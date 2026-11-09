@@ -538,6 +538,19 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   "p"; `DatabaseBuilder.start()` of a `memory()` builder whose database has
   closed starts on the closed stream, reads the data and fails at its first
   write.
+* **The rules for writes through the Core in a database of the Pub API**
+  (bergdb 020-22; Frans, 2026-11-09, A2: "Core is root, with a detection
+  floor"). `Db`'s Javadoc, "Keys and the layers above", says which keys a
+  `Db` may write: every key that does not start with the bkey of `/d`, `/-`
+  or `/#` is the Core user's, never read or written by BergDB; the Pub
+  API's keys may be written, but only the Pub API's writes keep its
+  indexes, so a Core put at an object key of an indexed directory is left
+  out of the index's scans until the key is written again through the Pub
+  API or the index is made again; keys under `/#` are BergDB's. Malformed
+  internal data is refused with `InternalDataException`; a scan of an index
+  never returns a value that does not match its query. `bergdb.pub`'s "The
+  API and its jar", the Core's `key-encoding.md` and docs/levels.md,
+  section 11, point to it.
 * **A start's heap** (bergdb 019-45): a start needs about twice the
   startup distance of heap above what the running database needs,
   whatever the cache budget (docs/levels.md, section 7); W7's 600 MB heap

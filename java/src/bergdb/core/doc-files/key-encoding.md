@@ -130,12 +130,23 @@ Example internal data (ikey)
 
     /#i/dreclaim/-table.txt -- reclaim information, see core.Reclaim.
 
-The Core Layer's own internal keys are those of Reclaim, under
-/#i/dreclaim/, and /#i/-dummy (Db). The rest of the internal space belongs
-to the layers above, whose keys are to the Core Layer keys like any other:
-the Pub API keeps its user indexes under /#i/didef/, /#i/dient/ and
-/#i/didel/ (bergdb 020-10, section 4.1). Until release 2026.4 they were
-under /#i/dii/ and /#i/di/, the examples given here until then.
+The key spaces of a database (bergdb 020-22, section 4.1), by a key's
+first two bytes, written here as the ikeys whose bkeys they are (/d is
+01 66, /- is 01 2f, /# is 01 25):
+
+* **The Pub API's**: every key that starts with /d or /-: a ukey's ikey,
+  and the other such keys, a bkey without an ikey too, reserved for it.
+* **BergDB's internal ones**: every key that starts with /#. The IKP /#i/
+  holds the Core Layer's own keys, /#i/dreclaim/ of Reclaim and
+  /#i/-dummy of Db, and the Pub API's: /#i/didef/, /#i/dient/ and
+  /#i/didel/ for its user indexes, and /#i/div/, hashed only, never stored
+  (bergdb 020-10, section 4.1); /#i/dii/ and /#i/di/, release 2026.3's,
+  are refused at a start and never read. The rest of /# is reserved.
+* **The Core user's**: every other key. BergDB never reads or writes them.
+
+The Core Layer takes the keys of all three as keys like any other. What a
+Core user may write in each, and what such a write does to the Pub API's
+data: Db's Javadoc.
 
 
 ### Conversion ikey --> bkey ###

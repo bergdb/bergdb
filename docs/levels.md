@@ -732,6 +732,21 @@ jars seal `bergdb.pub` and `bergdb.pubimp`, so no class of another jar or
 directory joins them. A `DbObject` is immutable: `getBytes()` gives a copy,
 and a put checks a user's `DbObject` by the full check and stores a copy.
 
+**Writes through the Core.** The Core is root: `Db` writes any key, the
+Pub API's too, and refuses none (010-01, P12). The rules are in `Db`'s
+Javadoc
+([020-22](../items/020-release-2026-4/22-core-writes-and-pub-integrity.md),
+section 5; Frans, 2026-11-09): keys that start with neither `/d`, `/-` nor
+`/#` are the Core user's; the Pub API's keys may be written, but only the
+Pub API's writes keep its indexes, so a Core put at an object key of an
+indexed directory is left out of its scans until the key is written again
+through the Pub API or the index is made again; keys under `/#` are
+BergDB's. Malformed internal data is refused with `InternalDataException`
+at a start or at the read that meets it (with 020-16's fixes F16-1 and
+F16-2); a scan never returns a value that does not match its query,
+whatever was written; a well-formed Core write of BergDB's keys is
+undefined (020-22, section 5.4).
+
 **Stored objects, format 2.** The spec is
 [020-07](../items/020-release-2026-4/07-object-spec.md), under 018-01's
 rule that Frans approves a change of the stored format (020-02, section

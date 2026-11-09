@@ -14,7 +14,8 @@ public class DbConstants {
     /** 
      * IKP, Internal Key Prefix; prefix of keys used to store internal database data.
      * Keys with this prefix must not be used by an ordinary user.
-     * The Pub Layer enforces this; the Core Layer does not.
+     * The Pub Layer enforces this; the Core Layer does not (the rules: Db's Javadoc,
+     * bergdb 020-22).
      * The string is an ikey (not ukey).
      */
     public static final String INTERNAL_PREFIX = Util.identity("/#i/");

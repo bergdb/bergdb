@@ -481,8 +481,8 @@ values' order, and which no other level's string is a proper prefix of
 * An entry is parsed from its start: the prefix of its generation, then
   each level by its type (8 bytes; or up to the `00` that ends E, every
   `01` followed by `01` or `02`), then K (non-empty, first byte `0x2f`,
-  no byte below 2). A key that does not parse is an
-  `InternalDataException` naming it.
+  no byte below 2, the bkey of an ikey's file part: 020-16, F16-1). A key
+  that does not parse is an `InternalDataException` naming it.
 * The scan's range (3.4): with base = the generation's prefix ‖ L(eq_1)
   ‖ ... ‖ L(eq_k) and succ(x) the least string above every string that
   starts with x: no bound, [base, succ(base)); `from(v, true)` starts at
@@ -503,8 +503,44 @@ In `DatabaseImp.createAndStart`, after `Db.start()`, before it returns:
 4. Every definition in state `building` starts a build from the first key
    of its directory (6.1); `indexJob(name)` returns its job.
 
-A start reads no entry and no user value. Its cost is one prefix scan of
-the definitions and one of the markers, both small.
+Steps 1 to 3 read every key under their prefix, the prefix's own key
+included, which is refused as a key that is not a definition or a marker
+(020-16, F16-2). A start reads no entry and no user value. Its cost is one
+prefix scan of the definitions and one of the markers, both small.
+
+### 4.6. Writes through the Core
+
+The Core is root: a write through `Db` reaches every key of this section,
+and the Core refuses none (010-01, P12). The rules for such writes, and
+what each does, are 020-22, section 5; Frans decided its principle A2,
+"Core is root, with a detection floor" (2026-11-09, 11:13; 020-22, section
+9). Users read them in `Db`'s Javadoc.
+
+* **The invariants** that the indexes rely on, which only the Pub layer's
+  own writes keep, are stated in 020-22, section 4.2: V3, the entries
+  (while an index is active, every value at an object key of its
+  directory has its entry; 3.3); V4, the definitions (4.2); V5, who makes
+  them (the index manager, under its lock, 5.2); V6, the entries' keys
+  (4.4); V7, the markers (6.2); V8, every generation a live definition's
+  or a marker's; V9, format 1's spaces (4.1); V10, the virtual keys,
+  hashed only (5.1).
+* **The promise** (A2): malformed data under these keys is never used.
+  A start that reads it (4.5: a definition, a marker, a key under
+  `/#i/dii/`, a prefix's own key) refuses the database with
+  `InternalDataException` (`VersioningStreamException` under
+  `/#i/dii/`), and a read that meets it throws `InternalDataException`
+  (an entry at a scan, 4.4; a definition at `useIndex`); never another
+  exception, and never skipped. A key under a directory's file prefix
+  that is no ukey's ikey is no key of the directory: the primary scan
+  (3.5) and a build (6.1) leave it out. A scan never returns a value that
+  does not match its query, whatever was written (3.4). When each check
+  runs: 020-22, section 4.3. Well-formed data that the rules forbid, such
+  as a missing entry or a definition that the manager did not make, is
+  undefined, with the scan's check as its floor; the repair is to write
+  the keys again through the Pub API, or to make the index again.
+* **020-16's fixes** (F16-1 to F16-3; its O16-2) make 4.4, 4.5 and 6.1
+  read so: K is the bkey of an ikey's file part, a start's scans take the
+  prefix's own key, a build's step skips a key whose name holds a `/`.
 
 
 ## 5. Maintenance (F4 a and b)
@@ -611,7 +647,9 @@ key with 18 digits in place of `${transactionTime}`.
   connection.
 * **A step** is an `rw()`: a `getMany` of at most 25 values of the
   directory's own keys (the prefix idir ‖ `-`, so it stops at the
-  directory's end: 015-30, S2-F16) after the last key of the step before;
+  directory's end: 015-30, S2-F16) after the last key of the step before,
+  skipping a key whose name holds a `/`, no key of the directory, as the
+  primary scan does (020-16, F16-3; 021-06);
   the definition's key hash added to the read set; if the in-memory index
   of this generation is no longer building (deleted), the build ends
   FAILED "deleted"; else f(v) is put for each value read (3.3; a value
@@ -1056,3 +1094,8 @@ tests and the Javadoc changed with it.
 2026-11-09. Section 5.3: key replace in an object key's directory refused,
 and no previous value for a replaced name (the Codex review's X1, 020-14);
 the code, its tests and the Javadoc changed with it.
+
+2026-11-09. Section 4.6, writes through the Core: the invariants that
+020-22, section 4.2 states, and the promise of its principle A2 (Frans,
+11:13). 020-16's words (its O16-2) for its fixes F16-1 to F16-3 in
+sections 4.4, 4.5 and 6.1.

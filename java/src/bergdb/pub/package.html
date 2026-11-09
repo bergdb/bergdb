@@ -197,10 +197,13 @@ indexes, and what happens on errors.</li>
 <h3 id="api">The API and its jar</h3>
 
 <p>The API is the packages bergdb.pub and bergdb.pub.util, and the Core's bergdb.core.Db with
-the types of its signatures. Everything else, bergdb.pubimp included, is not API, whatever is
-public in it, and may change in any release. The jar that a release ships, which java/build.sh
-makes as build/bergdb-release.jar, holds the classes of BergDB's src directory only. Objects
-and user indexes, experimental in 2026.3, are part of the API since 2026.4.</p>
+the types of its signatures. The Core's Db reaches every key, the Pub API's own too; its
+Javadoc says which keys a Db may write in a database that the Pub API uses, and what a write
+of the others does to the Pub API's data (bergdb 020-22). Everything else, bergdb.pubimp
+included, is not API, whatever is public in it, and may change in any release. The jar that a
+release ships, which java/build.sh makes as build/bergdb-release.jar, holds the classes of
+BergDB's src directory only. Objects and user indexes, experimental in 2026.3, are part of the
+API since 2026.4.</p>
 
 <h3 id="strings">Strings</h3>
 
