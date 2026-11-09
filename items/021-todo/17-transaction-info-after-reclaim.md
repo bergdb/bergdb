@@ -126,3 +126,22 @@ land. Severity: medium, as 020-24-06 gave it. In 2026.1 to 2026.3
 Runs, under the gate lock (2026-11-09, 15:11 to 15:14), on the tree of
 both commits: `BEFORE COMMIT OK (153 s)` (unit 1554, f 86, demos);
 `JAVADOC PUB OK`. No Core code changed, so no `level1.sh`.
+
+2026-11-09. R17-1 (low), from coord-1109's review of 579f7d9 by v1 (its
+probe `/Users/f/fl/bench/2026-11-09/v1/probe17/`): any record with a KV
+under reclaim's prefix was taken for a step, so a transaction through the
+Core's `Db` that writes a user's key with such a key (malformed internal
+data, 020-22) gave the `Bug` above, which failed the database, or an
+earlier, wrong transaction. Fixed by r17 in commit e06e28a in
+`clone-r17`, on 6e336b6: the record's own value of the key must be the
+value one unit before it, byte for byte, stored before it; else
+`InternalDataException`, and the database goes on. No `Bug` is left. Not
+detected: a Core write of the same bytes again with such a KV, taken for a
+copy (the earlier transaction that wrote those bytes is given). The
+Javadoc now says exactly when a transaction before the first available
+lookup time is given: while reclaim has neither removed it nor rewritten
+the value at or before that time. Test
+`PubTester.testTransactionInfoOfAFakeReclaimRecord`, failing before in
+both cases. Under the gate lock (15:25 to 15:28): `BEFORE COMMIT OK (156
+s)` (unit 1555, f 86, demos), `JAVADOC PUB OK`; v1's probe refused in both
+cases, the database went on.
