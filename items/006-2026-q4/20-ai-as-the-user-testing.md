@@ -177,7 +177,31 @@ encryption flaw, round 4 four high. New scenarios kept finding new faults.
   header alone (022), to test the port's documentation the same way.
 
 
+## 6. Later the same day: round 5, and the C port's users
+
+Round 5 (020-24-13 to 15, 17:28) found one high fault (U14-1, puts slowing down under index churn with a
+retain duration) and about 20 contradictions between the documents. Round 6 (16 to 18) ran on the frozen
+candidate.
+
+At 17:20, Frans sent the method to the C port's session (022) as a suggestion. Three black-box users of the
+C library wrote applications from `bergdb.h` and its readme alone (022-06). The C library writes Java's bytes,
+so a fault they found in C was often Java's too, and a Java reproduction followed within the hour:
+
+* **021-25:** reclaim stops cutting under keys in time order with deletes. It was in 2026.3 too; a part of it
+  was fixed for 2026.4, and the rest is for 2026.5.
+* **021-26:** a regression from that day's own clock fix, fixed before the candidate.
+* **021-27**, and the slow loop with long keys; both for Frans's list.
+
+The C session also fixed six faults of its own.
+
+Frans, 19:20: "The C port has been valuable for finding issues with the Java implementation. That is one
+conclusion from today's bug hunt. The other is the value of AI-user testing. Those were the most productive
+bug hunting tool."
+
+
 Log
 ===
 
 2026-11-09. Written at Frans's request (16:47) by coord-1109.
+
+2026-11-09. Section 6: round 5, the C port's black-box users, and Frans's conclusion (19:20).
