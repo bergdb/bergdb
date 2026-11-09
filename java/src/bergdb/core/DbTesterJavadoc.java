@@ -137,4 +137,25 @@ public class DbTesterJavadoc {
             db.close();
         }
     }
+
+    /**
+     * DbBuilder.cacheSizeIndicator(): a value below 1 is refused with
+     * IllegalArgumentException, as Db.setCacheSizeIndicator() refuses one.
+     */
+    @Nano
+    public static void testBuilderCacheSizeIndicatorBelowOneRefused() {
+        long[] bad = {0, -1, Long.MIN_VALUE};
+        for (final long size : bad) {
+            assertThrows("cacheSizeIndicator(" + size + ")", IllegalArgumentException.class,
+                    () -> Db.builder().cacheSizeIndicator(size));
+        }
+        Db db = Db.builder().testSetup().cacheSizeIndicator(1).start();
+        try {
+            Assert.assertEquals(1, db.getCacheSizeIndicator());
+            db.execute(db.trans().put("k", "v").build());
+            Assert.assertEquals("v", new String(get(db, "k")));
+        } finally {
+            db.close();
+        }
+    }
 }

@@ -521,6 +521,12 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   time when the database had no state returned no KV without calling
   `eod()`, which the interface promises at the end of the database. BergDB's
   own readers do not depend on it.
+* **`DbBuilder.cacheSizeIndicator()` refuses a value below 1** (bergdb
+  020-27; 2026-11-09) with `IllegalArgumentException`, as
+  `Db.setCacheSizeIndicator()` does: it took one, and a start then threw an
+  `AssertionError` (with `-ea`) or ran with a budget of 0 or less. The Pub
+  API's `DatabaseBuilder` clamps its value to 4 to 100,000 MB and never
+  passed one.
 
 
 ### Format

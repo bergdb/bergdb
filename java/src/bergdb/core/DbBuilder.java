@@ -167,7 +167,17 @@ public class DbBuilder {
         return this;
     }
     
+    /**
+     * The cache size indicator in bytes, the budget of the cache (Db.getCacheSizeIndicator());
+     * 200 MB by default. A value below 1 is refused with IllegalArgumentException, as
+     * Db.setCacheSizeIndicator() refuses it (bergdb 020-27: it was taken, a budget of 0 or
+     * less, and an AssertionError of Cache3 with -ea).
+     */
     public DbBuilder cacheSizeIndicator(long cacheSizeIndicator) {
+        if (cacheSizeIndicator < 1) {
+            throw new IllegalArgumentException("Bad cacheSizeIndicator: " + cacheSizeIndicator
+                    + ".");
+        }
         this.cacheSizeIndicator = cacheSizeIndicator;
         return this;
     }
