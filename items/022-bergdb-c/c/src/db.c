@@ -648,13 +648,18 @@ enum err_code db_open(struct db *db, const char *dir, const struct db_config *cf
         free_all(db);
         return rc;
     }
-    /* The admission of the large values that the rerun made, as after a
-     * record that this database writes: their records are in the stream, and
-     * their pointers become stream pointers; the list is empty after it
-     * (bergdb 015-68, as Java's start since release 2026.3; until 022-01, step
-     * 4, the rerun had no such listener, and its large values stayed in their
-     * leaves, counted, until eviction took them). */
-    ev_record_written(&db->ev, NULL);
+    /* The admission of the large values that the start made resident, as
+     * after a record that this database writes: their records are in the
+     * stream, and their pointers become stream pointers; the list is empty
+     * after it (bergdb 015-68, as Java's start since release 2026.3; until
+     * 022-01, step 4, the rerun had no such listener, and its large values
+     * stayed in their leaves, counted, until eviction took them). The
+     * resident key nodes too, as a record's written nodes (bergdb 019-47, as
+     * Java's start since release 2026.4): the start links the values of the
+     * section's first transaction, which is not rerun, into the section's
+     * node versions (create_memory_pointers), and the list did not have
+     * those; a large one stayed in its leaf. */
+    ev_record_written_start(&db->ev, &db->node_table);
     db_evict(db);       /* eviction.afterTransaction: after the startup's loads (012-12) */
     return ERR_OK;
 }

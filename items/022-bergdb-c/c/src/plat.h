@@ -34,7 +34,11 @@ struct plat_entry {
  * that plat_free_entries frees. Java sorts by String.compareTo, UTF-16 code
  * units: the same order for every name but those that mix characters above
  * U+FFFF with ones from U+E000 to U+FFFF. ERR_IO if the directory cannot be
- * read; ERR_NOMEM. */
+ * listed (it cannot be opened, or its listing fails), with Java's
+ * IOException of FileStream.listFiles, "Cannot list the directory DIR: an
+ * I/O error, or no permission to read it." (bergdb 020-20, T1, as Java's
+ * since release 2026.4; before, "Cannot read directory DIR: " and
+ * strerror's text, and an error in the listing ended it); ERR_NOMEM. */
 enum err_code plat_list_dir(const char *dir, struct mem *m, struct plat_entry **out,
         int32_t *n, struct err *e);
 

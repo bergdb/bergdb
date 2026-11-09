@@ -42,8 +42,11 @@
  * feeds the residents and eviction only (no byte). The residents are the
  * allocator's counts in C; eviction's part, the admission list of the large
  * values (Eviction.largeValueCreated), is the caller's listener in struct
- * sr_env, which Db then drains (ev_record_written with no written nodes,
- * as Java's start since release 2026.3: bergdb 015-68).
+ * sr_env, which Db then drains (ev_record_written_start, as Java's start
+ * since release 2026.3: bergdb 015-68), with the resident key nodes as the
+ * written nodes, for the large values of the section's first transaction,
+ * which create_memory_pointers links and the listener does not see (bergdb
+ * 019-47, as Java's since release 2026.4).
  *
  * Memory (012-01, 4.5; 012-07, 6.4.4): sr_start makes safe points
  * (obj_collect) between the records it validates, after each put of the

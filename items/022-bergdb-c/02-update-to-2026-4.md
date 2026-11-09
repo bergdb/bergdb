@@ -676,3 +676,50 @@ a clone of `int.git`'s `022`; first read at `770d88b`, then 021-11 landed),
 this was written), and step 4's corrupt set in its clone `s4b` as it
 stood at about 12:00; nothing built or run. The study and a line
 in 022's readme; no other file changed.
+
+2026-11-09, step 3 (worker t3). Section 3.1, point 3, and D4's T1 (3.2);
+the stream's bytes do not change. (a) 019-47: the open's admission passes
+the resident key nodes as the written nodes, as `Db.startInner`'s
+`eviction.recordWritten(this, cache.nodes().iterator())` since `c126d7d`.
+`db_open` calls the new `ev_record_written_start` (`evict.c`), which
+drains the admission list as before (015-68: the rerun's large values)
+and then puts the key node of each live handle of the node table
+(`nt_slot`) through the record's loop body, made a function
+(`admit_written`): a value over 1 MiB of the startup section's first
+transaction, which `create_memory_pointers` links and the rerun's
+listener never reports, becomes a stream pointer. It allocates nothing
+and changes no slot. Before, C, as 2026.3's Java, kept such a value in
+its leaf, counted, until a budget's sweep took it. Test: `t_evict.c`'s
+`evict_start_admits_first_transactions_large_values`
+(`Eviction.testStartAdmitsLargeValuesOfTheSectionsFirstTransaction`: a
+startup distance of 200 bytes; "a" of 1,200 KiB and a small "b" in one
+transaction, and with extra "c" of 1,200 KiB in a later one; the restart
+with a budget of 100 MB: no resident pointer to a value over 1 MiB after
+the start and after the reads, the values read back, the recount 0; then
+the allocation failures in turn in that start, 50 and 51 starts, each
+refused with nothing left or opened with no large value resident). With
+the fix taken out it fails with extra: 1 such pointer after the start and
+after the reads, the resident bytes over 1,200 KiB. Without extra the
+section begins with the creation and the start reruns "a", so the list
+has it (015-68's case), and the test passes either way, in Java too: a
+probe on the candidate's Java gives the sections that C's start gives
+(startPos 0 and 264, two transactions each), and with `c126d7d`'s line
+reverted 1 large resident pointer with extra, 0 without, as C. (b) T1
+(020-20): `plat_list_dir` refuses a directory that cannot be listed with
+Java's `IOException` text, "Cannot list the directory DIR: an I/O error,
+or no permission to read it.", where it gave "Cannot read directory DIR:
+" and `strerror`'s; an error of `readdir` refuses too, where it ended the
+listing as if complete. Test: `t_append.c`'s `append_dir_unlistable`
+(`FileStream.testUnlistableDirectory`: a directory without read
+permission refused at the open for writing and at a read-only open,
+nothing left; once readable, the byte read back; skipped where the
+permission does not stop the listing), which failed before on the text.
+No harness compares the text.
+
+The gate against 2026.3 (`JAVA_REF`'s default: step 0 had not landed),
+on `2026.4` at `2929db5`: `C BEFORE COMMIT OK (477 s)`, F53 under a load
+of about 12 to 25; `unit` 383 tests (382 in the release build); `cross
+quick` 0 differences (23 workloads, 69 crash cuts, 85 corrupt variants,
+2 in turns, 46 budget runs); `writecheck` 0; `allocfail` 628 runs. No
+difference remains; neither change shows in the cross runs, as section
+4.1 expects.

@@ -692,6 +692,51 @@ TEST(append_dir_cut_at_length) {
     CHECK_MEM_ZERO(&am);
 }
 
+/* bergdb 020-20, T1, FileStream.testUnlistableDirectory: a directory that
+ * cannot be listed, here one without read permission, is refused at the
+ * open for writing, and at a read-only one, with Java's IOException text;
+ * the failed open leaves nothing open; once readable, the stream opens
+ * with its byte. Skipped where the permission does not stop the listing
+ * (root). Before, the text was "Cannot read directory DIR: " and
+ * strerror's. */
+TEST(append_dir_unlistable) {
+    struct stream s;
+    struct stat st;
+    uint8_t b[1] = { 7 };
+    char want[600];
+    mem_init(&am);
+    REQUIRE(new_dir());
+    CHECK_EQ(stream_open_dir_rw(&s, adir, 0, &am, &ae), ERR_OK);
+    CHECK_EQ(stream_append(&s, b, 1, &ae), ERR_OK);
+    CHECK_EQ(stream_finish(&s, &ae), ERR_OK);
+    REQUIRE(stat(adir, &st) == 0);
+    REQUIRE(chmod(adir, st.st_mode & (mode_t) ~0444) == 0);
+    DIR *d = opendir(adir);
+    if (d != NULL) {
+        closedir(d);
+        printf("  append_dir_unlistable: skipped, the directory can be listed without read "
+                "permission\n");
+    } else {
+        snprintf(want, sizeof want, "Cannot list the directory %s: an I/O error, or no "
+                "permission to read it.", adir);
+        CHECK_EQ(stream_open_dir_rw(&s, adir, 0, &am, &ae), ERR_IO);
+        CHECK(strcmp(ae.java, "IOException") == 0);
+        CHECK(strcmp(ae.text, want) == 0);
+        CHECK_MEM_ZERO(&am);
+        CHECK_EQ(stream_open_dir(&s, adir, &am, &ae), ERR_IO);
+        CHECK(strcmp(ae.text, want) == 0);
+        CHECK_MEM_ZERO(&am);
+    }
+    CHECK_EQ(chmod(adir, st.st_mode), 0);
+    CHECK_EQ(stream_open_dir_rw(&s, adir, 0, &am, &ae), ERR_OK);
+    b[0] = 0;
+    CHECK_EQ(stream_read(&s, 0, b, 1, &ae), ERR_OK);
+    CHECK_EQ(b[0], 7);
+    CHECK_EQ(stream_finish(&s, &ae), ERR_OK);
+    remove_dir();
+    CHECK_MEM_ZERO(&am);
+}
+
 const struct test append_tests[] = {
     TEST_ENTRY(append_rs_test1),
     TEST_ENTRY(append_rs_large),
@@ -709,5 +754,6 @@ const struct test append_tests[] = {
     TEST_ENTRY(append_dir_mkdirs),
     TEST_ENTRY(append_dir_first_file),
     TEST_ENTRY(append_dir_cut_at_length),
+    TEST_ENTRY(append_dir_unlistable),
     TEST_END
 };

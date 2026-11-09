@@ -62,7 +62,10 @@
  * Java's (its schedule is BUDGET also with noEvict()). A start's rerun of
  * the transactions puts its large values on the list too, and the open
  * drains it before its first eviction (bergdb 015-68, as Java's since
- * release 2026.3): a database opened for reads keeps none in memory.
+ * release 2026.3), with every resident key node as a written one, which
+ * takes the large values of the startup section's first transaction, not
+ * rerun (bergdb 019-47, as Java's since release 2026.4): a database opened
+ * for reads keeps none in memory.
  *
  * The debug check (BERGDB_TEST, ev_check_pins): after a sweep, every pinned
  * object is still its node's object in the node table.
@@ -164,10 +167,21 @@ bool ev_large_value_created(struct ev *ev, struct knode *holder, int32_t index,
 
 /* Eviction.recordWritten (the admission): after the record of tn is
  * written, the list's large values and those that the record's key nodes
- * hold become stream pointers; the list is emptied. tn NULL: no written
- * nodes, the start's call for the large values of its rerun, whose records
- * are in the stream (bergdb 015-68). */
+ * hold become stream pointers; the list is emptied. */
 void ev_record_written(struct ev *ev, const struct transnodes *tn);
+
+/* Eviction.recordWritten as Db's start calls it, with the resident key
+ * nodes as the written nodes (recordWritten(this, cache.nodes().iterator())):
+ * the list's large values, those of the start's rerun (bergdb 015-68), and
+ * the large values that the key nodes of nt's live handles hold, all with
+ * their records in the stream, become stream pointers; the list is
+ * emptied. The pass takes the values of the startup section's first
+ * transaction, which the start does not rerun but links into the
+ * section's node versions (starter.c's create_memory_pointers), so the
+ * rerun's listener never put them on the list (bergdb 019-47, as Java's
+ * since release 2026.4). Allocates nothing; the values let go are freed at
+ * the next safe point. */
+void ev_record_written_start(struct ev *ev, const struct ntable *nt);
 
 /* The bytes of what is pinned, as the allocator counts them: each pinned
  * object (D's got-dirty nodes, the super root, the newest written top node)

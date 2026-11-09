@@ -231,9 +231,10 @@ static bool is_large(const struct vnode *v) {
     return v->len > EV_LARGE_VALUE;
 }
 
-void ev_record_written(struct ev *ev, const struct transnodes *tn) {
-    /* The large values the transaction made, through their pointers as the
-     * writer made them; a value is written with its transaction's record. */
+/* Eviction.recordWritten's first part: the large values the transaction
+ * made, through their pointers as the writer made them; a value is written
+ * with its transaction's record. The list is emptied. */
+static void admit_listed(struct ev *ev) {
     for (int32_t k = 0; k < ev->nlarge; k++) {
         struct knode *x = ev->large[k].holder;
         int32_t i = ev->large[k].index;
@@ -256,20 +257,42 @@ void ev_record_written(struct ev *ev, const struct transnodes *tn) {
         obj_release(ev->cx, &v->n.o);
     }
     ev->nlarge = 0;
-    /* The record's key nodes' pointers to written large values; none for the
-     * start (tn NULL). */
-    for (int32_t k = 0; tn != NULL && k < tn->key_count; k++) {
-        struct knode *x = tn->key_nodes[k];
-        const int32_t size = x->size;
-        for (int32_t i = 0; i < size; i++) {
-            struct obj *p = kn_get_pointee(x, i);
-            if (p == NULL || p->kind != OBJ_VALUE) {
-                continue;
-            }
-            struct vnode *v = (struct vnode *) p;
-            if (is_large(v) && spos_is_valid(v->n.spos) && !spos_is_vpos(v->n.spos)) {
-                unswizzle_value(ev, x, i, v);
-            }
+}
+
+/* Eviction.recordWritten's second part, for one written key node x: its
+ * pointers to written large values become stream pointers. */
+static void admit_written(struct ev *ev, struct knode *x) {
+    const int32_t size = x->size;
+    for (int32_t i = 0; i < size; i++) {
+        struct obj *p = kn_get_pointee(x, i);
+        if (p == NULL || p->kind != OBJ_VALUE) {
+            continue;
+        }
+        struct vnode *v = (struct vnode *) p;
+        if (is_large(v) && spos_is_valid(v->n.spos) && !spos_is_vpos(v->n.spos)) {
+            unswizzle_value(ev, x, i, v);
+        }
+    }
+}
+
+void ev_record_written(struct ev *ev, const struct transnodes *tn) {
+    admit_listed(ev);
+    /* The record's key nodes. */
+    for (int32_t k = 0; k < tn->key_count; k++) {
+        admit_written(ev, tn->key_nodes[k]);
+    }
+}
+
+void ev_record_written_start(struct ev *ev, const struct ntable *nt) {
+    admit_listed(ev);
+    /* The resident key nodes as the written nodes, Java's cache.nodes(): the
+     * object of each live handle of the node table (bergdb 019-47). The
+     * walk changes no slot: an unswizzle changes a pointer of its key node
+     * and lets the value go, to be freed at the next safe point. */
+    for (int64_t s = 0; s < nt_slots(nt); s++) {
+        const struct handle *h = nt_slot(nt, s);
+        if (h != NULL && h->obj != NULL && h->obj->o.kind == OBJ_KEY) {
+            admit_written(ev, (struct knode *) h->obj);
         }
     }
 }

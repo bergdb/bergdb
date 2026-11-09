@@ -12,6 +12,14 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+/* FileStream.listFiles' refusal (bergdb 020-20, T1, as Java's since release
+ * 2026.4): a directory that cannot be listed, as Java's File.listFiles()
+ * gives null for it. */
+static enum err_code cannot_list(const char *dir, struct err *e) {
+    return err_set(e, ERR_IO, "IOException",
+            "Cannot list the directory %s: an I/O error, or no permission to read it.", dir);
+}
+
 enum err_code plat_list_dir(const char *dir, struct mem *m, struct plat_entry **out,
         int32_t *n, struct err *e) {
     struct plat_entry *list = NULL;
@@ -24,12 +32,21 @@ enum err_code plat_list_dir(const char *dir, struct mem *m, struct plat_entry **
     *out = NULL;
     *n = 0;
     if (dp == NULL) {
-        return err_set(e, ERR_IO, "IOException", "Cannot read directory %s: %s", dir,
-                strerror(errno));
+        return cannot_list(dir, e);
     }
-    while ((d = readdir(dp)) != NULL) {
+    for (;;) {
         struct stat st;
         struct plat_entry *x;
+        errno = 0;
+        d = readdir(dp);
+        if (d == NULL) {
+            if (errno != 0) {       /* an I/O error in the listing, not its end */
+                closedir(dp);
+                plat_free_entries(m, list, cap);
+                return cannot_list(dir, e);
+            }
+            break;
+        }
         if (strcmp(d->d_name, ".") == 0 || strcmp(d->d_name, "..") == 0) {
             continue;
         }

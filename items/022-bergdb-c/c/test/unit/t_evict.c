@@ -4,10 +4,11 @@
  * byte after every transaction, the same answers at every time, the counts
  * right (the recount), the pins in the node table, the resident bytes at
  * most the trigger; the setter's eviction in its call; the admission of a
- * large value, also of a start's rerun (015-68); a warmup that keeps no
- * large value (019-22); a lowered budget reached after the pins fell
- * (015-70); and the allocation failures in turn under a budget of one
- * byte. Each test ends with the allocator's count 0. */
+ * large value, also of a start's rerun (015-68) and of its section's first
+ * transaction (019-47); a warmup that keeps no large value (019-22); a
+ * lowered budget reached after the pins fell (015-70); and the allocation
+ * failures in turn under a budget of one byte. Each test ends with the
+ * allocator's count 0. */
 #define _DARWIN_C_SOURCE        /* mkdtemp */
 #include <dirent.h>
 #include <stdlib.h>
@@ -533,6 +534,155 @@ TEST(evict_start_admits_large_values) {
     remove_dir(dir);
 }
 
+/* A transaction of n puts, ikeys[i] with values[i] of lens[i] bytes, at
+ * clock time tt; *tpos its record's position. */
+static enum err_code exec_kvs(struct db *db, struct mem *m, struct bergdb_test_clock *clock,
+        int64_t tt, int n, const char *const *ikeys, const uint8_t *const *values,
+        const int32_t *lens, int64_t *tpos, struct err *e) {
+    struct tr_builder b;
+    struct trans t;
+    tr_builder_init(&b, m);
+    tr_init(&t, m);
+    bergdb_test_clock_set(clock, tt);
+    enum err_code rc = ERR_OK;
+    for (int i = 0; i < n && rc == ERR_OK; i++) {
+        uint8_t bkey[64];
+        const int32_t kl = (int32_t) strlen(ikeys[i]);
+        keys_ikey_to_bkey((const uint8_t *) ikeys[i], kl, bkey);
+        rc = tr_put(&b, bkey, kl, values[i], lens[i], NULL, e);
+    }
+    if (rc == ERR_OK) {
+        rc = tr_build(&b, &t, e);
+    }
+    if (rc == ERR_OK) {
+        rc = db_execute(db, &t, e);
+    }
+    if (rc == ERR_OK) {
+        *tpos = t.tpos;
+    }
+    tr_free(&t);
+    tr_builder_free(&b);
+    return rc;
+}
+
+/* getOne of ikey at the newest time: the value equals the len bytes of
+ * expected. */
+static bool value_is(struct db *db, const char *ikey, const uint8_t *expected, int32_t len) {
+    uint8_t bkey[64];
+    const int32_t kl = (int32_t) strlen(ikey);
+    keys_ikey_to_bkey((const uint8_t *) ikey, kl, bkey);
+    int64_t segs[16];
+    keys_to_segments(bkey, kl, segs);
+    struct getdata gd;
+    db_new_get_data(db, &gd);
+    struct vnode *v = NULL;
+    struct err e;
+    return db_get_one(db, INT64_MAX, segs, keys_segment_count(kl), &gd, &v, &e) == ERR_OK
+            && v != NULL && v->len == len && memcmp(v->value, expected, (size_t) len) == 0;
+}
+
+/* Eviction.testStartAdmitsLargeValuesOfTheSectionsFirstTransaction (bergdb
+ * 019-47, as Java's since release 2026.4): a start whose startup section
+ * begins with the transaction of a large value does not keep that value
+ * either. The section's first transaction is not rerun; its values are
+ * linked into the section's node versions (starter.c's
+ * create_memory_pointers), which the rerun's pointer-created listener does
+ * not see, so 015-68's admission, of the list alone, left the value in its
+ * leaf. A startup distance of 200 bytes; a large value ("a", with a small
+ * "b") in one transaction, and with extra a second ("c") in a later one.
+ * With extra, the next start's section begins with "a"'s transaction (264,
+ * at "c"'s record), which is not rerun, and the start reruns "c"'s: the
+ * admission takes "c" from its list, as before, and "a" only by the pass
+ * over the resident key nodes. Without extra, the section begins with the
+ * creation, the start reruns "a"'s transaction, and its list has the value
+ * (015-68's case). Java's start gives the same sections (startPos 0 and
+ * 264, two transactions each; checked with a probe on the candidate). The
+ * restart with a budget of 100 MB, so that no sweep takes them. Before the
+ * fix, with extra: 1 resident pointer to a value over 1 MiB after the
+ * start, and after the reads, as Java's before 019-47. Then the allocation
+ * failures in turn in that start: each open refuses (NOMEM) and leaves
+ * nothing, or opens with no large value resident. */
+TEST(evict_start_admits_first_transactions_large_values) {
+    const int32_t len = 1200 * 1024;
+    uint8_t *value = calloc((size_t) len, 1);
+    REQUIRE(value != NULL);
+    const uint8_t *small = (const uint8_t *) "small";
+    for (int extra = 0; extra < 2; extra++) {
+        char dir[256];
+        REQUIRE(temp_dir(dir, sizeof dir));
+        struct mem m;
+        struct err e;
+        struct db db;
+        struct db_config c;
+        struct db_start_info info;
+        struct bergdb_test_clock k = {0};
+        mem_init(&m);
+        config(&c, &k, 30, 200, INT64_MAX);         /* testSetup: no eviction */
+        bergdb_test_clock_set(&k, 500);
+        REQUIRE(db_open(&db, dir, &c, &m, &info, &e) == ERR_OK);
+        const char *const ab[] = {"a", "b"};
+        const uint8_t *const abv[] = {value, small};
+        const int32_t abl[] = {len, 5};
+        int64_t tposA = -1, tposC = -1;
+        CHECK(exec_kvs(&db, &m, &k, 1000, 2, ab, abv, abl, &tposA, &e) == ERR_OK);
+        if (extra == 1) {
+            const char *const cc[] = {"c"};
+            const uint8_t *const cv[] = {value};
+            CHECK(exec_kvs(&db, &m, &k, 1001, 1, cc, cv, &len, &tposC, &e) == ERR_OK);
+        }
+        CHECK(db_close(&db, &e) == ERR_OK);
+        CHECK_MEM_ZERO(&m);
+
+        config(&c, &k, 30, 200, 100000000);
+        REQUIRE(db_open(&db, dir, &c, &m, &info, &e) == ERR_OK);
+        CHECK_EQ(info.start_pos, extra == 1 ? tposA : 0);
+        CHECK_EQ(tposA, 264);
+        CHECK_EQ(info.trans_count, 2);
+        CHECK_EQ(db.ev.nlarge, 0);
+        CHECK_EQ(large_resident(&db), 0);
+        CHECK(db_resident_bytes(&db) < len);
+        CHECK_EQ(db.ev.sweeps, 0);              /* the admission, not a sweep */
+        CHECK_EQ(db_recount(&db), 0);
+        CHECK(value_is(&db, "a", value, len));
+        CHECK(value_is(&db, "b", small, 5));
+        if (extra == 1) {
+            CHECK(value_is(&db, "c", value, len));
+        }
+        db_evict(&db);
+        CHECK_EQ(large_resident(&db), 0);       /* after the reads */
+        CHECK_EQ(db_recount(&db), 0);
+        CHECK(db_close(&db, &e) == ERR_OK);
+        CHECK_MEM_ZERO(&m);
+
+        int64_t runs = 0, refused = 0;
+        for (int64_t at = 1; at < 100000; at++) {
+            struct mem mf;
+            mem_init(&mf);
+            mf.fail_at = at;
+            enum err_code rc = db_open(&db, dir, &c, &mf, &info, &e);
+            runs++;
+            if (rc != ERR_OK) {
+                CHECK_EQ(rc, ERR_NOMEM);
+                CHECK_MEM_ZERO(&mf);
+                refused++;
+                continue;
+            }
+            CHECK_EQ(db.ev.nlarge, 0);
+            CHECK_EQ(large_resident(&db), 0);
+            db_close(&db, &e);
+            CHECK_MEM_ZERO(&mf);
+            if (mf.allocs < at) {
+                break;
+            }
+        }
+        CHECK(refused > 0);
+        printf("  evict_start_admits_first_transactions_large_values (%d more): %lld starts, "
+                "%lld refused (NOMEM)\n", extra, (long long) runs, (long long) refused);
+        remove_dir(dir);
+    }
+    free(value);
+}
+
 /* Eviction.testWarmupKeepsNoLargeValue (bergdb 019-22, as Java's since
  * release 2026.3): a transaction's warmup keeps no value over 1 MiB. A
  * key's value of 1,200 KiB is written, and the admission takes it from its
@@ -818,6 +968,7 @@ const struct test evict_tests[] = {
     TEST_ENTRY(evict_twins),
     TEST_ENTRY(evict_large_value),
     TEST_ENTRY(evict_start_admits_large_values),
+    TEST_ENTRY(evict_start_admits_first_transactions_large_values),
     TEST_ENTRY(evict_warmup_keeps_no_large_value),
     TEST_ENTRY(evict_lowered_budget_after_pins_fell),
     TEST_ENTRY(evict_alloc_failures),
