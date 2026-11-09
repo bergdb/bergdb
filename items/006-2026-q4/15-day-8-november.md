@@ -176,6 +176,8 @@ session continues with `/coordinator resume` (013-02).
   021-10, NIGHT OK, the quiet measurements, the audit 020-11 (section 6;
   the minute-by-minute record is the state file,
   `/Users/f/fl/bench/coord/2026-11-08/state.md`).
+* 06:07 to 08:50, 9 November, attended: Frans back; section 6.3 gone
+  through and section 6.5 written (the morning's outcome).
 
 
 ## 6. Outcome
@@ -293,3 +295,63 @@ The night, in order (each gated with BEFORE COMMIT OK; reviews read-only):
   every typed getter (F6), records as Data Objects, an opt-in key field
   (017-07, section 6).
 * The release's own checks and cut (6.3, point 3).
+
+### 6.5. The morning of 9 November, attended (06:07 to 08:50)
+
+Frans back at 06:07, early; coord-1108 went on, attended, until the
+handover to coord-1109 (his word, 08:50). Each item in `main`, gated
+where it touches `java/`:
+
+* **Section 6.3 decided**: 020-07 approved (07:33; 102500f), after its
+  section 4.4's examples were rewritten in JSON5 with annotated bytes
+  (6d9b0fb, 36c3811); C-M8 accepted (07:18; 2bb62b3); the four most
+  important decisions under the delegation read, "No changes" (b44e932).
+* **The Core Layer is a simple key-value store of byte arrays**, written
+  down at Frans's request in 010-01 (P12), `docs/levels.md` and
+  `AGENTS.md` (ef0da69): 2026.4 added no Core code for objects or
+  indexes. Two small fixes found on the way (626a6bc): the Core's key doc
+  gave the 2017 index keys; an unused field in `RwEnvironmentImp`.
+* **017-09**, object keys hold objects only: a study for a later release
+  (54dfb1c), at Frans's request; his to read.
+* **The Pub API's Javadoc made welcoming** (14cf30d): the first example
+  `c.put("/a.txt", "Hello world!")`; the package page a tour by examples
+  from PayDemo and WebsiteCode, the rules lower down.
+* **PayDemo fixed** (f3af680): its index call failed on 2026.4 at run
+  time. Frans: the code must compile and run before every commit; it
+  already compiled in the gate, so **the gate now runs the demos**
+  (1d1b6f3, about 3 s), which found WebsiteCode failing on every run
+  (fixed there) and three small faults in the demos (3b29ffd).
+* **`Job.join()` throws `IndexBuildException`** for a failed build
+  (4dc245a), at Frans's word (08:29): Java's convention, and a short
+  `start().join()` no longer hides a failure.
+
+Running at the handover, in coord-1108's process (it stays open in
+closing mode until they report, then sends their results to coord-1109):
+
+* **020-13, the test study and bug hunt** (Frans, 08:41: "I want the test
+  study before the release cut. This release focus is 'bug-free
+  database'"): in `/Users/f/fl/bench/2026-11-09/clone-tests`, from
+  1d1b6f3; JaCoCo coverage, a hand mutation sample, probes of the risky
+  areas, fixes in its clone with tests; report by about 11:45. **The
+  release cut waits for it.**
+* **006-16, Props across releases** (Frans, 08:21): from the 2013 era to
+  the 2026.4 candidate, in `/Users/f/fl/bench/006-16/`; its CORE timings
+  need a quiet F53, so they wait for gaps (by 13:00, else the commands
+  are left for later).
+
+For coord-1109 (also in the state file's handover note):
+
+1. Integrate 020-13's fixes and 006-16's item when coord-1108 sends them.
+2. **A Codex review** (Frans, 08:45: a review by GPT-6.1 Sol Max, his
+   subscription; the coordinator recommended it): Codex runs from Frans's
+   side (no `codex` CLI on F53). Prepare a clone at main's head and a
+   brief: the 2026.4 production code of most risk (index maintenance and
+   jobs, `ObjectFormat`, `DataObjects`, `IndexKeys`, `IndexDefinition`,
+   the 019-46 and 019-47 fixes) against 020-07, 020-09, 020-10 and the
+   Javadoc; findings with file, line, severity and a reproduction, no
+   code changed; kept apart from 020-11 and 020-13 until done; each
+   finding then checked by a failing test before a fix.
+3. **The release candidate** after 020-13 (and Codex, if Frans wants to
+   wait for it): `night.sh large` on F53 (about 5 h), the jar tests on
+   s1, jcstress on F53, StreamDigest and the axioms; the tag after
+   Frans's word. Nothing new into 2026.4 after the candidate.
