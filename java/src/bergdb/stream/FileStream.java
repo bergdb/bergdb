@@ -698,7 +698,8 @@ public class FileStream implements AppendOnlyStream {
     }
 
     /**
-     * @throws IOException  If directory does not exist and cannot be created.
+     * @throws IOException  If directory does not exist and cannot be created, or exists and
+     *      is not a directory.
      */
     private void createDirIfNeeded() throws IOException {
         boolean exists;
@@ -710,6 +711,12 @@ public class FileStream implements AppendOnlyStream {
         }
         
         if (exists) {
+            if (!dir.isDirectory()) {
+                // 2026-11-09 (bergdb 020-24-08, U8-11): lockDir() threw "Not a directory",
+                // without the path.
+                throw new IOException("Directory " + dir.getPath() + " could not be opened: "
+                        + "it exists and is not a directory.");
+            }
             File parent = dir.getAbsoluteFile().getParentFile();
             if (parent != null) forceDirectory(parent);
             return;

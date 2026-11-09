@@ -187,12 +187,13 @@ public interface DatabaseBuilder {
      * @throws DbException
      *             If a functioning database could not be started; among them a
      *             StreamIoException if the directory of create() or open() cannot be
-     *             opened or listed (an I/O error, no permission to read it; bergdb 020-20),
-     *             or another database has it (the cause a DirectoryInUseException, bergdb
-     *             005-63). A read or a write that fails on the storage during the start, as
-     *             on a full disk or with a stream file missing, throws the storage's
-     *             exception, a StreamIoException, or a StreamFormatException for a damaged
-     *             stream (Database, "Errors"; bergdb 020-24-08, U8-2).
+     *             opened or listed (an I/O error, no permission to read it, a path that is
+     *             not a directory; bergdb 020-20, 020-24-08), or another database has it
+     *             (the cause a DirectoryInUseException, bergdb 005-63). A read or a write
+     *             that fails on the storage during the start, as on a full disk or with a
+     *             stream file missing, throws the storage's exception, a StreamIoException,
+     *             or a StreamFormatException for a damaged stream (Database, "Errors";
+     *             bergdb 020-24-08, U8-2).
      * @throws BadCryptoKey
      *             If the wrong crypto key is used, or none is used with an encrypted
      *             database or a crypto key is used with an unencrypted database; without a

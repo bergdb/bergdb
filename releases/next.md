@@ -501,7 +501,9 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   restart, which failed the same way. Now it throws the storage's `StreamIoException` (or
   `StreamFormatException`), as `DatabaseBuilder.start()` says and as the
   start's earlier steps did, and has closed what it opened, as before.
-  Found by a new-user application.
+  `create()` of a path that is a regular file says "Directory P could not
+  be opened: it exists and is not a directory." where it said "Not a
+  directory" without the path (U8-11). Found by a new-user application.
 
 
 ### Core API

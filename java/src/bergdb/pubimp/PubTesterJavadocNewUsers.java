@@ -2,6 +2,7 @@ package bergdb.pubimp;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -576,5 +577,20 @@ public class PubTesterJavadocNewUsers {
             inner.close();
             closed = true;
         }
+    }
+
+    /**
+     * U8-11 (bergdb 020-24-08): create() of a path that is a regular file is refused with a
+     * StreamIoException that names the path; it said "Not a directory", without the path.
+     * The file is left as it was.
+     */
+    @Nano
+    public static void testCreateOnAFileNamesThePath(TestEnvironment env) throws IOException {
+        final File file = new File(env.createTempDir(), "file");
+        Files.write(file.toPath(), new byte[] {1, 2, 3});
+        StreamIoException e = PubTesterJavadoc.assertThrows("create", StreamIoException.class,
+                () -> Factory.database().create(file.getPath()).start());
+        Assert.assertTrue(e.getMessage(), e.getMessage().contains(file.getPath()));
+        Assert.assertEquals(3L, file.length());
     }
 }
