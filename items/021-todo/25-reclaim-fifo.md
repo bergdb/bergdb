@@ -321,3 +321,5 @@ item: `69600f9` (the known issue), `c6e60ba` (part 3) and `e3b9787` (fix
 
 2026-11-09. Section "The note for the tag": round 6's evidence (U18-1, U18-2, U16-1, U17-1)
 and a draft of the known issue to replace before the tag; p33 prototypes fix (a) on a branch (coord-1109).
+
+2026-11-09. Fix (a), a prototype by p33 (branch `021-25-fix-a`, 50ef43ff, in clone-p33; its section "Fix (a), a prototype" there): the cuts go on in the FIFO (20 cuts, the first available time 20 to 62 s back, 80 MB against 134 MB) but the database is not bounded: part 1 stays (an iteration's first step touches every deleted key's node, records up to 7.27 MB), and u18's metrics store gets 4 cuts in 5 h and 446 MB against 517 MB. Every database with a retain duration writes other bytes (StreamDigest, the C port). Gate, level1, level3 and level4 quick OK. Coordinator's recommendation: not into 2026.4; (a) with (b) in 2026.5, and the note of section "The note for the tag" before the tag (coord-1109).
