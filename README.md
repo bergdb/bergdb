@@ -59,6 +59,7 @@ from 34; checked on an emulator, not yet on a phone (bergdb 006-18-03).
     java/stress/harness-soak.sh    # the Pub layer's randomized harnesses (night: -r 2, about 4 minutes)
     java/stress/fuzz.sh            # fuzzing of 2026.4's readers of bytes (8 minutes; night: 12)
     java/stress/kill-restart.sh    # the Pub layer under kills of its JVM (1,000 kills: about 26 minutes)
+    java/stress/android.sh         # the unit tests and demos on an Android emulator, before a release (about 2 minutes)
     cd lean && lake build          # checks all proofs
 
 `java/before-commit.sh` must print `BEFORE COMMIT OK` before a change to
