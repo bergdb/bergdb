@@ -205,6 +205,13 @@ TEST(api_create_and_read) {
     CHECK(bergdb_get_many(db, rd, &r, &many) == BERGDB_OK);
     CHECK_EQ((int64_t) many.count, 40);             /* 41 puts, one deleted */
     CHECK(many.eod);
+    /* Before the first transaction (1000): no state, and the end at once
+     * (bergdb 020-27, C2; eod was false). */
+    r.lookup_time = 999;
+    CHECK(bergdb_get_many(db, rd, &r, &many) == BERGDB_OK);
+    CHECK_EQ((int64_t) many.count, 0);
+    CHECK(many.eod);
+    r.lookup_time = BERGDB_LATEST;
     r.max_count = 3;
     r.forward = false;
     CHECK(bergdb_get_many(db, rd, &r, &many) == BERGDB_OK);
@@ -631,6 +638,131 @@ TEST(api_any_bkey) {
     remove_dir(dir);
 }
 
+/* DbTesterLongKeys.key: length bytes of 'k', start's bytes first (malloc'd). */
+static uint8_t *long_key(const char *start, size_t length) {
+    uint8_t *key = malloc(length);
+    if (key != NULL) {
+        memset(key, 'k', length);
+        memcpy(key, start, strlen(start));
+    }
+    return key;
+}
+
+static int put_one(bergdb_db *db, const uint8_t *key, size_t key_len, const char *value) {
+    bergdb_trans *t;
+    int rc = bergdb_trans_new(db, &t);
+    if (rc == BERGDB_OK) {
+        rc = bergdb_trans_put(t, key, key_len, (const uint8_t *) value, strlen(value));
+    }
+    if (rc == BERGDB_OK) {
+        rc = bergdb_execute(db, t, NULL);
+    }
+    bergdb_trans_free(t);
+    return rc;
+}
+
+static bool value_is(bergdb_db *db, const uint8_t *key, size_t key_len, const char *value) {
+    bergdb_read *rd;
+    struct bergdb_one one;
+    if (bergdb_read_new(db, &rd) != BERGDB_OK) {
+        return false;
+    }
+    bool is = bergdb_get_one(db, rd, BERGDB_LATEST, key, key_len, &one) == BERGDB_OK
+            && one.value != NULL && one.value_len == strlen(value)
+            && memcmp(one.value, value, one.value_len) == 0;
+    bergdb_read_free(rd);
+    return is;
+}
+
+/* The keys of a scan of the whole database, forward or backward, are a and b. */
+static bool scan_is(bergdb_db *db, bool forward, const uint8_t *a, size_t a_len,
+        const uint8_t *b, size_t b_len) {
+    bergdb_read *rd;
+    struct bergdb_range r;
+    struct bergdb_many many;
+    if (bergdb_read_new(db, &rd) != BERGDB_OK) {
+        return false;
+    }
+    bergdb_range_init(&r);
+    r.forward = forward;
+    bool is = bergdb_get_many(db, rd, &r, &many) == BERGDB_OK && many.count == 2
+            && many.kvts[0].key_len == a_len && memcmp(many.kvts[0].key, a, a_len) == 0
+            && many.kvts[1].key_len == b_len && memcmp(many.kvts[1].key, b, b_len) == 0;
+    bergdb_read_free(rd);
+    return is;
+}
+
+/* Java's DbTesterLongKeys (bergdb 021-16; 020-24-05, U5-1 and U5-2): a key
+ * is a tree of key nodes with a level per segment of 7 bytes, and Java's
+ * walks of it were recursions with a frame per level, a StackOverflowError
+ * at a start with a key of about 90 KB (the start's check) and at a put of
+ * a key of 1,000,000 bytes after one of 100,000 (dirtyNodeBound's
+ * freshTreeBound). C's walks have no recursion: the start's check walks the
+ * node table, dag_dirty_node_bound keeps its work in an array, and the
+ * reads are loops. testLongKeyRestart: a key of 200,000 bytes and a short
+ * one, put, the database opened again from its directory, the values read,
+ * both scans, the check, a longer put. testLongKeyAfterItsStart: a key of
+ * 1,000,000 bytes after one of 100,000 with the same start, a startup
+ * distance of 200 MB, then a short put. Both on the test build's stack,
+ * under AddressSanitizer. */
+TEST(api_long_keys) {
+    char dir[1024];
+    temp_dir(dir, sizeof dir);
+    REQUIRE(dir[0] != '\0');
+    struct bergdb_mem m = {0};
+    struct bergdb_test_clock clock = {0};
+    struct bergdb_options o;
+    bergdb_db *db;
+    bergdb_options_init(&o);
+    o.clock = bergdb_test_clock_time;
+    o.clock_ctx = &clock;
+    memcpy(o.id, bergdb_test_id, BERGDB_ID_SIZE);
+    o.mem = &m;
+    bergdb_test_clock_set(&clock, 1000);
+    uint8_t *longKey = long_key("/d/", 200 * 1000);
+    uint8_t *longer = long_key("/d/", 210 * 1000);
+    uint8_t shortKey[8];
+    size_t shortLen;
+    k("/a", shortKey, &shortLen);
+    REQUIRE(longKey != NULL && longer != NULL);
+    REQUIRE(bergdb_open(dir, &o, &db, NULL, NULL) == BERGDB_OK);
+    CHECK_EQ(put_one(db, longKey, 200 * 1000, "long"), BERGDB_OK);
+    CHECK_EQ(put_one(db, shortKey, shortLen, "short"), BERGDB_OK);
+    CHECK_EQ(bergdb_sync(db, 0, BERGDB_SYNC_ORDINARY), BERGDB_OK);
+    CHECK_EQ(bergdb_debug_check(db), BERGDB_OK);
+    CHECK_EQ(bergdb_close(db), BERGDB_OK);
+    REQUIRE(bergdb_open(dir, &o, &db, NULL, NULL) == BERGDB_OK);
+    CHECK(value_is(db, longKey, 200 * 1000, "long"));
+    CHECK(value_is(db, shortKey, shortLen, "short"));
+    CHECK(scan_is(db, true, shortKey, shortLen, longKey, 200 * 1000));
+    CHECK(scan_is(db, false, longKey, 200 * 1000, shortKey, shortLen));
+    CHECK_EQ(bergdb_debug_check(db), BERGDB_OK);
+    CHECK_EQ(put_one(db, longer, 210 * 1000, "longer"), BERGDB_OK);
+    CHECK(value_is(db, longer, 210 * 1000, "longer"));
+    CHECK(value_is(db, longKey, 200 * 1000, "long"));
+    CHECK_EQ(bergdb_close(db), BERGDB_OK);
+    CHECK_EQ(m.live_total, 0);
+    free(longKey);
+    free(longer);
+
+    uint8_t *first = long_key("/d/", 100 * 1000);
+    uint8_t *second = long_key("/d/", 1000 * 1000);
+    REQUIRE(first != NULL && second != NULL);
+    o.startup_distance = 200 * 1000 * 1000;
+    REQUIRE(bergdb_open(NULL, &o, &db, NULL, NULL) == BERGDB_OK);
+    CHECK_EQ(put_one(db, first, 100 * 1000, "first"), BERGDB_OK);
+    CHECK_EQ(put_one(db, second, 1000 * 1000, "second"), BERGDB_OK);
+    CHECK(value_is(db, first, 100 * 1000, "first"));
+    CHECK(value_is(db, second, 1000 * 1000, "second"));
+    CHECK_EQ(put_one(db, k("/x", shortKey, &shortLen), shortLen, "x"), BERGDB_OK);
+    CHECK(value_is(db, shortKey, shortLen, "x"));
+    CHECK_EQ(bergdb_close(db), BERGDB_OK);
+    CHECK_EQ(m.live_total, 0);
+    free(first);
+    free(second);
+    remove_dir(dir);
+}
+
 static const struct test api_tests[] = {
     TEST_ENTRY(api_stm_after_restart),
     TEST_ENTRY(api_create_and_read),
@@ -639,6 +771,7 @@ static const struct test api_tests[] = {
     TEST_ENTRY(api_alloc_failures),
     TEST_ENTRY(api_read_nomem),
     TEST_ENTRY(api_any_bkey),
+    TEST_ENTRY(api_long_keys),
     TEST_END
 };
 

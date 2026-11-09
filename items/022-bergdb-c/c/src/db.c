@@ -536,8 +536,9 @@ enum err_code db_open(struct db *db, const char *dir, const struct db_config *cf
                 (int) cfg->max_node_size);
     }
     if (cfg->cache_size_indicator < 1) {
-        /* Cache3.setSizeIndicator's assert (C's asserts are on, as Java's -ea). */
-        return err_set(e, ERR_ARG, "AssertionError", "a cache size indicator under 1, %lld",
+        /* DbBuilder.cacheSizeIndicator's check (bergdb 020-27, C3, as Java's since
+         * release 2026.4); before, Cache3.setSizeIndicator's assert, "AssertionError". */
+        return err_set(e, ERR_ARG, "IllegalArgumentException", "Bad cacheSizeIndicator: %lld.",
                 (long long) cfg->cache_size_indicator);
     }
     if (cfg->startup_distance < 10) {
@@ -700,15 +701,27 @@ static enum err_code check_size(const struct db *db, const struct trans *t, stru
     return ERR_OK;
 }
 
+/* Db.getOneInternal's and getMany's refusal of a lookup time before the
+ * first available one, Java's text with its times in UTC (DbUtil.dbTimeToUtc;
+ * bergdb 020-24, U1-12, as Java's since release 2026.4, which closed its
+ * first parenthesis; before, C gave the times alone, "Cannot lookup at time
+ * T, the first time available for lookup is F."). */
+static enum err_code lookup_refused(int64_t lookupTime, int64_t first, struct err *e) {
+    char lookupTimeString[CLK_UTC_SIZE], firstString[CLK_UTC_SIZE];
+    clk_time_to_utc(lookupTime, lookupTimeString);
+    clk_time_to_utc(first, firstString);
+    return err_set(e, ERR_NOT_AVAILABLE, "LookupTimeNotAvailableException", "Cannot lookup "
+            "at time %lld (%s): the first time available for lookup is %lld (%s).",
+            (long long) lookupTime, lookupTimeString, (long long) first, firstString);
+}
+
 /* getOneInternal: the first available time (reclaim's), the actual
  * lookup time, Dag.getOne, the get count. */
 static enum err_code get_one_internal(struct db *db, int64_t lookupTime, const int64_t *key,
         int32_t n, struct getdata *gd, struct vnode **out, struct err *e) {
     const int64_t firstAvailable = db_first_available_time(db);
     if (lookupTime < firstAvailable) {
-        return err_set(e, ERR_NOT_AVAILABLE, "LookupTimeNotAvailableException", "Cannot lookup "
-                "at time %lld, the first time available for lookup is %lld.",
-                (long long) lookupTime, (long long) firstAvailable);
+        return lookup_refused(lookupTime, firstAvailable, e);
     }
     gd->op.access_data = ACCESS_DATA_DEFAULT;
     int64_t time = dbclock_lookup_time(&db->clock, lookupTime);
@@ -1393,9 +1406,7 @@ enum err_code db_get_many(struct db *db, struct getmany *g, struct err *e) {
     }
     const int64_t first = db_first_available_time(db);
     if (g->lookup_time < first) {
-        return err_set(e, ERR_NOT_AVAILABLE, "LookupTimeNotAvailableException", "Cannot lookup "
-                "at time %lld, the first time available for lookup is %lld.",
-                (long long) g->lookup_time, (long long) first);
+        return lookup_refused(g->lookup_time, first, e);
     }
     g->gd.op.access_data = ACCESS_DATA_DEFAULT;
     g->actual_lookup_time = dbclock_lookup_time(&db->clock, g->lookup_time);

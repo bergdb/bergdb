@@ -76,9 +76,22 @@ void dbclock_init(struct dbclock *c, clk_fn clock, void *ctx);
 int64_t dbclock_lookup_time(const struct dbclock *c, int64_t wantedLookupTime);
 
 /* DbClock.currentTime: while a transaction runs, its time minus 1; else
- * the clock's time, but at least the last transaction's, which it keeps
- * as the last read time (so the next transaction's time is later). */
+ * the clock's time, at most DBCLOCK_LAST_USER_TIME, or, when that is
+ * earlier, the last read time or the last transaction's time, which it
+ * keeps as the last read time (so the next transaction's time is later,
+ * and the times returned never decrease: bergdb 020-23, Z1, as Java's
+ * since release 2026.4). */
 int64_t dbclock_current_time(struct dbclock *c);
+
+/* DbUtil.dbTimeToUtc: the time as Java gives it in the texts of a lookup
+ * time not available, "yyyy-MM-dd HH:mm:ss.SSS UTC": its milliseconds
+ * (time / 10,000, toward zero, Java's division) as an Instant, in the
+ * proleptic Gregorian calendar, UTC, the year of the era (a year before 1
+ * counts back from 1, as Locale.US's "yyyy"), with a '+' above 9999
+ * (DateTimeFormatter's sign for "yyyy"). out holds CLK_UTC_SIZE bytes, the
+ * text and its 0. For any time (bergdb 020-24, U1-12). */
+#define CLK_UTC_SIZE 40
+void clk_time_to_utc(int64_t time, char *out);
 
 /* DbClock.TIME_MARGIN: the database times below 2^56 - 1 that are left when
  * user transactions are refused (bergdb 015-55): room for reclaim's

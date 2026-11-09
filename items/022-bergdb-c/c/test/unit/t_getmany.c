@@ -257,6 +257,102 @@ TEST(gm_start_key_random) {
     }
 }
 
+/* ======== DbTesterJavadoc (bergdb 020-27) ======== */
+
+/* A database with the keys k0 to k(n-1), as DbTesterJavadoc.dbWithKeys. */
+static void db_with_keys(struct mdb *db, struct mem *m, int32_t n) {
+    mem_init(m);
+    REQUIRE(mdb_create(db, m, 1, 30));
+    for (int32_t i = 0; i < n; i++) {
+        char key[16], value[16];
+        snprintf(key, sizeof key, "k%d", (int) i);
+        snprintf(value, sizeof value, "v%d", (int) i);
+        put(db, 1000 + i * 10, key, (const uint8_t *) value, (int32_t) strlen(value));
+    }
+}
+
+/* DbTesterJavadoc.testGetManyAtMostN (020-27, C1): GetN and PrefixN give at
+ * most N pairs, N = 0 too (they gave every pair for 0). Its last case, the
+ * caller's prefix changed after PrefixN's construction, has no counterpart:
+ * gm_prefix_n keeps the caller's array, valid during the read, as
+ * gm_endpoint does, and bergdb_get_many makes the prefix's segments at the
+ * call. */
+TEST(gm_at_most_n) {
+    struct mem m;
+    struct mdb db;
+    db_with_keys(&db, &m, 5);
+    const int32_t counts[] = { 0, 1, 3, 5, 7 };
+    struct key prefix = key_of("k");
+    for (int i = 0; i < 5; i++) {
+        int32_t n = counts[i];
+        int32_t expected = n < 5 ? n : 5;
+        struct gm_get_n gn;
+        struct gm_stop stop = gm_get_n(&gn, n);
+        struct got got;
+        many(&db, INT64_MAX, NULL, true, true, &stop, &got);
+        CHECK_EQ(got.n, expected);
+
+        struct gm_prefix_n pn;
+        stop = gm_prefix_n(&pn, prefix.s, prefix.n, n);
+        many(&db, INT64_MAX, NULL, true, true, &stop, &got);
+        CHECK_EQ(got.n, expected);
+    }
+    struct gm_get_n one;
+    struct gm_stop stop = gm_get_n(&one, 1);    /* GetOne */
+    struct got got;
+    many(&db, INT64_MAX, NULL, true, true, &stop, &got);
+    CHECK_EQ(got.n, 1);
+    end(&db, &m);
+}
+
+/* testEodOnceAtTheEnd's stop condition: its calls of handleKvt and eod. */
+struct eod_count {
+    int32_t handle;
+    int32_t eod;
+    bool after_eod;
+    int32_t stop_at;
+};
+
+static int32_t eod_count_handle(void *ctx, const struct kvt *kvt) {
+    (void) kvt;
+    struct eod_count *c = ctx;
+    c->after_eod |= c->eod > 0;
+    return ++c->handle >= c->stop_at ? GM_STOP : GM_ADD;
+}
+
+static void eod_count_eod(void *ctx) {
+    ((struct eod_count *) ctx)->eod++;
+}
+
+/* DbTesterJavadoc.testEodOnceAtTheEnd (020-27, C2): eod once when the end of
+ * the database is reached, and handleKvt never after it; none when
+ * handleKvt stops the read; once also at a lookup time before the first
+ * transaction (time 0 here, the first at 1), where the read finds no state
+ * (it was not called there). */
+TEST(gm_eod_once_at_the_end) {
+    struct mem m;
+    struct mdb db;
+    db_with_keys(&db, &m, 3);
+    const int64_t times[] = { INT64_MAX, 0 };
+    const int32_t sizes[] = { 3, 0 };
+    for (int i = 0; i < 2; i++) {
+        struct eod_count c = { 0, 0, false, INT32_MAX };
+        struct gm_stop stop = { eod_count_handle, eod_count_eod, &c };
+        struct got got;
+        many(&db, times[i], NULL, true, true, &stop, &got);
+        CHECK_EQ(got.n, sizes[i]);
+        CHECK_EQ(c.eod, 1);
+        CHECK(!c.after_eod);
+    }
+    struct eod_count c = { 0, 0, false, 2 };
+    struct gm_stop stop = { eod_count_handle, eod_count_eod, &c };
+    struct got got;
+    many(&db, INT64_MAX, NULL, true, true, &stop, &got);
+    CHECK_EQ(got.n, 1);
+    CHECK_EQ(c.eod, 0);
+    end(&db, &m);
+}
+
 /* ======== The database against a model ======== */
 
 #define MKEYS 48
@@ -696,6 +792,8 @@ TEST(dag_dirty_node_bound) {
 const struct test getmany_tests[] = {
     TEST_ENTRY(gm_inclusive_start_key_with_deep_tree),
     TEST_ENTRY(gm_start_key_random),
+    TEST_ENTRY(gm_at_most_n),
+    TEST_ENTRY(gm_eod_once_at_the_end),
     TEST_ENTRY(mdb_model),
     TEST_ENTRY(mdb_allocation_failures),
     TEST_ENTRY(dag_dirty_node_bound),

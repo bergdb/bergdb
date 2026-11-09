@@ -197,6 +197,108 @@ TEST(clock_dbclock_rules) {
     dbclock_transaction_end(&d2);
 }
 
+/* A clock that the test sets to any time, back too (DbClock's tests' "now"). */
+static int64_t now_time(void *ctx) {
+    return *(const int64_t *) ctx;
+}
+
+/* DbClock.testClockGoesBack (bergdb 020-23, Z1): a clock that goes back
+ * never takes back a time that currentTime gave: a later currentTime gives
+ * that time or a later one, and a later transaction a later time. The
+ * second currentTime gave the clock's earlier time and kept it as the last
+ * read time, and the transaction then took a time before the first one. */
+TEST(clock_dbclock_clock_goes_back) {
+    int64_t now = 1000;
+    struct dbclock d;
+    struct err e;
+    int64_t t = -1;
+    dbclock_init(&d, now_time, &now);
+    CHECK_EQ(dbclock_transaction_begin(&d, true, &t, &e), ERR_OK);
+    CHECK_EQ(t, 1000);
+    dbclock_transaction_end(&d);
+    now = 2000;
+    CHECK_EQ(dbclock_current_time(&d), 2000);
+    now = 1500;
+    CHECK_EQ(dbclock_current_time(&d), 2000);
+    CHECK_EQ(dbclock_transaction_begin(&d, true, &t, &e), ERR_OK);
+    CHECK_EQ(t, 2001);
+    dbclock_transaction_end(&d);
+    CHECK_EQ(dbclock_current_time(&d), 2001);
+    now = 3000;
+    CHECK_EQ(dbclock_current_time(&d), 3000);
+}
+
+/* DbClock.testCurrentTimeLeavesTheMargin (bergdb 020-23, Z1): currentTime
+ * gives no time after LAST_USER_TIME but a transaction's, also with the
+ * clock after it or out of range, so that the times kept for reclaim's
+ * internal transactions after a user transaction stay theirs (015-55). It
+ * gave the clock's time, Klong.MAX_TIME, and an internal transaction after
+ * it had no time left. */
+TEST(clock_dbclock_current_time_leaves_the_margin) {
+    int64_t now = DBCLOCK_LAST_USER_TIME - 1;
+    struct dbclock d;
+    struct err e;
+    int64_t t = -1;
+    dbclock_init(&d, now_time, &now);
+    CHECK_EQ(dbclock_transaction_begin(&d, true, &t, &e), ERR_OK);
+    CHECK_EQ(t, DBCLOCK_LAST_USER_TIME - 1);
+    dbclock_transaction_end(&d);
+    now = KL_MAX_TIME;
+    CHECK_EQ(dbclock_current_time(&d), DBCLOCK_LAST_USER_TIME);
+    now = KL_MAX_TIME + 1;
+    CHECK_EQ(dbclock_current_time(&d), DBCLOCK_LAST_USER_TIME);
+    now = DBCLOCK_LAST_USER_TIME - 5;
+    for (int64_t i = 1; i <= DBCLOCK_TIME_MARGIN; i++) {
+        CHECK_EQ(dbclock_transaction_begin(&d, false, &t, &e), ERR_OK);
+        CHECK_EQ(t, DBCLOCK_LAST_USER_TIME + i);
+        dbclock_transaction_end(&d);
+        CHECK_EQ(dbclock_current_time(&d), DBCLOCK_LAST_USER_TIME + i);
+    }
+}
+
+/* DbUtil.dbTimeToUtc (bergdb 020-24, U1-12): Java's strings,
+ * DbUtil.testDbTimeToUtc's three and twenty edges, as Java's DbUtil gave
+ * them for these times (2026-11-09, the pin of 022-02): the division toward
+ * zero, the millisecond before 1970, the years 1 and 0 (1 BC, the year of
+ * the era 1), 9999 and 10000 ('+'), a year BC, the leap day of 2000, 1900,
+ * and both ends of a long. */
+TEST(clock_time_to_utc) {
+    static const struct { int64_t time; const char *utc; } cases[] = {
+        { 0, "1970-01-01 00:00:00.000 UTC" },
+        { INT64_C(14080262741234567), "2014-08-14 14:24:34.123 UTC" },
+        { (INT64_C(1) << 56) - 1, "2198-05-04 23:50:03.792 UTC" },
+        { 1, "1970-01-01 00:00:00.000 UTC" },
+        { -1, "1970-01-01 00:00:00.000 UTC" },
+        { 9999, "1970-01-01 00:00:00.000 UTC" },
+        { -9999, "1970-01-01 00:00:00.000 UTC" },
+        { -10000, "1969-12-31 23:59:59.999 UTC" },
+        { -10001, "1969-12-31 23:59:59.999 UTC" },
+        { (INT64_C(1) << 56) - 1025, "2198-05-04 23:50:03.792 UTC" },
+        { INT64_MAX, "+31197-09-14 02:48:05.477 UTC" },
+        { INT64_MIN, "+27259-04-19 21:11:54.523 UTC" },
+        { INT64_MIN + 1, "+27259-04-19 21:11:54.523 UTC" },
+        { INT64_C(-621355968000000000), "0001-01-01 00:00:00.000 UTC" },
+        { INT64_C(-621355968000000001), "0001-01-01 00:00:00.000 UTC" },
+        { INT64_C(-621672192000000000), "0001-01-01 00:00:00.000 UTC" },
+        { INT64_C(-621672192000000001), "0001-01-01 00:00:00.000 UTC" },
+        { INT64_C(2534023007999999999), "9999-12-31 23:59:59.999 UTC" },
+        { INT64_C(2534023008000000000), "+10000-01-01 00:00:00.000 UTC" },
+        { INT64_C(-1576800000000000000), "3028-04-27 00:00:00.000 UTC" },
+        { INT64_C(9517824000000000), "2000-02-29 00:00:00.000 UTC" },
+        { INT64_C(9518687999999999), "2000-02-29 23:59:59.999 UTC" },
+        { INT64_C(-22089888000000000), "1900-01-01 00:00:00.000 UTC" },
+    };
+    for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
+        char utc[CLK_UTC_SIZE];
+        clk_time_to_utc(cases[i].time, utc);
+        CHECK(strcmp(utc, cases[i].utc) == 0);
+        if (strcmp(utc, cases[i].utc) != 0) {
+            printf("  %lld: \"%s\", Java's \"%s\"\n", (long long) cases[i].time, utc,
+                    cases[i].utc);
+        }
+    }
+}
+
 /* CoreTestClock: forward only, 0 at first, no range of its own (DbClock
  * refuses a time out of range). */
 TEST(clock_test_clock) {
@@ -265,6 +367,9 @@ const struct test clock_tests[] = {
     TEST_ENTRY(clock_dbclock_time_margin_for_internal),
     TEST_ENTRY(clock_dbclock_lookup_time),
     TEST_ENTRY(clock_dbclock_rules),
+    TEST_ENTRY(clock_dbclock_clock_goes_back),
+    TEST_ENTRY(clock_dbclock_current_time_leaves_the_margin),
+    TEST_ENTRY(clock_time_to_utc),
     TEST_ENTRY(clock_test_clock),
     TEST_ENTRY(clock_system_clock),
     TEST_END

@@ -11,11 +11,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "bytes.h"
 #include "checksum.h"
 #include "getmany.h"
 #include "keys.h"
 #include "klong.h"
+#include "lmap.h"
 #include "mdb.h"
 #include "mem.h"
 #include "meta.h"
@@ -975,6 +977,89 @@ TEST(sdb_section_pointer_to_a_vpos) {
     free(v.stream);
 }
 
+/* StoredTrans.testFindNode (bergdb 021-16, Q2): sr_find_node gives the node
+ * of an id, the first of two nodes with one id, NULL for an id that no node
+ * has, and the nodes of another record once the map is made again; in time
+ * linear in the count of nodes, as the start's rerun calls it for each node
+ * it makes. It scanned the nodes at each call: 200,000 lookups among
+ * 100,001 nodes took seconds. And a scan, up to SR_FIND_NODE_SCAN_LIMIT
+ * nodes, and the map above it give the same answers. */
+TEST(sdb_find_node) {
+    const int32_t n = 100 * 1000;
+    struct mem m;
+    mem_init(&m);
+    struct lmap ids;
+    lmap_init(&ids, &m);
+    struct err e;
+    struct sn_node *nodes = calloc((size_t) n + 1, sizeof *nodes);
+    REQUIRE(nodes != NULL);
+    for (int32_t i = 0; i < n; i++) {
+        nodes[i].type = NODE_VALUE;
+        nodes[i].id = 1000 + 2 * (int64_t) i;
+    }
+    nodes[n].type = NODE_VALUE;
+    nodes[n].id = 1000;                     /* the twin */
+    struct st_record t;
+    st_init(&t);
+    t.nodes = nodes;
+    t.nnodes = n + 1;
+    bool indexed = false;
+    const struct sn_node *got;
+    struct timespec t0, t1;
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    int32_t wrong = 0;
+    for (int32_t i = 0; i < n; i++) {
+        REQUIRE(sr_find_node(&t, &ids, &indexed, 1000 + 2 * (int64_t) i, &got, &e));
+        wrong += got != &nodes[i];
+        REQUIRE(sr_find_node(&t, &ids, &indexed, 1001 + 2 * (int64_t) i, &got, &e));
+        wrong += got != NULL;
+    }
+    clock_gettime(CLOCK_MONOTONIC, &t1);
+    const int64_t ms = (int64_t) (t1.tv_sec - t0.tv_sec) * 1000
+            + (t1.tv_nsec - t0.tv_nsec) / 1000000;
+    CHECK_EQ(wrong, 0);
+    CHECK(indexed);
+    CHECK(ms < 2000);
+    if (ms >= 2000) {
+        printf("  sdb_find_node: 200,000 lookups took %lld ms\n", (long long) ms);
+    }
+
+    /* Another record: its map made again. */
+    t.nodes = &nodes[n];
+    t.nnodes = 1;
+    indexed = false;
+    REQUIRE(sr_find_node(&t, &ids, &indexed, 1000, &got, &e));
+    CHECK(got == &nodes[n]);
+    REQUIRE(sr_find_node(&t, &ids, &indexed, 1002, &got, &e));
+    CHECK(got == NULL);
+
+    /* A scan, up to SR_FIND_NODE_SCAN_LIMIT nodes, and a map above it: the
+     * same answers. */
+    const int32_t sizes[] = { 2, SR_FIND_NODE_SCAN_LIMIT, SR_FIND_NODE_SCAN_LIMIT + 1 };
+    struct sn_node few[SR_FIND_NODE_SCAN_LIMIT + 1];
+    for (int k = 0; k < 3; k++) {
+        const int32_t size = sizes[k];
+        memset(few, 0, sizeof few);
+        for (int32_t i = 0; i < size - 1; i++) {
+            few[i] = nodes[i];
+        }
+        few[size - 1] = nodes[n];
+        t.nodes = few;
+        t.nnodes = size;
+        indexed = false;
+        REQUIRE(sr_find_node(&t, &ids, &indexed, 1000, &got, &e));
+        CHECK(got == &few[0]);
+        REQUIRE(sr_find_node(&t, &ids, &indexed, 1000 + 2 * (int64_t) (size - 2), &got, &e));
+        CHECK(got == &few[size - 2]);
+        REQUIRE(sr_find_node(&t, &ids, &indexed, 999, &got, &e));
+        CHECK(got == NULL);
+        CHECK(indexed == (size > SR_FIND_NODE_SCAN_LIMIT));
+    }
+    lmap_free(&ids);
+    free(nodes);
+    CHECK_MEM_ZERO(&m);
+}
+
 TEST(sdb_allocation_failures) {
     struct vec v;
     REQUIRE(read_vec(&v));
@@ -1031,6 +1116,7 @@ const struct test sdb_tests[] = {
     TEST_ENTRY(sdb_found_021_12),
     TEST_ENTRY(sdb_starter_node_texts),
     TEST_ENTRY(sdb_section_pointer_to_a_vpos),
+    TEST_ENTRY(sdb_find_node),
     TEST_ENTRY(sdb_allocation_failures),
     TEST_END
 };

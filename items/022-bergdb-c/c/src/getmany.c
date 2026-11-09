@@ -50,10 +50,15 @@ struct gm_stop gm_endpoint(struct gm_endpoint *s, const int64_t *key, int32_t ke
     return r;
 }
 
-/* GetN.handleKvt */
+/* GetN.handleKvt: at most max_count, none for 0 (bergdb 020-27, C1, as Java's since
+ * release 2026.4: GetN(0) gave every pair, as the count passed 0 before it was
+ * compared). */
 static int32_t get_n_handle(void *ctx, const struct kvt *kvt) {
     (void) kvt;
     struct gm_get_n *s = ctx;
+    if (s->count >= s->max_count) {
+        return GM_STOP;
+    }
     s->count++;
     return s->count == s->max_count ? GM_ADD_AND_STOP : GM_ADD;
 }
@@ -90,9 +95,12 @@ struct gm_stop gm_prefix(struct gm_prefix *s, const int64_t *prefix, int32_t pre
     return r;
 }
 
-/* PrefixN.handleKvt */
+/* PrefixN.handleKvt: at most max_count, none for 0, as GetN (bergdb 020-27, C1). */
 static int32_t prefix_n_handle(void *ctx, const struct kvt *kvt) {
     struct gm_prefix_n *s = ctx;
+    if (s->count >= s->max_count) {
+        return GM_STOP;
+    }
     s->count++;
     return keys_is_prefix(s->prefix, s->prefix_n, kvt->key, kvt->key_n)
             ? (s->count == s->max_count ? GM_ADD_AND_STOP : GM_ADD) : GM_STOP;
@@ -473,6 +481,12 @@ bool dag_get_many(struct dag *d, struct getmany *g) {
     }
 
     if (root == NULL) {
+        /* No state at the lookup time, before the first transaction: the end at once,
+         * and eod says so, as StopCondition promises (bergdb 020-27, C2, as Java's since
+         * release 2026.4; it was not called). */
+        if (g->stop_condition.eod != NULL) {
+            g->stop_condition.eod(g->stop_condition.ctx);
+        }
         return true;
     }
 

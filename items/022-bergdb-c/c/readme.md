@@ -27,9 +27,9 @@ keeps; 022-01 brought it to 2026.3, and 2026.4 follows (022-02; 022's
 readme). Until 2026-11-05 C followed `main` as of 2026-10-29 (`ae4aaf9`),
 then release 2026.2 until 2026-11-09. **On the way to 2026.4** (022-02):
 the harness compiles the pinned candidate of release 2026.4 by default
-(`JAVA_REF=git:772e09b`, `main` at 2026-11-09 14:40, with 021-15 and
-021-14; `82edabf`, 13:04, and `94a1520`, 11:57, before, until 022-02's
-re-pins), and
+(`JAVA_REF=git:32f3832`, `main` at 2026-11-09 15:22, with 020-27,
+021-13, 020-23's Z1 and 021-16; `772e09b`, 14:40, `82edabf`, 13:04, and
+`94a1520`, 11:57, before, until 022-02's re-pins), and
 `JAVA_REF=2026.3` no longer compiles (`CorruptSet.java` takes the
 candidate's `Config`); 022-02's step 5 writes this paragraph for 2026.4.
 

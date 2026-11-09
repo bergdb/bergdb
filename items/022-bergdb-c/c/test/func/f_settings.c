@@ -439,6 +439,47 @@ TEST(settings_open_checks) {
     o.startup_distance = 10;
     CHECK_EQ(m.live_total, 0);
 
+    /* DbTesterJavadoc.testBuilderCacheSizeIndicatorBelowOneRefused (bergdb
+     * 020-27, C3), in memory: a cache size indicator below 1 refused with
+     * DbBuilder.cacheSizeIndicator's IllegalArgumentException and text (it
+     * was Cache3's AssertionError); 1 taken, and the database works. */
+    {
+        static const int64_t bad[] = { 0, -1, INT64_MIN };
+        static const char *const badText[] = {
+            "IllegalArgumentException: Bad cacheSizeIndicator: 0.",
+            "IllegalArgumentException: Bad cacheSizeIndicator: -1.",
+            "IllegalArgumentException: Bad cacheSizeIndicator: -9223372036854775808." };
+        struct bergdb_test_clock c2 = {0};
+        struct bergdb_options o2 = o;
+        o2.clock_ctx = &c2;
+        bergdb_test_clock_set(&c2, 1000);
+        for (int i = 0; i < 3; i++) {
+            o2.cache_size_indicator = bad[i];
+            db = (bergdb_db *) &o;
+            CHECK(bergdb_open(NULL, &o2, &db, NULL, errbuf) == BERGDB_ARG);
+            CHECK(db == NULL);
+            CHECK(strcmp(errbuf, badText[i]) == 0);
+            CHECK_EQ(m.live_total, 0);
+        }
+        o2.cache_size_indicator = 1;
+        REQUIRE(bergdb_open(NULL, &o2, &db, NULL, errbuf) == BERGDB_OK);
+        struct bergdb_stats cs;
+        REQUIRE(bergdb_stats(db, &cs) == BERGDB_OK);
+        CHECK_EQ(cs.cache_size_indicator, 1);
+        CHECK(put1(db, &c2, 2000, "/k", "v") == BERGDB_OK);
+        bergdb_read *rd;
+        struct bergdb_one one;
+        uint8_t kb[8];
+        size_t kl;
+        REQUIRE(bergdb_read_new(db, &rd) == BERGDB_OK);
+        CHECK(bergdb_get_one(db, rd, BERGDB_LATEST, se_key("/k", kb, &kl), kl, &one)
+                == BERGDB_OK);
+        CHECK(one.value != NULL && one.value_len == 1 && one.value[0] == 'v');
+        bergdb_read_free(rd);
+        CHECK(bergdb_close(db) == BERGDB_OK);
+        CHECK_EQ(m.live_total, 0);
+    }
+
     /* Created with node size 8 and startup distance 10; opened again with
      * another node size: FORMAT (005-50); with another startup distance:
      * the stream's (a setting in the stream). */
@@ -624,6 +665,125 @@ TEST(settings_sync_and_times) {
     CHECK(bergdb_close(db) == BERGDB_OK);
     CHECK_EQ(m2.live_total, 0);
     se_remove_dir(dir);
+}
+
+/* A clock that the test sets to any time, back too. */
+static int64_t se_now(void *ctx) {
+    return *(const int64_t *) ctx;
+}
+
+/* A put of one key, its time in *tt; the call's code. */
+static int se_put(bergdb_db *db, const char *ikey, const char *value, int64_t *tt) {
+    bergdb_trans *t;
+    struct bergdb_executed ex;
+    uint8_t b[64];
+    size_t kl;
+    int rc = bergdb_trans_new(db, &t);
+    if (rc == BERGDB_OK) {
+        rc = bergdb_trans_put(t, se_key(ikey, b, &kl), kl, (const uint8_t *) value,
+                strlen(value));
+    }
+    if (rc == BERGDB_OK) {
+        rc = bergdb_execute(db, t, &ex);
+    }
+    if (rc == BERGDB_OK && tt != NULL) {
+        *tt = ex.tt;
+    }
+    bergdb_trans_free(t);
+    return rc;
+}
+
+/* True if the key's value at the lookup time is the text. */
+static bool se_value_is(bergdb_db *db, int64_t time, const char *ikey, const char *text) {
+    bergdb_read *rd;
+    struct bergdb_one one;
+    uint8_t b[64];
+    size_t kl;
+    if (bergdb_read_new(db, &rd) != BERGDB_OK) {
+        return false;
+    }
+    bool is = bergdb_get_one(db, rd, time, se_key(ikey, b, &kl), kl, &one) == BERGDB_OK
+            && one.value != NULL && one.value_len == strlen(text)
+            && memcmp(one.value, text, one.value_len) == 0;
+    bergdb_read_free(rd);
+    return is;
+}
+
+/* PubTesterJavadocRest.testCurrentTimeWithAClockThatGoesBack (bergdb
+ * 020-23, Z1): with a clock that goes back, the time bergdb_current_time
+ * gives is before every later transaction's time, so a read at it gives
+ * the same value after a later put; a later call does not give an earlier
+ * time. The second call gave the clock's earlier time, and a put after it
+ * took a time before the first one given, which then read the put's
+ * value. */
+TEST(settings_current_time_with_a_clock_that_goes_back) {
+    struct bergdb_mem m = {0};
+    struct bergdb_options o;
+    int64_t now = 1000, first = -1, later = -1, written = -1;
+    bergdb_db *db;
+    bergdb_options_init(&o);
+    o.clock = se_now;
+    o.clock_ctx = &now;
+    o.mem = &m;
+    REQUIRE(bergdb_open(NULL, &o, &db, NULL, NULL) == BERGDB_OK);
+    CHECK(se_put(db, "/a", "before", NULL) == BERGDB_OK);
+    now = 2000;
+    CHECK(bergdb_current_time(db, &first) == BERGDB_OK);
+    CHECK_EQ(first, 2000);
+    now = 1500;
+    CHECK(bergdb_current_time(db, &later) == BERGDB_OK);
+    CHECK_EQ(later, 2000);
+    CHECK(se_put(db, "/a", "after", &written) == BERGDB_OK);
+    CHECK(written > first);
+    CHECK(se_value_is(db, first, "/a", "before"));
+    CHECK(se_value_is(db, BERGDB_LATEST, "/a", "after"));
+    CHECK(bergdb_close(db) == BERGDB_OK);
+    CHECK_EQ(m.live_total, 0);
+}
+
+/* PubTesterJavadocRest.testStartWithTheClockOutOfRange (bergdb 020-23, Z3;
+ * Clock's Javadoc since 2026.4): an open that creates a database with the
+ * clock out of range is refused, as it writes the database's first
+ * transaction; an open of an existing one does not read the clock and
+ * succeeds, its reads work, and its transactions are refused (BERGDB_LIMIT,
+ * the database going on) until the clock is back in the range. Each case
+ * on a database of its own, created at 1000, as Java's on a copy. */
+TEST(settings_open_with_the_clock_out_of_range) {
+    char base[1024], dir[1100], errbuf[BERGDB_ERRBUF_SIZE];
+    se_temp_dir(base, sizeof base);
+    REQUIRE(base[0] != '\0');
+    struct bergdb_mem m = {0};
+    struct bergdb_options o;
+    int64_t now = INT64_C(1) << 56, tt = -1;
+    bergdb_db *db;
+    bergdb_options_init(&o);
+    o.clock = se_now;
+    o.clock_ctx = &now;
+    o.mem = &m;
+    snprintf(dir, sizeof dir, "%s/creation", base);
+    CHECK(bergdb_open(dir, &o, &db, NULL, errbuf) == BERGDB_LIMIT);
+    CHECK(strstr(errbuf, "outside the range") != NULL);
+    CHECK_EQ(m.live_total, 0);
+
+    const int64_t times[] = { INT64_C(1) << 56, -1 };
+    for (int i = 0; i < 2; i++) {
+        snprintf(dir, sizeof dir, "%s/existing-%d", base, i);
+        now = 1000;
+        REQUIRE(bergdb_open(dir, &o, &db, NULL, NULL) == BERGDB_OK);
+        CHECK(se_put(db, "/a", "a", NULL) == BERGDB_OK);
+        CHECK(bergdb_close(db) == BERGDB_OK);
+        now = times[i];
+        REQUIRE(bergdb_open(dir, &o, &db, NULL, errbuf) == BERGDB_OK);
+        CHECK(se_value_is(db, BERGDB_LATEST, "/a", "a"));
+        CHECK_EQ(se_put(db, "/b", "b", NULL), BERGDB_LIMIT);
+        now = 2000;
+        CHECK(se_put(db, "/b", "b", &tt) == BERGDB_OK);
+        CHECK_EQ(tt, 2000);
+        CHECK(se_value_is(db, BERGDB_LATEST, "/b", "b"));
+        CHECK(bergdb_close(db) == BERGDB_OK);
+        CHECK_EQ(m.live_total, 0);
+    }
+    se_remove_dir(base);
 }
 
 /* ======== The debug calls ======== */
@@ -817,6 +977,8 @@ const struct test settings_tests[] = {
     TEST_ENTRY(settings_open_checks),
     TEST_ENTRY(settings_errors_and_keys),
     TEST_ENTRY(settings_sync_and_times),
+    TEST_ENTRY(settings_current_time_with_a_clock_that_goes_back),
+    TEST_ENTRY(settings_open_with_the_clock_out_of_range),
     TEST_ENTRY(settings_debug),
     TEST_ENTRY(settings_debug_after_start),
     TEST_ENTRY(settings_close_and_callbacks),

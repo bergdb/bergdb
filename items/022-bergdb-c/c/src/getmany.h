@@ -74,7 +74,7 @@ struct gm_prefix {              /* GetMany.Prefix */
     bool eod;
 };
 struct gm_prefix_n {            /* GetMany.PrefixN */
-    const int64_t *prefix;
+    const int64_t *prefix;      /* the caller's, valid during the read (Java clones it) */
     int32_t prefix_n;
     int32_t max_count;
     int32_t count;
@@ -86,7 +86,8 @@ struct gm_stop gm_dont_stop(void);
 /* new Endpoint(key, inclusive, backward); Endpoint(key) is (key, true, false). */
 struct gm_stop gm_endpoint(struct gm_endpoint *s, const int64_t *key, int32_t key_n,
         bool inclusive, bool backward);
-/* new GetN(maxCount): maxCount >= 0 (asserted). */
+/* new GetN(maxCount): maxCount >= 0 (asserted). GetN and PrefixN give at most
+ * maxCount pairs, none for 0 (bergdb 020-27, C1). */
 struct gm_stop gm_get_n(struct gm_get_n *s, int32_t max_count);
 struct gm_stop gm_prefix(struct gm_prefix *s, const int64_t *prefix, int32_t prefix_n);
 struct gm_stop gm_prefix_n(struct gm_prefix_n *s, const int64_t *prefix, int32_t prefix_n,

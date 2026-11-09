@@ -69,6 +69,7 @@
 #include <stdint.h>
 #include "dag.h"
 #include "err.h"
+#include "lmap.h"
 #include "mem.h"
 #include "ncoll.h"
 #include "ntable.h"
@@ -150,5 +151,20 @@ enum err_code sr_check_stream_pointers(const struct node *node, struct err *e);
  * AssertionError ("value node got no spos during startup, value node ID at
  * SPOS."). */
 enum err_code sr_check_value_nodes_have_spos(const struct knode *k, struct err *e);
+
+/* StoredTrans.findNode(id) of record t, for the rerun's nodeCreated: its node
+ * of the id in *out, or NULL; the first of the nodes, in their order, if
+ * several have it. A scan of the nodes, as before bergdb 021-16, when they
+ * are at most SR_FIND_NODE_SCAN_LIMIT, as in most records; otherwise a
+ * lookup in ids, a map from an id to the index of its first node, made
+ * when *indexed is false (then set), at the first call for the record
+ * (021-16, Q2, as Java's since release 2026.4). The rerun calls it for
+ * every node it makes, a key node per 7 bytes of a new key: with a scan
+ * only, a database with a key of 100,000 bytes and then one of 1,000,000
+ * with the same start took seconds to start, in this scan. false: NOMEM,
+ * in e (the map is made again at the next call). */
+#define SR_FIND_NODE_SCAN_LIMIT 64      /* StoredTrans.FIND_NODE_SCAN_LIMIT */
+bool sr_find_node(const struct st_record *t, struct lmap *ids, bool *indexed, int64_t id,
+        const struct sn_node **out, struct err *e);
 
 #endif

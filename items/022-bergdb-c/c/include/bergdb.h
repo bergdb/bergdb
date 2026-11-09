@@ -145,17 +145,21 @@
  *   - Your keys: every key that does not start with the bytes 01 66, 01 2f
  *     or 01 25, the bkeys of "/d", "/-" and "/#": a key whose first byte
  *     is not 01, or the bkey of an ikey such as "/k1". BergDB never reads
- *     or writes them, in this release or a later one.
+ *     them for their meaning or changes them, in this release or a later
+ *     one: the Core keeps them as any key (reclaim copies a live value
+ *     forward, as it copies every value).
  *   - The Pub API's keys: the bkey of the ikey of a Pub key, such as
  *     "/da/-b" for "/a/b". A put or a delete there is allowed: the Pub
  *     API's reads check what they read. But only the Pub API's own writes
  *     keep its indexes. A put at an object key (no suffix, or ".obj") of a
- *     directory that has an index, building or active, leaves the value
+ *     directory that has an index, building or active, can leave the value
  *     out of the index's scans until the key is written again through the
  *     Pub API (a put of its own bytes will do), or the index is deleted and
  *     created again: write such keys before the index is created, or make
- *     it again after. A delete there leaves an entry that scans skip. Any
- *     other key that starts with "/d" or "/-" is reserved.
+ *     it again after. (A put that keeps what the index takes from the
+ *     value, the fields of its levels, changes nothing in the index.) A
+ *     delete there leaves an entry that scans skip. Any other key that
+ *     starts with "/d" or "/-" is reserved.
  *   - BergDB's keys: every key that starts with "/#", among them the
  *     internal prefix "/#i/": reclaim's state and the Pub API's index
  *     definitions, entries and markers. Do not write them. Data there that
@@ -197,9 +201,16 @@
  *   - A transaction's time is the clock's time, but later than the last
  *     transaction's time and than the last time bergdb_current_time
  *     returned. So a call of bergdb_current_time can move the next
- *     transaction's time when the clock has not moved since.
+ *     transaction's time when the clock has not moved since. The clock may
+ *     go back: bergdb_current_time's times never decrease (bergdb 020-23,
+ *     Z1, as Java's since release 2026.4).
  *   - A clock time outside 0 to BERGDB_MAX_TIME, or no time left after the
  *     last transaction's, refuses the transaction (BERGDB_LIMIT; 005-18).
+ *     So is an open that creates a database, as it writes the database's
+ *     first transaction; an open of an existing database does not read the
+ *     clock, and succeeds, and its transactions are refused while the
+ *     clock is outside the range (as Java's Clock says since 2026.4,
+ *     020-23, Z3).
  *   - A lookup time is clamped to the last transaction's time
  *     (bergdb_lookup_time); BERGDB_LATEST reads the latest state.
  *
@@ -425,10 +436,11 @@ struct bergdb_options {
     /* The cache size indicator in bytes, the memory budget
      * (cacheSizeIndicator(long)): 200,000,000 by default; BERGDB_NO_EVICT
      * for no eviction. For this run only (005-52). Under 1: BERGDB_ARG,
-     * "AssertionError" (Cache3.setSizeIndicator's assert; DbBuilder has no
-     * check). The index's resident bytes (bergdb_stats) are kept at most
-     * this, but for what must stay: the nodes changed since the startup
-     * position and the newest top nodes (Level 4, 012-12). */
+     * "IllegalArgumentException: Bad cacheSizeIndicator: N.", DbBuilder's
+     * check (bergdb 020-27, C3; before, Cache3.setSizeIndicator's
+     * "AssertionError"). The index's resident bytes (bergdb_stats) are kept
+     * at most this, but for what must stay: the nodes changed since the
+     * startup position and the newest top nodes (Level 4, 012-12). */
     int64_t cache_size_indicator;
     /* The clock (clock(Clock)): NULL for the system clock (the default,
      * Java's SystemClock), or a function and its ctx: the test clock's
@@ -761,7 +773,9 @@ typedef int (*bergdb_stop_fn)(void *ctx, const struct bergdb_kvt *kvt);
  *      direction as its backward flag);
  *   3. stop: the function's answer;
  *   4. max_count: BERGDB_ADD_AND_STOP for the max_count-th pair added
- *      (GetN; 0: no count, as GetN(0)).
+ *      (GetN); 0: no count. Java's GetN(0) gives no pair since release
+ *      2026.4 (bergdb 020-27, C1; before, every pair, as 0 here); a read
+ *      of no pair needs no call, so 0 stays the field's "not given".
  */
 struct bergdb_range {
     int64_t lookup_time;            /* GetMany.lookupTime; BERGDB_LATEST */
@@ -792,7 +806,9 @@ struct bergdb_many {
     size_t count;
     int64_t actual_lookup_time;     /* GetMany.actualLookupTime */
     int32_t get_op_count;           /* GetMany.getOpCount: the pairs the stop conditions saw */
-    bool eod;                       /* the end of the database was reached (StopCondition.eod()) */
+    bool eod;                       /* the end of the database was reached (StopCondition.eod()),
+                                       also at once at a lookup time before the first
+                                       transaction (bergdb 020-27, C2) */
 };
 
 /*
@@ -869,9 +885,10 @@ int bergdb_sync(bergdb_db *db, int64_t pos, int level);
 
 /*
  * The database's time now (Java's currentTime(), DbClock.currentTime): the
- * clock's time, but not before the last transaction's time. The next
- * transaction's time is later than it (section F). Errors: BERGDB_ARG
- * (NULL), BERGDB_STATE.
+ * clock's time, at most BERGDB_MAX_TIME - 1024, or, when that is earlier,
+ * the last time it gave or the last transaction's time, so its times never
+ * decrease (bergdb 020-23, Z1). The next transaction's time is later than
+ * it (section F). Errors: BERGDB_ARG (NULL), BERGDB_STATE.
  */
 int bergdb_current_time(bergdb_db *db, int64_t *time);
 

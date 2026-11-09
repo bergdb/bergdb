@@ -25,6 +25,11 @@
 # extra-garbage-file, lock-garbage) differ from run to run: last-longer's record size is
 # random, refused when negative, zero-filled (up to 2 GB a copy) and started when
 # positive; each outcome is compared as it comes, and no class is counted by variant.
+# Such a start reads the zero-filled record whole, one array of up to
+# StoredTrans.MAX_RECORD_SIZE, 2^31 - 9 bytes, in either dumper: Java's runs with
+# -Xmx4g (bergdb 022-02; with -Xmx2g it threw OutOfMemoryError at a record of
+# 2,146,064,565 bytes, where C started it; with 4g a record of 2^31 - 9 bytes starts,
+# a resident size of 2.3 GB, both dumps equal).
 # Java writing into a database that it refuses is reported, not counted.
 #
 # Usage: test/stress/corrupt.sh
@@ -176,8 +181,8 @@ done
 echo "variants: $NV, made in $(( $(date +%s) - T0 )) s"
 
 # Both dumpers in OUT. Java's dumps one at a time, each with its standard error in
-# OUT.err (CorruptSet's -dump), as C's.
-(cd "$OUT" && exec "$JAVA" -ea -Xmx2g -cp "$CLASSES" bergdb.core.CorruptSet -dump 1 dump-a.jobs) \
+# OUT.err (CorruptSet's -dump), as C's; a heap for a record of 2^31 - 9 bytes (above).
+(cd "$OUT" && exec "$JAVA" -ea -Xmx4g -cp "$CLASSES" bergdb.core.CorruptSet -dump 1 dump-a.jobs) \
     > "$OUT/dump-a.log" 2>&1 &
 pa=$!
 (cd "$OUT" && while read -r kind out args; do

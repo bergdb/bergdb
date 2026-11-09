@@ -1353,3 +1353,106 @@ C2 (`eod()` also before the first transaction, `98e39d5`) and C3
 thread); 020-24's U1-12 (`LookupTimeNotAvailableException`'s text,
 `c6be92b`; C has no such text). After the pin, `main` took 020-23's Z1
 (`6ac9708`, `DbClock.currentTime()` with a clock that goes back).
+
+2026-11-09, `main` at 32f3832 (worker t9). The candidate pinned again,
+`main` at `32f383282d57ebfa18ccedeea9b0891dd70c4dc1` (15:22), the head
+when the pin was moved: `java-build.sh`'s default and `c/readme.md`'s
+"Which Java". Java's vectors written again from it: all thirteen files
+equal. The stream's bytes do not change. Every Core commit that C had
+not checked, in the last pin and after it, with C's outcome. (a)
+020-27's C1 (`04b0178`): `getmany.c`'s `get_n_handle` and
+`prefix_n_handle` stop at their count, none for 0 (`GM_STOP`), where
+`GetN(0)` gave every pair. `bergdb_range.max_count` 0 stays the field's
+"no count", as before, so the API's reads do not change (`bergdb.h`: a
+read of no pair needs no call). `PrefixN`'s copy of its prefix:
+`gm_prefix_n` keeps the caller's array during the read, as `gm_endpoint`
+does, and `bergdb_get_many` makes the segments at the call. Test
+`t_getmany.c`'s `gm_at_most_n` (`DbTesterJavadoc.testGetManyAtMostN`: 0,
+1, 3, 5 and 7 of 5 keys, and `GetOne`). (b) C2 (`98e39d5`):
+`dag_get_many` calls `eod` for a lookup time with no state, before the
+first transaction, as `Dag.getMany` now does; `bergdb_many.eod` is true
+there. Tests `gm_eod_once_at_the_end` (`testEodOnceAtTheEnd`) and
+`f_api.c`'s `api_create_and_read`, a read at 999 before the creation at
+1000. (c) C3 (`75f42c8`): `db_open` refuses a cache size indicator below
+1 with `DbBuilder.cacheSizeIndicator`'s `IllegalArgumentException`, "Bad
+cacheSizeIndicator: N.", where C gave `Cache3`'s `AssertionError`
+(`BERGDB_ARG` both). Test `f_settings.c`'s `settings_open_checks`
+(`testBuilderCacheSizeIndicatorBelowOneRefused`: 0, -1 and `INT64_MIN`
+refused with the texts, 1 taken and the database working). (d) 021-13
+(`f66bf25`): nothing for C. Java's writer thread sets a record's
+positions before it appends the record, and a reader's `getTrans` could
+meet it in part; C appends a record whole within `bergdb_execute`,
+before any other call, and `bergdb_get_trans` from a callback is
+`BERGDB_STATE` (one caller, no thread: `c/readme.md`, section 8). (e)
+020-24's U1-12 (`c6be92b`): C's text of a lookup time before the first
+available one was its own since 2026.2's port, "Cannot lookup at time T,
+the first time available for lookup is F.", without Java's times in UTC;
+now Java's, with its parenthesis closed, "Cannot lookup at time T (UTC):
+the first time available for lookup is F (UTC).", in `db.c`'s
+`lookup_refused` for `getOne` and `getMany`, with `DbUtil.dbTimeToUtc`
+ported as `clk_time_to_utc` (`clock.c`: Java's division toward zero, the
+proleptic Gregorian calendar, the year of the era, a '+' above 9999).
+Tests `t_clock.c`'s `clock_time_to_utc` (`DbUtil.testDbTimeToUtc`'s
+three times and twenty edges, with the strings Java's `DbUtil` gave for
+them, from `Long.MIN_VALUE` to `Long.MAX_VALUE`) and `t_reclaim.c`'s
+check of both texts behind a cut (10 checks in 2 tests failing with the
+old text). No harness compares the text (the dumps print "unavailable").
+(f) 020-23's Z1 (`6ac9708`): `dbclock_current_time` takes the clock's
+time at most as `DBCLOCK_LAST_USER_TIME` and never below the last time
+it gave. Tests `t_clock.c`'s `clock_dbclock_clock_goes_back`
+(`testClockGoesBack`) and `clock_dbclock_current_time_leaves_the_margin`
+(`testCurrentTimeLeavesTheMargin`), and `f_settings.c`'s
+`settings_current_time_with_a_clock_that_goes_back`
+(`PubTesterJavadocRest.testCurrentTimeWithAClockThatGoesBack` through
+the API). Z3 (`142afa2`, Javadoc): `bergdb.h`, section F, says that only
+an open that creates a database reads the clock; `f_settings.c`'s
+`settings_open_with_the_clock_out_of_range`
+(`testStartWithTheClockOutOfRange`) passes before too, as Java's. (g)
+021-16 (`01d5352`): nothing to change. Java's walks of a long key's
+levels were recursions; C's have none: the start's check walks the node
+table, `dag_dirty_node_bound` keeps its work in an array,
+`bergdb_debug_check` has a stack of its own, and the reads are loops;
+`Dag.visitMemoryNodes` and `DagNodeIterator` have no counterpart.
+`f_api.c`'s `api_long_keys` (`DbTesterLongKeys`' two tests through the
+API, under the sanitizers: a key of 200,000 bytes, a restart, reads,
+both scans, the check and a longer put; a key of 1,000,000 bytes after
+one of 100,000) passes before and after. Its Q2 (`520963d`): the rerun's
+`node_created` (`starter.c`) scanned the record for each node it made,
+as `StoredTrans.findNode` did; now `sr_find_node` (`starter.h`), a scan
+up to 64 nodes, above it a map (`lmap`) from id to the first node, made
+at the first call of a record's rerun. Test `t_sdb.c`'s `sdb_find_node`
+(`StoredTrans.testFindNode`: 200,000 lookups among 100,001 nodes under 2
+s, the first of two, none, another record, 2, 64 and 65 nodes alike),
+failing with a scan only (23.6 s in the release build). (h) The rest:
+020-27's Javadoc of the Core API (`0b71892`, `08a6f00`): `bergdb.h` says
+each already; K1 and K2 (`4f96446`): `bergdb.h`'s "Keys and the layers
+above" takes their words (K3's sentence is C's own: the lock); 020-25's
+J4 to J7 (`5fafc1f`, `e3c4a36`, `5f04330`), 020-23's Z2 (`d794d06`),
+021-17 (`89a7e56`, a comment in `Reclaim.java`) and 020-24's U6
+(`7de6d57`): the Pub layer's, nothing for C. Each test above fails
+before its fix but where said (shown on a copy of `c/` with the old
+`getmany.c`, `db.c` and `clock.c`, and with the scan only). (i)
+`corrupt.sh`: Java's dumper runs with `-Xmx4g`. `last-longer`'s random
+record size made a zero fill to 2,146,064,565 bytes on 503 in worker
+t8's run, and a start reads the zero-filled record whole, one array of
+up to `StoredTrans.MAX_RECORD_SIZE`, 2^31 - 9 bytes; with `-Xmx2g`
+Java's `Dump` threw `OutOfMemoryError` (`NodeStream.TransIterator.next`,
+reproduced on base 503 with that size), where C started it. With
+`-Xmx3g` that copy starts, a resident size of 2.3 GB, and with `-Xmx4g`
+one of 2^31 - 9 bytes; both dumps equal C's. The script's header says
+so.
+
+The gate against the new pin (`git:32f3832`), on `2026.4` at `38e8b4e`
+with this entry: `C BEFORE COMMIT OK (310 s)`, F53 under a load of about
+15; `unit` 410 tests (409 in the release build); `func` 31; `cross
+quick` 0 differences (23 workloads, 69 crash cuts, 85 corrupt variants,
+2 in turns, 46 budget runs); `writecheck` 0; `corruptset` 63 copies;
+`allocfail` 628 runs; `examples` OK. The whole corrupt set, seed 1,
+`nice -n 10`: `CORRUPTSET OK`, 6,253 copies (120 s), 2,628 refused by
+both with the same exception and message, 3,560 started, 65 with a later
+read failing alike, 22 of 014-01's case. `corrupt.sh`, `nice -n 10`:
+`CORRUPT OK`, 144 variants, 105 messages compared, 0 differ (85 s;
+`last-longer` refused on 503 and 504, its sizes negative this run,
+started on 501 and 502). No difference remains. After the pin, `main`
+took `cf67d0c` (021-17's R17-1) and `bd92096` (its item), the Pub
+layer's alone, which the harness does not compile (15:27 to 15:31).

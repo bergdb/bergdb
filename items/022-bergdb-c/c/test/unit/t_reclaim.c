@@ -560,6 +560,20 @@ static void check_lookups(struct rdb *r, const struct model *mo, int64_t step) {
     g.lookup_time = first - 1;
     CHECK(db_get_many(&r->db, &g, &e) == ERR_NOT_AVAILABLE);
     CHECK(strcmp(e.java, "LookupTimeNotAvailableException") == 0);
+    {   /* Java's text, its first parenthesis closed (bergdb 020-24, U1-12) */
+        char text[ERR_TEXT], a[CLK_UTC_SIZE], b[CLK_UTC_SIZE];
+        clk_time_to_utc(first - 1, a);
+        clk_time_to_utc(first, b);
+        snprintf(text, sizeof text, "Cannot lookup at time %lld (%s): the first time available "
+                "for lookup is %lld (%s).", (long long) (first - 1), a, (long long) first, b);
+        CHECK(strcmp(e.text, text) == 0);
+        struct getdata gd;
+        struct vnode *v;
+        const int64_t key[1] = { 0 };
+        db_new_get_data(&r->db, &gd);
+        CHECK(db_get_one(&r->db, first - 1, key, 1, &gd, &v, &e) == ERR_NOT_AVAILABLE);
+        CHECK(strcmp(e.text, text) == 0);
+    }
     g.lookup_time = first;
     CHECK(db_get_many(&r->db, &g, &e) == ERR_OK);
 }

@@ -90,6 +90,11 @@ struct starter {
     /* The rerun of one transaction. */
     const struct st_record *rerun;
     int64_t vpos;
+    /* StoredTrans.findNode's map (bergdb 021-16, Q2): an id to the index of
+     * the first of rerun's nodes with it, made at the first find_node of a
+     * rerun of a record of more than SR_FIND_NODE_SCAN_LIMIT nodes. */
+    struct lmap rerun_ids;
+    bool rerun_indexed;
     struct err lerr;                /* a listener's failure */
 };
 
@@ -115,6 +120,7 @@ static void free_starter(struct starter *st) {
     lmap_free(&st->pos_map);
     lmap_free(&st->new_by_id);
     lmap_free(&st->pos_to_id);
+    lmap_free(&st->rerun_ids);
 }
 
 /* posMap.put: the starter holds the node. */
@@ -728,6 +734,36 @@ static enum err_code canonical_node(struct starter *st, int64_t id, int64_t spos
     return nt_register(env->nt, node, out, e);
 }
 
+bool sr_find_node(const struct st_record *t, struct lmap *ids, bool *indexed, int64_t id,
+        const struct sn_node **out, struct err *e) {
+    *out = NULL;
+    if (t->nnodes <= SR_FIND_NODE_SCAN_LIMIT) {
+        for (int32_t i = 0; i < t->nnodes; i++) {
+            if (t->nodes[i].id == id) {
+                *out = &t->nodes[i];
+                break;
+            }
+        }
+        return true;
+    }
+    if (!*indexed) {
+        lmap_clear(ids);
+        for (int32_t i = 0; i < t->nnodes; i++) {
+            int64_t first;
+            if (!lmap_get(ids, t->nodes[i].id, &first) && !lmap_put(ids, t->nodes[i].id, i)) {
+                nomem(e, "findNode's map");
+                return false;
+            }
+        }
+        *indexed = true;
+    }
+    int64_t i;
+    if (lmap_get(ids, id, &i)) {
+        *out = &t->nodes[i];
+    }
+    return true;
+}
+
 /* The rerun's NodeChangeListener: nodeCreated. */
 static bool node_created(struct starter *st, struct node *node) {
     struct sr_env *env = st->env;
@@ -737,12 +773,9 @@ static bool node_created(struct starter *st, struct node *node) {
     node->spos = id;           /* initially, we use vpos as spos */
 
     /* storedTrans.findNode(id) */
-    const struct sn_node *n = NULL;
-    for (int32_t i = 0; i < st->rerun->nnodes; i++) {
-        if (st->rerun->nodes[i].id == id) {
-            n = &st->rerun->nodes[i];
-            break;
-        }
+    const struct sn_node *n;
+    if (!sr_find_node(st->rerun, &st->rerun_ids, &st->rerun_indexed, id, &n, &st->lerr)) {
+        return false;
     }
     if (n != NULL) {
         if (node_type(node) == NODE_TYPE_VALUE || node_type(node) == NODE_TYPE_DELETE) {
@@ -797,6 +830,7 @@ static enum err_code rerun_transaction(struct starter *st, const struct st_recor
         struct ts_info *tinfo, struct err *e) {
     struct sr_env *env = st->env;
     st->rerun = t;
+    st->rerun_indexed = false;      /* findNode's map made again for this record */
     st->vpos = spos_next_vpos(t->tpos);
     int64_t valueBytes = 0;
     int64_t *key = NULL;
@@ -1042,6 +1076,7 @@ enum err_code sr_start(struct sr_env *env, struct sr_result *out, struct err *e)
     lmap_init(&st.pos_map, env->mem);
     lmap_init(&st.new_by_id, env->mem);
     lmap_init(&st.pos_to_id, env->mem);
+    lmap_init(&st.rerun_ids, env->mem);
     err_clear(&st.lerr);
 
     /* handleStartParams */
