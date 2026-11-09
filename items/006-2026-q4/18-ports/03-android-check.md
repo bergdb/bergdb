@@ -575,3 +575,7 @@ needed, and `~/.android` with them.
     (1584 tests, 5 skipped) in 119 s; 10 demo runs". On the committed
     tree: "ANDROID OK (1584 tests, 5 skipped) in 151 s; 10 demo runs". The
     JVM runs the same 1,589 tests, none skipped.
+* 2026-11-09, 18:03: the skip of `StreamContractTester.testOneFileStream`
+  is gone. `OneFileStream` now checks a read's end before its seek
+  (021-14, `a2fa9df`). On the emulator: "ANDROID OK (1613 tests, 4
+  skipped) in 209 s; 10 demo runs".
