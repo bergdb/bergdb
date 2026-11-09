@@ -313,8 +313,11 @@ class IndexBuilderImp implements IndexBuilder {
      * directory's end: 015-30, S2-F16); the definition's key hash in its read set; if the index
      * was deleted, the build ends FAILED "deleted"; else each value's entry is put (a value
      * with no entry is counted and skipped; a key without an ikey is skipped, bergdb 021-06).
-     * The values' hashes are in the read set, so a concurrent write of one makes the step run
-     * again. After a step, a pause of half its time, at most a second (N10). At the end, the
+     * The hash of each value whose entry the step puts is in the read set, so a concurrent
+     * write of one makes the step run again; a write of a value without an entry, such as one
+     * at a key with a suffix, does not, as the step writes nothing for it (bergdb 020-18, F1:
+     * such a write takes no index manager's lock, and collided with the step under it). After
+     * a step, a pause of half its time, at most a second (N10). At the end, the
      * activation. Errors: a stop of the database ends the thread, BUILDING; a refusal or an
      * expiry waits 10 to 640 ms and takes the step again (019-38); any other RuntimeException,
      * a DataFormatException or an InternalDataException included, ends the build FAILED, the
@@ -481,6 +484,7 @@ class IndexBuilderImp implements IndexBuilder {
                 }
                 byte[] entry = def.entry(ikey, kvt.value);
                 if (entry != null) {
+                    env.addReadHash(Keys.hash(kvt.key));    // bergdb 020-18, F1
                     env.set(entry, new byte[0], null);
                 }
             }

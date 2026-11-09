@@ -14,7 +14,6 @@ import bergdb.dag.GetData;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.dag.Klong;
-import bergdb.dag.Kvt;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.DataFormatException;
@@ -486,6 +485,11 @@ class RwEnvironmentImp implements RwEnvironment {
     /**
      * Internal method for using GetMany in an RW transaction.
      * g.lookupTime is set by this method and should not be set by the caller.
+     * The KVs read are not put in the read set: the caller adds the hashes of those its
+     * writes depend on (addReadHash). Its one caller, a build step, adds the hash of each
+     * value whose entry it puts (bergdb 020-18, F1: every KV read was added, so a write of a
+     * key with a suffix, which has no entry and takes no index manager's lock, made the
+     * step run again, also under that lock).
      */
     void getMany(GetMany g) {
         g.lookupTime = firstRead ? Long.MAX_VALUE : this.readTime;
@@ -496,10 +500,6 @@ class RwEnvironmentImp implements RwEnvironment {
             firstRead = false;
             
             //System.out.println("RwEnvironmentImp, firstRead, readTime: " + readTime + ", " + g.result.size());
-        }
-        
-        for (Kvt kvt : g.result) {
-            this.readHashes.add(Keys.hash(kvt.key));
         }
     }
     

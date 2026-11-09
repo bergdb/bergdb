@@ -966,6 +966,44 @@ public class PubTesterIndexJobs {
         }
     }
 
+    /**
+     * 020-18, F1: a write of a key with a suffix in the directory, which has no entry, never
+     * makes a build step run again. Such a write takes no index manager's lock (it keeps no
+     * index), and it collided with every step that had read its key: after a few refused tries
+     * the step ran under the lock and collided with it again and again, while every write at
+     * an object key, in any directory, and every index's change waited for the lock (on F53,
+     * 24 threads that wrote keys with a suffix of a directory of 10 objects held another
+     * directory's object puts up to 0.4 s, against 30 ms without the build). Here a hook writes
+     * the step's key k2.txt at each of its first ten tries: the step commits at its first.
+     */
+    @Nano
+    public static void testSuffixWriteDoesNotRerunABuildStep() {
+        Database db = start(new MemoryStream());
+        try {
+            Connection c0 = db.newConnection();
+            for (int k = 0; k < 5; k++) {
+                c0.put("/items/k" + k, new Item(k, k));
+                c0.put("/items/k" + k + ".txt", "text " + k);
+            }
+            IndexManager m = manager(db);
+            Connection w = db.newConnection();
+            int[] tries = new int[1];
+            m.testHook = p -> {
+                if (p.equals(IndexManager.BUILD_STEP) && ++tries[0] <= 10) {
+                    w.put("/items/k2.txt", "changed " + tries[0]);
+                }
+            };
+            JobStatus status = db.indexBuilder("by-field").dir("/items/").type("long")
+                    .field("amount").start().join(10000);
+            m.testHook = null;
+            Assert.assertEquals(status.note(), JobStatus.State.ACTIVE, status.state());
+            Assert.assertEquals("the tries of the build's one step", 1, tries[0]);
+            Assert.assertEquals(5, entries(db, "by-field"));
+        } finally {
+            db.close();
+        }
+    }
+
     // ======== The builder (020-10, section 3.1) ========
 
     /** S2-F20: dir() twice is refused at once; the builder needs dir() first. */
