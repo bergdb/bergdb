@@ -770,4 +770,33 @@ public class PubTesterJavadocNewUsers {
         }
         return r.totalMemory() - r.freeMemory();
     }
+
+    /**
+     * U10-6 (bergdb 020-24-10): sync() after close() returns, from the Database and from a
+     * Connection, as its Javadoc says when the transaction is durable: close() wrote and
+     * forced it. Also after stop() once the close is done, and for a transaction that no
+     * sync() preceded. It threw StreamIoException, "StorageManager has error: Storage is
+     * closing.".
+     */
+    @Nano
+    public static void testSyncAfterClose(TestEnvironment env) throws Exception {
+        File root = env.createTempDir();
+        for (int i = 0; i < 4; i++) {
+            Database d = Factory.database().create(new File(root, "d" + i).getPath()).start();
+            Connection c = d.connection();
+            c.put("/a.txt", "a");
+            if (i % 2 == 0) {
+                d.sync();
+            }
+            if (i < 2) {
+                d.close();
+            } else {
+                d.stop();
+                d.close();      // Waits for the stop's close.
+            }
+            d.sync();
+            c.sync();
+            d.sync(SyncLevel.ORDINARY);
+        }
+    }
 }

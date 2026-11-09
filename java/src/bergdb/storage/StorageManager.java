@@ -150,6 +150,9 @@ public class StorageManager implements AppendOnlyStream {
             // ends, has ended.
             try {
                 mainStream.close();
+                if (!failed) {
+                    closedDurable();
+                }
             } catch (IOException e) {
                 if (!failed) {
                     first = e;
@@ -166,6 +169,23 @@ public class StorageManager implements AppendOnlyStream {
         return first;
     }
 
+    /**
+     * After a close of the main stream that worked: what it wrote is durable, so a sync of it
+     * returns (2026-11-09, bergdb 020-24-10, U10-6). computeRules() ignores the close's own
+     * flushes, as the error is set by then, and a sync after close() threw "Storage is
+     * closing." for a transaction that the close had written and forced, though
+     * Database.sync() says that it returns.
+     */
+    private void closedDurable() {
+        synchronized (d1Lock) {
+            long size = confirmedLength.get();
+            if (size > d1Size) {
+                d1Size = size;
+            }
+            d1Lock.notifyAll();
+        }
+    }
+    
     /**
      * The error after the main stream failed (handleStreamException); the failure itself is
      * mainFailure, the cause of what read(), append() and sync() throw.

@@ -649,6 +649,13 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   threw `StreamIoException` "Directory ... could not be created.", as
   `mkdirs()` returns false when another thread made it; now they are
   refused as in use, as `DatabaseBuilder.start()` says.
+* **`sync()` after `close()` returns** (bergdb 020-24-10, U10-6;
+  2026-11-09), from `Database` and from a `Connection`, as its Javadoc says
+  for a durable transaction: the close wrote and forced every transaction.
+  It threw `StreamIoException`, "StorageManager has error: Storage is
+  closing.". So does `sync()` after `stop()` once the background close is
+  done; during it, a `sync()` of a transaction not yet durable throws as
+  before.
 
 
 ### Core API

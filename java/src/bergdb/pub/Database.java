@@ -222,7 +222,9 @@ public interface Database extends AutoCloseable {
      *             (stop()) and the transaction is not yet durable: a StreamIoException
      *             ("Storage is closing."), the database has not failed, and close() still
      *             writes the transaction (bergdb 020-24-03, U3-3). If it is durable, this
-     *             method returns, also then.
+     *             method returns, also then: after close(), or after stop() once the
+     *             database has closed, every transaction is durable, unless the close
+     *             failed (bergdb 020-24-10, U10-6).
      * @throws DbFailedException
      *             If the storage has failed: the database fails (see above).
      */
