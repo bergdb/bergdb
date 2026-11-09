@@ -112,11 +112,17 @@ public class PubTesterIndexJobs {
         }
     }
 
-    /** The build was deleted: join() throws, FAILED "deleted", with no cause. */
+    /**
+     * The build was deleted: join() throws, FAILED "deleted", with no cause; the note does
+     * not say that the next start takes the build again (020-18, F2: it did, as for a
+     * failure).
+     */
     private static void assertDeleted(Job job) {
         IndexBuildException e = assertJoinThrows(job, "by-field");
         Assert.assertEquals("deleted", e.getStatus().reason());
         Assert.assertTrue("no cause", e.getCause() == null);
+        String note = e.getStatus().note();
+        Assert.assertTrue(note, note.contains("deleted") && !note.contains("next start"));
     }
 
     /**
