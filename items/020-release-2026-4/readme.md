@@ -121,9 +121,9 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   decision joins; 52 existing tests changed, about 25 new, the vectors
   run by Java and a harness against a reference codec; the measurements
   of 020-02, section 6; the steps and commits (since 2026-11-08, 22:38:
-  steps 1, 2, 7, 8, 3, 4, 6, step 5 dropped, about 7 days; step 1 done);
-  the risks.
-  No code changed.
+  steps 1, 2, 7, 8, 3, 4, 6, step 5 dropped, about 7 days); the risks.
+  Done on 2026-11-09, each step's record in section 8; step 4's
+  measurements are 020-12.
 * [09-conversion-rules.md](09-conversion-rules.md). 020-09, the rules of
   the conversion between Data Objects and `DbObject`s in Java for 2026.4,
   both ways, from Frans's decisions (020-02, section 2's decision and
@@ -158,6 +158,16 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   fixed with its commit and the test that shows it (read and run), open
   with who has it, gone or not a fault, or Frans's question. Brought up
   to date until the release.
+* [12-measurements.md](12-measurements.md). 020-12, format 2 measured,
+  020-08's step 4, on a quiet machine (2026-11-09, 03:43 to 04:23):
+  ObjectBench's M1 to M8 at `7231771` against format 1 at `ae68938`, and
+  `performance.sh`'s quick suite against release 2026.3. A `Payment` is
+  36 bytes against 71; the writer takes 0.29 to 0.66 of format 1's time,
+  the read of bytes 0.16 to 0.74, a lookup 0.13 to 0.44, a get into
+  `Payment` 0.70, a build 0.46; the Core unchanged (NO ALERTS). Two
+  figures over 10 % worse, neither a fault: M4's get as `byte[]` (1.34,
+  the JVM's state where ObjectBench runs it; alone 0.93) and a `w()` of
+  one put at an object key (1.13, 020-10's I1 rule, by design).
 
 
 Log
@@ -204,3 +214,6 @@ from `main` at `fd6dd09` at the coordinator's request: twelve open rows
 size checked after its encoding, N10's test outside `Pack`, B3, two low
 points of 019-46's review, step 4's measurements, three item updates)
 and six questions or approvals for Frans.
+
+2026-11-09. 020-12, the measurements of 020-08's step 4, made on a quiet
+machine in night 006-15 by the coordinator's agent C; 020-08 done.

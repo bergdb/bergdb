@@ -1,9 +1,9 @@
 # 020-08 Objects in format 2: the implementation plan
 
-Created 2026-11-08 by Frans Lundberg. Status: open; steps 1, 2, 7, 8, 3
-and 6 done (sections 8.1 to 8.5 and 8.7), step 4 prepared (8.6); the
-other steps decided under Frans's delegation of 2026-11-08, 22:17 (section
-2). How format 2 of stored objects (020-07; 020-02, section 4), the no-null
+Created 2026-11-08 by Frans Lundberg. Status: done (2026-11-09); steps
+1, 2, 7, 8, 3, 4 and 6 done (sections 8.1 to 8.7), step 5 dropped; the
+steps after step 1 decided under Frans's delegation of 2026-11-08, 22:17
+(section 2). How format 2 of stored objects (020-07; 020-02, section 4), the no-null
 rules of 020-04 as Frans chose them, (c), the conversion rules of 020-09
 and the API's removals (020-02, section 5.1b) get into the Java code: the
 design, the changes file by file and method by method, the tests, the
@@ -1185,10 +1185,11 @@ Decided in the step, under Frans's delegation (22:17):
 Gate: BEFORE COMMIT OK.
 
 
-### 8.6. Step 4, prepared (2026-11-09)
+### 8.6. Step 4, done (2026-11-09)
 
-The tool, ready for the quiet run; the measurement itself is not made, as
-the machine was busy with the night's agents and gates (006-15).
+The tool, prepared in the night, when the machine was busy with the
+night's agents and gates (006-15); the measurement made in the morning,
+quiet, written as 020-12 (at the end of this section).
 
 * `java/stress/ObjectBench.java` (package `bergdb.core`, compiled by
   `build.sh` with the stress tests): M1 to M7 of section 7, and M8, the
@@ -1240,6 +1241,26 @@ against 133 (M7); a one-put `w()` at an object key 3.0 µs against 2.5, and
 as `byte[]` (1.46 in the full run, 1.01 in the quick one), M8's one-put
 `w()` at an object key, the cost of I1 (1.20 and 1.09), and M1's `Blob`
 (1.35 in the quick run, 0.45 in the full one).
+
+**Done**, quiet, at `7231771` (020-12): ObjectBench against `ae68938`, 5
+JVMs a build, 03:43 to 03:51; `performance.sh ab` with the quick suite
+against release 2026.3's preserved build (the coordinator's choice of
+reference, in place of `pre-f2`), 03:52 to 04:05: NO ALERTS. The
+candidate as a fraction of format 1: the writer 0.29 to 0.66 (M1), the
+read of bytes 0.16 to 0.74 (M2), the lookups 0.13 to 0.44 (M3), a get
+into `Payment` 0.70 and as `DbObject` 0.84 (M4), a put 0.89 indexed and
+0.77 not (M5), the build 0.46 (M6, 226,000 objects a second), a
+`Payment` 36 bytes against 71 (M7). The three open figures: M1's `Blob`
+0.64, no regression; M8's one-put `w()` at an object key 1.13, the cost
+of 020-10, section 5.1's rule, by design, not a fault; M4's get as
+`byte[]` 1.34 in ObjectBench, but 0.93 alone in a fresh JVM on the same
+data (a probe, 04:19 to 04:23), so the JVM's state where ObjectBench runs
+it, not the get's code, and not a fault. Section 7's questions: no
+unchecked lookups and no view without a copy (M2: 52 ns of a `Payment`'s
+844 ns get), the writer's way 1 stays (M1). `objectbench.sh` no longer
+runs the reference since B3 (`48378fe`), which made ObjectBench import
+`bergdb.pub.DbObject`: the quiet run compiled a copy for format 1's jar;
+the script should compile it for each build (020-12, section 2).
 
 ### 8.7. Step 6, done (2026-11-09)
 
@@ -1435,3 +1456,6 @@ Step 1's record (section 8.1) unchanged. No code changed.
 format-1 reference built from `ae68938` outside the repository, two runs
 that are not quiet; the quiet run's command for the morning; no code
 under test changed; BEFORE COMMIT OK.
+
+2026-11-09. Step 4 done in night 006-15 by the coordinator's agent C
+(section 8.6), the measurements written as 020-12; 020-08 done.
