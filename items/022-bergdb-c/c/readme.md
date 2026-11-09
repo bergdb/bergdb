@@ -9,29 +9,40 @@ D1): the library, its tests, the tools, and the Java side of the cross
 tests. Its first parts, the build, the tests, the gate and the rules
 below, are 012-04's.
 
-**Which Java.** C is a port of **Java release 2026.3** (the tag
-`release-2026.3`, `929fa33`, 2026-11-06; bergdb 022-01), not of the Java
-of the day: it writes that release's bytes, opens its databases and
-refuses what it refuses, with Java's exception names and texts, and its
-API follows `Db`'s public methods there. Where it departs from 2026.3, on
-purpose, section 11 says how and why. The cross tests compare with the
-release's Java: `test/cross/java-build.sh` compiles the Core Layer from
-`releases/2026.3/bergdb-2026.3-src.zip` by default, checked against its
-`SHA256SUMS` and extracted once into `build/java-src/`. `JAVA_REF=2026.2`
-compiles release 2026.2's instead, `JAVA_REF=tree` the repository's
-`java/`, and `JAVA_REF=DIR` another Java tree; each differs from C where
-its Java differs from 2026.3. C is kept at one release at a time, and
-follows Java's releases, not its changes in between: this copy began at
-012's `be51a78`, the port of release 2026.2 (bergdb 015-02), which 012
-keeps; 022-01 brought it to 2026.3, and 2026.4 follows (022-02; 022's
-readme). Until 2026-11-05 C followed `main` as of 2026-10-29 (`ae4aaf9`),
-then release 2026.2 until 2026-11-09. **On the way to 2026.4** (022-02):
-the harness compiles the pinned candidate of release 2026.4 by default
-(`JAVA_REF=git:32f3832`, `main` at 2026-11-09 15:22, with 020-27,
-021-13, 020-23's Z1 and 021-16; `772e09b`, 14:40, `82edabf`, 13:04, and
-`94a1520`, 11:57, before, until 022-02's re-pins), and
-`JAVA_REF=2026.3` no longer compiles (`CorruptSet.java` takes the
-candidate's `Config`); 022-02's step 5 writes this paragraph for 2026.4.
+**Which Java.** C is a port of **Java release 2026.4** (bergdb 022-02),
+not of the Java of the day: it writes that release's bytes, opens its
+databases and refuses what it refuses, with Java's exception names and
+texts, and its API follows `Db`'s public methods there. Where it departs
+from that Java, on purpose, section 11 says how and why. Until 2026.4 is
+tagged, C follows its release candidate, a commit of `main` that the cross
+tests compile by default: `test/cross/java-build.sh`'s
+`JAVA_REF=git:HASH`, the commit's `java/src`, `java/stress` and
+`java/deps.py` by `git archive`, as a release's source zip holds them,
+extracted once into `build/java-src/git-HASH/`; `java-ref.txt` names it
+in every report. The candidate is cut from `main` on 2026-11-09 at about
+20:00; until then C follows the newest `main` that 022-02 has pinned and
+checked (each pin, with what it brought, is in 022-02's log). The pin,
+here and as `java-build.sh`'s default:
+
+    JAVA_REF=git:32f383282d57ebfa18ccedeea9b0891dd70c4dc1   main at 2026-11-09 15:22
+
+Once 2026.4 is tagged, the default becomes `JAVA_REF=2026.4`, the
+release's `releases/2026.4/bergdb-2026.4-src.zip`, checked against its
+`SHA256SUMS` and extracted once into `build/java-src/`, and this
+paragraph names the tag and its commit (022-02, section 4.2).
+`JAVA_REF=tree` compiles the repository's `java/`, `JAVA_REF=DIR` another
+Java tree and `JAVA_REF=git:HASH` another commit; each differs from C
+where its Java differs from the pin. `JAVA_REF=2026.3` and `2026.2` no
+longer compile the harness (`CorruptSet.java` takes 2026.4's
+`CorruptStreamTester.Config`, with its keys). C is kept at one release at
+a time, and follows Java's releases, not its changes in between: this
+copy began at 012's `be51a78`, the port of release 2026.2 (bergdb
+015-02), which 012 keeps; 022-01 brought it to release 2026.3 (the tag
+`release-2026.3`, `929fa33`, 2026-11-06), whose port, gated against
+2026.3, is `c/` as of `main`'s `b49606b` (2026-11-09 12:53; `int.git`'s
+branch `022`, `342dcb2`); 022-02 brings it to 2026.4, on `int.git`'s
+branch `2026.4`. Until 2026-11-05 C followed `main` as of 2026-10-29
+(`ae4aaf9`), then release 2026.2 until 2026-11-09.
 
 
 # 1. Build and test
@@ -98,10 +109,10 @@ section 10); the allocation failures in turn on a small workload
 (012-13), which runs the examples under the sanitizers and compares them
 with Java (section 8).
 Java's gate, `java/before-commit.sh`, is not touched. The gate takes
-about 4 to 8 minutes on a loaded F53 (225 to 450 s at 022-01's landings,
-under a load of 10 to 28; 179 s at 015-02 on a quieter one), most of it
-in `cross` and the functional tests under `leaks`; each step's line gives
-its seconds.
+about 5 to 9 minutes on a loaded F53 (285 to 567 s at 022-02's landings,
+under a load of 11 to 48; 225 to 450 s at 022-01's; 179 s at 015-02 on a
+quieter one), most of it in `cross` and the functional tests under
+`leaks`; each step's line gives its seconds.
 
 The test programs run every test, or those whose names start with an
 argument; `-l` lists them:
@@ -111,12 +122,18 @@ argument; `-l` lists them:
 
 **Java's vectors.** `test/unit/vectors/*.txt` are what Java's own classes
 give for fixed inputs (compare values, segments, hashes, checksums, the
-byte codecs, and Java's arithmetic in `jsem.txt`). They are written by
+byte codecs, the keys' conversions and their UTF-8 check, and Java's
+arithmetic in `jsem.txt`). They are written by
 `test/cross/java/Vectors.java` and committed, so that the unit tests run
-without Java; `t_vectors.c` reads them. They are release 2026.3's (written
-again on 2026-11-09, 022-01, step 0). To write them again from Java, and to check
-C against the Java that `JAVA_REF` chooses (above; the release by default)
-without changing the committed ones:
+without Java; `t_vectors.c` reads them. They are the pin's (above),
+thirteen files, written again from each of 022-02's pins and equal to
+the committed ones each time. 2026.4 brought two kinds (022-02, step 1):
+`utf8 BYTES RESULT` in the new `strutil.txt`
+(`StringUtil.isWellFormedUtf8`) and `bkey2ikey BKEY IKEY` or `none` in
+`keys.txt` (`Keys.bkey2ikeyOrNull`); the other eleven files are as
+2026.3 wrote them (022-01, step 0). To write them again from Java, and
+to check C against the Java that `JAVA_REF` chooses (above; the pin by
+default) without changing the committed ones:
 
     JAVA_HOME=/opt/homebrew/opt/openjdk test/cross/java-build.sh
     /opt/homebrew/opt/openjdk/bin/java -ea -cp build/java/classes bergdb.core.Vectors DIR
@@ -475,9 +492,10 @@ bergdb_close(db);                               /* writes, forces, frees all */
   value at the transaction's time.
 * **Read.** `bergdb_get_one` (a key at a time), `bergdb_get_many` (a range
   in key order, forward or backward, with Java's stop conditions: an end
-  key, a count, a prefix, or a function), `bergdb_get_trans` (the
-  transaction at a position, as `bergdb_one.tpos` gives it). Results
-  point into the read context: copy what must outlive its next call.
+  key, a count, a prefix, or a function; a count of 0 is none, section
+  11, point 4), `bergdb_get_trans` (the transaction at a position, as
+  `bergdb_one.tpos` gives it). Results point into the read context: copy
+  what must outlive its next call.
 * **Close.** `bergdb_close` writes and forces what is buffered, releases
   the directory's lock and frees every byte, the transactions and read
   contexts not yet freed with it; after it the handle is gone, as a
@@ -613,8 +631,9 @@ and at random moments; a write that fails). Power loss: `test/stress/power.sh`
     the operating system, can lose what was written and not forced, and
     the file system may make a new file's name durable at once, before
     any force of the directory, or a later name before an earlier one.
-    C's forces, each an `F_FULLFSYNC`, are those of 2026.3's `FileStream`
-    with per-append forcing off (`stream.c`; `plat.h`'s reasons, Java's
+    C's forces, each an `F_FULLFSYNC`, are those of Java's `FileStream`
+    (2026.3's, whose forces 2026.4's candidate keeps) with per-append
+    forcing off (`stream.c`; `plat.h`'s reasons, Java's
     `FileStreamIo.Force`):
 
     * **At a sync and a close** (SYNC): the files written since the last
@@ -657,8 +676,9 @@ and at random moments; a write that fails). Power loss: `test/stress/power.sh`
 
 By hand, not in the gate (but for the short allocation-failure run and
 the corrupt-stream set's `quick`); each script's header has its usage,
-012-14 the results of 012's runs, and 022-03 those of the port to 2026.3.
-Raw output goes to `/Users/f/fl/bench/022/out/` by default (`OUT=`).
+012-14 the results of 012's runs, 022-03 those of the port to 2026.3,
+and 022-04 those of the port to 2026.4. Raw output goes to
+`/Users/f/fl/bench/022/out/` by default (`OUT=`).
 
 * `test/stress/random.sh FROM TO`: Gen's seeds by the thousand, Java
   against C, in batches of `cross.sh random`.
@@ -670,33 +690,38 @@ Raw output goes to `/Users/f/fl/bench/022/out/` by default (`OUT=`).
   its name and message, byte for byte (C's cut at 239 bytes); both run in
   `OUT` with paths from there, and a path names each dumper's own copy.
   C writes nothing into a database it refuses, but for 014-01's zero
-  fill, counted as the corrupt-stream set counts it.
+  fill, counted as the corrupt-stream set counts it. Java's dumper runs
+  with `-Xmx4g`: a start of `last-longer`'s zero-filled record reads it
+  whole, up to 2^31 - 9 bytes (022-02, the pin of 15:22). 144 variants,
+  about 105 messages compared, in 1.5 to 3 minutes under load.
 * `test/stress/corruptset.sh`: **the corrupt-stream set** (022-01, step
-  4): damaged copies of streams that release 2026.3's Java writes, made
-  by `test/cross/java/CorruptSet.java` with the release's own classes:
-  harness 6.1's copies by class (`CorruptStreamTester`: truncation, flip,
-  header fields, a node's field with its checksum made right, a range cut
-  out), `testFound019_32`'s, `testFound021_11`'s (022-02, step 2: base
-  `found-long-1`), `testFound021_12`'s (022-02, the re-pin: base
-  `found-long-3971358`), and the cases of 2026.3's refusal tests
-  (`DbTesterRestart`'s six, 015-72, 015-75, 019-34, 019-01; the node
+  4): damaged copies of streams that the pinned Java writes (2026.3's in
+  022-01), made by `test/cross/java/CorruptSet.java` with that Java's own
+  classes: harness 6.1's copies by class (`CorruptStreamTester`:
+  truncation, flip, header fields, a node's field with its checksum made
+  right, a range cut out), `testFound019_32`'s, `testFound021_11`'s
+  (022-02, step 2: base `found-long-1`), `testFound021_12`'s (022-02, the
+  re-pin: base `found-long-3971358`), and the cases of 2026.3's refusal
+  tests (`DbTesterRestart`'s six, 015-72, 015-75, 019-34, 019-01; the node
   tests' changes, 019-32, on every node of a stream). Both dumpers start
   each, C's with `-check` (the start's check by node id, 005-57, which
   Java's runs under `-ea`): the same status, text and messages (C's text
-  cut at 239 bytes), C never crashes and writes nothing into a database
-  it refuses. A `StreamIoException`'s message is compared as any other:
-  C's text is Java's, the inner exception's message, its name kept as
-  the error's cause (`struct err`), and a database's stream is read as
-  Java's `Db` reads it, through `BufferedStream` (`stream_as_storage`);
-  022-02, D6 (Frans, 2026-11-09, 12:25), decided 012-14, section 6.4's
-  open choice so, where the set had counted C's own text as known. The
-  texts of a start's refusals and of the nodes' checks name a node by its
-  kind, id and position, "key node 22807 at 36536" (021-15, as Java's
-  since release 2026.4), and are compared as any other; the set counted
+  cut at 239 bytes), C never crashes and writes nothing into a database it
+  refuses, but for 014-01's zero fill, the one class counted as known
+  (both refuse after the fill, the two directories alike). A
+  `StreamIoException`'s message is compared as any other: C's text is
+  Java's, the inner exception's message, its name kept as the error's
+  cause (`struct err`), and a database's stream is read as Java's `Db`
+  reads it, through `BufferedStream` (`stream_as_storage`); 022-02, D6
+  (Frans, 2026-11-09, 12:25), decided 012-14, section 6.4's open choice
+  so, where the set had counted C's own text as known. The texts of a
+  start's refusals and of the nodes' checks name a node by its kind, id
+  and position, "key node 22807 at 36536" (021-15, as Java's since release
+  2026.4), and are compared as any other; the set counted
   `KeyNode.validateStreamNode`'s as known until then, as Java's printed
-  the node with `Object.toString`'s identity hash. `quick`
-  (about 60 copies) is in the gate; the whole set (`SEEDS=`, 1 by
-  default, testSample's copies) by hand. `CONTROL=REV` is the negative
+  the node with `Object.toString`'s identity hash. `quick` (63 copies) is
+  in the gate; the whole set (`SEEDS=`, 1 by default, testSample's copies:
+  6,253, 2 to 5 minutes under load) by hand. `CONTROL=REV` is the negative
   control: C at REV (`86dade8`, the port of 2026.2) must differ in every
   case's base.
 * `test/stress/power.sh`: **power loss**. `bergdb-power` (`power.c`, the
@@ -745,9 +770,10 @@ Raw output goes to `/Users/f/fl/bench/022/out/` by default (`OUT=`).
 
 # 11. Departures from Java
 
-Where C does not do what release 2026.3's Java does, on purpose; the
-cross tests and the corrupt sets compare around them, and 022-03,
-section 7, gives them with the port's evidence. Those of C's design since
+Where C does not do what the Java that it follows does (2026.4's
+candidate, pinned: "Which Java" above), on purpose; the cross tests and
+the corrupt sets compare around them, and 022-03, section 7, and 022-04,
+section 6, give them with the ports' evidence. Those of C's design since
 012 (012-16, section 4): one caller at a time and no thread (section 8),
 so a transaction is durable at a sync or a close (section 9, points 1 to
 4) and a decided cut is forced and made in the call that decides it
@@ -759,7 +785,7 @@ call from a callback (`BERGDB_STATE`); a text is cut at C's limit
 encryption and the layers above the Core left out. Not ported (022-01's
 D4): 015-67's bounded batches (C's sweep at the end of a call has no
 bound on its work, a latency property; 012-16's proposal) and 2026.3's
-limits harness. And those of 2026.3:
+limits harness. And those of the ports to 2026.3 and 2026.4:
 
 1. **NOMEM is a refusal** (Java's 019-10; 012-14's decision, kept by
    022-01's D4). A failed allocation before a transaction's go point, or
@@ -787,16 +813,27 @@ limits harness. And those of 2026.3:
    C, never a byte that a sync or a close acknowledged, and a hole within
    a file, outside 014-01's contract, has more room in C, as in Java with
    per-append forcing off.
-4. **`StreamIoException`'s text: no longer a departure** (022-02, D6;
-   Frans, 2026-11-09, 12:25: "Yes, (a)."). 012-14, section 6.4 left open
-   how C names a wrapped exception; decided as its option A, to wrap as
-   Java does. A failed read of the stream is named `StreamIoException`,
-   as Java's `RecoverableStream` names it, its text is the inner
-   exception's message, as Java's, and the inner name is kept as the
-   error's cause (`struct err`'s `cause`, which `tools/reappend.c` reads);
-   a database's stream is read as Java's `Db` reads it, through
-   `BufferedStream` (`stream_as_storage`, `src/stream.h`), so a read past
-   the end has that class's text. Until then the text began with the
-   inner name and went on in C's words, and `corruptset.sh` counted the
-   10 copies of 022-01, step 4 as known; now it compares them as any
-   other message and fails on a difference.
+4. **A count of 0 is no count** (Java's 020-27, C1).
+   `bergdb_range.max_count` 0 is the field's "not given", as it was
+   before 2026.4, so C's API cannot ask for at most 0 pairs, where Java's
+   `GetMany.GetN(0)` and `PrefixN` with a count of 0 give none since
+   2026.4 (before, every pair, as 0 in C). Inside, `getmany.c`'s GetN and
+   PrefixN stop at their count, none for 0, as Java's (`t_getmany.c`'s
+   `gm_at_most_n`); a read of no pair needs no call (`bergdb.h`,
+   `struct bergdb_range`; 022-02's log, the pin of 15:22).
+
+**No longer departures.** A new stream file and the directory are forced
+when the file is made, as Java's `openForRw` forces them, since 022-02's
+D7 (section 9, point 11); C forced them at the next sync, close or cut.
+And `StreamIoException`'s text (022-02, D6; Frans, 2026-11-09, 12:25:
+"Yes, (a)."): 012-14, section 6.4 left open how C names a wrapped
+exception; decided as its option A, to wrap as Java does. A failed read of
+the stream is named `StreamIoException`, as Java's `RecoverableStream`
+names it, its text is the inner exception's message, as Java's, and the
+inner name is kept as the error's cause (`struct err`'s `cause`, which
+`tools/reappend.c` reads); a database's stream is read as Java's `Db`
+reads it, through `BufferedStream` (`stream_as_storage`, `src/stream.h`),
+so a read past the end has that class's text. Until then the text began
+with the inner name and went on in C's words, and `corruptset.sh` counted
+the 10 copies of 022-01, step 4 as known; now it compares them as any
+other message and fails on a difference.

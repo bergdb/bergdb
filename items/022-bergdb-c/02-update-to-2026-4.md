@@ -587,8 +587,10 @@ steps 1 to 3 in parallel, about 2 hours from step 0 to the last landing.
 
 # 7. Decisions for Frans
 
-Each has a default that goes ahead if Frans does not answer; D6 came
-later, decided by Frans.
+Each has a default that goes ahead if Frans does not answer; D6 and D7
+came later. As taken (step 5): D1 (a), D2 (a) on a branch of its own, D3
+(a) and D6 (a) by Frans, D4 all in, D7 (a) by default; D5 waits for the
+tag.
 
 * **D1. Start now, or at the tag.** (a) Now: the steps of section 6 on a
   pinned candidate, the coding today in clones; at the tag, the diff from
@@ -597,7 +599,11 @@ later, decided by Frans.
   at 2026.4 within hours of the tag. (b) At the tag: one port from
   `release-2026.3` to `release-2026.4`, as the 2026.3 port was made;
   nothing done twice; nothing starts before the tag, 10 November at the
-  earliest. **Default (a)**, as Frans's words of 11:45 suggest.
+  earliest. **Default (a)**, as Frans's words of 11:45 suggest. **Taken:
+  (a)**, the default: steps 0 to 3 landed from 12:36 to 13:15 on the
+  pinned `main`, which was pinned again three times until 15:22 (this
+  file's log); the candidate's diff is taken at about 20:00 and the tag's
+  at step T (022-04, sections 8 and 9).
 * **D2. Landing after the 2026.3 port closes.** (a) The coding in clones
   at once; landings on `022` only after the 2026.3 port's step 5 has
   passed and its step 6 has recorded its state (a tag such as
@@ -607,7 +613,14 @@ later, decided by Frans.
   when ready; the 2026.3 runs take a commit before the first 2026.4
   landing; `022`'s head is between two releases meanwhile (a gate against
   2026.3 fails on 021-11's copies, one against the candidate on what is
-  not yet ported). **Default (a).**
+  not yet ported). **Default (a).** **Taken: (a)**, the default, on a
+  branch of its own: the landings went to `int.git`'s new branch
+  `2026.4`, not to `022`, which stays the port of 2026.3 (at `342dcb2`,
+  `main`'s `b49606b`; 022-01's long runs tonight) and was merged into
+  `2026.4` for the 2026.3 port's corrupt set (`0110bc7`) and step 6
+  (`007285a`). The gate on `2026.4` is against the pin from step 0 on. No
+  tag of the 2026.3 state was made; `c/readme.md`'s "Which Java" names its
+  commit.
 * **D3. C's keys and 021-04's rule.** (a) `bergdb_ikey_to_bkey` refuses an
   ikey whose bytes are not well-formed UTF-8 (`BERGDB_ARG`), as
   `Keys.toBytes(String)` refuses a lone surrogate; `bergdb_bkey_to_ikey`
@@ -626,13 +639,17 @@ later, decided by Frans.
 * **D4. The optional parts** (3.2). **Default**: all in, each a few lines
   in a step that changes its file anyway: T1's text and test, 019-46's
   writer line, 020-22's note in `bergdb.h` (with r22b's words once they
-  land). Section 3.3 stays out.
+  land). Section 3.3 stays out. **Taken: all in**, the default: T1 in step
+  3, 019-46's line in step 2, 020-22's note in step 1 from r22b's draft,
+  with `Db`'s Javadoc as landed at the pin of 13:04 and 020-27's K1 and K2
+  at the pin of 15:22.
 * **D5. The runs at the tag.** (a) If the diff from the pinned candidate
   to the tag is `BuildInfo` alone: the gate with `cross quick`, the
   corrupt set, and the digests compared, at `JAVA_REF=2026.4`; the
   candidate's long runs stand. (b) Step 4's runs again at 2026.4, about
   1.5 hours of a quiet F53. **Default (a)**, and (b) when the diff holds
-  Core code.
+  Core code. **Not taken yet**: it is for the tag (step T); the long runs
+  of step 4 run on the candidate (022-04, section 9).
 * **D6. `StreamIoException`'s text** (012-14, section 6.4, a choice left
   open; 022-03, section 10, point 5). **Decided**: Frans, 2026-11-09,
   12:25: "Yes, (a)." A failed read of the stream is named
@@ -652,7 +669,8 @@ later, decided by Frans.
   other and fails on a difference. (b) Keep C's text, a departure
   counted as known, as 022-03, section 7, point 5 records it: the name
   compared, the message not. Made in the landing "022-02, D6" (this
-  file's log).
+  file's log), and for `corrupt.sh`'s messages in "022-02, D6,
+  `corrupt.sh`".
 * **D7. A new stream file and the directory forced when the file is made,
   or at the next sync, close or cut** (put to Frans by the session at
   12:43; 022-01's log, step 3, and the departure that was `c/readme.md`'s
@@ -1456,3 +1474,33 @@ read failing alike, 22 of 014-01's case. `corrupt.sh`, `nice -n 10`:
 started on 501 and 502). No difference remains. After the pin, `main`
 took `cf67d0c` (021-17's R17-1) and `bd92096` (its item), the Pub
 layer's alone, which the harness does not compile (15:27 to 15:31).
+
+2026-11-09, step 5 (worker t10). The documents, written before the
+release candidate, so that at about 20:00 only its hash and its last
+changes remain. `c/readme.md`: "Which Java" says that C is a port of
+release 2026.4 and that until the tag it follows the release candidate,
+pinned as `java-build.sh`'s default `JAVA_REF=git:HASH`; the pin is one
+indented line of that paragraph, today `main` at `32f3832` (15:22), and
+its hash is in no other place of the file, so that the session's re-pin
+to the candidate changes that one line (and `java-build.sh`'s default);
+once tagged, `JAVA_REF=2026.4` and the release's source zip; the 2026.3
+port's state, `c/` at `main`'s `b49606b` (`int.git`'s `022` at
+`342dcb2`); the interim sentence "On the way to 2026.4" gone. The vectors
+paragraph: the pin's thirteen files, the new kinds `utf8` (`strutil.txt`)
+and `bkey2ikey` (`keys.txt`). Section 1: the gate about 5 to 9 minutes
+under load (285 to 567 s at this item's landings). Section 8: a count of
+0 is none. Section 9, point 11: Java's `FileStream`'s forces, 2026.3's,
+which the candidate keeps (no force changed in `FileStream` since
+2026.3). Section 10: 022-04 named; `corrupt.sh`'s `-Xmx4g` and counts; the
+corrupt-stream set's copies from the pinned Java, `quick`'s 63 copies and
+the whole set's 6,253, 014-01's zero fill its one known class. Section 11:
+the Java that C follows; a new point 4, a count of 0 is no count
+(020-27's C1: C's API cannot say Java's `GetN(0)`); D7's and D6's former
+departures in a closing paragraph. Sections 9 and 11 were otherwise as D7
+and D6 left them, and consistent. The report, 022-04
+(`04-report-2026-4.md`), in 022-03's form, with section 8 (the candidate)
+and section 9 (the long runs, `runs-2026-4.sh`) left to fill, and the
+open points for Frans. Section 7 here: D1 to D7 as taken. 022's readme:
+022-04 in `Files`, and 022-02's decisions D1 to D7. No file of `c/` but
+`readme.md` changed, so the gate was not run (022-01, section 5); the
+gate of the pin of 15:22, on `ddd75cc`, stands.
