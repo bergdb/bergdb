@@ -24,13 +24,15 @@ import bergdb.pub.util.Job;
  *     first byte is the header of the object format, 0x82, and that passes the format's full
  *     check), v has no entry. A String value never is an object; a byte[] value that passes
  *     the check is taken as one. An object of the format of BergDB 2026.3 and before is
- *     refused: a write of it in an indexed directory throws DataFormatException, and a build
- *     over it fails. It is told by its structure, "bergo", the version 1, a field count and
- *     a field table that fits the value, so a value that only starts with "bergo" and the
- *     version 1 is not one. A String put is never taken for one, but a write over a stored
- *     value, a delete of it and a build read its bytes alone: a String or a byte[] whose
- *     bytes happen to be a whole object of format 1, such as "bergo" and the chars U+0001,
- *     U+0000 and U+0000, is refused as one (bergdb 020-08, section 3).</li>
+ *     refused: a byte[] put of it in an indexed directory throws DataFormatException, and a
+ *     build over it fails. A put over it and a delete of it work: it has no entry, as no
+ *     index of this version indexed one, so a user can replace or delete it, also after a
+ *     build that failed over it. It is told by its structure, "bergo", the version 1, a field
+ *     count and a field table that fits the value, so a value that only starts with "bergo"
+ *     and the version 1 is not one. A String put is never taken for one, but a build reads
+ *     the stored bytes alone: a String or a byte[] whose bytes happen to be a whole object of
+ *     format 1, such as "bergo" and the chars U+0001, U+0000 and U+0000, fails it as one
+ *     (bergdb 020-08, section 3).</li>
  * <li>Each level's field is followed in the stored object; each part of a nested path but
  *     the last must name a field that holds an object. The value found must be of the
  *     level's stored kind: an integer for "long" (Java's long, int, short, byte and char

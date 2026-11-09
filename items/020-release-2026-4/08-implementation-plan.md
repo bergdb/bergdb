@@ -1137,8 +1137,10 @@ failed on step 8's code); with the review of step 2 (the coordinator's,
   reach the reader in a get as `Object` (`ObjectCreationException`), a
   primary scan (`UsePrimaryBuilderImp.isObject`), an index scan's filter
   and a build (`IndexBuilderImp`: its stop condition takes it, and the
-  build ends failed, naming the key); a put or a delete of it in an
-  indexed directory is a `DataFormatException`, as since step 2; a start
+  build ends failed, naming the key); a `byte[]` put of it in an
+  indexed directory is a `DataFormatException`, as since step 2 (a put
+  over it and a delete of it were too, until 2026-11-09: see the last
+  point below); a start
   that meets an index definition of format 1 throws
   `VersioningStreamException` with section 5's message
   (`IndexManager.refuseFormat1`), and closes the database.
@@ -1171,6 +1173,14 @@ Decided in the step, under Frans's delegation (22:17):
   stream's tail; the message says to make the database again.
 * A stored value above `ObjectFormat.MAX_ARRAY` (2^31 − 9 bytes), within
   R15 but more than a Java array may hold, is refused too.
+* Changed 2026-11-09, after the review of `e92a95a` (decided under
+  Frans's delegation): a previous value of format 1 has no index entries,
+  as no index of 2026.4 indexed one, so a put over it and a delete of it
+  work in an indexed directory, and a user can clean up after a build
+  that failed over one; the refusal stays for the new value of a `byte[]`
+  put and for the build (020-10, section 5.1, step 4;
+  `PubTester.testFormat1ObjectRefused`,
+  `PubTesterIndexRaces.testFormat1InIndexedDirectory`).
 
 Gate: BEFORE COMMIT OK.
 

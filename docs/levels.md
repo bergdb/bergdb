@@ -736,9 +736,11 @@ refuses any other, naming the rule it breaks (`BadFormatException`; at a
 get `ObjectCreationException`). A field is found by a binary search on the
 table. There is no null: a field without a value is absent (020-02,
 section 4.1). Objects of 2026.3 and before (format 1) are refused, named so:
-a get, a scan and index maintenance refuse them, a build over one fails,
-and a start that meets an index definition of format 1 is refused; such a
-database is made again from its data (020-02, section 4.11).
+a get and a scan refuse them, a `byte[]` put of one in an indexed
+directory is refused, a build over one fails, and a start that meets an
+index definition of format 1 is refused; such a database is made again
+from its data (020-02, section 4.11). A put over one and a delete of one
+work, in an indexed directory too: it has no index entries.
 
 **Data Objects and the conversion.** The rules are
 [020-09](../items/020-release-2026-4/09-conversion-rules.md); the code,
@@ -834,5 +836,6 @@ a scan, as the format's header is a guess there (020-08, section 3; 020-01,
 N4). Format 1 is told by its structure (`bergo`, the version 1, a field
 count and a field table that fits the value), not by its first six bytes:
 a `String` put is never taken for it, but a stored value whose bytes happen
-to be a whole object of format 1, a `String`'s too, is refused as one.
+to be a whole object of format 1, a `String`'s too, is read as one: a get
+refuses it, and a build fails over it.
 

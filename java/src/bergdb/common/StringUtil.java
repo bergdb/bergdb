@@ -1,6 +1,11 @@
 package bergdb.common;
 
 import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.CharsetEncoder;
+import java.nio.charset.CoderResult;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
 import bergdb.nanotest.Assert;
@@ -129,6 +134,33 @@ public class StringUtil {
     }
 
     /**
+     * The UTF-8 of 's', a string with no lone surrogate, encoded into an array of exactly
+     * 'size' bytes, its utf8Size(): no larger buffer on the way, as String.getBytes() may
+     * allocate (2026-11-09, bergdb 020-08, section 3; the review of e92a95a: 2 bytes a char for
+     * a Latin-1 String with a char above U+007F in JDK 27, 3 in JDK 17, so a String whose
+     * UTF-8 fits a Java array could throw OutOfMemoryError). For a String of a size that may
+     * pass that: getBytes() is faster.
+     *
+     * @throws IllegalArgumentException  If 's' has a lone surrogate, or its UTF-8 does not
+     *      take exactly 'size' bytes.
+     */
+    public static byte[] toBytes(String s, int size) {
+        byte[] result = new byte[size];
+        ByteBuffer out = ByteBuffer.wrap(result);
+        CharsetEncoder encoder = StandardCharsets.UTF_8.newEncoder();
+        CoderResult r = encoder.encode(CharBuffer.wrap(s), out, true);
+        if (r.isUnderflow()) {
+            r = encoder.flush(out);
+        }
+        if (!r.isUnderflow() || out.position() != size) {
+            throw new IllegalArgumentException("toBytes: the UTF-8 of the string does not take "
+                    + size + " bytes" + (r.isMalformed() || r.isUnmappable() 
+                    ? " (a lone surrogate)" : "") + ".");
+        }
+        return result;
+    }
+
+    /**
      * Returns the number of bytes needed to encoding the string in UTF-8 encoding: a long,
      * as a String may need more than 2^31 - 1 bytes, up to 3 a char (2026-11-09, bergdb
      * 020-08, section 3: an int, which wrapped).
@@ -181,6 +213,31 @@ public class StringUtil {
         for (int i = 0; i < strings.length; i++) {
             int len = strings[i].getBytes("UTF-8").length;
             Assert.assertEquals(len, utf8Size(strings[i]));
+        }
+    }
+
+    /**
+     * toBytes(s, size): the UTF-8 of well-formed strings, as getBytes() makes it; a size that
+     * is not the string's is refused (bergdb 020-08, section 3; the review of e92a95a).
+     */
+    @Nano
+    public static void testToBytesOfAKnownSize() throws UnsupportedEncodingException {
+        String[] strings = {"", "a", "\u00e5", "Sn\u00f6slask", "\u00e9" + "a".repeat(300),
+                "\u0800\uffff", "a\ud83d\ude00b", "\u0000abc"};
+        for (String s : strings) {
+            byte[] b = s.getBytes("UTF-8");
+            Assert.assertArrayEquals(b, toBytes(s, (int) utf8Size(s)));
+            for (int size : new int[] {b.length - 1, b.length + 1}) {
+                if (size < 0) {
+                    continue;
+                }
+                try {
+                    toBytes(s, size);
+                    throw new AssertionError(s + ", size " + size + ": not refused");
+                } catch (IllegalArgumentException e) {
+                    // refused
+                }
+            }
         }
     }
 

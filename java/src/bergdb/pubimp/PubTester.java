@@ -32,6 +32,7 @@ import bergdb.pub.CryptoKey;
 import bergdb.pub.Database;
 import bergdb.pub.DatabaseBuilder;
 import bergdb.pub.DbObject;
+import bergdb.pub.DbString;
 import bergdb.pub.Duration;
 import bergdb.pub.Factory;
 import bergdb.pub.Kv;
@@ -3806,9 +3807,12 @@ public class PubTester {
      * T8 (020-08, section 6.2; 020-02, section 4.11): an object of format 1 at a key is
      * refused with a message that names the format: a get as a class, as DbObject and as
      * Object throws ObjectCreationException, in rw() too, and the database goes on; a primary
-     * scan of objects throws it for that object and goes on; a put or a delete of the key in
-     * an indexed directory gives DataFormatException; a build over a directory holding it
-     * ends failed, with the message.
+     * scan of objects throws it for that object and goes on; a byte[] put of it in an indexed
+     * directory gives DataFormatException; a build over a directory holding it ends failed,
+     * with the message. A put over it and a delete of it work, also in an indexed directory and
+     * in one whose build failed: a previous value of format 1 has no entries, as no index of
+     * 2026.4 ever indexed one (2026-11-09, the review of e92a95a: such a key could not be
+     * written or deleted while the index existed).
      */
     @Nano
     public static void testFormat1ObjectRefused() {
@@ -3846,6 +3850,12 @@ public class PubTester {
                     .start().join();
             Assert.assertTrue(status.note(), status.state() == JobStatus.State.FAILED
                     && status.reason().contains("format 1") && status.reason().contains("/p/b"));
+            c.delete("/p/b");       // the user cleans up after the failed build
+            Assert.assertNull(c.get("/p/b", byte[].class));
+            assertFormat1("a byte[] put of it where the build failed",    // the index kept
+                    bergdb.pub.DataFormatException.class, () -> c.put("/p/b", format1Payment()));
+            c.put("/p/b", new Payment("7", "8", 9));
+            Assert.assertEquals(9L, c.get("/p/b", Payment.class).amount);
             
             c.put("/q/a", new Payment("1", "2", 3));
             d.indexBuilder("q-from").dir("/q/").type("string").field("from").start().join();
@@ -3854,11 +3864,22 @@ public class PubTester {
             Db db = ((DatabaseImp) d).getDb();     // written as 2026.3 wrote it
             db.execute(db.trans().put(Keys.toBytes(PubKeys.u2i("/q/b")), format1Payment())
                     .build());
-            assertFormat1("a put over it in an indexed directory", 
-                    bergdb.pub.DataFormatException.class, 
-                    () -> c.put("/q/b", new Payment("7", "8", 9)));
-            assertFormat1("a delete of it in an indexed directory", 
-                    bergdb.pub.DataFormatException.class, () -> c.w().delete("/q/b").execute());
+            c.put("/q/b", new Payment("7", "8", 9));        // a put over it, with its entry
+            Assert.assertEquals(9L, c.useIndex("q-from", Payment.class).eq("7").kvs()
+                    .iterator().next().value().amount);
+            db.execute(db.trans().put(Keys.toBytes(PubKeys.u2i("/q/c")), format1Payment())
+                    .build());
+            c.w().delete("/q/c").execute();                 // a delete of it
+            Assert.assertNull(c.get("/q/c", byte[].class));
+            db.execute(db.trans().put(Keys.toBytes(PubKeys.u2i("/q/d")), format1Payment())
+                    .build());
+            c.put("/q/d", "a String over it");
+            Assert.assertEquals("a String over it", c.get("/q/d", String.class));
+            int n = 0;
+            for (Payment p : c.useIndex("q-from", Payment.class).objects()) {
+                n += p.from.equals("1") || p.from.equals("7") ? 1 : 100;
+            }
+            Assert.assertEquals(2, n);
             
             c.put("/later", "x");      // not failed
             Assert.assertEquals("x", c.get("/later", String.class));
@@ -3966,7 +3987,7 @@ public class PubTester {
      * directory a put of it, in rw() too, a byte[] put of its bytes, a put over it and a
      * delete of it; a build over a directory that holds it. Last, the guess that remains: a
      * stored value whose bytes are a whole object of format 1 is taken for one, also a String
-     * put; the put itself is not refused.
+     * put, by a get; the put itself is not refused, nor a put over it or a delete of it.
      */
     @Nano
     public static void testStringThatStartsAsFormat1() {
@@ -4025,8 +4046,11 @@ public class PubTester {
             Assert.assertEquals(whole, c.get("/i/g", String.class));
             assertFormat1("a get as Object of the guess", ObjectCreationException.class, 
                     () -> c.get("/i/g", Object.class));
-            assertFormat1("a put over the guess", bergdb.pub.DataFormatException.class,
-                    () -> c.put("/i/g", "x"));
+            c.put("/i/g", "x");     // a put over the guess: no entries, as format 1 has none
+            Assert.assertEquals("x", c.get("/i/g", String.class));
+            c.put("/i/h", whole);
+            c.delete("/i/h");
+            Assert.assertNull(c.get("/i/h", String.class));
             
             c.put("/later", "x");       // not failed
             Assert.assertEquals("x", c.get("/later", String.class));
@@ -4053,6 +4077,38 @@ public class PubTester {
         }
         PubTesterPrimary.assertThrows(IllegalArgumentException.class,      // lone surrogate
                 () -> RwEnvironmentImp.stringValue("x\ud800", 100));
+        // With a small limit, the path of a String counted first (3 bytes a char over the
+        // limit), which encodes into an array of its counted size (the review of e92a95a):
+        // the same bytes as getBytes().
+        for (String t : new String[] {"a\u00e9", "\u00e9" + "a".repeat(40), "\u0800x", 
+                "\ud83d\ude00", "abc"}) {
+            byte[] b = StringUtil.toBytes(t);
+            Assert.assertArrayEquals(b, RwEnvironmentImp.stringValue(t, b.length));
+        }
+    }
+    
+    /**
+     * A String whose UTF-8 fits, 2^30 + 1 bytes (a String of 2^30 chars, one of them U+00E9,
+     * so Latin-1 of 1 GiB), is encoded into an array of its size, as a value and as a
+     * DbString (the review of e92a95a: String.getBytes() allocated 2 bytes a char for such a
+     * String, more than Java's largest array, and threw OutOfMemoryError). Skipped in a JVM
+     * of less than 3 GiB of heap.
+     */
+    @Nano("night")
+    public static void testLargeStringThatFits() {
+        if (Runtime.getRuntime().maxMemory() < (3L << 30)) {
+            System.out.println("PubTester.testLargeStringThatFits: skipped, heap below 3 GiB");
+            return;
+        }
+        final String large = "\u00e9" + "a".repeat((1 << 30) - 1);
+        byte[] b = RwEnvironmentImp.stringValue(large, ObjectFormat.MAX_ARRAY);
+        Assert.assertEquals((1 << 30) + 1, b.length);
+        Assert.assertTrue((b[0] & 0xff) == 0xc3 && (b[1] & 0xff) == 0xa9 && b[2] == 'a'
+                && b[b.length - 1] == 'a');
+        b = null;
+        DbString v = new DbString(large);
+        Assert.assertEquals(5 + (1 << 30) + 1, v.getByteSize());
+        Assert.assertTrue(v.toStringValue() == large);
     }
     
     /**

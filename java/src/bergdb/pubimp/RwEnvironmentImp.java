@@ -246,6 +246,9 @@ class RwEnvironmentImp implements RwEnvironment {
                         + "UTF-8; a value has at most " + limit + ", the most bytes a Java "
                         + "array holds (bergdb 020-08, section 3).");
             }
+            // Into an array of its size: getBytes() may need more than Java's largest
+            // array on the way (the review of e92a95a).
+            return StringUtil.toBytes(s, (int) size);
         }
         return StringUtil.toBytes(s);
     }
@@ -374,12 +377,12 @@ class RwEnvironmentImp implements RwEnvironment {
      *     the set.</li>
      * </ol>
      * 
-     * @throws DataFormatException  If, in a directory with an index, the previous value or
-     *      the new one of a byte[] put is an object of format 1 (BergDB 2026.3's, by its
-     *      structure, ObjectFormat.isFormat1): such a write is refused; in a directory
-     *      without an index they are stored as they are (bergdb 020-08, step 3 and section
-     *      3; 020-10, section 5.1). A String put's new value never is one; the previous
-     *      value is told by its bytes alone, a String's too.
+     * @throws DataFormatException  If, in a directory with an index, the new value of a
+     *      byte[] put is an object of format 1 (BergDB 2026.3's, by its structure,
+     *      ObjectFormat.isFormat1): such a put is refused; in a directory without an index it
+     *      is stored as it is (bergdb 020-08, step 3 and section 3; 020-10, section 5.1). A
+     *      String put's new value never is one. A previous value of format 1 has no entries,
+     *      so a put over it and a delete of it work (2026-11-09).
      */
     public void indexEntries(IndexManager m) throws DataFormatException {
         assert m != null : "m is null";
@@ -407,10 +410,14 @@ class RwEnvironmentImp implements RwEnvironment {
                 continue;
             }
             
-            // The previous value, read at R, to delete its entries.
+            // The previous value, read at R, to delete its entries. One of format 1 has none:
+            // no index of 2026.4 indexed one (a build fails over it, a byte[] put of it is
+            // refused), so a put over it and a delete of it work (2026-11-09, the review of
+            // e92a95a: they were refused, so such a key stayed while the index existed).
             byte[] previous = getInternal(ikey, byte[].class);
+            boolean previousFormat1 = previous != null && ObjectFormat.isFormat1(previous);
             for (IndexDefinition def : info.indexes) {
-                byte[] old = def.entry(ikey, previous);
+                byte[] old = previousFormat1 ? null : def.entry(ikey, previous);
                 byte[] put = info.string ? null : def.entry(ikey, info.value);
                 if (old != null) {
                     deleteIndexEntry(old);

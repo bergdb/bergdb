@@ -311,10 +311,12 @@ public class PubTesterIndexRaces {
     }
 
     /**
-     * An object of format 1 (2026.3's: "bergo" and the version 1) at an object key: a write
-     * over it in an indexed directory, and a byte[] put of it there, are refused with
-     * DataFormatException naming the key (020-08, step 3; 020-10, section 5.1, step 4); in a
-     * directory without an index the byte[] is stored.
+     * An object of format 1 (2026.3's: "bergo" and the version 1) at an object key: a byte[]
+     * put of it in an indexed directory is refused with DataFormatException naming the key
+     * (020-08, step 3; 020-10, section 5.1, step 4); in a directory without an index the
+     * byte[] is stored. A write over it and a delete of it work there, and keep the index: a
+     * previous value of format 1 has no entries (2026-11-09, the review of e92a95a: they were
+     * refused).
      */
     @Nano
     public static void testFormat1InIndexedDirectory() {
@@ -337,17 +339,14 @@ public class PubTesterIndexRaces {
 
             // Written through the Core, as an old database holds it; a write over it.
             Db db = d.getDb();
-            db.execute(db.trans().put(Keys.toBytes(PubKeys.u2i(KEY)), format1).build());
             for (Runnable r : new Runnable[] {() -> c.put(KEY, new Item(1)),
                     () -> c.put(KEY, "s"), () -> c.delete(KEY)}) {
-                try {
-                    r.run();
-                    throw new AssertionError("a write over an object of format 1");
-                } catch (DataFormatException e) {
-                    Assert.assertTrue(e.getMessage(), e.getMessage().contains("/dr/-k"));
-                }
+                c.delete(KEY);      // so that the Core's put leaves no entry of the value before
+                db.execute(db.trans().put(Keys.toBytes(PubKeys.u2i(KEY)), format1).build());
+                r.run();
+                Assert.assertFalse(java.util.Arrays.equals(format1, c.get(KEY, byte[].class)));
+                checkEntries(d, "a write over an object of format 1");
             }
-            Assert.assertArrayEquals(format1, c.get(KEY, byte[].class));
         } finally {
             database.close();
         }

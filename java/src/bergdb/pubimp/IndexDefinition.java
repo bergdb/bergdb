@@ -412,8 +412,9 @@ final class IndexDefinition {
      *
      * @throws DataFormatException  If the value is an object of format 1, of BergDB 2026.3
      *      and before, at an object key, by its structure (ObjectFormat.isFormat1; 020-08,
-     *      section 3): a write over it is refused, and a build fails (020-10, sections 3.3,
-     *      5.1 and 6.1).
+     *      section 3): a byte[] put of it is refused, and a build fails (020-10, sections
+     *      3.3, 5.1 and 6.1). RwEnvironmentImp gives a previous value of format 1 no entries
+     *      without calling this, so a put over it and a delete of it work (2026-11-09).
      */
     byte[] entryLevels(String ikey, byte[] value) {
         if (value == null || !Entries.isObjectKey(ikey)) {

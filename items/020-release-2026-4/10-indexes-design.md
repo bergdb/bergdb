@@ -503,9 +503,14 @@ directory d, a new value or no value, and commits at the read time R:
    deleted and put stays (015-40). "Old" and "new" are any values: one that
    is not an object has no entries (3.3, rule 1), so a `String` or a
    `byte[]` put over an object deletes its entries, and an object put over
-   a `String` deletes none (015-46). A previous value in format 1 refuses
+   a `String` deletes none (015-46). A previous value in format 1 has no
+   entries, as no index of 2026.4 indexed one, so a put over it and a
+   delete of it work; a new value in format 1, of a `byte[]` put, refuses
    the transaction with `DataFormatException` naming the key (020-08,
-   step 3).
+   step 3; since 2026-11-09, after the review of `e92a95a`, decided under
+   Frans's delegation: the previous value refused it too, so such a key
+   could not be written or deleted while the index existed, also after a
+   build that failed over it).
 5. The writer does not put the definition's key in its read set (today it
    does): the activation of an index does not change S, and so does not
    make writers run again. A build step does read it (6.1).

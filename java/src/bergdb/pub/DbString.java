@@ -41,12 +41,17 @@ public final class DbString extends DbValue {
         }
         // Counted before it is made, if it may be too long (2026-11-09, bergdb 020-08,
         // section 3): a char takes at most 3 bytes in UTF-8, and the encoding of a String of
-        // more than about 2^31 bytes threw OutOfMemoryError.
-        if (5L + 3L * value.length() > ObjectFormat.MAX_VALUE) {
-            ObjectFormat.checkValueSize(5L + StringUtil.utf8Size(value));
-        }
+        // more than about 2^31 bytes threw OutOfMemoryError. Then made into an array of its
+        // size, as getBytes() may need more than Java's largest array on the way (the review
+        // of e92a95a).
         this.value = value;
-        this.utf8 = value.getBytes(StandardCharsets.UTF_8);
+        if (5L + 3L * value.length() > ObjectFormat.MAX_VALUE) {
+            long size = StringUtil.utf8Size(value);
+            ObjectFormat.checkValueSize(5L + size);
+            this.utf8 = StringUtil.toBytes(value, (int) size);
+        } else {
+            this.utf8 = value.getBytes(StandardCharsets.UTF_8);
+        }
     }
     
     /** A string read from well-formed UTF-8, and its bytes: no check. */
