@@ -324,4 +324,217 @@ theorem build_ends_finite {sp : Spec V F L} (ρ : Run sp W) {n : Name} {g : Gen}
       rwa [show j3 + (max j j3 - j3) = max j j3 by omega] at this)⟩) hfin hW hb ha
   exact hnB (hBj j hj)
 
+/-! ### Finitely many definitions and builds -/
+
+/-- Finitely many names have a definition in the streams of the system, and
+finitely many builds run. -/
+def FinSys (s : Sys V F L W) : Prop :=
+  (∃ ns : List Name, ∀ x ∈ s.st :: s.past, ∀ n, x.dfn n ≠ none → n ∈ ns) ∧
+  ∃ ngs : List (Name × Gen), ∀ n g, s.m.bld n g ≠ none → (n, g) ∈ ngs
+
+omit [DecidableEq W] in
+theorem finSys_init (d0 : Key → Option V) : FinSys (Sys.init d0 : Sys V F L W) := by
+  refine ⟨⟨[], fun x hx n h => ?_⟩, ⟨[], fun n g h => absurd rfl h⟩⟩
+  change x ∈ [Stream.init d0] at hx
+  rw [List.mem_singleton] at hx
+  subst hx
+  exact absurd rfl h
+
+theorem fin_past {ns : List Name} {st' : Stream V F L} {l : List (Stream V F L)}
+    (h1 : ∀ n, st'.dfn n ≠ none → n ∈ ns) (h2 : ∀ x ∈ l, ∀ n, x.dfn n ≠ none → n ∈ ns) :
+    ∀ x ∈ st' :: l, ∀ n, x.dfn n ≠ none → n ∈ ns := by
+  intro x hx n hn
+  rcases List.mem_cons.mp hx with rfl | hx
+  · exact h1 n hn
+  · exact h2 x hx n hn
+
+theorem fin_upd2 {β : Type} {f : Name → Gen → Option β} {ngs : List (Name × Gen)}
+    (h : ∀ n g, f n g ≠ none → (n, g) ∈ ngs) {n0 : Name} {g0 : Gen} {v : Option β} :
+    ∀ n g, upd2 f n0 g0 v n g ≠ none → (n, g) ∈ (n0, g0) :: ngs := by
+  intro n g hn
+  by_cases hgg : n = n0 ∧ g = g0
+  · rw [hgg.1, hgg.2]; exact List.mem_cons_self
+  · rw [upd2_ne _ _ hgg] at hn; exact List.mem_cons_of_mem _ (h n g hn)
+
+/-- Every step keeps `FinSys`. -/
+theorem finSys_step {sp : Spec V F L} {s s' : Sys V F L W} {lb : Lbl W}
+    (hst : Step sp s lb s') (h : FinSys s) : FinSys s' := by
+  obtain ⟨⟨ns, hns⟩, ⟨ngs, hngs⟩⟩ := h
+  have hst0 : ∀ n, s.st.dfn n ≠ none → n ∈ ns := hns s.st List.mem_cons_self
+  have keep : ∀ (st' : Stream V F L), st'.dfn = s.st.dfn →
+      ∀ x ∈ st' :: (s.st :: s.past), ∀ n, x.dfn n ≠ none → n ∈ ns :=
+    fun st' he => fin_past (fun n hn => hst0 n (by rw [← he]; exact hn)) hns
+  have chg : ∀ (st' : Stream V F L) (n0 : Name) (v : Option (Def F)),
+      st'.dfn = upd s.st.dfn n0 v →
+      ∀ x ∈ st' :: (s.st :: s.past), ∀ n, x.dfn n ≠ none → n ∈ n0 :: ns := by
+    intro st' n0 v he
+    apply fin_past
+    · intro n hn
+      rw [he] at hn
+      by_cases hc : n = n0
+      · rw [hc]; exact List.mem_cons_self
+      · rw [upd_ne _ _ hc] at hn; exact List.mem_cons_of_mem _ (hst0 n hn)
+    · intro x hx n hn; exact List.mem_cons_of_mem _ (hns x hx n hn)
+  cases hst with
+  | wSuffix => exact ⟨⟨ns, keep _ (by rfl)⟩, ⟨ngs, hngs⟩⟩
+  | wCommit => exact ⟨⟨ns, keep _ (by rfl)⟩, ⟨ngs, hngs⟩⟩
+  | aCreate n fn _ _ _ => exact ⟨⟨_, chg _ n _ (by rfl)⟩, ⟨ngs, hngs⟩⟩
+  | aDelete n d _ _ _ => exact ⟨⟨_, chg _ n _ (by rfl)⟩, ⟨ngs, hngs⟩⟩
+  | aCreateMap => exact ⟨⟨ns, hns⟩, ⟨_, fin_upd2 hngs⟩⟩
+  | bReadE => exact ⟨⟨ns, hns⟩, ⟨_, fin_upd2 hngs⟩⟩
+  | bRead => exact ⟨⟨ns, hns⟩, ⟨_, fin_upd2 hngs⟩⟩
+  | bCheck => exact ⟨⟨ns, hns⟩, ⟨_, fin_upd2 hngs⟩⟩
+  | bCheckFail => exact ⟨⟨ns, hns⟩, ⟨_, fin_upd2 hngs⟩⟩
+  | bCommit => exact ⟨⟨ns, keep _ (by rfl)⟩, ⟨_, fin_upd2 hngs⟩⟩
+  | bRefused => exact ⟨⟨ns, hns⟩, ⟨_, fin_upd2 hngs⟩⟩
+  | bLock => exact ⟨⟨ns, hns⟩, ⟨_, fin_upd2 hngs⟩⟩
+  | bActivate n g b d _ _ _ _ _ => exact ⟨⟨_, chg _ n _ (by rfl)⟩, ⟨_, fin_upd2 hngs⟩⟩
+  | bActivateFail => exact ⟨⟨ns, hns⟩, ⟨_, fin_upd2 hngs⟩⟩
+  | bRetry => exact ⟨⟨ns, hns⟩, ⟨_, fin_upd2 hngs⟩⟩
+  | bAbort => exact ⟨⟨ns, hns⟩, ⟨_, fin_upd2 hngs⟩⟩
+  | cDel => exact ⟨⟨ns, keep _ (by rfl)⟩, ⟨ngs, hngs⟩⟩
+  | cEnd => exact ⟨⟨ns, keep _ (by rfl)⟩, ⟨ngs, hngs⟩⟩
+  | cut j =>
+    refine ⟨⟨ns, fun x hx n hn => ?_⟩, ⟨ngs, hngs⟩⟩
+    rcases List.mem_cons.mp hx with rfl | hx
+    · exact hst0 n hn
+    · exact hns x (List.mem_cons_of_mem _ (List.mem_of_mem_take hx)) n hn
+  | crash pre x rest heq =>
+    have hin : ∀ y ∈ x :: rest, y ∈ s.st :: s.past := by
+      intro y hy; rw [heq]; exact List.mem_append_right _ hy
+    refine ⟨⟨ns, fun y hy n hn => hns y (hin y hy) n hn⟩,
+      ⟨ns.filterMap (fun n => (x.dfn n).map (fun d => (n, d.gen))), fun n g hb => ?_⟩⟩
+    change (match x.dfn n with
+      | some d => if d.gen = g ∧ d.active = false then some (BSt.init d.fn) else none
+      | none => none) ≠ none at hb
+    cases hd : x.dfn n with
+    | none => rw [hd] at hb; exact absurd rfl hb
+    | some d =>
+      rw [hd] at hb
+      dsimp only at hb
+      by_cases hc : d.gen = g ∧ d.active = false
+      · have hn : n ∈ ns := hns x (hin x List.mem_cons_self) n (by rw [hd]; intro h; cases h)
+        rw [List.mem_filterMap]
+        exact ⟨n, hn, by rw [hd, ← hc.1]; rfl⟩
+      · rw [ite_eq_right hc] at hb; exact absurd rfl hb
+  | _ => exact ⟨⟨ns, hns⟩, ⟨ngs, hngs⟩⟩
+
+theorem reach_finSys {sp : Spec V F L} {s : Sys V F L W} (h : Reach sp s) :
+    FinSys s := by
+  induction h with
+  | init d0 => exact finSys_init d0
+  | step _ hst ih => exact finSys_step hst ih
+
+theorem upd2_new {β : Type} {f : Name → Gen → Option β} {n' n : Name} {g' g : Gen}
+    {v : Option β} (h : f n g = none) (h' : upd2 f n' g' v n g ≠ none)
+    (hv : f n' g' ≠ none ∨ v = none) : False := by
+  by_cases hgg : n = n' ∧ g = g'
+  · rw [hgg.1, hgg.2, upd2_same] at h'
+    rw [hgg.1, hgg.2] at h
+    rcases hv with hv | hv
+    · exact hv h
+    · exact h' hv
+  · rw [upd2_ne _ _ hgg] at h'; exact h' h
+
+/-- A build appears only at a creation's maps, or at a start. -/
+theorem bld_new {sp : Spec V F L} {s s' : Sys V F L W} {lb : Lbl W}
+    (hst : Step sp s lb s') {n : Name} {g : Gen} (h : s.m.bld n g = none)
+    (h' : s'.m.bld n g ≠ none) : lb = .amap ∨ lb = .crash := by
+  have hs : ∀ {n' g'} {b : BSt V F}, s.m.bld n' g' = some b → s.m.bld n' g' ≠ none :=
+    fun hb => by rw [hb]; intro h; cases h
+  cases hst with
+  | aCreateMap => exact Or.inl rfl
+  | crash => exact Or.inr rfl
+  | bReadE _ _ _ _ hb _ _ => exact (upd2_new h h' (Or.inl (hs hb))).elim
+  | bRead _ _ _ _ _ hb _ _ _ _ => exact (upd2_new h h' (Or.inl (hs hb))).elim
+  | bCheck _ _ _ _ hb _ _ _ _ => exact (upd2_new h h' (Or.inl (hs hb))).elim
+  | bCheckFail => exact (upd2_new h h' (Or.inr rfl)).elim
+  | bCommit _ _ _ hb _ _ _ => exact (upd2_new h h' (Or.inl (hs hb))).elim
+  | bRefused _ _ _ hb _ _ => exact (upd2_new h h' (Or.inl (hs hb))).elim
+  | bLock _ _ _ hb _ _ => exact (upd2_new h h' (Or.inl (hs hb))).elim
+  | bActivate => exact (upd2_new h h' (Or.inr rfl)).elim
+  | bActivateFail => exact (upd2_new h h' (Or.inr rfl)).elim
+  | bRetry _ _ _ hb _ => exact (upd2_new h h' (Or.inl (hs hb))).elim
+  | bAbort => exact (upd2_new h h' (Or.inr rfl)).elim
+  | _ => exact absurd h h'
+
+/-- A definition change's maps come only while one is under way. -/
+theorem amap_admin {sp : Spec V F L} {s s' : Sys V F L W} (hst : Step sp s .amap s') :
+    s.m.admin ≠ .idle := by
+  cases hst with
+  | aCreateMap _ _ _ ha => rw [ha]; intro h; cases h
+  | aDeleteMap _ _ ha => rw [ha]; intro h; cases h
+
+/-- With no crash and no definition change under way from some time on, a run
+has finitely many builds. -/
+theorem run_bld_finite {sp : Spec V F L} (ρ : Run sp W) {N : Nat}
+    (hN : ∀ j, N ≤ j → ρ.lbl j ≠ .crash) (hadm : ∀ j, N ≤ j → (ρ.sys j).m.admin = .idle) :
+    ∃ ngs : List (Name × Gen), ∀ j n g, (ρ.sys j).m.bld n g ≠ none → (n, g) ∈ ngs := by
+  have hL : ∀ j, ∃ l : List (Name × Gen), ∀ n g, (ρ.sys j).m.bld n g ≠ none → (n, g) ∈ l :=
+    fun j => (reach_finSys (ρ.reach j)).2
+  let L := fun j => Classical.choose (hL j)
+  have hLs : ∀ j n g, (ρ.sys j).m.bld n g ≠ none → (n, g) ∈ L j :=
+    fun j => Classical.choose_spec (hL j)
+  have hback : ∀ d n g, (ρ.sys (N + d)).m.bld n g ≠ none → (ρ.sys N).m.bld n g ≠ none := by
+    intro d
+    induction d with
+    | zero => exact fun _ _ h => h
+    | succ d ih =>
+      intro n g h
+      apply ih n g
+      intro h0
+      rcases bld_new (ρ.step (N + d)) h0 h with hl | hl
+      · have hst := ρ.step (N + d)
+        rw [hl] at hst
+        exact amap_admin hst (hadm _ (by omega))
+      · exact hN _ (by omega) hl
+  refine ⟨((List.range (N + 1)).map L).flatten, fun j n g h => ?_⟩
+  rw [List.mem_flatten]
+  by_cases hj : j ≤ N
+  · exact ⟨L j, List.mem_map.mpr ⟨j, List.mem_range.mpr (by omega), rfl⟩, hLs j n g h⟩
+  · have h2 := hback (j - N) n g (by rw [show N + (j - N) = j by omega]; exact h)
+    exact ⟨L N, List.mem_map.mpr ⟨N, List.mem_range.mpr (by omega), rfl⟩, hLs N n g h2⟩
+
+/-- From some time on, no definition change is under way, if they are
+finitely many and their maps weakly fair. -/
+theorem admin_idle_eventually {sp : Spec V F L} (ρ : Run sp W) {N : Nat}
+    (hN : ∀ j, N ≤ j → ρ.lbl j ≠ .achange) (hwm : WeakFair ρ .amap) :
+    ∃ N1, N ≤ N1 ∧ ∀ j, N1 ≤ j → (ρ.sys j).m.admin = .idle := by
+  have hkeep : ∀ j, N ≤ j → (ρ.sys j).m.admin = .idle →
+      ∀ d, (ρ.sys (j + d)).m.admin = .idle := by
+    intro j hj h d
+    induction d with
+    | zero => exact h
+    | succ d ih => exact admin_idle_keep (ρ.step (j + d)) (hN _ (by omega)) ih
+  obtain ⟨j2, hj2, h2⟩ : ∃ j2, N ≤ j2 ∧ (ρ.sys j2).m.admin = .idle := by
+    apply Classical.byContradiction
+    intro hno
+    have hne : ∀ j, N ≤ j → (ρ.sys j).m.admin ≠ .idle := fun j hj h => hno ⟨j, hj, h⟩
+    obtain ⟨j3, hj3, hl⟩ := hwm N (fun j hj =>
+      amap_enabled (ρ.inv j) ((ρ.inv j).minv.lockMgr.mpr (hne j hj)))
+    have hst := ρ.step j3
+    rw [hl] at hst
+    exact hne (j3 + 1) (by omega) (amap_idle hst)
+  refine ⟨j2, hj2, fun j hj => ?_⟩
+  have := hkeep j2 hj2 h2 (j - j2)
+  rwa [show j2 + (j - j2) = j by omega] at this
+
+/-- **BuildEnds under weak fairness**, when the definition changes are
+finitely many, with no hypothesis on the builds: `build_ends_finite`, its
+finitely many builds from `run_bld_finite` (a reachable system has finitely
+many, and from some time on none is made). -/
+theorem build_ends_weak {sp : Spec V F L} (ρ : Run sp W) {n : Name} {g : Gen}
+    (hcr : ∃ N, ∀ j, N ≤ j →
+      ρ.lbl j ≠ .crash ∧ ρ.lbl j ≠ .achange ∧ ∀ n' g', ρ.lbl j ≠ .bretry n' g')
+    (hab : ∀ j, ρ.lbl j ≠ .babort n g)
+    (hwm : WeakFair ρ .amap) (hwb : ∀ n' g', WeakFair ρ (.bld n' g'))
+    (hfin : ∀ j, ∃ e, ∀ k, e < k → (ρ.sys j).st.data k = none)
+    (hW : ∃ ws : List W, ∀ w, w ∈ ws)
+    {i : Nat} (hb : (ρ.sys i).m.bld n g ≠ none) (ha : (ρ.sys i).m.admin.name ≠ some n) :
+    ∃ j, i ≤ j ∧ ¬ Building (ρ.sys j) n g := by
+  obtain ⟨N, hN⟩ := hcr
+  obtain ⟨N1, hN1, hadm⟩ := admin_idle_eventually ρ (N := N) (fun j hj => (hN j hj).2.1) hwm
+  exact build_ends_finite ρ ⟨N, hN⟩ hab hwm hwb hfin hW
+    (run_bld_finite ρ (N := N1) (fun j hj => (hN j (by omega)).1) hadm) hb ha
+
 end BergDB.Index
