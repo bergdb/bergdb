@@ -19,6 +19,7 @@ import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.Connection;
 import bergdb.pub.DataFormatException;
 import bergdb.pub.Database;
+import bergdb.pub.DatabaseBuilder;
 import bergdb.pub.DbArray;
 import bergdb.pub.DbObject;
 import bergdb.pub.Duration;
@@ -27,6 +28,7 @@ import bergdb.pub.Kv;
 import bergdb.pub.ObjectCreationException;
 import bergdb.pub.TestClock;
 import bergdb.pub.Time;
+import bergdb.pub.util.DbException;
 import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.LookupTimeNotAvailableException;
 import bergdb.pub.util.SyncLevel;
@@ -719,5 +721,53 @@ public class PubTesterJavadocNewUsers {
             sb.append(t).append("; ");
         }
         return sb.toString();
+    }
+
+    /**
+     * U10-3 (bergdb 020-24-10): a closed Database that the application still references
+     * holds little heap: its write buffer, 10 MB, is released at the close, also after
+     * stop(). It held it until the object was dropped: 11 MB for each, 331 MB for 30.
+     */
+    @Nano
+    public static void testClosedDatabasesHoldLittleHeap(TestEnvironment env) throws Exception {
+        File root = env.createTempDir();
+        List<Database> kept = new ArrayList<Database>();
+        long before = heapAfterGc();
+        for (int i = 0; i < 10; i++) {
+            DatabaseBuilder b = Factory.database();
+            if (i % 3 == 2) {
+                b.memory();
+            } else {
+                b.create(new File(root, "d" + i).getPath());
+            }
+            Database d = b.startupDistanceInMb(5).start();
+            d.connection().put("/a.txt", "a");
+            if (i % 2 == 0) {
+                d.close();
+            } else {
+                d.stop();
+            }
+            kept.add(d);
+        }
+        for (Database d : kept) {
+            try {
+                d.close();      // Waits for the stopped ones; the others return.
+            } catch (DbException e) {
+                throw new AssertionError(e);
+            }
+        }
+        long grown = heapAfterGc() - before;
+        Assert.assertTrue("heap grew by " + grown / 1000 + " KB for " + kept.size()
+                + " closed databases", grown < 30_000_000L);   // 110 MB before.
+        kept.clear();
+    }
+
+    private static long heapAfterGc() throws InterruptedException {
+        Runtime r = Runtime.getRuntime();
+        for (int i = 0; i < 3; i++) {
+            System.gc();
+            Thread.sleep(20);
+        }
+        return r.totalMemory() - r.freeMemory();
     }
 }

@@ -637,6 +637,13 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `StreamIoException` of `close()`). `Database.stop()` says to delete a
   database's directory only after `close()` has returned. In 2026.1 to
   2026.3. Found by a new-user application.
+* **A closed database releases its write buffer** (bergdb 020-24-10,
+  U10-3; 2026-11-09). A closed `Database` that the application still
+  referenced held its write buffer, 10 MB, until the object was dropped:
+  30 closed databases kept in a list of recent documents held 331 MB. The
+  buffer is released when the database's storage thread ends, at
+  `close()` or at the end of the background close after `stop()`; such a
+  database now holds about 0.5 MB (a memory database its data too).
 
 
 ### Core API

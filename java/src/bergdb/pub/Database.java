@@ -165,7 +165,9 @@ public interface Database extends AutoCloseable {
      * not for another call that runs, such as an rw() whose action runs: that call is
      * refused, as stop() says (bergdb 020-24-03, U3-1). After this method has been called
      * this Database object must not be used anymore. It is safe to call it several times,
-     * also after stop(), and from different threads.
+     * also after stop(), and from different threads. A closed database has released its
+     * write buffer, also one closed in the background after stop(): a closed Database that
+     * the application still references holds little heap (bergdb 020-24-10, U10-3).
      * </p>
      * 
      * <p>This is AutoCloseable's close(), without its checked exception: a try-with-resources

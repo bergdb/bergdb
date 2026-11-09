@@ -52,7 +52,14 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
     // This is true also for daemon threads. The thread "consumer" has a reference 
     // to this object. We must rely on the user of this class to call close().
     //
-    private final byte[] buffer;
+    /**
+     * The ring buffer; null once the thread has ended (2026-11-09, bergdb 020-24-10, U10-3):
+     * a closed database that the application still referenced held it, 10 MB, until the
+     * object was dropped. The thread ends only after stop, and stop() and every failure set
+     * 'exception' before, so every later append and read throws before it would use it.
+     * Changed under this; read by the thread, and by the others under this.
+     */
+    private byte[] buffer;
     private final int bufferCapacity;
     private final int tenPercentOfBufferCapacity;
     private final int twentyFivePercentOfBufferCapacity;
@@ -184,7 +191,14 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             // from consume() before the close, and the stream's files and directory lock
             // stayed open.
             closeStream();
+            releaseBuffer();
         }
+    }
+    
+    /** Drops the buffer once the thread has ended or never ran; see 'buffer' (bergdb 020-24-10). */
+    private synchronized void releaseBuffer() {
+        assert exception != null;
+        buffer = null;
     }
     
     /** The consumer's loop: flushes what is buffered until stop() or a failed flush. */
@@ -805,6 +819,9 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         }
 
         closeStream();
+        if (Thread.currentThread() != consumer) {
+            releaseBuffer();     // The thread has ended, or was never started (U10-3).
+        }
         
         IOException failed;
         synchronized (this) {
@@ -914,6 +931,52 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         long after = java.lang.management.ManagementFactory.getRuntimeMXBean().getUptime();
         Assert.assertTrue(Uptime.JVM);
         Assert.assertTrue(before + " " + uptime + " " + after, before <= uptime && uptime <= after);
+    }
+
+    /**
+     * bergdb 020-24-10, U10-3: the buffer is released when the thread ends, after close()
+     * and after stop(), and by close() of a stream whose thread never ran; a read and an
+     * append then throw. A closed database that the application still referenced held the
+     * buffer, 10 MB, until the object was dropped.
+     */
+    @Nano
+    public static void testBufferReleasedAtTheEnd() throws Exception {
+        BufferedStream b = new BufferedStream(new MemoryStream(), 1000, 20);
+        b.start();
+        b.append(new byte[] {1, 2, 3}, 0, 3);
+        b.close();
+        synchronized (b) {
+            Assert.assertTrue("closed", b.buffer == null);
+        }
+        Assert.assertEquals(3L, b.getUnderlyingStream().getLength());
+        
+        BufferedStream s = new BufferedStream(new MemoryStream(), 1000, 20);
+        s.start();
+        s.append(new byte[] {1, 2, 3}, 0, 3);
+        s.stop();
+        s.consumer.join();
+        synchronized (s) {
+            Assert.assertTrue("stopped", s.buffer == null);
+        }
+        try {
+            s.read(0, new byte[1], 0, 1);
+            throw new AssertionError("read a stopped stream");
+        } catch (IOException e) {
+            // Expected.
+        }
+        try {
+            s.append(new byte[1], 0, 1);
+            throw new AssertionError("appended to a stopped stream");
+        } catch (IOException e) {
+            // Expected.
+        }
+        s.close();
+        
+        BufferedStream n = new BufferedStream(new MemoryStream(), 1000, 20);
+        n.close();      // Never started.
+        synchronized (n) {
+            Assert.assertTrue("never started", n.buffer == null);
+        }
     }
 
     /** bergdb 005-76: reaching a quarter wakes a consumer in its timed wait. */
