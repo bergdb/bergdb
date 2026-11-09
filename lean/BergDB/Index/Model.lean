@@ -5,7 +5,8 @@ The protocol that bergdb 020-26 modelled in TLA+ (its IndexModel.tla, checked
 by TLC within small bounds), here for any number of keys, writers, steps,
 generations and crashes: one index name over one directory, its writers, the
 build of each generation, the activation, the deletion with its marker and
-the cleanup, crashes and restarts. Section numbers are 020-10's (the design)
+the cleanup, crashes and restarts. A writer's transaction writes any keys,
+which 020-26's model left out (its section 2.4). Section numbers are 020-10's (the design)
 unless said otherwise; 020-18's F1, F3, F4 and F5 are in, as in the code.
 
 This file is the trusted part: the definitions that the theorems of
@@ -92,13 +93,16 @@ inductive Admin (F : Type) where
   | create (g : Gen) (fn : F)
   | delete (g : Gen)
 
-/-- A writer's transaction in flight, one put (or delete: v = none) at an
-object key k (5.1): R fixed and the previous value `old` read at R (`set`);
-then the index set S read under the lock (`commit`). -/
+/-- A writer's transaction in flight (5.1), an `rw()` or a `w()` with an object
+key: it writes the keys `ws`, each with its new value `nv` (none: a delete;
+several calls on one key: the last wins, 015-41). R fixed, and the previous
+values `old` read at R, the data at R (`set`); then the index set S read
+under the lock (`commit`). -/
 inductive WSt (V F : Type) where
   | idle
-  | set (k : Key) (v : Option V) (R : Time) (old : Option V)
-  | commit (k : Key) (v : Option V) (R : Time) (old : Option V) (S : Option (Def F))
+  | set (ws : Key → Bool) (nv : Key → Option V) (R : Time) (old : Key → Option V)
+  | commit (ws : Key → Bool) (nv : Key → Option V) (R : Time) (old : Key → Option V)
+      (S : Option (Def F))
 
 /-- Where a build is (6.1): reading its end key E, reading a step, checking
 that its index is live, committing the step, waiting for the lock, or
@@ -195,15 +199,26 @@ def Sys.init (d0 : Key → Option V) : Sys V F L W :=
 def Sys.commit (s : Sys V F L W) (st' : Stream V F L) (m' : Mem V F L W) : Sys V F L W :=
   ⟨st', s.st :: s.past, m'⟩
 
-/-- The entries after a writer's commit at k (5.1, step 4): if S has the index,
-f(old) deleted and f(new) put; an entry both deleted and put stays (015-40). -/
+/-- The data after a transaction that writes the keys ws with the values nv. -/
+def writeData (data : Key → Option V) (ws : Key → Bool) (nv : Key → Option V) :
+    Key → Option V :=
+  fun k => if ws k = true then nv k else data k
+
+/-- The last write times after a transaction at the time t that writes the
+keys ws. -/
+def writeTimes (wk : Key → Time) (ws : Key → Bool) (t : Time) : Key → Time :=
+  fun k => if ws k = true then t else wk k
+
+/-- The entries after a writer's commit (5.1, step 4): if S has the index, at
+each key k written, f(old) deleted and f(new) put; an entry both deleted and
+put stays (015-40). -/
 def wEntries (sp : Spec V F L) (ent : Gen → Key → L → Prop) (S : Option (Def F))
-    (k : Key) (old v : Option V) : Gen → Key → L → Prop :=
+    (ws : Key → Bool) (old nv : Key → Option V) : Gen → Key → L → Prop :=
   match S with
   | none => ent
-  | some d => fun g k' l =>
-      (ent g k' l ∧ ¬ (g = d.gen ∧ k' = k ∧ sp.f d.fn k old = some l)) ∨
-      (g = d.gen ∧ k' = k ∧ sp.f d.fn k v = some l)
+  | some d => fun g k l =>
+      (ent g k l ∧ ¬ (g = d.gen ∧ ws k = true ∧ sp.f d.fn k (old k) = some l)) ∨
+      (g = d.gen ∧ ws k = true ∧ sp.f d.fn k (nv k) = some l)
 
 /-- The entries after a build step's commit: f of each value it read (6.1). -/
 def bEntries (sp : Spec V F L) (ent : Gen → Key → L → Prop) (g : Gen) (b : BSt V F) :
@@ -216,32 +231,35 @@ variable [DecidableEq W]
 thread's (020-26, section 2.3). A step that commits a transaction moves the
 time by one. -/
 inductive Step (sp : Spec V F L) : Sys V F L W → Sys V F L W → Prop where
-  /-- `WSuffix`: a write of a key with a suffix: no read time, no read set, no
-  lock, no index (5.1, "Which writes"); it cannot be refused. -/
-  | wSuffix (s : Sys V F L W) (k : Key) (v : Option V) :
-      sp.isObj k = false →
+  /-- `WSuffix`: a `w()` of keys with a suffix only: no read time, no read
+  set, no lock, no index (5.1, "Which writes"); it cannot be refused. -/
+  | wSuffix (s : Sys V F L W) (ws : Key → Bool) (nv : Key → Option V) :
+      (∀ k, ws k = true → sp.isObj k = false) →
       Step sp s (s.commit
-        { s.st with data := upd s.st.data k v, wk := upd s.st.wk k (s.st.now + 1),
-                    now := s.st.now + 1 } s.m)
+        { s.st with data := writeData s.st.data ws nv,
+                    wk := writeTimes s.st.wk ws (s.st.now + 1), now := s.st.now + 1 } s.m)
   /-- `WStart`: R fixed first, the latest transaction's time (5.1, step 1);
-  the previous value is the one at R. -/
-  | wStart (s : Sys V F L W) (w : W) (k : Key) (v : Option V) :
-      s.m.wr w = .idle → sp.isObj k = true →
-      Step sp s { s with m := { s.m with wr := upd s.m.wr w (.set k v s.st.now (s.st.data k)) } }
+  the previous values are those at R. Any keys, those with a suffix too. -/
+  | wStart (s : Sys V F L W) (w : W) (ws : Key → Bool) (nv : Key → Option V) :
+      s.m.wr w = .idle →
+      Step sp s { s with m := { s.m with wr := upd s.m.wr w (.set ws nv s.st.now s.st.data) } }
   /-- `WReadS`: the index set S read from the maps under the lock (5.1, step 3). -/
-  | wReadS (s : Sys V F L W) (w : W) (k : Key) (v : Option V) (R : Time) (old : Option V) :
-      s.m.wr w = .set k v R old → s.m.lock = .free →
-      Step sp s { s with m := { s.m with wr := upd s.m.wr w (.commit k v R old s.m.mem) } }
+  | wReadS (s : Sys V F L W) (w : W) (ws : Key → Bool) (nv : Key → Option V) (R : Time)
+      (old : Key → Option V) :
+      s.m.wr w = .set ws nv R old → s.m.lock = .free →
+      Step sp s { s with m := { s.m with wr := upd s.m.wr w (.commit ws nv R old s.m.mem) } }
   /-- `WCommit`: the read set is the virtual key (step 2) and, if S has the
-  index, the key k (step 4); the Core accepts the transaction if none of them
-  was written after R. f(old) deleted, f(new) put. -/
-  | wCommit (s : Sys V F L W) (w : W) (k : Key) (v : Option V) (R : Time) (old : Option V)
-      (S : Option (Def F)) :
-      s.m.wr w = .commit k v R old S →
-      s.st.wv ≤ R → (S ≠ none → s.st.wk k ≤ R) →
+  index, the keys written (step 4); the Core accepts the transaction if none
+  of them was written after R. At each key written, f(old) deleted and f(new)
+  put. (An `rw()`'s own reads add keys to its read set: it is refused more
+  often, which `wDrop` allows.) -/
+  | wCommit (s : Sys V F L W) (w : W) (ws : Key → Bool) (nv : Key → Option V) (R : Time)
+      (old : Key → Option V) (S : Option (Def F)) :
+      s.m.wr w = .commit ws nv R old S →
+      s.st.wv ≤ R → (S ≠ none → ∀ k, ws k = true → s.st.wk k ≤ R) →
       Step sp s (s.commit
-        { s.st with data := upd s.st.data k v, ent := wEntries sp s.st.ent S k old v,
-                    wk := upd s.st.wk k (s.st.now + 1), now := s.st.now + 1 }
+        { s.st with data := writeData s.st.data ws nv, ent := wEntries sp s.st.ent S ws old nv,
+                    wk := writeTimes s.st.wk ws (s.st.now + 1), now := s.st.now + 1 }
         { s.m with wr := upd s.m.wr w .idle })
   /-- A transaction in flight ends without a commit: refused by the Core's
   check (it runs again, a new `wStart`), or ended by an exception. Allowed at

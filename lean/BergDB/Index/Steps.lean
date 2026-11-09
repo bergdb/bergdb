@@ -13,32 +13,52 @@ variable {V F L W : Type}
 
 /-! ### Helpers -/
 
-theorem frame_write (st : Stream V F L) (k0 : Key) (v : Option V) (k : Key) :
-    (upd st.wk k0 (st.now + 1) k = st.wk k ∧ upd st.data k0 v k = st.data k) ∨
-      st.now < upd st.wk k0 (st.now + 1) k := by
-  by_cases hk : k = k0
-  · right; rw [hk, upd_same]; omega
-  · left; exact ⟨upd_ne _ _ hk, upd_ne _ _ hk⟩
+theorem writeData_yes {data : Key → Option V} {ws : Key → Bool} {nv : Key → Option V}
+    {k : Key} (h : ws k = true) : writeData data ws nv k = nv k := by
+  simp [writeData, h]
 
-/-- A writer's commit with S naming the index: at its key, its generation's
-entries become f(new), if they were within f(old). -/
-theorem wEntries_at {sp : Spec V F L} {ent : Gen → Key → L → Prop} {d0 : Def F} {k : Key}
-    {old v : Option V} (hst : ∀ l, ent d0.gen k l → sp.f d0.fn k old = some l) (l : L) :
-    wEntries sp ent (some d0) k old v d0.gen k l ↔ sp.f d0.fn k v = some l := by
-  show ((ent d0.gen k l ∧ ¬ (d0.gen = d0.gen ∧ k = k ∧ sp.f d0.fn k old = some l)) ∨
-      (d0.gen = d0.gen ∧ k = k ∧ sp.f d0.fn k v = some l)) ↔ _
+theorem writeData_no {data : Key → Option V} {ws : Key → Bool} {nv : Key → Option V}
+    {k : Key} (h : ws k = false) : writeData data ws nv k = data k := by
+  simp [writeData, h]
+
+theorem writeTimes_yes {wk : Key → Time} {ws : Key → Bool} {t : Time} {k : Key}
+    (h : ws k = true) : writeTimes wk ws t k = t := by
+  simp [writeTimes, h]
+
+theorem writeTimes_no {wk : Key → Time} {ws : Key → Bool} {t : Time} {k : Key}
+    (h : ws k = false) : writeTimes wk ws t k = wk k := by
+  simp [writeTimes, h]
+
+/-- A transaction's writes at the time now + 1: each key is written after
+every R, or keeps its value and its time. -/
+theorem frame_write (st : Stream V F L) (ws : Key → Bool) (nv : Key → Option V) (k : Key) :
+    (writeTimes st.wk ws (st.now + 1) k = st.wk k ∧ writeData st.data ws nv k = st.data k) ∨
+      st.now < writeTimes st.wk ws (st.now + 1) k := by
+  cases hk : ws k with
+  | true => right; rw [writeTimes_yes hk]; omega
+  | false => left; exact ⟨writeTimes_no hk, writeData_no hk⟩
+
+/-- A writer's commit with S naming the index: at a key it writes, the
+generation's entries become f(new), if they were within f(old). -/
+theorem wEntries_at {sp : Spec V F L} {ent : Gen → Key → L → Prop} {d0 : Def F}
+    {ws : Key → Bool} {old nv : Key → Option V} {k : Key} (hw : ws k = true)
+    (hst : ∀ l, ent d0.gen k l → sp.f d0.fn k (old k) = some l) (l : L) :
+    wEntries sp ent (some d0) ws old nv d0.gen k l ↔ sp.f d0.fn k (nv k) = some l := by
+  show ((ent d0.gen k l ∧ ¬ (d0.gen = d0.gen ∧ ws k = true ∧ sp.f d0.fn k (old k) = some l)) ∨
+      (d0.gen = d0.gen ∧ ws k = true ∧ sp.f d0.fn k (nv k) = some l)) ↔ _
   constructor
   · rintro (⟨h1, h2⟩ | ⟨-, -, h3⟩)
-    · exact (h2 ⟨rfl, rfl, hst l h1⟩).elim
+    · exact (h2 ⟨rfl, hw, hst l h1⟩).elim
     · exact h3
-  · intro h3; exact Or.inr ⟨rfl, rfl, h3⟩
+  · intro h3; exact Or.inr ⟨rfl, hw, h3⟩
 
 /-- Elsewhere a writer's commit changes no entry. -/
-theorem wEntries_other {sp : Spec V F L} {ent : Gen → Key → L → Prop} {d0 : Def F} {k : Key}
-    {old v : Option V} {g : Gen} {k' : Key} (hne : ¬ (g = d0.gen ∧ k' = k)) (l : L) :
-    wEntries sp ent (some d0) k old v g k' l ↔ ent g k' l := by
-  show ((ent g k' l ∧ ¬ (g = d0.gen ∧ k' = k ∧ sp.f d0.fn k old = some l)) ∨
-      (g = d0.gen ∧ k' = k ∧ sp.f d0.fn k v = some l)) ↔ _
+theorem wEntries_other {sp : Spec V F L} {ent : Gen → Key → L → Prop} {d0 : Def F}
+    {ws : Key → Bool} {old nv : Key → Option V} {g : Gen} {k : Key}
+    (hne : ¬ (g = d0.gen ∧ ws k = true)) (l : L) :
+    wEntries sp ent (some d0) ws old nv g k l ↔ ent g k l := by
+  show ((ent g k l ∧ ¬ (g = d0.gen ∧ ws k = true ∧ sp.f d0.fn k (old k) = some l)) ∨
+      (g = d0.gen ∧ ws k = true ∧ sp.f d0.fn k (nv k) = some l)) ↔ _
   constructor
   · rintro (⟨h1, -⟩ | ⟨h2, h3, -⟩)
     · exact h1
@@ -61,30 +81,31 @@ theorem Inv.setM {sp : Spec V F L} {s : Sys V F L W} (h : Inv sp s) {m' : Mem V 
 
 /-- `WSuffix`: a key with a suffix has no entry in any index. -/
 theorem step_wSuffix {sp : Spec V F L} {st st' : Stream V F L} {m : Mem V F L W}
-    (hs : SInv sp st) (hm : MInv sp st m) {k0 : Key} {v : Option V}
-    (hk0 : sp.isObj k0 = false)
-    (e1 : st'.data = upd st.data k0 v) (e2 : st'.ent = st.ent)
-    (e3 : st'.wk = upd st.wk k0 (st.now + 1)) (e4 : st'.now = st.now + 1)
+    (hs : SInv sp st) (hm : MInv sp st m) {ws : Key → Bool} {nv : Key → Option V}
+    (hsuf : ∀ k, ws k = true → sp.isObj k = false)
+    (e1 : st'.data = writeData st.data ws nv) (e2 : st'.ent = st.ent)
+    (e3 : st'.wk = writeTimes st.wk ws (st.now + 1)) (e4 : st'.now = st.now + 1)
     (e5 : st'.dfn = st.dfn) (e6 : st'.mark = st.mark) (e7 : st'.wdef = st.wdef)
     (e8 : st'.wv = st.wv) :
     SInv sp st' ∧ MInv sp st' m := by
   have hk : ∀ k, (st'.wk k = st.wk k ∧ st'.data k = st.data k) ∨ st.now < st'.wk k := by
-    intro k; rw [e1, e3]; exact frame_write st k0 v k
+    intro k; rw [e1, e3]; exact frame_write st ws nv k
   have hcov : ∀ g fn k, Covered sp st g fn k → Covered sp st' g fn k := by
     intro g fn k hc
-    by_cases hkk : k = k0
-    · rw [hkk]; exact Covered.of_none (sp.f_suffix _ _ _ hk0)
-    · exact hc.mono (by rw [e1]; exact upd_ne _ _ hkk) (fun l hl => by rw [e2]; exact hl)
+    cases hkk : ws k with
+    | true => exact Covered.of_none (sp.f_suffix _ _ _ (hsuf k hkk))
+    | false =>
+      exact hc.mono (by rw [e1]; exact writeData_no hkk) (fun l hl => by rw [e2]; exact hl)
   refine ⟨⟨?_, ?_, ?_, ?_, ?_, ?_⟩, ?_⟩
   · intro d hd; rw [e5] at hd; rw [e4]; exact Nat.lt_succ_of_lt (hs.gen_lt d hd)
   · intro g hg; rw [e6] at hg; rw [e4]; exact Nat.lt_succ_of_lt (hs.mark_lt g hg)
   · intro d hd k l hkl
     rw [e5] at hd; rw [e2] at hkl
-    by_cases hkk : k = k0
-    · rw [hkk] at hkl
-      have := hs.noStale d hd k0 l hkl
-      rw [sp.f_suffix _ _ _ hk0] at this; cases this
-    · rw [e1, upd_ne _ _ hkk]; exact hs.noStale d hd k l hkl
+    cases hkk : ws k with
+    | true =>
+      have := hs.noStale d hd k l hkl
+      rw [sp.f_suffix _ _ _ (hsuf k hkk)] at this; cases this
+    | false => rw [e1, writeData_no hkk]; exact hs.noStale d hd k l hkl
   · intro d hd ha k; rw [e5] at hd; exact hcov _ _ k (hs.active d hd ha k)
   · intro g k l hl; rw [e5, e6]; rw [e2] at hl; exact hs.accounted g k l hl
   · intro d hd; rw [e5] at hd; rw [e6]; exact hs.markerNotLive d hd
@@ -92,14 +113,16 @@ theorem step_wSuffix {sp : Spec V F L} {st st' : Stream V F L} {m : Mem V F L W}
       (fun g k l _ hl => by rw [e2] at hl; exact hl)
 
 /-- `WCommit`: point 1. If S names the index, it is the live one (the virtual
-key), and the previous value is the key's value (the key); so the key's
-entries become exactly f(new). If S is empty, there is no index. -/
+key), and the previous values are the keys' values (the keys written); so the
+entries of each key written become exactly f(new). If S is empty, there is no
+index. -/
 theorem step_wCommit {sp : Spec V F L} {st st' : Stream V F L} {m : Mem V F L W}
-    [DecidableEq W] (hs : SInv sp st) (hm : MInv sp st m) {w : W} {k0 : Key}
-    {v : Option V} {R : Time} {old : Option V} {S : Option (Def F)}
-    (hw : m.wr w = .commit k0 v R old S) (hv : st.wv ≤ R) (hk : S ≠ none → st.wk k0 ≤ R)
-    (e1 : st'.data = upd st.data k0 v) (e2 : st'.ent = wEntries sp st.ent S k0 old v)
-    (e3 : st'.wk = upd st.wk k0 (st.now + 1)) (e4 : st'.now = st.now + 1)
+    [DecidableEq W] (hs : SInv sp st) (hm : MInv sp st m) {w : W} {ws : Key → Bool}
+    {nv : Key → Option V} {R : Time} {old : Key → Option V} {S : Option (Def F)}
+    (hw : m.wr w = .commit ws nv R old S) (hv : st.wv ≤ R)
+    (hk : S ≠ none → ∀ k, ws k = true → st.wk k ≤ R)
+    (e1 : st'.data = writeData st.data ws nv) (e2 : st'.ent = wEntries sp st.ent S ws old nv)
+    (e3 : st'.wk = writeTimes st.wk ws (st.now + 1)) (e4 : st'.now = st.now + 1)
     (e5 : st'.dfn = st.dfn) (e6 : st'.mark = st.mark) (e7 : st'.wdef = st.wdef)
     (e8 : st'.wv = st.wv) :
     SInv sp st' ∧ MInv sp st' { m with wr := upd m.wr w .idle } := by
@@ -109,7 +132,7 @@ theorem step_wCommit {sp : Spec V F L} {st st' : Stream V F L} {m : Mem V F L W}
   obtain ⟨_, hold, hS⟩ := hwi
   have hS' := hS hv
   have hkf : ∀ k, (st'.wk k = st.wk k ∧ st'.data k = st.data k) ∨ st.now < st'.wk k := by
-    intro k; rw [e1, e3]; exact frame_write st k0 v k
+    intro k; rw [e1, e3]; exact frame_write st ws nv k
   have hnow : st.now ≤ st'.now := by omega
   have hgl : ∀ d, st'.dfn = some d → d.gen < st'.now := by
     intro d hd; rw [e5] at hd; rw [e4]; exact Nat.lt_succ_of_lt (hs.gen_lt d hd)
@@ -130,38 +153,44 @@ theorem step_wCommit {sp : Spec V F L} {st st' : Stream V F L} {m : Mem V F L W}
       · intro g k l _ hl; rw [hent] at hl; exact hl
   | some d0 =>
     obtain ⟨d, hd, hdg, hdf⟩ := sameIdx_some hS'
-    have hold' : st.data k0 = old := hold (hk (by simp))
-    have hwithin : ∀ l, st.ent d0.gen k0 l → sp.f d0.fn k0 old = some l := by
-      intro l hl
+    have hold' : ∀ k, ws k = true → st.data k = old k :=
+      fun k hwk => hold k (hk (by simp) k hwk)
+    have hwithin : ∀ k, ws k = true → ∀ l, st.ent d0.gen k l → sp.f d0.fn k (old k) = some l := by
+      intro k hwk l hl
       rw [hdg] at hl
-      have := hs.noStale d hd k0 l hl
-      rw [hold', ← hdf] at this
+      have := hs.noStale d hd k l hl
+      rw [hold' k hwk, ← hdf] at this
       exact this
-    have hat : ∀ l, st'.ent d.gen k0 l ↔ sp.f d.fn k0 v = some l := by
-      intro l; rw [e2, ← hdg, ← hdf]; exact wEntries_at hwithin l
-    have hoth : ∀ g k l, ¬ (g = d.gen ∧ k = k0) → (st'.ent g k l ↔ st.ent g k l) := by
+    have hat : ∀ k, ws k = true → ∀ l, (st'.ent d.gen k l ↔ sp.f d.fn k (nv k) = some l) := by
+      intro k hwk l; rw [e2, ← hdg, ← hdf]; exact wEntries_at hwk (hwithin k hwk) l
+    have hoth : ∀ g k l, ¬ (g = d.gen ∧ ws k = true) → (st'.ent g k l ↔ st.ent g k l) := by
       intro g k l hne; rw [e2]; exact wEntries_other (by rw [hdg]; exact hne) l
+    have hnot : ∀ k, ws k = false → ¬ (d.gen = d.gen ∧ ws k = true) := by
+      intro k hkk h; rw [hkk] at h; cases h.2
     have hsub : ∀ g k l, st'.ent g k l → st.ent g k l ∨ g = d.gen := by
       intro g k l hl
-      by_cases hc : g = d.gen ∧ k = k0
+      by_cases hc : g = d.gen ∧ ws k = true
       · exact Or.inr hc.1
       · exact Or.inl ((hoth g k l hc).mp hl)
     have hcov : ∀ k, Covered sp st d.gen d.fn k → Covered sp st' d.gen d.fn k := by
       intro k hc
-      by_cases hkk : k = k0
-      · rw [hkk]; intro l hl
-        rw [e1, upd_same] at hl
-        exact (hat l).mpr hl
-      · exact hc.mono (by rw [e1]; exact upd_ne _ _ hkk)
-          (fun l hl => (hoth d.gen k l (fun h => hkk h.2)).mpr hl)
+      cases hkk : ws k with
+      | true =>
+        intro l hl
+        rw [e1, writeData_yes hkk] at hl
+        exact (hat k hkk l).mpr hl
+      | false =>
+        exact hc.mono (by rw [e1]; exact writeData_no hkk)
+          (fun l hl => (hoth d.gen k l (hnot k hkk)).mpr hl)
     refine ⟨⟨hgl, hml, ?_, ?_, ?_, hmnl⟩, ?_⟩
     · intro d' hd' k l hkl
       have hdd : d' = d := by rw [e5, hd] at hd'; exact (Option.some.inj hd').symm
       rw [hdd] at hkl ⊢
-      by_cases hkk : k = k0
-      · rw [hkk] at hkl ⊢; rw [e1, upd_same]; exact (hat l).mp hkl
-      · rw [e1, upd_ne _ _ hkk]
-        exact hs.noStale d hd k l ((hoth d.gen k l (fun h => hkk h.2)).mp hkl)
+      cases hkk : ws k with
+      | true => rw [e1, writeData_yes hkk]; exact (hat k hkk l).mp hkl
+      | false =>
+        rw [e1, writeData_no hkk]
+        exact hs.noStale d hd k l ((hoth d.gen k l (hnot k hkk)).mp hkl)
     · intro d' hd' ha k
       have hdd : d' = d := by rw [e5, hd] at hd'; exact (Option.some.inj hd').symm
       rw [hdd] at ha ⊢
@@ -614,23 +643,24 @@ theorem step_cEnd {sp : Spec V F L} {st st' : Stream V F L} {m : Mem V F L W}
 /-! ### Steps of memory only -/
 
 theorem minv_wStart {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W} [DecidableEq W]
-    (hm : MInv sp st m) (w : W) (k : Key) (v : Option V) :
-    MInv sp st { m with wr := upd m.wr w (.set k v st.now (st.data k)) } :=
-  hm.setW w (show st.now ≤ st.now ∧ (st.wk k ≤ st.now → st.data k = st.data k) from
-    ⟨Nat.le_refl _, fun _ => rfl⟩)
+    (hm : MInv sp st m) (w : W) (ws : Key → Bool) (nv : Key → Option V) :
+    MInv sp st { m with wr := upd m.wr w (.set ws nv st.now st.data) } :=
+  hm.setW w (show st.now ≤ st.now ∧ ∀ k, st.wk k ≤ st.now → st.data k = st.data k from
+    ⟨Nat.le_refl _, fun _ _ => rfl⟩)
 
 /-- `WReadS`: under the lock, no definition change is under way, so the maps
 are the stream's definition. -/
 theorem minv_wReadS {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W} [DecidableEq W]
-    (hm : MInv sp st m) {w : W} {k : Key} {v : Option V} {R : Time} {old : Option V}
-    (hw : m.wr w = .set k v R old) (hl : m.lock = .free) :
-    MInv sp st { m with wr := upd m.wr w (.commit k v R old m.mem) } := by
+    (hm : MInv sp st m) {w : W} {ws : Key → Bool} {nv : Key → Option V} {R : Time}
+    {old : Key → Option V} (hw : m.wr w = .set ws nv R old) (hl : m.lock = .free) :
+    MInv sp st { m with wr := upd m.wr w (.commit ws nv R old m.mem) } := by
   have hwi := hm.wInv w
   rw [hw] at hwi
   simp only [WInv] at hwi
   obtain ⟨h1, h2⟩ := hwi
   apply hm.setW w
-  show R ≤ st.now ∧ (st.wk k ≤ R → st.data k = old) ∧ (st.wv ≤ R → sameIdx m.mem st.dfn)
+  show R ≤ st.now ∧ (∀ k, st.wk k ≤ R → st.data k = old k) ∧
+    (st.wv ≤ R → sameIdx m.mem st.dfn)
   refine ⟨h1, h2, fun _ => ?_⟩
   rw [hm.memEq (by rw [hl]; simp)]; exact sameIdx_refl _
 
@@ -837,11 +867,11 @@ variable [DecidableEq W]
 theorem inv_step {sp : Spec V F L} {s s' : Sys V F L W} (h : Inv sp s) (hst : Step sp s s') :
     Inv sp s' := by
   cases hst with
-  | wSuffix k v hk =>
-    exact h.commit (step_wSuffix h.sinv h.minv hk rfl rfl rfl rfl rfl rfl rfl rfl)
-  | wStart w k v _ _ => exact h.setM (minv_wStart h.minv w k v)
-  | wReadS w k v R old hw hl => exact h.setM (minv_wReadS h.minv hw hl)
-  | wCommit w k v R old S hw hv hk =>
+  | wSuffix ws nv hsuf =>
+    exact h.commit (step_wSuffix h.sinv h.minv hsuf rfl rfl rfl rfl rfl rfl rfl rfl)
+  | wStart w ws nv _ => exact h.setM (minv_wStart h.minv w ws nv)
+  | wReadS w ws nv R old hw hl => exact h.setM (minv_wReadS h.minv hw hl)
+  | wCommit w ws nv R old S hw hv hk =>
     exact h.commit (step_wCommit h.sinv h.minv hw hv hk rfl rfl rfl rfl rfl rfl rfl rfl)
   | wDrop w => exact h.setM (h.minv.setW w trivial)
   | aCreate fn ha hl hmem =>

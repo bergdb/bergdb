@@ -41,10 +41,10 @@ theorem example_run :
   -- the activation
   have r7 := Reach.step r6 (Step.bActivate _ 0 _ ⟨0, (), false⟩ rfl rfl rfl rfl rfl)
   -- a writer puts 9 at key 0
-  have r8 := Reach.step r7 (Step.wStart _ () 0 (some 9) rfl rfl)
-  have r9 := Reach.step r8 (Step.wReadS _ () 0 (some 9) _ _ rfl rfl)
-  have r10 := Reach.step r9 (Step.wCommit _ () 0 (some 9) _ _ _ rfl (by decide)
-    (fun _ => by decide))
+  have r8 := Reach.step r7 (Step.wStart _ () (fun k => decide (k = 0)) (fun _ => some 9) rfl)
+  have r9 := Reach.step r8 (Step.wReadS _ () _ _ _ _ rfl rfl)
+  have r10 := Reach.step r9 (Step.wCommit _ () _ _ _ _ _ rfl (by decide)
+    (fun _ _ _ => Nat.zero_le _))
   refine ⟨_, r10, rfl, rfl, ?_, ?_⟩
   · exact Or.inr ⟨rfl, rfl, rfl⟩
   · intro h7

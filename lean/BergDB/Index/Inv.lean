@@ -49,14 +49,15 @@ structure SInv (sp : Spec V F L) (st : Stream V F L) : Prop where
   markerNotLive : ∀ d, st.dfn = some d → st.mark d.gen = false
 
 /-- A writer's transaction in flight (020-26, section 4, point 1): its R is
-fixed; if its key was not written after R, the previous value it read is the
+fixed; for each key not written after R, the previous value it read is the
 key's value; if the virtual key was not written after R, the index set it read
 names the live index, or none if there is none. -/
 def WInv (st : Stream V F L) : WSt V F → Prop
   | .idle => True
-  | .set k _ R old => R ≤ st.now ∧ (st.wk k ≤ R → st.data k = old)
-  | .commit k _ R old S =>
-      R ≤ st.now ∧ (st.wk k ≤ R → st.data k = old) ∧ (st.wv ≤ R → sameIdx S st.dfn)
+  | .set _ _ R old => R ≤ st.now ∧ ∀ k, st.wk k ≤ R → st.data k = old k
+  | .commit _ _ R old S =>
+      R ≤ st.now ∧ (∀ k, st.wk k ≤ R → st.data k = old k) ∧
+        (st.wv ≤ R → sameIdx S st.dfn)
 
 /-- A build step between its read and its commit (point 3): the values it read
 are the keys' values if the keys were not written after R; the keys whose
@@ -162,19 +163,19 @@ theorem WInv.frame {st st' : Stream V F L} {x : WSt V F} (h : WInv st x)
     WInv st' x := by
   cases x with
   | idle => trivial
-  | set k v R old =>
+  | set ws nv R old =>
     simp only [WInv] at h ⊢
     obtain ⟨hR, hd⟩ := h
-    refine ⟨by omega, fun hw => ?_⟩
+    refine ⟨by omega, fun k hw => ?_⟩
     rcases hk k with ⟨h1, h2⟩ | h1
-    · rw [h2]; exact hd (by omega)
+    · rw [h2]; exact hd k (by omega)
     · omega
-  | commit k v R old S =>
+  | commit ws nv R old S =>
     simp only [WInv] at h ⊢
     obtain ⟨hR, hd, hS⟩ := h
-    refine ⟨by omega, fun hw => ?_, fun hw => ?_⟩
+    refine ⟨by omega, fun k hw => ?_, fun hw => ?_⟩
     · rcases hk k with ⟨h1, h2⟩ | h1
-      · rw [h2]; exact hd (by omega)
+      · rw [h2]; exact hd k (by omega)
       · omega
     · rcases hv with ⟨h1, h2⟩ | h1
       · exact h2 S (hS (by omega))

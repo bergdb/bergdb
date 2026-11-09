@@ -141,8 +141,8 @@ not written since R) read the live index (020-26, section 4, points 1 and 2):
 after a definition change, no writer commits with the index set from before
 it. -/
 theorem writer_sees_live {sp : Spec V F L} {s : Sys V F L W} (h : Reach sp s) {w : W}
-    {k : Key} {v : Option V} {R : Time} {old : Option V} {S : Option (Def F)}
-    (hw : s.m.wr w = .commit k v R old S) (hv : s.st.wv ≤ R) : sameIdx S s.st.dfn := by
+    {ws : Key → Bool} {nv : Key → Option V} {R : Time} {old : Key → Option V}
+    {S : Option (Def F)} (hw : s.m.wr w = .commit ws nv R old S) (hv : s.st.wv ≤ R) : sameIdx S s.st.dfn := by
   have hwi := (reach_inv h).minv.wInv w
   rw [hw] at hwi
   exact hwi.2.2 hv

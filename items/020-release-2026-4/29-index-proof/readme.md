@@ -40,7 +40,9 @@ All four are done, with no `sorry` and no axiom of its own (section 6).
 ## 2. The model
 
 020-26's IndexModel.tla, step for step (its section 2.3), in Lean 4.34.1
-without Mathlib: one index name over one directory; transactions of one key.
+without Mathlib: one index name over one directory. A writer's transaction
+writes any set of keys, each with its new value or a delete (the last call
+on a key wins, 015-41), where 020-26's writes one key.
 
 * **The stream** (`Stream`), what a crash keeps: the data (key to value),
   the definition (G, its function, building or active), the entries (a set
@@ -75,9 +77,16 @@ without Mathlib: one index name over one directory; transactions of one key.
   code: 100 entries after the last deleted); a transaction in flight may end
   without a commit at any time (`wDrop`: refused, then run again as a new
   transaction, or an exception); a crash may lose committed transactions.
-* **Left out**, as in 020-26, section 2.4: several names, several directories
-  and transactions of several keys; writes through the Core, key replace,
-  reclaim's cut of lookup times, format 1. And liveness (section 7).
+* **Writers** (`WSt`): a transaction fixes R and reads the previous values at
+  R (`wStart`), reads the index set under the lock (`wReadS`), and commits if
+  neither the virtual key nor, when S has the index, a key it writes was
+  written after R (`wCommit`); at each key it writes, f(old) is deleted and
+  f(new) put. A `w()` of keys with a suffix only has no R and no read set
+  (`wSuffix`). An `rw()`'s own reads only add keys to its read set, so more
+  refusals, which `wDrop` allows.
+* **Left out**, as in 020-26, section 2.4: several names and several
+  directories; writes through the Core, key replace, reclaim's cut of lookup
+  times, format 1. And liveness (section 7).
 
 `G` is the latest transaction's time when the creation runs, as in the code
 and 020-26's `TimedGen`.
@@ -224,12 +233,11 @@ no design fault, for every size, in the protocol as 020-26 models it.
   refused only by writers that read S before the lock was taken, each at
   most once. A Lean statement could be: in every fair infinite run, the
   definition leaves `building`. Not started.
-* **The extensions 020-26 left out**: several names (each with its own
-  definition, generations, markers and entries; one lock; the virtual key per
-  directory), several directories, and transactions of several keys (one
-  read time, a key's read set per indexed key, the virtual keys of each
-  directory). The proof's structure carries over: the invariant per name and
-  per key. Not started.
+* **Several names and directories**, which 020-26 left out too (each name
+  with its own definition, generations, markers and entries; one lock; the
+  virtual key per directory, in the read set of a writer of that directory).
+  The proof's structure carries over: the invariant per name. Not started.
+  Transactions of several keys are in (section 2).
 * **The Java code**: the theorems are about the model; the model follows
   020-26's, which follows the code at `83e8e13` with 020-18's fixes. When the
   code changes the read sets, the lock or the order of R and S, the model

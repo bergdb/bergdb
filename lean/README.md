@@ -108,8 +108,9 @@ for it; SIS/Proof/HandleCutSkip.lean, SIS/Proof/HandleCutPos.lean.
 Since bergdb 020-29 (2026-11-09) a second library, `BergDB`, has the user
 indexes of release 2026.4 (020-10 with 020-18's fixes), the protocol that
 020-26 checked with TLC within small bounds: one index name over one
-directory, its writers, builds, activation, deletion, cleanup, crashes and
-restarts (BergDB/Index/Model.lean, the trusted part), and 020-26's safety
+directory, its writers (transactions of any keys), builds, activation,
+deletion, cleanup, crashes and restarts (BergDB/Index/Model.lean, the trusted
+part), and 020-26's safety
 invariants proved for every size (BergDB/Index/Theorems.lean): at every
 lookup time an active index's entries are exactly f over the data
 (`index_is_function`), no entry of the live generation is stale, a build
