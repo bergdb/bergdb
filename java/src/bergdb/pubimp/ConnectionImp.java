@@ -1,7 +1,9 @@
 package bergdb.pubimp;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import bergdb.common.Bug;
 import bergdb.core.Db;
 import bergdb.core.DbConstants;
 import bergdb.core.Reclaim;
@@ -37,6 +39,13 @@ class ConnectionImp implements Connection {
     private boolean enableKeyReplace;
     private boolean freezeLookupTime;
     long lastSposOfLastTrans;
+    
+    /**
+     * The key of the last read that retrieved a value, the value whose transaction
+     * getData.tpos names: transactionInfo() follows reclaim's copies of the value back by it
+     * (bergdb 021-17). Set with getData.tpos, by each read that finds a value.
+     */
+    private long[] infoKey;
 
     public ConnectionImp(DatabaseImp database) {
         assert database != null;
@@ -131,26 +140,59 @@ class ConnectionImp implements Connection {
         
         // A record that the writer has not appended in whole yet: getTrans waits for it
         // (bergdb 021-13). It threw IllegalArgumentException, or failed the database.
-        final StoredTrans storedTrans = db.getTrans(getData.tpos);
+        StoredTrans stored = db.getTrans(getData.tpos);
+        
+        // A record of reclaim's is not the transaction that wrote the value: reclaim has
+        // rewritten the value, in a step of its own, so that the transaction that wrote it
+        // can be cut (Reclaim.step). Until 2026-10-25 this method gave the step's time and its
+        // row; then, until bergdb 021-17 (020-24-06, U6-1), it threw
+        // LookupTimeNotAvailableException for every copy, from reclaim's first iteration on,
+        // long before anything was cut. The copy is the value at the key just before the
+        // step: the step reads the latest state and puts the value with the key as read (its
+        // keyRead and readTime), so a write of the key between them makes it run again. So
+        // the value at the step's time less one unit is the one copied, the original or an
+        // older copy, followed back in the same way; each time is smaller than the last.
+        // A time before the first available lookup time is refused: the transaction that
+        // wrote the value is before it then, and reclaim has cut it or is about to.
+        GetData before = null;
+        while (isReclaims(stored)) {
+            assert holds(stored, infoKey) : "No value of the key in reclaim's step.";
+            if (before == null) {
+                before = db.newGetData();
+            }
+            final long copyTime = stored.tt;
+            final byte[] copied;
+            try {
+                copied = db.getOne(copyTime - 1, infoKey, before);
+            } catch (LookupTimeNotAvailableException e) {
+                final long first = db.getFirstAvailableLookupTime();
+                LookupTimeNotAvailableException ex = new LookupTimeNotAvailableException(
+                        "No available transaction info: reclaim has rewritten the value, at time "
+                        + copyTime + " (" + Time.units(copyTime) + "), and the transaction that "
+                        + "wrote it is before the first available lookup time, " + first + " ("
+                        + Time.units(first) + "), and no longer available.");
+                ex.initCause(e);
+                throw ex;
+            }
+            if (copied == null || before.tpos < 0 || before.tpos >= stored.tpos) {
+                // Cannot happen (Reclaim.step); a bug fails the database (bergdb 010-01, P7).
+                throw failed(new Bug("No value before reclaim's copy at " + stored.tpos + ": "
+                        + (copied == null ? "none" : "one at " + before.tpos) + "."));
+            }
+            stored = db.getTrans(before.tpos);
+        }
+        final StoredTrans storedTrans = stored;
         
         // The user's KVs only (2026-10-25, bergdb 005-42): those under the internal prefix,
         // an index's entries, were given too, and their key() threw, as they have no ukey.
-        // And a record of reclaim's is not the transaction that wrote the value: reclaim has
-        // rewritten the value, so that the transaction that wrote it can be cut. It gave the
-        // step's time and its row. A key that is no ukey's, which only a write through the
-        // Core API makes, is left out too (bergdb 020-22, R22-1): its key() threw, or gave
-        // the ukey of another key.
+        // A key that is no ukey's, which only a write through the Core API makes, is left out
+        // too (bergdb 020-22, R22-1): its key() threw, or gave the ukey of another key.
         final ArrayList<Kv<byte[]>> kvs = new ArrayList<Kv<byte[]>>();
         for (int i = 0; i < storedTrans.nodes.length; i++) {
             StoredNode storedNode = storedTrans.nodes[i];
             
             if (storedNode instanceof StoredValueNode) {
                 final StoredValueNode storedValueNode = (StoredValueNode) storedNode;
-                if (Keys.isPrefix(Reclaim.KEY_PREFIX_SKEY, storedValueNode.getKey())) {
-                    throw new LookupTimeNotAvailableException("No available transaction info: "
-                            + "reclaim has rewritten the value, and the transaction that wrote "
-                            + "it is no longer available.");
-                }
                 if (Keys.isPrefix(DbConstants.INTERNAL_PREFIX_SKEY, storedValueNode.getKey())) {
                     continue;
                 }
@@ -182,6 +224,31 @@ class ConnectionImp implements Connection {
             }
         };
     }
+    
+    /**
+     * True if 'stored' is one of reclaim's records, one with a KV under its prefix (bergdb
+     * 005-42): a record of a step, the only one of reclaim's with a value of the user.
+     */
+    private static boolean isReclaims(StoredTrans stored) {
+        for (StoredNode node : stored.nodes) {
+            if (node instanceof StoredValueNode 
+                    && Keys.isPrefix(Reclaim.KEY_PREFIX_SKEY, ((StoredValueNode) node).getKey())) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /** True if 'stored' has a value node of 'key'. For an assert. */
+    private static boolean holds(StoredTrans stored, long[] key) {
+        for (StoredNode node : stored.nodes) {
+            if (node instanceof StoredValueNode 
+                    && Arrays.equals(key, ((StoredValueNode) node).getKey())) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     /**
      * Internal method to get the value (byte[]) given a key (long[]) at a
@@ -189,6 +256,9 @@ class ConnectionImp implements Connection {
      */
     final byte[] getBytesAtLookupTime(long lookupTime, long[] key) {
         byte[] value = db.getOne(lookupTime, key, getData);
+        if (value != null) {
+            infoKey = key;
+        }
         
         // After the read, as in getInternal() (bergdb 015-48). Before it, a frozen time was
         // set to the time of the read before, or to -1 if there was none, and an exists()
@@ -309,7 +379,11 @@ class ConnectionImp implements Connection {
      * RwEnvironment, with getInTransaction().
      */
     public final <TYPE> TYPE getInternal(long lookupTime, String ikey, Class<TYPE> clazz) {
-        byte[] value = db.getOne(lookupTime, Keys.toSegments(ikey), getData);
+        final long[] key = Keys.toSegments(ikey);
+        byte[] value = db.getOne(lookupTime, key, getData);
+        if (value != null) {
+            infoKey = key;
+        }
 
         if (this.freezeLookupTime && this.lookupTime != getData.actualLookupTime) {
             this.lookupTime = getData.actualLookupTime;

@@ -260,6 +260,13 @@ public interface Connection extends ReadInterface {
      * This method call will always require a read from the database
      * storage, no caching for this query.
      *
+     * <p>With a finite retain duration (Database.setRetainDuration()), reclaim rewrites live
+     * values, in transactions of its own, so that it can cut the front of the stream, and a
+     * get then reads reclaim's copy. This method gives the transaction that wrote the value
+     * even so, not reclaim's (bergdb 021-17): always when its time is at or after the first
+     * available lookup time (Database.getFirstAvailableLookupTime()), and when it is before,
+     * until reclaim removes it.</p>
+     *
      * @throws IllegalStateException
      *             If no get() has retrieved a value: none has been made, or each found no
      *             entry. Or if the transaction that wrote the value was still being stored
@@ -269,9 +276,10 @@ public interface Connection extends ReadInterface {
      *             If the database has failed, before or in this read: it then refuses
      *             every transaction and read until it is restarted. See Database.
      * @throws LookupTimeNotAvailableException
-     *             If the database has reclaimed the transaction: the lookup time of the
-     *             get is no longer available, or reclaim has rewritten the value, in a
-     *             transaction of its own, so that the transaction that wrote it can be cut.
+     *             If the transaction that wrote the value is no longer available: its time
+     *             is before the first available lookup time, and reclaim has removed it, or
+     *             has rewritten the value and may remove it at any time. The value stays
+     *             readable; a get at a later lookup time leads to the same refusal.
      */
     public TransactionInfo transactionInfo();
 

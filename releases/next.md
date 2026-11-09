@@ -458,6 +458,21 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   with the default clock when the system clock was set back, and since
   2026.2 (005-69) with a `Clock` of the application's
   (`DatabaseBuilder.clock()`) that goes back, as `Clock.getTime()` allows.
+* **`transactionInfo()` gives the transaction that wrote a value that
+  reclaim has rewritten** (bergdb 021-17; 2026-11-09). With a finite
+  retain duration, reclaim rewrites live values in transactions of its
+  own, from its first iteration on, long before it cuts anything, and a
+  get then reads reclaim's copy. `Connection.transactionInfo()` threw
+  `LookupTimeNotAvailableException` for every such copy ("reclaim has
+  rewritten the value, and the transaction that wrote it is no longer
+  available"): for a value 10 ms old with a minute retained and nothing
+  cut, and for every value written once, from reclaim's first iteration
+  on; a later lookup time never helped. Now it follows the copy back to
+  the transaction that wrote the value and gives its time and KVs, always
+  when that time is at or after the first available lookup time; it throws
+  only for a transaction before that time that reclaim has removed or may
+  remove, and the message says so. The stream is unchanged. In 2026.1 to
+  2026.3; found by a new-user application (020-24-06, U6-1).
 
 
 ### Core API

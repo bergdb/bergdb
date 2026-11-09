@@ -530,6 +530,12 @@ public class Reclaim implements Db.TransactionListener {
      * and stores the table row as it is after the step; all in one internal transaction.
      * After the last step (the scan reached the end), the iteration is done, and tEnd and
      * pEnd are stored.
+     * 
+     * <p>A value that a step rewrites, its copy, is the value of its key at one unit before
+     * the step's time: the step reads it at the latest state and puts it with the key as read
+     * (keyRead, readTime), so a write of the key between them makes the step run again
+     * (RerunException). ConnectionImp.transactionInfo() follows a copy back to the
+     * transaction that wrote the value by it (bergdb 021-17).</p>
      */
     private void step(final IterationInfo it, final long writeSize) {
         final long[][] lastKeyOfStep = new long[][] {it.lastKey};

@@ -3522,7 +3522,10 @@ public class PubTester {
      * transactionInfo() described reclaim's step, with its time and its row, whose key()
      * threw. Now it throws LookupTimeNotAvailableException, as for a transaction that reclaim
      * has removed; a value written after the cut still gives its transaction. Made with the
-     * core's builder, as testFirstAvailableLookupTime2, so that reclaim cuts soon.
+     * core's builder, as testFirstAvailableLookupTime2, so that reclaim cuts soon. Since
+     * bergdb 021-17 it throws only as here, for a transaction before the first available
+     * lookup time, and gives the one that wrote a copy's value otherwise
+     * (testTransactionInfoOfReclaimsCopy).
      */
     @Nano
     private static void testTransactionInfoAfterReclaim() {
@@ -3563,6 +3566,192 @@ public class PubTester {
         Assert.assertEquals(1, tinfo.kvs().size());
         Assert.assertEquals("/b", tinfo.kvs().get(0).key());
         d.stop();
+    }
+    
+    /**
+     * bergdb 021-17 (020-24-06, U6-1): transactionInfo() of a value that reclaim had
+     * rewritten, in a step of its own, threw LookupTimeNotAvailableException from reclaim's
+     * first iteration on, long before anything was cut: the first available lookup time was
+     * still 0, and a get at the value's own time found the transaction that wrote it. Now it
+     * gives that transaction, its time and its KVs, also through a copy of a copy; and it
+     * throws only when that transaction is before the first available lookup time. The case
+     * of the report's TiRepro, with a test clock and a small startup distance (2,000 bytes):
+     * a put of two KVs, then puts 20 ms apart, with 60 s retained.
+     */
+    @Nano
+    private static void testTransactionInfoOfReclaimsCopy() {
+        TestClock clock = new TestClock();
+        Db db = Db.builder().testSetup(new CutStream()).clock(clock).maxNodeSize8()
+                .startupDistance(2000).build();
+        Database d = DatabaseImp.createAndStart(db);
+        try {
+            d.setRetainDuration(Duration.seconds(60));
+            Connection c = d.connection();
+            long ms = Duration.seconds(0.001).units();
+            long time = Duration.seconds(1).units();
+            clock.setTime(Time.units(time));
+            long t0 = c.w().put("/sensor/a.txt", "21.5").put("/sensor/b.txt", "b").execute()
+                    .getTime().units();
+            long[] key = Keys.toSegments(PubKeys.u2i("/sensor/a.txt"));
+            
+            // Until reclaim has rewritten the value (its first iteration), and then that copy
+            // (its third iteration, whose cut point is after the first copy), with nothing cut.
+            long copy1 = -1, copy2 = -1;
+            for (int i = 0; i < 100000 && copy2 == -1; i++) {
+                time += 20 * ms;
+                clock.setTime(Time.units(time));
+                c.put("/k/" + (i % 50) + ".txt", "v" + i);
+                long tt = recordTimeOfLatest(db, key);
+                if (copy1 == -1 && tt != t0) {
+                    copy1 = tt;
+                    Assert.assertTrue("nothing cut", d.getFirstAvailableLookupTime().units() < t0);
+                    checkInfoOfSensorA(c, t0, "one copy, at " + copy1);
+                } else if (copy1 != -1 && tt != copy1) {
+                    copy2 = tt;
+                }
+            }
+            Assert.assertTrue("a copy of a copy", copy2 > copy1 && copy1 > t0);
+            Assert.assertTrue("nothing cut", d.getFirstAvailableLookupTime().units() < t0);
+            checkInfoOfSensorA(c, t0, "two copies, at " + copy1 + " and " + copy2);
+            
+            // Until the cut passes t0: the transaction is then refused, its time before the
+            // first available lookup time; the value is read as before.
+            for (int i = 0; i < 100000 && d.getFirstAvailableLookupTime().units() <= t0; i++) {
+                time += 20 * ms;
+                clock.setTime(Time.units(time));
+                c.put("/k/" + (i % 50) + ".txt", "w" + i);
+            }
+            long first = d.getFirstAvailableLookupTime().units();
+            Assert.assertTrue("a cut after t0", first > t0);
+            Assert.assertEquals("21.5", c.get("/sensor/a.txt", String.class));
+            try {
+                c.transactionInfo();
+                throw new AssertionError("transactionInfo() returned, t0 " + t0 + ", first " 
+                        + first);
+            } catch (LookupTimeNotAvailableException e) {
+                Assert.assertTrue(e.getMessage(), 
+                        e.getMessage().contains("before the first available lookup time"));
+            }
+        } finally {
+            d.close();
+        }
+    }
+    
+    /** The time of the record that holds the value of 'key' at the latest state. */
+    private static long recordTimeOfLatest(Db db, long[] key) {
+        bergdb.dag.GetData gd = db.newGetData();
+        Assert.assertTrue("a value", db.getOne(Long.MAX_VALUE, key, gd) != null);
+        return db.getTrans(gd.tpos).tt;
+    }
+    
+    /** transactionInfo() after a get of /sensor/a.txt: the put of both sensors at t0. */
+    private static void checkInfoOfSensorA(Connection c, long t0, String what) {
+        Assert.assertEquals(what, "21.5", c.get("/sensor/a.txt", String.class));
+        TransactionInfo info;
+        try {
+            info = c.transactionInfo();
+        } catch (LookupTimeNotAvailableException e) {
+            throw new AssertionError(what + ": " + e, e);
+        }
+        Assert.assertEquals(what, t0, info.time().units());
+        Assert.assertEquals(what, 2, info.kvs().size());
+        Assert.assertEquals(what, "/sensor/a.txt", info.kvs().get(0).key());
+        Assert.assertEquals(what, "21.5", StringUtil.toString(info.kvs().get(0).value()));
+        Assert.assertEquals(what, "/sensor/b.txt", info.kvs().get(1).key());
+        Assert.assertEquals(what, "b", StringUtil.toString(info.kvs().get(1).value()));
+    }
+    
+    /**
+     * bergdb 021-17: transactionInfo() against an oracle of every put, while reclaim rewrites
+     * values and cuts (1 s retained, puts 10 ms apart at 40 keys, gets at the latest state
+     * and at past times from the first available lookup time on): it gives the transaction
+     * that wrote the value read, its time and its KV, whenever that time is at or after the
+     * first available lookup time, also for reclaim's copies; before it, the same or
+     * LookupTimeNotAvailableException. Before the fix, each copy threw.
+     */
+    @Nano
+    private static void testTransactionInfoAgainstOracle() {
+        TestClock clock = new TestClock();
+        Db db = Db.builder().testSetup(new CutStream()).clock(clock).maxNodeSize8()
+                .startupDistance(2000).build();
+        Database d = DatabaseImp.createAndStart(db);
+        try {
+            d.setRetainDuration(Duration.seconds(1));
+            Connection c = d.connection();
+            long ms = Duration.seconds(0.001).units();
+            long time = Duration.seconds(1).units();
+            java.util.Random r = new java.util.Random(2117);
+            final int keys = 40;
+            @SuppressWarnings("unchecked")
+            java.util.ArrayList<long[]>[] history = new java.util.ArrayList[keys];
+            for (int k = 0; k < keys; k++) {
+                history[k] = new java.util.ArrayList<long[]>();     // {time, i} of each put.
+            }
+            int copies = 0, refused = 0, cuts = 0;
+            long lastFirst = 0;
+            
+            for (int i = 0; i < 2500; i++) {
+                time += 10 * ms;
+                clock.setTime(Time.units(time));
+                int k = r.nextInt(keys);
+                long tt = c.put("/k/" + k + ".txt", "v" + i).getTime().units();
+                history[k].add(new long[] {tt, i});
+                if (i % 20 != 0) {
+                    continue;
+                }
+                
+                long first = d.getFirstAvailableLookupTime().units();
+                if (first != lastFirst) {
+                    cuts++;
+                    lastFirst = first;
+                }
+                for (int j = 0; j < 10; j++) {
+                    int kj = r.nextInt(keys);
+                    long lo = Math.max(first, Duration.seconds(1).units());
+                    long lookup = j % 2 == 0 ? Long.MAX_VALUE 
+                            : lo + (long) (r.nextDouble() * (tt - lo));
+                    long[] put = null;
+                    for (long[] p : history[kj]) {
+                        if (p[0] <= lookup) {
+                            put = p;
+                        }
+                    }
+                    c.setLookupTime(lookup == Long.MAX_VALUE ? Time.MAX : Time.units(lookup));
+                    String value = c.get("/k/" + kj + ".txt", String.class);
+                    String what = "/k/" + kj + ".txt at " + lookup + ", first " + first;
+                    if (put == null) {
+                        Assert.assertTrue(what + ": " + value, value == null);
+                        continue;
+                    }
+                    Assert.assertEquals(what, "v" + put[1], value);
+                    
+                    bergdb.dag.GetData gd = db.newGetData();
+                    db.getOne(lookup, Keys.toSegments(PubKeys.u2i("/k/" + kj + ".txt")), gd);
+                    if (db.getTrans(gd.tpos).tt != put[0]) {
+                        copies++;
+                    }
+                    
+                    TransactionInfo info;
+                    try {
+                        info = c.transactionInfo();
+                    } catch (LookupTimeNotAvailableException e) {
+                        Assert.assertTrue(what + ": " + e, put[0] < first);
+                        refused++;
+                        continue;
+                    }
+                    Assert.assertEquals(what, put[0], info.time().units());
+                    Assert.assertEquals(what, 1, info.kvs().size());
+                    Assert.assertEquals(what, "/k/" + kj + ".txt", info.kvs().get(0).key());
+                    Assert.assertEquals(what, "v" + put[1], 
+                            StringUtil.toString(info.kvs().get(0).value()));
+                }
+            }
+            Assert.assertTrue("cuts " + cuts, cuts >= 3);
+            Assert.assertTrue("copies " + copies, copies >= 30);
+            Assert.assertTrue("refused " + refused + " of " + copies, refused < copies);
+        } finally {
+            d.close();
+        }
     }
     
     /**
