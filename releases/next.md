@@ -389,6 +389,11 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
 * **`Time.add(null)` and `Time.isBetween()` with a null throw
   `IllegalArgumentException`** (bergdb 020-25, C2), as every null argument
   of the API does (020-21, 3); they threw a `NullPointerException`.
+* **The default cache size is clamped** (bergdb 020-25, C3) to 4 to 100,000
+  MB, as a value given to `DatabaseBuilder.cacheSizeInMb()` is: a fifth of
+  the JVM's maximum heap gave 2 or 3 MB under a heap of 20 MB, and more
+  than 100,000 MB over one of 500 GB. A JVM without a maximum heap gets
+  100 MB, as before, now in the Javadoc.
 * **`transactionInfo()` leaves out a key that is no Pub key** (bergdb
   020-22, R22-1; Frans, 2026-11-09, Q5): for a transaction written through
   the Core's `Db` with a key of the Pub API and another key, such as a key

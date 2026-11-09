@@ -54,18 +54,22 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         
         dbBuilder = Db.builder();
         
-        long max = Runtime.getRuntime().maxMemory();
-        if (max == Long.MAX_VALUE) {
-            cacheSizeInMb = 100;
-        } else {
-            int maxMb = (int) (max / 1000000);
-            cacheSizeInMb = maxMb / 5;
-            if (cacheSizeInMb < 2) {
-                cacheSizeInMb = 2;
-            }
-        }
-        
+        cacheSizeInMb = defaultCacheSizeInMb(Runtime.getRuntime().maxMemory());
         startupDistanceInMb = 50;      // Was 20 (2026-10-13).
+    }
+    
+    /**
+     * The default cache size in MB for a JVM whose maximum heap is maxMemory bytes
+     * (Runtime.maxMemory(), Long.MAX_VALUE for no maximum): a fifth of it, clamped as a
+     * value of cacheSizeInMb() is, to 4 to 100,000 (2026-11-09, bergdb 020-25, C3: it was
+     * at least 2 and not clamped above, so a heap under 20 MB gave 2 or 3, and one over 500
+     * GB more than 100,000), or 100 for no maximum.
+     */
+    static int defaultCacheSizeInMb(long maxMemory) {
+        if (maxMemory == Long.MAX_VALUE) {
+            return 100;
+        }
+        return clampCacheSizeInMb((int) Math.min(Integer.MAX_VALUE, maxMemory / 5000000));
     }
     
     /**

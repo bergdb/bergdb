@@ -392,6 +392,30 @@ public class PubTesterJavadocRest {
     }
 
 
+    /**
+     * DatabaseBuilder.cacheSizeInMb(): the default is a fifth of the JVM's maximum heap,
+     * within the clamp of 4 to 100,000 MB as a value given is, or 100 MB for a JVM without
+     * a maximum (bergdb 020-25, C3): a heap under 20 MB gave 2 or 3, and one over 500 GB more
+     * than 100,000.
+     */
+    @Nano
+    public static void testDefaultCacheSizeClamped() {
+        final long mb = 1000000;
+        Assert.assertEquals(100, DatabaseBuilderImp.defaultCacheSizeInMb(Long.MAX_VALUE));
+        Assert.assertEquals(200, DatabaseBuilderImp.defaultCacheSizeInMb(1000 * mb));
+        Assert.assertEquals(4, DatabaseBuilderImp.defaultCacheSizeInMb(20 * mb));
+        Assert.assertEquals(4, DatabaseBuilderImp.defaultCacheSizeInMb(16 * mb));
+        Assert.assertEquals(4, DatabaseBuilderImp.defaultCacheSizeInMb(1 * mb));
+        Assert.assertEquals(100000, DatabaseBuilderImp.defaultCacheSizeInMb(500000 * mb));
+        Assert.assertEquals(100000, DatabaseBuilderImp.defaultCacheSizeInMb(2000000 * mb));
+        try (Database db = Factory.database().memory().start()) {
+            Assert.assertEquals(
+                    DatabaseBuilderImp.defaultCacheSizeInMb(Runtime.getRuntime().maxMemory()),
+                    db.getCacheSizeInMb());
+        }
+    }
+
+
     // ======== Time, Duration ========
 
     /**

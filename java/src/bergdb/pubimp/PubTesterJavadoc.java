@@ -1038,7 +1038,8 @@ public class PubTesterJavadoc {
     @Nano
     public static void testBuilderSettings() {
         long max = Runtime.getRuntime().maxMemory();
-        int cache = max == Long.MAX_VALUE ? 100 : Math.max(2, (int) (max / 1000000) / 5);
+        int cache = max == Long.MAX_VALUE ? 100
+                : (int) Math.min(100000, Math.max(4, max / 1000000 / 5));
         try (Database db = Factory.database().memory().start()) {
             Assert.assertEquals(50, db.getStartupDistanceInMb());
             Assert.assertEquals(cache, db.getCacheSizeInMb());

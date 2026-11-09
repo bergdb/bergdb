@@ -109,7 +109,8 @@ public interface DatabaseBuilder {
      * the index nodes and values it holds in memory pass it, it evicts those used least
      * recently, down to three quarters of it. What the database must keep in memory (the
      * nodes changed since its startup position, of the order of the startup distance) is
-     * never evicted and may exceed it. The default is a fifth of the JVM's maximum heap.
+     * never evicted and may exceed it. The default is a fifth of the JVM's maximum heap,
+     * clamped as a value given is (bergdb 020-25, C3), or 100 if the JVM has no maximum.
      * Database.setCacheSizeInMb() changes it while the database runs, for that run (bergdb
      * 005-52). The value is clamped to 4 to 100,000.
      * 
