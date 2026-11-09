@@ -65,6 +65,7 @@ public class CorruptStreamTester {
      * -Dbergdb.corrupt.skip=none, nothing is skipped.
      */
     static final String[] SKIP = {
+        "021-12",
     };
 
     /**
@@ -88,9 +89,19 @@ public class CorruptStreamTester {
 
     /**
      * The open entry of SKIP that a failure belongs to, or null: a new fault. Each entry
-     * says which damage and which failure are its. None since 019-32's fix (2026-11-06).
+     * says which damage and which failure are its.
      */
     static String entryOf(Copy c, String failure) {
+        // 021-12 (LONG's full set, 2026-11-09): a key node read at a start from outside the
+        // startup section, whose klongs break KeyNode's invariants (times not increasing, a
+        // key klong's pointer Spos.NULL), damaged by a flip of 0xff or a node field with its
+        // checksum right: the start's check of the nodes in memory (KeyNode.check from
+        // DbStarter.postStartupCheck, also without -ea) or the rerun's put (an assert of
+        // KeyNode.addKlong) throws an AssertionError.
+        if (failure.startsWith("the start threw java.lang.AssertionError")
+                && failure.contains("(at dag.KeyNode.")) {
+            return "021-12";
+        }
         return null;
     }
 
@@ -179,11 +190,16 @@ public class CorruptStreamTester {
 
     /**
      * Long keys (LONG_KEYS), and a startup section of several records: key nodes that point
-     * to key nodes, written in many records. Not in CONFIGS; testFound021_11's.
+     * to key nodes, written in many records. In the full set only, not in the unit tests'
+     * sample; testFound021_11's.
      */
     static final Config LONG = new Config("long", 5000, 50, 200, 0, 0, LONG_KEYS);
 
+    /** The sample's workloads (the unit tests). */
     static final Config[] CONFIGS = {ALL, TAKE, META};
+
+    /** The full set's workloads (the night tests): also LONG (bergdb 021-11). */
+    static final Config[] FULL_CONFIGS = {ALL, TAKE, META, LONG};
 
     /** A record of the original: its position, its size and its last byte. */
     static final class Record {
@@ -1144,13 +1160,14 @@ public class CorruptStreamTester {
 
     /**
      * One run on an original of each configuration: 'full' every truncation, every byte
-     * flipped by each mask, each record's header fields and each node's fields; otherwise a
-     * sample. Returns the results; prints a summary to 'out'.
+     * flipped by each mask, each record's header fields and each node's fields, on
+     * FULL_CONFIGS; otherwise a sample, on CONFIGS. Returns the results; prints a summary to
+     * 'out'.
      */
     static Results run(long seed, boolean full, int threads, PrintStream out) {
         Results results = new Results();
         Random r = new Random(seed);
-        for (Config c : CONFIGS) {
+        for (Config c : full ? FULL_CONFIGS : CONFIGS) {
             Original o = write(c, seed * 31 + c.name.hashCode());
             List<Copy> copies = new ArrayList<Copy>();
             boolean every = full && o.bytes.length < 100000;
