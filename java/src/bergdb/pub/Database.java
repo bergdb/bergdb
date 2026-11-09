@@ -243,6 +243,22 @@ public interface Database extends AutoCloseable {
      * </p>
      *
      * <p>
+     * Reclaim works in iterations, not as the duration passes (bergdb 011-04): one begins at
+     * a commit when the stream has grown by more than twice the startup distance
+     * (getStartupDistanceInMb()) since the last one began, and a quarter of the duration has
+     * passed since then. At the commits that follow, it rewrites the live values stored
+     * before its cut point, a part at each, at most a quarter of what the stream has grown
+     * by since it began. When it has rewritten them all, its end is older than the retain
+     * duration and the startup section has moved past it, the stream is cut at its cut point
+     * and getFirstAvailableLookupTime() moves; until then every earlier state stays
+     * readable. So however short the duration, nothing is cut before the stream has grown by
+     * about four times the startup distance in a small database, after about 200 MB of puts
+     * with the default 50 MB and 20 to 30 MB with 5 MB (measured, bergdb 020-24-03, U3-9),
+     * and by more in a database with much live data, which the first iteration rewrites. A
+     * smaller startup distance cuts sooner.
+     * </p>
+     *
+     * <p>
      * Use Duration.MAX to keep old states available forever. Note, that this will increase the
      * database storage space indefinitely even when data is deleted from the database. This could
      * be a valid setting however. The retain duration can be decreased later, also while the

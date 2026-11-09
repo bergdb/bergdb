@@ -297,7 +297,10 @@ public interface Connection extends ReadInterface {
     /**
      * Deletes a key-value entry from the database. If no entry has the key, nothing is
      * deleted, but the delete is still a transaction of its own, with a time of its own,
-     * which this method commits and returns, as for a key with an entry.
+     * which this method commits and returns, as for a key with an entry. The value stays
+     * readable at earlier lookup times, as every earlier state, until reclaim cuts them
+     * (Database.setRetainDuration()), and with the default retain duration forever: a delete
+     * does not erase a key's history (bergdb 020-24-01, U1-11).
      * 
      * @param key
      *             The key of the key-value entry. Must begin with "/".

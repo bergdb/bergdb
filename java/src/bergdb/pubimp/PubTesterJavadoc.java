@@ -2342,4 +2342,59 @@ public class PubTesterJavadoc {
             db.close();
         }
     }
+
+    /**
+     * Database.setRetainDuration() (bergdb 020-24-03, U3-9): with a retain duration of 1 s
+     * and a startup distance of 5 MB, nothing is cut before the stream has grown by twice
+     * the startup distance (here 100 puts of 100 kB); then the first cut comes. A deleted
+     * value (Connection.delete(), 020-24-01, U1-11) stays readable at the earlier lookup
+     * time until the cut passes it; then a get and a primary scan at that time throw
+     * LookupTimeNotAvailableException, whose message closes its parentheses (U1-12).
+     */
+    @Nano
+    public static void testReclaimCutsLater() {
+        final TestClock clock = new TestClock();
+        clock.setTime(Time.utc("2026-01-01"));
+        final Database db = Factory.database().memory().clock(clock).startupDistanceInMb(5)
+                .start();
+        try {
+            final Connection c = db.connection();
+            db.setRetainDuration(Duration.seconds(1));
+            final Time first = db.getFirstAvailableLookupTime();
+            final Time put = c.put("/p.txt", "personal").getTime();
+            final long step = Duration.seconds(1000).units();
+            clock.setTime(Time.units(clock.getTime() + step));
+            final Time deleted = c.delete("/p.txt").getTime();
+            byte[] value = new byte[100000];
+            int i = 0;
+            for (; i < 1000 && db.getFirstAvailableLookupTime().equals(first); i++) {
+                clock.setTime(Time.units(clock.getTime() + step));
+                c.put("/v/" + (i % 10) + ".bin", value);
+                if (i % 20 == 0) {
+                    c.setLookupTime(put);
+                    Assert.assertEquals("personal", c.get("/p.txt", String.class));
+                    c.setLookupTime(deleted);
+                    Assert.assertNull(c.get("/p.txt", String.class));
+                }
+            }
+            Assert.assertTrue("the first cut after " + i + " puts", i > 100 && i < 1000);
+            Assert.assertTrue(db.getFirstAvailableLookupTime().units() > deleted.units());
+            c.setLookupTime(put);
+            LookupTimeNotAvailableException e = assertThrows("get",
+                    LookupTimeNotAvailableException.class, () -> c.get("/p.txt", String.class));
+            LookupTimeNotAvailableException e2 = assertThrows("scan",
+                    LookupTimeNotAvailableException.class,
+                    () -> c.usePrimary(String.class).dir("/").kvs().iterator().hasNext());
+            for (String m : new String[] {e.getMessage(), e2.getMessage()}) {
+                Assert.assertEquals(m, m.chars().filter(ch -> ch == '(').count(),
+                        m.chars().filter(ch -> ch == ')').count());
+                Assert.assertTrue(m, m.contains(" UTC): the first time available for lookup "
+                        + "is "));
+            }
+            c.setLookupTime(Time.MAX);
+            Assert.assertNull(c.get("/p.txt", String.class));
+        } finally {
+            db.close();
+        }
+    }
 }

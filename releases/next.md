@@ -688,3 +688,17 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   as a reader at another lookup time. `Connection` adds that `connection()`
   sets the lookup time of the thread's connection to `Time.MAX` at each call,
   so code that reads at a lookup time keeps its connection.
+* **When reclaim cuts, and a delete's history** (bergdb 020-24-03, U3-9;
+  020-24-01, U1-11): `Database.setRetainDuration()` says when reclaim
+  starts and cuts: an iteration begins when the stream has grown by more
+  than twice the startup distance and a quarter of the duration has passed,
+  and the cut comes when it has rewritten the live values and its end is
+  older than the duration; so nothing is cut before the stream has grown by
+  about four times the startup distance in a small database (about 200 MB of
+  puts with the default 50 MB), however short the duration. A user who set
+  one second and wrote 140 MB saw no state expire. `Connection.delete()` and
+  the package page say that a deleted value stays readable at earlier lookup
+  times until reclaim cuts them, forever by default. The message of
+  `LookupTimeNotAvailableException` closes its parenthesis: "Cannot lookup at
+  time T (UTC): the first time available for lookup is F (UTC)."; it had
+  "(T's UTC, the first time ... F (F's UTC).".

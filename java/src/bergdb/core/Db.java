@@ -1771,7 +1771,7 @@ public class Db implements AutoCloseable {
             String firstTimeString = DbUtil.dbTimeToUtc(firstAvailable);
             throw new LookupTimeNotAvailableException("Cannot lookup at time " + lookupTime 
                     + " (" + lookupTimeString 
-                    + ", the first time available for lookup is " 
+                    + "): the first time available for lookup is " 
                     + firstAvailable + " (" + firstTimeString + ").");
         }
 
@@ -1846,7 +1846,7 @@ public class Db implements AutoCloseable {
             String firstString = DbUtil.dbTimeToUtc(first);
             throw new LookupTimeNotAvailableException("Cannot lookup at time " + g.lookupTime 
                     + " (" + lookupTimeString 
-                    + ", the first time available for lookup is " 
+                    + "): the first time available for lookup is " 
                     + first + " (" + firstString + ").");
         }
         
