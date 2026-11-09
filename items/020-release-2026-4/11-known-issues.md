@@ -23,19 +23,18 @@ section 9; 020-04's and 020-07's questions; the lists of 015, 019 and
 
 ## 1. In short
 
-At `fd6dd09` every fault of 020-01's, 020-08's and 020-10's lists is
+On `main` at `e92a95a` (and this update) every fault of 020-01's,
+020-08's and 020-10's lists is
 fixed, gone or not a fault, and so is every finding of the night's
 reviews, but the open rows below; the one approval left to Frans is the
 spec's text (020-07) under 018-01's rule, a step of the release; the
 night tests, `night.sh` and step 4 are still to run. The open rows (since
 "020-11, the open rows", 2026-11-09: N10-test, N4-doc, BK-015, BK-020 and
-BK-020-10 closed, 020-04 Q6 and 020-07 Q2 to Q5 decided):
+BK-020-10 closed, 020-04 Q6 and 020-07 Q2 to Q5 decided; since e92a95a:
+R3-F1, R3-N2 and R3-N3 fixed):
 
 | Row | What | With |
 |---|---|---|
-| R3-F1 | A String starting with "bergo" and U+0001 taken for a format-1 object | o02 (objects) |
-| R3-N3 | DbString encodes before its size check: OutOfMemoryError over 2^31 bytes | o02 |
-| R3-N2 | `Entries.suffix`: ukey and ikey differ for a name starting with '.' | o02 (Javadoc) |
 | N5 / B3 | `DbObject` and its value classes still in `pubimp` | o02, step B3 |
 | R46-L1 | `NodeCollection.followStreamPointer`: a reader's drop also for the writer | C (low, hardening) |
 | R46-L2 | `Handle` and 009-02 words on `dropIfEmpty`'s written position | C (low, words) |
@@ -70,13 +69,13 @@ the night tests of tonight's harnesses, `night.sh`, step 4 (section 7).
 | BG6 | Three index behaviours for null | fixed | 8185c07, 9a22bd6; PubTester.testOneIndexRule |
 | DB7 | Raw double bits, NaN payloads, kept | fixed | 8185c07; DbObjectFormatTester.testDoubles |
 | N1 | A null String fails every start | fixed | 8185c07; PubTesterIndexJobs.testBuildOverAnObjectItCannotIndex |
-| N2 | User data gives an Error in rw() | fixed but R3-N3 | S2-F6, F8, F21, F26 gone; 7681710 (BadInit in rw()) |
+| N2 | User data gives an Error in rw() | fixed | S2-F6, F8, F21, F26 gone; 7681710; e92a95a (R3-N3) |
 | N4 | The kind of a value is not stored | partly | 8185c07 (0x82 and the full check; the guess documented) |
 | N4-doc | Put Javadoc silent on objects at suffixed keys | fixed | 020-11's rows; ObjectKeysTester |
 | T1, H0 | The vectors; a reference codec; mutants | done | 9a45e06; ObjectFormatTester, 7 tests; night not run |
 | T2 to T7 | The vectors by DbObject; refusals; integers; sizes | done | 8185c07; DbObjectFormatTester, 15 tests |
 | T8 | Format-1 objects and definitions refused | done | 38afb1a; PubTester.testFormat1ObjectRefused and 2 more |
-| T9 | "A String value is never an object" | claim fails | 38afb1a; testKindOfValue tests "x" only; see R3-F1 |
+| T9 | "A String value is never an object" | fixed | e92a95a (R3-F1); PubTester.testStringThatStartsAsFormat1 |
 | T10 | A long index over one integer | done | 8185c07; PubTester.testLongIndexOverOneInteger |
 | T11, H1 | 020-09's G1-G122, K1-K18, W1-W36 | done | ca67411; DataObjectsTester, all 176 IDs; night not run |
 | 020-04 N1-N14 | The no-null tests | done | N1 to N14 as planned under (c); N2, N6 to N8 were (d)'s, not made |
@@ -89,7 +88,7 @@ Tonight's reviews of the objects' steps:
 | ID | What | State | Commit; test (ran) |
 |---|---|---|---|
 | R2-1 | Step 2 lost 019-42's restart test | fixed | 38afb1a; testBuildOverAnObjectItCannotIndex |
-| R2-2 | R15 sizes give Errors | fixed but R3-N3 | 38afb1a; DbObjectFormatTester.testSizesRefused |
+| R2-2 | R15 sizes give Errors | fixed | 38afb1a, e92a95a; DbObjectFormatTester.testSizesRefused |
 | R2-3 | DbString's UTF-8 field: a data race | fixed | 38afb1a; testValueClassesClosed |
 | R2-4 | DbValue's public constructor; DbObject not final | fixed | 38afb1a; testValueClassesClosed |
 | R2-5 | A cycle's message with an empty place | fixed | 38afb1a; testCyclePlaces |
@@ -100,20 +99,24 @@ Tonight's reviews of the objects' steps:
 | R8-5 | V9 takes a bounded type variable | fixed | 7681710; testReviewOfStep8 |
 | R8-6 | Scans do not check the class first | fixed | 7681710, 5b08db5; testReviewOfStep8, testScanTypes |
 | R8-7 | void.class gives a NullPointerException | fixed | 7681710; testReviewOfStep8 |
-| R3-F1 | A String "bergo"+U+0001 taken for format 1 | open | isFormat1Object, entryLevels: 6 bytes (below) |
-| R3-N2 | `Entries.suffix`: ukey "/d/.h" none, ikey "h" | open | its Javadoc gives the ukey's rule; callers give ikeys |
-| R3-N3 | DbString encodes, then checks the size | open | DbString.java:42; String values: StringUtil.toBytes |
+| R3-F1 | A String "bergo"+U+0001 taken for format 1 | fixed | e92a95a; PubTester.testStringThatStartsAsFormat1 |
+| R3-N2 | `Entries.suffix`: ukey "/d/.h" none, ikey "h" | fixed | e92a95a: "h" for both; testSuffixOfANameThat... |
+| R3-N3 | DbString encodes, then checks the size | fixed | e92a95a; testStringValueCountedFirst; night: Huge |
 | R3-x | A bytes field into a String field repairs | not a fault | 020-09, 5.6 (delegated); not 021-06's rule |
 
 R3-F1 in detail (the review of 38afb1a, probed at `c126d7d`): a String
-value whose text starts with "bergo" and U+0001, at an object key, makes
+value whose text starts with "bergo" and U+0001, at an object key, made
 `get(key, Object.class)` throw `ObjectCreationException` "format-1";
-`usePrimary(String.class)` leaves it out; `usePrimary(Object.class)` and a
-class throw at it; in a directory with an index, a put of it is refused
-(`w()` and `rw()`), a build over it fails, and a put over it or a delete of
-it is refused. The objects agent has it (decided: a String put is never
-format 1; format 1 recognised by its structure, not 6 bytes; the guess
-documented).
+`usePrimary(String.class)` left it out; `usePrimary(Object.class)` and a
+class threw at it; in a directory with an index, a put of it was refused
+(`w()` and `rw()`), a build over it failed, and a put over it or a delete
+of it was refused. Fixed in e92a95a (decided under the delegation: a
+String put is never format 1; format 1 is told by its structure, its
+field count and a field table that fits, not by 6 bytes; the guess is in
+`Connection.get`'s Javadoc): `PubTester.testStringThatStartsAsFormat1`
+puts such a String and checks the gets, the scans of each type, the
+puts, the delete and the index; `ObjectFormatTester.testIsFormat1` and
+`Entries.testIsFormat1Object` the structure.
 
 
 ## 3. Indexes: F3 to F8 (020-01) and 020-10, section 8
@@ -238,8 +241,9 @@ Notes:
   `Connection` says that an object is put only at an object key and is
   refused elsewhere ("Bad key"), and the package page's Objects section
   what a suffix is (the name's last '.'; a directory's '.' is not one;
-  ".h" has "h", as the objects agent settles `Entries.suffix` for ikeys);
-  `ObjectKeysTester` pins its examples.
+  ".h" has "h", as e92a95a settles `Entries.suffix` for ukeys and ikeys
+  alike); `ObjectKeysTester.testObjectKeysOfThePutJavadoc` pins its
+  examples in `w()` and `rw()`.
 
 
 ## 7. Still to run or measure
@@ -270,3 +274,7 @@ entries closed; 020-10's race test names; 020-04's Q2 to Q6 and 020-07's
 Q2 to Q7 recorded as decided, Q6 of 020-04 and Q2 to Q5 of 020-07 under
 Frans's delegation of 22:17, as recommended. Left for Frans: 020-07's
 approval.
+
+2026-11-09. R3-F1, R3-N2 and R3-N3 fixed on `main` in e92a95a (the
+objects agent): their rows, N2's, R2-2's and T9's brought up to date;
+the tests read and run.
