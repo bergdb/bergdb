@@ -2473,4 +2473,27 @@ public class PubTesterJavadoc {
             Assert.assertEquals(t2, c.getLookupTime());
         }
     }
+
+    /**
+     * Time.resolve() (bergdb 020-24-01, U1-9): a local time that summer time skips or
+     * repeats is taken as standard time: in Europe/Stockholm a skipped 02:30 is 01:30 UTC
+     * (03:30 summer time) and a repeated one 01:30 UTC, the second; so for a time of day
+     * and a minus time with one; and in America/New_York, as a check of the rule.
+     */
+    @Nano
+    public static void testSummerTimeLocalTimes() {
+        java.util.TimeZone se = java.util.TimeZone.getTimeZone("Europe/Stockholm");
+        Assert.assertEquals(Time.utc("2026-03-29 01:30"), Time.resolve(se, "2026-03-29 02:30"));
+        Assert.assertEquals(Time.utc("2026-03-29 01:30"), Time.resolve(se, "2026-03-29 03:30"));
+        Assert.assertEquals(Time.utc("2026-10-25 01:30"), Time.resolve(se, "2026-10-25 02:30"));
+        Assert.assertEquals(Time.utc("2026-10-25 01:59"), Time.resolve(se, "2026-10-25 02:59"));
+        Assert.assertEquals(Time.utc("2026-10-24 23:59"), Time.resolve(se, "2026-10-25 01:59"));
+        Assert.assertEquals(Time.utc("2026-03-29 01:30"), Time.resolve(se,
+                Time.utc("2026-03-29 12:00"), "02:30"));
+        Assert.assertEquals(Time.utc("2026-03-29 01:30"), Time.resolve(se,
+                Time.utc("2026-03-30 12:00"), "-1 d 02:30"));
+        java.util.TimeZone ny = java.util.TimeZone.getTimeZone("America/New_York");
+        Assert.assertEquals(Time.utc("2026-03-08 07:30"), Time.resolve(ny, "2026-03-08 02:30"));
+        Assert.assertEquals(Time.utc("2026-11-01 06:30"), Time.resolve(ny, "2026-11-01 01:30"));
+    }
 }

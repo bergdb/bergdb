@@ -186,6 +186,13 @@ public class Time {
      * day's 00:00 and 13:00. A fraction of a second, and a minus time's duration, its number
      * times its unit taken exactly, are rounded to Time's resolution, 100 ns, half up.</p>
      * 
+     * <p>A local time that a change to or from summer time skips or repeats in the time
+     * zone is not refused: it is taken as standard time, as java.util.GregorianCalendar takes
+     * it (bergdb 020-24-01, U1-9). In Europe/Stockholm, "2026-03-29 02:30", which the clocks
+     * skip, is 01:30 UTC, the time they show as 03:30; "2026-10-25 02:30", which they show
+     * twice, is 01:30 UTC, the second time. A time of day, also after a minus time, is taken
+     * so too.</p>
+     * 
      * @throws BadFormatException If the time string does not follow the format above, or a
      *             field is outside its range; or if the time is outside Time's range, before
      *             1970 or after 2198-05-04 23:50:03.7927935 UTC, as an absolute time or a

@@ -718,3 +718,9 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   at lookup time t reads the state that the transactions of time t and
   earlier made, the one of time t included, and that a null throws
   `IllegalArgumentException`.
+* **A local time in a change of summer time** (bergdb 020-24-01, U1-9):
+  `Time.resolve()` says what it does with a local time that the change to or
+  from summer time skips or repeats: it takes it as standard time, as
+  `java.util.GregorianCalendar` does, so a skipped 02:30 is the time the
+  clocks show as 03:30, and a repeated one is the second; it was silent, and
+  since 020-21 says that the parse is strict.
