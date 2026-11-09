@@ -58,4 +58,55 @@ theorem example_run :
     have := (index_is_function (n := 0) (d := ⟨1, (), true⟩) r10 (at_now _) rfl rfl 0 7).mp h7
     cases this
 
+/-- A second run: the index of the first is deleted, its cleanup scans, deletes
+its one entry, finds none left and deletes the marker; the name is created
+again, with a new G (6, the latest time then). -/
+theorem example_run2 :
+    ∃ s : Sys Nat Unit Nat Unit, Reach exSpec s ∧ s.st.dfn 0 = some ⟨6, (), false⟩ ∧
+      s.st.mark 0 1 = false ∧ s.m.cln 0 1 = none ∧ ∀ k l, ¬ s.st.ent 0 1 k l := by
+  have r0 : Reach exSpec (Sys.init (F := Unit) (L := Nat) (W := Unit) exData) := Reach.init _
+  have r1 := Reach.step r0 (Step.aCreate _ 0 () rfl rfl rfl)
+  have r2 := Reach.step r1 (Step.aCreateMap _ 0 1 () rfl)
+  have r3 := Reach.step r2 (Step.bReadE _ 0 1 _ 0 rfl rfl (by
+    intro k hk
+    show (if k = 0 then some 7 else none) = none
+    rw [ite_eq_right (by omega)]))
+  have r4 := Reach.step r3 (Step.bRead _ 0 1 _ 0 1 rfl rfl rfl (by decide) (by decide))
+  have r5 := Reach.step r4 (Step.bCheck _ 0 1 _ ⟨1, (), false⟩ rfl rfl (Or.inl rfl) rfl rfl)
+  have r6 := Reach.step r5 (Step.bCommit _ 0 1 _ rfl rfl (by decide)
+    (fun k _ _ _ => Nat.zero_le _))
+  have r7 := Reach.step r6 (Step.bActivate _ 0 1 _ ⟨1, (), false⟩ rfl rfl rfl rfl rfl)
+  -- the deletion, its maps and its cleanup's thread
+  have r8 := Reach.step r7 (Step.aDelete _ 0 ⟨1, (), true⟩ rfl rfl rfl)
+  have r9 := Reach.step r8 (Step.aDeleteMap _ 0 1 rfl)
+  -- the cleanup: a scan that finds the entry (7, key 0), its deletion
+  have r10 := Reach.step r9 (Step.cScan _ 0 1 _ (fun k l => k = 0 ∧ l = 7) rfl rfl)
+  have r11 := Reach.step r10 (Step.cDel _ 0 1 _ rfl rfl)
+  -- a scan from the prefix that finds none, and the marker's deletion
+  have r12 := Reach.step r11 (Step.cScanEnd _ 0 1 _ rfl rfl (by
+    intro k l h
+    obtain ⟨h1, h2⟩ := h
+    rcases h1 with h1 | ⟨_, _, _, hk, hl⟩
+    · exact h1
+    · have hk0 : k = 0 := by change k < 1 at hk; omega
+      subst hk0
+      have hl7 : l = 7 := by
+        change some 7 = some l at hl
+        cases hl; rfl
+      exact h2 ⟨rfl, rfl, rfl, hl7⟩))
+  have r13 := Reach.step r12 (Step.cEnd _ 0 1 _ rfl rfl)
+  -- the name created again: G = 6
+  have r14 := Reach.step r13 (Step.aCreate _ 0 () rfl rfl rfl)
+  refine ⟨_, r14, rfl, rfl, rfl, ?_⟩
+  intro k l h
+  obtain ⟨h1, h2⟩ := h
+  rcases h1 with h1 | ⟨_, _, _, hk, hl⟩
+  · exact h1
+  · have hk0 : k = 0 := by change k < 1 at hk; omega
+    subst hk0
+    have hl7 : l = 7 := by
+      change some 7 = some l at hl
+      cases hl; rfl
+    exact h2 ⟨rfl, rfl, rfl, hl7⟩
+
 end BergDB.Index

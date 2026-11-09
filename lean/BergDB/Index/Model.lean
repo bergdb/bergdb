@@ -484,6 +484,11 @@ inductive Step (sp : Spec V F L) : Sys V F L W → Sys V F L W → Prop where
   | cAbort (s : Sys V F L W) (n : Name) (g : Gen) (c : CSt L) :
       s.m.cln n g = some c →
       Step sp s { s with m := { s.m with cln := upd2 s.m.cln n g none } }
+  /-- Reclaim's cut of lookup times: the oldest times are gone; a lookup at
+  one of them is refused (`LookupTimeNotAvailableException`), and so is a
+  transaction whose R is one of them, which `wDrop` and `bRetry` allow. -/
+  | cut (s : Sys V F L W) (j : Nat) :
+      Step sp s { s with past := s.past.take j }
   /-- A crash or a stop, then a start: memory lost. The stream is the latest
   one or, as a crash may lose the last committed transactions (levels.md,
   section 8), one of an earlier time; the times after it are gone. -/

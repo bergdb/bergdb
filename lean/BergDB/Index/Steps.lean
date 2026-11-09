@@ -1300,6 +1300,7 @@ theorem inv_step {sp : Spec V F L} {s s' : Sys V F L W} (h : Inv sp s) (hst : St
   | cEnd n g c hc hpc =>
     exact h.commit (step_cEnd h.sinv h.minv hc hpc rfl rfl rfl rfl rfl rfl rfl rfl)
   | cAbort n g c _ => exact h.setM (minv_cAbort h.minv)
+  | cut j => exact ⟨h.sinv, fun x hx => h.past x (List.mem_of_mem_take hx), h.minv⟩
   | crash pre x rest he => exact inv_crash h he
 
 /-- Every reachable system has the invariant. -/

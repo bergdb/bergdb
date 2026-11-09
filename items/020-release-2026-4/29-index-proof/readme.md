@@ -97,7 +97,9 @@ wins, 015-41).
   step again from its start, unlocked (`underLock` released the lock);
   `bAbort`, a build's thread that ends without its activation (FAILED, or a
   stop), its lock released; `cAbort`, a cleanup's thread that ends, its
-  marker kept for the next start.
+  marker kept for the next start. And `cut`, reclaim's cut of lookup times:
+  the oldest streams gone from the past (a lookup or a transaction at a time
+  cut is refused, which `wDrop` and `bRetry` allow).
 * **Where the model allows more than the code**, so that the theorems hold
   for the code's choices too: a build step reads any range of keys up to E
   (the code: 25 values or 1 MB); E is any key after which no value has an
@@ -106,8 +108,11 @@ wins, 015-41).
   index set of any key, and a transaction in flight may end without a commit
   at any time (`wDrop`: refused, then run again as a new transaction, or an
   exception); a crash may lose committed transactions.
-* **Left out**, as in 020-26, section 2.4: writes through the Core, key
-  replace, reclaim's cut of lookup times, format 1. And liveness (section 7).
+* **Left out**, as in 020-26, section 2.4: writes through the Core (020-22:
+  undefined) and key replace (`${transactionTime}`, 020-10, section 5.3). And
+  liveness (section 7). Format 1 is in as f with no entry for a value of
+  format 1, as the code takes a previous value of format 1; a put of one is
+  refused (`wDrop`) and a build over one fails (`bAbort`).
 
 `G` is the latest transaction's time when the creation runs, and at least 1,
 as in the code (`Math.max(1, db.lookupTime(Long.MAX_VALUE))`); 020-26's
@@ -219,13 +224,19 @@ every R, so a transaction with one of them in its read set will be refused,
 and the other keys keep their values.
 
 
-## 5. The run
+## 5. The runs
 
-`example_run` (Example.lean) checks that the model is not empty: a database
-with the value 7 at key 0 creates an index, builds it in one step, activates
-it; a writer puts 9 at key 0; the index then has the entry 9 and, by
-`index_is_function` applied to that run, not the entry 7. Each step's
-conditions are met by computation (`rfl`, `decide`).
+Two runs (Example.lean) check that the model is not empty, each step's
+conditions met by computation (`rfl`, `decide`):
+
+* `example_run`: a database with the value 7 at key 0 and no transaction yet
+  creates an index (G = 1), builds it in one step, activates it; a writer
+  puts 9 at key 0; the index then has the entry 9 and, by
+  `index_is_function` applied to that run, not the entry 7.
+* `example_run2`: the same index is deleted; its cleanup scans, deletes its
+  one entry, scans from the prefix and finds none, deletes the marker; the
+  name is created again with G = 6, the latest time then, and generation 1
+  has no entry, no marker and no cleanup left.
 
 
 ## 6. How to check
@@ -234,7 +245,7 @@ In the clone (`/Users/f/fl/bench/2026-11-09/clone-l29`), or wherever the
 branch is checked out:
 
     cd lean
-    lake build BergDB           # 4 s from clean, the library alone
+    lake build BergDB           # about 5 s from clean, the library alone
 
 and the axioms, from a file outside the library with
 `lake env lean Axioms.lean`:
@@ -252,8 +263,10 @@ and the axioms, from a file outside the library with
     #print axioms BergDB.Index.cleanup_done_empty
     #print axioms BergDB.Index.writer_sees_live
     #print axioms BergDB.Index.example_run
+    #print axioms BergDB.Index.example_run2
 
-Each prints `[propext, Classical.choice, Quot.sound]` (2026-11-09).
+Each prints `[propext, Classical.choice, Quot.sound]`, or a part of it
+(`example_run2`: no `Classical.choice`), 2026-11-09.
 `grep -rn sorry lean/BergDB` finds none. The full `lake build` (SIS and the
 checker too) was not run in the clone: the library is new and imports
 nothing of SIS, and a build of SIS from clean would have loaded the shared
@@ -267,7 +280,7 @@ target.
 transactions of any keys, build steps of any size, generations, deletions,
 creations again and crashes (also crashes that lose committed
 transactions): every invariant of 020-26, section 3 (section 3 above), with
-no `sorry`; 2,469 lines. So 020-26's safety results hold beyond its bounds and
+no `sorry`; 2,526 lines. So 020-26's safety results hold beyond its bounds and
 beyond its one name, one directory and one key per transaction: no design
 fault, for every size, in the protocol as modelled.
 
@@ -287,7 +300,7 @@ fault, for every size, in the protocol as modelled.
   crashes, a definition in state building becomes active or is deleted. Not
   started.
 * **What 020-26 left out and this model too**: writes through the Core
-  (020-22: undefined), key replace, reclaim's cut of lookup times, format 1.
+  (020-22: undefined), key replace (020-10, section 5.3).
 * **The Java code**: the theorems are about the model; the model follows
   020-26's and the code at `83e8e13` with 020-18's fixes
   (`RwEnvironmentImp.indexEntries` for the writers' read sets and the
@@ -323,6 +336,8 @@ Log
   `bAbort` and `cAbort` (runs of the code the model had not), and G as the
   code takes it, max(1, the latest time), with the freshness invariant
   weakened to match (a live generation at most the latest time).
+  18:41: `cut`, reclaim's cut of lookup times; a second run, with the
+  deletion, the cleanup and a creation again.
 
 Each step: `lake build BergDB` clean, no `sorry`, the standard axioms only.
 Nothing in 2026.4. For the coordinator: a line for this subitem in 020's
