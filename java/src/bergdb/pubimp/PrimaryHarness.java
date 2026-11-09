@@ -19,6 +19,7 @@ import bergdb.pub.Connection;
 import bergdb.pub.DataFormatException;
 import bergdb.pub.Database;
 import bergdb.pub.DbObject;
+import bergdb.pub.Duration;
 import bergdb.pub.Factory;
 import bergdb.pub.Kv;
 import bergdb.pub.ObjectCreationException;
@@ -27,6 +28,8 @@ import bergdb.pub.TestClock;
 import bergdb.pub.Time;
 import bergdb.pub.UsePrimaryBuilder;
 import bergdb.pub.WBuilder;
+import bergdb.pub.util.Clock;
+import bergdb.pub.util.LookupTimeNotAvailableException;
 import bergdb.stream.MemoryStream;
 
 /**
@@ -315,15 +318,35 @@ public class PrimaryHarness {
     byte[] objectBytes;
     long listings;
     long listed;
+    /**
+     * Reclaim on (bergdb 020-17): a retain duration of a second, the least, and the clock
+     * moved 2,000 times as far, so that reclaim's cut passes old lookup times; a listing at
+     * a time behind the cut throws LookupTimeNotAvailableException (020-10, section 3.6).
+     */
+    final boolean reclaim;
+    /** The lookup time of the listing that runs, for a LookupTimeNotAvailableException. */
+    long listTime;
+    /** The listings that met reclaim's cut. */
+    long cut;
 
     PrimaryHarness(long seed) {
+        this(seed, false);
+    }
+
+    PrimaryHarness(long seed, boolean reclaim) {
         this.seed = seed;
         this.random = new Random(seed);
+        this.reclaim = reclaim;
     }
 
     /** Runs steps random steps on one seed; fails with the seed, the step and the last calls. */
     public static PrimaryHarness run(long seed, int steps) {
-        PrimaryHarness h = new PrimaryHarness(seed);
+        return run(seed, steps, false);
+    }
+
+    /** As run(seed, steps); with reclaim on if reclaim (bergdb 020-17). */
+    static PrimaryHarness run(long seed, int steps, boolean reclaim) {
+        PrimaryHarness h = new PrimaryHarness(seed, reclaim);
         try {
             h.start(new MemoryStream());
             h.firstObject();
@@ -353,6 +376,10 @@ public class PrimaryHarness {
     private void start(MemoryStream m) {
         stream = m;
         db = ((DatabaseBuilderImp) Factory.database()).mainStream(m).clock(clock).start();
+        if (reclaim) {
+            db.setRetainDuration(Duration.units(Clock.UNITS_PER_SEC));
+        }
+        IndexHarness.startupDistance(db);
         conns[0] = db.connection();
         conns[1] = db.newConnection();
     }
@@ -375,7 +402,7 @@ public class PrimaryHarness {
 
     private void step() {
         if (random.nextInt(5) == 0) {
-            clock.setTime(Time.units(clock.getTime() + random.nextInt(1000)));
+            clock.setTime(Time.units(clock.getTime() + random.nextInt(1000) * (reclaim ? 2000 : 1)));
         }
         Connection c = conns[random.nextInt(2)];
         int r = random.nextInt(100);
@@ -531,8 +558,26 @@ public class PrimaryHarness {
         commit(w.execute().getTime().units(), keys, values);
     }
 
-    /** A listing, checked against the reference; now and then iterated twice. */
+    /**
+     * A listing, checked against the reference; now and then iterated twice. With reclaim, a
+     * LookupTimeNotAvailableException is right for a lookup time behind reclaim's cut, at any
+     * call of the listing (020-10, section 3.6), and a finding for any other.
+     */
     private void list(Connection c) {
+        try {
+            listChecked(c);
+        } catch (LookupTimeNotAvailableException e) {
+            long first = db.getFirstAvailableLookupTime().units();
+            if (!reclaim || listTime >= first) {
+                throw new AssertionError("a listing at " + listTime + " threw " + e
+                        + ", and the first available lookup time is " + first, e);
+            }
+            log("the listing at " + listTime + " is behind reclaim's cut, at " + first);
+            cut++;
+        }
+    }
+
+    private void listChecked(Connection c) {
         int d = random.nextInt(10);
         String dir = d < 7 ? "/h/" : d < 8 ? "/h/sub/" : d < 9 ? "/" : "/h0/";
         Class<?> type = TYPES[random.nextInt(TYPES.length)];
@@ -558,6 +603,7 @@ public class PrimaryHarness {
             c.setLookupTime(Time.units(t));
             timeString = "before the first, at " + t;
         }
+        listTime = t;
 
         String startAt = null;
         boolean inclusive = true;
@@ -751,16 +797,21 @@ public class PrimaryHarness {
         }
     }
 
-    /** Usage: PrimaryHarness [SEED [STEPS [RUNS]]]. */
+    /**
+     * Usage: PrimaryHarness [SEED [STEPS [RUNS [RECLAIM]]]]: RECLAIM 1 turns reclaim on
+     * (bergdb 020-17).
+     */
     public static void main(String[] args) {
         long seed = args.length > 0 ? Long.parseLong(args[0]) : System.nanoTime();
         int steps = args.length > 1 ? Integer.parseInt(args[1]) : 5000;
         int runs = args.length > 2 ? Integer.parseInt(args[2]) : 1;
+        boolean reclaim = args.length > 3 && args[3].equals("1");
         for (int i = 0; i < runs; i++) {
             long t0 = System.nanoTime();
-            PrimaryHarness h = run(seed + i, steps);
+            PrimaryHarness h = run(seed + i, steps, reclaim);
             System.out.println("PrimaryHarness: seed " + (seed + i) + ", " + steps + " steps, "
                     + h.listings + " listings, " + h.listed + " values listed, "
+                    + (reclaim ? h.cut + " behind reclaim's cut, " : "")
                     + (System.nanoTime() - t0) / 1000000 + " ms");
         }
         System.out.println("PrimaryHarness OK");

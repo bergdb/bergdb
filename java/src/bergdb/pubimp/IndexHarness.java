@@ -4,8 +4,10 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Random;
 import java.util.TreeMap;
 
@@ -349,16 +351,60 @@ final class IndexHarness {
     }
 
     static String key(Random r) {
+        return key(r, 0, false);
+    }
+
+    /**
+     * The directories of a wide run (bergdb 020-17): the parent of DIRS[0], whose own values
+     * exclude every key of DIRS, and a neighbour whose name starts with DIRS[0]'s.
+     */
+    static final String[] WIDE_DIRS = {"/h/", "/h/a0/"};
+
+    /**
+     * A key: with keys > 0, one time in three one of 'keys' more object names in DIRS[0]
+     * (extraName), so that a build takes several steps and a scan several pages; in a wide
+     * run, one time in ten a name of WIDE_DIRS. With neither, the draws of key(r).
+     */
+    static String key(Random r, int keys, boolean wide) {
+        if (keys > 0 && r.nextInt(3) == 0) {
+            return DIRS[0] + extraName(r.nextInt(keys));
+        }
+        if (wide && r.nextInt(10) == 0) {
+            return WIDE_DIRS[r.nextInt(WIDE_DIRS.length)]
+                    + OBJECT_NAMES[r.nextInt(OBJECT_NAMES.length)];
+        }
         String dir = r.nextInt(5) != 0 ? DIRS[0] : DIRS[1];
         return dir + (r.nextInt(10) != 0 ? OBJECT_NAMES[r.nextInt(OBJECT_NAMES.length)]
                 : OTHER_NAMES[r.nextInt(OTHER_NAMES.length)]);
     }
 
+    /** The more object names of a run with keys: "j0", "m1", "j2", ..., among OBJECT_NAMES. */
+    static String extraName(int i) {
+        return (i % 2 == 0 ? "j" : "m") + i;
+    }
+
     /** An index's definition: 1 to 3 levels, mostly of the type that the field prefers. */
     static Def def(String name, Random r) {
+        return def(name, r, false);
+    }
+
+    /**
+     * As def(name, r); in a wide run, one time in four 4 to 8 levels (IndexDefinition's
+     * most), and one time in five a directory of WIDE_DIRS (bergdb 020-17).
+     */
+    static Def def(String name, Random r, boolean wide) {
         String dir = r.nextInt(10) < 7 ? DIRS[0] : DIRS[1];
+        int n = 1 + r.nextInt(3);
+        if (wide) {
+            if (r.nextInt(5) == 0) {
+                dir = WIDE_DIRS[r.nextInt(WIDE_DIRS.length)];
+            }
+            if (r.nextInt(4) == 0) {
+                n = 4 + r.nextInt(5);
+            }
+        }
         List<Level> levels = new ArrayList<Level>();
-        for (int i = 1 + r.nextInt(3); i > 0; i--) {
+        for (int i = n; i > 0; i--) {
             String[] path = r.nextInt(100) < 85 ? PATHS[r.nextInt(9)] : PATHS[9 + r.nextInt(2)];
             Type type = r.nextInt(4) != 0 ? preferred(path[path.length - 1])
                     : Type.values()[r.nextInt(4)];
@@ -389,6 +435,10 @@ final class IndexHarness {
         final Random r;
         /** The deletion that follows a creation without join one time in four, or null. */
         private Op next;
+        /** More object names in DIRS[0] (key(r, keys, wide)); 0: none, the unit's runs. */
+        int keys;
+        /** More levels and directories (key(), def()); false: the unit's runs. */
+        boolean wide;
 
         Generator(long seed) {
             r = new Random(seed);
@@ -420,8 +470,18 @@ final class IndexHarness {
 
         Tx tx() {
             List<Write> writes = new ArrayList<Write>();
+            if (keys > 0 && r.nextInt(20) == 0) {
+                // A bulk write of the more names, one in nine a delete: builds of several
+                // steps, scans of several pages, a cleanup of several steps (020-17).
+                int from = r.nextInt(keys);
+                for (int i = from; i < Math.min(keys, from + 1 + r.nextInt(150)); i++) {
+                    String key = DIRS[0] + extraName(i);
+                    writes.add(new Write(key, r.nextInt(9) != 0 ? keyValue(key, r) : null));
+                }
+                return new Tx(r.nextBoolean(), writes);
+            }
             for (int i = 1 + r.nextInt(4); i > 0; i--) {
-                String key = key(r);
+                String key = key(r, keys, wide);
                 writes.add(new Write(key, r.nextInt(5) != 0 ? keyValue(key, r) : null));
             }
             return new Tx(r.nextBoolean(), writes);
@@ -442,7 +502,7 @@ final class IndexHarness {
             } else {
                 name = free.get(r.nextInt(free.size()));
             }
-            Create c = new Create(def(name, r), r.nextInt(10) < 6);
+            Create c = new Create(def(name, r, wide), r.nextInt(10) < 6);
             if (!c.join && r.nextInt(4) == 0) {
                 // A deletion at once, while the build likely runs.
                 next = new DeleteIndex(name);
@@ -1100,11 +1160,17 @@ final class IndexHarness {
     Connection c;
     int step;
     
-    /** What the run checked: active indexes, scans, scan results, raw entries compared. */
-    final long[] counts = new long[4];
+    /**
+     * What the run checked: active indexes, scans, scan results, raw entries compared, scans
+     * of more than a page (UseIndexBuilderImp's 100 entries), and at the end the
+     * transactions' times behind reclaim's cut (020-17: reclaim cuts only when the stream
+     * has grown by twice the startup distance, so with the Pub API's least, 5 MB, it does
+     * not in a run of the unit's size; harness.sd makes it).
+     */
+    final long[] counts = new long[6];
     
     /** The counts of the last run of run(), for the tests. */
-    static long[] lastCounts = new long[4];
+    static long[] lastCounts = new long[6];
 
     IndexHarness(long seed, Fault fault, boolean restarts, int threads) {
         this.seed = seed;
@@ -1121,7 +1187,18 @@ final class IndexHarness {
      * once. restartEvery > 0: a restart every that many operations as well as the random ones.
      */
     static void run(long seed, int steps, Fault fault, File dir, int threads, int restartEvery) {
+        run(seed, steps, fault, dir, threads, restartEvery, 0, false);
+    }
+
+    /**
+     * As run() above; keys > 0 and wide as Generator's (bergdb 020-17): more object names,
+     * bulk writes, more levels and directories.
+     */
+    static void run(long seed, int steps, Fault fault, File dir, int threads, int restartEvery,
+            int keys, boolean wide) {
         IndexHarness h = new IndexHarness(seed, fault, true, threads);
+        h.gen.keys = keys;
+        h.gen.wide = wide;
         h.dir = dir == null ? null : dir.getPath();
         try {
             h.start(new MemoryStream());
@@ -1138,6 +1215,14 @@ final class IndexHarness {
             a.initCause(e);
             throw a;
         } finally {
+            if (h.db != null) {
+                try {
+                    long first = h.db.getFirstAvailableLookupTime().units();
+                    h.counts[5] = h.m.times.headSet(first).size();
+                } catch (RuntimeException e) {
+                    // The database stopped or failed: the run's own exception says why.
+                }
+            }
             lastCounts = h.counts.clone();
             if (h.db != null) {
                 h.db.close();
@@ -1173,7 +1258,25 @@ final class IndexHarness {
         }
         db = b.clock(clock).start();
         db.setRetainDuration(Duration.units(RETAIN_UNITS));
+        startupDistance(db);
         c = db.connection();
+    }
+
+    /**
+     * The system property harness.sd, a startup distance in bytes for the harnesses' runs by
+     * hand and the soak (bergdb 020-17), or 0: the default. The Pub API's least is 5 MB,
+     * more than a harness's stream, so that nothing of the index is evicted; with the Core's
+     * Db.setStartupDistance, at least 400,000 bytes (it commits a value of 200 kB, at each
+     * start, to record the setting), the nodes written before it can be, and are with the
+     * property evict (every, random) or a small evictbudget.
+     */
+    static final int HARNESS_SD = Integer.getInteger("harness.sd", 0);
+
+    /** Sets HARNESS_SD on d, if it is set. */
+    static void startupDistance(Database d) {
+        if (HARNESS_SD > 0) {
+            ((DatabaseImp) d).getDb().setStartupDistance(HARNESS_SD);
+        }
     }
 
     private void restart() {
@@ -1197,8 +1300,11 @@ final class IndexHarness {
                 txs((Tx) op);
             } else {
                 Tx tx = (Tx) op;
-                m.commit(execute(c, tx), tx.writes);
+                m.commit(execute(c, tx, gen.wide), tx.writes);
             }
+        } else if ((op instanceof Create || op instanceof DeleteIndex) && gen.wide
+                && threads > 1) {
+            withWriters(op);
         } else if (op instanceof Create) {
             create((Create) op);
         } else if (op instanceof DeleteIndex) {
@@ -1222,12 +1328,19 @@ final class IndexHarness {
         }
     }
 
-    /** Executes tx on the connection; returns its time. */
-    private static long execute(Connection c, final Tx tx) {
+    /**
+     * Executes tx on the connection; returns its time. With reads (a wide run, bergdb
+     * 020-17), an rw() reads each key before it writes it, so that a concurrent write of the
+     * key makes it run again: the rerun's index entries come from the value read again.
+     */
+    private static long execute(Connection c, final Tx tx, final boolean reads) {
         Transaction t;
         if (tx.rw) {
             t = c.rw(env -> {
                 for (Write w : tx.writes) {
+                    if (reads) {
+                        env.get(w.key, byte[].class);
+                    }
                     if (w.value == null) {
                         env.delete(w.key);
                     } else {
@@ -1257,15 +1370,45 @@ final class IndexHarness {
             txs.add(gen.tx());
             log(txs.get(i).toString());
         }
+        runTxs(txs, null);
+    }
+
+    /**
+     * A creation or a deletion of an index in this thread while threads - 1 transactions run,
+     * each in its own thread and connection (a wide run, bergdb 020-17, B7): writers that
+     * race the change of the directory's index set (020-10, sections 5.1 and 5.2). The model
+     * takes the change's time as the interval of the call, as it does alone.
+     */
+    private void withWriters(final Op op) {
+        final List<Tx> txs = new ArrayList<Tx>();
+        for (int i = 1; i < threads; i++) {
+            txs.add(gen.tx());
+            log(txs.get(i - 1).toString() + ", with it");
+        }
+        runTxs(txs, () -> {
+            if (op instanceof Create) {
+                create((Create) op);
+            } else {
+                deleteIndex(((DeleteIndex) op).name);
+            }
+        });
+    }
+
+    /**
+     * Runs txs at once, each in its own thread (the first on the connection c if main is
+     * null, else on a new one), and main in this thread meanwhile; then the model takes the
+     * transactions.
+     */
+    private void runTxs(final List<Tx> txs, Runnable main) {
         final long[] times = new long[txs.size()];
         final Throwable[] failed = new Throwable[1];
         List<Thread> ts = new ArrayList<Thread>();
         for (int i = 0; i < txs.size(); i++) {
             final int k = i;
-            final Connection ck = k == 0 ? c : db.newConnection();
+            final Connection ck = k == 0 && main == null ? c : db.newConnection();
             Thread th = new Thread(() -> {
                 try {
-                    times[k] = execute(ck, txs.get(k));
+                    times[k] = execute(ck, txs.get(k), gen.wide);
                 } catch (Throwable e) {
                     failed[0] = e;
                 }
@@ -1273,12 +1416,25 @@ final class IndexHarness {
             ts.add(th);
             th.start();
         }
+        Throwable mainFailed = null;
+        if (main != null) {
+            try {
+                main.run();
+            } catch (RuntimeException | Error e) {
+                mainFailed = e;
+            }
+        }
         for (Thread th : ts) {
             try {
                 th.join();
             } catch (InterruptedException e) {
                 throw new AssertionError(e);
             }
+        }
+        if (mainFailed instanceof Error) {
+            throw (Error) mainFailed;
+        } else if (mainFailed != null) {
+            throw (RuntimeException) mainFailed;
         }
         if (failed[0] != null) {
             throw new AssertionError("a writer thread: " + failed[0], failed[0]);
@@ -1392,34 +1548,128 @@ final class IndexHarness {
         List<Entry> entries = ref.entries(def, m.dirAt(def.dir, t));
         for (Query q : queries(def, entries, checks)) {
             List<Entry> expected = ref.filter(def, entries, q);
-            List<Kv<DbObject>> got = new ArrayList<Kv<DbObject>>();
+            // The scan's forms (bergdb 020-17): kvs() three times in four, else objects();
+            // as DbObject, or one time in six as byte[] (the stored bytes); one time in six
+            // the same Iterable twice, each iterator from the beginning at the same lookup
+            // time (020-10, section 3.4); hasNext() asked twice now and then, and next()
+            // past the end.
+            boolean kvs = checks.nextInt(4) != 0;
+            int k6 = checks.nextInt(6);
+            Class<?> type = k6 == 0 ? byte[].class : k6 == 1 && gen.wide ? Doc.class
+                    : DbObject.class;
+            int times = checks.nextInt(6) == 0 ? 2 : 1;
+            String what = "scan " + q + " of " + def + " at " + t + (kvs ? ", kvs()"
+                    : ", objects()") + " as " + type.getSimpleName();
+            List<String> keys = new ArrayList<String>();
+            List<Object> values = new ArrayList<Object>();
             try {
-                for (Kv<DbObject> kv : use(rc, def, q).kvs()) {
-                    got.add(kv);
+                UseIndexBuilder<?> b = use(rc, def, q, type);
+                Iterable<?> iterable = kvs ? b.kvs() : b.objects();
+                for (int k = 0; k < times; k++) {
+                    keys.clear();
+                    values.clear();
+                    iterate(iterable, kvs, keys, values, k == 0 ? what : what + ", again");
                 }
             } catch (LookupTimeNotAvailableException e) {
                 return;
             }
             counts[1]++;
-            counts[2] += got.size();
-            int n = Math.min(got.size(), expected.size());
+            counts[2] += values.size();
+            if (values.size() > 100) {
+                counts[4]++;
+            }
+            int n = Math.min(values.size(), expected.size());
             for (int i = 0; i < n; i++) {
                 Entry e = expected.get(i);
-                Kv<DbObject> kv = got.get(i);
-                check(e.key.equals(kv.key()), "scan " + q + " of " + def + " at " + t
-                        + ", result " + i + ": " + IndexReference.show(kv.key()) + ", not "
-                        + e + "; all: " + expected);
-                check(Arrays.equals(toDbObject(e.value).getBytes(), kv.value().getBytes()),
-                        "scan " + q + " of " + def + " at " + t + ", the value at " + e.key);
+                if (kvs) {
+                    check(e.key.equals(keys.get(i)), what + ", result " + i + ": "
+                            + IndexReference.show(keys.get(i)) + ", not " + e + "; all: "
+                            + expected);
+                }
+                check(same(e.value, values.get(i)), what + ", the value of result " + i + ", at "
+                        + e.key);
             }
-            check(got.size() == expected.size(), "scan " + q + " of " + def + " at " + t
-                    + ": " + got.size() + " results, not " + expected.size() + ": " + expected);
+            check(values.size() == expected.size(), what + ": " + values.size()
+                    + " results, not " + expected.size() + ": " + expected);
         }
     }
 
+    /**
+     * Iterates the scan once into keys (for kvs()) and values (the stored bytes): hasNext()
+     * one time in eight asked again, the same answer; next() past the end throws
+     * NoSuchElementException (020-10, section 3.4).
+     */
+    private void iterate(Iterable<?> iterable, boolean kvs, List<String> keys,
+            List<Object> values, String what) {
+        Iterator<?> it = iterable.iterator();
+        while (true) {
+            boolean has = it.hasNext();
+            if (checks.nextInt(8) == 0) {
+                check(it.hasNext() == has, what + ": hasNext() changed at " + values.size());
+            }
+            if (!has) {
+                break;
+            }
+            Object v = it.next();
+            if (kvs) {
+                Kv<?> kv = (Kv<?>) v;
+                keys.add(kv.key());
+                v = kv.value();
+            }
+            values.add(v instanceof DbObject ? ((DbObject) v).getBytes() : v);
+        }
+        boolean threw = false;
+        try {
+            it.next();
+        } catch (NoSuchElementException e) {
+            threw = true;
+        }
+        check(threw, what + ": next() past the end did not throw NoSuchElementException");
+    }
+
+    /**
+     * A Data Object class for a scan's conversion (bergdb 020-17, B9): the fields of the
+     * objects' top level that are Java names; n, an object or another value, as a nested
+     * Data Object.
+     */
+    public static class Doc {
+        public long a;
+        public double b;
+        public String c;
+        public DocN n;
+        public int z;
+
+        public Doc() {}
+    }
+
+    /** The nested object n of Doc. */
+    public static class DocN {
+        public long a;
+        public String c;
+
+        public DocN() {}
+    }
+
+    /**
+     * Whether a scan's value (the stored bytes for byte[] and DbObject, else a Doc) is the
+     * model's value v: the stored bytes; a Doc as a get of the bytes gives it
+     * (DbObject.toJavaObject, 020-09's rules), field by field.
+     */
+    static boolean same(Object v, Object got) {
+        byte[] stored = toDbObject(v).getBytes();
+        if (got instanceof byte[]) {
+            return Arrays.equals(stored, (byte[]) got);
+        }
+        Doc x = new DbObject(stored).toJavaObject(Doc.class);
+        Doc y = (Doc) got;
+        return x.a == y.a && Double.compare(x.b, y.b) == 0 && java.util.Objects.equals(x.c, y.c)
+                && x.z == y.z && (x.n == null ? y.n == null : y.n != null && x.n.a == y.n.a
+                && java.util.Objects.equals(x.n.c, y.n.c));
+    }
+
     /** The builder of q on the index. */
-    private static UseIndexBuilder<DbObject> use(Connection rc, Def def, Query q) {
-        UseIndexBuilder<DbObject> b = rc.useIndex(def.name, DbObject.class);
+    private static <T> UseIndexBuilder<T> use(Connection rc, Def def, Query q, Class<T> type) {
+        UseIndexBuilder<T> b = rc.useIndex(def.name, type);
         for (Object v : q.eq) {
             if (v instanceof Long) {
                 b.eq((Long) v);
@@ -1615,24 +1865,51 @@ final class IndexHarness {
     }
 
     /**
-     * Usage: IndexHarness [SEED [STEPS [THREADS [SEEDS]]]]: runs SEEDS seeds (default 1) from
-     * SEED (default: the time), each of STEPS operations (default 5,000) in THREADS writer
-     * threads (default 1), a restart every 500, on a MemoryStream; prints the counts of
-     * each. The long form of the night run, 020-10, section 9.1's size, about 55 minutes:
-     * IndexHarness SEED 5000 4 40.
+     * Usage: IndexHarness [SEED [STEPS [THREADS [SEEDS [KEYS [WIDE [DIR [RESTART]]]]]]]]:
+     * runs SEEDS seeds (default 1) from SEED (default: the time), each of STEPS operations
+     * (default 5,000) in THREADS writer threads (default 1), a restart every RESTART
+     * operations (default 500; 0: the random ones only), on a MemoryStream, or with DIR 1 in
+     * a directory (made in the system's temporary directory, deleted after a run that
+     * passed); prints the counts of each. KEYS (default 0) more object names and WIDE (0 or
+     * 1) more levels and directories (bergdb 020-17). The long form of the night run, 020-10,
+     * section 9.1's size, about 55 minutes: IndexHarness SEED 5000 4 40.
      */
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         long seed = args.length > 0 ? Long.parseLong(args[0]) : System.nanoTime();
         int steps = args.length > 1 ? Integer.parseInt(args[1]) : 5000;
         int threads = args.length > 2 ? Integer.parseInt(args[2]) : 1;
         int seeds = args.length > 3 ? Integer.parseInt(args[3]) : 1;
+        int keys = args.length > 4 ? Integer.parseInt(args[4]) : 0;
+        boolean wide = args.length > 5 && args[5].equals("1");
+        boolean disk = args.length > 6 && args[6].equals("1");
+        int restart = args.length > 7 ? Integer.parseInt(args[7]) : 500;
         for (long s = seed; s < seed + seeds; s++) {
             System.out.println("IndexHarness: seed " + s + ", " + steps + " operations, "
-                    + threads + " threads");
-            run(s, steps, Fault.NONE, null, threads, 500);
+                    + threads + " threads, " + keys + " more keys" + (wide ? ", wide" : "")
+                    + (disk ? ", in a directory" : "") + ", a restart every " + restart
+                    + (HARNESS_SD > 0 ? ", startup distance " + HARNESS_SD : ""));
+            File dir = null;
+            if (disk) {
+                dir = new File(java.nio.file.Files.createTempDirectory("indexharness").toFile(),
+                        "db");
+            }
+            run(s, steps, Fault.NONE, dir, threads, restart, keys, wide);
+            if (dir != null) {
+                for (File f : dir.getParentFile().listFiles()) {
+                    if (f.isDirectory()) {
+                        for (File g : f.listFiles()) {
+                            g.delete();
+                        }
+                    }
+                    f.delete();
+                }
+                dir.getParentFile().delete();
+            }
             System.out.println("IndexHarness OK: active indexes checked " + lastCounts[0]
                     + ", scans " + lastCounts[1] + ", scan results " + lastCounts[2]
-                    + ", raw entries compared " + lastCounts[3]);
+                    + ", raw entries compared " + lastCounts[3] + ", scans of more than a "
+                    + "page " + lastCounts[4] + ", times behind reclaim's cut "
+                    + lastCounts[5]);
         }
     }
 }

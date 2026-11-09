@@ -2458,16 +2458,26 @@ public class DataObjectsTester {
     }
 
     /**
-     * Usage: DataObjectsTester [SEED [COUNT]]: R1, R2 and R3 on COUNT random objects from
-     * SEED (default: the time, and NIGHT_OBJECTS), by toDbObject() and toJavaObject().
+     * Usage: DataObjectsTester [SEED [COUNT [DB]]]: R1, R2 and R3 on COUNT random objects
+     * from SEED (default: the time, and NIGHT_OBJECTS), by toDbObject() and toJavaObject();
+     * with DB 1, as the night's run, one in ten of R1's and one in sixteen of R2's through a
+     * database in memory, a put and a get (bergdb 020-17).
      */
     public static void main(String[] args) {
         long seed = args.length > 0 ? Long.parseLong(args[0]) : System.nanoTime();
         int count = args.length > 1 ? Integer.parseInt(args[1]) : NIGHT_OBJECTS;
+        boolean withDb = args.length > 2 && args[2].equals("1");
         long t0 = System.nanoTime();
         Check ch = new Check();
-        r1(ch, null, seed, count);
-        r2(ch, null, seed, count);
+        Database db = withDb ? memory() : null;
+        try {
+            r1(ch, db == null ? null : db.connection(), seed, count);
+            r2(ch, db == null ? null : db.connection(), seed, count);
+        } finally {
+            if (db != null) {
+                db.close();
+            }
+        }
         System.out.println("DataObjectsTester: seed " + seed + ", " + ch.count + " checks, "
                 + ch.failed + " failed; " + (System.nanoTime() - t0) / 1000000 + " ms");
         ch.done();
