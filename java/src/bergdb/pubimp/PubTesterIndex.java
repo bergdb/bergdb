@@ -2365,6 +2365,46 @@ public class PubTesterIndex {
     }
     
     /**
+     * bergdb 020-22: a value and its entry written through the Core at the directory's own
+     * file prefix, /dr/-, the ikey of an empty name, which no ukey gives (K is "-", which
+     * parses). The scan read the value, which has the entry, and gave it under "/r/", no key
+     * of the Pub API. Now a scan leaves out an entry whose key has no ukey
+     * (PubKeys.i2uOrNull), forward and backward, as transactionInfo() and the primary scan
+     * do. A K with a '/', such as "-a/-b", has the byte 1 and is refused when parsed
+     * (InternalDataException, 020-10, section 4.4), so it never reaches this.
+     */
+    @Nano
+    public static void testScanLeavesOutAKeyWithNoUkey() {
+        Database db = rows();
+        try {
+            Connection c = db.newConnection();
+            c.put("/r/a1", new Row("a", 1, 1, new byte[] {1}));
+            Db core = ((DatabaseImp) db).getDb();
+            IndexDefinition def = IndexDefinition.read(core, "sn", Long.MAX_VALUE);
+            byte[] levels = IndexKeysTester.concat(IndexKeys.encodeString("a"),
+                    IndexKeys.encodeLong(1));
+            byte[] entry = IndexKeys.entryKey(def.generationPrefix(), levels, 
+                    IndexKeys.fileKey("/dr/-"));
+            core.execute(core.trans().put(Keys.toBytes("/dr/-"), c.get("/r/a1", byte[].class))
+                    .put(entry, new byte[0]).build());
+            for (boolean back : new boolean[] {false, true}) {
+                UseIndexBuilder<Row> b = c.useIndex("sn", Row.class).eq("a");
+                if (back) {
+                    b.backward();
+                }
+                StringBuilder keys = new StringBuilder();
+                for (Kv<Row> kv : b.kvs()) {
+                    keys.append(kv.key()).append(' ');
+                }
+                Assert.assertEquals("backward " + back, "/r/a1 ", keys.toString());
+            }
+            Assert.assertEquals(1, count(c.useIndex("sn", Row.class).eq("a").objects()));
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
      * N3: a scan reads the definition, the entries and the values with Db directly: it leaves
      * the connection's transactionInfo() as it was, which describes get() and exists() only.
      */

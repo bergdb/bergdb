@@ -315,6 +315,7 @@ class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
         private long[] last = null;         // The last entry key read
         private boolean ended;              // No entry left in the range
         private String nextIkey;            // The value that hasNext() found
+        private String nextUkey;
         private byte[] nextValue;
 
         Scan(byte[] lo, byte[] hi) {
@@ -340,6 +341,14 @@ class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                 IndexKeys.Entry entry = IndexKeys.parseEntry(Keys.toBytes(kvt.key), generation,
                         types);
                 String ikey = def.idir() + entry.fileName();
+                // A key that no ukey gives, such as the directory's own file prefix (an
+                // empty name), which only a write through the Core makes, is no key of the
+                // Pub API: left out (bergdb 020-22). It was given under a String that is no
+                // key, such as "/r/". A K with a '/' is refused by parseEntry.
+                String ukey = PubKeys.i2uOrNull(ikey);
+                if (ukey == null) {
+                    continue;
+                }
                 byte[] value = db.getOne(lookupTime, Keys.toSegments(ikey), gd);
                 if (value == null) {
                     continue;
@@ -354,6 +363,7 @@ class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                 }
                 if (levels != null && Arrays.equals(levels, entry.levels())) {
                     nextIkey = ikey;
+                    nextUkey = ukey;
                     nextValue = value;
                 }
             }
@@ -413,17 +423,11 @@ class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                 throw new NoSuchElementException();
             }
             final String ikey = nextIkey;
+            final String finalUkey = nextUkey;
             final byte[] value = nextValue;
             nextIkey = null;
+            nextUkey = null;
             nextValue = null;
-
-            String ukey;
-            try {
-                ukey = PubKeys.i2u(ikey);
-            } catch (IllegalArgumentException e) {
-                ukey = null;
-            }
-            final String finalUkey = ukey;
 
             // Null for a type whose get gives null for this value, as a get of a primitive's
             // wrapper over an object without the field p (bergdb 020-09, section 5.9).

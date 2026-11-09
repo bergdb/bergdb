@@ -364,7 +364,10 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   its `key()` threw `IllegalArgumentException`, or, for a key such as
   `/-q/-t`, gave the Pub key of another key (`/q/t`, whose key is
   `/dq/-t`). Now such a KV is left out, as the index entries are (005-42)
-  and as `usePrimary()` leaves out such keys (021-06).
+  and as `usePrimary()` leaves out such keys (021-06). A scan of an index
+  leaves out such a key too: a value and its entry written through the
+  Core at a directory's own prefix, such as `/dr/-` (an empty name), were
+  given under `/r/`, no key.
 
 
 ### Core API

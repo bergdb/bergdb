@@ -42,8 +42,6 @@ class UsePrimaryBuilderImp<TYPE> implements UsePrimaryBuilder<TYPE> {
     private final long lookupTime;
     /** The bkey of the directory's idir and '-': the prefix of its own keys; null until dir(). */
     private byte[] prefix;
-    /** The length of the prefix's ikey, idir and '-'. */
-    private int prefixIkeyLength;
     /** The bkey bytes of startAt()'s name, or null. */
     private byte[] startName;
     private boolean inclusive = true;
@@ -92,7 +90,6 @@ class UsePrimaryBuilderImp<TYPE> implements UsePrimaryBuilder<TYPE> {
         }
         String idir = PubKeys.udir2idir(udir);      // its rules (bergdb 021-09)
         prefix = Keys.toBytes(idir + PubKeys.FILE_PREFIX);
-        prefixIkeyLength = idir.length() + 1;
         return this;
     }
 
@@ -242,6 +239,7 @@ class UsePrimaryBuilderImp<TYPE> implements UsePrimaryBuilder<TYPE> {
         /** The next value of the type's kind, looked ahead by hasNext(), or null. */
         private Kvt next = null;
         private String nextIkey = null;
+        private String nextUkey = null;
 
         Scan() {
             if (startName != null) {
@@ -290,9 +288,11 @@ class UsePrimaryBuilderImp<TYPE> implements UsePrimaryBuilder<TYPE> {
                     }
                     // A bkey without an ikey (written through the Core or by another
                     // writer; bergdb 021-06), or a key whose name has a '/', which is no
-                    // user's key of the directory, is not listed.
+                    // user's key of the directory, is not listed: a key that no ukey gives
+                    // (PubKeys.i2uOrNull, the rule of every reader, bergdb 020-22).
                     String ikey = Keys.bkey2ikeyOrNull(Keys.toBytes(kvt.key));
-                    if (ikey == null || ikey.indexOf('/', prefixIkeyLength) != -1) {
+                    String ukey = ikey == null ? null : PubKeys.i2uOrNull(ikey);
+                    if (ukey == null) {
                         continue;
                     }
                     boolean listed = kind == ALL
@@ -300,6 +300,7 @@ class UsePrimaryBuilderImp<TYPE> implements UsePrimaryBuilder<TYPE> {
                     if (listed) {
                         next = kvt;
                         nextIkey = ikey;
+                        nextUkey = ukey;
                     }
                 } else if (lastPage) {
                     return false;
@@ -320,10 +321,11 @@ class UsePrimaryBuilderImp<TYPE> implements UsePrimaryBuilder<TYPE> {
             }
             final byte[] value = next.value;
             final String ikey = nextIkey;
+            final String ukey = nextUkey;
             next = null;
             nextIkey = null;
+            nextUkey = null;
 
-            String ukey = PubKeys.i2u(ikey);    // a key of the directory, with no '/' in its name
             TYPE object = connection.getDatabaseImp().getKvToObjectConverter()
                     .createObject(type, ikey, value);
             return new PrimaryKv<TYPE>(ukey, object);

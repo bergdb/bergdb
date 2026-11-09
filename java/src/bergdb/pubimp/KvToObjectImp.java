@@ -58,12 +58,7 @@ class KvToObjectImp implements KvToObjectConverter {
             return null;
         }
         
-        String ukey;
-        try {
-            ukey = PubKeys.i2u(ikey);
-        } catch (IllegalArgumentException e) {
-            ukey = null;
-        }
+        String ukey = PubKeys.i2uOrNull(ikey);     // for messages; null if none (020-22)
         
         TYPE result;
         

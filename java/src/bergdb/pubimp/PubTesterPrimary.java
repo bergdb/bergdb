@@ -862,6 +862,32 @@ public class PubTesterPrimary {
     }
     
     /**
+     * bergdb 020-22: a value written through the Core at the directory's own file prefix,
+     * /dm/-, the ikey of an empty name, which no ukey gives, is not listed, forward or
+     * backward: a page holds the keys that the prefix is a proper prefix of
+     * (Keys.isPrefix), and a key that no ukey gives is left out (PubKeys.i2uOrNull), as by
+     * an index's scan and transactionInfo(). The index's scan gave such a key as "/r/"
+     * (PubTesterIndex.testScanLeavesOutAKeyWithNoUkey).
+     */
+    @Nano
+    public static void testScanLeavesOutTheEmptyName() {
+        Database d = Factory.database().memory().start();
+        try {
+            Db db = ((DatabaseImp) d).getDb();
+            db.execute(db.trans().put(Keys.toBytes("/dm/-"), new byte[] {'x'}).build());
+            Connection c = d.connection();
+            c.put("/m/a", "a");
+            Assert.assertEquals("/m/a ", keys(c.usePrimary(byte[].class).dir("/m/").kvs()));
+            Assert.assertEquals("/m/a ", 
+                    keys(c.usePrimary(byte[].class).dir("/m/").backward().kvs()));
+            Assert.assertEquals("/m/a ", 
+                    keys(c.usePrimary(Object.class).dir("/m/").backward().kvs()));
+        } finally {
+            d.stop();
+        }
+    }
+    
+    /**
      * A scan reads with the Core's Db, not through the connection's get: transactionInfo()
      * still describes the last get() (bergdb 020-10, section 3.6, N3).
      */

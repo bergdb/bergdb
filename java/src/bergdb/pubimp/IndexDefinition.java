@@ -490,11 +490,8 @@ final class IndexDefinition {
 
     /** A key as the user gave it, and its ikey: "/p/b (/dp/-b)"; the ikey if it has no ukey. */
     private static String ukeyOf(String ikey) {
-        try {
-            return PubKeys.i2u(ikey) + " (" + ikey + ")";
-        } catch (IllegalArgumentException e) {
-            return ikey;
-        }
+        String ukey = PubKeys.i2uOrNull(ikey);
+        return ukey == null ? ikey : ukey + " (" + ikey + ")";
     }
     
     /**
