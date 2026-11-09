@@ -24,8 +24,9 @@ public interface RwEnvironment extends ReadInterface {
      * <p>The action's reads read one state, the latest as of its first read: they do not
      * see the transaction's own puts and deletes (bergdb 018-04, Q1).</p>
      *
-     * <p>A class other than String, byte[], DbObject and Object is a Data Object class,
-     * and the stored object is converted to it as by Connection.get() (bergdb 020-09).</p>
+     * <p>A class other than String, byte[], DbObject and Object is a Data Object class, or a
+     * primitive, its wrapper or an array class for a value put as one, and the stored object
+     * is converted to it as by Connection.get() (bergdb 020-09).</p>
      *
      * @throws ObjectCreationException  As Connection.get(): the action's exception, which
      *             ends the action; the database goes on.
