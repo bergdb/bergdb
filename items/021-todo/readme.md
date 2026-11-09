@@ -59,7 +59,7 @@ Closed
 |---|---|---|---|---|---|
 | [021-06](06-read-side-ill-formed-utf8.md) | Investigate | Ill-formed UTF-8 from another writer, read by Java | answers | done | 2026-11-09 |
 | [021-10](10-entries-suffix-dot-in-dir.md) | Fix | A '.' in a directory makes no key there an object key | none | done | 2026-11-09 |
-| [021-11](11-pointer-type-at-start.md) | Fix | A damaged pointer naming a node of another type was linked at a start (three sites) | none | done | 2026-11-09 |
+| [021-11](11-pointer-type-at-start.md) | Fix | A damaged pointer naming a node of another type was linked by node id | none | done | 2026-11-09 |
 | [021-12](12-key-node-outside-section-unchecked.md) | Fix | A damaged key node read before the startup section made a start throw AssertionError | none | done | 2026-11-09 |
 | [021-09](09-udir-accepts-bad-dirs.md) | Fix | `PubKeys.udir2idir` accepts "p/" and "/p//" | none | done | 2026-11-08 |
 | [021-08](08-object-reader-nesting-depth.md) | Fix | The object reader has no limit on nesting depth | none | done | 2026-11-07 |
@@ -112,6 +112,20 @@ Files
   021-08, Fix: an object nested deeper than the writer's limit, from
   another writer, can give a `StackOverflowError` at a read, failing the
   database in `rw()`.
+* [09-udir-accepts-bad-dirs.md](09-udir-accepts-bad-dirs.md). 021-09,
+  Fix: `PubKeys.udir2idir` accepts directories that are not well-formed,
+  such as "p/" and "/p//" (found in 020-10's step I0).
+* [10-entries-suffix-dot-in-dir.md](10-entries-suffix-dot-in-dir.md).
+  021-10, Fix: `Entries.suffix` takes the last '.' of the whole key, so a
+  '.' in a directory's name makes no key there an object key.
+* [11-pointer-type-at-start.md](11-pointer-type-at-start.md). 021-11, Fix:
+  a pointer that the Core links by node id, at a start (rule 4) and by the
+  writer, is not checked for its node's type, as a follow checks it
+  (019-32); found by reading in the C port (022-01).
+* [12-key-node-outside-section-unchecked.md](12-key-node-outside-section-unchecked.md).
+  021-12, Fix: a key node that a start reads from before its startup
+  section is not validated, as the section's are, and a damaged one made
+  the start throw an `AssertionError`.
 
 
 Log

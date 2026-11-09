@@ -151,14 +151,18 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   first; the jobs; the boundary; the fault map of F3 to F8 with a test for
   each; harnesses H2 to H4; nine steps for three agents, with the files
   each owns. Section 11 lists the decisions taken under the delegation.
-  No code changed.
+  No code changed. Sections 6.1 and 6.2 describe the build and the
+  cleanup as the code is since 020-18's fixes (020-23, V1-3).
 * [11-known-issues.md](11-known-issues.md). 020-11, the known issues of
   2026.4: every fault and open question of 020-01 (sections 12 and 13),
   020-08, 020-09, 020-10 (section 8), 020-04, 020-07, the lists of 015,
   019 and 021 and the night's reviews, each with its state on `main`:
   fixed with its commit and the test that shows it (read and run), open
   with who has it, gone or not a fault, or Frans's question. Brought up
-  to date until the release.
+  to date until the release; since 2026-11-09, afternoon, with every
+  fault that the day's bug hunts found and fixed (020-13 to 020-23, 021-11,
+  021-12; its section 10) and what they left for a later release (its
+  section 11).
 * [12-measurements.md](12-measurements.md). 020-12, format 2 measured,
   020-08's step 4, on a quiet machine (2026-11-09, 03:43 to 04:23):
   ObjectBench's M1 to M8 at `7231771` against format 1 at `ae68938`, and
@@ -182,6 +186,84 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   that failed the database in rw(), key replace that deleted another key's
   index entries, and a lost wake-up that made `BufferedStream.close()` wait
   a quarter of the buffer time; `Time`'s lenient parsing left for Frans.
+  On `main` as `c950612`, `42201c2`, `3f61a74` and `4b520f9`, the three
+  tests as `efe1bec`.
+* [14-codex-review.md](14-codex-review.md). 020-14, a Codex review of
+  2026.4's code (Codex CLI, GPT-6.1-Sol, effort max; Frans, 09:11), its
+  report verbatim: three confirmed findings, X1 (high: key replace in an
+  object key's directory left an index wrong), X2 (high: an `Error` of a
+  Data Object class's static initializer failed the database in `rw()`)
+  and X3 (medium: an inherited field of a package not exported passed the
+  class check); each fixed with a test that failed first (`a03111e`,
+  `987e734`, `ef6a3cf`), X1 by option (a), the refusal, which Frans
+  confirmed (10:30).
+* [15-kill-restart-harness.md](15-kill-restart-harness.md). 020-15, a
+  kill-and-restart harness for the Pub layer (done): `KillRestartHarness`
+  and `java/stress/kill-restart.sh`, a child JVM killed with SIGKILL
+  during work on objects and indexes, each restart checked against what
+  the promises allow; 2,993 kills and 78 stops, no fault of BergDB. One
+  observation, KR-O1, a creation or deletion that returned can be undone
+  by a crash before it is durable, said in the Javadoc (`f99f4c6`); a step
+  of `night.sh`, 1,000 kills.
+* [16-fuzzing.md](16-fuzzing.md). 020-16, fuzzing of the object format,
+  the index keys and the index definitions: `FormatFuzzer`, six areas,
+  each reader against its spec, and `java/stress/fuzz.sh`, a step of
+  `night.sh`. Three low faults, each from data written through the Core,
+  fixed: F16-1, a corrupt entry key gave a scan an
+  `IllegalArgumentException`; F16-2, a value at a prefix's own key hid
+  every index definition from a start; F16-3, a build failed over a key
+  whose name holds a '/'. O16-1, a get of an object at a key with a
+  suffix, fine as is for 2026.4 (Frans, 11:52).
+* [17-harness-long-runs.md](17-harness-long-runs.md). 020-17, long runs
+  of the Pub layer's randomized harnesses (H2 to H4 and the objects') on
+  s1, with `java/stress/harness-soak.sh`, a step of `night.sh`: four false
+  findings of `IndexJobsHarness` (H3-O1 to H3-O4), fixed, and the
+  harnesses' blind spots read, the cheap ones closed (B1 to B17); no fault
+  of BergDB.
+* [18-index-concurrency-review.md](18-index-concurrency-review.md).
+  020-18, the user indexes under concurrency, a review (Frans, 09:21): the
+  shared state and its guards, 19 interleavings each with a verdict, and
+  probes. Five faults fixed, each with a test: F1, F3, F4 and F5, medium (a
+  build step that collided with writes of keys with a suffix under the
+  manager's lock, a locked step of large values, a build that chased the
+  writers appending to its directory, a cleanup whose work grew as the
+  square of its entries), and F2, low (a deleted build's note); three
+  observations for later (O1 to O3).
+* [19-javadoc-against-behaviour.md](19-javadoc-against-behaviour.md).
+  020-19, the public Javadoc checked against behaviour, promise by
+  promise, for the classes that 2026.4 changed most, with
+  `PubTesterJavadoc` (45 tests): one code fault (F1, a deleted build's
+  note) and eight Javadoc faults (J1 to J8) fixed; Q1 (`Time`'s lenient
+  parse) and Q2 (`WBuilder.execute()` twice), decided by Frans and done in
+  020-21.
+* [20-spotbugs.md](20-spotbugs.md). 020-20, SpotBugs 4.10.5 over 2026.4's
+  code: 655 warnings kept and triaged, none a true defect; outside them,
+  T1, a directory that cannot be listed (a `NullPointerException`, or a
+  message that advised removing the database's files), fixed (`6db1ac3`);
+  N1, `CryptoKey.getKeyData()` returns a copy, at Frans's decision
+  (`a3bb07b`).
+* [21-api-decisions-9-november.md](21-api-decisions-9-november.md).
+  020-21, Frans's API decisions of 9 November (10:30: "1 to 5, all as
+  recommended"), implemented, each with a test that failed first: a time
+  string parsed strictly, `WBuilder.execute()` spends the builder, the
+  small API faults and the Javadoc's corners, and the gate's check of the
+  index threads; Q1, `Duration.seconds(NaN)` refused (Frans, 11:23); Y1 and
+  Y2, two faults of the strict parse found by 020-23, fixed.
+* [22-core-writes-and-pub-integrity.md](22-core-writes-and-pub-integrity.md).
+  020-22, writes through the Core and the Pub layer's integrity, a study
+  and a spec (Frans, 10:43): the key spaces that the Pub layer owns and
+  their invariants; the rules W1 to W26 for writes through the Core, free,
+  allowed with care or forbidden; the options, and Frans's decisions
+  (11:13): A2, "Core is root, with a detection floor", the free space K2,
+  W6 allowed with care, detection B1. R22-1 and an index scan's key with
+  no ukey fixed; the rules written in five places, `Db`'s Javadoc first.
+* [23-review-of-fixes.md](23-review-of-fixes.md). 020-23, independent
+  reviews of the day's fixes (Frans, 11:57): Codex's round 2 (Y1, medium,
+  and Y2, low, in the strict `Time` parse, fixed in 020-21); reviewer v1
+  of the Pub layer's fixes (four low points on documents, V1-1 to V1-4,
+  done in 020-21 and in the day's document update); reviewer v2 of the
+  Core's (V2-1, a test, and V2-2, `BufferedStream.append` after its wait
+  for room, fixed).
 
 
 Log
@@ -237,3 +319,17 @@ request (08:41), by the coordinator's agent in a clone of `main` at
 `1d1b6f3`: four bugs fixed there with their tests, three tests for the
 faults of its mutation sample that the gate missed, for the coordinator
 to integrate.
+
+2026-11-09. The bug hunts before the release candidate (Frans, 08:41:
+"So let's go bug-hunting"; 09:21: "Start 1 to 4"), by coord-1109's agents,
+each in a clone of its own: the test study (020-13), a Codex review
+(020-14), a kill-and-restart harness (020-15), fuzzing (020-16), long
+runs of the harnesses (020-17), a concurrency review of the indexes
+(020-18), the Javadoc against behaviour (020-19) and SpotBugs (020-20);
+then Frans's API decisions implemented (020-21), the rules for writes
+through the Core (020-22) and independent reviews of the day's fixes
+(020-23). Every fault found is fixed with a test, on `main` from
+`a9e5488` to `b149d12`, with 021-11 and 021-12. The day's document update
+by coord-1109's agent d27: 020-11 brought up to date (sections 10 and
+11), 020-10's sections 6.1 and 6.2, `releases/next.md`, and the Javadoc
+and comments of 020-23's V1-2 and V1-3.
