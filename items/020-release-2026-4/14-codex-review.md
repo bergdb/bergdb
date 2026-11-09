@@ -322,3 +322,7 @@ all confirmed by a run; the report copied into section 3.
 gated commit each, with a sibling of X1 (a placeholder in the name) and
 one of X3 (`TypeNotPresentException` from the check); X1's refusal is for
 Frans to confirm (section 3, Fixes).
+
+2026-11-09. Frans confirmed X1's option (a) (10:30: "1 to 5, all as
+recommended"): a put at an object key in a directory with
+`${transactionTime}`, under key replace, is refused.

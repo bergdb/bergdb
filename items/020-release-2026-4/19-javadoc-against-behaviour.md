@@ -416,7 +416,7 @@ after Frans's word; section 6's notes, each a small entry if Frans wants it.
 Log
 ===
 
-2026-11-09. Created by coord-1109's agent j19 (Claude, Opus 5.5, effort xhigh), 09:24.
+2026-11-09. Created by coord-1109's agent j19, 09:24.
 The priority classes checked, F1 and J1 to J8 fixed in the clone, the tests added; 16
 commits in the clone, `dbd6630` to `90a7534`, the tip gated (BEFORE COMMIT OK, 10:05).
 Stopped at 10:06: every public method of the priority classes checked.
