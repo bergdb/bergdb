@@ -22,6 +22,10 @@ Files
 
 * [01-plan.md](01-plan.md), 022-01: the plan, 2026.3 and then 2026.4;
   the steps, the clones, the gate and how the work lands.
+* [02-update-to-2026-4.md](02-update-to-2026-4.md), 022-02: the study of
+  the port from 2026.3 to 2026.4, from the candidate (`main` at
+  `770d88b`): what changed in Java's Core, what C needs, how C is tested
+  before the tag, what may still move, the steps, decisions D1 to D5.
 * [c/](c/): BergDB's Core in C.
 
 
