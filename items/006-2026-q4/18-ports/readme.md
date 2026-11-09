@@ -229,8 +229,8 @@ an estimate from this one port.
   bounded steps); map-size limits; long startup or replay (Prometheus,
   geth, Hive, LiveStore; only the tail is read, T3).
 * It does not fill: sync between devices, which local-first users want
-  most; SQL; several processes; write amplification (681 bytes of stream
-  a put at 10M keys and a 50 MB startup distance, 006-08, section 6.4); a
+  most; SQL; several processes; write amplification (867 bytes of stream
+  a put at 10M keys and a 50 MB startup distance, 006-19); a
   format kept across releases (005-50); the trust that a maintainer stays.
 * The clearest demand for history is where it is now built at great
   cost: the browser and local-first apps, Rust (SurrealKV), Go (immudb,

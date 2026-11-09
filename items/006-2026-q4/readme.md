@@ -32,6 +32,7 @@ The list
 | [006-16](16-props-across-releases.md) | 2026-11-09 | Props (MEM, CORE, SS) across BergDB's history, 2013.1 to the 2026.4 candidate, 14 builds on F53: MEM 144 (2013) to 129-130 (2026.2 on), SS 1.83 to 1.51; CORE not run yet, needs a quiet F53 |
 | [006-17](17-day-9-november.md) | 2026-11-09 | Day work of 9 November (a Monday), with the coordinator coord-1109: release 2026.4's bug hunts, the plan, the progress and the outcome |
 | [006-18](18-ports/readme.md) | 2026-11-09 | BergDB in languages other than Java: demand (01) and technical feasibility (02), one ranking; C on Linux as the base of bindings, Java's Core on Android as a check, then Rust and Python bindings; the licence decides the reach |
+| [006-19](19-write-amplification.md) | 2026-11-09 | Write amplification at large sizes: where a put's bytes go (867 at 10M keys and 50 MB, 92 % index nodes), the levers, what to measure |
 
 
 Files
@@ -105,6 +106,10 @@ Files
   it, the first steps and Frans's decisions in its readme; demand and
   landscape in [01-demand.md](18-ports/01-demand.md), technical
   feasibility in [02-technical.md](18-ports/02-technical.md).
+* [19-write-amplification.md](19-write-amplification.md). 006-19, write
+  amplification at large sizes: where the bytes of a put go, how they grow
+  with the keys and the startup distance, other engines, the levers (with
+  and without a format change), and the measurements to make.
 
 
 Log

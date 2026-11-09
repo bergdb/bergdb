@@ -150,8 +150,10 @@ are from the cited items.
     Writes are in order, which suits flash and copying to elsewhere.
   * The limit: index nodes are written into the stream too. With 10M
     keys and uniform updates, a put of a 24-byte key and an 8-byte value
-    cost 681 bytes of stream at a 50 MB startup distance, 373 bytes at
-    200 MB and 180 bytes at 1000 MB (006-08, section 6.4).
+    cost 867 bytes of stream at a 50 MB startup distance, 524 bytes at
+    200 MB and 190 bytes at 1000 MB with today's code (007-07, section
+    10; 006-19; 006-08, section 6.4's 681, 373 and 180 were from the take
+    used before 2026-10-28).
 * **Every past state can be read at a time**, within the retain duration.
   * What a user gets: audit, undo, debugging and reads "as of" a time,
     without history tables.
@@ -649,8 +651,8 @@ Each block gives:
 
 Two rows need a word more:
 
-* **Write amplification.** BergDB's own amplification is the 681 bytes a
-  put at 10M keys and 50 MB (section 3). It is no worse in kind than an
+* **Write amplification.** BergDB's own amplification is the 867 bytes a
+  put at 10M keys and 50 MB (section 3; 006-19). It is no worse in kind than an
   LSM's, but it is not an answer to that complaint.
 * **Abandoned stores.** That row is about Frans, not the code. A port
   answers it only if someone keeps the port.
