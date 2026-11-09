@@ -7,6 +7,10 @@ import bergdb.core.Trans;
 import bergdb.dag.Keys;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
+import bergdb.pub.DbArray;
+import bergdb.pub.DbLong;
+import bergdb.pub.DbObject;
+import bergdb.pub.DbString;
 import bergdb.pub.Factory;
 import bergdb.pub.Time;
 import bergdb.pub.Transaction;
@@ -17,10 +21,11 @@ import bergdb.stream.FileStream;
  * compiles and runs it with build/bergdb-release.jar as the only class path, so it
  * can use only what the release jar holds. It checks that src-dev's classes are
  * not there, then uses the Pub API's puts, gets and deletes of String and byte[]
- * values (w(), rw(), a lookup at an earlier time) on a database in a directory,
- * stops it, starts it again and reads again; and the Core's Db on another
- * directory. Not in a bergdb package, so it sees only what is public. The Pub
- * API's experimental parts (objects, indexes) are left out: they change in 2026.4.
+ * values (w(), rw(), a lookup at an earlier time) and a DbObject, built with its
+ * Builder, a nested object and a DbArray (bergdb 020-10, step B3: DbObject and its
+ * classes in bergdb.pub), on a database in a directory, stops it, starts it again
+ * and reads again; and the Core's Db on another directory. Not in a bergdb package,
+ * so it sees only what is public.
  *
  * Usage: java -ea -cp bergdb-release.jar ReleaseDemo.java DIR  (DIR new or empty)
  */
@@ -42,6 +47,12 @@ public class ReleaseDemo {
             Connection c = database.connection();
             first = c.put("/fruit/apple", "red").getTime();
             c.w().put("/fruit/banana", "yellow").put("/bytes/b", new byte[] {0, 1, 2}).execute();
+            DbArray tags = new DbArray.Builder().add(new DbString("red")).add(new DbLong(7))
+                    .build();
+            DbObject where = new DbObject.Builder().addString("city", "Uppsala").build();
+            c.put("/obj/apple", new DbObject.Builder().addString("name", "apple")
+                    .addLong("weight", 150).addObject("where", where).addArray("tags", tags)
+                    .build());
             Transaction rw = c.rw(env -> {
                 String apple = env.get("/fruit/apple", String.class);
                 env.put("/fruit/apple", "green");
@@ -66,12 +77,17 @@ public class ReleaseDemo {
         db.close();
         check(v != null && "v".equals(new String(v, StandardCharsets.UTF_8)), "Db's getOne");
 
-        System.out.println("ReleaseDemo OK: no class of src-dev; the Pub API and Db, "
+        System.out.println("ReleaseDemo OK: no class of src-dev; the Pub API, a DbObject and Db, "
                 + "with a restart, on the release jar alone");
     }
 
     /** The reads, the same before and after the restart. */
     static void read(Connection c, Time first) {
+        DbObject apple = c.get("/obj/apple", DbObject.class);
+        check(apple != null && "apple".equals(apple.getString("name"))
+                && apple.getLong("weight") == 150
+                && "Uppsala".equals(apple.getObject("where").getString("city"))
+                && apple.getArray("tags").getSize() == 2, "the DbObject");
         check("green".equals(c.get("/fruit/apple", String.class)), "apple");
         check(!c.exists("/fruit/banana"), "banana deleted");
         check(Arrays.equals(new byte[] {0, 1, 2}, c.get("/bytes/b", byte[].class)), "bytes");
