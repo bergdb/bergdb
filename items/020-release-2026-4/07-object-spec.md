@@ -229,24 +229,60 @@ either refuses the other at its first object (020-05, section 12b.1).
 
 ### 4.4. Two examples
 
-`Payment {from "1001", to "1002", amount 500}`, 36 bytes (020-05, section
-12b.1; vector `payment`):
+Each example gives an object's content in JSON, then its bytes. JSON
+shows the fields and their values, nothing more. It has one type of
+number, and format 2 has two, integer and double: every number here is
+an integer, stored in the fewest bytes (rule R9). JSON has no bytes
+type; neither example needs one. The order of the fields in the JSON
+does not matter: the bytes hold them in the order of their names (rule
+R7).
 
-    82                               header, format 2
-    48 03                            w = 1; 3 fields
-    0a 15 1e                         the ends: 10, 21, 30
-    06 61 6d 6f 75 6e 74  11 f4 01   "amount" 500 (int16)
-    04 66 72 6f 6d  14 04 31 30 30 31    "from" "1001"
-    02 74 6f  14 04 31 30 30 32      "to" "1002"
+**A payment**, 36 bytes (020-05, section 12b.1; vector `payment`):
 
-`{personA {id 1}, personB {id 2}}`, 37 bytes; each nested object has its
-own type byte, count and table, and no header (vector `dialog`):
+    {"from": "1001", "to": "1002", "amount": 500}
 
-    82 48 02 10 20
-    07 70 65 72 73 6f 6e 41  48 01 05  02 69 64  10 01
-    07 70 65 72 73 6f 6e 42  48 01 05  02 69 64  10 02
+Three fields: `from` and `to` are strings, and `amount` is the integer
+500, an int16 (`11 f4 01`), as 500 is above 127. In the bytes the fields
+come as `amount`, `from`, `to`. The field `amount` takes 10 bytes: its
+name's length, 6 bytes of name and 3 of value; so its end is 10 (section
+4.2). The last end, 30, fits in a byte, so w = 1 (rule R2):
 
-The empty object is `82 48 00`.
+    82                                 header, format 2
+    48 03                              w = 1; 3 fields
+    0a 15 1e                           the ends: 10, 21, 30
+    06 61 6d 6f 75 6e 74  11 f4 01     "amount" 500 (int16)
+    04 66 72 6f 6d  14 04 31 30 30 31  "from" "1001" (string, 4 bytes)
+    02 74 6f  14 04 31 30 30 32        "to" "1002" (string, 4 bytes)
+
+**A dialog**, 37 bytes (vector `dialog`): one object with two fields,
+`personA` and `personB`, whose values are objects. Each of them has one
+field, `id`, the integer 1 or 2, an int8 (`10 01`, `10 02`):
+
+    {"personA": {"id": 1}, "personB": {"id": 2}}
+
+A nested object has the top object's framing, its own type byte, count
+and table, and no header. Below, each is indented under its field's
+name:
+
+    82                                 header, format 2
+    48 02                              w = 1; 2 fields
+    10 20                              the ends: 16, 32
+    07 70 65 72 73 6f 6e 41            "personA", its value:
+       48 01                           w = 1; 1 field
+       05                              the end: 5
+       02 69 64  10 01                 "id" 1 (int8)
+    07 70 65 72 73 6f 6e 42            "personB", its value:
+       48 01                           w = 1; 1 field
+       05                              the end: 5
+       02 69 64  10 02                 "id" 2 (int8)
+
+The empty object is `82 48 00` (`{}` in JSON).
+
+*Informative*: Java writes these objects from instances of classes with
+public fields: `Payment` with `String from`, `String to` and `long
+amount`; `Dialog` with `Person personA` and `Person personB`, and
+`Person` with `long id`. The classes' names are not stored, only their
+fields; and a `long` of 500 is an int16 all the same (rule R9).
 
 
 ## 5. The rules
@@ -849,3 +885,10 @@ under 018-01's rule; questions Q1 to Q7 open.
 2026-11-09. Q2 to Q5 decided under Frans's delegation of 22:17, as
 recommended, and Q6 and Q7 recorded as settled (section 14), in night
 006-15 (020-11); the spec's approval stays with Frans.
+
+2026-11-09. Section 4.4's two examples rewritten at Frans's request: each
+object's content in JSON, one notation for both, its numbers said to be
+integers, and both dumps annotated alike (header, type byte and count,
+ends, each field); Java's classes a side note, their names not stored.
+No change of meaning; the bytes checked against the vectors `payment` and
+`dialog`.
