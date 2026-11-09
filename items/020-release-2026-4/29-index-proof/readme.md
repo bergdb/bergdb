@@ -326,10 +326,12 @@ and the axioms, from a file outside the library with
 `[propext, Classical.choice, Quot.sound]`, or a part of it (`example_run2`:
 no `Classical.choice`), 2026-11-09, 19:45.
 `grep -rn sorry lean/BergDB` finds none. The full `lake build` (SIS and the
-checker too) was not run in the clone: the library is new and imports
-nothing of SIS, and a build of SIS from clean would have loaded the shared
-machine; the lakefile's change is the library's entry and its default
-target.
+checker too) was not run in the clone: coord-1109 allowed it after 21:00 with
+F53's load under 6, and the work ended at 20:06 with the load at 9.5. The
+library is new and imports nothing of SIS; the branch changes no file of
+SIS (`git diff b0eba12 -- lean/SIS lean/SIS.lean` is empty), and the
+lakefile's change, the library's entry and its default target, is read by
+every `lake build BergDB`.
 
 
 ## 7. Liveness
@@ -679,7 +681,10 @@ Log
 * 19:59, `900c458`, `10fc278`: this readme, for it.
 * 20:02, `fac14a1`: `reach_finSys`, `run_bld_finite`, `build_ends_weak`:
   finitely many builds proved, not assumed.
-* 20:05: this readme, for it.
+* 20:03, `b0d8638`; 20:04, `1fcd12f`: this readme, for it; the fair
+  lock's Javadoc and HotSpot's comment on succession (section 7.5).
+* 20:06: the end of the session's work; the full `lake build` not run
+  (section 6).
 
 Each step: `lake build BergDB` clean, no `sorry`, the standard axioms only.
 Nothing in 2026.4. For the coordinator: a line for this subitem in 020's
