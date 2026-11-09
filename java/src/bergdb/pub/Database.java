@@ -186,12 +186,13 @@ public interface Database extends AutoCloseable {
      * close()), at the latest when it needs its next stream file; what it wrote after the
      * delete is lost with the directory. It checks the directory right before it makes or
      * deletes a stream file, with nothing that waits in between, and again after (bergdb
-     * 021-24). A replacement in the microseconds between the check and the step is not
-     * prevented: the step then leaves an empty stream file in the new directory, which a
-     * start there refuses until the file is removed, or, at a cut, deletes the new
-     * directory's file of the same name; the check after the step fails the database if
-     * the directory is still replaced. Otherwise it writes nothing into the directory that
-     * is then at the path.
+     * 021-24). A replacement in the short window between the check and the step, usually
+     * microseconds, longer if the thread is paused, as by a garbage collection, is not
+     * prevented: the step then leaves an empty stream file in the new directory, or, at a
+     * cut, deletes the new directory's file of the same name; a start there is refused
+     * until the empty file is removed, with an exception that depends on what else is in
+     * the directory; the check after the step fails the database if the directory is still
+     * replaced. Otherwise it writes nothing into the directory that is then at the path.
      * </p>
      */
     public void stop();

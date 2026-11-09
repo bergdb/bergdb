@@ -73,18 +73,34 @@ to land. In 2026.4's 021-20 only (main's 2557286).
   replacement. The start's last file goes through `openForRw()`, so the
   start is checked too, after its opens of the earlier files. Nothing
   else of 021-20 changed: the two lock keys, the messages, the failure.
-* Left: a replacement in the microseconds between the check and the
-  step, as Java's `RandomAccessFile` and `File.delete()` take a path,
-  not a directory that is open. The check after the step then fails the
-  stream before it writes a byte there, but the step is done: a new,
-  empty stream file in the replacement, which a stream there refuses
-  (`BadDirStateException`) until it is removed; or, at a cut, the
-  replacement's file of that name deleted. A directory replaced and put
-  back between the two checks is not seen. `checkDirectory()`'s comment,
+* Left: a replacement in the short window between the check and the
+  step, usually microseconds, longer if the thread is paused, as by a GC
+  or a preempted thread on a loaded machine (reviewer v2), as Java's
+  `RandomAccessFile` and `File.delete()` take a path, not a directory
+  that is open. The check after the step then fails the stream before it
+  writes a byte there, but the step is done: a new, empty stream file in
+  the replacement, or, at a cut, the replacement's file of that name
+  deleted. A database's start there is refused until the empty file is
+  removed, with an exception that depends on what else is in the
+  directory: `BadDirStateException` (in a `StreamIoException`) beside
+  stream files of its own, as `testReplacedRightBeforeTheOpen` shows; in
+  a directory without others (a fresh `mkdir`, or the directory a
+  refused `create()` made), reviewer v2's EmptyFileProbe
+  (`/Users/f/fl/bench/2026-11-09/v2/probe6`): `create()` throws
+  `StreamFormatException` ("Could not find *any* valid meta block"),
+  `open()` with `created.txt` `DatabaseMissingException`, whose message
+  advises a restore from a backup. A directory replaced and put back
+  between the two checks is not seen. `checkDirectory()`'s comment,
   the class comment and `Database.stop()` say so; `stop()`'s sentence
   "writes nothing into the directory that is then at the path" now
   comes after what is left, as "Otherwise". Another process at the path,
   and Windows, as in 021-20.
+* For Frans's list, after the release: in a directory without other
+  stream files, `open()`'s `DatabaseMissingException` beside such an
+  empty stream file advises a restore from a backup where removing the
+  file is enough, and `create()`'s `StreamFormatException` says only that
+  no valid meta block was found (reviewer v2); a clearer refusal is a
+  code change, not made tonight.
 * For Frans's list, after the release: `SecureDirectoryStream`, which
   the JDK gives on macOS (checked: `UnixSecureDirectoryStream` on F53's
   JDK 27) and Linux, opens and deletes relative to an open directory
@@ -122,3 +138,13 @@ to land. In 2026.4's 021-20 only (main's 2557286).
 Runs, under the gate lock (2026-11-09, 17:58 to 18:08), on the tree of
 4ebd063: `BEFORE COMMIT OK (323 s)` (unit 1614, f 86, demos);
 `JAVADOC PUB OK`; `LEVEL 1 OK` (MEM 129, SS 1.51).
+
+2026-11-09. Reviewer v2 (020-23) found 4ebd063 sound, with two low
+points of wording, done by d24 in one commit on top (comments, Javadoc,
+`releases/next.md` and this item; no change of code): the window is
+"usually microseconds, longer if the thread is paused, as by a GC", not
+a bound; and the empty file left by it is refused with an exception that
+depends on what else is in the directory, not always
+`BadDirStateException` (reviewer v2's EmptyFileProbe; above, "Left").
+Under the gate lock (18:37 to 18:42), on the tree of that commit:
+`BEFORE COMMIT OK (260 s)` (unit 1614, f 86, demos); `JAVADOC PUB OK`.

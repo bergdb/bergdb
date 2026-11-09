@@ -96,8 +96,9 @@ import bergdb.pub.util.BadFormatException;
  * Within the JVM, so is one at the path while a stream that opened the directory at that
  * path is open, also when the directory was deleted, moved or replaced since; and such a
  * stream fails before it makes, deletes or opens again a file by its name there
- * (checkDirectory(), 2026-11-09, bergdb 021-20), but for a replacement in the microseconds
- * right before such a step (bergdb 021-24).
+ * (checkDirectory(), 2026-11-09, bergdb 021-20), but for a replacement in a short window
+ * right before such a step, usually microseconds, longer if the thread is paused, as by a
+ * GC (bergdb 021-24).
  * The operating system holds the lock and drops it when the process ends, also at a crash,
  * so a lock is never stale; the file is never deleted, and its text is for people. The lock
  * is on one byte far beyond the end of the file: on Windows a lock is mandatory, and the text
@@ -908,14 +909,18 @@ public class FileStream implements AppendOnlyStream {
      * file (Force.SWITCH, with per-append forcing off), which can take seconds, so a
      * directory replaced during that force got the new file, and the stream went on without
      * an error; a cut's delete checked before closing the file, which waits for the reads in
-     * progress. Left: a replacement in the microseconds between the check and the step, as
-     * the step opens or deletes the file by its path. The check after the step then fails
-     * the stream before it writes a byte there, but the step is done: a new, empty stream
-     * file in the replacement, which a stream there refuses (BadDirStateException) until the
-     * file is removed, or, at a cut, the replacement's file of that name deleted. A directory
-     * replaced and put back between the two checks is not seen. SecureDirectoryStream (macOS
-     * and Linux), which opens and deletes relative to an open directory, could close the
-     * window; not used here.
+     * progress. Left: a replacement in the short window between the check and the step,
+     * usually microseconds, longer if the thread is paused, as by a GC, as the step opens or
+     * deletes the file by its path. The check after the step then fails the stream before it
+     * writes a byte there, but the step is done: a new, empty stream file in the
+     * replacement, or, at a cut, the replacement's file of that name deleted. A database's
+     * start there is refused until the empty file is removed, with an exception that
+     * depends on what else is in the directory: BadDirStateException beside stream files of
+     * its own; in a directory without others, StreamFormatException ("Could not find *any*
+     * valid meta block") from create(), DatabaseMissingException from open() (bergdb 020-23,
+     * reviewer v2's EmptyFileProbe). A directory replaced and put back between the two
+     * checks is not seen. SecureDirectoryStream (macOS and Linux), which opens and deletes
+     * relative to an open directory, could close the window; not used here.
      * 
      * The invariant that the check relies on (bergdb 020-23, section 5, V5-1): while the
      * stream holds bergdb.lock open, from lockDir() until unlockDir(), which close() calls
@@ -3352,7 +3357,8 @@ public class FileStream implements AppendOnlyStream {
      * bergdb 021-24: what is left, a replacement right before the new file is made, after
      * the check (here inside FileStreamIo.open()). The check after the open fails the
      * stream before it writes a byte: the append and close() throw. The new file, empty, is
-     * in the replacement, which a stream refuses until it is removed.
+     * in the replacement, which a stream refuses beside the replacement's own files
+     * (BadDirStateException) until it is removed.
      */
     @Nano
     public static void testReplacedRightBeforeTheOpen(TestEnvironment c) throws Exception {

@@ -674,11 +674,15 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   close of the file, which waits for reads in progress. Now the database
   checks its directory right before it makes, deletes or opens again a
   stream file, with nothing that waits in between, and again after.
-  Still not prevented: a replacement in the microseconds between the
-  check and the step, which can leave an empty stream file in the new
-  directory (a start there is refused until it is removed) or, at a cut,
-  delete the new directory's file of the same name; the database then
-  fails. `Database.stop()` says so. Found by a Codex review (round 4) of
+  Still not prevented: a replacement in the short window between the
+  check and the step, usually microseconds, longer if the thread is
+  paused, as by a garbage collection, which can leave an empty stream file
+  in the new directory or, at a cut, delete the new directory's file of
+  the same name; the database then fails. A start there is refused until
+  the empty file is removed, with an exception that depends on what else
+  is in the directory (`StreamIoException` beside stream files of its
+  own; in an otherwise empty one `StreamFormatException` from `create()`
+  and `DatabaseMissingException` from `open()`). `Database.stop()` says so. Found by a Codex review (round 4) of
   021-20.
 * **A closed database releases its write buffer** (bergdb 020-24-10,
   U10-3; 2026-11-09). A closed `Database` that the application still
