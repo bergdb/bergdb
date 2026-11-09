@@ -147,7 +147,13 @@ const char *kn_check(const struct knode *k);
 
 /* validateStreamNode: Java's KeyNode.Invalid as a message; a text with
  * numbers ("Time not increasing, ...", Java's) is written into buf, KN_TEXT
- * bytes. */
+ * bytes. Java's texts that print the node hold KeyNode.toString, and so
+ * Object.toString's identity hash, which no other program gives ("Bad spos
+ * of pointer I of node " and toString, or print and the startup time; "Key
+ * node with size N, " and toString): C's are its own, "Bad spos of
+ * pointer", "Bad spos of pointer, at or before the startup time" and "Key
+ * node with size 0" (corruptset.sh counts them; bergdb 021-12's start meets
+ * them). */
 const char *kn_validate_stream_node(const struct knode *k, int64_t startup_time, char *buf);
 
 /* getDeleteBitmap: the delete bitmap that deletes compare_value's klongs,

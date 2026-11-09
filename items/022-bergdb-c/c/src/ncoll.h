@@ -137,6 +137,23 @@ bool nc_points_to_index_node(const struct node *node, int32_t i);
 enum err_code nc_check_pointee_type(const struct node *node, int32_t i,
         const struct node *pointee, int64_t pos, struct err *e);
 
+/* DbStarter.validateKeyNode (bergdb 021-12, as Java's since release 2026.4):
+ * a key node version that the start reads, validated
+ * (kn_validate_stream_node), and if 'before', a version from before the
+ * startup section, none of its times after the startup time. Else
+ * ERR_FORMAT, "StreamFormatException", with Java's text. Called for the
+ * section's nodes (starter.c's validate_node), and before a version is cut
+ * back: by the follows during the reconstruction, for each key node version
+ * read, and by the start for the version of a node of D that it reads
+ * (canonical_node). Before, a damaged version from before the section, its
+ * checksum right, gave the start's check of its nodes (post_startup_check,
+ * Java's Db.checkNodes) an AssertionError, or failed an assert of the
+ * rerun's put, an abort (kn_add_klong, Java's KeyNode.addKlong; dag.c's
+ * append_delete_klong and append_klongs). */
+struct knode;
+enum err_code nc_validate_key_node(const struct knode *node, int64_t startup_time, bool before,
+        struct err *e);
+
 /* newerPos: the newer of reference ref and position w (-1: none). */
 int64_t nc_newer_pos(int64_t ref, int64_t w);
 

@@ -133,24 +133,44 @@
  * value is null (no value: never put, or deleted), and not NULL for an
  * empty value.
  *
- * Keys and the layers above (bergdb 020-22; 010-01, P12). The Core takes
- * any key and knows nothing of the layers above it; Java's Pub API
- * (bergdb.pub) keeps its data in the Core under keys of its own, and the
- * Core does not stop another writer there. In a database that the Pub API
- * also uses, a key is of one of three kinds, by its first bytes. The
- * user's keys: every key that does not start with the bytes 01 66, 01 2f
- * or 01 25, the bkeys of "/d", "/-" and "/#"; BergDB keeps none of its
- * own data there. The Pub API's keys, those that start with "/d" or "/-":
- * a put or a delete there is allowed, as the Pub API's reads check what
- * they read, but only the Pub API's own writes keep its indexes (a put at
- * an object key of a directory with an index leaves the value out of the
- * index's scans until the key is written again through the Pub API); the
- * keys there that are no Pub key's are reserved. BergDB's keys, every key
- * that starts with "/#", among them the internal prefix "/#i/" (reclaim's
- * state, the Pub API's index definitions, entries and markers): do not
- * write them; data there that does not parse is refused at a start or at
- * the read that meets it. Of BergDB's keys, this library writes reclaim's,
- * under "/#i/dreclaim/", and "/#i/-dummy" (bergdb_set_startup_distance).
+ * Keys and the layers above (bergdb 020-22; 010-01, P12), as Java's Db
+ * says since release 2026.4. The Core takes any key and knows nothing of
+ * the layers above it. A database of Java's Pub API (bergdb.pub) keeps its
+ * data in the Core under keys of its own, and the Core does not stop
+ * another writer there: a write through this library can break the Pub
+ * API's data, as an edit of the database's files can. In a database that
+ * the Pub API uses, a key is of one of three kinds, by its first bytes
+ * (its bkey):
+ *
+ *   - Your keys: every key that does not start with the bytes 01 66, 01 2f
+ *     or 01 25, the bkeys of "/d", "/-" and "/#": a key whose first byte
+ *     is not 01, or the bkey of an ikey such as "/k1". BergDB never reads
+ *     or writes them, in this release or a later one.
+ *   - The Pub API's keys: the bkey of the ikey of a Pub key, such as
+ *     "/da/-b" for "/a/b". A put or a delete there is allowed: the Pub
+ *     API's reads check what they read. But only the Pub API's own writes
+ *     keep its indexes. A put at an object key (no suffix, or ".obj") of a
+ *     directory that has an index, building or active, leaves the value
+ *     out of the index's scans until the key is written again through the
+ *     Pub API (a put of its own bytes will do), or the index is deleted and
+ *     created again: write such keys before the index is created, or make
+ *     it again after. A delete there leaves an entry that scans skip. Any
+ *     other key that starts with "/d" or "/-" is reserved.
+ *   - BergDB's keys: every key that starts with "/#", among them the
+ *     internal prefix "/#i/": reclaim's state and the Pub API's index
+ *     definitions, entries and markers. Do not write them. Data there that
+ *     does not parse is refused (InternalDataException; BERGDB_FORMAT
+ *     here), at a start or at the read that meets it. Data that parses but
+ *     that BergDB did not write makes values missing from an index's
+ *     scans, or an index disappear, and in reclaim's keys it can lose data.
+ *
+ * A scan of an index never returns a value that does not match its query,
+ * whatever was written through the Core: it checks each value against the
+ * index (bergdb 020-10, section 3.4). Java's rule to write through Db while
+ * no Database runs on the stream holds here by the directory's lock: this
+ * library and Java do not open one directory at once (BERGDB_IN_USE). Of
+ * BergDB's keys, this library writes reclaim's, under "/#i/dreclaim/", and
+ * "/#i/-dummy" (bergdb_set_startup_distance).
  *
  *
  * F. Time and the clock (012-01, 4.4)

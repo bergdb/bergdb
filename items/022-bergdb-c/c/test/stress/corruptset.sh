@@ -6,8 +6,9 @@
 # to 018-08), by class, on its sample run's random choices: truncation, flip, header (a
 # record's size, time, startupPos, topPos, got-dirty entry or count set), node (a node's
 # field changed, its checksum made right: 019-32's damage, which corrupt.sh's bit flips do
-# not reach), cut out; testFound019_32's ten copies and testFound021_11's three (bergdb
-# 021-11, release 2026.4); and the cases of the release's refusal
+# not reach), cut out; testFound019_32's ten copies, and testFound021_11's three and
+# testFound021_12's three (bergdb 021-11 and 021-12, release 2026.4); and the cases of the
+# release's refusal
 # tests on the streams those tests write: DbTesterRestart's testEnlargedRecordSizeRefused
 # (015-72), testCorruptStartupPosRefused, testCorruptGotDirtyIdRefused and
 # testOlderTopPosRefused (015-75), testMetaBlockLastTransPosRefused (019-34) and
@@ -32,13 +33,17 @@
 # text is "A read failed: " and the cause's message (src/sdb.c, fail_on_storage). A
 # StreamIoException's message is compared as any other: C's is Java's, the inner
 # exception's message (022-02, D6, Frans, 2026-11-09; until then a known departure,
-# counted, not failed: 012-14, section 6.4's open choice). Java writing into a database
-# that it refuses is reported, not counted.
+# counted, not failed: 012-14, section 6.4's open choice). One departure is counted, not
+# failed (node_text): Java's texts of KeyNode.validateStreamNode that print the key node
+# (KeyNode.toString, with Object.toString's identity hash), which no program gives, against
+# C's own text of the same check (bergdb 021-12's start meets them). Java writing into a
+# database that it refuses is reported, not counted.
 #
 # Usage: test/stress/corruptset.sh [quick]
 #   quick    the gate's set (before-commit.sh), about 60 copies, a few seconds: the refusal
-#            tests' cases and testFound019_32's and testFound021_11's copies only, the node
-#            tests' changes on the first and the last node that takes each
+#            tests' cases and testFound019_32's, testFound021_11's and testFound021_12's
+#            copies only, the node tests' changes on the first and the last node that takes
+#            each
 #   OUT      (environment) /Users/f/fl/bench/022/out/corruptset by default, or
 #            /Users/f/fl/bench/022/out/corruptset-quick
 #   CBUILD   (environment) C's builds, build/ by default
@@ -48,9 +53,10 @@
 #            repository, such as 86dade8, the port of 2026.2 before step 2), its c/ taken
 #            by git archive into OUT/control and built there, takes C's side; it must
 #            differ from Java in every base of the refusal tests' cases and of
-#            testFound019_32 and testFound021_11 (C before 022-02, step 2, such as 3e3b704,
-#            differs in found-long-1 alone). Prints CORRUPTSET CONTROL CAUGHT or CORRUPTSET
-#            CONTROL MISSED.
+#            testFound019_32, testFound021_11 and testFound021_12 (C before 022-02, step 2,
+#            such as 3e3b704, differs in found-long-1 and found-long-3971358 alone, and C
+#            before 022-02's re-pin, such as 0e4e27f, in found-long-3971358 alone). Prints
+#            CORRUPTSET CONTROL CAUGHT or CORRUPTSET CONTROL MISSED.
 # Needs C's test build and build/java/classes (test/cross/java-build.sh). Prints
 # CORRUPTSET OK or CORRUPTSET FAILED; the copies are removed when the set passes, and OUT
 # keeps list.txt (each copy, with harness 6.1's own outcome of it), results.txt (each
@@ -163,6 +169,24 @@ def java_error(err):
             return name, msg, None
     return None
 
+def node_text(j, c):
+    """KeyNode.validateStreamNode's texts that print the key node, which a start meets since
+    bergdb 021-12 (found-long-3971358/2): Java's holds KeyNode.toString, and so
+    Object.toString's identity hash ("K/3a"), and KeyNode.print's lines after it, which no
+    other program gives; C's is its own text of the same check. Counted, not failed: Java's
+    message taken as C's where both name the same check."""
+    if j is None or c is None or j[0] != 'StreamFormatException' or c[0] != j[0]:
+        return j, c
+    node = r'K/\S+( -?\d+:-?\d+)?( L)?'
+    for jp, cm in ((r'Bad spos of pointer \d+ of node %s\.$' % node, 'Bad spos of pointer'),
+                   (r'Bad spos of pointer \d+ of node %s$' % node,
+                    'Bad spos of pointer, at or before the startup time'),
+                   (r'Key node with size -?\d+, %s\.$' % node, 'Key node with size 0')):
+        if re.match(jp, j[1]) and c[1] == cm:
+            count("known: Java's text prints the key node (KeyNode.toString's identity hash)")
+            return (j[0], c[1], j[2]), c
+    return j, c
+
 def c_error(err):
     for line in err.decode('utf-8', 'replace').splitlines():
         m = re.match(r'bergdb-dump: (?:the start|a getMany|a getOne) failed: (\w+), (.*)$', line)
@@ -215,7 +239,7 @@ for line in lines:
         pb = re.findall(rb'spos:* ([0-9]+)', errb)[:1]
         if pa != pb:
             fail("the failed reads' positions: Java %s, C %s" % (pa, pb))
-        j, c = java_error(erra), c_error(errb)
+        j, c = node_text(java_error(erra), c_error(errb))
         messages(j, c, 'failed reads')
         outcome = 'read failed (%s)' % (c[0] if c else '?')
     else:
@@ -238,7 +262,7 @@ for line in lines:
             elif ta_ != src:
                 notes.append('note: %s: Java refused the start and changed the directory' % v)
             if eb == '1':
-                j, c = java_error(erra), c_error(errb)
+                j, c = node_text(java_error(erra), c_error(errb))
                 messages(j, c, 'refusals')
                 outcome = 'refused (%s)' % (c[0] if c else '?')
             else:

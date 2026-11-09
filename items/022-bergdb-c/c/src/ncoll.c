@@ -145,6 +145,26 @@ enum err_code nc_check_pointee_type(const struct node *node, int32_t i,
     return ERR_OK;
 }
 
+/* DbStarter.validateKeyNode (bergdb 021-12, as Java's since release 2026.4) */
+enum err_code nc_validate_key_node(const struct knode *node, int64_t startupTime, bool before,
+        struct err *e) {
+    char buf[KN_TEXT];
+    const char *msg = kn_validate_stream_node(node, startupTime, buf);
+    if (msg != NULL) {
+        return err_set(e, ERR_FORMAT, "StreamFormatException", "%s", msg);
+    }
+    for (int32_t i = 0; before && i < node->size; i++) {
+        int64_t klong = node->klongs[i];
+        if (kl_get_type(klong) == KL_TYPE_TIME && kl_get_time(klong) > startupTime) {
+            return err_set(e, ERR_FORMAT, "StreamFormatException", "Key node %" PRId64 " at %"
+                    PRId64 ", before the startup section, has the time %" PRId64
+                    ", after the startup time %" PRId64 ".", node->n.id, node->n.spos,
+                    kl_get_time(klong), startupTime);
+        }
+    }
+    return ERR_OK;
+}
+
 int64_t nc_newer_pos(int64_t ref, int64_t w) {
     if (!spos_is_valid(w) || spos_is_vpos(w)) {
         return ref;
@@ -193,7 +213,8 @@ static void touch(struct obj *pointee) {
 }
 
 /* readVersion: version pos of node id; during the reconstruction a key node
- * version of the section is cut back to the startup time (M22). */
+ * version is validated (bergdb 021-12), and one of the section is cut back to
+ * the startup time (M22). */
 static enum err_code read_version(struct ncoll *nc, int64_t id, int64_t pos,
         int32_t pointerIndex, struct node *predecessor, struct node **out, struct err *e) {
     if (spos_is_vpos(pos)) {
@@ -216,9 +237,19 @@ static enum err_code read_version(struct ncoll *nc, int64_t id, int64_t pos,
                 node->id, id);
     }
     nc->loads++;
-    if (nc->reconstructing && nc->have_section && pos >= nc->section_start_pos
-            && node_type(node) == NODE_TYPE_KEY_NODE) {
-        kn_to_previous_state(nc->cx, (struct knode *) node, nc->section_startup_time);
+    if (nc->reconstructing && nc->have_section && node_type(node) == NODE_TYPE_KEY_NODE) {
+        /* Validated as the start validates the section's nodes (bergdb 021-12, as Java's
+         * since release 2026.4): a damaged version from before the section, its checksum
+         * right, made the start's check of its nodes give an AssertionError, or the rerun's
+         * put fail an assert. */
+        rc = nc_validate_key_node((const struct knode *) node, nc->section_startup_time,
+                pos < nc->section_start_pos, e);
+        if (rc != ERR_OK) {
+            return rc;
+        }
+        if (pos >= nc->section_start_pos) {
+            kn_to_previous_state(nc->cx, (struct knode *) node, nc->section_startup_time);
+        }
     }
     *out = node;
     return ERR_OK;

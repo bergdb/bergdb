@@ -45,7 +45,10 @@ import bergdb.stream.MemoryStream;
  * (a range of bytes removed). And the ten copies of testFound019_32, the damage that found
  * 019-32 (bases "found-..."), and the three of testFound021_11 (bergdb 021-11, release
  * 2026.4: a pointer that a start links by node id set to a version of a node of another
- * type; base "found-long-1", the configuration LONG's original of seed 1).</li>
+ * type; base "found-long-1", the configuration LONG's original of seed 1), and the three
+ * of testFound021_12 (bergdb 021-12, release 2026.4: a key node that a start reads from
+ * before its startup section, damaged so that it breaks KeyNode's invariants; base
+ * "found-long-3971358", LONG's original of the test's seed).</li>
  * <li><b>The cases of the release's refusal tests</b> (bases "case-..."), on the streams
  * that those tests write, with the tests' changes: DbTesterRestart's
  * testEnlargedRecordSizeRefused (015-72), testCorruptStartupPosRefused,
@@ -68,9 +71,9 @@ import bergdb.stream.MemoryStream;
  *
  * <pre>
  * Usage: java -ea -cp CLASSES bergdb.core.CorruptSet [-quick] OUT [SEED ...]
- *   -quick  the gate's set, about 60 copies: the refusal tests' cases and testFound019_32's
- *           and testFound021_11's copies only, the node tests' changes on the first and the
- *           last node that takes each
+ *   -quick  the gate's set, about 60 copies: the refusal tests' cases and testFound019_32's,
+ *           testFound021_11's and testFound021_12's copies only, the node tests' changes on
+ *           the first and the last node that takes each
  *   SEED    the sample runs' seeds, 1 (testSample's) by default
  * Writes, for each original NAME, OUT/base/NAME/db (the stream as written), and for each
  * copy OUT/v/NAME/N/src, its damaged directory, with a and b, two copies of it for the two
@@ -136,6 +139,7 @@ public final class CorruptSet {
             set.cases();
             set.found019_32();
             set.found021_11();
+            set.found021_12();
             if (!quick) {
                 for (long seed : seeds) {
                     set.sample(seed);
@@ -424,6 +428,44 @@ public final class CorruptSet {
             Bytes.longToBytesLE(row[3], nb, (int) row[2]);
             CorruptStreamTester.Copy c = nodeCopy(o, "found", rec, node, nb,
                     "its byte " + row[2] + " set to " + row[3]);
+            CorruptStreamTester.Outcome out = CorruptStreamTester.check(o, c);
+            String tester = out.failure == null ? out.kind : "FAILED: " + out.failure;
+            if (out.failure != null) {
+                testerFailures++;
+                System.out.println("the tester failed " + name + "/" + n + ": " + tester);
+            }
+            copy(name, n++, c, tester);
+        }
+    }
+
+    /**
+     * testFound021_12's copies (bergdb 021-12, as Java's since release 2026.4), as the test
+     * makes them: in LONG's original of the test's seed (keys of three segments), a key node
+     * that a start reads from before its startup section (its node at offset 200 of the
+     * record at 36336), damaged so that it breaks KeyNode's invariants: a time klong's byte
+     * flipped by 0xff at 36570 and at 36738 (the times not increasing), and its first klong,
+     * a time klong, made a key klong whose pointer is Spos.NULL (the int 0x7ffffff8 at its
+     * byte 36, its checksum made right). Each refused at the start; before 021-12, Java's
+     * start threw an AssertionError.
+     */
+    private void found021_12() throws IOException {
+        CorruptStreamTester.Config config = CorruptStreamTester.LONG;
+        long seed = 20766L * 31 + config.name.hashCode();
+        CorruptStreamTester.Original o = CorruptStreamTester.write(config, seed);
+        String name = "found-" + config.name + "-" + seed;
+        base(name, o.bytes);
+        CorruptStreamTester.Record rec = o.recordAt(36336);
+        int[] node = null;
+        for (int[] x : rec.nodes) {
+            if (x[0] == 200) node = x;
+        }
+        List<CorruptStreamTester.Copy> list = new ArrayList<CorruptStreamTester.Copy>();
+        CorruptStreamTester.flips(o, Arrays.asList(36570, 36738), new int[] {0xff}, list);
+        byte[] nb = Arrays.copyOfRange(rec.bytes, node[0], node[0] + node[1]);
+        Bytes.intToBytesLE(0x7ffffff8, nb, 36);
+        list.add(nodeCopy(o, "found", rec, node, nb, "int " + 0x7ffffff8 + " at its byte 36"));
+        int n = 0;
+        for (CorruptStreamTester.Copy c : list) {
             CorruptStreamTester.Outcome out = CorruptStreamTester.check(o, c);
             String tester = out.failure == null ? out.kind : "FAILED: " + out.failure;
             if (out.failure != null) {

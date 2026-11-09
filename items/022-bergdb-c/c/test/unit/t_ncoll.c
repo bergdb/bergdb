@@ -704,6 +704,34 @@ TEST(ncoll_link_to_canonical_another_type) {
     world_free(&w);
 }
 
+/* NodeCollection.testLinkToCanonicalChecksTheType (bergdb 020-23, V2-1, as Java's since
+ * release 2026.4): rule 4 at startup without the check by node id, as with Java's assertions
+ * off (DbStarter.linkD; C's db_open, and bergdb-dump without -check): a key node's pointer
+ * whose position the section's ids give as a version of a top node with a canonical object
+ * is refused, and gets no handle (021-11). With the check, the check refuses it first, so a
+ * test with the check does not pin nc_link_to_canonical's own check of the type; case (1) of
+ * ncoll_link_to_canonical_another_type pins it too, on other nodes. */
+TEST(ncoll_link_to_canonical_checks_the_type) {
+    struct world w;
+    world_init(&w);
+    stream_put(&w, 100, &test_top_node(&w, 301, 100)->n);      /* a version of top node 301 */
+    struct tnode *top = test_top_node(&w, 301, 50);             /* its canonical object */
+    node_set_canonical(&top->n, true);
+    reg(&w, &top->n);
+    struct lmap ids, byPos;
+    lmap_init(&ids, &w.m);
+    CHECK(lmap_put(&ids, 100, 301));                            /* the section's id of 100 */
+    const int64_t p100[] = { 100 };
+    struct knode *parent = test_node_of_d(&w, 103, 1, p100);
+    test_by_pos(&w, &byPos);
+    CHECK(!w.nc.check_link);
+    link_refused(&w, &parent->n, &ids, &byPos, 1,
+            "Pointer 1 of node 103 names a node of type 10 at 100, not 20.");
+    lmap_free(&ids);
+    lmap_free(&byPos);
+    world_free(&w);
+}
+
 /* NodeCollection.testResolvePointersChecksTheType (bergdb 021-11, as Java's since release
  * 2026.4): before a node is written, a stream pointer that names, by damage (the node's
  * checksum right), a version of a pinned node of another type is refused, as a follow
@@ -905,6 +933,7 @@ const struct test ncoll_tests[] = {
     TEST_ENTRY(ncoll_pointee_type),
     TEST_ENTRY(ncoll_bad_pointers),
     TEST_ENTRY(ncoll_link_to_canonical_another_type),
+    TEST_ENTRY(ncoll_link_to_canonical_checks_the_type),
     TEST_ENTRY(ncoll_resolve_pointers_checks_the_type),
     TEST_ENTRY(ncoll_writer_keeps_the_node_whatever_its_policy),
     TEST_ENTRY(ntable_rules),

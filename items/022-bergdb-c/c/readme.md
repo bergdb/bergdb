@@ -27,7 +27,8 @@ keeps; 022-01 brought it to 2026.3, and 2026.4 follows (022-02; 022's
 readme). Until 2026-11-05 C followed `main` as of 2026-10-29 (`ae4aaf9`),
 then release 2026.2 until 2026-11-09. **On the way to 2026.4** (022-02):
 the harness compiles the pinned candidate of release 2026.4 by default
-(`JAVA_REF=git:94a1520`, `main` at 2026-11-09 11:57), and
+(`JAVA_REF=git:82edabf`, `main` at 2026-11-09 13:04; `94a1520`, 11:57,
+until 022-02's re-pin), and
 `JAVA_REF=2026.3` no longer compiles (`CorruptSet.java` takes the
 candidate's `Config`); 022-02's step 5 writes this paragraph for 2026.4.
 
@@ -669,7 +670,8 @@ Raw output goes to `/Users/f/fl/bench/022/out/` by default (`OUT=`).
   harness 6.1's copies by class (`CorruptStreamTester`: truncation, flip,
   header fields, a node's field with its checksum made right, a range cut
   out), `testFound019_32`'s, `testFound021_11`'s (022-02, step 2: base
-  `found-long-1`), and the cases of 2026.3's refusal tests
+  `found-long-1`), `testFound021_12`'s (022-02, the re-pin: base
+  `found-long-3971358`), and the cases of 2026.3's refusal tests
   (`DbTesterRestart`'s six, 015-72, 015-75, 019-34, 019-01; the node
   tests' changes, 019-32, on every node of a stream). Both dumpers start
   each, C's with `-check` (the start's check by node id, 005-57, which
@@ -680,7 +682,11 @@ Raw output goes to `/Users/f/fl/bench/022/out/` by default (`OUT=`).
   the error's cause (`struct err`), and a database's stream is read as
   Java's `Db` reads it, through `BufferedStream` (`stream_as_storage`);
   022-02, D6 (Frans, 2026-11-09, 12:25), decided 012-14, section 6.4's
-  open choice so, where the set had counted C's own text as known. `quick`
+  open choice so, where the set had counted C's own text as known.
+  Counted, not failed: Java's texts of `KeyNode.validateStreamNode` that
+  print the key node (its `toString`, with `Object.toString`'s identity
+  hash), which the start meets since 021-12; C's is its own text of the
+  same check. `quick`
   (about 60 copies) is in the gate; the whole set (`SEEDS=`, 1 by
   default, testSample's copies) by hand. `CONTROL=REV` is the negative
   control: C at REV (`86dade8`, the port of 2026.2) must differ in every

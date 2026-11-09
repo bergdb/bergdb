@@ -1113,3 +1113,79 @@ runs); `writecheck` 0; `corruptset` quick 60 copies; `allocfail` 628
 runs; `examples` OK. The same on the landings that came meanwhile (step
 1, step 2's bases, the merge of step 6), 365 to 506 s. No difference
 remains.
+
+2026-11-09, the re-pin (worker t6). The candidate pinned again, `main`
+at `82edabf4ec2f4df51c411ae5a37e6d345017d7f2` (13:04, `int.git`'s
+`repo-main`): `java-build.sh`'s default. The Core layer's commits since
+`94a1520`: `fd18b6a` (020-22, `Db`'s Javadoc), `c2bb988` (021-11:
+harness 6.1's full set runs `LONG` too; the sample's configurations, and
+so the corrupt set's copies, unchanged), `83e8e13` (021-12), `780dc63`
+(020-23 V2-1, a test), `8a3d191` (020-23 V2-2, `BufferedStream.append`'s
+check after its wait for room: no counterpart, as C has no buffer thread
+and one caller, so no append waits while a close begins). Java's vectors
+written again from it: all thirteen files equal. The negative control, C
+before this entry (the library of `b23d24e`, as at `0e4e27f`) against
+the new pin: `C BEFORE COMMIT OK (437 s)` (`unit` 392 tests, `cross
+quick` 0 differences, `writecheck` 0, `corruptset` 57 copies,
+`allocfail` 628 runs); the whole corrupt set `CORRUPTSET OK` (6,247
+copies, step 0's counts); `corrupt.sh` `CORRUPT OK` (144 variants, 83
+refused by both, 39 started, 22 with a later read failing): no
+difference, as harness 6.1's sample never met 021-12 (its full set on
+`LONG` did). (a) 021-12, as `83e8e13`: `nc_validate_key_node`
+(`ncoll.c`, `DbStarter.validateKeyNode`): `kn_validate_stream_node` and,
+for a version from before the startup section, no time after the startup
+time, with Java's `StreamFormatException` and text ("Key node N at P,
+before the startup section, has the time T, after the startup time S.");
+called by `validate_node` (the section's nodes, as before), by
+`read_version` for each key node version a follow reads during the
+reconstruction, and by `canonical_node`, each before the cut back.
+Before, C took such a version: the times not increasing gave the
+`AssertionError` of the start's check of its nodes (`post_startup_check`,
+Java's `Db.checkNodes`), or an abort on an assert of the rerun's put
+(`kn_add_klong`, Java's `KeyNode.addKlong`; `dag.c`'s
+`append_delete_klong` and `append_klongs`); a time after the startup time
+that kept them increasing was started; a time klong made a key klong
+whose pointer is `Spos.NULL` gave the check's `AssertionError`. Tests,
+each failing before the fix (an `AssertionError`, then an abort):
+`t_sdb.c`'s `sdb_found_021_12`, `testFound021_12` on the vectors' stream,
+ten copies of versions from before the section, checksums right, refused
+with Java's texts or, unchanged, started: those the rerun's follows read
+(1357 at 1760, 2595 at 2848, 1359 at 3496) and, the last record's
+got-dirty entry of 2595 set to a version the rerun does not reach (as a
+touch's entry names one), those `canonical_node` reads (733 at 1008, 735
+at 2376); with `read_version`'s call taken out it fails at its first
+copy, with `canonical_node`'s at those two. The corrupt set's base
+`found-long-3971358` (`CorruptSet.java`'s `found021_12`, the test's three
+copies on `LONG`'s original of its seed, in `quick` too): refused by
+both; C before differs in all three (`CONTROL=0e4e27f`: the
+`AssertionError`, an abort in `kn_add_klong`, the `AssertionError`; no
+other base). The third's Java text, `KeyNode.validateStreamNode`'s "Bad
+spos of pointer 0 of node K/3a 22807:36536 L" and the node's print, holds
+`Object.toString`'s identity hash ("K/d9" in the next run), so no program
+gives it; C's text of that check is its own since the port of 2026.2
+("Bad spos of pointer, at or before the startup time"), and
+`corruptset.sh` counts the pair (`node_text`; `knode.h`, `c/readme.md`,
+section 10). (b) V2-1: `t_ncoll.c`'s
+`ncoll_link_to_canonical_checks_the_type`
+(`testLinkToCanonicalChecksTheType`); C has the check since step 2, so it
+passed before, and fails with `nc_link_to_canonical`'s
+`nc_check_pointee_type` taken out. (c) 020-22: `bergdb.h`'s "Keys and the
+layers above", step 1's from r22b's draft, now follows `Db`'s Javadoc as
+landed (a write through the Core can break the Pub API's data; your keys
+never read or written by BergDB; an object key's put left out of an
+index's scans until written again through the Pub API or the index made
+again, a delete an entry that scans skip; well-formed data that BergDB
+did not write in its keys; a scan of an index returns only matching
+values; Java's rule to write while no `Database` runs, which C's lock
+gives).
+
+The gate against the new pin (`git:82edabf`), on `2026.4` at `9b5c244`
+(D7 and D6 landed): `C BEFORE COMMIT OK (331 s)`, F53 under a load of
+about 28 to 48; `unit` 397 tests (396 in the release build); `func` 28;
+`cross quick` 0 differences (23 workloads, 69 crash cuts, 85 corrupt
+variants, 2 in turns, 46 budget runs); `writecheck` 0; `corruptset` 63
+copies, `found-long-3971358`'s three refused by both, the third's text
+counted by `node_text`; `allocfail` 628 runs; `examples` OK. On
+`0e4e27f` with this entry, before the rebases: the whole corrupt set
+`CORRUPTSET OK` (6,253 copies, the control's counts and these six, 198
+s) and `corrupt.sh` `CORRUPT OK` (144 variants). No difference remains.

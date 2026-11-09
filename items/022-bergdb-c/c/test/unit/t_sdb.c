@@ -716,6 +716,130 @@ TEST(sdb_found_021_11) {
     free(v.stream);
 }
 
+/* A copy started (with the check by node id or without): refused at the start with Java's
+ * StreamFormatException and 'text', nothing written, or, if 'text' is NULL, started. */
+static void start_copy(const struct vec *v, const uint8_t *copy, bool check, const char *text) {
+    if (text != NULL) {
+        found_start(v, copy, check, text, 0, NULL);
+        return;
+    }
+    struct mem m;
+    struct stream s;
+    struct sdb d;
+    struct err e;
+    mem_init(&m);
+    open_stream(&s, &m, copy, v->len);
+    err_clear(&e);
+    enum err_code rc = sdb_open(&d, &s, &m, 8, check, &e);
+    CHECK_EQ(rc, ERR_OK);
+    if (rc == ERR_OK) {
+        sdb_close(&d);
+    } else {
+        printf("    check %d: %s: %s\n", (int) check, e.java, e.text);
+    }
+    stream_close(&s);
+    CHECK_MEM_ZERO(&m);
+}
+
+/* CorruptStreamTester.testFound021_12 (bergdb 021-12, as Java's since release 2026.4), on the
+ * vectors' stream: a key node version that the start reads from before its startup section
+ * (the records at 3824 and 3960, the startup time 2120), damaged so that it breaks KeyNode's
+ * invariants, its checksum right, is refused at the start with Java's StreamFormatException
+ * and text, as the section's own nodes are (validateNode): the start validates it before
+ * the cut back (nc_validate_key_node, Java's DbStarter.validateKeyNode) where it reads it,
+ * by a follow during the reconstruction (read_version, NodeCollection.readVersion) and as the
+ * canonical object of a got-dirty node (canonical_node, DbStarter.canonicalNode). Before, C
+ * took such a version: (a) a time klong's byte xor 0xff, the times not increasing, gave the
+ * AssertionError of the start's check of its nodes (post_startup_check, Java's KeyNode.check
+ * from DbStarter.postStartupCheck), or (b) failed an assert of the rerun's put, an abort
+ * (dag.c's append_delete_klong and append_klongs, knode.c's kn_add_klong: Java's
+ * KeyNode.addKlong); a time after the startup time that kept the times increasing was
+ * started; (c) the first klong, a time klong, made a key klong, whose pointer is Spos.NULL
+ * (the int 0x7ffffff8 at the node's byte 36), gave the start's check's AssertionError. The
+ * text of (c) is C's own: Java's prints the node (KeyNode.print, which begins with
+ * KeyNode.toString and so with Object.toString's identity hash), which no other program
+ * gives. On Java's streams of keys of three segments: the corrupt set's found-long-3971358,
+ * testFound021_12's own copies (CorruptSet.java). */
+TEST(sdb_found_021_12) {
+    struct vec v;
+    REQUIRE(read_vec(&v));
+    const struct jtrans *last = &v.t[v.nt - 1];
+    REQUIRE(last->tpos == 3960 && last->startup_pos == 3824);
+    REQUIRE(v.t[v.nt - 2].tpos == 3824 && v.t[v.nt - 2].tt == 2120);
+    /* The node's position and id, the klong's byte in the node, and xor 0xff of its low
+     * byte, or (mask 0) its high int set to 0x7ffffff8; the text, NULL: started. The
+     * versions of key nodes 1357, 2595 and 1359 that the rerun's puts reach, by its follows
+     * (read_version). And, after the entry's change below, of 733 and 735, which the rerun
+     * does not reach, read as the canonical objects of D (canonical_node). */
+    const struct {
+        int64_t pos, id;
+        int32_t at, mask;
+        const char *text;
+    } rows[] = {
+        /* (a): 2595's time 2090 made 2261 */
+        { 2848, 2595, 32, 0xff, "Time not increasing, 2100, 2261, index=4" },
+        /* (b): 1357's time 2050 made 2301; before, an abort in append_delete_klong */
+        { 1760, 1357, 32, 0xff, "Time not increasing, 2060, 2301, index=3" },
+        /* (b): 2595's last time, 2100, made 2251; before, an abort in kn_add_klong */
+        { 2848, 2595, 64, 0xff, "Key node 2595 at 2848, before the startup section, has the "
+                "time 2251, after the startup time 2120." },
+        /* (b): 1359's time 2050 made 2301; before, an abort in append_klongs */
+        { 3496, 1359, 32, 0xff, "Time not increasing, 2100, 2301, index=4" },
+        /* 1359's last time, 2110, made 2241; before, started */
+        { 3496, 1359, 80, 0xff, "Key node 1359 at 3496, before the startup section, has the "
+                "time 2241, after the startup time 2120." },
+        /* (c) */
+        { 2848, 2595, 32, 0, "Bad spos of pointer, at or before the startup time" },
+        /* canonical_node, (a): 733's time 2040 made 1799 */
+        { 1008, 733, 56, 0xff, "Time not increasing, 1799, 2030, index=3" },
+        /* canonical_node: 735's last time, 2080, made 2271; before, started */
+        { 2376, 735, 80, 0xff, "Key node 735 at 2376, before the startup section, has the "
+                "time 2271, after the startup time 2120." },
+        /* canonical_node: unchanged; started */
+        { 1008, 733, 32, -1, NULL },
+        { 2376, 735, 32, -1, NULL },
+    };
+    /* The last record's got-dirty entry of 2595 at 2848, set to the canonical rows' node and
+     * version: a version that the rerun does not reach, as the entry of a node that a touch
+     * made dirty names one (a reclaim step's, which is not rerun). */
+    int64_t entry;
+    {
+        struct mem m;
+        struct err e;
+        struct st_record r;
+        mem_init(&m);
+        st_init(&r);
+        REQUIRE(st_parse(&r, last->tpos, v.stream + last->tpos, (int32_t) (v.len - last->tpos),
+                &m, &e) == ERR_OK);
+        REQUIRE(r.got_dirty_count == 5 && st_got_dirty_id(&r, 2) == 2595
+                && st_got_dirty_pos(&r, 2) == 2848);
+        entry = last->tpos + (r.got_dirty - (v.stream + last->tpos)) + 16 * 2;
+        st_free(&r, &m);
+        CHECK_MEM_ZERO(&m);
+    }
+    for (size_t r = 0; r < sizeof rows / sizeof rows[0]; r++) {
+        const int64_t p = rows[r].pos;
+        REQUIRE(v.stream[p + 4] == NODE_KEY && bytes_get_long_le(v.stream + p + 24) == rows[r].id);
+        REQUIRE(p < 3824 && rows[r].at < 32 + 8 * bytes_get_short_le(v.stream + p + 17));
+        const int64_t klong = bytes_get_long_le(v.stream + p + rows[r].at);
+        REQUIRE(kl_get_type(klong) == KL_TYPE_TIME);
+        const int64_t value = rows[r].mask > 0 ? klong ^ rows[r].mask
+                : rows[r].mask < 0 ? klong
+                : (int64_t) (((uint64_t) klong & UINT64_C(0xffffffff))
+                | ((uint64_t) 0x7ffffff8 << 32));
+        uint8_t *copy = node_copy(&v, p, rows[r].at, value);
+        if (p == 1008 || p == 2376) {
+            le64(rows[r].id, copy + entry);
+            le64(p, copy + entry + 8);
+        }
+        for (int check = 1; check >= 0; check--) {
+            start_copy(&v, copy, check == 1, rows[r].text);
+        }
+        free(copy);
+    }
+    free(v.stream);
+}
+
 TEST(sdb_allocation_failures) {
     struct vec v;
     REQUIRE(read_vec(&v));
@@ -769,6 +893,7 @@ const struct test sdb_tests[] = {
     TEST_ENTRY(sdb_refusals),
     TEST_ENTRY(sdb_refusals_2026_3),
     TEST_ENTRY(sdb_found_021_11),
+    TEST_ENTRY(sdb_found_021_12),
     TEST_ENTRY(sdb_allocation_failures),
     TEST_END
 };

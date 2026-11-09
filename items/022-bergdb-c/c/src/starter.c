@@ -264,11 +264,7 @@ static enum err_code validate_node(struct starter *st, const struct sn_node *sn,
         if (k == NULL) {
             return nomem(e, "a key node");
         }
-        char buf[KN_TEXT];
-        const char *msg = kn_validate_stream_node(k, st->startup_time, buf);
-        if (msg != NULL) {
-            return err_set(e, ERR_FORMAT, "StreamFormatException", "%s", msg);
-        }
+        return nc_validate_key_node(k, st->startup_time, false, e);
     }
     return ERR_OK;
 }
@@ -681,7 +677,8 @@ static enum err_code prepare_db(struct starter *st, struct err *e) {
 
 /* canonicalNode: the canonical object of a node of D: the node table's; or
  * its newest version in the section, cut back to the startup time; or the
- * version at spos. NULL in *out if none of these. */
+ * version at spos. NULL in *out if none of these. A key node version read is
+ * validated first (bergdb 021-12). */
 static enum err_code canonical_node(struct starter *st, int64_t id, int64_t spos,
         struct node **out, struct err *e) {
     struct sr_env *env = st->env;
@@ -709,6 +706,12 @@ static enum err_code canonical_node(struct starter *st, int64_t id, int64_t spos
                 node->id);
     }
     if (node_type(node) == NODE_TYPE_KEY_NODE) {
+        /* validated before the cut back (bergdb 021-12, as Java's since release 2026.4) */
+        rc = nc_validate_key_node((const struct knode *) node, st->startup_time,
+                pos < st->startup_pos, e);
+        if (rc != ERR_OK) {
+            return rc;
+        }
         kn_to_previous_state(env->cx, (struct knode *) node, st->startup_time);
     }
     node_set_canonical(node, true);
