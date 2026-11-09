@@ -33,7 +33,7 @@ build); one known cost is accepted (below):
 
 | Row | What | With |
 |---|---|---|
-| 020-07 | Frans's approval of the spec's text under 018-01's rule | Frans: a release step |
+| 020-07 | Frans's approval of the spec's text under 018-01's rule | approved 2026-11-09, 07:33 |
 | L-F6 | DbObject: the String[] (nested path) form for every typed getter | later (B3's review, F6) |
 | L-rec | Records as Data Objects (020-02, 5.1b; the coordinator's lean) | later |
 | L-key | A key field in a stored object, opt-in (017-07, section 6) | later, on demand |

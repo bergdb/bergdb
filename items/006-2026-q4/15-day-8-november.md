@@ -260,6 +260,9 @@ The night, in order (each gated with BEFORE COMMIT OK; reviews read-only):
 1. **020-07's text**, the spec of stored objects, for your approval under
    018-01's rule (you approved its design on 2026-11-08). Read 020-07.
    Recommended: approve; it is checked by two codecs and the vectors.
+   *Decided* (Frans, 2026-11-09, 07:33): "I approve 020-07." Before the
+   release he reads the Pub API's Javadoc.
+
 2. **C-M8, a known cost**: a `w()` of one String or `byte[]` put at an
    object key is 13 % slower (2.6 µs against 2.3), the price of I1's rule
    that fixes 015-28, 015-43 and 015-46 (020-12, 020-11). Recommended:

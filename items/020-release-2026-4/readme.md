@@ -103,7 +103,8 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
 * [07-object-spec.md](07-object-spec.md). 020-07, the spec of stored
   objects, format 2, "DbObject's table with Binson's values", as Frans
   decided it on 2026-11-08 (020-02, section 4), written at his request
-  (17:12) for his approval under 018-01's rule: the model, the grammar,
+  (17:12) for his approval under 018-01's rule, approved 2026-11-09,
+  07:33 (done): the model, the grammar,
   the rules R1 to R15, what a writer must do and a reader must refuse
   (each condition with a code), the limits, the lookup by binary search,
   the header and the old format, the conversion with Binson; seven

@@ -1,7 +1,8 @@
 # 020-07 Stored objects, format 2: the spec
 
-Created 2026-11-08 by Frans Lundberg. Status: open, a draft for Frans's
-approval under 018-01's rule (020-02, section 4.12). The bytes of a stored
+Created 2026-11-08 by Frans Lundberg. Status: done, approved by Frans
+under 018-01's rule on 2026-11-09, 07:33 (020-02, section 4.12; section
+14); frozen at release 2026.4 (Q6). The bytes of a stored
 object in BergDB, format 2, "DbObject's table with Binson's values"
 (020-05's option (f)), as Frans decided them on 2026-11-08, 15:51 to 17:09
 (020-02, section 4): the model, the grammar, the rules, what a writer must
@@ -855,7 +856,8 @@ check at every read; the others before the release.
   refused.
 
 The approval of this spec's text under 018-01's rule stays with Frans: a
-step of the release, not a blocker of the code (020-11).
+step of the release, not a blocker of the code (020-11). *Approved*
+(Frans, 2026-11-09, 07:33): "I approve 020-07."
 
 
 ## 15. Sources
@@ -893,3 +895,6 @@ ends, each field); Java's classes a side note, their names not stored.
 No change of meaning; the bytes checked against the vectors `payment` and
 `dialog`. Then, at Frans's request, in JSON5: the names unquoted, in the
 annotations too, easier to read.
+
+2026-11-09. Approved by Frans under 018-01's rule, 07:33: "I approve
+020-07." Status: done.
