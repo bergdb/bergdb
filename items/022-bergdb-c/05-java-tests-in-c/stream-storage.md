@@ -29,15 +29,15 @@ are, and are ported as C's stream and recovery tests: lengths, reads past
 the end and below a cut, cuts, the forces, failures of writes, forces,
 opens and deletes, the lock file, a torn tail and recovery.
 
-Written now: 21 tests (section 3), in `t_stream.c` (11), `t_recover.c`
-(4), `t_rstream.c` (4) and `t_append.c` (2). They found one fault of C,
-fixed (section 4.1): a stream that an I/O failure had failed still took a
-sync and a close when its buffer was empty, so that through `bergdb.h` a
-sync after a failed sync gave `BERGDB_OK` (the force tried again) and the
-close `BERGDB_OK`, where `c/readme.md` (section 9, point 8) and Java give
-the failure. And one difference that a user of C meets, not fixed, for the
-session (section 4.2): a database in memory never frees its stream's
-bytes, also after reclaim's cuts.
+Written now: 21 tests of Java's (section 3), in `t_stream.c` (11),
+`t_recover.c` (4), `t_rstream.c` (4) and `t_append.c` (2), and one of
+C's own. They found two faults of C, both fixed. A stream that an I/O
+failure had failed still took a sync and a close when its buffer was
+empty, so that through `bergdb.h` a sync after a failed sync gave
+`BERGDB_OK` (the force tried again) and the close `BERGDB_OK`, where
+`c/readme.md` (section 9, point 8) and Java give the failure (section
+4.1). And a database in memory never freed its stream's bytes, also after
+reclaim's cuts, where Java's drops them (section 4.2).
 
 
 # 1. `bergdb.stream`
@@ -355,6 +355,8 @@ runs the contract on the memory streams and the workload with one seed.
   `rs_pos_of_trans_completed_before_after_cut`.
 * `t_append.c`: `append_rs_offset` (C's record is a pointer to its first
   byte: the slice's own size field is checked, 005-75), `append_constants`.
+* C's own, for section 4.2: `t_stream.c`'s
+  `stream_memory_database_frees_cut_bytes`.
 
 
 # 4. Findings
@@ -392,22 +394,38 @@ passes with it (`allocfail`'s runs among them: a NOMEM in a new file fails
 the stream with bytes still in its buffer, which a flush refused before as
 now).
 
-## 4.2 For the session: a database in memory keeps every byte of its stream
+## 4.2 C's fault, fixed: a database in memory kept every byte of its stream
 
-C's memory stream is one buffer from position 0, and its cut
-(`stream_pretruncate`, `CutStream`'s exact cut) moves the first position
-and frees nothing. Java's database in memory (`DbBuilder`'s default: a
+C's memory stream was one buffer from position 0, and its cut
+(`stream_pretruncate`, `CutStream`'s exact cut) moved the first position
+and freed nothing. Java's database in memory (`DbBuilder`'s default: a
 `MemoryStream` under a `StorageManager`) drops each 1,000,000-byte array
-below a cut. So a C database in memory with reclaim grows by every byte
-it writes, whatever the retain duration. A probe through `bergdb.h` (a
+below a cut. So a C database in memory with reclaim grew by every byte
+it wrote, whatever the retain duration. A probe through `bergdb.h` (a
 database in memory, the retain duration one second, 4,000 transactions of
 10 kB, 0.1 s apart, on 50 keys): at 4,000, the stream 50.4 MB, its first
 available position 49.3 MB (reclaim cuts), and the stream's buffer 67.2 MB
 (`BERGDB_MEM_BUFFER`; the doubled allocation of 50 MB), where Java holds
 about 2 MB of arrays. Not in `c/readme.md`, section 11, nor in 012-11
 (which made the memory stream's cut `CutStream`'s, "the tests' stream").
-For a fix see section 5; it is not a test port, so it is left for the
-session or Frans to decide: a departure to write, or the fix.
+
+The fix, in the second landing: the memory stream keeps the bytes from a
+base, 0 until a cut, and a cut (`stream_pretruncate`) moves the base to
+its 1,000,000-byte boundary, as `MemoryStream` drops its arrays, with a
+`memmove` of the bytes kept; the room is the next appends', and the
+allocation keeps its size, so a cut allocates nothing (no new NOMEM
+path); reads and appends count from the base; the first position stays
+the cut, exactly, as before. `stream_truncate_memory` refuses a length
+below the base (`CutStream.truncate`'s rule). `stream_pretruncate_memory`,
+the tests' `MemoryStream.pretruncate`, keeps its bytes, for the tests that
+write into a cut stream. The test, `t_stream.c`'s
+`stream_memory_database_frees_cut_bytes` (through `bergdb.h`: 1,200
+transactions of 8,000 bytes, 0.1 s apart, the retain duration one second;
+then each key's last value read again after an eviction to a budget of
+100,000 bytes, from the bytes the cuts kept): the stream 12.3 MB, its first
+available position 11.1 MB; the stream's buffer 4.2 MB with the fix (the
+allocation's size at the first cut), 16.8 MB without it, which the test
+refuses (more than 5 MB).
 
 ## 4.3 Notes
 
@@ -428,14 +446,13 @@ session or Frans to decide: a departure to write, or the fix.
 
 # 5. Left (L)
 
-* **The memory stream's cut that frees** (section 4.2; with it
-  `MemoryStream.testCutPast2GB`, a cut past 2^31 bytes, as a functional
-  test of 2.2 GB of appends). The memory stream would keep the bytes from
-  its first 1,000,000-byte boundary at or below the cut, with that
-  boundary as the base of its buffer (`memmove` and a smaller allocation at
-  a cut), and the exact cut for reads as now; the tests that write
-  `s.bytes` at a position (`t_rstream.c`) would take the base into
-  account. About an hour with the tests; the most valuable of what is left.
+* `MemoryStream.testCutPast2GB`: a cut past 2^31 bytes of a memory stream,
+  now that the cut frees (section 4.2): 2.2 GB of appends, a functional or
+  stress test, not a unit test. The most valuable of what is left, and
+  small: positions are `int64_t` throughout, and the base too.
+* The memory stream's allocation could shrink at a cut, when it is much
+  larger than the bytes kept (now it keeps the size it had at the first
+  cut); a `mem_realloc` whose failure keeps the larger block.
 * `StorageContractTester.testWorkloadsLong`: `stream_workload` with 20
   seeds and more operations, as a step of a stress script (seconds).
 * `FileStream.testConstants`: `FILE_SIZES` (2 GB at index 6, the factors 5,

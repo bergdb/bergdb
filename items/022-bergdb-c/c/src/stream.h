@@ -72,9 +72,12 @@ struct stream {
     struct mem *mem;
     int64_t first;          /* getFirstPos() */
     int64_t length;         /* getLength() */
-    /* STREAM_MEMORY: the bytes from position 0 to length. */
+    /* STREAM_MEMORY: the bytes from position base to length; base is 0 until a
+     * cut (stream_pretruncate) frees the bytes below its 1,000,000-byte boundary,
+     * as MemoryStream drops its arrays. */
     uint8_t *bytes;
     int64_t cap;
+    int64_t base;
     /* STREAM_DIR: the files, by their first positions. */
     struct stream_file *files;
     int32_t nfiles;
@@ -243,14 +246,18 @@ enum err_code stream_pretruncate_memory(struct stream *s, int64_t pos, struct er
  *   - a memory stream: CutStream.pretruncate, the first position pos
  *     exactly, so that a read just below the cut is refused (Java's
  *     MemoryStream drops whole 1 MB arrays); ERR_IO, "IOException", for a
- *     pos below the earlier cut or past the length.
+ *     pos below the earlier cut or past the length. The bytes below pos's
+ *     1,000,000-byte boundary are freed for the appends that follow, as
+ *     MemoryStream drops its arrays (bergdb 022-05: a database in memory
+ *     kept every byte it wrote); the allocation keeps its size.
  *
  * Reads below the first position give ERR_NOT_AVAILABLE,
  * "ReadBelowFirstPosException" (stream_read). */
 enum err_code stream_pretruncate(struct stream *s, int64_t pos, struct err *e);
 
 /* Cuts a memory stream to 'length' bytes (MemoryStream.truncate), for
- * crash tests. ERR_ARG if it is longer than the stream. */
+ * crash tests. ERR_ARG if it is longer than the stream, or below the bytes
+ * that a cut kept (CutStream.truncate's lengthAtCut). */
 enum err_code stream_truncate_memory(struct stream *s, int64_t length, struct err *e);
 
 #endif

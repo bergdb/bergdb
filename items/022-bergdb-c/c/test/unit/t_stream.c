@@ -1447,6 +1447,77 @@ TEST(stream_forces_at_close) {
 #endif
 }
 
+/* A database in memory frees what reclaim cuts (MemoryStream.pretruncate drops its arrays
+ * below the cut; bergdb 022-05): with the retain duration one second and 1,200
+ * transactions of 8,000 bytes, 0.1 s apart, the stream is about 9.7 MB and reclaim's cuts
+ * leave little of it available; the stream's buffer then holds that, not the whole stream.
+ * The values read again after an eviction (a budget of 100,000 bytes) come from the
+ * stream's bytes that the cuts kept. Before, C's memory stream freed nothing at a cut: its
+ * buffer was 16.8 MB here (the doubled allocation of the whole stream). */
+TEST(stream_memory_database_frees_cut_bytes) {
+    struct bergdb_mem bm = {0};
+    struct bergdb_test_clock clock = {0};
+    struct bergdb_options o;
+    struct bergdb_executed ex;
+    struct bergdb_stats st;
+    bergdb_db *db;
+    bergdb_trans *t;
+    bergdb_read *rd;
+    static uint8_t v[8000];
+    uint8_t key[16];
+    char ik[16];
+    bergdb_options_init(&o);
+    o.clock = bergdb_test_clock_time;
+    o.clock_ctx = &clock;
+    memcpy(o.id, bergdb_test_id, BERGDB_ID_SIZE);
+    o.mem = &bm;
+    o.startup_distance = 100000;
+    bergdb_test_clock_set(&clock, 1000000);
+    REQUIRE(bergdb_open(NULL, &o, &db, NULL, NULL) == BERGDB_OK);
+    REQUIRE(bergdb_set_retain_duration(db, 10000000) == BERGDB_OK);    /* one second */
+    const int n = 1200;
+    for (int i = 0; i < n; i++) {
+        bergdb_test_clock_set(&clock, 1000000 + 1000000 * (int64_t) (i + 1));
+        snprintf(ik, sizeof ik, "/k/%d", i % 50);
+        REQUIRE(bergdb_ikey_to_bkey((const uint8_t *) ik, strlen(ik), key) == BERGDB_OK);
+        REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+        v[0] = (uint8_t) i;
+        v[1] = (uint8_t) (i >> 8);
+        v[7999] = (uint8_t) (i * 7);
+        REQUIRE(bergdb_trans_put(t, key, strlen(ik), v, sizeof v) == BERGDB_OK);
+        CHECK_EQ(bergdb_execute(db, t, &ex), BERGDB_OK);
+        bergdb_trans_free(t);
+    }
+    REQUIRE(bergdb_stats(db, &st) == BERGDB_OK);
+    const int64_t buffer = bm.live[BERGDB_MEM_BUFFER];
+    printf("    the stream %lld bytes, the first available position %lld, the stream's buffer "
+            "%lld bytes\n", (long long) st.stream_length, (long long) st.first_available_pos,
+            (long long) buffer);
+    CHECK(st.stream_length > 9000000);
+    CHECK(st.first_available_pos > st.stream_length - 3000000);
+    CHECK(buffer < 5000000);
+    /* Read again from the stream's bytes: each key's last value. */
+    REQUIRE(bergdb_set_cache_size_indicator(db, 100000) == BERGDB_OK);
+    REQUIRE(bergdb_read_new(db, &rd) == BERGDB_OK);
+    int64_t now;
+    REQUIRE(bergdb_current_time(db, &now) == BERGDB_OK);
+    for (int k = 0; k < 50; k++) {
+        const int i = n - 50 + k;          /* n is a multiple of 50 */
+        snprintf(ik, sizeof ik, "/k/%d", k);
+        REQUIRE(bergdb_ikey_to_bkey((const uint8_t *) ik, strlen(ik), key) == BERGDB_OK);
+        struct bergdb_one one;
+        CHECK_EQ(bergdb_get_one(db, rd, now, key, strlen(ik), &one), BERGDB_OK);
+        CHECK(one.value != NULL && one.value_len == sizeof v);
+        if (one.value != NULL && one.value_len == sizeof v) {
+            CHECK_EQ(one.value[0] | one.value[1] << 8, i);
+            CHECK_EQ(one.value[7999], (uint8_t) (i * 7));
+        }
+    }
+    bergdb_read_free(rd);
+    CHECK_EQ(bergdb_close(db), BERGDB_OK);
+    CHECK_EQ(bm.live_total, 0);
+}
+
 const struct test stream_tests[] = {
     TEST_ENTRY(stream_memory),
     TEST_ENTRY(stream_dir),
@@ -1466,5 +1537,6 @@ const struct test stream_tests[] = {
     TEST_ENTRY(stream_lock_file),
     TEST_ENTRY(stream_reopen_past_214tb),
     TEST_ENTRY(stream_forces_at_close),
+    TEST_ENTRY(stream_memory_database_frees_cut_bytes),
     TEST_END
 };

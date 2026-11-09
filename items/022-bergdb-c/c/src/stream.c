@@ -636,7 +636,7 @@ enum err_code stream_read(struct stream *s, int64_t pos, uint8_t *buf, int32_t n
                     "position is %lld, length to read is %d and stream size is %lld.",
                     (long long) pos, (int) n, (long long) s->length);
         }
-        memcpy(buf, s->bytes + pos, (size_t) n);
+        memcpy(buf, s->bytes + (pos - s->base), (size_t) n);
         return ERR_OK;
     }
 
@@ -717,9 +717,10 @@ enum err_code stream_read(struct stream *s, int64_t pos, uint8_t *buf, int32_t n
 
 enum err_code stream_append_memory(struct stream *s, const uint8_t *buf, int64_t n,
         struct err *e) {
-    if (s->length + n > s->cap) {
+    const int64_t used = s->length - s->base;
+    if (used + n > s->cap) {
         int64_t c2 = s->cap == 0 ? 4096 : s->cap;
-        while (c2 < s->length + n) {
+        while (c2 < used + n) {
             c2 *= 2;
         }
         uint8_t *b2 = mem_realloc(s->mem, s->bytes, (size_t) s->cap, (size_t) c2, MEM_BUFFER);
@@ -731,7 +732,7 @@ enum err_code stream_append_memory(struct stream *s, const uint8_t *buf, int64_t
         s->cap = c2;
     }
     if (n > 0) {
-        memcpy(s->bytes + s->length, buf, (size_t) n);
+        memcpy(s->bytes + used, buf, (size_t) n);
     }
     s->length += n;
     return ERR_OK;
@@ -758,6 +759,10 @@ enum err_code stream_truncate_memory(struct stream *s, int64_t length, struct er
         return err_set(e, ERR_ARG, "IllegalArgumentException", "newLength larger than current "
                 "length, %lld > %lld.", (long long) length, (long long) s->length);
     }
+    if (length < s->base) {
+        return err_set(e, ERR_ARG, "IllegalArgumentException", "truncate to %lld, before the "
+                "bytes kept at the last cut, %lld", (long long) length, (long long) s->base);
+    }
     s->length = length;
     return ERR_OK;
 }
@@ -775,6 +780,15 @@ enum err_code stream_pretruncate(struct stream *s, int64_t pos, struct err *e) {
                     "the length %lld", (long long) pos, (long long) s->length);
         }
         s->first = pos;
+        /* MemoryStream's arrays: the bytes below the cut's 1,000,000-byte
+         * boundary are dropped, and the room is the next appends'. Before
+         * (bergdb 022-05), C kept every byte, and a database in memory grew
+         * by all it wrote, whatever reclaim cut. */
+        const int64_t base = pos / MEMORY_ARRAY_SIZE * MEMORY_ARRAY_SIZE;
+        if (base > s->base) {
+            memmove(s->bytes, s->bytes + (base - s->base), (size_t) (s->length - base));
+            s->base = base;
+        }
         return ERR_OK;
     }
     if (!s->rw) {
