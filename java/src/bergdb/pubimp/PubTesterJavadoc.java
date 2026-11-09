@@ -849,7 +849,7 @@ public class PubTesterJavadoc {
      * Database.deleteIndex(): when it returns, the index is gone at every later lookup time
      * and its name is free; a scan at a lookup time when it was active still works, also a
      * builder made before the deletion (Connection.useIndex()), after the cleanup of its
-     * entries.
+     * entries, and after a new index of the name.
      */
     @Nano
     public static void testDeleteIndexKeepsEarlierScans() {
@@ -874,6 +874,10 @@ public class PubTesterJavadoc {
             db.indexBuilder("i").dir("/acc/").type("string").field("owner").start().join();
             Assert.assertEquals("Ann 5 Bo 3", owners(c.useIndex("i", Account.class)
                     .objects()));
+            c.setLookupTime(before);
+            Assert.assertEquals("Bo 3 Ann 5", owners(c.useIndex("i", Account.class)
+                    .objects()));
+            Assert.assertEquals("Bo 3 Ann 5", owners(made.objects()));
         }
     }
 
