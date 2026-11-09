@@ -281,6 +281,12 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `NullPointerException` for one without it. The cause is the
   `IOException`. The Core's `FileStream` throws that `IOException` from its
   constructor, where it threw the `NullPointerException`.
+* **`CryptoKey.getKeyData()` returns a copy** (bergdb 020-20, N1; Frans,
+  2026-11-09): it returned the key's own array, so a caller that changed
+  the array changed the key: its `serialize()`, `equals()` and the key
+  data that a start with it reads. Now a change of the array leaves the
+  key as it was, as `DbByteArray.getByteArray()` and `DbObject.getBytes()`
+  give copies since 020-10's step B3.
 
 
 ### Core API

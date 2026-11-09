@@ -58,10 +58,14 @@ public class CryptoKey {
     }
     
     /**
-     * Returns the key data specific for the algorithm used.
+     * Returns the key data specific for the algorithm used, a new array: a change of it does
+     * not change this key (2026-11-09, bergdb 020-20, N1: the key's own array, so a caller
+     * could change the key).
+     *
+     * @return A copy of the key data.
      */
     public byte[] getKeyData() {
-        return keyData;
+        return keyData.clone();
     }
     
     /**
@@ -238,6 +242,25 @@ public class CryptoKey {
         Assert.assertTrue("NULL equals NULL, with equal hash codes", 
                 CryptoKey.NULL.equals(CryptoKey.NULL) 
                 && CryptoKey.NULL.hashCode() == CryptoKey.NULL.hashCode());
+    }
+    
+    /**
+     * bergdb 020-20, N1: getKeyData() gives a copy, so a change of the array it returns does
+     * not change the key: neither a second getKeyData() nor serialize().
+     */
+    @Nano private static void testGetKeyDataGivesACopy() {
+        CryptoKey key = CryptoKey.generate();
+        String serialized = key.serialize();
+        byte[] data = key.getKeyData();
+        byte[] before = data.clone();
+        for (int i = 0; i < data.length; i++) {
+            data[i] ^= (byte) 0xff;
+        }
+        
+        Assert.assertArrayEquals("a second getKeyData()", before, key.getKeyData());
+        Assert.assertEquals("serialize()", serialized, key.serialize());
+        Assert.assertTrue("equal to the key parsed from its serialized form", 
+                key.equals(CryptoKey.parse(serialized)));
     }
     
     @Nano private static void testNull1() {
