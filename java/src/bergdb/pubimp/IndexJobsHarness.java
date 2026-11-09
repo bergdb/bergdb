@@ -1131,7 +1131,12 @@ public final class IndexJobsHarness {
             Set<State> allowed;
             String rule;
             boolean countAtFault = false;
-            if (fired && firedBuild == b) {
+            boolean deleted = cfg.deleteDuringBuild && b == 1 && deletedDuringBuild;
+            // A refusal, an expiry or an interrupt is taken again, so a deletion during the
+            // build decides its end as with no fault (020-17, H3-O1).
+            boolean retried = cfg.fault == Fault.REFUSAL || cfg.fault == Fault.EXPIRY
+                    || cfg.fault == Fault.INTERRUPT;
+            if (fired && firedBuild == b && !(deleted && retried)) {
                 Fault f = cfg.fault;
                 if (cfg.point == Point.ACTIVATE_AFTER) {
                     allowed = up || f == Fault.INTERRUPT || f == Fault.STOP
@@ -1158,7 +1163,7 @@ public final class IndexJobsHarness {
                     rule = "a refusal, an expiry and an interrupt are taken again (019-38, "
                             + "015-37)";
                 }
-            } else if (cfg.deleteDuringBuild && b == 1 && deletedDuringBuild) {
+            } else if (deleted) {
                 allowed = up ? EnumSet.of(State.FAILED) : EnumSet.of(State.FAILED, State.BUILDING);
                 rule = "FAILED \"deleted\" after a deletion during the build (020-10, 3.2)";
                 if (s == State.FAILED && (st.reason() == null || !st.reason().contains("deleted"))) {
@@ -2053,6 +2058,28 @@ public final class IndexJobsHarness {
         check(r.deletedDuringBuild && r.finals[1] != null
                 && r.finals[1].state() == State.FAILED, "deleted during the build: "
                 + (r.finals[1] == null ? null : r.finals[1].note()));
+    }
+
+    /**
+     * A refusal, an expiry or an interrupt at the first build's first step, taken again, and
+     * then a deletion during the build (at its third step call): the build ends FAILED
+     * "deleted", which is no finding (bergdb 020-17, H3-O1: the harness expected ACTIVE, as
+     * for a fault taken again with no deletion; found by the soak with 30 objects, where
+     * random runs take a step's fault before the deletion).
+     */
+    @Nano
+    public static void testRetriedFaultThenDeletedDuringBuild() {
+        for (Fault f : new Fault[] {Fault.REFUSAL, Fault.EXPIRY, Fault.INTERRUPT}) {
+            Config cfg = new Config(Point.BUILD_STEP, 1, f);
+            cfg.deleteDuringBuild = true;
+            Run r = run(cfg);
+            Results res = new Results();
+            res.add(r);
+            res.assertClean();
+            check(r.fired && r.firedBuild == 1 && r.deletedDuringBuild && r.finals[1] != null
+                    && r.finals[1].state() == State.FAILED, f + ", then deleted during the "
+                    + "build: " + (r.finals[1] == null ? null : r.finals[1].note()));
+        }
     }
 
     private static void check(boolean ok, String message) {
