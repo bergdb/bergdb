@@ -261,7 +261,7 @@ public final class DataObjects {
         if (Modifier.isAbstract(c.getModifiers())) {
             return ClassInfo.refused(c, "it is abstract (V2)");
         }
-        if (!c.getModule().isExported(c.getPackageName(), DataObjects.class.getModule())) {
+        if (!exported(c)) {
             return ClassInfo.refused(c, "its package " + c.getPackageName() + " is not "
                     + "exported to BergDB (V6)");
         }
@@ -293,8 +293,7 @@ public final class DataObjects {
                     return ClassInfo.refused(c, "its field '" + name + "' is declared by "
                             + d.getName() + ", which is not public (V4)");
                 }
-                if (d != c && !d.getModule().isExported(d.getPackageName(),
-                        DataObjects.class.getModule())) {
+                if (d != c && !exported(d)) {
                     // Field.get and Field.set check the declaring class's access (the Codex
                     // review's X3, bergdb 020-14: until 2026-11-09 only c's package was
                     // checked, and they threw IllegalAccessException at a put and a get).
@@ -341,7 +340,40 @@ public final class DataObjects {
     /** A class of the Java platform: of the bootstrap or the platform class loader (V5). */
     private static boolean isPlatformClass(Class<?> c) {
         ClassLoader loader = c.getClassLoader();
-        return loader == null || loader == ClassLoader.getPlatformClassLoader();
+        return loader == null || loader == PLATFORM_LOADER;
+    }
+
+    /**
+     * The platform class loader; on Android, which has none, the boot class loader, which
+     * Android returns for its own classes instead of null (bergdb 006-18-03).
+     */
+    private static final ClassLoader PLATFORM_LOADER = platformLoader();
+
+    private static ClassLoader platformLoader() {
+        try {
+            return ClassLoader.getPlatformClassLoader();
+        } catch (LinkageError e) {
+            return Object.class.getClassLoader();
+        }
+    }
+
+    /**
+     * Whether c's package is exported to BergDB (V6); always on Android, which has no
+     * modules (bergdb 006-18-03).
+     */
+    private static boolean exported(Class<?> c) {
+        return !MODULES || c.getModule().isExported(c.getPackageName(),
+                DataObjects.class.getModule());
+    }
+
+    private static final boolean MODULES = modules();
+
+    private static boolean modules() {
+        try {
+            return DataObjects.class.getModule() != null;
+        } catch (LinkageError e) {
+            return false;
+        }
     }
     
     /** A type variable, or an array of one, of any dimensions (V9). */
