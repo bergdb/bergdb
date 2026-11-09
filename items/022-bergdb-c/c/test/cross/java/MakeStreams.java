@@ -55,6 +55,7 @@ public class MakeStreams {
         final TestClock clock = new TestClock();
         long time = T0;
         long retain = -1;
+        boolean started = false;
         Db db;
 
         Run(File dir, int nodeSize, int sd) {
@@ -71,9 +72,11 @@ public class MakeStreams {
             else if (nodeSize == 14) b.maxNodeSize14();
             else if (nodeSize == 30) b.maxNodeSize30();
             else b.maxNodeSize62();
-            if (retain > 0) b.retainDuration(retain);
-            else b.retainForever();
             db = b.start();
+            // The retain duration once, after the first start, the creation's (OUTDIR/NAME
+            // is new): the stream keeps it (bergdb 015-87; 022-01, D3). Forever by default.
+            if (!started && retain > 0) db.setRetainDuration(retain);
+            started = true;
         }
 
         void tick() {

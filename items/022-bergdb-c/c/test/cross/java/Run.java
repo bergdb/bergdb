@@ -189,12 +189,18 @@ public final class Run {
         }
         if (w.startupDistance >= 0) b.startupDistance(w.startupDistance);
         if (w.budget >= 0) b.cacheSizeIndicator(w.budget);
-        if (w.retain >= 0) b.retainDuration(w.retain);
         if (audit > 0) b.audit(audit);
         Db d = b.build();
         StartInfo si = d.start();
         db = d;
-        if (w.fraction != null) db.setReclaimInternalFraction(Double.parseDouble(w.fraction));
+        if (create) {
+            // The header's retain duration and fraction once, after the creation's start
+            // (bergdb 022-01, D3): the stream keeps them (015-87), as in StreamDigest's
+            // restarts-once; a later start takes the stream's. Each setter commits reclaim's
+            // settings if its value is not the one in force.
+            if (w.retain >= 0) db.setRetainDuration(w.retain);
+            if (w.fraction != null) db.setReclaimInternalFraction(Double.parseDouble(w.fraction));
+        }
         out.println("start create=" + (create ? 1 : 0) + " startPos=" + si.startPos
                 + " startupDistance=" + si.startupDistance + " startTime=" + si.startTime
                 + " transCount=" + si.transCount + " lastPos=" + si.lastPos);
@@ -241,7 +247,7 @@ public final class Run {
             out.println("now time=" + db.currentTime());
             break;
         case "sync":
-            db.sync(SyncLevel.STRONG);
+            db.sync(SyncLevel.ORDINARY);
             status();
             break;
         case "restart":

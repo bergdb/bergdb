@@ -146,3 +146,51 @@ messages, C gives Java's, byte for byte, as 2026.3 has them.
 
 2026-11-09. Created by the session `022-bergdb-c` from coord-1109's plan
 of 10:18. `c/` copied from 012 at `be51a78`.
+
+2026-11-09, step 0 (worker s0). The copy builds and passes its gate where
+it is, against 2026.2 (`JAVA_REF=2026.2`): `C BEFORE COMMIT OK (225 s)`,
+F53 under a load of about 20. The harness on 2026.3: `java-build.sh`
+defaults to `JAVA_REF=2026.3` (its `SHA256SUMS` checked; `JAVA_REF=2026.2`
+still builds 012's); `Run.java` applies the header's `set retain` and
+`set fraction` once, after the creation's start (D3), and syncs with
+`ORDINARY`; `Export.java` takes StreamDigest's mode `restarts-once`, which
+`cross.sh` runs for the twelve configurations in `full` and once in
+`quick` (`sd:l3-node14:restarts-once:n=600`); `MakeStreams.java` and
+`StatsProbe.java` set the retain duration after the first start (the
+probe prints a line `setretain` after `open`); `JBench.java` drops
+`retainForever`, the default. 2026.3's `CoreDemo.java` is 2026.2's, so
+`examples/compare.sh` needs no change. All compile against 2026.3,
+`PowerImages.java` too. Java's vectors written again from 2026.3: only
+`reclaim.txt` changed (its runs call `setRetainDuration`: the settings'
+record, and 015-54's pSafe); the other eleven files are equal. Java's
+`Run` gives StreamDigest's own digest in each of the quick set's seven
+StreamDigest workloads, the four with reclaim and `restarts-once`
+included, and the three modes of `l3-node14` give one digest (015-87).
+
+The negative control, C unchanged against 2026.3 (012-18, section 4,
+point 7). The gate stops at `unit`; its later steps were run by hand.
+Every difference is of 015-87 and 015-54, step 1's:
+
+* `unit`, both builds: `reclaim_java_vectors` (`reclaim.txt`).
+* `func`: passes, but `f_settings.c`'s `java_stats` holds 2026.2's lines;
+  `StatsProbe` on 2026.3 prints others (the settings' record, a get more
+  at each start as `initFromDb` reads the settings, the setter counted as
+  a transaction, the retain duration and the fraction kept at the
+  reopen). Step 1 writes them in.
+* `cross quick`: 152 differences, all in workloads with reclaim: the 11
+  of its 23 workloads that reclaim (runs' texts, the streams from the
+  decided cut, scans and dumps of C's directories: 79), the crash cuts of
+  `reclaim-crash` (13 of 84 cuts: 26), the turns of
+  `sd-l3-node14-restarts` (3), C's budget runs of the 11 (44). The 12
+  workloads without reclaim, the 84 crash directories' starts and the 85
+  corrupt variants: none.
+* `write`: `bergdb-clockcheck` stops on 7 of Java's directories at the
+  settings' record after the creation ("transaction 0: not the next
+  record (264)"): it knows `setsd`'s dummy record, not the setters'.
+  Step 1 (`tools/clockcheck.c`).
+* `allocfail`, `examples`: pass.
+
+No difference of steps 2 and 3 shows in the quick set: its corrupt
+variants are bit flips, which 019-32's damage does not reach (012-18,
+section 3.2), and 015-72, 015-75, 019-01 and 019-34 need records or meta
+blocks made for them.

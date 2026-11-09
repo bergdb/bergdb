@@ -98,8 +98,8 @@ argument; `-l` lists them:
 give for fixed inputs (compare values, segments, hashes, checksums, the
 byte codecs, and Java's arithmetic in `jsem.txt`). They are written by
 `test/cross/java/Vectors.java` and committed, so that the unit tests run
-without Java; `t_vectors.c` reads them. They are release 2026.2's (written
-again on 2026-11-05, 015-02). To write them again from Java, and to check
+without Java; `t_vectors.c` reads them. They are release 2026.3's (written
+again on 2026-11-09, 022-01, step 0). To write them again from Java, and to check
 C against the Java that `JAVA_REF` chooses (above; the release by default)
 without changing the committed ones:
 

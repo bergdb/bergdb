@@ -13,7 +13,7 @@ import bergdb.pub.util.Clock;
 
 /**
  * The exporters of the cross workloads (bergdb 012-05, section 3, step 4): StreamDigest's
- * configurations in its three modes, through its own class (same package: its
+ * configurations in its four modes, through its own class (same package: its
  * constructor's lists of keys, values and times, and its lookups, draw for draw);
  * CoreSame's draws (bergdb 006-08); and Gen's random workloads. One JVM writes a whole
  * set's workloads.
@@ -21,7 +21,9 @@ import bergdb.pub.util.Clock;
  * <pre>
  * Usage: java -cp CLASSES bergdb.core.Export OUTDIR SPEC...
  *   sd:NAME:MODE[:n=N]   StreamDigest's configuration NAME in MODE (plain, reads,
- *                        restarts), with n transactions if given (a smaller run of the
+ *                        restarts, restarts-once: the retain duration set after the
+ *                        first start only, which a restart keeps, bergdb 015-87; 022-01,
+ *                        D3), with n transactions if given (a smaller run of the
  *                        same draws); writes OUTDIR/sd-NAME-MODE[-nN].wl and, beside it,
  *                        .digest: StreamDigest's own DIGEST line for the same run, which
  *                        the stream that Run makes must match from the decided cut
@@ -87,7 +89,8 @@ public final class Export {
         if (config == null) {
             throw new IllegalArgumentException("no StreamDigest configuration " + name);
         }
-        if (!mode.equals("plain") && !mode.equals("reads") && !mode.equals("restarts")) {
+        if (!mode.equals("plain") && !mode.equals("reads") && !mode.equals("restarts")
+                && !mode.equals("restarts-once")) {
             throw new IllegalArgumentException("mode " + mode);
         }
         String props = config[2];
@@ -107,7 +110,8 @@ public final class Export {
             out.println("set sd " + w.startupDistance);
         }
         final boolean reads = !mode.equals("plain");
-        final boolean restarts = mode.equals("restarts");
+        final boolean restarts = mode.startsWith("restarts");
+        final boolean setRetainAtRestart = !mode.equals("restarts-once");
         final String setRetain = w.retain > 0
                 ? "setretain " + w.retain * Clock.UNITS_PER_SEC : null;
         if (setRetain != null) out.println(setRetain);
@@ -130,7 +134,7 @@ public final class Export {
             if (restarts && (i + 1) % w.every == 0 && i + 1 < w.n) {
                 out.println("sync");
                 out.println("restart");
-                if (setRetain != null) out.println(setRetain);
+                if (setRetain != null && setRetainAtRestart) out.println(setRetain);
             }
             if (reads && checkpoint) {
                 lookups(w, i, out);

@@ -83,7 +83,7 @@ public class JBench {
     }
 
     Db open(File dir, int sd, long budget) throws IOException {
-        DbBuilder b = Db.builder().mainStream(new FileStream(dir)).clock(clock).testId().retainForever()
+        DbBuilder b = Db.builder().mainStream(new FileStream(dir)).clock(clock).testId()
                 .maxNodeSize30().startupDistance(sd);
         if (budget > 0) b.cacheSizeIndicator(budget);
         else b.noEvict();

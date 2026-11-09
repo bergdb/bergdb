@@ -36,6 +36,10 @@ public class StatsProbe {
         clock.setTime(1000);
         open(dir);
         print("open", true);
+        // The retain duration once, after the creation's start: the stream keeps it
+        // (bergdb 015-87; 022-01, D3). A commit, so the durable length is not printed.
+        db.setRetainDuration(10_000_000L);
+        print("setretain", false);
         for (int i = 0; i < 150; i++) {
             clock.setTime(2_000_000L + i * 1_000_000L);
             Trans.Builder b = db.trans();
@@ -73,7 +77,7 @@ public class StatsProbe {
                 print("setters", false);
             }
             if (i == 100) {
-                db.sync(SyncLevel.STRONG);
+                db.sync(SyncLevel.ORDINARY);
                 print("sync", true);
             }
         }
@@ -97,7 +101,6 @@ public class StatsProbe {
         b.clock(clock);
         b.maxNodeSize8();
         b.startupDistance(1000);
-        b.retainDuration(10_000_000L);
         db = b.build();
         db.start();
     }

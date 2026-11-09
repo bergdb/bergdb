@@ -9,12 +9,14 @@
 # (--layer core). The harness's classes may be in package bergdb.core, to
 # reach the parsers. Never touches java/build/.
 #
-# Which Java (bergdb 015-02): C matches a release of BergDB, not the Java of
-# the day (Frans, 2026-11-05). JAVA_REF chooses the Java tree:
-#   JAVA_REF=2026.2    (the default, the release that C matches) the java/ of
-#                      releases/2026.2/bergdb-2026.2-src.zip, checked against
-#                      releases/2026.2/SHA256SUMS and extracted once into
-#                      build/java-src/bergdb-2026.2/java/
+# Which Java (bergdb 015-02, 022-01): C matches a release of BergDB, not the
+# Java of the day (Frans, 2026-11-05). JAVA_REF chooses the Java tree:
+#   JAVA_REF=2026.3    (the default, the release that C matches, bergdb 022) the
+#                      java/ of releases/2026.3/bergdb-2026.3-src.zip, checked
+#                      against releases/2026.3/SHA256SUMS and extracted once into
+#                      build/java-src/bergdb-2026.3/java/
+#   JAVA_REF=REL       another release in releases/REL/ the same way: 2026.2,
+#                      the release of 012's port (bergdb 015-02)
 #   JAVA_REF=tree      the repository's java/, as it is in the working tree
 #   JAVA_REF=DIR       the java/ directory DIR (holding src/, stress/, deps.py)
 # The classes are made again at every run. build/java/java-dir.txt names the
@@ -29,7 +31,7 @@
 set -e
 C=$(cd "$(dirname "$0")/../.." && pwd)
 REPO=$(cd "$C/../../.." && pwd)
-REF=${JAVA_REF:-2026.2}
+REF=${JAVA_REF:-2026.3}
 case "$REF" in
 tree)
     JAVA=$REPO/java ;;

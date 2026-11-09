@@ -53,7 +53,9 @@ public final class Workload {
         }
     }
 
-    // The settings ("set" lines), applied at every start. -1 or null: not set.
+    // The settings ("set" lines): maxnode, sd and budget applied at every start; retain and
+    // fraction once, after the creation's start, as the stream keeps them (bergdb 015-87;
+    // 022-01, D3). -1 or null: not set.
     public int maxNode = 30;
     public int startupDistance = -1;
     public long retain = -1;            // Long.MAX_VALUE for forever

@@ -21,9 +21,10 @@
 #   quick   a minute or so: small configurations, a few seeds, a few cuts,
 #           one workload in turns, and the hand-written workloads in
 #           test/cross/workloads/; the C gate runs it
-#   full    StreamDigest's twelve configurations at full size in their three
-#           modes, CoreSame, a few hundred Gen seeds, about a thousand crash
-#           cuts, workloads in turns; 10 to 20 minutes
+#   full    StreamDigest's twelve configurations at full size in their four
+#           modes (restarts-once since 022-01, step 0), CoreSame, a few
+#           hundred Gen seeds, about a thousand crash cuts, workloads in
+#           turns; 10 to 20 minutes
 #   scale   one workload of SCALE keys (10,000,000 by default), by hand,
 #           outside other sessions' timed runs; the scans take the last
 #           file only, the dumps -large
@@ -414,6 +415,7 @@ SPECS=""; CRASH=""; CUTS=0; RANDCUTS=0; TURNS=""; CORRUPT=""; FLIPS=0
 case "$SET" in
 quick)
     SPECS="sd:l2-sd100:restarts:n=300 sd:l2-sd1000-node8:reads:n=300 sd:l3-node14:restarts:n=600
+        sd:l3-node14:restarts-once:n=600
         sd:l2-idle-1:plain:n=200 coresame:n=1500 gen:1:n=300 gen:2:n=300 gen:3:n=300,retain=2
         gen:4:n=200,maxnode=8,sd=100,restarts=3,retain=0 coresame:n=1500:plain
         gen:5:n=300,restarts=0,retain=0 gen:6:n=300,maxnode=8,sd=100,restarts=0,retain=0
@@ -429,7 +431,7 @@ quick)
 full)
     for c in l2-sd100 l2-sd1000-node8 l2-sd10000-node14 l2-sd100000-node62 l2-every1 \
              l2-idle-1 l2-idle-2 l2-default-100MB l3-every1 l3-node8 l3-node14 l3-node62; do
-        for m in plain reads restarts; do SPECS="$SPECS sd:$c:$m"; done
+        for m in plain reads restarts restarts-once; do SPECS="$SPECS sd:$c:$m"; done
     done
     SPECS="$SPECS coresame coresame:plain"
     s=1; while [ $s -le 200 ]; do SPECS="$SPECS gen:$s"; s=$((s + 1)); done
