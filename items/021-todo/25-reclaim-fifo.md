@@ -1,7 +1,7 @@
 021-25. Investigate: reclaim stops cutting a FIFO of keys in time order
 ======================================================================
 
-Status: for Frans. Kind: Investigate. Frans: decision.
+Status: waiting. Kind: Investigate. Frans: decision.
 Created 2026-11-09 by Frans Lundberg.
 
 What: a new user of the C library (022-06-3, U3-1 and U3-2; report and
@@ -276,3 +276,8 @@ FIFO. Investigation ended; the item stays for Frans's decision.
 `PutCost` and the FIFO before and after (section "Fix (c)"); the stream
 unchanged. A line in `releases/next.md`. The item stays for Frans's
 decision on (a) and (b).
+
+2026-11-09. Status "waiting" (for Frans's decision), one of 021's
+status values, where it said "for Frans"; the main commits of the
+item: `69600f9` (the known issue), `c6e60ba` (part 3) and `e3b9787` (fix
+(c)); its row in 021-todo. By coord-1109.
