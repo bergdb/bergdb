@@ -25,7 +25,7 @@ public class WebsiteCode {
         
         System.out.println("adam2 = " + adam2.name);
         
-        database.stop();
+        database.close();
     }
     
     void m2() {
@@ -50,7 +50,7 @@ public class WebsiteCode {
         System.out.println("/data length: " + c.get("/data", byte[].class).length);
         System.out.println("/text: " + c.get("/text", String.class));
         
-        database.stop();
+        database.close();
     }
     
     void m3() {
@@ -79,7 +79,7 @@ public class WebsiteCode {
         System.out.println("t2 = " + t2);
         System.out.println("t3 = " + t3);
         
-        database.stop();
+        database.close();
     }
     
     public static class Person {

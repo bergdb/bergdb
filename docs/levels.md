@@ -55,7 +55,8 @@ the Pub layer's (`pubimp`), built on the Core's four data methods
   committed. Since 2026-10-20 it is the only requirement (006-03). Before
   the tests it checks the packages' dependencies against their
   `package.html` (`deps.py`, 005-56) and that no double or float decides
-  anything in the Core Layer (`doubles.py`, 005-79).
+  anything in the Core Layer (`doubles.py`, 005-79). With the tests it runs
+  the demos of `src-dev` on small sizes (since 2026-11-09).
 * The level scripts in `java/stress/` are deeper checks, run after larger
   changes; each prints `LEVEL n OK`, and its header lists its steps.
   `level2.sh` to `level4.sh` need Lean (elan) for their conformance steps.

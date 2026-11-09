@@ -26,8 +26,8 @@ algorithm. [README.md](README.md) describes the repo; start reading at
   nothing of objects or user indexes; build such features on top of it,
   not into it (010-01, P12).
 - `java/before-commit.sh` must print `BEFORE COMMIT OK` before a change to
-  the Java code is committed: the unit tests and the f-tests, about 2
-  minutes. It is the only requirement. The level scripts
+  the Java code is committed: the unit tests, the f-tests and a smoke run of
+  the demos, about 2 minutes. It is the only requirement. The level scripts
   (`java/stress/level1.sh` to `level4.sh`) are deeper checks, not commit
   gates; `level2.sh`, `level3.sh` and `level4.sh` need Lean (elan) for their
   conformance steps.

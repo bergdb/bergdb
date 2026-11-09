@@ -41,7 +41,7 @@ and `level2.sh` to `level4.sh`, [elan](https://github.com/leanprover/elan).
 
     
     java/build.sh                  # builds java/build/bergdb.jar, bergdb-release.jar and the stress tests
-    java/before-commit.sh          # the check before a commit: unit and f-tests (about 2 minutes)
+    java/before-commit.sh          # the check before a commit: unit and f-tests, demos (about 2 minutes)
     java/unit.sh                   # runs the unit tests
     java/f.sh                      # runs the f-tests
     java/perf.sh                   # runs the perf-tests

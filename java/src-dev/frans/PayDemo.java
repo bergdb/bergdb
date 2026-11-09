@@ -18,11 +18,19 @@ import bergdb.pub.util.JobStatus;
  * Replication was used, until it was removed on 2026-11-04 (bergdb 005-11): the
  * database had a replica in /a/data/pay-demo-replica, added after each start.
  * 
+ * <p>Three system properties make a smaller run, as java/before-commit.sh does (2026-11-09):
+ * pay.accounts, the number of accounts, a multiple of 1000 (default 1000000); pay.count,
+ * the payments of pay and the gets in each of access's ten rounds (default 100000); and
+ * pay.dir, the database's directory (default /a/data/pay-demo). For example:
+ * java -Dpay.accounts=2000 -Dpay.count=1000 -Dpay.dir=/tmp/pay -cp bergdb.jar frans.PayDemo create
+ * </p>
+ * 
  * @author Frans Lundberg
  */
 public class PayDemo {
-    private static final long n = 1*1000000;
-    private static final String dir = "/a/data/pay-demo";
+    private static final long n = Long.getLong("pay.accounts", 1*1000000);
+    private static final int count = Integer.getInteger("pay.count", 100*1000);
+    private static final String dir = System.getProperty("pay.dir", "/a/data/pay-demo");
     
     /** Creates database and starts it. */
     private static Database createDatabase() throws IOException {
@@ -108,7 +116,6 @@ public class PayDemo {
         void go(String[] args) throws IOException {
             Database database = createDatabase();
             Connection c = database.connection();
-            long count = 100*1000;
             double t0 = System.nanoTime();
             double time;
             
@@ -187,13 +194,14 @@ public class PayDemo {
         for (int i = 0; i < 10; i++) {
             long t0 = System.nanoTime();
             
-            for (int j = 0; j < 100*1000; j++) {
-                int id = random.nextInt(1000*1000);
-                c.get(accountKey(id), Account.class);
+            for (int j = 0; j < count; j++) {
+                int id = random.nextInt((int) n);
+                Account a = c.get(accountKey(id), Account.class);
+                assert a != null : "no account " + id;
             }
             
             double time = 1e-9 * (System.nanoTime() - t0);
-            System.out.printf("Retrieved 100k accounts, time: %.1f s. time/account: %.6f s.\n", time, time/100000.0);
+            System.out.printf("Retrieved %d accounts, time: %.1f s. time/account: %.6f s.\n", count, time, time/count);
         }
     }
     
@@ -212,6 +220,9 @@ public class PayDemo {
     
     public static void help() {
         System.out.println("One of: create / pay / iter / access.");
+        System.out.println("Options: -Dpay.accounts=N (default 1000000, a multiple of 1000),");
+        System.out.println("-Dpay.count=M (payments of pay, gets in each of access's ten rounds;");
+        System.out.println("default 100000), -Dpay.dir=DIR (default /a/data/pay-demo).");
     }
     
     public static void main(String[] args) throws IOException {
