@@ -85,6 +85,13 @@ Files
   recommended, and the questions for Frans. Created on 2026-11-09 at
   Frans's request, for a release after 2026.4. Open; a study, no code
   changed.
+* [017-10](10-encryption-done-right/readme.md). Encryption done right:
+  the encryption of the stream's files that 2026.3 had and 2026.4 took out
+  of its API (020-28), as it reused keystream and had no integrity
+  (020-24-07, U7-1 and U7-3); the options for a later design (a nonce per
+  database or per start, XChaCha20, authenticated pages, a keyed check, a
+  MAC chain), what it must be tested against, and the code kept inside
+  BergDB. Created on 2026-11-09 at Frans's request. Open; notes only.
 
 
 Log
@@ -154,3 +161,7 @@ from 019 by the rule for moved entries.
 2026-11-09. 017-09, object keys hold objects only, created at Frans's
 request: a study of refusing a `String` or a `byte[]` at an object key,
 for a release after 2026.4; no code changed.
+
+2026-11-09. 017-10, encryption done right, created at Frans's request
+(16:08, 16:12), when the encryption was taken out of 2026.4's API (020-28):
+"Move the possibility to add it to a 017 item."
