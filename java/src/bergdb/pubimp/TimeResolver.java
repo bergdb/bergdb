@@ -129,7 +129,11 @@ public class TimeResolver {
         }
     }
     
-    /** YYYY-MM, YYYY-MM-DD, or YYYY-MM-DD and a time of day after ' ' or 'T'. */
+    /**
+     * YYYY-MM or YYYY-MM-DD, and optionally a time of day after ' ' or 'T': the grammar's
+     * "absolute = date [(SPACE / "T") time-of-day]" with "date = year "-" month ["-" day]"
+     * (bergdb 020-23, Y2: a time of day after YYYY-MM was refused).
+     */
     private long reallyResolveAbsolute(String timeString) {
         int length = timeString.length();
         
@@ -144,28 +148,25 @@ public class TimeResolver {
         td.year = digits(timeString, 0, 4, 0, 9999, "year");
         td.month = digits(timeString, 5, 2, 1, 12, "month");
         
-        if (length > 7) {
+        int dateEnd = 7;                    // The end of the date: 7 or 10
+        td.date = 1;
+        if (length > 7 && timeString.charAt(7) == '-') {
             if (length < 10) {
-                throw new BadFormatException("Bad absolute time string, was: '" + timeString + "'.");
-            }
-            
-            if (timeString.charAt(7) != '-') {
                 throw new BadFormatException("Bad absolute time string, was: '" + timeString + "'.");
             }
             
             int days = YearMonth.of(td.year, td.month).lengthOfMonth();
             td.date = digits(timeString, 8, 2, 1, days, "day");
-        } else {
-            td.date = 1;
+            dateEnd = 10;
         }
         
-        if (length > 10) {
-            char c = timeString.charAt(10);
+        if (length > dateEnd) {
+            char c = timeString.charAt(dateEnd);
             if (c != ' ' && c != 'T') {
                 throw new BadFormatException("Bad absolute time string, was: '" + timeString + "'.");
             }
             
-            parseTime(timeString, 11);
+            parseTime(timeString, dateEnd + 1);
             
         } else {
             td.hour = 0;

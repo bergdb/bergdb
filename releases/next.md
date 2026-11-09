@@ -333,7 +333,9 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   half up to 100 ns (bergdb 020-23, Y1): it went through a double and was
   truncated, so "-0.0000021 s" was 20 units, not 21, a large number could
   be a unit off, and `Time.MAX` minus its own seconds was refused as before
-  1970.
+  1970. A year and a month take a time of day, as the grammar says, on the
+  month's first day: "2020-06 12:34" is 2020-06-01 12:34 (bergdb 020-23,
+  Y2); it was refused.
 * **`WBuilder.execute()` spends the builder** (bergdb 020-21, 2; Frans,
   2026-11-09, 020-19's Q2): a second `execute()`, and a `put()` or a
   `delete()` after `execute()`, throw `IllegalStateException` and write

@@ -126,6 +126,7 @@ public class Time {
      * "2013-08-19 14:29"               -- 19 Aug 2013 at 14:29:00. 
      * "2013-08-19"                     -- 19 Aug 2013 at 00:00:00.
      * "2013-08"                        -- 1 Aug 2013 at 00:00:00.
+     * "2013-08 14:29"                  -- 1 Aug 2013 at 14:29:00.
      * "2013-01"                        -- 1 Jan 2013 at 00:00:00.
      * 
      * TIME-OF-DAY
@@ -417,6 +418,34 @@ public class Time {
                 throw new AssertionError("'" + s + "' not refused: " + t);
             } catch (BadFormatException e) {
                 // Expected: before 1970.
+            }
+        }
+    }
+    
+    /**
+     * bergdb 020-23, Y2 (Codex's review of 020-21): the grammar's "date = year "-" month
+     * ["-" day]" takes a time of day after a year and a month too, on the month's first day;
+     * the parse wanted a day before a time of day.
+     */
+    @Nano
+    private static void testMonthWithTimeOfDay() {
+        final Time now = Time.utc("2020-06-15 12:00");
+        Assert.assertEquals(Time.utc("2020-06-01 12:34"), Time.utc("2020-06 12:34"));
+        Assert.assertEquals(Time.utc("2020-06-01 12:34:56.1234567"),
+                Time.utc("2020-06T12:34:56.1234567"));
+        Assert.assertEquals(Time.utc("2020-06-01 12:34:56"),
+                Time.resolve(UTC, "2020-06 12:34:56"));
+        Assert.assertEquals(Time.utc("2020-06-01 12:34"), Time.resolve(UTC, now, "2020-06T12:34"));
+        Assert.assertEquals(Time.utc("2020-06-01 10:34"),
+                Time.resolve(TimeZone.getTimeZone("Europe/Stockholm"), "2020-06 12:34"));
+        for (String s : new String[] {"2020-06 ", "2020-06T", "2020-06 1:00", "2020-06x12:34",
+                "2020-06  12:34", "2020-06 24:00", "2020-06 12:34 ", "2020-13 12:00",
+                "1969-12 23:59"}) {
+            try {
+                Time t = Time.resolve(UTC, now, s);
+                throw new AssertionError("'" + s + "' not refused: " + t);
+            } catch (BadFormatException e) {
+                // Expected.
             }
         }
     }
