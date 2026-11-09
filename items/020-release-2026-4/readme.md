@@ -162,7 +162,8 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   to date until the release; since 2026-11-09, afternoon, with every
   fault that the day's bug hunts found and fixed (020-13 to 020-23, 021-11,
   021-12; its section 10) and what they left for a later release (its
-  section 11).
+  section 11); since the evening, to `03ce6ec`, with 021-13 to 021-27, Z1
+  to Z3 and the late fixes, and the day's open questions and API wishes.
 * [12-measurements.md](12-measurements.md). 020-12, format 2 measured,
   020-08's step 4, on a quiet machine (2026-11-09, 03:43 to 04:23):
   ObjectBench's M1 to M8 at `7231771` against format 1 at `ae68938`, and
@@ -263,7 +264,94 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   of the Pub layer's fixes (four low points on documents, V1-1 to V1-4,
   done in 020-21 and in the day's document update); reviewer v2 of the
   Core's (V2-1, a test, and V2-2, `BufferedStream.append` after its wait
-  for room, fixed).
+  for room, fixed); Codex's round 3 (Z1 and Z2, high, and Z3, low, fixed;
+  Z2's rule decided by Frans, 16:20); reviewer v2 of the late Core fixes
+  (021-20 and U10's: sound, V5-1, a comment); Codex's round 4 (W1, high, a
+  directory replaced during a file switch's force, fixed as 021-24); and
+  reviewer v2 of 021-24 (sound; V7-1 and V7-2, wording, done).
+* [24-new-user-apps/](24-new-user-apps/). 020-24, new users'
+  applications of 2026.4, from 12:41, by coord-1109's agents (006-20 says
+  how): a new user with only the release jar and the Javadoc writes a real
+  application for one scenario, with an oracle of its own, and reports
+  every fault, gap and unclear word; each file has its findings and a
+  Fixes section with the commits on `main`; the larger faults became 021
+  entries. Fifteen applications, in five rounds:
+  * [01-event-log.md](24-new-user-apps/01-event-log.md). 020-24-01, an
+    event log with time travel: U1-1, high, `transactionInfo()` during a
+    write failed the database (021-13).
+  * [02-inventory.md](24-new-user-apps/02-inventory.md). 020-24-02, an
+    inventory with user indexes: no wrong result in 1.2 million checks;
+    I-1 to I-8, the Javadoc and API wishes.
+  * [03-concurrent.md](24-new-user-apps/03-concurrent.md). 020-24-03, a
+    concurrent service, cache, counters and transfers: no wrong result;
+    U3-1, `stop()`'s Javadoc, and U3-2 to U3-9.
+  * [04-large-data.md](24-new-user-apps/04-large-data.md). 020-24-04, a
+    catalogue larger than memory: no wrong result in 15 million values;
+    U4-1 and U4-2, the cache budget and the heap, in the Javadoc.
+  * [05-document-store.md](24-new-user-apps/05-document-store.md).
+    020-24-05, a document store behind a small service: U5-1, critical,
+    and U5-2, high, long keys overflowed the stack (021-16).
+  * [06-metrics.md](24-new-user-apps/06-metrics.md). 020-24-06, a
+    metrics service with expiring history: U6-1, `transactionInfo()`
+    after reclaim (021-17); 136 million values checked, 36 crashes.
+  * [07-encrypted.md](24-new-user-apps/07-encrypted.md). 020-24-07, a
+    password vault on an encrypted database: U7-1, high, keystream reuse,
+    and U7-3, no integrity: encryption out of 2026.4 (020-28).
+  * [08-io-errors.md](24-new-user-apps/08-io-errors.md). 020-24-08, an
+    append-heavy log store where the file system misbehaves: no hang, no
+    wrong record; U8-1, a lost last stream file drops synced records
+    silently, documented, its options for Frans.
+  * [09-core-api.md](24-new-user-apps/09-core-api.md). 020-24-09, the
+    Core API as an embedded key-value store: U9-1, a prefix scan (021-18),
+    U9-3, a KV's time (021-19), and the Core API's Javadoc.
+  * [10-lifecycle.md](24-new-user-apps/10-lifecycle.md). 020-24-10, many
+    small databases, opened and closed all the time: U10-1, high, a
+    directory deleted and made again (021-20); U10-3, U10-5, U10-6 fixed.
+  * [11-reentrancy.md](24-new-user-apps/11-reentrancy.md). 020-24-11, a
+    hurried service, reentrant calls and shared objects: U11-1 and U11-2,
+    high (021-21 and 021-22).
+  * [12-java-types.md](24-new-user-apps/12-java-types.md). 020-24-12, a
+    domain model of Java types as Data Objects: U12-1, high, a put of a
+    huge array (021-23); U12-4 for Frans.
+  * [13-bulk-import-export.md](24-new-user-apps/13-bulk-import-export.md).
+    020-24-13, bulk import and export: no bug (5 million records, kills
+    during an import and during a commit of 1.88 GB); U13-1, U13-2, U13-3
+    and U13-7 in the Javadoc.
+  * [14-multi-tenant.md](24-new-user-apps/14-multi-tenant.md). 020-24-14,
+    a multi-tenant backend with index churn in one database: no wrong
+    result; U14-1, high, puts slowed by index churn under reclaim (021-25,
+    fix (c)); U14-2 to U14-6, API wishes.
+  * [15-docs-examples.md](24-new-user-apps/15-docs-examples.md).
+    020-24-15, a new user who learns BergDB by copying the documentation:
+    every example runs as documented; the findings fixed in the documents
+    (U15-1 to U15-14 but U15-6 and U15-13); Q1 and Q2 for Frans.
+* [25-javadoc-against-behaviour-rest.md](25-javadoc-against-behaviour-rest.md).
+  020-25, the public Javadoc checked against behaviour, the rest of the
+  Pub API after 020-19's classes: C1 to C3 (low) and J1 to J7 fixed with
+  tests (`PubTesterJavadocRest`); Q1, a local time that summer time skips
+  or repeats in `Time.resolve`.
+* [26-index-model/](26-index-model/). 020-26, a TLA+ model of 2026.4's
+  user indexes (writers with a read time, the virtual key, build steps,
+  activation, deletion and cleanup, generations, crash and restart),
+  checked with TLC: the safety invariants hold within small bounds,
+  liveness under fairness in three runs; eleven planted faults caught; no
+  design fault found.
+* [27-core-api-javadoc.md](27-core-api-javadoc.md). 020-27, the Core
+  API's Javadoc checked against behaviour: C1 to C3 (low) fixed, J1 to J6
+  and K1 to K3, with tests; Q1, what the Core API is, named at the top of
+  `Db`'s Javadoc, and Q2, a null or out-of-range argument refused with
+  `IllegalArgumentException`, both at Frans's decision (16:20 and 16:27).
+* [28-encryption-out-of-2026-4.md](28-encryption-out-of-2026-4.md).
+  020-28, encryption out of 2026.4's API (Frans, 16:08 and 16:12, on
+  020-24-07's U7-1 and U7-3): `DatabaseBuilder.cryptoKey()` and
+  `CryptoKey` gone, the code kept internal and tested, an earlier
+  release's encrypted database refused; done right later, 017-10.
+* 29-index-proof/, on a branch, not merged: `020-29-index-proof` in
+  `/Users/f/fl/bench/2026-11-09/clone-l29`. 020-29, a Lean proof, for
+  every size, of 020-26 section 3's safety invariants (no `sorry`), in a
+  wider model (several index names and directories, transactions of any
+  keys); liveness in progress. A finding on the way: with several names
+  a build needs strong fairness of the index manager's lock.
 
 
 Log
@@ -333,3 +421,7 @@ through the Core (020-22) and independent reviews of the day's fixes
 by coord-1109's agent d27: 020-11 brought up to date (sections 10 and
 11), 020-10's sections 6.1 and 6.2, `releases/next.md`, and the Javadoc
 and comments of 020-23's V1-2 and V1-3.
+
+2026-11-09, evening. The Files entries of 020-24 to 020-29 (020-29 on its
+branch, not merged), and 020-11's and 020-23's brought up to date, by
+coord-1109's final items pass.
