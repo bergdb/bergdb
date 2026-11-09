@@ -1584,31 +1584,47 @@ final class IndexHarness {
         }
     }
 
+    /** The night run's seeds and operations: 6 minutes on F53 (2026-11-09). */
+    static final int NIGHT_SEEDS = 8;
+    static final int NIGHT_STEPS = 4000;
+    
     /**
-     * The night's size: 40 seeds of 5,000 operations, a restart every 500, 4 writer
-     * threads; one seed in four in a directory. New seeds each day, printed.
+     * The night's size: NIGHT_SEEDS seeds of NIGHT_STEPS operations, a restart every 500, 4
+     * writer threads (S2-F1); one seed in four in a directory. New seeds each day, printed.
+     * Shortened on 2026-11-09 from 020-10, section 9.1's 40 seeds of 5,000 (about 55 minutes,
+     * too long for night.sh); that long form is run by hand with main(), from the seed this
+     * run printed or any other: IndexHarness SEED 5000 4 40.
      */
     @Nano("night")
     public static void testSeedsLong(TestEnvironment c) throws IOException {
         long base = System.currentTimeMillis() / 86400000L * 1000;
-        c.out().println("IndexHarness: seeds " + base + " to " + (base + 39)
-                + ", 5000 operations each");
-        for (long seed = base; seed < base + 40; seed++) {
-            run(seed, 5000, Fault.NONE,
+        c.out().println("IndexHarness: seeds " + base + " to " + (base + NIGHT_SEEDS - 1)
+                + ", " + NIGHT_STEPS + " operations each, 4 writer threads");
+        for (long seed = base; seed < base + NIGHT_SEEDS; seed++) {
+            run(seed, NIGHT_STEPS, Fault.NONE,
                     seed % 4 == 0 ? new File(c.createTempDir(), "db" + seed) : null, 4, 500);
         }
     }
 
-    /** Usage: IndexHarness [SEED [STEPS [THREADS]]]: repeats one seed. */
+    /**
+     * Usage: IndexHarness [SEED [STEPS [THREADS [SEEDS]]]]: runs SEEDS seeds (default 1) from
+     * SEED (default: the time), each of STEPS operations (default 5,000) in THREADS writer
+     * threads (default 1), a restart every 500, on a MemoryStream; prints the counts of
+     * each. The long form of the night run, 020-10, section 9.1's size, about 55 minutes:
+     * IndexHarness SEED 5000 4 40.
+     */
     public static void main(String[] args) {
         long seed = args.length > 0 ? Long.parseLong(args[0]) : System.nanoTime();
         int steps = args.length > 1 ? Integer.parseInt(args[1]) : 5000;
         int threads = args.length > 2 ? Integer.parseInt(args[2]) : 1;
-        System.out.println("IndexHarness: seed " + seed + ", " + steps + " operations, "
-                + threads + " threads");
-        run(seed, steps, Fault.NONE, null, threads, 500);
-        System.out.println("IndexHarness OK: active indexes checked " + lastCounts[0]
-                + ", scans " + lastCounts[1] + ", scan results " + lastCounts[2]
-                + ", raw entries compared " + lastCounts[3]);
+        int seeds = args.length > 3 ? Integer.parseInt(args[3]) : 1;
+        for (long s = seed; s < seed + seeds; s++) {
+            System.out.println("IndexHarness: seed " + s + ", " + steps + " operations, "
+                    + threads + " threads");
+            run(s, steps, Fault.NONE, null, threads, 500);
+            System.out.println("IndexHarness OK: active indexes checked " + lastCounts[0]
+                    + ", scans " + lastCounts[1] + ", scan results " + lastCounts[2]
+                    + ", raw entries compared " + lastCounts[3]);
+        }
     }
 }
