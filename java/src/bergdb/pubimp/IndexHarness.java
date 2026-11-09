@@ -1602,14 +1602,15 @@ final class IndexHarness {
         for (Query q : queries(def, entries, checks)) {
             List<Entry> expected = ref.filter(def, entries, q);
             // The scan's forms (bergdb 020-17): kvs() three times in four, else objects();
-            // as DbObject, or one time in six as byte[] (the stored bytes); one time in six
+            // as DbObject, or one time in six as byte[] (the stored bytes), and in a wide run
+            // one in six as Doc and one in six as Object (B9); one time in six
             // the same Iterable twice, each iterator from the beginning at the same lookup
             // time (020-10, section 3.4); hasNext() asked twice now and then, and next()
             // past the end.
             boolean kvs = checks.nextInt(4) != 0;
             int k6 = checks.nextInt(6);
             Class<?> type = k6 == 0 ? byte[].class : k6 == 1 && gen.wide ? Doc.class
-                    : DbObject.class;
+                    : k6 == 2 && gen.wide ? Object.class : DbObject.class;
             int times = checks.nextInt(6) == 0 ? 2 : 1;
             String what = "scan " + q + " of " + def + " at " + t + (kvs ? ", kvs()"
                     : ", objects()") + " as " + type.getSimpleName();
@@ -1621,7 +1622,7 @@ final class IndexHarness {
                 for (int k = 0; k < times; k++) {
                     keys.clear();
                     values.clear();
-                    iterate(iterable, kvs, keys, values, k == 0 ? what : what + ", again");
+                    iterate(iterable, kvs, type, keys, values, k == 0 ? what : what + ", again");
                 }
             } catch (LookupTimeNotAvailableException e) {
                 behindCut(t, e);
@@ -1653,7 +1654,7 @@ final class IndexHarness {
      * one time in eight asked again, the same answer; next() past the end throws
      * NoSuchElementException (020-10, section 3.4).
      */
-    private void iterate(Iterable<?> iterable, boolean kvs, List<String> keys,
+    private void iterate(Iterable<?> iterable, boolean kvs, Class<?> type, List<String> keys,
             List<Object> values, String what) {
         Iterator<?> it = iterable.iterator();
         while (true) {
@@ -1670,6 +1671,9 @@ final class IndexHarness {
                 keys.add(kv.key());
                 v = kv.value();
             }
+            // Of the scan's type; as Object, a DbObject, as a get gives an object (020-09).
+            check(type == Object.class ? v instanceof DbObject : type.isInstance(v),
+                    what + ": a value of " + v.getClass().getName());
             values.add(v instanceof DbObject ? ((DbObject) v).getBytes() : v);
         }
         boolean threw = false;
