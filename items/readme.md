@@ -161,3 +161,6 @@ Index
   database (020): each done and closed in a day or two, mostly by an AI
   agent; every open entry done before 2026.4 but Frans's exceptions. 019
   keeps 2026.3's entries until that release.
+* **022-bergdb-c** (open). BergDB's Core in C, updated to Java's releases
+  2026.3 and 2026.4, maybe later ones: a fresh start from 012's C clone,
+  which stays the port of 2026.2.

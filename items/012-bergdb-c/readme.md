@@ -62,6 +62,12 @@ the tests, notes, progress), in the order of 012-01, section 8:
 * [16-report.md](16-report.md). 012-16, the report and the next steps.
 * [17-lto.md](17-lto.md). 012-17, link-time optimization in the release
   build (012-15's first proposal).
+* [18-update-to-2026-3.md](18-update-to-2026-3.md). 012-18, a study of
+  what updating the C clone to Java's release 2026.3 takes: the Core's
+  changes since 2026.2 by kind, which the clone needs, the faults it shares,
+  the tests that would show it matches, a plan and its size; feasible in
+  about a day. Frans, 2026-11-09, 10:08: the update is a new item, 022,
+  and 012 stays the port of 2026.2.
 
 
 Log
@@ -424,3 +430,6 @@ and eviction, 005-69's clock, 005-73's F1 and F4, the checks of 005-74,
 005-75 and 015-07, and the doubles check in the gate. The cross harness
 compiles the release's source zip by default (`JAVA_REF`, `c/readme.md`).
 The work and its evidence are in 015-02.
+
+2026-11-09. 012-18, the study of an update to 2026.3, by coord-1109's
+agent; the update itself is item 022 (Frans, 10:08).
