@@ -20,6 +20,7 @@ import bergdb.nanotest.Nano;
 import bergdb.pub.DataFormatException;
 import bergdb.pub.DbObject;
 import bergdb.pub.RwEnvironment;
+import bergdb.pub.util.BadFormatException;
 
 /**
  * Environment for a transaction.
@@ -618,12 +619,26 @@ class RwEnvironmentImp implements RwEnvironment {
             
             if (object == null) {
                 dbo = null;
+                value = null;
             } else if (object instanceof DbObject) {
+                // A user's DbObject: a copy of its bytes, checked by the full check (the
+                // review of bergdb 020-10, B3: its own array was stored, and changed by a
+                // change of getBytes()' array; and a class that joined bergdb.pub could
+                // make one that breaks a rule). An object that DataObjects builds is not
+                // checked again.
                 dbo = (DbObject) object;
+                value = dbo.getBytes();
+                try {
+                    ObjectFormat.checkStored(value);
+                } catch (BadFormatException e) {
+                    throw new IllegalArgumentException("The DbObject put at " 
+                            + PubKeys.i2u(ikey) + " is not a stored object of format 2: " 
+                            + e.getMessage(), e);
+                }
             } else {
                 dbo = DbObject.toDbObject(object);
+                value = dbo.getBytes();
             }
-            value = dbo == null ? null : dbo.getBytes();
             
             this.kt = kt;
         }

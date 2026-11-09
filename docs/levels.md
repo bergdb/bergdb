@@ -719,7 +719,10 @@ the classes of `src` only. The stored object is API since 020-10's step
 B3: `DbObject`, its `Builder`, `DbArray`, `DbValue` and the value classes
 (`DbBoolean`, `DbLong`, `DbDouble`, `DbString`, `DbByteArray`) are in
 `bergdb.pub`; the codec (`ObjectFormat`) and the conversion
-(`DataObjects`) stay in `bergdb.pubimp`, public there for them only.
+(`DataObjects`) stay in `bergdb.pubimp`, public there for them only. Both
+jars seal `bergdb.pub` and `bergdb.pubimp`, so no class of another jar or
+directory joins them. A `DbObject` is immutable: `getBytes()` gives a copy,
+and a put checks a user's `DbObject` by the full check and stores a copy.
 
 **Stored objects, format 2.** The spec is
 [020-07](../items/020-release-2026-4/07-object-spec.md), under 018-01's

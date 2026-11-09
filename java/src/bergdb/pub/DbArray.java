@@ -160,7 +160,7 @@ public final class DbArray extends DbValue implements Iterable<DbValue> {
      * A builder of a DbArray: elements are added in order. It is not thread-safe: use it from
      * one thread.
      */
-    public static class Builder {
+    public static final class Builder {
         private final ByteArrayOutputStream out = new ByteArrayOutputStream();
         private int elementCount = 0;
         private int height = 1;

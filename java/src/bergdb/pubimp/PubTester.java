@@ -4139,6 +4139,35 @@ public class PubTester {
         }
     }
     
+    /**
+     * A put of a DbObject stores a copy of its bytes (the review of B3, F1): a change of the
+     * array that getBytes() gave, after the commit, changes neither the stored value nor the
+     * index's entry; it changed the value in memory until a restart, and the index found it
+     * by neither value.
+     */
+    @Nano
+    public static void testDbObjectPutStoresACopy() {
+        Database d = Factory.database().memory().start();
+        try {
+            Connection c = d.connection();
+            d.indexBuilder("n").dir("/o/").type("long").field("n").start().join();
+            DbObject o = new DbObject.Builder().addLong("n", 5).build();
+            c.put("/o/a", o);
+            byte[] b = o.getBytes();
+            b[b.length - 1] = 6;        // the integer's value, 5
+            Assert.assertEquals(5L, c.get("/o/a", DbObject.class).getLong("n"));
+            Assert.assertEquals(5L, o.getLong("n"));
+            int n = 0;
+            for (DbObject x : c.useIndex("n", DbObject.class).eq(5L).objects()) {
+                Assert.assertEquals(5L, x.getLong("n"));
+                n++;
+            }
+            Assert.assertEquals(1, n);
+        } finally {
+            d.close();
+        }
+    }
+    
     public static class Inner12 {
         public String name;
         public Inner12() {}

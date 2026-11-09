@@ -76,7 +76,14 @@ class KvToObjectImp implements KvToObjectConverter {
         } else if (c.equals(Object.class)) {
             result = (TYPE) entryToMixedTypeObject(ikey, ukey, value);
         } else {
-            result = DataObjects.toJavaObject(entryToDbObject(ukey, value), c);
+            // From the stored bytes, after the full check: no DbObject, no copy (the review
+            // of bergdb 020-10, B3).
+            try {
+                ObjectFormat.checkStored(value);
+            } catch (BadFormatException e) {
+                throw new ObjectCreationException(e.getMessage() + " ukey=" + ukey);
+            }
+            result = DataObjects.toJavaObject(value, 1, c);
         }
         
         return result;

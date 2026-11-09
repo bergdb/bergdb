@@ -566,7 +566,8 @@ public class DbObjectFormatTester {
     @Nano
     public static void testValueClassesClosed() throws ReflectiveOperationException {
         for (Class<?> c : new Class<?>[] {DbObject.class, DbArray.class, DbBoolean.class,
-                DbLong.class, DbDouble.class, DbString.class, DbByteArray.class}) {
+                DbLong.class, DbDouble.class, DbString.class, DbByteArray.class, 
+                DbObject.Builder.class, DbArray.Builder.class}) {
             Assert.assertTrue(c.getName(), java.lang.reflect.Modifier.isFinal(c.getModifiers()));
         }
         for (java.lang.reflect.Constructor<?> k : DbValue.class.getDeclaredConstructors()) {
@@ -575,6 +576,23 @@ public class DbObjectFormatTester {
         }
         Assert.assertTrue(java.lang.reflect.Modifier.isFinal(DbString.class
                 .getDeclaredField("utf8").getModifiers()));
+    }
+
+    /**
+     * bergdb.pub and bergdb.pubimp are sealed in the jars (the review of B3, F2): a class of
+     * another jar or directory cannot join them, so no class outside BergDB extends DbValue
+     * or reads pubimp's package-private members. Checked when the classes come from a jar,
+     * as the tests run.
+     */
+    @Nano
+    public static void testPackagesSealed() {
+        for (Class<?> c : new Class<?>[] {DbValue.class, ObjectFormat.class}) {
+            java.security.CodeSource source = c.getProtectionDomain().getCodeSource();
+            if (source != null && source.getLocation().getPath().endsWith(".jar")) {
+                Assert.assertTrue(c.getPackage().getName() + " sealed", 
+                        c.getPackage().isSealed());
+            }
+        }
     }
 
     /** A cycle's message names both places, also below an array put at the top. */

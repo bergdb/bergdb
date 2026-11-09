@@ -15,8 +15,8 @@ import bergdb.pubimp.ObjectFormat;
  * DbDouble.toDouble(), DbString.toStringValue(), DbByteArray.getByteArray(); DbArray its
  * elements, DbObject its fields. A value is immutable and may be read by any number of
  * threads at the same time. No class outside this package extends DbValue (its constructor
- * is not public), so every value is one of the seven, and writes only bytes that a reader
- * of the format takes. getByteSize() and write() give its encoding in the format, its type
+ * is not public, and BergDB's jars seal the package), so every value is one of the seven,
+ * and writes only bytes that a reader of the format takes. getByteSize() and write() give its encoding in the format, its type
  * byte included (bergdb 020-07, section 4).</p>
  * 
  * @author Frans Lundberg

@@ -6,6 +6,10 @@
 #   build/bergdb-release.jar  the jar for users, which a release ships (bergdb 020-10,
 #                             section 7): the classes and resources of src only, no
 #                             Main-Class. Neither jar has ICU since 020-10's step B2.
+# Both jars seal the packages bergdb.pub and bergdb.pubimp (the review of 020-10's B3): no
+# class of another jar or directory joins them, so none outside BergDB extends DbValue or
+# reads their package-private members. A probe in one of them runs with build/classes on
+# the class path, not a jar.
 #   build/stress/             the stress tests.
 # Run tests: java -ea -jar build/bergdb.jar bergdb.dev.Unit
 # (also bergdb.dev.F and bergdb.dev.Night, with -cp build/bergdb.jar).
@@ -15,7 +19,7 @@
 #   1. Its entries are bergdb.jar's but for those in a directory of src-dev (so not
 #      bergdb.Help either), none is under bergdb/dev/, bergdb/test/, bergdb/demo/,
 #      frans/, bergdb/icu50/ or bergdb/pubimpicu/ (ICU's, gone), and its manifest has no
-#      Main-Class.
+#      Main-Class and seals bergdb/pub/ and bergdb/pubimp/.
 #   2. jdeps --missing-deps: every class that it uses is in it or in the JDK.
 #   3. stress/release-jar/ReleaseDemo.java, user code compiled and run with the release
 #      jar alone on the class path: no class of src-dev; the Pub API's String and byte[]
@@ -38,7 +42,7 @@ CHECK=$OUT/release-jar
 # .DS_Store in a directory at any time, and removing the directory then fails.
 mkdir -p $OUT/classes $OUT/stress $CHECK
 find $OUT/classes $OUT/stress $CHECK -type f -delete
-rm -f $OUT/bergdb.jar $OUT/MANIFEST.MF $REL
+rm -f $OUT/bergdb.jar $OUT/MANIFEST.MF $OUT/RELEASE-MANIFEST.MF $REL
 
 $JAVAC --release 17 -encoding UTF-8 -nowarn -Xlint:-options -d $OUT/classes -cp $OUT/classes \
     $(find $SRC/src $SRC/src-dev -name '*.java')
@@ -53,7 +57,9 @@ for d in src src-dev; do
 done
 
 find $OUT/classes -name .DS_Store -delete
-printf 'Main-Class: bergdb.dev.Run\n' > $OUT/MANIFEST.MF
+SEALED='Name: bergdb/pub/\nSealed: true\n\nName: bergdb/pubimp/\nSealed: true\n'
+printf "Main-Class: bergdb.dev.Run\n\n$SEALED" > $OUT/MANIFEST.MF
+printf "Manifest-Version: 1.0\n\n$SEALED" > $OUT/RELEASE-MANIFEST.MF
 $JAR cfm $OUT/bergdb.jar $OUT/MANIFEST.MF -C $OUT/classes .
 echo "Built $OUT/bergdb.jar"
 
@@ -79,7 +85,7 @@ fi
 RELFILES=$(while read d; do
     if [ -d "$OUT/classes/$d" ]; then (cd $OUT/classes && find "$d" -maxdepth 1 -type f); fi
 done < $CHECK/release-dirs.txt)
-(cd $OUT/classes && $JAR cf "$HERE/$REL" $RELFILES)
+(cd $OUT/classes && $JAR cfm "$HERE/$REL" "$HERE/$OUT/RELEASE-MANIFEST.MF" $RELFILES)
 
 # Check 1: the entries and the manifest.
 unzip -Z1 $OUT/bergdb.jar | grep -v '/$' |
@@ -98,6 +104,13 @@ fi
 if unzip -p $REL META-INF/MANIFEST.MF | grep -i '^Main-Class' >&2; then
     release_failed "its manifest has a Main-Class"
 fi
+for d in pub pubimp; do
+    if ! unzip -p $REL META-INF/MANIFEST.MF | tr -d '\r' |
+            awk -v n="Name: bergdb/$d/" '$0 == n { s = 1; next } s && /^Sealed: true$/ { f = 1 }
+                /^$/ { s = 0 } END { exit !f }'; then
+        release_failed "its manifest does not seal bergdb/$d/"
+    fi
+done
 
 # Check 2: jdeps prints each use of a class that is not there.
 $JDEPS --missing-deps $REL > $CHECK/jdeps.txt 2>&1 || { cat $CHECK/jdeps.txt >&2; release_failed "jdeps"; }

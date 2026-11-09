@@ -37,7 +37,8 @@ import bergdb.pubimp.ObjectFormat;
  * have. INT, 'i', is not a stored type either: has(name, INT) is true, and getInt() gives
  * the value, for an integer within int's range. An object has at most 32,767 fields, at
  * most 16 levels of objects and arrays (the top object is level 1, a scalar is no level),
- * and its stored bytes at most 2^31 - 1 bytes.</p>
+ * and its stored bytes at most 2^31 - 1 bytes by the format; in Java at most 2^31 - 9, the
+ * most that an array holds.</p>
  *
  * <p><b>No null.</b> No value is null: a field without a value is absent, and an array has
  * no absent element (the package's {@linkplain bergdb.pub##null Null and absent fields}).
@@ -66,14 +67,16 @@ import bergdb.pubimp.ObjectFormat;
  * not an object makes the field absent.</p>
  *
  * <p><b>Views.</b> getObject() gives a view on this object's bytes: no copy is made, and the
- * nested object's getBytes() makes a new array, its own stored bytes with the header. The
+ * nested object's getBytes() gives its own stored bytes with the header, a new array. The
  * other getters give copies: a byte[] from getByteArray() is the caller's, and a DbArray
  * holds its own bytes.</p>
  *
  * <p><b>Immutable and thread-safe.</b> A DbObject never changes, and any number of threads
- * may read one at the same time without synchronization. getBytes() of an object made from
- * bytes or by the Builder returns its own array, not a copy, as Connection.get() returns a
- * byte[]: do not change it. The Builders are not thread-safe: use one from one thread.</p>
+ * may read one at the same time without synchronization: new DbObject(bytes) copies the
+ * bytes, and getBytes() gives a copy. No class outside BergDB extends DbValue: its
+ * constructor is not public, and the package is sealed in BergDB's jars. A put of a
+ * DbObject checks its bytes by the format's full check and stores a copy. The Builders
+ * are not thread-safe: use one from one thread.</p>
  *
  * <p><b>Strings.</b> A string, and a field's name, is Unicode text stored as well-formed
  * UTF-8, as every string BergDB stores (the package's
@@ -180,15 +183,16 @@ public final class DbObject extends DbValue {
     
     /**
      * Returns the stored bytes, the header first: the bytes that a put of this object stores
-     * and that new DbObject(bytes) reads back. For an object made from bytes or by the
-     * Builder, its own array, not a copy: do not change it. For an object nested in another
-     * (getObject()), a new array.
+     * and that new DbObject(bytes) reads back. A new array each time, the caller's: a change
+     * of it changes neither this object nor what a put of it stored (2026-11-09, the review
+     * of bergdb 020-10, B3: the object's own array, so a change after a put changed the
+     * committed value in memory).
      *
-     * @return The stored bytes.
+     * @return A copy of the stored bytes.
      */
     public byte[] getBytes() {
         if (whole) {
-            return this.bytes;
+            return this.bytes.clone();
         }
         byte[] b = new byte[1 + end - start];
         b[0] = HEADER;
@@ -226,9 +230,11 @@ public final class DbObject extends DbValue {
      * @param nameParts  The names, the top object's field first.
      * @param type  A type char, such as LONG; or INT.
      * @return True if the field is there and of the type.
-     * @throws IllegalArgumentException  If 'nameParts' is empty or holds a null.
+     * @throws IllegalArgumentException  If 'nameParts' is null, empty or holds a null,
+     *      checked first, also when an earlier part is absent.
      */
     public boolean has(String[] nameParts, char type) {
+        checkParts(nameParts);
         if (nameParts.length == 1) {
             return has(nameParts[0], type);
         }
@@ -252,6 +258,23 @@ public final class DbObject extends DbValue {
     private int find(String name) {
         byte[] b = nameBytes(name);
         return b == null ? -1 : ObjectFormat.find(bytes, start, end, b);
+    }
+    
+    /**
+     * Refuses name parts that are null, empty or hold a null, before any lookup, so that the
+     * answer does not depend on the data (2026-11-09, the review of bergdb 020-10, B3: a null
+     * after an absent part gave 0 or null, a null array a NullPointerException).
+     */
+    private static void checkParts(String[] parts) {
+        if (parts == null || parts.length == 0) {
+            throw new IllegalArgumentException("nameParts: null or empty; a nested field "
+                    + "has one name per level");
+        }
+        for (String part : parts) {
+            if (part == null) {
+                throw new IllegalArgumentException("nameParts: a part is null");
+            }
+        }
     }
     
     /** The start of the value of a nested field, or -1 if absent. */
@@ -325,7 +348,7 @@ public final class DbObject extends DbValue {
      *              a constructor throws (the cause).
      */
     public <TYPE> TYPE toJavaObject(Class<TYPE> c) {
-        return DataObjects.toJavaObject(this, c);
+        return DataObjects.toJavaObject(bytes, start, c);       // reads, no copy
     }
     
     /**
@@ -391,9 +414,11 @@ public final class DbObject extends DbValue {
      *
      * @param nameParts  The names, the top object's field first.
      * @return The value, or 0.
-     * @throws IllegalArgumentException  If 'nameParts' is empty or holds a null.
+     * @throws IllegalArgumentException  If 'nameParts' is null, empty or holds a null,
+     *      checked first, also when an earlier part is absent.
      */
     public int getInt(String[] nameParts) {
+        checkParts(nameParts);
         if (nameParts.length == 1) {
             return getInt(nameParts[0]);
         }
@@ -418,9 +443,11 @@ public final class DbObject extends DbValue {
      *
      * @param nameParts  The names, the top object's field first.
      * @return The value, or 0.
-     * @throws IllegalArgumentException  If 'nameParts' is empty or holds a null.
+     * @throws IllegalArgumentException  If 'nameParts' is null, empty or holds a null,
+     *      checked first, also when an earlier part is absent.
      */
     public long getLong(String[] nameParts) {
+        checkParts(nameParts);
         if (nameParts.length == 1) {
             return getLong(nameParts[0]);
         }
@@ -447,9 +474,11 @@ public final class DbObject extends DbValue {
      *
      * @param nameParts  The names, the top object's field first.
      * @return The value, or 0.0.
-     * @throws IllegalArgumentException  If 'nameParts' is empty or holds a null.
+     * @throws IllegalArgumentException  If 'nameParts' is null, empty or holds a null,
+     *      checked first, also when an earlier part is absent.
      */
     public double getDouble(String[] nameParts) {
+        checkParts(nameParts);
         if (nameParts.length == 1) {
             return getDouble(nameParts[0]);
         }
@@ -475,9 +504,11 @@ public final class DbObject extends DbValue {
      *
      * @param nameParts  The names, the top object's field first.
      * @return The value, or null.
-     * @throws IllegalArgumentException  If 'nameParts' is empty or holds a null.
+     * @throws IllegalArgumentException  If 'nameParts' is null, empty or holds a null,
+     *      checked first, also when an earlier part is absent.
      */
     public String getString(String[] nameParts) {
+        checkParts(nameParts);
         if (nameParts.length == 1) {
             return getString(nameParts[0]);
         }
@@ -588,9 +619,10 @@ public final class DbObject extends DbValue {
      *
      * <p>Each add refuses, with IllegalArgumentException, a name that is null, empty, longer
      * than 255 bytes in UTF-8 or that has a lone surrogate; a null value; a 32,768th field.
-     * build() refuses an object of more than 16 levels or 2^31 - 1 bytes.</p>
+     * build() refuses an object of more than 16 levels, or of more than 2^31 - 9 bytes, the
+     * most that a Java array holds (the format allows 2^31 - 1).</p>
      */
-    public static class Builder {
+    public static final class Builder {
         private final ArrayList<DbField> fields = new ArrayList<DbField>();
         private final HashMap<String, Integer> indexes = new HashMap<String, Integer>();
         
@@ -695,7 +727,8 @@ public final class DbObject extends DbValue {
          * each nested value copied in (bergdb 020-08, section 4.4).
          * 
          * @throws IllegalArgumentException  If the object would have more than 16 levels of
-         *      objects and arrays, or more than 2^31 - 1 bytes (bergdb 020-07, R14, R15).
+         *      objects and arrays (bergdb 020-07, R14), or more than 2^31 - 9 bytes, the most
+         *      that a Java array holds (R15 allows 2^31 - 1).
          */
         public DbObject build() {
             DbField[] f = fields.toArray(new DbField[0]);
@@ -750,6 +783,74 @@ public final class DbObject extends DbValue {
                         .length + " bytes"));
             }
         }
+    }
+    
+    /**
+     * Immutable (the review of B3, F1): getBytes() gives a copy, so a change of it changes
+     * neither the object nor what a put of it stored.
+     */
+    @bergdb.nanotest.Nano
+    private static void testGetBytesGivesACopy() {
+        DbObject o = new Builder().addInt("a", 1).build();
+        byte[] b = o.getBytes();
+        b[b.length - 1] = 9;
+        bergdb.nanotest.Assert.assertEquals(1, o.getInt("a"));
+        bergdb.nanotest.Assert.assertTrue(o.getBytes() != o.getBytes());
+    }
+    
+    /**
+     * A put of a DbObject checks its bytes by the full check (the review of B3, F2): one whose
+     * bytes break a rule, here made by this class's own constructor, is refused with
+     * IllegalArgumentException naming the condition, and nothing is written.
+     */
+    @bergdb.nanotest.Nano
+    private static void testPutChecksTheBytes() {
+        byte[] bad = new Builder().addInt("a", 1).build().getBytes();
+        bad[bad.length - 2] = 0x7f;     // the integer's type byte: no type
+        final DbObject o = new DbObject(bad, 1, bad.length, true, 0);
+        Database d = Factory.database().memory().start();
+        try {
+            Connection c = d.connection();
+            try {
+                c.put("/k", o);
+                throw new AssertionError("a DbObject that breaks a rule was put");
+            } catch (IllegalArgumentException e) {
+                bergdb.nanotest.Assert.assertTrue(e.getMessage(), e.getMessage().contains("type"));
+            }
+            bergdb.nanotest.Assert.assertTrue(c.get("/k", byte[].class) == null);
+        } finally {
+            d.close();
+        }
+    }
+    
+    /**
+     * The getters of a nested field check the parts first (the review of B3, F5): a null
+     * array, an empty one, or one with a null part is refused, also after a part that is
+     * absent.
+     */
+    @bergdb.nanotest.Nano
+    private static void testNamePartsCheckedFirst() {
+        final DbObject o = new Builder().addInt("a", 1).build();
+        Runnable[] calls = {
+            () -> o.getInt(new String[] {"absent", null}),
+            () -> o.getLong(new String[] {"absent", null}),
+            () -> o.getDouble(new String[] {"absent", null}),
+            () -> o.getString(new String[] {"absent", null}),
+            () -> o.has(new String[] {"absent", null}, LONG),
+            () -> o.getInt((String[]) null),
+            () -> o.has((String[]) null, LONG),
+            () -> o.getString(new String[0]),
+            () -> o.getLong(new String[] {null}),
+        };
+        for (int k = 0; k < calls.length; k++) {
+            try {
+                calls[k].run();
+                throw new AssertionError("call " + k + ": not refused");
+            } catch (IllegalArgumentException e) {
+                // refused
+            }
+        }
+        bergdb.nanotest.Assert.assertEquals(1, o.getInt(new String[] {"a"}));
     }
 }
 

@@ -580,23 +580,25 @@ public final class DataObjects {
     // ======== The get: DbObject to Data Object, best effort (020-09, section 5) ========
 
     /**
-     * The stored object 's' as an object of 'c', by 020-09, section 5.9: a primitive or a
-     * wrapper from the field p, an array from the field array, null if it is absent; a Data
-     * Object class by section 5.3.
+     * The object at 'p' of checked bytes (its type byte; 1 for a stored value) as an object of
+     * 'c', by 020-09, section 5.9: a primitive or a wrapper from the field p, an array from
+     * the field array, null if it is absent; a Data Object class by section 5.3. The bytes
+     * are read, never changed or kept: a stored value's (KvToObjectImp, after the full
+     * check) or a DbObject's own (DbObject.toJavaObject), so a get makes no copy of them
+     * (2026-11-09, the review of 020-10, B3).
      *
      * @throws ObjectCreationException  If 'c' is not a Data Object class or a class it reaches
      *      is not (020-09, section 3.3), or a constructor throws (section 5.2).
      */
     @SuppressWarnings("unchecked")
-    public static <T> T toJavaObject(DbObject s, Class<T> c) {
+    public static <T> T toJavaObject(byte[] b, int p, Class<T> c) {
         checkGet(c);
-        byte[] b = s.getBytes();        // its own array; a copy for a nested object
         if (isScalarType(c) || c.isArray()) {
             byte[] name = c.isArray() ? ARRAY_NAME : PRIMITIVE_NAME;
-            int p = ObjectFormat.find(b, 1, b.length, name);
-            return p < 0 ? null : (T) convert(b, p, c);
+            int q = ObjectFormat.find(b, p, ObjectFormat.objectEnd(b, p), name);
+            return q < 0 ? null : (T) convert(b, q, c);
         }
-        return (T) make(b, 1, c);
+        return (T) make(b, p, c);
     }
 
     /** A new 'c' with the stored fields of the object at 'p' (020-09, section 5.3). */

@@ -5,7 +5,8 @@ API: whatever is public in it may change in any release. The API is bergdb.pub,
 bergdb.pub.util and the Core's bergdb.core.Db (bergdb 020-10, section 7). ObjectFormat,
 the stored object format's codec, and DataObjects, the conversion of Data Objects, are
 public for bergdb.pub's DbObject and its value classes, which use them (bergdb 020-10,
-step B3); they are not API either.</p>
+step B3); they are not API either. BergDB's jars seal this package and bergdb.pub: a probe
+that is to run in one of them runs with build/classes on the class path, not a jar.</p>
 
 <p>Depends on: common, core, dag, nanotest, pub, pub.util, storage, stream. Note that we allow the circular package 
 dependency: pubimp -> pub -> pubimp.</p>
