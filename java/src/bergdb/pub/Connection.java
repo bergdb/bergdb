@@ -269,6 +269,10 @@ public interface Connection extends ReadInterface {
      *             one, as for WBuilder.put() (the package's
      *             {@linkplain bergdb.pub##strings Strings}; bergdb 019-44, 021-04); or if
      *             the object cannot be stored exactly, as for WBuilder.put().
+     * @throws DataFormatException
+     *             If it puts a byte[] that is an object of BergDB 2026.3 and before (format
+     *             1) at an object key of a directory with a user index, which no index can
+     *             take (IndexBuilder, rule 1): nothing is written, and the database goes on.
      */
     public Transaction put(String key, Object object);
 
@@ -311,6 +315,10 @@ public interface Connection extends ReadInterface {
      *             If the database has failed, in this transaction or before: it then
      *             refuses every transaction and read until it is restarted. See
      *             Database.
+     * @throws DataFormatException
+     *             If the action puts a byte[] that is an object of BergDB 2026.3 and before (format
+     *             1) at an object key of a directory with a user index, which no index can
+     *             take (IndexBuilder, rule 1): nothing is written, and the database goes on.
      */
     public Transaction rw(Action action);
 

@@ -7,8 +7,8 @@ import bergdb.pub.util.DbException;
  * read when its index entries are updated or built; a value read as a String that is not
  * well-formed UTF-8 (bergdb 021-06). A get never throws it for a value that does not fit
  * the field it is read into: it converts best effort (bergdb 020-09, section 5). It belongs
- * to the objects and the user indexes (see Connection.get(), WBuilder.put(String, Object)
- * and Database.indexBuilder()), and to String values.
+ * to the objects and the user indexes (see Connection.get(), WBuilder.execute() and
+ * IndexBuilder), and to String values.
  * 
  * @author Frans Lundberg
  */

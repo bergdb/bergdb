@@ -56,6 +56,11 @@ public interface WBuilder {
      *             If the database has failed, in this transaction or before: it then
      *             refuses every transaction and read until it is restarted. See
      *             Database.
+     * @throws DataFormatException
+     *             If one of its puts is of a byte[] that is an object of BergDB 2026.3 and
+     *             before (format 1), at an object key of a directory with a user index,
+     *             which no index can take (IndexBuilder, rule 1): nothing is written, and the
+     *             database goes on.
      */
     public Transaction execute();
 }
