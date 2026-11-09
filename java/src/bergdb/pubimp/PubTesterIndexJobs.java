@@ -1058,6 +1058,47 @@ public class PubTesterIndexJobs {
         }
     }
 
+    /**
+     * 020-18, F4: a build reads the directory up to its last key when the build begins; the
+     * keys put after it were put after the creation, by writers that keep the index. It read
+     * to the directory's end at each step, so writers that appended to the directory faster
+     * than the build read it kept it BUILDING for as long as they wrote (on F53, four writers
+     * appending 57,000 objects a second: BUILDING after 30 s and 777,200 values read, from a
+     * directory of 20,000; ACTIVE 14 s after the writers stopped). Here three objects, steps
+     * of two values, and a hook at the first step that appends 30 objects: the build reads 3
+     * values, and the index has all 33 entries.
+     */
+    @Nano
+    public static void testBuildReadsUpToItsStartsLastKey() {
+        Database db = start(new MemoryStream());
+        try {
+            Connection c = db.newConnection();
+            for (int k = 0; k < 3; k++) {
+                c.put("/items/k" + k, new Item(k, k));
+            }
+            IndexManager m = manager(db);
+            m.testStepValues = 2;
+            Connection w = db.newConnection();
+            boolean[] once = {true};
+            m.testHook = p -> {
+                if (p.equals(IndexManager.BUILD_STEP) && once[0]) {
+                    once[0] = false;
+                    for (int k = 0; k < 30; k++) {
+                        w.put("/items/x" + k, new Item(100 + k, k));
+                    }
+                }
+            };
+            JobStatus status = db.indexBuilder("by-field").dir("/items/").type("long")
+                    .field("amount").start().join(10000);
+            m.testHook = null;
+            Assert.assertEquals(status.note(), JobStatus.State.ACTIVE, status.state());
+            Assert.assertEquals("the values the build read", 3, status.count());
+            Assert.assertEquals(33, entries(db, "by-field"));
+        } finally {
+            db.close();
+        }
+    }
+
     // ======== The builder (020-10, section 3.1) ========
 
     /** S2-F20: dir() twice is refused at once; the builder needs dir() first. */

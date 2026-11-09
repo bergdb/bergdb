@@ -319,7 +319,8 @@ class IndexBuilderImp implements IndexBuilder {
      * 6.1). A step is an rw(): a getMany of at most STEP_VALUES values of the directory's own
      * keys, ending after the value that takes it to STEP_BYTES (bergdb 020-18, F3), after the
      * last key of the step before (its prefix idir and '-', so it stops at the
-     * directory's end: 015-30, S2-F16); the definition's key hash in its read set; if the index
+     * directory's end: 015-30, S2-F16), up to the directory's last key when the build began
+     * (bergdb 020-18, F4: the keys after it were put by writers that keep the index); the definition's key hash in its read set; if the index
      * was deleted, the build ends FAILED "deleted"; else each value's entry is put (a value
      * with no entry is counted and skipped; a key without an ikey is skipped, bergdb 021-06).
      * The hash of each value whose entry the step puts is in the read set, so a concurrent
@@ -348,7 +349,17 @@ class IndexBuilderImp implements IndexBuilder {
         private final ConnectionImp connection;
         private final Db db;
         private final long[] prefix;
+        private final long[] afterPrefix;       // The least key after the directory's keys
         private final long defKeyHash;
+
+        /**
+         * The directory's last key when the build began, or the prefix if it had none; null
+         * until the first step. A key after it was put after the index's creation, by a writer
+         * that keeps the index, so the build stops there (bergdb 020-18, F4: it read to the
+         * directory's end at each step, and writers that appended to the directory faster
+         * than it read kept it building for as long as they wrote).
+         */
+        private long[] endKey;
 
         // The step's results, set by its action (which may run again).
         private long[] lastKey;
@@ -361,8 +372,37 @@ class IndexBuilderImp implements IndexBuilder {
             this.def = live.def;
             this.connection = new ConnectionImp(database);
             this.db = database.getDb();
-            this.prefix = Keys.toSegments(Keys.toBytes(def.idir() + PubKeys.FILE_PREFIX));
+            byte[] p = Keys.toBytes(def.idir() + PubKeys.FILE_PREFIX);
+            this.prefix = Keys.toSegments(p);
+            byte[] after = p.clone();
+            after[after.length - 1]++;          // The bkey of '-' is below 0xff.
+            this.afterPrefix = Keys.toSegments(after);
             this.defKeyHash = Keys.hash(Keys.toSegments(def.key()));
+        }
+
+        /**
+         * The directory's last key now, or the prefix if it has none: a read after the index's
+         * creation, as the build runs after it (bergdb 020-18, F4).
+         */
+        private long[] lastKeyOfDirectory() {
+            final long[][] last = new long[1][];
+            GetMany g = db.newGetMany();
+            g.forward = false;
+            g.startKey = afterPrefix;
+            g.inclusive = false;
+            g.lookupTime = Long.MAX_VALUE;
+            g.stopCondition = new GetMany.StopCondition() {
+                public int handleKvt(Kvt kvt) {
+                    if (Keys.isPrefix(prefix, kvt.key)) {
+                        last[0] = kvt.key;
+                    }
+                    return GetMany.StopCondition.STOP;
+                }
+
+                public void eod() {}
+            };
+            db.getMany(g);
+            return last[0] == null ? prefix : last[0];
         }
 
         public void run() {
@@ -456,6 +496,10 @@ class IndexBuilderImp implements IndexBuilder {
         private void step(RwEnvironmentImp env, long[] from) {
             lastKey = null;
             count = 0;
+            if (endKey == null) {
+                endKey = lastKeyOfDirectory();
+            }
+            final long[] last = endKey;
             final int max = m.testStepValues > 0 ? m.testStepValues : STEP_VALUES;
             final boolean[] end = new boolean[1];
             GetMany g = db.newGetMany();
@@ -466,7 +510,7 @@ class IndexBuilderImp implements IndexBuilder {
                 private long bytes = 0;
 
                 public int handleKvt(Kvt kvt) {
-                    if (!Keys.isPrefix(prefix, kvt.key)) {
+                    if (!Keys.isPrefix(prefix, kvt.key) || Keys.compareKeys(kvt.key, last) > 0) {
                         end[0] = true;
                         return GetMany.StopCondition.STOP;
                     }
