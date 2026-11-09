@@ -31,6 +31,7 @@ The list
 | [006-15](15-day-8-november.md) | 2026-11-08 | Day work of 8 November (a Sunday), with the coordinator coord-1108: release 2026.4's work, the plan, the progress and the outcome |
 | [006-16](16-props-across-releases.md) | 2026-11-09 | Props (MEM, CORE, SS) across BergDB's history, 2013.1 to the 2026.4 candidate, 14 builds on F53: MEM 144 (2013) to 129-130 (2026.2 on), SS 1.83 to 1.51; CORE not run yet, needs a quiet F53 |
 | [006-17](17-day-9-november.md) | 2026-11-09 | Day work of 9 November (a Monday), with the coordinator coord-1109: release 2026.4's bug hunts, the plan, the progress and the outcome |
+| [006-18](18-ports/readme.md) | 2026-11-09 | BergDB in languages other than Java: demand (01) and technical feasibility (02), one ranking; C on Linux as the base of bindings, Java's Core on Android as a check, then Rust and Python bindings; the licence decides the reach |
 
 
 Files
@@ -99,6 +100,11 @@ Files
 * [17-day-9-november.md](17-day-9-november.md). 006-17: the plan for the
   day of 9 November (coord-1109): release 2026.4's bug hunts, the progress
   and the outcome.
+* [18-ports/](18-ports/readme.md). 006-18, the study of BergDB in
+  languages other than Java: the combined ranking, the facts that decide
+  it, the first steps and Frans's decisions in its readme; demand and
+  landscape in [01-demand.md](18-ports/01-demand.md), technical
+  feasibility in [02-technical.md](18-ports/02-technical.md).
 
 
 Log
