@@ -277,6 +277,12 @@ The night, in order (each gated with BEFORE COMMIT OK; reviews read-only):
 4. **For your reading, not decisions**: the decisions taken under your
    delegation (020-04 Q6, 020-07 Q2 to Q5; 020-09, section 6, 24; 020-10,
    section 11, 22; and the night's in the commits and 020-11).
+   *Read* (Frans, 2026-11-09, 07:26), the four most important given in
+   chat (the API that 2026.4 promises, 020-10's 11, 16, 17, 19; a start
+   refuses 2026.3's index data, 020-10, 4.1; what a Data Object is, 020-09,
+   section 6's 4, 5, 8, 14; `DbObject`'s getters give the type's zero for
+   an absent field, 020-04 Q6): "Those four are good decisions. No
+   changes."
 
 ### 6.4. Left
 
