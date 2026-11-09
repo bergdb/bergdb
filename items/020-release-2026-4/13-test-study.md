@@ -74,9 +74,10 @@ entry with its value. With them, 46 of 46.
 
 **Recommendations** (section 6): take the five commits into `main`;
 decide `Time`'s parsing; add the index threads to the gate's check that
-no database is left running; move three slow f-test classes that cover
-11 lines no other test covers out of the gate (about 30 s of the f-tests'
-62); and check reruns, not only final states, in race tests.
+no database is left running; move or shorten four slow f-test classes
+(five slow classes cover 11 lines that no other test covers), about 30 s
+of the f group's 69 to 89; and check reruns, not only final states, in
+race tests.
 
 
 ## 2. Coverage (part 1)
@@ -588,9 +589,9 @@ to 57 s (15 s of it bug 4's, section 4.1).
   RestartInvariance; their memory reports are for `perf`); Concurrency2 at
   2 s in f and 10 s in night; CreateIndexTester's restart at 10,000
   objects with the build held by a hook, as `IndexJobsHarness` does (H3),
-  or dropped for it; BryanIssue kept. About 30 s off the f group, which
-  is the gate's longer half (unit 37 s, f 62 s on a quiet machine): the
-  gate from about 2 minutes to about 1.5.
+  or dropped for it; BryanIssue kept. About 30 s off the f group, the
+  gate's longer half on a quiet machine (unit 37 s, f 62 s): f at about
+  32 s, below the unit group, so the gate about 25 s shorter.
 * **Duplicates**: `PubTester.testDirManyObjects1` and `2` and
   `PubTesterPrimary.testManyObjects1` and `2` run the same helper,
   `manyObjects(233)` and `(200)`, one on `connection()`, the other on
