@@ -3447,7 +3447,39 @@ public final class FormatFuzzer {
                     .field("s").start().join();
             IndexDefinition a = IndexDefinition.read(core, "a", Long.MAX_VALUE);
             IndexDefinition ab = IndexDefinition.read(core, "ab", Long.MAX_VALUE);
-            switch (r.nextInt(7)) {
+            switch (r.nextInt(8)) {
+            case 7: {       // a key under /p/ that is no key of it, then a build over /p/
+                byte[][] junk = {bergdb.dag.Keys.toBytes("/dp/-a/b"),
+                        bergdb.dag.Keys.toBytes("/dp/-a/-x0"),
+                        bergdb.dag.Keys.toBytes("/dp/-a/dq/-c"),
+                        bergdb.dag.Keys.toBytes("/dp/-"),
+                        insert(bergdb.dag.Keys.toBytes("/dp/-z"), 6, new byte[] {(byte) 0xff}),
+                        insert(bergdb.dag.Keys.toBytes("/dp/-z"), 6, new byte[] {'/' + 2})};
+                Item x = new Item();
+                x.s = "v" + r.nextInt(3);
+                core.execute(core.trans().put(junk[r.nextInt(junk.length)],
+                        DbObject.toDbObject(x).getBytes()).build());
+                bergdb.pub.util.JobStatus status;
+                try {
+                    status = db.indexBuilder("c").dir("/p/").type("string").field("s")
+                            .start().join();
+                } catch (bergdb.pub.util.IndexBuildException e) {
+                    throw fail(where, "a build over a key that is no key of the directory "
+                            + "failed: " + e.getCause(), null, e);
+                }
+                IndexDefinition cd = ((DatabaseImp) db).getIndexManager().definition("c");
+                int entries = ((DatabaseImp) db).getIndexManager().entries("c", cd.gen(),
+                        Long.MAX_VALUE).size();
+                Assert(status.state() == bergdb.pub.util.JobStatus.State.ACTIVE
+                        && entries == 4, where, "a build over a key that is no key of the "
+                        + "directory: " + status.state() + ", " + entries + " entries, not 4",
+                        null);
+                key = a.key();
+                value = a.toBytes();
+                expectOk = true;
+                what = "a build over a key that is no key of the directory";
+                break;
+            }
             case 0: {
                 byte[] b = a.toBytes();
                 value = r.nextBoolean() ? mutateBytes(b, r) : extreme(b, r);
