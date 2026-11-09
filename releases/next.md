@@ -101,9 +101,14 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   structure) at an object key is refused wherever it is read as an
   object, with a message that names format 1: a get as `Object`,
   `DbObject` or a class throws
-  `ObjectCreationException`, and so does `next()` of a primary scan or an
-  index scan that lists it as an object; an index build over it ends
-  failed, naming the key, and the database goes on. Such an object at a
+  `ObjectCreationException`, and so does `next()` of a primary scan that
+  lists it as an object; an index build over it ends failed, naming the
+  key, and the database goes on. It has no index entry, so a scan of an
+  index leaves out a key where a write through the Core put one, whatever
+  the scan's type (bergdb 020-23, Z2; 2026-11-09: since 020-08's step 3, in
+  this release's development, a scan as `byte[]` returned its bytes as a
+  match of a query that they do not hold, and one as an object threw
+  `ObjectCreationException`, against 020-22's floor). Such an object at a
   key can be overwritten or deleted, in an indexed directory too; a
   `byte[]` put of one there throws `DataFormatException`. A start of
   a database that holds an index definition of format 1 throws

@@ -102,6 +102,59 @@ public class PubTesterCoreKeys {
         }
     }
 
+    /**
+     * A put through the Core of an object of format 1, of BergDB 2026.3 and before, at an
+     * indexed object key (bergdb 020-23, Z2): the value has no entry, as no index of 2026.4
+     * takes one (IndexDefinition.entryLevels; RwEnvironmentImp gives a previous value of
+     * format 1 none), so the key's entry is stale and every scan leaves the key out, as it
+     * leaves out a value that a Core put changed, whatever the scan's type. A scan as byte[],
+     * whose conversion does not refuse it, returned its bytes as a match of a query that they
+     * do not hold, and one as DbObject or Object threw ObjectCreationException. A get of it
+     * as an object refuses it; a put through the Pub API brings the key back.
+     */
+    @Nano
+    public static void testCorePutOfAFormat1ObjectAtAnIndexedObjectKey() {
+        Database d = Factory.database().memory().start();
+        try {
+            Connection c = d.connection();
+            Db core = ((DatabaseImp) d).getDb();
+            c.put("/p/a", new DbObject(obj(1, "a")));
+            c.put("/p/b", new DbObject(obj(1, "b")));
+            createIndex(d);
+            final byte[] format1 = {'b', 'e', 'r', 'g', 'o', 1, 0, 0};
+            corePut(core, "/dp/-a", format1);
+            for (Class<?> type : new Class<?>[] {byte[].class, DbObject.class, Object.class}) {
+                List<String> keys = new ArrayList<>();
+                for (Kv<?> kv : c.useIndex("byx", type).eq(1L).kvs()) {
+                    keys.add(kv.key());
+                }
+                for (Kv<?> kv : c.useIndex("byx", type).backward().kvs()) {
+                    keys.add(kv.key());
+                }
+                int n = 0;
+                for (Object o : c.useIndex("byx", type).objects()) {
+                    n++;
+                }
+                Assert.assertEquals("as " + type.getName(), "[/p/b, /p/b]", keys.toString());
+                Assert.assertEquals("as " + type.getName(), 1, n);
+            }
+            try {
+                c.get("/p/a", DbObject.class);
+                throw new AssertionError("a get of an object of format 1 as a DbObject");
+            } catch (bergdb.pub.ObjectCreationException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("format 1"));
+            }
+            Assert.assertArrayEquals(format1, c.get("/p/a", byte[].class));
+
+            c.put("/p/a", new DbObject(obj(1, "a")));
+            assertScan("a put through the Pub API", c, 1, "/p/a", "/p/b");
+            c.put("/after", "x");
+            Assert.assertEquals("x", c.get("/after", String.class));
+        } finally {
+            d.close();
+        }
+    }
+
     /** A delete through the Core at an indexed object key leaves an entry that scans skip. */
     @Nano
     public static void testCoreDeleteAtAnIndexedObjectKey() {

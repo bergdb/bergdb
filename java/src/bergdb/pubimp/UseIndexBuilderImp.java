@@ -357,9 +357,12 @@ class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                 try {
                     levels = def.entryLevels(ikey, value);
                 } catch (DataFormatException e) {
-                    // An object of format 1 at the key: its conversion refuses it, naming
-                    // the format, from next() (bergdb 020-08, step 3).
-                    levels = entry.levels();
+                    // An object of format 1 at the key, which only a write through the Core
+                    // puts there, has no entry, as RwEnvironmentImp gives it none: the entry
+                    // is stale, and the key left out, whatever the scan's type (bergdb
+                    // 020-23, Z2; 020-22, W6). Its conversion was left to refuse it, and as
+                    // a byte[] it was returned as a match that it is not.
+                    levels = null;
                 }
                 if (levels != null && Arrays.equals(levels, entry.levels())) {
                     nextIkey = ikey;
