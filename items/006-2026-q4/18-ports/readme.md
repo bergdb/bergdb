@@ -366,6 +366,13 @@ The ones that matter most, first:
   risk and reach, and what is uncertain; facts marked [M] measured, [R]
   read, [W] web, [E] estimate; web sources W1 to W20, numbered apart from
   01's.
+* [03-android-check.md](03-android-check.md). 006-18-03, the Android
+  check (Frans, 12:43: "Android ... is in scope"): the Core runs on Android
+  13 (API 33) with one fix (`java.lang.management` in `BufferedStream`),
+  objects need a second (`DataObjects`) and API 34; both fixes on a branch,
+  not in 2026.4; the emulator runs, the floors, G88 (ART decodes `ed a0 80`
+  to three U+FFFD, 020-09 pins Java's one), and the effort to a supported
+  Android release (3 to 5 days).
 
 
 ## Log
@@ -374,3 +381,6 @@ The ones that matter most, first:
 written independently by its agents pd18 and pt18, from the brief's
 reading list and the web; this readme by ps18 from the two, with the
 facts of section 4 checked in the code and Git. Nothing built or run.
+
+2026-11-09. 006-18-03, the Android check, by coord-1109's agent an18
+(12:44 to 13:37), at Frans's word (12:43).
