@@ -644,8 +644,8 @@ public final class DataObjects {
             // An Error that a static initializer threw, of the class or of a superclass: Java
             // passes it as it is, and wraps only an Exception in an
             // ExceptionInInitializerError (JLS 12.4.2). The class's fault as that one (the
-            // Codex review's X2, bergdb 020-14: it escaped the get, and failed the database
-            // in rw()).
+            // Codex review's X2, bergdb 020-14, and 020-13, bug 2: it escaped the get, and
+            // failed the database in rw()).
             throw new ObjectCreationException("The class " + c.getName() + " could not be "
                     + "initialized: " + e + " (bergdb 020-09, section 5.2).", e);
         }

@@ -2911,6 +2911,28 @@ public class DataObjectsTester {
         public BadInit() {}
     }
 
+    /** Its static initializer throws an Error, not an exception; first used by a get. */
+    public static class BadInitError {
+        static {
+            if (Boolean.parseBoolean("true")) {
+                throw new AssertionError("BadInitError");
+            }
+        }
+        public int v;
+        public BadInitError() {}
+    }
+
+    /** As BadInitError, first used by a get in rw(). */
+    public static class BadInitErrorRw {
+        static {
+            if (Boolean.parseBoolean("true")) {
+                throw new AssertionError("BadInitErrorRw");
+            }
+        }
+        public int v;
+        public BadInitErrorRw() {}
+    }
+
     /**
      * The review of step 8 (020-08): (1, 3) a class that extends a class of the Java
      * platform, such as Number or Date, is not a Data Object (V5 for every superclass below
@@ -2958,6 +2980,22 @@ public class DataObjectsTester {
             }
             c.put("/later", "x");       // the database goes on
             ch.eq("BadInit, the database goes on", "x", c.get("/later", String.class));
+
+            // An Error of a static initializer, which the JVM throws as it is (bergdb 020-13,
+            // bug 2): an ObjectCreationException at the first use too, also in rw(), where
+            // the database goes on. Before, the AssertionError passed, and failed the
+            // database in rw().
+            for (int k = 0; k < 3; k++) {
+                ch.creationRefused("BadInitError, get " + k,
+                        () -> c.get("/bad-init", BadInitError.class), null);
+                ch.creationRefused("BadInitErrorRw, get in rw() " + k, () -> c.rw(new Action() {
+                    public void run(RwEnvironment env) {
+                        env.get("/bad-init", BadInitErrorRw.class);
+                    }
+                }), null);
+            }
+            c.put("/later", "y");
+            ch.eq("BadInitError, the database goes on", "y", c.get("/later", String.class));
 
             ch.creationRefused("a primary scan of an empty directory as Bad",
                     () -> c.usePrimary(Bad.class).dir("/empty/").objects().iterator()
