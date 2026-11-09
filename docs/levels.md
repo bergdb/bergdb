@@ -782,8 +782,9 @@ put is exact: each field by its declared type, a null field left out
 anything is written and naming the place, a class that is not a Data
 Object, a null array element, a value of another class than its field's,
 a cycle, nesting deeper than 16 levels. A get is best effort: by name,
-the nearest value, integers clamped, the type's zero where no conversion
-makes sense, never a throw for the data; `ObjectCreationException` for a
+the nearest value, integers clamped, a double into an integer cut toward
+zero (020-09, section 5.4), the type's zero where no conversion makes
+sense, never a throw for the data; `ObjectCreationException` for a
 class that is not a Data Object, checked first also at a key without a
 value, and for a constructor that throws. `put(Object)`, the field `key`
 and `MissingKeyFieldException` are gone: a field named `key` is an

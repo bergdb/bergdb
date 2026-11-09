@@ -147,7 +147,9 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `IllegalArgumentException` naming the path, before anything is written.
   The get is best effort (020-09, section 5): each field by its name, the
   stored value if it fits the field's type, else the nearest value
-  (integers clamped), else the type's zero; it never throws for the data,
+  (integers clamped; a double into an integer field cut toward zero, as
+  Java's `(long) x`, then clamped: 12.7 is 12, NaN 0), else the type's
+  zero; it never throws for the data,
   and a constructor that throws gives an `ObjectCreationException` with it
   as the cause. `DbObject.toDbObject(Object)` and `toJavaObject(Class)`
   apply the same rules; `toJavaObject(Object, ClassToObject)` is gone. A
@@ -724,3 +726,12 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `java.util.GregorianCalendar` does, so a skipped 02:30 is the time the
   clocks show as 03:30, and a repeated one is the second; it was silent, and
   since 020-21 says that the parse is strict.
+* **A double into an integer field, and a read-modify-write after a class
+  changed** (bergdb 020-24-02, I-1 and I-4): the package's "Objects",
+  `DbObject.toJavaObject()` and this file said that a get sets "the nearest
+  value"; a double, or a text with a fraction, read into an integer field is
+  cut toward zero, as Java's `(long) x`, then clamped (12.7 is 12), as
+  020-09, section 5.4 decided, and now they say so. "Objects" says what a get
+  into a class and a put back store: what the object holds, so the put drops
+  a stored field that the class does not have and keeps a converted value as
+  converted.

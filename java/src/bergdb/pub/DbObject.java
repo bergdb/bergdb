@@ -338,11 +338,12 @@ public final class DbObject extends DbValue {
     /**
      * Converts this DbObject to an object of the class 'c', best effort (bergdb 020-09,
      * section 5): each stored field with a matching field of the class is converted to the
-     * field's type, the nearest value where it does not fit, the type's zero where no
-     * sensible conversion exists; a field of the class that is not stored keeps the value its
-     * constructor gives. A primitive class, a wrapper or String reads the field "p", an array
-     * class the field "array", byte[] too, as an array of integers, not a byte string in "p";
-     * null if it is absent.
+     * field's type, the nearest value where it does not fit (but a double into an integer
+     * field is cut toward zero, as Java's (long) cast cuts it, then clamped: 12.7 is 12,
+     * section 5.4), the type's zero where no sensible conversion exists; a field of the class
+     * that is not stored keeps the value its constructor gives. A primitive class, a wrapper
+     * or String reads the field "p", an array class the field "array", byte[] too, as an
+     * array of integers, not a byte string in "p"; null if it is absent.
      * 
      * @param c     The wanted Class of the Java object that is created and returned: a Data
      *              Object class, a primitive, a wrapper or String, or an array class.

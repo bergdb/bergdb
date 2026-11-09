@@ -2496,4 +2496,85 @@ public class PubTesterJavadoc {
         Assert.assertEquals(Time.utc("2026-03-08 07:30"), Time.resolve(ny, "2026-03-08 02:30"));
         Assert.assertEquals(Time.utc("2026-11-01 06:30"), Time.resolve(ny, "2026-11-01 01:30"));
     }
+
+    /** For testGetIntoANewerClass: a price as a double, a long, an int and a text. */
+    public static class Price {
+        public double price;
+    }
+
+    /** For testGetIntoANewerClass. */
+    public static class LongPrice {
+        public long price;
+    }
+
+    /** For testGetIntoANewerClass. */
+    public static class IntPrice {
+        public int price;
+    }
+
+    /** For testGetIntoANewerClass. */
+    public static class TextPrice {
+        public String price;
+    }
+
+    /** For testGetIntoANewerClass: a product, and the next version of its class. */
+    public static class Product {
+        public String name;
+        public long price;
+        public double weight;
+    }
+
+    /** For testGetIntoANewerClass: name renamed title, weight removed, price an int. */
+    public static class Product2 {
+        public String title;
+        public int price;
+    }
+
+    /**
+     * The package's "Objects" (bergdb 020-24-02, I-1 and I-4): a double read into an integer
+     * field, and a text with a fraction, is cut toward zero, then clamped (12.7 and "12.7" as
+     * 12, -12.7 as -12, NaN as 0, 1e300 as the greatest); a get into a newer class and a put
+     * back store what the object holds: the stored fields that the class lacks are dropped,
+     * a clamped value stays clamped, and the object leaves the index of a dropped field.
+     */
+    @Nano
+    public static void testGetIntoANewerClass() {
+        try (final Database db = Factory.database().memory().start()) {
+            final Connection c = db.connection();
+            double[] xs = {12.7, -12.7, Double.NaN, 1e300};
+            long[] expected = {12, -12, 0, Long.MAX_VALUE};
+            for (int i = 0; i < xs.length; i++) {
+                Price p = new Price();
+                p.price = xs[i];
+                c.put("/x/a", p);
+                Assert.assertEquals(xs[i] + "", expected[i], c.get("/x/a", LongPrice.class).price);
+                Assert.assertEquals(xs[i] + "", (int) Math.max(Integer.MIN_VALUE, Math.min(
+                        Integer.MAX_VALUE, expected[i])), c.get("/x/a", IntPrice.class).price);
+            }
+            TextPrice t = new TextPrice();
+            t.price = "12.7";
+            c.put("/x/t", t);
+            Assert.assertEquals(12, c.get("/x/t", IntPrice.class).price);
+
+            db.indexBuilder("by-weight").dir("/p/").type("double").field("weight").start()
+                    .join();
+            Product v1 = new Product();
+            v1.name = "a";
+            v1.price = Long.MAX_VALUE;
+            v1.weight = 2.5;
+            c.put("/p/1", v1);
+            Assert.assertEquals("/p/1", keys(c.useIndex("by-weight", Product.class).kvs()));
+            Product2 v2 = c.get("/p/1", Product2.class);
+            Assert.assertNull(v2.title);
+            Assert.assertEquals(Integer.MAX_VALUE, v2.price);
+            c.put("/p/1", v2);
+            DbObject stored = c.get("/p/1", DbObject.class);
+            Assert.assertEquals(1, stored.getFieldCount());
+            Assert.assertEquals(Integer.MAX_VALUE, stored.getLong("price"));
+            Assert.assertEquals('z', stored.getType("name"));
+            Assert.assertEquals('z', stored.getType("weight"));
+            Assert.assertEquals("", keys(c.useIndex("by-weight", Product.class).kvs()));
+            Assert.assertEquals(Integer.MAX_VALUE, c.get("/p/1", Product.class).price);
+        }
+    }
 }

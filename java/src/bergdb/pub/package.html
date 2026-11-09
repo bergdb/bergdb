@@ -283,12 +283,22 @@ key is stored as an object with the field "array", a primitive's wrapper with th
 
 <p>A get is best effort: a stored field is matched to the class's field of its name; a value
 that fits the field's type is set exactly, else the nearest value (an integer clamped, never
-wrapped; a text read as a number, a number written as a text); where no sensible conversion
-exists, the type's zero (0, false or null); a stored field that the class does not have is
-left out. A get never throws for the data. It throws ObjectCreationException for a class that
-is not a Data Object, for a constructor that throws (its exception the cause), and for a
-value that is not a stored object. To read a stored object exactly as it is, get it as a
-{@link DbObject}.</p>
+wrapped; a text read as a number, a number written as a text), but for a double read into an
+integer field, and a text with a fraction: it is cut toward zero, as Java's (long) cast cuts
+it, then clamped, so 12.7 and "12.7" read as 12, -12.7 as -12 and NaN as 0 (bergdb 020-09,
+section 5.4); where no sensible conversion exists, the type's zero (0, false or null); a
+stored field that the class does not have is left out. A get never throws for the data. It
+throws ObjectCreationException for a class that is not a Data Object, for a constructor that
+throws (its exception the cause), and for a value that is not a stored object. To read a
+stored object exactly as it is, get it as a {@link DbObject}.</p>
+
+<p>A get and a put of the object back, the usual read-modify-write, store what the object
+holds, no more: a stored field that the class does not have is not in the object, so the put
+drops it, and a value that the get converted is stored as converted, such as a long clamped
+into an int field. So after a change of a class, a field renamed or removed or its type
+narrowed, a read-modify-write of an object written before loses what the class does not
+keep, and the object leaves the user indexes of the fields it lost (bergdb 020-24-02,
+I-4).</p>
 
 <h3 id="null">Null and absent fields</h3>
 
