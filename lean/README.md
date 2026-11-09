@@ -122,11 +122,15 @@ manager's lock, only writers that could commit when it took the lock can
 refuse it, each once (BergDB/Index/Locked.lean); runs of the model:
 BergDB/Index/Example.lean. Liveness over runs with weak and strong fairness
 (BergDB/Index/Liveness.lean): a cleanup ends (`cleanup_ends`, weak fairness
-of its thread, finitely many crashes), and a build ends, its definition
-active or deleted (`build_ends`, strong fairness of the build's thread, the
-manager's lock free again and again, finitely many crashes and retries);
-and a run in which weak fairness does not give it, with two names
-(`weak_fairness_not_enough`, BergDB/Index/Starve.lean).
+of its thread, finitely many crashes), so no generation that is not live
+keeps entries for ever (`no_orphans`, BergDB/Index/Orphans.lean), and a
+build ends, its definition active or deleted (`build_ends`, strong fairness
+of the build's thread, the manager's lock free again and again, finitely
+many crashes and retries); the lock is free again and again under weak
+fairness of its holders (`lock_released`, `build_ends_wf`,
+BergDB/Index/Release.lean); and a run in which weak fairness does not give
+BuildEnds, with two names (`weak_fairness_not_enough`,
+BergDB/Index/Starve.lean).
 
 
 Build and run
@@ -219,11 +223,11 @@ Check/R4.lean) are checked the same way:
     #print axioms SIS.Fast.step_eq_fast
     #print axioms SIS.TopBridge.r4Fast_sound
 
-The user indexes' theorems (BergDB/Index/Theorems.lean and
-BergDB/Index/Liveness.lean, 020-29) the same way, each printing
+The user indexes' theorems (BergDB/Index/Theorems.lean, Liveness.lean,
+Orphans.lean, Release.lean and Starve.lean, 020-29) the same way, each printing
 `[propext, Classical.choice, Quot.sound]`:
 
-    import BergDB.Index.Starve
+    import BergDB
     #print axioms BergDB.Index.reach_inv
     #print axioms BergDB.Index.index_is_function
     #print axioms BergDB.Index.no_stale_entry
@@ -235,6 +239,9 @@ BergDB/Index/Liveness.lean, 020-29) the same way, each printing
     #print axioms BergDB.Index.cleanup_ends
     #print axioms BergDB.Index.build_ends
     #print axioms BergDB.Index.weak_fairness_not_enough
+    #print axioms BergDB.Index.no_orphans
+    #print axioms BergDB.Index.lock_released
+    #print axioms BergDB.Index.build_ends_wf
 
 
 What to read

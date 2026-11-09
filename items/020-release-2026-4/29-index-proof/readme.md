@@ -8,10 +8,10 @@ indexes that 020-26 checked with TLC within small bounds: the protocol of
 020-10 with 020-18's F1, F3, F4 and F5, as 020-26's IndexModel.tla states it
 and more (several index names and directories, transactions of any keys), in
 Lean, and its invariants proved by induction over the steps. And its
-liveness under fairness: cleanups and builds end (020-26's CleanupEnds and
-BuildEnds), with the fairness of the index manager's lock that a build needs
-when there are several names, and a run that shows weak fairness is not
-enough.
+liveness under fairness: cleanups and builds end and no orphan stays (020-26's
+CleanupEnds, BuildEnds and NoOrphans), with the fairness of the index
+manager's lock that a build needs when there are several names, and a run
+that shows weak fairness is not enough.
 
 
 Files
@@ -28,6 +28,9 @@ On the branch `020-29-index-proof`, in `lean/` (the library `BergDB`, beside
 * `lean/BergDB/Index/Locked.lean`. A build step's locked phase (section 7.3).
 * `lean/BergDB/Index/Liveness.lean`. Runs, fairness, CleanupEnds and
   BuildEnds (section 7).
+* `lean/BergDB/Index/Release.lean`. The lock is released, under weak
+  fairness of its holders (section 7.3).
+* `lean/BergDB/Index/Orphans.lean`. NoOrphans (section 7.2).
 * `lean/BergDB/Index/Starve.lean`. A run in which weak fairness is not
   enough (section 7.4).
 * `lean/BergDB/Index/Example.lean`. Two runs of the model (section 5).
@@ -149,7 +152,7 @@ wins, 015-41).
 | `CrashRestart`                             | `crash`, also back to an earlier time           |
 | (none)                                     | `bRetry`, `bAbort`, `cAbort`, `cut`             |
 | the invariants of its section 3            | Theorems.lean (section 3 below)                 |
-| `Fairness`, `BuildEnds`, `CleanupEnds`     | Liveness.lean (section 7)                       |
+| `Fairness` and its three properties        | Liveness.lean and more (section 7)              |
 
 `G` is the latest transaction's time when the creation runs, and at least 1,
 as in the code (`Math.max(1, db.lookupTime(Long.MAX_VALUE))`); 020-26's
@@ -254,7 +257,8 @@ activation changes no generation or function.
    (`step_aCreate`, `gen_fresh`).
 8. Builds end: `build_ends`, under fairness, with `locked_phase` for the
    locked phase (section 7.3).
-9. Cleanups end: `cleanup_ends`, under fairness (section 7.2).
+9. Cleanups end: `cleanup_ends`, under fairness, and so no orphan stays,
+   `no_orphans` (section 7.2).
 
 The step lemmas that commit a transaction are stated over any stream with the
 fields the step gives, so that their proofs rewrite with them; the frame
@@ -292,7 +296,7 @@ branch is checked out:
 and the axioms, from a file outside the library with
 `lake env lean Axioms.lean`:
 
-    import BergDB.Index.Starve
+    import BergDB
     #print axioms BergDB.Index.reach_inv
     #print axioms BergDB.Index.index_is_function
     #print axioms BergDB.Index.no_stale_entry
@@ -310,8 +314,11 @@ and the axioms, from a file outside the library with
     #print axioms BergDB.Index.cleanup_ends
     #print axioms BergDB.Index.build_ends
     #print axioms BergDB.Index.weak_fairness_not_enough
+    #print axioms BergDB.Index.no_orphans
+    #print axioms BergDB.Index.lock_released
+    #print axioms BergDB.Index.build_ends_wf
 
-(Starve.lean imports the rest). Each prints
+(`BergDB`, the library's root, imports every file). Each prints
 `[propext, Classical.choice, Quot.sound]`, or a part of it (`example_run2`:
 no `Classical.choice`), 2026-11-09, 19:45.
 `grep -rn sorry lean/BergDB` finds none. The full `lake build` (SIS and the
@@ -323,10 +330,11 @@ target.
 
 ## 7. Liveness
 
-Liveness.lean and Starve.lean: 020-26's CleanupEnds and BuildEnds (its
-section 3), whose arguments are its section 4, points 9 and 8, each under
-the fairness it needs, stated as hypotheses of its theorem; and a run in
-which weak fairness, which 020-26's runs assume, does not give BuildEnds.
+Liveness.lean, Orphans.lean, Release.lean and Starve.lean: 020-26's
+CleanupEnds, NoOrphans and BuildEnds (its section 3), whose arguments are its
+section 4, points 9 and 8, each under the fairness it needs, stated as
+hypotheses of its theorem; and a run in which weak fairness, which 020-26's
+runs assume, does not give BuildEnds.
 
 
 ### 7.1. Runs and fairness
@@ -382,6 +390,17 @@ theorem cleanup_ends {sp : Spec V F L} (ρ : Run sp W) {n : Name} {g : Gen}
     ∃ j, i ≤ j ∧ (ρ.sys j).st.mark n g = false
 ```
 
+`no_orphans` (Orphans.lean), 020-26's NoOrphans: a generation that is not
+its name's live one does not keep entries for ever: from any time, at that
+time or later it has none, or it is live (after a crash that went back to
+before its deletion), so in TLA+'s words `Orphan ~> ~Orphan`. A corollary of
+`cleanup_ends` and GensAccounted (an entry of a generation that is not live
+has its marker), with what starts the cleanup: a marker has its cleanup, or
+the deletion that put it is in its maps, which start it (`CleanOk`); every
+step keeps that but a `cabort`, and a start makes it (`cleanOk_init` for the
+first). Its hypotheses: those of `cleanup_ends`, weak fairness of the
+definition changes' maps, and `CleanOk` at the run's start.
+
 
 ### 7.3. Builds end (point 8)
 
@@ -409,6 +428,18 @@ each a line of the theorem:
    many refusals (`locked_phase`, below), or at an exception.
 5. Finitely many keys with a value at each time (so E exists), and finitely
    many writers, each of which may write for ever.
+
+Hypothesis 4 is not an assumption of its own: it follows from weak fairness
+of the lock's holders (Release.lean, `lock_released`). In a run with
+finitely many crashes, weak fairness of the definition changes' maps and of
+every build, the lock is free at times without end: a holder keeps it until
+it frees it (`lock_keep`); a definition change frees it at its maps; a build
+of a definition that is building, in its locked phase, steps on until it
+commits, by `build_ends` on the run from then, in which the lock is its own;
+a build of a deleted generation fails its check. So `build_ends_wf`:
+BuildEnds under strong fairness of the build and weak fairness of the
+others, which is 020-26's `Fairness` (its writers' part not needed) with
+the build's own made strong.
 
 ```lean
 theorem build_ends {sp : Spec V F L} (ρ : Run sp W) {n : Name} {g : Gen}
@@ -544,30 +575,23 @@ transactions), with no `sorry` and Lean's standard axioms only:
   safety results hold beyond its bounds and beyond its one name, one
   directory and one key per transaction: no design fault, for every size,
   in the protocol as modelled;
-* CleanupEnds and BuildEnds under the fairness each needs (section 7), with
-  020-26, section 4, point 8 in full;
+* its three liveness properties, CleanupEnds, NoOrphans and BuildEnds, under
+  the fairness each needs (section 7), with 020-26, section 4, point 8 in
+  full; BuildEnds under strong fairness of the build and weak fairness of
+  the other threads (`build_ends_wf`), the lock's release proved from the
+  weak fairness of its holders;
 * that weak fairness, 020-26's, does not give BuildEnds with several names:
   a build needs strong fairness of the manager's lock (section 7.4), which
   Java's `synchronized` does not promise (section 7.5).
 
-4,113 lines of Lean (Index/: Model 531, Inv 434, Steps 1,359, Theorems 162,
-Locked 159, Liveness 957, Example 117, Starve 386; the root 8).
+4,690 lines of Lean (Index/: Model 531, Inv 434, Steps 1,359, Theorems 162,
+Locked 159, Liveness 957, Orphans 194, Release 381, Example 117, Starve 386;
+the root 10).
 
 **Not proved**:
 
-* **NoOrphans** (020-26's third liveness property, the entries of a
-  generation that is not live are deleted) as a theorem of its own. It
-  follows from `cleanup_ends` and `gens_accounted` for a generation whose
-  cleanup runs: once its marker is deleted, an entry of it would have to be
-  live. A marker without a running cleanup is one between a deletion's
-  commit and its maps, which start it, or after a cleanup's `cabort`, until
-  the next start.
 * **Weak fairness with finitely many definition changes** (section 7.4): an
-  argument in words.
-* **Hypothesis 4 from the other threads' fairness**: that every holder of
-  the lock releases it (a definition change by weak fairness of its maps,
-  another build's locked phase by `locked_phase` and its weak fairness) is
-  an argument in words; `build_ends` takes it as a hypothesis.
+  argument in words. It would make section 7.5's second way exact.
 * **What 020-26 left out and this model too**: writes through the Core
   (020-22: undefined), key replace (020-10, section 5.3).
 * **The Java code**: the theorems are about the model; the model follows
@@ -577,16 +601,18 @@ Locked 159, Liveness 957, Example 117, Starve 386; the root 8).
   key), `IndexBuilderImp` (the build, its tries and errors) and
   `IndexManager` (G, the definition changes, the cleanup, the lock). When
   the code changes the read sets, the lock or the order of R and the index
-  set, the model must follow (020-26, section 8).
+  set, the model must follow (020-26, section 8). The writers' map reads,
+  which the code makes under the monitor, are atomic in the model (section
+  7.5).
 
 **How to continue**: for Frans, the choice of section 7.5 (a fair lock, a
 bound on definition changes while a build waits, or a sentence in the
-Javadoc), with the measurement it needs. In Lean, in order of use: NoOrphans
-as a corollary; hypothesis 4 from the weak fairness of the definition
-changes' maps and of the other builds; BuildEnds under weak fairness when
-the definition changes are finitely many. Each reuses `build_step`,
-`descent` and `locked_phase`.
-
+Javadoc), with the measurement it needs. In Lean: BuildEnds under weak
+fairness when the definition changes are finitely many (each other build
+then takes the lock finitely often: its locked steps commit and move it on
+up to its E), with `build_step`, `descent` and `lock_released`'s cases. A
+merge of the branch into main, if Frans wants the proof kept with the code:
+it adds a library and changes no file of SIS.
 
 Log
 ===
@@ -625,7 +651,10 @@ Log
 * 19:16, `e22da73`: `build_ends`, with its measure and `build_step`.
 * 19:23, `efd4d28`: Starve.lean, `weak_fairness_not_enough`.
 * 19:25, `3882a47`: no unused section variables in Liveness.lean.
-* 19:40: this readme: section 7, the State.
+* 19:38, `e8659ff`: this readme: section 7, the State; lean/README.md.
+* 19:41, `c5e3fa3`: Orphans.lean, `no_orphans`.
+* 19:48, `13561de`: Release.lean, `lock_released` and `build_ends_wf`.
+* 19:55: this readme, for both.
 
 Each step: `lake build BergDB` clean, no `sorry`, the standard axioms only.
 Nothing in 2026.4. For the coordinator: a line for this subitem in 020's
