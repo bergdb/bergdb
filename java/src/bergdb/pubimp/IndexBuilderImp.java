@@ -322,12 +322,13 @@ class IndexBuilderImp implements IndexBuilder {
      * priority, on its own connection, from the first key of its directory (020-10, section
      * 6.1). A step is an rw(): a getMany of at most STEP_VALUES values of the directory's own
      * keys, ending after the value that takes it to STEP_BYTES (bergdb 020-18, F3), after the
-     * last key of the step before (its prefix idir and '-', so it stops at the
-     * directory's end: 015-30, S2-F16), up to the directory's last key when the build began
-     * (bergdb 020-18, F4: the keys after it were put by writers that keep the index); the definition's key hash in its read set; if the index
-     * was deleted, the build ends FAILED "deleted"; else each value's entry is put (a value
-     * with no entry is counted and skipped; a key without an ikey, or whose name holds a
-     * '/', is skipped, bergdb 021-06 and 020-16, F16-3).
+     * last key of the step before (its prefix idir and '-', so it stops at the directory's
+     * end: 015-30, S2-F16), up to the directory's last key when the build began (bergdb
+     * 020-18, F4: the keys after it were put by writers that keep the index); the
+     * definition's key hash in its read set; if the index was deleted, the build ends FAILED
+     * "deleted"; else each value's entry is put (a value with no entry is counted and
+     * skipped; a key without an ikey, or whose name holds a '/', is skipped, bergdb 021-06
+     * and 020-16, F16-3).
      * The hash of each value whose entry the step puts is in the read set, so a concurrent
      * write of one makes the step run again; a write of a value without an entry, such as one
      * at a key with a suffix, does not, as the step writes nothing for it (bergdb 020-18, F1:

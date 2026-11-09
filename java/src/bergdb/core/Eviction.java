@@ -2222,9 +2222,12 @@ public final class Eviction {
      * section's first transaction is not rerun, but its values are linked into the section's
      * node versions (DbStarter.createMemoryPointers), which the rerun's pointer listener
      * does not see, so the start's admission (015-68) left the value in its leaf. A startup
-     * distance of 200 bytes, so that the section is the large value's transaction alone.
-     * A second large value is put by the rerun of a later transaction: the admission takes
-     * that one as before.
+     * distance of 200 bytes. The second case tests 019-47: a later transaction puts a second
+     * large value, so that the section begins with the first large value's transaction (it
+     * failed before the fix, 1 large pointer); the second value is put by the rerun of the
+     * later transaction, and the admission takes it as before. In the first case, with no
+     * later transaction, the section begins before the large value's transaction, which the
+     * start reruns, so 015-68's list takes its value, with the fix or without it.
      */
     @Nano
     public static void testStartAdmitsLargeValuesOfTheSectionsFirstTransaction() {

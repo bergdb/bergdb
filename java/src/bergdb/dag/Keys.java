@@ -84,9 +84,10 @@ public class Keys {
      * are not well-formed UTF-8 (StringUtil.isWellFormedUtf8()). Such a bkey, written with
      * the Core API or by another writer, is reached by its bytes only; its bytes are never
      * repaired, with U+FFFD or otherwise, so two bkeys never give one ikey: the bkey of the
-     * ikey returned, toBytes(), is 'bytes'. Until 2026-11-08 the bytes were decoded with
-     * U+FFFD in place of each ill-formed sequence: the bkeys of "a" ED A0 80 and "a" EF BF BD
-     * (021-04's CK1 and CK2) read as one String, whose bkey is the second's.
+     * ikey returned, toBytes(), is 'bytes', but for the empty bkey, whose ikey is the empty
+     * string, which toBytes() refuses (no key is empty). Until 2026-11-08 the bytes were
+     * decoded with U+FFFD in place of each ill-formed sequence: the bkeys of "a" ED A0 80 and
+     * "a" EF BF BD (021-04's CK1 and CK2) read as one String, whose bkey is the second's.
      * 
      * @param bytes  The bkey, not null.
      */
