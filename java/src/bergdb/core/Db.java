@@ -2939,12 +2939,26 @@ public class Db implements AutoCloseable {
             x.putData.clearFast();
         }
 
+        // Every key transformation first, then the KVs in key order (bergdb 023-08, section 7,
+        // Q4): the index gets a transaction's operations in the order of their keys, whatever
+        // the order a transformation left them in, so two transactions with the same
+        // operations run the same and write the same stream. Value transformations stay in
+        // the put loop: each reads the previous value at tt, as before. The startup's rerun
+        // applies a record's KVs in their stored order, this order, and does not sort.
+        boolean transformed = false;
         for (int i = 0; i < length; i++) {
             Kv kv = x.trans.kvs[i];
-
             if (kv.keyTransformation != null) {
                 kv.getKeyTransformation().transform(x.trans, i);
+                transformed = true;
             }
+        }
+        if (transformed) {
+            sortByKey(x.trans);
+        }
+
+        for (int i = 0; i < length; i++) {
+            Kv kv = x.trans.kvs[i];
 
             if (kv.valueTransformation != null) {
                 final byte[] previousValue = this.getOne(x.trans.tt, kv.getKey(), x.getData);
@@ -2961,6 +2975,34 @@ public class Db implements AutoCloseable {
         x.putData.clear();
     }
 
+    /**
+     * Sorts the KVs of 't' by key, after its key transformations (putKvs; bergdb 023-08,
+     * section 7, Q4), with each KV's write hash; the virtual KVs' hashes after them stay
+     * where they are. The sort is stable: two KVs that transformations make one key stay
+     * both, next to each other, in their order, and the later one gives the key its value
+     * at tt, as before.
+     */
+    static void sortByKey(Trans t) {
+        final Kv[] kvs = t.kvs;
+        final Integer[] order = new Integer[kvs.length];
+        for (int i = 0; i < order.length; i++) {
+            order[i] = i;
+        }
+        java.util.Arrays.sort(order, new java.util.Comparator<Integer>() {
+            public int compare(Integer a, Integer b) {
+                return Keys.compareArrays(kvs[a].getKey(), kvs[b].getKey());
+            }
+        });
+        final Kv[] sorted = new Kv[kvs.length];
+        final long[] hashes = t.writeKeyHashes.clone();
+        for (int i = 0; i < order.length; i++) {
+            sorted[i] = kvs[order[i]];
+            hashes[i] = t.writeKeyHashes[order[i]];
+        }
+        System.arraycopy(sorted, 0, kvs, 0, kvs.length);
+        t.writeKeyHashes = hashes;
+    }
+    
     /**
      * Visits, as the writer, every node reachable at the transaction time for the keys in a
      * range, so that each gets dirty; see Trans.touch. For reclaim (2026-10-13).
