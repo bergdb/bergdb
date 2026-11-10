@@ -479,8 +479,7 @@ public class Dag {
      * of that tree on the paths, once for the transaction, as each such collapse unlinks a
      * root that existed before it, one level lower each time (a root that a split of the
      * transaction made is taken back in place, with no klong). The space root's collapses
-     * change the top node of the transaction, which Db counts. One node more for an emptied
-     * inner space root replaced by an empty segment leaf.</li>
+     * change the top node of the transaction, which Db counts.</li>
      * </ul>
      * 
      * @param deletes  deletes[i] is true if keys[i] is deleted; a delete of a missing key
@@ -546,7 +545,6 @@ public class Dag {
         
         long count = walked.size();
         if (anyDelete) {
-            count++;                                // an empty segment leaf as the space root
             for (Walked w : walked.values()) {
                 w.klongs += w.collapses;
             }
@@ -1052,9 +1050,9 @@ public class Dag {
     // An unlinked node gets no entry of tt and loses those it got earlier in the transaction
     // (toPreviousState, as a node replaced by a split), and is reported as replaced, so that
     // it leaves D if it got dirty in this transaction only (Db.endOfTrans): no lookup at tt or
-    // later reaches it, lookups before tt still do, through the klong as it was. An inner
-    // space root left with no live klong is replaced by an empty segment leaf, a new super
-    // root, as time-split-2 makes one; a space root that is a segment leaf stays, empty.
+    // later reaches it, lookups before tt still do, through the klong as it was. A space root
+    // that is a segment leaf stays, empty; an inner one is never emptied, as root collapse
+    // lowers it first (a Bug otherwise; bergdb 023-11, review A, S1).
     //
     // All of it is a function of the delete and the state at tt (the model's A1), so the
     // startup's rerun redoes it; a record of format 6 means it (StoredTrans.RECORD_FORMAT).
@@ -1062,7 +1060,7 @@ public class Dag {
     
     /** Counts for tests and measurements; written by the writer only. */
     public static volatile long statUnlinked, statClimbs, statRelabels,
-            statKeptNew, statTakenBack, statNewRoots, statCollapses, statRootsTakenBack;
+            statKeptNew, statTakenBack, statCollapses, statRootsTakenBack;
     
     /**
      * A delete of 'compareValue', the key's last segment, in the segment leaf 'leaf' at
@@ -1084,19 +1082,13 @@ public class Dag {
         }
         
         // The leaf is empty after the delete. Find 'stop', the node that gets the delete: the
-        // first above that keeps a live klong, -1 for a new space root. Nothing is changed
-        // until it is known, so a climb that cannot go on changes nothing above the leaf.
+        // first above that keeps a live klong. Nothing is changed until it is known, so a climb
+        // that cannot go on changes nothing above the leaf.
         final KeyAccessPath path = pd.keyAccessPath;
         int top = depth;
         int stop;
         while (true) {
             final KeyNode n = path.get(top);
-            if (n.getFirstTime() == tt && top == 0 && !n.isSegmentLeaf()) {
-                // An inner space root made by this transaction: the new empty root takes its
-                // place in the top node of tt, and it is taken back (see takeBack).
-                stop = -1;
-                break;
-            }
             if (n.getFirstTime() == tt && top > 0
                     && !canTakeBack(n, path.get(top - 1), path.getKlong(top), pd)) {
                 // Made by this transaction, and not by a split of a node that existed (023-04,
@@ -1112,11 +1104,17 @@ public class Dag {
             }
             if (top == 0) {
                 // The space root. A segment leaf stays, empty, with the delete, also one that
-                // the transaction made; an inner one with no live klong left is replaced.
+                // the transaction made. An inner one is never emptied: root collapse lowers an
+                // inner root as soon as a climb leaves it one live klong, and a root that the
+                // transaction made fresh holds only its puts (bergdb 023-11, review A, S1).
+                if (!n.isSegmentLeaf()) {
+                    throw new Bug("The upward unlink at " + tt + ": inner space root "
+                            + n.getId() + " is emptied (bergdb 023-11, S1).");
+                }
                 if (n.getFirstTime() == tt) {
                     statKeptNew++;
                 }
-                stop = n.isSegmentLeaf() ? 0 : -1;
+                stop = 0;
                 break;
             }
             final KeyNode p = path.get(top - 1);
@@ -1145,20 +1143,10 @@ public class Dag {
         for (int k = depth; k > stop; k--) {
             final KeyNode n = path.get(k);
             if (n.getFirstTime() == tt) {
-                takeBack(n, k == 0 ? null : path.get(k - 1), path.getKlong(k), pd);
+                takeBack(n, path.get(k - 1), path.getKlong(k), pd);
             } else {
                 unlink(n, pd);
             }
-        }
-        
-        if (stop == -1) {
-            // The inner space root has no live klong left: an empty segment leaf replaces it.
-            final KeyNode root = KeyNode.nodeWithTime(tt);
-            pd.nodeChangeListener.keyNodeCreated(root);
-            topDs.newSuperRoot(tt, root, pd.accessData, pd.pointerCreatedListener,
-                    pd.nodeChangeListener);
-            statNewRoots++;
-            return false;
         }
         
         final KeyNode s = path.get(stop);
@@ -1426,22 +1414,17 @@ public class Dag {
      * if it is the empty key's (emptyKeyNext), as for any emptied child. The klongs are behind
      * the parent's time klong of tt, where every reader stops, as replaceKlong changes such
      * klongs. 'node' is reported as replaced, so it leaves
-     * D and is never written: as far as the stream and the model see, it was never made. The
-     * space root ('parent' null) is replaced in the top node of tt by the caller.
+     * D and is never written: as far as the stream and the model see, it was never made.
      */
     private void takeBack(KeyNode node, KeyNode parent, long klong, PutData pd) {
-        if (parent != null) {
-            final KeyNode old = pd.replacedBy(node);
-            final int i = linkIndex(parent, node, klong);
-            if (old == null || i < 0) {
-                throw new Bug("Take back of key node " + node.getId() + " at " + pd.tt
-                        + ": no node it replaces, or no klong to it.");
-            }
-            parent.repointKlong(i, old);
-            // A deleted klong of tt may name it too: the next child's own klong after
-            // emptyKeyNext pointed the empty key to it (bergdb 023-07, section 5.1, fault 6).
-            retarget(parent, node, old, pd.tt);
+        final KeyNode old = pd.replacedBy(node);
+        if (old == null || linkIndex(parent, node, klong) < 0 || lastTime(parent) != pd.tt) {
+            throw new Bug("Take back of key node " + node.getId() + " at " + pd.tt
+                    + ": no node it replaces, or no klong of tt to it.");
         }
+        // The live klong of tt to it, and any deleted one: the next child's own klong after
+        // emptyKeyNext pointed the empty key to it (bergdb 023-07, section 5.1, fault 6).
+        retarget(parent, node, old, pd.tt);
         pd.nodeChangeListener.keyNodeTakenBack(node);
         statTakenBack++;
     }

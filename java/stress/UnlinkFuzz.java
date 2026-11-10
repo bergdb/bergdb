@@ -389,8 +389,8 @@ public class UnlinkFuzz {
         }
         System.out.println("unlinked " + (Dag.statUnlinked - unlinked0) + ", climbs " + Dag.statClimbs
                 + ", empty keys pointed to the next child " + (Dag.statRelabels - relabels0)
-                + ", kept for A3 " + Dag.statKeptNew + ", new roots "
-                + Dag.statNewRoots + ", collapses " + Dag.statCollapses);
+                + ", empty space roots kept " + Dag.statKeptNew
+                + ", collapses " + Dag.statCollapses);
         System.out.println("nodes taken back by the climb " + Dag.statTakenBack
                 + " (roots " + Dag.statRootsTakenBack + ")");
         System.out.println("Done: " + rounds + " rounds, " + fails + " failures.");
