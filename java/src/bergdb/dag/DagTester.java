@@ -648,6 +648,101 @@ public class DagTester {
         }
     }
     
+    /**
+     * Fault 12 (bergdb 023-08, review C; the check of it, sections 3 and 4, ShadowProbe mode
+     * 0): one transaction puts z keys after a history of b keys in one segment tree, then
+     * deletes every b key and some z keys again, in that order, out of key order, as a Core
+     * KeyTransformation could give them to the Dag before Db sorted the transformed keys.
+     * The segment root that the transaction made is split in place under a new root, and the
+     * deletes empty and take it back. No klong of a node reachable at any time, live, deleted
+     * or shadowed, may name a node taken back: such a node is never written. Failed in the
+     * first iterations without the in-place repoint of Dag.spaceSplitInPlace, the segment
+     * leaf's second klong of tt to the new root shadowing the one that still named the root.
+     */
+    @Nano
+    public static void testNoKlongNamesATakenBackNode() {
+        Random r = new Random(1);
+        for (int iter = 0; iter < 40; iter++) {
+            final int b = 4 + r.nextInt(5);
+            Dag dag = Dag.createEmpty(0, b, DUMMY_POINTER_FOLLOWER,
+                    Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
+            PutData pd = pd(dag);
+            final Set<Node> takenBack = identitySet();
+            pd.nodeChangeListener = new Dag.NodeChangeListener() {
+                public void topNodeCreated(TopNode node) {}
+                public void keyNodeCreated(KeyNode node) {}
+                public void valueNodeCreated(ValueNode node, long[] key) {}
+                public void keyNodeChanged(KeyNode node) {}
+                public void keyNodeTakenBack(KeyNode node) { takenBack.add(node); }
+            };
+            int nb = 1 + r.nextInt(60);
+            int hist = 1 + r.nextInt(4);
+            long t = 1;
+            List<String> keys = new ArrayList<String>();
+            List<Boolean> deletes = new ArrayList<Boolean>();
+            for (int h = 0; h < hist; h++, t++) {
+                keys.clear();
+                deletes.clear();
+                for (int i = 0; i < nb; i++) {
+                    if (h == 0 || r.nextInt(3) == 0) {
+                        keys.add(prefixKey("b", i));
+                        deletes.add(false);
+                    }
+                }
+                putAll(dag, pd, t, keys, deletes);
+            }
+            keys.clear();
+            deletes.clear();
+            int nz = 1 + r.nextInt(120);
+            int zdel = r.nextInt(3) == 0 ? 0 : r.nextInt(nz + 1);
+            for (int i = 0; i < nz; i++) { keys.add(prefixKey("z", i)); deletes.add(false); }
+            for (int i = 0; i < nb; i++) { keys.add(prefixKey("b", i)); deletes.add(true); }
+            for (int i = 0; i < zdel; i++) { keys.add(prefixKey("z", i)); deletes.add(true); }
+            putAll(dag, pd, t, keys, deletes);
+            
+            String at = "iter " + iter + ", b " + b + ", nb " + nb + ", hist " + hist + ", nz "
+                    + nz + ", zdel " + zdel + ": ";
+            Set<Node> seen = identitySet();
+            Deque<KeyNode> todo = new ArrayDeque<KeyNode>();
+            for (long u = 0; u <= t; u++) {
+                KeyNode root = dag.getTopDs().findRoot(u, gd(dag));
+                if (root != null && seen.add(root)) todo.add(root);
+            }
+            while (!todo.isEmpty()) {
+                KeyNode n = todo.poll();
+                Assert.assertTrue(at + "a taken-back node is reachable", !takenBack.contains(n));
+                for (int i = 0; i < n.size; i++) {
+                    if (!Klong.isKey(n.klongs[i])) continue;
+                    Node c = n.getPointerNode(i);
+                    Assert.assertTrue(at + "klong " + i + " names a taken-back node:\n" + n.print(),
+                            c == null || !takenBack.contains(c));
+                    if (c instanceof KeyNode && seen.add(c)) todo.add((KeyNode) c);
+                }
+            }
+            GetData gd = gd(dag);
+            for (int i = 0; i < keys.size(); i++) {
+                boolean deleted = deletes.get(keys.lastIndexOf(keys.get(i)));
+                byte[] v = dag.getOne(t, Keys.toSegments(keys.get(i)), gd);
+                Assert.assertEquals(at + keys.get(i), deleted, v == null);
+            }
+        }
+    }
+    
+    private static String prefixKey(String segment, int i) {
+        return "/prefix/" + segment + String.format("%04d", i);
+    }
+    
+    private static void putAll(Dag dag, PutData pd, long tt, List<String> keys,
+            List<Boolean> deletes) {
+        pd.tt = tt;
+        for (int i = 0; i < keys.size(); i++) {
+            String k = keys.get(i);
+            dag.putKv(Keys.toSegments(k), deletes.get(i) ? null : StringUtil.toBytes("v" + tt + k), pd);
+            pd.clearFast();
+        }
+        pd.clear();
+    }
+    
     private static Set<Node> identitySet() {
         return Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
     }

@@ -26,8 +26,15 @@ import bergdb.common.StringUtil;
  * as random with keys of 1 to 3 segments sharing prefixes. del=P percent deletes (random,
  * long). Stops at the first error.
  *
+ * order=shuffle applies a transaction's keys in a random order, as a Core KeyTransformation
+ * may leave them (Db applies it after Trans.build sorts the keys); dup=P adds, for P percent
+ * of a transaction's keys, a second operation on the key later in the transaction (a delete
+ * after a put, a put after a delete), as two keys that a KeyTransformation makes one; the
+ * last one is the key's value at tt (bergdb 023-08, review C, fault 12 and X5 (c)).
+ *
  * Usage: java -ea -cp build/bergdb.jar:build/stress bergdb.dag.UnlinkFuzz firstSeed rounds
- * Properties: maxnode (8), keys (60), n (150), ops (6), del (40), shape (random), scans (6).
+ * Properties: maxnode (8), keys (60), n (150), ops (6), del (40), shape (random), scans (6),
+ * order (sorted), dup (0).
  */
 public class UnlinkFuzz {
     static final int MAX_NODE = Integer.getInteger("maxnode", 8);
@@ -37,6 +44,8 @@ public class UnlinkFuzz {
     static final int DEL = Integer.getInteger("del", 40);
     static final int SCANS = Integer.getInteger("scans", 6);
     static final String SHAPE = System.getProperty("shape", "random");
+    static final boolean SHUFFLE = "shuffle".equals(System.getProperty("order"));
+    static final int DUP = Integer.getInteger("dup", 0);
 
     static final PointerFollower FOLLOWER = new PointerFollower() {
         public Node followPointer(Node predecessor, int pointerIndex, OpData op) {
@@ -62,6 +71,9 @@ public class UnlinkFuzz {
     final List<String> log = new ArrayList<String>();
     int fifoNext = 0, fifoFirst = 0;
     long keptBefore;
+    /** Nodes made and reported replaced in one transaction: taken back, never written. */
+    final Set<Node> takenBack = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
+    final Set<Node> madeNow = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
 
     UnlinkFuzz(long seed) {
         this.seed = seed;
@@ -86,6 +98,15 @@ public class UnlinkFuzz {
     String run() {
         PutData pd = dag.newPutData();
         pd.pointerFollower = FOLLOWER;
+        pd.nodeChangeListener = new Dag.NodeChangeListener() {
+            public void topNodeCreated(TopNode node) {}
+            public void keyNodeCreated(KeyNode node) { madeNow.add(node); }
+            public void valueNodeCreated(ValueNode node, long[] key) {}
+            public void keyNodeChanged(KeyNode node) {}
+            public void keyNodeReplaced(KeyNode node) {
+                if (madeNow.contains(node)) takenBack.add(node);
+            }
+        };
         GetData gd = dag.newGetData();
         gd.pointerFollower = FOLLOWER;
 
@@ -109,25 +130,73 @@ public class UnlinkFuzz {
                 }
             }
             StringBuilder sb = new StringBuilder("T" + i + " t=" + tt + ":");
+            List<String[]> list = new ArrayList<String[]>();
             for (Map.Entry<String, String> e : trans.entrySet()) {
-                String value = e.getValue();
-                dag.putKv(Keys.toSegments(e.getKey()), value == null ? null : StringUtil.toBytes(value), pd);
+                list.add(new String[] {e.getKey(), e.getValue()});
+            }
+            if (SHUFFLE) Collections.shuffle(list, rnd);
+            if (DUP > 0) {
+                for (int j = list.size() - 1; j >= 0; j--) {
+                    if (rnd.nextInt(100) < DUP) {
+                        String[] o = list.get(j);
+                        String v2 = o[1] == null ? "w" + tt + o[0] : null;
+                        list.add(j + 1 + rnd.nextInt(list.size() - j), new String[] {o[0], v2});
+                    }
+                }
+            }
+            for (String[] e : list) {
+                String value = e[1];
+                dag.putKv(Keys.toSegments(e[0]), value == null ? null : StringUtil.toBytes(value), pd);
                 pd.clearFast();
-                TreeMap<Long, String> m = model.get(e.getKey());
+                TreeMap<Long, String> m = model.get(e[0]);
                 if (m == null) {
                     m = new TreeMap<Long, String>();
-                    model.put(e.getKey(), m);
+                    model.put(e[0], m);
                 }
                 m.put(tt, value);
-                sb.append(value == null ? " del " : " put ").append(e.getKey());
+                sb.append(value == null ? " del " : " put ").append(e[0]);
             }
             pd.clear();
+            madeNow.clear();
             log.add(sb.toString());
 
             String err = checkGets(tt, gd);
             if (err == null) err = checkScans(tt);
             if (err == null) err = checkTree(tt);
+            if (err == null) err = checkTakenBack(tt);
             if (err != null) return "after T" + i + ": " + err;
+        }
+        return null;
+    }
+
+    /**
+     * No pointer of a node reachable at any time, deleted or shadowed klongs too, names a node
+     * that a transaction took back: such a node is never written, so a written pointer to it
+     * would have no position (bergdb 023-05, P5; 023-07, section 5.1).
+     */
+    String checkTakenBack(long tt) {
+        Set<Node> seen = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
+        ArrayDeque<KeyNode> todo = new ArrayDeque<KeyNode>();
+        for (long t = 0; t <= tt; t += 10) {
+            GetData gd = dag.newGetData();
+            gd.pointerFollower = FOLLOWER;
+            KeyNode root = dag.getTopDs().findRoot(t, gd);
+            if (root != null && seen.add(root)) todo.add(root);
+        }
+        while (!todo.isEmpty()) {
+            KeyNode n = todo.poll();
+            if (takenBack.contains(n)) return "taken-back key node " + System.identityHashCode(n) + " reachable";
+            int sz = n.getSize();
+            for (int i = 0; i < sz; i++) {
+                if (!Klong.isKey(n.getKlong(i))) continue;
+                Node c = n.getPointerNode(i);
+                if (c == null) continue;
+                if (takenBack.contains(c)) {
+                    return "key node " + System.identityHashCode(n) + " klong " + i
+                            + " points to taken-back node " + System.identityHashCode(c);
+                }
+                if (c instanceof KeyNode && seen.add(c)) todo.add((KeyNode) c);
+            }
         }
         return null;
     }
@@ -307,6 +376,8 @@ public class UnlinkFuzz {
                 + ", empty keys pointed to the next child " + (Dag.statRelabels - relabels0)
                 + ", kept for A3 " + Dag.statKeptNew + ", new roots "
                 + Dag.statNewRoots + ", collapses " + Dag.statCollapses);
+        System.out.println("nodes taken back by the climb " + Dag.statTakenBack
+                + " (roots " + Dag.statRootsTakenBack + ")");
         System.out.println("Done: " + rounds + " rounds, " + fails + " failures.");
     }
 }

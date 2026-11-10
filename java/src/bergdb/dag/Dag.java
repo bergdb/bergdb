@@ -1767,12 +1767,23 @@ public class Dag {
                         pd.nodeChangeListener);
                 pd.splitListener.nodeSplit(Dag.SPACE_SPLIT_3);
             } else {
-                long klong1 = pd.keyAccessPath.getKlong(depth);
+                // The segment leaf's klong of tt to 'node' is pointed to newRoot in place, as
+                // TopDs.newSuperRoot does for the space root: a second klong would shadow it
+                // and still name 'node', and if the transaction then empties 'node' and takes
+                // it back, which points klongs in its parent only (takeBack, retarget,
+                // takeBackRoot), a written node would name a node never written (bergdb
+                // 023-08, review C, fault 12). The klong is behind the leaf's time klong of tt,
+                // where every reader stops, as replaceKlong changes such klongs.
+                final long klong1 = pd.keyAccessPath.getKlong(depth);
                 assert klong1 != Klong.NULL : "Missing klong in keyAccessPath, " + depth;
-                pd.oneKwi[0].klong = klong1;
-                pd.oneKwi[0].node = newRoot;
-                pd.oneKwi[0].pos = pd.accessData;
-                appendKlongs(parent, depth - 1, pd.oneKwi, pd);
+                final int i = linkIndex(parent, node, klong1);
+                if (i < 0 || lastTime(parent) != tt) {
+                    throw new Bug("Space split at " + tt + ": no klong of tt to segment root "
+                            + node.getId() + " in its segment leaf.");
+                }
+                parent.repointKlong(i, newRoot);
+                pd.pointerCreatedListener.pointerCreated(parent, i, newRoot);
+                pd.nodeChangeListener.keyNodeChanged(parent);
                 pd.splitListener.nodeSplit(Dag.SPACE_SPLIT_2);
             }
             assert newRoot.checkWithMessage() == null;
