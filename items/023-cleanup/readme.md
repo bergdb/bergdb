@@ -207,3 +207,9 @@ each fix led to yet another fix and so on. I smell expanding complexity
 where I [want] simple beauty." 023-08 merged the reviews: a smaller core
 than 023-07's (P8 out, fault 12's fix in, no new mechanism), frozen, with
 a stop rule; questions 1 to 8 for Frans.
+
+2026-11-10. Frans answered 023-08's questions (16:34): Q1 to Q8 as
+recommended, except Q4: sort a transaction's keys after their
+transformation, in 2026.4 ("It defines equality of transactions in a
+sense i like."). The design is frozen at 023-08, section 5. Q9 (005-04's
+trace check) open. Next: the integration branch.

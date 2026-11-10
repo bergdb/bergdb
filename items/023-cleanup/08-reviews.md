@@ -207,11 +207,30 @@ last touch. Never: (b'), the replaced queue on by default.
    the merges.
 
 
-## 7. State
+## 7. Frans's answers
+
+2026-11-10, 16:34: "1 to 8. Everything as recommended except 4. Do 4.
+Sorting keys within one transaction is cheap and reduces variability. It
+defines equality of transactions in a sense i like. put of /a and /b can
+be specifies in either order still the same identical transaction is
+run, the same stream is generated."
+
+* Q1 to Q3, Q5 to Q8: as recommended. The design is frozen at section 5.
+* Q4: yes, in 2026.4. The Core transforms every key of a transaction
+  first, then sorts them (stable), then puts them in the index; value
+  transformations stay in the put loop; the startup rerun keeps the
+  stored order. So two transactions with the same operations, given in
+  any order, run the same and write the same stream. Fault 12's fix is
+  needed all the same (it is reached with sorted keys).
+* Q9: open.
+
+
+## 8. State
 
 2026-11-10, 16:23. The three reviews and the two checks are committed.
 Fault 12's fix (023-v12-fix, 92bf4eb5, in the check's clone): level3
 full OK; level2 full OK but for 005-04's trace check (Q9). Fault 13's
 fix is on 023-v8-fix (0f4571fc), not gated
 beyond before-commit. Nothing is integrated; nothing is in `main`'s
-code. Waiting for Frans's answers to section 6.
+code. Frans answered Q1 to Q8 at 16:34 (section 7); next, the integration
+branch of section 5 with Q4's sort.
