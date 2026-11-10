@@ -1046,8 +1046,8 @@ public class Dag {
     // first klong of tt) and that it empties is taken back (takeBack; 023-04, X5 (a)): never
     // written, as if never made, so that a transaction leaves no node it made unreachable at
     // its time (the Lean model's A3; handleFullNode). Any other node made by the transaction
-    // is not unlinked: it is a segment leaf, which keeps its delete and stays linked, empty,
-    // as before 023 (023-04, X5 (c)); an inner one is a Bug (023-08, section 5).
+    // holds only puts of the transaction, which one operation a key leaves live, so no delete
+    // empties it (023-04, X5 (c)): a Bug (023-08, sections 5 and 7).
     //
     // An unlinked node gets no entry of tt and loses those it got earlier in the transaction
     // (toPreviousState, as a node replaced by a split), and is reported as replaced, so that
@@ -1097,26 +1097,25 @@ public class Dag {
                 stop = -1;
                 break;
             }
-            if (n.getFirstTime() == tt && (top == 0
-                    || !canTakeBack(n, path.get(top - 1), path.getKlong(top), pd))) {
-                // Made by this transaction, and not by a split of a node that existed: it
-                // stays linked (A3) and keeps the delete (023-04, X5 (c)). A Core
-                // KeyTransformation can give one transaction a put and a delete of one key,
-                // so this is reached, at a segment leaf. Never at an inner node: one that the
-                // transaction made and no split made belongs to a fresh tree, every node below
-                // it is fresh too, and the climb stops at the segment leaf first (bergdb
-                // 023-08, sections 3 and 5; its check of fault 12, section 7). Nothing is
-                // changed yet.
-                if (!n.isSegmentLeaf()) {
-                    throw new Bug("The upward unlink at " + tt + ": inner key node "
-                            + n.getId() + ", made by the transaction and not by a split, is"
-                            + " emptied (bergdb 023-08, X5 (c)).");
-                }
-                stop = top;
-                statKeptNew++;
-                break;
+            if (n.getFirstTime() == tt && top > 0
+                    && !canTakeBack(n, path.get(top - 1), path.getKlong(top), pd)) {
+                // Made by this transaction, and not by a split of a node that existed (023-04,
+                // X5 (c)): such a node, and every node below it, holds only puts of the
+                // transaction, and a transaction reaches the Dag with one operation a key
+                // (Db.putKvs keeps one of the KVs that key transformations make one key; bergdb
+                // 023-08, section 7), so no delete of it empties the node. Nothing is changed
+                // yet. Until 2026-11-10 a segment leaf kept the delete here, reached through a
+                // KeyTransformation's put and a delete of one key (023-08, section 3).
+                throw new Bug("The upward unlink at " + tt + ": key node " + n.getId()
+                        + ", made by the transaction and not by a split, is emptied: two"
+                        + " operations on one key in a transaction (bergdb 023-08, X5 (c)).");
             }
             if (top == 0) {
+                // The space root. A segment leaf stays, empty, with the delete, also one that
+                // the transaction made; an inner one with no live klong left is replaced.
+                if (n.getFirstTime() == tt) {
+                    statKeptNew++;
+                }
                 stop = n.isSegmentLeaf() ? 0 : -1;
                 break;
             }

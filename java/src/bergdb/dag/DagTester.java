@@ -650,9 +650,10 @@ public class DagTester {
     
     /**
      * Fault 12 (bergdb 023-08, review C; the check of it, sections 3 and 4, ShadowProbe mode
-     * 0): one transaction puts z keys after a history of b keys in one segment tree, then
-     * deletes every b key and some z keys again, in that order, out of key order, as a Core
-     * KeyTransformation could give them to the Dag before Db sorted the transformed keys.
+     * 2): one transaction puts z keys after a history of b keys in one segment tree, then
+     * deletes every b key, in that order, out of key order, as a Core KeyTransformation could
+     * give them to the Dag before Db sorted the transformed keys (023-08, section 7). One
+     * operation a key: until 2026-11-10 some z keys were deleted again too (mode 0).
      * The segment root that the transaction made is split in place under a new root, and the
      * deletes empty and take it back. No klong of a node reachable at any time, live, deleted
      * or shadowed, may name a node taken back: such a node is never written. Failed in the
@@ -694,14 +695,12 @@ public class DagTester {
             keys.clear();
             deletes.clear();
             int nz = 1 + r.nextInt(120);
-            int zdel = r.nextInt(3) == 0 ? 0 : r.nextInt(nz + 1);
             for (int i = 0; i < nz; i++) { keys.add(prefixKey("z", i)); deletes.add(false); }
             for (int i = 0; i < nb; i++) { keys.add(prefixKey("b", i)); deletes.add(true); }
-            for (int i = 0; i < zdel; i++) { keys.add(prefixKey("z", i)); deletes.add(true); }
             putAll(dag, pd, t, keys, deletes);
             
             String at = "iter " + iter + ", b " + b + ", nb " + nb + ", hist " + hist + ", nz "
-                    + nz + ", zdel " + zdel + ": ";
+                    + nz + ": ";
             Set<Node> seen = identitySet();
             Deque<KeyNode> todo = new ArrayDeque<KeyNode>();
             for (long u = 0; u <= t; u++) {
@@ -729,16 +728,16 @@ public class DagTester {
     }
     
     /**
-     * Every key deleted in the transaction that split the space root (bergdb 023-07, section
-     * 5.1; 023-08, review C, 5.3, item 3): one transaction puts keys between those of an
-     * earlier one, so that the space root and its nodes are split by it, and then deletes
-     * every key, old and new, as a Core KeyTransformation could give them to the Dag. Root
-     * collapse lowers the space root as it loses its children: at the transaction's time it
-     * is a segment leaf, empty, and every key is gone; at the earlier time every old key is
-     * there. Node sizes 4 and 8, keys of one segment and of two.
+     * Every key deleted, after a transaction that split the space root (bergdb 023-07,
+     * section 5.1; 023-08, review C, 5.3, item 3): one transaction puts keys between those of
+     * an earlier one, so that the space root and its nodes are split by it, and deletes every
+     * old key, one operation a key; the next deletes the new keys. Root collapse lowers the
+     * space root as it loses its children: at the last time it is a segment leaf, empty, and
+     * every key is gone; at the times before, the keys put then are there. Node sizes 4 and
+     * 8, keys of one segment and of two.
      */
     @Nano
-    public static void testDeleteEveryKeyInTheTransactionThatSplitTheRoot() {
+    public static void testDeleteEveryKeyAfterTheRootSplit() {
         final long collapses0 = Dag.statCollapses;
         for (int b : new int[] {4, 8}) {
             for (String prefix : new String[] {"/k", "/key/prefix/"}) {
@@ -756,22 +755,27 @@ public class DagTester {
                 List<String> old = new ArrayList<String>(keys);
                 keys.clear();
                 deletes.clear();
-                for (int i = 1; i < 60; i += 2) {
-                    keys.add(prefix + (100 + i));
-                    deletes.add(false);
-                }
                 for (int i = 0; i < 60; i++) {
+                    keys.add(prefix + (100 + i));
+                    deletes.add(i % 2 == 0);    // the old keys deleted, new ones put
+                }
+                putAll(dag, pd, 2, keys, deletes);
+                keys.clear();
+                deletes.clear();
+                for (int i = 1; i < 60; i += 2) {
                     keys.add(prefix + (100 + i));
                     deletes.add(true);
                 }
-                putAll(dag, pd, 2, keys, deletes);
+                putAll(dag, pd, 3, keys, deletes);
                 
                 GetData gd = gd(dag);
-                KeyNode root = dag.getTopDs().findRoot(2, gd);
+                KeyNode root = dag.getTopDs().findRoot(3, gd);
                 Assert.assertTrue(at + "the root is a segment leaf", root.isSegmentLeaf());
                 for (int i = 0; i < 60; i++) {
                     String k = prefix + (100 + i);
-                    Assert.assertTrue(at + k, dag.getOne(2, Keys.toSegments(k), gd) == null);
+                    Assert.assertTrue(at + k, dag.getOne(3, Keys.toSegments(k), gd) == null);
+                    Assert.assertEquals(at + k + " at 2", !old.contains(k),
+                            dag.getOne(2, Keys.toSegments(k), gd) != null);
                     Assert.assertEquals(at + k + " at 1", old.contains(k),
                             dag.getOne(1, Keys.toSegments(k), gd) != null);
                 }
