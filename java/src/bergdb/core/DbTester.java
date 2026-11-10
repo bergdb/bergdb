@@ -1480,8 +1480,8 @@ public class DbTester {
      * transformations (Db.putKvs; bergdb 023-08, section 7, Q4): two databases, each given
      * the same operations, puts through a key transformation in another order and plain
      * deletes, write the same stream, byte for byte, and give the same values, also after
-     * a restart. One transformed key is also put by a plain KV: both are applied, the later
-     * in the builder's order giving the key its value, in both databases. Before 023-09 the
+     * a restart. One transformed key is also put by a plain KV: one of the two is kept, the
+     * later put in the builder's order (Db.sortByKey), in both databases. Before 023-09 the
      * index got the transformed KVs in the order of their keys before the transformation,
      * and the streams differed.
      */

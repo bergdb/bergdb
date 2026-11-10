@@ -178,57 +178,95 @@ public class DbTesterDelete {
         Assert.assertTrue("root collapses", bergdb.dag.Dag.statCollapses > collapses0);
     }
     
-    /** Turns the key "/newpref/$..." into "/newpref/z...". */
-    private static final KeyTransformation NEWPREF_DOLLAR_TO_Z = new KeyTransformation() {
+    /** Turns the key "/c/$x" or "/c/~x" into "/c/x": "$" sorts before letters, "~" after. */
+    private static final KeyTransformation TO_C = new KeyTransformation() {
         public void transform(Trans trans, int index) {
-            String s = Keys.toString(trans.kvs[index].getKey()).replace("/newpref/$", "/newpref/z");
-            long[] key = Keys.toSegments(s);
+            String s = Keys.toString(trans.kvs[index].getKey());
+            long[] key = Keys.toSegments("/c/" + s.substring("/c/".length() + 1));
             trans.kvs[index].setKey(key);
             trans.writeKeyHashes[index] = Keys.hash(key);
         }
     };
     
+    /** Appends "!" to the value it is given, and counts its calls. */
+    private static final class Bang implements ValueTransformation {
+        int calls = 0;
+        public byte[] transform(long transTime, byte[] inputValue, byte[] previous) {
+            calls++;
+            return (new String(inputValue, java.nio.charset.StandardCharsets.UTF_8) + "!")
+                    .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
+    }
+    
     /**
-     * X5 (c) at the leaf (bergdb 023-08, sections 3 and 5; its check of fault 12, section 7,
-     * X5cProbe): one transaction puts the keys of a new prefix through a KeyTransformation
-     * ("/newpref/$i" becomes "/newpref/zi") and deletes two thirds of them by their own keys,
-     * so the Dag gets a put and a delete of one key. The segment leaf that the put made and
-     * the delete empties is not a split's node: it stays linked, empty, with the delete
-     * (Dag.statKeptNew). Gets before and after restarts, at startup distances that rerun
-     * little and all.
+     * KVs that key transformations make one key reach the index as one operation (Db.putKvs,
+     * Db.sortByKey; bergdb 023-08, section 7, Frans's decision of 2026-11-10): of them the
+     * last put in the order of the keys as written is kept, or a delete if there is no put; a
+     * delete never replaces a put, as Trans.Builder.build's rule for the calls on one key
+     * (bergdb 015-40). One transaction has, on keys that existed: a transformed put and a
+     * plain put (the plain one, later, is kept); a transformed put and a later delete (the
+     * put); a delete and a later transformed put (the put); two transformed puts (the later);
+     * and a transformed put with a value transformation before a plain put with one (only
+     * the kept one's runs). Its database writes the same stream, byte for byte, as one given
+     * the kept operations alone, and gives their values at the latest time and after a
+     * restart, at startup distances that rerun little and all. Until 2026-11-10 both KVs
+     * reached the index, and a put and a delete of one key reached X5 (c).
      */
     @Nano
-    public static void testPutAndDeleteOfOneKeyInATransaction() {
-        final long kept0 = bergdb.dag.Dag.statKeptNew;
+    public static void testOneOperationAKeyAfterTransformations() {
         for (int sd : DISTANCES) {
-            for (int n = 1; n <= 40; n += 3) {
-                String at = "sd " + sd + ", n " + n + ": ";
+            byte[][] streams = new byte[2][];
+            for (int d = 0; d < 2; d++) {
                 MemoryStream ms = new MemoryStream();
                 Db db = start(ms, sd);
-                db.execute(db.trans().put("/a/x1", "v").put("/zz/y1", "v").build());
-                int keep = n / 3;
                 Trans.Builder tb = db.trans();
-                for (int i = 0; i < n; i++) {
-                    tb.put(Keys.toSegments("/newpref/$" + String.format("%04d", i)),
-                            NEWPREF_DOLLAR_TO_Z, ("z" + i).getBytes(), null);
-                }
-                for (int i = keep; i < n; i++) tb.delete("/newpref/z" + String.format("%04d", i));
+                for (String k : new String[] {"a", "b", "c", "d", "e"}) tb.put("/c/" + k, "old");
                 db.execute(tb.build());
-                db.execute(db.trans().put("/a/x2", "w").build());
-                for (int round = 0; round < 3; round++) {
-                    for (int i = 0; i < n; i++) {
-                        String k = "/newpref/z" + String.format("%04d", i);
-                        assertValue(at + "round " + round + ", " + k,
-                                i < keep ? "z" + i : null, DbUtil.getString(db, k));
+                Bang dropped = new Bang(), kept = new Bang();
+                tb = db.trans();
+                if (d == 0) {
+                    tb.put(Keys.toSegments("/c/$a"), TO_C, bytes("a1"), null);
+                    tb.put("/c/a", "a2");
+                    tb.put(Keys.toSegments("/c/$b"), TO_C, bytes("b1"), null);
+                    tb.delete("/c/b");
+                    tb.delete("/c/c");
+                    tb.put(Keys.toSegments("/c/~c"), TO_C, bytes("c1"), null);
+                    tb.put(Keys.toSegments("/c/$d"), TO_C, bytes("d1"), null);
+                    tb.put(Keys.toSegments("/c/~d"), TO_C, bytes("d2"), null);
+                    tb.put(Keys.toSegments("/c/$e"), TO_C, bytes("e1"), dropped);
+                    tb.put(Keys.toSegments("/c/e"), null, bytes("e2"), kept);
+                } else {
+                    tb.put("/c/a", "a2").put("/c/b", "b1").put("/c/c", "c1").put("/c/d", "d2");
+                    tb.put(Keys.toSegments("/c/e"), null, bytes("e2"), kept);
+                }
+                db.execute(tb.build());
+                String at = "sd " + sd + (d == 0 ? ", transformed: " : ", plain: ");
+                Assert.assertEquals(at + "the dropped KV's value transformation", 0, dropped.calls);
+                Assert.assertEquals(at + "the kept KV's value transformation", 1, kept.calls);
+                for (int round = 0; round < 2; round++) {
+                    String[] expected = {"a2", "b1", "c1", "d2", "e2!"};
+                    for (int i = 0; i < expected.length; i++) {
+                        String k = "/c/" + (char) ('a' + i);
+                        Assert.assertEquals(at + "round " + round + ", " + k, expected[i],
+                                DbUtil.getString(db, k));
                     }
-                    Assert.assertEquals(at + "/a/x2", "w", DbUtil.getString(db, "/a/x2"));
                     db.close();
                     db = start(ms.copy(), sd);
                 }
                 db.close();
+                streams[d] = new byte[(int) ms.getLength()];
+                try {
+                    ms.read(0, streams[d], 0, streams[d].length);
+                } catch (java.io.IOException e) {
+                    throw new RuntimeException(e);
+                }
             }
+            Assert.assertTrue("sd " + sd + ": the same stream, " + streams[0].length + " and "
+                    + streams[1].length + " bytes", java.util.Arrays.equals(streams[0], streams[1]));
         }
-        Assert.assertTrue("a segment leaf made by the transaction kept its delete (X5 (c))",
-                bergdb.dag.Dag.statKeptNew > kept0);
+    }
+    
+    private static byte[] bytes(String s) {
+        return s.getBytes(java.nio.charset.StandardCharsets.UTF_8);
     }
 }

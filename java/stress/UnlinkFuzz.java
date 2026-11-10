@@ -29,8 +29,10 @@ import bergdb.common.StringUtil;
  * order=shuffle applies a transaction's keys in a random order, as a Core KeyTransformation
  * may leave them (Db applies it after Trans.build sorts the keys); dup=P adds, for P percent
  * of a transaction's keys, a second operation on the key later in the transaction (a delete
- * after a put, a put after a delete), as two keys that a KeyTransformation makes one; the
- * last one is the key's value at tt (bergdb 023-08, review C, fault 12 and X5 (c)).
+ * after a put, a put after a delete), as two keys that a KeyTransformation makes one, and
+ * then keeps one operation a key, at the key's first place, as Db.putKvs does since
+ * 2026-11-10: the put, by Trans.Builder.build's rule (bergdb 023-08, review C, fault 12 and
+ * X5 (c), and section 7). Until then both reached the Dag, the last giving the value.
  *
  * Usage: java -ea -cp build/bergdb.jar:build/stress bergdb.dag.UnlinkFuzz firstSeed rounds
  * Properties: maxnode (8), keys (60), n (150), ops (6), del (40), shape (random), scans (6),
@@ -142,6 +144,19 @@ public class UnlinkFuzz {
                         String v2 = o[1] == null ? "w" + tt + o[0] : null;
                         list.add(j + 1 + rnd.nextInt(list.size() - j), new String[] {o[0], v2});
                     }
+                }
+                // One operation a key (Db.putKvs, Db.sortByKey): the last put, or a delete if
+                // there is no put, at the place of the key's first operation.
+                Map<String, String[]> first = new HashMap<String, String[]>();
+                for (Iterator<String[]> it = list.iterator(); it.hasNext(); ) {
+                    String[] e = it.next();
+                    String[] f = first.get(e[0]);
+                    if (f == null) {
+                        first.put(e[0], e);
+                        continue;
+                    }
+                    if (e[1] != null) f[1] = e[1];
+                    it.remove();
                 }
             }
             for (String[] e : list) {
