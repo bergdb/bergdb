@@ -2729,8 +2729,10 @@ public class Db implements AutoCloseable {
         for (Kv kv : t.kvs) {
             // A delete: with the upward unlink two klongs in every node of its path, and the
             // klongs of root collapse in the segment leaves above (Dag.dirtyNodeBound; bergdb
-            // 023-07, section 5.4); P1's factor of 7, kept as a margin over a put's 3.
-            cheap += (kv.getValue() == null ? 7 : 3) * height * kv.getKey().length + 3;
+            // 023-07, section 5.4); P1's factor of 7, kept as a margin over a put's 3. A value
+            // transformation may give null, a delete (bergdb 023-11, review B, B2).
+            final boolean delete = kv.getValue() == null || kv.valueTransformation != null;
+            cheap += (delete ? 7 : 3) * height * kv.getKey().length + 3;
         }
         if (cheap <= (limit - topBytes) / nodeBytes) {
             return;
@@ -2738,15 +2740,22 @@ public class Db implements AutoCloseable {
         
         int n = 0;
         long nodes = 0;
-        final long[][] keys = new long[t.kvs.length][];
-        final boolean[] deletes = new boolean[t.kvs.length];
+        final long[][] keys = new long[2 * t.kvs.length][];
+        final boolean[] deletes = new boolean[2 * t.kvs.length];
         for (Kv kv : t.kvs) {
             if (kv.keyTransformation != null) {
-                nodes += 3 * height * kv.getKey().length + 3;
+                nodes += (kv.valueTransformation != null ? 7 : 3) * height * kv.getKey().length + 3;
             } else {
                 keys[n] = kv.getKey();
                 deletes[n] = kv.getValue() == null && kv.valueTransformation == null;
                 n++;
+                if (kv.valueTransformation != null) {
+                    // It may give null, a delete: walked as a put and as a delete, an
+                    // over-count (bergdb 023-11, review B, B2).
+                    keys[n] = kv.getKey();
+                    deletes[n] = true;
+                    n++;
+                }
             }
         }
         final long time = dbClock.lookupTime(Long.MAX_VALUE);
