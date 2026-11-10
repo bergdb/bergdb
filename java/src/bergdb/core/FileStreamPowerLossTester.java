@@ -394,7 +394,12 @@ public class FileStreamPowerLossTester {
             } catch (IOException expected) { }
             Assert.assertEquals(0, manager.getDurableLength());
         } finally {
-            manager.stop();
+            // close(), not stop() (2026-11-10): after the failed force, the storage's thread
+            // closes the stream, and stop() returned before that close ended. The next test's
+            // new directory got this one's inode (ext4), while the stream was between its
+            // close of bergdb.lock and the release of the directory's key, and its FileStream
+            // was refused with DirectoryInUseException. close() waits for that thread.
+            manager.close();
             for (RandomAccessFile handle : io.handles) {
                 Assert.assertTrue("failed storage leaked a file handle", !handle.getFD().valid());
             }
@@ -434,7 +439,7 @@ public class FileStreamPowerLossTester {
             manager.sync(100);
             Assert.assertEquals(100, manager.getDurableLength());
             Assert.assertEquals(100, io.image("after force").end());
-        } finally { release.countDown(); manager.stop(); remove(dir); }
+        } finally { release.countDown(); manager.close(); remove(dir); }     // As testFailedForce.
     }
 
     @Nano("f")
@@ -489,7 +494,7 @@ public class FileStreamPowerLossTester {
                 throw new AssertionError("the stream went on after a failed cut");
             } catch (IOException expected) { }
             Assert.assertEquals(200100, manager.getDurableLength());
-        } finally { release.countDown(); manager.stop(); remove(dir); }
+        } finally { release.countDown(); manager.close(); remove(dir); }     // As testFailedForce.
     }
 
     @Nano
