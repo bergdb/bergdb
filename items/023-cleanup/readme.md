@@ -28,6 +28,12 @@ Files
 * 02-problem.md. 023-02, the problem stated exactly, and what we want
   from a solution, with Frans's rule that a deleted KV eventually
   consumes no resources of the database. Being written.
+* 03-test-spec.md. 023-03, the test specification: Frans's practical
+  test of the rule (a hello-world database against one that adds a large
+  amount of data and deletes it all but "/a.txt"; eventually its
+  resources come back to about the hello-world database's), a
+  steady-state churn twin, correctness and regression; with today's
+  numbers from a prototype. Being written.
 
 Earlier work, in 020: 020-30, the first study (sections 1 to 4), with
 four helper studies 020-30-01 to 020-30-04, and an independent study by
@@ -38,4 +44,5 @@ Log
 ===
 
 2026-11-10. Created the item (Frans, 09:45); 023-01 and 023-02 started
-by the coordinator's agents.
+by the coordinator's agents. 023-03 started at Frans's request (09:58),
+after his practical test of the rule (09:55).
