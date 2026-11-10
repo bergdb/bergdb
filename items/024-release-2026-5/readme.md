@@ -46,7 +46,9 @@ queue on by default.
 Files
 =====
 
-None yet.
+* 01-inventory.md. 024-01, the inventory of candidates for 2026.5, for
+  Frans to choose a theme and a scope (Frans, 19:24 to 19:26). Being
+  written.
 
 
 Log
@@ -54,3 +56,7 @@ Log
 
 2026-11-10. Created the item (Frans, 17:52), with what 023-08 put off to
 later.
+
+2026-11-10. Frans (19:24): "About 2026.5. I would like to prepare for
+this work. What can we do now?" 024-01, an inventory of the candidates,
+started 19:26.
