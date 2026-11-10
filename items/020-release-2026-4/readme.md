@@ -354,6 +354,11 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   the build thread, or under weak fairness with finitely many definition
   changes; weak fairness alone is not enough with several names (a model
   run shows it). 5,231 lines, head `9d33587`.
+* [30-deleted-kvs-cost-nothing.md](30-deleted-kvs-cost-nothing.md).
+  020-30, a deleted KV eventually costs nothing (Frans's rule, 2026-11-10):
+  the index keeps the nodes of deleted keys for ever, so scans and the
+  stream are not bounded by the live data (U16-1, U17-1, 021-25); the
+  study and the fix. 2026.4 waits for it (Frans, 09:03).
 
 
 Log
@@ -427,3 +432,10 @@ and comments of 020-23's V1-2 and V1-3.
 2026-11-09, evening. The Files entries of 020-24 to 020-29 (020-29 on its
 branch, not merged), and 020-11's and 020-23's brought up to date, by
 coord-1109's final items pass.
+
+2026-11-10. Release 2026.4 paused (Frans, 09:03: "My decision is to pause
+2026.4 until this has been sorted out."): the index keeps the nodes of
+deleted keys, so a scan's cost and the stream's size grow with every
+delete (020-24-16, 020-24-17, 021-25). 020-30 created with Frans's rule
+that a deleted KV eventually costs nothing; its study started. The
+candidate `03ce6ec` is not tagged.

@@ -34,6 +34,7 @@ The list
 | [006-18](18-ports/readme.md) | 2026-11-09 | BergDB in languages other than Java: demand (01) and technical feasibility (02), one ranking; C on Linux as the base of bindings, Java's Core on Android as a check, then Rust and Python bindings; the licence decides the reach |
 | [006-19](19-write-amplification.md) | 2026-11-09 | Write amplification at large sizes: where a put's bytes go (867 at 10M keys and 50 MB, 92 % index nodes), the levers, what to measure |
 | [006-20](20-ai-as-the-user-testing.md) | 2026-11-09 | AI as the user: black-box application testing, the method and the 12 applications of 020-24 as its example |
+| [006-21](21-day-10-november.md) | 2026-11-10 | Day work of 10 November (a Tuesday), with the coordinator coord-1110: 2026.4 paused for 020-30, the plan, the progress and the outcome |
 
 
 Files
