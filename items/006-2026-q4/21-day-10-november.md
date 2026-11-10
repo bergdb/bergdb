@@ -103,6 +103,17 @@ restarts it from there (013-02, `resume`).
 * 10:53 023-05: three prototypes started, xhigh (Frans, 10:51): P1
   relabel, P2 relaxed invariant, P3 reclaim compaction and `maintain()`;
   each in its own clone, by 14:30 at the latest.
+* 11:53 P4 (LE-b, Frans 11:52). 12:00 023-06, the architecture review on a
+  stronger model at max (Frans 11:59); first pass 12:12, second 13:30.
+  12:23 P5 (merges at the delete), 12:37 P6 (memory, Frans's Y6 (b)),
+  13:43 P7 (the dirty top-node window, Z13) and P8 (reclaim's scan at the
+  step's time, Z14). 14:00 023-06 section 18 recommended fix (b); 14:06 P7
+  showed it unsound (a counterexample, a failing unit test); 14:12 the
+  review agreed (18.7): (a) plus (b'). 14:29 the long-run answer: (b') an
+  efficiency only. P1 to P6 and P8 done, reports committed.
+* 14:26 to 14:36 Frans: KISS; pause and review. 14:37 023-07, the
+  proposal for 2026.4 (a KISS core against the full set), by 15:25; then
+  three independent reviews (Codex, and fresh agents on two other models).
 
 
 ## 8. Outcome
