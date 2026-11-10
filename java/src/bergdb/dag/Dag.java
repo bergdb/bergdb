@@ -703,6 +703,12 @@ public class Dag {
         // the 'g' object.
         //
 
+        if (g.endKey != null && !g.forward) {
+            // Refused before the root is looked up, also when there is none (bergdb 021-28).
+            throw new IllegalArgumentException("g.endKey with a backward scan: the end is for "
+                    + "forward scans only (bergdb 021-28).");
+        }
+        
         KeyNode root = topDs.findRoot(g.actualLookupTime, g.gd);
         
         if (root == null) {

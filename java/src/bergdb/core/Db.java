@@ -1790,6 +1790,10 @@ public class Db implements AutoCloseable {
         assertHasDag("newGetMany");
         GetMany g = dag.newGetMany();
         g.gd.pointerFollower = this.nodeCollection;
+        final TestHooks hooks = testHooks;
+        if (hooks != null) {
+            hooks.getManyCreated(g);
+        }
         return g;
     }
 
@@ -2049,8 +2053,9 @@ public class Db implements AutoCloseable {
      *              call (GetMany).
      * @throws IllegalArgumentException
      *              If g or its stopCondition is null, its startKey has no segment, its
-     *              result is not empty, or its stop condition answers a value other than
-     *              the four of StopCondition, which ends the scan (bergdb 020-27, Q2).
+     *              result is not empty, its endKey is set for a backward scan (bergdb
+     *              021-28), or its stop condition answers a value other than the four of
+     *              StopCondition, which ends the scan (bergdb 020-27, Q2).
      * @throws IllegalDbStateException
      *              If start() has not been called, or stop() or close() has (a
      *              DbStoppingException then).
@@ -2099,6 +2104,10 @@ public class Db implements AutoCloseable {
         if (g.result.size() != 0) {
             throw new IllegalArgumentException("g.result not empty, " + g.result.size()
                     + " KVs: clear it, or use a new GetMany (newGetMany()).");
+        }
+        if (g.endKey != null && !g.forward) {
+            throw new IllegalArgumentException("g.endKey with a backward scan: the end is for "
+                    + "forward scans only (bergdb 021-28).");
         }
 
         try {
@@ -3366,6 +3375,12 @@ public class Db implements AutoCloseable {
          * index node; the super root included.
          */
         public void nodeTouched(Node node);
+
+        /**
+         * newGetMany() made g, for a reader of the Core API or the Pub API's scans; a test may
+         * set g.gd.pointerListener to count the nodes that the scan follows (bergdb 021-28).
+         */
+        public default void getManyCreated(GetMany g) {}
 
         /**
          * The transaction being executed replaced an index node (a split, a new super root):

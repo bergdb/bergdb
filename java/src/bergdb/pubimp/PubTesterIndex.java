@@ -117,6 +117,105 @@ public class PubTesterIndex {
         }
     }
     
+    /**
+     * Scans of an index whose entries are followed in key order by the deleted entries of
+     * another index of the directory, created and deleted three times (bergdb 021-28;
+     * 020-24-17, u17): an empty range at the end, ranges with entries, the whole index,
+     * forward and backward, give the payments that there are. Since 021-28 a forward scan
+     * ends at its range's end (GetMany.endKey) instead of at the first live key after it.
+     */
+    @Nano
+    public static void testScansBeforeDeletedEntries() {
+        Database db = Factory.database().memory().start();
+        try {
+            Connection c = db.newConnection();
+            db.indexBuilder("in").dir("/payments/").type("long").field("amount").start().join();
+            WBuilder w = c.w();
+            for (int i = 0; i < 300; i++) {
+                w.put("/payments/" + i, new Payment("f" + (i % 7), "t", i % 50));
+            }
+            w.execute();
+            for (int k = 0; k < 3; k++) {
+                db.indexBuilder("ix2").dir("/payments/").type("string").field("from").start()
+                        .join();
+                db.deleteIndex("ix2");
+            }
+            
+            final int[] nodes = new int[1];
+            Db.testHooks = keyNodeCounter(nodes);
+            try {
+                Assert.assertEquals(0, count(c.useIndex("in", Payment.class).eq(1000L)
+                        .objects()));
+            } finally {
+                Db.testHooks = null;
+            }
+            // The scan's GetMany has endKey (UseIndexBuilderImp.Scan.readPage): 6 key nodes
+            // with it, 146 without it, over ix2's deleted entries (2026-11-09).
+            Assert.assertTrue("key nodes followed: " + nodes[0], nodes[0] <= 30);
+            Assert.assertEquals(0, count(c.useIndex("in", Payment.class).from(50L, true)
+                    .objects()));
+            Assert.assertEquals(6, count(c.useIndex("in", Payment.class).eq(49L).objects()));
+            Assert.assertEquals(6, count(c.useIndex("in", Payment.class).eq(0L).objects()));
+            Assert.assertEquals(30, count(c.useIndex("in", Payment.class).from(45L, true)
+                    .objects()));
+            
+            long last = -1;
+            int n = 0;
+            for (Payment p : c.useIndex("in", Payment.class).objects()) {
+                Assert.assertTrue(p.amount >= last);
+                last = p.amount;
+                n++;
+            }
+            Assert.assertEquals(300, n);
+            Assert.assertEquals(49L, last);
+            
+            last = Long.MAX_VALUE;
+            n = 0;
+            for (Payment p : c.useIndex("in", Payment.class).backward().objects()) {
+                Assert.assertTrue(p.amount <= last);
+                last = p.amount;
+                n++;
+            }
+            Assert.assertEquals(300, n);
+            Assert.assertEquals(0L, last);
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
+     * Test hooks that count the key nodes followed by the scans that this thread makes with
+     * Db.newGetMany() (bergdb 021-28). Set them as Db.testHooks, and null them after.
+     */
+    static Db.TestHooks keyNodeCounter(final int[] count) {
+        final Thread thread = Thread.currentThread();
+        return new Db.TestHooks() {
+            public void transExecuted(Db.ExecuteData x) {}
+            
+            public void valueNodeCreated(bergdb.dag.ValueNode node, long[] key) {}
+            
+            public void nodeTouched(bergdb.dag.Node node) {}
+            
+            public void nodeReplaced(bergdb.dag.Node node) {}
+            
+            public void getManyCreated(GetMany g) {
+                if (Thread.currentThread() != thread) {
+                    return;
+                }
+                g.gd.pointerListener = new bergdb.dag.Dag.PointerListener() {
+                    public void pointerFollowed(bergdb.dag.Node predecessor, int pointerIndex,
+                            bergdb.dag.Node result, int pointerType) {
+                        if (result instanceof bergdb.dag.KeyNode) {
+                            count[0]++;
+                        }
+                    }
+                    
+                    public void superRootAccessed(bergdb.dag.TopNode superRoot) {}
+                };
+            }
+        };
+    }
+    
     @Nano
     public static void test0() {
         Database db = Factory.database().memory().start();

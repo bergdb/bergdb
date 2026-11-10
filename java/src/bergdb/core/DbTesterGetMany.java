@@ -5,11 +5,17 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Random;
+import java.util.TreeSet;
 
 import bergdb.common.StringUtil;
+import bergdb.dag.Dag;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
+import bergdb.dag.KeyNode;
 import bergdb.dag.Kvt;
+import bergdb.dag.Node;
+import bergdb.dag.TopNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.util.SyncLevel;
@@ -1157,6 +1163,324 @@ public class DbTesterGetMany {
         db.getMany(g);
         List<String> keys = new ArrayList<String>();
         for (Kvt kvt : g.result) {
+            keys.add(new String(Keys.toBytes(kvt.key), StandardCharsets.US_ASCII));
+        }
+        return keys;
+    }
+    
+    // ======== The end key (bergdb 021-28) ========
+    
+    /**
+     * GetMany.endKey gives what the Endpoint stop condition gives, inclusive or not, from any
+     * start, at any lookup time, also where the keys after the end are deleted (bergdb
+     * 021-28): random keys of 1 to 20 bytes of three letters, around the segments of 7
+     * bytes, put in transactions of 50, then deleted, the run of keys that start with "b"
+     * and every third of the others, in transactions of 50; scans at times before, between
+     * and after the deletes. The scan ends as at the end of the database: eod() is called.
+     */
+    @Nano
+    public static void testEndKeyAsEndpoint() {
+        Random r = new Random(2128);
+        CoreTestClock clock = new CoreTestClock();
+        Db db = Db.builder().testSetup().clock(clock).start();
+        try {
+            TreeSet<String> keys = new TreeSet<String>();
+            while (keys.size() < 2000) {
+                keys.add(abcKey(r));
+            }
+            List<String> list = new ArrayList<String>(keys);
+            Collections.shuffle(list, r);
+            long time = 10;
+            List<Long> times = new ArrayList<Long>();
+            for (int i = 0; i < list.size(); i += 50) {
+                clock.setTime(time);
+                Trans.Builder b = db.trans();
+                for (String key : list.subList(i, Math.min(list.size(), i + 50))) {
+                    b.put(ascii(key), new byte[] {1});
+                }
+                db.execute(b.build());
+                times.add(time);
+                time += 10;
+            }
+            List<String> deleted = new ArrayList<String>();
+            for (int i = 0; i < list.size(); i++) {
+                if (list.get(i).startsWith("b") || i % 3 == 0) {
+                    deleted.add(list.get(i));
+                }
+            }
+            for (int i = 0; i < deleted.size(); i += 50) {
+                clock.setTime(time);
+                Trans.Builder b = db.trans();
+                for (String key : deleted.subList(i, Math.min(deleted.size(), i + 50))) {
+                    b.delete(ascii(key));
+                }
+                db.execute(b.build());
+                times.add(time);
+                time += 10;
+            }
+            
+            for (int i = 0; i < 1500; i++) {
+                long lookupTime = i % 3 == 0 ? Long.MAX_VALUE : times.get(r.nextInt(times.size()));
+                long[] start = r.nextInt(10) == 0 ? null : Keys.toSegments(ascii(abcKey(r)));
+                boolean inclusive = r.nextBoolean();
+                long[] end = Keys.toSegments(ascii(abcKey(r)));
+                boolean endInclusive = r.nextBoolean();
+                
+                GetMany g = db.newGetMany();
+                g.lookupTime = lookupTime;
+                g.startKey = start;
+                g.inclusive = inclusive;
+                g.stopCondition = new GetMany.Endpoint(end, endInclusive);
+                db.getMany(g);
+                
+                final boolean[] eod = new boolean[1];
+                GetMany h = db.newGetMany();
+                h.lookupTime = lookupTime;
+                h.startKey = start;
+                h.inclusive = inclusive;
+                h.endKey = end;
+                h.endInclusive = endInclusive;
+                h.stopCondition = new GetMany.StopCondition() {
+                    public int handleKvt(Kvt kvt) {
+                        return ADD;
+                    }
+                    
+                    public void eod() {
+                        eod[0] = true;
+                    }
+                };
+                db.getMany(h);
+                
+                String about = "scan " + i + " from " + (start == null ? "null" 
+                        : Keys.toString(start)) + " to " + Keys.toString(end) + " at " 
+                        + lookupTime + ", " + inclusive + ", " + endInclusive;
+                Assert.assertEquals(about, keysOf(g.result), keysOf(h.result));
+                Assert.assertTrue(about + ": eod()", eod[0]);
+            }
+            
+            GetMany backward = db.newGetMany();
+            backward.setBackward();
+            backward.endKey = Keys.toSegments(ascii("a"));
+            boolean refused = false;
+            try {
+                db.getMany(backward);
+            } catch (IllegalArgumentException e) {
+                refused = true;
+            }
+            Assert.assertTrue("A backward scan with endKey refused", refused);
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
+     * A scan that GetMany.endKey ends follows no key node of the deleted keys after its range
+     * (bergdb 021-28; 020-24-17): 100 live keys "a0000" to "a0099", then 5,000 keys "b00000"
+     * to "b04999" put and deleted, then "c". The scan of [a0050, a0100) follows the key
+     * nodes on its path and no more; the same scan ended by the stop condition alone, which
+     * sees live KVs only, follows every key node of the deleted keys up to "c". Without the
+     * end key's check in GetMany.Chain.next() (endKey ignored), the scan with the end key
+     * follows them too, and the test fails at "key nodes followed with endKey".
+     */
+    @Nano
+    public static void testEndKeyPassesNoDeletedKeys() {
+        Db db = Db.builder().testSetup().start();
+        try {
+            Trans.Builder b = db.trans();
+            for (int i = 0; i < 100; i++) {
+                b.put(ascii(String.format("a%04d", i)), new byte[] {1});
+            }
+            b.put(ascii("c"), new byte[] {1});
+            db.execute(b.build());
+            for (int i = 0; i < 5000; i += 100) {
+                b = db.trans();
+                for (int j = i; j < i + 100; j++) {
+                    b.put(ascii(String.format("b%05d", j)), new byte[] {1});
+                }
+                db.execute(b.build());
+            }
+            for (int i = 0; i < 5000; i += 100) {
+                b = db.trans();
+                for (int j = i; j < i + 100; j++) {
+                    b.delete(ascii(String.format("b%05d", j)));
+                }
+                db.execute(b.build());
+            }
+            
+            long[] from = Keys.toSegments(ascii("a0050"));
+            long[] to = Keys.toSegments(ascii("a0100"));
+            final int[] withEnd = new int[1];
+            GetMany g = db.newGetMany();
+            g.startKey = from;
+            g.endKey = to;
+            g.endInclusive = false;
+            g.stopCondition = new GetMany.Endpoint(to, false);     // as the Pub API's scan
+            g.gd.pointerListener = keyNodeCounter(withEnd);
+            db.getMany(g);
+            
+            final int[] stopOnly = new int[1];
+            GetMany h = db.newGetMany();
+            h.startKey = from;
+            h.stopCondition = new GetMany.Endpoint(to, false);
+            h.gd.pointerListener = keyNodeCounter(stopOnly);
+            db.getMany(h);
+            
+            Assert.assertEquals(50, g.result.size());
+            Assert.assertEquals(keysOf(h.result), keysOf(g.result));
+            Assert.assertTrue("key nodes followed with endKey: " + withEnd[0], withEnd[0] <= 20);
+            Assert.assertTrue("key nodes followed by the stop condition alone: " + stopOnly[0],
+                    stopOnly[0] > 200);
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
+     * As testEndKeyPassesNoDeletedKeys, with long keys, each in a segment tree of its own for
+     * its last segment, as the Pub API's index entries (bergdb 021-28; 020-24-16): 100 live
+     * keys "a000000xyzw" to "a000099xyzw", 2,000 keys "b000000xyzw" to "b001999xyzw" put
+     * and deleted, then "c". The scan of the last five live keys, to the end "b" not
+     * inclusive, follows few key nodes with endKey (9 on 2026-11-09); the stop condition
+     * alone follows a node of each deleted key's segment tree (2,160).
+     */
+    @Nano
+    public static void testEndKeyPassesNoDeletedLongKeys() {
+        Db db = Db.builder().testSetup().start();
+        try {
+            Trans.Builder b = db.trans();
+            for (int i = 0; i < 100; i++) {
+                b.put(ascii(String.format("a%06dxyzw", i)), new byte[] {1});
+            }
+            b.put(ascii("c"), new byte[] {1});
+            db.execute(b.build());
+            b = db.trans();
+            for (int i = 0; i < 2000; i++) {
+                b.put(ascii(String.format("b%06dxyzw", i)), new byte[] {1});
+            }
+            db.execute(b.build());
+            b = db.trans();
+            for (int i = 0; i < 2000; i++) {
+                b.delete(ascii(String.format("b%06dxyzw", i)));
+            }
+            db.execute(b.build());
+            
+            long[] from = Keys.toSegments(ascii("a000095xyzw"));
+            long[] to = Keys.toSegments(ascii("b"));
+            final int[] withEnd = new int[1];
+            GetMany g = db.newGetMany();
+            g.startKey = from;
+            g.endKey = to;
+            g.endInclusive = false;
+            g.stopCondition = new GetMany.Endpoint(to, false);
+            g.gd.pointerListener = keyNodeCounter(withEnd);
+            db.getMany(g);
+            
+            final int[] stopOnly = new int[1];
+            GetMany h = db.newGetMany();
+            h.startKey = from;
+            h.stopCondition = new GetMany.Endpoint(to, false);
+            h.gd.pointerListener = keyNodeCounter(stopOnly);
+            db.getMany(h);
+            
+            Assert.assertEquals(5, g.result.size());
+            Assert.assertEquals(keysOf(h.result), keysOf(g.result));
+            Assert.assertTrue("key nodes followed with endKey: " + withEnd[0], withEnd[0] <= 30);
+            Assert.assertTrue("key nodes followed by the stop condition alone: " + stopOnly[0],
+                    stopOnly[0] > 2000);
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
+     * A Chain driven directly, as Dag.getMany does, stays at its end once the end key has
+     * ended it (bergdb 021-28, a review's point 1): with keys "pppppppa" and "pppppppb" and
+     * the inclusive end "pppppppa", next() gives "pppppppa", then null, and null again. The
+     * end set the local copy of the link count, not the field, and the third call gave a
+     * truncated key "b". A backward scan with an end key is refused with
+     * IllegalArgumentException by the Chain's constructor and by Dag.getMany, also at a lookup
+     * time with no root (point 2: an assert, and nothing before the root).
+     */
+    @Nano
+    public static void testEndKeyChainEdges() {
+        Db db = Db.builder().testSetup().start();
+        try {
+            db.execute(db.trans().put(ascii("pppppppa"), new byte[] {1})
+                    .put(ascii("pppppppb"), new byte[] {2}).build());
+            Dag dag = db.internal().dag();
+            GetMany g = db.newGetMany();
+            g.actualLookupTime = db.lookupTime(Long.MAX_VALUE);
+            g.endKey = Keys.toSegments(ascii("pppppppa"));
+            KeyNode root = dag.getTopDs().findRoot(g.actualLookupTime, g.gd);
+            GetMany.Chain chain = g.new Chain();
+            chain.setup(root);
+            Kvt first = chain.next();
+            Assert.assertEquals("pppppppa", keysOf(java.util.Collections.singletonList(first))
+                    .get(0));
+            Assert.assertTrue("second", chain.next() == null);
+            Assert.assertTrue("third", chain.next() == null);
+            
+            for (long time : new long[] {-1, db.lookupTime(Long.MAX_VALUE)}) {
+                GetMany h = db.newGetMany();
+                h.forward = false;
+                h.endKey = Keys.toSegments(ascii("a"));
+                h.lookupTime = time;
+                h.actualLookupTime = time;
+                boolean refused = false;
+                try {
+                    dag.getMany(h);
+                } catch (IllegalArgumentException e) {
+                    refused = true;
+                }
+                Assert.assertTrue("Dag.getMany, backward, time " + time, refused);
+            }
+            
+            GetMany k = db.newGetMany();
+            k.forward = false;
+            k.endKey = Keys.toSegments(ascii("a"));
+            boolean refused = false;
+            try {
+                k.new Chain();
+            } catch (IllegalArgumentException e) {
+                refused = true;
+            }
+            Assert.assertTrue("Chain, backward", refused);
+        } finally {
+            db.close();
+        }
+    }
+    
+    /** A pointer listener that counts the key nodes followed. */
+    private static Dag.PointerListener keyNodeCounter(final int[] count) {
+        return new Dag.PointerListener() {
+            public void pointerFollowed(Node predecessor, int pointerIndex, Node result,
+                    int pointerType) {
+                if (result instanceof KeyNode) {
+                    count[0]++;
+                }
+            }
+            
+            public void superRootAccessed(TopNode superRoot) {}
+        };
+    }
+    
+    /** A key of 1 to 20 of the bytes 'a', 'b' and 'c'. */
+    private static String abcKey(Random r) {
+        int length = 1 + r.nextInt(20);
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < length; i++) {
+            sb.append((char) ('a' + r.nextInt(3)));
+        }
+        return sb.toString();
+    }
+    
+    private static byte[] ascii(String s) {
+        return s.getBytes(StandardCharsets.US_ASCII);
+    }
+    
+    private static List<String> keysOf(List<Kvt> result) {
+        List<String> keys = new ArrayList<String>();
+        for (Kvt kvt : result) {
             keys.add(new String(Keys.toBytes(kvt.key), StandardCharsets.US_ASCII));
         }
         return keys;

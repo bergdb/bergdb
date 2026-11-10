@@ -46,6 +46,72 @@ public class PubTesterPrimary {
         }
     }
     
+    /**
+     * A listing of a directory followed in key order by deleted keys (bergdb 021-28): 100
+     * keys in /a/, then 2,000 keys of /b/ put and deleted, then /c/x. The listing of /a/,
+     * from the start and from a name, forward and backward, gives its keys; that of /b/
+     * none. Since 021-28 a forward listing ends at the directory's end (GetMany.endKey)
+     * instead of at the first live key after it.
+     */
+    @Nano
+    public static void testListingBeforeDeletedKeys() {
+        Database db = Factory.database().memory().start();
+        try {
+            Connection c = db.newConnection();
+            WBuilder w = c.w();
+            for (int i = 0; i < 100; i++) {
+                w.put(String.format("/a/%04d", i), new Person(Integer.toString(i)));
+            }
+            w.put("/c/x", new Person("x"));
+            w.execute();
+            w = c.w();
+            for (int i = 0; i < 2000; i++) {
+                w.put(String.format("/b/%05d", i), new Person("b"));
+            }
+            w.execute();
+            w = c.w();
+            for (int i = 0; i < 2000; i++) {
+                w.delete(String.format("/b/%05d", i));
+            }
+            w.execute();
+            
+            final int[] nodes = new int[1];
+            Db.testHooks = PubTesterIndex.keyNodeCounter(nodes);
+            int i = 0;
+            try {
+                for (Person p : c.usePrimary(Person.class).dir("/a/").startAt("0095")
+                        .objects()) {
+                    Assert.assertEquals(Integer.toString(95 + i++), p.name);
+                }
+            } finally {
+                Db.testHooks = null;
+            }
+            Assert.assertEquals(5, i);
+            // The listing's GetMany has endKey (UsePrimaryBuilderImp.Scan.readPage): 3 key
+            // nodes with it, 157 without it, over the deleted keys of /b/ (2026-11-09).
+            Assert.assertTrue("key nodes followed: " + nodes[0], nodes[0] <= 30);
+            i = 0;
+            for (Person p : c.usePrimary(Person.class).dir("/a/").objects()) {
+                Assert.assertEquals(Integer.toString(i++), p.name);
+            }
+            Assert.assertEquals(100, i);
+            i = 50;
+            for (Person p : c.usePrimary(Person.class).dir("/a/").startAt("0050").objects()) {
+                Assert.assertEquals(Integer.toString(i++), p.name);
+            }
+            Assert.assertEquals(100, i);
+            i = 99;
+            for (Person p : c.usePrimary(Person.class).dir("/a/").backward().objects()) {
+                Assert.assertEquals(Integer.toString(i--), p.name);
+            }
+            Assert.assertEquals(-1, i);
+            Assert.assertFalse(c.usePrimary(Person.class).dir("/b/").objects().iterator()
+                    .hasNext());
+        } finally {
+            db.close();
+        }
+    }
+    
     @Nano
     public static void test0() {
         Database db = Factory.database().memory().start();
