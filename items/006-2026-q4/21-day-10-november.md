@@ -96,6 +96,13 @@ restarts it from there (013-02, `resume`).
 * 09:47 023-01 (introduction) and 023-02 (the problem) started, xhigh.
 * 09:59 023-03 (the test specification) started, max, after Frans's
   practical test of the rule (09:55).
+* 10:02 to 10:30 023-01, 023-02 and 023-03 done. 10:13 023-04 (the
+  options, max) started. 10:22 Codex stopped and resumed with a phase 1
+  options brief (by 11:45). 10:30 to 10:49 Frans answered 023-02's F2,
+  F3, F5, F7, F9 and F10.
+* 10:55 023-05: three prototypes started, xhigh (Frans, 10:51): P1
+  relabel, P2 relaxed invariant, P3 reclaim compaction and `maintain()`;
+  each in its own clone, by 14:30 at the latest.
 
 
 ## 8. Outcome

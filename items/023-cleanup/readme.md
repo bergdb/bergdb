@@ -45,6 +45,14 @@ Files
   requirements, the open design decisions, the format and compatibility,
   and what phase 2 should do; phase 1's conclusions (020-30, section 4)
   carried into 023. Being written.
+* 05-prototypes/. 023-05, three prototypes in parallel, each on a branch
+  in a clone of its own, measured with 023-03's tests (Frans, 10:51: "I am
+  really eager to see one or multiple options coded"): P1, the upward
+  unlink at the delete with the leftmost child relabelled
+  (`p1-relabel.md`); P2, the same with a relaxed invariant, the leftmost
+  klong covering every key below it (`p2-relax.md`); P3, reclaim
+  compacts what it rewrites, towards the strict allowance, with an
+  explicit `maintain()` (`p3-compact.md`). Being built.
 
 Earlier work, in 020: 020-30, the first study (sections 1 to 4), with
 four helper studies 020-30-01 to 020-30-04, and an independent study by
