@@ -476,7 +476,8 @@ public class Dag {
      * collapse in a segment tree below a segment leaf L adds a klong to L for each level it
      * collapses (Dag.replaceRoot), several in one delete when a chain of single children
      * becomes the root (023-08, reviews B and C, 2.5): L gets one klong for each inner node
-     * of that tree on the paths, once for the transaction, as each such collapse unlinks a
+     * of each tree below L on the paths (023-11, review B, B1: summed over the trees; every
+     * path of a tree has as many), once for the transaction, as each such collapse unlinks a
      * root that existed before it, one level lower each time (a root that a split of the
      * transaction made is taken back in place, with no klong). The space root's collapses
      * change the top node of the transaction, which Db counts.</li>
@@ -486,6 +487,13 @@ public class Dag {
      *      changes nothing.
      */
     public long dirtyNodeBound(long time, long[][] keys, boolean[] deletes, GetData gd) {
+        return dirtyNodeBound(time, keys, deletes, gd, null);
+    }
+    
+    /** As dirtyNodeBound; with 'klongsOut' not null, the klongs counted for each node walked,
+     *  before the splits' klongs (for tests). */
+    long dirtyNodeBound(long time, long[][] keys, boolean[] deletes, GetData gd,
+            java.util.Map<KeyNode, Long> klongsOut) {
         final KeyNode root = topDs.findRoot(time, gd);
         if (root == null) {
             return 0;
@@ -515,11 +523,11 @@ public class Dag {
                         // on it, for the collapses, at the segment leaf above that tree.
                         anyDelete = true;
                         int inner = 0;
-                        for (Walked u = w; u != null; u = u.up) {
+                        for (Walked u = w, below = null; u != null; below = u, u = u.up) {
                             u.klongs += 2;
                             if (u.node.isSegmentLeaf()) {
-                                if (u != w) {
-                                    u.collapses = Math.max(u.collapses, inner);
+                                if (below != null) {        // 'below' is a tree's root
+                                    below.collapses = Math.max(below.collapses, inner);
                                 }
                                 inner = 0;
                             } else {
@@ -546,7 +554,14 @@ public class Dag {
         long count = walked.size();
         if (anyDelete) {
             for (Walked w : walked.values()) {
-                w.klongs += w.collapses;
+                if (w.up != null) {
+                    w.up.klongs += w.collapses;     // summed over the trees below a leaf
+                }
+            }
+        }
+        if (klongsOut != null) {
+            for (Walked w : walked.values()) {
+                klongsOut.put(w.node, w.klongs);
             }
         }
         final java.util.List<Walked> deepestFirst = new java.util.ArrayList<Walked>(walked.values());
@@ -580,7 +595,7 @@ public class Dag {
         final Walked up;                // the node above it on the path, null for the space root
         final int depth;
         long klongs = 0;                // that it gets
-        int collapses = 0;              // root collapses below it, a segment leaf, at most
+        int collapses = 0;              // root collapses of its tree at most, a tree's root
         java.util.HashMap<Long, java.util.List<long[]>> freshKeys = null;
         int freshLevel;                 // the segment of the keys in freshKeys missing here
         

@@ -895,6 +895,49 @@ public class DagTester {
         c.run(new ArrayList<String>(), all, true);
     }
     
+    /**
+     * Dag.dirtyNodeBound sums the klongs that root collapse gives a segment leaf over the
+     * trees below it (bergdb 023-11, review B, B1, its SiblingCollapseProbe): the space root,
+     * a segment leaf, names three trees of 1,024 keys at node size 8; a transaction deletes
+     * every key of each but its first and last, so each root has two chains of single
+     * children; the next deletes the first key of each tree, and root collapse lowers each
+     * root five levels, a klong in the space root for each: 15. The count gives the space
+     * root at least the collapses and two klongs a delete; before the fix it took the most of
+     * one tree (2 x 3 + 5 = 11). The bound also covers the dirty key nodes.
+     */
+    @Nano
+    public static void testDirtyNodeBoundSumsCollapsesOverTrees() {
+        BoundCase c = new BoundCase(8);
+        List<String> all = new ArrayList<String>(), thin = new ArrayList<String>();
+        List<String> firsts = new ArrayList<String>();
+        for (int m = 0; m < 3; m++) {
+            for (int i = 0; i < 1024; i++) {
+                String k = "/pref0" + m + "/k" + String.format("%04d", i);
+                all.add(k);
+                if (i == 0) firsts.add(k);
+                else if (i < 1023) thin.add(k);
+            }
+        }
+        c.run(all, null, false);
+        c.run(new ArrayList<String>(), thin, false);
+        KeyNode leaf = c.dag.getTopDs().findRoot(c.t - 1, gd(c.dag));
+        Assert.assertTrue("the space root is a segment leaf", leaf.isSegmentLeaf());
+        long[][] keys = new long[firsts.size()][];
+        boolean[] deletes = new boolean[firsts.size()];
+        for (int i = 0; i < keys.length; i++) {
+            keys[i] = Keys.toSegments(firsts.get(i));
+            deletes[i] = true;
+        }
+        java.util.Map<KeyNode, Long> klongs = new IdentityHashMap<KeyNode, Long>();
+        c.dag.dirtyNodeBound(c.t - 1, keys, deletes, gd(c.dag), klongs);
+        long collapses0 = Dag.statCollapses;
+        c.run(new ArrayList<String>(), firsts, true);
+        long collapses = Dag.statCollapses - collapses0;
+        Assert.assertEquals("collapses, five in each tree", 15L, collapses);
+        Assert.assertTrue("klongs counted for the space root: " + klongs.get(leaf),
+                klongs.get(leaf) >= collapses + 2 * 3);
+    }
+    
     /** A Dag and the key nodes a transaction makes dirty, for testDirtyNodeBoundOfDeletes. */
     private static final class BoundCase {
         final Dag dag;
