@@ -66,7 +66,9 @@ Files
   on 023-04's LE-b: "a good idea to explore further"), P4, the empty key
   first, on P1's branch instead of the relabel (`p4-empty-key.md`); and,
   from 12:23 (Frans, 12:22, on 023-06's recommendation), P5, merges at the
-  delete on P4's branch (`p5-merge.md`). P3 done; the others being built.
+  delete on P4's branch (`p5-merge.md`); and, from 12:37 (Frans, 12:35,
+  Y6), P6, the release of memory held by ended versions, on P4's branch
+  (`p6-memory.md`). P3 done; the others being built.
 * [06-architecture-review.md](06-architecture-review.md). 023-06, an
   architect's review of the overall solution, by an agent on a stronger
   model at effort max (Frans, 11:57 to 11:59), first pass: A+RC with LE-b
