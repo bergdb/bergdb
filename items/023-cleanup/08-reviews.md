@@ -211,6 +211,7 @@ last touch. Never: (b'), the replaced queue on by default.
 
 2026-11-10, 16:23. The three reviews and the two checks are committed.
 Fault 12's fix (023-v12-fix, 92bf4eb5, in the check's clone): level3
-full OK; level2 full OK but for 005-04's trace check (Q9). Fault 13's fix is on 023-v8-fix (0f4571fc), not gated
+full OK; level2 full OK but for 005-04's trace check (Q9). Fault 13's
+fix is on 023-v8-fix (0f4571fc), not gated
 beyond before-commit. Nothing is integrated; nothing is in `main`'s
 code. Waiting for Frans's answers to section 6.
