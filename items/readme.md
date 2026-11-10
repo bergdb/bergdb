@@ -168,3 +168,5 @@ Index
   database keeps after nothing needs it any more, and how it is released;
   from the slow scans over deleted entries (020-30) to cleanup in general.
   Release 2026.4 waits for it.
+* **024-release-2026-5** (open). Release 2026.5, after 2026.4: its plan,
+  its decisions and the work towards it; so far what 023 put off to later.
