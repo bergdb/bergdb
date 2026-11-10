@@ -112,7 +112,13 @@ B read the take-back as sound; C found fault 12 in it (section 4).
   is repointed in place, as `TopDs.newSuperRoot` already does. On P5's
   head and on P4 with only the retarget; not on `main`. With the fix:
   every probe and UnlinkFuzz run (sorted, shuffled, with repeated keys)
-  passes, and before-commit. level2 and level3 full are running.
+  passes, and before-commit. level3 full: OK (25 traces, C-CUT 0 of
+  303). level2 full: steps 1 to 6 OK, A2A3Check2 OK, the trace checker
+  70 of 70 OK; it fails only conformance.sh's check that a trace of A6's
+  kind (005-04: a segment root made and split in place in one
+  transaction) shows an adoption below the old parent. The fix removes
+  that adoption: the leaf's klong now names the new root, so no node is
+  adopted below its old parent. The check must change (Q9).
 * **Fault 13.** A step counts every KV it scans against its 16 kB, also
   the keys put ahead of the scan since tStart. The fix: a step counts
   only KVs stored before pStart. It ends every probe of the three
@@ -191,12 +197,20 @@ last touch. Never: (b'), the replaced queue on by default.
 7. **The stop rule** of section 5? Recommended: yes.
 8. **The gates** of section 5 before the release, about a day and a
    night? Recommended: yes.
+9. **005-04's trace check.** Fault 12's fix makes the a6 traces show no
+   adoption below the old parent, which conformance.sh requires. Change
+   the check to require none, that is A6 rather than A6', for those
+   traces? Recommended: yes; the stricter A6 may then hold for the whole
+   core, a simplification of the model for later. The other way, a fix
+   that repoints in every node above (C's option 1), keeps the adoption
+   but also the dead klong, and touches the take-back, its root case and
+   the merges.
 
 
 ## 7. State
 
 2026-11-10, 16:23. The three reviews and the two checks are committed.
-Fault 12's fix (023-v12-fix, 92bf4eb5, in the check's clone) runs level2
-and level3 full. Fault 13's fix is on 023-v8-fix (0f4571fc), not gated
+Fault 12's fix (023-v12-fix, 92bf4eb5, in the check's clone): level3
+full OK; level2 full OK but for 005-04's trace check (Q9). Fault 13's fix is on 023-v8-fix (0f4571fc), not gated
 beyond before-commit. Nothing is integrated; nothing is in `main`'s
 code. Waiting for Frans's answers to section 6.
