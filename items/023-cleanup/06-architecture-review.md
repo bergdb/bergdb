@@ -956,3 +956,268 @@ P5's and P6's drafts (their level2 full and level4 full were running), and
 Frans's answers to Y2, Y6, Y7, Y8 and Y10. No code read beyond the first
 pass; the prototypes' branches were not opened. When P5's and P6's final
 reports come: 11.3's points 1 and 2, P5's gates, and Z12 may change.
+
+
+## 18. The fix of the dirty top-node window
+
+Written 2026-11-10, 13:50 to 14:00, at Frans's decision to solve Z13 now
+(13:42), for prototype P7. From P6's section 5, the code of `TransSeq.take`,
+`Db.store`, `DbHelper.handleStillDirtyNodes` and `hasDirtyChild`,
+`Handle.serializedRef`, `TopDs.newSuperRoot`, `DbStarter.createMaps` and
+`canonicalNode`, sis-model.md 6.1, 6.2 and 8, and `lean/SIS/Algorithm.lean`
+with the proofs that name `javaTest`. No code written.
+
+### 18.1 The mechanism, precisely
+
+* **The lists.** At the end of a transaction i, every index node that its
+  operations followed, made or changed, and that is not dirty already,
+  becomes dirty and goes into the transaction's got-dirty list gd(i)
+  (`Db.makeDirtyIfNeeded`, `TransInfo.gotDirtyNodes`); its d(x) is i. D is
+  the union of the lists of the startup section, in order
+  (`TransSeq`). A record stores its list as (id, position) pairs
+  (`StoredTrans.gotDirtyIdsAndSpos`), and a start rebuilds D from them
+  (sis-model.md 6.2, step 2; `DbStarter.canonicalNode`).
+* **The take** (`TransSeq.take`): whole lists, oldest first, as many as the
+  record's share asks and every one before the deadline. The taken nodes'
+  pointers are resolved to the latest versions (`resolvePointersOfTakenNodes`),
+  the nodes are cleaned, and their versions are written in the record,
+  each reference being the pointee's latest written position, or its vpos
+  if it has none (`Handle.serializedRef`).
+* **Rule A** (`handleStillDirtyNodes`, the model's step 7): a taken node that
+  points to a dirty node, through any pointer, is dirty again and is filed
+  in the current transaction's list gd(i), the newest; a loop runs this to
+  a fixpoint over the record's taken nodes, so a chain of nodes taken in
+  one record is cleaned in that record. The test is `javaTest` in the
+  model (sis-model.md 6.1, step 7).
+* **Top nodes.** A top node holds a root pointer and skip pointers to older
+  top nodes (`TopNode.pointers`, by the bits of its ordinal; `newSuperRoot`
+  inherits or names the super root). Its content never changes after its
+  creation; it is written again only to carry fresh references. Every top
+  node but the super root is a replaced node (`topNodeReplaced`), reachable
+  only at times before the next root change.
+* **The inversion.** T_k is made at transaction i and filed in gd(i). Its
+  predecessor T_k-1, filed earlier, is taken at a later transaction j > i
+  while T_k-2 is dirty, so Rule A refiles T_k-1 in gd(j): now the newer
+  T_k waits in an older list than its predecessor. The take writes T_k
+  first, sees T_k-1 dirty, and refiles T_k at the end: a wasted write and a
+  wait of a full take cycle (the startup distance's lag). Every top node
+  made meanwhile points to its predecessor and is filed in a list older
+  than the refiled one: the inversion is passed on at the rate new top
+  nodes are made. So the run of dirty top nodes neither grows nor
+  shrinks: a window of the length a disturbance left (P6: 157 nodes, 39
+  inverted pairs at 1M), and a later disturbance can only lengthen it.
+* **The family.** The same holds for any replaced node in D that points to
+  current children: nodes a split, an unlink, a merge or a root collapse
+  left out (P5's "inter": 248 left-out key nodes kept dirty against P4's
+  45, their children being reclaim's internal keys, dirty in most
+  transactions). For a *current* node Rule A is right: its version must
+  become good for every time up to the startup time, so it must be written
+  after its children. For a *replaced* node it is over-strict: the node is
+  reachable only at times before its replacement, and a child's version
+  written at or after that time serves all of them (lemma M). Rule A asks
+  for a clean child where a child written since the replacement suffices.
+
+### 18.2 The fixes
+
+* **(a) Take a written top node's dirty skip targets in the same record**
+  (P6's 5.3 (a)). The take removes from D, besides the lists up to s(i),
+  every dirty top node that a taken top node points to, recursively, so
+  that the fixpoint cleans the chain in one record. It keeps `javaTest`,
+  but it changes the model's step 5 (the take), and INV-1 (D is exactly
+  the section's lists) no longer holds at a start: a node written ahead of
+  its list must be known to be clean, which a start can derive only by a
+  new rule (a node of gd(j) with a version in a later record of the
+  section and not in that record's list is clean). It covers top nodes
+  only, not P5's family, and keeps the first wasted write.
+* **(b) Rule A by the replacement time** (P6's 5.3 (b)). The still-dirty
+  test, for a replaced node, asks whether a dirty child got dirty before
+  the replacement. The test is a different sound test; the model allows
+  any sound test (sis-model.md 6.1), and the take, the lists and D are as
+  today. It covers the whole family. Its Lean cost is in 18.4.
+* **(c) File a re-dirtied node with its child's list.** Rule A files x not
+  at d = i but keyed to the dirtiest child's list, d' = max d(y) over the
+  dirty children, recorded in gd(i) with the key; the take merges the keys
+  into its oldest-first order, so x is written with y and the fixpoint
+  cleans them together. This is the generalization sis-model.md, section
+  8, suggests ("choices of d with s(i) < d <= i in step 7, recorded in the
+  stream; not formalized"). It keeps `javaTest` and the closure the
+  physical proofs use, removes the cycle wait and the passing-on of
+  inversions, and so dissolves the window; but a replaced node stays
+  coupled to its current children for ever (written at every take of a
+  child that is dirty then), so it does not cover P5's family, and the
+  first wasted write remains.
+
+**Recommended: (b)**, with (c) as the fallback if 18.4's Lean work cannot
+be done for 2026.4 and Frans wants the proofs intact (Z21).
+
+**The rule, exactly.** r(x), the replacement time of x: the transaction
+time at which x stopped being current, set when x is reported replaced
+(`keyNodeReplaced`, a split's node, `toPreviousState`), unlinked or left out
+by a merge (P4, P5), collapsed as a root, or superseded as super root
+(`topNodeReplaced`); none for a current node. d(y), the time of the list y
+is in: set when y is filed (`makeDirtyIfNeeded`, Rule A's refile), the
+list's record time after a start. Then, after a taken node x is written in
+record i:
+
+    x is dirty again  iff  x points to a node y that is dirty,
+                           and (x has no r(x), or d(y) < r(x)).
+
+A taken-back node has no r(x): it is in no list. The loop to a fixpoint
+stays as it is. For a current node this is `javaTest`; only replaced nodes
+differ.
+
+**Why it is sound** (the test must say dirty whenever the exact test does;
+sis-model.md 5.2, 6.1). x's version v, just written, holds every entry of
+x (x gets none after r(x)). x is reachable only at times t < r(x). v is
+good for such a t iff for each child y of x at t the reference names a
+version good for t (5.1). The reference names lv(y), y's latest written
+version, or y's vpos if it has none. If y is clean, lv(y) is good for every
+t at which y is reachable (INV-2). If y is dirty with d(y) >= r(x), y was
+clean just before d(y), so lv(y) is good for every t < d(y) (INV-3), hence
+for every t < r(x). If y is dirty with d(y) < r(x), lv(y) may lack y's
+entries at times in [d(y), r(x)), or be none (an unwritten y was made before
+r(x), so d(y) < r(x)): x must stay dirty, and it does. So every x the exact
+test calls dirty, the rule calls dirty.
+
+**Why it dissolves the window.** T_k-1 is replaced at r = tt_k, the next
+root change, about 14 overwrites later in T1's drive; its first write comes
+a take cycle later, thousands of transactions on. At that write its
+predecessor T_k-2 has been written at least once (older list), and if it is
+dirty again, by Rule A, its d is the record of that write, far after tt_k:
+T_k-1 is clean. The same for its root pointer: the root's refile, if any,
+lies after tt_k. So each replaced top node is written once, in list order,
+and no inversion is passed on. A top node whose predecessor has never
+been written (d < r) stays dirty, rightly: its reference would be a vpos.
+In a disturbance where the lag is shorter than a root change's interval,
+the rule keeps what it must and nothing more. Expected: D's top nodes at
+about the number made in one take's lag of the newest list, for the twin
+and the emptied database alike, so T1's C6 and C9 at 1M within the
+allowance, and the start's objects with them.
+
+### 18.3 The written references and the cut
+
+* **The invariant.** Every reference in a written version is the position
+  of a written version of its pointee, or the pointee's vpos; and no clean
+  node names a vpos (an unwritten pointee is in D from its creation,
+  INV-4, and keeps its parent dirty: today by Rule A, with the rule because
+  d(y) is its creation, before any r(x)). The rule changes nothing about
+  what a write names (`serializedRef` is untouched) and writes fewer
+  replaced nodes; so the invariant holds as today.
+* **Rule R and the startup.** A clean replaced node's latest version may
+  now name an older version of a child that is dirty (d(y) >= r(x)). That
+  version is good for every time at which the node is reachable (18.2), as
+  a clean current node's references are today. Rule R still redirects any
+  reference to a version in the section to the newest there (lemma M: a
+  newer version serves every time an older one serves), so the lazy start
+  reads P at every time from the startup time on as before; L-OUT's
+  argument ("got dirty after s") is unchanged, and L-SEC's by level.
+* **The cut** (Reclaim's class comment; pEnd, pSafe). The argument needs:
+  every node reachable at times from tEnd on is at pStart or later or
+  dirty, and after pSafe no such node names a position below pCut for a
+  child in the range. With the rule, a replaced node x (touched at ts <=
+  tEnd, replaced at r(x) > ts) that is clean after a write names, for each
+  child y of the range: lv(y) written after y's touch-dirtying (y clean,
+  or dirty again with d(y) >= r(x) > ts, so written after the touch), at
+  pStart or later; or x stays dirty (d(y) < r(x)). So pEnd and pSafe keep
+  their meaning and need no change; the wait for pSafe covers fewer nodes.
+  Top nodes are not touched; P6's 1.1 argument for them does not use Rule
+  A and stands.
+
+### 18.4 What the rerun, the id check, Rule R and the Lean model see
+
+* **Record contents, within format 6.** The got-dirty list gains r(x): each
+  entry (id, position) becomes (id, position, r), r = 0 for a current node;
+  8 bytes an entry, 24 instead of 16 (`store()`'s `fixedBytes`,
+  `TransSeq.recordBytes`, `StoredTrans`'s serializer and parser). Needed
+  because a node in D can have been replaced before the startup section
+  (re-listed by Rule A in the section) and nothing in the section says so.
+  No other record change; the rerun's rules are untouched, so the format
+  byte stays 6 and no further refusal follows.
+* **The startup rerun.** D is rebuilt from the lists as today, each node
+  with its d (the list's record) and its r from the entry. The rerun
+  reproduces the section's replacements (`keyNodeReplaced` and the others
+  during `rerunTransaction`), which set r on the same nodes: where both
+  exist they must agree, a check like the node-id check ("startup error"),
+  which RestartInvariance exercises after every transaction. The node-id
+  check is unchanged: the rule makes no node.
+* **Rule R**: unchanged (18.3). `linkD`, rule 4 by position: unchanged.
+* **Determinism (P2, INV-RESTART).** The rule's inputs, r(x) and d(y), are
+  in the stream (the entry; the list's record), so a run with restarts
+  writes the same records: RestartInvariance and StreamDigest's four modes
+  check it. The digests change (the entries are longer), as format 6
+  changes them anyway.
+* **The Lean model.** The algorithm's step 7 is a parameter
+  (`Algo.stillDirty`, `stillDirtyOf`, lean/SIS/Algorithm.lean:80, 177) and the
+  logical theorems hold for any sound test. But the physical layer's
+  theorems, cuts, the lazy start and eviction with handles, take the
+  hypothesis `al.stillDirty = javaTest sp` (`lean/SIS/Proof/CutHist.lean`,
+  `CutLazyStart.lean`, `EvLogic.lean`, `CutRestart.lean`: `step_dClosed`,
+  `step_closed`, `topsD` and their users), that is, they use the closure
+  "no clean node points to a dirty node", which the rule gives up for
+  replaced nodes. So (b) needs: in `lean/Check`, the new test beside
+  `javaTest` (`Steps.lean`'s `java7`), with r derived by the checker from
+  reachability or read from the trace, else C-S fails "model only" as it
+  did for P3; and in `lean/SIS/Proof`, the physical theorems proved for the
+  new test, with the weaker closure "a clean node points to a dirty node
+  only if it is replaced and the pointee got dirty at or after its
+  replacement", by the argument of 18.2 and 18.3. A proof task of its own,
+  effort xhigh, size unknown (those files are long); the checker's change
+  is small. Until the proofs are done, R24 holds by the checker and the
+  gates, not by the theorems: Frans's call (Z21). (c) would keep
+  `javaTest` and touch instead step 7's d, INV-1 and the take's order, the
+  model's own suggested generalization, also unproved.
+* **The trace format**: unchanged if the checker derives r; one field per
+  got-dirty entry if it reads it, which also gives a new check, the
+  stored r against the model's reachability.
+
+### 18.5 Coverage: P5's left-out nodes and the rest of the family
+
+Yes. The rule is stated for every replaced node, and P5's case is its
+clearest instance: L and R left out by a merge at tt, in D from an earlier
+dirtying, pointing to the current children that the merged node now holds;
+those children are reclaim's internal keys' nodes, dirty in most
+transactions, with d far after tt once each has been written once after
+the merge, so L and R are clean after their first write. The same for the
+nodes UP leaves out, a split's replaced node, a collapsed root, P3's
+replaced nodes if RB ever comes (its 5.3), and every top node but the
+super root. P6's replaced queue then evicts them as soon as they are
+written, which closes the loop for memory. Not in the family: current
+nodes kept dirty by Rule A, rightly, and taken-back nodes, which are in no
+list.
+
+### 18.6 How to test it
+
+1. **The failing test** (P7's): T1 at 1M with a drive of 12,000, D in the
+   window (M8) and the objects after a restart (M11) against the twin's,
+   C6 and C9 with the bounded allowance; and the twin's own D, which the
+   rule should bring down too (its 10 to 11 inverted pairs).
+2. **A unit test of the rule** in `DbHelper`: a replaced node with a dirty
+   child filed at or after r stays clean; filed before r stays dirty; a
+   current node with any dirty child stays dirty; a chain cleaned in one
+   record by the fixpoint; a top node with a dirty skip target.
+3. **A ratchet test**, in `cleanup.sh` or `night.sh`: T4's queue for 1M
+   transactions with a mass delete every 200,000, a restart after each,
+   and a reclaim iteration spanning each; D's top nodes at every
+   checkpoint within the twin's steady value, before and after each
+   disturbance.
+4. **Determinism and the start**: RestartInvariance (a restart after every
+   transaction, the stream byte for byte, the stored r against the
+   rerun's), StreamDigest's four modes, CrashTest; the record limit's
+   accounting with 24-byte entries (`DbTester.testRecordsWithinLimit`).
+5. **The cut and readers**: ReclaimStress, ReclaimReaders, LoadTest
+   (`level3.sh`), and EvictionInvariance with the audit (INV-SLOT,
+   INV-CAN) under `level4.sh`, with P6's replaced queue on.
+6. **The checker**: `level2.sh`, `level3.sh` and `level4.sh`'s conformance
+   with the checker's new test; C-S must pass with no "model only" node;
+   C-CUT at every cut.
+7. **The measures**: bytes written a phase and top nodes written per top
+   node made, before and after, in T1 and T4; the twin's D at 100,000 and
+   1M (section 2's measure of top nodes in D).
+
+**Z21, for Frans.** (b) changes the still-dirty test that the Lean
+physical-layer theorems assume (`javaTest`). Ship (b) in 2026.4 with the
+checker aligned and the theorems re-proved as a parallel Lean task, or
+take (c), which keeps `javaTest` and fixes the window but not P5's family,
+or defer? Recommended: (b), with the Lean task started at once and the
+release's R24 stated as "checked by the trace checker; the physical
+theorems for the new test in progress" if the proofs are not done in time.
