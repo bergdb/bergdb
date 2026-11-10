@@ -260,4 +260,4 @@ for later (023-08, Q6). After a mass delete of 1M keys `023-core` holds up
 to 152 dirty top nodes against the twin's 87 while the iteration that
 spans the delete runs (T1's miss at 1M); `main` cannot show the window,
 as its reclaim stops cutting after the first mass delete. The full run
-(1M transactions) started at 18:28.
+(1M transactions) started at 18:27.
