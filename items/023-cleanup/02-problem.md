@@ -483,6 +483,11 @@ reads, warm and cold, with a startup distance of 50 MB or more.
   bounded underfill; 011-01, Q1)? Recommended: decide after measuring the
   underfill case; a strict reading of "zero resources" against the twin
   asks for the live keys.
+  **Frans, 2026-11-10, 10:38** (on 023-03's Q2, the same question): "I agree in general. However, it depends on how difficult Strict is. If we find a good Strict solution, let's go for it. But Bounded is ok. For Strict, it is enough to eventually, after one or several reclaims, to get the original Hello-world resource consumption."
+  So the bound in the keys ever put (023-03's bounded allowance) is
+  enough; the bound in the live keys (strict) is wanted if a good solution
+  is found, and may be reached eventually, after one or more reclaim
+  iterations.
 * **F6. K and the lag.** How many cuts after a version is dead (R2), how
   many spans of lag (R6)? Recommended: K = 2, as a node version written
   during an iteration goes with the cut after the next (020-30, 4.2).
@@ -520,3 +525,6 @@ levels.md, sis-model.md and the code of `main`; Frans's words of 08:29,
 2026-11-10. Frans answered F9, (a): earlier releases' databases are
 refused, and F10, yes: a change of the record format is acceptable in
 2026.4 (10:30).
+
+2026-11-10. Frans answered F5 (10:38): bounded is enough, strict if a good
+solution is found; strict may be reached after one or more reclaims.

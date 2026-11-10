@@ -63,3 +63,8 @@ after his practical test of the rule (09:55). 023-01 and 023-02 done;
 change of the record format is acceptable in 2026.4, and 2026.4 refuses
 the databases of earlier releases ("No need for compatibility, we can
 ignore released before 2026.4").
+
+2026-11-10. Frans answered 023-02's F5 and 023-03's Q2 (10:38): the
+bounded allowance is enough; the strict one (back to the hello-world
+database's resources) is wanted if a good solution is found, and may be
+reached eventually, after one or several reclaims.

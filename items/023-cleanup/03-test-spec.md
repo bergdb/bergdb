@@ -679,6 +679,13 @@ Q3 lean on them.
   and report the strict one (10 nodes, dead klongs within B) with the
   "sparse" row; the strict one gates once F5 is decided for the live
   keys.
+  **Frans, 2026-11-10, 10:38:** "I agree in general. However, it depends
+  on how difficult Strict is. If we find a good Strict solution, let's go
+  for it. But Bounded is ok. For Strict, it is enough to eventually, after
+  one or several reclaims, to get the original Hello-world resource
+  consumption." So the bounded allowance gates; the strict one gates too
+  if a good solution is found, measured after one or more reclaim
+  iterations of the drive.
 * **Q3. T3's constants** (023-02, F4 and F12): c = c' = 2, 1,000 rounds,
   the amortized sum gates and the worst single scan is reported.
   Recommended: so, checked against the first solution that passes.
