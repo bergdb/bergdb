@@ -956,6 +956,27 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   key was put, in that order. A Core API user with key transformations that
   make one key twice sees the change: silently, one operation is kept. The
   `Trans` itself is not changed, and can be run again.
+* **A damaged stream that made a read loop for ever is refused** (found by
+  018-07's harness, CorruptStreamTester, on 2026-11-10, the release night of
+  2026.4; seed 20767). A key node's `prevPos`, damaged with its checksum made
+  right, named the version of its own child before the startup section; the
+  start's rule R made the node's pointer to that child a pointer to the node
+  itself, and a read's descent (`Dag.getEqNodeInSegment`) looped without end.
+  Now every descent and scan keeps a cycle check on the node ids it passes
+  (Brent's), and a read that comes back to a node it passed fails with a
+  `StreamFormatException`, the database failed as for other damage. Valid
+  streams are read as before; the stream's bytes are unchanged. In 2026.1 to
+  2026.3; `main` before 023 (`329d78f3`) hangs on the same copy.
+* **A damaged `prevPos` that breaks rule 4 by position is refused at the
+  start, also with `-ea`** (found by CorruptStreamTester, seeds 20769 and
+  20770 of 2026-11-10). With assertions on, the start's check of rule 4
+  (`NodeCollection.checkLinkById`, 005-57) threw an `AssertionError` for a
+  key node of the startup section whose damaged `prevPos` left no link by
+  position where the node id gives one; now it refuses the stream with
+  `StreamFormatException`, as 021-11 does for a damaged pointer's type.
+  Every other difference stays an `AssertionError`, the Core's fault.
+  Without `-ea` the start goes on as before. In 2026.1 to 2026.3; `main`
+  before 023 throws the same `AssertionError` on the same copy.
 
 
 ### Format
@@ -1067,6 +1088,14 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   end key, one operation a key and reclaim's liveness; `A2A3Check2` counts a
   node taken back as not made; and `conformance.sh` requires no adoption
   below the old parent in 005-04's a6 traces (023-08, section 7, Q9).
+* **`DbTesterFailure.testUncheckedCloseErrorAfterFailedWriteFailsSync`
+  waits, at most 5 s, for the storage thread's close** before it checks that
+  the close's error was met: 015-81 gives a failed storage its error before
+  it closes the stream, so the sync can fail first (seen once on s1 with JDK
+  27, 2026-11-10). `NodeCollection.testLinkToCanonicalCheck` expects the
+  `StreamFormatException` above, where it expected an `AssertionError`. Two
+  tests of the fixes above: `CorruptStreamTester.testFoundDescentCycle` and
+  `testFoundLinkByIdPrevPos`. Tests only.
 
 
 ### Documentation
