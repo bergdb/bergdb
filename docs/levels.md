@@ -278,7 +278,9 @@ How it works in Java:
   Since item 009 a pointer reaches its node through a handle (section 7).
 * Startup (`DbStarter`): Rule R from the startup section by node id; the
   super root at the startup time from the last record's topPos (record
-  format 5); the rerun of the section's transactions; D rebuilt from the
+  format 6 since release 2026.4, which refuses the format 5 of 2026.1 to
+  2026.3; 023-07, section 5.8); the rerun of the section's transactions;
+  D rebuilt from the
   stored got-dirty ids, and its pointers linked to the canonical objects
   (rule 4). Rule 4 finds a pointer's node by its position, without reading
   the stream: by the section's versions and the versions before them, or
@@ -296,6 +298,23 @@ How it works in Java:
   creates or changes get dirty when the operation ends, and only if it
   changed something; a node that the transaction replaced leaves D at its
   end. These are the nodes that the model marks (T13).
+* A delete (`Dag.deleteUpward`, since format 6; 023-07, sections 5.1 to 5.3;
+  023-09, section 2): if the key's segment leaf keeps a live key, the delete
+  is a delete bitmap of the transaction, as before. Else the writer climbs
+  to the first node above that keeps a live key, changing nothing until it
+  is found, and unlinks each node below it on the path: a node that a split
+  of the same transaction made is taken back (its parent's klongs of the
+  transaction that name it, deleted ones too, point again to the node it
+  replaced, and it leaves D, the record and the node table); an older one is
+  unlinked. In every inner node the smallest live klong is the empty key
+  (LE-b): a space split of an inner node gives its second half the empty key
+  first, and where the climb stops at the empty key's klong, the next live
+  child takes its place, so no node off the path changes. Then root
+  collapse: while a segment tree's root is an inner node with one live
+  klong, its child takes its place. A space split in place of a segment root
+  that the transaction made points the segment leaf's klong to the new root,
+  without a second klong (023-09, section 2, fault 12). The rerun of a
+  record does the same. Nodes are not merged.
 
 Alignment: [011-11](../items/011-docs-archive/11-level2-alignment.md)
 maps Java's state to the model's (section 2) and keeps the register of
@@ -395,8 +414,10 @@ How it works (`Reclaim`; the class comment has the details):
   value nodes rewritten and the index nodes made dirty. A step scans at
   most about 16 KB of KVs at tStart, with maintenance reads that swizzle
   nothing; in one internal transaction it touches its key range at the
-  current time (making its index nodes dirty, also those of deleted keys)
-  and rewrites each live value stored before pCut. Its value nodes stay
+  current time (making its index nodes dirty; since format 6 the nodes
+  that deletes emptied are no longer in the tree, but a leaf with a live
+  key keeps its deleted keys' entries) and rewrites each live value
+  stored before pCut. Its value nodes stay
   within 7/8 of the record limit, as a user transaction's: a value that
   would pass it ends the step before it and starts the next one, where it is
   within the limit alone, with the step's row (015-50).
@@ -514,6 +535,13 @@ named, with a sweep that walked every resident object (item 004).
 * **Reclaim** reads with the maintenance follower, which loads but swizzles
   nothing; a step's dirty index nodes stay pinned until written, and a
   reserve (4 MiB) splits a step that would pin more.
+* **The dead hand** (since 2026.4; 023-07, section 5.6): after a cut has
+  moved the first available position, the writer, at each transaction's end,
+  evicts in steps of at most 4,096 units of work and 2 ms
+  (`Eviction.deadStep`) every object stored before the cut that is not
+  pinned, whatever its CLOCK bit and the budget, and makes each value stored
+  before the cut in a kept node a stream pointer. Not with `noEvict()`:
+  there the memory of ended versions is released only at a restart.
 
 Evidence: the Lean model proves that with any eviction schedule the
 records, D and the answers are those without eviction (T-CACHE, T-READ,
