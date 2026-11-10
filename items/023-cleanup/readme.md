@@ -32,12 +32,14 @@ Files
   exact, R2 to R5; the bounds, R9 to R15; the constraints, R16 to R27,
   with his words of 09:55), how they are checked (the tests in 023-03),
   non-goals, and questions F1 to F12 for Frans. No solution.
-* 03-test-spec.md. 023-03, the test specification: Frans's practical
-  test of the rule (a hello-world database against one that adds a large
-  amount of data and deletes it all but "/a.txt"; eventually its
-  resources come back to about the hello-world database's), a
-  steady-state churn twin, correctness and regression; with today's
-  numbers from a prototype. Being written.
+* [03-test-spec.md](03-test-spec.md). 023-03, the test specification:
+  T1, Frans's hello-world test (an emptied database against its twin
+  that never held the deleted keys, after the same drive), T2 its shapes,
+  T3 the scan bound at every time, T4 a steady-state queue, T5 the
+  workloads of 020-24 and 021-25, T6 to T12 correctness, restarts,
+  determinism, regression and performance; measures M1 to M14 and their
+  allowances; today's numbers from a prototype (`java/stress/CleanupRule.java`,
+  in [03-test-spec/](03-test-spec/)): `main` fails the rule at every size.
 * 04-options.md. 023-04, the options, the first phase of the solution:
   the building blocks, the options as combinations judged against 023-02's
   requirements, the open design decisions, the format and compatibility,
