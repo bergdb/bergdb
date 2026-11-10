@@ -725,3 +725,11 @@ Pub form; the hooks H2 and H3; the tests in the repo (`CleanupTester`,
 `cleanup.sh`); the large run. Next: Frans's answers to Q1 to Q7, then
 the tests as code on `main`, before any solution, so that each solution
 is judged by the same tests.
+
+2026-11-10, 17:52, Frans ("As you recommend", on 023-08's integration
+results): T1's small misses on `023-core` are accepted as a named part of
+the bounded allowance, with this note: at N = 1M (a drive of 12,000) C9
+is over by up to 6 objects (127 against 121), the dirty top-node window,
+which `main` and the twin also have (023-08, Q6: fix (a) later); at N =
+1,000, C6 or C9 is over by 1 to 7 in three rows, the phase of the startup
+section that fault 12's fix shifts (023-09, section 5.1).

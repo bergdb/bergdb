@@ -234,3 +234,8 @@ to 023-core.
 (17:19 to 17:51): all OK. level2: the trace checker 70 of 70 with Q9's
 check; level3: 25 traces, C-CUT 0 of 305; level4: 45 traces, C-P and C-H
 0 of 10,356 transactions, LargerThanMemory OK.
+
+2026-11-10. Frans (17:52): T1's small misses accepted as a named part of
+the allowance (023-03, section 10); tonight a night of fuzzing on
+`023-core`, the ratchet test on `main` and `023-core`, and a review of
+the integrated code only.

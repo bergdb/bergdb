@@ -234,6 +234,12 @@ run, the same stream is generated."
   transaction reaches the index with one operation a key; X5 (c) then
   becomes a `Bug`. Changing the builder's rule itself to "the last
   operation wins" is a later item, for 2026.5, with the C clone.
+* T1's small misses on `023-core` (17:52, "As you recommend"): accepted
+  as a named part of the bounded allowance, noted in 023-03, section 10.
+* Tonight (17:52, "As you recommend"): a night of fuzzing on the final
+  head of `023-core`, the ratchet test of the top-node window (023-06,
+  section 18.6, item 3) on `main` and on `023-core`, and a review of the
+  integrated code only.
 
 
 ## 8. State
