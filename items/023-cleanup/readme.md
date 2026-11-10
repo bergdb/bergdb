@@ -68,3 +68,7 @@ ignore released before 2026.4").
 bounded allowance is enough; the strict one (back to the hello-world
 database's resources) is wanted if a good solution is found, and may be
 reached eventually, after one or several reclaims.
+
+2026-11-10. Frans answered 023-02's F2 (10:41): the rule covers every
+version that has ended, not only deleted KVs ("Yes, it should cover every
+version that has ended.").

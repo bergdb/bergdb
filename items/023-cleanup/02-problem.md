@@ -472,6 +472,8 @@ reads, warm and cold, with a startup distance of 50 MB or more.
 * **F2. Old versions.** Does the rule cover every ended version, replaced
   node versions and internal keys (R7), or deleted KVs only? Recommended:
   every ended version.
+  **Frans, 2026-11-10, 10:41: "Yes, it should cover every version that has
+  ended."** R7 holds as written.
 * **F3. The scan bound's times.** R9 at every available time, at the
   latest only, or at the latest at once and in the past eventually?
   Recommended: every available time, as 011-01's R1.
@@ -528,3 +530,6 @@ refused, and F10, yes: a change of the record format is acceptable in
 
 2026-11-10. Frans answered F5 (10:38): bounded is enough, strict if a good
 solution is found; strict may be reached after one or more reclaims.
+
+2026-11-10. Frans answered F2 (10:41): the rule covers every version that
+has ended (R7).
