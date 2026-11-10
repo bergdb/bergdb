@@ -93,7 +93,8 @@ Files
   written; B and C: accept the core with changes. All three: P8's step can
   stop the cuts (confirmed on P8, P4 and `main` in checks/p8-liveness.md,
   with a fix); C: fault 12, the take-back can leave a pointer to a node
-  never written (being checked).
+  never written (confirmed in checks/take-back.md, also with sorted keys,
+  with a fix).
 
 Earlier work, in 020: 020-30, the first study (sections 1 to 4), with
 four helper studies 020-30-01 to 020-30-04, and an independent study by
@@ -190,3 +191,12 @@ a key after it outruns the scan. A check (checks/p8-liveness.md) confirmed
 it on P8 and found `main` and P4 as today's rule expects; its fix (a step
 counts only KVs stored before pStart) ends every probe. C found fault 12
 (the take-back) and reproduced it; a check runs.
+
+2026-11-10. Fault 12 confirmed (checks/take-back.md, 16:15): on P5's head
+and on P4 with only the retarget; not on `main`. Sorted keys reach it too
+(UnlinkFuzz with larger transactions, replayed through the plain Core
+API): the database cannot be opened again. The fix repoints the segment
+leaf's klong in place in `Dag.spaceSplitInPlace` (as `TopDs.newSuperRoot`
+does); every probe and fuzz run passes with it, and before-commit. X5 (c)
+is reachable (a key transformation can put and delete one key in one
+transaction); only its inner branch is unreachable.
