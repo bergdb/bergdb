@@ -931,6 +931,9 @@ Numbered on from section 9.
   Long.MAX_VALUE, used by the test setups (`DbBuilder.testSetup`) and the
   benchmark and soak tools (Perf, LoadTest, Soak, ReclaimCost); the Pub API
   has none.
+  **Frans, 13:59: agreed** to the coordinator's recommendation: `noEvict()`
+  unchanged; its Javadoc says it is for tests and benchmarks, and that
+  under it the memory of ended versions is released only at a restart.
 * **Z16. P5's sibling rule and cap** (P5's Q1, Q2): the left sibling first
   when both fit in B/2, cap B/2, "sparse" at 1.44 times the twin.
   Recommended: accept the factor for 2026.4; the 3 B/4 cap only after a

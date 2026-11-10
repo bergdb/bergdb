@@ -136,3 +136,10 @@ P5's gates and points close within days: as recommended), Z13 (the dirty
 top-node window: "solve this now", in 2026.4) and Z14 (each reclaim step
 scans at its own time, after a probe: yes), 13:42. P7 (the top-node
 window) and P8 (the scan at the step's time) started on P4's branch.
+
+2026-11-10. Frans answered 023-06's Z15 (13:57 to 13:59): P6's dead hand on
+by default; the replaced queue on by default only if P8 removes
+reclaim's reloads and a measure of reads at earlier times shows the cost
+small, else kept but off by default; `noEvict()` unchanged (a Core option
+for tests and benchmarks), its Javadoc saying that under it the memory of
+ended versions is released only at a restart.
