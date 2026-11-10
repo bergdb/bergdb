@@ -281,3 +281,6 @@ of 8 handles), S1 with B5 (the dead empty inner root's fallback removed,
 a `Bug` instead); B's B1, B2, B3 and B4. Each fault with a test that fails
 before. before-commit, level1, UnlinkFuzz 8,800 seeds, fault 12's probes
 and A2A3Check2 OK. level2 to level4 full on it started 18:55.
+
+2026-11-10. On `023-core`'s head b7874541 (18:55 to 19:27): level2,
+level3 and level4 full all OK.
