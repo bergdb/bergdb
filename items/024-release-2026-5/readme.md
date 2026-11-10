@@ -6,7 +6,8 @@ Created 2026-11-10 by Frans Lundberg. Status: open.
 Release 2026.5 of BergDB, after 2026.4 (020): its plan, its decisions and
 the work towards it. Frans, 2026-11-10, 17:52: "Time to create the
 nnn-release-2026-5 item? We are already planning for it, so why not."
-Its theme is not set yet.
+Its theme: **a stable stream format** (Frans, 2026-11-10, 19:54: "OK,
+release theme decided, "a stable stream format".").
 
 
 Planned so far
@@ -82,3 +83,16 @@ release directly after 2026.4 is done. 4. I don't know, you can
 propose." So: 2026.5 need not open 2026.4's databases; measurements of
 2026.4 beside the work or at night; the theme open, "a stable stream"
 proposed by Frans for feedback.
+
+2026-11-10. The theme decided (Frans, 19:54): "a stable stream format".
+The coordinator's reading of it (19:52, accepted): 2026.4's bugs first;
+a byte-level spec of the stream format, checked by the C clone; every
+open format question decided once, now or never (merges and compaction,
+the builder's "last operation wins", the startup distance in a KV, a
+compact key node encoding; a place reserved for objects' storage and
+encryption rather than the features); a compatibility rule and a corpus
+of saved databases; measurements at 10M to 100M keys at night. Fix (a)
+dropped (023-10: the window does not grow); strict cleanup decided in
+2026.5 after the measurements. Tonight, after the release: 024-02, the
+spec's skeleton; the builder's rule on a branch; the tag measured at 10M
+keys if time.
