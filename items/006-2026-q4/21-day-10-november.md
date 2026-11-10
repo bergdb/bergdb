@@ -125,6 +125,10 @@ restarts it from there (013-02, `resume`).
   confirmed, each with a fix (fault 12 also with sorted keys). 16:23
   023-08, the merged verdict: the delete design stands, P8 out, a smaller
   core frozen, a stop rule (Frans, 16:14: "I smell expanding complexity").
+* 16:34 Frans answered 023-08: Q1 to Q8 as recommended, except Q4: sort
+  a transaction's keys after their transformation. 16:36 the integration
+  branch (023-09) started, by 20:30; then level2 to level4 full and a night
+  of fuzzing.
 
 
 ## 8. Outcome
