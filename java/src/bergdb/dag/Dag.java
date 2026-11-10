@@ -410,6 +410,7 @@ public class Dag {
         final KlongWithPointer kwi = gd.kwi;
         KeyNode current = segmentRoot;
         Node result;
+        gd.descentFrom(current);
 
         while (true) {
             if (current.isSegmentLeaf()) {
@@ -439,6 +440,7 @@ public class Dag {
                             : "Expected a KeyNode, got " + kwi.node;
 
                     KeyNode nextCurrent = (KeyNode) gd.followPointer(current, kwi.pointerIndex);
+                    gd.descentTo(nextCurrent);
                     current = nextCurrent;
                 }
             }
@@ -507,6 +509,7 @@ public class Dag {
             final long[] key = keys[k];
             KeyNode node = root;
             Walked w = walked(walked, node, null);
+            gd.descentFrom(node);
             for (int i = 0; i < key.length; i++) {
                 while (!node.isSegmentLeaf()) {
                     node.searchLte(time, key[i], kwi);
@@ -514,6 +517,7 @@ public class Dag {
                         break;
                     }
                     node = (KeyNode) gd.followPointer(node, kwi.pointerIndex);
+                    gd.descentTo(node);
                     w = walked(walked, node, w);
                 }
                 if (i == key.length - 1) {
@@ -547,6 +551,7 @@ public class Dag {
                     break;
                 }
                 node = (KeyNode) gd.followPointer(node, kwi.pointerIndex);
+                gd.descentTo(node);
                 w = walked(walked, node, w);
             }
         }
@@ -837,12 +842,14 @@ public class Dag {
     private void setValue(KeyNode node, long compareValue, long[] key, byte[] value, PutData pd) {
         assert node != null : "node is null";
         
+        pd.descentFrom(node);
         while (!node.isSegmentLeaf()) {
             node.searchLte(pd.tt, compareValue, pd.kwi);
             checkFound(node, pd);
             
             node = (KeyNode) pd.followPointer(node, pd.kwi.pointerIndex);
             assert node != null;
+            pd.descentTo(node);
         }
 
         if (value == null) {
@@ -903,6 +910,7 @@ public class Dag {
         
         assert current.assertOk(this.maxNodeSize);
         
+        pd.descentFrom(current);
         while (!current.isSegmentLeaf()) {
             current.searchLte(pd.tt, compareValue, pd.kwi);
             checkFound(current, pd);
@@ -910,6 +918,7 @@ public class Dag {
                     : "LTE search found klong, but pointerIndex=" + pd.kwi.pointerIndex;
             
             current = (KeyNode) pd.followPointer(current, pd.kwi.pointerIndex);
+            pd.descentTo(current);
             assert current.assertOk(this.maxNodeSize);
         }
         

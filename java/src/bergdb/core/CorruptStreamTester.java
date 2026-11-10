@@ -1364,6 +1364,58 @@ public class CorruptStreamTester {
         }
     }
 
+    /**
+     * A key node's prevPos (its byte 8) xor 0x80, its checksum made right: testFull's copy
+     * of 2026-11-10 (its seed 20767, the release night of 2026.4) in the first node of the
+     * startup section. The prevPos then named the version of the node's own child before the
+     * section, and the start's Rule R made the node's pointer to that child a pointer to the
+     * node itself. A get looped without end in Dag.getEqNodeInSegment, and testFull's copy
+     * did not end in 60 s; now the get fails the database (OpData.descentTo()), and so does
+     * a scan of the copy (GetMany's check of its chain).
+     */
+    @Nano
+    public static void testFoundDescentCycle() {
+        Original o = write(LONG, 20767L * 31 + LONG.name.hashCode());
+        Record rec = o.recordAt(19632);
+        int[] node = rec.nodes.get(0);
+        Assert.assertEquals(32, node[0]);
+        byte[] nb = Arrays.copyOfRange(rec.bytes, node[0], node[0] + node[1]);
+        nb[8] ^= (byte) 0x80;
+        Copy c = nodeCopy(o, rec, node, nb, "xor 128 at its byte 8");
+        Results results = new Results();
+        checkAll(o, Arrays.asList(c), 1, 60, results);
+        assertNoFailure(results);
+        Assert.assertTrue(results.counts.toString(),
+                results.counts.keySet().iterator().next().startsWith("node: read failed"));
+        
+        // Scans at the transactions' times, until one meets the cycle (the get met it at an
+        // earlier time, not the last): Db.getMany's descent and chain, as DbUtil.checksum
+        // scans every KV.
+        byte[] bytes = c.bytes.get();
+        CoreTestClock clock = new CoreTestClock();
+        clock.setTime(TIME_STEP * (o.n + 5));
+        try (Db db = start(o, c, new CopyStream(bytes, bytes.length), clock)) {
+            int failedAt = 0;
+            for (int j = 1; j <= o.n && failedAt == 0; j++) {
+                try {
+                    DbUtil.checksum(db, TIME_STEP * j, false, false);
+                } catch (DbException e) {
+                    failedAt = j;       // the database failed
+                }
+            }
+            if (failedAt == 0) {
+                throw new AssertionError("every scan ended");
+            }
+            try {
+                DbUtil.get(db, Long.MAX_VALUE, COUNTER);
+                throw new AssertionError("the database goes on after a failed scan");
+            } catch (IllegalDbStateException expected) {
+            }
+        } catch (DbException e) {
+            // The close of the failed database reports its failure.
+        }
+    }
+
     /** The message of the exception that a start of the copy throws, or null if it starts. */
     static String refusal(Original o, Copy c) {
         byte[] bytes = c.bytes.get();

@@ -171,6 +171,15 @@ public class NodeCollection implements PointerFollower {
         return new MaintenanceFollower();
     }
 
+    /**
+     * A cycle that a descent or a scan met (OpData.descentTo(), GetMany's chain), damage of
+     * the stream as checkPointeeType() finds it: a StreamFormatException. The writer's and
+     * maintenance's followers give the same.
+     */
+    public RuntimeException cycle(String message) {
+        return new StreamFormatException(message);
+    }
+    
     public Node followPointer(Node predecessor, int pointerIndex, OpData op) {
         //
         // With handles (bergdb item 009, step 3a; items/009-handles/02-implementation-plan.md,
@@ -258,6 +267,10 @@ public class NodeCollection implements PointerFollower {
 
     /** The follower for the writer, see writer(). */
     private final class WriterFollower implements PointerFollower {
+        public RuntimeException cycle(String message) {
+            return NodeCollection.this.cycle(message);
+        }
+        
         public Node followPointer(Node predecessor, int pointerIndex, OpData op) {
             Node result;
             assert pointerIndex >= 0 : "pointerIndex: " + pointerIndex;
@@ -325,6 +338,10 @@ public class NodeCollection implements PointerFollower {
             loadBytes += node.getMemSize();
         }
 
+        public RuntimeException cycle(String message) {
+            return NodeCollection.this.cycle(message);
+        }
+        
         public Node followPointer(Node predecessor, int pointerIndex, OpData op) {
             assert pointerIndex >= 0 : "pointerIndex: " + pointerIndex;
             assert predecessor != null : "predecessor is null";

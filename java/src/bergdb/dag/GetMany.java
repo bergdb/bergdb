@@ -167,7 +167,22 @@ public class GetMany {
             kwi = new KlongWithPointer();
         }
         
+        /**
+         * Adds 'node' to the chain, below the last link. A node already in the chain is a
+         * cycle, which a damaged stream can make (OpData.descentFrom()): the follower's
+         * cycle(), in a Db a StreamFormatException, which fails the database, where the scan
+         * went round it without end. The links are the path from the root, a few nodes for
+         * each segment; a node without an id (Spos.NULL) is not compared, as in
+         * OpData.descentTo().
+         */
         private void addLink(KeyNode node, long compareValue) {
+            final long id = node.getId();
+            for (int i = 0; i < linkSize && id != Spos.NULL; i++) {
+                if (linkNodes[i].getId() == id) {
+                    throw gd.pointerFollower.cycle("A scan came back to key node " + id
+                            + ", which it passed: the pointers make a cycle.");
+                }
+            }
             if (linkSize == linkNodes.length) {
                 assert linkNodes.length == linkCompareValues.length;
                 
