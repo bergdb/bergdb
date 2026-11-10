@@ -386,3 +386,19 @@ In `/Users/f/fl/bench/2026-11-10/ratchet/`:
 State, 2026-11-10, 18:30: the scaled runs done on both builds (sections
 3 to 5); the full run ready for the night, not started. No change to the
 repository or to any other clone.
+
+
+## Addendum: the full run
+
+2026-11-10, 18:27 to 18:32, by the coordinator: `night-ratchet.sh`, 1M
+transactions with a mass delete of 1M keys every 200,000 and a restart
+after each, both workloads on both builds; the summary in
+10-ratchet/full/summary.txt. As the scaled runs: no ratchet anywhere
+("inversions rising at every disturbance: no" in all four).
+
+| Run             | Tops / inversions at each segment end | Within twin + a_n |
+|---|---|---|
+| queue, `main`     | 1/0, 1/0, 1/0, 1/0                    | yes; no cut after the first delete |
+| queue, `023-core` | 6/3, 6/2, 5/0, 5/2                    | yes                                |
+| drive, `main`     | 9/0, 6/0, 6/0, 22/2                   | yes; no cut after the first delete |
+| drive, `023-core` | 110/26, 134/42, 51/11, 121/34         | no (bound 88): the window, bounded |

@@ -1,0 +1,128 @@
+/Users/f/fl/bench/2026-11-10/ratchet/runs/full/queue-1m-200k-main.txt: m=1000000 dist=200000 n=1000000 work=queue
+twin steady (after 10000): most dirty top nodes sampled 1, most inversions 0; a_n = 18; bound twin + a_n = 19
+| Seg | Twin tops | Twin inv | Dist tops | Dist inv | Dist most tops | Dist most D | Within |
+|---|---|---|---|---|---|---|---|
+| 0 | 1 | 0 | 1 | 0 | 1 | 3392 | yes |
+| 1 | 1 | 0 | 1 | 0 | 2 | 134 | yes |
+| 2 | 1 | 0 | 1 | 0 | 1 | 148 | yes |
+| 3 | 1 | 0 | 1 | 0 | 1 | 133 | yes |
+| 4 | 1 | 0 | 1 | 0 | 1 | 150 | yes |
+dist after each disturbance, at its segment end (tops/inv): 1/0, 1/0, 1/0, 1/0; inversions rising at every disturbance: no
+twin end: D=107 tops=1 inv=0 made=1 res=189 kept=557098160 lag=893074ms cuts=10 reach=111434 qhead=111320
+dist end: D=103 tops=1 inv=0 made=4 res=195 kept=1926758704 lag=870327ms cuts=12 reach=438239 qhead=111327
+  twin DONE 18355 ms
+  dist q=200000 hFill=8
+  dist q=200000 reclaim: at the deletes' end an iteration in progress: yes, tStart during the fill (9673 transactions in)
+  dist q=200000 reclaim: an iteration in progress at the fill: yes (tStart 1169270000); it ended at tEnd 2140420001; iterations started during the disturbance 2, of them done 1
+  dist q=399999 reclaim: no cut since the restart, 199999 transactions
+  dist q=400000 hFill=8
+  dist q=400000 reclaim: at the deletes' end an iteration in progress: yes, tStart before the fill
+  dist q=400000 reclaim: an iteration in progress at the fill: yes (tStart 2196740000); it ended not yet; iterations started during the disturbance 0, of them done 0
+  dist q=599999 reclaim: no cut since the restart, 199999 transactions
+  dist q=600000 hFill=8
+  dist q=600000 reclaim: at the deletes' end an iteration in progress: yes, tStart before the fill
+  dist q=600000 reclaim: an iteration in progress at the fill: yes (tStart 2196740000); it ended not yet; iterations started during the disturbance 0, of them done 0
+  dist q=799999 reclaim: no cut since the restart, 199999 transactions
+  dist q=800000 hFill=8
+  dist q=800000 reclaim: at the deletes' end an iteration in progress: yes, tStart before the fill
+  dist q=800000 reclaim: an iteration in progress at the fill: yes (tStart 2196740000); it ended not yet; iterations started during the disturbance 0, of them done 0
+  dist q=999999 reclaim: no cut since the restart, 199999 transactions
+  dist DONE 70519 ms
+  real 89.00
+
+/Users/f/fl/bench/2026-11-10/ratchet/runs/full/queue-1m-200k-core.txt: m=1000000 dist=200000 n=1000000 work=queue
+twin steady (after 10000): most dirty top nodes sampled 19, most inversions 7; a_n = 18; bound twin + a_n = 37
+| Seg | Twin tops | Twin inv | Dist tops | Dist inv | Dist most tops | Dist most D | Within |
+|---|---|---|---|---|---|---|---|
+| 0 | 4-15 | 1-5 | 4-15 | 1-5 | 15 | 215 | yes |
+| 1 | 1-10 | 0-3 | 3-9 | 0-3 | 12 | 213 | yes |
+| 2 | 3-16 | 0-4 | 3-13 | 1-2 | 15 | 213 | yes |
+| 3 | 2-12 | 0-4 | 2-13 | 0-3 | 14 | 227 | yes |
+| 4 | 3-11 | 0-3 | 1-10 | 0-2 | 13 | 216 | yes |
+dist after each disturbance, at its segment end (tops/inv): 6/3, 6/2, 5/0, 5/2; inversions rising at every disturbance: no
+twin end: D=135 tops=9 inv=2 made=329 res=222 kept=1488856 lag=1377ms cuts=1695 reach=117 qhead=4
+dist end: D=107 tops=5 inv=2 made=339 res=158 kept=1321752 lag=1075ms cuts=1705 reach=117 qhead=4
+  twin DONE 11325 ms
+  dist q=200000 hFill=8
+  dist q=200000 reclaim: at the deletes' end an iteration in progress: yes, tStart during the deletes (4474 transactions in)
+  dist q=200000 reclaim: an iteration in progress at the fill: yes (tStart 2097010000); it ended at tEnd 2100110001; iterations started during the disturbance 6, of them done 5
+  dist q=203171 reclaim: the first cut after the restart, 3171 transactions after it
+  dist q=400000 hFill=8
+  dist q=400000 reclaim: at the deletes' end an iteration in progress: yes, tStart during the deletes (7554 transactions in)
+  dist q=400000 reclaim: an iteration in progress at the fill: yes (tStart 4298240000); it ended at tEnd 4300140001; iterations started during the disturbance 6, of them done 5
+  dist q=401974 reclaim: the first cut after the restart, 1974 transactions after it
+  dist q=600000 hFill=8
+  dist q=600000 reclaim: at the deletes' end an iteration in progress: yes, tStart during the deletes (3975 transactions in)
+  dist q=600000 reclaim: an iteration in progress at the fill: yes (tStart 6494780000); it ended at tEnd 6500070001; iterations started during the disturbance 6, of them done 5
+  dist q=603365 reclaim: the first cut after the restart, 3365 transactions after it
+  dist q=800000 hFill=8
+  dist q=800000 reclaim: at the deletes' end an iteration in progress: yes, tStart during the deletes (176 transactions in)
+  dist q=800000 reclaim: an iteration in progress at the fill: none; it ended -; iterations started during the disturbance 6, of them done 5
+  dist q=804845 reclaim: the first cut after the restart, 4845 transactions after it
+  dist DONE 52127 ms
+  real 63.52
+
+/Users/f/fl/bench/2026-11-10/ratchet/runs/full/drive-1m-200k-main.txt: m=1000000 dist=200000 n=1000000 work=drive
+twin steady (after 10000): most dirty top nodes sampled 70, most inversions 12; a_n = 18; bound twin + a_n = 88
+| Seg | Twin tops | Twin inv | Dist tops | Dist inv | Dist most tops | Dist most D | Within |
+|---|---|---|---|---|---|---|---|
+| 0 | 55-64 | 11 | 55-64 | 11 | 65 | 105 | yes |
+| 1 | 54-60 | 11 | 3-9 | 0 | 22 | 40 | yes |
+| 2 | 59-66 | 12 | 3-9 | 0 | 27 | 39 | yes |
+| 3 | 57-64 | 12 | 4-10 | 0 | 38 | 50 | yes |
+| 4 | 57-62 | 12 | 15-23 | 2 | 28 | 41 | yes |
+dist after each disturbance, at its segment end (tops/inv): 9/0, 6/0, 6/0, 22/2; inversions rising at every disturbance: no
+twin end: D=74 tops=60 inv=12 made=71429 res=79 kept=2005464 lag=1043ms cuts=3995 reach=6 qhead=6
+dist end: D=30 tops=22 inv=2 made=76010 res=53 kept=2655047512 lag=871623ms cuts=803 reach=328455 qhead=6
+  twin DONE 12062 ms
+  dist q=200000 hFill=8
+  dist q=200000 reclaim: at the deletes' end an iteration in progress: yes, tStart during the fill (8377 transactions in)
+  dist q=200000 reclaim: an iteration in progress at the fill: none; it ended -; iterations started during the disturbance 5, of them done 4
+  dist q=399999 reclaim: no cut since the restart, 199999 transactions
+  dist q=400000 hFill=8
+  dist q=400000 reclaim: at the deletes' end an iteration in progress: yes, tStart before the fill
+  dist q=400000 reclaim: an iteration in progress at the fill: yes (tStart 2183780000); it ended not yet; iterations started during the disturbance 0, of them done 0
+  dist q=599999 reclaim: no cut since the restart, 199999 transactions
+  dist q=600000 hFill=8
+  dist q=600000 reclaim: at the deletes' end an iteration in progress: yes, tStart before the fill
+  dist q=600000 reclaim: an iteration in progress at the fill: yes (tStart 2183780000); it ended not yet; iterations started during the disturbance 0, of them done 0
+  dist q=799999 reclaim: no cut since the restart, 199999 transactions
+  dist q=800000 hFill=8
+  dist q=800000 reclaim: at the deletes' end an iteration in progress: yes, tStart before the fill
+  dist q=800000 reclaim: an iteration in progress at the fill: yes (tStart 2183780000); it ended not yet; iterations started during the disturbance 0, of them done 0
+  dist q=999999 reclaim: no cut since the restart, 199999 transactions
+  dist DONE 66365 ms
+  real 78.62
+
+/Users/f/fl/bench/2026-11-10/ratchet/runs/full/drive-1m-200k-core.txt: m=1000000 dist=200000 n=1000000 work=drive
+twin steady (after 10000): most dirty top nodes sampled 70, most inversions 12; a_n = 18; bound twin + a_n = 88
+| Seg | Twin tops | Twin inv | Dist tops | Dist inv | Dist most tops | Dist most D | Within |
+|---|---|---|---|---|---|---|---|
+| 0 | 55-64 | 11 | 55-64 | 11 | 65 | 105 | yes |
+| 1 | 54-60 | 11 | 101-110 | 26 | 116 | 163 | no |
+| 2 | 59-66 | 12 | 134-147 | 42 | 153 | 207 | no |
+| 3 | 57-64 | 12 | 51-57 | 10-11 | 99 | 201 | no |
+| 4 | 57-62 | 12 | 117-128 | 34 | 137 | 177 | no |
+dist after each disturbance, at its segment end (tops/inv): 110/26, 134/42, 51/11, 121/34; inversions rising at every disturbance: no
+twin end: D=74 tops=60 inv=12 made=71429 res=79 kept=2005464 lag=1043ms cuts=3995 reach=6 qhead=6
+dist end: D=124 tops=121 inv=34 made=71438 res=139 kept=2923096 lag=1176ms cuts=3988 reach=6 qhead=6
+  twin DONE 12153 ms
+  dist q=200000 hFill=8
+  dist q=200000 reclaim: at the deletes' end an iteration in progress: yes, tStart during the fill (8416 transactions in)
+  dist q=200000 reclaim: an iteration in progress at the fill: none; it ended -; iterations started during the disturbance 5, of them done 4
+  dist q=202047 reclaim: the first cut after the restart, 2047 transactions after it
+  dist q=400000 hFill=8
+  dist q=400000 reclaim: at the deletes' end an iteration in progress: yes, tStart during the deletes (4125 transactions in)
+  dist q=400000 reclaim: an iteration in progress at the fill: none; it ended -; iterations started during the disturbance 6, of them done 5
+  dist q=403296 reclaim: the first cut after the restart, 3296 transactions after it
+  dist q=600000 hFill=8
+  dist q=600000 reclaim: at the deletes' end an iteration in progress: yes, tStart during the deletes (4092 transactions in)
+  dist q=600000 reclaim: an iteration in progress at the fill: none; it ended -; iterations started during the disturbance 6, of them done 5
+  dist q=603309 reclaim: the first cut after the restart, 3309 transactions after it
+  dist q=800000 hFill=8
+  dist q=800000 reclaim: at the deletes' end an iteration in progress: yes, tStart during the deletes (4749 transactions in)
+  dist q=800000 reclaim: an iteration in progress at the fill: none; it ended -; iterations started during the disturbance 6, of them done 5
+  dist q=803053 reclaim: the first cut after the restart, 3053 transactions after it
+  dist DONE 56064 ms
+  real 68.29
+
