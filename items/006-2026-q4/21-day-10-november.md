@@ -120,6 +120,11 @@ restarts it from there (013-02, `resume`).
 * 14:48 023-07 written (e45fd4c1). 14:49 P7 done: fix (a) closes the
   window; report 0a0f0016. 14:49 the three reviews of 023-07 started
   (023-08), each in its own clone, by 16:45.
+* 15:36 to 16:06 the reviews in (B, C, A). All three: P8 can stop the
+  cuts; C: fault 12 in the take-back. 15:38 and 15:50 two checks: both
+  confirmed, each with a fix (fault 12 also with sorted keys). 16:23
+  023-08, the merged verdict: the delete design stands, P8 out, a smaller
+  core frozen, a stop rule (Frans, 16:14: "I smell expanding complexity").
 
 
 ## 8. Outcome

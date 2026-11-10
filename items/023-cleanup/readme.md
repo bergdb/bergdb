@@ -89,7 +89,8 @@ Files
   D1 (the tier, no recommendation) to D13.
 * 08-reviews/. 023-08, three independent reviews of 023-07 (a.md, b.md,
   c.md, each with its evidence), checks of their findings (checks/), and
-  the verdict merged from them (being written). A: reject the core as
+  the verdict merged from them (08-reviews.md): the delete design stands,
+  P8 does not; a smaller core, frozen; questions 1 to 8. A: reject the core as
   written; B and C: accept the core with changes. All three: P8's step can
   stop the cuts (confirmed on P8, P4 and `main` in checks/p8-liveness.md,
   with a fix); C: fault 12, the take-back can leave a pointer to a node
@@ -200,3 +201,9 @@ leaf's klong in place in `Dag.spaceSplitInPlace` (as `TopDs.newSuperRoot`
 does); every probe and fuzz run passes with it, and before-commit. X5 (c)
 is reachable (a key transformation can put and delete one key in one
 transaction); only its inner branch is unreachable.
+
+2026-11-10. Frans (16:14): "I worry about stability. Today, it seems like
+each fix led to yet another fix and so on. I smell expanding complexity
+where I [want] simple beauty." 023-08 merged the reviews: a smaller core
+than 023-07's (P8 out, fault 12's fix in, no new mechanism), frozen, with
+a stop rule; questions 1 to 8 for Frans.
