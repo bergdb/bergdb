@@ -413,6 +413,12 @@ class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
             } else {
                 g.startKey = last != null ? last : lo;
                 g.inclusive = last == null;
+                // The range's end ends the scan also over deleted entries after it, such as
+                // those of an index of the directory deleted after this one in key order
+                // (bergdb 021-28; 020-24-17): the stop condition below sees live entries
+                // only, and alone it ended an empty range at the first live key after it.
+                g.endKey = hi;
+                g.endInclusive = false;
             }
             g.lookupTime = lookupTime;
             g.stopCondition = new GetMany.StopCondition() {

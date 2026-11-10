@@ -36,6 +36,12 @@ import bergdb.storage.VersioningStreamException;
 public class StoredTrans {
     /**
      * The format byte of a stored transaction, written by Serializer and checked by Parser.
+     * 6 since 2026-11-10 (bergdb 023-07, section 5.8; 023-09), for release 2026.4: a record's
+     * deletes are rerun with the upward unlink, the empty key first, root collapse and the
+     * take-back (Dag.deleteUpward), and a space split in place of a segment root made by the
+     * transaction repoints the segment leaf's klong (Dag.spaceSplitInPlace), so a record
+     * means another tree than in format 5; databases of format 5, written by release 2026.3
+     * and earlier, are refused (023-02, F9 (a)).
      * 5 since 2026-10-15: the header holds topPos (bergdb 011-11, M18). Before, 2,
      * also through two incompatible changes, of 2015-12-29 and of 2016-05-11 (both id and
      * spos in the got-dirty list): they changed CURRENT_FORMAT_VERSION, to 3 and then 4,
@@ -50,7 +56,7 @@ public class StoredTrans {
      * before it writes; the zero fill of a torn record, before its format is read, uses
      * only the framing (2026-10-25, bergdb 005-40).</p>
      */
-    public final static byte RECORD_FORMAT = 5;
+    public final static byte RECORD_FORMAT = 6;
     
     /**
      * The largest record, in bytes (2026-10-21, bergdb 005-17): the record's size field is an
@@ -235,8 +241,8 @@ public class StoredTrans {
             return s + "A larger number is a database written by a newer version of BergDB.";
         }
         return s + "A smaller number is a database written by an older version of BergDB, "
-                + "which cannot be opened: format 2 was written until 2026-10-15 "
-                + "(bergdb 011-11, M18).";
+                + "which cannot be opened: format 5 was written by release 2026.3 and earlier "
+                + "(bergdb 023-07, section 5.8), format 2 until 2026-10-15 (bergdb 011-11, M18).";
     }
     
     public String toString() {
@@ -1127,23 +1133,29 @@ public class StoredTrans {
     }
     
     /**
-     * A transaction of the format before 2026-10-15 (2) is refused with a clear message, as a
-     * VersioningStreamException since 2026-10-25 (bergdb 005-40).
+     * A transaction of the format before 2026-10-15 (2), or of release 2026.3 and earlier (5),
+     * is refused with a clear message, as a VersioningStreamException since 2026-10-25
+     * (bergdb 005-40); the message names release 2026.3 since format 6 (bergdb 023-07,
+     * section 5.8).
      */
     @Nano
     private static void testRefusesOldFormat() {
         Serializer serializer = new Serializer();
         serializer.serialize(new TransNodes(), 100, 200, -1, new ArrayList<Node>());
-        byte[] buffer = serializer.getTransBuffer().clone();
-        assertEquals(RECORD_FORMAT, buffer[4]);
-        buffer[4] = 2;
-        
-        try {
-            new Parser().parse(200, buffer);
-            throw new AssertionError("no exception for format 2");
-        } catch (VersioningStreamException e) {
-            Assert.assertTrue(e.getMessage(), e.getMessage().contains("format version 2;"));
-            Assert.assertTrue(e.getMessage(), e.getMessage().contains("older version"));
+        for (int format : new int[] {2, 5}) {
+            byte[] buffer = serializer.getTransBuffer().clone();
+            assertEquals(RECORD_FORMAT, buffer[4]);
+            buffer[4] = (byte) format;
+            
+            try {
+                new Parser().parse(200, buffer);
+                throw new AssertionError("no exception for format " + format);
+            } catch (VersioningStreamException e) {
+                String m = e.getMessage();
+                Assert.assertTrue(m, m.contains("format version " + format + ";"));
+                Assert.assertTrue(m, m.contains("older version"));
+                Assert.assertTrue(m, m.contains("release 2026.3"));
+            }
         }
     }
     
@@ -1155,7 +1167,7 @@ public class StoredTrans {
     private static void testRefusesNewerFormat() {
         Serializer serializer = new Serializer();
         serializer.serialize(new TransNodes(), 100, 200, -1, new ArrayList<Node>());
-        for (int format : new int[] {6, 200}) {
+        for (int format : new int[] {RECORD_FORMAT + 1, 200}) {
             byte[] buffer = serializer.getTransBuffer().clone();
             buffer[4] = (byte) format;
             try {

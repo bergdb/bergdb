@@ -273,7 +273,10 @@ public class DbBuilder {
 
     /**
      * No eviction: the capacity controller's budget, the cache size indicator, becomes
-     * Long.MAX_VALUE (Eviction, bergdb item 001, WP J7). The test setups use it.
+     * Long.MAX_VALUE (Eviction, bergdb item 001, WP J7). The test setups use it. Without
+     * eviction the dead hand does not run either (Eviction.deadStep; bergdb 023-07, section
+     * 5.6): the memory of ended versions, the objects stored before a cut, is released only
+     * at a restart (023-06, Z15).
      */
     public DbBuilder noEvict() {
         this.cacheSizeIndicator = Long.MAX_VALUE;

@@ -1475,6 +1475,76 @@ public class DbTester {
         Assert.assertTrue(ex != null && ex.getCause() == syncEx.getCause());
     }
     
+    /**
+     * A transaction's KVs reach the index in the order of their keys after the key
+     * transformations (Db.putKvs; bergdb 023-08, section 7, Q4): two databases, each given
+     * the same operations, puts through a key transformation in another order and plain
+     * deletes, write the same stream, byte for byte, and give the same values, also after
+     * a restart. One transformed key is also put by a plain KV: one of the two is kept, the
+     * later put in the builder's order (Db.sortByKey), in both databases. Before 023-09 the
+     * index got the transformed KVs in the order of their keys before the transformation,
+     * and the streams differed.
+     */
+    @Nano
+    public static void testTransformedKeysSorted() {
+        final KeyTransformation toName = new KeyTransformation() {
+            public void transform(Trans trans, int index) {
+                String s = Keys.toString(trans.kvs[index].getKey());
+                long[] key = Keys.toSegments("/t/" + s.substring(s.indexOf('=') + 1));
+                trans.kvs[index].setKey(key);
+                trans.writeKeyHashes[index] = Keys.hash(key);
+            }
+        };
+        final int n = 60;
+        byte[][] streams = new byte[2][];
+        String[][] values = new String[2][];
+        for (int d = 0; d < 2; d++) {
+            List<Integer> names = new ArrayList<Integer>();
+            for (int i = 0; i < n; i++) names.add(i);
+            Collections.shuffle(names, new Random(10 + d));
+            MemoryStream ms = new MemoryStream();
+            Db db = Db.builder().testSetup(ms).maxNodeSize8().start();
+            Trans.Builder tb = db.trans();
+            for (int i = 0; i < 2 * n; i += 2) tb.put("/t/" + String.format("k%03d", i), "old" + i);
+            db.execute(tb.build());
+            tb = db.trans();
+            for (int i = 0; i < n; i++) {
+                // "/t/$NN=kXXX": the builder's order is NN's, the key after it kXXX.
+                String name = String.format("k%03d", 2 * names.get(i) + 1);
+                tb.put(Keys.toSegments("/t/$" + String.format("%02d", i) + "=" + name), toName,
+                        StringUtil.toBytes("new" + name), null);
+            }
+            for (int i = 0; i < 2 * n; i += 6) tb.delete("/t/" + String.format("k%03d", i));
+            tb.put("/t/k031", "plain");
+            db.execute(tb.build());
+            db.close();
+            
+            db = Db.builder().testSetup(ms.copy()).maxNodeSize8().start();
+            values[d] = new String[2 * n];
+            for (int i = 0; i < 2 * n; i++) {
+                values[d][i] = DbUtil.getString(db, "/t/" + String.format("k%03d", i));
+            }
+            db.close();
+            streams[d] = new byte[(int) ms.getLength()];
+            try {
+                ms.read(0, streams[d], 0, streams[d].length);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        for (int i = 0; i < 2 * n; i++) {
+            String expected = i % 6 == 0 ? null : i % 2 == 0 ? "old" + i
+                    : i == 31 ? "plain" : "new" + String.format("k%03d", i);
+            String at = "key " + i + ": ";
+            Assert.assertTrue(at + values[0][i], expected == null ? values[0][i] == null
+                    : expected.equals(values[0][i]));
+            Assert.assertTrue(at + values[1][i], expected == null ? values[1][i] == null
+                    : expected.equals(values[1][i]));
+        }
+        Assert.assertTrue("the same stream, " + streams[0].length + " and "
+                + streams[1].length + " bytes", java.util.Arrays.equals(streams[0], streams[1]));
+    }
+    
     @Nano
     public static void testKeyTransformation1() {
         KeyTransformation kt = new KeyTransformation() {

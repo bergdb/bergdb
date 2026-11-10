@@ -884,6 +884,78 @@ public class KeyNode implements Node {
     }
     
     /**
+     * Adds a KEY klong whose pointer is a copy of pointer 'from' of this node: the same
+     * pointee (a handle, or nothing) and the same reference, read as a coherent pair under
+     * the node's monitor, as lastVersionGivenDel() copies pointers. If needed, a time klong
+     * is added before it. Write access required. For the empty key's klong at a delete, when
+     * its child has emptied (bergdb 023-07, section 5.2, LE-b; Dag.emptyKeyNext).
+     * 
+     * @return The index of the new klong.
+     */
+    public int addKlongCopyPointer(long time, long klong, int from) {
+        assert Klong.getType(klong) == Klong.TYPE_KEY;
+        assert from >= 0 && from < this.size && Klong.getType(klongs[from]) == Klong.TYPE_KEY;
+        final Pointee pointer;
+        final long ref;
+        synchronized (this) {
+            pointer = pointers[from];
+            ref = pos[from];
+        }
+        short sz = this.size;
+        assert lastTimeIndex == -1 || time >= klongs[lastTimeIndex];
+        int addCount = 1;
+        if (lastTimeIndex == -1 || time > Klong.getTime(klongs[lastTimeIndex])) {
+            addCount = 2;
+        }
+        ensureCapacity(sz + addCount);
+        short newSize = sz;
+        if (addCount == 2) {
+            this.klongs[newSize] = Klong.createTime(time);
+            this.pointers[newSize] = null;
+            this.pos[newSize] = Spos.NULL;
+            this.lastTimeIndex = newSize;
+            newSize++;
+        }
+        this.klongs[newSize] = klong;
+        this.pointers[newSize] = pointer;
+        this.pos[newSize] = ref;
+        newSize++;
+        this.size = newSize;    // Synch action, publishes the new klong to readers.
+        return newSize - 1;
+    }
+    
+    /**
+     * Copies pointer 'from' of this node to the KEY klong at 'index', a klong of the current
+     * transaction behind its time klong, where every reader stops: the same pointee and
+     * reference, read and written under the node's monitor, as addKlongCopyPointer() reads
+     * them. For LE-b at a delete (bergdb 023-05, P4; Dag.emptyKeyNext). Write access required.
+     */
+    public void copyPointer(int index, int from) {
+        assert index >= 0 && index < this.size && Klong.getType(klongs[index]) == Klong.TYPE_KEY;
+        assert from >= 0 && from < this.size && Klong.getType(klongs[from]) == Klong.TYPE_KEY;
+        assert lastTimeIndex >= 0 && index > lastTimeIndex;
+        synchronized (this) {
+            this.pointers[index] = pointers[from];
+            this.pos[index] = pos[from];
+        }
+    }
+    
+    /**
+     * Points the KEY klong at 'index', a klong of the current transaction behind its time
+     * klong, where every reader stops, to 'node' instead, as replaceKlong changes such klongs
+     * (bergdb 023-05, P1: a node made by the transaction and taken back, Dag.takeBack). Under
+     * the node's monitor, as setPointer. Write access required.
+     */
+    public void repointKlong(int index, Node node) {
+        assert index >= 0 && index < this.size && Klong.getType(klongs[index]) == Klong.TYPE_KEY;
+        assert lastTimeIndex >= 0 && index > lastTimeIndex;
+        synchronized (this) {
+            this.pointers[index] = Handle.pointeeOf(node);
+            this.pos[index] = node.getSpos();
+        }
+    }
+    
+    /**
      * Replaces existing key klong along with pointer and accessData if
      * 'klong' equals an existing key klong at the same time.
      * Delete klongs are not allowed in this KeyNode.
@@ -1312,9 +1384,25 @@ public class KeyNode implements Node {
             insertTo = second;
         }
         
+        // An inner node's second half starts with the empty key, as every inner node does
+        // (bergdb 023-04, LE-b; 023-05, P4); its parent gets 'secondKlong' for it, as before.
+        // A klong to insert with the compare value of 'secondKlong' (a split of the child it
+        // names) goes to the second half as the empty key too, and shadows it there.
+        final boolean emptyKeyFirst = !second.isSegmentLeaf();
+        final long secondCompareValue = Klong.getCompareValue(secondKlong);
+        if (emptyKeyFirst) {
+            assert second.size > 1 && second.klongs[1] == secondKlong;
+            second.klongs[1] = Klong.EMPTY_KEY;
+        }
+        
         for (int i = 0; i < insert.length; i++) {
             KlongWithPointer kwi = insert[i];
-            insertTo.addToEnd(kwi.klong, Handle.pointeeOf(kwi.node),
+            long klong = kwi.klong;
+            if (emptyKeyFirst && insertTo == second
+                    && Klong.getCompareValue(klong) == secondCompareValue) {
+                klong = Klong.EMPTY_KEY;
+            }
+            insertTo.addToEnd(klong, Handle.pointeeOf(kwi.node),
                     kwi.node != null ? kwi.node.getSpos() : kwi.pos);
         }
         

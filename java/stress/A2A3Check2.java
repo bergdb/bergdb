@@ -75,7 +75,7 @@ public class A2A3Check2 {
     static long trans, transA2, transA3, transA5, transDead;
     static long created, createdKey, createdTop, createdValue, notCurrentCreated, notCurrentCreatedValue;
     static long changed, changedNotCurrent, preexistingChangedNotCurrent;
-    static long marked, markedDead, markedDeadPreexisting, resurrected;
+    static long marked, markedDead, markedDeadPreexisting, resurrected, takenBack;
     // Net effect: nodes with a klong at tt that are not current (the model's A2); the step-3
     // set of Db (marks of ops that change something, minus replaced nodes)
     // compared with the model's marked set.
@@ -407,6 +407,16 @@ public class A2A3Check2 {
                 if (opChanged[0]) javaMarked.addAll(opMarks);
             }
             pd.clear();
+            // A node made by the transaction and taken back in it (bergdb 023-05, P1; Dag.takeBack)
+            // is reported as made and as replaced: nothing points to it and it is never
+            // written, so it is not part of the transaction's net effect.
+            for (Node x : rp) {
+                if (cr.remove(x)) {
+                    takenBack++;
+                    ch.remove(x);
+                    mk.remove(x);
+                }
+            }
 
             Set<Node> now = reachable(dag, tt);
             Set<Node> prevAgain = reachable(dag, tt - 10);
@@ -534,6 +544,7 @@ public class A2A3Check2 {
         System.out.println("  created index nodes " + created + " (key " + createdKey + ", top "
                 + createdTop + "), not current at the end " + notCurrentCreated
                 + "; created value nodes " + createdValue + ", not current " + notCurrentCreatedValue);
+        System.out.println("  taken back (made and emptied in a transaction, bergdb 023-05) " + takenBack);
         System.out.println("  changed key nodes " + changed + ", not current at the end "
                 + changedNotCurrent + " (pre-existing " + preexistingChangedNotCurrent + ")");
         System.out.println("  marked index nodes (followed, created, changed) " + marked

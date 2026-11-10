@@ -361,6 +361,29 @@ public class Cache3 {
         return residents.released(o);
     }
 
+    /**
+     * 'node', a key node that its transaction made and took back (bergdb 023-07, section 5.1;
+     * Dag.takeBack, Dag.takeBackRoot), leaves the table as an
+     * evicted object does: its handle dies, its canonical flag is cleared, and the handle
+     * leaves the table. It was never written, and no node names it. The caller holds
+     * Db.writeLock (or is the startup).
+     */
+    public void dropNode(Node node) {
+        final long id = node.getId();
+        synchronized (getLock(id)) {
+            final Handle h = internalGet(id);
+            if (h == null || h.obj != node) {
+                node.setCanonical(false);
+                return;
+            }
+            if (!h.casState(Handle.LIVE, Handle.DEAD)) {
+                return;
+            }
+            kill(h, node);
+            internalRemove(id);
+        }
+    }
+    
     /** Whether eviction may take an object (Eviction.detachable, with the batch's roots). */
     interface Detachable {
         boolean detachable(Node o);
@@ -458,6 +481,53 @@ public class Cache3 {
         c[0] += kill(h, h.obj);    // again: a loader may have replaced o (kill)
         c[1]++;
         return true;
+    }
+
+    /**
+     * One part of a step of the dead hand over map k (bergdb 023-05, P6): handles from to
+     * to-1 of 'part', a copy of the map's handles (mapHandles), under the map's lock, as
+     * clockStep(int, Handle[], ...) takes them. An object stored before 'cut', the decided
+     * cut position (Reclaim.getFirstAvailablePos), is evicted whatever its CLOCK bit, if it
+     * is detachable: no lookup at an available time reaches it (Reclaim's class comment:
+     * every node reachable from the first available time on is stored at the cut or later,
+     * or is dirty, so pinned). A live handle with no object leaves the table, as in a CLOCK
+     * step. The key nodes that stay are added to 'kept', for the values below the cut that
+     * their pointers hold (Eviction.deadStep). Returns the bytes freed, the objects evicted
+     * and the handles examined.
+     */
+    long[] deadStep(int k, Handle[] part, int from, int to, long cut, Detachable d,
+            java.util.List<Node> kept) {
+        HashMap<Long, Handle> m = maps[k];
+        long[] c = new long[3];
+        synchronized (m) {
+            for (int j = from; j < to; j++) {
+                Handle h = part[j];
+                c[2]++;
+                if (m.get(h.id) != h) continue;     // left the map since the copy
+                Node o = h.obj;
+                if (o == null) {
+                    if (h.casState(Handle.LIVE, Handle.DEAD)) {
+                        o = h.obj;      // a loader may have installed one since (kill)
+                        if (o != null) {
+                            c[0] += kill(h, o);
+                            c[1]++;
+                        }
+                        m.remove(h.id);
+                    }
+                    continue;
+                }
+                long spos = o.getSpos();
+                if (Spos.isValid(spos) && !Spos.isVpos(spos) && spos < cut && d.detachable(o)) {
+                    if (!h.casState(Handle.LIVE, Handle.DEAD)) continue;   // a loader holds it
+                    c[0] += kill(h, h.obj);     // again: a loader may have replaced o (kill)
+                    c[1]++;
+                    m.remove(h.id);
+                    continue;
+                }
+                if (o instanceof KeyNode) kept.add(o);
+            }
+        }
+        return c;
     }
 
     /** The number of maps, for the CLOCK hand. */
