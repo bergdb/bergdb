@@ -108,3 +108,22 @@ quiet block. The session agrees: C has moved on to the candidate, and the
 2026.4 runs test the code that `main` now has. 022-01 then closes either on
 `step5.sh` in a later block or on Frans's word that the 2026.4 runs stand
 for it.
+
+2026-11-10, 09:30. The session `022-bergdb-c` closes (Frans, 09:24: a
+serious internal bug is to be fixed in Java before 2026.4 is released; a
+new session updates C after the release). Neither night step ran on the
+night to 10 November (coord-1109's news: they did not fit), so 022-03 and
+022-04, section 9, are still empty, and 022-01 and 022-02 stay open. The
+READY markers of both steps are removed, so that no quiet block runs them
+before the release.
+
+For the new session, after the release: point 3 of the 19:30 entry (the
+diff from `03ce6ec5` to `release-2026.4`, now with the bug's fix; read its
+item first), point 4 as it stands, then the long runs: `runs-2026-4.sh`
+with `REV` set to the landed tree (it pins int.git `8772b934`, and that
+tree's `JAVA_REF` is `git:03ce6ec5`), in a quiet block the day's
+coordinator gives. Proposed to Frans on 10 November and not yet answered:
+leave out `step5.sh` (2026.3) and close 022-01 on the 2026.4 runs. The
+workers' brief (`/Users/f/fl/bench/022/briefs/tests.md`) now says how to
+wait on a run: three wait loops of 9 November matched their own `pgrep -f`
+and ran for 21 hours.
