@@ -170,3 +170,7 @@ Index
   Release 2026.4 waits for it.
 * **024-release-2026-5** (open). Release 2026.5, after 2026.4: its plan,
   its decisions and the work towards it; so far what 023 put off to later.
+* **025-spare-tokens** (open). Things to do with spare AI tokens: work
+  that uses many tokens and very little of Frans's time, a short dialog
+  followed by long unattended work; one subitem per entry, started by
+  Frans. First, a model-first rewrite of BergDB (025-01).
