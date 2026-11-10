@@ -97,8 +97,15 @@ public class ReclaimReaderTester {
     }
 
     static Db start(AppendOnlyStream stream, CoreTestClock clock) {
-        Db db = Db.builder().testSetup(stream).clock(clock).maxNodeSize8()
-                .startupDistance(2000).start();
+        return start(stream, clock, 0);
+    }
+
+    /** With a budget of the capacity controller if budget > 0, else none (noEvict). */
+    static Db start(AppendOnlyStream stream, CoreTestClock clock, long budget) {
+        DbBuilder b = Db.builder().testSetup(stream).clock(clock).maxNodeSize8()
+                .startupDistance(2000);
+        if (budget > 0) b.cacheSizeIndicator(budget);
+        Db db = b.start();
         db.setRetainDuration(1 * SEC);
         return db;
     }
@@ -110,6 +117,8 @@ public class ReclaimReaderTester {
         Throwable readerError;          // null if the scan finished
         int readerKvs;
         boolean writesAfter;            // the database accepted a write and read it back
+        boolean same = true;            // the reader's KVs, if it ended, are those of a scan before
+        long deadObjects;               // the objects the dead hand took (bergdb 023-05, P6)
         String failure;                 // why writesAfter is false, or null
     }
 
@@ -130,11 +139,21 @@ public class ReclaimReaderTester {
 
     private static Outcome scenario(Kit kit, int valueSize, long seed, final boolean latest)
             throws Exception {
+        return scenario(kit, valueSize, seed, latest, 0);
+    }
+
+    /**
+     * With budget > 0 (bergdb 023-05, P6): the databases have that budget, and a scan at
+     * the reader's time (not latest) runs before the reader starts, which also makes its
+     * nodes resident; the reader's KVs, if it ends, must be that scan's.
+     */
+    private static Outcome scenario(Kit kit, int valueSize, long seed, final boolean latest,
+            long budget) throws Exception {
         CoreTestClock clock = new CoreTestClock();
         long time = SEC;
         clock.setTime(time);
         AppendOnlyStream stream = kit.open();
-        Db db = start(stream, clock);
+        Db db = start(stream, clock, budget);
         Random r = new Random(seed);
 
         int n = 0;
@@ -153,12 +172,23 @@ public class ReclaimReaderTester {
         stream = kit.reopen(stream);
         clock = new CoreTestClock();
         clock.setTime(time);
-        db = start(stream, clock);
+        db = start(stream, clock, budget);
 
         final long t0 = latest ? db.lookupTime(Long.MAX_VALUE)
                 : db.getFirstAvailableLookupTime();
+        java.util.List<Kvt> before = null;
+        if (budget > 0 && !latest) {
+            GetMany g = db.newGetMany();
+            g.lookupTime = t0;
+            db.getMany(g);
+            before = g.result;
+        }
+        final GetMany[] readerScan = new GetMany[1];
         final long pos0 = kit.firstPos(stream);
-        final long requiredCut = latest ? db.getStreamLength() : pos0;
+        // With a budget (bergdb 023-05, P6), on until the cut passes every version that the
+        // start and the scan before could load, so that the objects of that scan that are
+        // still resident are dead when the dead hand runs.
+        final long requiredCut = latest || budget > 0 ? db.getStreamLength() : pos0;
         final Db readerDb = db;
         final AppendOnlyStream readerStream = stream;
         final CountDownLatch arrived = new CountDownLatch(1);
@@ -170,6 +200,7 @@ public class ReclaimReaderTester {
             public void run() {
                 try {
                     GetMany g = readerDb.newGetMany();
+                    readerScan[0] = g;
                     g.lookupTime = latest ? Long.MAX_VALUE : t0;
                     g.stopCondition = new GetMany.StopCondition() {
                         private boolean first = true;
@@ -231,9 +262,26 @@ public class ReclaimReaderTester {
             }
         }
 
+        if (budget > 0) {
+            // A few more transactions, the reader still held: the dead hand runs after them.
+            for (int k = 0; k < 5; k++) {
+                time += SEC / 20;
+                clock.setTime(time);
+                put(db, r, valueSize);
+            }
+            outcome.deadObjects = db.internal().eviction().deadCounts()[1];
+        }
         release.countDown();
         reader.join(WAIT_SEC * 1000);
         Assert.assertTrue("the reader did not end", done.get());
+        if (before != null && outcome.readerError == null) {
+            java.util.List<Kvt> got = readerScan[0].result;
+            outcome.same = got.size() == before.size();
+            for (int i = 0; outcome.same && i < got.size(); i++) {
+                outcome.same = java.util.Arrays.equals(got.get(i).key, before.get(i).key)
+                        && java.util.Arrays.equals(got.get(i).value, before.get(i).value);
+            }
+        }
 
         // Is the database still usable?
         try {
@@ -423,6 +471,35 @@ public class ReclaimReaderTester {
     @Nano("f")
     public static void testReaderExpiresWhenCutOvertakesIt() throws Exception {
         checkSomeSeed(new CutKit(), 40, 1);
+    }
+
+    /**
+     * The dead hand (bergdb 023-05, P6): with a budget far above the database's need, a scan
+     * at the first available time makes its nodes resident, and a scan at that time is held
+     * while the writer runs until the next cut. The cut makes those nodes dead, and the dead
+     * hand takes them, whatever the budget, as the reader holds some of them. The reader
+     * ends with the KVs of the first scan, or expires with LookupTimeNotAvailableException
+     * from a read below the cut; never another answer, and the database goes on. An f-test:
+     * six seeds, about 0.4 s each.
+     */
+    @Nano("f")
+    public static void testHeldReadersAndTheDeadHand() throws Exception {
+        int expired = 0;
+        for (long seed = 1; seed <= 6; seed++) {
+            Outcome o = scenario(new CutKit(), 40, seed, false, 1L << 30);
+            Assert.assertTrue("seed " + seed + ": the dead hand took nothing while the reader "
+                    + "was held", o.deadObjects > 0);
+            if (o.readerError != null) {
+                check(o);
+                expired++;
+            } else {
+                Assert.assertTrue("seed " + seed + ": the reader's KVs differ from the scan "
+                        + "before", o.same);
+                Assert.assertTrue("seed " + seed + ": the database failed after the reader: "
+                        + o.failure, o.writesAfter);
+            }
+        }
+        Assert.assertTrue("no reader expired", expired > 0);
     }
 
     /**
