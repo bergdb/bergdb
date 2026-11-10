@@ -1,0 +1,47 @@
+--- scratch-c/Dag.before-fix.java	2026-11-10 15:42:04
++++ wt-p4/java/src/bergdb/dag/Dag.java	2026-11-10 15:42:04
+@@ -1534,6 +1534,8 @@
+     }
+     
+     /** The time of the node's last time klong, -1 if none. */
++    static final boolean REVIEW_FIX_F1 = !Boolean.getBoolean("review.nofix");
++
+     private static long lastTime(KeyNode node) {
+         for (int i = node.size - 1; i >= 0; i--) {
+             final long klong = node.klongs[i];
+@@ -1760,10 +1762,31 @@
+             } else {
+                 long klong1 = pd.keyAccessPath.getKlong(depth);
+                 assert klong1 != Klong.NULL : "Missing klong in keyAccessPath, " + depth;
+-                pd.oneKwi[0].klong = klong1;
+-                pd.oneKwi[0].node = newRoot;
+-                pd.oneKwi[0].pos = pd.accessData;
+-                appendKlongs(parent, depth - 1, pd.oneKwi, pd);
++                // Review 023-08 C, a sketch of F1's fix: the segment leaf's klong of tt to
++                // 'node' is repointed in place, so that no klong of tt names 'node' once
++                // newRoot stands above it (as TopDs.newSuperRoot does for the space root).
++                int at = -1;
++                if (REVIEW_FIX_F1 && lastTime(parent) == tt) {
++                    for (int i = parent.size - 1; i >= 0; i--) {
++                        final long k = parent.klongs[i];
++                        if (Klong.getIntType(k) == Klong.INT_TYPE_TIME) break;
++                        if (Klong.getIntType(k) == Klong.INT_TYPE_KEY
++                                && parent.getPointerNode(i) == node) {
++                            at = i;
++                            break;
++                        }
++                    }
++                }
++                if (at >= 0) {
++                    parent.repointKlong(at, newRoot);
++                    pd.pointerCreatedListener.pointerCreated(parent, at, newRoot);
++                    pd.nodeChangeListener.keyNodeChanged(parent);
++                } else {
++                    pd.oneKwi[0].klong = klong1;
++                    pd.oneKwi[0].node = newRoot;
++                    pd.oneKwi[0].pos = pd.accessData;
++                    appendKlongs(parent, depth - 1, pd.oneKwi, pd);
++                }
+                 pd.splitListener.nodeSplit(Dag.SPACE_SPLIT_2);
+             }
+             assert newRoot.checkWithMessage() == null;

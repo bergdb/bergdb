@@ -88,7 +88,12 @@ Files
   every rule stated exactly; nine questions for the reviewers; decisions
   D1 (the tier, no recommendation) to D13.
 * 08-reviews/. 023-08, three independent reviews of 023-07 (a.md, b.md,
-  c.md), and the verdict merged from them. Running.
+  c.md, each with its evidence), checks of their findings (checks/), and
+  the verdict merged from them (being written). A: reject the core as
+  written; B and C: accept the core with changes. All three: P8's step can
+  stop the cuts (confirmed on P8, P4 and `main` in checks/p8-liveness.md,
+  with a fix); C: fault 12, the take-back can leave a pointer to a node
+  never written (being checked).
 
 Earlier work, in 020: 020-30, the first study (sections 1 to 4), with
 four helper studies 020-30-01 to 020-30-04, and an independent study by
@@ -176,3 +181,12 @@ and level3 full OK, level4 quick OK (one expected C-S difference: the
 model has no pull); 3 tests need new expected values. Rule (b) unsound,
 proved by a unit test; (b') built behind a switch, an efficiency only.
 Not done: level4 full, the Lean model and checker changes.
+
+2026-11-10. The three reviews of 023-07 are in (B 15:36, C 15:47, A
+16:06). Each found, on its own, that P8's step at its own time can stop
+reclaim's cuts: a step counts every KV it scans against its 16 kB, also
+keys put ahead of the scan, so a growing random workload or a queue with
+a key after it outruns the scan. A check (checks/p8-liveness.md) confirmed
+it on P8 and found `main` and P4 as today's rule expects; its fix (a step
+counts only KVs stored before pStart) ends every probe. C found fault 12
+(the take-back) and reproduced it; a check runs.

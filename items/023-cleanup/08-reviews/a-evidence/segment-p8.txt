@@ -1,0 +1,9 @@
+deletedAt=100010000 candidates=[265] longBytes=95
+cuts=100 oldDeleteNodes=[265] firstTime=350410001 dead=true
+cuts=200 oldDeleteNodes=[265] firstTime=600410001 dead=true
+cuts=300 oldDeleteNodes=[265] firstTime=850410001 dead=true
+cuts=400 oldDeleteNodes=[265] firstTime=1100410001 dead=true
+cuts=500 oldDeleteNodes=[265] firstTime=1350410001 dead=true
+cuts=600 oldDeleteNodes=[265] firstTime=1600410001 dead=true
+cuts=700 oldDeleteNodes=[265] firstTime=1850410001 dead=true
+live=live deleted=null keptNew=0

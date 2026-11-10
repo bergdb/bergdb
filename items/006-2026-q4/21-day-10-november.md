@@ -117,6 +117,9 @@ restarts it from there (013-02, `resume`).
 * 14:43 Frans away (a walk): unattended until about 17:30. While away:
   023-07 committed when written, then the three reviews, then a merged
   verdict for Frans; P7's report committed when done (by 16:30).
+* 14:48 023-07 written (e45fd4c1). 14:49 P7 done: fix (a) closes the
+  window; report 0a0f0016. 14:49 the three reviews of 023-07 started
+  (023-08), each in its own clone, by 16:45.
 
 
 ## 8. Outcome

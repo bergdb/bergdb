@@ -1,0 +1,68 @@
+--- P8 Db.java
++++ review point-path Db.java
+@@ -2924,7 +2924,7 @@
+             // of a reclaim step, wherever its key sorts, can store what the step made dirty
+             // (Trans.dirtiedBytes). The puts then make dirty only new nodes and nodes
+             // outside the range.
+-            touchRange(x.trans.touchFrom, x.trans.touchTo);
++            touchRewritePaths();
+             endOfOp(true);
+             touchMarks = x.transInfo == null ? 0 : x.transInfo.gotDirtyNodes.size();
+             x.putData.clearFast();
+@@ -2959,20 +2959,20 @@
+      * @param from  The keys after this one (exclusive), or null for the first key.
+      * @param to  The keys up to this one (inclusive), or null for the last key.
+      */
+-    private void touchRange(long[] from, final long[] to) {
+-        GetMany g = dag.newGetMany();
+-        g.gd.pointerFollower = x.putData.pointerFollower;
+-        g.gd.pointerListener = x.putData.pointerListener;      // makes nodes dirty
++    private void touchRewritePaths() {
++        GetData gd = dag.newGetData();
++        gd.pointerFollower = x.putData.pointerFollower;
++        gd.pointerListener = x.putData.pointerListener;      // makes nodes dirty
+         Reclaim.TouchCounter counter = null;
+         if (x.trans.touchCount != null) {
+             counter = new Reclaim.TouchCounter(x.trans.touchCount, x.trans.touchOldBefore,
+                     x.putData.pointerListener);
+-            g.gd.pointerListener = counter;
++            gd.pointerListener = counter;
+         }
+         final TestHooks hooks = testHooks;
+         if (hooks != null) {
+-            final Dag.PointerListener inner = g.gd.pointerListener;
+-            g.gd.pointerListener = new Dag.PointerListener() {
++            final Dag.PointerListener inner = gd.pointerListener;
++            gd.pointerListener = new Dag.PointerListener() {
+                 public void superRootAccessed(TopNode superRoot) {
+                     hooks.nodeTouched(superRoot);
+                     inner.superRootAccessed(superRoot);
+@@ -2987,22 +2987,12 @@
+                 }
+             };
+         }
+-        g.gd.accessData = x.putData.accessData;
+-        g.lookupTime = x.trans.tt;
+-        g.actualLookupTime = x.trans.tt;     // Dag.getMany() uses this one.
+-        g.startKey = from;
+-        g.inclusive = false;
+-        g.stopCondition = new GetMany.StopCondition() {
+-            public int handleKvt(Kvt kvt) {
+-                if (to != null && Keys.compareKeys(kvt.key, to) > 0) {
+-                    return STOP;
+-                }
+-                return CONTINUE;
+-            }
+-            
+-            public void eod() {}
+-        };
+-        dag.getMany(g);
++        gd.accessData = x.putData.accessData;
++        for (Kv kv : x.trans.kvs) {
++            dag.getOne(x.trans.tt, kv.getKey(), gd);
++            endOfOp(true);
++            x.putData.clearFast();
++        }
+         if (counter != null) {
+             counter.finish();
+         }

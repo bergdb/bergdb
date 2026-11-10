@@ -1,0 +1,8 @@
+# T=2000 ops=1000 sd=100000 retainMs=1000 dtMs=10 budgetMB=1024
+# trans  live     streamMB  itStarted itDone steps   cuts  lagMs    curSteps curKvs  wallS  curPos%
+   500    400100    430.0        1      0     498     0     none      498   35856      6    14.8
+  1000    800100    974.3        1      0     998     0     none      998   71856     14    16.6
+  1500   1200100   1569.8        1      0    1498     0     none     1498  107856     23    16.7
+  2000   1600100   2185.6        1      0    1998     0     none     1998  143856     33    17.0
+# iteration in progress at the end: pStart 477424 lastKey [25473824058907128, 1805254392019766712, 1066874385199005736] endKey [25473872376483320, 1069832018857692408, 1069844393722118184] kvCount 143856 rewritten 16340803
+# wall 33.339236083 s

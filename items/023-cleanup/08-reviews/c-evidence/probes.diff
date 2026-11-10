@@ -1,0 +1,285 @@
+diff --git a/java/src/bergdb/core/Reclaim.java b/java/src/bergdb/core/Reclaim.java
+index 2fd4aff7..1c7b446b 100644
+--- a/java/src/bergdb/core/Reclaim.java
++++ b/java/src/bergdb/core/Reclaim.java
+@@ -531,6 +531,8 @@ public class Reclaim implements Db.TransactionListener {
+      * (bergdb 023-05, P8): an iteration's endKey. A maintenance read of one KV, backward from
+      * the end of the key space.
+      */
++    static boolean probeAtTStart = false;
++    
+     private long[] lastKeyAt(long tt) {
+         GetMany g = db.newGetMany();
+         g.gd.pointerFollower = db.internal().nodeCollection().maintenance();
+@@ -586,13 +588,13 @@ public class Reclaim implements Db.TransactionListener {
+         g.startKey = it.lastKey;
+         assert g.startKey == null || g.startKey.length > 0;
+         g.inclusive = false;
+-        g.lookupTime = Long.MAX_VALUE;      // The step's own time (bergdb 023-05, P8).
++        g.lookupTime = probeAtTStart ? it.tStart : Long.MAX_VALUE;      // The step's own time (bergdb 023-05, P8).
+         g.stopCondition = new GetMany.StopCondition() {
+             private long size = 0;
+                 // An approximation of the stream space the KVs of the step.
+             
+             public int handleKvt(Kvt kvt) {
+-                if (it.pastEnd(kvt.key)) {
++                if (!probeAtTStart && it.pastEnd(kvt.key)) {
+                     eod[0] = true;          // Every key up to endKey is covered.
+                     return STOP;
+                 }
+@@ -610,7 +612,15 @@ public class Reclaim implements Db.TransactionListener {
+             }
+         };
+         db.getMany(g);
+-        final long scanTime = g.actualLookupTime;
++        final long scanTime;
++        if (probeAtTStart) {
++            GetData gd0 = db.newGetData();
++            gd0.pointerFollower = maintenance;
++            db.getOne(Long.MAX_VALUE, currentKey, gd0);
++            scanTime = gd0.actualLookupTime;
++        } else {
++            scanTime = g.actualLookupTime;
++        }
+         final int scanNodes = maintenance.indexNodes();
+         
+         Trans.Builder b = db.trans();
+@@ -1846,6 +1856,238 @@ public class Reclaim implements Db.TransactionListener {
+          * from ending. 500 keys, then 200 new keys after them in every transaction, 43 kB by
+          * the scan's measure; the iteration must end. Without the end key it does not.
+          */
++        /** Probe (review of P8): lastKeyAt's backward read against a forward scan. */
++        @Nano
++        public static void testProbeBackwardLastKey() {
++            for (int seed = 1; seed <= 6; seed++) {
++                CoreTestClock clock = new CoreTestClock();
++                long time = Clock.UNITS_PER_SEC;
++                clock.setTime(time);
++                Db db = Db.builder().testSetup().maxNodeSize8().clock(clock).start();
++                java.util.Random r = new java.util.Random(seed);
++                java.util.TreeSet<String> live = new java.util.TreeSet<String>();
++                int checks = 0;
++                for (int t = 0; t < 400; t++) {
++                    time += 1000; clock.setTime(time);
++                    Trans.Builder b = db.trans();
++                    int n = 1 + r.nextInt(40);
++                    boolean mass = r.nextInt(10) == 0;
++                    java.util.Set<String> inTrans = new java.util.HashSet<String>();
++                    for (int j = 0; j < n; j++) {
++                        if ((mass || r.nextInt(3) == 0 || (t > 200 && r.nextInt(5) != 0)) && !live.isEmpty()) {
++                            String k = r.nextBoolean() ? live.last() 
++                                    : live.ceiling("/k/" + r.nextInt(1000));
++                            if (k == null) k = live.first();
++                            if (inTrans.add(k)) { b.delete(k); live.remove(k); }
++                        } else {
++                            int len = r.nextInt(4);
++                            String k = "/k/" + r.nextInt(1000) 
++                                    + (len == 0 ? "" : "/" + "abcdefghijklmnopqrstuvwxyz".substring(0, len * 7));
++                            if (inTrans.add(k)) { b.put(k, "v" + t); live.add(k); }
++                        }
++                    }
++                    if (inTrans.isEmpty()) continue;
++                    db.execute(b.build());
++                    
++                    GetMany f = db.newGetMany();
++                    f.stopCondition = new GetMany.GetN(Integer.MAX_VALUE);
++                    f.lookupTime = Long.MAX_VALUE;
++                    db.getMany(f);
++                    GetMany g = db.newGetMany();
++                    g.setBackward();
++                    g.startKey = null;
++                    g.lookupTime = Long.MAX_VALUE;
++                    g.stopCondition = new GetMany.GetN(1);
++                    db.getMany(g);
++                    long[] fl = f.result.isEmpty() ? null : f.result.get(f.result.size() - 1).key;
++                    long[] bl = g.result.isEmpty() ? null : g.result.get(0).key;
++                    if (fl == null || bl == null) {
++                        Assert.assertTrue("seed " + seed + " t " + t, fl == bl);
++                    } else {
++                        Assert.assertTrue("seed " + seed + " t " + t + " " + Arrays.toString(fl)
++                                + " " + Arrays.toString(bl), Arrays.equals(fl, bl));
++                    }
++                    checks++;
++                }
++                System.out.println("PROBE-BACKWARD seed " + seed + " checks " + checks 
++                        + " live " + live.size() + " unlinked " + bergdb.dag.Dag.statUnlinked
++                        + " relabels " + bergdb.dag.Dag.statRelabels 
++                        + " collapses " + bergdb.dag.Dag.statCollapses);
++                db.stop();
++            }
++        }
++        
++        /** Probe (review of P8): a queue of bounded size before endKey. */
++        @Nano
++        public static void testProbeQueueBeforeEndKey() {
++            CoreTestClock clock = new CoreTestClock();
++            long time = Clock.UNITS_PER_SEC;
++            clock.setTime(time);
++            Db db = Db.builder().testSetup().clock(clock).startupDistance(2000).start();
++            Reclaim reclaim = db.internal().reclaim();
++            byte[] v = new byte[100];
++            int head = 100000, next = 100000;
++            for (int i = 0; i < 5; i++) {
++                Trans.Builder b = db.trans();
++                for (int j = 0; j < 200; j++) {
++                    b.put("/q/" + next++, v);
++                }
++                db.execute(b.build());
++            }
++            db.execute(db.trans().put("/z", "z").build());     // One key after the queue.
++            
++            db.setRetainDuration(1000 * Clock.UNITS_PER_SEC);
++            time += Clock.UNITS_PER_SEC;
++            clock.setTime(time);
++            db.execute(db.trans().put("/a", "a").build());
++            Assert.assertArrayEquals(Keys.toSegments("/z"), reclaim.currentIteration().endKey);
++            
++            int i = 0;
++            for (; i < 3000 && reclaim.lastDoneRow() == null; i++) {
++                Trans.Builder b = db.trans();
++                for (int j = 0; j < 200; j++) {
++                    b.put("/q/" + next++, v);
++                    b.delete("/q/" + head++);
++                }
++                db.execute(b.build());
++            }
++            IterationInfo it = reclaim.currentIteration();
++            System.out.println("PROBE-P8-QUEUE transactions " + i + ", done " 
++                    + (reclaim.lastDoneRow() != null) + ", kvCount " 
++                    + (it == null ? -1 : it.kvCount) + ", live " + (next - head)
++                    + ", stream " + db.getStreamLength());
++            Assert.assertTrue("counterexample: the iteration has not ended", 
++                    reclaim.lastDoneRow() == null);
++            db.stop();
++        }
++        
++        @Nano
++        public static void testProbeQueueControlNoZ() {
++            CoreTestClock clock = new CoreTestClock();
++            long time = Clock.UNITS_PER_SEC;
++            clock.setTime(time);
++            Db db = Db.builder().testSetup().clock(clock).startupDistance(2000).start();
++            Reclaim reclaim = db.internal().reclaim();
++            byte[] v = new byte[100];
++            int head = 100000, next = 100000;
++            for (int i = 0; i < 5; i++) {
++                Trans.Builder b = db.trans();
++                for (int j = 0; j < 200; j++) {
++                    b.put("/q/" + next++, v);
++                }
++                db.execute(b.build());
++            }
++            
++            db.setRetainDuration(1000 * Clock.UNITS_PER_SEC);
++            time += Clock.UNITS_PER_SEC;
++            clock.setTime(time);
++            db.execute(db.trans().put("/a", "a").build());
++            
++            int i = 0;
++            for (; i < 3000 && reclaim.lastDoneRow() == null; i++) {
++                Trans.Builder b = db.trans();
++                for (int j = 0; j < 200; j++) {
++                    b.put("/q/" + next++, v);
++                    b.delete("/q/" + head++);
++                }
++                db.execute(b.build());
++            }
++            IterationInfo it = reclaim.currentIteration();
++            System.out.println("PROBE-P8-QUEUE-CONTROL transactions " + i + ", done " 
++                    + (reclaim.lastDoneRow() != null) + ", kvCount " 
++                    + (it == null ? -1 : it.kvCount) + ", live " + (next - head)
++                    + ", stream " + db.getStreamLength());
++            Assert.assertTrue("control: ended", reclaim.lastDoneRow() != null);
++            db.stop();
++        }
++        
++        @Nano
++        public static void testProbeQueueAtTStart() {
++            probeAtTStart = true;
++            try {
++            CoreTestClock clock = new CoreTestClock();
++            long time = Clock.UNITS_PER_SEC;
++            clock.setTime(time);
++            Db db = Db.builder().testSetup().clock(clock).startupDistance(2000).start();
++            Reclaim reclaim = db.internal().reclaim();
++            byte[] v = new byte[100];
++            int head = 100000, next = 100000;
++            for (int i = 0; i < 5; i++) {
++                Trans.Builder b = db.trans();
++                for (int j = 0; j < 200; j++) {
++                    b.put("/q/" + next++, v);
++                }
++                db.execute(b.build());
++            }
++            db.execute(db.trans().put("/z", "z").build());     // One key after the queue.
++            
++            db.setRetainDuration(1000 * Clock.UNITS_PER_SEC);
++            time += Clock.UNITS_PER_SEC;
++            clock.setTime(time);
++            db.execute(db.trans().put("/a", "a").build());
++            Assert.assertArrayEquals(Keys.toSegments("/z"), reclaim.currentIteration().endKey);
++            
++            int i = 0;
++            for (; i < 3000 && reclaim.lastDoneRow() == null; i++) {
++                Trans.Builder b = db.trans();
++                for (int j = 0; j < 200; j++) {
++                    b.put("/q/" + next++, v);
++                    b.delete("/q/" + head++);
++                }
++                db.execute(b.build());
++            }
++            IterationInfo it = reclaim.currentIteration();
++            System.out.println("PROBE-P8-QUEUE-AT-TSTART transactions " + i + ", done " 
++                    + (reclaim.lastDoneRow() != null) + ", kvCount " 
++                    + (it == null ? -1 : it.kvCount) + ", live " + (next - head)
++                    + ", stream " + db.getStreamLength());
++            Assert.assertTrue("control at tStart: ended", reclaim.lastDoneRow() != null);
++            db.stop();
++            } finally { probeAtTStart = false; }
++        }
++        
++        /** Probe (review of P8): ordered puts before endKey, ahead of the scan. */
++        @Nano
++        public static void testProbeOrderedPutsBeforeEndKey() {
++            CoreTestClock clock = new CoreTestClock();
++            long time = Clock.UNITS_PER_SEC;
++            clock.setTime(time);
++            Db db = Db.builder().testSetup().clock(clock).startupDistance(2000).start();
++            Reclaim reclaim = db.internal().reclaim();
++            byte[] v = new byte[100];
++            for (int i = 0; i < 500; i += 20) {
++                Trans.Builder b = db.trans();
++                for (int j = i; j < i + 20; j++) {
++                    b.put("/k/" + (10000 + j), v);
++                }
++                db.execute(b.build());
++            }
++            db.execute(db.trans().put("/z", "z").build());     // One key after the log.
++            
++            db.setRetainDuration(1000 * Clock.UNITS_PER_SEC);
++            time += Clock.UNITS_PER_SEC;
++            clock.setTime(time);
++            db.execute(db.trans().put("/a", "a").build());
++            Assert.assertArrayEquals(Keys.toSegments("/z"), reclaim.currentIteration().endKey);
++            
++            int next = 200000;
++            int i = 0;
++            for (; i < 2000 && reclaim.lastDoneRow() == null; i++) {
++                Trans.Builder b = db.trans();
++                for (int j = 0; j < 200; j++) {
++                    b.put("/k/" + next++, v);
++                }
++                db.execute(b.build());
++            }
++            IterationInfo it = reclaim.currentIteration();
++            System.out.println("PROBE-P8 transactions " + i + ", done " 
++                    + (reclaim.lastDoneRow() != null) + ", kvCount " 
++                    + (it == null ? -1 : it.kvCount) + ", keys put " + (next - 200000));
++            Assert.assertTrue("counterexample: the iteration has not ended", 
++                    reclaim.lastDoneRow() == null);
++            db.stop();
++        }
++        
+         @Nano
+         public static void testEndKeyBoundsTheScan() {
+             CoreTestClock clock = new CoreTestClock();

@@ -1,0 +1,2 @@
+end=/a/sentinel
+completed=1 appendedKeys=40000 steps=40 scanned=5003 maxScanNodes=17 maxStepDirtied=81018 totalDirtiedBytes=6066048 maxCallDirtiedBytes=5811040

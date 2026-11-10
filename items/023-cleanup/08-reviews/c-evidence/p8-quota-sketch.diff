@@ -1,0 +1,32 @@
+--- /Users/f/fl/bench/2026-11-10/rev23/c/scratch-c/Reclaim.before-quota.java	2026-11-10 15:43:46
++++ src/bergdb/core/Reclaim.java	2026-11-10 15:43:46
+@@ -159,6 +159,8 @@
+     
+     /** A step is made when it may rewrite more than this many bytes. */
+     private static final long MIN_STEP_SIZE = 10 * 1000L;
++    static boolean PROPORTIONAL = Boolean.getBoolean("review.proportional");
++    private long prevNextPos = 0;
+     
+     /**
+      * A step scans at most this many bytes of KVs (2026-10-13, bergdb 011-04,
+@@ -456,6 +458,8 @@
+         
+         final long streamSize = t.nextPos;
+             // This is correct since meta blocks are written eagerly by RecoverableStream.
++        final long tBytes = Math.max(0, t.nextPos - prevNextPos);   // Review 023-08 C (sketch).
++        prevNextPos = t.nextPos;
+         IterationInfo current = currentIteration();
+         
+         if (current == null && retainDuration != Long.MAX_VALUE
+@@ -474,7 +478,10 @@
+             long allowed = fractionOf(streamSize - current.pStart, internalFraction) 
+                     - current.rewritten;
+             if (allowed > MIN_STEP_SIZE) {
+-                step(current, Math.min(allowed, MAX_STEP_SIZE));
++                // Review 023-08 C, a sketch: the quota also follows the transaction's bytes,
++                // twice them, so that keys put ahead of the scan cannot outrun it.
++                long quota = PROPORTIONAL ? Math.max(MAX_STEP_SIZE, 2 * tBytes) : MAX_STEP_SIZE;
++                step(current, Math.min(allowed, quota));
+             }
+         }
+         

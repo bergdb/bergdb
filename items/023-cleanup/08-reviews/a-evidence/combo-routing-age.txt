@@ -1,0 +1,3 @@
+candidates=[1824437, 1890981, 1913135, 1932541, 1934823, 1936935, 1937005] deletedAt=101600000
+cuts=1 iterations=2 oldNodesStillCurrent=[1890981, 1913135, 1932541, 1934823, 1936935] dead=true drive=253
+cuts=2 iterations=4 oldNodesStillCurrent=[] dead=true drive=495

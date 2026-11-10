@@ -1,0 +1,62 @@
+candidates=[432315, 880683, 894763, 922941, 951153, 1035637, 1177241, 1177245, 1489725] deletedAt=101600001
+cuts=1 iterations=2 oldNodesStillCurrent=[432315, 894763, 922941, 951153, 1035637, 1177241, 1177245, 1489725] dead=true drive=249
+cuts=2 iterations=4 oldNodesStillCurrent=[894763, 922941, 951153, 1035637, 1177241, 1177245, 1489725] dead=true drive=489
+cuts=3 iterations=4 oldNodesStillCurrent=[894763, 922941, 951153, 1035637, 1177241, 1177245, 1489725] dead=true drive=572
+cuts=4 iterations=6 oldNodesStillCurrent=[894763, 922941, 951153, 1035637, 1177241, 1177245, 1489725] dead=true drive=730
+cuts=5 iterations=6 oldNodesStillCurrent=[894763, 922941, 951153, 1035637, 1177241, 1177245, 1489725] dead=true drive=813
+cuts=6 iterations=8 oldNodesStillCurrent=[894763, 922941, 951153, 1035637, 1177241, 1177245, 1489725] dead=true drive=970
+cuts=7 iterations=8 oldNodesStillCurrent=[922941, 951153, 1035637, 1177241, 1177245, 1489725] dead=true drive=1053
+cuts=8 iterations=10 oldNodesStillCurrent=[922941, 951153, 1035637, 1177241, 1177245, 1489725] dead=true drive=1211
+cuts=9 iterations=10 oldNodesStillCurrent=[922941, 951153, 1035637, 1177241, 1177245, 1489725] dead=true drive=1294
+cuts=10 iterations=12 oldNodesStillCurrent=[922941, 951153, 1035637, 1177241, 1177245, 1489725] dead=true drive=1451
+cuts=11 iterations=12 oldNodesStillCurrent=[922941, 951153, 1035637, 1177241, 1177245, 1489725] dead=true drive=1534
+cuts=12 iterations=14 oldNodesStillCurrent=[922941, 951153, 1035637, 1177241, 1177245, 1489725] dead=true drive=1693
+cuts=20 iterations=22 oldNodesStillCurrent=[922941, 951153, 1035637, 1177241, 1177245, 1489725] dead=true drive=2658
+cuts=30 iterations=32 oldNodesStillCurrent=[922941, 951153, 1035637, 1177241, 1177245, 1489725] dead=true drive=3866
+cuts=40 iterations=42 oldNodesStillCurrent=[951153, 1035637, 1177241, 1177245, 1489725] dead=true drive=5079
+cuts=50 iterations=52 oldNodesStillCurrent=[951153, 1035637, 1177241, 1177245, 1489725] dead=true drive=6277
+cuts=60 iterations=62 oldNodesStillCurrent=[951153, 1035637, 1177241, 1177245, 1489725] dead=true drive=7493
+cuts=70 iterations=72 oldNodesStillCurrent=[951153, 1035637, 1177241, 1489725] dead=true drive=8700
+cuts=80 iterations=82 oldNodesStillCurrent=[951153, 1035637, 1177241, 1489725] dead=true drive=9913
+cuts=90 iterations=92 oldNodesStillCurrent=[951153, 1035637, 1177241, 1489725] dead=true drive=11120
+cuts=100 iterations=102 oldNodesStillCurrent=[951153, 1035637, 1177241, 1489725] dead=true drive=12329
+cuts=110 iterations=112 oldNodesStillCurrent=[951153, 1035637, 1177241, 1489725] dead=true drive=13539
+cuts=120 iterations=122 oldNodesStillCurrent=[951153, 1035637, 1177241, 1489725] dead=true drive=14743
+cuts=130 iterations=132 oldNodesStillCurrent=[951153, 1035637, 1177241, 1489725] dead=true drive=15953
+cuts=140 iterations=142 oldNodesStillCurrent=[951153, 1035637, 1177241, 1489725] dead=true drive=17167
+cuts=150 iterations=152 oldNodesStillCurrent=[951153, 1035637, 1177241, 1489725] dead=true drive=18375
+cuts=160 iterations=162 oldNodesStillCurrent=[951153, 1035637, 1177241, 1489725] dead=true drive=19584
+cuts=170 iterations=172 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=20800
+cuts=180 iterations=182 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=22007
+cuts=190 iterations=192 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=23214
+cuts=200 iterations=202 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=24424
+cuts=210 iterations=212 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=25630
+cuts=220 iterations=222 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=26840
+cuts=230 iterations=232 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=28050
+cuts=240 iterations=242 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=29263
+cuts=250 iterations=252 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=30473
+cuts=260 iterations=262 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=31683
+cuts=270 iterations=272 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=32894
+cuts=280 iterations=282 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=34104
+cuts=290 iterations=292 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=35303
+cuts=300 iterations=302 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=36510
+cuts=310 iterations=312 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=37722
+cuts=320 iterations=322 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=38925
+cuts=330 iterations=332 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=40129
+cuts=340 iterations=342 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=41342
+cuts=350 iterations=352 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=42551
+cuts=360 iterations=362 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=43756
+cuts=370 iterations=372 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=44960
+cuts=380 iterations=382 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=46164
+cuts=390 iterations=392 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=47373
+cuts=400 iterations=402 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=48580
+cuts=410 iterations=412 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=49784
+cuts=420 iterations=422 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=50993
+cuts=430 iterations=432 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=52200
+cuts=440 iterations=442 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=53404
+cuts=450 iterations=452 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=54614
+cuts=460 iterations=462 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=55823
+cuts=470 iterations=472 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=57036
+cuts=480 iterations=482 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=58246
+cuts=490 iterations=492 oldNodesStillCurrent=[1035637, 1177241, 1489725] dead=true drive=59455
+keptNew=0 originalCandidatesRemaining=[1035637, 1177241, 1489725]

@@ -1,0 +1,17 @@
+# T=3000 ops=60 sd=100000 retainMs=1000 dtMs=10 budgetMB=1024
+# trans  live     streamMB  itStarted itDone steps   cuts  lagMs    curSteps curKvs  wallS  curPos%
+ITER 0 done: trans 14 to 30 = 17 trans; steps 16 kvs 1036 values 564 liveAtFirstStep 678 liveNow 1446 (main's rule would scan ~liveAtStart KVs)
+ITER 1 done: trans 39 to 75 = 37 trans; steps 37 kvs 2646 values 0 liveAtFirstStep 1878 liveNow 3606 (main's rule would scan ~liveAtStart KVs)
+ITER 2 done: trans 77 to 149 = 73 trans; steps 73 kvs 5243 values 1578 liveAtFirstStep 3702 liveNow 7158 (main's rule would scan ~liveAtStart KVs)
+ITER 3 done: trans 151 to 296 = 146 trans; steps 146 kvs 10430 values 1801 liveAtFirstStep 7254 liveNow 14214 (main's rule would scan ~liveAtStart KVs)
+   500     24006     35.7        5      4     473     3     2039      201   14468      1    94.1
+ITER 4 done: trans 300 to 585 = 286 trans; steps 286 kvs 20526 values 4728 liveAtFirstStep 14406 liveNow 28086 (main's rule would scan ~liveAtStart KVs)
+  1000     48006     76.9        6      5     972     4     4149      414   29804      1    95.9
+ITER 5 done: trans 587 to 1142 = 556 trans; steps 556 kvs 39974 values 8221 liveAtFirstStep 28182 liveNow 54822 (main's rule would scan ~liveAtStart KVs)
+  1500     72006    120.1        7      6    1470     5     3579      356   25628      2    12.9
+  2000     96006    164.0        7      6    1970     5     8579      856   61628      2    96.0
+ITER 6 done: trans 1145 to 2230 = 1086 trans; steps 1086 kvs 78178 values 17340 liveAtFirstStep 54966 liveNow 107046 (main's rule would scan ~liveAtStart KVs)
+  2500    120006    208.7        8      7    2469     6     2699      269   19364      3     5.6
+  3000    144006    254.2        8      7    2969     6     7699      769   55364      3    13.3
+# iteration in progress at the end: pStart 184406584 lastKey [25473821893761464, 958661276510116408, 994619975358480424] endKey [25473872377289144, 1048593080234315320, 1877170977108918312] kvCount 55364 rewritten 9934256
+# wall 3.249016208 s

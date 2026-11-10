@@ -1,0 +1,26 @@
+TraceExport seed=3 n=400 (443 records: 9 steps, 34 table stores; 5 cuts decided, 5 physical; 135 references to versions before a cut) (run E: 18305 SLOT lines, 66041 handle lines, eviction RANDOM: 25 slots unswizzled, 90 objects released): 881 nodes, 0 errors, 0 probe failures; items/023-cleanup/08-review-a/path-mark-3.trace
+TRACECHECK items/023-cleanup/08-review-a/path-mark-3.trace
+CONFIG seed=3 n=400 keys=60 maxnode=8 sd=1000 ops=4 exact=false bulk=0 del=60 nodel=0 empty=0 long=true valsize=100 probe=17 live=false segments=4 height=3 retain=1
+options: step3 mark, step7 java, root virtual
+C-A assumptions: 0 of 444 transactions fail
+C-A adoptions below the old parent (A6' allows them, A6 not; bergdb 005-04): 0 of 444 transactions
+C-S steps: 0 of 444 transactions fail
+C-V live: 0 transactions with differences, 0 LIVE lines
+C-R probes: 0 of 30 fail
+C-L first touches: 0 of 4075 FIRST lines fail
+C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 492 of 4075 FIRST lines take a snapshot from the node table
+  T(19) node 846: a snapshot of R(5) from the node table
+  T(19) node 846: a snapshot of R(5) from the node table
+  T(19) node 1586: a snapshot of R(14) from the node table
+  T(19) node 1774: a snapshot of R(14) from the node table
+  T(36) node 2604: a snapshot of R(25) from the node table
+  T(36) node 8276: a snapshot of R(34) from the node table
+  T(36) node 5652: a snapshot of R(20) from the node table
+  T(36) node 11350: a snapshot of R(30) from the node table
+C-P slots (INV-SLOT on run E's states): 0 of 444 transactions fail; 18305 SLOT lines, 15530 checked (of objects current or in D)
+C-H handles (the model's invariants with handles on run E's states): 0 of 444 transactions fail; 400 states, 15079 handles, 11470 objects, 11470 histories compared, 27622 pointers, 11370 checked by the record rule
+C-H cases (SIS/HandleExample.lean's pointCounts): 5423 snapshots, 584 of nodes in the startup section after a restart; 4330 pointers to snapshots, 0 with a reference older than the section's (open point 1); 1123 pointers checked written with their handle's written position (choice 1), 376 with a vpos (open point 3)
+exporter errors: 0
+C-CUT cuts: 0 of 5 CUT lines (and PHYSCUT lines) fail
+diagnostics: 0 of 444 transactions fail
+TRACECHECK OK

@@ -1,0 +1,5 @@
+round=300 completed=0 first=0 bytes=14026464 sameIteration=true cursor=/m/000060074 end=/z steps=299
+round=600 completed=0 first=0 bytes=27855904 sameIteration=true cursor=/m/000120074 end=/z steps=599
+round=900 completed=0 first=0 bytes=41698160 sameIteration=true cursor=/m/000180074 end=/z steps=899
+round=1200 completed=0 first=0 bytes=55530064 sameIteration=true cursor=/m/000240074 end=/z steps=1199
+liveKVs=1004 userKVs=1001

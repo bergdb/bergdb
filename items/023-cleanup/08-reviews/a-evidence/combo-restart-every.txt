@@ -1,0 +1,11 @@
+seed=1 n=1000 keys=150 sd=2000 maxnode=8 every=1 valsize=100 del=true retain=1
+CUT: A=2088088 B=2088088, first available lookup time A=1041000011 B=1041000011, same
+stream length A=2451248 B=2451248
+AHEAD: A wrote 1 top nodes ahead; starts dropped 1 ids; (b') let replaced nodes pass 0 dirty children
+STREAM: identical
+TRANSSEQ: 0 of 1000 checkpoints differ
+KV CHECKSUM: 0 of 1000 checkpoints differ
+IDENTITY A (no restarts): 0 of 1000 checkpoints violate
+IDENTITY B (restarts): 0 of 1000 checkpoints violate
+LOOKUP A (no restarts): 0 of 1000 checkpoints violate
+LOOKUP B (restarts): 0 of 1000 checkpoints violate

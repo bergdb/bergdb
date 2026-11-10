@@ -1,0 +1,11 @@
+--- P8 Reclaim.java
++++ review no-touch Reclaim.java
+@@ -703,7 +703,7 @@
+         // Reclaim.Tester.testDeletedKeysAfterCut): only live values were rewritten. Nodes
+         // that hold deleted keys only, and the segment subtrees of deleted long keys, kept 
+         // their versions before pStart, and lookups still pass through them.
+-        t.touch = true;
++        t.touch = false;   // Review probe: UP leaves no empty current subtree.
+         t.touchFrom = it.lastKey;
+         t.touchTo = eod[0] ? null : lastKeyOfStep[0];
+         

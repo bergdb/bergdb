@@ -1,0 +1,6 @@
+candidates=[1489729, 1788073, 1795569, 1800789, 1800843, 1800869, 1800919, 1804575, 1804645] deletedAt=101320000
+cuts=1 iterations=1 oldNodesStillCurrent=[1489729, 1788073, 1795569, 1800789, 1800843, 1800919, 1804575] dead=true drive=300
+cuts=2 iterations=3 oldNodesStillCurrent=[1788073] dead=true drive=613
+cuts=3 iterations=4 oldNodesStillCurrent=[1788073] dead=true drive=720
+cuts=4 iterations=5 oldNodesStillCurrent=[1788073] dead=true drive=924
+cuts=5 iterations=6 oldNodesStillCurrent=[] dead=true drive=1031

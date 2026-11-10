@@ -1,0 +1,6 @@
+
+======== NanotestForBergDB: f ========
+On f53 261110 15:13, OpenJDK 64-Bit Server VM 27.0.1.0.3
+bergdb.core.ReclaimReaderTester .
+bergdb.dev.NanotestForBergDB .
+SUCCESS, 2 successful tests in 0.2 s.

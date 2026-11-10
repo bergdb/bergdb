@@ -1,0 +1,4 @@
+unlinked 2207, climbs 0, relabels 0 (off-path nodes 0), kept for A3 0, new roots 0, collapses 341
+merges 1509 (two nodes 49, leaves 1141, taken back 947, skipped 0), sibling follows 1511, underfull non-root nodes seen 0
+cases: merges with two klongs of one compare value in the parent 246, with a left node made by the transaction 737, a right one 210; nodes taken back by the climb 205 (roots 205)
+Done: 5 rounds, 0 failures.

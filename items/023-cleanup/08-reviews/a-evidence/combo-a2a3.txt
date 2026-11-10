@@ -1,0 +1,11 @@
+maxnode=8 keys=100 n=300 ops=1..20 del=60% long=true sorted=true seeds=5
+  transactions 1500: with a changed node not current at the end 779 (A2 is the NET line below), violating A3 0, A5 0; with marked nodes not current at the end 1233
+  created index nodes 7699 (key 7552, top 147), not current at the end 0; created value nodes 6361, not current 0
+  taken back (made and emptied in a transaction, bergdb 023-05) 403
+  changed key nodes 14139, not current at the end 1541 (pre-existing 1541)
+  marked index nodes (followed, created, changed) 46818, not current at the end 6169 (pre-existing 6169); resurrected 0
+  NET (A2): nodes with a klong at tt not current 0 (transactions 0)
+  MARKING: Db's step-3 nodes 30639, model marked 30639, in step 3 only 0, in model only 0 (transactions with a difference 0)
+  A6' (no adoption, an assumption of the model): adopted index nodes not below the old parent 0 (transactions 0); below it, which A6' allows and A6, not assumed, does not (bergdb 005-04), 0 (transactions 0)
+  TREE (one current parent, an assumption of the model): nodes without exactly one 0 (transactions 0)
+  A-COPY (an assumption of the model: a new pointer names a node of the writer's paths or a child of one): new pointers 16065 (to a child, not a node, of the paths 14117), failing 0 (transactions 0)

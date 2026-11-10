@@ -1,0 +1,7 @@
+
+======== NanotestForBergDB: unit ========
+On f53 261110 15:13, OpenJDK 64-Bit Server VM 27.0.1.0.3
+bergdb.core.Eviction ..
+bergdb.core.EvictionReaderTester ..
+bergdb.dev.NanotestForBergDB .
+SUCCESS, 5 successful tests in 0.7 s.

@@ -1,0 +1,17 @@
+
+======== NanotestForBergDB: unit ========
+On f53 261110 15:05, OpenJDK 64-Bit Server VM 27.0.1.0.3
+bergdb.core.DbTesterRestart FAILED! bergdb.core.DbTesterRestart.testRuleBCounterexample
+java.lang.AssertionError: seed 1: get(/k/19, 69) failed: bergdb.pub.util.DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted.; cause: bergdb.storage.StreamFormatException: Pointer to node 1931, which is not in the stream and not in memory, index 4 of node 915., expected true, but was false.
+	at bergdb.nanotest.Assert.assertTrue(Assert.java:357)
+	at bergdb.core.DbTesterRestart.testRuleBCounterexample(DbTesterRestart.java:1374)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:583)
+	at bergdb.nanotest.TestRunner.invokeTestMethod(TestRunner.java:131)
+	at bergdb.nanotest.TestRunner.runClassTests(TestRunner.java:98)
+	at bergdb.nanotest.TestRunner.run(TestRunner.java:59)
+	at bergdb.dev.NanotestForBergDB.go(NanotestForBergDB.java:87)
+	at bergdb.dev.Unit.main(Unit.java:16)
+
+bergdb.dev.NanotestForBergDB .
+FAILURE, total: 2, failed: 1. Time: 0.2 s.
