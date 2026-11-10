@@ -47,8 +47,11 @@ Files
 =====
 
 * 01-inventory.md. 024-01, the inventory of candidates for 2026.5, for
-  Frans to choose a theme and a scope (Frans, 19:24 to 19:26). Being
-  written.
+  Frans to choose a theme and a scope (Frans, 19:24 to 19:26): 49
+  candidates in eight areas, four possible themes ((A) consolidate
+  2026.4, (B) large databases measured on a calm Core, recommended, (C)
+  strict cleanup, (D) the Pub API), and the questions for Frans in order.
+  Nothing decided.
 
 
 Log
@@ -60,3 +63,8 @@ later.
 2026-11-10. Frans (19:24): "About 2026.5. I would like to prepare for
 this work. What can we do now?" 024-01, an inventory of the candidates,
 started 19:26.
+
+2026-11-10. 024-01 written (19:26 to 19:40): 49 candidates; four themes,
+(B) recommended; the first questions: the theme, whether 2026.5 opens
+2026.4's databases, measuring first, and fix (a) dropped since the window
+does not grow (023-10).
