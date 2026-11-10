@@ -87,8 +87,11 @@ public class PubTesterPrimary {
                 Db.testHooks = null;
             }
             Assert.assertEquals(5, i);
-            // The listing's GetMany has endKey (UsePrimaryBuilderImp.Scan.readPage): 3 key
-            // nodes with it, 157 without it, over the deleted keys of /b/ (2026-11-09).
+            // The listing's GetMany has endKey (UsePrimaryBuilderImp.Scan.readPage). Since
+            // the deletes unlink the nodes they empty (bergdb 023-07, section 5.1, K1) the
+            // listing follows few key nodes with or without it, so this tests K1 and SE
+            // together; DbTesterGetMany.testEndKeyAsEndpoint and testEndKeyChainEdges test
+            // SE's own (bergdb 023-11, review B, B3).
             Assert.assertTrue("key nodes followed: " + nodes[0], nodes[0] <= 30);
             i = 0;
             for (Person p : c.usePrimary(Person.class).dir("/a/").objects()) {

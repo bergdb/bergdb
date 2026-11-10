@@ -51,21 +51,19 @@ public class DbTesterDelete {
     private static final int[] DISTANCES = {10, 10 * 1000 * 1000};
 
     /**
-     * Fault 12 (bergdb 023-08, review C; the check of it, section 3.1, DbShadowProbe): a
-     * history of b keys, then one transaction that puts z keys through a KeyTransformation and
-     * deletes every b key, then a restart and more transactions, and another restart. The
-     * segment root of "/prefix" that the transaction made is split in place under a new root;
-     * its segment leaf's klong of tt to it was shadowed by a second klong, and when the
-     * transaction emptied and took the root back, the shadowed klong named a node never
-     * written: with -ea the store failed (StoredTrans' stream pointer check), without it the
-     * next start ("Unexpected stream pointer"). The startup distance of 10 bytes writes the
-     * leaf at once. Failed at iterations 7 and 11 without the fix in Dag.spaceSplitInPlace.
-     * Since the sort of a transaction's keys after their transformation (Db.putKvs, 023-09),
-     * the z keys are put after the deletes, and this test no longer reaches that order through
-     * Db; DagTester.testNoKlongNamesATakenBackNode still does, through the Dag.
+     * Deletes and puts through a KeyTransformation in one transaction, with restarts (bergdb
+     * 023-08, review C; the check of fault 12, section 3.1, DbShadowProbe): a history of b
+     * keys, then one transaction that puts z keys through a KeyTransformation and deletes
+     * every b key, then a restart and more transactions, and another restart; the values at
+     * each step, at a startup distance of 10 bytes, which writes each record at once. Before
+     * the sort of a transaction's keys after their transformation (Db.putKvs, 023-09) this was
+     * fault 12's case, reached at iterations 7 and 11 without the fix in
+     * Dag.spaceSplitInPlace; since then the z keys are put after the deletes, and
+     * DagTester.testNoKlongNamesATakenBackNode reaches that order through the Dag (bergdb
+     * 023-11, review B, B4: the name was testTakeBackAfterSpaceSplitInPlace).
      */
     @Nano
-    public static void testTakeBackAfterSpaceSplitInPlace() {
+    public static void testTransformedPutsAndDeletesWithRestarts() {
         Random r = new Random(1);
         for (int iter = 0; iter < 16; iter++) {
             int nb = 1 + r.nextInt(60);
@@ -129,8 +127,8 @@ public class DbTesterDelete {
      * root, which root collapse lowers as it loses its children, down to a segment leaf that
      * stays, empty. In one transaction after the fill, and over several transactions, then
      * puts again, at startup distances that rerun little and all; gets after each step and
-     * after restarts. An inner space root emptied in one delete is replaced by an empty
-     * segment leaf: DagTester.testEmptiedSpaceRootReplacedByALeaf.
+     * after restarts. An inner space root is never emptied in one delete: Dag.deleteUpward
+     * throws Bug for it (bergdb 023-11, review A, S1).
      */
     @Nano
     public static void testDeleteEveryKey() {

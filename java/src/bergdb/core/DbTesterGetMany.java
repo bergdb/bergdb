@@ -1282,7 +1282,8 @@ public class DbTesterGetMany {
      * (398), and the test failed without the end key's check in GetMany.Chain.next(). Since
      * 023-09 a delete unlinks the nodes it empties (Dag.deleteUpward; bergdb 023-07, section
      * 5.1), so the stop condition alone follows few key nodes too (11); the results of both
-     * are the same.
+     * are the same. So this tests K1 and SE together, and passes without SE's check;
+     * testEndKeyAsEndpoint and testEndKeyChainEdges test SE's own (bergdb 023-11, B3).
      */
     @Nano
     public static void testEndKeyPassesNoDeletedKeys() {
@@ -1344,7 +1345,7 @@ public class DbTesterGetMany {
      * and deleted, then "c". The scan of the last five live keys, to the end "b" not
      * inclusive, follows few key nodes with endKey (9 on 2026-11-09). The stop condition
      * alone followed a node of each deleted key's segment tree (2,160) before 023-09, and
-     * since then, as the deletes unlink them, few too (11).
+     * since then, as the deletes unlink them, few too (11): K1 and SE together, as above.
      */
     @Nano
     public static void testEndKeyPassesNoDeletedLongKeys() {

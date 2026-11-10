@@ -149,8 +149,11 @@ public class PubTesterIndex {
             } finally {
                 Db.testHooks = null;
             }
-            // The scan's GetMany has endKey (UseIndexBuilderImp.Scan.readPage): 6 key nodes
-            // with it, 146 without it, over ix2's deleted entries (2026-11-09).
+            // The scan's GetMany has endKey (UseIndexBuilderImp.Scan.readPage). Since the
+            // deletes unlink the nodes they empty (bergdb 023-07, section 5.1, K1) the scan
+            // follows few key nodes with or without it, so this tests K1 and SE together;
+            // DbTesterGetMany.testEndKeyAsEndpoint and testEndKeyChainEdges test SE's own
+            // (bergdb 023-11, review B, B3).
             Assert.assertTrue("key nodes followed: " + nodes[0], nodes[0] <= 30);
             Assert.assertEquals(0, count(c.useIndex("in", Payment.class).from(50L, true)
                     .objects()));
