@@ -79,6 +79,14 @@ Files
   Frans's 2012 plan) rather than reclaim's rebuild (RB); LE-b sound
   everywhere checked; what the studies missed; the biggest risks;
   questions Z1 to Z11. A second pass when the prototypes of 023-05 report.
+* 07-proposal.md. 023-07, the proposal for 2026.4, written down for
+  independent reviews (Frans, 14:26 to 14:36: "Principle KISS? [...] write
+  this down in 023-07. Then we can make multiple independent reviews with
+  multiple AIs"): a KISS core (P4's unlink, P8's scan at the step's time,
+  P6's dead hand, 021-28's end key, format 6) against the full set (with
+  merges, the top-node window's fixes, the replaced queue, `maintain()`),
+  every rule stated exactly. Being written; then three independent
+  reviews.
 
 Earlier work, in 020: 020-30, the first study (sections 1 to 4), with
 four helper studies 020-30-01 to 020-30-04, and an independent study by
@@ -143,3 +151,9 @@ reclaim's reloads and a measure of reads at earlier times shows the cost
 small, else kept but off by default; `noEvict()` unchanged (a Core option
 for tests and benchmarks), its Javadoc saying that under it the memory of
 ended versions is released only at a restart.
+
+2026-11-10. Frans paused to review (14:26 to 14:36): the proposal has
+grown; KISS. 023-07 written down for three independent reviews (Codex,
+and two agents on other models). The long-run answer to Z21 (P7, 14:29):
+without (b') the left-out nodes leave D within 10,000 transactions, so
+(b') is an efficiency, not needed for the rule.
