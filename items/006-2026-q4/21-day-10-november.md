@@ -100,7 +100,7 @@ restarts it from there (013-02, `resume`).
   options, max) started. 10:22 Codex stopped and resumed with a phase 1
   options brief (by 11:45). 10:30 to 10:49 Frans answered 023-02's F2,
   F3, F5, F7, F9 and F10.
-* 10:55 023-05: three prototypes started, xhigh (Frans, 10:51): P1
+* 10:53 023-05: three prototypes started, xhigh (Frans, 10:51): P1
   relabel, P2 relaxed invariant, P3 reclaim compaction and `maintain()`;
   each in its own clone, by 14:30 at the latest.
 
