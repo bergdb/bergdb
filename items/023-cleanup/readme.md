@@ -103,6 +103,8 @@ Files
   (023-06, section 18.6, item 3; 023-08, Q6) on `main` and `023-core`:
   bounded, no growth over repeated mass deletes and restarts; its probe
   and scripts in 10-ratchet/.
+* 11-code-reviews/. 023-11, two independent reviews of the code of
+  `023-core` at 13246f53 (a.md, b.md): both "ready with fixes".
 
 Earlier work, in 020: 020-30, the first study (sections 1 to 4), with
 four helper studies 020-30-01 to 020-30-04, and an independent study by
@@ -261,3 +263,13 @@ to 152 dirty top nodes against the twin's 87 while the iteration that
 spans the delete runs (T1's miss at 1M); `main` cannot show the window,
 as its reclaim stops cutting after the first mass delete. The full run
 (1M transactions) started at 18:27.
+
+2026-11-10. 023-11, two independent code reviews of `023-core` at
+13246f53 (18:04 to 18:35): A by Codex (gpt-6.1-sol, effort max), B by
+Fable 5.2 at max. Both: ready with fixes. A: F1, a fault: the sort's
+compaction changes a reusable `Trans`'s input, so a later run of it can
+lose a put; F2, the dead hand's 2 ms a step is not enforced inside a map
+part (33 ms of CPU in a probe); S1, the empty inner root's fallback is
+dead. B: no fault; B1 and B2, two undercounts of the dirty-node checks;
+B3 to B5, comments, test names and small simplifications. The fixes go to
+the integration branch.
