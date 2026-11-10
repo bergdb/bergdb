@@ -1416,6 +1416,31 @@ public class CorruptStreamTester {
         }
     }
 
+    /**
+     * A key node's prevPos changed, its checksum made right, in the first record of the
+     * startup section: testFull's copies of seeds 20769 and 20770 (2026-11-10, run for the
+     * release of 2026.4), each change of the prevPos of one key node. The version that the
+     * prevPos named, before the section, is the one that its parent's pointer names; without
+     * it in DbStarter's posToId, rule 4 by position found no canonical object for the
+     * pointer, and by node id the node's: the start's check of rule 4 (005-57, with -ea)
+     * threw an AssertionError. Now the start refuses the stream (checkLinkById).
+     */
+    @Nano
+    public static void testFoundLinkByIdPrevPos() {
+        Original o = write(LONG, 20769L * 31 + LONG.name.hashCode());
+        Record rec = o.recordAt(22448);
+        int[] node = rec.nodes.get(0);
+        Assert.assertEquals(32, node[0]);
+        byte[] nb = Arrays.copyOfRange(rec.bytes, node[0], node[0] + node[1]);
+        nb[8] ^= (byte) 0x01;
+        Copy c = nodeCopy(o, rec, node, nb, "xor 1 at its byte 8");
+        Outcome out = check(o, c);
+        if (out.failure != null || !out.kind.startsWith("refused")) {
+            throw new AssertionError(c.what + ": " + (out.failure != null ? out.failure
+                    : out.kind));
+        }
+    }
+
     /** The message of the exception that a start of the copy throws, or null if it starts. */
     static String refusal(Original o, Copy c) {
         byte[] bytes = c.bytes.get();
