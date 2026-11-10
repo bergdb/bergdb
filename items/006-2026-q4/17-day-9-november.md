@@ -165,7 +165,7 @@ coordinator reads it, this plan's progress, and the State notes of
 
 ## 6. Outcome
 
-Written by coord-1109 on 10 November, 06:40. The day's events, agent by
+Written by coord-1109 on 10 November, 06:31. The day's events, agent by
 agent, are in `/Users/f/fl/bench/coord/2026-11-09/state.md`.
 
 ### 6.1. The day
@@ -208,8 +208,18 @@ on the storage's thread (its `stop()` does not wait for a failed
 storage) and deletes the directory; `FileStream.unlockDir()` closes
 `bergdb.lock` before it removes the key from its set of locked
 directories, and in that moment ext4 gave the next test's new directory
-the same inode. Reproduced on s1 with JDK 17 and JDK 27, about 1 in
-1,000. Test hygiene first; behind it a small race of the product that
+the same inode. The test has raced since 019-41 (`8f0d117c`, 6 November), which
+wakes the waiting sync before the storage's thread closes the stream;
+before, the sync returned at the next 500 ms poll, after the close.
+Reproduced on s1 by a probe that loops the tester's failure tests on the
+candidate's jar: 10 refusals in 30,000 tests on JDK 17 and 14 on JDK 27;
+0 with the test fix (`manager.close()` instead of `manager.stop()` in
+the three tests that remove their directory after a failed storage), 0
+with the product fix idea (`unlockDir()` closes the lock file and
+removes the keys under the `LOCKED_DIRS` monitor). The patches are in
+`/Users/f/fl/bench/2026-11-10/jdk17-f/` (`test-fix.patch`,
+`product-fix-idea.patch`; both applied, uncommitted, in its `clone`); s1's
+outputs in `/opt/bergdb-bench/2026-11-10-jdk17/`. Test hygiene first; behind it a small race of the product that
 can refuse, rarely and on Linux, a start in a new directory right after
 a database was stopped and its directory deleted; a retry works; no
 wrong or lost data.
@@ -239,8 +249,12 @@ settings below the API's least, and one status lag of BergDB (low).
    prototype (branch `021-25-fix-a`) brings the cuts back but does not
    bound the database; (b) is the fix, also for 020-24-16's U16-1.
 5. **The night's new findings, for 2026.5:** the JDK 17 test race (the
-   test closes and waits; `unlockDir()` removes the key before it
-   releases the lock); 020-17's H3-O5 (the job ACTIVE under the lock),
+   test fix, `close()` in three tests, changes no product class and
+   could go in before the tag; the product fix in `unlockDir()` with a
+   Linux-only failing test, and perhaps a line in `releases/next.md`:
+   "On Linux, a new database in a new directory can, rarely, be refused
+   as in use while a database whose directory was deleted is closing; a
+   retry works"); 020-17's H3-O5 (the job ACTIVE under the lock),
    H2-O5 and H2-O6 (harness). Rec: one 021 entry each for the two of
    BergDB.
 6. **022's night steps** (`runs-2026-4.sh`, 90 minutes, and `step5.sh`)
