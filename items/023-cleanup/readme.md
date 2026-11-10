@@ -38,6 +38,11 @@ Files
   resources come back to about the hello-world database's), a
   steady-state churn twin, correctness and regression; with today's
   numbers from a prototype. Being written.
+* 04-options.md. 023-04, the options, the first phase of the solution:
+  the building blocks, the options as combinations judged against 023-02's
+  requirements, the open design decisions, the format and compatibility,
+  and what phase 2 should do; phase 1's conclusions (020-30, section 4)
+  carried into 023. Being written.
 
 Earlier work, in 020: 020-30, the first study (sections 1 to 4), with
 four helper studies 020-30-01 to 020-30-04, and an independent study by
@@ -49,4 +54,5 @@ Log
 
 2026-11-10. Created the item (Frans, 09:45); 023-01 and 023-02 started
 by the coordinator's agents. 023-03 started at Frans's request (09:58),
-after his practical test of the rule (09:55).
+after his practical test of the rule (09:55). 023-01 and 023-02 done;
+023-04, the first phase of the solution, started (Frans, 10:12).
