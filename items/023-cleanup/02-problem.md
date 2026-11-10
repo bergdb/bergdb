@@ -494,9 +494,13 @@ reads, warm and cold, with a startup distance of 50 MB or more.
   them; (b) open them and leave what they hold; (c) open them and release
   it too. Recommended: (c) if it fits R11's bound, else (b) with a note in
   the release notes. 2026.4 already refuses 2026.3's encrypted ones.
+  **Frans, 2026-11-10, 10:30: (a).** "No need for compatibility, we can
+  ignore released before 2026.4, so: (a)." 2026.4 refuses databases of
+  earlier releases.
 * **F10. The format in 2026.4.** Is a change of the record format
   acceptable in 2026.4, with new digests, the C port after the release,
   and F9's answer? Recommended: yes, each change approved in its entry.
+  **Frans, 2026-11-10, 10:30: "Yes, acceptable."**
 * **F11. 2026.4's scope.** Which requirements must 2026.4 meet?
   Recommended: R1, R6, R9, R11, R12 (a), R13, and R2 to R5 for deleted
   KVs; F1's klongs, R7 and R12 (b) may follow in 2026.5.
@@ -512,3 +516,7 @@ its helpers' files (facts and questions, not options), 020-24-14 to 18,
 021-25, 021-28 (branch `scan-deleted-keys`), 011-01, 010-01, 018-01,
 levels.md, sis-model.md and the code of `main`; Frans's words of 08:29,
 08:50 and 09:55. No code, no build, no new measurement.
+
+2026-11-10. Frans answered F9, (a): earlier releases' databases are
+refused, and F10, yes: a change of the record format is acceptable in
+2026.4 (10:30).

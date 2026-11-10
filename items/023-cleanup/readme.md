@@ -58,3 +58,8 @@ Log
 by the coordinator's agents. 023-03 started at Frans's request (09:58),
 after his practical test of the rule (09:55). 023-01 and 023-02 done;
 023-04, the first phase of the solution, started (Frans, 10:12).
+
+2026-11-10. 023-03 done. Frans answered 023-02's F9 and F10 (10:30): a
+change of the record format is acceptable in 2026.4, and 2026.4 refuses
+the databases of earlier releases ("No need for compatibility, we can
+ignore released before 2026.4").
