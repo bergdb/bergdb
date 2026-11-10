@@ -66,6 +66,12 @@ Files
   on 023-04's LE-b: "a good idea to explore further"), P4, the empty key
   first, on P1's branch instead of the relabel (`p4-empty-key.md`). Being
   built.
+* 06-architecture-review.md. 023-06, an architect's review of the
+  overall solution, by an agent on a stronger model at effort max (Frans,
+  11:57 to 11:59): the framing, the best design against 023-04 and Codex's
+  study, the interactions and risks, the leftmost child, the path to
+  strict, a sketch of the correctness argument; a second pass when the
+  prototypes of 023-05 report. Being written.
 
 Earlier work, in 020: 020-30, the first study (sections 1 to 4), with
 four helper studies 020-30-01 to 020-30-04, and an independent study by
