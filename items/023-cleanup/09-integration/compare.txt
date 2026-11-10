@@ -1,0 +1,97 @@
+DIFFERENT l2-default-100MB plain: length 79056128 -> 79175656, sha256 0dde386df386e2c3c7ea710e0a9fe429edc04c0b374a95a1ae5b6185b40d89e6 -> fce3e13f8cf4aed7b23e324dcd3f815a52f319fdd876439a74162e69a2156202
+  physical cut l2-default-100MB plain: firstPos 0 -> 0
+DIFFERENT l2-default-100MB reads: length 79056128 -> 79175656, sha256 0dde386df386e2c3c7ea710e0a9fe429edc04c0b374a95a1ae5b6185b40d89e6 -> fce3e13f8cf4aed7b23e324dcd3f815a52f319fdd876439a74162e69a2156202
+  physical cut l2-default-100MB reads: firstPos 0 -> 0
+DIFFERENT l2-default-100MB restarts: length 79056128 -> 79175656, sha256 0dde386df386e2c3c7ea710e0a9fe429edc04c0b374a95a1ae5b6185b40d89e6 -> fce3e13f8cf4aed7b23e324dcd3f815a52f319fdd876439a74162e69a2156202
+  physical cut l2-default-100MB restarts: firstPos 0 -> 0
+DIFFERENT l2-default-100MB restarts-once: length 79056128 -> 79175656, sha256 0dde386df386e2c3c7ea710e0a9fe429edc04c0b374a95a1ae5b6185b40d89e6 -> fce3e13f8cf4aed7b23e324dcd3f815a52f319fdd876439a74162e69a2156202
+  physical cut l2-default-100MB restarts-once: firstPos 0 -> 0
+DIFFERENT l2-every1 plain: sha256 d415c92e0d33ec6ed5147c4494ef1a3ccaf3bc6a8a5728840925ccb93eb6fecc -> 8295ed2545b2c1b5f3e6d7d181c80655464d1d90c3bac4cfd528e094b678425a
+  physical cut l2-every1 plain: firstPos 0 -> 0
+DIFFERENT l2-every1 reads: sha256 d415c92e0d33ec6ed5147c4494ef1a3ccaf3bc6a8a5728840925ccb93eb6fecc -> 8295ed2545b2c1b5f3e6d7d181c80655464d1d90c3bac4cfd528e094b678425a
+  physical cut l2-every1 reads: firstPos 0 -> 0
+DIFFERENT l2-every1 restarts: sha256 d415c92e0d33ec6ed5147c4494ef1a3ccaf3bc6a8a5728840925ccb93eb6fecc -> 8295ed2545b2c1b5f3e6d7d181c80655464d1d90c3bac4cfd528e094b678425a
+  physical cut l2-every1 restarts: firstPos 0 -> 0
+DIFFERENT l2-every1 restarts-once: sha256 d415c92e0d33ec6ed5147c4494ef1a3ccaf3bc6a8a5728840925ccb93eb6fecc -> 8295ed2545b2c1b5f3e6d7d181c80655464d1d90c3bac4cfd528e094b678425a
+  physical cut l2-every1 restarts-once: firstPos 0 -> 0
+DIFFERENT l2-idle-1 plain: length 222152 -> 222104, sha256 623c92d84f675cc270fabbf97c4c7ca3fce307c600415570c1c3d50bafafc9ee -> 47704b7d265f91d927f8ff469c1e96e9fb4e9659c55dd8d74dc5881398c061cd
+  physical cut l2-idle-1 plain: firstPos 0 -> 0
+DIFFERENT l2-idle-1 reads: length 222152 -> 222104, sha256 623c92d84f675cc270fabbf97c4c7ca3fce307c600415570c1c3d50bafafc9ee -> 47704b7d265f91d927f8ff469c1e96e9fb4e9659c55dd8d74dc5881398c061cd
+  physical cut l2-idle-1 reads: firstPos 0 -> 0
+DIFFERENT l2-idle-1 restarts: length 222152 -> 222104, sha256 623c92d84f675cc270fabbf97c4c7ca3fce307c600415570c1c3d50bafafc9ee -> 47704b7d265f91d927f8ff469c1e96e9fb4e9659c55dd8d74dc5881398c061cd
+  physical cut l2-idle-1 restarts: firstPos 0 -> 0
+DIFFERENT l2-idle-1 restarts-once: length 222152 -> 222104, sha256 623c92d84f675cc270fabbf97c4c7ca3fce307c600415570c1c3d50bafafc9ee -> 47704b7d265f91d927f8ff469c1e96e9fb4e9659c55dd8d74dc5881398c061cd
+  physical cut l2-idle-1 restarts-once: firstPos 0 -> 0
+DIFFERENT l2-idle-2 plain: sha256 92d2c4619f5cda3abd742409c141eb94cf3c8d2e21db061ec6bee30ec534d7cf -> 098934fdac9b73b1f000310931245496e157852fd19a6305b0a3ebac7c25c4af
+  physical cut l2-idle-2 plain: firstPos 0 -> 0
+DIFFERENT l2-idle-2 reads: sha256 92d2c4619f5cda3abd742409c141eb94cf3c8d2e21db061ec6bee30ec534d7cf -> 098934fdac9b73b1f000310931245496e157852fd19a6305b0a3ebac7c25c4af
+  physical cut l2-idle-2 reads: firstPos 0 -> 0
+DIFFERENT l2-idle-2 restarts: sha256 92d2c4619f5cda3abd742409c141eb94cf3c8d2e21db061ec6bee30ec534d7cf -> 098934fdac9b73b1f000310931245496e157852fd19a6305b0a3ebac7c25c4af
+  physical cut l2-idle-2 restarts: firstPos 0 -> 0
+DIFFERENT l2-idle-2 restarts-once: sha256 92d2c4619f5cda3abd742409c141eb94cf3c8d2e21db061ec6bee30ec534d7cf -> 098934fdac9b73b1f000310931245496e157852fd19a6305b0a3ebac7c25c4af
+  physical cut l2-idle-2 restarts-once: firstPos 0 -> 0
+DIFFERENT l2-sd100 plain: sha256 d6d0398f3063c8ed8ded70bad7db78714113159b5b41f4935af94bf765a8a0b7 -> 56d42886eedff9f600798e2660cb285986e38378bb79593463bd4e9a424b1639
+  physical cut l2-sd100 plain: firstPos 0 -> 0
+DIFFERENT l2-sd100 reads: sha256 d6d0398f3063c8ed8ded70bad7db78714113159b5b41f4935af94bf765a8a0b7 -> 56d42886eedff9f600798e2660cb285986e38378bb79593463bd4e9a424b1639
+  physical cut l2-sd100 reads: firstPos 0 -> 0
+DIFFERENT l2-sd100 restarts: sha256 d6d0398f3063c8ed8ded70bad7db78714113159b5b41f4935af94bf765a8a0b7 -> 56d42886eedff9f600798e2660cb285986e38378bb79593463bd4e9a424b1639
+  physical cut l2-sd100 restarts: firstPos 0 -> 0
+DIFFERENT l2-sd100 restarts-once: sha256 d6d0398f3063c8ed8ded70bad7db78714113159b5b41f4935af94bf765a8a0b7 -> 56d42886eedff9f600798e2660cb285986e38378bb79593463bd4e9a424b1639
+  physical cut l2-sd100 restarts-once: firstPos 0 -> 0
+DIFFERENT l2-sd1000-node8 plain: length 4355480 -> 4347144, sha256 51a6989f867d2e71d08790ffe246510424249aa76fb7f816f2c3d9a8b52f2aca -> 9de0a54ce5a49d9423ec415a8f3051a7c6551946c5304110823561fb744730ea
+  physical cut l2-sd1000-node8 plain: firstPos 0 -> 0
+DIFFERENT l2-sd1000-node8 reads: length 4355480 -> 4347144, sha256 51a6989f867d2e71d08790ffe246510424249aa76fb7f816f2c3d9a8b52f2aca -> 9de0a54ce5a49d9423ec415a8f3051a7c6551946c5304110823561fb744730ea
+  physical cut l2-sd1000-node8 reads: firstPos 0 -> 0
+DIFFERENT l2-sd1000-node8 restarts: length 4355480 -> 4347144, sha256 51a6989f867d2e71d08790ffe246510424249aa76fb7f816f2c3d9a8b52f2aca -> 9de0a54ce5a49d9423ec415a8f3051a7c6551946c5304110823561fb744730ea
+  physical cut l2-sd1000-node8 restarts: firstPos 0 -> 0
+DIFFERENT l2-sd1000-node8 restarts-once: length 4355480 -> 4347144, sha256 51a6989f867d2e71d08790ffe246510424249aa76fb7f816f2c3d9a8b52f2aca -> 9de0a54ce5a49d9423ec415a8f3051a7c6551946c5304110823561fb744730ea
+  physical cut l2-sd1000-node8 restarts-once: firstPos 0 -> 0
+DIFFERENT l2-sd10000-node14 plain: length 2556312 -> 2477400, sha256 f28b17727e08fdca3e54c6c7330978654d50739cfbc729c869de66f659a86e67 -> 706a00df1045ec8255fef4514df4d2cf60f8994f4f7cf0a0d5ce8c791ec8f390
+  physical cut l2-sd10000-node14 plain: firstPos 0 -> 0
+DIFFERENT l2-sd10000-node14 reads: length 2556312 -> 2477400, sha256 f28b17727e08fdca3e54c6c7330978654d50739cfbc729c869de66f659a86e67 -> 706a00df1045ec8255fef4514df4d2cf60f8994f4f7cf0a0d5ce8c791ec8f390
+  physical cut l2-sd10000-node14 reads: firstPos 0 -> 0
+DIFFERENT l2-sd10000-node14 restarts: length 2556312 -> 2477400, sha256 f28b17727e08fdca3e54c6c7330978654d50739cfbc729c869de66f659a86e67 -> 706a00df1045ec8255fef4514df4d2cf60f8994f4f7cf0a0d5ce8c791ec8f390
+  physical cut l2-sd10000-node14 restarts: firstPos 0 -> 0
+DIFFERENT l2-sd10000-node14 restarts-once: length 2556312 -> 2477400, sha256 f28b17727e08fdca3e54c6c7330978654d50739cfbc729c869de66f659a86e67 -> 706a00df1045ec8255fef4514df4d2cf60f8994f4f7cf0a0d5ce8c791ec8f390
+  physical cut l2-sd10000-node14 restarts-once: firstPos 0 -> 0
+DIFFERENT l2-sd100000-node62 plain: sha256 474567089c5d47b40db5bf445add467d4dde9e908b0b685eb119c485ec77c519 -> ddb507b413ddf8ce386f0f12fc309f4ddbfa91be7a87de9cc601b130ab5f2b61
+  physical cut l2-sd100000-node62 plain: firstPos 0 -> 0
+DIFFERENT l2-sd100000-node62 reads: sha256 474567089c5d47b40db5bf445add467d4dde9e908b0b685eb119c485ec77c519 -> ddb507b413ddf8ce386f0f12fc309f4ddbfa91be7a87de9cc601b130ab5f2b61
+  physical cut l2-sd100000-node62 reads: firstPos 0 -> 0
+DIFFERENT l2-sd100000-node62 restarts: sha256 474567089c5d47b40db5bf445add467d4dde9e908b0b685eb119c485ec77c519 -> ddb507b413ddf8ce386f0f12fc309f4ddbfa91be7a87de9cc601b130ab5f2b61
+  physical cut l2-sd100000-node62 restarts: firstPos 0 -> 0
+DIFFERENT l2-sd100000-node62 restarts-once: sha256 474567089c5d47b40db5bf445add467d4dde9e908b0b685eb119c485ec77c519 -> ddb507b413ddf8ce386f0f12fc309f4ddbfa91be7a87de9cc601b130ab5f2b61
+  physical cut l2-sd100000-node62 restarts-once: firstPos 0 -> 0
+DIFFERENT l3-every1 plain: sha256 4e62d943a1f7ac2b6469163248c9ec3b0e0d29491bc06a05738185b12859c982 -> 23834074061b62b35d038c82f32360a2cfaf87a8af4baeda023e66c4efbcd27e
+  physical cut l3-every1 plain: firstPos 1000000 -> 1000000
+DIFFERENT l3-every1 reads: sha256 4e62d943a1f7ac2b6469163248c9ec3b0e0d29491bc06a05738185b12859c982 -> 23834074061b62b35d038c82f32360a2cfaf87a8af4baeda023e66c4efbcd27e
+  physical cut l3-every1 reads: firstPos 1000000 -> 1000000
+DIFFERENT l3-every1 restarts: sha256 4e62d943a1f7ac2b6469163248c9ec3b0e0d29491bc06a05738185b12859c982 -> 23834074061b62b35d038c82f32360a2cfaf87a8af4baeda023e66c4efbcd27e
+  physical cut l3-every1 restarts: firstPos 1000000 -> 1000000
+DIFFERENT l3-every1 restarts-once: sha256 4e62d943a1f7ac2b6469163248c9ec3b0e0d29491bc06a05738185b12859c982 -> 23834074061b62b35d038c82f32360a2cfaf87a8af4baeda023e66c4efbcd27e
+  physical cut l3-every1 restarts-once: firstPos 1000000 -> 1000000
+DIFFERENT l3-node14 plain: length 1651552 -> 1640160, firstAvailablePos 1546440 -> 1516000, firstAvailableTime 2069500011 -> 2051300011, sha256 92dc924bb84cc02d4ed4c6ba15b42f5a46b02ce5a38fa60cab46297e3b34ba82 -> f464a97f5ea7b81139579ed6eb35193df10f685bd340821953385378f95acc3d
+  physical cut l3-node14 plain: firstPos 1000000 -> 1000000
+DIFFERENT l3-node14 reads: length 1651552 -> 1640160, firstAvailablePos 1546440 -> 1516000, firstAvailableTime 2069500011 -> 2051300011, sha256 92dc924bb84cc02d4ed4c6ba15b42f5a46b02ce5a38fa60cab46297e3b34ba82 -> f464a97f5ea7b81139579ed6eb35193df10f685bd340821953385378f95acc3d
+  physical cut l3-node14 reads: firstPos 1000000 -> 1000000
+DIFFERENT l3-node14 restarts: length 1651552 -> 1640160, firstAvailablePos 1546440 -> 1516000, firstAvailableTime 2069500011 -> 2051300011, sha256 92dc924bb84cc02d4ed4c6ba15b42f5a46b02ce5a38fa60cab46297e3b34ba82 -> f464a97f5ea7b81139579ed6eb35193df10f685bd340821953385378f95acc3d
+  physical cut l3-node14 restarts: firstPos 1000000 -> 1000000
+DIFFERENT l3-node14 restarts-once: length 1651552 -> 1640160, firstAvailablePos 1546440 -> 1516000, firstAvailableTime 2069500011 -> 2051300011, sha256 92dc924bb84cc02d4ed4c6ba15b42f5a46b02ce5a38fa60cab46297e3b34ba82 -> f464a97f5ea7b81139579ed6eb35193df10f685bd340821953385378f95acc3d
+  physical cut l3-node14 restarts-once: firstPos 1000000 -> 1000000
+DIFFERENT l3-node62 plain: sha256 c03d5fd707f4154eab327bc808dfca8e8d455afeea0bb6aa0d9f5fdcc7266068 -> 96c54270b6cc55678b743c98f536abab9a4662e5631fd71247b5e8bbffe9f48c
+  physical cut l3-node62 plain: firstPos 9000000 -> 9000000
+DIFFERENT l3-node62 reads: sha256 c03d5fd707f4154eab327bc808dfca8e8d455afeea0bb6aa0d9f5fdcc7266068 -> 96c54270b6cc55678b743c98f536abab9a4662e5631fd71247b5e8bbffe9f48c
+  physical cut l3-node62 reads: firstPos 9000000 -> 9000000
+DIFFERENT l3-node62 restarts: sha256 c03d5fd707f4154eab327bc808dfca8e8d455afeea0bb6aa0d9f5fdcc7266068 -> 96c54270b6cc55678b743c98f536abab9a4662e5631fd71247b5e8bbffe9f48c
+  physical cut l3-node62 restarts: firstPos 9000000 -> 9000000
+DIFFERENT l3-node62 restarts-once: sha256 c03d5fd707f4154eab327bc808dfca8e8d455afeea0bb6aa0d9f5fdcc7266068 -> 96c54270b6cc55678b743c98f536abab9a4662e5631fd71247b5e8bbffe9f48c
+  physical cut l3-node62 restarts-once: firstPos 9000000 -> 9000000
+DIFFERENT l3-node8 plain: length 7195952 -> 7175352, firstAvailablePos 5968296 -> 5907888, firstAvailableTime 2033500011 -> 2027300011, sha256 dc9e8a6181fb7479e0345b2560bfe9678a41e579033fc3bc28c96bc10b20ee3d -> c573d3bfecca505f4a3d04896f71ffd5e6867e4a1b6a35952f57294afec9cd05
+  physical cut l3-node8 plain: firstPos 5000000 -> 5000000
+DIFFERENT l3-node8 reads: length 7195952 -> 7175352, firstAvailablePos 5968296 -> 5907888, firstAvailableTime 2033500011 -> 2027300011, sha256 dc9e8a6181fb7479e0345b2560bfe9678a41e579033fc3bc28c96bc10b20ee3d -> c573d3bfecca505f4a3d04896f71ffd5e6867e4a1b6a35952f57294afec9cd05
+  physical cut l3-node8 reads: firstPos 5000000 -> 5000000
+DIFFERENT l3-node8 restarts: length 7195952 -> 7175352, firstAvailablePos 5968296 -> 5907888, firstAvailableTime 2033500011 -> 2027300011, sha256 dc9e8a6181fb7479e0345b2560bfe9678a41e579033fc3bc28c96bc10b20ee3d -> c573d3bfecca505f4a3d04896f71ffd5e6867e4a1b6a35952f57294afec9cd05
+  physical cut l3-node8 restarts: firstPos 5000000 -> 5000000
+DIFFERENT l3-node8 restarts-once: length 7195952 -> 7175352, firstAvailablePos 5968296 -> 5907888, firstAvailableTime 2033500011 -> 2027300011, sha256 dc9e8a6181fb7479e0345b2560bfe9678a41e579033fc3bc28c96bc10b20ee3d -> c573d3bfecca505f4a3d04896f71ffd5e6867e4a1b6a35952f57294afec9cd05
+  physical cut l3-node8 restarts-once: firstPos 5000000 -> 5000000
+DECIDED DIGESTS DIFFER (0 of 48; the physical cut differs in 48, timing)
