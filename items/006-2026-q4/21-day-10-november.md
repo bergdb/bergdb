@@ -150,11 +150,12 @@ restarts it from there (013-02, `resume`).
   022's night steps and props-006-16 not tonight.
 
 
-## 9. The night of 10 to 11 November
+## 8. The night of 10 to 11 November
 
 | When            | What                                                          |
 |---|---|
-| 19:36 to 21:00  | Commit A in a clone: main + `023-core` + BuildInfo 2026.4 + the JDK 17 test fix + notes and docs; before-commit |
+| 19:36 to 21:00  | Commit A in a clone: main + `023-core`, BuildInfo 2026.4, notes, docs |
+| 19:36 to 21:00  | and the JDK 17 test fix; before-commit on A                   |
 | 21:15 to 03:30  | F53: `night.sh large` on A, then jcstress, then checks (digests, axioms) |
 | 21:15 to 04:30  | s1: the tests on A's jars (JDK 27, 17), the user's program; then UnlinkFuzz's modes |
 | 03:30 to 05:00  | If clean: main to A, push; releases/2026.4/; commit B; tag `release-2026.4`; push |
@@ -166,6 +167,6 @@ watchdog until 07:00. F53's quiet block: nothing else heavy while
 `night.sh large` runs.
 
 
-## 8. Outcome
+## 9. Outcome
 
 (at the end of the day)
