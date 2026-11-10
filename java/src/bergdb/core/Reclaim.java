@@ -2687,6 +2687,91 @@ public class Reclaim implements Db.TransactionListener {
                 d2.close();
             }
         }
+        
+        /**
+         * Reclaim's liveness with a queue before a key (bergdb 023-08, review C, 5.3, item 2,
+         * testProbeQueueBeforeEndKey; its check, section 3): a queue of 1,000 keys, then "/z"
+         * after it; then 200 puts at the tail and 200 deletes at the head a transaction. Each
+         * step scans the keys live at the iteration's start, so the iteration ends within 2 x
+         * (the data at tStart) / (the step's 16 kB) + 10 transactions: 1,000 KVs of 216 bytes
+         * by the scan's measure, 37. On 2026-11-10 it ended in 22 on main, 15 with the upward
+         * unlink; P8, which scanned at the step's time, never ended it (fault 13).
+         */
+        @Nano
+        public static void testQueueBeforeAKeyEnds() {
+            CoreTestClock clock = new CoreTestClock();
+            long time = Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            Db db = Db.builder().testSetup().clock(clock).startupDistance(2000).start();
+            Reclaim reclaim = db.internal().reclaim();
+            byte[] v = new byte[100];
+            int head = 100000, next = 100000;
+            for (int i = 0; i < 5; i++) {
+                Trans.Builder b = db.trans();
+                for (int j = 0; j < 200; j++) {
+                    b.put("/q/" + next++, v);
+                }
+                db.execute(b.build());
+            }
+            db.execute(db.trans().put("/z", "z").build());     // One key after the queue.
+            
+            db.setRetainDuration(1000 * Clock.UNITS_PER_SEC);    // Iterations, but no cut.
+            time += Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            db.execute(db.trans().put("/a", "a").build());
+            
+            for (int i = 0; reclaim.lastDoneRow() == null; i++) {
+                Assert.assertTrue("the iteration ends: " + i, i < 37);
+                Trans.Builder b = db.trans();
+                for (int j = 0; j < 200; j++) {
+                    b.put("/q/" + next++, v);
+                    b.delete("/q/" + head++);
+                }
+                db.execute(b.build());
+            }
+            db.stop();
+        }
+        
+        /**
+         * Random puts ahead of the scan do not stop an iteration (bergdb 023-08, review B, 2.6;
+         * its check, sections 3 and 4.1, from 023-v8-fix's 0f4571fc, without P8's end key):
+         * 500 keys, then 400 new keys a transaction between them. Each step scans the keys live
+         * at the iteration's start, so the iteration ends within 30 transactions (7 on main
+         * and with the fix on 2026-11-10; P8 took 449).
+         */
+        @Nano
+        public static void testRandomPutsAheadDoNotSlowTheScan() {
+            CoreTestClock clock = new CoreTestClock();
+            long time = Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            Db db = Db.builder().testSetup().clock(clock).startupDistance(2000).start();
+            Reclaim reclaim = db.internal().reclaim();
+            byte[] v = new byte[100];
+            for (int i = 0; i < 500; i += 20) {
+                Trans.Builder b = db.trans();
+                for (int j = i; j < i + 20; j++) {
+                    b.put("/k/" + (10000 + j), v);
+                }
+                db.execute(b.build());
+            }
+            
+            db.setRetainDuration(1000 * Clock.UNITS_PER_SEC);    // Iterations, but no cut.
+            time += Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            db.execute(db.trans().put("/a", "a").build());
+            
+            java.util.Random r = new java.util.Random(1);
+            int next = 0;
+            for (int i = 0; reclaim.lastDoneRow() == null; i++) {
+                Assert.assertTrue("the iteration ends: " + i, i < 30);
+                Trans.Builder b = db.trans();
+                for (int j = 0; j < 400; j++) {
+                    b.put("/k/" + (10000 + r.nextInt(499)) + "-" + next++, v);
+                }
+                db.execute(b.build());
+            }
+            db.stop();
+        }
     }
 }
 
