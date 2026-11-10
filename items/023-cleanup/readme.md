@@ -62,7 +62,10 @@ Files
   (`p1-relabel.md`); P2, the same with a relaxed invariant, the leftmost
   klong covering every key below it (`p2-relax.md`); P3, reclaim
   compacts what it rewrites, towards the strict allowance, with an
-  explicit `maintain()` (`p3-compact.md`). Being built.
+  explicit `maintain()` (`p3-compact.md`); and, from 11:53 (Frans, 11:52,
+  on 023-04's LE-b: "a good idea to explore further"), P4, the empty key
+  first, on P1's branch instead of the relabel (`p4-empty-key.md`). Being
+  built.
 
 Earlier work, in 020: 020-30, the first study (sections 1 to 4), with
 four helper studies 020-30-01 to 020-30-04, and an independent study by
