@@ -245,3 +245,7 @@ key after the key transformations, by the builder's rule (96a18987); X5
 (c) a `Bug` (96d22be5); Q9's change last (13246f53). before-commit and
 level1 OK (MEM 130 against its limit of 131), UnlinkFuzz 8,200 seeds and
 fault 12's probes 0 failures. level2 full and level4 quick on it next.
+
+2026-11-10. On `023-core`'s head 13246f53 (18:03 to 18:17): level2 full
+OK (the trace checker 70 of 70; A2A3Check2 with no adoption below the old
+parent) and level4 quick OK. The code reviews of the branch (023-11) run.
