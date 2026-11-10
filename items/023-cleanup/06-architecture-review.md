@@ -922,6 +922,15 @@ Numbered on from section 9.
   probe.
 * **Z15. P6's two mechanisms on by default**, `noEvict()` unchanged (P6's
   Q1 to Q3)? Recommended: yes, both; `noEvict()` keeps its contract.
+  **Frans, 2026-11-10, 13:57:** (1) the dead hand on by default: agreed;
+  (2) the replaced queue on by default only if P8 removes reclaim's reloads
+  and a measure of reads at earlier times shows the cost small, else kept
+  but off by default: agreed (the coordinator's reading of 13:49, which
+  differs from "both on"); (3) `noEvict()`: open; the coordinator looked at
+  its use (13:58): a Core-only builder option that sets the budget to
+  Long.MAX_VALUE, used by the test setups (`DbBuilder.testSetup`) and the
+  benchmark and soak tools (Perf, LoadTest, Soak, ReclaimCost); the Pub API
+  has none.
 * **Z16. P5's sibling rule and cap** (P5's Q1, Q2): the left sibling first
   when both fit in B/2, cap B/2, "sparse" at 1.44 times the twin.
   Recommended: accept the factor for 2026.4; the 3 B/4 cap only after a
