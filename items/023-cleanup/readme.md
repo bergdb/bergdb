@@ -223,3 +223,9 @@ OK; UnlinkFuzz in the new modes 0 failures in 20,000 seeds; T1 at
 100,000 passes; at 1M (drive 12,000) C9 over by 6, the top-node window;
 at 1,000 three rows over by 1 to 7, a phase that fault 12's fix shifts.
 One commit of expected values (two SE tests). level2 to level4 full next.
+
+2026-11-10. Frans back at 17:35. Q9 as recommended (17:49). KVs that key
+transformations make one key: one operation a key, by the builder's rule
+of 015-40, silently; "the last operation wins" for the builder too is a
+later item, for 2026.5 (17:41 to 17:48; 023-08, section 7). Being added
+to 023-core.

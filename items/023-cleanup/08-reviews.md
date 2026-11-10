@@ -172,7 +172,8 @@ cold start at 50 MB; then a review of the integrated code only.
 **Later, each on its own:** P8 with fault 13's fix and the liveness
 tests; merges, switched on by record format; (a), if the ratchet test
 on `main` shows the window grows; `maintain()`; the cache's tables; the
-last touch. Never: (b'), the replaced queue on by default.
+last touch; the builder's rule "the last operation wins" (section 7),
+with the C clone. Never: (b'), the replaced queue on by default.
 
 
 ## 6. Questions for Frans
@@ -222,7 +223,17 @@ run, the same stream is generated."
   stored order. So two transactions with the same operations, given in
   any order, run the same and write the same stream. Fault 12's fix is
   needed all the same (it is reached with sorted keys).
-* Q9: open.
+* Q9 (17:49, after an explanation): as recommended. conformance.sh
+  requires no adoption below the old parent in 005-04's a6 traces.
+* Two KVs that key transformations make one key (Frans, 17:41: "Why keep
+  both. [...] Either we should silently use the last KV put (or delete),
+  or we throw."; 17:46: "last operation takes precedent, put or delete.
+  It should be silent"; 17:48, on the options: "As you recommend"):
+  silently, by the builder's rule of 015-40 (the last put, or a delete if
+  there is no put), so that one rule holds in the Core and every
+  transaction reaches the index with one operation a key; X5 (c) then
+  becomes a `Bug`. Changing the builder's rule itself to "the last
+  operation wins" is a later item, for 2026.5, with the C clone.
 
 
 ## 8. State
