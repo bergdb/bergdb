@@ -1383,11 +1383,13 @@ public class Dag {
     
     /**
      * Takes back 'node', made by this transaction by a split and emptied in it (bergdb 023-04,
-     * X5 (a); 023-05, P1): its parent's klong of tt to it is pointed to the node it replaced,
-     * which existed before the transaction and is not current, so nothing points to 'node'
-     * any more; the climb then deletes that klong in the parent, or points it to the next
-     * child if it is the empty key's (emptyKeyNext), as for any emptied child. The klong is behind the parent's time klong of tt, where every reader
-     * stops, as replaceKlong changes such klongs. 'node' is reported as replaced, so it leaves
+     * X5 (a); 023-05, P1): its parent's klong of tt to it, and every other klong of tt there
+     * that names it, deleted ones too (retarget), is pointed to the node it replaced, which
+     * existed before the transaction and is not current, so nothing points to 'node' any
+     * more; the climb then deletes that klong in the parent, or points it to the next child
+     * if it is the empty key's (emptyKeyNext), as for any emptied child. The klongs are behind
+     * the parent's time klong of tt, where every reader stops, as replaceKlong changes such
+     * klongs. 'node' is reported as replaced, so it leaves
      * D and is never written: as far as the stream and the model see, it was never made. The
      * space root ('parent' null) is replaced in the top node of tt by the caller.
      */
@@ -1400,9 +1402,33 @@ public class Dag {
                         + ": no node it replaces, or no klong to it.");
             }
             parent.repointKlong(i, old);
+            // A deleted klong of tt may name it too: the next child's own klong after
+            // emptyKeyNext pointed the empty key to it (bergdb 023-07, section 5.1, fault 6).
+            retarget(parent, node, old, pd.tt);
         }
         pd.nodeChangeListener.keyNodeTakenBack(node);
         statTakenBack++;
+    }
+    
+    /**
+     * Points every KEY klong of tt in 'p' (behind its time klong of tt, where every reader
+     * stops) that points to 'from', a node that the transaction made and takes back, to 'to':
+     * no written node may point to a node that is never written, not even by a deleted klong
+     * (bergdb 023-05, P5; 023-07, section 5.1).
+     */
+    private static void retarget(KeyNode p, KeyNode from, KeyNode to, long tt) {
+        if (lastTime(p) != tt) {
+            return;
+        }
+        for (int i = p.size - 1; i >= 0; i--) {
+            final long klong = p.klongs[i];
+            if (Klong.getIntType(klong) == Klong.INT_TYPE_TIME) {
+                break;
+            }
+            if (Klong.getIntType(klong) == Klong.INT_TYPE_KEY && p.getPointerNode(i) == from) {
+                p.repointKlong(i, to);
+            }
+        }
     }
     
     /**
