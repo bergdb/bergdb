@@ -342,6 +342,57 @@ the jobs checked, in all six runs:
 The run goes on until 18:00; its summary is section 2's command.
 
 
+### 6.1. soak6's end, triaged on 10 November
+
+soak6 ended at 18:00 on 9 November, after 72 rounds, on a jar of
+`ed7ff00` (the morning's code; none of the day's later fixes):
+
+| Harness | Jobs | OK | FAIL | TIMEOUT |
+|---|---|---|---|---|
+| H2      | 73   | 61 | 6    | 6       |
+| H3      | 73   | 71 | 2    | 0       |
+| H4      | 73   | 73 | 0    | 0       |
+| obj     | 72   | 72 | 0    | 0       |
+| dobj    | 72   | 72 | 0    | 0       |
+
+Nobody read it that evening. coord-1109's agent triaged it on 10
+November, 06:11 to 06:27, with reruns of the seeds on the candidate
+`03ce6ec` on F53 (files in `/Users/f/fl/bench/2026-11-10/soak-triage/`).
+None is a fault of BergDB that returns wrong data; none blocks 2026.4.
+
+* **H2-O5, harness (6 FAILs: jobs 96, 111, 156, 211, 231, 336).** "The
+  frozen lookup time t+1, not from the last transaction's time to the
+  current time t": `IndexHarness.checkAt` takes t from `currentTime()`
+  before `freezeLookupTime()` and the read. In all six an index job ran
+  in the background (a create without a join, or a deleted index's
+  cleanup); its transaction, which the model does not record, committed
+  between the two. `currentTime()`'s promise holds. On the candidate
+  seeds 111 and 231 fail 1 of 2 runs; with the fix, a t taken after the
+  read (`groupA-harness.patch` in that folder), 8 of 8 pass.
+* **H3-O5, a status lag of BergDB, low (job 232).** After a restart in
+  the middle of a build, `IndexManager.activateInner` sets the
+  definition active under the manager's lock, and
+  `IndexBuilderImp.activate` sets the job ACTIVE (`activated(0)`) only
+  after the lock is released. For that moment `getStatus()` says
+  BUILDING (count 67) of an index that is active and usable; `join()` is
+  not affected. A probe that holds the window open gives the soak's
+  finding 5 of 5 times on the candidate; without it 0 of 9. Fix after
+  the tag: the job ACTIVE under the lock, or the harness reads the status
+  before the definition. Open: the build's count 67 where 61 values were
+  read back.
+* **H3-O4 again (job 317, "hang").** No hang: the build was progressing
+  (17,050 to 19,100 of 20,000 values read) when the bound of 110 s passed
+  on s1. On F53 the seed passes in 70 s, on the candidate and on
+  `ed7ff00`.
+* **H2-O6, slow settings (6 TIMEOUTs at 1,800 s).** All with an eviction
+  budget of 20,000 bytes and `harness.sd` 400,000 bytes, below the Pub
+  API's least cache (1 MB) and startup distance (5 MB). Together they
+  grow fast with the operations (800: 180 s; either alone or a 1 MB
+  budget: 21 to 25 s); the main thread waits in `Eviction.afterLoad` for
+  the evictor, which runs at about 80 % of a CPU. Fix: a smaller run or
+  a longer bound for the pair in `harness-soak.sh`.
+
+
 ## 7. State
 
 Done: the driver; soak1 to soak5 on s1, soak6 running until 18:00; H3-O1
@@ -349,9 +400,8 @@ to H3-O4 fixed in the clone; the blind spots read; B1 to B10 (B9 in part),
 B12 to B14, B16 and B17 added in the clone.
 
 Left: B9's `String`; B18 and B19 (medium); H3's single index
-and definitions (a harness of its own size, not cheap); soak6's results
-after 18:00 (section 2's command; a news.md line then, by the
-coordinator).
+and definitions (a harness of its own size, not cheap); the fixes of
+section 6.1 (H2-O5, H3-O5, H2-O6 in `harness-soak.sh`).
 
 The clone's commits, all on top of `a9e5488`, none on `main`; each with
 BEFORE COMMIT OK under the gate's lock but the two without Java:
@@ -389,3 +439,7 @@ at 09:31, soak2 at 09:47, soak6 at 10:37, until 18:00.
 2026-11-09. H3-O1 to H3-O4 found and fixed in the clone, B1 to B10, B12
 to B14, B16 and B17 added (section 5); the results until 11:32 (section
 6); reported to coord-1109.
+
+2026-11-10. soak6's end triaged by coord-1109's agent (section 6.1):
+no fault of BergDB that gives wrong data; H2-O5 and H2-O6 of the
+harness, H3-O5 a status lag of BergDB (low).
