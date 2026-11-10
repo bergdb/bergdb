@@ -2955,11 +2955,7 @@ public class Db implements AutoCloseable {
                 transformed = true;
             }
         }
-        if (transformed) {
-            sortByKey(x.trans);
-        }
-
-        final Kv[] kvs = x.trans.kvs;           // fewer than 'length' if sortByKey kept fewer
+        final Kv[] kvs = transformed ? sortByKey(x.trans.kvs) : x.trans.kvs;
         for (int i = 0; i < kvs.length; i++) {
             Kv kv = kvs[i];
 
@@ -2979,58 +2975,35 @@ public class Db implements AutoCloseable {
     }
 
     /**
-     * Sorts the KVs of 't' by key, after its key transformations (putKvs; bergdb 023-08,
-     * section 7, Q4), with each KV's write hash, and keeps one KV a key; the virtual KVs'
-     * hashes after them stay after them. The sort is stable, so KVs that transformations
-     * make one key are next to each other, in the order of Trans.Builder.build's sort (the
-     * keys as written). Of them one is kept, by build's rule for the calls on one key
-     * (bergdb 015-40): the last put, or a delete if there is no put; a delete never replaces
-     * a put. Frans, 2026-11-10 (023-08, section 7): silently, as the builder does; until then
-     * both reached the index. So a transaction reaches the index with one operation a key,
-     * and t.kvs and t.writeKeyHashes become shorter arrays when KVs are dropped; a dropped
-     * KV's hash is its kept KV's, as the key is the same.
+     * The KVs to put, after the key transformations (putKvs; bergdb 023-08, section 7, Q4):
+     * 'kvs' sorted by key and one KV a key, in a new array; 'kvs' and the transaction's write
+     * hashes are left as they are, so that a Trans can be run again (its Javadoc allows
+     * reuse), each key transformation seeing its own slot (bergdb 023-11, review A, F1). The
+     * sort is stable, so KVs that transformations make one key are next to each other, in
+     * the order of Trans.Builder.build's sort (the keys as written). Of them one is kept, by
+     * build's rule for the calls on one key (bergdb 015-40): the last put, or a delete if
+     * there is no put; a delete never replaces a put. Frans, 2026-11-10 (023-08, section 7):
+     * silently, as the builder does. So a transaction reaches the index with one operation a
+     * key. A dropped KV's write hash is its kept KV's, as the key is the same.
      */
-    static void sortByKey(Trans t) {
-        final Kv[] kvs = t.kvs;
-        final Integer[] order = new Integer[kvs.length];
-        for (int i = 0; i < order.length; i++) {
-            order[i] = i;
-        }
-        java.util.Arrays.sort(order, new java.util.Comparator<Integer>() {
-            public int compare(Integer a, Integer b) {
-                return Keys.compareArrays(kvs[a].getKey(), kvs[b].getKey());
+    static Kv[] sortByKey(Kv[] kvs) {
+        final Kv[] sorted = kvs.clone();
+        java.util.Arrays.sort(sorted, new java.util.Comparator<Kv>() {
+            public int compare(Kv a, Kv b) {
+                return Keys.compareArrays(a.getKey(), b.getKey());
             }
         });
-        final Kv[] sorted = new Kv[kvs.length];
-        final long[] hashes = t.writeKeyHashes.clone();
-        for (int i = 0; i < order.length; i++) {
-            sorted[i] = kvs[order[i]];
-            hashes[i] = t.writeKeyHashes[order[i]];
-        }
         int n = 0;                              // the KVs kept, in sorted[0, n)
         for (int i = 0; i < sorted.length; i++) {
             if (n > 0 && Keys.compareArrays(sorted[n - 1].getKey(), sorted[i].getKey()) == 0) {
                 if (sorted[i].getValue() != null || sorted[n - 1].getValue() == null) {
                     sorted[n - 1] = sorted[i];  // a put, or a delete after a delete
-                    hashes[n - 1] = hashes[i];
                 }
                 continue;
             }
-            sorted[n] = sorted[i];
-            hashes[n] = hashes[i];
-            n++;
+            sorted[n++] = sorted[i];
         }
-        if (n == kvs.length) {
-            System.arraycopy(sorted, 0, kvs, 0, kvs.length);
-            t.writeKeyHashes = hashes;
-            return;
-        }
-        final int virtual = hashes.length - kvs.length;
-        final long[] kept = new long[n + virtual];
-        System.arraycopy(hashes, 0, kept, 0, n);
-        System.arraycopy(hashes, kvs.length, kept, n, virtual);
-        t.kvs = java.util.Arrays.copyOf(sorted, n);
-        t.writeKeyHashes = kept;
+        return n == sorted.length ? sorted : java.util.Arrays.copyOf(sorted, n);
     }
     
     /**

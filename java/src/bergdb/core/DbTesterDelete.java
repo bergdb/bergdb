@@ -266,6 +266,61 @@ public class DbTesterDelete {
         }
     }
     
+    /**
+     * A Trans run twice (its Javadoc allows reuse by one thread) keeps every KV and its slot
+     * (bergdb 023-11, review A, F1): Db.putKvs sorts and keeps one operation a key in a copy
+     * for each run. Two puts built at "/template/a" and "/template/b", whose transformation
+     * gives each slot its key by the slot's index and a switch: in the first run both
+     * "/shared" (one put kept, b's), or "/x2" and "/x1" (the sort turns them round); in the
+     * second "/later/a" and "/later/b". After the second run, and after a restart, each
+     * "/later" key holds its own slot's value. Before the fix the first run dropped a's KV
+     * from the Trans, or turned the slots round, and "/later/a" was absent or wrong.
+     */
+    @Nano
+    public static void testReusedTransKeepsItsKvs() {
+        final boolean[] first = new boolean[1];
+        final boolean[] collide = new boolean[1];
+        final KeyTransformation bySlot = new KeyTransformation() {
+            public void transform(Trans trans, int index) {
+                String name = index == 0 ? "a" : "b";
+                String k = !first[0] ? "/later/" + name : collide[0] ? "/shared"
+                        : index == 0 ? "/x2" : "/x1";
+                long[] key = Keys.toSegments(k);
+                trans.kvs[index].setKey(key);
+                trans.writeKeyHashes[index] = Keys.hash(key);
+            }
+        };
+        for (boolean c : new boolean[] {true, false}) {
+            collide[0] = c;
+            MemoryStream ms = new MemoryStream();
+            Db db = start(ms, DISTANCES[1]);
+            Trans t = db.trans()
+                    .put(Keys.toSegments("/template/a"), bySlot, bytes("1"), null)
+                    .put(Keys.toSegments("/template/b"), bySlot, bytes("2"), null)
+                    .build();
+            first[0] = true;
+            db.execute(t);
+            String at = c ? "collision: " : "no collision: ";
+            if (c) {
+                assertValue(at + "/shared", "2", DbUtil.getString(db, "/shared"));
+            } else {
+                assertValue(at + "/x2", "1", DbUtil.getString(db, "/x2"));
+                assertValue(at + "/x1", "2", DbUtil.getString(db, "/x1"));
+            }
+            first[0] = false;
+            db.execute(t);
+            for (int round = 0; round < 2; round++) {
+                assertValue(at + "round " + round + ", /later/a", "1",
+                        DbUtil.getString(db, "/later/a"));
+                assertValue(at + "round " + round + ", /later/b", "2",
+                        DbUtil.getString(db, "/later/b"));
+                db.close();
+                db = start(ms.copy(), DISTANCES[1]);
+            }
+            db.close();
+        }
+    }
+    
     private static byte[] bytes(String s) {
         return s.getBytes(java.nio.charset.StandardCharsets.UTF_8);
     }
