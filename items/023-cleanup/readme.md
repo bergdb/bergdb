@@ -27,9 +27,11 @@ Files
   gets and scans, the Pub API's use of it, memory and handles, startup,
   reclaim), where a deleted key's remains are, the 2012 intent never
   built, and where the docs and the code differ. No solution.
-* 02-problem.md. 023-02, the problem stated exactly, and what we want
-  from a solution, with Frans's rule that a deleted KV eventually
-  consumes no resources of the database. Being written.
+* [02-problem.md](02-problem.md). 023-02, the problem stated exactly and
+  what we want from a solution: requirements R1 to R27 (Frans's rule made
+  exact, R2 to R5; the bounds, R9 to R15; the constraints, R16 to R27,
+  with his words of 09:55), how they are checked (the tests in 023-03),
+  non-goals, and questions F1 to F12 for Frans. No solution.
 * 03-test-spec.md. 023-03, the test specification: Frans's practical
   test of the rule (a hello-world database against one that adds a large
   amount of data and deletes it all but "/a.txt"; eventually its
