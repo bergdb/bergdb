@@ -26,8 +26,11 @@
 #   three of them restart run E too (TraceExport's ereads and erestart).
 #   Since bergdb 005-04 the small and evict sets each have a configuration
 #   with A6's kind, a segment root that a transaction makes and splits in
-#   place (a6, e-a6: two-segment keys, 40 KVs per transaction); a trace of
-#   them without an adoption below the old parent fails.
+#   place (a6, e-a6: two-segment keys, 40 KVs per transaction). Since 023-09
+#   (fault 12's fix, 023-08, Q9) the segment leaf's klong is pointed to the
+#   new root in place, so no node is adopted below its old parent: a trace of
+#   them with such an adoption, or without the checker's count, fails (A6,
+#   not only A6'). Until then a trace of them without one failed.
 #   seeds: per configuration (default 10 small, 3 medium, 2 large, 5 reclaim, 3
 #   evict). The checker computes
 #   the model's own definitions, with fast versions proven equal to them
@@ -239,8 +242,8 @@ for set_name in $RAN; do
     fi
     for f in build/traces/$set_name/a6-*.check.txt build/traces/$set_name/e-a6-*.check.txt; do
         [ -f $f ] || continue
-        if ! grep -q '^C-A adoptions below the old parent .*: [1-9][0-9]* of' $f; then
-            echo "CONFORMANCE FAILED: a trace of A6's kind without an adoption below the old parent ($f)"
+        if ! grep -q '^C-A adoptions below the old parent .*: 0 of' $f; then
+            echo "CONFORMANCE FAILED: a trace of A6's kind with an adoption below the old parent, or without the count ($f)"
             exit 1
         fi
     done
