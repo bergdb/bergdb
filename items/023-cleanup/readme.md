@@ -71,7 +71,7 @@ Files
   (`p6-memory.md`); and, from 13:43 (Frans, 13:42, 023-06's Z13 and Z14),
   P7, the window of dirty top nodes fixed (`p7-topnodes.md`), and P8, each
   reclaim step scans at its own time (`p8-steptime.md`), both on P4's
-  branch. P1 to P4 done; the others being built.
+  branch. P1 to P8 done.
 * [06-architecture-review.md](06-architecture-review.md). 023-06, an
   architect's review of the overall solution, by an agent on a stronger
   model at effort max (Frans, 11:57 to 11:59), first pass: A+RC with LE-b
@@ -168,3 +168,11 @@ only merges carry a format cost if put off. Three independent reviews
 started (023-08): A by Codex (gpt-6.1-sol, effort max), B by Fable 5.2 at
 max, C by Opus 5.5 at max, each in its own clone, none reading the
 others.
+
+2026-11-10. P7 done (14:49): fix (a) closes the dirty top-node window
+at every N measured (T1 at 1M: max D 35/34 against 94/178 before; objects
+after a restart 25/33 against 83/184; drive bytes -27%); level1, level2
+and level3 full OK, level4 quick OK (one expected C-S difference: the
+model has no pull); 3 tests need new expected values. Rule (b) unsound,
+proved by a unit test; (b') built behind a switch, an efficiency only.
+Not done: level4 full, the Lean model and checker changes.
