@@ -90,12 +90,15 @@ Files
 * 08-reviews/. 023-08, three independent reviews of 023-07 (a.md, b.md,
   c.md, each with its evidence), checks of their findings (checks/), and
   the verdict merged from them (08-reviews.md): the delete design stands,
-  P8 does not; a smaller core, frozen; questions 1 to 8. A: reject the core as
-  written; B and C: accept the core with changes. All three: P8's step can
-  stop the cuts (confirmed on P8, P4 and `main` in checks/p8-liveness.md,
-  with a fix); C: fault 12, the take-back can leave a pointer to a node
-  never written (confirmed in checks/take-back.md, also with sorted keys,
-  with a fix).
+  P8 does not; a smaller core, frozen; questions 1 to 9. A: reject the
+  core as written; B and C: accept the core with changes. All three: P8's
+  step can stop the cuts (confirmed on P8, P4 and `main` in
+  checks/p8-liveness.md, with a fix); C: fault 12, the take-back can leave
+  a pointer to a node never written (confirmed in checks/take-back.md,
+  also with sorted keys, with a fix).
+* 09-integration.md. 023-09, the integration branch `023-core` of
+  023-08's core with Frans's sort (Q4): twelve commits, the gates run,
+  the expected values changed, what remains.
 
 Earlier work, in 020: 020-30, the first study (sections 1 to 4), with
 four helper studies 020-30-01 to 020-30-04, and an independent study by
@@ -213,3 +216,10 @@ recommended, except Q4: sort a transaction's keys after their
 transformation, in 2026.4 ("It defines equality of transactions in a
 sense i like."). The design is frozen at 023-08, section 5. Q9 (005-04's
 trace check) open. Next: the integration branch.
+
+2026-11-10. 023-09: the integration branch `023-core` (head 2c67f887,
+16:36 to 17:18): twelve commits, no new design; before-commit and level1
+OK; UnlinkFuzz in the new modes 0 failures in 20,000 seeds; T1 at
+100,000 passes; at 1M (drive 12,000) C9 over by 6, the top-node window;
+at 1,000 three rows over by 1 to 7, a phase that fault 12's fix shifts.
+One commit of expected values (two SE tests). level2 to level4 full next.

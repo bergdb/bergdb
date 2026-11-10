@@ -129,6 +129,8 @@ restarts it from there (013-02, `resume`).
   a transaction's keys after their transformation. 16:36 the integration
   branch (023-09) started, by 20:30; then level2 to level4 full and a night
   of fuzzing.
+* 17:18 023-09 done (023-core, 2c67f887): before-commit, level1, fuzz OK.
+  17:19 level2 to level4 full started on it.
 
 
 ## 8. Outcome
