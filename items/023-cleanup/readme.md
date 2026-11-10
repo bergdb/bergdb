@@ -229,3 +229,8 @@ transformations make one key: one operation a key, by the builder's rule
 of 015-40, silently; "the last operation wins" for the builder too is a
 later item, for 2026.5 (17:41 to 17:48; 023-08, section 7). Being added
 to 023-core.
+
+2026-11-10. level2, level3 and level4 full on `023-core` at 2c67f887
+(17:19 to 17:51): all OK. level2: the trace checker 70 of 70 with Q9's
+check; level3: 25 traces, C-CUT 0 of 305; level4: 45 traces, C-P and C-H
+0 of 10,356 transactions, LargerThanMemory OK.
