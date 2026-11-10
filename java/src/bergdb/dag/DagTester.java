@@ -728,6 +728,58 @@ public class DagTester {
         }
     }
     
+    /**
+     * Every key deleted in the transaction that split the space root (bergdb 023-07, section
+     * 5.1; 023-08, review C, 5.3, item 3): one transaction puts keys between those of an
+     * earlier one, so that the space root and its nodes are split by it, and then deletes
+     * every key, old and new, as a Core KeyTransformation could give them to the Dag. Root
+     * collapse lowers the space root as it loses its children: at the transaction's time it
+     * is a segment leaf, empty, and every key is gone; at the earlier time every old key is
+     * there. Node sizes 4 and 8, keys of one segment and of two.
+     */
+    @Nano
+    public static void testDeleteEveryKeyInTheTransactionThatSplitTheRoot() {
+        final long collapses0 = Dag.statCollapses;
+        for (int b : new int[] {4, 8}) {
+            for (String prefix : new String[] {"/k", "/key/prefix/"}) {
+                String at = "b " + b + ", prefix " + prefix + ": ";
+                Dag dag = Dag.createEmpty(0, b, DUMMY_POINTER_FOLLOWER,
+                        Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
+                PutData pd = pd(dag);
+                List<String> keys = new ArrayList<String>();
+                List<Boolean> deletes = new ArrayList<Boolean>();
+                for (int i = 0; i < 60; i += 2) {
+                    keys.add(prefix + (100 + i));
+                    deletes.add(false);
+                }
+                putAll(dag, pd, 1, keys, deletes);
+                List<String> old = new ArrayList<String>(keys);
+                keys.clear();
+                deletes.clear();
+                for (int i = 1; i < 60; i += 2) {
+                    keys.add(prefix + (100 + i));
+                    deletes.add(false);
+                }
+                for (int i = 0; i < 60; i++) {
+                    keys.add(prefix + (100 + i));
+                    deletes.add(true);
+                }
+                putAll(dag, pd, 2, keys, deletes);
+                
+                GetData gd = gd(dag);
+                KeyNode root = dag.getTopDs().findRoot(2, gd);
+                Assert.assertTrue(at + "the root is a segment leaf", root.isSegmentLeaf());
+                for (int i = 0; i < 60; i++) {
+                    String k = prefix + (100 + i);
+                    Assert.assertTrue(at + k, dag.getOne(2, Keys.toSegments(k), gd) == null);
+                    Assert.assertEquals(at + k + " at 1", old.contains(k),
+                            dag.getOne(1, Keys.toSegments(k), gd) != null);
+                }
+            }
+        }
+        Assert.assertTrue("root collapses", Dag.statCollapses > collapses0);
+    }
+    
     private static String prefixKey(String segment, int i) {
         return "/prefix/" + segment + String.format("%04d", i);
     }
