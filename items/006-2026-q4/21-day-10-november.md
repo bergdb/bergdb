@@ -41,6 +41,13 @@ high, xhigh for hard tasks; W1 at max (Frans, 09:03).
   in the stream, the Lean model and the C port, an estimate. Clone
   `/Users/f/fl/bench/2026-11-10/d30/`. Reports to 020-30 and to the
   coordinator.
+* **W2. 020-30, the same study by Codex** (Frans, 09:07: "How about doing
+  this study in Codex too. Codex Sol 6.1 Max. Independent work to start
+  with. Then a possible 'merge' of ideas."): `codex exec`, gpt-6.1-sol at
+  effort max, workspace-write in its own clone at `0b93d273`, in
+  `/Users/f/fl/bench/2026-11-10/codex30/`; it does not read d30's work nor
+  d30 its. Its study goes to `codex-study.md` on its branch `020-30-codex`.
+  The two are compared after both are finished.
 
 
 ## 4. Principles
@@ -54,7 +61,10 @@ stream format (018).
 
 | Time  | What                                  |
 |---|---|
-| 09:10 | W1 started                            |
+| 09:06 | W1 started                            |
+| 09:08 | W2 started                            |
+| 17:00 | W2 done at the latest                 |
+| 18:00 | W1 done at the latest; then the comparison |
 
 
 ## 6. If the session stops
@@ -69,7 +79,8 @@ restarts it from there (013-02, `resume`).
   006-17, section 6).
 * 07:47 to 09:03 Frans and the coordinator on 021-28: the index keeps
   the nodes of deleted keys (020-30, section 3).
-* 09:03 2026.4 paused (Frans). 020-30 created; W1 started.
+* 09:03 2026.4 paused (Frans). 020-30 created; W1 started 09:06.
+* 09:08 W2 started (Codex), at Frans's idea (09:07).
 
 
 ## 8. Outcome
