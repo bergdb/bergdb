@@ -468,7 +468,19 @@ public class Dag {
      * and adds two klongs to its parent; later ones split new nodes in place, one new node and
      * one klong each. An overflow of the space root adds a new root;</li>
      * <li>the new segment trees of keys whose segment is not there, counted the same way from
-     * an empty node.</li>
+     * an empty node;</li>
+     * <li>for a delete (bergdb 023-07, section 5.4, K4): two klongs in every node of its path,
+     * which the upward unlink (Dag.deleteUpward) can give to the node where the climb stops
+     * (a bitmap, and with LE-b a klong of the empty key) and which also covers its time
+     * klong; no node off the path, as the unlink, LE-b and root collapse change none. Root
+     * collapse in a segment tree below a segment leaf L adds a klong to L for each level it
+     * collapses (Dag.replaceRoot), several in one delete when a chain of single children
+     * becomes the root (023-08, reviews B and C, 2.5): L gets one klong for each inner node
+     * of that tree on the paths, once for the transaction, as each such collapse unlinks a
+     * root that existed before it, one level lower each time (a root that a split of the
+     * transaction made is taken back in place, with no klong). The space root's collapses
+     * change the top node of the transaction, which Db counts. One node more for an emptied
+     * inner space root replaced by an empty segment leaf.</li>
      * </ul>
      * 
      * @param deletes  deletes[i] is true if keys[i] is deleted; a delete of a missing key
@@ -482,7 +494,7 @@ public class Dag {
         final java.util.IdentityHashMap<KeyNode, Walked> walked =
                 new java.util.IdentityHashMap<KeyNode, Walked>();
         final KlongWithPointer kwi = gd.kwi;
-        long offPath = 0;
+        boolean anyDelete = false;
         
         for (int k = 0; k < keys.length; k++) {
             final long[] key = keys[k];
@@ -499,17 +511,22 @@ public class Dag {
                 }
                 if (i == key.length - 1) {
                     if (deletes[k]) {
-                        // The upward unlink (bergdb 023-05, P1, P4): the delete lands in a node
-                        // of its path, a bitmap and with LE-b a klong of the empty key; a root
-                        // collapse adds a klong to the segment leaf above, or a new top node.
-                        // P1's count, which had a relabelled node a level off the path, is
-                        // kept as a margin: LE-b changes no node off the path.
-                        int len = 0;
+                        // The upward unlink, LE-b and root collapse (see above): two klongs
+                        // in every node of the path, and the inner nodes of each segment tree
+                        // on it, for the collapses, at the segment leaf above that tree.
+                        anyDelete = true;
+                        int inner = 0;
                         for (Walked u = w; u != null; u = u.up) {
                             u.klongs += 2;
-                            len++;
+                            if (u.node.isSegmentLeaf()) {
+                                if (u != w) {
+                                    u.collapses = Math.max(u.collapses, inner);
+                                }
+                                inner = 0;
+                            } else {
+                                inner++;
+                            }
                         }
-                        offPath += 4L * len + 2;
                     } else {
                         w.klongs++;
                     }
@@ -527,7 +544,13 @@ public class Dag {
             }
         }
         
-        long count = walked.size() + offPath;
+        long count = walked.size();
+        if (anyDelete) {
+            count++;                                // an empty segment leaf as the space root
+            for (Walked w : walked.values()) {
+                w.klongs += w.collapses;
+            }
+        }
         final java.util.List<Walked> deepestFirst = new java.util.ArrayList<Walked>(walked.values());
         java.util.Collections.sort(deepestFirst, new java.util.Comparator<Walked>() {
             public int compare(Walked a, Walked b) {
@@ -559,6 +582,7 @@ public class Dag {
         final Walked up;                // the node above it on the path, null for the space root
         final int depth;
         long klongs = 0;                // that it gets
+        int collapses = 0;              // root collapses below it, a segment leaf, at most
         java.util.HashMap<Long, java.util.List<long[]>> freshKeys = null;
         int freshLevel;                 // the segment of the keys in freshKeys missing here
         

@@ -2718,9 +2718,9 @@ public class Db implements AutoCloseable {
         
         long cheap = 0;
         for (Kv kv : t.kvs) {
-            // A delete: its path, and with the upward unlink a node a level off it that a
-            // relabelling changes and can split (bergdb 023-05, P1); kept as a margin with
-            // LE-b, which changes no node off the path (P4).
+            // A delete: with the upward unlink two klongs in every node of its path, and the
+            // klongs of root collapse in the segment leaves above (Dag.dirtyNodeBound; bergdb
+            // 023-07, section 5.4); P1's factor of 7, kept as a margin over a put's 3.
             cheap += (kv.getValue() == null ? 7 : 3) * height * kv.getKey().length + 3;
         }
         if (cheap <= (limit - topBytes) / nodeBytes) {

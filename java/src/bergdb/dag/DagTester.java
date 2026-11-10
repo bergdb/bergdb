@@ -780,6 +780,175 @@ public class DagTester {
         Assert.assertTrue("root collapses", Dag.statCollapses > collapses0);
     }
     
+    /**
+     * Dag.dirtyNodeBound for transactions with deletes (bergdb 023-07, section 5.4, K4;
+     * 023-08, reviews B and C, 2.5, and C, 5.3, item 4) against the key nodes that the
+     * transaction makes dirty: those the writer follows, makes or changes, less those it
+     * replaces, unlinks or takes back (review C's BoundProbe2). At node sizes 8, 14 and 30:
+     * (1) random histories, thinned out to leave chains of single children, and a transaction
+     * of deletes and some puts; (2) a chain that root collapse takes in one delete, several
+     * levels, each a klong in the segment leaf above; (3) transactions of 1,000 deletes, and
+     * one of 100,000 at node size 30.
+     */
+    @Nano
+    public static void testDirtyNodeBoundOfDeletes() {
+        Random r = new Random(5);
+        for (int b : new int[] {8, 14, 30}) {
+            for (int iter = 0; iter < 40; iter++) {
+                BoundCase c = new BoundCase(b);
+                int nk = 20 + r.nextInt(b * b * 3);
+                int shape = r.nextInt(4);
+                String[] keys = new String[nk];
+                for (int i = 0; i < nk; i++) {
+                    switch (shape) {
+                    case 0: keys[i] = "/k/" + String.format("%05d", i); break;
+                    case 1: keys[i] = "/prefix/" + (char) ('a' + i % 3) + "/" + String.format("%05d", i); break;
+                    case 2: keys[i] = "/p" + String.format("%05d", i % 5) + "/x" + String.format("%05d", i); break;
+                    default: keys[i] = "/longprefix/abcdefgh/" + String.format("%05d", i) + (i % 2 == 0 ? "/tail/more" : ""); break;
+                    }
+                }
+                java.util.Arrays.sort(keys, new java.util.Comparator<String>() {
+                    public int compare(String x, String y) {
+                        return Keys.compareArrays(Keys.toSegments(x), Keys.toSegments(y));
+                    }
+                });
+                Set<Integer> live = new java.util.TreeSet<Integer>();
+                int hist = 1 + r.nextInt(4);
+                for (int h = 0; h < hist; h++) {
+                    List<String> ks = new ArrayList<String>();
+                    for (int i = 0; i < nk; i++) {
+                        if (h == 0 || r.nextInt(4) == 0) { ks.add(keys[i]); live.add(i); }
+                    }
+                    c.run(ks, null, false);
+                }
+                if (r.nextBoolean()) {
+                    int k = 2 + r.nextInt(b);
+                    List<String> ks = new ArrayList<String>();
+                    for (int i = 0; i < nk; i++) {
+                        if (i % k != 0 && live.remove(i)) ks.add(keys[i]);
+                    }
+                    c.run(new ArrayList<String>(), ks, false);
+                }
+                List<String> puts = new ArrayList<String>(), dels = new ArrayList<String>();
+                int lo = r.nextInt(nk), hi = lo + r.nextInt(nk - lo + 1), pdel = r.nextInt(101);
+                boolean range = r.nextBoolean();
+                for (int i = 0; i < nk; i++) {
+                    boolean del = range ? i >= lo && i < hi : r.nextInt(100) < pdel;
+                    if (del && live.contains(i)) dels.add(keys[i]);
+                    else if (r.nextInt(50) == 0) puts.add(keys[i]);
+                }
+                c.run(puts, dels, true);
+            }
+            
+            // (2) A chain: keep the first and the last key of a segment tree of three or more
+            // levels; then a delete of the first leaves the root one child, a chain of single
+            // children down to the last key's leaf, which root collapse takes in one delete.
+            BoundCase c = new BoundCase(b);
+            List<String> all = new ArrayList<String>();
+            int n = b * b * 2;
+            for (int i = 0; i < n; i++) all.add("/prefix/" + String.format("%05d", i));
+            c.run(all, null, false);
+            c.run(new ArrayList<String>(), all.subList(1, n - 1), true);
+            long collapses0 = Dag.statCollapses;
+            c.run(new ArrayList<String>(), all.subList(0, 1), true);
+            Assert.assertTrue("b " + b + ": a collapse of several levels in one delete",
+                    Dag.statCollapses - collapses0 >= 2);
+            
+            // (2b) The same chain below a segment leaf filled with live klongs to one klong
+            // short of full, so that the collapses' klongs overflow it.
+            for (int extra = 0; extra < 3; extra++) {
+                c = new BoundCase(b);
+                c.run(all, null, false);
+                c.run(new ArrayList<String>(), all.subList(1, n - 1), false);
+                KeyNode leaf = c.dag.getTopDs().findRoot(c.t - 1, gd(c.dag));
+                Assert.assertTrue("b " + b + ": the space root is a segment leaf", leaf.isSegmentLeaf());
+                List<String> fill = new ArrayList<String>();
+                for (int i = 0; i < b - 2 - leaf.size + extra && i < 20; i++) {
+                    fill.add("/" + (char) ('a' + i) + "aaaaa/x");
+                }
+                c.run(fill, null, false);
+                collapses0 = Dag.statCollapses;
+                c.run(new ArrayList<String>(), all.subList(0, 1), true);
+                Assert.assertTrue("b " + b + ", extra " + extra + ": collapses of several levels",
+                        Dag.statCollapses - collapses0 >= 2);
+            }
+            
+            // (3) 1,000 deletes, of every key and of every third.
+            for (int step : new int[] {1, 3}) {
+                c = new BoundCase(b);
+                all.clear();
+                for (int i = 0; i < 1000 * step; i++) all.add("/k/" + String.format("%06d", i));
+                c.run(all, null, false);
+                List<String> dels = new ArrayList<String>();
+                for (int i = 0; i < all.size(); i += step) dels.add(all.get(i));
+                c.run(new ArrayList<String>(), dels, true);
+            }
+        }
+        BoundCase c = new BoundCase(30);
+        List<String> all = new ArrayList<String>();
+        for (int i = 0; i < 100000; i++) all.add("/big/" + String.format("%06d", i));
+        c.run(all, null, false);
+        c.run(new ArrayList<String>(), all, true);
+    }
+    
+    /** A Dag and the key nodes a transaction makes dirty, for testDirtyNodeBoundOfDeletes. */
+    private static final class BoundCase {
+        final Dag dag;
+        final PutData pd;
+        final Set<Node> dirty = identitySet();
+        long t = 1;
+        
+        BoundCase(int b) {
+            dag = Dag.createEmpty(0, b, DUMMY_POINTER_FOLLOWER,
+                    Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
+            pd = pd(dag);
+            final Dag.PointerListener inner = pd.pointerListener;
+            pd.pointerListener = new Dag.PointerListener() {
+                public void pointerFollowed(Node pred, int i, Node result, int type) {
+                    if (result instanceof KeyNode) dirty.add(result);
+                    inner.pointerFollowed(pred, i, result, type);
+                }
+                public void superRootAccessed(TopNode s) {}
+            };
+            pd.nodeChangeListener = new Dag.NodeChangeListener() {
+                public void topNodeCreated(TopNode node) {}
+                public void keyNodeCreated(KeyNode node) { dirty.add(node); }
+                public void valueNodeCreated(ValueNode node, long[] key) {}
+                public void keyNodeChanged(KeyNode node) { dirty.add(node); }
+                public void keyNodeReplaced(KeyNode node) { dirty.remove(node); }
+            };
+        }
+        
+        /** One transaction: the puts, then the deletes; with 'check', against the bound. */
+        void run(List<String> puts, List<String> dels, boolean check) {
+            List<String> ks = new ArrayList<String>(puts);
+            if (dels != null) ks.addAll(dels);
+            long bound = -1;
+            if (check) {
+                long[][] keys = new long[ks.size()][];
+                boolean[] deletes = new boolean[ks.size()];
+                for (int i = 0; i < ks.size(); i++) {
+                    keys[i] = Keys.toSegments(ks.get(i));
+                    deletes[i] = i >= puts.size();
+                }
+                bound = dag.dirtyNodeBound(t - 1, keys, deletes, gd(dag));
+            }
+            dirty.clear();
+            pd.tt = t;
+            for (int i = 0; i < ks.size(); i++) {
+                byte[] v = i < puts.size() ? StringUtil.toBytes("v" + t) : null;
+                dag.putKv(Keys.toSegments(ks.get(i)), v, pd);
+                pd.clearFast();
+            }
+            pd.clear();
+            if (check) {
+                Assert.assertTrue("t " + t + ", " + puts.size() + " puts, " + ks.size() + " keys: "
+                        + dirty.size() + " dirty key nodes, bound " + bound, dirty.size() <= bound);
+            }
+            t++;
+        }
+    }
+    
     private static String prefixKey(String segment, int i) {
         return "/prefix/" + segment + String.format("%04d", i);
     }
