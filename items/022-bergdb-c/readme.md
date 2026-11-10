@@ -127,3 +127,7 @@ leave out `step5.sh` (2026.3) and close 022-01 on the 2026.4 runs. The
 workers' brief (`/Users/f/fl/bench/022/briefs/tests.md`) now says how to
 wait on a run: three wait loops of 9 November matched their own `pgrep -f`
 and ran for 21 hours.
+
+2026-11-10, 09:30. Frans: "Let's not run it" (`step5.sh`, 2026.3's long
+runs). The C work comes back after 2026.4's release; 022-01 then closes
+on the 2026.4 runs.
