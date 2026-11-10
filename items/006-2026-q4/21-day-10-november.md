@@ -81,6 +81,13 @@ restarts it from there (013-02, `resume`).
   the nodes of deleted keys (020-30, section 3).
 * 09:03 2026.4 paused (Frans). 020-30 created; W1 started 09:06.
 * 09:08 W2 started (Codex), at Frans's idea (09:07).
+* 09:21 Frans: the first study by 10:00, an overview of the alternatives;
+  several subagents allowed; full proposals in a phase 2. W1 rescoped to
+  the overview; four helpers at high (r30 reclaim, p30 Frans's notes and
+  prior art, a30 the upward delete in the Dag, f30 format, Lean and C),
+  09:23 to 09:30.
+* 09:33 Phase 1 done: 020-30 section 4 and files 020-30-01 to 04
+  (90f8d315). Codex (W2) still runs its full study.
 
 
 ## 8. Outcome
