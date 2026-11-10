@@ -120,3 +120,8 @@ optional), Y8 (one record format 6 for 2026.4, 2026.3's databases refused
 with a message naming it) and Y10 (`maintain()`, yes; the cleanup goes on
 in the ordinary operations, and calling `maintain()` is optional, never
 required of the user), 12:31.
+
+2026-11-10. Frans answered 023-04's Y6 (12:35): "Option (b), we follow the
+rule for resource release, also for memory." The memory of ended versions
+is released too, eventually, in the ordinary operations, not only under
+the cache's pressure or at a restart.

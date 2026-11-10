@@ -1196,6 +1196,15 @@ meets. Answered already: F2, F3, F5 and Q2, F7, F9, F10; F1 implied
   order, passes with B/2.
 * **Y6. Memory without pressure** (X6; 023-02, R4). CLOCK as today, with
   M11 and M13 reported? Recommended: yes.
+  **Frans, 2026-11-10, 12:35:** "Option (b), we follow the rule for
+  resource release, also for memory." Not CLOCK alone: the memory of
+  ended versions is released too, eventually, in the ordinary operations
+  (Y10's note), not only under the cache's pressure or at a restart. The
+  coordinator's (b), not yet checked in the code: after a cut, every node
+  that a lookup at an available time can reach is stored at the cut's
+  position or later, or is dirty, so a cached node stored before it is
+  dead and can be dropped, a little at a time; 023-03's M11 and M13 then
+  gate.
 * **Y7. 021-28's end key** (X8; 020-30, F7). Into 2026.4 with A+RC, and
   021-25's fix (a) with it or not at all? Recommended: SE yes; TE
   optional.
