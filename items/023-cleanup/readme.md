@@ -113,3 +113,10 @@ solution needs it for its tests: called again and again, it must
 eventually bring a database with only the hello-world entry to about the
 resources of a fresh hello-world database. 023-03's T1 notes it as a
 second drive.
+
+2026-11-10. Frans answered 023-04's Y2 (root collapse at the delete, in
+2026.4: yes), Y7 (021-28's end key into 2026.4; 021-25's fix (a)
+optional), Y8 (one record format 6 for 2026.4, 2026.3's databases refused
+with a message naming it) and Y10 (`maintain()`, yes; the cleanup goes on
+in the ordinary operations, and calling `maintain()` is optional, never
+required of the user), 12:31.

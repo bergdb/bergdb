@@ -1180,6 +1180,7 @@ meets. Answered already: F2, F3, F5 and Q2, F7, F9, F10; F1 implied
   relax the routing? Recommended: LE-b; LE-a as the fallback; not LE-c.
 * **Y2. Root collapse at the delete, in 2026.4** (X2)? Recommended: yes,
   with UP: it gives the hello-world shapes their twins at once.
+  **Frans, 2026-11-10, 12:31: yes.**
 * **Y3. Strict by reclaim's rebuild** (X3; 023-02, F5; 023-03, Q2). C, RB
   in reclaim's touch, rather than D, merges at the delete? Recommended:
   C; not MG for now.
@@ -1198,9 +1199,11 @@ meets. Answered already: F2, F3, F5 and Q2, F7, F9, F10; F1 implied
 * **Y7. 021-28's end key** (X8; 020-30, F7). Into 2026.4 with A+RC, and
   021-25's fix (a) with it or not at all? Recommended: SE yes; TE
   optional.
+  **Frans, 12:31: as recommended** (SE into 2026.4; TE optional).
 * **Y8. One format 6** (X7; 023-02, F9 and F10 answered). Every rule of
   2026.4 in one `RECORD_FORMAT` 6, and 2026.3's databases refused at the
   start with a message that names 2026.3? Recommended: yes.
+  **Frans, 12:31: as recommended.**
 * **Y9. 2026.4's scope** (023-02, F11). Recommended: A+RC's at least: R1,
   R6, R8 to R11, R12 (a), R13 to R27, R2 to R5 for nodes, and for klongs
   with K up to about B iterations; with RB also R2 to R5 and R7 with a
@@ -1210,6 +1213,11 @@ meets. Answered already: F2, F3, F5 and Q2, F7, F9, F10; F1 implied
   `Database.maintain()`, each call bounded (one reclaim step, a share of
   D, the cut when due) and returning whether more is due, made with the
   tests? Recommended: yes.
+  **Frans, 12:31:** "Y10, yes to maintain(), note: maintainance should be
+  performed while doing other operations on the database, so the user
+  explicitely calling maintain() should be optional, not a requirement on
+  the user that she must call maintain." So the cleanup goes on in the
+  ordinary operations; `maintain()` only lets an application ask for more.
 
 
 ## 8. The probes' numbers
