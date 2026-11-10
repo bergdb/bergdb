@@ -68,7 +68,7 @@ Files
   from 12:23 (Frans, 12:22, on 023-06's recommendation), P5, merges at the
   delete on P4's branch (`p5-merge.md`); and, from 12:37 (Frans, 12:35,
   Y6), P6, the release of memory held by ended versions, on P4's branch
-  (`p6-memory.md`); and, from 13:44 (Frans, 13:42, 023-06's Z13 and Z14),
+  (`p6-memory.md`); and, from 13:43 (Frans, 13:42, 023-06's Z13 and Z14),
   P7, the window of dirty top nodes fixed (`p7-topnodes.md`), and P8, each
   reclaim step scans at its own time (`p8-steptime.md`), both on P4's
   branch. P1 to P4 done; the others being built.
