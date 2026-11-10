@@ -906,16 +906,20 @@ Numbered on from section 9.
   into format 6 if P5's gates pass full and 11.3's points 1 and 2 close
   within days; else 2026.4 with P4 alone and merges in 2026.5 with the
   refusal, as 2026.4 does to 2026.3.
+  **Frans, 2026-11-10, 13:42: as recommended.**
 * **Z13. The dirty top-node window**: fix (a) in 2026.4 or later? It
   changes what the take writes, not the rerun's rules, so it can come
   later without refusing databases. Recommended: later; now a named
   tolerance in C6 and C9, and a night run to see whether it ratchets.
+  **Frans, 13:42: "Z13, solve this now."** The window is fixed in 2026.4.
 * **Z14. 023-03's T1 at 1M**: change the drive, or let each reclaim step
   scan at its own time? Recommended: the scan at the step's time, a
   deterministic change of reclaim's rule that also removes P6's loads
   after a mass delete; a probe first (ReclaimStress, RestartInvariance,
   C-CUT); if it is not clean in time, the drive counted from the end of
   the iteration in progress, and the change after the release.
+  **Frans, 13:42: yes**: each reclaim step scans at its own time, after a
+  probe.
 * **Z15. P6's two mechanisms on by default**, `noEvict()` unchanged (P6's
   Q1 to Q3)? Recommended: yes, both; `noEvict()` keeps its contract.
 * **Z16. P5's sibling rule and cap** (P5's Q1, Q2): the left sibling first

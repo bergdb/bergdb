@@ -68,7 +68,10 @@ Files
   from 12:23 (Frans, 12:22, on 023-06's recommendation), P5, merges at the
   delete on P4's branch (`p5-merge.md`); and, from 12:37 (Frans, 12:35,
   Y6), P6, the release of memory held by ended versions, on P4's branch
-  (`p6-memory.md`). P3 done; the others being built.
+  (`p6-memory.md`); and, from 13:44 (Frans, 13:42, 023-06's Z13 and Z14),
+  P7, the window of dirty top nodes fixed (`p7-topnodes.md`), and P8, each
+  reclaim step scans at its own time (`p8-steptime.md`), both on P4's
+  branch. P1 to P4 done; the others being built.
 * [06-architecture-review.md](06-architecture-review.md). 023-06, an
   architect's review of the overall solution, by an agent on a stronger
   model at effort max (Frans, 11:57 to 11:59), first pass: A+RC with LE-b
@@ -127,3 +130,9 @@ required of the user), 12:31.
 rule for resource release, also for memory." The memory of ended versions
 is released too, eventually, in the ordinary operations, not only under
 the cache's pressure or at a restart.
+
+2026-11-10. Frans answered 023-06's Z12 (merges in 2026.4's format 6 if
+P5's gates and points close within days: as recommended), Z13 (the dirty
+top-node window: "solve this now", in 2026.4) and Z14 (each reclaim step
+scans at its own time, after a probe: yes), 13:42. P7 (the top-node
+window) and P8 (the scan at the step's time) started on P4's branch.
