@@ -5,7 +5,7 @@ Created 2026-11-10 by Frans Lundberg. Status: open.
 The core of 023-08, section 5, with Frans's answers of its section 7, put
 together on one branch from the prototypes: no new design. Clone
 `/Users/f/fl/bench/2026-11-10/int/clone`, branch `023-core` from `main` at
-`22b6ce4c`, head `13246f53`. Runs and their outputs:
+`22b6ce4c`, head `b7874541` (section 8). Runs and their outputs:
 `/Users/f/fl/bench/2026-11-10/int/runs/`. Gate worktree (detached):
 `/Users/f/fl/bench/2026-11-10/int/gate`.
 
@@ -364,3 +364,84 @@ The Java of `13246f53` is that of `96d22be5`. No Bug was thrown in any
 run. level1: unit 1,641; DagFuzz, DeleteRepro, RestartStress OK;
 RestartInvariance: the stream identical; MEM 130 (at most 131; 129 on
 `9d843d82`, the step of noise that the limit allows), SS 1.51.
+
+
+## 8. The fixes of the code reviews (023-11)
+
+Two independent reviews of `13246f53`, 023-11's a.md (A) and b.md (B).
+Six commits on top of `13246f53`; each the smallest change that fixes its
+point, none over 40 lines of production code.
+
+| Finding | Commit     | Test                                                     |
+|---|---|---|
+| A F1    | `a7ea3a7b` | DbTesterDelete.testReusedTransKeepsItsKvs                |
+| A F2    | `f04dcd7e` | Eviction.testDeadHandBoundsItsWork (f)                   |
+| A S1, B5 | `54b292bb` | the existing tests; UnlinkFuzz                          |
+| B B1    | `f513df36` | DagTester.testDirtyNodeBoundSumsCollapsesOverTrees       |
+| B B2    | `65ef031f` | none (an over-count)                                     |
+| B B3, B4 | `b7874541` | comments and one name                                   |
+
+* **A F1, a fault.** `Db.sortByKey` replaced a reused `Trans`'s `kvs` and
+  write hashes with the sorted, compacted arrays, so a KV dropped in one
+  run was gone from the next, and a slot-based key transformation saw
+  another KV after the sort. Now `sortByKey(Kv[])` returns a new array for
+  the put loop; the `Trans` stays as given. The test runs one `Trans`
+  twice, with a collision in the first run and with the slots turned
+  round by the sort, then checks each key after the second run and a
+  restart. It fails on `13246f53` ("/later/a" held b's value).
+* **A F2, a risk.** A step of the dead hand counted only handles, and
+  unswizzled every value of every kept node of a part of up to 4,096
+  handles. Now it takes parts of 8 handles (`DEAD_PART`), and the handles,
+  the pointers of kept nodes examined and the map copy all count toward
+  `DEAD_BATCH`. The cursor stays at a part's end, so no value is skipped.
+  A step may exceed the budget by one part and one map copy.
+  `Eviction.deadBatch` lets a test set less. The test (an f-test, 1.2 s):
+  3,000 keys, overwrites while reclaim cuts, work set to 256. Every step
+  unswizzles at most 256 + 8 x 31 = 504 values (248 seen); the rounds
+  unswizzle about 230,000. With the old loop one step unswizzled 725, and
+  the test fails.
+* **A S1 and B5, simpler.** An inner space root is never emptied (root
+  collapse lowers it first). The climb now throws `Bug` for it before it
+  changes anything. Removed: the new empty root, `statNewRoots`, the
+  climb's duplicate first branch, `takeBack`'s null parent, and its
+  repoint before `retarget` (which repoints that klong too). `takeBack`'s
+  `Bug` now also checks the parent's time klong of tt, which `retarget`
+  needs. `dirtyNodeBound`'s one node for the empty root is gone with it.
+  Not changed: B5's three refusals of an end key with a backward scan.
+  They differ in what they cover: Db's comes before the state and time
+  checks, Dag's before the root's lookup (also with no root), the Chain's
+  for direct drivers. So none is removed.
+* **B B1.** The collapses' klongs into a segment leaf are now summed over
+  the trees below it: kept at each tree's root, added to its leaf. The test
+  (B's probe) has three trees of 1,024 keys at node size 8, thinned to
+  chains, one delete each: 15 collapses, and the count gives the space root
+  at least 15 + 6 klongs. With the old rule 11, and it fails. A
+  package-private overload of `dirtyNodeBound` returns the klongs counted
+  for each node, for the test.
+* **B B2.** `Db.checkDirtyNodes` walks a KV with a value transformation as
+  a put and as a delete, an over-count; the cheap test counts it with a
+  delete's factor. No test: the bound only grows.
+* **B B3 and B4.** The four node-count tests of SE now say that they test K1
+  and SE together; SE's own tests are `testEndKeyAsEndpoint` and
+  `testEndKeyChainEdges`. The Pub tests' figures of 146 and 157 are gone.
+  `testTakeBackAfterSpaceSplitInPlace` is now
+  `testTransformedPutsAndDeletesWithRestarts`. `testDeleteEveryKey` no
+  longer names a test that does not exist.
+
+### 8.1 Gates
+
+| Gate                                     | Where      | Result                         |
+|---|---|---|
+| before-commit.sh                         | `b7874541` | BEFORE COMMIT OK (273 s)       |
+| level1.sh (full)                         | `b7874541` | LEVEL 1 OK (151 s), MEM 129    |
+| UnlinkFuzz, 4 configurations, 5 min each | `b7874541` | 8,800 seeds, 0 failures        |
+| DbShadowProbe30, `-Dsd=10 -ea`           | `b7874541` | bad 0 of 4,377                 |
+| DbShadowProbe, `-Dsd=10` and default     | `b7874541` | bad 0 of 200 each              |
+| DbReplay seed 33, -ea and without        | `b7874541` | OK, restart OK                 |
+| ShadowProbe modes 1 and 2 (Dag)          | `b7874541` | 0 found in 3,000 each          |
+| A2A3Check2, 8 configurations             | `b7874541` | all rules hold                 |
+
+UnlinkFuzz: long, shuffle, dup 10; long, sorted, dup 10; random,
+shuffle, dup 20; long, shuffle, dup 10 at node size 14 (2,850, 2,800, 250
+and 2,900 seeds); no Bug thrown. before-commit: unit 1,643 tests, f 89.
+level1: SS 1.51.

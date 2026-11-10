@@ -273,3 +273,11 @@ part (33 ms of CPU in a probe); S1, the empty inner root's fallback is
 dead. B: no fault; B1 and B2, two undercounts of the dirty-node checks;
 B3 to B5, comments, test names and small simplifications. The fixes go to
 the integration branch.
+
+2026-11-10. 023-11's fixes on `023-core` (18:36 to 18:54), head b7874541,
+six commits: A's F1 (a reused `Trans` keeps its KVs; the put loop sorts a
+copy), F2 (a dead-hand step bounds its values and the map copy, in parts
+of 8 handles), S1 with B5 (the dead empty inner root's fallback removed,
+a `Bug` instead); B's B1, B2, B3 and B4. Each fault with a test that fails
+before. before-commit, level1, UnlinkFuzz 8,800 seeds, fault 12's probes
+and A2A3Check2 OK. level2 to level4 full on it started 18:55.
