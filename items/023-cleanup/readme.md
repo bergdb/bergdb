@@ -99,6 +99,10 @@ Files
 * 09-integration.md. 023-09, the integration branch `023-core` of
   023-08's core with Frans's sort (Q4): twelve commits, the gates run,
   the expected values changed, what remains.
+* 10-ratchet.md. 023-10, the ratchet test of the dirty top-node window
+  (023-06, section 18.6, item 3; 023-08, Q6) on `main` and `023-core`:
+  bounded, no growth over repeated mass deletes and restarts; its probe
+  and scripts in 10-ratchet/.
 
 Earlier work, in 020: 020-30, the first study (sections 1 to 4), with
 four helper studies 020-30-01 to 020-30-04, and an independent study by
@@ -249,3 +253,11 @@ fault 12's probes 0 failures. level2 full and level4 quick on it next.
 2026-11-10. On `023-core`'s head 13246f53 (18:03 to 18:17): level2 full
 OK (the trace checker 70 of 70; A2A3Check2 with no adoption below the old
 parent) and level4 quick OK. The code reviews of the branch (023-11) run.
+
+2026-11-10. 023-10, the ratchet test (17:53 to 18:27): the window stays
+bounded and does not grow, on `main` and on `023-core`; so fix (a) stays
+for later (023-08, Q6). After a mass delete of 1M keys `023-core` holds up
+to 152 dirty top nodes against the twin's 87 while the iteration that
+spans the delete runs (T1's miss at 1M); `main` cannot show the window,
+as its reclaim stops cutting after the first mass delete. The full run
+(1M transactions) started at 18:28.
