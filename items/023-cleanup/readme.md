@@ -40,11 +40,21 @@ Files
   determinism, regression and performance; measures M1 to M14 and their
   allowances; today's numbers from a prototype (`java/stress/CleanupRule.java`,
   in [03-test-spec/](03-test-spec/)): `main` fails the rule at every size.
-* 04-options.md. 023-04, the options, the first phase of the solution:
-  the building blocks, the options as combinations judged against 023-02's
-  requirements, the open design decisions, the format and compatibility,
-  and what phase 2 should do; phase 1's conclusions (020-30, section 4)
-  carried into 023. Being written.
+* [04-options.md](04-options.md). 023-04, the options, the first phase
+  of the solution: building blocks (UP, the unlink at the delete; LE-a to
+  LE-d for the leftmost child, LE-b "the empty key first" new; RC, root
+  collapse; MG, merges; RB, reclaim rebuilds; MT, `maintain()`; and
+  smaller ones), the options B, A, A+RC, C and D judged against R1 to R27
+  and 023-03's tests, decisions X1 to X11, questions Y1 to Y10;
+  recommended: A+RC with LE-b in format 6 for 2026.4, then C (RB) for
+  strict. Probes in `/Users/f/fl/bench/2026-11-10/o23/probe`.
+* [04-options/codex-options.md](04-options/codex-options.md). An
+  independent options study by Codex (gpt-6.1-sol, effort max), from
+  023-01 and 023-02 before Frans's answers, without 020-30's options or
+  023-04: options A (copy the path on each delete; its stopped prototype,
+  on branch `020-30-codex-proto` in `/Users/f/fl/bench/2026-11-10/codex30/clone`),
+  B (small versioned edits with a recorded sweep; recommended), C (prune
+  history keeping node ids) and D (rebuild in steps), with measurements.
 * 05-prototypes/. 023-05, three prototypes in parallel, each on a branch
   in a clone of its own, measured with 023-03's tests (Frans, 10:51: "I am
   really eager to see one or multiple options coded"): P1, the upward
