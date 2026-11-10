@@ -98,6 +98,12 @@ Checks 023-02, R1 to R6 and R13 to R15. Frans's test, made exact.
 | Drive             | 4,000 overwrites of "/a.txt", 1,000 B      | 4 R, 40 startup distances  |
 | N                 | 1,000; 100,000; 1M; large: 10M             | one end state for all      |
 
+Frans, 2026-11-10, 10:49 (023-02, F7): an explicit `maintain()` may be
+added to test a solution; calling it again and again must, eventually,
+bring the emptied database to about the resources of a fresh hello-world
+database. A solution that adds it gets a second drive in T1 and T2:
+repeated `maintain()` calls instead of the overwrites, measured as above.
+
 The large run, on disk: a `FileStream`, the capacity controller with a
 budget of 64 MB, a startup distance of 5 MB (the Pub API's smallest), 1,000
 puts or deletes a transaction, and a drive of 200,000 transactions (40

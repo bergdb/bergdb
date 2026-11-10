@@ -77,3 +77,10 @@ version that has ended.").
 every available lookup time ("At every available time; this is what we
 want."). F1 follows from his answers to F2 and F5: a dead klong in a node
 that still holds live keys goes too, eventually.
+
+2026-11-10. Frans answered 023-02's F7 (10:49): the user's writes drive
+the cleanup, and an explicit `maintain()` is good too, to be added if a
+solution needs it for its tests: called again and again, it must
+eventually bring a database with only the hello-world entry to about the
+resources of a fresh hello-world database. 023-03's T1 notes it as a
+second drive.

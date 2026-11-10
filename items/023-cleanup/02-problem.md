@@ -501,6 +501,11 @@ reads, warm and cold, with a startup distance of 50 MB or more.
 * **F7. Eventually in time?** In the user's writes only (P3), or also in
   time, which needs work no call asks for, or a call such as `maintain()`
   (010-01, P3's idea)? Recommended: the user's writes.
+  **Frans, 2026-11-10, 10:49**, to the user's writes as the driver:
+  "Yes. The explicite call to maintain() is also good. Feel free to add it if needed to test the solution. That makes the "eventually" well-defined; repeatedly calling maintain() must eventually release resources so a database with only one hello-world entry will consume about as much as a fresh hello-world database." So the user's writes drive it, and an explicit
+  `maintain()` may be added: calling it again and again must, eventually,
+  bring a database that holds only the hello-world entry to about the
+  resources of a fresh hello-world database.
 * **F8. Retain forever** (R8): section 4's bounds only? Recommended: yes.
 * **F9. Earlier databases** (R23), which hold K4 to K6 already: (a) refuse
   them; (b) open them and leave what they hold; (c) open them and release
@@ -541,3 +546,7 @@ has ended (R7).
 
 2026-11-10. Frans answered F3 (10:44): R9 at every available time. F1
 follows from F2 and F5: dead klongs in live nodes go, eventually.
+
+2026-11-10. Frans answered F7 (10:49): the user's writes, and an explicit
+`maintain()` that, called again and again, eventually brings the
+hello-world database back to a fresh one's resources.
