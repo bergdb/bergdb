@@ -164,3 +164,7 @@ Index
 * **022-bergdb-c** (open). BergDB's Core in C, updated to Java's releases
   2026.3 and 2026.4, maybe later ones: a fresh start from 012's C clone,
   which stays the port of 2026.2.
+* **023-cleanup** (open). Resource cleanup in BergDB's Core: what the
+  database keeps after nothing needs it any more, and how it is released;
+  from the slow scans over deleted entries (020-30) to cleanup in general.
+  Release 2026.4 waits for it.
