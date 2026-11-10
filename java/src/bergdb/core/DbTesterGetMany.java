@@ -1277,10 +1277,12 @@ public class DbTesterGetMany {
      * A scan that GetMany.endKey ends follows no key node of the deleted keys after its range
      * (bergdb 021-28; 020-24-17): 100 live keys "a0000" to "a0099", then 5,000 keys "b00000"
      * to "b04999" put and deleted, then "c". The scan of [a0050, a0100) follows the key
-     * nodes on its path and no more; the same scan ended by the stop condition alone, which
-     * sees live KVs only, follows every key node of the deleted keys up to "c". Without the
-     * end key's check in GetMany.Chain.next() (endKey ignored), the scan with the end key
-     * follows them too, and the test fails at "key nodes followed with endKey".
+     * nodes on its path and no more. Before 023-09 the same scan ended by the stop condition
+     * alone, which sees live KVs only, followed every key node of the deleted keys up to "c"
+     * (398), and the test failed without the end key's check in GetMany.Chain.next(). Since
+     * 023-09 a delete unlinks the nodes it empties (Dag.deleteUpward; bergdb 023-07, section
+     * 5.1), so the stop condition alone follows few key nodes too (11); the results of both
+     * are the same.
      */
     @Nano
     public static void testEndKeyPassesNoDeletedKeys() {
@@ -1329,7 +1331,7 @@ public class DbTesterGetMany {
             Assert.assertEquals(keysOf(h.result), keysOf(g.result));
             Assert.assertTrue("key nodes followed with endKey: " + withEnd[0], withEnd[0] <= 20);
             Assert.assertTrue("key nodes followed by the stop condition alone: " + stopOnly[0],
-                    stopOnly[0] > 200);
+                    stopOnly[0] <= 20);
         } finally {
             db.close();
         }
@@ -1340,8 +1342,9 @@ public class DbTesterGetMany {
      * its last segment, as the Pub API's index entries (bergdb 021-28; 020-24-16): 100 live
      * keys "a000000xyzw" to "a000099xyzw", 2,000 keys "b000000xyzw" to "b001999xyzw" put
      * and deleted, then "c". The scan of the last five live keys, to the end "b" not
-     * inclusive, follows few key nodes with endKey (9 on 2026-11-09); the stop condition
-     * alone follows a node of each deleted key's segment tree (2,160).
+     * inclusive, follows few key nodes with endKey (9 on 2026-11-09). The stop condition
+     * alone followed a node of each deleted key's segment tree (2,160) before 023-09, and
+     * since then, as the deletes unlink them, few too (11).
      */
     @Nano
     public static void testEndKeyPassesNoDeletedLongKeys() {
@@ -1386,7 +1389,7 @@ public class DbTesterGetMany {
             Assert.assertEquals(keysOf(h.result), keysOf(g.result));
             Assert.assertTrue("key nodes followed with endKey: " + withEnd[0], withEnd[0] <= 30);
             Assert.assertTrue("key nodes followed by the stop condition alone: " + stopOnly[0],
-                    stopOnly[0] > 2000);
+                    stopOnly[0] <= 30);
         } finally {
             db.close();
         }
