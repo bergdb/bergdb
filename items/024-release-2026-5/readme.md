@@ -40,6 +40,17 @@ own", and section 7):
 * **Dead klongs in live nodes**: compaction, beyond 2026.4's named
   allowance (023-08, Q5).
 
+From the release night of 2026.4 (2026-11-10):
+
+* **A time klong's unused bits** (56 to 61) are not checked:
+  `StoredKeyNode.parse` should refuse a time klong whose bits 56 to 61 are
+  not zero ("Bad time klong", a `StreamFormatException`, beside its check
+  of the klong's type, 019-32). Found by CorruptStreamTester's seed 20775
+  (the night of 18 November): such a damage makes a start with -ea fail
+  an assertion in `KeyNode.addKlong`; without -ea the database starts and
+  answers right. Old, on `main` before 023 too. A case of the stable
+  stream format: bits that must be zero are checked.
+
 Not to do (023-08, section 5): rule (b') of the window, and the replaced
 queue on by default.
 
