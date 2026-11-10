@@ -162,6 +162,16 @@ restarts it from there (013-02, `resume`).
 | after           | 2026.5 on branches: P8 with fault 13's fix on the new main; the builder's rule |
 | 06:00 to 07:00  | The morning summary (news.md, this plan's Outcome)            |
 
+As set up (20:37): commit A is `72c8e0ec` in the release clone: `main`'s
+329d78f3, `023-core` merged, BuildInfo 2026.4, the JDK 17 test fix,
+releases/next.md and the docs for 023, and a test race fix found by s1's
+first run (the first night stopped at 20:22 for it); before-commit OK. On
+F53 `night.sh large` from 20:37, then jcstress, checks and Android (about
+03:30); on s1 the jar tests, then UnlinkFuzz's modes until 04:30. 021-25
+is fixed by 023 (its own workload: 139 cuts in 1M transactions, against
+15 in 300,000 on `main`). The morning's scripts: the release's
+`morning/clean.sh`, `to-main.sh` and `release.sh`.
+
 Check-ins every 20 minutes all night (the morning steps need them); the
 watchdog until 07:00. F53's quiet block: nothing else heavy while
 `night.sh large` runs.
