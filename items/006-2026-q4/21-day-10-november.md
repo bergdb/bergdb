@@ -114,6 +114,9 @@ restarts it from there (013-02, `resume`).
 * 14:26 to 14:36 Frans: KISS; pause and review. 14:37 023-07, the
   proposal for 2026.4 (a KISS core against the full set), by 15:25; then
   three independent reviews (Codex, and fresh agents on two other models).
+* 14:43 Frans away (a walk): unattended until about 17:30. While away:
+  023-07 committed when written, then the three reviews, then a merged
+  verdict for Frans; P7's report committed when done (by 16:30).
 
 
 ## 8. Outcome

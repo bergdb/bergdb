@@ -85,8 +85,10 @@ Files
   multiple AIs"): a KISS core (P4's unlink, P8's scan at the step's time,
   P6's dead hand, 021-28's end key, format 6) against the full set (with
   merges, the top-node window's fixes, the replaced queue, `maintain()`),
-  every rule stated exactly. Being written; then three independent
-  reviews.
+  every rule stated exactly; nine questions for the reviewers; decisions
+  D1 (the tier, no recommendation) to D13.
+* 08-reviews/. 023-08, three independent reviews of 023-07 (a.md, b.md,
+  c.md), and the verdict merged from them. Running.
 
 Earlier work, in 020: 020-30, the first study (sections 1 to 4), with
 four helper studies 020-30-01 to 020-30-04, and an independent study by
@@ -157,3 +159,12 @@ grown; KISS. 023-07 written down for three independent reviews (Codex,
 and two agents on other models). The long-run answer to Z21 (P7, 14:29):
 without (b') the left-out nodes leave D within 10,000 transactions, so
 (b') is an efficiency, not needed for the rule.
+
+2026-11-10. 023-07 written (14:48). Its findings beyond the reports: the
+core needs P5's retarget in the take-back and `dirtyNodeBound` counted
+by node (P4's count refuses transactions of more than about 150,000
+deletes); P8 alone removes the dirty top-node window's trigger in T1;
+only merges carry a format cost if put off. Three independent reviews
+started (023-08): A by Codex (gpt-6.1-sol, effort max), B by Fable 5.2 at
+max, C by Opus 5.5 at max, each in its own clone, none reading the
+others.
