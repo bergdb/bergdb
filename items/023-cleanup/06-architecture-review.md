@@ -1221,3 +1221,139 @@ take (c), which keeps `javaTest` and fixes the window but not P5's family,
 or defer? Recommended: (b), with the Lean task started at once and the
 release's R24 stated as "checked by the trace checker; the physical
 theorems for the new test in progress" if the proofs are not done in time.
+**Withdrawn in 18.7: (b) is unsound. Z21 now asks about (a) with (b').**
+
+### 18.7 Review of P7's objection (14:00 to 14:10)
+
+**The gap is real, and 18.2 was wrong.** 18.2 argued: "y dirty with d(y)
+>= r(x): y was clean just before d(y), so lv(y) is good for t < d(y)
+(INV-3)". INV-3 (sis-model.md, section 8) says that only for a node whose
+latest version was written *before* d(y), that is, one that got into D by
+marking (step 3). A node that Rule A refiles at record j (step 7) has d(y)
+= j and its latest version written *in* j; it was dirty before j, not
+clean, and that version names its dirty children's older versions, or
+their vpos. So "clean just before d(y)" is false for every Rule A entry,
+and rule (b) clears a node whose version can lead, through a dirty child's
+stale reference, to a version that lacks a change the node's times need.
+18.3's and 18.4's claims about (b) fall with it.
+
+**The counterexample is valid.** Checked against the code: in step 3, y is
+written at j1 and refiled because z is dirty (`handleStillDirtyNodes`),
+and y@j1 names z's version from before k (`resolvePointersOfTakenNodes`,
+`Handle.serializedRef`: the latest written version, or a vpos). In step
+5, (b) clears x at m2 because d(y) = j1 >= r(x), and x@m2 names y@j1. In
+step 6, y is rewritten clean at some j3, but x@m2 still names y@j1; Rule R
+redirects a reference only to a version in the startup section, so after
+a restart whose section starts after j3, a lookup at t in [k, r(x)) reads
+x@m2, y@j1 and z's old version: a wrong answer. `javaTest` keeps x dirty
+until y is clean and rewrites it naming y@j3. P7's reading of the window
+is right too: an inverted pair writes the newer top node before the older
+one has ever been written, so its version names a vpos, and (b) would
+have cleaned its successor on top of it. (b) seemed to dissolve the window
+only because it stopped needed writes.
+
+**(b') is sound.** Let e(y) be the time y last went from clean to dirty by
+marking, or its creation time if it has not been clean since; Rule A's
+refile does not change e. The rule: after a replaced node x (replaced at
+r(x)) is written, x is dirty again iff it points to a dirty node y with
+e(y) < r(x); a current node keeps `javaTest`. Argument, in the model's
+terms (5.1, 5.2; the test must say dirty whenever the exact test does):
+x's version v, written at i >= r(x), holds every entry of x; it is good
+for a time t < r(x) iff for each child y of x at t the reference, lv(y)
+at i, is good for t.
+
+1. y clean at i: lv(y) is good for every t at which y is reachable
+   (INV-2).
+2. y dirty with e(y) >= r(x). y was not created at e(y): a pointer of x
+   to y was made at a time before r(x), when y existed, so a creation
+   would be before r(x). So y went clean to dirty at e(y): at the end of
+   e(y) - 1 >= r(x) - 1 its version then, v0, was good for every t <= e(y)
+   - 1 at which y is reachable, so for every t < r(x) at which y is x's
+   child. lv(y) at i is v0 or a newer version. By lemma M (`LM_newer`;
+   15.2: a newer version is good for every time an older one is good for;
+   by induction on the level, A4: it holds a superset of the entries and
+   names versions at least as new of each child), lv(y) is good for those
+   t. This is the step 18.2 got wrong: it holds from a *clean* state,
+   never from a refile.
+3. y dirty with e(y) < r(x), or unwritten (its creation is before r(x), as
+   in 2, so e(y) < r(x)): x stays dirty. Sound by construction.
+
+In the counterexample e(y) = t0 < r(x), so (b') keeps x dirty.
+
+**(b') does not dissolve the window**, as P7 says: every top node of the
+window has been dirty since its creation, which lies before its
+successor's replacement, so e < r and the successor stays dirty, rightly:
+the window's writes are needed, each node once after its predecessor; only
+their order is wrong. So the window is a filing and take problem, not a
+test problem, and no sound test can remove it. (b') still clears the rest
+of the family: a replaced root or a merge's left-out node whose children
+are marked again after the replacement (a leaf's e advances with every
+change to it; an inner node and its leaf are marked together, taken
+together and cleaned by the fixpoint), so e >= r soon. P5's "inter" should
+show it.
+
+**Corrected recommendation: (a) for the window, (b') for the family.**
+
+* **(a), exactly.** The take removes from D every node of the lists up to
+  s(i) and, for each top node so taken or pulled, every top node in D that
+  one of its skip pointers names, recursively; the pulled nodes are
+  written in record i after the nodes they point to (ordinal order), with
+  the record limit's accounting counting them, and Rule A applies to them
+  as to any taken node (refiled in gd(i) if still dirty). The root pointer
+  pulls nothing: a root's list is never newer than its top node's, as both
+  are marked when the top node is made; a root refiled by Rule A is (b')'s
+  case. **The start's rule, which (a) needs** (INV-1 as it is would put a
+  pulled, clean node back into D from its old list, and a restart would
+  then write it again: other bytes, RestartInvariance): a node x of a
+  section list gd(j) is in D with d(x) = j unless x has a version in a
+  record of the section after j; then it was pulled there, and it is in D
+  only by a newer list that names it, with that d. Derivable from the
+  stream: `createMaps` already indexes every version of the section by id
+  (`newById`), and the lists are read. Today no node of a section list has
+  a version after its list (a taken list is before the section), so the
+  rule changes nothing for streams without a pull. INV-1 becomes: D holds
+  exactly the nodes whose newest list in the section is not before their
+  newest version in it. L-OUT's argument is unchanged (a node in D got
+  there by marking, latest version before d and good below it, or by Rule
+  A, written in d, in the section); a pulled clean node's latest version
+  is in the section (L-SEC). The chain pulled is bounded by the window's
+  length, a few top nodes once the window is gone, about 100 bytes each.
+* **(b'), exactly,** as above, with e(y) kept on the node (set by
+  `makeDirtyIfNeeded` and at creation, untouched by `handleStillDirtyNodes`)
+  and r(x) set where 18.2 says. **Record contents, within format 6:** a
+  got-dirty entry becomes (id, position, r, e): r is needed as 18.4 says;
+  e because a start cannot tell a Rule A entry's last marking (it can tell
+  the entry is Rule A's, the node having a version in its own record, but
+  not when it was last marked, which may be before the section), and a
+  conservative e after a restart would change the bytes written (P2).
+  The rerun's markings set e on the section's nodes too; stored and rerun
+  values must agree where both exist, as for r.
+* **The cut** (18.3) with (b'): a clean replaced node x, touched at ts,
+  names for a child y of the range either a clean y's lv, written after
+  the touch, or a dirty y with e(y) >= r(x) > ts, which went clean after
+  the touch, so was written after it: at pStart or later in both cases.
+  pEnd and pSafe keep their meaning.
+* **The Lean model.** (a) changes step 5 and the start's step 2 (the
+  closure of `javaTest` stays); (b') changes the test, which the physical
+  theorems fix to `javaTest` (18.4). Both need the checker updated (the
+  pull and the start's rule; the test with r and e, which the checker can
+  derive from the model's reachability and marking, or read from the
+  trace) and the proofs extended: a Lean task either way, Z21 as before,
+  now for (a) with (b'). If only one can be done for 2026.4: (a), which
+  P7 has gated (D 166 to 11, the start's objects 184 to 33 against the
+  twin's 25), with the start's rule added and RestartInvariance,
+  StreamDigest's modes and CrashTest run on it; (b') after, with P5's
+  "inter" as its test.
+* **(c)** (the keyed refile) remains the general form of (a): it orders
+  every re-dirtied node with its child, key nodes included, and is the
+  generalization sis-model.md's section 8 names. More to change in the
+  take and the lists; not needed for the window once (a) is in.
+
+**Tests to add to 18.6:** the counterexample as a unit test, three levels
+with a restart whose section starts after the third write, lookups at
+every time (it must fail with (b) and pass with `javaTest`, (a) and (b'));
+RestartInvariance with a restart after every transaction on a run that
+pulls (the start's rule); and, for (b'), a replaced node over a child that
+is refiled by Rule A while another grandchild's change is unwritten (the
+counterexample's shape) and one over a child that went clean after the
+replacement.
