@@ -72,3 +72,8 @@ reached eventually, after one or several reclaims.
 2026-11-10. Frans answered 023-02's F2 (10:41): the rule covers every
 version that has ended, not only deleted KVs ("Yes, it should cover every
 version that has ended.").
+
+2026-11-10. Frans answered 023-02's F3 (10:44): the scan bound holds at
+every available lookup time ("At every available time; this is what we
+want."). F1 follows from his answers to F2 and F5: a dead klong in a node
+that still holds live keys goes too, eventually.

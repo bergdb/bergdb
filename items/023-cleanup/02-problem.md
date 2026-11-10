@@ -469,6 +469,9 @@ reads, warm and cold, with a startup distance of 50 MB or more.
   shadowed one, go from a node that still holds live keys (R3 as read),
   or is a rest of at most B a node enough? Recommended: they go, as "zero
   resources" says; a solution may take longer for them (a larger K).
+  Implied by Frans's answers to F2 and F5 (10:38, 10:41; coordinator,
+  10:44, not contradicted): they go, eventually, after one or more reclaims,
+  as ended versions.
 * **F2. Old versions.** Does the rule cover every ended version, replaced
   node versions and internal keys (R7), or deleted KVs only? Recommended:
   every ended version.
@@ -477,6 +480,8 @@ reads, warm and cold, with a startup distance of 50 MB or more.
 * **F3. The scan bound's times.** R9 at every available time, at the
   latest only, or at the latest at once and in the past eventually?
   Recommended: every available time, as 011-01's R1.
+  **Frans, 2026-11-10, 10:44: "At every available time; this is what we
+  want."**
 * **F4. Amortized or worst case.** R9 amortized only, or also a bound on
   a single scan (P1)? Recommended: amortized; the worst single scan
   measured and reported.
@@ -533,3 +538,6 @@ solution is found; strict may be reached after one or more reclaims.
 
 2026-11-10. Frans answered F2 (10:41): the rule covers every version that
 has ended (R7).
+
+2026-11-10. Frans answered F3 (10:44): R9 at every available time. F1
+follows from F2 and F5: dead klongs in live nodes go, eventually.
