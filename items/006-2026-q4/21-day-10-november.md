@@ -131,6 +131,39 @@ restarts it from there (013-02, `resume`).
   of fuzzing.
 * 17:18 023-09 done (023-core, 2c67f887): before-commit, level1, fuzz OK.
   17:19 level2 to level4 full started on it.
+* 17:35 Frans back. 17:41 to 17:52 his answers: one operation a key
+  after the key transformations, by the builder's rule; Q9; T1's small
+  misses accepted; 024-release-2026-5 created. 17:51 level2 to level4
+  full OK on 2c67f887. 18:04 to 18:35 two code reviews of `023-core`
+  (023-11): ready with fixes; 18:36 to 18:54 the fixes, head b7874541;
+  19:27 level2 to level4 full OK on it. 18:27 the ratchet test (023-10):
+  no growth. 19:26 024-01, the inventory for 2026.5, started.
+* 19:33 Frans: "If the night is clean, merge into main, push, and make the
+  commit. Complete everything if the night is clean. I want release 2026.4
+  created in the bergdb/releases/ directory before 07:00 in the morning.
+  When night is clean, make the release as soon as possible and start to
+  work on 2026.5 without waiting for me." 19:38: "OK, unattended from
+  now." The defaults he accepted: if the night is not clean, no merge and
+  no release, a morning summary with options (a take-back fault: the stop
+  rule waits for his word); the release internal, as 2026.3, pushed with
+  its tag; 2026.5's work on branches only, CPU work after the release;
+  022's night steps and props-006-16 not tonight.
+
+
+## 9. The night of 10 to 11 November
+
+| When            | What                                                          |
+|---|---|
+| 19:36 to 21:00  | Commit A in a clone: main + `023-core` + BuildInfo 2026.4 + the JDK 17 test fix + notes and docs; before-commit |
+| 21:15 to 03:30  | F53: `night.sh large` on A, then jcstress, then checks (digests, axioms) |
+| 21:15 to 04:30  | s1: the tests on A's jars (JDK 27, 17), the user's program; then UnlinkFuzz's modes |
+| 03:30 to 05:00  | If clean: main to A, push; releases/2026.4/; commit B; tag `release-2026.4`; push |
+| after           | 2026.5 on branches: P8 with fault 13's fix on the new main; the builder's rule |
+| 06:00 to 07:00  | The morning summary (news.md, this plan's Outcome)            |
+
+Check-ins every 20 minutes all night (the morning steps need them); the
+watchdog until 07:00. F53's quiet block: nothing else heavy while
+`night.sh large` runs.
 
 
 ## 8. Outcome
