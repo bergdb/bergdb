@@ -426,10 +426,19 @@ public final class Eviction {
     // it keeps, the pointers to values stored before the cut become stream pointers.
 
     /**
-     * The handles that the dead hand examines at most a transaction (a map counts one); and
-     * at most BATCH_NANOS of time, as a batch of the capacity controller.
+     * The work of a step of the dead hand at most, in units: a handle examined, a pointer of
+     * a kept key node examined, a handle copied from a map (a map counts one at least); and
+     * at most BATCH_NANOS of time, as a batch of the capacity controller. A step ends at the
+     * end of a part of DEAD_PART handles, after the values of its kept nodes, so it can
+     * exceed DEAD_BATCH by one part's work and one map's copy (bergdb 023-11, review A, F2).
      */
     static final int DEAD_BATCH = 4096;
+
+    /** The handles of a part of a step of the dead hand, the unit of its cursor. */
+    static final int DEAD_PART = 8;
+
+    /** DEAD_BATCH; a test sets less (testDeadHandBoundsItsWork). */
+    int deadBatch = DEAD_BATCH;
 
     /** The decided cut position when the dead hand's last round began; 0: none yet. */
     private long deadRoundCut = 0;
@@ -450,9 +459,9 @@ public final class Eviction {
 
     /**
      * One step of the dead hand (see above): if a cut moved the decided cut position since
-     * the last round began, a round begins; a round in progress goes on, DEAD_BATCH handles
-     * and BATCH_NANOS at most, with the decided cut position now as its bound (it only
-     * rises). The caller holds Db.writeLock, between transactions.
+     * the last round began, a round begins; a round in progress goes on, DEAD_BATCH units of
+     * work and BATCH_NANOS at most, part by part, with the decided cut position now as its
+     * bound (it only rises). The caller holds Db.writeLock, between transactions.
      */
     private void deadStep(Db db) {
         final Db.Internal in = db.internal();
@@ -476,13 +485,14 @@ public final class Eviction {
         final java.util.ArrayList<Node> kept = new java.util.ArrayList<Node>();
         final int all = Cache3.maps();
         long examined = 0, objects = 0, values = 0;
-        while (examined < DEAD_BATCH && deadHand < all
+        while (examined < deadBatch && deadHand < all
                 && System.nanoTime() - t0 < BATCH_NANOS) {
             if (deadPart == null) {
                 deadPart = table.mapHandles(deadHand);
                 deadPartNext = 0;
+                examined += deadPart.length;    // the copy
             }
-            int to = (int) Math.min(deadPart.length, deadPartNext + (DEAD_BATCH - examined));
+            int to = Math.min(deadPart.length, deadPartNext + DEAD_PART);
             long[] c = table.deadStep(deadHand, deadPart, deadPartNext, to, cut, d, kept);
             objects += c[1];
             examined += Math.max(1, c[2]);
@@ -490,6 +500,7 @@ public final class Eviction {
             for (int j = 0; j < kept.size(); j++) {
                 Node x = kept.get(j);
                 int size = x.getSize();
+                examined += size;
                 for (int i = 0; i < size; i++) {
                     Pointee p = x.getPointee(i);
                     if (!(p instanceof ValueNode)) continue;
@@ -1589,6 +1600,49 @@ public final class Eviction {
         deadHand(false);
     }
 
+    /**
+     * The dead hand bounds the work of a step, not only its handles (bergdb 023-11, review A,
+     * F2): a database with a budget far above its need, 3,000 keys put, then overwrites of
+     * them, a few a transaction, while reclaim cuts; key nodes written after a cut keep the
+     * shadowed klongs of values written before it, which the hand unswizzles. With a step's
+     * work set to 256 units, a step unswizzles at most 256 + DEAD_PART x (B + 1) values, 504
+     * (a pointer examined counts a unit, as a handle does; 248 on 2026-11-10), while the
+     * rounds unswizzle about 230,000. Before the fix a step examined 256 handles and every
+     * value of their kept nodes: 725 values in one step.
+     */
+    @Nano("f")
+    public static void testDeadHandBoundsItsWork() {
+        CoreTestClock clock = new CoreTestClock();
+        long time = 1000 * STEP;
+        clock.setTime(time);
+        Db db = Db.builder().testSetup().clock(clock).testId().startupDistance(300)
+                .evictionSchedule(Schedule.BUDGET, 1).cacheSizeIndicator(1L << 30).start();
+        db.internal().eviction().deadBatch = 256;
+        db.setRetainDuration(bergdb.pub.util.Clock.UNITS_PER_SEC);
+        for (int i = 0; i < 3000; i += 100) {
+            Trans.Builder b = db.trans();
+            for (int j = i; j < i + 100; j++) b.put("/k/" + (100000 + j), "v" + j);
+            db.execute(b.build());
+        }
+        java.util.Random r = new java.util.Random(1);
+        long maxStep = 0, all = 0, last = 0;
+        for (int i = 0; i < 4000; i++) {
+            time += bergdb.pub.util.Clock.UNITS_PER_SEC / 20;
+            clock.setTime(time);
+            Trans.Builder b = db.trans();
+            for (int j = 0; j < 10; j++) b.put("/k/" + (100000 + r.nextInt(3000)), "w" + i);
+            db.execute(b.build());
+            long values = db.internal().eviction().deadCounts()[2];
+            maxStep = Math.max(maxStep, values - last);
+            all += values - last;
+            last = values;
+        }
+        db.close();
+        final long bound = 256 + DEAD_PART * 31;
+        Assert.assertTrue("values the dead hand took in all: " + all, all > 4 * bound);
+        Assert.assertTrue("values a step took at most: " + maxStep, maxStep <= bound);
+    }
+    
     private static void deadHand(boolean quick) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < 300; i++) sb.append((char) ('a' + i % 26));
