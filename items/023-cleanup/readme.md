@@ -21,10 +21,12 @@ log of 2026-11-10).
 Files
 =====
 
-* 01-introduction.md. 023-01, an introduction for an AI to get up to
-  date: what triggered the work, and how the Core works today (scans,
-  lookups, the index, reclaim, caching with handles). No solution.
-  Being written.
+* [01-introduction.md](01-introduction.md). 023-01, an introduction for
+  an AI to get up to date: what triggered the work, a glossary, and how
+  the Core works today (keys and the stream, the index and its splits,
+  gets and scans, the Pub API's use of it, memory and handles, startup,
+  reclaim), where a deleted key's remains are, the 2012 intent never
+  built, and where the docs and the code differ. No solution.
 * 02-problem.md. 023-02, the problem stated exactly, and what we want
   from a solution, with Frans's rule that a deleted KV eventually
   consumes no resources of the database. Being written.
