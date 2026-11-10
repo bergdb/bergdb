@@ -68,3 +68,17 @@ started 19:26.
 (B) recommended; the first questions: the theme, whether 2026.5 opens
 2026.4's databases, measuring first, and fix (a) dropped since the window
 does not grow (023-10).
+
+2026-11-10. Frans on 024-01's first questions (19:49): "1. The theme. Not
+sure. Parts of 2026.4 was pushed to 5. If Release 4 really is "bug-free
+database", we don't need to chase bugs. But if there are still issues,
+they have priority. I would like your feedback on "stable stream" as a
+theme. 2026.5 does not need to open 2026.4 databases. But at some point
+we want to publish this and then I would like the stream format to be
+more stable. So, working towards a stable stream format is a good aim.
+What do you think? 2. No. 3. Measurements on 2026.4 can be done in
+parallell when possible, or at night. Start the work on the 2026.5
+release directly after 2026.4 is done. 4. I don't know, you can
+propose." So: 2026.5 need not open 2026.4's databases; measurements of
+2026.4 beside the work or at night; the theme open, "a stable stream"
+proposed by Frans for feedback.
