@@ -361,6 +361,29 @@ public class Cache3 {
         return residents.released(o);
     }
 
+    /**
+     * 'node', a key node that its transaction made and took back (bergdb 023-07, section 5.1;
+     * Dag.takeBack, Dag.takeBackRoot), leaves the table as an
+     * evicted object does: its handle dies, its canonical flag is cleared, and the handle
+     * leaves the table. It was never written, and no node names it. The caller holds
+     * Db.writeLock (or is the startup).
+     */
+    public void dropNode(Node node) {
+        final long id = node.getId();
+        synchronized (getLock(id)) {
+            final Handle h = internalGet(id);
+            if (h == null || h.obj != node) {
+                node.setCanonical(false);
+                return;
+            }
+            if (!h.casState(Handle.LIVE, Handle.DEAD)) {
+                return;
+            }
+            kill(h, node);
+            internalRemove(id);
+        }
+    }
+    
     /** Whether eviction may take an object (Eviction.detachable, with the batch's roots). */
     interface Detachable {
         boolean detachable(Node o);

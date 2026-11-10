@@ -1146,6 +1146,11 @@ public class Db implements AutoCloseable {
                 }
             }
             
+            public void keyNodeTakenBack(KeyNode node) {
+                keyNodeReplaced(node);
+                takenBackInTrans.add(node);
+            }
+            
             public void topNodeReplaced(TopNode node) {
                 if (x.transInfo != null) replacedInTrans.add(node);
                 final TestHooks hooks = testHooks;
@@ -1470,6 +1475,9 @@ public class Db implements AutoCloseable {
     /** Whether the current operation changed the Dag. */
     private boolean opChanged = false;
     
+    /** The nodes that the current transaction made and took back (bergdb 023-05, P4). */
+    private final ArrayList<Node> takenBackInTrans = new ArrayList<Node>();
+    
     /** The nodes that the current transaction replaced. */
     private final Set<Node> replacedInTrans = 
             Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
@@ -1520,6 +1528,12 @@ public class Db implements AutoCloseable {
         }
         replacedInTrans.clear();
         touchMarks = 0;
+        // Nodes the transaction made and took back (bergdb 023-05, P4, as P2), out of D above,
+        // leave the node table: never written, and no node names them.
+        for (Node n : takenBackInTrans) {
+            cache.dropNode(n);
+        }
+        takenBackInTrans.clear();
     }
 
     /**
@@ -2704,7 +2718,10 @@ public class Db implements AutoCloseable {
         
         long cheap = 0;
         for (Kv kv : t.kvs) {
-            cheap += 3 * height * kv.getKey().length + 3;
+            // A delete: its path, and with the upward unlink a node a level off it that a
+            // relabelling changes and can split (bergdb 023-05, P1); kept as a margin with
+            // LE-b, which changes no node off the path (P4).
+            cheap += (kv.getValue() == null ? 7 : 3) * height * kv.getKey().length + 3;
         }
         if (cheap <= (limit - topBytes) / nodeBytes) {
             return;
@@ -2898,6 +2915,7 @@ public class Db implements AutoCloseable {
         opMarks.clear();
         opChanged = false;
         replacedInTrans.clear();
+        takenBackInTrans.clear();
         touchMarks = 0;
 
         if (x.trans.touch) {

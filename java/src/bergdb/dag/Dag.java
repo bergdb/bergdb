@@ -482,6 +482,7 @@ public class Dag {
         final java.util.IdentityHashMap<KeyNode, Walked> walked =
                 new java.util.IdentityHashMap<KeyNode, Walked>();
         final KlongWithPointer kwi = gd.kwi;
+        long offPath = 0;
         
         for (int k = 0; k < keys.length; k++) {
             final long[] key = keys[k];
@@ -497,7 +498,21 @@ public class Dag {
                     w = walked(walked, node, w);
                 }
                 if (i == key.length - 1) {
-                    w.klongs++;
+                    if (deletes[k]) {
+                        // The upward unlink (bergdb 023-05, P1, P4): the delete lands in a node
+                        // of its path, a bitmap and with LE-b a klong of the empty key; a root
+                        // collapse adds a klong to the segment leaf above, or a new top node.
+                        // P1's count, which had a relabelled node a level off the path, is
+                        // kept as a margin: LE-b changes no node off the path.
+                        int len = 0;
+                        for (Walked u = w; u != null; u = u.up) {
+                            u.klongs += 2;
+                            len++;
+                        }
+                        offPath += 4L * len + 2;
+                    } else {
+                        w.klongs++;
+                    }
                     break;
                 }
                 node.searchEq(time, key[i], kwi);
@@ -512,7 +527,7 @@ public class Dag {
             }
         }
         
-        long count = walked.size();
+        long count = walked.size() + offPath;
         final java.util.List<Walked> deepestFirst = new java.util.ArrayList<Walked>(walked.values());
         java.util.Collections.sort(deepestFirst, new java.util.Comparator<Walked>() {
             public int compare(Walked a, Walked b) {
@@ -791,7 +806,7 @@ public class Dag {
             // A delete operation. A ValueNode (of delete type) is created
             // only for the pd.nodeChangeListener.
             
-            boolean isNoop = appendDeleteKlong(node, pd.keyAccessPath.size - 1, compareValue, pd);
+            boolean isNoop = deleteUpward(node, pd.keyAccessPath.size - 1, compareValue, key, pd);
             if (!isNoop) {
                 pd.nodeChangeListener.valueNodeCreated(ValueNode.createDelete(), key);
             }
@@ -979,6 +994,583 @@ public class Dag {
     }
     
     
+    // ======== The upward unlink at a delete (bergdb 023-05, P1) ========
+    //
+    // A delete that leaves its segment leaf with no live KEY klong at the transaction time tt
+    // does not write the leaf: it deletes the parent's klong to it instead, and so on upward
+    // while a node is left with no live klong, also across segment trees (an emptied segment
+    // root takes the segment's klong in the segment leaf above). The first node that keeps a
+    // live klong gets the delete. Frans's rule of 2012, "If lastVersion is empty, remove from
+    // parent" (bergdb 020-30-02), for every emptied node (023-04, UP).
+    //
+    // Every inner node has the empty key (Klong.EMPTY_KEY, compare value 0) as its smallest
+    // live klong (bergdb 023-04, LE-b; 023-05, P4): the roots that space splits make have it,
+    // and a space split of an inner node gives its second half the empty key for its first
+    // klong (KeyNode.firstAndSecond). So every klong above a leaf is a lower bound of every key
+    // below it, and the empty key is the one every put relies on (checkFound). When the child
+    // of the empty key empties, the empty key is pointed to the next live child, whose own
+    // klong is deleted (emptyKeyNext): one klong in the node, which is on the delete's path,
+    // and nothing below changes, as the next child's first klong is the empty key already.
+    //
+    // A node that the transaction made by a split (a last version, a half or a new root, its
+    // first klong of tt) and that it empties is taken back (takeBack; 023-04, X5 (a)): never
+    // written, as if never made, so that a transaction leaves no node it made unreachable at
+    // its time (the Lean model's A3; handleFullNode). Any other node made by the transaction
+    // is not unlinked: the climb then stops at the first segment leaf at or below it, which
+    // keeps its delete and stays linked, empty, as before 023 (023-04, X5 (c)).
+    //
+    // An unlinked node gets no entry of tt and loses those it got earlier in the transaction
+    // (toPreviousState, as a node replaced by a split), and is reported as replaced, so that
+    // it leaves D if it got dirty in this transaction only (Db.endOfTrans): no lookup at tt or
+    // later reaches it, lookups before tt still do, through the klong as it was. An inner
+    // space root left with no live klong is replaced by an empty segment leaf, a new super
+    // root, as time-split-2 makes one; a space root that is a segment leaf stays, empty.
+    //
+    // All of it is a function of the delete and the state at tt (the model's A1), so the
+    // startup's rerun redoes it; a record of format 6 means it (StoredTrans.RECORD_FORMAT).
+    //
+    
+    /** Counts for tests and measurements; written by the writer only. */
+    public static volatile long statUnlinked, statClimbs, statRelabels,
+            statKeptNew, statTakenBack, statNewRoots, statCollapses, statRootsTakenBack;
+    
+    /**
+     * A delete of 'compareValue', the key's last segment, in the segment leaf 'leaf' at
+     * 'depth' of pd.keyAccessPath, with the upward unlink (see above).
+     * 
+     * @return True if the delete is a noop: the key has no live value.
+     */
+    private boolean deleteUpward(final KeyNode leaf, final int depth, final long compareValue,
+            final long[] key, PutData pd) {
+        final long tt = pd.tt;
+        final long leafDel = lastBitmap(leaf);
+        final long leafUnion = leafDel | bitsOf(leaf, compareValue);
+        if (leafUnion == leafDel) {
+            return true;
+        }
+        if (!allKeysIn(leaf, leafUnion)) {
+            appendDeleteKlong(leaf, depth, compareValue, pd);
+            return false;
+        }
+        
+        // The leaf is empty after the delete. Find 'stop', the node that gets the delete: the
+        // first above that keeps a live klong, -1 for a new space root. Nothing is changed
+        // until it is known, so a climb that cannot go on changes nothing above the leaf.
+        final KeyAccessPath path = pd.keyAccessPath;
+        int top = depth;
+        int stop;
+        while (true) {
+            final KeyNode n = path.get(top);
+            if (n.getFirstTime() == tt && top == 0 && !n.isSegmentLeaf()) {
+                // An inner space root made by this transaction: the new empty root takes its
+                // place in the top node of tt, and it is taken back (see takeBack).
+                stop = -1;
+                break;
+            }
+            if (n.getFirstTime() == tt && (top == 0
+                    || !canTakeBack(n, path.get(top - 1), path.getKlong(top), pd))) {
+                // Made by this transaction, and not by a split of a node that existed: it
+                // stays linked (A3). The first segment leaf at or below it keeps the delete,
+                // so no inner node is left without a klong.
+                stop = top;
+                while (!path.get(stop).isSegmentLeaf()) {
+                    stop++;
+                }
+                statKeptNew++;
+                break;
+            }
+            if (top == 0) {
+                stop = n.isSegmentLeaf() ? 0 : -1;
+                break;
+            }
+            final KeyNode p = path.get(top - 1);
+            final long c = Klong.getCompareValue(path.getKlong(top));
+            if (allKeysIn(p, lastBitmap(p) | bitsOf(p, c))) {
+                top--;
+                continue;
+            }
+            stop = top - 1;
+            break;
+        }
+        
+        if (stop == depth) {
+            appendDeleteKlong(leaf, depth, compareValue, pd);
+            return false;
+        }
+        
+        statClimbs++;
+        
+        // The segment of 'stop''s tree, from the path before it changes, for root collapse.
+        int segment = 0;
+        for (int i = 0; i < stop; i++) {
+            if (path.get(i).isSegmentLeaf()) segment++;
+        }
+        
+        for (int k = depth; k > stop; k--) {
+            final KeyNode n = path.get(k);
+            if (n.getFirstTime() == tt) {
+                takeBack(n, k == 0 ? null : path.get(k - 1), path.getKlong(k), pd);
+            } else {
+                unlink(n, pd);
+            }
+        }
+        
+        if (stop == -1) {
+            // The inner space root has no live klong left: an empty segment leaf replaces it.
+            final KeyNode root = KeyNode.nodeWithTime(tt);
+            pd.nodeChangeListener.keyNodeCreated(root);
+            topDs.newSuperRoot(tt, root, pd.accessData, pd.pointerCreatedListener,
+                    pd.nodeChangeListener);
+            statNewRoots++;
+            return false;
+        }
+        
+        final KeyNode s = path.get(stop);
+        final long c = Klong.getCompareValue(path.getKlong(stop + 1));
+        
+        if (s.isSegmentLeaf()) {
+            appendDeleteKlong(s, stop, c, pd);
+            return false;
+        }
+        if (smallestLive(s) != 0) {
+            throw new Bug("The upward unlink at " + tt + ": inner node " + s.getId()
+                    + " has no live klong of the empty key (bergdb 023-04, LE-b).");
+        }
+        if (c != 0) {
+            appendDeleteKlong(s, stop, c, pd);
+        } else {
+            // The leftmost child (023-04, LE-b).
+            statRelabels++;
+            emptyKeyNext(s, stop, pd);
+        }
+        collapseRoot(key, segment, pd);
+        return false;
+    }
+    
+    /**
+     * RC, root collapse (bergdb 023-04, 2.3; 023-05, P1), after a climb that ended in an inner
+     * node of the tree of segment 'segment': while the root of that tree is an inner node,
+     * not made by the transaction, with one live klong, its only child takes its place: for
+     * the space root through a new super root (as time-split-2 makes one), for a segment root
+     * through a klong with the same compare value in the segment leaf above, which shadows the
+     * old one (as time-split-1 does for a segment root). The old root is unlinked (unlink). The
+     * one live klong of a root is the empty key, and the child's smallest klong is the empty
+     * key too, as every inner node's is (LE-b), or the child is a segment leaf.
+     * The child does not change, so it is followed without being marked: the model marks it
+     * only if something below it changed.
+     * 
+     * <p>A root that a split of the transaction made (a last version, or a new root above two
+     * halves) is collapsed too, and taken back (023-05, P4): the klong of tt that links it,
+     * in the top node of tt or in the segment leaf above, is pointed to the child instead,
+     * behind the time klong of tt, where every reader stops; the root is reported as
+     * replaced, so it is never written, as takeBack does. Before, such a root ended the
+     * collapse: a full root replaced by a delete's bitmap in the transaction's last delete
+     * kept a chain of single children (T3, "hashed", four levels).</p>
+     */
+    private void collapseRoot(long[] key, int segment, PutData pd) {
+        final long tt = pd.tt;
+        while (true) {
+            final KeyNode root = descendToRootQuietly(key, segment, pd);
+            if (root.isSegmentLeaf()) {
+                return;
+            }
+            final boolean made = root.getFirstTime() == tt;
+            if (made && pd.replacedBy(root) == null) {
+                return;
+            }
+            final int only = onlyLiveKlong(root);
+            if (only < 0) {
+                return;
+            }
+            if (Klong.getCompareValue(root.klongs[only]) != 0) {
+                throw new Bug("Root collapse at " + tt + ": the one live klong of root "
+                        + root.getId() + " is not the empty key.");
+            }
+            if (made) {
+                takeBackRoot(root, pd.keyAccessPath.size - 1, only, pd);
+            } else {
+                replaceRoot(root, pd.keyAccessPath.size - 1, only, pd);
+            }
+        }
+    }
+    
+    /**
+     * Root collapse of 'root', made by a split of the transaction, at 'depth' of
+     * pd.keyAccessPath, whose one live child is that of its klong at 'only': the child takes
+     * its place in the klong of tt that links it, and 'root' is taken back (see
+     * collapseRoot).
+     */
+    private void takeBackRoot(KeyNode root, int depth, int only, PutData pd) {
+        final long tt = pd.tt;
+        final KeyNode child = followQuietly(root, only, pd);
+        if (depth == 0) {
+            // The top node of tt is updated in place (TopDs.newSuperRoot).
+            topDs.newSuperRoot(tt, child, pd.accessData, pd.pointerCreatedListener,
+                    pd.nodeChangeListener);
+        } else {
+            final KeyNode leaf = pd.keyAccessPath.get(depth - 1);
+            final int i = linkIndex(leaf, root, pd.keyAccessPath.getKlong(depth));
+            if (i < 0 || lastTime(leaf) != tt) {
+                throw new Bug("Root collapse at " + tt + ": no klong of tt to root "
+                        + root.getId() + " in its segment leaf.");
+            }
+            leaf.repointKlong(i, child);
+            pd.nodeChangeListener.keyNodeChanged(leaf);
+        }
+        pd.nodeChangeListener.keyNodeTakenBack(root);
+        statTakenBack++;
+        statRootsTakenBack++;
+        statCollapses++;
+    }
+    
+    /**
+     * One step of root collapse: 'root', at 'depth' of pd.keyAccessPath, is replaced by the
+     * child of its klong at 'only', its one live child: the space root through a new super
+     * root, a segment root through a klong with the same compare value in the segment leaf
+     * above. The child is followed before 'root' is unlinked, as unlinking drops the klongs
+     * of tt, and without being marked: it does not change.
+     */
+    private void replaceRoot(KeyNode root, int depth, int only, PutData pd) {
+        final long tt = pd.tt;
+        final KeyNode child = followQuietly(root, only, pd);
+        if (depth == 0) {
+            unlink(root, pd);
+            topDs.newSuperRoot(tt, child, pd.accessData, pd.pointerCreatedListener,
+                    pd.nodeChangeListener);
+        } else {
+            final KeyNode leaf = pd.keyAccessPath.get(depth - 1);
+            final long klong = pd.keyAccessPath.getKlong(depth);
+            unlink(root, pd);
+            pd.oneKwi[0].klong = klong;
+            pd.oneKwi[0].node = child;
+            pd.oneKwi[0].pos = pd.accessData;
+            appendKlongs(leaf, depth - 1, pd.oneKwi, pd);
+        }
+        statCollapses++;
+    }
+    
+    /**
+     * As descendToSegmentRoot(), but the segment root itself is followed without being marked
+     * (followQuietly) and put on the key access path by hand: after a collapse it is the old
+     * root's child, which does not change, and the model marks a node only if something below
+     * it changed. The nodes above it are followed as by any descent: they are above the
+     * climb's change, or the segment leaf above changed by the collapse.
+     */
+    private KeyNode descendToRootQuietly(long[] key, int segment, PutData pd) {
+        final long tt = pd.tt;
+        if (segment == 0) {
+            pd.keyAccessPath.clearFast();
+            final PointerListener listener = pd.pointerListener;
+            pd.pointerListener = DO_NOTHING_POINTER_LISTENER;
+            final KeyNode root;
+            try {
+                root = topDs.findRoot(tt, pd);
+            } finally {
+                pd.pointerListener = listener;
+            }
+            pd.keyAccessPath.add(Klong.NULL, root);
+            return root;
+        }
+        final KlongWithPointer kwi = pd.kwi;
+        KeyNode node = descendToSegmentRoot(key, segment - 1, pd);
+        while (!node.isSegmentLeaf()) {
+            node.searchLte(tt, key[segment - 1], kwi);
+            checkFound(node, pd);
+            node = (KeyNode) pd.followPointer(node, kwi.pointerIndex);
+        }
+        node.searchEq(tt, key[segment - 1], kwi);
+        if (kwi.klong == Klong.NULL) {
+            throw new Bug("Descent at " + tt + ": segment " + (segment - 1) + " not found.");
+        }
+        final long klong = kwi.klong;
+        final KeyNode root = followQuietly(node, kwi.pointerIndex, pd);
+        pd.keyAccessPath.add(klong, root);
+        return root;
+    }
+    
+    /** The index of the latest klong of the node's only live compare value; -1 if it has
+     *  none or more than one. */
+    private static int onlyLiveKlong(KeyNode node) {
+        final long del = lastBitmap(node);
+        int index = -1;
+        long cv = -1;
+        for (int i = 0; i < node.size; i++) {
+            final long klong = node.klongs[i];
+            if (Klong.getIntType(klong) != Klong.INT_TYPE_KEY || Klong.isDeleted(del, i)) {
+                continue;
+            }
+            final long c = Klong.getCompareValue(klong);
+            if (index >= 0 && c != cv) {
+                return -1;
+            }
+            index = i;
+            cv = c;
+        }
+        return index;
+    }
+    
+    /** Follows pointer 'index' of 'node' as the writer, without telling pd's listener: the
+     *  node is not marked, nor put on the key access path. */
+    private static KeyNode followQuietly(KeyNode node, int index, PutData pd) {
+        final PointerListener listener = pd.pointerListener;
+        pd.pointerListener = DO_NOTHING_POINTER_LISTENER;
+        try {
+            return (KeyNode) pd.followPointer(node, index);
+        } finally {
+            pd.pointerListener = listener;
+        }
+    }
+    
+    /**
+     * Goes down from the space root at tt by the key's segments before 'segment' to the root
+     * of that segment's tree, and returns it. Rebuilds pd.keyAccessPath.
+     */
+    private KeyNode descendToSegmentRoot(long[] key, int segment, PutData pd) {
+        final long tt = pd.tt;
+        final KlongWithPointer kwi = pd.kwi;
+        pd.keyAccessPath.clearFast();
+        KeyNode node = topDs.findRoot(tt, pd);
+        for (int i = 0; i < segment; i++) {
+            while (!node.isSegmentLeaf()) {
+                node.searchLte(tt, key[i], kwi);
+                checkFound(node, pd);
+                node = (KeyNode) pd.followPointer(node, kwi.pointerIndex);
+            }
+            node.searchEq(tt, key[i], kwi);
+            if (kwi.klong == Klong.NULL) {
+                throw new Bug("Descent at " + tt + ": segment " + i + " not found.");
+            }
+            node = (KeyNode) pd.followPointer(node, kwi.pointerIndex);
+        }
+        return node;
+    }
+    
+    /**
+     * Unlinks 'node', which existed before the transaction, at tt: it loses its klongs of tt
+     * and is reported as replaced (see above).
+     */
+    private void unlink(KeyNode node, PutData pd) {
+        assert node.getFirstTime() != pd.tt : "unlink of a node made in the transaction";
+        if (lastTime(node) == pd.tt) {
+            node.toPreviousState(pd.tt - 1);
+        }
+        pd.nodeChangeListener.keyNodeReplaced(node);
+        statUnlinked++;
+    }
+    
+    /**
+     * True if 'node', made by this transaction and linked by its klong 'klong' of tt in
+     * 'parent', replaces a node that existed before (a split's last version, half or new
+     * root), so that it can be taken back (takeBack).
+     */
+    private boolean canTakeBack(KeyNode node, KeyNode parent, long klong, PutData pd) {
+        return pd.replacedBy(node) != null && linkIndex(parent, node, klong) >= 0;
+    }
+    
+    /** The index of the live klong of 'parent' with the compare value of 'klong' that points
+     *  to 'node', or -1. */
+    private static int linkIndex(KeyNode parent, KeyNode node, long klong) {
+        final long cv = Klong.getCompareValue(klong);
+        final long del = lastBitmap(parent);
+        for (int i = parent.size - 1; i >= 0; i--) {
+            final long k = parent.klongs[i];
+            if (Klong.getIntType(k) == Klong.INT_TYPE_KEY && Klong.getCompareValue(k) == cv) {
+                return !Klong.isDeleted(del, i) && parent.getPointerNode(i) == node ? i : -1;
+            }
+        }
+        return -1;
+    }
+    
+    /**
+     * Takes back 'node', made by this transaction by a split and emptied in it (bergdb 023-04,
+     * X5 (a); 023-05, P1): its parent's klong of tt to it is pointed to the node it replaced,
+     * which existed before the transaction and is not current, so nothing points to 'node'
+     * any more; the climb then deletes that klong in the parent, or points it to the next
+     * child if it is the empty key's (emptyKeyNext), as for any emptied child. The klong is behind the parent's time klong of tt, where every reader
+     * stops, as replaceKlong changes such klongs. 'node' is reported as replaced, so it leaves
+     * D and is never written: as far as the stream and the model see, it was never made. The
+     * space root ('parent' null) is replaced in the top node of tt by the caller.
+     */
+    private void takeBack(KeyNode node, KeyNode parent, long klong, PutData pd) {
+        if (parent != null) {
+            final KeyNode old = pd.replacedBy(node);
+            final int i = linkIndex(parent, node, klong);
+            if (old == null || i < 0) {
+                throw new Bug("Take back of key node " + node.getId() + " at " + pd.tt
+                        + ": no node it replaces, or no klong to it.");
+            }
+            parent.repointKlong(i, old);
+        }
+        pd.nodeChangeListener.keyNodeTakenBack(node);
+        statTakenBack++;
+    }
+    
+    /**
+     * LE-b, the empty key first (bergdb 023-04, 2.2 and X1; 023-05, P4). The child of the
+     * empty key of the inner node 'node', at 'depth' of pd.keyAccessPath, its leftmost child,
+     * has emptied: the empty key is pointed to the next live child, the one with the smallest
+     * live compare value but the empty key's, and that child's compare value is deleted. A
+     * new klong of the empty key, with a copy of the child's pointer, shadows the old one, as
+     * a time split's klong does. If the latest klong of the empty key is of tt (a split of the
+     * transaction made it, or a take-back or an earlier call pointed it), it is pointed to the
+     * next child in place instead: it is behind the time klong of tt, where every reader
+     * stops, as replaceKlong changes such klongs. Nothing below changes: the next child's own
+     * first klong is the empty key already (KeyNode.firstAndSecond), or it is a segment leaf.
+     * A full node is replaced by its last version, with the empty key instead of the next
+     * child's klong (the order stays sorted), through handleFullNode with no klong to insert.
+     */
+    private void emptyKeyNext(final KeyNode node, final int depth, PutData pd) {
+        assert !node.isSegmentLeaf();
+        final long tt = pd.tt;
+        final short sz = node.size;
+        long arrayDel = Klong.DELETE_NONE_BITMAP;
+        long arrayTime = -1;
+        int timeIndex = -1;
+        boolean hasTransDel = false;
+        int e = -1;                         // the latest klong of the empty key
+        for (int i = 0; i < sz; i++) {
+            final long klong = node.klongs[i];
+            switch (Klong.getIntType(klong)) {
+            case Klong.INT_TYPE_TIME:
+                arrayTime = Klong.getTime(klong);
+                timeIndex = i;
+                break;
+            case Klong.INT_TYPE_DELETE_BITMAP:
+                arrayDel = klong;
+                hasTransDel = arrayTime == tt && i == sz - 1;
+                break;
+            default:
+                if (Klong.getCompareValue(klong) == 0) {
+                    e = i;
+                }
+                break;
+            }
+        }
+        // The next live child: the smallest live compare value but the empty key's, and its
+        // latest klong.
+        final long del0 = arrayDel | bitsOf(node, 0);
+        int j = -1;
+        long jcv = -1;
+        for (int i = 0; i < sz; i++) {
+            final long klong = node.klongs[i];
+            if (Klong.getIntType(klong) != Klong.INT_TYPE_KEY || Klong.isDeleted(del0, i)) {
+                continue;
+            }
+            final long cv = Klong.getCompareValue(klong);
+            if (j == -1 || cv <= jcv) {
+                j = i;
+                jcv = cv;
+            }
+        }
+        if (e == -1 || Klong.isDeleted(arrayDel, e) || j == -1) {
+            throw new Bug("LE-b at " + tt + " in key node " + node.getId() + ": "
+                    + (j == -1 ? "no next child." : "no live klong of the empty key."));
+        }
+        final long union = arrayDel | bitsOf(node, jcv);
+        final boolean inPlace = arrayTime == tt && e > timeIndex;
+        final int need = (hasTransDel ? 0 : 1) + (inPlace ? 0 : 1) + (arrayTime == tt ? 0 : 1);
+        
+        if (sz + need <= this.maxNodeSize) {
+            // The bitmap first: in the model's terms a bitmap deletes the klongs before it with
+            // the compare values of its new bits (docs/trace-format.md, "D"); the empty key is
+            // not one of them, so the order is free.
+            if (hasTransDel) {
+                node.klongs[sz - 1] = union;    // the transaction's own bitmap, no reader sees it
+            } else {
+                node.addDeleteKlong(tt, union);
+            }
+            final int index;
+            if (inPlace) {
+                node.copyPointer(e, j);
+                index = e;
+            } else {
+                index = node.addKlongCopyPointer(tt, Klong.EMPTY_KEY, j);
+            }
+            final Node pointee = node.getPointerNode(index);
+            if (pointee != null) {
+                pd.pointerCreatedListener.pointerCreated(node, index, pointee);
+            }
+            pd.nodeChangeListener.keyNodeChanged(node);
+        } else {
+            final KeyNode last = node.lastVersionGivenDel(sz, tt, del0);
+            assert Klong.getType(last.klongs[0]) == Klong.TYPE_TIME;
+            if (last.size < 2 || Klong.getCompareValue(last.klongs[1]) != jcv) {
+                throw new Bug("LE-b at " + tt + " in key node " + node.getId()
+                        + ": the last version does not start with the next child.");
+            }
+            last.klongs[1] = Klong.EMPTY_KEY;   // sorted still: the empty key is below the rest
+            handleFullNode(node, depth, ZERO_LONG_KWP, tt, last, pd);
+        }
+    }
+    
+    /** The last delete bitmap of the node, or one with no bit set. */
+    private static long lastBitmap(KeyNode node) {
+        final short sz = node.size;
+        long del = Klong.DELETE_NONE_BITMAP;
+        for (int i = 0; i < sz; i++) {
+            final long klong = node.klongs[i];
+            if (Klong.getIntType(klong) == Klong.INT_TYPE_DELETE_BITMAP) {
+                del = klong;
+            }
+        }
+        return del;
+    }
+    
+    /** The time of the node's last time klong, -1 if none. */
+    private static long lastTime(KeyNode node) {
+        for (int i = node.size - 1; i >= 0; i--) {
+            final long klong = node.klongs[i];
+            if (Klong.getIntType(klong) == Klong.INT_TYPE_TIME) {
+                return Klong.getTime(klong);
+            }
+        }
+        return -1;
+    }
+    
+    /** The delete bits of every KEY klong of the node with the compare value. */
+    private static long bitsOf(KeyNode node, long compareValue) {
+        final short sz = node.size;
+        long del = Klong.createDelete();
+        for (int i = 0; i < sz; i++) {
+            final long klong = node.klongs[i];
+            if (Klong.getIntType(klong) == Klong.INT_TYPE_KEY
+                    && Klong.getCompareValue(klong) == compareValue) {
+                del = Klong.delete(del, i);
+            }
+        }
+        return del;
+    }
+    
+    /**
+     * True if every KEY klong of the node is deleted by 'del': no compare value is live, as a
+     * delete sets the bits of every klong of its compare value.
+     */
+    private static boolean allKeysIn(KeyNode node, long del) {
+        final short sz = node.size;
+        for (int i = 0; i < sz; i++) {
+            if (Klong.getIntType(node.klongs[i]) == Klong.INT_TYPE_KEY && !Klong.isDeleted(del, i)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    /** The smallest live compare value of the node, at the latest time; -1 if none. */
+    private static long smallestLive(KeyNode node) {
+        final long del = lastBitmap(node);
+        final short sz = node.size;
+        long best = -1;
+        for (int i = 0; i < sz; i++) {
+            final long klong = node.klongs[i];
+            if (Klong.getIntType(klong) == Klong.INT_TYPE_KEY && !Klong.isDeleted(del, i)) {
+                final long cv = Klong.getCompareValue(klong);
+                if (best == -1 || cv < best) best = cv;
+            }
+        }
+        return best;
+    }
+    
+    
     // ======== appendKlongs() and helpers ========
     
     /**
@@ -1078,6 +1670,7 @@ public class Dag {
             if (newInTrans) {
                 timeSplitInPlace(tTime, node, last, toInsert, pd);
             } else {
+                pd.madeFor(last, node);
                 timeSplit(tTime, last, depth, toInsert, pd);
             }
         }
@@ -1125,6 +1718,7 @@ public class Dag {
         final KeyNode parent = pd.getParent(depth);
         
         pd.nodeChangeListener.keyNodeCreated(second);
+        pd.madeFor(second, pd.replacedBy(node));
         long secondKlong = node.firstAndSecond(tt, last, toInsert, first, second);
         node.setContentFrom(first);
         reportNewPointers(node, pd.pointerCreatedListener);
@@ -1136,6 +1730,7 @@ public class Dag {
             // 'node' is the space root or a segment root: a new root above both halves.
             KeyNode newRoot = new KeyNode(false);
             pd.nodeChangeListener.keyNodeCreated(newRoot);
+            pd.madeFor(newRoot, pd.replacedBy(node));
             newRoot.addKlong(tt, Klong.EMPTY_KEY, node, pd.accessData);
             pd.pointerCreatedListener.pointerCreated(newRoot, newRoot.size - 1, node);
             newRoot.addKlong(tt, secondKlong, second, pd.accessData);
@@ -1240,6 +1835,8 @@ public class Dag {
 
         pd.nodeChangeListener.keyNodeCreated(first);
         pd.nodeChangeListener.keyNodeCreated(second);
+        pd.madeFor(first, node);
+        pd.madeFor(second, node);
         
         if (parent == null) {
             //
@@ -1248,6 +1845,7 @@ public class Dag {
             //
             KeyNode newRoot = new KeyNode(false);
             pd.nodeChangeListener.keyNodeCreated(newRoot);
+            pd.madeFor(newRoot, node);
             
             long secondKlong = node.firstAndSecond(tt, last, toInsert, first, second);
             reportNewPointers(first, pd.pointerCreatedListener);
@@ -1274,6 +1872,7 @@ public class Dag {
             
             KeyNode newSegmentRoot = new KeyNode(false);
             pd.nodeChangeListener.keyNodeCreated(newSegmentRoot);
+            pd.madeFor(newSegmentRoot, node);
             long secondKlong = node.firstAndSecond(tt, last, toInsert, first, second);
             reportNewPointers(first, pd.pointerCreatedListener);
             reportNewPointers(second, pd.pointerCreatedListener);
@@ -1474,10 +2073,21 @@ public class Dag {
         
         /**
          * Reports that a KeyNode that existed before the current transaction was replaced by
-         * a split: it is no longer current, and it has no klongs of the transaction
-         * (Dag.handleFullNode). Added 2026-10-16; does nothing by default.
+         * a split, or unlinked by a delete (bergdb 023-05, P1): it is no longer current, and it
+         * has no klongs of the transaction (Dag.handleFullNode, Dag.unlink). Added 2026-10-16;
+         * does nothing by default.
          */
         public default void keyNodeReplaced(KeyNode node) {}
+        
+        /**
+         * Reports that a KeyNode that the current transaction made was taken back (bergdb
+         * 023-05, P4, as P2's keyNodeDropped: Dag.takeBack, Dag.takeBackRoot): no node names
+         * it, and it is never written. As keyNodeReplaced, and its object leaves the node
+         * table. Calls keyNodeReplaced by default.
+         */
+        public default void keyNodeTakenBack(KeyNode node) {
+            keyNodeReplaced(node);
+        }
         
         /**
          * Reports that the super root, which existed before the current transaction, was
