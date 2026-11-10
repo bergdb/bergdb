@@ -239,3 +239,9 @@ check; level3: 25 traces, C-CUT 0 of 305; level4: 45 traces, C-P and C-H
 the allowance (023-03, section 10); tonight a night of fuzzing on
 `023-core`, the ratchet test on `main` and `023-core`, and a review of
 the integrated code only.
+
+2026-11-10. `023-core`'s head 13246f53 (17:48 to 18:02): one operation a
+key after the key transformations, by the builder's rule (96a18987); X5
+(c) a `Bug` (96d22be5); Q9's change last (13246f53). before-commit and
+level1 OK (MEM 130 against its limit of 131), UnlinkFuzz 8,200 seeds and
+fault 12's probes 0 failures. level2 full and level4 quick on it next.

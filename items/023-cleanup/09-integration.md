@@ -5,17 +5,19 @@ Created 2026-11-10 by Frans Lundberg. Status: open.
 The core of 023-08, section 5, with Frans's answers of its section 7, put
 together on one branch from the prototypes: no new design. Clone
 `/Users/f/fl/bench/2026-11-10/int/clone`, branch `023-core` from `main` at
-`22b6ce4c`, head `2c67f887`. Runs and their outputs:
+`22b6ce4c`, head `13246f53`. Runs and their outputs:
 `/Users/f/fl/bench/2026-11-10/int/runs/`. Gate worktree (detached):
 `/Users/f/fl/bench/2026-11-10/int/gate`.
 
 
 ## 1. Summary
 
-* Twelve commits on `023-core`: K1 to K3 (P4), the take-back's retarget (P5),
-  fault 12's fix, X5 (c), K4, K7 (SE), K6 (the dead hand), K8 (format 6),
-  Frans's Q4 (the sort), reclaim liveness tests, one commit of expected
-  values, and last, apart, Q9's change of `conformance.sh`.
+* Fourteen commits on `main`: K1 to K3 (P4), the take-back's retarget
+  (P5), fault 12's fix, X5 (c), K4, K7 (SE), K6 (the dead hand), K8
+  (format 6), Frans's Q4 (the sort), reclaim liveness tests, one commit of
+  expected values, one operation a key and X5 (c) unreachable (Frans,
+  17:48; section 7), and last Q9's change of `conformance.sh` (Frans
+  accepted Q9 at 17:49).
 * No textual conflict. `main` has no Java change since the prototypes'
   base `99089978`; P5's, P6's and fault 12's parts were taken by hand.
 * Reclaim is `main`'s. No P8, no merges, no `mergeBound`, no replaced
@@ -68,8 +70,14 @@ In order, on `main` at `22b6ce4c`:
     the KVs by key, then the puts. A test that two transactions with the
     same operations in other orders write the same stream.
 11. `9d843d82` Reclaim liveness: two unit tests on `main`'s reclaim.
-12. `2c67f887` Q9, apart, to drop if Frans says no: `conformance.sh`
-    requires no adoption below the old parent in the a6 traces.
+12. `96a18987` One operation a key: of the KVs that key transformations
+    make one key, `Db.putKvs` keeps one by the builder's rule (section 7).
+13. `96d22be5` X5 (c) unreachable: a `Bug` at any level; the Dag tests
+    give one operation a key (section 7).
+14. `13246f53` Q9 (Frans, 17:49): `conformance.sh` requires no adoption
+    below the old parent in the a6 traces. The same change as `2c67f887`,
+    the head before section 7's change (kept as the branch
+    `023-core-before-collapse` in the clone), with a new message.
 
 Each commit message says what it holds and where it comes from, in
 Frans's name, with no other attribution.
@@ -92,6 +100,7 @@ Frans's name, with no other attribution.
   test probes from `v12/probe`.
 * **X5 (c)**: the inner branch is a `Bug`, not a Java `assert`, as the
   climb's other impossible states are, so that it holds without -ea.
+  Since `96d22be5` the leaf branch is a `Bug` too (section 7).
 * **K4, chained collapses** (reviews B and C, 2.5): each level that
   `replaceRoot` collapses adds a klong to the segment leaf L above the
   tree, and unlinks a root that existed before the transaction, one level
@@ -108,7 +117,8 @@ Frans's name, with no other attribution.
   `Db.sortByKey`. **Liveness tests**: review C's probe with the
   assertion turned round, and 023-v8-fix's unit test without its
   Reclaim change and without the line on P8's end key.
-* **Q9**: `conformance.sh` only, the last commit.
+* **Q9**: `conformance.sh` only, the last commit; accepted by Frans at
+  17:49 ("Q9, as recommended").
 
 
 ## 4. Expected values changed
@@ -204,7 +214,9 @@ three as on P4).
 
 * DbShadowProbe30, `-Dsd=10 -ea`, 4,377 cases: bad 0.
 * DbShadowProbe, `-Dsd=10 -ea`, 200 iterations: bad 0.
-* X5cProbe: bad 0; X5 (c) at the leaf taken 2,187 times.
+* X5cProbe: bad 0; X5 (c) at the leaf taken 2,187 times. Since
+  `96a18987` this probe no longer applies: its deletes of keys that its
+  transformed puts give are dropped by the builder's rule.
 * DbReplay of UnlinkFuzz seed 33 (sorted), with and without -ea: OK, 15
   transactions, restart OK.
 
@@ -270,8 +282,85 @@ nodes, far below the record limit; P4 counted 2.7M.
   delete's climb), sis-model.md 3.4 (transient nodes, the empty key
   first), releases/next.md (format 6, the refusal), 018-01's format
   entry. No Lean change.
-* **Not run here** (the coordinator's): level2.sh to level4.sh,
+* **Not run here** (the coordinator's): level2.sh to level4.sh (level3
+  and level4 ran on `2c67f887`, before section 7's change),
   conformance.sh (so Q9's commit is not run), night.sh,
   performance.sh, `night.sh large`, the cold start at 50 MB.
 * **Item files:** 021-28's item file is on the branch `scan-deleted-keys`
   only; not taken (the branch holds code only).
+
+
+## 7. One operation a key (Frans, 17:48)
+
+Frans, on KVs that key transformations make one key: "Why keep both.
+[...] Either we should silently use the last KV put (or delete), or we
+throw." His decision: silently, with the builder's existing rule
+(`Trans.Builder.build`, 015-40). `Trans` itself is not changed; a rule of
+"the last operation wins" is a later item, with the C clone.
+
+### 7.1 The rule
+
+* In `Db.putKvs`, after the key transformations and the stable sort,
+  `Db.sortByKey` keeps one KV of each run of KVs with one key: the last
+  put in the order of build's sort (the keys as written), or a delete if
+  there is no put; a delete never replaces a put.
+* `t.kvs` and `t.writeKeyHashes` become shorter arrays when KVs are
+  dropped; the virtual KVs' hashes stay after the KVs'. A dropped KV's
+  hash is the kept one's.
+* Value transformations run in the put loop, so only for the KVs kept.
+* The record holds the value nodes of the KVs put, so the startup's
+  rerun, in stored order, does the same.
+* `Db.checkDirtyNodes` and `Db.checkSize`, before the go point, still
+  count every KV: an over-count.
+* A transaction without a key transformation is not sorted and has one
+  KV a key already (build), so nothing changes for it: T1, T3,
+  StreamDigest and the other runs on `9d843d82` hold for it.
+
+### 7.2 X5 (c) and the tests
+
+* X5 (c) is unreachable: a node that the transaction made and no split
+  made, and every node below it, holds only puts of the transaction, and
+  one operation a key leaves them live. `Dag.deleteUpward` throws `Bug`
+  for it at any level above the space root, before it changes anything.
+  A space root that is a segment leaf stays, empty, as before
+  (`statKeptNew` counts that case now).
+* `DbTesterDelete.testOneOperationAKeyAfterTransformations` replaces the
+  X5 (c) leaf test: put + put, put + delete, delete + put and two
+  transformed puts on keys that existed, and two puts with value
+  transformations. The stream is the same, byte for byte, as a
+  database's given the kept operations alone; the values are the rule's
+  at the latest time and after restarts (startup distances 10 bytes and
+  10 MB); the dropped KV's value transformation does not run. It fails
+  without the collapse.
+* `DbTester.testTransformedKeysSorted` (two orders, one stream) is kept;
+  its plain put of a transformed key is the KV kept.
+* `DagTester.testNoKlongNamesATakenBackNode` no longer deletes z keys
+  that its transaction put (ShadowProbe mode 2); it still fails without
+  fault 12's fix. `testDeleteEveryKeyInTheTransactionThatSplitTheRoot`
+  became `testDeleteEveryKeyAfterTheRootSplit`: the transaction that
+  splits the root puts the new keys and deletes the old ones, the next
+  deletes the new ones.
+* UnlinkFuzz's `dup` mode keeps one operation a key in the same way, at
+  the key's first place, so the Dag gets one operation a key.
+
+### 7.3 Gates
+
+| Gate                                     | Where      | Result                         |
+|---|---|---|
+| before-commit.sh                         | `96d22be5` | BEFORE COMMIT OK (283 s)       |
+| level1.sh (full)                         | `96d22be5` | LEVEL 1 OK (168 s), MEM 130    |
+| UnlinkFuzz long, shuffle, dup 10, 5 min  | `13246f53` | 2,650 seeds, 0 failures        |
+| UnlinkFuzz long, sorted, dup 10, 5 min   | `13246f53` | 2,650 seeds, 0 failures        |
+| UnlinkFuzz long, shuffle, dup 10, B 14   | `13246f53` | 2,650 seeds, 0 failures        |
+| UnlinkFuzz random, shuffle, dup 20       | `13246f53` | 250 seeds, 0 failures          |
+| DbShadowProbe30, `-Dsd=10 -ea`           | `13246f53` | bad 0 of 4,377                 |
+| DbShadowProbe, `-Dsd=10` and default     | `13246f53` | bad 0 of 200 each              |
+| DbReplay seed 33, -ea and without        | `13246f53` | OK, restart OK                 |
+| ShadowProbe modes 1 and 2 (Dag)          | `13246f53` | 0 found in 3,000 each          |
+| A2A3Check2, 8 configurations             | `13246f53` | all rules hold                 |
+| StreamDigest quick, four modes           | `13246f53` | the modes give the same stream |
+
+The Java of `13246f53` is that of `96d22be5`. No Bug was thrown in any
+run. level1: unit 1,641; DagFuzz, DeleteRepro, RestartStress OK;
+RestartInvariance: the stream identical; MEM 130 (at most 131; 129 on
+`9d843d82`, the step of noise that the limit allows), SS 1.51.
