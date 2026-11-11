@@ -3,10 +3,8 @@
 Created 2026-11-11 by Frans Lundberg. Status: open.
 
 The theme and the aims of release 2026.5, as Frans decided them on
-2026-11-11 in a discussion with the day's coordinator (coord-1111). The
-theme changes from "a stable stream format" (2026-11-10, 19:54; 024's
-log) to **solid algorithms**. This is the document that the release's
-other work cites: "024-04, aim 2".
+2026-11-11 in a discussion with the day's coordinator (coord-1111). This
+is the document that the release's other work cites: "024-04, aim 2".
 
 
 ## 1. The aim
@@ -35,12 +33,8 @@ P1 (no stop-the-world), asked of every Core operation at large sizes.
 
 2026-11-11, to the coordinator:
 
-* 06:44: "I first though that "stable stream" should be the theme of the
-  release. But after sleeping on it, I am more more leaning towards
-  "solid algos". Release 4 changed quite a bit. And there is some more
-  work to do. The internal core algorithms of the database must be right.
-  This is what we want to prove correct. And not change later. So, solid
-  algorithms perhaps comes before a "stable stream"?"
+* 06:44: "The internal core algorithms of the database must be right.
+  This is what we want to prove correct. And not change later."
 * 06:50, on aims 2 and 4: "That is good! Also, something about KVs stored
   do not cost (disk, memory) out of proportion to its count and size. So,
   both storage and operations are proportional to the value they bring to
@@ -51,27 +45,21 @@ P1 (no stop-the-world), asked of every Core operation at large sizes.
   theme/aims as stated by you above".
 
 
-## 3. Why the algorithms come first
+## 3. Why solid algorithms
 
-The coordinator's reasons, in short:
-
-* **The stream format is the algorithms' output**, so it cannot be stable
-  before they are. 2026.4 showed it: the cleanup (023) took the record
-  format from 5 to 6, with the same byte layout and a new meaning of a
-  record's deletes, and a start refuses format 5 (023-07, section 5.8;
-  024-02, "What it builds on").
-* **The known open work is algorithmic and changes what is written.**
-  The last touch of a reclaim iteration (024-03, section 7, CL7) and the
-  underfilled nodes after scattered deletes (024-03, section 5, CL2) are
-  the two faults measured at 10M keys. A fix of the last touch changes
-  the bytes a database writes, not the format (024-01, section 4.7).
-  Merges, the fix of the underfill, are the piece that 2026.4 put off
-  with a format cost: out of format 6 they need a later format that
-  refuses 2026.4's databases, or two rerun paths (023-07, section 9.1,
-  Z12; 024-02, section 20, Q1).
-* **A proof is worth its cost only on algorithms that stay.** Today the
-  Lean model is not changed for 2026.4's deletes: it has no delete rule
-  of its own (docs/sis-model.md, section 3.4).
+* **The Core's algorithms are what is proved and what is kept.** A proof
+  is worth its cost only on an algorithm that stays, so the algorithms
+  are made right first, then proved, and then not changed.
+* **Release 2026.4 changed them, and work is left.** Its cleanup (023)
+  gave the Core a new delete path. Measured at 10M keys afterwards
+  (024-03), two old faults stood out: the last touch of a reclaim
+  iteration (section 7, CL7) and the underfilled nodes after scattered
+  deletes (section 5, CL2). And the Lean model was not changed for the
+  new deletes: it has no delete rule of its own (docs/sis-model.md,
+  section 3.4; 024-06).
+* **Everything else rests on them.** What a database writes, the C
+  clone, the specification of the format and its stability follow the
+  algorithms, and can settle only when the algorithms have (section 5).
 
 
 ## 4. Making it checkable
@@ -79,49 +67,58 @@ The coordinator's reasons, in short:
 "Proportional" needs constants. Aims 2 and 3 each become a short list of
 bounds, each with a test, as 023-03 did for the deletes (its tests T1 to
 T12 and pass criteria C1 to C12, counts against a twin before times).
+024-05 has the list of known cases, the proposed bounds and the tests;
+024-06 has the gap between the model and the code.
 
-The known cases against the aim today, from 024-03 (release 2026.4 on
-F53, one run each):
+The cases known when the release began, from 024-03 (release 2026.4 on
+F53, one run each), and where each went:
 
-| Aim | Case                              | Measured at 10M keys                        |
-|---|---|---|
-| 2   | CL7, the last touch (section 7)   | a record of 191 to 206 MB, a commit of 21 s |
-| 2   | CL2, the underfill (section 5)    | 11 to 16 x the twin's key nodes             |
-| 3   | MEM, heap bytes a KV (section 3)  | 327; at 1M KVs 129.6; key shape (024-08)    |
+| Aim | Case                    | Measured at 10M keys           | Where it went     |
+|---|---|---|---|
+| 2   | CL7, the last touch     | a record of 206 MB, 21 s       | fixed, 024-07     |
+| 2, 3 | CL2, the underfill     | 11 to 16 x the twin's nodes    | merges, 024-11    |
+| 3   | MEM, heap bytes a KV    | 327, against 129.6 at 1M KVs   | key shape, 024-08 |
 
-* **CL7.** Once a reclaim iteration with keys in time order; the commits
-  took 20.6 and 22.2 s. At 1M live keys: 17 MB and 1.7 s. It grows with
-  the live keys, and is old (2026.3 too).
-* **CL2.** All but every 30th key deleted. Reclaim does not bring the
-  node count down (55 iterations). After 300,000 transactions of
-  overwrites: scans 4.6 times slower than the twin's, 3.3 times the bytes
-  written a transaction, 2.6 times the stream kept; so a case of aim 3
-  too.
-* **MEM.** 129.6 at 1M KVs is the figure that `level1.sh`'s MEM limit
-  guards (129 to 130). At 10M KVs the same method gives 2.5 times that,
-  in 2026.3 as in 2026.4.
+* **CL7.** Once a reclaim iteration with keys in time order, a step made
+  the whole index dirty: commits of 20.6 and 22.2 s, records of 191 to
+  206 MB, growing with the live keys; old. It was also two faults (the
+  record limit near 104M keys, a small heap: 024-07, 020-33). Fixed: a
+  step makes dirty the paths of its own puts only.
+* **CL2.** All but every 30th key deleted: reclaim does not bring the
+  node count down; after 300,000 transactions of overwrites, scans 4.6
+  times slower than the twin's, 3.3 times the bytes written a
+  transaction, 2.6 times the stream kept. The fix is merges at the
+  delete, with a bound on every key node's fill (024-11; the thresholds
+  measured in 024-14).
+* **MEM.** Not a cost that grows with the count: the test's keys of
+  exactly 7 bytes each get a key node of their own (024-08). The cost
+  of key shape is within aim 3 (Frans, section 7): documented, with a
+  bound and its runs (024-15).
 
-Two investigations own the details:
+Two rules that the aim led to, each an item of its own:
 
-* **024-05**, the aim against the known cases: the list, the bounds, the
-  tests.
-* **024-06**, the model gap: what the Lean model covers of 2026.4's
-  algorithm.
+* **One operation a key in a transaction, strictly** (024-16): a
+  transaction fails at the commit when key transformations make two of
+  its keys one key.
+* **Limits** (024-17): a key at most 256 bytes, the one limit for a
+  user to remember; the limits of a transaction and of a value generous,
+  checked in the user's terms; the internal bounds (the nodes edited, a
+  record's bytes) proved from them.
 
 
-## 5. The stream format
+## 5. Not in this release: a stable stream format
 
-The stable stream format follows in release 2026.6 (026), when the algorithms
-have stopped moving. Until then:
+A stream format that later releases promise to read is the theme of
+release 2026.6 (026), when the algorithms have stopped moving. In
+2026.5:
 
 * **The specification's draft (024-02) is kept current** with the code.
-* **Its cheap strictness questions may still be done in 2026.5**: Q14
-  (reserved bytes are zero) and Q16 (an unknown node type or format is
-  refused), in 024-02, section 20. They prepare stability without
-  promising it. Not yet decided by Frans.
-* **Not changed by the new theme:** 2026.5 need not open 2026.4's
-  databases (Frans, 2026-11-10, 19:49; 024's log), so an algorithm that
-  costs a new record format may take it.
+* **Its cheap strictness questions may still be done**: Q14 (reserved
+  bytes are zero) and Q16 (an unknown node type or format is refused),
+  in 024-02, section 20. Not yet decided by Frans.
+* **An algorithm that costs a new record format may take it**: 2026.5
+  may refuse to open 2026.4's databases (Frans, 2026-11-10, 19:49, and
+  2026-11-11, 07:23).
 
 
 ## 6. The order of work: model first
@@ -180,3 +177,18 @@ keys, not their count.
 a stretch of 7 key bytes that no other key shares costs a key node of
 its own) is within aim 3: "Yes." So it is documented, with a bound and
 its Mem runs (024-08, option (a)); no fix is studied in 2026.5.
+
+2026-11-11, 10:55. Rewritten in place at Frans's word (10:50: "Rewrite
+it to reduce or remove "a stable stream format". Less about changes.
+Overwrite in place so to say, is better here."): the document states
+the aim as it is. Sections 3 to 5 written anew, section 4 with where
+each case went; sections 1 and 6 unchanged. For the record: from
+2026-11-10, 19:54, to 2026-11-11, 06:44, the release's theme was "a
+stable stream format", now 2026.6's (026). Frans's words of 06:44 in
+full: "I first though that "stable stream" should be the theme of the
+release. But after sleeping on it, I am more more leaning towards "solid
+algos". Release 4 changed quite a bit. And there is some more work to
+do. The internal core algorithms of the database must be right. This is
+what we want to prove correct. And not change later. So, solid
+algorithms perhaps comes before a "stable stream"?"
+
