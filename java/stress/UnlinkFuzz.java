@@ -406,7 +406,7 @@ public class UnlinkFuzz {
                 + " (roots " + Dag.statRootsTakenBack + ")");
         System.out.println("merges " + Dag.statMerges + " (two nodes " + Dag.statMergesTwo
                 + ", leaves " + Dag.statMergeLeaves + ", taken back " + Dag.statMergeTaken
-                + ", skipped " + Dag.statMergeSkipped + "), sibling follows "
+                + "), sibling follows "
                 + Dag.statSiblingFollows + ", descents " + Dag.statMergeDescents
                 + "; with two klongs of one compare value in the parent " + Dag.statMergeDup
                 + ", a left node made by the transaction " + Dag.statMergeMadeL

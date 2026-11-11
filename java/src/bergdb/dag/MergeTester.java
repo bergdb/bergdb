@@ -189,8 +189,7 @@ public class MergeTester {
         final long merges0 = Dag.statMerges, two0 = Dag.statMergesTwo,
                 leaves0 = Dag.statMergeLeaves, madeL0 = Dag.statMergeMadeL,
                 madeR0 = Dag.statMergeMadeR, dup0 = Dag.statMergeDup,
-                taken0 = Dag.statMergeTaken, collapses0 = Dag.statCollapses,
-                skipped0 = Dag.statMergeSkipped;
+                taken0 = Dag.statMergeTaken, collapses0 = Dag.statCollapses;
         Random r = new Random(21);
         for (int b : new int[] {8, 14, 30}) {
             for (int shape = 0; shape < 2; shape++) {
@@ -226,7 +225,6 @@ public class MergeTester {
         Assert.assertTrue("two klongs of a compare value in the parent", Dag.statMergeDup > dup0);
         Assert.assertTrue("nodes taken back", Dag.statMergeTaken > taken0);
         Assert.assertTrue("root collapses", Dag.statCollapses > collapses0);
-        Assert.assertEquals("merges skipped", skipped0, Dag.statMergeSkipped);
     }
 
     /**

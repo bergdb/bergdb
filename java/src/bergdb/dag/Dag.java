@@ -1819,7 +1819,7 @@ public class Dag {
 
     /** Counts for tests and measurements; written by the writer only. */
     public static volatile long statMerges, statMergesTwo, statMergeLeaves, statMergeTaken,
-            statMergeSkipped, statSiblingFollows, statSiblingLoads, statMergeKlongs,
+            statSiblingFollows, statSiblingLoads, statMergeKlongs,
             statMergeDup, statMergeMadeL, statMergeMadeR, statMergeDescents;
 
     /**
@@ -1849,9 +1849,6 @@ public class Dag {
             }
             final int roots = pd.newRootsMade;
             final int r = merge(x, d, pd);
-            if (r == 0) {
-                break;
-            }
             merged = true;
             if (r == 2) {
                 break;          // two new nodes: P keeps its count
@@ -1899,9 +1896,10 @@ public class Dag {
      * Merges the node 'x' at 'd' of pd.keyAccessPath, not a root of a segment tree, with its
      * sibling (see above; bergdb 024-11, section 5.3).
      *
-     * @return 0: no merge (no sibling, or an inner node without the empty key first: neither
-     *      happens while V1 to V3 hold); 1: one new node, the parent lost a live klong; 2: two
-     *      new nodes, the parent's live klongs are as many as before.
+     * @return 1: one new node, the parent lost a live klong; 2: two new nodes, the parent's
+     *      live klongs are as many as before. A state that V1 to V3 exclude (no sibling, an
+     *      empty node, an inner node without the empty key first) is a Bug (bergdb 024-21,
+     *      section 6; 024-22, MD2): prototype P5 skipped the merge, and left the node under m.
      */
     private int merge(final KeyNode x, final int d, PutData pd) {
         final long tt = pd.tt;
@@ -1936,8 +1934,10 @@ public class Dag {
                     + "child of its klong in " + p.getId() + ".");
         }
         if (ia < 0 && ib < 0) {
-            statMergeSkipped++;
-            return 0;
+            // A node that is not a root has a sibling (V2: an inner root holds 2 live klongs,
+            // root collapse keeps it so; V1 any other inner node m >= 2).
+            throw new Bug("Merge at " + tt + ": key node " + x.getId() + " has no sibling in "
+                    + p.getId() + " (bergdb 024-11, V1 and V2).");
         }
 
         // M1, the sibling: the left one if both fit in one node (so that the nodes a run of
@@ -1974,15 +1974,13 @@ public class Dag {
         final int nL = lvL.size - 1;
         final int nR = lvR.size - 1;
         final int n = nL + nR;
-        if (inner && (nL == 0 || nR == 0 || Klong.getCompareValue(lvL.klongs[1]) != 0
-                || Klong.getCompareValue(lvR.klongs[1]) != 0)) {
-            // An inner node without the empty key first (LE-b), or empty: not merged.
-            statMergeSkipped++;
-            return 0;
-        }
-        if (n == 0) {
-            statMergeSkipped++;
-            return 0;
+        if (nL == 0 || nR == 0 || (inner && (Klong.getCompareValue(lvL.klongs[1]) != 0
+                || Klong.getCompareValue(lvR.klongs[1]) != 0))) {
+            // An empty node that is not a root, or an inner node without the empty key first:
+            // states that V1 and V3 (LE-b) exclude.
+            throw new Bug("Merge at " + tt + ": key node " + l.getId() + " (" + nL + " live) or "
+                    + r.getId() + " (" + nR + " live) is empty, or an inner node without the "
+                    + "empty key first (bergdb 024-11, V1 and V3).");
         }
 
         // M3, the new nodes: one of n live klongs, or two, the first of the ceiling of half.
