@@ -31,3 +31,14 @@ import SIS.HandleReclaimExample
 import SIS.Bound
 import SIS.BoundTheorems
 import SIS.BoundExample
+import SIS.Tree.Val
+import SIS.Tree.Node
+import SIS.Tree.Exec
+import SIS.Tree.Read
+import SIS.Tree.Spec
+import SIS.Tree.Inv
+import SIS.Tree.Props
+import SIS.Tree.Bound
+import SIS.Tree.Top
+import SIS.Proof.TreeRoot
+import SIS.Proof.TreeInit

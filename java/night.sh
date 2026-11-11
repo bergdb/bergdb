@@ -127,6 +127,8 @@ step level2 sh stress/level2.sh
 step level3 sh stress/level3.sh
 step level4 sh stress/level4.sh
 step lean-tests sh stress/lean-tests.sh
+# The tree model's small cases (bergdb 024-12): lake exe treetest, on one core.
+step tree-tests sh stress/tree-tests.sh
 step night-tests night_tests
 step harness-soak sh stress/harness-soak.sh -r 2
 step fuzz sh stress/fuzz.sh 12
