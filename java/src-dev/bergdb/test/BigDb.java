@@ -69,7 +69,8 @@ public class BigDb {
         MemoryStream ms = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup(ms).clock(clock).start();
-        final int valueSize = 100 * 1000*1000 / n;
+        // At most 8 MiB, L4 (bergdb 024-24): at 10 KVs 8,388,608 bytes, not 10 MB.
+        final int valueSize = Math.min(100 * 1000*1000 / n, Db.MAX_VALUE_BYTES);
         
         long emptyMem = getMem();
         
