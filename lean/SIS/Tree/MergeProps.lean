@@ -249,4 +249,60 @@ theorem mergeFillOK : MergeFillOK := by
     obtain ⟨rfl, rfl⟩ := hs
     omega
 
+/-- TP37, V1 at a space split (the other half of 024-11's "why V1 holds"): with
+thresholds that meet TP28, the two halves of a last version of more than M / 2
+klongs (rule O's space split, `halves`) each hold at least m key klongs besides
+their time klong. (A last version's key klongs are its live klongs, one a
+compare value.) -/
+def SplitFillOK : Prop :=
+  ∀ (p : Params) (leaf : Bool) (t : Time) (last : KNode) (ins : List (Nat × NodeId)),
+    MergeParamsOK p → p.M / 2 < last.size →
+    p.mergeBelow + 1 ≤ (halves leaf t last ins).1.size ∧
+      p.mergeBelow + 1 ≤ (halves leaf t last ins).2.1.size
+
+/-- A bound on a function of either branch of an `if` bounds it of the `if`. -/
+theorem ite_len {α : Type} {b : Prop} {d : Decidable b} {x y : α} (f : α → Nat) {k : Nat}
+    (hx : k ≤ f x) (hy : k ≤ f y) : k ≤ f (@ite α b d x y) := by
+  cases d <;> assumption
+
+theorem splitFillOK : SplitFillOK := by
+  intro p leaf t last ins hp h
+  obtain ⟨_, _, h3, _, _⟩ := hp
+  simp only [KNode.size] at h
+  have hb : (last.ks.drop 1).length = last.ks.length - 1 := by simp
+  constructor
+  · simp only [halves, KNode.size]
+    apply ite_len (f := fun q : KNode × KNode × Nat => q.1.ks.length)
+    · simp only [List.length_cons, List.length_take, hb]; omega
+    · simp only [List.length_cons, List.length_append, List.length_take, List.length_map, hb]
+      omega
+  · simp only [halves, KNode.size]
+    apply ite_len (f := fun q : KNode × KNode × Nat => q.2.1.ks.length)
+    · cases leaf
+      · simp only [Bool.false_eq_true, ↓reduceIte, List.length_cons, List.length_append,
+          List.length_map]
+        split
+        · rename_i heq
+          have hl := congrArg List.length heq
+          simp only [List.length_drop, List.length_cons, hb] at hl
+          simp only [List.length_cons]
+          omega
+        · simp only [List.length_drop, hb]
+          omega
+      · simp only [↓reduceIte, List.length_cons, List.length_append, List.length_drop,
+          List.length_map, hb]
+        omega
+    · cases leaf
+      · simp only [Bool.false_eq_true, ↓reduceIte, List.length_cons]
+        split
+        · rename_i heq
+          have hl := congrArg List.length heq
+          simp only [List.length_drop, List.length_cons, hb] at hl
+          simp only [List.length_cons]
+          omega
+        · simp only [List.length_drop, hb]
+          omega
+      · simp only [↓reduceIte, List.length_cons, List.length_drop, hb]
+        omega
+
 end SIS.Tree
