@@ -1205,6 +1205,30 @@ counts the room after a merge gives 1,128 at H = 22, 13 % over 1,000;
 it is to be stated (QL8). The other figures (520, 880, 1,280, 1,070 at
 256, 150, 100, 120 bytes) are right by 2026.4's form.
 
+**Decided, the limits** (Frans, 2026-11-11, 17:41): "I want be a bit
+more conservative, possibly increasing in a future version. So, use:
+L1 = 500, L2 = 111, L4 = 8 MiB, L5 = 32 MiB. The rest as recommended."
+So:
+
+* **L1 = 500 operations** a transaction (QL1; was proposed 1,000).
+* **L2 = 111 bytes** a key as stored, 16 segments (QL11; replaces the
+  112 of 14:45).
+* **L4 = 8 MiB** a value, **L5 = 32 MiB** a transaction (QL3; were
+  proposed 16 and 64 MiB).
+* **As recommended:** L6 with a refused put (QL4), the internal checks
+  as `Bug` once proved (QL5), a value transformation's result over L4
+  fails the database (QL6), the reader reads a record's header first
+  (QL7), the count with q stated and run (QL8 (a)), CRC32C in place of
+  Fletcher-16 (QL9), reclaim's step of a large value documented now
+  (QL10), one L1 for every node size (QL12 (a)).
+* **To restate for the new values** (the coordinator's reading of "as
+  recommended", for the rework to confirm): L3 by the same rule as
+  proposed (L1 keys of L2 bytes: about 54 KiB); L6 as one number with
+  the key (111 bytes); the bound's margins, and whether L1 = 500 is
+  covered by TP26's form for format 7 (20 a level) at 16 segments, so
+  that QL8's restatement is a margin and no longer a need; QL12 (Java's
+  own counts at node sizes 8 and 62 were 720 and 938 operations).
+
 * **QL1. L1 = 1,000 operations and L3 = 112 KiB of key bytes** (6.1),
   resting on the count with q (QL8 (a)): 1,128 operations of 112-byte
   keys at H = 22, and with L3 3.35 million nodes, 9.4 % under the

@@ -346,6 +346,12 @@ from them.
   full, level4 full, conformance small, medium, reclaim, evict, drain).
   Record format 7; 2026.4's databases are refused. Landing delegated by
   Frans at 14:48; the six changed tests (024-21, QJ1) accepted under it.
+* 17:20 Frans back. 17:33 the review of option 2 (024-23): land with
+  fixes (R1, a changed test made vacuous; docs).
+* 17:41 Frans decided the limits (024-17, section 8): L1 = 500
+  operations, L2 = 111 bytes (16 segments), L4 = 8 MiB, L5 = 32 MiB,
+  the rest as recommended ("a bit more conservative, possibly
+  increasing in a future version").
 
 
 ## 6. Outcome
