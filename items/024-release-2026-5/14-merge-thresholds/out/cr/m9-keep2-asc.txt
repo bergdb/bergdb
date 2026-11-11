@@ -1,0 +1,42 @@
+CleanupRule hello {keep=2, n=100000, order=asc}
+twin filled:  len=9915736 kept=9915736 phys=9894856 files=0 lag=10501ms iters=1 cuts=0 reach=3937 klongs=54192 dead=252 kvs=50004 user=50001 get=1 head=6 D=76 res=4902 resB=14125793 handles=4902 loads=0
+twin drive 500: len=11815488 kept=11815488 phys=11761416 files=0 lag=11001ms iters=2 cuts=0 reach=3937 klongs=54330 dead=390 kvs=50004 user=50001 get=1 head=6 D=85 res=5141 resB=15337583 handles=5141 loads=0 maxRecord=500952
+twin drive 1000: len=13589200 kept=13375520 phys=13360368 files=0 lag=1451ms iters=2 cuts=1 reach=3937 klongs=54837 dead=897 kvs=50004 user=50001 get=1 head=6 D=156 res=5387 resB=16590246 handles=5387 loads=0 maxRecord=500952
+twin drive 1500: len=19427552 kept=19213872 phys=19209936 files=0 lag=1951ms iters=2 cuts=1 reach=3937 klongs=56427 dead=2487 kvs=50004 user=50001 get=1 head=6 D=53 res=6033 resB=19272251 handles=6033 loads=0 maxRecord=500952
+twin drive 2000: len=20638152 kept=20424472 phys=20419440 files=0 lag=2451ms iters=2 cuts=1 reach=3937 klongs=56752 dead=2812 kvs=50004 user=50001 get=1 head=6 D=125 res=6225 resB=20337767 handles=6225 loads=0 maxRecord=500952
+twin drive 2500: len=24874160 kept=24660480 phys=24637696 files=0 lag=2951ms iters=2 cuts=1 reach=3937 klongs=57905 dead=3965 kvs=50004 user=50001 get=1 head=6 D=20 res=6713 resB=22459239 handles=6713 loads=0 maxRecord=500952
+twin drive 3000: len=25919968 kept=25706288 phys=25686784 files=0 lag=3451ms iters=2 cuts=1 reach=3937 klongs=58188 dead=4248 kvs=50004 user=50001 get=1 head=6 D=110 res=6889 resB=23408439 handles=6889 loads=0 maxRecord=500952
+twin drive 3500: len=28714544 kept=28500864 phys=28487080 files=0 lag=3951ms iters=2 cuts=1 reach=3937 klongs=58726 dead=4786 kvs=50004 user=50001 get=1 head=6 D=298 res=7152 resB=24737636 handles=7152 loads=0 maxRecord=50632
+twin drive 4000: len=34006752 kept=33793072 phys=33769384 files=0 lag=4451ms iters=3 cuts=1 reach=3937 klongs=58709 dead=4769 kvs=50004 user=50001 get=1 head=6 D=205 res=7261 resB=25457185 handles=7261 loads=0 maxRecord=69496
+twin bytes appended: fill=9915160 delete=0 drive=24091016 deleteUser=0
+twin dag in the fill: merges=0 two=0 leaves=0 mergeTaken=0 siblingFollows=0 siblingLoads=0 mergeKlongs=0 unlinked=0 climbs=0 relabels=0 takenBack=0 collapses=0
+twin dag in the deletes: merges=0 two=0 leaves=0 mergeTaken=0 siblingFollows=0 siblingLoads=0 mergeKlongs=0 unlinked=0 climbs=0 relabels=0 takenBack=0 collapses=0
+twin dag in the drive: merges=0 two=0 leaves=0 mergeTaken=0 siblingFollows=0 siblingLoads=0 mergeKlongs=0 unlinked=0 climbs=0 relabels=0 takenBack=0 collapses=0
+twin last done iteration: steps=768 kvs=50004 touchVisited=9387 touchDirtied=3954 dirtiedNodes=6067 dirtiedBytes=1626168 maxStepNodes=22 recordBytes=10945720
+twin iteration in progress: steps=314 kvs=23497 touchVisited=4049 dirtiedNodes=1948 dirtiedBytes=596304 maxStepDirtied=17 maxStepNodes=19
+twin end:     len=34006752 kept=33793072 phys=33793072 files=0 lag=4451ms iters=3 cuts=1 reach=3937 klongs=58709 dead=4769 kvs=50004 user=50001 get=1 head=6 D=205 res=7261 resB=25457185 handles=7261 loads=0
+twin started: len=34006752 kept=33793072 phys=33793072 files=0 lag=4451ms iters=0 cuts=0 reach=3937 klongs=58709 dead=4769 kvs=50004 user=50001 get=1 head=6 D=205 res=343 resB=337895 handles=343 loads=53633
+twin probed:  len=34006752 kept=33793072 phys=33793072 files=0 lag=4451ms iters=0 cuts=0 reach=3937 klongs=58709 dead=4769 kvs=50004 user=50001 get=1 head=6 D=205 res=3972 resB=11307978 handles=3972 loads=107262
+twin window: kept 25707368 to 33793072, max record 69496, max D 298; 1294 ms
+n100000 filled:  len=23336896 kept=23336896 phys=23336896 files=0 lag=11001ms iters=2 cuts=0 reach=7870 klongs=110665 dead=2792 kvs=100004 user=100001 get=1 head=6 D=59 res=10732 resB=31798928 handles=10732 loads=0
+n100000 hFill=6
+n100000 deleted: len=30268584 kept=30054904 phys=30037176 files=0 lag=1951ms iters=2 cuts=1 reach=3933 klongs=70609 dead=16673 kvs=50004 user=50001 get=1 head=6 D=175 res=16495 resB=49979464 handles=16495 loads=0
+n100000 drive 500: len=32341064 kept=32127384 phys=32118480 files=0 lag=2451ms iters=3 cuts=1 reach=3933 klongs=70652 dead=16716 kvs=50004 user=50001 get=1 head=6 D=97 res=16618 resB=50753010 handles=16618 loads=0 maxRecord=760048
+n100000 drive 1000: len=34846048 kept=34632368 phys=34632368 files=0 lag=2951ms iters=3 cuts=1 reach=3933 klongs=70954 dead=17018 kvs=50004 user=50001 get=1 head=6 D=164 res=16965 resB=52380573 handles=16965 loads=0 maxRecord=760048
+n100000 drive 1500: len=39254216 kept=34216888 phys=34201648 files=0 lag=1435ms iters=3 cuts=2 reach=3933 klongs=71501 dead=17565 kvs=50004 user=50001 get=1 head=6 D=71 res=17562 resB=54888342 handles=17562 loads=0 maxRecord=760048
+n100000 drive 2000: len=41407336 kept=36370008 phys=36353824 files=0 lag=1935ms iters=3 cuts=2 reach=3933 klongs=71773 dead=17837 kvs=50004 user=50001 get=1 head=6 D=133 res=17877 resB=56423805 handles=17877 loads=0 maxRecord=760048
+n100000 drive 2500: len=43257928 kept=38220600 phys=38203800 files=0 lag=2435ms iters=3 cuts=2 reach=3933 klongs=72009 dead=18073 kvs=50004 user=50001 get=1 head=6 D=92 res=18169 resB=57756049 handles=18169 loads=0 maxRecord=760048
+n100000 drive 3000: len=44892152 kept=39854824 phys=39840240 files=0 lag=2935ms iters=3 cuts=2 reach=3933 klongs=72132 dead=18196 kvs=50004 user=50001 get=1 head=6 D=214 res=18363 resB=58858191 handles=18363 loads=0 maxRecord=760048
+n100000 drive 3500: len=47851760 kept=42814432 phys=42796296 files=0 lag=3435ms iters=4 cuts=2 reach=3933 klongs=72348 dead=18412 kvs=50004 user=50001 get=1 head=6 D=68 res=18606 resB=60064365 handles=18606 loads=0 maxRecord=62936
+n100000 drive 4000: len=49408112 kept=44370784 phys=44357664 files=0 lag=3935ms iters=4 cuts=2 reach=3933 klongs=72555 dead=18619 kvs=50004 user=50001 get=1 head=6 D=143 res=18855 resB=61326248 handles=18855 loads=0 maxRecord=62936
+n100000 bytes appended: fill=23336320 delete=6931688 drive=19139528 deleteUser=4731560
+n100000 dag in the fill: merges=0 two=0 leaves=0 mergeTaken=0 siblingFollows=0 siblingLoads=0 mergeKlongs=0 unlinked=0 climbs=0 relabels=0 takenBack=0 collapses=0
+n100000 dag in the deletes: merges=7847 two=3907 leaves=7198 mergeTaken=7017 siblingFollows=13079 siblingLoads=0 mergeKlongs=155486 unlinked=8677 climbs=0 relabels=0 takenBack=0 collapses=0
+n100000 dag in the drive: merges=0 two=0 leaves=0 mergeTaken=0 siblingFollows=0 siblingLoads=0 mergeKlongs=0 unlinked=0 climbs=0 relabels=0 takenBack=0 collapses=0
+n100000 last done iteration: steps=839 kvs=50004 touchVisited=9873 touchDirtied=3947 dirtiedNodes=5646 dirtiedBytes=1868336 maxStepNodes=21 recordBytes=7829176
+n100000 iteration in progress: steps=78 kvs=4239 touchVisited=888 dirtiedNodes=732 dirtiedBytes=229512 maxStepDirtied=21 maxStepNodes=18
+n100000 end:     len=49408112 kept=44370784 phys=44370784 files=0 lag=3935ms iters=4 cuts=2 reach=3933 klongs=72555 dead=18619 kvs=50004 user=50001 get=1 head=6 D=143 res=18855 resB=61326248 handles=18855 loads=0
+n100000 started: len=49408112 kept=44370784 phys=44370784 files=0 lag=3935ms iters=0 cuts=0 reach=3933 klongs=72555 dead=18619 kvs=50004 user=50001 get=1 head=6 D=143 res=163 resB=192475 handles=163 loads=53749
+n100000 probed:  len=49408112 kept=44370784 phys=44370784 files=0 lag=3935ms iters=0 cuts=0 reach=3933 klongs=72555 dead=18619 kvs=50004 user=50001 get=1 head=6 D=143 res=4063 resB=11517091 handles=4063 loads=107480
+n100000 window: kept 39859544 to 44370784, max record 62936, max D 229; 1704 ms
+RESULT hello n=100000 shape=after order=asc versions=1: keptMax 33793072/44370784, reach 3937/3933, dead 4769/18619, get 1/1, head 6/6, maxD 298/229, maxRecord 69496/62936, lagMs 4451/3935, res after start 343/163, after probe 3972/4063, handles 3972/4063, loads after probe 107262/107480, files 0/0 (twin/B); 1704 ms

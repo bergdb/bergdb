@@ -348,8 +348,11 @@ enum bergdb_error {
      * (BERGDB_FAILED). */
     BERGDB_IO = 4,
     /* The stream is not a BergDB stream that this version opens: another
-     * record format or meta block version, a database written before
-     * 2026-10-27, another maximum node size than the options', an
+     * record format or meta block version (record format 6 since release
+     * 2026.4, bergdb 023-07, section 5.8: a database written by release
+     * 2026.3 or earlier, format 5, is refused, and the text says so), a
+     * database written before 2026-10-27, another maximum node size than
+     * the options', an
      * encrypted database, corrupt data (StreamFormatException, also for bad
      * magic bytes, which was BadCryptoKey until release 2026.4, bergdb
      * 020-28; VersioningStreamException, StreamChecksumException,
@@ -526,7 +529,11 @@ struct bergdb_options {
      * bergdb_stats.pinned_bytes gives. Under a budget below them, the
      * resident bytes are kept within a margin over them: the gap between
      * eviction's watermarks, a quarter of the budget, or the node table's
-     * bytes if more (bergdb 022-06, U1-4; src/evict.h). The
+     * bytes if more (bergdb 022-06, U1-4; src/evict.h). With a budget, the
+     * index objects and values of ended versions, those stored before a
+     * reclaim cut, also leave memory after each cut, whatever the budget
+     * (the dead hand, bergdb 023-07, section 5.6, as Java's since release
+     * 2026.4); with BERGDB_NO_EVICT they stay until the close. The
      * budget bounds the index only: the stream's write buffer (10 MB,
      * section A), the transactions and read contexts, and the stream of a
      * database in memory are outside it (bergdb 022-06, U2-16). */
@@ -683,6 +690,18 @@ void bergdb_trans_free(bergdb_trans *t);
  * another key: give a transformed put a key that no other put or delete of
  * the transaction gives (bergdb 022-06, U1-7).
  *
+ * Since release 2026.4 (bergdb 023-08, section 7) the execute runs every key
+ * transformation first, then sorts the puts and deletes by their keys once
+ * more, and puts them in that order, so that two transactions with the same
+ * operations, given in any order, write the same stream. Of puts and
+ * deletes that the transformations made one key, one is kept, by the same
+ * rule: the last put in the order of the keys as given, or a delete if
+ * there is no put; the others, and their value transformations, do not
+ * run. A delete of the last key of a part of the index removes that part
+ * from the index in the same transaction (the upward unlink, 023-07,
+ * section 5), so the keys read at the transaction's time or later pass no
+ * emptied node; reads at earlier times are as before.
+ *
  * Errors: BERGDB_ARG (t, key or value NULL, also when its length is 0: an
  * empty key or value has a pointer too; a length over INT32_MAX),
  * BERGDB_STATE, BERGDB_NOMEM; the transaction is then as before. The
@@ -713,7 +732,11 @@ int bergdb_trans_put(bergdb_trans *t, const uint8_t *key, size_t key_len,
  * What a function sets must stay valid until it is called again or the
  * execute returns; the transaction copies it, and keeps it in place of the
  * put's key or value, as Java's Kv does: executed again, the transaction
- * starts from the transformed key and value.
+ * starts from the transformed key and value. As the transaction is built
+ * again at each execute, with one put a key, two transformed puts that an
+ * execute gave one key are one put from then on, the later one (C's
+ * departure from Java's Trans, which is built once and keeps both; the C
+ * directory's readme.md, section 11, point 7).
  *
  * What they set is not size-checked (bergdb 015-51, as Java's Javadoc
  * since release 2026.3): bergdb_execute checks the transaction's size

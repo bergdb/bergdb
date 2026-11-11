@@ -40,8 +40,22 @@ import bergdb.pub.util.SyncLevel;
  * of 200,000 keys, each with a String value of 11 bytes, written 1,000 to a transaction, a
  * key of 13 bytes took about 70 bytes of the stream, and a key of 114 bytes whose first 100
  * differ from key to key about 1,200 to 1,400 bytes; keys of 120 bytes that shared their
- * first 109 took about 190 (bergdb 020-24-13, U13-1). Keep keys short, put large data in
- * values, and let keys that are written together share their start.</p>
+ * first 109 took about 190 (bergdb 020-24-13, U13-1). Keys share key nodes by their starts
+ * of 7, 14, 21 bytes, a key's bytes being its UTF-8 and one more for each '/'. A start of
+ * 7, 14 or 21 bytes that no other key has, the whole key included when it has exactly 7,
+ * 14 or 21 bytes, costs a key node of its own, about 226 bytes of heap while in memory; so
+ * one byte more or less of a key or of a common prefix can add or save a key node a key.
+ * With empty values and every node in memory, a million keys that shared their starts took
+ * about 130 bytes of heap a key (127 at ten million), keys of 7 bytes 356, and random keys,
+ * put in random order, of 6 bytes 181 and of 36 bytes, such as UUIDs, 1,305 (bergdb
+ * 024-08, sections 5 and 7).
+ * With a cache budget below the data (DatabaseBuilder.cacheSizeInMb()) the heap stays near
+ * the budget whatever the keys, and the nodes cost stream bytes and time instead: 3 million
+ * keys of 32 random hex digits, put in random order, wrote 819 bytes of the stream a put
+ * and read 5.6 nodes from the stream a get, and a put took 4.6 times as long, against 226
+ * bytes and 1.2 nodes for keys that shared their start (bergdb 024-08, section 8). Keep
+ * keys short, put large data in values, and let keys that are written together share their
+ * start.</p>
  *
  * <p>Strings. Every string BergDB stores, a key, a String value and each string in an
  * object, is Unicode text stored as well-formed UTF-8; a put refuses a String with a lone
@@ -83,9 +97,11 @@ public interface Connection extends ReadInterface {
      * It is guaranteed to be unique for every transaction and is strictly increasing. So the
      * puts of one transaction at a key with "${transactionTime}" are puts at one key, and the
      * last of them counts: a transaction that puts two such values needs another part in each
-     * key, such as "${transactionTime}-1" (bergdb 020-24-01, U1-6). A put or a delete of the
-     * same transaction at the key that the replace gives, the time written out, is at that
-     * one key too: of them all the last one counts (bergdb 024-10).</p>
+     * key, such as "${transactionTime}-1" (bergdb 020-24-01, U1-6). A transaction that also
+     * puts or deletes the key that the replace gives, the time written out, would set one key
+     * twice: it is refused at the commit with a DbException, nothing of it written, and the
+     * database goes on (bergdb 024-16; WBuilder.execute(), rw()). A transaction has one
+     * operation a key.</p>
      *
      * <p>By default, the key replace feature of a connection is disabled, also for the
      * connection that Database.connection() gives a thread until it is enabled there. This
@@ -445,7 +461,8 @@ public interface Connection extends ReadInterface {
      *             If action is null.
      * @throws DbException
      *             If the transaction is refused, as for put(), also when the database stops
-     *             while the action runs (Database.stop()); or if the thread is
+     *             while the action runs (Database.stop()), or as for WBuilder.execute():
+     *             key replace makes two of its keys one key; or if the thread is
      *             interrupted while the transaction waits to run again after a conflict:
      *             it is not run, and the thread's interrupt flag is set (Database,
      *             "Interrupts").

@@ -42,7 +42,8 @@ static const char *formatRefused(int32_t v) {
     return v > ST_RECORD_FORMAT
             ? "A larger number is a database written by a newer version of BergDB."
             : "A smaller number is a database written by an older version of BergDB, which "
-              "cannot be opened: format 2 was written until 2026-10-15 (bergdb 011-11, M18).";
+              "cannot be opened: format 5 was written by release 2026.3 and earlier "
+              "(bergdb 023-07, section 5.8), format 2 until 2026-10-15 (bergdb 011-11, M18).";
 }
 
 enum err_code st_parse(struct st_record *r, int64_t tpos, const uint8_t *buffer, int32_t len,

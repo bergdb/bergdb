@@ -105,6 +105,20 @@ struct getmany {
     bool inclusive;             /* true */
     bool forward;               /* true */
     struct gm_stop stop_condition;      /* DontStop */
+    /* GetMany.endKey and endInclusive (bergdb 021-28; 023-07, section 5.7,
+     * SE; Java's since release 2026.4): the end of a forward scan's range,
+     * or NULL, the default, for none: the scan ends before the first key
+     * after end_key, or at end_key itself when end_inclusive is false, as at
+     * the end of the database (the stop condition's eod is called), whatever
+     * the stop condition would have answered for the keys after it. Unlike
+     * a stop condition, which sees the live pairs only, the bound ends the
+     * scan as soon as the key nodes it follows are past it, also over
+     * deleted keys whose klongs stay in live nodes. A backward scan with it
+     * is refused (Java's IllegalArgumentException). The caller's array,
+     * valid during the read. */
+    const int64_t *end_key;
+    int32_t end_key_n;
+    bool end_inclusive;         /* true */
     bool cache;                 /* true */
     struct gm_sink result;      /* GetMany.result.add */
     struct obj_ctx *collect;    /* not NULL: a safe point (obj_collect) after each pair */
@@ -129,7 +143,10 @@ void gm_set_backward(struct getmany *g);
 /* Dag.getMany: walks the chain at g->actual_lookup_time from the start key,
  * each pair to the stop condition and the added ones to the sink. false on
  * a failure (NOMEM, the follower, the sink, a stop condition's answer below
- * 0); the chain's holds are released in every case. */
+ * 0; an end key with a backward scan, ERR_ARG in the GetData's err; a chain
+ * that comes back to a node it holds, a cycle that a damaged stream can
+ * make, Java's StreamFormatException, bergdb 020-32); the chain's holds are
+ * released in every case. */
 bool dag_get_many(struct dag *d, struct getmany *g);
 
 #endif

@@ -1,0 +1,7 @@
+== thrash4w p5 09:41:45 thrash4 n=1000 trials=400 pp=200 emax=10 fmax=14
+ 9:41  up 23 days,  2:26, 5 users, load averages: 8.48 11.79 10.68
+THR thrash4 {pp=200, emax=10, trials=400, dir=/Users/f/fl/bench/2026-11-11/thr/data/thrash4w-p5, n=1000, fmax=14} m=7 h=15 c=15 merges=true
+THRASH4 n=1000 trials=400 pp=200 mean new/op=0.104 worst new/op=0.140 (trial=167 y=1494 e=1 f=13 tsplit=26 ssplit=0 merges=2 two=0 bytes/op=142) merges/op=0.0002 ssplits/op=0.0000 bytes/op=142 cycling trials=0
+[15.0s] DONE
+rc=0 09:42:00
+ 9:42  up 23 days,  2:27, 5 users, load averages: 8.71 11.68 10.66

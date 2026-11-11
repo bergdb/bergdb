@@ -1,0 +1,2 @@
+/Users/f/fl/bench/2026-11-11/thr/out/10m dense k30-rand run n=10000000 fill=random shape=keep keep=30 order=asc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/10m m8 k30-rand run n=10000000 fill=random shape=keep keep=30 order=asc drive=10000

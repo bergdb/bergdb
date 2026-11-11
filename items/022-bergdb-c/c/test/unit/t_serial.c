@@ -210,18 +210,30 @@ TEST(serial_top_pos) {
 }
 
 /* testRefusesOldFormat, testRefusesNewerFormat: the parser's (012-06),
- * on the serializer's record. */
+ * on the serializer's record. Since format 6 (bergdb 023-07, section 5.8;
+ * release 2026.4) format 5 is an old one too, and the refusal of an older
+ * format names release 2026.3; the newer format is RECORD_FORMAT + 1. */
 TEST(serial_refuses_other_formats) {
     struct fx f;
     fx_init(&f);
     CHECK(ser_serialize(&f.s, &f.tn, 100, 200, -1, NULL, NULL, ST_MAX_RECORD_SIZE, &f.e)
             == ERR_OK);
     CHECK_EQ(f.s.byte_buffer[4], ST_RECORD_FORMAT);
-    const int formats[] = {2, 6, 200};
-    for (int i = 0; i < 3; i++) {
+    const int formats[] = {2, 5, ST_RECORD_FORMAT + 1, 200};
+    for (int i = 0; i < 4; i++) {
         f.s.byte_buffer[4] = (uint8_t) formats[i];
         CHECK(fx_parse(&f, 200) == ERR_FORMAT);
         CHECK(strcmp(f.e.java, "VersioningStreamException") == 0);
+        char want[40];
+        snprintf(want, sizeof want, "format version %d;", formats[i]);
+        CHECK(strstr(f.e.text, want) != NULL);
+        if (formats[i] < ST_RECORD_FORMAT) {
+            /* The text is cut at ERR_TEXT, in "release 2026.3 and earlier". */
+            CHECK(strstr(f.e.text, "older version") != NULL);
+            CHECK(strstr(f.e.text, "format 5 was written by release 2026.3") != NULL);
+        } else {
+            CHECK(strstr(f.e.text, "newer version") != NULL);
+        }
     }
     fx_free(&f);
 }

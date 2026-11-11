@@ -1,0 +1,21 @@
+== over dense 12:37:55 run n=10000000 fill=random shape=over phase=10000
+12:37  up 23 days,  5:22, 5 users, load averages: 3.91 9.05 15.16
+THR {phase=10000, shape=over, fill=random, dir=/Users/f/fl/bench/2026-11-11/thr/data/10m-t-over-dense, n=10000000} m=10 h=20 c=20 merges=true
+[185.0s] FILL tx=100000 ops=10000000 s=184.6 ops/s=54176 rec/op=604.8 stream/op=750.6 rec/tx=60482 stream/tx=75060 maxRec=179680 tsplit/op=0.0612 ssplit/op=0.0691 merge/op=0.0000 merge2/op=0.0000 taken/op=0.0000 sibLoads=0 iters=3 p50=1764us p99.9=6100us kept=7067512584 len=7506074464
+[185.0s] NODES fill keys=10000000 keyNodes=690688 klongs=11305881 dead=615191 keys/node=14.48 minLive=10 under7=0 under10=0
+[217.4s] SCAN fill keys=10000000 ms=26453.6 ns/key=2645
+[243.8s] SCAN fill-again keys=10000000 ms=26233.2 ns/key=2623
+[270.0s] STATE fill kept=7067512584 len=7506074464 iters=3
+[275.8s] OVER at=2000 kept=7261035112 iters=3
+[281.8s] OVER at=4000 kept=7453965040 iters=3
+[288.0s] OVER at=6000 kept=7648597352 iters=3
+[294.3s] OVER at=8000 kept=7841242352 iters=3
+[300.7s] OVER at=10000 kept=8037250624 iters=3
+[300.7s] OVER tx=10000 ops=1000000 s=30.6 ops/s=32658 rec/op=818.4 stream/op=969.7 rec/tx=81836 stream/tx=96973 maxRec=210752 tsplit/op=0.0762 ssplit/op=0.0559 merge/op=0.0000 merge2/op=0.0000 taken/op=0.0000 sibLoads=0 iters=0 p50=2908us p99.9=6240us kept=8037250624 len=8475812504
+[300.7s] NODES over keys=10000000 keyNodes=746563 klongs=12238854 dead=1492289 keys/node=13.39 minLive=10 under7=0 under10=0
+[333.5s] SCAN over keys=10000000 ms=26694.0 ns/key=2669
+[360.2s] SCAN over-again keys=10000000 ms=26292.1 ns/key=2629
+[386.5s] STATE over kept=8037250624 len=8475812504 iters=3
+[387.4s] DONE
+rc=0 12:44:23
+12:44  up 23 days,  5:29, 5 users, load averages: 3.27 4.88 10.85

@@ -1,0 +1,8 @@
+== thrash2 dense 09:35:21 thrash2 n=20000 w=120 bursts=300 pp=40
+ 9:35  up 23 days,  2:20, 5 users, load averages: 14.69 12.02 9.73
+THR thrash2 {pp=40, bursts=300, w=120, dir=/Users/f/fl/bench/2026-11-11/thr/data/thrash2-dense, n=20000} m=10 h=20 c=20 merges=true
+[0.2s] FILL tx=100 ops=10000 s=0.1 ops/s=103914 rec/op=146.1 stream/op=146.1 rec/tx=14614 stream/tx=14614 maxRec=15208 tsplit/op=0.0006 ssplit/op=0.0780 merge/op=0.0000 merge2/op=0.0000 taken/op=0.0000 sibLoads=0 iters=0 p50=350us p99.9=4453us kept=1461896 len=1461896
+THRASH2 w=120 bursts=300 pp=40 mean new/op=0.144 worst new/op=0.225 (burst=126 target=34 y=66 tsplit=9 ssplit=0 merges=0 two=0) merges/op=0.0008 ssplits/op=0.0020 bytes/op=143
+[0.6s] DONE
+rc=0 09:35:21
+ 9:35  up 23 days,  2:20, 5 users, load averages: 14.69 12.02 9.73

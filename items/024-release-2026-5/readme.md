@@ -160,6 +160,90 @@ Files
   (before-commit.sh about 80 s again), 024-10 and 024-07 merged; the
   gates' results. Landed as a780b957; then 024-09 merged and gated,
   landed as 379d8acf.
+* 12-tree-model.md. 024-12, the model of BergDB's key tree in Lean, run
+  against Java (024-06's B0 to B2): trace format 3 with keys; the tree
+  in `lean/SIS/Tree/` as an instance of `Spec` (the searches, get,
+  scan, put with the splits, delete with the upward unlink, the empty
+  key first, the take-back, reclaim's part, `dirtyNodeBound`, the
+  touch); the checker `treecheck` and `treeconf.sh`, step 8 of
+  `level2.sh`: on 115 traces the model's own run writes Java's records;
+  `treetest`, exhaustive at small node sizes; 27 stated properties, a
+  few proved. Branch 024-12-tree-model. Approved by Frans 2026-11-11,
+  14:28; on main since 14:56, the merge of 480f83da (gated: lake build,
+  treetest, no sorry or axiom, test-traces, before-commit, level1 to
+  level3 full).
+* 14-merge-thresholds.md. 024-14, the merge's thresholds measured in
+  Java at 1M and 10M keys, on a measuring build (P5's merge with fault
+  12's fix, the thresholds as run parameters; not landed): the sets P5
+  (7/15/15), m8 (8/17/17), m9, dense (10/20/20) and main; no set showed
+  a fault or a thrash; with merges at most 1.90 (P5), 1.49 (m8), 1.25
+  (dense) times the twin's key nodes, main up to 21.5; the put path's
+  price (m8 1 % more bytes a put, dense 4 %); the recommendation m8;
+  what is not measured. Probe, scripts and outputs in
+  14-merge-thresholds/.
+* 15-key-shape-cost.md. 024-15, the cost of key shape documented and
+  bounded (024-08, option (a)): Javadoc in `Connection` and `Db` on what
+  costs a key node of its own (about 226 heap bytes) and what eviction
+  does instead; `Mem` with `-n` and `-keys`; two checks in `level1.sh`
+  (SEG at most 230; MEM10M at most 131, full run only); docs/levels.md.
+  On main since the merge of 251cd1e0.
+* 16-one-operation-a-key.md. 024-16, one operation a key in a
+  transaction, strictly (Frans, 2026-11-11): in a builder the last call
+  on a key as written wins; a transaction whose key transformations make
+  two keys one key is refused before the go point (`Db.transformKeys`,
+  a `DbException`, the time given back by `DbClock.transactionCancel`),
+  in the Core and the Pub layer; 024-10's rule R2 and what it needed
+  removed; no stale index entry possible (024-10's F1); six tests'
+  expected values changed. Branch 024-16-one-operation-a-key; its
+  review in 16-one-operation-a-key/. On main since 2026-11-11, 14:12,
+  the merge of 3af7513e (gated: before-commit, level1 to level4 full,
+  unlinkfuzz, conformance drain).
+* 17-limits.md. 024-17, the limits of BergDB: of a transaction, a key,
+  a value, a record. The discussion with Frans (limits in the user's
+  terms, checked; internal bounds proved; a key at most 256 bytes, the
+  one limit for a user to remember; most kinds of files should fit);
+  today's limits (only the record's 2^31 - 9, and two refusals that
+  follow from it); what our own code uses; the cost against the batch
+  size at 1M and 10M keys and of values of 16 MiB; the derivation of
+  the node bound; a proposed table L1 to L8 (1,000 operations, 256
+  bytes a key, 16 MiB a value, 64 MiB a transaction); the idea of
+  database sizes S, M, L for later; questions QL1 to QL10. Probes and
+  outputs in 17-limits/.
+* 18-dead-klongs.md. 024-18, dead klongs in live nodes: what one costs
+  (16 bytes each time its node is written, 24 heap bytes, a klong more
+  in every lookup), the counts at 100k and 1M keys (0.4 to 0.5 per live
+  klong under writes, 0.83 in a cold database with a retain duration),
+  and the three options measured: 1 nothing more; 2 compaction at the
+  write (by a threshold theta; reclaim's own writes compact cold leaves
+  too); 3 by reclaim, in three variants, of which 3c (reclaim's writes
+  leave nodes not changed since the iteration began as last versions)
+  costs 0 to 3 % bytes and takes the cold case to 0.15. Recommended:
+  3c with merges. Measuring patches named; nothing at 10M. Probes in
+  18-dead-klongs/.
+* 19-node-size.md. 024-19, the node size: which, and one fixed constant
+  or not. Postponed 2026-11-11, 11:50, until the merges are in (024-21),
+  with what was done: what the size is today (62 a hard ceiling by the
+  delete bitmap; 005-38's earlier measurements), the prediction, the
+  counts at 1M keys (a flat optimum: 30 and 62 within 2 % in the bytes
+  an overwrite writes; 8 is 57 to 71 % above), a draft of the options.
+  Nothing at 10M, no times, no recommendation. Outputs in 19-node-size/.
+* 20-compact-nodes.md. 024-20, a more compact stored form of an index
+  node. Postponed 2026-11-11, 11:50, until the merges are in (024-21),
+  with what was done: the stored form today, byte for byte (a key node
+  is written whole each time); interim numbers at 1M keys (under random
+  overwrites the index nodes are 57 % of the stream, 223 of 393 bytes a
+  put; a compact encoding of the key node needs 41 to 43 % of today's
+  index bytes; the JDK's Deflater does no better). No recommendation.
+  The probe in 20-compact-nodes/.
+* 21-merges-java.md. 024-21, merges at the delete in Java, record
+  format 7, with assumptions for now (Frans, 2026-11-11, 11:44): node
+  size 30, P5's thresholds, dead klongs as today, P5's way of making
+  nodes, each a named constant. Branch 024-21-merges; it agrees with
+  024-22's model; not to land before Frans has looked. Files in
+  21-merges-java/.
+* 22-merges-lean.md. 024-22, merges at the delete in 024-12's Lean model
+  of the key tree, run beside Java's 024-21 (15,084 transactions, 9,243
+  merges, 0 differences). Branch 024-22-merges-lean, on 024-12's.
 
 
 Log

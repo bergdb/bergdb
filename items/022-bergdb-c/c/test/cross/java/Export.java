@@ -32,7 +32,12 @@ import bergdb.pub.util.Clock;
  *                        syncs kept), for a writer that neither reclaims nor restarts
  *                        (012-09): OUTDIR/coresame-plain[-nN].wl
  *   gen:SEED[:K=V,...]   Gen's workload; OUTDIR/gen-SEED[-K-V...].wl
+ *   del:SEED[:K=V,...]   GenDel's workload, the delete path of release 2026.4 (bergdb
+ *                        022-07); OUTDIR/del-SEED[-K-V...].wl
  *   scale:KEYS           the scale workload: KEYS keys; OUTDIR/scale-KEYS.wl
+ *   scaledel:KEYS        the scale workload of deletes (bergdb 022-07): KEYS keys put,
+ *                        deleted but for one in a thousand, then those too, then one in
+ *                        a hundred put again; OUTDIR/scaledel-KEYS.wl
  * Prints the path of each workload written.
  * </pre>
  */
@@ -63,8 +68,14 @@ public final class Export {
             case "scale":
                 f = scale(dir, Long.parseLong(parts[1]));
                 break;
+            case "scaledel":
+                f = scaleDel(dir, Long.parseLong(parts[1]));
+                break;
             case "gen":
                 f = gen(dir, Long.parseLong(parts[1]), parts.length > 2 ? parts[2] : null);
+                break;
+            case "del":
+                f = del(dir, Long.parseLong(parts[1]), parts.length > 2 ? parts[2] : null);
                 break;
             default:
                 throw new IllegalArgumentException("unknown spec " + args[i]);
@@ -303,6 +314,80 @@ public final class Export {
         return f;
     }
 
+    /**
+     * The scale workload of deletes (bergdb 022-07; the delete path of release 2026.4 on a
+     * large database, 023-07, section 5): KEYS keys /k/000000000 to /k/(KEYS-1), nine
+     * digits, put in transactions of 100 consecutive keys with values of 40 bytes, the
+     * default node size 30 and a startup distance of 50 MB; a restart; a mass delete in
+     * key order, 999 keys a transaction, every key but those whose number ends in 500;
+     * a check, a restart (whose rerun has deletes); the kept keys deleted, 1,000 a
+     * transaction, so that the database is empty and its root a segment leaf again; a
+     * check; then every hundredth key put again, 100 a transaction; a check of the latest
+     * state, and gets.
+     */
+    static File scaleDel(File dir, long keys) throws IOException {
+        File f = new File(dir, "scaledel-" + keys + ".wl");
+        PrintStream out = open(f);
+        out.println("bergdb-workload 1");
+        out.println("# The scale workload of deletes, " + keys + " keys (bergdb 022-07)");
+        out.println("set maxnode 30");
+        out.println("set sd 50000000");
+        long time = 1000;
+        StringBuilder line = new StringBuilder();
+        for (long k = 0; k < keys; k += 100) {
+            time += 10;
+            line.setLength(0);
+            line.append("t ").append(time);
+            for (long j = k; j < Math.min(keys, k + 100); j++) {
+                line.append(" p /k/").append(String.format("%09d", j)).append(" r:").append(j)
+                        .append(":40");
+            }
+            out.println(line);
+        }
+        out.println("sync");
+        out.println("restart");
+        for (long k = 0; k < keys; k += 1000) {
+            time += 10;
+            line.setLength(0);
+            line.append("t ").append(time);
+            for (long j = k; j < Math.min(keys, k + 1000); j++) {
+                if (j % 1000 != 500) {
+                    line.append(" d /k/").append(String.format("%09d", j));
+                }
+            }
+            out.println(line);
+        }
+        out.println("check latest");
+        out.println("sync");
+        out.println("restart");
+        for (long k = 0; k < keys; k += 1000000) {
+            time += 10;
+            line.setLength(0);
+            line.append("t ").append(time);
+            for (long j = k + 500; j < Math.min(keys, k + 1000000); j += 1000) {
+                line.append(" d /k/").append(String.format("%09d", j));
+            }
+            out.println(line);
+        }
+        out.println("check latest");
+        for (long k = 0; k < keys; k += 10000) {
+            time += 10;
+            line.setLength(0);
+            line.append("t ").append(time);
+            for (long j = k; j < Math.min(keys, k + 10000); j += 100) {
+                line.append(" p /k/").append(String.format("%09d", j)).append(" r:")
+                        .append(j + keys).append(":40");
+            }
+            out.println(line);
+        }
+        out.println("check latest");
+        out.println("get latest /k/000000000 /k/000000001 /k/000000100 /k/"
+                + String.format("%09d", keys / 2) + " /k/" + String.format("%09d", keys - 1));
+        out.println("sync");
+        out.close();
+        return f;
+    }
+
     // ======== Gen ========
 
     static File gen(File dir, long seed, String options) throws IOException {
@@ -318,6 +403,23 @@ public final class Export {
         File f = new File(dir, name + ".wl");
         PrintStream out = open(f);
         bergdb.cross.Gen.generate(seed, p, out);
+        out.close();
+        return f;
+    }
+
+    static File del(File dir, long seed, String options) throws IOException {
+        Map<String, String> p = new TreeMap<String, String>();
+        String name = "del-" + seed;
+        if (options != null) {
+            for (String kv : options.split(",")) {
+                int eq = kv.indexOf('=');
+                p.put(kv.substring(0, eq), kv.substring(eq + 1));
+                name += "-" + kv.substring(0, eq) + kv.substring(eq + 1);
+            }
+        }
+        File f = new File(dir, name + ".wl");
+        PrintStream out = open(f);
+        bergdb.cross.GenDel.generate(seed, p, out);
         out.close();
         return f;
     }

@@ -43,6 +43,7 @@ enum obj_kind {
 #define OBJ_REF       0x0080u   /* Handle.ref, the CLOCK bit */
 #define OBJ_LEFT      0x0100u   /* an index object that a handle let go of (handle.h) */
 #define OBJ_REPLACED  0x0200u   /* in Db.replacedInTrans during a transaction (db.h) */
+#define OBJ_TAKEN_BACK 0x0400u  /* with OBJ_REPLACED: also in Db.takenBackInTrans (db.h) */
 
 struct obj {
     int32_t refs;               /* the counted holders */

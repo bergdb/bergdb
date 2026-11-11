@@ -46,7 +46,13 @@ struct op_pointer_created_listener {
 };
 
 /* Dag.NodeChangeListener; key_node_replaced and top_node_replaced do
- * nothing by default in Java (NULL here does nothing). */
+ * nothing by default in Java (NULL here does nothing). key_node_replaced:
+ * a key node that existed before the transaction was replaced by a split,
+ * or unlinked by a delete (bergdb 023-07, section 5.1; release 2026.4).
+ * key_node_taken_back: a key node that the transaction made was taken back
+ * (Dag.takeBack, Dag.takeBackRoot): no node names it and it is never
+ * written; NULL calls key_node_replaced, as Java's default does. It is the
+ * last member, so that a listener initialized by position leaves it NULL. */
 struct op_node_change_listener {
     bool (*top_node_created)(void *ctx, struct tnode *node);
     bool (*key_node_created)(void *ctx, struct knode *node);
@@ -55,6 +61,7 @@ struct op_node_change_listener {
     bool (*key_node_replaced)(void *ctx, struct knode *node);
     bool (*top_node_replaced)(void *ctx, struct tnode *node);
     void *ctx;
+    bool (*key_node_taken_back)(void *ctx, struct knode *node);
 };
 
 /* Dag.CachePolicy */
@@ -77,6 +84,9 @@ struct opdata {
     struct pointer temp_pointer;        /* borrowed node (012-07, 6.4.2) */
     struct kwp kwi;                     /* borrowed node */
     struct err *err;                    /* not counted, not owned */
+    int64_t descent_mark;               /* the check of a descent for a cycle (op_descent_to) */
+    uint32_t descent_steps;             /* unsigned: Java's int wraps, C's must not */
+    uint32_t descent_power;
 };
 
 /* new OpData(): no functions, access data 0, the scratch reset. */
@@ -84,6 +94,21 @@ void op_init(struct opdata *op);
 
 /* OpData.followPointer */
 struct node *op_follow_pointer(struct opdata *op, struct node *predecessor, int32_t index);
+
+/* OpData.descentFrom and descentTo (bergdb 020-32; Java's since release
+ * 2026.4): the check of a descent for a cycle, which a damaged stream can
+ * make (a key node's prevPos that names its own child's version before the
+ * startup section: Rule R then made the node's pointer to that child a
+ * pointer to the node itself, and a get looped without end). Brent's cycle
+ * detection on node ids: the id of the node of step 2^k is kept, and each
+ * node after it compared with it, so a cycle is found within about twice the
+ * steps of the path and the cycle, in constant memory. A node without an id
+ * (SPOS_NULL) is not compared. op_descent_from starts the check at root;
+ * op_descent_to is a step to next: false, with Java's StreamFormatException
+ * in *op->err (NodeCollection.cycle; every follower of C is a database's),
+ * if the descent came back to a node it passed. */
+void op_descent_from(struct opdata *op, const struct node *root);
+bool op_descent_to(struct opdata *op, const struct node *next);
 
 /* Java's cast of a node that a follow gave (KeyNode or TopNode: type
  * NODE_TYPE_KEY_NODE or NODE_TYPE_TOP_NODE), where C cast it with an assert:

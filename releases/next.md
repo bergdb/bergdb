@@ -81,7 +81,18 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
   (StreamDigest `all`, 48 of 48 digests identical; 024-10, section 8). The
   Pub API's `w()` and `rw()` already kept the last call on a key as
   written (015-40, 015-41).
-* *For 024-16 to fill: KVs that key transformations make one key.*
+* **A transaction whose key transformations make two of its keys one key
+  is refused** (bergdb 024-16; Frans, 2026-11-11, 09:43: "One transaction
+  must not set (put or delete) a value more than once! This is a strict
+  rule."). At the commit, when the key transformations (the Core's; a key
+  replace such as `${transactionTime}` in the Pub layer) make two
+  different keys as written one key, nothing of the transaction is
+  written and the caller gets a `DbException` that names both keys as
+  written and the key they became; the database goes on. The check is
+  made before the go point (`Db.transformKeys`), so every transaction
+  that reaches the index holds one operation a key. In 2026.4 and before
+  one of the two was kept (the last put in key order, or a delete). A
+  transaction without such keys writes the bytes it wrote before.
 
 
 ### Known issues and limits

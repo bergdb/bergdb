@@ -1,0 +1,5 @@
+== over main 12:23:38 run n=10000000 fill=random shape=over phase=10000
+12:23  up 23 days,  5:08, 5 users, load averages: 25.57 28.92 23.83
+THR {phase=10000, shape=over, fill=random, dir=/Users/f/fl/bench/2026-11-11/thr/data/10m-t-over-main, n=10000000} main (no merges)
+rc=143 12:24:51
+12:24  up 23 days,  5:09, 5 users, load averages: 16.92 25.60 22.97

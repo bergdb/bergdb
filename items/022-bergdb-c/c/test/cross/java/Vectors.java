@@ -51,7 +51,10 @@ import bergdb.stream.MemoryStream;
  * the default step reserve and with one of four nodes, which splits the steps: the stream
  * from the decided cut, as its SHA-256), and (022-02) strutil.txt
  * (StringUtil.isWellFormedUtf8) and keys.txt's bkey2ikey (Keys.bkey2ikeyOrNull), the
- * keys of bergdb 021-05 and 021-06, into a directory. C's unit tests read them
+ * keys of bergdb 021-05 and 021-06, and (022-07) sorted.txt (the streams of two databases
+ * whose transactions put through key transformations, which Db.putKvs sorts and makes one
+ * operation a key since release 2026.4, bergdb 023-08, section 7), into a directory. C's
+ * unit tests read them
  * (c/test/unit/t_vectors.c); 012-05's cross tests run this again and compare with the
  * committed files, so that a change in Java shows.
  *
@@ -86,7 +89,143 @@ public class Vectors {
         keymod(open(dir, "keymod.txt"));
         dag(open(dir, "dag.txt"));
         reclaim(open(dir, "reclaim.txt"));
+        sorted(open(dir, "sorted.txt"));
         System.out.println("VECTORS OK: " + dir);
+    }
+
+    // ---- Transactions with key transformations (bergdb 023-08, section 7; 022-07) ----
+
+    /**
+     * The streams of two databases (MemoryStream, the test setup, node size 8, startup
+     * distance 1,000; created at time 1,000, two transactions at 2,000 and 2,010) whose
+     * second transaction puts through key transformations: "keys-sorted",
+     * DbTester.testTransformedKeysSorted's operations, the transformed puts given in the
+     * order (i * 37 + 11) % 60 of their names; and "one-operation",
+     * DbTesterDelete.testOneOperationAKeyAfterTransformations's, with its value
+     * transformations. C runs the same operations through its API and must write the same
+     * bytes (c/test/unit/t_dbtester.c): the cross workloads have no transformations.
+     * And "empty-key": the empty key, the bkey of no bytes, whose one segment has the
+     * compare value 0, as Klong.EMPTY_KEY, with the deletes of release 2026.4 around it
+     * (bergdb 023-07, section 5.2): the empty key and "k00" to "k59" put; "k00" to "k29"
+     * deleted; the empty key deleted; the empty key put again and "k30" to "k58" deleted;
+     * "k59" and the empty key deleted, the database empty; the empty key and "k00" put.
+     * No ikey gives the empty key, so no cross workload has it.
+     */
+    private static void sorted(PrintWriter w) throws IOException {
+        w.print("# sortstream NAME HEX: the stream of a database that Db made (MemoryStream, "
+                + "node size 8, startup distance 1000), whose second transaction puts through "
+                + "key transformations (bergdb 023-08, section 7)\n");
+        final KeyTransformation toName = new KeyTransformation() {
+            public void transform(Trans trans, int index) {
+                String s = Keys.toString(trans.kvs[index].getKey());
+                long[] key = Keys.toSegments("/t/" + s.substring(s.indexOf('=') + 1));
+                trans.kvs[index].setKey(key);
+                trans.writeKeyHashes[index] = Keys.hash(key);
+            }
+        };
+        final KeyTransformation toC = new KeyTransformation() {
+            public void transform(Trans trans, int index) {
+                String s = Keys.toString(trans.kvs[index].getKey());
+                long[] key = Keys.toSegments("/c/" + s.substring("/c/".length() + 1));
+                trans.kvs[index].setKey(key);
+                trans.writeKeyHashes[index] = Keys.hash(key);
+            }
+        };
+        final ValueTransformation bang = new ValueTransformation() {
+            public byte[] transform(long transTime, byte[] inputValue, byte[] previous) {
+                return (new String(inputValue, StandardCharsets.UTF_8) + "!")
+                        .getBytes(StandardCharsets.UTF_8);
+            }
+        };
+        for (int run = 0; run < 3; run++) {
+            MemoryStream ms = new MemoryStream();
+            CoreTestClock clock = new CoreTestClock();
+            DbBuilder b = Db.builder();
+            b.testSetup(ms);
+            b.clock(clock);
+            b.maxNodeSize8();
+            b.startupDistance(1000);
+            clock.setTime(1000);
+            Db db = b.build();
+            db.start();
+            if (run == 2) {
+                final byte[] empty = new byte[0];
+                clock.setTime(2000);
+                Trans.Builder eb = db.trans();
+                eb.put(empty, "e0".getBytes(StandardCharsets.UTF_8));
+                for (int i = 0; i < 60; i++) {
+                    eb.put(String.format("k%02d", i).getBytes(StandardCharsets.UTF_8),
+                            ("v" + i).getBytes(StandardCharsets.UTF_8));
+                }
+                db.execute(eb.build());
+                clock.setTime(2010);
+                eb = db.trans();
+                for (int i = 0; i < 30; i++) {
+                    eb.delete(String.format("k%02d", i).getBytes(StandardCharsets.UTF_8));
+                }
+                db.execute(eb.build());
+                clock.setTime(2020);
+                db.execute(db.trans().delete(empty).build());
+                clock.setTime(2030);
+                eb = db.trans();
+                eb.put(empty, "e1".getBytes(StandardCharsets.UTF_8));
+                for (int i = 30; i < 59; i++) {
+                    eb.delete(String.format("k%02d", i).getBytes(StandardCharsets.UTF_8));
+                }
+                db.execute(eb.build());
+                clock.setTime(2040);
+                db.execute(db.trans().delete("k59".getBytes(StandardCharsets.UTF_8))
+                        .delete(empty).build());
+                clock.setTime(2050);
+                db.execute(db.trans().put(empty, "e2".getBytes(StandardCharsets.UTF_8))
+                        .put("k00".getBytes(StandardCharsets.UTF_8),
+                                "v".getBytes(StandardCharsets.UTF_8)).build());
+                db.close();
+                byte[] stream = new byte[(int) ms.getLength()];
+                ms.read(0, stream, 0, stream.length);
+                w.print("sortstream empty-key " + hex(stream) + "\n");
+                continue;
+            }
+            clock.setTime(2000);
+            Trans.Builder tb = db.trans();
+            if (run == 0) {
+                for (int i = 0; i < 120; i += 2) {
+                    tb.put("/t/" + String.format("k%03d", i), "old" + i);
+                }
+            } else {
+                for (String k : new String[] {"a", "b", "c", "d", "e"}) tb.put("/c/" + k, "old");
+            }
+            db.execute(tb.build());
+            clock.setTime(2010);
+            tb = db.trans();
+            if (run == 0) {
+                for (int i = 0; i < 60; i++) {
+                    String name = String.format("k%03d", 2 * ((i * 37 + 11) % 60) + 1);
+                    tb.put(Keys.toSegments("/t/$" + String.format("%02d", i) + "=" + name),
+                            toName, ("new" + name).getBytes(StandardCharsets.UTF_8), null);
+                }
+                for (int i = 0; i < 120; i += 6) tb.delete("/t/" + String.format("k%03d", i));
+                tb.put("/t/k031", "plain");
+            } else {
+                tb.put(Keys.toSegments("/c/$a"), toC, "a1".getBytes(StandardCharsets.UTF_8), null);
+                tb.put("/c/a", "a2");
+                tb.put(Keys.toSegments("/c/$b"), toC, "b1".getBytes(StandardCharsets.UTF_8), null);
+                tb.delete("/c/b");
+                tb.delete("/c/c");
+                tb.put(Keys.toSegments("/c/~c"), toC, "c1".getBytes(StandardCharsets.UTF_8), null);
+                tb.put(Keys.toSegments("/c/$d"), toC, "d1".getBytes(StandardCharsets.UTF_8), null);
+                tb.put(Keys.toSegments("/c/~d"), toC, "d2".getBytes(StandardCharsets.UTF_8), null);
+                tb.put(Keys.toSegments("/c/$e"), toC, "e1".getBytes(StandardCharsets.UTF_8), bang);
+                tb.put(Keys.toSegments("/c/e"), null, "e2".getBytes(StandardCharsets.UTF_8), bang);
+            }
+            db.execute(tb.build());
+            db.close();
+            byte[] stream = new byte[(int) ms.getLength()];
+            ms.read(0, stream, 0, stream.length);
+            w.print("sortstream " + (run == 0 ? "keys-sorted" : "one-operation") + " "
+                    + hex(stream) + "\n");
+        }
+        w.close();
     }
 
     private static PrintWriter open(String dir, String name) throws IOException {

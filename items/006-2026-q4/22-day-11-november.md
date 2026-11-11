@@ -41,19 +41,21 @@ high, xhigh for a hard task. At most 8 agents at a time (Frans,
 | 024-07 | The last touch of a reclaim iteration (CL7): design, fix | touch (xhigh) | on main, a780b957 |
 | 024-08 | MEM 327 at 10M keys against 129.6 at 1M: the cause | mem (high) | done 07:25 |
 | 024-09 | The tie of model and code repaired (024-06, A1 to A4) | tie (xhigh) | on main, 379d8acf |
-| 022-07 | The C clone to release 2026.4 as released (CC1) | cc (high) | |
+| 022-07 | The C clone to release 2026.4 as released (CC1) | cc (high) | on main, 51a7224c |
 | 024-10 | The builder's rule "the last operation wins" (CA1) | low (high) | on main, a780b957 |
 | 024-11 | The underfill fix: a design study, no code | fill (xhigh) | done 08:18 |
 | 024-12 | The key tree's model in Lean, run against Java | tree (xhigh) | |
 | 024-13 | The integration branch: doubles.py, 024-10, 024-07; gates | int (Opus, high) | landed 10:07 |
-| 024-14 | The merge's thresholds measured in Java at 10M keys | thr (Opus, high) | |
-| 024-15 | The cost of key shape: documentation, bound, Mem runs | shape (Opus, high) | |
+| 024-14 | The merge's thresholds measured in Java at 10M keys | thr (Opus, high) | done 13:50 |
+| 024-15 | The cost of key shape: documentation, bound, Mem runs | shape (Opus, high) | on main 12:25 |
 | 024-16 | One operation a key, strict: a collision fails the commit | strict (Opus, high) | |
-| 024-17 | The limits of a transaction, a key, a value, a record | limits (Opus, high) | |
+| 024-17 | The limits of a transaction, a key, a value, a record | limits (Opus, high) | done 11:59 |
 | 020-33 | The known issue of 2026.4 in its notes; next.md | notes (Opus, high) | done 10:28 |
-| 024-18 | Dead klongs: what they cost, three options measured | dead (Opus, high) | |
-| 024-19 | The node size: which, and one fixed constant or not | nsize (Opus, high) | |
-| 024-20 | A more compact stored form of an index node | compact (Opus, high) | |
+| 024-18 | Dead klongs: what they cost, three options measured | dead (Opus, high) | done 13:49 |
+| 024-19 | The node size: which, and one fixed constant or not | nsize (Opus, high) | postponed 11:50 |
+| 024-20 | A more compact stored form of an index node | compact (Opus, high) | postponed 11:50 |
+| 024-21 | Merges at the delete, in Java on main, format 7 | mgj (Opus, xhigh) | |
+| 024-22 | Merges at the delete in the Lean tree model, run first | mgl (Opus, xhigh) | |
 
 024-04 to 024-06 are read-only studies. 024-07 to 024-10 and 022-07 work
 in clones under `/Users/f/fl/bench/2026-11-11/<name>/clone` on their own
@@ -222,6 +224,107 @@ from them.
   dead (024-18). 11:31: "Node size is worth a separate study. Compact
   stored format too.": started nsize (024-19) and compact (024-20).
   The usage: 63 % at 11:27.
+* 11:36 Frans: "I fail to see the overall picture. [...] What is the
+  most important algos to get in place now, today?" The coordinator:
+  one algorithm is left, the delete path's final form (merges at the
+  delete), and it waits for three numbers (the node size, the
+  thresholds, the dead klongs). 11:44, Frans: "Could we instead make
+  reasonable assumptions on 1, 2, 3. Go with this "for now". To get the
+  merges at the delete done today. [...] To be able to change one thing
+  at a time." The assumptions, as named constants: node size 30, P5's
+  thresholds (a quarter, a half), nothing more for dead klongs, P5's
+  way of making merged nodes. 11:49: "Yes." Started mgj (024-21, Java)
+  and mgl (024-22, the Lean tree, run first); 024-19 and 024-20
+  postponed until after the merges.
+* 11:49 Frans: "I will be back at 14:30 for 30 minutes. Use up to 85% of
+  AI usage limits. You can land the C clone, the key-shape doc, the
+  one-operation rule. I would like to approve the new tree model."
+  Unattended from 11:56 until 14:30.
+* 11:52 024-19 and 024-20 stopped with their interim states (the node
+  size: a flat optimum at 1M keys, 30 and 62 within 2 %; the stored
+  form: index nodes 57 % of the stream under random overwrites, a
+  compact encoding at 41 to 43 % of today's index bytes).
+* 11:56 **The third landing: main 51a7224c**, the C clone at release
+  2026.4 as released (022-07; `items/022-bergdb-c/c` only): C's gate OK
+  on the head, 0 differences with Java's release on every comparison
+  set; no fault of Java's product code, three notes on Java.
+* 11:59 024-17 done (the limits; a proposed table: 1,000 operations, a
+  key of 256 bytes, a value of 16 MiB, 64 MiB a transaction). 024-16
+  done on its branch; as it moves the key transformations to before
+  the go point and adds a cancel to the clock, it went to a full gate
+  by int and an independent review, not to main on its own gates.
+* 12:16 The review of 024-16: land with four small fixes; no fault found
+  in the commit path, by reading or by a concurrency probe; an old
+  fault beside it (a key-replace put over an indexed object leaves a
+  stale index entry). The fixes are with the branch's agent.
+* 12:25 **The fourth landing**: 024-15, the cost of key shape documented
+  and bounded (the merge of 251cd1e0): before-commit and level1 full on
+  the merged tree; SEG 226.4 (at most 230), MEM10M 127.0 (at most 131).
+  The usage: 67 % at 12:15.
+* 12:25 024-12 done on its branch (d90586d0): the tree's model writes
+  Java's records on 115 traces; it waits for Frans's approval; int
+  prepares it on today's main. 12:23 to 12:33 thr's timing hold
+  disturbed by mgl's runs and by dead's scripts, which kept starting
+  runs: the coordinator stopped dead's processes.
+* 13:06 024-16's four fixes made (3412ee7a); with int for the full
+  gates.
+* 13:34 The merge is in the Lean model (63e39de6) and Java with merges
+  (024-21) agrees with it: 15,084 transactions, 9,243 merges, 0
+  differences. 13:37 024-21's head 331dd400 passed before-commit,
+  unlinkfuzz, level1, level2 and level3. The two slots starved mgl and
+  thr; an order set by message.
+* 13:50 024-14 done: no threshold set showed a fault or a thrash; the
+  recommendation m8 (8/17/17): at most 1.49 times the twin's key nodes
+  (P5 1.90, main 21.5), 1 % more bytes a put, no slower.
+* 13:57 024-12 gated on today's main (ca3824aa): lake build, no sorry
+  or axiom, test-traces, before-commit, level1, treeconf, level3; waits
+  for Frans's approval at 14:30.
+* 14:12 024-16 landed: 47c93e34, the merge of 3af7513e, gated with
+  before-commit, level1 to level4 full, unlinkfuzz and conformance drain
+  (024-13, section 6). Release notes filled (releases/next.md).
+  024-12 lands second, after a re-merge and new gates.
+* 14:14 Frans back (attended). 14:27 dead klongs decided (024-18,
+  QD1): option 2 with theta 7, after the merges, as a change of its own
+  through the model; it lands on its gates, without the 10M measurement
+  first ("Let's get this in now. We will measure carefully and study
+  alternatives later."). 3c shelved.
+* 14:28 Frans approved the tree model (024-12) for landing: "Yes, I
+  approve." It lands after int's re-merge onto main (with 024-16) and
+  its gates; int gets the next free slot.
+* 14:34 Frans: the merge's thresholds 8/17/17 (024-14, QT1; QT2 open),
+  and 024-22's QM1 to QM5 as their defaults. 024-22's agent finished
+  (8e78cf65; 239 traces against Java equal).
+* 14:45 Frans: a key at most 112 bytes (024-17, QL2; 16 segments; the
+  user's rule of thumb "about 100 characters"). 024-17 to be reworked
+  for it (L3, L6, the bound's arithmetic with merges, the tests).
+* 14:47 Frans left; unattended until 2026-11-12 07:00 (the default; he
+  gave no time). While he is away: the tree model lands on its gates
+  (approved); the merges (024-21 at 8/17/17, 024-22) are gated and run
+  against each other, not landed; option 2 with theta 7 is built on top
+  of them, model first, not landed; 024-17 reworked for 112-byte keys;
+  night.sh on main after the tree model, if the machine is free. Usage
+  ceiling 85 %.
+* 14:48 Frans, on the three things waiting for him (the four re-found
+  CorruptStreamTester copies of 024-21, 906d54d7; the diff of the
+  trusted Lean statements, LiveAppend in place of PhysRunOK; the merges
+  branch before it lands): "Handle these for me as you see fit." And:
+  "I am plan to be back 17:00. If not back by 18:00, keep working
+  unattended through the night." So the coordinator lands the merges
+  (024-21 with 024-22) once fully gated, Java against the model at
+  8/17/17, and after an independent review finds nothing that blocks;
+  the LiveAppend change lands on its gates, its trusted diff quoted in
+  its item for Frans to read; 906d54d7 goes in with the merges.
+* 14:56 The tree model landed: b84cf761, the merge of 480f83da (024-12
+  re-merged onto main with 024-16; gates: lake build, treetest, no
+  sorry or axiom, test-traces, before-commit, level1 full, level2 full
+  with its new treeconf step, level3 full).
+* 14:59 024-17 reworked for 112-byte keys (lim2). Three corrections to
+  the coordinator's figures of 14:40 to 14:45: TP26 is stated and
+  checked, not proved; 112 bytes are 17 segments (111 are 16); with
+  merges TP26's form counts 20 nodes a level, which covers only 452
+  operations. A sharper count with q (about 8 a level) covers 1,128
+  (QL8). Proposed L3 112 KiB, L6 112 bytes refused; QL1, QL4, QL8,
+  QL11 (112 or 111), QL12 (node sizes 8 and 62) for Frans.
 
 
 ## 6. Outcome

@@ -1,0 +1,73 @@
+size=8 shape=random keys=60 del=40 ops=6 n=150 -Dorder=sorted -Ddup=0: cases: merges with two klongs of one compare value in the parent 332, with a left node made by the transaction 113, a right one 120; nodes taken back by the climb 3 (roots 3)
+size=8 shape=random keys=60 del=40 ops=6 n=150 -Dorder=sorted -Ddup=0: Done: 30 rounds, 0 failures.
+size=8 shape=random keys=60 del=40 ops=6 n=150 -Dorder=shuffle -Ddup=20: cases: merges with two klongs of one compare value in the parent 439, with a left node made by the transaction 142, a right one 233; nodes taken back by the climb 4 (roots 4)
+size=8 shape=random keys=60 del=40 ops=6 n=150 -Dorder=shuffle -Ddup=20: Done: 30 rounds, 0 failures.
+size=8 shape=random keys=60 del=70 ops=6 n=150 -Dorder=sorted -Ddup=0: cases: merges with two klongs of one compare value in the parent 311, with a left node made by the transaction 101, a right one 84; nodes taken back by the climb 18 (roots 18)
+size=8 shape=random keys=60 del=70 ops=6 n=150 -Dorder=sorted -Ddup=0: Done: 30 rounds, 0 failures.
+size=8 shape=random keys=60 del=70 ops=6 n=150 -Dorder=shuffle -Ddup=20: cases: merges with two klongs of one compare value in the parent 392, with a left node made by the transaction 131, a right one 187; nodes taken back by the climb 10 (roots 10)
+size=8 shape=random keys=60 del=70 ops=6 n=150 -Dorder=shuffle -Ddup=20: Done: 30 rounds, 0 failures.
+size=8 shape=random keys=60 del=50 ops=30 n=60 -Dorder=sorted -Ddup=0: cases: merges with two klongs of one compare value in the parent 330, with a left node made by the transaction 287, a right one 152; nodes taken back by the climb 0 (roots 0)
+size=8 shape=random keys=60 del=50 ops=30 n=60 -Dorder=sorted -Ddup=0: Done: 15 rounds, 0 failures.
+size=8 shape=random keys=60 del=50 ops=30 n=60 -Dorder=shuffle -Ddup=20: cases: merges with two klongs of one compare value in the parent 401, with a left node made by the transaction 347, a right one 417; nodes taken back by the climb 1 (roots 1)
+size=8 shape=random keys=60 del=50 ops=30 n=60 -Dorder=shuffle -Ddup=20: Done: 15 rounds, 0 failures.
+size=8 shape=fifo keys=40 del=0 ops=6 n=100 -Dorder=sorted -Ddup=0: cases: merges with two klongs of one compare value in the parent 344, with a left node made by the transaction 427, a right one 68; nodes taken back by the climb 73 (roots 73)
+size=8 shape=fifo keys=40 del=0 ops=6 n=100 -Dorder=sorted -Ddup=0: Done: 8 rounds, 0 failures.
+size=8 shape=fifo keys=40 del=0 ops=6 n=100 -Dorder=shuffle -Ddup=20: cases: merges with two klongs of one compare value in the parent 200, with a left node made by the transaction 182, a right one 264; nodes taken back by the climb 3 (roots 3)
+size=8 shape=fifo keys=40 del=0 ops=6 n=100 -Dorder=shuffle -Ddup=20: Done: 8 rounds, 0 failures.
+size=8 shape=long keys=60 del=60 ops=6 n=150 -Dorder=sorted -Ddup=0: cases: merges with two klongs of one compare value in the parent 58, with a left node made by the transaction 15, a right one 17; nodes taken back by the climb 6 (roots 5)
+size=8 shape=long keys=60 del=60 ops=6 n=150 -Dorder=sorted -Ddup=0: Done: 20 rounds, 0 failures.
+size=8 shape=long keys=60 del=60 ops=6 n=150 -Dorder=shuffle -Ddup=20: cases: merges with two klongs of one compare value in the parent 100, with a left node made by the transaction 49, a right one 43; nodes taken back by the climb 28 (roots 21)
+size=8 shape=long keys=60 del=60 ops=6 n=150 -Dorder=shuffle -Ddup=20: Done: 20 rounds, 0 failures.
+size=8 shape=random keys=400 del=50 ops=60 n=100 -Dorder=sorted -Ddup=0: cases: merges with two klongs of one compare value in the parent 410, with a left node made by the transaction 199, a right one 153; nodes taken back by the climb 0 (roots 0)
+size=8 shape=random keys=400 del=50 ops=60 n=100 -Dorder=sorted -Ddup=0: Done: 6 rounds, 0 failures.
+size=8 shape=random keys=400 del=50 ops=60 n=100 -Dorder=shuffle -Ddup=20: cases: merges with two klongs of one compare value in the parent 484, with a left node made by the transaction 197, a right one 289; nodes taken back by the climb 0 (roots 0)
+size=8 shape=random keys=400 del=50 ops=60 n=100 -Dorder=shuffle -Ddup=20: Done: 6 rounds, 0 failures.
+size=14 shape=random keys=60 del=40 ops=6 n=150 -Dorder=sorted -Ddup=0: cases: merges with two klongs of one compare value in the parent 149, with a left node made by the transaction 39, a right one 29; nodes taken back by the climb 0 (roots 0)
+size=14 shape=random keys=60 del=40 ops=6 n=150 -Dorder=sorted -Ddup=0: Done: 30 rounds, 0 failures.
+size=14 shape=random keys=60 del=40 ops=6 n=150 -Dorder=shuffle -Ddup=20: cases: merges with two klongs of one compare value in the parent 218, with a left node made by the transaction 63, a right one 73; nodes taken back by the climb 2 (roots 2)
+size=14 shape=random keys=60 del=40 ops=6 n=150 -Dorder=shuffle -Ddup=20: Done: 30 rounds, 0 failures.
+size=14 shape=random keys=60 del=70 ops=6 n=150 -Dorder=sorted -Ddup=0: cases: merges with two klongs of one compare value in the parent 192, with a left node made by the transaction 29, a right one 21; nodes taken back by the climb 1 (roots 1)
+size=14 shape=random keys=60 del=70 ops=6 n=150 -Dorder=sorted -Ddup=0: Done: 30 rounds, 0 failures.
+size=14 shape=random keys=60 del=70 ops=6 n=150 -Dorder=shuffle -Ddup=20: cases: merges with two klongs of one compare value in the parent 240, with a left node made by the transaction 45, a right one 65; nodes taken back by the climb 2 (roots 2)
+size=14 shape=random keys=60 del=70 ops=6 n=150 -Dorder=shuffle -Ddup=20: Done: 30 rounds, 0 failures.
+size=14 shape=random keys=60 del=50 ops=30 n=60 -Dorder=sorted -Ddup=0: cases: merges with two klongs of one compare value in the parent 181, with a left node made by the transaction 124, a right one 62; nodes taken back by the climb 0 (roots 0)
+size=14 shape=random keys=60 del=50 ops=30 n=60 -Dorder=sorted -Ddup=0: Done: 15 rounds, 0 failures.
+size=14 shape=random keys=60 del=50 ops=30 n=60 -Dorder=shuffle -Ddup=20: cases: merges with two klongs of one compare value in the parent 229, with a left node made by the transaction 160, a right one 161; nodes taken back by the climb 0 (roots 0)
+size=14 shape=random keys=60 del=50 ops=30 n=60 -Dorder=shuffle -Ddup=20: Done: 15 rounds, 0 failures.
+size=14 shape=fifo keys=40 del=0 ops=6 n=100 -Dorder=sorted -Ddup=0: cases: merges with two klongs of one compare value in the parent 22, with a left node made by the transaction 46, a right one 39; nodes taken back by the climb 34 (roots 34)
+size=14 shape=fifo keys=40 del=0 ops=6 n=100 -Dorder=sorted -Ddup=0: Done: 8 rounds, 0 failures.
+size=14 shape=fifo keys=40 del=0 ops=6 n=100 -Dorder=shuffle -Ddup=20: cases: merges with two klongs of one compare value in the parent 233, with a left node made by the transaction 103, a right one 179; nodes taken back by the climb 3 (roots 3)
+size=14 shape=fifo keys=40 del=0 ops=6 n=100 -Dorder=shuffle -Ddup=20: Done: 8 rounds, 0 failures.
+size=14 shape=long keys=60 del=60 ops=6 n=150 -Dorder=sorted -Ddup=0: cases: merges with two klongs of one compare value in the parent 44, with a left node made by the transaction 6, a right one 3; nodes taken back by the climb 2 (roots 2)
+size=14 shape=long keys=60 del=60 ops=6 n=150 -Dorder=sorted -Ddup=0: Done: 20 rounds, 0 failures.
+size=14 shape=long keys=60 del=60 ops=6 n=150 -Dorder=shuffle -Ddup=20: cases: merges with two klongs of one compare value in the parent 60, with a left node made by the transaction 18, a right one 16; nodes taken back by the climb 13 (roots 13)
+size=14 shape=long keys=60 del=60 ops=6 n=150 -Dorder=shuffle -Ddup=20: Done: 20 rounds, 0 failures.
+size=14 shape=random keys=400 del=50 ops=60 n=100 -Dorder=sorted -Ddup=0: cases: merges with two klongs of one compare value in the parent 210, with a left node made by the transaction 82, a right one 62; nodes taken back by the climb 0 (roots 0)
+size=14 shape=random keys=400 del=50 ops=60 n=100 -Dorder=sorted -Ddup=0: Done: 6 rounds, 0 failures.
+size=14 shape=random keys=400 del=50 ops=60 n=100 -Dorder=shuffle -Ddup=20: cases: merges with two klongs of one compare value in the parent 234, with a left node made by the transaction 109, a right one 107; nodes taken back by the climb 0 (roots 0)
+size=14 shape=random keys=400 del=50 ops=60 n=100 -Dorder=shuffle -Ddup=20: Done: 6 rounds, 0 failures.
+size=30 shape=random keys=60 del=40 ops=6 n=150 -Dorder=sorted -Ddup=0: cases: merges with two klongs of one compare value in the parent 177, with a left node made by the transaction 32, a right one 29; nodes taken back by the climb 0 (roots 0)
+size=30 shape=random keys=60 del=40 ops=6 n=150 -Dorder=sorted -Ddup=0: Done: 30 rounds, 0 failures.
+size=30 shape=random keys=60 del=40 ops=6 n=150 -Dorder=shuffle -Ddup=20: cases: merges with two klongs of one compare value in the parent 148, with a left node made by the transaction 39, a right one 38; nodes taken back by the climb 5 (roots 5)
+size=30 shape=random keys=60 del=40 ops=6 n=150 -Dorder=shuffle -Ddup=20: Done: 30 rounds, 0 failures.
+size=30 shape=random keys=60 del=70 ops=6 n=150 -Dorder=sorted -Ddup=0: cases: merges with two klongs of one compare value in the parent 62, with a left node made by the transaction 31, a right one 27; nodes taken back by the climb 13 (roots 13)
+size=30 shape=random keys=60 del=70 ops=6 n=150 -Dorder=sorted -Ddup=0: Done: 30 rounds, 0 failures.
+size=30 shape=random keys=60 del=70 ops=6 n=150 -Dorder=shuffle -Ddup=20: cases: merges with two klongs of one compare value in the parent 170, with a left node made by the transaction 57, a right one 58; nodes taken back by the climb 35 (roots 35)
+size=30 shape=random keys=60 del=70 ops=6 n=150 -Dorder=shuffle -Ddup=20: Done: 30 rounds, 0 failures.
+size=30 shape=random keys=60 del=50 ops=30 n=60 -Dorder=sorted -Ddup=0: cases: merges with two klongs of one compare value in the parent 111, with a left node made by the transaction 66, a right one 45; nodes taken back by the climb 7 (roots 7)
+size=30 shape=random keys=60 del=50 ops=30 n=60 -Dorder=sorted -Ddup=0: Done: 15 rounds, 0 failures.
+size=30 shape=random keys=60 del=50 ops=30 n=60 -Dorder=shuffle -Ddup=20: cases: merges with two klongs of one compare value in the parent 109, with a left node made by the transaction 64, a right one 56; nodes taken back by the climb 4 (roots 4)
+size=30 shape=random keys=60 del=50 ops=30 n=60 -Dorder=shuffle -Ddup=20: Done: 15 rounds, 0 failures.
+size=30 shape=fifo keys=40 del=0 ops=6 n=100 -Dorder=sorted -Ddup=0: cases: merges with two klongs of one compare value in the parent 0, with a left node made by the transaction 0, a right one 0; nodes taken back by the climb 0 (roots 0)
+size=30 shape=fifo keys=40 del=0 ops=6 n=100 -Dorder=sorted -Ddup=0: Done: 8 rounds, 0 failures.
+size=30 shape=fifo keys=40 del=0 ops=6 n=100 -Dorder=shuffle -Ddup=20: cases: merges with two klongs of one compare value in the parent 77, with a left node made by the transaction 36, a right one 41; nodes taken back by the climb 5 (roots 5)
+size=30 shape=fifo keys=40 del=0 ops=6 n=100 -Dorder=shuffle -Ddup=20: Done: 8 rounds, 0 failures.
+size=30 shape=long keys=60 del=60 ops=6 n=150 -Dorder=sorted -Ddup=0: cases: merges with two klongs of one compare value in the parent 0, with a left node made by the transaction 0, a right one 0; nodes taken back by the climb 1 (roots 0)
+size=30 shape=long keys=60 del=60 ops=6 n=150 -Dorder=sorted -Ddup=0: Done: 20 rounds, 0 failures.
+size=30 shape=long keys=60 del=60 ops=6 n=150 -Dorder=shuffle -Ddup=20: cases: merges with two klongs of one compare value in the parent 0, with a left node made by the transaction 0, a right one 0; nodes taken back by the climb 1 (roots 0)
+size=30 shape=long keys=60 del=60 ops=6 n=150 -Dorder=shuffle -Ddup=20: Done: 20 rounds, 0 failures.
+size=30 shape=random keys=400 del=50 ops=60 n=100 -Dorder=sorted -Ddup=0: cases: merges with two klongs of one compare value in the parent 104, with a left node made by the transaction 55, a right one 37; nodes taken back by the climb 0 (roots 0)
+size=30 shape=random keys=400 del=50 ops=60 n=100 -Dorder=sorted -Ddup=0: Done: 6 rounds, 0 failures.
+size=30 shape=random keys=400 del=50 ops=60 n=100 -Dorder=shuffle -Ddup=20: cases: merges with two klongs of one compare value in the parent 141, with a left node made by the transaction 70, a right one 85; nodes taken back by the climb 0 (roots 0)
+size=30 shape=random keys=400 del=50 ops=60 n=100 -Dorder=shuffle -Ddup=20: Done: 6 rounds, 0 failures.
+FUZZ DONE

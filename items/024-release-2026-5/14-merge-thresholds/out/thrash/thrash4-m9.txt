@@ -1,0 +1,7 @@
+== thrash4 m9 09:36:51 thrash4 n=1000 trials=100 pp=200
+ 9:36  up 23 days,  2:21, 5 users, load averages: 14.30 13.01 10.37
+THR thrash4 {pp=200, trials=100, dir=/Users/f/fl/bench/2026-11-11/thr/data/thrash4-m9, n=1000} m=9 h=18 c=19 merges=true
+THRASH4 n=1000 trials=100 pp=200 mean new/op=0.127 worst new/op=0.195 (trial=50 y=1372 e=0 f=4 tsplit=35 ssplit=1 merges=2 two=0 bytes/op=143) merges/op=0.0010 ssplits/op=0.0012 bytes/op=142 cycling trials=0
+[4.9s] DONE
+rc=0 09:36:56
+ 9:36  up 23 days,  2:21, 5 users, load averages: 13.55 12.88 10.34

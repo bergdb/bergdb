@@ -1,0 +1,88 @@
+== thrash p5 09:34:29 thrash n=20000 span=40 pp=200
+ 9:34  up 23 days,  2:19, 5 users, load averages: 11.91 11.18 9.31
+THR thrash {pp=200, dir=/Users/f/fl/bench/2026-11-11/thr/data/thrash-p5, n=20000, span=40} m=7 h=15 c=15 merges=true
+[0.5s] FILL tx=100 ops=10000 s=0.3 ops/s=35847 rec/op=146.4 stream/op=146.4 rec/tx=14637 stream/tx=14637 maxRec=16976 tsplit/op=0.0001 ssplit/op=0.0782 merge/op=0.0000 merge2/op=0.0000 taken/op=0.0000 sibLoads=0 iters=0 p50=349us p99.9=82370us kept=1464248 len=1464248
+THRASH up d=1 new/op=0.095 tsplit=17 ssplit=1 merges=0 two=0 bytes/op=141
+THRASH up d=2 new/op=0.100 tsplit=20 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=3 new/op=0.115 tsplit=23 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=4 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=5 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=142
+THRASH up d=6 new/op=0.115 tsplit=23 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=7 new/op=0.115 tsplit=23 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=8 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=9 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=10 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=11 new/op=0.115 tsplit=23 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=12 new/op=0.115 tsplit=23 ssplit=0 merges=0 two=0 bytes/op=142
+THRASH up d=13 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=152
+THRASH up d=14 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=15 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=16 new/op=0.120 tsplit=24 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=17 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=18 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=19 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=142
+THRASH up d=20 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=21 new/op=0.120 tsplit=24 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=22 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=23 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=24 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=25 new/op=0.120 tsplit=24 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=26 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=153
+THRASH up d=27 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=28 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=29 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=30 new/op=0.120 tsplit=24 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=31 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=32 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=33 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=142
+THRASH up d=34 new/op=0.115 tsplit=23 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=35 new/op=0.120 tsplit=24 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=36 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=159
+THRASH up d=37 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=38 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=39 new/op=0.115 tsplit=23 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH up d=40 new/op=0.115 tsplit=23 ssplit=0 merges=0 two=0 bytes/op=142
+THRASH down d=1 new/op=0.145 tsplit=27 ssplit=1 merges=0 two=0 bytes/op=154
+THRASH down d=2 new/op=0.140 tsplit=28 ssplit=0 merges=0 two=0 bytes/op=142
+THRASH down d=3 new/op=0.140 tsplit=28 ssplit=0 merges=0 two=0 bytes/op=142
+THRASH down d=4 new/op=0.140 tsplit=28 ssplit=0 merges=0 two=0 bytes/op=142
+THRASH down d=5 new/op=0.140 tsplit=28 ssplit=0 merges=0 two=0 bytes/op=142
+THRASH down d=6 new/op=0.140 tsplit=28 ssplit=0 merges=0 two=0 bytes/op=142
+THRASH down d=7 new/op=0.140 tsplit=28 ssplit=0 merges=0 two=0 bytes/op=142
+THRASH down d=8 new/op=0.140 tsplit=28 ssplit=0 merges=0 two=0 bytes/op=172
+THRASH down d=9 new/op=0.115 tsplit=23 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH down d=10 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH down d=11 new/op=0.100 tsplit=20 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH down d=12 new/op=0.095 tsplit=19 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH down d=13 new/op=0.100 tsplit=18 ssplit=1 merges=0 two=0 bytes/op=141
+THRASH down d=14 new/op=0.140 tsplit=28 ssplit=0 merges=0 two=0 bytes/op=142
+THRASH down d=15 new/op=0.140 tsplit=28 ssplit=0 merges=0 two=0 bytes/op=153
+THRASH down d=16 new/op=0.140 tsplit=28 ssplit=0 merges=0 two=0 bytes/op=157
+THRASH down d=17 new/op=0.135 tsplit=27 ssplit=0 merges=0 two=0 bytes/op=142
+THRASH down d=18 new/op=0.140 tsplit=28 ssplit=0 merges=0 two=0 bytes/op=142
+THRASH down d=19 new/op=0.135 tsplit=27 ssplit=0 merges=0 two=0 bytes/op=142
+THRASH down d=20 new/op=0.145 tsplit=29 ssplit=0 merges=0 two=0 bytes/op=142
+THRASH down d=21 new/op=0.135 tsplit=27 ssplit=0 merges=0 two=0 bytes/op=142
+THRASH down d=22 new/op=0.140 tsplit=28 ssplit=0 merges=0 two=0 bytes/op=142
+THRASH down d=23 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=153
+THRASH down d=24 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH down d=25 new/op=0.105 tsplit=21 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH down d=26 new/op=0.095 tsplit=19 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH down d=27 new/op=0.100 tsplit=18 ssplit=1 merges=0 two=0 bytes/op=142
+THRASH down d=28 new/op=0.135 tsplit=27 ssplit=0 merges=0 two=0 bytes/op=142
+THRASH down d=29 new/op=0.140 tsplit=28 ssplit=0 merges=0 two=0 bytes/op=142
+THRASH down d=30 new/op=0.140 tsplit=28 ssplit=0 merges=0 two=0 bytes/op=142
+THRASH down d=31 new/op=0.140 tsplit=28 ssplit=0 merges=0 two=0 bytes/op=142
+THRASH down d=32 new/op=0.135 tsplit=27 ssplit=0 merges=0 two=0 bytes/op=142
+THRASH down d=33 new/op=0.140 tsplit=28 ssplit=0 merges=0 two=0 bytes/op=142
+THRASH down d=34 new/op=0.135 tsplit=27 ssplit=0 merges=0 two=0 bytes/op=142
+THRASH down d=35 new/op=0.145 tsplit=29 ssplit=0 merges=0 two=0 bytes/op=158
+THRASH down d=36 new/op=0.135 tsplit=27 ssplit=0 merges=0 two=0 bytes/op=142
+THRASH down d=37 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH down d=38 new/op=0.110 tsplit=22 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH down d=39 new/op=0.100 tsplit=20 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH down d=40 new/op=0.095 tsplit=19 ssplit=0 merges=0 two=0 bytes/op=141
+THRASH worst new/op=0.145 at down d=1
+[0.9s] DONE
+rc=0 09:34:30
+ 9:34  up 23 days,  2:19, 5 users, load averages: 11.91 11.18 9.31

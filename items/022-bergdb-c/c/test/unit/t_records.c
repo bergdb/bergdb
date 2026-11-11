@@ -435,7 +435,7 @@ TEST(records_negative_node_size) {
     st_init(&r);
     memset(b, 0, sizeof b);
     bytes_put_int_le(112, b);
-    b[4] = 5;
+    b[4] = ST_RECORD_FORMAT;
     bytes_put_long_le(1, b + 8);
     bytes_put_int_le(32, b + 32);
     b[36] = 40;
@@ -475,7 +475,7 @@ TEST(records_negative_node_size) {
 static void record_with_bad_node_size(uint8_t *b, int32_t size) {
     memset(b, 0, 112);
     bytes_put_int_le(112, b);
-    b[4] = 5;                               /* RECORD_FORMAT */
+    b[4] = ST_RECORD_FORMAT;                /* RECORD_FORMAT */
     bytes_put_long_le(1, b + 8);
     for (int32_t offset = 32; offset <= 64; offset += 32) {
         bytes_put_int_le(offset == 32 ? 32 : size, b + offset);

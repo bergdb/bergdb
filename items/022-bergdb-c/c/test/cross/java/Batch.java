@@ -45,7 +45,21 @@ public final class Batch {
                     new FileOutputStream(outFile), 1 << 16), false, "UTF-8");
             try {
                 switch (w[0]) {
-                case "run": status = bergdb.cross.Run.main(rest, out); break;
+                case "run": {
+                    // The delete path's counters of this run (Dag.statUnlinked and the
+                    // others, release 2026.4; bergdb 022-07), beside its output: what the
+                    // workload made the writer do. C's runner has no such counters; its
+                    // bytes are Java's, so the counts are C's too.
+                    long[] s0 = delStats();
+                    status = bergdb.cross.Run.main(rest, out);
+                    long[] s1 = delStats();
+                    StringBuilder b = new StringBuilder();
+                    for (int i = 0; i < s0.length; i++) {
+                        b.append(DEL_STATS[i]).append(' ').append(s1[i] - s0[i]).append('\n');
+                    }
+                    Files.write(new File(w[1] + ".delstats").toPath(), b.toString().getBytes("UTF-8"));
+                    break;
+                }
                 case "dump": status = bergdb.cross.Dump.main(rest, out); break;
                 case "scan": status = scan(rest[0], out, outFile); break;
                 default: throw new IllegalArgumentException("unknown job " + w[0]);
@@ -85,5 +99,15 @@ public final class Batch {
             r.close();
         }
         return 0;
+    }
+
+    static final String[] DEL_STATS = {"unlinked", "climbs", "emptykey", "keptnew", "takenback",
+            "collapses", "rootstakenback"};
+
+    static long[] delStats() {
+        return new long[] {bergdb.dag.Dag.statUnlinked, bergdb.dag.Dag.statClimbs,
+                bergdb.dag.Dag.statRelabels, bergdb.dag.Dag.statKeptNew,
+                bergdb.dag.Dag.statTakenBack, bergdb.dag.Dag.statCollapses,
+                bergdb.dag.Dag.statRootsTakenBack};
     }
 }

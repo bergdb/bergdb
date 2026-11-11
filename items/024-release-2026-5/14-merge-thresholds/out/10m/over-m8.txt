@@ -1,0 +1,34 @@
+== over m8 10:34:36 run n=10000000 fill=random shape=over phase=20000
+10:34  up 23 days,  3:19, 5 users, load averages: 4.74 6.47 6.96
+THR {phase=20000, shape=over, fill=random, dir=/Users/f/fl/bench/2026-11-11/thr/data/over-m8, n=10000000} m=8 h=17 c=17 merges=true
+Exception in thread "main" bergdb.pub.util.DbFailedException: The transaction at time 101070000 failed after it began (the cause); nothing is undone. The database takes no more transactions or reads and must be restarted: the restart rebuilds it from the stream.
+	at bergdb.core.Db.fail(Db.java:2604)
+	at bergdb.core.Db.executeInner(Db.java:2563)
+	at bergdb.core.Db.execute(Db.java:2388)
+	at bergdb.core.THR$Phase.exec(THR.java:137)
+	at bergdb.core.THR.fill(THR.java:301)
+	at bergdb.core.THR.run(THR.java:384)
+	at bergdb.core.THR.main(THR.java:675)
+Caused by: bergdb.storage.StreamIoException: Main storage not active: the main stream failed (the cause).
+	at bergdb.storage.RecoverableStream.append(RecoverableStream.java:558)
+	at bergdb.core.NodeStream.appendNodes(NodeStream.java:159)
+	at bergdb.core.Db.store(Db.java:2798)
+	at bergdb.core.Db.executeInner(Db.java:2527)
+	... 5 more
+Caused by: java.io.IOException: Main storage not active: the main stream failed (the cause).
+	at bergdb.storage.StorageManager.append(StorageManager.java:416)
+	at bergdb.storage.RecoverableStream.append(RecoverableStream.java:556)
+	... 8 more
+Caused by: java.io.IOException: Directory /Users/f/fl/bench/2026-11-11/thr/data/over-m8 is no longer the database's directory: it was deleted, moved or replaced while the database had it open. Nothing more is written there.
+	at bergdb.stream.FileStream.checkDirectory(FileStream.java:942)
+	at bergdb.stream.FileStream.openForRw(FileStream.java:1364)
+	at bergdb.stream.FileStream.newFile(FileStream.java:1247)
+	at bergdb.stream.FileStream.append(FileStream.java:400)
+	at bergdb.storage.BufferedStream.appendToStream(BufferedStream.java:437)
+	at bergdb.storage.BufferedStream.flushToStream(BufferedStream.java:355)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:267)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:181)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:160)
+	at java.base/java.lang.Thread.run(Thread.java:1527)
+rc=1 10:34:37
+10:34  up 23 days,  3:19, 5 users, load averages: 4.74 6.47 6.96

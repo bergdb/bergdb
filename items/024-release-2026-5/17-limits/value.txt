@@ -1,0 +1,37 @@
+# 11:56:41 main 68c3917e, timing
+size     what           ms       allocMB  note
+10000000 put0           172.7    13.2     sync 112.9 ms, next small put 0.5 ms, stream +10425096
+10000000 put1           183.0    0.0      sync 25.9 ms, next small put 0.2 ms, stream +10336800
+10000000 put2           76.3     0.0      sync 23.5 ms, next small put 0.2 ms, stream +10269664
+10000000 heap held      0.0      44.0     after 3 puts and a GC, MB
+10000000 get0 r0        67.6     20.1     length 10000000
+10000000 get0 r4        64.8     20.0     length 10000000
+10000000 get1 r4        65.8     20.0     length 10000000
+10000000 get2 r4        64.8     20.0     length 10000000
+10000000 restart        458.4    152.7    heap after 90.2 MB
+10000000 get after      62.7     0.0      length 10000000
+16777216 put0           250.1    22.0     sync 106.3 ms, next small put 0.4 ms, stream +17514360
+16777216 put1           146.2    0.0      sync 60.9 ms, next small put 0.1 ms, stream +17249392
+16777216 put2           134.6    0.0      sync 58.4 ms, next small put 0.1 ms, stream +17074176
+16777216 heap held      0.0      58.7     after 3 puts and a GC, MB
+16777216 get0 r0        104.5    33.6     length 16777216
+16777216 get0 r4        106.9    33.6     length 16777216
+16777216 get1 r4        106.3    33.6     length 16777216
+16777216 get2 r4        121.0    33.6     length 16777216
+16777216 restart        556.9    191.5    heap after 31.5 MB
+16777216 get after      105.1    0.0      length 16777216
+67108864 put0           882.6    85.1     sync 56.9 ms, next small put 0.4 ms, stream +69153960
+67108864 put1           627.7    0.0      sync 43.0 ms, next small put 0.1 ms, stream +67152472
+67108864 put2           612.0    0.0      sync 28.0 ms, next small put 0.1 ms, stream +67152408
+67108864 heap held      0.0      119.5    after 3 puts and a GC, MB
+67108864 get0 r0        443.6    134.2    length 67108864
+67108864 get0 r4        429.0    134.2    length 67108864
+67108864 get1 r4        417.2    134.2    length 67108864
+67108864 get2 r4        417.2    134.2    length 67108864
+67108864 restart        859.0    279.6    heap after 18.9 MB
+67108864 get after      422.6    0.0      length 67108864
+16 MiB: Fletcher 95.9 ms, CRC32C 2.1 ms, copy 2.0 ms
+16 MiB: Fletcher 107.8 ms, CRC32C 2.1 ms, copy 1.9 ms
+16 MiB: Fletcher 96.6 ms, CRC32C 2.1 ms, copy 2.0 ms
+-450756096
+# exit 11:57:00

@@ -1,0 +1,2 @@
+/Users/f/fl/bench/2026-11-11/thr/out/10m p5 k10-hashed run n=10000000 fill=seq shape=keep keep=10 order=hashed drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/10m dense k10-hashed run n=10000000 fill=seq shape=keep keep=10 order=hashed drive=10000
