@@ -39,10 +39,12 @@ high, xhigh for a hard task. At most 8 agents at a time (Frans,
 | 024-06 | The model gap: the Lean model against 2026.4's code | gap (high) | done 07:08 |
 | 026 | Item for release 2026.6, "a stable stream" (preliminary) | coordinator | done |
 | 024-07 | The last touch of a reclaim iteration (CL7): design, fix | touch (xhigh) | |
-| 024-08 | MEM 327 at 10M keys against 129.6 at 1M: the cause | mem (high) | |
+| 024-08 | MEM 327 at 10M keys against 129.6 at 1M: the cause | mem (high) | done 07:25 |
 | 024-09 | The tie of model and code repaired (024-06, A1 to A4) | tie (xhigh) | |
 | 022-07 | The C clone to release 2026.4 as released (CC1) | cc (high) | |
 | 024-10 | The builder's rule "the last operation wins" (CA1) | low (high) | |
+| 024-11 | The underfill fix: a design study, no code | fill (xhigh) | |
+| 024-12 | The key tree's model in Lean, run against Java | tree (xhigh) | |
 
 024-04 to 024-06 are read-only studies. 024-07 to 024-10 and 022-07 work
 in clones under `/Users/f/fl/bench/2026-11-11/<name>/clone` on their own
@@ -86,6 +88,18 @@ from them.
   the record limit at 100M keys (not read yet). Both sent on to mem and
   touch.
 * 07:10 Unattended until 09:00. Started touch, mem, tie, cc, low.
+* 07:23 Frans: 2026.5 may refuse 2026.4's databases ("2. as
+  recommended"); item commits may be pushed ("Sure, feel free to
+  push"). 07:24 started fill (024-11).
+* 07:25 024-08 done: the 327 is the shape of MEM's keys (a key of
+  exactly 7 bytes gets a key node of its own, 226 heap bytes), not the
+  count; 024-03 and 024-04 corrected; committed 9d134987, pushed.
+* 07:26 low disturbed touch's timing run (07:21 to 07:25) and said so;
+  touch told to rerun or mark those times.
+* 07:27 Frans on the order of work: model first, and the proofs wanted
+  (024-04, section 6): "Yes, start it." Started tree (024-12); touch
+  told to settle the cut question in Lean first; tie and tree told of
+  each other.
 
 
 ## 6. Outcome

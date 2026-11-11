@@ -38,7 +38,10 @@ own", and section 7):
   checks/p8-liveness.md) and the liveness tests: a shorter lag after a
   mass delete. No format cost.
 * **Merges at the delete** (023-05 P5), switched on by the record's
-  format, so that 2026.4's databases need no refusal.
+  format, so that 2026.4's databases need no refusal. Changed
+  2026-11-11, 07:23 (Frans, "as recommended"): 2026.5 may refuse
+  2026.4's databases, so one rerun path and a new record format; the
+  design study is 024-11.
 * **Fix (a) of the dirty top-node window** (023-05 P7), if the ratchet
   test shows that the window grows (023-08, Q6).
 * **`maintain()`**, the explicit call that drives cleanup (023-04, Y10).
