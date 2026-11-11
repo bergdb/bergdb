@@ -28,6 +28,11 @@ public class PutData extends OpData {
     /** Counter of time splits. */
     public long timeSplitCount;
     
+    /** Dag's own counts of the full nodes that rule O handled and of the new roots above a
+     *  space split's halves: changes of the key access path, for the merges at a delete
+     *  (bergdb 024-21; Dag.mergeAfterDelete). */
+    int fullNodes, newRootsMade;
+    
     
     // ==== Internal ====
 

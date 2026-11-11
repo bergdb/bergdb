@@ -5,7 +5,7 @@ The tree checker (bergdb 024-12, section 2.7; docs/trace-format.md, section
 only says how a trace becomes the model's objects, and what is compared.
 -/
 import Check.Trace
-import SIS.Tree.Bound
+import SIS.Tree.MergeProps
 import SIS.Tree.Top
 import Std.Data.HashMap
 
@@ -38,7 +38,8 @@ structure TTx where
 
 /-- The tree lines of a trace. -/
 structure TTrace where
-  /-- The TREE line: M, G, H and the primordial key node's id. -/
+  /-- The TREE line: M, G, H and the primordial key node's id; with merges, m and
+  c, and rule O's h (024-22, section 2.5). -/
   tree : Option (Params × NodeId) := none
   txs : Array TTx := #[]
   bad : Array String := #[]
@@ -118,8 +119,24 @@ def parseTreeLine (t : TTrace) (n : Nat) (line : String) : TTrace :=
   if line.startsWith "#" then t else
   match toks line with
   | ["TREE", m, g, h, k] => match m.toNat?, g.toNat?, h.toNat?, k.toNat? with
-    | some m, some g, some h, some k => { t with tree := some (⟨m, g, h⟩, k) }
+    | some m, some g, some h, some k => { t with tree := some ({ M := m, G := g, H := h }, k) }
     | _, _, _, _ => bad "bad TREE"
+  -- With the merges' thresholds m and c (bergdb 024-22, section 2.5). Rule O's h
+  -- is c: h = c in every set that a writer of format 7 has had (P5's B / 2, 024-14's
+  -- m8 17 B / 30); a line of 8 tokens gives h of its own.
+  | ["TREE", m, g, h, k, mb, mm] =>
+    match m.toNat?, g.toNat?, h.toNat?, k.toNat?, mb.toNat?, mm.toNat? with
+    | some m, some g, some h, some k, some mb, some mm =>
+      { t with tree := some ({ M := m, G := g, H := h, mergeBelow := mb, mergeMax := mm,
+                               splitAbove := mm }, k) }
+    | _, _, _, _, _, _ => bad "bad TREE"
+  -- And rule O's h (record format 7, 024-14's m8: h is no longer M / 2).
+  | ["TREE", m, g, h, k, mb, mm, sa] =>
+    match m.toNat?, g.toNat?, h.toNat?, k.toNat?, mb.toNat?, mm.toNat?, sa.toNat? with
+    | some m, some g, some h, some k, some mb, some mm, some sa =>
+      { t with tree := some ({ M := m, G := g, H := h, mergeBelow := mb, mergeMax := mm,
+                               splitAbove := sa }, k) }
+    | _, _, _, _, _, _, _ => bad "bad TREE"
   | ["TX", i] => match i.toNat? with
     | some i => { t with txs := t.txs.push { idx := i } }
     | none => t
@@ -330,6 +347,19 @@ def checkTx (p : Params) (P after : PMap) (r : TRec) (x : TTx) : TxResult := Id.
   -- every pointer of an entry added names a node of P (live or dead: TP4).
   for f in faultsAt p viewA i do
     res := { res with inv := res.inv ++ [s!"T({i}): {f}"] }
+  -- With merges, BU1's count (TP31, bergdb 024-22): the key nodes reachable at i are
+  -- at most S + (n + S - 1) / (m - 1), for the n keys the tree holds at i (its scan) in
+  -- S segment trees.
+  if p.merges then
+    let kvs := (scan p viewA i {} 1000000000).map (fun kv => (kv.key, kv.h))
+    let trees := segTrees kvs
+    let bound := trees + (kvs.length + trees - 1) / (p.mergeBelow - 1)
+    let nodes := match rootAt viewA i with
+      | some r => (nodesAt p viewA i p.fuel r).length
+      | none => 0
+    if bound < nodes then
+      res := { res with inv := res.inv ++
+        [s!"T({i}): BU1: {nodes} key nodes reachable, more than {bound}: {kvs.length} keys, {trees} segment trees"] }
   for (y, _, v) in r.adds do
     for z in bptrs v do
       if (after[z]?).isNone then

@@ -956,6 +956,15 @@ public class KeyNode implements Node {
     }
     
     /**
+     * Adds a KEY klong with a pointer to 'node' to this last version (lastVersion()), in
+     * compare value order: for a merge's parent (bergdb 024-21; Dag.mergeParent). No reader
+     * sees this node yet. Write access required.
+     */
+    public void addSortedKlong(long klong, Node node, long accessData) {
+        addToSorted(klong, Handle.pointeeOf(node), node != null ? node.getSpos() : accessData);
+    }
+    
+    /**
      * Replaces existing key klong along with pointer and accessData if
      * 'klong' equals an existing key klong at the same time.
      * Delete klongs are not allowed in this KeyNode.

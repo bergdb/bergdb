@@ -2750,12 +2750,14 @@ public class Db implements AutoCloseable {
         
         long cheap = 0;
         for (Kv kv : t.kvs) {
-            // A delete: with the upward unlink two klongs in every node of its path, and the
-            // klongs of root collapse in the segment leaves above (Dag.dirtyNodeBound; bergdb
-            // 023-07, section 5.4); P1's factor of 7, kept as a margin over a put's 3. A value
+            // A delete: with the upward unlink and the merges four klongs in every node of its
+            // path, the klongs of root collapse in the segment leaves above, and four nodes a
+            // level and two levels more for the merges (Dag.dirtyNodeBound; bergdb 023-07,
+            // section 5.4; 024-21): 20 nodes a level, over the walk's count of a delete with
+            // its path's overflows at node size 8 (2026.4: 7); a put 3. A value
             // transformation may give null, a delete (bergdb 023-11, review B, B2).
             final boolean delete = kv.getValue() == null || kv.valueTransformation != null;
-            cheap += (delete ? 7 : 3) * height * kv.getKey().length + 3;
+            cheap += (delete ? 20 : 3) * height * kv.getKey().length + 3;
         }
         if (cheap <= (limit - topBytes) / nodeBytes) {
             return;
@@ -2767,7 +2769,10 @@ public class Db implements AutoCloseable {
         final boolean[] deletes = new boolean[2 * t.kvs.length];
         for (Kv kv : t.kvs) {
             if (kv.keyTransformation != null) {
-                nodes += (kv.valueTransformation != null ? 7 : 3) * height * kv.getKey().length + 3;
+                // As the cheap test counts it: a delete too (bergdb 024-21: until then a delete
+                // with a key transformation counted as a put, 3 nodes a level).
+                final boolean delete = kv.getValue() == null || kv.valueTransformation != null;
+                nodes += (delete ? 20 : 3) * height * kv.getKey().length + 3;
             } else {
                 keys[n] = kv.getKey();
                 deletes[n] = kv.getValue() == null && kv.valueTransformation == null;

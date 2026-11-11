@@ -122,7 +122,7 @@ def main (args : List String) : IO UInt32 := do
         P := after
       for b in tt.bad.toList.take 8 do
         IO.println s!"bad line: {b}"
-      IO.println s!"tree: M={p.M} G={p.G} H={p.H}; {n} transactions, {opsN} operations ({noopN} noops), {made} key nodes made, {taken} taken back, {kn} KN lines, {gets} GET lines, {scans} SCAN lines, {touches} touches"
+      IO.println s!"tree: M={p.M} G={p.G} H={p.H}{if p.merges then s!" m={p.mergeBelow} c={p.mergeMax} h={p.splitAbove}" else ""}; {n} transactions, {opsN} operations ({noopN} noops), {made} key nodes made, {taken} taken back, {kn} KN lines, {gets} GET lines, {scans} SCAN lines, {touches} touches"
       let names := trail.toList.mergeSort (fun a b => decide (a.1 ≤ b.1))
       IO.println ("reached: " ++ ", ".intercalate (names.map (fun (s, k) => s!"{s} {k}")))
       report "C-T1 change" change n

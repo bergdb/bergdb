@@ -93,6 +93,13 @@ structure W where
   /-- Which rules ran, by name, for the checker's counts of what a run reached.
   No rule reads it. -/
   trail : List String := []
+  /-- The merges and the space splits made so far (bergdb 024-22), for the
+  statements of the costs (CB1, CB3 of 024-11). No rule reads them. -/
+  merges : Nat := 0
+  spaceSplits : Nat := 0
+  /-- Key nodes made outside the level bounds G and H (bergdb 024-22, MF3): an
+  error unless the transaction takes each back (`boundsOK`). -/
+  outside : List (NodeId × Nat × Nat) := []
   deriving Repr, Inhabited
 
 /-- What the writer reads and does not change: the parameters, the
@@ -156,13 +163,17 @@ def ghOf (x : NodeId) : M (Nat × Nat) := do
   | none => throw s!"corrupt: key node {x} has no segment and height"
 
 /-- A new key node in segment g at height h (`keyNodeCreated`). Outside the
-bounds G and H its level would not be below its parent's (A4; 024-12, D5): an
-error. -/
+bounds G and H its level would not be below its parent's (A4; 024-12, D5): such
+a node is noted, and is an error at the transaction's end unless the
+transaction took it back (`boundsOK`). A trace's G and H are those of the nodes
+written, and a delete can make a root one above them that root collapse takes
+back in the same operation (024-22, MF1 and MF3); the writer reads a node's
+segment and height from `gh`, never from its level. -/
 def newKey (g h : Nat) (leaf : Bool) (ks : List Klong) : M NodeId := do
   let c ← read
-  if c.p.G < g || c.p.H < h then
-    throw s!"bounds: the tree leaves the level bounds: segment {g}, height {h}; G = {c.p.G}, H = {c.p.H}"
   let x ← fresh
+  if c.p.G < g || c.p.H < h then
+    modify (fun w => { w with outside := (x, g, h) :: w.outside })
   modify (fun w => { w with nodes := w.nodes ++ [(x, ⟨leaf, ks⟩)], gh := (x, g, h) :: w.gh,
                             made := w.made ++ [⟨x, c.p.keyLevel g h, false⟩] })
   pure x
@@ -270,7 +281,8 @@ def replaceOrAdd (last : KNode) (ins : List (Nat × NodeId)) : M KNode := do
 last version `last` and the klongs `ins` to insert; `up` gives klongs to the
 parent (`appendKlongs` one level up).
 
-More than M/2 klongs in the last version: a space split (`spaceSplit`; in place
+More than h klongs in the last version (`Params.splitAbove`, `Dag.splitAbove`;
+M / 2 until record format 7): a space split (`spaceSplit`; in place
 for a node that the transaction made, `spaceSplitInPlace`). Else a time split
 (`timeSplit`, `timeSplitInPlace`). A node that existed before the transaction
 then loses its klongs of the transaction (`toPreviousState`). -/
@@ -285,7 +297,8 @@ def handleFullWith (up : NodeId → List (Nat × NodeId) → M Unit) (depth : Na
   let parentLeaf ← match parent with
     | some q => do pure (← getNode q).leaf
     | none => pure false
-  if last.size > c.p.M / 2 then
+  if last.size > c.p.splitAbove then
+    modify (fun w => { w with spaceSplits := w.spaceSplits + 1 })
     if newInTrans then
       -- Dag.spaceSplitInPlace: x keeps the first half.
       let second ← newKey g h n.leaf []
@@ -621,6 +634,294 @@ def collapseRoot (key : Key) (segment : Nat) : Nat → M Unit
       if made then takeBackRoot root depth only else replaceRoot root depth only
       collapseRoot key segment fuel
 
+/-! ## Merges at the delete (bergdb 024-11, section 5; 023-05, P5; 024-22)
+
+After a delete has changed a key node (its segment leaf, or after the upward
+unlink the segment leaf that kept a live klong), that node, if it is not the
+root of its segment tree and holds fewer than m live klongs (`mergeBelow`), is
+merged with a sibling under the same parent: their live klongs make one new
+node, or two of half each when they are more than c (`mergeMax`). The parent's
+klong of the left node names the first new node; the right node's compare value
+is deleted, or names the second new node. A merge into one node takes a live
+klong from the parent, which is checked in the same way, up to the segment
+root; then root collapse (RC). The two nodes merged are left out: one that
+existed loses its klongs of the transaction (`unlink`); one that the
+transaction made is taken back, and every klong of the transaction in the
+parent that names it names the first new node (024-11, M5 and V8). Nothing
+changes for m below 2 (`Params.merges`): release 2026.4's delete. -/
+
+/-- Down from key node x by `searchLte` for compare value cv, each node followed
+onto the key access path, to the node at height h of its segment tree. -/
+def descendHeight (cv h : Nat) : Nat → NodeId → M Unit
+  | 0, x => throw s!"bounds: a merge's descent from key node {x} went below the height bound"
+  | f + 1, x => do
+    let c ← read
+    let (_, hx) ← ghOf x
+    if hx == h then return
+    let n ← getNode x
+    if n.leaf || hx < h then
+      throw s!"Bug: merge descent at {c.i}: key node {x} at height {hx} is above no node at height {h}"
+    match n.searchLte c.i cv with
+    | none => throw s!"corrupt: key node {x}, not a segment leaf, has no klong at or below the key at {c.i}"
+    | some fd =>
+      pathAdd (some fd.c) fd.y
+      descendHeight cv h f fd.y
+
+/-- The node of segment g at height h on the key's path, at the transaction's
+time: the node that a delete changed, or what replaced it (a split keeps a
+node's segment and height; the roots it makes are above it). Rebuilds the key
+access path and returns the node's depth in it. P5's `Dag.descendToDepth` finds
+the same node by its depth, counting the new roots made since
+(`PutData.newRootsMade`). -/
+def descendToHeight (key : Key) (g h : Nat) : M Nat := do
+  let c ← read
+  let root ← descendToSegmentRoot key g
+  match key[g]? with
+  | none => throw s!"Bug: merge descent at {c.i}: the key has no segment {g}"
+  | some cv =>
+    descendHeight cv h c.p.fuel root
+    pure ((← pathSize) - 1)
+
+/-- In node n, over its key klongs that its last bitmap does not delete: the
+index of the last klong of compare value cx; the last klong of the smallest
+compare value above cx, with that value; the last klong of the largest below cx,
+with that value (`Dag.merge`'s loop: a klong of an equal value later in the node
+replaces the one before). -/
+def mergeIdx (n : KNode) (cx : Nat) : Option Nat × Option (Nat × Nat) × Option (Nat × Nat) :=
+  let del := n.lastBitmap
+  n.ks.zipIdx.foldl (fun (acc : Option Nat × Option (Nat × Nat) × Option (Nat × Nat)) (k, i) =>
+    match k with
+    | .key cv _ =>
+      if del.contains i then acc
+      else if cv == cx then (some i, acc.2.1, acc.2.2)
+      else if cx < cv then
+        (acc.1, (match acc.2.1 with
+          | none => some (i, cv)
+          | some (_, cva) => if cv ≤ cva then some (i, cv) else acc.2.1), acc.2.2)
+      else
+        (acc.1, acc.2.1, (match acc.2.2 with
+          | none => some (i, cv)
+          | some (_, cvb) => if cvb ≤ cv then some (i, cv) else acc.2.2))
+    | _ => acc) (none, none, none)
+
+/-- The first klong of a list gets compare value c (an inner node's empty key
+given its bound, or a bound made the empty key). -/
+def renameHead (c : Nat) : List (Nat × NodeId) → List (Nat × NodeId)
+  | (_, y) :: r => (c, y) :: r
+  | [] => []
+
+/-- The live klongs that a merge joins (024-11, M2): the left node's, then the
+right one's, in compare order; in an inner node the right one's first klong,
+the empty key, gets cR, its compare value in the parent. -/
+def mergeList (inner : Bool) (cR : Nat) (lvL lvR : List (Nat × NodeId)) : List (Nat × NodeId) :=
+  lvL ++ (if inner then renameHead cR lvR else lvR)
+
+/-- How a merge's klongs make nodes (024-11, M3): one node if they are at most c
+(`cap`); else two, the first ceil(n / 2) klongs and the rest, whose first
+compare value g the parent gets, and which in an inner node starts with the
+empty key, as a space split's second half. Returns the first node's klongs, and
+the second's with g. -/
+def splitMerged (inner : Bool) (cap : Nat) (e : List (Nat × NodeId)) :
+    List (Nat × NodeId) × Option (List (Nat × NodeId) × Nat) :=
+  if e.length ≤ cap then (e, none) else
+    let rest := e.drop ((e.length + 1) / 2)
+    (e.take ((e.length + 1) / 2),
+      some (if inner then renameHead 0 rest else rest, (rest.head?.map (·.1)).getD 0))
+
+/-- The klongs of a merge's new nodes (M2, M3). -/
+def mergeKlongs (inner : Bool) (cap cR : Nat) (lvL lvR : List (Nat × NodeId)) :
+    List (Nat × NodeId) × Option (List (Nat × NodeId) × Nat) :=
+  splitMerged inner cap (mergeList inner cR lvL lvR)
+
+/-- The klongs of a new node of the merge: a time klong of tt, then the key
+klongs. -/
+def newKlongs (tt : Time) (l : List (Nat × NodeId)) : List Klong :=
+  .time tt :: l.map (fun (cv, y) => Klong.key cv y)
+
+/-- Inserts the key klong (cv, y) into a last version (a time klong and key
+klongs in compare order) at its place (`KeyNode.addSortedKlong`). -/
+def insertSorted (ks : List Klong) (cv : Nat) (y : NodeId) : List Klong :=
+  match ks with
+  | [] => [.key cv y]
+  | k :: r =>
+    match k with
+    | .key c _ => if cv < c then .key cv y :: k :: r else k :: insertSorted r cv y
+    | _ => k :: insertSorted r cv y
+
+/-- `Dag.mergeParent` (024-11, M4): the parent p, at `depth` of the key access
+path, gets the left child's klong (index il, compare value cL) pointed to m1;
+the right child's (ir, cR) is deleted, or, if the second new node m2 starts at
+cR, pointed to m2; else m2 gets a new klong of its first compare value g. The
+bitmap comes before any new klong; the transaction's own bitmap, if it is the
+node's last klong, gets the bits in place; a klong of tt is pointed in place. A
+full node is replaced by its last version with the new pointers set (rule O,
+`handleFullNode` with nothing to insert). -/
+def mergeParent (p : NodeId) (depth il cL : Nat) (m1 : NodeId) (ir cR : Nat)
+    (m2 : Option (NodeId × Nat)) : M Unit := do
+  let c ← read
+  let tt := c.i
+  let pn ← getNode p
+  let deleteR := match m2 with
+    | some (_, g) => g != cR
+    | none => true
+  let ofTt := pn.lastTime == some tt
+  let after (i : Nat) : Bool := match pn.lastTimeIndex with
+    | some ti => decide (ti < i)
+    | none => false
+  let arrayDel := pn.lastBitmap
+  let hasTransDel := (match pn.ks.getLast? with
+    | some (.del _) => true
+    | _ => false) && ofTt
+  let union := if deleteR then bitsUnion arrayDel (pn.bitsOf cR) else arrayDel
+  let lInPlace := ofTt && after il
+  let rInPlace := !deleteR && ofTt && after ir
+  let need := (if deleteR && !hasTransDel then 1 else 0) + (if lInPlace then 0 else 1) +
+    (if m2.isNone || rInPlace then 0 else 1) + (if ofTt then 0 else 1)
+  if pn.size + need ≤ c.p.M then
+    note (if deleteR then "merge.parent.delete" else "merge.parent.repoint")
+    let n1 := if !deleteR then pn
+      else if hasTransDel then pn.setAt (pn.size - 1) (.del union)
+      else pn.add tt (.del union)
+    let n2 := if lInPlace then n1.repoint il m1 else n1.add tt (.key cL m1)
+    let n3 := match m2 with
+      | some (y, g) => if rInPlace then n2.repoint ir y else n2.add tt (.key (if deleteR then g else cR) y)
+      | none => n2
+    putNode p n3
+  else
+    note "merge.parent.full"
+    let last := pn.lastVersionGivenDel tt union
+    let last ← match replaceKlong last.ks tt cL m1 with
+      | .ok (some ks) => pure { last with ks := ks }
+      | .ok none => throw s!"Bug: merge at {tt}: no klong of the left child in the last version of {p}"
+      | .error e => throw e
+    let last ← match m2 with
+      | some (y, g) =>
+        if deleteR then pure { last with ks := insertSorted last.ks g y }
+        else match replaceKlong last.ks tt cR y with
+          | .ok (some ks) => pure { last with ks := ks }
+          | .ok none => throw s!"Bug: merge at {tt}: no klong of the right child in the last version of {p}"
+          | .error e => throw e
+      | none => pure last
+    handleFull depth p last
+
+/-- `Dag.sibling`: the node that klong i of p names, read as the writer reads a
+path (`followQuietly`: not marked); a key node of the merged node's kind. -/
+def sibling (p : NodeId) (pn : KNode) (i : Nat) (inner : Bool) : M (NodeId × KNode) := do
+  let c ← read
+  match pn.ptr? i with
+  | none => throw s!"Bug: merge at {c.i}: klong {i} of key node {p} is no key klong"
+  | some s =>
+    let sn ← getNode s
+    if sn.leaf == inner then
+      throw s!"Bug: merge at {c.i}: the sibling {s} at {i} of key node {p} is not a node of its kind"
+    pure (s, sn)
+
+/-- `Dag.merge` (024-11, M1 to M5): merges node x, at depth d of the key access
+path and not a root, with a sibling under its parent. The sibling (M1): the
+left one (the live klong next below x's) if it exists and the two hold at most c
+live klongs, or there is no right one; else the right one. Returns 1 for one
+new node (the parent lost a live klong), 2 for two (it did not).
+
+What P5 skips (no sibling; an empty node; an inner node whose first live klong
+is not the empty key) is an error here, a state that V1 to V3 exclude
+(024-22, section 2). -/
+def merge (x : NodeId) (d : Nat) : M Nat := do
+  let c ← read
+  let tt := c.i
+  let p ← pathNode (d - 1)
+  let pn ← getNode p
+  let xn ← getNode x
+  let inner := !xn.leaf
+  let cx ← klongAt d
+  let (ix?, ia, ib) := mergeIdx pn cx
+  let ix ← match ix? with
+    | some ix => pure ix
+    | none => throw s!"Bug: merge at {tt}: key node {x} has no live klong {cx} in {p}"
+  if pn.ptr? ix != some x then
+    throw s!"Bug: merge at {tt}: key node {x} is not the live child of its klong in {p}"
+  let left ← match ib with
+    | some (ib, _) => do
+      let (ls, lsn) ← sibling p pn ib inner
+      if ia.isNone || lsn.cnt + xn.cnt ≤ c.p.mergeMax then pure (some (ib, ls, lsn))
+      else pure none
+    | none => pure none
+  -- (l, ln, il, r, rn, ir): the left node, its klong's index in p; the right one.
+  let (l, ln, il, r, rn, ir) ← match left with
+    | some (ib, ls, lsn) => pure (ls, lsn, ib, x, xn, ix)
+    | none =>
+      match ia with
+      | some (ia, _) => do
+        let (rs, rsn) ← sibling p pn ia inner
+        pure (x, xn, ix, rs, rsn, ia)
+      | none => throw s!"Bug: merge at {tt}: key node {x} has no sibling in {p}"
+  note (if left.isSome then "merge.left" else "merge.right")
+  let cL ← match pn.cv? il with
+    | some v => pure v
+    | none => throw s!"Bug: merge at {tt}: no klong {il} in {p}"
+  let cR ← match pn.cv? ir with
+    | some v => pure v
+    | none => throw s!"Bug: merge at {tt}: no klong {ir} in {p}"
+  let lvL := ln.live
+  let lvR := rn.live
+  if lvL.isEmpty || lvR.isEmpty then
+    throw s!"Bug: merge at {tt}: key node {l} or {r} has no live klong"
+  if inner && ((lvL.head?.map (·.1)) != some 0 || (lvR.head?.map (·.1)) != some 0) then
+    throw s!"Bug: merge at {tt}: inner node {l} or {r} has no live klong of the empty key first"
+  let (first, second) := mergeKlongs inner c.p.mergeMax cR lvL lvR
+  modify (fun w => { w with merges := w.merges + 1 })
+  note (if second.isSome then "merge.two" else "merge.one")
+  note (if inner then "merge.inner" else "merge.leaf")
+  let (g, h) ← ghOf x
+  let lMade := ln.firstTime == some tt
+  let rMade := rn.firstTime == some tt
+  if lMade then note "merge.made.left"
+  if rMade then note "merge.made.right"
+  let m1 ← newKey g h (!inner) (newKlongs tt first)
+  setMadeFor m1 (← if lMade then replacedBy l else pure (some l))
+  let m2 ← match second with
+    | some (ks2, g2) => do
+      let y ← newKey g h (!inner) (newKlongs tt ks2)
+      setMadeFor y (← if rMade then replacedBy r else pure (some r))
+      pure (some (y, g2))
+    | none => pure none
+  mergeParent p (d - 1) il cL m1 ir cR m2
+  -- The two nodes merged are left out (M5).
+  for (o, made) in [(l, lMade), (r, rMade)] do
+    if made then
+      retarget p o m1
+      takenBack o
+      note "merge.takeback"
+    else unlink o
+  pure (if second.isSome then 2 else 1)
+
+/-- `Dag.mergeAfterDelete` (024-11, the fix loop F3 and F4): from the node of
+segment g at height h on the key's path, while it is not the root of its
+segment tree and holds fewer than m live klongs, it is merged; after a merge
+into one node its parent, one height up, is checked. Returns true if a merge was
+made, after which root collapse is due (F1). -/
+def mergeUp (key : Key) (g : Nat) : Nat → Nat → Bool → M Bool
+  | 0, _, _ => throw "bounds: the merges went above the height bound"
+  | f + 1, h, merged => do
+    let c ← read
+    let d ← descendToHeight key g h
+    if d == 0 then return merged
+    let x ← pathNode d
+    let q ← pathNode (d - 1)
+    if (← getNode q).leaf then return merged
+    if (← getNode x).cnt ≥ c.p.mergeBelow then return merged
+    let r ← merge x d
+    if r == 2 then return true
+    mergeUp key g f (h + 1) true
+
+/-- After a delete changed the node of segment g at height h on the key's path:
+the merges, if they are on, and root collapse after a merge (`Dag.deleteUpward`
+with P5's calls of `mergeAfterDelete`). -/
+def afterDelete (key : Key) (g h : Nat) : M Unit := do
+  let c ← read
+  if c.p.merges then
+    if ← mergeUp key g c.p.fuel h false then
+      collapseRoot key g c.p.fuel
+
 /-- The climb of `Dag.deleteUpward`: from the emptied node at `top` of the key
 access path, the depth of the first node above that keeps a live klong; nothing
 is changed. -/
@@ -653,7 +954,9 @@ def deleteUpward (leaf : NodeId) (depth : Nat) (cv : Nat) (key : Key) : M Bool :
   let leafUnion := bitsUnion leafDel (n.bitsOf cv)
   if leafUnion == leafDel then return true
   if !n.allKeysIn leafUnion then
+    let (g, h) ← ghOf leaf
     let _ ← appendDeleteKlong leaf depth cv
+    afterDelete key g h
     return false
   -- The leaf is empty after the delete: UP.
   let stop ← climb depth
@@ -678,9 +981,11 @@ def deleteUpward (leaf : NodeId) (depth : Nat) (cv : Nat) (key : Key) : M Bool :
   let s ← pathNode stop
   let cs ← klongAt (stop + 1)
   let sn ← getNode s
+  let (gs, hs) ← ghOf s
   if sn.leaf then
     note "up.stop-at-segment-leaf"
     let _ ← appendDeleteKlong s stop cs
+    afterDelete key gs hs
     return false
   if sn.smallestLive != some 0 then
     throw s!"Bug: the upward unlink at {tt}: inner node {s} has no live klong of the empty key"
@@ -688,6 +993,8 @@ def deleteUpward (leaf : NodeId) (depth : Nat) (cv : Nat) (key : Key) : M Bool :
     let _ ← appendDeleteKlong s stop cs
   else
     emptyKeyNext s stop
+  if c.p.merges then
+    let _ ← mergeUp key gs c.p.fuel hs false
   collapseRoot key segment (c.p.fuel)
   return false
 
@@ -799,6 +1106,17 @@ def changesOf (i : Time) (w : W) : Changes BVal :=
   { new := new,
     adds := (keyAdds ++ valAdds ++ topAdds).mergeSort (fun a b => decide (a.1 ≤ b.1)) }
 
+/-- The level bounds at the transaction's end: a key node made outside G and H
+that the transaction did not take back is the `bounds:` error (`newKey`). -/
+def boundsOK (p : Params) (r : Except String (List Bool × W)) : Except String (List Bool × W) :=
+  match r with
+  | .error e => .error e
+  | .ok (noops, w) =>
+    match w.outside.find? (fun q => !w.taken.contains q.1) with
+    | some (_, g, h) =>
+      .error s!"bounds: the tree leaves the level bounds: segment {g}, height {h}; G = {p.G}, H = {p.H}"
+    | none => .ok (noops, w)
+
 /-- The writer's run from its super root z and the view without the root. -/
 def runOpsFrom (p : Params) (base : NodeId) (ops : List Op) (i : Time) (z : Option NodeId)
     (v : View BVal) : Except String (List Bool × W) :=
@@ -807,7 +1125,8 @@ def runOpsFrom (p : Params) (base : NodeId) (ops : List Op) (i : Time) (z : Opti
   | some z =>
     match topOf p v z with
     | .error e => .error e
-    | .ok top => ((ops.mapM putKv).run { p := p, i := i, view := v }).run { next := base, top := top }
+    | .ok top =>
+      boundsOK p (((ops.mapM putKv).run { p := p, i := i, view := v }).run { next := base, top := top })
 
 /-- The writer's run of a list of operations at time i from P@(i-1): the final
 state, and for each operation whether it was a noop. -/

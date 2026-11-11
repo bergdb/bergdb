@@ -1588,7 +1588,11 @@ public final class Eviction {
      * hand's round is done, no detachable object stored before the decided cut is resident,
      * and no resident key node holds a value stored before it (Twin.checkDead); the hand has
      * taken objects and values; the stream is the twin's without eviction, byte for byte,
-     * and every lookup at every available time is the same, with restarts, the audit on.
+     * and every lookup at every available time is the same, with restarts, the audit on. The
+     * restarts come at overwrite 190, 390, ... (bergdb 024-21; until then at 120, 270, ...):
+     * with the merges at the delete the first cut came after the first restart, which loads
+     * only the startup section, so no object stored before the cut was resident when the
+     * hand ran, and it took none.
      */
     @Nano
     public static void testDeadHand() {
@@ -1668,7 +1672,7 @@ public final class Eviction {
         for (int i = 0; i < (quick ? 300 : 900); i++) {
             w.trans("a=" + i + big);
             if (w.checkDead()) checks++;
-            if (i % 150 == 120) {
+            if (i % 200 == 190) {
                 long[] ci = w.sub.internal().eviction().deadCounts();
                 for (int k = 0; k < 3; k++) c[k] += ci[k];
                 w.restart();

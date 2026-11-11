@@ -6,6 +6,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.*;
 
+import bergdb.dag.Dag;
 import bergdb.dag.GetData;
 import bergdb.dag.GetMany;
 import bergdb.dag.Kvt;
@@ -1609,7 +1610,11 @@ public class TraceExport {
         if (tree) {
             KeyNode first = topNodes.isEmpty() ? null : (KeyNode) topNodes.get(0).getPointerNode(0);
             out.println("TREE " + maxNode + " " + bounds[0] + " " + bounds[1] + " "
-                    + (first == null ? -1 : mid(first.getId())));
+                    + (first == null ? -1 : mid(first.getId()))
+                    // the writer's thresholds of format 7 (bergdb 024-21; 024-22, J2 and J9):
+                    // m, c and rule O's h; m is 1 below node size 8, where nothing merges
+                    + " " + Dag.minFill(maxNode) + " " + Dag.mergeCap(maxNode) + " "
+                    + Dag.splitAbove(maxNode));
         }
         for (String e : errors) out.println("ERROR " + e);
         if (!unreached.isEmpty()) {

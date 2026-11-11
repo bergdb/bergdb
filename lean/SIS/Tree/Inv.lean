@@ -68,6 +68,8 @@ Checks, for every key node reached (the names are those of SIS/Tree/Props.lean):
 * `LeftmostOK` (LE-b): an inner node's smallest live compare value is the
   empty key's, 0;
 * `RootsOK` (what RC leaves): an inner root has two live klongs at least;
+* `FillOK` (V1 of bergdb 024-11, the bound BU1; with merges on): a key node
+  that is not the root of its segment tree has at least m live klongs;
 * `RangeOK` (the order): a segment leaf's live compare values are at or above
   `lo` and below `hi`; an inner node's, but the empty key's, above `lo` and
   below `hi`;
@@ -100,6 +102,8 @@ def walk (p : Params) (view : View BVal) (t : Time) :
             [s!"LeftmostOK: inner node {x} has no live klong of the empty key at {t}"] else []) ++
           (if !n.leaf && isRoot && live.length < 2 then
             [s!"RootsOK: inner root {x} has {live.length} live klongs at {t}"] else []) ++
+          (if p.merges && !isRoot && live.length < p.mergeBelow then
+            [s!"FillOK: key node {x}, not a root, has {live.length} live klongs at {t}, fewer than m = {p.mergeBelow}"] else []) ++
           (live.filterMap (fun (c, _) =>
             let low := if n.leaf then decide (lo ≤ c) else (c == 0 || decide (lo < c))
             let high := match hi with

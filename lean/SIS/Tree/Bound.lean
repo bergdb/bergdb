@@ -27,6 +27,9 @@ structure Walked where
   collapses : Nat := 0
   fresh : List (Nat × List Key) := []
   freshLevel : Nat := 0
+  /-- A delete's path goes through it (`Walked.deleteBelow`, record format 7,
+  bergdb 024-21): a merge can replace it by a node of up to c + 1 klongs. -/
+  deleteBelow : Bool := false
   deriving Repr, Inhabited
 
 /-- The walked nodes, in the order they were first reached. -/
@@ -45,23 +48,34 @@ def Walk.reach (ws : Walk) (x : NodeId) (n : KNode) (up : Option NodeId) : Walk 
       | none => 0
     ws ++ [{ x := x, up := up, depth := depth, size := n.size, leaf := n.leaf }]
 
+/-- `Dag.roomAfterReplacement`: the room for more klongs that a node made by
+rule O or by a merge has at least, less a margin of 3, and at least 2: max(2,
+min(M / 2, M - h, M - c) - 3) (record format 7, bergdb 024-21 with 024-14's
+thresholds; 10 at node size 30). Without merges (c = 0, h = M / 2) it is
+2026.4's max(2, M / 2 - 3). -/
+def Params.roomAfterReplacement (p : Params) : Nat :=
+  max 2 (min (p.M / 2) (min (p.M - p.splitAbove) (p.M - p.mergeMax)) - 3)
+
 /-- `Dag.overflows`: how many times a node of `size` klongs, given `klongs`
-more and a time klong, can overflow. -/
-def overflows (m klongs size : Nat) : Nat :=
+more and a time klong, can overflow, in a node size m with q, the room after a
+replacement (`roomAfterReplacement`). `merged` (record format 7, bergdb
+024-21): a delete's path goes through the node, so a merge can replace it by a
+node of up to c + 1 klongs, with at most q of room. -/
+def overflows (m q klongs size : Nat) (merged : Bool := false) : Nat :=
   if klongs == 0 then 0 else
     let k := klongs + 1
-    let room := m - 2 - size
-    if k ≤ room then 0 else 1 + (k - room - 1) / (max 2 (m / 2 - 3))
+    let room := if merged then min (m - 2 - size) q else m - 2 - size
+    if k ≤ room then 0 else 1 + (k - room - 1) / q
 
 /-- The splits of a new tree's nodes, level by level: the loop
 `for (ov = overflows(klongs, 0); ov > 0; ov = overflows(ov, 1)) count += ov + 1`. -/
-def freshSplits (m : Nat) : Nat → Nat → Nat
+def freshSplits (m q : Nat) : Nat → Nat → Nat
   | 0, _ => 0
-  | f + 1, ov => if ov == 0 then 0 else ov + 1 + freshSplits m f (overflows m ov 1)
+  | f + 1, ov => if ov == 0 then 0 else ov + 1 + freshSplits m q f (overflows m q ov 1)
 
 /-- `Dag.freshTreeBound`: the nodes of the new segment trees of `keys`, which
 share their segments before `level` and whose segment `level` is in a new tree. -/
-def freshTreeBound (m : Nat) : Nat → List Key → Nat → Nat
+def freshTreeBound (m q : Nat) : Nat → List Key → Nat → Nat
   | 0, _, _ => 0
   | f + 1, keys, level =>
     let r := keys.foldl (fun (acc : Nat × List (Nat × List Key)) key =>
@@ -72,26 +86,29 @@ def freshTreeBound (m : Nat) : Nat → List Key → Nat → Nat
             (acc.1, acc.2.map (fun q => if q.1 == c then (c, q.2 ++ [key]) else q))
           else (acc.1 + 1, acc.2 ++ [(c, [key])])
         | none => acc) (0, [])
-    let ov := overflows m r.1 0
-    1 + freshSplits m (ov + 1) ov +
-      (r.2.map (fun q => freshTreeBound m f q.2 (level + 1))).foldl (· + ·) 0
+    let ov := overflows m q r.1 0
+    1 + freshSplits m q (ov + 1) ov +
+      (r.2.map (fun e => freshTreeBound m q f e.2 (level + 1))).foldl (· + ·) 0
 
-/-- The climb of a delete in the count: two klongs for every node from x up to
-the space root, and for each segment tree on the way the number of its inner
-nodes on the path, as the collapses of its root. -/
-def markDelete : Nat → Walk → Option NodeId → Option NodeId → Nat → Walk
+/-- The climb of a delete in the count: `add` klongs for every node from x up
+to the space root (two; four with the merges of record format 7, bergdb
+024-21, which also mark each node `deleteBelow`), and for each segment tree on
+the way the number of its inner nodes on the path, as the collapses of its
+root. -/
+def markDelete (add : Nat) (merges : Bool) : Nat → Walk → Option NodeId → Option NodeId → Nat → Walk
   | 0, ws, _, _, _ => ws
   | f + 1, ws, cur, below, inner =>
     match cur.bind ws.get? with
     | none => ws
     | some u =>
-      let ws := ws.modify u.x (fun w => { w with klongs := w.klongs + 2 })
+      let ws := ws.modify u.x (fun w => { w with klongs := w.klongs + add,
+                                                 deleteBelow := w.deleteBelow || merges })
       if u.leaf then
         let ws := match below with
           | some b => ws.modify b (fun w => { w with collapses := max w.collapses inner })
           | none => ws
-        markDelete f ws u.up (some u.x) 0
-      else markDelete f ws u.up (some u.x) (inner + 1)
+        markDelete add merges f ws u.up (some u.x) 0
+      else markDelete add merges f ws u.up (some u.x) (inner + 1)
 
 /-- The descent of the count in one segment tree: from node x by `searchLte` to
 the segment leaf, each node walked; it ends above the leaf where no klong is at
@@ -112,37 +129,42 @@ def boundDescend (p : Params) (view : View BVal) (t : Time) (cv : Nat) :
           | none => (ws, x)
 
 /-- The walk of one key in the count: the loop of `dirtyNodeBound` over the
-key's segments from index i, at node x. Returns the walk and whether the key is
-a delete that reached its last segment. -/
+key's segments from index i, at node x. Returns the walk and, for a delete that
+reached its last segment, the depth of the node it reached there. -/
 def boundKey (p : Params) (view : View BVal) (t : Time) (key : Key) (isDel : Bool) :
-    List Nat → Nat → Walk → NodeId → Walk × Bool
-  | [], _, ws, _ => (ws, false)
+    List Nat → Nat → Walk → NodeId → Walk × Option Nat
+  | [], _, ws, _ => (ws, none)
   | cv :: rest, i, ws, x =>
     let (ws, x) := boundDescend p view t cv p.fuel ws x
     match rest with
     | [] =>
-      if isDel then (markDelete (ws.length + 1) ws (some x) none 0, true)
-      else (ws.modify x (fun w => { w with klongs := w.klongs + 1 }), false)
+      if isDel then
+        (markDelete (if p.format7 then 4 else 2) p.format7 (ws.length + 1) ws (some x) none 0,
+          some ((ws.get? x).map (·.depth) |>.getD 0))
+      else (ws.modify x (fun w => { w with klongs := w.klongs + 1 }), none)
     | _ :: _ =>
       match (knodeOf p view x).bind (fun n => n.searchEq t cv) with
       | none =>
-        if isDel then (ws, false) else
+        if isDel then (ws, none) else
           (ws.modify x (fun w =>
             let w := if w.fresh.isEmpty then { w with freshLevel := i } else w
             if w.fresh.any (fun q => q.1 == cv) then
               { w with fresh := w.fresh.map (fun q => if q.1 == cv then (cv, q.2 ++ [key]) else q) }
-            else { w with fresh := w.fresh ++ [(cv, [key])], klongs := w.klongs + 1 }), false)
+            else { w with fresh := w.fresh ++ [(cv, [key])], klongs := w.klongs + 1 }), none)
       | some fd =>
         match knodeOf p view fd.y with
         | some ny => boundKey p view t key isDel rest (i + 1) (ws.reach fd.y ny (some x)) fd.y
-        | none => (ws, false)
+        | none => (ws, none)
 
 /-- `Dag.dirtyNodeBound`: an upper bound on the key nodes that a transaction
 with these operations, at a later time, can make dirty or create, from the tree
 at time t: the nodes on the paths of the keys, the nodes that splits can make
 (counted from the klongs each node can get and the room it has), the new
 segment trees, and for a delete two klongs in every node of its path and the
-collapses of the roots above it. -/
+collapses of the roots above it. With the merges of record format 7 (bergdb
+024-21, `Params.format7`): four klongs in every node of a delete's path, room
+of at most q in a node on it (`overflows`' `merged`), and four nodes for each
+level of the path and two levels more. -/
 def dirtyNodeBound (p : Params) (view : View BVal) (t : Time) (ops : List Op) : Nat :=
   match rootAt view t with
   | none => 0
@@ -152,12 +174,15 @@ def dirtyNodeBound (p : Params) (view : View BVal) (t : Time) (ops : List Op) : 
     | some rn =>
       -- The space root is walked for each key, as in Java's loop: a transaction
       -- without operations walks no node, and its bound is 0.
-      let st := ops.foldl (fun (acc : Walk × Bool) op =>
+      let st := ops.foldl (fun (acc : Walk × Bool × Nat) op =>
         let isDel := match op with
           | .del _ => true
           | .put _ _ => false
         let res := boundKey p view t op.key isDel op.key 0 (Walk.reach acc.1 r rn none) r
-        (res.1, acc.2 || res.2)) (([] : Walk), false)
+        (res.1, acc.2.1 || res.2.isSome, acc.2.2 + (res.2.map (· + 1 + 2)).getD 0))
+        (([] : Walk), false, 0)
+      let mergeLevels := st.2.2
+      let st := (st.1, st.2.1)
       let ws := if st.2 then
           st.1.foldl (fun (ws : Walk) w => match w.up with
             | some u => ws.modify u (fun v => { v with klongs := v.klongs + w.collapses })
@@ -169,12 +194,14 @@ def dirtyNodeBound (p : Params) (view : View BVal) (t : Time) (ops : List Op) : 
         | none => acc
         | some w =>
           let count := acc.2 + (w.fresh.map (fun q =>
-            freshTreeBound p.M (p.G + 2) q.2 (w.freshLevel + 1))).foldl (· + ·) 0
-          let ov := overflows p.M w.klongs w.size
+            freshTreeBound p.M p.roomAfterReplacement (p.G + 2) q.2 (w.freshLevel + 1))).foldl
+              (· + ·) 0
+          let ov := overflows p.M p.roomAfterReplacement w.klongs w.size w.deleteBelow
           if ov == 0 then (acc.1, count) else
             match w.up with
             | some u => (acc.1.modify u (fun v => { v with klongs := v.klongs + ov + 1 }), count + ov + 1)
-            | none => (acc.1, count + ov + 1 + ov)) (ws, ws.length)).2
+            | none => (acc.1, count + ov + 1 + ov)) (ws, ws.length)).2 +
+        (if p.format7 && st.2 then 4 * mergeLevels else 0)
 
 /-- The key nodes of the tree at time t that have a node of `changed` at or
 below them: the nodes that the model's `marked` marks (the access path of the
@@ -229,9 +256,13 @@ create, from the limits and the tree's height bound alone: for each operation
 its path (at most H + 1 key nodes in each of its key's segment trees), eight
 times over, for the nodes walked, their splits and the splits above them, a
 delete's klongs and collapses, and the new segment trees. The constant is
-generous; the runs measure far less. -/
+generous; the runs measure far less. With the merges of record format 7
+(bergdb 024-21, 024-22): twenty times, as a delete gives each node of its path
+four klongs (not two) and a node on it has at most q of room, and four nodes
+for each level of the path and two levels more, 4 x (segments x (H + 2) + 3). -/
 def Limits.dirtyNodes (p : Params) (lim : Limits) : Nat :=
-  lim.maxOps * (8 * lim.maxSegs * (p.H + 2) + 2)
+  if p.format7 then lim.maxOps * (20 * lim.maxSegs * (p.H + 2) + 14)
+  else lim.maxOps * (8 * lim.maxSegs * (p.H + 2) + 2)
 
 /-- TP26 (bergdb 024-17). The user's limits bound a transaction's index nodes:
 `dirtyNodeBound` of a transaction within the limits is at most
