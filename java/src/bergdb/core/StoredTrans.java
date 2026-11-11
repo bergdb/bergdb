@@ -954,10 +954,13 @@ public class StoredTrans {
         }
     }
 
-    /** bergdb 005-74, option A: a node must fit inside its declared record. */
+    /**
+     * bergdb 005-74, option A: a node must fit inside its declared record; and since bergdb
+     * 024-25 hold its 12-byte header (sizes 8 and 11).
+     */
     @Nano
     private static void testNodeSizeOutsideRecord() {
-        for (int size : new int[] {1, 6, 7, Integer.MAX_VALUE}) {
+        for (int size : new int[] {1, 6, 7, 8, 11, Integer.MAX_VALUE}) {
             try {
                 parse(128, recordWithBadNodeSize(size));
                 throw new AssertionError("bad node size was accepted: " + size);
