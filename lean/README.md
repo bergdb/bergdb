@@ -32,14 +32,15 @@ with restarts (`T3_take`, `T3_take_restarts`), and after a decrease of the
 setting it shrinks with every transaction until it is below twice the new
 one, and then stays below it (`T3_take_decrease`); SIS/Proof/BoundTake.lean.
 `javaTake` gives the startup pos of Java's `TransSeq.take` on 300 generated
-cases (SIS/BoundExample.lean). Its share and dither are the double rule of
-2026-10-28; since bergdb 005-79 (2026-11-03) Java's take computes them in
-integers, in units of 2^-16 (`TransSeq.shareFp`, `ditherFp`). On the 300
-cases the integer take gives the same startup pos, `BoundExample.lean`'s;
-over 3 * 10^6 of TakeCheck's cases it differs from the double rule in 13,
-each taking one transaction more (the review of 005-79's Part B). The bit
-guards of `dither` and `share` have no Java counterpart since then, as
-`TransSeq.dither` is gone.
+cases (SIS/BoundExample.lean). Since bergdb 024-09 (2026-11-11; 015-03) its
+share and dither are Java's integer rule of bergdb 005-79 (2026-11-03), in
+units of 2^-16 (`shareFp`, `ditherFp`, as `TransSeq.shareFp` and `ditherFp`),
+with `#guard`s against Java's numbers and the 300 cases run again on release
+2026.4's code (`TakeCheck`, now java/stress/TakeCheck.java). From 2026-10-28
+until then they were the double rule that Java had before 005-79; the two
+rules give the same startup pos on the 300 cases, and over 3 * 10^6 of
+TakeCheck's cases they differ in 13, the integer rule taking one transaction
+more (the review of 005-79's Part B).
 
 Since bergdb item 009 (2026-10-25) the model also has handles: SIS/Handle.lean
 models 009's design of the physical layer (one handle per node, pointers that
@@ -104,6 +105,24 @@ it links what rule 4 by node id links (`rule4PosCut_handles`): the pointers it
 skips name no node with a canonical object; so the run with cuts and rule 4 by
 position is `runHandlesCut` (`runPosCut_handles`), and T12 over handles holds
 for it; SIS/Proof/HandleCutSkip.lean, SIS/Proof/HandleCutPos.lean.
+
+Since bergdb 024-09 (2026-11-11) the assumptions of the physical layer
+(`PhysStep`, `PhysRunOK`) are proved from the other assumptions, for any
+`Spec`: `adopt` from TREE after the transaction and A5 (`physStep_adopt`), and
+`liveNew` from one property of the function `live`, `LiveAppend`: entries added
+at the end of a history give no live child but their own pointees
+(`physStep_liveNew`). So `PhysRunOK` holds in every run that meets `RunOK`,
+with TREE after every transaction and `LiveAppend` (`physRunOK_of_tree`), and
+so in every run that meets `RunOK` and `EvictRunOK`, with `LiveAppend`
+(`physRunOK_of_evict`); SIS/Proof/PhysAssumptions.lean. For the trace checker's
+instance, `LiveAppend` and `SpecOK.liveSub`, which no check of a trace can
+establish, are proved of `blive` (`blive_append`, `blive_sub`), so its
+`PhysRunOK` follows from what C-A checks on a trace (`bspec_physRunOK`,
+`bspec_physRunOK_evict`); Check/Live.lean. The theorems state `PhysRunOK` as
+before: the trusted part is unchanged. A theorem that assumes `RunOK`,
+`PhysRunOK` and `EvictRunOK` holds without `PhysRunOK` for a Spec with
+`LiveAppend` (`without_physRunOK`; for a trace's instance, T-READ with handles
+as the example: `bspec_tr_handles`).
 
 
 Build and run
@@ -196,6 +215,18 @@ Check/R4.lean) are checked the same way:
     #print axioms SIS.Fast.reachList_eq_fast
     #print axioms SIS.Fast.step_eq_fast
     #print axioms SIS.TopBridge.r4Fast_sound
+
+And `PhysRunOK` from the other assumptions (bergdb 024-09), each printing
+`[propext, Classical.choice, Quot.sound]`, the two about `blive` without
+`Classical.choice`:
+
+    import Check.Live
+    #print axioms SIS.physRunOK_of_tree
+    #print axioms SIS.physRunOK_of_evict
+    #print axioms SIS.Check.blive_append
+    #print axioms SIS.Check.blive_sub
+    #print axioms SIS.Check.bspec_physRunOK
+    #print axioms SIS.Check.bspec_tr_handles
 
 
 What to read
@@ -350,11 +381,11 @@ its section in sis-model.md.
   first, each taken if it begins max(2 sd, span) or more before the end of
   the stream or if the pace takes it, with the setting sd any function of
   the transaction (`takePolicy`); BergDB's pace, its share and its dither in
-  the double arithmetic of Java's take from 2026-10-28 until 005-79
-  (`share`, `dither`, `javaPace`), and the take with it (`javaTake`); no
-  theorem uses these four, kept to check the model against that arithmetic
-  (the `#guard`s, TakeCheck); Java's take is in integers since 005-79
-  (015-03).
+  the integer arithmetic of Java's take since 005-79, in units of 2^-16
+  (`shareFp`, `ditherFp`, `javaPace`), and the take with it (`javaTake`);
+  no theorem uses these four, kept to check the model against that
+  arithmetic (the `#guard`s, TakeCheck); until bergdb 024-09 (015-03) they
+  were the double rule of 2026-10-28.
 * SIS/BoundTheorems.lean (sis-model.md, section 10; 007-01, 3; 007-08, 2).
   T3 (`T3_section`): in every run whose policy keeps up with d, the startup
   section without its last record costs less than d; also with restarts
@@ -452,6 +483,16 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
   (`treeAt_unique`), the parts of a transaction from step 3 on (`D1Of`,
   `takenOf`, `stepOf`), which depend on P only through its nodes
   (`stepOf_congr`).
+* PhysAssumptions (bergdb 024-09). `PhysStep` from the other assumptions,
+  for any `Spec`: `adopt` from TREE after the transaction, A5 and A4
+  (`physStep_adopt`: a new live child that the change does not create was
+  reachable before it, so it had a parent then, and that parent, unchanged
+  and still reachable, would be a second parent); `liveNew` from
+  `LiveAppend` (`physStep_liveNew`); and for a run, `PhysRunOK` from `RunOK`,
+  TREE after every transaction and `LiveAppend` (`physRunOK_of_tree`,
+  `physRunOK_of_evict`), so a theorem with handles holds without
+  `PhysRunOK` (`without_physRunOK`). P does not depend on the algorithm's
+  choices (`st_P_algo`).
 * PhysStart. The lazy startup from the stream after T(k) (WP E5): its rerun
   keeps `RInv` (every object canonical, every stream slot naming its
   pointee's latest version after Rule R and naming a version, a slot for
@@ -844,10 +885,10 @@ Not trusted, tests only:
   its last record stays below d with `sdPolicy`, with and without restarts;
   a sketch of BergDB's take before 007-07 (`oldTake`) with a tight node
   limit does not keep up. Since bergdb 007-08, BergDB's take since 007-07:
-  `dither` and `share` give the bits of Java's `TransSeq.dither` and share
-  (until 005-79);
+  `ditherFp` and `shareFp` give the numbers of Java's `TransSeq.ditherFp`
+  and `shareFp` (since bergdb 024-09; the double rule's bits until then);
   `javaTake` gives the result of Java's `TransSeq.take` on 300 cases that
-  `TakeCheck` (../items/007-bounds/08-step4-take-in-lean/) and `takeCase`
+  `TakeCheck` (../java/stress/TakeCheck.java) and `takeCase`
   make with the same generator; runs of example 2 with `javaTake` at a
   constant setting, with restarts (the same stream as without, T2) and
   with decreases of the setting meet `T3_take_step`, `T3_take` and
@@ -871,6 +912,13 @@ Not trusted, tests only:
   exponential `topClosure` runs only when that test fails. On 2026-10-16 (001-02) the
   medium set took 88 s instead of 6,770 s, and a trace of 5,000 transactions
   at node size 30 with 1,000 keys 428 s and 128 MB.
+* Check/Live.lean (bergdb 024-09), not part of the checker's program: what
+  the model assumes of the function `live`, proved of the checker's `blive`:
+  `LiveAppend` (`blive_append`) and `SpecOK.liveSub` (`blive_sub`). With
+  SIS/Proof/PhysAssumptions.lean: the `PhysRunOK` of a trace's instance
+  follows from `RunOK` and TREE after every transaction, which C-A checks
+  (`bspec_physRunOK`, `bspec_physRunOK_evict`), and T-READ with handles
+  holds for it from `RunOK` and `EvictRunOK` (`bspec_tr_handles`).
 
 Choices made in Lean that the text leaves open:
 
@@ -949,6 +997,11 @@ run):
   `LM_ruleR`, `LM_cutTo`; L2), T1-L (`T1_lazy`, L3), CC and T2-L
   (`CC_canonical`, `T2_lazy`, L4); Java's first touches after restarts are
   checked against the model's rule (C-L, L5).
+* The assumptions of the physical layer (bergdb 024-09): `PhysRunOK` from
+  `RunOK`, TREE after every transaction and `LiveAppend`, a property of the
+  function `live` (`physRunOK_of_tree`, `physRunOK_of_evict`); `LiveAppend`
+  and `SpecOK.liveSub` for the trace checker's `blive` (`blive_append`,
+  `blive_sub`).
 * Stage 2, eviction, over handles (009): T-CACHE, T-READ, T2-C and T-PIN
   (`tc_handles`, `tr_handles`, `t2_handles`, `tr_handles_restarts`,
   `tp_handles`), and rule 4 by position (005-58).
@@ -970,8 +1023,6 @@ by `tracecheck` ([levels.md](../docs/levels.md)).
 
 Not done:
 
-* A check of the physical layer's assumptions (`PhysStep`, M47) on Java
-  traces; they are argued (011-11, 13.3).
 * The bounds: T4 (D) (bergdb item 007). T3 for BergDB's take is proved
   without its record limit (bergdb 007-08). The stream's meta blocks are
   not modelled either, but they make no difference to the take: when it
