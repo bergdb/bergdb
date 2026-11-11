@@ -62,7 +62,8 @@ the Pub layer's (`pubimp`), built on the Core's four data methods
   `level2.sh` to `level4.sh` need Lean (elan) for their conformance steps.
   * `level1.sh`: the unit tests, DagFuzz, RestartStress with restarts by
     full replay, RestartInvariance (the same stream, byte for byte, with and
-    without restarts: T2), and the Props limits (MEM and SS).
+    without restarts: T2), and the Props limits (MEM, the keys' shape of
+    section 4, and SS).
   * `level2.sh`: RestartStress with bounded startup in random
     configurations, RestartInvariance, CrashTest (INV-CRASH), BryanRepro
     (the bug report ISSUE151111 of November 2015), and the conformance with
@@ -244,6 +245,35 @@ invariants of 2015-algos) and on replay determinism (rerunning the stored
 transactions rebuilds the same Dag, with the same node ids); neither is
 written down as a proof. Two bugs of the 2017 code were fixed on
 2026-10-12: 011-04, "The level 1 bugs".
+
+**The keys' shape and the heap** (024-08; 024-15). A key is cut into
+segments of 7 bytes (`Keys.toSegments`; a key of exactly 7, 14 or 21
+bytes ends with an empty segment, so that a klong of 7 bytes points to a
+tree and a shorter one to a value), and the keys that share their first j
+segments are in one segment tree, whose root is a key node. So the index
+holds a tree for each distinct prefix of 7, 14, 21 bytes that keys of
+that length or more have, and a prefix that only one key has, the whole
+key included when it is that long, is a key node for that key alone:
+about 226 bytes of heap (the node, its three arrays of 2 places, its
+handle and its entry in the node table), where a KV whose key shares its
+prefixes costs about 130 in all with an empty value. With everything in
+memory (`noEvict()`) and keys put in key order, the heap above the empty
+database's is at most 131 K + 230 T + V bytes: K the KVs, T the segment
+trees beyond the first segment's, V the values' byte arrays; in random
+key order K's constant is about 181, the splits' history. A random key of
+L bytes, such as a UUID, has L / 7 such trees, rounded down: at 1M keys
+of 36 random characters 1,305 bytes a KV, of 6 random characters 181.
+With eviction the heap stays near the budget for any key shape, and the
+one-key nodes cost stream bytes and reads instead: at 3M keys of 32
+random hex digits, 3.6 times the stream a put of keys that share their
+start, and 5.6 nodes read a get against 1.2 (024-08, section 8). `level1.sh` checks the two constants with
+`bergdb.dev.props.Mem`: MEM, 1M keys of 1 to 6 bytes, at most 131; SEG,
+MEM with 1M keys of exactly 7 bytes minus MEM, at most 230; and, in its
+full run, MEM with 10M keys `/k/%010d`, which share their first 7 bytes,
+at most 131, so that no term grows with the count. Frans counts this cost
+within release 2026.5's aim 3 (024-04, log of 2026-11-11), so it is
+documented and bounded, not fixed; `Connection` and `Db` give users the
+advice: keys that share their prefixes.
 
 
 ## 5. Level 2: bounded startup

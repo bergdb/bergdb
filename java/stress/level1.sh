@@ -22,7 +22,10 @@
 #   6. Props, the 2014-2017 property suite (bergdb.dev.props; bergdb item
 #      006-02): MEM, heap bytes per KV, and SS, stream bytes per user byte,
 #      checked against the limits below; CORE, the speed of four Core tests,
-#      printed and not checked (full only).
+#      printed and not checked (full only). With MEM, the cost of the keys'
+#      shape (bergdb 024-08, section 7; 024-15): MEM with keys of 7 bytes, a
+#      segment tree of one key each, minus MEM; and (full only, about 20 s)
+#      MEM at 10M keys that share their first 7 bytes.
 # The startup distance is set to 200 MB, larger than any stream here, so
 # startup always replays the whole stream. Logs go to build/level1/.
 # Set JAVA_HOME or PATH for the JDK; the build needs javac too.
@@ -121,18 +124,56 @@ echo "6. Props"
 # -XX:-UseCompactObjectHeaders) MEM is about 18 bytes higher for this code: it
 # is then printed, not checked. CORE (1.00 = cissi, July 2013) depends on the machine
 # and on what else runs: printed only.
+# The keys' shape (bergdb 024-08, section 7; 024-15): each prefix of 7, 14 or 21 bytes
+# that only one key has, the whole key included when it is that long, costs a key node
+# of its own. MEM's keys are 1 to 6 bytes long, so MEM has none. Two more runs
+# of Mem check the bound of the heap without eviction, 131 K + 230 T + the values'
+# bytes, K the KVs and T the segment trees beyond the first segment's (the distinct
+# prefixes of 7, 14, 21 bytes): SEG, MEM with keys %07d (1M keys of 7 bytes, a node
+# each) minus MEM, at most SEG_MAX, 226.0 to 226.4 on 2026-11-11 plus 3.6; and MEM10M,
+# MEM with 10M keys /k/%010d, which share their first 7 bytes, at most MEM_MAX, so that
+# no term grows with the count (127.0 on 2026-11-11; full only, about 20 s, 1.3 GB of
+# heap). Checked only with compact object headers, as MEM.
 MEM_MAX=131
+SEG_MAX=230
 SS_MAX="1.52 1.11 1.21 1.66 2.41"   # SS, then SS1 to SS4
 $JAVA -cp build/bergdb.jar bergdb.dev.props.Mem > $LOG/props-mem.txt 2>&1 &
+$JAVA -cp build/bergdb.jar bergdb.dev.props.Mem -keys %07d > $LOG/props-mem7.txt 2>&1 &
+if [ "$1" != quick ]; then
+    $JAVA -Xmx4g -cp build/bergdb.jar bergdb.dev.props.Mem -n 10000000 -keys /k/%010d \
+        > $LOG/props-mem10m.txt 2>&1 &
+fi
 $JAVA -cp build/bergdb.jar bergdb.dev.props.SS > $LOG/props-ss.txt 2>&1 &
 wait
+# memfig FILE: Mem's figure with one decimal, as "MEM:130 (129.6 bytes a KV, ...)" gives it.
+memfig() {
+    sed -n 's/^MEM:[0-9]* (\([0-9.]*\) bytes a KV.*/\1/p' $1
+}
 MEM=$(sed -n 's/^MEM:\([0-9]*\).*/\1/p' $LOG/props-mem.txt)
 [ -n "$MEM" ] || fail "Props MEM" $LOG/props-mem.txt
+MEM1=$(memfig $LOG/props-mem.txt)
+MEM7=$(memfig $LOG/props-mem7.txt)
+[ -n "$MEM1" ] && [ -n "$MEM7" ] || fail "Props MEM with keys %07d" $LOG/props-mem7.txt
+SEG=$(awk -v a=$MEM7 -v b=$MEM1 'BEGIN { printf "%.1f", a - b }')
+if [ "$1" != quick ]; then
+    MEM10M=$(memfig $LOG/props-mem10m.txt)
+    [ -n "$MEM10M" ] || fail "Props MEM at 10M keys" $LOG/props-mem10m.txt
+fi
 if $JAVA -XX:+PrintFlagsFinal -version 2>/dev/null | grep -Eq ' UseCompactObjectHeaders .*= true'; then
     [ "$MEM" -le $MEM_MAX ] || fail "Props MEM $MEM, more than $MEM_MAX bytes per KV" $LOG/props-mem.txt
     echo "   MEM:$MEM (at most $MEM_MAX)"
+    awk -v s=$SEG -v m=$SEG_MAX 'BEGIN { exit !(s <= m) }' \
+        || fail "Props SEG $SEG, more than $SEG_MAX bytes per key node of one key" $LOG/props-mem7.txt
+    echo "   SEG:$SEG, MEM with keys %07d $MEM7 minus MEM $MEM1 (at most $SEG_MAX)"
+    if [ "$1" != quick ]; then
+        awk -v s=$MEM10M -v m=$MEM_MAX 'BEGIN { exit !(s <= m) }' \
+            || fail "Props MEM10M $MEM10M, more than $MEM_MAX bytes per KV" $LOG/props-mem10m.txt
+        echo "   MEM10M:$MEM10M, 10M keys /k/%010d (at most $MEM_MAX)"
+    fi
 else
     echo "   MEM:$MEM (not checked: no compact object headers)"
+    echo "   SEG:$SEG (not checked)"
+    if [ "$1" != quick ]; then echo "   MEM10M:$MEM10M (not checked)"; fi
 fi
 SS=$(grep '^SS:' $LOG/props-ss.txt)
 [ -n "$SS" ] || fail "Props SS" $LOG/props-ss.txt
