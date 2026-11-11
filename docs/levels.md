@@ -397,9 +397,10 @@ How it works in Java:
   is full by its size first. So after every write a node holds at most
   theta dead klongs (024-23, TP39; checked by `Dag.checkFill`), where the
   merges alone allow B, and reclaim's rewrites, which are puts, compact
-  the cold leaves they reach. A compaction keeps every live klong, so the
-  fill (m, BU1) does not change. theta is 7 at node size 30, 7 B / 30 at
-  the others, at least 1, none below 8 (`Dag.theta`; 024-14's QT2 open).
+  the cold leaves that they take above theta. A compaction keeps every
+  live klong, so the fill (m, BU1) does not change. theta is 7 at node
+  size 30, 7 B / 30 at the others, at least 1, none below 8 (`Dag.theta`;
+  024-14's QT2 open).
   `Dag.dirtyNodeBound` counts one overflow at least for a node that its
   klongs can take above theta. The rerun of a record does the same; no
   field.

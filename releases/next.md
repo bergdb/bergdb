@@ -45,10 +45,12 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
   the write still read) replaces the node by its current version with the
   write applied, as a full node is replaced; theta is 7 at node size 30
   (1, 3 and 14 at 8, 14 and 62). In 2026.4 a node kept up to B such
-  entries until it filled; under random overwrites at 1M keys about 0.48
-  dead entries a live one, 0.35 with the rule, and a cold node that
-  reclaim rewrites keeps fewer than theta (0.83 down to 0.30; 024-18,
-  sections 4 and 6), for -3 % to +7 % stream bytes there. Each written
+  entries until it filled. The figures so far are of 024-18's prototype
+  (a slightly different rule, "theta or more before a write"; 024-18,
+  sections 4 and 6), until 024-23's own count replaces them: under random
+  overwrites at 1M keys about 0.48 dead entries a live one, 0.35 with the
+  rule, and in a cold database that reclaim rewrites 0.83 down to 0.30,
+  for -3 % to +7 % stream bytes. Each written
   node and each lookup through it carries fewer stale entries; a node
   that is never written again keeps up to theta. A start's rerun applies
   the same rule (no new field).

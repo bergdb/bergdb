@@ -1663,6 +1663,9 @@ public class Dag {
         final boolean room = sz + need <= this.maxNodeSize;
         
         // The dead klongs it adds: the next child's klong, and the empty key's unless in place.
+        // Not reached at format 7 from node size 8 (every node but a root holds m >= 2 live
+        // klongs, so no delete empties an inner node's child; theta is 0 below 8): the Lean
+        // model's emptyKeyNext runs it (treetest, theta forced below 8; bergdb 024-23, R3).
         if (room && !deadFull(node, inPlace ? 1 : 2)) {
             // The bitmap first: in the model's terms a bitmap deletes the klongs before it with
             // the compare values of its new bits (docs/trace-format.md, "D"); the empty key is
@@ -1851,7 +1854,8 @@ public class Dag {
     // is compacted in place. A node without room is full by its size first, as before. So after
     // every write a node holds at most theta dead klongs (bergdb 024-23, TP39), where the
     // merges alone allow B; and reclaim's rewrites, which are puts, compact the cold leaves
-    // they reach. A compaction keeps every live klong, so it changes no node's fill (V1, BU1).
+    // that they take above theta. A compaction keeps every live klong, so it changes no node's
+    // fill (V1, BU1).
     // A function of the node and the write, so a start's rerun of a record of format 7 makes
     // the same nodes; no field (bergdb 024-23, sections 2.2 to 2.4; Frans's decision of
     // 2026-11-11, 024-18, QD1). The Lean model: Exec.lean's deadOver.
