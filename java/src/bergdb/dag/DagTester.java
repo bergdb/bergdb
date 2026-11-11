@@ -792,12 +792,15 @@ public class DagTester {
      * (1) random histories, thinned out to leave chains of single children, and a transaction
      * of deletes and some puts; (2) a chain that root collapse takes in one delete, several
      * levels, each a klong in the segment leaf above; (3) transactions of 1,000 deletes, and
-     * one of 100,000 at node size 30.
+     * one of 100,000 at node size 30. Since the merges at the delete (bergdb 024-21) every key
+     * node but a root holds at least m >= 2 live klongs at node sizes 8 and more, so no chain
+     * of single children forms there: (2) runs at node size 6, which has no merges (Dag.
+     * minFill), and (1) and (3) at 6 too.
      */
     @Nano
     public static void testDirtyNodeBoundOfDeletes() {
         Random r = new Random(5);
-        for (int b : new int[] {8, 14, 30}) {
+        for (int b : new int[] {6, 8, 14, 30}) {
             for (int iter = 0; iter < 40; iter++) {
                 BoundCase c = new BoundCase(b);
                 int nk = 20 + r.nextInt(b * b * 3);
@@ -844,38 +847,42 @@ public class DagTester {
                 c.run(puts, dels, true);
             }
             
-            // (2) A chain: keep the first and the last key of a segment tree of three or more
-            // levels; then a delete of the first leaves the root one child, a chain of single
-            // children down to the last key's leaf, which root collapse takes in one delete.
-            BoundCase c = new BoundCase(b);
-            List<String> all = new ArrayList<String>();
-            int n = b * b * 2;
-            for (int i = 0; i < n; i++) all.add("/prefix/" + String.format("%05d", i));
-            c.run(all, null, false);
-            c.run(new ArrayList<String>(), all.subList(1, n - 1), true);
-            long collapses0 = Dag.statCollapses;
-            c.run(new ArrayList<String>(), all.subList(0, 1), true);
-            Assert.assertTrue("b " + b + ": a collapse of several levels in one delete",
-                    Dag.statCollapses - collapses0 >= 2);
-            
-            // (2b) The same chain below a segment leaf filled with live klongs to one klong
-            // short of full, so that the collapses' klongs overflow it.
-            for (int extra = 0; extra < 3; extra++) {
-                c = new BoundCase(b);
+            if (Dag.minFill(b) < 2) {        // no merges: chains of single children
+                // (2) A chain: keep the first and the last key of a segment tree of three or more
+                // levels; then a delete of the first leaves the root one child, a chain of single
+                // children down to the last key's leaf, which root collapse takes in one delete.
+                BoundCase c = new BoundCase(b);
+                List<String> all = new ArrayList<String>();
+                int n = b * b * 2;
+                for (int i = 0; i < n; i++) all.add("/prefix/" + String.format("%05d", i));
                 c.run(all, null, false);
-                c.run(new ArrayList<String>(), all.subList(1, n - 1), false);
-                KeyNode leaf = c.dag.getTopDs().findRoot(c.t - 1, gd(c.dag));
-                Assert.assertTrue("b " + b + ": the space root is a segment leaf", leaf.isSegmentLeaf());
-                List<String> fill = new ArrayList<String>();
-                for (int i = 0; i < b - 2 - leaf.size + extra && i < 20; i++) {
-                    fill.add("/" + (char) ('a' + i) + "aaaaa/x");
-                }
-                c.run(fill, null, false);
-                collapses0 = Dag.statCollapses;
+                c.run(new ArrayList<String>(), all.subList(1, n - 1), true);
+                long collapses0 = Dag.statCollapses;
                 c.run(new ArrayList<String>(), all.subList(0, 1), true);
-                Assert.assertTrue("b " + b + ", extra " + extra + ": collapses of several levels",
+                Assert.assertTrue("b " + b + ": a collapse of several levels in one delete",
                         Dag.statCollapses - collapses0 >= 2);
+            
+                // (2b) The same chain below a segment leaf filled with live klongs to one klong
+                // short of full, so that the collapses' klongs overflow it.
+                for (int extra = 0; extra < 3; extra++) {
+                    c = new BoundCase(b);
+                    c.run(all, null, false);
+                    c.run(new ArrayList<String>(), all.subList(1, n - 1), false);
+                    KeyNode leaf = c.dag.getTopDs().findRoot(c.t - 1, gd(c.dag));
+                    Assert.assertTrue("b " + b + ": the space root is a segment leaf", leaf.isSegmentLeaf());
+                    List<String> fill = new ArrayList<String>();
+                    for (int i = 0; i < b - 2 - leaf.size + extra && i < 20; i++) {
+                        fill.add("/" + (char) ('a' + i) + "aaaaa/x");
+                    }
+                    c.run(fill, null, false);
+                    collapses0 = Dag.statCollapses;
+                    c.run(new ArrayList<String>(), all.subList(0, 1), true);
+                    Assert.assertTrue("b " + b + ", extra " + extra + ": collapses of several levels",
+                            Dag.statCollapses - collapses0 >= 2);
+                }
             }
+            BoundCase c;
+            List<String> all = new ArrayList<String>();
             
             // (3) 1,000 deletes, of every key and of every third.
             for (int step : new int[] {1, 3}) {
@@ -898,19 +905,23 @@ public class DagTester {
     /**
      * Dag.dirtyNodeBound sums the klongs that root collapse gives a segment leaf over the
      * trees below it (bergdb 023-11, review B, B1, its SiblingCollapseProbe): the space root,
-     * a segment leaf, names three trees of 1,024 keys at node size 8; a transaction deletes
+     * a segment leaf, names two trees of 1,024 keys at node size 6; a transaction deletes
      * every key of each but its first and last, so each root has two chains of single
      * children; the next deletes the first key of each tree, and root collapse lowers each
-     * root five levels, a klong in the space root for each: 15. The count gives the space
+     * root eight levels, a klong in the space root for each: 16. The count gives the space
      * root at least the collapses and two klongs a delete; before the fix it took the most of
-     * one tree (2 x 3 + 5 = 11). The bound also covers the dirty key nodes.
+     * one tree (2 x 2 + 8 = 12). The bound also covers the dirty key nodes. Until the merges
+     * at the delete (bergdb 024-21) three trees at node size 8, five levels each: at 8 and
+     * more every key node but a root now holds at least m >= 2 live klongs, so no chain of
+     * single children forms; 6 has no merges (Dag.minFill), and three trees split its space
+     * root, a segment leaf of at most 3 klongs in a last version.
      */
     @Nano
     public static void testDirtyNodeBoundSumsCollapsesOverTrees() {
-        BoundCase c = new BoundCase(8);
+        BoundCase c = new BoundCase(6);
         List<String> all = new ArrayList<String>(), thin = new ArrayList<String>();
         List<String> firsts = new ArrayList<String>();
-        for (int m = 0; m < 3; m++) {
+        for (int m = 0; m < 2; m++) {
             for (int i = 0; i < 1024; i++) {
                 String k = "/pref0" + m + "/k" + String.format("%04d", i);
                 all.add(k);
@@ -933,9 +944,9 @@ public class DagTester {
         long collapses0 = Dag.statCollapses;
         c.run(new ArrayList<String>(), firsts, true);
         long collapses = Dag.statCollapses - collapses0;
-        Assert.assertEquals("collapses, five in each tree", 15L, collapses);
+        Assert.assertEquals("collapses, eight in each tree", 16L, collapses);
         Assert.assertTrue("klongs counted for the space root: " + klongs.get(leaf),
-                klongs.get(leaf) >= collapses + 2 * 3);
+                klongs.get(leaf) >= collapses + 2 * 2);
     }
     
     /** A Dag and the key nodes a transaction makes dirty, for testDirtyNodeBoundOfDeletes. */
@@ -968,22 +979,32 @@ public class DagTester {
         
         /** One transaction: the puts, then the deletes; with 'check', against the bound. */
         void run(List<String> puts, List<String> dels, boolean check) {
+            // The keys in key order, puts and deletes mixed, as Db applies a transaction, so
+            // that a put can come after a merge into the node that took its range (bergdb
+            // 024-21's review, R6); until then the puts first, then the deletes.
+            final Set<String> delSet = new java.util.HashSet<String>();
+            if (dels != null) delSet.addAll(dels);
             List<String> ks = new ArrayList<String>(puts);
             if (dels != null) ks.addAll(dels);
+            Collections.sort(ks, new java.util.Comparator<String>() {
+                public int compare(String x, String y) {
+                    return Keys.compareArrays(Keys.toSegments(x), Keys.toSegments(y));
+                }
+            });
             long bound = -1;
             if (check) {
                 long[][] keys = new long[ks.size()][];
                 boolean[] deletes = new boolean[ks.size()];
                 for (int i = 0; i < ks.size(); i++) {
                     keys[i] = Keys.toSegments(ks.get(i));
-                    deletes[i] = i >= puts.size();
+                    deletes[i] = delSet.contains(ks.get(i));
                 }
                 bound = dag.dirtyNodeBound(t - 1, keys, deletes, gd(dag));
             }
             dirty.clear();
             pd.tt = t;
             for (int i = 0; i < ks.size(); i++) {
-                byte[] v = i < puts.size() ? StringUtil.toBytes("v" + t) : null;
+                byte[] v = delSet.contains(ks.get(i)) ? null : StringUtil.toBytes("v" + t);
                 dag.putKv(Keys.toSegments(ks.get(i)), v, pd);
                 pd.clearFast();
             }

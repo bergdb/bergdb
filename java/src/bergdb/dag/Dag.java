@@ -1,6 +1,7 @@
 package bergdb.dag;
 
 import java.io.PrintStream;
+import java.util.ArrayDeque;
 import java.util.HashSet;
 import java.util.Set;
 import bergdb.common.Bug;
@@ -504,10 +505,11 @@ public class Dag {
      * <li>the nodes that splits can make. A node that gets k klongs (one for each put and each
      * new segment below it, those of its children's splits, and a TIME klong) with room for r
      * more overflows at most once if k exceeds r, and once more for every further half node
-     * of klongs (a replacement holds at most half a node): 1 + (k - r - 1) / q times, q = M/2
-     * - 3 or 1. The first overflow of a node that existed replaces it by up to two new nodes
-     * and adds two klongs to its parent; later ones split new nodes in place, one new node and
-     * one klong each. An overflow of the space root adds a new root;</li>
+     * of klongs (a replacement holds at most h klongs, a half node, or c + 1, a merged
+     * node): 1 + (k - r - 1) / q times, q = roomAfterReplacement(), 10 at node size 30
+     * (M/2 - 3 or 1 until format 7). The first overflow of a node that existed replaces it
+     * by up to two new nodes and adds two klongs to its parent; later ones split new nodes in
+     * place, one new node and one klong each. An overflow of the space root adds a new root;</li>
      * <li>the new segment trees of keys whose segment is not there, counted the same way from
      * an empty node;</li>
      * <li>for a delete (bergdb 023-07, section 5.4, K4): two klongs in every node of its path,
@@ -522,6 +524,24 @@ public class Dag {
      * root that existed before it, one level lower each time (a root that a split of the
      * transaction made is taken back in place, with no klong). The space root's collapses
      * change the top node of the transaction, which Db counts.</li>
+     * <li>the merges at a delete (bergdb 024-21; 024-11, CB1 and CB2): two klongs more in every
+     * node of its path, four in all: a merge of a child gives the node at most three (a
+     * bitmap, the left child's klong and a second new node's; a rule O of the child before
+     * its merge gives a time split's klong, which the merge then points in place), and one
+     * for the extra overflow of a merged node below (next); and four nodes for each level of
+     * its path and two levels more, for new roots that splits of the transaction can make
+     * above it: a delete merges at most once a level (fix climbs only after a merge into one
+     * node), a merge makes at most two new nodes, and two more are for one extra overflow of
+     * a merged node, a half and a new root, as a merged node holds the klongs of two
+     * positions of the walk (its left and its right node), floor((a + b) / q) <= floor(a /
+     * q) + floor(b / q) + 1. A merged node starts with up to c + 1 klongs, so a node of a
+     * delete's path overflows as if it had at most q klongs of room (roomAfterReplacement).
+     * A sibling that a merge leaves out is not made dirty. With m < 2 (minFill) there are
+     * no merges, and these are counted as a margin. An argument, checked by DagTester's tests
+     * of the bound (bergdb 024-11, TU8), not a proof. For node size 30 and a path of 5 nodes,
+     * about 30 nodes a delete: a record's limit takes about 120,000 deletes in one
+     * transaction; a larger one is refused (Db.checkDirtyNodes), as one of puts that can make
+     * too many nodes dirty is.</li>
      * </ul>
      * 
      * @param deletes  deletes[i] is true if keys[i] is deleted; a delete of a missing key
@@ -543,6 +563,7 @@ public class Dag {
                 new java.util.IdentityHashMap<KeyNode, Walked>();
         final KlongWithPointer kwi = gd.kwi;
         boolean anyDelete = false;
+        long mergeLevels = 0;           // the levels of the deletes' paths, two more each
         
         for (int k = 0; k < keys.length; k++) {
             final long[] key = keys[k];
@@ -561,13 +582,16 @@ public class Dag {
                 }
                 if (i == key.length - 1) {
                     if (deletes[k]) {
-                        // The upward unlink, LE-b and root collapse (see above): two klongs
-                        // in every node of the path, and the inner nodes of each segment tree
-                        // on it, for the collapses, at the segment leaf above that tree.
+                        // The upward unlink, LE-b, root collapse and the merges (see above):
+                        // four klongs in every node of the path, and the inner nodes of each
+                        // segment tree on it, for the collapses, at the segment leaf above
+                        // that tree; for the merges four nodes a level and two levels more.
                         anyDelete = true;
+                        mergeLevels += w.depth + 1 + 2;
                         int inner = 0;
                         for (Walked u = w, below = null; u != null; below = u, u = u.up) {
-                            u.klongs += 2;
+                            u.klongs += 4;
+                            u.deleteBelow = true;
                             if (u.node.isSegmentLeaf()) {
                                 if (below != null) {        // 'below' is a tree's root
                                     below.collapses = Math.max(below.collapses, inner);
@@ -620,7 +644,7 @@ public class Dag {
                     count += freshTreeBound(l, w.freshLevel + 1);
                 }
             }
-            final long overflows = overflows(w.klongs, w.node.size);
+            final long overflows = overflows(w.klongs, w.node.size, w.deleteBelow);
             if (overflows > 0) {
                 count += overflows + 1;
                 if (w.up != null) {
@@ -629,6 +653,9 @@ public class Dag {
                     count += overflows;             // new roots
                 }
             }
+        }
+        if (anyDelete) {
+            count += 4 * mergeLevels;               // the merges (see above)
         }
         return count;
     }
@@ -640,6 +667,7 @@ public class Dag {
         final int depth;
         long klongs = 0;                // that it gets
         int collapses = 0;              // root collapses of its tree at most, a tree's root
+        boolean deleteBelow = false;    // a delete's path goes through it (merges)
         java.util.HashMap<Long, java.util.List<long[]>> freshKeys = null;
         int freshLevel;                 // the segment of the keys in freshKeys missing here
         
@@ -675,17 +703,24 @@ public class Dag {
         return w;
     }
     
-    /** How many times a node of 'size' klongs, given 'klongs' more and a TIME klong, can overflow. */
-    private long overflows(long klongs, int size) {
+    /**
+     * How many times a node of 'size' klongs, given 'klongs' more and a TIME klong, can
+     * overflow. 'merged': a delete's path goes through it, so a merge can replace it by a node
+     * of up to c + 1 klongs, with at most q of room (bergdb 024-21).
+     */
+    private long overflows(long klongs, int size, boolean merged) {
         if (klongs == 0) {
             return 0;
         }
         final long k = klongs + 1;
-        final long room = Math.max(0, maxNodeSize - 2 - size);
+        final long q = roomAfterReplacement();
+        long room = Math.max(0, maxNodeSize - 2 - size);
+        if (merged) {
+            room = Math.min(room, q);
+        }
         if (k <= room) {
             return 0;
         }
-        final long q = Math.max(2, maxNodeSize / 2 - 3);
         return 1 + (k - room - 1) / q;
     }
     
@@ -728,7 +763,7 @@ public class Dag {
                 }
             }
             count += 1;
-            for (long ov = overflows(klongs, 0); ov > 0; ov = overflows(ov, 1)) {
+            for (long ov = overflows(klongs, 0, false); ov > 0; ov = overflows(ov, 1, false)) {
                 count += ov + 1;                    // the splits, and a new node above them
             }
             for (java.util.List<long[]> l : below.values()) {
@@ -1120,6 +1155,13 @@ public class Dag {
     // All of it is a function of the delete and the state at tt (the model's A1), so the
     // startup's rerun redoes it; a record of format 6 means it (StoredTrans.RECORD_FORMAT).
     //
+    // Since format 7 (bergdb 024-21) a delete also merges underfull nodes (mergeAfterDelete,
+    // below), so every key node but a root of a segment tree holds at least m >= 2 live
+    // klongs (node size 8 and more): a delete empties only a root, and the climb above, the
+    // take-back of an emptied half and LE-b's relabel are reached from an emptied root only:
+    // the segment leaf above takes the delete, or the climb goes on above it when it is a root
+    // that the delete empties too. A record of format 7 means the delete with the merges.
+    //
     
     /** Counts for tests and measurements; written by the writer only. */
     public static volatile long statUnlinked, statClimbs, statRelabels,
@@ -1139,8 +1181,13 @@ public class Dag {
         if (leafUnion == leafDel) {
             return true;
         }
+        final int full0 = pd.fullNodes;
+        final int roots0 = pd.newRootsMade;
         if (!allKeysIn(leaf, leafUnion)) {
             appendDeleteKlong(leaf, depth, compareValue, pd);
+            if (mergeAfterDelete(key, depth, full0, roots0, pd)) {
+                collapseRoot(key, key.length - 1, pd);
+            }
             return false;
         }
         
@@ -1218,6 +1265,9 @@ public class Dag {
         
         if (s.isSegmentLeaf()) {
             appendDeleteKlong(s, stop, c, pd);
+            if (mergeAfterDelete(key, stop, full0, roots0, pd)) {
+                collapseRoot(key, segment, pd);
+            }
             return false;
         }
         if (smallestLive(s) != 0) {
@@ -1231,6 +1281,7 @@ public class Dag {
             statRelabels++;
             emptyKeyNext(s, stop, pd);
         }
+        mergeAfterDelete(key, stop, full0, roots0, pd);
         collapseRoot(key, segment, pd);
         return false;
     }
@@ -1680,6 +1731,593 @@ public class Dag {
     }
     
     
+
+    // ======== Format 7's fill rule: the thresholds (bergdb 024-21; 024-11, section 5.1) ========
+    //
+    // The thresholds of a key node's fill, each a function of the node size B (maxNodeSize,
+    // which the database's meta block holds). They are rules of record format 7
+    // (StoredTrans.RECORD_FORMAT): a start reruns a record's puts and deletes with them, so a
+    // change of any of them is a change of the format, and of every database's tree. Frans
+    // decided them on 2026-11-11 at 14:34 (bergdb 024-14, QT1: the set m8, 8/17/17 for B =
+    // 30); until then prototype P5's 7/15/15 (023-05). Another node size B gets v * B / 30 by
+    // integer division, m at least 2, as 024-14's measuring build scaled them (QT2, other
+    // node sizes, open): 2/4/4 at 8 and 3/7/7 at 14 (P5's), 16/35/35 at 62. Each is used only
+    // through the three methods below.
+    //
+
+    /** The node size of the three values below; another node size scales them. */
+    static final int THRESHOLDS_NODE_SIZE = 30;
+
+    /**
+     * h at node size 30: rule O (handleFullNode) replaces a full node by its last version, a
+     * time split, if that holds at most h klongs with its time klong, else splits it in two
+     * halves, a space split, each of at least h / 2 live klongs. 2026.4: B / 2, 15.
+     */
+    static final int SPLIT_ABOVE_30 = 17;
+
+    /**
+     * m at node size 30: after every transaction, every reachable key node that is not the
+     * root of a segment tree holds at least m live klongs (bergdb 024-11, BU1 and V1); a delete
+     * that leaves one with m - 1 merges it (mergeAfterDelete).
+     */
+    static final int MIN_FILL_30 = 8;
+
+    /** c at node size 30: the most live klongs that a merge puts in one new node; more make
+     *  two new nodes of about half each (a redistribution). */
+    static final int MERGE_CAP_30 = 17;
+
+    /**
+     * The smallest node size with merges. Below it a space split's halves can hold fewer
+     * than 2 live klongs (h / 2 < 2), so V1 cannot hold with m = 2: m is 1 there, and no node
+     * is merged, as in 2026.4. A database has node size 8, 14, 30 or 62 (DbBuilder); smaller
+     * ones are for Dag's own tests.
+     */
+    static final int MERGE_MIN_NODE_SIZE = 8;
+
+    /** h for node size 'b' (see SPLIT_ABOVE_30): b / 2 below 8 too, as in 2026.4. */
+    public static int splitAbove(int b) {
+        return SPLIT_ABOVE_30 * b / THRESHOLDS_NODE_SIZE;
+    }
+
+    /** m for node size 'b' (see MIN_FILL_30, MERGE_MIN_NODE_SIZE). */
+    public static int minFill(int b) {
+        return b < MERGE_MIN_NODE_SIZE ? 1
+                : Math.max(2, MIN_FILL_30 * b / THRESHOLDS_NODE_SIZE);
+    }
+
+    /** c for node size 'b' (see MERGE_CAP_30). */
+    public static int mergeCap(int b) {
+        return MERGE_CAP_30 * b / THRESHOLDS_NODE_SIZE;
+    }
+
+    /**
+     * The room for more klongs that a node made by rule O or by a merge has at least, less a
+     * margin of 3, and at least 2: q = max(2, min(B / 2, B - h, B - c) - 3), 10 at node size
+     * 30. A time split's last version holds at most h klongs, a space split's half at most B /
+     * 2, a merged node at most c + 1 (dirtyNodeBound; bergdb 024-14's count for its sets).
+     */
+    private int roomAfterReplacement() {
+        final int b = maxNodeSize;
+        return Math.max(2, Math.min(b / 2, Math.min(b - splitAbove(b), b - mergeCap(b))) - 3);
+    }
+
+
+    // ======== Merges at the delete (bergdb 024-21; 024-11, MG and section 5; 023-05, P5) ========
+    //
+    // Frans's plan of 2012: "Merges are made when the current version of a node shrinks
+    // because of a delete"; the multiversion B-tree's weak version condition. After a delete
+    // has changed a node X (its segment leaf; or after the upward unlink, which with merges
+    // starts only at a root that the delete empties, the segment leaf above), fix(X): while X
+    // is not the root of its segment tree and holds m - 1 live klongs at tt (minFill), it is
+    // merged with a sibling S under its parent P: the child of P's live klong next below X's
+    // if the two hold at most c live klongs together (mergeCap), else the child of the next
+    // one above, else the one below (M1). L and R are the left and the right of the two.
+    // Their live klongs at tt, in order, make one new node if they are at most c, else two
+    // new nodes of half each, the first the larger (M3). P's klong of L points to the first
+    // new node, R's compare value is deleted by a bitmap of tt before any new klong, and a
+    // second new node gets a klong of its first compare value, or R's klong if that is the
+    // same (M4). With the empty key first in every inner node (LE-b), R's empty key becomes
+    // R's compare value in P in the merged node, and a second inner node starts with the
+    // empty key, as a space split's second half does. A merge into one node takes a live
+    // klong from P, so P is fixed in turn; a merge into two ends the loop. Then root
+    // collapse (collapseRoot, F1): a root left with one live child gives way to it.
+    //
+    // The new nodes are last versions of tt, as a time split makes. L and R get no entry of
+    // tt (M5): one that existed before is unlinked as a split's replaced node, so lookups
+    // before tt still read it through P's old klongs, and it is written still if it was
+    // dirty from an earlier transaction; one that the transaction made is taken back: every
+    // klong of tt in P that names it is pointed to the first new node first, behind P's time
+    // klong of tt, where every reader stops, and it is never written (keyNodeTakenBack).
+    // The new nodes' pointers are copies of L's and R's while both are current (the model's
+    // A-COPY): the same pointees, handles included.
+    //
+    // A function of the delete and the state at tt (the model's A1, 024-11's V9): the start's
+    // rerun of a record of format 7 makes the same merges and the same nodes, in the same
+    // order, reading the sibling as the writer did.
+    //
+
+    /** Counts for tests and measurements; written by the writer only. */
+    public static volatile long statMerges, statMergesTwo, statMergeLeaves, statMergeTaken,
+            statSiblingFollows, statSiblingLoads, statMergeKlongs,
+            statMergeDup, statMergeMadeL, statMergeMadeR, statMergeDescents;
+
+    /**
+     * fix (bergdb 024-11, section 5.2, step 3) after a delete changed the node at 'depth' of
+     * pd.keyAccessPath: merges it if it is not a root and holds fewer than m live klongs,
+     * then its parent if that lost a live klong, and so on (see above). 'full0' and 'roots0'
+     * are pd's counts before the change: a node replaced by rule O makes the path stale, so
+     * it is walked again, and every new root that a space split made since is above the node
+     * (splits go up the key's path only), so it moves the node's depth one down.
+     *
+     * @return True if a merge was made: then root collapse is due.
+     */
+    private boolean mergeAfterDelete(long[] key, int depth, int full0, int roots0,
+            PutData pd) {
+        final int m = minFill(maxNodeSize);
+        if (m < 2) {
+            return false;
+        }
+        boolean merged = false;
+        boolean fresh = pd.fullNodes == full0;
+        int d = depth + (pd.newRootsMade - roots0);
+        while (d > 0) {
+            final KeyNode x = fresh ? pd.keyAccessPath.get(d) : descendToDepth(key, d, pd);
+            final KeyNode p = pd.keyAccessPath.get(d - 1);
+            if (p.isSegmentLeaf() || liveCount(x, m) >= m) {
+                break;          // a root of a segment tree, or not underfull (F3)
+            }
+            final int roots = pd.newRootsMade;
+            final int r = merge(x, d, pd);
+            merged = true;
+            if (r == 2) {
+                break;          // two new nodes: P keeps its count
+            }
+            fresh = false;
+            d = d - 1 + (pd.newRootsMade - roots);
+        }
+        return merged;
+    }
+
+    /**
+     * Goes down from the space root at tt along 'key' until pd.keyAccessPath has 'depth' + 1
+     * nodes, and returns the last. The nodes are followed as by any descent, marked: every one
+     * is an ancestor of the delete's change, or the node that took it.
+     */
+    private KeyNode descendToDepth(long[] key, int depth, PutData pd) {
+        final long tt = pd.tt;
+        final KlongWithPointer kwi = pd.kwi;
+        final KeyAccessPath path = pd.keyAccessPath;
+        statMergeDescents++;
+        path.clearFast();
+        KeyNode node = topDs.findRoot(tt, pd);
+        int segment = 0;
+        while (path.size - 1 < depth) {
+            if (!node.isSegmentLeaf()) {
+                node.searchLte(tt, key[segment], kwi);
+                checkFound(node, pd);
+            } else {
+                node.searchEq(tt, key[segment], kwi);
+                if (kwi.klong == Klong.NULL) {
+                    throw new Bug("Merge descent at " + tt + ": segment " + segment
+                            + " not found.");
+                }
+                segment++;
+            }
+            node = (KeyNode) pd.followPointer(node, kwi.pointerIndex);
+        }
+        if (path.size - 1 != depth || path.get(depth) != node) {
+            throw new Bug("Merge descent at " + tt + ": the path is not as followed.");
+        }
+        return node;
+    }
+
+    /**
+     * Merges the node 'x' at 'd' of pd.keyAccessPath, not a root of a segment tree, with its
+     * sibling (see above; bergdb 024-11, section 5.3).
+     *
+     * @return 1: one new node, the parent lost a live klong; 2: two new nodes, the parent's
+     *      live klongs are as many as before. A state that V1 to V3 exclude (no sibling, an
+     *      empty node, an inner node without the empty key first) is a Bug (bergdb 024-21,
+     *      section 6; 024-22, MD2): prototype P5 skipped the merge, and left the node under m.
+     */
+    private int merge(final KeyNode x, final int d, PutData pd) {
+        final long tt = pd.tt;
+        final int c = mergeCap(maxNodeSize);
+        final KeyAccessPath path = pd.keyAccessPath;
+        final KeyNode p = path.get(d - 1);
+        final boolean inner = !x.isSegmentLeaf();
+        final long cx = Klong.getCompareValue(path.getKlong(d));
+
+        // x's klong in p, and the live klongs next above and below it (the latest of each).
+        final long del = lastBitmap(p);
+        final short sz = p.size;
+        int ix = -1, ia = -1, ib = -1;
+        long cva = 0, cvb = 0;
+        for (int i = 0; i < sz; i++) {
+            final long klong = p.klongs[i];
+            if (Klong.getIntType(klong) != Klong.INT_TYPE_KEY || Klong.isDeleted(del, i)) {
+                continue;
+            }
+            final long cv = Klong.getCompareValue(klong);
+            if (cv == cx) {
+                ix = i;
+            } else if (cv > cx) {
+                if (ia < 0 || cv <= cva) { ia = i; cva = cv; }
+            } else {
+                if (ib < 0 || cv >= cvb) { ib = i; cvb = cv; }
+            }
+        }
+        final Node atX = ix < 0 ? null : p.getPointerNode(ix);
+        if (ix < 0 || (atX != null && atX != x && atX.getId() != x.getId())) {
+            throw new Bug("Merge at " + tt + ": key node " + x.getId() + " is not the live "
+                    + "child of its klong in " + p.getId() + ".");
+        }
+        if (ia < 0 && ib < 0) {
+            // A node that is not a root has a sibling (V2: an inner root holds 2 live klongs,
+            // root collapse keeps it so; V1 any other inner node m >= 2).
+            throw new Bug("Merge at " + tt + ": key node " + x.getId() + " has no sibling in "
+                    + p.getId() + " (bergdb 024-11, V1 and V2).");
+        }
+
+        // M1, the sibling: the left one if both fit in one node (so that the nodes a run of
+        // deletes in key order leaves behind fill up to c, as a twin's do), else the right
+        // one, else the left one.
+        KeyNode s = null;
+        boolean right = true;
+        if (ib >= 0) {
+            final KeyNode left = sibling(p, ib, inner, pd);
+            if (ia < 0 || liveCount(left, c + 1) + liveCount(x, c + 1) <= c) {
+                s = left;
+                right = false;
+            }
+        }
+        if (s == null) {
+            s = sibling(p, ia, inner, pd);
+        }
+        final KeyNode l = right ? x : s;
+        final KeyNode r = right ? s : x;
+        final int il = right ? ix : ib;
+        final int ir = right ? ia : ix;
+        final long klongL = p.klongs[il];
+        final long klongR = p.klongs[ir];
+        if (klongsOf(p, Klong.getCompareValue(klongL)) > 1
+                || klongsOf(p, Klong.getCompareValue(klongR)) > 1) {
+            statMergeDup++;     // two klongs of one compare value in the parent
+        }
+        if (l.getFirstTime() == tt) statMergeMadeL++;
+        if (r.getFirstTime() == tt) statMergeMadeR++;
+
+        // M2: the two last versions, read while both are current (A-COPY).
+        final KeyNode lvL = l.lastVersion(tt);
+        final KeyNode lvR = r.lastVersion(tt);
+        final int nL = lvL.size - 1;
+        final int nR = lvR.size - 1;
+        final int n = nL + nR;
+        if (nL == 0 || nR == 0 || (inner && (Klong.getCompareValue(lvL.klongs[1]) != 0
+                || Klong.getCompareValue(lvR.klongs[1]) != 0))) {
+            // An empty node that is not a root, or an inner node without the empty key first:
+            // states that V1 and V3 (LE-b) exclude.
+            throw new Bug("Merge at " + tt + ": key node " + l.getId() + " (" + nL + " live) or "
+                    + r.getId() + " (" + nR + " live) is empty, or an inner node without the "
+                    + "empty key first (bergdb 024-11, V1 and V3).");
+        }
+
+        // M3, the new nodes: one of n live klongs, or two, the first of the ceiling of half.
+        final boolean two = n > c;
+        final int k = two ? (n + 1) / 2 : n;
+        final KeyNode m1 = new KeyNode(!inner);
+        final KeyNode m2 = two ? new KeyNode(!inner) : null;
+        m1.addToEnd(Klong.createTime(tt), null, Spos.NULL);
+        if (two) m2.addToEnd(Klong.createTime(tt), null, Spos.NULL);
+        long secondKlong = Klong.NULL;
+        for (int j = 0; j < n; j++) {
+            final KeyNode lv = j < nL ? lvL : lvR;
+            final int i = j < nL ? j + 1 : j - nL + 1;
+            long klong = lv.klongs[i];
+            if (inner && lv == lvR && i == 1) {
+                klong = klongR;             // the right node's empty key: its bound in p
+            }
+            if (two && j == k) {
+                secondKlong = klong;
+                if (inner) klong = Klong.EMPTY_KEY;
+            }
+            (j < k ? m1 : m2).addToEnd(klong, lv.getPointee(i), lv.getPointerPos(i));
+        }
+
+        assert m1.checkWithMessage() == null : m1.checkWithMessage();
+        assert !two || m2.checkWithMessage() == null : m2.checkWithMessage();
+        pd.nodeChangeListener.keyNodeCreated(m1);
+        pd.madeFor(m1, l.getFirstTime() == tt ? pd.replacedBy(l) : l);
+        reportNewPointers(m1, pd.pointerCreatedListener);
+        pd.nodeChangeListener.keyNodeChanged(m1);
+        if (two) {
+            pd.nodeChangeListener.keyNodeCreated(m2);
+            pd.madeFor(m2, r.getFirstTime() == tt ? pd.replacedBy(r) : r);
+            reportNewPointers(m2, pd.pointerCreatedListener);
+            pd.nodeChangeListener.keyNodeChanged(m2);
+        }
+
+        // M4, the parent.
+        mergeParent(p, d - 1, il, klongL, m1, ir, klongR, m2, secondKlong, pd);
+
+        // M5: l and r are left out: a node that existed before is unlinked (no entry of tt),
+        // one that the transaction made is taken back, its klongs of tt in p pointed to m1
+        // first.
+        for (KeyNode o : new KeyNode[] {l, r}) {
+            if (o.getFirstTime() == tt) {
+                retarget(p, o, m1, tt);
+                pd.nodeChangeListener.keyNodeTakenBack(o);
+                statMergeTaken++;
+            } else {
+                unlink(o, pd);
+            }
+        }
+
+        statMerges++;
+        if (two) statMergesTwo++;
+        if (!inner) statMergeLeaves++;
+        statMergeKlongs += n;
+        return two ? 2 : 1;
+    }
+
+    /**
+     * The sibling at pointer 'index' of 'p', read as the writer reads a path (from the stream
+     * if not resident), but not marked: it is left out if merged, and stays as it is if not
+     * (bergdb 023-05, P1's fault 2).
+     */
+    private static KeyNode sibling(KeyNode p, int index, boolean inner, PutData pd) {
+        final boolean resident = p.getPointerNode(index) != null;
+        final KeyNode s = followQuietly(p, index, pd);
+        statSiblingFollows++;
+        if (!resident) statSiblingLoads++;
+        if (s == null || s.isSegmentLeaf() == inner) {
+            throw new Bug("Merge at " + pd.tt + ": the sibling at " + index + " of key node "
+                    + p.getId() + " is not a node of its kind.");
+        }
+        return s;
+    }
+
+    /**
+     * M4, the parent's change of a merge: 'p', at 'depth' of pd.keyAccessPath, gets its left
+     * child's klong (at 'il') pointed to 'm1', and its right child's (at 'ir') deleted, or,
+     * if 'm2' starts at the right child's compare value, pointed to 'm2'; else 'm2' gets a new
+     * klong 'secondKlong'. The bitmap comes before any new klong (bergdb 023-06, section 6). A
+     * klong of tt behind p's time klong of tt is pointed in place, as replaceKlong changes such
+     * klongs. A full node is replaced by its last version with the new pointers set, through
+     * handleFullNode with no klong to insert (rule O), so that a space split puts each in its
+     * half.
+     */
+    private void mergeParent(final KeyNode p, final int depth, final int il, final long klongL,
+            final KeyNode m1, final int ir, final long klongR, final KeyNode m2,
+            final long secondKlong, PutData pd) {
+        final long tt = pd.tt;
+        final long cR = Klong.getCompareValue(klongR);
+        final boolean deleteR = m2 == null || Klong.getCompareValue(secondKlong) != cR;
+        final short sz = p.size;
+        long arrayTime = -1;
+        int timeIndex = -1;
+        long arrayDel = Klong.DELETE_NONE_BITMAP;
+        boolean hasTransDel = false;
+        for (int i = 0; i < sz; i++) {
+            final long klong = p.klongs[i];
+            switch (Klong.getIntType(klong)) {
+            case Klong.INT_TYPE_TIME:
+                arrayTime = Klong.getTime(klong);
+                timeIndex = i;
+                break;
+            case Klong.INT_TYPE_DELETE_BITMAP:
+                arrayDel = klong;
+                hasTransDel = arrayTime == tt && i == sz - 1;
+                break;
+            default:
+                break;
+            }
+        }
+        final long union = deleteR ? arrayDel | bitsOf(p, cR) : arrayDel;
+        final boolean lInPlace = arrayTime == tt && il > timeIndex;
+        final boolean rInPlace = !deleteR && arrayTime == tt && ir > timeIndex;
+        final int need = (deleteR && !hasTransDel ? 1 : 0) + (lInPlace ? 0 : 1)
+                + (m2 == null || rInPlace ? 0 : 1) + (arrayTime == tt ? 0 : 1);
+
+        if (sz + need <= this.maxNodeSize) {
+            if (deleteR) {
+                if (hasTransDel) {
+                    p.klongs[sz - 1] = union;   // the transaction's own bitmap, no reader sees it
+                } else {
+                    p.addDeleteKlong(tt, union);
+                }
+            }
+            link(p, il, klongL, m1, lInPlace, pd);
+            if (m2 != null) {
+                link(p, ir, deleteR ? secondKlong : klongR, m2, rInPlace, pd);
+            }
+            pd.nodeChangeListener.keyNodeChanged(p);
+        } else {
+            final KeyNode last = p.lastVersionGivenDel(sz, tt, union);
+            if (!last.replaceKlong(tt, klongL, m1, pd.accessData)) {
+                throw new Bug("Merge at " + tt + ": no klong of the left child in the last "
+                        + "version of " + p.getId() + ".");
+            }
+            if (m2 != null) {
+                if (!deleteR) {
+                    if (!last.replaceKlong(tt, klongR, m2, pd.accessData)) {
+                        throw new Bug("Merge at " + tt + ": no klong of the right child in "
+                                + "the last version of " + p.getId() + ".");
+                    }
+                } else {
+                    last.addSortedKlong(secondKlong, m2, pd.accessData);
+                }
+            }
+            handleFullNode(p, depth, ZERO_LONG_KWP, tt, last, pd);
+        }
+    }
+
+    /** Points p's klong at 'index' to 'node' in place, or adds a klong 'klong' to it. */
+    private static void link(KeyNode p, int index, long klong, KeyNode node, boolean inPlace,
+            PutData pd) {
+        if (inPlace) {
+            p.repointKlong(index, node);
+            pd.pointerCreatedListener.pointerCreated(p, index, node);
+        } else {
+            p.addKlong(pd.tt, klong, node, pd.accessData);
+            pd.pointerCreatedListener.pointerCreated(p, p.size - 1, node);
+        }
+    }
+
+    /** The number of KEY klongs of the node with the compare value, live or not. */
+    private static int klongsOf(KeyNode node, long compareValue) {
+        int n = 0;
+        for (int i = 0; i < node.size; i++) {
+            final long klong = node.klongs[i];
+            if (Klong.getIntType(klong) == Klong.INT_TYPE_KEY
+                    && Klong.getCompareValue(klong) == compareValue) {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    /**
+     * The number of live compare values of the node at the latest time, counted up to
+     * 'limit' (a merge's measure).
+     */
+    private static int liveCount(KeyNode node, int limit) {
+        final long del = lastBitmap(node);
+        final short sz = node.size;
+        int count = 0;
+        A: for (int i = 0; i < sz && count < limit; i++) {
+            final long klong = node.klongs[i];
+            if (Klong.getIntType(klong) != Klong.INT_TYPE_KEY || Klong.isDeleted(del, i)) {
+                continue;
+            }
+            final long cv = Klong.getCompareValue(klong);
+            for (int j = i + 1; j < sz; j++) {
+                final long k2 = node.klongs[j];
+                if (Klong.getIntType(k2) == Klong.INT_TYPE_KEY && !Klong.isDeleted(del, j)
+                        && Klong.getCompareValue(k2) == cv) {
+                    continue A;
+                }
+            }
+            count++;
+        }
+        return count;
+    }
+
+
+    // ======== BU1's check (bergdb 024-21; 024-11, BU1, V1, V2, V4 and TU2) ========
+
+    /** What checkFill() found: the counts of the walk, and the first violation or null. */
+    public static final class Fill {
+        /** Key nodes reachable at the time, segment trees, live keys, live klongs of the
+         *  segment leaves (n + S - 1), and nodes that are not roots with fewer than m. */
+        public long keyNodes, trees, liveKeys, leafKlongs, underfull;
+        /** The first violation of V1, V2, V4 or TU2's count, or null. */
+        public String error;
+
+        public String toString() {
+            return "key nodes " + keyNodes + ", trees " + trees + ", live keys " + liveKeys
+                    + ", leaf klongs " + leafKlongs + ", underfull " + underfull
+                    + (error == null ? "" : ", " + error);
+        }
+    }
+
+    /**
+     * BU1's check: walks every key node reachable at 'time' (the latest time, for the bound)
+     * through the live klongs, the latest of each compare value, and checks (bergdb 024-11,
+     * section 2.4 and 5.4): V1, every key node that is not the root of a segment tree holds at
+     * least m live klongs (minFill); V2, an inner root at least 2, a leaf root at least 1 but
+     * the space root; V4, the leaves of a segment tree are at one depth; and TU2, the key
+     * nodes are at most S + (n + S - 1) / (m - 1) for S segment trees and n live keys, which
+     * V1, V2 and V4 give. For tests: it reads as a reader at 'time' does, loading nodes
+     * through gd's follower. With m < 2 (node size below MERGE_MIN_NODE_SIZE) it checks V2
+     * and V4, and V1 as "not empty".
+     */
+    public Fill checkFill(long time, GetData gd) {
+        final Fill f = new Fill();
+        final int m = minFill(maxNodeSize);
+        final KeyNode spaceRoot = topDs.findRoot(time, gd);
+        if (spaceRoot == null) {
+            return f;
+        }
+        // A stack of frames: the node, its depth in its segment tree, whether it is a root,
+        // and its tree's leaf depth (-1 until its first leaf).
+        final ArrayDeque<Object[]> todo = new ArrayDeque<Object[]>();
+        todo.push(new Object[] {spaceRoot, 0, Boolean.TRUE, new int[] {-1}});
+        f.trees = 1;
+        while (!todo.isEmpty()) {
+            final Object[] fr = todo.pop();
+            final KeyNode node = (KeyNode) fr[0];
+            final int depth = (Integer) fr[1];
+            final boolean isRoot = (Boolean) fr[2];
+            final int[] leafDepth = (int[]) fr[3];
+            f.keyNodes++;
+            final int sz = node.size;
+            final long del = node.getDeleteBitmapAtTime(time, sz);
+            final java.util.TreeMap<Long, Integer> live = new java.util.TreeMap<Long, Integer>();
+            for (int i = 0; i < sz; i++) {
+                final long k = node.klongs[i];
+                if (Klong.getIntType(k) == Klong.INT_TYPE_TIME && Klong.getTime(k) > time) {
+                    break;
+                }
+                if (Klong.getIntType(k) != Klong.INT_TYPE_KEY || Klong.isDeleted(del, i)) {
+                    continue;
+                }
+                live.put(Klong.getCompareValue(k), i);      // the latest of a compare value
+            }
+            final int cnt = live.size();
+            if (!isRoot && cnt < m) {
+                f.underfull++;
+                if (f.error == null) {
+                    f.error = "V1: " + what(node, isRoot, depth) + " holds " + cnt + " live klongs, fewer than m = "
+                            + m;
+                }
+            }
+            if (isRoot && f.error == null) {
+                if (!node.isSegmentLeaf() && cnt < 2) {
+                    f.error = "V2: inner root " + what(node, isRoot, depth) + " holds " + cnt + " live klongs";
+                } else if (node != spaceRoot && cnt < 1) {
+                    f.error = "V2: " + what(node, isRoot, depth) + " holds no live klong";
+                }
+            }
+            if (node.isSegmentLeaf()) {
+                if (leafDepth[0] < 0) {
+                    leafDepth[0] = depth;
+                } else if (leafDepth[0] != depth && f.error == null) {
+                    f.error = "V4: " + what(node, isRoot, depth) + " is a leaf at another depth than "
+                            + leafDepth[0];
+                }
+                for (int i : live.values()) {
+                    f.leafKlongs++;
+                    final long k = node.klongs[i];
+                    if (Klong.getLength(k) < Klong.MAX_SIZE) {
+                        f.liveKeys++;
+                        continue;
+                    }
+                    f.trees++;
+                    final KeyNode child = (KeyNode) gd.followPointer(node, i);
+                    todo.push(new Object[] {child, 0, Boolean.TRUE, new int[] {-1}});
+                }
+            } else {
+                for (int i : live.values()) {
+                    final KeyNode child = (KeyNode) gd.followPointer(node, i);
+                    todo.push(new Object[] {child, depth + 1, Boolean.FALSE, leafDepth});
+                }
+            }
+        }
+        if (f.error == null && m >= 2 && f.keyNodes > f.trees + f.leafKlongs / (m - 1)) {
+            f.error = "TU2: " + f.keyNodes + " key nodes, more than S + (n + S - 1) / (m - 1) = "
+                    + (f.trees + f.leafKlongs / (m - 1)) + " for S = " + f.trees + ", m = " + m;
+        }
+        return f;
+    }
+    
+    
+    private static String what(KeyNode node, boolean isRoot, int depth) {
+        return "key node " + node.getId() + " (" + (node.isSegmentLeaf() ? "leaf" : "inner")
+                + (isRoot ? ", a root" : "") + ", depth " + depth + " in its segment tree)";
+    }
+    
+    
     // ======== appendKlongs() and helpers ========
     
     /**
@@ -1743,7 +2381,7 @@ public class Dag {
     
     /**
      * This is an important method.
-     * If last.size > maxNodeSize / 2, then 'node' is split into two nodes -
+     * If last.size > splitAbove(maxNodeSize), h, then 'node' is split into two nodes -
      * a space-split is made. Otherwise, 'node' is replaced by the last version 
      * of it - a time-split.
      * 
@@ -1769,7 +2407,9 @@ public class Dag {
         
         final boolean newInTrans = node.getFirstTime() == tTime;
         
-        if (last.size > this.maxNodeSize / 2) {
+        pd.fullNodes++;                 // the key access path may be stale now (merges)
+        
+        if (last.size > splitAbove(this.maxNodeSize)) {
             if (newInTrans) {
                 spaceSplitInPlace(node, last, depth, toInsert, pd);
             } else {
@@ -1837,6 +2477,7 @@ public class Dag {
         
         if (parent == null || parent.isSegmentLeaf()) {
             // 'node' is the space root or a segment root: a new root above both halves.
+            pd.newRootsMade++;
             KeyNode newRoot = new KeyNode(false);
             pd.nodeChangeListener.keyNodeCreated(newRoot);
             pd.madeFor(newRoot, pd.replacedBy(node));
@@ -1963,6 +2604,7 @@ public class Dag {
             // space-split-3:
             // 'node' is the space root node.
             //
+            pd.newRootsMade++;
             KeyNode newRoot = new KeyNode(false);
             pd.nodeChangeListener.keyNodeCreated(newRoot);
             pd.madeFor(newRoot, node);
@@ -1990,6 +2632,7 @@ public class Dag {
             // 'node' is a segment root since parent is a segment leaf.
             //
             
+            pd.newRootsMade++;
             KeyNode newSegmentRoot = new KeyNode(false);
             pd.nodeChangeListener.keyNodeCreated(newSegmentRoot);
             pd.madeFor(newSegmentRoot, node);

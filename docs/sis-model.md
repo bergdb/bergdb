@@ -216,6 +216,19 @@ its own, so LE-b, the climb, the take-back and root collapse are not in
 it; it takes each transaction's change as given, and the trace checker
 checks that Java's transactions are steps of it.
 
+Since record format 7 (024-21; 024-11, section 5), a delete also merges
+the nodes it leaves underfull: a node that is not the root of its segment
+tree and holds fewer than m live klongs (8 at node size 30) is merged with
+a sibling under the same parent into one new node, or two of half each,
+with entries of time i in the parent; the two nodes are left out (no
+entry of time i; reachable before time i only, A5), or taken back if T(i)
+made them, after every klong of time i in the parent that named them names
+the first new node. The new nodes' pointers are copies of the two nodes'
+(A-COPY). So the new nodes are created by T(i) and reachable at time i
+(A3, TREE), and every entry is at time i in a current node (A2). The
+model takes each transaction's change as given, as before; the tree model
+of 024-12 has the merge as a definition (024-22).
+
 
 4 The stream
 ============
@@ -646,8 +659,11 @@ implementation must meet them.
   (011-11, mismatch M18; with a virtual root, top(i) of 6.3).
 * The rerun's rule is part of the record. A1 asks that a rerun of T(i)
   make the same entries and nodes, so a change of what a rerun does with
-  the same record changes the record format. BergDB's is 6 since
-  2026-11-10 (023-07, section 5.8): a delete unlinks the nodes it empties,
+  the same record changes the record format. BergDB's is 7 since
+  2026-11-11 (024-21): a delete also merges the nodes it leaves underfull
+  (3.4), and a start refuses format 6, written by release 2026.4. Format
+  6 since 2026-11-10 (023-07, section 5.8): a delete unlinks the nodes it
+  empties,
   with LE-b, root collapse and the take-back (3.4), and a space split in
   place of a segment root that T(i) made points the segment leaf's klong
   to the new root (023-09, section 2, fault 12). A start refuses format 5,
