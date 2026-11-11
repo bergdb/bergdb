@@ -322,8 +322,9 @@ oldest, so N keys stay live; 200,000 transactions at 10M, 100,000 at 1M.
   under further writes 3.3 times the bytes a transaction, 2.6 times the
   stream, 3 to 5 times slower scans, gets and drives. At 1M only the
   memory and scan cost show. So 024-01's "not in 2026.5" now rests on how
-  often such deletes happen, not on their cost. With 2026.5's theme, a
-  stable stream format, merges change the rerun (024-02, section 20, Q1):
+  often such deletes happen, not on their cost. With a stable stream
+  format (2026.5's theme when this was written; since 2026-11-11 that of
+  2026.6, 026; 024-04), merges change the rerun (024-02, section 20, Q1):
   either the format reserves the switch now, or merges come only with a
   versioned record format later. Recommended: decide Q1 in 2026.5, even
   if merges themselves wait.
@@ -344,7 +345,7 @@ oldest, so N keys stay live; 200,000 transactions at 10M, 100,000 at 1M.
   stream holds 4.5 to 6 times a fresh database of the same keys (twin:
   1.45 to 1.95 GB against 0.33 GB), and after a random fill of 10M keys
   6 times the data: reclaim's pace, not a CL item, but a number for
-  2026.5's large-database theme. The default cache of 200 MB makes a get
+  2026.5's aim of proportional storage (024-04, aim 3). The default cache of 200 MB makes a get
   at 10M read about 25 versions. MEM at 10M (327) needs an explanation.
 
 

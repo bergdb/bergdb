@@ -3,8 +3,12 @@
 Created 2026-11-11 by Frans Lundberg. Status: open.
 
 The skeleton of a specification of BergDB's stream format, the first
-work item of release 2026.5, whose theme is "a stable stream format"
-(024's readme; Frans, 2026-11-10, 19:54). It lists every structure of the
+work item of release 2026.5, written when its theme was "a stable stream
+format" (Frans, 2026-11-10, 19:54). Since 2026-11-11 the theme of 2026.5
+is "solid algorithms" (024-04) and the stable format is release 2026.6's
+(026); this draft is kept current until then (024-04, section 5). Where
+the text below says what 2026.5 decides for a stable format, read it with
+that change. It lists every structure of the
 stream, from the files to the bits, as numbered sections, so that the
 full specification can be written section by section and checked against
 the C clone. Each section says what it must define, which code defines it
