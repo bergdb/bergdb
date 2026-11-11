@@ -198,19 +198,18 @@ public class DbTesterDelete {
     }
     
     /**
-     * KVs that key transformations make one key reach the index as one operation (Db.putKvs,
-     * Db.sortByKey; bergdb 023-08, section 7, Frans's decision of 2026-11-10): of them the
-     * one called last is kept, a put or a delete, as Trans.Builder.build's rule for the calls
-     * on one key (bergdb 024-10: the last operation wins; until release 2026.4 the last put
-     * in the order of the keys as written, or a delete if there was no put, so that "/c/b"
-     * held "b1"). One transaction has, on keys that existed: a transformed put and a
-     * plain put (the plain one, later, is kept); a transformed put and a later delete (the
-     * delete); a delete and a later transformed put (the put); two transformed puts (the later);
-     * and a transformed put with a value transformation before a plain put with one (only
-     * the kept one's runs). Its database writes the same stream, byte for byte, as one given
-     * the kept operations alone, and gives their values at the latest time and after a
-     * restart, at startup distances that rerun little and all. Until 2026-11-10 both KVs
-     * reached the index, and a put and a delete of one key reached X5 (c).
+     * KVs that key transformations make one key: the transaction is refused (bergdb 024-16,
+     * Db.transformKeys), and nothing of it is written. One transaction has, on keys that
+     * existed: a transformed put and a plain put; a transformed put and a later delete; a
+     * delete and a later transformed put; two transformed puts; and a transformed put with a
+     * value transformation before a plain put with one (neither runs). Its database writes
+     * the same stream, byte for byte, as one not given the transaction, and every key keeps
+     * its value, at the latest time and after a restart, at startup distances that rerun
+     * little and all. From 2026-11-10 one KV of each key was kept (023-08, section 7): until
+     * 024-16 the one called last (024-10), so that the keys held "a2", nothing, "c1", "d2" and
+     * "e2!"; until release 2026.4 the last put in the order of the keys as written, or a
+     * delete if there was no put, so that "/c/b" held "b1". Until 2026-11-10 both KVs reached
+     * the index, and a put and a delete of one key reached X5 (c).
      */
     @Nano
     public static void testOneOperationAKeyAfterTransformations() {
@@ -235,16 +234,13 @@ public class DbTesterDelete {
                     tb.put(Keys.toSegments("/c/~d"), TO_C, bytes("d2"), null);
                     tb.put(Keys.toSegments("/c/$e"), TO_C, bytes("e1"), dropped);
                     tb.put(Keys.toSegments("/c/e"), null, bytes("e2"), kept);
-                } else {
-                    tb.put("/c/a", "a2").delete("/c/b").put("/c/c", "c1").put("/c/d", "d2");
-                    tb.put(Keys.toSegments("/c/e"), null, bytes("e2"), kept);
+                    refused(db, tb.build(), false);
                 }
-                db.execute(tb.build());
-                String at = "sd " + sd + (d == 0 ? ", transformed: " : ", plain: ");
-                Assert.assertEquals(at + "the dropped KV's value transformation", 0, dropped.calls);
-                Assert.assertEquals(at + "the kept KV's value transformation", 1, kept.calls);
+                String at = "sd " + sd + (d == 0 ? ", transformed: " : ", not given: ");
+                Assert.assertEquals(at + "a value transformation", 0, dropped.calls);
+                Assert.assertEquals(at + "the other value transformation", 0, kept.calls);
                 for (int round = 0; round < 2; round++) {
-                    String[] expected = {"a2", null, "c1", "d2", "e2!"};
+                    String[] expected = {"old", "old", "old", "old", "old"};
                     for (int i = 0; i < expected.length; i++) {
                         String k = "/c/" + (char) ('a' + i);
                         assertValue(at + "round " + round + ", " + k, expected[i],
@@ -274,7 +270,9 @@ public class DbTesterDelete {
      * "/shared" (one put kept, b's), or "/x2" and "/x1" (the sort turns them round); in the
      * second "/later/a" and "/later/b". After the second run, and after a restart, each
      * "/later" key holds its own slot's value. Before the fix the first run dropped a's KV
-     * from the Trans, or turned the slots round, and "/later/a" was absent or wrong.
+     * from the Trans, or turned the slots round, and "/later/a" was absent or wrong. Since
+     * bergdb 024-16 the first run with "/shared" is refused, and "/shared" has no value; until
+     * then it held "2", the KV kept.
      */
     @Nano
     public static void testReusedTransKeepsItsKvs() {
@@ -299,11 +297,12 @@ public class DbTesterDelete {
                     .put(Keys.toSegments("/template/b"), bySlot, bytes("2"), null)
                     .build();
             first[0] = true;
-            db.execute(t);
             String at = c ? "collision: " : "no collision: ";
             if (c) {
-                assertValue(at + "/shared", "2", DbUtil.getString(db, "/shared"));
+                refused(db, t, false);
+                assertValue(at + "/shared", null, DbUtil.getString(db, "/shared"));
             } else {
+                db.execute(t);
                 assertValue(at + "/x2", "1", DbUtil.getString(db, "/x2"));
                 assertValue(at + "/x1", "2", DbUtil.getString(db, "/x1"));
             }
@@ -332,7 +331,7 @@ public class DbTesterDelete {
         final String k;             // the value at the row's key "/c/x" after it; null: none
         final String dollar;        // the value at "/c/$x", a key as written
         final Calls calls;          // the row's calls, in order
-        final Calls kept;           // the operations kept, alone
+        final Calls kept;           // the operations kept, alone; null: refused (024-16)
         
         Row(String name, String k, String dollar, Calls calls, Calls kept) {
             this.name = name;
@@ -387,55 +386,50 @@ public class DbTesterDelete {
             new Row("B7", null, "old",
                     (tb, x, vt) -> { del(tb, x); put(tb, x, "1"); del(tb, x); },
                     (tb, x, vt) -> del(tb, x)),
-            new Row("T1", "2", "old",
-                    (tb, x, vt) -> { tput(tb, "$", x, "1"); put(tb, x, "2"); },
-                    (tb, x, vt) -> put(tb, x, "2")),
-            new Row("T2", "1", "old",
-                    (tb, x, vt) -> { put(tb, x, "2"); tput(tb, "$", x, "1"); },
-                    (tb, x, vt) -> put(tb, x, "1")),
-            new Row("T3", null, "old",
-                    (tb, x, vt) -> { tput(tb, "$", x, "1"); del(tb, x); },
-                    (tb, x, vt) -> del(tb, x)),
-            new Row("T4", "1", "old",
-                    (tb, x, vt) -> { del(tb, x); tput(tb, "$", x, "1"); },
-                    (tb, x, vt) -> put(tb, x, "1")),
-            new Row("T5", "2", "old",
-                    (tb, x, vt) -> { tput(tb, "$", x, "1"); tput(tb, "~", x, "2"); },
-                    (tb, x, vt) -> put(tb, x, "2")),
-            new Row("T6", "1", "old",
-                    (tb, x, vt) -> { tput(tb, "~", x, "2"); tput(tb, "$", x, "1"); },
-                    (tb, x, vt) -> put(tb, x, "1")),
-            new Row("T7", "2", "old",
-                    (tb, x, vt) -> { tput(tb, "~", x, "1"); put(tb, x, "2"); },
-                    (tb, x, vt) -> put(tb, x, "2")),
-            new Row("T8", "1", "old",
-                    (tb, x, vt) -> { put(tb, x, "2"); tput(tb, "~", x, "1"); },
-                    (tb, x, vt) -> put(tb, x, "1")),
+            new Row("T1", "old", "old",
+                    (tb, x, vt) -> { tput(tb, "$", x, "1"); put(tb, x, "2"); }, null),
+            new Row("T2", "old", "old",
+                    (tb, x, vt) -> { put(tb, x, "2"); tput(tb, "$", x, "1"); }, null),
+            new Row("T3", "old", "old",
+                    (tb, x, vt) -> { tput(tb, "$", x, "1"); del(tb, x); }, null),
+            new Row("T4", "old", "old",
+                    (tb, x, vt) -> { del(tb, x); tput(tb, "$", x, "1"); }, null),
+            new Row("T5", "old", "old",
+                    (tb, x, vt) -> { tput(tb, "$", x, "1"); tput(tb, "~", x, "2"); }, null),
+            new Row("T6", "old", "old",
+                    (tb, x, vt) -> { tput(tb, "~", x, "2"); tput(tb, "$", x, "1"); }, null),
+            new Row("T7", "old", "old",
+                    (tb, x, vt) -> { tput(tb, "~", x, "1"); put(tb, x, "2"); }, null),
+            new Row("T8", "old", "old",
+                    (tb, x, vt) -> { put(tb, x, "2"); tput(tb, "~", x, "1"); }, null),
             new Row("T9", "2", null,
                     (tb, x, vt) -> { put(tb, x, "2"); tput(tb, "$", x, "1"); del(tb, "$" + x); },
                     (tb, x, vt) -> { put(tb, x, "2"); del(tb, "$" + x); }),
-            new Row("T10", "2!", "old",
+            new Row("T10", "old", "old",
                     (tb, x, vt) -> {
                         tb.put(Keys.toSegments("/c/$" + x), TO_C, bytes("1"), vt[0]);
                         tb.put(Keys.toSegments("/c/" + x), null, bytes("2"), vt[1]);
-                    },
-                    (tb, x, vt) -> tb.put(Keys.toSegments("/c/" + x), null, bytes("2"), vt[1])),
+                    }, null),
         };
     }
     
     /**
-     * The last operation on a key wins, put or delete (bergdb 024-10, section 3, R1 to R3):
-     * the rows B1 to B7 (calls on one key in Trans.Builder) and T1 to T10 (KVs that key
-     * transformations make one key) of 024-10, section 4, each a transaction of its own on a
-     * key "/c/x" that held "old", as did "/c/$x", a key as written. After it the key holds
-     * the value of the call made last, or nothing if that was a delete, and a key as written
-     * that a transformation left is as it was (T9: deleted by its own last call, which also
-     * takes its put away). The database's stream is, byte for byte, that of a database given
-     * the kept operations alone, and the values are the same after a restart, at startup
-     * distances that rerun little and all. Only the kept KV's value transformation runs
-     * (T10). Until 2026-11-11 a delete never replaced a put (B3, B6, B7, T3, T9), and of two
-     * puts that transformations made one key, the one whose key as written sorted last was
-     * kept (T2, T6, T7): every wrong row is named in the failure.
+     * The last operation on a key as written wins, put or delete (bergdb 024-10, section 3,
+     * R1), and a transaction whose key transformations make two keys one is refused (bergdb
+     * 024-16, section 3, S2): the rows B1 to B7 (calls on one key in Trans.Builder) and T1 to
+     * T10 (KVs that key transformations may make one key) of 024-10, section 4, and 024-16,
+     * section 6, each a transaction of its own on a key "/c/x" that held "old", as did
+     * "/c/$x", a key as written. After a B row the key holds the value of the call made last,
+     * or nothing if that was a delete. T1 to T8 and T10 are refused, and both keys hold "old";
+     * T9 is not (its put at "/c/$x" is taken away by its own last call, a delete, before the
+     * commit): "/c/x" holds 2, "/c/$x" nothing. The database's stream is, byte for byte, that
+     * of a database given the kept operations alone, and nothing of a refused row, and the
+     * values are the same after a restart, at startup distances that rerun little and all. No
+     * value transformation runs (T10). Until 2026-11-11 a delete never replaced a put (B3, B6,
+     * B7, T3, T9), and of two puts that transformations made one key, the one whose key as
+     * written sorted last was kept; from then until 024-16 the one called last was kept, so
+     * that T1 to T8 and T10 gave 2, 1, nothing, 1, 2, 1, 2, 1 and "2!": every wrong row is
+     * named in the failure.
      */
     @Nano
     public static void testLastOperationWins() {
@@ -452,15 +446,28 @@ public class DbTesterDelete {
                 }
                 db.execute(tb.build());
                 Bang[] vt = {new Bang(), new Bang()};
-                for (int i = 0; i < rows.length; i++) {
-                    tb = db.trans();
-                    (d == 0 ? rows[i].calls : rows[i].kept).on(tb, "r" + i, vt);
-                    db.execute(tb.build());
-                }
                 String at = "sd " + sd + (d == 0 ? ", the calls" : ", the kept alone");
-                if (vt[0].calls != 0 || vt[1].calls != 1) {
+                for (int i = 0; i < rows.length; i++) {
+                    Calls calls = d == 0 ? rows[i].calls : rows[i].kept;
+                    if (calls == null) {
+                        continue;
+                    }
+                    tb = db.trans();
+                    calls.on(tb, "r" + i, vt);
+                    try {
+                        db.execute(tb.build());
+                        if (d == 0 && rows[i].kept == null) {
+                            wrong.add(at + ", " + rows[i].name + " is not refused");
+                        }
+                    } catch (DbException e) {
+                        if (rows[i].kept != null) {
+                            wrong.add(at + ", " + rows[i].name + " is refused: " + e.getMessage());
+                        }
+                    }
+                }
+                if (vt[0].calls != 0 || vt[1].calls != 0) {
                     wrong.add(at + ": the value transformations of T10 ran " + vt[0].calls
-                            + " and " + vt[1].calls + " times, expected 0 and 1");
+                            + " and " + vt[1].calls + " times, expected 0 and 0");
                 }
                 for (int round = 0; round < 2; round++) {
                     for (int i = 0; i < rows.length; i++) {
@@ -490,15 +497,15 @@ public class DbTesterDelete {
     }
     
     /**
-     * A reused Trans and the last call (bergdb 024-10, section 3, R5; rows U1 and U2): every
-     * run of a Trans keeps, of the KVs that its key transformations make one key in that
-     * run, the one whose call was made last in the builder, whatever the order of the keys
-     * as written. Two puts, at "/template/a" (value 1) and "/template/b" (value 2), called in
-     * either order; the transformation gives both the key "/shared" in the first and the
-     * third run, and "/later/a" and "/later/b" in the second. "/shared" holds the value of
-     * the put called last after the first run and, deleted in between, after the third; the
-     * second run puts both KVs. Until 2026-11-11 "/shared" held 2, the value of the key as
-     * written that sorts last, also when a's put was called last (U2).
+     * A reused Trans whose key transformations make two keys one in some runs (bergdb 024-10,
+     * section 3, R5; rows U1 and U2; 024-16, sections 3 and 6): each such run is refused,
+     * and the next run gets the keys as written. Two puts, at "/template/a" (value 1) and
+     * "/template/b" (value 2), called in either order; the transformation gives both the key
+     * "/shared" in the first and the third run, and "/later/a" and "/later/b" in the second.
+     * The first and the third run are refused, and "/shared" has no value; the second run puts
+     * both KVs. Until 2026-11-11 "/shared" held 2, the value of the key as written that sorts
+     * last, also when a's put was called last (U2); from then until 024-16 the value of the
+     * put called last.
      */
     @Nano
     public static void testReusedTransLastCallWins() {
@@ -515,7 +522,6 @@ public class DbTesterDelete {
         List<String> wrong = new ArrayList<String>();
         for (boolean aLast : new boolean[] {false, true}) {
             String at = aLast ? "U2, a's put called last: " : "U1, b's put called last: ";
-            String last = aLast ? "1" : "2";
             MemoryStream ms = new MemoryStream();
             Db db = start(ms, DISTANCES[1]);
             Trans.Builder tb = db.trans();
@@ -524,17 +530,17 @@ public class DbTesterDelete {
             if (!aLast) tb.put(Keys.toSegments("/template/b"), byRun, bytes("2"), null);
             Trans t = tb.build();
             collide[0] = true;
-            db.execute(t);
-            check(wrong, at + "run 1, /shared", last, DbUtil.getString(db, "/shared"));
+            refused(db, t, false);
+            check(wrong, at + "run 1, /shared", null, DbUtil.getString(db, "/shared"));
             collide[0] = false;
             db.execute(t);
             check(wrong, at + "run 2, /later/a", "1", DbUtil.getString(db, "/later/a"));
             check(wrong, at + "run 2, /later/b", "2", DbUtil.getString(db, "/later/b"));
             db.execute(db.trans().delete("/shared").build());
             collide[0] = true;
-            db.execute(t);
+            refused(db, t, false);
             for (int round = 0; round < 2; round++) {
-                check(wrong, at + "run 3, round " + round + ", /shared", last,
+                check(wrong, at + "run 3, round " + round + ", /shared", null,
                         DbUtil.getString(db, "/shared"));
                 check(wrong, at + "round " + round + ", /later/a", "1",
                         DbUtil.getString(db, "/later/a"));

@@ -965,18 +965,19 @@ public class PubTester {
     
     /**
      * The last operation on a key wins in the Pub API (bergdb 024-10, section 3, R6, and the
-     * rows P1 to P10 of its section 4), through WBuilder. P1 to P3: of the calls on one key
-     * as written, a key with a suffix and an object key, the last one counts, as since 015-40
-     * and 015-41. P4 to P8: a put at "/t/${transactionTime}.txt" with key replace, and a put
-     * or a delete at the key that the replace gives it, which the test knows: the clock
-     * stands still, so each transaction's time is the one before it plus one. Of the two the
-     * call made last counts; so too for an object key, "/t/${transactionTime}". Until
-     * 2026-11-11 the put at the key with the digits stayed over the replaced put called after
-     * it (P5: its key as written sorts last), and the replaced put stayed over a delete
-     * called after it (P6). P8: a key's place among the calls is its last call's. P9 and
-     * P10: index entries follow the object's last call: an object put again with its indexed
-     * field unchanged keeps its entry, and one put and then deleted leaves no entry, of the
-     * value it had or of the value put.
+     * rows P1 to P10 of its section 4), through WBuilder, and a transaction where key replace
+     * makes two keys one is refused (bergdb 024-16, section 6). P1 to P3: of the calls on one
+     * key as written, a key with a suffix and an object key, the last one counts, as since
+     * 015-40 and 015-41. P4 to P8: a put at "/t/${transactionTime}.txt" with key replace, and
+     * a put or a delete at the key that the replace gives it, which the test knows: the clock
+     * stands still, so each transaction's time is the one before it plus one; so too for an
+     * object key, "/t/${transactionTime}". Each is refused with a DbException, and the key
+     * keeps "old". Until 2026-11-11 the put at the key with the digits stayed over the
+     * replaced put called after it (P5: its key as written sorts last), and the replaced put
+     * stayed over a delete called after it (P6); from then until 024-16 the call made last
+     * counted (P4 to P8: b, a, nothing, a, c). P9 and P10: index entries follow the object's
+     * last call: an object put again with its indexed field unchanged keeps its entry, and
+     * one put and then deleted leaves no entry, of the value it had or of the value put.
      */
     @Nano
     public static void testLastOperationWinsRows() {
@@ -1010,9 +1011,13 @@ public class PubTester {
                 if (row == 6) w.put(k, "a").delete(kt);
                 if (row == 7) w.delete(kt).put(k, "a");
                 if (row == 8) w.put(kt, "b").put(k, "a").put(kt, "c");
-                Transaction t = w.execute();
-                Assert.assertEquals(at + ": the transaction's time", time, t.getTime().units());
-                String expected = row == 4 ? "b" : row == 6 ? null : row == 8 ? "c" : "a";
+                try {
+                    w.execute();
+                    wrong.append(at + ": not refused. ");
+                } catch (DbException e) {
+                    // Refused (bergdb 024-16).
+                }
+                String expected = "old";
                 String got = c.get(kt, String.class);
                 if (!java.util.Objects.equals(expected, got)) {
                     wrong.append(at + ": the value at the replaced key is " + got
