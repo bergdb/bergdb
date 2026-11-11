@@ -55,6 +55,10 @@
 #      conformance.sh's drain set (2 seeds quick, 10 full). A draining
 #      configuration that takes back no node fails the step: it no longer
 #      reaches the mechanism.
+#      And TakeCheck check (bergdb 024-09, step A4): Java's take gives, on 300
+#      generated cases, the numbers that lake build compares with the
+#      model's javaTake (lean/SIS/BoundExample.lean), and its integer share
+#      and dither those of the model's shareFp and ditherFp.
 # Logs go to build/level2/. Set JAVA_HOME or PATH for the JDK; the build
 # needs javac too. Step 7 needs Lean (elan, with the toolchain of
 # ../lean/lean-toolchain); it builds the checker with lake.
@@ -227,5 +231,9 @@ grep -q '^CONFORMANCE OK' $LOG/conformance-drain.txt \
     || fail "conformance.sh drain: $(grep '^CONFORMANCE FAILED' $LOG/conformance-drain.txt | cut -c1-300)" $LOG/conformance-drain.txt
 echo "   conformance, drain: $(grep '^   traces:' $LOG/conformance-drain.txt | sed 's/^ *//');" \
     "$(grep '^   Dag counters' $LOG/conformance-drain.txt | sed -e 's/^ *//' -e 's/ (.*):/:/' -e 's/; of .*//')"
+
+$JAVA -ea -cp $CP bergdb.core.TakeCheck check > $LOG/takecheck.txt 2>&1
+grep -q '^TAKECHECK OK' $LOG/takecheck.txt || fail "TakeCheck check: Java's take against the Lean model's numbers" $LOG/takecheck.txt
+echo "   take: $(tail -1 $LOG/takecheck.txt)"
 
 echo "LEVEL 2 OK"
