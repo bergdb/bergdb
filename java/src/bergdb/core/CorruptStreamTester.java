@@ -1239,12 +1239,14 @@ public class CorruptStreamTester {
      * fix, each failed: a start or a read threw an AssertionError or a ClassCastException.
      * A row: the workload, the Original's seed, the record, then the node's offset in it,
      * its byte and the xor (its checksum made right); or -1, the stream's byte and the xor.
+     * The second row's record moved with the merges at the delete (bergdb 024-21): the
+     * workload's last record, its last value node, was at 31880, offset 156, in format 6.
      */
     @Nano
     public static void testFound019_32() {
         Object[][] rows = {
             {META, 3348004L, 365024, 104, 39, 0x80},    // a klong of type 2, at the start
-            {TAKE, 3552484L, 31880, 156, 37, 0x80},     // a value node's key, at the start
+            {TAKE, 3552484L, 27808, 596, 37, 0x80},     // a value node's key, at the start
             {TAKE, 4184729L, 2808, 72, 17, 0x01},       // a key count, at a read
             {TAKE, 4184729L, 2808, 72, 24, 0x01},       // a key node's id 0 to 1, at a read
             {TAKE, 4184729L, 2808, 32, 16, 0x01},       // a top node's id 1 to 0, at a read
