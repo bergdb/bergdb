@@ -50,7 +50,7 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
   0.48 dead entries a live one with the merges alone, 0.31 with the rule;
   in a cold database that reclaim rewrites 0.83 down to 0.29; after
   scattered deletes, with a hot range, 0.85 down to 0.31; for -3 % to
-  +8.5 % stream bytes, and 13 to 15 % fewer key nodes. Not yet measured:
+  +8.5 % stream bytes, and 13 to 16 % fewer key nodes. Not yet measured:
   10M keys, memory, reads. Each written
   node and each lookup through it carries fewer stale entries; a node
   that is never written again keeps up to theta. A start's rerun applies
