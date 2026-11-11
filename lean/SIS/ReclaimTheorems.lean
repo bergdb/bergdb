@@ -18,9 +18,11 @@ variable {V T : Type} [DecidableEq V]
 
 /-- T13' (bergdb item 001, WP R3): with touches, step 3, by testing or by
 marking, gives exactly the index nodes that are not in D (and not a virtual
-root) and are dirty or touched. BergDB's reclaim step touches the nodes that
-its range traversal visits, which makes them dirty without adding entries
-(`Db.touchRange`, M17), and then rewrites the old values. -/
+root) and are dirty or touched. BergDB's reclaim step touches index nodes,
+which makes them dirty without adding entries (M17), and then rewrites the old
+values: until bergdb 024-07 the nodes that the traversal of its key range
+visited (`Db.touchRange`), since then the nodes on the paths of its own puts
+(`Db.touchPaths`). -/
 theorem T13_markTouch (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp al ts)
     (hst : al.stillDirty = javaTest sp ∨ (sp.virt = false ∧ al.stillDirty = exactTest sp))
     (j : Nat) (hj : j < ts.length) (x : NodeId) :
