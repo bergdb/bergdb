@@ -21,7 +21,7 @@ numbers (024-12's series, continued), the findings as "024-22, MF1".
 
 ## 1. In short
 
-Kept current; section 11 has the exact state; section 9 the questions. Written 14:10.
+Kept current; section 11 has the exact state; section 9 the questions. Written 14:35.
 
 * **What the model defines.** The merge at the delete in 024-12's Lean
   tree (branch `024-22-merges-lean`, head `8e78cf65`, on 024-12's gated
@@ -41,7 +41,8 @@ Kept current; section 11 has the exact state; section 9 the questions. Written 1
   core): exhaustive sequences at node sizes 8, 10 and 12 after four
   kinds of prefix, every subset of a transaction's deletes (or puts and
   deletes), pairs, random runs, the whole model (records, D, startup):
-  about 253,000 states with merges, and 024-12's 340,000 without. After
+  about 315,000 states with merges (node sizes 8 to 14), and 024-12's
+  340,000 without. After
   every transaction: V1 and the other invariants, the map (gets at
   every time, scans), BU1's count, CB1, CB3, A6, `dirtyNodeBound` of
   record format 7 and TP26. **0 failures of the algorithm.**
@@ -82,13 +83,13 @@ Kept current; section 11 has the exact state; section 9 the questions. Written 1
   **Proved:** TP28 from node size 8 (and its failure at 4 and 6), TP34
   to TP37: every node a merge or a space split makes holds m or more.
   Left: TP30 (V1 kept, the B-tree proof) and TP31 to TP33.
-* **Gated** (section 8): `lake build` (all targets; no sorry or axiom),
-  the whole `treetest` default set (31 min, 0 failures), `treeconf.sh
-  all 5` on the branch's own Java (115 traces OK), on the commit before
-  MF3's fix. **Not yet gated:** `level2.sh` on the head `8e78cf65`
-  (running since 13:59, about 18 minutes); on the head so far `lake
-  build` (180 jobs), two `treetest` runs and the 110 drain traces of
-  Java with merges.
+* **Gated** (section 8): on the head `8e78cf65`, `lake build` (all
+  targets; no sorry or axiom) and `level2.sh` full (LEVEL 2 OK, its
+  step 8 the tree model against 2026.4's Java); on the commits before
+  MF3's fix, the whole `treetest` default set (31 min, 0 failures) and
+  `treeconf.sh all 5`. **Not gated:** the whole `treetest` set on the
+  head (two of its runs were); Java with merges is not a gate here (it
+  is 024-21's branch, compared in a scratch combination).
 * **For Java (mgj):** section 7, J1 to J8.
 
 ## 2. The design note
@@ -463,6 +464,15 @@ three 7-byte prefixes, half the operations deletes (`split.space2.inplace`
   on, section 4).
 * The most merges: 3 in one operation (random, M = 8), 6 in one
   transaction (deletes of 12 keys).
+* **Later, `set5.sh`** (14:14 to 14:31, one slot, `treetest-head` of
+  `8e78cf65`; stopped at 14:31 for int's re-gate of 024-12, as the
+  coordinator asked): every transaction of puts and deletes on 10 keys
+  after prefix 4 at M = 8, 59,048 states, 123,936 merges, 133,426
+  nodes taken back, 0 failures; random at M = 14, 10 seeds of 300
+  transactions of up to 16 operations on 80 keys, 3,000 states, 285
+  merges (29 into two nodes, 20 inner), 0 failures. Not finished:
+  random at M = 30, 1,000 transactions at M = 8, `model` at M = 14,
+  the exhaustive depth 4.
 * `treetest model 8 6 60 30 merge`: the whole model on the merged tree
   (records, D, startup), 360 transactions: A2 to A5, TREE, A6', A6,
   A-COPY on every one, T1 and T2: 0 failures.
@@ -779,18 +789,22 @@ For mgj (024-21), kept current; newest last.
 | `treeconf.sh all 5`, own Java          | TREECONF OK, 115 traces                | `ad3707eb` |
 | Java with merges, 10 seeds (5.1)       | 230 traces OK (after MF3's fix)        | `8e78cf65` |
 | Java with merges, medium set           | 9 traces OK                            | `ad3707eb` |
-| `level2.sh`                            | not run yet                            |            |
+| `lake build` (all targets)             | OK, 180 jobs                           | `8e78cf65` |
+| `level2.sh` full (its step 8: treeconf) | LEVEL 2 OK, 15 min                    | `8e78cf65` |
 
 * `treetest`'s default set: 024-12's runs (merges off, node sizes 4 to
   8; 340,000 states; random; `model`), now with A6 checked on every
   state: 0 failures, so 2026.4's tree keeps A6 in all of them; then the
   merge set (`runMergeSet`, 10 runs, 164,000 states, `model` with
   merges): 0 failures.
-* On `8e78cf65` (MF3's fix: the bounds check at the transaction's end)
-  so far: `lake build treetest treecheck`, `treetest exhaustive 8 3 12
-  4 merge` and `exhaustive 4 3 5 2 pairs` (0 failures), the 110 drain
-  traces of Java with merges (all OK). To run on it: `level2.sh`, and
-  `treeconf.sh all 5` again.
+* On `8e78cf65` (MF3's fix: the bounds check at the transaction's end):
+  `lake build`, `treetest exhaustive 8 3 12 4 merge` and `exhaustive 4
+  3 5 2 pairs` (0 failures), the 110 drain traces of Java with merges
+  (all OK), and `level2.sh` full (13:59 to 14:14, LEVEL 2 OK): its step
+  8 ran `treeconf.sh` at full size on the branch's own Java (small 70
+  traces, drain 110, reclaim 15: 29,794 transactions), its step 7
+  `conformance.sh` (70 traces, and drain 50, TRACECHECK OK), and the
+  take's check.
 * The branch changes no Java, so `before-commit.sh` is not a gate of
   it; `treeconf.sh` and `level2.sh` check the changed checker against
   2026.4's Java (merges off), where nothing should move.
@@ -874,24 +888,35 @@ traces rechecked OK; the medium set OK.
 
 ## 11. State
 
-Written 2026-11-11, 14:05 (agent "mgl" of coord-1111).
+Written 2026-11-11, 14:34 (agent "mgl" of coord-1111).
 
 * **Branch** `024-22-merges-lean` in
   `/Users/f/fl/bench/2026-11-11/mgl/clone`, three commits on 024-12's
-  gated head `d90586d0` (not on `main`; it needs 024-12 to land first):
-  `63e39de6` (the merge, V1, TP28 to TP36, format 7's count, TP26,
-  `treetest` with merges and A6, `treecheck`'s TREE line), `ad3707eb`
-  (TP37 and its proof), `8e78cf65` (MF3's fix). Lean only; no Java.
-* **Done:** sections 2 to 7; the runs of section 3; faults A and B
-  (section 4); Java with merges, 10 seeds of three sets, `tracecheck`
-  on reclaim traces (5.1); the gates of section 8's table.
-* **Running:** `runs/hold2.sh`, `level2.sh` on the head `8e78cf65`,
-  in a slot since 13:59 (log `runs/hold2.log`, `runs/level2-g.log`).
-* **Not done:** `level2.sh` on the head (running); `runs/set5.sh` (deeper runs: node sizes 14 and 30, 1,000
-  transactions); the proofs of TP30 to TP33.
+  gated head `d90586d0` (not on `main`; it needs 024-12 to land first,
+  approved by Frans at 14:28): `63e39de6` (the merge, V1, TP28 to TP36,
+  format 7's count, TP26, `treetest` with merges and A6, `treecheck`'s
+  TREE line), `ad3707eb` (TP37 and its proof), `8e78cf65` (MF3's fix).
+  Lean only; no Java.
+* **Done:** sections 2 to 7 and 9; the runs of section 3; faults A and
+  B (section 4); Java with merges, 10 seeds of three sets and the
+  medium set, `tracecheck` on reclaim traces (5.1).
+* **Gated:** section 8's table; `lake build` and `level2.sh` full OK
+  on the head `8e78cf65` (14:14).
+* **Nothing running.** `set5.sh` stopped at 14:31 after two of its runs
+  (3.3), its slot released: int's re-gate of 024-12 on `main` has
+  priority (the coordinator); no slot taken until int has reported its
+  gates or 15:30.
+* **Not done:** the whole `treetest` set on the head (two of its runs
+  ran on it); the rest of `set5.sh` (M = 30, 1,000 transactions,
+  `model` at M = 14, the exhaustive depth 4); `treeconf.sh large`
+  against Java with merges; the proofs of TP30 to TP33.
+* **Next, decided by Frans (14:27, 024-18, QD1), not started:** dead
+  klongs, option 2 with theta 7, after the merges, as a change of its
+  own through the model; its Lean side on top of this branch.
 * **Copies:** `mgl/plant/lean` (planted faults; clean, with a `debug6`
   mode in `TreeTest.lean`), `mgl/comb/clone` (branch `comb`:
   `d90586d0` + mgj's `f507148d` + J2's TREE line, uncommitted; Java
   built there).
-* **To continue:** read `runs/hold2.log`; then `set5.sh`. Every script in
-  `runs/` takes its own slot with `slot.sh`.
+* **To continue:** after int's gates (or 15:30), the rest of `set5.sh`
+  in one slot (edit its run list first; every script in `runs/` takes
+  its own slot with `slot.sh`); then 024-18's dead klongs.

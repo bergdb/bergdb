@@ -319,20 +319,52 @@ Gates on `ca3824aa`, one slot a run:
    it belongs: after the value transformation, before `Dag.putKv`. If
    024-16 lands first, 024-12 is merged onto it and gated again.
 
-## 8. State
+## 8. 024-12 again, on main with 024-16
 
-2026-11-11, 14:11.
+024-16 landed as `main`'s `47c93e34` (14:10); the coordinator's message
+(14:12): merge `d90586d0` again on `main`'s `b7f1b1cf`, as a new
+branch, `ca3824aa` kept as it is. Frans approved 024-12 for landing
+at 14:28 (the coordinator, 14:29); it lands once these gates pass.
+
+* **The branch:** `024-13-int-e`, in the worktree
+  `/Users/f/fl/bench/2026-11-11/int/wt-e` of the clone; the merge
+  **`480f83da`** (`--no-ff`), no conflict. Its `java/`, `lean/` and
+  `docs/` are exactly those of the trial merge of 13:35 (section 7,
+  point 5). The change against `main` is the same as in section 7: 29
+  files, 4,303 lines added, 51 removed (`lean/` 21 files, 3,806 and 49;
+  `java/` 6, 411 and 2; `docs/` 2, 86); no trailing whitespace lost.
+* **`kvApplied` in the combined `Db.putKvs`:** after the value
+  transformation (`kv.transformValue`), before `dag.putKv`; the key
+  transformations are done before the go point by 024-16's
+  `Db.transformKeys`, so the hook sees the key and value the Dag gets.
+
+Gates on `480f83da`; the Lean build and the static checks without a
+slot (the coordinator, 14:12), the rest one slot a run:
+
+| Gate                                   | When           | Result                          |
+|---|---|---|
+| `lake build` and `lake build treetest` | 14:13 to 14:14 | OK, 179 and 72 jobs             |
+| `sorry`, `admit`, `axiom`, `native_decide` | 14:14      | 0 in `lean/`, by grep           |
+| `collectAxioms`, every theorem         | 14:14          | 142, only the three standard    |
+| `lean/test-traces/run.sh`              | 14:14          | TRACE TESTS OK                  |
+| `java/before-commit.sh`                |                | (waiting for a slot)            |
+| `java/stress/level1.sh`, full          |                |                                 |
+| `java/stress/level2.sh`, full          |                | with its step 8, treeconf.sh    |
+| `java/stress/level3.sh`, full          |                |                                 |
+
+
+## 9. State
+
+2026-11-11, 14:16.
 
 * **Landed:** the first landing as `main`'s `a780b957`, 024-09 as
-  `379d8acf`, 024-15 as `1e77cfc6`.
-* **024-12, for Frans at 14:30:** branch `024-13-int-c`, head
-  **`ca3824aa`**, worktree `/Users/f/fl/bench/2026-11-11/int/wt-c`;
-  every gate passed (section 7). Not to be landed by this subitem.
-* **To land: 024-16,** branch `024-13-int`, head **`3af7513e`**, in
-  the clone `/Users/f/fl/bench/2026-11-11/int/clone`: one merge
-  (`3412ee7a`) on `main`'s `210e5b60`; every gate passed (section 6).
-  The working tree is clean. If 024-12 lands first, 024-16 is merged
-  onto it and gated again (or the other way round; the trial merge has
-  no conflict, section 7, point 5).
+  `379d8acf`, 024-15 as `1e77cfc6`, 024-16 as `47c93e34`.
+* **024-12, for Frans's yes:** branch `024-13-int-e`, head
+  **`480f83da`**, worktree `/Users/f/fl/bench/2026-11-11/int/wt-e`, on
+  `main`'s `b7f1b1cf`; the slot gates run by
+  `/Users/f/fl/bench/2026-11-11/int/gated.sh` (logs `e-*` in
+  `/Users/f/fl/bench/2026-11-11/int/logs/`), one waiting take at a time.
+  When they pass, `480f83da` is the head to land after Frans's yes.
+  `ca3824aa` (`024-13-int-c`, on `2108aa2d`) is superseded, kept.
 * **Later:** the C clone's branch if sent. Owner lines say "gates
-  only", never the word for a timing run; one waiting take at a time.
+  only", never the word for a timing run. Stop by 19:00.
