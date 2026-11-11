@@ -40,7 +40,7 @@ high, xhigh for a hard task. At most 8 agents at a time (Frans,
 | 026 | Item for release 2026.6, "a stable stream" (preliminary) | coordinator | done |
 | 024-07 | The last touch of a reclaim iteration (CL7): design, fix | touch (xhigh) | on main, a780b957 |
 | 024-08 | MEM 327 at 10M keys against 129.6 at 1M: the cause | mem (high) | done 07:25 |
-| 024-09 | The tie of model and code repaired (024-06, A1 to A4) | tie (xhigh) | |
+| 024-09 | The tie of model and code repaired (024-06, A1 to A4) | tie (xhigh) | done 10:34, to int |
 | 022-07 | The C clone to release 2026.4 as released (CC1) | cc (high) | |
 | 024-10 | The builder's rule "the last operation wins" (CA1) | low (high) | on main, a780b957 |
 | 024-11 | The underfill fix: a design study, no code | fill (xhigh) | done 08:18 |
@@ -179,6 +179,17 @@ from them.
   (020-33, started); the cut's safety rests on the delete's upward
   unlink, stated in the tree model, with 024-09's gates landed; the
   touch removed altogether later, with the tree model.
+* 10:25 The usage: 59 % of the week (50 % at 09:25). Frans, 10:28: a
+  ceiling of 75 % for today ("Yes."); the Fable agents finish as they
+  are, every follow-up on Opus. 10:26 Frans on a value's limit: "I think
+  1 MB is too small for the limit. But 10 MB could work. Ordinary photos
+  should fit."; the repo's largest file is 15.6 MB; 16 MiB suggested;
+  sent to limits. 10:28 020-33 done: the known issue in 2026.4's notes
+  (65b8bfdc).
+* 10:34 024-09 done: T-SCHEME's argument holds for 2026.4's code; the
+  gates now reach the take-back; PhysStep proved; head e6b6bda6, sent
+  to int to merge and gate (unlinkfuzz, conformance reclaim and evict,
+  level3 not yet run after its merge of main).
 
 
 ## 6. Outcome

@@ -1,0 +1,30 @@
+# bergdb 024-09, A3: cover.py on the reclaim set of conformance.sh (30 traces, 5 seeds; branch 024-09-tie, a48534fe), 2026-11-11
+traces 30: iterations with a cut 321, steps 583; index nodes reachable at f: made before the first step 13791, of them in a step's touch 13791, not 0 (with an entry in the iteration 0); made in the iteration 4353
+r-small: traces 5: iterations with a cut 26, steps 40; index nodes reachable at f: made before the first step 512, of them in a step's touch 512, not 0 (with an entry in the iteration 0); made in the iteration 234
+   Dag counters: unlinked 0, taken back 0, collapses 0, empty keys pointed to the next child 0
+r-del: traces 5: iterations with a cut 55, steps 81; index nodes reachable at f: made before the first step 2852, of them in a step's touch 2852, not 0 (with an entry in the iteration 0); made in the iteration 937
+   Dag counters: unlinked 157, taken back 2, collapses 0, empty keys pointed to the next child 70
+r-long: traces 5: iterations with a cut 59, steps 105; index nodes reachable at f: made before the first step 3263, of them in a step's touch 3263, not 0 (with an entry in the iteration 0); made in the iteration 629
+   Dag counters: unlinked 966, taken back 0, collapses 0, empty keys pointed to the next child 2
+r-big: traces 5: iterations with a cut 145, steps 295; index nodes reachable at f: made before the first step 6357, of them in a step's touch 6357, not 0 (with an entry in the iteration 0); made in the iteration 2247
+   Dag counters: unlinked 57, taken back 0, collapses 0, empty keys pointed to the next child 17
+r-idle: traces 5: iterations with a cut 20, steps 30; index nodes reachable at f: made before the first step 630, of them in a step's touch 630, not 0 (with an entry in the iteration 0); made in the iteration 212
+   Dag counters: unlinked 0, taken back 0, collapses 0, empty keys pointed to the next child 0
+r-drain: traces 5: iterations with a cut 16, steps 32; index nodes reachable at f: made before the first step 177, of them in a step's touch 177, not 0 (with an entry in the iteration 0); made in the iteration 94
+   Dag counters: unlinked 353, taken back 21, collapses 2, empty keys pointed to the next child 95
+
+# the same with the first step's TOUCH left out (cover-mut.py): the check can fail
+traces 30: iterations with a cut 321, steps 583; index nodes reachable at f: made before the first step 13791, of them in a step's touch 3665, not 10126 (with an entry in the iteration 3984); made in the iteration 4353
+
+# more.sh: 60 more draining reclaim traces, export only
+c-drain: traces 12: iterations with a cut 119, steps 188; index nodes reachable at f: made before the first step 1480, of them in a step's touch 1480, not 0 (with an entry in the iteration 0); made in the iteration 657
+   unlinked 905, taken back 31, collapses 8, empty keys pointed to the next child 274; errors 0
+c-drain2: traces 12: iterations with a cut 343, steps 418; index nodes reachable at f: made before the first step 15402, of them in a step's touch 15402, not 0 (with an entry in the iteration 0); made in the iteration 3422
+   unlinked 1577, taken back 9, collapses 0, empty keys pointed to the next child 557; errors 0
+c-long: traces 12: iterations with a cut 460, steps 510; index nodes reachable at f: made before the first step 37137, of them in a step's touch 37137, not 0 (with an entry in the iteration 0); made in the iteration 3355
+   unlinked 9740, taken back 131, collapses 320, empty keys pointed to the next child 587; errors 0
+c-big: traces 12: iterations with a cut 542, steps 1124; index nodes reachable at f: made before the first step 93253, of them in a step's touch 93253, not 0 (with an entry in the iteration 0); made in the iteration 23027
+   unlinked 20084, taken back 46, collapses 9, empty keys pointed to the next child 1230; errors 0
+c-14: traces 12: iterations with a cut 429, steps 1248; index nodes reachable at f: made before the first step 22312, of them in a step's touch 22312, not 0 (with an entry in the iteration 0); made in the iteration 11334
+   unlinked 504, taken back 1, collapses 0, empty keys pointed to the next child 130; errors 0
+MORE DONE
