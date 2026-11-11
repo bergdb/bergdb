@@ -304,6 +304,16 @@ from them.
   of them, model first, not landed; 024-17 reworked for 112-byte keys;
   night.sh on main after the tree model, if the machine is free. Usage
   ceiling 85 %.
+* 14:48 Frans, on the three things waiting for him (the four re-found
+  CorruptStreamTester copies of 024-21, 906d54d7; the diff of the
+  trusted Lean statements, LiveAppend in place of PhysRunOK; the merges
+  branch before it lands): "Handle these for me as you see fit." And:
+  "I am plan to be back 17:00. If not back by 18:00, keep working
+  unattended through the night." So the coordinator lands the merges
+  (024-21 with 024-22) once fully gated, Java against the model at
+  8/17/17, and after an independent review finds nothing that blocks;
+  the LiveAppend change lands on its gates, its trusted diff quoted in
+  its item for Frans to read; 906d54d7 goes in with the merges.
 
 
 ## 6. Outcome
