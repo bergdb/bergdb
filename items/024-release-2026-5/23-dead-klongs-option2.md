@@ -25,15 +25,43 @@ here as "024-23, OD1", the questions as "024-23, QO1".
 
 ## 1. In short
 
-Kept current; section 10 has the exact state. Written 16:12.
+Kept current; section 9 has the exact state. Written 18:16.
 
-* **Design note written** (section 2). The rule is 024-18's option 2
-  made exact: a node holds at most theta dead KEY klongs; a write that
-  would leave more finds the node full, and rule O replaces it by its
-  last version with the write applied, always one node (a time split).
-  theta = 7 at B = 30, 7 B / 30 at the other sizes (1, 3, 14 at 8, 14,
-  62), none below 8. No record field; one more rule of format 7.
-* Lean, Java, the comparison and the gates: not yet.
+* **The rule** (section 2): 024-18's option 2 made exact. A key node
+  holds at most theta dead KEY klongs: a write that would leave more
+  finds the node full, and rule O replaces it by its last version with
+  the write applied, always one node (a time split). The same as
+  024-18's "theta or more before a write" for every write that adds one
+  dead klong; exact where a write adds none or two, and the
+  transaction's own bitmap counts (QO1). theta = 7 at B = 30, 7 B / 30
+  at the other sizes (1, 3, 14 at 8, 14, 62), none below 8 (QO2). No
+  record field: one more rule of format 7. `dirtyNodeBound` counts one
+  overflow for a node its klongs can take above theta; 024-16's and
+  024-17's bounds do not change.
+* **Model first**: Lean (`aabafc04`): `Params.theta`, `deadOver` in every
+  write, TP39 and TP40 stated (the local form and theta's values
+  proved), treecheck reads theta from a 9-token TREE line, treetest's
+  `thetas` set: 205,008 states, 0 failures (5.1). Then Java
+  (`1838b687`): `Dag.theta`, `deadCount`, `deadFull` in every write path,
+  the count in `dirtyNodeBound`, TP39 in `checkFill` (so UnlinkFuzz's
+  strict walk), the TREE line, new tests, docs.
+* **Java equals the model** (5.2): treeconf small, drain, reclaim and
+  medium, 222 traces, 43,513 transactions, 137,285 compactions: all TREE
+  OK (C-T1 to C-T9, TP39 on Java's tree). Two planted faults are caught
+  (5.3): `dirtyNodeBound` without the new term fails TP23; the
+  prototype's unchecked own bitmap fails TP39.
+* **Five existing tests changed** (4.1), each its own commit, for Frans:
+  pinned stream positions and two fragile states moved; one test misused
+  PutData.
+* **Reviewed** (rev23, 4.2): land with fixes; R1 (a test of mine made
+  vacuous) fixed, R3 and R4 done, R2 for the landing message, R5 to R7
+  notes.
+* **Gated** (6), head **`e0fb9d77`**: lake build, no sorry or axiom,
+  test-traces, before-commit, level1 to level4 full, unlinkfuzz,
+  conformance small, medium, reclaim, evict and drain: all OK.
+* **At 1M keys** (7): 0.29 to 0.31 dead klongs a live one (the merges
+  alone 0.48 to 0.85), -3 % to +8.5 % stream bytes, 13 to 16 % fewer key
+  nodes; every value checked.
 
 
 ## 2. Design note
@@ -306,12 +334,105 @@ rule of 2.2.
   distances of 10 bytes and 10 MB: the tree after each start the same,
   node for node, and the reruns compact (10 MB). The existing restart and
   crash-cut tests of the merges (node size 8, theta 1) now rerun
-  compactions too, and pass unchanged. **No existing test's expected
-  value changed.**
+  compactions too, and pass unchanged. Four existing tests needed a
+  changed value (4.1).
 * **Docs**: docs/levels.md (the rule, after the merges' paragraph),
   docs/sis-model.md (3.4 and the format's paragraph), docs/trace-format.md
   (the TREE line's th), releases/next.md (the format 7 entry: one more
   rule; its figures are 024-18's, to be replaced by section 7's).
+
+
+### 4.1 Changed expected values of existing tests
+
+Each its own commit, for Frans's approval. Option 2 changes the stream
+of every workload that overwrites (at node size 30 from the 8th dead
+klong of a node, at 8 from the 2nd), so tests that pin bytes or shapes
+of a stream moved, as with the merges (024-21, 5.4). Found by
+`before-commit.sh` on `e633004f` (8 failures, 17:04); each change
+checked by a probe in `o2/probe2/src` against the new build and 024-21's
+frozen merges build (`mgj/b2`), so that the same case is pinned again:
+
+* **`1d38e6f4`, CorruptStreamTester** (four tests; the probes CstRows,
+  CstOne, CstLeaf, CstFlip, CstPtr, Cst11 and 024-21's CstFind, NodeMap,
+  NodePtrs): testFound019_32's rows 1, 2 and 8 at their records' new
+  places, each with the same refusal (`Bad klong type, 2`, `Bad key of
+  value node`, a read that fails); row 6 ("a leaf's flag") in ALL's seed
+  729025, refused as before ("Pointer 23 of node 0 names a node of type
+  30"): seed 729011's stream writes no key node after its first record
+  any more, its primordial node being compacted rather than filled; the
+  last row's odd value pointer at the stream's byte 7200 (a read fails,
+  as before; 3336 is now in a node the start reads, refused by its
+  checksum). testFound021_11 in the record at 22712 (key node 6217's
+  pointer 1, to the newest top node 22904 and the older 18008; the top
+  node's skip pointer 0 to the key node at 18848), all refused as
+  before. testFound021_12 in the same seed 20767, its node at offset
+  208 of the record at 26632, and its three refusal texts.
+  testFoundDescentCycle in seed 20828, the record at 39248, prevPos
+  15800 (CstFind's search, seeds 20767 to 20830).
+* **`c8a59666`, DbTester.testDecreaseOfStartupDistance** (replaces
+  `c6655215`, after the review's R1): the decrease to 450 kB (was 500
+  kB), "no jump" counted from the stream's end before the call, as
+  before. Probed: at 500 kB the paced take of the call moved the startup
+  pos to 3,517,520, past the one transaction that was 1,281 bytes inside
+  the point (3,511,608 < 3,512,889); with the merges alone it stopped 4.3
+  kB before its transaction. `c6655215` counted from the end after the
+  call instead, which the review (rev23, R1) showed holds with a planted
+  jump too, as the call's own record is about 250 kB: wrong of mine. At
+  450 kB the test passes, a planted jump fails it, and the span shrinks
+  for 7 commits (rev23's check).
+* **`214d4635`, Eviction.testLoweredBudgetAfterPinsFell**: 520
+  transactions (was 500). After 500 the test's own evictions down to P0
+  left nothing detachable above the pins (P1 3,183 = resident 3,183, P0
+  3,442), so the state it tests (resident between the budget and P0) was
+  not reached; probed at 400 to 600, 520 reaches it (P1 3,151, resident
+  3,981, P0 4,013). Fragile before too (it depends on where the hand's
+  evictions stop).
+* **`7103d741`, EvictionReaderTester.testEvictionKeepsTheRecords**: 40
+  keys (was 30). The space root at node size 8 is compacted to 2 live
+  klongs, so the walk of the top node's and the root's pointers found 1
+  clean index node, not the 3 it asks; with 40 keys 6.
+* **`1f9fdb64`, DagTester.testPointerCreationListener** (an f-test,
+  found by the second run of `before-commit.sh`, 17:14): the key access
+  path is cleared after each put, as Db does. The test never cleared it,
+  so it grew over its 10,000 puts; its space root, a segment leaf with
+  one long segment, never split before; with option 2 the segment root's
+  splits give it a shadowed klong each, it is compacted, and its time
+  split took the path's node before it for its parent ("time-split-1,
+  missing klong in keyAccessPath, 10186"). A test's misuse of PutData,
+  not a fault of the rule: Db and the model clear the path at each put.
+
+
+### 4.2 The review (rev23)
+
+The review in this item's directory, `review.md` (rev23, 17:18 to 17:45, on
+`1f9fdb64`): **land with fixes**; no defect in the rule; planted faults
+in three of the four counting paths, the restart's determinism and
+`dirtyNodeBound`'s term are caught by Java's own tests. Done on top
+(no history rewritten, the gates running):
+
+* **R1** (should fix): `c8a59666` (4.1).
+* **R3**: `e3732d24`, a comment at `emptyKeyNext`'s test: not reached at
+  format 7 from node size 8; the model runs it (treetest, theta forced
+  below 8).
+* **R4**: `e3732d24`: docs/levels.md and Dag's comment say that
+  reclaim's rewrites compact the cold leaves that they take above theta
+  (not every leaf they reach); releases/next.md says its figures are
+  024-18's prototype's until section 7's.
+* **R2** (format 7's meaning changes without a format bump): for the
+  landing message (QO3).
+* **R5, the count's cost on every put**: `setValue` takes `isLive` (a scan
+  and `lastBitmap`) before `deadFull`'s cheap size test, and `deadCount`
+  is up to B^2 / 2 comparisons on a node above theta (about 450 at 30,
+  1,900 at 62). Left for the measurement Frans put later (QD1); if it
+  shows, test the size first or count in one pass per compare value.
+* **R6, TP40's premise** (every key node of P) is wider than TP39's
+  conclusion (the nodes reachable): true (a replaced or unlinked node goes
+  back to its state before the transaction), to be stated or narrowed
+  when the two are proved.
+* **R7, treecheck takes theta from the TREE line** without comparing it
+  with `Params.thetaFor M` (nor m, c, h with theirs): Java's and Lean's
+  values agree (`DeadKlongTester.testTheta`, `thetaFor_values`); a
+  one-line check is optional, not made.
 
 
 ## 5. The model's runs, and Java against the model
@@ -360,9 +481,12 @@ bound holds.
 | small   | 10    | 70     | 7,100        | 21,860      | 1,144  | TREECONF OK  |
 | drain   | 10    | 110    | 13,900       | 50,800      | 27,627 | TREECONF OK  |
 | reclaim | 3     | 15     | 8,777        | 8,560       | 715    | TREECONF OK  |
+| medium  | 3     | 27     | 13,736       | 56,065      | 19,870 | TREECONF OK  |
 
 Compactions are the model's `dead.compact` (of them by a delete's
-bitmap in place: 33, 11,606 and 10). No trace reached LE-b (`leb.*`): with
+bitmap in place: 33, 11,606, 10 and 6,643). The medium set has node
+sizes 8 to 62 (theta 1 to 14) and up to 8,000 keys; its traces at node
+size 62 take the checker 14 minutes each (16:26 to 17:02 in all). No trace reached LE-b (`leb.*`): with
 the merges a delete empties only a root. Earlier, 16:20, 4 seeds of
 small and drain: OK as well.
 
@@ -381,6 +505,90 @@ In a copy of the model (`o2/plant/lean`), each fault alone, treetest:
   in 20 transactions of 2,000 (a node with 2 dead klongs, theta 1), from
   transaction 31 on, three deletes in one leaf. So the walk's TP39 check
   catches a write that the rule misses.
+
+
+## 6. Gates
+
+On `1f9fdb64` (`e633004f` with section 4.1's five test commits), each
+in a slot of its own (`o2/gate.sh`, logs in `o2/logs/`):
+
+| Gate                                      | When           | Result                          |
+|---|---|---|
+| `lake build`, no sorry or axiom, axioms   | 17:15          | OK, 183 jobs; 0 sorry, 0 axiom  |
+| `lean/test-traces/run.sh`                 | 17:15          | TRACE TESTS OK                  |
+| `java/before-commit.sh`                   | 17:15 to 17:17 | BEFORE COMMIT OK (101 s)        |
+| `java/stress/level1.sh`, full             | 17:18 to 17:21 | LEVEL 1 OK, MEM 129 (172 s)     |
+| `java/stress/unlinkfuzz.sh`               | 17:21 to 17:26 | UNLINKFUZZ OK, 3,226 rounds     |
+| `java/stress/level2.sh`, full             | 17:26 to 17:39 | LEVEL 2 OK (771 s)              |
+| `java/stress/level3.sh`, full             | 17:39 to 17:47 | LEVEL 3 OK, C-CUT 0 of 314      |
+| `conformance.sh medium`                   | 17:47 to 17:49 | OK, 9 traces TRACECHECK OK      |
+| `conformance.sh reclaim`                  | 17:49 to 17:52 | OK, 30 traces TRACECHECK OK     |
+| `conformance.sh evict`                    | 17:52 to 17:53 | OK, 51 traces TRACECHECK OK     |
+| `java/stress/level4.sh`, full             | 17:53 to 18:07 | LEVEL 4 OK                      |
+| the 1M count (section 7)                  | 18:07 to 18:11 | values checked OK, three shapes |
+| `conformance.sh small`                    | 18:11          | OK, 70 traces TRACECHECK OK     |
+| `conformance.sh drain`                    | 18:12          | OK, 15 traces TRACECHECK OK     |
+| on `e0fb9d77`: lake build, axioms, traces | 18:12          | OK, as above                    |
+| on `e0fb9d77`: `java/before-commit.sh`    | 18:12 to 18:14 | BEFORE COMMIT OK (103 s)        |
+
+* The axioms (`#print axioms` of the README's list and of 024-22's and
+  024-23's theorems): Lean's standard ones; `thetaFor_values` none,
+  `thetaFor_pos` and `deadOver_false` propext and Quot.sound.
+* before-commit: unit 1,670 tests, f 89, DEMOS OK (14 runs). Its first
+  two runs, on `e633004f` (17:04) and with the four tests of 4.1 changed
+  (17:14), failed: 8 unit tests, then 1 f-test (section 4.1).
+* level2 (on `1f9fdb64`'s build): conformance small 70 traces and drain
+  50, TRACECHECK OK (A6 required); A2A3Check2's ten configurations OK
+  with A6; treeconf small, drain and reclaim as section 5.2's; take
+  TAKECHECK OK; every stress step 0 failures.
+* The gates from level3 on build the head `e3732d24` (the review's fixes,
+  4.2: a test, comments and docs only after `1f9fdb64`).
+* unlinkfuzz: 32 configurations, 697,388 compactions; the most dead
+  klongs of a node after a transaction (its strict walk, TP39) is theta
+  exactly in every configuration with theta on (1 at node size 8, 3 at
+  14, 7 at 30); node size 6 has none (theta off), at most 2.
+* level3: conformance with reclaim 30 traces, C-CUT 0 of 314; level4:
+  conformance with eviction 51 traces (C-P 0 of 11,943 transactions,
+  C-H 0), EvictionInvariance, LargerThanMemory; every step 0 failures.
+* The final head `e0fb9d77` adds to `e3732d24` only releases/next.md's
+  figures (section 7); lake build, the axioms, test-traces and
+  before-commit ran on it last (unit 1,670 tests, f 89, demos).
+* By `o2/gates-all.sh`, 17:18 to 18:12, each gate in its own slot, one
+  slot at a time; no failure, so no rerun.
+
+
+## 7. The count at 1M keys
+
+A sanity check that dead klongs a live klong drop as 024-18 measured, no
+timing: 024-18's probe DK (compiled in `o2/probe/c` against the build of
+`1f9fdb64`, frozen in `o2/b1`), its setup unchanged (1M keys, R = 1 s,
+60,000 transactions after the shape, a census every 20,000 and at each
+iteration's end), one JVM at a time in one slot, 18:06 to 18:11
+(`o2/count1m.sh`; outputs `o2/out1m/`, summed by `o2/dl.py` as 024-18,
+6.2 takes them: d/l over leaves and inner nodes at transaction 60,000,
+B/op the stream's growth over the 60,000 an operation). Against 024-18's
+runs on 024-21's build (6.2): the merges alone (g0) and its prototype of
+option 2 at theta 7 (g7):
+
+| Shape      | Merges: d/l | B/op  | Prototype: d/l | B/op  | 024-23: d/l | B/op           |
+|---|---|---|---|---|---|---|
+| cold       | 0.83        | 264.9 | 0.30           | 279.8 | 0.29        | 284.7 (+7.5 %) |
+| over       | 0.48        | 459.3 | 0.35           | 446.8 | 0.31        | 445.0 (-3.1 %) |
+| sparsecold | 0.85        | 224.5 | 0.36           | 241.2 | 0.31        | 243.5 (+8.5 %) |
+
+* **Dead klongs drop as measured**, a little further than the prototype's
+  (0.29 to 0.31 a live klong, against 0.30 to 0.36), for about the same
+  bytes (the percentages against the merges alone). The census's
+  histogram has no node above 8 dead klongs at any census of the three
+  runs (with the merges alone, "cold" had 51,278 leaves above 8 at
+  transaction 60,000). Each run ends with DK's check of every live key's
+  value by a scan: OK (1,000,000, 1,000,000 and 100,000 keys).
+* **Fewer key nodes** (13 to 16 %): 94,299 in "cold" and 96,737 in "over" (merges
+  alone 110,671 and 111,412; prototype 105,627 and 111,389): a
+  compaction keeps one node of up to B - 1 klongs where rule O would
+  split a last version above h.
+* Not measured, as Frans decided (QD1): 10M keys, MEM, reads and their
+  time, the cost of the count on each put (4.2, R5).
 
 
 ## 8. Questions for Frans
@@ -411,22 +619,27 @@ could go on; each is a default that Frans may overturn.
   `main` before anyone keeps a database**, and keep format 7.
 
 
-## 10. State
+## 9. State
 
-2026-11-11, 16:34, by the agent "o2" of coord-1111.
+2026-11-11, 18:15, by the agent "o2" of coord-1111. Done; reported to
+the coordinator, who lands it.
 
 * **Clone** `/Users/f/fl/bench/2026-11-11/o2/clone`, branch
-  `024-23-option2`, on `024-13-int-m`'s `2679622e` (the merges, 024-21
-  and 024-22, with `main` of 16:0x; `main`'s later commits are items
-  only). Commits: `aabafc04` (Lean), `1838b687` (Java, tests, docs),
-  `6a24e0f0` (lean/README.md). Head **`6a24e0f0`**.
-* **Done**: the design note (2), Lean (3), Java (4). treeconf small (10
-  seeds, 70 traces), drain (10, 110), reclaim (3, 15): TREECONF OK with
-  option 2 on. treetest `thetas`: running (one core,
-  `o2/runs/thetas1.txt`), the first four runs 0 failures.
-* **Running**: treeconf medium (3 seeds) in slot heavy2 (from 16:26);
-  a control in `o2/plant/lean` (dirtyNodeBound without option 2's term).
-* **Next**: the gates (section 6) by `o2/gate.sh` and `o2/gate-lean.sh`,
-  one slot at a time; the 1M count by `o2/count1m.sh cold over
-  sparsecold` (DK compiled in `o2/probe/c`, the build frozen in
-  `o2/b1`), section 7.
+  `024-23-option2`, head **`e0fb9d77`**, working tree clean. On `main`'s
+  `4c75ebf1` (merged at `e633004f`). Commits after the merge base
+  `2679622e`: `aabafc04` (Lean), `1838b687` (Java, tests, docs),
+  `6a24e0f0` (lean/README.md), `e633004f` (merge of `main`), the test
+  commits `1d38e6f4`, `c6655215` (replaced by `c8a59666`), `214d4635`,
+  `7103d741`, `1f9fdb64` (4.1), the review's fixes `c8a59666` and
+  `e3732d24` (4.2), and `bf48bb24`, `e0fb9d77` (releases/next.md's
+  figures).
+* **Gated** (section 6): all of the brief's gates, OK; before-commit and
+  the Lean checks again on `e0fb9d77`.
+* **For Frans**: the six test commits of 4.1 (with `c8a59666`) need his
+  approval; QO1 to QO3 (section 8); the landing message says that format
+  7's meaning changes without a format number (R2, QO3).
+* **Not done, by Frans's decision** (QD1): 10M keys, MEM, reads timed,
+  the cost of the count on every put (R5). Not proved: TP39, TP40 (R6).
+* **Nothing runs; no slot is held.** Scratch: `o2/plant/lean` (the
+  controls of 5.3), `o2/probe2` (the probes of 4.1), `o2/probe3`,
+  `o2/out1m`, `o2/runs`, `o2/logs`.

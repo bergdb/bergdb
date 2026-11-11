@@ -346,6 +346,63 @@ from them.
   full, level4 full, conformance small, medium, reclaim, evict, drain).
   Record format 7; 2026.4's databases are refused. Landing delegated by
   Frans at 14:48; the six changed tests (024-21, QJ1) accepted under it.
+* 17:20 Frans back. 17:33 the review of option 2 (024-23): land with
+  fixes (R1, a changed test made vacuous; docs).
+* 17:41 Frans decided the limits (024-17, section 8): L1 = 500
+  operations, L2 = 111 bytes (16 segments), L4 = 8 MiB, L5 = 32 MiB,
+  the rest as recommended ("a bit more conservative, possibly
+  increasing in a future version").
+* 17:43 Frans left ("You can plan the unattended work"). Unattended
+  until 2026-11-12 07:00 (the default; no time given). The plan, in
+  order, each step by its own rule:
+  1. Option 2 (024-23) lands when its gates pass with the review's R1
+     fixed (Frans 14:27: "Let's get this in now"); the landing says
+     that format 7's meaning changes without a new format number (R2).
+  2. 024-17 restated for the decided limits (lim2, by 19:30).
+  3. The limits implemented, a new item (024-24), on main after option
+     2: the constants and the count with q in the Lean model (QL8 (a)),
+     Java's checks with refusals (L1 to L6), the reader reading a
+     record's header first (QL7), the tests and benchmarks that use
+     longer keys; full gates and an independent review, then it lands
+     (Frans decided the values; the coordinator lands as for 024-21).
+  4. CRC32C (QL9) as its own item after 024-24, only if the week's
+     usage is under 82 % when 024-24 lands.
+  5. night.sh on main when no agent needs a slot (both slots), its
+     report in news.md.
+  No new agent at or above 83 % of the week (ceiling 85 %). The Lean
+  proofs (TP30 to TP33) wait for a day with more usage. The morning: a
+  summary in news.md and this plan's Outcome.
+* 17:48 Frans: "Fine to use up to 90%. Use Opus 5.5 High for coding
+  agents to save usage. Use xhigh for planning. This session is Opus 5.5
+  xhigh. [...] Keep on working until 07:00 or you get to 90% usage." So
+  the ceiling is 90 % (no new agent at or above 88 %); 024-24 (the
+  limits) started at 17:49 on Opus high; CRC32C (QL9) as 024-25 after
+  option 2 lands, on Opus high, when usage is under 85 %; with usage
+  left after night.sh, the proofs of the count with q (TP23, TP26 for
+  format 7) on Opus high.
+* 18:01 Frans: offload the proofs to his Codex (GPT Plus, gpt-6.1-sol at
+  max; "Sol Max does not use too much"), to save the Claude week (80 %
+  spent in two days). 18:10 the first Codex run started: TP32
+  (`MergeOpBound`, 024-22) in a clone of main
+  (/Users/f/fl/bench/2026-11-11/cx/clone, branch 024-22-tp32), brief
+  /Users/f/fl/bench/2026-11-11/cx/brief-tp32.md: no changed statement,
+  no sorry or axiom, Lean only, commits in Frans's name without AI
+  attribution, stop at 06:00. The coordinator checks it mechanically
+  (lake build, the statements' diff empty, print axioms) and lands it.
+  Next for Codex, one at a time: TP23 and TP26 with the count with q
+  (after 024-24), TP39 and TP40 (024-23), TP31, TP7 and TP30.
+* 18:05 Frans reset the Claude usage (the 5 hours and the week 100 %
+  left) and confirmed Codex on TP30 to TP33 ("Yes, start it."); Codex
+  takes them one at a time after TP32. 18:06 CRC32C (QL9) started as
+  024-25 on Opus high, now that usage allows. 18:06 Frans left: "Work
+  unattended."
+* 18:16 Option 2 for dead klongs landed: 08659847, the merge of
+  e0fb9d77 (gates: lake build, no sorry or axiom, test-traces,
+  before-commit, level1 to level4 full, unlinkfuzz, conformance small,
+  medium, reclaim, evict, drain; the review's R1 fixed). At 1M keys
+  0.29 to 0.31 dead klongs a live one (0.48 to 0.85 with the merges
+  alone), stream bytes -3 % to +8.5 %, 13 to 16 % fewer key nodes. The
+  landing says that format 7's meaning changes without a new number.
 
 
 ## 6. Outcome
