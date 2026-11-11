@@ -24,6 +24,8 @@
 #include "knode.h"
 #include "ntable.h"
 #include "plat.h"
+#include "spos.h"
+#include "stream.h"
 #include "trans.h"
 #include "vnode.h"
 
@@ -291,10 +293,20 @@ static void twin_run(int64_t budget, bool setter, int32_t maxNode, int32_t sd, u
         CHECK(db_resident_bytes(&sub) <= sub.ev.trigger);
         /* At most the budget plus what is pinned, or what is pinned plus the
          * node table's bytes, the margin over the floor of a budget under it
-         * (022-06, U1-4; the budget may be INT64_MAX). */
+         * (022-06, U1-4; the budget may be INT64_MAX). While a floor raises
+         * the trigger, what is pinned may be less than the floor by 'stale':
+         * a transaction and its take can leave D with as many nodes as at
+         * the floor's sweep (ev_run takes the floor as old only when D has
+         * fewer) but with fewer bytes. Until 022-07 this check had no such
+         * term and held on these seeds; the trees of release 2026.4's
+         * deletes made one case of 120 bytes (budget 2,000, node size 8,
+         * seed 12, transaction 226: D of 7 nodes before and after). */
         const int64_t table = nt_bytes(&sub.node_table);
-        CHECK(db_resident_bytes(&sub) - db_pinned_bytes(&sub)
-                <= (sub.ev.high > table ? sub.ev.high : table));
+        const int64_t pinned = db_pinned_bytes(&sub);
+        const int64_t stale = sub.ev.trigger > sub.ev.high && sub.ev.floor > pinned
+                ? sub.ev.floor - pinned : 0;
+        CHECK(db_resident_bytes(&sub) - pinned
+                <= (sub.ev.high > table ? sub.ev.high : table) + stale);
         if (i % 25 == 24) {
             /* Reads at past times, each followed by the end of an API call. */
             for (int j = 0; j < 60; j++) {
@@ -336,6 +348,241 @@ TEST(evict_twins) {
     }
     twin_run(3000, true, 8, 200, 31, &evicted);
     printf("  evict_twins: %lld objects evicted\n", (long long) evicted);
+}
+
+/* ======== The dead hand (bergdb 023-07, section 5.6; 022-07) ======== */
+
+struct dead_twin {
+    struct mem m0, m1;
+    struct db ref, sub;
+    struct bergdb_test_clock k0, k1;
+    int64_t time;
+    int32_t checks;
+};
+
+/* One transaction on both: n operations, ikeys[i] put with values[i], or
+ * deleted if values[i] is NULL. */
+static void dead_trans(struct dead_twin *w, const char *const *ikeys, const char *const *values,
+        int n) {
+    w->time += 5 * (CLK_UNITS_PER_SEC / 100);
+    bergdb_test_clock_set(&w->k0, w->time);
+    bergdb_test_clock_set(&w->k1, w->time);
+    struct db *dbs[2] = { &w->ref, &w->sub };
+    struct mem *mems[2] = { &w->m0, &w->m1 };
+    for (int d = 0; d < 2; d++) {
+        struct tr_builder b;
+        struct trans t;
+        struct err e;
+        tr_builder_init(&b, mems[d]);
+        tr_init(&t, mems[d]);
+        enum err_code rc = ERR_OK;
+        for (int i = 0; i < n && rc == ERR_OK; i++) {
+            uint8_t bkey[64];
+            int32_t kl = (int32_t) strlen(ikeys[i]);
+            keys_ikey_to_bkey((const uint8_t *) ikeys[i], kl, bkey);
+            rc = values[i] == NULL ? tr_delete(&b, bkey, kl, &e)
+                    : tr_put(&b, bkey, kl, (const uint8_t *) values[i],
+                            (int32_t) strlen(values[i]), NULL, &e);
+        }
+        if (rc == ERR_OK) {
+            rc = tr_build(&b, &t, &e);
+        }
+        if (rc == ERR_OK) {
+            rc = db_execute(dbs[d], &t, &e);
+        }
+        CHECK_EQ(rc, ERR_OK);
+        tr_free(&t);
+        tr_builder_free(&b);
+    }
+}
+
+/* Twin.checkDead: the dead hand's guarantee, once its round for the decided
+ * cut is done: no detachable object stored before the cut is in sub's node
+ * table, and no key node there holds a value stored before it. */
+static void dead_check(struct dead_twin *w) {
+    struct db *db = &w->sub;
+    const int64_t cut = db_first_available_pos(db);
+    if (cut == 0 || cut != db->ev.dead_round_cut) {
+        return;
+    }
+    int64_t bad = 0;
+    for (int64_t i = 0; i < nt_slots(&db->node_table); i++) {
+        struct handle *h = nt_slot(&db->node_table, i);
+        struct node *o = h == NULL ? NULL : h->obj;
+        if (o == NULL) {
+            continue;
+        }
+        const int64_t spos = o->spos;
+        if (spos_is_valid(spos) && !spos_is_vpos(spos) && spos < cut
+                && ev_detachable(o, tds_get_super_root(&db->dag.top_ds),
+                        db->newest_written_top)) {
+            bad++;      /* stored before the cut and resident */
+        }
+        if (o->o.kind != OBJ_KEY) {
+            continue;
+        }
+        const struct knode *x = (const struct knode *) o;
+        for (int32_t j = 0; j < x->size; j++) {
+            const struct obj *p = kn_get_pointee(x, j);
+            if (p == NULL || p->kind != OBJ_VALUE) {
+                continue;
+            }
+            const int64_t vpos = ((const struct vnode *) p)->n.spos;
+            if (spos_is_valid(vpos) && !spos_is_vpos(vpos) && vpos < cut
+                    && !node_is_in_trans_nodes((const struct node *) p)) {
+                bad++;  /* a value stored before the cut, held by a key node */
+            }
+        }
+    }
+    CHECK_EQ(bad, 0);
+    w->checks++;
+}
+
+/* The twins' streams are the same from the cut, and their answers. */
+static void dead_compare(struct dead_twin *w, const char *const *ikeys, int n) {
+    struct err e;
+    CHECK_EQ(db_stream_length(&w->ref), db_stream_length(&w->sub));
+    CHECK_EQ(db_first_available_pos(&w->ref), db_first_available_pos(&w->sub));
+    int64_t from = stream_first_pos(&w->ref.stream);
+    if (from < stream_first_pos(&w->sub.stream)) {
+        from = stream_first_pos(&w->sub.stream);
+    }
+    const int64_t length = db_stream_length(&w->ref);
+    uint8_t a[4096], b[4096];
+    bool same = true;
+    for (int64_t pos = from; same && pos < length; pos += 4096) {
+        const int32_t len = (int32_t) (length - pos < 4096 ? length - pos : 4096);
+        same = stream_read(&w->ref.stream, pos, a, len, &e) == ERR_OK
+                && stream_read(&w->sub.stream, pos, b, len, &e) == ERR_OK
+                && memcmp(a, b, (size_t) len) == 0;
+    }
+    CHECK(same);        /* the stream is the twin's without eviction */
+    const int64_t first = db_first_available_time(&w->ref);
+    const int64_t times[3] = { INT64_MAX, first, first + (w->time - first) / 2 };
+    for (int t = 0; t < 3; t++) {
+        for (int i = 0; i < n; i++) {
+            uint8_t bkey[64];
+            int32_t kl = (int32_t) strlen(ikeys[i]);
+            keys_ikey_to_bkey((const uint8_t *) ikeys[i], kl, bkey);
+            int64_t segs[16];
+            keys_to_segments(bkey, kl, segs);
+            struct getdata gd;
+            struct vnode *v0 = NULL, *v1 = NULL;
+            db_new_get_data(&w->ref, &gd);
+            CHECK(db_get_one(&w->ref, times[t], segs, keys_segment_count(kl), &gd, &v0, &e)
+                    == ERR_OK);
+            const int32_t l0 = v0 == NULL ? -2 : v0->len;
+            uint64_t s0 = 0;
+            for (int32_t j = 0; v0 != NULL && j < v0->len; j++) {
+                s0 = s0 * 31 + v0->value[j];
+            }
+            db_new_get_data(&w->sub, &gd);
+            CHECK(db_get_one(&w->sub, times[t], segs, keys_segment_count(kl), &gd, &v1, &e)
+                    == ERR_OK);
+            const int32_t l1 = v1 == NULL ? -2 : v1->len;
+            uint64_t s1 = 0;
+            for (int32_t j = 0; v1 != NULL && j < v1->len; j++) {
+                s1 = s1 * 31 + v1->value[j];
+            }
+            CHECK_EQ(l0, l1);
+            CHECK(s0 == s1);
+            db_evict(&w->ref);
+            db_evict(&w->sub);
+        }
+    }
+    CHECK_EQ(db_recount(&w->sub), 0);
+}
+
+/* Java's Eviction.testDeadHand, without its restarts (databases in memory):
+ * with a budget far above what the database needs, so that the capacity
+ * controller takes nothing, keys are put, most of them deleted, and one key
+ * overwritten until reclaim has cut several times. After every transaction
+ * whose round for the decided cut is done, no detachable object stored
+ * before the cut is resident, and no resident key node holds a value stored
+ * before it; the hand has taken objects and values; the stream is the
+ * twin's without eviction, byte for byte, and the lookups are the same.
+ * The twin without a budget (BERGDB_NO_EVICT) has no dead hand. */
+TEST(evict_dead_hand) {
+    struct dead_twin *w = calloc(1, sizeof *w);
+    struct db_config c0, c1;
+    struct db_start_info info;
+    struct err e;
+    mem_init(&w->m0);
+    mem_init(&w->m1);
+    config(&c0, &w->k0, 8, 300, INT64_MAX);
+    config(&c1, &w->k1, 8, 300, INT64_C(1) << 30);
+    w->time = 100 * (CLK_UNITS_PER_SEC / 100);
+    bergdb_test_clock_set(&w->k0, w->time);
+    bergdb_test_clock_set(&w->k1, w->time);
+    REQUIRE(db_open(&w->ref, NULL, &c0, &w->m0, &info, &e) == ERR_OK);
+    REQUIRE(db_open(&w->sub, NULL, &c1, &w->m1, &info, &e) == ERR_OK);
+    REQUIRE(db_set_retain_duration(&w->ref, CLK_UNITS_PER_SEC, &e) == ERR_OK);
+    REQUIRE(db_set_retain_duration(&w->sub, CLK_UNITS_PER_SEC, &e) == ERR_OK);
+
+    char big[301];
+    for (int i = 0; i < 300; i++) {
+        big[i] = (char) ('a' + i % 26);
+    }
+    big[300] = '\0';
+    enum { N = 120 };
+    static char keys[N + 1][16];
+    static char vals[10][320];
+    const char *all[N + 1];
+    for (int i = 0; i < N; i++) {
+        snprintf(keys[i], sizeof keys[i], "k%d", 1000 + i);
+        all[i] = keys[i];
+    }
+    snprintf(keys[N], sizeof keys[N], "a");
+    all[N] = keys[N];
+    for (int i = 0; i < N; i += 10) {
+        const char *k[10], *v[10];
+        for (int j = 0; j < 10; j++) {
+            snprintf(vals[j], sizeof vals[j], "%d%s", i, big);
+            k[j] = keys[i + j];
+            v[j] = vals[j];
+        }
+        dead_trans(w, k, v, 10);
+        dead_check(w);
+    }
+    dead_compare(w, all, N + 1);
+    for (int i = 0; i < N; i += 10) {
+        const char *k[10], *v[10];
+        for (int j = 0; j < 10; j++) {
+            k[j] = keys[i + j];
+            v[j] = (i + j) % 37 == 0 ? "x" : NULL;
+        }
+        dead_trans(w, k, v, 10);
+        dead_check(w);
+    }
+    dead_compare(w, all, N + 1);
+    for (int i = 0; i < 300; i++) {
+        const char *k = keys[N], *v = vals[0];
+        snprintf(vals[0], sizeof vals[0], "%d%s", i, big);
+        dead_trans(w, &k, &v, 1);
+        dead_check(w);
+        if (i % 100 == 99) {
+            dead_compare(w, all, N + 1);
+        }
+    }
+    dead_compare(w, all, N + 1);
+    CHECK(db_first_available_pos(&w->sub) > 0);     /* a cut */
+    CHECK(w->sub.ev.dead_rounds > 0);               /* rounds of the dead hand */
+    CHECK(w->sub.ev.dead_objects > 0);              /* objects it took */
+    CHECK(w->sub.ev.dead_values > 0);               /* values it took */
+    CHECK(w->checks > 10);
+    CHECK_EQ(w->ref.ev.dead_rounds, 0);             /* no budget: no dead hand */
+    CHECK_EQ(w->ref.ev.evicted, 0);
+    printf("  evict_dead_hand: %lld rounds, %lld objects, %lld values, %d checks; resident "
+            "bytes %lld with the hand, %lld without\n", (long long) w->sub.ev.dead_rounds,
+            (long long) w->sub.ev.dead_objects, (long long) w->sub.ev.dead_values,
+            (int) w->checks, (long long) db_resident_bytes(&w->sub),
+            (long long) db_resident_bytes(&w->ref));
+    CHECK(db_resident_bytes(&w->sub) < db_resident_bytes(&w->ref));
+    db_close(&w->ref, &e);
+    db_close(&w->sub, &e);
+    CHECK_MEM_ZERO(&w->m0);
+    CHECK_MEM_ZERO(&w->m1);
+    free(w);
 }
 
 /* Admission: a value over 1 MiB leaves memory when its record is written,
@@ -1565,12 +1812,132 @@ TEST(evict_accounting_many_restarts) {
 #endif
 }
 
+/* ======== A taken-back node leaves the node table (022-07) ======== */
+
+/* The index objects of the node table that are at a vpos (never written)
+ * and neither dirty nor in a record: none may be there. A node that its
+ * transaction made is dirty until a take writes it; one that the
+ * transaction made and took back (dag.c's take_back) is never written, and
+ * leaves the table at the transaction's end (Cache3.dropNode). */
+static int64_t unwritten_clean_objects(struct db *db) {
+    int64_t n = 0;
+    for (int64_t i = 0; i < nt_slots(&db->node_table); i++) {
+        struct handle *h = nt_slot(&db->node_table, i);
+        struct node *o = h == NULL ? NULL : h->obj;
+        if (o != NULL && spos_is_vpos(o->spos) && !node_is_dirty(o)
+                && !node_is_in_trans_nodes(o)) {
+            n++;
+        }
+    }
+    return n;
+}
+
+/* One transaction at tt: 40 puts "/p/Lnnn" of the letter put, and deletes
+ * of the 40 keys of the letter del (0: none). */
+static enum err_code swap_trans(struct db *db, struct mem *m, struct bergdb_test_clock *clock,
+        int64_t tt, char put, char del, struct err *e) {
+    struct tr_builder b;
+    struct trans t;
+    tr_builder_init(&b, m);
+    tr_init(&t, m);
+    bergdb_test_clock_set(clock, tt);
+    enum err_code rc = ERR_OK;
+    for (int i = 0; i < 80 && rc == ERR_OK; i++) {
+        if (i >= 40 && del == 0) {
+            break;
+        }
+        char ikey[16];
+        uint8_t bkey[16];
+        snprintf(ikey, sizeof ikey, "/p/%c%03d", i < 40 ? put : del, i % 40);
+        const int32_t kl = (int32_t) strlen(ikey);
+        keys_ikey_to_bkey((const uint8_t *) ikey, kl, bkey);
+        rc = i < 40 ? tr_put(&b, bkey, kl, (const uint8_t *) "value", 5, NULL, e)
+                : tr_delete(&b, bkey, kl, e);
+    }
+    if (rc == ERR_OK) {
+        rc = tr_build(&b, &t, e);
+    }
+    if (rc == ERR_OK) {
+        rc = db_execute(db, &t, e);
+    }
+    tr_free(&t);
+    tr_builder_free(&b);
+    return rc;
+}
+
+/* Cache3.dropNode through the database (bergdb 023-07, section 5.1, fault
+ * 3; Java's since release 2026.4): transactions that each put 40 keys
+ * before the 40 live ones in key order and delete the live ones, so that
+ * the puts split the nodes and the deletes empty what the splits made:
+ * nodes are taken back. After each transaction, and after a restart, whose
+ * rerun takes the same nodes back, no index object that was never written
+ * is in the node table unless it is dirty; and the keys are the last ones
+ * put. Without nt_drop_node the taken-back nodes stay in the table, at a
+ * vpos, neither dirty nor ever written, until the close. */
+TEST(evict_taken_back_nodes_leave_the_table) {
+    struct mem m;
+    struct err e;
+    struct db db;
+    struct db_config c;
+    struct db_start_info info;
+    struct bergdb_test_clock k = {0};
+    char dir[256];
+    REQUIRE(temp_dir(dir, sizeof dir));
+    mem_init(&m);
+    config(&c, &k, 8, 100, INT64_C(1) << 30);
+    bergdb_test_clock_set(&k, 500);
+    REQUIRE(db_open(&db, dir, &c, &m, &info, &e) == ERR_OK);
+    int64_t tt = 1000, takenBack = 0;
+    CHECK_EQ(swap_trans(&db, &m, &k, tt, 'm', 0, &e), ERR_OK);
+    for (char letter = 'l'; letter >= 'a'; letter--) {
+        tt += 10;
+        CHECK_EQ(swap_trans(&db, &m, &k, tt, letter, (char) (letter + 1), &e), ERR_OK);
+        CHECK_EQ(unwritten_clean_objects(&db), 0);
+        CHECK_EQ(db_recount(&db), 0);
+        if (letter == 'g' || letter == 'c') {
+            takenBack += db.put_data.stat_taken_back;
+            CHECK(db_close(&db, &e) == ERR_OK);
+            CHECK_MEM_ZERO(&m);
+            REQUIRE(db_open(&db, dir, &c, &m, &info, &e) == ERR_OK);
+            CHECK_EQ(unwritten_clean_objects(&db), 0);
+            CHECK_EQ(db_recount(&db), 0);
+        }
+    }
+    takenBack += db.put_data.stat_taken_back;
+    CHECK(takenBack > 0);       /* the transactions took nodes back */
+    for (int i = 0; i < 40; i++) {
+        char ikey[16];
+        uint8_t bkey[16];
+        int64_t segs[4];
+        struct getdata gd;
+        struct vnode *v;
+        for (char letter = 'a'; letter <= 'b'; letter++) {
+            snprintf(ikey, sizeof ikey, "/p/%c%03d", letter, i);
+            const int32_t kl = (int32_t) strlen(ikey);
+            keys_ikey_to_bkey((const uint8_t *) ikey, kl, bkey);
+            keys_to_segments(bkey, kl, segs);
+            db_new_get_data(&db, &gd);
+            v = NULL;
+            CHECK(db_get_one(&db, INT64_MAX, segs, keys_segment_count(kl), &gd, &v, &e)
+                    == ERR_OK);
+            CHECK_EQ(v != NULL, letter == 'a');
+        }
+    }
+    printf("  evict_taken_back_nodes_leave_the_table: %lld nodes taken back\n",
+            (long long) takenBack);
+    CHECK(db_close(&db, &e) == ERR_OK);
+    CHECK_MEM_ZERO(&m);
+    remove_dir(dir);
+}
+
 const struct test evict_tests[] = {
     TEST_ENTRY(evict_low_of_exact),
     TEST_ENTRY(evict_table),
     TEST_ENTRY(evict_floor_after_shrink),
     TEST_ENTRY(evict_detachable),
     TEST_ENTRY(evict_twins),
+    TEST_ENTRY(evict_dead_hand),
+    TEST_ENTRY(evict_taken_back_nodes_leave_the_table),
     TEST_ENTRY(evict_large_value),
     TEST_ENTRY(evict_start_admits_large_values),
     TEST_ENTRY(evict_start_admits_first_transactions_large_values),

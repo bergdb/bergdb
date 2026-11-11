@@ -91,7 +91,10 @@ public interface WBuilder {
      *             If the transaction is refused, nothing of it written, and the database
      *             goes on, as for Connection.put(): it is too large, about 1.88 GB in the
      *             stream, counted as Connection.put() says, or the database is stopping or
-     *             stopped. Or if the thread is interrupted while the transaction waits to
+     *             stopped. Or if key replace makes two of its keys one key, such as a put at
+     *             "/t/${transactionTime}.txt" and one at the key with the transaction's time
+     *             written out (Connection.setEnableKeyReplace(); bergdb 024-16): it is not
+     *             run again. Or if the thread is interrupted while the transaction waits to
      *             run again after a conflict, which one with a put or a delete at an object
      *             key may meet, as it runs as an rw() does (bergdb 020-10, section 5.1): it
      *             is not run, and the thread's interrupt flag is set (Database,

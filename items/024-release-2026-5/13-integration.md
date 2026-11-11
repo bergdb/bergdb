@@ -152,23 +152,224 @@ changed `UnlinkFuzz.java`):
   `docs/` are `e6b6bda6`'s, where the branch agent ran it (LEVEL 2 OK),
   and my one commit after it changes a comment.
 
-## 5. State
+## 5. The third landing: 024-15
 
-2026-11-11, 11:24.
+The coordinator's message (12:03): Frans allowed landing
+`024-15-key-shape-cost`, head `877ddf20` (024-15), once gated; to land
+before 024-16, on a branch of its own from `main`.
 
-* **Done:** the first landing (sections 1 to 3), on `main` as
-  `a780b957`; the merge of 024-09 and the header's comment, every gate
-  of section 4 passed on `e74bb8ff`.
-* **To land:** branch `024-13-int`, head **`e74bb8ff`**, in
-  `/Users/f/fl/bench/2026-11-11/int/clone`; two commits on `main`'s
-  `cffb6a75` (`bc2ba891` the merge of `e6b6bda6`, `e74bb8ff` the
-  comment). The working tree is clean.
-* **Next:** `024-12-tree-model`, when the coordinator sends its head
-  (merge notes in 024-09 and 024-12: a two-line conflict in
-  `TraceExport.key()`, import lines in `lean/SIS.lean` and
-  `lean/Check.lean`, 024-09's `Check/Live.lean` against 024-12's
-  `SIS/Tree/Val.lean`); and `022-07-c-2026-4` (`items/022-bergdb-c/c/`
-  only). Bring the branch to `main` first, merge with `--no-ff`, gate
-  one run a hold with `/Users/f/fl/bench/2026-11-11/int/gate2.sh`
-  (after `slot.sh take`; owner lines say "gates only", never the word
-  for a timing run).
+* **The branch:** `024-13-int-b`, in a worktree of the clone,
+  `/Users/f/fl/bench/2026-11-11/int/wt-b` (the clone's own tree held
+  024-16's gates then), from `main`'s `26cb90da`.
+* **The merge** (`251cd1e0`, `--no-ff`): no conflict. `docs/levels.md`,
+  `Db.java`'s and `Connection.java`'s Javadoc had been edited by today's
+  landings too, in other paragraphs; Git kept both texts, and each reads
+  as one text (024-15's paragraphs on key nodes beside 024-07's and
+  024-16's). The diff from `main` is the same with `-w` and with
+  `--ignore-space-at-eol`.
+
+Gates on `251cd1e0`, one slot each:
+
+| Gate                          | When           | Result                                  |
+|---|---|---|
+| `java/before-commit.sh`       | 12:18 to 12:20 | BEFORE COMMIT OK (102 s)                |
+| `java/stress/level1.sh`, full | 12:20 to 12:23 | LEVEL 1 OK (212 s)                      |
+
+* **level1.sh's Props step:** MEM 130 (at most 131); the new SEG 226.4
+  (MEM with keys `%07d` 355.9 minus MEM 129.5; at most 230); the new
+  MEM10M 127.0 at 10M keys `/k/%010d` (at most 131); SS 1.51.
+* **before-commit.sh:** unit 1,651, f 89, DEMOS OK. Both ran beside
+  024-14's counting JVMs in the other slot, so the times are not
+  timings.
+
+
+## 6. The fourth landing: 024-16
+
+The coordinator's message (11:58): Frans allowed landing
+`024-16-one-operation-a-key`, head `d5617d45` (024-16), once gated in
+full. Merged on `main`'s `9a2318bc` (`4b934e3e`, no conflict; no file
+changed by both 024-16 and 024-09 since their common base `68c3917e`;
+`-w` drops lines only where 024-16 moved code into `try` blocks).
+Before-commit.sh on `4b934e3e`: BEFORE COMMIT OK (106 s, 12:01 to
+12:03). Then, at 12:03, its chain was stopped so that 024-15 could take
+the slots first, and at 12:18 the coordinator said the review asks for
+four small fixes, so a new head replaces `d5617d45`: no more gates on
+it. The merge `ce562af7` (024-15's `251cd1e0` into it) is left in the
+clone and is not to be landed.
+
+**The fixed head** (the coordinator, 13:08): `3412ee7a`, three commits
+on `main`'s `6bda69b0` (`190fe6f1` the change, `7177bc0e` six expected
+values, `3412ee7a` the review's four fixes). `024-13-int` was reset to
+`main`'s `210e5b60` (the old merge kept as the branch
+`024-13-int-d5617d45-old`, not to be landed) and `3412ee7a` merged with
+`--no-ff`: `3af7513e`, no conflict. Its `java/`, `lean/` and `docs/` are
+`3412ee7a`'s with exactly 024-15's five files beside them (`git diff
+--stat` against `3412ee7a` is 024-15's own); `Db.java` and
+`docs/levels.md` keep both texts. No trailing whitespace lost.
+
+Gates on `3af7513e`, one slot a run:
+
+| Gate                            | When           | Result                                  |
+|---|---|---|
+| `lake build`, `lean/`           | 13:07          | OK, 151 jobs                            |
+| `java/before-commit.sh`         | 13:07 to 13:09 | BEFORE COMMIT OK (103 s), unit 1,654    |
+| `java/stress/level1.sh`, full   | 13:09 to 13:12 | LEVEL 1 OK, MEM 130, SEG 226.4, MEM10M 127.1 |
+| `sh stress/unlinkfuzz.sh`       | 13:12 to 13:18 | UNLINKFUZZ OK, 3,226 rounds (310 s)     |
+| `conformance.sh drain`          | 13:18          | OK, 15 traces, each takes a node back   |
+| `java/stress/level2.sh`, full   | 13:18 to 13:31 | LEVEL 2 OK, 70 + 50 traces, TAKECHECK OK |
+| `java/stress/level3.sh`, full   | 13:31 to 13:40 | LEVEL 3 OK, 30 traces, C-CUT 0 of 326   |
+| `java/stress/level4.sh`, full   | 13:56 to 14:10 | LEVEL 4 OK, 51 traces, C-P and C-H 0    |
+
+* **UnlinkFuzz's `dup` mode** drives the Dag directly, not `Db`, so
+  024-16's refusal does not reach it: it makes, for a share of a
+  transaction's keys, a second operation on the key, and then keeps one
+  operation a key, the last, at the key's first place, which is what
+  the Dag gets from `Db` for a key with one operation. 024-16 changed
+  only its comments (no line of code since `e74bb8ff`), and with the
+  same seeds every configuration's result is the same as on `e74bb8ff`,
+  before 024-16, line for line: the seven `dup` configurations pass and
+  take back 0 to 1,124 nodes, as before. So it exercises what it did.
+* **024-16 is gated** on `3af7513e` (14:10): every gate the
+  coordinator listed passed, none needed a rerun.
+* **Order of the slots** (the coordinator, 13:35): 024-12's gates go
+  first, for Frans's approval at 14:30; `level4.sh` of 024-16 waits for
+  them or for 14:15.
+
+
+## 7. 024-12, the tree model: for Frans's approval at 14:30
+
+The coordinator's message (12:28): prepare `024-12-tree-model`, head
+`d90586d0` (024-12, State in section 9), for Frans, who approves it
+himself; not landed by this subitem.
+
+* **The branch:** `024-13-int-c`, in the worktree
+  `/Users/f/fl/bench/2026-11-11/int/wt-c` of the clone, from `main`'s
+  `2108aa2d`; the merge **`ca3824aa`** (`--no-ff`), no conflict
+  (`docs/levels.md` and `Db.java`, also changed by 024-15, merged in
+  other paragraphs). `d90586d0` already holds 024-07, 024-09 and
+  024-10; the merged tree's `java/`, `lean/` and `docs/` differ from
+  `d90586d0`'s by exactly 024-15's five files, the same `git diff
+  --stat` as 024-15's own commit. Hence `level2.sh` full is not rerun:
+  it rests on the branch agent's run on `d90586d0` (024-12, section 7),
+  and 024-15 changes no product logic (Javadoc, a dev tool, level1's
+  checks), which `level1.sh` here covers.
+* **The change against `main`** (`git diff --stat 2108aa2d ca3824aa`):
+  29 files, 4,303 lines added, 51 removed.
+
+  | Part   | Files | Added | Removed | What                                        |
+  |---|---|---|---|---|
+  | lean/  | 21    | 3,806 | 49      | SIS/Tree (2,400 lines), Check/Tree*, proofs |
+  | java/  | 6     | 411   | 2       | TraceExport, treeconf.sh, level2.sh, Db.java |
+  | docs/  | 2     | 86    | 0       | trace-format.md section 4, levels.md        |
+
+  The largest files: `lean/SIS/Tree/Exec.lean` 823, `Node.lean` 380,
+  `TreeTest.lean` 374, `Check/Tree.lean` 339, `Props.lean` 325,
+  `Read.lean` 290, `Bound.lean` 246; `java/stress/TraceExport.java` 176,
+  `treeconf.sh` 169.
+
+Gates on `ca3824aa`, one slot a run:
+
+| Gate                              | When           | Result                                  |
+|---|---|---|
+| `lake build` and `lake build treetest` | 12:52 to 12:53 | OK, 179 and 72 jobs (61 s)    |
+| `sorry`, `admit`, `axiom`, `native_decide` | 12:54 | 0 in `lean/`, by grep              |
+| `collectAxioms`, every theorem    | 12:55          | 142 theorems, only the three standard   |
+| `lean/test-traces/run.sh`         | 12:53          | TRACE TESTS OK                          |
+| `java/before-commit.sh`           | 12:53 to 12:55 | BEFORE COMMIT OK (87 s), unit 1,651     |
+| `java/stress/level1.sh`, full     | 12:55 to 12:58 | LEVEL 1 OK, MEM 130, SEG 225.6, MEM10M 127.1 |
+| `stress/treeconf.sh all 5`        | 13:46 to 13:47 | TREECONF OK (55 s)                      |
+| `java/stress/level3.sh`, full     | 13:47 to 13:55 | LEVEL 3 OK, 30 traces, C-CUT 0 of 326   |
+
+* **treeconf.sh all 5:** small 3,550 transactions (20,129 operations,
+  9 key nodes taken back), drain 6,950 (126,418 operations, 282 taken
+  back), reclaim 14,669 (45,949 operations, 624 touches); every trace
+  TREE OK, the exporter without errors.
+* **024-12 is gated** on `ca3824aa` (13:55): every gate the
+  coordinator listed passed; `level2.sh` rests on `d90586d0`'s run (as
+  above).
+
+* **The axioms:** a Lean file run with `lake env lean` collects, with
+  `Lean.collectAxioms`, the axioms of every theorem whose module is one
+  of the 15 that the branch adds or changes under `SIS/` and `Check/`:
+  142 theorems; the axioms are propext, Classical.choice and Quot.sound,
+  none other (`sorryAx` would show).
+
+**What a reader approving it should look at first:**
+
+1. **The one change in product code:** `Db.putKvs` calls
+   `TestHooks.kvApplied(key, value)` for each operation just before
+   `Dag.putKv`, when a test hook is set (a read of `testHooks` and a
+   null check per KV otherwise), and `TestHooks` gains the default
+   method. Everything else in `java/` is in `stress/` and `night.sh`.
+2. **`level2.sh` gains a step 8,** `treeconf.sh` on its small, drain and
+   reclaim sets, so the tree model becomes a gate of Level 2 (024-12
+   says about 12 minutes for the whole script on its head); `night.sh`
+   gains a step `tree-tests` (`lake exe treetest`, one core).
+3. **`BVal`, `bptrs` and `blive` move** from `Check/Trace.lean` to
+   `SIS/Tree/Val.lean` with their names (the 59 lines changed in
+   `Check/Trace.lean`); no line of the existing model or its proofs
+   changes otherwise.
+4. **27 properties are stated, 4 proved** (TP13, TP17, TP18, the run's
+   P): the model is checked against Java by running (115 traces, 25,169
+   transactions, no difference), not proved (024-12, sections 1 and 6).
+5. **With 024-16:** 024-16 (section 6) changes `Db.putKvs` near the
+   same lines (the key transformations move to `Db.transformKeys`,
+   before the go point). A trial merge (`git merge-tree` of `3af7513e`
+   and `ca3824aa`, 13:35) has no conflict, and `kvApplied` stays where
+   it belongs: after the value transformation, before `Dag.putKv`. If
+   024-16 lands first, 024-12 is merged onto it and gated again.
+
+## 8. 024-12 again, on main with 024-16
+
+024-16 landed as `main`'s `47c93e34` (14:10); the coordinator's message
+(14:12): merge `d90586d0` again on `main`'s `b7f1b1cf`, as a new
+branch, `ca3824aa` kept as it is. Frans approved 024-12 for landing
+at 14:28 (the coordinator, 14:29); it lands once these gates pass.
+
+* **The branch:** `024-13-int-e`, in the worktree
+  `/Users/f/fl/bench/2026-11-11/int/wt-e` of the clone; the merge
+  **`480f83da`** (`--no-ff`), no conflict. Its `java/`, `lean/` and
+  `docs/` are exactly those of the trial merge of 13:35 (section 7,
+  point 5). The change against `main` is the same as in section 7: 29
+  files, 4,303 lines added, 51 removed (`lean/` 21 files, 3,806 and 49;
+  `java/` 6, 411 and 2; `docs/` 2, 86); no trailing whitespace lost.
+* **`kvApplied` in the combined `Db.putKvs`:** after the value
+  transformation (`kv.transformValue`), before `dag.putKv`; the key
+  transformations are done before the go point by 024-16's
+  `Db.transformKeys`, so the hook sees the key and value the Dag gets.
+
+Gates on `480f83da`; the Lean build and the static checks without a
+slot (the coordinator, 14:12), the rest one slot a run:
+
+| Gate                                   | When           | Result                          |
+|---|---|---|
+| `lake build` and `lake build treetest` | 14:13 to 14:14 | OK, 179 and 72 jobs             |
+| `sorry`, `admit`, `axiom`, `native_decide` | 14:14      | 0 in `lean/`, by grep           |
+| `collectAxioms`, every theorem         | 14:14          | 142, only the three standard    |
+| `lean/test-traces/run.sh`              | 14:14          | TRACE TESTS OK                  |
+| `java/before-commit.sh`                | 14:31 to 14:33 | BEFORE COMMIT OK (82 s), unit 1,654 |
+| `java/stress/level1.sh`, full          | 14:33 to 14:35 | LEVEL 1 OK, MEM 129, SEG 226.4  |
+| `java/stress/level2.sh`, full          | 14:35 to 14:47 | LEVEL 2 OK (729 s)              |
+| `java/stress/level3.sh`, full          | 14:47 to 14:55 | LEVEL 3 OK, C-CUT 0 of 326      |
+
+* **level1.sh:** MEM10M 127.1, SS 1.51.
+* **level2.sh's step 8,** the tree model against Java with 024-16 in
+  the tree: treeconf small 7,100 transactions (13 key nodes taken
+  back), drain 13,900 (251,431 operations, 554 taken back), reclaim
+  8,794 (369 touches), all TREECONF OK; step 7: 70 traces and 50
+  draining traces TRACECHECK OK, TAKECHECK OK.
+* **024-12 on `main` with 024-16 is gated** on `480f83da` (14:55).
+
+## 9. State
+
+2026-11-11, 14:56.
+
+* **Landed:** the first landing as `main`'s `a780b957`, 024-09 as
+  `379d8acf`, 024-15 as `1e77cfc6`, 024-16 as `47c93e34`.
+* **To land: 024-12** (Frans's yes at 14:28), branch `024-13-int-e`,
+  head **`480f83da`**, worktree `/Users/f/fl/bench/2026-11-11/int/wt-e`
+  of the clone, one merge of `d90586d0` on `main`'s `b7f1b1cf` (main
+  has moved by items only since); every gate passed (section 8). The
+  working tree is clean. `ca3824aa` (`024-13-int-c`) is superseded.
+* **Not done:** the C clone's branch was never sent to this subitem.
+  Nothing of 024-13 is running; no slot is held.

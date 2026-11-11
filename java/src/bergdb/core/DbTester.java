@@ -25,6 +25,7 @@ import static bergdb.nanotest.Assert.*;
 import bergdb.nanotest.Nano;
 import bergdb.pub.util.Clock;
 import bergdb.pub.util.DatabaseNotCreatedException;
+import bergdb.pub.util.DbException;
 import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.IllegalDbStateException;
 import bergdb.pub.util.SyncLevel;
@@ -1480,10 +1481,12 @@ public class DbTester {
      * transformations (Db.putKvs; bergdb 023-08, section 7, Q4): two databases, each given
      * the same operations, puts through a key transformation in another order and plain
      * deletes, write the same stream, byte for byte, and give the same values, also after
-     * a restart. One transformed key is also put by a plain KV: one of the two is kept, the
-     * later put in the builder's order (Db.sortByKey), in both databases. Before 023-09 the
-     * index got the transformed KVs in the order of their keys before the transformation,
-     * and the streams differed.
+     * a restart. The same transaction with a plain put at one of the transformed keys is
+     * refused first, in both databases, with nothing written (bergdb 024-16; its KVs are the
+     * transaction's, which get their keys as written back); until 024-16 one of the two was
+     * kept, the later put in the builder's order (Db.sortByKey), and "k031" held "plain".
+     * Before 023-09 the index got the transformed KVs in the order of their keys before the
+     * transformation, and the streams differed.
      */
     @Nano
     public static void testTransformedKeysSorted() {
@@ -1515,8 +1518,15 @@ public class DbTester {
                         StringUtil.toBytes("new" + name), null);
             }
             for (int i = 0; i < 2 * n; i += 6) tb.delete("/t/" + String.format("k%03d", i));
+            Trans t = tb.build();
             tb.put("/t/k031", "plain");
-            db.execute(tb.build());
+            try {
+                db.execute(tb.build());
+                throw new AssertionError("not refused");
+            } catch (DbException e) {
+                // Refused (bergdb 024-16).
+            }
+            db.execute(t);
             db.close();
             
             db = Db.builder().testSetup(ms.copy()).maxNodeSize8().start();
@@ -1534,7 +1544,7 @@ public class DbTester {
         }
         for (int i = 0; i < 2 * n; i++) {
             String expected = i % 6 == 0 ? null : i % 2 == 0 ? "old" + i
-                    : i == 31 ? "plain" : "new" + String.format("k%03d", i);
+                    : "new" + String.format("k%03d", i);
             String at = "key " + i + ": ";
             Assert.assertTrue(at + values[0][i], expected == null ? values[0][i] == null
                     : expected.equals(values[0][i]));

@@ -834,6 +834,15 @@ static bool l_key_node_changed(void *ctx, struct knode *node) {
     return true;
 }
 
+/* The rerun's keyNodeTakenBack (bergdb 023-07, section 5.1; as Java's
+ * DbStarter since release 2026.4): made and taken back by the transaction,
+ * never written: the node leaves the node table at once (Cache3.dropNode). */
+static bool l_key_node_taken_back(void *ctx, struct knode *node) {
+    struct starter *st = ctx;
+    nt_drop_node(st->env->nt, &node->n);
+    return true;
+}
+
 /* rerunTransaction: the record's value and delete nodes put again at its
  * time, then D's TransInfo of it from its stored got-dirty ids. */
 static enum err_code rerun_transaction(struct starter *st, const struct st_record *t,
@@ -857,6 +866,7 @@ static enum err_code rerun_transaction(struct starter *st, const struct st_recor
     pd.node_change_listener.value_node_created = l_value_node_created;
     pd.node_change_listener.key_node_changed = l_key_node_changed;
     pd.node_change_listener.key_node_replaced = NULL;
+    pd.node_change_listener.key_node_taken_back = l_key_node_taken_back;
     pd.node_change_listener.top_node_replaced = NULL;
     pd.node_change_listener.ctx = st;
     if (env->pointer_created != NULL) {

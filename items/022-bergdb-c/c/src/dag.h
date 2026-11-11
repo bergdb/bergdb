@@ -5,6 +5,12 @@
  * Chain), and dirtyNodeBound (005-31); with Java's PutData, GetData,
  * KeyAccessPath and Dag.SplitListener. Prefixes dag_, pd_, gd_, kap_.
  *
+ * Since release 2026.4 (record format 6; bergdb 023-07, section 5, as
+ * frozen in 023-08, section 5; C's port 022-07) a delete removes what it
+ * empties, in its transaction: the upward unlink (UP) with the take-back
+ * of a node that a split of the transaction made, the empty key first in
+ * every inner node (LE-b) and root collapse (RC); dag.c's delete_upward.
+ *
  * Every node and listener is 012-07's (knode.h, tnode.h, topds.h,
  * opdata.h). Memory follows 012-07, section 6: the Dag makes its objects
  * pending and holds what it keeps through counted fields (a key node's
@@ -78,6 +84,27 @@ struct putdata {
     int64_t time_split_count;
     struct kwp one_kwi[1];      /* scratch; borrowed nodes */
     struct kwp two_kwis[2];
+    /* PutData.replaced (bergdb 023-07, section 5.1; release 2026.4): the
+     * nodes that the splits of the transaction at replaced_time made, each
+     * with the node that existed before it and that it replaces: a split's
+     * last version, halves and new root. A node made by the transaction and
+     * emptied in it is taken back through it (dag.c's take_back). Java's
+     * IdentityHashMap; here open addressing by the made node's address, the
+     * arrays through the access path's allocator (MEM_STATE). The nodes are
+     * borrowed: a made node is held by the node table until it is taken
+     * back, and its entry leaves the map then (Java's stays, never read
+     * again: nothing names the node), so no entry outlives its node; an old
+     * node is held by its handle, which no eviction takes within a
+     * transaction. */
+    struct knode **replaced_made;   /* NULL: empty; PD_REMOVED: an entry that left */
+    struct knode **replaced_old;
+    int32_t replaced_cap;           /* 0 or a power of 2 */
+    int32_t replaced_used;          /* the slots not NULL */
+    int64_t replaced_time;          /* -1: none */
+    /* Dag.statUnlinked and the others, Java's static counts for tests and
+     * measurements, here the put data's (no global state). */
+    int64_t stat_unlinked, stat_climbs, stat_relabels, stat_kept_new, stat_taken_back,
+            stat_collapses, stat_roots_taken_back;
 };
 
 /* GetData: a read's output and scratch. Made by dag_new_get_data, whose
@@ -119,7 +146,7 @@ struct topds *dag_get_top_ds(struct dag *d);
  * follower and listeners as Db does. m: the access path's allocator. */
 void dag_new_put_data(struct dag *d, struct putdata *pd, struct mem *m);
 
-/* Frees the access path's arrays. */
+/* Frees the access path's arrays and the replaced map's. */
 void pd_free(struct putdata *pd);
 
 /* PutData.clearFast (after each putKv) and clear (after a transaction). */
@@ -151,16 +178,34 @@ bool dag_get_one(struct dag *d, int64_t time, const int64_t *key, int32_t n, str
 
 /* Dag.putKv: the pair (key of n segments, value of len bytes) put at
  * pd->tt, or the key deleted if value is NULL (len ignored). New nodes and
- * changes are reported to pd's listeners, as Java's. */
+ * changes are reported to pd's listeners, as Java's. A delete that leaves
+ * its segment leaf with no live key unlinks it from its parent, and so on
+ * upward (delete_upward); the caller gives a transaction's operations one a
+ * key (Db.putKvs), else a delete can empty a node that the transaction made
+ * fresh, which is refused (Java's Bug). */
 bool dag_put_kv(struct dag *d, const int64_t *key, int32_t n, const uint8_t *value, int32_t len,
         struct putdata *pd);
 
 /* Dag.dirtyNodeBound (005-31): an upper bound on the index nodes that a
  * transaction with these keys (keys[k], key_n[k] segments; deletes[k] true
  * for a delete), at a later time than 'time', can make dirty or create.
- * m: its scratch's allocator. */
+ * For a delete (bergdb 023-07, section 5.4, K4; 023-11, B1; Java's since
+ * release 2026.4): two klongs in every node of its path, which the upward
+ * unlink can give to the node where the climb stops, and for the root
+ * collapses in a segment tree below a segment leaf one klong in that leaf
+ * for each inner node of the tree on the path, summed over the trees below
+ * the leaf. m: its scratch's allocator. */
 bool dag_dirty_node_bound(struct dag *d, int64_t time, const int64_t *const *keys,
         const int32_t *key_n, const bool *deletes, int32_t count, struct getdata *gd,
         struct mem *m, int64_t *out);
+
+/* As dag_dirty_node_bound; with probe_klongs not NULL, the klongs counted
+ * for the walked node probe, before the splits' klongs, or -1 if the walk
+ * did not pass it (Java's klongsOut, for tests; without the klongs of the
+ * pointers to new segment trees, which C adds after this point: a delete
+ * makes none). */
+bool dag_dirty_node_bound_klongs(struct dag *d, int64_t time, const int64_t *const *keys,
+        const int32_t *key_n, const bool *deletes, int32_t count, struct getdata *gd,
+        struct mem *m, int64_t *out, const struct knode *probe, int64_t *probe_klongs);
 
 #endif

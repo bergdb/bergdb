@@ -1,0 +1,7 @@
+== thrash4 dense 09:36:57 thrash4 n=1000 trials=100 pp=200
+ 9:36  up 23 days,  2:21, 5 users, load averages: 13.55 12.88 10.34
+THR thrash4 {pp=200, trials=100, dir=/Users/f/fl/bench/2026-11-11/thr/data/thrash4-dense, n=1000} m=10 h=20 c=20 merges=true
+THRASH4 n=1000 trials=100 pp=200 mean new/op=0.152 worst new/op=0.200 (trial=5 y=1320 e=0 f=0 tsplit=38 ssplit=0 merges=2 two=0 bytes/op=143) merges/op=0.0019 ssplits/op=0.0009 bytes/op=143 cycling trials=0
+[3.2s] DONE
+rc=0 09:37:00
+ 9:37  up 23 days,  2:22, 5 users, load averages: 13.55 12.88 10.34

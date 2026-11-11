@@ -1,0 +1,90 @@
+dirtyLimit 2013265912 bytes; top nodes 2160 bytes
+segments: 111 B -> 16, 112 B -> 17, 251 B -> 36, 252 B -> 37, 256 B -> 37
+
+Node size 30: nodes a record's 15/16 holds: 3700852
+count, a segment / key / H                   nodes/op most ops
+TP26 2026.4, 8 (H+2)+2,   112 B (s=17) H=22      3266     1133
+TP26 format 7, 20 (H+2)+14, 112 B H=22           8174      452
+q-aware, 8 (H+2)+14,      112 B H=22             3278     1128
+Java walk, one delete, full path, 112 B H=22     2778     1332
+TP26 2026.4, 8 (H+2)+2,   112 B (s=17) H=21      3130     1182
+TP26 format 7, 20 (H+2)+14, 112 B H=21           7834      472
+q-aware, 8 (H+2)+14,      112 B H=21             3142     1177
+Java walk, one delete, full path, 112 B H=21     2659     1391
+TP26 2026.4, 8 (H+2)+2,   112 B (s=17) H=19      2858     1294
+TP26 format 7, 20 (H+2)+14, 112 B H=19           7154      517
+q-aware, 8 (H+2)+14,      112 B H=19             2870     1289
+Java walk, one delete, full path, 112 B H=19     2421     1528
+
+TP26 2026.4, 8 (H+2)+2,   111 B (s=16) H=22      3074     1203
+TP26 format 7, 20 (H+2)+14, 111 B H=22           7694      481
+q-aware, 8 (H+2)+14,      111 B H=22             3086     1199
+Java walk, one delete, full path, 111 B H=22     2615     1415
+TP26 2026.4, 8 (H+2)+2,   111 B (s=16) H=21      2946     1256
+TP26 format 7, 20 (H+2)+14, 111 B H=21           7374      501
+q-aware, 8 (H+2)+14,      111 B H=21             2958     1251
+Java walk, one delete, full path, 111 B H=21     2503     1478
+TP26 2026.4, 8 (H+2)+2,   111 B (s=16) H=19      2690     1375
+TP26 format 7, 20 (H+2)+14, 111 B H=19           6734      549
+q-aware, 8 (H+2)+14,      111 B H=19             2702     1369
+Java walk, one delete, full path, 111 B H=19     2279     1623
+
+TP26 2026.4, 8 (H+2)+2,   256 B (s=37) H=22      7106      520
+TP26 format 7, 20 (H+2)+14, 256 B H=22          17774      208
+q-aware, 8 (H+2)+14,      256 B H=22             7118      519
+Java walk, one delete, full path, 256 B H=22     6038      612
+TP26 2026.4, 8 (H+2)+2,   256 B (s=37) H=21      6810      543
+TP26 format 7, 20 (H+2)+14, 256 B H=21          17034      217
+q-aware, 8 (H+2)+14,      256 B H=21             6822      542
+Java walk, one delete, full path, 256 B H=21     5779      640
+TP26 2026.4, 8 (H+2)+2,   256 B (s=37) H=19      6218      595
+TP26 format 7, 20 (H+2)+14, 256 B H=19          15554      237
+q-aware, 8 (H+2)+14,      256 B H=19             6230      594
+Java walk, one delete, full path, 256 B H=19     5261      703
+
+Every node size (keys of 112 bytes, s = 17; H = 1 + log_m(2^60)):
+  B bytes   m   h   c   q      nodes   H |    TP26   ops |  TP26f7   ops | q-aware   ops |    walk   ops
+  8   192   2   4   4   2   10485748  61 |    8570  1223 |   21434   489 |   13937   752 |   14547   720
+    per level (amortized) at q = 2: 13.00, rounded up 13
+ 14   288   3   7   7   4    6990499  38 |    5442  1284 |   13614   513 |    6134  1139 |    6115  1143
+    per level (amortized) at q = 4: 9.00, rounded up 9
+ 30   544   8  17  17  10    3700852  21 |    3130  1182 |    7834   472 |    3142  1177 |    2659  1391
+    per level (amortized) at q = 10: 7.67, rounded up 8
+ 62  1056  16  35  35  24    1906499  16 |    2450   778 |    6134   310 |    2462   774 |    2032   938
+    per level (amortized) at q = 24: 7.26, rounded up 8
+
+The same with K < 2^48 klongs (a stream under 2 PiB):
+  B= 8 H=49 q-aware  11285 nodes/op,   929 ops
+  B=14 H=31 q-aware   5063 nodes/op,  1380 ops
+  B=30 H=17 q-aware   2598 nodes/op,  1424 ops
+  B=62 H=13 q-aware   2054 nodes/op,   928 ops
+
+L3, node size 30, n = 1,000: nodes <= a (H + 2) S + c n, S <= L3/7 + n
+  TP26 2026.4    H=22: S <=  19264, L3 <=  127848 bytes (124.9 KiB)
+  TP26 2026.4    H=19: S <=  22016, L3 <=  147112 bytes (143.7 KiB)
+  q-aware        H=22: S <=  19202, L3 <=  127414 bytes (124.4 KiB)
+  q-aware        H=19: S <=  21945, L3 <=  146615 bytes (143.2 KiB)
+  TP26 format 7  H=22: S <=   7680, L3 <=   46760 bytes (45.7 KiB)
+  TP26 format 7  H=19: S <=   8778, L3 <=   54446 bytes (53.2 KiB)
+  L3  40 KiB: S   6851  TP26 2026.4    H=22   1317392 nodes ( 64.4 % under), H=19   1152968 ( 68.8 %)
+  L3  40 KiB: S   6851  q-aware        H=22   1329392 nodes ( 64.1 % under), H=19   1164968 ( 68.5 %)
+  L3  40 KiB: S   6851  TP26 format 7  H=22   3302480 nodes ( 10.8 % under), H=19   2891420 ( 21.9 %)
+  L3  64 KiB: S  10362  TP26 2026.4    H=22   1991504 nodes ( 46.2 % under), H=19   1742816 ( 52.9 %)
+  L3  64 KiB: S  10362  q-aware        H=22   2003504 nodes ( 45.9 % under), H=19   1754816 ( 52.6 %)
+  L3  64 KiB: S  10362  TP26 format 7  H=22   4987760 nodes (-34.8 % under), H=19   4366040 (-18.0 %)
+  L3 112 KiB: S  17384  TP26 2026.4    H=22   3339728 nodes (  9.8 % under), H=19   2922512 ( 21.0 %)
+  L3 112 KiB: S  17384  q-aware        H=22   3351728 nodes (  9.4 % under), H=19   2934512 ( 20.7 %)
+  L3 112 KiB: S  17384  TP26 format 7  H=22   8358320 nodes (-125.8 % under), H=19   7315280 (-97.7 %)
+  L3 120 KiB: S  18554  TP26 2026.4    H=22   3564368 nodes (  3.7 % under), H=19   3119072 ( 15.7 %)
+  L3 120 KiB: S  18554  q-aware        H=22   3576368 nodes (  3.4 % under), H=19   3131072 ( 15.4 %)
+  L3 120 KiB: S  18554  TP26 format 7  H=22   8919920 nodes (-141.0 % under), H=19   7806680 (-110.9 %)
+  L3 128 KiB: S  19724  TP26 2026.4    H=22   3789008 nodes ( -2.4 % under), H=19   3315632 ( 10.4 %)
+  L3 128 KiB: S  19724  q-aware        H=22   3801008 nodes ( -2.7 % under), H=19   3327632 ( 10.1 %)
+  L3 128 KiB: S  19724  TP26 format 7  H=22   9481520 nodes (-156.2 % under), H=19   8298080 (-124.2 %)
+
+Record at L3 = 112 KiB, q-aware, H = 22: own 67177248 + dirty 1823342192 = 1890519440 of 2147483639 (12.0 % under)
+
+L6  64: the largest entry  451 bytes,  65 segments; objects with one index at L3 = 112 KiB: 113
+L6 112: the largest entry  499 bytes,  72 segments; objects with one index at L3 = 112 KiB: 103
+L6 128: the largest entry  515 bytes,  74 segments; objects with one index at L3 = 112 KiB: 100
+L6 256: the largest entry  643 bytes,  92 segments; objects with one index at L3 = 112 KiB: 82

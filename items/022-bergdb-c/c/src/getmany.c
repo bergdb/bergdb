@@ -6,6 +6,7 @@
 #include "keys.h"
 #include "klong.h"
 #include "opdata.h"
+#include "spos.h"
 
 /* ======== The stop conditions ======== */
 
@@ -145,6 +146,9 @@ void gm_init(struct getmany *g, struct dag *d, struct mem *m) {
     g->lookup_time = INT64_MAX;
     g->inclusive = true;
     g->forward = true;
+    g->end_key = NULL;
+    g->end_key_n = 0;
+    g->end_inclusive = true;
     g->cache = true;
     dag_new_get_data(d, &g->gd);
     g->get_op_count = 0;
@@ -175,6 +179,9 @@ struct chain {
     int32_t chain_start_key_n;
     bool chain_forward;
     bool chain_inclusive;
+    const int64_t *chain_end_key;
+    int32_t chain_end_key_n;
+    bool chain_end_inclusive;
 
     struct getmany *g;
     struct obj_ctx *cx;
@@ -200,6 +207,9 @@ static bool chain_init(struct chain *c, struct getmany *g, struct obj_ctx *cx) {
     c->chain_start_key_n = g->start_key_n;
     c->chain_forward = g->forward;
     c->chain_inclusive = g->inclusive;
+    c->chain_end_key = g->end_key;
+    c->chain_end_key_n = g->end_key_n;
+    c->chain_end_inclusive = g->end_inclusive;
     c->first = true;
     c->setup_eq_match = false;
     c->g = g;
@@ -227,8 +237,22 @@ static void chain_free(struct chain *c) {
             MEM_STATE);
 }
 
-/* Chain.addLink */
+/* Chain.addLink: adds 'node' to the chain, below the last link. A node
+ * already in the chain is a cycle, which a damaged stream can make
+ * (op_descent_from; bergdb 020-32, as Java's since release 2026.4): the
+ * follower's cycle(), a StreamFormatException, which fails the database,
+ * where the scan went round it without end. The links are the path from the
+ * root, a few nodes for each segment; a node without an id (SPOS_NULL) is
+ * not compared. */
 static bool add_link(struct chain *c, struct knode *node, int64_t compareValue) {
+    const int64_t id = node->n.id;
+    for (int32_t i = 0; i < c->link_size && id != SPOS_NULL; i++) {
+        if (c->link_nodes[i]->n.id == id) {
+            return op_fail(&c->g->gd.op, ERR_FORMAT, "StreamFormatException", "A scan came "
+                    "back to key node %lld, which it passed: the pointers make a cycle.",
+                    (long long) id);
+        }
+    }
     if (c->link_size == c->link_cap) {
         void *ln = c->link_nodes;
         if (!grow(c->g->mem, &ln, &c->link_cap, sizeof(struct knode *))) {
@@ -402,6 +426,33 @@ static bool chain_setup(struct chain *c, struct knode *root) {
     return true;
 }
 
+/* Chain.isPastEnd (bergdb 021-28): true if every key at and after the klong
+ * of compareValue that next() found, forward, is past the chain's end key.
+ * The key segments passed and compareValue, P, are a lower bound of every
+ * key below the klong: in a segment leaf, the key itself (a value node) or
+ * the prefix of every key of the next segment's tree; above the leaf, a key
+ * node's klong is the lower bound of its child (the first child's the empty
+ * key). The keys after it, in the scan's order, are greater. So the scan may
+ * end if P is after the end, or at it when the end is not inclusive. P is
+ * compared as keys_compare_keys compares keys. */
+static bool is_past_end(const struct chain *c, int64_t compareValue) {
+    const int64_t *end = c->chain_end_key;
+    const int32_t n = c->key_segment_size;
+    const int32_t length = n + 1 < c->chain_end_key_n ? n + 1 : c->chain_end_key_n;
+    int32_t cmp = 0;
+    for (int32_t i = 0; i < length; i++) {
+        const int64_t segment = i < n ? c->key_segments[i] : compareValue;
+        if (segment != end[i]) {
+            cmp = segment < end[i] ? -1 : 1;
+            break;
+        }
+    }
+    if (cmp == 0 && n + 1 != c->chain_end_key_n) {
+        cmp = n + 1 < c->chain_end_key_n ? -1 : 1;
+    }
+    return cmp > 0 || (cmp == 0 && !c->chain_end_inclusive);
+}
+
 /* Chain.next: the next pair into *out, *has false at the end. */
 static bool chain_next(struct chain *c, struct kvt *out, bool *has) {
     struct getmany *g = c->g;
@@ -445,6 +496,18 @@ static bool chain_next(struct chain *c, struct kvt *out, bool *has) {
         }
 
         linkCompareValue = kl_get_compare_value(kwi->klong);
+
+        if (c->chain_end_key != NULL && is_past_end(c, linkCompareValue)) {
+            /* Every key from here on is past the end (bergdb 021-28): the scan
+             * ends, before the pointer is followed, as at the end of the
+             * database: no link is left, so a later next() gives none too. */
+            while (c->link_size > 0) {
+                remove_link(c);
+            }
+            c->key_segment_size = 0;
+            break;
+        }
+
         c->link_compare_values[c->link_size - 1] = linkCompareValue;    /* setLinkCompareValue */
 
         struct node *next = op_follow_pointer(&g->gd.op, &linkNode->n, kwi->pointer_index);
@@ -488,6 +551,12 @@ static bool chain_next(struct chain *c, struct kvt *out, bool *has) {
 
 /* Dag.getMany */
 bool dag_get_many(struct dag *d, struct getmany *g) {
+    if (g->end_key != NULL && !g->forward) {
+        /* Refused before the root is looked up, also when there is none
+         * (bergdb 021-28). */
+        return op_fail(&g->gd.op, ERR_ARG, "IllegalArgumentException", "g.endKey with a "
+                "backward scan: the end is for forward scans only (bergdb 021-28).");
+    }
     struct knode *root;
     if (!tds_find_root(dag_get_top_ds(d), g->actual_lookup_time, &g->gd.op, &root)) {
         return false;

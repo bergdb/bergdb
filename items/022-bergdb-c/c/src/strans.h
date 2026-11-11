@@ -19,7 +19,13 @@
 #include "mem.h"
 #include "snode.h"
 
-#define ST_RECORD_FORMAT 5                      /* StoredTrans.RECORD_FORMAT */
+/* StoredTrans.RECORD_FORMAT: 6 since release 2026.4 (bergdb 023-07, section
+ * 5.8; 022-07): a record's deletes are rerun with the upward unlink, the
+ * empty key first, root collapse and the take-back (dag.c's delete_upward),
+ * and a space split in place of a segment root that the transaction made
+ * repoints the segment leaf's klong, so a record means another tree than in
+ * format 5, which release 2026.3 and earlier wrote and which is refused. */
+#define ST_RECORD_FORMAT 6
 #define ST_MAX_RECORD_SIZE (INT32_MAX - 8)      /* StoredTrans.MAX_RECORD_SIZE */
 
 struct st_record {

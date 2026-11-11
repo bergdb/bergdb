@@ -1,0 +1,9 @@
+== thrash3 m8 09:35:52 thrash3 n=3000 w=60 pp=200
+ 9:35  up 23 days,  2:20, 5 users, load averages: 19.10 13.36 10.30
+THR thrash3 {pp=200, w=60, dir=/Users/f/fl/bench/2026-11-11/thr/data/thrash3-m8, n=3000} m=8 h=17 c=17 merges=true
+[0.2s] fill1 keys=3000 keyNodes=339 klongs=3360 dead=21 keys/node=8.85 minLive=2 under7=1 under10=19
+[0.3s] end keys=3000 keyNodes=339 klongs=3378 dead=39 keys/node=8.85 minLive=2 under7=1 under10=19
+THRASH3 n=3000 w=60 pp=200 mean new/op=0.111 worst new/op=0.115 (y=1506 tsplit=23 ssplit=0 merges=0 two=0 bytes/op=141) merges/op=0.0000 ssplits/op=0.0000 bytes/op=143
+[0.4s] DONE
+rc=0 09:35:52
+ 9:35  up 23 days,  2:20, 5 users, load averages: 19.10 13.36 10.30

@@ -11,27 +11,23 @@
 #
 # Which Java (bergdb 015-02, 022-01, 022-02): C matches a release of BergDB,
 # not the Java of the day (Frans, 2026-11-05). JAVA_REF chooses the Java tree:
+#   JAVA_REF=2026.4    the default since 022-07: release 2026.4 as released (tag
+#                      release-2026.4, record format 6): the java/ of
+#                      releases/2026.4/bergdb-2026.4-src.zip, checked against
+#                      releases/2026.4/SHA256SUMS and extracted once into
+#                      build/java-src/bergdb-2026.4/java/
 #   JAVA_REF=git:HASH  the java/ of the commit HASH in this repository's Git: its
 #                      java/src, java/stress and java/deps.py by git archive, as
 #                      a release's source zip holds them, extracted once into
-#                      build/java-src/git-HASH/java/. The default, until 2026.4's
-#                      tag, is the pinned candidate of release 2026.4 (bergdb
-#                      022-02, section 2.1, and its log's re-pins), the
-#                      release candidate, main at 03ce6ec, 2026-11-09 18:42
-#                      (coord-1109's word, 18:58; int.git's candidate-2026.4),
-#                      with 021-20, 021-24 to 021-27, 020-24's U10 and 020-27's
-#                      Q1 and Q2 (2566df1, 17:18, 32f3832, 15:22, 772e09b, 14:40,
-#                      82edabf, 13:04, and 94a1520, 11:57, before):
+#                      build/java-src/git-HASH/java/. Until 2026.4's tag the
+#                      default was the release candidate of 2026.4, main at
+#                      03ce6ec, 2026-11-09 18:42 (bergdb 022-02 and 022-04; record
+#                      format 5, which C no longer writes or reads):
 #                      git:03ce6ec5efc6f1c4f56bf809de21d05a9c7a1616
-#                      A clone of int.git without the commit fetches it first:
-#                      git fetch /Users/f/fl/repos/bergdb main:refs/remotes/repo/main
-#   JAVA_REF=2026.3    the release of the 2026.3 port (bergdb 022-01): the
-#                      java/ of releases/2026.3/bergdb-2026.3-src.zip, checked
-#                      against releases/2026.3/SHA256SUMS and extracted once into
-#                      build/java-src/bergdb-2026.3/java/. On branch 2026.4 the
-#                      harness's CorruptSet.java does not compile against it
-#                      (CorruptStreamTester.Config takes the keys since 021-11);
-#                      branch 022 keeps 2026.3's harness
+#   JAVA_REF=2026.3    the release of the 2026.3 port (bergdb 022-01), the same
+#                      way. The harness's CorruptSet.java does not compile
+#                      against it (CorruptStreamTester.Config takes the keys
+#                      since 021-11); int.git's branch 022 keeps 2026.3's harness
 #   JAVA_REF=REL       another release in releases/REL/ the same way: 2026.2,
 #                      the release of 012's port (bergdb 015-02), which has no
 #                      CorruptStreamTester for CorruptSet.java (022-01, step 4)
@@ -49,7 +45,7 @@
 set -e
 C=$(cd "$(dirname "$0")/../.." && pwd)
 REPO=$(cd "$C/../../.." && pwd)
-REF=${JAVA_REF:-git:03ce6ec5efc6f1c4f56bf809de21d05a9c7a1616}
+REF=${JAVA_REF:-2026.4}
 case "$REF" in
 tree)
     JAVA=$REPO/java ;;

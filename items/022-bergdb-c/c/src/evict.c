@@ -191,6 +191,75 @@ static int64_t sweep(struct ev *ev, const struct ev_env *env, bool in_call) {
     return before - after;
 }
 
+/* Eviction.deadStep with Cache3.deadStep (bergdb 023-07, section 5.6, K6;
+ * Java's since release 2026.4): the dead hand. C's round is made whole in
+ * this call (evict.h). A removal from the table moves later entries back
+ * (lmap.h's backward shift), so after one the round looks at its slot again,
+ * as a sweep does. */
+void ev_dead_hand(struct ev *ev, const struct ev_env *env, int64_t cut) {
+    if (ev->high == INT64_MAX || cut <= ev->dead_round_cut) {
+        return;
+    }
+    ev->dead_round_cut = cut;
+    struct ntable *nt = env->nt;
+    obj_collect(ev->cx);
+    int64_t i = 0;
+    while (i < nt_slots(nt)) {
+        struct handle *h = nt_slot(nt, i);
+        if (h == NULL) {
+            i++;
+            continue;
+        }
+        struct node *o = h->obj;
+        if (o == NULL) {
+            /* A live handle with no object leaves the table, as in a sweep. */
+            nt_evict(nt, h);
+            obj_collect(ev->cx);
+            ev->dropped++;
+            continue;
+        }
+        const int64_t spos = o->spos;
+        if (spos_is_valid(spos) && !spos_is_vpos(spos) && spos < cut
+                && ev_detachable(o, env->super_root, env->newest_written_top)) {
+            /* Stored before the cut: no lookup at an available time reaches
+             * it. Whatever its CLOCK bit and the budget. */
+            nt_evict(nt, h);
+            obj_collect(ev->cx);
+            ev->evicted++;
+            ev->dead_objects++;
+            continue;
+        }
+        if (o->o.kind == OBJ_KEY) {
+            /* A key node that stays: the values stored before the cut that
+             * its pointers hold become stream pointers. */
+            struct knode *x = (struct knode *) o;
+            const int32_t size = x->size;
+            bool any = false;
+            for (int32_t j = 0; j < size; j++) {
+                struct obj *p = kn_get_pointee(x, j);
+                if (p == NULL || p->kind != OBJ_VALUE) {
+                    continue;
+                }
+                struct vnode *v = (struct vnode *) p;
+                if (written_value(v) && v->n.spos < cut) {
+                    unswizzle_value(ev, x, j, v);
+                    ev->dead_values++;
+                    any = true;
+                }
+            }
+            if (any) {
+                obj_collect(ev->cx);
+            }
+        }
+        i++;
+    }
+    ev->dead_rounds++;
+    nt_shrink(nt);
+    if (ev->hand >= nt_slots(nt)) {
+        ev->hand = 0;
+    }
+}
+
 void ev_run(struct ev *ev, const struct ev_env *env, bool in_call) {
     obj_collect(ev->cx);
     if (ev->trigger > ev->high && env->d->dirtyCount < ev->floor_dirty) {
