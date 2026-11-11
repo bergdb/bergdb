@@ -505,10 +505,11 @@ public class Dag {
      * <li>the nodes that splits can make. A node that gets k klongs (one for each put and each
      * new segment below it, those of its children's splits, and a TIME klong) with room for r
      * more overflows at most once if k exceeds r, and once more for every further half node
-     * of klongs (a replacement holds at most half a node): 1 + (k - r - 1) / q times, q = M/2
-     * - 3 or 1. The first overflow of a node that existed replaces it by up to two new nodes
-     * and adds two klongs to its parent; later ones split new nodes in place, one new node and
-     * one klong each. An overflow of the space root adds a new root;</li>
+     * of klongs (a replacement holds at most h klongs, a half node, or c + 1, a merged
+     * node): 1 + (k - r - 1) / q times, q = roomAfterReplacement(), 10 at node size 30
+     * (M/2 - 3 or 1 until format 7). The first overflow of a node that existed replaces it
+     * by up to two new nodes and adds two klongs to its parent; later ones split new nodes in
+     * place, one new node and one klong each. An overflow of the space root adds a new root;</li>
      * <li>the new segment trees of keys whose segment is not there, counted the same way from
      * an empty node;</li>
      * <li>for a delete (bergdb 023-07, section 5.4, K4): two klongs in every node of its path,
@@ -534,13 +535,13 @@ public class Dag {
      * a merged node, a half and a new root, as a merged node holds the klongs of two
      * positions of the walk (its left and its right node), floor((a + b) / q) <= floor(a /
      * q) + floor(b / q) + 1. A merged node starts with up to c + 1 klongs, so a node of a
-     * delete's path overflows as if it had at most q klongs of room, q = M/2 - 3. A sibling
-     * that a merge leaves out is not made dirty. With m < 2 (minFill) there are no merges,
-     * and these are counted as a margin. An argument, checked by DagTester's tests of the
-     * bound (bergdb 024-11, TU8), not a proof. For node size 30 and a path of 5 nodes, about
-     * 30 nodes a delete: a record's limit takes about 120,000 deletes in one transaction; a
-     * larger one is refused (Db.checkDirtyNodes), as one of puts that can make too many
-     * nodes dirty is.</li>
+     * delete's path overflows as if it had at most q klongs of room (roomAfterReplacement).
+     * A sibling that a merge leaves out is not made dirty. With m < 2 (minFill) there are
+     * no merges, and these are counted as a margin. An argument, checked by DagTester's tests
+     * of the bound (bergdb 024-11, TU8), not a proof. For node size 30 and a path of 5 nodes,
+     * about 30 nodes a delete: a record's limit takes about 120,000 deletes in one
+     * transaction; a larger one is refused (Db.checkDirtyNodes), as one of puts that can make
+     * too many nodes dirty is.</li>
      * </ul>
      * 
      * @param deletes  deletes[i] is true if keys[i] is deleted; a delete of a missing key
@@ -712,7 +713,7 @@ public class Dag {
             return 0;
         }
         final long k = klongs + 1;
-        final long q = Math.max(2, maxNodeSize / 2 - 3);
+        final long q = roomAfterReplacement();
         long room = Math.max(0, maxNodeSize - 2 - size);
         if (merged) {
             room = Math.min(room, q);
@@ -1733,31 +1734,36 @@ public class Dag {
     // ======== Format 7's fill rule: the thresholds (bergdb 024-21; 024-11, section 5.1) ========
     //
     // The thresholds of a key node's fill, each a function of the node size B (maxNodeSize,
-    // which the database's meta block holds), by integer division. They are rules of record
-    // format 7 (StoredTrans.RECORD_FORMAT): a start reruns a record's puts and deletes with
-    // them, so a change of any of them is a change of the format, and of every database's
-    // tree. Chosen "for now" on 2026-11-11 (bergdb 024-21, section 2): prototype P5's set
-    // (023-05), 7, 15 and 15 for B = 30; 024-14 measured others. Each is used only through
-    // the three methods below.
+    // which the database's meta block holds). They are rules of record format 7
+    // (StoredTrans.RECORD_FORMAT): a start reruns a record's puts and deletes with them, so a
+    // change of any of them is a change of the format, and of every database's tree. Frans
+    // decided them on 2026-11-11 at 14:34 (bergdb 024-14, QT1: the set m8, 8/17/17 for B =
+    // 30); until then prototype P5's 7/15/15 (023-05). Another node size B gets v * B / 30 by
+    // integer division, m at least 2, as 024-14's measuring build scaled them (QT2, other
+    // node sizes, open): 2/4/4 at 8 and 3/7/7 at 14 (P5's), 16/35/35 at 62. Each is used only
+    // through the three methods below.
     //
 
-    /**
-     * h = B / SPLIT_DIVISOR: rule O (handleFullNode) replaces a full node by its last
-     * version, a time split, if that holds at most h klongs with its time klong, else splits
-     * it in two halves, a space split, each of at least h / 2 live klongs. As in 2026.4.
-     */
-    static final int SPLIT_DIVISOR = 2;
+    /** The node size of the three values below; another node size scales them. */
+    static final int THRESHOLDS_NODE_SIZE = 30;
 
     /**
-     * m = B / MIN_FILL_DIVISOR, at least 2: after every transaction, every reachable key node
-     * that is not the root of a segment tree holds at least m live klongs (bergdb 024-11, BU1
-     * and V1); a delete that leaves one with m - 1 merges it (mergeAfterDelete).
+     * h at node size 30: rule O (handleFullNode) replaces a full node by its last version, a
+     * time split, if that holds at most h klongs with its time klong, else splits it in two
+     * halves, a space split, each of at least h / 2 live klongs. 2026.4: B / 2, 15.
      */
-    static final int MIN_FILL_DIVISOR = 4;
+    static final int SPLIT_ABOVE_30 = 17;
 
-    /** c = B / MERGE_CAP_DIVISOR: the most live klongs that a merge puts in one new node;
-     *  more make two new nodes of about half each (a redistribution). */
-    static final int MERGE_CAP_DIVISOR = 2;
+    /**
+     * m at node size 30: after every transaction, every reachable key node that is not the
+     * root of a segment tree holds at least m live klongs (bergdb 024-11, BU1 and V1); a delete
+     * that leaves one with m - 1 merges it (mergeAfterDelete).
+     */
+    static final int MIN_FILL_30 = 8;
+
+    /** c at node size 30: the most live klongs that a merge puts in one new node; more make
+     *  two new nodes of about half each (a redistribution). */
+    static final int MERGE_CAP_30 = 17;
 
     /**
      * The smallest node size with merges. Below it a space split's halves can hold fewer
@@ -1767,19 +1773,31 @@ public class Dag {
      */
     static final int MERGE_MIN_NODE_SIZE = 8;
 
-    /** h for node size 'b' (see SPLIT_DIVISOR). */
+    /** h for node size 'b' (see SPLIT_ABOVE_30): b / 2 below 8 too, as in 2026.4. */
     public static int splitAbove(int b) {
-        return b / SPLIT_DIVISOR;
+        return SPLIT_ABOVE_30 * b / THRESHOLDS_NODE_SIZE;
     }
 
-    /** m for node size 'b' (see MIN_FILL_DIVISOR, MERGE_MIN_NODE_SIZE). */
+    /** m for node size 'b' (see MIN_FILL_30, MERGE_MIN_NODE_SIZE). */
     public static int minFill(int b) {
-        return b < MERGE_MIN_NODE_SIZE ? 1 : Math.max(2, b / MIN_FILL_DIVISOR);
+        return b < MERGE_MIN_NODE_SIZE ? 1
+                : Math.max(2, MIN_FILL_30 * b / THRESHOLDS_NODE_SIZE);
     }
 
-    /** c for node size 'b' (see MERGE_CAP_DIVISOR). */
+    /** c for node size 'b' (see MERGE_CAP_30). */
     public static int mergeCap(int b) {
-        return b / MERGE_CAP_DIVISOR;
+        return MERGE_CAP_30 * b / THRESHOLDS_NODE_SIZE;
+    }
+
+    /**
+     * The room for more klongs that a node made by rule O or by a merge has at least, less a
+     * margin of 3, and at least 2: q = max(2, min(B / 2, B - h, B - c) - 3), 10 at node size
+     * 30. A time split's last version holds at most h klongs, a space split's half at most B /
+     * 2, a merged node at most c + 1 (dirtyNodeBound; bergdb 024-14's count for its sets).
+     */
+    private int roomAfterReplacement() {
+        final int b = maxNodeSize;
+        return Math.max(2, Math.min(b / 2, Math.min(b - splitAbove(b), b - mergeCap(b))) - 3);
     }
 
 
@@ -2362,7 +2380,7 @@ public class Dag {
     
     /**
      * This is an important method.
-     * If last.size > maxNodeSize / 2, then 'node' is split into two nodes -
+     * If last.size > splitAbove(maxNodeSize), h, then 'node' is split into two nodes -
      * a space-split is made. Otherwise, 'node' is replaced by the last version 
      * of it - a time-split.
      * 

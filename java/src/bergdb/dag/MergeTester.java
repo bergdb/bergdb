@@ -343,16 +343,28 @@ public class MergeTester {
         }
     }
 
-    /** The thresholds of format 7 (bergdb 024-21, section 2): P5's set, for every node size
-     *  that a database has, and V1's conditions on them (024-11, section 5.4). */
+    /**
+     * The thresholds of format 7 (bergdb 024-21, section 2; 024-14, QT1: 8/17/17 at node size
+     * 30, scaled to other node sizes): the values at the database's node sizes, h = B / 2
+     * below 8 as in 2026.4, no merges there, and V1's conditions (024-11, section 5.4) for
+     * every node size from 8 to 64: a space split's halves and a redistribution's halves hold
+     * at least m, a merge into one node fits in c, and h and c leave room in a node.
+     */
     @Nano
     public static void testThresholds() {
-        Assert.assertEquals(7, Dag.minFill(30));
-        Assert.assertEquals(15, Dag.mergeCap(30));
-        Assert.assertEquals(15, Dag.splitAbove(30));
-        Assert.assertEquals(1, Dag.minFill(6));
-        for (int b : new int[] {8, 14, 30, 62}) {
+        int[][] at = {{8, 2, 4, 4}, {14, 3, 7, 7}, {30, 8, 17, 17}, {62, 16, 35, 35}};
+        for (int[] x : at) {
+            Assert.assertEquals("m at " + x[0], x[1], Dag.minFill(x[0]));
+            Assert.assertEquals("h at " + x[0], x[2], Dag.splitAbove(x[0]));
+            Assert.assertEquals("c at " + x[0], x[3], Dag.mergeCap(x[0]));
+        }
+        for (int b = 2; b < 8; b++) {
+            Assert.assertEquals("m at " + b, 1, Dag.minFill(b));
+            Assert.assertEquals("h at " + b, b / 2, Dag.splitAbove(b));
+        }
+        for (int b = 8; b <= 64; b++) {
             int m = Dag.minFill(b), h = Dag.splitAbove(b), c = Dag.mergeCap(b);
+            Assert.assertTrue("b " + b + ": h and c leave room", h <= b - 2 && c <= b - 2);
             Assert.assertTrue("b " + b + ": a space split's halves", h / 2 >= m);
             Assert.assertTrue("b " + b + ": a redistribution's halves", (c + 1) / 2 >= m);
             Assert.assertTrue("b " + b + ": a merge into one node", 2 * m - 1 <= c);
