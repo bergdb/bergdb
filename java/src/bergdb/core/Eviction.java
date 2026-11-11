@@ -1512,7 +1512,7 @@ public final class Eviction {
      * Cold historical parents and shared, updated children (the Lean model's example 5): an
      * old version of a parent, read at an old time after eviction, names old versions of
      * children that the writer updates since; with long keys, whose delete leaves a subtree
-     * cold.
+     * cold: of 111 bytes, the most (L2; 302 bytes until bergdb 024-24).
      */
     @Nano
     public static void testHistoricalParentsAndLongKeys() {
@@ -1526,7 +1526,7 @@ public final class Eviction {
 
     private static void historicalParentsAndLongKeys(boolean quick, int... schedules) {
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < 300; i++) sb.append((char) ('a' + i % 26));
+        for (int i = 0; i < Db.MAX_KEY_BYTES - 2; i++) sb.append((char) ('a' + i % 26));
         String pad = sb.toString();
         for (int s : schedules) {
             Twin w = twin(s, quick);
