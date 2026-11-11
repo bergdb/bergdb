@@ -1239,14 +1239,15 @@ public class CorruptStreamTester {
      * fix, each failed: a start or a read threw an AssertionError or a ClassCastException.
      * A row: the workload, the Original's seed, the record, then the node's offset in it,
      * its byte and the xor (its checksum made right); or -1, the stream's byte and the xor.
-     * The second row's record moved with the merges at the delete (bergdb 024-21): the
-     * workload's last record, its last value node, was at 31880, offset 156, in format 6.
+     * The second row's record moved with format 7 (bergdb 024-21: the merges at the delete,
+     * then the thresholds 8/17/17): the workload's last record, its last value node, was at
+     * 31880, offset 156, in format 6, and at 27808, offset 596, with P5's thresholds.
      */
     @Nano
     public static void testFound019_32() {
         Object[][] rows = {
             {META, 3348004L, 365024, 104, 39, 0x80},    // a klong of type 2, at the start
-            {TAKE, 3552484L, 27808, 596, 37, 0x80},     // a value node's key, at the start
+            {TAKE, 3552484L, 27640, 708, 37, 0x80},     // a value node's key, at the start
             {TAKE, 4184729L, 2808, 72, 17, 0x01},       // a key count, at a read
             {TAKE, 4184729L, 2808, 72, 24, 0x01},       // a key node's id 0 to 1, at a read
             {TAKE, 4184729L, 2808, 32, 16, 0x01},       // a top node's id 1 to 0, at a read
@@ -1297,9 +1298,9 @@ public class CorruptStreamTester {
     @Nano
     public static void testFound021_11() {
         long[][] rows = {
-            {32760, 880, 112, 35936},   // a key node's pointer 1 to the newest top node
-            {35904, 32, 40, 7080},      // a top node's skip pointer 0 to a key node
-            {32760, 880, 112, 27560},   // to an older top node version: 005-57's check (-ea)
+            {28856, 1112, 120, 30504},  // a key node's pointer 1 to the newest top node
+            {30472, 32, 40, 7080},      // a top node's skip pointer 0 to a key node
+            {28856, 1112, 120, 26224},  // to an older top node version: 005-57's check (-ea)
         };
         Original o = write(LONG, 1);
         for (long[] row : rows) {
@@ -1325,20 +1326,22 @@ public class CorruptStreamTester {
      * start threw an AssertionError: its check of the nodes in memory (KeyNode.check, from
      * DbStarter.postStartupCheck, also without -ea), or an assert of KeyNode.addKlong when the
      * rerun put into the node. Copies of LONG's first full run (seed 20766), in its node at
-     * offset 200 of the record at 36336.
+     * offset 200 of the record at 36336, until format 7's thresholds 8/17/17 (bergdb 024-21):
+     * that run's stream no longer has a node before the section that the start reads, so the
+     * same copies are made in seed 20767's, its node at offset 72 of the record at 21592.
      */
     @Nano
     public static void testFound021_12() {
-        Original o = write(LONG, 20766L * 31 + LONG.name.hashCode());
-        Record rec = o.recordAt(36336);
+        Original o = write(LONG, 20767L * 31 + LONG.name.hashCode());
+        Record rec = o.recordAt(21592);
         int[] node = null;
         for (int[] n : rec.nodes) {
-            if (n[0] == 200) node = n;
+            if (n[0] == 72) node = n;
         }
         List<Copy> copies = new ArrayList<Copy>();
         // A time klong's byte flipped by 0xff (019-33's flip): the times not increasing, at
-        // the start's check (36570), and at the rerun's put (36738).
-        flips(o, Arrays.asList(36570, 36738), new int[] {0xff}, copies);
+        // the start's check (21698), and at the rerun's put (21842).
+        flips(o, Arrays.asList(21698, 21842), new int[] {0xff}, copies);
         // The first klong, a time klong, made a key klong, whose pointer is Spos.NULL.
         byte[] nb = Arrays.copyOfRange(rec.bytes, node[0], node[0] + node[1]);
         Bytes.intToBytesLE(0x7ffffff8, nb, 36);
@@ -1355,11 +1358,11 @@ public class CorruptStreamTester {
         // holds the object's identity hash ("K/44" in one run, "K/ab" in the next), and
         // printed the whole node over many lines.
         String[] texts = {
-            "Time not increasing, 400, 16712050, index=13",
-            "Key node 22807 at 36536, before the startup section, has the time 16712120, after "
-                    + "the startup time 470.",
-            "Bad spos of pointer 0 of key node 22807 at 36536: -1, at or before the startup "
-                    + "time 470.",
+            "Time not increasing, 430, 16712100, index=16",
+            "Key node 16971 at 21664, before the startup section, has the time 16712130, after "
+                    + "the startup time 480.",
+            "Bad spos of pointer 0 of key node 16971 at 21664: -1, at or before the startup "
+                    + "time 480.",
         };
         for (int i = 0; i < copies.size(); i++) {
             Assert.assertEquals(copies.get(i).what, texts[i], refusal(o, copies.get(i)));
@@ -1373,17 +1376,21 @@ public class CorruptStreamTester {
      * section, and the start's Rule R made the node's pointer to that child a pointer to the
      * node itself. A get looped without end in Dag.getEqNodeInSegment, and testFull's copy
      * did not end in 60 s; now the get fails the database (OpData.descentTo()), and so does
-     * a scan of the copy (GetMany's check of its chain).
+     * a scan of the copy (GetMany's check of its chain). Since format 7's thresholds 8/17/17
+     * (bergdb 024-21) seed 20767's stream has no such node; the copy sets the prevPos to the
+     * position of the version of the node's child (its pointer 1) before the section, what
+     * the xor did by chance, in the first node of the record at 25584 of seed 20777 (until
+     * then the xor of 0x80 in the record at 19632 of seed 20767).
      */
     @Nano
     public static void testFoundDescentCycle() {
-        Original o = write(LONG, 20767L * 31 + LONG.name.hashCode());
-        Record rec = o.recordAt(19632);
+        Original o = write(LONG, 20777L * 31 + LONG.name.hashCode());
+        Record rec = o.recordAt(25584);
         int[] node = rec.nodes.get(0);
         Assert.assertEquals(32, node[0]);
         byte[] nb = Arrays.copyOfRange(rec.bytes, node[0], node[0] + node[1]);
-        nb[8] ^= (byte) 0x80;
-        Copy c = nodeCopy(o, rec, node, nb, "xor 128 at its byte 8");
+        Bytes.longToBytesLE(21344, nb, 8);
+        Copy c = nodeCopy(o, rec, node, nb, "its prevPos set to 21344");
         Results results = new Results();
         checkAll(o, Arrays.asList(c), 1, 60, results);
         assertNoFailure(results);
