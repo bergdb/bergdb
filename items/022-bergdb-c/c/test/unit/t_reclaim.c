@@ -396,6 +396,44 @@ static void close_rdb(struct rdb *r) {
     CHECK(db_close(&r->db, &e) == ERR_OK);
 }
 
+/* A transaction under construction: rdb_tx_put and rdb_tx_delete add to
+ * it, rdb_tx_execute builds and runs it. */
+struct rdb_tx {
+    struct tr_builder b;
+    enum err_code rc;
+};
+
+static void rdb_tx_begin(struct rdb *r, struct rdb_tx *x) {
+    tr_builder_init(&x->b, &r->m);
+    x->rc = ERR_OK;
+}
+
+static void rdb_tx_put(struct rdb_tx *x, const char *ikey, const uint8_t *v, int32_t len) {
+    int64_t seg[64];
+    int32_t n;
+    struct err e;
+    ikey_segments(ikey, seg, &n);
+    if (x->rc == ERR_OK) {
+        x->rc = tr_put_segments(&x->b, seg, n, len < 0 ? NULL : v, len, &e);
+    }
+}
+
+static enum err_code rdb_tx_execute(struct rdb *r, struct rdb_tx *x) {
+    struct trans t;
+    struct err e;
+    tr_init(&t, &r->m);
+    enum err_code rc = x->rc;
+    if (rc == ERR_OK) {
+        rc = tr_build(&x->b, &t, &e);
+    }
+    if (rc == ERR_OK) {
+        rc = db_execute(&r->db, &t, &e);
+    }
+    tr_free(&t);
+    tr_builder_free(&x->b);
+    return rc;
+}
+
 /* A done row, the last one, or NULL. */
 static const struct rc_row *last_done_row(const struct reclaim *rc, int32_t *index) {
     const struct rc_row *result = NULL;
@@ -1411,6 +1449,111 @@ static void step_within_value_limit(int64_t slack) {
 TEST(reclaim_step_within_value_limit) {
     step_within_value_limit(1000);
     step_within_value_limit(0);
+}
+
+/* Reclaim.Tester.testQueueBeforeAKeyEnds (bergdb 023-08, review C, 5.3, item
+ * 2; Java's since release 2026.4): reclaim's liveness with a queue before a
+ * key: a queue of 1,000 keys, then "/z" after it; then 200 puts at the tail
+ * and 200 deletes at the head a transaction. Each step scans the keys live
+ * at the iteration's start, so the iteration ends within 2 x (the data at
+ * tStart) / (the step's 16 kB) + 10 transactions: 1,000 KVs of 216 bytes by
+ * the scan's measure, 37. (A scan at the step's time, 023's P8, never ended
+ * it: fault 13; reclaim is as before in release 2026.4.) */
+TEST(reclaim_queue_before_a_key_ends) {
+    struct rdb r;
+    mem_init(&r.m);
+    r.time = CLK_UNITS_PER_SEC;
+    struct err e;
+    REQUIRE(rdb_start(&r, NULL, 30, 2000, 0, &e) == ERR_OK);
+    uint8_t v[100];
+    memset(v, 0, sizeof v);
+    char key[32];
+    int head = 100000, next = 100000;
+    struct rdb_tx x;
+    for (int i = 0; i < 5; i++) {
+        rdb_tx_begin(&r, &x);
+        for (int j = 0; j < 200; j++) {
+            snprintf(key, sizeof key, "/q/%d", next++);
+            rdb_tx_put(&x, key, v, 100);
+        }
+        REQUIRE(rdb_tx_execute(&r, &x) == ERR_OK);
+    }
+    REQUIRE(rdb_put(&r, "/z", (const uint8_t *) "z", 1, NULL) == ERR_OK);  /* one key after the queue */
+
+    REQUIRE(db_set_retain_duration(&r.db, 1000 * CLK_UNITS_PER_SEC, &e) == ERR_OK);    /* iterations, no cut */
+    r.time += CLK_UNITS_PER_SEC;
+    REQUIRE(rdb_put(&r, "/a", (const uint8_t *) "a", 1, NULL) == ERR_OK);
+
+    int32_t index;
+    int i = 0;
+    for (; last_done_row(&r.db.reclaim, &index) == NULL; i++) {
+        CHECK(i < 37);      /* the iteration ends */
+        if (i >= 37) {
+            break;
+        }
+        rdb_tx_begin(&r, &x);
+        for (int j = 0; j < 200; j++) {
+            snprintf(key, sizeof key, "/q/%d", next++);
+            rdb_tx_put(&x, key, v, 100);
+            snprintf(key, sizeof key, "/q/%d", head++);
+            rdb_tx_put(&x, key, NULL, -1);
+        }
+        REQUIRE(rdb_tx_execute(&r, &x) == ERR_OK);
+    }
+    printf("  reclaim_queue_before_a_key_ends: the iteration ended in %d transactions\n", i);
+    close_rdb(&r);
+    CHECK_MEM_ZERO(&r.m);
+}
+
+/* Reclaim.Tester.testRandomPutsAheadDoNotSlowTheScan (bergdb 023-08, review
+ * B, 2.6): random puts ahead of the scan do not stop an iteration: 500
+ * keys, then 400 new keys a transaction between them. Each step scans the
+ * keys live at the iteration's start, so the iteration ends within 30
+ * transactions. */
+TEST(reclaim_random_puts_ahead_do_not_slow_the_scan) {
+    struct rdb r;
+    mem_init(&r.m);
+    r.time = CLK_UNITS_PER_SEC;
+    struct err e;
+    REQUIRE(rdb_start(&r, NULL, 30, 2000, 0, &e) == ERR_OK);
+    uint8_t v[100];
+    memset(v, 0, sizeof v);
+    char key[48];
+    struct rdb_tx x;
+    for (int i = 0; i < 500; i += 20) {
+        rdb_tx_begin(&r, &x);
+        for (int j = i; j < i + 20; j++) {
+            snprintf(key, sizeof key, "/k/%d", 10000 + j);
+            rdb_tx_put(&x, key, v, 100);
+        }
+        REQUIRE(rdb_tx_execute(&r, &x) == ERR_OK);
+    }
+
+    REQUIRE(db_set_retain_duration(&r.db, 1000 * CLK_UNITS_PER_SEC, &e) == ERR_OK);    /* iterations, no cut */
+    r.time += CLK_UNITS_PER_SEC;
+    REQUIRE(rdb_put(&r, "/a", (const uint8_t *) "a", 1, NULL) == ERR_OK);
+
+    uint64_t rnd = 1;
+    int next = 0;
+    int32_t index;
+    int i = 0;
+    for (; last_done_row(&r.db.reclaim, &index) == NULL; i++) {
+        CHECK(i < 30);      /* the iteration ends */
+        if (i >= 30) {
+            break;
+        }
+        rdb_tx_begin(&r, &x);
+        for (int j = 0; j < 400; j++) {
+            snprintf(key, sizeof key, "/k/%d-%d", 10000 + (int) test_random_below(&rnd, 499),
+                    next++);
+            rdb_tx_put(&x, key, v, 100);
+        }
+        REQUIRE(rdb_tx_execute(&r, &x) == ERR_OK);
+    }
+    printf("  reclaim_random_puts_ahead_do_not_slow_the_scan: the iteration ended in %d "
+            "transactions\n", i);
+    close_rdb(&r);
+    CHECK_MEM_ZERO(&r.m);
 }
 
 /* Reclaim.Tester.testUserTransactionLeavesTimesForReclaim (015-55, 016-06
@@ -2524,6 +2667,8 @@ const struct test reclaim_tests[] = {
     TEST_ENTRY(reclaim_safe_pos_after_the_calls_records),
     TEST_ENTRY(reclaim_step_within_value_limit),
     TEST_ENTRY(reclaim_user_transaction_leaves_times),
+    TEST_ENTRY(reclaim_queue_before_a_key_ends),
+    TEST_ENTRY(reclaim_random_puts_ahead_do_not_slow_the_scan),
     TEST_ENTRY(reclaim_retention_shrink_during_iteration),
     TEST_ENTRY(reclaim_retention_shrink_makes_rows_cuttable),
     TEST_ENTRY(reclaim_retention_grow_after_cut),

@@ -16,7 +16,7 @@
 # files cut or removed (the corrupt variants, 012-06): a stream that Java
 # refuses, C refuses, at the same place, and C's scanner never crashes.
 #
-# Usage: test/cross/cross.sh quick|full|scale [C=DIR] [SCALE=N] [KEEP=1]
+# Usage: test/cross/cross.sh quick|full|deletes|scale [C=DIR] [SCALE=N] [KEEP=1]
 #        test/cross/cross.sh random SPECFILE=FILE [OUTDIR=DIR] [C=DIR] [KEEP=1]
 #   quick   a minute or so: small configurations, a few seeds, a few cuts,
 #           one workload in turns, and the hand-written workloads in
@@ -25,6 +25,13 @@
 #           modes (restarts-once since 022-01, step 0), CoreSame, a few
 #           hundred Gen seeds, about a thousand crash cuts, workloads in
 #           turns; 10 to 20 minutes
+#   deletes the delete path of release 2026.4 (bergdb 022-07; GenDel.java): 190
+#           workloads of mass deletes, scattered deletes, deletes that empty
+#           nodes, trees and the database, from the left (the empty key's
+#           child) and the right, swaps in one transaction (the take-back),
+#           with restarts and with reclaim across them; 24 of them in turns
+#           and with crash cuts; DELETES=N for the first N seeds of each
+#           group only (a smaller run); 5 to 10 minutes
 #   scale   one workload of SCALE keys (10,000,000 by default), by hand,
 #           outside other sessions' timed runs; the scans take the last
 #           file only, the dumps -large
@@ -56,6 +63,7 @@ SCALE=10000000
 KEEP=0
 SPECFILE=""
 OUTDIR=""
+DELETES=1000
 for arg in "$@"; do
     case "$arg" in
     C=*) CTOOLS=$(cd "${arg#C=}" && pwd) || exit 2 ;;
@@ -63,13 +71,14 @@ for arg in "$@"; do
     KEEP=*) KEEP=${arg#KEEP=} ;;
     SPECFILE=*) SPECFILE=${arg#SPECFILE=} ;;
     OUTDIR=*) OUTDIR=${arg#OUTDIR=} ;;
+    DELETES=*) DELETES=${arg#DELETES=} ;;
     *) echo "cross.sh: unknown argument $arg"; exit 2 ;;
     esac
 done
 case "$SET" in
-quick|full|scale) ;;
+quick|full|deletes|scale) ;;
 random) [ -f "$SPECFILE" ] || { echo "cross.sh random: no SPECFILE"; exit 2; } ;;
-*) echo "Usage: test/cross/cross.sh quick|full|scale [C=DIR] [SCALE=N] [KEEP=1]"; exit 2 ;;
+*) echo "Usage: test/cross/cross.sh quick|full|deletes|scale [C=DIR] [SCALE=N] [KEEP=1]"; exit 2 ;;
 esac
 
 if [ -z "${JAVA_HOME:-}" ] && [ -d /opt/homebrew/opt/openjdk ]; then
@@ -420,7 +429,9 @@ quick)
         gen:4:n=200,maxnode=8,sd=100,restarts=3,retain=0 coresame:n=1500:plain
         gen:5:n=300,restarts=0,retain=0 gen:6:n=300,maxnode=8,sd=100,restarts=0,retain=0
         sd:l3-node14:plain:n=600 sd:l3-every1:reads:n=400 gen:7:n=400,restarts=0,retain=1
-        gen:8:n=300,maxnode=8,sd=100,restarts=0,retain=1"
+        gen:8:n=300,maxnode=8,sd=100,restarts=0,retain=1
+        del:1:keys=300,maxnode=8,sd=100,retain=0 del:2:keys=400,maxnode=8,retain=1
+        del:3:keys=500,maxnode=14,shape=0,pattern=5 del:4:keys=300,maxnode=8,tx=200,mix=30"
     CRASH="sd-l2-sd1000-node8-reads-n300 gen-4-n200-maxnode8-sd100-restarts3-retain0
         reclaim-crash"
     CUTS=4; RANDCUTS=3
@@ -446,6 +457,8 @@ full)
     s=301; while [ $s -le 340 ]; do SPECS="$SPECS gen:$s:restarts=0"; s=$((s + 1)); done
     s=341; while [ $s -le 380 ]; do SPECS="$SPECS gen:$s:restarts=0,retain=2"; s=$((s + 1)); done
     s=381; while [ $s -le 400 ]; do SPECS="$SPECS gen:$s:maxnode=8,sd=100,restarts=0,retain=1"; s=$((s + 1)); done
+    # The delete path of release 2026.4 (022-07): GenDel's seeds, drawn.
+    s=1; while [ $s -le 40 ]; do SPECS="$SPECS del:$s"; s=$((s + 1)); done
     CRASH="sd-l2-sd100-plain sd-l2-sd1000-node8-plain sd-l2-sd10000-node14-restarts sd-l2-every1-plain
         gen-201-maxnode8-sd100-retain0 gen-202-maxnode8-sd100-retain0 gen-203-maxnode8-sd100-retain0
         gen-204-maxnode8-sd100-retain0 reclaim-crash"
@@ -455,6 +468,29 @@ full)
     FLIPS=80
     TURNS="sd-l2-sd100-restarts sd-l2-sd1000-node8-restarts sd-l3-node8-restarts coresame
         gen-201-maxnode8-sd100-retain0 gen-205-maxnode8-sd100-retain0"
+    ;;
+deletes)
+    # Drawn (1 to 80); each pattern on each shape at node size 8 and startup distance
+    # 100, where index nodes are written and split often, without reclaim (101 to 145)
+    # and with it (201 to 245); transactions of up to 1,000 operations on 3,000 keys
+    # (301 to 320).
+    n=0; s=1; while [ $s -le 80 ] && [ $n -lt "$DELETES" ]; do SPECS="$SPECS del:$s"; s=$((s + 1)); n=$((n + 1)); done
+    n=0; s=101
+    for pt in 0 1 2 3 4 5 6 7 8; do for sh in 0 1 2 3 4; do
+        if [ $n -lt "$DELETES" ]; then
+            SPECS="$SPECS del:$s:maxnode=8,sd=100,retain=0,pattern=$pt,shape=$sh,keys=700"
+            SPECS="$SPECS del:$((s + 100)):maxnode=8,sd=100,retain=1,pattern=$pt,shape=$sh,keys=700"
+        fi
+        s=$((s + 1)); n=$((n + 1))
+    done; done
+    n=0; s=301; while [ $s -le 320 ] && [ $n -lt "$DELETES" ]; do SPECS="$SPECS del:$s:tx=1000,keys=3000,mix=40"; s=$((s + 1)); n=$((n + 1)); done
+    CRASH="del-1 del-2 del-3 del-101-maxnode8-sd100-retain0-pattern0-shape0-keys700
+        del-201-maxnode8-sd100-retain1-pattern0-shape0-keys700 del-301-tx1000-keys3000-mix40"
+    CUTS=6; RANDCUTS=10
+    CORRUPT="del-1 del-101-maxnode8-sd100-retain0-pattern0-shape0-keys700"
+    FLIPS=40
+    TURNS="del-1 del-2 del-3 del-4 del-101-maxnode8-sd100-retain0-pattern0-shape0-keys700
+        del-201-maxnode8-sd100-retain1-pattern0-shape0-keys700"
     ;;
 scale)
     SPECS="scale:$SCALE"
@@ -479,7 +515,7 @@ fi
 # shellcheck disable=SC2086
 "$JAVA" $JAVA_OPTS -cp "$CLASSES" bergdb.core.Export "$OUT/wl" $SPECS > "$OUT/export.txt" 2>&1 \
     || { cat "$OUT/export.txt"; say "CROSS $SET FAILED: the export"; exit 1; }
-if [ "$SET" != scale ] && [ "$SET" != random ]; then
+if [ "$SET" != scale ] && [ "$SET" != random ] && [ "$SET" != deletes ]; then
     for f in "$HERE"/workloads/*.wl; do       # hand-written workloads
         [ -f "$f" ] && cp "$f" "$OUT/wl/" && echo "$OUT/wl/$(basename "$f")" >> "$OUT/export.txt"
     done
@@ -507,6 +543,11 @@ for w in $WORKLOADS; do
 done
 both_sides "$OUT/run-a.jobs" "$OUT/run-b.jobs"
 say "runs done in $(( $(date +%s) - T0 )) s"
+# The delete path that the workloads took (022-07): Java's counters of side A's runs
+# (Batch.java; Dag.statUnlinked and the others of release 2026.4).
+if ls "$OUT"/a/*/run.txt.delstats > /dev/null 2>&1; then
+    say "the delete path in side A's runs: $(cat "$OUT"/a/*/run.txt.delstats | awk '{ s[$1] += $2; if (!($1 in o)) { o[$1] = ++n; k[n] = $1 } } END { for (i = 1; i <= n; i++) printf "%s%s %d", (i > 1 ? ", " : ""), k[i], s[k[i]] }'); workloads with a take-back: $(grep -l '^takenback [1-9]' "$OUT"/a/*/run.txt.delstats 2>/dev/null | wc -l | tr -d ' '), with a root collapse: $(grep -l '^collapses [1-9]' "$OUT"/a/*/run.txt.delstats 2>/dev/null | wc -l | tr -d ' '), with the empty key's child emptied: $(grep -l '^emptykey [1-9]' "$OUT"/a/*/run.txt.delstats 2>/dev/null | wc -l | tr -d ' ')"
+fi
 if ctool run > /dev/null; then
     nj=$(grep -c '/run\.txt$' "$OUT/java-only.txt" | tr -d ' ')
     nr=0

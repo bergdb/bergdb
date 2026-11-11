@@ -9,40 +9,40 @@ D1): the library, its tests, the tools, and the Java side of the cross
 tests. Its first parts, the build, the tests, the gate and the rules
 below, are 012-04's.
 
-**Which Java.** C is a port of **Java release 2026.4** (bergdb 022-02),
-not of the Java of the day: it writes that release's bytes, opens its
-databases and refuses what it refuses, with Java's exception names and
-texts, and its API follows `Db`'s public methods there. Where it departs
-from that Java, on purpose, section 11 says how and why. Until 2026.4 is
-tagged, C follows its release candidate, a commit of `main` that the cross
-tests compile by default: `test/cross/java-build.sh`'s
-`JAVA_REF=git:HASH`, the commit's `java/src`, `java/stress` and
-`java/deps.py` by `git archive`, as a release's source zip holds them,
-extracted once into `build/java-src/git-HASH/`; `java-ref.txt` names it
-in every report. The candidate is `main` at `03ce6ec` (2026-11-09 18:42,
-named by coord-1109 at 18:58); before it C followed the newest `main`
-that 022-02 had pinned and checked (each pin, with what it brought, is
-in 022-02's log). The pin, here and as `java-build.sh`'s default:
+**Which Java.** C is a port of **Java release 2026.4** as released (the
+tag `release-2026.4`, `bb8da6dc`, 2026-11-10; record format 6; bergdb
+022-07), not of the Java of the day: it writes that release's bytes,
+opens its databases and refuses what it refuses, with Java's exception
+names and texts, and its API follows `Db`'s public methods there. Where
+it departs from that Java, on purpose, section 11 says how and why. The
+cross tests compile the release's Java by default:
+`test/cross/java-build.sh`'s `JAVA_REF=2026.4`, the release's
+`releases/2026.4/bergdb-2026.4-src.zip`, checked against its `SHA256SUMS`
+and extracted once into `build/java-src/`; `java-ref.txt` names it in
+every report.
 
-    JAVA_REF=git:03ce6ec5efc6f1c4f56bf809de21d05a9c7a1616   the candidate, main at 2026-11-09 18:42
+    JAVA_REF=2026.4     release 2026.4, the tag release-2026.4
 
-Once 2026.4 is tagged, the default becomes `JAVA_REF=2026.4`, the
-release's `releases/2026.4/bergdb-2026.4-src.zip`, checked against its
-`SHA256SUMS` and extracted once into `build/java-src/`, and this
-paragraph names the tag and its commit (022-02, section 4.2).
 `JAVA_REF=tree` compiles the repository's `java/`, `JAVA_REF=DIR` another
-Java tree and `JAVA_REF=git:HASH` another commit; each differs from C
-where its Java differs from the pin. `JAVA_REF=2026.3` and `2026.2` no
-longer compile the harness (`CorruptSet.java` takes 2026.4's
-`CorruptStreamTester.Config`, with its keys). C is kept at one release at
-a time, and follows Java's releases, not its changes in between: this
-copy began at 012's `be51a78`, the port of release 2026.2 (bergdb
-015-02), which 012 keeps; 022-01 brought it to release 2026.3 (the tag
-`release-2026.3`, `929fa33`, 2026-11-06), whose port, gated against
-2026.3, is `c/` as of `main`'s `b49606b` (2026-11-09 12:53; `int.git`'s
-branch `022`, `342dcb2`); 022-02 brings it to 2026.4, on `int.git`'s
-branch `2026.4`. Until 2026-11-05 C followed `main` as of 2026-10-29
-(`ae4aaf9`), then release 2026.2 until 2026-11-09.
+Java tree and `JAVA_REF=git:HASH` a commit's `java/src`, `java/stress`
+and `java/deps.py` by `git archive`; each differs from C where its Java
+differs from the release. `JAVA_REF=2026.3` and `2026.2` no longer
+compile the harness (`CorruptSet.java` takes 2026.4's
+`CorruptStreamTester.Config`, with its keys), and C no longer reads their
+streams (record format 5). C is kept at one release at a time, and
+follows Java's releases, not its changes in between: this copy began at
+012's `be51a78`, the port of release 2026.2 (bergdb 015-02), which 012
+keeps; 022-01 brought it to release 2026.3 (the tag `release-2026.3`,
+`929fa33`, 2026-11-06), whose port, gated against 2026.3, is `c/` as of
+`main`'s `b49606b` (2026-11-09 12:53; `int.git`'s branch `022`,
+`342dcb2`); 022-02 brought it to 2026.4's release candidate, `main` at
+`03ce6ec` (2026-11-09 18:42; record format 5; `int.git`'s branch
+`2026.4`, `8772b93`), through five pins of `main` (022-02's log, 022-04);
+and 022-07 to the release, after 023 changed the delete path before it
+(the upward unlink at a delete, the empty key first, root collapse and the
+take-back, the sort of a transaction's keys after their transformations,
+record format 6; `src/dag.h`). Until 2026-11-05 C followed `main` as of
+2026-10-29 (`ae4aaf9`), then release 2026.2 until 2026-11-09.
 
 
 # 1. Build and test
@@ -104,7 +104,7 @@ build; the rules a tool can check (section 4); the unit tests in the test
 build; the unit tests in the release build, then under macOS's `leaks`;
 the functional tests likewise; `test/cross/cross.sh quick` (012-05) and
 `writecheck.sh`; `test/stress/corruptset.sh quick` (022-01, step 4,
-section 10); the allocation failures in turn on a small workload
+section 10; 65 copies since 022-07); the allocation failures in turn on a small workload
 (`bergdb-allocfail`, 012-14, section 10); and `examples/compare.sh`
 (012-13), which runs the examples under the sanitizers and compares them
 with Java (section 8).
@@ -125,15 +125,18 @@ give for fixed inputs (compare values, segments, hashes, checksums, the
 byte codecs, the keys' conversions and their UTF-8 check, and Java's
 arithmetic in `jsem.txt`). They are written by
 `test/cross/java/Vectors.java` and committed, so that the unit tests run
-without Java; `t_vectors.c` reads them. They are the pin's (above),
+without Java; `t_vectors.c` reads them. They are the release's (above),
 thirteen files, written again from each of 022-02's pins and equal to
-the committed ones each time. 2026.4 brought two kinds (022-02, step 1):
+the committed ones each time, and from the release in 022-07: four
+changed with record format 6 and the delete path (`dag.txt`,
+`knode.txt`, `reclaim.txt`, `records.txt`), nine are equal. 2026.4
+brought two kinds (022-02, step 1):
 `utf8 BYTES RESULT` in the new `strutil.txt`
 (`StringUtil.isWellFormedUtf8`) and `bkey2ikey BKEY IKEY` or `none` in
 `keys.txt` (`Keys.bkey2ikeyOrNull`); the other eleven files are as
 2026.3 wrote them (022-01, step 0). To write them again from Java, and
-to check C against the Java that `JAVA_REF` chooses (above; the pin by
-default) without changing the committed ones:
+to check C against the Java that `JAVA_REF` chooses (above; the release
+by default) without changing the committed ones:
 
     JAVA_HOME=/opt/homebrew/opt/openjdk test/cross/java-build.sh
     /opt/homebrew/opt/openjdk/bin/java -ea -cp build/java/classes bergdb.core.Vectors DIR
@@ -706,6 +709,24 @@ the corrupt-stream set's `quick`); each script's header has its usage,
 and 022-04 those of the port to 2026.4. Raw output goes to
 `/Users/f/fl/bench/022/out/` by default (`OUT=`).
 
+* `test/cross/cross.sh deletes`: **the delete path** of release 2026.4
+  (022-07): 190 workloads of `test/cross/java/GenDel.java` (`del:SEED`
+  specs): rounds of a fill, a delete pattern (every key ascending,
+  descending or shuffled, every k-th, a range, all but the first and the
+  last and then those, from both ends inward, a random share, thinned out
+  and then the rest), mixed transactions with swaps (a range whose dead
+  keys are put and whose live keys are deleted in one transaction, so that
+  it splits nodes and empties what it split) and a drive of single puts,
+  on keys of five shapes, at every node size, with restarts, checks at
+  earlier times and reclaim across the deleted ranges; 80 drawn, 45 with
+  each pattern on each shape at node size 8 and startup distance 100, the
+  same 45 with reclaim, 20 with transactions of up to 1,000 operations;
+  with crash cuts, corrupt variants, runs in turns and budget runs as the
+  other sets. Its report says what the workloads made the writer do, by
+  Java's counters of side A's runs (`Dag.statUnlinked` and the others):
+  nodes unlinked, climbs, the empty key's child emptied, nodes taken back,
+  root collapses. `DELETES=N` takes the first N seeds of each group. Four
+  small `del:` workloads are in `quick`, 40 drawn ones in `full`.
 * `test/stress/random.sh FROM TO`: Gen's seeds by the thousand, Java
   against C, in batches of `cross.sh random`.
 * `test/stress/long.sh SEED N`: a long run with restarts, reclaim and a
@@ -727,7 +748,12 @@ and 022-04 those of the port to 2026.4. Raw output goes to
   truncation, flip, header fields, a node's field with its checksum made
   right, a range cut out), `testFound019_32`'s, `testFound021_11`'s
   (022-02, step 2: base `found-long-1`), `testFound021_12`'s (022-02, the
-  re-pin: base `found-long-3971358`), and the cases of 2026.3's refusal
+  re-pin: base `found-long-3971358`), 020-32's two of the release (022-07:
+  `testFoundDescentCycle`, base `found-long-3971389`, a damaged prevPos
+  that makes a pointer of a key node name the node itself, which both
+  starts take and a read of both dumpers then fails on, with the same
+  text; and `testFoundLinkByIdPrevPos`, base `found-long-3971451`, which
+  both starts refuse), and the cases of 2026.3's refusal
   tests (`DbTesterRestart`'s six, 015-72, 015-75, 019-34, 019-01; the node
   tests' changes, 019-32, on every node of a stream). Both dumpers start
   each, C's with `-check` (the start's check by node id, 005-57, which
@@ -745,7 +771,7 @@ and 022-04 those of the port to 2026.4. Raw output goes to
   and position, "key node 22807 at 36536" (021-15, as Java's since release
   2026.4), and are compared as any other; the set counted
   `KeyNode.validateStreamNode`'s as known until then, as Java's printed
-  the node with `Object.toString`'s identity hash. `quick` (63 copies) is
+  the node with `Object.toString`'s identity hash. `quick` (65 copies) is
   in the gate; the whole set (`SEEDS=`, 1 by default, testSample's copies:
   6,253, 2 to 5 minutes under load) by hand. `CONTROL=REV` is the negative
   control: C at REV (`86dade8`, the port of 2026.2) must differ in every
@@ -796,10 +822,10 @@ and 022-04 those of the port to 2026.4. Raw output goes to
 
 # 11. Departures from Java
 
-Where C does not do what the Java that it follows does (2026.4's
-candidate, pinned: "Which Java" above), on purpose; the cross tests and
-the corrupt sets compare around them, and 022-03, section 7, and 022-04,
-section 6, give them with the ports' evidence. Those of C's design since
+Where C does not do what the Java that it follows does (release 2026.4:
+"Which Java" above), on purpose; the cross tests and the corrupt sets
+compare around them, and 022-03, section 7, 022-04, section 6, and
+022-07, section 6, give them with the ports' evidence. Those of C's design since
 012 (012-16, section 4): one caller at a time and no thread (section 8),
 so a transaction is durable at a sync or a close (section 9, points 1 to
 4) and a decided cut is forced and made in the call that decides it
@@ -866,6 +892,38 @@ the ports to 2026.3 and 2026.4:
    2026-11-09 (the session `022-bergdb-c`; Frans may change it); until
    then `bergdb.h` said that Java's `close()` does not report a failure,
    which was so before 005-73 and 019-09.
+
+6. **The dead hand's round is made whole** (Java's 023-07, section 5.6;
+   022-07). After a cut that moves the decided cut position, Java's
+   eviction takes the objects stored before it and the values below it in
+   steps, one a transaction, of 4,096 units of work and 2 ms at most, as
+   its readers run meanwhile. C makes the round in the call after the
+   cut, whole, as its sweeps are (above): its work is the node table's
+   slots and the pointers of the key nodes that stay, once for each cut
+   that moves. With a budget only, as Java's (`src/evict.h`,
+   `ev_dead_hand`). No byte depends on it.
+7. **A transaction executed again after its key transformations made two
+   puts one key** has one of them (022-07; Java's 023-11, F1). A C
+   transaction is its builder: a put keeps its transformed key in place
+   of the key given (`bergdb.h`, `struct bergdb_transform`), and each
+   execute builds the transaction again, one put a key
+   (`bergdb_trans_put`). So when two transformed puts of an execute got
+   the same key, the next execute of that transaction has the later one
+   only, where Java's `Trans`, built once, keeps both KVs and gives each
+   key transformation its own slot again. The run itself is Java's: the
+   sort after the transformations and its one operation a key work on a
+   copy (`db.c`'s `sort_by_key`), and puts that got different keys keep
+   their own state (`t_dbtester.c`'s `dbt_reused_trans_keeps_its_kvs`).
+8. **A forward read's end key is the stop condition's** (Java's 021-28,
+   SE; 022-07). The Core has Java's `GetMany.endKey` (`getmany.h`'s
+   `end_key`: the scan ends at its range's end also over deleted keys, as
+   at the end of the database), but `bergdb_range.end_key` is still
+   `Endpoint` alone, with its `eod` as before: Java sets `endKey` in the
+   Pub API's scans, which C does not have, and a range that set both would
+   change what `bergdb_many.eod` says. Since a delete unlinks the nodes it
+   empties, the stop condition alone passes few deleted keys
+   (`t_dbgetmany.c`'s `dbgm_end_key_passes_no_deleted_keys`: 11 key nodes
+   against 8).
 
 **No longer departures.** A new stream file and the directory are forced
 when the file is made, as Java's `openForRw` forces them, since 022-02's

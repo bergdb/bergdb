@@ -48,7 +48,12 @@ import bergdb.stream.MemoryStream;
  * type; base "found-long-1", the configuration LONG's original of seed 1), and the three
  * of testFound021_12 (bergdb 021-12, release 2026.4: a key node that a start reads from
  * before its startup section, damaged so that it breaks KeyNode's invariants; base
- * "found-long-3971358", LONG's original of the test's seed).</li>
+ * "found-long-3971358", LONG's original of the test's seed), and the two of
+ * testFoundDescentCycle and testFoundLinkByIdPrevPos (bergdb 020-32, release 2026.4 as
+ * released; 022-07: a key node's prevPos changed, its checksum made right, which makes a
+ * pointer of the node name the node itself, a cycle that a read meets, or leaves a pointer
+ * of its parent without its link by position, which the start refuses; bases
+ * "found-long-3971389" and "found-long-3971451").</li>
  * <li><b>The cases of the release's refusal tests</b> (bases "case-..."), on the streams
  * that those tests write, with the tests' changes: DbTesterRestart's
  * testEnlargedRecordSizeRefused (015-72), testCorruptStartupPosRefused,
@@ -71,8 +76,8 @@ import bergdb.stream.MemoryStream;
  *
  * <pre>
  * Usage: java -ea -cp CLASSES bergdb.core.CorruptSet [-quick] OUT [SEED ...]
- *   -quick  the gate's set, about 60 copies: the refusal tests' cases and testFound019_32's,
- *           testFound021_11's and testFound021_12's copies only, the node tests' changes on
+ *   -quick  the gate's set, about 65 copies: the refusal tests' cases and testFound019_32's,
+ *           testFound021_11's, testFound021_12's and 020-32's copies only, the node tests' changes on
  *           the first and the last node that takes each
  *   SEED    the sample runs' seeds, 1 (testSample's) by default
  * Writes, for each original NAME, OUT/base/NAME/db (the stream as written), and for each
@@ -140,6 +145,7 @@ public final class CorruptSet {
             set.found019_32();
             set.found021_11();
             set.found021_12();
+            set.found020_32();
             if (!quick) {
                 for (long seed : seeds) {
                     set.sample(seed);
@@ -473,6 +479,50 @@ public final class CorruptSet {
                 System.out.println("the tester failed " + name + "/" + n + ": " + tester);
             }
             copy(name, n++, c, tester);
+        }
+    }
+
+    /**
+     * testFoundDescentCycle's and testFoundLinkByIdPrevPos's copies (bergdb 020-32, as Java's
+     * since release 2026.4 as released; 022-07), as the tests make them: in LONG's originals
+     * of the tests' seeds, the prevPos (byte 8) of the first node, a key node, of the first
+     * record of the startup section changed, its checksum made right. Xor 0x80 in the record
+     * at 19632 of seed 20767's original: the prevPos then names the version of the node's own
+     * child before the section, and the start's Rule R makes the node's pointer to that
+     * child a pointer to the node itself; the start goes on, and a get or a scan that meets
+     * the cycle fails the read (a StreamFormatException; before, it looped without end).
+     * Xor 0x01 in the record at 22448 of seed 20769's: the version that the prevPos named is
+     * the one that its parent's pointer names, so rule 4 by position has no canonical object
+     * for it and rule 4 by node id has: the start refuses the stream (before, 005-57's
+     * check threw an AssertionError under -ea).
+     */
+    private void found020_32() throws IOException {
+        long[][] rows = {
+            {20767, 19632, 0x80},
+            {20769, 22448, 0x01},
+        };
+        CorruptStreamTester.Config config = CorruptStreamTester.LONG;
+        for (long[] row : rows) {
+            long seed = row[0] * 31 + config.name.hashCode();
+            CorruptStreamTester.Original o = CorruptStreamTester.write(config, seed);
+            String name = "found-" + config.name + "-" + seed;
+            base(name, o.bytes);
+            CorruptStreamTester.Record rec = o.recordAt(row[1]);
+            int[] node = rec.nodes.get(0);
+            if (node[0] != 32) {
+                throw new IOException(name + ": the record's first node is at " + node[0]);
+            }
+            byte[] nb = Arrays.copyOfRange(rec.bytes, node[0], node[0] + node[1]);
+            nb[8] ^= (byte) row[2];
+            CorruptStreamTester.Copy c = nodeCopy(o, "found", rec, node, nb,
+                    "xor " + row[2] + " at its byte 8");
+            CorruptStreamTester.Outcome out = CorruptStreamTester.check(o, c);
+            String tester = out.failure == null ? out.kind : "FAILED: " + out.failure;
+            if (out.failure != null) {
+                testerFailures++;
+                System.out.println("the tester failed " + name + "/0: " + tester);
+            }
+            copy(name, 0, c, tester);
         }
     }
 

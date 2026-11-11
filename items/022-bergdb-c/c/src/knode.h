@@ -97,6 +97,17 @@ bool kn_add_delete_klong(struct obj_ctx *cx, struct knode *k, int64_t time, int6
 bool kn_add_klong(struct obj_ctx *cx, struct knode *k, int64_t time, int64_t klong,
         struct node *pointer_node, int64_t access_data_or_spos);
 
+/* addKlongCopyPointer, copyPointer, repointKlong (bergdb 023-07, sections
+ * 5.1 and 5.2; Java's since release 2026.4), for a delete's upward unlink:
+ * a KEY klong at time whose pointer is a copy of pointer from (*index its
+ * index; a TIME klong first if needed); pointer from copied to the KEY klong
+ * at index; the KEY klong at index pointed to node. The last two change a
+ * klong of the current transaction, behind the node's last TIME klong. */
+bool kn_add_klong_copy_pointer(struct obj_ctx *cx, struct knode *k, int64_t time, int64_t klong,
+        int32_t from, int32_t *index);
+void kn_copy_pointer(struct obj_ctx *cx, struct knode *k, int32_t index, int32_t from);
+bool kn_repoint_klong(struct obj_ctx *cx, struct knode *k, int32_t index, struct node *node);
+
 /* replaceKlong: replaces the pointer of the key klong equal to klong1 at
  * time; *replaced is true if there was one. A delete bitmap in the node is
  * a bug (asserted; Java throws IllegalStateException). */
@@ -128,7 +139,9 @@ struct knode *kn_last_version_given_del(struct obj_ctx *cx, const struct knode *
  * (last.size - 1) / 2 + 1, each with a TIME klong of t_time first; the
  * n_insert klongs of insert[] go to first, or to second if the first of
  * them is at or after second's first key; *second_klong is second's first
- * key klong. first and second are empty on entry. */
+ * key klong, which the parent gets. The second half of an inner node gets
+ * the empty key in its place (LE-b, bergdb 023-07, section 5.2), an inserted
+ * klong of that compare value too. first and second are empty on entry. */
 bool kn_first_and_second(struct obj_ctx *cx, const struct knode *k, int64_t t_time,
         const struct knode *last, const struct kwp *insert, int32_t n_insert,
         struct knode *first, struct knode *second, int64_t *second_klong);

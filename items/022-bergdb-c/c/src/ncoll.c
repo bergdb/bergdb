@@ -592,6 +592,19 @@ static enum err_code check_link_by_id(struct ncoll *nc, struct node *node, int32
             return rc;
         }
     }
+    if (linked == NULL && expected != NULL) {
+        /* None by position and a canonical object by node id is a damaged
+         * prevPos, not the Core's fault (bergdb 020-32, section 7; as Java's
+         * since release 2026.4, CorruptStreamTester's seeds 20769 and 20770):
+         * the key node version of the section that names the version at pos
+         * as its prevPos names another position, so pos is not in the
+         * start's posToId. The start refuses the stream, as for a damaged
+         * pointer (021-11); it was the AssertionError below. */
+        return err_set(e, ERR_FORMAT, "StreamFormatException", "Pointer %d of node %" PRId64
+                " names %" PRId64 ", a version of node %" PRId64 " (at %" PRId64 " in the "
+                "startup section), but no version of the section names it as its prevPos.",
+                (int) i, node->id, pos, expected->id, o->spos);
+    }
     if (linked != expected) {
         /* Java's text (before bergdb 021-11, C's differed) */
         char byPosition[48], byNodeId[80];

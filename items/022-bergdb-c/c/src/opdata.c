@@ -18,6 +18,28 @@ struct node *op_follow_pointer(struct opdata *op, struct node *predecessor, int3
     return op->pointer_follower.follow(op->pointer_follower.ctx, predecessor, index, op);
 }
 
+/* OpData.descentFrom */
+void op_descent_from(struct opdata *op, const struct node *root) {
+    op->descent_mark = root->id;
+    op->descent_steps = 0;
+    op->descent_power = 1;
+}
+
+/* OpData.descentTo */
+bool op_descent_to(struct opdata *op, const struct node *next) {
+    const int64_t id = next->id;
+    if (id == op->descent_mark && id != -1) {       /* Spos.NULL */
+        return op_fail(op, ERR_FORMAT, "StreamFormatException", "A descent came back to key "
+                "node %" PRId64 ", which it passed: the pointers make a cycle.", id);
+    }
+    if (++op->descent_steps == op->descent_power) {
+        op->descent_mark = id;
+        op->descent_power <<= 1;
+        op->descent_steps = 0;
+    }
+    return true;
+}
+
 bool op_fail(struct opdata *op, enum err_code code, const char *java, const char *format, ...) {
     if (op->err != NULL && op->err->code == ERR_OK) {
         va_list args;
@@ -99,7 +121,8 @@ const struct op_pointer_created_listener OP_DO_NOTHING_POINTER_CREATED_LISTENER 
 };
 
 const struct op_node_change_listener OP_DO_NOTHING_NODE_CHANGE_LISTENER = {
-    nothing_top, nothing_key, nothing_value, nothing_key, nothing_key, nothing_top, NULL
+    nothing_top, nothing_key, nothing_value, nothing_key, nothing_key, nothing_top, NULL,
+    NULL        /* key_node_taken_back: key_node_replaced */
 };
 
 bool op_pointer_created(const struct op_pointer_created_listener *l, struct node *from,

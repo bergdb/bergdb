@@ -32,6 +32,8 @@ import bergdb.pub.util.Clock;
  *                        syncs kept), for a writer that neither reclaims nor restarts
  *                        (012-09): OUTDIR/coresame-plain[-nN].wl
  *   gen:SEED[:K=V,...]   Gen's workload; OUTDIR/gen-SEED[-K-V...].wl
+ *   del:SEED[:K=V,...]   GenDel's workload, the delete path of release 2026.4 (bergdb
+ *                        022-07); OUTDIR/del-SEED[-K-V...].wl
  *   scale:KEYS           the scale workload: KEYS keys; OUTDIR/scale-KEYS.wl
  * Prints the path of each workload written.
  * </pre>
@@ -65,6 +67,9 @@ public final class Export {
                 break;
             case "gen":
                 f = gen(dir, Long.parseLong(parts[1]), parts.length > 2 ? parts[2] : null);
+                break;
+            case "del":
+                f = del(dir, Long.parseLong(parts[1]), parts.length > 2 ? parts[2] : null);
                 break;
             default:
                 throw new IllegalArgumentException("unknown spec " + args[i]);
@@ -318,6 +323,23 @@ public final class Export {
         File f = new File(dir, name + ".wl");
         PrintStream out = open(f);
         bergdb.cross.Gen.generate(seed, p, out);
+        out.close();
+        return f;
+    }
+
+    static File del(File dir, long seed, String options) throws IOException {
+        Map<String, String> p = new TreeMap<String, String>();
+        String name = "del-" + seed;
+        if (options != null) {
+            for (String kv : options.split(",")) {
+                int eq = kv.indexOf('=');
+                p.put(kv.substring(0, eq), kv.substring(eq + 1));
+                name += "-" + kv.substring(0, eq) + kv.substring(eq + 1);
+            }
+        }
+        File f = new File(dir, name + ".wl");
+        PrintStream out = open(f);
+        bergdb.cross.GenDel.generate(seed, p, out);
         out.close();
         return f;
     }

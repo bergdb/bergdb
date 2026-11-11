@@ -451,6 +451,70 @@ bool kn_add_klong(struct obj_ctx *cx, struct knode *k, int64_t time, int64_t klo
     return true;
 }
 
+/* KeyNode.addKlongCopyPointer (bergdb 023-07, section 5.2, LE-b; as Java's
+ * since release 2026.4): a KEY klong whose pointer is a copy of pointer
+ * 'from' of this node, the same pointee (retained) and the same reference; a
+ * TIME klong first if time is later than the node's last time. *index: the
+ * new klong's. */
+bool kn_add_klong_copy_pointer(struct obj_ctx *cx, struct knode *k, int64_t time, int64_t klong,
+        int32_t from, int32_t *index) {
+    assert(kl_get_type(klong) == KL_TYPE_KEY);
+    assert(from >= 0 && from < k->size && kl_get_type(k->klongs[from]) == KL_TYPE_KEY);
+    int16_t sz = k->size;
+    assert(k->last_time_index == -1 || time >= k->klongs[k->last_time_index]);
+    int32_t addCount = 1;
+    if (k->last_time_index == -1 || time > kl_get_time(k->klongs[k->last_time_index])) {
+        addCount = 2;
+    }
+    if (!ensure_capacity(cx, k, sz + addCount)) {
+        return false;
+    }
+    /* Read after the growth: the arrays may have moved. */
+    struct obj *pointer = k->pointers[from];
+    const int64_t ref = k->pos[from];
+    int16_t newSize = sz;
+    if (addCount == 2) {
+        k->klongs[newSize] = kl_create_time(time);
+        assert(k->pointers[newSize] == NULL);
+        k->pos[newSize] = SPOS_NULL;
+        k->last_time_index = newSize;
+        newSize++;
+    }
+    k->klongs[newSize] = klong;
+    assert(k->pointers[newSize] == NULL);
+    obj_retain(pointer);
+    k->pointers[newSize] = pointer;
+    k->pos[newSize] = ref;
+    newSize++;
+    k->size = newSize;
+    *index = newSize - 1;
+    return true;
+}
+
+/* KeyNode.copyPointer: pointer 'from' copied to the KEY klong at index, a
+ * klong of the current transaction behind its time klong. */
+void kn_copy_pointer(struct obj_ctx *cx, struct knode *k, int32_t index, int32_t from) {
+    assert(index >= 0 && index < k->size && kl_get_type(k->klongs[index]) == KL_TYPE_KEY);
+    assert(from >= 0 && from < k->size && kl_get_type(k->klongs[from]) == KL_TYPE_KEY);
+    assert(k->last_time_index >= 0 && index > k->last_time_index);
+    hold(cx, k, index, k->pointers[from]);
+    k->pos[index] = k->pos[from];
+}
+
+/* KeyNode.repointKlong: the KEY klong at index, a klong of the current
+ * transaction behind its time klong, pointed to node instead. */
+bool kn_repoint_klong(struct obj_ctx *cx, struct knode *k, int32_t index, struct node *node) {
+    assert(index >= 0 && index < k->size && kl_get_type(k->klongs[index]) == KL_TYPE_KEY);
+    assert(k->last_time_index >= 0 && index > k->last_time_index);
+    struct obj *pointer;
+    if (!hd_pointee_of(cx, node, &pointer)) {
+        return false;
+    }
+    hold(cx, k, index, pointer);
+    k->pos[index] = node->spos;
+    return true;
+}
+
 /* KeyNode.replaceKlong */
 bool kn_replace_klong(struct obj_ctx *cx, struct knode *k, int64_t time, int64_t klong1,
         struct node *pointerNode, int64_t accessData, bool *replaced) {
@@ -795,11 +859,28 @@ bool kn_first_and_second(struct obj_ctx *cx, const struct knode *k, int64_t tTim
         insertTo = second;
     }
 
+    /* An inner node's second half starts with the empty key, as every inner
+     * node does (bergdb 023-04, LE-b; as Java's since release 2026.4); its
+     * parent gets secondKlong for it, as before. A klong to insert with the
+     * compare value of secondKlong (a split of the child it names) goes to
+     * the second half as the empty key too, and shadows it there. */
+    const bool emptyKeyFirst = !kn_is_segment_leaf(second);
+    const int64_t secondCompareValue = kl_get_compare_value(secondKlong);
+    if (emptyKeyFirst) {
+        assert(second->size > 1 && second->klongs[1] == secondKlong);
+        second->klongs[1] = KL_EMPTY_KEY;
+    }
+
     for (int32_t i = 0; i < insertLength; i++) {
         const struct kwp *kwi = &insert[i];
         struct obj *pointee;
+        int64_t klong = kwi->klong;
+        if (emptyKeyFirst && insertTo == second
+                && kl_get_compare_value(klong) == secondCompareValue) {
+            klong = KL_EMPTY_KEY;
+        }
         if (!hd_pointee_of(cx, kwi->node, &pointee)
-                || !kn_add_to_end(cx, insertTo, kwi->klong, pointee,
+                || !kn_add_to_end(cx, insertTo, klong, pointee,
                         kwi->node != NULL ? kwi->node->spos : kwi->pos)) {
             return false;
         }

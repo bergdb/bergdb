@@ -139,6 +139,14 @@ struct ev {
     int64_t dropped;
     int64_t unswizzled;
     int64_t max_before;
+    /* The dead hand (ev_dead_hand): the decided cut position at its last
+     * round, 0: none yet; its rounds, the objects it evicted and the values
+     * it unswizzled (Eviction.deadCounts; counted in evicted and unswizzled
+     * too). */
+    int64_t dead_round_cut;
+    int64_t dead_rounds;
+    int64_t dead_objects;
+    int64_t dead_values;
 };
 
 /* What eviction reads of the database, at a safe point. */
@@ -174,6 +182,32 @@ bool ev_detachable(const struct node *o, const struct tnode *superRoot,
  * what the call holds stays until the call ends: a floor found there lasts
  * for the call only. Allocates nothing. */
 void ev_run(struct ev *ev, const struct ev_env *env, bool in_call);
+
+/* The dead hand (Eviction.deadStep; bergdb 023-07, section 5.6, K6; Java's
+ * since release 2026.4; Frans, 2026-11-10, 023-04, Y6: "we follow the rule
+ * for resource release, also for memory"): the objects of ended versions
+ * leave memory in the ordinary operations, not only under the budget's
+ * pressure or at a restart. cut is the decided cut position (reclaim's
+ * first available position). After a cut, every node and value that a
+ * lookup at an available time can reach is stored at cut or later, or is
+ * dirty and so pinned; an object stored before cut is dead. When cut has
+ * moved since the last round, a round over the node table: each object
+ * stored before cut that is detachable (ev_detachable: never the pinned
+ * state) is evicted, whatever its CLOCK bit and the budget, and in each key
+ * node that stays, a pointer that holds a written value stored before cut
+ * becomes a stream pointer; then the table's arrays shrink. No byte of the
+ * stream changes. With a budget only (not BERGDB_NO_EVICT, as Java's
+ * noEvict(): there the memory of ended versions is released at a restart).
+ * The database calls it after a transaction, before the capacity
+ * controller.
+ *
+ * Java's hand takes a round in steps, one a transaction, of 4,096 units of
+ * work and 2 ms at most (no stop-the-world, with concurrent readers). C's
+ * round is made whole in the call, as its sweeps are (above): one caller,
+ * and what it frees depends on the calls only, never on timing. Its work is
+ * the table's slots and the pointers of the key nodes that stay, once for
+ * each cut that moves. Allocates nothing. */
+void ev_dead_hand(struct ev *ev, const struct ev_env *env, int64_t cut);
 
 /* Eviction.largeValueCreated: pointer index of holder to v, a value over
  * EV_LARGE_VALUE, kept counted until the record is written. false: NOMEM

@@ -518,10 +518,14 @@ TEST(ncoll_link_to_canonical_check) {
     w.nc.check_link = true;
     struct err e;
     CHECK_EQ(nc_link_to_canonical(&w.nc, &parent->n, &ids, &byPos, &e), ERR_FORMAT);
-    CHECK(strcmp(e.java, "AssertionError") == 0);      /* the check found the missing link */
-    CHECK(strcmp(e.text, "rule 4 by position is not rule 4 by node id (bergdb 005-57): "
-            "pointer 1 of node 103 names 100; by position no canonical object, by node id "
-            "node 101's, at 200") == 0);               /* Java's text (before 021-11, C's own) */
+    /* The check found the missing link: a StreamFormatException, as a damaged
+     * prevPos makes such ids (bergdb 020-32, section 7; Java's
+     * NodeCollection.testLinkToCanonicalCheck since release 2026.4), where it
+     * was the AssertionError "rule 4 by position is not rule 4 by node id". */
+    CHECK(strcmp(e.java, "StreamFormatException") == 0);
+    CHECK(strcmp(e.text, "Pointer 1 of node 103 names 100, a version of node 101 (at 200 in "
+            "the startup section), but no version of the section names it as its prevPos.")
+            == 0);
     lmap_free(&ids);
     lmap_free(&byPos);
     world_free(&w);

@@ -1908,6 +1908,594 @@ TEST(dbt_reads_that_fail_on_the_storage) {
     files_free(&f);
 }
 
+/* ======== DbTesterDelete, and DbTester.testTransformedKeysSorted ========
+ *
+ * Deletes through the database: the upward unlink, the take-back and root
+ * collapse at the delete (bergdb 023-07, sections 5.1 to 5.3; Java's since
+ * release 2026.4; 022-07), with restarts that rerun the records, and the
+ * sort of a transaction's keys after their transformations, one operation a
+ * key (023-08, section 7). Java's MemoryStream.copy() is a database in a
+ * directory, closed and started again. */
+
+/* A key transformation's state: what it changes, and the new key's bytes,
+ * valid until it is called again. */
+struct ktf {
+    int how;            /* 0 DOLLAR_TO_Z, 1 TO_C, 2 toName, 3 bySlot */
+    uint8_t buf[KMAX];
+    int calls;          /* of the value transformation (Bang) */
+    uint8_t vbuf[64];
+    int slot;           /* bySlot: 0 or 1 */
+    const bool *first;
+    const bool *collide;
+};
+
+static void ktf_key(void *ctx, int64_t tt, const uint8_t **key, size_t *key_len) {
+    (void) tt;
+    struct ktf *f = ctx;
+    char in[KMAX], out[KMAX];
+    size_t n = *key_len;
+    if (n >= KMAX || bergdb_bkey_to_ikey(*key, n, (uint8_t *) in) != BERGDB_OK) {
+        return;
+    }
+    in[n] = '\0';
+    switch (f->how) {
+    case 0:
+        /* "/prefix/$..." into "/prefix/z...", which sorts after "/prefix/b...". */
+        snprintf(out, sizeof out, "%s", in);
+        if (strncmp(out, "/prefix/$", 9) == 0) {
+            out[8] = 'z';
+        }
+        break;
+    case 1:
+        /* "/c/$x" or "/c/~x" into "/c/x": "$" sorts before letters, "~" after. */
+        snprintf(out, sizeof out, "/c/%s", in + 4);
+        break;
+    case 2: {
+        /* "/t/$NN=kXXX" into "/t/kXXX". */
+        const char *eq = strchr(in, '=');
+        snprintf(out, sizeof out, "/t/%s", eq != NULL ? eq + 1 : in);
+        break;
+    }
+    default:
+        if (!*f->first) {
+            snprintf(out, sizeof out, "/later/%s", f->slot == 0 ? "a" : "b");
+        } else if (*f->collide) {
+            snprintf(out, sizeof out, "/shared");
+        } else {
+            snprintf(out, sizeof out, "%s", f->slot == 0 ? "/x2" : "/x1");
+        }
+        break;
+    }
+    *key_len = bk(out, f->buf);
+    *key = f->buf;
+}
+
+/* Bang: appends "!" to the value it is given, and counts its calls. */
+static void ktf_bang(void *ctx, int64_t tt, const uint8_t *previous, size_t previous_len,
+        const uint8_t **value, size_t *value_len) {
+    (void) tt, (void) previous, (void) previous_len;
+    struct ktf *f = ctx;
+    f->calls++;
+    memcpy(f->vbuf, *value, *value_len);
+    f->vbuf[*value_len] = '!';
+    *value = f->vbuf;
+    *value_len += 1;
+}
+
+/* tb.put(key, keyTransformation, value, valueTransformation), by ikey. */
+static int put_tf(bergdb_trans *t, const char *ikey, const char *value, struct ktf *f,
+        bool keyTf, bool valueTf) {
+    uint8_t b[KMAX];
+    size_t n = bk(ikey, b);
+    struct bergdb_transform tf = { keyTf ? ktf_key : NULL, valueTf ? ktf_bang : NULL, f };
+    return bergdb_trans_put_transformed(t, b, n, (const uint8_t *) value, strlen(value), &tf);
+}
+
+static int put_s(bergdb_trans *t, const char *ikey, const char *value) {
+    uint8_t b[KMAX];
+    size_t n = bk(ikey, b);
+    return bergdb_trans_put(t, b, n, (const uint8_t *) value, strlen(value));
+}
+
+static int del_s(bergdb_trans *t, const char *ikey) {
+    uint8_t b[KMAX];
+    size_t n = bk(ikey, b);
+    return bergdb_trans_delete(t, b, n);
+}
+
+/* Closes the database and starts it again on its directory. */
+static bool tdb_restart(struct tdb *x) {
+    if (tdb_close(x) != BERGDB_OK) {
+        return false;
+    }
+    return tdb_start(x) == BERGDB_OK;
+}
+
+static void tdb_end(struct tdb *x) {
+    tdb_close(x);
+    remove_dir(x->dir);
+}
+
+/* The two directories' streams are the same, byte for byte. */
+static bool same_streams(const char *dir0, const char *dir1) {
+    struct files *f0 = malloc(sizeof *f0), *f1 = malloc(sizeof *f1);
+    bool same = files_read(dir0, f0) && files_read(dir1, f1) && f0->n == f1->n;
+    for (int i = 0; same && i < f0->n; i++) {
+        same = f0->len[i] == f1->len[i]
+                && memcmp(f0->bytes[i], f1->bytes[i], (size_t) f0->len[i]) == 0;
+    }
+    files_free(f0);
+    files_free(f1);
+    free(f0);
+    free(f1);
+    return same;
+}
+
+/* Startup distances: 10 bytes, so a start reruns little; 10 MB, so it reruns all. */
+static const int32_t DISTANCES[] = { 10, 10 * 1000 * 1000 };
+
+/* DbTesterDelete.testTransformedPutsAndDeletesWithRestarts: a history of b
+ * keys, then one transaction that puts z keys through a key transformation
+ * and deletes every b key, then a restart and more transactions, and
+ * another restart; the values at each step, at a startup distance of 10
+ * bytes, which writes each record at once. */
+TEST(dbt_transformed_puts_and_deletes_with_restarts) {
+    uint64_t rs = 1;
+    for (int iter = 0; iter < 16; iter++) {
+        const int nb = 1 + test_random_below(&rs, 60);
+        const int hist = 1 + test_random_below(&rs, 4);
+        const int nz = 1 + test_random_below(&rs, 120);
+        struct tdb x;
+        REQUIRE(tdb_new(&x, 8, 10, true));
+        char key[40], value[40];
+        bergdb_trans *t;
+        for (int h = 0; h < hist; h++) {
+            REQUIRE(bergdb_trans_new(x.db, &t) == BERGDB_OK);
+            for (int i = 0; i < nb; i++) {
+                if (h == 0 || test_random_below(&rs, 3) == 0) {
+                    snprintf(key, sizeof key, "/prefix/b%04d", i);
+                    snprintf(value, sizeof value, "v%d-%d", h, i);
+                    CHECK_EQ(put_s(t, key, value), BERGDB_OK);
+                }
+            }
+            CHECK_EQ(bergdb_execute(x.db, t, NULL), BERGDB_OK);
+            bergdb_trans_free(t);
+        }
+        struct ktf *fs = calloc((size_t) nz, sizeof *fs);
+        REQUIRE(bergdb_trans_new(x.db, &t) == BERGDB_OK);
+        for (int i = 0; i < nz; i++) {
+            snprintf(key, sizeof key, "/prefix/$%04d", i);
+            snprintf(value, sizeof value, "z%d", i);
+            CHECK_EQ(put_tf(t, key, value, &fs[i], true, false), BERGDB_OK);
+        }
+        for (int i = 0; i < nb; i++) {
+            snprintf(key, sizeof key, "/prefix/b%04d", i);
+            CHECK_EQ(del_s(t, key), BERGDB_OK);
+        }
+        CHECK_EQ(bergdb_execute(x.db, t, NULL), BERGDB_OK);
+        bergdb_trans_free(t);
+        free(fs);
+        struct bergdb_executed ex;
+        CHECK_EQ(tx(&x, &ex, "p", "/other/key00001", "x", NULL), BERGDB_OK);
+        CHECK_EQ(bergdb_sync(x.db, ex.last_pos, BERGDB_SYNC_ORDINARY), BERGDB_OK);
+        for (int i = 0; i < nz; i++) {
+            snprintf(key, sizeof key, "/prefix/z%04d", i);
+            snprintf(value, sizeof value, "z%d", i);
+            CHECK(get_is(&x, BERGDB_LATEST, key, value));
+        }
+
+        REQUIRE(tdb_restart(&x));
+        for (int i = 0; i < nz; i++) {
+            snprintf(key, sizeof key, "/prefix/z%04d", i);
+            snprintf(value, sizeof value, "z%d", i);
+            CHECK(get_is(&x, BERGDB_LATEST, key, value));
+        }
+        for (int i = 0; i < nb; i++) {
+            snprintf(key, sizeof key, "/prefix/b%04d", i);
+            CHECK(get_is(&x, BERGDB_LATEST, key, NULL));
+        }
+        CHECK_EQ(tx(&x, NULL, "p", "/other/key00002", "y", NULL), BERGDB_OK);
+        CHECK_EQ(tx(&x, NULL, "p", "/other/key00003", "y", NULL), BERGDB_OK);
+        for (int q = 0; q < 30; q++) {
+            char other[40];
+            snprintf(other, sizeof other, "/other/q%d", q);
+            snprintf(key, sizeof key, "/prefix/z%04d", q % nz);
+            CHECK_EQ(tx(&x, NULL, "p", other, "y", "d", key, NULL), BERGDB_OK);
+        }
+
+        REQUIRE(tdb_restart(&x));
+        for (int i = 30; i < nz; i++) {
+            snprintf(key, sizeof key, "/prefix/z%04d", i);
+            snprintf(value, sizeof value, "z%d", i);
+            CHECK(get_is(&x, BERGDB_LATEST, key, value));
+        }
+        tdb_end(&x);
+    }
+}
+
+/* DbTesterDelete.testDeleteEveryKey: the climbs reach the space root, which
+ * root collapse lowers as it loses its children, down to a segment leaf
+ * that stays, empty. In one transaction after the fill, and over several
+ * transactions, then puts again, at startup distances that rerun little and
+ * all; gets after each step and after restarts. */
+TEST(dbt_delete_every_key) {
+    const int counts[] = { 1, 7, 100, 2000 };
+    for (int di = 0; di < 2; di++) {
+        for (int ni = 0; ni < 4; ni++) {
+            const int n = counts[ni];
+            for (int pi = 0; pi < 2; pi++) {
+                const int per = pi == 0 ? n : 13;
+                struct tdb x;
+                REQUIRE(tdb_new(&x, 8, DISTANCES[di], true));
+                char key[40], value[40];
+                bergdb_trans *t;
+                for (int i = 0; i < n; i += 50) {
+                    REQUIRE(bergdb_trans_new(x.db, &t) == BERGDB_OK);
+                    for (int j = i; j < (n < i + 50 ? n : i + 50); j++) {
+                        snprintf(key, sizeof key, "/k/%d", j);
+                        snprintf(value, sizeof value, "v%d", j);
+                        CHECK_EQ(put_s(t, key, value), BERGDB_OK);
+                    }
+                    CHECK_EQ(bergdb_execute(x.db, t, NULL), BERGDB_OK);
+                    bergdb_trans_free(t);
+                }
+                for (int i = 0; i < n; i += per) {
+                    REQUIRE(bergdb_trans_new(x.db, &t) == BERGDB_OK);
+                    for (int j = i; j < (n < i + per ? n : i + per); j++) {
+                        snprintf(key, sizeof key, "/k/%d", j);
+                        CHECK_EQ(del_s(t, key), BERGDB_OK);
+                    }
+                    CHECK_EQ(bergdb_execute(x.db, t, NULL), BERGDB_OK);
+                    bergdb_trans_free(t);
+                }
+                for (int i = 0; i < n; i++) {
+                    snprintf(key, sizeof key, "/k/%d", i);
+                    CHECK(get_is(&x, BERGDB_LATEST, key, NULL));
+                }
+
+                REQUIRE(tdb_restart(&x));
+                for (int i = 0; i < n; i++) {
+                    snprintf(key, sizeof key, "/k/%d", i);
+                    CHECK(get_is(&x, BERGDB_LATEST, key, NULL));
+                }
+                REQUIRE(bergdb_trans_new(x.db, &t) == BERGDB_OK);
+                for (int i = 0; i < n; i += 3) {
+                    snprintf(key, sizeof key, "/k/%d", i);
+                    snprintf(value, sizeof value, "w%d", i);
+                    CHECK_EQ(put_s(t, key, value), BERGDB_OK);
+                }
+                CHECK_EQ(bergdb_execute(x.db, t, NULL), BERGDB_OK);
+                bergdb_trans_free(t);
+
+                REQUIRE(tdb_restart(&x));
+                for (int i = 0; i < n; i++) {
+                    snprintf(key, sizeof key, "/k/%d", i);
+                    snprintf(value, sizeof value, "w%d", i);
+                    CHECK(get_is(&x, BERGDB_LATEST, key, i % 3 == 0 ? value : NULL));
+                }
+                tdb_end(&x);
+            }
+        }
+    }
+}
+
+/* DbTesterDelete.testOneOperationAKeyAfterTransformations: KVs that key
+ * transformations make one key reach the index as one operation: of them
+ * the last put in the order of the keys as written is kept, or a delete if
+ * there is no put; a delete never replaces a put. One transaction has, on
+ * keys that existed: a transformed put and a plain put (the plain one,
+ * later, is kept); a transformed put and a later delete (the put); a delete
+ * and a later transformed put (the put); two transformed puts (the later);
+ * and a transformed put with a value transformation before a plain put
+ * with one (only the kept one's runs). Its database writes the same stream,
+ * byte for byte, as one given the kept operations alone, and gives their
+ * values at the latest time and after a restart. */
+TEST(dbt_one_operation_a_key_after_transformations) {
+    for (int di = 0; di < 2; di++) {
+        struct tdb x[2];
+        for (int d = 0; d < 2; d++) {
+            REQUIRE(tdb_new(&x[d], 8, DISTANCES[di], true));
+            CHECK_EQ(tx(&x[d], NULL, "p", "/c/a", "old", "p", "/c/b", "old", "p", "/c/c", "old",
+                    "p", "/c/d", "old", "p", "/c/e", "old", NULL), BERGDB_OK);
+            struct ktf f[6];
+            memset(f, 0, sizeof f);
+            for (int i = 0; i < 6; i++) {
+                f[i].how = 1;
+            }
+            struct ktf *dropped = &f[4], *kept = &f[5];
+            bergdb_trans *t;
+            REQUIRE(bergdb_trans_new(x[d].db, &t) == BERGDB_OK);
+            if (d == 0) {
+                CHECK_EQ(put_tf(t, "/c/$a", "a1", &f[0], true, false), BERGDB_OK);
+                CHECK_EQ(put_s(t, "/c/a", "a2"), BERGDB_OK);
+                CHECK_EQ(put_tf(t, "/c/$b", "b1", &f[1], true, false), BERGDB_OK);
+                CHECK_EQ(del_s(t, "/c/b"), BERGDB_OK);
+                CHECK_EQ(del_s(t, "/c/c"), BERGDB_OK);
+                CHECK_EQ(put_tf(t, "/c/~c", "c1", &f[2], true, false), BERGDB_OK);
+                CHECK_EQ(put_tf(t, "/c/$d", "d1", &f[3], true, false), BERGDB_OK);
+                CHECK_EQ(put_tf(t, "/c/~d", "d2", &f[0], true, false), BERGDB_OK);
+                CHECK_EQ(put_tf(t, "/c/$e", "e1", dropped, true, true), BERGDB_OK);
+                CHECK_EQ(put_tf(t, "/c/e", "e2", kept, false, true), BERGDB_OK);
+            } else {
+                CHECK_EQ(put_s(t, "/c/a", "a2"), BERGDB_OK);
+                CHECK_EQ(put_s(t, "/c/b", "b1"), BERGDB_OK);
+                CHECK_EQ(put_s(t, "/c/c", "c1"), BERGDB_OK);
+                CHECK_EQ(put_s(t, "/c/d", "d2"), BERGDB_OK);
+                CHECK_EQ(put_tf(t, "/c/e", "e2", kept, false, true), BERGDB_OK);
+            }
+            CHECK_EQ(bergdb_execute(x[d].db, t, NULL), BERGDB_OK);
+            bergdb_trans_free(t);
+            CHECK_EQ(dropped->calls, 0);    /* the dropped KV's value transformation */
+            CHECK_EQ(kept->calls, 1);       /* the kept KV's */
+            for (int round = 0; round < 2; round++) {
+                CHECK(get_is(&x[d], BERGDB_LATEST, "/c/a", "a2"));
+                CHECK(get_is(&x[d], BERGDB_LATEST, "/c/b", "b1"));
+                CHECK(get_is(&x[d], BERGDB_LATEST, "/c/c", "c1"));
+                CHECK(get_is(&x[d], BERGDB_LATEST, "/c/d", "d2"));
+                CHECK(get_is(&x[d], BERGDB_LATEST, "/c/e", "e2!"));
+                REQUIRE(tdb_restart(&x[d]));
+            }
+            tdb_close(&x[d]);
+        }
+        CHECK(same_streams(x[0].dir, x[1].dir));    /* the same stream */
+        remove_dir(x[0].dir);
+        remove_dir(x[1].dir);
+    }
+}
+
+/* DbTesterDelete.testReusedTransKeepsItsKvs (bergdb 023-11, review A, F1),
+ * as far as C's API has the case: the sort after the key transformations
+ * and its one operation a key are made in a copy for each run, and leave
+ * the transaction's pairs as they are. Two puts built at "/template/a" and
+ * "/template/b", whose transformation gives each its key by its own state
+ * and a switch: in the first run "/x2" and "/x1" (the sort turns them
+ * round), in the second "/later/a" and "/later/b"; after the second run,
+ * and after a restart, each "/later" key holds its own put's value.
+ *
+ * With both first keys "/shared" (one put kept, b's), C departs from Java:
+ * a C transaction is its builder, which keeps a transformed key in place of
+ * the put's key (bergdb.h, struct bergdb_transform) and is built again at
+ * each execute, with one put a key (bergdb_trans_put): the second run has
+ * b's put only, so "/later/b" is 2 and "/later/a" has no value, where
+ * Java's Trans, built once, keeps both KVs and gives "/later/a" 1. */
+TEST(dbt_reused_trans_keeps_its_kvs) {
+    for (int ci = 0; ci < 2; ci++) {
+        bool first = true, collide = ci == 0;
+        struct ktf f[2];
+        memset(f, 0, sizeof f);
+        for (int i = 0; i < 2; i++) {
+            f[i].how = 3;
+            f[i].slot = i;
+            f[i].first = &first;
+            f[i].collide = &collide;
+        }
+        struct tdb x;
+        REQUIRE(tdb_new(&x, 8, DISTANCES[1], true));
+        bergdb_trans *t;
+        REQUIRE(bergdb_trans_new(x.db, &t) == BERGDB_OK);
+        CHECK_EQ(put_tf(t, "/template/a", "1", &f[0], true, false), BERGDB_OK);
+        CHECK_EQ(put_tf(t, "/template/b", "2", &f[1], true, false), BERGDB_OK);
+        CHECK_EQ(bergdb_execute(x.db, t, NULL), BERGDB_OK);
+        if (collide) {
+            CHECK(get_is(&x, BERGDB_LATEST, "/shared", "2"));
+        } else {
+            CHECK(get_is(&x, BERGDB_LATEST, "/x2", "1"));
+            CHECK(get_is(&x, BERGDB_LATEST, "/x1", "2"));
+        }
+        first = false;
+        CHECK_EQ(bergdb_execute(x.db, t, NULL), BERGDB_OK);
+        bergdb_trans_free(t);
+        for (int round = 0; round < 2; round++) {
+            CHECK(get_is(&x, BERGDB_LATEST, "/later/a", collide ? NULL : "1"));
+            CHECK(get_is(&x, BERGDB_LATEST, "/later/b", "2"));
+            REQUIRE(tdb_restart(&x));
+        }
+        tdb_end(&x);
+    }
+}
+
+#ifndef VECTORS_DIR
+#define VECTORS_DIR "test/unit/vectors"
+#endif
+
+/* Java's stream NAME of sorted.txt ("sortstream NAME HEX"; Vectors.sorted);
+ * its length, -1 if it is not there. The caller frees *out. */
+static int64_t java_sorted_stream(const char *name, uint8_t **out) {
+    char path[1024];
+    const char *dir = getenv("BERGDB_VECTORS");
+    snprintf(path, sizeof path, "%s/sorted.txt", dir != NULL ? dir : VECTORS_DIR);
+    FILE *f = fopen(path, "r");
+    *out = NULL;
+    if (f == NULL) {
+        return -1;
+    }
+    char *line = NULL;
+    size_t cap = 0;
+    ssize_t len;
+    int64_t n = -1;
+    const size_t nl = strlen(name);
+    while (n < 0 && (len = getline(&line, &cap, f)) >= 0) {
+        if (strncmp(line, "sortstream ", 11) != 0 || strncmp(line + 11, name, nl) != 0
+                || line[11 + nl] != ' ') {
+            continue;
+        }
+        const char *hex = line + 12 + nl;
+        size_t hl = strlen(hex);
+        while (hl > 0 && (hex[hl - 1] == '\n' || hex[hl - 1] == '\r')) {
+            hl--;
+        }
+        uint8_t *b = malloc(hl / 2 + 1);
+        for (size_t i = 0; i < hl / 2; i++) {
+            unsigned v = 0;
+            sscanf(hex + 2 * i, "%2x", &v);
+            b[i] = (uint8_t) v;
+        }
+        *out = b;
+        n = (int64_t) (hl / 2);
+    }
+    free(line);
+    fclose(f);
+    return n;
+}
+
+/* The transactions with key transformations against Java's bytes (bergdb
+ * 022-07; 023-08, section 7): the two runs of Vectors.sorted,
+ * DbTester.testTransformedKeysSorted's operations (the transformed puts
+ * given in the order (i * 37 + 11) % 60 of their names) and
+ * DbTesterDelete.testOneOperationAKeyAfterTransformations's, through C's
+ * API, write the streams that release 2026.4's Java wrote, byte for byte.
+ * The cross workloads have no transformations, so this is where the sort
+ * after the transformations and its one operation a key meet Java's
+ * bytes. */
+TEST(dbt_transformed_streams_are_javas) {
+    for (int run = 0; run < 2; run++) {
+        struct tdb x;
+        tdb_init(&x, 8, 1000);
+        const char *tmp = getenv("TMPDIR");
+        snprintf(x.dir, sizeof x.dir, "%s/bergdb-t_dbtester-XXXXXX", tmp != NULL ? tmp : "/tmp");
+        REQUIRE(mkdtemp(x.dir) != NULL);
+        at(&x, 1000);
+        REQUIRE(tdb_start(&x) == BERGDB_OK);
+        char key[40], value[40];
+        bergdb_trans *t;
+        struct ktf *fs = calloc(64, sizeof *fs);
+        at(&x, 2000);
+        REQUIRE(bergdb_trans_new(x.db, &t) == BERGDB_OK);
+        if (run == 0) {
+            for (int i = 0; i < 120; i += 2) {
+                snprintf(key, sizeof key, "/t/k%03d", i);
+                snprintf(value, sizeof value, "old%d", i);
+                CHECK_EQ(put_s(t, key, value), BERGDB_OK);
+            }
+        } else {
+            const char *const ks[] = { "/c/a", "/c/b", "/c/c", "/c/d", "/c/e" };
+            for (int i = 0; i < 5; i++) {
+                CHECK_EQ(put_s(t, ks[i], "old"), BERGDB_OK);
+            }
+        }
+        CHECK_EQ(bergdb_execute(x.db, t, NULL), BERGDB_OK);
+        bergdb_trans_free(t);
+        at(&x, 2010);
+        REQUIRE(bergdb_trans_new(x.db, &t) == BERGDB_OK);
+        if (run == 0) {
+            for (int i = 0; i < 60; i++) {
+                fs[i].how = 2;
+                const int name = 2 * ((i * 37 + 11) % 60) + 1;
+                snprintf(key, sizeof key, "/t/$%02d=k%03d", i, name);
+                snprintf(value, sizeof value, "newk%03d", name);
+                CHECK_EQ(put_tf(t, key, value, &fs[i], true, false), BERGDB_OK);
+            }
+            for (int i = 0; i < 120; i += 6) {
+                snprintf(key, sizeof key, "/t/k%03d", i);
+                CHECK_EQ(del_s(t, key), BERGDB_OK);
+            }
+            CHECK_EQ(put_s(t, "/t/k031", "plain"), BERGDB_OK);
+        } else {
+            for (int i = 0; i < 8; i++) {
+                fs[i].how = 1;
+            }
+            CHECK_EQ(put_tf(t, "/c/$a", "a1", &fs[0], true, false), BERGDB_OK);
+            CHECK_EQ(put_s(t, "/c/a", "a2"), BERGDB_OK);
+            CHECK_EQ(put_tf(t, "/c/$b", "b1", &fs[1], true, false), BERGDB_OK);
+            CHECK_EQ(del_s(t, "/c/b"), BERGDB_OK);
+            CHECK_EQ(del_s(t, "/c/c"), BERGDB_OK);
+            CHECK_EQ(put_tf(t, "/c/~c", "c1", &fs[2], true, false), BERGDB_OK);
+            CHECK_EQ(put_tf(t, "/c/$d", "d1", &fs[3], true, false), BERGDB_OK);
+            CHECK_EQ(put_tf(t, "/c/~d", "d2", &fs[4], true, false), BERGDB_OK);
+            CHECK_EQ(put_tf(t, "/c/$e", "e1", &fs[5], true, true), BERGDB_OK);
+            CHECK_EQ(put_tf(t, "/c/e", "e2", &fs[6], false, true), BERGDB_OK);
+        }
+        CHECK_EQ(bergdb_execute(x.db, t, NULL), BERGDB_OK);
+        bergdb_trans_free(t);
+        free(fs);
+        tdb_close(&x);
+
+        uint8_t *java = NULL;
+        const int64_t jn = java_sorted_stream(run == 0 ? "keys-sorted" : "one-operation", &java);
+        struct files *f = malloc(sizeof *f);
+        REQUIRE(files_read(x.dir, f));
+        CHECK(jn > 0);          /* Java's stream is in sorted.txt */
+        CHECK_EQ(f->n, 1);
+        CHECK_EQ(f->len[0], jn);
+        int64_t first = -1;
+        for (int64_t i = 0; first < 0 && i < jn && i < f->len[0]; i++) {
+            if (java[i] != f->bytes[0][i]) {
+                first = i;
+            }
+        }
+        CHECK_EQ(first, -1);    /* the first byte that differs */
+        files_free(f);
+        free(f);
+        free(java);
+        remove_dir(x.dir);
+    }
+}
+
+/* DbTester.testTransformedKeysSorted: a transaction's KVs reach the index
+ * in the order of their keys after the key transformations (bergdb 023-08,
+ * section 7, Q4): two databases, each given the same operations, puts
+ * through a key transformation in another order and plain deletes, write
+ * the same stream, byte for byte, and give the same values, also after a
+ * restart. One transformed key is also put by a plain KV: one of the two is
+ * kept, the later put in the builder's order, in both databases. */
+TEST(dbt_transformed_keys_sorted) {
+    enum { N = 60 };
+    struct tdb x[2];
+    for (int d = 0; d < 2; d++) {
+        int names[N];
+        for (int i = 0; i < N; i++) {
+            names[i] = i;
+        }
+        uint64_t rs = (uint64_t) (10 + d);
+        for (int i = N - 1; i > 0; i--) {       /* Collections.shuffle */
+            int j = test_random_below(&rs, i + 1);
+            int tmp = names[i];
+            names[i] = names[j];
+            names[j] = tmp;
+        }
+        REQUIRE(tdb_new(&x[d], 8, 0, true));
+        char key[40], value[40];
+        bergdb_trans *t;
+        REQUIRE(bergdb_trans_new(x[d].db, &t) == BERGDB_OK);
+        for (int i = 0; i < 2 * N; i += 2) {
+            snprintf(key, sizeof key, "/t/k%03d", i);
+            snprintf(value, sizeof value, "old%d", i);
+            CHECK_EQ(put_s(t, key, value), BERGDB_OK);
+        }
+        CHECK_EQ(bergdb_execute(x[d].db, t, NULL), BERGDB_OK);
+        bergdb_trans_free(t);
+        struct ktf *fs = calloc(N, sizeof *fs);
+        REQUIRE(bergdb_trans_new(x[d].db, &t) == BERGDB_OK);
+        for (int i = 0; i < N; i++) {
+            /* "/t/$NN=kXXX": the builder's order is NN's, the key after it kXXX. */
+            fs[i].how = 2;
+            snprintf(key, sizeof key, "/t/$%02d=k%03d", i, 2 * names[i] + 1);
+            snprintf(value, sizeof value, "newk%03d", 2 * names[i] + 1);
+            CHECK_EQ(put_tf(t, key, value, &fs[i], true, false), BERGDB_OK);
+        }
+        for (int i = 0; i < 2 * N; i += 6) {
+            snprintf(key, sizeof key, "/t/k%03d", i);
+            CHECK_EQ(del_s(t, key), BERGDB_OK);
+        }
+        CHECK_EQ(put_s(t, "/t/k031", "plain"), BERGDB_OK);
+        CHECK_EQ(bergdb_execute(x[d].db, t, NULL), BERGDB_OK);
+        bergdb_trans_free(t);
+        free(fs);
+
+        REQUIRE(tdb_restart(&x[d]));
+        for (int i = 0; i < 2 * N; i++) {
+            snprintf(key, sizeof key, "/t/k%03d", i);
+            snprintf(value, sizeof value, i % 2 == 0 ? "old%d" : "newk%03d", i);
+            CHECK(get_is(&x[d], BERGDB_LATEST, key,
+                    i % 6 == 0 ? NULL : i == 31 ? "plain" : value));
+        }
+        tdb_close(&x[d]);
+    }
+    CHECK(same_streams(x[0].dir, x[1].dir));    /* the same stream */
+    remove_dir(x[0].dir);
+    remove_dir(x[1].dir);
+}
+
 const struct test dbtester_tests[] = {
     TEST_ENTRY(dbt_test1),
     TEST_ENTRY(dbt_test2_and_test3),
@@ -1937,5 +2525,11 @@ const struct test dbtester_tests[] = {
     TEST_ENTRY(dbt_get_one_and_the_transaction),
     TEST_ENTRY(dbt_null_and_range_arguments),
     TEST_ENTRY(dbt_reads_that_fail_on_the_storage),
+    TEST_ENTRY(dbt_transformed_puts_and_deletes_with_restarts),
+    TEST_ENTRY(dbt_delete_every_key),
+    TEST_ENTRY(dbt_one_operation_a_key_after_transformations),
+    TEST_ENTRY(dbt_reused_trans_keeps_its_kvs),
+    TEST_ENTRY(dbt_transformed_keys_sorted),
+    TEST_ENTRY(dbt_transformed_streams_are_javas),
     TEST_END
 };

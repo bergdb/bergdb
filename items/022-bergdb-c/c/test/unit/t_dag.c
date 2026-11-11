@@ -306,7 +306,7 @@ TEST(dag_delete_missing_key) {
     struct changes c;
     memset(&c, 0, sizeof c);
     struct op_node_change_listener l = { ch_top, ch_key_created, ch_value, ch_key_changed, NULL,
-        NULL, &c };
+        NULL, &c , NULL };
     t.pd.node_change_listener = l;
 
     const char *keys[] = { "/k/100", "/k/1000", "/k/10000000", "/abcdefgh12345" };
@@ -718,7 +718,7 @@ TEST(dag_transaction_leaves_no_unreachable_node) {
     struct reach r;
     memset(&r, 0, sizeof r);
     struct op_node_change_listener l = { r_top, r_key_created, NULL, r_key_changed,
-        r_key_replaced, NULL, &r };
+        r_key_replaced, NULL, &r , NULL };
     t.pd.node_change_listener = l;
 
     for (int round = 0; round < 2; round++) {

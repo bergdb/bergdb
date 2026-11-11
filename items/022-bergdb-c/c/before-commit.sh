@@ -32,9 +32,10 @@
 #                 directories equal to Java's; C's tools of the test build
 #   corruptset    test/stress/corruptset.sh quick (022-01, step 4): damaged copies of
 #                 streams that Java writes, the cases of release 2026.3's refusal
-#                 tests and testFound019_32's, testFound021_11's and testFound021_12's
-#                 copies, started by Java's Dump and C's bergdb-dump of the test build
-#                 (-check): the same status, text and messages (into build/corruptset)
+#                 tests and testFound019_32's, testFound021_11's, testFound021_12's
+#                 and 020-32's (022-07) copies, started by Java's Dump and C's
+#                 bergdb-dump of the test build (-check): the same status, text and
+#                 messages (into build/corruptset)
 #   allocfail     the allocation failures in turn, short (012-14, done item 7):
 #                 build/test/bergdb-allocfail on test/stress/allocfail.wl (Gen 31,
 #                 4 transactions, a restart, reclaim, a budget of 1,000 bytes),

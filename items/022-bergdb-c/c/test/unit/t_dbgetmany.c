@@ -598,6 +598,414 @@ TEST(dbgm_get_op_count) {
     db_close(&db);
 }
 
+/* ======== The end key (bergdb 021-28; 023-07, section 5.7, SE) ========
+ *
+ * Java's DbTesterGetMany tests of GetMany.endKey, since release 2026.4
+ * (022-07), on mdb with the Core's struct getmany. The C API's ranges do
+ * not set it (its end_key is the Endpoint stop condition, as before). */
+
+/* The keys of a result, in order (keysOf). */
+struct keylist {
+    struct key *k;
+    int32_t n, cap;
+    bool eod;
+};
+
+static bool keylist_add(void *ctx, const struct kvt *kvt) {
+    struct keylist *l = ctx;
+    if (l->n < l->cap) {
+        memcpy(l->k[l->n].s, kvt->key, (size_t) kvt->key_n * sizeof(int64_t));
+        l->k[l->n].n = kvt->key_n;
+    }
+    l->n++;
+    return true;
+}
+
+static int32_t add_all(void *ctx, const struct kvt *kvt) {
+    (void) ctx, (void) kvt;
+    return GM_ADD;
+}
+
+static void keylist_eod(void *ctx) {
+    ((struct keylist *) ctx)->eod = true;
+}
+
+/* abcKey: a key of 1 to 20 of the bytes 'a', 'b' and 'c'. */
+static int32_t abc_key(uint64_t *rs, uint8_t *out) {
+    int32_t length = 1 + test_random_below(rs, 20);
+    for (int32_t i = 0; i < length; i++) {
+        out[i] = (uint8_t) ('a' + test_random_below(rs, 3));
+    }
+    return length;
+}
+
+struct abc {
+    uint8_t b[20];
+    int32_t len;
+    struct key k;
+    bool deleted;
+};
+
+static int cmp_abc_bytes(const void *x, const void *y) {
+    const struct abc *a = x, *b = y;
+    int32_t n = a->len < b->len ? a->len : b->len;
+    int c = memcmp(a->b, b->b, (size_t) n);
+    return c != 0 ? c : a->len - b->len;
+}
+
+static int cmp_abc_ptr(const void *x, const void *y) {
+    const struct abc *a = *(const struct abc *const *) x, *b = *(const struct abc *const *) y;
+    return keys_compare_arrays(a->k.s, a->k.n, b->k.s, b->k.n);
+}
+
+/* One transaction at t of the keys list[from .. to), sorted, put or deleted. */
+static void abc_trans(struct db *db, int64_t t, struct abc **list, int32_t from, int32_t to,
+        bool del) {
+    struct abc *chunk[100];
+    int32_t n = to - from;
+    memcpy(chunk, list + from, (size_t) n * sizeof *chunk);
+    qsort(chunk, (size_t) n, sizeof *chunk, cmp_abc_ptr);
+    static const uint8_t one[1] = { 1 };
+    mdb_begin(&db->d, t);
+    for (int32_t i = 0; i < n; i++) {
+        CHECK(mdb_put(&db->d, chunk[i]->k.s, chunk[i]->k.n, del ? NULL : one, 1));
+    }
+    mdb_end(&db->d);
+    db->time = t;
+}
+
+/* testEndKeyAsEndpoint: GetMany.endKey gives what the Endpoint stop
+ * condition gives, inclusive or not, from any start, at any lookup time,
+ * also where the keys after the end are deleted: random keys of 1 to 20
+ * bytes of three letters, around the segments of 7 bytes, put in
+ * transactions of 50, then deleted, the run of keys that start with "b" and
+ * every third of the others, in transactions of 50; scans at times before,
+ * between and after the deletes. The scan ends as at the end of the
+ * database: eod() is called. A backward scan with an end key is refused. */
+TEST(dbgm_end_key_as_endpoint) {
+    enum { N = 2000 };
+    uint64_t rs = 2128;
+    struct db db;
+    db_start(&db);
+    struct abc *keys = calloc(N, sizeof *keys);
+    struct abc **list = calloc(N, sizeof *list);
+    int32_t n = 0;
+    while (n < N) {
+        struct abc c;
+        memset(&c, 0, sizeof c);
+        c.len = abc_key(&rs, c.b);
+        bool dup = false;
+        for (int32_t i = 0; i < n && !dup; i++) {
+            dup = cmp_abc_bytes(&keys[i], &c) == 0;
+        }
+        if (!dup) {
+            c.k = bk(c.b, c.len);
+            keys[n++] = c;
+        }
+    }
+    for (int32_t i = 0; i < N; i++) {
+        list[i] = &keys[i];
+    }
+    for (int32_t i = N - 1; i > 0; i--) {       /* Collections.shuffle */
+        int32_t j = test_random_below(&rs, i + 1);
+        struct abc *tmp = list[i];
+        list[i] = list[j];
+        list[j] = tmp;
+    }
+    int64_t time = 10;
+    int64_t times[200];
+    int32_t ntimes = 0;
+    for (int32_t i = 0; i < N; i += 50) {
+        abc_trans(&db, time, list, i, i + 50 < N ? i + 50 : N, false);
+        times[ntimes++] = time;
+        time += 10;
+    }
+    struct abc **deleted = calloc(N, sizeof *deleted);
+    int32_t nd = 0;
+    for (int32_t i = 0; i < N; i++) {
+        if (list[i]->b[0] == 'b' || i % 3 == 0) {
+            deleted[nd++] = list[i];
+        }
+    }
+    for (int32_t i = 0; i < nd; i += 50) {
+        abc_trans(&db, time, deleted, i, i + 50 < nd ? i + 50 : nd, true);
+        times[ntimes++] = time;
+        time += 10;
+    }
+
+    struct keylist g = { calloc(N, sizeof(struct key)), 0, N, false };
+    struct keylist h = { calloc(N, sizeof(struct key)), 0, N, false };
+    int64_t pairs = 0;
+    for (int i = 0; i < 1500; i++) {
+        const int64_t lookupTime = i % 3 == 0 ? INT64_MAX
+                : times[test_random_below(&rs, ntimes)];
+        uint8_t sb[20], eb[20];
+        const bool noStart = test_random_below(&rs, 10) == 0;
+        struct key start = ik("a");
+        if (!noStart) {
+            int32_t len = abc_key(&rs, sb);
+            start = bk(sb, len);
+        }
+        const bool inclusive = test_random_below(&rs, 2) == 0;
+        int32_t elen = abc_key(&rs, eb);
+        const struct key end = bk(eb, elen);
+        const bool endInclusive = test_random_below(&rs, 2) == 0;
+
+        struct getmany q;
+        struct gm_endpoint ep;
+        mdb_new_get_many(&db.d, &q);
+        q.lookup_time = lookupTime;
+        if (!noStart) {
+            q.start_key = start.s;
+            q.start_key_n = start.n;
+        }
+        q.inclusive = inclusive;
+        q.stop_condition = gm_endpoint(&ep, end.s, end.n, endInclusive, false);
+        g.n = 0;
+        q.result.add = keylist_add;
+        q.result.ctx = &g;
+        CHECK(mdb_get_many(&db.d, &q));
+
+        mdb_new_get_many(&db.d, &q);
+        q.lookup_time = lookupTime;
+        if (!noStart) {
+            q.start_key = start.s;
+            q.start_key_n = start.n;
+        }
+        q.inclusive = inclusive;
+        q.end_key = end.s;
+        q.end_key_n = end.n;
+        q.end_inclusive = endInclusive;
+        h.n = 0;
+        h.eod = false;
+        q.stop_condition.handle_kvt = add_all;
+        q.stop_condition.eod = keylist_eod;
+        q.stop_condition.ctx = &h;
+        q.result.add = keylist_add;
+        q.result.ctx = &h;
+        CHECK(mdb_get_many(&db.d, &q));
+
+        bool same = g.n == h.n;
+        for (int32_t j = 0; same && j < g.n; j++) {
+            same = same_key(&g.k[j], &h.k[j]);
+        }
+        CHECK(same);
+        CHECK(h.eod);
+        if (!same) {
+            printf("  scan %d at %lld, %d, %d: %d and %d keys\n", i, (long long) lookupTime,
+                    (int) inclusive, (int) endInclusive, (int) g.n, (int) h.n);
+        }
+        pairs += g.n;
+    }
+    CHECK(pairs > 1500);        /* the scans read pairs */
+
+    struct getmany back;
+    struct err e;
+    err_clear(&e);
+    mdb_new_get_many(&db.d, &back);
+    gm_set_backward(&back);
+    const struct key a = ik("a");
+    back.end_key = a.s;
+    back.end_key_n = a.n;
+    back.gd.op.err = &e;
+    CHECK(!mdb_get_many(&db.d, &back));     /* a backward scan with endKey refused */
+    CHECK_EQ(e.code, ERR_ARG);
+    CHECK(strcmp(e.java, "IllegalArgumentException") == 0);
+
+    free(g.k);
+    free(h.k);
+    free(deleted);
+    free(list);
+    free(keys);
+    db_close(&db);
+}
+
+/* A pointer listener that counts the key nodes followed. */
+static bool count_key_nodes(void *ctx, struct node *pre, int32_t index, struct node *result,
+        int32_t type) {
+    (void) pre, (void) index, (void) type;
+    if (result != NULL && result->o.kind == OBJ_KEY) {
+        (*(int32_t *) ctx)++;
+    }
+    return true;
+}
+
+static bool count_super_root(void *ctx, struct tnode *superRoot) {
+    (void) ctx, (void) superRoot;
+    return true;
+}
+
+/* The scan from 'from' to 'to', not inclusive, by the Endpoint stop
+ * condition, with the end key too if withEnd: its pairs, and the key nodes
+ * it followed. */
+static int32_t end_scan(struct db *db, const struct key *from, const struct key *to,
+        bool withEnd, struct keylist *out) {
+    struct getmany q;
+    struct gm_endpoint ep;
+    int32_t followed = 0;
+    mdb_new_get_many(&db->d, &q);
+    q.start_key = from->s;
+    q.start_key_n = from->n;
+    if (withEnd) {
+        q.end_key = to->s;
+        q.end_key_n = to->n;
+        q.end_inclusive = false;
+    }
+    q.stop_condition = gm_endpoint(&ep, to->s, to->n, false, false);
+    q.gd.op.pointer_listener.pointer_followed = count_key_nodes;
+    q.gd.op.pointer_listener.super_root_accessed = count_super_root;
+    q.gd.op.pointer_listener.ctx = &followed;
+    out->n = 0;
+    q.result.add = keylist_add;
+    q.result.ctx = out;
+    CHECK(mdb_get_many(&db->d, &q));
+    return followed;
+}
+
+/* One transaction at the next time of count keys FORMAT % (first + i), put
+ * or deleted; with extra, that key put too. */
+static void fmt_trans(struct db *db, const char *format, int first, int count, bool del,
+        const char *extra) {
+    static struct abc keys[2001];
+    static struct abc *list[2001];
+    int32_t n = 0;
+    char text[32];
+    for (int i = 0; i < count; i++) {
+        snprintf(text, sizeof text, format, first + i);
+        keys[n].k = bk((const uint8_t *) text, (int32_t) strlen(text));
+        list[n] = &keys[n];
+        n++;
+    }
+    if (extra != NULL) {
+        keys[n].k = bk((const uint8_t *) extra, (int32_t) strlen(extra));
+        list[n] = &keys[n];
+        n++;
+    }
+    qsort(list, (size_t) n, sizeof *list, cmp_abc_ptr);
+    static const uint8_t one[1] = { 1 };
+    mdb_begin(&db->d, db->time + 10);
+    for (int32_t i = 0; i < n; i++) {
+        CHECK(mdb_put(&db->d, list[i]->k.s, list[i]->k.n, del ? NULL : one, 1));
+    }
+    mdb_end(&db->d);
+    db->time += 10;
+}
+
+/* testEndKeyPassesNoDeletedKeys: a scan that GetMany.endKey ends follows no
+ * key node of the deleted keys after its range: 100 live keys "a0000" to
+ * "a0099", then 5,000 keys "b00000" to "b04999" put and deleted, then "c".
+ * The scan of [a0050, a0100) follows the key nodes on its path and no more.
+ * Since release 2026.4 a delete unlinks the nodes it empties, so the stop
+ * condition alone follows few key nodes too; the results of both are the
+ * same. So this tests the unlink and the end key together (023-11, B3). */
+TEST(dbgm_end_key_passes_no_deleted_keys) {
+    struct db db;
+    db_start(&db);
+    fmt_trans(&db, "a%04d", 0, 100, false, "c");
+    for (int i = 0; i < 5000; i += 100) {
+        fmt_trans(&db, "b%05d", i, 100, false, NULL);
+    }
+    for (int i = 0; i < 5000; i += 100) {
+        fmt_trans(&db, "b%05d", i, 100, true, NULL);
+    }
+    const struct key from = bk((const uint8_t *) "a0050", 5);
+    const struct key to = bk((const uint8_t *) "a0100", 5);
+    struct keylist g = { calloc(128, sizeof(struct key)), 0, 128, false };
+    struct keylist h = { calloc(128, sizeof(struct key)), 0, 128, false };
+    const int32_t withEnd = end_scan(&db, &from, &to, true, &g);
+    const int32_t stopOnly = end_scan(&db, &from, &to, false, &h);
+    CHECK_EQ(g.n, 50);
+    CHECK_EQ(h.n, 50);
+    for (int32_t i = 0; i < 50 && i < g.n && i < h.n; i++) {
+        CHECK(same_key(&g.k[i], &h.k[i]));
+    }
+    CHECK(withEnd <= 20);       /* key nodes followed with endKey */
+    CHECK(stopOnly <= 20);      /* by the stop condition alone */
+    printf("  dbgm_end_key_passes_no_deleted_keys: %d key nodes followed with the end key, "
+            "%d by the stop condition alone\n", (int) withEnd, (int) stopOnly);
+    free(g.k);
+    free(h.k);
+    db_close(&db);
+}
+
+/* testEndKeyPassesNoDeletedLongKeys: as above, with long keys, each in a
+ * segment tree of its own for its last segment: 100 live keys
+ * "a000000xyzw" to "a000099xyzw", 2,000 keys "b000000xyzw" to "b001999xyzw"
+ * put and deleted, then "c". The scan of the last five live keys, to the
+ * end "b" not inclusive, follows few key nodes. */
+TEST(dbgm_end_key_passes_no_deleted_long_keys) {
+    struct db db;
+    db_start(&db);
+    fmt_trans(&db, "a%06dxyzw", 0, 100, false, "c");
+    fmt_trans(&db, "b%06dxyzw", 0, 2000, false, NULL);
+    fmt_trans(&db, "b%06dxyzw", 0, 2000, true, NULL);
+    const struct key from = bk((const uint8_t *) "a000095xyzw", 11);
+    const struct key to = bk((const uint8_t *) "b", 1);
+    struct keylist g = { calloc(128, sizeof(struct key)), 0, 128, false };
+    struct keylist h = { calloc(128, sizeof(struct key)), 0, 128, false };
+    const int32_t withEnd = end_scan(&db, &from, &to, true, &g);
+    const int32_t stopOnly = end_scan(&db, &from, &to, false, &h);
+    CHECK_EQ(g.n, 5);
+    CHECK_EQ(h.n, 5);
+    for (int32_t i = 0; i < 5 && i < g.n && i < h.n; i++) {
+        CHECK(same_key(&g.k[i], &h.k[i]));
+    }
+    CHECK(withEnd <= 30);
+    CHECK(stopOnly <= 30);
+    printf("  dbgm_end_key_passes_no_deleted_long_keys: %d key nodes followed with the end key, "
+            "%d by the stop condition alone\n", (int) withEnd, (int) stopOnly);
+    free(g.k);
+    free(h.k);
+    db_close(&db);
+}
+
+/* testEndKeyChainEdges, as far as C has the cases (the Chain is not driven
+ * from outside getmany.c: dag_get_many ends at the first end, and the end
+ * key leaves the chain without a link): with keys "pppppppa" and "pppppppb"
+ * and the inclusive end "pppppppa", the scan gives "pppppppa" and eod, once;
+ * a backward scan with an end key is refused with IllegalArgumentException
+ * by Dag.getMany, also at a lookup time with no root. */
+TEST(dbgm_end_key_chain_edges) {
+    struct db db;
+    db_start(&db);
+    fmt_trans(&db, "ppppppp%c", 'a', 1, false, "pppppppb");
+    const struct key end = bk((const uint8_t *) "pppppppa", 8);
+    struct keylist g = { calloc(8, sizeof(struct key)), 0, 8, false };
+    struct getmany q;
+    mdb_new_get_many(&db.d, &q);
+    q.end_key = end.s;
+    q.end_key_n = end.n;
+    q.stop_condition.handle_kvt = add_all;
+    q.stop_condition.eod = keylist_eod;
+    q.stop_condition.ctx = &g;
+    q.result.add = keylist_add;
+    q.result.ctx = &g;
+    CHECK(mdb_get_many(&db.d, &q));
+    CHECK_EQ(g.n, 1);
+    CHECK(g.n == 1 && same_key(&g.k[0], &end));
+    CHECK(g.eod);
+    CHECK_EQ(q.get_op_count, 1);
+
+    const int64_t times[] = { -1, mdb_lookup_time(&db.d, INT64_MAX) };
+    const struct key a = bk((const uint8_t *) "a", 1);
+    for (int i = 0; i < 2; i++) {
+        struct err e;
+        err_clear(&e);
+        mdb_new_get_many(&db.d, &q);
+        q.forward = false;
+        q.end_key = a.s;
+        q.end_key_n = a.n;
+        q.lookup_time = times[i];
+        q.actual_lookup_time = times[i];
+        q.gd.op.err = &e;
+        CHECK(!dag_get_many(&db.d.dag, &q));    /* Dag.getMany, backward */
+        CHECK_EQ(e.code, ERR_ARG);
+        CHECK(strcmp(e.java, "IllegalArgumentException") == 0);
+    }
+    free(g.k);
+    db_close(&db);
+}
+
 const struct test dbgetmany_tests[] = {
     TEST_ENTRY(dbgm_test1),
     TEST_ENTRY(dbgm_test1_backward),
@@ -620,5 +1028,9 @@ const struct test dbgetmany_tests[] = {
     TEST_ENTRY(dbgm_from_indexing),
     TEST_ENTRY(dbgm_bug130606),
     TEST_ENTRY(dbgm_get_op_count),
+    TEST_ENTRY(dbgm_end_key_as_endpoint),
+    TEST_ENTRY(dbgm_end_key_passes_no_deleted_keys),
+    TEST_ENTRY(dbgm_end_key_passes_no_deleted_long_keys),
+    TEST_ENTRY(dbgm_end_key_chain_edges),
     TEST_END
 };
