@@ -1,0 +1,8 @@
+T7 fill dir=/Users/f/fl/bench/2026-11-11/touch/data/dmain n=1000000 order=random cp=/Users/f/fl/bench/2026-11-11/touch/cmain:/Users/f/fl/bench/2026-11-11/touch/main.jar
+[0.1s] START ms=30 len=480 fap=0 fresh=true recordLimit=2147483639
+[8.0s] FILL n=1000000 valsize=100 batch=100 order=random puts/s=126142 s=7.9
+[8.0s] FILL tx=10000 bytes/tx=23155 maxRec=48976 recs>1MB=0 exec p50=494us p99.9=3536us max=43ms
+[8.1s] FILL maxRecTx=9982 maxRecCommitMs=1.3 maxExecTx=747 stepRecs=4890 stepBytes/rec=19735 maxStepRecord=46088 maxLag=50635856
+[8.1s] FILL state len=328061928 kept=328061928 iters=0 fap=0 lag=49913688
+[8.1s] CLOSE ms=7
+[8.1s] DONE

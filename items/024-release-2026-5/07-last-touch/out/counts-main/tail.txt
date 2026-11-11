@@ -1,0 +1,15 @@
+T7 drive dir=/Users/f/fl/bench/2026-11-11/touch/data/dmain n=1000000 maxdrive=30000 report=10000 tail=10 touchcount=1 cp=/Users/f/fl/bench/2026-11-11/touch/cmain:/Users/f/fl/bench/2026-11-11/touch/main.jar
+[1.7s] START ms=1603 len=328061928 fap=0 fresh=false recordLimit=2147483639
+[1.7s] DRIVE before state len=328061928 kept=328061928 iters=0 fap=0 lag=49913688
+[5.4s] ITEREND tx=2004 commitMs=42.5 userRecord=36656 stepRecord=17560 lag=49781064 resident=198874568 | steps=2004 kvs=150233 values=136129 dirtiedNodes=24309 dirtiedBytes=6064400 maxStepDirtied=1009 maxStepNodes=17 loads=161285 touch: visited=44427 dirtied=11338 old=0 minimal=0
+[16.5s] drive tx=10000  len=790057664 kept=690046160 iters=1 fap=100011504 lag=50168344 tx=10000 bytes/tx=41210 maxRec=262096 recs>1MB=0 exec p50=1307us p99.9=4988us max=42ms
+[25.4s] ITEREND tx=15607 commitMs=319.2 userRecord=44384 stepRecord=180648 lag=49750528 resident=199230988 | steps=13602 kvs=1020053 values=0 dirtiedNodes=59062 dirtiedBytes=18930976 maxStepDirtied=11265 maxStepNodes=19 loads=1314467 touch: visited=233311 dirtied=58086 old=0 minimal=0
+[27.0s] BIGREC tx=16599 userRecord=2748560 commitMs=35.4
+[32.8s] drive tx=20000  len=1287272256 kept=1187260752 iters=2 fap=100011504 lag=50476776 tx=20000 bytes/tx=43640 maxRec=2748560 recs>1MB=1 exec p50=1393us p99.9=4656us max=319ms
+[48.8s] drive tx=30000  len=1791302320 kept=1691290816 iters=2 fap=100011504 lag=49388488 tx=30000 bytes/tx=44353 maxRec=2748560 recs>1MB=1 exec p50=1419us p99.9=4219us max=319ms
+[48.8s] DRIVE done tx=30000 iters=2 s=47.1 tx/s=637
+[48.8s] DRIVE tx=30000 bytes/tx=44353 maxRec=2748560 recs>1MB=1 exec p50=1419us p99.9=4219us max=319ms
+[48.8s] DRIVE maxRecTx=16599 maxRecCommitMs=35.4 maxExecTx=15607 stepRecs=29998 stepBytes/rec=4421 maxStepRecord=180648 maxLag=55522640
+[48.8s] DRIVE state len=1791302320 kept=1691290816 iters=2 fap=100011504 lag=49388488
+[48.8s] CLOSE ms=13
+[48.8s] DONE

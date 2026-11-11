@@ -1,0 +1,23 @@
+T7 log dir=/Users/f/fl/bench/2026-11-11/touch/data/hmain n=1000000 maxdrive=40000 report=10000 sd=5000000 cp=/Users/f/fl/bench/2026-11-11/touch/cmain:/Users/f/fl/bench/2026-11-11/touch/main.jar
+[0.3s] START ms=191 len=243817288 fap=10013696 fresh=false recordLimit=2147483639
+[0.3s] LOG before state len=243817288 kept=233803592 iters=0 fap=10013696 lag=5101616
+Exception in thread "main" java.lang.OutOfMemoryError: Java heap space
+	at bergdb.core.NodeStream.readNode(NodeStream.java:204)
+	at bergdb.core.NodeCollection.followValuePointer(NodeCollection.java:632)
+	at bergdb.core.NodeCollection.followStreamPointer(NodeCollection.java:413)
+	at bergdb.core.NodeCollection$WriterFollower.followPointer(NodeCollection.java:301)
+	at bergdb.dag.OpData.followPointer(OpData.java:41)
+	at bergdb.dag.GetMany$Chain.next(GetMany.java:426)
+	at bergdb.dag.Dag.getMany(Dag.java:743)
+	at bergdb.core.Db.touchRange(Db.java:3068)
+	at bergdb.core.Db.putKvs(Db.java:2945)
+	at bergdb.core.Db.executeInner(Db.java:2519)
+	at bergdb.core.Db.execute(Db.java:2397)
+	at bergdb.core.Reclaim.step(Reclaim.java:685)
+	at bergdb.core.Reclaim.transactionCompleted(Reclaim.java:475)
+	at bergdb.core.Db.executeInner(Db.java:2561)
+	at bergdb.core.Db.execute(Db.java:2397)
+	at bergdb.core.T7.exec(T7.java:132)
+	at bergdb.core.T7.log(T7.java:262)
+	at bergdb.core.T7.main(T7.java:322)
+heap rc=1

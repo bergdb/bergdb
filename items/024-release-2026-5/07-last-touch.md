@@ -1,7 +1,8 @@
 # 024-07. The last touch of a reclaim iteration (CL7, OP1)
 
-Created 2026-11-11. Status: open (the fix is built on a branch, not on
-`main`; section 13 has the exact state).
+Created 2026-11-11. Status: open (the fix is built, gated and merged
+into 024-13's integration branch, not yet on `main`; section 13 has the
+exact state).
 
 The largest measured fault against aim 2 of release 2026.5 (024-04: no
 Core operation costs out of proportion to its work): with keys in time
@@ -24,8 +25,10 @@ Cite the bounds as "024-07, B1", the options as "024-07, option A".
   the pinned nodes grow without end, and nothing throws. Read from the
   code and reproduced with the record limit lowered (section 3; the test
   `testLastStepWithinRecordLimit` fails on `main`). Before that size the
-  step pins every index node at once (0.67 to 2.31 GB resident at 10M
-  keys, with a budget of 0.2 GB).
+  step pins every index node at once and loads every value (0.67 to
+  2.31 GB resident at 10M keys, with a budget of 0.2 GB): with a heap of
+  256 MB a queue of 1M keys ends in an `OutOfMemoryError` inside a
+  user's commit on `main`, and runs with the fix.
 * **The mechanism.** A step scans 16 kB of KVs as they were at tStart,
   but its touch (`Db.touchRange`) walks the same key range as it is now,
   and the last step's touch has no end key. Every key put after the
@@ -120,12 +123,14 @@ keys, values of 100 bytes). "sd" is the startup distance.
   the run; the first: 716,523 nodes):
   1. its commit: 22.3 s (20.6 s; in the first run, partly disturbed,
      24.4 and 21.7 s), under the write lock: every writer waits. It is
-     the walk, which loads the nodes that the cache of 200 MB does not
-     hold;
+     the walk, a scan through the writer's follower, which loads the
+     index nodes that the cache of 200 MB does not hold and follows the
+     pointer to every value in the range too (`GetMany.Chain.next`,
+     `NodeCollection.followValuePointer`): 10M values;
   2. memory: the 772,454 nodes are pinned until they are written. The
      resident count right after the step was 2.31 GB in one run and 0.67
-     GB in the other, with a budget of 0.2 GB: what else the walk loaded
-     can be released, the nodes cannot;
+     GB in the other, with a budget of 0.2 GB: the values that the walk
+     loaded can be released, the nodes cannot;
   3. the step's own record: 12.4 MB, its got-dirty list of 16 bytes a
      node;
   4. 83 transactions later (50 MB later) a user commit takes them all:
@@ -180,19 +185,25 @@ the record limit. Read from the code, and reproduced small.
   startup pos is 260,048 bytes behind; after 1,000 it is 2,261,304
   behind, four iterations are done, the stream is 9.2 MB, and nothing
   is cut. With the fix it passes the step within 100 transactions.
-* **Before that size, the heap.** The step pins its nodes at once: 0.67
-  to 2.31 GB resident at 10M keys (two runs, heap 8 GB), 67 to 231 bytes
-  a live key. By those figures the pinned bytes pass an 8 GB heap
-  somewhere between 35M and 120M keys in time order: an
-  `OutOfMemoryError` inside the go point, which fails the database. The
-  iteration's row is stored, so after a restart the same last step runs
-  at the first commit that allows a step. Not run at that size: an
-  estimate from two readings of one counter. A run of 1M keys with a
-  heap of 256 MB, which would show it small, is queued (`counts.sh`,
-  section 13).
+* **Before that size, the heap: the database fails.** The step pins its
+  nodes at once and loads the range's values: 0.67 to 2.31 GB resident
+  at 10M keys (two runs, heap 8 GB), 67 to 231 bytes a live key. Shown
+  small (`counts.sh`, 10:13 to 10:15): the queue of 1M keys with a heap
+  of 256 MB (startup distance 5 MB, the default cache budget of 200 MB).
+  On `main` the first iteration's last step ends in
+  `java.lang.OutOfMemoryError: Java heap space`, in `Db.touchRange`
+  under `Reclaim.step` under the user's `Db.execute`: inside the go
+  point, so the database has failed. The iteration's row is stored, so
+  after a restart the same last step runs at the first commit that
+  allows a step. With the fix the same run does its 40,000
+  transactions, three iterations, the slowest commit 37 ms
+  (`out/counts-main/heap-fifo.txt`, `out/counts-fix/heap-fifo.txt`).
+  With an 8 GB heap, by the two readings above, that is somewhere
+  between 35M and 120M keys in time order: an estimate, not run.
 
-So OP1 is an aim 1 case (bugs first) from some tens of millions of keys
-in time order, and the 21 s commit at 10M is its mild form.
+So OP1 is an aim 1 case (bugs first): from some tens of millions of
+keys in time order with a heap of 8 GB, sooner with a smaller heap, and
+the 21 s commit at 10M is its mild form.
 
 
 ## 4. What the cut needs, and the argument in the model
@@ -599,29 +610,34 @@ tables have the second run, and its first run agrees in every count.
   byte (191,137,072 and 206,065,600) with commits of 20.6 and 22.3 s
   (024-03: 20.6 and 22.2 s), so the two sets compare.
 
-**Beside the queue, at 200,000 keys** (counts; startup distance 1 MB; a
-fill in random order, then 10,000 transactions of 100 overwrites of
-random keys; "with a tail": 10 new keys after every key in each
-transaction too, keys put beyond the scan's end beside the overwrites):
+**Beside the queue, at 1M keys** (counts; `counts.sh`, the defaults of
+the runs above; a fill in random order, then 30,000 transactions of 100
+overwrites of random keys; "with a tail": 10 new keys after every key in
+each transaction too, keys put beyond the scan's end beside the
+overwrites):
 
-| Measure                              | main            | fix             |
+| Measure                                  | main             | fix              |
 |---|---|---|
-| overwrites: bytes a transaction      | 90,411          | 89,355          |
-| index nodes dirty, an iteration      | 23,050, 7.82 MB | 16,683, 5.57 MB |
-| nodes dirty, worst step              | 16              | 15              |
-| largest record                       | 222,408 bytes   | 213,104 bytes   |
-| with a tail: nodes dirty, last step  | 2,683 and 3,037 | 14              |
-| largest record                       | 840,160 bytes   | 224,048 bytes   |
-| the last step's commit               | 50 and 69 ms    | 1.9 and 2.8 ms  |
-| bytes a transaction                  | 93,478          | 92,372          |
+| overwrites: bytes a transaction          | 41,043           | 40,540           |
+| nodes dirty, iteration with no rewrite   | 44,062, 15.1 MB  | 959, 0.06 MB     |
+| nodes dirty, iteration, 145,600 rewrites | 63,735, 20.4 MB  | 52,303, 16.4 MB  |
+| nodes dirty, worst step                  | 23               | 25               |
+| largest record                           | 88,080 bytes     | 87,104 bytes     |
+| with a tail: nodes dirty, last step      | 11,265           | 3                |
+| largest record                           | 2,748,560 bytes  | 97,312 bytes     |
+| the last step's commit                   | 319 ms           | 1.3 ms           |
+| bytes a transaction                      | 44,353           | 43,665           |
 
 * **Random overwrites lose nothing**: 1.2 % fewer bytes, the same three
-  iterations with the same 2,667 steps and 22,890 values rewritten in
-  each. Most values are rewritten there, so a step's paths are most of
-  what its range held; still an iteration makes 28 % fewer nodes dirty.
+  iterations with the same 13,334 steps. Where an iteration has values
+  to rewrite, a step's paths are most of what its range held (18 % fewer
+  nodes). Where it has none, because every value was written since
+  pCut, `main` still made 44,062 nodes dirty and the fix 959.
 * **A tail beside them is the queue's fault again on `main`**: the last
-  step walks the 30,000 keys put after the scan's end. With the fix: 14
-  nodes.
+  step walks the 136,000 keys put after the scan's end, 11,265 nodes and
+  a record of 2.7 MB. With the fix: 3 nodes.
+* The same at 200,000 keys with a startup distance of 1 MB
+  (`out/counts-small/`).
 
 Outputs: `out/fifo-10000000-fix/`, `out/fifo-10000000-main-r2/`,
 `out/small-fix-sd1m/`, `out/small-fix/`, `out/small-main-sd1m-r2/`,
@@ -631,8 +647,9 @@ each run. Disturbed, by the coordinator's notes: the first runs on
 kept without `-r2`, their counts used, their times not), and the fix's
 runs at 100,000 to 400,000 keys between 07:53:40 and 07:54:25 (their
 times, 0.4 to 0.7 ms against 9 to 193 ms, are not the evidence; the
-counts are). The runs at 200,000 keys (`out/counts-small/`, 09:33 to
-09:36) ran beside other agents' gates, without the lock: counts only.
+counts are). The count runs at 1M keys (`out/counts-main/`,
+`out/counts-fix/`, 10:11 to 10:15) ran under the lock; those at 200,000
+keys (09:33 to 09:36) beside other agents' gates.
 
 
 ## 9. Gates, and changed tests
@@ -679,9 +696,16 @@ checker); on it `lake build` of the whole tree is OK (09:26).
   last across lines: 0.5 to 0.8 s for each start position in the
   comment. Its header says "under a second". Not this subitem's, and
   not fixed here; the coordinator has the diagnosis.
-* **Not run:** `level2.sh` (no touch there; its conformance uses the
-  changed checker), `level4.sh` full, `night.sh`. `level4.sh quick` is
-  queued (section 13).
+* **`level4.sh quick`** on the head, 10:08 to 10:11, beside the gates:
+  LEVEL 4 OK; its conformance with eviction, 15 traces, TRACECHECK OK
+  15, C-P and C-H 0 of 3,461 transactions.
+* **The integration** (024-13, the branch merged with 024-10's, head
+  `524732d8`) ran, under its own holds of the lock: `lake build`, the
+  checker's test traces, `level1.sh` (LEVEL 1 OK), `level2.sh` (LEVEL 2
+  OK, 70 traces), `level3.sh` (conformance 25 traces OK, C-CUT 0 of
+  310); read from its logs at 10:06, its own item has the results.
+* **Not run here:** `level2.sh` (no touch there; its conformance uses
+  the changed checker), `level4.sh` full, `night.sh`.
 
 Changed tests, each its own commit, for Frans's approval:
 
@@ -705,15 +729,12 @@ Changed tests, each its own commit, for Frans's approval:
 
 ## 10. Not done
 
-* **Nothing at 100M keys**, and no run of the heap case of section 3
-  (35M to 120M keys in time order with an 8 GB heap, on `main`).
+* **Nothing at 100M keys**, and the heap case of section 3 only at 1M
+  keys with a small heap, not at 35M to 120M keys with 8 GB.
 * **Keys put ahead of the scan, at scale** (024-05, GM2's second half):
-  counted at 200,000 keys only (section 8, "with a tail"); keys put at
-  random between old keys, not at the tail, are not measured.
-* **Three runs that are not gates** wait until the integration's gates
-  have had the lock (the coordinator, 09:33): `level4.sh quick` on the
-  branch, the counts at 1M keys, and the queue of 1M keys with a heap
-  of 256 MB on `main` and on the fix (section 13 has the commands).
+  counted at 1M keys as a tail beside random overwrites (section 8);
+  keys put at random between old keys, not at the tail, are not
+  measured.
 * **T-SCHEME is not proved.** T-COVER and T-LATEST are its steps 1, 3
   and 5 for the latest versions. Steps 6 and 7 (the references after
   pSafe, the nodes of D that no read reaches) and the versions that
@@ -791,14 +812,14 @@ merges this branch with 024-10's (the coordinator, 09:33).
 
 ## 13. State
 
-2026-11-11, 09:36: the fix is built, measured and gated, and merged
-into the integration branch (024-13); three runs that are not gates
-are queued.
+2026-11-11, 10:16: done. The fix is built, measured and gated, and
+merged into the integration branch (024-13).
 
 * **Done:**
   * the mechanism, and its count at 10M keys on `main`: 772,454 index
     nodes made dirty by one step (section 2);
-  * the record limit, read and reproduced: an aim 1 case (section 3);
+  * the record limit, read and reproduced, and the heap, shown at 1M
+    keys: an aim 1 case (section 3);
   * the cut's argument in the Lean model: T-COVER and T-LATEST proved,
     the scheme check with the cover run with and without any touch, the
     premise LIVEBELOW checked at every traced cut (section 4);
@@ -809,7 +830,8 @@ are queued.
     29 kB (it was 206 MB), the slowest commit 78 ms (22.3 s);
   * the gates (section 9): the Lean build and tests, `level3.sh`,
     `level1.sh`, `before-commit.sh`: all pass, on `b33a3daa`; the head
-    is one Lean commit later, built; 15 draining traces pass.
+    is one Lean commit later, built; `level4.sh quick` on the head; 15
+    draining traces.
 * **The clone:** `/Users/f/fl/bench/2026-11-11/touch/clone`, branch
   `024-07-last-touch`, head `5bbdbf6e`, nine commits on `e7aa50f7`:
   `2d26ead3` the changed test; `98cb7438` the model (T-COVER,
@@ -818,18 +840,14 @@ are queued.
   `e81b8a6d` T-LATEST; `e7b66711` the checker's `CUT-live`; `b33a3daa`
   the checker's changed test; `5bbdbf6e` T-LATEST's premise. The working
   tree is clean. The coordinator merged the branch into `024-13-int`
-  (09:33), whose gates run under the integration's hold of the lock.
-* **Queued, not gates:** `touch/post3.sh` waits until the integration's
-  second hold of the heavy lock has ended, then takes the lock for
-  about 12 minutes: `java/stress/level4.sh quick` in the clone, then
-  `07-last-touch/counts.sh fix` and `counts.sh main` (at 1M keys:
-  random overwrites, a tail beside them, and the queue with a heap of
-  256 MB and a startup distance of 5 MB). Progress:
-  `touch/post.progress`; outputs: `touch/level4-quick.log`,
-  `out/counts-fix/`, `out/counts-main/`.
-* **To continue:** when `touch/post.progress` says "released", put the
-  results in section 9 (`level4.sh quick`) and in section 3's last
-  point (`heap-fifo.txt` of the two `out/counts-*`: whether `main`
-  fails with an `OutOfMemoryError` where the fix runs). If the runs are
-  not wanted: `pkill -f post3.sh` before it takes the lock. Nothing
-  else is needed from this subitem.
+  (09:33).
+* **Nothing is running or queued** from this subitem; it holds no lock.
+  The data directories of the runs are deleted; the outputs are in
+  `07-last-touch/out/`, the gates' logs in
+  `/Users/f/fl/bench/2026-11-11/touch/`.
+* **Not done:** section 10. **For Frans:** section 11.
+* **To continue:** nothing is needed from this subitem to land the fix.
+  What could follow it: 024-09's A1 with it (the draining set and
+  UnlinkFuzz in the gates); the C clone's pin and StreamDigest's digests
+  after the batch of byte changes; a run at 100M keys in time order,
+  now that no step can stop it (024-05, GM7).

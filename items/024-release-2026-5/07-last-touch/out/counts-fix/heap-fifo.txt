@@ -1,0 +1,18 @@
+T7 log dir=/Users/f/fl/bench/2026-11-11/touch/data/hfix n=1000000 maxdrive=40000 report=10000 sd=5000000 cp=/Users/f/fl/bench/2026-11-11/touch/cfix:/Users/f/fl/bench/2026-11-11/touch/fix.jar
+[0.3s] START ms=207 len=226637880 fap=10013696 fresh=false recordLimit=2147483639
+[0.3s] LOG before state len=226637880 kept=216624184 iters=0 fap=10013696 lag=5074448
+[4.9s] ITEREND tx=4742 commitMs=1.3 userRecord=23008 stepRecord=280 lag=4957176 resident=195775644 | steps=4676 kvs=335551 values=38551 dirtiedNodes=5847 dirtiedBytes=1504832 maxStepDirtied=14 maxStepNodes=18 loads=383709
+[9.1s] log tx=10000  len=462103296 kept=411501904 iters=1 fap=50601392 lag=5037960 tx=10000 bytes/tx=22515 maxRec=28576 recs>1MB=0 exec p50=698us p99.9=6456us max=36ms
+[15.6s] ITEREND tx=18078 commitMs=0.8 userRecord=21536 stepRecord=272 lag=5004784 resident=198592966 | steps=13334 kvs=1000003 values=0 dirtiedNodes=958 dirtiedBytes=63360 maxStepDirtied=3 maxStepNodes=20 loads=28463
+[17.1s] log tx=20000  len=689566040 kept=585246896 iters=2 fap=104319144 lag=5008592 tx=20000 bytes/tx=22467 maxRec=28624 recs>1MB=0 exec p50=650us p99.9=7344us max=36ms
+[24.9s] log tx=30000  len=917029328 kept=812710184 iters=2 fap=104319144 lag=5028504 tx=30000 bytes/tx=22449 maxRec=28624 recs>1MB=0 exec p50=640us p99.9=7344us max=37ms
+[26.0s] ITEREND tx=31414 commitMs=0.7 userRecord=21648 stepRecord=280 lag=5003168 resident=197622776 | steps=13334 kvs=1000003 values=1 dirtiedNodes=957 dirtiedBytes=63328 maxStepDirtied=3 maxStepNodes=19 loads=28975
+[32.7s] log tx=40000  len=1144545816 kept=801991336 iters=3 fap=342554480 lag=4835928 tx=40000 bytes/tx=22440 maxRec=28624 recs>1MB=0 exec p50=636us p99.9=6423us max=37ms
+[32.7s] LOG done tx=40000 iters=3 s=32.5 tx/s=1233
+[32.7s] LOG tx=40000 bytes/tx=22440 maxRec=28624 recs>1MB=0 exec p50=636us p99.9=6423us max=37ms
+[32.7s] LOG maxRecTx=18754 maxRecCommitMs=0.7 maxExecTx=27833 stepRecs=39928 stepBytes/rec=507 maxStepRecord=16952 maxLag=5370104
+[32.7s] LOG state len=1144545816 kept=801991336 iters=3 fap=342554480 lag=4835928
+[32.7s] LOG head1000 keys=1000 ms=3.0
+[32.8s] CLOSE ms=17
+[32.8s] DONE
+heap rc=0
