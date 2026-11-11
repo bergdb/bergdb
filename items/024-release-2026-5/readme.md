@@ -64,6 +64,13 @@ Files
   2026.4, (B) large databases measured on a calm Core, recommended, (C)
   strict cleanup, (D) the Pub API), and the questions for Frans in order.
   Nothing decided.
+* 02-stream-format.md. 024-02, the stream format's specification: the
+  skeleton, written from release 2026.4's code (on 012-02's description
+  of format 5): the structures from the files to the bits, field tables
+  for the meta block, the record and the nodes; the gaps where the code
+  accepts what a spec should refuse (G1 to G21) and its Java dependences
+  (J1 to J8); the open format questions (Q1 to Q23, Q14 and Q16 first);
+  the options for versioning, none decided.
 
 
 Log
@@ -107,3 +114,8 @@ dropped (023-10: the window does not grow); strict cleanup decided in
 2026.5 after the measurements. Tonight, after the release: 024-02, the
 spec's skeleton; the builder's rule on a branch; the tag measured at 10M
 keys if time.
+
+2026-11-11. Release 2026.4 made (04:55; 020-31). 2026.5 started at 04:57
+(Frans, 2026-11-10, 19:33: "start to work on 2026.5 without waiting for
+me"): 024-02, the stream format's skeleton (done 05:29), and 024-03, the
+measurements of 2026.4 at 10M keys (running).
