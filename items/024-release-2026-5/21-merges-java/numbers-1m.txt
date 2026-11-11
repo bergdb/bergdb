@@ -1,0 +1,43 @@
+| Shape            | Keys nodes | Twin  | x    | main   | x     | BU1 | TU2 bound | merges/del | rec/del br/main |
+| n100000-k10-asc  |       1118 |   790 | 1.42 |   7900 | 10.00 | 0 ok | 1672 | 0.172 | 43.5/42.9 = 1.01 (stream 1.01) |
+| n100000-k10-desc |       1022 |   790 | 1.29 |   7900 | 10.00 | 0 ok | 1672 | 0.176 | 43.2/43.0 = 1.00 (stream 1.00) |
+| n100000-k10-hashed |       1165 |   790 | 1.47 |   7901 | 10.00 | 0 ok | 1672 | 0.098 | 47.9/46.8 = 1.02 (stream 1.02) |
+| n100000-k100-asc |        123 |    81 | 1.52 |   1700 | 20.99 | 0 ok | 172 | 0.187 | 43.1/42.8 = 1.01 (stream 1.01) |
+| n100000-k100-desc |        141 |    81 | 1.74 |   1701 | 21.00 | 0 ok | 172 | 0.178 | 43.4/42.6 = 1.02 (stream 1.02) |
+| n100000-k100-hashed |        117 |    81 | 1.44 |   1701 | 21.00 | 0 ok | 172 | 0.103 | 47.8/45.9 = 1.04 (stream 1.04) |
+| n100000-k2-asc   |       7501 |  3950 | 1.90 |   7900 |  2.00 | 0 ok | 8339 | 0.012 | 44.0/43.6 = 1.01 (stream 1.01) |
+| n100000-k2-desc  |       7501 |  3950 | 1.90 |   7900 |  2.00 | 0 ok | 8339 | 0.012 | 42.8/42.9 = 1.00 (stream 1.00) |
+| n100000-k2-hashed |       7501 |  3950 | 1.90 |   7900 |  2.00 | 0 ok | 8339 | 0.009 | 44.2/43.9 = 1.01 (stream 1.01) |
+| n100000-k30-asc  |        388 |   266 | 1.46 |   4035 | 15.17 | 0 ok | 561 | 0.186 | 43.5/42.9 = 1.01 (stream 1.01) |
+| n100000-k30-desc |        419 |   266 | 1.58 |   4035 | 15.17 | 0 ok | 561 | 0.181 | 43.1/43.0 = 1.00 (stream 1.00) |
+| n100000-k30-hashed |        399 |   266 | 1.50 |   4035 | 15.17 | 0 ok | 561 | 0.101 | 47.7/46.5 = 1.03 (stream 1.03) |
+| n1000000-k10-asc |      11134 |  7899 | 1.41 |  78997 | 10.00 | 0 ok | 16675 | 0.172 | 52.1/57.1 = 0.91 (stream 0.92) |
+| n1000000-k10-desc |      10219 |  7899 | 1.29 |  78997 | 10.00 | 0 ok | 16675 | 0.176 | 52.2/55.9 = 0.93 (stream 0.92) |
+| n1000000-k10-hashed |      11573 |  7899 | 1.47 |  78998 | 10.00 | 0 ok | 16675 | 0.098 | 104.6/101.3 = 1.03 (stream 1.04) |
+| n1000000-k100-asc |       1202 |   790 | 1.52 |  16997 | 21.52 | 0 ok | 1675 | 0.187 | 51.2/49.8 = 1.03 (stream 1.03) |
+| n1000000-k100-desc |       1332 |   790 | 1.69 |  16998 | 21.52 | 0 ok | 1675 | 0.178 | 52.2/50.0 = 1.04 (stream 1.05) |
+| n1000000-k100-hashed |       1139 |   790 | 1.44 |  16998 | 21.52 | 0 ok | 1675 | 0.103 | 107.4/103.1 = 1.04 (stream 1.04) |
+| n1000000-k2-asc  |      75000 | 39498 | 1.90 |  78997 |  2.00 | 0 ok | 83341 | 0.012 | 60.6/60.4 = 1.00 (stream 0.99) |
+| n1000000-k2-desc |      75000 | 39498 | 1.90 |  78997 |  2.00 | 0 ok | 83341 | 0.012 | 58.8/58.8 = 1.00 (stream 1.00) |
+| n1000000-k2-hashed |      75000 | 39498 | 1.90 |  78997 |  2.00 | 0 ok | 83341 | 0.009 | 85.8/81.6 = 1.05 (stream 1.05) |
+| n1000000-k30-asc |       3825 |  2634 | 1.45 |  40332 | 15.31 | 0 ok | 5564 | 0.185 | 51.4/52.9 = 0.97 (stream 0.98) |
+| n1000000-k30-desc |       4158 |  2634 | 1.58 |  40332 | 15.31 | 0 ok | 5564 | 0.181 | 52.2/52.3 = 1.00 (stream 1.00) |
+| n1000000-k30-hashed |       3859 |  2634 | 1.47 |  40332 | 15.31 | 0 ok | 5564 | 0.102 | 106.1/103.4 = 1.03 (stream 1.03) |
+n100000-over-br.txt
+  br   [0.8s] FILL tx=1000 ops=100000 s=0.7 ops/s=149944 rec/op=158.4 stream/op=158.4 rec/tx=15843 stream/tx=15843 maxRec=30352 tsplit/op=0.0000 ssplit/op=0.0000 merge/op=0.0000 merge2/op=0.0000 taken/op=0.0
+  main [0.8s] FILL tx=1000 ops=100000 s=0.6 ops/s=155666 rec/op=158.4 stream/op=158.4 rec/tx=15843 stream/tx=15843 maxRec=30352 tsplit/op=0.0000 ssplit/op=0.0000 merge/op=0.0000 merge2/op=0.0000 taken/op=0.0
+  br   [0.8s] NODES fill keys=100000 keyNodes=8068 klongs=110156 dead=2088 keys/node=12.39 minLive=2 under7=1 under10=401
+  main [0.8s] NODES fill keys=100000 keyNodes=8068 klongs=110156 dead=2088 keys/node=12.39 minLive=2 under7=1 under10=401
+  br   [0.8s] FILL fill key nodes 8068, trees 5, live keys 100001, leaf klongs 100005, underfull 0
+  main [1.6s] OVER tx=2000 ops=200000 s=0.8 ops/s=250979 rec/op=181.2 stream/op=181.2 rec/tx=18124 stream/tx=18124 maxRec=35072 tsplit/op=0.0000 ssplit/op=0.0000 merge/op=0.0000 merge2/op=0.0000 taken/op=0.0
+  br   [1.7s] OVER tx=2000 ops=200000 s=0.8 ops/s=246787 rec/op=181.2 stream/op=181.2 rec/tx=18124 stream/tx=18124 maxRec=35072 tsplit/op=0.0000 ssplit/op=0.0000 merge/op=0.0000 merge2/op=0.0000 taken/op=0.0
+  main [1.6s] NODES over keys=100000 keyNodes=11058 klongs=161516 dead=50458 keys/node=9.04 minLive=2 under7=1 under10=5227
+n1000000-over-br.txt
+  br   [9.1s] FILL tx=10000 ops=1000000 s=9.0 ops/s=111269 rec/op=231.7 stream/op=328.9 rec/tx=23170 stream/tx=32890 maxRec=49408 tsplit/op=0.0000 ssplit/op=0.0000 merge/op=0.0000 merge2/op=0.0000 taken/op=0
+  main [9.1s] FILL tx=10000 ops=1000000 s=9.0 ops/s=111281 rec/op=231.7 stream/op=328.9 rec/tx=23170 stream/tx=32890 maxRec=49408 tsplit/op=0.0000 ssplit/op=0.0000 merge/op=0.0000 merge2/op=0.0000 taken/op=0
+  br   [9.1s] NODES fill keys=1000000 keyNodes=88990 klongs=1303722 dead=214730 keys/node=11.24 minLive=2 under7=1 under10=18383
+  main [9.1s] NODES fill keys=1000000 keyNodes=88990 klongs=1303722 dead=214730 keys/node=11.24 minLive=2 under7=1 under10=18383
+  br   [11.7s] FILL fill key nodes 88992, trees 7, live keys 1000003, leaf klongs 1000009, underfull 0
+  main [19.2s] OVER tx=2000 ops=200000 s=3.0 ops/s=65617 rec/op=317.0 stream/op=534.9 rec/tx=31696 stream/tx=53488 maxRec=57104 tsplit/op=0.0000 ssplit/op=0.0000 merge/op=0.0000 merge2/op=0.0000 taken/op=0.0
+  br   [19.4s] OVER tx=2000 ops=200000 s=3.1 ops/s=63805 rec/op=317.0 stream/op=534.9 rec/tx=31696 stream/tx=53488 maxRec=57104 tsplit/op=0.0000 ssplit/op=0.0000 merge/op=0.0000 merge2/op=0.0000 taken/op=0.0
+  main [19.2s] NODES over keys=1000000 keyNodes=103996 klongs=1527919 dead=423921 keys/node=9.62 minLive=2 under7=1 under10=40962

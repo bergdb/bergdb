@@ -276,6 +276,13 @@ from them.
 * 13:50 024-14 done: no threshold set showed a fault or a thrash; the
   recommendation m8 (8/17/17): at most 1.49 times the twin's key nodes
   (P5 1.90, main 21.5), 1 % more bytes a put, no slower.
+* 13:57 024-12 gated on today's main (ca3824aa): lake build, no sorry
+  or axiom, test-traces, before-commit, level1, treeconf, level3; waits
+  for Frans's approval at 14:30.
+* 14:12 024-16 landed: 47c93e34, the merge of 3af7513e, gated with
+  before-commit, level1 to level4 full, unlinkfuzz and conformance drain
+  (013-integration, section 6). Release notes filled (releases/next.md).
+  024-12 lands second, after a re-merge and new gates.
 
 
 ## 6. Outcome

@@ -193,7 +193,9 @@ Files
   in the Core and the Pub layer; 024-10's rule R2 and what it needed
   removed; no stale index entry possible (024-10's F1); six tests'
   expected values changed. Branch 024-16-one-operation-a-key; its
-  review in 16-one-operation-a-key/.
+  review in 16-one-operation-a-key/. On main since 2026-11-11, 14:12,
+  the merge of 3af7513e (gated: before-commit, level1 to level4 full,
+  unlinkfuzz, conformance drain).
 * 17-limits.md. 024-17, the limits of BergDB: of a transaction, a key,
   a value, a record. The discussion with Frans (limits in the user's
   terms, checked; internal bounds proved; a key at most 256 bytes, the
@@ -231,6 +233,15 @@ Files
   put; a compact encoding of the key node needs 41 to 43 % of today's
   index bytes; the JDK's Deflater does no better). No recommendation.
   The probe in 20-compact-nodes/.
+* 21-merges-java.md. 024-21, merges at the delete in Java, record
+  format 7, with assumptions for now (Frans, 2026-11-11, 11:44): node
+  size 30, P5's thresholds, dead klongs as today, P5's way of making
+  nodes, each a named constant. Branch 024-21-merges; it agrees with
+  024-22's model; not to land before Frans has looked. Files in
+  21-merges-java/.
+* 22-merges-lean.md. 024-22, merges at the delete in 024-12's Lean model
+  of the key tree, run beside Java's 024-21 (15,084 transactions, 9,243
+  merges, 0 differences). Branch 024-22-merges-lean, on 024-12's.
 
 
 Log
