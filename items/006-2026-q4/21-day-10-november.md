@@ -179,4 +179,56 @@ watchdog until 07:00. F53's quiet block: nothing else heavy while
 
 ## 9. Outcome
 
-(at the end of the day)
+Written 2026-11-11, 05:50, by coord-1110.
+
+**Release 2026.4 made, 04:55** (020-31): the tag `release-2026.4` on A'
+`bb8da6dc`, commit B `04f8863e` with releases/2026.4/ (six files,
+SHA256SUMS checked), pushed to origin with the tag; BuildInfo 2026.4,
+264; `main` at 2026.5-dev.
+
+The day, in short:
+
+* Morning: the slow scans over deleted keys (021-28) found to be a
+  fault of the Core's deletes; Frans paused 2026.4 (09:03) and made the
+  rule that a deleted KV must cost nothing eventually (020-30). New item
+  023-cleanup: the problem (023-02), the tests (023-03), the options
+  (023-04), eight prototypes (023-05), an architecture review (023-06).
+* Afternoon: Frans: KISS (14:26). The proposal written down (023-07),
+  three independent reviews and two checks (023-08): the delete design
+  stands, P8 out, fault 12 in the take-back found and fixed; a smaller
+  core frozen (16:34), with Frans's sort of a transaction's keys and one
+  operation a key. The integration branch (023-09), two code reviews and
+  their fixes (023-11), level1 to level4 full on each head, the ratchet
+  test (023-10: no growth).
+* Night: the release night on commit A failed one night test, an old
+  weakness against damaged streams (020-32); A made again with two fixes
+  (A'), whose own night, s1's tests on JDK 27 and 17, and 40,600 fuzz
+  seeds in all were clean. 021-25 closed (fixed by 023).
+* 2026.5: item 024 created (17:52), its inventory (024-01), its theme
+  decided by Frans (19:54): "a stable stream format". Started after the
+  release (04:57): 024-02, the stream format's skeleton (done); 024-03,
+  measurements of 2026.4 at 10M keys (running until about 08:30).
+
+**For Frans to decide** (most urgent first):
+
+1. **024-02's two first format questions**: must reserved bytes and
+   unused bits be zero (Q14), and what does a reader do with an unknown
+   node type or format (Q16)? They decide what can come later without a
+   break. Rec: zero, refused if not; an unknown type or format refused
+   with a message that names the release needed.
+2. **The versioning rule for the stable format** (024-02, section 21):
+   rec: each record carries its format and a release reads every stable
+   format from 2026.5 on.
+3. **Expected values changed in 2026.4** (for the record, all in the
+   release; 023-09, sections 4 and 7; 020-31): the SE tests' control
+   counts; A2A3Check2's taken-back nodes; `testRefusesNewerFormat`;
+   `NodeCollection.testLinkToCanonicalCheck` (now a refusal); P4 to P8's
+   own test changes did not enter. Rec: noted, nothing to do.
+4. **Next for 2026.5 after the measurements**: the C clone to 2026.4
+   (024-01, CC1; needed before the spec can be checked against C), and the
+   builder's "last operation wins" (CA1). Rec: both today.
+
+Not done: 022's night steps and props-006-16 (the machine was busy all
+night); the integration branch's docs beyond 023-09's list (done in the
+release commit for levels.md and sis-model.md).
+
