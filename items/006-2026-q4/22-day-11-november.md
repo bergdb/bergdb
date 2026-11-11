@@ -52,8 +52,10 @@ high, xhigh for a hard task. At most 8 agents at a time (Frans,
 | 024-17 | The limits of a transaction, a key, a value, a record | limits (Opus, high) | |
 | 020-33 | The known issue of 2026.4 in its notes; next.md | notes (Opus, high) | done 10:28 |
 | 024-18 | Dead klongs: what they cost, three options measured | dead (Opus, high) | |
-| 024-19 | The node size: which, and one fixed constant or not | nsize (Opus, high) | |
-| 024-20 | A more compact stored form of an index node | compact (Opus, high) | |
+| 024-19 | The node size: which, and one fixed constant or not | nsize (Opus, high) | postponed 11:50 |
+| 024-20 | A more compact stored form of an index node | compact (Opus, high) | postponed 11:50 |
+| 024-21 | Merges at the delete, in Java on main, format 7 | mgj (Opus, xhigh) | |
+| 024-22 | Merges at the delete in the Lean tree model, run first | mgl (Opus, xhigh) | |
 
 024-04 to 024-06 are read-only studies. 024-07 to 024-10 and 022-07 work
 in clones under `/Users/f/fl/bench/2026-11-11/<name>/clone` on their own
@@ -222,6 +224,22 @@ from them.
   dead (024-18). 11:31: "Node size is worth a separate study. Compact
   stored format too.": started nsize (024-19) and compact (024-20).
   The usage: 63 % at 11:27.
+* 11:36 Frans: "I fail to see the overall picture. [...] What is the
+  most important algos to get in place now, today?" The coordinator:
+  one algorithm is left, the delete path's final form (merges at the
+  delete), and it waits for three numbers (the node size, the
+  thresholds, the dead klongs). 11:44, Frans: "Could we instead make
+  reasonable assumptions on 1, 2, 3. Go with this "for now". To get the
+  merges at the delete done today. [...] To be able to change one thing
+  at a time." The assumptions, as named constants: node size 30, P5's
+  thresholds (a quarter, a half), nothing more for dead klongs, P5's
+  way of making merged nodes. 11:49: "Yes." Started mgj (024-21, Java)
+  and mgl (024-22, the Lean tree, run first); 024-19 and 024-20
+  postponed until after the merges.
+* 11:49 Frans: "I will be back at 14:30 for 30 minutes. Use up to 85% of
+  AI usage limits. You can land the C clone, the key-shape doc, the
+  one-operation rule. I would like to approve the new tree model."
+  Unattended from 11:56 until 14:30.
 
 
 ## 6. Outcome
