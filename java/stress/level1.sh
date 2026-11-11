@@ -118,8 +118,10 @@ echo "6. Props"
 # bergdb item 009, and 007-07) on JDK 27 with its default compact object
 # headers, plus one step for MEM's noise (129 to 130 since 009). The SS limits
 # are the values of 2026-10-28 after 007-07 (f89846d; bergdb 007-07, section
-# 12.3), plus the same one step for SS on other machines (0.01). When a change improves
-# MEM or SS, lower the limit; a change that needs a higher one needs a reason
+# 12.3), raised on 2026-11-11 for bergdb 024-25's 12-byte node header (SS 1.53,
+# SS3 1.69; docs/log.md), plus the same one step for SS on other machines
+# (0.01). When a change improves MEM or SS, lower the limit; a change that
+# needs a higher one needs a reason
 # in docs/log.md. Without compact object headers (older JDKs, or
 # -XX:-UseCompactObjectHeaders) MEM is about 18 bytes higher for this code: it
 # is then printed, not checked. CORE (1.00 = cissi, July 2013) depends on the machine
@@ -136,7 +138,7 @@ echo "6. Props"
 # heap). Checked only with compact object headers, as MEM.
 MEM_MAX=131
 SEG_MAX=230
-SS_MAX="1.52 1.11 1.21 1.66 2.41"   # SS, then SS1 to SS4
+SS_MAX="1.54 1.12 1.22 1.70 2.41"   # SS, then SS1 to SS4 (bergdb 024-25: docs/log.md)
 $JAVA -cp build/bergdb.jar bergdb.dev.props.Mem > $LOG/props-mem.txt 2>&1 &
 $JAVA -cp build/bergdb.jar bergdb.dev.props.Mem -keys %07d > $LOG/props-mem7.txt 2>&1 &
 if [ "$1" != quick ]; then

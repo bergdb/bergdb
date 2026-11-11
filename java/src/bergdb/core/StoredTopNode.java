@@ -22,18 +22,21 @@ import bergdb.storage.VersioningStreamException;
  * This class is responsible for how to store a TopNode in the stream:
  * serialization/deserialization.
  * 
- * <p>Format version 2, little-endian, 40 + 16 * h bytes for a top node with h skip pointers
- * (h is the bit length of its ordinal): bytes 0 to 3, the size; 4, the type; 5, the version;
- * 6 and 7, the checksum; 8, h; 9, zero; 10 to 15, the ordinal, an unsigned 48-bit number
- * (bergdb item 005-02; before it, bytes 10 to 13 were read as an int and the ordinal was
- * below 2^30); 16 to 23, the node id; 24 to 31, the root time; 32 to 39, the root pointer's
- * position. Then, for each skip pointer, its position and the time it caches, Spos.NULL
- * and -1 when unset. Skip pointer i is set exactly when bit i of the ordinal is.</p>
+ * <p>Format version 3 of record format 7, little-endian, 48 + 16 * h bytes for a top node
+ * with h skip pointers (h is the bit length of its ordinal): bytes 0 to 3, the size; 4, the
+ * type; 5, the version; 6 and 7, zero; 8 to 11, the checksum (NodeChecksum); 12 to 15, zero;
+ * 16, h; 17, zero; 18 to 23, the ordinal, an unsigned 48-bit number (bergdb item 005-02;
+ * before it, the ordinal's bytes were read as an int and the ordinal was below 2^30); 24 to
+ * 31, the node id; 32 to 39, the root time; 40 to 47, the root pointer's position. Then,
+ * for each skip pointer, its position and the time it caches, Spos.NULL and -1 when unset.
+ * Skip pointer i is set exactly when bit i of the ordinal is. In version 2, until the
+ * checksum's 4 bytes (bergdb 024-25), the node was 40 + 16 * h bytes, the checksum in bytes 6
+ * and 7, and every field from h on 8 bytes earlier.</p>
  * 
  * @author Frans Lundberg
  */
 public class StoredTopNode implements StoredNode {
-    public static final int ID_OFFSET = 16;
+    public static final int ID_OFFSET = 24;
     
     private TopNode node;
     
@@ -77,14 +80,15 @@ public class StoredTopNode implements StoredNode {
         byte version = buffer[offset];
         offset += 1;
         
-        if (version != 2) {
+        if (version != 3) {
             throw new VersioningStreamException("Cannot parse top node of "
                     + "format version " + version + ".");
         }
 
-        offset += 2; // checksum bytes, checked later.
+        offset += 2; // zero bytes
+        offset += NodeChecksum.SIZE + 4; // checksum bytes, checked before parsing; zero bytes
         
-        // offset == 8 here
+        // offset == 16 here
 
         int pointerCount = buffer[offset];
         offset += 1;
@@ -98,21 +102,21 @@ public class StoredTopNode implements StoredNode {
         // it, or threw an ArrayIndexOutOfBoundsException, which escaped the reads' failure
         // handling.
         final int nodeSize = Bytes.bytesToIntLE(buffer, firstOffset);
-        if (nodeSize != 40 + 16 * pointerCount || nodeSize > buffer.length - firstOffset) {
+        if (nodeSize != 48 + 16 * pointerCount || nodeSize > buffer.length - firstOffset) {
             throw new StreamFormatException("TopNode at " + spos + " with " + pointerCount
                     + " skip pointers has the size " + nodeSize + ", not "
-                    + (40 + 16 * pointerCount) + ", or more than its buffer.");
+                    + (48 + 16 * pointerCount) + ", or more than its buffer.");
         }
 
         offset += 1; // rest of header (reserved)
 
-        // The ordinal: bytes 10 to 15, an unsigned 48-bit number (bergdb item 005-02,
-        // register M46). Before, bytes 10 to 13 were read as an int, and ordinals were below
-        // 2^30; their bytes are the same.
-        long topNodeId = Bytes.bytesToLongLE(buffer, firstOffset + 8) >>> 16;
+        // The ordinal: bytes 18 to 23, an unsigned 48-bit number (bergdb item 005-02,
+        // register M46). Before, its first 4 bytes were read as an int, and ordinals were
+        // below 2^30; their bytes are the same.
+        long topNodeId = Bytes.bytesToLongLE(buffer, firstOffset + 16) >>> 16;
         offset += 6;
         
-        // offset == 16 here
+        // offset == 24 here
 
         long id = Bytes.bytesToLongLE(buffer, offset);
         offset += 8;
@@ -190,7 +194,7 @@ public class StoredTopNode implements StoredNode {
     }
 
     public static final int getByteSize(TopNode node) {
-        return 40 + 16 * node.pointersLength;
+        return 48 + 16 * node.pointersLength;
     }
     
     /**
@@ -200,7 +204,7 @@ public class StoredTopNode implements StoredNode {
         int byteSize = getByteSize(node);
         int offset = firstOffset;
         long l;
-        final long FORMAT_VERSION = 2;     // serial format version (one byte)
+        final long FORMAT_VERSION = 3;     // serial format version (one byte)
         
         assert byteSize % 8 == 0 : "byteSize=" + byteSize;
 
@@ -208,14 +212,16 @@ public class StoredTopNode implements StoredNode {
                 | (((long) Node.TYPE_TOP_NODE) << (4 * 8)) 
                 | (FORMAT_VERSION << (5 * 8));
         
-        // Room for 2 checksum bytes.
-        
         buffer[offset++] = l;
+        
+        // Bytes 8 to 11, the checksum, zero here: StoredTrans.Serializer sets it in the
+        // record's bytes (NodeChecksum, bergdb 024-25). Bytes 12 to 15 are zero.
+        buffer[offset++] = 0;
 
         // 2026-10-16 (bergdb item 001, WP A3; F1-008-13, 5.1): the ordinal is widened before
         // it is shifted. It was shifted as an int, so the stored ordinal was its low 16 bits,
         // and ordinals from 32,768 on were written wrong. Since bergdb item 005-02, the
-        // ordinal is a long below 2^48, in bytes 10 to 15; byte 9 stays zero.
+        // ordinal is a long below 2^48, in bytes 18 to 23; byte 17 stays zero.
         l = ((long) node.pointersLength) | (node.topNodeId << (2 * 8));
         buffer[offset++] = l;
 
@@ -239,9 +245,6 @@ public class StoredTopNode implements StoredNode {
             buffer[offset++] = time;
         }
         
-        long checksum = NodeChecksum.sum(buffer, firstOffset, offset - firstOffset);
-        buffer[firstOffset] = buffer[firstOffset] | (checksum << (6 * 8));
-        
         assert (offset - firstOffset) * 8 == byteSize : "offset-firstOffset="
                 + (offset - firstOffset) + ", byteSize=" + byteSize;
         return byteSize / 8;
@@ -263,7 +266,7 @@ public class StoredTopNode implements StoredNode {
         long[] longs = new long[getByteSize(top) / 8];
         toLongs(top, longs, 0);
         byte[] bytes = Bytes.longsToBytesLE(longs);
-        bytes[8] = (byte) -3;
+        bytes[16] = (byte) -3;
         try {
             parse(bytes, 0, 1000);
             throw new AssertionError("no exception");
@@ -279,13 +282,13 @@ public class StoredTopNode implements StoredNode {
         long[] longs = new long[getByteSize(top) / 8];
         toLongs(top, longs, 0);
         byte[] bytes = Bytes.longsToBytesLE(longs);
-        Assert.assertEquals(2, bytes[5]);
-        bytes[5] = 3;
+        Assert.assertEquals(3, bytes[5]);
+        bytes[5] = 2;
         try {
             parse(bytes, 0, 1000);
             throw new AssertionError("parsed");
         } catch (VersioningStreamException e) {
-            Assert.assertTrue(e.getMessage(), e.getMessage().contains("format version 3"));
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("format version 2"));
         }
     }
     
@@ -366,7 +369,7 @@ public class StoredTopNode implements StoredNode {
             toLongs(topOfLayout(c[0]), longs, 0);
             byte[] bytes = Bytes.longsToBytesLE(longs);
             for (int b = 0; b < 6; b++) {
-                bytes[10 + b] = (byte) (c[1] >>> (8 * b));      // The ordinal field.
+                bytes[18 + b] = (byte) (c[1] >>> (8 * b));      // The ordinal field.
             }
             boolean refused = false;
             try {
@@ -379,9 +382,9 @@ public class StoredTopNode implements StoredNode {
     }
 
     /**
-     * The ordinal's bytes (bergdb item 005-02): bytes 10 to 15, little-endian, byte 9 zero.
-     * An ordinal below 2^30 has the bytes it had when the field was read as an int from
-     * bytes 10 to 13, with bytes 14 and 15 zero: no format change.
+     * The ordinal's bytes (bergdb item 005-02): bytes 18 to 23, little-endian, byte 17 zero
+     * (10 to 15 and 9 until bergdb 024-25). An ordinal below 2^30 has the bytes it had when
+     * the field was read as an int from its first 4 bytes, with its last 2 bytes zero.
      */
     @Nano
     public static void testOrdinalField() {
@@ -392,17 +395,17 @@ public class StoredTopNode implements StoredNode {
             long[] longs = new long[getByteSize(top) / 8];
             toLongs(top, longs, 0);
             byte[] bytes = Bytes.longsToBytesLE(longs);
-            Assert.assertEquals("ordinal " + n + ", byte 8", top.pointersLength, bytes[8]);
-            Assert.assertEquals("ordinal " + n + ", byte 9", 0, bytes[9]);
+            Assert.assertEquals("ordinal " + n + ", byte 16", top.pointersLength, bytes[16]);
+            Assert.assertEquals("ordinal " + n + ", byte 17", 0, bytes[17]);
             for (int b = 0; b < 6; b++) {
-                Assert.assertEquals("ordinal " + n + ", byte " + (10 + b),
-                        (byte) (n >>> (8 * b)), bytes[10 + b]);
+                Assert.assertEquals("ordinal " + n + ", byte " + (18 + b),
+                        (byte) (n >>> (8 * b)), bytes[18 + b]);
             }
             if (n < (1L << 30)) {
                 Assert.assertEquals("ordinal " + n + " as an int", n,
-                        Bytes.bytesToIntLE(bytes, 10));
-                Assert.assertEquals("ordinal " + n + ", byte 14", 0, bytes[14]);
-                Assert.assertEquals("ordinal " + n + ", byte 15", 0, bytes[15]);
+                        Bytes.bytesToIntLE(bytes, 18));
+                Assert.assertEquals("ordinal " + n + ", byte 22", 0, bytes[22]);
+                Assert.assertEquals("ordinal " + n + ", byte 23", 0, bytes[23]);
             }
         }
     }
@@ -518,7 +521,7 @@ public class StoredTopNode implements StoredNode {
         StoredTopNode.toLongs(top, longs, 0);
         for (int count : new int[] {top.pointersLength + 1, 127}) {
             byte[] buffer = java.util.Arrays.copyOf(Bytes.longsToBytesLE(longs), size + 64);
-            buffer[8] = (byte) count;
+            buffer[16] = (byte) count;
             String refused = StoredValueNode.parseWithRightChecksum(buffer, size);
             Assert.assertTrue(count + ": " + refused, refused.startsWith("TopNode at")
                     && refused.contains("has the size"));
