@@ -6,14 +6,16 @@ The integration branch of the changes to Java and Lean that Frans
 approved on 2026-11-11 at 09:25, merged into one tree and gated as one:
 first a fix of `java/doubles.py`, which made `java/before-commit.sh`
 take 4.3 minutes; then 024-10 (the last operation wins) and 024-07 (the
-last touch of a reclaim iteration). The coordinator lands the branch on
-`main`.
+last touch of a reclaim iteration); later in the day 024-09 (the tie of
+the model and the code repaired) and 024-12 (the tree's model). The
+coordinator lands each gated head on `main`.
 
 
 ## 1. In short
 
-* **Branch** `024-13-int` in `/Users/f/fl/bench/2026-11-11/int/clone`,
-  from `main`'s `1fe5f180`, three commits on it:
+* **First landing**, on `main` as `a780b957` (10:36). Branch
+  `024-13-int` in `/Users/f/fl/bench/2026-11-11/int/clone`, from
+  `main`'s `1fe5f180`, three commits on it:
 
   | Commit     | What                                                       |
   |---|---|
@@ -26,6 +28,7 @@ last touch of a reclaim iteration). The coordinator lands the branch on
   older of the two branches' bases. The merged tree is each branch's
   tree with the other's changes beside it; its `lean/` is `5bbdbf6e`'s.
 * **Gates:** section 3.
+* **Second landing**, 024-09: section 4.
 
 
 ## 2. The fix of doubles.py
@@ -101,18 +104,71 @@ clone's `java/build/`).
 * **Not run:** `level4.sh`, `night.sh` (not asked).
 
 
-## 4. State
+## 4. The second landing: 024-09
 
-2026-11-11, 10:07.
+The coordinator's message (10:36): Frans approved landing `024-09-tie`,
+head `e6b6bda6` (024-09, its State in section 8), which had merged
+`main`'s `a780b957`, the first landing, already.
 
-* **Done:** the fix of `doubles.py`, the merges of 024-10 and 024-07,
-  every gate passed on `524732d8` (section 3). Nothing changed by me in
-  the merges.
-* **To land:** branch `024-13-int`, head **`524732d8`**, in
-  `/Users/f/fl/bench/2026-11-11/int/clone`; three commits on `main`'s
-  `1fe5f180` (section 1). The working tree is clean.
-* **Later, when the coordinator sends them:** `024-09-tie` and
-  `024-12-tree-model` (adapted onto `main` by their agents after this
-  head lands; 024-12's State has merge notes), and `022-07-c-2026-4`
-  (`items/022-bergdb-c/c/` only); merge each with `--no-ff` and gate as
-  in section 3.
+* **The branch brought to `main`:** `024-13-int` fast-forwarded to
+  `main`'s `cffb6a75` (the first landing and items-only commits after
+  it).
+* **The merge** (`bc2ba891`, `--no-ff`): clean, no conflict. Its
+  `java/`, `lean/` and `docs/` are exactly `e6b6bda6`'s (`git diff`
+  empty), so the branch agent's `lake build`, `before-commit.sh` and
+  `level2.sh` full on `e6b6bda6` stand for them. The merge's diff from
+  `cffb6a75` is the same with `-w` and with `--ignore-space-at-eol`: no
+  whitespace noise.
+* **One commit of mine** (`e74bb8ff`): `before-commit.sh`'s header says
+  doubles.py takes "a few seconds", not "under a second" (a comment).
+
+Gates on `e74bb8ff`, each its own hold of the heavy lock (the runs that
+the branch agent did not make after its merge of `main`, where 024-10
+changed `UnlinkFuzz.java`):
+
+| Gate                            | When           | Result                                 |
+|---|---|---|
+| `lake build`, `lean/`           | 10:49          | OK, 151 jobs (9 s)                     |
+| `java/before-commit.sh`         | 10:49 to 10:51 | BEFORE COMMIT OK (84 s)                |
+| `java/stress/level1.sh`, full   | 10:51 to 10:53 | LEVEL 1 OK, MEM 129, SS 1.51 (156 s)   |
+| `java/stress/unlinkfuzz.sh`     | 11:06 to 11:11 | UNLINKFUZZ OK, 3,226 rounds (300 s)    |
+| `conformance.sh reclaim`, whole | 11:11 to 11:13 | OK, 30 traces, C-CUT 0 of 326 (152 s)  |
+| `conformance.sh evict`, whole   | 11:13 to 11:14 | OK, 51 traces TRACECHECK OK (55 s)     |
+| `java/stress/level3.sh`, full   | 11:14 to 11:22 | LEVEL 3 OK, 30 traces, C-CUT 0 of 326  |
+
+* **The slots:** the first four in heavy2.lock, which the coordinator
+  reserved at 10:50; the rest in a slot taken again at 11:06, with the
+  other slot running 024-14's counts beside it, so the times are not
+  timings. No failure, so no rerun was needed.
+* **unlinkfuzz.sh** is mode 644 in Git, where the other scripts of
+  `java/stress/` are 755; its header's usage line names it as a command.
+  `night.sh` runs it with `sh`, and so did this gate (a first attempt
+  without `sh` got "Permission denied"). Not changed here; a `chmod +x`
+  for 024-09's agent or the next commit that touches it.
+* **level3.sh:** reclaim with a cut in every round, readers 36 rounds,
+  every stress step with 0 failures; its conformance 30 traces, with
+  the drain configuration of 024-09.
+* **Not rerun:** `level2.sh` full; the merge's `java/`, `lean/` and
+  `docs/` are `e6b6bda6`'s, where the branch agent ran it (LEVEL 2 OK),
+  and my one commit after it changes a comment.
+
+## 5. State
+
+2026-11-11, 11:24.
+
+* **Done:** the first landing (sections 1 to 3), on `main` as
+  `a780b957`; the merge of 024-09 and the header's comment, every gate
+  of section 4 passed on `e74bb8ff`.
+* **To land:** branch `024-13-int`, head **`e74bb8ff`**, in
+  `/Users/f/fl/bench/2026-11-11/int/clone`; two commits on `main`'s
+  `cffb6a75` (`bc2ba891` the merge of `e6b6bda6`, `e74bb8ff` the
+  comment). The working tree is clean.
+* **Next:** `024-12-tree-model`, when the coordinator sends its head
+  (merge notes in 024-09 and 024-12: a two-line conflict in
+  `TraceExport.key()`, import lines in `lean/SIS.lean` and
+  `lean/Check.lean`, 024-09's `Check/Live.lean` against 024-12's
+  `SIS/Tree/Val.lean`); and `022-07-c-2026-4` (`items/022-bergdb-c/c/`
+  only). Bring the branch to `main` first, merge with `--no-ff`, gate
+  one run a hold with `/Users/f/fl/bench/2026-11-11/int/gate2.sh`
+  (after `slot.sh take`; owner lines say "gates only", never the word
+  for a timing run).
