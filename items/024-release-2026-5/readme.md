@@ -160,6 +160,15 @@ Files
   (before-commit.sh about 80 s again), 024-10 and 024-07 merged; the
   gates' results. Landed as a780b957; then 024-09 merged and gated,
   landed as 379d8acf.
+* 16-one-operation-a-key.md. 024-16, one operation a key in a
+  transaction, strictly (Frans, 2026-11-11): in a builder the last call
+  on a key as written wins; a transaction whose key transformations make
+  two keys one key is refused before the go point (`Db.transformKeys`,
+  a `DbException`, the time given back by `DbClock.transactionCancel`),
+  in the Core and the Pub layer; 024-10's rule R2 and what it needed
+  removed; no stale index entry possible (024-10's F1); six tests'
+  expected values changed. Branch 024-16-one-operation-a-key; its
+  review in 16-one-operation-a-key/.
 * 19-node-size.md. 024-19, the node size: which, and one fixed constant
   or not. Postponed 2026-11-11, 11:50, until the merges are in (024-21),
   with what was done: what the size is today (62 a hard ceiling by the
