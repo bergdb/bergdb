@@ -87,7 +87,7 @@ F53, one run each):
 |---|---|---|
 | 2   | CL7, the last touch (section 7)   | a record of 191 to 206 MB, a commit of 21 s |
 | 2   | CL2, the underfill (section 5)    | 11 to 16 x the twin's key nodes             |
-| 3   | MEM, heap bytes a KV (section 3)  | 327; at 1M KVs 129.6; not explained         |
+| 3   | MEM, heap bytes a KV (section 3)  | 327; at 1M KVs 129.6; key shape (024-08)    |
 
 * **CL7.** Once a reclaim iteration with keys in time order; the commits
   took 20.6 and 22.2 s. At 1M live keys: 17 MB and 1.7 s. It grows with

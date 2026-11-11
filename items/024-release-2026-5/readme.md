@@ -112,6 +112,13 @@ Files
   T-SCHEME's argument, the draining configurations, javaTake); the work
   in an order (A the tie, B the tree in Lean run against Java, C and D
   its proofs, E the costs); questions 1 to 8.
+* 08-mem-at-10m.md. 024-08, MEM's 327 bytes a KV at 10M keys explained:
+  the shape of MEM's keys, not their count (a key of exactly 7 bytes is
+  two segments and gets a key node of its own, about 226 heap bytes);
+  shown by runs that separate shape from count, and a breakdown by
+  class; the cost of key shape for a user, a proposed bound with three
+  Mem runs, options (a) to (d), questions Q1 to Q3. Outputs in
+  08-mem-at-10m/.
 
 
 Log

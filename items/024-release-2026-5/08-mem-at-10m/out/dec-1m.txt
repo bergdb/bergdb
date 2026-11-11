@@ -1,0 +1,13 @@
+MemProbe n=1000000 keys=dec order=asc value=0 java=27.0.1.0.3 maxHeap=8589934592
+MEM n=1000000 keys=dec order=asc value=0: 129.6 bytes/KV (heap 145007200 - 15409080 = 129598120 bytes)
+fill 1.4 s, 1.43 us/put; kvCount=1000000; key bytes/KV 5.89; stream 48468760 bytes, 48.5 bytes/KV; transactions 10000; reclaim iterations 0
+cacheStats: resident 65 MB, 0 loads, 0 eviction steps, 0 objects evicted, eviction time 0 ms in total, 0.000 ms at most
+WALK handles=95711 objects=95711 keyNodes=95700 (segment leaves 83026) topNodes=11 other=0
+WALK klongs: time=107234 key=1483167 (of 7 bytes, to a segment's tree: 0; shorter, to a value: 1483167) other=0
+WALK pointers of key klongs: handle=221907 value=1261260 null=0; value bytes 0
+WALK key nodes with exactly one key klong: 0 (leaves 0), their arrays 0 bytes
+WALK capacity  14:     17111 key nodes,     228883 klongs used, fill 0.96
+WALK capacity  30:     78589 key nodes,    1361518 klongs used, fill 0.58
+WALK bytes a KV: key node arrays 56.5 (one-key nodes' 0.0), top nodes 0.00
+histogram in /Users/f/fl/bench/2026-11-11/mem/out/dec-1m.hist.txt
+kvCount at the end 1000000

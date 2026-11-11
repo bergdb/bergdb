@@ -1,0 +1,19 @@
+MemProbe n=3000000 keys=hex:32 order=asc value=0 java=27.0.1.0.3 maxHeap=8589934592
+setup=default cacheSizeIndicator=200000000 startupDistance=50000000
+MEM n=3000000 keys=hex:32 order=asc value=0: 71.1 bytes/KV (heap 228987672 - 15647696 = 213339976 bytes)
+fill 67.9 s, 22.63 us/put; kvCount=3000000; key bytes/KV 32.00; stream 2457094184 bytes, 819.0 bytes/KV; transactions 30000; reclaim iterations 0
+cacheStats: resident 199 MB, 570860 loads, 6365 eviction steps, 14501435 objects evicted, eviction time 4430 ms in total, 2.168 ms at most
+WALK handles=484727 objects=484727 keyNodes=484723 (segment leaves 453691) topNodes=4 other=0
+WALK klongs: time=1122453 key=2598433 (of 7 bytes, to a segment's tree: 2469213; shorter, to a value: 129220) other=0
+WALK pointers of key klongs: handle=1019311 value=33952 null=1545170; value bytes 0
+WALK key nodes with exactly one key klong: 332487 (leaves 332487), their arrays 29258856 bytes
+WALK capacity   2:    332487 key nodes,     664974 klongs used, fill 1.00
+WALK capacity   6:      1647 key nodes,       6602 klongs used, fill 0.67
+WALK capacity  14:     36556 key nodes,     448143 klongs used, fill 0.88
+WALK capacity  30:    114033 key nodes,    2601167 klongs used, fill 0.76
+WALK bytes a KV: key node arrays 38.5 (one-key nodes' 9.8), top nodes 0.00
+GETS round 1: 100000 gets, 100000 found, 15.78 us/get, 5.55 loads/get
+GETS round 2: 100000 gets, 100000 found, 15.86 us/get, 5.60 loads/get
+heap after the gets 231447976; cacheStats: resident 199 MB, 1685887 loads, 7113 eviction steps, 15372204 objects evicted, eviction time 4995 ms in total, 7.322 ms at most
+histogram in /Users/f/fl/bench/2026-11-11/mem/out/ev-hex32-3m.hist.txt
+kvCount at the end 3000000
