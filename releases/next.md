@@ -45,12 +45,13 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
   the write still read) replaces the node by its current version with the
   write applied, as a full node is replaced; theta is 7 at node size 30
   (1, 3 and 14 at 8, 14 and 62). In 2026.4 a node kept up to B such
-  entries until it filled. The figures so far are of 024-18's prototype
-  (a slightly different rule, "theta or more before a write"; 024-18,
-  sections 4 and 6), until 024-23's own count replaces them: under random
-  overwrites at 1M keys about 0.48 dead entries a live one, 0.35 with the
-  rule, and in a cold database that reclaim rewrites 0.83 down to 0.30,
-  for -3 % to +7 % stream bytes. Each written
+  entries until it filled. Counted at 1M keys with a retain duration of
+  1 s (bergdb 024-23, section 7; 024-18's probe): under random overwrites
+  0.48 dead entries a live one with the merges alone, 0.31 with the rule;
+  in a cold database that reclaim rewrites 0.83 down to 0.29; after
+  scattered deletes, with a hot range, 0.85 down to 0.31; for -3 % to
+  +8.5 % stream bytes, and 13 to 15 % fewer key nodes. Not yet measured:
+  10M keys, memory, reads. Each written
   node and each lookup through it carries fewer stale entries; a node
   that is never written again keeps up to theta. A start's rerun applies
   the same rule (no new field).
