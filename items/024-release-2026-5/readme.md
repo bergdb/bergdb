@@ -160,6 +160,12 @@ Files
   (before-commit.sh about 80 s again), 024-10 and 024-07 merged; the
   gates' results. Landed as a780b957; then 024-09 merged and gated,
   landed as 379d8acf.
+* 15-key-shape-cost.md. 024-15, the cost of key shape documented and
+  bounded (024-08, option (a)): Javadoc in `Connection` and `Db` on what
+  costs a key node of its own (about 226 heap bytes) and what eviction
+  does instead; `Mem` with `-n` and `-keys`; two checks in `level1.sh`
+  (SEG at most 230; MEM10M at most 131, full run only); docs/levels.md.
+  Branch 024-15-key-shape-cost.
 * 16-one-operation-a-key.md. 024-16, one operation a key in a
   transaction, strictly (Frans, 2026-11-11): in a builder the last call
   on a key as written wins; a transaction whose key transformations make
