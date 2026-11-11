@@ -70,7 +70,8 @@ the Pub layer's (`pubimp`), built on the Core's four data methods
     Since 024-09 both also run draining configurations (mostly deletes on
     few keys, and many small segment trees that come and go), which must
     reach the delete path's take-back: one that takes back no node fails
-    the step. The trace checker's are `conformance.sh drain`.
+    the step. The trace checker's are `conformance.sh drain`. The step
+    also compares Java's take with the model's (`TakeCheck check`).
   * `level3.sh`: the unit and f-tests, ReclaimStress, RestartInvariance and
     CrashTest with reclaim, ReclaimReaders (readers while cuts are made),
     LoadTest with reclaim (full only), PowerLossTest, and the conformance
@@ -348,11 +349,13 @@ Limits:
   with the record that ends at its position
   ([005-68](../items/005-todo/68-fix-take-stream-length.md)). The model's
   take gives Java's startup pos on 300 generated cases. Its share and
-  dither are the double rule of 2026-10-28, where Java's take computes
-  them in integers, in units of 2^-16, since 005-79: on the 300 cases the
-  two give the same startup pos, and over 3 million of TakeCheck's cases
-  the integer take differs in 13, each taking one transaction more
-  ([lean/README.md](../lean/README.md); the model in integers is 015-03).
+  dither are Java's, in integers, in units of 2^-16 (005-79; in the model
+  since 024-09, which did 015-03), and `level2.sh` compares the two sides
+  on the 300 cases and on the share's and the dither's numbers
+  (`TakeCheck check` with `lake build`). Until 005-79 both were the double
+  rule of 2026-10-28, which over 3 million of TakeCheck's cases differs
+  from the integer take in 13, each taking one transaction fewer
+  ([lean/README.md](../lean/README.md)).
   `T3_take` holds for any share, so the bound covers both. T3 is not all of
   bounded startup: the records at the ends of the section (T4) and a cold
   start's reads through references into older records are not bounded by a
