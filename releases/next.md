@@ -72,8 +72,8 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
   not see (019-33), and passes about one random change in 2^32 (65,025
   before). A database written by `main` with format 7 before this change
   (no release wrote one) is refused at the start, for a checksum error.
-  StreamDigest's digests change in every configuration (024-25,
-  section 7).
+  The stream grows by those bytes: Props' SS, stream bytes a user byte,
+  from 1.51 to 1.53 (SS3, KVs of 100 bytes, from 1.64 to 1.69).
 
 * **A reclaim step makes dirty only the index nodes on the paths of its
   own puts** (bergdb 024-07, option A; on `main` in `a780b957`). The last
