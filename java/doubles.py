@@ -5,7 +5,7 @@ deps.py --layer core lists may use floating point only in the allowed places
 below, each with its reason. A step of before-commit.sh.
 
 Usage: python3 -I java/doubles.py [JAVA_SRC]
-  Under a second. JAVA_SRC is java/src (the default: the one of this repository).
+  A few seconds. JAVA_SRC is java/src (the default: the one of this repository).
 
 Why: the stream's bytes are a function of the transactions and the settings
 (bergdb 010-01, P2), and a port must give the same bytes. Integer operations
@@ -115,10 +115,16 @@ def is_float_literal(text):
 
 
 def method_regions(code, name):
-    """The (start, end) ranges of the methods or constructors named name in stripped code."""
+    """The (start, end) ranges of the methods or constructors named name in stripped code.
+
+    The type starts with a character that is not a space: if it could start with one, the
+    indentation, the type and the space after it would all match the same spaces, and on
+    the blank lines that strip leaves of a long comment the search backtracks over every
+    way to split them (85 s for each allowed method of core/Db.java, 2026-11-11, 024-13)."""
     regions = []
     for m in re.finditer(r"^[ \t]*(?:(?:public|protected|private|static|final|synchronized|"
-                         r"abstract)\s+)*(?:<[^>\n]*>\s*)?(?:[\w.\[\]<>, ]+\s+)?%s\s*\("
+                         r"abstract)\s+)*(?:<[^>\n]*>\s*)?(?:[\w.\[\]<>,][\w.\[\]<>, ]*\s+)?"
+                         r"%s\s*\("
                          r"[^;{}]*\)[^;{}]*\{" % re.escape(name), code, re.M):
         regions.append((m.start(), deps.block_end(code, m.start())))
     return regions
