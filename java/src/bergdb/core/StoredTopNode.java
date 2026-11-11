@@ -266,7 +266,7 @@ public class StoredTopNode implements StoredNode {
         long[] longs = new long[getByteSize(top) / 8];
         toLongs(top, longs, 0);
         byte[] bytes = Bytes.longsToBytesLE(longs);
-        bytes[8] = (byte) -3;
+        bytes[16] = (byte) -3;
         try {
             parse(bytes, 0, 1000);
             throw new AssertionError("no exception");
@@ -369,7 +369,7 @@ public class StoredTopNode implements StoredNode {
             toLongs(topOfLayout(c[0]), longs, 0);
             byte[] bytes = Bytes.longsToBytesLE(longs);
             for (int b = 0; b < 6; b++) {
-                bytes[10 + b] = (byte) (c[1] >>> (8 * b));      // The ordinal field.
+                bytes[18 + b] = (byte) (c[1] >>> (8 * b));      // The ordinal field.
             }
             boolean refused = false;
             try {
@@ -382,9 +382,9 @@ public class StoredTopNode implements StoredNode {
     }
 
     /**
-     * The ordinal's bytes (bergdb item 005-02): bytes 10 to 15, little-endian, byte 9 zero.
-     * An ordinal below 2^30 has the bytes it had when the field was read as an int from
-     * bytes 10 to 13, with bytes 14 and 15 zero: no format change.
+     * The ordinal's bytes (bergdb item 005-02): bytes 18 to 23, little-endian, byte 17 zero
+     * (10 to 15 and 9 until bergdb 024-25). An ordinal below 2^30 has the bytes it had when
+     * the field was read as an int from its first 4 bytes, with its last 2 bytes zero.
      */
     @Nano
     public static void testOrdinalField() {
@@ -395,17 +395,17 @@ public class StoredTopNode implements StoredNode {
             long[] longs = new long[getByteSize(top) / 8];
             toLongs(top, longs, 0);
             byte[] bytes = Bytes.longsToBytesLE(longs);
-            Assert.assertEquals("ordinal " + n + ", byte 8", top.pointersLength, bytes[8]);
-            Assert.assertEquals("ordinal " + n + ", byte 9", 0, bytes[9]);
+            Assert.assertEquals("ordinal " + n + ", byte 16", top.pointersLength, bytes[16]);
+            Assert.assertEquals("ordinal " + n + ", byte 17", 0, bytes[17]);
             for (int b = 0; b < 6; b++) {
-                Assert.assertEquals("ordinal " + n + ", byte " + (10 + b),
-                        (byte) (n >>> (8 * b)), bytes[10 + b]);
+                Assert.assertEquals("ordinal " + n + ", byte " + (18 + b),
+                        (byte) (n >>> (8 * b)), bytes[18 + b]);
             }
             if (n < (1L << 30)) {
                 Assert.assertEquals("ordinal " + n + " as an int", n,
-                        Bytes.bytesToIntLE(bytes, 10));
-                Assert.assertEquals("ordinal " + n + ", byte 14", 0, bytes[14]);
-                Assert.assertEquals("ordinal " + n + ", byte 15", 0, bytes[15]);
+                        Bytes.bytesToIntLE(bytes, 18));
+                Assert.assertEquals("ordinal " + n + ", byte 22", 0, bytes[22]);
+                Assert.assertEquals("ordinal " + n + ", byte 23", 0, bytes[23]);
             }
         }
     }
@@ -521,7 +521,7 @@ public class StoredTopNode implements StoredNode {
         StoredTopNode.toLongs(top, longs, 0);
         for (int count : new int[] {top.pointersLength + 1, 127}) {
             byte[] buffer = java.util.Arrays.copyOf(Bytes.longsToBytesLE(longs), size + 64);
-            buffer[8] = (byte) count;
+            buffer[16] = (byte) count;
             String refused = StoredValueNode.parseWithRightChecksum(buffer, size);
             Assert.assertTrue(count + ": " + refused, refused.startsWith("TopNode at")
                     && refused.contains("has the size"));

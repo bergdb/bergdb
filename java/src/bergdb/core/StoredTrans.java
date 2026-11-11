@@ -965,7 +965,7 @@ public class StoredTrans {
                 Assert.assertTrue(e.getMessage(), e.getMessage().contains("node size"));
             }
         }
-        byte[] buffer = recordWithBadNodeSize(32);
+        byte[] buffer = recordWithBadNodeSize(36);
         Bytes.intToBytesLE(80, buffer, 0);    // The array is longer than the record.
         try {
             parse(128, buffer);
@@ -976,18 +976,21 @@ public class StoredTrans {
     }
 
     private static byte[] recordWithBadNodeSize(int size) {
-        byte[] buffer = new byte[112];
+        // Two delete nodes of 36 bytes, at 32 and 68 (of 32 bytes, at 32 and 64, and a record
+        // of 112 bytes, until the node header's 12 bytes, bergdb 024-25); the second's size
+        // is 'size'.
+        byte[] buffer = new byte[120];
         Bytes.intToBytesLE(buffer.length, buffer, 0);
         buffer[4] = RECORD_FORMAT;
         Bytes.longToBytesLE(1, buffer, 8);
-        for (int offset : new int[] {32, 64}) {
-            Bytes.intToBytesLE(offset == 32 ? 32 : size, buffer, offset);
+        for (int offset : new int[] {32, 68}) {
+            Bytes.intToBytesLE(offset == 32 ? 36 : size, buffer, offset);
             buffer[offset + 4] = Node.TYPE_DELETE;
             buffer[offset + 5] = 4;
-            Bytes.intToBytesLE(offset, buffer, offset + 16);
-            Bytes.intToBytesLE(8, buffer, offset + 20);
+            Bytes.intToBytesLE(offset, buffer, offset + 20);
+            Bytes.intToBytesLE(8, buffer, offset + 24);
         }
-        NodeChecksum.set(buffer, 32, 32);
+        NodeChecksum.set(buffer, 32, 36);
         buffer[buffer.length - 1] = RecoverableStream.LAST_BYTE;
         return buffer;
     }

@@ -412,7 +412,7 @@ public class StoredValueNode implements StoredNode {
         long[] key = Keys.toSegments("/-mykey.txt");
         ValueNode node = new ValueNode(new byte[10], Spos.NULL);
         final int size = getByteSize(node, key);
-        final int valueAt = 20, keyAt = 24 + 10;
+        final int valueAt = 24, keyAt = 28 + 10;
         // The field's offset, its value, and what the message starts with.
         Object[][] cases = {
             {valueAt, -1, "Bad value size"},
@@ -446,7 +446,7 @@ public class StoredValueNode implements StoredNode {
         Assert.assertEquals(2, key.length);
         ValueNode node = new ValueNode(new byte[10], Spos.NULL);
         final int size = getByteSize(node, key);
-        final int keyAt = 24 + 10 + 4;
+        final int keyAt = 28 + 10 + 4;
         long[][] bad = {
             {key[0], key[1] ^ (1L << 63)},
             {key[0], key[1] | 1},

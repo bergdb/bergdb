@@ -1139,8 +1139,9 @@ public class DbTesterFailure {
         db.sync(SyncLevel.ORDINARY);
         final long length = s.getLength();
         
-        // The value node of /a, as stored: size 4, type 1, version 1, checksum 2, id 8,
-        // offset from the record 4, the value's size 4, then the value (StoredValueNode).
+        // The value node of /a, as stored: size 4, type 1, version 1, zero 2, checksum 4,
+        // id 8, offset from the record 4, the value's size 4, then the value (StoredValueNode;
+        // the checksum 2 bytes, at 6, until bergdb 024-25).
         long vpos = -1;
         for (StoredNode n : db.getTrans(t1.tpos).nodes) {
             if (n instanceof StoredValueNode
@@ -1155,13 +1156,13 @@ public class DbTesterFailure {
         s.inner.read(vpos, node, 0, node.length);
         Class<?> cause;
         if (damage == 0) {
-            node[24] ^= 0x01;
+            node[28] ^= 0x01;
             cause = StreamChecksumException.class;
         } else if (damage == 1) {
             node[3] ^= 0x01;
             cause = StreamFormatException.class;
         } else {
-            Bytes.intToBytesLE(-1, node, 20);
+            Bytes.intToBytesLE(-1, node, 24);
             NodeChecksum.set(node, 0, node.length);
             cause = StreamFormatException.class;
         }
@@ -1879,8 +1880,8 @@ public class DbTesterFailure {
             inner.read(position, dest, destOffset, length);
             if (damage && length >= 32 && dest[destOffset + 4] == bergdb.dag.Node.TYPE_KEY_NODE
                     && bergdb.common.Bytes.bytesToIntLE(dest, destOffset) == length) {
-                dest[destOffset + 17] = (byte) 0xff;      // the count, bytes 17 and 18
-                dest[destOffset + 18] = (byte) 0x7f;
+                dest[destOffset + 13] = (byte) 0xff;      // the count, bytes 13 and 14
+                dest[destOffset + 14] = (byte) 0x7f;
                 NodeChecksum.set(dest, destOffset, length);
                 damaged++;
             }

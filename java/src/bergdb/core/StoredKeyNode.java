@@ -264,8 +264,8 @@ public class StoredKeyNode implements StoredNode {
         toLongs(node, longs, 0, 200);
         for (int count : new int[] {32767, 3}) {
             byte[] buffer = java.util.Arrays.copyOf(Bytes.longsToBytesLE(longs), size + 64);
-            buffer[17] = (byte) count;          // the count, bytes 17 and 18 (toLongs)
-            buffer[18] = (byte) (count >>> 8);
+            buffer[13] = (byte) count;          // the count, bytes 13 and 14 (toLongs)
+            buffer[14] = (byte) (count >>> 8);
             String refused = StoredValueNode.parseWithRightChecksum(buffer, size);
             Assert.assertTrue(count + ": " + refused, refused.startsWith("Bad key count"));
         }
@@ -288,11 +288,11 @@ public class StoredKeyNode implements StoredNode {
         toLongs(node, longs, 0, 200);
         // What changes the node (the offset of an 8-byte field, its new value; or a byte, its
         // xor), and what the message starts with. Klong i is at 32 + 8 * i, its pointer at
-        // 48 + 8 * i, the count at 17.
+        // 48 + 8 * i, the count at 13.
         Object[][] cases = {
             {"byte", 39, 0x80, "Bad klong type"},
             {"long", 56, -8L, "Bad pointer"},
-            {"byte", 17, 3, "Bad key count"},
+            {"byte", 13, 3, "Bad key count"},
         };
         for (Object[] c : cases) {
             byte[] buffer = Bytes.longsToBytesLE(longs);
