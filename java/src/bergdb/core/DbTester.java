@@ -2046,7 +2046,9 @@ public class DbTester {
      * below twice the setting. 2 MB lowered to 500 kB, 1 kB values: transactions past twice
      * the new setting are left after the call (with the deadline at twice the new setting
      * at once, none were), the span is below twice the setting after 19 commits, and the
-     * deadline holds from then on.
+     * deadline holds from then on. "Past twice the new setting" is counted from the stream's
+     * end after the call: until option 2 of dead klongs (bergdb 024-23) from its end before
+     * the call, where the transaction just past that point was taken by a few kB.
      */
     @Nano
     public static void testDecreaseOfStartupDistance() {
@@ -2063,7 +2065,7 @@ public class DbTester {
         long length = db.getStreamLength();
         assertTrue(dueLeft(db, length, sd));
         db.setStartupDistance(sd);
-        assertTrue("no jump", dueLeft(db, length, sd));
+        assertTrue("no jump", dueLeft(db, db.getStreamLength(), sd));
         
         long span = span(db);
         int below = -1;
