@@ -144,11 +144,12 @@ so in every run that meets `RunOK` and `EvictRunOK`, with `LiveAppend`
 instance, `LiveAppend` and `SpecOK.liveSub`, which no check of a trace can
 establish, are proved of `blive` (`blive_append`, `blive_sub`), so its
 `PhysRunOK` follows from what C-A checks on a trace (`bspec_physRunOK`,
-`bspec_physRunOK_evict`); Check/Live.lean. The theorems state `PhysRunOK` as
-before: the trusted part is unchanged. A theorem that assumes `RunOK`,
-`PhysRunOK` and `EvictRunOK` holds without `PhysRunOK` for a Spec with
-`LiveAppend` (`without_physRunOK`; for a trace's instance, T-READ with handles
-as the example: `bspec_tr_handles`).
+`bspec_physRunOK_evict`); Check/Live.lean. Since 024-09's follow-up (Frans,
+2026-11-11) the trusted statements assume `LiveAppend` in place of
+`PhysRunOK`, and T1-L, CC and T2-L also TREE after every transaction
+(`TreeRunOK`; the theorems with handles have it in `EvictRunOK`); both are
+defined in SIS/Phys.lean. For a trace's instance `LiveAppend` is proved
+(`bspec_liveAppend`); T-READ with handles as the example: `bspec_tr_handles`.
 
 
 Build and run
@@ -295,7 +296,10 @@ its section in sis-model.md.
   back in the section); reads (`Mem.read`); the lazy startup
   (`lazyStartup`); a version cut back to a time (`Version.cutTo`); the
   operations after startup (`Op`, `Mem.step`, admissible: `OpsOK`); the
-  assumptions of the physical layer (`PhysStep`, `PhysRunOK`); the writer
+  assumptions of the physical layer (`PhysStep`, `PhysRunOK`), which no
+  theorem assumes since bergdb 024-09, and what the theorems assume in their
+  place: `LiveAppend`, a property of `live`, and TREE after every
+  transaction (`TreeRunOK`); the writer
   after a lazy startup (WP L4: its view through the physical layer,
   `Mem.view`; its transaction, `lazyTrans`, with the record of `stepWith`,
   `step` with its change given) and a run with lazy restarts (`runLazy`);
@@ -516,8 +520,9 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
   and still reachable, would be a second parent); `liveNew` from
   `LiveAppend` (`physStep_liveNew`); and for a run, `PhysRunOK` from `RunOK`,
   TREE after every transaction and `LiveAppend` (`physRunOK_of_tree`,
-  `physRunOK_of_evict`), so a theorem with handles holds without
-  `PhysRunOK` (`without_physRunOK`). P does not depend on the algorithm's
+  `physRunOK_of_evict`), which the proofs of the theorems use since their
+  statements assume `LiveAppend` (and TREE) in its place; a lemma that
+  assumes `PhysRunOK` holds without it (`without_physRunOK`). P does not depend on the algorithm's
   choices (`st_P_algo`).
 * PhysStart. The lazy startup from the stream after T(k) (WP E5): its rerun
   keeps `RInv` (every object canonical, every stream slot naming its
@@ -1027,7 +1032,8 @@ run):
   `RunOK`, TREE after every transaction and `LiveAppend`, a property of the
   function `live` (`physRunOK_of_tree`, `physRunOK_of_evict`); `LiveAppend`
   and `SpecOK.liveSub` for the trace checker's `blive` (`blive_append`,
-  `blive_sub`).
+  `blive_sub`). The theorems assume `LiveAppend` and TREE in place of
+  `PhysRunOK`.
 * Stage 2, eviction, over handles (009): T-CACHE, T-READ, T2-C and T-PIN
   (`tc_handles`, `tr_handles`, `t2_handles`, `tr_handles_restarts`,
   `tp_handles`), and rule 4 by position (005-58).

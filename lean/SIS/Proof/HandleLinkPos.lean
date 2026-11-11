@@ -217,7 +217,8 @@ theorem before_ptr_facts (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts) (hj :
 with a canonical object, names a version of the section, the version before the
 pointee's first version there, or the canonical object's own. -/
 theorem rule4_positions (sp : Spec V T) (al : Algo V T) : Rule4_positions sp al := by
-  intro ts hok hph hev hj hmk k hk
+  intro ts hok hla hev hj hmk k hk
+  have hph := physRunOK_of_evict hok hla hev
   dsimp only
   rw [show run sp al (ts.take k) = st sp al ts k from rfl]
   intro a o y p r b ho _ _ hmem hh hr hb
@@ -359,7 +360,8 @@ variable {sp : Spec V T} {al : Algo V T} {ts : List T}
 /-- `Rule4Pos_handles`: on the states that the startup reaches, rule 4 by position
 links what rule 4 by node id links. -/
 theorem rule4Pos_handles (sp : Spec V T) (al : Algo V T) : Rule4Pos_handles sp al := by
-  intro ts hok hph hev hj hmk k hk
+  intro ts hok hla hev hj hmk k hk
+  have hph := physRunOK_of_evict hok hla hev
   rw [show run sp al (ts.take k) = st sp al ts k from rfl]
   unfold handleStartupPos handleStartup
   have hst : AlgOK sp al := algOK_of sp al (Or.inl hj)
@@ -493,11 +495,11 @@ theorem runHandlesPos_succ (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool
 /-- `RunPos_handles`: every startup of a run is from the run's stream (T2-C), where
 rule 4 by position is rule 4 by node id. -/
 theorem runPos_handles (sp : Spec V T) (al : Algo V T) : RunPos_handles sp al := by
-  intro ts hok hph hev hj hmk j
+  intro ts hok hla hev hj hmk j
   induction j with
   | zero =>
     intro _
-    have h0 := rule4Pos_handles sp al (ts.map (·.1)) hok hph hev hj hmk 0 (Nat.zero_le _)
+    have h0 := rule4Pos_handles sp al (ts.map (·.1)) hok hla hev hj hmk 0 (Nat.zero_le _)
     simp only [List.take_zero] at h0
     simp only [List.take_zero, runHandlesPos, runHandles, List.foldl_nil]
     rw [show (init sp : DB V T) = run sp al [] from rfl, h0]
@@ -506,13 +508,13 @@ theorem runPos_handles (sp : Spec V T) (al : Algo V T) : RunPos_handles sp al :=
     rw [runHandlesPos_succ sp al ts (by omega), runHandles_succ sp al ts (by omega), ih (by omega)]
     split
     · rename_i hrs
-      obtain ⟨hS, -⟩ := t2_handles sp al ts hok hph hev hj hmk (j + 1) hjt
+      obtain ⟨hS, -⟩ := t2_handles sp al ts hok hla hev hj hmk (j + 1) hjt
       rw [runHandles_succ sp al ts (by omega)] at hS
       simp only [hrs, ↓reduceIte] at hS
       have hS' : (handleTrans sp al (runHandles sp al (ts.take j)).2.2 (runHandles sp al (ts.take j)).1
           (runHandles sp al (ts.take j)).2.1 ts[j].1).1.S = (run sp al ((ts.map (·.1)).take (j + 1))).S := by
         rw [← List.map_take]; exact hS
-      rw [hS', rule4Pos_handles sp al (ts.map (·.1)) hok hph hev hj hmk (j + 1) (by simp; omega)]
+      rw [hS', rule4Pos_handles sp al (ts.map (·.1)) hok hla hev hj hmk (j + 1) (by simp; omega)]
     · rfl
 
 end SIS

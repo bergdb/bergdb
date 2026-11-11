@@ -9,9 +9,10 @@ definitions of type `Prop`, not as theorems, so that nothing here is assumed or
 left unproved. The proofs are in SIS/Proof/.
 
 Assumptions as in ReclaimTheorems.lean: BergDB's bookkeeping (`javaTest`,
-marking), the Level 2 assumptions (`RunOK`), those of the physical layer
-(`PhysRunOK`) and of stage 2 (`EvictRunOK`), and for T12 those of the logical
-T12 (`ExecRootOK`, `VirtLiveOK`, `PolicyCutOK`).
+marking), the Level 2 assumptions (`RunOK`), `LiveAppend` (in place of those of
+the physical layer, `PhysRunOK`, since bergdb 024-09) and those of stage 2
+(`EvictRunOK`), and for T12 those of the logical T12 (`ExecRootOK`,
+`VirtLiveOK`, `PolicyCutOK`).
 
 And rule 4 by position after a cut (bergdb 005-62, question 2; Java's since
 bergdb 005-57): `Rule4PosCut_handles` (the startup from a stream cut safely, with
@@ -56,7 +57,7 @@ at t. The cut is made while the process runs: the memory keeps the objects and
 the handles made before it. -/
 def T9_handles (sp : Spec V T) (al : Algo V T) : Prop :=
   ∀ ts : List (T × Bool × List HCacheOp),
-    RunOK sp al (ts.map (·.1)) → PhysRunOK sp al (ts.map (·.1)) →
+    RunOK sp al (ts.map (·.1)) → LiveAppend sp →
     EvictRunOK sp al (ts.map (·.1)) → al.stillDirty = javaTest sp → al.mark = true →
     ∀ j ≤ ts.length, ∀ c t,
       let db := run sp al ((ts.take j).map (·.1))
@@ -78,7 +79,7 @@ and so are its lookups from the run's first available time on. The records are
 those of the physical writer with handles (`handleTrans`). -/
 def T12_handles (sp : Spec V T) (al : Algo V T) : Prop :=
   ∀ cs : List (T × Option Nat × List HCacheOp),
-    RunOK sp al (cs.map (·.1)) → PhysRunOK sp al (cs.map (·.1)) →
+    RunOK sp al (cs.map (·.1)) → LiveAppend sp →
     EvictRunOK sp al (cs.map (·.1)) → al.stillDirty = javaTest sp → al.mark = true →
     ExecRootOK sp → VirtLiveOK sp → PolicyCutOK al →
     (∀ j (h : j < cs.length) c, cs[j].2.1 = some c →
@@ -122,7 +123,7 @@ pointer that Java skips names a node with a canonical object, and every other
 one is found by `posToId`, by `byPos`, or, for a top node's, by node id.
 Proved: `rule4PosCut_handles` (SIS/Proof/HandleCutPos.lean). -/
 def Rule4PosCut_handles (sp : Spec V T) (al : Algo V T) : Prop :=
-  ∀ ts : List T, RunOK sp al ts → PhysRunOK sp al ts → EvictRunOK sp al ts →
+  ∀ ts : List T, RunOK sp al ts → LiveAppend sp → EvictRunOK sp al ts →
     al.stillDirty = javaTest sp → al.mark = true → ExecRootOK sp → VirtLiveOK sp →
     ∀ k ≤ ts.length, ∀ c first, CutOK sp c (run sp al (ts.take k)) k → first ≤ c →
       handleStartupPosFrom sp first (cutStream c (run sp al (ts.take k)).S) =
@@ -136,7 +137,7 @@ same state, memory and stream of the last startup. So `T12_handles` holds for it
 as it is. Proved: `runPosCut_handles` (SIS/Proof/HandleCutPos.lean). -/
 def RunPosCut_handles (sp : Spec V T) (al : Algo V T) : Prop :=
   ∀ cs : List (T × Option Nat × List HCacheOp),
-    RunOK sp al (cs.map (·.1)) → PhysRunOK sp al (cs.map (·.1)) →
+    RunOK sp al (cs.map (·.1)) → LiveAppend sp →
     EvictRunOK sp al (cs.map (·.1)) → al.stillDirty = javaTest sp → al.mark = true →
     ExecRootOK sp → VirtLiveOK sp → PolicyCutOK al →
     (∀ j (h : j < cs.length) c, cs[j].2.1 = some c →

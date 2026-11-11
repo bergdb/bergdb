@@ -8,6 +8,7 @@ whole stream: `t9_handles`.
 -/
 import SIS.Proof.HandleCutTrans
 import SIS.HandleReclaimTheorems
+import SIS.Proof.PhysAssumptions
 
 set_option linter.unusedSectionVars false
 
@@ -174,10 +175,11 @@ after any transaction and its operations or its restart, with a safe cut at c, a
 read through the handles at a time from the first available time on gives the
 same on the cut stream as on the whole stream, and gives P at that time. -/
 theorem t9_handles (sp : Spec V T) (al : Algo V T) : T9_handles sp al := by
-  intro ts hok hph hev hj hmk j hjt c t db r m hcut hft ht
+  intro ts hok hla hev hj hmk j hjt c t db r m hcut hft ht
+  have hph := physRunOK_of_evict hok hla hev
   have he : m.read sp r.2.2 (cutStream c db.S) t = m.read sp r.2.2 db.S t :=
     readCutH ts hok hph hev hj hmk j hjt hcut hft ht
   rw [he]
-  exact ⟨rfl, tr_handles_restarts sp al ts hok hph hev hj hmk j hjt t ht⟩
+  exact ⟨rfl, tr_handles_restarts sp al ts hok hla hev hj hmk j hjt t ht⟩
 
 end SIS
