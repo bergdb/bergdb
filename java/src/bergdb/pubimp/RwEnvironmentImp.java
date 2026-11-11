@@ -1,6 +1,7 @@
 package bergdb.pubimp;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 
@@ -60,10 +61,14 @@ class RwEnvironmentImp implements RwEnvironment {
     // String or byte[] put was in kvOps, and left the previous object's index entries);
     // every other key's is in kvOps. So the last call on a key wins in its one map (bergdb
     // 015-41). In indexOps a put of an index entry stays over a delete of it
-    // (deleteIndexEntry).
-    private HashMap<MapKey, byte[]> kvOps;
-    private HashMap<String, ObjectInfo> objectOps;
-    private HashMap<MapKey, byte[]> indexOps;
+    // (deleteIndexEntry). Each map keeps the order of the calls, the last call on each key
+    // (a put removes the key first), and createTrans gives Trans.Builder the operations in
+    // that order: of the keys that key replace makes one, the Core keeps the one called
+    // last (bergdb 024-10, section 3, R6). Until release 2026.4 they were HashMaps, and the
+    // builder got the operations in their iteration order.
+    private LinkedHashMap<MapKey, byte[]> kvOps;
+    private LinkedHashMap<String, ObjectInfo> objectOps;
+    private LinkedHashMap<MapKey, byte[]> indexOps;
     private final ConnectionImp connection;
     private final boolean enableKeyReplace;
     private volatile boolean closed;                    // Set by close(), under the lock.
@@ -79,9 +84,9 @@ class RwEnvironmentImp implements RwEnvironment {
      */
     private RwEnvironmentImp(ConnectionImp connection, boolean enableKeyReplace) {
         readHashes = new MyLongSet();
-        kvOps = new HashMap<MapKey, byte[]>();
-        objectOps = new HashMap<String, ObjectInfo>();
-        indexOps = new HashMap<MapKey, byte[]>();
+        kvOps = new LinkedHashMap<MapKey, byte[]>();
+        objectOps = new LinkedHashMap<String, ObjectInfo>();
+        indexOps = new LinkedHashMap<MapKey, byte[]>();
         firstRead = true;
         readTime = -1;
         this.connection = connection;
@@ -311,6 +316,7 @@ class RwEnvironmentImp implements RwEnvironment {
      */
     private synchronized void writeObject(String ikey, ObjectInfo info) {
         checkOpen();
+        objectOps.remove(ikey);         // so that the key's place is the last call's
         objectOps.put(ikey, info);
     }
     
@@ -329,7 +335,8 @@ class RwEnvironmentImp implements RwEnvironment {
      * Sets the operation of a key in kvOps, a put, or a delete if value is null: it replaces
      * the key's earlier one, so the last call on a key wins (bergdb 015-40). The key is
      * removed first, as a HashMap keeps its first key object when a put replaces an entry,
-     * and the key transformation of the MapKey must be the last call's (a delete has none).
+     * and the key transformation of the MapKey must be the last call's (a delete has none);
+     * and so that the key's place in the map's order is the last call's (bergdb 024-10).
      */
     private void setKv(MapKey key, byte[] value) {
         kvOps.remove(key);
@@ -415,7 +422,9 @@ class RwEnvironmentImp implements RwEnvironment {
      * for its previous value and the one put for its new value are one key, and the entry
      * must stay, whatever the order of the two calls. indexEntries() deletes first, so the
      * put replaces the delete; before 015-40, when MapKey.equals was never true and indexOps
-     * held both, Trans.Builder.build's rule (a put over a delete) kept the entry.
+     * held both, Trans.Builder.build's rule (a put over a delete) kept the entry. The put is
+     * also the last operation on the entry, in the order of an object's change: its previous
+     * value's entries deleted, then its new value's put (bergdb 024-10, section 3, R6).
      */
     private void deleteIndexEntry(byte[] indexKey) {
         indexOps.putIfAbsent(new MapKey(Keys.toSegments(indexKey), null), null);

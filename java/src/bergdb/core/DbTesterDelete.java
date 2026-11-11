@@ -319,6 +319,231 @@ public class DbTesterDelete {
         }
     }
     
+    /** The calls of a row of bergdb 024-10's table on a builder; x names the row's key. */
+    private interface Calls {
+        void on(Trans.Builder tb, String x, Bang[] vt);
+    }
+    
+    /** A row of bergdb 024-10, section 4: its calls, and what the rule keeps of them. */
+    private static final class Row {
+        final String name;
+        final String k;             // the value at the row's key "/c/x" after it; null: none
+        final String dollar;        // the value at "/c/$x", a key as written
+        final Calls calls;          // the row's calls, in order
+        final Calls kept;           // the operations kept, alone
+        
+        Row(String name, String k, String dollar, Calls calls, Calls kept) {
+            this.name = name;
+            this.k = k;
+            this.dollar = dollar;
+            this.calls = calls;
+            this.kept = kept;
+        }
+    }
+    
+    private static void put(Trans.Builder tb, String x, String value) {
+        tb.put("/c/" + x, value);
+    }
+    
+    /** A put at "/c/$x" or "/c/~x" (mark "$" or "~") whose final key is "/c/x". */
+    private static void tput(Trans.Builder tb, String mark, String x, String value) {
+        tb.put(Keys.toSegments("/c/" + mark + x), TO_C, bytes(value), null);
+    }
+    
+    private static void del(Trans.Builder tb, String x) {
+        tb.delete("/c/" + x);
+    }
+    
+    /** Notes a value that is not the expected one, so that a test names every wrong row. */
+    private static void check(List<String> wrong, String about, String expected, String got) {
+        if (!java.util.Objects.equals(expected, got)) {
+            wrong.add(about + " is " + got + ", expected " + expected);
+        }
+    }
+    
+    /** The rows B1 to B7 and T1 to T10 of bergdb 024-10, section 4. */
+    private static Row[] rows() {
+        return new Row[] {
+            new Row("B1", "2", "old",
+                    (tb, x, vt) -> { put(tb, x, "1"); put(tb, x, "2"); },
+                    (tb, x, vt) -> put(tb, x, "2")),
+            new Row("B2", "1", "old",
+                    (tb, x, vt) -> { del(tb, x); put(tb, x, "1"); },
+                    (tb, x, vt) -> put(tb, x, "1")),
+            new Row("B3", null, "old",
+                    (tb, x, vt) -> { put(tb, x, "1"); del(tb, x); },
+                    (tb, x, vt) -> del(tb, x)),
+            new Row("B4", "3", "old",
+                    (tb, x, vt) -> { put(tb, x, "1"); del(tb, x); put(tb, x, "3"); },
+                    (tb, x, vt) -> put(tb, x, "3")),
+            new Row("B5", null, "old",
+                    (tb, x, vt) -> { del(tb, x); del(tb, x); },
+                    (tb, x, vt) -> del(tb, x)),
+            new Row("B6", null, "old",
+                    (tb, x, vt) -> { put(tb, x, "1"); del(tb, x); put(tb, x, "2"); del(tb, x); },
+                    (tb, x, vt) -> del(tb, x)),
+            new Row("B7", null, "old",
+                    (tb, x, vt) -> { del(tb, x); put(tb, x, "1"); del(tb, x); },
+                    (tb, x, vt) -> del(tb, x)),
+            new Row("T1", "2", "old",
+                    (tb, x, vt) -> { tput(tb, "$", x, "1"); put(tb, x, "2"); },
+                    (tb, x, vt) -> put(tb, x, "2")),
+            new Row("T2", "1", "old",
+                    (tb, x, vt) -> { put(tb, x, "2"); tput(tb, "$", x, "1"); },
+                    (tb, x, vt) -> put(tb, x, "1")),
+            new Row("T3", null, "old",
+                    (tb, x, vt) -> { tput(tb, "$", x, "1"); del(tb, x); },
+                    (tb, x, vt) -> del(tb, x)),
+            new Row("T4", "1", "old",
+                    (tb, x, vt) -> { del(tb, x); tput(tb, "$", x, "1"); },
+                    (tb, x, vt) -> put(tb, x, "1")),
+            new Row("T5", "2", "old",
+                    (tb, x, vt) -> { tput(tb, "$", x, "1"); tput(tb, "~", x, "2"); },
+                    (tb, x, vt) -> put(tb, x, "2")),
+            new Row("T6", "1", "old",
+                    (tb, x, vt) -> { tput(tb, "~", x, "2"); tput(tb, "$", x, "1"); },
+                    (tb, x, vt) -> put(tb, x, "1")),
+            new Row("T7", "2", "old",
+                    (tb, x, vt) -> { tput(tb, "~", x, "1"); put(tb, x, "2"); },
+                    (tb, x, vt) -> put(tb, x, "2")),
+            new Row("T8", "1", "old",
+                    (tb, x, vt) -> { put(tb, x, "2"); tput(tb, "~", x, "1"); },
+                    (tb, x, vt) -> put(tb, x, "1")),
+            new Row("T9", "2", null,
+                    (tb, x, vt) -> { put(tb, x, "2"); tput(tb, "$", x, "1"); del(tb, "$" + x); },
+                    (tb, x, vt) -> { put(tb, x, "2"); del(tb, "$" + x); }),
+            new Row("T10", "2!", "old",
+                    (tb, x, vt) -> {
+                        tb.put(Keys.toSegments("/c/$" + x), TO_C, bytes("1"), vt[0]);
+                        tb.put(Keys.toSegments("/c/" + x), null, bytes("2"), vt[1]);
+                    },
+                    (tb, x, vt) -> tb.put(Keys.toSegments("/c/" + x), null, bytes("2"), vt[1])),
+        };
+    }
+    
+    /**
+     * The last operation on a key wins, put or delete (bergdb 024-10, section 3, R1 to R3):
+     * the rows B1 to B7 (calls on one key in Trans.Builder) and T1 to T10 (KVs that key
+     * transformations make one key) of 024-10, section 4, each a transaction of its own on a
+     * key "/c/x" that held "old", as did "/c/$x", a key as written. After it the key holds
+     * the value of the call made last, or nothing if that was a delete, and a key as written
+     * that a transformation left is as it was (T9: deleted by its own last call, which also
+     * takes its put away). The database's stream is, byte for byte, that of a database given
+     * the kept operations alone, and the values are the same after a restart, at startup
+     * distances that rerun little and all. Only the kept KV's value transformation runs
+     * (T10). Until 2026-11-11 a delete never replaced a put (B3, B6, B7, T3, T9), and of two
+     * puts that transformations made one key, the one whose key as written sorted last was
+     * kept (T2, T6, T7): every wrong row is named in the failure.
+     */
+    @Nano
+    public static void testLastOperationWins() {
+        Row[] rows = rows();
+        List<String> wrong = new ArrayList<String>();
+        for (int sd : DISTANCES) {
+            byte[][] streams = new byte[2][];
+            for (int d = 0; d < 2; d++) {
+                MemoryStream ms = new MemoryStream();
+                Db db = start(ms, sd);
+                Trans.Builder tb = db.trans();
+                for (int i = 0; i < rows.length; i++) {
+                    tb.put("/c/r" + i, "old").put("/c/$r" + i, "old");
+                }
+                db.execute(tb.build());
+                Bang[] vt = {new Bang(), new Bang()};
+                for (int i = 0; i < rows.length; i++) {
+                    tb = db.trans();
+                    (d == 0 ? rows[i].calls : rows[i].kept).on(tb, "r" + i, vt);
+                    db.execute(tb.build());
+                }
+                String at = "sd " + sd + (d == 0 ? ", the calls" : ", the kept alone");
+                if (vt[0].calls != 0 || vt[1].calls != 1) {
+                    wrong.add(at + ": the value transformations of T10 ran " + vt[0].calls
+                            + " and " + vt[1].calls + " times, expected 0 and 1");
+                }
+                for (int round = 0; round < 2; round++) {
+                    for (int i = 0; i < rows.length; i++) {
+                        String row = at + ", round " + round + ", " + rows[i].name;
+                        String k = DbUtil.getString(db, "/c/r" + i);
+                        String dollar = DbUtil.getString(db, "/c/$r" + i);
+                        check(wrong, row + ", k", rows[i].k, k);
+                        check(wrong, row + ", $k", rows[i].dollar, dollar);
+                    }
+                    db.close();
+                    db = start(ms.copy(), sd);
+                }
+                db.close();
+                streams[d] = new byte[(int) ms.getLength()];
+                try {
+                    ms.read(0, streams[d], 0, streams[d].length);
+                } catch (java.io.IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            if (!java.util.Arrays.equals(streams[0], streams[1])) {
+                wrong.add("sd " + sd + ": the stream is not that of the kept operations alone, "
+                        + streams[0].length + " and " + streams[1].length + " bytes");
+            }
+        }
+        Assert.assertTrue(wrong.size() + " wrong: " + wrong, wrong.isEmpty());
+    }
+    
+    /**
+     * A reused Trans and the last call (bergdb 024-10, section 3, R5; rows U1 and U2): every
+     * run of a Trans keeps, of the KVs that its key transformations make one key in that
+     * run, the one whose call was made last in the builder, whatever the order of the keys
+     * as written. Two puts, at "/template/a" (value 1) and "/template/b" (value 2), called in
+     * either order; the transformation gives both the key "/shared" in the first and the
+     * third run, and "/later/a" and "/later/b" in the second. "/shared" holds the value of
+     * the put called last after the first run and, deleted in between, after the third; the
+     * second run puts both KVs. Until 2026-11-11 "/shared" held 2, the value of the key as
+     * written that sorts last, also when a's put was called last (U2).
+     */
+    @Nano
+    public static void testReusedTransLastCallWins() {
+        final boolean[] collide = new boolean[1];
+        final KeyTransformation byRun = new KeyTransformation() {
+            public void transform(Trans trans, int index) {
+                // trans.kvs is in the order of the keys as written: 0 is a's, 1 is b's.
+                String name = index == 0 ? "a" : "b";
+                long[] key = Keys.toSegments(collide[0] ? "/shared" : "/later/" + name);
+                trans.kvs[index].setKey(key);
+                trans.writeKeyHashes[index] = Keys.hash(key);
+            }
+        };
+        List<String> wrong = new ArrayList<String>();
+        for (boolean aLast : new boolean[] {false, true}) {
+            String at = aLast ? "U2, a's put called last: " : "U1, b's put called last: ";
+            String last = aLast ? "1" : "2";
+            MemoryStream ms = new MemoryStream();
+            Db db = start(ms, DISTANCES[1]);
+            Trans.Builder tb = db.trans();
+            if (aLast) tb.put(Keys.toSegments("/template/b"), byRun, bytes("2"), null);
+            tb.put(Keys.toSegments("/template/a"), byRun, bytes("1"), null);
+            if (!aLast) tb.put(Keys.toSegments("/template/b"), byRun, bytes("2"), null);
+            Trans t = tb.build();
+            collide[0] = true;
+            db.execute(t);
+            check(wrong, at + "run 1, /shared", last, DbUtil.getString(db, "/shared"));
+            collide[0] = false;
+            db.execute(t);
+            check(wrong, at + "run 2, /later/a", "1", DbUtil.getString(db, "/later/a"));
+            check(wrong, at + "run 2, /later/b", "2", DbUtil.getString(db, "/later/b"));
+            db.execute(db.trans().delete("/shared").build());
+            collide[0] = true;
+            db.execute(t);
+            for (int round = 0; round < 2; round++) {
+                check(wrong, at + "run 3, round " + round + ", /shared", last,
+                        DbUtil.getString(db, "/shared"));
+                check(wrong, at + "round " + round + ", /later/a", "1",
+                        DbUtil.getString(db, "/later/a"));
+                db.close();
+                db = start(ms.copy(), DISTANCES[1]);
+            }
+            db.close();
+        }
+        Assert.assertTrue(wrong.size() + " wrong: " + wrong, wrong.isEmpty());
+    }
+    
     private static byte[] bytes(String s) {
         return s.getBytes(java.nio.charset.StandardCharsets.UTF_8);
     }
