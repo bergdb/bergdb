@@ -51,7 +51,8 @@ public class PubTesterPrimary {
      * keys in /a/, then 2,000 keys of /b/ put and deleted, then /c/x. The listing of /a/,
      * from the start and from a name, forward and backward, gives its keys; that of /b/
      * none. Since 021-28 a forward listing ends at the directory's end (GetMany.endKey)
-     * instead of at the first live key after it.
+     * instead of at the first live key after it. The 2,000 puts and deletes in w() of 500
+     * (L1; one w() of 2,000 each until bergdb 024-24).
      */
     @Nano
     public static void testListingBeforeDeletedKeys() {
@@ -64,16 +65,20 @@ public class PubTesterPrimary {
             }
             w.put("/c/x", new Person("x"));
             w.execute();
-            w = c.w();
-            for (int i = 0; i < 2000; i++) {
-                w.put(String.format("/b/%05d", i), new Person("b"));
+            for (int i0 = 0; i0 < 2000; i0 += 500) {
+                w = c.w();
+                for (int i = i0; i < i0 + 500; i++) {
+                    w.put(String.format("/b/%05d", i), new Person("b"));
+                }
+                w.execute();
             }
-            w.execute();
-            w = c.w();
-            for (int i = 0; i < 2000; i++) {
-                w.delete(String.format("/b/%05d", i));
+            for (int i0 = 0; i0 < 2000; i0 += 500) {
+                w = c.w();
+                for (int i = i0; i < i0 + 500; i++) {
+                    w.delete(String.format("/b/%05d", i));
+                }
+                w.execute();
             }
-            w.execute();
             
             final int[] nodes = new int[1];
             Db.testHooks = PubTesterIndex.keyNodeCounter(nodes);
