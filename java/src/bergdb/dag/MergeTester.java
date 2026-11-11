@@ -1,0 +1,364 @@
+package bergdb.dag;
+
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import java.util.TreeMap;
+
+import bergdb.common.StringUtil;
+import bergdb.nanotest.Assert;
+import bergdb.nanotest.Nano;
+
+/**
+ * The merges at the delete (bergdb 024-21; 024-11, sections 5 and 6), on the Dag alone, in
+ * memory: BU1 checked after every transaction (Dag.checkFill: V1, V2, V4 and TU2's count),
+ * lookups at every time against a model, no klong of a node reachable at any time naming a
+ * node taken back (V8), the cases of prototype P5 (023-05, section 2.4) reached, the shape
+ * against a twin (BU2), and thrash at a boundary (TU5).
+ *
+ * @author Frans Lundberg
+ */
+public class MergeTester {
+
+    private static final PointerFollower FOLLOWER = new PointerFollower() {
+        public Node followPointer(Node predecessor, int pointerIndex, OpData op) {
+            Node result = predecessor.getPointerNode(pointerIndex);
+            if (!Pointer.isMem(result)) {
+                throw new IllegalStateException("stream pointer");
+            }
+            op.pointerListener.pointerFollowed(predecessor, pointerIndex, result,
+                    Pointer.TYPE_MEMORY);
+            return result;
+        }
+    };
+
+    private static final Comparator<String> BYTES = new Comparator<String>() {
+        public int compare(String a, String b) {
+            return Keys.compareArrays(Keys.toSegments(a), Keys.toSegments(b));
+        }
+    };
+
+    /** A Dag with a model of every key's history, and the checks after each transaction. */
+    private static final class Run {
+        final Dag dag;
+        final PutData pd;
+        final TreeMap<String, TreeMap<Long, String>> model =
+                new TreeMap<String, TreeMap<Long, String>>(BYTES);
+        final Set<Node> madeNow = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
+        final Set<Node> takenBack = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
+        final List<Long> times = new ArrayList<Long>();
+        long t = 0;
+        long newNodes = 0;
+
+        Run(int b) {
+            dag = Dag.createEmpty(0, b, FOLLOWER, Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
+            pd = dag.newPutData();
+            pd.pointerFollower = FOLLOWER;
+            pd.nodeChangeListener = new Dag.NodeChangeListener() {
+                public void topNodeCreated(TopNode node) {}
+                public void keyNodeCreated(KeyNode node) { madeNow.add(node); newNodes++; }
+                public void valueNodeCreated(ValueNode node, long[] key) {}
+                public void keyNodeChanged(KeyNode node) {}
+                public void keyNodeTakenBack(KeyNode node) { takenBack.add(node); }
+            };
+        }
+
+        GetData gd() {
+            GetData gd = dag.newGetData();
+            gd.pointerFollower = FOLLOWER;
+            return gd;
+        }
+
+        /** One transaction: the keys in key order (as Db sorts them), a null value a delete. */
+        void trans(TreeMap<String, String> ops) {
+            t += 10;
+            pd.tt = t;
+            for (Map.Entry<String, String> e : ops.entrySet()) {
+                String v = e.getValue();
+                dag.putKv(Keys.toSegments(e.getKey()), v == null ? null : StringUtil.toBytes(v), pd);
+                pd.clearFast();
+                TreeMap<Long, String> h = model.get(e.getKey());
+                if (h == null) {
+                    h = new TreeMap<Long, String>();
+                    model.put(e.getKey(), h);
+                }
+                h.put(t, v);
+            }
+            pd.clear();
+            madeNow.clear();
+            times.add(t);
+        }
+
+        /** BU1 at the latest time; returns the walk's counts. */
+        Dag.Fill checkFill(String at) {
+            Dag.Fill f = dag.checkFill(t, gd());
+            Assert.assertTrue(at + ", t " + t + ": " + f, f.error == null);
+            return f;
+        }
+
+        /** Gets of every key at every time of 'every'-th transaction, and the latest. */
+        void checkGets(String at, int every) {
+            GetData gd = gd();
+            for (int i = times.size() - 1; i >= 0; i -= every) {
+                long u = times.get(i);
+                for (Map.Entry<String, TreeMap<Long, String>> e : model.entrySet()) {
+                    Map.Entry<Long, String> v = e.getValue().floorEntry(u);
+                    String exp = v == null ? null : v.getValue();
+                    byte[] got = dag.getOne(u, Keys.toSegments(e.getKey()), gd);
+                    String act = got == null ? null : StringUtil.toString(got);
+                    if (exp == null ? act != null : !exp.equals(act)) {
+                        throw new AssertionError(at + ": get " + e.getKey() + " at " + u
+                                + ", expected " + exp + ", got " + act);
+                    }
+                }
+            }
+        }
+
+        /** A full scan at time u against the model. */
+        void checkScan(String at, long u) {
+            GetMany g = dag.newGetMany();
+            g.gd.pointerFollower = FOLLOWER;
+            g.lookupTime = u;
+            g.actualLookupTime = u;
+            g.forward = true;
+            dag.getMany(g);
+            List<String> got = new ArrayList<String>();
+            for (Kvt kvt : g.result) got.add(Keys.toString(kvt.key));
+            List<String> exp = new ArrayList<String>();
+            for (Map.Entry<String, TreeMap<Long, String>> e : model.entrySet()) {
+                Map.Entry<Long, String> v = e.getValue().floorEntry(u);
+                if (v != null && v.getValue() != null) exp.add(e.getKey());
+            }
+            Assert.assertEquals(at + ": scan at " + u, exp, got);
+        }
+
+        /** V8: no klong, live, deleted or shadowed, of a node reachable at any time names a
+         *  node taken back. */
+        void checkTakenBack(String at) {
+            Set<Node> seen = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
+            Deque<KeyNode> todo = new ArrayDeque<KeyNode>();
+            for (long u : times) {
+                KeyNode root = dag.getTopDs().findRoot(u, gd());
+                if (root != null && seen.add(root)) todo.add(root);
+            }
+            while (!todo.isEmpty()) {
+                KeyNode n = todo.poll();
+                Assert.assertTrue(at + ": a taken-back node is reachable", !takenBack.contains(n));
+                for (int i = 0; i < n.size; i++) {
+                    if (!Klong.isKey(n.klongs[i])) continue;
+                    Node c = n.getPointerNode(i);
+                    Assert.assertTrue(at + ": klong " + i + " names a taken-back node",
+                            c == null || !takenBack.contains(c));
+                    if (c instanceof KeyNode && seen.add(c)) todo.add((KeyNode) c);
+                }
+            }
+        }
+    }
+
+    private static String key(int i) {
+        return "/k/" + String.format("%06d", i);
+    }
+
+    private static String longKey(int i) {
+        int a = i % 7, b = (i / 7) % 5;
+        switch (i % 3) {
+        case 0: return "/k/" + i;
+        case 1: return "/long/prefix" + a + "/x" + b + "/" + i;
+        default: return "/long/prefix" + a + "/y" + i + "/tail/more/" + b;
+        }
+    }
+
+    /**
+     * TU1 and TU2 (bergdb 024-11): random transactions of puts and deletes, most of them
+     * deletes in a second phase, keys of one segment and of up to three; after every
+     * transaction BU1 (Dag.checkFill), and lookups at every time and scans against the model;
+     * at the end V8. Node sizes 8, 14, 30. The cases of prototype P5 (023-05, section 2.4)
+     * are reached: merges into one node and into two, of leaves and inner nodes, a left and
+     * a right node made by the transaction, two klongs of one compare value in the parent,
+     * nodes taken back, and root collapse after a merge.
+     */
+    @Nano
+    public static void testFillAfterEveryTransaction() {
+        final long merges0 = Dag.statMerges, two0 = Dag.statMergesTwo,
+                leaves0 = Dag.statMergeLeaves, madeL0 = Dag.statMergeMadeL,
+                madeR0 = Dag.statMergeMadeR, dup0 = Dag.statMergeDup,
+                taken0 = Dag.statMergeTaken, collapses0 = Dag.statCollapses,
+                skipped0 = Dag.statMergeSkipped;
+        Random r = new Random(21);
+        for (int b : new int[] {8, 14, 30}) {
+            for (int shape = 0; shape < 2; shape++) {
+                String at = "b " + b + ", shape " + shape;
+                Run run = new Run(b);
+                int keys = b * 25;
+                for (int i = 0; i < 120; i++) {
+                    int del = i < 40 ? 15 : 70;
+                    int ops = 1 + r.nextInt(i < 40 ? 3 * b : b);
+                    TreeMap<String, String> trans = new TreeMap<String, String>(BYTES);
+                    while (trans.size() < ops) {
+                        int k = r.nextInt(keys);
+                        String key = shape == 0 ? key(k) : longKey(k);
+                        trans.put(key, r.nextInt(100) < del ? null : "v" + i + "-" + k);
+                    }
+                    run.trans(trans);
+                    run.checkFill(at + ", transaction " + i);
+                    if (i % 10 == 9) {
+                        run.checkGets(at, 3);
+                        run.checkScan(at, run.t);
+                    }
+                }
+                run.checkGets(at, 1);
+                run.checkTakenBack(at);
+            }
+        }
+        Assert.assertTrue("merges", Dag.statMerges > merges0);
+        Assert.assertTrue("merges into two nodes", Dag.statMergesTwo > two0);
+        Assert.assertTrue("merges of inner nodes",
+                Dag.statMerges - merges0 > Dag.statMergeLeaves - leaves0);
+        Assert.assertTrue("a left node made by the transaction", Dag.statMergeMadeL > madeL0);
+        Assert.assertTrue("a right node made by the transaction", Dag.statMergeMadeR > madeR0);
+        Assert.assertTrue("two klongs of a compare value in the parent", Dag.statMergeDup > dup0);
+        Assert.assertTrue("nodes taken back", Dag.statMergeTaken > taken0);
+        Assert.assertTrue("root collapses", Dag.statCollapses > collapses0);
+        Assert.assertEquals("merges skipped", skipped0, Dag.statMergeSkipped);
+    }
+
+    /**
+     * TU3 and TU4 at a small size (bergdb 024-11; 023-03, T2's "sparse"): 3,000 keys put in
+     * key order, 100 a transaction; then every key but each k-th deleted, 100 a transaction,
+     * in ascending, descending or random order. Right after the deletes, with no reclaim (R
+     * forever): BU1, the key nodes at most twice the twin's (BU2), a fresh Dag with the kept
+     * keys put in key order in transactions of the same size, and a scan of every key against
+     * the model. Node sizes 8 and 30; k = 2, 3, 10, 30.
+     */
+    @Nano
+    public static void testSparseAgainstTwin() {
+        for (int b : new int[] {8, 30}) {
+            for (int k : new int[] {2, 3, 10, 30}) {
+                for (int order = 0; order < 3; order++) {
+                    String at = "b " + b + ", k " + k + ", order " + order;
+                    final int n = 3000;
+                    Run run = new Run(b);
+                    for (int i = 0; i < n; i += 100) {
+                        TreeMap<String, String> tr = new TreeMap<String, String>(BYTES);
+                        for (int j = i; j < i + 100; j++) tr.put(key(j), "v" + j);
+                        run.trans(tr);
+                    }
+                    List<Integer> dels = new ArrayList<Integer>();
+                    for (int i = 0; i < n; i++) if (i % k != 0) dels.add(i);
+                    if (order == 1) Collections.reverse(dels);
+                    if (order == 2) Collections.shuffle(dels, new Random(k));
+                    for (int i = 0; i < dels.size(); i += 100) {
+                        TreeMap<String, String> tr = new TreeMap<String, String>(BYTES);
+                        for (int j = i; j < Math.min(dels.size(), i + 100); j++) {
+                            tr.put(key(dels.get(j)), null);
+                        }
+                        run.trans(tr);
+                        run.checkFill(at + ", deletes " + i);
+                    }
+                    Dag.Fill f = run.checkFill(at);
+                    run.checkScan(at, run.t);
+                    Run twin = new Run(b);
+                    for (int i = 0; i < n; i += 100 * k) {
+                        TreeMap<String, String> tr = new TreeMap<String, String>(BYTES);
+                        for (int j = i; j < Math.min(n, i + 100 * k); j += k) tr.put(key(j), "v" + j);
+                        twin.trans(tr);
+                    }
+                    Dag.Fill ft = twin.checkFill(at + ", twin");
+                    Assert.assertEquals(at + ": live keys", ft.liveKeys, f.liveKeys);
+                    Assert.assertTrue(at + ": key nodes " + f.keyNodes + ", the twin's "
+                            + ft.keyNodes + " (BU2)", f.keyNodes <= 2 * ft.keyNodes);
+                }
+            }
+        }
+    }
+
+    /**
+     * TU5, thrash (bergdb 024-11, CB4): 2,000 keys put in key order, one a transaction, which
+     * leaves the leaves at the halves of their splits; then one key in the middle deleted and
+     * put again in turns, and three keys next to it too, 10,000 transactions of one operation:
+     * at most 0.5 new key nodes an operation at node sizes 14 and 30, BU1 every 100. Measured
+     * on 2026-11-11 (2026.4's in brackets): 0.093 at 30 (0.093), 0.300 at 14 (0.207), 0.750
+     * at 8 (0.375), where a merged node of c + 1 = 5 klongs fills in two transactions and a
+     * space split's halves hold m = 2: a split and a merge every few operations, so at most
+     * 1.0 there (bergdb 024-21, section 5).
+     */
+    @Nano
+    public static void testThrashAtABoundary() {
+        for (int b : new int[] {8, 14, 30}) {
+            Run run = new Run(b);
+            for (int i = 0; i < 2000; i++) {
+                TreeMap<String, String> tr = new TreeMap<String, String>(BYTES);
+                tr.put(key(i), "v");
+                run.trans(tr);
+            }
+            long nodes0 = run.newNodes;
+            int ops = 10000;
+            for (int i = 0; i < ops; i++) {
+                TreeMap<String, String> tr = new TreeMap<String, String>(BYTES);
+                int k = 1000 + (i / 2) % 4;
+                tr.put(key(k), i % 2 == 0 ? null : "w" + i);
+                run.trans(tr);
+                if (i % 100 == 0) run.checkFill("b " + b + ", operation " + i);
+            }
+            double perOp = (run.newNodes - nodes0) / (double) ops;
+            Assert.assertTrue("b " + b + ": new key nodes an operation " + perOp,
+                    perOp <= (b == 8 ? 1.0 : 0.5));
+            run.checkFill("b " + b);
+        }
+    }
+
+    /**
+     * A delete transaction of every key but the first and the last of a tree of several
+     * levels (the chain of single children that 2026.4 left, 023-11, review B, B1): with the
+     * merges every node but a root keeps m live klongs, so the two keys end in one leaf under
+     * the space root's tree, and the next delete collapses at most one level. Node sizes 8, 14
+     * and 30; BU1 after each transaction.
+     */
+    @Nano
+    public static void testNoChainOfSingleChildren() {
+        for (int b : new int[] {8, 14, 30}) {
+            Run run = new Run(b);
+            int n = b * b * 2;
+            TreeMap<String, String> tr = new TreeMap<String, String>(BYTES);
+            for (int i = 0; i < n; i++) tr.put(key(i), "v");
+            run.trans(tr);
+            tr = new TreeMap<String, String>(BYTES);
+            for (int i = 1; i < n - 1; i++) tr.put(key(i), null);
+            run.trans(tr);
+            Dag.Fill f = run.checkFill("b " + b);
+            Assert.assertTrue("b " + b + ": key nodes " + f, f.keyNodes <= 3);
+            long c0 = Dag.statCollapses;
+            tr = new TreeMap<String, String>(BYTES);
+            tr.put(key(0), null);
+            run.trans(tr);
+            run.checkFill("b " + b + ", the last delete");
+            Assert.assertTrue("b " + b + ": collapses " + (Dag.statCollapses - c0),
+                    Dag.statCollapses - c0 <= 1);
+            run.checkGets("b " + b, 1);
+        }
+    }
+
+    /** The thresholds of format 7 (bergdb 024-21, section 2): P5's set, for every node size
+     *  that a database has, and V1's conditions on them (024-11, section 5.4). */
+    @Nano
+    public static void testThresholds() {
+        Assert.assertEquals(7, Dag.minFill(30));
+        Assert.assertEquals(15, Dag.mergeCap(30));
+        Assert.assertEquals(15, Dag.splitAbove(30));
+        Assert.assertEquals(1, Dag.minFill(6));
+        for (int b : new int[] {8, 14, 30, 62}) {
+            int m = Dag.minFill(b), h = Dag.splitAbove(b), c = Dag.mergeCap(b);
+            Assert.assertTrue("b " + b + ": a space split's halves", h / 2 >= m);
+            Assert.assertTrue("b " + b + ": a redistribution's halves", (c + 1) / 2 >= m);
+            Assert.assertTrue("b " + b + ": a merge into one node", 2 * m - 1 <= c);
+            Assert.assertTrue("b " + b + ": m >= 2", m >= 2);
+        }
+    }
+}

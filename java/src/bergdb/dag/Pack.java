@@ -13,6 +13,7 @@ public class Pack implements IPack {
         KlongWithPointer.class,
         NodeInfo.class,
         KeyNodeTester.class,
+        MergeTester.class,
         Keys.class,
         Pack.class,
         Pointer.class,

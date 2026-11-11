@@ -5,10 +5,10 @@ import java.util.*;
 import bergdb.common.StringUtil;
 
 /**
- * A randomized test of the upward unlink at a delete (bergdb 023-05, P1, P4), on the Dag alone, all
- * in memory, as DagFuzz: random transactions of puts and deletes, keys sorted in each
- * transaction as Db sorts them. After each transaction it checks, against a model of every
- * key's history:
+ * A randomized test of the delete (the upward unlink of bergdb 023-05, P1, P4, and the merges
+ * of 024-21), on the Dag alone, all in memory, as DagFuzz: random transactions of puts and
+ * deletes, keys sorted in each transaction as Db sorts them. After each transaction it checks,
+ * against a model of every key's history:
  *
  *   gets of every key at every time;
  *   scans at every time: forward and backward, of every key, and from random start keys,
@@ -20,6 +20,10 @@ import bergdb.common.StringUtil;
  *       in the range its parents' klongs give it, at or after the klong that leads to it and
  *       before the next one, as every reader assumes; and the keys reachable are the model's
  *       live keys.
+ *   BU1 (bergdb 024-11, 024-21), with Dag.checkFill: every reachable key node that is not a
+ *       root of a segment tree holds at least m live klongs (Dag.minFill: 2 at node size 8, 3
+ *       at 14, 7 at 30; no merges below 8), an inner root at least 2, the leaves of a segment
+ *       tree at one depth, and the key nodes at most S + (n + S - 1) / (m - 1).
  *
  * Key shapes (keys=N distinct keys, shape=): "fifo" puts keys in increasing order and deletes
  * the oldest, a window of about N/4 live keys; "random" puts and deletes at random; "long"
@@ -74,6 +78,7 @@ public class UnlinkFuzz {
     final List<String> log = new ArrayList<String>();
     int fifoNext = 0, fifoFirst = 0;
     long keptBefore;
+    static long fillChecks;
     /** Nodes made and reported replaced in one transaction: taken back, never written. */
     final Set<Node> takenBack = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
     final Set<Node> madeNow = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
@@ -180,6 +185,11 @@ public class UnlinkFuzz {
             if (err == null) err = checkScans(tt);
             if (err == null) err = checkTree(tt);
             if (err == null) err = checkTakenBack(tt);
+            if (err == null) {
+                Dag.Fill fill = dag.checkFill(tt, gd);
+                err = fill.error;
+                fillChecks++;
+            }
             if (err != null) return "after T" + i + ": " + err;
         }
         return null;
@@ -394,6 +404,14 @@ public class UnlinkFuzz {
                 + ", collapses " + Dag.statCollapses);
         System.out.println("nodes taken back by the climb " + Dag.statTakenBack
                 + " (roots " + Dag.statRootsTakenBack + ")");
+        System.out.println("merges " + Dag.statMerges + " (two nodes " + Dag.statMergesTwo
+                + ", leaves " + Dag.statMergeLeaves + ", taken back " + Dag.statMergeTaken
+                + ", skipped " + Dag.statMergeSkipped + "), sibling follows "
+                + Dag.statSiblingFollows + ", descents " + Dag.statMergeDescents
+                + "; with two klongs of one compare value in the parent " + Dag.statMergeDup
+                + ", a left node made by the transaction " + Dag.statMergeMadeL
+                + ", a right one " + Dag.statMergeMadeR + "; BU1 checked after "
+                + fillChecks + " transactions (m = " + Dag.minFill(MAX_NODE) + ")");
         System.out.println("Done: " + rounds + " rounds, " + fails + " failures.");
     }
 }
