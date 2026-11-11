@@ -297,6 +297,13 @@ from them.
 * 14:45 Frans: a key at most 112 bytes (024-17, QL2; 16 segments; the
   user's rule of thumb "about 100 characters"). 024-17 to be reworked
   for it (L3, L6, the bound's arithmetic with merges, the tests).
+* 14:47 Frans left; unattended until 2026-11-12 07:00 (the default; he
+  gave no time). While he is away: the tree model lands on its gates
+  (approved); the merges (024-21 at 8/17/17, 024-22) are gated and run
+  against each other, not landed; option 2 with theta 7 is built on top
+  of them, model first, not landed; 024-17 reworked for 112-byte keys;
+  night.sh on main after the tree model, if the machine is free. Usage
+  ceiling 85 %.
 
 
 ## 6. Outcome
