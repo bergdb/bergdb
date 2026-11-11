@@ -45,6 +45,8 @@ high, xhigh for a hard task. At most 8 agents at a time (Frans,
 | 024-10 | The builder's rule "the last operation wins" (CA1) | low (high) | done 07:49, branch |
 | 024-11 | The underfill fix: a design study, no code | fill (xhigh) | done 08:18 |
 | 024-12 | The key tree's model in Lean, run against Java | tree (xhigh) | |
+| 024-13 | The integration branch: doubles.py, 024-10, 024-07; gates | int (Opus, high) | |
+| 024-14 | The merge's thresholds measured in Java at 10M keys | thr (Opus, high) | |
 
 024-04 to 024-06 are read-only studies. 024-07 to 024-10 and 022-07 work
 in clones under `/Users/f/fl/bench/2026-11-11/<name>/clone` on their own
@@ -118,6 +120,23 @@ from them.
   BU1; with merges the index is 1.12 to 1.90 times the twin's key nodes
   (35 runs on P5's build), without 2.0 to 20.2; a plan of about two
   weeks; QU1 to QU8 for Frans.
+* 08:49 The usage level turned tight (48 %): tree told to gate and stop
+  before the proofs, cc to stop after its next gate run. 09:02 024-07's
+  gates all pass on its branch (level3, level1, before-commit; two Lean
+  theorems, T-COVER and T-LATEST).
+* 09:17 Frans back; attended. The usage: 27 % at 06:39, 50 % at 09:17.
+* 09:25 Frans: "1. Use Opus 5.5 for subagents by default. At effort High
+  or XHigh depending on how hard the task it. Only this coordinator
+  session continues with Fable 5.2. Continue with several agents in
+  parallell. 2. Yes. 3. Yes. 4. Yes. 5. Yes. 6. Yes, as recommended."
+  That is: land 024-07 with its two changed tests when its last runs
+  have reported; land 024-10 with its two changed expected values; the
+  underfill by merges alone with the bound BU1, the denser thresholds
+  measured in Java at 10M keys before the model is written; fix
+  `doubles.py` (09:26: "Yes do it."); land the C clone and the tree
+  model when their gates report, the tree model merged with the tie's
+  branch. The rule on Opus written into the coordinator's skill
+  (013-02). Started int (024-13) and thr (024-14), both on Opus.
 
 
 ## 6. Outcome
