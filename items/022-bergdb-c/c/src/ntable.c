@@ -176,6 +176,19 @@ void nt_drop_if_empty(struct ntable *t, struct handle *h) {
     }
 }
 
+void nt_drop_node(struct ntable *t, struct node *node) {
+    struct handle *h = nt_live_handle(t, node->id);
+    if (h == NULL || h->obj != node) {
+        node_set_canonical(node, false);
+        return;
+    }
+    if (hd_is_dead(h)) {        /* casState(LIVE, DEAD) fails */
+        return;
+    }
+    hd_kill(t->cx, h);
+    remove_handle(t, h);
+}
+
 int64_t nt_size(const struct ntable *t) {
     return t->map.size;
 }

@@ -78,6 +78,15 @@ struct node *nt_make_canonical(struct ntable *t, struct handle *h, struct node *
  * table. */
 void nt_drop_if_empty(struct ntable *t, struct handle *h);
 
+/* Cache3.dropNode (bergdb 023-07, section 5.1; Java's since release
+ * 2026.4): node, a key node that its transaction made and took back
+ * (dag.c's take_back, take_back_root), leaves the table as an evicted
+ * object does: its handle dies (hd_kill), its canonical flag is cleared, and
+ * the handle leaves the table. It was never written, and no node names it.
+ * If the table's handle of its id holds another object, or there is none,
+ * only the node's canonical flag is cleared. */
+void nt_drop_node(struct ntable *t, struct node *node);
+
 /* Cache3.evict (012-12): live handle h dies (hd_kill: a canonical object's
  * position into its written position, the object let go) and leaves the
  * table. The caller has checked that the object may go (evict.h). false if

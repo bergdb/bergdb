@@ -2,6 +2,7 @@
  * KeyAccessPath; see dag.h. Java's names in comments, its order kept. */
 #include "dag.h"
 #include <assert.h>
+#include <stdarg.h>
 #include <string.h>
 #include "handle.h"
 #include "jsem.h"
@@ -21,6 +22,14 @@ static bool key_node_changed(const struct op_node_change_listener *l, struct kno
 
 static bool key_node_replaced(const struct op_node_change_listener *l, struct knode *n) {
     return l->key_node_replaced == NULL || l->key_node_replaced(l->ctx, n);
+}
+
+/* Dag.NodeChangeListener.keyNodeTakenBack: keyNodeReplaced by default. */
+static bool key_node_taken_back(const struct op_node_change_listener *l, struct knode *n) {
+    if (l->key_node_taken_back != NULL) {
+        return l->key_node_taken_back(l->ctx, n);
+    }
+    return key_node_replaced(l, n);
 }
 
 static bool value_node_created(const struct op_node_change_listener *l, struct vnode *n,
@@ -142,6 +151,140 @@ static bool cache_all_except_large(void *ctx, const struct node *node) {
     return true;
 }
 
+/* ======== PutData.replaced (dag.h) ======== */
+
+#define PD_REMOVED ((struct knode *) (uintptr_t) 1)
+
+static uint32_t made_hash(const void *p) {
+    uint64_t x = (uint64_t) (uintptr_t) p;
+    x ^= x >> 33;
+    x *= UINT64_C(0xff51afd7ed558ccd);
+    x ^= x >> 33;
+    return (uint32_t) x;
+}
+
+static void replaced_free(struct putdata *pd) {
+    struct mem *m = pd->key_access_path.mem;
+    mem_free(m, pd->replaced_made, (size_t) pd->replaced_cap * sizeof *pd->replaced_made,
+            MEM_STATE);
+    mem_free(m, pd->replaced_old, (size_t) pd->replaced_cap * sizeof *pd->replaced_old,
+            MEM_STATE);
+    pd->replaced_made = NULL;
+    pd->replaced_old = NULL;
+    pd->replaced_cap = 0;
+    pd->replaced_used = 0;
+}
+
+/* replaced.clear(): a small table is emptied, a large one freed (a
+ * transaction of many splits leaves no large table to every later one). */
+static void replaced_clear(struct putdata *pd) {
+    if (pd->replaced_used == 0) {
+        return;
+    }
+    if (pd->replaced_cap > 256) {
+        replaced_free(pd);
+    } else {
+        memset(pd->replaced_made, 0, (size_t) pd->replaced_cap * sizeof *pd->replaced_made);
+        pd->replaced_used = 0;
+    }
+}
+
+static bool replaced_grow(struct putdata *pd) {
+    struct mem *m = pd->key_access_path.mem;
+    const int32_t cap = pd->replaced_cap == 0 ? 16 : 2 * pd->replaced_cap;
+    struct knode **made = mem_zalloc(m, (size_t) cap * sizeof *made, MEM_STATE);
+    struct knode **old = mem_zalloc(m, (size_t) cap * sizeof *old, MEM_STATE);
+    if (made == NULL || old == NULL) {
+        mem_free(m, made, made == NULL ? 0 : (size_t) cap * sizeof *made, MEM_STATE);
+        mem_free(m, old, old == NULL ? 0 : (size_t) cap * sizeof *old, MEM_STATE);
+        return false;
+    }
+    int32_t used = 0;
+    for (int32_t i = 0; i < pd->replaced_cap; i++) {
+        struct knode *k = pd->replaced_made[i];
+        if (k == NULL || k == PD_REMOVED) {
+            continue;
+        }
+        uint32_t h = made_hash(k) & (uint32_t) (cap - 1);
+        while (made[h] != NULL) {
+            h = (h + 1) & (uint32_t) (cap - 1);
+        }
+        made[h] = k;
+        old[h] = pd->replaced_old[i];
+        used++;
+    }
+    replaced_free(pd);
+    pd->replaced_made = made;
+    pd->replaced_old = old;
+    pd->replaced_cap = cap;
+    pd->replaced_used = used;
+    return true;
+}
+
+/* PutData.madeFor: 'made', made by the split at tt, replaces 'old'; NULL:
+ * no such node. false: NOMEM. */
+static bool pd_made_for(struct putdata *pd, struct knode *made, struct knode *old) {
+    if (pd->replaced_time != pd->tt) {
+        replaced_clear(pd);
+        pd->replaced_time = pd->tt;
+    }
+    if (old == NULL) {
+        return true;
+    }
+    if (2 * (pd->replaced_used + 1) > pd->replaced_cap && !replaced_grow(pd)) {
+        return false;
+    }
+    const uint32_t mask = (uint32_t) (pd->replaced_cap - 1);
+    uint32_t h = made_hash(made) & mask;
+    while (pd->replaced_made[h] != NULL) {
+        if (pd->replaced_made[h] == made) {
+            pd->replaced_old[h] = old;
+            return true;
+        }
+        h = (h + 1) & mask;
+    }
+    pd->replaced_made[h] = made;
+    pd->replaced_old[h] = old;
+    pd->replaced_used++;
+    return true;
+}
+
+/* PutData.replacedBy: the node that 'made', made by a split of this
+ * transaction, replaces; else NULL. */
+static struct knode *pd_replaced_by(const struct putdata *pd, const struct knode *made) {
+    if (pd->replaced_time != pd->tt || pd->replaced_cap == 0) {
+        return NULL;
+    }
+    const uint32_t mask = (uint32_t) (pd->replaced_cap - 1);
+    uint32_t h = made_hash(made) & mask;
+    while (pd->replaced_made[h] != NULL) {
+        if (pd->replaced_made[h] == made) {
+            return pd->replaced_old[h];
+        }
+        h = (h + 1) & mask;
+    }
+    return NULL;
+}
+
+/* C's: the entry of 'made', taken back, leaves the map, so that the map
+ * names no node that may be freed (dag.h). Java's entry stays and is never
+ * read again. */
+static void pd_replaced_remove(struct putdata *pd, const struct knode *made) {
+    if (pd->replaced_time != pd->tt || pd->replaced_cap == 0) {
+        return;
+    }
+    const uint32_t mask = (uint32_t) (pd->replaced_cap - 1);
+    uint32_t h = made_hash(made) & mask;
+    while (pd->replaced_made[h] != NULL) {
+        if (pd->replaced_made[h] == made) {
+            pd->replaced_made[h] = PD_REMOVED;
+            pd->replaced_old[h] = NULL;
+            return;
+        }
+        h = (h + 1) & mask;
+    }
+}
+
 /* new PutData(), then Dag.newPutData's listeners */
 void dag_new_put_data(struct dag *d, struct putdata *pd, struct mem *m) {
     (void) d;
@@ -155,6 +298,7 @@ void dag_new_put_data(struct dag *d, struct putdata *pd, struct mem *m) {
     kwp_init(&pd->two_kwis[0]);
     kwp_init(&pd->two_kwis[1]);
     pd->key_access_path.mem = m;
+    pd->replaced_time = -1;
     pd->node_change_listener = OP_DO_NOTHING_NODE_CHANGE_LISTENER;
     pd->pointer_created_listener = OP_DO_NOTHING_POINTER_CREATED_LISTENER;
     pd->op.cache_policy.should_cache = cache_all_except_large;
@@ -174,6 +318,8 @@ void pd_free(struct putdata *pd) {
     p->cap = 0;
     p->size = 0;
     p->used = 0;
+    replaced_free(pd);
+    pd->replaced_time = -1;
 }
 
 /* PutData.clearFast */
@@ -197,6 +343,8 @@ void pd_clear(struct putdata *pd) {
     }
     p->used = 0;
     p->size = 0;
+    replaced_clear(pd);                         /* replaced.clear() */
+    pd->replaced_time = -1;
     pd->op.temp_pointer.index = -1;
     pd->op.temp_pointer.node = NULL;
     pd->op.temp_pointer.pos = SPOS_NULL;
@@ -302,6 +450,7 @@ static bool get_eq_node_in_segment(int64_t time, struct knode *segmentRoot, int6
     struct kwp *kwi = &gd->op.kwi;
     struct knode *current = segmentRoot;
     struct node *result;
+    op_descent_from(&gd->op, &current->n);
 
     while (true) {
         if (kn_is_segment_leaf(current)) {
@@ -335,7 +484,7 @@ static bool get_eq_node_in_segment(int64_t time, struct knode *segmentRoot, int6
                 struct node *nextCurrent = op_follow_pointer(&gd->op, &current->n,
                         kwi->pointer_index);
                 if (nextCurrent == NULL || !op_cast_ok(&gd->op, nextCurrent,
-                        NODE_TYPE_KEY_NODE)) {
+                        NODE_TYPE_KEY_NODE) || !op_descent_to(&gd->op, nextCurrent)) {
                     return false;
                 }
                 current = (struct knode *) nextCurrent;
@@ -412,6 +561,10 @@ static bool append_delete_klong(struct dag *d, struct knode *node, int32_t depth
 static bool handle_full_node(struct dag *d, struct knode *node, int32_t depth,
         const struct kwp *toInsert, int32_t nInsert, int64_t tTime, struct knode *last,
         struct putdata *pd);
+static bool delete_upward(struct dag *d, struct knode *leaf, int32_t depth, int64_t compareValue,
+        const int64_t *key, struct putdata *pd, bool *isNoop);
+static int32_t link_index(const struct knode *parent, const struct knode *node, int64_t klong);
+static int64_t last_time(const struct knode *node);
 
 /* Dag.reportNewPointers */
 static bool report_new_pointers(struct knode *node, const struct op_pointer_created_listener *l) {
@@ -461,6 +614,7 @@ static bool set_value(struct dag *d, struct knode *node, int64_t compareValue,
         struct putdata *pd) {
     assert(node != NULL && "node is null");
 
+    op_descent_from(&pd->op, &node->n);
     while (!kn_is_segment_leaf(node)) {
         kn_search_lte(node, pd->tt, compareValue, &pd->op.kwi);
         if (!check_found(node, pd)) {
@@ -468,7 +622,8 @@ static bool set_value(struct dag *d, struct knode *node, int64_t compareValue,
         }
 
         struct node *next = op_follow_pointer(&pd->op, &node->n, pd->op.kwi.pointer_index);
-        if (next == NULL || !op_cast_ok(&pd->op, next, NODE_TYPE_KEY_NODE)) {
+        if (next == NULL || !op_cast_ok(&pd->op, next, NODE_TYPE_KEY_NODE)
+                || !op_descent_to(&pd->op, next)) {
             return false;
         }
         node = (struct knode *) next;
@@ -478,7 +633,7 @@ static bool set_value(struct dag *d, struct knode *node, int64_t compareValue,
         /* A delete operation. A ValueNode (of delete type) is created only
          * for the pd.nodeChangeListener. */
         bool isNoop;
-        if (!append_delete_klong(d, node, pd->key_access_path.size - 1, compareValue, pd,
+        if (!delete_upward(d, node, pd->key_access_path.size - 1, compareValue, key, pd,
                 &isNoop)) {
             return false;
         }
@@ -529,6 +684,7 @@ static bool set_node(struct dag *d, struct knode *segmentRoot, int64_t compareVa
         return false;
     }
 
+    op_descent_from(&pd->op, &current->n);
     while (!kn_is_segment_leaf(current)) {
         kn_search_lte(current, pd->tt, compareValue, &pd->op.kwi);
         if (!check_found(current, pd)) {
@@ -537,7 +693,8 @@ static bool set_node(struct dag *d, struct knode *segmentRoot, int64_t compareVa
         assert(pd->op.kwi.pointer_index >= 0 && "LTE search found klong, but pointerIndex < 0");
 
         struct node *next = op_follow_pointer(&pd->op, &current->n, pd->op.kwi.pointer_index);
-        if (next == NULL || !op_cast_ok(&pd->op, next, NODE_TYPE_KEY_NODE)) {
+        if (next == NULL || !op_cast_ok(&pd->op, next, NODE_TYPE_KEY_NODE)
+                || !op_descent_to(&pd->op, next)) {
             return false;
         }
         current = (struct knode *) next;
@@ -748,7 +905,8 @@ static bool space_split_in_place(struct dag *d, struct knode *node, struct knode
         return false;
     }
 
-    if (!key_node_created(&pd->node_change_listener, second)) {
+    if (!key_node_created(&pd->node_change_listener, second)
+            || !pd_made_for(pd, second, pd_replaced_by(pd, node))) {
         return false;
     }
     int64_t secondKlong;
@@ -768,6 +926,7 @@ static bool space_split_in_place(struct dag *d, struct knode *node, struct knode
         struct knode *newRoot = kn_new(d->cx, false);
         if (newRoot == NULL
                 || !key_node_created(&pd->node_change_listener, newRoot)
+                || !pd_made_for(pd, newRoot, pd_replaced_by(pd, node))
                 || !kn_add_klong(d->cx, newRoot, tt, KL_EMPTY_KEY, &node->n, pd->op.access_data)
                 || !op_pointer_created(&pd->pointer_created_listener, &newRoot->n,
                         newRoot->size - 1, &node->n)
@@ -784,12 +943,26 @@ static bool space_split_in_place(struct dag *d, struct knode *node, struct knode
             }
             node_split(&pd->split_listener, DAG_SPACE_SPLIT_3);
         } else {
-            int64_t klong1 = kap_get_klong(&pd->key_access_path, depth);
+            /* The segment leaf's klong of tt to 'node' is pointed to newRoot in
+             * place, as TopDs.newSuperRoot does for the space root: a second
+             * klong would shadow it and still name 'node', and if the
+             * transaction then empties 'node' and takes it back, which points
+             * klongs in its parent only (take_back, retarget, take_back_root),
+             * a written node would name a node never written (bergdb 023-08,
+             * review C, fault 12; as Java's since release 2026.4). The klong is
+             * behind the leaf's time klong of tt, where every reader stops. */
+            const int64_t klong1 = kap_get_klong(&pd->key_access_path, depth);
             assert(klong1 != KL_NULL && "Missing klong in keyAccessPath");
-            pd->one_kwi[0].klong = klong1;
-            pd->one_kwi[0].node = &newRoot->n;
-            pd->one_kwi[0].pos = pd->op.access_data;
-            if (!append_klongs(d, parent, depth - 1, pd->one_kwi, 1, pd)) {
+            const int32_t i = link_index(parent, node, klong1);
+            if (i < 0 || last_time(parent) != tt) {
+                return op_fail(&pd->op, ERR_FORMAT, "Bug", "Space split at %lld: no klong of "
+                        "tt to segment root %lld in its segment leaf.", (long long) tt,
+                        (long long) node->n.id);
+            }
+            if (!kn_repoint_klong(d->cx, parent, i, &newRoot->n)
+                    || !op_pointer_created(&pd->pointer_created_listener, &parent->n, i,
+                            &newRoot->n)
+                    || !key_node_changed(&pd->node_change_listener, parent)) {
                 return false;
             }
             node_split(&pd->split_listener, DAG_SPACE_SPLIT_2);
@@ -870,7 +1043,9 @@ static bool space_split(struct dag *d, struct knode *node, struct knode *last, i
     struct knode *parent = pd_get_parent(pd, depth);
     if (first == NULL || second == NULL
             || !key_node_created(&pd->node_change_listener, first)
-            || !key_node_created(&pd->node_change_listener, second)) {
+            || !key_node_created(&pd->node_change_listener, second)
+            || !pd_made_for(pd, first, node)
+            || !pd_made_for(pd, second, node)) {
         return false;
     }
 
@@ -880,6 +1055,7 @@ static bool space_split(struct dag *d, struct knode *node, struct knode *last, i
         struct knode *newRoot = kn_new(d->cx, false);
         if (newRoot == NULL
                 || !key_node_created(&pd->node_change_listener, newRoot)
+                || !pd_made_for(pd, newRoot, node)
                 || !kn_first_and_second(d->cx, node, tt, last, toInsert, nInsert, first, second,
                         &secondKlong)
                 || !report_new_pointers(first, &pd->pointer_created_listener)
@@ -904,6 +1080,7 @@ static bool space_split(struct dag *d, struct knode *node, struct knode *last, i
         struct knode *newSegmentRoot = kn_new(d->cx, false);
         if (newSegmentRoot == NULL
                 || !key_node_created(&pd->node_change_listener, newSegmentRoot)
+                || !pd_made_for(pd, newSegmentRoot, node)
                 || !kn_first_and_second(d->cx, node, tt, last, toInsert, nInsert, first, second,
                         &secondKlong)
                 || !report_new_pointers(first, &pd->pointer_created_listener)
@@ -988,7 +1165,8 @@ static bool handle_full_node(struct dag *d, struct knode *node, int32_t depth,
                 return false;
             }
         } else {
-            if (!time_split(d, tTime, last, depth, toInsert, nInsert, pd)) {
+            if (!pd_made_for(pd, last, node)
+                    || !time_split(d, tTime, last, depth, toInsert, nInsert, pd)) {
                 return false;
             }
         }
@@ -1045,6 +1223,667 @@ bool dag_put_kv(struct dag *d, const int64_t *key, int32_t n, const uint8_t *val
     return true;
 }
 
+/* ======== The upward unlink at a delete (bergdb 023-07, section 5) ========
+ *
+ * Java's Dag.deleteUpward and its helpers, as release 2026.4 has them
+ * (record format 6), in Java's order. A delete that leaves its segment leaf
+ * with no live KEY klong at the transaction time tt does not write the
+ * leaf: it deletes the parent's klong to it instead, and so on upward while
+ * a node is left with no live klong, also across segment trees (an emptied
+ * segment root takes the segment's klong in the segment leaf above). The
+ * first node that keeps a live klong gets the delete (UP).
+ *
+ * Every inner node has the empty key (KL_EMPTY_KEY, compare value 0) as its
+ * smallest live klong (LE-b): the roots that space splits make have it, and
+ * a space split of an inner node gives its second half the empty key for its
+ * first klong (kn_first_and_second). When the child of the empty key
+ * empties, the empty key is pointed to the next live child, whose own klong
+ * is deleted (empty_key_next).
+ *
+ * A node that the transaction made by a split (a last version, a half or a
+ * new root, its first klong of tt) and that it empties is taken back
+ * (take_back): never written, as if never made. Any other node made by the
+ * transaction holds only puts of the transaction, which one operation a key
+ * leaves live, so no delete empties it: Java's Bug.
+ *
+ * An unlinked node gets no entry of tt and loses those it got earlier in
+ * the transaction (kn_to_previous_state), and is reported as replaced, so
+ * that it leaves D if it got dirty in this transaction only. A space root
+ * that is a segment leaf stays, empty; an inner one is never emptied, as
+ * root collapse (RC, collapse_root) lowers it first.
+ *
+ * All of it is a function of the delete and the state at tt, so the
+ * startup's rerun redoes it; a record of format 6 means it. */
+
+static bool bug(struct putdata *pd, const char *format, ...) {
+    if (pd->op.err != NULL && pd->op.err->code == ERR_OK) {
+        va_list args;
+        va_start(args, format);
+        err_setv(pd->op.err, ERR_FORMAT, "Bug", format, args);
+        va_end(args);
+    }
+    return false;
+}
+
+/* Dag.lastBitmap: the last delete bitmap of the node, or one with no bit set. */
+static int64_t last_bitmap(const struct knode *node) {
+    const int16_t sz = node->size;
+    int64_t del = KL_DELETE_NONE_BITMAP;
+    for (int32_t i = 0; i < sz; i++) {
+        const int64_t klong = node->klongs[i];
+        if (kl_get_int_type(klong) == KL_INT_TYPE_DELETE_BITMAP) {
+            del = klong;
+        }
+    }
+    return del;
+}
+
+/* Dag.lastTime: the time of the node's last time klong, -1 if none. */
+static int64_t last_time(const struct knode *node) {
+    for (int32_t i = node->size - 1; i >= 0; i--) {
+        const int64_t klong = node->klongs[i];
+        if (kl_get_int_type(klong) == KL_INT_TYPE_TIME) {
+            return kl_get_time(klong);
+        }
+    }
+    return -1;
+}
+
+/* Dag.bitsOf: the delete bits of every KEY klong of the node with the
+ * compare value. */
+static int64_t bits_of(const struct knode *node, int64_t compareValue) {
+    const int16_t sz = node->size;
+    int64_t del = kl_create_delete();
+    for (int32_t i = 0; i < sz; i++) {
+        const int64_t klong = node->klongs[i];
+        if (kl_get_int_type(klong) == KL_INT_TYPE_KEY
+                && kl_get_compare_value(klong) == compareValue) {
+            del = kl_delete(del, i);
+        }
+    }
+    return del;
+}
+
+/* Dag.allKeysIn: true if every KEY klong of the node is deleted by 'del'. */
+static bool all_keys_in(const struct knode *node, int64_t del) {
+    const int16_t sz = node->size;
+    for (int32_t i = 0; i < sz; i++) {
+        if (kl_get_int_type(node->klongs[i]) == KL_INT_TYPE_KEY && !kl_is_deleted(del, i)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/* Dag.smallestLive: the smallest live compare value of the node, at the
+ * latest time; -1 if none. */
+static int64_t smallest_live(const struct knode *node) {
+    const int64_t del = last_bitmap(node);
+    const int16_t sz = node->size;
+    int64_t best = -1;
+    for (int32_t i = 0; i < sz; i++) {
+        const int64_t klong = node->klongs[i];
+        if (kl_get_int_type(klong) == KL_INT_TYPE_KEY && !kl_is_deleted(del, i)) {
+            const int64_t cv = kl_get_compare_value(klong);
+            if (best == -1 || cv < best) {
+                best = cv;
+            }
+        }
+    }
+    return best;
+}
+
+/* Dag.onlyLiveKlong: the index of the latest klong of the node's only live
+ * compare value; -1 if it has none or more than one. */
+static int32_t only_live_klong(const struct knode *node) {
+    const int64_t del = last_bitmap(node);
+    int32_t index = -1;
+    int64_t cv = -1;
+    for (int32_t i = 0; i < node->size; i++) {
+        const int64_t klong = node->klongs[i];
+        if (kl_get_int_type(klong) != KL_INT_TYPE_KEY || kl_is_deleted(del, i)) {
+            continue;
+        }
+        const int64_t c = kl_get_compare_value(klong);
+        if (index >= 0 && c != cv) {
+            return -1;
+        }
+        index = i;
+        cv = c;
+    }
+    return index;
+}
+
+/* Dag.linkIndex: the index of the live klong of 'parent' with the compare
+ * value of 'klong' that points to 'node', or -1. */
+static int32_t link_index(const struct knode *parent, const struct knode *node, int64_t klong) {
+    const int64_t cv = kl_get_compare_value(klong);
+    const int64_t del = last_bitmap(parent);
+    for (int32_t i = parent->size - 1; i >= 0; i--) {
+        const int64_t k = parent->klongs[i];
+        if (kl_get_int_type(k) == KL_INT_TYPE_KEY && kl_get_compare_value(k) == cv) {
+            return !kl_is_deleted(del, i) && kn_get_pointer_node(parent, i) == &node->n ? i : -1;
+        }
+    }
+    return -1;
+}
+
+/* Dag.followQuietly: follows pointer 'index' of 'node' as the writer,
+ * without telling pd's listener: the node is not marked, nor put on the key
+ * access path. NULL: a failure. */
+static struct knode *follow_quietly(struct knode *node, int32_t index, struct putdata *pd) {
+    const struct op_pointer_listener listener = pd->op.pointer_listener;
+    pd->op.pointer_listener = OP_DO_NOTHING_POINTER_LISTENER;
+    struct node *next = op_follow_pointer(&pd->op, &node->n, index);
+    pd->op.pointer_listener = listener;
+    if (next == NULL || !op_cast_ok(&pd->op, next, NODE_TYPE_KEY_NODE)) {
+        return NULL;
+    }
+    return (struct knode *) next;
+}
+
+/* Dag.descendToSegmentRoot: goes down from the space root at tt by the
+ * key's segments before 'segment' to the root of that segment's tree, into
+ * *out. Rebuilds pd's key access path. */
+static bool descend_to_segment_root(struct dag *d, const int64_t *key, int32_t segment,
+        struct putdata *pd, struct knode **out) {
+    const int64_t tt = pd->tt;
+    struct kwp *kwi = &pd->op.kwi;
+    pd->key_access_path.size = 0;               /* keyAccessPath.clearFast() */
+    struct knode *node;
+    if (!tds_find_root(&d->top_ds, tt, &pd->op, &node)) {
+        return false;
+    }
+    for (int32_t i = 0; i < segment; i++) {
+        while (!kn_is_segment_leaf(node)) {
+            kn_search_lte(node, tt, key[i], kwi);
+            if (!check_found(node, pd)) {
+                return false;
+            }
+            struct node *next = op_follow_pointer(&pd->op, &node->n, kwi->pointer_index);
+            if (next == NULL || !op_cast_ok(&pd->op, next, NODE_TYPE_KEY_NODE)) {
+                return false;
+            }
+            node = (struct knode *) next;
+        }
+        kn_search_eq(node, tt, key[i], kwi);
+        if (kwi->klong == KL_NULL) {
+            return bug(pd, "Descent at %lld: segment %d not found.", (long long) tt, (int) i);
+        }
+        struct node *next = op_follow_pointer(&pd->op, &node->n, kwi->pointer_index);
+        if (next == NULL || !op_cast_ok(&pd->op, next, NODE_TYPE_KEY_NODE)) {
+            return false;
+        }
+        node = (struct knode *) next;
+    }
+    *out = node;
+    return true;
+}
+
+/* Dag.descendToRootQuietly: as descend_to_segment_root, but the segment
+ * root itself is followed without being marked (follow_quietly) and put on
+ * the key access path by hand: after a collapse it is the old root's child,
+ * which does not change, and the model marks a node only if something below
+ * it changed. The nodes above it are followed as by any descent. */
+static bool descend_to_root_quietly(struct dag *d, const int64_t *key, int32_t segment,
+        struct putdata *pd, struct knode **out) {
+    const int64_t tt = pd->tt;
+    if (segment == 0) {
+        pd->key_access_path.size = 0;           /* keyAccessPath.clearFast() */
+        const struct op_pointer_listener listener = pd->op.pointer_listener;
+        pd->op.pointer_listener = OP_DO_NOTHING_POINTER_LISTENER;
+        struct knode *root;
+        const bool ok = tds_find_root(&d->top_ds, tt, &pd->op, &root);
+        pd->op.pointer_listener = listener;
+        if (!ok || !kap_add(&pd->key_access_path, KL_NULL, root)) {
+            return false;
+        }
+        *out = root;
+        return true;
+    }
+    struct kwp *kwi = &pd->op.kwi;
+    struct knode *node;
+    if (!descend_to_segment_root(d, key, segment - 1, pd, &node)) {
+        return false;
+    }
+    while (!kn_is_segment_leaf(node)) {
+        kn_search_lte(node, tt, key[segment - 1], kwi);
+        if (!check_found(node, pd)) {
+            return false;
+        }
+        struct node *next = op_follow_pointer(&pd->op, &node->n, kwi->pointer_index);
+        if (next == NULL || !op_cast_ok(&pd->op, next, NODE_TYPE_KEY_NODE)) {
+            return false;
+        }
+        node = (struct knode *) next;
+    }
+    kn_search_eq(node, tt, key[segment - 1], kwi);
+    if (kwi->klong == KL_NULL) {
+        return bug(pd, "Descent at %lld: segment %d not found.", (long long) tt,
+                (int) (segment - 1));
+    }
+    const int64_t klong = kwi->klong;
+    struct knode *root = follow_quietly(node, kwi->pointer_index, pd);
+    if (root == NULL || !kap_add(&pd->key_access_path, klong, root)) {
+        return false;
+    }
+    *out = root;
+    return true;
+}
+
+/* Dag.unlink: unlinks 'node', which existed before the transaction, at tt:
+ * it loses its klongs of tt and is reported as replaced. */
+static bool unlink_node(struct dag *d, struct knode *node, struct putdata *pd) {
+    assert(kn_get_first_time(node) != pd->tt && "unlink of a node made in the transaction");
+    if (last_time(node) == pd->tt) {
+        kn_to_previous_state(d->cx, node, pd->tt - 1);
+    }
+    if (!key_node_replaced(&pd->node_change_listener, node)) {
+        return false;
+    }
+    pd->stat_unlinked++;
+    return true;
+}
+
+/* Dag.canTakeBack: true if 'node', made by this transaction and linked by
+ * its klong 'klong' of tt in 'parent', replaces a node that existed before
+ * (a split's last version, half or new root), so that it can be taken back. */
+static bool can_take_back(const struct knode *node, const struct knode *parent, int64_t klong,
+        const struct putdata *pd) {
+    return pd_replaced_by(pd, node) != NULL && link_index(parent, node, klong) >= 0;
+}
+
+/* Dag.retarget: points every KEY klong of tt in 'p' (behind its time klong
+ * of tt, where every reader stops) that points to 'from', a node that the
+ * transaction made and takes back, to 'to': no written node may point to a
+ * node that is never written, not even by a deleted klong (023-07, section
+ * 5.1, fault 6). */
+static bool retarget(struct dag *d, struct knode *p, const struct knode *from, struct knode *to,
+        int64_t tt) {
+    if (last_time(p) != tt) {
+        return true;
+    }
+    for (int32_t i = p->size - 1; i >= 0; i--) {
+        const int64_t klong = p->klongs[i];
+        if (kl_get_int_type(klong) == KL_INT_TYPE_TIME) {
+            break;
+        }
+        if (kl_get_int_type(klong) == KL_INT_TYPE_KEY
+                && kn_get_pointer_node(p, i) == &from->n) {
+            if (!kn_repoint_klong(d->cx, p, i, &to->n)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+/* Dag.takeBack: takes back 'node', made by this transaction by a split and
+ * emptied in it: its parent's klong of tt to it, and every other klong of
+ * tt there that names it, deleted ones too (retarget), is pointed to the
+ * node it replaced, which existed before the transaction and is not
+ * current, so nothing points to 'node' any more; the climb then deletes
+ * that klong in the parent, or points it to the next child if it is the
+ * empty key's (empty_key_next), as for any emptied child. 'node' is reported
+ * as taken back, so it leaves D and is never written. */
+static bool take_back(struct dag *d, struct knode *node, struct knode *parent, int64_t klong,
+        struct putdata *pd) {
+    struct knode *old = pd_replaced_by(pd, node);
+    if (old == NULL || link_index(parent, node, klong) < 0 || last_time(parent) != pd->tt) {
+        return bug(pd, "Take back of key node %lld at %lld: no node it replaces, or no klong "
+                "of tt to it.", (long long) node->n.id, (long long) pd->tt);
+    }
+    if (!retarget(d, parent, node, old, pd->tt)) {
+        return false;
+    }
+    pd_replaced_remove(pd, node);       /* C's: see dag.h */
+    if (!key_node_taken_back(&pd->node_change_listener, node)) {
+        return false;
+    }
+    pd->stat_taken_back++;
+    return true;
+}
+
+/* Dag.emptyKeyNext: LE-b, the empty key first. The child of the empty key
+ * of the inner node 'node', at 'depth' of the key access path, its leftmost
+ * child, has emptied: the empty key is pointed to the next live child, the
+ * one with the smallest live compare value but the empty key's, and that
+ * child's compare value is deleted. A new klong of the empty key, with a
+ * copy of the child's pointer, shadows the old one, as a time split's klong
+ * does. If the latest klong of the empty key is of tt, it is pointed to the
+ * next child in place instead: it is behind the time klong of tt, where
+ * every reader stops. Nothing below changes. A full node is replaced by its
+ * last version, with the empty key instead of the next child's klong (the
+ * order stays sorted), through handle_full_node with no klong to insert. */
+static bool empty_key_next(struct dag *d, struct knode *node, int32_t depth,
+        struct putdata *pd) {
+    assert(!kn_is_segment_leaf(node));
+    const int64_t tt = pd->tt;
+    const int16_t sz = node->size;
+    int64_t arrayDel = KL_DELETE_NONE_BITMAP;
+    int64_t arrayTime = -1;
+    int32_t timeIndex = -1;
+    bool hasTransDel = false;
+    int32_t e = -1;                         /* the latest klong of the empty key */
+    for (int32_t i = 0; i < sz; i++) {
+        const int64_t klong = node->klongs[i];
+        switch (kl_get_int_type(klong)) {
+        case KL_INT_TYPE_TIME:
+            arrayTime = kl_get_time(klong);
+            timeIndex = i;
+            break;
+        case KL_INT_TYPE_DELETE_BITMAP:
+            arrayDel = klong;
+            hasTransDel = arrayTime == tt && i == sz - 1;
+            break;
+        default:
+            if (kl_get_compare_value(klong) == 0) {
+                e = i;
+            }
+            break;
+        }
+    }
+    /* The next live child: the smallest live compare value but the empty
+     * key's, and its latest klong. */
+    const int64_t del0 = arrayDel | bits_of(node, 0);
+    int32_t j = -1;
+    int64_t jcv = -1;
+    for (int32_t i = 0; i < sz; i++) {
+        const int64_t klong = node->klongs[i];
+        if (kl_get_int_type(klong) != KL_INT_TYPE_KEY || kl_is_deleted(del0, i)) {
+            continue;
+        }
+        const int64_t cv = kl_get_compare_value(klong);
+        if (j == -1 || cv <= jcv) {
+            j = i;
+            jcv = cv;
+        }
+    }
+    if (e == -1 || kl_is_deleted(arrayDel, e) || j == -1) {
+        return bug(pd, "LE-b at %lld in key node %lld: %s", (long long) tt,
+                (long long) node->n.id,
+                j == -1 ? "no next child." : "no live klong of the empty key.");
+    }
+    const int64_t unionDel = arrayDel | bits_of(node, jcv);
+    const bool inPlace = arrayTime == tt && e > timeIndex;
+    const int32_t need = (hasTransDel ? 0 : 1) + (inPlace ? 0 : 1) + (arrayTime == tt ? 0 : 1);
+
+    if (sz + need <= d->max_node_size) {
+        /* The bitmap first: in the model's terms a bitmap deletes the klongs
+         * before it with the compare values of its new bits; the empty key
+         * is not one of them, so the order is free. */
+        if (hasTransDel) {
+            node->klongs[sz - 1] = unionDel;    /* the transaction's own bitmap */
+        } else if (!kn_add_delete_klong(d->cx, node, tt, unionDel)) {
+            return false;
+        }
+        int32_t index;
+        if (inPlace) {
+            kn_copy_pointer(d->cx, node, e, j);
+            index = e;
+        } else if (!kn_add_klong_copy_pointer(d->cx, node, tt, KL_EMPTY_KEY, j, &index)) {
+            return false;
+        }
+        struct node *pointee = kn_get_pointer_node(node, index);
+        if (pointee != NULL) {
+            if (!op_pointer_created(&pd->pointer_created_listener, &node->n, index, pointee)) {
+                return false;
+            }
+        }
+        if (!key_node_changed(&pd->node_change_listener, node)) {
+            return false;
+        }
+    } else {
+        struct knode *last = kn_last_version_given_del(d->cx, node, sz, tt, del0);
+        if (last == NULL) {
+            return false;
+        }
+        assert(kl_get_type(last->klongs[0]) == KL_TYPE_TIME);
+        if (last->size < 2 || kl_get_compare_value(last->klongs[1]) != jcv) {
+            return bug(pd, "LE-b at %lld in key node %lld: the last version does not start "
+                    "with the next child.", (long long) tt, (long long) node->n.id);
+        }
+        last->klongs[1] = KL_EMPTY_KEY;     /* sorted still: the empty key is below the rest */
+        if (!handle_full_node(d, node, depth, NULL, 0, tt, last, pd)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/* Dag.takeBackRoot: root collapse of 'root', made by a split of the
+ * transaction, at 'depth' of the key access path, whose one live child is
+ * that of its klong at 'only': the child takes its place in the klong of tt
+ * that links it, and 'root' is taken back (collapse_root). */
+static bool take_back_root(struct dag *d, struct knode *root, int32_t depth, int32_t only,
+        struct putdata *pd) {
+    const int64_t tt = pd->tt;
+    struct knode *child = follow_quietly(root, only, pd);
+    if (child == NULL) {
+        return false;
+    }
+    if (depth == 0) {
+        /* The top node of tt is updated in place (TopDs.newSuperRoot). */
+        if (!tds_new_super_root(d->cx, &d->top_ds, tt, child, pd->op.access_data,
+                &pd->pointer_created_listener, &pd->node_change_listener)) {
+            return false;
+        }
+    } else {
+        struct knode *leaf = kap_get(&pd->key_access_path, depth - 1);
+        const int32_t i = link_index(leaf, root, kap_get_klong(&pd->key_access_path, depth));
+        if (i < 0 || last_time(leaf) != tt) {
+            return bug(pd, "Root collapse at %lld: no klong of tt to root %lld in its segment "
+                    "leaf.", (long long) tt, (long long) root->n.id);
+        }
+        if (!kn_repoint_klong(d->cx, leaf, i, &child->n)
+                || !key_node_changed(&pd->node_change_listener, leaf)) {
+            return false;
+        }
+    }
+    pd_replaced_remove(pd, root);       /* C's: see dag.h */
+    if (!key_node_taken_back(&pd->node_change_listener, root)) {
+        return false;
+    }
+    pd->stat_taken_back++;
+    pd->stat_roots_taken_back++;
+    pd->stat_collapses++;
+    return true;
+}
+
+/* Dag.replaceRoot: one step of root collapse: 'root', at 'depth' of the key
+ * access path, is replaced by the child of its klong at 'only', its one
+ * live child: the space root through a new super root, a segment root
+ * through a klong with the same compare value in the segment leaf above.
+ * The child is followed before 'root' is unlinked, as unlinking drops the
+ * klongs of tt, and without being marked: it does not change. */
+static bool replace_root(struct dag *d, struct knode *root, int32_t depth, int32_t only,
+        struct putdata *pd) {
+    const int64_t tt = pd->tt;
+    struct knode *child = follow_quietly(root, only, pd);
+    if (child == NULL) {
+        return false;
+    }
+    if (depth == 0) {
+        if (!unlink_node(d, root, pd)
+                || !tds_new_super_root(d->cx, &d->top_ds, tt, child, pd->op.access_data,
+                        &pd->pointer_created_listener, &pd->node_change_listener)) {
+            return false;
+        }
+    } else {
+        struct knode *leaf = kap_get(&pd->key_access_path, depth - 1);
+        const int64_t klong = kap_get_klong(&pd->key_access_path, depth);
+        if (!unlink_node(d, root, pd)) {
+            return false;
+        }
+        pd->one_kwi[0].klong = klong;
+        pd->one_kwi[0].node = &child->n;
+        pd->one_kwi[0].pos = pd->op.access_data;
+        if (!append_klongs(d, leaf, depth - 1, pd->one_kwi, 1, pd)) {
+            return false;
+        }
+    }
+    pd->stat_collapses++;
+    return true;
+}
+
+/* Dag.collapseRoot: RC, root collapse, after a climb that ended in an inner
+ * node of the tree of segment 'segment': while the root of that tree is an
+ * inner node with one live klong, its only child takes its place: for the
+ * space root through a new super root (as time-split-2 makes one), for a
+ * segment root through a klong with the same compare value in the segment
+ * leaf above, which shadows the old one. The old root is unlinked. A root
+ * that a split of the transaction made is collapsed too, and taken back
+ * (take_back_root); a root that the transaction made fresh ends it. */
+static bool collapse_root(struct dag *d, const int64_t *key, int32_t segment,
+        struct putdata *pd) {
+    const int64_t tt = pd->tt;
+    while (true) {
+        struct knode *root;
+        if (!descend_to_root_quietly(d, key, segment, pd, &root)) {
+            return false;
+        }
+        if (kn_is_segment_leaf(root)) {
+            return true;
+        }
+        const bool made = kn_get_first_time(root) == tt;
+        if (made && pd_replaced_by(pd, root) == NULL) {
+            return true;
+        }
+        const int32_t only = only_live_klong(root);
+        if (only < 0) {
+            return true;
+        }
+        if (kl_get_compare_value(root->klongs[only]) != 0) {
+            return bug(pd, "Root collapse at %lld: the one live klong of root %lld is not the "
+                    "empty key.", (long long) tt, (long long) root->n.id);
+        }
+        if (made) {
+            if (!take_back_root(d, root, pd->key_access_path.size - 1, only, pd)) {
+                return false;
+            }
+        } else {
+            if (!replace_root(d, root, pd->key_access_path.size - 1, only, pd)) {
+                return false;
+            }
+        }
+    }
+}
+
+/* Dag.deleteUpward: a delete of 'compareValue', the key's last segment, in
+ * the segment leaf 'leaf' at 'depth' of the key access path, with the
+ * upward unlink (see above). *isNoop: the key has no live value. */
+static bool delete_upward(struct dag *d, struct knode *leaf, int32_t depth, int64_t compareValue,
+        const int64_t *key, struct putdata *pd, bool *isNoop) {
+    const int64_t tt = pd->tt;
+    const int64_t leafDel = last_bitmap(leaf);
+    const int64_t leafUnion = leafDel | bits_of(leaf, compareValue);
+    bool noop;
+    if (leafUnion == leafDel) {
+        *isNoop = true;
+        return true;
+    }
+    *isNoop = false;
+    if (!all_keys_in(leaf, leafUnion)) {
+        return append_delete_klong(d, leaf, depth, compareValue, pd, &noop);
+    }
+
+    /* The leaf is empty after the delete. Find 'stop', the node that gets
+     * the delete: the first above that keeps a live klong. Nothing is
+     * changed until it is known, so a climb that cannot go on changes
+     * nothing above the leaf. */
+    const struct kap *path = &pd->key_access_path;
+    int32_t top = depth;
+    int32_t stop;
+    while (true) {
+        struct knode *n = kap_get(path, top);
+        if (kn_get_first_time(n) == tt && top > 0
+                && !can_take_back(n, kap_get(path, top - 1), kap_get_klong(path, top), pd)) {
+            /* Made by this transaction, and not by a split of a node that
+             * existed (X5 (c)): such a node, and every node below it, holds
+             * only puts of the transaction, and a transaction reaches the
+             * Dag with one operation a key (Db.putKvs), so no delete of it
+             * empties the node. Nothing is changed yet. */
+            return bug(pd, "The upward unlink at %lld: key node %lld, made by the transaction "
+                    "and not by a split, is emptied: two operations on one key in a "
+                    "transaction (bergdb 023-08, X5 (c)).", (long long) tt,
+                    (long long) n->n.id);
+        }
+        if (top == 0) {
+            /* The space root. A segment leaf stays, empty, with the delete,
+             * also one that the transaction made. An inner one is never
+             * emptied (bergdb 023-11, review A, S1). */
+            if (!kn_is_segment_leaf(n)) {
+                return bug(pd, "The upward unlink at %lld: inner space root %lld is emptied "
+                        "(bergdb 023-11, S1).", (long long) tt, (long long) n->n.id);
+            }
+            if (kn_get_first_time(n) == tt) {
+                pd->stat_kept_new++;
+            }
+            stop = 0;
+            break;
+        }
+        const struct knode *p = kap_get(path, top - 1);
+        const int64_t c = kl_get_compare_value(kap_get_klong(path, top));
+        if (all_keys_in(p, last_bitmap(p) | bits_of(p, c))) {
+            top--;
+            continue;
+        }
+        stop = top - 1;
+        break;
+    }
+
+    if (stop == depth) {
+        return append_delete_klong(d, leaf, depth, compareValue, pd, &noop);
+    }
+
+    pd->stat_climbs++;
+
+    /* The segment of 'stop''s tree, from the path before it changes, for
+     * root collapse. */
+    int32_t segment = 0;
+    for (int32_t i = 0; i < stop; i++) {
+        if (kn_is_segment_leaf(kap_get(path, i))) {
+            segment++;
+        }
+    }
+
+    for (int32_t k = depth; k > stop; k--) {
+        struct knode *n = kap_get(path, k);
+        if (kn_get_first_time(n) == tt) {
+            if (!take_back(d, n, kap_get(path, k - 1), kap_get_klong(path, k), pd)) {
+                return false;
+            }
+        } else {
+            if (!unlink_node(d, n, pd)) {
+                return false;
+            }
+        }
+    }
+
+    struct knode *s = kap_get(path, stop);
+    const int64_t c = kl_get_compare_value(kap_get_klong(path, stop + 1));
+
+    if (kn_is_segment_leaf(s)) {
+        return append_delete_klong(d, s, stop, c, pd, &noop);
+    }
+    if (smallest_live(s) != 0) {
+        return bug(pd, "The upward unlink at %lld: inner node %lld has no live klong of the "
+                "empty key (bergdb 023-04, LE-b).", (long long) tt, (long long) s->n.id);
+    }
+    if (c != 0) {
+        if (!append_delete_klong(d, s, stop, c, pd, &noop)) {
+            return false;
+        }
+    } else {
+        /* The leftmost child (023-04, LE-b). */
+        pd->stat_relabels++;
+        if (!empty_key_next(d, s, stop, pd)) {
+            return false;
+        }
+    }
+    return collapse_root(d, key, segment, pd);
+}
+
 /* ======== dirtyNodeBound() ======== */
 
 /* A node that dirtyNodeBound walked (Dag.Walked). */
@@ -1052,6 +1891,7 @@ struct walked {
     struct knode *node;
     int32_t up;                 /* the node above it on the path, -1 for the space root */
     int64_t klongs;             /* that it gets */
+    int32_t collapses;          /* root collapses of its tree at most, a tree's root */
     int32_t fresh_first;        /* its fresh keys: a list through fresh_next, -1 none */
     int32_t fresh_level;        /* the segment of the keys in its fresh list missing here */
 };
@@ -1126,6 +1966,7 @@ static bool dnb_walked(struct dnb *s, struct knode *node, int32_t up, int32_t *o
     w->node = node;
     w->up = up;
     w->klongs = 0;
+    w->collapses = 0;
     w->fresh_first = -1;
     w->fresh_level = 0;
     s->nw++;
@@ -1298,7 +2139,19 @@ static void dnb_free(struct dnb *s, int32_t count) {
 bool dag_dirty_node_bound(struct dag *d, int64_t time, const int64_t *const *keys,
         const int32_t *key_n, const bool *deletes, int32_t n, struct getdata *gd,
         struct mem *m, int64_t *out) {
+    return dag_dirty_node_bound_klongs(d, time, keys, key_n, deletes, n, gd, m, out, NULL,
+            NULL);
+}
+
+/* Dag.dirtyNodeBound with klongsOut, for tests: the klongs counted for the
+ * walked node 'probe', before the splits' klongs. */
+bool dag_dirty_node_bound_klongs(struct dag *d, int64_t time, const int64_t *const *keys,
+        const int32_t *key_n, const bool *deletes, int32_t n, struct getdata *gd,
+        struct mem *m, int64_t *out, const struct knode *probe, int64_t *probeKlongs) {
     *out = 0;
+    if (probeKlongs != NULL) {
+        *probeKlongs = -1;
+    }
     struct knode *root;
     if (!tds_find_root(&d->top_ds, time, &gd->op, &root)) {
         return false;
@@ -1318,12 +2171,14 @@ bool dag_dirty_node_bound(struct dag *d, int64_t time, const int64_t *const *key
         ok = s.fresh_next != NULL && s.order != NULL;
     }
     struct kwp *kwi = &gd->op.kwi;
+    bool anyDelete = false;
 
     for (int32_t k = 0; ok && k < n; k++) {
         const int64_t *key = keys[k];
         struct knode *node = root;
         int32_t w;
         ok = dnb_walked(&s, node, -1, &w);
+        op_descent_from(&gd->op, &node->n);
         for (int32_t i = 0; ok && i < key_n[k]; i++) {
             while (!kn_is_segment_leaf(node)) {
                 kn_search_lte(node, time, key[i], kwi);
@@ -1331,7 +2186,8 @@ bool dag_dirty_node_bound(struct dag *d, int64_t time, const int64_t *const *key
                     break;
                 }
                 struct node *next = op_follow_pointer(&gd->op, &node->n, kwi->pointer_index);
-                if (next == NULL || !op_cast_ok(&gd->op, next, NODE_TYPE_KEY_NODE)) {
+                if (next == NULL || !op_cast_ok(&gd->op, next, NODE_TYPE_KEY_NODE)
+                        || !op_descent_to(&gd->op, next)) {
                     ok = false;
                     break;
                 }
@@ -1345,7 +2201,28 @@ bool dag_dirty_node_bound(struct dag *d, int64_t time, const int64_t *const *key
                 break;
             }
             if (i == key_n[k] - 1) {
-                s.w[w].klongs++;
+                if (deletes[k]) {
+                    /* The upward unlink, LE-b and root collapse (bergdb 023-07,
+                     * section 5.4, K4; 023-11, B1): two klongs in every node
+                     * of the path, and the inner nodes of each segment tree on
+                     * it, for the collapses, at the segment leaf above that
+                     * tree. */
+                    anyDelete = true;
+                    int32_t inner = 0;
+                    for (int32_t u = w, below = -1; u >= 0; below = u, u = s.w[u].up) {
+                        s.w[u].klongs += 2;
+                        if (kn_is_segment_leaf(s.w[u].node)) {
+                            if (below >= 0 && s.w[below].collapses < inner) {
+                                s.w[below].collapses = inner;   /* 'below' is a tree's root */
+                            }
+                            inner = 0;
+                        } else {
+                            inner++;
+                        }
+                    }
+                } else {
+                    s.w[w].klongs++;
+                }
                 break;
             }
             kn_search_eq(node, time, key[i], kwi);
@@ -1356,7 +2233,8 @@ bool dag_dirty_node_bound(struct dag *d, int64_t time, const int64_t *const *key
                 break;
             }
             struct node *next = op_follow_pointer(&gd->op, &node->n, kwi->pointer_index);
-            if (next == NULL || !op_cast_ok(&gd->op, next, NODE_TYPE_KEY_NODE)) {
+            if (next == NULL || !op_cast_ok(&gd->op, next, NODE_TYPE_KEY_NODE)
+                    || !op_descent_to(&gd->op, next)) {
                 ok = false;
                 break;
             }
@@ -1366,6 +2244,20 @@ bool dag_dirty_node_bound(struct dag *d, int64_t time, const int64_t *const *key
     }
 
     int64_t count = s.nw;
+    if (ok && anyDelete) {
+        for (int32_t i = 0; i < s.nw; i++) {
+            if (s.w[i].up >= 0) {
+                s.w[s.w[i].up].klongs += s.w[i].collapses;  /* summed over the trees below a leaf */
+            }
+        }
+    }
+    if (ok && probeKlongs != NULL) {
+        for (int32_t i = 0; i < s.nw; i++) {
+            if (s.w[i].node == probe) {
+                *probeKlongs = s.w[i].klongs;
+            }
+        }
+    }
     /* Deepest first. Java sorts the walked nodes by depth, from the
      * largest, so that each node comes after the nodes whose up it is: their
      * overflows add to its klongs, and nothing else passes between the

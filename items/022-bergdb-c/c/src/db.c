@@ -219,10 +219,10 @@ static bool add_replaced(struct db *db, struct node *node) {
     return true;
 }
 
-/* replacedInTrans.clear() */
+/* replacedInTrans.clear(), and takenBackInTrans.clear() */
 static void clear_replaced(struct db *db) {
     for (int32_t i = 0; i < db->n_replaced; i++) {
-        db->replaced[i]->o.flags &= (uint16_t) ~OBJ_REPLACED;
+        db->replaced[i]->o.flags &= (uint16_t) ~(OBJ_REPLACED | OBJ_TAKEN_BACK);
         obj_release(&db->cx, &db->replaced[i]->o);
     }
     db->n_replaced = 0;
@@ -245,6 +245,16 @@ static void end_of_trans(struct db *db) {
             }
         }
         info->ndirty = kept;
+    }
+    /* Nodes the transaction made and took back (bergdb 023-07, section 5.1; as
+     * Java's since release 2026.4), out of D above, leave the node table:
+     * never written, and no node names them. Java's list takenBackInTrans is
+     * the flag OBJ_TAKEN_BACK on the nodes of the replaced list, which holds
+     * them (counted) until here. */
+    for (int32_t i = 0; i < db->n_replaced; i++) {
+        if ((db->replaced[i]->o.flags & OBJ_TAKEN_BACK) != 0) {
+            nt_drop_node(&db->node_table, db->replaced[i]);
+        }
     }
     clear_replaced(db);
     db->touch_marks = 0;
@@ -302,6 +312,22 @@ static bool l_value_node_created(void *ctx, struct vnode *node, const int64_t *k
 static bool l_key_node_replaced(void *ctx, struct knode *node) {
     struct db *db = ctx;
     return db->trans_info == NULL || add_replaced(db, &node->n);
+}
+
+/* keyNodeTakenBack: keyNodeReplaced(node); takenBackInTrans.add(node).
+ * Without a transaction's info (no D, so no replaced list to hold the
+ * node), it leaves the node table at once, as in the startup's rerun. */
+static bool l_key_node_taken_back(void *ctx, struct knode *node) {
+    struct db *db = ctx;
+    if (db->trans_info == NULL) {
+        nt_drop_node(&db->node_table, &node->n);
+        return true;
+    }
+    if (!add_replaced(db, &node->n)) {
+        return false;
+    }
+    node->n.o.flags |= OBJ_TAKEN_BACK;
+    return true;
 }
 
 static bool l_top_node_replaced(void *ctx, struct tnode *node) {
@@ -421,6 +447,7 @@ static void create_put_and_get_data(struct db *db) {
     pd->node_change_listener.key_node_changed = l_key_node_changed;
     pd->node_change_listener.value_node_created = l_value_node_created;
     pd->node_change_listener.key_node_replaced = l_key_node_replaced;
+    pd->node_change_listener.key_node_taken_back = l_key_node_taken_back;
     pd->node_change_listener.top_node_replaced = l_top_node_replaced;
     pd->node_change_listener.ctx = db;
     db->dag_listener = pd->op.pointer_listener;
@@ -770,13 +797,20 @@ static enum err_code check_dirty_nodes(struct db *db, const struct trans *t, str
 
     int64_t cheap = 0;
     for (int32_t i = 0; i < t->nkvs; i++) {
-        cheap += 3 * height * t->kvs[i]->key_n + 3;
+        /* A delete: with the upward unlink two klongs in every node of its
+         * path, and the klongs of root collapse in the segment leaves above
+         * (dag_dirty_node_bound; bergdb 023-07, section 5.4); a factor of 7,
+         * a margin over a put's 3. A value transformation may give null, a
+         * delete (023-11, review B, B2). As Java's since release 2026.4. */
+        const struct tr_kv *kv = t->kvs[i];
+        const bool delete = kv->len < 0 || (kv->has_tf && kv->tf.value != NULL);
+        cheap += (delete ? 7 : 3) * height * kv->key_n + 3;
     }
     if (cheap <= (limit - topBytes) / nodeBytes) {
         return ERR_OK;
     }
 
-    const int32_t count = t->nkvs;
+    const int32_t count = 2 * t->nkvs;      /* a KV with a value transformation twice */
     const int64_t **keys = mem_alloc(db->mem, (size_t) (count > 0 ? count : 1) * sizeof *keys,
             MEM_STATE);
     int32_t *keyN = mem_alloc(db->mem, (size_t) (count > 0 ? count : 1) * sizeof *keyN,
@@ -789,15 +823,24 @@ static enum err_code check_dirty_nodes(struct db *db, const struct trans *t, str
     } else {
         int32_t n = 0;
         int64_t nodes = 0;
-        for (int32_t i = 0; i < count; i++) {
+        for (int32_t i = 0; i < t->nkvs; i++) {
             const struct tr_kv *kv = t->kvs[i];
+            const bool vtf = kv->has_tf && kv->tf.value != NULL;
             if (kv->has_tf && kv->tf.key != NULL) {
-                nodes += 3 * height * kv->key_n + 3;
+                nodes += (vtf ? 7 : 3) * height * kv->key_n + 3;
             } else {
                 keys[n] = kv->key;
                 keyN[n] = kv->key_n;
-                deletes[n] = kv->len < 0 && !(kv->has_tf && kv->tf.value != NULL);
+                deletes[n] = kv->len < 0 && !vtf;
                 n++;
+                if (vtf) {
+                    /* It may give null, a delete: walked as a put and as a
+                     * delete, an over-count (023-11, review B, B2). */
+                    keys[n] = kv->key;
+                    keyN[n] = kv->key_n;
+                    deletes[n] = true;
+                    n++;
+                }
             }
         }
         const int64_t time = dbclock_lookup_time(&db->clock, INT64_MAX);
@@ -889,8 +932,63 @@ static enum err_code touch_range(struct db *db, const int64_t *from, int32_t fro
     return ERR_OK;
 }
 
-/* putKvs: the pairs applied in the transaction's order, each an operation
- * with its marking, then endOfTrans. A safe point after each operation. */
+/* Db.sortByKey (bergdb 023-08, section 7, Q4; 023-11, review A, F1): the
+ * KVs to put, after the key transformations: kvs sorted by key and one KV
+ * a key, in a new array (2 * n pointers, MEM_STATE: the result and the
+ * merge's scratch; the caller frees it), *out its count; kvs and the
+ * transaction's write hashes are left as they are. The sort is stable (a
+ * merge sort, as Java's Arrays.sort of objects), so KVs that
+ * transformations make one key are next to each other in the transaction's
+ * order. Of them one is kept, by tr_build's rule for the calls on one key
+ * (015-40): the last put, or a delete if there is no put; a delete never
+ * replaces a put. NULL: NOMEM. */
+static struct tr_kv **sort_by_key(struct db *db, struct tr_kv **kvs, int32_t n, int32_t *out) {
+    struct tr_kv **a = mem_alloc(db->mem, 2 * (size_t) n * sizeof *a, MEM_STATE);
+    if (a == NULL) {
+        return NULL;
+    }
+    struct tr_kv **b = a + n;
+    memcpy(a, kvs, (size_t) n * sizeof *a);
+    for (int32_t width = 1; width < n; width *= 2) {
+        for (int32_t lo = 0; lo < n; lo += 2 * width) {
+            const int32_t mid = lo + width < n ? lo + width : n;
+            const int32_t hi = lo + 2 * width < n ? lo + 2 * width : n;
+            int32_t i = lo, j = mid, k = lo;
+            while (i < mid && j < hi) {
+                /* The left one first when equal: stable. */
+                if (keys_compare_arrays(a[j]->key, a[j]->key_n, a[i]->key, a[i]->key_n) < 0) {
+                    b[k++] = a[j++];
+                } else {
+                    b[k++] = a[i++];
+                }
+            }
+            while (i < mid) {
+                b[k++] = a[i++];
+            }
+            while (j < hi) {
+                b[k++] = a[j++];
+            }
+        }
+        memcpy(a, b, (size_t) n * sizeof *a);
+    }
+    int32_t kept = 0;                       /* the KVs kept, in a[0, kept) */
+    for (int32_t i = 0; i < n; i++) {
+        if (kept > 0 && keys_compare_arrays(a[kept - 1]->key, a[kept - 1]->key_n, a[i]->key,
+                a[i]->key_n) == 0) {
+            if (a[i]->len >= 0 || a[kept - 1]->len < 0) {
+                a[kept - 1] = a[i];         /* a put, or a delete after a delete */
+            }
+            continue;
+        }
+        a[kept++] = a[i];
+    }
+    *out = kept;
+    return a;
+}
+
+/* putKvs: the pairs applied in key order (the transaction's; sorted again
+ * after key transformations), each an operation with its marking, then
+ * endOfTrans. A safe point after each operation. */
 static enum err_code put_kvs(struct db *db, struct err *e) {
     struct trans *t = db->trans;
     struct putdata *pd = &db->put_data;
@@ -919,9 +1017,18 @@ static enum err_code put_kvs(struct db *db, struct err *e) {
         obj_collect(&db->cx);       /* a safe point, as after a put */
     }
 
+    /* Every key transformation first, then the KVs in key order, one a key
+     * (bergdb 023-08, section 7, Q4; as Java's since release 2026.4): the
+     * index gets a transaction's operations in the order of their keys,
+     * whatever the order a transformation left them in, so two transactions
+     * with the same operations run the same and write the same stream; of
+     * KVs that transformations make one key, one is kept by tr_build's rule
+     * (sort_by_key). Value transformations stay in the put loop, for the KVs
+     * kept. The record holds the KVs put, and the startup's rerun applies
+     * them in their stored order, this order, and does not sort. */
+    bool transformed = false;
     for (int32_t i = 0; i < t->nkvs; i++) {
         struct tr_kv *kv = t->kvs[i];
-        enum err_code rc;
         if (kv->has_tf && kv->tf.key != NULL) {
             /* kv.getKeyTransformation().transform(x.trans, i); its write hash the
              * new key's (bergdb.h). */
@@ -934,13 +1041,30 @@ static enum err_code put_kvs(struct db *db, struct err *e) {
             const uint8_t *k = bkey;
             size_t klen = (size_t) blen;
             kv->tf.key(kv->tf.ctx, t->tt, &k, &klen);
-            rc = tr_kv_set_key(kv, t->mem, k, (int32_t) klen, e);
+            enum err_code rc = tr_kv_set_key(kv, t->mem, k, (int32_t) klen, e);
             mem_free(db->mem, bkey, bsize, MEM_CALLER);
             if (rc != ERR_OK) {
                 return rc;
             }
             t->write_key_hashes[i] = keys_hash(kv->key, kv->key_n);
+            transformed = true;
         }
+    }
+    struct tr_kv **kvs = t->kvs;
+    int32_t nkvs = t->nkvs;
+    struct tr_kv **sorted = NULL;
+    if (transformed) {
+        sorted = sort_by_key(db, t->kvs, t->nkvs, &nkvs);
+        if (sorted == NULL) {
+            return nomem(e);
+        }
+        kvs = sorted;
+    }
+    const size_t sortedBytes = 2 * (size_t) t->nkvs * sizeof *sorted;
+
+    for (int32_t i = 0; i < nkvs; i++) {
+        struct tr_kv *kv = kvs[i];
+        enum err_code rc;
         if (kv->has_tf && kv->tf.value != NULL) {
             struct vnode *prev = NULL;
             rc = db_check_active(db, "getOne", e);
@@ -948,6 +1072,7 @@ static enum err_code put_kvs(struct db *db, struct err *e) {
                 rc = get_one_internal(db, t->tt, kv->key, kv->key_n, &db->get_data, &prev, e);
             }
             if (rc != ERR_OK) {
+                mem_free(db->mem, sorted, sorted == NULL ? 0 : sortedBytes, MEM_STATE);
                 return rc;
             }
             const uint8_t *v = kv->value;
@@ -957,6 +1082,7 @@ static enum err_code put_kvs(struct db *db, struct err *e) {
             if (v != kv->value || (int64_t) vlen != (kv->len < 0 ? 0 : kv->len)) {
                 rc = tr_kv_set_value(kv, t->mem, v, (int32_t) vlen, e);
                 if (rc != ERR_OK) {
+                    mem_free(db->mem, sorted, sorted == NULL ? 0 : sortedBytes, MEM_STATE);
                     return rc;
                 }
             }
@@ -966,6 +1092,7 @@ static enum err_code put_kvs(struct db *db, struct err *e) {
                 kv->len < 0 ? NULL : (kv->value == NULL ? (const uint8_t *) "" : kv->value),
                 kv->len < 0 ? 0 : kv->len, pd);
         if (!ok) {
+            mem_free(db->mem, sorted, sorted == NULL ? 0 : sortedBytes, MEM_STATE);
             if (db->op_err.code != ERR_OK) {
                 *e = db->op_err;
                 return e->code;
@@ -973,11 +1100,13 @@ static enum err_code put_kvs(struct db *db, struct err *e) {
             return nomem(e);
         }
         if (!end_of_op(db, false)) {
+            mem_free(db->mem, sorted, sorted == NULL ? 0 : sortedBytes, MEM_STATE);
             return nomem(e);
         }
         pd_clear_fast(pd);
         obj_collect(&db->cx);       /* a safe point between the puts (012-07, 6.4.4) */
     }
+    mem_free(db->mem, sorted, sorted == NULL ? 0 : sortedBytes, MEM_STATE);
     end_of_trans(db);
     pd_clear(pd);
     return ERR_OK;
@@ -1139,6 +1268,8 @@ static enum err_code stm_record_keys(struct db *db, const struct trans *t, struc
     return ERR_OK;
 }
 
+
+static void evict_after_transaction(struct db *db);
 /* The end of a transaction refused before its go point (a refusal, or a
  * database that is not active): a safe point, and on an active database
  * eviction (eviction.afterTransaction's place; 012-12), as the warmup may
@@ -1235,7 +1366,7 @@ enum err_code db_execute(struct db *db, struct trans *t, struct err *e) {
     tns_clear(&db->trans_nodes);
     /* eviction (012-12), the audit */
     obj_collect(&db->cx);
-    db_evict(db);       /* eviction.afterTransaction (012-12) */
+    evict_after_transaction(db);    /* eviction.afterTransaction (012-12), the dead hand first */
     /* reclaim.transactionCompleted(t), within the go point: what fails there
      * fails the database (an internal transaction that failed has failed it
      * already, and its ERR_FAILED is returned as it is). */
@@ -1363,6 +1494,19 @@ void db_evict(struct db *db) {
     evict_at(db, false);
 }
 
+/* Eviction.afterTransaction's first step (bergdb 023-07, section 5.6; as
+ * Java's since release 2026.4): the dead hand, when a cut has moved the
+ * decided cut position, then the capacity controller. */
+static void evict_after_transaction(struct db *db) {
+    obj_collect(&db->cx);
+    if (db->state == DB_ACTIVE) {
+        struct ev_env env = { &db->node_table, tds_get_super_root(&db->dag.top_ds),
+                db->newest_written_top, &db->trans_seq };
+        ev_dead_hand(&db->ev, &env, db->reclaim.firstAvailablePos);
+    }
+    evict_at(db, false);
+}
+
 void db_safe_point(void *ctx) {
     evict_at(ctx, true);
 }
@@ -1416,6 +1560,12 @@ enum err_code db_get_many(struct db *db, struct getmany *g, struct err *e) {
     enum err_code rc = db_check_active(db, "getMany", e);
     if (rc != ERR_OK) {
         return rc;
+    }
+    if (g->end_key != NULL && !g->forward) {
+        /* Db.getMany's refusal (bergdb 021-28, as Java's since release 2026.4):
+         * an argument's, the database goes on. */
+        return err_set(e, ERR_ARG, "IllegalArgumentException", "g.endKey with a backward "
+                "scan: the end is for forward scans only (bergdb 021-28).");
     }
     const int64_t first = db_first_available_time(db);
     if (g->lookup_time < first) {
