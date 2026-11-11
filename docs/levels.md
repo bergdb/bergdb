@@ -285,8 +285,9 @@ How it works in Java:
   Since item 009 a pointer reaches its node through a handle (section 7).
 * Startup (`DbStarter`): Rule R from the startup section by node id; the
   super root at the startup time from the last record's topPos (record
-  format 6 since release 2026.4, which refuses the format 5 of 2026.1 to
-  2026.3; 023-07, section 5.8); the rerun of the section's transactions;
+  format 7 since release 2026.5, which refuses the format 6 of 2026.4
+  and the format 5 of 2026.1 to 2026.3; 024-21, 023-07, section 5.8);
+  the rerun of the section's transactions;
   D rebuilt from the
   stored got-dirty ids, and its pointers linked to the canonical objects
   (rule 4). Rule 4 finds a pointer's node by its position, without reading
@@ -320,8 +321,25 @@ How it works in Java:
   collapse: while a segment tree's root is an inner node with one live
   klong, its child takes its place. A space split in place of a segment root
   that the transaction made points the segment leaf's klong to the new root,
-  without a second klong (023-09, section 2, fault 12). The rerun of a
-  record does the same. Nodes are not merged.
+  without a second klong (023-09, section 2, fault 12).
+* Merges at the delete (`Dag.mergeAfterDelete`, since format 7; 024-21;
+  024-11, section 5): after the delete has changed a node, while that
+  node is not the root of its segment tree and holds fewer than m = B / 4
+  live keys or children (7 of 30; at least 2; none below node size 8), it
+  is merged with a sibling under the same parent (the left one if both
+  fit in c = B / 2, else the right one): their live klongs make one new
+  node, or two of half each if they are more than c, and the parent's
+  klongs point to them (a bitmap of the transaction deletes the right
+  one's, behind the parent's time klong); the two nodes are left out as
+  a split's replaced node, or taken back if the transaction made them.
+  A merge into one node takes a live klong from the parent, which is
+  checked in turn; then root collapse. So after every transaction every
+  key node but a root holds at least m live klongs (024-11, BU1), and the
+  key nodes are at most S + (n + S - 1) / (m - 1) for n live keys in S
+  segment trees: a function of the live keys, with any retain duration.
+  A delete therefore empties only a root; the climb above starts there.
+  The thresholds are constants of format 7 (`Dag.minFill`, `mergeCap`,
+  `splitAbove`). The rerun of a record does the same.
 
 Alignment: [011-11](../items/011-docs-archive/11-level2-alignment.md)
 maps Java's state to the model's (section 2) and keeps the register of
@@ -430,8 +448,9 @@ How it works (`Reclaim`; the class comment has the details):
   index nodes on the key's path dirty, so that they are written again.
   A step makes dirty the nodes on the paths of its own puts only
   (`Db.touchPaths`, 024-07): since format 6 a delete unlinks the nodes it
-  empties, so every index node that a lookup reaches has a live key below
-  it, and a put of that key after pCut, the user's or a step's, has made
+  empties, and since format 7 merges those it leaves underfull, so every
+  index node that a lookup reaches has a live key below it, and a put of
+  that key after pCut, the user's or a step's, has made
   the node dirty (a leaf with a live key keeps its deleted keys' entries).
   Until 024-07 a step visited every index node of its key range at the
   current time, and an iteration's last step every node to the end of the
