@@ -122,6 +122,14 @@ Files
   class; the cost of key shape for a user, a proposed bound with three
   Mem runs, options (a) to (d), questions Q1 to Q3. Outputs in
   08-mem-at-10m/.
+* 10-last-operation-wins.md. 024-10, the builder's rule "the last
+  operation wins" (CA1) in Java: the rule made exact (R1 for the calls
+  on one key as written, R2 for the KVs that key transformations make
+  one key: the later call), the 34 cases of which 11 differ from 2026.4,
+  the change on the branch 024-10-last-operation-wins (not on main), its
+  tests, two expected values changed (for Frans to approve), the same
+  stream bytes without repeated keys, what C must change; questions QL1
+  to QL5.
 
 
 Log

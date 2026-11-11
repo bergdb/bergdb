@@ -42,7 +42,7 @@ high, xhigh for a hard task. At most 8 agents at a time (Frans,
 | 024-08 | MEM 327 at 10M keys against 129.6 at 1M: the cause | mem (high) | done 07:25 |
 | 024-09 | The tie of model and code repaired (024-06, A1 to A4) | tie (xhigh) | |
 | 022-07 | The C clone to release 2026.4 as released (CC1) | cc (high) | |
-| 024-10 | The builder's rule "the last operation wins" (CA1) | low (high) | |
+| 024-10 | The builder's rule "the last operation wins" (CA1) | low (high) | done 07:49, branch |
 | 024-11 | The underfill fix: a design study, no code | fill (xhigh) | |
 | 024-12 | The key tree's model in Lean, run against Java | tree (xhigh) | |
 
@@ -100,6 +100,17 @@ from them.
   (024-04, section 6): "Yes, start it." Started tree (024-12); touch
   told to settle the cut question in Lean first; tie and tree told of
   each other.
+* 07:30 Frans: the cost of key shape is within aim 3 ("Yes."); logged
+  in 024-04. He left until 09:00.
+* 07:49 024-10 done on its branch (head 3ad9fa1e in
+  /Users/f/fl/bench/2026-11-11/low/clone): before-commit, level1 and
+  level2 OK; the stream's bytes the same without repeated keys; two
+  expected values changed, for Frans to approve; not landed. Its
+  finding F2: `java/doubles.py` takes 181 s on main, so
+  before-commit.sh is about 4.5 minutes.
+* 07:50 The usage: 38 % of the week, about 12 points an hour with six
+  agents; nothing new started. tie silent since 07:18: resume message
+  sent.
 
 
 ## 6. Outcome
