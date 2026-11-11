@@ -89,8 +89,10 @@ public interface WBuilder {
      *             unspent.
      * @throws bergdb.pub.util.DbException
      *             If the transaction is refused, nothing of it written, and the database
-     *             goes on, as for Connection.put(): it is too large, about 1.88 GB in the
-     *             stream, counted as Connection.put() says, or the database is stopping or
+     *             goes on, as for Connection.put(): it passes a limit of a transaction,
+     *             500 operations, 56 KiB of keys or 32 MiB of keys and values (the package's
+     *             {@linkplain bergdb.pub##limits Limits}; bergdb 024-17), or the database is
+     *             stopping or
      *             stopped. Or if key replace makes two of its keys one key, such as a put at
      *             "/t/${transactionTime}.txt" and one at the key with the transaction's time
      *             written out (Connection.setEnableKeyReplace(); bergdb 024-16): it is not

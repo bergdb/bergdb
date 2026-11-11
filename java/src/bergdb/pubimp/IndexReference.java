@@ -57,7 +57,7 @@ final class IndexReference {
     }
 
     /** The most bytes of levels an entry has (bergdb 020-10, section 3.3). */
-    static final int MAX_LEVEL_BYTES = 4096;
+    static final int MAX_LEVEL_BYTES = IndexKeys.MAX_LEVEL_BYTES;     // L6 (bergdb 024-24)
 
     /** How a harness gives a level's path to IndexBuilder; the reference reads the path only. */
     enum Call {

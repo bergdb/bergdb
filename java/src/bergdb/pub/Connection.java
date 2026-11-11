@@ -34,7 +34,9 @@ import bergdb.pub.util.SyncLevel;
  * 
  * <p>Keys. A key starts with '/', has at least one more character, does not end with '/',
  * and has no "//" and no lone surrogate (bergdb 015-49); every call that takes a key refuses
- * another key, and null, with IllegalArgumentException. A key is stored as a path of key
+ * another key, and null, with IllegalArgumentException. A put or a delete refuses a key of
+ * more than 111 bytes as stored, its UTF-8 and one byte more for each '/' (the package's
+ * {@linkplain bergdb.pub##limits Limits}; bergdb 024-17, L2). A key is stored as a path of key
  * nodes, a level for each 7 bytes of the key, so that a key costs stream bytes, memory and
  * time in proportion to its length, many times what a value of that length costs. In a test
  * of 200,000 keys, each with a String value of 11 bytes, written 1,000 to a transaction, a
@@ -375,7 +377,10 @@ public interface Connection extends ReadInterface {
      *            OutOfMemoryError in its transaction fails the database (the same).
      * @throws DbException
      *             If the transaction is refused, nothing of it written, and the database
-     *             goes on (DbException): it is too large, its values and keys taking more
+     *             goes on (DbException): it passes a limit of a transaction, 500
+     *             operations, 56 KiB of keys or 32 MiB of keys and values (the package's
+     *             {@linkplain bergdb.pub##limits Limits}; bergdb 024-17); it is too large
+     *             for a record, its values and keys taking more
      *             than 7/8 of 2^31 - 9 bytes, rounded down, 1,879,048,178 bytes, about 1.88
      *             GB, in the stream (bergdb 005-17); or the database is stopping or stopped
      *             (IllegalDbStateException). The size counts each key-value pair of the

@@ -263,7 +263,7 @@ class RwEnvironmentImp implements RwEnvironment {
      * The UTF-8 of a String value, checked before it is made. A lone surrogate is refused, as
      * in a key (bergdb 015-49): its UTF-8 bytes would have '?' in its place, and a get would
      * return another string (bergdb 019-44). So is a String whose UTF-8 takes more than
-     * 'limit' bytes, ObjectFormat.MAX_ARRAY for a put, counted first (2026-11-09, bergdb
+     * 'limit' bytes, Db.MAX_VALUE_BYTES for a put (L4, bergdb 024-24), counted first (2026-11-09, bergdb
      * 020-08, section 3: the encoding of a String of more than about 2^31 bytes in UTF-8 threw
      * OutOfMemoryError, an Error that fails the database in rw(), bergdb 019-10).
      *
@@ -279,8 +279,8 @@ class RwEnvironmentImp implements RwEnvironment {
             long size = StringUtil.utf8Size(s);
             if (size > limit) {
                 throw new IllegalArgumentException("String value of " + size + " bytes in "
-                        + "UTF-8; a value has at most " + limit + ", the most bytes a Java "
-                        + "array holds (bergdb 020-08, section 3).");
+                        + "UTF-8; a value has at most " + limit + " (bergdb 024-17, L4; 020-08, "
+                        + "section 3).");
             }
             // Into an array of its size: getBytes() may need more than Java's largest
             // array on the way (the review of e92a95a).
@@ -348,6 +348,7 @@ class RwEnvironmentImp implements RwEnvironment {
         
         checkOpen();
         String ikey = PubKeys.u2i(ukey);
+        checkKeyBytes(ukey, ikey);
 
         if (Entries.isObjectKey(ikey)) {
             writeObject(ikey, new ObjectInfo(ikey, null, null));
@@ -369,16 +370,18 @@ class RwEnvironmentImp implements RwEnvironment {
         }
         
         String ikey = PubKeys.u2i(ukey);
+        checkKeyBytes(ukey, ikey);
         checkReplaceInDirectory(ukey, ikey);
         Class<?> clazz = object.getClass();
         
         if (clazz.equals(byte[].class)) {
             // NOTE, No check here, but we could force suffix != EMPTY.
             // A copy: the value in memory must not be the caller's array, which the caller
-            // may change after the put (bergdb 015-47).
+            // may change after the put (bergdb 015-47). L4 checked before it (024-24).
+            checkValueBytes(ukey, ((byte[]) object).length);
             setBytes(ikey, ((byte[]) object).clone(), false);
         } else if (clazz.equals(String.class)) {
-            setBytes(ikey, stringValue((String) object, ObjectFormat.MAX_ARRAY), true);
+            setBytes(ikey, stringValue((String) object, Db.MAX_VALUE_BYTES), true);
         } else {
             if (!Entries.isObjectKey(ikey)) {
                 // The user's key; it gave the ikey, "/dk/-x.OBJ" (bergdb 020-24-05, U5-9).
@@ -386,8 +389,46 @@ class RwEnvironmentImp implements RwEnvironment {
                         + "object is put only at a key without a suffix or with the suffix "
                         + "\".obj\", in lower case.");
             }
-            writeObject(ikey, new ObjectInfo(ikey, object, 
-                    enableKeyReplace ? getKeyTransformation(ikey) : null));
+            ObjectInfo info = new ObjectInfo(ikey, object, 
+                    enableKeyReplace ? getKeyTransformation(ikey) : null);
+            checkValueBytes(ukey, info.value.length);   // a DbObject's own bytes
+            writeObject(ikey, info);
+        }
+    }
+    
+    /**
+     * L2 (bergdb 024-17, 6.2 (a); 024-24): a Pub key is at most Db.MAX_KEY_BYTES bytes as
+     * stored, its ikey: the UTF-8 of the key and one byte more for each part ("/a/b" is
+     * "/da/-b"), so each '/' counts two. Checked at the put and the delete, before anything
+     * is written; key replace keeps a key's length ("${transactionTime}" and the time's 18
+     * digits), so the key as written is the key as stored.
+     *
+     * @throws IllegalArgumentException  If the key is longer.
+     */
+    static void checkKeyBytes(String ukey, String ikey) {
+        if (3L * ikey.length() <= Db.MAX_KEY_BYTES) {
+            return;     // a char takes at most 3 bytes in UTF-8
+        }
+        long bytes = StringUtil.utf8Size(ikey);
+        if (bytes > Db.MAX_KEY_BYTES) {
+            throw new IllegalArgumentException("The key has " + bytes + " bytes as stored, "
+                    + "more than " + Db.MAX_KEY_BYTES + " (bergdb 024-17, L2): its UTF-8 and a "
+                    + "byte for each part, so each '/' counts two. Key: " 
+                    + (ukey.length() <= 100 ? ukey : ukey.substring(0, 100) + "...") + ".");
+        }
+    }
+    
+    /**
+     * L4 (bergdb 024-17; 024-24): a value is at most Db.MAX_VALUE_BYTES bytes, 8 MiB, as
+     * stored, a byte[]'s bytes, a String's UTF-8 or an object's stored value.
+     *
+     * @throws IllegalArgumentException  If the value is larger.
+     */
+    static void checkValueBytes(String ukey, long bytes) {
+        if (bytes > Db.MAX_VALUE_BYTES) {
+            throw new IllegalArgumentException("The value put at " + ukey + " has " + bytes 
+                    + " bytes, more than " + Db.MAX_VALUE_BYTES + " (bergdb 024-17, L4). A "
+                    + "larger value is put in chunks, under keys of their own.");
         }
     }
     
@@ -501,7 +542,7 @@ class RwEnvironmentImp implements RwEnvironment {
             boolean previousFormat1 = previous != null && ObjectFormat.isFormat1(previous);
             for (IndexDefinition def : info.indexes) {
                 byte[] old = previousFormat1 ? null : def.entry(ikey, previous);
-                byte[] put = info.string ? null : def.entry(ikey, info.value);
+                byte[] put = info.string ? null : def.entryForPut(ikey, info.value);
                 if (old != null) {
                     deleteIndexEntry(old);
                 }
@@ -569,15 +610,20 @@ class RwEnvironmentImp implements RwEnvironment {
             }
         }
         
+        // The user's keys and values were checked at the put (L2, L4: checkKeyBytes,
+        // checkValueBytes); kvOps also holds a build step's index entries (set()), and indexOps
+        // the entries of the objects put, BergDB's own keys, which may be longer than L2: so
+        // the internal calls (bergdb 024-17, 6.2 (a); 024-24). Db.execute() checks L1, L3 and
+        // L5 on the transaction.
         for (Map.Entry<MapKey, byte[]> entry : kvOps.entrySet()) {
             final long[] key = entry.getKey().getArray();
             final byte[] value = entry.getValue();
             final KeyTransformation kt = entry.getKey().getKeyTransformation();
             
             if (value == null) {
-                b.delete(key);
+                b.deleteLongKey(key);
             } else {
-                b.put(key, kt, value, null);
+                b.putLongKey(key, kt, value, null);
             }
         }
         
@@ -599,9 +645,9 @@ class RwEnvironmentImp implements RwEnvironment {
             final KeyTransformation kt = mkey.getKeyTransformation();
             
             if (value == null) {
-                b.delete(key);
+                b.deleteLongKey(key);
             } else {
-                b.put(key, kt, value, null);
+                b.putLongKey(key, kt, value, null);
             }
         }
         
@@ -713,7 +759,9 @@ class RwEnvironmentImp implements RwEnvironment {
                             + e.getMessage(), e);
                 }
             } else {
-                dbo = DbObject.toDbObject(object);
+                // Its stored value counted against L4 before anything is copied (bergdb
+                // 021-23; 024-17, L4).
+                dbo = DataObjects.toDbObject(object, Db.MAX_VALUE_BYTES);
                 value = dbo.getBytes();
             }
             

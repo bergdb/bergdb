@@ -119,12 +119,12 @@ import bergdb.stream.SalsaStream;
  * String key, Keys.toBytes(String), is never empty). getMany() gives the keys in the unsigned
  * order of their bytes, as java.util.Arrays.compareUnsigned(byte[], byte[]) orders them: a key
  * comes before its extensions, so that 61 &lt; 61 00 &lt; 61 00 00 &lt; 61 01 &lt; 61 61 &lt;
- * 62; the empty key is first, and FF FF comes after FF. A key has no maximum length, and keys
- * of 300 kB work in every call (bergdb 021-16). But a key is stored as a path of key nodes, a
- * level for each 7 bytes, so that a key costs memory, stream bytes and time in proportion to
- * its length, many times what a value of that length costs, and a commit of a long key that
- * shares a long start with another key can take seconds (one of 1 MB after one of 100 kB with
- * the same start: 2.6 to 5.8 s; bergdb 021-16, Q1). The keys that share their first j
+ * 62; the empty key is first, and FF FF comes after FF. A key has at most 111 bytes ("Limits"
+ * below; bergdb 024-17, L2): a key is stored as a path of key nodes, a level for each 7 bytes,
+ * so that a key costs memory, stream bytes and time in proportion to its length, many times
+ * what a value of that length costs (until release 2026.5 a key had no maximum length, and a
+ * commit of a key of 1 MB after one of 100 kB with the same start took 2.6 to 5.8 s; bergdb
+ * 021-16, Q1). The keys that share their first j
  * segments, their first 7j bytes, share a segment tree, a tree of key nodes, and a key of
  * exactly 7, 14 or 21 bytes ends with an empty segment (Keys.toSegments). So a prefix of 7,
  * 14 or 21 bytes that only one key has, the whole key included when its length is exactly
@@ -140,8 +140,8 @@ import bergdb.stream.SalsaStream;
  * short, put large data in values, and let keys that are written together share their
  * start. A value is an array of bytes, the empty array too, which is a value, not a delete;
  * Trans.Builder.delete() removes a key's value. A put of a null value is refused with
- * IllegalArgumentException. The values and keys of one transaction may take at most about 1.88
- * GB of the stream (execute()'s DbException).</p>
+ * IllegalArgumentException. A value has at most 8 MiB, and the keys and values of one
+ * transaction at most 32 MiB ("Limits" below).</p>
  * 
  * <p><b>Threads</b> (bergdb 020-24-09, U9-7). A Db is for any number of threads at once:
  * execute(), getOne(), getMany(), getTrans(), sync() and the settings may be called from
@@ -237,6 +237,37 @@ import bergdb.stream.SalsaStream;
  * definitions), so that such a Db's writes of BergDB's keys are seen only in part until the
  * next start.</p>
  * 
+ * <p><b>Limits</b> (bergdb 024-17, section 6; decided by Frans on 2026-11-11). A transaction,
+ * its keys and its values have fixed limits, the same for every database and node size, and
+ * checked before the transaction's go point: a transaction over one is refused, nothing of it
+ * is written, and the database goes on. They are constants of the release, not settings: a
+ * later release may raise them, never lower them.</p>
+ * <ul>
+ * <li><b>A key</b> has at most MAX_KEY_BYTES = 111 bytes as stored, its bkey: 16 segments of 7
+ * bytes. About 100 characters as a rule of thumb: ASCII letters and digits are one byte each,
+ * letters such as å, ä and ö two (UTF-8), and each "/" of a Pub key two (its ikey has a byte
+ * for each part). A longer key is refused by the Trans.Builder call that takes it, with an
+ * IllegalArgumentException; a key that a key transformation makes longer, by execute(), with a
+ * DbException (L2).</li>
+ * <li><b>A value</b> has at most MAX_VALUE_BYTES = 8 MiB, 8,388,608 bytes, refused by the
+ * Trans.Builder call that takes it with an IllegalArgumentException (L4). A value
+ * transformation's result over it fails the database, as an exception of the transformation
+ * does (ValueTransformation).</li>
+ * <li><b>A transaction</b> has at most MAX_OPERATIONS = 500 operations, the KVs it puts or
+ * deletes, one a key (Trans.Builder.build()) (L1); at most MAX_TRANS_KEY_BYTES = 56 KiB,
+ * 57,344 bytes, of keys (L3); and at most MAX_TRANS_BYTES = 32 MiB of keys and values (L5).
+ * execute() refuses one over them with a DbException. L3 binds only on BergDB's own keys,
+ * which may be longer than a user's (the Pub API's index entries): 500 keys of 111 bytes are
+ * 55,500 bytes.</li>
+ * </ul>
+ * <p>Larger work is split: transactions of at most 500 operations, with a marker key written
+ * in the last one, which readers look at first; a larger value in chunks under keys of their
+ * own and a manifest written last (bergdb 024-17, 6.7). The limits bound what a transaction
+ * can make dirty in the index, so that its record always fits the record limit, 2^31 - 9
+ * bytes, at every node size (024-17, section 5; the Lean model's Limits.release). The checks
+ * of the record's size and of the index nodes a transaction can make dirty (bergdb 005-17,
+ * 005-31) stay, as refusals that a transaction within the limits does not meet.</p>
+ * 
  * <p><b>Errors</b> (2026-11-06, bergdb 019-10; 010-01, P7). BergDB assumes a sound
  * environment: correct storage, a stream that returns the bytes appended to it, and enough
  * memory and stack for its work. Its checksums and checks find some damage of the stored
@@ -287,6 +318,47 @@ import bergdb.stream.SalsaStream;
  * @author Frans Lundberg
  */
 public class Db implements AutoCloseable {
+    
+    // ======== Limits (bergdb 024-17, section 6; 024-24) ========
+    // Fixed constants, the same for every database: raise later, never lower (024-17, 6.3).
+    // Db's Javadoc, "Limits", and the pub package's say them for users.
+    
+    /**
+     * L1: the most operations of a transaction, the KVs it puts or deletes after
+     * Trans.Builder.build()'s rule of one operation a key (bergdb 024-17, L1). Checked by
+     * execute(), before the write lock.
+     */
+    public static final int MAX_OPERATIONS = 500;
+    
+    /**
+     * L2: the most bytes of a key as stored, its bkey: 16 segments of 7 bytes (a key of b
+     * bytes has b / 7 + 1 segments, so 112 bytes would be 17; bergdb 024-17, L2, F10). Checked
+     * by the Trans.Builder call that takes the key, and by execute() for a key that a key
+     * transformation gives. BergDB's own longer keys (the Pub API's index entries) are put
+     * through Trans.Builder's internal calls, which do not check it; L3 bounds them.
+     */
+    public static final int MAX_KEY_BYTES = 111;
+    
+    /**
+     * L3: the most bytes of the keys of a transaction, 56 KiB: 500 keys of 111 bytes are
+     * 55,500 bytes, so only BergDB's own longer keys meet it (bergdb 024-17, L3). With L1 it
+     * bounds the key segments of a transaction, and so the index nodes it can make dirty
+     * (024-17, 5.2a). Checked by execute(), before the write lock.
+     */
+    public static final int MAX_TRANS_KEY_BYTES = 56 * 1024;
+    
+    /**
+     * L4: the most bytes of a value, 8 MiB (bergdb 024-17, L4). Checked by the Trans.Builder
+     * call that takes the value; a value transformation's result over it fails the database
+     * (024-17, QL6; ValueTransformation).
+     */
+    public static final int MAX_VALUE_BYTES = 8 * 1024 * 1024;
+    
+    /**
+     * L5: the most bytes of the keys and values of a transaction, 32 MiB (bergdb 024-17, L5).
+     * Checked by execute(), before the write lock.
+     */
+    public static final long MAX_TRANS_BYTES = 32L * 1024 * 1024;
     
     private Dag dag;
     
@@ -2379,7 +2451,10 @@ public class Db implements AutoCloseable {
      *             If BergDB internal data in the database is corrupt.
      * @throws DbException
      *             If the transaction is refused before its go point, and the database goes
-     *             on: it is too large (bergdb 005-17), or its dirty index nodes would not fit
+     *             on: it passes a limit of "Limits" above, its operations (L1), its keys'
+     *             bytes (L3) or its keys' and values' bytes (L5), or a key transformation
+     *             gives a key over L2 or the keys over L3 (bergdb 024-17, 024-24); it is too
+     *             large for a record (bergdb 005-17), or its dirty index nodes would not fit
      *             in one record (005-31); its key transformations make two of its keys one
      *             key, and its KVs are left as they were (bergdb 024-16; Trans.Builder); the
      *             clock's time is out of range (005-18), or in the last 1,024 database
@@ -2708,6 +2783,7 @@ public class Db implements AutoCloseable {
      * @throws DbException
      */
     private static void checkSize(Trans t) {
+        checkLimits(t.kvs);
         long bytes = 0;
         for (Kv kv : t.kvs) {
             bytes += StoredValueNode.getByteSizeLong(kv.getValue(), kv.getKey());
@@ -2716,6 +2792,43 @@ public class Db implements AutoCloseable {
         if (bytes > limit) {
             throw new DbException("The transaction is too large: its values and keys take " 
                     + bytes + " bytes in the stream, more than " + limit + ".");
+        }
+    }
+    
+    /**
+     * Refuses a user transaction over the limits L1, L3 and L5 (bergdb 024-17, section 6;
+     * "Limits" in the class Javadoc): its operations, its keys' bytes, its keys' and values'
+     * bytes, as Trans.Builder.build() gave them, keys as written. Called by checkSize(),
+     * before the write lock and the go point, so that a refused transaction leaves nothing,
+     * and the refusal does not depend on what the database holds. L2 and L4 are checked by
+     * the Trans.Builder calls that take a key or a value; a key transformation's keys by
+     * transformKeys(). Not for reclaim's internal transactions, which are within the limits
+     * by construction (024-17, 5.5): a step puts at most 16 kB of scanned KVs or one KV.
+     *
+     * @throws DbException
+     */
+    static void checkLimits(Kv[] kvs) {
+        if (kvs.length > MAX_OPERATIONS) {
+            throw new DbException("The transaction has " + kvs.length + " operations, more "
+                    + "than " + MAX_OPERATIONS + " (bergdb 024-17, L1). Split it into "
+                    + "transactions.");
+        }
+        long keyBytes = 0;
+        long bytes = 0;
+        for (Kv kv : kvs) {
+            final long k = Trans.keyBytes(kv.getKey());
+            keyBytes += k;
+            bytes += k + (kv.getValue() == null ? 0 : kv.getValue().length);
+        }
+        if (keyBytes > MAX_TRANS_KEY_BYTES) {
+            throw new DbException("The keys of the transaction have " + keyBytes + " bytes, "
+                    + "more than " + MAX_TRANS_KEY_BYTES + " (bergdb 024-17, L3). Split it "
+                    + "into transactions.");
+        }
+        if (bytes > MAX_TRANS_BYTES) {
+            throw new DbException("The keys and values of the transaction have " + bytes 
+                    + " bytes, more than " + MAX_TRANS_BYTES + " (bergdb 024-17, L5). Split it "
+                    + "into transactions.");
         }
     }
     
@@ -2989,6 +3102,14 @@ public class Db implements AutoCloseable {
             if (kv.valueTransformation != null) {
                 final byte[] previousValue = this.getOne(x.trans.tt, kv.getKey(), x.getData);
                 kv.transformValue(x.trans.tt, previousValue);
+                final byte[] v = kv.getValue();
+                if (v != null && v.length > MAX_VALUE_BYTES && !x.trans.isInternal()) {
+                    // After the go point: the database fails (bergdb 024-17, QL6; 015-51).
+                    throw new IllegalStateException("A value transformation gave a value of "
+                            + v.length + " bytes, more than " + MAX_VALUE_BYTES + " (bergdb "
+                            + "024-17, L4): the caller's fault, as an exception of the "
+                            + "transformation; the database fails (ValueTransformation).");
+                }
             }
 
             final TestHooks kvHooks = testHooks;
@@ -3025,7 +3146,9 @@ public class Db implements AutoCloseable {
      * A transaction that commits keeps its transformed keys, as before. A transformation that
      * throws fails the database, as when it ran after the go point (KeyTransformation).</p>
      *
-     * @throws DbException  If two KVs have one key after the transformations.
+     * @throws DbException  If two KVs have one key after the transformations; if a key that a
+     *      transformation gave has more than MAX_KEY_BYTES (L2), or the keys more than
+     *      MAX_TRANS_KEY_BYTES (L3) (bergdb 024-24).
      * @throws DbFailedException  If a transformation threw.
      */
     private Kv[] transformKeys(final Trans t, final long ttBefore) {
@@ -3064,20 +3187,54 @@ public class Db implements AutoCloseable {
                         + shown(sorted[i].getKey()) + ". The transaction is refused; "
                         + "nothing of it is written, and the database goes on: a "
                         + "transaction has one operation a key (bergdb 024-16).";
-                for (int j = 0; j < kvs.length; j++) {
-                    if (written[j] != null) {
-                        kvs[j].setKey(written[j]);
-                        t.writeKeyHashes[j] = hashes[j];
-                    }
+                giveBack(t, kvs, written, hashes, ttBefore);
+                throw new DbException(message);
+            }
+            // The limits on the keys as transformed (bergdb 024-17, 5.1; 024-24): L2 for each
+            // key a transformation gave, but for BergDB's own longer keys (Kv.longKey), and
+            // L3 for the keys of the transaction. The Pub API's key replace keeps a key's
+            // length, so it never meets them.
+            long keyBytes = 0;
+            for (int i = 0; i < kvs.length; i++) {
+                final long k = Trans.keyBytes(kvs[i].getKey());
+                keyBytes += k;
+                if (written[i] != null && !kvs[i].longKey && k > MAX_KEY_BYTES) {
+                    final String message = "The key transformation of " + shown(written[i]) 
+                            + " gave a key of " + k + " bytes, more than " + MAX_KEY_BYTES
+                            + " (bergdb 024-17, L2). The transaction is refused; nothing of "
+                            + "it is written, and the database goes on.";
+                    giveBack(t, kvs, written, hashes, ttBefore);
+                    throw new DbException(message);
                 }
-                t.tt = ttBefore;
-                dbClock.transactionCancel();
+            }
+            if (keyBytes > MAX_TRANS_KEY_BYTES && !t.isInternal()) {
+                final String message = "The keys of the transaction have " + keyBytes 
+                        + " bytes after its key transformations, more than "
+                        + MAX_TRANS_KEY_BYTES + " (bergdb 024-17, L3). The transaction is "
+                        + "refused; nothing of it is written, and the database goes on.";
+                giveBack(t, kvs, written, hashes, ttBefore);
                 throw new DbException(message);
             }
         } catch (Error e) {
             throw failed(e);
         }
         return sorted;
+    }
+    
+    /**
+     * Leaves a transaction that transformKeys() refuses as it was before the call: each
+     * transformed KV gets its key as written back, and its write hash; t.tt gets ttBefore,
+     * and the time is given back (DbClock.transactionCancel()).
+     */
+    private void giveBack(Trans t, Kv[] kvs, long[][] written, long[] hashes, long ttBefore) {
+        for (int j = 0; j < kvs.length; j++) {
+            if (written[j] != null) {
+                kvs[j].setKey(written[j]);
+                t.writeKeyHashes[j] = hashes[j];
+            }
+        }
+        t.tt = ttBefore;
+        dbClock.transactionCancel();
     }
     
     /** A KV's key as written, for transformKeys()'s message. */
