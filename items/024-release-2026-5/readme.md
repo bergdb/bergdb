@@ -160,6 +160,13 @@ Files
   (before-commit.sh about 80 s again), 024-10 and 024-07 merged; the
   gates' results. Landed as a780b957; then 024-09 merged and gated,
   landed as 379d8acf.
+* 19-node-size.md. 024-19, the node size: which, and one fixed constant
+  or not. Postponed 2026-11-11, 11:50, until the merges are in (024-21),
+  with what was done: what the size is today (62 a hard ceiling by the
+  delete bitmap; 005-38's earlier measurements), the prediction, the
+  counts at 1M keys (a flat optimum: 30 and 62 within 2 % in the bytes
+  an overwrite writes; 8 is 57 to 71 % above), a draft of the options.
+  Nothing at 10M, no times, no recommendation. Outputs in 19-node-size/.
 
 
 Log
