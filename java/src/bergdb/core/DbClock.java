@@ -147,8 +147,10 @@ public class DbClock {
     /**
      * Notifies this object that a new write transaction is about to start.
      * The transaction time of the new transaction is returned. 
-     * The returned time is guaranteed to be strictly larger than any
-     * previous read time and any previous transaction time returned by this object.
+     * The returned time is guaranteed to be strictly larger than every time currentTime()
+     * has returned and the time of every transaction that ended (transactionEnd()). The time
+     * of a cancelled transaction (transactionCancel(); bergdb 024-16) is given back: the
+     * next call may return it again.
      * 
      * @param user  True for a user transaction, which is refused after LAST_USER_TIME;
      *      false for an internal one, refused after Klong.MAX_TIME (bergdb 015-55).

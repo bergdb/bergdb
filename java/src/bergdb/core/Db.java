@@ -2474,6 +2474,7 @@ public class Db implements AutoCloseable {
         }
         t.warmupGetData.pointerFollower = x.getData.pointerFollower;
         warmup(t);
+        final long ttBefore = t.tt;         // a refusal gives it back (transformKeys)
         
         writersWaiting.incrementAndGet();
         synchronized (writeLock) {
@@ -2516,7 +2517,7 @@ public class Db implements AutoCloseable {
             // The key transformations, at t.tt, and the refusal of a transaction that they
             // leave with two KVs at one key (bergdb 024-16): before the go point, so that the
             // refusal leaves everything as it was. Until 024-16 they ran in putKvs().
-            final Kv[] kvs = transformKeys(t);
+            final Kv[] kvs = transformKeys(t, ttBefore);
             
             // The go point. From here nothing refuses the transaction and nothing is undone:
             // whatever throws fails the database (bergdb 005-01).
@@ -2988,7 +2989,7 @@ public class Db implements AutoCloseable {
      * transformation (Trans.Builder.build sorted them, one KV a key as written), else a sorted
      * copy (sortByKey). Called under writeLock after DbClock.transactionBegin(), before the go
      * point. A transaction whose KVs have, after the transformations, two at one key is
-     * refused: one operation a key reaches the index, with no exception (Frans, 2026-11-11,
+     * refused: one operation a key reaches the index, always (Frans, 2026-11-11,
      * 09:43: "One transaction must not set (put or delete) a value more than once! This is a
      * strict rule."). Two KVs are two keys as written, as build() keeps one KV a key as
      * written, so a KV is never taken for two. Until 024-16 one of them was kept: the one
@@ -2996,15 +2997,16 @@ public class Db implements AutoCloseable {
      * keys as written, or a delete if there was no put (023-09, section 7.1).
      *
      * <p>A refusal leaves everything as it was before the call: each transformed KV gets its
-     * key as written back, and its write hash, so that the Trans can be run again; the time
-     * is given back (DbClock.transactionCancel()); nothing has been put, written or recorded.
+     * key as written back, and its write hash, so that the Trans can be run again, and t.tt
+     * gets ttBefore, its value before the call; the time is given back
+     * (DbClock.transactionCancel()); nothing has been put, written or recorded.
      * A transaction that commits keeps its transformed keys, as before. A transformation that
      * throws fails the database, as when it ran after the go point (KeyTransformation).</p>
      *
      * @throws DbException  If two KVs have one key after the transformations.
      * @throws DbFailedException  If a transformation threw.
      */
-    private Kv[] transformKeys(final Trans t) {
+    private Kv[] transformKeys(final Trans t, final long ttBefore) {
         final Kv[] kvs = t.kvs;
         long[][] written = null;                // the keys as written of the KVs transformed
         long[] hashes = null;                   // and their write hashes, by index
@@ -3029,27 +3031,29 @@ public class Db implements AutoCloseable {
         } catch (Throwable e) {
             throw fail(t, e);
         }
-        for (int i = 1; i < sorted.length; i++) {
-            if (Keys.compareArrays(sorted[i - 1].getKey(), sorted[i].getKey()) == 0) {
-                try {
-                    final String message = "Two keys of the transaction are one key after its "
-                            + "key transformations: " + shown(written, kvs, sorted[i - 1])
-                            + " and " + shown(written, kvs, sorted[i]) + " as written are both "
-                            + shown(sorted[i].getKey()) + ". The transaction is refused; "
-                            + "nothing of it is written, and the database goes on: a "
-                            + "transaction has one operation a key (bergdb 024-16).";
-                    for (int j = 0; j < kvs.length; j++) {
-                        if (written[j] != null) {
-                            kvs[j].setKey(written[j]);
-                            t.writeKeyHashes[j] = hashes[j];
-                        }
-                    }
-                    dbClock.transactionCancel();
-                    throw new DbException(message);
-                } catch (Error e) {
-                    throw failed(e);    // under the lock, as above (bergdb 019-40)
+        try {           // an Error is recorded under the lock (bergdb 019-40)
+            for (int i = 1; i < sorted.length; i++) {
+                if (Keys.compareArrays(sorted[i - 1].getKey(), sorted[i].getKey()) != 0) {
+                    continue;
                 }
+                final String message = "Two keys of the transaction are one key after its "
+                        + "key transformations: " + shown(written, kvs, sorted[i - 1])
+                        + " and " + shown(written, kvs, sorted[i]) + " as written are both "
+                        + shown(sorted[i].getKey()) + ". The transaction is refused; "
+                        + "nothing of it is written, and the database goes on: a "
+                        + "transaction has one operation a key (bergdb 024-16).";
+                for (int j = 0; j < kvs.length; j++) {
+                    if (written[j] != null) {
+                        kvs[j].setKey(written[j]);
+                        t.writeKeyHashes[j] = hashes[j];
+                    }
+                }
+                t.tt = ttBefore;
+                dbClock.transactionCancel();
+                throw new DbException(message);
             }
+        } catch (Error e) {
+            throw failed(e);
         }
         return sorted;
     }

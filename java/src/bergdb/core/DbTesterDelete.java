@@ -588,8 +588,9 @@ public class DbTesterDelete {
      * transformation), a plain put at "/c/b" and a delete of "/c/c" is run twice, from this
      * thread and from a thread of its own, and refused each time with a DbException that
      * names both keys as written and the key they became. After each refusal: the Trans holds
-     * the same array of the same KVs, each with its key as written, and the same write hashes;
-     * the value transformation has not run; the lookup time and every value are as before.
+     * the same array of the same KVs, each with its key as written, and the same write hashes,
+     * each that of its key as written; t.tt as before; the value transformation has not run;
+     * the lookup time and every value are as before.
      * Then both databases run the same transaction, which takes the time the refused one
      * would have had, as the clock stands still; their streams are the same, byte for byte,
      * and so are the values after a restart. A key of 300 characters is shown in the message
@@ -618,6 +619,7 @@ public class DbTesterDelete {
                     for (int i = 0; i < kvs.length; i++) keys[i] = kvs[i].getKey().clone();
                     final long[] hashes = t.writeKeyHashes;
                     final long[] hashes0 = hashes.clone();
+                    final long tt0 = t.tt;
                     for (int run = 0; run < 2; run++) {
                         String about = at + "run " + run + ", ";
                         String message = refused(db, t, run == 1);
@@ -630,6 +632,13 @@ public class DbTesterDelete {
                         }
                         Assert.assertTrue(about + "the write hashes", t.writeKeyHashes == hashes
                                 && java.util.Arrays.equals(hashes, hashes0));
+                        for (int i = 0; i < kvs.length; i++) {
+                            // Each the hash of its key as written: a check of its own, so that
+                            // a restore of the keys alone fails twice (the review of 024-16).
+                            Assert.assertEquals(about + "the write hash of KV " + i,
+                                    Keys.hash(kvs[i].getKey()), hashes[i]);
+                        }
+                        Assert.assertEquals(about + "t.tt, as before the call", tt0, t.tt);
                         Assert.assertEquals(about + "the value transformation", 0, vt.calls);
                         Assert.assertEquals(about + "the lookup time", time,
                                 db.lookupTime(Long.MAX_VALUE));

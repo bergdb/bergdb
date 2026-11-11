@@ -1159,8 +1159,8 @@ public class Dag {
                 // transaction, and a transaction reaches the Dag with one operation a key
                 // (Db.transformKeys refuses a transaction whose key transformations make two
                 // of its keys one key; bergdb 024-16; 023-08, section 7), so no delete of it
-                // empties the node. Nothing is changed
-                // yet. Until 2026-11-10 a segment leaf kept the delete here, reached through a
+                // empties the node. Nothing is changed yet.
+                // Until 2026-11-10 a segment leaf kept the delete here, reached through a
                 // KeyTransformation's put and a delete of one key (023-08, section 3).
                 throw new Bug("The upward unlink at " + tt + ": key node " + n.getId()
                         + ", made by the transaction and not by a split, is emptied: two"
