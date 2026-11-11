@@ -249,7 +249,11 @@ Files
 * 23-dead-klongs-option2.md. 024-23, dead klongs in live nodes, option 2
   with theta 7 (Frans, 2026-11-11, 024-18 QD1), model first: the rule in
   the Lean tree model and in Java, at most theta dead klongs a node
-  after every write. Branch 024-23-option2, on the merges.
+  after every write; Java equal to the model on 222 traces; reviewed in
+  23-dead-klongs-option2/review.md (land with fixes, made). On main
+  since 2026-11-11, 18:16: the merge of e0fb9d77. QO1 to QO3; six
+  changed tests (section 4.1) accepted by the coordinator for Frans to
+  see.
 
 
 Log

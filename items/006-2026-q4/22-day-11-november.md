@@ -396,6 +396,13 @@ from them.
   takes them one at a time after TP32. 18:06 CRC32C (QL9) started as
   024-25 on Opus high, now that usage allows. 18:06 Frans left: "Work
   unattended."
+* 18:16 Option 2 for dead klongs landed: 08659847, the merge of
+  e0fb9d77 (gates: lake build, no sorry or axiom, test-traces,
+  before-commit, level1 to level4 full, unlinkfuzz, conformance small,
+  medium, reclaim, evict, drain; the review's R1 fixed). At 1M keys
+  0.29 to 0.31 dead klongs a live one (0.48 to 0.85 with the merges
+  alone), stream bytes -3 % to +8.5 %, 13 to 16 % fewer key nodes. The
+  landing says that format 7's meaning changes without a new number.
 
 
 ## 6. Outcome
