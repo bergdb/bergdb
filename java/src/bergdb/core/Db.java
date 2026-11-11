@@ -2705,8 +2705,12 @@ public class Db implements AutoCloseable {
      * bergdb 005-31). TransSeq.take takes transactions whole, so it would never take such a
      * transaction, and the startup pos would stay before it for good: the startup section,
      * startup, D and the stream would grow without end. Called under writeLock, before the
-     * go point; not for reclaim's internal transactions, whose steps are bounded by their
-     * own reserve (Reclaim.setStepReserve).
+     * go point; not for reclaim's internal transactions: a step makes dirty the index nodes
+     * on the paths of its own puts only (touchPaths), and it puts at most the KVs of its
+     * scan, 16 kB of them or one KV, and its row. Until bergdb 024-07 a step's touch walked
+     * a key range and had no bound: the last step of an iteration over keys in time order
+     * made dirty every index node, which at about 100M keys no record could take (024-07,
+     * section 3).
      * 
      * <p>A cheap test first: every key at most three nodes a level of a path of at most
      * 'height' levels a segment, and three more; 'height' from the stream's length, as a
