@@ -360,16 +360,103 @@ slot (the coordinator, 14:12), the rest one slot a run:
   draining traces TRACECHECK OK, TAKECHECK OK.
 * **024-12 on `main` with 024-16 is gated** on `480f83da` (14:55).
 
-## 9. State
+## 9. The merges at the delete: 024-22 and 024-21
 
-2026-11-11, 14:56.
+The coordinator's message (15:42): Frans delegated the landing of the
+merges at the delete to the coordinator at 14:48. The independent review
+(024-21's `review.md`) says "land with fixes"; the fixes are in 024-21's
+head. Two branches, merged in this order:
+
+| Merge      | Branch                | Head       | What                                |
+|---|---|---|---|
+| `b43dac6f` | `024-22-merges-lean`  | `90eb124a` | the merges in the Lean tree model   |
+| `a78aa498` | `024-21-merges`       | `4105fc1a` | the merges in Java, format 7, docs  |
+
+* **The branch:** `024-13-int-m`, in the worktree
+  `/Users/f/fl/bench/2026-11-11/int/wt-m` of the clone, from `main`'s
+  `9b40ed83`. Both merges `--no-ff`, no conflict, no trailing whitespace
+  lost. 024-22 changes only `lean/` (9 files, 1,171 lines added, 75
+  removed); 024-21 changes `java/`, `docs/` and `releases/` (19 files,
+  1,677 and 106). Against `main`: 27 files under `java/`, `lean/` and
+  `docs/`, 2,823 lines added, 181 removed.
+* **The TREE line:** Java's `TraceExport` writes `TREE M G H k` and then
+  `Dag.minFill(M)`, `Dag.mergeCap(M)` and `Dag.splitAbove(M)`.
+  `parseTreeLine` (`Check/Tree.lean`) reads a line of 8 tokens as M, G,
+  H, the primordial key node's id, then m (`mergeBelow`), c
+  (`mergeMax`) and h (`splitAbove`); a line of 7 gives h = c. It is
+  checked by running it on "TREE 30 0 2 1 8 17 17" (below).
+* **The overlap with 024-09's follow-up** (`fu`, branch
+  `024-09-followup`, head `751bb653` at 15:45): both change
+  `docs/levels.md` and `docs/sis-model.md`; `git merge-tree` of
+  `a78aa498` and `751bb653` has no conflict. No Lean file is changed by
+  both. But `fu` makes A6 (no adoption below the old parent) a
+  requirement for every trace of `conformance.sh` and all ten
+  A2A3Check2 configurations of `level2.sh`, and the merges give Java a
+  new way to move klongs between nodes: whichever lands second runs
+  `level2.sh` and `conformance.sh` with both in.
+
+Gates, one slot a run: the first six on `a78aa498`; then `main` with
+the 024-09 follow-up merged in (below), and the rest on the new head
+**`2679622e`**:
+
+| Gate                                   | On         | When           | Result                    |
+|---|---|---|---|
+| `lake build` and `lake build treetest` | `a78aa498` | 15:44 to 15:45 | OK, 181 and 74 jobs       |
+| no sorry etc.; `collectAxioms`         | `a78aa498` | 15:45          | 0; 80 theorems, standard  |
+| the TREE line, by `parseTreeLine`      | `a78aa498` | 15:45          | m=8 c=17 h=17             |
+| `java/before-commit.sh`                | `a78aa498` | 15:45 to 15:47 | OK (96 s), unit 1,664     |
+| `java/stress/level1.sh`, full          | `a78aa498` | 15:47 to 15:51 | OK, MEM 130, SEG 225.8    |
+| `sh stress/unlinkfuzz.sh`              | `a78aa498` | 15:51 to 15:56 | OK, 3,226 rounds          |
+| `java/stress/level2.sh`, full          | `a78aa498` | 15:56 to 16:09 | LEVEL 2 OK (before A6)    |
+| `lake build` and `lake build treetest` | `2679622e` | 16:09 to 16:10 | OK                        |
+| no sorry etc.; `collectAxioms`         | `2679622e` | 16:10          | 0; 285 theorems, standard |
+| TREE line; `test-traces/run.sh`        | `2679622e` | 16:10          | m=8 c=17 h=17; OK         |
+| `java/stress/level2.sh`, full          | `2679622e` | 16:10 to 16:23 | LEVEL 2 OK (780 s)        |
+| `java/stress/level3.sh`, full          | `2679622e` | 16:23 to 16:31 | LEVEL 3 OK, C-CUT 0 of 318 |
+| `java/stress/level4.sh`, full          | `2679622e` | 16:31 to 16:46 | LEVEL 4 OK (902 s)        |
+| `conformance.sh small`                 | `2679622e` | 16:46          | 70 traces OK, A6 0        |
+| `conformance.sh medium`                | `2679622e` | 16:46 to 16:49 | 9 traces OK, A6 0         |
+| `conformance.sh reclaim`               | `2679622e` | 16:49 to 16:51 | 30 OK, A6 0, C-CUT 0 of 318 |
+| `conformance.sh evict`                 | `2679622e` | 16:51 to 16:52 | 51 traces OK, A6 0        |
+| `conformance.sh drain`                 | `2679622e` | 16:52 to 16:53 | 15 traces OK, A6 0        |
+
+* **The static checks** (`static-m.sh`): no `sorry`, `admit`, `axiom`
+  or `native_decide` in `lean/`. `collectAxioms`, first of the 80
+  theorems of the 6 modules the merges change, then on `2679622e` of the
+  285 theorems of the 25 modules that the merges or the follow-up change
+  (the follow-up's trusted statements included): propext,
+  Classical.choice and Quot.sound only. `parseTreeLine` on "TREE 30 0 2
+  1 8 17 17" gives M=30 G=0 H=2 k=1 m=8 c=17 h=17: m, c and h as Java's
+  `Dag.minFill`, `mergeCap` and `splitAbove` write them.
+* **The merge of `main`** (`2679622e`, 16:09, `main` at `6f0491fd`): no
+  conflict. Against `a78aa498` it changes no Java source: only
+  `java/stress/conformance.sh`, `level2.sh` and `unlinkfuzz.sh`'s mode,
+  and 22 files of `lean/` and `docs/`. So before-commit, level1 and
+  unlinkfuzz of `a78aa498` stand for `2679622e` (the coordinator, 16:00).
+* **A6 with the merges:** `level2.sh`'s ten A2A3Check2 configurations
+  all "A2, A3, A5, marking, TREE, A6 and A-COPY OK" (the five draining
+  ones take back 809 to 8,927 nodes); every conformance set has 0
+  transactions with an adoption below the old parent.
+* **The tree model against Java with merges** (`level2.sh`'s step 8):
+  treeconf small 7,100 transactions, 492 key nodes taken back (13
+  without merges, section 8); drain 13,900, 18,451 taken back (554
+  without); reclaim 8,784, 158 taken back, 369 touches: all TREECONF OK.
+* **The merges' gates are passed** on `2679622e` (16:53).
+
+`conformance.sh large` is not run: only `night.sh large` runs it, which
+is started by hand.
+
+
+## 10. State
+
+2026-11-11, 16:56.
 
 * **Landed:** the first landing as `main`'s `a780b957`, 024-09 as
-  `379d8acf`, 024-15 as `1e77cfc6`, 024-16 as `47c93e34`.
-* **To land: 024-12** (Frans's yes at 14:28), branch `024-13-int-e`,
-  head **`480f83da`**, worktree `/Users/f/fl/bench/2026-11-11/int/wt-e`
-  of the clone, one merge of `d90586d0` on `main`'s `b7f1b1cf` (main
-  has moved by items only since); every gate passed (section 8). The
-  working tree is clean. `ca3824aa` (`024-13-int-c`) is superseded.
-* **Not done:** the C clone's branch was never sent to this subitem.
-  Nothing of 024-13 is running; no slot is held.
+  `379d8acf`, 024-15 as `1e77cfc6`, 024-16 as `47c93e34`; 024-12 as
+  `b84cf761` (the merge of `480f83da`, section 8); the 024-09 follow-up
+  as `e7488080` (not by this subitem).
+* **To land: the merges at the delete,** branch `024-13-int-m`, head
+  **`2679622e`**, worktree `/Users/f/fl/bench/2026-11-11/int/wt-m` of the
+  clone: the merges of 024-22 (`90eb124a`) and 024-21 (`4105fc1a`) and of
+  `main` at `6f0491fd`; every gate passed (section 9). The working tree
+  is clean. Nothing of 024-13 is running; no slot is held.
