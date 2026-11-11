@@ -1,0 +1,4 @@
+hold H1 start 11:57:12 /Users/f/fl/bench/2026-11-11/heavy2.lock
+11:57  up 23 days,  4:42, 5 users, load averages: 22.21 20.77 16.02
+hold H1 end 12:18:18
+12:18  up 23 days,  5:03, 5 users, load averages: 28.84 22.22 19.57

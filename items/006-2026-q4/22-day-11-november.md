@@ -46,7 +46,7 @@ high, xhigh for a hard task. At most 8 agents at a time (Frans,
 | 024-11 | The underfill fix: a design study, no code | fill (xhigh) | done 08:18 |
 | 024-12 | The key tree's model in Lean, run against Java | tree (xhigh) | |
 | 024-13 | The integration branch: doubles.py, 024-10, 024-07; gates | int (Opus, high) | landed 10:07 |
-| 024-14 | The merge's thresholds measured in Java at 10M keys | thr (Opus, high) | |
+| 024-14 | The merge's thresholds measured in Java at 10M keys | thr (Opus, high) | done 13:50 |
 | 024-15 | The cost of key shape: documentation, bound, Mem runs | shape (Opus, high) | on main 12:25 |
 | 024-16 | One operation a key, strict: a collision fails the commit | strict (Opus, high) | |
 | 024-17 | The limits of a transaction, a key, a value, a record | limits (Opus, high) | done 11:59 |
@@ -261,6 +261,21 @@ from them.
   and bounded (the merge of 251cd1e0): before-commit and level1 full on
   the merged tree; SEG 226.4 (at most 230), MEM10M 127.0 (at most 131).
   The usage: 67 % at 12:15.
+* 12:25 024-12 done on its branch (d90586d0): the tree's model writes
+  Java's records on 115 traces; it waits for Frans's approval; int
+  prepares it on today's main. 12:23 to 12:33 thr's timing hold
+  disturbed by mgl's runs and by dead's scripts, which kept starting
+  runs: the coordinator stopped dead's processes.
+* 13:06 024-16's four fixes made (3412ee7a); with int for the full
+  gates.
+* 13:34 The merge is in the Lean model (63e39de6) and Java with merges
+  (024-21) agrees with it: 15,084 transactions, 9,243 merges, 0
+  differences. 13:37 024-21's head 331dd400 passed before-commit,
+  unlinkfuzz, level1, level2 and level3. The two slots starved mgl and
+  thr; an order set by message.
+* 13:50 024-14 done: no threshold set showed a fault or a thrash; the
+  recommendation m8 (8/17/17): at most 1.49 times the twin's key nodes
+  (P5 1.90, main 21.5), 1 % more bytes a put, no slower.
 
 
 ## 6. Outcome

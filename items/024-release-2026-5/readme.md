@@ -170,6 +170,15 @@ Files
   `treetest`, exhaustive at small node sizes; 27 stated properties, a
   few proved. Branch 024-12-tree-model; lands when Frans has approved
   it.
+* 14-merge-thresholds.md. 024-14, the merge's thresholds measured in
+  Java at 1M and 10M keys, on a measuring build (P5's merge with fault
+  12's fix, the thresholds as run parameters; not landed): the sets P5
+  (7/15/15), m8 (8/17/17), m9, dense (10/20/20) and main; no set showed
+  a fault or a thrash; with merges at most 1.90 (P5), 1.49 (m8), 1.25
+  (dense) times the twin's key nodes, main up to 21.5; the put path's
+  price (m8 1 % more bytes a put, dense 4 %); the recommendation m8;
+  what is not measured. Probe, scripts and outputs in
+  14-merge-thresholds/.
 * 15-key-shape-cost.md. 024-15, the cost of key shape documented and
   bounded (024-08, option (a)): Javadoc in `Connection` and `Db` on what
   costs a key node of its own (about 226 heap bytes) and what eviction

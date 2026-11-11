@@ -1,0 +1,80 @@
+/Users/f/fl/bench/2026-11-11/thr/out/1m main churn run n=1000000 fill=random shape=churn phase=20000 drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m p5 churn run n=1000000 fill=random shape=churn phase=20000 drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m8 churn run n=1000000 fill=random shape=churn phase=20000 drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m9 churn run n=1000000 fill=random shape=churn phase=20000 drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m dense churn run n=1000000 fill=random shape=churn phase=20000 drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m main k10-asc run n=1000000 fill=seq shape=keep keep=10 order=asc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m p5 k10-asc run n=1000000 fill=seq shape=keep keep=10 order=asc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m8 k10-asc run n=1000000 fill=seq shape=keep keep=10 order=asc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m9 k10-asc run n=1000000 fill=seq shape=keep keep=10 order=asc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m dense k10-asc run n=1000000 fill=seq shape=keep keep=10 order=asc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m main k10-desc run n=1000000 fill=seq shape=keep keep=10 order=desc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m p5 k10-desc run n=1000000 fill=seq shape=keep keep=10 order=desc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m8 k10-desc run n=1000000 fill=seq shape=keep keep=10 order=desc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m9 k10-desc run n=1000000 fill=seq shape=keep keep=10 order=desc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m dense k10-desc run n=1000000 fill=seq shape=keep keep=10 order=desc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m main k10-hashed run n=1000000 fill=seq shape=keep keep=10 order=hashed drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m p5 k10-hashed run n=1000000 fill=seq shape=keep keep=10 order=hashed drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m8 k10-hashed run n=1000000 fill=seq shape=keep keep=10 order=hashed drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m9 k10-hashed run n=1000000 fill=seq shape=keep keep=10 order=hashed drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m dense k10-hashed run n=1000000 fill=seq shape=keep keep=10 order=hashed drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m main k100-asc run n=1000000 fill=seq shape=keep keep=100 order=asc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m p5 k100-asc run n=1000000 fill=seq shape=keep keep=100 order=asc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m8 k100-asc run n=1000000 fill=seq shape=keep keep=100 order=asc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m9 k100-asc run n=1000000 fill=seq shape=keep keep=100 order=asc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m dense k100-asc run n=1000000 fill=seq shape=keep keep=100 order=asc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m main k100-desc run n=1000000 fill=seq shape=keep keep=100 order=desc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m p5 k100-desc run n=1000000 fill=seq shape=keep keep=100 order=desc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m8 k100-desc run n=1000000 fill=seq shape=keep keep=100 order=desc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m9 k100-desc run n=1000000 fill=seq shape=keep keep=100 order=desc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m dense k100-desc run n=1000000 fill=seq shape=keep keep=100 order=desc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m main k100-hashed run n=1000000 fill=seq shape=keep keep=100 order=hashed drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m p5 k100-hashed run n=1000000 fill=seq shape=keep keep=100 order=hashed drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m8 k100-hashed run n=1000000 fill=seq shape=keep keep=100 order=hashed drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m9 k100-hashed run n=1000000 fill=seq shape=keep keep=100 order=hashed drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m dense k100-hashed run n=1000000 fill=seq shape=keep keep=100 order=hashed drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m main k2-asc run n=1000000 fill=seq shape=keep keep=2 order=asc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m p5 k2-asc run n=1000000 fill=seq shape=keep keep=2 order=asc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m8 k2-asc run n=1000000 fill=seq shape=keep keep=2 order=asc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m9 k2-asc run n=1000000 fill=seq shape=keep keep=2 order=asc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m dense k2-asc run n=1000000 fill=seq shape=keep keep=2 order=asc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m main k2-desc run n=1000000 fill=seq shape=keep keep=2 order=desc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m p5 k2-desc run n=1000000 fill=seq shape=keep keep=2 order=desc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m8 k2-desc run n=1000000 fill=seq shape=keep keep=2 order=desc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m9 k2-desc run n=1000000 fill=seq shape=keep keep=2 order=desc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m dense k2-desc run n=1000000 fill=seq shape=keep keep=2 order=desc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m main k2-hashed run n=1000000 fill=seq shape=keep keep=2 order=hashed drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m p5 k2-hashed run n=1000000 fill=seq shape=keep keep=2 order=hashed drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m8 k2-hashed run n=1000000 fill=seq shape=keep keep=2 order=hashed drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m9 k2-hashed run n=1000000 fill=seq shape=keep keep=2 order=hashed drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m dense k2-hashed run n=1000000 fill=seq shape=keep keep=2 order=hashed drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m main k3-asc run n=1000000 fill=seq shape=keep keep=3 order=asc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m p5 k3-asc run n=1000000 fill=seq shape=keep keep=3 order=asc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m8 k3-asc run n=1000000 fill=seq shape=keep keep=3 order=asc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m9 k3-asc run n=1000000 fill=seq shape=keep keep=3 order=asc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m dense k3-asc run n=1000000 fill=seq shape=keep keep=3 order=asc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m main k3-desc run n=1000000 fill=seq shape=keep keep=3 order=desc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m p5 k3-desc run n=1000000 fill=seq shape=keep keep=3 order=desc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m8 k3-desc run n=1000000 fill=seq shape=keep keep=3 order=desc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m9 k3-desc run n=1000000 fill=seq shape=keep keep=3 order=desc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m dense k3-desc run n=1000000 fill=seq shape=keep keep=3 order=desc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m main k3-hashed run n=1000000 fill=seq shape=keep keep=3 order=hashed drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m p5 k3-hashed run n=1000000 fill=seq shape=keep keep=3 order=hashed drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m8 k3-hashed run n=1000000 fill=seq shape=keep keep=3 order=hashed drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m9 k3-hashed run n=1000000 fill=seq shape=keep keep=3 order=hashed drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m dense k3-hashed run n=1000000 fill=seq shape=keep keep=3 order=hashed drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m main k30-rand run n=1000000 fill=random shape=keep keep=30 order=asc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m p5 k30-rand run n=1000000 fill=random shape=keep keep=30 order=asc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m8 k30-rand run n=1000000 fill=random shape=keep keep=30 order=asc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m9 k30-rand run n=1000000 fill=random shape=keep keep=30 order=asc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m dense k30-rand run n=1000000 fill=random shape=keep keep=30 order=asc drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m main mass run n=1000000 fill=random shape=mass drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m p5 mass run n=1000000 fill=random shape=mass drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m8 mass run n=1000000 fill=random shape=mass drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m9 mass run n=1000000 fill=random shape=mass drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m dense mass run n=1000000 fill=random shape=mass drive=10000
+/Users/f/fl/bench/2026-11-11/thr/out/1m main over run n=1000000 fill=random shape=over phase=20000
+/Users/f/fl/bench/2026-11-11/thr/out/1m p5 over run n=1000000 fill=random shape=over phase=20000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m8 over run n=1000000 fill=random shape=over phase=20000
+/Users/f/fl/bench/2026-11-11/thr/out/1m m9 over run n=1000000 fill=random shape=over phase=20000
+/Users/f/fl/bench/2026-11-11/thr/out/1m dense over run n=1000000 fill=random shape=over phase=20000

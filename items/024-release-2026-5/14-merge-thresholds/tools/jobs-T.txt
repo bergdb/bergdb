@@ -1,0 +1,3 @@
+/Users/f/fl/bench/2026-11-11/thr/out/10m-t main over run n=10000000 fill=random shape=over phase=10000
+/Users/f/fl/bench/2026-11-11/thr/out/10m-t dense over run n=10000000 fill=random shape=over phase=10000
+/Users/f/fl/bench/2026-11-11/thr/out/10m-t m8 over run n=10000000 fill=random shape=over phase=10000

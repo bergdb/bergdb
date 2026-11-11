@@ -1,0 +1,41 @@
+== k10-asc p5 09:48:29 run n=1000000 fill=seq shape=keep keep=10 order=asc drive=10000
+ 9:48  up 23 days,  2:33, 5 users, load averages: 10.83 10.71 10.43
+THR {shape=keep, keep=10, fill=seq, drive=10000, dir=/Users/f/fl/bench/2026-11-11/thr/data/k10-asc-p5, n=1000000, order=asc} m=7 h=15 c=15 merges=true
+[4.0s] FILL tx=10000 ops=1000000 s=3.9 ops/s=259342 rec/op=168.6 stream/op=195.4 rec/tx=16864 stream/tx=19537 maxRec=22304 tsplit/op=0.0094 ssplit/op=0.0790 merge/op=0.0000 merge2/op=0.0000 taken/op=0.0000 sibLoads=0 iters=0 p50=217us p99.9=4966us kept=195371064 len=195371064
+[4.0s] NODES fill keys=1000000 keyNodes=78996 klongs=1105111 dead=26113 keys/node=12.66 minLive=2 under7=1 under10=991
+[5.0s] SCAN fill keys=1000000 ms=1159.5 ns/key=1159
+[6.2s] SCAN fill-again keys=1000000 ms=1006.4 ns/key=1006
+[7.2s] STATE fill kept=195371064 len=195371064 iters=0
+[12.4s] DELETE tx=9000 ops=900000 s=5.2 ops/s=171993 rec/op=53.1 stream/op=69.0 rec/tx=5306 stream/tx=6895 maxRec=9968 tsplit/op=0.0131 ssplit/op=0.0000 merge/op=0.1720 merge2/op=0.0966 taken/op=0.2371 sibLoads=3125 iters=1 p50=472us p99.9=3800us kept=257427104 len=257427104
+[12.4s] NODES shape keys=100000 keyNodes=11132 klongs=172161 dead=61027 keys/node=8.98 minLive=2 under7=1 under10=2753
+[12.5s] SCAN shape keys=100000 ms=34.7 ns/key=346
+[12.5s] SCAN shape-again keys=100000 ms=11.9 ns/key=118
+[12.5s] STATE shape kept=257427104 len=257427104 iters=1
+[13.8s] DRIVE at=2000 kept=303272968 iters=2
+[14.9s] DRIVE at=4000 kept=245624504 iters=2
+[16.3s] DRIVE at=6000 kept=288488592 iters=3
+[17.3s] DRIVE at=8000 kept=330330512 iters=3
+[18.6s] DRIVE at=10000 kept=372927856 iters=3
+[18.6s] DRIVE tx=10000 ops=1000000 s=6.1 ops/s=164527 rec/op=213.3 stream/op=215.5 rec/tx=21333 stream/tx=21551 maxRec=3581408 tsplit/op=0.1089 ssplit/op=0.0000 merge/op=0.0000 merge2/op=0.0000 taken/op=0.0000 sibLoads=0 iters=2 p50=437us p99.9=8622us kept=372927856 len=472945968
+[18.6s] NODES drive keys=100000 keyNodes=11134 klongs=163717 dead=52581 keys/node=8.98 minLive=2 under7=1 under10=2757
+[18.7s] SCAN drive keys=100000 ms=55.5 ns/key=555
+[18.7s] SCAN drive-again keys=100000 ms=23.1 ns/key=231
+[18.8s] STATE drive kept=372927856 len=472945968 iters=3
+[19.4s] TWIN FILL tx=1000 ops=100000 s=0.6 ops/s=160521 rec/op=150.0 stream/op=150.0 rec/tx=14996 stream/tx=14996 maxRec=19024 tsplit/op=0.0000 ssplit/op=0.0789 merge/op=0.0000 merge2/op=0.0000 taken/op=0.0000 sibLoads=0 iters=0 p50=186us p99.9=209206us kept=14996912 len=14996912
+[19.4s] TWIN NODES fill keys=100000 keyNodes=7899 klongs=107920 dead=21 keys/node=12.66 minLive=2 under7=1 under10=96
+[19.5s] TWIN SCAN fill keys=100000 ms=6.6 ns/key=65
+[19.5s] TWIN SCAN fill-again keys=100000 ms=6.7 ns/key=66
+[19.5s] TWIN STATE fill kept=14996912 len=14996912 iters=0
+[20.2s] TWIN DRIVE at=2000 kept=49661592 iters=0
+[21.1s] TWIN DRIVE at=4000 kept=89681696 iters=0
+[22.9s] TWIN DRIVE at=6000 kept=144919344 iters=1
+[24.0s] TWIN DRIVE at=8000 kept=188723016 iters=1
+[25.4s] TWIN DRIVE at=10000 kept=233776408 iters=2
+[25.4s] TWIN DRIVE tx=10000 ops=1000000 s=5.9 ops/s=170410 rec/op=206.0 stream/op=218.8 rec/tx=20601 stream/tx=21877 maxRec=36768 tsplit/op=0.1382 ssplit/op=0.0000 merge/op=0.0000 merge2/op=0.0000 taken/op=0.0000 sibLoads=0 iters=2 p50=406us p99.9=8839us kept=233776408 len=233776408
+[25.4s] TWIN NODES drive keys=100000 keyNodes=7901 klongs=136879 dead=28976 keys/node=12.66 minLive=2 under7=1 under10=95
+[25.4s] TWIN SCAN drive keys=100000 ms=69.6 ns/key=696
+[25.5s] TWIN SCAN drive-again keys=100000 ms=21.8 ns/key=217
+[25.5s] TWIN STATE drive kept=233776408 len=233776408 iters=2
+[25.6s] DONE
+rc=0 09:48:55
+ 9:48  up 23 days,  2:33, 5 users, load averages: 13.92 11.39 10.68

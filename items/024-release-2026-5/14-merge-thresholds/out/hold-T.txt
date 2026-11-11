@@ -1,0 +1,17 @@
+hold T start 12:23:38 /Users/f/fl/bench/2026-11-11/heavy.lock /Users/f/fl/bench/2026-11-11/heavy2.lock
+12:23  up 23 days,  5:08, 5 users, load averages: 25.57 28.92 23.83
+404.1 javac
+109.7 java
+105.5 java
+ 99.1 ./treetest-2
+ 98.4 /Users/f/fl/bench/2026-11-11/mgl/clone/lean/.lake/build/bin/treetest
+quiet wait end 12:31:04 others=5
+12:31  up 23 days,  5:16, 5 users, load averages: 17.61 18.56 20.41
+job done 12:37:55 /Users/f/fl/bench/2026-11-11/thr/out/10m-t main over run n=10000000 fill=random shape=over phase=10000
+12:37  up 23 days,  5:22, 5 users, load averages: 3.91 9.05 15.16
+job done 12:44:23 /Users/f/fl/bench/2026-11-11/thr/out/10m-t dense over run n=10000000 fill=random shape=over phase=10000
+12:44  up 23 days,  5:29, 5 users, load averages: 3.27 4.88 10.85
+job done 12:50:59 /Users/f/fl/bench/2026-11-11/thr/out/10m-t m8 over run n=10000000 fill=random shape=over phase=10000
+12:50  up 23 days,  5:36, 5 users, load averages: 3.25 3.83 8.10
+hold T end 12:50:59
+12:50  up 23 days,  5:36, 5 users, load averages: 3.25 3.83 8.10
