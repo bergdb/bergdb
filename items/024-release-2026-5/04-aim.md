@@ -175,3 +175,8 @@ and 024-02.
 2026-11-11, 07:30. Section 6 added (the order of work, Frans 07:23 and
 07:27). Section 4's MEM case is explained by 024-08: the shape of the
 keys, not their count.
+
+2026-11-11, 07:30. Frans, asked whether the cost of key shape (024-08:
+a stretch of 7 key bytes that no other key shares costs a key node of
+its own) is within aim 3: "Yes." So it is documented, with a bound and
+its Mem runs (024-08, option (a)); no fix is studied in 2026.5.
