@@ -601,6 +601,104 @@ def checkSchemeB (sp : Spec Val Tr4) (al : Algo Val Tr4) (ts : List Tr4) : Nat �
 hold; `CutOK` at 3 holds in every state from the waits on. -/
 #guard (let r := checkSchemeB spec4 al4 ts4; r.1 == 1 && decide (0 < r.2.1) && r.2.2 == 0)
 
+/-! ### The scheme without a touch of a key range (bergdb 024-07)
+
+Since 024-07 a reclaim step of Java touches only the index nodes on the paths of
+its own puts. The index nodes then need no touch: T-COVER
+(SIS/ReclaimTheorems.lean, `T_cover`) gives, from the rewrites and a data node
+below every index node, that every index node reachable at the iteration's end
+is in D or at the cut or later, `coverB`. `coverB` is weaker than `touchCoverB`:
+a version from pCut on is enough, where a touch gave one after pStart.
+T-SCHEME by running with it, `checkSchemeC`: also on example 4 without any
+touch (`spec4n`), where `touchCoverB` holds for few iterations. In the fixed
+run key 3 has no value, so its leaf has no data node below it, and no put ever
+writes the leaf again: without the touch the iteration does not cover it. That
+is what the touch of a key range was for, when BergDB kept nodes that held
+deleted keys only. -/
+
+/-- Every written index node reachable at tEnd is in D then, or has its latest
+version at pCut or later. -/
+def coverB (sp : Spec Val Tr4) (al : Algo Val Tr4) (ts : List Tr4) (pCut tEnd : Nat) : Bool :=
+  let db := run sp al (ts.take tEnd)
+  (allIds db.P).all (fun x =>
+    if isIndex db.P x && written sp x && reachable sp db.P tEnd x then
+      inD db.D x || ((db.S.lv x).map (fun v => decide (pCut ≤ v.recNo))).getD false
+    else true)
+
+/-- Every written index node reachable at tEnd has a data node below it at tEnd,
+reachable from it through live pointers (T-COVER's second premise). -/
+def liveBelowB (sp : Spec Val Tr4) (al : Algo Val Tr4) (ts : List Tr4) (tEnd : Nat) : Bool :=
+  let db := run sp al (ts.take tEnd)
+  (allIds db.P).all (fun x =>
+    match db.P.get? x with
+    | some n => !(!n.isData && written sp x && reachable sp db.P tEnd x) ||
+        (reachFrom sp db.P tEnd x n).any (fun d => ((db.P.get? d).map (·.isData)).getD false)
+    | none => true)
+
+/-- T-SCHEME by running with `coverB` in place of `touchCoverB` (bergdb 024-07,
+section 4), and T-COVER by running. For each iteration of a run of example 4
+with pCut at most pStart whose rewrites hold (`rewritesB`). Returns:
+1. the iterations with a data node below every index node (`liveBelowB`);
+2. of them, those that `coverB` fails for: none, by T-COVER;
+3. the iterations with the scheme's conditions, `coverB` and the rewrites;
+4. of them, those with `touchCoverB` too;
+5. the states past the waits where `CutOK` at pCut was checked, as in
+   `checkSchemeB`, for the iterations of 3;
+6. the states where it fails. -/
+def checkSchemeC (sp : Spec Val Tr4) (al : Algo Val Tr4) (ts : List Tr4) :
+    Nat × Nat × Nat × Nat × Nat × Nat :=
+  let n := ts.length
+  let dbs := (List.range (n + 1)).map (fun j => run sp al (ts.take j))
+  let sps := dbs.map (fun db => lastSp db.S)
+  (schemeIters ts).foldl (fun (acc : Nat × Nat × Nat × Nat × Nat × Nat) it =>
+    let (pStart, pCut, tEnd) := it
+    let (nLive, nLiveBad, nCond, nTouch, nStates, nBad) := acc
+    if !(decide (pCut ≤ pStart) && rewritesB sp al ts pCut tEnd) then acc
+    else
+      let cov := coverB sp al ts pCut tEnd
+      let lb := liveBelowB sp al ts tEnd
+      let nLive := if lb then nLive + 1 else nLive
+      let nLiveBad := if lb && !cov then nLiveBad + 1 else nLiveBad
+      if !cov then (nLive, nLiveBad, nCond, nTouch, nStates, nBad)
+      else
+        let nTouch := if touchCoverB sp al ts pStart tEnd then nTouch + 1 else nTouch
+        match sps.findIdx? (fun s => decide (tEnd < s)) with
+        | none => (nLive, nLiveBad, nCond + 1, nTouch, nStates, nBad)
+        | some j0 =>
+          let ks := (List.range (n + 1)).filter (fun k =>
+            decide (j0 < sps.getD k 0) && decide (tEnd ≤ lastFa (dbs.getD k (init sp)).S))
+          let bad := (ks.filter (fun k => !cutOKB sp pCut (dbs.getD k (init sp)) k)).length
+          (nLive, nLiveBad, nCond + 1, nTouch, nStates + ks.length, nBad + bad)) (0, 0, 0, 0, 0, 0)
+
+/-- The sum of `checkSchemeC`'s counts. -/
+def addC (a b : Nat × Nat × Nat × Nat × Nat × Nat) : Nat × Nat × Nat × Nat × Nat × Nat :=
+  (a.1 + b.1, a.2.1 + b.2.1, a.2.2.1 + b.2.2.1, a.2.2.2.1 + b.2.2.2.1, a.2.2.2.2.1 + b.2.2.2.2.1,
+    a.2.2.2.2.2 + b.2.2.2.2.2)
+
+/- The fixed run, with the touch: its iteration has the scheme's conditions in
+both forms, and `CutOK` at 3 holds in the three states past the waits; key 3's
+leaf has no data node below it. -/
+#guard checkSchemeC spec4 al4 ts4 == (0, 0, 1, 1, 3, 0)
+
+/- The fixed run without the touch: the rewrites hold, but key 3's leaf, with no
+data node below it, is not covered: it keeps its version of R(0), below the cut. -/
+#guard (rewritesB spec4n al4 ts4 3 7, liveBelowB spec4n al4 ts4 7, coverB spec4n al4 ts4 3 7) ==
+  (true, false, false)
+#guard checkSchemeC spec4n al4 ts4 == (0, 0, 0, 0, 0, 0)
+
+/-- The fixed run with a put to key 3 first, so that every leaf has a value. -/
+def ts4v : List Tr4 := .put 3 10 :: ts4.map (fun tr => match tr with
+  | .step lo hi last b => .step lo hi last (b + 1)
+  | tr => tr)
+
+/- Without any touch its iteration (steps at 7 and 8, pCut 4) has a data node
+below every index node, the rewrites and so the cover (T-COVER), though no
+touch covers it; and `CutOK` at 4 holds in the states past the waits. -/
+#guard (liveBelowB spec4n al4 ts4v 8, rewritesB spec4n al4 ts4v 4 8, coverB spec4n al4 ts4v 4 8,
+  touchCoverB spec4n al4 ts4v 6 8) == (true, true, true, false)
+#guard (let r := checkSchemeC spec4n al4 ts4v
+  r.1 == 1 && r.2.1 == 0 && r.2.2.1 == 1 && r.2.2.2.1 == 0 && decide (0 < r.2.2.2.2.1) && r.2.2.2.2.2 == 0)
+
 /-! ## Example 4 meets T8's assumptions on its virtual root
 
 The root's entries are `.slot 0 z`. Its live child is the root child of its
