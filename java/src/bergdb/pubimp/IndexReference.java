@@ -315,7 +315,7 @@ final class IndexReference {
      * for no entry. No entry for a key with a suffix (not .obj), a value that is not an
      * object, a level whose path is absent or goes through a field that is not an object, a
      * value of another kind than the level's type (no kind converted), NaN, or levels of more
-     * than 4,096 bytes in all. -0.0 is 0.0.
+     * than 111 bytes in all (L6; 4,096 until bergdb 024-24, tooLong()). -0.0 is 0.0.
      */
     List<Object> f(Def def, String key, Object value) {
         if (!isObjectKey(key) || !(value instanceof Map)) {
@@ -332,6 +332,26 @@ final class IndexReference {
             levels.add(v);
         }
         return size > MAX_LEVEL_BYTES ? null : levels;
+    }
+    
+    /**
+     * Whether the value at key would have an entry of 'def' but for its levels' size, more
+     * than MAX_LEVEL_BYTES (L6): a put of it is refused (bergdb 024-17, QL4; 024-24), and an
+     * index built over it, put before, gives it no entry (f()).
+     */
+    boolean tooLong(Def def, String key, Object value) {
+        if (!isObjectKey(key) || !(value instanceof Map)) {
+            return false;
+        }
+        int size = 0;
+        for (Level level : def.levels) {
+            Object v = levelValue(level.type, follow((Map<?, ?>) value, level.path));
+            if (v == null) {
+                return false;
+            }
+            size += encodedSize(level.type, v);
+        }
+        return size > MAX_LEVEL_BYTES;
     }
 
     /** The value at path in the object o, or null if a part is absent or not an object. */
@@ -907,26 +927,30 @@ final class IndexReference {
         checkF(ref, two, "/h/k", obj("a", "s"), null);
     }
 
-    /** The 4,096 bytes of levels: an entry at 4,096, none at 4,097; 00 and 01 count twice. */
+    /**
+     * The 111 bytes of levels (L6; 4,096 until bergdb 024-24): an entry at 111, none at 112;
+     * 00 and 01 count twice.
+     */
     @Nano
     public static void testFunctionSizeLimit() {
         IndexReference ref = new IndexReference();
         Def s = def("/h/", level(Type.STRING, "a"));
-        checkF(ref, s, "/h/k", obj("a", repeat("a", 4095)), list(repeat("a", 4095)));
-        checkF(ref, s, "/h/k", obj("a", repeat("a", 4096)), null);
-        checkF(ref, s, "/h/k", obj("a", repeat("\u0000", 2047)), list(repeat("\u0000", 2047)));
-        checkF(ref, s, "/h/k", obj("a", repeat("\u0001", 2048)), null);
+        checkF(ref, s, "/h/k", obj("a", repeat("a", 110)), list(repeat("a", 110)));
+        checkF(ref, s, "/h/k", obj("a", repeat("a", 111)), null);
+        check(ref.tooLong(s, "/h/k", obj("a", repeat("a", 111)))
+                && !ref.tooLong(s, "/h/k", obj("a", repeat("a", 110))), "tooLong");
+        checkF(ref, s, "/h/k", obj("a", repeat("\u0000", 55)), list(repeat("\u0000", 55)));
+        checkF(ref, s, "/h/k", obj("a", repeat("\u0001", 56)), null);
         // U+00E9 is two bytes of UTF-8.
-        checkF(ref, s, "/h/k", obj("a", repeat("é", 2047) + "a"),
-                list(repeat("é", 2047) + "a"));
-        checkF(ref, s, "/h/k", obj("a", repeat("é", 2048)), null);
+        checkF(ref, s, "/h/k", obj("a", repeat("é", 55)), list(repeat("é", 55)));
+        checkF(ref, s, "/h/k", obj("a", repeat("é", 55) + "a"), null);
         Def sl = def("/h/", level(Type.STRING, "a"), level(Type.LONG, "b"));
-        checkF(ref, sl, "/h/k", obj("a", repeat("a", 4087), "b", 1L), list(repeat("a", 4087), 1L));
-        checkF(ref, sl, "/h/k", obj("a", repeat("a", 4088), "b", 1L), null);
+        checkF(ref, sl, "/h/k", obj("a", repeat("a", 102), "b", 1L), list(repeat("a", 102), 1L));
+        checkF(ref, sl, "/h/k", obj("a", repeat("a", 103), "b", 1L), null);
         Def b = def("/h/", level(Type.BYTES, "a"));
-        byte[] zeros = new byte[2047];
+        byte[] zeros = new byte[55];
         checkF(ref, b, "/h/k", obj("a", new Bin(zeros)), list(new Bin(zeros)));
-        checkF(ref, b, "/h/k", obj("a", new Bin(new byte[2048])), null);
+        checkF(ref, b, "/h/k", obj("a", new Bin(new byte[56])), null);
         check(encodedSize(Type.BYTES, Bin.of()) == 1 && encodedSize(Type.STRING, "") == 1
                 && encodedSize(Type.BYTES, Bin.of(0, 1, 2)) == 6, "encodedSize");
     }
