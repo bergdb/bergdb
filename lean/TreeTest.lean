@@ -129,8 +129,10 @@ def runCounted (p : Params) (base : NodeId) (ops : List Tree.Op) (i : Time) (vie
     match topOf p (rootless view) z with
     | .error e => .error e
     | .ok top =>
-      ((ops.mapM putCounted).run
-        { p := p, i := i, view := rootless view }).run { next := base, top := top }
+      match ((ops.mapM putCounted).run { p := p, i := i, view := rootless view }).run
+          { next := base, top := top } with
+      | .error e => .error e
+      | .ok (per, w) => (boundsOK p (.ok ([], w))).map (fun r => (per, r.2))
 
 /-- One transaction from a state; the base leaves room for 500 nodes. -/
 def stepSt (p : Params) (st : St) (ops : List Tree.Op) : Except String St :=

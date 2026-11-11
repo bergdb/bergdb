@@ -97,6 +97,9 @@ structure W where
   statements of the costs (CB1, CB3 of 024-11). No rule reads them. -/
   merges : Nat := 0
   spaceSplits : Nat := 0
+  /-- Key nodes made outside the level bounds G and H (bergdb 024-22, MF3): an
+  error unless the transaction takes each back (`boundsOK`). -/
+  outside : List (NodeId × Nat × Nat) := []
   deriving Repr, Inhabited
 
 /-- What the writer reads and does not change: the parameters, the
@@ -160,13 +163,17 @@ def ghOf (x : NodeId) : M (Nat × Nat) := do
   | none => throw s!"corrupt: key node {x} has no segment and height"
 
 /-- A new key node in segment g at height h (`keyNodeCreated`). Outside the
-bounds G and H its level would not be below its parent's (A4; 024-12, D5): an
-error. -/
+bounds G and H its level would not be below its parent's (A4; 024-12, D5): such
+a node is noted, and is an error at the transaction's end unless the
+transaction took it back (`boundsOK`). A trace's G and H are those of the nodes
+written, and a delete can make a root one above them that root collapse takes
+back in the same operation (024-22, MF1 and MF3); the writer reads a node's
+segment and height from `gh`, never from its level. -/
 def newKey (g h : Nat) (leaf : Bool) (ks : List Klong) : M NodeId := do
   let c ← read
-  if c.p.G < g || c.p.H < h then
-    throw s!"bounds: the tree leaves the level bounds: segment {g}, height {h}; G = {c.p.G}, H = {c.p.H}"
   let x ← fresh
+  if c.p.G < g || c.p.H < h then
+    modify (fun w => { w with outside := (x, g, h) :: w.outside })
   modify (fun w => { w with nodes := w.nodes ++ [(x, ⟨leaf, ks⟩)], gh := (x, g, h) :: w.gh,
                             made := w.made ++ [⟨x, c.p.keyLevel g h, false⟩] })
   pure x
@@ -1098,6 +1105,17 @@ def changesOf (i : Time) (w : W) : Changes BVal :=
   { new := new,
     adds := (keyAdds ++ valAdds ++ topAdds).mergeSort (fun a b => decide (a.1 ≤ b.1)) }
 
+/-- The level bounds at the transaction's end: a key node made outside G and H
+that the transaction did not take back is the `bounds:` error (`newKey`). -/
+def boundsOK (p : Params) (r : Except String (List Bool × W)) : Except String (List Bool × W) :=
+  match r with
+  | .error e => .error e
+  | .ok (noops, w) =>
+    match w.outside.find? (fun q => !w.taken.contains q.1) with
+    | some (_, g, h) =>
+      .error s!"bounds: the tree leaves the level bounds: segment {g}, height {h}; G = {p.G}, H = {p.H}"
+    | none => .ok (noops, w)
+
 /-- The writer's run from its super root z and the view without the root. -/
 def runOpsFrom (p : Params) (base : NodeId) (ops : List Op) (i : Time) (z : Option NodeId)
     (v : View BVal) : Except String (List Bool × W) :=
@@ -1106,7 +1124,8 @@ def runOpsFrom (p : Params) (base : NodeId) (ops : List Op) (i : Time) (z : Opti
   | some z =>
     match topOf p v z with
     | .error e => .error e
-    | .ok top => ((ops.mapM putKv).run { p := p, i := i, view := v }).run { next := base, top := top }
+    | .ok top =>
+      boundsOK p (((ops.mapM putKv).run { p := p, i := i, view := v }).run { next := base, top := top })
 
 /-- The writer's run of a list of operations at time i from P@(i-1): the final
 state, and for each operation whether it was a noop. -/
