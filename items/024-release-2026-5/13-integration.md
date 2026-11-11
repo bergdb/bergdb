@@ -152,23 +152,67 @@ changed `UnlinkFuzz.java`):
   `docs/` are `e6b6bda6`'s, where the branch agent ran it (LEVEL 2 OK),
   and my one commit after it changes a comment.
 
-## 5. State
+## 5. The third landing: 024-15
 
-2026-11-11, 11:24.
+The coordinator's message (12:03): Frans allowed landing
+`024-15-key-shape-cost`, head `877ddf20` (024-15), once gated; to land
+before 024-16, on a branch of its own from `main`.
 
-* **Done:** the first landing (sections 1 to 3), on `main` as
-  `a780b957`; the merge of 024-09 and the header's comment, every gate
-  of section 4 passed on `e74bb8ff`.
-* **To land:** branch `024-13-int`, head **`e74bb8ff`**, in
-  `/Users/f/fl/bench/2026-11-11/int/clone`; two commits on `main`'s
-  `cffb6a75` (`bc2ba891` the merge of `e6b6bda6`, `e74bb8ff` the
-  comment). The working tree is clean.
-* **Next:** `024-12-tree-model`, when the coordinator sends its head
-  (merge notes in 024-09 and 024-12: a two-line conflict in
-  `TraceExport.key()`, import lines in `lean/SIS.lean` and
-  `lean/Check.lean`, 024-09's `Check/Live.lean` against 024-12's
-  `SIS/Tree/Val.lean`); and `022-07-c-2026-4` (`items/022-bergdb-c/c/`
-  only). Bring the branch to `main` first, merge with `--no-ff`, gate
-  one run a hold with `/Users/f/fl/bench/2026-11-11/int/gate2.sh`
-  (after `slot.sh take`; owner lines say "gates only", never the word
-  for a timing run).
+* **The branch:** `024-13-int-b`, in a worktree of the clone,
+  `/Users/f/fl/bench/2026-11-11/int/wt-b` (the clone's own tree held
+  024-16's gates then), from `main`'s `26cb90da`.
+* **The merge** (`251cd1e0`, `--no-ff`): no conflict. `docs/levels.md`,
+  `Db.java`'s and `Connection.java`'s Javadoc had been edited by today's
+  landings too, in other paragraphs; Git kept both texts, and each reads
+  as one text (024-15's paragraphs on key nodes beside 024-07's and
+  024-16's). The diff from `main` is the same with `-w` and with
+  `--ignore-space-at-eol`.
+
+Gates on `251cd1e0`, one slot each:
+
+| Gate                          | When           | Result                                  |
+|---|---|---|
+| `java/before-commit.sh`       | 12:18 to 12:20 | BEFORE COMMIT OK (102 s)                |
+| `java/stress/level1.sh`, full | 12:20 to 12:23 | LEVEL 1 OK (212 s)                      |
+
+* **level1.sh's Props step:** MEM 130 (at most 131); the new SEG 226.4
+  (MEM with keys `%07d` 355.9 minus MEM 129.5; at most 230); the new
+  MEM10M 127.0 at 10M keys `/k/%010d` (at most 131); SS 1.51.
+* **before-commit.sh:** unit 1,651, f 89, DEMOS OK. Both ran beside
+  024-14's counting JVMs in the other slot, so the times are not
+  timings.
+
+
+## 6. 024-16 (first head, not landed)
+
+The coordinator's message (11:58): Frans allowed landing
+`024-16-one-operation-a-key`, head `d5617d45` (024-16), once gated in
+full. Merged on `main`'s `9a2318bc` (`4b934e3e`, no conflict; no file
+changed by both 024-16 and 024-09 since their common base `68c3917e`;
+`-w` drops lines only where 024-16 moved code into `try` blocks).
+Before-commit.sh on `4b934e3e`: BEFORE COMMIT OK (106 s, 12:01 to
+12:03). Then, at 12:03, its chain was stopped so that 024-15 could take
+the slots first, and at 12:18 the coordinator said the review asks for
+four small fixes, so a new head replaces `d5617d45`: no more gates on
+it. The merge `ce562af7` (024-15's `251cd1e0` into it) is left in the
+clone and is not to be landed.
+
+
+## 7. State
+
+2026-11-11, 12:24.
+
+* **Landed:** the first landing as `main`'s `a780b957`, the second
+  (024-09) as `379d8acf`.
+* **To land:** 024-15, branch `024-13-int-b`, head **`251cd1e0`**, in
+  the worktree `/Users/f/fl/bench/2026-11-11/int/wt-b` of the clone;
+  one merge on `main`'s `26cb90da`; gated (section 5).
+* **Next:** 024-16's new head, when the coordinator sends it: reset
+  `024-13-int` (now `ce562af7`, not to be landed) to `main`'s head, merge
+  the new head with `--no-ff`, and gate in full, one run a slot with
+  `/Users/f/fl/bench/2026-11-11/int/gate3.sh LABEL CMD...`: `lake
+  build`, `before-commit.sh`, `level1.sh` to `level4.sh` full,
+  `sh stress/unlinkfuzz.sh` (mode 644), `conformance.sh drain`. Owner
+  lines say "gates only", never the word for a timing run. Then
+  `024-12-tree-model` and the C clone's branch, when sent (merge notes
+  in 024-09 and 024-12).

@@ -47,7 +47,7 @@ high, xhigh for a hard task. At most 8 agents at a time (Frans,
 | 024-12 | The key tree's model in Lean, run against Java | tree (xhigh) | |
 | 024-13 | The integration branch: doubles.py, 024-10, 024-07; gates | int (Opus, high) | landed 10:07 |
 | 024-14 | The merge's thresholds measured in Java at 10M keys | thr (Opus, high) | |
-| 024-15 | The cost of key shape: documentation, bound, Mem runs | shape (Opus, high) | |
+| 024-15 | The cost of key shape: documentation, bound, Mem runs | shape (Opus, high) | on main 12:25 |
 | 024-16 | One operation a key, strict: a collision fails the commit | strict (Opus, high) | |
 | 024-17 | The limits of a transaction, a key, a value, a record | limits (Opus, high) | done 11:59 |
 | 020-33 | The known issue of 2026.4 in its notes; next.md | notes (Opus, high) | done 10:28 |
@@ -248,6 +248,19 @@ from them.
   2026.4 as released (022-07; `items/022-bergdb-c/c` only): C's gate OK
   on the head, 0 differences with Java's release on every comparison
   set; no fault of Java's product code, three notes on Java.
+* 11:59 024-17 done (the limits; a proposed table: 1,000 operations, a
+  key of 256 bytes, a value of 16 MiB, 64 MiB a transaction). 024-16
+  done on its branch; as it moves the key transformations to before
+  the go point and adds a cancel to the clock, it went to a full gate
+  by int and an independent review, not to main on its own gates.
+* 12:16 The review of 024-16: land with four small fixes; no fault found
+  in the commit path, by reading or by a concurrency probe; an old
+  fault beside it (a key-replace put over an indexed object leaves a
+  stale index entry). The fixes are with the branch's agent.
+* 12:25 **The fourth landing**: 024-15, the cost of key shape documented
+  and bounded (the merge of 251cd1e0): before-commit and level1 full on
+  the merged tree; SEG 226.4 (at most 230), MEM10M 127.0 (at most 131).
+  The usage: 67 % at 12:15.
 
 
 ## 6. Outcome

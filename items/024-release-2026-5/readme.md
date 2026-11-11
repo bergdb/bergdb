@@ -165,7 +165,7 @@ Files
   costs a key node of its own (about 226 heap bytes) and what eviction
   does instead; `Mem` with `-n` and `-keys`; two checks in `level1.sh`
   (SEG at most 230; MEM10M at most 131, full run only); docs/levels.md.
-  Branch 024-15-key-shape-cost.
+  On main since the merge of 251cd1e0.
 * 16-one-operation-a-key.md. 024-16, one operation a key in a
   transaction, strictly (Frans, 2026-11-11): in a builder the last call
   on a key as written wins; a transaction whose key transformations make
