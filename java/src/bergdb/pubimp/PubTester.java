@@ -44,6 +44,7 @@ import bergdb.pub.TransactionInfo;
 import bergdb.pub.WBuilder;
 import bergdb.pub.util.DatabaseMissingException;
 import bergdb.pub.util.DatabaseNotCreatedException;
+import bergdb.pub.util.DbException;
 import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.IllegalDbStateException;
 import bergdb.pub.util.IndexBuildException;
@@ -1035,6 +1036,83 @@ public class PubTester {
                         keys.toString());
                 Assert.assertEquals("P" + row + ": the object", row == 9,
                         c.get("/o/1", LongV.class) != null);
+            }
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
+     * Object keys that key replace makes one key are refused (bergdb 024-16, section 3, S2;
+     * 024-10, section 11, F1). "/o/" has an index on v; Kt, "/o/" and the digits of the next
+     * transaction's time, which the test knows (the clock stands still, so each transaction's
+     * time is the one before plus one), holds an object of v = 5. Each of F1's four call
+     * sequences, with K = "/o/${transactionTime}" and key replace on, through w() and through
+     * rw(), is refused with a DbException that names both keys: Kt still holds 5, K holds
+     * nothing, the index gives Kt alone, and one index entry is stored, Kt's: no stale entry
+     * can be stored, as the transaction is refused. rw() runs its action once: a refusal is
+     * not a conflict, and is not run again. The next transaction takes the refused one's
+     * time. Until 024-16 one of the two operations was kept, and the other's index entry
+     * could stay stored, given by no scan (024-10, F1: two puts, or a put and a delete).
+     */
+    @Nano
+    public static void testKeyReplaceCollisionRefused() {
+        TestClock clock = new TestClock();
+        clock.setTime(Time.units(1000L * 1000 * 1000));
+        Database db = Factory.database().memory().clock(clock).start();
+        try {
+            db.indexBuilder("v").dir("/o/").type("long").field("v").start().join();
+            Connection c = db.connection();
+            c.setEnableKeyReplace(true);
+            final String k = "/o/${transactionTime}";
+            for (int i = 0; i < 8; i++) {
+                final int seq = i % 4;
+                final boolean rw = i >= 4;
+                String at = "sequence " + seq + (rw ? ", rw()" : ", w()") + ": ";
+                long time = c.put("/t/seed.txt", "s").getTime().units() + 2;
+                final String kt = String.format(Locale.US, "/o/%018d", time);
+                c.put(kt, new LongV(5));
+                final int[] runs = new int[1];
+                DbException e = null;
+                try {
+                    if (rw) {
+                        c.rw(env -> {
+                            runs[0]++;
+                            if (seq == 0) { env.put(k, new LongV(7)); env.put(kt, new LongV(8)); }
+                            if (seq == 1) { env.put(kt, new LongV(8)); env.put(k, new LongV(7)); }
+                            if (seq == 2) { env.put(k, new LongV(7)); env.delete(kt); }
+                            if (seq == 3) { env.delete(kt); env.put(k, new LongV(7)); }
+                        });
+                    } else {
+                        WBuilder w = c.w();
+                        if (seq == 0) w.put(k, new LongV(7)).put(kt, new LongV(8));
+                        if (seq == 1) w.put(kt, new LongV(8)).put(k, new LongV(7));
+                        if (seq == 2) w.put(k, new LongV(7)).delete(kt);
+                        if (seq == 3) w.delete(kt).put(k, new LongV(7));
+                        w.execute();
+                    }
+                } catch (DbException x) {
+                    e = x;
+                }
+                Assert.assertTrue(at + "refused", e != null);
+                // The Core's keys: "/o/x" is "/do/-x" (bergdb 020-08).
+                Assert.assertTrue(at + e.getMessage(), e.getMessage().contains(
+                        "\"/do/-${transactionTime}\" and \"/do/-" + kt.substring(3) + "\" as "
+                        + "written are both \"/do/-" + kt.substring(3) + "\"."));
+                Assert.assertEquals(at + "the action's runs", rw ? 1 : 0, runs[0]);
+                Assert.assertEquals(at + "Kt", 5L, c.get(kt, LongV.class).v);
+                Assert.assertEquals(at + "K", null, c.get(k, LongV.class));
+                StringBuilder entries = new StringBuilder();
+                for (Kv<DbObject> kv : c.useIndex("v", DbObject.class).kvs()) {
+                    entries.append(kv.key()).append(' ').append(kv.value().getLong("v")).append(';');
+                }
+                Assert.assertEquals(at + "the index", kt + " 5;", entries.toString());
+                Assert.assertEquals(at + "the index entries stored", 1, ((DatabaseImp) db)
+                        .getIndexManager().scan(IndexKeys.entriesPrefix(), Long.MAX_VALUE, 1000)
+                        .size());
+                Assert.assertEquals(at + "the next transaction's time", time,
+                        c.put("/t/after.txt", "a").getTime().units());
+                c.delete(kt);
             }
         } finally {
             db.close();

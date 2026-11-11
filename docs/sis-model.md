@@ -653,8 +653,10 @@ implementation must meet them.
   to the new root (023-09, section 2, fault 12). A start refuses format 5,
   written by releases 2026.1 to 2026.3. Since then too a transaction's KVs
   reach the tree in key order, one a key, after its key transformations
-  (023-08, section 7), so two transactions with the same operations give
-  the same record; the rerun keeps the stored order.
+  (023-08, section 7; since 024-16 a transaction whose key
+  transformations make two of its keys one key is refused), so two
+  transactions with the same operations give the same record; the rerun
+  keeps the stored order.
 
 
 12 Compared with startup.md

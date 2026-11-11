@@ -181,8 +181,11 @@ public class Trans {
      * keeps one operation, the last one, a put or a delete (build()): a delete after a put
      * deletes, a put after a delete puts, as a batch of most embedded stores. Until release
      * 2026.4 a delete never replaced a put, whatever their order (bergdb 015-40; 020-24-09,
-     * U9-12; changed by 024-10). The keys and values: Db's "Keys and values"; the read time
-     * and the keys read: Db's "Optimistic transactions".</p>
+     * U9-12; changed by 024-10). The key is the key as written: a transaction whose key
+     * transformations make two of its keys one key is refused by Db.execute() with a
+     * DbException, nothing of it written, and its KVs left as they were (bergdb 024-16): a
+     * transaction has one operation a key. The keys and values: Db's "Keys and values"; the
+     * read time and the keys read: Db's "Optimistic transactions".</p>
      * <p>A null key, value, read key or hash array is refused with IllegalArgumentException,
      * and nothing is added (bergdb 020-27, Q2: a null key threw NullPointerException, or
      * AssertionError with -ea, and delete((long[]) null) was taken, so that build() threw);
@@ -239,7 +242,9 @@ public class Trans {
         
         /**
          * Puts the value at the key, with a key transformation and a value transformation,
-         * each null for none.
+         * each null for none. If the key transformation, at the commit, gives the key of
+         * another KV of the transaction, Db.execute() refuses the transaction (bergdb 024-16;
+         * the class Javadoc).
          * 
          * @throws IllegalArgumentException  If key or value is null, or the key has no segment.
          */
@@ -473,10 +478,10 @@ public class Trans {
          * 
          * One operation a key, in key order: of the calls on a key, the last one, a put or a
          * delete (bergdb 024-10, section 3, R1: the last operation wins; Frans, 2026-11-10). The
-         * key is the key as written, before any key transformation: of the KVs that key
-         * transformations make one key, Db.putKvs keeps the one called last (R2), which each
-         * KV's call number tells it (Kv.call). Until release 2026.4 the last put was kept, or a
-         * delete if there was no put (bergdb 015-40).
+         * key is the key as written, before any key transformation: a transaction whose key
+         * transformations make two of its keys one key is refused at the commit (bergdb
+         * 024-16; Db.transformKeys). Until release 2026.4 the last put was kept, or a delete if
+         * there was no put (bergdb 015-40).
          */
         public Trans build() {
             // We use a TreeMap to sort and to avoid duplicates.
@@ -488,9 +493,7 @@ public class Trans {
             
             TreeMap<long[], Kv> map = new TreeMap<long[], Kv>(ARRAY_COMPARATOR);
             
-            for (int i = 0; i < kvs.size(); i++) {
-                Kv kv = kvs.get(i);
-                kv.call = i;
+            for (Kv kv : kvs) {
                 map.put(kv.getKey(), kv);       // the last call on a key replaces the others
             }
             

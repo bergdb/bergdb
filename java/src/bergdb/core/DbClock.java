@@ -118,7 +118,10 @@ public class DbClock {
         long time;
         
         if (transactionRunning) {
+            // Kept as a time handed out (bergdb 024-16): if the transaction is refused
+            // (transactionCancel()), the next one still takes a later time than this.
             time = transactionTime - 1;
+            lastReadTime = time > lastReadTime ? time : lastReadTime;
         } else {
             time = clock.getTime();
             time = time > LAST_USER_TIME ? lastTransactionTime : time;
@@ -194,6 +197,18 @@ public class DbClock {
     public final synchronized void transactionEnd() {
         assert transactionRunning;
         lastTransactionTime = transactionTime;
+        transactionRunning = false;
+    }
+    
+    /**
+     * Ends a write transaction that was refused after transactionBegin(), before its go
+     * point, when nothing of it has changed (bergdb 024-16: Db.transformKeys): its time is
+     * given back, not made the last transaction's, so the next transaction may take the same
+     * time. A time that currentTime() handed out while it ran is kept (lastReadTime), so the
+     * next transaction's time is later than every time handed out, as always.
+     */
+    public final synchronized void transactionCancel() {
+        assert transactionRunning;
         transactionRunning = false;
     }
 
@@ -412,6 +427,37 @@ public class DbClock {
         assertEquals(2*F, dbClock.lookupTime(Long.MAX_VALUE));
         assertEquals(1*F, dbClock.lookupTime(1*F));
         
+    }
+    
+    /**
+     * A refused transaction gives its time back (transactionCancel(); bergdb 024-16): the
+     * last transaction's time stays, and the next transaction takes the same time, unless
+     * currentTime() handed out a time while the refused one ran: then a later one, also when
+     * the clock has gone back.
+     */
+    @Nano
+    private static void testTransactionCancel() {
+        final long[] now = {1*F};
+        DbClock dbClock = new DbClock(() -> now[0]);
+        assertEquals(1*F, dbClock.transactionBegin(true));
+        dbClock.transactionEnd();
+        
+        now[0] = 2*F;
+        assertEquals(2*F, dbClock.transactionBegin(true));
+        dbClock.transactionCancel();
+        assertEquals(1*F, dbClock.lookupTime(Long.MAX_VALUE));
+        assertEquals(2*F, dbClock.transactionBegin(true));
+        dbClock.transactionCancel();
+        
+        now[0] = 3*F;
+        assertEquals(3*F, dbClock.transactionBegin(true));
+        assertEquals(3*F - 1, dbClock.currentTime());
+        dbClock.transactionCancel();
+        now[0] = 2*F;
+        assertEquals(3*F - 1, dbClock.currentTime());
+        assertEquals(3*F, dbClock.transactionBegin(true));
+        dbClock.transactionEnd();
+        assertEquals(3*F, dbClock.lookupTime(Long.MAX_VALUE));
     }
     
 }

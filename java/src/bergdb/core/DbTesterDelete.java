@@ -7,6 +7,7 @@ import java.util.Random;
 import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.pub.util.DbException;
 import bergdb.pub.util.SyncLevel;
 import bergdb.stream.MemoryStream;
 
@@ -543,6 +544,125 @@ public class DbTesterDelete {
             db.close();
         }
         Assert.assertTrue(wrong.size() + " wrong: " + wrong, wrong.isEmpty());
+    }
+    
+    /**
+     * Executes t, which must be refused (bergdb 024-16), and returns the message, from the
+     * calling thread or, if inThread, from a thread of its own.
+     */
+    private static String refused(final Db db, final Trans t, boolean inThread) {
+        final DbException[] e = new DbException[1];
+        Runnable run = () -> {
+            try {
+                db.execute(t);
+            } catch (DbException x) {
+                e[0] = x;
+            }
+        };
+        if (inThread) {
+            Thread thread = new Thread(run);
+            thread.start();
+            try {
+                thread.join();
+            } catch (InterruptedException x) {
+                throw new RuntimeException(x);
+            }
+        } else {
+            run.run();
+        }
+        Assert.assertTrue("refused", e[0] != null);
+        return e[0].getMessage();
+    }
+    
+    /**
+     * A transaction whose key transformations make two of its keys one key is refused
+     * (bergdb 024-16, section 3, S2, and section 4) and leaves everything as it was. Two
+     * databases at startup distances that rerun little and all; in the first, a Trans with a
+     * put at "/c/a", a transformed put at "/c/$b" whose final key is "/c/b" (with a value
+     * transformation), a plain put at "/c/b" and a delete of "/c/c" is run twice, from this
+     * thread and from a thread of its own, and refused each time with a DbException that
+     * names both keys as written and the key they became. After each refusal: the Trans holds
+     * the same array of the same KVs, each with its key as written, and the same write hashes;
+     * the value transformation has not run; the lookup time and every value are as before.
+     * Then both databases run the same transaction, which takes the time the refused one
+     * would have had, as the clock stands still; their streams are the same, byte for byte,
+     * and so are the values after a restart. A key of 300 characters is shown in the message
+     * by its first 100 and its length.
+     */
+    @Nano
+    public static void testRefusedTransUnchanged() {
+        for (int sd : DISTANCES) {
+            byte[][] streams = new byte[2][];
+            for (int d = 0; d < 2; d++) {
+                MemoryStream ms = new MemoryStream();
+                Db db = start(ms, sd);
+                Trans.Builder tb = db.trans();
+                for (String k : new String[] {"a", "b", "$b", "c"}) tb.put("/c/" + k, "old");
+                db.execute(tb.build());
+                final long time = db.lookupTime(Long.MAX_VALUE);
+                String at = "sd " + sd + ": ";
+                if (d == 0) {
+                    Bang vt = new Bang();
+                    Trans t = db.trans().put("/c/a", "a1")
+                            .put(Keys.toSegments("/c/$b"), TO_C, bytes("b1"), vt)
+                            .put("/c/b", "b2").delete("/c/c").build();
+                    final Kv[] kvs = t.kvs;
+                    final Kv[] kvs0 = kvs.clone();
+                    final long[][] keys = new long[kvs.length][];
+                    for (int i = 0; i < kvs.length; i++) keys[i] = kvs[i].getKey().clone();
+                    final long[] hashes = t.writeKeyHashes;
+                    final long[] hashes0 = hashes.clone();
+                    for (int run = 0; run < 2; run++) {
+                        String about = at + "run " + run + ", ";
+                        String message = refused(db, t, run == 1);
+                        Assert.assertTrue(about + message, message.contains("\"/c/$b\" and "
+                                + "\"/c/b\" as written are both \"/c/b\"."));
+                        Assert.assertTrue(about + "the same KVs", t.kvs == kvs);
+                        for (int i = 0; i < kvs.length; i++) {
+                            Assert.assertTrue(about + "KV " + i, kvs[i] == kvs0[i]
+                                    && java.util.Arrays.equals(kvs[i].getKey(), keys[i]));
+                        }
+                        Assert.assertTrue(about + "the write hashes", t.writeKeyHashes == hashes
+                                && java.util.Arrays.equals(hashes, hashes0));
+                        Assert.assertEquals(about + "the value transformation", 0, vt.calls);
+                        Assert.assertEquals(about + "the lookup time", time,
+                                db.lookupTime(Long.MAX_VALUE));
+                        for (String k : new String[] {"a", "b", "$b", "c"}) {
+                            assertValue(about + k, "old", DbUtil.getString(db, "/c/" + k));
+                        }
+                    }
+                    
+                    String x = "/c/" + new String(new char[300]).replace('\0', 'x');
+                    String y = "/c/$" + x.substring("/c/".length());
+                    String message = refused(db, db.trans().put(x, "1")
+                            .put(Keys.toSegments(y), TO_C, bytes("2"), null).build(), false);
+                    Assert.assertTrue(at + message, message.contains("...\" (304 characters)")
+                            && message.length() < 600);
+                }
+                Trans t2 = db.trans().put("/c/a", "a2")
+                        .put(Keys.toSegments("/c/$b"), TO_C, bytes("b3"), null).build();
+                db.execute(t2);
+                Assert.assertEquals(at + "the next transaction's time", time + 1, t2.tt);
+                for (int round = 0; round < 2; round++) {
+                    String[][] expected = {{"a", "a2"}, {"b", "b3"}, {"$b", "old"}, {"c", "old"}};
+                    for (String[] kv : expected) {
+                        assertValue(at + "round " + round + ", " + kv[0], kv[1],
+                                DbUtil.getString(db, "/c/" + kv[0]));
+                    }
+                    db.close();
+                    db = start(ms.copy(), sd);
+                }
+                db.close();
+                streams[d] = new byte[(int) ms.getLength()];
+                try {
+                    ms.read(0, streams[d], 0, streams[d].length);
+                } catch (java.io.IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            Assert.assertTrue("sd " + sd + ": the same stream, " + streams[0].length + " and "
+                    + streams[1].length + " bytes", java.util.Arrays.equals(streams[0], streams[1]));
+        }
     }
     
     private static byte[] bytes(String s) {
