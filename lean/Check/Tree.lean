@@ -121,11 +121,14 @@ def parseTreeLine (t : TTrace) (n : Nat) (line : String) : TTrace :=
   | ["TREE", m, g, h, k] => match m.toNat?, g.toNat?, h.toNat?, k.toNat? with
     | some m, some g, some h, some k => { t with tree := some ({ M := m, G := g, H := h }, k) }
     | _, _, _, _ => bad "bad TREE"
-  -- With the merges' thresholds m and c (bergdb 024-22, section 2.5).
+  -- With the merges' thresholds m and c (bergdb 024-22, section 2.5). Rule O's h
+  -- is c: h = c in every set that a writer of format 7 has had (P5's B / 2, 024-14's
+  -- m8 17 B / 30); a line of 8 tokens gives h of its own.
   | ["TREE", m, g, h, k, mb, mm] =>
     match m.toNat?, g.toNat?, h.toNat?, k.toNat?, mb.toNat?, mm.toNat? with
     | some m, some g, some h, some k, some mb, some mm =>
-      { t with tree := some ({ M := m, G := g, H := h, mergeBelow := mb, mergeMax := mm }, k) }
+      { t with tree := some ({ M := m, G := g, H := h, mergeBelow := mb, mergeMax := mm,
+                               splitAbove := mm }, k) }
     | _, _, _, _, _, _ => bad "bad TREE"
   -- And rule O's h (record format 7, 024-14's m8: h is no longer M / 2).
   | ["TREE", m, g, h, k, mb, mm, sa] =>
