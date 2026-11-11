@@ -104,6 +104,12 @@ public class Vectors {
      * DbTesterDelete.testOneOperationAKeyAfterTransformations's, with its value
      * transformations. C runs the same operations through its API and must write the same
      * bytes (c/test/unit/t_dbtester.c): the cross workloads have no transformations.
+     * And "empty-key": the empty key, the bkey of no bytes, whose one segment has the
+     * compare value 0, as Klong.EMPTY_KEY, with the deletes of release 2026.4 around it
+     * (bergdb 023-07, section 5.2): the empty key and "k00" to "k59" put; "k00" to "k29"
+     * deleted; the empty key deleted; the empty key put again and "k30" to "k58" deleted;
+     * "k59" and the empty key deleted, the database empty; the empty key and "k00" put.
+     * No ikey gives the empty key, so no cross workload has it.
      */
     private static void sorted(PrintWriter w) throws IOException {
         w.print("# sortstream NAME HEX: the stream of a database that Db made (MemoryStream, "
@@ -131,7 +137,7 @@ public class Vectors {
                         .getBytes(StandardCharsets.UTF_8);
             }
         };
-        for (int run = 0; run < 2; run++) {
+        for (int run = 0; run < 3; run++) {
             MemoryStream ms = new MemoryStream();
             CoreTestClock clock = new CoreTestClock();
             DbBuilder b = Db.builder();
@@ -142,6 +148,44 @@ public class Vectors {
             clock.setTime(1000);
             Db db = b.build();
             db.start();
+            if (run == 2) {
+                final byte[] empty = new byte[0];
+                clock.setTime(2000);
+                Trans.Builder eb = db.trans();
+                eb.put(empty, "e0".getBytes(StandardCharsets.UTF_8));
+                for (int i = 0; i < 60; i++) {
+                    eb.put(String.format("k%02d", i).getBytes(StandardCharsets.UTF_8),
+                            ("v" + i).getBytes(StandardCharsets.UTF_8));
+                }
+                db.execute(eb.build());
+                clock.setTime(2010);
+                eb = db.trans();
+                for (int i = 0; i < 30; i++) {
+                    eb.delete(String.format("k%02d", i).getBytes(StandardCharsets.UTF_8));
+                }
+                db.execute(eb.build());
+                clock.setTime(2020);
+                db.execute(db.trans().delete(empty).build());
+                clock.setTime(2030);
+                eb = db.trans();
+                eb.put(empty, "e1".getBytes(StandardCharsets.UTF_8));
+                for (int i = 30; i < 59; i++) {
+                    eb.delete(String.format("k%02d", i).getBytes(StandardCharsets.UTF_8));
+                }
+                db.execute(eb.build());
+                clock.setTime(2040);
+                db.execute(db.trans().delete("k59".getBytes(StandardCharsets.UTF_8))
+                        .delete(empty).build());
+                clock.setTime(2050);
+                db.execute(db.trans().put(empty, "e2".getBytes(StandardCharsets.UTF_8))
+                        .put("k00".getBytes(StandardCharsets.UTF_8),
+                                "v".getBytes(StandardCharsets.UTF_8)).build());
+                db.close();
+                byte[] stream = new byte[(int) ms.getLength()];
+                ms.read(0, stream, 0, stream.length);
+                w.print("sortstream empty-key " + hex(stream) + "\n");
+                continue;
+            }
             clock.setTime(2000);
             Trans.Builder tb = db.trans();
             if (run == 0) {

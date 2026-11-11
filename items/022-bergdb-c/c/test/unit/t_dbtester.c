@@ -2431,6 +2431,159 @@ TEST(dbt_transformed_streams_are_javas) {
     }
 }
 
+/* A transaction of puts (value not NULL) and deletes by bkey: n operations. */
+static int tx_b(struct tdb *x, int n, const char *const *keys, const char *const *values) {
+    bergdb_trans *t;
+    int rc = bergdb_trans_new(x->db, &t);
+    for (int i = 0; i < n && rc == BERGDB_OK; i++) {
+        const uint8_t *k = (const uint8_t *) keys[i];
+        rc = values[i] != NULL
+                ? bergdb_trans_put(t, k, strlen(keys[i]), (const uint8_t *) values[i],
+                        strlen(values[i]))
+                : bergdb_trans_delete(t, k, strlen(keys[i]));
+    }
+    if (rc == BERGDB_OK) {
+        rc = bergdb_execute(x->db, t, NULL);
+    }
+    bergdb_trans_free(t);
+    return rc;
+}
+
+/* The value of a bkey at the latest time is want (NULL: none). */
+static bool get_b_is(struct tdb *x, const char *bkey, const char *want) {
+    struct bergdb_one one;
+    if (bergdb_get_one(x->db, x->rd, BERGDB_LATEST, (const uint8_t *) bkey, strlen(bkey), &one)
+            != BERGDB_OK) {
+        return false;
+    }
+    if (want == NULL) {
+        return one.value == NULL;
+    }
+    return one.value != NULL && one.value_len == strlen(want)
+            && memcmp(one.value, want, one.value_len) == 0;
+}
+
+/* The number of pairs at the latest time, forward; -1 on an error. */
+static int64_t count_b(struct tdb *x) {
+    struct bergdb_range r;
+    struct bergdb_many many;
+    bergdb_range_init(&r);
+    if (bergdb_get_many(x->db, x->rd, &r, &many) != BERGDB_OK) {
+        return -1;
+    }
+    return (int64_t) many.count;
+}
+
+/* The empty key with the deletes of release 2026.4 around it, against
+ * Java's bytes (bergdb 022-07; 023-07, section 5.2): the key of no bytes
+ * has one segment, of the compare value 0, which is also the empty key
+ * klong that every inner node begins with (LE-b). Vectors.sorted's run
+ * "empty-key", through C's API: the empty key and "k00" to "k59" put;
+ * "k00" to "k29" deleted; the empty key deleted; the empty key put again
+ * and "k30" to "k58" deleted; "k59" and the empty key deleted, the database
+ * empty; the empty key and "k00" put. The values and the count of pairs
+ * after each step, and after a restart; the stream is Java's, byte for
+ * byte. No ikey gives the empty key, so no cross workload has it. */
+TEST(dbt_empty_key_stream_is_javas) {
+    struct tdb x;
+    tdb_init(&x, 8, 1000);
+    const char *tmp = getenv("TMPDIR");
+    snprintf(x.dir, sizeof x.dir, "%s/bergdb-t_dbtester-XXXXXX", tmp != NULL ? tmp : "/tmp");
+    REQUIRE(mkdtemp(x.dir) != NULL);
+    at(&x, 1000);
+    REQUIRE(tdb_start(&x) == BERGDB_OK);
+    static char keys[61][8], vals[61][8];
+    const char *k[61], *v[61];
+    k[0] = "";
+    v[0] = "e0";
+    for (int i = 0; i < 60; i++) {
+        snprintf(keys[i], sizeof keys[i], "k%02d", i);
+        snprintf(vals[i], sizeof vals[i], "v%d", i);
+        k[i + 1] = keys[i];
+        v[i + 1] = vals[i];
+    }
+    at(&x, 2000);
+    CHECK_EQ(tx_b(&x, 61, k, v), BERGDB_OK);
+    CHECK(get_b_is(&x, "", "e0"));
+    CHECK_EQ(count_b(&x), 61);
+
+    for (int i = 0; i < 30; i++) {
+        k[i] = keys[i];
+        v[i] = NULL;
+    }
+    at(&x, 2010);
+    CHECK_EQ(tx_b(&x, 30, k, v), BERGDB_OK);
+    CHECK(get_b_is(&x, "", "e0"));
+    CHECK(get_b_is(&x, "k29", NULL));
+    CHECK(get_b_is(&x, "k30", "v30"));
+    CHECK_EQ(count_b(&x), 31);
+
+    k[0] = "";
+    v[0] = NULL;
+    at(&x, 2020);
+    CHECK_EQ(tx_b(&x, 1, k, v), BERGDB_OK);
+    CHECK(get_b_is(&x, "", NULL));
+    CHECK_EQ(count_b(&x), 30);
+
+    k[0] = "";
+    v[0] = "e1";
+    for (int i = 30; i < 59; i++) {
+        k[i - 29] = keys[i];
+        v[i - 29] = NULL;
+    }
+    at(&x, 2030);
+    CHECK_EQ(tx_b(&x, 30, k, v), BERGDB_OK);
+    CHECK(get_b_is(&x, "", "e1"));
+    CHECK(get_b_is(&x, "k58", NULL));
+    CHECK(get_b_is(&x, "k59", "v59"));
+    CHECK_EQ(count_b(&x), 2);
+
+    k[0] = "k59";
+    v[0] = NULL;
+    k[1] = "";
+    v[1] = NULL;
+    at(&x, 2040);
+    CHECK_EQ(tx_b(&x, 2, k, v), BERGDB_OK);
+    CHECK(get_b_is(&x, "", NULL));
+    CHECK_EQ(count_b(&x), 0);       /* the database is empty */
+
+    k[0] = "";
+    v[0] = "e2";
+    k[1] = "k00";
+    v[1] = "v";
+    at(&x, 2050);
+    CHECK_EQ(tx_b(&x, 2, k, v), BERGDB_OK);
+    for (int round = 0; round < 2; round++) {
+        CHECK(get_b_is(&x, "", "e2"));
+        CHECK(get_b_is(&x, "k00", "v"));
+        CHECK(get_b_is(&x, "k01", NULL));
+        CHECK_EQ(count_b(&x), 2);
+        if (round == 0) {
+            REQUIRE(tdb_restart(&x));
+        }
+    }
+    tdb_close(&x);
+
+    uint8_t *java = NULL;
+    const int64_t jn = java_sorted_stream("empty-key", &java);
+    struct files *f = malloc(sizeof *f);
+    REQUIRE(files_read(x.dir, f));
+    CHECK(jn > 0);              /* Java's stream is in sorted.txt */
+    CHECK_EQ(f->n, 1);
+    CHECK_EQ(f->len[0], jn);
+    int64_t first = -1;
+    for (int64_t i = 0; first < 0 && i < jn && i < f->len[0]; i++) {
+        if (java[i] != f->bytes[0][i]) {
+            first = i;
+        }
+    }
+    CHECK_EQ(first, -1);        /* the first byte that differs */
+    files_free(f);
+    free(f);
+    free(java);
+    remove_dir(x.dir);
+}
+
 /* DbTester.testTransformedKeysSorted: a transaction's KVs reach the index
  * in the order of their keys after the key transformations (bergdb 023-08,
  * section 7, Q4): two databases, each given the same operations, puts
@@ -2531,5 +2684,6 @@ const struct test dbtester_tests[] = {
     TEST_ENTRY(dbt_reused_trans_keeps_its_kvs),
     TEST_ENTRY(dbt_transformed_keys_sorted),
     TEST_ENTRY(dbt_transformed_streams_are_javas),
+    TEST_ENTRY(dbt_empty_key_stream_is_javas),
     TEST_END
 };
