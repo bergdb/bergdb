@@ -1,0 +1,22 @@
+TRACECHECK /Users/f/fl/repos/bergdb/items/024-release-2026-5/07-last-touch/out/drain/d-del80-3.trace
+CONFIG seed=3 n=800 keys=300 maxnode=8 sd=500 ops=8 exact=false bulk=0 del=80 nodel=0 empty=0 long=false valsize=20 probe=10 live=false segments=4 height=4 retain=1
+options: step3 mark, step7 java, root virtual
+C-A assumptions: 0 of 898 transactions fail
+C-A adoptions below the old parent (A6' allows them, A6 not; bergdb 005-04): 0 of 898 transactions
+C-S steps: 0 of 898 transactions fail
+C-V live: 0 transactions with differences, 0 LIVE lines
+C-R probes: 0 of 94 fail
+C-L first touches: 0 of 16335 FIRST lines fail
+C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 966 of 16335 FIRST lines take a snapshot from the node table
+  T(32) node 1626: a snapshot of R(22) from the node table
+  T(32) node 3352: a snapshot of R(22) from the node table
+  T(32) node 6294: a snapshot of R(24) from the node table
+  T(32) node 6292: a snapshot of R(24) from the node table
+  T(32) node 5574: a snapshot of R(23) from the node table
+  T(32) node 5422: a snapshot of R(23) from the node table
+  T(42) node 1626: a snapshot of R(22) from the node table
+  T(42) node 3196: a snapshot of R(22) from the node table
+exporter errors: 0
+C-CUT cuts: 0 of 15 CUT lines (and PHYSCUT lines) fail
+diagnostics: 0 of 898 transactions fail
+TRACECHECK OK

@@ -115,6 +115,13 @@ Files
   T-SCHEME's argument, the draining configurations, javaTake); the work
   in an order (A the tie, B the tree in Lean run against Java, C and D
   its proofs, E the costs); questions 1 to 8.
+* 07-last-touch.md. 024-07, the last touch of a reclaim iteration
+  (CL7, OP1) fixed: a reclaim step makes dirty the index nodes on the
+  paths of its own puts only (`Db.touchPaths` in place of the key
+  range); with 10M keys the last step's record 29 kB, not 206 MB; the
+  mechanism, the options, the theorems T-COVER and T-LATEST in Lean, the
+  checker's touchPath and CUT-live, the numbers before and after, two
+  changed tests. On main since a780b957. Outputs in 07-last-touch/.
 * 08-mem-at-10m.md. 024-08, MEM's 327 bytes a KV at 10M keys explained:
   the shape of MEM's keys, not their count (a key of exactly 7 bytes is
   two segments and gets a key node of its own, about 226 heap bytes);
@@ -140,6 +147,10 @@ Files
   fill rules, a plan of about two weeks, questions QU1 to QU8. The
   probe's scripts and outputs and the model in 11-underfill/ (copied by
   the coordinator from the study's bench directory).
+* 13-integration.md. 024-13, the integration branch of the day's
+  approved changes, gated as one tree: `doubles.py` in 3 s, not 188 s
+  (before-commit.sh about 80 s again), 024-10 and 024-07 merged; the
+  gates' results. Landed as a780b957.
 
 
 Log

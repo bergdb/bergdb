@@ -1,0 +1,20 @@
+T7 log dir=/Users/f/fl/bench/2026-11-11/touch/data/sfix1000000 n=1000000 maxdrive=60000 report=10000 cp=/Users/f/fl/bench/2026-11-11/touch/cfix:/Users/f/fl/bench/2026-11-11/touch/fix.jar
+[1.1s] START ms=1061 len=195420976 fap=0 fresh=false recordLimit=2147483639
+[1.1s] LOG before state len=195420976 kept=195420976 iters=0 fap=0 lag=49096040
+[7.0s] ITEREND tx=7254 commitMs=1.1 userRecord=22928 stepRecord=280 lag=50078512 resident=195252653 | steps=6949 kvs=469963 values=136978 dirtiedNodes=20088 dirtiedBytes=5301920 maxStepDirtied=14 maxStepNodes=18 loads=154413
+[9.0s] log tx=10000  len=449899256 kept=449899256 iters=1 fap=0 lag=50015968 tx=10000 bytes/tx=22630 maxRec=28000 recs>1MB=0 exec p50=647us p99.9=2930us max=34ms
+[16.2s] log tx=20000  len=677316152 kept=577298040 iters=1 fap=100018112 lag=49647312 tx=20000 bytes/tx=22521 maxRec=28000 recs>1MB=0 exec p50=630us p99.9=2811us max=34ms
+[16.6s] ITEREND tx=20590 commitMs=0.7 userRecord=21920 stepRecord=288 lag=49686896 resident=196712604 | steps=13334 kvs=1000003 values=0 dirtiedNodes=956 dirtiedBytes=63200 maxStepDirtied=3 maxStepNodes=19 loads=50524
+[23.3s] log tx=30000  len=904587008 kept=804568896 iters=2 fap=100018112 lag=50188312 tx=30000 bytes/tx=22480 maxRec=28440 recs>1MB=0 exec p50=626us p99.9=2753us max=34ms
+[26.0s] ITEREND tx=33926 commitMs=0.7 userRecord=21872 stepRecord=280 lag=49948688 resident=198179897 | steps=13334 kvs=1000003 values=1 dirtiedNodes=957 dirtiedBytes=63328 maxStepDirtied=3 maxStepNodes=18 loads=49221
+[30.3s] log tx=40000  len=1131949328 kept=744362024 iters=3 fap=387587304 lag=50198384 tx=40000 bytes/tx=22459 maxRec=28440 recs>1MB=0 exec p50=620us p99.9=2726us max=60ms
+[35.4s] ITEREND tx=47262 commitMs=0.7 userRecord=23776 stepRecord=4128 lag=50444480 resident=199983391 | steps=13334 kvs=1000003 values=0 dirtiedNodes=956 dirtiedBytes=63200 maxStepDirtied=3 maxStepNodes=19 loads=48635
+[37.3s] log tx=50000  len=1359375512 kept=971788208 iters=4 fap=387587304 lag=49914176 tx=50000 bytes/tx=22449 maxRec=28440 recs>1MB=0 exec p50=616us p99.9=2708us max=81ms
+[44.3s] log tx=60000  len=1586831888 kept=896090312 iters=4 fap=690741576 lag=49807336 tx=60000 bytes/tx=22440 maxRec=28528 recs>1MB=0 exec p50=614us p99.9=2704us max=81ms
+[44.3s] LOG done tx=60000 iters=4 s=43.2 tx/s=1389
+[44.3s] LOG tx=60000 bytes/tx=22440 maxRec=28528 recs>1MB=0 exec p50=614us p99.9=2704us max=81ms
+[44.3s] LOG maxRecTx=52083 maxRecCommitMs=0.6 maxExecTx=43433 stepRecs=59687 stepBytes/rec=753 maxStepRecord=17752 maxLag=52239880
+[44.3s] LOG state len=1586831888 kept=896090312 iters=4 fap=690741576 lag=49807336
+[44.3s] LOG head1000 keys=1000 ms=2.9
+[44.3s] CLOSE ms=8
+[44.3s] DONE

@@ -1,0 +1,34 @@
+T7 log dir=/Users/f/fl/bench/2026-11-11/touch/data/fmain n=10000000 maxdrive=200000 report=10000 cp=/Users/f/fl/bench/2026-11-11/touch/cmain:/Users/f/fl/bench/2026-11-11/touch/main.jar
+[1.2s] START ms=1134 len=2441525064 fap=100018112 fresh=false recordLimit=2147483639
+[1.2s] LOG before state len=2441525064 kept=2341506952 iters=0 fap=100018112 lag=50312024
+[12.0s] log tx=10000  len=2726649352 kept=2626631240 iters=0 fap=100018112 lag=49268832 tx=10000 bytes/tx=23560 maxRec=30304 recs>1MB=0 exec p50=961us p99.9=3206us max=32ms
+[22.6s] log tx=20000  len=2973563656 kept=2873545544 iters=0 fap=100018112 lag=50237208 tx=20000 bytes/tx=23895 maxRec=30304 recs>1MB=0 exec p50=956us p99.9=3143us max=60ms
+[33.1s] log tx=30000  len=3220021688 kept=3120003576 iters=0 fap=100018112 lag=49925928 tx=30000 bytes/tx=23991 maxRec=30304 recs>1MB=0 exec p50=950us p99.9=3105us max=66ms
+[43.6s] log tx=40000  len=3465720832 kept=3365702720 iters=0 fap=100018112 lag=49829384 tx=40000 bytes/tx=24018 maxRec=30304 recs>1MB=0 exec p50=946us p99.9=3062us max=66ms
+[69.1s] ITEREND tx=44643 commitMs=20643.2 userRecord=24624 stepRecord=11471944 lag=61454360 resident=629918715 | steps=44161 kvs=3216489 values=250789 dirtiedNodes=989819 dirtiedBytes=263299216 maxStepDirtied=716523 maxStepNodes=21 loads=3422556
+[73.0s] BIGREC tx=45325 userRecord=191137072 commitMs=2459.4
+[76.5s] log tx=50000  len=3907609736 kept=3400079120 iters=1 fap=507530616 lag=44350416 tx=50000 bytes/tx=27681 maxRec=191137072 recs>1MB=1 exec p50=941us p99.9=3738us max=20643ms
+[83.6s] log tx=60000  len=4135253480 kept=3627722864 iters=1 fap=507530616 lag=49991120 tx=60000 bytes/tx=26804 maxRec=191137072 recs>1MB=1 exec p50=933us p99.9=3201us max=20643ms
+[91.0s] log tx=70000  len=4363991592 kept=3856460976 iters=1 fap=507530616 lag=50168592 tx=70000 bytes/tx=26194 maxRec=191137072 recs>1MB=1 exec p50=925us p99.9=3137us max=20643ms
+[99.3s] log tx=80000  len=4592879296 kept=4085348680 iters=1 fap=507530616 lag=49917960 tx=80000 bytes/tx=25738 maxRec=191137072 recs>1MB=1 exec p50=914us p99.9=3095us max=20643ms
+[107.6s] log tx=90000  len=4821698432 kept=4314167816 iters=1 fap=507530616 lag=50186720 tx=90000 bytes/tx=25381 maxRec=191137072 recs>1MB=1 exec p50=834us p99.9=3061us max=20643ms
+[116.0s] log tx=100000  len=5050767304 kept=4543236688 iters=1 fap=507530616 lag=49839680 tx=100000 bytes/tx=25099 maxRec=191137072 recs>1MB=1 exec p50=766us p99.9=3045us max=20643ms
+[124.5s] log tx=110000  len=5279923256 kept=4772392640 iters=1 fap=507530616 lag=49814752 tx=110000 bytes/tx=24868 maxRec=191137072 recs>1MB=1 exec p50=761us p99.9=3041us max=20643ms
+[133.0s] log tx=120000  len=5509159576 kept=5001628960 iters=1 fap=507530616 lag=50014136 tx=120000 bytes/tx=24677 maxRec=191137072 recs>1MB=1 exec p50=760us p99.9=3034us max=20643ms
+[141.5s] log tx=130000  len=5738609896 kept=5231079280 iters=1 fap=507530616 lag=49776976 tx=130000 bytes/tx=24516 maxRec=191137072 recs>1MB=1 exec p50=759us p99.9=3025us max=20643ms
+[150.0s] log tx=140000  len=5968030272 kept=5460499656 iters=1 fap=507530616 lag=50179920 tx=140000 bytes/tx=24379 maxRec=191137072 recs>1MB=1 exec p50=759us p99.9=3017us max=20643ms
+[158.6s] log tx=150000  len=6197769264 kept=5690238648 iters=1 fap=507530616 lag=49861800 tx=150000 bytes/tx=24261 maxRec=191137072 recs>1MB=1 exec p50=759us p99.9=3013us max=20643ms
+[167.2s] log tx=160000  len=6427554104 kept=5920023488 iters=1 fap=507530616 lag=50002896 tx=160000 bytes/tx=24159 maxRec=191137072 recs>1MB=1 exec p50=760us p99.9=3007us max=20643ms
+[175.8s] log tx=170000  len=6657514216 kept=6149983600 iters=1 fap=507530616 lag=49835680 tx=170000 bytes/tx=24070 maxRec=191137072 recs>1MB=1 exec p50=760us p99.9=3005us max=20643ms
+[204.9s] ITEREND tx=177978 commitMs=22306.6 userRecord=22832 stepRecord=12367488 lag=63022080 resident=668535413 | steps=133334 kvs=10000003 values=0 dirtiedNodes=808834 dirtiedBytes=213835920 maxStepDirtied=772454 maxStepNodes=20 loads=9694700
+[208.5s] BIGREC tx=178061 userRecord=206065600 commitMs=2638.0
+[210.0s] log tx=180000  len=7109915272 kept=5979584864 iters=2 fap=1130330408 lag=27216120 tx=180000 bytes/tx=25150 maxRec=206065600 recs>1MB=2 exec p50=760us p99.9=3009us max=22306ms
+[216.9s] log tx=190000  len=7334055040 kept=6203724632 iters=2 fap=1130330408 lag=50533624 tx=190000 bytes/tx=24988 maxRec=206065600 recs>1MB=2 exec p50=757us p99.9=3006us max=22306ms
+[224.2s] log tx=200000  len=7562904904 kept=6432574496 iters=2 fap=1130330408 lag=50040952 tx=200000 bytes/tx=24865 maxRec=206065600 recs>1MB=2 exec p50=754us p99.9=3002us max=22306ms
+[224.2s] LOG done tx=200000 iters=2 s=223.0 tx/s=897
+[224.2s] LOG tx=200000 bytes/tx=24865 maxRec=206065600 recs>1MB=2 exec p50=754us p99.9=3002us max=22306ms
+[224.2s] LOG maxRecTx=178061 maxRecCommitMs=2638.0 maxExecTx=177978 stepRecs=199516 stepBytes/rec=742 maxStepRecord=12367488 maxLag=63022080
+[224.2s] LOG state len=7562904904 kept=6432574496 iters=2 fap=1130330408 lag=50040952
+[224.2s] LOG head1000 keys=1000 ms=3.0
+[224.2s] CLOSE ms=10
+[224.2s] DONE

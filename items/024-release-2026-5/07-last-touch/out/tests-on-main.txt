@@ -1,0 +1,21 @@
+
+======== NanotestForBergDB: unit ========
+On f53 261111 07:37, OpenJDK 64-Bit Server VM 27.0.1.0.3
+bergdb.core.Reclaim.Tester.testEmptiedSubtreesAfterCut: 123
+FAILED! bergdb.core.Reclaim.Tester.testLastStepWithinRecordLimit
+java.lang.AssertionError: the startup pos passes the iteration's last step: after 100 transactions it is 260048 bytes behind, expected true, but was false.
+FAILED! bergdb.core.Reclaim.Tester.testStepDirtiesItsPathsOnly
+java.lang.AssertionError: n=2000: a step with 1 puts made 991 index nodes dirty, more than 63 a put, expected true, but was false.
+bergdb.dev.NanotestForBergDB.databasesStopped: 0
+FAILURE, total: 4, failed: 2. Time: 0.5 s.
+Error: Could not find or load main class bergdb.dev.Unit
+Caused by: java.lang.ClassNotFoundException: bergdb.dev.Unit
+
+======== NanotestForBergDB: unit ========
+On f53 261111 07:37, OpenJDK 64-Bit Server VM 27.0.1.0.3
+FAILED! bergdb.core.Reclaim.Tester.testLastStepWithinRecordLimit
+java.lang.AssertionError: the startup pos passes the iteration's last step: after 1000 transactions it is 2261304 bytes behind, cut at 0, iterations 4, stream 9187320, expected true, but was false.
+FAILED! bergdb.core.Reclaim.Tester.testStepDirtiesItsPathsOnly
+java.lang.AssertionError: n=8000: a step with 1 puts made 4180 index nodes dirty, more than 63 a put, expected true, but was false.
+bergdb.dev.NanotestForBergDB.databasesStopped: 0
+FAILURE, total: 3, failed: 2. Time: 0.6 s.
