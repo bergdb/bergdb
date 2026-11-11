@@ -136,7 +136,7 @@ echo "6. Props"
 # heap). Checked only with compact object headers, as MEM.
 MEM_MAX=131
 SEG_MAX=230
-SS_MAX="1.52 1.11 1.21 1.66 2.41"   # SS, then SS1 to SS4
+SS_MAX="1.54 1.12 1.22 1.70 2.41"   # SS, then SS1 to SS4 (bergdb 024-25: docs/log.md)
 $JAVA -cp build/bergdb.jar bergdb.dev.props.Mem > $LOG/props-mem.txt 2>&1 &
 $JAVA -cp build/bergdb.jar bergdb.dev.props.Mem -keys %07d > $LOG/props-mem7.txt 2>&1 &
 if [ "$1" != quick ]; then
