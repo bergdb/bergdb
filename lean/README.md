@@ -105,6 +105,24 @@ skips name no node with a canonical object; so the run with cuts and rule 4 by
 position is `runHandlesCut` (`runPosCut_handles`), and T12 over handles holds
 for it; SIS/Proof/HandleCutSkip.lean, SIS/Proof/HandleCutPos.lean.
 
+Since bergdb 024-09 (2026-11-11) the assumptions of the physical layer
+(`PhysStep`, `PhysRunOK`) are proved from the other assumptions, for any
+`Spec`: `adopt` from TREE after the transaction and A5 (`physStep_adopt`), and
+`liveNew` from one property of the function `live`, `LiveAppend`: entries added
+at the end of a history give no live child but their own pointees
+(`physStep_liveNew`). So `PhysRunOK` holds in every run that meets `RunOK`,
+with TREE after every transaction and `LiveAppend` (`physRunOK_of_tree`), and
+so in every run that meets `RunOK` and `EvictRunOK`, with `LiveAppend`
+(`physRunOK_of_evict`); SIS/Proof/PhysAssumptions.lean. For the trace checker's
+instance, `LiveAppend` and `SpecOK.liveSub`, which no check of a trace can
+establish, are proved of `blive` (`blive_append`, `blive_sub`), so its
+`PhysRunOK` follows from what C-A checks on a trace (`bspec_physRunOK`,
+`bspec_physRunOK_evict`); Check/Live.lean. The theorems state `PhysRunOK` as
+before: the trusted part is unchanged. A theorem that assumes `RunOK`,
+`PhysRunOK` and `EvictRunOK` holds without `PhysRunOK` for a Spec with
+`LiveAppend` (`without_physRunOK`; for a trace's instance, T-READ with handles
+as the example: `bspec_tr_handles`).
+
 
 Build and run
 =============
@@ -194,6 +212,18 @@ Check/R4.lean) are checked the same way:
     #print axioms SIS.Fast.reachList_eq_fast
     #print axioms SIS.Fast.step_eq_fast
     #print axioms SIS.TopBridge.r4Fast_sound
+
+And `PhysRunOK` from the other assumptions (bergdb 024-09), each printing
+`[propext, Classical.choice, Quot.sound]`, the two about `blive` without
+`Classical.choice`:
+
+    import Check.Live
+    #print axioms SIS.physRunOK_of_tree
+    #print axioms SIS.physRunOK_of_evict
+    #print axioms SIS.Check.blive_append
+    #print axioms SIS.Check.blive_sub
+    #print axioms SIS.Check.bspec_physRunOK
+    #print axioms SIS.Check.bspec_tr_handles
 
 
 What to read
@@ -443,6 +473,16 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
   (`treeAt_unique`), the parts of a transaction from step 3 on (`D1Of`,
   `takenOf`, `stepOf`), which depend on P only through its nodes
   (`stepOf_congr`).
+* PhysAssumptions (bergdb 024-09). `PhysStep` from the other assumptions,
+  for any `Spec`: `adopt` from TREE after the transaction, A5 and A4
+  (`physStep_adopt`: a new live child that the change does not create was
+  reachable before it, so it had a parent then, and that parent, unchanged
+  and still reachable, would be a second parent); `liveNew` from
+  `LiveAppend` (`physStep_liveNew`); and for a run, `PhysRunOK` from `RunOK`,
+  TREE after every transaction and `LiveAppend` (`physRunOK_of_tree`,
+  `physRunOK_of_evict`), so a theorem with handles holds without
+  `PhysRunOK` (`without_physRunOK`). P does not depend on the algorithm's
+  choices (`st_P_algo`).
 * PhysStart. The lazy startup from the stream after T(k) (WP E5): its rerun
   keeps `RInv` (every object canonical, every stream slot naming its
   pointee's latest version after Rule R and naming a version, a slot for
@@ -840,6 +880,13 @@ Not trusted, tests only:
   exponential `topClosure` runs only when that test fails. On 2026-10-16 (001-02) the
   medium set took 88 s instead of 6,770 s, and a trace of 5,000 transactions
   at node size 30 with 1,000 keys 428 s and 128 MB.
+* Check/Live.lean (bergdb 024-09), not part of the checker's program: what
+  the model assumes of the function `live`, proved of the checker's `blive`:
+  `LiveAppend` (`blive_append`) and `SpecOK.liveSub` (`blive_sub`). With
+  SIS/Proof/PhysAssumptions.lean: the `PhysRunOK` of a trace's instance
+  follows from `RunOK` and TREE after every transaction, which C-A checks
+  (`bspec_physRunOK`, `bspec_physRunOK_evict`), and T-READ with handles
+  holds for it from `RunOK` and `EvictRunOK` (`bspec_tr_handles`).
 
 Choices made in Lean that the text leaves open:
 
@@ -918,6 +965,11 @@ run):
   `LM_ruleR`, `LM_cutTo`; L2), T1-L (`T1_lazy`, L3), CC and T2-L
   (`CC_canonical`, `T2_lazy`, L4); Java's first touches after restarts are
   checked against the model's rule (C-L, L5).
+* The assumptions of the physical layer (bergdb 024-09): `PhysRunOK` from
+  `RunOK`, TREE after every transaction and `LiveAppend`, a property of the
+  function `live` (`physRunOK_of_tree`, `physRunOK_of_evict`); `LiveAppend`
+  and `SpecOK.liveSub` for the trace checker's `blive` (`blive_append`,
+  `blive_sub`).
 * Stage 2, eviction, over handles (009): T-CACHE, T-READ, T2-C and T-PIN
   (`tc_handles`, `tr_handles`, `t2_handles`, `tr_handles_restarts`,
   `tp_handles`), and rule 4 by position (005-58).
@@ -939,8 +991,6 @@ by `tracecheck` ([levels.md](../docs/levels.md)).
 
 Not done:
 
-* A check of the physical layer's assumptions (`PhysStep`, M47) on Java
-  traces; they are argued (011-11, 13.3).
 * The bounds: T4 (D) (bergdb item 007). T3 for BergDB's take is proved
   without its record limit (bergdb 007-08). The stream's meta blocks are
   not modelled either, but they make no difference to the take: when it
