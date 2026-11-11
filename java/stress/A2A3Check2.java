@@ -44,6 +44,14 @@ import bergdb.common.StringUtil;
  * Properties: maxnode (8), keys (200), n (300), ops (max ops per transaction, 4),
  * exact=1 (exactly ops ops), del (percent deletes, 0), long=1 (two segments for half
  * the keys), unsorted=1 (do not sort the ops), seeds (10), debugA6=1.
+ *
+ * shape=long (bergdb 024-09, step A1) takes the keys from UnlinkFuzz's long shape instead
+ * (longShapeKey: 'keys' distinct keys of 1 to 5 segments that share prefixes; long is then
+ * not used): many small segment trees that come and go, so that a transaction makes a
+ * segment root, splits it in place and empties it again. That is where a klong to a node
+ * taken back was left (fault 12 of bergdb 023-08, review C), which A-COPY counts as a
+ * failure: the node is not made by the transaction, once taken back, nor on the writer's
+ * paths.
  */
 public class A2A3Check2 {
     static final int MAX_NODE = Integer.getInteger("maxnode", 8);
@@ -55,6 +63,21 @@ public class A2A3Check2 {
     static final boolean LONG = "1".equals(System.getProperty("long"));
     static final boolean UNSORTED = "1".equals(System.getProperty("unsorted"));
     static final int SEEDS = Integer.getInteger("seeds", 10);
+    static final boolean SHAPE_LONG = "long".equals(System.getProperty("shape"));
+
+    /**
+     * Key i of UnlinkFuzz's long shape (the rule of UnlinkFuzz.key; TraceExport's long=2
+     * uses it too): keys of one, three and five segments, the longer ones under seven
+     * shared prefixes.
+     */
+    public static String longShapeKey(int i) {
+        int a = i % 7, b = (i / 7) % 5;
+        switch (i % 3) {
+        case 0: return "/k/" + i;
+        case 1: return "/long/prefix" + a + "/x" + b + "/" + i;
+        default: return "/long/prefix" + a + "/y" + i + "/tail/more/" + b;
+        }
+    }
 
     static final PointerFollower FOLLOWER = new PointerFollower() {
         public Node followPointer(Node predecessor, int pointerIndex, OpData op) {
@@ -385,7 +408,7 @@ public class A2A3Check2 {
             });
             List<long[]> order = new ArrayList<long[]>();
             while (sorted.size() < ops) {
-                String key = LONG && rnd.nextBoolean()
+                String key = SHAPE_LONG ? longShapeKey(rnd.nextInt(KEYS)) : LONG && rnd.nextBoolean()
                         ? "/long/" + rnd.nextInt(KEYS) + "/" + rnd.nextInt(4)
                         : "/k/" + rnd.nextInt(KEYS);
                 long[] seg = Keys.toSegments(key);
@@ -537,7 +560,7 @@ public class A2A3Check2 {
         }
         System.out.println("maxnode=" + MAX_NODE + " keys=" + KEYS + " n=" + N + " ops="
                 + (EXACT ? "" : "1..") + OPS + " del=" + DEL + "% long=" + LONG
-                + " sorted=" + !UNSORTED + " seeds=" + SEEDS);
+                + " sorted=" + !UNSORTED + " seeds=" + SEEDS + (SHAPE_LONG ? " shape=long" : ""));
         System.out.println("  transactions " + trans + ": with a changed node not current at the end "
                 + transA2 + " (A2 is the NET line below), violating A3 " + transA3 + ", A5 " + transA5
                 + "; with marked nodes not current at the end " + transDead);

@@ -79,33 +79,45 @@ def states2 (p : Stream Val Tr2 → Dirty → Time → Tr2 → Nat) (seed n : Na
 `takePolicy` and `javaTake` of SIS/Bound.lean on example 2. First the share's
 arithmetic against Java's; then runs. -/
 
-/-! Java's share and dither, bit for bit. The numbers on the right are Java's
-`Double.doubleToLongBits` of `TransSeq.dither(p)` and of the share's
-expression in `TransSeq.take`, with its types, printed by JDK 27 on 2026-10-28
-(`TakeCheck bits`, bergdb 007-08); Lean's `Float` gives the same bits. The
-share 25 and the dithers of 1300 and 1200 are those of `TransSeq.testShare`. -/
+/-! Java's share and dither, number for number. The numbers on the right are
+`TransSeq.ditherFp(p)` and `TransSeq.shareFp`, Java's integer arithmetic since
+bergdb 005-79, in units of 2^-16, printed by JDK 27 on 2026-11-11 from release
+2026.4's code (`TakeCheck fp`, java/stress/TakeCheck.java; bergdb 024-09). The
+share 25 (1,638,400) and the dithers of 1300 and 1200 are those of
+`TransSeq.testShare`; the share 297,636 is its tie, where the double rule that
+Java had until 005-79 took one transaction more. The last five are outside
+Java's bounds, where the share is all of D (`Long.MAX_VALUE`). Until 024-09 the
+guards here were of that double rule, bit for bit (bergdb 007-08). -/
 
-#guard [0, 1, 1200, 1300, 123456789, 50000000000, 9007199254740993].map (fun p => (dither p).toBits)
-  == [0, 4606131375998723001, 4607131743264829540, 4600978861501654284, 4603666215157931066,
-      4605233888489268388, 4603104620836595471]
-#guard (share 100 100 1000 2000 800).toBits == 4627730092099895296
-#guard (share 7 333 1001 12345 997).toBits == 4628809252918152948
-#guard (share 123457 48 9999991 50000017 50000000).toBits == 4603512834796201358
+#guard [0, 1, 1200, 1300, 123456789, 50000000000, 9007199254740993].map ditherFp
+  == [0, 57888, 65167, 26583, 39952, 51358, 35866]
+#guard shareFp 100 100 1000 2000 800 == 1638400
+#guard shareFp 7 333 1001 12345 997 == 458752
+#guard shareFp 123457 48 9999991 50000017 50000000 == 38836
+#guard shareFp 6 1000 1000 49606 65536 == 297636
+#guard shareFp 1000 48 48 1099511627776 10 == 65536000
+#guard shareFp 0 48 1000 2000 800 == 0
+#guard [shareFp 4294967296 48 1000 2000 800, shareFp 5 2147483648 1000 2000 800,
+    shareFp 5 48 1000 140737488355328 800, shareFp 5 48 0 2000 800, shareFp 5 48 1000 2000 0]
+  == List.replicate 5 9223372036854775807
 
 /-- BergDB's pace's test for the next transaction, with the share and the
-dither given, as `javaPace` computes it. -/
-def paceTest (sh u : Float) (taken count : Nat) : Bool :=
-  !(decide (sh < (taken + count).toFloat) && decide (sh - taken.toFloat ≤ u * count.toFloat))
+dither given, in units of 2^-16, as `javaPace` computes it. -/
+def paceTest (sh u : Nat) (taken count : Nat) : Bool :=
+  !(decide (sh < (taken + count) * 2 ^ 16) && decide (sh - taken * 2 ^ 16 ≤ u * count))
 
 -- `TransSeq.testShare`: a share of 25 nodes and transactions of 10 take two
 -- transactions; the third, half of which fits, if the dither is below 0.5:
 -- it is 0.41 for the stream's length 1300 and 0.99 for 1200.
-#guard paceTest 25 (dither 1300) 0 10 && paceTest 25 (dither 1300) 10 10 &&
-  paceTest 25 (dither 1300) 20 10 && !paceTest 25 (dither 1300) 30 10
-#guard paceTest 25 (dither 1200) 10 10 && !paceTest 25 (dither 1200) 20 10
+#guard paceTest (25 * 2 ^ 16) (ditherFp 1300) 0 10 && paceTest (25 * 2 ^ 16) (ditherFp 1300) 10 10 &&
+  paceTest (25 * 2 ^ 16) (ditherFp 1300) 20 10 && !paceTest (25 * 2 ^ 16) (ditherFp 1300) 30 10
+#guard paceTest (25 * 2 ^ 16) (ditherFp 1200) 10 10 && !paceTest (25 * 2 ^ 16) (ditherFp 1200) 20 10
 -- A transaction with no got-dirty nodes is taken while the share is not used
 -- up (007-07, 2.4), and not after.
-#guard paceTest 25 (dither 1200) 25 0 && !paceTest 25 (dither 1200) 26 0
+#guard paceTest (25 * 2 ^ 16) (ditherFp 1200) 25 0 && !paceTest (25 * 2 ^ 16) (ditherFp 1200) 26 0
+-- `TransSeq.testShare`'s tie: the part that fits, all of the share 297,636,
+-- equals the dither 49,606 times the transaction's 6 nodes; the take stops.
+#guard ditherFp 531776 == 49606 && !paceTest 297636 (ditherFp 531776) 0 6
 
 /-- The own bytes of a transaction of example 2, as `bytes2` counts its
 record: 48 for the header and the transaction, and 24 for its one data node's
@@ -211,16 +223,17 @@ def slowSpans : List Nat :=
 
 /-! ### Against Java's `TransSeq.take` on generated cases
 
-bergdb 007-08's `TakeCheck` (in items/007-bounds/08-step4-take-in-lean/) runs
-`TransSeq.take` of `f89846d` on 300 cases that SplitMix64 makes from the case
-number, and prints the number of transactions taken in each. `takeCase` makes
-the same cases as streams of the model, with the same generator, and runs
-`javaTake` on them: the results are the same in all 300. In the cases, the
-deadline takes a transaction in 107, the span is longer than twice the
-setting in 95, the share takes more than the deadline in 213, and the share
-stops the take before its last transaction in 163; the deadline alone gives
-other results in 213 cases, a dither of 0.5 in 52, and counting the got-dirty
-nodes of T(i) in D, which Java adds after the take, in 11. -/
+`TakeCheck` (java/stress/TakeCheck.java since bergdb 024-09; from 007-08) runs
+`TransSeq.take` on 300 cases that SplitMix64 makes from the case number, and
+prints the number of transactions taken in each. `takeCase` makes the same
+cases as streams of the model, with the same generator, and runs `javaTake` on
+them: the results are the same in all 300. In the cases, the deadline takes a
+transaction in 107, the span is longer than twice the setting in 95, the share
+takes more than the deadline in 213, and the share stops the take before its
+last transaction in 163 (TakeCheck's counts, the same on 2026-10-28 and on
+2026-11-11); with the double rule of 2026-10-28, the deadline alone gave other
+results in 213 cases, a dither of 0.5 in 52, and counting the got-dirty nodes
+of T(i) in D, which Java adds after the take, in 11. -/
 
 /-- SplitMix64's generator, as `TakeCheck` has it: the next number and state. -/
 def splitmix (st : UInt64) : UInt64 × UInt64 :=
@@ -270,7 +283,9 @@ def takeCase (c : Nat) : Nat :=
     List.replicate extra (0, a + n)
   javaTake caseSize (fun t => t.1) (fun _ => 10 + sd) S D (a + n) (48 + o, 0) - (a - 1)
 
-/-- `TakeCheck 300`'s output, JDK 27, 2026-10-28. -/
+/-- `TakeCheck 300`'s output, JDK 27: on 2026-10-28 with the double rule
+(`f89846d`), and the same on 2026-11-11 with the integer take of release
+2026.4 (bergdb 024-09). -/
 def javaTakes : List Nat :=
   [0, 2, 1, 0, 3, 6, 1, 3, 2, 8, 5, 0, 0, 5, 1, 0, 9, 2, 0, 0, 1, 8, 2, 1, 1, 2, 0, 3,
    0, 4, 3, 7, 5, 2, 0, 0, 1, 2, 1, 0, 4, 1, 1, 1, 2, 0, 10, 3, 1, 1, 0, 1, 3, 3, 9, 1,

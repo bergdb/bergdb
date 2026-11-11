@@ -11,7 +11,7 @@
 # package in src uses only what its package.html lists, bergdb 005-56; under a
 # second), checks with doubles.py that no double or float is used in the Core
 # Layer's production code outside its list of allowed places (API conversions,
-# statistics, the users' values as bits; bergdb 005-79; under a second), then
+# statistics, the users' values as bits; bergdb 005-79; a few seconds), then
 # runs at the same time, each in its own JVM with assertions on (-ea):
 #   * the unit tests (bergdb.dev.Unit, the Nano test group "unit"), about 30 s;
 #   * the f-tests (bergdb.dev.F, the Nano test group "f"), about 1 minute;

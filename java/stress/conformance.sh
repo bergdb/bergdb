@@ -3,7 +3,7 @@
 # configurations, and checks each trace with the Lean checker (lean/, lake exe
 # tracecheck). Written 2026-10-15 for F1-008-11, WPs C3 and F1.
 #
-# Usage: java/stress/conformance.sh [small|medium|large|all|reclaim|evict] [seeds]
+# Usage: java/stress/conformance.sh [small|medium|large|all|reclaim|evict|drain] [seeds]
 #   small (default): the Lean tier on every transaction, in the target mode
 #   (marking, Java's still-dirty test, the virtual root) and, for the first
 #   three seeds of the first two configurations, in the unchanged model's mode
@@ -31,8 +31,18 @@
 #   new root in place, so no node is adopted below its old parent: a trace of
 #   them with such an adoption, or without the checker's count, fails (A6,
 #   not only A6'). Until then a trace of them without one failed.
+#   drain (2026-11-11, bergdb 024-09, step A1): configurations that drain
+#   trees (50 to 65 percent deletes, few keys), so that the delete path's
+#   upward unlink, root collapse and take-back (bergdb 023-05) are in the
+#   traces; three of them with long=2, UnlinkFuzz's long keys, whose small
+#   segment trees a transaction makes and empties. The reclaim set has one
+#   such configuration (r-drain) and the evict set two (e-drain, e-r-drain).
+#   A configuration whose name contains "drain" must take back a node in
+#   one of its seeds at least (TraceExport's last output line, the Dag's
+#   counters): else its traces no longer reach the take-back, and the run
+#   fails. Every set's summary has the sum of those counters.
 #   seeds: per configuration (default 10 small, 3 medium, 2 large, 5 reclaim, 3
-#   evict). The checker computes
+#   evict, 3 drain). The checker computes
 #   the model's own definitions, with fast versions proven equal to them
 #   (lean/Check/Fast.lean, since bergdb item 001, WP C2).
 #
@@ -90,6 +100,8 @@ reclaim() {
     echo "r-long  -Dn=500 -Dkeys=100 -Dmaxnode=14 -Dsd=500 -Dops=4 -Dlong=1 -Ddel=25 -Dretain=2 -Dprobe=10"
     echo "r-big   -Dn=800 -Dkeys=200 -Dmaxnode=14 -Dsd=1000 -Dops=8 -Ddel=25 -Dretain=2 -Dprobe=10"
     echo "r-idle  -Dn=400 -Dkeys=50 -Dmaxnode=8 -Dsd=300 -Dops=2 -Dempty=20 -Dnodel=10 -Dretain=1 -Dprobe=10"
+    # Trees drained and refilled; must take back a node (bergdb 024-09, step A1).
+    echo "r-drain -Dn=400 -Dkeys=30 -Dmaxnode=8 -Dsd=200 -Dops=6 -Ddel=60 -Dretain=1 -Dprobe=10"
 }
 
 evict() {
@@ -116,6 +128,24 @@ evict() {
     echo "e-restart -Dn=100 -Dkeys=50 -Dmaxnode=8 -Dsd=300 -Dops=4 -Ddel=25 -Dprobe=10 -Drune=random -Dereads=20 -Derestart=10"
     echo "e-r-restart -Dn=300 -Dkeys=30 -Dmaxnode=8 -Dsd=200 -Dops=4 -Dretain=1 -Dprobe=10 -Drune=random -Dereads=20 -Derestart=25"
     echo "e-b-restart -Dn=300 -Dkeys=200 -Dmaxnode=8 -Dsd=500 -Dops=4 -Ddel=25 -Dprobe=10 -Drune=budget -Devictbudget=30000 -Dereads=20 -Derestart=50"
+    # Trees drained and refilled, with reads and restarts, and with reclaim; each must take
+    # back a node (bergdb 024-09, step A1).
+    echo "e-drain   -Dn=200 -Dkeys=30 -Dmaxnode=8 -Dsd=300 -Dops=8 -Ddel=65 -Dprobe=10 -Drune=random -Dereads=20 -Derestart=10"
+    echo "e-r-drain -Dn=300 -Dkeys=30 -Dmaxnode=8 -Dsd=200 -Dops=10 -Ddel=65 -Dretain=1 -Dprobe=10 -Drune=random -Dereads=20 -Derestart=25"
+}
+
+drain() {
+    # Trees drained and refilled (bergdb 023-05, P4's traces; 024-09, step A1): mostly
+    # deletes on few keys. long=2 is UnlinkFuzz's long key shape, with which a trace takes
+    # back segment roots too, not only nodes below them.
+    echo "drain      -Dn=300 -Dkeys=25 -Dmaxnode=8 -Dsd=200 -Dops=10 -Ddel=65 -Dprobe=10 -Dlive=1"
+    echo "drainlong  -Dn=200 -Dkeys=60 -Dmaxnode=8 -Dsd=300 -Dops=20 -Dexact=1 -Ddel=60 -Dlong=1 -Dprobe=10"
+    echo "drainbig   -Dn=100 -Dkeys=80 -Dmaxnode=8 -Dsd=1000 -Dops=40 -Dexact=1 -Ddel=60 -Dlong=2 -Dprobe=10"
+    echo "drain14    -Dn=300 -Dkeys=200 -Dmaxnode=14 -Dsd=500 -Dops=30 -Dexact=1 -Ddel=60 -Dlong=2 -Dprobe=20"
+    # Most of the keys in every transaction: a transaction makes a segment root, splits it in
+    # place and empties it again. A klong left to a node taken back (fault 12 of bergdb
+    # 023-08, review C) fails here: the writer's assertion on the pointer, or C-A's A-COPY.
+    echo "drainroots -Dn=60 -Dkeys=90 -Dmaxnode=8 -Dsd=300 -Dops=120 -Dexact=1 -Ddel=50 -Dlong=2 -Dprobe=10"
 }
 
 large() {
@@ -177,6 +207,21 @@ run_set() {
     done < $dir/configs.txt
 }
 
+# The Dag's counters of the exports of set $1, summed (TraceExport's last output line, so
+# each trace's runs A, B and E together): how far the set's traces reach the delete path's
+# upward unlink, root collapse and take-back (bergdb 024-06, section 4.4).
+dag_counters() {
+    cat build/traces/$1/*.export.txt | sed -nE 's/^Dag counters: unlinked ([0-9]+), taken back ([0-9]+), roots taken back ([0-9]+), collapses ([0-9]+), empty keys pointed to the next child ([0-9]+)$/\1 \2 \3 \4 \5/p' \
+        | awk '{n++; u+=$1; t+=$2; r+=$3; c+=$4; e+=$5; if ($1 > 0) nu++; if ($2 > 0) nt++; if ($4 > 0) nc++}
+            END {print "   Dag counters (the exports, each with its runs A, B and E): unlinked " u+0 ", taken back " t+0 " (roots " r+0 "), collapses " c+0 ", empty keys pointed to the next child " e+0 "; of " n+0 " traces " nu+0 " unlink a node, " nt+0 " take one back, " nc+0 " collapse a root"}'
+}
+
+# The nodes taken back by the exports of configuration $2 of set $1, over its seeds.
+taken_back() {
+    cat build/traces/$1/$2-*.export.txt | sed -nE 's/^Dag counters: .*, taken back ([0-9]+), .*/\1/p' \
+        | awk '{s+=$1} END {print s+0}'
+}
+
 summary() {
     dir=build/traces/$1
     echo "Summed over the traces of $1, target mode: transactions failing, by check"
@@ -203,6 +248,7 @@ summary() {
         ls $dir/*.$k.time > /dev/null 2>&1 || continue
         echo "   time and memory, $k: $(awk '/ real /{s+=$1; if ($1>l) l=$1} /maximum resident set size/{if ($1>m) m=$1} END {printf "%.0f s in total, %.0f s at most, at most %.0f MB", s, l, m/1048576}' $dir/*.$k.time)"
     done
+    dag_counters $1
     if ls $dir/*.model.txt > /dev/null 2>&1; then
         echo "Unchanged model's mode (--model), $(ls $dir/*.model.txt | wc -l | tr -d ' ') traces:"
         for k in "C-A assumptions" "C-S steps"; do
@@ -220,7 +266,8 @@ case $SET in
         run_set large ${2:-2}; summary large ;;
     reclaim) run_set reclaim ${2:-5}; summary reclaim ;;
     evict) run_set evict ${2:-3}; summary evict ;;
-    *) echo "usage: $0 [small|medium|large|all|reclaim|evict] [seeds]"; exit 2 ;;
+    drain) run_set drain ${2:-3}; summary drain ;;
+    *) echo "usage: $0 [small|medium|large|all|reclaim|evict|drain] [seeds]"; exit 2 ;;
 esac
 
 for set_name in $RAN; do
@@ -244,6 +291,13 @@ for set_name in $RAN; do
         [ -f $f ] || continue
         if ! grep -q '^C-A adoptions below the old parent .*: 0 of' $f; then
             echo "CONFORMANCE FAILED: a trace of A6's kind with an adoption below the old parent, or without the count ($f)"
+            exit 1
+        fi
+    done
+    # A draining configuration must reach the take-back (bergdb 024-09, step A1).
+    for name in $(sed -n 's/^\([^ ]*drain[^ ]*\) .*/\1/p' build/traces/$set_name/configs.txt); do
+        if [ "$(taken_back $set_name $name)" = 0 ]; then
+            echo "CONFORMANCE FAILED: the draining configuration $name of set $set_name takes back no node in its seeds: its traces do not reach the take-back (the Dag counters in build/traces/$set_name/$name-*.export.txt)"
             exit 1
         fi
     done
