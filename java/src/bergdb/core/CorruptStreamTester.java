@@ -1184,7 +1184,9 @@ public class CorruptStreamTester {
 
             copies.clear();
             for (Record rec : recs) {
-                nodeFields(o, rec, full ? 64 : 40, full ? MASKS : new int[] {0x80},
+                // Bytes up to 72 and 48 (64 and 40 until the node header's 12 bytes, bergdb
+                // 024-25): the same fields, a top node's root pointer among them.
+                nodeFields(o, rec, full ? 72 : 48, full ? MASKS : new int[] {0x80},
                         new int[] {-8, 0x7ffffff8, 0x10000}, copies);
             }
             if (!full) {
