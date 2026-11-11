@@ -311,11 +311,13 @@ public class PubTesterThreads {
     public static void testConnectionSharedByReaders() throws Exception {
         try (Database db = Factory.database().memory().start()) {
             final int keys = 2000;
-            WBuilder w = db.connection().w();
-            for (int k = 0; k < keys; k++) {
-                w.put("/k/k" + k + ".txt", "value of k" + k);
+            for (int k0 = 0; k0 < keys; k0 += 500) {       // L1 (bergdb 024-24): w() of 500
+                WBuilder w = db.connection().w();
+                for (int k = k0; k < k0 + 500; k++) {
+                    w.put("/k/k" + k + ".txt", "value of k" + k);
+                }
+                w.execute();
             }
-            w.execute();
             final Connection shared = db.newConnection();
             final AtomicInteger wrong = new AtomicInteger();
             final AtomicInteger refused = new AtomicInteger();
@@ -378,25 +380,26 @@ public class PubTesterThreads {
     /**
      * U11-6 (bergdb 021-22): 4 threads putting into one WBuilder, then execute(): every put
      * is written. Before the fix the builder's HashMaps lost some (3,809 of 4,000 keys in
-     * 020-24-11's H1), or a thread spun in a broken HashMap.
+     * 020-24-11's H1), or a thread spun in a broken HashMap. 20 rounds of 500 puts, L1 (10
+     * rounds of 1,000 until bergdb 024-24).
      */
     @Nano
     public static void testWBuilderSharedByThreads() throws Exception {
         try (Database db = Factory.database().memory().start()) {
             final Connection c = db.connection();
-            for (int round = 0; round < 10; round++) {
+            for (int round = 0; round < 20; round++) {
                 final int r = round;
                 final WBuilder w = c.w();
                 inThreads(4, i -> {
-                    for (int k = i; k < 1000; k += 4) {
+                    for (int k = i; k < 500; k += 4) {
                         w.put("/w/r" + r + "-k" + k + ".txt", "v" + k);
                     }
                 });
                 w.execute();
             }
             int missing = 0;
-            for (int round = 0; round < 10; round++) {
-                for (int k = 0; k < 1000; k++) {
+            for (int round = 0; round < 20; round++) {
+                for (int k = 0; k < 500; k++) {
                     if (!("v" + k).equals(c.get("/w/r" + round + "-k" + k + ".txt",
                             String.class))) {
                         missing++;
