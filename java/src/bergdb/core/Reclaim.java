@@ -2877,19 +2877,23 @@ public class Reclaim implements Db.TransactionListener {
          * nodes do not fit in a record; Db.checkDirtyNodes refuses such a user transaction
          * before it changes anything, and leaves reclaim's steps to their own bound. Until
          * 024-07 an iteration's last step had none: its touch made dirty every index node
-         * after its scan's last key. Here, with the record limit lowered to 100 kB as
-         * StoredTrans's own test does, and a queue of 6,000 keys in time order, the index
-         * nodes of the first iteration's last step did not fit in a record: no record took
+         * after its scan's last key. Here, with the record limit lowered to 200 kB, and a queue
+         * of 6,000 keys in time order, the index nodes of the first iteration's last step did
+         * not fit in a record (at 100 kB, as StoredTrans's own test lowers it): no record took
          * them, the startup pos stayed before the step for good (2.3 MB behind after 1,000
          * transactions more, with a startup distance of 2 kB, four iterations done), and
          * the stream was never cut, with no exception: the fault of a queue of about 100M
          * keys at the real limit, 2 GB (024-07, section 3). Now the startup pos passes the
-         * last step within 100 transactions.
+         * last step within 100 transactions. 200 kB since the merges at the delete (bergdb
+         * 024-21): Dag.dirtyNodeBound counts up to 922 index nodes, 179 kB, for the user's
+         * transactions of 8 puts and 8 deletes at node size 8, and a limit of 100 kB refused
+         * them; the index of 6,000 keys at node size 8 is over 1,000 nodes, at 192 bytes each
+         * more than 200 kB.
          */
         @Nano
         public static void testLastStepWithinRecordLimit() {
             final long saved = StoredTrans.recordLimit;
-            StoredTrans.recordLimit = 100 * 1000;
+            StoredTrans.recordLimit = 200 * 1000;
             Db db = null;
             try {
                 CoreTestClock clock = new CoreTestClock();
