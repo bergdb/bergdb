@@ -325,6 +325,18 @@ from them.
   operations. A sharper count with q (about 8 a level) covers 1,128
   (QL8). Proposed L3 112 KiB, L6 112 bytes refused; QL1, QL4, QL8,
   QL11 (112 or 111), QL12 (node sizes 8 and 62) for Frans.
+* 15:28 The independent review of the merges (024-21, review.md): land
+  with fixes; R1 (land with 024-22, the thresholds in the TREE line, the
+  combined head gated with level2 to level4), R2 to R6 fixed by mgj
+  (4105fc1a). 15:38 024-21 at 8/17/17 passed before-commit, unlinkfuzz,
+  level1 to level4 full; 15:02 to 15:20 Java at 8/17/17 equal to the
+  model on 260 traces. 15:45 int combined main + 024-22 + 024-21
+  (a78aa498); its gates running.
+* 16:00 The 024-09 follow-up landed: the merge of 751bb653 (LiveAppend
+  in place of PhysRunOK in the trusted statements, its diff quoted in
+  024-09, section 9.2 for Frans; A6 required by the gates). The merges'
+  combined head takes main in and reruns its Lean and level2 to level4
+  and conformance gates with it.
 
 
 ## 6. Outcome
