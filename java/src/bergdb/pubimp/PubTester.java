@@ -963,6 +963,85 @@ public class PubTester {
     }
     
     /**
+     * The last operation on a key wins in the Pub API (bergdb 024-10, section 3, R6, and the
+     * rows P1 to P10 of its section 4), through WBuilder. P1 to P3: of the calls on one key
+     * as written, a key with a suffix and an object key, the last one counts, as since 015-40
+     * and 015-41. P4 to P8: a put at "/t/${transactionTime}.txt" with key replace, and a put
+     * or a delete at the key that the replace gives it, which the test knows: the clock
+     * stands still, so each transaction's time is the one before it plus one. Of the two the
+     * call made last counts; so too for an object key, "/t/${transactionTime}". Until
+     * 2026-11-11 the put at the key with the digits stayed over the replaced put called after
+     * it (P5: its key as written sorts last), and the replaced put stayed over a delete
+     * called after it (P6). P8: a key's place among the calls is its last call's. P9 and
+     * P10: index entries follow the object's last call: an object put again with its indexed
+     * field unchanged keeps its entry, and one put and then deleted leaves no entry, of the
+     * value it had or of the value put.
+     */
+    @Nano
+    public static void testLastOperationWinsRows() {
+        TestClock clock = new TestClock();
+        clock.setTime(Time.units(1000L * 1000 * 1000));
+        Database db = Factory.database().memory().clock(clock).start();
+        try {
+            Connection c = db.connection();
+            StringBuilder wrong = new StringBuilder();      // every wrong row
+            c.put("/a.txt", "old");
+            c.w().put("/a.txt", "new").delete("/a.txt").execute();
+            assertNoEntry("P1", c.get("/a.txt", String.class));
+            c.w().delete("/a.txt").put("/a.txt", "new").execute();
+            Assert.assertEquals("P2", "new", c.get("/a.txt", String.class));
+            c.put("/d", "old");
+            c.w().put("/d", "new").delete("/d").execute();
+            assertNoEntry("P3", c.get("/d", String.class));
+            
+            c.setEnableKeyReplace(true);
+            for (int i = 0; i < 10; i++) {
+                int row = 4 + i / 2;
+                String suffix = i % 2 == 0 ? ".txt" : "";           // "": an object key
+                String at = "P" + row + ", suffix '" + suffix + "'";
+                String k = "/t/${transactionTime}" + suffix;
+                long time = c.put("/t/seed.txt", "s").getTime().units() + 2;
+                String kt = String.format(Locale.US, "/t/%018d", time) + suffix;
+                c.put(kt, "old");               // the transaction before the row's
+                WBuilder w = c.w();
+                if (row == 4) w.put(k, "a").put(kt, "b");
+                if (row == 5) w.put(kt, "b").put(k, "a");
+                if (row == 6) w.put(k, "a").delete(kt);
+                if (row == 7) w.delete(kt).put(k, "a");
+                if (row == 8) w.put(kt, "b").put(k, "a").put(kt, "c");
+                Transaction t = w.execute();
+                Assert.assertEquals(at + ": the transaction's time", time, t.getTime().units());
+                String expected = row == 4 ? "b" : row == 6 ? null : row == 8 ? "c" : "a";
+                String got = c.get(kt, String.class);
+                if (!java.util.Objects.equals(expected, got)) {
+                    wrong.append(at + ": the value at the replaced key is " + got
+                            + ", expected " + expected + ". ");
+                }
+                assertNoEntry(at + ": the key as written", c.get(k, String.class));
+            }
+            Assert.assertEquals("", wrong.toString());
+            c.setEnableKeyReplace(false);
+            
+            db.indexBuilder("v").dir("/o/").type("long").field("v").start().join();
+            c.put("/o/1", new LongV(7));
+            for (int row = 9; row <= 10; row++) {
+                if (row == 9) c.w().put("/o/1", new LongV(7)).execute();
+                if (row == 10) c.w().put("/o/1", new LongV(9)).delete("/o/1").execute();
+                StringBuilder keys = new StringBuilder();
+                for (Kv<DbObject> kv : c.useIndex("v", DbObject.class).kvs()) {
+                    keys.append(kv.key()).append(' ').append(kv.value().getLong("v")).append(';');
+                }
+                Assert.assertEquals("P" + row + ": the index", row == 9 ? "/o/1 7;" : "",
+                        keys.toString());
+                Assert.assertEquals("P" + row + ": the object", row == 9,
+                        c.get("/o/1", LongV.class) != null);
+            }
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
      * bergdb 015-64: key replace replaces every "${transactionTime}" of a key, as
      * Connection.setEnableKeyReplace() says ("occurrences"); before 015-64, only the last.
      */

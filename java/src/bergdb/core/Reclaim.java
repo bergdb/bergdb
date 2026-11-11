@@ -44,15 +44,27 @@ import bergdb.stream.MemoryStream;
  * its own pStart).</li>
  * <li>Each external transaction allows a step when the bytes rewritten so far are below
  * internalFraction times the stream growth since pStart (fractionOf). A step scans the KVs at time
- * tStart after lastKey, rewrites each live value stored before pCut, and "touches"
- * the same key range at the current time (Trans.touch): every index node on the way
- * gets dirty and is written again, also nodes that hold deleted keys only. The row of the
+ * tStart after lastKey and rewrites each live value stored before pCut: a put of the same
+ * key and value, which makes the index nodes on the key's path dirty, as every put does, so
+ * that they are written again. The row of the
  * iteration, with the new lastKey, is stored in the same transaction (CURRENT_KEY_NAME);
  * the table is stored when an iteration starts, ends, gets safe or is cut.</li>
  * <li>When the scan reaches the end, the iteration is done; tEnd and pEnd are the time and
  * position of the last step. Every node and value reachable at times from tEnd on is then
- * stored at pCut or later (index nodes at pStart or later), or is dirty and will be
- * written there.</li>
+ * stored at pCut or later, or is dirty and will be written there. A value: by its put, or
+ * by the step that rewrote it. An index node: a delete unlinks the nodes it empties
+ * (Dag.deleteUpward, format 6), so the node has a live key below it; if nothing below the
+ * node changed since pCut, that key's value is stored before pCut, and the step that rewrote
+ * it made the node dirty; otherwise the transaction that changed something below it did
+ * (bergdb 024-07, section 4). The space root, the only node that can be empty, is on the path
+ * of every step's row.</li>
+ * <li>A step makes dirty the index nodes on the paths of its own puts only (Trans.touch,
+ * Db.touchPaths), so what it pins and what a later record writes for it follow the 16 kB
+ * of its scan, not the size of the database (024-07). From 2026-10-13 until 024-07 a step
+ * also visited every index node of its scan's key range at the step's time, and the last
+ * step every node from the scan's last key to the end of the key space, to write again the
+ * nodes that held deleted keys only; with keys put in time order that was every node made
+ * since the iteration began, in one transaction (024-03, section 7).</li>
  * <li>The cut waits until the startup pos has passed pEnd (every touched node written
  * once), and then passed pSafe, the stream length at that moment (nodes written before
  * their children and kept dirty by the still-dirty test written once more, now naming the
@@ -526,7 +538,7 @@ public class Reclaim implements Db.TransactionListener {
     
     /**
      * One step of iteration 'it': scans KVs at time tStart after lastKey, about writeSize
-     * bytes of them, rewrites each live value stored before pCut, touches the key range,
+     * bytes of them, rewrites each live value stored before pCut,
      * and stores the table row as it is after the step; all in one internal transaction.
      * After the last step (the scan reached the end), the iteration is done, and tEnd and
      * pEnd are stored.
@@ -667,13 +679,15 @@ public class Reclaim implements Db.TransactionListener {
         }
         t.isInternal = true;
         
-        // 2026-10-13 (Q7 in bergdb 011-01, 
-        // Reclaim.Tester.testDeletedKeysAfterCut): only live values were rewritten. Nodes
-        // that hold deleted keys only, and the segment subtrees of deleted long keys, kept 
-        // their versions before pStart, and lookups still pass through them.
+        // The touch (Trans.touch): the index nodes on the paths of the step's puts get dirty
+        // before the puts, so that the row stores what the step made dirty. From 2026-10-13
+        // (Q7 in bergdb 011-01, Reclaim.Tester.testDeletedKeysAfterCut) until bergdb 024-07
+        // the touch visited the key range of the step's scan at the step's time, to the end
+        // of the key space in the last step: only live values were rewritten, and nodes that
+        // held deleted keys only, and the segment subtrees of deleted long keys, kept their
+        // versions before pStart, while lookups still passed through them. Since format 6 a
+        // delete unlinks the nodes it empties, so no such node is left (024-07, section 4).
         t.touch = true;
-        t.touchFrom = it.lastKey;
-        t.touchTo = eod[0] ? null : lastKeyOfStep[0];
         
         Stats.Iteration st = stats == null ? null : statsOf(it);
         if (st != null && stats.countTouch) {
@@ -2769,6 +2783,286 @@ public class Reclaim implements Db.TransactionListener {
                     b.put("/k/" + (10000 + r.nextInt(499)) + "-" + next++, v);
                 }
                 db.execute(b.build());
+            }
+            db.stop();
+        }
+        
+        /** A key of the queue of the tests of bergdb 024-07: in key order by i. */
+        private static String queueKey(int i) {
+            return "/q/" + (100000000 + i);
+        }
+        
+        /**
+         * bergdb 024-07, the bound of a reclaim step: a step makes dirty the index nodes on
+         * the paths of its own puts only, the values it rewrites and its row, however many
+         * keys the database holds: here at most 63 index nodes for each of its puts, three
+         * for each node of a path, taken as at most 20 nodes long, and three more, as
+         * Db.checkDirtyNodes counts a put. The same bound with 2,000
+         * and with 8,000 keys. A queue, keys in time order: each transaction puts 100 new keys
+         * at the tail and deletes the 100 oldest, until three iterations are done; from the
+         * second on an iteration has no user value to rewrite.
+         * 
+         * <p>Until 024-07 the last step of an iteration visited every index node from its
+         * scan's last key to the end of the key space, every key put since the iteration began:
+         * here one step with 1 put made 991 index nodes dirty with 2,000 keys and 4,180 with
+         * 8,000 (2026-11-11); at 10M keys 772,454, a record of 206 MB (024-07, section 2).</p>
+         */
+        @Nano
+        public static void testStepDirtiesItsPathsOnly() {
+            final int nodesAPut = 3 * 20 + 3;
+            for (final int n : new int[] {2000, 8000}) {
+                CoreTestClock clock = new CoreTestClock();
+                long time = Clock.UNITS_PER_SEC;
+                clock.setTime(time);
+                Db db = Db.builder().testSetup().clock(clock).maxNodeSize8()
+                        .startupDistance(2000).start();
+                Reclaim reclaim = db.internal().reclaim();
+                byte[] v = new byte[100];
+                int head = 0, next = 0;
+                while (next < n) {
+                    Trans.Builder b = db.trans();
+                    for (int j = 0; j < 100; j++) {
+                        b.put(queueKey(next++), v);
+                    }
+                    db.execute(b.build());
+                }
+                db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
+                
+                // Of the steps, the one with most dirty nodes above the bound: the excess, its
+                // dirty nodes and its puts; and the steps.
+                final long[] worst = new long[] {Long.MIN_VALUE, 0, 0, 0};
+                Db.testHooks = new Db.TestHooks() {
+                    public void transExecuted(Db.ExecuteData x) {
+                        final Trans t = x.trans;
+                        if (t.touch) {
+                            final long excess = t.dirtiedNodes - (long) nodesAPut * t.kvs.length;
+                            if (excess > worst[0]) {
+                                worst[0] = excess;
+                                worst[1] = t.dirtiedNodes;
+                                worst[2] = t.kvs.length;
+                            }
+                            worst[3]++;
+                        }
+                    }
+                    public void valueNodeCreated(bergdb.dag.ValueNode node, long[] key) {}
+                    public void nodeTouched(Node node) {}
+                    public void nodeReplaced(Node node) {}
+                };
+                try {
+                    for (int i = 0; reclaim.getIterationCount() < 3; i++) {
+                        Assert.assertTrue("three iterations, n=" + n + ": " + i, i < 20000);
+                        time += Clock.UNITS_PER_SEC / 20;
+                        clock.setTime(time);
+                        Trans.Builder b = db.trans();
+                        for (int j = 0; j < 100; j++) {
+                            b.put(queueKey(next++), v);
+                            b.delete(queueKey(head++));
+                        }
+                        db.execute(b.build());
+                    }
+                } finally {
+                    Db.testHooks = null;
+                    db.stop();
+                }
+                Assert.assertTrue("steps, n=" + n + ": " + worst[3], worst[3] >= 3 * n / 150);
+                Assert.assertTrue("n=" + n + ": a step with " + worst[2] + " puts made "
+                        + worst[1] + " index nodes dirty, more than " + nodesAPut + " a put",
+                        worst[0] <= 0);
+            }
+        }
+        
+        /**
+         * bergdb 024-07, the last step and the record limit. TransSeq.take takes a
+         * transaction's dirty index nodes whole, in one record, and never a transaction whose
+         * nodes do not fit in a record; Db.checkDirtyNodes refuses such a user transaction
+         * before it changes anything, and leaves reclaim's steps to their own bound. Until
+         * 024-07 an iteration's last step had none: its touch made dirty every index node
+         * after its scan's last key. Here, with the record limit lowered to 100 kB as
+         * StoredTrans's own test does, and a queue of 6,000 keys in time order, the index
+         * nodes of the first iteration's last step did not fit in a record: no record took
+         * them, the startup pos stayed before the step for good (2.3 MB behind after 1,000
+         * transactions more, with a startup distance of 2 kB, four iterations done), and
+         * the stream was never cut, with no exception: the fault of a queue of about 100M
+         * keys at the real limit, 2 GB (024-07, section 3). Now the startup pos passes the
+         * last step within 100 transactions.
+         */
+        @Nano
+        public static void testLastStepWithinRecordLimit() {
+            final long saved = StoredTrans.recordLimit;
+            StoredTrans.recordLimit = 100 * 1000;
+            Db db = null;
+            try {
+                CoreTestClock clock = new CoreTestClock();
+                long time = Clock.UNITS_PER_SEC;
+                clock.setTime(time);
+                db = Db.builder().testSetup().clock(clock).maxNodeSize8()
+                        .startupDistance(2000).start();
+                Reclaim reclaim = db.internal().reclaim();
+                byte[] v = new byte[100];
+                int head = 0, next = 0;
+                while (next < 6000) {
+                    Trans.Builder b = db.trans();
+                    for (int j = 0; j < 20; j++) {
+                        b.put(queueKey(next++), v);
+                    }
+                    db.execute(b.build());
+                }
+                db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
+                
+                for (int i = 0; reclaim.lastDoneRow() == null; i++) {
+                    Assert.assertTrue("an iteration: " + i, i < 20000);
+                    time += Clock.UNITS_PER_SEC / 20;
+                    clock.setTime(time);
+                    Trans.Builder b = db.trans();
+                    for (int j = 0; j < 8; j++) {
+                        b.put(queueKey(next++), v);
+                        b.delete(queueKey(head++));
+                    }
+                    db.execute(b.build());
+                }
+                final long pEnd = reclaim.lastDoneRow().pEnd;
+                for (int i = 0; db.internal().getStartupPosForEvict() < pEnd; i++) {
+                    Assert.assertTrue("the startup pos passes the iteration's last step: after "
+                            + i + " transactions it is " 
+                            + (db.getStreamLength() - db.internal().getStartupPosForEvict())
+                            + " bytes behind", i < 100);
+                    time += Clock.UNITS_PER_SEC / 20;
+                    clock.setTime(time);
+                    Trans.Builder b = db.trans();
+                    for (int j = 0; j < 8; j++) {
+                        b.put(queueKey(next++), v);
+                        b.delete(queueKey(head++));
+                    }
+                    db.execute(b.build());
+                }
+            } finally {
+                StoredTrans.recordLimit = saved;
+                if (db != null) {
+                    db.stop();
+                }
+            }
+        }
+        
+        /**
+         * bergdb 024-07, the premise of a step that makes dirty its own paths only: a delete
+         * unlinks the nodes it empties (Dag.deleteUpward), so no index node that a lookup
+         * reaches is left without a live key below it, where no put would make it dirty
+         * again and its version would stay below the cut (testDeletedKeysAfterCut, at a
+         * larger size and at the first available time too). 600 short keys and 300 long
+         * ones of several segments under three prefixes; then all but the last 20 short keys
+         * and the long keys of two prefixes are deleted, in key order, which empties whole
+         * subtrees and segment trees; then overwrites of the 20 short keys left, until three
+         * cuts. On the cut stream, which refuses every read below the cut, in the running
+         * database and after a restart: every key ever put has its value, or none, at the
+         * first available time and at the latest, and scans at both times give the keys.
+         */
+        @Nano
+        public static void testEmptiedSubtreesAfterCut() {
+            CoreTestClock clock = new CoreTestClock();
+            long time = Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            CutStream stream = new CutStream();
+            Db db = startForCutTest(stream, clock);
+            final java.util.Map<String, java.util.TreeMap<Long, byte[]>> model = 
+                    new java.util.TreeMap<String, java.util.TreeMap<Long, byte[]>>();
+            final java.util.List<String> keys = new java.util.ArrayList<String>();
+            for (int i = 0; i < 600; i++) {
+                keys.add("/k/" + (1000 + i));
+            }
+            for (int i = 0; i < 300; i++) {
+                keys.add("/long/prefix-number-" + (i % 3) + "/and-a-second-long-segment/" 
+                        + (1000 + i));
+            }
+            for (String k : keys) {
+                model.put(k, new java.util.TreeMap<Long, byte[]>());
+            }
+            
+            for (int i = 0; i < keys.size(); i += 30) {
+                time += Clock.UNITS_PER_SEC / 20;
+                clock.setTime(time);
+                Trans.Builder b = db.trans();
+                for (int j = i; j < i + 30; j++) {
+                    b.put(keys.get(j), StringUtil.toBytes("v" + j));
+                }
+                Trans t = b.build();
+                db.execute(t);
+                for (int j = i; j < i + 30; j++) {
+                    model.get(keys.get(j)).put(t.tt, StringUtil.toBytes("v" + j));
+                }
+            }
+            final java.util.List<String> deleted = new java.util.ArrayList<String>();
+            for (int i = 0; i < keys.size(); i++) {
+                if (i < 580 || (i >= 600 && i % 3 != 0)) {
+                    deleted.add(keys.get(i));
+                }
+            }
+            for (int i = 0; i < deleted.size(); i += 30) {
+                time += Clock.UNITS_PER_SEC / 20;
+                clock.setTime(time);
+                Trans.Builder b = db.trans();
+                for (int j = i; j < Math.min(i + 30, deleted.size()); j++) {
+                    b.delete(deleted.get(j));
+                }
+                Trans t = b.build();
+                db.execute(t);
+                for (int j = i; j < Math.min(i + 30, deleted.size()); j++) {
+                    model.get(deleted.get(j)).put(t.tt, null);
+                }
+            }
+            
+            java.util.Random r = new java.util.Random(7);
+            long cut = 0;
+            int cuts = 0;
+            for (int i = 0; i < 20000 && cuts < 3; i++) {
+                time += Clock.UNITS_PER_SEC / 20;
+                clock.setTime(time);
+                String k = keys.get(580 + r.nextInt(20));
+                byte[] v = StringUtil.toBytes("w" + i);
+                Trans t = db.trans().put(k, v).build();
+                db.execute(t);
+                model.get(k).put(t.tt, v);
+                if (stream.getCut() > cut) {
+                    cut = stream.getCut();
+                    cuts++;
+                }
+            }
+            Assert.assertTrue("cuts: " + cuts, cuts >= 3);
+            
+            for (int pass = 0; pass < 2; pass++) {
+                final long first = db.getFirstAvailableLookupTime();
+                Assert.assertTrue("first available time " + first, first > Clock.UNITS_PER_SEC);
+                for (long lt : new long[] {first, (first + time) / 2, time}) {
+                    int live = 0;
+                    for (String k : keys) {
+                        java.util.Map.Entry<Long, byte[]> e = model.get(k).floorEntry(lt);
+                        byte[] expected = e == null ? null : e.getValue();
+                        Assert.assertArrayEquals("pass " + pass + ", " + k + " at " + lt, expected,
+                                DbUtil.get(db, lt, k));
+                        if (expected != null) {
+                            live++;
+                        }
+                    }
+                    GetMany g = db.newGetMany();
+                    g.lookupTime = lt;
+                    g.startKey = Keys.toSegments("/k/");
+                    final int[] count = new int[1];
+                    g.stopCondition = new GetMany.StopCondition() {
+                        public int handleKvt(Kvt kvt) {
+                            count[0]++;
+                            return CONTINUE;
+                        }
+                        public void eod() {}
+                    };
+                    db.getMany(g);
+                    Assert.assertEquals("pass " + pass + ", the scan at " + lt, live, count[0]);
+                }
+                if (pass == 0) {
+                    db.sync(SyncLevel.ORDINARY);
+                    db.stop();
+                    clock = new CoreTestClock();
+                    clock.setTime(time);
+                    db = startForCutTest(stream.copy(), clock);
+                }
             }
             db.stop();
         }

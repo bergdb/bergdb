@@ -1,7 +1,9 @@
 # Bergdb item 001, C-CUT (WP R7): a cut that CutOK does not allow. The nodes of
 # R(0) are reachable at every time, and none is written again; T(2) moves the
 # first available time to 1 and decides a cut at 1. Expected: the record and D
-# are the model's, and the cut fails CutOK's part 2 (CUT-reach).
+# are the model's, and the cut fails CutOK's part 2 (CUT-reach). Since bergdb
+# 024-07 also CUT-live: the trace has no data node, so its index nodes have none
+# below them.
 TRACE 2
 CONFIG cut
 TX 0

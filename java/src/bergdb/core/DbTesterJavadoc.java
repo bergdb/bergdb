@@ -93,8 +93,9 @@ public class DbTesterJavadoc {
     }
 
     /**
-     * Trans.Builder.build(): one operation a key: the last put, or a delete if there is no
-     * put; a delete never replaces a put, whatever their order.
+     * Trans.Builder.build(): one operation a key, the last call's, a put or a delete (bergdb
+     * 024-10: the last operation wins). Until release 2026.4: the last put, or a delete if
+     * there was no put, so that "a" held "1" and "f" held "2".
      */
     @Nano
     public static void testTransBuilderOneOperationPerKey() {
@@ -109,8 +110,8 @@ public class DbTesterJavadoc {
             Trans t = db.trans().put("f", "1").delete("f").put("f", "2").delete("f").build();
             Assert.assertEquals("one KV", 1, t.kvs.length);
             db.execute(t);
-            String[][] expected = {{"a", "1"}, {"b", "2"}, {"c", "2"}, {"d", "3"}, {"e", null},
-                    {"f", "2"}};
+            String[][] expected = {{"a", null}, {"b", "2"}, {"c", "2"}, {"d", "3"}, {"e", null},
+                    {"f", null}};
             for (String[] kv : expected) {
                 byte[] value = get(db, kv[0]);
                 Object got = value == null ? null : new String(value);

@@ -11,7 +11,11 @@ lookups at the end; and at every restart, rule 4 by position
 with the cut as the stream's first position against rule 4 by node id
 (bergdb 005-62, `posCutCounts`). And T-SCHEME by running
 (WP R6, `checkSchemeB`): for every iteration whose scheme conditions hold,
-`CutOK` at its cut position in every later state past the waits.
+`CutOK` at its cut position in every later state past the waits. And the same
+with the cover in place of the touch's (bergdb 024-07, `checkSchemeC`), on
+example 4 and on example 4 without any touch (`spec4n`): the iterations with a
+data node below every index node all have the cover (T-COVER), and `CutOK`
+holds past the waits for every iteration with the cover and the rewrites.
 Usage: lake exe reclaimtest [seeds] [n] [scheme]
   scheme: T-SCHEME only (for larger runs).
 -/
@@ -38,12 +42,16 @@ def main (args : List String) : IO UInt32 := do
     let mut sIters := 0
     let mut sStates := 0
     let mut sFails := 0
+    let mut cT : Nat × Nat × Nat × Nat × Nat × Nat := (0, 0, 0, 0, 0, 0)
+    let mut cN : Nat × Nat × Nat × Nat × Nat × Nat := (0, 0, 0, 0, 0, 0)
     for seed in [1:seeds + 1] do
       let ts := randomTs4 seed n
       let (si, ss, sf) := checkSchemeB spec4 al (ts.map (·.1))
       sIters := sIters + si
       sStates := sStates + ss
       sFails := sFails + sf
+      cT := addC cT (checkSchemeC spec4 al (ts.map (·.1)))
+      cN := addC cN (checkSchemeC spec4n al (ts.map (·.1)))
       if !schemeOnly then
         let cs := cutsFor spec4 al ts
         let (ok, t8, t12, cm) := checkCut spec4 al cs
@@ -60,7 +68,10 @@ def main (args : List String) : IO UInt32 := do
     if hfails != 0 then bad := bad + 1
     if sFails != 0 then bad := bad + 1
     if pc.getD 3 0 + pc.getD 4 0 + pc.getD 5 0 != 0 then bad := bad + 1
-    let scheme := s!"T-SCHEME: {sIters} iterations with the scheme's conditions, CutOK checked in {sStates} states past the waits, {sFails} fail"
+    if cT.2.1 + cT.2.2.2.2.2 + cN.2.1 + cN.2.2.2.2.2 != 0 then bad := bad + 1
+    let cover := fun (c : Nat × Nat × Nat × Nat × Nat × Nat) =>
+      s!"{c.1} iterations with a data node below every index node, {c.2.1} of them without the cover; {c.2.2.1} iterations with the cover and the rewrites ({c.2.2.2.1} with the touch's cover too), CutOK checked in {c.2.2.2.2.1} states past the waits, {c.2.2.2.2.2} fail"
+    let scheme := s!"T-SCHEME: {sIters} iterations with the scheme's conditions, CutOK checked in {sStates} states past the waits, {sFails} fail; with the cover (024-07): {cover cT}; without any touch: {cover cN}"
     if schemeOnly then
       IO.println s!"policy {a}: {scheme}"
     else

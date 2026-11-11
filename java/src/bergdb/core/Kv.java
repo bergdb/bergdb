@@ -20,6 +20,14 @@ public final class Kv {
     public final ValueTransformation valueTransformation;
     
     /**
+     * The number of the call that made this KV, in the order of its Trans.Builder's puts and
+     * deletes, from 0; set by Trans.Builder.build(). Of the KVs of a transaction that key
+     * transformations make one key, Db.putKvs keeps the one with the highest number: the
+     * last operation wins (bergdb 024-10, section 3, R2).
+     */
+    int call;
+    
+    /**
      * The constructor does not copy arrays, just references.
      * Arrays must not be changed by caller after this constructor is called.
      */
