@@ -199,11 +199,12 @@ public class DbTesterDelete {
     /**
      * KVs that key transformations make one key reach the index as one operation (Db.putKvs,
      * Db.sortByKey; bergdb 023-08, section 7, Frans's decision of 2026-11-10): of them the
-     * last put in the order of the keys as written is kept, or a delete if there is no put; a
-     * delete never replaces a put, as Trans.Builder.build's rule for the calls on one key
-     * (bergdb 015-40). One transaction has, on keys that existed: a transformed put and a
+     * one called last is kept, a put or a delete, as Trans.Builder.build's rule for the calls
+     * on one key (bergdb 024-10: the last operation wins; until release 2026.4 the last put
+     * in the order of the keys as written, or a delete if there was no put, so that "/c/b"
+     * held "b1"). One transaction has, on keys that existed: a transformed put and a
      * plain put (the plain one, later, is kept); a transformed put and a later delete (the
-     * put); a delete and a later transformed put (the put); two transformed puts (the later);
+     * delete); a delete and a later transformed put (the put); two transformed puts (the later);
      * and a transformed put with a value transformation before a plain put with one (only
      * the kept one's runs). Its database writes the same stream, byte for byte, as one given
      * the kept operations alone, and gives their values at the latest time and after a
@@ -234,7 +235,7 @@ public class DbTesterDelete {
                     tb.put(Keys.toSegments("/c/$e"), TO_C, bytes("e1"), dropped);
                     tb.put(Keys.toSegments("/c/e"), null, bytes("e2"), kept);
                 } else {
-                    tb.put("/c/a", "a2").put("/c/b", "b1").put("/c/c", "c1").put("/c/d", "d2");
+                    tb.put("/c/a", "a2").delete("/c/b").put("/c/c", "c1").put("/c/d", "d2");
                     tb.put(Keys.toSegments("/c/e"), null, bytes("e2"), kept);
                 }
                 db.execute(tb.build());
@@ -242,10 +243,10 @@ public class DbTesterDelete {
                 Assert.assertEquals(at + "the dropped KV's value transformation", 0, dropped.calls);
                 Assert.assertEquals(at + "the kept KV's value transformation", 1, kept.calls);
                 for (int round = 0; round < 2; round++) {
-                    String[] expected = {"a2", "b1", "c1", "d2", "e2!"};
+                    String[] expected = {"a2", null, "c1", "d2", "e2!"};
                     for (int i = 0; i < expected.length; i++) {
                         String k = "/c/" + (char) ('a' + i);
-                        Assert.assertEquals(at + "round " + round + ", " + k, expected[i],
+                        assertValue(at + "round " + round + ", " + k, expected[i],
                                 DbUtil.getString(db, k));
                     }
                     db.close();
