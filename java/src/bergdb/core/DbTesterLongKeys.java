@@ -37,6 +37,17 @@ public class DbTesterLongKeys {
         return key;
     }
 
+    /**
+     * One of BergDB's own keys, which alone may pass L2: it starts with 01 25, the bkey of
+     * "/#" (review rev24, R2).
+     */
+    private static byte[] ownKey(int length) {
+        byte[] key = key("..", length);
+        key[0] = 1;
+        key[1] = 0x25;
+        return key;
+    }
+
     private static void assertValue(Db db, byte[] key, String value) {
         Assert.assertArrayEquals("the value of the key of " + key.length + " bytes",
                 value.getBytes(java.nio.charset.StandardCharsets.UTF_8), DbUtil.get(db, key));
@@ -155,8 +166,8 @@ public class DbTesterLongKeys {
         for (int nodeSize : NODE_SIZES) {
             final byte[] first = key("/d/", 50);
             final byte[] second = key("/d/", Db.MAX_KEY_BYTES);
-            final byte[] own1 = key("/#i/", 10 * 1000);
-            final byte[] own2 = key("/#i/", Db.MAX_TRANS_KEY_BYTES);
+            final byte[] own1 = ownKey(10 * 1000);
+            final byte[] own2 = ownKey(Db.MAX_TRANS_KEY_BYTES);
             Db db = builder(nodeSize, new MemoryStream()).startupDistance(200 * 1000 * 1000)
                     .start();
             try {
@@ -171,7 +182,7 @@ public class DbTesterLongKeys {
                 assertValue(db, own1, "own1");
                 assertValue(db, own2, "own2");
                 final long count = db.getTransactionCount();
-                final byte[] over = key("/#i/", Db.MAX_TRANS_KEY_BYTES + 1);
+                final byte[] over = ownKey(Db.MAX_TRANS_KEY_BYTES + 1);
                 String m = refused(bergdb.pub.util.DbException.class, () -> db.execute(
                         db.trans().putLongKey(Keys.toSegments(over), null, new byte[0], null)
                         .build()));
@@ -186,6 +197,65 @@ public class DbTesterLongKeys {
             } finally {
                 db.close();
             }
+        }
+    }
+    /**
+     * 021-16's depth through BergDB's own long keys (review rev24, R7): in a thread with a
+     * stack of 256 kB, where a recursion with a frame a segment would overflow at these
+     * 8,193 segments, a key of 10,000 bytes and then one of 57,344 (L3's whole) with the same
+     * start, through putLongKey(), and a start again from the stream (the start's check,
+     * Dag.visitMemoryNodes). The record limit is lowered to 30 MB so that execute()'s cheap
+     * count fails and Dag.dirtyNodeBound walks the new key's segment trees
+     * (freshTreeBound), as U5-2's put did.
+     */
+    @Nano
+    public static void testOwnLongKeysSmallStack() throws InterruptedException {
+        final Throwable[] failure = new Throwable[1];
+        Thread t = new Thread(null, () -> {
+            try {
+                ownLongKeys();
+            } catch (Throwable e) {
+                failure[0] = e;
+            }
+        }, "a small stack", 256 * 1024);
+        t.start();
+        t.join();
+        if (failure[0] != null) {
+            throw new AssertionError("with a stack of 256 kB: " + failure[0], failure[0]);
+        }
+    }
+
+    private static void ownLongKeys() {
+        final long saved = StoredTrans.recordLimit;
+        StoredTrans.recordLimit = 30 * 1000 * 1000;
+        try {
+            final byte[] first = ownKey(10 * 1000);
+            final byte[] second = ownKey(Db.MAX_TRANS_KEY_BYTES);
+            MemoryStream stream = new MemoryStream();
+            Db db = Db.builder().testSetup(stream).startupDistance(200 * 1000 * 1000).start();
+            try {
+                db.execute(db.trans().putLongKey(Keys.toSegments(first), null, 
+                        "first".getBytes(), null).build());
+                db.execute(db.trans().putLongKey(Keys.toSegments(second), null, 
+                        "second".getBytes(), null).build());
+                assertValue(db, first, "first");
+                assertValue(db, second, "second");
+                db.sync(SyncLevel.ORDINARY);
+                db.checkNodes();
+                stream = stream.copy();
+            } finally {
+                db.close();
+            }
+            Db db2 = Db.builder().testSetup(stream).start();
+            try {
+                assertValue(db2, first, "first");
+                assertValue(db2, second, "second");
+                db2.checkNodes();
+            } finally {
+                db2.close();
+            }
+        } finally {
+            StoredTrans.recordLimit = saved;
         }
     }
 }
