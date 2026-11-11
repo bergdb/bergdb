@@ -38,7 +38,7 @@ structure TTx where
 
 /-- The tree lines of a trace. -/
 structure TTrace where
-  /-- The TREE line: M, G, H and the primordial key node's id. -/
+  /-- The TREE line: M, G, H and the primordial key node's id; with merges, m and c (024-22). -/
   tree : Option (Params × NodeId) := none
   txs : Array TTx := #[]
   bad : Array String := #[]
@@ -118,8 +118,14 @@ def parseTreeLine (t : TTrace) (n : Nat) (line : String) : TTrace :=
   if line.startsWith "#" then t else
   match toks line with
   | ["TREE", m, g, h, k] => match m.toNat?, g.toNat?, h.toNat?, k.toNat? with
-    | some m, some g, some h, some k => { t with tree := some (⟨m, g, h⟩, k) }
+    | some m, some g, some h, some k => { t with tree := some ({ M := m, G := g, H := h }, k) }
     | _, _, _, _ => bad "bad TREE"
+  -- With the merges' thresholds m and c (bergdb 024-22, section 2.5).
+  | ["TREE", m, g, h, k, mb, mm] =>
+    match m.toNat?, g.toNat?, h.toNat?, k.toNat?, mb.toNat?, mm.toNat? with
+    | some m, some g, some h, some k, some mb, some mm =>
+      { t with tree := some ({ M := m, G := g, H := h, mergeBelow := mb, mergeMax := mm }, k) }
+    | _, _, _, _, _, _ => bad "bad TREE"
   | ["TX", i] => match i.toNat? with
     | some i => { t with txs := t.txs.push { idx := i } }
     | none => t

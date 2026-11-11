@@ -19,12 +19,39 @@ open SIS SIS.Check
 /-- The parameters of a tree: the node size M (`Dag.maxNodeSize`: 8, 14, 30 or
 62), and the bounds of the levels: G, the largest segment index of a key node,
 and H, the largest height of a key node in its segment tree. A run stays
-within G and H, or its levels are not those of A4. -/
+within G and H, or its levels are not those of A4.
+
+The merges at the delete (bergdb 024-11, section 5; 024-22): `mergeBelow`, m,
+the least live klongs of a key node that is not a root of a segment tree (a
+node with fewer after a delete is merged with a sibling; `Dag.mergeBelow`), and
+`mergeMax`, c, the most live klongs that a merge puts in one node (more make
+two; `Dag.mergeMax`). Parameters, not literals, so that a decision on the
+thresholds changes a value, not the model (bergdb 024-14). Below 2, m merges
+nothing: release 2026.4's tree, the default. `Params.withMerges` gives
+024-11's values, m = max(2, M / 4) and c = M / 2; `MergeParamsOK` states what
+they must meet. -/
 structure Params where
   M : Nat
   G : Nat
   H : Nat
+  mergeBelow : Nat := 0
+  mergeMax : Nat := 0
   deriving Repr, DecidableEq, Inhabited
+
+/-- Merges at the delete are on: m is 2 or more. -/
+def Params.merges (p : Params) : Bool := 2 ≤ p.mergeBelow
+
+/-- The writer of record format 7 (bergdb 024-21): m is set, 1 below node size
+8 (where nothing merges) and 2 or more from it. Its `dirtyNodeBound` counts the
+merges at every node size, as a margin below 8 (`Bound.lean`). -/
+def Params.format7 (p : Params) : Bool := 1 ≤ p.mergeBelow
+
+/-- The parameters with 024-11's thresholds for node size M ("for now",
+Frans, 2026-11-11, 11:44; 024-22, section 2): m = max(2, M / 4), c = M / 2;
+below node size 8 m = 1, no merge, as Java's `Dag.minFill` (024-21): there a
+space split's halves can hold one klong (`MergeParamsOK`). -/
+def Params.withMerges (p : Params) : Params :=
+  { p with mergeBelow := if p.M < 8 then 1 else max 2 (p.M / 4), mergeMax := p.M / 2 }
 
 /-- The largest level of a key node. -/
 def Params.keyMax (p : Params) : Nat := 1 + p.G * (p.H + 1) + p.H
@@ -222,6 +249,17 @@ def KNode.lastVersionGivenDel (n : KNode) (t : Time) (del : List Nat) : KNode :=
 
 /-- `KeyNode.lastVersion`. -/
 def KNode.lastVersion (n : KNode) (t : Time) : KNode := n.lastVersionGivenDel t n.lastBitmap
+
+/-- The live klongs of the node at the latest time, as (compare value,
+pointee), in compare order: the key klongs of its last version. -/
+def KNode.live (n : KNode) : List (Nat × NodeId) :=
+  ((n.lastVersion 0).ks.filterMap (fun k => match k with
+    | .key c y => some (c, y)
+    | _ => none))
+
+/-- `Dag.liveCount` without its limit: the number of live compare values at the
+latest time (024-11's cnt). -/
+def KNode.cnt (n : KNode) : Nat := n.live.length
 
 /-- The two halves of a space split (`KeyNode.firstAndSecond`): the last version
 `last` (a time klong and sorted key klongs) cut after its first
