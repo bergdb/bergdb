@@ -40,5 +40,6 @@ import SIS.Tree.Inv
 import SIS.Tree.Props
 import SIS.Tree.Bound
 import SIS.Tree.Top
+import SIS.Tree.MergeProps
 import SIS.Proof.TreeRoot
 import SIS.Proof.TreeInit
