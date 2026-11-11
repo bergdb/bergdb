@@ -2952,7 +2952,7 @@ public class Db implements AutoCloseable {
         // section 7, Q4): the index gets a transaction's operations in the order of their keys,
         // whatever the order a transformation left them in, so two transactions with the same
         // operations run the same and write the same stream; of KVs that transformations make
-        // one key, one is kept by Trans.Builder.build's rule (sortByKey). Value
+        // one key, the one called last is kept, as Trans.Builder.build does (sortByKey). Value
         // transformations stay in the put loop, for the KVs kept: each reads the previous value
         // at tt, as before. The record holds the KVs put, and the startup's rerun applies them
         // in their stored order, this order, and does not sort.
@@ -2987,27 +2987,27 @@ public class Db implements AutoCloseable {
      * The KVs to put, after the key transformations (putKvs; bergdb 023-08, section 7, Q4):
      * 'kvs' sorted by key and one KV a key, in a new array; 'kvs' and the transaction's write
      * hashes are left as they are, so that a Trans can be run again (its Javadoc allows
-     * reuse), each key transformation seeing its own slot (bergdb 023-11, review A, F1). The
-     * sort is stable, so KVs that transformations make one key are next to each other, in
-     * the order of Trans.Builder.build's sort (the keys as written). Of them one is kept, by
-     * build's rule for the calls on one key (bergdb 015-40): the last put, or a delete if
-     * there is no put; a delete never replaces a put. Frans, 2026-11-10 (023-08, section 7):
-     * silently, as the builder does. So a transaction reaches the index with one operation a
-     * key. A dropped KV's write hash is its kept KV's, as the key is the same.
+     * reuse), each key transformation seeing its own slot (bergdb 023-11, review A, F1). KVs
+     * that transformations make one key are next to each other, in the order of their calls
+     * in the builder (Kv.call). Of them the one called last is kept, a put or a delete: the
+     * last operation wins, as in Trans.Builder.build for the calls on one key as written
+     * (bergdb 024-10, section 3, R2; Frans, 2026-11-10, 023-08, section 7: silently). Until
+     * release 2026.4 the last put in the order of the keys as written was kept, or a delete
+     * if there was no put. So a transaction reaches the index with one operation a key. A
+     * dropped KV's write hash is its kept KV's, as the key is the same.
      */
     static Kv[] sortByKey(Kv[] kvs) {
         final Kv[] sorted = kvs.clone();
         java.util.Arrays.sort(sorted, new java.util.Comparator<Kv>() {
             public int compare(Kv a, Kv b) {
-                return Keys.compareArrays(a.getKey(), b.getKey());
+                int c = Keys.compareArrays(a.getKey(), b.getKey());
+                return c != 0 ? c : Integer.compare(a.call, b.call);
             }
         });
         int n = 0;                              // the KVs kept, in sorted[0, n)
         for (int i = 0; i < sorted.length; i++) {
             if (n > 0 && Keys.compareArrays(sorted[n - 1].getKey(), sorted[i].getKey()) == 0) {
-                if (sorted[i].getValue() != null || sorted[n - 1].getValue() == null) {
-                    sorted[n - 1] = sorted[i];  // a put, or a delete after a delete
-                }
+                sorted[n - 1] = sorted[i];      // the same key, called later
                 continue;
             }
             sorted[n++] = sorted[i];
