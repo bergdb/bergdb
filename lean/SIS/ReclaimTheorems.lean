@@ -85,16 +85,16 @@ theorem T_cover (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp al
 /-- T-LATEST (bergdb 024-07, section 4): from an iteration's end on, the latest
 versions are at the cut or later. With T-COVER's two premises at e, the end of
 an iteration with its cut at c ≤ e, in every state after T(k), e ≤ k, whose
-startup pos has passed e (BergDB waits for it: pEnd), every node reachable at a
-time from e to k has its latest version, if it has one, at c or later: the
-latest versions that a read from the first available time e on may follow
-(`ReadsPhys.latest`, and so `CutOK`'s part 4), and the first half of `CutOK`'s
-part 3 for the nodes of D that such a read reaches.
+startup pos is at e or later (BergDB waits for it: `startupPos >= pEnd`), every
+node reachable at a time from e to k has its latest version, if it has one, at
+c or later: the latest versions that a read from the first available time e on
+may follow (`ReadsPhys.latest`, and so `CutOK`'s part 4), and the first half
+of `CutOK`'s part 3 for the nodes of D that such a read reaches.
 
 A node made after T(e) has its versions after e; one that existed then was
 reachable at e (no resurrection): there a data node is at c or later by the
 rewrites, and an index node is at c or later or in D (T-COVER), with a
-got-dirty index at most e, so it is written once the startup pos has passed e.
+got-dirty index at most e, so it is written once the startup pos has reached e.
 
 Not in it, and still checked by running (`checkSchemeC`, and C-CUT on Java's
 traces), not proved: the versions that a pointer leads to besides the latest
@@ -111,7 +111,7 @@ theorem T_latest (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp a
     (∀ x n, db.P.get? x = some n → n.isData = false → written sp x = true →
       reachable sp db.P e x = true →
       ∃ d m, d ∈ reachFrom sp db.P e x n ∧ db.P.get? d = some m ∧ m.isData = true) →
-    e < lastSp dbk.S →
+    e ≤ lastSp dbk.S →
     ∀ t x, e ≤ t → t ≤ k → reachable sp dbk.P t x = true →
       ∀ v, dbk.S.lv x = some v → c ≤ v.recNo :=
   latest_st sp al ts hok (algOK_of sp al hst) e k c hce hek hk

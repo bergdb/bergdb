@@ -319,7 +319,7 @@ its section in sis-model.md.
   every index node reachable then has a data node below it, every index
   node reachable then is in D or at c or later; so a step of Java need not
   touch a key range. T-LATEST (`T_latest`, 024-07): with the same premises,
-  once the startup pos has passed the iteration's end, every node reachable
+  once the startup pos has reached the iteration's end, every node reachable
   at a time from the end on has its latest version at c or later.
 * SIS/HandleReclaimTheorems.lean (not in sis-model.md; 001-07, 2.9, 2.10;
   005-62). Level 3's reclaim theorems with eviction over handles (bergdb
@@ -650,9 +650,9 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
   before the one above (`Inv.good_below`); so the latest version of a node
   that is not in D is at or after the version of every data node below it
   (`Inv.clean_ge_data`); T-COVER (`cover_st`). From the iteration's end on,
-  with the startup pos past it, the latest versions of the nodes reachable
-  then are at the cut or later (`latest_st`, with `reach_back_st`, `D_later`
-  and the indexes of D after the startup pos).
+  with the startup pos at it or later, the latest versions of the nodes
+  reachable then are at the cut or later (`latest_st`, with `reach_back_st`,
+  `D_later` and the indexes of D after the startup pos).
 * CutLazySim, CutLazyStart. WP R5, for T12 over handles: stage 1's memory
   with another object for the root (`Mem.withRoot`); two root objects that
   agree from f on (`RootRel`: the same live children from f on, and the same

@@ -866,7 +866,7 @@ only, and the top is after the cut. Then:
   clean: its latest version is good, and so at or after the version of every
   data node below it. So no key range needs a touch.
 * T-LATEST (`T_latest`, bergdb 024-07): with the same two premises, in
-  every later state whose startup pos has passed the iteration's end, every
+  every later state whose startup pos has reached the iteration's end, every
   node reachable at a time from the end on has its latest version at c or
   later.
 * T8 (`T8_recoverCut`): startup from the cut stream gives the same lookups

@@ -14,7 +14,7 @@ version of every node below it, each in a record at or before the one above
 version of every data node below it (`Inv.clean_ge_data`): where the rewrites
 have put the data nodes at c or later, and every index node has a data node
 below it, every index node is in D or at c or later (`cover_st`). And once the
-startup pos has passed the iteration's end, every node reachable from then on
+startup pos has reached the iteration's end, every node reachable from then on
 has its latest version at c or later (`latest_st`).
 -/
 import SIS.Proof.LogicFacts
@@ -130,9 +130,9 @@ theorem cover_st (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp a
 
 /-! ## From the iteration's end on (bergdb 024-07, section 4.2)
 
-With the cover at the iteration's end e, and the startup pos past e: every node
-that is reachable at a time from e on has its latest version, if it has one, at
-the cut c or later. Steps 1 and 5 of the scheme's argument (bergdb 001-07,
+With the cover at the iteration's end e, and the startup pos at e or later:
+every node that is reachable at a time from e on has its latest version, if it
+has one, at the cut c or later. Steps 1 and 5 of the scheme's argument (bergdb 001-07,
 section 5) for the latest versions, now proved; the versions that a physical
 read may follow besides the latest ones, and the references of D's nodes, are
 still T-SCHEME's part that is checked by running. -/
@@ -173,8 +173,9 @@ end
 
 /-- From the iteration's end on: with the two premises of `cover_st` at e, the
 end of an iteration with its cut at c ≤ e, in every state after T(k), e ≤ k,
-whose startup pos has passed e, every node reachable at a time t from e to k
-has its latest version, if it has one, at c or later.
+whose startup pos is at e or later (the take has taken T(e)'s nodes; Java's
+`startupPos >= pEnd`), every node reachable at a time t from e to k has its
+latest version, if it has one, at c or later.
 
 A node that did not exist after T(e) has its versions after e. A node that
 existed then was reachable at e (no resurrection, `reach_back_st`): a data node
@@ -191,7 +192,7 @@ theorem latest_st (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp 
       reachable sp (st sp al ts e).P e x = true →
       ∃ d m, d ∈ reachFrom sp (st sp al ts e).P e x n ∧ (st sp al ts e).P.get? d = some m ∧
         m.isData = true)
-    (hsp : e < lastSp (st sp al ts k).S) :
+    (hsp : e ≤ lastSp (st sp al ts k).S) :
     ∀ t x, e ≤ t → t ≤ k → reachable sp (st sp al ts k).P t x = true →
       ∀ v, (st sp al ts k).S.lv x = some v → c ≤ v.recNo := by
   intro t x het htk hr v hv
