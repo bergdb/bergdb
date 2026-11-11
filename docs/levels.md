@@ -384,6 +384,26 @@ How it works in Java:
   at node size 30; v B / 30 at another node size, m at least 2, no
   merges below 8; `Dag.minFill`, `mergeCap`, `splitAbove`). The rerun of
   a record does the same.
+* At most theta dead klongs a key node (option 2 of 024-18, since format
+  7; 024-23): a klong is dead when the node's last bitmap deletes it or a
+  later klong of its compare value follows it. Before each write to a
+  key node (a put's klong, a delete's bitmap, the transaction's own
+  bitmap changed in place, a split's or a merge's klongs in the parent,
+  LE-b, root collapse) the writer counts the dead klongs the write adds;
+  if the node would then hold more than theta (`Dag.deadFull`), it is
+  full, and rule O replaces it by its last version with the write
+  applied: one node always (a time split, in place for a node of the
+  transaction), as the node had room for the write; a node without room
+  is full by its size first. So after every write a node holds at most
+  theta dead klongs (024-23, TP39; checked by `Dag.checkFill`), where the
+  merges alone allow B, and reclaim's rewrites, which are puts, compact
+  the cold leaves that they take above theta. A compaction keeps every
+  live klong, so the fill (m, BU1) does not change. theta is 7 at node
+  size 30, 7 B / 30 at the others, at least 1, none below 8 (`Dag.theta`;
+  024-14's QT2 open).
+  `Dag.dirtyNodeBound` counts one overflow at least for a node that its
+  klongs can take above theta. The rerun of a record does the same; no
+  field.
 
 Alignment: [011-11](../items/011-docs-archive/11-level2-alignment.md)
 maps Java's state to the model's (section 2) and keeps the register of

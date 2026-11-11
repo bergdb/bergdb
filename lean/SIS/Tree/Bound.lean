@@ -30,6 +30,9 @@ structure Walked where
   /-- A delete's path goes through it (`Walked.deleteBelow`, record format 7,
   bergdb 024-21): a merge can replace it by a node of up to c + 1 klongs. -/
   deleteBelow : Bool := false
+  /-- Its dead key klongs as walked (option 2, bergdb 024-23, 2.6;
+  `Walked.dead`). -/
+  dead : Nat := 0
   deriving Repr, Inhabited
 
 /-- The walked nodes, in the order they were first reached. -/
@@ -46,7 +49,8 @@ def Walk.reach (ws : Walk) (x : NodeId) (n : KNode) (up : Option NodeId) : Walk 
     let depth := match up.bind ws.get? with
       | some u => u.depth + 1
       | none => 0
-    ws ++ [{ x := x, up := up, depth := depth, size := n.size, leaf := n.leaf }]
+    ws ++ [{ x := x, up := up, depth := depth, size := n.size, leaf := n.leaf,
+             dead := n.deadCount }]
 
 /-- `Dag.roomAfterReplacement`: the room for more klongs that a node made by
 rule O or by a merge has at least, less a margin of 3, and at least 2: max(2,
@@ -60,12 +64,17 @@ def Params.roomAfterReplacement (p : Params) : Nat :=
 more and a time klong, can overflow, in a node size m with q, the room after a
 replacement (`roomAfterReplacement`). `merged` (record format 7, bergdb
 024-21): a delete's path goes through the node, so a merge can replace it by a
-node of up to c + 1 klongs, with at most q of room. -/
-def overflows (m q klongs size : Nat) (merged : Bool := false) : Nat :=
+node of up to c + 1 klongs, with at most q of room. `theta` and `dead` (option
+2, bergdb 024-23, 2.6): a node of `dead` dead klongs that gets more klongs than
+theta - dead can be compacted, once, by a new node and a klong in its parent:
+at least one overflow then. Its replacement has no fewer klongs of room than
+the node would have, and later compactions in the transaction are in place. -/
+def overflows (m q klongs size : Nat) (merged : Bool := false) (theta dead : Nat := 0) : Nat :=
   if klongs == 0 then 0 else
     let k := klongs + 1
     let room := if merged then min (m - 2 - size) q else m - 2 - size
-    if k ≤ room then 0 else 1 + (k - room - 1) / q
+    let ov := if k ≤ room then 0 else 1 + (k - room - 1) / q
+    if theta != 0 && decide (theta < dead + klongs) then max ov 1 else ov
 
 /-- The splits of a new tree's nodes, level by level: the loop
 `for (ov = overflows(klongs, 0); ov > 0; ov = overflows(ov, 1)) count += ov + 1`. -/
@@ -164,7 +173,8 @@ segment trees, and for a delete two klongs in every node of its path and the
 collapses of the roots above it. With the merges of record format 7 (bergdb
 024-21, `Params.format7`): four klongs in every node of a delete's path, room
 of at most q in a node on it (`overflows`' `merged`), and four nodes for each
-level of the path and two levels more. -/
+level of the path and two levels more. With option 2 (bergdb 024-23, 2.6): a
+node that its klongs can take above theta dead klongs overflows at least once. -/
 def dirtyNodeBound (p : Params) (view : View BVal) (t : Time) (ops : List Op) : Nat :=
   match rootAt view t with
   | none => 0
@@ -196,7 +206,7 @@ def dirtyNodeBound (p : Params) (view : View BVal) (t : Time) (ops : List Op) : 
           let count := acc.2 + (w.fresh.map (fun q =>
             freshTreeBound p.M p.roomAfterReplacement (p.G + 2) q.2 (w.freshLevel + 1))).foldl
               (· + ·) 0
-          let ov := overflows p.M p.roomAfterReplacement w.klongs w.size w.deleteBelow
+          let ov := overflows p.M p.roomAfterReplacement w.klongs w.size w.deleteBelow p.theta w.dead
           if ov == 0 then (acc.1, count) else
             match w.up with
             | some u => (acc.1.modify u (fun v => { v with klongs := v.klongs + ov + 1 }), count + ov + 1)

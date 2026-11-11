@@ -38,6 +38,23 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
   dirtyNodeBound`, 024-11's CB2): at node size 30 and a path of 5 nodes
   about 120,000 deletes fit one transaction, and a larger one is refused
   before it changes anything.
+  **One more rule of format 7: at most theta dead klongs a key node**
+  (bergdb 024-23; 024-18's option 2, Frans's decision of 2026-11-11). A
+  write to a key node that would leave it with more than theta dead
+  entries (deleted or overwritten keys and children, which lookups before
+  the write still read) replaces the node by its current version with the
+  write applied, as a full node is replaced; theta is 7 at node size 30
+  (1, 3 and 14 at 8, 14 and 62). In 2026.4 a node kept up to B such
+  entries until it filled. Counted at 1M keys with a retain duration of
+  1 s (bergdb 024-23, section 7; 024-18's probe): under random overwrites
+  0.48 dead entries a live one with the merges alone, 0.31 with the rule;
+  in a cold database that reclaim rewrites 0.83 down to 0.29; after
+  scattered deletes, with a hot range, 0.85 down to 0.31; for -3 % to
+  +8.5 % stream bytes, and 13 to 16 % fewer key nodes. Not yet measured:
+  10M keys, memory, reads. Each written
+  node and each lookup through it carries fewer stale entries; a node
+  that is never written again keeps up to theta. A start's rerun applies
+  the same rule (no new field).
 
 * **A reclaim step makes dirty only the index nodes on the paths of its
   own puts** (bergdb 024-07, option A; on `main` in `a780b957`). The last

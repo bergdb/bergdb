@@ -20,8 +20,9 @@ Checks, per transaction i of the trace, from Java's structure before it:
   C-T6  the invariants (SIS/Tree/Inv.lean, `faultsAt`): on Java's structure after
         the transaction, at its time: the leftmost rule (LE-b), a live klong in
         every node but the space root, two in an inner root, the order, the
-        kinds of the children, the sizes, well-formed klongs; and every pointer
-        of an entry added names a node of P
+        kinds of the children, the sizes, well-formed klongs, with merges m live
+        klongs (V1), with option 2 at most theta dead klongs a node (TP39); and
+        every pointer of an entry added names a node of P
   C-T8  the bound: the key nodes that the transaction marks (those on the access
         path of its change) are at most `dirtyNodeBound` of its operations on
         the tree before it (Java's `Dag.dirtyNodeBound`, restated)
@@ -122,7 +123,7 @@ def main (args : List String) : IO UInt32 := do
         P := after
       for b in tt.bad.toList.take 8 do
         IO.println s!"bad line: {b}"
-      IO.println s!"tree: M={p.M} G={p.G} H={p.H}{if p.merges then s!" m={p.mergeBelow} c={p.mergeMax} h={p.splitAbove}" else ""}; {n} transactions, {opsN} operations ({noopN} noops), {made} key nodes made, {taken} taken back, {kn} KN lines, {gets} GET lines, {scans} SCAN lines, {touches} touches"
+      IO.println s!"tree: M={p.M} G={p.G} H={p.H}{if p.merges then s!" m={p.mergeBelow} c={p.mergeMax} h={p.splitAbove}" else ""}{if p.theta != 0 then s!" theta={p.theta}" else ""}; {n} transactions, {opsN} operations ({noopN} noops), {made} key nodes made, {taken} taken back, {kn} KN lines, {gets} GET lines, {scans} SCAN lines, {touches} touches"
       let names := trail.toList.mergeSort (fun a b => decide (a.1 ≤ b.1))
       IO.println ("reached: " ++ ", ".intercalate (names.map (fun (s, k) => s!"{s} {k}")))
       report "C-T1 change" change n

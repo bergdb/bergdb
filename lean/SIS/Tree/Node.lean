@@ -31,7 +31,13 @@ more than h klongs, its time klong counted, is space split, else time split
 literals, so that a decision on the thresholds changes a value, not the model
 (bergdb 024-14). Below 2, m merges nothing: release 2026.4's tree, the default.
 `Params.withMerges` gives record format 7's values; `MergeParamsOK` states
-what they must meet. -/
+what they must meet.
+
+Option 2 of dead klongs (bergdb 024-18, section 4; 024-23, section 2):
+`theta`, the most dead key klongs a key node holds after a write (`Dag.theta`);
+a write that would leave more finds the node full, and rule O replaces it by
+its last version with the write applied. 0: off, release 2026.4's and the
+merges' tree, the default. `Params.withTheta` gives record format 7's value. -/
 structure Params where
   M : Nat
   G : Nat
@@ -39,6 +45,7 @@ structure Params where
   mergeBelow : Nat := 0
   mergeMax : Nat := 0
   splitAbove : Nat := M / 2
+  theta : Nat := 0
   deriving Repr, DecidableEq, Inhabited
 
 /-- Merges at the delete are on: m is 2 or more. -/
@@ -59,6 +66,16 @@ as v M / 30, m at least 2, as 024-14's build scales them (QT2 open): 2/4/4 at
 def Params.withMerges (p : Params) : Params :=
   { p with mergeBelow := if p.M < 8 then 1 else max 2 (8 * p.M / 30),
            splitAbove := 17 * p.M / 30, mergeMax := 17 * p.M / 30 }
+
+/-- Option 2's theta of record format 7 for node size M (Frans, 2026-11-11:
+024-18, QD1, theta 7 at node size 30; 024-23, OD2): 7 M / 30, at least 1, so 1
+at 8, 3 at 14, 14 at 62; 0 (off) below node size 8, where record format 7
+merges nothing either (Java's `Dag.theta`). Other node sizes are open with
+024-14's QT2. -/
+def Params.thetaFor (M : Nat) : Nat := if M < 8 then 0 else max 1 (7 * M / 30)
+
+/-- The writer with option 2 of record format 7 (bergdb 024-23). -/
+def Params.withTheta (p : Params) : Params := { p with theta := Params.thetaFor p.M }
 
 /-- The largest level of a key node. -/
 def Params.keyMax (p : Params) : Nat := 1 + p.G * (p.H + 1) + p.H
@@ -263,6 +280,17 @@ def KNode.live (n : KNode) : List (Nat × NodeId) :=
   ((n.lastVersion 0).ks.filterMap (fun k => match k with
     | .key c y => some (c, y)
     | _ => none))
+
+/-- The dead key klongs of a node at the latest time (bergdb 024-23, 2.1;
+`Dag.deadCount`): a key klong that the node's last bitmap deletes, or that a
+later key klong of the same compare value follows (shadowed); each once. -/
+def KNode.deadCount (n : KNode) : Nat :=
+  let del := n.lastBitmap
+  (n.ks.zipIdx.filter (fun (k, i) => match k with
+    | .key c _ => del.contains i || (n.ks.drop (i + 1)).any (fun k' => match k' with
+        | .key c' _ => c' == c
+        | _ => false)
+    | _ => false)).length
 
 /-- `Dag.liveCount` without its limit: the number of live compare values at the
 latest time (024-11's cnt). -/

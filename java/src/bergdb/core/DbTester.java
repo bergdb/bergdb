@@ -2043,14 +2043,18 @@ public class DbTester {
      * to twice the new setting, which would make the transaction that setStartupDistance
      * runs write the index nodes of every transaction past it (007-06, section 3); it is at
      * the span of the section's transactions, which shrinks with every commit until it is
-     * below twice the setting. 2 MB lowered to 500 kB, 1 kB values: transactions past twice
-     * the new setting are left after the call (with the deadline at twice the new setting
-     * at once, none were), the span is below twice the setting after 19 commits, and the
-     * deadline holds from then on.
+     * below twice the setting. 2 MB lowered to 450 kB, 1 kB values: transactions past twice
+     * the new setting, counted from the stream's end before the call, are left after it (with
+     * the deadline at twice the new setting at once, none are), the span is below twice the
+     * setting after a few commits, and the deadline holds from then on. 500 kB until option 2
+     * of dead klongs (bergdb 024-23; its review rev23, R1): with it, the paced take of the
+     * call took the transaction just past the point at 500 kB, by a few kB, without a jump;
+     * counted from the end after the call (the call's own record is about 250 kB) the check
+     * held with a jump too.
      */
     @Nano
     public static void testDecreaseOfStartupDistance() {
-        final int sd = 500 * 1000;
+        final int sd = 450 * 1000;
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).startupDistance(2000 * 1000).start();
         Random random = new Random(1);

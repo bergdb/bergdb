@@ -163,6 +163,66 @@ public class DbTesterMerge {
     }
 
     /**
+     * Option 2 of dead klongs through Db (bergdb 024-23): 400 keys at node sizes 14 and 30
+     * (theta 3 and 7), then transactions of 40 overwrites of random keys, so that leaves and
+     * inner nodes reach theta dead klongs and are compacted; after every third transaction a
+     * restart on a copy of the stream, at startup distances of 10 bytes and 10 MB. After each
+     * start: the values, BU1 and at most theta dead klongs a node (checkFill), and the tree the
+     * same as before the restart, node for node: the rerun compacts the same nodes. With 10 MB
+     * a start reruns every record, and its reruns compact (Dag.statCompactions).
+     */
+    @Nano
+    public static void testRestartsRerunTheCompactions() {
+        for (int b : new int[] {14, 30}) {
+            for (int sd : new int[] {10, 10 * 1000 * 1000}) {
+                String at0 = "node size " + b + ", startup distance " + sd;
+                MemoryStream ms = new MemoryStream();
+                Db db = builder(ms, b, sd).start();
+                TreeMap<String, String> state = new TreeMap<String, String>();
+                Random rnd = new Random(b + sd);
+                final long compactions0 = Dag.statCompactions;
+                long rerun = 0;             // compactions made by the starts' reruns
+                for (int i = 0; i < 30; i++) {
+                    String at = at0 + ", transaction " + i;
+                    TreeMap<String, String> ops = new TreeMap<String, String>();
+                    if (i == 0) {
+                        for (int j = 0; j < 400; j++) ops.put(key(j), "v" + j);
+                    } else {
+                        for (int j = 0; j < 40; j++) ops.put(key(rnd.nextInt(400)), "w" + i + "." + j);
+                    }
+                    Trans t = build(db, ops);
+                    db.execute(t);
+                    state.putAll(ops);
+                    checkFill(db, at);
+                    if (i % 3 == 2) {
+                        db.sync(t.lastPos, SyncLevel.ORDINARY);
+                        String before = tree(db);
+                        db.close();
+                        ms = ms.copy();
+                        final long c0 = Dag.statCompactions;
+                        db = builder(ms, b, sd).start();
+                        rerun += Dag.statCompactions - c0;
+                        Assert.assertEquals(at + ": the tree after the restart", before, tree(db));
+                        checkFill(db, at + ", restarted");
+                        checkValues(db, state, 400, at + ", restarted");
+                    }
+                }
+                checkValues(db, state, 400, at0);
+                db.close();
+                Assert.assertTrue(at0 + ": compactions", Dag.statCompactions > compactions0);
+                if (sd > 1000) {
+                    Assert.assertTrue(at0 + ": compactions of the reruns", rerun > 0);
+                }
+            }
+        }
+    }
+
+    private static DbBuilder builder(MemoryStream ms, int b, int sd) {
+        DbBuilder builder = Db.builder().testSetup(ms).startupDistance(sd);
+        return b == 14 ? builder.maxNodeSize14() : builder.maxNodeSize30();
+    }
+
+    /**
      * Crashes (T7): the same work at node size 8 and a startup distance of 10 bytes, on a
      * CutStream; then for every second transaction of the deletes a copy of the stream cut
      * at that transaction's end and at a byte inside its record: a start gives the state

@@ -2602,7 +2602,7 @@ public final class Eviction {
 
     /**
      * A lowered budget is reached when the pins of the hand's last round have fallen since
-     * (bergdb 015-70; 016-06, R4-F5): 500 transactions of one key, nodes of at most 8
+     * (bergdb 015-70; 016-06, R4-F5): 520 transactions of one key, nodes of at most 8
      * entries, and a startup distance of 2,000 bytes, so that much of the tree is dirty
      * (pinned); the budget lowered to 1 byte, so that the hand's rounds count the pinned
      * bytes (pinnedOfLastRound, P0); the budget raised, and a transaction that writes the
@@ -2615,7 +2615,9 @@ public final class Eviction {
      * batch took the resident bytes down to P0 only, the pins of a round before the
      * decrease, here nothing, and the trigger was P0 or more: the thread stopped above the
      * budget, with detachable objects resident. Then a budget of half P1, below the pins: the
-     * decrease ends, and the thread waits for a request.
+     * decrease ends, and the thread waits for a request. (500 transactions until option 2 of
+     * dead klongs, bergdb 024-23: with it, after 500 the evictions to P0 left no detachable
+     * object above the pins, so the state was not reached; with 520 it is.)
      */
     @Nano
     public static void testLoweredBudgetAfterPinsFell() throws InterruptedException {
@@ -2627,7 +2629,7 @@ public final class Eviction {
             Db.Internal in = db.internal();
             Eviction e = in.eviction();
             long time = 100 * STEP;
-            for (int i = 0; i < 500; i++) {
+            for (int i = 0; i < 520; i++) {
                 clock.setTime(time += STEP);
                 db.execute(db.trans().put("k" + i, new byte[100]).build());
             }

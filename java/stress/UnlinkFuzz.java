@@ -23,7 +23,9 @@ import bergdb.common.StringUtil;
  *   BU1 (bergdb 024-11, 024-21), with Dag.checkFill: every reachable key node that is not a
  *       root of a segment tree holds at least m live klongs (Dag.minFill: 2 at node size 8, 3
  *       at 14, 8 at 30; no merges below 8), an inner root at least 2, the leaves of a segment
- *       tree at one depth, and the key nodes at most S + (n + S - 1) / (m - 1).
+ *       tree at one depth, and the key nodes at most S + (n + S - 1) / (m - 1); and TP39 of
+ *       option 2 (bergdb 024-23): every reachable key node holds at most theta dead klongs
+ *       (Dag.theta: 1 at node size 8, 3 at 14, 7 at 30; none below 8).
  *
  * Key shapes (keys=N distinct keys, shape=): "fifo" puts keys in increasing order and deletes
  * the oldest, a window of about N/4 live keys; "random" puts and deletes at random; "long"
@@ -80,6 +82,7 @@ public class UnlinkFuzz {
     int fifoNext = 0, fifoFirst = 0;
     long keptBefore;
     static long fillChecks;
+    static long deadMax;
     /** Nodes made and reported replaced in one transaction: taken back, never written. */
     final Set<Node> takenBack = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
     final Set<Node> madeNow = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
@@ -190,6 +193,7 @@ public class UnlinkFuzz {
                 Dag.Fill fill = dag.checkFill(tt, gd);
                 err = fill.error;
                 fillChecks++;
+                deadMax = Math.max(deadMax, fill.deadMax);
             }
             if (err != null) return "after T" + i + ": " + err;
         }
@@ -413,6 +417,9 @@ public class UnlinkFuzz {
                 + ", a left node made by the transaction " + Dag.statMergeMadeL
                 + ", a right one " + Dag.statMergeMadeR + "; BU1 checked after "
                 + fillChecks + " transactions (m = " + Dag.minFill(MAX_NODE) + ")");
+        System.out.println("compactions of option 2 " + Dag.statCompactions + " (theta = "
+                + Dag.theta(MAX_NODE) + "), at most " + deadMax
+                + " dead klongs in a node after a transaction");
         System.out.println("Done: " + rounds + " rounds, " + fails + " failures.");
     }
 }
