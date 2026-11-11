@@ -112,7 +112,10 @@ database fails instead. That happens on:
 * an `Error`, such as `OutOfMemoryError` or `StackOverflowError`, thrown
   during a read, a transaction or a sync, also in the application's code
   that it runs, or on one of the database's own threads;
-* any exception after a transaction's go point, as nothing there is undone.
+* any exception after a transaction's go point, as nothing there is undone;
+  and an exception of a Core API key transformation, which must not throw:
+  it runs just before the go point, after the transaction's time is taken
+  (024-16), and fails the database as when it ran after it.
 
 A failed database does no more work. The call that met the failure throws
 it: an `Error` as it is, anything else as a `DbFailedException`. Every later
@@ -137,10 +140,12 @@ The details:
 * `Db.executeInner` has a go point. Before it, everything that may refuse
   the transaction is checked, and nothing is changed: the STM check
   (`RerunException`), the end of the top node ordinals (005-02), the size of
-  the transaction (005-17), the index nodes it can make dirty (005-31) and
-  the clock (005-18), whose last 1,024 times are kept for reclaim's internal
-  transactions after a user transaction (015-55). The Pub API runs the
-  application's code before it too.
+  the transaction (005-17), the index nodes it can make dirty (005-31), the
+  clock (005-18), whose last 1,024 times are kept for reclaim's internal
+  transactions after a user transaction (015-55), and, last, two of its keys
+  that its key transformations (the Pub API's key replace) make one key
+  (024-16: a `DbException`; the transaction's KVs, its time and the clock
+  are given back). The Pub API runs the application's code before it too.
   A refused transaction leaves the database as it was, and it goes on.
   The size check counts a Core API value transformation's input: its
   result, made after the go point, must keep the transaction within the

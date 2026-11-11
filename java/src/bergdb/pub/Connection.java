@@ -97,9 +97,11 @@ public interface Connection extends ReadInterface {
      * It is guaranteed to be unique for every transaction and is strictly increasing. So the
      * puts of one transaction at a key with "${transactionTime}" are puts at one key, and the
      * last of them counts: a transaction that puts two such values needs another part in each
-     * key, such as "${transactionTime}-1" (bergdb 020-24-01, U1-6). A put or a delete of the
-     * same transaction at the key that the replace gives, the time written out, is at that
-     * one key too: of them all the last one counts (bergdb 024-10).</p>
+     * key, such as "${transactionTime}-1" (bergdb 020-24-01, U1-6). A transaction that also
+     * puts or deletes the key that the replace gives, the time written out, would set one key
+     * twice: it is refused at the commit with a DbException, nothing of it written, and the
+     * database goes on (bergdb 024-16; WBuilder.execute(), rw()). A transaction has one
+     * operation a key.</p>
      *
      * <p>By default, the key replace feature of a connection is disabled, also for the
      * connection that Database.connection() gives a thread until it is enabled there. This
@@ -459,7 +461,8 @@ public interface Connection extends ReadInterface {
      *             If action is null.
      * @throws DbException
      *             If the transaction is refused, as for put(), also when the database stops
-     *             while the action runs (Database.stop()); or if the thread is
+     *             while the action runs (Database.stop()), or as for WBuilder.execute():
+     *             key replace makes two of its keys one key; or if the thread is
      *             interrupted while the transaction waits to run again after a conflict:
      *             it is not run, and the thread's interrupt flag is set (Database,
      *             "Interrupts").
