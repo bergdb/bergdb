@@ -364,6 +364,12 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   BuildInfo, two fixes of test races, two of corrupt streams, next.md and
   the docs), its night of 10 to 11 November on F53 and s1, and the morning's
   steps; the tag `release-2026.4`.
+* [32-corrupt-stream-cycle.md](32-corrupt-stream-cycle.md). 020-32, the
+  release night's one failure: CorruptStreamTester's seed of 10 November
+  made a read loop on a damaged prevPos (old, on `main` before 023 too);
+  its cause, the two fixes in 2026.4 (a cycle check in every descent; a
+  refusal where the start's -ea check asserted), and a third weakness of
+  the same class for 2026.5 (024).
 
 
 Log
@@ -447,3 +453,9 @@ candidate `03ce6ec` is not tagged.
 
 2026-11-11. Release 2026.4 made: the tag `release-2026.4` on `bb8da6d`,
 after a clean night (020-31).
+
+2026-11-11. Release 2026.4 made (04:55): the tag `release-2026.4` on A'
+bb8da6dc, commit B 04f8863e, pushed; releases/2026.4/ (020-31). The night
+on the first A failed one night test, an old weakness against damaged
+streams (020-32); A was made again with two fixes, and A''s own night,
+s1's tests and fuzz were clean.
