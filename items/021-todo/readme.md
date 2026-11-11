@@ -50,7 +50,6 @@ Open
 
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
-| [021-25](25-reclaim-fifo.md) | Investigate | Reclaim stops cutting a FIFO in time order | decision | waiting |
 | [021-27](27-gettrans-inside-record.md) | Decide | getTrans inside a record fails the database | decision | waiting |
 
 
@@ -59,6 +58,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [021-25](25-reclaim-fifo.md) | Investigate | Reclaim stops cutting a FIFO in time order | decision | done | 2026-11-11 |
 | [021-06](06-read-side-ill-formed-utf8.md) | Investigate | Ill-formed UTF-8 from another writer, read by Java | answers | done | 2026-11-09 |
 | [021-10](10-entries-suffix-dot-in-dir.md) | Fix | A '.' in a directory makes no key there an object key | none | done | 2026-11-09 |
 | [021-11](11-pointer-type-at-start.md) | Fix | A damaged pointer naming a node of another type was linked by node id | none | done | 2026-11-09 |
@@ -224,3 +224,8 @@ the list for 2026.4 would open at 2026.3's release. By coord-1106.
 
 2026-11-09. The open row of 021-25 and the Files entries of 021-13 to
 021-27, with their commits on `main`, by coord-1109.
+
+2026-11-11. 021-25 done: fixed by 023's unlink at the delete in release
+2026.4 (its own workload, ReclaimFifo, on the release commit: 139 cuts in
+1M transactions, a 15 MB directory, against 15 cuts and 135 MB on `main`
+before 023; 020-31, section 4).

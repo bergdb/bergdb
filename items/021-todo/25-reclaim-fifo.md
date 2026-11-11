@@ -1,7 +1,8 @@
 021-25. Investigate: reclaim stops cutting a FIFO of keys in time order
 ======================================================================
 
-Status: waiting. Kind: Investigate. Frans: decision.
+Status: done 2026-11-11: fixed by 023 in release 2026.4 (020-31,
+section 4). Kind: Investigate. Frans: decision.
 Created 2026-11-09 by Frans Lundberg.
 
 What: a new user of the C library (022-06-3, U3-1 and U3-2; report and
