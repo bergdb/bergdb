@@ -414,6 +414,13 @@ from them.
   full set; 48 of 48 StreamDigest digests change). Checksum 5.6 to 0.12
   ms a MB; an 8 MiB commit 49-57 to 2-11 ms (rough). Its changed tests
   and level1's raised stream-size limits (QC2) accepted for Frans to see.
+* 20:19 The limits landed: 7c255127, the merge of 829d6135 (main with
+  CRC32C merged in; gates: lake build, no sorry or axiom, test-traces,
+  before-commit, level1 full, unlinkfuzz, level2 to level4 full,
+  conformance small, medium, reclaim, evict, drain). About 30 changed
+  tests and programs, each its own commit (024-24, section 3), accepted
+  for Frans to see (Q2); the index build over values longer than L6
+  gives no entry (Q1, as recommended).
 
 
 ## 6. Outcome

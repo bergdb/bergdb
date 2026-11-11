@@ -266,6 +266,16 @@ Fixed as new commits on the branch, 19:05 to 19:09:
   record's size is made first; a stub stream of about 2^31 bytes would).
 
 
+**024-25 merged** (19:23, `ef0d406b`, main `79f35aa3`, CRC32C): no
+conflict. Its review's R5 (rev25), fixed in `829d6135`: a top node is
+now 48 + 16 h bytes, h at most 48 (`TopNode.MAX_HEIGHT`), so
+`Db.checkDirtyNodes`' `topBytes` and the Lean `ReleaseFits` count
+2 x (48 + 16 x 48 + 16) bytes, exactly (were 2 x (40 + 16 x 64 + 16),
+the size before CRC32C, which bounded it). A key node's bytes are
+unchanged (32 + 16 x size). `ReleaseFits`' doc now says that it makes
+005-31 unreachable for transactions without transformations (R3).
+
+
 ## 8. Gates
 
 * **On `98454653`** (before the review): Lean (lake build, no sorry or
@@ -274,26 +284,41 @@ Fixed as new commits on the branch, 19:05 to 19:09:
   rule); before-commit OK (111 s); level1 OK (194 s); unlinkfuzz OK
   (3,226 rounds, 330 s); level2 stopped at 19:09 for the fixes. Logs in
   `lim3/logs-98454653/`.
-* **On `26e19264`** (the fixes): running from 19:10, `lim3/gates.out`.
+* **On `26e19264`** (rev24's fixes): Lean OK, before-commit OK (102 s),
+  level1 OK (184 s), unlinkfuzz OK (330 s); level2 from 19:20 (logs in
+  `lim3/logs-26e19264/`). Then main (024-25) merged.
+* **On `829d6135`** (main `79f35aa3` merged, rev25's R5), the final
+  head, by `lim3/gates-merged.sh`, one slot at a time, 19:33 to 20:18,
+  all rc = 0 (logs in `lim3/logs/`, summary `lim3/gates.out`):
+
+| Gate                                            | Result, time              |
+|-------------------------------------------------|---------------------------|
+| lake build, no sorry or axiom, test-traces      | OK, 13 s                  |
+| before-commit                                   | BEFORE COMMIT OK, 82 s    |
+| level1 full                                     | LEVEL 1 OK, 138 s         |
+| unlinkfuzz                                      | OK, 3,226 rounds, 292 s   |
+| level2 full (treeconf small, drain, reclaim)    | LEVEL 2 OK, 764 s         |
+| conformance small, drain                        | OK, 26 s, 29 s            |
+| level3 full                                     | LEVEL 3 OK, 445 s         |
+| conformance medium, reclaim, evict              | OK, 141 s, 150 s, 63 s    |
+| level4 full                                     | LEVEL 4 OK, 500 s         |
+
+  treetest's default set (TREETEST OK) ran on `98454653`; the Lean
+  model's change after it is `ReleaseFits`' top node bytes only (and
+  the merge brought no Lean change but 024-25's), checked by `lake
+  build`'s `decide`.
 
 
 ## State
 
-2026-11-11, 19:12.
+2026-11-11, 20:19.
 
-* **Clone** `/Users/f/fl/bench/2026-11-11/lim3/clone`, branch
-  `024-24-limits`, from 024-23's `e3732d24`, main (`08659847`) merged
-  at `50698d44`; head `26e19264` (the review's fixes, made in a second
-  clone `lim3/fix` while level2 ran, then pulled).
-* **Done.** Lean (section 1); Java (section 2); tests and programs
-  (section 3); docs (section 4); the review's fixes (section 7). Unit
-  tests 1,679 of 1,679 on `26e19264`.
-* **Running.** The gates on `26e19264` (section 8), one slot at a time,
-  by `lim3/gates-all.sh` (each gate `lim3/gate.sh`): Lean, before-commit,
-  level1 full, unlinkfuzz, level2 full (its treeconf steps), level3
-  full, conformance medium, reclaim and evict, level4 full, conformance
-  small and drain. Progress in `lim3/gates.out`, logs in `lim3/logs/`
-  (under `/Users/f/fl/bench/2026-11-11/`). If stopped: rerun the gates
-  not ended rc=0, each with `sh lim3/gate.sh LABEL "sh stress/..."`.
-* **After.** If 024-25 (CRC32C) lands on main first: merge main into the
-  branch, rerun before-commit, level1, level2 (the coordinator's rule).
+* **Ready to land.** Branch `024-24-limits`, head **`829d6135`**, in
+  `/Users/f/fl/bench/2026-11-11/lim3/clone` (main `79f35aa3` merged at
+  `ef0d406b`; main had no code commit after it at 20:18). Every gate of
+  section 8 passed on it.
+* **Done.** Sections 1 to 8.
+* **Open for Frans.** Q1 and Q2 (section 6); QL5's precondition for
+  024-17 (section 7, R3); the notes R6, R8 to R11 (section 7).
+* **To continue** (if main moves before landing): merge main, rerun
+  before-commit, level1, level2 (`lim3/gate.sh`).
