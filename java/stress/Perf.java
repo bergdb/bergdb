@@ -86,7 +86,7 @@ public class Perf {
     final long seed = pl("seed", 1);
     final int n = pi("n", 100000);
     final int nlong = pi("nlong", 0);
-    final int longlen = pi("longlen", 120);
+    final int longlen = pi("longlen", 111);     // 120 until bergdb 024-24: L2 is 111 bytes
     final int valsize = Math.max(8, pi("valsize", 1000));
     final int batch = pi("batch", 100);
     final String work = ps("work", "uniform");               // uniform | hot | cold

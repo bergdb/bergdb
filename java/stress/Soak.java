@@ -91,7 +91,7 @@ public class Soak {
     final long seed = pl("seed", 1);
     final int n = pi("n", 1000000);
     final int nlong = pi("nlong", 1000);
-    final int longlen = Math.max(21, pi("longlen", 120));
+    final int longlen = Math.max(21, pi("longlen", 111));   // 120 until bergdb 024-24 (L2)
     final int valsize = Math.max(8, pi("valsize", 1000));
     final int retainSec = pi("retain", 300);
     final int rate = pi("rate", 300);                 // writer transactions per second; 0: unpaced
