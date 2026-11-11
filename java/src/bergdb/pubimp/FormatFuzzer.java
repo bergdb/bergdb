@@ -2007,7 +2007,10 @@ public final class FormatFuzzer {
         place((Obj) next, path, k + 1, type, r);
     }
     
-    /** A stored value of a level's kind, with lengths around the 4,096 bytes of levels. */
+    /**
+     * A stored value of a level's kind, with lengths around the 111 bytes of levels (L6;
+     * around 4,096 until bergdb 024-24).
+     */
     static Object kindValue(char type, Random r) {
         switch (type) {
         case IndexKeys.LONG:
@@ -2018,7 +2021,7 @@ public final class FormatFuzzer {
         default: {
             byte[] x;
             if (r.nextInt(5) == 0) {
-                x = new byte[4080 + r.nextInt(20)];
+                x = new byte[IndexKeys.MAX_LEVEL_BYTES - 12 + r.nextInt(20)];
                 Arrays.fill(x, (byte) 'a');
                 for (int k = 0; k < r.nextInt(4); k++) {
                     x[r.nextInt(x.length)] = (byte) r.nextInt(2);
@@ -2746,6 +2749,37 @@ public final class FormatFuzzer {
         }
     }
     
+    /** Whether a last value of the transaction is refused for L6 (bergdb 024-24). */
+    static boolean tooLongAny(Map<String, Put> last, boolean indexed) {
+        for (Map.Entry<String, Put> e : last.entrySet()) {
+            if (e.getValue() != null && indexed && levelsTooLong(e.getKey(), e.getValue())) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * Whether the put of 'stored' at 'key' is refused for L6 (bergdb 024-17, QL4; 024-24):
+     * an object at an object key of /k/ whose levels for one of its indexes pass 111 bytes.
+     */
+    static boolean levelsTooLong(String key, Put p) {
+        if (!key.startsWith("/k/") || !objectKey(key) || p.value instanceof String
+                || p.stored == null || ObjectFormat.isFormat1(p.stored)) {
+            return false;
+        }
+        for (int k = 0; k < INDEXES.length; k++) {
+            IndexDefinition d = new IndexDefinition(INDEXES[k], "/k/", 1, true,
+                    new String[] {INDEX_TYPES[k]}, new String[][] {{INDEXES[k]}});
+            try {
+                d.entryForPut(PubKeys.u2i(key), p.stored);
+            } catch (IllegalArgumentException e) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
     /** A put, by w() or rw(); refused as Connection.put's Javadoc says, else stored. */
     void put(bergdb.pub.Connection c, String key, Put p, boolean indexed, Map<String, Put> ref,
             Random r, String where) {
@@ -2753,7 +2787,8 @@ public final class FormatFuzzer {
         Class<? extends Throwable> refused = object && !objectKey(key)
                 ? IllegalArgumentException.class : indexed && p.value instanceof byte[]
                 && objectKey(key) && ObjectFormat.isFormat1(p.stored)
-                ? bergdb.pub.DataFormatException.class : null;
+                ? bergdb.pub.DataFormatException.class : indexed && levelsTooLong(key, p)
+                ? IllegalArgumentException.class : null;
         Throwable got = null;
         try {
             if (r.nextBoolean()) {
@@ -2801,6 +2836,7 @@ public final class FormatFuzzer {
             }
             last.put(keys[k], puts[k]);
         }
+        boolean tooLong = false;            // L6 (bergdb 024-24)
         for (Map.Entry<String, Put> e : last.entrySet()) {
             Put p = e.getValue();
             if (refused == null && p != null && p.value instanceof byte[] && indexed
@@ -2808,7 +2844,15 @@ public final class FormatFuzzer {
                     && ObjectFormat.isFormat1(p.stored)) {
                 refused = bergdb.pub.DataFormatException.class;
             }
+            tooLong |= refused == null && p != null && indexed && levelsTooLong(e.getKey(), p);
         }
+        if (refused == null && tooLong) {
+            refused = IllegalArgumentException.class;
+        }
+        // Format 1 at one key and L6 at another: the first key that indexEntries() reaches
+        // decides which; either refuses the transaction.
+        final boolean either = refused == bergdb.pub.DataFormatException.class && tooLongAny(
+                last, indexed);
         Throwable got = null;
         try {
             c.rw(env -> {
@@ -2828,7 +2872,8 @@ public final class FormatFuzzer {
             ops.append(k > 0 ? ", " : "").append(puts[k] == null ? "delete " + keys[k]
                     : "put " + puts[k].what + " at " + keys[k]);
         }
-        if (refused == null ? got != null : !refused.isInstance(got)) {
+        if (refused == null ? got != null : !refused.isInstance(got)
+                && !(either && got instanceof IllegalArgumentException)) {
             throw fail(where, "an rw() of " + ops + ": " + (got == null ? "taken"
                     : got.toString()) + ", expected " + (refused == null ? "taken"
                     : refused.getSimpleName()), null, got);

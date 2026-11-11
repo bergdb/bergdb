@@ -131,14 +131,14 @@ public class Crazy {
         out.println("A very large transaction.");
         clock.setTime(5*1000000);
         b = db.trans();
-        b.put(KeyFactory.crazyKey(1001), new byte[20*1000000]);
+        b.put(KeyFactory.crazyKey(1001), new byte[Db.MAX_VALUE_BYTES]);   // L4; 20 MB until 024-24
         db.execute(b.build());
         db.sync(0, SyncLevel.ORDINARY);
         
         out.println("Stream size: " + db.getStreamLength() + ".");
         
         // ----
-        int keySize = 10*1000;
+        int keySize = Db.MAX_KEY_BYTES;     // L2 (bergdb 024-24); 10,000 bytes until then
         out.println("An unsusually large key, size: " + keySize + " bytes.");
         clock.setTime(6*1000000);
         long streamSize1 = db.getStreamLength();

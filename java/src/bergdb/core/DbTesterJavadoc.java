@@ -422,18 +422,19 @@ public class DbTesterJavadoc {
     /**
      * Db, "Keys and values" (bergdb 020-24-09, U9-5): any bytes make a key, the empty array
      * too; getMany() gives the keys in the unsigned order of their bytes, as
-     * Arrays.compareUnsigned() orders them, forward and backward; a key of 3,000 bytes works;
-     * the empty array is a value, not a delete; a put of a null value is refused with
-     * IllegalArgumentException.
+     * Arrays.compareUnsigned() orders them, forward and backward; a key of 111 bytes, the
+     * most (Db, "Limits"; L2), works, and one of 112 is refused with IllegalArgumentException
+     * (until bergdb 024-24 a key of 3,000 bytes worked); the empty array is a value, not a
+     * delete; a put of a null value is refused with IllegalArgumentException.
      */
     @Nano
     public static void testKeysAndValues() {
         byte[][] keys = {{}, {0}, {0, 0}, {1}, {0x61}, {0x61, 0}, {0x61, 0, 0}, {0x61, 1},
                 {0x61, 0x61}, {0x62}, {0x7f}, {(byte) 0x80}, {(byte) 0xfe, 0}, {(byte) 0xff},
                 {(byte) 0xff, (byte) 0xff}, {1, 2, 3, 4, 5, 6, 7}, {1, 2, 3, 4, 5, 6, 7, 8},
-                {1, 2, 3, 4, 5, 6, 7, (byte) 0x90}, new byte[3000]};
+                {1, 2, 3, 4, 5, 6, 7, (byte) 0x90}, new byte[Db.MAX_KEY_BYTES]};
         final byte[] longKey = keys[keys.length - 1];
-        longKey[2999] = 5;
+        longKey[Db.MAX_KEY_BYTES - 1] = 5;
         final Db db = Db.builder().testSetup().start();
         try {
             Trans.Builder b = db.trans();
@@ -463,6 +464,8 @@ public class DbTesterJavadoc {
             Assert.assertTrue("the empty value is a value", v != null && v.length == 0);
             v = db.getOne(LATEST, Keys.toSegments(longKey), db.newGetData());
             Assert.assertTrue("the long key", v != null && v[0] == keys.length - 1);
+            assertThrows("a key of 112 bytes", IllegalArgumentException.class,
+                    () -> db.trans().put(new byte[Db.MAX_KEY_BYTES + 1], new byte[0]));
             assertThrows("a null value", IllegalArgumentException.class,
                     () -> db.trans().put(new byte[] {1}, null));
             assertThrows("a null value, a key of segments", IllegalArgumentException.class,

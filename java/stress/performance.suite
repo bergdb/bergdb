@@ -23,7 +23,9 @@
 # scenarios of the rest of the grid are in performance-grid.suite.
 
 # ---- Warm resident reads: latest, historical and long-key gets, scans in both directions, gets from 4 threads.
-# 1M keys of 100 bytes and 100,000 long keys (120 bytes); a history of 1M updates (infinite retention).
+# 1M keys of 100 bytes and 100,000 long keys (111 bytes since bergdb 024-24, L2; 120 before, so
+# long-key results from before 024-24 are not comparable: 16 segments a key, not 18); a history of
+# 1M updates (infinite retention).
 read-100        read     5   n=1000000 nlong=100000 valsize=100 history=1000000
 read-1k         read     3   n=200000 nlong=20000 valsize=1000 history=200000
 read-10k        read     3   n=20000 nlong=2000 valsize=10000 history=20000

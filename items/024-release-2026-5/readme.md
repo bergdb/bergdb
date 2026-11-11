@@ -249,7 +249,21 @@ Files
 * 23-dead-klongs-option2.md. 024-23, dead klongs in live nodes, option 2
   with theta 7 (Frans, 2026-11-11, 024-18 QD1), model first: the rule in
   the Lean tree model and in Java, at most theta dead klongs a node
-  after every write. Branch 024-23-option2, on the merges.
+  after every write; Java equal to the model on 222 traces; reviewed in
+  23-dead-klongs-option2/review.md (land with fixes, made). On main
+  since 2026-11-11, 18:16: the merge of e0fb9d77. QO1 to QO3; six
+  changed tests (section 4.1) accepted by the coordinator for Frans to
+  see.
+* 24-limits-implemented.md. 024-24, the limits of 024-17 implemented
+  (L1 500 operations, L2 111 bytes, L3 56 KiB, L4 8 MiB, L5 32 MiB, L6
+  111 bytes refused, the reader reading a record's header first, the
+  count with q in Lean); its review in 24-limits-implemented/review.md
+  (land with fixes, made). On main since 2026-11-11, 20:19, the merge
+  of 829d6135. Q1, Q2.
+* 25-crc32c.md. 024-25, CRC32C in place of Fletcher-16 as the node
+  checksum (024-17, QL9): the node header 12 bytes, node formats 3/3/5;
+  reviewed (25-crc32c/review.md, land with fixes, made). On main since
+  2026-11-11, 19:24, the merge of e1a87bec. QC1 to QC3.
 
 
 Log

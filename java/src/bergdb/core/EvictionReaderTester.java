@@ -109,7 +109,9 @@ public class EvictionReaderTester {
      * record would get is the same before and after the pointee's handle dies, its object's
      * position, and the reads are those of the database without eviction. (Until step 3a
      * this test was of the access data that a reader wrote after an unswizzle; with handles
-     * a follow writes into the pointee's handle, never into the pointer.)
+     * a follow writes into the pointee's handle, never into the pointer.) 40 keys (30 until
+     * option 2 of dead klongs, bergdb 024-23, which compacted the root to 2 live klongs, so
+     * that the walk below found 1 pointer to check, not 3; with 40 it finds 6).
      */
     @Nano
     public static void testEvictionKeepsTheRecords() {
@@ -117,7 +119,7 @@ public class EvictionReaderTester {
         CoreTestClock clock = new CoreTestClock();
         Db ref = start(s1, clock, Eviction.Schedule.NONE, 0);
         Db db = start(s2, clock, Eviction.Schedule.NONE, 0);
-        load(ref, db, clock, 60, 30, 1);
+        load(ref, db, clock, 60, 40, 1);
         db.sync(SyncLevel.ORDINARY);
         Db.Internal in = db.internal();
         TopNode top = in.superRoot();
@@ -146,7 +148,7 @@ public class EvictionReaderTester {
             checked++;
         }
         Assert.assertTrue("pointers checked", checked >= 3);
-        assertSameReads(ref, db, 30, new ArrayList<Long>());
+        assertSameReads(ref, db, 40, new ArrayList<Long>());
         ref.close();
         db.close();
     }

@@ -147,6 +147,26 @@ The details:
   (024-16: a `DbException`; the transaction's KVs, its time and the clock
   are given back). The Pub API runs the application's code before it too.
   A refused transaction leaves the database as it was, and it goes on.
+* The limits of 2026.5 (024-17, sections 6 and 8; 024-24), constants in
+  `Db`, the same for every database and node size: a key at most 111 bytes
+  (L2) and a value at most 8 MiB (L4), refused by the `Trans.Builder` call
+  that takes them (`IllegalArgumentException`), BergDB's own longer keys
+  (index entries) through its internal `putLongKey`; a transaction at most
+  500 operations (L1), 56 KiB of keys (L3) and 32 MiB of keys and values
+  (L5), refused by `Db.checkLimits` before the write lock (`DbException`),
+  and a key transformation's keys again in `transformKeys`; the Pub API
+  checks L2 on the ikey, L4, and an indexed value's levels, at most 111
+  bytes (L6; a longer one's put is refused). Within them a transaction's
+  dirty index nodes fit a record at every node size by the count with q
+  (`Limits.dirtyNodes`, `ReleaseFits` proved by `decide`; TP26 checked by
+  `treetest` and C-T8, not proved). The checks of 005-17 and 005-31 stay,
+  as refusals: `checkDirtyNodes` counts a KV with a key or a value
+  transformation coarsely, from the stream's length, so such a
+  transaction within the limits can meet 005-31 (024-24's review, R3),
+  and QL5's step to a `Bug` waits for a count of transformed KVs within
+  the model's bound. A value transformation's result over L4 fails the
+  database (QL6). The reader
+  reads a record's size and format byte first (QL7).
   The size check counts a Core API value transformation's input: its
   result, made after the go point, must keep the transaction within the
   limit, and one whose record does not fit fails the database, as a
@@ -384,6 +404,26 @@ How it works in Java:
   at node size 30; v B / 30 at another node size, m at least 2, no
   merges below 8; `Dag.minFill`, `mergeCap`, `splitAbove`). The rerun of
   a record does the same.
+* At most theta dead klongs a key node (option 2 of 024-18, since format
+  7; 024-23): a klong is dead when the node's last bitmap deletes it or a
+  later klong of its compare value follows it. Before each write to a
+  key node (a put's klong, a delete's bitmap, the transaction's own
+  bitmap changed in place, a split's or a merge's klongs in the parent,
+  LE-b, root collapse) the writer counts the dead klongs the write adds;
+  if the node would then hold more than theta (`Dag.deadFull`), it is
+  full, and rule O replaces it by its last version with the write
+  applied: one node always (a time split, in place for a node of the
+  transaction), as the node had room for the write; a node without room
+  is full by its size first. So after every write a node holds at most
+  theta dead klongs (024-23, TP39; checked by `Dag.checkFill`), where the
+  merges alone allow B, and reclaim's rewrites, which are puts, compact
+  the cold leaves that they take above theta. A compaction keeps every
+  live klong, so the fill (m, BU1) does not change. theta is 7 at node
+  size 30, 7 B / 30 at the others, at least 1, none below 8 (`Dag.theta`;
+  024-14's QT2 open).
+  `Dag.dirtyNodeBound` counts one overflow at least for a node that its
+  klongs can take above theta. The rerun of a record does the same; no
+  field.
 
 Alignment: [011-11](../items/011-docs-archive/11-level2-alignment.md)
 maps Java's state to the model's (section 2) and keeps the register of

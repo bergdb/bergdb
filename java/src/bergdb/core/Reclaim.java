@@ -640,7 +640,11 @@ public class Reclaim implements Db.TransactionListener {
                 }
                 valueNodeBytes += nodeBytes;
                 b.keyRead(kvt.key);
-                b.put(kvt.key, value);      // Note, no mem copy of key and value.
+                // Note, no mem copy of key and value. The internal call: a live key may be
+                // BergDB's own, longer than Db.MAX_KEY_BYTES (an index entry), and a check
+                // that threw here, inside a user transaction's go point, would fail the
+                // database (bergdb 024-24).
+                b.putLongKey(kvt.key, null, value, null);
                 rewritten += kvt.key.length * 8 + value.length + VALUE_NODE_BYTES;
                 values++;
                 valueBytes += kvt.key.length * 8 + value.length;

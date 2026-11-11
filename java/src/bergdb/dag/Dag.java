@@ -542,6 +542,11 @@ public class Dag {
      * about 30 nodes a delete: a record's limit takes about 120,000 deletes in one
      * transaction; a larger one is refused (Db.checkDirtyNodes), as one of puts that can make
      * too many nodes dirty is.</li>
+     * <li>option 2 of dead klongs (bergdb 024-23, 2.6): a node that holds d dead klongs and
+     * gets k klongs with d + k > theta can be compacted, once, by a new node and a klong in its
+     * parent, so it overflows at least once. Its replacement has no less room than the node
+     * would have, so it overflows by its size no more often, and later compactions in the
+     * transaction are of nodes the transaction made, in place: nothing more is counted.</li>
      * </ul>
      * 
      * @param deletes  deletes[i] is true if keys[i] is deleted; a delete of a missing key
@@ -644,7 +649,7 @@ public class Dag {
                     count += freshTreeBound(l, w.freshLevel + 1);
                 }
             }
-            final long overflows = overflows(w.klongs, w.node.size, w.deleteBelow);
+            final long overflows = overflows(w.klongs, w.node.size, w.deleteBelow, w.dead);
             if (overflows > 0) {
                 count += overflows + 1;
                 if (w.up != null) {
@@ -668,6 +673,7 @@ public class Dag {
         long klongs = 0;                // that it gets
         int collapses = 0;              // root collapses of its tree at most, a tree's root
         boolean deleteBelow = false;    // a delete's path goes through it (merges)
+        final int dead;                 // its dead klongs as walked (option 2)
         java.util.HashMap<Long, java.util.List<long[]>> freshKeys = null;
         int freshLevel;                 // the segment of the keys in freshKeys missing here
         
@@ -675,6 +681,7 @@ public class Dag {
             this.node = node;
             this.up = up;
             this.depth = up == null ? 0 : up.depth + 1;
+            this.dead = deadCount(node);
         }
         
         /** A key whose segment i is not in this leaf: a new segment tree below it. */
@@ -712,6 +719,22 @@ public class Dag {
         if (klongs == 0) {
             return 0;
         }
+        return overflows(klongs, size, merged, -1);
+    }
+    
+    /**
+     * As overflows(klongs, size, merged) for a node of the tree that holds 'dead' dead klongs
+     * (option 2, bergdb 024-23, 2.6): if its klongs can take it above theta, it can be
+     * compacted, once, by a new node and a klong in its parent: one overflow at least. Its
+     * replacement has no less room than the node would have, and later compactions in the
+     * transaction are of nodes it made, in place. 'dead' < 0: a node of a new tree, none.
+     */
+    private long overflows(long klongs, int size, boolean merged, int dead) {
+        if (klongs == 0) {
+            return 0;
+        }
+        final int theta = theta(maxNodeSize);
+        final long least = theta > 0 && dead >= 0 && dead + klongs > theta ? 1 : 0;
         final long k = klongs + 1;
         final long q = roomAfterReplacement();
         long room = Math.max(0, maxNodeSize - 2 - size);
@@ -719,7 +742,7 @@ public class Dag {
             room = Math.min(room, q);
         }
         if (k <= room) {
-            return 0;
+            return least;
         }
         return 1 + (k - room - 1) / q;
     }
@@ -942,7 +965,8 @@ public class Dag {
             // "+1" is needed. We need to be able to fit two more klongs. 
             // A TIME klong may be needed.
             
-            if (node.size + 1 < this.maxNodeSize) {
+            if (node.size + 1 < this.maxNodeSize
+                    && !deadFull(node, isLive(node, compareValue) ? 1 : 0)) {
                 node.addKlong(pd.tt, Klong.compareValueToKeyKlong(compareValue),
                         valueNode, pd.accessData);
                 pd.pointerCreatedListener.pointerCreated(node, node.size - 1, valueNode);
@@ -1097,7 +1121,12 @@ public class Dag {
         boolean isNoop = (union == arrayDel);
         
         if (!isNoop) {
-            if (hasTransDel) {
+            if (hasTransDel && deadFull(node, 1)) {
+                // The transaction's own bitmap would delete one klong too many (option 2).
+                KeyNode last = node.lastVersionGivenDel(sz, tTime, union);
+                handleFullNode(node, depth, ZERO_LONG_KWP, tTime, last, true, pd);
+                
+            } else if (hasTransDel) {
                 node.klongs[sz - 1] = union;
                 pd.nodeChangeListener.keyNodeChanged(node);
                 
@@ -1106,12 +1135,13 @@ public class Dag {
                 // the delete at trans.transTime before the transaction completes.
                 
             } else {                
-                if (node.size + 1 < this.maxNodeSize) {
+                final boolean room = node.size + 1 < this.maxNodeSize;
+                if (room && !deadFull(node, 1)) {
                     node.addDeleteKlong(tTime, union);
                     pd.nodeChangeListener.keyNodeChanged(node);
                 } else {                    
                     KeyNode last = node.lastVersionGivenDel(sz, tTime, union);
-                    handleFullNode(node, depth, ZERO_LONG_KWP, tTime, last, pd);
+                    handleFullNode(node, depth, ZERO_LONG_KWP, tTime, last, room, pd);
                 }
             }
         }
@@ -1577,7 +1607,8 @@ public class Dag {
      * stops, as replaceKlong changes such klongs. Nothing below changes: the next child's own
      * first klong is the empty key already (KeyNode.firstAndSecond), or it is a segment leaf.
      * A full node is replaced by its last version, with the empty key instead of the next
-     * child's klong (the order stays sorted), through handleFullNode with no klong to insert.
+     * child's klong (the order stays sorted), through handleFullNode with no klong to insert;
+     * so is a node that would hold more than theta dead klongs (option 2, deadFull).
      */
     private void emptyKeyNext(final KeyNode node, final int depth, PutData pd) {
         assert !node.isSegmentLeaf();
@@ -1629,8 +1660,13 @@ public class Dag {
         final long union = arrayDel | bitsOf(node, jcv);
         final boolean inPlace = arrayTime == tt && e > timeIndex;
         final int need = (hasTransDel ? 0 : 1) + (inPlace ? 0 : 1) + (arrayTime == tt ? 0 : 1);
+        final boolean room = sz + need <= this.maxNodeSize;
         
-        if (sz + need <= this.maxNodeSize) {
+        // The dead klongs it adds: the next child's klong, and the empty key's unless in place.
+        // Not reached at format 7 from node size 8 (every node but a root holds m >= 2 live
+        // klongs, so no delete empties an inner node's child; theta is 0 below 8): the Lean
+        // model's emptyKeyNext runs it (treetest, theta forced below 8; bergdb 024-23, R3).
+        if (room && !deadFull(node, inPlace ? 1 : 2)) {
             // The bitmap first: in the model's terms a bitmap deletes the klongs before it with
             // the compare values of its new bits (docs/trace-format.md, "D"); the empty key is
             // not one of them, so the order is free.
@@ -1659,7 +1695,7 @@ public class Dag {
                         + ": the last version does not start with the next child.");
             }
             last.klongs[1] = Klong.EMPTY_KEY;   // sorted still: the empty key is below the rest
-            handleFullNode(node, depth, ZERO_LONG_KWP, tt, last, pd);
+            handleFullNode(node, depth, ZERO_LONG_KWP, tt, last, room, pd);
         }
     }
     
@@ -1799,6 +1835,106 @@ public class Dag {
     private int roomAfterReplacement() {
         final int b = maxNodeSize;
         return Math.max(2, Math.min(b / 2, Math.min(b - splitAbove(b), b - mergeCap(b))) - 3);
+    }
+
+
+    // ======== Option 2 of dead klongs: compaction at the write (bergdb 024-23; 024-18) ========
+    //
+    // A key node holds at most theta dead KEY klongs (deadCount: deleted by the node's last
+    // bitmap, or followed by a later KEY klong of the same compare value). Before the writer
+    // applies a write to a key node, it takes the dead klongs that the write adds: a put's
+    // klong 1 if its key is live in the node (isLive), else 0; a delete's bitmap, new or the
+    // transaction's own changed in place, 1; LE-b's bitmap and empty key 2, or 1 when the empty
+    // key is pointed in place; a merge's parent 1 or 2; a split's klongs in the parent and
+    // root collapse's klong 1 for each of a live compare value; a new segment's klong and a
+    // klong pointed in place 0. If the node would then hold more than theta, it is full
+    // (deadFull), and rule O replaces it by its last version with the write applied
+    // (handleFullNode with 'compaction'): always one node, a time split, as the node had room
+    // for the write and its last version has no more klongs; a node that the transaction made
+    // is compacted in place. A node without room is full by its size first, as before. So after
+    // every write a node holds at most theta dead klongs (bergdb 024-23, TP39), where the
+    // merges alone allow B; and reclaim's rewrites, which are puts, compact the cold leaves
+    // that they take above theta. A compaction keeps every live klong, so it changes no node's
+    // fill (V1, BU1).
+    // A function of the node and the write, so a start's rerun of a record of format 7 makes
+    // the same nodes; no field (bergdb 024-23, sections 2.2 to 2.4; Frans's decision of
+    // 2026-11-11, 024-18, QD1). The Lean model: Exec.lean's deadOver.
+    //
+
+    /** theta at node size 30 (Frans, 2026-11-11; bergdb 024-18, QD1). */
+    static final int THETA_30 = 7;
+
+    /**
+     * theta for node size 'b': THETA_30 * b / 30 by integer division, at least 1, from node size
+     * 8 (1 at 8, 3 at 14, 14 at 62); 0, off, below it, where format 7 merges nothing either
+     * (bergdb 024-23, OD2; other node sizes are open with 024-14's QT2). A rule of record
+     * format 7, as the thresholds are.
+     */
+    public static int theta(int b) {
+        return b < MERGE_MIN_NODE_SIZE ? 0 : Math.max(1, THETA_30 * b / THRESHOLDS_NODE_SIZE);
+    }
+
+    /** Compactions made by option 2; written by the writer only. */
+    public static volatile long statCompactions;
+
+    /**
+     * The dead KEY klongs of the node at the latest time: deleted by its last bitmap, or
+     * followed by a later KEY klong of the same compare value; each once (bergdb 024-23, 2.1).
+     */
+    public static int deadCount(KeyNode node) {
+        return deadCount(node, Integer.MAX_VALUE);
+    }
+
+    /** As deadCount(node), but the count stops at 'limit'. */
+    private static int deadCount(KeyNode node, int limit) {
+        final short sz = node.size;
+        final long del = lastBitmap(node);
+        int dead = 0;
+        A: for (int i = 0; i < sz && dead < limit; i++) {
+            final long klong = node.klongs[i];
+            if (Klong.getIntType(klong) != Klong.INT_TYPE_KEY) {
+                continue;
+            }
+            if (Klong.isDeleted(del, i)) {
+                dead++;
+                continue;
+            }
+            final long cv = Klong.getCompareValue(klong);
+            for (int j = i + 1; j < sz; j++) {
+                final long k2 = node.klongs[j];
+                if (Klong.getIntType(k2) == Klong.INT_TYPE_KEY && Klong.getCompareValue(k2) == cv) {
+                    dead++;
+                    continue A;
+                }
+            }
+        }
+        return dead;
+    }
+
+    /** True if the compare value's latest KEY klong in the node is not deleted by its last
+     *  bitmap: a klong of it added now shadows a live one. */
+    private static boolean isLive(KeyNode node, long compareValue) {
+        for (int i = node.size - 1; i >= 0; i--) {
+            final long klong = node.klongs[i];
+            if (Klong.getIntType(klong) == Klong.INT_TYPE_KEY
+                    && Klong.getCompareValue(klong) == compareValue) {
+                return !Klong.isDeleted(lastBitmap(node), i);
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Option 2: a write that adds 'dead' dead klongs to 'node' would leave it with more than
+     * theta: the node is full. Never with theta 0. A node of n klongs holds at most n - 1 KEY
+     * klongs, so a small one is not counted.
+     */
+    private boolean deadFull(KeyNode node, int dead) {
+        final int theta = theta(maxNodeSize);
+        if (theta == 0 || node.size - 1 + dead <= theta) {
+            return false;
+        }
+        return deadCount(node, theta - dead + 1) + dead > theta;
     }
 
 
@@ -2085,7 +2221,7 @@ public class Dag {
      * klong of tt behind p's time klong of tt is pointed in place, as replaceKlong changes such
      * klongs. A full node is replaced by its last version with the new pointers set, through
      * handleFullNode with no klong to insert (rule O), so that a space split puts each in its
-     * half.
+     * half; so is a node that would hold more than theta dead klongs (option 2, deadFull).
      */
     private void mergeParent(final KeyNode p, final int depth, final int il, final long klongL,
             final KeyNode m1, final int ir, final long klongR, final KeyNode m2,
@@ -2118,8 +2254,14 @@ public class Dag {
         final boolean rInPlace = !deleteR && arrayTime == tt && ir > timeIndex;
         final int need = (deleteR && !hasTransDel ? 1 : 0) + (lInPlace ? 0 : 1)
                 + (m2 == null || rInPlace ? 0 : 1) + (arrayTime == tt ? 0 : 1);
+        final boolean room = sz + need <= this.maxNodeSize;
+        // The dead klongs it adds: the right child's klong deleted or shadowed (unless pointed
+        // in place), the left child's shadowed (unless pointed in place); a second new node's
+        // klong of a new compare value adds none.
+        final int dead = (deleteR ? 1 : 0) + (lInPlace ? 0 : 1)
+                + (m2 != null && !deleteR && !rInPlace ? 1 : 0);
 
-        if (sz + need <= this.maxNodeSize) {
+        if (room && !deadFull(p, dead)) {
             if (deleteR) {
                 if (hasTransDel) {
                     p.klongs[sz - 1] = union;   // the transaction's own bitmap, no reader sees it
@@ -2148,7 +2290,7 @@ public class Dag {
                     last.addSortedKlong(secondKlong, m2, pd.accessData);
                 }
             }
-            handleFullNode(p, depth, ZERO_LONG_KWP, tt, last, pd);
+            handleFullNode(p, depth, ZERO_LONG_KWP, tt, last, room, pd);
         }
     }
 
@@ -2211,12 +2353,15 @@ public class Dag {
         /** Key nodes reachable at the time, segment trees, live keys, live klongs of the
          *  segment leaves (n + S - 1), and nodes that are not roots with fewer than m. */
         public long keyNodes, trees, liveKeys, leafKlongs, underfull;
-        /** The first violation of V1, V2, V4 or TU2's count, or null. */
+        /** The dead klongs of the nodes (deadCount), summed, and the most of one node. */
+        public long deadKlongs, deadMax;
+        /** The first violation of V1, V2, V4, TU2's count or TP39, or null. */
         public String error;
 
         public String toString() {
             return "key nodes " + keyNodes + ", trees " + trees + ", live keys " + liveKeys
                     + ", leaf klongs " + leafKlongs + ", underfull " + underfull
+                    + ", dead klongs " + deadKlongs + " (at most " + deadMax + " a node)"
                     + (error == null ? "" : ", " + error);
         }
     }
@@ -2228,13 +2373,15 @@ public class Dag {
      * least m live klongs (minFill); V2, an inner root at least 2, a leaf root at least 1 but
      * the space root; V4, the leaves of a segment tree are at one depth; and TU2, the key
      * nodes are at most S + (n + S - 1) / (m - 1) for S segment trees and n live keys, which
-     * V1, V2 and V4 give. For tests: it reads as a reader at 'time' does, loading nodes
-     * through gd's follower. With m < 2 (node size below MERGE_MIN_NODE_SIZE) it checks V2
-     * and V4, and V1 as "not empty".
+     * V1, V2 and V4 give; and TP39 of option 2 (bergdb 024-23), every node holds at most
+     * theta dead klongs (deadCount, at the latest time). For tests: it reads as a reader at
+     * 'time' does, loading nodes through gd's follower. With m < 2 (node size below
+     * MERGE_MIN_NODE_SIZE) it checks V2 and V4, and V1 as "not empty".
      */
     public Fill checkFill(long time, GetData gd) {
         final Fill f = new Fill();
         final int m = minFill(maxNodeSize);
+        final int theta = theta(maxNodeSize);
         final KeyNode spaceRoot = topDs.findRoot(time, gd);
         if (spaceRoot == null) {
             return f;
@@ -2251,6 +2398,13 @@ public class Dag {
             final boolean isRoot = (Boolean) fr[2];
             final int[] leafDepth = (int[]) fr[3];
             f.keyNodes++;
+            final int dead = deadCount(node);
+            f.deadKlongs += dead;
+            f.deadMax = Math.max(f.deadMax, dead);
+            if (theta > 0 && dead > theta && f.error == null) {
+                f.error = "TP39: " + what(node, isRoot, depth) + " holds " + dead
+                        + " dead klongs, more than theta = " + theta;
+            }
             final int sz = node.size;
             final long del = node.getDeleteBitmapAtTime(time, sz);
             final java.util.TreeMap<Long, Integer> live = new java.util.TreeMap<Long, Integer>();
@@ -2348,9 +2502,17 @@ public class Dag {
         assert node.assertOk(maxNodeSize);
 
         // "+1" is needed since a TIME klong could be added along with the toInsert klongs.
-        final boolean isFull = node.size + toAppend.length + 1 > this.maxNodeSize;
+        final boolean sizeFull = node.size + toAppend.length + 1 > this.maxNodeSize;
+        boolean compaction = false;
+        if (!sizeFull) {
+            int dead = 0;                       // the dead klongs the klongs add (option 2)
+            for (int i = 0; i < toAppend.length; i++) {
+                if (isLive(node, Klong.getCompareValue(toAppend[i].klong))) dead++;
+            }
+            compaction = deadFull(node, dead);
+        }
 
-        if (!isFull) {
+        if (!sizeFull && !compaction) {
             for (int i = 0; i < toAppend.length; i++) {
                 KlongWithPointer kwi = toAppend[i];
                 node.addKlong(pd.tt, kwi.klong, kwi.node, pd.accessData);
@@ -2375,7 +2537,7 @@ public class Dag {
             KeyNode last = node.lastVersion(pd.tt);
             
             assert last.assertOk(maxNodeSize);
-            handleFullNode(node, depth, toAppend, pd.tt, last, pd);
+            handleFullNode(node, depth, toAppend, pd.tt, last, compaction, pd);
         }
     }
     
@@ -2393,9 +2555,15 @@ public class Dag {
      * transaction of the Lean model (assumptions A2 and A3; bergdb 011-11,
      * M1). Before 2026-10-16, a later key of a transaction could replace a node that an
      * earlier key had created or changed.</p>
+     * 
+     * <p>'compaction': the node had room for the write, and is full by its dead klongs only
+     * (option 2, deadFull): it is replaced by its last version with the write applied, a time
+     * split, whatever h says. The last version holds no more klongs than the node with the
+     * write would, so it fits (bergdb 024-23, 2.2).</p>
      */
     private void handleFullNode(final KeyNode node, final int depth,
-            final KlongWithPointer[] toInsert, final long tTime, KeyNode last, PutData pd) {
+            final KlongWithPointer[] toInsert, final long tTime, KeyNode last,
+            final boolean compaction, PutData pd) {
         //
         // When this method is called, 'last' has not been added reported as a new node
         // (pd.nodeChangeListener.keyNodeChanged(last) not called).
@@ -2408,8 +2576,15 @@ public class Dag {
         final boolean newInTrans = node.getFirstTime() == tTime;
         
         pd.fullNodes++;                 // the key access path may be stale now (merges)
+        if (compaction) {
+            statCompactions++;
+            if (last.size + toInsert.length > this.maxNodeSize) {
+                throw new Bug("Compaction at " + tTime + " of key node " + node.getId()
+                        + ": its last version and the write do not fit (bergdb 024-23, 2.2).");
+            }
+        }
         
-        if (last.size > splitAbove(this.maxNodeSize)) {
+        if (!compaction && last.size > splitAbove(this.maxNodeSize)) {
             if (newInTrans) {
                 spaceSplitInPlace(node, last, depth, toInsert, pd);
             } else {

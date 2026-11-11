@@ -20,6 +20,13 @@ public final class Kv {
     public final ValueTransformation valueTransformation;
     
     /**
+     * BergDB's own KV, put by Trans.Builder's internal calls (putLongKey(), deleteLongKey()):
+     * its key may be longer than Db.MAX_KEY_BYTES (bergdb 024-17, L2), also after a key
+     * transformation (Db.transformKeys).
+     */
+    boolean longKey;
+    
+    /**
      * The constructor does not copy arrays, just references.
      * Arrays must not be changed by caller after this constructor is called.
      */

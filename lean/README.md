@@ -43,6 +43,12 @@ whose records and D must be Java's. `lake exe treetest` (TreeTest.lean;
 `java/stress/tree-tests.sh`) runs the tree alone on small exhaustive cases,
 and the whole model on it, with the assumptions' checks, T1 and T2. The design, the results and the list of the properties:
 ../items/024-release-2026-5/12-tree-model.md.
+The merges at the delete (bergdb 024-22: `Params.mergeBelow`, `mergeMax`,
+`splitAbove`; their properties TP28 to TP38 in SIS/Tree/MergeProps.lean) and
+option 2 of dead klongs (bergdb 024-23: `Params.theta`, `deadOver` in
+Exec.lean; TP39 and TP40 in SIS/Tree/DeadProps.lean) are parameters of the
+tree, off by default; record format 7's writer is
+`Params.withMerges.withTheta`.
 
 Since bergdb item 007 (2026-10-23) the model also has the first bound, T3:
 with any cost of a record and a startup pos policy that keeps up with a

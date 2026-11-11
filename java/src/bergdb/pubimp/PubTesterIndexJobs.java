@@ -1324,8 +1324,11 @@ public class PubTesterIndexJobs {
     }
 
     /**
-     * N7: a value whose levels take more than 4,096 bytes has no entry, so no step can be
-     * too large to commit; the build ends ACTIVE.
+     * N7: a value whose levels take more than 111 bytes (L6; 4,096 until bergdb 024-24), put
+     * before the index, has no entry, so no step can be too large to commit; the build ends
+     * ACTIVE. With the index there, a put of such a value is refused with
+     * IllegalArgumentException, nothing written (QL4; until 024-24 it was taken with no
+     * entry); one at 111 bytes, a string of 110, is taken with its entry.
      */
     @Nano
     public static void testLargeValueNoEntry() {
@@ -1338,8 +1341,20 @@ public class PubTesterIndexJobs {
                     .start().join();
             Assert.assertEquals(JobStatus.State.ACTIVE, s.state());
             Assert.assertEquals(1, entries(db, "n"));
-            c.put("/named/big2", new Named(IndexKeysTester.repeat("y", 5000)));
-            Assert.assertEquals(1, entries(db, "n"));
+            for (int n : new int[] {5000, IndexKeys.MAX_LEVEL_BYTES}) {
+                try {
+                    c.put("/named/big2", new Named(IndexKeysTester.repeat("y", n)));
+                    throw new AssertionError("a put of levels over L6 was taken");
+                } catch (IllegalArgumentException e) {
+                    Assert.assertTrue(e.getMessage(), 
+                            e.getMessage().contains("(bergdb 024-17, L6)"));
+                }
+                Assert.assertNull(c.get("/named/big2", byte[].class));
+                Assert.assertEquals(1, entries(db, "n"));
+            }
+            c.put("/named/big2", new Named(IndexKeysTester.repeat("y", 
+                    IndexKeys.MAX_LEVEL_BYTES - 1)));
+            Assert.assertEquals(2, entries(db, "n"));
         } finally {
             db.close();
         }

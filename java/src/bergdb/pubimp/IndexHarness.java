@@ -175,11 +175,14 @@ final class IndexHarness {
             "a\u0001b", "é", "￿", "😀", "a😀", "𐀀",
             "\u007f", "\u0080"};
 
-    /** Strings at and around the 4,096 bytes of levels (bergdb 020-10, section 3.3). */
-    static final String[] LONG_STRINGS = {IndexReference.repeat("a", 4087),
-            IndexReference.repeat("a", 4088), IndexReference.repeat("a", 4095),
-            IndexReference.repeat("a", 4096), IndexReference.repeat("\u0000", 2047),
-            IndexReference.repeat("\u0000", 2048), IndexReference.repeat("a", 2040)};
+    /**
+     * Strings at and around the 111 bytes of levels (bergdb 020-10, section 3.3; L6, 024-24:
+     * 4,096 until then): a put whose levels pass it is refused (execute()).
+     */
+    static final String[] LONG_STRINGS = {IndexReference.repeat("a", 102),
+            IndexReference.repeat("a", 103), IndexReference.repeat("a", 110),
+            IndexReference.repeat("a", 111), IndexReference.repeat("\u0000", 55),
+            IndexReference.repeat("\u0000", 56), IndexReference.repeat("a", 50)};
 
     /** The code points of random strings. */
     static final int[] CODE_POINTS = {'a', 'b', 0, 1, 0xe9, 0xffff, 0x1f600};
@@ -868,7 +871,7 @@ final class IndexHarness {
             if (s.codePointCount(0, s.length()) < s.length()) {
                 stats.add("string with an astral char");
             }
-            if (s.length() > 2000) {
+            if (s.length() >= 50) {         // 2,000 until bergdb 024-24 (L6)
                 stats.add("long string");
             }
         } else if (v instanceof Bin) {
@@ -1330,7 +1333,9 @@ final class IndexHarness {
             } else {
                 Tx tx = (Tx) op;
                 long time = execute(c, tx, gen.wide);
-                m.commit(time, replaced(tx.writes, time));
+                if (time != -1) {
+                    m.commit(time, replaced(tx.writes, time));
+                }
             }
         } else if ((op instanceof Create || op instanceof DeleteIndex) && gen.wide
                 && threads > 1) {
@@ -1363,7 +1368,41 @@ final class IndexHarness {
      * 020-17), an rw() reads each key before it writes it, so that a concurrent write of the
      * key makes it run again: the rerun's index entries come from the value read again.
      */
-    private static long execute(Connection c, final Tx tx, final boolean reads) {
+    private long execute(Connection c, final Tx tx, final boolean reads) {
+        try {
+            return executeOrRefused(c, tx, reads);
+        } catch (IllegalArgumentException e) {
+            // L6 (bergdb 024-17, QL4; 024-24): a put whose levels for an index of its
+            // directory pass 111 bytes is refused, nothing written. The index named must be
+            // one whose levels of a write of the transaction are too long, if it is live.
+            String msg = String.valueOf(e.getMessage());
+            if (!msg.contains("(bergdb 024-17, L6)")) {
+                throw e;
+            }
+            int q = msg.indexOf("index \"");
+            String name = q < 0 ? null : msg.substring(q + 7, msg.indexOf('"', q + 7));
+            IndexReference.Generation g = name == null ? null : m.live(name);
+            if (g != null) {
+                boolean holds = false;
+                for (Write w : tx.writes) {
+                    holds |= w.value != null && ref.tooLong(g.def, w.key, w.value);
+                }
+                if (!holds) {
+                    throw new AssertionError("refused for L6 by " + name + ", but no write's "
+                            + "levels are too long: " + msg, e);
+                }
+            }
+            synchronized (this) {
+                refusedL6++;
+            }
+            return -1;
+        }
+    }
+
+    /** Puts refused for L6 (bergdb 024-24). */
+    private int refusedL6;
+
+    private static long executeOrRefused(Connection c, final Tx tx, final boolean reads) {
         Transaction t;
         if (tx.rw) {
             t = c.rw(env -> {
@@ -1479,7 +1518,9 @@ final class IndexHarness {
             throw new AssertionError("a writer thread: " + failed[0], failed[0]);
         }
         for (int i = 0; i < txs.size(); i++) {
-            m.commit(times[i], replaced(txs.get(i).writes, times[i]));
+            if (times[i] != -1) {           // -1: refused for L6 (bergdb 024-24)
+                m.commit(times[i], replaced(txs.get(i).writes, times[i]));
+            }
         }
     }
 

@@ -352,13 +352,16 @@ public class ObjectBench {
         return dir + "p" + i;
     }
 
-    /** Puts n Payments into dir, 1,000 a transaction; the stream's bytes they took. */
+    /**
+     * Puts n Payments into dir, 500 a transaction (L1; 1,000 until bergdb 024-24); the
+     * stream's bytes they took.
+     */
     static long load(Database db, String dir, int n) {
         Connection c = db.connection();
         long before = streamLength(db);
-        for (int i = 0; i < n; i += 1000) {
+        for (int i = 0; i < n; i += Db.MAX_OPERATIONS) {
             WBuilder w = c.w();
-            for (int j = i; j < Math.min(n, i + 1000); j++) {
+            for (int j = i; j < Math.min(n, i + Db.MAX_OPERATIONS); j++) {
                 w.put(key(dir, j), payment(1000 + j % 997, 2000 + j % 991, j));
             }
             w.execute();

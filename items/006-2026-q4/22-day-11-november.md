@@ -380,6 +380,51 @@ from them.
   option 2 lands, on Opus high, when usage is under 85 %; with usage
   left after night.sh, the proofs of the count with q (TP23, TP26 for
   format 7) on Opus high.
+* 18:01 Frans: offload the proofs to his Codex (GPT Plus, gpt-6.1-sol at
+  max; "Sol Max does not use too much"), to save the Claude week (80 %
+  spent in two days). 18:10 the first Codex run started: TP32
+  (`MergeOpBound`, 024-22) in a clone of main
+  (/Users/f/fl/bench/2026-11-11/cx/clone, branch 024-22-tp32), brief
+  /Users/f/fl/bench/2026-11-11/cx/brief-tp32.md: no changed statement,
+  no sorry or axiom, Lean only, commits in Frans's name without AI
+  attribution, stop at 06:00. The coordinator checks it mechanically
+  (lake build, the statements' diff empty, print axioms) and lands it.
+  Next for Codex, one at a time: TP23 and TP26 with the count with q
+  (after 024-24), TP39 and TP40 (024-23), TP31, TP7 and TP30.
+* 18:05 Frans reset the Claude usage (the 5 hours and the week 100 %
+  left) and confirmed Codex on TP30 to TP33 ("Yes, start it."); Codex
+  takes them one at a time after TP32. 18:06 CRC32C (QL9) started as
+  024-25 on Opus high, now that usage allows. 18:06 Frans left: "Work
+  unattended."
+* 18:16 Option 2 for dead klongs landed: 08659847, the merge of
+  e0fb9d77 (gates: lake build, no sorry or axiom, test-traces,
+  before-commit, level1 to level4 full, unlinkfuzz, conformance small,
+  medium, reclaim, evict, drain; the review's R1 fixed). At 1M keys
+  0.29 to 0.31 dead klongs a live one (0.48 to 0.85 with the merges
+  alone), stream bytes -3 % to +8.5 %, 13 to 16 % fewer key nodes. The
+  landing says that format 7's meaning changes without a new number.
+* 18:45 to 19:04 The reviews of CRC32C (land with fixes: level1's
+  stream-size limits, a node size under 12 untested, 024-02's text) and
+  of the limits (land with fixes: R1, a value over L4 through the public
+  Trans.kvs failed the database when reclaim rewrote it; docs). Both
+  fixed by their agents.
+* 19:24 CRC32C landed: 79f35aa3, the merge of e1a87bec (gates:
+  before-commit, level1 full, unlinkfuzz, level2 to level4 full,
+  conformance small, medium, reclaim, evict, drain, CorruptStreamTester's
+  full set; 48 of 48 StreamDigest digests change). Checksum 5.6 to 0.12
+  ms a MB; an 8 MiB commit 49-57 to 2-11 ms (rough). Its changed tests
+  and level1's raised stream-size limits (QC2) accepted for Frans to see.
+* 20:19 The limits landed: 7c255127, the merge of 829d6135 (main with
+  CRC32C merged in; gates: lake build, no sorry or axiom, test-traces,
+  before-commit, level1 full, unlinkfuzz, level2 to level4 full,
+  conformance small, medium, reclaim, evict, drain). About 30 changed
+  tests and programs, each its own commit (024-24, section 3), accepted
+  for Frans to see (Q2); the index build over values longer than L6
+  gives no entry (Q1, as recommended).
+* 20:19 night.sh started on main (f5ac2600), holding both slots.
+  20:21 024-26 started (Opus high, to 02:00): a round of "AI as the user"
+  (006-20) against the new algorithms (merges, option 2, CRC32C, the
+  limits): bugs first (024-04, aim 1).
 
 
 ## 6. Outcome

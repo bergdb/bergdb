@@ -1380,6 +1380,13 @@ So:
   (QL7), the count with q stated and run (QL8 (a)), CRC32C in place of
   Fletcher-16 (QL9), reclaim's step of a large value documented now
   (QL10), one L1 for every node size (QL12 (a)).
+* **A precondition of QL5** (found 2026-11-11, 19:04, by 024-24's
+  review, R3): a transaction within L1 to L5 can still meet 005-31's
+  check (a probe at node size 62, 500 KVs of 111-byte keys, each with a
+  key and a value transformation), because the check's count of
+  transformed KVs is coarse. So 005-31's check becomes a `Bug` only
+  after that count is made exact and the bound is proved; until then it
+  stays a refusal (024-24, section 7).
 * **To restate for the new values** (the coordinator's reading of "as
   recommended", for the rework to confirm): L3 by the same rule as
   proposed (L1 keys of L2 bytes: about 54 KiB); L6 as one number with

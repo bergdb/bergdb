@@ -36,6 +36,11 @@ import bergdb.stream.CutStream;
  * the value limit is the caller's fault; a database that fails after one is counted so,
  * the transaction must not be in the stream, and the run ends.</p>
  *
+ * <p>Since bergdb 024-24 the limits of 024-17 too: keys of up to 111 bytes, the most (L2),
+ * and of 112, which the Trans.Builder call refuses with IllegalArgumentException, nothing
+ * written; transactions of up to 1,550 small KVs, those of more than 500 refused with
+ * DbException (L1). Until then keys of up to 3,006 bytes, and 1,550 KVs were taken.</p>
+ *
  * <p>Each run has a seed, printed at a failure, so that it can be repeated:
  * {@code run(seed, steps)}, or main.</p>
  *
@@ -86,7 +91,7 @@ public class LimitsTester {
     /** A run's outcome, for the summaries. */
     static final class Result {
         long committed, refusedSize, refusedTime, refusedNodes, refusedClock,
-                refusedOrdinals, settings,
+                refusedOrdinals, refusedLimits, settings,
                 restarts, cuts, iterations;
         boolean callersFault;
         String callersFaultNote = "";
@@ -98,6 +103,7 @@ public class LimitsTester {
             refusedNodes += o.refusedNodes;
             refusedClock += o.refusedClock;
             refusedOrdinals += o.refusedOrdinals;
+            refusedLimits += o.refusedLimits;
             settings += o.settings;
             restarts += o.restarts;
             cuts += o.cuts;
@@ -107,7 +113,8 @@ public class LimitsTester {
         public String toString() {
             return committed + " committed, refused: " + refusedSize + " size, " + refusedNodes
                     + " index nodes, " + refusedTime + " time, " + refusedClock + " clock, "
-                    + refusedOrdinals + " top node ordinals; "
+                    + refusedOrdinals + " top node ordinals, " + refusedLimits + " limits of "
+                    + "024-17; "
                     + settings + " settings calls, " + restarts + " restarts, " + cuts
                     + " cuts, " + iterations + " reclaim iterations"
                     + (callersFault ? "; ended by the caller's fault: " + callersFaultNote : "");
@@ -362,17 +369,35 @@ public class LimitsTester {
         boolean execute(List<Op> ops, String what, boolean callers) {
             Trans.Builder b = db.trans();
             long bytes = 0;
+            boolean keyOver = false;            // a key over L2 (bergdb 024-24)
             for (Op op : ops) {
-                long[] key = Keys.toSegments(op.key);
-                if (op.vt != null) {
-                    b.put(key, null, op.value, op.vt);
-                } else if (op.value == null) {
-                    b.delete(key);
-                } else {
-                    b.put(key, op.value);
-                }
-                bytes += op.nodeBytes();
+                keyOver |= Keys.toBytes(op.key).length > Db.MAX_KEY_BYTES;
             }
+            try {
+                for (Op op : ops) {
+                    long[] key = Keys.toSegments(op.key);
+                    if (op.vt != null) {
+                        b.put(key, null, op.value, op.vt);
+                    } else if (op.value == null) {
+                        b.delete(key);
+                    } else {
+                        b.put(key, op.value);
+                    }
+                    bytes += op.nodeBytes();
+                }
+            } catch (IllegalArgumentException e) {
+                // L2 at the builder's call: nothing of the transaction is written.
+                note(what + ": refused by the builder: " + e.getMessage());
+                check(keyOver && e.getMessage().contains("(bergdb 024-17, L2)"),
+                        what + ": refused by the builder for a reason that does not hold: " + e);
+                result.refusedLimits++;
+                checkActive();
+                for (Op op : ops) {
+                    checkKey(op.key);
+                }
+                return false;
+            }
+            check(!keyOver, what + ": a key over L2 taken by the builder");
             final long clockTime = now.get();
             final boolean clockOut = clockTime < Klong.MIN_TIME || clockTime > Klong.MAX_TIME;
             final boolean over = bytes > valueLimit();
@@ -407,6 +432,9 @@ public class LimitsTester {
                 } else if (m.contains("used its top node ordinals")) {
                     holds = secondOrdinal > 0;
                     result.refusedOrdinals++;
+                } else if (m.contains("(bergdb 024-17, L1)")) {
+                    holds = ops.size() > Db.MAX_OPERATIONS;
+                    result.refusedLimits++;
                 } else if (m.contains("index nodes it can make dirty")) {
                     // Db.checkDirtyNodes (bergdb 005-31): a documented refusal of a
                     // transaction whose index nodes may not fit one record.
@@ -429,6 +457,8 @@ public class LimitsTester {
                 return false;
             }
             check(!clockOut, what + ": taken with the clock out of range, " + clockTime);
+            check(ops.size() <= Db.MAX_OPERATIONS, what + ": taken with " + ops.size()
+                    + " operations, over L1");
             check(!over, what + ": taken with " + bytes + " bytes, over the value limit "
                     + valueLimit());
             check(t.tt > lastUserTime, what + ": its time " + t.tt + " not after the last, "
@@ -556,9 +586,15 @@ public class LimitsTester {
             return "/v/" + r.nextInt(16);
         }
 
+        /**
+         * A key of 24 to 111 bytes, the most (L2), and one in ten of 112, which the builder
+         * refuses (bergdb 024-24; until then 24 to 3,010 bytes).
+         */
         String longKey() {
-            int[] lengths = {20, 70, 140, 400, 1000, 1500, 3000};
-            int n = lengths[r.nextInt(lengths.length)] + r.nextInt(7);
+            int[] lengths = {20, 50, 70, 100};
+            int n = r.nextInt(10) == 0 ? Db.MAX_KEY_BYTES - 3
+                    : r.nextInt(10) == 0 ? Db.MAX_KEY_BYTES - 4
+                    : lengths[r.nextInt(lengths.length)] + r.nextInt(8);
             char[] c = new char[n];
             Arrays.fill(c, (char) ('a' + r.nextInt(3)));
             return "/l/" + r.nextInt(4) + new String(c);
@@ -686,12 +722,15 @@ public class LimitsTester {
                     : "transform", callers);
         }
 
-        /** Many small KVs in one transaction, at the bound of its index nodes. */
+        /**
+         * Many small KVs in one transaction, at the bound of its index nodes, and around L1:
+         * those of more than 500 KVs are refused (bergdb 024-24).
+         */
         void putManyKeys() {
             List<Op> ops = new ArrayList<Op>();
-            int n = 50 + r.nextInt(1500);
+            int n = r.nextInt(3) == 0 ? Db.MAX_OPERATIONS + r.nextInt(2) : 50 + r.nextInt(1500);
             java.util.HashSet<String> keys = new java.util.HashSet<String>();
-            for (int i = 0; i < n; i++) {
+            while (ops.size() < n) {            // n distinct keys (bergdb 024-24)
                 String k = "/m/" + r.nextInt(5000);
                 if (keys.add(k)) {
                     ops.add(new Op(k, value(r.nextInt(20)), null));

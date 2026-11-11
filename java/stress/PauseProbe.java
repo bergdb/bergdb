@@ -29,7 +29,8 @@ import bergdb.stream.FileStream;
  * Properties: keys=N (default 1000000), valsize=N (bytes, default 100), budget=MB (default
  * 20), dir=D (default build/pauseprobe, emptied first), readers=N (default 4), seconds=S (per
  * phase, default 60), tsize=N,N,... (the writer's puts a transaction, a phase each; default
- * 1,1000); lower=MB (default 0: none) and lowerAt=S (default 10), the lowered budget (bergdb
+ * 1,500; 1,1000 until bergdb 024-24); lower=MB (default 0: none) and lowerAt=S (default
+ * 10), the lowered budget (bergdb
  * 005-52): each phase starts with the budget 'budget', and lowerAt seconds into it, between
  * two of the writer's commits, the budget becomes 'lower'; a sampler reads the resident bytes
  * every 10 ms until they are at most 'lower' or the phase ends, and the phase's block has a
@@ -45,7 +46,7 @@ public class PauseProbe {
     final File dir = new File(System.getProperty("dir", "build/pauseprobe"));
     final int readers = Integer.getInteger("readers", 4);
     final int seconds = Integer.getInteger("seconds", 60);
-    final int[] tsizes = parse(System.getProperty("tsize", "1,1000"));
+    final int[] tsizes = parse(System.getProperty("tsize", "1,500"));      // L1: 1,1000 until 024-24
     /** The lowered budget, in bytes, 0 for none, and the seconds into a phase (bergdb 005-52). */
     final long lower = Long.getLong("lower", 0) * 1000 * 1000;
     final int lowerAt = Integer.getInteger("lowerAt", 10);
@@ -275,9 +276,10 @@ public class PauseProbe {
         Lat commits = new Lat();
         long s = System.nanoTime();
         long from = uptimeMs();
-        for (int i = 0; i < keys; i += 1000) {
+        // Batches of 500, L1 (bergdb 024-24; 1,000 until then).
+        for (int i = 0; i < keys; i += Db.MAX_OPERATIONS) {
             Trans.Builder b = db.trans();
-            for (int j = i; j < Math.min(keys, i + 1000); j++) b.put(key(order[j]), value(order[j], 0));
+            for (int j = i; j < Math.min(keys, i + Db.MAX_OPERATIONS); j++) b.put(key(order[j]), value(order[j], 0));
             Trans t = b.build();
             long t0 = System.nanoTime();
             db.execute(t);

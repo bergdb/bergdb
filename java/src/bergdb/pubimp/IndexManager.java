@@ -245,7 +245,7 @@ class IndexManager {
                 Trans.Builder b = db.trans();
                 b.lookupTime(g);
                 b.addReadHash(keyHash(def));
-                b.put(def.key(), def.toBytes());
+                b.putLongKey(Keys.toSegments(def.key()), null, def.toBytes(), null);
                 b.addVirtualWriteHash(vhashOfDir(def.idir()));
                 if (execute(b, "create")) {
                     break;
@@ -298,7 +298,7 @@ class IndexManager {
                 Trans.Builder b = db.trans();
                 b.lookupTime(db.lookupTime(Long.MAX_VALUE));
                 b.addReadHash(keyHash(active));
-                b.put(active.key(), active.toBytes());
+                b.putLongKey(Keys.toSegments(active.key()), null, active.toBytes(), null);
                 if (execute(b, "activate")) {
                     break;
                 }
@@ -346,8 +346,11 @@ class IndexManager {
                 Trans.Builder b = db.trans();
                 b.lookupTime(db.lookupTime(Long.MAX_VALUE));
                 b.addReadHash(keyHash(def));
-                b.delete(def.key());
-                b.put(IndexKeys.markerKey(def.name(), def.gen()), new byte[0]);
+                // BergDB's own keys, which may pass Db.MAX_KEY_BYTES (an index name has up to
+                // 255 bytes): the internal calls (bergdb 024-17, 6.2 (a); 024-24).
+                b.deleteLongKey(Keys.toSegments(def.key()));
+                b.putLongKey(Keys.toSegments(IndexKeys.markerKey(def.name(), def.gen())), null, 
+                        new byte[0], null);
                 b.addVirtualWriteHash(vhashOfDir(def.idir()));
                 if (execute(b, "delete")) {
                     break;
@@ -498,13 +501,13 @@ class IndexManager {
                             continue;
                         }
                         hook(CLEANUP_END);
-                        db.execute(db.trans().delete(marker).build());
+                        db.execute(db.trans().deleteLongKey(Keys.toSegments(marker)).build());
                         return;
                     }
                     hook(CLEANUP_STEP);
                     Trans.Builder b = db.trans();
                     for (Kvt kvt : keys) {
-                        b.delete(kvt.key);
+                        b.deleteLongKey(kvt.key);       // an entry: BergDB's own key (024-24)
                     }
                     db.execute(b.build());
                     after = keys.get(keys.size() - 1).key;

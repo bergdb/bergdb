@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Set;
 
 import bergdb.common.StringUtil;
+import bergdb.core.Db;
 import bergdb.pub.DbArray;
 import bergdb.pub.DbBoolean;
 import bergdb.pub.DbByteArray;
@@ -833,9 +834,11 @@ public final class DataObjects {
                 String at = here();
                 throw new IllegalArgumentException("The object is too large: its stored value "
                         + "passes " + limit + " bytes at " + (at.isEmpty() ? "the top"
-                        : "'" + at + "'") + ". A stored value has at most 2^31 - 1 bytes, and "
+                        : "'" + at + "'") + ". " + (limit <= Db.MAX_VALUE_BYTES 
+                        ? "A value put has at most " + Db.MAX_VALUE_BYTES + " bytes (bergdb "
+                        + "024-17, L4)." : "A stored value has at most 2^31 - 1 bytes, and "
                         + "in Java at most 2^31 - 9, the largest Java array (bergdb 020-07, "
-                        + "R15; 020-09, section 4.7).");
+                        + "R15; 020-09, section 4.7)."));
             }
         }
     }

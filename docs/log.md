@@ -1772,3 +1772,14 @@ included, on 2026.3's bug-free Core; and the Core's cleanup (023): a delete
 removes the index nodes it empties, so that scans and reclaim no longer pass
 deleted keys. Record format 6: databases of 2026.3 are refused. After the
 tag, `BuildInfo` says 2026.5-dev.
+
+2026-11-11. `level1.sh`'s SS limits raised to 1.54 1.12 1.22 1.70 2.41
+(from 1.52 1.11 1.21 1.66 2.41), for bergdb 024-25 (CRC32C as the node
+checksum, Frans's decision QL9 of 024-17). The reason, as step 6's rule
+asks: the node header grows from 8 to 12 bytes for the 32-bit checksum, so
+every value or delete node is 4 bytes longer and every top node 8 (key
+nodes keep their size). On `main` at `08659847` SS is 1.51 (1.10, 1.20,
+1.64, 2.41); with the change 1.53 (1.11, 1.21, 1.69, 2.40): SS3, 10,000
+transactions of 100 KVs of 100 bytes, gains 4 bytes a KV of 100, so 0.04
+to 0.05 more stream bytes a user byte; SS4 is 0.01 lower (not looked
+into). The limits keep one step of 0.01 above the new values.

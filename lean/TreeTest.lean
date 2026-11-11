@@ -37,6 +37,11 @@ format 7 and TP26; `model` checks A6 too. More forms:
     put in its own transaction, twice), then `depth` single operations;
   random M seeds steps keys [merge] [maxOps] [delete percent];
   merges: the default set with merges (`runMergeSet`), about 15 minutes.
+Option 2 of dead klongs (bergdb 024-23): the word `theta` runs with
+`Params.withTheta` (below node size 8, forced to 1); then each state is checked
+also for TP39 (at most theta dead klongs a node, in the walk), and TP23 with
+the count of 024-23, 2.6. `thetas`: the set with option 2 and the merges
+(`runThetaSet`), also part of the default set.
 Key sets: up to 16 keys `testKeys`, to 100 `manyKeys`, to 200 `segKeys` of n -
 100 keys (three 7-byte prefixes), above `oneSegKeys` of n - 200 (one prefix).
 -/
@@ -63,7 +68,8 @@ structure St where
   `dirtyNodeBound` on the tree before it. -/
   marked : Nat := 0
   bound : Nat := 0
-  /-- TP26: the transaction's own limits (its operations, its longest key) allow
+  /-- TP26: the transaction's own limits (its operations, its longest key, its
+  keys' segments) allow
   `dirtyNodeBound`. -/
   limitsOk : Bool := true
 
@@ -152,7 +158,8 @@ def stepSt (p : Params) (st : St) (ops : List Tree.Op) : Except String St :=
           marked := markedKeyNodes p (viewOf P') i c,
           bound := dirtyNodeBound p (viewOf st.P) (i - 1) ops,
           limitsOk := dirtyNodeBound p (viewOf st.P) (i - 1) ops ≤
-            ({ maxOps := ops.length, maxSegs := (ops.map (·.key.length)).foldl max 0 } : Limits).dirtyNodes p }
+            ({ maxOps := ops.length, maxSegs := (ops.map (·.key.length)).foldl max 0,
+               maxTxSegs := (ops.map (·.key.length)).foldl (· + ·) 0 } : Limits).dirtyNodes p }
 
 /-- The scans to compare at a time: forward and backward from every key and
 from none, inclusive and not; forward to every end key, inclusive and not. -/
@@ -413,16 +420,23 @@ def modelRun (p : Params) (keys : List Key) (seed n : Nat) : List String :=
     else ["T2: the run with restarts has another stream"]
   initF ++ r.2 ++ sameP ++ t1 ++ t2
 
-def runModel (m seeds steps nkeys : Nat) (merges : Bool := false) : IO Bool := do
+/-- Option 2 (bergdb 024-23) on p with `theta`: `Params.withTheta`; below node
+size 8, where record format 7 has none, forced to 1, so that the small sizes
+run the rule too. -/
+def addTheta (p : Params) (theta : Bool) : Params :=
+  if !theta then p else if p.M < 8 then { p with theta := 1 } else p.withTheta
+
+def runModel (m seeds steps nkeys : Nat) (merges : Bool := false) (theta : Bool := false) :
+    IO Bool := do
   let p0 : Params := { M := m, G := 1, H := 8 }
-  let p := if merges then p0.withMerges else p0
+  let p := addTheta (if merges then p0.withMerges else p0) theta
   let keys := if nkeys ≤ 16 then testKeys nkeys else
     ([0] :: (List.range (nkeys - 1)).map (fun j =>
       if j % 4 == 3 then [64 + 56, (j / 4) * 64 + 8] else [(j + 2) * 64 + 8]))
   let mut fails : List String := []
   for seed in [1:seeds + 1] do
     fails := (fails ++ (modelRun p keys seed steps).map (fun f => s!"seed {seed}: {f}")).take 20
-  IO.println s!"model M={m} seeds={seeds} steps={steps} keys={nkeys}{if merges then " merges" else ""}: C-A on every transaction{if merges then " (A6 too)" else ""}, T1, T2: {fails.length} failures"
+  IO.println s!"model M={m} seeds={seeds} steps={steps} keys={nkeys}{if merges then " merges" else ""}{if theta then s!" theta={p.theta}" else ""}: C-A on every transaction{if merges then " (A6 too)" else ""}, T1, T2: {fails.length} failures"
   for f in fails.take 6 do
     IO.println s!"  {f}"
   pure fails.isEmpty
@@ -444,11 +458,11 @@ def report (name : String) (s : Stats) : IO Bool := do
 thresholds (`Params.withMerges`). Below node size 8, where `withMerges` (as
 Java) merges nothing, `merge` forces 024-11's formulas, m = 2 and c = M / 2:
 to show what TP28 excludes (024-22, section 3.3). -/
-def mkParams (m : Nat) (merges : Bool) : Params :=
+def mkParams (m : Nat) (merges : Bool) (theta : Bool := false) : Params :=
   let p : Params := { M := m, G := 1, H := 8 }
-  if !merges then p
-  else if m < 8 then { p with mergeBelow := 2, mergeMax := m / 2 }
-  else p.withMerges
+  addTheta (if !merges then p
+    else if m < 8 then { p with mergeBelow := 2, mergeMax := m / 2 }
+    else p.withMerges) theta
 
 /-- More keys than `testKeys` has: the empty key, and keys of one segment, every
 fourth of two segments below one long first segment. -/
@@ -474,7 +488,8 @@ def keysFor (n : Nat) : List Key :=
   if n ≤ 16 then testKeys n else if n ≤ 100 then manyKeys n
   else if n ≤ 200 then segKeys (n - 100) else oneSegKeys (n - 200)
 
-def mergeName (merges : Bool) : String := if merges then " merges" else ""
+def mergeName (merges : Bool) (theta : Bool := false) (p : Params := default) : String :=
+  (if merges then " merges" else "") ++ (if theta then s!" theta={p.theta}" else "")
 
 /-- A state to start the exhaustive runs from: `pre` 0, the primordial structure;
 1, every key put in one transaction; 2, every key put in a transaction of its
@@ -497,11 +512,11 @@ def prefixSt (p : Params) (keys : List Key) (pre : Nat) : Except String St :=
         acc.bind (fun st => stepSt p st [Tree.Op.put k (1000 * (st.ts.length + 1) + j)])) r
     else r.bind (fun st => stepSt p st (all (st.ts.length + 1)))
 
-def runExhaustive (m depth nkeys pre : Nat) (pairs : Bool := false) (merges : Bool := false) :
-    IO Bool := do
-  let p := mkParams m merges
+def runExhaustive (m depth nkeys pre : Nat) (pairs : Bool := false) (merges : Bool := false)
+    (theta : Bool := false) : IO Bool := do
+  let p := mkParams m merges theta
   let keys := keysFor nkeys
-  let name := s!"exhaustive M={m} depth={depth} keys={nkeys} prefix={pre}{if pairs then " pairs" else ""}{mergeName merges}"
+  let name := s!"exhaustive M={m} depth={depth} keys={nkeys} prefix={pre}{if pairs then " pairs" else ""}{mergeName merges theta p}"
   match prefixSt p keys pre with
   | .error e =>
     IO.println s!"{name}: the prefix fails: {e}"
@@ -516,10 +531,11 @@ key that has a value), or with `puts` also a put: one transaction from the
 prefix, its operations in key order; then every sequence of `depth` single
 operations after it. With merges this reaches nodes made and merged in one
 transaction (the take-back of 024-11, M5). -/
-def runSubsets (m nkeys pre depth : Nat) (puts merges : Bool) : IO Bool := do
-  let p := mkParams m merges
+def runSubsets (m nkeys pre depth : Nat) (puts merges : Bool) (theta : Bool := false) :
+    IO Bool := do
+  let p := mkParams m merges theta
   let keys := keysFor nkeys
-  let name := s!"subsets M={m} keys={nkeys} prefix={pre} depth={depth}{if puts then " puts" else ""}{mergeName merges}"
+  let name := s!"subsets M={m} keys={nkeys} prefix={pre} depth={depth}{if puts then " puts" else ""}{mergeName merges theta p}"
   match prefixSt p keys pre with
   | .error e =>
     IO.println s!"{name}: the prefix fails: {e}"
@@ -547,8 +563,8 @@ def runSubsets (m nkeys pre depth : Nat) (puts merges : Bool) : IO Bool := do
     report name s
 
 def runRandom (m seeds steps nkeys : Nat) (merges : Bool := false) (maxOps : Nat := 6)
-    (delPct : Nat := 0) : IO Bool := do
-  let p := mkParams m merges
+    (delPct : Nat := 0) (theta : Bool := false) : IO Bool := do
+  let p := mkParams m merges theta
   let mut ok := true
   let mut total : Stats := {}
   for seed in [1:seeds + 1] do
@@ -564,7 +580,7 @@ def runRandom (m seeds steps nkeys : Nat) (merges : Bool := false) (maxOps : Nat
                  if r.any (fun z => z.1 == q.1) then r.map (fun z => if z.1 == q.1 then (z.1, z.2 + q.2) else z)
                  else r ++ [q]) total.reached }
     if !s.fails.isEmpty then ok := false
-  let _ ← report s!"random M={m} seeds={seeds} steps={steps} keys={nkeys} ops<={maxOps}{if delPct == 0 then "" else s!" deletes {delPct}%"}{mergeName merges}" total
+  let _ ← report s!"random M={m} seeds={seeds} steps={steps} keys={nkeys} ops<={maxOps}{if delPct == 0 then "" else s!" deletes {delPct}%"}{mergeName merges theta p}" total
   pure ok
 
 /-- The runs with merges at the delete (bergdb 024-22, section 3): node sizes 8
@@ -584,17 +600,40 @@ def runMergeSet : IO Bool := do
   let l ← runModel 8 6 60 30 true
   pure (a && b && c && d && e && f && g && h && k && l)
 
+/-- The runs with option 2 of dead klongs (bergdb 024-23, section 3), with the
+merges, as record format 7 has them: node sizes 8 (theta 1), 10 and 12 (theta
+2) and 14 (theta 3); prefix 4 (every key put twice) starts in nodes full of dead
+klongs; and option 2 alone, at node size 4 (theta 1, forced) and 8. -/
+def runThetaSet : IO Bool := do
+  let a ← runExhaustive 8 3 12 2 false true true
+  let b ← runExhaustive 8 3 12 4 false true true
+  let c ← runExhaustive 10 2 14 4 false true true
+  let d ← runExhaustive 12 2 14 4 false true true
+  let e ← runExhaustive 8 2 12 2 true true true
+  let f ← runSubsets 8 12 2 0 false true true
+  let g ← runSubsets 8 9 3 0 true true true
+  let h ← runSubsets 8 210 0 1 true true true
+  let k ← runRandom 8 20 200 40 true 12 0 true
+  let l ← runRandom 8 10 200 124 true 20 50 true
+  let m ← runRandom 14 10 300 60 true 12 30 true
+  let n ← runModel 8 6 60 30 true true
+  let o ← runExhaustive 4 4 6 2 false false true
+  let q ← runExhaustive 8 3 12 4 false false true
+  pure (a && b && c && d && e && f && g && h && k && l && m && n && o && q)
+
 def main (args : List String) : IO UInt32 := do
-  let flags := ["merge", "pairs", "puts"]
+  let flags := ["merge", "pairs", "puts", "theta"]
   let nums := args.filter (fun a => !flags.contains a)
   let nat := fun (i : Nat) (d : Nat) => (nums[i]?.bind String.toNat?).getD d
   let mg := args.contains "merge"
+  let th := args.contains "theta"
   let ok ← match args.head? with
-    | some "exhaustive" => runExhaustive (nat 1 4) (nat 2 5) (nat 3 4) (nat 4 0) (args.contains "pairs") mg
-    | some "subsets" => runSubsets (nat 1 8) (nat 2 10) (nat 3 1) (nat 4 0) (args.contains "puts") mg
-    | some "random" => runRandom (nat 1 8) (nat 2 20) (nat 3 150) (nat 4 14) mg (nat 5 6) (nat 6 0)
-    | some "model" => runModel (nat 1 8) (nat 2 10) (nat 3 40) (nat 4 10) mg
+    | some "exhaustive" => runExhaustive (nat 1 4) (nat 2 5) (nat 3 4) (nat 4 0) (args.contains "pairs") mg th
+    | some "subsets" => runSubsets (nat 1 8) (nat 2 10) (nat 3 1) (nat 4 0) (args.contains "puts") mg th
+    | some "random" => runRandom (nat 1 8) (nat 2 20) (nat 3 150) (nat 4 14) mg (nat 5 6) (nat 6 0) th
+    | some "model" => runModel (nat 1 8) (nat 2 10) (nat 3 40) (nat 4 10) mg th
     | some "merges" => runMergeSet
+    | some "thetas" => runThetaSet
     | _ => do
       let a ← runExhaustive 4 5 4 0
       let b ← runExhaustive 6 5 4 0
@@ -611,7 +650,8 @@ def main (args : List String) : IO UInt32 := do
       let n ← runModel 4 6 30 8
       let o ← runModel 8 6 40 12
       let r ← runMergeSet
-      pure (a && b && c && d && e && f && g && h && k && l && m && n && o && q && r)
+      let t ← runThetaSet
+      pure (a && b && c && d && e && f && g && h && k && l && m && n && o && q && r && t)
   if ok then
     IO.println "TREETEST OK"
     return 0

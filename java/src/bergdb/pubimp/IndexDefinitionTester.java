@@ -34,7 +34,8 @@ import bergdb.pubimp.ObjectFormatTester.Vn;
  *     (exactly these fields, the name from the key, a stored object of format 2); the
  *     definition at a lookup time, read from a database;</li>
  * <li>the function's table (3.3) by stored kind, absent fields, paths through non-objects,
- *     values that are not objects, format 1, and the 4,096-byte limit; random objects against
+ *     values that are not objects, format 1, and the limit of 111 bytes (L6; 4,096 until
+ *     bergdb 024-24); random objects against
  *     a reference written apart, on the model of ObjectFormatTester.</li>
  * </ul>
  * The test objects are written with ObjectFormatTester's codec of the model (Obj, Arr, ...),
@@ -394,7 +395,8 @@ public class IndexDefinitionTester {
 
     /**
      * 3.3's table by stored kind: each type takes exactly its kind, at every width; -0.0 is
-     * 0.0's entry; NaN, booleans, arrays and objects give none; nothing is converted.
+     * 0.0's entry; NaN, booleans, arrays and objects give none; nothing is converted. The
+     * long string and bytes have 110 bytes, the most within L6 (200 until bergdb 024-24).
      */
     @Nano
     public static void testFunctionTable() {
@@ -403,8 +405,8 @@ public class IndexDefinitionTester {
                 "d3ff8000000000000", "d8000000000000000", "d0000000000000000",
                 "d7ff8000000000000", "dfff0000000000000", "d7ff0000000000000",
                 "d0000000000000001",
-                "s\"\"", "s\"a\\x00\\x01\"", "s\"" + repeat("x", 200) + "\"", "s<f09f9880>",
-                "b\"\"", "b<0001ff>", "b\"" + repeat("y", 200) + "\"",
+                "s\"\"", "s\"a\\x00\\x01\"", "s\"" + repeat("x", 110) + "\"", "s<f09f9880>",
+                "b\"\"", "b<0001ff>", "b\"" + repeat("y", 110) + "\"",
                 "true", "false", "[]", "[i1]", "{}", "{\"v\":i1}"};
         int entries = 0;
         for (char type : IndexKeys.TYPES) {
@@ -545,40 +547,54 @@ public class IndexDefinitionTester {
     }
 
     /**
-     * The limit: levels of 4,096 bytes in all give an entry, 4,097 none (020-10, section
-     * 3.3, rule 3), with E's escapes counted; a value of a megabyte gives none.
+     * The limit: levels of 111 bytes in all give an entry, 112 none (020-10, section 3.3, rule
+     * 3; L6, bergdb 024-17, 024-24: 4,096 until then), with E's escapes counted; a value of a
+     * megabyte gives none. A put of a value with longer levels is refused
+     * (IndexDefinition.entryForPut; PubTesterIndexJobs.testLargeValueNoEntry).
      */
     @Nano
     public static void testFunctionLimit() {
+        final int max = IndexKeys.MAX_LEVEL_BYTES;
+        Assert.assertEquals(111, max);
         IndexDefinition s = new IndexDefinition("n", "/p/", 1, false, new String[] {"string"},
                 new String[][] {{"s"}});
-        Assert.assertEquals(4096, s.entryLevels("/dp/-k", writeString("s",
-                repeat("x", 4095))).length);
-        assertNull(s.entryLevels("/dp/-k", writeString("s", repeat("x", 4096))));
-        Assert.assertEquals(4096, s.entryLevels("/dp/-k", writeString("s",
-                repeat("\u0000", 2047) + "x")).length);
-        assertNull(s.entryLevels("/dp/-k", writeString("s", repeat("\u0000", 2048))));
+        Assert.assertEquals(max, s.entryLevels("/dp/-k", writeString("s",
+                repeat("x", max - 1))).length);
+        assertNull(s.entryLevels("/dp/-k", writeString("s", repeat("x", max))));
+        Assert.assertEquals(max, s.entryLevels("/dp/-k", writeString("s",
+                repeat("\u0000", (max - 1) / 2))).length);
+        assertNull(s.entryLevels("/dp/-k", writeString("s", repeat("\u0000", (max - 1) / 2)
+                + "x")));
         assertNull(s.entryLevels("/dp/-k", writeString("s", repeat("x", 1 << 20))));
+        try {
+            s.entryForPut("/dp/-k", writeString("s", repeat("x", max)));
+            throw new AssertionError("a put of levels over L6 was taken");
+        } catch (IllegalArgumentException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("(bergdb 024-17, L6)"));
+        }
+        Assert.assertEquals(max, s.entryLevels("/dp/-k", writeString("s",
+                repeat("x", max - 1))).length);
 
         IndexDefinition b = new IndexDefinition("n", "/p/", 1, false, new String[] {"bytes"},
                 new String[][] {{"b"}});
-        byte[] zeros = new byte[2048];
-        zeros[2047] = 5;
-        Assert.assertEquals(4096, b.entryLevels("/dp/-k", writeBytes("b", zeros)).length);
-        assertNull(b.entryLevels("/dp/-k", writeBytes("b", new byte[2048])));
-        byte[] ff = new byte[4095];
+        byte[] zeros = new byte[(max - 1) / 2 + 1];
+        zeros[zeros.length - 1] = 5;
+        assertNull(b.entryLevels("/dp/-k", writeBytes("b", zeros)));
+        Assert.assertEquals(max, b.entryLevels("/dp/-k", writeBytes("b", 
+                new byte[(max - 1) / 2])).length);
+        byte[] ff = new byte[max - 1];
         Arrays.fill(ff, (byte) 0xff);
-        Assert.assertEquals(4096, b.entryLevels("/dp/-k", writeBytes("b", ff)).length);
+        Assert.assertEquals(max, b.entryLevels("/dp/-k", writeBytes("b", ff)).length);
 
         // Levels in all: a long (8 bytes) and a string.
         IndexDefinition ls = new IndexDefinition("n", "/p/", 1, false,
                 new String[] {"long", "string", "double"}, new String[][] {{"a"}, {"s"},
                 {"d"}});
         Obj o = obj("{\"a\":i1,\"d\":d3ff0000000000000}");
-        o.fields.put("s", new Str(repeat("x", 4096 - 8 - 8 - 1)));
-        Assert.assertEquals(4096, ls.entryLevels("/dp/-k", ObjectFormatTester.codecWrite(o))
+        o.fields.put("s", new Str(repeat("x", max - 8 - 8 - 1)));
+        Assert.assertEquals(max, ls.entryLevels("/dp/-k", ObjectFormatTester.codecWrite(o))
                 .length);
-        o.fields.put("s", new Str(repeat("x", 4096 - 8 - 8)));
+        o.fields.put("s", new Str(repeat("x", max - 8 - 8)));
         assertNull(ls.entryLevels("/dp/-k", ObjectFormatTester.codecWrite(o)));
     }
 
@@ -726,14 +742,15 @@ public class IndexDefinitionTester {
         case 2: {
             String s = IndexKeysTester.randomString(r);
             if (r.nextInt(20) == 0) {
-                s = repeat(s.isEmpty() ? "x" : s, 4096 / (s.length() + 1) + r.nextInt(30));
+                s = repeat(s.isEmpty() ? "x" : s, IndexKeys.MAX_LEVEL_BYTES / (s.length() + 1)
+                        + r.nextInt(30));
             }
             return new Str(chars(s));
         }
         case 3: {
             byte[] b = IndexKeysTester.randomBytes(r);
             if (r.nextInt(20) == 0) {
-                b = Arrays.copyOf(b, 4080 + r.nextInt(30));
+                b = Arrays.copyOf(b, IndexKeys.MAX_LEVEL_BYTES - 16 + r.nextInt(30));
             }
             return new Bin(ObjectFormatTester.chars(b));
         }
@@ -760,8 +777,8 @@ public class IndexDefinitionTester {
     /**
      * f(o) by 020-10, section 3.3, over the model's Java values: each level's path followed
      * through objects (Obj); the value found must be of the level's kind (Long, Dbl but NaN,
-     * Str, Bin); encoded by 4.4 as IndexKeysTester's references write it; none above 4,096
-     * bytes.
+     * Str, Bin); encoded by 4.4 as IndexKeysTester's references write it; none above 111
+     * bytes (L6; 4,096 until bergdb 024-24).
      */
     static byte[] refLevels(Obj o, IndexDefinition d) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -796,7 +813,7 @@ public class IndexDefinitionTester {
             }
             out.write(e, 0, e.length);
         }
-        return out.size() > 4096 ? null : out.toByteArray();
+        return out.size() > IndexKeys.MAX_LEVEL_BYTES ? null : out.toByteArray();
     }
 
     /** E of 020-10, section 4.4, written apart: 00 as 01 01, 01 as 01 02, then 00. */

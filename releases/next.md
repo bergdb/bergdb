@@ -38,6 +38,44 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
   dirtyNodeBound`, 024-11's CB2): at node size 30 and a path of 5 nodes
   about 120,000 deletes fit one transaction, and a larger one is refused
   before it changes anything.
+  **One more rule of format 7: at most theta dead klongs a key node**
+  (bergdb 024-23; 024-18's option 2, Frans's decision of 2026-11-11). A
+  write to a key node that would leave it with more than theta dead
+  entries (deleted or overwritten keys and children, which lookups before
+  the write still read) replaces the node by its current version with the
+  write applied, as a full node is replaced; theta is 7 at node size 30
+  (1, 3 and 14 at 8, 14 and 62). In 2026.4 a node kept up to B such
+  entries until it filled. Counted at 1M keys with a retain duration of
+  1 s (bergdb 024-23, section 7; 024-18's probe): under random overwrites
+  0.48 dead entries a live one with the merges alone, 0.31 with the rule;
+  in a cold database that reclaim rewrites 0.83 down to 0.29; after
+  scattered deletes, with a hot range, 0.85 down to 0.31; for -3 % to
+  +8.5 % stream bytes, and 13 to 16 % fewer key nodes. Not yet measured:
+  10M keys, memory, reads. Each written
+  node and each lookup through it carries fewer stale entries; a node
+  that is never written again keeps up to theta. A start's rerun applies
+  the same rule (no new field).
+  **One more change of format 7: the node checksum is CRC32C** (bergdb
+  024-25; 024-17, QL9, Frans's decision of 2026-11-11). Every node's
+  checksum is a CRC-32C (`java.util.zip.CRC32C`) of 4 bytes in place of
+  2026.4's Fletcher-16 of 2 bytes, in a node header of 12 bytes (8 in
+  2026.4); the node formats are 3, 3 and 5 (top, key, value and delete
+  nodes; 2, 2 and 4 in 2026.4). Key nodes keep their size (the fields
+  moved into reserved bytes); a top node is 8 bytes longer, a value or
+  delete node 4. The checksum of 8 MiB, a value at the limit L4, takes
+  about 1 ms instead of 47 (0.12 ms a MB against 5.6; a key node of 544
+  bytes 0.05 us against 3.0): a commit of an 8 MiB value about 2 to 10
+  ms instead of 49 to 56, a get of it about 4 ms instead of 53, a
+  restart with six such values about 0.2 s instead of 0.5 (rough
+  figures, 024-25, section 6). It sees every change of up to 32 adjacent
+  bits, so a byte changed between 0x00 and 0xff, which Fletcher-16 did
+  not see (019-33), and passes about one random change in 2^32 (65,025
+  before). A database written by `main` with format 7 before this change
+  (no release wrote one) is refused at the start, for a checksum error.
+  The stream grows by those bytes: Props' SS, stream bytes a user byte,
+  from 1.51 to 1.53 (SS3, KVs of 100 bytes, from 1.64 to 1.69).
+  StreamDigest: the digests of all 12 configurations change, in every
+  mode (48 of 48; the digests before and after in 024-25, section 7).
 
 * **A reclaim step makes dirty only the index nodes on the paths of its
   own puts** (bergdb 024-07, option A; on `main` in `a780b957`). The last
@@ -94,6 +132,39 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
   one of the two was kept (the last put in key order, or a delete). A
   transaction without such keys writes the bytes it wrote before.
 
+
+### Limits
+
+* **Limits on keys, values and transactions** (bergdb 024-17, 024-24),
+  fixed for every database; a later release may raise them, never lower
+  them. A call over one throws and writes nothing; the database goes on.
+  * **A key is at most 111 bytes**; about 100 characters as a rule of
+    thumb: ASCII letters and digits one byte each, each "/" of a Pub key
+    two, letters such as å, ä and ö two bytes each (UTF-8). Refused with
+    `IllegalArgumentException` by the call that takes the key. Until now a
+    key had no limit.
+  * **A value is at most 8 MiB** (8,388,608 bytes), refused at the put
+    with `IllegalArgumentException`; larger data goes in chunks under keys
+    of their own, with a key that lists them written last.
+  * **A transaction is at most 500 operations** (the keys it puts or
+    deletes; a Pub object put in a directory with k indexes counts up to 1
+    + 2k) **and 32 MiB of keys and values**; its keys, its index entries
+    among them, at most 56 KiB. Refused at the commit with
+    `DbException`. Larger work goes in several transactions, with a key
+    written last that readers look at first.
+  * **An indexed value's levels are at most 111 bytes**, as a key: a put
+    of an object with longer ones for an index of its directory is refused
+    with `IllegalArgumentException` (until now it was taken with no entry,
+    and the index's scans missed it); index such a value by a hash or a
+    prefix. A build over objects put before the index gives them no entry.
+  * A value transformation (Core API) whose result passes 8 MiB fails the
+    database, as one that throws does. A start reads a record's header
+    first, and refuses another format before reading the record.
+  * Gates and tools changed with them: batches of 500 (were 1,000) in
+    PayDemo, PayTest and LargerThanMemory, so bytes a put and time a
+    commit there are not comparable with earlier runs; `performance.sh`'s
+    long keys of 111 bytes (were 120), so its long-key results are not
+    comparable with 2026.4's reference.
 
 ### Known issues and limits
 

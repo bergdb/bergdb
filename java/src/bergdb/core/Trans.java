@@ -9,6 +9,7 @@ import bergdb.core.Db.ExecuteData;
 import bergdb.dag.Dag;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
+import bergdb.dag.Klong;
 import bergdb.dag.Spos;
 import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
@@ -140,6 +141,25 @@ public class Trans {
         return isInternal;
     }
     
+    /**
+     * The bytes of a key as stored, its bkey, from its segments (Keys.getByteSize), in a long:
+     * every segment but the last has 7 (bergdb 024-17, L2).
+     */
+    static long keyBytes(long[] key) {
+        return 7L * (key.length - 1) + Klong.getLength(key[key.length - 1]);
+    }
+    
+    /** The bkey of "/#": BergDB's keys start with it (Db, "Keys and the layers above"). */
+    private static final long[] OWN_PREFIX = Keys.toSegments(new byte[] {1, 0x25});
+    
+    /**
+     * Whether a key is one of BergDB's own, under "/#", the bytes 01 25, which alone may pass
+     * L2, through Trans.Builder's internal calls (bergdb 024-24; review rev24, R2).
+     */
+    static boolean ownKey(long[] key) {
+        return Keys.isPrefix(OWN_PREFIX, key);
+    }
+    
     public String toString() {
         String s = "tt:" + tt + ", pos:" + tpos;
         s = isInternal ? s + ", internal" : s;
@@ -186,6 +206,11 @@ public class Trans {
      * DbException, nothing of it written, and its KVs left as they were (bergdb 024-16): a
      * transaction has one operation a key. The keys and values: Db's "Keys and values"; the
      * read time and the keys read: Db's "Optimistic transactions".</p>
+     * <p>A key of more than Db.MAX_KEY_BYTES bytes (111) and a value of more than
+     * Db.MAX_VALUE_BYTES (8 MiB) are refused with IllegalArgumentException by the call that
+     * takes them, and nothing is added (Db, "Limits"; bergdb 024-17, L2 and L4); Db.execute()
+     * refuses a transaction of more than Db.MAX_OPERATIONS operations (500) or of more bytes
+     * than its limits (L1, L3, L5).</p>
      * <p>A null key, value, read key or hash array is refused with IllegalArgumentException,
      * and nothing is added (bergdb 020-27, Q2: a null key threw NullPointerException, or
      * AssertionError with -ea, and delete((long[]) null) was taken, so that build() threw);
@@ -218,10 +243,12 @@ public class Trans {
          * so is an empty key (Db, "Keys and values").
          * 
          * @throws IllegalArgumentException  If key or value is null; for a null value, delete()
-         *      deletes.
+         *      deletes. If the key has more than Db.MAX_KEY_BYTES bytes (111), or the value
+         *      more than Db.MAX_VALUE_BYTES (8 MiB) (Db, "Limits"; bergdb 024-17, L2, L4).
          */
         public Builder put(byte[] key, byte[] value) {
             checkKey(key);
+            checkKeyBytes(key.length);
             checkValue(value);
             kvs.add(new Kv(Keys.toSegments(key), value));
             return this;
@@ -235,6 +262,7 @@ public class Trans {
          */
         public Builder put(long[] key, byte[] value) {
             checkSegments(key);
+            checkKeyBytes(keyBytes(key));
             checkValue(value);
             kvs.add(new Kv(key, value));
             return this;
@@ -250,8 +278,53 @@ public class Trans {
          */
         public Builder put(long[] key, KeyTransformation kt, byte[] value, ValueTransformation vt) {
             checkSegments(key);
+            checkKeyBytes(keyBytes(key));
             checkValue(value);
             Kv kv = new Kv(key, value, kt, vt);
+            kvs.add(kv);
+            return this;
+        }
+        
+        /**
+         * Internal, not API (bergdb 024-17, 6.2 (a); 024-24): as put(long[],
+         * KeyTransformation, byte[], ValueTransformation) for BergDB's own KVs, whose keys may
+         * be longer than Db.MAX_KEY_BYTES (L2), but only BergDB's keys, those that start with
+         * the bytes 01 25, the bkey of "/#" (Db, "Keys and the layers above"): the Pub API's
+         * index entries, definitions and markers; and for reclaim's copies of live values.
+         * The value's length (L4) is not checked here: reclaim's step runs inside a user
+         * transaction's go point, where a refusal would fail the database, and it copies what
+         * a user transaction put, which Db.execute() checked (review rev24, R1). For a user
+         * transaction Db.execute() checks each KV (L2 but for BergDB's keys, L4), the
+         * operations (L1), the keys' bytes (L3) and the keys' and values' bytes (L5).
+         * 
+         * @throws IllegalArgumentException  If key or value is null, the key has no segment,
+         *      or it has more than Db.MAX_KEY_BYTES bytes and does not start with 01 25.
+         */
+        public Builder putLongKey(long[] key, KeyTransformation kt, byte[] value, 
+                ValueTransformation vt) {
+            checkSegments(key);
+            checkLongKey(key);
+            if (value == null) {
+                checkValue(value);
+            }
+            Kv kv = new Kv(key, value, kt, vt);
+            kv.longKey = true;
+            kvs.add(kv);
+            return this;
+        }
+        
+        /**
+         * Internal, not API: as delete(long[]) for BergDB's own keys, which may be longer than
+         * Db.MAX_KEY_BYTES under "/#" (putLongKey()).
+         * 
+         * @throws IllegalArgumentException  If key is null or has no segment, or it has more
+         *      than Db.MAX_KEY_BYTES bytes and does not start with 01 25.
+         */
+        public Builder deleteLongKey(long[] key) {
+            checkSegments(key);
+            checkLongKey(key);
+            Kv kv = new Kv(key, null);
+            kv.longKey = true;
             kvs.add(kv);
             return this;
         }
@@ -394,6 +467,7 @@ public class Trans {
          */
         public Builder delete(byte[] key) {
             checkKey(key);
+            checkKeyBytes(key.length);
             kvs.add(new Kv(Keys.toSegments(key), null));
             return this;
         }
@@ -405,6 +479,7 @@ public class Trans {
          */
         public Builder delete(long[] key) {
             checkSegments(key);
+            checkKeyBytes(keyBytes(key));
             kvs.add(new Kv(key, null));
             return this;
         }
@@ -447,6 +522,32 @@ public class Trans {
             if (value == null) {
                 throw new IllegalArgumentException("value == null not allowed, use delete() "
                         + "to delete a key-value pair.");
+            }
+            if (value instanceof byte[] && ((byte[]) value).length > Db.MAX_VALUE_BYTES) {
+                throw new IllegalArgumentException("The value has " + ((byte[]) value).length
+                        + " bytes, more than " + Db.MAX_VALUE_BYTES + " (bergdb 024-17, L4). "
+                        + "A larger value is put in chunks, under keys of their own.");
+            }
+        }
+        
+        /**
+         * The internal calls' key: over L2 only under BergDB's prefix "/#", the bytes 01 25
+         * (review rev24, R2): a Core user cannot put a long key through them.
+         */
+        private static void checkLongKey(long[] key) {
+            if (!ownKey(key)) {
+                checkKeyBytes(keyBytes(key));
+            }
+        }
+        
+        /**
+         * L2: a key of more than Db.MAX_KEY_BYTES bytes as stored is refused, and nothing is
+         * added (bergdb 024-17, L2; Db, "Limits").
+         */
+        private static void checkKeyBytes(long bytes) {
+            if (bytes > Db.MAX_KEY_BYTES) {
+                throw new IllegalArgumentException("The key has " + bytes + " bytes, more than "
+                        + Db.MAX_KEY_BYTES + " (bergdb 024-17, L2).");
             }
         }
         

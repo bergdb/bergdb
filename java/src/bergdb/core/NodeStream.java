@@ -11,6 +11,7 @@ import bergdb.dag.Spos;
 import bergdb.storage.MetaBlock;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
+import bergdb.storage.VersioningStreamException;
 
 /**
  * Db uses a NodeStream object as its interface to the database stream. Db appends nodes with
@@ -221,21 +222,53 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
     }
     
     public byte[] readTransBytes(long tpos) {
-        byte[] buffer = new byte[4];
-        rstream.read(tpos, buffer, 0, 4);
+        int size = readRecordHeader(tpos, 7);
         
-        int size = Bytes.bytesToIntLE(buffer, 0);
-        if (size <= 6) {
-            throw new StreamFormatException("Bad transaction byte size, " + size + ". At spos " + tpos
-                    + ".");
-        }
-        checkReadSize(tpos, size);
-        
-        buffer = new byte[size];
+        byte[] buffer = new byte[size];
         rstream.read(tpos, buffer, 0, size);
         return buffer;
     }
 
+    /**
+     * Reads the header of the record at 'tpos', its size and its format byte, before the
+     * record (bergdb 024-17, QL7 and 6.5; 024-24), and returns its size. A size of at most
+     * 'min', or over the record limit StoredTrans.MAX_RECORD_SIZE (L7), is corrupt; so is one
+     * beyond the stream (checkReadSize). A record of another format is refused with
+     * VersioningStreamException before its bytes are read: until 2026.5 the whole record was
+     * read into one array first, so that a start on an older stream whose last record was
+     * 1.5 GB needed 1.5 GB of heap to refuse it.
+     *
+     * @throws StreamFormatException
+     * @throws VersioningStreamException
+     */
+    private int readRecordHeader(long tpos, int min) {
+        byte[] header = new byte[4];
+        rstream.read(tpos, header, 0, 4);
+        int size = Bytes.bytesToIntLE(header, 0);
+        if (size <= min) {
+            throw new StreamFormatException("Bad transaction size, " + size + ", transPos="
+                    + tpos + ", stream size: " + rstream.getLength() + ".");
+        }
+        if (size > StoredTrans.MAX_RECORD_SIZE) {
+            throw new StreamFormatException("Bad transaction size, " + size + ", transPos="
+                    + tpos + ": more than the record limit, " + StoredTrans.MAX_RECORD_SIZE
+                    + " (bergdb 024-17, L7).");
+        }
+        checkReadSize(tpos, size);
+        // The format byte of a committed record (its last byte set, RecoverableStream): an
+        // uncommitted one, a crash's tail, is skipped by the iterator, as before.
+        byte[] b = new byte[1];
+        rstream.read(RecoverableStream.getSpos(tpos, size - 1), b, 0, 1);
+        if (b[0] == RecoverableStream.LAST_BYTE) {
+            header = new byte[5];
+            rstream.read(tpos, header, 0, 5);
+            if (header[4] != StoredTrans.RECORD_FORMAT) {
+                throw new VersioningStreamException(StoredTrans.formatRefused(header[4]));
+            }
+        }
+        return size;
+    }
+    
     /** Check untrusted sizes before allocating, excluding meta blocks (bergdb 005-74, A). */
     private void checkReadSize(long pos, int size) {
         checkReadSize(pos, size, rstream.getLength());
@@ -304,12 +337,18 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
     }
 
     private static void checkChecksum(long spos, byte[] buffer, int offset, int size, byte nodeType) {
-        int computedSum = NodeChecksum.sumWithZeroReplace(buffer, offset, size, offset + 6);
-        int storedSum = Bytes.bytesToUShortLE(buffer, offset + 6);
+        // A node holds at least its header, with the checksum (bergdb 024-25).
+        if (size < NodeChecksum.HEADER_SIZE) {
+            throw new StreamFormatException("Bad node size, " + size + ", at spos " + spos
+                    + ": less than a node's header.");
+        }
+        int computedSum = NodeChecksum.sum(buffer, offset, size);
+        int storedSum = NodeChecksum.stored(buffer, offset);
         
         if (computedSum != storedSum) {
             throw new StreamChecksumException("spos: " + spos + ", storedSum: "
-                    + storedSum + ", computedSum: " + computedSum + ", nodeType: " + nodeType);
+                    + Integer.toUnsignedString(storedSum) + ", computedSum: "
+                    + Integer.toUnsignedString(computedSum) + ", nodeType: " + nodeType);
         }
     }
     
@@ -398,18 +437,11 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
                     return false;
                 }
 
-                byte[] buffer = new byte[4];
-                rstream.read(tpos, buffer, 0, 4);
-                int size = Bytes.bytesToIntLE(buffer, 0);
-                if (size < 16 + 0 + 1) {
-                    String message = "Bad transaction size, " + size + ", transPos=" + tpos
-                            + ", stream size: " + rstream.getLength() + ", transCount="
-                            + transCount;
-                    throw new StreamFormatException(message);
-                }
-                checkReadSize(tpos, size);
+                // The header first (bergdb 024-17, QL7): a size over the record limit is
+                // corrupt, another format refused, before the record is read.
+                int size = readRecordHeader(tpos, 16);
 
-                buffer = new byte[size];
+                byte[] buffer = new byte[size];
                 rstream.read(tpos, buffer, 0, size);
                 byte lastByte = buffer[buffer.length - 1];
                 if (lastByte != 0 && lastByte != RecoverableStream.LAST_BYTE) {

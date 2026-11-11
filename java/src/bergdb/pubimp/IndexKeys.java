@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 import bergdb.common.StringUtil;
+import bergdb.core.Db;
 import bergdb.core.DbConstants;
 import bergdb.core.InternalDataException;
 import bergdb.dag.Keys;
@@ -61,8 +62,13 @@ final class IndexKeys {
     /** The longest index name, in UTF-8 bytes (020-10, section 3.1). */
     static final int MAX_NAME = 255;
 
-    /** The most bytes of an entry's levels; above it a value has no entry (020-10, 3.3). */
-    static final int MAX_LEVEL_BYTES = 4096;
+    /**
+     * L6: the most bytes of an entry's encoded levels, 111 as a key's (bergdb 024-17, L6;
+     * 024-24): a put of a value with longer ones is refused (QL4,
+     * IndexDefinition.entryForPut), and a build gives such a value, put before the index,
+     * no entry. Until release 2026.5, 4,096, and above it a value had no entry (020-10, 3.3).
+     */
+    static final int MAX_LEVEL_BYTES = Db.MAX_KEY_BYTES;
 
     /**
      * The type of a type string: "long", "double", "string" or "bytes".

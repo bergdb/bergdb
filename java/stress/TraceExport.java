@@ -1612,9 +1612,10 @@ public class TraceExport {
             out.println("TREE " + maxNode + " " + bounds[0] + " " + bounds[1] + " "
                     + (first == null ? -1 : mid(first.getId()))
                     // the writer's thresholds of format 7 (bergdb 024-21; 024-22, J2 and J9):
-                    // m, c and rule O's h; m is 1 below node size 8, where nothing merges
+                    // m, c and rule O's h; m is 1 below node size 8, where nothing merges;
+                    // and option 2's theta (bergdb 024-23), 0 below node size 8
                     + " " + Dag.minFill(maxNode) + " " + Dag.mergeCap(maxNode) + " "
-                    + Dag.splitAbove(maxNode));
+                    + Dag.splitAbove(maxNode) + " " + Dag.theta(maxNode));
         }
         for (String e : errors) out.println("ERROR " + e);
         if (!unreached.isEmpty()) {

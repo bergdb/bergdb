@@ -229,6 +229,15 @@ the first new node. The new nodes' pointers are copies of the two nodes'
 model takes each transaction's change as given, as before; the tree model
 of 024-12 has the merge as a definition (024-22).
 
+Since 024-23 (option 2 of 024-18, a rule of format 7), a write that would
+leave a key node with more than theta dead klongs (deleted, or shadowed by
+a later klong of the same compare value) replaces the node by its last
+version with the write applied, one node, as a time split does: T(i)
+creates it, the parent gets an entry of time i for it, and the old node
+gets no entry of time i (A2, A3, A5 as for a time split). A node that T(i)
+made is compacted in place. The tree model has the rule (`deadOver` in
+SIS/Tree/Exec.lean) and states its bound, TP39.
+
 
 4 The stream
 ============
@@ -661,7 +670,9 @@ implementation must meet them.
   make the same entries and nodes, so a change of what a rerun does with
   the same record changes the record format. BergDB's is 7 since
   2026-11-11 (024-21): a delete also merges the nodes it leaves underfull
-  (3.4), and a start refuses format 6, written by release 2026.4. Format
+  (3.4), and a write that would leave a key node more than theta dead
+  klongs replaces it (024-23); a start refuses format 6, written by
+  release 2026.4. Format
   6 since 2026-11-10 (023-07, section 5.8): a delete unlinks the nodes it
   empties,
   with LE-b, root collapse and the take-back (3.4), and a space split in

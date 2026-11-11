@@ -2043,14 +2043,18 @@ public class DbTester {
      * to twice the new setting, which would make the transaction that setStartupDistance
      * runs write the index nodes of every transaction past it (007-06, section 3); it is at
      * the span of the section's transactions, which shrinks with every commit until it is
-     * below twice the setting. 2 MB lowered to 500 kB, 1 kB values: transactions past twice
-     * the new setting are left after the call (with the deadline at twice the new setting
-     * at once, none were), the span is below twice the setting after 19 commits, and the
-     * deadline holds from then on.
+     * below twice the setting. 2 MB lowered to 450 kB, 1 kB values: transactions past twice
+     * the new setting, counted from the stream's end before the call, are left after it (with
+     * the deadline at twice the new setting at once, none are), the span is below twice the
+     * setting after a few commits, and the deadline holds from then on. 500 kB until option 2
+     * of dead klongs (bergdb 024-23; its review rev23, R1): with it, the paced take of the
+     * call took the transaction just past the point at 500 kB, by a few kB, without a jump;
+     * counted from the end after the call (the call's own record is about 250 kB) the check
+     * held with a jump too.
      */
     @Nano
     public static void testDecreaseOfStartupDistance() {
-        final int sd = 500 * 1000;
+        final int sd = 450 * 1000;
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).startupDistance(2000 * 1000).start();
         Random random = new Random(1);
@@ -2351,7 +2355,9 @@ public class DbTester {
      * TransSeq.take takes transactions whole, and the startup pos stayed before it for good.
      * Now it is refused before it changes anything, and the database goes on with its
      * startup pos moving; a smaller update, and a load of new keys, are taken. The record
-     * limit is lowered to 200 KB.
+     * limit is lowered to 200 KB. Within L1 (bergdb 024-24): the update of every 20th key,
+     * 500 operations (every 10th, 1,000, until then), and the load in two transactions of
+     * 500 (one of 1,000).
      */
     @Nano("f")
     public static void testTooManyDirtyNodes() {
@@ -2382,11 +2388,11 @@ public class DbTester {
                 db.execute(db.trans().put("/x", "a" + i).build());
             }
             
-            // An update of every 10th key: a record of about 70 KB, and index nodes for more
+            // An update of every 20th key: a record of about 35 KB, and index nodes for more
             // than the record limit.
             clock.setTime(time += 1000);
             Trans.Builder b = db.trans();
-            for (int k = 0; k < 10000; k += 10) {
+            for (int k = 0; k < 10000; k += 20) {
                 b.put(dirtyKey(k), "w");
             }
             long length = db.getStreamLength();
@@ -2405,12 +2411,14 @@ public class DbTester {
                 b.put(dirtyKey(k), "w");
             }
             db.execute(b.build());
-            clock.setTime(time += 1000);
-            b = db.trans();
-            for (int k = 0; k < 1000; k++) {
-                b.put(String.format("/new/%06d", k), "n");
+            for (int k0 = 0; k0 < 1000; k0 += 500) {
+                clock.setTime(time += 1000);
+                b = db.trans();
+                for (int k = k0; k < k0 + 500; k++) {
+                    b.put(String.format("/new/%06d", k), "n");
+                }
+                db.execute(b.build());
             }
-            db.execute(b.build());
             for (int i = 0; i < 500; i++) {
                 clock.setTime(time += 1000);
                 db.execute(db.trans().put("/y", "b" + i).build());

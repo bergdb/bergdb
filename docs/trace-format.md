@@ -239,7 +239,7 @@ reads over them. `java/stress/treeconf.sh` runs the exporter and
 `treecheck`. A key is written as `n c1 ... cn`: the number of its segments
 and their compare values (`Keys.toSegments`); `-` stands for no key.
 
-    TREE m g h k mb mc sa        after CONFIG: the node size M; the bounds of
+    TREE m g h k mb mc sa th     after CONFIG: the node size M; the bounds of
                                  the levels, G (the largest segment index of a
                                  key node, 0 for the first segment's trees) and
                                  H (the largest height of a key node in its
@@ -256,8 +256,12 @@ and their compare values (`Keys.toSegments`); `-` stands for no key.
                                  a merge's one new node (Dag.mergeCap); sa,
                                  rule O's h, the most klongs of a last version
                                  that a time split keeps (Dag.splitAbove): 8,
-                                 17 and 17 at node size 30. The checker reads
-                                 a line of 4 numbers too (2026.4's writer: no
+                                 17 and 17 at node size 30. Since 024-23 a
+                                 ninth token, th: option 2's theta, the most
+                                 dead klongs a key node holds after a write
+                                 (Dag.theta: 7 at node size 30; 0 below 8,
+                                 none). The checker reads a line of 7 numbers
+                                 too (theta 0, off), of 4 (2026.4's writer: no
                                  merges, h = M / 2), and of 6 (sa = mc)
     BASE b                       in TX i, i > 0, first: the id of the first node
                                  that T(i) makes; the following get b + 2,

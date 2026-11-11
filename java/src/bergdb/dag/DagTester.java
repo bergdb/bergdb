@@ -509,7 +509,10 @@ public class DagTester {
      * The last pointer reported for a node is the node's last memory pointer, unless the
      * transaction that reported it replaced the node by a split: a replaced node loses its
      * klongs of that transaction (Dag.handleFullNode, since 2026-10-16), so then its last
-     * memory pointer is the last one reported in an earlier transaction.
+     * memory pointer is the last one reported in an earlier transaction. The key access path
+     * is cleared after each put, as Db does (since bergdb 024-23: until then it grew over the
+     * test's puts, and a split of the space root, which option 2's compaction of it reached,
+     * took the node before it in the path for its parent).
      */
     @SuppressWarnings("unchecked")
     private static void testPointerCreationListener(int n) {
@@ -557,6 +560,7 @@ public class DagTester {
         
         for (int i = 0; i < n; i++) {
             dag.putKv(Keys.toSegments("/prefix-" + i), StringUtil.toBytes("v" + i), pd);
+            pd.clearFast();         // as Db after each put: the key access path of one put
             if (i % 10 == 9) {
                 pd.tt += 10;
                 now[0] = pd.tt;

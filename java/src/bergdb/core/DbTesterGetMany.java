@@ -1346,6 +1346,8 @@ public class DbTesterGetMany {
      * inclusive, follows few key nodes with endKey (9 on 2026-11-09). The stop condition
      * alone followed a node of each deleted key's segment tree (2,160) before 023-09, and
      * since then, as the deletes unlink them, few too (11): K1 and SE together, as above.
+     * The 2,000 puts and the 2,000 deletes in transactions of 500, Db.MAX_OPERATIONS (L1;
+     * each in one transaction until bergdb 024-24).
      */
     @Nano
     public static void testEndKeyPassesNoDeletedLongKeys() {
@@ -1357,16 +1359,20 @@ public class DbTesterGetMany {
             }
             b.put(ascii("c"), new byte[] {1});
             db.execute(b.build());
-            b = db.trans();
-            for (int i = 0; i < 2000; i++) {
-                b.put(ascii(String.format("b%06dxyzw", i)), new byte[] {1});
+            for (int i0 = 0; i0 < 2000; i0 += Db.MAX_OPERATIONS) {
+                b = db.trans();
+                for (int i = i0; i < i0 + Db.MAX_OPERATIONS; i++) {
+                    b.put(ascii(String.format("b%06dxyzw", i)), new byte[] {1});
+                }
+                db.execute(b.build());
             }
-            db.execute(b.build());
-            b = db.trans();
-            for (int i = 0; i < 2000; i++) {
-                b.delete(ascii(String.format("b%06dxyzw", i)));
+            for (int i0 = 0; i0 < 2000; i0 += Db.MAX_OPERATIONS) {
+                b = db.trans();
+                for (int i = i0; i < i0 + Db.MAX_OPERATIONS; i++) {
+                    b.delete(ascii(String.format("b%06dxyzw", i)));
+                }
+                db.execute(b.build());
             }
-            db.execute(b.build());
             
             long[] from = Keys.toSegments(ascii("a000095xyzw"));
             long[] to = Keys.toSegments(ascii("b"));

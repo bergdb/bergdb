@@ -61,7 +61,7 @@ public class PayTest {
             
             Connection c = database.connection();
             long id = 0;
-            long batchSize = 1000;
+            long batchSize = 500;       // 1,000 until bergdb 024-24: L1 is 500 operations
             long batchCount = total / batchSize;
             assert total % batchSize == 0;
             long t0 = System.nanoTime();
