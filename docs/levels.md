@@ -334,13 +334,18 @@ How it works in Java:
   position (005-62, `Rule4PosCut_handles`). A cold start still reads the nodes on
   the rerun's paths that have no version in the section: about 46 s on s1
   at 10M keys and a startup distance of 50 MB (005-57; 214 s before).
+  Since format 7 it also reads the siblings that the rerun's merges read,
+  up to two a level of a delete's path (024-21; not measured: 024-11's
+  TU9).
   Before replay it validates record order and the 56-bit range of record
   times in the startup section, and increasing times within its stored
   key nodes; violations are refused as stream format errors (005-75).
 * Marking: the index nodes that an operation (a put or a delete) follows,
   creates or changes get dirty when the operation ends, and only if it
   changed something; a node that the transaction replaced leaves D at its
-  end. These are the nodes that the model marks (T13).
+  end. These are the nodes that the model marks (T13). A sibling that a
+  merge reads is not marked (format 7, 024-21): it is left out, or stays as
+  it is.
 * A delete (`Dag.deleteUpward`, since format 6; 023-07, sections 5.1 to 5.3;
   023-09, section 2): if the key's segment leaf keeps a live key, the delete
   is a delete bitmap of the transaction, as before. Else the writer climbs
@@ -362,10 +367,11 @@ How it works in Java:
   node is not the root of its segment tree and holds fewer than m live
   keys or children (8 at node size 30), it is merged with a sibling
   under the same parent (the left one if both fit in c, 17 at 30, else
-  the right one): their live klongs make one new node, or two of half
-  each if they are more than c, and the parent's
-  klongs point to them (a bitmap of the transaction deletes the right
-  one's, behind the parent's time klong); the two nodes are left out as
+  the right one, or the left one if there is none): their live klongs
+  make one new node, or two of half each if they are more than c, and
+  the parent's klongs point to them (a bitmap of the transaction deletes
+  the right one's klong, unless a second new node starts at its compare
+  value, behind the parent's time klong); the two nodes are left out as
   a split's replaced node, or taken back if the transaction made them.
   A merge into one node takes a live klong from the parent, which is
   checked in turn; then root collapse. So after every transaction every

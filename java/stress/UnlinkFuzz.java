@@ -22,7 +22,7 @@ import bergdb.common.StringUtil;
  *       live keys.
  *   BU1 (bergdb 024-11, 024-21), with Dag.checkFill: every reachable key node that is not a
  *       root of a segment tree holds at least m live klongs (Dag.minFill: 2 at node size 8, 3
- *       at 14, 7 at 30; no merges below 8), an inner root at least 2, the leaves of a segment
+ *       at 14, 8 at 30; no merges below 8), an inner root at least 2, the leaves of a segment
  *       tree at one depth, and the key nodes at most S + (n + S - 1) / (m - 1).
  *
  * Key shapes (keys=N distinct keys, shape=): "fifo" puts keys in increasing order and deletes

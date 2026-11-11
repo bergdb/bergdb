@@ -2887,8 +2887,9 @@ public class Reclaim implements Db.TransactionListener {
          * last step within 100 transactions. 200 kB since the merges at the delete (bergdb
          * 024-21): Dag.dirtyNodeBound counts up to 922 index nodes, 179 kB, for the user's
          * transactions of 8 puts and 8 deletes at node size 8, and a limit of 100 kB refused
-         * them; the index of 6,000 keys at node size 8 is over 1,000 nodes, at 192 bytes each
-         * more than 200 kB.
+         * them. At 200 kB the test still has its fault: with the touch of a key range back
+         * (Db.touchRange before 024-07) it fails, the startup pos 252,408 bytes behind after
+         * 100 transactions (024-21's review, R5).
          */
         @Nano
         public static void testLastStepWithinRecordLimit() {
