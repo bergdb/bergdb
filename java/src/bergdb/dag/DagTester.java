@@ -979,22 +979,32 @@ public class DagTester {
         
         /** One transaction: the puts, then the deletes; with 'check', against the bound. */
         void run(List<String> puts, List<String> dels, boolean check) {
+            // The keys in key order, puts and deletes mixed, as Db applies a transaction, so
+            // that a put can come after a merge into the node that took its range (bergdb
+            // 024-21's review, R6); until then the puts first, then the deletes.
+            final Set<String> delSet = new java.util.HashSet<String>();
+            if (dels != null) delSet.addAll(dels);
             List<String> ks = new ArrayList<String>(puts);
             if (dels != null) ks.addAll(dels);
+            Collections.sort(ks, new java.util.Comparator<String>() {
+                public int compare(String x, String y) {
+                    return Keys.compareArrays(Keys.toSegments(x), Keys.toSegments(y));
+                }
+            });
             long bound = -1;
             if (check) {
                 long[][] keys = new long[ks.size()][];
                 boolean[] deletes = new boolean[ks.size()];
                 for (int i = 0; i < ks.size(); i++) {
                     keys[i] = Keys.toSegments(ks.get(i));
-                    deletes[i] = i >= puts.size();
+                    deletes[i] = delSet.contains(ks.get(i));
                 }
                 bound = dag.dirtyNodeBound(t - 1, keys, deletes, gd(dag));
             }
             dirty.clear();
             pd.tt = t;
             for (int i = 0; i < ks.size(); i++) {
-                byte[] v = i < puts.size() ? StringUtil.toBytes("v" + t) : null;
+                byte[] v = delSet.contains(ks.get(i)) ? null : StringUtil.toBytes("v" + t);
                 dag.putKv(Keys.toSegments(ks.get(i)), v, pd);
                 pd.clearFast();
             }
