@@ -150,13 +150,14 @@ def dirtyNodeBound (p : Params) (view : View BVal) (t : Time) (ops : List Op) : 
     match knodeOf p view r with
     | none => 0
     | some rn =>
-      let w0 : Walk := Walk.reach [] r rn none
+      -- The space root is walked for each key, as in Java's loop: a transaction
+      -- without operations walks no node, and its bound is 0.
       let st := ops.foldl (fun (acc : Walk × Bool) op =>
         let isDel := match op with
           | .del _ => true
           | .put _ _ => false
-        let res := boundKey p view t op.key isDel op.key 0 acc.1 r
-        (res.1, acc.2 || res.2)) (w0, false)
+        let res := boundKey p view t op.key isDel op.key 0 (Walk.reach acc.1 r rn none) r
+        (res.1, acc.2 || res.2)) (([] : Walk), false)
       let ws := if st.2 then
           st.1.foldl (fun (ws : Walk) w => match w.up with
             | some u => ws.modify u (fun v => { v with klongs := v.klongs + w.collapses })
