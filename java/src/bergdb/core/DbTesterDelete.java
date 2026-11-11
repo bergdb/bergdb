@@ -131,13 +131,14 @@ public class DbTesterDelete {
      * after restarts. An inner space root is never emptied in one delete: Dag.deleteUpward
      * throws Bug for it (bergdb 023-11, review A, S1). Transactions of at most
      * Db.MAX_OPERATIONS (L1, bergdb 024-24): 2,000 keys are deleted in four of 500, not in one,
-     * and put again in batches of 500.
+     * and put again in batches of 500; 500 keys, a deeper tree than 100, are still deleted in
+     * one transaction (review rev24, R12).
      */
     @Nano
     public static void testDeleteEveryKey() {
         final long collapses0 = bergdb.dag.Dag.statCollapses;
         for (int sd : DISTANCES) {
-            for (int n : new int[] {1, 7, 100, 2000}) {
+            for (int n : new int[] {1, 7, 100, 500, 2000}) {
                 for (int per : new int[] {Math.min(n, Db.MAX_OPERATIONS), 13}) {
                     String at = "sd " + sd + ", n " + n + ", deletes a transaction " + per + ": ";
                     MemoryStream ms = new MemoryStream();
