@@ -40,7 +40,9 @@ public class StoredTrans {
      * record's deletes are rerun with the merges of underfull key nodes (Dag.mergeAfterDelete;
      * 024-11, section 5), so a record of deletes means another tree than in format 6;
      * databases of format 6, written by release 2026.4, are refused at the start, with a
-     * message that names that release.
+     * message that names that release. Also in format 7 (bergdb 024-25): the node checksum
+     * is CRC32C, 4 bytes, in a node header of 12 bytes (NodeChecksum), so the node formats
+     * are 3 (top and key nodes) and 5 (value and delete nodes).
      * 6 since 2026-11-10 (bergdb 023-07, section 5.8; 023-09), for release 2026.4: a record's
      * deletes are rerun with the upward unlink, the empty key first, root collapse and the
      * take-back (Dag.deleteUpward), and a space split in place of a segment root made by the
@@ -439,9 +441,10 @@ public class StoredTrans {
                 return null;
             }
 
-            // The common node header is 8 bytes. Check before parsing or advancing: a
-            // negative size used to move backwards and loop until the heap ran out.
-            if (nodeSize < 8 || nodeSize > byteSize - offset) {
+            // The common node header is 12 bytes (bergdb 024-25; 8 before). Check before
+            // parsing or advancing: a negative size used to move backwards and loop until the
+            // heap ran out.
+            if (nodeSize < NodeChecksum.HEADER_SIZE || nodeSize > byteSize - offset) {
                 throw new StreamFormatException("Bad node size, " + nodeSize + ", at offset "
                         + offset + " of transaction at " + tpos + ", size " + byteSize + ".");
             }
@@ -789,6 +792,21 @@ public class StoredTrans {
             // Copies from longBuffer to byteBuffer, top nodes and value nodes.
             offset = copyLongBufferToByteBuffer(longOffset, offset);
 
+            // The checksums of the top and key nodes, on their bytes (bergdb 024-25): toLongs
+            // leaves them zero. A value node's toBytes sets its own.
+            int nodeOffset = 32;
+            for (int i = 0; i < transNodes.topCount; i++) {
+                int size = StoredTopNode.getByteSize(transNodes.topNodes[i]);
+                NodeChecksum.set(byteBuffer, nodeOffset, size);
+                nodeOffset += size;
+            }
+            for (int i = 0; i < transNodes.keyCount; i++) {
+                int size = StoredKeyNode.getByteSize(transNodes.keyNodes[i]);
+                NodeChecksum.set(byteBuffer, nodeOffset, size);
+                nodeOffset += size;
+            }
+            assert nodeOffset == offset : nodeOffset + ", " + offset;
+
             for (int i = 0; i < transNodes.valueCount; i++) {
                 ValueNode n = transNodes.valueNodes[i];
                 long[] skey = transNodes.keys[i];
@@ -936,10 +954,13 @@ public class StoredTrans {
         }
     }
 
-    /** bergdb 005-74, option A: a node must fit inside its declared record. */
+    /**
+     * bergdb 005-74, option A: a node must fit inside its declared record; and since bergdb
+     * 024-25 hold its 12-byte header (sizes 8 and 11).
+     */
     @Nano
     private static void testNodeSizeOutsideRecord() {
-        for (int size : new int[] {1, 6, 7, Integer.MAX_VALUE}) {
+        for (int size : new int[] {1, 6, 7, 8, 11, Integer.MAX_VALUE}) {
             try {
                 parse(128, recordWithBadNodeSize(size));
                 throw new AssertionError("bad node size was accepted: " + size);
@@ -947,7 +968,7 @@ public class StoredTrans {
                 Assert.assertTrue(e.getMessage(), e.getMessage().contains("node size"));
             }
         }
-        byte[] buffer = recordWithBadNodeSize(32);
+        byte[] buffer = recordWithBadNodeSize(36);
         Bytes.intToBytesLE(80, buffer, 0);    // The array is longer than the record.
         try {
             parse(128, buffer);
@@ -958,19 +979,21 @@ public class StoredTrans {
     }
 
     private static byte[] recordWithBadNodeSize(int size) {
-        byte[] buffer = new byte[112];
+        // Two delete nodes of 36 bytes, at 32 and 68 (of 32 bytes, at 32 and 64, and a record
+        // of 112 bytes, until the node header's 12 bytes, bergdb 024-25); the second's size
+        // is 'size'.
+        byte[] buffer = new byte[120];
         Bytes.intToBytesLE(buffer.length, buffer, 0);
         buffer[4] = RECORD_FORMAT;
         Bytes.longToBytesLE(1, buffer, 8);
-        for (int offset : new int[] {32, 64}) {
-            Bytes.intToBytesLE(offset == 32 ? 32 : size, buffer, offset);
+        for (int offset : new int[] {32, 68}) {
+            Bytes.intToBytesLE(offset == 32 ? 36 : size, buffer, offset);
             buffer[offset + 4] = Node.TYPE_DELETE;
-            buffer[offset + 5] = 4;
-            Bytes.intToBytesLE(offset, buffer, offset + 16);
-            Bytes.intToBytesLE(8, buffer, offset + 20);
+            buffer[offset + 5] = 5;
+            Bytes.intToBytesLE(offset, buffer, offset + 20);
+            Bytes.intToBytesLE(8, buffer, offset + 24);
         }
-        int sum = NodeChecksum.sumWithZeroReplace(buffer, 32, 32, 38);
-        Bytes.shortToBytesLE((short) sum, buffer, 38);
+        NodeChecksum.set(buffer, 32, 36);
         buffer[buffer.length - 1] = RecoverableStream.LAST_BYTE;
         return buffer;
     }

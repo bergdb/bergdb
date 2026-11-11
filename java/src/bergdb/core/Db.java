@@ -466,11 +466,12 @@ public class Db implements AutoCloseable {
     
     /**
      * The length of a new database's stream, what a creation writes (2026-10-25, bergdb
-     * 005-33): the first meta block, 128 bytes, and the primordial transaction, 136 bytes
+     * 005-33): the first meta block, 128 bytes, and the primordial transaction, 144 bytes
      * (its header, the super root with its one pointer, the first key node, empty, and the
-     * record's end, aligned to 8). writePrimordialTransaction() asserts it.
+     * record's end, aligned to 8; 136 until the top node's header grew by 8 bytes, bergdb
+     * 024-25). writePrimordialTransaction() asserts it.
      */
-    static final long CREATION_LENGTH = RecoverableStream.META_BLOCK_SIZE + 136;
+    static final long CREATION_LENGTH = RecoverableStream.META_BLOCK_SIZE + 144;
     
     /**
      * The audit (bergdb item 001, WP J1; test-only): after every auditEvery-th transaction

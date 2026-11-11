@@ -114,6 +114,37 @@ public class NodeStreamTester {
     }
 
     /**
+     * A node size of 8 to 11, below the node header's 12 bytes (bergdb 024-25), is refused
+     * with a StreamFormatException, by readNode and by a record's parse, before the
+     * checksum: NodeChecksum.sum throws an IllegalArgumentException for it, which would
+     * escape the reads' failure handling (as 015-07's and 019-32's faults did).
+     */
+    @Nano
+    private static void testNodeSizeBelowHeader() throws IOException {
+        for (int size = 8; size < NodeChecksum.HEADER_SIZE; size++) {
+            byte[] bytes = new byte[128 + 64];
+            Bytes.intToBytesLE(size, bytes, 128);
+            bytes[128 + 4] = Node.TYPE_DELETE;
+            MemoryStream stream = new MemoryStream();
+            stream.append(bytes, 0, bytes.length);
+            NodeStream ns = new NodeStream(new RecoverableStream(stream, new MetaBlock()),
+                    new Object());
+            try {
+                ns.readNode(128);
+                throw new AssertionError("a node of " + size + " bytes was read");
+            } catch (StreamFormatException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("node size"));
+            }
+            try {
+                NodeStream.bytesToNode(128, bytes, 128, size);
+                throw new AssertionError("a node of " + size + " bytes was parsed");
+            } catch (StreamFormatException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("node size"));
+            }
+        }
+    }
+
+    /**
      * bergdb 021-14: a size at a position near Long.MAX_VALUE is refused; the check's
      * RecoverableStream.getSpos() overflowed, and it passed.
      */

@@ -16,6 +16,14 @@ import bergdb.storage.VersioningStreamException;
 /**
  * This class is responsible for how to store a ValueNode in the stream.
  * 
+ * <p>Format version 5 of record format 7, little-endian: bytes 0 to 3, the size; 4, the type
+ * (value or delete); 5, the version; 6 and 7, zero; 8 to 11, the checksum (NodeChecksum); 12
+ * to 19, the node id; 20 to 23, the node's offset in its record's bytes; for a value, 24 to
+ * 27, its length L, then its L bytes; then the key's size in bytes, 8 * k, and its k
+ * segments; then zeros to a multiple of 4. In version 4, until the checksum's 4 bytes (bergdb
+ * 024-25), the checksum was in bytes 6 and 7 and every field from the id on 4 bytes
+ * earlier.</p>
+ * 
  * @author Frans Lundberg
  */
 public class StoredValueNode implements StoredNode {
@@ -25,13 +33,13 @@ public class StoredValueNode implements StoredNode {
     // We need alignment to allow for spos to determine node type.
     //
     
-    public static final int ID_OFFSET = 8;
+    public static final int ID_OFFSET = 12;
     
     /**
-     * The smallest size of a stored value node: the header, 8 bytes; the id, 8; the offset
-     * from the transaction, 4; and the value's or the key's size, 4.
+     * The smallest size of a stored value node: the header, 12 bytes (NodeChecksum.HEADER_SIZE);
+     * the id, 8; the offset from the transaction, 4; and the value's or the key's size, 4.
      */
-    static final int MIN_SIZE = 24;
+    static final int MIN_SIZE = 28;
     
     private ValueNode node;
     private long[] key;
@@ -103,12 +111,13 @@ public class StoredValueNode implements StoredNode {
         byte version = buffer[offset];
         offset += 1;
         
-        if (version != 4) {
+        if (version != 5) {
             throw new VersioningStreamException("Cannot parse value node of "
                     + "format version " + version + ".");
         }
         
-        offset += 2; // checksum bytes, checked before parsing
+        offset += 2; // zero bytes
+        offset += NodeChecksum.SIZE; // checksum bytes, checked before parsing
         
         long id = Bytes.bytesToLongLE(buffer, offset);
         offset += 8;
@@ -188,8 +197,8 @@ public class StoredValueNode implements StoredNode {
 
     public static int getByteSize(ValueNode node, long[] key) {
         int size = node.value == null ? 
-                8 + 8 + 4 +                         4 + 8 * key.length
-              : 8 + 8 + 4 + 4 + node.value.length + 4 + 8 * key.length;
+                12 + 8 + 4 +                         4 + 8 * key.length
+              : 12 + 8 + 4 + 4 + node.value.length + 4 + 8 * key.length;
         return size + Spos.addToAlign(size, 4);
     }
     
@@ -199,8 +208,8 @@ public class StoredValueNode implements StoredNode {
      */
     public static long getByteSizeLong(byte[] value, long[] key) {
         long size = value == null ?
-                8 + 8 + 4 +                                4 + 8L * key.length
-              : 8 + 8 + 4 + 4 + (long) value.length + 4 + 8L * key.length;
+                12 + 8 + 4 +                                4 + 8L * key.length
+              : 12 + 8 + 4 + 4 + (long) value.length + 4 + 8L * key.length;
         return size + (4 - size % 4) % 4;
     }
 
@@ -219,7 +228,7 @@ public class StoredValueNode implements StoredNode {
         int offset = bufferOffset;
         int byteSize = getByteSize(node, key);
         long myLong;
-        final long FORMAT_VERSION = 4L;     // serial format version (one byte)
+        final long FORMAT_VERSION = 5L;     // serial format version (one byte)
         long nodeType = node.value == null ? Node.TYPE_DELETE : Node.TYPE_VALUE;
 
         myLong = ((long) byteSize) 
@@ -228,7 +237,8 @@ public class StoredValueNode implements StoredNode {
         
         Bytes.longToBytesLE(myLong, buffer, offset);
         offset += 8;
-        // Room for 2 checksum bytes.
+        Bytes.intToBytesLE(0, buffer, offset);      // the checksum, set below
+        offset += NodeChecksum.SIZE;
         
         Bytes.longToBytesLE(node.getId(), buffer, offset);
         offset += 8;
@@ -257,8 +267,7 @@ public class StoredValueNode implements StoredNode {
             buffer[i] = 0;
         }
 
-        int checksum = NodeChecksum.sum(buffer, bufferOffset, byteSize);
-        Bytes.ushortToBytesLE(checksum, buffer, bufferOffset + 6);
+        NodeChecksum.set(buffer, bufferOffset, byteSize);
 
         int sizeHere = offset - bufferOffset;
         assert sizeHere + Spos.addToAlign(sizeHere, 4) == byteSize
@@ -309,14 +318,14 @@ public class StoredValueNode implements StoredNode {
         ValueNode node = new ValueNode(new byte[3], Spos.NULL);
         byte[] buffer = new byte[getByteSize(node, key)];
         StoredValueNode.toBytes(node, key, buffer, 0);
-        Assert.assertEquals(4, buffer[5]);
-        buffer[5] = 5;
+        Assert.assertEquals(5, buffer[5]);
+        buffer[5] = 4;
         
         try {
             parse(buffer, 0, 128);
             throw new AssertionError("parsed");
         } catch (VersioningStreamException e) {
-            Assert.assertTrue(e.getMessage(), e.getMessage().contains("format version 5"));
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("format version 4"));
         }
     }
     
@@ -403,7 +412,7 @@ public class StoredValueNode implements StoredNode {
         long[] key = Keys.toSegments("/-mykey.txt");
         ValueNode node = new ValueNode(new byte[10], Spos.NULL);
         final int size = getByteSize(node, key);
-        final int valueAt = 20, keyAt = 24 + 10;
+        final int valueAt = 24, keyAt = 28 + 10;
         // The field's offset, its value, and what the message starts with.
         Object[][] cases = {
             {valueAt, -1, "Bad value size"},
@@ -437,7 +446,7 @@ public class StoredValueNode implements StoredNode {
         Assert.assertEquals(2, key.length);
         ValueNode node = new ValueNode(new byte[10], Spos.NULL);
         final int size = getByteSize(node, key);
-        final int keyAt = 24 + 10 + 4;
+        final int keyAt = 28 + 10 + 4;
         long[][] bad = {
             {key[0], key[1] ^ (1L << 63)},
             {key[0], key[1] | 1},
@@ -455,7 +464,7 @@ public class StoredValueNode implements StoredNode {
         }
         byte[] buffer = new byte[size];
         toBytes(node, key, buffer, 0);
-        Bytes.ushortToBytesLE(NodeChecksum.sumWithZeroReplace(buffer, 0, size, 6), buffer, 6);
+        NodeChecksum.set(buffer, 0, size);
         NodeStream.bytesToNode(128, buffer, 0, size);       // The key as it is: taken.
     }
     
@@ -465,7 +474,7 @@ public class StoredValueNode implements StoredNode {
      * message. It must not be a checksum's.
      */
     static String parseWithRightChecksum(byte[] buffer, int size) {
-        Bytes.ushortToBytesLE(NodeChecksum.sumWithZeroReplace(buffer, 0, size, 6), buffer, 6);
+        NodeChecksum.set(buffer, 0, size);
         try {
             NodeStream.bytesToNode(128, buffer, 0, size);
         } catch (StreamChecksumException e) {
