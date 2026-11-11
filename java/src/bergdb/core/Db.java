@@ -2878,7 +2878,10 @@ public class Db implements AutoCloseable {
     private void checkDirtyNodes(Trans t) {
         final long limit = StoredTrans.dirtyLimit();
         final long nodeBytes = 32 + 16L * (maxNodeSize + 1) + 16;
-        final long topBytes = 2 * (40 + 16L * 64 + 16);     // its top nodes
+        // Its two top nodes: 48 + 16 h bytes each (StoredTopNode, bergdb 024-25), h at most 48
+        // (TopNode.MAX_HEIGHT), and a got-dirty entry of 16 (until 024-24's merge of
+        // 024-25, 40 + 16 x 64 + 16, the size before CRC32C, a bound of it too).
+        final long topBytes = 2 * (48 + 16L * 48 + 16);
         final long height = 2 + 63 - Long.numberOfLeadingZeros(
                 Math.max(1, nodeStream.getLength() / 48));
         

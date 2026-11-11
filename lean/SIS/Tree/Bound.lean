@@ -336,14 +336,18 @@ def nodeBytes (M : Nat) : Nat := 32 + 16 * (M + 1) + 16
 
 /-- L8 at the limits of 2026.5 (bergdb 024-17, 5.2a and 5.3): with the count
 with q, the index nodes of one transaction, each at its largest, and the two
-top nodes fit 15/16 of the record limit 2^31 - 9 (`Db.dirtyLimit`) at every node
+top nodes (48 + 16 x 48 bytes at most since CRC32C, 024-25, and a got-dirty entry
+of 16 each, as `Db.checkDirtyNodes` counts them) fit 15/16 of the record limit
+2^31 - 9 (`Db.dirtyLimit`) at every node
 size of the builder, with H the height bound 1 + log_m(2^60) of any database
 (024-17, 5.2: 61, 38, 21 and 16 at node sizes 8, 14, 30 and 62; 22, m = 7's,
 kept at 30 as the safe figure, 5.2a). Arithmetic
 only: with TP23 and TP26 proved, and H from V1 (TP30), it makes 005-31's
-refusal unreachable within the limits, so a `Bug` (QL5). -/
+refusal unreachable within the limits for a transaction without key or value
+transformations, whose KVs Java counts coarsely (024-24's review, R3), so a `Bug`
+(QL5) once those are counted within this bound. -/
 abbrev ReleaseFits (M H : Nat) : Prop :=
-  (Limits.release.dirtyNodes (Params.java M H)) * nodeBytes M + 2 * (40 + 16 * 64 + 16) ≤
+  (Limits.release.dirtyNodes (Params.java M H)) * nodeBytes M + 2 * (48 + 16 * 48 + 16) ≤
     (2 ^ 31 - 9) - (2 ^ 31 - 9) / 16
 
 theorem releaseFits8 : ReleaseFits 8 61 := by decide
@@ -354,7 +358,7 @@ theorem releaseFits62 : ReleaseFits 62 16 := by decide
 /-- The count of 20 a level, every operation at the longest key, did not fit at
 node size 30 and H = 22 (024-17, 5.2a: 481 operations). -/
 theorem twentyALevelDoesNotFit30 :
-    ¬ (500 * (20 * 16 * (22 + 2) + 14)) * 544 + 2 * (40 + 16 * 64 + 16) ≤ (2 ^ 31 - 9) - (2 ^ 31 - 9) / 16 := by
+    ¬ (500 * (20 * 16 * (22 + 2) + 14)) * 544 + 2 * (48 + 16 * 48 + 16) ≤ (2 ^ 31 - 9) - (2 ^ 31 - 9) / 16 := by
   decide
 
 end SIS.Tree
