@@ -125,8 +125,21 @@ import bergdb.stream.SalsaStream;
  * level for each 7 bytes, so that a key costs memory, stream bytes and time in proportion to
  * its length, many times what a value of that length costs, and a commit of a long key that
  * shares a long start with another key can take seconds (one of 1 MB after one of 100 kB with
- * the same start: 2.6 to 5.8 s; bergdb 021-16, Q1). Keep keys short, and put large data in
- * values. A value is an array of bytes, the empty array too, which is a value, not a delete;
+ * the same start: 2.6 to 5.8 s; bergdb 021-16, Q1). The keys that share their first j
+ * segments, their first 7j bytes, share a segment tree, a tree of key nodes, and a key of
+ * exactly 7, 14 or 21 bytes ends with an empty segment (Keys.toSegments). So a prefix of 7,
+ * 14 or 21 bytes that only one key has, the whole key included when its length is exactly
+ * that, is a key node for that key alone: about 226 bytes of heap when in memory, where a KV
+ * with an empty value whose key shares its prefixes costs about 130 in all. A random key of
+ * L bytes, such as a UUID, pays it L / 7 times, rounded down (5 for 36 bytes), and one byte
+ * more or less of a fixed-width key can add or save a node a key. With noEvict() and keys
+ * put in key order, the heap above the empty database's is at most about 131 K + 230 T
+ * bytes and the values' byte arrays, K the KVs and T the segment trees beyond the first
+ * segment's; in random key order K's constant is about 181 (bergdb 024-08, sections 5 and
+ * 7). With eviction the heap stays near the budget whatever the keys,
+ * and those nodes cost stream bytes and node reads instead (024-08, section 8). Keep keys
+ * short, put large data in values, and let keys that are written together share their
+ * start. A value is an array of bytes, the empty array too, which is a value, not a delete;
  * Trans.Builder.delete() removes a key's value. A put of a null value is refused with
  * IllegalArgumentException. The values and keys of one transaction may take at most about 1.88
  * GB of the stream (execute()'s DbException).</p>

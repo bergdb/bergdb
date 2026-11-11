@@ -1,5 +1,6 @@
 package bergdb.dev.props;
 import java.io.IOException;
+import java.util.Locale;
 
 import bergdb.core.Db;
 import bergdb.core.Trans;
@@ -9,6 +10,15 @@ import bergdb.stream.DummyStream;
 /**
  * Computes the MEM property; the memory usage per KV in a database
  * with one million small KVs.
+ * 
+ * <p>The heap in use after the fill minus before it, divided by the number of KVs, in a
+ * database that holds everything (testSetup(): no eviction, no reclaim; a DummyStream);
+ * values of 0 bytes, 100 KVs a transaction, keys in key order. Options, for the key-shape
+ * runs of level1.sh (bergdb 024-08, section 7; 024-15): -n N, the number of KVs, a
+ * multiple of 100, by default 1,000,000; -keys FORMAT, the keys as
+ * String.format(FORMAT, i) for i from 0 to N - 1, such as %07d or /k/%010d, by default
+ * "" + i. Without options it measures what it measured from 2015 on (bergdb 006-02).
+ * The report is MEM: and the figure rounded, then the figure with one decimal.</p>
  * 
  * @author Frans Lundberg.
  */
@@ -20,7 +30,8 @@ public class Mem {
     }
     
     private double go(CommandLine line) throws Exception {
-        int n = 1000*1000;
+        int n = line.hasOne("n") ? Integer.parseInt(line.getOne("n")) : 1000*1000;
+        String keys = line.hasOne("keys") ? line.getOne("keys") : null;
         int valueSize = 0;
         Db db = Db.builder().testSetup().mainStream(new DummyStream()).start();
         
@@ -28,10 +39,14 @@ public class Mem {
         long emptyMem = usedMem();
         
         int batchSize = 100;
+        if (n <= 0 || n % batchSize != 0) {
+            throw new IllegalArgumentException("-n must be a positive multiple of 100: " + n);
+        }
         for (int i = 0; i < n/batchSize; i++) {
             Trans.Builder b = db.trans();
             for (int j = 0; j < batchSize; j++) {
-                String key = "" + (i*batchSize + j);
+                int k = i*batchSize + j;
+                String key = keys == null ? "" + k : String.format(Locale.ROOT, keys, k);
                 byte[] value = new byte[valueSize];
                 b.put(key, value);
             }
@@ -43,7 +58,8 @@ public class Mem {
         long fullMem = usedMem();
         
         double memPerKv = (double)(fullMem - emptyMem) / (double) n;
-        report = String.format("MEM:%.0f", memPerKv);
+        report = String.format(Locale.ROOT, "MEM:%.0f (%.1f bytes a KV, %d KVs, keys %s)",
+                memPerKv, memPerKv, n, keys == null ? "\"\" + i" : keys);
         
         if (line.has("wait")) {
             System.out.println("Waiting for ENTER.");
