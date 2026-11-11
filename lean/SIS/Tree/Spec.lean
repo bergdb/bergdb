@@ -18,9 +18,7 @@ open SIS SIS.Check
 P@(i-1): its touch first, which changes nothing, then its operations in their
 order. An error of the writer (Java's `Bug`) gives no change. -/
 def exec (p : Params) (tx : Tx) (i : Time) (view : View BVal) : Changes BVal :=
-  let touch := match tx.touch with
-    | some (src, to) => touchOf p view (i - 1) src to
-    | none => []
+  let touch := touchOf p view (i - 1) tx.touch
   match exec? p tx i view with
   | .ok c => { c with touch := touch }
   | .error _ => { new := [], adds := [], touch := touch }
@@ -53,18 +51,16 @@ def Tx.sorted (tx : Tx) : Bool := sortedKeys (tx.ops.map (·.key))
 /-- Every key of the transaction is one that `Keys.toSegments` makes. -/
 def Tx.wf (tx : Tx) : Bool := tx.ops.all (fun op => keyWf op.key)
 
-/-- `Db.sortByKey`: the operations sorted by key, stably, and of operations on
-one key one kept: the last put, or the last delete if there is no put (a delete
-never replaces a put). -/
+/-- `Db.sortByKey` and `Trans.Builder.build` (since bergdb 024-10): the
+operations sorted by key, stably, and of the operations on one key the last one
+kept, a put or a delete: the last operation wins. (Until release 2026.4: the
+last put, or a delete if there was no put.) Since bergdb 024-16 a transaction
+whose key transformations make two keys one fails at the commit, so the Dag
+gets one operation a key either way (`Tx.sorted`). -/
 def normalize (ops : List Op) : List Op :=
   (ops.mergeSort (fun a b => !keyLt b.key a.key)).foldl (fun acc op =>
     match acc.getLast? with
     | none => [op]
-    | some prev =>
-      if prev.key == op.key then
-        match op, prev with
-        | .del _, .put _ _ => acc
-        | _, _ => acc.dropLast ++ [op]
-      else acc ++ [op]) []
+    | some prev => if prev.key == op.key then acc.dropLast ++ [op] else acc ++ [op]) []
 
 end SIS.Tree

@@ -38,11 +38,18 @@ high, xhigh for a hard task. At most 8 agents at a time (Frans,
 | 024-05 | The aim against the known cases: the list, bounds, tests | cases (high) | done 07:10 |
 | 024-06 | The model gap: the Lean model against 2026.4's code | gap (high) | done 07:08 |
 | 026 | Item for release 2026.6, "a stable stream" (preliminary) | coordinator | done |
-| 024-07 | The last touch of a reclaim iteration (CL7): design, fix | touch (xhigh) | |
-| 024-08 | MEM 327 at 10M keys against 129.6 at 1M: the cause | mem (high) | |
+| 024-07 | The last touch of a reclaim iteration (CL7): design, fix | touch (xhigh) | on main, a780b957 |
+| 024-08 | MEM 327 at 10M keys against 129.6 at 1M: the cause | mem (high) | done 07:25 |
 | 024-09 | The tie of model and code repaired (024-06, A1 to A4) | tie (xhigh) | |
 | 022-07 | The C clone to release 2026.4 as released (CC1) | cc (high) | |
-| 024-10 | The builder's rule "the last operation wins" (CA1) | low (high) | |
+| 024-10 | The builder's rule "the last operation wins" (CA1) | low (high) | on main, a780b957 |
+| 024-11 | The underfill fix: a design study, no code | fill (xhigh) | done 08:18 |
+| 024-12 | The key tree's model in Lean, run against Java | tree (xhigh) | |
+| 024-13 | The integration branch: doubles.py, 024-10, 024-07; gates | int (Opus, high) | landed 10:07 |
+| 024-14 | The merge's thresholds measured in Java at 10M keys | thr (Opus, high) | |
+| 024-15 | The cost of key shape: documentation, bound, Mem runs | shape (Opus, high) | |
+| 024-16 | One operation a key, strict: a collision fails the commit | strict (Opus, high) | |
+| 024-17 | The limits of a transaction, a key, a value, a record | limits (Opus, high) | |
 
 024-04 to 024-06 are read-only studies. 024-07 to 024-10 and 022-07 work
 in clones under `/Users/f/fl/bench/2026-11-11/<name>/clone` on their own
@@ -86,6 +93,78 @@ from them.
   the record limit at 100M keys (not read yet). Both sent on to mem and
   touch.
 * 07:10 Unattended until 09:00. Started touch, mem, tie, cc, low.
+* 07:23 Frans: 2026.5 may refuse 2026.4's databases ("2. as
+  recommended"); item commits may be pushed ("Sure, feel free to
+  push"). 07:24 started fill (024-11).
+* 07:25 024-08 done: the 327 is the shape of MEM's keys (a key of
+  exactly 7 bytes gets a key node of its own, 226 heap bytes), not the
+  count; 024-03 and 024-04 corrected; committed 9d134987, pushed.
+* 07:26 low disturbed touch's timing run (07:21 to 07:25) and said so;
+  touch told to rerun or mark those times.
+* 07:27 Frans on the order of work: model first, and the proofs wanted
+  (024-04, section 6): "Yes, start it." Started tree (024-12); touch
+  told to settle the cut question in Lean first; tie and tree told of
+  each other.
+* 07:30 Frans: the cost of key shape is within aim 3 ("Yes."); logged
+  in 024-04. He left until 09:00.
+* 07:49 024-10 done on its branch (head 3ad9fa1e in
+  /Users/f/fl/bench/2026-11-11/low/clone): before-commit, level1 and
+  level2 OK; the stream's bytes the same without repeated keys; two
+  expected values changed, for Frans to approve; not landed. Its
+  finding F2: `java/doubles.py` takes 181 s on main, so
+  before-commit.sh is about 4.5 minutes.
+* 07:50 The usage: 38 % of the week, about 12 points an hour with six
+  agents; nothing new started. tie silent since 07:18: resume message
+  sent.
+* 07:56 tree disturbed touch's timing for 45 s (07:53:40) and said so;
+  touch told. tree's first result: the Lean tree gives Java's change
+  and klongs on 76 traces (9,080 transactions), 0 differences.
+* 08:18 024-11 done: merges at the delete alone (P5's), with the bound
+  BU1; with merges the index is 1.12 to 1.90 times the twin's key nodes
+  (35 runs on P5's build), without 2.0 to 20.2; a plan of about two
+  weeks; QU1 to QU8 for Frans.
+* 08:49 The usage level turned tight (48 %): tree told to gate and stop
+  before the proofs, cc to stop after its next gate run. 09:02 024-07's
+  gates all pass on its branch (level3, level1, before-commit; two Lean
+  theorems, T-COVER and T-LATEST).
+* 09:17 Frans back; attended. The usage: 27 % at 06:39, 50 % at 09:17.
+* 09:25 Frans: "1. Use Opus 5.5 for subagents by default. At effort High
+  or XHigh depending on how hard the task it. Only this coordinator
+  session continues with Fable 5.2. Continue with several agents in
+  parallell. 2. Yes. 3. Yes. 4. Yes. 5. Yes. 6. Yes, as recommended."
+  That is: land 024-07 with its two changed tests when its last runs
+  have reported; land 024-10 with its two changed expected values; the
+  underfill by merges alone with the bound BU1, the denser thresholds
+  measured in Java at 10M keys before the model is written; fix
+  `doubles.py` (09:26: "Yes do it."); land the C clone and the tree
+  model when their gates report, the tree model merged with the tie's
+  branch. The rule on Opus written into the coordinator's skill
+  (013-02). Started int (024-13) and thr (024-14), both on Opus.
+* 09:29 Frans: "Feel free to push." (code on main after a landing).
+  09:31 024-07's branch final at 5bbdbf6e; int has merged the
+  doubles.py fix (188 s to 2.9 s), 024-10 and 024-07 (head 524732d8),
+  its gates wait for the lock. 09:34 Frans: "Sure, do it.": started
+  shape (024-15).
+* 09:43 to 09:47 Frans on 024-10's finding F1 and the rule: "One
+  transaction must not set (put or delete) a value more than once! This
+  is a strict rule. [...] So, yes, 3, refuse it if it happens." Of the
+  coordinator's three scopes he chose B ("Yes!"): in the builder the
+  last call on a key as written wins, silently (024-10's R1 stays); at
+  the commit a transaction fails when key transformations make two of
+  its keys one key, in the Core and the Pub layer alike (this replaces
+  024-10's R2 and his word of 2026-11-10, 17:46). 024-10 lands as
+  built; the change is 024-16 on top. Started strict (024-16).
+* 09:54 to 10:06 Frans on limits: "It is reasonable to limit
+  transactions. Actually, I see no reason for a transaction with
+  250,000 operations." 10:03: "This is important. Setting limits. I
+  suggest creating a subitem of 024 to document this." Started limits
+  (024-17): the discussion, today's limits, the cost against the batch
+  size, a proposal (user limits checked, internal bounds proved).
+* 10:07 **The first landing: main a780b957**, the merge of 024-13-int
+  (524732d8), pushed: doubles.py (188 s to 2.9 s; before-commit.sh 80
+  s), 024-10, 024-07. Gated as one tree: the Lean build, before-commit,
+  level1, level2 and level3 full (C-CUT 0 of 310 cuts). main's java/,
+  lean/ and docs/ equal the gated head's.
 
 
 ## 6. Outcome

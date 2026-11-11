@@ -52,12 +52,13 @@ def keyWf : Key → Bool
 
 /-- A transaction: the id of the first node it makes (024-12, D8: Java's record
 position plus one), its operations in the order the Dag gets them, and the
-bounds of its touch, if it has one (reclaim's steps, `Trans.touchFrom` and
-`touchTo`: after the first, up to the second; none: no bound). -/
+keys whose paths it touches before its operations (reclaim's steps,
+`Trans.touch`: all the transaction's keys, `Db.touchPaths`, since bergdb 024-07;
+a key range until then); none for a transaction without a touch. -/
 structure Tx where
   base : NodeId
   ops : List Op
-  touch : Option (Option Key × Option Key) := none
+  touch : List Key := []
   deriving Repr, Inhabited
 
 /-! ## The writer's state within a transaction (024-12, D7) -/

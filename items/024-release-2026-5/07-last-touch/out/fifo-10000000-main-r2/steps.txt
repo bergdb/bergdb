@@ -1,0 +1,5 @@
+08:01:16 start fill
+08:02:24 end fill rc=0
+08:02:24 start fifo
+08:06:08 end fifo rc=0
+08:06:08 ALL DONE

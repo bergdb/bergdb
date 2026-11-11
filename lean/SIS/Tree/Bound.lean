@@ -208,4 +208,38 @@ def DirtyBoundOK (p : Params) : Prop :=
     markedKeyNodes p (viewOf ((treeRun p ts).apply (ts.length + 1) c)) (ts.length + 1) c ≤
       dirtyNodeBound p (viewOf (treeRun p ts)) ts.length tx.ops
 
+/-! ## The user's limits (bergdb 024-17) -/
+
+/-- The limits of a transaction that a user is given (bergdb 024-17, in
+discussion on 2026-11-11): the most operations, and the most segments of a key
+(a key of b bytes has b / 7 + 1). -/
+structure Limits where
+  maxOps : Nat
+  maxSegs : Nat
+  deriving Repr, DecidableEq, Inhabited
+
+/-- A transaction is within the limits. -/
+def Tx.within (lim : Limits) (tx : Tx) : Bool :=
+  decide (tx.ops.length ≤ lim.maxOps) &&
+    tx.ops.all (fun op => decide (op.key.length ≤ lim.maxSegs))
+
+/-- The index nodes that a transaction within the limits can make dirty or
+create, from the limits and the tree's height bound alone: for each operation
+its path (at most H + 1 key nodes in each of its key's segment trees), eight
+times over, for the nodes walked, their splits and the splits above them, a
+delete's klongs and collapses, and the new segment trees. The constant is
+generous; the runs measure far less. -/
+def Limits.dirtyNodes (p : Params) (lim : Limits) : Nat :=
+  lim.maxOps * (8 * lim.maxSegs * (p.H + 2) + 2)
+
+/-- TP26 (bergdb 024-17). The user's limits bound a transaction's index nodes:
+`dirtyNodeBound` of a transaction within the limits is at most
+`Limits.dirtyNodes`. With TP23 the key nodes that a transaction marks, and so
+the bytes of its record's index part (each node at most M klongs), are bounded
+by the limits, the node size and the height bound, whatever the database
+holds. -/
+def DirtyBoundFromLimits (p : Params) : Prop :=
+  ∀ ts, Within p ts → ∀ (lim : Limits) (tx : Tx), tx.within lim = true →
+    dirtyNodeBound p (viewOf (treeRun p ts)) ts.length tx.ops ≤ lim.dirtyNodes p
+
 end SIS.Tree

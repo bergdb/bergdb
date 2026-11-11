@@ -1,0 +1,15 @@
+d-del60-1: cuts 18, ERROR lines 0, failing probes 0, C-CUT cuts: 0 of 18 CUT lines (and PHYSCUT lines) fail, C-A assumptions: 0 of 715 transactions fail, TRACECHECK OK
+d-del60-2: cuts 17, ERROR lines 0, failing probes 0, C-CUT cuts: 0 of 17 CUT lines (and PHYSCUT lines) fail, C-A assumptions: 0 of 709 transactions fail, TRACECHECK OK
+d-del60-3: cuts 18, ERROR lines 0, failing probes 0, C-CUT cuts: 0 of 18 CUT lines (and PHYSCUT lines) fail, C-A assumptions: 0 of 715 transactions fail, TRACECHECK OK
+d-del60-4: cuts 18, ERROR lines 0, failing probes 0, C-CUT cuts: 0 of 18 CUT lines (and PHYSCUT lines) fail, C-A assumptions: 0 of 714 transactions fail, TRACECHECK OK
+d-del60-5: cuts 19, ERROR lines 0, failing probes 0, C-CUT cuts: 0 of 19 CUT lines (and PHYSCUT lines) fail, C-A assumptions: 0 of 716 transactions fail, TRACECHECK OK
+d-del80-1: cuts 13, ERROR lines 0, failing probes 0, C-CUT cuts: 0 of 13 CUT lines (and PHYSCUT lines) fail, C-A assumptions: 0 of 892 transactions fail, TRACECHECK OK
+d-del80-2: cuts 15, ERROR lines 0, failing probes 0, C-CUT cuts: 0 of 15 CUT lines (and PHYSCUT lines) fail, C-A assumptions: 0 of 902 transactions fail, TRACECHECK OK
+d-del80-3: cuts 15, ERROR lines 0, failing probes 0, C-CUT cuts: 0 of 15 CUT lines (and PHYSCUT lines) fail, C-A assumptions: 0 of 898 transactions fail, TRACECHECK OK
+d-del80-4: cuts 14, ERROR lines 0, failing probes 0, C-CUT cuts: 0 of 14 CUT lines (and PHYSCUT lines) fail, C-A assumptions: 0 of 897 transactions fail, TRACECHECK OK
+d-del80-5: cuts 16, ERROR lines 0, failing probes 0, C-CUT cuts: 0 of 16 CUT lines (and PHYSCUT lines) fail, C-A assumptions: 0 of 899 transactions fail, TRACECHECK OK
+d-long-1: cuts 22, ERROR lines 0, failing probes 0, C-CUT cuts: 0 of 22 CUT lines (and PHYSCUT lines) fail, C-A assumptions: 0 of 737 transactions fail, TRACECHECK OK
+d-long-2: cuts 19, ERROR lines 0, failing probes 0, C-CUT cuts: 0 of 19 CUT lines (and PHYSCUT lines) fail, C-A assumptions: 0 of 728 transactions fail, TRACECHECK OK
+d-long-3: cuts 20, ERROR lines 0, failing probes 0, C-CUT cuts: 0 of 20 CUT lines (and PHYSCUT lines) fail, C-A assumptions: 0 of 728 transactions fail, TRACECHECK OK
+d-long-4: cuts 21, ERROR lines 0, failing probes 0, C-CUT cuts: 0 of 21 CUT lines (and PHYSCUT lines) fail, C-A assumptions: 0 of 735 transactions fail, TRACECHECK OK
+d-long-5: cuts 21, ERROR lines 0, failing probes 0, C-CUT cuts: 0 of 21 CUT lines (and PHYSCUT lines) fail, C-A assumptions: 0 of 733 transactions fail, TRACECHECK OK

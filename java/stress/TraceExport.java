@@ -59,8 +59,7 @@ import bergdb.stream.MemoryStream;
  *   probe=K    run B: a restart after every K transactions (default 0: no run B)
  *   live=1     LIVE lines: Java's own live children, for each node, at each of its times
  *   tree=1     trace format 3 (bergdb 024-12, section 2.6; docs/trace-format.md, section 4):
- *              the lines the tree model needs: TREE, BASE, OP, RANGEF and RANGET, KN, GET and
- *              SCAN; gets=N: N GET lines and one SCAN line after each transaction (default 4)
+ *              the lines the tree model needs: TREE, BASE, OP, KN, GET and SCAN; gets=N: N GET lines and one SCAN line after each transaction (default 4)
  *   retain=S   reclaim on, with a retain duration of S seconds, as RestartInvariance's option
  *              (default 0: off); transactions are then 0.01 to 0.2 s apart
  *   rune=S     run E: run A's workload with the eviction schedule S (values, every, random,
@@ -316,7 +315,7 @@ public class TraceExport {
         String kind = "user";
         List<Long> touch;
         List<String> reclaimLines = new ArrayList<String>();
-        /** Trace format 3 (bergdb 024-12): BASE, OP, RANGEF and RANGET; then KN, GET, SCAN. */
+        /** Trace format 3 (bergdb 024-12): BASE and OP; then KN, GET, SCAN. */
         List<String> treeHead = new ArrayList<String>();
         List<String> treeLines = new ArrayList<String>();
     }
@@ -893,8 +892,8 @@ public class TraceExport {
         }
     }
 
-    /** The lines of T(i) for the tree model: its first id, its operations, its touch's
-     *  bounds, the key nodes it made or changed, and reads of Java at random times. */
+    /** The lines of T(i) for the tree model: its first id, its operations, the key nodes
+     *  it made or changed, and reads of Java at random times. */
     void recordTree(Db db, Trans t, Rec rec, NodeStream ns) {
         rec.treeHead.add("BASE " + mid(rec.tpos + 1));
         for (Object[] op : treeOps) {
@@ -905,10 +904,6 @@ public class TraceExport {
             } else {
                 rec.treeHead.add("OP " + (op[2] == Boolean.TRUE ? "D " : "N ") + segs(key));
             }
-        }
-        if (t.touch) {
-            rec.treeHead.add("RANGEF " + (t.touchFrom == null ? "-" : segs(t.touchFrom)));
-            rec.treeHead.add("RANGET " + (t.touchTo == null ? "-" : segs(t.touchTo)));
         }
         Set<Long> changed = new TreeSet<Long>(rec.newNodes);
         for (long[] a : rec.addsNode) changed.add(a[0]);

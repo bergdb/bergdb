@@ -10,6 +10,7 @@ import SIS.Theorems
 import SIS.Reclaim
 import SIS.Proof.CutRecover
 import SIS.Proof.CutRuns
+import SIS.Proof.CutCover
 
 namespace SIS
 
@@ -17,9 +18,11 @@ variable {V T : Type} [DecidableEq V]
 
 /-- T13' (bergdb item 001, WP R3): with touches, step 3, by testing or by
 marking, gives exactly the index nodes that are not in D (and not a virtual
-root) and are dirty or touched. BergDB's reclaim step touches the nodes that
-its range traversal visits, which makes them dirty without adding entries
-(`Db.touchRange`, M17), and then rewrites the old values. -/
+root) and are dirty or touched. BergDB's reclaim step touches index nodes,
+which makes them dirty without adding entries (M17), and then rewrites the old
+values: until bergdb 024-07 the nodes that the traversal of its key range
+visited (`Db.touchRange`), since then the nodes on the paths of its own puts
+(`Db.touchPaths`). -/
 theorem T13_markTouch (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp al ts)
     (hst : al.stillDirty = javaTest sp ∨ (sp.virt = false ∧ al.stillDirty = exactTest sp))
     (j : Nat) (hj : j < ts.length) (x : NodeId) :
@@ -46,6 +49,88 @@ theorem T13_markTouch (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK
   constructor
   · rintro ⟨-, a, b, w, d⟩; exact ⟨a, b, w, d⟩
   · rintro ⟨a, b, w, d⟩; exact ⟨isSome_of_isIndex' a, a, b, w, d⟩
+
+/-- T-COVER (bergdb 024-07, section 4): what puts the index nodes at the cut or
+later when no key range is touched. In the state after transaction e of a run
+(e the end of an iteration of reclaim, c its cut): if every data node reachable
+at e has its version at c or later (the rewrites), and every written index node
+reachable at e has a data node below it at e (reachable from it through live
+pointers), then every written index node reachable at e is in D or has its
+latest version at c or later. A node that is not in D is clean, so its latest
+version is good, and a good version's references lead, each to a record at or
+before the one above, down to the one version of the data node below
+(`Inv.clean_ge_data`).
+
+Since 024-07 a reclaim step of BergDB touches only the index nodes on the paths
+of its own puts, not every index node of a key range (`Db.touchPaths`; before,
+`Db.touchRange`). The second premise is BergDB's: a delete unlinks the nodes it
+empties (`Dag.deleteUpward`), so no index node that a lookup reaches is without
+a live key below it, but an empty space root; the model has no keys and takes
+it as given. T-SCHEME, that the scheme's waits then give `CutOK`, is still
+checked by running (`checkSchemeC` in SIS/ReclaimExample.lean), not proved;
+`T_latest` below proves its part about the latest versions. -/
+theorem T_cover (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp al ts)
+    (hst : al.stillDirty = javaTest sp ∨ (sp.virt = false ∧ al.stillDirty = exactTest sp))
+    (e c : Nat) (he : e ≤ ts.length) :
+    let db := run sp al (ts.take e)
+    (∀ d m, db.P.get? d = some m → m.isData = true → reachable sp db.P e d = true →
+      ∃ u, db.S.lv d = some u ∧ c ≤ u.recNo) →
+    (∀ x n, db.P.get? x = some n → n.isData = false → written sp x = true →
+      reachable sp db.P e x = true →
+      ∃ d m, d ∈ reachFrom sp db.P e x n ∧ db.P.get? d = some m ∧ m.isData = true) →
+    ∀ x, isIndex db.P x = true → written sp x = true → reachable sp db.P e x = true →
+      inD db.D x = true ∨ ∃ v, db.S.lv x = some v ∧ c ≤ v.recNo :=
+  cover_st sp al ts hok (algOK_of sp al hst) e c he
+
+/-- T-LATEST (bergdb 024-07, section 4): from an iteration's end on, the latest
+versions are at the cut or later. With T-COVER's two premises at e, the end of
+an iteration with its cut at c ≤ e, in every state after T(k), e ≤ k, whose
+startup pos is at e or later (BergDB waits for it: `startupPos >= pEnd`), every
+node reachable at a time from e to k has its latest version, if it has one, at
+c or later: the latest versions that a read from the first available time e on
+may follow (`ReadsPhys.latest`, and so `CutOK`'s part 4), and the first half
+of `CutOK`'s part 3 for the nodes of D that such a read reaches.
+
+A node made after T(e) has its versions after e; one that existed then was
+reachable at e (no resurrection): there a data node is at c or later by the
+rewrites, and an index node is at c or later or in D (T-COVER), with a
+got-dirty index at most e, so it is written once the startup pos has reached e.
+
+Not in it, and still checked by running (`checkSchemeC`, and C-CUT on Java's
+traces), not proved: the versions that a pointer leads to besides the latest
+ones (`ReadsPhys.child`), the references of D's nodes, and the nodes of D that
+no read from e on reaches (BergDB's second wait, pSafe; bergdb 001-07, section
+5, steps 6 and 7). -/
+theorem T_latest (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp al ts)
+    (hst : al.stillDirty = javaTest sp ∨ (sp.virt = false ∧ al.stillDirty = exactTest sp))
+    (e k c : Nat) (hce : c ≤ e) (hek : e ≤ k) (hk : k ≤ ts.length) :
+    let db := run sp al (ts.take e)
+    let dbk := run sp al (ts.take k)
+    (∀ d m, db.P.get? d = some m → m.isData = true → reachable sp db.P e d = true →
+      ∃ u, db.S.lv d = some u ∧ c ≤ u.recNo) →
+    (∀ x n, db.P.get? x = some n → n.isData = false → written sp x = true →
+      reachable sp db.P e x = true →
+      ∃ d m, d ∈ reachFrom sp db.P e x n ∧ db.P.get? d = some m ∧ m.isData = true) →
+    e ≤ lastSp dbk.S →
+    ∀ t x, e ≤ t → t ≤ k → reachable sp dbk.P t x = true →
+      ∀ v, dbk.S.lv x = some v → c ≤ v.recNo :=
+  latest_st sp al ts hok (algOK_of sp al hst) e k c hce hek hk
+
+/-- The bound of a touch (bergdb 024-07, section 5), a definition: the touch of
+the changes c made at time i to P marks only nodes on the paths of the change.
+Every touched node has below it at i - 1, itself included, a node that c gives
+an entry or that is no longer reachable at i (a node that the change replaces).
+So a touch makes no node dirty outside the writer's own paths, and what a
+transaction with a touch makes dirty is bounded by the paths of its change,
+whatever else the structure holds. Java's reclaim steps meet it since 024-07
+(`Db.touchPaths` visits the paths of the step's own puts; `Db.touchRange`
+visited a key range), and the trace checker checks it (C-A, `touchPath`). No
+theorem assumes it: it is a cost property, and `StepOK` allows any touch that
+is closed upward. -/
+def TouchOnPaths (sp : Spec V T) (P : Struct V) (i : Time) (c : Changes V) : Prop :=
+  ∀ x ∈ c.touch, ∀ nx, P.get? x = some nx →
+    ∃ z ∈ reachFrom sp P (i - 1) x nx,
+      changed c z = true ∨ reachable sp (P.apply i c) i z = false
 
 /-- T8 (bergdb item 001, WP R4): after a safe cut (`CutOK`) at c in the state
 after transaction k of a run, startup from the cut stream gives the same

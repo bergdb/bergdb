@@ -850,13 +850,25 @@ A cut at record c (`SIS/Reclaim.lean`) leaves of every version before c a
 stub (`Version.stub`): its position, no history. After a cut, lookups are
 supported only from the first available time f on. To make cuts possible,
 reclaim touches index nodes, making them dirty so that they are written
-again. A cut is safe (`CutOK`) when c <= f, every version a read
-from f on may follow is at c or later, every node of D has its latest
-version at c or later with references below c to latest versions only, and
-the top is after the cut. Then:
+again (in Java since bergdb 024-07 the nodes on the paths of a step's own
+puts; a key range before). A cut is safe (`CutOK`) when c <= f, every
+version a read from f on may follow is at c or later, every node of D has
+its latest version at c or later with references below c to latest versions
+only, and the top is after the cut. Then:
 
 * T13' (`T13_markTouch`): with reclaim's touches, step 3 gives exactly the
   index nodes not in D that are dirty or touched.
+* T-COVER (`T_cover`, bergdb 024-07): at the end of an iteration, if every
+  data node reachable then is at c or later (the rewrites) and every index
+  node reachable then has a data node below it (in BergDB, a live key: a
+  delete unlinks the nodes it empties), every index node reachable then is
+  in D or has its latest version at c or later. A node that is not in D is
+  clean: its latest version is good, and so at or after the version of every
+  data node below it. So no key range needs a touch.
+* T-LATEST (`T_latest`, bergdb 024-07): with the same two premises, in
+  every later state whose startup pos has reached the iteration's end, every
+  node reachable at a time from the end on has its latest version at c or
+  later.
 * T8 (`T8_recoverCut`): startup from the cut stream gives the same lookups
   at every time from f on, and the same D.
 * T9 (`T9_handles`): with eviction, reads through the handles in the
@@ -866,10 +878,10 @@ the top is after the cut. Then:
   restarts from safe cut streams appends the records of the run without
   restarts.
 
-That Java's reclaim (its touches, rewrites and waits) gives safe cuts
-(T-SCHEME) is checked, not proved: at every cut of every trace the checker
-sees, and by running on the model's example (001-07, section
-5).
+That Java's reclaim (its rewrites and waits) gives safe cuts (T-SCHEME) is
+checked, not proved: at every cut of every trace the checker sees, and by
+running on the model's example (001-07, section 5; with T-COVER's
+conclusion as the condition on the index nodes, 024-07, section 4).
 
 15.4 Java against it
 --------------------

@@ -84,7 +84,8 @@ in a record of their own, R(1), internal and marked `kind=table`; its calls
 after a restart write nothing. Format 2 then also has:
 
     TOUCH x1 x2 ...              in TX i, after the ADD lines: the index nodes
-                                 T(i)'s touch visited (Db.touchRange), sorted
+                                 T(i)'s touch visited (Db.touchPaths: the paths
+                                 of its keys; a key range until 024-07), sorted
     FA t                         in TX i, when it changes: fa(i), the first
                                  available time, as a model time
     CUT c t                      in TX i: Java decided a cut at R(i): records
@@ -257,10 +258,6 @@ and their compare values (`Keys.toSegments`); `-` stands for no key.
     OP D key                     a delete that deleted
     OP N key                     a delete that changed nothing (not in the
                                  record)
-    RANGEF key                   in TX i with a touch (reclaim's steps): the
-    RANGET key                   touch's bounds: the keys after the first
-                                 (`-`: from the first key) up to the second
-                                 (`-`: to the last key); Trans.touchFrom, touchTo
     KN x l n k1 ... kn           in TX i, after the ADD lines: key node x after
                                  T(i), for each key node that T(i) made or gave
                                  an entry (in TX 0: every key node): l is 1 for
@@ -281,6 +278,12 @@ and their compare values (`Keys.toSegments`); `-` stands for no key.
                                  (GetMany.GetN); start and end are keys or `-`;
                                  r results follow, each a key and its value's
                                  hash
+
+A transaction with a TOUCH line (a step of reclaim; section 2) touches the
+paths of all the keys of its OP lines (Db.touchPaths, since bergdb 024-07):
+the tree model's `touchOf` of those keys must give the TOUCH line. (Until
+024-07 the touch was a key range, and format 3 had its bounds as RANGEF and
+RANGET lines, on 2026-11-11 only.)
 
 The reads of the GET and SCAN lines are at random times from the first
 available time on, of keys of the workload, `gets=N` GET lines and one

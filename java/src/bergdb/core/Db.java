@@ -18,7 +18,6 @@ import bergdb.dag.GetMany;
 import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Keys;
-import bergdb.dag.Kvt;
 import bergdb.dag.NodeVisitor;
 import bergdb.dag.PutData;
 import bergdb.dag.Spos;
@@ -2706,8 +2705,12 @@ public class Db implements AutoCloseable {
      * bergdb 005-31). TransSeq.take takes transactions whole, so it would never take such a
      * transaction, and the startup pos would stay before it for good: the startup section,
      * startup, D and the stream would grow without end. Called under writeLock, before the
-     * go point; not for reclaim's internal transactions, whose steps are bounded by their
-     * own reserve (Reclaim.setStepReserve).
+     * go point; not for reclaim's internal transactions: a step makes dirty the index nodes
+     * on the paths of its own puts only (touchPaths), and it puts at most the KVs of its
+     * scan, 16 kB of them or one KV, and its row. Until bergdb 024-07 a step's touch walked
+     * a key range and had no bound: the last step of an iteration over keys in time order
+     * made dirty every index node, which at about 100M keys no record could take (024-07,
+     * section 3).
      * 
      * <p>A cheap test first: every key at most three nodes a level of a path of at most
      * 'height' levels a segment, and three more; 'height' from the stream's length, as a
@@ -2938,11 +2941,12 @@ public class Db implements AutoCloseable {
 
         if (x.trans.touch) {
             // 2026-10-13: was after the puts. Before them, the touch makes dirty 
-            // every index node of the range, so that the value transformation of the row
-            // of a reclaim step, wherever its key sorts, can store what the step made dirty
-            // (Trans.dirtiedBytes). The puts then make dirty only new nodes and nodes
-            // outside the range.
-            touchRange(x.trans.touchFrom, x.trans.touchTo);
+            // every index node on the paths of the transaction's keys, so that the value
+            // transformation of the row of a reclaim step, wherever its key sorts, can store
+            // what the step made dirty (Trans.dirtiedBytes). The puts then make dirty only
+            // the nodes they create. Until bergdb 024-07 the touch visited a key range
+            // (touchRange), to the end of the key space in an iteration's last step.
+            touchPaths();
             endOfOp(true);
             touchMarks = x.transInfo == null ? 0 : x.transInfo.gotDirtyNodes.size();
             x.putData.clearFast();
@@ -2952,7 +2956,7 @@ public class Db implements AutoCloseable {
         // section 7, Q4): the index gets a transaction's operations in the order of their keys,
         // whatever the order a transformation left them in, so two transactions with the same
         // operations run the same and write the same stream; of KVs that transformations make
-        // one key, one is kept by Trans.Builder.build's rule (sortByKey). Value
+        // one key, the one called last is kept, as Trans.Builder.build does (sortByKey). Value
         // transformations stay in the put loop, for the KVs kept: each reads the previous value
         // at tt, as before. The record holds the KVs put, and the startup's rerun applies them
         // in their stored order, this order, and does not sort.
@@ -2991,27 +2995,27 @@ public class Db implements AutoCloseable {
      * The KVs to put, after the key transformations (putKvs; bergdb 023-08, section 7, Q4):
      * 'kvs' sorted by key and one KV a key, in a new array; 'kvs' and the transaction's write
      * hashes are left as they are, so that a Trans can be run again (its Javadoc allows
-     * reuse), each key transformation seeing its own slot (bergdb 023-11, review A, F1). The
-     * sort is stable, so KVs that transformations make one key are next to each other, in
-     * the order of Trans.Builder.build's sort (the keys as written). Of them one is kept, by
-     * build's rule for the calls on one key (bergdb 015-40): the last put, or a delete if
-     * there is no put; a delete never replaces a put. Frans, 2026-11-10 (023-08, section 7):
-     * silently, as the builder does. So a transaction reaches the index with one operation a
-     * key. A dropped KV's write hash is its kept KV's, as the key is the same.
+     * reuse), each key transformation seeing its own slot (bergdb 023-11, review A, F1). KVs
+     * that transformations make one key are next to each other, in the order of their calls
+     * in the builder (Kv.call). Of them the one called last is kept, a put or a delete: the
+     * last operation wins, as in Trans.Builder.build for the calls on one key as written
+     * (bergdb 024-10, section 3, R2; Frans, 2026-11-10, 023-08, section 7: silently). Until
+     * release 2026.4 the last put in the order of the keys as written was kept, or a delete
+     * if there was no put. So a transaction reaches the index with one operation a key. A
+     * dropped KV's write hash is its kept KV's, as the key is the same.
      */
     static Kv[] sortByKey(Kv[] kvs) {
         final Kv[] sorted = kvs.clone();
         java.util.Arrays.sort(sorted, new java.util.Comparator<Kv>() {
             public int compare(Kv a, Kv b) {
-                return Keys.compareArrays(a.getKey(), b.getKey());
+                int c = Keys.compareArrays(a.getKey(), b.getKey());
+                return c != 0 ? c : Integer.compare(a.call, b.call);
             }
         });
         int n = 0;                              // the KVs kept, in sorted[0, n)
         for (int i = 0; i < sorted.length; i++) {
             if (n > 0 && Keys.compareArrays(sorted[n - 1].getKey(), sorted[i].getKey()) == 0) {
-                if (sorted[i].getValue() != null || sorted[n - 1].getValue() == null) {
-                    sorted[n - 1] = sorted[i];  // a put, or a delete after a delete
-                }
+                sorted[n - 1] = sorted[i];      // the same key, called later
                 continue;
             }
             sorted[n++] = sorted[i];
@@ -3020,26 +3024,39 @@ public class Db implements AutoCloseable {
     }
     
     /**
-     * Visits, as the writer, every node reachable at the transaction time for the keys in a
-     * range, so that each gets dirty; see Trans.touch. For reclaim (2026-10-13).
+     * The touch of a reclaim step (Trans.touch; bergdb 024-07): visits, as the writer, the
+     * index nodes on the path of each key of the transaction at the transaction time, from
+     * the super root to the segment leaf of the key (Dag.followPath), so that each gets dirty
+     * before the puts; the values are not read. These are the nodes that the transaction's
+     * puts follow, so the touch visits no node off the paths of its own puts: a step's index
+     * nodes are those of the paths of its own puts, however many keys the database holds.
      * 
-     * @param from  The keys after this one (exclusive), or null for the first key.
-     * @param to  The keys up to this one (inclusive), or null for the last key.
+     * <p>Until 024-07 it visited every node reachable at the transaction time for the keys of
+     * a range (touchRange, 2026-10-13), the range of the step's scan, and in an iteration's
+     * last step the range from the scan's last key to the end of the key space: every key
+     * put after the scan's keys since the iteration started, at 10M keys in time order
+     * 772,454 nodes in one transaction, pinned at once and then written in one record of 206
+     * MB (bergdb 024-07, section 2). The range was walked for
+     * the nodes that held deleted keys only, which no put reaches; since format 6 a delete
+     * unlinks the nodes it empties (Dag.deleteUpward), so every index node that a lookup
+     * reaches, but an empty space root, has a live key below it, and the put of that key, the
+     * user's or a step's rewrite, makes the node dirty (024-07, section 4; the Lean model's
+     * T_cover).</p>
      */
-    private void touchRange(long[] from, final long[] to) {
-        GetMany g = dag.newGetMany();
-        g.gd.pointerFollower = x.putData.pointerFollower;
-        g.gd.pointerListener = x.putData.pointerListener;      // makes nodes dirty
+    private void touchPaths() {
+        final GetData gd = dag.newGetData();
+        gd.pointerFollower = x.putData.pointerFollower;
+        gd.pointerListener = x.putData.pointerListener;      // makes nodes dirty
         Reclaim.TouchCounter counter = null;
         if (x.trans.touchCount != null) {
             counter = new Reclaim.TouchCounter(x.trans.touchCount, x.trans.touchOldBefore,
                     x.putData.pointerListener);
-            g.gd.pointerListener = counter;
+            gd.pointerListener = counter;
         }
         final TestHooks hooks = testHooks;
         if (hooks != null) {
-            final Dag.PointerListener inner = g.gd.pointerListener;
-            g.gd.pointerListener = new Dag.PointerListener() {
+            final Dag.PointerListener inner = gd.pointerListener;
+            gd.pointerListener = new Dag.PointerListener() {
                 public void superRootAccessed(TopNode superRoot) {
                     hooks.nodeTouched(superRoot);
                     inner.superRootAccessed(superRoot);
@@ -3054,22 +3071,10 @@ public class Db implements AutoCloseable {
                 }
             };
         }
-        g.gd.accessData = x.putData.accessData;
-        g.lookupTime = x.trans.tt;
-        g.actualLookupTime = x.trans.tt;     // Dag.getMany() uses this one.
-        g.startKey = from;
-        g.inclusive = false;
-        g.stopCondition = new GetMany.StopCondition() {
-            public int handleKvt(Kvt kvt) {
-                if (to != null && Keys.compareKeys(kvt.key, to) > 0) {
-                    return STOP;
-                }
-                return CONTINUE;
-            }
-            
-            public void eod() {}
-        };
-        dag.getMany(g);
+        gd.accessData = x.putData.accessData;
+        for (Kv kv : x.trans.kvs) {
+            dag.followPath(x.trans.tt, kv.getKey(), gd);
+        }
         if (counter != null) {
             counter.finish();
         }
@@ -3437,8 +3442,8 @@ public class Db implements AutoCloseable {
         public default void kvApplied(long[] key, byte[] value) {}
 
         /**
-         * The touch of the transaction being executed (Trans.touchFrom, touchTo) visited an
-         * index node; the super root included.
+         * The touch of the transaction being executed (Trans.touch) visited an index node; the
+         * super root included. A node on the paths of several keys is reported for each.
          */
         public void nodeTouched(Node node);
 

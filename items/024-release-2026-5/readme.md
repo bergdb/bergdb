@@ -38,7 +38,10 @@ own", and section 7):
   checks/p8-liveness.md) and the liveness tests: a shorter lag after a
   mass delete. No format cost.
 * **Merges at the delete** (023-05 P5), switched on by the record's
-  format, so that 2026.4's databases need no refusal.
+  format, so that 2026.4's databases need no refusal. Changed
+  2026-11-11, 07:23 (Frans, "as recommended"): 2026.5 may refuse
+  2026.4's databases, so one rerun path and a new record format; the
+  design study is 024-11.
 * **Fix (a) of the dirty top-node window** (023-05 P7), if the ratchet
   test shows that the window grows (023-08, Q6).
 * **`maintain()`**, the explicit call that drives cleanup (023-04, Y10).
@@ -112,6 +115,13 @@ Files
   T-SCHEME's argument, the draining configurations, javaTake); the work
   in an order (A the tie, B the tree in Lean run against Java, C and D
   its proofs, E the costs); questions 1 to 8.
+* 07-last-touch.md. 024-07, the last touch of a reclaim iteration
+  (CL7, OP1) fixed: a reclaim step makes dirty the index nodes on the
+  paths of its own puts only (`Db.touchPaths` in place of the key
+  range); with 10M keys the last step's record 29 kB, not 206 MB; the
+  mechanism, the options, the theorems T-COVER and T-LATEST in Lean, the
+  checker's touchPath and CUT-live, the numbers before and after, two
+  changed tests. On main since a780b957. Outputs in 07-last-touch/.
 * 08-mem-at-10m.md. 024-08, MEM's 327 bytes a KV at 10M keys explained:
   the shape of MEM's keys, not their count (a key of exactly 7 bytes is
   two segments and gets a key node of its own, about 226 heap bytes);
@@ -119,6 +129,28 @@ Files
   class; the cost of key shape for a user, a proposed bound with three
   Mem runs, options (a) to (d), questions Q1 to Q3. Outputs in
   08-mem-at-10m/.
+* 10-last-operation-wins.md. 024-10, the builder's rule "the last
+  operation wins" (CA1) in Java: the rule made exact (R1 for the calls
+  on one key as written, R2 for the KVs that key transformations make
+  one key: the later call), the 34 cases of which 11 differ from 2026.4,
+  the change on the branch 024-10-last-operation-wins (not on main), its
+  tests, two expected values changed (for Frans to approve), the same
+  stream bytes without repeated keys, what C must change; questions QL1
+  to QL5.
+* 11-underfill.md. 024-11, the design study of the underfill's fix
+  (OP2/ST2 of 024-05): the bound BU1 (every key node that is not a
+  segment tree's root holds at least a quarter of a node's klongs, after
+  every transaction), the options with their verdicts (merges at the
+  delete: yes; borrowing, reclaim's rebuild, compaction: no), the
+  algorithm stated for the Lean tree (invariants V1 to V9, theorems TH1
+  to TH4, costs CB1 to CB4), a probe on P5's build and a model of the
+  fill rules, a plan of about two weeks, questions QU1 to QU8. The
+  probe's scripts and outputs and the model in 11-underfill/ (copied by
+  the coordinator from the study's bench directory).
+* 13-integration.md. 024-13, the integration branch of the day's
+  approved changes, gated as one tree: `doubles.py` in 3 s, not 188 s
+  (before-commit.sh about 80 s again), 024-10 and 024-07 merged; the
+  gates' results. Landed as a780b957.
 
 
 Log

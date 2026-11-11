@@ -2,7 +2,9 @@
 # touched one. Top node 3 points to root key node 5, which points to 7 and 13;
 # 7 points to 15, 13 to 11. T(1) touches 3, 5 and 15, not 7, which is reachable
 # with 15 below it. Expected: touchUp fails for node 7; the record and D are the
-# model's (the touched nodes get dirty without entries).
+# model's (the touched nodes get dirty without entries). And the bound of the
+# touch (bergdb 024-07): T(1) changes nothing, so no touched node is on a path
+# of its change, and touchPath fails for 3, 5 and 15.
 TRACE 2
 CONFIG touch
 TX 0

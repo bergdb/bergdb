@@ -1,0 +1,58 @@
+T7 log dir=/Users/f/fl/bench/2026-11-11/touch/data/smain100000 n=100000 maxdrive=30000 report=10000 sd=1000000 cp=/Users/f/fl/bench/2026-11-11/touch/cmain:/Users/f/fl/bench/2026-11-11/touch/main.jar
+[0.1s] START ms=87 len=21822168 fap=0 fresh=false recordLimit=2147483639
+[0.1s] LOG before state len=21822168 kept=21822168 iters=0 fap=0 lag=979624
+[0.4s] ITEREND tx=45 commitMs=138.8 userRecord=25104 stepRecord=70992 lag=1029592 resident=15251856 | steps=45 kvs=3304 values=0 dirtiedNodes=4677 dirtiedBytes=1246720 maxStepDirtied=4412 maxStepNodes=13 loads=3609
+[0.5s] BIGREC tx=63 userRecord=1196176 commitMs=26.3
+[1.2s] ITEREND tx=1380 commitMs=8.3 userRecord=22696 stepRecord=120824 lag=1159776 resident=60988909 | steps=1334 kvs=100003 values=1 dirtiedNodes=7899 dirtiedBytes=2088224 maxStepDirtied=7534 maxStepNodes=16 loads=58
+[1.2s] BIGREC tx=1384 userRecord=2029136 commitMs=19.7
+[1.9s] ITEREND tx=2715 commitMs=9.6 userRecord=23568 stepRecord=120984 lag=1128304 resident=92177045 | steps=1334 kvs=100003 values=0 dirtiedNodes=7917 dirtiedBytes=2093408 maxStepDirtied=7544 maxStepNodes=16 loads=0
+[1.9s] BIGREC tx=2722 userRecord=2031824 commitMs=22.6
+[2.5s] ITEREND tx=4050 commitMs=10.4 userRecord=21792 stepRecord=121336 lag=1088632 resident=118045153 | steps=1334 kvs=100003 values=1 dirtiedNodes=7931 dirtiedBytes=2096560 maxStepDirtied=7558 maxStepNodes=16 loads=0
+[2.6s] BIGREC tx=4055 userRecord=2035552 commitMs=23.7
+[3.2s] ITEREND tx=5385 commitMs=8.4 userRecord=22576 stepRecord=120936 lag=1149448 resident=119974144 | steps=1334 kvs=100003 values=0 dirtiedNodes=7904 dirtiedBytes=2089904 maxStepDirtied=7533 maxStepNodes=16 loads=0
+[3.2s] BIGREC tx=5389 userRecord=2028912 commitMs=20.1
+[3.8s] ITEREND tx=6720 commitMs=9.6 userRecord=23200 stepRecord=120984 lag=1124256 resident=120009009 | steps=1334 kvs=100003 values=1 dirtiedNodes=7914 dirtiedBytes=2092736 maxStepDirtied=7544 maxStepNodes=16 loads=0
+[3.9s] BIGREC tx=6746 userRecord=2034144 commitMs=25.9
+[4.5s] ITEREND tx=8055 commitMs=9.5 userRecord=23248 stepRecord=121192 lag=1109936 resident=120051400 | steps=1334 kvs=100003 values=0 dirtiedNodes=7915 dirtiedBytes=2093024 maxStepDirtied=7549 maxStepNodes=16 loads=0
+[4.5s] BIGREC tx=8059 userRecord=2033184 commitMs=22.2
+[5.1s] ITEREND tx=9390 commitMs=9.9 userRecord=18576 stepRecord=120872 lag=1143008 resident=120007107 | steps=1334 kvs=100003 values=1 dirtiedNodes=7898 dirtiedBytes=2089632 maxStepDirtied=7529 maxStepNodes=16 loads=0
+[5.2s] BIGREC tx=9398 userRecord=2029408 commitMs=23.1
+[5.4s] log tx=10000  len=267468832 kept=114159440 iters=8 fap=153309392 lag=909456 tx=10000 bytes/tx=24093 maxRec=2035552 recs>1MB=8 exec p50=385us p99.9=18016us max=138ms
+[5.8s] ITEREND tx=10725 commitMs=8.5 userRecord=21488 stepRecord=121208 lag=1114216 resident=120052513 | steps=1334 kvs=100003 values=0 dirtiedNodes=7930 dirtiedBytes=2096736 maxStepDirtied=7550 maxStepNodes=16 loads=0
+[5.9s] BIGREC tx=10797 userRecord=2041040 commitMs=22.7
+[6.5s] ITEREND tx=12060 commitMs=9.5 userRecord=22288 stepRecord=121208 lag=1112616 resident=120037850 | steps=1334 kvs=100003 values=1 dirtiedNodes=7908 dirtiedBytes=2090400 maxStepDirtied=7550 maxStepNodes=16 loads=0
+[6.5s] BIGREC tx=12063 userRecord=2060296 commitMs=27.0
+[7.1s] ITEREND tx=13395 commitMs=9.6 userRecord=18576 stepRecord=120952 lag=1153664 resident=119993438 | steps=1334 kvs=100003 values=0 dirtiedNodes=7906 dirtiedBytes=2090352 maxStepDirtied=7534 maxStepNodes=16 loads=0
+[7.2s] BIGREC tx=13400 userRecord=2029072 commitMs=22.1
+[7.8s] ITEREND tx=14730 commitMs=9.5 userRecord=23408 stepRecord=120952 lag=1132944 resident=120004404 | steps=1334 kvs=100003 values=1 dirtiedNodes=7911 dirtiedBytes=2091824 maxStepDirtied=7542 maxStepNodes=16 loads=0
+[7.8s] BIGREC tx=14757 userRecord=2033664 commitMs=23.9
+[8.5s] ITEREND tx=16065 commitMs=9.6 userRecord=22592 stepRecord=120712 lag=1186776 resident=119917923 | steps=1334 kvs=100003 values=0 dirtiedNodes=7887 dirtiedBytes=2085840 maxStepDirtied=7519 maxStepNodes=16 loads=0
+[9.1s] ITEREND tx=17400 commitMs=9.8 userRecord=22928 stepRecord=120456 lag=1202288 resident=119900118 | steps=1334 kvs=100003 values=1 dirtiedNodes=7862 dirtiedBytes=2078576 maxStepDirtied=7511 maxStepNodes=16 loads=0
+[9.2s] BIGREC tx=17418 userRecord=2024528 commitMs=24.9
+[9.8s] ITEREND tx=18735 commitMs=10.5 userRecord=24304 stepRecord=121752 lag=1023648 resident=120165993 | steps=1334 kvs=100003 values=0 dirtiedNodes=7951 dirtiedBytes=2102272 maxStepDirtied=7584 maxStepNodes=16 loads=0
+[9.8s] BIGREC tx=18762 userRecord=2045040 commitMs=25.3
+[10.4s] log tx=20000  len=511491368 kept=96318328 iters=15 fap=415173040 lag=973416 tx=20000 bytes/tx=23888 maxRec=2060296 recs>1MB=14 exec p50=380us p99.9=10546us max=138ms
+[10.4s] ITEREND tx=20070 commitMs=9.8 userRecord=21712 stepRecord=120952 lag=1154392 resident=120010785 | steps=1334 kvs=100003 values=1 dirtiedNodes=7902 dirtiedBytes=2089248 maxStepDirtied=7534 maxStepNodes=16 loads=0
+[10.5s] BIGREC tx=20121 userRecord=2034368 commitMs=26.4
+[11.1s] ITEREND tx=21405 commitMs=9.8 userRecord=22432 stepRecord=121208 lag=1087944 resident=120072278 | steps=1334 kvs=100003 values=0 dirtiedNodes=7926 dirtiedBytes=2095992 maxStepDirtied=7558 maxStepNodes=16 loads=0
+[11.1s] BIGREC tx=21410 userRecord=2035632 commitMs=23.9
+[11.8s] ITEREND tx=22740 commitMs=9.8 userRecord=23200 stepRecord=121096 lag=1125080 resident=119989532 | steps=1334 kvs=100003 values=1 dirtiedNodes=7914 dirtiedBytes=2092752 maxStepDirtied=7543 maxStepNodes=16 loads=0
+[11.8s] BIGREC tx=22754 userRecord=2032560 commitMs=24.4
+[12.4s] ITEREND tx=24075 commitMs=9.8 userRecord=23664 stepRecord=121208 lag=1108472 resident=120027816 | steps=1334 kvs=100003 values=0 dirtiedNodes=7916 dirtiedBytes=2093808 maxStepDirtied=7550 maxStepNodes=16 loads=0
+[12.5s] BIGREC tx=24123 userRecord=2038336 commitMs=26.1
+[13.1s] ITEREND tx=25410 commitMs=9.8 userRecord=22112 stepRecord=121096 lag=1107784 resident=120055299 | steps=1334 kvs=100003 values=1 dirtiedNodes=7915 dirtiedBytes=2092936 maxStepDirtied=7551 maxStepNodes=16 loads=0
+[13.1s] BIGREC tx=25438 userRecord=2036144 commitMs=26.1
+[13.8s] ITEREND tx=26745 commitMs=10.0 userRecord=22768 stepRecord=120712 lag=1202560 resident=119933739 | steps=1334 kvs=100003 values=0 dirtiedNodes=7885 dirtiedBytes=2084864 maxStepDirtied=7519 maxStepNodes=16 loads=0
+[13.8s] BIGREC tx=26758 userRecord=2026080 commitMs=24.3
+[14.4s] ITEREND tx=28080 commitMs=9.3 userRecord=22992 stepRecord=121224 lag=1079032 resident=120071919 | steps=1334 kvs=100003 values=1 dirtiedNodes=7929 dirtiedBytes=2096600 maxStepDirtied=7559 maxStepNodes=16 loads=0
+[14.4s] BIGREC tx=28088 userRecord=2035968 commitMs=21.9
+[15.1s] ITEREND tx=29415 commitMs=9.4 userRecord=23968 stepRecord=120904 lag=1134752 resident=119986041 | steps=1334 kvs=100003 values=0 dirtiedNodes=7910 dirtiedBytes=2092688 maxStepDirtied=7539 maxStepNodes=16 loads=0
+[15.1s] BIGREC tx=29425 userRecord=2032208 commitMs=22.1
+[15.3s] log tx=30000  len=757760176 kept=113539976 iters=23 fap=644220200 lag=975000 tx=30000 bytes/tx=23963 maxRec=2060296 recs>1MB=22 exec p50=380us p99.9=9956us max=138ms
+[15.3s] LOG done tx=30000 iters=23 s=15.2 tx/s=1974
+[15.3s] LOG tx=30000 bytes/tx=23963 maxRec=2060296 recs>1MB=22 exec p50=380us p99.9=9956us max=138ms
+[15.3s] LOG maxRecTx=12063 maxRecCommitMs=27.0 maxExecTx=45 stepRecs=29977 stepBytes/rec=550 maxStepRecord=2016448 maxLag=2297664
+[15.3s] LOG state len=757760176 kept=113539976 iters=23 fap=644220200 lag=975000
+[15.3s] LOG head1000 keys=1000 ms=0.5
+[15.4s] CLOSE ms=5
+[15.4s] DONE

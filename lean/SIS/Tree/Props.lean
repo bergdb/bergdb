@@ -5,8 +5,8 @@ proof left for later (bergdb 024-06: C1, C2, C3 and E), but TP17 and TP18, which
 SIS/Proof/TreeRoot.lean proves: in this model every theorem is proved in full,
 with nothing assumed, so a statement without a proof is not written as a
 theorem. The item
-lists them as TP1 to TP24 (TP23 is in Bound.lean, TP24 in Top.lean) with what
-each means and how hard its proof looks.
+lists them as TP1 to TP27 (TP23 and TP26 are in Bound.lean, TP24 in Top.lean)
+with what each means and how hard its proof looks.
 
 The tree checker computes the invariants (`faultsAt`) on Java's structure
 after every transaction, and the reads against a reference; SIS/Tree/Small.lean
@@ -267,18 +267,45 @@ def KlongBound (p : Params) : Prop :=
     ((keyNodesAt p (treeRun p ts) t).filterMap (keyNodeAt p (treeRun p ts))).foldl
         (fun s n => s + n.size) 0 ≤ p.M * (1 + (refKvs ts t).length * p.fuel)
 
+/-! ## TP27: the premise of T-COVER (bergdb 024-07, I2) -/
+
+/-- TP27, I2 of bergdb 024-07: every index node has a data node below it. After
+a run within reach, at every time e at which some key has a value, every
+written index node reachable at e (a top node, a key node; not the virtual
+root) has a value below it at e, through live pointers. This is the second
+premise of `T_cover` (SIS/ReclaimTheorems.lean), in its words, for the tree: the
+cut's safety rests on it since a reclaim step touches only the paths of its own
+keys (024-07). It holds by the delete's upward unlink (`deleteUpward`): a delete
+that empties a node unlinks it, up to the first node that keeps a live klong,
+so every reachable key node but the space root has a live klong (TP3,
+`NonEmptyOK`); a segment leaf's live klong names a value or a tree of the next
+segment, which is not empty either (`KindsOK`, TP3); so every key node's
+subtree ends in a value. The one exception is the tree without a key, an empty
+space root under its top node: hence "some key has a value at e" (with reclaim
+on, its settings key has one). -/
+def DataBelowOK (p : Params) : Prop :=
+  ∀ ts, Within p ts → ∀ e ≤ ts.length, refKvs ts e ≠ [] →
+    ∀ x n, (treeRun p (ts.take e)).get? x = some n → n.isData = false →
+      written (treeSpec p) x = true →
+      reachable (treeSpec p) (treeRun p (ts.take e)) e x = true →
+      ∃ d m, d ∈ reachFrom (treeSpec p) (treeRun p (ts.take e)) e x n ∧
+        (treeRun p (ts.take e)).get? d = some m ∧ m.isData = true
+
+/-- The other case of TP27: at a time when no key has a value, the tree is its
+space root alone, an empty segment leaf. T-COVER's premise does not hold there
+(the top node and the space root have no value below them). -/
+def EmptyTreeOK (p : Params) : Prop :=
+  ∀ ts, Within p ts → ∀ e ≤ ts.length, refKvs ts e = [] →
+    (keyNodesAt p (treeRun p ts) e).length = 1
+
 /-- The operation that the builder's rule keeps for key k of the operations ops
-(`Trans.Builder.build`, `Db.sortByKey`; bergdb 015-40): the last put of k, or
-the last delete of k if it has no put. -/
+(`Trans.Builder.build`, `Db.sortByKey`; bergdb 024-10): the last operation on k. -/
 def ruleFor (ops : List Op) (k : Key) : Option Op :=
-  match (ops.filter (fun op => op.key == k && (match op with
-    | .put _ _ => true
-    | .del _ => false))).getLast? with
-  | some pt => some pt
-  | none => (ops.filter (fun op => op.key == k)).getLast?
+  (ops.filter (fun op => op.key == k)).getLast?
 
 /-- TP25. `normalize` gives a transaction with one operation a key, in key
-order (`Tx.sorted`), and for each key the operation of the builder's rule. -/
+order (`Tx.sorted`), and for each key the operation of the builder's rule: the
+last operation wins. -/
 def NormalizeOK : Prop :=
   ∀ ops : List Op, sortedKeys ((normalize ops).map (·.key)) = true ∧
     ∀ k, (normalize ops).find? (fun op => op.key == k) = ruleFor ops k

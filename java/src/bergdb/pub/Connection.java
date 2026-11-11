@@ -83,7 +83,9 @@ public interface Connection extends ReadInterface {
      * It is guaranteed to be unique for every transaction and is strictly increasing. So the
      * puts of one transaction at a key with "${transactionTime}" are puts at one key, and the
      * last of them counts: a transaction that puts two such values needs another part in each
-     * key, such as "${transactionTime}-1" (bergdb 020-24-01, U1-6).</p>
+     * key, such as "${transactionTime}-1" (bergdb 020-24-01, U1-6). A put or a delete of the
+     * same transaction at the key that the replace gives, the time written out, is at that
+     * one key too: of them all the last one counts (bergdb 024-10).</p>
      *
      * <p>By default, the key replace feature of a connection is disabled, also for the
      * connection that Database.connection() gives a thread until it is enabled there. This

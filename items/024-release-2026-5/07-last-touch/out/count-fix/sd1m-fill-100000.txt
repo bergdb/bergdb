@@ -1,0 +1,9 @@
+T7 fill dir=/Users/f/fl/bench/2026-11-11/touch/data/c100000 n=100000 sd=1000000 cp=/Users/f/fl/bench/2026-11-11/touch/cfix:/Users/f/fl/bench/2026-11-11/touch/fix.jar
+[0.1s] START ms=35 len=480 fap=0 fresh=true recordLimit=2147483639
+[0.4s] ITEREND tx=446 commitMs=0.4 userRecord=17312 stepRecord=4784 lag=1026840 resident=14223676 | steps=216 kvs=12301 values=12301 dirtiedNodes=1775 dirtiedBytes=474064 maxStepDirtied=13 maxStepNodes=12 loads=0
+[0.6s] FILL n=100000 valsize=100 batch=100 order=asc puts/s=187275 s=0.5
+[0.6s] FILL tx=1000 bytes/tx=17675 maxRec=22224 recs>1MB=0 exec p50=287us p99.9=87992us max=87ms
+[0.6s] FILL maxRecTx=951 maxRecCommitMs=0.3 maxExecTx=588 stepRecs=767 stepBytes/rec=3259 maxStepRecord=14896 maxLag=1073784
+[0.6s] FILL state len=20177872 kept=20177872 iters=1 fap=0 lag=1019768
+[0.7s] CLOSE ms=59
+[0.7s] DONE

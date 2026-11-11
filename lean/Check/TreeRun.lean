@@ -40,14 +40,14 @@ def toRecordM (mk : Std.HashMap NodeId Nat) (lv : List (NodeId × Nat × Bool)) 
 
 /-- The transactions of a trace for the tree's `exec`, by record index: the
 operations that changed the tree (a noop is not part of a transaction), the
-first id, the touch's bounds. -/
-def txsOf (tt : TTrace) : Array Tx :=
+first id, and for a transaction with a TOUCH line (a reclaim step) the keys
+whose paths it touches: all its keys. -/
+def txsOf (recs : Array TRec) (tt : TTrace) : Array Tx :=
   tt.txs.map (fun x =>
     { base := x.base.getD 0,
       ops := (x.ops.toList.filter (fun q => !q.2)).map (·.1),
-      touch := match x.rangeF, x.rangeT with
-        | some src, some to => some (src, to)
-        | _, _ => none })
+      touch := if (recs.getD x.idx default).touch.isEmpty then []
+        else x.ops.toList.map (·.1.key) })
 
 /-- The whole run: the failures, each with its transaction, and the number of
 records compared. -/
@@ -57,7 +57,7 @@ def wholeRun (p : Params) (tr : Trace) (tt : TTrace) : List String × Nat := Id.
   let fas := faSeq recs
   let mk := markerNodes p recs
   let jrecs := (recs.toList.zipIdx.map (fun (r, i) => toRecordM mk lv (fas.getD i 0) r)).toArray
-  let txs := txsOf tt
+  let txs := txsOf recs tt
   -- R(0): Java's primordial structure, its key node with the marker.
   let c0 := changesOf (recs.getD 0 default)
   let m0 := (c0.new.filter (fun n => mk.contains n.id)).map (fun n => (n.id, marker))

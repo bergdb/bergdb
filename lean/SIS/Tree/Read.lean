@@ -240,39 +240,51 @@ def scan (p : Params) (view : View BVal) (t : Time) (req : ScanReq) (limit : Nat
   | none => []
   | some r => scanGo p view t req limit limit (chainSetup p view t req r) []
 
-/-- The loop of `Db.touchRange`: the scan goes on until a key after `to`, or the
-end; the chain then has every key node it followed. -/
-def touchGo (p : Params) (view : View BVal) (t : Time) (req : ScanReq) (to : Option Key) :
-    Nat → Chain → Chain
-  | 0, ch => ch
-  | f + 1, ch =>
-    match nextGo p view t req scanFuel ch with
-    | (none, ch') => ch'
-    | (some kv, ch') =>
-      let stop := match to with
-        | some e => keyLt e kv.key
-        | none => false
-      if stop then ch' else touchGo p view t req to f ch'
+/-- `Dag.followPath` from key node x (bergdb 024-07): the key nodes followed
+for the key's segments `segs`: in an inner node the child of the last klong at
+or below the segment (`searchLte`), down to the segment leaf; there, for a
+segment that is not the key's last, the tree of the next segment (`searchEq`),
+if it is there. The pointer to the key's value is not followed. -/
+def pathFrom (p : Params) (view : View BVal) (t : Time) : List Nat → Nat → NodeId → List NodeId
+  | [], _, _ => []
+  | _ :: _, 0, _ => []
+  | cv :: rest, f + 1, x =>
+    match knodeOf p view x with
+    | none => []
+    | some n =>
+      if n.leaf then
+        match rest with
+        | [] => []
+        | _ :: _ =>
+          match n.searchEq t cv with
+          | none => []
+          | some fd =>
+            if (knodeOf p view fd.y).isSome then fd.y :: pathFrom p view t rest f fd.y else []
+      else
+        match n.searchLte t cv with
+        | none => []
+        | some fd => fd.y :: pathFrom p view t (cv :: rest) f fd.y
 
 /-- The touch from the writer's super root z and the view without the root. -/
-def touchFrom (p : Params) (z : Option NodeId) (v : View BVal) (t : Time) (src to : Option Key) :
+def touchFrom (p : Params) (z : Option NodeId) (v : View BVal) (t : Time) (keys : List Key) :
     List NodeId :=
-  match z with
-  | none => []
-  | some z =>
-    match rootKeyOf v z with
-    | none => [z]
-    | some r =>
-      let req : ScanReq := { start := src, inclusive := false }
-      let ch := touchGo p v t req to scanFuel (chainSetup p v t req r)
-      ((z :: r :: ch.seen).eraseDups).mergeSort (fun a b => decide (a ≤ b))
+  if keys.isEmpty then [] else
+    match z with
+    | none => []
+    | some z =>
+      match rootKeyOf v z with
+      | none => [z]
+      | some r =>
+        ((z :: r :: keys.flatMap (fun k => pathFrom p v t k p.fuel r)).eraseDups).mergeSort
+          (fun a b => decide (a ≤ b))
 
-/-- The touch of a reclaim step (`Db.touchRange`): the index nodes that the
-writer's scan follows at time t, from its super root (`lastTop`; the view
-without the root, as the writer's), for the keys after `src` up to the first key
-after `to`: the super root, the space root, and the key nodes of the chain;
-sorted by id. -/
-def touchOf (p : Params) (view : View BVal) (t : Time) (src to : Option Key) : List NodeId :=
-  touchFrom p (lastTop view) (rootless view) t src to
+/-- The touch of a reclaim step (`Db.touchPaths`, bergdb 024-07): the index
+nodes on the paths of the transaction's keys at time t, from the writer's super
+root (`lastTop`; the view without the root, as the writer's): the super root,
+the space root, and for each key the key nodes that `Dag.followPath` follows;
+sorted by id. No key: no node. Until 024-07 the touch was a scan of a key range
+(`Db.touchRange`). -/
+def touchOf (p : Params) (view : View BVal) (t : Time) (keys : List Key) : List NodeId :=
+  touchFrom p (lastTop view) (rootless view) t keys
 
 end SIS.Tree

@@ -1,0 +1,33 @@
+024-07: the trace checker's touchPath (C-A) on one reclaim trace, r-del seed 1 of reclaimtraces.sh
+(-Dn=500 -Dkeys=100 -Dmaxnode=8 -Dsd=500 -Dops=4 -Ddel=25 -Dnodel=5 -Dempty=5 -Dretain=1 -Dprobe=10), 2026-11-11 08:20.
+
+== main's algorithm (Db.touchRange), the trace of the worktree at 2d26ead3:
+TraceExport seed=1 n=500 (574 records: 19 steps, 55 table stores; 11 cuts decided, 11 physical; 675 references to versions before a cut): 1831 nodes, 0 errors, 0 probe failures; r-del.trace
+TRACECHECK r-del.trace
+C-A assumptions: 18 of 575 transactions fail (touchPath 18)
+  T(54) touchPath fails for nodes 1242 7926 9220 19750 21886 22854 22856 22858 26156 26158 26166 27046 ...
+  T(98) touchPath fails for nodes 270 1242 22858 27046 34004 34006 35984 35986 47892 47898 52178 53660 ...
+  T(133) touchPath fails for nodes 53660 60424 70096 70100 81572 84892 84894 91532 100398 100408 101876 101878 ...
+  T(169) touchPath fails for nodes 270 78944 101876 107316 110182 110184 115052 115054 116484 123040 130528 130530 ...
+  T(180) touchPath fails for nodes 101890 168684 188070 188072
+  T(216) touchPath fails for nodes 70096 70098 84900 157476 160564 162092 168684 176536 195146 195154 195170 208540 ...
+  T(231) touchPath fails for nodes 160564 168684 248124 248126 248128
+  T(266) touchPath fails for nodes 270 208540 231362 234604 234614 257140 262124 264264 267718 281212 285224 289652 ...
+  T(281) touchPath fails for nodes 160564 248124 248128 303250 342930 342936 345476
+  T(311) touchPath fails for nodes 285228 303244 317290 330004 331276 335274 342936 345470 345474 345476 348176 362700 ...
+
+== the fix (Db.touchPaths), branch 024-07-last-touch at 84879877:
+TraceExport seed=1 n=500 (579 records: 20 steps, 59 table stores; 12 cuts decided, 9 physical; 642 references to versions before a cut): 1879 nodes, 0 errors, 0 probe failures; r-del.trace
+C-A assumptions: 0 of 580 transactions fail
+C-A adoptions below the old parent (A6' allows them, A6 not; bergdb 005-04): 0 of 580 transactions
+C-S steps: 0 of 580 transactions fail
+C-CUT cuts: 0 of 12 CUT lines (and PHYSCUT lines) fail
+TRACECHECK OK
+
+== the fix, a draining trace with long keys (-Dn=600 -Dkeys=200 -Dmaxnode=8 -Dsd=500 -Dops=8 -Dlong=1 -Ddel=60 -Dretain=2 -Dprobe=10), seed 1:
+TraceExport seed=1 n=600 (736 records: 37 steps, 99 table stores; 22 cuts decided, 21 physical; 1203 references to versions before a cut): 2851 nodes, 0 errors, 0 probe failures; d-long.trace
+C-A assumptions: 0 of 737 transactions fail
+C-A adoptions below the old parent (A6' allows them, A6 not; bergdb 005-04): 0 of 737 transactions
+C-S steps: 0 of 737 transactions fail
+C-CUT cuts: 0 of 22 CUT lines (and PHYSCUT lines) fail
+TRACECHECK OK

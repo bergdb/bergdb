@@ -215,6 +215,13 @@ state file. Delete the old job when the mode changes.
 Effort
 ------
 
+Subagents run on Opus 5.5: pass `model: "opus"` on every Agent call, as
+a subagent otherwise inherits the session's model. Only the coordinator
+session runs on Fable (Frans, 2026-11-11: "Use Opus 5.5 for subagents by
+default. [...] Only this coordinator session continues with Fable 5.2.";
+seven subagents on Fable took about 10 points of the week an hour). A
+Fable subagent only when Frans asks for one.
+
 Subagents: high by default (Frans, 2026-11-07). xhigh, at the
 coordinator's judgment, for a hard task such as finding Lean proofs or
 coding for correct concurrency, when the usage level is `plenty` or
@@ -295,7 +302,8 @@ Rules
   builds, gates, Lean, measurements and reviews as background commands or
   in subagents, never in the foreground.
 * **Subagents.**
-  * Use background agents (Agent). Pass `effort` on every call: `high`;
+  * Use background agents (Agent). Pass `model: "opus"` on every call
+    (section "Effort"). Pass `effort` on every call: `high`;
     `xhigh` for a hard task, such as finding Lean proofs or coding for
     correct concurrency, when the usage level is `plenty` or `normal`
     (section "Effort"). Another level only when Frans asks for it; never

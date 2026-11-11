@@ -28,9 +28,6 @@ structure TTx where
   base : Option Nat := none
   /-- The OP lines, in order; true for `OP N`, a delete that was a noop. -/
   ops : Array (SIS.Tree.Op × Bool) := #[]
-  /-- RANGEF and RANGET: the touch's bounds. -/
-  rangeF : Option (Option Key) := none
-  rangeT : Option (Option Key) := none
   /-- KN lines: Java's key nodes after the transaction. -/
   kns : Array (NodeId × KNode) := #[]
   /-- GET lines: the time, the key, and Java's answer (a value's hash). -/
@@ -140,12 +137,6 @@ def parseTreeLine (t : TTrace) (n : Nat) (line : String) : TTrace :=
   | "OP" :: "N" :: r => match takeKey r with
     | some (k, []) => modTx t (fun x => { x with ops := x.ops.push (.del k, true) })
     | _ => bad "bad OP N"
-  | "RANGEF" :: r => match takeKeyOpt r with
-    | some (k, []) => modTx t (fun x => { x with rangeF := some k })
-    | _ => bad "bad RANGEF"
-  | "RANGET" :: r => match takeKeyOpt r with
-    | some (k, []) => modTx t (fun x => { x with rangeT := some k })
-    | _ => bad "bad RANGET"
   | "KN" :: x :: l :: cnt :: r => match x.toNat?, cnt.toNat?, parseKlongs r with
     | some x, some cnt, some ks =>
       if ks.length != cnt || (l != "0" && l != "1") then bad "bad KN"
@@ -275,6 +266,11 @@ def checkTx (p : Params) (P after : PMap) (r : TRec) (x : TTx) : TxResult := Id.
       if marked > bound then
         res := { res with bound := res.bound ++
           [s!"T({i}): {marked} key nodes marked, dirtyNodeBound {bound}"] }
+      -- TP26: the bound from the transaction's own sizes as its limits.
+      let lim : Limits := { maxOps := ops.length, maxSegs := (ops.map (·.1.key.length)).foldl max 0 }
+      if bound > lim.dirtyNodes p then
+        res := { res with bound := res.bound ++
+          [s!"T({i}): DirtyBoundFromLimits: dirtyNodeBound {bound}, the limits allow {lim.dirtyNodes p}"] }
       -- TP20, on the operations that changed the tree.
       let changing := (flags.filter (fun b => !b)).length
       if c.new.length > changing * (4 * p.fuel + 1) + 1 then
@@ -322,18 +318,14 @@ def checkTx (p : Params) (P after : PMap) (r : TRec) (x : TTx) : TxResult := Id.
     if ms != sc.results then
       res := { res with reads := res.reads ++
         [s!"T({i}): SCAN at {sc.t} {repr sc.req} limit {sc.limit}: the model {ms}, Java {sc.results}"] }
-  -- C-T5: the touch, on Java's structure before the transaction.
-  match x.rangeF, x.rangeT with
-  | some src, some to =>
+  -- C-T5: the touch, on Java's structure before the transaction: a transaction with a
+  -- TOUCH line touches the paths of all its keys (Db.touchPaths, bergdb 024-07).
+  if !r.touch.isEmpty then
     res := { res with touchCount := res.touchCount + 1 }
-    let mt := SIS.Tree.touchOf p (fun y => P[y]?) (i - 1) src to
+    let mt := SIS.Tree.touchOf p (fun y => P[y]?) (i - 1) (ops.map (·.1.key))
     if mt != r.touch then
       res := { res with touch := res.touch ++
-        [s!"T({i}): the touch after {src} up to {to}: the model {mt}, Java {r.touch}"] }
-  | none, none =>
-    if !r.touch.isEmpty then
-      res := { res with touch := res.touch ++ [s!"T({i}): a TOUCH line without RANGEF and RANGET"] }
-  | _, _ => res := { res with touch := res.touch ++ [s!"T({i}): one of RANGEF and RANGET is missing"] }
+        [s!"T({i}): the touch of the paths of its keys: the model {mt}, Java {r.touch}"] }
   -- C-T6: the invariants, on Java's structure after the transaction, at its time; and
   -- every pointer of an entry added names a node of P (live or dead: TP4).
   for f in faultsAt p viewA i do
