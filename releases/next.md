@@ -74,13 +74,15 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `StreamFormatException`, "Invalid magic bytes in stream: the stream is
   not a BergDB stream, or it is damaged; or an earlier release of BergDB,
   2026.3 or before, encrypted it, and this release cannot read it: it has
-  no encryption". To move such a database to 2026.4, export it with 2026.3
-  first: start it with 2026.3 and its key, copy its data to a new database
-  that 2026.3 creates without a key, and start that one with 2026.4; the
-  history is not copied. A start refused for the magic bytes, of a stream
-  that is not a BergDB stream or is damaged where the start reads first,
-  throws that `StreamFormatException` where it threw `BadCryptoKey`. The
-  stream's format is unchanged, and `created.txt` keeps its line "crypto
+  no encryption". To move such a database to 2026.4, read its data with
+  2026.3 and its key, and put it into a new database with 2026.4; the
+  history is not copied. A database that 2026.3 makes without a key is
+  refused too, as every database of 2026.1 to 2026.3 is (Format, record
+  format 6), so a copy made with 2026.3 alone no longer serves. A start
+  refused for the magic bytes, of a stream that is not a BergDB stream or
+  is damaged where the start reads first, throws that
+  `StreamFormatException` where it threw `BadCryptoKey`. The removal
+  changes no byte of the stream, and `created.txt` keeps its line "crypto
   key: none (not encrypted)". The encryption's code, `SalsaStream` and the
   key, stays inside BergDB with its tests, not API, for that later design,
   with the fixes made to it for 2026.4 before the removal: `getKeyData()`
@@ -900,6 +902,81 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   behaviour: there is no exact value time (bergdb 011-01, Q9, 2026-10-13),
   and the Pub API has none since 2026.1. Found by a new-user application
   (020-24-09, U9-3).
+* **A delete removes the index nodes that it empties, in the deleting
+  transaction** (bergdb 023-07, sections 5.1 to 5.3; 023-08, section 5;
+  Frans, 2026-11-10, 16:34). In 2026.1 to 2026.3 a delete set a bit in the
+  leaf that held the key, and nothing above it changed: the index kept the
+  nodes of every key ever deleted, so a scan passed them, also after a
+  restart, and reclaim copied them forward at every iteration (020-30;
+  020-24-16, U16-1). Now a delete that empties a segment leaf unlinks it,
+  and each node above it that it empties, up to the first node that keeps a
+  live key; in every inner node the smallest key is the empty key (LE-b), so
+  that no node off the delete's path changes; and a root left with one child
+  is replaced by that child (root collapse). A node that a split of the same
+  transaction made, and that the delete empties, is taken back: it is never
+  written. So the index of a key range shrinks with its deletes, and a scan
+  passes no node left with deleted keys only, before or in its range: right
+  after 100,000 keys were deleted, a scan for one key followed 1 key node,
+  where it followed 7,897 before (60,787 for 10,000 long keys; 023-03,
+  section 8.3; 023-09, section 5.1). The records change: format 6 (Format,
+  below). A leaf that keeps a live key keeps the entries of its deleted keys
+  (Known issues and limits).
+* **A forward scan with an end key ends at its range's end, also over
+  deleted keys** (bergdb 021-28; 023-07, section 5.7). `GetMany` has an end
+  key, `endKey` and `endInclusive`: a scan ends at the first key past it,
+  live or deleted, as at the end of the database. In 2026.1 to 2026.3 a scan
+  learned of its range's end only from its stop condition, at the first live
+  key after the range, and so walked every deleted key between: an empty
+  scan of a user index, with the deleted entries of an index made and
+  deleted 160 times after it, took 30.7 ms, and 0.01 ms with the end key
+  (006-17, section 6.3; 020-24-17, U17-1). The Pub API's index scans and
+  primary scans set it. A backward scan with an end key is refused with
+  `IllegalArgumentException`. No byte of the stream changes.
+* **The memory of ended versions is released after each cut** (bergdb
+  023-07, section 5.6, K6; 023-08, section 5). When a cut moves the first
+  available position, the writer's thread, after its transactions, takes in
+  bounded steps (at most 4,096 units of work and 2 ms each) the index nodes
+  and values stored before the cut, whatever the cache budget, and turns a
+  kept node's pointer to such a value into a stream pointer: no read at an
+  available time reaches them. In 2026.1 to 2026.3 they stayed in memory
+  until the budget's eviction took them. With `noEvict()` this does not run,
+  and that memory is released only at a restart (`DbBuilder.noEvict()`'s
+  Javadoc).
+* **A transaction's KVs are put in the order of their keys, one a key, after
+  its key transformations** (bergdb 023-08, section 7, Q4; Frans,
+  2026-11-10, 16:34 and 17:48; 023-09, section 7). `Db` runs every key
+  transformation of a transaction first, then sorts its KVs by key (stable)
+  and puts them in that order, so two transactions with the same operations,
+  given in any order, write the same stream; value transformations run in
+  the put loop, as before. Of KVs that key transformations make one key, one
+  is kept, by `Trans.Builder.build`'s rule (015-40): the last put in the
+  order of the keys as written, or a delete if there is none; a delete never
+  replaces a put. In 2026.1 to 2026.3 the KVs were put in the order of their
+  keys as written, each transformed just before its put, and every KV of a
+  key was put, in that order. A Core API user with key transformations that
+  make one key twice sees the change: silently, one operation is kept. The
+  `Trans` itself is not changed, and can be run again.
+* **A damaged stream that made a read loop for ever is refused** (found by
+  018-07's harness, CorruptStreamTester, on 2026-11-10, the release night of
+  2026.4; seed 20767). A key node's `prevPos`, damaged with its checksum made
+  right, named the version of its own child before the startup section; the
+  start's rule R made the node's pointer to that child a pointer to the node
+  itself, and a read's descent (`Dag.getEqNodeInSegment`) looped without end.
+  Now every descent and scan keeps a cycle check on the node ids it passes
+  (Brent's), and a read that comes back to a node it passed fails with a
+  `StreamFormatException`, the database failed as for other damage. Valid
+  streams are read as before; the stream's bytes are unchanged. In 2026.1 to
+  2026.3; `main` before 023 (`329d78f3`) hangs on the same copy.
+* **A damaged `prevPos` that breaks rule 4 by position is refused at the
+  start, also with `-ea`** (found by CorruptStreamTester, seeds 20769 and
+  20770 of 2026-11-10). With assertions on, the start's check of rule 4
+  (`NodeCollection.checkLinkById`, 005-57) threw an `AssertionError` for a
+  key node of the startup section whose damaged `prevPos` left no link by
+  position where the node id gives one; now it refuses the stream with
+  `StreamFormatException`, as 021-11 does for a damaged pointer's type.
+  Every other difference stays an `AssertionError`, the Core's fault.
+  Without `-ea` the start goes on as before. In 2026.1 to 2026.3; `main`
+  before 023 throws the same `AssertionError` on the same copy.
 
 
 ### Format
@@ -907,9 +984,10 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
 * **Stored objects and the index definitions are in format 2** (bergdb
   020-08, step 2; see the Pub API): the bytes of every object that the Pub
   layer stores change, and so do those of an index's definition, an
-  object of format 2 (020-10, section 4.2). The Core's records and the
-  stream's format are unchanged. StreamDigest's digests are unchanged: its
-  workloads use the Core API and put no object.
+  object of format 2 (020-10, section 4.2). The Core's records do not
+  change with it, and StreamDigest's workloads, which use the Core API
+  and put no object, do not see it; the records change for another
+  reason, format 6 (below).
 * **The user indexes' internal keys are new** (bergdb 020-10, section 4;
   their layout approved in principle by Frans on 2026-11-08, 22:08,
   020-01, section 14.1, its details under his delegation of 22:17): a
@@ -918,10 +996,34 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   another's entries; a deleted generation's marker `/#i/didel/dNAME/-G16`
   until its cleanup ends. 2026.3's keys, `/#i/dii/` and `/#i/di/`, are no
   longer written: a start that finds a key under `/#i/dii/` throws
-  `VersioningStreamException` (020-08, step 3). So a database of 2026.3
-  with an index does not start, and one with objects starts but refuses
-  them when they are read (the Pub API's entries); make such a database
-  again. The Core's records are unchanged.
+  `VersioningStreamException` (020-08, step 3). These keys alone would
+  refuse a database of 2026.3 with an index at its start, and its objects
+  when they are read (the Pub API's entries); format 6 (below) refuses
+  every database of 2026.1 to 2026.3 at its start, before either. These
+  keys change no record of the Core.
+* **The Core's records are in format 6, and the databases of 2026.1 to
+  2026.3 are refused** (bergdb 023-07, section 5.8; 023-02, F9 (a); 023-04,
+  Y8; 023-08, section 5). `StoredTrans.RECORD_FORMAT` is 6, where it was 5:
+  a start reruns a record's deletes with the unlink of the nodes they empty
+  (Core API, above), and a space split in place of a segment root that the
+  transaction made repoints the segment leaf's pointer, so a record of
+  format 5 would mean another tree. A start of a database that 2026.3 or an
+  earlier release wrote, from `DatabaseBuilder.start()` or `Db.start()`,
+  throws a `VersioningStreamException`, a `StreamFormatException`: "Cannot
+  parse stored transaction of format version 5; this version of BergDB reads
+  format 6 only. A smaller number is a database written by an older version
+  of BergDB, which cannot be opened: format 5 was written by release 2026.3
+  and earlier (bergdb 023-07, section 5.8), format 2 until 2026-10-15
+  (bergdb 011-11, M18)." No tool converts such a database: make it again,
+  or, to keep its data, read it with 2026.3 and put it with 2026.4, in two
+  programs (the two releases have the same packages), for example through a
+  file; its history is not kept. An encrypted database of 2026.3 too (the
+  Pub API's "Encryption is removed from the API"). Every record changes, its
+  format byte at least, and so do the index nodes written: StreamDigest's
+  decided digests differ in all 12 configurations, 48 of 48 digests, the 8
+  of `l2-*` and the 4 of `l3-*`; in each configuration the four modes give
+  the same stream. The digests before and after are in 023-09's folder
+  (`digests-base.txt`, `digests-new.txt`, `compare.txt`).
 
 
 ### Build and tools
@@ -974,6 +1076,26 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   against its spec (`FormatFuzzer`, 12 minutes); and
   `java/stress/harness-soak.sh`, long runs of the randomized harnesses with
   new seeds (two rounds). The unit tests run `FormatFuzzer` briefly.
+* **`FileStreamPowerLossTester`'s three tests that remove their directory
+  after a failed storage call `close()`, not `stop()`** (bergdb 006-17,
+  section 6.3, point 5): `stop()` returned before the storage's thread had
+  closed the stream, and the next test's new directory could be refused as
+  in use (the known issue on Linux). Tests only.
+* **The tests of the deletes' cleanup** (bergdb 023-09, sections 2, 5 and
+  8): `UnlinkFuzz`, a fuzzer of deletes in the index alone, with shuffled
+  and repeated keys; tests of the take-back, root collapse, the bound of the
+  nodes a transaction makes dirty (`Dag.dirtyNodeBound`), the dead hand, the
+  end key, one operation a key and reclaim's liveness; `A2A3Check2` counts a
+  node taken back as not made; and `conformance.sh` requires no adoption
+  below the old parent in 005-04's a6 traces (023-08, section 7, Q9).
+* **`DbTesterFailure.testUncheckedCloseErrorAfterFailedWriteFailsSync`
+  waits, at most 5 s, for the storage thread's close** before it checks that
+  the close's error was met: 015-81 gives a failed storage its error before
+  it closes the stream, so the sync can fail first (seen once on s1 with JDK
+  27, 2026-11-10). `NodeCollection.testLinkToCanonicalCheck` expects the
+  `StreamFormatException` above, where it expected an `AssertionError`. Two
+  tests of the fixes above: `CorruptStreamTester.testFoundDescentCycle` and
+  `testFoundLinkByIdPrevPos`. Tests only.
 
 
 ### Documentation
@@ -1336,19 +1458,52 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
 
 ### Known issues and limits
 
-* **Reclaim stops cutting a log keyed by time** (bergdb 021-25; found by a
-  new user of the C library, 022-06-3, U3-1 and U3-2). Under a workload
-  whose keys sort in the order of time, each transaction putting a new key
-  and deleting an old one (a FIFO, such as an audit log), with a retain
-  duration, reclaim cuts as expected at first and then falls behind until
-  it stops cutting, after some 200,000 transactions: the directory grows
-  beyond what the retention needs. With a startup distance of 2 MB, a
-  retain duration of 20 s and 1,024 live keys of 80 to 479 bytes, the last
-  cut came at about transaction 200,000; after 300,000 transactions the
-  first available time was 182 s back and the directory 135 MB, for
-  300 KB of live data. Now and then a transaction of one put and one
-  delete writes a record of 1 to 4 MB, growing with the run. No data is
-  lost and every read is right. The same in 2026.3.
+* **A leaf keeps the entries of its deleted keys while it keeps a live key**
+  (bergdb 023-08, section 5 and Q5, a named allowance; Frans, 2026-11-10,
+  16:34). A delete that leaves a live key in its leaf marks the key's entry
+  deleted, as before; such entries, at most a node's size of them in each
+  leaf, stay until the leaf is replaced by a split by time, and a scan
+  passes them. Nodes are not merged, so after scattered deletes the leaves
+  stay part full. Their removal is for a later release.
+* **After a mass delete, more dirty top nodes for a while** (bergdb 023-03,
+  section 10, a named allowance; 023-10; Frans, 2026-11-10, 17:52). After a
+  delete of 1 million keys, the dirty top nodes, held in memory until
+  written, were up to about 2.5 times those of a database that never held
+  the deleted keys (152 against 48 to 66), until the next mass delete, which
+  replaces them: they do not grow from one to the next (023-10, section 6);
+  after 100,000 keys or fewer, within. In 023-03's test T1 at 1 million keys
+  a start after it held 127 objects against a bound of 121 (023-09, section
+  5.1). 2026.3 has the same run of dirty top nodes (023-08, section 5).
+* **On Linux, a new database in a new directory can, rarely, be refused as
+  in use** (bergdb 006-17, section 6.3, point 5; found on s1, ext4):
+  `start()` throws a `StreamIoException`, its cause a
+  `DirectoryInUseException`, while a database whose directory was deleted is
+  still closing, as after `stop()`, which closes in the background.
+  `FileStream` releases `bergdb.lock` before it removes the directory from
+  its set of locked directories, and in that moment the file system can give
+  a new directory the same identity. A retry works; no data is wrong or
+  lost. The fix is for 2026.5.
+
+* **Fixed: reclaim cuts a log keyed by time** (bergdb 021-25; 023-07,
+  section 5.1; found by a new user of the C library, 022-06-3, U3-1 and
+  U3-2). Under a workload whose keys sort in the order of time, each
+  transaction putting a new key and deleting an old one (a FIFO, such as an
+  audit log), with a retain duration, reclaim cut as expected at first and
+  then fell behind until it stopped cutting, after some 200,000
+  transactions, as each iteration passed the index nodes of every key
+  deleted before: the directory grew beyond what the retention needs. With a
+  startup distance of 2 MB, a retain duration of 20 s and 1,024 live keys of
+  80 to 479 bytes, 300,000 transactions gave 15 cuts, then none: the first
+  available time 182 s back, the directory 135 MB, for 300 KB of live data,
+  and records of one put and one delete of up to 4.17 MB, 20 of them over 1
+  MB. Now a delete unlinks the nodes it empties (Core API), and the same
+  workload cuts throughout: 39 cuts in 300,000 transactions, at the end the
+  first available time 22.5 s back and the directory 16 MB (at most
+  32 MB in the run), the largest record 4,056 bytes; in 1,000,000
+  transactions 139 cuts, 22.0 s back, 15 MB. A steady queue (023-03's T4)
+  shows the same (023-10, section 3). No data was lost and every read was
+  right. The same in 2026.3. A metrics store that met the same issue
+  (020-24-18, U18-1) was not run again.
 
 * **Fixed: puts no longer slow down after reclaim has passed many deleted
   keys** (bergdb 021-25, fix (c); 020-24-14, U14-1). Every transaction
@@ -1356,5 +1511,5 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   followed (28,544 entries from transaction 180,000 of the FIFO above), so
   with index creations and deletions under a retain duration of 2 s, puts
   in another directory fell from 224,000 to 6,100 per second after 1,000
-  cycles; now 202,000. The stream is unchanged, and so is the known issue
-  above: reclaim still stops cutting there.
+  cycles; now 202,000. Fix (c) changes no byte of the stream, and alone it
+  left reclaim's stop above; format 6's deletes ended that.

@@ -61,6 +61,24 @@ public class GetMany {
      */
     public StopCondition stopCondition;
     
+    /**
+     * The end of a forward scan's range, or null, the default, for none: the scan ends before
+     * the first key after endKey, or at endKey itself when endInclusive is false, as at the
+     * end of the database (StopCondition.eod() is called), whatever the stop condition would
+     * have answered for the keys after it. Unlike a stop condition, which sees the live KVs
+     * only, the bound ends the scan as soon as the key nodes it follows are past it, also over
+     * deleted keys, whose index nodes stay (bergdb 021-28): a stop condition ended such a scan
+     * only at the first live key after the range, after every node of the deleted keys before
+     * it. A backward scan with it is refused: Db.getMany, Dag.getMany and a Chain's
+     * constructor throw IllegalArgumentException. The array is not copied.
+     */
+    public long[] endKey;
+    
+    /**
+     * True, the default, if endKey itself is in the range; false to end the scan at it.
+     */
+    public boolean endInclusive;
+    
     // ---- Output ----
     
     /**
@@ -95,6 +113,8 @@ public class GetMany {
         lookupTime = Long.MAX_VALUE;
         inclusive = true;
         forward = true;
+        endKey = null;
+        endInclusive = true;
         gd = new GetData();
         getOpCount = 0;
     }
@@ -125,11 +145,19 @@ public class GetMany {
         private final long[] chainStartKey;
         private final boolean chainForward;
         private final boolean chainInclusive;
+        private final long[] chainEndKey;
+        private final boolean chainEndInclusive;
         
         public Chain() {
             chainStartKey = GetMany.this.startKey;
             chainForward = GetMany.this.forward;
             chainInclusive = GetMany.this.inclusive;
+            chainEndKey = GetMany.this.endKey;
+            chainEndInclusive = GetMany.this.endInclusive;
+            if (chainEndKey != null && !chainForward) {
+                throw new IllegalArgumentException("endKey with a backward scan: the end is "
+                        + "for forward scans only (bergdb 021-28).");
+            }
             
             linkNodes = new KeyNode[4];
             linkCompareValues = new long[4];
@@ -139,7 +167,22 @@ public class GetMany {
             kwi = new KlongWithPointer();
         }
         
+        /**
+         * Adds 'node' to the chain, below the last link. A node already in the chain is a
+         * cycle, which a damaged stream can make (OpData.descentFrom()): the follower's
+         * cycle(), in a Db a StreamFormatException, which fails the database, where the scan
+         * went round it without end. The links are the path from the root, a few nodes for
+         * each segment; a node without an id (Spos.NULL) is not compared, as in
+         * OpData.descentTo().
+         */
         private void addLink(KeyNode node, long compareValue) {
+            final long id = node.getId();
+            for (int i = 0; i < linkSize && id != Spos.NULL; i++) {
+                if (linkNodes[i].getId() == id) {
+                    throw gd.pointerFollower.cycle("A scan came back to key node " + id
+                            + ", which it passed: the pointers make a cycle.");
+                }
+            }
             if (linkSize == linkNodes.length) {
                 assert linkNodes.length == linkCompareValues.length;
                 
@@ -368,6 +411,16 @@ public class GetMany {
                 }
                 
                 linkCompareValue = Klong.getCompareValue(kwi.klong);
+                
+                if (chainEndKey != null && isPastEnd(linkCompareValue)) {
+                    // Every key from here on is past the end (bergdb 021-28): the scan ends,
+                    // before the pointer is followed, as at the end of the database. The
+                    // field, not the local copy: a later next() gives null too.
+                    this.linkSize = 0;
+                    keySegmentSize = 0;
+                    break;
+                }
+                
                 setLinkCompareValue(linkCompareValue);
                 
                 Node next = gd.followPointer(linkNode, kwi.pointerIndex);
@@ -394,6 +447,36 @@ public class GetMany {
             }
 
             return result;
+        }
+        
+        /**
+         * True if every key at and after the klong of compareValue that next() found, forward,
+         * is past chainEndKey (bergdb 021-28). The key segments passed (keySegments) and
+         * compareValue, P, are a lower bound of every key below the klong: in a segment leaf,
+         * the key itself (a value node) or the prefix of every key of the next segment's tree (a
+         * klong of Klong.MAX_SIZE bytes); above the leaf, a key node's klong is the lower bound
+         * of its child (the first child's the empty key, Dag.spaceSplit), as a put follows the
+         * last klong at or before its segment (Dag.putKv, searchLte). The keys after it, in the
+         * scan's order, are greater. So the scan may end if P is after the end, or at it when
+         * the end is not inclusive. P is compared as Keys.compareKeys compares keys, without
+         * making the array.
+         */
+        private boolean isPastEnd(long compareValue) {
+            final long[] end = chainEndKey;
+            final int n = keySegmentSize;
+            final int length = Math.min(n + 1, end.length);
+            int c = 0;
+            for (int i = 0; i < length; i++) {
+                long segment = i < n ? keySegments[i] : compareValue;
+                if (segment != end[i]) {
+                    c = segment < end[i] ? -1 : 1;
+                    break;
+                }
+            }
+            if (c == 0 && n + 1 != end.length) {
+                c = n + 1 < end.length ? -1 : 1;
+            }
+            return c > 0 || (c == 0 && !chainEndInclusive);
         }
         
         /**

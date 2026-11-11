@@ -171,6 +171,15 @@ public class NodeCollection implements PointerFollower {
         return new MaintenanceFollower();
     }
 
+    /**
+     * A cycle that a descent or a scan met (OpData.descentTo(), GetMany's chain), damage of
+     * the stream as checkPointeeType() finds it: a StreamFormatException. The writer's and
+     * maintenance's followers give the same.
+     */
+    public RuntimeException cycle(String message) {
+        return new StreamFormatException(message);
+    }
+    
     public Node followPointer(Node predecessor, int pointerIndex, OpData op) {
         //
         // With handles (bergdb item 009, step 3a; items/009-handles/02-implementation-plan.md,
@@ -258,6 +267,10 @@ public class NodeCollection implements PointerFollower {
 
     /** The follower for the writer, see writer(). */
     private final class WriterFollower implements PointerFollower {
+        public RuntimeException cycle(String message) {
+            return NodeCollection.this.cycle(message);
+        }
+        
         public Node followPointer(Node predecessor, int pointerIndex, OpData op) {
             Node result;
             assert pointerIndex >= 0 : "pointerIndex: " + pointerIndex;
@@ -325,6 +338,10 @@ public class NodeCollection implements PointerFollower {
             loadBytes += node.getMemSize();
         }
 
+        public RuntimeException cycle(String message) {
+            return NodeCollection.this.cycle(message);
+        }
+        
         public Node followPointer(Node predecessor, int pointerIndex, OpData op) {
             assert pointerIndex >= 0 : "pointerIndex: " + pointerIndex;
             assert predecessor != null : "predecessor is null";
@@ -800,6 +817,14 @@ public class NodeCollection implements PointerFollower {
      * linkToCanonical's check (bergdb 005-57): 'linked', the handle that rule 4 by position
      * gives pointer i of 'node', at 'pos', or null, is the one that rule 4 by node id gives,
      * with a read of the header.
+     *
+     * <p>None by position and a canonical object by node id is a damaged prevPos, not the
+     * Core's fault (2026-11-10, CorruptStreamTester's seeds 20769 and 20770): the key node
+     * version of the section that names the version at 'pos' as its prevPos names another
+     * position, so 'pos' is not in DbStarter's posToId. A StreamFormatException, the start
+     * refuses the stream, as for a damaged pointer (bergdb 021-11). Without assertions the
+     * start goes on, and a follow of the pointer applies Rule R by the header's node id.
+     * Every other difference is the Core's fault: an AssertionError.</p>
      */
     private void checkLinkById(Node node, int i, long pos, Handle linked) {
         Handle byId = cache.liveHandle(idOf(pos));
@@ -808,6 +833,12 @@ public class NodeCollection implements PointerFollower {
         if (expected != null) {
             // A damaged pointer, not the Core's fault (bergdb 021-11): no AssertionError.
             checkPointeeType(node, i, o, pos);
+        }
+        if (linked == null && expected != null) {
+            throw new StreamFormatException("Pointer " + i + " of node " + node.getId()
+                    + " names " + pos + ", a version of node " + expected.id + " (at "
+                    + o.getSpos() + " in the startup section), but no version of the section "
+                    + "names it as its prevPos.");
         }
         if (linked != expected) {
             throw new AssertionError("rule 4 by position is not rule 4 by node id (bergdb 005-57): "
@@ -1483,7 +1514,9 @@ public class NodeCollection implements PointerFollower {
     /**
      * The check (bergdb 005-57): rule 4 by position against rule 4 by node id. Section ids
      * without the version before the node's version in the section miss the link that the
-     * node id gives, and the check says so.
+     * node id gives, and the check says so: a StreamFormatException, as a damaged prevPos
+     * makes such ids (2026-11-10, CorruptStreamTester.testFoundLinkByIdPrevPos), where it
+     * was an AssertionError.
      */
     @Nano
     private static void testLinkToCanonicalCheck() {
@@ -1500,7 +1533,7 @@ public class NodeCollection implements PointerFollower {
         boolean failed = false;
         try {
             c.linkToCanonical(parent, ids, testByPos(c), true);
-        } catch (AssertionError e) {
+        } catch (StreamFormatException e) {
             failed = true;
         }
         Assert.assertTrue("the check found the missing link", failed);

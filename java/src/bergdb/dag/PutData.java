@@ -77,6 +77,8 @@ public class PutData extends OpData {
      */
     public void clear() {
         keyAccessPath.clear();
+        replaced.clear();
+        replacedTime = -1;
         tempPointer.index = -1;
         tempPointer.node = null;
         tempPointer.pos = Spos.NULL;
@@ -88,6 +90,32 @@ public class PutData extends OpData {
         oneKwi[0].node = null;
         twoKwis[0].node = null;
         twoKwis[1].node = null;
+    }
+    
+    /**
+     * The nodes that the splits of the transaction at time 'replacedTime' made, each with the
+     * node that existed before it and that it replaces (bergdb 023-05, P1): a split's last
+     * version, halves and new root. A node made by the transaction and emptied in it is taken
+     * back through it (Dag.takeBack).
+     */
+    private final java.util.IdentityHashMap<KeyNode, KeyNode> replaced =
+            new java.util.IdentityHashMap<KeyNode, KeyNode>();
+    private long replacedTime = -1;
+    
+    /** Records that 'made', made by the split at tt, replaces 'old', null: no such node. */
+    void madeFor(KeyNode made, KeyNode old) {
+        if (replacedTime != tt) {
+            replaced.clear();
+            replacedTime = tt;
+        }
+        if (old != null) {
+            replaced.put(made, old);
+        }
+    }
+    
+    /** The node that 'made', made by a split of this transaction, replaces; else null. */
+    KeyNode replacedBy(KeyNode made) {
+        return replacedTime == tt ? replaced.get(made) : null;
     }
     
     public KeyNode getParent(int depth) {

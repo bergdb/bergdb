@@ -331,6 +331,13 @@ public final class Eviction {
      */
     public void afterTransaction(Db db) {
         if (schedule == Schedule.NONE) return;
+        // The objects of ended versions, whatever the budget (bergdb 023-05, P6; 023-07,
+        // section 5.6): with a budget (not noEvict()), and in the random schedule, which the
+        // tests run.
+        if (schedule == Schedule.RANDOM
+                || (schedule == Schedule.BUDGET && high != Long.MAX_VALUE)) {
+            deadStep(db);
+        }
         if (schedule == Schedule.BUDGET) {
             Db.Internal bin = db.internal();
             if (bin.cache().residents().bytes() > trigger) {
@@ -396,6 +403,135 @@ public final class Eviction {
         // 3. The accounting, exact again: the objects that are still resident, each counted
         //    with its bytes now (bergdb 015-69: by differences, as readers load meanwhile).
         table.residents().resync(Residents.walk(superRoot, table.nodes(), dObjects));
+    }
+
+    // ======== The dead hand (bergdb 023-05, P6) ========
+    //
+    // Frans, 2026-11-10 (023-04, Y6): "we follow the rule for resource release, also for
+    // memory": the objects of ended versions leave memory in the ordinary operations, not
+    // only under the budget's pressure or at a restart. After a cut at pCut, every node and
+    // value that a lookup at an available time (the first available time f, the cut
+    // iteration's tEnd, and later) can reach is stored at pCut or later, or is dirty and so
+    // pinned (Reclaim's class comment). An object stored before pCut is dead: no reader
+    // that the database admits from the cut on follows a pointer to it. A reader admitted
+    // before the cut, at a time before f, may hold it and finish with it, as after any
+    // eviction (the version at its position); if it follows the pointer again, it loads
+    // from the cut stream and expires with LookupTimeNotAvailableException (D1 = A; 011-04,
+    // W1). So the dead hand is eviction as the capacity controller's (Cache3.evict, kill;
+    // Eviction.detachable: never the pinned state; the records do not change), with another
+    // choice of the objects: those stored before the decided cut, whatever their CLOCK bit and
+    // the budget. After each cut that moves the decided cut position, one round of the hand
+    // over the node table, DEAD_BATCH handles a transaction at most (no stop-the-world:
+    // bergdb 010-01; a map taken in parts as in the CLOCK steps, 015-67); and in the key nodes
+    // it keeps, the pointers to values stored before the cut become stream pointers.
+
+    /**
+     * The work of a step of the dead hand at most, in units: a handle examined, a pointer of
+     * a kept key node examined, a handle copied from a map (a map counts one at least); and
+     * at most BATCH_NANOS of time, as a batch of the capacity controller. A step ends at the
+     * end of a part of DEAD_PART handles, after the values of its kept nodes, so it can
+     * exceed DEAD_BATCH by one part's work and one map's copy (bergdb 023-11, review A, F2).
+     */
+    static final int DEAD_BATCH = 4096;
+
+    /** The handles of a part of a step of the dead hand, the unit of its cursor. */
+    static final int DEAD_PART = 8;
+
+    /** DEAD_BATCH; a test sets less (testDeadHandBoundsItsWork). */
+    int deadBatch = DEAD_BATCH;
+
+    /** The decided cut position when the dead hand's last round began; 0: none yet. */
+    private long deadRoundCut = 0;
+
+    /** Whether a round of the dead hand is in progress; its next map; a map taken in parts. */
+    private boolean deadRunning = false;
+    private int deadHand = 0;
+    private Handle[] deadPart = null;
+    private int deadPartNext = 0;
+
+    /** The dead hand's counts: rounds done, objects evicted, values unswizzled. */
+    private long deadRounds = 0, deadObjects = 0, deadValues = 0;
+
+    /** The dead hand's counts: rounds done, objects evicted, values unswizzled. */
+    public synchronized long[] deadCounts() {
+        return new long[] {deadRounds, deadObjects, deadValues};
+    }
+
+    /**
+     * One step of the dead hand (see above): if a cut moved the decided cut position since
+     * the last round began, a round begins; a round in progress goes on, DEAD_BATCH units of
+     * work and BATCH_NANOS at most, part by part, with the decided cut position now as its
+     * bound (it only rises). The caller holds Db.writeLock, between transactions.
+     */
+    private void deadStep(Db db) {
+        final Db.Internal in = db.internal();
+        final long cut = in.reclaim().getFirstAvailablePos();
+        if (!deadRunning) {
+            if (cut <= deadRoundCut) return;
+            deadRoundCut = cut;
+            deadRunning = true;
+            deadHand = 0;
+            deadPart = null;
+        }
+        final long t0 = System.nanoTime();
+        final Cache3 table = in.cache();
+        final TopNode superRoot = in.superRoot();
+        final TopNode newestWritten = in.newestWrittenTop();
+        final Cache3.Detachable d = new Cache3.Detachable() {
+            public boolean detachable(Node o) {
+                return Eviction.detachable(o, superRoot, newestWritten);
+            }
+        };
+        final java.util.ArrayList<Node> kept = new java.util.ArrayList<Node>();
+        final int all = Cache3.maps();
+        long examined = 0, objects = 0, values = 0;
+        while (examined < deadBatch && deadHand < all
+                && System.nanoTime() - t0 < BATCH_NANOS) {
+            if (deadPart == null) {
+                deadPart = table.mapHandles(deadHand);
+                deadPartNext = 0;
+                examined += deadPart.length;    // the copy
+            }
+            int to = Math.min(deadPart.length, deadPartNext + DEAD_PART);
+            long[] c = table.deadStep(deadHand, deadPart, deadPartNext, to, cut, d, kept);
+            objects += c[1];
+            examined += Math.max(1, c[2]);
+            deadPartNext = to;
+            for (int j = 0; j < kept.size(); j++) {
+                Node x = kept.get(j);
+                int size = x.getSize();
+                examined += size;
+                for (int i = 0; i < size; i++) {
+                    Pointee p = x.getPointee(i);
+                    if (!(p instanceof ValueNode)) continue;
+                    ValueNode v = (ValueNode) p;
+                    long spos = v.getSpos();
+                    if (v.isInTransNodes() || !Spos.isValid(spos) || Spos.isVpos(spos)
+                            || spos >= cut) {
+                        continue;
+                    }
+                    if (unswizzleValue(in, x, i, v)) values++;
+                }
+            }
+            kept.clear();
+            if (deadPartNext >= deadPart.length) {
+                deadPart = null;
+                deadHand++;
+            }
+        }
+        final boolean done = deadHand == all;
+        if (done) deadRunning = false;
+        synchronized (this) {
+            if (done) deadRounds++;
+            deadObjects += objects;
+            deadValues += values;
+            released += objects + values;
+            unswizzled += values;
+        }
+        synchronized (Eviction.class) {
+            allReleased += objects + values;
+            allUnswizzled += values;
+        }
     }
 
     /**
@@ -1022,11 +1158,19 @@ public final class Eviction {
         long time = 100 * STEP;
         int sharedIndex = 0, sharedValues = 0;
 
+        /** The budget of 'sub' with the schedule BUDGET; 0: none (noEvict, the test setup). */
+        final long budget;
+
         Twin(Schedule schedule, long seed, int retain, boolean quick) {
+            this(schedule, seed, retain, quick, 0);
+        }
+
+        Twin(Schedule schedule, long seed, int retain, boolean quick, long budget) {
             this.schedule = schedule;
             this.seed = seed;
             this.retain = retain;
             this.quick = quick;
+            this.budget = budget;
             this.step = retain > 0 ? 5 * STEP : STEP;
             ref = start(s1, Schedule.NONE);
             sub = start(s2, schedule);
@@ -1038,6 +1182,7 @@ public final class Eviction {
             DbBuilder b = Db.builder().testSetup(s).clock(clock).testId().maxNodeSize8()
                     .startupDistance(300).evictionSchedule(sch, seed)
                     .audit(sch == Schedule.NONE ? 0 : 1);
+            if (sch != Schedule.NONE && budget > 0) b.cacheSizeIndicator(budget);
             Db db = b.start();
             if (retain > 0) db.setRetainDuration(retain * bergdb.pub.util.Clock.UNITS_PER_SEC);
             return db;
@@ -1144,6 +1289,37 @@ public final class Eviction {
 
         long released() {
             return sub.internal().eviction().released;
+        }
+
+        /**
+         * The dead hand's guarantee (bergdb 023-05, P6), once its round for the decided cut
+         * is done: no detachable object stored before the cut is in sub's node table, and no
+         * key node there holds a value stored before it. Returns whether it checked.
+         */
+        boolean checkDead() {
+            Db.Internal in = sub.internal();
+            Eviction e = in.eviction();
+            long cut = in.reclaim().getFirstAvailablePos();
+            if (e.deadRunning || cut == 0 || cut != e.deadRoundCut) return false;
+            for (Handle h : in.cache().handles()) {
+                Node o = h.obj;
+                if (o == null) continue;
+                long spos = o.getSpos();
+                if (Spos.isValid(spos) && !Spos.isVpos(spos) && spos < cut) {
+                    Assert.assertTrue("stored before the cut " + cut + " and resident: " + o,
+                            !detachable(o, in.superRoot(), in.newestWrittenTop()));
+                }
+                if (!(o instanceof KeyNode)) continue;
+                for (int i = 0; i < o.getSize(); i++) {
+                    Pointee p = o.getPointee(i);
+                    if (!(p instanceof ValueNode)) continue;
+                    long vpos = ((ValueNode) p).getSpos();
+                    Assert.assertTrue("a value stored at " + vpos + ", before the cut " + cut
+                            + ", held by " + o, !Spos.isValid(vpos) || Spos.isVpos(vpos)
+                            || vpos >= cut);
+                }
+            }
+            return true;
         }
 
         /** Closes both databases. */
@@ -1403,6 +1579,111 @@ public final class Eviction {
             w.close();
         }
         Assert.assertEquals("a cut in every run", (long) schedules.length, cuts);
+    }
+
+    /**
+     * The dead hand (bergdb 023-05, P6): with a budget far above what the database needs,
+     * so that the capacity controller takes nothing, keys are put, most of them deleted, and
+     * one key overwritten until reclaim has cut several times. After every transaction whose
+     * hand's round is done, no detachable object stored before the decided cut is resident,
+     * and no resident key node holds a value stored before it (Twin.checkDead); the hand has
+     * taken objects and values; the stream is the twin's without eviction, byte for byte,
+     * and every lookup at every available time is the same, with restarts, the audit on.
+     */
+    @Nano
+    public static void testDeadHand() {
+        deadHand(true);
+    }
+
+    @Nano("f")
+    public static void testDeadHandF() {
+        deadHand(false);
+    }
+
+    /**
+     * The dead hand bounds the work of a step, not only its handles (bergdb 023-11, review A,
+     * F2): a database with a budget far above its need, 3,000 keys put, then overwrites of
+     * them, a few a transaction, while reclaim cuts; key nodes written after a cut keep the
+     * shadowed klongs of values written before it, which the hand unswizzles. With a step's
+     * work set to 256 units, a step unswizzles at most 256 + DEAD_PART x (B + 1) values, 504
+     * (a pointer examined counts a unit, as a handle does; 248 on 2026-11-10), while the
+     * rounds unswizzle about 230,000. Before the fix a step examined 256 handles and every
+     * value of their kept nodes: 725 values in one step.
+     */
+    @Nano("f")
+    public static void testDeadHandBoundsItsWork() {
+        CoreTestClock clock = new CoreTestClock();
+        long time = 1000 * STEP;
+        clock.setTime(time);
+        Db db = Db.builder().testSetup().clock(clock).testId().startupDistance(300)
+                .evictionSchedule(Schedule.BUDGET, 1).cacheSizeIndicator(1L << 30).start();
+        db.internal().eviction().deadBatch = 256;
+        db.setRetainDuration(bergdb.pub.util.Clock.UNITS_PER_SEC);
+        for (int i = 0; i < 3000; i += 100) {
+            Trans.Builder b = db.trans();
+            for (int j = i; j < i + 100; j++) b.put("/k/" + (100000 + j), "v" + j);
+            db.execute(b.build());
+        }
+        java.util.Random r = new java.util.Random(1);
+        long maxStep = 0, all = 0, last = 0;
+        for (int i = 0; i < 4000; i++) {
+            time += bergdb.pub.util.Clock.UNITS_PER_SEC / 20;
+            clock.setTime(time);
+            Trans.Builder b = db.trans();
+            for (int j = 0; j < 10; j++) b.put("/k/" + (100000 + r.nextInt(3000)), "w" + i);
+            db.execute(b.build());
+            long values = db.internal().eviction().deadCounts()[2];
+            maxStep = Math.max(maxStep, values - last);
+            all += values - last;
+            last = values;
+        }
+        db.close();
+        final long bound = 256 + DEAD_PART * 31;
+        Assert.assertTrue("values the dead hand took in all: " + all, all > 4 * bound);
+        Assert.assertTrue("values a step took at most: " + maxStep, maxStep <= bound);
+    }
+    
+    private static void deadHand(boolean quick) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 300; i++) sb.append((char) ('a' + i % 26));
+        String big = sb.toString();
+        Twin w = new Twin(Schedule.BUDGET, 1, 1, quick, 1L << 30);
+        int n = quick ? 120 : 400, checks = 0;
+        for (int i = 0; i < n; i += 10) {
+            String[] ops = new String[10];
+            for (int j = 0; j < 10; j++) ops[j] = "k" + (1000 + i + j) + "=" + i + big;
+            w.trans(ops);
+            if (w.checkDead()) checks++;
+        }
+        w.check(true);
+        for (int i = 0; i < n; i += 10) {
+            String[] ops = new String[10];
+            for (int j = 0; j < 10; j++) ops[j] = (i + j) % 37 == 0 ? "k" + (1000 + i + j) + "=x"
+                    : "-k" + (1000 + i + j);
+            w.trans(ops);
+            if (w.checkDead()) checks++;
+        }
+        w.check(true);
+        long[] c = new long[3];
+        for (int i = 0; i < (quick ? 300 : 900); i++) {
+            w.trans("a=" + i + big);
+            if (w.checkDead()) checks++;
+            if (i % 150 == 120) {
+                long[] ci = w.sub.internal().eviction().deadCounts();
+                for (int k = 0; k < 3; k++) c[k] += ci[k];
+                w.restart();
+            }
+            w.check(i % 100 == 99);
+        }
+        w.check(true);
+        long[] ci = w.sub.internal().eviction().deadCounts();
+        for (int k = 0; k < 3; k++) c[k] += ci[k];
+        Assert.assertTrue("a cut", w.s2.getCut() > 0);
+        Assert.assertTrue("rounds of the dead hand: " + c[0], c[0] > 0);
+        Assert.assertTrue("objects the dead hand took: " + c[1], c[1] > 0);
+        Assert.assertTrue("values the dead hand took: " + c[2], c[2] > 0);
+        Assert.assertTrue("checks: " + checks, checks > 10);
+        w.close();
     }
 
     /** A key node object that a memory slot of a resident parent names, and a value in a

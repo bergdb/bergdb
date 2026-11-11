@@ -230,6 +230,8 @@ class UsePrimaryBuilderImp<TYPE> implements UsePrimaryBuilder<TYPE> {
     /** An iterator of the listing: the pages of Db.getMany, the values of the type's kind. */
     private final class Scan implements Iterator<Kv<TYPE>> {
         private final long[] prefixSegments = Keys.toSegments(prefix);
+        /** The end of the listing, forward: the first key after every key under the prefix. */
+        private final long[] endSegments = Keys.toSegments(after(prefix));
         /** Where the next page starts. */
         private long[] from;
         private boolean fromInclusive;
@@ -270,6 +272,13 @@ class UsePrimaryBuilderImp<TYPE> implements UsePrimaryBuilder<TYPE> {
             g.startKey = from;
             g.inclusive = fromInclusive;
             g.forward = forward;
+            if (forward) {
+                // The prefix's end ends the scan also over deleted keys after it (bergdb
+                // 021-28): the page's stop condition sees live keys only, and alone it ended
+                // the listing at the first live key after the prefix.
+                g.endKey = endSegments;
+                g.endInclusive = false;
+            }
             g.lookupTime = lookupTime;
             g.stopCondition = p;
             db.getMany(g);

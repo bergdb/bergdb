@@ -1146,6 +1146,11 @@ public class Db implements AutoCloseable {
                 }
             }
             
+            public void keyNodeTakenBack(KeyNode node) {
+                keyNodeReplaced(node);
+                takenBackInTrans.add(node);
+            }
+            
             public void topNodeReplaced(TopNode node) {
                 if (x.transInfo != null) replacedInTrans.add(node);
                 final TestHooks hooks = testHooks;
@@ -1470,6 +1475,9 @@ public class Db implements AutoCloseable {
     /** Whether the current operation changed the Dag. */
     private boolean opChanged = false;
     
+    /** The nodes that the current transaction made and took back (bergdb 023-05, P4). */
+    private final ArrayList<Node> takenBackInTrans = new ArrayList<Node>();
+    
     /** The nodes that the current transaction replaced. */
     private final Set<Node> replacedInTrans = 
             Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
@@ -1520,6 +1528,12 @@ public class Db implements AutoCloseable {
         }
         replacedInTrans.clear();
         touchMarks = 0;
+        // Nodes the transaction made and took back (bergdb 023-05, P4, as P2), out of D above,
+        // leave the node table: never written, and no node names them.
+        for (Node n : takenBackInTrans) {
+            cache.dropNode(n);
+        }
+        takenBackInTrans.clear();
     }
 
     /**
@@ -1776,6 +1790,10 @@ public class Db implements AutoCloseable {
         assertHasDag("newGetMany");
         GetMany g = dag.newGetMany();
         g.gd.pointerFollower = this.nodeCollection;
+        final TestHooks hooks = testHooks;
+        if (hooks != null) {
+            hooks.getManyCreated(g);
+        }
         return g;
     }
 
@@ -2035,8 +2053,9 @@ public class Db implements AutoCloseable {
      *              call (GetMany).
      * @throws IllegalArgumentException
      *              If g or its stopCondition is null, its startKey has no segment, its
-     *              result is not empty, or its stop condition answers a value other than
-     *              the four of StopCondition, which ends the scan (bergdb 020-27, Q2).
+     *              result is not empty, its endKey is set for a backward scan (bergdb
+     *              021-28), or its stop condition answers a value other than the four of
+     *              StopCondition, which ends the scan (bergdb 020-27, Q2).
      * @throws IllegalDbStateException
      *              If start() has not been called, or stop() or close() has (a
      *              DbStoppingException then).
@@ -2085,6 +2104,10 @@ public class Db implements AutoCloseable {
         if (g.result.size() != 0) {
             throw new IllegalArgumentException("g.result not empty, " + g.result.size()
                     + " KVs: clear it, or use a new GetMany (newGetMany()).");
+        }
+        if (g.endKey != null && !g.forward) {
+            throw new IllegalArgumentException("g.endKey with a backward scan: the end is for "
+                    + "forward scans only (bergdb 021-28).");
         }
 
         try {
@@ -2704,7 +2727,12 @@ public class Db implements AutoCloseable {
         
         long cheap = 0;
         for (Kv kv : t.kvs) {
-            cheap += 3 * height * kv.getKey().length + 3;
+            // A delete: with the upward unlink two klongs in every node of its path, and the
+            // klongs of root collapse in the segment leaves above (Dag.dirtyNodeBound; bergdb
+            // 023-07, section 5.4); P1's factor of 7, kept as a margin over a put's 3. A value
+            // transformation may give null, a delete (bergdb 023-11, review B, B2).
+            final boolean delete = kv.getValue() == null || kv.valueTransformation != null;
+            cheap += (delete ? 7 : 3) * height * kv.getKey().length + 3;
         }
         if (cheap <= (limit - topBytes) / nodeBytes) {
             return;
@@ -2712,15 +2740,22 @@ public class Db implements AutoCloseable {
         
         int n = 0;
         long nodes = 0;
-        final long[][] keys = new long[t.kvs.length][];
-        final boolean[] deletes = new boolean[t.kvs.length];
+        final long[][] keys = new long[2 * t.kvs.length][];
+        final boolean[] deletes = new boolean[2 * t.kvs.length];
         for (Kv kv : t.kvs) {
             if (kv.keyTransformation != null) {
-                nodes += 3 * height * kv.getKey().length + 3;
+                nodes += (kv.valueTransformation != null ? 7 : 3) * height * kv.getKey().length + 3;
             } else {
                 keys[n] = kv.getKey();
                 deletes[n] = kv.getValue() == null && kv.valueTransformation == null;
                 n++;
+                if (kv.valueTransformation != null) {
+                    // It may give null, a delete: walked as a put and as a delete, an
+                    // over-count (bergdb 023-11, review B, B2).
+                    keys[n] = kv.getKey();
+                    deletes[n] = true;
+                    n++;
+                }
             }
         }
         final long time = dbClock.lookupTime(Long.MAX_VALUE);
@@ -2898,6 +2933,7 @@ public class Db implements AutoCloseable {
         opMarks.clear();
         opChanged = false;
         replacedInTrans.clear();
+        takenBackInTrans.clear();
         touchMarks = 0;
 
         if (x.trans.touch) {
@@ -2912,12 +2948,25 @@ public class Db implements AutoCloseable {
             x.putData.clearFast();
         }
 
+        // Every key transformation first, then the KVs in key order, one a key (bergdb 023-08,
+        // section 7, Q4): the index gets a transaction's operations in the order of their keys,
+        // whatever the order a transformation left them in, so two transactions with the same
+        // operations run the same and write the same stream; of KVs that transformations make
+        // one key, one is kept by Trans.Builder.build's rule (sortByKey). Value
+        // transformations stay in the put loop, for the KVs kept: each reads the previous value
+        // at tt, as before. The record holds the KVs put, and the startup's rerun applies them
+        // in their stored order, this order, and does not sort.
+        boolean transformed = false;
         for (int i = 0; i < length; i++) {
             Kv kv = x.trans.kvs[i];
-
             if (kv.keyTransformation != null) {
                 kv.getKeyTransformation().transform(x.trans, i);
+                transformed = true;
             }
+        }
+        final Kv[] kvs = transformed ? sortByKey(x.trans.kvs) : x.trans.kvs;
+        for (int i = 0; i < kvs.length; i++) {
+            Kv kv = kvs[i];
 
             if (kv.valueTransformation != null) {
                 final byte[] previousValue = this.getOne(x.trans.tt, kv.getKey(), x.getData);
@@ -2934,6 +2983,38 @@ public class Db implements AutoCloseable {
         x.putData.clear();
     }
 
+    /**
+     * The KVs to put, after the key transformations (putKvs; bergdb 023-08, section 7, Q4):
+     * 'kvs' sorted by key and one KV a key, in a new array; 'kvs' and the transaction's write
+     * hashes are left as they are, so that a Trans can be run again (its Javadoc allows
+     * reuse), each key transformation seeing its own slot (bergdb 023-11, review A, F1). The
+     * sort is stable, so KVs that transformations make one key are next to each other, in
+     * the order of Trans.Builder.build's sort (the keys as written). Of them one is kept, by
+     * build's rule for the calls on one key (bergdb 015-40): the last put, or a delete if
+     * there is no put; a delete never replaces a put. Frans, 2026-11-10 (023-08, section 7):
+     * silently, as the builder does. So a transaction reaches the index with one operation a
+     * key. A dropped KV's write hash is its kept KV's, as the key is the same.
+     */
+    static Kv[] sortByKey(Kv[] kvs) {
+        final Kv[] sorted = kvs.clone();
+        java.util.Arrays.sort(sorted, new java.util.Comparator<Kv>() {
+            public int compare(Kv a, Kv b) {
+                return Keys.compareArrays(a.getKey(), b.getKey());
+            }
+        });
+        int n = 0;                              // the KVs kept, in sorted[0, n)
+        for (int i = 0; i < sorted.length; i++) {
+            if (n > 0 && Keys.compareArrays(sorted[n - 1].getKey(), sorted[i].getKey()) == 0) {
+                if (sorted[i].getValue() != null || sorted[n - 1].getValue() == null) {
+                    sorted[n - 1] = sorted[i];  // a put, or a delete after a delete
+                }
+                continue;
+            }
+            sorted[n++] = sorted[i];
+        }
+        return n == sorted.length ? sorted : java.util.Arrays.copyOf(sorted, n);
+    }
+    
     /**
      * Visits, as the writer, every node reachable at the transaction time for the keys in a
      * range, so that each gets dirty; see Trans.touch. For reclaim (2026-10-13).
@@ -3348,6 +3429,12 @@ public class Db implements AutoCloseable {
          * index node; the super root included.
          */
         public void nodeTouched(Node node);
+
+        /**
+         * newGetMany() made g, for a reader of the Core API or the Pub API's scans; a test may
+         * set g.gd.pointerListener to count the nodes that the scan follows (bergdb 021-28).
+         */
+        public default void getManyCreated(GetMany g) {}
 
         /**
          * The transaction being executed replaced an index node (a split, a new super root):

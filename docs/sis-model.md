@@ -197,6 +197,25 @@ checkers check A2 to A5, with the levels of 011-11, section
 Lean model on traces of Java runs (section 13), and the Java tier, a Java
 stress test (`A2A3Check2`). That is a check on many runs, not a proof.
 
+Since 2026-11-10 (record format 6; 023-07, sections 5.1 to 5.3), a delete
+removes the index nodes it empties, in its own transaction. A node that a
+split of T(i) made and a delete of T(i) empties, a transient node, is
+taken back: the parent's klongs of time i that name it, deleted ones too,
+point again to the node it replaced, and it leaves D and the node table
+and is in no record. To the model T(i) did not create it, and the
+checkers count it so (023-07, section 5.1, Z18); only its id is used up,
+so ids stay in creation order. An older node that a delete empties is
+unlinked, and stays reachable before time i only (A5). In every inner node
+the smallest live klong is the empty key (LE-b): where the climb stops at
+the empty key's klong, a new klong of the empty key points to the next
+live child, so no node off the delete's path gets an entry. Root collapse
+puts a root's child in its place while the root has one live klong. Each
+of these adds entries at time i to current nodes only (A2). The Lean model
+is not changed (023-09, section 6): it has no keys and no delete rule of
+its own, so LE-b, the climb, the take-back and root collapse are not in
+it; it takes each transaction's change as given, and the trace checker
+checks that Java's transactions are steps of it.
+
 
 4 The stream
 ============
@@ -625,6 +644,17 @@ implementation must meet them.
   lv(root) at startup will do. BergDB stores topPos in every record since
   2026-10-15 (format 5): the position of the super root at the startup time
   (011-11, mismatch M18; with a virtual root, top(i) of 6.3).
+* The rerun's rule is part of the record. A1 asks that a rerun of T(i)
+  make the same entries and nodes, so a change of what a rerun does with
+  the same record changes the record format. BergDB's is 6 since
+  2026-11-10 (023-07, section 5.8): a delete unlinks the nodes it empties,
+  with LE-b, root collapse and the take-back (3.4), and a space split in
+  place of a segment root that T(i) made points the segment leaf's klong
+  to the new root (023-09, section 2, fault 12). A start refuses format 5,
+  written by releases 2026.1 to 2026.3. Since then too a transaction's KVs
+  reach the tree in key order, one a key, after its key transformations
+  (023-08, section 7), so two transactions with the same operations give
+  the same record; the rerun keeps the stored order.
 
 
 12 Compared with startup.md
