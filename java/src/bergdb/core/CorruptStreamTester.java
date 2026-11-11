@@ -81,11 +81,12 @@ public class CorruptStreamTester {
      * them flipped, to a value that passes the start's checks.</li>
      * <li>019-31 (2026-11-06, 10:42, option (a)): a range cut out of the stream's middle,
      * such as whole records: the stream left is a valid stream of fewer transactions.</li>
-     * <li>019-33 (2026-11-06, 10:42, option (a)): a node byte flipped by 0xff, between 0x00
-     * and 0xff, which Fletcher-16 modulo 255 does not see.</li>
      * </ul>
+     * 019-33 (2026-11-06, 10:42, option (a)), a node byte flipped by 0xff, between 0x00 and
+     * 0xff, which Fletcher-16 modulo 255 did not see, is gone since the node checksum is
+     * CRC32C (bergdb 024-25): such a flip passing undetected is a failure.
      */
-    static final String[] KNOWN = {"015-73", "014-01", "019-30", "019-31", "019-33"};
+    static final String[] KNOWN = {"015-73", "014-01", "019-30", "019-31"};
 
     /**
      * The open entry of SKIP that a failure belongs to, or null: a new fault. Each entry
@@ -796,15 +797,12 @@ public class CorruptStreamTester {
 
     /**
      * The entry of KNOWN that a byte flipped by 'mask' at 'where' (a region) belongs to if
-     * it passes undetected, or null: 019-30 in a record's time or topPos, 019-33 by 0xff in
-     * a node.
+     * it passes undetected, or null: 019-30 in a record's time or topPos. (019-33, by 0xff in
+     * a node, until bergdb 024-25.)
      */
     static String flipKnown(String where, int mask) {
         if (where.endsWith(": time") || where.endsWith(": topPos")) {
             return "019-30";
-        }
-        if (mask == 0xff && where.contains(": node at offset")) {
-            return "019-33";
         }
         return null;
     }
