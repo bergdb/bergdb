@@ -160,6 +160,16 @@ Files
   (before-commit.sh about 80 s again), 024-10 and 024-07 merged; the
   gates' results. Landed as a780b957; then 024-09 merged and gated,
   landed as 379d8acf.
+* 12-tree-model.md. 024-12, the model of BergDB's key tree in Lean, run
+  against Java (024-06's B0 to B2): trace format 3 with keys; the tree
+  in `lean/SIS/Tree/` as an instance of `Spec` (the searches, get,
+  scan, put with the splits, delete with the upward unlink, the empty
+  key first, the take-back, reclaim's part, `dirtyNodeBound`, the
+  touch); the checker `treecheck` and `treeconf.sh`, step 8 of
+  `level2.sh`: on 115 traces the model's own run writes Java's records;
+  `treetest`, exhaustive at small node sizes; 27 stated properties, a
+  few proved. Branch 024-12-tree-model; lands when Frans has approved
+  it.
 * 15-key-shape-cost.md. 024-15, the cost of key shape documented and
   bounded (024-08, option (a)): Javadoc in `Connection` and `Db` on what
   costs a key node of its own (about 226 heap bytes) and what eviction

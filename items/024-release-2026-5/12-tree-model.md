@@ -1,0 +1,1208 @@
+# 024-12. The tree model: BergDB's key tree in Lean, run against Java
+
+Created 2026-11-11 by Frans Lundberg. Status: open.
+
+The main step towards aim 4 of release 2026.5 (024-04, "the model
+matches"): the key tree of release 2026.4 (`Dag`, `KeyNode`, `GetMany`,
+`TopDs`) as a Lean definition that can be run, the trace format that
+carries what it needs (B0 of 024-06, section 5.1), the definition itself
+with its stated properties (B1), and the checker that runs it against
+Java's traces (B2). Frans's order of 2026-11-11: model first; a design
+note, then a Lean definition that runs, with its invariants and bounds
+stated, then runs against small cases and Java, and the proofs when the
+algorithm has settled. The proofs (C1 to C3 of 024-06) are not this
+subitem's work.
+
+Cite the design rules as "024-12, D1", the stated properties as
+"024-12, TP1", the differences found as "024-12, F1".
+
+
+## 1. In short
+
+Kept current; section 9 has the exact state. Written 12:24.
+
+* **The branch is gated and ready to land:** `024-12-tree-model`, head
+  `d90586d0`, main with 024-07, 024-10, 024-13 and 024-09 merged in
+  (section 7).
+* **The tree of release 2026.4, with 024-07's touch and 024-10's
+  builder rule, is in Lean and runs** (`lean/SIS/Tree/`, about 2,400
+  lines of definitions and statements): a key node as its klongs, the
+  six searches, get, scan with the end key, put with the five splits,
+  delete with the upward unlink, LE-b, the take-back and root collapse,
+  the top node and the search through its skip pointers, a reclaim
+  step's touch, `Dag.dirtyNodeBound`. `Tree.exec` is a function of the
+  transaction, its time and P@(i-1), and `treeSpec` an instance of the
+  existing `Spec`: no line of the existing model or its proofs changed.
+  `BVal`, `bptrs` and `blive` moved from the checker
+  (`Check/Trace.lean`) to a file of the model, with their names.
+* **The model gives Java's change exactly.** On 115 traces (25,169
+  transactions, 192,496 operations): every node made with its id, level
+  and kind, every entry, every klong of every changed key node; every
+  noop; 100,676 gets and 25,169 scans; 624 touches of reclaim's steps.
+  And on 9 larger traces, to node size 62 (before the merges).
+* **The whole model runs on the tree, alone, and writes Java's
+  records** (C-T9, section 5.5): `init` and `step` of the existing
+  model with the tree's `exec`, from R(0), given only each
+  transaction's operations, first id and Java's startup pos, give every
+  record (versions with histories and references, gd, top) and D of
+  Java's run: 25,284 records on the 115 traces, none different.
+* **No difference of Java's found.** Two of the model's, both fixed
+  (5.3): a time klong that no klong follows (D4), and the bound of a
+  transaction without operations.
+* **Every rule of the writer is reached** by the draining set, the
+  rarest 3 times (section 5.2); the small set of `conformance.sh`
+  reaches the take-back 9 times in 35 traces.
+* **27 properties are stated** as `Prop` definitions (section 6): the
+  invariants, the multiversion map, the assumptions C1 needs, the
+  bounds (with a transaction's limits as hypotheses, 024-17), and I2,
+  T-COVER's premise since 024-07. The computable ones hold on Java's
+  tree after every traced transaction and on 340,276 states of small
+  cases (exhaustive at node sizes 4, 6 and 8; section 4.3). **Proved,
+  as they fell out:** TP13 (`SpecOK`, with 024-09's lemma on `blive`),
+  TP17 (`ExecRootOK`), TP18 (`VirtLiveOK`) and that the model's run has
+  the tree's P.
+* **The existing model's own tests pass on the tree, in Lean alone**
+  (4.3): on 35 pseudo-random runs of `SIS.run (treeSpec)`, every
+  transaction meets `StepOK`, TREE, A6' and A-COPY, and T1 (startup from
+  the stream) and T2 (restarts) hold.
+* **Five things the model had to copy that look unintended in Java**
+  (section 5.4), none a fault: a wasted klong in the primordial key node
+  and in an emptied root; two dead tests in the searches; a search with
+  another tie rule, used by no code; a depth that is not the node's.
+* **Not done:** the proofs but the four small ones (by the brief, and
+  the coordinator's word of 08:50); 024-11's merge in the model;
+  `treeconf.sh large`; Java against the model on keys of raw bytes
+  (section 9).
+
+
+## 2. The design note
+
+### 2.1 What is modelled
+
+The Core's algorithm on keys, as release 2026.4 runs it:
+
+| Java                                         | In the model                  |
+|---|---|
+| `KeyNode`: the klongs, the six searches      | `KNode`, `searchEq` and so on |
+| `KeyNode.lastVersion`, `firstAndSecond`      | `lastVersion`, `halves`       |
+| `Dag.getOne`, `getEqNodeInSegment`           | `get`                         |
+| `Dag.putKv`, `setValue`, `setNode`           | `putKv`                       |
+| `appendKlongs`, `handleFullNode`, the splits | `appendKlongs`                |
+| `deleteUpward`, `appendDeleteKlong` (UP)     | `deleteUpward`                |
+| `emptyKeyNext` (LE-b)                        | `emptyKeyNext`                |
+| `takeBack`, `retarget`, `takeBackRoot`       | the same names                |
+| `collapseRoot`, `replaceRoot` (RC)           | the same names                |
+| `TopDs.newSuperRoot`, `findRoot`             | `newSuperRoot`, `rootAt`      |
+| `GetMany.Chain` (setup, next, the end key)   | `scan`                        |
+| `Db.putKvs`: the operations in order         | `exec`                        |
+| `Db.sortByKey`, `Trans.Builder.build`        | `normalize`, `Tx.sorted`      |
+| `Db.touchPaths`, `Dag.followPath` (024-07)   | `touchOf`, `pathFrom`         |
+| `Dag.dirtyNodeBound`                         | `dirtyNodeBound`              |
+
+This is the algorithm in the 5,215 lines that 024-06 counts; the rest of
+them is tests, printing, concurrency and the pointer forms (2.4).
+
+### 2.2 The state
+
+**D1. The state is P, the existing model's structure, with no new
+field.** A node of P is its id, its level, whether it is a data node,
+and its history: entries, each a time and a value (`SIS.Node`,
+`Check.BVal`: `K c y`, `D cs`, `R y`, `S j z`, `T z`, `V h`;
+docs/trace-format.md, section 1). The tree's `exec` gets P@(i-1) as the
+existing `View`, and returns `Changes`: the nodes made and the entries
+added at time i. So the tree is a value of `Spec BVal Tx`, and every
+existing theorem speaks about it once its assumptions are proved (2.5).
+
+**D2. Inside `exec`, a key node is its klongs, exactly as Java has
+them.** `KNode`: whether it is a segment leaf, and a list of klongs,
+each one of
+
+* `time t`: a time klong; t is the model's time, the record's index;
+* `key c y`: a key klong with compare value c, and its pointer, which
+  names node y (a key node or a value);
+* `del bits`: a delete bitmap, the indexes of the klongs it deletes,
+  cumulative as in Java (a new bitmap holds the bits of the one before).
+
+A node's size, on which every split decision rests, is the length of
+this list, time klongs and bitmaps included.
+
+**D3. `klongsOf` reads the klongs back from a history; `entriesOf` is
+its inverse.** The exporter's α (`TraceExport.keyEntries`) written in
+Lean, both ways: a run of entries with one time is a time klong and the
+klongs of the entries; a `D cs` entry is a bitmap with the bits of the
+bitmap before it and of every key klong before it whose compare value is
+in cs. The exporter writes cs as the compare values of the new bits, so
+the two agree as long as a bitmap holds, for each of its compare
+values, the bits of all klongs of it before the bitmap; Java makes
+bitmaps only so (`Dag.bitsOf`), and the checker compares the klongs
+themselves (2.7), so a bitmap of another kind is found.
+
+**D4. A time klong that no klong follows is an entry of the model: the
+marker.** Java has key nodes that are one time klong and nothing else:
+the primordial key node (`KeyNode.nodeWithTime`), and a space root that
+a delete emptied by a time split (`appendDeleteKlong` on a full segment
+leaf whose last version is empty: `[T tt]`). The klong stays in front
+when the node gets klongs later (`[T 0, T 1, K ...]`), so the node is
+one klong larger than its entries say, for good, and its splits come one
+klong earlier. The exporter writes no entry for it. Rule: in the model's
+P such a time klong is an entry at its time, a delete entry without
+compare values (`SIS.Tree.marker`); `klongsOf` reads it as the time
+klong alone, `entriesOf` writes it for a time klong that no klong
+follows. Klongs and histories then correspond one to one, with the true
+times. `blive` ignores it (it deletes nothing), and it has no pointer.
+The tree checker adds it to a key node that a trace makes without
+entries, and leaves markers out when it compares entries (2.7); the
+comparison of klongs covers the klong itself. (First written here as "a
+key node with an empty history is `[time 0]`, but the primordial one,
+which has no klong": wrong on both counts, found by the first run of the
+checker, T(1) of the first trace.)
+
+**D5. Whether a key node is a segment leaf, its segment and its height
+are read from its level.** The exporter gives a key node the level
+1 + (G - g)(H + 1) + h, with g its segment (0 for the first), h its
+height in its segment tree (0 for a segment leaf), and G and H the
+largest of the run (`TraceExport.levelOf`). The model takes G and H as
+parameters and gives a new node its level by the same formula: a half or
+a last version gets its node's g and h, a new root h + 1, a new segment
+leaf below a leaf g + 1 and h = 0. A top node's level gives its ordinal
+(level = keyMax + 1 + ordinal). So A4 (pointers go to lower levels)
+holds for runs within G and H, and for no others: a statement about
+bounded runs, as the checker's has been since 011-11, section 8.4.
+
+**D6. The top of the tree.** The root (id 0) has an entry `T z` for
+each top node z; a top node has `R y`, its root key node, and `S j z'`,
+its skip pointers; all of a top node's entries have its root time. The
+super root is the top node of the root's last entry. The model's time
+is the record index, so "the top node at time t" is the root's last
+entry with a time at most t.
+
+**D7. The writer's state within a transaction** (`W`): the overlay (the
+key nodes read, made or changed so far, as klongs, by id), the next id,
+the nodes made, in order, with their levels, the map from a node made
+by a split to the node it replaces (`PutData.madeFor`), the nodes taken
+back, the key access path of the operation (`KeyAccessPath`: pairs of a
+compare value and a node), the super root (its id, ordinal, root time,
+root key node and skip pointers) and the values made. A node that
+existed before and is replaced or unlinked gets its klongs of before
+the transaction back (`toPreviousState`), so it adds nothing. At the
+end, `Changes` is read off: the nodes made and not taken back, sorted
+by id, and for every node of the overlay its entries of time i, sorted
+by node id, as the exporter writes NEW and ADD lines.
+
+**D8. Ids.** Java gives a transaction's nodes the ids p + 1, p + 3 and
+so on, p the position of its record (`Db.begin`: `nextVpos`), in the
+order of `setIdOfNode`'s calls: a put's value first; a split's halves,
+then its new root, then the new top node; a time split's last version
+when the split is known to be a time split; a delete's marker last,
+which uses an id and is no node. The model's transaction carries the
+first id (`Tx.base`) and makes ids in the same order, a taken-back
+node's id used up. That the bases are far enough apart is an assumption
+on the run (TP list, `BasesOK`), true in Java as records have positive
+length.
+
+### 2.3 The operations
+
+Each is the Java method's rule, case by case; the names are 2.1's. In
+words, what each does and when:
+
+* **search** (six: Eq, Lte, Lt, Gt, Gte, First) at a time t in one
+  node: over the klongs before the first time klong after t, a key
+  klong counts unless the last bitmap at or before t deletes it (for
+  `searchEq`: the bitmaps in order, as Java's loop); among klongs of one
+  compare value the last wins.
+* **get** of a key at time t: the top node at t, its root, then per
+  segment `searchLte` down to the segment leaf and `searchEq` in it;
+  the last segment's pointee is the value.
+* **put** of a key and a value, by the writer at time i: the value is
+  made (an id); per segment, down to the leaf (`searchLte`; no klong at
+  or below the key is an error: LE-b says there is one); a missing
+  segment gets a new segment leaf and a klong to it; the klong is added
+  if the node has room for it and a time klong (size + 1 < M), else the
+  node is full (`appendKlongs`).
+* **a full node** (`handleFullNode`): its last version at i is made
+  (the live klongs, sorted, one a compare value). More than M/2 klongs:
+  a **space split** into two halves, the klongs to add going to the half
+  of their compare value; an inner node's second half gets the empty key
+  as its first klong (LE-b). Else a **time split**: the last version
+  with the klongs to add replaces the node. A node that the transaction
+  made is changed in place (it keeps the first half, or becomes its last
+  version); one that existed is replaced, loses its klongs of i, and its
+  parent gets the klongs of what replaces it, which may fill the
+  parent: the same rule one level up. A split root gets a new root
+  above its halves, with the empty key and the second half's klong; the
+  space root's goes into the top node of i (a new one, or the one the
+  transaction made already), a segment root's into the segment leaf
+  above: a klong of the same compare value, or, for a segment root made
+  and split in the same transaction, the leaf's klong of i pointed to
+  the new root in place (fault 12's fix).
+* **delete** of a key (`deleteUpward`): no live klong of it: nothing
+  (a noop makes no node and no entry). The leaf keeps a live key: a
+  bitmap in the leaf (the transaction's own last bitmap gets the bit in
+  place). Else **UP**: climb while the node above would be left without
+  a live klong; nothing changes until the stop node is known. Each node
+  below it on the path: one that the transaction made by a split is
+  **taken back** (its parent's klongs of i that name it, deleted ones
+  too, name again the node it replaced; it is no node of the
+  transaction), one made otherwise is an error (one operation a key
+  excludes it), an older one is **unlinked** (it loses its klongs of
+  i). The stop node gets the bitmap; if the klong to delete is the empty
+  key's (**LE-b**, `emptyKeyNext`): the empty key gets the pointer of
+  the next live klong, by a new klong or in place if its klong is of i,
+  and that next klong's compare value is deleted instead. Then **RC**:
+  while the root of the stop node's tree is an inner node with one live
+  klong, its child takes its place: through the top node (space root),
+  through a klong in the segment leaf above (segment root), or by
+  pointing the klong of i in place when the root was made by a split of
+  the transaction, which is then taken back.
+* **a transaction** (`exec`): the touch first, if any (it changes
+  nothing; it gives `Changes.touch`), then the operations in the order
+  given, each as above. `Tx.sorted`: the keys strictly increasing, so
+  one operation a key; `normalize` is `sortByKey`'s rule (the last put,
+  or a delete if there is none) and gives a sorted transaction.
+* **scan** (`GetMany.Chain`): the chain of nodes and compare values;
+  setup from the start key; next by `searchGt` or `searchLt` in the last
+  link, down through `searchFirst` order, up when a node is exhausted;
+  forward it ends when the klong found is past the end key
+  (`isPastEnd`), before following it.
+* **the touch** (reclaim's part, as far as the tree is concerned).
+  Since 024-07 landed (10:07): `Db.touchPaths`, the index nodes on the
+  paths of the transaction's own keys at time i, before the operations:
+  the super root, the space root, and per key what `Dag.followPath`
+  follows (`searchLte` down each segment tree, `searchEq` in a segment
+  leaf to the next segment's tree; not the value). `Tx.touch` is the
+  list of those keys, empty for a transaction without a touch. Until
+  then, and in the runs of sections 5 and 7 made before 10:07, it was
+  `Db.touchRange`: the nodes that a forward scan from `from`
+  (exclusive) to the first key after `to` follows. The reclaim step's
+  rewrites are puts like any other, and are in its operations.
+* **`dirtyNodeBound`**: Java's count, on the model's nodes, for C3.
+
+### 2.4 What is abstracted away, and why
+
+| Left out                                   | Why it can be                          |
+|---|---|
+| Bytes: the klong's bits, key bytes         | a segment is its compare value, a Nat  |
+| Values                                     | a hash, as in the trace                |
+| Array capacities, `lastTimeIndex`          | no rule reads them                     |
+| Pointer forms, handles, references         | Phys.lean and Handle.lean have them    |
+| Readers beside the writer, monitors        | no threads in the model (024-06, 3.3)  |
+| Listeners, marking, `opChanged`            | the model marks by `marked` (T13)      |
+| The quiet follows of RC                    | they only stop marks                   |
+| Key and value transformations, the STM     | T(i) is the operations as applied      |
+| The skip list's search                     | D6: the last top node at or before t   |
+| The cycle check, statistics, printing      | not part of the algorithm              |
+| The 62-bit limit of a bitmap               | M is at most 62; a stated assumption   |
+
+* **A compare value is a natural number**, ordered as numbers. Its low
+  bits hold the segment's length; the model uses that only as Java does:
+  a segment of 7 bytes (`long c`) continues in the next segment's tree,
+  any other is a key's last. `Key.wf`: every segment but the last is
+  long, the last is not, as `Keys.toSegments` makes them.
+* **Java's `Bug` and "corrupt data" exceptions** are errors of the
+  model: `exec` returns no changes, `exec?` a text that starts with its
+  kind: `Bug:` (a state that `Dag` excludes), `corrupt:` (a P that is no
+  tree of BergDB's), `bounds:` (the tree left G or H). The checker
+  reports any.
+* **The skip pointers are kept** (they are entries of a top node, and
+  R4 of the existing model needs them); only the search through them is
+  replaced by its specification. It can be added later as a definition
+  with a statement that it finds the same node.
+
+### 2.5 How it fits under the existing model
+
+`treeSpec M G H : Spec BVal Tx` with `ptrs := bptrs`, `live := blive`
+(the checker's, moved or restated in the model), `exec := Tree.exec`,
+`virt := true`, `rootVal := .top`, and `init` the primordial structure
+(the root, one top node, one empty key node). `SIS.step` then runs BergDB
+whole: the tree makes the change, the existing model the record and D.
+
+What C1 (024-06, section 5.1) has to prove of it, each stated in
+section 6 as a `Prop`:
+
+| Assumption (024-06, 2.4)              | For the tree                          |
+|---|---|
+| `SpecOK`, `VirtInit`                  | of `blive`, `bptrs`, `init`: small    |
+| `StepOK.fresh`, `distinct`            | from D8 and `BasesOK`                 |
+| `current` (A2), `newReachable` (A3)   | splits in place, the take-back        |
+| `dataFixed`, `dataNoPtrs`             | values get one entry                  |
+| `levels` (A4)                         | D5, within G and H                    |
+| `noRes` (A5)                          | no klong names an older dead node     |
+| `VirtStep` (R1 to R4, `dead`)         | `newSuperRoot`'s rule                 |
+| the touch (`touchUp` and two more)    | the scan walks down from the root     |
+| `PhysStep` (`liveNew`, `adopt`)       | of `blive`; TREE and A5               |
+| TREE, A6', A-COPY (`EvictRunOK`)      | one live parent; fault 12's fix       |
+| `ExecRootOK`, `VirtLiveOK`            | `exec` reads the root by its children |
+| A1                                    | holds by type, with D4's rule         |
+
+Not the tree's: `PolicyCutOK`, `CutOK`, the take (024-06, 2.4, last
+three rows). A1 needs one more statement, that `exec` reads only nodes
+reachable at i-1 (it starts at the root and follows live pointers), so
+that the checker may give it P itself for P@(i-1).
+
+### 2.6 The trace: format 3 (B0)
+
+`TRACE 3` is format 2 with these lines more; the exporter writes them
+with the property `tree=1`, and `tracecheck` reads over them, so one
+trace serves both checkers.
+
+    TREE m g h k                 after CONFIG: the node size M, the level
+                                 bounds G and H (D5), the primordial key
+                                 node's id
+    BASE b                       in TX i, first: the id of the first node
+                                 that T(i) makes (D8)
+    OP P n c1 ... cn h           in TX i, after BASE, in the order the Dag
+                                 got them: a put of the key with segments
+                                 c1 ... cn, the value's hash h
+    OP D n c1 ... cn             a delete that deleted
+    OP N n c1 ... cn             a delete that was a noop
+    (RANGEF, RANGET              the bounds of a touch's key range: only
+                                 until 024-07 landed; a transaction with
+                                 a TOUCH line now touches the paths of
+                                 all its OP keys)
+    KN x l n k1 ... kn           in TX i, after the ADD lines: key node x
+                                 after T(i), for each key node that T(i)
+                                 made or gave an entry: l is 1 for a
+                                 segment leaf; the n klongs, each `T t`,
+                                 `K c y` or `B b` (b the bitmap's 62 bits
+                                 as a number)
+    GET t n c1 ... cn r          in TX i, after KN: Java's getOne of the
+                                 key at model time t gave the value with
+                                 hash r, or `-` for none
+    SCAN t d a b n start end r kv1 ... kvr
+                                 Java's getMany at model time t: forward
+                                 or backward, the start and end keys and
+                                 whether each is inclusive, the limit,
+                                 and the r KVs it gave
+
+`OP` lines come from a new test hook in `Db.putKvs`, called before each
+`dag.putKv`, and `valueNodeCreated`, which tells a noop from a delete
+that deleted. T(i) for the model is the P and D lines: what the record
+stores and the rerun applies. `OP N` is not part of it; the checker
+checks that the model's delete changes nothing there.
+
+### 2.7 What the checker compares (B2)
+
+A new program, `treecheck` (its own root file and `Check/Tree.lean`), so
+that `tracecheck` and its scripts stay as they are. For each `TX i` of a
+format 3 trace, with P the structure of the trace so far:
+
+* **C-T1**, the change: `Tree.exec` of the P and D operations, from P,
+  equals the trace's change, NEW and ADD lines, lists compared as they
+  stand: every node made with its id, level and kind, every entry.
+* **C-T2**, the klongs: each KN line equals the model's node, klong by
+  klong (sizes, bitmaps by index, the lone time klong of D4).
+* **C-T3**, the noops: at each `OP N`, the model's delete is a noop.
+* **C-T4**, the reads: each GET line is the model's `get`; each SCAN
+  line the model's `scan`; a reference map kept by the checker (key to
+  the list of its puts and deletes) gives the same answers as both.
+* **C-T5**, the touch: the TOUCH line is `touchOf`.
+* **C-T6**, the stated invariants that can be computed, on the model's
+  state after each transaction (section 6).
+* **C-T7**, `Tx.sorted` and `Key.wf` of each transaction; no error of
+  the model.
+
+A new script, `java/stress/treeconf.sh`, exports with `tree=1` and runs
+`treecheck`: `conformance.sh`'s small set, the draining configurations
+and UnlinkFuzz's workloads; one new step in `level2.sh` calls it. A
+difference is a finding (section 5).
+
+### 2.8 Where the planned changes land
+
+* **The last touch (024-07):** `touchOf`, one definition; the scheme
+  that chooses a step's keys is not in this model (D1 of 024-06).
+  **Done on 2026-11-11, 10:10**, when 024-07 was on main: `touchOf`
+  went from a scan of a key range to `pathFrom` over the transaction's
+  keys (30 lines of `Read.lean`), `Tx.touch` from two bounds to a list
+  of keys, and two trace lines went; nothing else of the model moved.
+* **The underfill fix (024-11), merges or other:** `deleteUpward`'s
+  stop rule and the step after it, where RC stands now; `halves` if the
+  fill rule changes. `dirtyNodeBound` with it. 024-11, section 5, states
+  the merge in this model's terms: its `fix` takes the place of the
+  steps after `climb` in `deleteUpward` (`collapseRoot` is its F1), its
+  `merge` is a new definition beside `takeBack`, its rule O is
+  `handleFullWith` unchanged, and its invariant V1 (at least m live
+  klongs) is a line more in `walk` beside `NonEmptyOK`. The checker and
+  `treetest` then run it as they run today's.
+* **A new record format, one rerun path:** nothing here, unless the
+  record stops storing what `Tx` holds. D4's rule goes if a node of one
+  time klong is no longer made.
+* **"The last operation wins" (024-10):** `normalize`, one definition.
+  **Done** with the merge of main at 10:10 (and `ruleFor` of TP25).
+  024-16 (one operation a key, strict: a transaction whose key
+  transformations make two keys one fails at the commit) needs no
+  change: the Dag gets one operation a key either way (`Tx.sorted`).
+* **Fixed limits of a transaction (024-17, in discussion):** `Limits`
+  (the most operations, the most segments of a key), `Tx.within`, and
+  TP26, which bounds `dirtyNodeBound` by the limits alone; a limit on
+  value sizes is not the tree's.
+
+### 2.9 Decisions taken here, and why
+
+* **D1 against a state of its own for the tree** (a map of klong
+  nodes): with its own state the tree would be a second model beside
+  the first, tied to it by a proof that does not exist. As an instance
+  of `Spec`, T1 to T12 wait only for C1.
+* **D2 against a tree on entries only:** the size of a node decides
+  every split, and entries do not give it in D4's case; index bitmaps
+  are what `Dag` computes with. Entries would be a model near Java's,
+  not Java's.
+* **Format 3 is opt-in** (`tree=1`) and `treecheck` a program of its
+  own: 024-09 changes `conformance.sh` and maybe the checker today;
+  new files merge without conflict. One step and one accepted version
+  number are the only shared lines.
+* **The proofs' form:** unproved statements are `def ... : Prop`, named
+  and listed in section 6; no `sorry`, no axiom.
+
+
+## 3. B0: the trace format 3
+
+Done; docs/trace-format.md, section 4, is its description.
+
+* **The exporter** (`java/stress/TraceExport.java`, property `tree=1`)
+  writes `TRACE 3`: format 2 and the lines TREE, BASE, OP, KN, GET and
+  SCAN (and, until 024-07 landed, RANGEF and RANGET, the bounds of a
+  touch's key range). Without `tree=1` a trace is format 2,
+  byte for byte as before: the reads of the GET and SCAN lines use a
+  generator of their own.
+* **One line of `src` changed:** `Db.putKvs` calls a new test hook,
+  `Db.TestHooks.kvApplied(key, value)`, before each `dag.putKv`; a
+  default method, so no other implementer changes. With
+  `valueNodeCreated` it tells a delete that deleted (`OP D`) from a noop
+  (`OP N`).
+* **T(i) for the model** is the P and D lines, the operations the record
+  stores and a rerun applies, in the order the Dag got them; and BASE,
+  the first id, the record's position plus 2 in model ids.
+* **KN lines** give every key node that T(i) made or gave an entry, as
+  its klongs: this is what makes the comparison exact (bitmaps by index,
+  sizes, the lone time klong), where the ADD lines give entries.
+* **Two workload shapes** of UnlinkFuzz in the exporter: `shape=fifo` and
+  `shape=long3` (keys of 1 to 5 segments with shared prefixes).
+* **`tracecheck` reads over the new lines** (8 cases in
+  `Check/Trace.lean`'s `parseLine`), so one trace serves both checkers.
+* **Differs from 2.6 as first written:** a klong on a KN line is two or
+  three tokens (`T t`, `K c y`, `B b`), not one; SCAN's form.
+
+
+## 4. B1: the tree in Lean
+
+### 4.1 The files
+
+| File in `lean/`          | Lines | What it has                                |
+|---|---|---|
+| SIS/Tree/Val.lean        | 63    | `BVal`, `bptrs`, `blive`, moved, unchanged |
+| SIS/Tree/Node.lean       | 380   | D2 to D5: klongs, levels, the searches,    |
+|                          |       | last version, halves, `klongsOf`, marker   |
+| SIS/Tree/Exec.lean       | 822   | the writer: put, splits, delete, UP, LE-b, |
+|                          |       | take-back, RC, the top node; `exec?`       |
+| SIS/Tree/Read.lean       | 278   | `get`, the scan's chain, `scan`, `touchOf` |
+| SIS/Tree/Spec.lean       | 70    | `exec`, `initStruct`, `treeSpec`,          |
+|                          |       | `normalize`, `Tx.sorted`                   |
+| SIS/Tree/Inv.lean        | 154   | the invariants as a walk, `faultsAt`       |
+| SIS/Tree/Props.lean      | 297   | TP1 to TP22 and TP25, `Prop` definitions   |
+| SIS/Tree/Bound.lean      | 211   | `dirtyNodeBound`, TP23                     |
+| SIS/Tree/Top.lean        | 82    | the skip pointers' search, TP24            |
+| SIS/Proof/TreeRoot.lean  | 169   | the proofs of TP17 and TP18                |
+| SIS/Proof/TreeInit.lean  | 171   | the proofs of TP13 (but `liveSub`) and of  |
+|                          |       | `RunPSame`                                 |
+| Check/Tree.lean          | 347   | format 3's lines; C-T1 to C-T8             |
+| Check/TreeRun.lean       | 92    | C-T9, the whole run                        |
+| TreeCheck.lean           | 153   | `lake exe treecheck`                       |
+| TreeTest.lean            | 372   | `lake exe treetest`: the small cases       |
+
+Each definition's comment names the Java method it restates. Where
+Java's loop has an order the fold has the same, and the steps that make
+a node id come in Java's order (D8).
+
+### 4.2 What differs from the design note
+
+* **D4**: rewritten above; the marker entry.
+* **The writer is a state monad** (`M`: a reader of the parameters, the
+  time and P@(i-1); the state `W`; an error text). `appendKlongs` recurs
+  on the depth in the key access path; the descents and root collapse
+  have a fuel, (G + 1)(H + 2) + 2, and end in a `bounds:` error past it.
+* **A new key node outside G and H is an error** (`bounds:`), so that a
+  run within reach has levels that meet A4 (D5), and "within reach" has a
+  definition (`Within`, section 6).
+* **`W.trail`** notes which rules ran, for the counts of 5.2; no rule
+  reads it.
+* **`scan` and `touchOf` have a fuel of 2^40 steps**, which no run
+  reaches: the scan's chain goes up and down, and no measure of the
+  model's P bounds it without a proof.
+* **The writer has no root in its view.** `runOps` and `touchOf` take
+  the top node of the root's last entry (`lastTop`) and give the writer
+  P@(i-1) without the root (`rootless`); a klong that names the root, a
+  top node or a value where a key node is due is a `corrupt:` error.
+  Java's writer starts at `TopDs.superRoot` the same way. This shape
+  makes `ExecRootOK` (TP17) a proof of twenty lines; before it, a view
+  with a klong to node 0 would have broken the statement.
+* **D6's search is modelled after all** (`Top.lean`,
+  `findSuperRootAt`), at a record's time and between two records; the
+  readers keep `topAt`, and TP24 says the two agree.
+
+### 4.3 The small cases, in Lean alone
+
+`lake exe treetest` (`java/stress/tree-tests.sh`; 10 min 57 s on one
+core for the exhaustive and random runs below). Keys: the empty key,
+keys of one segment, keys of two segments below a long first one.
+
+**Exhaustive:** every sequence of transactions to a depth, each one
+operation (a put or a delete of one of the keys) or, with "pairs", one
+or two operations on two keys; from the primordial structure, or from a
+tree that a prefix built (every key put: in one transaction, each in
+its own, or both). After every transaction: the invariants (`faultsAt`),
+pointers to nodes of P, every key's get at every time against the
+reference map, scans against it (from every key and from none, forward
+and backward, inclusive and not, and to every end key; at two times,
+with two limits), a noop delete, the skip pointers' search at every
+time, the bounds of TP21 and TP22, and for the first four transactions
+`exec` on P@(i-1) against `exec` on P.
+
+| M | Depth | Keys | Prefix          | Pairs | States  | Failures |
+|---|---|---|---|---|---|---|
+| 4 | 5     | 4    | none            | no    | 37,448  | 0        |
+| 6 | 5     | 4    | none            | no    | 37,448  | 0        |
+| 8 | 4     | 5    | none            | no    | 11,110  | 0        |
+| 4 | 4     | 6    | one transaction | no    | 22,620  | 0        |
+| 4 | 4     | 6    | one a key       | no    | 22,620  | 0        |
+| 6 | 4     | 7    | one a key       | no    | 41,370  | 0        |
+| 6 | 3     | 9    | both            | no    | 6,174   | 0        |
+| 8 | 3     | 12   | both            | no    | 14,424  | 0        |
+| 4 | 3     | 5    | one a key       | yes   | 127,550 | 0        |
+| 6 | 2     | 8    | both            | yes   | 16,512  | 0        |
+
+337,276 states. **Random:** 20 seeds of 150 transactions of up to 6
+operations on 14 keys at M = 8, normalized (`normalize`, with TP25's
+check): 3,000 states, 0 failures.
+
+* Node sizes 4 and 6 are not Java's; the rules are the same, and small
+  nodes reach splits, UP, LE-b, RC and the take-back within 3 or 4
+  steps. The run with pairs at M = 4: `up.takeback` 6,121 times,
+  `rc.takeback.space` 27,431, `leb.full` 49,273, `up.climb` 70,016,
+  `lone-time-klong` 48. The runs of the table reach 27 of the 28 rules
+  of 5.2's table; the one missing, `split.space2.inplace` (a segment
+  root made and split in one transaction), is reached once by a run
+  with pairs at M = 4, depth 2, from six keys (5,256 states, 0
+  failures), which joined the default set after the table's run.
+* At M = 4 the two prefixes "one transaction" and "one a key" reach the
+  same counts to the digit: a node of four klongs is full at every put,
+  so every changed node is a last version of one time klong, whatever
+  the times before. Checked by hand at depth 1; not a fault of the test.
+* A control: with LE-b's bitmap changed to delete the empty key's klongs
+  instead of the next child's, a run that does not reach `leb.newklong`
+  passes, and `treecheck` fails on the first trace (C-T1, C-T2). So a
+  pass of the small cases says only as much as their reach line, which
+  each run prints.
+
+**The whole model on the tree** (`treetest model`): `SIS.run` with
+`treeSpec`: the existing model's records, D and startup, with the
+tree's `exec`, on pseudo-random transactions made before the run (noop
+deletes among them). Checked on every transaction, with `tracecheck`'s
+own functions: `SpecOK` and `VirtInit` of R(0), `StepOK` with `VirtStep`
+(A2 to A5, ids, data nodes, R1 to R4), TREE, A6', A-COPY; that the
+model's run has the tree's P; and with BergDB's algorithm (marking,
+Java's still-dirty test, the startup pos two records back) **T1**,
+startup from the stream gives P and D (every tenth transaction and the
+last), and **T2**, the run with a restart after every third transaction
+appends the same records. A restart reruns the tree's `exec` from the P
+that startup rebuilt from the stream: A1 at work, markers included.
+
+| M | Seeds | Transactions | Keys | Failures | Time   |
+|---|---|---|---|---|---|
+| 4 | 10    | 40           | 8    | 0        | 6.9 s  |
+| 6 | 10    | 50           | 10   | 0        | 1.9 s  |
+| 8 | 10    | 60           | 12   | 0        | 2.1 s  |
+| 8 | 5     | 120          | 16   | 0        | 35.1 s |
+
+So the theorems' assumptions (TP13, TP14, TP16) and two of their
+conclusions hold on these runs of BergDB's tree in Lean, without Java.
+
+
+## 5. B2: the checker's results, and the differences found
+
+### 5.1 What is compared
+
+`lake exe treecheck TRACE`, for each `TX i` from Java's structure before
+it (P built from the trace's own NEW and ADD lines, so a difference does
+not carry over to later transactions):
+
+| Check | What                                                         |
+|---|---|
+| C-T1  | `Tree.exec` of the operations = the NEW and ADD lines, as    |
+|       | lists: ids, levels, kinds, entries                           |
+| C-T2  | each KN line = the model's node, klong by klong; and = the   |
+|       | klongs of the node's history (`klongsOf`, `entriesOf`)       |
+| C-T3  | `OP N` is a noop of the model, `OP D` is not                 |
+| C-T4  | each GET line = `get`; each SCAN line = `scan`; at each      |
+|       | GET's time the skip search finds `topAt`'s top node (TP24)   |
+| C-T5  | the TOUCH line = `touchOf`: the paths of the transaction's   |
+|       | keys (of RANGEF and RANGET, until 024-07 landed)             |
+| C-T6  | `faultsAt` finds no fault in Java's tree after T(i); every   |
+|       | pointer of an entry added names a node of P                  |
+| C-T7  | keys strictly increasing; keys as `Keys.toSegments` makes    |
+|       | them; no error of the model                                  |
+| C-T8  | key nodes marked by the change <= `dirtyNodeBound` before    |
+|       | it (TP23); nodes made within TP20's bound                    |
+| C-T9  | the model's own run from R(0) writes Java's records and      |
+|       | keeps Java's D (5.5)                                         |
+
+### 5.2 Results
+
+`java/stress/treeconf.sh all 5` on the clone's head (`0e02cbf0`), 31 s:
+
+| Set     | Traces | Transactions | Operations | Key nodes made | Taken back |
+|---|---|---|---|---|---|
+| small   | 35     | 3,550        | 20,129     | 10,158         | 9          |
+| drain   | 55     | 6,950        | 126,418    | 50,102         | 279        |
+| reclaim | 25     | 14,531       | 44,734     | 13,824         | 1          |
+| all     | 115    | 25,031       | 191,281    | 74,084         | 289        |
+
+* **Failures: 0 in every check**, C-T1 to C-T9; exporter errors 0.
+  (C-T9 from the same sets run again at `dd271920`, on one core, 122
+  s: 25,146 records of the model's own run, R(0) included, equal to
+  Java's; the other figures the same to the digit.)
+* Compared besides: 170,198 KN lines, 100,124 GET lines, 25,031 SCAN
+  lines, 572 touches (reclaim's steps; the traces have 305 cuts), 32,943
+  noops.
+* Node sizes 8, 14 and 30; up to 5 segments (G = 4) and height 6.
+* C-T8: 281,545 key nodes marked against a bound of 1,272,780, summed:
+  Java's bound holds on every transaction, with room of 4.5 times.
+
+How often each rule ran (the model's `trail`, on the model's run, which
+equals Java's):
+
+| Rule (the Lean name's place)          | small | drain  | reclaim |
+|---|---|---|---|
+| space split 1, node replaced          | 1,466 | 6,847  | 968     |
+| space split 1, in place               | 576   | 6,930  | 2       |
+| space split 2 (a segment root)        | 78    | 176    | 10      |
+| space split 2, in place (fault 12)    | 5     | 3      | 0       |
+| space split 3 (the space root)        | 91    | 345    | 80      |
+| space split 3, in place               | 9     | 9      | 0       |
+| time split 1                          | 5,089 | 13,416 | 10,677  |
+| time split 2 (the space root)         | 455   | 796    | 174     |
+| time split, in place                  | 1     | 15     | 0       |
+| a new top node                        | 546   | 1,148  | 254     |
+| the top node of tt, in place          | 9     | 175    | 0       |
+| a new segment leaf                    | 571   | 13,679 | 765     |
+| a bitmap, new klong                   | 899   | 20,624 | 3,963   |
+| a bitmap, the transaction's, in place | 13    | 6,009  | 40      |
+| a bitmap in a full node               | 383   | 3,734  | 1,053   |
+| UP: a climb                           | 344   | 14,721 | 558     |
+| UP: a node unlinked                   | 356   | 22,624 | 563     |
+| UP: a node taken back                 | 3     | 260    | 1       |
+| UP: the stop node a segment leaf      | 259   | 7,947  | 449     |
+| the space root kept, empty            | 0     | 116    | 0       |
+| LE-b: a new klong of the empty key    | 24    | 4,118  | 23      |
+| LE-b: in place                        | 2     | 940    | 0       |
+| LE-b: in a full node                  | 13    | 779    | 19      |
+| RC: the space root replaced           | 0     | 162    | 0       |
+| RC: a segment root replaced           | 13    | 40     | 0       |
+| RC: the space root taken back         | 0     | 11     | 0       |
+| RC: a segment root taken back         | 6     | 8      | 0       |
+| a lone time klong (D4)                | 0     | 31     | 0       |
+
+**The medium set** (`PAR=1 treeconf.sh medium 1` at `dd271920`, 991 s
+on one core, most of it the exports): `conformance.sh`'s three medium
+configurations and six larger draining ones, 9 traces, node sizes 8,
+14, 30 and 62, up to 5 segments and height 7.
+
+| Traces | Transactions | Operations | Key nodes made | Taken back | Touches |
+|---|---|---|---|---|---|
+| 9      | 4,544        | 245,931    | 74,312         | 15         | 75      |
+
+Failures: 0 in C-T1 to C-T9; 190,775 KN lines, 18,176 gets, 4,544
+scans; 4,553 records of the model's own run equal to Java's; 297,884
+key nodes marked against a bound of 936,409. The first runs at node
+size 62 (bitmaps of up to 62 bits) and the largest transactions (200
+operations).
+
+**After the merges** (`treeconf.sh all 5` at `d90586d0`, 101 s with
+two traces at a time): the same 115 configurations and seeds on main's
+code with 024-07, 024-10 and 024-09. TREECONF OK, 0 failures in C-T1 to
+C-T9.
+
+| Set     | Traces | Transactions | Operations | Key nodes made | Taken back |
+|---|---|---|---|---|---|
+| small   | 35     | 3,550        | 20,129     | 10,158         | 9          |
+| drain   | 55     | 6,950        | 126,418    | 49,957         | 282        |
+| reclaim | 25     | 14,669       | 45,949     | 14,038         | 0          |
+| all     | 115    | 25,169       | 192,496    | 74,153         | 291        |
+
+* 25,284 records of the model's own run equal to Java's; 624 touches,
+  each the paths of the step's own keys (`touchOf` since 024-07).
+* The small set's figures are the earlier ones to the digit. The drain
+  set's differ a little: its fifo workloads put a key and delete it in
+  one transaction, and since 024-10 the delete, the later call, wins.
+  The reclaim set's differ as 024-07 changed what a step makes dirty.
+
+This answers 024-06, section 4.4, point 3, for the small set: its
+traces reach UP and LE-b, the take-back 9 times in 35 traces (3 by the
+climb, 6 by RC), and never RC of the space root. The drain set reaches
+every rule.
+
+### 5.3 Differences found
+
+* **F1, the model's, fixed.** T(1) of the first trace: Java's primordial
+  key node is `[T 0]` (`KeyNode.nodeWithTime`) and keeps that klong in
+  front (`[T 0, T 1, K, K]`); the model read the node from its history
+  as `[T 1, K, K]`, one klong smaller, and so split one put later (T(2):
+  "Java has 440/1/I, the model nothing more"). The design note's D4 had
+  the rule wrong on both counts. Fixed by the marker entry (D4 as it
+  stands). After it: no difference in any run.
+* **F2, the model's, fixed** (11:56, the gate after the merges). The
+  new check of TP26 failed on the 20 traces whose workload has
+  transactions without operations (`empty=`): "dirtyNodeBound 1, the
+  limits allow 0", 546 times. The Lean restatement of
+  `Dag.dirtyNodeBound` walked the space root before its loop over the
+  keys; Java walks it inside the loop, so a transaction without
+  operations has the bound 0. One line of `Bound.lean`. TP23's check
+  could not see it (a bound that is one too large still bounds); a
+  statement in the other direction did. Java's count is not compared
+  with the model's number in any trace: a line for it would be format
+  3's next addition.
+* **No difference of Java's.** Nothing was written to `news.md`.
+
+Controls of the checker, on a trace of the drain set changed by hand:
+an `OP D` told as `OP N` fails C-T3; one bit of a bitmap on a KN line
+fails C-T2 twice; a GET answer fails C-T4; a NEW line's level fails the
+transaction. With LE-b's rule changed in the model: C-T1 and C-T2 fail.
+
+### 5.4 What the model had to copy, and looks unintended in Java
+
+Not faults: none changes an answer or the stream's meaning. Each is a
+place where the Lean definition is odd because Java is.
+
+* **O1. A wasted klong.** The primordial key node, and a space root
+  that a delete emptied through a time split, are a time klong alone,
+  and keep it: such a node holds one klong fewer than M for as long as
+  it lives (D4). 31 nodes in the drain set. Changing it changes the
+  bytes written, so it belongs with a record format change, if at all.
+* **O2. `KeyNode.searchEq` skips klongs "deleted by the bitmap so far"**
+  (`if ((deleteBitmap & DELETE_BITS[index]) != 0) continue`): a bitmap
+  only has bits of klongs before it, so the test is never true. The
+  model's fold has it too, to be literal.
+* **O3. `KeyNode.searchFirst` keeps the first klong of the smallest
+  compare value** (its test is `<`), where the five others keep the
+  last, the current one. No code calls it but one test
+  (`KeyNodeTester`); if it were used for a key that was overwritten in
+  its node it would give the old pointer.
+* **O4. `GetMany.Chain.setup`'s start segment "after the start key's
+  last"** (`forward ? Long.MAX_VALUE : -1`) is not reached for a key
+  that `Keys.toSegments` makes: such a key's last segment is short, so a
+  long klong differs from it and `hasDiff` is set first.
+* **O5. `Dag.setNode` gives `appendKlongs` a depth that is not the
+  node's** when the segment root is a leaf it has just made (the new
+  node is not on the key access path): harmless, as a new node has room
+  and the depth is read only for a full one.
+
+### 5.5 The whole run: the model alone writes Java's records (C-T9)
+
+Added 08:38 (`lean/Check/TreeRun.lean`, on by default in `treecheck`;
+`--norun` leaves it out). C-T1 to C-T8 start each transaction from
+Java's structure. C-T9 never takes Java's state: it runs the model's own
+`init` and `step` (SIS/Algorithm.lean: marking, Java's still-dirty test,
+the virtual root) with the tree's `exec` for every change, from R(0) to
+the trace's end, and compares each record the model writes, and D after
+it, with Java's.
+
+* **What the model is given of Java's run:** each transaction's
+  operations, the id of its first node, the startup pos that Java chose
+  (the take is not the tree's) and the first available time.
+* **What must then be the model's own:** every node and entry (the
+  model's P is never corrected), every version written with its whole
+  history and its references, gd, top, and D.
+* **How the records are compared:** `tracecheck`'s `diffRecord`. A
+  version of Java's of a node with the marker (D4) gets the marker
+  entry first; nothing else is adjusted. R(0)'s structure must be the
+  model's `initStruct`.
+* **Result** (`treeconf.sh all 5` at `dd271920`): on all 115 traces,
+  25,146 records, every record and every D equal: small 3,585, drain
+  7,005, reclaim 14,556 (reclaim's steps with their touches, table
+  stores, and Java's cuts: the model's stream is not cut, and T12 says
+  the records are the same).
+* **Controls**, on a drain trace changed by hand: one reference of one
+  version (an F line), one id less on a GD line, one compare value on
+  an H line, one node less on a DIRTY line: each fails C-T9 at that
+  record, and at no other, as the model's run does not follow Java's.
+
+So "C-S covers the tree" (024-06, B2) holds in the stronger form: the
+Lean model, tree and stream together, is a second implementation of
+the Core's writer that agrees with Java record by record on these runs.
+`tracecheck` itself is unchanged and still takes each change from the
+trace; its other checks (C-L, C-CUT, C-P, C-H, C-R) do not use `exec`.
+
+### 5.6 What these checks do not do
+
+* **Not compared:** `Kvt.time` of a scan's result; the bytes; anything
+  of 2.4's table. The take: C-T9 takes Java's startup pos, as
+  `tracecheck`'s C-S does.
+* **Restarts:** format 3's lines are run A's. That a rerun gives the
+  same change is `tracecheck`'s C-R on Java, and A1 for the model: its
+  `exec` is a function of P@(i-1). `treetest`'s `model` runs (4.3)
+  restart the model itself.
+* **Size:** the traces are small or medium (up to 979 transactions and
+  200 operations a transaction, node sizes 8 to 62); `treeconf.sh
+  large` (up to 5,000 transactions) is written, not run.
+* **`tracecheck` on format 3:** it reads over the tree lines (tried on
+  one trace: TRACECHECK OK); `conformance.sh` still exports format 2.
+
+
+## 6. The stated properties
+
+`lean/SIS/Tree/Props.lean`, `Bound.lean` and `Top.lean`: each a `def
+... : Prop`. Proved, as they fell out: TP17 and TP18
+(`lean/SIS/Proof/TreeRoot.lean`: `execRootOKTree`, `virtLiveOKTree`),
+`RunPSame` of TP19, and TP13 but for one field (`TreeInit.lean`:
+`runPSame`; `specOKTree_of_liveSub`, which takes `SpecOK.liveSub`, a
+property of `blive` alone, as a hypothesis; since the merge with 024-09
+`lean/Check/TreeLive.lean` closes it with that branch's `blive_sub`:
+`specOKTree`). The others are not proved. `Within p ts` is a run within reach: every transaction
+sorted and with keys as `Keys.toSegments` makes them, no step with an
+error, each base above the ids in use. "Run" below says which are
+computed on runs: T, by `treecheck` on Java's tree after every traced
+transaction; S, by `treetest` on the small cases.
+
+| TP | Name                 | What it says                                | Run  |
+|---|---|---|---|
+| 1  | `KlongsRoundTrip`    | well-formed klongs are those of their       | T    |
+|    |                      | entries: D3 and D4 lose nothing             |      |
+| 2  | `LeftmostOK`         | LE-b: an inner node's smallest live klong   | T, S |
+|    |                      | is the empty key's                          |      |
+| 3  | `NonEmptyOK`         | what UP leaves: a live klong in every node  | T, S |
+|    |                      | but the space root                          |      |
+| 4  | `PointersOK`         | every entry's pointee is a node of P: no    | T, S |
+|    |                      | klong names a node taken back               |      |
+| 5  | `SizeOK`             | a key node has at most M klongs             | T, S |
+| 6  | `InvOK`              | all of `walk`'s: 2, 3, 5, the order         | T, S |
+|    |                      | (`RangeOK`), what RC leaves (`RootsOK`),    |      |
+|    |                      | the kinds of children, well-formed klongs   |      |
+| 7  | `InvPreserved`       | 6 and 4 after every run within reach, at    | T, S |
+|    |                      | every time                                  |      |
+| 8  | `NoBug`              | a sorted transaction ends in no error but   | T, S |
+|    |                      | the level bounds: Java's `Bug`s are dead    |      |
+| 9  | `SearchEqSpec`       | `searchEq` is a lookup in the live klongs   |      |
+| 10 | `GetOK`              | a multiversion map: a get at t gives the    | T, S |
+|    |                      | last put at or before t, unless deleted     |      |
+| 11 | `ScanOK`             | a scan at t gives the map's KVs in range,   | T, S |
+|    |                      | in order, both ways, with the end key       |      |
+| 12 | `NoopOK`             | a delete without a value changes nothing    | T, S |
+| 13 | `SpecOKTree`         | `SpecOK`, `VirtInit` of `treeSpec`          | PROVED |
+| 14 | `RunOKTree`          | `RunOK`: A2 to A5, ids, data nodes,         | (T), S |
+|    |                      | `VirtStep`, the touch's rules               |      |
+| 15 | `PhysRunOKTree`      | `PhysStep`: `liveNew`, `adopt`              |      |
+| 16 | `EvictRunOKTree`     | TREE, A6', A-COPY                           | (T), S |
+| 17 | `ExecRootOKTree`     | `exec` sees the root by its live children   | PROVED |
+| 18 | `VirtLiveOKTree`     | the root's live children: its last entry's  | PROVED |
+| 19 | `ExecReadsReachable` | `exec` on P@(i-1) = `exec` on P; with       | S    |
+|    | and `RunPSame`       | `treeRun` = the P of `SIS.run` (PROVED)     |      |
+| 20 | `MadeBound`          | nodes made <= operations x (4 x the         | T    |
+|    |                      | longest path + 1) + 1: aim 2, first form    |      |
+| 21 | `DeletedNoNode`      | key nodes reachable at t <= 1 + live keys   | S    |
+|    |                      | x the longest path: aim 3, first form       |      |
+| 22 | `KlongBound`         | klongs reachable at t <= M x that           | S    |
+| 23 | `DirtyBoundOK`       | key nodes marked <= `dirtyNodeBound`: C3    | T    |
+| 24 | `SkipSearchOK`       | the skip pointers' search finds the top     | T, S |
+|    |                      | node of a time (`topAt`)                    |      |
+| 25 | `NormalizeOK`        | `normalize`: one operation a key, in key    | S    |
+|    |                      | order, the builder's rule for each key      |      |
+| 26 | `DirtyBoundFromLimits` | `dirtyNodeBound` <= operations x (8 x     | T    |
+|    |                      | segments x (H + 2) + 2), for a transaction  |      |
+|    |                      | within limits (024-17): with 23, the user's |      |
+|    |                      | limits bound the index nodes of a record    |      |
+| 27 | `DataBelowOK`        | I2 of 024-07, T-COVER's second premise:     | (T)  |
+|    |                      | every index node reachable at e has a value |      |
+|    |                      | below it, when a key has a value at e       |      |
+
+(T) for 27: `tracecheck`'s CUT-live checks it at every cut of a trace
+(024-07), and C-T6 checks what it follows from, `NonEmptyOK` and
+`KindsOK`, after every transaction. (T) for 14 and 16: `tracecheck`'s
+C-A checks them on the trace's change, which C-T1 shows to be the
+tree's. S for 14 and 16: `treetest
+model` (4.3) checks them on the tree's own runs.
+
+How hard each proof looks:
+
+* **Done:** 18 (a fold over entries of one kind: `blive` of a history
+  of top entries is its last entry's top node), 17 (from 18, and from
+  the writer's view having no root, 4.2), 13 but `liveSub` (three
+  nodes, with the levels' inequalities), `RunPSame` (an induction over
+  the run). About 340 lines of proofs, each at the first to third try.
+* **Small, a day or less each:** 9 (two folds over one list), 5 given
+  7, 25's first half (a merge sort is sorted; `keyLt` is a strict
+  order).
+* **Medium, days:** 1 (two folds that must agree on the bitmaps' bits;
+  the invariant is `klongsWf`), 12 (from 10), 19 (every node the writer
+  reads is named by a klong live at i-1, by 9), 20 (one case a split),
+  21 and 22 (from 3, 5 and 10), 15 (024-09's A2, on its branch, proves
+  that `PhysRunOK` follows from `RunOK` and TREE, with a property of
+  `blive` that it proves too; so 15 follows from 14 and 16).
+* **Large, the B-tree proof:** 7 with 8 and 4. Every rule of 5.2's
+  table keeps the order, LE-b, a live klong in each node and no klong to
+  a node taken back; `Bug` is what 7 excludes. The time splits and the
+  in-place cases double the cases; 16 follows from 7's order (one live
+  parent). A guess as 024-06's: one to two weeks of agent work at the
+  highest effort, uncertain.
+* **Medium, on top of 7:** 27, I2 (Frans, 10:21: the cut's safety
+  rests on it since 024-07). It is `deleteUpward`'s property: a delete
+  that empties a node unlinks it, up to the first node that keeps a live
+  klong, so every reachable key node but the space root has a live klong
+  (TP3); a segment leaf's live klong names a value or the next
+  segment's tree, which is not empty either; so by induction on the
+  level every key node's subtree ends in a value, and the top node has
+  the space root below it. The proof needs TP3 and `KindsOK` from TP7,
+  and that `blive`'s live children are `liveAt`'s (as TP9). It is
+  stated in `T_cover`'s own words, on `treeRun p (ts.take e)`, so that
+  with `RunPSame` (proved) it is that theorem's premise for `treeSpec`.
+  **Its exception is real:** with no key at e the tree is an empty space
+  root under its top node (`EmptyTreeOK`), and those two have no value
+  below them. With reclaim on, its settings key always has a value, so
+  a cut never meets that case; a database whose user deletes every key
+  with reclaim off has no cut.
+* **Medium, with 23:** 26 (Java's count term by term: the nodes walked
+  are at most the operations times the path, and each klong counted
+  adds at most a split's share).
+* **Medium, of its own:** 24 (the skip list: a top node's skip pointer
+  i names the top node 2^i ordinals back or the one it inherited; the
+  search is a binary descent).
+* **Large, on top of 7:** 10 and 11 (the map: 7 at every time, and that
+  a node's klongs before a time never change; the scan's chain has an
+  invariant of its own), 14 (A2, A3 and A5 are statements about
+  reachability after each rule; R4 is the skip list's closure), 23
+  (Java's count was wrong three times, 024-01, LM2; the proof follows
+  the count's cases).
+
+`NoDeadKlongsAim` is in the file and is not a property of 2026.4's
+tree: no dead klong in a reachable node. False today (024-05, ST4); it
+is what "a deleted KV costs nothing, eventually" asks of a klong, where
+21 says it of a node. 22 is what holds instead.
+
+Not stated yet: the five other searches' specifications (as 9); the
+levels' formula against A4 alone.
+
+
+### 6.1 The touch after 024-07: what the model says about removing it
+
+For the later question (the coordinator, 10:23: a reclaim step as a
+plain transaction). By reading the definitions; nothing run for it.
+
+* **Where the touch enters.** The tree's `exec` computes
+  `Changes.touch` and never uses it: it changes no node and no id. In
+  `step` it enters step 3 only: got dirty = the index nodes not in D on
+  the access path of the change (`markOf`: reachable at i with a
+  changed node at or below them), and the touched index nodes not in D
+  that the first set lacks (`touchOf` of SIS/Algorithm.lean).
+* **What it adds for a step.** A step's operations are puts (the
+  rewrites, its row), and a put changes its key's segment leaf. So
+  every node of a key's path that is still reachable after the
+  transaction has a changed node below it, and step 3 marks it without
+  the touch. The touch is the paths before the puts. So what it adds is
+  exactly **the nodes of those paths that the step itself replaces**: a
+  node that one of its puts splits, and the old top node when the space
+  root is replaced. With the touch they enter D at i and are written
+  once more, though no lookup at i or later reaches them ("stays dirty
+  also if the puts then replace it", `Trans.touch`'s comment); without
+  it they leave D as after a user transaction's split.
+* **The cut does not need it.** `T_cover` and `T_latest` have two
+  premises, the data nodes at c or later (the rewrites) and I2 (TP27),
+  and none about a touch; they speak of the nodes reachable at the
+  iteration's end, and a node replaced before it is reachable only at
+  times that the cut makes unavailable.
+* **What it gives besides**, outside the model: Java knows a step's
+  dirtied nodes and bytes before the step's row is put
+  (`Trans.dirtiedNodes`, `dirtiedBytes`, the pacing's charge). A plain
+  transaction would count after its puts, or charge the next step.
+* **To do before removing it:** the second point as a check in
+  `treecheck` on the reclaim traces (C-T5 has both sets: a touched node
+  still reachable at i is marked) and as a stated property; then the
+  records change (gd, D, the versions of replaced nodes), so C-T9 and
+  `tracecheck` say at once whether the model without the touch is
+  Java without it.
+
+
+### 6.2 Frans's decisions of 2026-11-11 that touch the model
+
+From the coordinator's messages (10:08, 10:23, 11:25); no work done for
+them here but where it says so.
+
+* **One operation a key is strict** (024-16): a transaction whose key
+  transformations make two keys one fails at the commit. The model's
+  `Within` asks `Tx.sorted` of every transaction already; `normalize`
+  is the builder's rule for the calls as written (done: 2.8).
+* **A key is at most 256 bytes** (024-17): 37 segments. Then G, the
+  largest segment index, is at most 36 for every run: a constant of
+  BergDB, where it is the run's bound today (D5). H stays a bound of the
+  run. `Limits.maxSegs` (TP26) is 37 under it.
+* **Fixed limits of a transaction** (024-17, in discussion): TP26 has
+  the form asked for: the limits as hypotheses, the bound a function of
+  them, M and H.
+* **I2 is the tree's property** (10:21): TP27, stated (done).
+* **`LiveAppend` will take `PhysRunOK`'s place in the trusted
+  statements**, in a commit of its own after this branch lands: TP15
+  then asks `LiveAppend` of `treeSpec`, a property of `blive` alone,
+  which 024-09's `blive_append` proves; TP15 becomes a proved line as
+  TP13 did.
+* **The gates will require A6, not A6'**: TP16's A6' becomes A6 (no
+  pointer of a reachable node to a reachable node that is not its live
+  child, even below it). For the tree this is fault 12's fix (a segment
+  root made and split in one transaction: the leaf's klong is pointed
+  to the new root in place). `treetest model` checks A6' today
+  (`adoptFailures`' first list); for A6 it must ask its second list
+  empty too. Not changed here.
+* **The touch may go altogether, later**: 6.1.
+
+
+## 7. Gates
+
+**On the head to land, `d90586d0`** (main `0016b9a5`, code `379d8acf`,
+merged in; one slot a run, two traces at a time):
+
+| Gate                            | Result                                |
+|---|---|
+| `cd lean && lake build`         | completed; `treetest` built too       |
+| grep in the tree's Lean files   | no unproved theorem, nothing assumed  |
+| `java/before-commit.sh`         | BEFORE COMMIT OK (105 s), `e52ed151`  |
+| `treeconf.sh all 5`             | TREECONF OK, 115 traces, C-T1 to C-T9 |
+| `java/stress/level2.sh` full    | LEVEL 2 OK (18 min)                   |
+| its step 8, `treeconf.sh`       | 195 traces, 29,794 transactions, OK   |
+| its step 7, `conformance.sh`    | small: 70 traces, TRACECHECK OK;      |
+|                                 | drain (024-09's): 50 traces, OK       |
+
+* `before-commit.sh` ran on `e52ed151`, the merge commit; `d90586d0`
+  differs from it by one line of `lean/SIS/Tree/Bound.lean` (F2), so no
+  Java file changed after it.
+* `level2.sh`'s step 8 at full size: `small` 70 traces (7,100
+  transactions), `drain` 110 traces (13,900 transactions, 251,431
+  operations, 554 nodes taken back), `reclaim` 15 traces (8,794
+  transactions, 369 touches). Its step 7 has 024-09's draining
+  A2A3Check2 configurations and `conformance.sh drain` (1,366 nodes
+  taken back in its 50 traces).
+* Not run on this head: level1, level3 and level4 (the integration
+  agent runs level1 and level3 on it before it lands); `treetest`'s
+  whole set (run on `15d04e1c`, 340,276 states; on the head a `model`
+  run and a random run); `treeconf.sh medium` (run on `dd271920`, 9
+  traces to node size 62, OK); `tree-tests.sh` as a script; `night.sh`.
+
+**Before the merges**, on this branch's own commits:
+
+| Gate                            | Result                                | On         |
+|---|---|---|
+| `java/before-commit.sh`         | BEFORE COMMIT OK (262 s)              | `0e02cbf0` |
+| `java/stress/level2.sh` full    | LEVEL 2 OK (11 min)                   | `0e02cbf0` |
+| `treeconf.sh all 5`, one core   | TREECONF OK, 115 traces, C-T1 to C-T9 | `dd271920` |
+| `treeconf.sh medium 1`, one core| TREECONF OK, 9 traces, C-T1 to C-T9   | `dd271920` |
+| `lake exe treetest`             | TREETEST OK, 340,276 states           | `15d04e1c` |
+| `treetest model`, four sizes    | 35 runs, 0 failures                   | `dd271920` |
+
+
+## 8. Log
+
+2026-11-11. 07:27, started (agent "tree" of coord-1111). Read 024-04,
+024-06, docs/levels.md, docs/trace-format.md, `Klong`, `KeyNode`, `Dag`,
+`TopDs`, `PutData`, `KeyAccessPath`, `GetMany`, `Db.putKvs` and its
+listeners, `TraceExport`, `lean/SIS/Basic.lean`, `Assumptions.lean`,
+`Algorithm.lean`, `lean/Check/Trace.lean`. Clone made. 07:36, the
+design note (section 2).
+
+07:37 to 07:52. B0 in `TraceExport` and `Db`; the clone's `lean/.lake`
+copied from the main tree's, so that `lake build` is incremental;
+`Node.lean`, `Exec.lean`, `Read.lean` (get), the checker. First run:
+F1. With the marker: the first trace passes; then `treeconf.sh small`
+and `drain`, all traces.
+
+07:53 to 07:54. **A mistake:** the lock's owner changed to touch's
+timing hold at 07:53:12, and I ran a lake build, `treeconf.sh drain` and
+`small` and four checker runs from 07:53:40 to 07:54:25 without reading
+the owner again: about 25 s on 4 to 5 cores inside a timing
+measurement. Told the coordinator at once. From then to 08:06 nothing
+of mine ran: the scan, the touch, `Spec.lean`, `Inv.lean`, `Props.lean`,
+`Bound.lean` and `TreeTest.lean` were written without a compile.
+
+08:06 to 08:17, with the lock: `before-commit.sh` (OK), the compile of
+what was written (six small errors of form, no error of content: the
+scan, the touch, the invariants and the bound passed on their first
+run), `treeconf.sh all 5`, the small cases, the commit `0e02cbf0`.
+**A second mistake:** I kept the lock between `before-commit.sh` and
+`level2.sh` while I edited and ran small things, 11 minutes in which
+touch and cc waited; the coordinator said so at 08:18. `level2.sh`
+released it when it ended, 08:28:34, LEVEL 2 OK.
+
+08:18 to 08:31, without the lock (the item's text while `level2.sh`
+ran; then single-file compiles on one core): the skip pointers' search
+(`Top.lean`); the writer's view without the root; transactions of two
+operations in `treetest`; the checks of TP20, TP21, TP22 and TP24; the
+proofs of TP18 and TP17 (`SIS/Proof/TreeRoot.lean`), which compiled at
+the third try; lean/README.md and docs/levels.md.
+
+08:32 to 08:47, without the lock, one core: `treetest`'s whole set (10
+min 57 s; 340,276 states, 0 failures); meanwhile, by single-file
+compiles: the whole run, C-T9 (`Check/TreeRun.lean`), which passed on
+the first trace and then on all 115; `treetest model`, the existing
+model's assumptions, T1 and T2 on the tree alone; the proofs of TP13
+(but `liveSub`) and `RunPSame`, each at the first try; TP25;
+`tree-tests.sh` and its night step; `treeconf.sh medium` and `large`.
+Commit `dd271920`.
+
+08:47 to 09:05: `treeconf.sh medium 1` on one core (991 s, OK). 08:50,
+the coordinator: usage is tight; gate, write up, stop; no proofs, no
+merge of 024-11. 09:31 to 09:35: Frans approved landing this branch
+after 024-07 and with 024-09; the queued `level2.sh` run was cancelled;
+the adaptation to 024-07 was prepared as a script by reading its
+branch.
+
+10:08 to 10:30: 024-07 on main. Merged (one conflict, `Db.TestHooks`);
+the touch as the paths of the transaction's keys, `normalize` as "the
+last operation wins" (024-10), TP26 for 024-17's limits, TP27 for I2
+(the coordinator, 10:23); `lake build` and a reclaim trace with the new
+touch passed. The gates then waited for a slot until main moved again.
+
+11:25 to 12:24: 024-09 on main. Committed the first merge
+(`5b6843cf`), merged again (two conflicts, by the merge notes), closed
+TP13 with 024-09's `blive_sub`. Gates, one slot a run: `lake build`,
+`before-commit.sh`, the commit `e52ed151`, `treeconf.sh all 5`: F2,
+fixed in one line (`d90586d0`); then `lake build`, `treeconf.sh all 5`
+and `level2.sh` full passed (12:03 to 12:23).
+
+
+## 9. State
+
+Written 2026-11-11, 12:24. Nothing of this subitem is running; no slot
+is held.
+
+* **The head to land:** `d90586d0` on `024-12-tree-model`, in
+  `/Users/f/fl/bench/2026-11-11/tree/clone`, working tree clean. Its
+  commits: `0e02cbf0`, `15d04e1c`, `dd271920` (this subitem's work,
+  sections 3 to 6), `5b6843cf` (the merge of main with 024-07, 024-10
+  and 024-13, with the adaptation of the touch, `normalize`, TP26 and
+  TP27), `e52ed151` (the merge of main with 024-09, code `379d8acf`;
+  TP13 closed), `d90586d0` (F2). Gates: section 7. The integration
+  agent runs level1 and level3 on it, and the coordinator lands it.
+* **Not run on the head:** level1, level3, level4; `treetest`'s whole
+  set; `treeconf.sh medium` and `large`; `tree-tests.sh` as a script;
+  `night.sh` (its new step `tree-tests` is one line after
+  `lean-tests`).
+* **Small things left in the files:** `treetest model` checks A6', not
+  A6 (6.2); `conformance.sh` exports format 2, `treeconf.sh` format 3:
+  one export could serve both checkers.
+* **Dropped, for later:** a workload `shape=bytes` for `TraceExport`
+  (keys of raw bytes through `Trans.Builder.put(long[], ...)`: the
+  empty key, keys of exactly 7, 14 and 21 bytes, the bytes 0x00 and
+  0xff, keys that are prefixes of keys). The traces' keys are all text
+  (`/k/12`); `treetest` has the empty key and a key of 7 bytes with an
+  empty last segment, Java against the model has not. Written and
+  reverted unbuilt at 08:50.
+* **Next, in order** (2 to 4 wait for Frans's pacing):
+  1. After it lands: the commit that names `LiveAppend` in place of
+     `PhysRunOK` makes TP15 a proved line (6.2); `treetest model` for
+     A6.
+  2. `shape=bytes`, `treeconf.sh large`, and a trace line with Java's
+     own `dirtyNodeBound`, so that the model's number is compared (F2).
+  3. The proofs, in section 6's order: TP9 and TP1 first (small, and
+     the base of the rest), then TP7 with TP8 and TP4, then TP27 (I2).
+  4. 024-11's merge in `deleteUpward` (2.8), then its invariant V1 in
+     `walk`; the checker and `treetest` run it as they are.
+  5. The touch removed altogether (6.1): its check first.
+* **To continue:** `cd clone/java && ./build.sh && stress/treeconf.sh
+  all 5` (a slot; `PAR=1` for one core); `cd ../lean && lake build &&
+  lake build treetest && .lake/build/bin/treetest`. The Lean files name
+  the Java method each definition restates; section 2 is the design,
+  6.2 Frans's decisions of the day that touch the model.
