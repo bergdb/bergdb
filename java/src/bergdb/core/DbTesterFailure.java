@@ -1162,9 +1162,7 @@ public class DbTesterFailure {
             cause = StreamFormatException.class;
         } else {
             Bytes.intToBytesLE(-1, node, 20);
-            final int sum = NodeChecksum.sumWithZeroReplace(node, 0, node.length, 6);
-            node[6] = (byte) sum;
-            node[7] = (byte) (sum >>> 8);
+            NodeChecksum.set(node, 0, node.length);
             cause = StreamFormatException.class;
         }
         s.patchAt = vpos;
@@ -1883,9 +1881,7 @@ public class DbTesterFailure {
                     && bergdb.common.Bytes.bytesToIntLE(dest, destOffset) == length) {
                 dest[destOffset + 17] = (byte) 0xff;      // the count, bytes 17 and 18
                 dest[destOffset + 18] = (byte) 0x7f;
-                int sum = NodeChecksum.sumWithZeroReplace(dest, destOffset, length,
-                        destOffset + 6);
-                bergdb.common.Bytes.ushortToBytesLE(sum, dest, destOffset + 6);
+                NodeChecksum.set(dest, destOffset, length);
                 damaged++;
             }
         }

@@ -859,7 +859,8 @@ public class CorruptStreamTester {
             if (off < node[0] + node[1]) {
                 int o2 = off - node[0];
                 return in + "node at offset " + node[0] + " of size " + node[1] + ", its byte "
-                        + o2 + (o2 < 4 ? " (size)" : o2 == 6 || o2 == 7 ? " (checksum)" : "");
+                        + o2 + (o2 < 4 ? " (size)" : o2 >= NodeChecksum.OFFSET
+                                && o2 < NodeChecksum.HEADER_SIZE ? " (checksum)" : "");
             }
         }
         if (off < rec.endMarker + 4) return in + "node end marker";
@@ -1008,8 +1009,8 @@ public class CorruptStreamTester {
     }
 
     /**
-     * A node's bytes changed and its checksum made right (Fletcher-16, NodeChecksum): each
-     * byte up to 'maxOffset' xor each mask, and each 4-byte field set to 'values'.
+     * A node's bytes changed and its checksum made right (CRC32C, NodeChecksum): each byte
+     * up to 'maxOffset' xor each mask, and each 4-byte field set to 'values'.
      */
     static void nodeFields(Original o, Record rec, int maxOffset, int[] masks, int[] values,
             List<Copy> out) {
@@ -1017,7 +1018,7 @@ public class CorruptStreamTester {
             int start = node[0];
             int size = node[1];
             for (int i = 0; i < Math.min(size, maxOffset); i++) {
-                if (i == 6 || i == 7) {
+                if (i >= NodeChecksum.OFFSET && i < NodeChecksum.HEADER_SIZE) {
                     continue;   // the checksum
                 }
                 for (int mask : masks) {
@@ -1027,8 +1028,8 @@ public class CorruptStreamTester {
                 }
             }
             for (int i = 0; i + 4 <= Math.min(size, maxOffset); i += 4) {
-                if (i == 4) {
-                    continue;   // type, format and checksum
+                if (i == 4 || i == NodeChecksum.OFFSET) {
+                    continue;   // type, format and zero bytes; the checksum
                 }
                 for (int v : values) {
                     byte[] nb = Arrays.copyOfRange(rec.bytes, start, start + size);
@@ -1041,7 +1042,7 @@ public class CorruptStreamTester {
     }
 
     private static Copy nodeCopy(Original o, Record rec, int[] node, byte[] nb, String what) {
-        Bytes.ushortToBytesLE(NodeChecksum.sumWithZeroReplace(nb, 0, nb.length, 6), nb, 6);
+        NodeChecksum.set(nb, 0, nb.length);
         return patched(o, "node", what + ", checksum right, of the node at offset " + node[0]
                 + " (size " + node[1] + ", type " + nb[4] + ") of the record at " + rec.tpos,
                 rec, node[0], nb, null);

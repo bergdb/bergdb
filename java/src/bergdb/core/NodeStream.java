@@ -304,12 +304,18 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
     }
 
     private static void checkChecksum(long spos, byte[] buffer, int offset, int size, byte nodeType) {
-        int computedSum = NodeChecksum.sumWithZeroReplace(buffer, offset, size, offset + 6);
-        int storedSum = Bytes.bytesToUShortLE(buffer, offset + 6);
+        // A node holds at least its header, with the checksum (bergdb 024-25).
+        if (size < NodeChecksum.HEADER_SIZE) {
+            throw new StreamFormatException("Bad node size, " + size + ", at spos " + spos
+                    + ": less than a node's header.");
+        }
+        int computedSum = NodeChecksum.sum(buffer, offset, size);
+        int storedSum = NodeChecksum.stored(buffer, offset);
         
         if (computedSum != storedSum) {
             throw new StreamChecksumException("spos: " + spos + ", storedSum: "
-                    + storedSum + ", computedSum: " + computedSum + ", nodeType: " + nodeType);
+                    + Integer.toUnsignedString(storedSum) + ", computedSum: "
+                    + Integer.toUnsignedString(computedSum) + ", nodeType: " + nodeType);
         }
     }
     

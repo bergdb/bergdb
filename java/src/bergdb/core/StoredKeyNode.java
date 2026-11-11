@@ -17,6 +17,13 @@ import bergdb.storage.VersioningStreamException;
  * This class is responsible for how to store a KeyNode in the stream. Serialization/deserialization
  * and the extra prevPos field.
  * 
+ * <p>Format version 3 of record format 7, little-endian, 32 + 16 * n bytes for a key node of
+ * n klongs: bytes 0 to 3, the size; 4, the type; 5, the version; 6 and 7, zero; 8 to 11, the
+ * checksum (NodeChecksum); 12, the leaf flag, 1 or 0; 13 and 14, n; 15, zero; 16 to 23,
+ * prevPos; 24 to 31, the node id; then the n klongs, then their n pointers. In version 2,
+ * until the checksum's 4 bytes (bergdb 024-25), the checksum was in bytes 6 and 7, prevPos in
+ * 8 to 15, the flag in 16 and n in 17 and 18; the size is the same.</p>
+ * 
  * @author Frans Lundberg
  */
 public class StoredKeyNode implements StoredNode {
@@ -52,18 +59,18 @@ public class StoredKeyNode implements StoredNode {
         int sz = node.size;
         int byteSize = getByteSize(node);
         int offset = firstOffset;
-        final long FORMAT_VERSION = 2;     // serial format version (one byte)
+        final long FORMAT_VERSION = 3;     // serial format version (one byte)
 
         buffer[offset++] = 
                   ((long) byteSize) 
                 | (((long) Node.TYPE_KEY_NODE) << (4 * 8))
                 | (FORMAT_VERSION << (5 * 8));
         
-        // 2 bytes available for checksum
-        
+        // Bytes 8 to 11, the checksum, zero here: StoredTrans.Serializer sets it in the
+        // record's bytes (NodeChecksum, bergdb 024-25). Byte 15 is zero.
+        buffer[offset++] = ((long) (node.isSegmentLeaf() ? 1 : 0)) << (4 * 8)
+                | ((long) sz) << (5 * 8);
         buffer[offset++] = prevPos;
-        buffer[offset++] = ((long) (node.isSegmentLeaf() ? 1 : 0)) | sz << (1 * 8);
-        // 5 zero bytes available...
         buffer[offset++] = node.getId();
 
         System.arraycopy(node.klongs, 0, buffer, offset, sz);
@@ -73,9 +80,6 @@ public class StoredKeyNode implements StoredNode {
             buffer[offset++] = node.getSerializedRef(i);
         }
         
-        long checksum = NodeChecksum.sum(buffer, firstOffset, offset - firstOffset);
-        buffer[firstOffset] = buffer[firstOffset] | (checksum << (6 * 8));
-
         assert (offset - firstOffset) * 8 == byteSize;
         assert byteSize % 8 == 0;
         return byteSize / 8;
@@ -105,22 +109,17 @@ public class StoredKeyNode implements StoredNode {
 
         byte version = buffer[offset];
         
-        if (version != 2) {
+        if (version != 3) {
             throw new VersioningStreamException("Cannot parse key node of format version "
                     + version + ".");
         }
         
         offset += 1;
 
-        offset += 2; // checksum bytes
+        offset += 2; // zero bytes
+        offset += NodeChecksum.SIZE; // checksum bytes, checked before parsing
         
-        // offset == 8 here
-
-        long prevPos = Bytes.bytesToLongLE(buffer, offset);
-        if (!Spos.isValidOrNull(prevPos)) {
-            throw new StreamFormatException("Bad KeyNode, prevPos is illegal: " + prevPos + ".");
-        }
-        offset += 8;
+        // offset == 12 here
 
         if (!(buffer[offset] == 0 || buffer[offset] == 1)) {
             throw new StreamFormatException("Bad second byte, expected 0 or 1, was "
@@ -135,8 +134,16 @@ public class StoredKeyNode implements StoredNode {
         }
         offset += 2;
 
-        // 5 zero bytes
-        offset += 5;
+        // 1 zero byte
+        offset += 1;
+        
+        // offset == 16 here
+
+        long prevPos = Bytes.bytesToLongLE(buffer, offset);
+        if (!Spos.isValidOrNull(prevPos)) {
+            throw new StreamFormatException("Bad KeyNode, prevPos is illegal: " + prevPos + ".");
+        }
+        offset += 8;
         
         // offset == 24 here
 
