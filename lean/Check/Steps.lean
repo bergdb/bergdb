@@ -186,6 +186,26 @@ def touchFailures (sp : Spec BVal Nat) (P : Struct BVal) (i : Time) (c : Changes
   [("touchIndex", notIndex), ("touchReach", notReach), ("touchUp", up),
    ("touchPath", offPath)].filter (fun p => !p.2.isEmpty)
 
+/-- T-COVER's second premise at time f (bergdb 024-07; `T_cover` of
+SIS/ReclaimTheorems.lean), by running: the index nodes reachable at f, a virtual
+root aside, that have no data node below them at f, through live pointers to
+lower levels as `reachFrom`. rl holds `reachList sp P f`. BergDB's delete
+unlinks the nodes it empties, so there is none but an empty space root; since
+024-07 no touch writes such a node again, so a cut could leave its version
+behind. -/
+def liveBelowFailures (sp : Spec BVal Nat) (P : Struct BVal) (f : Time) (rl : List NodeId) :
+    List NodeId :=
+  let lv := fun x => ((P.get? x).map (·.level)).getD 0
+  let xs := rl.eraseDups.mergeSort (fun a b => decide (lv a ≤ lv b))
+  let has : Std.HashMap NodeId Bool := xs.foldl (fun m x =>
+    match P.get? x with
+    | some n => m.insert x (n.isData || (sp.live (n.hist.upTo f)).any (fun y =>
+        match P.get? y with
+        | some ny => decide (ny.level < n.level) && m.getD y false
+        | none => false))
+    | none => m) {}
+  xs.filter (fun x => isIndex P x && !(sp.virt && x == root) && !has.getD x false)
+
 /-- The versions, as (node, record), that a lookup at time t may read (`ReadsAt` of
 SIS/Reclaim.lean, bergdb item 001, WP R7) and that are before c: from the latest
 version of every node of rl (the nodes reachable at t), through the pointers to

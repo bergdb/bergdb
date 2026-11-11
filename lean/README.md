@@ -804,7 +804,10 @@ Not trusted, tests only:
   SIS/ReclaimTheorems.lean; a key range's touch fails it), C-S
   compares fa(i) and, from the first cut on, runs the model's step on the
   stream cut at the largest cut so far, and C-CUT checks `CutOK` at every CUT
-  line and that every physical cut is at or below the decided one
+  line, since bergdb 024-07 also T-COVER's second premise there (CUT-live,
+  `liveBelowFailures`: every index node reachable at the first available
+  time has a data node below it), and that every physical cut is at or
+  below the decided one
   (`cutFailures`; [001-07](../items/001-lean-model-levels-3-4/07-level3-alignment.md),
   section 6). Since R4, a diagnostic that does not fail a trace, C-CUT+: at
   every CUT line, whether a physical read in the running process from f on
