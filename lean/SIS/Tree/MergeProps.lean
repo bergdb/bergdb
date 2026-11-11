@@ -320,4 +320,101 @@ theorem splitFillOK : SplitFillOK := by
       · simp only [↓reduceIte, List.length_cons, List.length_drop, hb]
         omega
 
+/-- Compare values strictly increasing along a list of live klongs. -/
+abbrev CvSorted (l : List (Nat × NodeId)) : Prop := l.Pairwise (fun a b => a.1 < b.1)
+
+/-- TP38, the order of a merge's nodes (V3 at a merge): when the two nodes'
+live klongs are in compare order, the left node's below cR, the right node's
+compare value in the parent, and the right node's at or above it (its first, in
+an inner node the empty key, standing for cR), the merge's first node is in
+compare order; and if it makes two, every compare value of the first is below
+g, the second's compare value in the parent, and the second is in order too
+(in an inner node with its first klong the empty key). -/
+def MergeOrderOK : Prop :=
+  ∀ (inner : Bool) (cap cR : Nat) (lvL lvR : List (Nat × NodeId)),
+    1 ≤ cap → CvSorted lvL → CvSorted lvR → (∀ q ∈ lvL, q.1 < cR) →
+    (∀ q ∈ lvR.tail, cR < q.1) → (inner = false → ∀ q ∈ lvR, cR ≤ q.1) →
+    let r := mergeKlongs inner cap cR lvL lvR
+    CvSorted r.1 ∧ ∀ rest g, r.2 = some (rest, g) → (∀ q ∈ r.1, q.1 < g) ∧ CvSorted rest
+
+theorem renameHead_sorted (c : Nat) (l : List (Nat × NodeId)) (hl : CvSorted l)
+    (hc : ∀ q ∈ l.tail, c < q.1) : CvSorted (renameHead c l) := by
+  cases l with
+  | nil => exact List.Pairwise.nil
+  | cons a r =>
+    simp only [renameHead, CvSorted, List.pairwise_cons] at hl ⊢
+    exact ⟨fun b hb => hc b hb, hl.2⟩
+
+theorem mem_renameHead (c : Nat) (l : List (Nat × NodeId)) (q : Nat × NodeId)
+    (hq : q ∈ renameHead c l) : q.1 = c ∨ q ∈ l.tail := by
+  cases l with
+  | nil => simp [renameHead] at hq
+  | cons a r =>
+    simp only [renameHead, List.mem_cons] at hq
+    rcases hq with rfl | h
+    · exact Or.inl rfl
+    · exact Or.inr h
+
+theorem mergeList_sorted (inner : Bool) (cR : Nat) (lvL lvR : List (Nat × NodeId))
+    (hL : CvSorted lvL) (hR : CvSorted lvR) (hLc : ∀ q ∈ lvL, q.1 < cR)
+    (hRt : ∀ q ∈ lvR.tail, cR < q.1) (hRl : inner = false → ∀ q ∈ lvR, cR ≤ q.1) :
+    CvSorted (mergeList inner cR lvL lvR) := by
+  simp only [mergeList, CvSorted, List.pairwise_append]
+  cases inner with
+  | false =>
+    simp only [Bool.false_eq_true, ↓reduceIte]
+    exact ⟨hL, hR, fun a ha b hb => Nat.lt_of_lt_of_le (hLc a ha) (hRl rfl b hb)⟩
+  | true =>
+    simp only [↓reduceIte]
+    refine ⟨hL, renameHead_sorted cR lvR hR hRt, fun a ha b hb => ?_⟩
+    rcases mem_renameHead cR lvR b hb with h | h
+    · rw [h]; exact hLc a ha
+    · exact Nat.lt_trans (hLc a ha) (hRt b h)
+
+theorem mergeOrderOK : MergeOrderOK := by
+  intro inner cap cR lvL lvR hcap hL hR hLc hRt hRl
+  have he := mergeList_sorted inner cR lvL lvR hL hR hLc hRt hRl
+  simp only [mergeKlongs, splitMerged]
+  generalize hE : mergeList inner cR lvL lvR = e at he
+  by_cases h : e.length ≤ cap
+  · simp only [h, ↓reduceIte]
+    refine ⟨he, fun rest g hs => ?_⟩
+    simp at hs
+  · simp only [h, ↓reduceIte]
+    have hsplit := he
+    rw [← List.take_append_drop ((e.length + 1) / 2) e] at hsplit
+    simp only [CvSorted, List.pairwise_append] at hsplit
+    obtain ⟨htake, hdrop, hcross⟩ := hsplit
+    refine ⟨htake, fun rest g hs => ?_⟩
+    simp only [Option.some.injEq, Prod.mk.injEq] at hs
+    obtain ⟨hrest, hg⟩ := hs
+    -- the rest is not empty: e has more than cap >= 1 klongs
+    have hne : e.drop ((e.length + 1) / 2) ≠ [] := by
+      intro hnil
+      have := congrArg List.length hnil
+      simp only [List.length_drop, List.length_nil] at this
+      omega
+    obtain ⟨b, tl, hbt⟩ := List.exists_cons_of_ne_nil hne
+    have hgb : g = b.1 := by
+      rw [← hg, hbt]; rfl
+    have hfirst : ∀ q ∈ e.take ((e.length + 1) / 2), q.1 < g := by
+      intro q hq
+      rw [hgb]
+      exact hcross q hq b (by rw [hbt]; exact List.mem_cons_self)
+    refine ⟨hfirst, ?_⟩
+    rw [← hrest]
+    have hdrop' : CvSorted (e.drop ((e.length + 1) / 2)) := hdrop
+    cases inner with
+    | false => simpa using hdrop'
+    | true =>
+      simp only [↓reduceIte]
+      apply renameHead_sorted 0 _ hdrop'
+      intro q hq
+      rw [hbt] at hq hdrop'
+      simp only [List.tail_cons] at hq
+      have h1 : b.1 < q.1 := by
+        simp only [CvSorted, List.pairwise_cons] at hdrop'
+        exact hdrop'.1 q hq
+      omega
+
 end SIS.Tree
