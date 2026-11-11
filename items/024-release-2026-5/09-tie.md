@@ -693,3 +693,225 @@ call blocked its caller until the helper ended.
 * **Files of this item:** `09-tie/cover.py`, `09-tie/more.sh`,
   `09-tie/cover-results.txt`. Outputs of the runs:
   `/Users/f/fl/bench/2026-11-11/tie/` (`a1/`, `a3/`, `gates/`).
+
+
+## 9. Follow-up (Q1, Q2)
+
+2026-11-11, 15:00 to 15:37 and the gates after. Written by the agent "fu"
+for the coordinator (coord-1111). Frans answered section 7's questions 1
+and 2 with yes; this is that work, on `main` after 024-12's tree model
+(`b84cf761`).
+
+**In short.** The 15 trusted statements that assumed `PhysRunOK` assume
+`LiveAppend` in its place, and the three that do not assume `EvictRunOK`
+(T1-L, CC, T2-L) also TREE after every transaction (`TreeRunOK`, new).
+Every conclusion is word for word as before. The gates require A6 in every
+trace and every A2A3Check2 run. The trusted statement lines: 15 removed, 18
+added, and two new definitions of 5 lines of code (section 9.2).
+
+### 9.1 The commits
+
+Branch `024-09-followup` in `/Users/f/fl/bench/2026-11-11/fu/clone`, from
+`main`'s `b84cf761`, four commits in Frans's name:
+
+* `970751cb`: comments only. The Lean comments that named `Db.touchRange`
+  as Java's touch (`Changes.touch` in Basic.lean, `touchOf` in
+  Algorithm.lean, `StepOK`'s touch rules in Assumptions.lean, `pathOf` in
+  Phys.lean) name `Db.touchPaths`, the paths of the step's own puts since
+  024-07. The two that say "until 024-07 ... `Db.touchRange`"
+  (ReclaimTheorems.lean, Tree/Read.lean) are history and stay. And
+  `java/stress/unlinkfuzz.sh` gets mode 755.
+* `7896813b`: Q1, `PhysRunOK` out of the trusted statements (9.2); the
+  proofs, `Check/Live.lean`, `lean/README.md`, docs/sis-model.md, section
+  15.2.
+* `a3763196`: TP15 of the tree model (024-12, section 6) is `LiveAppend`
+  of `treeSpec` (`LiveAppendTree`, was `PhysRunOKTree`), proved
+  (`liveAppendTree`, Check/TreeLive.lean, from `blive_append`), as 024-12's
+  plan asks once `LiveAppend` takes `PhysRunOK`'s place. Its own commit, so
+  that it can be left out.
+* `751bb653`: Q2, the gates require A6 (9.4), and docs/levels.md, section
+  5, says so in two lines.
+
+### 9.2 The trusted diff (Q1)
+
+The statement lines only, before (-) and after (+); a line that starts
+with neither names the statement. Docstrings and file headers changed with
+them to say the same (in the commit).
+
+```diff
+SIS/PhysTheorems.lean
+ theorem T1_lazy (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp al ts)
+-    (hph : PhysRunOK sp al ts) (hj : al.stillDirty = javaTest sp) (k : Nat) (hk : k ≤ ts.length)
++    (hla : LiveAppend sp) (htree : TreeRunOK sp al ts)
++    (hj : al.stillDirty = javaTest sp) (k : Nat) (hk : k ≤ ts.length)
+ theorem T2_lazy (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool))
+-    (hok : RunOK sp al (ts.map (·.1))) (hph : PhysRunOK sp al (ts.map (·.1)))
++    (hok : RunOK sp al (ts.map (·.1))) (hla : LiveAppend sp)
++    (htree : TreeRunOK sp al (ts.map (·.1)))
+ theorem CC_canonical (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool))
+-    (hok : RunOK sp al (ts.map (·.1))) (hph : PhysRunOK sp al (ts.map (·.1)))
++    (hok : RunOK sp al (ts.map (·.1))) (hla : LiveAppend sp)
++    (htree : TreeRunOK sp al (ts.map (·.1)))
+
+SIS/HandleTheorems.lean
+ def TC_handles, T2_handles, TR_handles, TR_handles_restarts, TP_handles,
+     RunPos_handles (six lines, each):
+-    RunOK sp al (ts.map (·.1)) → PhysRunOK sp al (ts.map (·.1)) →
++    RunOK sp al (ts.map (·.1)) → LiveAppend sp →
+ def Rule4_positions, Rule4Pos_handles (two lines, each):
+-  ∀ ts : List T, RunOK sp al ts → PhysRunOK sp al ts → EvictRunOK sp al ts →
++  ∀ ts : List T, RunOK sp al ts → LiveAppend sp → EvictRunOK sp al ts →
+
+SIS/HandleReclaimTheorems.lean
+ def T9_handles:
+-    RunOK sp al (ts.map (·.1)) → PhysRunOK sp al (ts.map (·.1)) →
++    RunOK sp al (ts.map (·.1)) → LiveAppend sp →
+ def T12_handles, RunPosCut_handles (two lines, each):
+-    RunOK sp al (cs.map (·.1)) → PhysRunOK sp al (cs.map (·.1)) →
++    RunOK sp al (cs.map (·.1)) → LiveAppend sp →
+ def Rule4PosCut_handles:
+-  ∀ ts : List T, RunOK sp al ts → PhysRunOK sp al ts → EvictRunOK sp al ts →
++  ∀ ts : List T, RunOK sp al ts → LiveAppend sp → EvictRunOK sp al ts →
+
+SIS/Phys.lean, new (LiveAppend moved here from SIS/Proof/PhysAssumptions.lean, unchanged)
++def LiveAppend (sp : Spec V T) : Prop :=
++  ∀ (h h' : History V) (y : NodeId), y ∈ sp.live (h ++ h') →
++    y ∈ sp.live h ∨ ∃ e ∈ h', y ∈ sp.ptrs e.val
++def TreeRunOK (sp : Spec V T) (al : Algo V T) (ts : List T) : Prop :=
++  ∀ j < ts.length, treeAt sp (run sp al (ts.take (j + 1))).P (j + 1)
+
+SIS/Tree/Props.lean, TP15 (commit a3763196)
+-def PhysRunOKTree (p : Params) : Prop :=
+-  ∀ (al : Algo BVal Tx) ts, Within p ts → PhysRunOK (treeSpec p) al ts
++def LiveAppendTree (p : Params) : Prop := LiveAppend (treeSpec p)
+```
+
+`PhysStep` and `PhysRunOK` stay in SIS/Phys.lean, assumed by no trusted
+statement now; the proofs use them, and its comment says so. The size of
+the change in the trusted files, comments included: `git diff --stat` 74
+lines added, 36 removed, in 8 files (the four of `970751cb` among them).
+
+### 9.3 Why each change keeps the meaning
+
+* **The conclusions are the same, word for word**, in all 15: only
+  hypotheses changed. So what each theorem promises when it applies is
+  unchanged; the question is only when it applies.
+* **The old hypothesis follows from the new ones, by a proof.** With
+  `RunOK`, `LiveAppend` and `EvictRunOK`, `physRunOK_of_evict` gives
+  `PhysRunOK`; with `RunOK`, `LiveAppend` and `TreeRunOK`,
+  `physRunOK_of_tree` does (section 3, A2). Each proof gets `PhysRunOK`
+  that way in its first line and then runs the old proof unchanged, or
+  passes `LiveAppend` on to the theorem it uses (`runPos_handles`). So
+  wherever the new statement's hypotheses hold, the old one applied too.
+* **For BergDB nothing is lost, and an unchecked assumption is gone.**
+  `LiveAppend` is a property of the function `live` alone, proved for
+  `blive`, the `live` of both BergDB instances: a trace's (`bspec`,
+  `bspec_liveAppend`) and the tree model's (`treeSpec`, `liveAppendTree`).
+  TREE after every transaction is checked by C-A on every trace
+  (`treeFailures`, R(0) included) and by A2A3Check2, and is part of
+  `EvictRunOK` (TP16 for the tree). `PhysRunOK` was argued in a text
+  (011-11, section 13.3) and checked on no Java trace. Now every
+  hypothesis of the 15 is either proved for BergDB's instances or checked
+  on every trace.
+* **What a reader could see as narrower:** for a `Spec` that met
+  `PhysRunOK` on some run but not `LiveAppend`, or not TREE (T1-L, CC and
+  T2-L), the old statements applied and the new ones do not. No instance
+  in the repository is such: BergDB's `blive` has `LiveAppend`, and the
+  examples are checked by running (`physRunOKB`), not through the
+  theorems.
+* **`TreeRunOK` asks the least that `physRunOK_of_tree` needs:** TREE after
+  transactions 1 to n, not R(0). `EvictRunOK` asks it with R(0), so the
+  twelve theorems with handles need no TREE of their own.
+* **Order:** `LiveAppend sp` stands where `PhysRunOK` stood, so the shape
+  of each statement is as before.
+* **TP15** asked the tree to meet `PhysRunOK`; what the theorems now need
+  of a structure besides `RunOK` and TREE is `LiveAppend`, so TP15 asks
+  that, and it is proved (`PhysRunOK` for the tree follows from TP14, TP15
+  and TP16 by `physRunOK_of_evict`).
+* `collectAxioms` (`#print axioms`) of the 15 proofs, of the bridge
+  theorems and of `liveAppendTree`: propext, Classical.choice, Quot.sound
+  (`blive_append`, `blive_sub`, `liveAppendTree`, `specOKTree`: propext and
+  Quot.sound). No `sorry`, `axiom`, `admit` or `native_decide` in lean/.
+
+### 9.4 Q2: A6 in the gates
+
+* **`conformance.sh`:** the rule "the checker's count of adoptions below
+  the old parent is 0" (`C-A adoptions below the old parent ...: 0 of`)
+  was for the traces of a6 and e-a6 only; it is for every trace of every
+  set now (small, medium, large, reclaim, evict, drain). A trace without
+  the count fails too, as before.
+* **`level2.sh`, step 7:** A2A3Check2's count of adoptions below the old
+  parent ("... does not (bergdb 005-04), 0 (transactions 0)") must be 0 in
+  the three configurations and in the seven draining ones; the line it
+  printed with the count says "TREE, A6 and A-COPY OK".
+* The model is not changed: it still assumes A6' (section 5.1; 024-06,
+  question 7). The gates check more than the model assumes.
+* Before 023-09 (fault 12's fix, 2026-11-10) these rules would have failed:
+  the night of 2026-11-09 had 11 such transactions in `level2.sh`'s small
+  set and 3 in `level4.sh`'s evict set; the medium and large sets had
+  none.
+
+### 9.5 Gates and results
+
+On the branch's head `751bb653`, each run in its own hold of a slot, from
+15:34 to 15:58:
+
+| Gate                                       | Result                                      |
+|---|---|
+| `lake build` (lean/)                       | completed successfully (179 jobs, 67 s)     |
+| `sorry`, `axiom`, `admit`, `native_decide` | 0 by grep (whole words)                     |
+| `#print axioms`, 34 theorems               | all standard (9.3)                          |
+| `test-traces/run.sh`                       | ok 41, FAIL 0                               |
+| `before-commit.sh`                         | BEFORE COMMIT OK (86 s)                     |
+| `level2.sh` full                           | LEVEL 2 OK (807 s)                          |
+| `conformance.sh medium`, 9 traces          | CONFORMANCE OK (159 s)                      |
+| `conformance.sh reclaim`, 30 traces        | CONFORMANCE OK (158 s); C-CUT 0 of 326      |
+| `conformance.sh evict`, 51 traces          | CONFORMANCE OK (65 s); C-P, C-H 0 of 11,965 |
+
+* `small` (70 traces) and `drain` (50) ran in `level2.sh` full, 10 seeds
+  each: TRACECHECK OK in all; in step 7 the ten A2A3Check2
+  configurations, 42,500 transactions, "TREE, A6 and A-COPY OK", and
+  TAKECHECK OK; treeconf small, drain and reclaim OK (step 8).
+* **Adoptions below the old parent: 0 everywhere**: in each of the five
+  sets' summaries (210 traces) and in all ten A2A3Check2 outputs.
+* **The new rules can fail:** the checker's output for
+  `test-traces/adopt.trace` ("1 of 3 transactions") fails the
+  conformance rule, and A2A3Check2's output on P5's head (section 2.3;
+  `tie/a1/tune/a2a3-p5-10.txt`, "4 (transactions 4)") fails `level2.sh`'s.
+* The Lean gates ran on the tree of `751bb653` before the four commits
+  were made from it; the intermediate commits were not built alone.
+  `7896813b` without `a3763196` builds by reading (TP15 still names
+  `PhysRunOK`, which stays).
+* Outputs: `/Users/f/fl/bench/2026-11-11/fu/gates/` (`chain-1.txt`,
+  `lean-gates-1.txt`, and one file a run); the scripts' own in the clone's
+  `java/build/level2/` and `java/build/traces/`.
+
+### 9.6 What remains
+
+* **`conformance.sh large`** (12 traces, 4.8 hours on 2026-11-09) did not
+  run: it is started by hand with `night.sh large`. Its traces had no
+  adoption below the old parent even before 023-09.
+* The checker's Bool functions against the Lean Props (section 3, "Not
+  theorems"): unchanged by this; `LiveAppend` was never a check.
+* `night.sh` as a whole, `level3.sh` and `level4.sh` on the head: not run
+  (scripts and Lean only; `level4.sh` runs `conformance.sh evict`, which
+  ran here by itself).
+* 024-12's item (12-tree-model.md, section 6 and its next steps) still
+  names `PhysRunOKTree`; it is that item's file.
+
+### 9.7 State
+
+2026-11-11, 15:59.
+
+* **Done:** Q1, Q2, the comments that named `Db.touchRange`, the mode of
+  `unlinkfuzz.sh`, and TP15: four commits on `024-09-followup`, head
+  `751bb653`, clone `/Users/f/fl/bench/2026-11-11/fu/clone`. Every gate of
+  9.5 passed on that head. Not on `main`: the coordinator lands it (a
+  fast-forward of `main`'s `b84cf761`, or a merge if `main` moved; the
+  files it touches are listed in 9.1).
+* **Not done:** 9.6 (`conformance.sh large`, `level3.sh`, `level4.sh`,
+  `night.sh`).
+* **How to continue:** a missing gate runs with
+  `sh /Users/f/fl/bench/2026-11-11/fu/gates/chain.sh NAME` (NAME:
+  before-commit, level2, conf-medium, conf-reclaim, conf-evict), the Lean
+  gates with `gates/lean-gates.sh`.

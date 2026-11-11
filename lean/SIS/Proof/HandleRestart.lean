@@ -266,7 +266,8 @@ end Run
 
 /-- `T2_handles` (SIS/HandleTheorems.lean) holds. -/
 theorem t2_handles (sp : Spec V T) (al : Algo V T) : T2_handles sp al := by
-  intro ts hok hph hev hj hmk j hjt db r m
+  intro ts hok hla hev hj hmk j hjt db r m
+  have hph := physRunOK_of_evict hok hla hev
   obtain ⟨k1, hk1, hS0, hrel, hm, -⟩ := handleInvR_all hok hph hev hj hmk j hjt
   have hst : st sp al (ts.map (·.1)) j = run sp al ((ts.take j).map (·.1)) := by
     unfold st; rw [List.map_take]
@@ -280,7 +281,8 @@ theorem t2_handles (sp : Spec V T) (al : Algo V T) : T2_handles sp al := by
 
 /-- `TR_handles_restarts` (SIS/HandleTheorems.lean) holds. -/
 theorem tr_handles_restarts (sp : Spec V T) (al : Algo V T) : TR_handles_restarts sp al := by
-  intro ts hok hph hev hj hmk j hjt t ht db r m
+  intro ts hok hla hev hj hmk j hjt t ht db r m
+  have hph := physRunOK_of_evict hok hla hev
   obtain ⟨k1, -, hS0, -, hm, hh⟩ := handleInvR_all hok hph hev hj hmk j hjt
   have hst : st sp al (ts.map (·.1)) j = run sp al ((ts.take j).map (·.1)) := by
     unfold st; rw [List.map_take]

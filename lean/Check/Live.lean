@@ -5,7 +5,7 @@ The trace checker's instance meets what the model assumes of the function
 Two of the model's assumptions are about the function `Spec.live` alone, for
 every history, so no check of a trace can establish them: `SpecOK.liveSub` (a
 live child is a pointee of an entry) and `LiveAppend`
-(SIS/Proof/PhysAssumptions.lean: entries added at the end of a history give no
+(SIS/Phys.lean: entries added at the end of a history give no
 live child but their own pointees), which gives `PhysStep.liveNew`. This file
 proves both for `blive`, the live children of the BergDB instance
 (Check/Trace.lean): a key entry sets its compare value's child to its own
@@ -16,7 +16,9 @@ With that, `PhysRunOK` holds for the instance of every trace (`bspec`) in a run
 that meets `RunOK` and has TREE after every transaction (`bspec_physRunOK`,
 `bspec_physRunOK_evict`): the assumption of the theorems of lazy reading and of
 the theorems with handles that the checker did not check is a consequence of
-those that C-A checks.
+those that C-A checks. Since 024-09's follow-up those theorems assume
+`LiveAppend` and TREE in its place; for a trace's instance `LiveAppend` is
+`bspec_liveAppend`.
 
 Not part of the trusted part, and not part of the checker's program.
 -/
@@ -197,8 +199,8 @@ SIS/HandleTheorems.lean) for the instance of a trace, with no assumption of the
 physical layer. In a run with BergDB's still-dirty test and marking that meets
 `RunOK` and `EvictRunOK`, with any reads and evictions and no restart, a read
 through the handles at any time up to the last record gives P at that time. The
-other theorems with handles lose `PhysRunOK` the same way
-(`without_physRunOK`). -/
+other theorems with handles lose `LiveAppend` the same way
+(`bspec_liveAppend`). -/
 theorem bspec_tr_handles {chs : Array (Changes BVal)} {p0 : Struct BVal} {virt : Bool}
     {al : Algo BVal Nat} :
     ∀ ts : List (Nat × Bool × List HCacheOp),
@@ -213,6 +215,6 @@ theorem bspec_tr_handles {chs : Array (Changes BVal)} {p0 : Struct BVal} {virt :
             reachList (bspec chs p0 virt) db.P t ∧
           ∀ p ∈ (m.read (bspec chs p0 virt) (init (bspec chs p0 virt)).S db.S t).2,
             view (bspec chs p0 virt) db.P t p.1 = some p.2 :=
-  without_physRunOK (bspec_liveAppend chs p0 virt) (tr_handles (bspec chs p0 virt) al)
+  fun ts hok hev => tr_handles (bspec chs p0 virt) al ts hok (bspec_liveAppend chs p0 virt) hev
 
 end SIS.Check

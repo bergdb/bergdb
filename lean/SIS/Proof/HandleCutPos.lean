@@ -429,7 +429,8 @@ theorem rule4PosCut_zero (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts) (hev 
 /-- `Rule4PosCut_handles`: rule 4 by position after a safe cut, with Java's skip
 below the stream's first position, links what rule 4 by node id links. -/
 theorem rule4PosCut_handles (sp : Spec V T) (al : Algo V T) : Rule4PosCut_handles sp al := by
-  intro ts hok hph hev hj hmk hex hvl k hk c first hcut hfc
+  intro ts hok hla hev hj hmk hex hvl k hk c first hcut hfc
+  have hph := physRunOK_of_evict hok hla hev
   rw [show run sp al (ts.take k) = st sp al ts k from rfl] at hcut ⊢
   have hskip := cutSkip_none hok hph hev hj hmk hk hcut
   exact handleStartupPosFrom_cut hok hph hev hj hmk hex hvl hk hcut
@@ -475,7 +476,8 @@ cut at the largest cut so far, where the cut is safe (T12's `RunSimH`), and ther
 rule 4 by position with the restart's cut as the first position is rule 4 by node
 id. -/
 theorem runPosCut_handles (sp : Spec V T) (al : Algo V T) : RunPosCut_handles sp al := by
-  intro cs hok hph hev hj hmk hex hvl hpol hcut hreads
+  intro cs hok hla hev hj hmk hex hvl hpol hcut hreads
+  have hph := physRunOK_of_evict hok hla hev
   have hcut' : ∀ j (h : j < cs.length) c, cs[j].2.1 = some c →
       CutOK sp (cutMax ((cs.take (j + 1)).map (·.2.1))) (st sp al (cs.map (·.1)) (j + 1)) (j + 1) := hcut
   have hsim : ∀ j ≤ cs.length, RunSimH sp al cs j := by
@@ -489,7 +491,7 @@ theorem runPosCut_handles (sp : Spec V T) (al : Algo V T) : RunPosCut_handles sp
   induction j with
   | zero =>
     intro _
-    have h0 := rule4PosCut_handles sp al (cs.map (·.1)) hok hph hev hj hmk hex hvl 0 (Nat.zero_le _) 0 0
+    have h0 := rule4PosCut_handles sp al (cs.map (·.1)) hok hla hev hj hmk hex hvl 0 (Nat.zero_le _) 0 0
       (CutOK.zero sp _ 0) (Nat.le_refl 0)
     simp only [List.take_zero] at h0
     rw [show run sp al [] = init sp from rfl, cutStream_zero] at h0
@@ -511,7 +513,7 @@ theorem runPosCut_handles (sp : Spec V T) (al : Algo V T) : RunPosCut_handles sp
       have hcm : c ≤ cutMax ((cs.take (j + 1)).map (·.2.1)) := by
         rw [cutMax_take_succ cs hjl, hc]
         exact Nat.le_max_right _ _
-      have hpos := rule4PosCut_handles sp al (cs.map (·.1)) hok hph hev hj hmk hex hvl (j + 1)
+      have hpos := rule4PosCut_handles sp al (cs.map (·.1)) hok hla hev hj hmk hex hvl (j + 1)
         (by simp; omega) (cutMax ((cs.take (j + 1)).map (·.2.1))) c (hcut j hjl c hc) hcm
       rw [show run sp al ((cs.map (·.1)).take (j + 1)) = st sp al (cs.map (·.1)) (j + 1) from rfl,
         ← hS] at hpos

@@ -21,11 +21,12 @@ numbers (024-12's series, continued), the findings as "024-22, MF1".
 
 ## 1. In short
 
-Kept current; section 11 has the exact state; section 9 the questions. Written 14:35.
+Final for today; section 11 has the exact state; section 9 the questions
+(Frans took the defaults at 14:34). Written 16:05.
 
 * **What the model defines.** The merge at the delete in 024-12's Lean
-  tree (branch `024-22-merges-lean`, head `8e78cf65`, on 024-12's gated
-  head `d90586d0`): 024-11's algorithm as P5 placed it in release
+  tree (branch `024-22-merges-lean`, head `90eb124a`, with `main` since
+  024-12 landed there): 024-11's algorithm as P5 placed it in release
   2026.4's `deleteUpward` and as mgj ports it to Java (024-21): after a
   delete changes a node, a node that is not a segment root and holds
   fewer than m live klongs is merged with a sibling (one new node, or
@@ -33,17 +34,20 @@ Kept current; section 11 has the exact state; section 9 the questions. Written 1
   root collapse; merged nodes are new nodes, a node of the transaction
   is taken back with its klongs repointed (024-11's QU6, P5's way; 2.9
   says what the model shows about the other way). The thresholds are
-  parameters, not literals (`Params.mergeBelow` m, `mergeMax` c;
-  `withMerges`: m = max(2, B / 4), c = B / 2 from node size 8, no merge
-  below, as Java). About 300 lines in `Exec.lean`; no rule of 2026.4
+  parameters, not literals (`Params.mergeBelow` m, `mergeMax` c, and
+  since 14:40 rule O's `splitAbove` h); `withMerges` gives Frans's
+  8/17/17 of 14:34 for node size 30 (024-14's m8), scaled as v B / 30
+  for other sizes, no merge below 8, the same as 024-21's Java (2.1a).
+  The runs and the comparison below used 024-11's m = max(2, B / 4), h =
+  c = B / 2, which are the same at the test sizes 8 to 14 and differ at
+  30 and 62. About 300 lines in `Exec.lean`; no rule of 2026.4
   changed, and with m below 2 the model is 2026.4's tree, run for run.
 * **What the runs covered before Java** (section 3; `treetest`, one
   core): exhaustive sequences at node sizes 8, 10 and 12 after four
   kinds of prefix, every subset of a transaction's deletes (or puts and
   deletes), pairs, random runs, the whole model (records, D, startup):
-  about 315,000 states with merges (node sizes 8 to 14), and 024-12's
-  340,000 without. After
-  every transaction: V1 and the other invariants, the map (gets at
+  about 315,000 states with merges (node sizes 8 to 14; at 8/17/17 also
+  30 and 62), and 024-12's 340,000 without. After every transaction: V1 and the other invariants, the map (gets at
   every time, scans), BU1's count, CB1, CB3, A6, `dirtyNodeBound` of
   record format 7 and TP26. **0 failures of the algorithm.**
 * **What they found** (3.2): no fault of the merge. MF1, a cost: a
@@ -75,53 +79,100 @@ Kept current; section 11 has the exact state; section 9 the questions. Written 1
   **No difference of Java's**, so no reading of 024-11 had to be
   chosen. The medium set (node sizes 8 to 62, 4,569 transactions,
   7,101 merges): all 9 traces OK.
-* **Properties** (2.7, 6): stated TP28 to TP37 (the thresholds'
+* **Properties** (2.7, 6): stated TP28 to TP38 (the thresholds'
   conditions, V1, TH2, TH3 as BU1's count, CB1, CB3, the merge's sizes,
   klongs and fill, the split's fill); V2 to V9, TH1 and I2 are 024-12's
   statements, which with merges speak of the merged tree;
   `dirtyNodeBound` of format 7 restated from Java and TP26 with merges.
   **Proved:** TP28 from node size 8 (and its failure at 4 and 6), TP34
-  to TP37: every node a merge or a space split makes holds m or more.
+  to TP38: every node a merge or a space split makes holds m or more,
+  and a merge's nodes are in order.
   Left: TP30 (V1 kept, the B-tree proof) and TP31 to TP33.
-* **Gated** (section 8): on the head `8e78cf65`, `lake build` (all
-  targets; no sorry or axiom) and `level2.sh` full (LEVEL 2 OK, its
-  step 8 the tree model against 2026.4's Java); on the commits before
-  MF3's fix, the whole `treetest` default set (31 min, 0 failures) and
-  `treeconf.sh all 5`. **Not gated:** the whole `treetest` set on the
-  head (two of its runs were); Java with merges is not a gate here (it
-  is 024-21's branch, compared in a scratch combination).
-* **For Java (mgj):** section 7, J1 to J8.
+* **8/17/17** (2.1a, 5.2; 14:35 to 15:02): the model and the count
+  follow 024-21's move term by term; TP28 proved for the new formulas;
+  short runs at node sizes 8, 14 and 30 pass; **mgj's 21 traces at
+  8/17/17 equal the model** (4,080 transactions, 5,655 merges; C-T1 to
+  C-T9, and `tracecheck` with A6), and with h = 15 they would not (the
+  control); in my combination with 10 seeds and the medium set, 239
+  traces, 54,877 transactions, 36,923 merges: all equal; BU1's count
+  holds on Java's tree after every transaction of all 260 traces.
+* **Gated** (section 8): on `e32eb6d9` (8/17/17, `main` merged in),
+  `lake build` (no sorry or axiom), `level2.sh` full (LEVEL 2 OK, its
+  step 8 the tree model against `main`'s Java) and the whole `treetest`
+  set (TREETEST OK, 30 min); on the head for landing, `90eb124a` (BU1's
+  count in `treecheck`, active only with merges), `lake build`. Java
+  with merges is not a gate here (024-21's branch, compared in a
+  combination and by mgj's traces); int gates the combined head.
+* **Landing:** this branch's head `90eb124a` is in int's combined
+  landing head (`024-13-int-m`) with 024-21; the coordinator lands
+  them together.
+* **For Java (mgj):** section 7, J1 to J9.
 
 ## 2. The design note
 
 ### 2.1 The assumptions "for now", as parameters
 
 Frans's three questions of 11:44 (024-14's), answered "for now" by
-024-11's values, each a parameter of the definitions, not a literal:
+024-11's values, each a parameter of the definitions, not a literal (as
+first written; the thresholds since 14:34 in 2.1a):
 
-| What                    | Value now                 | In the model                   |
+| What                    | Value until 14:34         | In the model                   |
 |---|---|---|
 | node size B             | 30 (8 to 62 in tests)     | `Params.M`, as before          |
 | m, the least fill       | max(2, B / 4): 7 at 30    | `Params.mergeBelow`            |
 | c, the merge's cap      | B / 2: 15 at 30           | `Params.mergeMax`              |
-| h, a time split's most  | B / 2, today's rule O     | `handleFullWith`'s `M / 2`     |
+| h, a time split's most  | B / 2, today's rule O     | `Params.splitAbove` (14:40)    |
 | dead klongs             | nothing beyond the merge  | no change                      |
 | how merged nodes made   | P5's: new nodes, take-back | `merge`, `mergeParent`        |
 
 * `Params.withMerges` sets m and c from M by 024-11's formulas; the
   default `mergeBelow = 0` is release 2026.4 (no merge), so every run of
   024-12 is unchanged. Merges are on when m is 2 or more.
-* h stays the literal `M / 2` of rule O, as in 2026.4: 024-14's other
-  sets (m8, m9, dense) change h too; then h becomes a parameter, one
-  line in `handleFullWith` (not done, not asked today).
+* h stayed the literal `M / 2` of rule O, as in 2026.4, until 8/17/17
+  made it a parameter (2.1a).
 * **The thresholds must meet `MergeParamsOK`** (TP28, section 2.7): 2 <=
   m; a merge into two nodes gives each at least m, m <= (c + 1) / 2; a
-  space split's smaller half has at least m, m <= (M / 2) / 2; the nodes
-  made fit, c + 1 <= M. **024-11's values meet it from M = 8 on, and not
+  space split's smaller half has at least m, m <= h / 2; the nodes
+  made fit, c and h at most M - 2. **024-11's values meet it from M = 8 on, and not
   at M = 4 or 6**: at 6, m = max(2, 1) = 2, and a space split of a last
   version of 3 live klongs makes a half of 1. So the runs with merges are
   at node sizes 8, 10 and 12 (and 14, 30 in Java's traces); 4 and 6 run
   2026.4's tree only. Proved for every M >= 8 (section 6).
+
+### 2.1a The thresholds decided: 8/17/17 (Frans, 14:34)
+
+Frans decided at 14:34 024-14's m8 for B = 30 (QT1): m = 8, h = 17,
+c = 17; QT2 (other node sizes) open, the test sizes scaled as 024-14's
+build scales them, v B / 30 with m at least 2. In the model since
+14:40 (section 10's log):
+
+* **h is a parameter now**, `Params.splitAbove` (default M / 2, 2026.4's
+  rule O), read by `handleFullWith` (`Dag.splitAbove`).
+* **`withMerges`**: m = max(2, 8 M / 30), h = c = 17 M / 30 from node
+  size 8; m = 1 below (no merge, as Java). So 2/4/4 at 8, 2/5/5 at 10,
+  3/6/6 at 12, 3/7/7 at 14 (024-11's values there too: every run of
+  section 3 at these sizes stands), 8/17/17 at 30, 16/35/35 at 62.
+* **TP28** reads h: m <= h / 2 (a space split's halves), and c and h at
+  most M - 2 (Java's check in 024-14's build). Proved for the new
+  formulas from node size 8 (`mergeParamsOK_withMerges`), and for the
+  old ones too (`mergeParamsOK_p5`). TP37 reads h.
+* **The TREE line** gets h too: `TREE M G H k m c h` (J9); 5 or 7
+  tokens still read, with h = M / 2.
+* **`dirtyNodeBound`** restated from mgj's head `0281018e` (024-21's
+  move to 8/17/17, commit `7fccc2d7`): the room after a replacement is
+  q = max(2, min(M / 2, M - h, M - c) - 3) (`roomAfterReplacement`, 10
+  at node size 30; 2026.4's max(2, M / 2 - 3) without merges), in every
+  overflow count, the fresh trees' too. Nothing else of the count
+  changed there.
+* **Runs at 8/17/17** (`runs/short-817.log`, `m30.log`; one core):
+  exhaustive 8 3 12 4 (14,424 states), random at node size 14 (5 x 200
+  transactions), at 30 (10 x 300 transactions of up to 30 operations
+  on 100 keys, half deletes: 3,000 states, 87 merges) and at 62 (3 x
+  300, 900 states), `model` at 30 (4 x 150 transactions; T1, T2, A6):
+  0 failures.
+* **Java and the model agree on the formulas**: `Dag.minFill`,
+  `splitAbove`, `mergeCap` at `0281018e` are `withMerges`' three, term
+  by term (m = 1 below 8; h = 17 B / 30 at every size).
 
 ### 2.2 Where the merge enters the model
 
@@ -286,7 +337,7 @@ New statements, `lean/SIS/Tree/MergeProps.lean`, each a `def ... : Prop`
 |    |                       | root has at least m live klongs (BU1 (a))  |      |
 | 30 | `MergeInvPreserved`   | TH2: with merges on, TP7 (the invariants,  | S    |
 |    |                       | V1 among them) after every run             |      |
-| 31 | `NodeCountBound`      | TH3, BU1's count: key nodes <= S + (n +    | S    |
+| 31 | `NodeCountBound`      | TH3, BU1's count: key nodes <= S + (n +    | S, T |
 |    |                       | S - 1) / (m - 1) at every time             |      |
 | 32 | `MergeOpBound`        | CB1: a transaction's merges <= its         | S    |
 |    |                       | deletes x (H + 1)                          |      |
@@ -300,6 +351,8 @@ New statements, `lean/SIS/Tree/MergeProps.lean`, each a `def ... : Prop`
 |    |                       | hold m or more and fit in a node           |      |
 | 37 | `SplitFillOK`         | V1 at a space split: with TP28, each half  | PROVED |
 |    |                       | of rule O holds m or more key klongs       |      |
+| 38 | `MergeOrderOK`        | V3 at a merge: its nodes in compare order, | PROVED |
+|    |                       | the first below the second's bound g       |      |
 | 23 | `DirtyBoundOK`        | 024-12's, now with format 7's count (3.4)  | S    |
 | 26 | `DirtyBoundFromLimits` | 024-12's, its limit restated with merges  | S    |
 
@@ -686,6 +739,37 @@ among them), the small set and reclaim's set, at node sizes 8, 14 and
   count (QU7), mgj's to weigh (J7).
 
 
+### 5.2 At 8/17/17
+
+* **mgj's traces** (`/Users/f/fl/bench/2026-11-11/mgj/traces-m8/`,
+  branch `024-21-merges-trace` at `4dbd7582` = 024-21's `0281018e` +
+  `d90586d0` + the TREE line `TREE 30 0 2 1 8 17`; 7 configurations x
+  3 seeds), checked at 15:00 in one slot (`runs/hold4.sh`, outputs in
+  `runs/m8/`): 21 traces, node sizes 8 (12), 14 (6) and 30 (3); 4,080
+  transactions, 107,965 operations, 5,655 merges (1,332 into two
+  nodes, 639 of inner nodes), 4,110 nodes taken back by merges.
+  **`treecheck`: TREE OK on all 21, C-T1 to C-T9 0 failures;
+  `tracecheck`: TRACECHECK OK on all 21** (C-A with A6, C-S; no
+  reclaim, so no cut).
+* **BU1's count on Java's tree** (`treecheck`'s C-T6 since `90eb124a`:
+  after every transaction, the key nodes reachable at most S + (n + S -
+  1) / (m - 1), n and S from the tree's own scan): mgj's 21 traces pass
+  it, and so do the combination's 239 traces (`runs/bu1-comb.log`,
+  16:01).
+* **Their TREE line has no h**: a line of 7 tokens now gives h = c
+  (commit `e7b66354`), as h = c in every set a writer of format 7 has
+  had (P5's B / 2, m8's 17 B / 30). **Control:** the same trace with h
+  = M / 2 = 15 (the checker before) fails C-T1 in 176 of 200
+  transactions: the comparison sees h.
+* **My combination at 8/17/17** (`mgl/comb/clone`: `d90586d0` +
+  024-21's `0281018e` + the TREE line with m, c and h; `runs/hold3.sh`,
+  15:02 to 15:19, one slot; `runs/comb817-*.log`): `treeconf.sh` drain,
+  small and reclaim with 10 seeds, medium with 1: **239 traces, all TREE
+  OK**, 54,877 transactions, 629,146 operations, 36,923 merges (3,516
+  into two nodes, 10,721 of inner nodes), 21,816 nodes taken back by
+  merges; node sizes 8, 14, 30 (8/17/17) and 62 (16/35/35); C-T1 to
+  C-T9 0 failures, reclaim's steps and cuts included.
+
 ## 6. Proofs
 
 Proved (`lean/SIS/Tree/MergeProps.lean`; `#print axioms`: propext,
@@ -712,9 +796,20 @@ Quot.sound and, for the first, Classical.choice, Lean's own):
 
 What remains, with sizes (a guess, as 024-12's section 6):
 
-* **Small:** that `mergeKlongs`' nodes are sorted and the parent's new
-  compare value g lies between them (from TP35 and the order of the
-  live klongs).
+* **Done since:** `mergeOrderOK`, TP38 (15:10): with the two nodes'
+  live klongs in compare order and bounded by R's compare value in the
+  parent, the merge's nodes are in compare order and the first's below
+  g (lists: `Pairwise`, `take` and `drop` of a sorted list, the inner
+  renames; first try).
+* **Tried at 15:25 to 15:35, put off: TP32 by frame lemmas** (each
+  action of the writer keeps the merge count, `merge` adds one; in
+  `mgl/plant/lean/SIS/Tree/MergeFrame.lean`, not on the branch). The
+  monad's own lemmas went fast (pure, throw, bind, read, get, modify,
+  `note`, `fresh`); the writer's functions with matches applied to the
+  reader and the state (`getNode` and every function above it) need a
+  case split each by hand, about 35 of them: a day, or a `do`-aware
+  simp set first. A form with the loop's fuel, merges <= deletes x
+  ((G + 1)(H + 2) + 2), is no easier: the frame is the work.
 * **Medium:** TP32 (CB1), by the loop's shape: `mergeUp` makes one merge
   a height and stops at a root; with the fuel, an induction. TP31 from
   V1, V2, V4 on layer A (a counting lemma on trees).
@@ -767,16 +862,24 @@ For mgj (024-21), kept current; newest last.
   `treeconf.sh` there (section 5); your planned trace branch is not
   needed for the comparison. When 024-12 is on `main`, J2's line goes
   with your branch.
-* **J8 (14:05). 10 seeds and the medium set agree too** (5.1): 239
-  traces, 54,877 transactions, 37,737 merges. The one failure was the
-  model's (MF3: a transient root above the trace's level bounds);
-  nothing for Java.
 * **J7 (13:10). Your `f507148d` agrees with the model** on every trace
   of `treeconf.sh` drain, small and reclaim (3 seeds; section 5.1):
   15,084 transactions, 9,243 merges, C-T1 to C-T9 all 0. Format 7's
   `dirtyNodeBound` is 24 times the nodes marked on the drain set (2026.4's
   count was 4.5 times): no fault, but it brings the record limit's
   refusal near (your "about 120,000 deletes" at node size 30).
+* **J8 (14:05). 10 seeds and the medium set agree too** (5.1): 239
+  traces, 54,877 transactions, 37,737 merges. The one failure was the
+  model's (MF3: a transient root above the trace's level bounds);
+  nothing for Java.
+* **J9 (14:40). 8/17/17**: the model has h as a parameter and record
+  format 7's thresholds as 024-14's build scales them (2.1a). For the
+  comparison the TREE line needs h too: `TREE M G H k minFill(M)
+  mergeCap(M) splitAbove(M)` (my combination writes it). Tell me (your
+  item's "For the model") when your head has 8/17/17 and its
+  `dirtyNodeBound` for it; I restate the count and run `treeconf.sh`
+  against it.
+
 
 ## 8. Gates
 
@@ -791,6 +894,9 @@ For mgj (024-21), kept current; newest last.
 | Java with merges, medium set           | 9 traces OK                            | `ad3707eb` |
 | `lake build` (all targets)             | OK, 180 jobs                           | `8e78cf65` |
 | `level2.sh` full (its step 8: treeconf) | LEVEL 2 OK, 15 min                    | `8e78cf65` |
+| `lake build`; `level2.sh` full          | 180 jobs; LEVEL 2 OK, 15 min          | `e32eb6d9` |
+| `treetest` (whole default set, A6)      | TREETEST OK, 30 min, one core         | `e32eb6d9` |
+| `lake build`                            | 181 jobs                              | `90eb124a` |
 
 * `treetest`'s default set: 024-12's runs (merges off, node sizes 4 to
   8; 340,000 states; random; `model`), now with A6 checked on every
@@ -813,6 +919,8 @@ For mgj (024-21), kept current; newest last.
 ## 9. Questions for Frans
 
 Each with a default that the work follows until he says otherwise.
+**Decided (Frans, 2026-11-11, 14:34): QM1 to QM5 as the defaults**
+(the coordinator's message).
 
 **Decided: QM1 to QM5 as their defaults** (Frans, 2026-11-11, 14:34,
 asked whether the five defaults are all right: "2, yes.").
@@ -889,37 +997,90 @@ the model's; fixed and committed (`8e78cf65`) at 13:50, all 110 drain
 traces rechecked OK; the medium set OK.
 
 
+14:31. `set5.sh` stopped and its slot released for int's re-gate of
+024-12 (the coordinator). 14:34, Frans: 8/17/17 (024-14, QT1), QM1 to
+QM5 as the defaults.
+
+14:35 to 14:50, no slot, one core: h as a parameter, `withMerges` as
+format 7's 8/17/17 scaling, TP28 and TP37 with h (proved), the count's
+room as mgj's `roomAfterReplacement` (from 024-21's `0281018e`), h on
+the TREE line; `lake build` (180 jobs); short `treetest` runs (2.1a);
+commit `37e8fbb0`. The combination re-merged with 024-21's
+`0281018e`. `hold3.sh` (Java at 8/17/17 against the model) waits for
+15:30.
+
+14:56 to 15:02. 024-12 on `main` (`b84cf761`); `main` (`944e6944`)
+merged into the branch (`447d3f0e`, no conflict, no Lean file changed
+by it; `lake build` OK). mgj's traces at 8/17/17 checked (5.2): all
+OK, after the TREE line of 7 tokens gives h = c (`e7b66354`); reported
+to the coordinator.
+
+15:20 to 15:45. `level2.sh` on `e32eb6d9` (LEVEL 2 OK). TP38 proved.
+TP32 by frame lemmas tried and put off (section 6). BU1's count in
+`treecheck` (`90eb124a`), mgj's 21 traces pass it. mgj's TREE line of 8
+tokens (m, c, h) checked: read as such. Head for landing given to the
+coordinator: `90eb124a` (the int agent lands 024-21 and 024-22 together
+on a combined, gated head).
+
+15:45 to 16:05. `treetest`'s whole default set on `e32eb6d9` OK; BU1's
+count on the combination's 239 traces OK. The branch is in int's
+combined landing head (`024-13-int-m`). Wrapped up at the coordinator's
+word: `set6.sh` skipped for today, the proofs left for a later agent
+(section 11), dead klongs to "o2" (024-23).
+
 ## 11. State
 
-Written 2026-11-11, 14:34 (agent "mgl" of coord-1111).
+Final for today: 2026-11-11, 16:05 (agent "mgl" of coord-1111). Nothing
+of mine runs or holds a slot.
 
 * **Branch** `024-22-merges-lean` in
-  `/Users/f/fl/bench/2026-11-11/mgl/clone`, three commits on 024-12's
-  gated head `d90586d0` (not on `main`; it needs 024-12 to land first,
-  approved by Frans at 14:28): `63e39de6` (the merge, V1, TP28 to TP36,
-  format 7's count, TP26, `treetest` with merges and A6, `treecheck`'s
-  TREE line), `ad3707eb` (TP37 and its proof), `8e78cf65` (MF3's fix).
-  Lean only; no Java.
-* **Done:** sections 2 to 7 and 9; the runs of section 3; faults A and
-  B (section 4); Java with merges, 10 seeds of three sets and the
-  medium set, `tracecheck` on reclaim traces (5.1).
-* **Gated:** section 8's table; `lake build` and `level2.sh` full OK
-  on the head `8e78cf65` (14:14).
-* **Nothing running.** `set5.sh` stopped at 14:31 after two of its runs
-  (3.3), its slot released: int's re-gate of 024-12 on `main` has
-  priority (the coordinator); no slot taken until int has reported its
-  gates or 15:30.
-* **Not done:** the whole `treetest` set on the head (two of its runs
-  ran on it); the rest of `set5.sh` (M = 30, 1,000 transactions,
-  `model` at M = 14, the exhaustive depth 4); `treeconf.sh large`
-  against Java with merges; the proofs of TP30 to TP33.
-* **Next, decided by Frans (14:27, 024-18, QD1), not started:** dead
-  klongs, option 2 with theta 7, after the merges, as a change of its
-  own through the model; its Lean side on top of this branch.
-* **Copies:** `mgl/plant/lean` (planted faults; clean, with a `debug6`
-  mode in `TreeTest.lean`), `mgl/comb/clone` (branch `comb`:
-  `d90586d0` + mgj's `f507148d` + J2's TREE line, uncommitted; Java
-  built there).
-* **To continue:** after int's gates (or 15:30), the rest of `set5.sh`
-  in one slot (edit its run list first; every script in `runs/` takes
-  its own slot with `slot.sh`); then 024-18's dead klongs.
+  `/Users/f/fl/bench/2026-11-11/mgl/clone`, **head `90eb124a`**, in
+  int's combined landing head `024-13-int-m` with 024-21 (`4105fc1a`).
+  `main` (`944e6944`, with 024-12) is merged in at `447d3f0e`. This
+  item's commits: `63e39de6` (the merge, V1, TP28 to TP36, format 7's
+  count, TP26, `treetest` with merges and A6, the TREE line),
+  `ad3707eb` (TP37), `8e78cf65` (MF3), `37e8fbb0` (8/17/17, h a
+  parameter), `e7b66354` (a 7-token TREE line: h = c), `e32eb6d9`
+  (TP38), `90eb124a` (BU1's count in `treecheck`). Lean only.
+* **Gated** (section 8): `lake build` on `90eb124a`; `level2.sh` full
+  and `treetest`'s whole default set on `e32eb6d9` (`90eb124a` changes
+  only `treecheck`'s checks with merges).
+* **Against Java:** before 8/17/17, 239 traces of the combination with
+  f507148d (5.1); at 8/17/17, mgj's 21 traces and the combination's
+  239 (5.2), all equal, BU1's count included.
+* **Next, not done:**
+  1. `runs/set6.sh` at 8/17/17, one slot (skipped today by the
+     coordinator): exhaustive 10 3 14 4 and 8 4 10 4, `model` at 14,
+     random on segment keys; the random M = 30 runs had only 87 merges
+     (3.3, 2.1a): a run with more keys at 30 is worth more.
+  2. `treeconf.sh large` against Java with merges (up to 5,000
+     transactions; may need a hold of its own, or `--norun`).
+  3. **The proofs, for a later agent** (section 6 has the sizes):
+     * TP30 (V1 kept, `MergeInvPreserved`): the B-tree proof of 024-12's
+       TP7 with V1 added. Its local parts are proved: TP36 (a merge's
+       nodes hold m or more and fit), TP37 (a space split's halves
+       hold m or more), TP38 (a merge's nodes in order). Left: that a
+       delete lowers a count by one, and that the loop (`mergeUp`)
+       then merges every node below m, up to a root; and every other
+       rule keeps V1 (a time split keeps the count). Statement in
+       `SIS/Tree/MergeProps.lean`; the run evidence is section 3.
+     * TP32 (CB1, `MergeOpBound`): needs frame lemmas, that every action
+       of the writer but `merge` keeps `W.merges`. Begun in
+       `mgl/plant/lean/SIS/Tree/MergeFrame.lean` (not on the branch):
+       `MergesLe`, its lemmas for pure, throw, bind, read, get, modify,
+       `note`, `fresh`, and a step tactic `mstep`. The blocker is
+       `getNode` and every function above it: matches applied to the
+       reader and the state, which `split at h` does not open; each
+       needs `cases` on the scrutinee by hand, about 35 functions. A
+       `do`-aware simp set (or a Hoare-style `WP` for `M`) first.
+     * TP31 (BU1's count): a counting lemma on trees from V1, V2, V4;
+       then the walk to that tree. Checked on runs and on Java's trees.
+     * TP33 (CB3): the potential argument of 024-11, 5.5, over a run.
+  4. Dead klongs (024-18, option 2): to the agent "o2" (024-23), on
+     top of this branch's model.
+* **Copies:** `mgl/plant/lean` (planted faults, clean; `MergeFrame.lean`;
+  a `debug6` mode), `mgl/comb/clone` (branch `comb`: `d90586d0` +
+  024-21's `0281018e` + the TREE line with m, c and h, uncommitted;
+  Java built there).
+* **Logs:** `/Users/f/fl/bench/2026-11-11/mgl/runs/` (each script there
+  takes its own slot with `slot.sh`).

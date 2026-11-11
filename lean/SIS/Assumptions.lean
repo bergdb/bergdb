@@ -112,8 +112,9 @@ structure StepOK (sp : Spec V T) (P : Struct V) (i : Time) (c : Changes V) : Pro
   /-- The touch (bergdb item 001, WP R3; `Changes.touch`): the touched nodes
   are index nodes reachable at time i-1, before the change; and a node
   reachable then with a touched node below it then (through live pointers) is
-  touched too, or is a virtual root (Java's range traversal walks down from the
-  super root, `Db.touchRange`). Without a touch these say nothing. -/
+  touched too, or is a virtual root (Java's touch walks down from the super
+  root along the paths of the step's own puts, `Db.touchPaths`, bergdb 024-07).
+  Without a touch these say nothing. -/
   touchIndex : ∀ x ∈ c.touch, isIndex P x = true
   touchReach : ∀ x ∈ c.touch, reachable sp P (i - 1) x = true
   touchUp : ∀ x ∈ c.touch, ∀ p np, reachable sp P (i - 1) p = true → P.get? p = some np →

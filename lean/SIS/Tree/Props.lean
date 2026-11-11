@@ -205,11 +205,14 @@ touch the three touch rules. With it T1, T2 and T13 hold for BergDB's tree. -/
 def RunOKTree (p : Params) : Prop :=
   ∀ (al : Algo BVal Tx) ts, Within p ts → RunOK (treeSpec p) al ts
 
-/-- TP15. `PhysRunOK`: a node's new live children are pointees of its new
-entries, and no child moves between current nodes (024-06, 4.4, point 1: argued
-before the delete path existed, checked nowhere). With TP14, lazy reading. -/
-def PhysRunOKTree (p : Params) : Prop :=
-  ∀ (al : Algo BVal Tx) ts, Within p ts → PhysRunOK (treeSpec p) al ts
+/-- TP15, proved (`liveAppendTree`, Check/TreeLive.lean). `LiveAppend`: entries
+added to a node make no pointee a live child but their own, a property of
+`blive` alone. Until bergdb 024-09 TP15 was `PhysRunOK` (a node's new live
+children are pointees of its new entries, and no child moves between current
+nodes), which the theorems assumed; since then they assume `LiveAppend` in
+its place, and `PhysRunOK` follows from it, TP14 and TREE (TP16;
+`physRunOK_of_evict`). With TP14 and TREE, lazy reading. -/
+def LiveAppendTree (p : Params) : Prop := LiveAppend (treeSpec p)
 
 /-- TP16. `EvictRunOK`: TREE and A6' after every transaction, A-COPY for every
 change. With TP14 and TP15, the theorems with handles. -/

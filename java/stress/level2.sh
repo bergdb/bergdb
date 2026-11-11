@@ -46,7 +46,8 @@
 #   7. Conformance with the Lean model (bergdb 011-11, 12):
 #      A2A3Check2 (a transaction meets the model's A2, A3 and A5, and Db
 #      marks what the model marks; and, since bergdb 005-04, TREE, A6' and
-#      A-COPY, the model's assumptions of stage 2) on three configurations;
+#      A-COPY, the model's assumptions of stage 2, and since bergdb 024-09
+#      A6 itself: no adoption below the old parent) on three configurations;
 #      and the trace checker on conformance.sh's small set (2 seeds quick, 10
 #      full): every transaction must be a step of the model that meets its
 #      assumptions, every restart invisible.
@@ -196,11 +197,11 @@ for cfg in "-Dops=4 -Ddel=25 -Dlong=1" \
     grep -q 'violating A3 0, A5 0;' $F && grep -q 'NET (A2): .* not current 0 ' $F \
         && grep -q 'in step 3 only 0, in model only 0 ' $F \
         && grep -q 'adopted index nodes not below the old parent 0 (transactions 0)' $F \
+        && grep -q 'does not (bergdb 005-04), 0 (transactions 0)' $F \
         && grep -q 'nodes without exactly one 0 (transactions 0)' $F \
         && grep -q 'A-COPY .* failing 0 (transactions 0)' $F || fail "A2A3Check2" $F
     echo "   a2a3-$n: $(grep -o '^  transactions [0-9]*' $F | sed 's/^ *//'): A2, A3, A5, marking," \
-        "TREE, A6' and A-COPY OK; adoptions below the old parent (A6' allows them, A6 not)" \
-        "$(grep -o 'does not (bergdb 005-04), [0-9]*' $F | sed 's/.*, //')"
+        "TREE, A6 and A-COPY OK"
 done
 # The draining configurations (bergdb 024-09, step A1).
 # a2a3_failing FILE: the first rule that A2A3Check2's output does not show to hold, with
@@ -215,6 +216,8 @@ a2a3_failing() {
         || { echo "marking: $(grep -o 'in step 3 only [0-9]*, in model only [0-9]*' $1)"; return; }
     grep -q 'adopted index nodes not below the old parent 0 (transactions 0)' $1 \
         || { echo "A6': $(grep -o 'adopted index nodes not below the old parent [0-9]* (transactions [0-9]*)' $1)"; return; }
+    grep -q 'does not (bergdb 005-04), 0 (transactions 0)' $1 \
+        || { echo "A6: adopted below the old parent $(grep -o 'does not (bergdb 005-04), [0-9]* (transactions [0-9]*)' $1 | sed 's/.*, //')"; return; }
     grep -q 'nodes without exactly one 0 (transactions 0)' $1 \
         || { echo "TREE: $(grep -o 'nodes without exactly one [0-9]* (transactions [0-9]*)' $1)"; return; }
     grep -q 'A-COPY .* failing 0 (transactions 0)' $1 \
@@ -236,7 +239,7 @@ for cfg in "-Dops=40 -Dexact=1 -Dn=200 -Dkeys=300 -Ddel=60 -Dlong=1" \
     TB=$(sed -n 's/^  taken back (made and emptied in a transaction, bergdb 023-05) //p' $F)
     [ "${TB:-0}" -gt 0 ] || fail "A2A3Check2, draining configuration $n ($cfg) takes back no node: it does not reach the take-back" $F
     echo "   a2a3-drain-$n: $(grep -o '^  transactions [0-9]*' $F | sed 's/^ *//'): A2, A3, A5, marking," \
-        "TREE, A6' and A-COPY OK; nodes taken back $TB"
+        "TREE, A6 and A-COPY OK; nodes taken back $TB"
 done
 (cd ../lean && lake build) > $LOG/lake.txt 2>&1 || fail "the Lean checker, lake build" $LOG/lake.txt
 sh stress/conformance.sh small $CONF_SEEDS > $LOG/conformance.txt 2>&1

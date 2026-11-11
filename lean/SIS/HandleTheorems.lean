@@ -18,8 +18,9 @@ Rule R on the fast path matters, over the memory with handles of SIS/Handle.lean
 (stated over Evict.lean's memory before handles, as PhysTheorems.lean's
 `TC_records`, `TR_view`, `TP_pins`, `T2_cache` and `TR_view_restarts`, until
 bergdb 005-62). The assumptions: BergDB's bookkeeping (`javaTest`, marking), the
-Level 2 assumptions (`RunOK`), those of the physical layer (`PhysRunOK`) and
-those of stage 2 (`EvictRunOK`: TREE, A6' and A-COPY; SIS/Phys.lean).
+Level 2 assumptions (`RunOK`), `LiveAppend` (which gives those of the physical
+layer, `PhysRunOK`, with `RunOK` and TREE; bergdb 024-09) and those of stage 2
+(`EvictRunOK`: TREE, A6' and A-COPY; SIS/Phys.lean).
 SIS/HandleExample.lean checks each of them by running, with the `Bool` twins
 of the invariants below.
 -/
@@ -130,7 +131,7 @@ def HWrittenOK (db : DB V T) (m : HMem V) : Prop :=
 
 /-- T-CACHE with handles (bergdb item 009, 2c; bergdb 001-08, 5.11). For a
 run of BergDB's algorithm (`javaTest`, with marking) that meets the assumptions,
-those of the physical layer and those of stage 2, from the startup with handles
+`LiveAppend` and those of stage 2, from the startup with handles
 from R(0) (`handleStartup`), with any reads and evictions after each transaction
 (`HCacheOp`, `runHandles`) and no restart: after every transaction and its
 operations, the physical writer with handles (`handleTrans`) has appended
@@ -143,7 +144,7 @@ transactions, in any order. Proved: `tc_handles`, and the first part, that the
 records are the model's, alone: `TC_handles_records` (SIS/Proof/HandleRecords.lean). -/
 def TC_handles (sp : Spec V T) (al : Algo V T) : Prop :=
   ∀ ts : List (T × Bool × List HCacheOp),
-    RunOK sp al (ts.map (·.1)) → PhysRunOK sp al (ts.map (·.1)) →
+    RunOK sp al (ts.map (·.1)) → LiveAppend sp →
     EvictRunOK sp al (ts.map (·.1)) → al.stillDirty = javaTest sp → al.mark = true →
     (∀ p ∈ ts, p.2.1 = false) →
     ∀ j ≤ ts.length,
@@ -166,7 +167,7 @@ at least the version in R(0)); after a restart it is what open point 1 needs.
 Proved: `t2_handles` (SIS/Proof/HandleRestart.lean). -/
 def T2_handles (sp : Spec V T) (al : Algo V T) : Prop :=
   ∀ ts : List (T × Bool × List HCacheOp),
-    RunOK sp al (ts.map (·.1)) → PhysRunOK sp al (ts.map (·.1)) →
+    RunOK sp al (ts.map (·.1)) → LiveAppend sp →
     EvictRunOK sp al (ts.map (·.1)) → al.stillDirty = javaTest sp → al.mark = true →
     ∀ j ≤ ts.length,
       let db := run sp al ((ts.take j).map (·.1))
@@ -188,7 +189,7 @@ and for the writer's own read at the last time. Proved: `tr_handles`
 (SIS/Proof/HandleReadT.lean). -/
 def TR_handles (sp : Spec V T) (al : Algo V T) : Prop :=
   ∀ ts : List (T × Bool × List HCacheOp),
-    RunOK sp al (ts.map (·.1)) → PhysRunOK sp al (ts.map (·.1)) →
+    RunOK sp al (ts.map (·.1)) → LiveAppend sp →
     EvictRunOK sp al (ts.map (·.1)) → al.stillDirty = javaTest sp → al.mark = true →
     (∀ p ∈ ts, p.2.1 = false) →
     ∀ j ≤ ts.length, ∀ t ≤ j,
@@ -206,7 +207,7 @@ for reads: without a restart, Rule R changes nothing. Proved:
 `tr_handles_restarts` (SIS/Proof/HandleRestart.lean). -/
 def TR_handles_restarts (sp : Spec V T) (al : Algo V T) : Prop :=
   ∀ ts : List (T × Bool × List HCacheOp),
-    RunOK sp al (ts.map (·.1)) → PhysRunOK sp al (ts.map (·.1)) →
+    RunOK sp al (ts.map (·.1)) → LiveAppend sp →
     EvictRunOK sp al (ts.map (·.1)) → al.stillDirty = javaTest sp → al.mark = true →
     ∀ j ≤ ts.length, ∀ t ≤ j,
       let db := run sp al ((ts.take j).map (·.1))
@@ -230,7 +231,7 @@ the pinned set is all that must stay: no walk, and nothing about the pointers
 that hold a handle. Proved: `tp_handles` (SIS/Proof/HandlePin.lean). -/
 def TP_handles (sp : Spec V T) (al : Algo V T) : Prop :=
   ∀ ts : List (T × Bool × List HCacheOp),
-    RunOK sp al (ts.map (·.1)) → PhysRunOK sp al (ts.map (·.1)) →
+    RunOK sp al (ts.map (·.1)) → LiveAppend sp →
     EvictRunOK sp al (ts.map (·.1)) → al.stillDirty = javaTest sp → al.mark = true →
     ∀ j ≤ ts.length,
       let r := runHandles sp al (ts.take j)
@@ -261,7 +262,7 @@ node. In (2) for a top node y, the pointer is a top node's or the root's, which
 `HMem.linkDPos` takes by node id, as Java reads the header for a top node's.
 Proved: `rule4_positions` (SIS/Proof/HandleLinkPos.lean). -/
 def Rule4_positions (sp : Spec V T) (al : Algo V T) : Prop :=
-  ∀ ts : List T, RunOK sp al ts → PhysRunOK sp al ts → EvictRunOK sp al ts →
+  ∀ ts : List T, RunOK sp al ts → LiveAppend sp → EvictRunOK sp al ts →
     al.stillDirty = javaTest sp → al.mark = true →
     ∀ k ≤ ts.length,
       let S := (run sp al (ts.take k)).S
@@ -290,7 +291,7 @@ raised by Rule R or linked here before it: a top node's pointer to a top node's
 version before the section, whose header Java reads (bergdb 005-58, Outcome).
 Proved: `rule4Pos_handles` (SIS/Proof/HandleLinkPos.lean). -/
 def Rule4Pos_handles (sp : Spec V T) (al : Algo V T) : Prop :=
-  ∀ ts : List T, RunOK sp al ts → PhysRunOK sp al ts → EvictRunOK sp al ts →
+  ∀ ts : List T, RunOK sp al ts → LiveAppend sp → EvictRunOK sp al ts →
     al.stillDirty = javaTest sp → al.mark = true →
     ∀ k ≤ ts.length,
       handleStartupPos sp (run sp al (ts.take k)).S = handleStartup sp (run sp al (ts.take k)).S
@@ -304,7 +305,7 @@ same state, memory and stream of the last startup. So `T2_handles`,
 `runPos_handles` (SIS/Proof/HandleLinkPos.lean). -/
 def RunPos_handles (sp : Spec V T) (al : Algo V T) : Prop :=
   ∀ ts : List (T × Bool × List HCacheOp),
-    RunOK sp al (ts.map (·.1)) → PhysRunOK sp al (ts.map (·.1)) →
+    RunOK sp al (ts.map (·.1)) → LiveAppend sp →
     EvictRunOK sp al (ts.map (·.1)) → al.stillDirty = javaTest sp → al.mark = true →
     ∀ j ≤ ts.length, runHandlesPos sp al (ts.take j) = runHandles sp al (ts.take j)
 

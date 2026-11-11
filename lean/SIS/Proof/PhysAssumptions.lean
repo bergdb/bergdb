@@ -16,15 +16,18 @@ any `Spec`, from what the model assumes besides it:
   reachable at i, y would be a live child at i of both x and z, against TREE.
   TREE before the transaction is not needed.
 * `liveNew` (`physStep_liveNew`): from one property of the Spec's `live`,
-  `LiveAppend`: entries added at the end of a history give no live child but
-  their own pointees. It is a property of the function `live` alone, not of a
-  run; Check/Live.lean proves it for the trace checker's `blive`.
+  `LiveAppend` (SIS/Phys.lean): entries added at the end of a history give no
+  live child but their own pointees. It is a property of the function `live`
+  alone, not of a run; Check/Live.lean proves it for the trace checker's
+  `blive`.
 
 So `PhysRunOK` holds in every run that meets `RunOK`, with TREE after every
 transaction and `LiveAppend` (`physRunOK_of_tree`), and in every run that meets
 `RunOK` and `EvictRunOK`, with `LiveAppend` (`physRunOK_of_evict`); and a
 theorem that assumes the three holds without `PhysRunOK` (`without_physRunOK`).
-The trusted statements are unchanged: they still name `PhysRunOK`.
+Since 024-09's follow-up the trusted statements assume `LiveAppend` and TREE
+(`TreeRunOK` for lazy reading, `EvictRunOK` for the theorems with handles) in
+place of `PhysRunOK`, and their proofs get `PhysRunOK` from here.
 -/
 import SIS.Proof.LogicFacts
 import SIS.Proof.PhysFrozen
@@ -34,14 +37,6 @@ set_option linter.unusedSectionVars false
 namespace SIS
 
 variable {V T : Type} [DecidableEq V]
-
-/-- Live children come from entries: a live child of a history h followed by
-the entries h' is a live child of h, or a pointee of an entry of h'. So entries
-added to a node make none of its other pointees live again. With `LiveSub` this
-is what `PhysStep.liveNew` needs of the function `live`. -/
-def LiveAppend (sp : Spec V T) : Prop :=
-  ∀ (h h' : History V) (y : NodeId), y ∈ sp.live (h ++ h') →
-    y ∈ sp.live h ∨ ∃ e ∈ h', y ∈ sp.ptrs e.val
 
 /-- A node that the change neither creates nor gives entries gets no entries. -/
 theorem addsFor_of_not_changed {c : Changes V} {z : NodeId} (h : changed c z = false) (i : Time) :
@@ -237,15 +232,14 @@ theorem physRunOK_of_tree (hok : RunOK sp al ts) (hla : LiveAppend sp)
 
 /-- `PhysRunOK` from `RunOK`, `EvictRunOK` (its TREE) and `LiveAppend`: the
 theorems with handles (SIS/HandleTheorems.lean, SIS/HandleReclaimTheorems.lean)
-assume the first two besides `PhysRunOK`. -/
+assume these three, and their proofs get `PhysRunOK` from them. -/
 theorem physRunOK_of_evict (hok : RunOK sp al ts) (hla : LiveAppend sp)
     (hev : EvictRunOK sp al ts) : PhysRunOK sp al ts :=
   physRunOK_of_tree hok hla (fun j hj => (hev.1 (j + 1) hj).tree)
 
 /-- A statement that assumes `RunOK`, `PhysRunOK` and `EvictRunOK` of a run,
-as the theorems with handles do, holds without `PhysRunOK` for a Spec with
-`LiveAppend`. For example `without_physRunOK hla (tr_handles sp al)` is T-READ
-with handles from `RunOK` and `EvictRunOK`. -/
+as the lemmas of the proofs with handles do, holds without `PhysRunOK` for a
+Spec with `LiveAppend`. -/
 theorem without_physRunOK {ι : Type} {f : ι → List T} {Q : ι → Prop} (hla : LiveAppend sp)
     (h : ∀ x, RunOK sp al (f x) → PhysRunOK sp al (f x) → EvictRunOK sp al (f x) → Q x) :
     ∀ x, RunOK sp al (f x) → EvictRunOK sp al (f x) → Q x :=

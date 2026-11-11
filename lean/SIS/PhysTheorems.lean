@@ -7,6 +7,7 @@ import SIS.Proof.EvLogic
 import SIS.Theorems
 import SIS.Proof.Newer
 import SIS.Proof.PhysT2
+import SIS.Proof.PhysAssumptions
 
 namespace SIS
 
@@ -50,7 +51,8 @@ theorem LM_cutTo (sp : Spec V T) (S : Stream V T) (P : Struct V) (w : Version V)
   good_cutTo sp S P w ht
 
 /-- T1-L, lazy startup (bergdb item 001, WP L3). After a run of BergDB's
-algorithm (`javaTest`) that meets the assumptions of the physical layer
+algorithm (`javaTest`) that meets the assumptions, with TREE after every
+transaction (`TreeRunOK`) and `LiveAppend`, so those of the physical layer
 (`PhysRunOK`), Java's lazy startup (`lazyStartup`) from the stream after T(k)
 (the whole stream, or a prefix of it, which a crash leaves), followed by any
 reads and writer follows (`Op`; admissible: `OpsOK`): a read at any time t up
@@ -63,7 +65,8 @@ node uses at a time t (it is reachable at t, the pointee a live child at t)
 leads to a canonical object, or to one that holds a version good for t if it
 holds all of it. -/
 theorem T1_lazy (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp al ts)
-    (hph : PhysRunOK sp al ts) (hj : al.stillDirty = javaTest sp) (k : Nat) (hk : k ≤ ts.length)
+    (hla : LiveAppend sp) (htree : TreeRunOK sp al ts)
+    (hj : al.stillDirty = javaTest sp) (k : Nat) (hk : k ≤ ts.length)
     (ops : List Op)
     (hops : OpsOK sp ((run sp al ts).S.take (k + 1)) (run sp al (ts.take k)).P k
       (lazyStartup sp ((run sp al ts).S.take (k + 1))) ops) :
@@ -80,6 +83,7 @@ theorem T1_lazy (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp al
         ∃ o', m.obj? h' = some o' ∧ o'.node = y ∧ (o'.canonical = true ∨
           ∃ r w, o'.pos = some r ∧ S.versionAt r y = some w ∧
             (o'.hist = w.hist → good sp S P t w = true))) := by
+  have hph := physRunOK_of_tree hok hla htree
   have hst : AlgOK sp al := algOK_of sp al (Or.inl hj)
   have hpre := st_S_prefix sp al ts (j := k) (j' := ts.length) hk (Nat.le_refl _)
   have hlen := st_len sp al ts hok hst hk
@@ -102,15 +106,18 @@ theorem step_eq_stepWith (sp : Spec V T) (al : Algo V T) (db : DB V T) (tr : T) 
       stepWith sp al db tr (sp.exec tr db.S.length (view sp db.P (db.S.length - 1))) := rfl
 
 /-- T2-L, restarts with a lazy startup (bergdb item 001, WP L4). A run of
-BergDB's algorithm (`javaTest`) that meets the assumptions, also those of the
+BergDB's algorithm (`javaTest`) that meets the assumptions, with TREE after
+every transaction (`TreeRunOK`) and `LiveAppend`, so also those of the
 physical layer (`PhysRunOK`), with restarts after any transactions, each a lazy
 startup (`lazyStartup`), and whose writer reads its view of P and reaches the
 nodes of its paths through the physical layer (`lazyTrans`, `runLazy`),
 appends exactly the same records as the run without restarts. -/
 theorem T2_lazy (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool))
-    (hok : RunOK sp al (ts.map (·.1))) (hph : PhysRunOK sp al (ts.map (·.1)))
+    (hok : RunOK sp al (ts.map (·.1))) (hla : LiveAppend sp)
+    (htree : TreeRunOK sp al (ts.map (·.1)))
     (hj : al.stillDirty = javaTest sp) :
     (runLazy sp al ts).1.S = (run sp al (ts.map (·.1))).S := by
+  have hph := physRunOK_of_tree hok hla htree
   have h := (T2_lazy_strong hok hph hj (j := ts.length) (Nat.le_refl _)).1.1
   rw [List.take_length] at h
   have hl : (ts.map (·.1)).length = ts.length := List.length_map _
@@ -122,10 +129,12 @@ after any of its transactions, every canonical object in memory, whether the
 startup made it or the writer's follows did, holds its node's whole history:
 that of the node in P of the run without restarts. -/
 theorem CC_canonical (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool))
-    (hok : RunOK sp al (ts.map (·.1))) (hph : PhysRunOK sp al (ts.map (·.1)))
+    (hok : RunOK sp al (ts.map (·.1))) (hla : LiveAppend sp)
+    (htree : TreeRunOK sp al (ts.map (·.1)))
     (hj : al.stillDirty = javaTest sp) (j : Nat) (hjt : j ≤ ts.length) :
     ∀ h o, (runLazy sp al (ts.take j)).2.1.obj? h = some o → o.canonical = true →
       ((run sp al ((ts.take j).map (·.1))).P.get? o.node).map (·.hist) = some o.hist := by
+  have hph := physRunOK_of_tree hok hla htree
   have h := (T2_lazy_strong hok hph hj hjt).2
   rw [List.map_take]
   exact h

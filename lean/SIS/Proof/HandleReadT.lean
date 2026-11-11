@@ -11,6 +11,7 @@ good for t, so by lemma M the object is canonical or a snapshot of a version
 good for t.
 -/
 import SIS.Proof.HandleHistTrans
+import SIS.Proof.PhysAssumptions
 
 set_option linter.unusedSectionVars false
 
@@ -462,7 +463,8 @@ end Run
 restart, after any transaction and its operations, a read through the handles
 at any time t up to the last record gives P at t. -/
 theorem tr_handles (sp : Spec V T) (al : Algo V T) : TR_handles sp al := by
-  intro ts hok hph hev hj hmk hnr j hjt t ht db m
+  intro ts hok hla hev hj hmk hnr j hjt t ht db m
+  have hph := physRunOK_of_evict hok hla hev
   have hst : st sp al (ts.map (·.1)) j = run sp al ((ts.take j).map (·.1)) := by
     unfold st; rw [List.map_take]
   obtain ⟨-, -, e3⟩ := TC_runH hok hph hev hj hmk hnr (heinv_init hok hph hj hmk hev) j hjt
