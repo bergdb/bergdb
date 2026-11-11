@@ -421,6 +421,10 @@ from them.
   tests and programs, each its own commit (024-24, section 3), accepted
   for Frans to see (Q2); the index build over values longer than L6
   gives no entry (Q1, as recommended).
+* 20:19 night.sh started on main (f5ac2600), holding both slots.
+  20:21 024-26 started (Opus high, to 02:00): a round of "AI as the user"
+  (006-20) against the new algorithms (merges, option 2, CRC32C, the
+  limits): bugs first (024-04, aim 1).
 
 
 ## 6. Outcome
