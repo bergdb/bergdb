@@ -359,6 +359,11 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   the index keeps the nodes of deleted keys for ever, so scans and the
   stream are not bounded by the live data (U16-1, U17-1, 021-25); the
   study and the fix. 2026.4 waits for it (Frans, 09:03).
+* [31-release.md](31-release.md). 020-31, the release of 2026.4: commit A
+  (`bb8da6d`, made again after its first night: main with 023-core merged,
+  BuildInfo, two fixes of test races, two of corrupt streams, next.md and
+  the docs), its night of 10 to 11 November on F53 and s1, and the morning's
+  steps; the tag `release-2026.4`.
 
 
 Log
@@ -439,3 +444,6 @@ deleted keys, so a scan's cost and the stream's size grow with every
 delete (020-24-16, 020-24-17, 021-25). 020-30 created with Frans's rule
 that a deleted KV eventually costs nothing; its study started. The
 candidate `03ce6ec` is not tagged.
+
+2026-11-11. Release 2026.4 made: the tag `release-2026.4` on `bb8da6d`,
+after a clean night (020-31).

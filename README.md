@@ -23,7 +23,7 @@ them:
   apart from the current state. See [items/readme.md](items/readme.md).
 * `releases/`. The releases: each one's jar, source, release notes and
   baseline measurements. The latest is
-  [2026.3](releases/2026.3/readme.md), internal, of 2026-11-07. What the
+  [2026.4](releases/2026.4/readme.md), internal, of 2026-11-11. What the
   next release's notes must say is collected in
   [releases/next.md](releases/next.md).
 
@@ -35,7 +35,7 @@ Build and test
 --------------
 
 Needs a JDK 17 or later (the code is compiled with `--release 17`, since
-2026-10-25, bergdb 009; before, `--release 8`; release 2026.3 was tested
+2026-10-25, bergdb 009; before, `--release 8`; release 2026.4 was tested
 on JDK 27 and 17, on macOS and Linux) and, for the proofs
 and `level2.sh` to `level4.sh`, [elan](https://github.com/leanprover/elan).
 BergDB's jar also runs on Android: the Core from API level 33, objects

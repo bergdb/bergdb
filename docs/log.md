@@ -1753,3 +1753,22 @@ known faults. Databases of 2026.2 open in 2026.3; the Pub API changed
 (`create(p)` and `open(p)` for `dir(p)`; the retain duration kept in the
 stream). After the tag, `BuildInfo` says 2026.4-dev.
 
+2026-11-11. Release 2026.4, internal, as planned in item 020: the tag
+`release-2026.4` on `bb8da6d`, where `BuildInfo` says 2026.4, made after its
+night of 10 to 11 November, at Frans's word (2026-11-10, 19:33: "If the
+night is clean, merge into main, push, and make the commit."). The release
+commit was made again that night: `night.sh large` on the first one,
+`72c8e0e`, passed its large conformance set in 369 minutes, but its night
+tests found that a damaged stream could make a read loop for ever; the
+commit made again adds the fix, a cycle check in every descent, and a
+refusal of a damaged prevPos. On it `night.sh` passed (NIGHT OK, 100
+minutes), and StreamDigest, the Lean axioms, the unit tests and demos on
+Android, and the tests again on the jars on s1 with JDK 27 and 17;
+jcstress's eight tests on the first commit; UnlinkFuzz on s1 on both (40,600
+seeds, no failure). `releases/2026.4/` holds the users' jar, the source, the
+Pub API's Javadoc, the release notes and the outputs of the runs. A bug-free
+database (020): the rest of what a user can use, objects and user indexes
+included, on 2026.3's bug-free Core; and the Core's cleanup (023): a delete
+removes the index nodes it empties, so that scans and reclaim no longer pass
+deleted keys. Record format 6: databases of 2026.3 are refused. After the
+tag, `BuildInfo` says 2026.5-dev.
