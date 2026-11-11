@@ -318,6 +318,13 @@ from them.
   re-merged onto main with 024-16; gates: lake build, treetest, no
   sorry or axiom, test-traces, before-commit, level1 full, level2 full
   with its new treeconf step, level3 full).
+* 14:59 024-17 reworked for 112-byte keys (lim2). Three corrections to
+  the coordinator's figures of 14:40 to 14:45: TP26 is stated and
+  checked, not proved; 112 bytes are 17 segments (111 are 16); with
+  merges TP26's form counts 20 nodes a level, which covers only 452
+  operations. A sharper count with q (about 8 a level) covers 1,128
+  (QL8). Proposed L3 112 KiB, L6 112 bytes refused; QL1, QL4, QL8,
+  QL11 (112 or 111), QL12 (node sizes 8 and 62) for Frans.
 
 
 ## 6. Outcome

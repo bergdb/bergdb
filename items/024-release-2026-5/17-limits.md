@@ -12,8 +12,10 @@ creating a subitem of 024 to document this."
 
 A study: facts from the code, from the item files and from
 measurements; no product code. Limits proposed are L1 to L8 (section
-6), alternatives A1 to A6 (section 7), questions QL1 to QL10 (section
-8), findings F1 to F7; cite them as "024-17, L2".
+6), alternatives A1 to A6 (section 7), questions QL1 to QL12 (section
+8), findings F1 to F12; cite them as "024-17, L2". Reworked from 14:45
+for Frans's QL2 (a key at most 112 bytes, 14:45): sections 0, 3, 5, 6,
+7, 8 and 9.
 
 
 ## 0. Summary
@@ -27,23 +29,32 @@ measurements; no product code. Limits proposed are L1 to L8 (section
   (10,000); long keys and values over 16 MiB only in tests of size and
   in the AI-user apps (section 3).
 * **Frans's frame** (section 1): user limits checked, internal bounds
-  proved ("Yes, sure. Good."); the key's length, 256 bytes, the one
-  limit a user remembers; the others large enough for nearly every use;
-  "Ordinary photos should fit".
-* **Proposed** (section 6): a key at most 256 bytes as stored (a Pub
-  key's UTF-8 with each "/" counted twice, a Core key's bytes), and an
-  indexed value likewise; a
-  transaction at most 1,000 operations and 64 MiB of keys and values; a
-  value at most 16 MiB; BergDB's own longer keys (index entries) within
-  256 KiB of key bytes a transaction. Checked before the go point, the
-  same whatever the database holds; nodes dirtied, records and heap are
-  bounds derived from them; the record limit stays the format's.
-* **F2, why 1,000.** The provable count of dirtied nodes is operations x
-  key segments x tree height: a 256-byte key is 37 segments, the height
-  of any database at most 22 with 024-11's merges, so a record of 2^31
-  - 9 bytes proves about 520 operations by 024-12's simple count, 1,000
-  to 1,400 by sharper ones (to prove). 10,000 needs a key-bytes limit or
-  a take that splits a transaction's dirty nodes over records (A1, A3).
+  proved ("Yes, sure. Good."); the key's length the one limit a user
+  remembers, **112 bytes** (QL2, decided 14:45; 256 before); the others
+  large enough for nearly every use; "Ordinary photos should fit".
+* **Proposed** (section 6): a key at most 112 bytes as stored (a Pub
+  key's UTF-8 with each "/" counted twice, a Core key's bytes; "about
+  100 characters"), and an indexed value likewise; a transaction at
+  most 1,000 operations and 64 MiB of keys and values; a value at most
+  16 MiB; BergDB's own longer keys (index entries) within 112 KiB of key
+  bytes a transaction. Checked before the go point, the same whatever
+  the database holds; nodes dirtied, records and heap are bounds derived
+  from them; the record limit stays the format's.
+* **F2, why 1,000.** The count of dirtied nodes is operations x key
+  segments x tree height: a 112-byte key is 17 segments (F10: not 16, a
+  key of a multiple of 7 bytes ends in an empty segment), the height of
+  any database at most 22 with 024-11's merges, so a record of 2^31 - 9
+  bytes takes 1,133 operations by 2026.4's form of TP26, 1,128 by a form
+  for format 7 that counts the room after a merge (8 nodes a level at
+  node size 30), and **452 by format 7's TP26 as stated today** (20
+  nodes a level, 024-22, 3.4). **No form is proved** (F11): TP26 is
+  stated and checked by the runs. So L1 = 1,000 rests on restating TP26
+  for format 7 (QL8): one line of `Bound.lean`, 13 % margin at H = 22.
+* **F12, node sizes.** A node of size 62 takes 1,056 bytes in the bound,
+  not 544, and at 8 a tree can be 61 levels high: at 8 and 62 not even
+  Java's own count of one delete on a full path reaches 1,000
+  operations (720 and 938 in a record); at 14 and 30 it does (5.2,
+  QL12).
 * **Measured** (section 4, main, 1M and 10M keys): batching does not cut
   a put's bytes past about 100 operations, nor its time (2.7 to 5.3 us),
   F8; a commit of 1,000 operations takes 2 to 6 ms, of 10,000 27 to 90
@@ -57,7 +68,9 @@ measurements; no product code. Limits proposed are L1 to L8 (section
   lossy songs and nearly all documents; not camera RAW, lossless audio
   or video (6.8). Sizes S, M, L of databases (Frans, 10:38) are later;
   2026.5 keeps the limits as named constants and hypotheses (6.9).
-* **Questions** QL1 to QL10 (section 8).
+* **Questions** QL1 to QL12 (section 8); QL2 decided (112 bytes), QL3
+  and QL5 to QL7, QL9, QL10 as before; QL1, QL4, QL8 reworked; QL11 (112
+  or 111 bytes) and QL12 (node sizes 8 and 62) new.
 
 ## 1. The discussion
 
@@ -168,6 +181,9 @@ All times 2026-11-11.
   databases of any size. Perhaps conversions from S to M, and from M to
   L are allowed. Just thinking out loud. Certainly not for 2026.5."
   The coordinator's remarks: see 6.9.
+* Frans, 14:40 to 14:45, on the key's length: 150 bytes? 100? 120?
+  "Let's make it 112 bytes then." The exchange is at the top of section
+  8 (QL2, decided); sections 3, 5 and 6 are reworked for it.
 
 
 ## 2. Today's limits
@@ -313,8 +329,9 @@ arrays of 1 MiB refused, 021-23).
 
 From a survey of the repository, the C clone and the AI-user apps
 (2026-11-11, 10:10). "Breaks" names the limits of 6.1 that it passes
-(L1 1,000 operations, L2 a 256-byte key, L4 a 16 MiB value, L5 64 MiB a
-transaction); "at L1": exactly 1,000.
+(L1 1,000 operations, L2 a 112-byte key, L4 a 16 MiB value, L5 64 MiB a
+transaction); "at L1": exactly 1,000. With 112 bytes (14:55),
+`performance.sh`'s long keys of 120 bytes break L2 too (6.2 (e)).
 
 | Where                         | Ops a tx | Largest key | Largest value | Breaks      |
 |-------------------------------|---------:|------------:|--------------:|-------------|
@@ -323,7 +340,7 @@ transaction); "at L1": exactly 1,000.
 | Perf group (`Get`, `BigDb`)   |   10,000 |       small |         10 MB | L1          |
 | Night (`PayTest`)             |    1,000 |       small |        ~10 kB | at L1       |
 | Demos (`PayDemo` and others)  |    1,000 |       small |         small | at L1       |
-| `performance.sh` suites       |      100 |       120 B |      10,000 B | none        |
+| `performance.sh` suites       |      100 |       120 B |      10,000 B | L2          |
 | Level scripts                 |    1,000 |       small |       8,000 B | at L1       |
 | C clone's tests and bench     |    1,000 |       small |   1,000,000 B | at L1       |
 | AI apps 006-20 (u1 to u12)    |  400,000 |       59 kB |        100 MB | all         |
@@ -347,8 +364,9 @@ u11 20,000 puts, u4 1,000 objects with indexes; 022-06's C u1 keys to
 
 **F3.** Every gate (`before-commit.sh`, the level scripts,
 `performance.sh`) passes with 6.1's limits except the unit tests of
-long keys and of 2,000 operations, `DbTesterStream`'s f test and the
-perf group, which change; 1,000 operations is exactly what `PayDemo`, `PayTest`,
+long keys and of 2,000 operations, `DbTesterStream`'s f test, the
+perf group and, with 112 bytes, `performance.sh`'s read suites (keys of
+120 bytes), which change; 1,000 operations is exactly what `PayDemo`, `PayTest`,
 `LargerThanMemory` and `cbench` use, so the limit must be "at most",
 and a Pub layer that counts index entries would refuse `PayTest` if
 its objects had indexes.
@@ -499,8 +517,13 @@ within 15 %).
 
 From the user's limits to every internal quantity, for a transaction
 within L1 to L6 (section 6). Notation: n operations (n <= L1), key i of
-k_i bytes, s_i = max(1, ceil(k_i / 7)) its segments (k_i <= 256 gives
-s_i <= 37), values v_i, the sum of k_i and v_i at most L5.
+k_i bytes, s_i = floor(k_i / 7) + 1 its segments (`Keys.toSegments`: a
+key whose length is a multiple of 7 ends in an empty segment, so that a
+klong of length 7 is always a key node's; k_i <= 112 gives s_i <= 17;
+this file said max(1, ceil(k_i / 7)) until 14:55, F10), S the sum of
+the s_i, values v_i, the sum of k_i and v_i at most L5. Reworked for
+112-byte keys at 14:55; the arithmetic is `17-limits/bound112.py`, its
+output `bound112.txt`.
 
 ### 5.1 The KVs that reach the tree
 
@@ -521,44 +544,117 @@ s_i <= 37), values v_i, the sum of k_i and v_i at most L5.
 
 ### 5.2 Nodes dirtied
 
-* **The count.** 024-12's TP26 (planned, checked by test, not proved):
-  `dirtyNodeBound` <= the sum over operations of (8 x s_i x (H + 2) +
-  2), H the largest height of a segment tree. So nodes <= 8 (H + 2) S +
-  2n.
+* **The count.** 024-12's TP26 (stated, checked by the runs, not
+  proved): `dirtyNodeBound` <= the sum over operations of (8 x s_i x (H
+  + 2) + 2), H the largest height of a segment tree. So nodes <= 8 (H +
+  2) S + 2n. **With merges** (record format 7, 024-21; 024-22, 3.4) it
+  is restated as 20 x s_i x (H + 2) + 14 an operation: a delete's four
+  klongs in every node of its path, the room q after a merge, and the
+  merges' four nodes a level and two levels more. The Lean statement
+  (`Limits.dirtyNodes`, `Bound.lean` on 024-22's branch) takes every
+  operation at the longest key: maxOps x (20 x maxSegs x (H + 2) + 14).
 * **H needs 024-11.** Today a segment tree's height is not bounded by
   its keys: deletes leave nodes nearly empty (024-11's underfill). With
-  merges at the delete every node but a root holds at least m = 7 live
-  klongs (024-11, V1, at B = 30), so a tree of K klongs has height at
-  most 1 + log7(K). A stream of under 2^63 bytes holds under 2^60
-  klongs: **H <= 22 for any database.** A constant, so the bound is a
-  function of the user's limits alone.
-* **Numbers.** At most 3.70 million nodes fit a record's 15/16
-  (2,013,265,912 bytes at 544 bytes a node, the largest, 2.1). Nodes an
-  operation, and the most operations whose bound fits:
+  merges at the delete every node but a root holds at least m live
+  klongs (024-11, V1; m = 8 at B = 30 since 14:34, 024-14's QT1; 7
+  before), so a tree of K klongs has height at most 1 + log_m(K). A
+  stream of under 2^63 bytes holds under 2^60 klongs: **H <= 22 for any
+  database** at m = 7, 21 at m = 8. A constant, so the bound is a
+  function of the user's limits alone; but it rests on V1, whose proof
+  (024-22's TP30) is not made.
+* **Format 7's count with q** (mine, 14:50; an argument as CB2's is).
+  Java's format-7 `dirtyNodeBound` (024-21, 3.5) counts for a delete at
+  each node of its path: the node, four nodes for the merges, and the
+  node's overflows and one, at most 2 + k / q for the k klongs it gets
+  (four of the delete, the overflows and one of the child below, the
+  root collapses' klongs at a segment leaf), q the room after a
+  replacement (`roomAfterReplacement`: 10 at B = 30 with 8/17/17, 12
+  with 7/15/15). So x = 2 + (4 + x) / q a level, x = 2 (q + 2) / (q -
+  1), 2.67 at q = 10: 7.67 nodes a level, and **8 x s_i x (H + 2) + 14**
+  holds with the collapses (about H / (q - 1) a segment), the merges'
+  two levels more and the new roots. A node shared by several operations
+  overflows at most 1 + (their klongs) / q times, under the sum of their
+  own counts, so the sum over operations bounds a transaction. TP26 as
+  restated (20 a level) holds for every q >= 2, which is why it is loose
+  at B = 30. Not in the model, not checked by its runs.
+* **Numbers at node size 30.** At most 3,700,852 nodes fit a record's
+  15/16 (2,013,265,912 bytes, less two top nodes, at 544 bytes a node,
+  2.1). Nodes an operation, and the most operations whose bound fits
+  (the last column: the nodes of 1,000 operations, in bytes):
 
-| Count, a segment            | Key     | H  | Nodes an op | Most ops | 1,000 ops |
-|-----------------------------|---------|----|------------:|---------:|----------:|
-| TP26, 8 (H + 2)             | 256 B   | 22 |       7,106 |      520 |   3.87 GB |
-| TP26, 8 (H + 2)             | 256 B   | 19 |       6,218 |      595 |   3.38 GB |
-| put, 3 (H + 1) + 1          | 256 B   | 22 |       2,590 |    1,428 |   1.41 GB |
-| delete, merges, 4 (H + 1) + 2 | 256 B | 22 |       3,478 |    1,064 |   1.89 GB |
-| TP26, 8 (H + 2)             | 12 B    | 22 |         386 |    9,585 |   0.21 GB |
-| walked, 10M keys (4.1)      | 12 B    | -  |  1.5 to 4.5 |        - |         - |
+| Count, a segment                  | Key           | H  | Nodes an op | Most ops | 1,000 ops |
+|-----------------------------------|---------------|----|------------:|---------:|----------:|
+| TP26 of 2026.4, 8 (H + 2) + 2     | 112 B, 17 seg | 22 |       3,266 |    1,133 |   1.78 GB |
+| TP26 of 2026.4                    | 112 B         | 19 |       2,858 |    1,294 |   1.55 GB |
+| TP26 of format 7, 20 (H + 2) + 14 | 112 B         | 22 |       8,174 |      452 |   4.45 GB |
+| TP26 of format 7                  | 112 B         | 19 |       7,154 |      517 |   3.89 GB |
+| format 7 with q, 8 (H + 2) + 14   | 112 B         | 22 |       3,278 |    1,128 |   1.78 GB |
+| format 7 with q                   | 112 B         | 19 |       2,870 |    1,289 |   1.56 GB |
+| Java's count, one delete (a)      | 112 B         | 22 |       2,778 |    1,332 |   1.51 GB |
+| TP26 of 2026.4                    | 111 B, 16 seg | 22 |       3,074 |    1,203 |   1.67 GB |
+| format 7 with q                   | 111 B         | 22 |       3,086 |    1,199 |   1.68 GB |
+| TP26 of 2026.4 (before 14:45)     | 256 B, 37 seg | 22 |       7,106 |      520 |   3.87 GB |
+| TP26 of format 7                  | 256 B         | 22 |      17,774 |      208 |   9.67 GB |
+| walked, 10M keys (4.1)            | 12 B          | -  |  1.5 to 4.5 |        - |         - |
 
-  H = 19 is the height for trees of at most 2^48 klongs. The put's and
-  the delete's sharper counts are mine, from 024-11's CB1 (at most one
-  merge a level, which makes at most 2 nodes and dirties a sibling) and
-  `dirtyNodeBound`'s Javadoc (a split makes at most 2 nodes and a klong
-  in the parent); not proved.
-* **F2.** The bound is a product of operations, segments and height.
-  With 256-byte keys the simple bound proves about 520 operations into
-  a record, the sharper counts about 1,000 (deletes) to 1,400 (puts);
-  10,000 operations of 256-byte keys need 26 to 71 million nodes, 14 to
-  39 GB, under any of these counts. A generous L1 with a provable
-  constant so needs one of: a sharper count proved (enough for 1,000);
-  a limit on the key bytes of a transaction (A1); a take that writes one
-  transaction's dirty nodes over several records, so that the bound
-  limits heap and time only (A3).
+  (a) Java's format-7 count of one delete on a path of full nodes (no
+  room), with the most root collapses, q = 10: the worst case of one
+  operation, below which no per-operation count can go. H = 19 is the
+  height the first version of this file gave for trees of at most 2^48
+  klongs; at m = 8 that is 17. The put's and the delete's sharper counts
+  of the first version (3 (H + 1) + 1 and 4 (H + 1) + 2) are dropped:
+  format 7's own count of a delete is about 7.7 a level.
+* **The coordinator's figures, checked.** "About 192 nodes a segment"
+  is 2026.4's 8 (H + 2) at H = 22; 520, 880 and 1,280 operations at
+  256, 150 and 100 bytes, and 1,070 at 120 bytes (18 segments), are
+  right by that form. **"112 bytes are 16 segments, exactly; about
+  1,200 operations" is not**: 112 bytes are 17 segments (F10), 1,133
+  operations by 2026.4's form; 1,203 is 111 bytes'. And 2026.4's form
+  is not format 7's: with merges as TP26 now states them, 452.
+* **F10. 112 bytes are 17 segments.** A key of 7j bytes is j full
+  segments and an empty one (`Keys.toSegments`); 111 bytes are the most
+  in 16. So also 252 bytes were 37 segments, not 36 as 6.1 said; 251
+  were 36.
+* **F11. L1 = 1,000 with merges is not covered by a stated count, and
+  by no proved one.** TP26 as stated for format 7 covers 452 operations
+  of 112-byte keys at H = 22 (517 at 19), so 1,000 is over it by 2.2
+  times; 2026.4's form (1,133) is not format 7's count. The count with q
+  covers 1,128 (a margin of 12.8 % at H = 22; 1,177 at H = 21, m = 8;
+  1,289 at H = 19). Proved is none of them: TP26 and TP23 are
+  statements checked by `treetest` and by Java's traces (C-T8), and H
+  rests on V1 (TP30). **What L1 = 1,000 needs**: (1) `Limits.dirtyNodes`
+  for format 7 restated with q (8 a level at node sizes 30 and 62, 9 at
+  14; the 20 kept at 8), a line of `Bound.lean`, and `treetest` and
+  `treeconf.sh` run against it, as they run TP26 today (024-22's agent
+  or 024-12's); (2) a third field in `Limits`, the segments of a
+  transaction (L3), with the sum form (5.6); (3) the proofs of TP23, TP26
+  and TP30 for the internal checks to become `Bug`s (QL5): 024-22,
+  section 6, puts them after 2026.5's change has settled. Without (1):
+  L3 at most 45.7 KiB (5.3) or L1 at most 452 (A4).
+* **F12. The node size changes the bound.** `Db.checkDirtyNodes` counts
+  each node at its database's largest size, 32 + 16 (B + 1) + 16 bytes,
+  and m, q and so H follow B (024-21's thresholds). The first version
+  of this file took 544 bytes as the largest, true at B = 30 only. With
+  112-byte keys (H = 1 + log_m(2^60)):
+
+| B  | Bytes | m/h/c, q     | Nodes fit |  H | TP26 f7 | With q | Java (a) | Ops: f7, q, Java  |
+|----|------:|--------------|----------:|---:|--------:|-------:|---------:|-------------------|
+| 8  |   192 | 2/4/4, 2     |   10.49 M | 61 |  21,434 | 13,937 |   14,547 | 489, 752, 720     |
+| 14 |   288 | 3/7/7, 4     |    6.99 M | 38 |  13,614 |  6,134 |    6,115 | 513, 1,139, 1,143 |
+| 30 |   544 | 8/17/17, 10  |    3.70 M | 21 |   7,834 |  3,142 |    2,659 | 472, 1,177, 1,391 |
+| 62 | 1,056 | 16/35/35, 24 |    1.91 M | 16 |   6,134 |  2,462 |    2,032 | 310, 774, 938     |
+
+  "With q": c (H + 2) x 17 + 14 with c = 13, 9, 8, 8 (5 + x rounded
+  up); at B = 8 it is below Java's own count (the collapses, H / q a
+  segment, weigh at q = 2), so there the form needs more. **At B = 8
+  and 62 no per-operation count reaches 1,000 operations**, not even
+  Java's count of one delete (720 and 938); with trees of at most 2^48
+  klongs (a stream under 2 PiB) the form with q gives 929 (too low at B
+  = 8 itself) and 928. At B
+  = 14 and 30 it does. A database of node size 8 or 62 can so meet
+  005-31's refusal within L1 to L5 in the worst case, which needs a
+  segment tree of 2^48 or more klongs built against the transaction:
+  QL12.
 * **The bound is loose.** Measured (4.1), a put of a 12-byte key at 10M
   keys dirties 0.25 to 1.45 nodes, and the walked `dirtyNodeBound` is
   1.5 to 4.5 an operation; the worst case
@@ -582,7 +678,27 @@ s_i <= 37), values v_i, the sum of k_i and v_i at most L5.
   count: within 2^31 - 9 by 9 %. With L3's 256 KiB of BergDB's own
   longer keys, S <= 38,450 and 3.61 million nodes, 1.96 GB: within the
   dirty limit's 2.01 GB by 2.5 %. Tight: the proof has no room for a
-  looser count.
+  looser count. (The first version's numbers, for 256-byte keys.)
+* **With 112-byte keys** (14:55, node size 30, H = 22). L3 = 112 KiB
+  (6.1) gives S <= 114,688 / 7 + 1,000 = 17,384 segments. By the count
+  with q (5.2), 8 x 24 x S + 14 n = 3,351,728 nodes, 1.82 GB: within the
+  dirty limit by 9.4 % (20.7 % at H = 19); with the own bytes, 67.2 MB,
+  a record of at most 1.89 GB, within 2^31 - 9 by 12.0 %. By 2026.4's
+  form of TP26, 3,339,728 nodes (9.8 %). By format 7's TP26 as stated,
+  8,358,320 nodes, 2.26 times the limit: with that count L3 can be at
+  most 45.7 KiB at n = 1,000 (40 KiB: S <= 6,851, 3,302,480 nodes, 10.8
+  % under), so 365 keys of 112 bytes a transaction.
+
+| L3      |      S | TP26 of 2026.4 |    With q | TP26 of format 7 | Under the limit, with q |
+|---------|-------:|---------------:|----------:|-----------------:|------------------------:|
+| 40 KiB  |  6,851 |      1,317,392 | 1,329,392 |        3,302,480 |                  64.1 % |
+| 64 KiB  | 10,362 |      1,991,504 | 2,003,504 |        4,987,760 |                  45.9 % |
+| 112 KiB | 17,384 |      3,339,728 | 3,351,728 |        8,358,320 |                   9.4 % |
+| 120 KiB | 18,554 |      3,564,368 | 3,576,368 |        8,919,920 |                   3.4 % |
+| 128 KiB | 19,724 |      3,789,008 | 3,801,008 |        9,481,520 |                  -2.7 % |
+
+  Nodes at H = 22 and n = 1,000; the limit is 3,700,852. The most L3
+  that the count with q allows is 124.4 KiB (143.2 KiB at H = 19).
 * **F4: no provable record limit of "a few tens of MiB".** The record
   limit stays the format's 2^31 - 9 bytes, the bound proved under it.
   The guide for real records stays 024-05's BD1 (no record over the
@@ -620,8 +736,12 @@ s_i <= 37), values v_i, the sum of k_i and v_i at most L5.
 * **With 024-12** (the tree): `Limits` (the most operations, the most
   segments) and `Tx.within`; TP26 bounds `dirtyNodeBound` by the limits;
   TP23 bounds the nodes marked by `dirtyNodeBound`. The tree needs S
-  (or L3) in `Limits`, beside the most segments of a key: F2.
-* **With 024-11**: V1 gives H <= 1 + log7(K) (TH3's count).
+  (or L3) in `Limits`, beside the most segments of a key: F2. Today
+  `Limits.dirtyNodes` is maxOps x (20 x maxSegs x (H + 2) + 14) in
+  format 7: every operation at the longest key. With L2 = 112, maxSegs
+  = 17; with L3, a third field (the segments of a transaction, 17,384
+  at 112 KiB) and the sum form, 8 (H + 2) S + 14 n with q (F11).
+* **With 024-11**: V1 gives H <= 1 + log_m(K) (TH3's count).
 * **Not the tree's**: L4 and L5 are counts of bytes in a record;
   `TransSeq.take`'s model (007-08's `T3_take`) leaves the record limit
   out, so "a record never passes R_max" is a Java check, tested.
@@ -630,7 +750,9 @@ s_i <= 37), values v_i, the sum of k_i and v_i at most L5.
 ## 6. Proposal
 
 Third version, 2026-11-11, 10:45, after Frans's 10:18 on keys and
-10:26 on files (section 1); checked against section 4 at 12:00.
+10:26 on files (section 1); checked against section 4 at 12:00. Fourth
+version, 14:57, after Frans's QL2 of 14:45 (a key at most 112 bytes):
+L2, L3, L6 and the reasons changed.
 
 ### 6.1 The table
 
@@ -641,11 +763,11 @@ on, as today's two refusals do.
 | ID | Limit                         | Value    | Checked where, refused with          |
 |----|-------------------------------|----------|--------------------------------------|
 | L1 | operations a transaction      | 1,000    | `Db.execute`, `DbException`          |
-| L2 | a key's bytes, as stored      | 256      | at the put: Pub `u2i`, Core builder  |
-| L3 | key bytes of a transaction    | 256 KiB  | `Db.execute`, `DbException`          |
+| L2 | a key's bytes, as stored      | 112      | at the put: Pub `u2i`, Core builder  |
+| L3 | key bytes of a transaction    | 112 KiB  | `Db.execute`, `DbException`          |
 | L4 | a value's bytes               | 16 MiB   | at the put, `IllegalArgumentException` |
 | L5 | keys and values a transaction | 64 MiB   | `Db.execute`, `DbException`          |
-| L6 | an indexed value's levels     | 256      | Pub, at the put of the object        |
+| L6 | an indexed value's levels     | 112      | Pub, at the put of the object        |
 | L7 | a record (internal)           | 2^31 - 9 | a theorem from L1 to L5; `Bug` if hit |
 | L8 | nodes dirtied (internal)      | derived  | a theorem; 005-31's check as `Bug`   |
 
@@ -655,28 +777,44 @@ on, as today's two refusals do.
   the indexes of its directory). Counted at `Trans.Builder.build`,
   refused by `Db.execute` before the write lock: "The transaction has
   N operations, more than 1,000 (bergdb 024-17, L1). Split it into
-  transactions." Why 1,000: the largest that the node bound proves
-  into a record with 256-byte keys (5.2, F2); every gate of ours
+  transactions." Why 1,000: with 112-byte keys and L3 the node bound
+  with q fits a record at 1,000 with 9 to 13 % to spare (5.2, 5.3; F11:
+  format 7's TP26 must be restated for it, QL8); every gate of ours
   passes with it inclusive (F3); batching stops paying well before it
   and a commit of 1,000 takes 2 to 6 ms, of 10,000 up to 90 ms (4.1,
   F8); ten times DynamoDB's and Cosmos DB's 100 (6.6).
-* **L2, a key.** At most 256 bytes as stored: for a Pub key the UTF-8
-  of the key as the user writes it ("/dir/name") and one byte more for
-  each part (its ikey, `PubKeys.u2i`: a "/" counts two), for a Core key
-  its bytes (`put(byte[], ..)`,
-  the UTF-8 of `put(String, ..)`, the bytes of `put(long[], ..)` as
-  `Keys.toBytes` gives them). Refused at the call that takes the key,
-  `IllegalArgumentException` ("The key has N bytes, more than 256
-  (bergdb 024-17, L2)"), so the place shows in the stack. Why 256 and
-  not 255: the format stores no key length in a byte (a key is its 7-
-  byte segments, the last one's length in its klong), so 255 buys
-  nothing, and 256 is the number users remember; 256 bytes are 37
-  segments (36 full and one of 4 bytes), 252 would be exactly 36.
-* **L3, the key bytes of a transaction.** At most 256 KiB, the sum of
-  the keys' bytes as the Core gets them. A transaction of user keys
-  never meets it (1,000 x 256 bytes is 250 KiB); it binds only on
-  BergDB's own longer keys, the index entries (6.2 (a)). It makes the
-  node bound a sum (F2): S <= 256 Ki / 7 + 1,000 = 38,450 segments.
+* **L2, a key.** At most 112 bytes as stored (Frans, 14:45, QL2): for
+  a Pub key the UTF-8 of the key as the user writes it ("/dir/name") and
+  one byte more for each part (its ikey, `PubKeys.u2i`: a "/" counts
+  two), for a Core key its bytes (`put(byte[], ..)`, the UTF-8 of
+  `put(String, ..)`, the bytes of `put(long[], ..)` as `Keys.toBytes`
+  gives them). Refused at the call that takes the key,
+  `IllegalArgumentException` ("The key has N bytes, more than 112
+  (bergdb 024-17, L2)"), so the place shows in the stack. **For users**
+  (`Db`'s and the `pub` package's Javadoc, the release notes): "A key
+  is at most 112 bytes; about 100 characters as a rule of thumb: ASCII
+  letters and digits one byte each, each "/" of a Pub key two, letters
+  such as å, ä and ö two bytes each (UTF-8)." So "/customers/12345678"
+  is 21 bytes, a Pub key of 100 ASCII characters with up to 12 "/"
+  fits, and a name of 50 Swedish letters, a quarter of them å, ä or ö,
+  is about 63 bytes. **Why 112 and not 111:** the format stores no key
+  length in a byte (a key is its 7-byte segments, the last one's length
+  in its klong), so neither 256 nor 112 is tied to a byte's 255. A key
+  has floor(k / 7) + 1 segments (F10): 112 bytes are 17 (16 full and an
+  empty one), 111 the most in 16, 6 % fewer nodes in the bound (1,203
+  operations against 1,133 by 2026.4's TP26 form, 5.2). 112 is Frans's
+  number and the bound fits with it; 111 is QL11. (The first version
+  said of 256 that 252 bytes would be 36 segments: 251 are.)
+* **L3, the key bytes of a transaction.** At most 112 KiB (114,688
+  bytes: 1,024 keys of 112 bytes), the sum of the keys' bytes as the
+  Core gets them. A transaction of user keys never meets it (1,000 x 112
+  bytes is 109.4 KiB); it binds only on BergDB's own longer keys, the
+  index entries (6.2 (a)). It makes the node bound a sum (F2): S <= 112
+  Ki / 7 + 1,000 = 17,384 segments, 3.35 million nodes by the count
+  with q at H = 22, 9.4 % under the record's dirty limit (5.3). 120 KiB
+  leaves 3.4 %, 128 KiB does not fit; the most is 124.4 KiB. With TP26
+  for format 7 as stated today, L3 would have to be at most 45.7 KiB
+  (QL8).
 * **L4, a value.** At most 16 MiB (2^24 bytes), at the put (Core
   builder; Pub: the stored value of an object or of raw bytes alike,
   counted before it is copied, as 021-23 counts it today against 2^31
@@ -690,36 +828,55 @@ on, as today's two refusals do.
   Four values at the limit. A record's own bytes then at most 67.2 MB
   (5.3).
 * **L6, an indexed value.** An index entry is a key, so the indexed
-  value is limited as a key: the encoded levels at most 256 bytes
-  (today 4,096, `IndexKeys.MAX_LEVEL_BYTES`). Today a longer value gets
-  no entry, silently (020-10, 3.3); recommended: keep that rule at the
-  new size, or refuse the put (QL4).
+  value is limited as a key: the encoded levels at most 112 bytes
+  (today 4,096, `IndexKeys.MAX_LEVEL_BYTES`). A string level is its
+  UTF-8 and one byte (a terminating 00, each 00 or 01 in it written as
+  two, `IndexKeys`), a long or a double 8 bytes: one string level of up
+  to 111 bytes, or a long and a string of up to 103. Today a longer
+  value gets no entry, silently (020-10, 3.3); recommended: refuse the
+  put (QL4). **Why 112, not 256** (the first version's): one number for
+  everything that becomes a key, "about 100 characters"; an entry of at
+  most 499 bytes, not 643 (6.2 (a)). **The trade-off:** e-mail
+  addresses may have 254 bytes (RFC 5321's 256 of a path less its
+  brackets), nearly all are under 100, so a few cannot be indexed as
+  they are; URLs often pass 112 bytes (query strings, signed links). An
+  application indexes such a value by a hash of it (a `bytes` level of
+  32) or by a prefix as a second, non-unique level, and checks the
+  object it finds. With 256 every e-mail address fits and most URLs; it
+  costs an entry of up to 643 bytes (92 segments, about 5 times a user
+  key's walk at a lookup) and 82 objects with one index a transaction
+  at the largest, against 103.
 * **L7 and L8** are not limits a user can meet: Java keeps today's
   checks (`StoredTrans`'s record check, `Db.checkDirtyNodes`), but as a
   `Bug` (an internal error, a failure of BergDB) once the bound is
   proved, since a transaction within L1 to L5 cannot reach them.
   Until the proof, they stay refusals that tests show unreachable.
 
-### 6.2 A 256-byte key, below the user's key
+### 6.2 A 112-byte key, below the user's key
 
 * **(a) The Pub layer's own keys.** A Pub key "/a/b/name" becomes an
   ikey with one prefix byte a part ("d" for a directory, "-" for the
   file, `PubKeys.u2i`): L2 counts the ikey, so that the user's limit
-  and the Core's are one number (the alternative, 256 bytes of UTF-8,
-  makes Core keys of up to 384 bytes and breaks L3's sum, 5.3). The
-  Pub's Javadoc says it as: at most 256 bytes of UTF-8, each "/"
-  counted twice. An index entry (020-10, 4.1)
+  and the Core's are one number (the alternative, 112 bytes of UTF-8,
+  makes Core keys of up to 168 bytes and breaks L3's sum, 5.3). The
+  Pub's Javadoc says it as: at most 112 bytes of UTF-8, each "/"
+  counted twice (L2's wording for users). An index entry (020-10, 4.1)
   is `/#i/dient/d` (11 bytes), the index name (at most 255), "/", the
   generation (8 bytes), the levels (at most 4,096 today) and the
-  object's file part with its "-" (within the ikey's 256): today up to
-  4,626 bytes. **So L2 is the user's limit, not every Core key's**: the Core
-  takes BergDB's own keys longer, and L3 bounds what they add. With L6
-  at 256 an entry is at most 11 + 255 + 1 + 8 + 256 + 256 = 787 bytes,
-  113 segments, and an object with k indexes adds at most 2k x 787
-  bytes to L3: 166 objects with one index whose entries are all at the
-  largest, about 1,000 / (1 + 2k) objects with short ones. The Core
-  tells its own keys from the user's by the call: the Pub layer puts
-  entries through an internal builder call that checks L3 but not L2.
+  object's file part with its "-" (within the ikey's 112): today up to
+  4,483 bytes. **So L2 is the user's limit, not every Core key's**: the
+  Core takes BergDB's own keys longer, and L3 bounds what they add. With
+  L6 at 112 an entry is at most 11 + 255 + 1 + 8 + 112 + 112 = 499
+  bytes, 72 segments (at 256: 643 bytes, 92 segments), and an object
+  with k indexes adds at most 2k x 499 bytes to L3. Objects of one
+  transaction, with entries all at the largest: 103 with one index
+  (114,688 / (112 + 2 x 499)), 54 with two; with short entries L1 binds
+  first, 1,000 / (1 + 2k) objects (333 with one index). The index name,
+  up to 255 bytes, is now the largest part of an entry: a limit of 64
+  bytes on it would make the largest entry 308 bytes; a later choice,
+  not needed for the bound. The Core tells its own keys from the
+  user's by the call: the Pub layer puts entries through an internal
+  builder call that checks L3 but not L2.
 * **(b) Key replace** (`${transactionTime}`, Pub) and Core key
   transformations. The Pub layer checks L2 at the put on the longest
   key the replace can give (the template with the time's 19 digits), so
@@ -728,15 +885,53 @@ on, as today's two refusals do.
   point.
 * **(c) The Core API's keys.** L2 for every public put and delete;
   `long[]` keys are checked by their bytes.
-* **(d) The 37 segments.** A key of 256 bytes crosses 37 segment trees;
-  every one on its path can be dirtied, with a split in each level:
-  `dirtyNodeBound` an operation is up to 2,590 (put) to 3,478 (delete)
-  nodes at H = 22 by the sharper counts, 7,106 by TP26's (5.2). These
+* **(d) The 17 segments.** A key of 112 bytes crosses 17 segment trees
+  (F10); every one on its path can be dirtied, with a split in each
+  level: `dirtyNodeBound` an operation is up to 3,278 nodes at H = 22
+  by the count with q, 8,174 by format 7's TP26 as stated (5.2). These
   numbers, not the time of a get, are what makes L1 small.
-* **(e) What our code uses** (section 3): longer keys only in tests of
-  long keys (`DbTesterLongKeys`, `LimitsTester`, the index tests at
-  4,095 bytes of levels) and in the AI-user apps; they change to assert
-  the refusal. `performance.sh`'s long keys are 120 bytes.
+* **(e) What changes in code and tests with 112** (a grep of main
+  `b73740fc`, 14:50 to 14:54; no edits; a full list comes with the
+  implementation, when the check in the builder fails every test with a
+  longer key):
+  * **Long-key tests of the Core and Pub:** `DbTesterLongKeys` (119
+    lines, 3 tests, keys of 100 kB to 1 MB), `PubTesterLongKeys` (a key
+    of 200 kB), `DbTesterJavadoc` (434: a key of 3,000 bytes), and
+    `Db`'s Javadoc (122: "A key has no maximum length, and keys of 300
+    kB work"): to tests of the refusal at 113 bytes and of 112 at every
+    node size. `DagTester.testLongKeyWalks` (462: 400 kB) is below the
+    check (the Dag has no limit) and can stay.
+  * **`LimitsTester`** (1,035 lines): `longKey()` (559, lengths 20 to
+    3,006 bytes, used at 585 and 708) to 1 to 112 bytes, a 113 refused.
+  * **Index tests at 4,095 and 4,096 bytes of levels**:
+    `IndexDefinitionTester` (555 to 581, 729, 799: 12 lines),
+    `IndexReference` (60, 334, 915, 916), `IndexHarness` (180, 181),
+    `FormatFuzzer` (2101); the constant `IndexKeys.MAX_LEVEL_BYTES` (65)
+    and `IndexBuilder`'s Javadoc (48): to L6 and, with QL4, a refusal.
+  * **`performance.sh`**: its read suites put long keys of `longlen` =
+    120 bytes, 18 segments (`Perf.java` 89; `read-100`, `read-1k`,
+    `read-10k` in `performance.suite` 27 to 29, `read-1k` in
+    `performance-quick.suite` 5, `read-s` in `performance-smoke.suite`
+    5): L2 refuses them, so the default must become at most 112. **The
+    long-key results (gets, scans, the mixed phase) then stop being
+    comparable** with earlier runs, 2026.4's baseline included: 17
+    segments a key, not 18. Recommended: 112, the longest key a user
+    can make, and a line in the suite's history; the short-key suites
+    are unchanged. `Soak` (94, `longlen` 120, outside the gates) the
+    same.
+  * **AI-user apps** (006-20, `/Users/f/fl/bench/2026-11-09/app-u1` to
+    `u12`, outside the repository: keys up to 59 kB; 022-06's C apps:
+    keys to 16 MiB): their next round expects the refusal.
+  * **The C clone** (022): follows release 2026.4 (015-02); when it
+    takes the limits, `src/db.c` (`check_size` 717, `check_dirty_nodes`
+    791) and its long-key tests, 45 lines in 14 files of `c/test` (most
+    in `t_klong.c` 8, `f_api.c` 7, `t_limits.c` 7).
+  * **`docs/levels.md`**: no key length today; section 3's refusals
+    (143, 403 to 405) gain L1 to L6 when they are built.
+  * **Not affected:** the level scripts' and conformance sets' long
+    keys (`/longer/key/` + i, `/long/` + i, `/longkey/number-` + i:
+    under 30 bytes), `CapacityTester`'s "keys of 300 bytes" (300-byte
+    values, keys "k" + k), `cbench` (24 bytes).
 * **(f) The original trade-off.** Frans's note "Segmented keys" (F1-007
   notes, 2012-02): "We want to store keys that often have a prefix
   common with other keys, potentially long (10-100) prefixes. [...] The
@@ -745,7 +940,8 @@ on, as today's two refusals do.
   keys. For 40 byte longer keys, we would double the number of lookups
   and increase from 2.0 us to 3.6 us (still OK). For 80 byte keys, we
   get 4.4 us." Keys of tens of bytes, prefixes of 10 to 100, were the
-  design point; 256 bytes is above it with room.
+  design point; 112 bytes keeps it with a little room (256 was well
+  above it).
 
 ### 6.3 Fixed, not configurable
 
@@ -815,10 +1011,10 @@ cannot exceed 10,000 bytes in size"; its developer guide: "sizes above
 were not tested, and bugs were often found when pushing SQLite to
 extremes"). The proposal sits between the small fixed limits of the
 cloud stores (100 operations, 2 to 4 MB) and the large configurable
-ones of TiDB and Spanner. Its key limit, 256 bytes, is the smallest in
-the table but LMDB's 511, under FoundationDB's advice of 1 kB: a store
-over a prefix tree, as LMDB over pages, pays for long keys on every
-path.
+ones of TiDB and Spanner. Its key limit, 112 bytes (256 in the first
+version), is the smallest in the table, under LMDB's 511 and
+FoundationDB's advice of 1 kB: a store over a prefix tree, as LMDB over
+pages, pays for long keys on every path.
 
 ### 6.7 The documented pattern for larger work
 
@@ -930,22 +1126,27 @@ should leave open, from the coordinator's remarks of 10:40.
   class is a set of values; the bounds and theorems (5, 024-12's
   `Limits`) take them as hypotheses, not as literals, so that S's and
   L's values need no new proof. For S (a Pico 2: 520 kB of RAM) the
-  node bound of 5.2 is what matters: a key of 256 bytes dirties up to
-  37 levels, so S would lower L2 and L1 much more than L4.
+  node bound of 5.2 is what matters: a key of 112 bytes crosses 17
+  segment trees, so S would lower L2 and L1 much more than L4.
 * **The class's place in the format** is a question for the stable
   format (026; 024-02), with the node size beside it.
 
 
 ## 7. Alternatives
 
-* **A1. L1 = 10,000 and L3 = 128 KiB.** 10,000 operations of keys up
-  to about 13 bytes, 512 of 256-byte keys: S <= 128 Ki / 7 + 10,000 =
-  28,725 segments, 2.70 million nodes by the delete's count, 1.47 GB.
-  Costs: a second number users can meet (key bytes), and the sharper
-  count proved. Buys: bulk loads of short keys in one transaction.
+* **A1. L1 = 10,000 and a smaller L3.** With 112-byte keys and the
+  count with q (5.2), 10,000 operations fit a record only with S <=
+  18,546, so L3 at most 58.4 KiB; at 48 KiB, S <= 17,021 and 3.41
+  million nodes (7.9 % under): 10,000 keys of about 5 bytes, or 438 of
+  112 bytes. (The first version: L3 = 128 KiB with 256-byte keys and
+  the delete's count of then.) Costs: a second number users meet often
+  (key bytes), the count restated and proved. Buys: bulk loads of very
+  short keys in one transaction. Not worth it.
 * **A2. L1 = 10,000 without L3 on user keys.** Not provable within a
-  record: up to 35 million nodes (5.2). Only with A3, and even then the
-  heap a commit may need is then 20 GB in the worst case.
+  record: up to 32.8 million nodes, 17.8 GB, with 112-byte keys by the
+  count with q (5.2; 71 million with 256-byte keys by the first
+  version's TP26). Only with A3, and even then the heap a commit may
+  need is about 18 GB in the worst case.
 * **A3. The take writes one transaction's dirty nodes over several
   records.** Removes the record from the bound: a record is then
   bounded by its own bytes and the take's budget alone, and R_max could
@@ -953,10 +1154,12 @@ should leave open, from the coordinator's remarks of 10:40.
   (the startup position must stay before a transaction until all of its
   nodes are written), a study of its own; the heap and the commit's time
   still follow the node bound. Buys: a small proved record limit.
-* **A4. L1 = 500.** Proved by TP26's simple count alone, today's
-  `dirtyNodeBound` with H = 22. Costs: PayDemo, PayTest,
-  `LargerThanMemory` and `cbench` (1,000 a transaction) change. Buys: no
-  sharper count to prove.
+* **A4. L1 = 450.** Covered by format 7's TP26 as stated today (452
+  operations of 112-byte keys at H = 22, 5.2), with no restatement;
+  still not proved, and at node size 62 that count gives 310. (The
+  first version: 500, by 2026.4's TP26 with 256-byte keys.) Costs:
+  PayDemo, PayTest, `LargerThanMemory` and `cbench` (1,000 a
+  transaction) change. Buys: no new count.
 * **A5. The value limit: 10 MB or 64 MiB against 16 MiB.** 10 MB
   (Frans's first number) loses 200 MP photos and this repository's
   release zips, and buys a commit a third shorter. 64 MiB keeps most
@@ -990,19 +1193,37 @@ user: "about 100 characters" (ASCII, each "/" of a Pub key counts two;
 å, ä, ö two bytes each). The rest of the proposal (L3, L6, the bound's
 arithmetic, the tests) is reworked for it (section 9).
 
-* **QL1. L1 = 1,000 operations** (the largest provable with 256-byte
-  keys in today's record), or A1's 10,000 with a key-bytes limit?
-  **Recommended: 1,000**; raise later when a sharper count is proved.
-* **QL2. L2 = 256 bytes of the key as stored**: a Core key's bytes, a
-  Pub key's ikey (its UTF-8 and a byte a part, so each "/" counts two),
-  with BergDB's own longer keys (index entries) bounded by L3?
-  **Recommended: yes**; 256 bytes of UTF-8 alone makes Core keys of up
-  to 384 bytes and the proof does not fit (6.2 (a)).
+**Checked, 14:55** (5.2, F10 to F12). Three corrections to the
+exchange above: (1) TP26 is not proved: it is a statement that
+`treetest` and Java's traces check (024-12, its table: "T"; 024-22:
+"S"); (2) 112 bytes are 17 segments, not 16 (`Keys.toSegments`: a key
+of a multiple of 7 bytes ends in an empty segment), so 2026.4's TP26
+gives 1,133 operations, not about 1,200 (that is 111 bytes'); (3) with
+merges (record format 7) TP26 is restated as 20 nodes a level, not 8
+(024-22, 3.4), and gives 452 operations. A form for format 7 that
+counts the room after a merge gives 1,128 at H = 22, 13 % over 1,000;
+it is to be stated (QL8). The other figures (520, 880, 1,280, 1,070 at
+256, 150, 100, 120 bytes) are right by 2026.4's form.
+
+* **QL1. L1 = 1,000 operations and L3 = 112 KiB of key bytes** (6.1),
+  resting on the count with q (QL8 (a)): 1,128 operations of 112-byte
+  keys at H = 22, and with L3 3.35 million nodes, 9.4 % under the
+  record's dirty limit; or A1's 10,000 with L3 at 48 KiB? **Recommended:
+  1,000 and 112 KiB**; raise later when a count is proved.
+* **QL2. Decided: L2 = 112 bytes** (above). Counted as stored: a Core
+  key's bytes, a Pub key's ikey (its UTF-8 and a byte a part, so each
+  "/" counts two), with BergDB's own longer keys (index entries) bounded
+  by L3; 112 bytes of UTF-8 alone would make Core keys of up to 168
+  bytes (6.2 (a)).
 * **QL3. Values 16 MiB, transactions 64 MiB** (L4, L5)? **Recommended:
   yes** (6.8); 10 MB or 64 MiB are A5.
-* **QL4. Indexed values over 256 bytes** (L6): no entry, as above 4,096
-  today, or a refused put? **Recommended: refuse the put**: a silent
-  missing entry makes a lookup miss an object.
+* **QL4. L6, an indexed value's encoded levels: 112 or 256 bytes, and
+  above it no entry (as above 4,096 today) or a refused put?** 112: one
+  number for all that becomes a key, entries of at most 499 bytes; 256:
+  every e-mail address (up to 254 bytes) and most URLs, entries of up to
+  643 bytes, 92 segments (6.1, L6). **Recommended: 112, and refuse the
+  put**: a silent missing entry makes a lookup miss an object; long
+  values are indexed by a hash or a prefix.
 * **QL5. The internal checks** (005-31, the record check) as `Bug` once
   proved, refusals until then? **Recommended: yes.**
 * **QL6. A value transformation's result over L4** fails the database
@@ -1010,9 +1231,16 @@ arithmetic, the tests) is reworked for it (section 9).
   low-level.
 * **QL7. The reader** reads a record's header first and refuses a size
   over L7 (6.5)? **Recommended: yes, in 2026.5.**
-* **QL8. The Lean model** states `Limits` with L1 and 37 segments, and
-  the sharper per-segment count is a 2026.5 theorem (024-12, TP26)?
-  **Recommended: yes**, since L1 = 1,000 rests on it.
+* **QL8. Which count L1 = 1,000 rests on** (F11)? (a) TP26 for format
+  7 restated with q, the room after a merge: 8 nodes a level at node
+  sizes 30 and 62, 9 at 14, the 20 kept at 8 (`Limits.dirtyNodes`, a
+  line of `Bound.lean`; `treetest` and `treeconf.sh`, C-T8, run it as
+  they run TP26 today), with the transaction's segments (L3) as a third
+  field of `Limits` and the sum form; or (b) TP26 as stated (20 a
+  level) with L3 = 40 KiB (365 keys of 112 bytes a transaction) or L1 =
+  450 (A4). **Recommended: (a)**, stated and run in 2026.5; the proofs
+  (TP23, TP26, and TP30 for H) after the merges have settled (024-22,
+  section 6), so L7 and L8 stay refusals until then (QL5).
 
 * **QL9. The node checksum** CRC32C in place of Fletcher-16 with
   2026.5's format change (F6: 45 times faster, 32 bits)? **Recommended:
@@ -1021,6 +1249,22 @@ arithmetic, the tests) is reworked for it (section 9).
 * **QL10. Reclaim's step of a large value** inside a user's commit (F7):
   accept for 2026.5 and document, or move such steps out? **Recommended:
   document now, change later**, with 024-05's BD7.
+* **QL11. 112 or 111 bytes** (F10)? 112 bytes are 17 segments, 111 the
+  most in 16: 6 % more operations in the bound (1,199 against 1,128 by
+  the count with q). The rule of thumb is the same. **Recommended: 112,
+  as decided**: the bound fits with it, and a round number is easier to
+  remember than 111.
+* **QL12. Node sizes 8 and 62** (F12): there no per-operation count
+  reaches 1,000 operations of 112-byte keys in a record in the worst
+  case (Java's own count of one delete: 720 and 938; at 62 a node is
+  1,056 bytes, at 8 a tree up to 61 levels). (a) L1 = 1,000 for every
+  node size; the bound stated and proved for 14 and 30; at 8 and 62
+  005-31's check stays a refusal, documented ("a database of node size
+  8 or 62 can refuse a transaction within the limits, in a tree of
+  2^48 or more klongs built against it"); (b) L1 = 700 for every node
+  size; (c) the builder offers 14 and 30 only in 2026.5 (024-19, the
+  node size, is postponed). **Recommended: (a)**, and 024-19 takes the
+  bound as one of its criteria (62 was its interim favourite with 30).
 
 ## 9. State
 
@@ -1048,3 +1292,25 @@ study; in the main tree this file and `17-limits/` only.
   limits' implementation is a later subitem (checks in `Trans.Builder`
   and `Db.execute`, `Db`'s and the `pub` package's Javadoc "Limits",
   the tests of 2.4 and section 3 changed to assert the refusals).
+
+**The rework for 112-byte keys**: 2026-11-11, 14:45 to 15:00, by the
+agent "lim2" of coord-1111, for Frans's QL2 (14:45). Arithmetic,
+reading and grep only; no clone, no run, no product code.
+
+* **Done.** Sections 0, 1, 3, 5 (5 intro, 5.2 rewritten with F10 to
+  F12, 5.3, 5.6), 6 (6.1's table, L1, L2 with the wording for users,
+  L3 = 112 KiB, L6 = 112; 6.2 (a), (d), (e) with the list of code and
+  tests that change; 6.6, 6.9), 7 (A1, A2, A4) and 8 (QL2 decided and
+  checked; QL1, QL4, QL8 reworked; QL11, QL12 new). The numbers are
+  `17-limits/bound112.py` (Java's constants as in 024-21's branch:
+  `Db.checkDirtyNodes`, `Dag.dirtyNodeBound`, 8/17/17), its output
+  `bound112.txt`; read 024-22 (2.1a, 2.6, 3.4, 6, 9) and 024-21 (2, 3.5)
+  and the branch's `Bound.lean` (`Limits.dirtyNodes`).
+* **Not done.** The count with q (5.2) is my argument and a one-path
+  computation of Java's count, not stated in the model nor checked by
+  `treetest`; a check of it on 024-22's runs is the next step (QL8 (a)).
+  6.8's file table and section 4 are unchanged (no limit of theirs
+  moved).
+* **To continue:** Frans's answers to QL1, QL4, QL8, QL11, QL12; then
+  024-22's agent (or 024-12's) restates `Limits.dirtyNodes` for format 7
+  with q and runs it; the implementation subitem as above.
