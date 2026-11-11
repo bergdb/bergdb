@@ -384,8 +384,11 @@ Limits:
   measured").
 * Argued, not proved (011-11): the mapping α itself; that Java's
   references are the latest versions (M5, checked on every record); the
-  order within a record (M6, M9); bytes as a function of the stream (M10);
-  the physical layer's assumptions (M47).
+  order within a record (M6, M9); bytes as a function of the stream (M10).
+  The physical layer's assumptions (M47) were argued too until 024-09:
+  they are proved from the assumptions that C-A checks on every trace
+  (A2 to A5, TREE) and from the checker's reading of a node's entries
+  ([lean/README.md](../lean/README.md)).
 
 
 ## 6. Level 3: reclaim
