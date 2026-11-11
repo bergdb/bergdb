@@ -51,7 +51,7 @@ high, xhigh for a hard task. At most 8 agents at a time (Frans,
 | 024-16 | One operation a key, strict: a collision fails the commit | strict (Opus, high) | |
 | 024-17 | The limits of a transaction, a key, a value, a record | limits (Opus, high) | done 11:59 |
 | 020-33 | The known issue of 2026.4 in its notes; next.md | notes (Opus, high) | done 10:28 |
-| 024-18 | Dead klongs: what they cost, three options measured | dead (Opus, high) | |
+| 024-18 | Dead klongs: what they cost, three options measured | dead (Opus, high) | done 13:49 |
 | 024-19 | The node size: which, and one fixed constant or not | nsize (Opus, high) | postponed 11:50 |
 | 024-20 | A more compact stored form of an index node | compact (Opus, high) | postponed 11:50 |
 | 024-21 | Merges at the delete, in Java on main, format 7 | mgj (Opus, xhigh) | |

@@ -205,6 +205,17 @@ Files
   bytes a key, 16 MiB a value, 64 MiB a transaction); the idea of
   database sizes S, M, L for later; questions QL1 to QL10. Probes and
   outputs in 17-limits/.
+* 18-dead-klongs.md. 024-18, dead klongs in live nodes: what one costs
+  (16 bytes each time its node is written, 24 heap bytes, a klong more
+  in every lookup), the counts at 100k and 1M keys (0.4 to 0.5 per live
+  klong under writes, 0.83 in a cold database with a retain duration),
+  and the three options measured: 1 nothing more; 2 compaction at the
+  write (by a threshold theta; reclaim's own writes compact cold leaves
+  too); 3 by reclaim, in three variants, of which 3c (reclaim's writes
+  leave nodes not changed since the iteration began as last versions)
+  costs 0 to 3 % bytes and takes the cold case to 0.15. Recommended:
+  3c with merges. Measuring patches named; nothing at 10M. Probes in
+  18-dead-klongs/.
 * 19-node-size.md. 024-19, the node size: which, and one fixed constant
   or not. Postponed 2026-11-11, 11:50, until the merges are in (024-21),
   with what was done: what the size is today (62 a hard ceiling by the
