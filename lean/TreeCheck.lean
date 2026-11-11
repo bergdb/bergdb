@@ -61,6 +61,7 @@ def main (args : List String) : IO UInt32 := do
       let mut bound : Array String := #[]
       let mut markedSum := 0
       let mut boundSum := 0
+      let mut madeMax := 0
       let mut scans := 0
       let mut touches := 0
       let mut form : Array String := #[]
@@ -100,6 +101,7 @@ def main (args : List String) : IO UInt32 := do
           bound := bound ++ res.bound.toArray
           markedSum := markedSum + res.markedSum
           boundSum := boundSum + res.boundSum
+          madeMax := max madeMax res.madeMax
           scans := scans + res.scanCount
           touches := touches + res.touchCount
           form := form ++ res.form.toArray
@@ -125,7 +127,7 @@ def main (args : List String) : IO UInt32 := do
       report "C-T5 touch" touch n
       report "C-T6 invariants" inv n
       report "C-T8 bound" bound n
-      IO.println s!"bound: {markedSum} key nodes marked, dirtyNodeBound {boundSum}, summed"
+      IO.println s!"bound: {markedSum} key nodes marked, dirtyNodeBound {boundSum}, summed; at most {madeMax} nodes made an operation, MadeBound allows {4 * p.fuel + 1}"
       report "C-T7 form" form n
       report "C-T7 model errors" errors n
       let bad := change.size + klongs.size + noops.size + reads.size + touch.size + inv.size + bound.size + form.size + errors.size + tt.bad.size

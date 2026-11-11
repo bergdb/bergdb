@@ -38,3 +38,5 @@ import SIS.Tree.Spec
 import SIS.Tree.Inv
 import SIS.Tree.Props
 import SIS.Tree.Bound
+import SIS.Tree.Top
+import SIS.Proof.TreeRoot

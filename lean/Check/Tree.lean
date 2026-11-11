@@ -6,6 +6,7 @@ only says how a trace becomes the model's objects, and what is compared.
 -/
 import Check.Trace
 import SIS.Tree.Bound
+import SIS.Tree.Top
 import Std.Data.HashMap
 
 namespace SIS.Check.Tree
@@ -205,6 +206,8 @@ structure TxResult where
   takenBack : Nat := 0
   trail : List String := []
   markedSum : Nat := 0
+  /-- The nodes made for each operation that changed the tree, rounded up. -/
+  madeMax : Nat := 0
   boundSum : Nat := 0
 
 def showNew (n : NewNode) : String := s!"{n.id}/{n.level}/{if n.isData then "D" else "I"}"
@@ -272,6 +275,12 @@ def checkTx (p : Params) (P after : PMap) (r : TRec) (x : TTx) : TxResult := Id.
       if marked > bound then
         res := { res with bound := res.bound ++
           [s!"T({i}): {marked} key nodes marked, dirtyNodeBound {bound}"] }
+      -- TP20, on the operations that changed the tree.
+      let changing := (flags.filter (fun b => !b)).length
+      if c.new.length > changing * (4 * p.fuel + 1) + 1 then
+        res := { res with bound := res.bound ++
+          [s!"T({i}): MadeBound: {c.new.length} nodes made by {changing} operations"] }
+      res := { res with madeMax := if changing == 0 then 0 else (c.new.length + changing - 1) / changing }
       -- C-T2: the klongs.
       for (y, jn) in x.kns do
         res := { res with knCount := res.knCount + 1 }
@@ -300,6 +309,13 @@ def checkTx (p : Params) (P after : PMap) (r : TRec) (x : TTx) : TxResult := Id.
     let mv := get p viewA t key
     if mv != jv then
       res := { res with reads := res.reads ++ [s!"T({i}): GET at {t} of {key}: the model {mv}, Java {jv}"] }
+    -- The search through the skip pointers finds the top node of the time (TP24), at
+    -- the record's time and between it and the next record's.
+    for mid in (if t < i then [false, true] else [false]) do
+      let z := findSuperRootAt viewA t mid
+      if z != topAt viewA t then
+        res := { res with reads := res.reads ++
+          [s!"T({i}): the skip search at {t}{if mid then " and a half" else ""}: {z}, the root's entry {topAt viewA t}"] }
   for sc in x.scans do
     res := { res with scanCount := res.scanCount + 1 }
     let ms := (scan p viewA sc.t sc.req sc.limit).map (fun kv => (kv.key, kv.h))

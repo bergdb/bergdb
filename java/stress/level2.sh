@@ -37,6 +37,12 @@
 #      read, delete all, create 10000 objects and stop, repeated (15 times
 #      quick, 40 full) with a retain duration of 10 s. The 2017 code fails
 #      to start after about 12 cycles.
+#   8. The tree model against Java (bergdb 024-12; run before step 7, and
+#      written before it here, so that changes of step 7 merge): treeconf.sh
+#      on its small, drain and reclaim sets (2 seeds quick, 10 full; reclaim
+#      1 and 3): the Lean model of the key tree (lean/SIS/Tree) gives Java's
+#      change of every traced transaction, node by node and klong by klong,
+#      and Java's answers to gets and scans; the tree's invariants hold.
 #   7. Conformance with the Lean model (bergdb 011-11, 12):
 #      A2A3Check2 (a transaction meets the model's A2, A3 and A5, and Db
 #      marks what the model marks; and, since bergdb 005-04, TREE, A6' and
@@ -153,6 +159,16 @@ mkdir -p $LOG/bryan
 $JAVA -ea -Xmx2g -cp $CP bergdb.core.BryanRepro $BRYAN_CYCLES 0 $LOG/bryan > $LOG/bryan.txt 2>&1
 grep -q '^Done: .* 0 failures' $LOG/bryan.txt || fail "BryanRepro" $LOG/bryan.txt
 echo "   bryan: $(tail -1 $LOG/bryan.txt)"
+
+echo "8. The tree model against Java (bergdb 024-12)"
+(cd ../lean && lake build) > $LOG/lake-tree.txt 2>&1 || fail "the Lean tree checker, lake build" $LOG/lake-tree.txt
+for set in small drain reclaim; do
+    seeds=$CONF_SEEDS
+    if [ $set = reclaim ]; then seeds=$((1 + CONF_SEEDS / 4)); fi
+    sh stress/treeconf.sh $set $seeds > $LOG/treeconf-$set.txt 2>&1
+    grep -q '^TREECONF OK' $LOG/treeconf-$set.txt || fail "treeconf.sh $set" $LOG/treeconf-$set.txt
+    echo "   treeconf $set: $(grep ' transactions, ' $LOG/treeconf-$set.txt | sed 's/^ *//')"
+done
 
 echo "7. Conformance with the Lean model"
 n=0

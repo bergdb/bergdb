@@ -130,7 +130,8 @@ def getNode (x : NodeId) : M KNode := do
     let c ← read
     match c.view x with
     | some nd =>
-      if nd.isData then throw s!"corrupt: node {x} is a value, a key node was expected" else
+      if nd.isData || c.p.keyMax < nd.level then
+        throw s!"corrupt: node {x} is no key node (a value, a top node or the root)" else
         let n : KNode := { leaf := c.p.heightOf nd.level == 0, ks := klongsOf nd.hist }
         set { w with nodes := w.nodes ++ [(x, n)],
                      gh := (x, c.p.segOf nd.level, c.p.heightOf nd.level) :: w.gh }
@@ -749,26 +750,35 @@ def putKv (op : Op) : M Bool := do
 
 /-! ## A transaction (`Db.putKvs`) -/
 
-/-- The super root at P@(i-1): the top node of the root's last entry. -/
-def topOfView (p : Params) (view : View BVal) : Except String Top :=
+/-- The super root as the writer has it (`TopDs.superRoot`): the top node of the
+root's last entry. In P@(i-1) it is the root's live child. -/
+def lastTop (view : View BVal) : Option NodeId :=
   match view root with
-  | none => .error "the root is not in P@(i-1)"
   | some r =>
     match r.hist.getLast? with
-    | some ⟨_, .top z⟩ =>
-      match view z with
-      | none => .error s!"top node {z} is not in P@(i-1)"
-      | some nd =>
-        match nd.hist.findSome? (fun e => match e.val with
-          | .rootKey y => some (e.time, y)
-          | _ => none) with
-        | some (t, y) =>
-          let skips := nd.hist.filterMap (fun e => match e.val with
-            | .skip j s => some (j, s)
-            | _ => none)
-          .ok { id := z, ord := p.ordOf nd.level, time := t, rootKey := y, skips := skips }
-        | none => .error s!"top node {z} has no root pointer"
-    | _ => .error "the root has no top node"
+    | some ⟨_, .top z⟩ => some z
+    | _ => none
+  | none => none
+
+/-- P@(i-1) without the root. The writer gets the root's last top node
+(`lastTop`) and this view: it sees the root only through its live child, which is
+the model's `ExecRootOK` (TP17). -/
+def rootless (view : View BVal) : View BVal := fun x => if x == root then none else view x
+
+/-- Top node z of P@(i-1), as the writer's super root. -/
+def topOf (p : Params) (view : View BVal) (z : NodeId) : Except String Top :=
+  match view z with
+  | none => .error s!"corrupt: top node {z} is not in P@(i-1)"
+  | some nd =>
+    match nd.hist.findSome? (fun e => match e.val with
+      | .rootKey y => some (e.time, y)
+      | _ => none) with
+    | some (t, y) =>
+      let skips := nd.hist.filterMap (fun e => match e.val with
+        | .skip j s => some (j, s)
+        | _ => none)
+      .ok { id := z, ord := p.ordOf nd.level, time := t, rootKey := y, skips := skips }
+    | none => .error s!"corrupt: top node {z} has no root pointer"
 
 /-- The changes of the writer's state w at time i (024-12, D7): the nodes made
 and not taken back, by id; the entries of time i of every key node of the
@@ -788,13 +798,21 @@ def changesOf (i : Time) (w : W) : Changes BVal :=
   { new := new,
     adds := (keyAdds ++ valAdds ++ topAdds).mergeSort (fun a b => decide (a.1 ≤ b.1)) }
 
+/-- The writer's run from its super root z and the view without the root. -/
+def runOpsFrom (p : Params) (base : NodeId) (ops : List Op) (i : Time) (z : Option NodeId)
+    (v : View BVal) : Except String (List Bool × W) :=
+  match z with
+  | none => .error "corrupt: the root has no top node"
+  | some z =>
+    match topOf p v z with
+    | .error e => .error e
+    | .ok top => ((ops.mapM putKv).run { p := p, i := i, view := v }).run { next := base, top := top }
+
 /-- The writer's run of a list of operations at time i from P@(i-1): the final
 state, and for each operation whether it was a noop. -/
 def runOps (p : Params) (base : NodeId) (ops : List Op) (i : Time) (view : View BVal) :
     Except String (List Bool × W) :=
-  match topOfView p view with
-  | .error e => .error e
-  | .ok top => ((ops.mapM putKv).run { p := p, i := i, view := view }).run { next := base, top := top }
+  runOpsFrom p base ops i (lastTop view) (rootless view)
 
 /-- The tree's `exec`, with its errors: the changes of transaction tx at time i
 from P@(i-1). The touch's nodes are added in SIS/Tree/Read.lean (`execT`). -/

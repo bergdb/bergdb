@@ -1,10 +1,12 @@
 /-
 The tree model (bergdb 024-12, section 6): the stated properties of BergDB's
 key tree. Each is a definition of type `Prop`, named and documented, with its
-proof left for later (bergdb 024-06: C1, C2, C3 and E): in this model every
-theorem is proved in full, with nothing assumed, so a statement without a proof
-is not written as a theorem. The item
-lists them as TP1 to TP22 with what each means and how hard its proof looks.
+proof left for later (bergdb 024-06: C1, C2, C3 and E), but TP17 and TP18, which
+SIS/Proof/TreeRoot.lean proves: in this model every theorem is proved in full,
+with nothing assumed, so a statement without a proof is not written as a
+theorem. The item
+lists them as TP1 to TP24 (TP23 is in Bound.lean, TP24 in Top.lean) with what
+each means and how hard its proof looks.
 
 The tree checker computes the invariants (`faultsAt`) on Java's structure
 after every transaction, and the reads against a reference; SIS/Tree/Small.lean
@@ -211,12 +213,14 @@ change. With TP14 and TP15, the theorems with handles. -/
 def EvictRunOKTree (p : Params) : Prop :=
   ∀ (al : Algo BVal Tx) ts, Within p ts → EvictRunOK (treeSpec p) al ts
 
-/-- TP17. `ExecRootOK`: a transaction sees the root only through its live
-children (`topOfView` reads the root's last entry). For T8 and T12. -/
+/-- TP17, proved in SIS/Proof/TreeRoot.lean (`execRootOKTree`). `ExecRootOK`: a
+transaction sees the root only through its live
+children (`lastTop`: the root's last entry; the writer's view has no root:
+`rootless`). For T8 and T12. -/
 def ExecRootOKTree (p : Params) : Prop := ExecRootOK (treeSpec p)
 
-/-- TP18. `VirtLiveOK`: the root's live children are those of its last entry
-(a property of `blive`). -/
+/-- TP18, proved in SIS/Proof/TreeRoot.lean (`virtLiveOKTree`). `VirtLiveOK`:
+the root's live children are those of its last entry (a property of `blive`). -/
 def VirtLiveOKTree (p : Params) : Prop := VirtLiveOK (treeSpec p)
 
 /-- TP19. `exec` reads only nodes reachable at i-1 (it starts at the root and
@@ -233,13 +237,15 @@ def RunPSame (p : Params) : Prop :=
 /-! ## TP20 to TP22: the costs (bergdb 024-04, aims 2 and 3; 024-06, C3 and E) -/
 
 /-- TP20. An operation's work is bounded by its path: a transaction makes at
-most, for each operation, a value, and three nodes for each level of the
-longest path (two halves and a root), and one top node. A first statement of
-aim 2 for the tree: the nodes made are proportional to the operations. -/
+most, for each operation, a value and four nodes for each level of the longest
+path (the halves and roots of its splits, and of the splits that root collapse
+can cause), and one top node. A first statement of aim 2 for the tree: the
+nodes made are proportional to the operations. The constant is generous; the
+runs measure far less. -/
 def MadeBound (p : Params) : Prop :=
   ∀ ts, Within p ts → ∀ (tx : Tx) (c : Changes BVal),
     exec? p tx (ts.length + 1) (view (treeSpec p) (treeRun p ts) ts.length) = .ok c →
-    c.new.length ≤ tx.ops.length * (3 * p.fuel + 1) + 1
+    c.new.length ≤ tx.ops.length * (4 * p.fuel + 1) + 1
 
 /-- TP21. A deleted KV keeps no node (aim 3, first statement for the tree): at
 every time, the key nodes reachable number at most one and, for each key with a

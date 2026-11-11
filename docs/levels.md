@@ -324,6 +324,19 @@ its assumptions met (A2 to A5, TREE, A6', A-COPY), every restart invisible,
 and every first touch after a restart must follow the model's rule (C-L).
 `level2.sh` runs it on the small set, `night.sh` on the medium set.
 
+The key tree itself (puts with their splits, the delete path, gets, scans,
+reclaim's touch) is a Lean definition since 2026-11-11 (`lean/SIS/Tree`,
+[024-12](../items/024-release-2026-5/12-tree-model.md)): `treeSpec`, an
+instance of the model's structure whose transaction is the tree's own, where
+the trace checker takes each transaction's change from the trace. The tree
+checker (`lake exe treecheck`, `java/stress/treeconf.sh`; step 8 of
+`level2.sh`) runs it against traces of Java runs: each transaction's change
+(every node made, with its id, and every klong of every changed key node),
+the answers of gets and scans and the touch must be the model's, and the
+tree's invariants must hold. Its properties (the invariants, the
+multiversion map, the model's assumptions for the tree, `dirtyNodeBound`)
+are stated in Lean, not proved.
+
 Limits:
 
 * The bound on the startup section is proved in Lean for a startup pos

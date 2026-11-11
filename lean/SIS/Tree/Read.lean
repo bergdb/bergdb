@@ -37,7 +37,7 @@ def rootAt (view : View BVal) (t : Time) : Option NodeId :=
 def knodeOf (p : Params) (view : View BVal) (x : NodeId) : Option KNode :=
   match view x with
   | some nd =>
-    if nd.isData then none
+    if nd.isData || p.keyMax < nd.level then none
     else some { leaf := p.heightOf nd.level == 0, ks := klongsOf nd.hist }
   | none => none
 
@@ -254,19 +254,25 @@ def touchGo (p : Params) (view : View BVal) (t : Time) (req : ScanReq) (to : Opt
         | none => false
       if stop then ch' else touchGo p view t req to f ch'
 
-/-- The touch of a reclaim step (`Db.touchRange`): the index nodes that the
-writer's scan follows at time t for the keys after `src` up to the first key
-after `to`: the super root, the space root, and the key nodes of the chain;
-sorted by id. -/
-def touchOf (p : Params) (view : View BVal) (t : Time) (src to : Option Key) : List NodeId :=
-  match topAt view t with
+/-- The touch from the writer's super root z and the view without the root. -/
+def touchFrom (p : Params) (z : Option NodeId) (v : View BVal) (t : Time) (src to : Option Key) :
+    List NodeId :=
+  match z with
   | none => []
   | some z =>
-    match rootKeyOf view z with
+    match rootKeyOf v z with
     | none => [z]
     | some r =>
       let req : ScanReq := { start := src, inclusive := false }
-      let ch := touchGo p view t req to scanFuel (chainSetup p view t req r)
+      let ch := touchGo p v t req to scanFuel (chainSetup p v t req r)
       ((z :: r :: ch.seen).eraseDups).mergeSort (fun a b => decide (a ≤ b))
+
+/-- The touch of a reclaim step (`Db.touchRange`): the index nodes that the
+writer's scan follows at time t, from its super root (`lastTop`; the view
+without the root, as the writer's), for the keys after `src` up to the first key
+after `to`: the super root, the space root, and the key nodes of the chain;
+sorted by id. -/
+def touchOf (p : Params) (view : View BVal) (t : Time) (src to : Option Key) : List NodeId :=
+  touchFrom p (lastTop view) (rootless view) t src to
 
 end SIS.Tree
