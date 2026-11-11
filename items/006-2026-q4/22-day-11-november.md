@@ -391,6 +391,11 @@ from them.
   (lake build, the statements' diff empty, print axioms) and lands it.
   Next for Codex, one at a time: TP23 and TP26 with the count with q
   (after 024-24), TP39 and TP40 (024-23), TP31, TP7 and TP30.
+* 18:05 Frans reset the Claude usage (the 5 hours and the week 100 %
+  left) and confirmed Codex on TP30 to TP33 ("Yes, start it."); Codex
+  takes them one at a time after TP32. 18:06 CRC32C (QL9) started as
+  024-25 on Opus high, now that usage allows. 18:06 Frans left: "Work
+  unattended."
 
 
 ## 6. Outcome
