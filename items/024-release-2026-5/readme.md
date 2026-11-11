@@ -130,6 +130,16 @@ Files
   tests, two expected values changed (for Frans to approve), the same
   stream bytes without repeated keys, what C must change; questions QL1
   to QL5.
+* 11-underfill.md. 024-11, the design study of the underfill's fix
+  (OP2/ST2 of 024-05): the bound BU1 (every key node that is not a
+  segment tree's root holds at least a quarter of a node's klongs, after
+  every transaction), the options with their verdicts (merges at the
+  delete: yes; borrowing, reclaim's rebuild, compaction: no), the
+  algorithm stated for the Lean tree (invariants V1 to V9, theorems TH1
+  to TH4, costs CB1 to CB4), a probe on P5's build and a model of the
+  fill rules, a plan of about two weeks, questions QU1 to QU8. The
+  probe's scripts and outputs and the model in 11-underfill/ (copied by
+  the coordinator from the study's bench directory).
 
 
 Log

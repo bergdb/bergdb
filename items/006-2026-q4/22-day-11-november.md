@@ -43,7 +43,7 @@ high, xhigh for a hard task. At most 8 agents at a time (Frans,
 | 024-09 | The tie of model and code repaired (024-06, A1 to A4) | tie (xhigh) | |
 | 022-07 | The C clone to release 2026.4 as released (CC1) | cc (high) | |
 | 024-10 | The builder's rule "the last operation wins" (CA1) | low (high) | done 07:49, branch |
-| 024-11 | The underfill fix: a design study, no code | fill (xhigh) | |
+| 024-11 | The underfill fix: a design study, no code | fill (xhigh) | done 08:18 |
 | 024-12 | The key tree's model in Lean, run against Java | tree (xhigh) | |
 
 024-04 to 024-06 are read-only studies. 024-07 to 024-10 and 022-07 work
@@ -111,6 +111,13 @@ from them.
 * 07:50 The usage: 38 % of the week, about 12 points an hour with six
   agents; nothing new started. tie silent since 07:18: resume message
   sent.
+* 07:56 tree disturbed touch's timing for 45 s (07:53:40) and said so;
+  touch told. tree's first result: the Lean tree gives Java's change
+  and klongs on 76 traces (9,080 transactions), 0 differences.
+* 08:18 024-11 done: merges at the delete alone (P5's), with the bound
+  BU1; with merges the index is 1.12 to 1.90 times the twin's key nodes
+  (35 runs on P5's build), without 2.0 to 20.2; a plan of about two
+  weeks; QU1 to QU8 for Frans.
 
 
 ## 6. Outcome
