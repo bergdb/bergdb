@@ -145,6 +145,7 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
     #print axioms SIS.T2_lazy
     #print axioms SIS.T15_closed
     #print axioms SIS.T13_markTouch
+    #print axioms SIS.T_cover
     #print axioms SIS.T8_recoverCut
     #print axioms SIS.T12_restartCut
     #print axioms SIS.T3_section
@@ -311,7 +312,12 @@ its section in sis-model.md.
   restarts (its stream is that run's, cut at the largest cut), with that
   run's D and lookups from the first available time on. T9 and T12 with
   eviction are stated over handles (SIS/HandleReclaimTheorems.lean); over
-  Evict.lean they were here until bergdb 005-62.
+  Evict.lean they were here until bergdb 005-62. T-COVER (`T_cover`, bergdb
+  024-07, section 4): in the state at the end of an iteration, if every
+  data node reachable then is at the cut c or later (the rewrites) and
+  every index node reachable then has a data node below it, every index
+  node reachable then is in D or at c or later; so a step of Java need not
+  touch a key range.
 * SIS/HandleReclaimTheorems.lean (not in sis-model.md; 001-07, 2.9, 2.10;
   005-62). Level 3's reclaim theorems with eviction over handles (bergdb
   005-62), as definitions of type `Prop`: the run with handles that restarts
@@ -636,6 +642,11 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
   (`recoverCut_dNodes`).
 * CutRuns. WP R5: the relation after every prefix of a run with restarts
   from cut streams (`restartCut_rel`), and T12 (`restartCut`).
+* CutCover (bergdb 024-07). A good version leads, reference by reference,
+  to a good version of every node below its node, each in a record at or
+  before the one above (`Inv.good_below`); so the latest version of a node
+  that is not in D is at or after the version of every data node below it
+  (`Inv.clean_ge_data`); T-COVER (`cover_st`).
 * CutLazySim, CutLazyStart. WP R5, for T12 over handles: stage 1's memory
   with another object for the root (`Mem.withRoot`); two root objects that
   agree from f on (`RootRel`: the same live children from f on, and the same
@@ -737,13 +748,21 @@ Not trusted, tests only:
   Evict.lean's eviction. T-SCHEME by
   running (`checkSchemeB`, WP R6: for every iteration whose scheme conditions
   hold, `CutOK` at its cut position in every later state past the waits; a
-  `#guard` on the fixed run). Proved there (WP
+  `#guard` on the fixed run). The same with the cover in place of the
+  touch's (`checkSchemeC`, `coverB`, `liveBelowB`; bergdb 024-07): every
+  index node reachable at the iteration's end in D or at the cut or later,
+  which T-COVER gives without a touch; `#guard`s on the fixed run, on the
+  fixed run without any touch (`spec4n`), where the leaf of the key that has
+  no value is not covered, and on the fixed run with a value for every key
+  (`ts4v`), which is covered without any touch. Proved there (WP
   R4): example 4 meets T8's
   assumptions on the virtual root (`execRootOK_spec4`, `virtLiveOK_spec4`;
   also `virtLiveOK_spec4e`).
   `lake exe reclaimtest 20 30`: the same on random runs,
-  for four startup pos policies, and with handles (below); `lake exe
-  reclaimtest 100 100 scheme`: T-SCHEME only, on larger runs (9 minutes).
+  for four startup pos policies, and with handles (below), `checkSchemeC`
+  on example 4 and on example 4 without any touch; `lake exe
+  reclaimtest 100 100 scheme`: T-SCHEME only, on larger runs (9 minutes
+  before 024-07's checks).
 * SIS/HandleReclaimExample.lean (bergdb 005-62): reclaim with handles by
   running, on example 4 with cuts and HandleExample's five eviction schedules
   (`checkHandleCut`): after every transaction the records are the run's, cut at
@@ -773,7 +792,10 @@ Not trusted, tests only:
   parent, which A6' allows and A6 does not (test traces `adopt.trace`,
   `adopt2.trace`, `copy.trace`). Item 001's A4, E2 and E3 had A6, TREE and
   A-COPY as diagnostics. Since item 001's R7 it reads reclaim's lines
-  (TOUCH, FA, CUT, PHYSCUT): C-A checks TouchOK (`touchFailures`), C-S
+  (TOUCH, FA, CUT, PHYSCUT): C-A checks TouchOK (`touchFailures`) and, since
+  bergdb 024-07, the bound of the touch (`touchPath`: every touched node is
+  on a path of the step's own change, `TouchOnPaths` in
+  SIS/ReclaimTheorems.lean; a key range's touch fails it), C-S
   compares fa(i) and, from the first cut on, runs the model's step on the
   stream cut at the largest cut so far, and C-CUT checks `CutOK` at every CUT
   line and that every physical cut is at or below the decided one
@@ -947,5 +969,9 @@ Not done:
   runs, the stream's length is where the new record begins (bergdb 005-68).
 * Reclaim's theorems: T-SCHEME (R6), that Java's scheme gives safe cuts:
   checked, not proved (the plan's fallback; 001-07, section 5):
-  by running on example 4 (`reclaimtest`, `checkSchemeB`), and at every cut
-  of Java's reclaim traces (C-CUT).
+  by running on example 4 (`reclaimtest`, `checkSchemeB`, and since bergdb
+  024-07 `checkSchemeC`, for a scheme without a touch of a key range), and
+  at every cut of Java's reclaim traces (C-CUT). Of its argument, the cover
+  of the index nodes is proved (T-COVER, 024-07) from two premises that the
+  model takes as given: the rewrites, and a data node below every index
+  node (BergDB's upward unlink; the model has no keys).

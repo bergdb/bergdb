@@ -18,7 +18,6 @@ import bergdb.dag.GetMany;
 import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Keys;
-import bergdb.dag.Kvt;
 import bergdb.dag.NodeVisitor;
 import bergdb.dag.PutData;
 import bergdb.dag.Spos;
@@ -2938,11 +2937,12 @@ public class Db implements AutoCloseable {
 
         if (x.trans.touch) {
             // 2026-10-13: was after the puts. Before them, the touch makes dirty 
-            // every index node of the range, so that the value transformation of the row
-            // of a reclaim step, wherever its key sorts, can store what the step made dirty
-            // (Trans.dirtiedBytes). The puts then make dirty only new nodes and nodes
-            // outside the range.
-            touchRange(x.trans.touchFrom, x.trans.touchTo);
+            // every index node on the paths of the transaction's keys, so that the value
+            // transformation of the row of a reclaim step, wherever its key sorts, can store
+            // what the step made dirty (Trans.dirtiedBytes). The puts then make dirty only
+            // the nodes they create. Until bergdb 024-07 the touch visited a key range
+            // (touchRange), to the end of the key space in an iteration's last step.
+            touchPaths();
             endOfOp(true);
             touchMarks = x.transInfo == null ? 0 : x.transInfo.gotDirtyNodes.size();
             x.putData.clearFast();
@@ -3016,26 +3016,39 @@ public class Db implements AutoCloseable {
     }
     
     /**
-     * Visits, as the writer, every node reachable at the transaction time for the keys in a
-     * range, so that each gets dirty; see Trans.touch. For reclaim (2026-10-13).
+     * The touch of a reclaim step (Trans.touch; bergdb 024-07): visits, as the writer, the
+     * index nodes on the path of each key of the transaction at the transaction time, from
+     * the super root to the segment leaf of the key (Dag.followPath), so that each gets dirty
+     * before the puts; the values are not read. These are the nodes that the transaction's
+     * puts follow, so the touch visits no node off the paths of its own puts: a step's index
+     * nodes are those of the paths of its own puts, however many keys the database holds.
      * 
-     * @param from  The keys after this one (exclusive), or null for the first key.
-     * @param to  The keys up to this one (inclusive), or null for the last key.
+     * <p>Until 024-07 it visited every node reachable at the transaction time for the keys of
+     * a range (touchRange, 2026-10-13), the range of the step's scan, and in an iteration's
+     * last step the range from the scan's last key to the end of the key space: every key
+     * put after the scan's keys since the iteration started, at 10M keys in time order
+     * 772,454 nodes in one transaction, pinned at once and then written in one record of 206
+     * MB (bergdb 024-07, section 2). The range was walked for
+     * the nodes that held deleted keys only, which no put reaches; since format 6 a delete
+     * unlinks the nodes it empties (Dag.deleteUpward), so every index node that a lookup
+     * reaches, but an empty space root, has a live key below it, and the put of that key, the
+     * user's or a step's rewrite, makes the node dirty (024-07, section 4; the Lean model's
+     * T_cover).</p>
      */
-    private void touchRange(long[] from, final long[] to) {
-        GetMany g = dag.newGetMany();
-        g.gd.pointerFollower = x.putData.pointerFollower;
-        g.gd.pointerListener = x.putData.pointerListener;      // makes nodes dirty
+    private void touchPaths() {
+        final GetData gd = dag.newGetData();
+        gd.pointerFollower = x.putData.pointerFollower;
+        gd.pointerListener = x.putData.pointerListener;      // makes nodes dirty
         Reclaim.TouchCounter counter = null;
         if (x.trans.touchCount != null) {
             counter = new Reclaim.TouchCounter(x.trans.touchCount, x.trans.touchOldBefore,
                     x.putData.pointerListener);
-            g.gd.pointerListener = counter;
+            gd.pointerListener = counter;
         }
         final TestHooks hooks = testHooks;
         if (hooks != null) {
-            final Dag.PointerListener inner = g.gd.pointerListener;
-            g.gd.pointerListener = new Dag.PointerListener() {
+            final Dag.PointerListener inner = gd.pointerListener;
+            gd.pointerListener = new Dag.PointerListener() {
                 public void superRootAccessed(TopNode superRoot) {
                     hooks.nodeTouched(superRoot);
                     inner.superRootAccessed(superRoot);
@@ -3050,22 +3063,10 @@ public class Db implements AutoCloseable {
                 }
             };
         }
-        g.gd.accessData = x.putData.accessData;
-        g.lookupTime = x.trans.tt;
-        g.actualLookupTime = x.trans.tt;     // Dag.getMany() uses this one.
-        g.startKey = from;
-        g.inclusive = false;
-        g.stopCondition = new GetMany.StopCondition() {
-            public int handleKvt(Kvt kvt) {
-                if (to != null && Keys.compareKeys(kvt.key, to) > 0) {
-                    return STOP;
-                }
-                return CONTINUE;
-            }
-            
-            public void eod() {}
-        };
-        dag.getMany(g);
+        gd.accessData = x.putData.accessData;
+        for (Kv kv : x.trans.kvs) {
+            dag.followPath(x.trans.tt, kv.getKey(), gd);
+        }
         if (counter != null) {
             counter.finish();
         }
@@ -3425,8 +3426,8 @@ public class Db implements AutoCloseable {
         public void valueNodeCreated(ValueNode node, long[] key);
 
         /**
-         * The touch of the transaction being executed (Trans.touchFrom, touchTo) visited an
-         * index node; the super root included.
+         * The touch of the transaction being executed (Trans.touch) visited an index node; the
+         * super root included. A node on the paths of several keys is reported for each.
          */
         public void nodeTouched(Node node);
 

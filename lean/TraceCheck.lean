@@ -61,7 +61,9 @@ Checks, per transaction i (R(0) included):
        (HFastOK), the unpinned objects written (T-PIN); no handle loading, and
        a dead handle never live again
 With reclaim, also: C-A checks TouchOK (`StepOK.touchIndex`, `touchReach`,
-`touchUp`) for the TOUCH lines; C-S compares fa(i) (FA lines; the model clamps
+`touchUp`) for the TOUCH lines, and the bound of the touch (`touchPath`,
+`TouchOnPaths`: every touched node is on a path of the step's own change;
+bergdb 024-07); C-S compares fa(i) (FA lines; the model clamps
 Java's value, `firstAvail`), and from a CUT on runs the model's step on the
 stream cut there (`cutStream`: version stubs before the cut).
 and in C-S, with SKIPT lines, the top nodes' skip slots: the layout (slot j
@@ -207,7 +209,8 @@ def main (args : List String) : IO UInt32 := do
       -- C-A, with the assumptions of stage 2: TREE and A6' after the transaction,
       -- A-COPY for its change (bergdb 005-04)
       let rlPrevSet := Std.HashSet.ofList rlPrev
-      let sf := stepFailures sp P i c rlPrevSet rlNowSet rlNow ++ touchFailures sp P i c rlPrev rlPrevSet
+      let sf := stepFailures sp P i c rlPrevSet rlNowSet rlNow ++
+        touchFailures sp P i c rlPrev rlPrevSet rlNowSet
       let (a6', belowP) := adoptFailures sp P' i rlNowSet rlNow
       let tr := treeFailures sp P' i rlNow
       let cp := copyFailures sp P i c rlPrev rlNowSet

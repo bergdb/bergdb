@@ -449,6 +449,45 @@ public class Dag {
         return result;
     }
     
+    /**
+     * Follows the index nodes on the path of a key at 'time': the super root, the space root
+     * and, in each segment's tree, the nodes down to the segment leaf of the key's segment,
+     * as putKv() and getOne() follow them (searchLte in an inner node, searchEq in a segment
+     * leaf), but not the pointer to the key's value. It stops where the path ends: a segment
+     * that no key has. For the touch of a reclaim step (Db.touchPaths; bergdb 024-07), whose
+     * pointer listener in 'gd' makes the nodes dirty.
+     * 
+     * @param time  The lookup time.
+     * @throws StreamFormatException
+     * @throws StreamIoException
+     */
+    public void followPath(long time, long[] keySegments, final GetData gd) {
+        final KlongWithPointer kwi = gd.kwi;
+        final int lastIndex = keySegments.length - 1;
+        KeyNode current = topDs.findRoot(time, gd);
+        
+        for (int i = 0; current != null; i++) {
+            gd.descentFrom(current);
+            while (!current.isSegmentLeaf()) {
+                current.searchLte(time, keySegments[i], kwi);
+                if (kwi.klong == Klong.NULL) {
+                    return;
+                }
+                final KeyNode next = (KeyNode) gd.followPointer(current, kwi.pointerIndex);
+                gd.descentTo(next);
+                current = next;
+            }
+            if (i == lastIndex) {
+                return;     // The segment leaf that holds the key's klong, or would.
+            }
+            current.searchEq(time, keySegments[i], kwi);
+            if (kwi.klong == Klong.NULL) {
+                return;
+            }
+            final Node item = gd.followPointer(current, kwi.pointerIndex);
+            current = item instanceof KeyNode ? (KeyNode) item : null;
+        }
+    }
     
     
     // ======== dirtyNodeBound() ========

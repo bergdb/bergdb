@@ -152,9 +152,14 @@ WPs R3 and R7), by name: the touched nodes that are no index nodes of P, or not
 reachable at i - 1; and the nodes reachable at i - 1 with a touched node below
 them, through live pointers to lower levels as `reachFrom`, that are not touched
 themselves, a virtual root aside. Lowest level first, as `copyFailures`. rlPrev
-holds `reachList sp P (i - 1)`, rlPrevSet the same as a set. -/
+holds `reachList sp P (i - 1)`, rlPrevSet the same as a set.
+
+And the bound of the touch (`TouchOnPaths` of SIS/ReclaimTheorems.lean; 024-07),
+`touchPath`: the touched nodes that have no node below them at i - 1, themselves
+included, that the change gives an entry or that is no longer reachable at i.
+rlNowSet holds the nodes reachable at i. -/
 def touchFailures (sp : Spec BVal Nat) (P : Struct BVal) (i : Time) (c : Changes BVal)
-    (rlPrev : List NodeId) (rlPrevSet : Std.HashSet NodeId) : List (String × List NodeId) :=
+    (rlPrev : List NodeId) (rlPrevSet rlNowSet : Std.HashSet NodeId) : List (String × List NodeId) :=
   if c.touch.isEmpty then [] else
   let tset : Std.HashSet NodeId := Std.HashSet.ofList c.touch
   let notIndex := c.touch.filter (fun x => !isIndex P x)
@@ -169,7 +174,17 @@ def touchFailures (sp : Spec BVal Nat) (P : Struct BVal) (i : Time) (c : Changes
         | none => false))
     | none => m) {}
   let up := xs.filter (fun x => below.getD x false && !tset.contains x && !(sp.virt && x == root))
-  [("touchIndex", notIndex), ("touchReach", notReach), ("touchUp", up)].filter (fun p => !p.2.isEmpty)
+  let onPath : Std.HashMap NodeId Bool := xs.foldl (fun m x =>
+    match P.get? x with
+    | some n => m.insert x (changed c x || !rlNowSet.contains x ||
+        (sp.live (n.hist.upTo (i - 1))).any (fun y =>
+          match P.get? y with
+          | some ny => decide (ny.level < n.level) && m.getD y false
+          | none => false))
+    | none => m) {}
+  let offPath := c.touch.filter (fun x => rlPrevSet.contains x && !onPath.getD x false)
+  [("touchIndex", notIndex), ("touchReach", notReach), ("touchUp", up),
+   ("touchPath", offPath)].filter (fun p => !p.2.isEmpty)
 
 /-- The versions, as (node, record), that a lookup at time t may read (`ReadsAt` of
 SIS/Reclaim.lean, bergdb item 001, WP R7) and that are before c: from the latest
