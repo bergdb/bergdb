@@ -50,6 +50,10 @@ high, xhigh for a hard task. At most 8 agents at a time (Frans,
 | 024-15 | The cost of key shape: documentation, bound, Mem runs | shape (Opus, high) | |
 | 024-16 | One operation a key, strict: a collision fails the commit | strict (Opus, high) | |
 | 024-17 | The limits of a transaction, a key, a value, a record | limits (Opus, high) | |
+| 020-33 | The known issue of 2026.4 in its notes; next.md | notes (Opus, high) | done 10:28 |
+| 024-18 | Dead klongs: what they cost, three options measured | dead (Opus, high) | |
+| 024-19 | The node size: which, and one fixed constant or not | nsize (Opus, high) | |
+| 024-20 | A more compact stored form of an index node | compact (Opus, high) | |
 
 024-04 to 024-06 are read-only studies. 024-07 to 024-10 and 022-07 work
 in clones under `/Users/f/fl/bench/2026-11-11/<name>/clone` on their own
@@ -207,6 +211,17 @@ from them.
   level1, level3 full, unlinkfuzz.sh (3,226 rounds), conformance.sh
   reclaim (C-CUT 0 of 326) and evict; level2 full on the branch's head,
   whose java/, lean/ and docs/ the merge equals. 015-03 closed.
+* 11:24 Frans on dead klongs in live nodes (024-11, QU3), not decided:
+  "This is important. I need to understand this better. We need to.
+  Perhaps with measurements. Let's call the options 1, 2, and 3. I like
+  the idea of 3, that reclaim will rewrite nodes so the cost goes to
+  zero eventually. [...] By the way, the node size of 30 is open for
+  discussion. And should it even be a fixed constant? And should an
+  index node be stored more compact in the stream? Big questions. But
+  these are important now when we want to settle the algos." Started
+  dead (024-18). 11:31: "Node size is worth a separate study. Compact
+  stored format too.": started nsize (024-19) and compact (024-20).
+  The usage: 63 % at 11:27.
 
 
 ## 6. Outcome
