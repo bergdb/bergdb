@@ -473,7 +473,8 @@ theorem handleCut_restartsCut (cs : List (T × Option Nat × List HCacheOp)) (ho
 /-- T12 over handles (`T12_handles`): from `handleCut_restartsCut` and the
 logical T12 (`restartCut`), as `restartCut_evict`. -/
 theorem t12_handles (sp : Spec V T) (al : Algo V T) : T12_handles sp al := by
-  intro cs hok hph hev hj hmk hex hvl hpol hcut hreads
+  intro cs hok hla hev hj hmk hex hvl hpol hcut hreads
+  have hph := physRunOK_of_evict hok hla hev
   dsimp only
   rw [handleCut_restartsCut cs hok hph hev hj hmk hex hvl hpol hcut hreads]
   have h := restartCut sp al (logOf cs) (by rw [logOf_fst]; exact hok) hj hmk hex hvl hpol (by

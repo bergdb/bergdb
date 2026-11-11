@@ -843,7 +843,11 @@ bergdb 005-62).
   (no adoption, weakened: a node that x points to without it being x's live
   child is a data node, unreachable, or reachable from x through live
   pointers) and A-COPY (a new pointer copies a pointer only from a current
-  node).
+  node). Since bergdb 024-09 the physical layer's own assumptions
+  (`PhysRunOK`) are no theorem's: they follow from A2 to A5, TREE and
+  `LiveAppend` (entries added to a node make no pointee a live child but
+  their own, a property of the function `live`), which the theorems above
+  assume in their place, T1-L, CC and T2-L with TREE.
 
 15.3 Reclaim
 ------------

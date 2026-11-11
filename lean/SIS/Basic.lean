@@ -58,8 +58,9 @@ structure Changes (V : Type) where
   new : List NewNode
   adds : List (NodeId × V)
   /-- The nodes that the transaction's touch marks dirty without giving them
-  entries (bergdb's reclaim steps, `Db.touchRange`; register M17 of
-  bergdb 001-07): as the rest of the changes, a function of T(i),
+  entries (bergdb's reclaim steps: `Db.touchPaths`, the paths of the step's
+  own puts, since bergdb 024-07; register M17 of bergdb 001-07): as the rest
+  of the changes, a function of T(i),
   i and P@(i-1) (A1). Step 3 marks them besides the access path of the change
   (`touchOf`), and the writer reaches them (`pathOf`). `StepOK` asks that they
   be index nodes reachable at i-1, and that every node reachable then with a

@@ -61,7 +61,8 @@ restarts, after any transaction and its operations or its restart, every live
 handle whose object is not pinned may be evicted, and one eviction removes the
 object and kills the handle. -/
 theorem tp_handles (sp : Spec V T) (al : Algo V T) : TP_handles sp al := by
-  intro ts hok hph hev hj hmk j hjt r m n hd a hh hdead ha hp
+  intro ts hok hla hev hj hmk j hjt r m n hd a hh hdead ha hp
+  have hph := physRunOK_of_evict hok hla hev
   obtain ⟨k1, -, -, hrel, hm, -⟩ := handleInvR_all hok hph hev hj hmk j hjt
   have hinv := inv_st sp al (ts.map (·.1)) hok (algOK_of sp al (Or.inl hj)) j
     (by rw [List.length_map]; exact hjt)

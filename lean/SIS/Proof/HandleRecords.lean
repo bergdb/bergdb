@@ -20,6 +20,7 @@ transaction, and runs from a memory with the invariant), HandleInit.lean and
 HandleStart.lean (the startup with handles from R(0) has it).
 -/
 import SIS.Proof.HandleStart
+import SIS.Proof.PhysAssumptions
 
 set_option linter.unusedSectionVars false
 
@@ -84,7 +85,8 @@ theorem TC_handles_records (ts : List (T × Bool × List HCacheOp)) (hok : RunOK
 
 /-- `TC_handles` (SIS/HandleTheorems.lean) holds. -/
 theorem tc_handles (sp : Spec V T) (al : Algo V T) : TC_handles sp al := by
-  intro ts hok hph hev hj hmk hnr j hjl
+  intro ts hok hla hev hj hmk hnr j hjl
+  have hph := physRunOK_of_evict hok hla hev
   obtain ⟨e1, -, e3⟩ := TC_runH hok hph hev hj hmk hnr (heinv_init hok hph hj hmk hev) j hjl
   have hst : st sp al (ts.map (·.1)) j = run sp al ((ts.take j).map (·.1)) := by
     unfold st; rw [List.map_take]

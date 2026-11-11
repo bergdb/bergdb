@@ -11,7 +11,8 @@ other node is read from the stream when a pointer to it is first followed
 specification: the theorems of PhysTheorems.lean say that what is read through
 this layer is P.
 
-The file also states the assumptions of the physical layer (`PhysRunOK`) and
+The file also states the assumptions of the physical layer (`PhysRunOK`; since
+bergdb 024-09 the theorems assume `LiveAppend` and TREE in its place) and
 of stage 2, eviction (`EvictRunOK`: TREE, A6' and A-COPY), and the positions
 that Java's startup gives the canonical objects of its section
 (`Mem.sectionPos`), which the startup with handles uses (Handle.lean).
@@ -306,7 +307,7 @@ def Mem.linkCanonical (m : Mem V) : Mem V :=
 /-- The nodes on the writer's paths for the change c at time j, in P before
 it (Java's put path, through `WriterFollower`): the nodes reachable at j - 1
 with a node below them, themselves included, that c changes, that c touches
-(Java's `Db.touchRange`, as the writer; bergdb item 001, WP R3) or that is no
+(Java's `Db.touchPaths`, as the writer; bergdb item 001, WP R3) or that is no
 longer reachable at j (a node the transaction replaces). -/
 def pathOf (sp : Spec V T) (P : Struct V) (c : Changes V) (j : Time) : List NodeId :=
   let P' := P.apply j c
@@ -546,11 +547,25 @@ structure PhysStep (sp : Spec V T) (P : Struct V) (i : Time) (c : Changes V) : P
         (changed c z = true ∨ reachable sp (P.apply i c) i z = false) ∧
         y ∈ sp.live (nz.hist.upTo (i - 1))
 
-/-- The assumptions of the physical layer hold for every transaction of a run. -/
+/-- The assumptions of the physical layer hold for every transaction of a run.
+Since bergdb 024-09 no trusted statement assumes it: it holds in every run
+that meets `RunOK`, with `LiveAppend` and TREE after every transaction
+(`TreeRunOK`; `physRunOK_of_tree`, SIS/Proof/PhysAssumptions.lean), and the
+theorems assume those in its place. Their proofs use it. -/
 def PhysRunOK (sp : Spec V T) (al : Algo V T) (ts : List T) : Prop :=
   ∀ j (h : j < ts.length),
     let db := run sp al (ts.take j)
     PhysStep sp db.P (j + 1) (sp.exec ts[j] (j + 1) (view sp db.P j))
+
+/-- Live children come from entries (bergdb 024-09): a live child of a history
+h followed by the entries h' is a live child of h, or a pointee of an entry of
+h'. So entries added to a node make none of its other pointees live again. A
+property of the function `live` alone, not of a run; it gives
+`PhysStep.liveNew`. Check/Live.lean proves it for the trace checker's
+`blive`. -/
+def LiveAppend (sp : Spec V T) : Prop :=
+  ∀ (h h' : History V) (y : NodeId), y ∈ sp.live (h ++ h') →
+    y ∈ sp.live h ∨ ∃ e ∈ h', y ∈ sp.ptrs e.val
 
 /-! ## The writer after a lazy startup (bergdb item 001, WP L4) -/
 
@@ -629,6 +644,12 @@ def treeAt (sp : Spec V T) (P : Struct V) (i : Time) : Prop :=
     ((reachList sp P i).eraseDups.filter (fun x => match P.get? x with
       | some n => (sp.live (n.hist.upTo i)).contains y
       | none => false)).length = 1
+
+/-- TREE after every transaction of a run, R(0) aside (bergdb 024-09): with
+`LiveAppend`, what the theorems of lazy reading (PhysTheorems.lean) assume in
+place of `PhysRunOK`. `EvictRunOK` has it, R(0) included. -/
+def TreeRunOK (sp : Spec V T) (al : Algo V T) (ts : List T) : Prop :=
+  ∀ j < ts.length, treeAt sp (run sp al (ts.take (j + 1))).P (j + 1)
 
 /-- A6' at time i (no adoption, the weaker form; bergdb 001-08,
 section 4): for every node x reachable at i and every pointee y of x that is

@@ -30,7 +30,9 @@
 #   (fault 12's fix, 023-08, Q9) the segment leaf's klong is pointed to the
 #   new root in place, so no node is adopted below its old parent: a trace of
 #   them with such an adoption, or without the checker's count, fails (A6,
-#   not only A6'). Until then a trace of them without one failed.
+#   not only A6'). Until then a trace of them without one failed. Since
+#   bergdb 024-09 (Frans, 2026-11-11, question 2) the rule holds for every
+#   trace of every set: the gates require A6 everywhere.
 #   drain (2026-11-11, bergdb 024-09, step A1): configurations that drain
 #   trees (50 to 65 percent deletes, few keys), so that the delete path's
 #   upward unlink, root collapse and take-back (bergdb 023-05) are in the
@@ -287,10 +289,10 @@ for set_name in $RAN; do
         echo "CONFORMANCE FAILED: an eviction trace without HANDLE lines"
         exit 1
     fi
-    for f in build/traces/$set_name/a6-*.check.txt build/traces/$set_name/e-a6-*.check.txt; do
+    for f in build/traces/$set_name/*.check.txt; do
         [ -f $f ] || continue
         if ! grep -q '^C-A adoptions below the old parent .*: 0 of' $f; then
-            echo "CONFORMANCE FAILED: a trace of A6's kind with an adoption below the old parent, or without the count ($f)"
+            echo "CONFORMANCE FAILED: a trace with an adoption below the old parent (A6), or without the count ($f)"
             exit 1
         fi
     done
