@@ -30,10 +30,11 @@ import bergdb.common.StringUtil;
  * may leave them (Db applies it after Trans.build sorts the keys); dup=P adds, for P percent
  * of a transaction's keys, a second operation on the key later in the transaction (a delete
  * after a put, a put after a delete), as two keys that a KeyTransformation makes one, and
- * then keeps one operation a key, at the key's first place, as Db.putKvs does since
- * 2026-11-10: the last one, as the last operation wins (bergdb 024-10; until release 2026.4
- * the put, by Trans.Builder.build's rule then: bergdb 023-08, review C, fault 12 and X5 (c),
- * and section 7). Until 2026-11-10 both reached the Dag, the last giving the value.
+ * then keeps one operation a key, the last one, at the key's first place, so that the Dag
+ * gets one operation a key, as from Db. Since bergdb 024-16 Db refuses such a transaction
+ * (Db.transformKeys); from 2026-11-10 it kept the last operation (024-10), until release
+ * 2026.4 the put (bergdb 023-08, review C, fault 12 and X5 (c), and section 7). Until
+ * 2026-11-10 both reached the Dag, the last giving the value.
  *
  * Usage: java -ea -cp build/bergdb.jar:build/stress bergdb.dag.UnlinkFuzz firstSeed rounds
  * Properties: maxnode (8), keys (60), n (150), ops (6), del (40), shape (random), scans (6),
@@ -146,8 +147,8 @@ public class UnlinkFuzz {
                         list.add(j + 1 + rnd.nextInt(list.size() - j), new String[] {o[0], v2});
                     }
                 }
-                // One operation a key (Db.putKvs, Db.sortByKey): the last one, at the place of
-                // the key's first operation.
+                // One operation a key, as the Dag gets from Db (bergdb 024-16): the last one, at
+                // the place of the key's first operation.
                 Map<String, String[]> first = new HashMap<String, String[]>();
                 for (Iterator<String[]> it = list.iterator(); it.hasNext(); ) {
                     String[] e = it.next();

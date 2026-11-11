@@ -2380,11 +2380,12 @@ public class Db implements AutoCloseable {
      * @throws DbException
      *             If the transaction is refused before its go point, and the database goes
      *             on: it is too large (bergdb 005-17), or its dirty index nodes would not fit
-     *             in one record (005-31); the clock's time is out of range (005-18), or in
-     *             the last 1,024 database times, kept for reclaim (015-55); or the database
-     *             has used its top node ordinals, after about 2^48 changes of the space
-     *             root, and then every later transaction is refused too; reads go on
-     *             (bergdb item 005-02).
+     *             in one record (005-31); its key transformations make two of its keys one
+     *             key, and its KVs are left as they were (bergdb 024-16; Trans.Builder); the
+     *             clock's time is out of range (005-18), or in the last 1,024 database
+     *             times, kept for reclaim (015-55); or the database has used its top node
+     *             ordinals, after about 2^48 changes of the space root, and then every later
+     *             transaction is refused too; reads go on (bergdb item 005-02).
      */
     public final void execute(final Trans t) {
         //
@@ -2486,6 +2487,7 @@ public class Db implements AutoCloseable {
         }
         t.warmupGetData.pointerFollower = x.getData.pointerFollower;
         warmup(t);
+        final long ttBefore = t.tt;         // a refusal gives it back (transformKeys)
         
         writersWaiting.incrementAndGet();
         synchronized (writeLock) {
@@ -2525,10 +2527,15 @@ public class Db implements AutoCloseable {
                 throw failed(e);
             }
             
+            // The key transformations, at t.tt, and the refusal of a transaction that they
+            // leave with two KVs at one key (bergdb 024-16): before the go point, so that the
+            // refusal leaves everything as it was. Until 024-16 they ran in putKvs().
+            final Kv[] kvs = transformKeys(t, ttBefore);
+            
             // The go point. From here nothing refuses the transaction and nothing is undone:
             // whatever throws fails the database (bergdb 005-01).
             try {
-                putKvs();
+                putKvs(kvs);
 
                 // The synch statement below publishes the changes by the writer thread 
                 // (the thread executing this code) to the readers. This is done
@@ -2939,9 +2946,8 @@ public class Db implements AutoCloseable {
      * @throws StreamIoException
      * @throws DbException
      */
-    private final void putKvs() {
+    private final void putKvs(final Kv[] kvs) {
         assert Thread.holdsLock(writeLock);
-        final int length = x.trans.kvs.length;        
         x.putData.tt = x.trans.tt;
         x.putData.accessData = getAccessData();
         // Cleared for the puts of startup (DbStarter), which use the same listeners; no
@@ -2965,23 +2971,13 @@ public class Db implements AutoCloseable {
             x.putData.clearFast();
         }
 
-        // Every key transformation first, then the KVs in key order, one a key (bergdb 023-08,
-        // section 7, Q4): the index gets a transaction's operations in the order of their keys,
-        // whatever the order a transformation left them in, so two transactions with the same
-        // operations run the same and write the same stream; of KVs that transformations make
-        // one key, the one called last is kept, as Trans.Builder.build does (sortByKey). Value
-        // transformations stay in the put loop, for the KVs kept: each reads the previous value
-        // at tt, as before. The record holds the KVs put, and the startup's rerun applies them
-        // in their stored order, this order, and does not sort.
-        boolean transformed = false;
-        for (int i = 0; i < length; i++) {
-            Kv kv = x.trans.kvs[i];
-            if (kv.keyTransformation != null) {
-                kv.getKeyTransformation().transform(x.trans, i);
-                transformed = true;
-            }
-        }
-        final Kv[] kvs = transformed ? sortByKey(x.trans.kvs) : x.trans.kvs;
+        // The KVs in key order, one a key, after the key transformations (transformKeys; bergdb
+        // 023-08, section 7, Q4; 024-16): the index gets a transaction's operations in the order
+        // of their keys, whatever the order a transformation left them in, so two transactions
+        // with the same operations run the same and write the same stream. Value
+        // transformations stay in the put loop: each reads the previous value at tt, as before.
+        // The record holds the KVs put, and the startup's rerun applies them in their stored
+        // order, this order, and does not sort.
         for (int i = 0; i < kvs.length; i++) {
             Kv kv = kvs[i];
 
@@ -3001,35 +2997,112 @@ public class Db implements AutoCloseable {
     }
 
     /**
-     * The KVs to put, after the key transformations (putKvs; bergdb 023-08, section 7, Q4):
-     * 'kvs' sorted by key and one KV a key, in a new array; 'kvs' and the transaction's write
-     * hashes are left as they are, so that a Trans can be run again (its Javadoc allows
-     * reuse), each key transformation seeing its own slot (bergdb 023-11, review A, F1). KVs
-     * that transformations make one key are next to each other, in the order of their calls
-     * in the builder (Kv.call). Of them the one called last is kept, a put or a delete: the
-     * last operation wins, as in Trans.Builder.build for the calls on one key as written
-     * (bergdb 024-10, section 3, R2; Frans, 2026-11-10, 023-08, section 7: silently). Until
-     * release 2026.4 the last put in the order of the keys as written was kept, or a delete
-     * if there was no put. So a transaction reaches the index with one operation a key. A
-     * dropped KV's write hash is its kept KV's, as the key is the same.
+     * Runs every key transformation of the transaction, at its time t.tt, and returns the KVs
+     * to put, in key order (bergdb 024-16, section 3, S2): t.kvs itself if none has a key
+     * transformation (Trans.Builder.build sorted them, one KV a key as written), else a sorted
+     * copy (sortByKey). Called under writeLock after DbClock.transactionBegin(), before the go
+     * point. A transaction whose KVs have, after the transformations, two at one key is
+     * refused: one operation a key reaches the index, always (Frans, 2026-11-11,
+     * 09:43: "One transaction must not set (put or delete) a value more than once! This is a
+     * strict rule."). Two KVs are two keys as written, as build() keeps one KV a key as
+     * written, so a KV is never taken for two. Until 024-16 one of them was kept: the one
+     * called last (024-10, R2), and until release 2026.4 the last put in the order of the
+     * keys as written, or a delete if there was no put (023-09, section 7.1).
+     *
+     * <p>A refusal leaves everything as it was before the call: each transformed KV gets its
+     * key as written back, and its write hash, so that the Trans can be run again, and t.tt
+     * gets ttBefore, its value before the call; the time is given back
+     * (DbClock.transactionCancel()); nothing has been put, written or recorded.
+     * A transaction that commits keeps its transformed keys, as before. A transformation that
+     * throws fails the database, as when it ran after the go point (KeyTransformation).</p>
+     *
+     * @throws DbException  If two KVs have one key after the transformations.
+     * @throws DbFailedException  If a transformation threw.
+     */
+    private Kv[] transformKeys(final Trans t, final long ttBefore) {
+        final Kv[] kvs = t.kvs;
+        long[][] written = null;                // the keys as written of the KVs transformed
+        long[] hashes = null;                   // and their write hashes, by index
+        final Kv[] sorted;
+        try {
+            for (int i = 0; i < kvs.length; i++) {
+                final Kv kv = kvs[i];
+                if (kv.keyTransformation != null) {
+                    if (written == null) {
+                        written = new long[kvs.length][];
+                        hashes = new long[kvs.length];
+                    }
+                    written[i] = kv.getKey();
+                    hashes[i] = t.writeKeyHashes[i];
+                    kv.keyTransformation.transform(t, i);
+                }
+            }
+            if (written == null) {
+                return kvs;
+            }
+            sorted = sortByKey(kvs);
+        } catch (Throwable e) {
+            throw fail(t, e);
+        }
+        try {           // an Error is recorded under the lock (bergdb 019-40)
+            for (int i = 1; i < sorted.length; i++) {
+                if (Keys.compareArrays(sorted[i - 1].getKey(), sorted[i].getKey()) != 0) {
+                    continue;
+                }
+                final String message = "Two keys of the transaction are one key after its "
+                        + "key transformations: " + shown(written, kvs, sorted[i - 1])
+                        + " and " + shown(written, kvs, sorted[i]) + " as written are both "
+                        + shown(sorted[i].getKey()) + ". The transaction is refused; "
+                        + "nothing of it is written, and the database goes on: a "
+                        + "transaction has one operation a key (bergdb 024-16).";
+                for (int j = 0; j < kvs.length; j++) {
+                    if (written[j] != null) {
+                        kvs[j].setKey(written[j]);
+                        t.writeKeyHashes[j] = hashes[j];
+                    }
+                }
+                t.tt = ttBefore;
+                dbClock.transactionCancel();
+                throw new DbException(message);
+            }
+        } catch (Error e) {
+            throw failed(e);
+        }
+        return sorted;
+    }
+    
+    /** A KV's key as written, for transformKeys()'s message. */
+    private static String shown(long[][] written, Kv[] kvs, Kv kv) {
+        for (int j = 0; j < kvs.length; j++) {
+            if (kvs[j] == kv) {
+                return shown(written[j] != null ? written[j] : kv.getKey());
+            }
+        }
+        return shown(kv.getKey());
+    }
+    
+    /** A key for a message: its text, at most 100 characters of it (bergdb 024-16). */
+    private static String shown(long[] key) {
+        final String s = Keys.toDisplayString(Keys.toBytes(key));
+        return s.length() <= 100 ? "\"" + s + "\""
+                : "\"" + s.substring(0, 100) + "...\" (" + s.length() + " characters)";
+    }
+
+    /**
+     * The KVs sorted by key, in a new array (transformKeys; bergdb 023-08, section 7, Q4):
+     * 'kvs' is left as it is, so that a Trans can be run again (its Javadoc allows reuse),
+     * each key transformation seeing its own KV (bergdb 023-11, review A, F1). Two KVs with
+     * one key are next to each other, and transformKeys() refuses the transaction (bergdb
+     * 024-16).
      */
     static Kv[] sortByKey(Kv[] kvs) {
         final Kv[] sorted = kvs.clone();
         java.util.Arrays.sort(sorted, new java.util.Comparator<Kv>() {
             public int compare(Kv a, Kv b) {
-                int c = Keys.compareArrays(a.getKey(), b.getKey());
-                return c != 0 ? c : Integer.compare(a.call, b.call);
+                return Keys.compareArrays(a.getKey(), b.getKey());
             }
         });
-        int n = 0;                              // the KVs kept, in sorted[0, n)
-        for (int i = 0; i < sorted.length; i++) {
-            if (n > 0 && Keys.compareArrays(sorted[n - 1].getKey(), sorted[i].getKey()) == 0) {
-                sorted[n - 1] = sorted[i];      // the same key, called later
-                continue;
-            }
-            sorted[n++] = sorted[i];
-        }
-        return n == sorted.length ? sorted : java.util.Arrays.copyOf(sorted, n);
+        return sorted;
     }
     
     /**
