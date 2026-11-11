@@ -167,6 +167,14 @@ Files
   counts at 1M keys (a flat optimum: 30 and 62 within 2 % in the bytes
   an overwrite writes; 8 is 57 to 71 % above), a draft of the options.
   Nothing at 10M, no times, no recommendation. Outputs in 19-node-size/.
+* 20-compact-nodes.md. 024-20, a more compact stored form of an index
+  node. Postponed 2026-11-11, 11:50, until the merges are in (024-21),
+  with what was done: the stored form today, byte for byte (a key node
+  is written whole each time); interim numbers at 1M keys (under random
+  overwrites the index nodes are 57 % of the stream, 223 of 393 bytes a
+  put; a compact encoding of the key node needs 41 to 43 % of today's
+  index bytes; the JDK's Deflater does no better). No recommendation.
+  The probe in 20-compact-nodes/.
 
 
 Log
