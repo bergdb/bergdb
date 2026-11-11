@@ -33,7 +33,8 @@ below are about any `Spec` that meets their assumptions; that `treeSpec`
 meets them is stated (TP13 to TP19), and proved only for the parts that fell
 out: `ExecRootOK` and `VirtLiveOK` (SIS/Proof/TreeRoot.lean), `SpecOK` but
 its `liveSub`, and that the model's `run` has the tree's structure
-(SIS/Proof/TreeInit.lean). The tree checker (`Check/Tree.lean`,
+(SIS/Proof/TreeInit.lean); `liveSub` and `LiveAppend` (TP13 and TP15,
+Check/TreeLive.lean). The tree checker (`Check/Tree.lean`,
 `Check/TreeRun.lean`, `TreeCheck.lean`: `lake exe treecheck`) runs the tree
 against Java's traces of format 3 (../docs/trace-format.md, section 4;
 `java/stress/treeconf.sh`): each transaction's change from Java's structure,
