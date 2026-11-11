@@ -306,7 +306,7 @@ def Mem.linkCanonical (m : Mem V) : Mem V :=
 /-- The nodes on the writer's paths for the change c at time j, in P before
 it (Java's put path, through `WriterFollower`): the nodes reachable at j - 1
 with a node below them, themselves included, that c changes, that c touches
-(Java's `Db.touchRange`, as the writer; bergdb item 001, WP R3) or that is no
+(Java's `Db.touchPaths`, as the writer; bergdb item 001, WP R3) or that is no
 longer reachable at j (a node the transaction replaces). -/
 def pathOf (sp : Spec V T) (P : Struct V) (c : Changes V) (j : Time) : List NodeId :=
   let P' := P.apply j c

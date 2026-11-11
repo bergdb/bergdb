@@ -155,7 +155,8 @@ def firstAvail (al : Algo V T) (S : Stream V T) (D : Dirty) (i : Time) (tr : T) 
 
 /-- The nodes that the touch of change c marks, besides the nodes `base` that
 step 3 found otherwise: the touched index nodes not in D and not in `base`,
-sorted by id (bergdb item 001, WP R3; Java's `Db.touchRange`, M17). -/
+sorted by id (bergdb item 001, WP R3; Java's `Db.touchPaths` since bergdb
+024-07, M17). -/
 def touchOf (P : Struct V) (c : Changes V) (D : Dirty) (base : List NodeId) : List NodeId :=
   (c.touch.eraseDups.filter (fun x => isIndex P x && !inD D x && !base.contains x)).mergeSort
     (fun a b => decide (a ≤ b))
