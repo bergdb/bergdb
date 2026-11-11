@@ -67,6 +67,10 @@ the Pub layer's (`pubimp`), built on the Core's four data methods
     configurations, RestartInvariance, CrashTest (INV-CRASH), BryanRepro
     (the bug report ISSUE151111 of November 2015), and the conformance with
     the Lean model: A2A3Check2, and the trace checker on the small set.
+    Since 024-09 both also run draining configurations (mostly deletes on
+    few keys, and many small segment trees that come and go), which must
+    reach the delete path's take-back: one that takes back no node fails
+    the step. The trace checker's are `conformance.sh drain`.
   * `level3.sh`: the unit and f-tests, ReclaimStress, RestartInvariance and
     CrashTest with reclaim, ReclaimReaders (readers while cuts are made),
     LoadTest with reclaim (full only), PowerLossTest, and the conformance
@@ -77,9 +81,11 @@ the Pub layer's (`pubimp`), built on the Core's four data methods
     (C-P and C-H), and LargerThanMemory, on disk in a capped JVM.
 * `java/night.sh` runs on a clone of the committed code: the check before
   a commit, the Core Layer built alone (`stress/core-build.sh`), the four
-  level scripts, the night tests and the medium conformance set. It has no
-  fixed time; it is started when the machine has room for it. Its report
-  is in `java/build/night/`.
+  level scripts, the night tests, the fuzzers (`stress/fuzz.sh` of the
+  readers of bytes; since 024-09 `stress/unlinkfuzz.sh`, UnlinkFuzz on the
+  Dag's delete path, which no level script runs) and the medium conformance
+  set. It has no fixed time; it is started when the machine has room for
+  it. Its report is in `java/build/night/`.
 * `cd lean && lake build` checks every proof of the model. The trace
   checker reads traces in the format of [trace-format.md](trace-format.md).
 
