@@ -1241,21 +1241,27 @@ public class CorruptStreamTester {
      * its byte and the xor (its checksum made right); or -1, the stream's byte and the xor.
      * The second row's record moved with format 7 (bergdb 024-21: the merges at the delete,
      * then the thresholds 8/17/17): the workload's last record, its last value node, was at
-     * 31880, offset 156, in format 6, and at 27808, offset 596, with P5's thresholds.
+     * 31880, offset 156, in format 6, and at 27808, offset 596, with P5's thresholds. With
+     * option 2 of dead klongs (bergdb 024-23) the same nodes were found again: the first row's
+     * key node of the last record (was at 365024, offset 104), the second row's (27640, 708),
+     * the sixth row's leaf in seed 729025 (seed 729011's stream has no key node written after
+     * its first record: its primordial node 0 is compacted, not filled), the eighth row's top
+     * node (180568, 88), and the last row's odd value pointer, a klong of the same kind, which
+     * a read finds (was the stream's byte 3336, now in a node that the start reads).
      */
     @Nano
     public static void testFound019_32() {
         Object[][] rows = {
-            {META, 3348004L, 365024, 104, 39, 0x80},    // a klong of type 2, at the start
-            {TAKE, 3552484L, 27640, 708, 37, 0x80},     // a value node's key, at the start
+            {META, 3348004L, 364768, 120, 39, 0x80},    // a klong of type 2, at the start
+            {TAKE, 3552484L, 25872, 676, 37, 0x80},     // a value node's key, at the start
             {TAKE, 4184729L, 2808, 72, 17, 0x01},       // a key count, at a read
             {TAKE, 4184729L, 2808, 72, 24, 0x01},       // a key node's id 0 to 1, at a read
             {TAKE, 4184729L, 2808, 32, 16, 0x01},       // a top node's id 1 to 0, at a read
-            {ALL, 729011L, 4528, 72, 16, 0x01},         // a leaf's flag, at the start
+            {ALL, 729025L, 4968, 72, 16, 0x01},         // a leaf's flag, at the start
             {ALL, 729042L, 128, 72, 16, 0x01},          // the flag of a leaf without keys
-            {META, 3980311L, 180568, 88, 56, 0x80},     // a skip pointer to a key node
+            {META, 3980311L, 181352, 88, 56, 0x80},     // a skip pointer to a key node
             {TAKE, 4184729L, 2808, -1, 3151, 0xff},     // a value pointer negative, a read
-            {TAKE, 4184729L, 2808, -1, 3336, 0xff},     // a value pointer odd, a read
+            {TAKE, 4184729L, 6760, -1, 7200, 0xff},     // a value pointer odd, a read
         };
         Map<String, Original> originals = new TreeMap<String, Original>();
         for (Object[] row : rows) {
@@ -1293,14 +1299,18 @@ public class CorruptStreamTester {
      * and a read threw an AssertionError ("Expected a KeyNode") or a ClassCastException, or
      * the check of rule 4 (005-57), which runs with -ea, threw an AssertionError (without
      * -ea, a read fails). A row: the record of LONG's original of seed 1, the node's offset
-     * in it, the pointer's byte in the node, the position it is set to.
+     * in it, the pointer's byte in the node, the position it is set to. Found again with
+     * option 2 of dead klongs (bergdb 024-23): the inner key node id 6217 in the record at
+     * 22712 (was id 4129 at 28856, offset 1112, its byte 120), the newest top node at 22904
+     * (was 30504), whose skip pointer 0 now names the key node at 18848 (was the top node at
+     * 30472 to 7080), and the older top node at 18008 (was 26224).
      */
     @Nano
     public static void testFound021_11() {
         long[][] rows = {
-            {28856, 1112, 120, 30504},  // a key node's pointer 1 to the newest top node
-            {30472, 32, 40, 7080},      // a top node's skip pointer 0 to a key node
-            {28856, 1112, 120, 26224},  // to an older top node version: 005-57's check (-ea)
+            {22712, 1432, 176, 22904},  // a key node's pointer 1 to the newest top node
+            {22712, 192, 40, 18848},    // a top node's skip pointer 0 to a key node
+            {22712, 1432, 176, 18008},  // to an older top node version: 005-57's check (-ea)
         };
         Original o = write(LONG, 1);
         for (long[] row : rows) {
@@ -1328,20 +1338,22 @@ public class CorruptStreamTester {
      * rerun put into the node. Copies of LONG's first full run (seed 20766), in its node at
      * offset 200 of the record at 36336, until format 7's thresholds 8/17/17 (bergdb 024-21):
      * that run's stream no longer has a node before the section that the start reads, so the
-     * same copies are made in seed 20767's, its node at offset 72 of the record at 21592.
+     * same copies are made in seed 20767's, its node at offset 72 of the record at 21592; with
+     * option 2 of dead klongs (bergdb 024-23) in the same seed's node at offset 208 of the
+     * record at 26632.
      */
     @Nano
     public static void testFound021_12() {
         Original o = write(LONG, 20767L * 31 + LONG.name.hashCode());
-        Record rec = o.recordAt(21592);
+        Record rec = o.recordAt(26632);
         int[] node = null;
         for (int[] n : rec.nodes) {
-            if (n[0] == 72) node = n;
+            if (n[0] == 208) node = n;
         }
         List<Copy> copies = new ArrayList<Copy>();
         // A time klong's byte flipped by 0xff (019-33's flip): the times not increasing, at
-        // the start's check (21698), and at the rerun's put (21842).
-        flips(o, Arrays.asList(21698, 21842), new int[] {0xff}, copies);
+        // the start's check (26874), and at the rerun's put (27026).
+        flips(o, Arrays.asList(26874, 27026), new int[] {0xff}, copies);
         // The first klong, a time klong, made a key klong, whose pointer is Spos.NULL.
         byte[] nb = Arrays.copyOfRange(rec.bytes, node[0], node[0] + node[1]);
         Bytes.intToBytesLE(0x7ffffff8, nb, 36);
@@ -1358,10 +1370,10 @@ public class CorruptStreamTester {
         // holds the object's identity hash ("K/44" in one run, "K/ab" in the next), and
         // printed the whole node over many lines.
         String[] texts = {
-            "Time not increasing, 430, 16712100, index=16",
-            "Key node 16971 at 21664, before the startup section, has the time 16712130, after "
+            "Time not increasing, 390, 16712050, index=10",
+            "Key node 14415 at 26840, before the startup section, has the time 16712150, after "
                     + "the startup time 480.",
-            "Bad spos of pointer 0 of key node 16971 at 21664: -1, at or before the startup "
+            "Bad spos of pointer 0 of key node 14415 at 26840: -1, at or before the startup "
                     + "time 480.",
         };
         for (int i = 0; i < copies.size(); i++) {
@@ -1380,17 +1392,19 @@ public class CorruptStreamTester {
      * (bergdb 024-21) seed 20767's stream has no such node; the copy sets the prevPos to the
      * position of the version of the node's child (its pointer 1) before the section, what
      * the xor did by chance, in the first node of the record at 25584 of seed 20777 (until
-     * then the xor of 0x80 in the record at 19632 of seed 20767).
+     * then the xor of 0x80 in the record at 19632 of seed 20767); with option 2 of dead klongs
+     * (bergdb 024-23) the first node of the record at 39248 of seed 20828, its prevPos set to
+     * 15800.
      */
     @Nano
     public static void testFoundDescentCycle() {
-        Original o = write(LONG, 20777L * 31 + LONG.name.hashCode());
-        Record rec = o.recordAt(25584);
+        Original o = write(LONG, 20828L * 31 + LONG.name.hashCode());
+        Record rec = o.recordAt(39248);
         int[] node = rec.nodes.get(0);
         Assert.assertEquals(32, node[0]);
         byte[] nb = Arrays.copyOfRange(rec.bytes, node[0], node[0] + node[1]);
-        Bytes.longToBytesLE(21344, nb, 8);
-        Copy c = nodeCopy(o, rec, node, nb, "its prevPos set to 21344");
+        Bytes.longToBytesLE(15800, nb, 8);
+        Copy c = nodeCopy(o, rec, node, nb, "its prevPos set to 15800");
         Results results = new Results();
         checkAll(o, Arrays.asList(c), 1, 60, results);
         assertNoFailure(results);
