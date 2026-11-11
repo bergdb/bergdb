@@ -1,0 +1,31 @@
+T7 log dir=/Users/f/fl/bench/2026-11-11/touch/data/smain400000 n=400000 maxdrive=50000 report=10000 sd=1000000 cp=/Users/f/fl/bench/2026-11-11/touch/cmain:/Users/f/fl/bench/2026-11-11/touch/main.jar
+[0.1s] START ms=89 len=99686336 fap=10224096 fresh=false recordLimit=2147483639
+[0.1s] LOG before state len=99686336 kept=89462240 iters=0 fap=10224096 lag=1013536
+[3.3s] ITEREND tx=2886 commitMs=274.9 userRecord=24000 stepRecord=493864 lag=1448016 resident=177486840 | steps=2881 kvs=215206 values=25406 dirtiedNodes=49654 dirtiedBytes=13202768 maxStepDirtied=30825 maxStepNodes=17 loads=230510
+[3.4s] BIGREC tx=2889 userRecord=8240592 commitMs=106.9
+[6.9s] ITEREND tx=8222 commitMs=188.3 userRecord=27280 stepRecord=500792 lag=1424808 resident=197571415 | steps=5334 kvs=400003 values=1 dirtiedNodes=32711 dirtiedBytes=8650144 maxStepDirtied=31258 maxStepNodes=17 loads=2928
+[7.0s] BIGREC tx=8226 userRecord=8358192 commitMs=105.9
+[7.9s] log tx=10000  len=355934200 kept=287133224 iters=2 fap=68800976 lag=1051160 tx=10000 bytes/tx=24683 maxRec=8358192 recs>1MB=2 exec p50=543us p99.9=5776us max=274ms
+[10.1s] ITEREND tx=13559 commitMs=201.3 userRecord=21776 stepRecord=500376 lag=1477040 resident=198176180 | steps=5334 kvs=400003 values=0 dirtiedNodes=32718 dirtiedBytes=8649504 maxStepDirtied=31240 maxStepNodes=18 loads=1159
+[10.3s] BIGREC tx=13561 userRecord=8351424 commitMs=127.7
+[13.3s] ITEREND tx=18894 commitMs=198.5 userRecord=22944 stepRecord=500536 lag=1475240 resident=196894754 | steps=5334 kvs=400003 values=1 dirtiedNodes=32688 dirtiedBytes=8643856 maxStepDirtied=31233 maxStepNodes=17 loads=1401
+[13.4s] BIGREC tx=18896 userRecord=8351120 commitMs=106.3
+[14.0s] log tx=20000  len=603041752 kept=296035896 iters=4 fap=307005856 lag=1013864 tx=20000 bytes/tx=24470 maxRec=8358192 recs>1MB=4 exec p50=482us p99.9=3052us max=274ms
+[16.5s] ITEREND tx=24229 commitMs=185.2 userRecord=22208 stepRecord=501384 lag=1412760 resident=199601049 | steps=5334 kvs=400003 values=0 dirtiedNodes=32734 dirtiedBytes=8656128 maxStepDirtied=31263 maxStepNodes=18 loads=1444
+[19.7s] ITEREND tx=29564 commitMs=205.1 userRecord=22816 stepRecord=500680 lag=1443264 resident=196990707 | steps=5334 kvs=400003 values=1 dirtiedNodes=32706 dirtiedBytes=8648544 maxStepDirtied=31251 maxStepNodes=18 loads=1767
+[19.9s] BIGREC tx=29567 userRecord=8355648 commitMs=116.9
+[20.1s] log tx=30000  len=850140880 kept=411834616 iters=6 fap=438306264 lag=1027592 tx=30000 bytes/tx=24120 maxRec=8358192 recs>1MB=5 exec p50=473us p99.9=2533us max=274ms
+[23.0s] ITEREND tx=34900 commitMs=230.7 userRecord=22816 stepRecord=500632 lag=1457808 resident=195789604 | steps=5334 kvs=400003 values=0 dirtiedNodes=32712 dirtiedBytes=8648336 maxStepDirtied=31248 maxStepNodes=18 loads=2125
+[23.1s] BIGREC tx=34902 userRecord=8353696 commitMs=87.8
+[25.8s] log tx=40000  len=1088424144 kept=387633960 iters=7 fap=700790184 lag=1004064 tx=40000 bytes/tx=23946 maxRec=8358192 recs>1MB=6 exec p50=467us p99.9=2372us max=274ms
+[26.1s] ITEREND tx=40235 commitMs=194.7 userRecord=22896 stepRecord=500136 lag=1504520 resident=198603145 | steps=5334 kvs=400003 values=1 dirtiedNodes=32692 dirtiedBytes=8643728 maxStepDirtied=31225 maxStepNodes=18 loads=2343
+[26.2s] BIGREC tx=40245 userRecord=8348400 commitMs=112.6
+[29.4s] ITEREND tx=45572 commitMs=194.9 userRecord=18608 stepRecord=500216 lag=1514912 resident=199227132 | steps=5334 kvs=400003 values=0 dirtiedNodes=32689 dirtiedBytes=8643264 maxStepDirtied=31230 maxStepNodes=17 loads=1766
+[31.8s] log tx=50000  len=1335471304 kept=372189928 iters=9 fap=963281376 lag=1052072 tx=50000 bytes/tx=23836 maxRec=8358192 recs>1MB=7 exec p50=462us p99.9=2317us max=274ms
+[31.8s] LOG done tx=50000 iters=9 s=31.7 tx/s=1579
+[31.8s] LOG tx=50000 bytes/tx=23836 maxRec=8358192 recs>1MB=7 exec p50=462us p99.9=2317us max=274ms
+[31.8s] LOG maxRecTx=8226 maxRecCommitMs=105.9 maxExecTx=2886 stepRecs=49978 stepBytes/rec=705 maxStepRecord=8338288 maxLag=8560744
+[31.8s] LOG state len=1335471304 kept=372189928 iters=9 fap=963281376 lag=1052072
+[31.8s] LOG head1000 keys=1000 ms=1.5
+[31.8s] CLOSE ms=6
+[31.8s] DONE

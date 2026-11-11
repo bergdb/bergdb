@@ -2174,6 +2174,13 @@ public class DbTester {
      * when the puts replace it, as the Lean model's step 3 has it (`touchOf`; bergdb item
      * 001, WP R8: register M17 and the red list of bergdb 001-07, section 6).
      * Before 2026-10-17, a touch transaction kept every mark (Db's endOfTrans).
+     * 
+     * <p>Since bergdb 024-07 the test names no key range for the touch: it visits the paths
+     * of the transaction's keys, and until then, with no range named, every index node. A
+     * put replaces only nodes on its key's path that existed before the transaction (a node
+     * that the transaction made is split in place), so the touch visited every node that
+     * the puts replace, and each stays in D; the first case, a node replaced and not
+     * touched, the test met only with a range that left the puts' paths out.</p>
      */
     @Nano
     public static void testTouchTransactionReplacedNodes() {
@@ -2201,16 +2208,14 @@ public class DbTester {
             public void nodeReplaced(Node node) { replaced.add(node); }
         };
         try {
-            // A touch of the first keys, and puts of new keys after the last ones, enough
-            // to split the nodes on their path, which the touch does not visit.
+            // A touch, and puts of new keys after the last ones, enough to split the nodes
+            // on their path, which the touch visits.
             Trans.Builder b = db.trans();
             for (int i = 30; i < 40; i++) {
                 b.put("/k/" + getKey(i), "v" + i);
             }
             Trans t = b.build();
             t.touch = true;
-            t.touchFrom = null;
-            t.touchTo = Keys.toSegments("/k/" + getKey(2));
             clock.setTime(time++);
             db.execute(t);
         } finally {
@@ -2219,9 +2224,10 @@ public class DbTester {
         
         Set<Node> inD = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
         inD.addAll(nodesOfD(db));
-        int putsOnly = 0;
+        int putsOnly = 0, touchedToo = 0;
         for (Node r : replaced) {
             if (touched.contains(r)) {
+                touchedToo++;
                 assertTrue("a node that the touch marked and the puts replaced stays in D",
                         inD.contains(r));
             } else {
@@ -2231,7 +2237,8 @@ public class DbTester {
                 assertTrue("a node that the puts marked and replaced is clean", !r.isDirty());
             }
         }
-        assertTrue("the puts replaced a node that the touch did not visit", putsOnly > 0);
+        assertTrue("the puts replaced a node that the touch visited", touchedToo > 0);
+        assertEquals("the puts replaced a node that the touch did not visit", 0, putsOnly);
         for (int i = 0; i < 40; i++) {
             Assert.assertArrayEquals("i=" + i, StringUtil.toBytes("v" + i),
                     DbUtil.get(db, Long.MAX_VALUE, "/k/" + getKey(i)));

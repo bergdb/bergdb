@@ -9,6 +9,19 @@ numbers (024-01, sections 4.1, 4.2, 4.7, 9.3). Frans, 2026-11-10, 19:49:
 night." Run on F53 from 05:03 to 06:29. The probe, the scripts and every
 output are in `03-measurements/`.
 
+**Corrections, 2026-11-11, 07:26** (the text below is left as written):
+
+* **MEM 327 at 10M keys is explained** (024-08): it is the shape of
+  MEM's keys, not the count. A key of exactly 7 bytes is two segments
+  and gets a key node of its own, and 9M of the 10M keys `"" + i` are 7
+  bytes. Keys with a shared prefix cost 127 bytes a KV at 10M. Do not
+  quote 327 as MEM at 10M.
+* **"A get reads about 25 versions" (sections 3 and 8) is wrong**
+  (024-05): the counter printed is the loads since the start, the fill
+  included. The second million gets added 1,924,301 loads: 1.9 a get.
+* **"20 records of 17 MB" (section 7)** is loose: 20 records over 1 MB,
+  the largest 17 MB (024-05).
+
 
 ## 1. In short
 

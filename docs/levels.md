@@ -422,11 +422,18 @@ How it works (`Reclaim`; the class comment has the details):
   `fractionOf`) of the stream's growth since pStart; the charge counts the
   value nodes rewritten and the index nodes made dirty. A step scans at
   most about 16 KB of KVs at tStart, with maintenance reads that swizzle
-  nothing; in one internal transaction it touches its key range at the
-  current time (making its index nodes dirty; since format 6 the nodes
-  that deletes emptied are no longer in the tree, but a leaf with a live
-  key keeps its deleted keys' entries) and rewrites each live value
-  stored before pCut. Its value nodes stay
+  nothing; in one internal transaction it rewrites each live value
+  stored before pCut: a put of the same key and value, which makes the
+  index nodes on the key's path dirty, so that they are written again.
+  A step makes dirty the nodes on the paths of its own puts only
+  (`Db.touchPaths`, 024-07): since format 6 a delete unlinks the nodes it
+  empties, so every index node that a lookup reaches has a live key below
+  it, and a put of that key after pCut, the user's or a step's, has made
+  the node dirty (a leaf with a live key keeps its deleted keys' entries).
+  Until 024-07 a step visited every index node of its key range at the
+  current time, and an iteration's last step every node to the end of the
+  key space: with 10M keys in time order, a record of 191 to 206 MB and a
+  commit of 21 s (024-03, section 7). Its value nodes stay
   within 7/8 of the record limit, as a user transaction's: a value that
   would pass it ends the step before it and starts the next one, where it is
   within the limit alone, with the step's row (015-50).
@@ -454,7 +461,9 @@ Limits:
 
 * That Java's scheme gives safe cuts (T-SCHEME) is checked at every cut
   Java decides, not proved; the register rows M32, M33, M36, M41 and M48 of
-  001-07 are argued or checked, not proved.
+  001-07 are argued or checked, not proved. Since 024-07 the argument for
+  the index nodes rests on the delete's upward unlink: no index node
+  without a live key below it, but an empty space root (024-07, section 4).
 * Reclaim added 26 to 38 percent of all stream writes in the cells
   measured (011-04, W4), and in the grids of 2026-10-13 the stream kept was
   the retention window plus one or two iteration spans. The bound on the

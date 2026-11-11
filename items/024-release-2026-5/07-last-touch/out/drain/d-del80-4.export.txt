@@ -1,0 +1,1 @@
+TraceExport seed=4 n=800 (896 records: 20 steps, 76 table stores; 14 cuts decided, 12 physical; 913 references to versions before a cut): 2006 nodes, 0 errors, 0 probe failures; /Users/f/fl/repos/bergdb/items/024-release-2026-5/07-last-touch/out/drain/d-del80-4.trace

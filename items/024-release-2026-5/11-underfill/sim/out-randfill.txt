@@ -1,0 +1,4 @@
+P5: m 7, h 15, c 15: random fill: 8262 nodes, 12.1 keys a node, 18.1 klongs a node, 0.083 splits and 0.165 new nodes a put
+   after 200000 overwrites: 11125 nodes, 20.6 klongs a node, 0.103 splits and 0.117 new nodes an overwrite
+dense: m 10, h 20, c 20: random fill: 7063 nodes, 14.2 keys a node, 19.9 klongs a node, 0.110 splits and 0.180 new nodes a put
+   after 200000 overwrites: 8059 nodes, 22.6 klongs a node, 0.145 splits and 0.150 new nodes an overwrite

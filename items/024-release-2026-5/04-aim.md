@@ -87,7 +87,7 @@ F53, one run each):
 |---|---|---|
 | 2   | CL7, the last touch (section 7)   | a record of 191 to 206 MB, a commit of 21 s |
 | 2   | CL2, the underfill (section 5)    | 11 to 16 x the twin's key nodes             |
-| 3   | MEM, heap bytes a KV (section 3)  | 327; at 1M KVs 129.6; not explained         |
+| 3   | MEM, heap bytes a KV (section 3)  | 327; at 1M KVs 129.6; key shape (024-08)    |
 
 * **CL7.** Once a reclaim iteration with keys in time order; the commits
   took 20.6 and 22.2 s. At 1M live keys: 17 MB and 1.7 s. It grows with
@@ -124,9 +124,59 @@ have stopped moving. Until then:
   costs a new record format may take it.
 
 
-## 6. Log
+## 6. The order of work: model first
+
+Frans, 2026-11-11, 07:23: "I want the proofs. The question is when. What
+comes first? If we are sure the algos are indeed correct, then we can do
+code first, then model. But, model-first seems attractive to me to
+verify our thinking before coding." The coordinator's proposal, which he
+accepted (07:27: "Yes, start it."):
+
+A model is a definition in Lean that can be run, with its invariants and
+its cost bound stated; it takes days and makes every rule exact before
+Java exists. A proof is the costly part and breaks when the design
+moves. So, for each algorithm change of 2026.5:
+
+1. a design note;
+2. the Lean definition, with the invariants and the bound stated as
+   properties to prove;
+3. the model run against small exhaustive cases and the fuzz;
+4. Java, checked against the model by the conformance steps;
+5. the proofs, when the change has settled.
+
+Two exceptions:
+
+* **Proof first** where the model already exists and the property is one
+  of safety: whether the last touch's fix keeps the cut correct is
+  settled against the model's cut conditions before the fix is called
+  done (024-07).
+* **Code first** where the code exists: 2026.4's key tree is modelled
+  after the fact (024-12). Proofs start in 2026.5 on its old and stable
+  parts (search, put, the splits).
+
+Not code first in general, as the algorithms are not known to be right:
+023-08's reviews found fault 12 in a branch that had passed level1 to
+level4, and the argument for reclaim's scheme rests on a premise that
+2026.4 made false (024-06; written again in 024-09).
+
+For 2026.5, "the model matches" (aim 4) so means: the tie repaired
+(024-09), the key tree in Lean and run against Java (024-12), new
+changes through the model first, the proofs begun on the stable parts
+and finished as the algorithms settle.
+
+
+## 7. Log
 
 2026-11-11. Written (06:55 to 06:57) from the coordinator's wording of
 the aim, approved by Frans, and Frans's words of 06:44 and 06:50. The
 figures of sections 3 and 4 were checked against 024-03, 023-07, 024-01
 and 024-02.
+
+2026-11-11, 07:30. Section 6 added (the order of work, Frans 07:23 and
+07:27). Section 4's MEM case is explained by 024-08: the shape of the
+keys, not their count.
+
+2026-11-11, 07:30. Frans, asked whether the cost of key shape (024-08:
+a stretch of 7 key bytes that no other key shares costs a key node of
+its own) is within aim 3: "Yes." So it is documented, with a bound and
+its Mem runs (024-08, option (a)); no fix is studied in 2026.5.
