@@ -174,3 +174,6 @@ Index
   that uses many tokens and very little of Frans's time, a short dialog
   followed by long unattended work; one subitem per entry, started by
   Frans. First, a model-first rewrite of BergDB (025-01).
+* **026-release-2026-6** (open). Release 2026.6, after 2026.5: its plan,
+  its decisions and the work towards it. Preliminary theme: a stable
+  stream.

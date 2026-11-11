@@ -6,15 +6,25 @@ Created 2026-11-10 by Frans Lundberg. Status: open.
 Release 2026.5 of BergDB, after 2026.4 (020): its plan, its decisions and
 the work towards it. Frans, 2026-11-10, 17:52: "Time to create the
 nnn-release-2026-5 item? We are already planning for it, so why not."
-Its theme: **a stable stream format** (Frans, 2026-11-10, 19:54: "OK,
-release theme decided, "a stable stream format".").
+Its theme, since 2026-11-11: **solid algorithms** (Frans, 06:44: "So,
+solid algorithms perhaps comes before a "stable stream"?"). Bugs first;
+operations and storage proportional to the value they bring to the user;
+a Lean model that matches the code. The aim, its reasons and Frans's
+words are in 024-04.
+
+The first theme, 2026-11-10 to 2026-11-11: "a stable stream format"
+(Frans, 2026-11-10, 19:54: "OK, release theme decided, "a stable stream
+format"."). It follows in release 2026.6 (026), when the algorithms have
+stopped moving (024-04, section 5).
 
 
 Planned so far
 ==============
 
 What Frans has put off to 2026.5 or to after 2026.4, with where it was
-decided. Nothing else is decided.
+decided. The list is from before the theme of 2026-11-11: which of it
+the aim asks for, with bounds and tests, is 024-05's work. Nothing else
+is decided.
 
 From 023, the Core's cleanup (023-08, section 5, "Later, each on its
 own", and section 7):
@@ -48,8 +58,12 @@ From the release night of 2026.4 (2026-11-10):
   of the klong's type, 019-32). Found by CorruptStreamTester's seed 20775
   (the night of 18 November): such a damage makes a start with -ea fail
   an assertion in `KeyNode.addKlong`; without -ea the database starts and
-  answers right. Old, on `main` before 023 too. A case of the stable
-  stream format: bits that must be zero are checked.
+  answers right. Old, on `main` before 023 too. A strictness check of
+  the stream format, bits that must be zero are checked (024-02, section
+  19, G1, and section 20, Q13): it was a case of the first theme; under
+  "solid algorithms" it is not decided whether 2026.5 does it (024-04,
+  section 5). It refuses no database that a writer wrote, so it can come
+  at any time.
 
 Not to do (023-08, section 5): rule (b') of the window, and the replaced
 queue on by default.
@@ -77,6 +91,13 @@ Files
   underfill measured (CL2); the last touch the biggest fault measured
   (CL7: a 200 MB record and 21 s at 10M, old); the stream under steady
   overwrites. Outputs in 03-measurements/.
+* 04-aim.md. 024-04, the aim of release 2026.5, "solid algorithms"
+  (Frans, 2026-11-11), the document the release's work cites: bugs
+  first; operations proportional; storage proportional; the model
+  matches; in one line, cost follows value. Frans's words, the reasons
+  for algorithms before a stable stream format, the known cases against
+  the aim (CL7, CL2, MEM at 10M KVs), and what stays of the stream
+  format's work (024-02 kept current; Q14 and Q16 maybe, not decided).
 
 
 Log
@@ -130,3 +151,19 @@ measurements of 2026.4 at 10M keys (running).
 numbers ask for CL7 (the last touch) first among the Core changes, and
 for deciding 024-02's Q1 (the merge switch in the format) in 2026.5; P8
 not needed.
+
+2026-11-11. The theme changed (Frans, 06:44 to 06:50, with the
+coordinator, coord-1111): from "a stable stream format" to **solid
+algorithms**. 06:44: "I first though that "stable stream" should be the
+theme of the release. But after sleeping on it, I am more more leaning
+towards "solid algos". [...] The internal core algorithms of the
+database must be right. This is what we want to prove correct. And not
+change later." 06:50: "both storage and operations are proportional to
+the value they bring to the user"; and "solid" is the worst-case
+behaviour and the model and proof catching up: "Both." The aim in four
+points, the full quotes and the reasons: 024-04, written 06:55 to 06:57.
+The stable stream format follows in release 2026.6 (026); 024-02 is kept
+current. The reading of 2026-11-10, 19:52 (above) belongs to the first
+theme. Started beside 024-04: 024-05 (the aim against the known cases:
+the list, the bounds, the tests) and 024-06 (the model gap: what the
+Lean model covers of 2026.4's algorithm).
