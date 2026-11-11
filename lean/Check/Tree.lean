@@ -5,7 +5,7 @@ The tree checker (bergdb 024-12, section 2.7; docs/trace-format.md, section
 only says how a trace becomes the model's objects, and what is compared.
 -/
 import Check.Trace
-import SIS.Tree.MergeProps
+import SIS.Tree.DeadProps
 import SIS.Tree.Top
 import Std.Data.HashMap
 
@@ -39,7 +39,7 @@ structure TTx where
 /-- The tree lines of a trace. -/
 structure TTrace where
   /-- The TREE line: M, G, H and the primordial key node's id; with merges, m and
-  c, and rule O's h (024-22, section 2.5). -/
+  c, and rule O's h (024-22, section 2.5); and option 2's theta (024-23). -/
   tree : Option (Params × NodeId) := none
   txs : Array TTx := #[]
   bad : Array String := #[]
@@ -137,6 +137,13 @@ def parseTreeLine (t : TTrace) (n : Nat) (line : String) : TTrace :=
       { t with tree := some ({ M := m, G := g, H := h, mergeBelow := mb, mergeMax := mm,
                                splitAbove := sa }, k) }
     | _, _, _, _, _, _, _ => bad "bad TREE"
+  -- And option 2's theta (bergdb 024-23): 0 off; the older forms have none.
+  | ["TREE", m, g, h, k, mb, mm, sa, th] =>
+    match m.toNat?, g.toNat?, h.toNat?, k.toNat?, mb.toNat?, mm.toNat?, sa.toNat?, th.toNat? with
+    | some m, some g, some h, some k, some mb, some mm, some sa, some th =>
+      { t with tree := some ({ M := m, G := g, H := h, mergeBelow := mb, mergeMax := mm,
+                               splitAbove := sa, theta := th }, k) }
+    | _, _, _, _, _, _, _, _ => bad "bad TREE"
   | ["TX", i] => match i.toNat? with
     | some i => { t with txs := t.txs.push { idx := i } }
     | none => t

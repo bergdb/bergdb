@@ -285,9 +285,13 @@ More than h klongs in the last version (`Params.splitAbove`, `Dag.splitAbove`;
 M / 2 until record format 7): a space split (`spaceSplit`; in place
 for a node that the transaction made, `spaceSplitInPlace`). Else a time split
 (`timeSplit`, `timeSplitInPlace`). A node that existed before the transaction
-then loses its klongs of the transaction (`toPreviousState`). -/
+then loses its klongs of the transaction (`toPreviousState`).
+
+`compact`: the node is full by its dead klongs only (option 2, bergdb 024-23,
+2.2; `deadOver`): always a time split, whatever h says; the node had room for
+the write, and its last version with the write has no more klongs. -/
 def handleFullWith (up : NodeId → List (Nat × NodeId) → M Unit) (depth : Nat) (x : NodeId)
-    (ins : List (Nat × NodeId)) (last : KNode) : M Unit := do
+    (ins : List (Nat × NodeId)) (last : KNode) (compact : Bool := false) : M Unit := do
   let c ← read
   let tt := c.i
   let n ← getNode x
@@ -297,7 +301,8 @@ def handleFullWith (up : NodeId → List (Nat × NodeId) → M Unit) (depth : Na
   let parentLeaf ← match parent with
     | some q => do pure (← getNode q).leaf
     | none => pure false
-  if last.size > c.p.splitAbove then
+  if compact then note "dead.compact"
+  if !compact && last.size > c.p.splitAbove then
     modify (fun w => { w with spaceSplits := w.spaceSplits + 1 })
     if newInTrans then
       -- Dag.spaceSplitInPlace: x keeps the first half.
@@ -392,32 +397,42 @@ def handleFullWith (up : NodeId → List (Nat × NodeId) → M Unit) (depth : Na
     let n ← getNode x
     putNode x (n.toPrev (tt - 1))
 
+/-- Option 2 (bergdb 024-23, 2.2; `Dag.deadFull`): n', a node with a write
+applied, would hold more than theta dead key klongs, so the node is full. A
+write that adds no dead klong never makes it so (the node holds at most theta
+before it). Never with theta 0. -/
+def deadOver (p : Params) (n' : KNode) : Bool := p.theta != 0 && decide (p.theta < n'.deadCount)
+
 /-- `Dag.appendKlongs`: the key klongs `ins` (one or two) go into node x at
-`depth` of the key access path, if it has room for them and a time klong; else
-the node is full. -/
+`depth` of the key access path, if it has room for them and a time klong, and
+holds at most theta dead klongs with them (`deadOver`); else the node is full. -/
 def appendKlongs : Nat → NodeId → List (Nat × NodeId) → M Unit
   | depth, x, ins => do
     let c ← read
     let n ← getNode x
+    let up : NodeId → List (Nat × NodeId) → M Unit := match depth with
+      | 0 => fun _ _ => throw "corrupt: a split's parent above depth 0"
+      | d + 1 => fun q more => appendKlongs d q more
     if n.size + ins.length + 1 > c.p.M then
-      let up : NodeId → List (Nat × NodeId) → M Unit := match depth with
-        | 0 => fun _ _ => throw "corrupt: a split's parent above depth 0"
-        | d + 1 => fun q more => appendKlongs d q more
       handleFullWith up depth x ins (n.lastVersion c.i)
+    else if deadOver c.p (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) n) then
+      handleFullWith up depth x ins (n.lastVersion c.i) true
     else addKeys x ins
 
-/-- `Dag.handleFullNode` with a last version made by the caller (a delete). -/
-def handleFull (depth : Nat) (x : NodeId) (last : KNode) : M Unit :=
+/-- `Dag.handleFullNode` with a last version made by the caller (a delete);
+`compact` as in `handleFullWith`. -/
+def handleFull (depth : Nat) (x : NodeId) (last : KNode) (compact : Bool := false) : M Unit :=
   let up : NodeId → List (Nat × NodeId) → M Unit := match depth with
     | 0 => fun _ _ => throw "corrupt: a split's parent above depth 0"
     | d + 1 => fun q more => appendKlongs d q more
-  handleFullWith up depth x [] last
+  handleFullWith up depth x [] last compact
 
 /-! ## The delete: UP, LE-b, the take-back, RC -/
 
 /-- `Dag.appendDeleteKlong`: a bitmap in node x that deletes compare value cv.
 Returns true for a noop. The transaction's own bitmap, if it is the node's last
-klong, gets the bits in place; a full node is replaced by its last version. -/
+klong, gets the bits in place; a full node is replaced by its last version, by
+its size or, both in place and not, by its dead klongs (`deadOver`). -/
 def appendDeleteKlong (x : NodeId) (depth : Nat) (cv : Nat) : M Bool := do
   let c ← read
   let tt := c.i
@@ -434,11 +449,21 @@ def appendDeleteKlong (x : NodeId) (depth : Nat) (cv : Nat) : M Bool := do
   let isNoop := union == arrayDel
   if !isNoop then
     if hasTransDel then
-      note "bitmap.inplace"
-      putNode x (n.setAt (n.size - 1) (.del union))
+      let n' := n.setAt (n.size - 1) (.del union)
+      if deadOver c.p n' then
+        note "bitmap.inplace.dead"
+        handleFull depth x (n.lastVersionGivenDel tt union) true
+      else
+        note "bitmap.inplace"
+        putNode x n'
     else if n.size + 1 < c.p.M then
-      note "bitmap.new"
-      putNode x (n.add tt (.del union))
+      let n' := n.add tt (.del union)
+      if deadOver c.p n' then
+        note "bitmap.dead"
+        handleFull depth x (n.lastVersionGivenDel tt union) true
+      else
+        note "bitmap.new"
+        putNode x n'
     else
       note "bitmap.full"
       handleFull depth x (n.lastVersionGivenDel tt union)
@@ -449,7 +474,8 @@ emptied. The empty key gets the pointer of the next live klong (the smallest
 live compare value but the empty key's, its last klong), by a new klong or in
 place if its klong is of the transaction, and that klong's compare value is
 deleted. A full node is replaced by its last version, the empty key in the next
-klong's place. -/
+klong's place; so is a node that would hold more than theta dead klongs
+(`deadOver`), as a compaction. -/
 def emptyKeyNext (x : NodeId) (depth : Nat) : M Unit := do
   let c ← read
   let tt := c.i
@@ -478,20 +504,22 @@ def emptyKeyNext (x : NodeId) (depth : Nat) : M Unit := do
       | some ti => decide (ti < e)
       | none => false)
     let need := (if hasTransDel then 0 else 1) + (if inPlace then 0 else 1) + (if ofTt then 0 else 1)
-    if n.size + need ≤ c.p.M then
-      note (if inPlace then "leb.inplace" else "leb.newklong")
-      let n1 := if hasTransDel then n.setAt (n.size - 1) (.del union) else n.add tt (.del union)
-      let n2 := if inPlace then n1.repoint e jy else n1.add tt (.key 0 jy)
-      putNode x n2
-    else
+    let full : Bool → M Unit := fun compact => do
       let last := n.lastVersionGivenDel tt del0
       match last.ks with
       | t :: .key c1 y1 :: r =>
         if c1 != jcv then
           throw s!"Bug: LE-b at {tt} in key node {x}: the last version does not start with the next child"
-        note "leb.full"
-        handleFull depth x { last with ks := t :: .key 0 y1 :: r }
+        note (if compact then "leb.dead" else "leb.full")
+        handleFull depth x { last with ks := t :: .key 0 y1 :: r } compact
       | _ => throw s!"Bug: LE-b at {tt} in key node {x}: the last version does not start with the next child"
+    if n.size + need ≤ c.p.M then
+      let n1 := if hasTransDel then n.setAt (n.size - 1) (.del union) else n.add tt (.del union)
+      let n2 := if inPlace then n1.repoint e jy else n1.add tt (.key 0 jy)
+      if deadOver c.p n2 then full true else
+        note (if inPlace then "leb.inplace" else "leb.newklong")
+        putNode x n2
+    else full false
   | none, _ => throw s!"Bug: LE-b at {tt} in key node {x}: no live klong of the empty key"
   | _, none => throw s!"Bug: LE-b at {tt} in key node {x}: no next child"
 
@@ -755,7 +783,8 @@ cR, pointed to m2; else m2 gets a new klong of its first compare value g. The
 bitmap comes before any new klong; the transaction's own bitmap, if it is the
 node's last klong, gets the bits in place; a klong of tt is pointed in place. A
 full node is replaced by its last version with the new pointers set (rule O,
-`handleFullNode` with nothing to insert). -/
+`handleFullNode` with nothing to insert); so is a node that would hold more
+than theta dead klongs (`deadOver`), as a compaction. -/
 def mergeParent (p : NodeId) (depth il cL : Nat) (m1 : NodeId) (ir cR : Nat)
     (m2 : Option (NodeId × Nat)) : M Unit := do
   let c ← read
@@ -777,18 +806,8 @@ def mergeParent (p : NodeId) (depth il cL : Nat) (m1 : NodeId) (ir cR : Nat)
   let rInPlace := !deleteR && ofTt && after ir
   let need := (if deleteR && !hasTransDel then 1 else 0) + (if lInPlace then 0 else 1) +
     (if m2.isNone || rInPlace then 0 else 1) + (if ofTt then 0 else 1)
-  if pn.size + need ≤ c.p.M then
-    note (if deleteR then "merge.parent.delete" else "merge.parent.repoint")
-    let n1 := if !deleteR then pn
-      else if hasTransDel then pn.setAt (pn.size - 1) (.del union)
-      else pn.add tt (.del union)
-    let n2 := if lInPlace then n1.repoint il m1 else n1.add tt (.key cL m1)
-    let n3 := match m2 with
-      | some (y, g) => if rInPlace then n2.repoint ir y else n2.add tt (.key (if deleteR then g else cR) y)
-      | none => n2
-    putNode p n3
-  else
-    note "merge.parent.full"
+  let full : Bool → M Unit := fun compact => do
+    note (if compact then "merge.parent.dead" else "merge.parent.full")
     let last := pn.lastVersionGivenDel tt union
     let last ← match replaceKlong last.ks tt cL m1 with
       | .ok (some ks) => pure { last with ks := ks }
@@ -802,7 +821,19 @@ def mergeParent (p : NodeId) (depth il cL : Nat) (m1 : NodeId) (ir cR : Nat)
           | .ok none => throw s!"Bug: merge at {tt}: no klong of the right child in the last version of {p}"
           | .error e => throw e
       | none => pure last
-    handleFull depth p last
+    handleFull depth p last compact
+  if pn.size + need ≤ c.p.M then
+    let n1 := if !deleteR then pn
+      else if hasTransDel then pn.setAt (pn.size - 1) (.del union)
+      else pn.add tt (.del union)
+    let n2 := if lInPlace then n1.repoint il m1 else n1.add tt (.key cL m1)
+    let n3 := match m2 with
+      | some (y, g) => if rInPlace then n2.repoint ir y else n2.add tt (.key (if deleteR then g else cR) y)
+      | none => n2
+    if deadOver c.p n3 then full true else
+      note (if deleteR then "merge.parent.delete" else "merge.parent.repoint")
+      putNode p n3
+  else full false
 
 /-- `Dag.sibling`: the node that klong i of p names, read as the writer reads a
 path (`followQuietly`: not marked); a key node of the merged node's kind. -/
@@ -1015,7 +1046,8 @@ def setValue (segRoot : NodeId) (cv : Nat) (key : Key) (value : Option Nat) : M 
   | some h =>
     let v ← newValue h
     let n ← getNode leaf
-    if n.size + 1 < c.p.M then putNode leaf (n.add c.i (.key cv v))
+    let n' := n.add c.i (.key cv v)
+    if n.size + 1 < c.p.M && !deadOver c.p n' then putNode leaf n'
     else appendKlongs ((← pathSize) - 1) leaf [(cv, v)]
     pure false
 
