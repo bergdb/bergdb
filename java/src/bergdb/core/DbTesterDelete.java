@@ -129,14 +129,16 @@ public class DbTesterDelete {
      * stays, empty. In one transaction after the fill, and over several transactions, then
      * puts again, at startup distances that rerun little and all; gets after each step and
      * after restarts. An inner space root is never emptied in one delete: Dag.deleteUpward
-     * throws Bug for it (bergdb 023-11, review A, S1).
+     * throws Bug for it (bergdb 023-11, review A, S1). Transactions of at most
+     * Db.MAX_OPERATIONS (L1, bergdb 024-24): 2,000 keys are deleted in four of 500, not in one,
+     * and put again in batches of 500.
      */
     @Nano
     public static void testDeleteEveryKey() {
         final long collapses0 = bergdb.dag.Dag.statCollapses;
         for (int sd : DISTANCES) {
             for (int n : new int[] {1, 7, 100, 2000}) {
-                for (int per : new int[] {n, 13}) {
+                for (int per : new int[] {Math.min(n, Db.MAX_OPERATIONS), 13}) {
                     String at = "sd " + sd + ", n " + n + ", deletes a transaction " + per + ": ";
                     MemoryStream ms = new MemoryStream();
                     Db db = start(ms, sd);
@@ -160,9 +162,13 @@ public class DbTesterDelete {
                     for (int i = 0; i < n; i++) {
                         Assert.assertEquals(at + "restart, /k/" + i, null, DbUtil.get(db, "/k/" + i));
                     }
-                    Trans.Builder tb = db.trans();
-                    for (int i = 0; i < n; i += 3) tb.put("/k/" + i, "w" + i);
-                    db.execute(tb.build());
+                    for (int i0 = 0; i0 < n; i0 += 3 * Db.MAX_OPERATIONS) {
+                        Trans.Builder tb = db.trans();
+                        for (int i = i0; i < Math.min(n, i0 + 3 * Db.MAX_OPERATIONS); i += 3) {
+                            tb.put("/k/" + i, "w" + i);
+                        }
+                        db.execute(tb.build());
+                    }
                     db.close();
                     
                     db = start(ms.copy(), sd);
@@ -593,8 +599,8 @@ public class DbTesterDelete {
      * the lookup time and every value are as before.
      * Then both databases run the same transaction, which takes the time the refused one
      * would have had, as the clock stands still; their streams are the same, byte for byte,
-     * and so are the values after a restart. A key of 300 characters is shown in the message
-     * by its first 100 and its length.
+     * and so are the values after a restart. A key of 108 characters is shown in the message
+     * by its first 100 and its length (of 303 until bergdb 024-24, over L2 since).
      */
     @Nano
     public static void testRefusedTransUnchanged() {
@@ -647,11 +653,11 @@ public class DbTesterDelete {
                         }
                     }
                     
-                    String x = "/c/" + new String(new char[300]).replace('\0', 'x');
+                    String x = "/c/" + new String(new char[105]).replace('\0', 'x');
                     String y = "/c/$" + x.substring("/c/".length());
                     String message = refused(db, db.trans().put(x, "1")
                             .put(Keys.toSegments(y), TO_C, bytes("2"), null).build(), false);
-                    Assert.assertTrue(at + message, message.contains("...\" (304 characters)")
+                    Assert.assertTrue(at + message, message.contains("...\" (109 characters)")
                             && message.length() < 600);
                 }
                 Trans t2 = db.trans().put("/c/a", "a2")
