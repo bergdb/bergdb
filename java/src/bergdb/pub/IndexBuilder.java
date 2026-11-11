@@ -45,7 +45,10 @@ import bergdb.pub.util.Job;
  *     by eq(0.1), as 0.1f is 0.10000000149011612; bergdb 020-24-12, U12-6), a string for
  *     "string", bytes for "bytes" (byte[]). No kind is converted to another; a boolean, an
  *     array or an object gives no entry; an absent field gives no entry.</li>
- * <li>If the levels' encodings take more than 4,096 bytes in all, v has no entry.</li>
+ * <li>If the levels' encodings take more than 111 bytes in all (L6, as a key; the package's
+ * {@linkplain bergdb.pub##limits Limits}), a put of v is refused with
+ * IllegalArgumentException, and a build over a v put before the index gives it no entry
+ * (4,096 bytes and no entry until release 2026.5; bergdb 024-17, QL4).</li>
  * </ol>
  *
  * <p>The order of a level: "long" by the numbers; "double" by the numbers, -0.0 as 0.0 (one

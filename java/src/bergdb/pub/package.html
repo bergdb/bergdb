@@ -235,7 +235,7 @@ objects put before it gives such an object no entry.</li>
 keys it puts or deletes, and at most 32 MiB of keys and values. An object put at a key of a
 directory with k indexes is up to 1 + 2k operations (the object and, for each index, the
 entry of its old value deleted and of its new one put): 500 objects without indexes, 166
-with one. BergDB's own keys of the transaction, its index entries among them, take at most 56
+with one. The keys of the transaction, its index entries among them, take at most 56
 KiB. A transaction over these is refused with DbException at its commit. Larger work is done
 in several transactions, with a key written last that readers look at first.</li>
 </ul>

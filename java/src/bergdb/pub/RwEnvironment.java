@@ -67,7 +67,9 @@ public interface RwEnvironment extends ReadInterface {
      * Deletes a database entry if it exists, otherwise, this method does nothing.
      * 
      * @param key Key of the database entry to delete.
-     * @throws IllegalArgumentException if 'key' is null or otherwise of an invalid format.
+     * @throws IllegalArgumentException if 'key' is null or otherwise of an invalid format,
+     *             or has more than 111 bytes as stored (L2; the package's
+     *             {@linkplain bergdb.pub##limits Limits}).
      */
     public void delete(String key);
     
@@ -88,9 +90,10 @@ public interface RwEnvironment extends ReadInterface {
      * (Connection.setEnableKeyReplace(); bergdb 020-24-02, I-6).</p>
      *
      * @see WBuilder#put(String, Object)
-     * @throws IllegalArgumentException if 'key' is null or otherwise of an invalid format.
+     * @throws IllegalArgumentException if 'key' is null or otherwise of an invalid format,
+     *             or has more than 111 bytes as stored (L2).
      * @throws IllegalArgumentException if 'object' is null, or if it is a String with a
-     *             lone surrogate or too long, or an object with a string that has one, as
+     *             lone surrogate or over 8 MiB (L4), or an object with a string that has one, as
      *             for WBuilder.put() (bergdb 019-44, 021-04; 020-08, section 3); or if the
      *             object cannot be stored exactly, as for WBuilder.put() (bergdb 020-09).
      */

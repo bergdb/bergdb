@@ -159,9 +159,13 @@ The details:
   bytes (L6; a longer one's put is refused). Within them a transaction's
   dirty index nodes fit a record at every node size by the count with q
   (`Limits.dirtyNodes`, `ReleaseFits` proved by `decide`; TP26 checked by
-  `treetest` and C-T8, not proved), so the checks of 005-17 and 005-31
-  stay, as refusals a transaction within the limits does not meet. A value
-  transformation's result over L4 fails the database (QL6). The reader
+  `treetest` and C-T8, not proved). The checks of 005-17 and 005-31 stay,
+  as refusals: `checkDirtyNodes` counts a KV with a key or a value
+  transformation coarsely, from the stream's length, so such a
+  transaction within the limits can meet 005-31 (024-24's review, R3),
+  and QL5's step to a `Bug` waits for a count of transformed KVs within
+  the model's bound. A value transformation's result over L4 fails the
+  database (QL6). The reader
   reads a record's size and format byte first (QL7).
   The size check counts a Core API value transformation's input: its
   result, made after the go point, must keep the transaction within the

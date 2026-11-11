@@ -263,10 +263,14 @@ import bergdb.stream.SalsaStream;
  * <p>Larger work is split: transactions of at most 500 operations, with a marker key written
  * in the last one, which readers look at first; a larger value in chunks under keys of their
  * own and a manifest written last (bergdb 024-17, 6.7). The limits bound what a transaction
- * can make dirty in the index, so that its record always fits the record limit, 2^31 - 9
- * bytes, at every node size (024-17, section 5; the Lean model's Limits.release). The checks
- * of the record's size and of the index nodes a transaction can make dirty (bergdb 005-17,
- * 005-31) stay, as refusals that a transaction within the limits does not meet.</p>
+ * can make dirty in the index, so that its record fits the record limit, 2^31 - 9 bytes, at
+ * every node size (024-17, section 5; the Lean model's Limits.release). The checks of the
+ * record's size and of the index nodes a transaction can make dirty (bergdb 005-17, 005-31)
+ * stay, as refusals before the go point. A transaction with key or value transformations
+ * can still meet 005-31's: the check counts a transformed KV coarsely, from the stream's
+ * length (at node size 62, 500 such KVs of 111-byte keys on a stream of 258 kB; review
+ * rev24, R3). A value transformation's result is not counted by L5, and one whose record
+ * does not fit fails the database (005-17; ValueTransformation).</p>
  * 
  * <p><b>Errors</b> (2026-11-06, bergdb 019-10; 010-01, P7). BergDB assumes a sound
  * environment: correct storage, a stream that returns the bytes appended to it, and enough

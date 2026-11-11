@@ -127,8 +127,8 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
     of their own, with a key that lists them written last.
   * **A transaction is at most 500 operations** (the keys it puts or
     deletes; a Pub object put in a directory with k indexes counts up to 1
-    + 2k) **and 32 MiB of keys and values**; BergDB's own keys of it, its
-    index entries among them, at most 56 KiB. Refused at the commit with
+    + 2k) **and 32 MiB of keys and values**; its keys, its index entries
+    among them, at most 56 KiB. Refused at the commit with
     `DbException`. Larger work goes in several transactions, with a key
     written last that readers look at first.
   * **An indexed value's levels are at most 111 bytes**, as a key: a put
