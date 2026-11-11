@@ -314,6 +314,10 @@ from them.
   8/17/17, and after an independent review finds nothing that blocks;
   the LiveAppend change lands on its gates, its trusted diff quoted in
   its item for Frans to read; 906d54d7 goes in with the merges.
+* 14:56 The tree model landed: b84cf761, the merge of 480f83da (024-12
+  re-merged onto main with 024-16; gates: lake build, treetest, no
+  sorry or axiom, test-traces, before-commit, level1 full, level2 full
+  with its new treeconf step, level3 full).
 
 
 ## 6. Outcome

@@ -168,8 +168,10 @@ Files
   touch); the checker `treecheck` and `treeconf.sh`, step 8 of
   `level2.sh`: on 115 traces the model's own run writes Java's records;
   `treetest`, exhaustive at small node sizes; 27 stated properties, a
-  few proved. Branch 024-12-tree-model; lands when Frans has approved
-  it.
+  few proved. Branch 024-12-tree-model. Approved by Frans 2026-11-11,
+  14:28; on main since 14:56, the merge of 480f83da (gated: lake build,
+  treetest, no sorry or axiom, test-traces, before-commit, level1 to
+  level3 full).
 * 14-merge-thresholds.md. 024-14, the merge's thresholds measured in
   Java at 1M and 10M keys, on a measuring build (P5's merge with fault
   12's fix, the thresholds as run parameters; not landed): the sets P5

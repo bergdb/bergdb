@@ -347,24 +347,29 @@ slot (the coordinator, 14:12), the rest one slot a run:
 | `sorry`, `admit`, `axiom`, `native_decide` | 14:14      | 0 in `lean/`, by grep           |
 | `collectAxioms`, every theorem         | 14:14          | 142, only the three standard    |
 | `lean/test-traces/run.sh`              | 14:14          | TRACE TESTS OK                  |
-| `java/before-commit.sh`                |                | (waiting for a slot)            |
-| `java/stress/level1.sh`, full          |                |                                 |
-| `java/stress/level2.sh`, full          |                | with its step 8, treeconf.sh    |
-| `java/stress/level3.sh`, full          |                |                                 |
+| `java/before-commit.sh`                | 14:31 to 14:33 | BEFORE COMMIT OK (82 s), unit 1,654 |
+| `java/stress/level1.sh`, full          | 14:33 to 14:35 | LEVEL 1 OK, MEM 129, SEG 226.4  |
+| `java/stress/level2.sh`, full          | 14:35 to 14:47 | LEVEL 2 OK (729 s)              |
+| `java/stress/level3.sh`, full          | 14:47 to 14:55 | LEVEL 3 OK, C-CUT 0 of 326      |
 
+* **level1.sh:** MEM10M 127.1, SS 1.51.
+* **level2.sh's step 8,** the tree model against Java with 024-16 in
+  the tree: treeconf small 7,100 transactions (13 key nodes taken
+  back), drain 13,900 (251,431 operations, 554 taken back), reclaim
+  8,794 (369 touches), all TREECONF OK; step 7: 70 traces and 50
+  draining traces TRACECHECK OK, TAKECHECK OK.
+* **024-12 on `main` with 024-16 is gated** on `480f83da` (14:55).
 
 ## 9. State
 
-2026-11-11, 14:16.
+2026-11-11, 14:56.
 
 * **Landed:** the first landing as `main`'s `a780b957`, 024-09 as
   `379d8acf`, 024-15 as `1e77cfc6`, 024-16 as `47c93e34`.
-* **024-12, for Frans's yes:** branch `024-13-int-e`, head
-  **`480f83da`**, worktree `/Users/f/fl/bench/2026-11-11/int/wt-e`, on
-  `main`'s `b7f1b1cf`; the slot gates run by
-  `/Users/f/fl/bench/2026-11-11/int/gated.sh` (logs `e-*` in
-  `/Users/f/fl/bench/2026-11-11/int/logs/`), one waiting take at a time.
-  When they pass, `480f83da` is the head to land after Frans's yes.
-  `ca3824aa` (`024-13-int-c`, on `2108aa2d`) is superseded, kept.
-* **Later:** the C clone's branch if sent. Owner lines say "gates
-  only", never the word for a timing run. Stop by 19:00.
+* **To land: 024-12** (Frans's yes at 14:28), branch `024-13-int-e`,
+  head **`480f83da`**, worktree `/Users/f/fl/bench/2026-11-11/int/wt-e`
+  of the clone, one merge of `d90586d0` on `main`'s `b7f1b1cf` (main
+  has moved by items only since); every gate passed (section 8). The
+  working tree is clean. `ca3824aa` (`024-13-int-c`) is superseded.
+* **Not done:** the C clone's branch was never sent to this subitem.
+  Nothing of 024-13 is running; no slot is held.
