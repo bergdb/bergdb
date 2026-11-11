@@ -352,6 +352,26 @@ from them.
   operations, L2 = 111 bytes (16 segments), L4 = 8 MiB, L5 = 32 MiB,
   the rest as recommended ("a bit more conservative, possibly
   increasing in a future version").
+* 17:43 Frans left ("You can plan the unattended work"). Unattended
+  until 2026-11-12 07:00 (the default; no time given). The plan, in
+  order, each step by its own rule:
+  1. Option 2 (024-23) lands when its gates pass with the review's R1
+     fixed (Frans 14:27: "Let's get this in now"); the landing says
+     that format 7's meaning changes without a new format number (R2).
+  2. 024-17 restated for the decided limits (lim2, by 19:30).
+  3. The limits implemented, a new item (024-24), on main after option
+     2: the constants and the count with q in the Lean model (QL8 (a)),
+     Java's checks with refusals (L1 to L6), the reader reading a
+     record's header first (QL7), the tests and benchmarks that use
+     longer keys; full gates and an independent review, then it lands
+     (Frans decided the values; the coordinator lands as for 024-21).
+  4. CRC32C (QL9) as its own item after 024-24, only if the week's
+     usage is under 82 % when 024-24 lands.
+  5. night.sh on main when no agent needs a slot (both slots), its
+     report in news.md.
+  No new agent at or above 83 % of the week (ceiling 85 %). The Lean
+  proofs (TP30 to TP33) wait for a day with more usage. The morning: a
+  summary in news.md and this plan's Outcome.
 
 
 ## 6. Outcome
