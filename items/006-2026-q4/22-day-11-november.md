@@ -40,7 +40,7 @@ high, xhigh for a hard task. At most 8 agents at a time (Frans,
 | 026 | Item for release 2026.6, "a stable stream" (preliminary) | coordinator | done |
 | 024-07 | The last touch of a reclaim iteration (CL7): design, fix | touch (xhigh) | on main, a780b957 |
 | 024-08 | MEM 327 at 10M keys against 129.6 at 1M: the cause | mem (high) | done 07:25 |
-| 024-09 | The tie of model and code repaired (024-06, A1 to A4) | tie (xhigh) | |
+| 024-09 | The tie of model and code repaired (024-06, A1 to A4) | tie (xhigh) | on main, 379d8acf |
 | 022-07 | The C clone to release 2026.4 as released (CC1) | cc (high) | |
 | 024-10 | The builder's rule "the last operation wins" (CA1) | low (high) | on main, a780b957 |
 | 024-11 | The underfill fix: a design study, no code | fill (xhigh) | done 08:18 |
@@ -165,6 +165,48 @@ from them.
   s), 024-10, 024-07. Gated as one tree: the Lean build, before-commit,
   level1, level2 and level3 full (C-CUT 0 of 310 cuts). main's java/,
   lean/ and docs/ equal the gated head's.
+* 10:16 024-07's final report: the old touch was also two faults of
+  2026.4 as shipped: near 104M keys in time order the step passes the
+  record limit and the startup position stops for good; with a small
+  heap a user's commit ends in OutOfMemoryError. Fixed on main.
+* 10:18 Frans on the key's size: "256 is a reasonable limit to key size.
+  I think this is the one limit that need to go into the db user's mind.
+  [...] The other limits are typically large enough for nearly all use
+  cases." And on "user limits checked, internal bounds proved": "Yes,
+  sure. Good." Sent to limits (024-17).
+* 10:21 Frans on 024-07's three decisions: "1, 2, 3 decisions; all as
+  recommended.": a known issue in 2026.4's notes
+  (020-33, started); the cut's safety rests on the delete's upward
+  unlink, stated in the tree model, with 024-09's gates landed; the
+  touch removed altogether later, with the tree model.
+* 10:25 The usage: 59 % of the week (50 % at 09:25). Frans, 10:28: a
+  ceiling of 75 % for today ("Yes."); the Fable agents finish as they
+  are, every follow-up on Opus. 10:26 Frans on a value's limit: "I think
+  1 MB is too small for the limit. But 10 MB could work. Ordinary photos
+  should fit."; the repo's largest file is 15.6 MB; 16 MiB suggested;
+  sent to limits. 10:28 020-33 done: the known issue in 2026.4's notes
+  (65b8bfdc).
+* 10:34 024-09 done: T-SCHEME's argument holds for 2026.4's code; the
+  gates now reach the take-back; PhysStep proved; head e6b6bda6, sent
+  to int to merge and gate (unlinkfuzz, conformance reclaim and evict,
+  level3 not yet run after its merge of main).
+* 10:48 Frans: two heavy runs at a time when neither is timing ("Yes.").
+  A second slot and a helper (`slot.sh`); the helper's test matched the
+  word in "not timing" and held waiting agents back twice (11:05,
+  11:20); corrected.
+* 10:50 Frans: 024-04 rewritten in place, the aim as it is (16526107).
+* 10:53 to 11:10 Frans on 024-09's questions, one at a time: the
+  trusted statements name `LiveAppend` in place of `PhysRunOK`, in a
+  commit of its own after 024-12 has landed, its diff shown to him
+  ("Yes, as recommended."); the gates require A6 everywhere ("Yes.
+  Sound very good. Nice to avoid the need to support such a corner
+  case."); 015-03 closed when the branch lands ("yes"); the longer gates
+  ("Yes, accepted.").
+* 11:24 **The second landing: main 379d8acf**, the merge of 024-13-int
+  (e74bb8ff), pushed: 024-09. Gated: the Lean build, before-commit,
+  level1, level3 full, unlinkfuzz.sh (3,226 rounds), conformance.sh
+  reclaim (C-CUT 0 of 326) and evict; level2 full on the branch's head,
+  whose java/, lean/ and docs/ the merge equals. 015-03 closed.
 
 
 ## 6. Outcome

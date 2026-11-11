@@ -193,9 +193,10 @@ def NoopOK (p : Params) : Prop :=
 
 /-! ## TP13 to TP19: the assumptions of the existing model (bergdb 024-06, C1) -/
 
-/-- TP13. The structure's own assumptions: `SpecOK`, with `VirtInit`. Proved in
-SIS/Proof/TreeInit.lean (`specOKTree_of_liveSub`) but for `liveSub`, a property
-of `blive` alone. -/
+/-- TP13, proved (`specOKTree`, Check/TreeLive.lean). The structure's own
+assumptions: `SpecOK`, with `VirtInit`: SIS/Proof/TreeInit.lean
+(`specOKTree_of_liveSub`) proves all but `liveSub`, a property of `blive` alone,
+which is `blive_sub` of Check/Live.lean (bergdb 024-09). -/
 def SpecOKTree (p : Params) : Prop := SpecOK (treeSpec p)
 
 /-- TP14. `RunOK`: every transaction of a run within reach meets A2 to A5, the

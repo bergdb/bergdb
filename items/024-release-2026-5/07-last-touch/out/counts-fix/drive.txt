@@ -1,0 +1,15 @@
+T7 drive dir=/Users/f/fl/bench/2026-11-11/touch/data/dfix n=1000000 maxdrive=30000 report=10000 touchcount=1 cp=/Users/f/fl/bench/2026-11-11/touch/cfix:/Users/f/fl/bench/2026-11-11/touch/fix.jar
+[1.7s] START ms=1624 len=328904496 fap=0 fresh=false recordLimit=2147483639
+[1.7s] DRIVE before state len=328904496 kept=328904496 iters=0 fap=0 lag=49386608
+[5.1s] ITEREND tx=2000 commitMs=1.8 userRecord=38688 stepRecord=15544 lag=49543288 resident=199336698 | steps=2000 kvs=149985 values=135920 dirtiedNodes=22877 dirtiedBytes=5691296 maxStepDirtied=25 maxStepNodes=17 loads=159751 touch: visited=47898 dirtied=9921 old=0 minimal=0
+[14.5s] drive tx=10000  len=751588536 kept=651577032 iters=1 fap=100011504 lag=50655776 tx=10000 bytes/tx=37296 maxRec=76192 recs>1MB=0 exec p50=1121us p99.9=4733us max=37ms
+[21.8s] ITEREND tx=15335 commitMs=1.7 userRecord=48176 stepRecord=36864 lag=49984736 resident=199613222 | steps=13334 kvs=1000003 values=0 dirtiedNodes=959 dirtiedBytes=63432 maxStepDirtied=5 maxStepNodes=20 loads=1248539 touch: visited=66670 dirtied=0 old=0 minimal=0
+[28.3s] drive tx=20000  len=1210901408 kept=1110889904 iters=2 fap=100011504 lag=49434392 tx=20000 bytes/tx=39649 maxRec=84128 recs>1MB=0 exec p50=1204us p99.9=4079us max=55ms
+[40.7s] ITEREND tx=28671 commitMs=0.8 userRecord=15248 stepRecord=440 lag=49600792 resident=199920475 | steps=13334 kvs=1000003 values=145602 dirtiedNodes=52303 dirtiedBytes=16351632 maxStepDirtied=14 maxStepNodes=20 loads=1302274 touch: visited=219730 dirtied=36361 old=1 minimal=1
+[42.5s] drive tx=30000  len=1678789272 kept=1578777768 iters=3 fap=100011504 lag=49992112 tx=30000 bytes/tx=40540 maxRec=87104 recs>1MB=0 exec p50=1245us p99.9=3953us max=73ms
+[42.5s] DRIVE done tx=30000 iters=3 s=40.8 tx/s=735
+[42.5s] DRIVE tx=30000 bytes/tx=40540 maxRec=87104 recs>1MB=0 exec p50=1245us p99.9=3953us max=73ms
+[42.5s] DRIVE maxRecTx=23450 maxRecCommitMs=1.8 maxExecTx=22694 stepRecs=29996 stepBytes/rec=4456 maxStepRecord=54392 maxLag=52190680
+[42.5s] DRIVE state len=1678789272 kept=1578777768 iters=3 fap=100011504 lag=49992112
+[42.5s] CLOSE ms=9
+[42.5s] DONE

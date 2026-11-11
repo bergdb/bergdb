@@ -32,7 +32,7 @@ Open
 
 | ID | Kind | What | Status |
 |---|---|---|---|
-| [015-03](03-lean-follows-005-79.md) | Implement | Lean follows 005-79's integer take | open |
+| [015-03](03-lean-follows-005-79.md) | Implement | Lean follows 005-79's integer take | done | 2026-11-11 |
 | [015-18](18-night-large-after-release.md) | Implement | Run night.sh large on the release, after 2026.2 | open |
 | [015-84](84-cap-pace-factor.md) | Investigate | Cap the pace's factor S/sd: a decrease's records grow with the keys | open |
 

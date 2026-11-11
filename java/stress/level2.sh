@@ -5,7 +5,7 @@
 # run it after larger changes.
 #
 # Usage: java/stress/level2.sh [quick]
-#   full (default): about 17 minutes on 10 cores. quick: about 2 minutes.
+#   full (default): about 12 minutes on 10 cores. quick: about 2 minutes.
 #
 # Builds with ../java/build.sh, then runs, stopping at the first failure:
 #   1. The unit tests (bergdb.dev.Unit), which include small level 2 tests.
@@ -50,6 +50,21 @@
 #      and the trace checker on conformance.sh's small set (2 seeds quick, 10
 #      full): every transaction must be a step of the model that meets its
 #      assumptions, every restart invisible.
+#      Since bergdb 024-09 (step A1) also the draining configurations, which
+#      reach the delete path's take-back (a node that a transaction makes
+#      and empties again is taken back, never written; bergdb 023-05): the
+#      three above take back no node. A2A3Check2 on seven of them, five
+#      with its own keys and two with shape=long, UnlinkFuzz's long keys,
+#      where a transaction makes a segment root, splits it in place and
+#      empties it (a klong left to a node taken back, fault 12 of bergdb
+#      023-08, fails A-COPY there); and the trace checker on
+#      conformance.sh's drain set (2 seeds quick, 10 full). A draining
+#      configuration that takes back no node fails the step: it no longer
+#      reaches the mechanism.
+#      And TakeCheck check (bergdb 024-09, step A4): Java's take gives, on 300
+#      generated cases, the numbers that lake build compares with the
+#      model's javaTake (lean/SIS/BoundExample.lean), and its integer share
+#      and dither those of the model's shareFp and ditherFp.
 # Logs go to build/level2/. Set JAVA_HOME or PATH for the JDK; the build
 # needs javac too. Step 7 needs Lean (elan, with the toolchain of
 # ../lean/lean-toolchain); it builds the checker with lake.
@@ -61,10 +76,10 @@ if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi
 
 if [ "$1" = quick ]; then
     QUICK=1; ROUNDS=40; SIZE_ROUNDS=3; INV_N=600; CRASH_ROUNDS=4; BRYAN_CYCLES=15
-    CONF_SEEDS=2
+    CONF_SEEDS=2; DRAIN_SEEDS=2
 else
     QUICK=0; ROUNDS=200; SIZE_ROUNDS=10; INV_N=2000; CRASH_ROUNDS=20; BRYAN_CYCLES=40
-    CONF_SEEDS=10
+    CONF_SEEDS=10; DRAIN_SEEDS=10
 fi
 
 CP=build/bergdb.jar:build/stress
@@ -187,9 +202,54 @@ for cfg in "-Dops=4 -Ddel=25 -Dlong=1" \
         "TREE, A6' and A-COPY OK; adoptions below the old parent (A6' allows them, A6 not)" \
         "$(grep -o 'does not (bergdb 005-04), [0-9]*' $F | sed 's/.*, //')"
 done
+# The draining configurations (bergdb 024-09, step A1).
+# a2a3_failing FILE: the first rule that A2A3Check2's output does not show to hold, with
+# its counts; nothing if all hold.
+a2a3_failing() {
+    grep -q '^  transactions ' $1 || { echo "no result ($(tail -1 $1))"; return; }
+    grep -q 'violating A3 0, A5 0;' $1 \
+        || { echo "A3 or A5: $(grep -o 'violating A3 [0-9]*, A5 [0-9]*' $1)"; return; }
+    grep -q 'NET (A2): .* not current 0 ' $1 \
+        || { echo "A2: $(grep -o 'nodes with a klong at tt not current [0-9]* (transactions [0-9]*)' $1)"; return; }
+    grep -q 'in step 3 only 0, in model only 0 ' $1 \
+        || { echo "marking: $(grep -o 'in step 3 only [0-9]*, in model only [0-9]*' $1)"; return; }
+    grep -q 'adopted index nodes not below the old parent 0 (transactions 0)' $1 \
+        || { echo "A6': $(grep -o 'adopted index nodes not below the old parent [0-9]* (transactions [0-9]*)' $1)"; return; }
+    grep -q 'nodes without exactly one 0 (transactions 0)' $1 \
+        || { echo "TREE: $(grep -o 'nodes without exactly one [0-9]* (transactions [0-9]*)' $1)"; return; }
+    grep -q 'A-COPY .* failing 0 (transactions 0)' $1 \
+        || { echo "A-COPY: new pointers $(grep -o 'failing [0-9]* (transactions [0-9]*)' $1)"; return; }
+}
+n=0
+for cfg in "-Dops=40 -Dexact=1 -Dn=200 -Dkeys=300 -Ddel=60 -Dlong=1" \
+    "-Dmaxnode=14 -Dops=60 -Dexact=1 -Dn=200 -Dkeys=600 -Ddel=50" \
+    "-Dmaxnode=8 -Dops=20 -Dexact=1 -Dn=400 -Dkeys=25 -Ddel=65" \
+    "-Dmaxnode=8 -Dops=60 -Dexact=1 -Dn=300 -Dkeys=80 -Ddel=60 -Dlong=1" \
+    "-Dmaxnode=8 -Dops=40 -Dn=400 -Dkeys=50 -Ddel=70" \
+    "-Dshape=long -Dops=40 -Dexact=1 -Dn=30 -Dkeys=60 -Ddel=40 -Dseeds=300" \
+    "-Dshape=long -Dops=40 -Dn=30 -Dkeys=60 -Ddel=40 -Dseeds=300 -Dunsorted=1"; do
+    n=$((n + 1))
+    F=$LOG/a2a3-drain-$n.txt
+    $JAVA -ea $cfg -cp $CP bergdb.dag.A2A3Check2 > $F 2>&1
+    R=$(a2a3_failing $F)
+    [ -z "$R" ] || fail "A2A3Check2, draining configuration $n ($cfg): $R" $F
+    TB=$(sed -n 's/^  taken back (made and emptied in a transaction, bergdb 023-05) //p' $F)
+    [ "${TB:-0}" -gt 0 ] || fail "A2A3Check2, draining configuration $n ($cfg) takes back no node: it does not reach the take-back" $F
+    echo "   a2a3-drain-$n: $(grep -o '^  transactions [0-9]*' $F | sed 's/^ *//'): A2, A3, A5, marking," \
+        "TREE, A6' and A-COPY OK; nodes taken back $TB"
+done
 (cd ../lean && lake build) > $LOG/lake.txt 2>&1 || fail "the Lean checker, lake build" $LOG/lake.txt
 sh stress/conformance.sh small $CONF_SEEDS > $LOG/conformance.txt 2>&1
 grep -q '^CONFORMANCE OK' $LOG/conformance.txt || fail "conformance.sh small" $LOG/conformance.txt
 echo "   conformance: $(grep '^   traces:' $LOG/conformance.txt | sed 's/^ *//')"
+sh stress/conformance.sh drain $DRAIN_SEEDS > $LOG/conformance-drain.txt 2>&1
+grep -q '^CONFORMANCE OK' $LOG/conformance-drain.txt \
+    || fail "conformance.sh drain: $(grep '^CONFORMANCE FAILED' $LOG/conformance-drain.txt | cut -c1-300)" $LOG/conformance-drain.txt
+echo "   conformance, drain: $(grep '^   traces:' $LOG/conformance-drain.txt | sed 's/^ *//');" \
+    "$(grep '^   Dag counters' $LOG/conformance-drain.txt | sed -e 's/^ *//' -e 's/ (.*):/:/' -e 's/; of .*//')"
+
+$JAVA -ea -cp $CP bergdb.core.TakeCheck check > $LOG/takecheck.txt 2>&1
+grep -q '^TAKECHECK OK' $LOG/takecheck.txt || fail "TakeCheck check: Java's take against the Lean model's numbers" $LOG/takecheck.txt
+echo "   take: $(tail -1 $LOG/takecheck.txt)"
 
 echo "LEVEL 2 OK"

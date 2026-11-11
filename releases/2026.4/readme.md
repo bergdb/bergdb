@@ -1822,6 +1822,36 @@ release jar has no tools.
 Known issues and limits
 -----------------------
 
+**Found after the release** (added on 2026-11-11; Post-release notes):
+
+* **Reclaim with keys in time order: one commit grows with the database,
+  and at tens of millions of keys the heap runs out or reclaim stops**
+  (bergdb 024-07, sections 2, 3 and 8; old, in 2026.1 to 2026.3 too; fixed
+  for 2026.5). With a retain duration set, and keys put after every key so
+  far, as keys in time order are (a queue, a log), the last step of each
+  reclaim iteration makes dirty every index node after its scan's last
+  key: the whole index. They stay in memory until a later commit writes
+  them, in one record. At 1M live keys the step's commit takes 1.6 s and
+  the record is 17 MB; at 10M the step makes 772,454 nodes dirty, its
+  commit takes 20.6 to 22.3 s under the write lock, so every writer waits,
+  0.67 to 2.31 GB are resident against a cache budget of 0.2 GB, and the
+  record is 206 MB. Two faults follow:
+  * **The heap**: the step runs inside a user's commit, and an
+    `OutOfMemoryError` there fails the database; after a restart the same
+    step runs again. Shown with a queue of 1M keys and a heap of 256 MB;
+    with 8 GB, estimated at 35M to 120M keys, not run.
+  * **The record limit**: from about 104M keys in time order (keys of 13
+    bytes, the default node size; fewer with longer keys) the step's nodes
+    pass a record's limit, 2^31 - 9 bytes. The startup position then stops
+    for good: no cut is made again, the stream, the startup section and the
+    heap grow without end, and nothing throws. Read from the code and
+    reproduced with the limit lowered; not run at that size.
+
+  Without a retain duration (the default, infinite retention) reclaim does
+  not run, and none of this happens. Not 021-25's stall (Fixed, below). In
+  2026.5 a step makes dirty only the index nodes on the paths of its own
+  puts: at 10M keys 5 to 15 nodes, the largest record 29 kB.
+
 **Open at the release** (019's and 021's open entries at the release commit):
 
 * **`Db.getTrans` at a position inside a record fails the database**
@@ -1978,5 +2008,17 @@ write that the rules leave undefined.
 Post-release notes
 ------------------
 
-None yet. A fault found later that affects 2026.4, its numbers or its
-correctness, is recorded here.
+A fault found later that affects 2026.4, its numbers or its correctness,
+is recorded here.
+
+* 2026-11-11: reclaim with keys in time order, found by 024-03's
+  measurements at 1M and 10M keys and studied in 024-07: at tens of
+  millions of keys the heap runs out in a user's commit, or reclaim stops
+  cutting for good (Known issues and limits, its first entry). Fixed for
+  2026.5 (024-07; 020-33).
+
+**Changes of these notes:**
+
+* 2026-11-11: that entry in Known issues and limits, under "Found after
+  the release" (Frans, 10:21). The jar, the zips and `SHA256SUMS` did not
+  change.

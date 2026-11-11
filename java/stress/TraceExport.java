@@ -54,7 +54,8 @@ import bergdb.stream.MemoryStream;
  *   long=1     half of the keys get two key segments
  *   shape=S    the workload's shape, UnlinkFuzz's (bergdb 024-12): fifo puts new keys in
  *              increasing order and deletes the oldest, a window of about keys/4 live keys;
- *              long3 gives the keys 1 to 5 segments with shared prefixes (default: none)
+ *              long3 gives the keys 1 to 5 segments with shared prefixes, the keys of
+ *              long=2 below (default: none)
  *   valsize=N  value sizes 1..N bytes (default 20)
  *   probe=K    run B: a restart after every K transactions (default 0: no run B)
  *   live=1     LIVE lines: Java's own live children, for each node, at each of its times
@@ -70,6 +71,16 @@ import bergdb.stream.MemoryStream;
  *              random times, checked against the workload (default 0); erestart=K: a restart
  *              of run E after every K-th transaction (default 0: none); ereads and erestart
  *              since bergdb item 009, step 4c
+ *   long=2     the keys of UnlinkFuzz's long shape (A2A3Check2.longShapeKey: 1 to 5 segments,
+ *              shared prefixes), which makes and empties many small segment trees
+ *              (bergdb 024-09, step A1); the trace's CONFIG line says long=false for it
+ *
+ * The last line on stdout (not in the trace; bergdb 024-09, step A1) has the Dag's counters of
+ * this JVM, so of runs A, B and E together, a rerun at a start included: nodes unlinked by a
+ * delete's climb (Dag.statUnlinked), nodes that a transaction made and took back
+ * (statTakenBack) and the segment roots among them (statRootsTakenBack), root collapses
+ * (statCollapses) and empty keys pointed to the next child (statRelabels). conformance.sh
+ * sums them over a set's traces, and requires a take-back of its draining configurations.
  *
  * With reclaim (bergdb item 001, WP R2; bergdb 001-07, 2.7) every executed
  * transaction is a record, reclaim's steps and table stores too: run A records each through
@@ -132,6 +143,8 @@ public class TraceExport {
     final int eReads = Integer.getInteger("ereads", 0);
     final int eRestart = Integer.getInteger("erestart", 0);
     final long timeScale = retain > 0 ? bergdb.pub.util.Clock.UNITS_PER_SEC / 100 : 1;
+    /** long=2: UnlinkFuzz's long key shape. */
+    final boolean longShape = "2".equals(System.getProperty("long"));
 
     // The workload: per transaction, keys and values (null value: delete).
     final List<String[]> wkeys = new ArrayList<String[]>();
@@ -201,14 +214,8 @@ public class TraceExport {
     }
 
     String key(int i) {
-        if (shape.equals("long3")) {
-            int a = i % 7, b = (i / 7) % 5;
-            switch (i % 3) {
-            case 0: return "/k/" + i;
-            case 1: return "/long/prefix" + a + "/x" + b + "/" + i;
-            default: return "/long/prefix" + a + "/y" + i + "/tail/more/" + b;
-            }
-        }
+        // long=2 (bergdb 024-09) and shape=long3 (024-12) are one key rule, UnlinkFuzz's.
+        if (longShape || shape.equals("long3")) return bergdb.dag.A2A3Check2.longShapeKey(i);
         return longKeys && i % 2 == 1 ? "/longer/key/" + i : "/k/" + i;
     }
 
@@ -1654,6 +1661,14 @@ public class TraceExport {
         out.close();
     }
 
+    /** The Dag's counters of this JVM, in one line (see the class comment). */
+    static String dagCounters() {
+        return "Dag counters: unlinked " + bergdb.dag.Dag.statUnlinked + ", taken back "
+                + bergdb.dag.Dag.statTakenBack + ", roots taken back "
+                + bergdb.dag.Dag.statRootsTakenBack + ", collapses " + bergdb.dag.Dag.statCollapses
+                + ", empty keys pointed to the next child " + bergdb.dag.Dag.statRelabels;
+    }
+
     public static void main(String[] args) throws IOException {
         if (args.length != 2) {
             System.out.println("Usage: TraceExport seed out.trace (properties: see the class comment)");
@@ -1686,6 +1701,7 @@ public class TraceExport {
         System.out.println("TraceExport seed=" + x.seed + " n=" + x.n + rc + re + ": "
                 + x.nodes.size() + " nodes, " + x.errors.size() + " errors, " + probeFails
                 + " probe failures; " + args[1]);
+        System.out.println(dagCounters());
         if (Audit.EVERY > 0) System.out.println(Audit.summary());   // -Daudit=N (WP J1)
     }
 }

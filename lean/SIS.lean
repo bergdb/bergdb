@@ -14,6 +14,7 @@ import SIS.HandleExample
 import SIS.Proof.HandleRecords
 import SIS.Proof.HandlePin
 import SIS.Proof.HandleLinkPos
+import SIS.Proof.PhysAssumptions
 import SIS.Reclaim
 import SIS.ReclaimTheorems
 import SIS.HandleReclaimTheorems

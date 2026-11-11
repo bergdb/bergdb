@@ -10,7 +10,7 @@
 # as launchd's job was before ProcessType Interactive (2026-10-22) or a
 # background process is (nice, taskpolicy -b), the timing tests fail.
 #
-# Usage: java/night.sh          the night run, about 95 minutes on F53
+# Usage: java/night.sh          the night run, about 100 minutes on F53
 #        java/night.sh large    the same and the large conformance set,
 #                               about 6 hours; by hand
 #        java/night.sh tests [-c classPattern] [-m methodPattern] [-v | -vv | -d | -s]
@@ -32,8 +32,8 @@
 #   3. stress/level1.sh to level4.sh, full: the random stress programs at
 #      scale (RestartStress, CrashTest, RestartInvariance, ReclaimStress,
 #      EvictionInvariance, LargerThanMemory, ...), conformance with the Lean
-#      model (the small, reclaim and evict sets), and level1.sh's MEM and SS
-#      limits.
+#      model (the small, drain, reclaim and evict sets), and level1.sh's MEM
+#      and SS limits.
 #   4. stress/lean-tests.sh: the Lean model's test programs, sistest,
 #      phystest and reclaimtest, at small sizes; about 4.5 minutes (bergdb
 #      021-03).
@@ -45,12 +45,16 @@
 #   7. stress/fuzz.sh 12: FormatFuzzer's six areas, the readers of bytes that
 #      2026.4 added, each against its spec, for 12 minutes, with new seeds
 #      each day (bergdb 020-16).
-#   8. stress/kill-restart.sh 1000: the Pub layer's kill-and-restart harness,
+#   8. stress/unlinkfuzz.sh: UnlinkFuzz, the fuzzer of the Dag's delete path
+#      (the upward unlink and the take-back of bergdb 023-05), on its fixed
+#      list of configurations, each with a fixed block of seeds and a block
+#      of new seeds each day; about 5 minutes (bergdb 024-09, step A1).
+#   9. stress/kill-restart.sh 1000: the Pub layer's kill-and-restart harness,
 #      its self-check and 1,000 kills of a child JVM with SIGKILL, each start
 #      checked against the journal of the children before; about 26 minutes
 #      (bergdb 020-15).
-#   9. stress/conformance.sh medium: 9 traces of 120 to 500 transactions.
-#  10. With "large": stress/conformance.sh large, 12 traces of 1,000 to 5,000
+#  10. stress/conformance.sh medium: 9 traces of 120 to 500 transactions.
+#  11. With "large": stress/conformance.sh large, 12 traces of 1,000 to 5,000
 #      transactions at node sizes 8 to 62; about 5 hours, most of it the two
 #      l-big62 traces.
 # It writes build/night/RUN/report.txt (the commit, the JDK, each step's last
@@ -128,6 +132,7 @@ step tree-tests sh stress/tree-tests.sh
 step night-tests night_tests
 step harness-soak sh stress/harness-soak.sh -r 2
 step fuzz sh stress/fuzz.sh 12
+step unlinkfuzz sh stress/unlinkfuzz.sh
 step kill-restart sh stress/kill-restart.sh 1000
 step conformance-medium sh stress/conformance.sh medium
 if [ $LARGE = 1 ]; then

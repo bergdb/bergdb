@@ -129,6 +129,14 @@ Files
   class; the cost of key shape for a user, a proposed bound with three
   Mem runs, options (a) to (d), questions Q1 to Q3. Outputs in
   08-mem-at-10m/.
+* 09-tie.md. 024-09, the tie of the Lean model and release 2026.4's code
+  repaired (024-06's A1 to A4): T-SCHEME's argument written again for
+  2026.4's code (it holds; checked on 90 reclaim traces); the draining
+  configurations and UnlinkFuzz in the gates (level2.sh, conformance.sh
+  drain, unlinkfuzz.sh in night.sh), which P5's head with fault 12 now
+  fails; PhysStep proved in Lean; A6 checked; Lean's javaTake made
+  Java's integer rule (015-03). On main since 379d8acf. Outputs in
+  09-tie/.
 * 10-last-operation-wins.md. 024-10, the builder's rule "the last
   operation wins" (CA1) in Java: the rule made exact (R1 for the calls
   on one key as written, R2 for the KVs that key transformations make
@@ -150,7 +158,8 @@ Files
 * 13-integration.md. 024-13, the integration branch of the day's
   approved changes, gated as one tree: `doubles.py` in 3 s, not 188 s
   (before-commit.sh about 80 s again), 024-10 and 024-07 merged; the
-  gates' results. Landed as a780b957.
+  gates' results. Landed as a780b957; then 024-09 merged and gated,
+  landed as 379d8acf.
 
 
 Log

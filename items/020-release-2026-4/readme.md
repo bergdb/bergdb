@@ -370,6 +370,13 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   its cause, the two fixes in 2026.4 (a cycle check in every descent; a
   refusal where the start's -ea check asserted), and a third weakness of
   the same class for 2026.5 (024).
+* [33-known-issue-reclaim-touch.md](33-known-issue-reclaim-touch.md).
+  020-33, a known issue added after the release (Frans, 2026-11-11,
+  10:21): reclaim with keys in time order, whose last step of an
+  iteration makes the whole index dirty, so that the heap runs out in a
+  user's commit, or, from about 104M keys, reclaim stops cutting (024-07);
+  how 024-03 and 024-07 found it, why the release did not, the notes' new
+  text; fixed for 2026.5.
 
 
 Log
@@ -459,3 +466,7 @@ bb8da6dc, commit B 04f8863e, pushed; releases/2026.4/ (020-31). The night
 on the first A failed one night test, an old weakness against damaged
 streams (020-32); A was made again with two fixes, and A''s own night,
 s1's tests and fuzz were clean.
+
+2026-11-11. A known issue added to 2026.4's notes after the release
+(Frans, 10:21: "all as recommended", 024-07's question 5): reclaim with
+keys in time order, fixed for 2026.5 (020-33).
