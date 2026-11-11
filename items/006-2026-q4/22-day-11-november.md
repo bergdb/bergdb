@@ -165,6 +165,20 @@ from them.
   s), 024-10, 024-07. Gated as one tree: the Lean build, before-commit,
   level1, level2 and level3 full (C-CUT 0 of 310 cuts). main's java/,
   lean/ and docs/ equal the gated head's.
+* 10:16 024-07's final report: the old touch was also two faults of
+  2026.4 as shipped: near 104M keys in time order the step passes the
+  record limit and the startup position stops for good; with a small
+  heap a user's commit ends in OutOfMemoryError. Fixed on main.
+* 10:18 Frans on the key's size: "256 is a reasonable limit to key size.
+  I think this is the one limit that need to go into the db user's mind.
+  [...] The other limits are typically large enough for nearly all use
+  cases." And on "user limits checked, internal bounds proved": "Yes,
+  sure. Good." Sent to limits (024-17).
+* 10:21 Frans on 024-07's three decisions: "1, 2, 3 decisions; all as
+  recommended.": a known issue in 2026.4's notes
+  (020-33, started); the cut's safety rests on the delete's upward
+  unlink, stated in the tree model, with 024-09's gates landed; the
+  touch removed altogether later, with the tree model.
 
 
 ## 6. Outcome
