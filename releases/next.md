@@ -74,6 +74,8 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
   (no release wrote one) is refused at the start, for a checksum error.
   The stream grows by those bytes: Props' SS, stream bytes a user byte,
   from 1.51 to 1.53 (SS3, KVs of 100 bytes, from 1.64 to 1.69).
+  StreamDigest: the digests of all 12 configurations change, in every
+  mode (48 of 48; the digests before and after in 024-25, section 7).
 
 * **A reclaim step makes dirty only the index nodes on the paths of its
   own puts** (bergdb 024-07, option A; on `main` in `a780b957`). The last
