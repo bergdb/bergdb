@@ -727,6 +727,11 @@ and 022-04 those of the port to 2026.4. Raw output goes to
   nodes unlinked, climbs, the empty key's child emptied, nodes taken back,
   root collapses. `DELETES=N` takes the first N seeds of each group. Four
   small `del:` workloads are in `quick`, 40 drawn ones in `full`.
+  `cross.sh scale SCALEDEL=1 SCALE=N` is the delete path on a large
+  database: N keys put, a mass delete in key order of all but one in a
+  thousand, then of those (the database empty, its root a segment leaf
+  again), then one in a hundred put again, with two restarts, the second
+  with deletes in its rerun.
 * `test/stress/random.sh FROM TO`: Gen's seeds by the thousand, Java
   against C, in batches of `cross.sh random`.
 * `test/stress/long.sh SEED N`: a long run with restarts, reclaim and a
@@ -809,9 +814,11 @@ and 022-04 those of the port to 2026.4. Raw output goes to
   go point, P7), and the closed stream is a prefix of the reference's and
   opens again; the live bytes are 0 after every close. The gate runs it on
   `test/stress/allocfail.wl` (Gen 31: 4 transactions, a restart, reclaim,
-  a budget of 1,000 bytes): 628 runs, about 50 s on a loaded F53, since
-  022-01, step 1, made its `set retain` a commit after the creation (379
-  runs before).
+  a budget of 1,000 bytes): 634 runs since 022-07 (the port to release
+  2026.4 allocates a few times more: the put data's table of the nodes
+  that splits made), about 50 s on a loaded F53; 628 since 022-01,
+  step 1, made its `set retain` a commit after the creation (379 runs
+  before).
 * `test/stress/gcc.sh`: **a second compiler**, Homebrew's gcc 16, by hand:
   both builds without `-Werror` (`CC=gcc-16 WERROR= BUILD=DIR ./build.sh`),
   then the unit and functional tests in both. The gate keeps clang and

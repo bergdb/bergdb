@@ -32,7 +32,10 @@
 #           with restarts and with reclaim across them; 24 of them in turns
 #           and with crash cuts; DELETES=N for the first N seeds of each
 #           group only (a smaller run); 5 to 10 minutes
-#   scale   one workload of SCALE keys (10,000,000 by default), by hand,
+#   scale   SCALEDEL=1: the scale workload of deletes instead (022-07: SCALE keys
+#           put, a mass delete of all but one in a thousand, then of those, then
+#           one in a hundred put again, with two restarts);
+#           one workload of SCALE keys (10,000,000 by default), by hand,
 #           outside other sessions' timed runs; the scans take the last
 #           file only, the dumps -large
 #   C=DIR   side B uses C's tools in DIR where they exist: bergdb-run,
@@ -64,6 +67,7 @@ KEEP=0
 SPECFILE=""
 OUTDIR=""
 DELETES=1000
+SCALEDEL=0
 for arg in "$@"; do
     case "$arg" in
     C=*) CTOOLS=$(cd "${arg#C=}" && pwd) || exit 2 ;;
@@ -72,6 +76,7 @@ for arg in "$@"; do
     SPECFILE=*) SPECFILE=${arg#SPECFILE=} ;;
     OUTDIR=*) OUTDIR=${arg#OUTDIR=} ;;
     DELETES=*) DELETES=${arg#DELETES=} ;;
+    SCALEDEL=*) SCALEDEL=${arg#SCALEDEL=} ;;
     *) echo "cross.sh: unknown argument $arg"; exit 2 ;;
     esac
 done
@@ -494,6 +499,7 @@ deletes)
     ;;
 scale)
     SPECS="scale:$SCALE"
+    [ "$SCALEDEL" = 1 ] && SPECS="scaledel:$SCALE"
     ;;
 random)
     SPECS=$(cat "$SPECFILE")
