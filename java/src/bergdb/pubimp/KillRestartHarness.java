@@ -27,6 +27,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
+import bergdb.nanotest.Assert;
+import bergdb.nanotest.Nano;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
 import bergdb.pub.DatabaseBuilder;
@@ -223,6 +225,74 @@ public final class KillRestartHarness {
         return o;
     }
 
+    /**
+     * The longest string in a value of this harness, in chars (bergdb 024-24, section 9). A
+     * longer one, one of IndexHarness.LONG_STRINGS (ASCII), is cut to its first MAX_STRING
+     * chars, at most 37 bytes as a level (18 00s, each written as two, and the final 00);
+     * every other string and byte[] of IndexHarness takes at most 17. So the levels of each
+     * definition (def(): at most 3 levels) take at most 111 bytes, and no put is refused
+     * for L6 (bergdb 024-17): this harness checks kills and restarts, and a refused put
+     * would leave a transaction begun in the journal (T) that never commits. IndexHarness
+     * and IndexDefinitionTester check L6.
+     */
+    static final int MAX_STRING = 18;
+
+    /** v with each string longer than MAX_STRING cut to it, in objects and arrays too. */
+    static Object cut(Object v) {
+        if (v instanceof String) {
+            String s = (String) v;
+            return s.length() <= MAX_STRING ? s : s.substring(0, MAX_STRING);
+        } else if (v instanceof Map) {
+            TreeMap<String, Object> o = new TreeMap<String, Object>();
+            for (Map.Entry<?, ?> e : ((Map<?, ?>) v).entrySet()) {
+                o.put((String) e.getKey(), cut(e.getValue()));
+            }
+            return o;
+        } else if (v instanceof List) {
+            List<Object> a = new ArrayList<Object>();
+            for (Object x : (List<?>) v) {
+                a.add(cut(x));
+            }
+            return a;
+        }
+        return v;
+    }
+
+    static String cut(String s) {
+        return (String) cut((Object) s);
+    }
+
+    /**
+     * No write of tx() is refused for L6 (MAX_STRING): over 2,000 transactions, every value
+     * put has levels within 111 bytes for each of 100 definitions of def(), and a string cut
+     * to MAX_STRING was seen. The night run of 2026-11-11 found a put refused for L6 in the
+     * child (bergdb 024-24, section 9).
+     */
+    @Nano
+    public static void testWithinL6() {
+        IndexReference ref = new IndexReference();
+        Random r = new Random(20261111);
+        List<Def> defs = new ArrayList<Def>();
+        for (int i = 0; i < 100; i++) {
+            defs.add(def("i" + i, r));
+        }
+        int cut = 0;
+        for (int seq = 1; seq <= 2000; seq++) {
+            for (Write w : tx(20261111, 1, seq % 4, seq).writes) {
+                if (w.value == null) {
+                    continue;
+                }
+                cut += String.valueOf(w.value).contains(IndexReference.repeat("a", MAX_STRING))
+                        ? 1 : 0;
+                for (Def d : defs) {
+                    Assert.assertTrue(w.key + " " + IndexReference.show(w.value) + ", "
+                            + d.levels.size() + " levels", !ref.tooLong(d, w.key, w.value));
+                }
+            }
+        }
+        Assert.assertTrue("cut " + cut, cut > 0);
+    }
+
     static Item item(Random r) {
         Item it = new Item();
         if (r.nextInt(5) != 0) {
@@ -232,7 +302,7 @@ public final class KillRestartHarness {
             it.b = IndexHarness.doubleValue(r);
         }
         if (r.nextInt(5) != 0) {
-            it.c = IndexHarness.stringValue(r);
+            it.c = cut(IndexHarness.stringValue(r));
         }
         if (r.nextInt(5) != 0) {
             it.d = IndexHarness.bytesValue(r).bytes();
@@ -243,7 +313,7 @@ public final class KillRestartHarness {
                 it.n.a = IndexHarness.longValue(r);
             }
             if (r.nextInt(5) != 0) {
-                it.n.c = IndexHarness.stringValue(r);
+                it.n.c = cut(IndexHarness.stringValue(r));
             }
         }
         if (r.nextInt(5) == 0) {
@@ -332,7 +402,7 @@ public final class KillRestartHarness {
                 Item it = item(r);
                 tx.add(key, model(it), it);
             } else {
-                Object v = IndexHarness.keyValue(key, r);
+                Object v = cut(IndexHarness.keyValue(key, r));
                 tx.add(key, v, IndexHarness.javaValue(v));
             }
         }

@@ -68,7 +68,8 @@ public class Pack implements IPack {
         DbObjectTester.class,
         IndexReference.class,
         IndexHarness.class,
-        IndexJobsHarness.class
+        IndexJobsHarness.class,
+        KillRestartHarness.class
     };
     
     public Class<?>[] getClasses() {
