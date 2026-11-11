@@ -160,8 +160,10 @@ public class DbTesterLimits {
             for (int i = 0; left > 0; i++) {
                 byte[] k = new byte[Math.min(left, 497)];   // the largest index entry
                 Arrays.fill(k, (byte) 'e');
-                byte[] n = bytes(String.format("/#i/%05d", i));
+                byte[] n = bytes(String.format("..%05d", i));
                 System.arraycopy(n, 0, k, 0, Math.min(n.length, k.length));
+                k[0] = 1;                   // BergDB's own: the bkey of "/#" (rev24, R2)
+                k[1] = 0x25;
                 at.putLongKey(Keys.toSegments(k), null, new byte[0], null);
                 left -= k.length;
             }
@@ -171,12 +173,69 @@ public class DbTesterLimits {
             Trans.Builder over = db.trans();
             byte[] k = new byte[Db.MAX_TRANS_KEY_BYTES - 1];
             Arrays.fill(k, (byte) 'o');
+            k[0] = 1;
+            k[1] = 0x25;
             over.putLongKey(Keys.toSegments(k), null, new byte[0], null);
             over.deleteLongKey(Keys.toSegments(new byte[] {'o', 'o'}));
             refused("57,345 bytes of keys", DbException.class, "57345 bytes, more than 57344 "
                     + "(bergdb 024-17, L3)", () -> db.execute(over.build()));
             Assert.assertNull(DbUtil.get(db, k));
             goesOn("L3", db, count);
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * Review rev24, R1 and R2: Db.execute() checks each KV of a user transaction, whatever
+     * built it (Trans.kvs is public): a value over L4 and a key over L2 put through t.kvs
+     * are refused with DbException, nothing written (a value of 9 MiB put so failed the
+     * database when reclaim copied it, the review's probe Rev24Reclaim); then reclaim runs
+     * many iterations with no failure. The internal calls take a key over L2 only under
+     * "/#" (01 25), and do not check a value's length: Db.execute() refuses it.
+     */
+    @Nano
+    public static void testEachKvChecked() {
+        final long sec = bergdb.pub.util.Clock.UNITS_PER_SEC;
+        CoreTestClock clock = new CoreTestClock();
+        long time = sec;
+        clock.setTime(time);
+        Db db = Db.builder().testSetup(new MemoryStream()).clock(clock).maxNodeSize8()
+                .startupDistance(2000).start();
+        try {
+            db.setRetainDuration(sec);
+            final long count = db.getTransactionCount();
+            Trans t = db.trans().put("/x", "x").build();
+            t.kvs = new Kv[] {new Kv(Keys.toSegments("/big"), new byte[9 << 20])};
+            t.writeKeyHashes = new long[] {Keys.hash(t.kvs[0].getKey())};
+            refused("a value of 9 MiB through t.kvs", DbException.class, "9437184 bytes, more "
+                    + "than 8388608 (bergdb 024-17, L4)", () -> db.execute(t));
+            Trans t2 = db.trans().put("/x", "x").build();
+            t2.kvs = new Kv[] {new Kv(Keys.toSegments(new byte[5000]), new byte[1])};
+            t2.writeKeyHashes = new long[] {Keys.hash(t2.kvs[0].getKey())};
+            refused("a key of 5,000 bytes through t.kvs", DbException.class, "5000 bytes, "
+                    + "more than 111 (bergdb 024-17, L2)", () -> db.execute(t2));
+            refused("putLongKey, a user's key of 112 bytes", IllegalArgumentException.class,
+                    "(bergdb 024-17, L2)", () -> db.trans().putLongKey(
+                    Keys.toSegments(new byte[112]), null, new byte[0], null));
+            refused("deleteLongKey, a user's key of 112 bytes", IllegalArgumentException.class,
+                    "(bergdb 024-17, L2)", () -> db.trans().deleteLongKey(
+                    Keys.toSegments(new byte[112])));
+            byte[] own = new byte[112];
+            own[0] = 1;
+            own[1] = 0x25;
+            Trans t3 = db.trans().putLongKey(Keys.toSegments(own), null, new byte[9 << 20],
+                    null).build();
+            refused("putLongKey, a value of 9 MiB", DbException.class, "(bergdb 024-17, L4)",
+                    () -> db.execute(t3));
+            Assert.assertEquals(count, db.getTransactionCount());
+            Assert.assertNull(DbUtil.get(db, "/big"));
+            for (int i = 0; i < 20000; i++) {
+                time += sec / 20;
+                clock.setTime(time);
+                db.execute(db.trans().put("/k/" + (i % 50), new byte[300]).build());
+            }
+            Assert.assertTrue("reclaim ran", db.getReclaimIterationCount() > 0);
         } finally {
             db.close();
         }

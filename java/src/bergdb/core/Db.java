@@ -2808,6 +2808,22 @@ public class Db implements AutoCloseable {
      * @throws DbException
      */
     static void checkLimits(Kv[] kvs) {
+        // Each KV, whatever built the Trans (its kvs are public): a key over L2 but one of
+        // BergDB's own from the internal calls, a value over L4 (review rev24, R1, R2). Until
+        // then only the Trans.Builder calls checked them, and a value over L4 put through
+        // t.kvs failed the database when reclaim copied it.
+        for (Kv kv : kvs) {
+            final long k = Trans.keyBytes(kv.getKey());
+            if (k > MAX_KEY_BYTES && !(kv.longKey && Trans.ownKey(kv.getKey()))) {
+                throw new DbException("A key of the transaction has " + k + " bytes, more "
+                        + "than " + MAX_KEY_BYTES + " (bergdb 024-17, L2).");
+            }
+            if (kv.getValue() != null && kv.getValue().length > MAX_VALUE_BYTES) {
+                throw new DbException("A value of the transaction has " 
+                        + kv.getValue().length + " bytes, more than " + MAX_VALUE_BYTES 
+                        + " (bergdb 024-17, L4).");
+            }
+        }
         if (kvs.length > MAX_OPERATIONS) {
             throw new DbException("The transaction has " + kvs.length + " operations, more "
                     + "than " + MAX_OPERATIONS + " (bergdb 024-17, L1). Split it into "
@@ -3198,7 +3214,8 @@ public class Db implements AutoCloseable {
             for (int i = 0; i < kvs.length; i++) {
                 final long k = Trans.keyBytes(kvs[i].getKey());
                 keyBytes += k;
-                if (written[i] != null && !kvs[i].longKey && k > MAX_KEY_BYTES) {
+                if (written[i] != null && k > MAX_KEY_BYTES 
+                        && !(kvs[i].longKey && Trans.ownKey(kvs[i].getKey()))) {
                     final String message = "The key transformation of " + shown(written[i]) 
                             + " gave a key of " + k + " bytes, more than " + MAX_KEY_BYTES
                             + " (bergdb 024-17, L2). The transaction is refused; nothing of "

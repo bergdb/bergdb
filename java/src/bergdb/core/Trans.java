@@ -149,6 +149,17 @@ public class Trans {
         return 7L * (key.length - 1) + Klong.getLength(key[key.length - 1]);
     }
     
+    /** The bkey of "/#": BergDB's keys start with it (Db, "Keys and the layers above"). */
+    private static final long[] OWN_PREFIX = Keys.toSegments(new byte[] {1, 0x25});
+    
+    /**
+     * Whether a key is one of BergDB's own, under "/#", the bytes 01 25, which alone may pass
+     * L2, through Trans.Builder's internal calls (bergdb 024-24; review rev24, R2).
+     */
+    static boolean ownKey(long[] key) {
+        return Keys.isPrefix(OWN_PREFIX, key);
+    }
+    
     public String toString() {
         String s = "tt:" + tt + ", pos:" + tpos;
         s = isInternal ? s + ", internal" : s;
@@ -277,20 +288,25 @@ public class Trans {
         /**
          * Internal, not API (bergdb 024-17, 6.2 (a); 024-24): as put(long[],
          * KeyTransformation, byte[], ValueTransformation) for BergDB's own KVs, whose keys may
-         * be longer than Db.MAX_KEY_BYTES (L2): the Pub API's index entries, and reclaim's
-         * copies of live values. Neither the key's length (L2) nor the value's (L4) is
-         * checked here: the Pub API checks its entries' parts (an index name, the levels,
-         * L6, the object's key), and reclaim copies what a user transaction put within the
-         * limits; its step runs inside a user transaction's go point, where a refusal would
-         * fail the database. Db.execute() checks the transaction's operations (L1), its keys'
-         * bytes (L3) and its keys' and values' bytes (L5) as for any user transaction.
+         * be longer than Db.MAX_KEY_BYTES (L2), but only BergDB's keys, those that start with
+         * the bytes 01 25, the bkey of "/#" (Db, "Keys and the layers above"): the Pub API's
+         * index entries, definitions and markers; and for reclaim's copies of live values.
+         * The value's length (L4) is not checked here: reclaim's step runs inside a user
+         * transaction's go point, where a refusal would fail the database, and it copies what
+         * a user transaction put, which Db.execute() checked (review rev24, R1). For a user
+         * transaction Db.execute() checks each KV (L2 but for BergDB's keys, L4), the
+         * operations (L1), the keys' bytes (L3) and the keys' and values' bytes (L5).
          * 
-         * @throws IllegalArgumentException  If key or value is null, or the key has no segment.
+         * @throws IllegalArgumentException  If key or value is null, the key has no segment,
+         *      or it has more than Db.MAX_KEY_BYTES bytes and does not start with 01 25.
          */
         public Builder putLongKey(long[] key, KeyTransformation kt, byte[] value, 
                 ValueTransformation vt) {
             checkSegments(key);
-            checkValue(value);
+            checkLongKey(key);
+            if (value == null) {
+                checkValue(value);
+            }
             Kv kv = new Kv(key, value, kt, vt);
             kv.longKey = true;
             kvs.add(kv);
@@ -299,12 +315,14 @@ public class Trans {
         
         /**
          * Internal, not API: as delete(long[]) for BergDB's own keys, which may be longer than
-         * Db.MAX_KEY_BYTES (putLongKey()).
+         * Db.MAX_KEY_BYTES under "/#" (putLongKey()).
          * 
-         * @throws IllegalArgumentException  If key is null or has no segment.
+         * @throws IllegalArgumentException  If key is null or has no segment, or it has more
+         *      than Db.MAX_KEY_BYTES bytes and does not start with 01 25.
          */
         public Builder deleteLongKey(long[] key) {
             checkSegments(key);
+            checkLongKey(key);
             Kv kv = new Kv(key, null);
             kv.longKey = true;
             kvs.add(kv);
@@ -509,6 +527,16 @@ public class Trans {
                 throw new IllegalArgumentException("The value has " + ((byte[]) value).length
                         + " bytes, more than " + Db.MAX_VALUE_BYTES + " (bergdb 024-17, L4). "
                         + "A larger value is put in chunks, under keys of their own.");
+            }
+        }
+        
+        /**
+         * The internal calls' key: over L2 only under BergDB's prefix "/#", the bytes 01 25
+         * (review rev24, R2): a Core user cannot put a long key through them.
+         */
+        private static void checkLongKey(long[] key) {
+            if (!ownKey(key)) {
+                checkKeyBytes(keyBytes(key));
             }
         }
         
