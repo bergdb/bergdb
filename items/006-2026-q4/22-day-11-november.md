@@ -41,7 +41,7 @@ high, xhigh for a hard task. At most 8 agents at a time (Frans,
 | 024-07 | The last touch of a reclaim iteration (CL7): design, fix | touch (xhigh) | on main, a780b957 |
 | 024-08 | MEM 327 at 10M keys against 129.6 at 1M: the cause | mem (high) | done 07:25 |
 | 024-09 | The tie of model and code repaired (024-06, A1 to A4) | tie (xhigh) | on main, 379d8acf |
-| 022-07 | The C clone to release 2026.4 as released (CC1) | cc (high) | |
+| 022-07 | The C clone to release 2026.4 as released (CC1) | cc (high) | on main, 51a7224c |
 | 024-10 | The builder's rule "the last operation wins" (CA1) | low (high) | on main, a780b957 |
 | 024-11 | The underfill fix: a design study, no code | fill (xhigh) | done 08:18 |
 | 024-12 | The key tree's model in Lean, run against Java | tree (xhigh) | |
@@ -240,6 +240,14 @@ from them.
   AI usage limits. You can land the C clone, the key-shape doc, the
   one-operation rule. I would like to approve the new tree model."
   Unattended from 11:56 until 14:30.
+* 11:52 024-19 and 024-20 stopped with their interim states (the node
+  size: a flat optimum at 1M keys, 30 and 62 within 2 %; the stored
+  form: index nodes 57 % of the stream under random overwrites, a
+  compact encoding at 41 to 43 % of today's index bytes).
+* 11:56 **The third landing: main 51a7224c**, the C clone at release
+  2026.4 as released (022-07; `items/022-bergdb-c/c` only): C's gate OK
+  on the head, 0 differences with Java's release on every comparison
+  set; no fault of Java's product code, three notes on Java.
 
 
 ## 6. Outcome

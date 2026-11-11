@@ -44,6 +44,12 @@ Files
 * [06-user-apps/](06-user-apps/), 022-06: three black-box users of the C
   library (a device store, the error paths, an audit log with retention),
   their reports and what came of each finding.
+* [07-report-2026-4-release.md](07-report-2026-4-release.md), 022-07:
+  the C clone at release 2026.4 as released (record format 6), from the
+  release candidate of 022-04: what was ported (the delete path of 023,
+  the sort with one operation a key, 020-32's refusals), the gate, the
+  comparisons with Java's release (0 differences; a new set `cross.sh
+  deletes`), three notes on Java, what is not run.
 * [c/](c/): BergDB's Core in C.
 
 
