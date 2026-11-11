@@ -193,7 +193,9 @@ def NoopOK (p : Params) : Prop :=
 
 /-! ## TP13 to TP19: the assumptions of the existing model (bergdb 024-06, C1) -/
 
-/-- TP13. The structure's own assumptions: `SpecOK`, with `VirtInit`. -/
+/-- TP13. The structure's own assumptions: `SpecOK`, with `VirtInit`. Proved in
+SIS/Proof/TreeInit.lean (`specOKTree_of_liveSub`) but for `liveSub`, a property
+of `blive` alone. -/
 def SpecOKTree (p : Params) : Prop := SpecOK (treeSpec p)
 
 /-- TP14. `RunOK`: every transaction of a run within reach meets A2 to A5, the
@@ -231,6 +233,8 @@ def ExecReadsReachable (p : Params) : Prop :=
     exec p tx (ts.length + 1) (view (treeSpec p) (treeRun p ts) ts.length) =
       exec p tx (ts.length + 1) (viewOf (treeRun p ts))
 
+/-- Proved in SIS/Proof/TreeInit.lean (`runPSame`): the model's `run` on the tree
+has the structure `treeRun`. -/
 def RunPSame (p : Params) : Prop :=
   ∀ (al : Algo BVal Tx) ts, (run (treeSpec p) al ts).P = treeRun p ts
 
@@ -262,6 +266,22 @@ def KlongBound (p : Params) : Prop :=
   ∀ ts, Within p ts → ∀ t ≤ ts.length,
     ((keyNodesAt p (treeRun p ts) t).filterMap (keyNodeAt p (treeRun p ts))).foldl
         (fun s n => s + n.size) 0 ≤ p.M * (1 + (refKvs ts t).length * p.fuel)
+
+/-- The operation that the builder's rule keeps for key k of the operations ops
+(`Trans.Builder.build`, `Db.sortByKey`; bergdb 015-40): the last put of k, or
+the last delete of k if it has no put. -/
+def ruleFor (ops : List Op) (k : Key) : Option Op :=
+  match (ops.filter (fun op => op.key == k && (match op with
+    | .put _ _ => true
+    | .del _ => false))).getLast? with
+  | some pt => some pt
+  | none => (ops.filter (fun op => op.key == k)).getLast?
+
+/-- TP25. `normalize` gives a transaction with one operation a key, in key
+order (`Tx.sorted`), and for each key the operation of the builder's rule. -/
+def NormalizeOK : Prop :=
+  ∀ ops : List Op, sortedKeys ((normalize ops).map (·.key)) = true ∧
+    ∀ k, (normalize ops).find? (fun op => op.key == k) = ruleFor ops k
 
 /-- Not a property of release 2026.4's tree, and not to prove: no dead klong in
 a reachable node. False since a leaf with a live key keeps its deleted keys'

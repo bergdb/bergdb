@@ -95,7 +95,7 @@ structure W where
   deriving Repr, Inhabited
 
 /-- What the writer reads and does not change: the parameters, the
-transaction's time, and P@(i-1). -/
+transaction's time, and P@(i-1), without the root (`rootless`). -/
 structure Ctx where
   p : Params
   i : Time
@@ -815,7 +815,7 @@ def runOps (p : Params) (base : NodeId) (ops : List Op) (i : Time) (view : View 
   runOpsFrom p base ops i (lastTop view) (rootless view)
 
 /-- The tree's `exec`, with its errors: the changes of transaction tx at time i
-from P@(i-1). The touch's nodes are added in SIS/Tree/Read.lean (`execT`). -/
+from P@(i-1). The touch's nodes are added in SIS/Tree/Spec.lean (`exec`). -/
 def exec? (p : Params) (tx : Tx) (i : Time) (view : View BVal) : Except String (Changes BVal) :=
   (runOps p tx.base tx.ops i view).map (fun r => changesOf i r.2)
 

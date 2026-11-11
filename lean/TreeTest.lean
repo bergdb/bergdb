@@ -11,17 +11,25 @@ through the skip pointers at every time (TP24), and that
 up to depth 4). An error of the writer other than the level bounds is a failure
 (TP8).
 
-Usage: lake exe treetest [exhaustive M depth keys prefix [pairs] | random M seeds steps keys]
+Usage: lake exe treetest [exhaustive M depth keys prefix [pairs] | random M seeds steps keys
+                           | model M seeds steps keys]
 An exhaustive run starts from the primordial structure (prefix 0), or after
 every key was put: in one transaction (1), each in its own (2), or both (3), so
 that the sequences start in a tree of several levels; with `pairs` a
-transaction is one operation or two, on two keys. Without arguments: ten
-exhaustive runs at node sizes 4, 6 and 8, and random 8 20 150 14. Node sizes
+transaction is one operation or two, on two keys. Without arguments: eleven
+exhaustive runs at node sizes 4, 6 and 8, random 8 20 150 14, and two `model`
+runs; about 11 minutes on one core. Node sizes
 below 8 are not Java's; the rules are the same. Each run prints how often each
 rule of the writer ran.
+
+`model` runs the whole model, `SIS.run`, on the tree (`treeSpec`): the records,
+D and the startup of SIS/Algorithm.lean and Startup.lean with the tree's `exec`;
+it checks the model's assumptions on every transaction and T1 and T2 (see
+`modelRun`).
 -/
 import SIS.Tree.Props
 import SIS.Tree.Top
+import Check.Steps
 
 open SIS SIS.Check SIS.Tree
 
@@ -179,8 +187,10 @@ def randomRun (p : Params) (keys : List Key) (maxOps delPct : Nat) : Nat → Nat
       let b := nextRand a
       let k := keys.getD ((a / 65536) % keys.length) [0]
       (q.1 ++ [if (b / 65536) % 100 < delPct then Tree.Op.del k else Tree.Op.put k (1000 * i + j)], b)) ([], s1)
+    let raw := ops
     let ops := normalize ops
-    if !sortedKeys (ops.map (·.key)) then acc.fail [s!"normalize: not sorted: {repr ops}"] else
+    if !sortedKeys (ops.map (·.key)) || !keys.all (fun k => ops.find? (fun op => op.key == k) == ruleFor raw k) then
+      acc.fail [s!"NormalizeOK: {repr raw} gives {repr ops}"] else
       -- The noops are not part of a transaction: left out, as Java's record leaves them.
       let ops := ops.filter (fun op => match op with
         | .del k => (refGet st.ts (i - 1) k).isSome
@@ -194,6 +204,94 @@ def randomRun (p : Params) (keys : List Key) (maxOps delPct : Nat) : Nat → Nat
         let acc := { acc with states := acc.states + 1 }
         let acc := acc.reach st'.trail
         randomRun p keys maxOps delPct n s2 st' (acc.fail (msgs.map (fun m => s!"T({i}) {repr ops}: {m}")))
+
+/-! ## The whole model on the tree: `SIS.run (treeSpec p)` -/
+
+/-- The tree as a `Spec` whose transactions are indexes into `txs` (the
+checker's functions and the model's records take transactions that can be
+compared): `treeSpec`, with transaction j the j-th of `txs`. -/
+def treeSpecNat (p : Params) (txs : Array Tx) : Spec BVal Nat where
+  ptrs := bptrs
+  live := blive
+  exec := fun j i v => SIS.Tree.exec p (txs.getD j { base := 0, ops := [] }) i v
+  init := initStruct p
+  virt := true
+  topLevel := p.topLevel 0
+  rootVal := .top
+
+/-- Pseudo-random transactions, made before the run: transaction j (time j + 1)
+has the base 1000 (j + 1) and up to `maxOps` operations, normalized. A delete of
+a key without a value may be among them: a noop. -/
+def genTxs (keys : List Key) (maxOps delPct seed n : Nat) : Array Tx :=
+  ((List.range n).foldl (fun (acc : Array Tx × Nat) j =>
+    let s1 := nextRand acc.2
+    let count := 1 + (s1 / 65536) % maxOps
+    let r := (List.range count).foldl (fun (q : List Tree.Op × Nat) k =>
+      let a := nextRand q.2
+      let b := nextRand a
+      let key := keys.getD ((a / 65536) % keys.length) [0]
+      (q.1 ++ [if (b / 65536) % 100 < delPct then Tree.Op.del key
+               else Tree.Op.put key (1000 * (j + 1) + k)], b)) ([], s1)
+    (acc.1.push { base := 1000 * (j + 1), ops := normalize r.1 }, r.2)) (#[], seed)).1
+
+/-- P ≈ P' up to time k, by comparing the views of every node at every time. -/
+def equivB (sp : Spec BVal Nat) (k : Time) (P P' : Struct BVal) : Bool :=
+  let ids := (P.map (·.1) ++ P'.map (·.1)).eraseDups
+  (List.range (k + 1)).all (fun t => ids.all (fun x => view sp P t x == view sp P' t x))
+
+/-- One run of the whole model on the tree: n pseudo-random transactions. Checks
+the model's assumptions on every transaction, with the trace checker's
+functions (Check/Steps.lean: `SpecOK` and `VirtInit` of the primordial
+structure; `StepOK` with `VirtStep`, A2 to A5; TREE and A6' after it; A-COPY:
+TP13, TP14, TP16), that the model's `run` has the tree's P (TP19), and, with
+BergDB's algorithm (marking, Java's still-dirty test, a startup pos two records
+back), T1 (startup from the stream gives P and D, here and every tenth
+transaction) and T2 (the run with restarts appends the same records). -/
+def modelRun (p : Params) (keys : List Key) (seed n : Nat) : List String :=
+  let txs := genTxs keys (1 + seed % 5) (20 + 10 * (seed % 5)) (seed * 7919) n
+  let sp := treeSpecNat p txs
+  let al : Algo BVal Nat := { policy := fun _ _ i _ => i - 2, stillDirty := javaTest sp, mark := true }
+  let ts := List.range n
+  let initF := (SIS.Check.initFailures sp).map (fun f => s!"R(0): {f}")
+  let r := ts.foldl (fun (acc : Struct BVal × List String) j =>
+    let P := acc.1
+    let i := j + 1
+    let c := sp.exec j i (view sp P (i - 1))
+    let P' := P.apply i c
+    let rlPrev := reachList sp P (i - 1)
+    let rlNow := reachList sp P' i
+    let prevSet : Std.HashSet NodeId := Std.HashSet.ofList rlPrev
+    let nowSet : Std.HashSet NodeId := Std.HashSet.ofList rlNow
+    let sf := (SIS.Check.stepFailures sp P i c prevSet nowSet rlNow).map (fun f => s!"T({i}): {f.1} {f.2}")
+    let tf := SIS.Check.treeFailures sp P' i rlNow
+    let af := (SIS.Check.adoptFailures sp P' i nowSet rlNow).1
+    let cf := SIS.Check.copyFailures sp P i c rlPrev nowSet
+    (P', acc.2 ++ sf ++
+      (if tf.isEmpty then [] else [s!"T({i}): TREE {tf}"]) ++
+      (if af.isEmpty then [] else [s!"T({i}): A6' {af}"]) ++
+      (if cf.isEmpty then [] else [s!"T({i}): A-COPY {cf}"]))) (sp.init, [])
+  let sts := ts.scanl (step sp al) (init sp)
+  let last := sts.getLastD (init sp)
+  let sameP := if last.P == r.1 then [] else ["RunPSame: the model's run has another P than the tree's"]
+  let t1 := sts.zipIdx.filterMap (fun (db, k) =>
+    if k % 10 != 0 && k != n then none else
+      let db' := startup sp db.S
+      if equivB sp (db.S.length - 1) db'.P db.P && db'.D == db.D then none
+      else some s!"T1 after T({k}): startup from the stream gives another P or D")
+  let flags := ts.map (fun j => (j, (seed + j) % 3 == 0))
+  let t2 := if (runRestarts sp al flags).S == last.S then []
+    else ["T2: the run with restarts has another stream"]
+  initF ++ r.2 ++ sameP ++ t1 ++ t2
+
+def runModel (m seeds steps nkeys : Nat) : IO Bool := do
+  let p : Params := { M := m, G := 1, H := 8 }
+  let mut fails : List String := []
+  for seed in [1:seeds + 1] do
+    fails := (fails ++ (modelRun p (testKeys nkeys) seed steps).map (fun f => s!"seed {seed}: {f}")).take 20
+  IO.println s!"model M={m} seeds={seeds} steps={steps} keys={nkeys}: C-A on every transaction, T1, T2: {fails.length} failures"
+  for f in fails.take 6 do
+    IO.println s!"  {f}"
+  pure fails.isEmpty
 
 def report (name : String) (s : Stats) : IO Bool := do
   IO.println s!"{name}: {s.states} states, {s.bounds} beyond the level bounds, {s.fails.length} failures"
@@ -251,6 +349,7 @@ def main (args : List String) : IO UInt32 := do
   let ok ← match args.head? with
     | some "exhaustive" => runExhaustive (nat 1 4) (nat 2 5) (nat 3 4) (nat 4 0) (args[5]? == some "pairs")
     | some "random" => runRandom (nat 1 8) (nat 2 20) (nat 3 150) (nat 4 14)
+    | some "model" => runModel (nat 1 8) (nat 2 10) (nat 3 40) (nat 4 10)
     | _ => do
       let a ← runExhaustive 4 5 4 0
       let b ← runExhaustive 6 5 4 0
@@ -262,8 +361,11 @@ def main (args : List String) : IO UInt32 := do
       let k ← runExhaustive 8 3 12 3
       let l ← runExhaustive 4 3 5 2 true
       let m ← runExhaustive 6 2 8 3 true
+      let q ← runExhaustive 4 2 6 2 true
       let d ← runRandom 8 20 150 14
-      pure (a && b && c && d && e && f && g && h && k && l && m)
+      let n ← runModel 4 6 30 8
+      let o ← runModel 8 6 40 12
+      pure (a && b && c && d && e && f && g && h && k && l && m && n && o && q)
   if ok then
     IO.println "TREETEST OK"
     return 0

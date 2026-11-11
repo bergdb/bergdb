@@ -29,10 +29,10 @@ def cvAt (ks : List Klong) (b : Nat) : Option Nat :=
   | _ => none
 
 /-- The klongs of a node are well formed: the times of its time klongs increase
-strictly; a key klong or a bitmap comes after a time klong; a bitmap holds the
-bits of the bitmap before it and at least one more, only bits of key klongs
-before it, and for each compare value of a new bit the bits of all klongs of it
-before the bitmap (Java's `Dag.bitsOf`: a delete sets the bits of every klong of
+strictly; a key klong or a bitmap comes after a time klong; a bitmap's bits are
+in increasing order; it holds the bits of the bitmap before it and at least one
+more, only bits of key klongs before it, and for each compare value of a new
+bit the bits of all klongs of it before the bitmap (Java's `Dag.bitsOf`: a delete sets the bits of every klong of
 its compare value). -/
 def klongsWf (ks : List Klong) : Bool :=
   let r := ks.zipIdx.foldl (fun (acc : Bool × Option Time × List Nat) (k, i) =>
@@ -45,6 +45,7 @@ def klongsWf (ks : List Klong) : Bool :=
       let newCvs := (bits.filter (fun b => !acc.2.2.contains b)).filterMap (cvAt ks)
       (acc.1 && acc.2.1.isSome && acc.2.2.all (fun b => bits.contains b) &&
         decide (acc.2.2.length < bits.length) &&
+        (bits.zip (bits.drop 1)).all (fun q => decide (q.1 < q.2)) &&
         bits.all (fun b => decide (b < i) && (cvAt ks b).isSome) &&
         (List.range i).all (fun j => match cvAt ks j with
           | some c => !newCvs.contains c || bits.contains j

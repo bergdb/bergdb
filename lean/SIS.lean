@@ -40,3 +40,4 @@ import SIS.Tree.Props
 import SIS.Tree.Bound
 import SIS.Tree.Top
 import SIS.Proof.TreeRoot
+import SIS.Proof.TreeInit

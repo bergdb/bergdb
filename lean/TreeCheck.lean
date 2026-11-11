@@ -3,7 +3,7 @@ The tree checker: checks a trace of format 3 (java/stress/TraceExport.java with
 tree=1) against the tree model, SIS/Tree/*.lean (bergdb 024-12, section 2.7;
 docs/trace-format.md, section 4).
 
-Usage: lake exe treecheck TRACE
+Usage: lake exe treecheck TRACE [--norun]
 
 Checks, per transaction i of the trace, from Java's structure before it:
   C-T1  the change: the model's `Tree.exec` of the transaction's operations gives
@@ -25,13 +25,18 @@ Checks, per transaction i of the trace, from Java's structure before it:
   C-T8  the bound: the key nodes that the transaction marks (those on the access
         path of its change) are at most `dirtyNodeBound` of its operations on
         the tree before it (Java's `Dag.dirtyNodeBound`, restated)
+  C-T9  the whole run (Check/TreeRun.lean): the model's `init` and `step` with
+        the tree's `exec`, from R(0), given of Java's run only each
+        transaction's operations, first id, startup pos and first available
+        time, write Java's records (the versions with their histories and
+        references, gd, top) and keep Java's D; not with --norun
   C-T7  the form: the keys of a transaction's operations strictly increasing,
         each key as `Keys.toSegments` makes them; no error of the model
 
 Prints one line a check, the first failures, counts of what the trace reached
 (splits, take-backs, noops), and TREE OK or TREE FAILED.
 -/
-import Check.Tree
+import Check.TreeRun
 
 open SIS SIS.Check SIS.Check.Tree SIS.Tree
 
@@ -42,7 +47,7 @@ def report (name : String) (fails : Array String) (n : Nat) : IO Unit := do
 
 def main (args : List String) : IO UInt32 := do
   match args with
-  | [file] =>
+  | file :: opts =>
     let text ← IO.FS.readFile file
     let tr := parseTrace text
     let tt := parseTree text
@@ -128,9 +133,15 @@ def main (args : List String) : IO UInt32 := do
       report "C-T6 invariants" inv n
       report "C-T8 bound" bound n
       IO.println s!"bound: {markedSum} key nodes marked, dirtyNodeBound {boundSum}, summed; at most {madeMax} nodes made an operation, MadeBound allows {4 * p.fuel + 1}"
+      let mut runFails : Array String := #[]
+      if !opts.contains "--norun" then
+        let (rf, rn) := wholeRun p tr tt
+        runFails := rf.toArray
+        IO.println s!"run: {rn} records of the model's own run compared with Java's"
+        report "C-T9 run" runFails n
       report "C-T7 form" form n
       report "C-T7 model errors" errors n
-      let bad := change.size + klongs.size + noops.size + reads.size + touch.size + inv.size + bound.size + form.size + errors.size + tt.bad.size
+      let bad := change.size + klongs.size + noops.size + reads.size + touch.size + inv.size + bound.size + runFails.size + form.size + errors.size + tt.bad.size
       if bad == 0 then
         IO.println "TREE OK"
         return 0

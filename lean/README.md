@@ -27,14 +27,20 @@ upward unlink, LE-b, the take-back and root collapse, the top node),
 Read.lean (get, scan, the touch), Spec.lean (`treeSpec`: the tree as an
 instance of `Spec`, so that `step` is BergDB whole), Inv.lean (the tree's
 invariants, as a walk that can be run), Props.lean, Bound.lean and Top.lean
-(the properties TP1 to TP24 as definitions of type `Prop`;
+(the properties TP1 to TP25 as definitions of type `Prop`;
 `Dag.dirtyNodeBound`; the search through the skip pointers). The theorems
 below are about any `Spec` that meets their assumptions; that `treeSpec`
-meets them is stated (TP13 to TP19), not proved. The tree checker
-(`Check/Tree.lean`, `TreeCheck.lean`: `lake exe treecheck`) runs the tree
+meets them is stated (TP13 to TP19), and proved only for the parts that fell
+out: `ExecRootOK` and `VirtLiveOK` (SIS/Proof/TreeRoot.lean), `SpecOK` but
+its `liveSub`, and that the model's `run` has the tree's structure
+(SIS/Proof/TreeInit.lean). The tree checker (`Check/Tree.lean`,
+`Check/TreeRun.lean`, `TreeCheck.lean`: `lake exe treecheck`) runs the tree
 against Java's traces of format 3 (../docs/trace-format.md, section 4;
-`java/stress/treeconf.sh`), and `lake exe treetest` (TreeTest.lean) on small
-exhaustive cases. The design, the results and the list of the properties:
+`java/stress/treeconf.sh`): each transaction's change from Java's structure,
+and the whole run of `init` and `step` with the tree's `exec` from R(0),
+whose records and D must be Java's. `lake exe treetest` (TreeTest.lean;
+`java/stress/tree-tests.sh`) runs the tree alone on small exhaustive cases,
+and the whole model on it, with the assumptions' checks, T1 and T2. The design, the results and the list of the properties:
 ../items/024-release-2026-5/12-tree-model.md.
 
 Since bergdb item 007 (2026-10-23) the model also has the first bound, T3:
