@@ -169,6 +169,17 @@ Files
   removed; no stale index entry possible (024-10's F1); six tests'
   expected values changed. Branch 024-16-one-operation-a-key; its
   review in 16-one-operation-a-key/.
+* 17-limits.md. 024-17, the limits of BergDB: of a transaction, a key,
+  a value, a record. The discussion with Frans (limits in the user's
+  terms, checked; internal bounds proved; a key at most 256 bytes, the
+  one limit for a user to remember; most kinds of files should fit);
+  today's limits (only the record's 2^31 - 9, and two refusals that
+  follow from it); what our own code uses; the cost against the batch
+  size at 1M and 10M keys and of values of 16 MiB; the derivation of
+  the node bound; a proposed table L1 to L8 (1,000 operations, 256
+  bytes a key, 16 MiB a value, 64 MiB a transaction); the idea of
+  database sizes S, M, L for later; questions QL1 to QL10. Probes and
+  outputs in 17-limits/.
 * 19-node-size.md. 024-19, the node size: which, and one fixed constant
   or not. Postponed 2026-11-11, 11:50, until the merges are in (024-21),
   with what was done: what the size is today (62 a hard ceiling by the

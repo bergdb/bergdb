@@ -49,7 +49,7 @@ high, xhigh for a hard task. At most 8 agents at a time (Frans,
 | 024-14 | The merge's thresholds measured in Java at 10M keys | thr (Opus, high) | |
 | 024-15 | The cost of key shape: documentation, bound, Mem runs | shape (Opus, high) | |
 | 024-16 | One operation a key, strict: a collision fails the commit | strict (Opus, high) | |
-| 024-17 | The limits of a transaction, a key, a value, a record | limits (Opus, high) | |
+| 024-17 | The limits of a transaction, a key, a value, a record | limits (Opus, high) | done 11:59 |
 | 020-33 | The known issue of 2026.4 in its notes; next.md | notes (Opus, high) | done 10:28 |
 | 024-18 | Dead klongs: what they cost, three options measured | dead (Opus, high) | |
 | 024-19 | The node size: which, and one fixed constant or not | nsize (Opus, high) | postponed 11:50 |
