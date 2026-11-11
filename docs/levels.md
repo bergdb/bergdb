@@ -324,11 +324,11 @@ How it works in Java:
   without a second klong (023-09, section 2, fault 12).
 * Merges at the delete (`Dag.mergeAfterDelete`, since format 7; 024-21;
   024-11, section 5): after the delete has changed a node, while that
-  node is not the root of its segment tree and holds fewer than m = B / 4
-  live keys or children (7 of 30; at least 2; none below node size 8), it
-  is merged with a sibling under the same parent (the left one if both
-  fit in c = B / 2, else the right one): their live klongs make one new
-  node, or two of half each if they are more than c, and the parent's
+  node is not the root of its segment tree and holds fewer than m live
+  keys or children (8 at node size 30), it is merged with a sibling
+  under the same parent (the left one if both fit in c, 17 at 30, else
+  the right one): their live klongs make one new node, or two of half
+  each if they are more than c, and the parent's
   klongs point to them (a bitmap of the transaction deletes the right
   one's, behind the parent's time klong); the two nodes are left out as
   a split's replaced node, or taken back if the transaction made them.
@@ -338,8 +338,11 @@ How it works in Java:
   key nodes are at most S + (n + S - 1) / (m - 1) for n live keys in S
   segment trees: a function of the live keys, with any retain duration.
   A delete therefore empties only a root; the climb above starts there.
-  The thresholds are constants of format 7 (`Dag.minFill`, `mergeCap`,
-  `splitAbove`). The rerun of a record does the same.
+  The thresholds are constants of format 7 (024-14, QT1: m = 8, c = 17,
+  and a split keeps a last version of up to h = 17 klongs, 2026.4's 15,
+  at node size 30; v B / 30 at another node size, m at least 2, no
+  merges below 8; `Dag.minFill`, `mergeCap`, `splitAbove`). The rerun of
+  a record does the same.
 
 Alignment: [011-11](../items/011-docs-archive/11-level2-alignment.md)
 maps Java's state to the model's (section 2) and keeps the register of

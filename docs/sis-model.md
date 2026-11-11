@@ -218,7 +218,7 @@ checks that Java's transactions are steps of it.
 
 Since record format 7 (024-21; 024-11, section 5), a delete also merges
 the nodes it leaves underfull: a node that is not the root of its segment
-tree and holds fewer than m live klongs (B / 4, at least 2) is merged with
+tree and holds fewer than m live klongs (8 at node size 30) is merged with
 a sibling under the same parent into one new node, or two of half each,
 with entries of time i in the parent; the two nodes are left out (no
 entry of time i; reachable before time i only, A5), or taken back if T(i)

@@ -17,8 +17,8 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
 * **Merges at the delete; record format 7** (bergdb 024-21; 024-11, MG).
   A delete now merges an underfull key node with a sibling: after every
   transaction every key node that is not the root of a segment tree
-  holds at least B / 4 live keys or children (7 at node size 30, at least
-  2; 024-11, BU1), so the index holds at most S + (n + S - 1) / (m - 1)
+  holds at least m live keys or children (m = 8 at node size 30; 024-11,
+  BU1), so the index holds at most S + (n + S - 1) / (m - 1)
   key nodes for n live keys in S segment trees, whatever was deleted and
   with any retain duration. In 2026.4 a node went only when it emptied:
   after scattered deletes the index had 2 to 20 times the key nodes of a
@@ -28,10 +28,12 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
   A record of deletes means another tree, so the record format is 7, and
   **a start refuses a database of format 6, written by release 2026.4**,
   with a `VersioningStreamException` that names 2026.4 (format 5 of 2026.3
-  and earlier, as before). The thresholds are 024-11's for now (m = B /
-  4, a merge's cap B / 2, a split's half B / 2 as before), constants of
-  format 7; a database without deletes writes what 2026.4 wrote but the
-  format byte (StreamDigest: section 8 of 024-21). A transaction of
+  and earlier, as before). The thresholds are 024-14's m8 (Frans,
+  2026-11-11): at node size 30 m = 8, a merge's cap 17, and a split keeps
+  a last version of up to 17 klongs (2026.4: 15), constants of format 7;
+  so the put path changes too, at node sizes 30 and 62: about 1 % more
+  bytes a put in a random fill at 10M keys and 6 to 13 % fewer key nodes
+  (024-14, section 4.3). A transaction of
   deletes counts more index nodes before the go point (`Dag.
   dirtyNodeBound`, 024-11's CB2): at node size 30 and a path of 5 nodes
   about 120,000 deletes fit one transaction, and a larger one is refused
