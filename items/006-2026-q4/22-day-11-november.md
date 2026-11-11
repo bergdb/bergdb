@@ -372,6 +372,14 @@ from them.
   No new agent at or above 83 % of the week (ceiling 85 %). The Lean
   proofs (TP30 to TP33) wait for a day with more usage. The morning: a
   summary in news.md and this plan's Outcome.
+* 17:48 Frans: "Fine to use up to 90%. Use Opus 5.5 High for coding
+  agents to save usage. Use xhigh for planning. This session is Opus 5.5
+  xhigh. [...] Keep on working until 07:00 or you get to 90% usage." So
+  the ceiling is 90 % (no new agent at or above 88 %); 024-24 (the
+  limits) started at 17:49 on Opus high; CRC32C (QL9) as 024-25 after
+  option 2 lands, on Opus high, when usage is under 85 %; with usage
+  left after night.sh, the proofs of the count with q (TP23, TP26 for
+  format 7) on Opus high.
 
 
 ## 6. Outcome
