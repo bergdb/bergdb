@@ -199,8 +199,9 @@ public class CapacityTester {
      * a budget of 10 MB, keys k0 to k999 read. Then, with the write lock held by the test, so
      * that the eviction thread cannot run a batch and the pressure stays: the budget lowered
      * to a quarter of the resident bytes, under pressure (over the trigger by more than the
-     * gap); a writer's transaction of 1,000 puts, to k1000 to k1999, whose values are not
-     * resident, so that its warmup loads at least 1,000 times. None of those loads waits
+     * gap); a writer's transaction of 500 puts, to k1000 to k1499, whose values are not
+     * resident, so that its warmup loads at least 500 times (1,000 puts until bergdb 024-24,
+     * over L1 since). None of those loads waits
      * (Eviction.loadWaits), and the writer goes on to wait for the write lock
      * (Db.writersWaiting). A reader then gets 20 keys of k2000 to k2999, not resident either:
      * each get waits for a batch, up to LOAD_WAIT_NANOS, as none ends. With the lock let go,
@@ -227,7 +228,7 @@ public class CapacityTester {
             final long budget = full / 4;
             clock.setTime(1000 * STEP);
             Trans.Builder b = db.trans();
-            for (int k = 1000; k < 2000; k++) b.put("k" + k, "new " + k);
+            for (int k = 1000; k < 1500; k++) b.put("k" + k, "new " + k);
             final Trans t = b.build();
             final Throwable[] failure = new Throwable[1];
             long writerBatches;
@@ -256,7 +257,7 @@ public class CapacityTester {
                 Assert.assertEquals("the writer waits for the write lock (" + failure[0] + ")",
                         1, in.writersWaiting());
                 long warmupLoads = in.nodeCollection().loads() - loads;
-                Assert.assertTrue("the warmup's loads: " + warmupLoads, warmupLoads >= 1000);
+                Assert.assertTrue("the warmup's loads: " + warmupLoads, warmupLoads >= 500);
                 Assert.assertEquals("the warmup's loads that waited", 0, e.loadWaits() - waits);
                 Assert.assertTrue("still under pressure", in.cache().residents().bytes()
                         > budget + (budget - Eviction.lowOf(budget)));
@@ -281,7 +282,7 @@ public class CapacityTester {
             writer.join(60 * 1000);
             Assert.assertTrue("the transaction has ended (" + failure[0] + ")",
                     !writer.isAlive() && failure[0] == null);
-            for (int k = 1000; k < 2000; k += 111) {
+            for (int k = 1000; k < 1500; k += 111) {
                 Assert.assertEquals("new " + k, new String(DbUtil.get(db, "k" + k)));
             }
             long[] c = e.sweepCounts();
