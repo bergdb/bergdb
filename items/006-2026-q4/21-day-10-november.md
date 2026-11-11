@@ -232,3 +232,10 @@ Not done: 022's night steps and props-006-16 (the machine was busy all
 night); the integration branch's docs beyond 023-09's list (done in the
 release commit for levels.md and sis-model.md).
 
+Added 06:40: 024-03, the measurements of 2026.4 at 1M and 10M keys, done
+(2ba2759f): the same speed and MEM as 2026.3; P8 not needed; merges'
+underfill measured; the last touch of a reclaim iteration (CL7) the
+biggest fault measured, old (a 200 MB record and 21 s at 10M). So point 4
+above gains CL7. Handed over to coord-1111 at 06:40 (013-02, section
+4.3); this coordinator closed.
+
