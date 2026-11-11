@@ -7,6 +7,8 @@ import java.io.PrintWriter;
 import java.util.*;
 
 import bergdb.dag.GetData;
+import bergdb.dag.GetMany;
+import bergdb.dag.Kvt;
 import bergdb.dag.Handle;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Keys;
@@ -50,9 +52,15 @@ import bergdb.stream.MemoryStream;
  *   nodel=P    percent of transactions that delete only keys that never exist (default 0)
  *   empty=P    percent of transactions without KVs (default 0)
  *   long=1     half of the keys get two key segments
+ *   shape=S    the workload's shape, UnlinkFuzz's (bergdb 024-12): fifo puts new keys in
+ *              increasing order and deletes the oldest, a window of about keys/4 live keys;
+ *              long3 gives the keys 1 to 5 segments with shared prefixes, the keys of
+ *              long=2 below (default: none)
  *   valsize=N  value sizes 1..N bytes (default 20)
  *   probe=K    run B: a restart after every K transactions (default 0: no run B)
  *   live=1     LIVE lines: Java's own live children, for each node, at each of its times
+ *   tree=1     trace format 3 (bergdb 024-12, section 2.6; docs/trace-format.md, section 4):
+ *              the lines the tree model needs: TREE, BASE, OP, KN, GET and SCAN; gets=N: N GET lines and one SCAN line after each transaction (default 4)
  *   retain=S   reclaim on, with a retain duration of S seconds, as RestartInvariance's option
  *              (default 0: off); transactions are then 0.01 to 0.2 s apart
  *   rune=S     run E: run A's workload with the eviction schedule S (values, every, random,
@@ -123,9 +131,12 @@ public class TraceExport {
     final int nodel = Integer.getInteger("nodel", 0);
     final int empty = Integer.getInteger("empty", 0);
     final boolean longKeys = "1".equals(System.getProperty("long"));
+    final String shape = System.getProperty("shape", "");
     final int valsize = Integer.getInteger("valsize", 20);
     final int probe = Integer.getInteger("probe", 0);
     final boolean live = "1".equals(System.getProperty("live"));
+    final boolean tree = "1".equals(System.getProperty("tree"));
+    final int treeGets = Integer.getInteger("gets", 4);
     final int retain = Integer.getInteger("retain", 0);
     final String runE = System.getProperty("rune", "");
     final int slotEvery = Integer.getInteger("slotevery", 1);
@@ -153,6 +164,7 @@ public class TraceExport {
         userLast = new int[n];
         long time = 10;
         int nextNew = keyCount;     // keys of bulk loads, beyond the key space
+        int fifoNext = 0, fifoFirst = 0;
         for (int i = 0; i < n; i++) {
             time += (1 + rnd.nextInt(20)) * timeScale;
             times[i] = time;
@@ -166,6 +178,17 @@ public class TraceExport {
                 for (int j = 0; j < c; j++) {
                     ks.add("/missing/" + i + "/" + j);
                     vs.add(null);
+                }
+            } else if (shape.equals("fifo")) {
+                int c = 1 + rnd.nextInt(ops);
+                int window = Math.max(2, keyCount / 4);
+                for (int j = 0; j < c; j++) {
+                    if (fifoNext - fifoFirst >= window || (fifoNext > fifoFirst && rnd.nextInt(3) == 0)) {
+                        ks.add(key(fifoFirst++));
+                        vs.add(null);
+                    }
+                    ks.add(key(fifoNext++));
+                    vs.add(value(rnd));
                 }
             } else if (bulk > 0 && rnd.nextInt(10) == 0) {
                 List<String> sorted = new ArrayList<String>();
@@ -191,7 +214,8 @@ public class TraceExport {
     }
 
     String key(int i) {
-        if (longShape) return bergdb.dag.A2A3Check2.longShapeKey(i);
+        // long=2 (bergdb 024-09) and shape=long3 (024-12) are one key rule, UnlinkFuzz's.
+        if (longShape || shape.equals("long3")) return bergdb.dag.A2A3Check2.longShapeKey(i);
         return longKeys && i % 2 == 1 ? "/longer/key/" + i : "/k/" + i;
     }
 
@@ -298,6 +322,9 @@ public class TraceExport {
         String kind = "user";
         List<Long> touch;
         List<String> reclaimLines = new ArrayList<String>();
+        /** Trace format 3 (bergdb 024-12): BASE and OP; then KN, GET, SCAN. */
+        List<String> treeHead = new ArrayList<String>();
+        List<String> treeLines = new ArrayList<String>();
     }
 
     final Map<Long, PNode> nodes = new TreeMap<Long, PNode>();
@@ -743,14 +770,22 @@ public class TraceExport {
 
         final List<ValueNode> created = new ArrayList<ValueNode>();
         final List<Node> touched = new ArrayList<Node>();
+        if (tree) recordTreeInit(db, r0, ns);
         Db.TestHooks hooks = new Db.TestHooks() {
             public void transExecuted(Db.ExecuteData x) {
                 record(db, x, created, touched, ns);
                 created.clear();
                 touched.clear();
+                treeOps.clear();
             }
             public void valueNodeCreated(ValueNode node, long[] key) {
                 created.add(node);
+                // The operation that Db.putKvs gave the Dag last changed it: a put, or a
+                // delete that deleted (bergdb 024-12, section 2.6).
+                if (!treeOps.isEmpty()) treeOps.get(treeOps.size() - 1)[2] = Boolean.TRUE;
+            }
+            public void kvApplied(long[] key, byte[] value) {
+                treeOps.add(new Object[] {key.clone(), value, Boolean.FALSE});
             }
             public void nodeTouched(Node node) {
                 touched.add(node);
@@ -808,6 +843,135 @@ public class TraceExport {
         recordDirty(db, rec);
         if (live) recordLive(db, rec);
         if (retain > 0) recordReclaim(db, t, touched, rec);
+        if (tree) recordTree(db, t, rec, ns);
+    }
+
+    // ======== Trace format 3: the lines of the tree model (bergdb 024-12, section 2.6) ========
+
+    /** The operations that Db.putKvs gave the Dag in the transaction being executed: the
+     *  key's segments, the value (null: a delete), and whether it made a value node. */
+    final List<Object[]> treeOps = new ArrayList<Object[]>();
+    /** The reads of the GET and SCAN lines: a generator of its own, so that the workload is
+     *  the same with and without tree=1. */
+    final Random treeRnd = new Random(0x5DEECE66DL);
+    /** Every key of the workload, for the GET and SCAN lines. */
+    List<String> treeKeys = null;
+
+    static String segs(long[] key) {
+        StringBuilder b = new StringBuilder("" + key.length);
+        for (long c : key) b.append(" ").append(c);
+        return b.toString();
+    }
+
+    /** A key node's klongs as on a KN line: T t, K c y, B b. */
+    String klongs(PNode pn, NodeStream ns) {
+        KeyNode k = (KeyNode) pn.obj;
+        int size = k.size;
+        String context = "KN of node " + pn.id;
+        StringBuilder b = new StringBuilder("KN " + pn.id + " " + (k.isSegmentLeaf() ? 1 : 0)
+                + " " + size);
+        for (int i = 0; i < size; i++) {
+            long klong = k.klongs[i];
+            switch (Klong.getIntType(klong)) {
+            case Klong.INT_TYPE_TIME:
+                b.append(" T ").append(timeIndex(Klong.getTime(klong), context));
+                break;
+            case Klong.INT_TYPE_KEY: {
+                Node child = k.getPointerNode(i);
+                long y = childId(child, child == null ? k.getSerializedRef(i) : Spos.NULL, ns, context);
+                b.append(" K ").append(Klong.getCompareValue(klong)).append(" ").append(y);
+                break;
+            }
+            case Klong.INT_TYPE_DELETE_BITMAP:
+                b.append(" B ").append(klong & 0x3fffffffffffffffL);
+                break;
+            default:
+                error("bad klong type at " + i + " (" + context + ")");
+            }
+        }
+        return b.toString();
+    }
+
+    /** R(0)'s lines: its key nodes. */
+    void recordTreeInit(Db db, Rec rec, NodeStream ns) {
+        for (PNode pn : nodes.values()) {
+            if (pn.obj instanceof KeyNode) rec.treeLines.add(klongs(pn, ns));
+        }
+    }
+
+    /** The lines of T(i) for the tree model: its first id, its operations, the key nodes
+     *  it made or changed, and reads of Java at random times. */
+    void recordTree(Db db, Trans t, Rec rec, NodeStream ns) {
+        rec.treeHead.add("BASE " + mid(rec.tpos + 1));
+        for (Object[] op : treeOps) {
+            long[] key = (long[]) op[0];
+            byte[] value = (byte[]) op[1];
+            if (value != null) {
+                rec.treeHead.add("OP P " + segs(key) + " " + hash(value));
+            } else {
+                rec.treeHead.add("OP " + (op[2] == Boolean.TRUE ? "D " : "N ") + segs(key));
+            }
+        }
+        Set<Long> changed = new TreeSet<Long>(rec.newNodes);
+        for (long[] a : rec.addsNode) changed.add(a[0]);
+        for (long id : changed) {
+            PNode pn = nodes.get(id);
+            if (pn != null && pn.obj instanceof KeyNode) rec.treeLines.add(klongs(pn, ns));
+        }
+        if (treeKeys == null) {
+            Set<String> all = new TreeSet<String>();
+            for (String[] ks : wkeys) for (String k : ks) all.add(k);
+            all.add("/absent");
+            treeKeys = new ArrayList<String>(all);
+        }
+        // Reads, from the first available time on (a read below it may expire).
+        final GetData gd = db.newGetData();
+        for (int g = 0; g < treeGets; g++) {
+            int ti = lastFa + treeRnd.nextInt(rec.index - lastFa + 1);
+            long[] key = Keys.toSegments(treeKeys.get(treeRnd.nextInt(treeKeys.size())));
+            try {
+                byte[] v = db.internal().dag().getOne(recs.get(ti).tt, key, gd);
+                rec.treeLines.add("GET " + ti + " " + segs(key) + " " + (v == null ? "-" : "" + hash(v)));
+            } catch (RuntimeException e) {
+                error("GET at R(" + rec.index + "), time " + ti + ": " + oneLine(e));
+            }
+        }
+        if (treeGets > 0) {
+            int ti = lastFa + treeRnd.nextInt(rec.index - lastFa + 1);
+            boolean forward = treeRnd.nextInt(4) != 0;
+            boolean inclusive = treeRnd.nextBoolean();
+            boolean endInclusive = treeRnd.nextBoolean();
+            int limit = 1 + treeRnd.nextInt(6);
+            long[] start = treeRnd.nextInt(5) == 0 ? null
+                    : Keys.toSegments(treeKeys.get(treeRnd.nextInt(treeKeys.size())));
+            long[] end = !forward || treeRnd.nextInt(2) == 0 ? null
+                    : Keys.toSegments(treeKeys.get(treeRnd.nextInt(treeKeys.size())));
+            try {
+                GetMany g = db.internal().dag().newGetMany();
+                g.gd.pointerFollower = gd.pointerFollower;
+                g.gd.pointerListener = gd.pointerListener;
+                g.gd.cachePolicy = gd.cachePolicy;
+                g.lookupTime = recs.get(ti).tt;
+                g.actualLookupTime = recs.get(ti).tt;
+                g.startKey = start;
+                g.inclusive = inclusive;
+                g.forward = forward;
+                g.endKey = end;
+                g.endInclusive = endInclusive;
+                g.stopCondition = new GetMany.GetN(limit);
+                db.internal().dag().getMany(g);
+                StringBuilder b = new StringBuilder("SCAN " + ti + " " + (forward ? "F" : "B") + " "
+                        + (inclusive ? 1 : 0) + " " + (endInclusive ? 1 : 0) + " " + limit + " "
+                        + (start == null ? "-" : segs(start)) + " " + (end == null ? "-" : segs(end))
+                        + " " + g.result.size());
+                for (Kvt kvt : g.result) {
+                    b.append(" ").append(segs(kvt.key)).append(" ").append(hash(kvt.value));
+                }
+                rec.treeLines.add(b.toString());
+            } catch (RuntimeException e) {
+                error("SCAN at R(" + rec.index + "), time " + ti + ": " + oneLine(e));
+            }
+        }
     }
 
     // ======== Reclaim (bergdb 001-07, 2.7) ========
@@ -1434,13 +1598,19 @@ public class TraceExport {
     void write(String file) throws IOException {
         long[] bounds = levels();
         PrintWriter out = new PrintWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"));
-        out.println("TRACE 2");
+        out.println(tree ? "TRACE 3" : "TRACE 2");
         out.println("CONFIG seed=" + seed + " n=" + n + " keys=" + keyCount + " maxnode=" + maxNode
                 + " sd=" + startupDistance + " ops=" + ops + " exact=" + exact + " bulk=" + bulk
                 + " del=" + del + " nodel=" + nodel + " empty=" + empty + " long=" + longKeys
                 + " valsize=" + valsize + " probe=" + probe + " live=" + live
+                + (shape.isEmpty() ? "" : " shape=" + shape)
                 + " segments=" + (bounds[0] + 1) + " height=" + bounds[1]
                 + (retain > 0 ? " retain=" + retain : ""));
+        if (tree) {
+            KeyNode first = topNodes.isEmpty() ? null : (KeyNode) topNodes.get(0).getPointerNode(0);
+            out.println("TREE " + maxNode + " " + bounds[0] + " " + bounds[1] + " "
+                    + (first == null ? -1 : mid(first.getId())));
+        }
         for (String e : errors) out.println("ERROR " + e);
         if (!unreached.isEmpty()) {
             out.println("# key nodes that no top node reaches (A3 failures, M1): " + unreached.size());
@@ -1449,6 +1619,7 @@ public class TraceExport {
             out.println("TX " + rec.index);
             out.println("# tt=" + rec.tt + " tpos=" + rec.tpos + " puts=" + rec.puts + " deletes="
                     + rec.deletes + (retain > 0 ? " kind=" + rec.kind : ""));
+            for (String s : rec.treeHead) out.println(s);
             for (long id : rec.newNodes) {
                 PNode pn = nodes.get(id);
                 out.println("NEW " + id + " " + levelOf(pn, bounds) + " " + (pn.isData() ? "D" : "I"));
@@ -1456,6 +1627,7 @@ public class TraceExport {
             for (int j = 0; j < rec.adds.size(); j++) {
                 out.println("ADD " + rec.addsNode.get(j)[0] + " " + rec.adds.get(j));
             }
+            for (String s : rec.treeLines) out.println(s);
             if (rec.touch != null) {
                 StringBuilder tl = new StringBuilder("TOUCH");
                 for (long x : rec.touch) tl.append(" ").append(x);

@@ -8,57 +8,11 @@ definitions (SIS/*.lean) on a Java run; this file only says how a trace
 becomes the model's objects. Written 2026-10-15 for F1-008-11, WP C2.
 -/
 import SIS.Assumptions
+import SIS.Tree.Val
 
 namespace SIS.Check
 
 open SIS
-
-/-- The entry values of the BergDB instance (docs, 2.4 and 9.1). -/
-inductive BVal where
-  /-- A key klong: compare value c, child y. -/
-  | key (c y : Nat)
-  /-- A delete bitmap: the key entries before it with these compare values are
-  deleted. -/
-  | del (cs : List Nat)
-  /-- A top node's pointer to its root key node. -/
-  | rootKey (y : Nat)
-  /-- A top node's skip pointer j to an older top node. -/
-  | skip (j z : Nat)
-  /-- The root's entry for a top node. -/
-  | top (z : Nat)
-  /-- A value node's data, as a hash. -/
-  | data (h : Nat)
-  deriving DecidableEq, Repr, Inhabited
-
-/-- The nodes an entry points to. -/
-def bptrs : BVal → List NodeId
-  | .key _ y => [y]
-  | .rootKey y => [y]
-  | .skip _ z => [z]
-  | .top z => [z]
-  | _ => []
-
-/-- Sets the value for compare value c in an association list, keeping the
-order of first appearance. -/
-def setAssoc (m : List (Nat × Option Nat)) (c : Nat) (v : Option Nat) :
-    List (Nat × Option Nat) :=
-  if m.any (fun p => p.1 == c) then m.map (fun p => if p.1 == c then (c, v) else p)
-  else m ++ [(c, v)]
-
-/-- The live children of a node with history h: for a key node, the child of
-the last key entry of each compare value that no later delete entry names; for
-a top node, its last root pointer; for the root, its last top node. -/
-def blive (h : History BVal) : List NodeId :=
-  let st := h.foldl (fun (acc : List (Nat × Option Nat) × Option Nat × Option Nat) e =>
-    match e.val with
-    | .key c y => (setAssoc acc.1 c (some y), acc.2.1, acc.2.2)
-    | .del cs =>
-      (cs.foldl (fun m c => if m.any (fun p => p.1 == c) then setAssoc m c none else m) acc.1,
-        acc.2.1, acc.2.2)
-    | .rootKey y => (acc.1, some y, acc.2.2)
-    | .top z => (acc.1, acc.2.1, some z)
-    | _ => acc) ([], none, none)
-  ((st.1.filterMap (·.2)) ++ st.2.1.toList ++ st.2.2.toList).eraseDups
 
 /-! ## Reading a trace -/
 
@@ -216,7 +170,16 @@ def parseLine (t : Trace) (n : Nat) (line : String) : Trace :=
   if line.startsWith "#" then t else
   match toks line with
   | [] => t
-  | "TRACE" :: v :: _ => if v == "1" || v == "2" then t else bad "unknown trace format"
+  | "TRACE" :: v :: _ =>
+    if v == "1" || v == "2" || v == "3" then t else bad "unknown trace format"
+  -- Trace format 3 (bergdb 024-12; docs/trace-format.md, section 4): the lines of the
+  -- tree model, which Check/Tree.lean reads; this checker reads over them.
+  | "TREE" :: _ => t
+  | "BASE" :: _ => t
+  | "OP" :: _ => t
+  | "KN" :: _ => t
+  | "GET" :: _ => t
+  | "SCAN" :: _ => t
   | "CONFIG" :: r => { t with config := " ".intercalate r }
   | "ERROR" :: r => { t with errors := t.errors.push (" ".intercalate r) }
   | ["TX", i] => match i.toNat? with

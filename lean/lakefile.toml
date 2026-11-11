@@ -1,6 +1,6 @@
 name = "sis"
 version = "0.1.0"
-defaultTargets = ["SIS", "Check", "tracecheck"]
+defaultTargets = ["SIS", "Check", "tracecheck", "treecheck"]
 
 [[lean_lib]]
 name = "SIS"
@@ -15,6 +15,14 @@ root = "Test"
 [[lean_exe]]
 name = "tracecheck"
 root = "TraceCheck"
+
+[[lean_exe]]
+name = "treecheck"
+root = "TreeCheck"
+
+[[lean_exe]]
+name = "treetest"
+root = "TreeTest"
 
 [[lean_exe]]
 name = "phystest"
