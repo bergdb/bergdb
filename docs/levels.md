@@ -364,6 +364,8 @@ where they differ. The trace checker runs the model's own `init` and `step`
 on traces of Java runs: every transaction must be a step of the model with
 its assumptions met (A2 to A5, TREE, A6', A-COPY), every restart invisible,
 and every first touch after a restart must follow the model's rule (C-L).
+Since 024-09 the gates require A6 itself, not only the model's A6': no
+trace and no run of A2A3Check2 may adopt a node below its old parent.
 `level2.sh` runs it on the small set, `night.sh` on the medium set.
 
 The key tree itself (puts with their splits, the delete path, gets, scans,
