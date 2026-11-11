@@ -1,0 +1,38 @@
+L1 = 500, L2 = 111 bytes, 16 segments
+
+Per operation, node size 30 (3,700,852 nodes fit):
+  H=22: TP26 f7  7694/op ->  481 ops (-3.8 % over 500); with q  3086 -> 1199 (+139.8 %); Java one delete  2615 -> 1415
+  H=21: TP26 f7  7374/op ->  501 ops (+0.2 % over 500); with q  2958 -> 1251 (+150.2 %); Java one delete  2503 -> 1478
+  H=20: TP26 f7  7054/op ->  524 ops (+4.8 % over 500); with q  2830 -> 1307 (+161.4 %); Java one delete  2391 -> 1547
+  H=19: TP26 f7  6734/op ->  549 ops (+9.8 % over 500); with q  2702 -> 1369 (+173.8 %); Java one delete  2279 -> 1623
+
+Every node size, H = 1 + log_m(2^60) and BU1's 1 + log_m(2^59) (the second H):
+  B= 8 H=61: TP26 f7  20174 ->  519 ops; with q (14 a level)  14126 ->  742; Java one delete  13685 ->  766
+  B= 8 H=60: TP26 f7  19854 ->  528 ops; with q (14 a level)  13902 ->  754; Java one delete  13476 ->  778
+  B=14 H=38: TP26 f7  12814 ->  545 ops; with q ( 9 a level)   5774 -> 1210; Java one delete   5753 -> 1215
+  B=14 H=38: TP26 f7  12814 ->  545 ops; with q ( 9 a level)   5774 -> 1210; Java one delete   5753 -> 1215
+  B=30 H=21: TP26 f7   7374 ->  501 ops; with q ( 8 a level)   2958 -> 1251; Java one delete   2503 -> 1478
+  B=30 H=20: TP26 f7   7054 ->  524 ops; with q ( 8 a level)   2830 -> 1307; Java one delete   2391 -> 1547
+  B=62 H=16: TP26 f7   5774 ->  330 ops; with q ( 8 a level)   2318 ->  822; Java one delete   1913 ->  996
+  B=62 H=15: TP26 f7   5454 ->  349 ops; with q ( 8 a level)   2190 ->  870; Java one delete   1801 -> 1058
+
+L3 (sum bound, S <= L3 / 7 + n, n = 500):
+  L3 48 KiB ( 49152 B, 442 keys of 111): S  7521; B8 f7 +10% q +37%; B14 f7 +14% q +61%; B30 f7 +6% q +62%; B62 f7 -42% q +43%;
+  L3 52 KiB ( 53248 B, 479 keys of 111): S  8106; B8 f7 +3% q +32%; B14 f7 +7% q +58%; B30 f7 -1% q +60%; B62 f7 -53% q +38%;
+  L3 54 KiB ( 55296 B, 498 keys of 111): S  8399; B8 f7 -1% q +29%; B14 f7 +4% q +57%; B30 f7 -5% q +58%; B62 f7 -59% q +36%;
+  L3 56 KiB ( 57344 B, 516 keys of 111): S  8692; B8 f7 -5% q +27%; B14 f7 +0% q +55%; B30 f7 -8% q +57%; B62 f7 -64% q +34%;
+  L3 64 KiB ( 65536 B, 590 keys of 111): S  9862; B8 f7 -19% q +17%; B14 f7 -13% q +49%; B30 f7 -23% q +51%; B62 f7 -87% q +25%;
+  L3 56 KiB, B=30, H=22: f7 4179160 nodes (-12.9 % under), with q 1675864 (54.7 % under)
+  L3 56 KiB, B=30, H=21: f7 4005320 nodes (-8.2 % under), with q 1606328 (56.6 % under)
+  L3 56 KiB, B=30, H=20: f7 3831480 nodes (-3.5 % under), with q 1536792 (58.5 % under)
+  L3 56 KiB, B=30, H=19: f7 3657640 nodes (1.2 % under), with q 1467256 (60.4 % under)
+  TP26 f7, H=22: S <= 7695, L3 <= 50365 bytes
+  TP26 f7, H=20: S <= 8395, L3 <= 55265 bytes
+
+Record, B=30, H=22, with q: own 33588624 + dirty 911672176 = 945260800 (44.0 % of 2^31 - 9)
+Record, B=30, H=22, TP26 f7: own + dirty = 2307053824 (107.4 %)
+
+L6 111: entry 497 bytes, 72 segments; objects with one index at the largest, L3 56 KiB: 51; two: 27
+L6 112: entry 498 bytes, 72 segments; objects with one index at the largest, L3 56 KiB: 51; two: 27
+
+8 MiB = 8.39 MB: Fletcher-16 48 ms, CRC32C 1.1 ms (F6: 5.7 and 0.13 ms a MB)
