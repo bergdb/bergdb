@@ -11,7 +11,7 @@ and gates, what BergDB's C clone must change later, and what the Lean
 tree model (024-12) can assume.
 
 Rules are S1 to S5, table rows as in 024-10, section 4 (B, T, U, P),
-findings G1 to G3, questions QS1 to QS4; cite them as "024-16, S2".
+findings G1 to G4, questions QS1 to QS5; cite them as "024-16, S2".
 
 
 ## 1. In short
@@ -29,10 +29,12 @@ findings G1 to G3, questions QS1 to QS4; cite them as "024-16, S2".
   transaction's time is taken and before the go point; the key
   transformations moved there from `Db.putKvs`, after the go point,
   where a refusal would have failed the database (section 4).
-* **Gates** on the head `d5617d45` (on `main` at `68c3917e`):
-  before-commit.sh, level1.sh and level2.sh OK; StreamDigest identical
-  (section 10). **For Frans:** QS1 to QS4 (section 13), first the six
-  changed expected values. State: section 15.
+* **Gates** on `7177bc0e`: before-commit.sh, level1.sh and level2.sh
+  OK; StreamDigest identical (section 10). The review
+  (`16-one-operation-a-key/review.md`): land with four small fixes, made
+  in `3412ee7a` (section 7.1), before-commit.sh on it (section 10).
+* **For Frans:** QS1 to QS5 (section 13), first the six changed expected
+  values. State: section 15.
 
 
 ## 2. What is decided
@@ -297,10 +299,10 @@ suffixes. Rows B, T9, P1 to P3, P9 and P10 keep 024-10's results.
 
 ## 7. The implementation
 
-On the branch `024-16-one-operation-a-key`, on `main` at `68c3917e`
-since 10:08 (first on the integration branch `024-13-int` at `524732d8`,
-whose `java/`, `lean/` and `docs/` `main` holds exactly since
-`a780b957`), commit `023bfa22` (`2229c812` before the rebase):
+On the branch `024-16-one-operation-a-key`, on `main` at `6bda69b0`
+(first on `024-13-int` at `524732d8`, whose `java/`, `lean/` and `docs/`
+`main` holds exactly since `a780b957`; rebased at 10:08 and 12:16, the
+same content), commit `190fe6f1` (`023bfa22`, `2229c812` before):
 
 * **`Db.transformKeys`**, new, called by `executeInner` between
   `transactionBegin` and the go point: the key transformations (moved
@@ -359,9 +361,39 @@ and `PubTester`, then put back (10:01):
   and `testKeyReplaceCollisionRefused` (the next transaction's time).
 
 
+### 7.1 The review's fixes
+
+The review (`16-one-operation-a-key/review.md`, by rev16, 11:57 to
+12:20): LAND WITH FIXES, no fault in the commit path, by reading and by
+a concurrency probe with refusals, commits and readers. Its four fixes,
+commit `3412ee7a`:
+
+* **R1.** A refused `Trans` kept `t.tt`, the time it was given and then
+  lost. `executeInner` keeps `t.tt` before `transactionBegin`, and
+  `transformKeys` puts it back with the keys and hashes: S5 now holds
+  for every field. `testRefusedTransUnchanged` checks `t.tt`, and each
+  write hash against its key as written, so the review's mutation MB
+  (the keys put back, not the hashes) fails two checks, not one.
+* **R2.** `DbClock.transactionBegin`'s Javadoc: later than every time
+  `currentTime()` returned and every ended transaction's; a cancelled
+  transaction's time may be returned again.
+* **R3.** `docs/levels.md`, "Errors": the refusal is the last check
+  before the go point; a key transformation's exception, now just
+  before the go point, still fails the database.
+* **R4.** The search for equal neighbours is inside the `catch (Error)`,
+  so an `Error` there fails the database under the lock (019-40).
+
+The review's probes (`/Users/f/fl/bench/2026-11-11/rev16/probe/`) are
+not taken as tests: p2 runs 8 to 10 s a clock, too long for the unit
+suite; p1 and p3 are covered by `testRefusedTransUnchanged`,
+`DbClock.testTransactionCancel` and `DbTesterFailure.failInPut`. No
+expected value of an existing test changed in `3412ee7a` (one test
+gained checks).
+
+
 ## 8. Tests
 
-**New**, in commit `023bfa22`:
+**New**, in commit `190fe6f1`:
 
 * `DbTesterDelete.testRefusedTransUnchanged` (section 4's list): a Trans
   with a put, a transformed put whose final key another plain put has,
@@ -388,8 +420,8 @@ and `PubTester`, then put back (10:01):
   clock back: the next transaction is later than it.
 
 **Expected values changed on purpose**, in a commit of their own,
-`d5617d45` (`33038dc7` before the rebase; QS4: Frans's approval). With
-`023bfa22` alone the unit suite fails in these six tests, each with the
+`7177bc0e` (`d5617d45`, `33038dc7` before the rebases; QS4: Frans's approval). With
+`190fe6f1` alone the unit suite fails in these six tests, each with the
 refusal's `DbException`, and no other (section 10):
 
 * `DbTesterDelete.testLastOperationWins` (024-10's rows B and T): T1 to
@@ -453,8 +485,8 @@ loop after the go point, as before).
 ## 10. Gates
 
 Each step in a heavy-run slot of its own (`strict/gates.sh`), on the
-branch's head `d5617d45` (on `main`), the first commit's step on
-`2229c812` (the same files as `023bfa22`), StreamDigest against the base
+branch's head `7177bc0e` (on `main`), the first commit's step on
+`2229c812` (the same files as `190fe6f1`), StreamDigest against the base
 `524732d8`:
 
 | Gate                            | When           | Result                                  |
@@ -464,6 +496,7 @@ branch's head `d5617d45` (on `main`), the first commit's step on
 | StreamDigest `all`, compare     | 11:34 to 11:35 | DIGESTS IDENTICAL (48 of 48)            |
 | `java/stress/level1.sh`, full   | 11:35 to 11:37 | LEVEL 1 OK, MEM 130 (at most 131)       |
 | `java/stress/level2.sh`, full   | 11:37 to 11:56 | LEVEL 2 OK, 70 traces TRACECHECK OK     |
+| before-commit.sh, `3412ee7a`    | 13:04 to 13:06 | BEFORE COMMIT OK (104 s)                |
 
 * **before-commit.sh**: deps 9 packages; doubles 7 packages, 183 files;
   unit 1,654 tests in 47.8 s; f 89 tests in 69.8 s; demos OK (14 runs).
@@ -571,6 +604,30 @@ sections 2.3 and 6). With this rule:
   more, and make a reused Trans run the same each time; not done, as it
   changes a committed run's behaviour: question QS4's second part.
 
+* **G4 (B1 of the review; old, not this branch's).** A put alone at
+  `/o/${transactionTime}` with key replace, in a directory with an
+  index, over a key that already holds an indexed object (written
+  earlier with a guessed time), leaves that object's index entry
+  stored: `RwEnvironmentImp.indexEntries` takes a replaced put to have
+  no previous value, as the final key is known only at the commit. No
+  scan is wrong (020-10, section 3.4); storage nothing takes back. Shown
+  on `68c3917e` too. Two fixes, for an entry of its own:
+  * **A refusal at the commit:** a "must be new" mark on the replaced
+    put's `Kv` (a new builder call), and in `transformKeys`, after the
+    transformations and before the go point, a lookup of each marked
+    KV's final key; a value there refuses the transaction as S2 does.
+    The Pub layer marks a replaced put at an object key in a directory
+    with an index. About 40 lines and a test; one lookup a marked KV.
+    020-14 named this: "A full fix needs an insert-if-absent in the
+    Core."
+  * **Reading the previous value at the commit** to delete its entries
+    would need the Core to let a transformation add KVs (the deletes of
+    the old entries) to a transaction: larger, and the Pub layer's
+    index logic inside the commit (010-01, P12). Not advised.
+  * A third, smallest and coarsest: refuse key replace at an object key
+    whose directory has an index (`indexEntries`, about 10 lines); it
+    takes away time-named objects in indexed directories.
+
 Questions for Frans, each with the choice made so that the work does
 not wait:
 
@@ -582,8 +639,10 @@ not wait:
 * **QS3. Check every transaction for one operation a key** (G1), also
   one without a key transformation, as a guard against a `Trans` changed
   by its caller? Chosen: not now; an entry of its own if wanted.
+* **QS5. B1, the review's old fault** (G4): which fix, if any?
+  Chosen: none here; an entry of its own.
 * **QS4. The six changed expected values** (section 8, commit
-  `d5617d45`): Frans's approval. And G3: give a committed Trans its keys
+  `7177bc0e`): Frans's approval. And G3: give a committed Trans its keys
   as written back too? Chosen: no, not in this item.
 
 
@@ -619,41 +678,35 @@ take that skips such lines (told the coordinator), and before-commit.sh
 first. 11:32 to 11:56: the gates, all as expected (section 10).
 
 
+12:16 to 12:19. The review's four fixes (section 7.1): rebased onto
+`main` at `6bda69b0` (`190fe6f1`, `7177bc0e`, the same content), commit
+`3412ee7a`; the affected testers pass (246); a mutation (no `t.tt` put
+back) fails `testRefusedTransUnchanged`. 13:04 to 13:06, after a wait for
+a slot ("thr" timing): before-commit.sh on `3412ee7a`, OK.
+
 ## 15. State
 
-2026-11-11, 11:58, by an agent of coord-1111 ("strict"). The work of the
-brief is done; the branch waits for Frans's answers and the
-coordinator's landing.
+2026-11-11, 13:07, by an agent of coord-1111 ("strict"). Done.
 
-* **Done.** The rule (section 3), where it is checked (section 4), the
-  exception (section 5), the table (section 6); the change and the new
-  tests, commit `023bfa22`; the six changed expected values, commit
-  `d5617d45` (sections 7 and 8); the stream's bytes (section 9); the
-  gates, all OK (section 10); C (section 11) and the Lean tree model
-  (section 12); findings and questions (section 13).
-* **Not done.** Nothing of the brief. Not asked for: G1 to G3's changes,
-  level3.sh and level4.sh, the C clone, 024's readme (its line for this
-  file is the coordinator's), release notes (`releases/next.md` does
-  not name 024-10's rule either).
-* **For Frans.** QS1 to QS4 (section 13); QS4 first: the six changed
-  expected values of commit `d5617d45`.
+* **Done.** The rule, the check, the exception, the table (sections 3
+  to 6); the change and the new tests, commit `190fe6f1`; the six
+  changed expected values, commit `7177bc0e` (sections 7 and 8, the
+  list unchanged since); the stream's bytes (section 9); the gates on
+  `7177bc0e`'s content, all OK (section 10); the review's four fixes,
+  commit `3412ee7a` (section 7.1); C, the Lean model, findings and
+  questions (sections 11 to 13), with the review's B1 as G4 and QS5.
+* **Gates on `3412ee7a`:** before-commit.sh OK, 13:04 to 13:06 (unit
+  1,654, f 89, demos). The full gates on it are the integration agent's.
+* **For Frans.** QS1 to QS5 (section 13); QS4 first: the six changed
+  expected values of commit `7177bc0e`.
 * **Where.** Clone `/Users/f/fl/bench/2026-11-11/strict/clone`, branch
-  `024-16-one-operation-a-key`, on `main` at `68c3917e` (rebased at
-  10:08; before, on `524732d8`, the head of `024-13-int`, whose `java/`,
-  `lean/` and `docs/` `main` holds exactly since `a780b957`), head
-  `d5617d45`, two commits (`023bfa22`, `d5617d45`; before the rebase
-  `2229c812`, `33038dc7`, the same content); the working tree clean;
-  nothing pushed. Worktrees: `strict/base` (`524732d8`, built, for the
-  byte comparisons) and `strict/c1` (`2229c812`, for the unit suite of
-  the first commit). The gate script `strict/gates.sh`, its log
-  `strict/gates.log`, the outputs `strict/unit-c1.txt`, `sd-base.txt`,
-  `sd-cur.txt`, `bc.txt`, `l1.txt`, `l2.txt`; the Pub probe and its
-  streams: `strict/probes/`. No slot is held by this work.
-* **To continue.** To land: the two commits on `main` (the
-  coordinator), after Frans's word on QS4; if `main` has moved in
-  `Db.java`, `DbClock.java`, `Trans.java`, `Kv.java`,
-  `RwEnvironmentImp.java`, the Pub API's `Connection.java` or
-  `WBuilder.java`, or the testers, rebase and run before-commit.sh
-  again. If Frans chooses otherwise on QS1 (another exception class):
-  `Db.transformKeys`'s throw, the Javadoc of section 7 and the tests'
-  catches.
+  `024-16-one-operation-a-key` on `main` at `6bda69b0`, head `3412ee7a`,
+  three commits (`190fe6f1`, `7177bc0e`, `3412ee7a`); nothing pushed.
+  Earlier heads with the same content as the first two: `023bfa22`,
+  `d5617d45` (on `68c3917e`) and `2229c812`, `33038dc7` (on
+  `524732d8`). Worktrees `strict/base` (`524732d8`) and `strict/c1`
+  (`2229c812`); gate logs `strict/gates.log`, `unit-c1.txt`,
+  `sd-base.txt`, `sd-cur.txt`, `bc.txt`, `l1.txt`, `l2.txt`, `bc2.txt`;
+  the Pub probe `strict/probes/`.
+* **To continue.** The coordinator lands the three commits after
+  the integration agent's gates and Frans's word on QS4.
