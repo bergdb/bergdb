@@ -767,6 +767,24 @@ counts say:
 
 Cite as "024-18, QD1".
 
+**Decided, QD1: option 2 with theta 7** (Frans, 2026-11-11). Asked by
+the coordinator for the cons of 3c (its restart's rerun not tested; it
+leaves the provable bound at B a node; inner and hot nodes unchanged;
+one run each at 1M only; 024-20 may change the picture), 14:21: "I am
+leaning towards 2 with threshold 7. It seems simpler. And I think we
+need to accept that we need to take this step by step. We cannot change
+everything at once. As you said, compactation of stored nodes can change
+things. And this is not thouroughly measured." To the proposed order
+(the merges first, then option 2 as a change of its own, model first;
+3c shelved), 14:27: "Yes." And to measuring at 10M with MEM and reads
+timed before it lands: "No. Let's get this in now. We will measure
+carefully and study alternatives later." So option 2 (section 4) is
+built after the merges (024-21, 024-22), through the model, with theta
+7 for B = 30 as a named constant, and lands on its gates; the careful
+measurements (10M, MEM, reads) and the alternatives (3c, 024-20's
+stored form) come later. QD3 to QD5 lapse with 3c; QD2 stands as
+recommended (option 2 gives the bound with R forever).
+
 * **QD1. Which option?** Recommended: **3c** (reclaim's writes compact
   the cold nodes they reach) with merges, option 1 for the rest (6.4).
 * **QD2. A bound with R forever?** With R forever nothing writes a cold

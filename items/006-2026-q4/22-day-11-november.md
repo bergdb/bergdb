@@ -281,8 +281,13 @@ from them.
   for Frans's approval at 14:30.
 * 14:12 024-16 landed: 47c93e34, the merge of 3af7513e, gated with
   before-commit, level1 to level4 full, unlinkfuzz and conformance drain
-  (013-integration, section 6). Release notes filled (releases/next.md).
+  (024-13, section 6). Release notes filled (releases/next.md).
   024-12 lands second, after a re-merge and new gates.
+* 14:14 Frans back (attended). 14:27 dead klongs decided (024-18,
+  QD1): option 2 with theta 7, after the merges, as a change of its own
+  through the model; it lands on its gates, without the 10M measurement
+  first ("Let's get this in now. We will measure carefully and study
+  alternatives later."). 3c shelved.
 
 
 ## 6. Outcome
