@@ -68,7 +68,8 @@ structure St where
   `dirtyNodeBound` on the tree before it. -/
   marked : Nat := 0
   bound : Nat := 0
-  /-- TP26: the transaction's own limits (its operations, its longest key) allow
+  /-- TP26: the transaction's own limits (its operations, its longest key, its
+  keys' segments) allow
   `dirtyNodeBound`. -/
   limitsOk : Bool := true
 
@@ -157,7 +158,8 @@ def stepSt (p : Params) (st : St) (ops : List Tree.Op) : Except String St :=
           marked := markedKeyNodes p (viewOf P') i c,
           bound := dirtyNodeBound p (viewOf st.P) (i - 1) ops,
           limitsOk := dirtyNodeBound p (viewOf st.P) (i - 1) ops ≤
-            ({ maxOps := ops.length, maxSegs := (ops.map (·.key.length)).foldl max 0 } : Limits).dirtyNodes p }
+            ({ maxOps := ops.length, maxSegs := (ops.map (·.key.length)).foldl max 0,
+               maxTxSegs := (ops.map (·.key.length)).foldl (· + ·) 0 } : Limits).dirtyNodes p }
 
 /-- The scans to compare at a time: forward and backward from every key and
 from none, inclusive and not; forward to every end key, inclusive and not. -/

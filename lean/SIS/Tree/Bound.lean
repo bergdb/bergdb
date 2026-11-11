@@ -248,40 +248,113 @@ def DirtyBoundOK (p : Params) : Prop :=
 
 /-! ## The user's limits (bergdb 024-17) -/
 
-/-- The limits of a transaction that a user is given (bergdb 024-17, in
-discussion on 2026-11-11): the most operations, and the most segments of a key
-(a key of b bytes has b / 7 + 1). -/
+/-- The limits of a transaction that a user is given (bergdb 024-17, section 6;
+decided by Frans on 2026-11-11, 17:41): the most operations (L1), the most
+segments of a key (L2: a key of b bytes has b / 7 + 1, so 111 bytes are 16),
+and the most segments of all the keys of a transaction together (from L3, the
+key bytes of a transaction: k bytes of keys in n keys are at most k / 7 + n
+segments). The last binds on BergDB's own longer keys, the Pub layer's index
+entries, which pass L2 (024-17, 6.2 (a)); by default it is the most that the
+other two allow. -/
 structure Limits where
   maxOps : Nat
   maxSegs : Nat
+  maxTxSegs : Nat := maxOps * maxSegs
   deriving Repr, DecidableEq, Inhabited
+
+/-- The limits of release 2026.5 as the Core sees them (bergdb 024-17, section
+8; Java's `Db` constants, 024-24): L1 = 500 operations, and L3 = 56 KiB =
+57,344 bytes of keys a transaction, so 57,344 / 7 + 500 = 8,692 segments. A
+user's key has at most L2 = 111 bytes, 16 segments (`Limits.user`), but
+BergDB's own keys, the Pub layer's index entries, pass it and are bounded by L3
+alone, so the longest key the Core takes is L3's (024-17, 6.2 (a)). -/
+def Limits.release : Limits := { maxOps := 500, maxSegs := 57344 / 7 + 1, maxTxSegs := 57344 / 7 + 500 }
+
+/-- The limits of release 2026.5 for a transaction of a user's keys alone:
+L1 and L2 (111 bytes, 16 segments); L3 does not bind (500 x 111 = 55,500 bytes,
+under 57,344). -/
+def Limits.user : Limits := { maxOps := 500, maxSegs := 111 / 7 + 1 }
 
 /-- A transaction is within the limits. -/
 def Tx.within (lim : Limits) (tx : Tx) : Bool :=
   decide (tx.ops.length ≤ lim.maxOps) &&
-    tx.ops.all (fun op => decide (op.key.length ≤ lim.maxSegs))
+    tx.ops.all (fun op => decide (op.key.length ≤ lim.maxSegs)) &&
+    decide ((tx.ops.map (·.key.length)).foldl (· + ·) 0 ≤ lim.maxTxSegs)
+
+/-- The segments of a transaction within the limits, at most: the sum's limit
+or every operation at the longest key, the smaller. -/
+def Limits.segments (lim : Limits) : Nat := min lim.maxTxSegs (lim.maxOps * lim.maxSegs)
+
+/-- The count with q (bergdb 024-17, 5.2 and 5.2a; QL8 (a)): the key nodes that
+one level of an operation's path can dirty or create in record format 7. The
+node itself, four for the merges, and its overflows: a node on a delete's path
+gets four klongs, its overflows and one of the child below, and after a
+replacement has at least q of room (`roomAfterReplacement`), so it overflows at
+most x = 2 + (4 + x) / q times, x = 2 (q + 2) / (q - 1), rounded up. At q = 2
+(node size 8, and the model's test sizes) one more, for the root collapses,
+H / (q - 1) klongs a segment, which weigh there (024-17, 5.2a: Java's count of
+one delete on a full path, 13,685 nodes at 16 segments and H = 61, is over 13 a
+level). So 14 a level at node size 8, 9 at 14, 8 at 30 and 62. -/
+def Params.nodesALevel (p : Params) : Nat :=
+  let q := p.roomAfterReplacement
+  5 + (3 * q + 2) / (q - 1) + (if q ≤ 2 then 1 else 0)
 
 /-- The index nodes that a transaction within the limits can make dirty or
-create, from the limits and the tree's height bound alone: for each operation
-its path (at most H + 1 key nodes in each of its key's segment trees), eight
-times over, for the nodes walked, their splits and the splits above them, a
-delete's klongs and collapses, and the new segment trees. The constant is
-generous; the runs measure far less. With the merges of record format 7
-(bergdb 024-21, 024-22): twenty times, as a delete gives each node of its path
-four klongs (not two) and a node on it has at most q of room, and four nodes
-for each level of the path and two levels more, 4 x (segments x (H + 2) + 3). -/
+create, from the limits and the tree's height bound alone, as a sum over its
+keys' segments: each segment tree on a key's path has at most H + 1 key nodes,
+and the path two levels more for the merges and new roots. 2026.4's writer:
+eight nodes a level of a segment (the nodes walked, their splits and the splits
+above them, a delete's klongs and collapses, the new segment trees) and two an
+operation. Record format 7 (bergdb 024-21, 024-22), restated with q for the
+limits of 2026.5 (024-17, QL8 (a); 024-24): `nodesALevel` a level, and 14 an
+operation (the merges' four nodes of the two levels more, the new roots). Until
+then it was 20 a level with every operation at the longest key, which does not
+cover 500 operations of 111-byte keys within a record (024-17, 5.2a). -/
 def Limits.dirtyNodes (p : Params) (lim : Limits) : Nat :=
-  if p.format7 then lim.maxOps * (20 * lim.maxSegs * (p.H + 2) + 14)
-  else lim.maxOps * (8 * lim.maxSegs * (p.H + 2) + 2)
+  if p.format7 then p.nodesALevel * (p.H + 2) * lim.segments + 14 * lim.maxOps
+  else 8 * (p.H + 2) * lim.segments + 2 * lim.maxOps
 
 /-- TP26 (bergdb 024-17). The user's limits bound a transaction's index nodes:
 `dirtyNodeBound` of a transaction within the limits is at most
 `Limits.dirtyNodes`. With TP23 the key nodes that a transaction marks, and so
 the bytes of its record's index part (each node at most M klongs), are bounded
 by the limits, the node size and the height bound, whatever the database
-holds. -/
+holds. Stated, not proved (bergdb 024-22, section 6); `treetest` and the
+Java traces (C-T8, `treeconf.sh`) check it on every transaction, with the
+transaction's own sizes as its limits. -/
 def DirtyBoundFromLimits (p : Params) : Prop :=
   ∀ ts, Within p ts → ∀ (lim : Limits) (tx : Tx), tx.within lim = true →
     dirtyNodeBound p (viewOf (treeRun p ts)) ts.length tx.ops ≤ lim.dirtyNodes p
+
+/-- The parameters of record format 7 with option 2 for node size M and
+height bound H, as Java's writer has them (bergdb 024-21, 024-23). -/
+def Params.java (M H : Nat) : Params := ({ M := M, G := 0, H := H } : Params).withMerges.withTheta
+
+/-- The bytes of a key node of node size M at its largest, as
+`Db.checkDirtyNodes` counts it: 32 + 16 (M + 1) + 16. -/
+def nodeBytes (M : Nat) : Nat := 32 + 16 * (M + 1) + 16
+
+/-- L8 at the limits of 2026.5 (bergdb 024-17, 5.2a and 5.3): with the count
+with q, the index nodes of one transaction, each at its largest, and the two
+top nodes fit 15/16 of the record limit 2^31 - 9 (`Db.dirtyLimit`) at every node
+size of the builder, with H the height bound 1 + log_m(2^60) of any database
+(024-17, 5.2: 61, 38, 21 and 16 at node sizes 8, 14, 30 and 62; 22, m = 7's,
+kept at 30 as the safe figure, 5.2a). Arithmetic
+only: with TP23 and TP26 proved, and H from V1 (TP30), it makes 005-31's
+refusal unreachable within the limits, so a `Bug` (QL5). -/
+abbrev ReleaseFits (M H : Nat) : Prop :=
+  (Limits.release.dirtyNodes (Params.java M H)) * nodeBytes M + 2 * (40 + 16 * 64 + 16) ≤
+    (2 ^ 31 - 9) - (2 ^ 31 - 9) / 16
+
+theorem releaseFits8 : ReleaseFits 8 61 := by decide
+theorem releaseFits14 : ReleaseFits 14 38 := by decide
+theorem releaseFits30 : ReleaseFits 30 22 := by decide
+theorem releaseFits62 : ReleaseFits 62 16 := by decide
+
+/-- The count of 20 a level, every operation at the longest key, did not fit at
+node size 30 and H = 22 (024-17, 5.2a: 481 operations). -/
+theorem twentyALevelDoesNotFit30 :
+    ¬ (500 * (20 * 16 * (22 + 2) + 14)) * 544 + 2 * (40 + 16 * 64 + 16) ≤ (2 ^ 31 - 9) - (2 ^ 31 - 9) / 16 := by
+  decide
 
 end SIS.Tree
