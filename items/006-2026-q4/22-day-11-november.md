@@ -380,6 +380,17 @@ from them.
   option 2 lands, on Opus high, when usage is under 85 %; with usage
   left after night.sh, the proofs of the count with q (TP23, TP26 for
   format 7) on Opus high.
+* 18:01 Frans: offload the proofs to his Codex (GPT Plus, gpt-6.1-sol at
+  max; "Sol Max does not use too much"), to save the Claude week (80 %
+  spent in two days). 18:10 the first Codex run started: TP32
+  (`MergeOpBound`, 024-22) in a clone of main
+  (/Users/f/fl/bench/2026-11-11/cx/clone, branch 024-22-tp32), brief
+  /Users/f/fl/bench/2026-11-11/cx/brief-tp32.md: no changed statement,
+  no sorry or axiom, Lean only, commits in Frans's name without AI
+  attribution, stop at 06:00. The coordinator checks it mechanically
+  (lake build, the statements' diff empty, print axioms) and lands it.
+  Next for Codex, one at a time: TP23 and TP26 with the count with q
+  (after 024-24), TP39 and TP40 (024-23), TP31, TP7 and TP30.
 
 
 ## 6. Outcome
