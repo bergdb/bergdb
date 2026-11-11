@@ -814,6 +814,9 @@ For mgj (024-21), kept current; newest last.
 
 Each with a default that the work follows until he says otherwise.
 
+**Decided: QM1 to QM5 as their defaults** (Frans, 2026-11-11, 14:34,
+asked whether the five defaults are all right: "2, yes.").
+
 * **QM1. P5's way for 2026.5** (024-11's QU6): new nodes and the
   take-back, as now in the model and in Java, which agree on every
   trace. The other way (in place and net) removes the one case that

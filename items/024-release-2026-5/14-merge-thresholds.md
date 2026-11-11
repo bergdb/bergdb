@@ -583,6 +583,10 @@ dense, churn, and the timed put path.
 
 **Questions for Frans** (cite as "024-14, QT1"):
 
+**Decided, QT1: m8, 8/17/17** (Frans, 2026-11-11, 14:34, asked "Shall
+the merges use 8/17/17? Named constants for B = 30; how they scale to
+other node sizes (QT2) stays open": "1, yes."). QT2 open.
+
 * **QT1. The set**: m8 (8/17/17), P5's 7/15/15, or the dense 10/20/20?
   Recommended: m8 (above). 024-21 builds P5's set as named constants
   (Frans, 11:55); m8 is a change of three constants and of h in rule O.

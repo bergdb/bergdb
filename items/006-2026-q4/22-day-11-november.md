@@ -288,6 +288,12 @@ from them.
   through the model; it lands on its gates, without the 10M measurement
   first ("Let's get this in now. We will measure carefully and study
   alternatives later."). 3c shelved.
+* 14:28 Frans approved the tree model (024-12) for landing: "Yes, I
+  approve." It lands after int's re-merge onto main (with 024-16) and
+  its gates; int gets the next free slot.
+* 14:34 Frans: the merge's thresholds 8/17/17 (024-14, QT1; QT2 open),
+  and 024-22's QM1 to QM5 as their defaults. 024-22's agent finished
+  (8e78cf65; 239 traces against Java equal).
 
 
 ## 6. Outcome
