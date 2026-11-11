@@ -105,7 +105,8 @@ checks no refusal (the 48 digests of 2026.4 are in the release's
 answers: after a cut, exactly the transactions before it; after other
 damage, a refusal, a failed read, or a state the database had (its
 Javadoc, lines 36 to 87, with its known blind spots: 015-73, 014-01,
-019-30, 019-31, 019-33). C's cross tests compare streams byte for byte,
+019-30, 019-31; 019-33 is gone with CRC32C, 024-25). C's cross tests
+compare streams byte for byte,
 both scanners' output and both dumpers' refusals (`cross.sh`,
 `writecheck.sh`, `corruptset.sh`); its vectors (`test/unit/vectors/`) are
 the only pinned bytes, written by Java at format 5.
@@ -541,46 +542,58 @@ got-dirty entries. SD: every byte. C: `serial.c`, `strans.c`,
 
 **Status: filled.**
 
-**Must define.** The 8 bytes every node begins with, the node types, the
+**Must define.** The 12 bytes every node begins with, the node types, the
 checksum and when it is checked, and the size rules a reader applies.
+
+Format 7 since 024-25 (CRC32C, Frans's QL9 in 024-17, section 8); until
+then the header was 8 bytes, with Fletcher-16 in bytes 6 and 7, and the
+node formats 2, 2, 4, 4.
 
 | Off | Size | Type  | Field    | Value                                                 |
 |---|---|---|---|---|
-| 0 | 4 | `i32` | size     | the node's bytes, these 8 included                    |
+| 0 | 4 | `i32` | size     | the node's bytes, these 12 included                   |
 | 4 | 1 | `u8`  | type     | 10 top, 20 key, 30 value, 40 delete (`dag/Node`, :35) |
-| 5 | 1 | `u8`  | format   | 2, 2, 4, 4                                            |
-| 6 | 2 | `u16` | checksum | Fletcher-16 of the node, bytes 6 and 7 counted as 0   |
+| 5 | 1 | `u8`  | format   | 3, 3, 5, 5                                            |
+| 6 | 2 | zero  | (unused) | written zero, not read; covered by the checksum       |
+| 8 | 4 | `u32` | checksum | CRC-32C of the node's bytes but these 4               |
 
-**The checksum** (`NodeChecksum.sum`, :14 and :60;
-`sumWithZeroReplace`, :34): sum1 and sum2 start at 0; for each byte b,
-unsigned, in order, sum1 = (sum1 + b) mod 255 and sum2 = (sum1 + sum2)
-mod 255; the result is sum1 | sum2 << 8, so byte 6 is sum1 and byte 7
-sum2. Top and key nodes compute it over their longs, least significant
-byte first, with bytes 6 and 7 zero; value nodes over their bytes with
-the padding zeroed (012-02, section 6.1).
+**The checksum** (`NodeChecksum`): CRC-32C, the Castagnoli polynomial
+(`java.util.zip.CRC32C`; RFC 3720's, whose check value for the ASCII
+bytes "123456789" is 0xe3069283), of bytes 0 to 7 and then 12 to the
+node's end, stored little-endian in bytes 8 to 11. The writer sets it
+on the node's bytes: a value node's in `StoredValueNode.toBytes`, top
+and key nodes' in `StoredTrans.Serializer.serializeNodes` after their
+longs are copied to the record's bytes (`toLongs` leaves it zero). It
+detects every change of up to 32 adjacent bits and every change of one
+byte, and passes about one random change in 2^32.
 
-**Checked on reading** (`NodeStream.bytesToNode`, :271): the checksum
-first (`checkChecksum`, :306: `StreamChecksumException`, an SFE), then the
-type (another than 10, 20, 30 or 40: an SFE, :298), then the type's
-parser, which checks the format byte (`VersioningStreamException`).
+**Checked on reading** (`NodeStream.bytesToNode`): a size below 12 is an
+SFE; then the checksum (`checkChecksum`: `StreamChecksumException`, an
+SFE), then the type (another than 10, 20, 30 or 40: an SFE), then the
+type's parser, which checks the format byte (`VersioningStreamException`).
+A record's parser refuses a node size below 12 (`StoredTrans.Parser`).
 `NodeStream.readNode` (:197), which reads one node by a pointer's
 position, refuses a position below 128 (019-32), a size of 6 or less, and
 a node that does not end inside the stream (`checkReadSize`, :245).
 
-**Tests.** UT: `NodeChecksum` (4, `testZeroReplace`). CST: node fields
-changed with the checksum made right. C: `checksum.c`, `checksum.txt`.
+**Tests.** UT: `NodeChecksum` (`testCheckValue`, `testField`: every byte
+but the field, flipped by 0x01, 0x80 and 0xff, changes the sum). CST:
+node fields changed with the checksum made right; every byte flipped
+(019-33's 0xff no longer a known blind spot). C: `checksum.c`,
+`checksum.txt` (Fletcher-16: the C clone is at 2026.4's format 6).
 
 **Unused and reserved.** Type values other than 10, 20, 30 and 40 (all
 refused). Format values other than the type's one (refused).
 
 **Gaps.**
 
-* G13. Fletcher-16 modulo 255 does not see a byte changed from 0x00 to
-  0xff or back (019-33, a known blind spot of CST), and passes about one
-  random change in 65,025. A pointer that names a position inside a node
-  or a record reads whatever bytes are there as a node; only the
+* G13. Closed by CRC32C (024-25): Fletcher-16 modulo 255 did not see a
+  byte changed from 0x00 to 0xff or back (019-33) and passed about one
+  random change in 65,025. Still: a pointer that names a position inside
+  a node or a record reads whatever bytes are there as a node; only the
   checksum, the type and the parser stand between them and a wrong node.
-  A stronger checksum is 017-08's direction (Q12).
+  The record header, the got-dirty list and the meta block have no
+  checksum (Q12).
 * `readNode` does not check that the node read has the type the pointer
   expects; its callers do: `NodeCollection.checkPointeeType` (:861;
   021-11), an SFE, when a pointer is followed (:513, :591, :633) and when
@@ -596,20 +609,22 @@ root key node of its time and to older top nodes by skip pointers; the
 newest, the super root, is where a lookup starts (docs/sis-model.md,
 section 6.3). Its layout, its ordinal and the skip pointers' rule.
 
-Layout, 40 + 16·h bytes (`StoredTopNode`'s class comment, :24 to :30;
-`toLongs`, :199; `parse`, :66):
+Layout, 48 + 16·h bytes (`StoredTopNode`'s class comment; `toLongs`;
+`parse`); 40 + 16·h, every field from h on 8 bytes earlier and byte 9
+the reserved one, until 024-25:
 
 | Off    | Size | Type  | Field        | Value and range                            |
 |---|---|---|---|---|
-| 0      | 8 |       | node header  | size 40 + 16·h, type 10, format 2          |
-| 8      | 1 | `u8`  | h            | skip pointers: the ordinal's bit length    |
-| 9      | 1 | zero  | (reserved)   | zero                                       |
-| 10     | 6 | `u48` | ordinal      | 0 for the first top node, then + 1         |
-| 16     | 8 | `i64` | id           | the node's id (section 5), not the ordinal |
-| 24     | 8 | `i64` | root time    | the time of the transaction that made it   |
-| 32     | 8 | `i64` | root pointer | the reference to the root key node         |
-| 40+16i | 8 | `i64` | skip ptr i   | an older top node, or −1 when unset        |
-| 48+16i | 8 | `i64` | skip time i  | that node's root time; −1 when unset       |
+| 0      | 12 |      | node header  | size 48 + 16·h, type 10, format 3          |
+| 12     | 4 | zero  | (reserved)   | zero                                       |
+| 16     | 1 | `u8`  | h            | skip pointers: the ordinal's bit length    |
+| 17     | 1 | zero  | (reserved)   | zero                                       |
+| 18     | 6 | `u48` | ordinal      | 0 for the first top node, then + 1         |
+| 24     | 8 | `i64` | id           | the node's id (section 5), not the ordinal |
+| 32     | 8 | `i64` | root time    | the time of the transaction that made it   |
+| 40     | 8 | `i64` | root pointer | the reference to the root key node         |
+| 48+16i | 8 | `i64` | skip ptr i   | an older top node, or −1 when unset        |
+| 56+16i | 8 | `i64` | skip time i  | that node's root time; −1 when unset       |
 
 Skip pointer i is set exactly when bit i of the ordinal is (012-02,
 section 6.2, with the rule of `TopDs.newSuperRoot`).
@@ -658,21 +673,24 @@ holds (section 8.2).
 
 ### 11.1. The layout
 
-32 + 16·n bytes (`StoredKeyNode.toLongs`, :51; `parse`, :87):
+32 + 16·n bytes (`StoredKeyNode.toLongs`; `parse`). The size did not
+change with 024-25's 12-byte header: the checksum took 4 of the 5
+reserved bytes, and the fields moved (until then prevPos at 8, leaf at
+16, n at 17 and 18, reserved 19 to 23):
 
 | Off      | Size | Type  | Field       | Value and range                              |
 |---|---|---|---|---|
-| 0        | 8 |       | node header | size 32 + 16·n, type 20, format 2            |
-| 8        | 8 | `i64` | prevPos     | the version replaced: a position, a vpos, −1 |
-| 16       | 1 | `u8`  | leaf        | 1 a segment leaf, 0 an inner node            |
-| 17       | 2 | `i16` | n           | the number of klongs                         |
-| 19       | 5 | zero  | (reserved)  | zero                                         |
+| 0        | 12 |      | node header | size 32 + 16·n, type 20, format 3            |
+| 12       | 1 | `u8`  | leaf        | 1 a segment leaf, 0 an inner node            |
+| 13       | 2 | `i16` | n           | the number of klongs                         |
+| 15       | 1 | zero  | (reserved)  | zero                                         |
+| 16       | 8 | `i64` | prevPos     | the version replaced: a position, a vpos, −1 |
 | 24       | 8 | `i64` | id          | the node's id (section 5)                    |
 | 32+8i    | 8 | `i64` | klong i     | i from 0 to n − 1 (11.2)                     |
 | 32+8n+8i | 8 | `i64` | ref i       | klong i's reference (section 14.1), or −1    |
 
-Java writes n as `sz << 8` in the third long, so bytes 17 to 19 hold n;
-the parser reads bytes 17 and 18 as a signed `i16` (:132).
+Java writes n as `sz << 40` in the second long, so bytes 13 to 15 hold
+n; the parser reads bytes 13 and 14 as a signed `i16`.
 
 **Checked on reading** (`StoredKeyNode.parse`): size 32 or more and
 within the buffer (:94); format 2; prevPos a position or −1
@@ -786,25 +804,26 @@ indexes n and above.
 key (type 40), written once, in its transaction's record. Its layout,
 the stored offset, the key, the padding.
 
-Layout (`StoredValueNode.toBytes`, :218; `parse`, :79; `getByteSize`):
+Layout (`StoredValueNode.toBytes`; `parse`; `getByteSize`); every field
+from the id on 4 bytes earlier until 024-25:
 
 | Off  | Size | Type  | Field       | Value and range                         |
 |---|---|---|---|---|
-| 0    | 8   |       | node header | size, type 30 or 40, format 4           |
-| 8    | 8   | `i64` | id          | the node's id (section 5)               |
-| 16   | 4   | `i32` | offset      | the node's offset in its record's bytes |
-| 20   | 4   | `i32` | L           | the value's length (type 30 only)       |
-| 24   | L   | bytes | value       | the value (type 30 only)                |
-| 24+L | 4   | `i32` | key size    | 8·k, k ≥ 1 (at 20 for a delete)         |
+| 0    | 12  |       | node header | size, type 30 or 40, format 5           |
+| 12   | 8   | `i64` | id          | the node's id (section 5)               |
+| 20   | 4   | `i32` | offset      | the node's offset in its record's bytes |
+| 24   | 4   | `i32` | L           | the value's length (type 30 only)       |
+| 28   | L   | bytes | value       | the value (type 30 only)                |
+| 28+L | 4   | `i32` | key size    | 8·k, k ≥ 1 (at 24 for a delete)         |
 | +4   | 8·k | `i64` | segments    | the key's k compare values (section 13) |
 |      | 0–3 | zero  | padding     | to a multiple of 4; none for a delete   |
 
-The size is 8 + 8 + 4 + 4 + L + 4 + 8·k for a value, 8 + 8 + 4 + 4 + 8·k
-for a delete, rounded up to a multiple of 4. The stored offset is in
+The size is 12 + 8 + 4 + 4 + L + 4 + 8·k for a value, 12 + 8 + 4 + 4 +
+8·k for a delete, rounded up to a multiple of 4. The stored offset is in
 record bytes; the node's distance from its record's start in the stream
 is longer by the meta blocks between them (005-34; 012-02, section 6.4).
 
-**Checked on reading** (`StoredValueNode.parse`): size 24 or more and
+**Checked on reading** (`StoredValueNode.parse`): size 28 or more and
 within the buffer (:90); format 4; L from 0 to what is left less 4
 (:125); the key size a positive multiple of 8 within the node (:139); the
 key a key as `Keys.toSegments` makes it (`isKey`, :178: bits 0 to 2, 62
@@ -1166,7 +1185,7 @@ where the result depends on Java rather than on the bytes.
 | G10 | top node skip times; −2 as a set pointer     | 10      | `StoredTopNode.parse`     |
 | G11 | value node: extra bytes, its stored offset   | 12      | `StoredValueNode.parse`   |
 | G12 | no header checksum; node order; startupPos   | 8, 14   | `StoredTrans.Parser`      |
-| G13 | Fletcher-16 blind to 0x00 and 0xff           | 9       | `NodeChecksum`            |
+| G13 | closed by CRC32C (024-25)                    | 9       | `NodeChecksum`            |
 | G14 | rule 4's checks only with -ea, as asserts    | 14      | `checkLinkById`, :829     |
 | G15 | file names with `+`, other digits, zeros     | 4       | `stringToIndex`, :1163    |
 | G16 | reclaim's row: any order, unknown names      | 15      | `StringMap.parse`, :33    |
@@ -1450,3 +1469,8 @@ run or changed. From the code of 2026.4, 012-02 (format 5 at `404d2ee`)
 and the items it cites; every line number cited was checked against the
 code. Nothing decided. 024's readme does not yet list this file in its
 Files section.
+
+2026-11-11, 18:28. Sections 9 to 12 updated for 024-25 (CRC32C, the
+12-byte node header, node formats 3, 3, 5) on the branch `024-25-crc32c`;
+G13 closed; the rest of the subitem as it was (section 8.2 still says
+format 6: 024-21's format 7 is not yet written here).

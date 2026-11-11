@@ -55,6 +55,25 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
   node and each lookup through it carries fewer stale entries; a node
   that is never written again keeps up to theta. A start's rerun applies
   the same rule (no new field).
+  **One more change of format 7: the node checksum is CRC32C** (bergdb
+  024-25; 024-17, QL9, Frans's decision of 2026-11-11). Every node's
+  checksum is a CRC-32C (`java.util.zip.CRC32C`) of 4 bytes in place of
+  2026.4's Fletcher-16 of 2 bytes, in a node header of 12 bytes (8 in
+  2026.4); the node formats are 3, 3 and 5 (top, key, value and delete
+  nodes; 2, 2 and 4 in 2026.4). Key nodes keep their size (the fields
+  moved into reserved bytes); a top node is 8 bytes longer, a value or
+  delete node 4. The checksum of 8 MiB, a value at the limit L4, takes
+  about 1 ms instead of 47 (0.12 ms a MB against 5.6; a key node of 544
+  bytes 0.05 us against 3.0): a commit of an 8 MiB value about 2 to 10
+  ms instead of 49 to 56, a get of it about 4 ms instead of 53, a
+  restart with six such values about 0.2 s instead of 0.5 (rough
+  figures, 024-25, section 6). It sees every change of up to 32 adjacent
+  bits, so a byte changed between 0x00 and 0xff, which Fletcher-16 did
+  not see (019-33), and passes about one random change in 2^32 (65,025
+  before). A database written by `main` with format 7 before this change
+  (no release wrote one) is refused at the start, for a checksum error.
+  StreamDigest's digests change in every configuration (024-25,
+  section 7).
 
 * **A reclaim step makes dirty only the index nodes on the paths of its
   own puts** (bergdb 024-07, option A; on `main` in `a780b957`). The last
