@@ -38,7 +38,11 @@ Checks, per transaction i (R(0) included):
        first available time is the record's; the physical cut (PHYSCUT) is at
        or below the decided one. Since WP R6, part 2 covers the versions that
        a physical read may follow (ReadsPhys; before, the diagnostic C-CUT+),
-       but for the versions of D that Rule A put back
+       but for the versions of D that Rule A put back. Since bergdb 024-07
+       also CUT-live, T-COVER's second premise (`liveBelowFailures`): every
+       index node reachable at the first available time has a data node
+       below it then (BergDB's delete unlinks the nodes it empties; no touch
+       of a key range writes an empty node again)
   C-P  with run E's SLOT lines (bergdb item 001, WP J4): INV-SLOT on Java's
        physical states (`slotFailures`; INV-SLOT of the design before handles,
        SIS/EvictExample.lean's `invSlotB`, which `TC_records` proved, until
@@ -61,7 +65,9 @@ Checks, per transaction i (R(0) included):
        (HFastOK), the unpinned objects written (T-PIN); no handle loading, and
        a dead handle never live again
 With reclaim, also: C-A checks TouchOK (`StepOK.touchIndex`, `touchReach`,
-`touchUp`) for the TOUCH lines; C-S compares fa(i) (FA lines; the model clamps
+`touchUp`) for the TOUCH lines, and the bound of the touch (`touchPath`,
+`TouchOnPaths`: every touched node is on a path of the step's own change;
+bergdb 024-07); C-S compares fa(i) (FA lines; the model clamps
 Java's value, `firstAvail`), and from a CUT on runs the model's step on the
 stream cut there (`cutStream`: version stubs before the cut).
 and in C-S, with SKIPT lines, the top nodes' skip slots: the layout (slot j
@@ -207,7 +213,8 @@ def main (args : List String) : IO UInt32 := do
       -- C-A, with the assumptions of stage 2: TREE and A6' after the transaction,
       -- A-COPY for its change (bergdb 005-04)
       let rlPrevSet := Std.HashSet.ofList rlPrev
-      let sf := stepFailures sp P i c rlPrevSet rlNowSet rlNow ++ touchFailures sp P i c rlPrev rlPrevSet
+      let sf := stepFailures sp P i c rlPrevSet rlNowSet rlNow ++
+        touchFailures sp P i c rlPrev rlPrevSet rlNowSet
       let (a6', belowP) := adoptFailures sp P' i rlNowSet rlNow
       let tr := treeFailures sp P' i rlNow
       let cp := copyFailures sp P i c rlPrev rlNowSet
@@ -256,7 +263,11 @@ def main (args : List String) : IO UInt32 := do
           readsBelowPhys sp tm cc (reachList sp P' tm) (fun x => (m.get? x).map (·.1)) verAt
             (fun y => (rm.getD y #[]).toList) (fun y => sec.get? y) r.dirty fuel)
         let cf := cutFailures cc f r.dirty below.eraseDups (jrecs.getD i r0).top (fun x => m.get? x)
-        ccut := ccut.add i (faFail ++ cf)
+        -- T-COVER's second premise at the first available time (bergdb 024-07).
+        let live := liveBelowFailures sp P' f (reachList sp P' f)
+        let lf := if live.isEmpty then [] else
+          [("CUT-live", s!"reachable at {f} without a data node below it: {showIds live}")]
+        ccut := ccut.add i (faFail ++ cf ++ lf)
         if cutNow < cc then
           for q in [cutNow:cc] do
             Sc := Sc.modify q Record.cut

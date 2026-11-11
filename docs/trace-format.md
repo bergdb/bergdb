@@ -84,7 +84,8 @@ in a record of their own, R(1), internal and marked `kind=table`; its calls
 after a restart write nothing. Format 2 then also has:
 
     TOUCH x1 x2 ...              in TX i, after the ADD lines: the index nodes
-                                 T(i)'s touch visited (Db.touchRange), sorted
+                                 T(i)'s touch visited (Db.touchPaths: the paths
+                                 of its keys; a key range until 024-07), sorted
     FA t                         in TX i, when it changes: fa(i), the first
                                  available time, as a model time
     CUT c t                      in TX i: Java decided a cut at R(i): records

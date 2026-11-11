@@ -89,16 +89,15 @@ public class Trans {
     boolean isInternal;
     
     /**
-     * For internal transactions of reclaim (2026-10-13): before the puts, the
-     * writer visits every node reachable at the transaction time for the keys
-     * after touchFrom (exclusive; null: from the first key) up to touchTo (inclusive; null:
-     * to the last key), as a put visits its path, so that each of them gets dirty and is
-     * written again.
+     * For internal transactions of reclaim, its steps (2026-10-13): before the puts, the
+     * writer visits the index nodes on the path of each of the transaction's keys at the
+     * transaction time, as the put of the key will, so that each of them gets dirty and is
+     * counted (dirtiedNodes, dirtiedBytes) before the step's row is put, and stays dirty also
+     * if the puts then replace it (Db.touchPaths, Db.endOfTrans). Until bergdb 024-07 the
+     * touch visited a key range, touchFrom to touchTo.
      * Not stored: startup rebuilds D from the stored got-dirty ids.
      */
     boolean touch;
-    long[] touchFrom;
-    long[] touchTo;
     
     /**
      * For a transaction with touch (2026-10-13, bergdb 011-04, "Level 3 cost"):
