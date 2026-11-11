@@ -6,11 +6,17 @@ Trusted part: the definitions that T3 is about. The statements are in
 SIS/BoundTheorems.lean. Added 2026-10-23. Since 2026-10-28 (bergdb 007-08,
 step 4 of 007-03) also BergDB's take, `TransSeq.take` as step 3 and D4:B left
 it (bergdb 007-07): `Stream.span`, `Pace`, `takeLoop`, `takePolicy`, and
-BergDB's pace with its share and rounding, `share`, `dither`, `javaPace` and
-`javaTake`. No theorem uses `share`, `dither` and `javaPace` (nor `javaTake`,
-made from them): T3 holds for every pace. They are kept, in the trusted part, to
-check the model against Java's arithmetic (the `#guard`s of
-SIS/BoundExample.lean, and TakeCheck; bergdb 007-08, sections 4 and 7).
+BergDB's pace with its share and rounding, `shareFp`, `ditherFp`, `javaPace`
+and `javaTake`. No theorem uses `shareFp`, `ditherFp` and `javaPace` (nor
+`javaTake`, made from them): T3 holds for every pace. They are kept, in the
+trusted part, to check the model against Java's arithmetic (the `#guard`s of
+SIS/BoundExample.lean, and TakeCheck, java/stress/TakeCheck.java).
+
+Since bergdb 024-09 (2026-11-11; 015-03) the share and the rounding are Java's
+integer rule of bergdb 005-79 (2026-11-03), in units of 2^-16 of a node. Until
+then they were the double rule that Java had from 2026-10-28 to 005-79 (`share`
+and `dither` on `Float`), which 005-79 left behind: in 13 of 3 * 10^6 cases
+the integer rule takes one transaction more (the review of 005-79's Part B).
 -/
 import SIS.Algorithm
 import SIS.Startup
@@ -119,50 +125,59 @@ def takePolicy (size : Record V T → Nat) (sd : Time → Nat) (pace : Pace V T)
     takeLoop size (max (2 * sd i) (S.span size)) (pace S D i tr) S D
       (sectionIdx S (lastSp S)) 0 (lastSp S)
 
-/-- The share of a record (`TransSeq.take`, bergdb 005-49): D × o / O × L / sd,
-where D (`dirty`) is the number of got-dirty nodes of the section's
-transactions, o (`own`) the record's own bytes, O (`ownSec`) those of the
-section's records, L (`len`) the length of the section, from the startup pos
-to the end of the stream, and sd the setting. In Java's double arithmetic and
-order: Lean's `Float` is the same IEEE 754 binary64, with the same rounding
-(SIS/BoundExample.lean compares bits with Java's). Used by no theorem; kept to
-check the model against Java's arithmetic (the `#guard`s, TakeCheck). -/
-def share (dirty own ownSec len sd : Nat) : Float :=
-  dirty.toFloat * own.toFloat / ownSec.toFloat * len.toFloat / sd.toFloat
+/-- The share of a record (`TransSeq.take`, bergdb 005-49), in units of 2^-16
+of a node (`TransSeq.shareFp`, bergdb 005-79): floor(D o L 2^16 / (O sd)), at
+most D 2^16, where D (`dirty`) is the number of got-dirty nodes of the
+section's transactions, o (`own`) the record's own bytes, O (`ownSec`) those
+of the section's records, L (`len`) the length of the section, from the
+startup pos to the end of the stream, and sd the setting. One rounding, down.
+Outside Java's bounds (D not below 2^32, o not below 2^31, L not below 2^47,
+or O or sd not positive) it is Java's `Long.MAX_VALUE`: the share is all of D.
+Java computes the same number in 64-bit words (a 128-bit product and two
+divisions; its unit test `testShareFpExact` compares it with this expression).
+Used by no theorem; kept to check the model against Java's arithmetic (the
+`#guard`s, TakeCheck). -/
+def shareFp (dirty own ownSec len sd : Nat) : Nat :=
+  if 2 ^ 32 ≤ dirty ∨ 2 ^ 31 ≤ own ∨ 2 ^ 47 ≤ len ∨ ownSec = 0 ∨ sd = 0 then 2 ^ 63 - 1
+  else min (dirty * own * (len * 2 ^ 16) / (ownSec * sd)) (dirty * 2 ^ 16)
 
-/-- `TransSeq.dither`: a number in [0, 1) hashed from a stream position, the
-finalizer of SplitMix64, as Java computes it on a `long` (multiplications mod
-2^64, logical shifts). Used by no theorem; kept to check the model against
+/-- `TransSeq.ditherFp` (bergdb 005-79): a number from 0 to 65,535, in units
+of 2^-16 a number in [0, 1), hashed from a stream position: the top 16 bits of
+the finalizer of SplitMix64, as Java computes it on a `long` (multiplications
+mod 2^64, logical shifts). Used by no theorem; kept to check the model against
 Java's arithmetic (the `#guard`s, TakeCheck). -/
-def dither (pos : Nat) : Float :=
+def ditherFp (pos : Nat) : Nat :=
   let z : UInt64 := UInt64.ofNat pos * 0x9E3779B97F4A7C15
   let z := (z ^^^ (z >>> 30)) * 0xBF58476D1CE4E5B9
   let z := (z ^^^ (z >>> 27)) * 0x94D049BB133111EB
-  ((z ^^^ (z >>> 31)) >>> 11).toFloat * Float.scaleB 1 (-53)
+  ((z ^^^ (z >>> 31)) >>> 48).toNat
 
-/-- BergDB's pace (`TransSeq.take`, bergdb 005-49): the record of T(i) has the
-share `share` of D, and takes the transactions that fit in it; the next one,
-of which only a part fits, if that part is larger than the dither of the
-stream's length. Java stops where `taken + count > share && share - taken <= u
-* count` (and the deadline does not ask for the transaction); this pace takes
-the transaction where Java does not stop. D counts the got-dirty nodes of
-T(s+1), ..., T(i-1), Java's `dirtyCount`, without those of T(i), which Java
-adds to its `TransSeq` after the take. `own t` is the own bytes of the record
-of transaction t (`TransSeq.ownBytes`: its value nodes and 48), a function of
-the transaction here; in Java it is that of the value nodes the transaction
-writes. Used by no theorem, which hold for every pace; kept to check the model
-against Java's take (the `#guard`s, TakeCheck). -/
+/-- BergDB's pace (`TransSeq.take`, bergdb 005-49; in integers since 005-79):
+the record of T(i) has the share `shareFp` of D, and takes the transactions
+that fit in it; the next one, of which only a part fits, if that part is
+larger than the dither of the stream's length. Java stops where
+`((taken + count) << 16) > share && share - (taken << 16) <= u * count` (and
+the deadline does not ask for the transaction); this pace takes the
+transaction where Java does not stop. Java's difference is a `long`'s and may
+be negative, and then the first test holds too; here it is a `Nat`'s, 0 then,
+with the same result. D counts the got-dirty nodes of T(s+1), ..., T(i-1),
+Java's `dirtyCount`, without those of T(i), which Java adds to its `TransSeq`
+after the take. `own t` is the own bytes of the record of transaction t
+(`TransSeq.ownBytes`: its value nodes and 48), a function of the transaction
+here; in Java it is that of the value nodes the transaction writes. Used by
+no theorem, which hold for every pace; kept to check the model against Java's
+take (the `#guard`s, TakeCheck). -/
 def javaPace (size : Record V T → Nat) (own : T → Nat) (sd : Time → Nat) : Pace V T :=
   fun S D i tr taken count =>
     let s := lastSp S
     let dirty := (D.filter (fun e => decide (s < e.2 ∧ e.2 < i))).length
     let ownSec := S.cost (fun R => (R.trans.map own).getD 0) (s + 1) S.length
-    let sh := share dirty (own tr) ownSec (S.cost size s S.length) (sd i)
-    let u := dither (S.cost size 0 S.length)
-    !(decide (sh < (taken + count).toFloat) && decide (sh - taken.toFloat ≤ u * count.toFloat))
+    let sh := shareFp dirty (own tr) ownSec (S.cost size s S.length) (sd i)
+    let u := ditherFp (S.cost size 0 S.length)
+    !(decide (sh < (taken + count) * 2 ^ 16) && decide (sh - taken * 2 ^ 16 ≤ u * count))
 
-/-- BergDB's take, `TransSeq.take` as bergdb 007-07 left it: `takePolicy` with
-BergDB's pace. -/
+/-- BergDB's take, `TransSeq.take` as bergdb 007-07 left it, with the integer
+share of 005-79: `takePolicy` with BergDB's pace. -/
 def javaTake (size : Record V T → Nat) (own : T → Nat) (sd : Time → Nat) :
     Stream V T → Dirty → Time → T → Nat :=
   takePolicy size sd (javaPace size own sd)

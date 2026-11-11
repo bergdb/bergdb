@@ -32,14 +32,15 @@ with restarts (`T3_take`, `T3_take_restarts`), and after a decrease of the
 setting it shrinks with every transaction until it is below twice the new
 one, and then stays below it (`T3_take_decrease`); SIS/Proof/BoundTake.lean.
 `javaTake` gives the startup pos of Java's `TransSeq.take` on 300 generated
-cases (SIS/BoundExample.lean). Its share and dither are the double rule of
-2026-10-28; since bergdb 005-79 (2026-11-03) Java's take computes them in
-integers, in units of 2^-16 (`TransSeq.shareFp`, `ditherFp`). On the 300
-cases the integer take gives the same startup pos, `BoundExample.lean`'s;
-over 3 * 10^6 of TakeCheck's cases it differs from the double rule in 13,
-each taking one transaction more (the review of 005-79's Part B). The bit
-guards of `dither` and `share` have no Java counterpart since then, as
-`TransSeq.dither` is gone.
+cases (SIS/BoundExample.lean). Since bergdb 024-09 (2026-11-11; 015-03) its
+share and dither are Java's integer rule of bergdb 005-79 (2026-11-03), in
+units of 2^-16 (`shareFp`, `ditherFp`, as `TransSeq.shareFp` and `ditherFp`),
+with `#guard`s against Java's numbers and the 300 cases run again on release
+2026.4's code (`TakeCheck`, now java/stress/TakeCheck.java). From 2026-10-28
+until then they were the double rule that Java had before 005-79; the two
+rules give the same startup pos on the 300 cases, and over 3 * 10^6 of
+TakeCheck's cases they differ in 13, the integer rule taking one transaction
+more (the review of 005-79's Part B).
 
 Since bergdb item 009 (2026-10-25) the model also has handles: SIS/Handle.lean
 models 009's design of the physical layer (one handle per node, pointers that
@@ -371,11 +372,11 @@ its section in sis-model.md.
   first, each taken if it begins max(2 sd, span) or more before the end of
   the stream or if the pace takes it, with the setting sd any function of
   the transaction (`takePolicy`); BergDB's pace, its share and its dither in
-  the double arithmetic of Java's take from 2026-10-28 until 005-79
-  (`share`, `dither`, `javaPace`), and the take with it (`javaTake`); no
-  theorem uses these four, kept to check the model against that arithmetic
-  (the `#guard`s, TakeCheck); Java's take is in integers since 005-79
-  (015-03).
+  the integer arithmetic of Java's take since 005-79, in units of 2^-16
+  (`shareFp`, `ditherFp`, `javaPace`), and the take with it (`javaTake`);
+  no theorem uses these four, kept to check the model against that
+  arithmetic (the `#guard`s, TakeCheck); until bergdb 024-09 (015-03) they
+  were the double rule of 2026-10-28.
 * SIS/BoundTheorems.lean (sis-model.md, section 10; 007-01, 3; 007-08, 2).
   T3 (`T3_section`): in every run whose policy keeps up with d, the startup
   section without its last record costs less than d; also with restarts
@@ -853,10 +854,10 @@ Not trusted, tests only:
   its last record stays below d with `sdPolicy`, with and without restarts;
   a sketch of BergDB's take before 007-07 (`oldTake`) with a tight node
   limit does not keep up. Since bergdb 007-08, BergDB's take since 007-07:
-  `dither` and `share` give the bits of Java's `TransSeq.dither` and share
-  (until 005-79);
+  `ditherFp` and `shareFp` give the numbers of Java's `TransSeq.ditherFp`
+  and `shareFp` (since bergdb 024-09; the double rule's bits until then);
   `javaTake` gives the result of Java's `TransSeq.take` on 300 cases that
-  `TakeCheck` (../items/007-bounds/08-step4-take-in-lean/) and `takeCase`
+  `TakeCheck` (../java/stress/TakeCheck.java) and `takeCase`
   make with the same generator; runs of example 2 with `javaTake` at a
   constant setting, with restarts (the same stream as without, T2) and
   with decreases of the setting meet `T3_take_step`, `T3_take` and
