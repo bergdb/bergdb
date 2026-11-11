@@ -34,11 +34,34 @@ high, xhigh for a hard task. At most 8 agents at a time (Frans,
 
 | ID | Task | Agent | Result |
 |---|---|---|---|
-| 024-04 | The aim of 2026.5, "solid algorithms"; 024's readme | aim (high) | |
-| 024-05 | The aim against the known cases: the list, bounds, tests | cases (high) | |
-| 024-06 | The model gap: the Lean model against 2026.4's code | gap (high) | |
+| 024-04 | The aim of 2026.5, "solid algorithms"; 024's readme | aim (high) | done 06:58 |
+| 024-05 | The aim against the known cases: the list, bounds, tests | cases (high) | done 07:10 |
+| 024-06 | The model gap: the Lean model against 2026.4's code | gap (high) | done 07:08 |
+| 026 | Item for release 2026.6, "a stable stream" (preliminary) | coordinator | done |
+| 024-07 | The last touch of a reclaim iteration (CL7): design, fix | touch (xhigh) | |
+| 024-08 | MEM 327 at 10M keys against 129.6 at 1M: the cause | mem (high) | |
+| 024-09 | The tie of model and code repaired (024-06, A1 to A4) | tie (xhigh) | |
+| 022-07 | The C clone to release 2026.4 as released (CC1) | cc (high) | |
+| 024-10 | The builder's rule "the last operation wins" (CA1) | low (high) | |
 
-All three are read-only studies that write items only.
+024-04 to 024-06 are read-only studies. 024-07 to 024-10 and 022-07 work
+in clones under `/Users/f/fl/bench/2026-11-11/<name>/clone` on their own
+branches, by the common brief `/Users/f/fl/bench/2026-11-11/common-brief.md`
+(heavy runs one at a time by the lock `heavy.lock` there). Nothing lands
+on `main` without Frans's word.
+
+Frans, 07:08, on the coordinator's proposal (CL7, the heap growth, the
+Lean model when 024-06 has reported, the C clone): "Do so, start 1 to 4
+in subagents. Also implement the "last operation wins" using a separate
+agent. I am back 09:00." A record format change in 2026.5: "Yes." Heavy
+measurements at 10M keys while he is away: "Yes." 07:10: "I changed
+Effort to High (was Medium)" (the session's effort; his word).
+
+Task 3 was planned as "the Lean model for 2026.4's delete path". 024-06
+found that the model has no keys at all, so that no proof covers the
+delete path and none broke; the task became 024-06's first step, the
+repair of the tie (A1 to A4), which needs no decision. The key tree in
+Lean (024-06, B) waits for Frans's answers to 024-06's questions.
 
 
 ## 4. If the session stops
@@ -55,6 +78,14 @@ from them.
 * 06:44 to 06:54 The aim of 2026.5 discussed and changed to "solid
   algorithms" (section 1).
 * 06:56 Started 024-04, 024-05, 024-06.
+* 06:58 Item 026 created. 07:00 024-04, 026 and this plan committed
+  (bddd9aad); 07:02 the old theme marked in 024-02 and 024-03 (1826cb37).
+* 07:08 024-06 done. 07:10 024-05 done: MEM 327 probably a matter of key
+  shape (7-byte keys make two segments), not of size; 024-03's "25
+  versions a get" is wrong (1.9 loads a get); the last touch may reach
+  the record limit at 100M keys (not read yet). Both sent on to mem and
+  touch.
+* 07:10 Unattended until 09:00. Started touch, mem, tie, cc, low.
 
 
 ## 6. Outcome

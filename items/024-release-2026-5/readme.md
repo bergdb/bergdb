@@ -98,6 +98,20 @@ Files
   for algorithms before a stable stream format, the known cases against
   the aim (CL7, CL2, MEM at 10M KVs), and what stays of the stream
   format's work (024-02 kept current; Q14 and Q16 maybe, not decided).
+* 05-known-cases.md. 024-05, the aim against what is known: every known
+  case against aims 2 and 3 with its figures checked at the source (OP1
+  the last touch, OP2/ST2 the underfill, ST3 the stream kept, OP3 a
+  put's bytes, ST4 dead klongs and the small ones); proposed bounds (BD1
+  to BD13) with the tests that check them or none; what is not measured
+  (100M keys; GM1 to GM8); a proposed order; questions QF1 to QF8.
+  Corrects 024-03: a get at 10M loads 1.9 nodes, not 25.
+* 06-model-gap.md. 024-06, the gap between the Lean model and release
+  2026.4's code: the model is the theory of the stream and of memory,
+  with the transaction's change an opaque function, so no proof broke
+  and none covers the key tree; four weak points in the tie (PhysStep,
+  T-SCHEME's argument, the draining configurations, javaTake); the work
+  in an order (A the tie, B the tree in Lean run against Java, C and D
+  its proofs, E the costs); questions 1 to 8.
 
 
 Log
