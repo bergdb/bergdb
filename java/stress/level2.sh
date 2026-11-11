@@ -5,7 +5,7 @@
 # run it after larger changes.
 #
 # Usage: java/stress/level2.sh [quick]
-#   full (default): about 17 minutes on 10 cores. quick: about 2 minutes.
+#   full (default): about 12 minutes on 10 cores. quick: about 2 minutes.
 #
 # Builds with ../java/build.sh, then runs, stopping at the first failure:
 #   1. The unit tests (bergdb.dev.Unit), which include small level 2 tests.

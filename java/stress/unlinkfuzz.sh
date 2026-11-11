@@ -10,10 +10,11 @@
 #   2, ... (a regression run, the same every time), and the day's block, seeds SEED, SEED +
 #   1, ... (default: the day's number times 1000, as fuzz.sh, so each day new seeds). Both
 #   blocks have the number of rounds that the list gives the configuration, chosen so that a
-#   block takes about 35 seconds on F53 and the script about 5 minutes. Prints one line a
-#   configuration, then UNLINKFUZZ OK; or, after a line for each failure, UNLINKFUZZ FAILED
-#   with the first failure's configuration, seed and message, and exits with status 1. A
-#   block stops at its first failure, which this repeats alone, with the transactions:
+#   block takes about 35 seconds on F53 and the script about 5 minutes (294 s, 3,226 rounds,
+#   on 2026-11-11). Prints one line a configuration, then UNLINKFUZZ OK; or, after a line
+#   for each failure, UNLINKFUZZ FAILED with the first failure's configuration, seed and
+#   message, and exits with status 1. A block stops at its first failure, which this
+#   repeats alone, with the transactions:
 #     java -ea PROPERTIES -cp java/build/bergdb.jar:java/build/stress bergdb.dag.UnlinkFuzz SEED 1
 #
 # The configurations (UnlinkFuzz's class comment has the properties): the gate runs of
@@ -38,6 +39,7 @@ SEED=${1:-$(( $(date +%s) / 86400 * 1000 ))}
 PAR=${PAR:-4}
 OUT=build/unlinkfuzz
 CP=build/bergdb.jar:build/stress
+REPEAT_CP=java/build/bergdb.jar:java/build/stress       # from the repository's root
 
 [ -f build/bergdb.jar ] || { echo "UNLINKFUZZ FAILED: no build/bergdb.jar (run java/build.sh)"; exit 2; }
 mkdir -p $OUT
@@ -102,10 +104,10 @@ while read name rounds props; do
         s=$(sed -n 's/^FAIL seed=\([0-9]*\) .*/\1/p' $f | head -1)
         if [ -n "$s" ]; then
             what="seed $s: $(grep '^FAIL seed=' $f | head -1 | sed 's/^FAIL seed=[0-9]* //' | cut -c1-200)"
-            again="java -ea $props -cp java/$CP bergdb.dag.UnlinkFuzz $s 1"
+            again="java -ea $props -cp $REPEAT_CP bergdb.dag.UnlinkFuzz $s 1"
         else
             what="no result from seed $first ($(tail -1 $f | cut -c1-200))"
-            again="java -ea $props -cp java/$CP bergdb.dag.UnlinkFuzz $first $rounds"
+            again="java -ea $props -cp $REPEAT_CP bergdb.dag.UnlinkFuzz $first $rounds"
         fi
         line="$line FAILED"
         echo "unlinkfuzz.sh: configuration $name failed, $what (log: java/$f); repeat: $again"
