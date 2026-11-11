@@ -21,18 +21,31 @@ open SIS SIS.Check
 /-! ## TP28: the thresholds -/
 
 /-- TP28. What the thresholds must meet for V1 (024-22, section 2.1): merges on,
-m >= 2; a merge into two nodes (more than c live klongs) gives each at least m;
-a space split (a last version of more than M / 2 klongs) gives each half at
-least m; a merged node fits, c + 1 <= M, and so does each node of two, at most
-ceil((m - 1 + M - 1) / 2) live klongs and a time klong. -/
+m >= 2; a merge into two nodes (more than c live klongs) gives each at least m
+(so one node of 2m - 1 or more is possible too); a space split (a last version
+of more than h klongs) gives each half at least m; a merged node and a time
+split's last version leave room for the klongs a change adds, c and h at most M
+- 2 (Java's check in 024-14's build); each node of two holds at most ceil((m -
+1 + M - 1) / 2) live klongs and a time klong, and fits. -/
 def MergeParamsOK (p : Params) : Prop :=
-  2 ≤ p.mergeBelow ∧ p.mergeBelow ≤ (p.mergeMax + 1) / 2 ∧ p.mergeBelow ≤ p.M / 2 / 2 ∧
-    p.mergeMax + 1 ≤ p.M ∧ (p.mergeBelow + p.M - 1) / 2 + 1 ≤ p.M
+  2 ≤ p.mergeBelow ∧ p.mergeBelow ≤ (p.mergeMax + 1) / 2 ∧
+    p.mergeBelow ≤ p.splitAbove / 2 ∧ p.mergeMax + 2 ≤ p.M ∧ p.splitAbove + 2 ≤ p.M ∧
+    (p.mergeBelow + p.M - 1) / 2 + 1 ≤ p.M
 
-/-- 024-11's thresholds, m = max(2, M / 4) and c = M / 2, meet TP28 for every
-node size from 8. -/
+/-- Record format 7's thresholds (`withMerges`: m = max(2, 8 M / 30), h = c =
+17 M / 30) meet TP28 for every node size from 8. -/
 theorem mergeParamsOK_withMerges (p : Params) (h : 8 ≤ p.M) : MergeParamsOK p.withMerges := by
   simp only [MergeParamsOK, Params.withMerges, show ¬ p.M < 8 from by omega, ↓reduceIte]
+  rcases Nat.le_total 2 (8 * p.M / 30) with hm | hm
+  · rw [Nat.max_eq_right hm]; omega
+  · rw [Nat.max_eq_left hm]; omega
+
+/-- And 024-11's earlier set, m = max(2, M / 4), h = c = M / 2 (P5's, the
+model's from 11:44 to 14:34), meets it from 8 too. -/
+theorem mergeParamsOK_p5 (p : Params) (h : 8 ≤ p.M) :
+    MergeParamsOK { p with mergeBelow := max 2 (p.M / 4), mergeMax := p.M / 2,
+                           splitAbove := p.M / 2 } := by
+  simp only [MergeParamsOK]
   rcases Nat.le_total 2 (p.M / 4) with hm | hm
   · rw [Nat.max_eq_right hm]; omega
   · rw [Nat.max_eq_left hm]; omega
@@ -41,12 +54,14 @@ theorem mergeParamsOK_withMerges (p : Params) (h : 8 ≤ p.M) : MergeParamsOK p.
 space split of three live klongs leaves a half of one. (So `withMerges`, as
 Java's `Dag.minFill`, sets m = 1 there: no merge.) -/
 theorem not_mergeParamsOK_six (g h : Nat) :
-    ¬ MergeParamsOK ({ M := 6, G := g, H := h, mergeBelow := 2, mergeMax := 3 } : Params) := by
+    ¬ MergeParamsOK ({ M := 6, G := g, H := h, mergeBelow := 2, mergeMax := 3,
+                       splitAbove := 3 } : Params) := by
   simp [MergeParamsOK]
 
 /-- Nor at node size 4: m = 2 and c = 2, so two nodes of a merge hold 2 and 1. -/
 theorem not_mergeParamsOK_four (g h : Nat) :
-    ¬ MergeParamsOK ({ M := 4, G := g, H := h, mergeBelow := 2, mergeMax := 2 } : Params) := by
+    ¬ MergeParamsOK ({ M := 4, G := g, H := h, mergeBelow := 2, mergeMax := 2,
+                       splitAbove := 2 } : Params) := by
   simp [MergeParamsOK]
 
 /-! ## TP29 to TP31: the fill, the invariants, the count (V1, TH2, TH3) -/
@@ -233,7 +248,7 @@ def MergeFillOK : Prop :=
 theorem mergeFillOK : MergeFillOK := by
   intro p inner cR lvL lvR hp hlo hhi
   dsimp only
-  obtain ⟨h1, h2, h3, h4, h5⟩ := hp
+  obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hp
   have hs0 := mergeSizeOK inner p.mergeMax cR lvL lvR
   dsimp only at hs0
   obtain ⟨hone, htwo⟩ := hs0
@@ -250,13 +265,13 @@ theorem mergeFillOK : MergeFillOK := by
     omega
 
 /-- TP37, V1 at a space split (the other half of 024-11's "why V1 holds"): with
-thresholds that meet TP28, the two halves of a last version of more than M / 2
+thresholds that meet TP28, the two halves of a last version of more than h
 klongs (rule O's space split, `halves`) each hold at least m key klongs besides
 their time klong. (A last version's key klongs are its live klongs, one a
 compare value.) -/
 def SplitFillOK : Prop :=
   ∀ (p : Params) (leaf : Bool) (t : Time) (last : KNode) (ins : List (Nat × NodeId)),
-    MergeParamsOK p → p.M / 2 < last.size →
+    MergeParamsOK p → p.splitAbove < last.size →
     p.mergeBelow + 1 ≤ (halves leaf t last ins).1.size ∧
       p.mergeBelow + 1 ≤ (halves leaf t last ins).2.1.size
 
@@ -267,7 +282,7 @@ theorem ite_len {α : Type} {b : Prop} {d : Decidable b} {x y : α} (f : α → 
 
 theorem splitFillOK : SplitFillOK := by
   intro p leaf t last ins hp h
-  obtain ⟨_, _, h3, _, _⟩ := hp
+  obtain ⟨_, _, h3, _, _, _⟩ := hp
   simp only [KNode.size] at h
   have hb : (last.ks.drop 1).length = last.ks.length - 1 := by simp
   constructor

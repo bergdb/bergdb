@@ -38,7 +38,8 @@ structure TTx where
 
 /-- The tree lines of a trace. -/
 structure TTrace where
-  /-- The TREE line: M, G, H and the primordial key node's id; with merges, m and c (024-22). -/
+  /-- The TREE line: M, G, H and the primordial key node's id; with merges, m and
+  c, and rule O's h (024-22, section 2.5). -/
   tree : Option (Params × NodeId) := none
   txs : Array TTx := #[]
   bad : Array String := #[]
@@ -126,6 +127,13 @@ def parseTreeLine (t : TTrace) (n : Nat) (line : String) : TTrace :=
     | some m, some g, some h, some k, some mb, some mm =>
       { t with tree := some ({ M := m, G := g, H := h, mergeBelow := mb, mergeMax := mm }, k) }
     | _, _, _, _, _, _ => bad "bad TREE"
+  -- And rule O's h (record format 7, 024-14's m8: h is no longer M / 2).
+  | ["TREE", m, g, h, k, mb, mm, sa] =>
+    match m.toNat?, g.toNat?, h.toNat?, k.toNat?, mb.toNat?, mm.toNat?, sa.toNat? with
+    | some m, some g, some h, some k, some mb, some mm, some sa =>
+      { t with tree := some ({ M := m, G := g, H := h, mergeBelow := mb, mergeMax := mm,
+                               splitAbove := sa }, k) }
+    | _, _, _, _, _, _, _ => bad "bad TREE"
   | ["TX", i] => match i.toNat? with
     | some i => { t with txs := t.txs.push { idx := i } }
     | none => t

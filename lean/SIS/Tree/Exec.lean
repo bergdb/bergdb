@@ -281,7 +281,8 @@ def replaceOrAdd (last : KNode) (ins : List (Nat × NodeId)) : M KNode := do
 last version `last` and the klongs `ins` to insert; `up` gives klongs to the
 parent (`appendKlongs` one level up).
 
-More than M/2 klongs in the last version: a space split (`spaceSplit`; in place
+More than h klongs in the last version (`Params.splitAbove`, `Dag.splitAbove`;
+M / 2 until record format 7): a space split (`spaceSplit`; in place
 for a node that the transaction made, `spaceSplitInPlace`). Else a time split
 (`timeSplit`, `timeSplitInPlace`). A node that existed before the transaction
 then loses its klongs of the transaction (`toPreviousState`). -/
@@ -296,7 +297,7 @@ def handleFullWith (up : NodeId → List (Nat × NodeId) → M Unit) (depth : Na
   let parentLeaf ← match parent with
     | some q => do pure (← getNode q).leaf
     | none => pure false
-  if last.size > c.p.M / 2 then
+  if last.size > c.p.splitAbove then
     modify (fun w => { w with spaceSplits := w.spaceSplits + 1 })
     if newInTrans then
       -- Dag.spaceSplitInPlace: x keeps the first half.

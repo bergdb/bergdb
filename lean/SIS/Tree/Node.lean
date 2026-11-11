@@ -23,19 +23,22 @@ within G and H, or its levels are not those of A4.
 
 The merges at the delete (bergdb 024-11, section 5; 024-22): `mergeBelow`, m,
 the least live klongs of a key node that is not a root of a segment tree (a
-node with fewer after a delete is merged with a sibling; `Dag.mergeBelow`), and
+node with fewer after a delete is merged with a sibling; `Dag.minFill`), and
 `mergeMax`, c, the most live klongs that a merge puts in one node (more make
-two; `Dag.mergeMax`). Parameters, not literals, so that a decision on the
-thresholds changes a value, not the model (bergdb 024-14). Below 2, m merges
-nothing: release 2026.4's tree, the default. `Params.withMerges` gives
-024-11's values, m = max(2, M / 4) and c = M / 2; `MergeParamsOK` states what
-they must meet. -/
+two; `Dag.mergeCap`). Rule O's h, `splitAbove`: a full node's last version of
+more than h klongs, its time klong counted, is space split, else time split
+(`Dag.splitAbove`; release 2026.4's M / 2, the default). Parameters, not
+literals, so that a decision on the thresholds changes a value, not the model
+(bergdb 024-14). Below 2, m merges nothing: release 2026.4's tree, the default.
+`Params.withMerges` gives record format 7's values; `MergeParamsOK` states
+what they must meet. -/
 structure Params where
   M : Nat
   G : Nat
   H : Nat
   mergeBelow : Nat := 0
   mergeMax : Nat := 0
+  splitAbove : Nat := M / 2
   deriving Repr, DecidableEq, Inhabited
 
 /-- Merges at the delete are on: m is 2 or more. -/
@@ -46,12 +49,16 @@ def Params.merges (p : Params) : Bool := 2 ≤ p.mergeBelow
 merges at every node size, as a margin below 8 (`Bound.lean`). -/
 def Params.format7 (p : Params) : Bool := 1 ≤ p.mergeBelow
 
-/-- The parameters with 024-11's thresholds for node size M ("for now",
-Frans, 2026-11-11, 11:44; 024-22, section 2): m = max(2, M / 4), c = M / 2;
-below node size 8 m = 1, no merge, as Java's `Dag.minFill` (024-21): there a
-space split's halves can hold one klong (`MergeParamsOK`). -/
+/-- The thresholds of record format 7 for node size M (Frans, 2026-11-11, 14:34:
+024-14's m8, QT1): m = 8, h = 17, c = 17 for M = 30; another node size scaled
+as v M / 30, m at least 2, as 024-14's build scales them (QT2 open): 2/4/4 at
+8, 3/7/7 at 14, 16/35/35 at 62. Below node size 8 m = 1, no merge, as Java's
+`Dag.minFill` (024-21): there a space split's halves can hold one klong
+(`MergeParamsOK`). (From 11:44 to 14:34: 024-11's m = max(2, M / 4), h = c = M
+/ 2, the same at the test sizes 8 to 14.) -/
 def Params.withMerges (p : Params) : Params :=
-  { p with mergeBelow := if p.M < 8 then 1 else max 2 (p.M / 4), mergeMax := p.M / 2 }
+  { p with mergeBelow := if p.M < 8 then 1 else max 2 (8 * p.M / 30),
+           splitAbove := 17 * p.M / 30, mergeMax := 17 * p.M / 30 }
 
 /-- The largest level of a key node. -/
 def Params.keyMax (p : Params) : Nat := 1 + p.G * (p.H + 1) + p.H

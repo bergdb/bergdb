@@ -48,26 +48,34 @@ def Walk.reach (ws : Walk) (x : NodeId) (n : KNode) (up : Option NodeId) : Walk 
       | none => 0
     ws ++ [{ x := x, up := up, depth := depth, size := n.size, leaf := n.leaf }]
 
+/-- `Dag.roomAfterReplacement`: the room for more klongs that a node made by
+rule O or by a merge has at least, less a margin of 3, and at least 2: max(2,
+min(M / 2, M - h, M - c) - 3) (record format 7, bergdb 024-21 with 024-14's
+thresholds; 10 at node size 30). Without merges (c = 0, h = M / 2) it is
+2026.4's max(2, M / 2 - 3). -/
+def Params.roomAfterReplacement (p : Params) : Nat :=
+  max 2 (min (p.M / 2) (min (p.M - p.splitAbove) (p.M - p.mergeMax)) - 3)
+
 /-- `Dag.overflows`: how many times a node of `size` klongs, given `klongs`
-more and a time klong, can overflow. `merged` (record format 7, bergdb
+more and a time klong, can overflow, in a node size m with q, the room after a
+replacement (`roomAfterReplacement`). `merged` (record format 7, bergdb
 024-21): a delete's path goes through the node, so a merge can replace it by a
 node of up to c + 1 klongs, with at most q of room. -/
-def overflows (m klongs size : Nat) (merged : Bool := false) : Nat :=
+def overflows (m q klongs size : Nat) (merged : Bool := false) : Nat :=
   if klongs == 0 then 0 else
     let k := klongs + 1
-    let q := max 2 (m / 2 - 3)
     let room := if merged then min (m - 2 - size) q else m - 2 - size
     if k ≤ room then 0 else 1 + (k - room - 1) / q
 
 /-- The splits of a new tree's nodes, level by level: the loop
 `for (ov = overflows(klongs, 0); ov > 0; ov = overflows(ov, 1)) count += ov + 1`. -/
-def freshSplits (m : Nat) : Nat → Nat → Nat
+def freshSplits (m q : Nat) : Nat → Nat → Nat
   | 0, _ => 0
-  | f + 1, ov => if ov == 0 then 0 else ov + 1 + freshSplits m f (overflows m ov 1)
+  | f + 1, ov => if ov == 0 then 0 else ov + 1 + freshSplits m q f (overflows m q ov 1)
 
 /-- `Dag.freshTreeBound`: the nodes of the new segment trees of `keys`, which
 share their segments before `level` and whose segment `level` is in a new tree. -/
-def freshTreeBound (m : Nat) : Nat → List Key → Nat → Nat
+def freshTreeBound (m q : Nat) : Nat → List Key → Nat → Nat
   | 0, _, _ => 0
   | f + 1, keys, level =>
     let r := keys.foldl (fun (acc : Nat × List (Nat × List Key)) key =>
@@ -78,9 +86,9 @@ def freshTreeBound (m : Nat) : Nat → List Key → Nat → Nat
             (acc.1, acc.2.map (fun q => if q.1 == c then (c, q.2 ++ [key]) else q))
           else (acc.1 + 1, acc.2 ++ [(c, [key])])
         | none => acc) (0, [])
-    let ov := overflows m r.1 0
-    1 + freshSplits m (ov + 1) ov +
-      (r.2.map (fun q => freshTreeBound m f q.2 (level + 1))).foldl (· + ·) 0
+    let ov := overflows m q r.1 0
+    1 + freshSplits m q (ov + 1) ov +
+      (r.2.map (fun e => freshTreeBound m q f e.2 (level + 1))).foldl (· + ·) 0
 
 /-- The climb of a delete in the count: `add` klongs for every node from x up
 to the space root (two; four with the merges of record format 7, bergdb
@@ -186,8 +194,9 @@ def dirtyNodeBound (p : Params) (view : View BVal) (t : Time) (ops : List Op) : 
         | none => acc
         | some w =>
           let count := acc.2 + (w.fresh.map (fun q =>
-            freshTreeBound p.M (p.G + 2) q.2 (w.freshLevel + 1))).foldl (· + ·) 0
-          let ov := overflows p.M w.klongs w.size w.deleteBelow
+            freshTreeBound p.M p.roomAfterReplacement (p.G + 2) q.2 (w.freshLevel + 1))).foldl
+              (· + ·) 0
+          let ov := overflows p.M p.roomAfterReplacement w.klongs w.size w.deleteBelow
           if ov == 0 then (acc.1, count) else
             match w.up with
             | some u => (acc.1.modify u (fun v => { v with klongs := v.klongs + ov + 1 }), count + ov + 1)
