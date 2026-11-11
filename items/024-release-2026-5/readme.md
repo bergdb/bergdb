@@ -236,14 +236,20 @@ Files
   index bytes; the JDK's Deflater does no better). No recommendation.
   The probe in 20-compact-nodes/.
 * 21-merges-java.md. 024-21, merges at the delete in Java, record
-  format 7, with assumptions for now (Frans, 2026-11-11, 11:44): node
-  size 30, P5's thresholds, dead klongs as today, P5's way of making
-  nodes, each a named constant. Branch 024-21-merges; it agrees with
-  024-22's model; not to land before Frans has looked. Files in
-  21-merges-java/.
+  format 7 (2026.4's databases refused): P5's merge ported to main, the
+  thresholds 8/17/17 at node size 30 (024-14, QT1), named constants,
+  BU1's check, dirtyNodeBound with CB2. Its review in
+  21-merges-java/review.md (land with fixes, made). On main since
+  2026-11-11, 16:54, with 024-22: the merge of 2679622e (landing
+  delegated by Frans, 14:48; gates in 024-13, section 9). QJ1 to QJ3.
 * 22-merges-lean.md. 024-22, merges at the delete in 024-12's Lean model
-  of the key tree, run beside Java's 024-21 (15,084 transactions, 9,243
-  merges, 0 differences). Branch 024-22-merges-lean, on 024-12's.
+  of the key tree, at 8/17/17; Java equal to it on 260 traces (54,877
+  and 4,080 transactions); TP28, TP34 to TP38 proved, TP30 to TP33 left.
+  On main with 024-21 (16:54).
+* 23-dead-klongs-option2.md. 024-23, dead klongs in live nodes, option 2
+  with theta 7 (Frans, 2026-11-11, 024-18 QD1), model first: the rule in
+  the Lean tree model and in Java, at most theta dead klongs a node
+  after every write. Branch 024-23-option2, on the merges.
 
 
 Log

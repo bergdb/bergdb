@@ -337,6 +337,15 @@ from them.
   024-09, section 9.2 for Frans; A6 required by the gates). The merges'
   combined head takes main in and reruns its Lean and level2 to level4
   and conformance gates with it.
+* 16:03 024-23 (option 2, theta 7) started, model first, on the merges'
+  combined head. 16:03 to 16:06 mgj and mgl finished (items final).
+* 16:54 The merges at the delete landed: 67925924, the merge of
+  2679622e (main + 024-22 + 024-21 + the 024-09 follow-up; gates: lake
+  build, treetest, no sorry or axiom, test-traces, before-commit, level1
+  full, unlinkfuzz, level2 full with A6 and treeconf with merges, level3
+  full, level4 full, conformance small, medium, reclaim, evict, drain).
+  Record format 7; 2026.4's databases are refused. Landing delegated by
+  Frans at 14:48; the six changed tests (024-21, QJ1) accepted under it.
 
 
 ## 6. Outcome
