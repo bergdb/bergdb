@@ -237,14 +237,14 @@ public class StoredKeyNode implements StoredNode {
         long[] longBuffer = new long[StoredKeyNode.getByteSize(node) / 8];
         StoredKeyNode.toLongs(node, longBuffer, 0, 200);
         byte[] byteBuffer = Bytes.longsToBytesLE(longBuffer);
-        Assert.assertEquals(2, byteBuffer[5]);
-        byteBuffer[5] = 3;
+        Assert.assertEquals(3, byteBuffer[5]);
+        byteBuffer[5] = 2;
         
         try {
             StoredKeyNode.parse(byteBuffer, 0, 0);
             throw new AssertionError("parsed");
         } catch (VersioningStreamException e) {
-            Assert.assertTrue(e.getMessage(), e.getMessage().contains("format version 3"));
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("format version 2"));
         }
     }
     

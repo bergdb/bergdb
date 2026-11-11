@@ -318,14 +318,14 @@ public class StoredValueNode implements StoredNode {
         ValueNode node = new ValueNode(new byte[3], Spos.NULL);
         byte[] buffer = new byte[getByteSize(node, key)];
         StoredValueNode.toBytes(node, key, buffer, 0);
-        Assert.assertEquals(4, buffer[5]);
-        buffer[5] = 5;
+        Assert.assertEquals(5, buffer[5]);
+        buffer[5] = 4;
         
         try {
             parse(buffer, 0, 128);
             throw new AssertionError("parsed");
         } catch (VersioningStreamException e) {
-            Assert.assertTrue(e.getMessage(), e.getMessage().contains("format version 5"));
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("format version 4"));
         }
     }
     

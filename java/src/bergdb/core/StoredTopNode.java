@@ -282,13 +282,13 @@ public class StoredTopNode implements StoredNode {
         long[] longs = new long[getByteSize(top) / 8];
         toLongs(top, longs, 0);
         byte[] bytes = Bytes.longsToBytesLE(longs);
-        Assert.assertEquals(2, bytes[5]);
-        bytes[5] = 3;
+        Assert.assertEquals(3, bytes[5]);
+        bytes[5] = 2;
         try {
             parse(bytes, 0, 1000);
             throw new AssertionError("parsed");
         } catch (VersioningStreamException e) {
-            Assert.assertTrue(e.getMessage(), e.getMessage().contains("format version 3"));
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("format version 2"));
         }
     }
     

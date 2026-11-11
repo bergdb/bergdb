@@ -986,7 +986,7 @@ public class StoredTrans {
         for (int offset : new int[] {32, 68}) {
             Bytes.intToBytesLE(offset == 32 ? 36 : size, buffer, offset);
             buffer[offset + 4] = Node.TYPE_DELETE;
-            buffer[offset + 5] = 4;
+            buffer[offset + 5] = 5;
             Bytes.intToBytesLE(offset, buffer, offset + 20);
             Bytes.intToBytesLE(8, buffer, offset + 24);
         }
