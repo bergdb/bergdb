@@ -146,6 +146,7 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
     #print axioms SIS.T15_closed
     #print axioms SIS.T13_markTouch
     #print axioms SIS.T_cover
+    #print axioms SIS.T_latest
     #print axioms SIS.T8_recoverCut
     #print axioms SIS.T12_restartCut
     #print axioms SIS.T3_section
@@ -317,7 +318,9 @@ its section in sis-model.md.
   data node reachable then is at the cut c or later (the rewrites) and
   every index node reachable then has a data node below it, every index
   node reachable then is in D or at c or later; so a step of Java need not
-  touch a key range.
+  touch a key range. T-LATEST (`T_latest`, 024-07): with the same premises,
+  once the startup pos has passed the iteration's end, every node reachable
+  at a time from the end on has its latest version at c or later.
 * SIS/HandleReclaimTheorems.lean (not in sis-model.md; 001-07, 2.9, 2.10;
   005-62). Level 3's reclaim theorems with eviction over handles (bergdb
   005-62), as definitions of type `Prop`: the run with handles that restarts
@@ -646,7 +649,10 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
   to a good version of every node below its node, each in a record at or
   before the one above (`Inv.good_below`); so the latest version of a node
   that is not in D is at or after the version of every data node below it
-  (`Inv.clean_ge_data`); T-COVER (`cover_st`).
+  (`Inv.clean_ge_data`); T-COVER (`cover_st`). From the iteration's end on,
+  with the startup pos past it, the latest versions of the nodes reachable
+  then are at the cut or later (`latest_st`, with `reach_back_st`, `D_later`
+  and the indexes of D after the startup pos).
 * CutLazySim, CutLazyStart. WP R5, for T12 over handles: stage 1's memory
   with another object for the root (`Mem.withRoot`); two root objects that
   agree from f on (`RootRel`: the same live children from f on, and the same
@@ -972,6 +978,9 @@ Not done:
   by running on example 4 (`reclaimtest`, `checkSchemeB`, and since bergdb
   024-07 `checkSchemeC`, for a scheme without a touch of a key range), and
   at every cut of Java's reclaim traces (C-CUT). Of its argument, the cover
-  of the index nodes is proved (T-COVER, 024-07) from two premises that the
-  model takes as given: the rewrites, and a data node below every index
-  node (BergDB's upward unlink; the model has no keys).
+  of the index nodes (T-COVER) and the latest versions from the iteration's
+  end on (T-LATEST) are proved (024-07), from two premises that the model
+  takes as given: the rewrites, and a data node below every index node
+  (BergDB's upward unlink; the model has no keys). Not proved: the versions
+  that pointers lead to besides the latest ones, and the references and the
+  unreachable nodes of D (the wait for pSafe).

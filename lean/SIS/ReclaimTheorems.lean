@@ -67,7 +67,8 @@ of its own puts, not every index node of a key range (`Db.touchPaths`; before,
 empties (`Dag.deleteUpward`), so no index node that a lookup reaches is without
 a live key below it, but an empty space root; the model has no keys and takes
 it as given. T-SCHEME, that the scheme's waits then give `CutOK`, is still
-checked by running (`checkSchemeC` in SIS/ReclaimExample.lean), not proved. -/
+checked by running (`checkSchemeC` in SIS/ReclaimExample.lean), not proved;
+`T_latest` below proves its part about the latest versions. -/
 theorem T_cover (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp al ts)
     (hst : al.stillDirty = javaTest sp ∨ (sp.virt = false ∧ al.stillDirty = exactTest sp))
     (e c : Nat) (he : e ≤ ts.length) :
@@ -80,6 +81,40 @@ theorem T_cover (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp al
     ∀ x, isIndex db.P x = true → written sp x = true → reachable sp db.P e x = true →
       inD db.D x = true ∨ ∃ v, db.S.lv x = some v ∧ c ≤ v.recNo :=
   cover_st sp al ts hok (algOK_of sp al hst) e c he
+
+/-- T-LATEST (bergdb 024-07, section 4): from an iteration's end on, the latest
+versions are at the cut or later. With T-COVER's two premises at e, the end of
+an iteration with its cut at c ≤ e, in every state after T(k), e ≤ k, whose
+startup pos has passed e (BergDB waits for it: pEnd), every node reachable at a
+time from e to k has its latest version, if it has one, at c or later: the
+latest versions that a read from the first available time e on may follow
+(`ReadsPhys.latest`, and so `CutOK`'s part 4), and the first half of `CutOK`'s
+part 3 for the nodes of D that such a read reaches.
+
+A node made after T(e) has its versions after e; one that existed then was
+reachable at e (no resurrection): there a data node is at c or later by the
+rewrites, and an index node is at c or later or in D (T-COVER), with a
+got-dirty index at most e, so it is written once the startup pos has passed e.
+
+Not in it, and still checked by running (`checkSchemeC`, and C-CUT on Java's
+traces), not proved: the versions that a pointer leads to besides the latest
+ones (`ReadsPhys.child`), the references of D's nodes, and the nodes of D that
+no read from e on reaches (BergDB's second wait, pSafe; bergdb 001-07, section
+5, steps 6 and 7). -/
+theorem T_latest (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp al ts)
+    (hst : al.stillDirty = javaTest sp ∨ (sp.virt = false ∧ al.stillDirty = exactTest sp))
+    (e k c : Nat) (hce : c ≤ e) (hek : e ≤ k) (hk : k ≤ ts.length) :
+    let db := run sp al (ts.take e)
+    let dbk := run sp al (ts.take k)
+    (∀ d m, db.P.get? d = some m → m.isData = true → reachable sp db.P e d = true →
+      ∃ u, db.S.lv d = some u ∧ c ≤ u.recNo) →
+    (∀ x n, db.P.get? x = some n → n.isData = false → written sp x = true →
+      reachable sp db.P e x = true →
+      ∃ d m, d ∈ reachFrom sp db.P e x n ∧ db.P.get? d = some m ∧ m.isData = true) →
+    e < lastSp dbk.S →
+    ∀ t x, e ≤ t → t ≤ k → reachable sp dbk.P t x = true →
+      ∀ v, dbk.S.lv x = some v → c ≤ v.recNo :=
+  latest_st sp al ts hok (algOK_of sp al hst) e k c hce hek hk
 
 /-- The bound of a touch (bergdb 024-07, section 5), a definition: the touch of
 the changes c made at time i to P marks only nodes on the paths of the change.

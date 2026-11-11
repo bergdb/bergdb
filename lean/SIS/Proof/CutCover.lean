@@ -13,11 +13,14 @@ version of every node below it, each in a record at or before the one above
 (`Inv.good_below`). So a clean node's latest version is at or after the one
 version of every data node below it (`Inv.clean_ge_data`): where the rewrites
 have put the data nodes at c or later, and every index node has a data node
-below it, every index node is in D or at c or later (`cover_st`).
+below it, every index node is in D or at c or later (`cover_st`). And once the
+startup pos has passed the iteration's end, every node reachable from then on
+has its latest version at c or later (`latest_st`).
 -/
 import SIS.Proof.LogicFacts
 import SIS.Proof.Fresh
 import SIS.Proof.HandleCutSkip
+import SIS.Proof.HandleCutLater
 
 namespace SIS
 
@@ -124,5 +127,105 @@ theorem cover_st (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp a
       rw [hu] at hu'
       cases hu'
       exact ⟨v, hv, by omega⟩
+
+/-! ## From the iteration's end on (bergdb 024-07, section 4.2)
+
+With the cover at the iteration's end e, and the startup pos past e: every node
+that is reachable at a time from e on has its latest version, if it has one, at
+the cut c or later. Steps 1 and 5 of the scheme's argument (bergdb 001-07,
+section 5) for the latest versions, now proved; the versions that a physical
+read may follow besides the latest ones, and the references of D's nodes, are
+still T-SCHEME's part that is checked by running. -/
+
+section
+
+variable {sp : Spec V T} {al : Algo V T} {ts : List T}
+
+/-- A version of a node that does not exist after T(e) is in a record after e. -/
+theorem st_version_after (hok : RunOK sp al ts) (hst : AlgOK sp al) {e k : Nat} (hek : e ≤ k)
+    (hk : k ≤ ts.length) {x : NodeId} (hx : (st sp al ts e).P.get? x = none) {r : Nat}
+    {w : Version V} (hw : (st sp al ts k).S.versionAt r x = some w) : e < r := by
+  rcases Nat.lt_or_ge e r with h | h
+  · exact h
+  · exfalso
+    have hinve := inv_st sp al ts hok hst e (by omega)
+    obtain ⟨l, hl⟩ := st_S_prefix sp al ts hek hk
+    rw [← hl, versionAt_append_left (by rw [hinve.len]; omega)] at hw
+    obtain ⟨-, -, n, hn, -⟩ := hinve.version_node hw
+    rw [hx] at hn
+    cases hn
+
+/-- The latest version of a node in a state is at or after each of its versions
+in an earlier state. -/
+theorem st_lv_ge (hok : RunOK sp al ts) (hst : AlgOK sp al) {e k : Nat} (hek : e ≤ k)
+    (hk : k ≤ ts.length) {x : NodeId} {r : Nat} {u v : Version V}
+    (hu : (st sp al ts e).S.versionAt r x = some u) (hv : (st sp al ts k).S.lv x = some v) :
+    r ≤ v.recNo := by
+  have hinvk := inv_st sp al ts hok hst k hk
+  have h1 := versionAt_prefix (st_S_prefix sp al ts hek hk) hu
+  obtain ⟨r', u', h2, h3, hle⟩ := lv_recNo_ge h1
+  rw [hv] at h3
+  cases h3
+  have := (hinvk.version_node h2).2.1
+  omega
+
+end
+
+/-- From the iteration's end on: with the two premises of `cover_st` at e, the
+end of an iteration with its cut at c ≤ e, in every state after T(k), e ≤ k,
+whose startup pos has passed e, every node reachable at a time t from e to k
+has its latest version, if it has one, at c or later.
+
+A node that did not exist after T(e) has its versions after e. A node that
+existed then was reachable at e (no resurrection, `reach_back_st`): a data node
+is at c or later by the rewrites; an index node is at c or later then, and so
+later too, or was in D then (`cover_st`) with a got-dirty index at most e, and
+a node of D stays in D with that index until it is written (`D_later`), while
+the indexes of D are after the startup pos: so it was written after e. -/
+theorem latest_st (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp al ts)
+    (hst : AlgOK sp al) (e k c : Nat) (hce : c ≤ e) (hek : e ≤ k) (hk : k ≤ ts.length)
+    (hrw : ∀ d m, (st sp al ts e).P.get? d = some m → m.isData = true →
+      reachable sp (st sp al ts e).P e d = true →
+      ∃ u, (st sp al ts e).S.lv d = some u ∧ c ≤ u.recNo)
+    (hlb : ∀ x n, (st sp al ts e).P.get? x = some n → n.isData = false → written sp x = true →
+      reachable sp (st sp al ts e).P e x = true →
+      ∃ d m, d ∈ reachFrom sp (st sp al ts e).P e x n ∧ (st sp al ts e).P.get? d = some m ∧
+        m.isData = true)
+    (hsp : e < lastSp (st sp al ts k).S) :
+    ∀ t x, e ≤ t → t ≤ k → reachable sp (st sp al ts k).P t x = true →
+      ∀ v, (st sp al ts k).S.lv x = some v → c ≤ v.recNo := by
+  intro t x het htk hr v hv
+  have hinvk := inv_st sp al ts hok hst k hk
+  have hinve := inv_st sp al ts hok hst e (by omega)
+  have hvat := hinvk.lv_at hv
+  cases hx : (st sp al ts e).P.get? x with
+  | none =>
+    have := st_version_after hok hst hek hk hx hvat
+    omega
+  | some n0 =>
+    have hre : reachable sp (st sp al ts e).P e x = true :=
+      reach_back_st hok hst hk (t - e) t (by omega) htk x hr (by simp [hx])
+    have hxw : written sp x = true := hinvk.written_of_versionAt hvat
+    have hcase : inD (st sp al ts e).D x = true ∨
+        ∃ u, (st sp al ts e).S.lv x = some u ∧ c ≤ u.recNo := by
+      cases hd : n0.isData with
+      | true => exact Or.inr (hrw x n0 hx hd hre)
+      | false =>
+        exact cover_st sp al ts hok hst e c (by omega) hrw hlb x (by simp [isIndex, hx, hd]) hxw hre
+    rcases hcase with hD | ⟨u, hu, hcu⟩
+    · obtain ⟨d, hd⟩ := (inD_iff _ _).mp hD
+      have hde : d ≤ e := by
+        have h1 : (x, d) ∈ sectionD (st sp al ts e).S := by rw [← hinve.inv1]; exact hd
+        obtain ⟨-, h2, -⟩ := sectionD_mem h1
+        have := hinve.len
+        omega
+      rcases D_later sp al ts hok hst hd k hek hk with h | ⟨r, w, hr1, -, hw⟩
+      · have h1 : (x, d) ∈ sectionD (st sp al ts k).S := by rw [← hinvk.inv1]; exact h
+        obtain ⟨h2, -, -⟩ := sectionD_mem h1
+        omega
+      · have := st_lv_ge hok hst (Nat.le_refl k) hk hw hv
+        omega
+    · have := st_lv_ge hok hst hek hk (hinve.lv_at hu) hv
+      omega
 
 end SIS
