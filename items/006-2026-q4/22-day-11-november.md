@@ -294,6 +294,9 @@ from them.
 * 14:34 Frans: the merge's thresholds 8/17/17 (024-14, QT1; QT2 open),
   and 024-22's QM1 to QM5 as their defaults. 024-22's agent finished
   (8e78cf65; 239 traces against Java equal).
+* 14:45 Frans: a key at most 112 bytes (024-17, QL2; 16 segments; the
+  user's rule of thumb "about 100 characters"). 024-17 to be reworked
+  for it (L3, L6, the bound's arithmetic with merges, the tests).
 
 
 ## 6. Outcome

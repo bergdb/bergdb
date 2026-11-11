@@ -973,6 +973,23 @@ should leave open, from the coordinator's remarks of 10:40.
 
 ## 8. Questions for Frans
 
+**Decided, QL2: L2 = 112 bytes of the key as stored** (Frans,
+2026-11-11), in place of 256. 14:40: "Should we limit key size to 150
+bytes? Or even 100 bytes? Do you see any problem with that? After all,
+this is a database, not a file system :-)." The coordinator: with
+TP26's simple count (already proved; about 192 nodes a segment) a
+record holds about 520 operations at 256 bytes, 880 at 150, 1,280 at
+100, so 100 proves L1 = 1,000 without the sharper counts; limits can
+be raised later and not lowered. 14:44: "How about 120 bytes. The user
+can think "100 characters" as a rule of thumb." The coordinator: 120 is
+18 segments, about 1,070 operations, a 7 % margin that the merges may
+take; 112 (16 segments) the fallback. 14:45: "Let's make it 112 bytes
+then." 112 bytes are 16 segments, exactly; about 1,200 operations by
+TP26's count (the coordinator's arithmetic, to be checked). For the
+user: "about 100 characters" (ASCII, each "/" of a Pub key counts two;
+å, ä, ö two bytes each). The rest of the proposal (L3, L6, the bound's
+arithmetic, the tests) is reworked for it (section 9).
+
 * **QL1. L1 = 1,000 operations** (the largest provable with 256-byte
   keys in today's record), or A1's 10,000 with a key-bytes limit?
   **Recommended: 1,000**; raise later when a sharper count is proved.
