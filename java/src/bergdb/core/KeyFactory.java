@@ -104,11 +104,12 @@ public class KeyFactory {
             key = StringUtil.toBytes(index + "I");
             break;
         case 6:
-            // Case 'L' - a longer key
-            int size = r.nextInt(1000) + 20;
+            // Case 'L' - a longer key: 20 to 111 bytes, the longest of them 2 % of the time.
+            // Until bergdb 024-24, 20 to 1,019 bytes, 2 % up to 10,019: over L2 since.
+            int size = r.nextInt(Db.MAX_KEY_BYTES - 19) + 20;
             if (r.nextDouble() < 0.02) {
                 // Very long key
-                size = r.nextInt(10*1000) + 20;
+                size = Db.MAX_KEY_BYTES;
             }
             
             key = new byte[size];
