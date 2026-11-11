@@ -5,7 +5,7 @@ The tree checker (bergdb 024-12, section 2.7; docs/trace-format.md, section
 only says how a trace becomes the model's objects, and what is compared.
 -/
 import Check.Trace
-import SIS.Tree.Bound
+import SIS.Tree.MergeProps
 import SIS.Tree.Top
 import Std.Data.HashMap
 
@@ -347,6 +347,19 @@ def checkTx (p : Params) (P after : PMap) (r : TRec) (x : TTx) : TxResult := Id.
   -- every pointer of an entry added names a node of P (live or dead: TP4).
   for f in faultsAt p viewA i do
     res := { res with inv := res.inv ++ [s!"T({i}): {f}"] }
+  -- With merges, BU1's count (TP31, bergdb 024-22): the key nodes reachable at i are
+  -- at most S + (n + S - 1) / (m - 1), for the n keys the tree holds at i (its scan) in
+  -- S segment trees.
+  if p.merges then
+    let kvs := (scan p viewA i {} 1000000000).map (fun kv => (kv.key, kv.h))
+    let trees := segTrees kvs
+    let bound := trees + (kvs.length + trees - 1) / (p.mergeBelow - 1)
+    let nodes := match rootAt viewA i with
+      | some r => (nodesAt p viewA i p.fuel r).length
+      | none => 0
+    if bound < nodes then
+      res := { res with inv := res.inv ++
+        [s!"T({i}): BU1: {nodes} key nodes reachable, more than {bound}: {kvs.length} keys, {trees} segment trees"] }
   for (y, _, v) in r.adds do
     for z in bptrs v do
       if (after[z]?).isNone then
