@@ -1,0 +1,9 @@
+06:15:35 start fifofill4
+06:16:42 end fifofill4 rc=0
+06:16:42 start fifo4
+06:20:55 end fifo4 rc=0
+06:20:56 start fifofill3
+06:22:16 end fifofill3 rc=0
+06:22:16 start fifo3
+06:27:23 end fifo3 rc=0
+06:27:23 ALL DONE

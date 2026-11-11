@@ -71,6 +71,12 @@ Files
   accepts what a spec should refuse (G1 to G21) and its Java dependences
   (J1 to J8); the open format questions (Q1 to Q23, Q14 and Q16 first);
   the options for versioning, none decided.
+* 03-measurements.md. 024-03, release 2026.4 measured at 1M and 10M keys
+  beside 2026.3 (PF1): the same speed and MEM; a mass delete fixed (101
+  nodes against 882,271); P8 not needed on these numbers (CL1); merges'
+  underfill measured (CL2); the last touch the biggest fault measured
+  (CL7: a 200 MB record and 21 s at 10M, old); the stream under steady
+  overwrites. Outputs in 03-measurements/.
 
 
 Log
@@ -119,3 +125,8 @@ keys if time.
 (Frans, 2026-11-10, 19:33: "start to work on 2026.5 without waiting for
 me"): 024-02, the stream format's skeleton (done 05:29), and 024-03, the
 measurements of 2026.4 at 10M keys (running).
+
+2026-11-11. 024-03, the measurements of 2026.4 (05:03 to 06:29): the
+numbers ask for CL7 (the last touch) first among the Core changes, and
+for deciding 024-02's Q1 (the merge switch in the format) in 2026.5; P8
+not needed.

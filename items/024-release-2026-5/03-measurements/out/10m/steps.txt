@@ -1,0 +1,37 @@
+05:10:25 start mem3
+05:10:52 end mem3 rc=0
+05:10:52 start mem4
+05:11:19 end mem4 rc=0
+05:11:19 start fill3
+05:16:15 end fill3 rc=0
+05:16:15 start cold3
+05:17:20 end cold3 rc=0
+05:17:20 start fill4
+05:22:12 end fill4 rc=0
+05:22:12 start cold4
+05:23:18 end cold4 rc=0
+05:23:18 start massdel4
+05:32:31 end massdel4 rc=0
+05:32:31 start start4
+05:32:37 end start4 rc=0
+05:32:37 start log4
+05:36:49 end log4 rc=0
+05:36:49 start twinfill4
+05:37:05 end twinfill4 rc=0
+05:37:05 start twindrive4
+05:44:16 end twindrive4 rc=0
+05:44:17 start spfill4
+05:47:29 end spfill4 rc=0
+05:47:29 start sparse4
+06:04:02 end sparse4 rc=0
+06:04:02 start sptwinfill4
+06:04:06 end sptwinfill4 rc=0
+06:04:06 start sptwindrive4
+06:08:53 end sptwindrive4 rc=0
+06:08:53 start massdel3
+06:13:52 end massdel3 rc=0
+06:13:52 start start3
+06:14:09 end start3 rc=0
+06:14:09 start log3
+06:15:23 end log3 rc=0
+06:15:23 ALL DONE 10m

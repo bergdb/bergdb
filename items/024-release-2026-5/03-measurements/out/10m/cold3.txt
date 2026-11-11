@@ -1,0 +1,10 @@
+PF1 cold dir=/Users/f/fl/bench/2026-11-11/pf1/data/d3-10m n=10000000 jar=/Users/f/fl/bench/2026-11-11/pf1/c3:/Users/f/fl/repos/bergdb/releases/2026.3/bergdb-2026.3.jar
+[2.1s] START ms=2084 len=7228907448 fap=440286008 files=6828907448 fresh=false
+[2.2s] COLD cold-gets gets=100000 us/get=8.61 p50=8.42us p99=16.8us max=0.6ms loads=257293
+[3.0s] COLD after-gets gets=100000 us/get=8.47 p50=8.17us p99=14.6us max=41.2ms loads=447262
+[3.9s] COLD after-gets-1M gets=1000000 us/get=7.92 p50=8.00us p99=14.0us max=20.9ms loads=2356851
+[11.8s] COLD scan1 keys=10000000 ms=26612.7 ns/key=2661
+[38.4s] COLD scan2 keys=10000000 ms=26451.8 ns/key=2645
+[64.9s] COLD state len=7228907448 kept=6788621440 files=6828907448 iters=0 fap=440286008
+[64.9s] CLOSE ms=1 files=6828907448
+[64.9s] DONE

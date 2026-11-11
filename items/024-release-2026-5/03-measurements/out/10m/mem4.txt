@@ -1,0 +1,3 @@
+PF1 mem n=10000000 jar=/Users/f/fl/bench/2026-11-11/pf1/c4:/Users/f/fl/repos/bergdb/releases/2026.4/bergdb-2026.4.jar
+MEM n=10000000 327.1 bytes/KV
+[26.6s] DONE

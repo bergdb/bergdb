@@ -1,0 +1,24 @@
+PF1 fill dir=/Users/f/fl/bench/2026-11-11/pf1/data/d4-10m n=10000000 gets=1000000 jar=/Users/f/fl/bench/2026-11-11/pf1/c4:/Users/f/fl/repos/bergdb/releases/2026.4/bergdb-2026.4.jar
+[0.1s] START ms=30 len=480 fap=0 files=0 fresh=true
+[7.8s] fill 1000000  len=328973464 kept=328973464 files=326660072 iters=0 fap=0
+[19.3s] fill 2000000  len=789852816 kept=689846144 files=689385800 iters=1 fap=100006672
+[34.1s] fill 3000000  len=1372604784 kept=1272598112 files=1271641624 iters=2 fap=100006672
+[51.1s] fill 4000000  len=2102001784 kept=2001995112 files=2000000000 iters=2 fap=100006672
+[70.4s] fill 5000000  len=2884458824 kept=2784452152 files=2783311000 iters=2 fap=100006672
+[92.1s] fill 6000000  len=3715602128 kept=3615595456 files=3613902224 iters=2 fap=100006672
+[114.7s] fill 7000000  len=4560724520 kept=4120438512 files=4160142672 iters=3 fap=440286008
+[138.1s] fill 8000000  len=5416251328 kept=4975965320 files=5015443384 iters=3 fap=440286008
+[163.9s] fill 9000000  len=6304636584 kept=5864350576 files=5902277416 iters=3 fap=440286008
+[192.8s] fill 10000000  len=7228907448 kept=6788621440 files=6828674456 iters=3 fap=440286008
+[192.8s] FILL n=10000000 valsize=100 batch=100 order=random puts/s=51971 us/put=19.242 s=192.4
+[192.8s] FILL tx=100000 bytes/tx=58126 maxRec=168976 recs>1MB=0 exec p50=1815us p99.9=5395us max=114ms
+[192.8s] SYNC ms=5
+[192.8s] FILL state len=7228907448 kept=6788621440 files=6828907448 iters=3 fap=440286008 bytes/put=722 kept/put=678
+[193.0s] HEAP after fill: 195 MB, 20 bytes/KV (default cache)
+[193.0s] WARM gets1 gets=1000000 us/get=7.77 p50=7.88us p99=13.6us max=0.1ms loads=25597036
+[200.8s] WARM gets2 gets=1000000 us/get=7.82 p50=7.88us p99=13.8us max=18.1ms loads=27521337
+[208.7s] WARM scan1 keys=10000000 ms=26390.8 ns/key=2639
+[235.1s] WARM scan2 keys=10000000 ms=26318.9 ns/key=2631
+[261.4s] NODES all keys=10000000 keyNodes=892251 follows=10892251 klongs=11774575 dead=882322 ms=30982.6
+[292.4s] CLOSE ms=1 files=6828907448
+[292.4s] DONE

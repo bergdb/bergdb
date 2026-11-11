@@ -1,0 +1,38 @@
+PF1 massdel dir=/Users/f/fl/bench/2026-11-11/pf1/data/d3-10m n=10000000 frac=0.9 maxdrive=50000 report=10000 jar=/Users/f/fl/bench/2026-11-11/pf1/c3:/Users/f/fl/repos/bergdb/releases/2026.3/bergdb-2026.3.jar
+[6.1s] START ms=6041 len=7228907448 fap=440286008 files=6828907448 fresh=false
+[6.1s] BEFORE state len=7228907448 kept=6788621440 files=6828907448 iters=0 fap=440286008
+[6.1s] BEFORE head1000 keys=1000 ms=81.9 ns/key=81859
+[6.2s] BEFORE all keys=10000000 keyNodes=892251 follows=10892251 klongs=11774575 dead=882322 ms=63144.9
+[69.3s] del 0  len=7228907448 kept=6788621440 files=6828907448 iters=0 fap=440286008
+[87.8s] del 1000000  len=7400898728 kept=6960612720 files=7000359032 iters=0 fap=440286008
+[100.3s] del 2000000  len=7553117944 kept=7112831936 files=7152910984 iters=0 fap=440286008
+[113.1s] del 3000000  len=7705718496 kept=7265432488 files=7305425536 iters=0 fap=440286008
+[125.9s] del 4000000  len=7859023688 kept=7418737680 files=7458374712 iters=0 fap=440286008
+[138.6s] del 5000000  len=8012687728 kept=7572401720 files=7612136064 iters=0 fap=440286008
+[154.7s] del 6000000  len=8277056888 kept=7047204904 files=7076739384 iters=1 fap=1229851984
+[161.8s] del 7000000  len=8347613208 kept=7117761224 files=7147109144 iters=1 fap=1229851984
+[169.0s] del 8000000  len=8426460584 kept=7196608600 files=7225885512 iters=1 fap=1229851984
+[176.2s] DELETE dels=9000000 dels/s=84246 s=106.8
+[176.2s] DELETE tx=90000 bytes/tx=10242 maxRec=153081344 recs>1MB=2 exec p50=1077us p99.9=18183us max=4315ms
+[176.2s] AFTER state len=8504968280 kept=7275116296 files=7304673176 iters=1 fap=1229851984
+[176.3s] AFTER live=1000000
+[176.3s] AFTER head1000 keys=1000 ms=3479.4 ns/key=3479354
+[179.8s] AFTER head1000-again keys=1000 ms=3470.6 ns/key=3470576
+[183.3s] AFTER all keys=1000000 ms=6292.1 ns/key=6292
+[189.6s] AFTER head1000 keys=1000 keyNodes=882271 follows=883271 klongs=11228860 dead=10345552 ms=4085.5
+[193.7s] AFTER all keys=1000000 keyNodes=980212 follows=1980212 klongs=12533671 dead=10553457 ms=5557.2
+[199.2s] AFTER gets gets=100000 us/get=3.73 p50=1.58us p99=12.5us max=0.1ms loads=38427652
+[215.4s] drive tx=10000  len=8977257920 kept=7747405936 files=7776762832 iters=1 fap=1229851984 tx=10000 bytes/tx=46627 maxRec=122037696 recs>1MB=2 exec p50=904us p99.9=5922us max=1870ms
+[232.9s] drive tx=20000  len=9503086848 kept=8273234864 files=8301353584 iters=1 fap=1229851984 tx=20000 bytes/tx=49304 maxRec=122052928 recs>1MB=4 exec p50=956us p99.9=5957us max=2734ms
+[249.1s] drive tx=30000  len=10033544056 kept=8803692072 files=8831440632 iters=1 fap=1229851984 tx=30000 bytes/tx=50351 maxRec=122052928 recs>1MB=6 exec p50=969us p99.9=6023us max=2734ms
+[266.2s] drive tx=40000  len=10566821232 kept=9336969248 files=9366424368 iters=1 fap=1229851984 tx=40000 bytes/tx=50944 maxRec=122052928 recs>1MB=8 exec p50=980us p99.9=5978us max=2910ms
+[285.0s] drive tx=50000  len=11120638592 kept=9890786608 files=9919228016 iters=1 fap=1229851984 tx=50000 bytes/tx=51591 maxRec=122052928 recs>1MB=10 exec p50=979us p99.9=6069us max=3092ms
+[285.0s] DRIVE done tx=50000 reachedAt=-1 itersDuring=0 s=85.4
+[285.0s] DRIVE tx=50000 bytes/tx=51591 maxRec=122052928 recs>1MB=10 exec p50=979us p99.9=6069us max=3092ms
+[285.0s] END state len=11120638592 kept=9890786608 files=9919228016 iters=1 fap=1229851984
+[285.0s] END head1000 keys=1000 ms=2490.9 ns/key=2490852
+[287.5s] END all keys=1000000 ms=5161.5 ns/key=5161
+[292.7s] END all keys=1000000 keyNodes=993735 follows=1993735 klongs=12856006 dead=10862269 ms=5277.9
+[298.1s] END heap=422 MB
+[298.1s] CLOSE ms=2 files=9920638592
+[298.1s] DONE

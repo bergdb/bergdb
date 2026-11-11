@@ -1,0 +1,54 @@
+PF1 drive dir=/Users/f/fl/bench/2026-11-11/pf1/data/st4-10m n=10000000 keep=30 frac=0 maxdrive=300000 report=10000 jar=/Users/f/fl/bench/2026-11-11/pf1/c4:/Users/f/fl/repos/bergdb/releases/2026.4/bergdb-2026.4.jar
+[1.0s] START ms=944 len=60538528 fap=0 files=60538528 fresh=false
+[1.0s] BEFORE state len=60538528 kept=60538528 files=60538528 iters=0 fap=0
+[1.0s] BEFORE head1000 keys=1000 ms=5.2 ns/key=5191
+[1.0s] BEFORE all keys=333334 keyNodes=26746 follows=360080 klongs=366901 dead=6821 ms=456.7
+[1.5s] DELETE dels=0 dels/s=0 s=0.0
+[1.5s] DELETE tx=0 bytes/tx=0 maxRec=0 recs>1MB=0 exec p50=0us p99.9=0us max=0ms
+[1.5s] AFTER state len=60538528 kept=60538528 files=60538528 iters=0 fap=0
+[1.5s] AFTER live=333334
+[1.5s] AFTER head1000 keys=1000 ms=0.6 ns/key=572
+[1.5s] AFTER head1000-again keys=1000 ms=0.2 ns/key=195
+[1.5s] AFTER all keys=333334 ms=316.1 ns/key=948
+[1.8s] AFTER head1000 keys=1000 keyNodes=84 follows=1084 klongs=1150 dead=29 ms=0.2
+[1.8s] AFTER all keys=333334 keyNodes=26746 follows=360080 klongs=366901 dead=6821 ms=58.4
+[1.9s] AFTER gets gets=100000 us/get=1.42 p50=1.13us p99=6.1us max=0.1ms loads=276412
+[10.5s] drive tx=10000  len=351233312 kept=351233312 files=349902216 iters=1 fap=0 tx=10000 bytes/tx=24493 maxRec=40880 recs>1MB=0 exec p50=802us p99.9=3157us max=31ms
+[20.0s] drive tx=20000  len=643650232 kept=389891768 files=402665800 iters=4 fap=253758464 tx=20000 bytes/tx=25446 maxRec=43136 recs>1MB=0 exec p50=835us p99.9=3110us max=31ms
+[29.6s] drive tx=30000  len=936771384 kept=432463224 files=435820184 iters=6 fap=504308160 tx=30000 bytes/tx=25768 maxRec=43136 recs>1MB=0 exec p50=845us p99.9=3137us max=31ms
+[39.5s] drive tx=40000  len=1228873464 kept=465789664 files=526936168 iters=8 fap=763083800 tx=40000 bytes/tx=25933 maxRec=44912 recs>1MB=0 exec p50=852us p99.9=3142us max=84ms
+[49.6s] drive tx=50000  len=1520455584 kept=368114584 files=418941464 iters=10 fap=1152341000 tx=50000 bytes/tx=26032 maxRec=44912 recs>1MB=0 exec p50=860us p99.9=3172us max=84ms
+[59.2s] drive tx=60000  len=1811842656 kept=399326760 files=411353720 iters=13 fap=1412515896 tx=60000 bytes/tx=26094 maxRec=44912 recs>1MB=0 exec p50=857us p99.9=3172us max=94ms
+[68.6s] drive tx=70000  len=2104345152 kept=432108800 files=502505600 iters=15 fap=1672236352 tx=70000 bytes/tx=26138 maxRec=46944 recs>1MB=0 exec p50=854us p99.9=3164us max=94ms
+[78.2s] drive tx=80000  len=2395485456 kept=464299040 files=494923680 iters=17 fap=1931186416 tx=80000 bytes/tx=26168 maxRec=46944 recs>1MB=0 exec p50=854us p99.9=3159us max=94ms
+[87.6s] drive tx=90000  len=2687818480 kept=367512992 files=387733976 iters=19 fap=2320305488 tx=90000 bytes/tx=26204 maxRec=46944 recs>1MB=0 exec p50=852us p99.9=3148us max=106ms
+[97.0s] drive tx=100000  len=2979626840 kept=399184120 files=478398592 iters=22 fap=2580442720 tx=100000 bytes/tx=26226 maxRec=46944 recs>1MB=0 exec p50=851us p99.9=3139us max=106ms
+[106.6s] drive tx=110000  len=3272848952 kept=432627776 files=471674464 iters=24 fap=2840221176 tx=110000 bytes/tx=26244 maxRec=46944 recs>1MB=0 exec p50=851us p99.9=3137us max=106ms
+[116.0s] drive tx=120000  len=3564586512 kept=464364600 files=463613192 iters=26 fap=3100221912 tx=120000 bytes/tx=26257 maxRec=46944 recs>1MB=0 exec p50=850us p99.9=3132us max=106ms
+[125.3s] drive tx=130000  len=3855376568 kept=365458360 files=454645280 iters=28 fap=3489918208 tx=130000 bytes/tx=26266 maxRec=46944 recs>1MB=0 exec p50=848us p99.9=3130us max=106ms
+[134.8s] drive tx=140000  len=4148458104 kept=399186544 files=448176840 iters=31 fap=3749271560 tx=140000 bytes/tx=26282 maxRec=46944 recs>1MB=0 exec p50=849us p99.9=3127us max=106ms
+[144.1s] drive tx=150000  len=4441294304 kept=431763024 files=439715640 iters=33 fap=4009531280 tx=150000 bytes/tx=26289 maxRec=46944 recs>1MB=0 exec p50=848us p99.9=3121us max=106ms
+[153.4s] drive tx=160000  len=4733996640 kept=464603488 files=531827592 iters=35 fap=4269393152 tx=160000 bytes/tx=26301 maxRec=46944 recs>1MB=0 exec p50=846us p99.9=3118us max=106ms
+[162.9s] drive tx=170000  len=5025283088 kept=365587432 files=423881016 iters=37 fap=4659695656 tx=170000 bytes/tx=26308 maxRec=46944 recs>1MB=0 exec p50=846us p99.9=3113us max=106ms
+[172.2s] drive tx=180000  len=5316854416 kept=397391536 files=415040120 iters=40 fap=4919462880 tx=180000 bytes/tx=26314 maxRec=46944 recs>1MB=0 exec p50=846us p99.9=3110us max=106ms
+[181.7s] drive tx=190000  len=5609624552 kept=430552824 files=508079424 iters=42 fap=5179071728 tx=190000 bytes/tx=26317 maxRec=47424 recs>1MB=0 exec p50=845us p99.9=3113us max=106ms
+[191.2s] drive tx=200000  len=5901319392 kept=462335632 files=500000000 iters=44 fap=5438983760 tx=200000 bytes/tx=26321 maxRec=47424 recs>1MB=0 exec p50=845us p99.9=3110us max=106ms
+[200.7s] drive tx=210000  len=6192660328 kept=364503712 files=391322448 iters=46 fap=5828156616 tx=210000 bytes/tx=26326 maxRec=47424 recs>1MB=0 exec p50=845us p99.9=3110us max=106ms
+[210.3s] drive tx=220000  len=6484398592 kept=397044520 files=484111392 iters=49 fap=6087354072 tx=220000 bytes/tx=26331 maxRec=47424 recs>1MB=0 exec p50=846us p99.9=3111us max=106ms
+[219.9s] drive tx=230000  len=6776776520 kept=429223496 files=475379216 iters=51 fap=6347553024 tx=230000 bytes/tx=26333 maxRec=47424 recs>1MB=0 exec p50=846us p99.9=3111us max=106ms
+[229.1s] drive tx=240000  len=7068582640 kept=461902464 files=468580024 iters=53 fap=6606680176 tx=240000 bytes/tx=26336 maxRec=47424 recs>1MB=0 exec p50=845us p99.9=3109us max=106ms
+[238.5s] drive tx=250000  len=7359496264 kept=363983152 files=458210408 iters=55 fap=6995513112 tx=250000 bytes/tx=26339 maxRec=47424 recs>1MB=0 exec p50=844us p99.9=3108us max=106ms
+[248.4s] drive tx=260000  len=7651355152 kept=396343520 files=449573720 iters=58 fap=7255011632 tx=260000 bytes/tx=26344 maxRec=47424 recs>1MB=0 exec p50=846us p99.9=3119us max=106ms
+[258.2s] drive tx=270000  len=7944718216 kept=429850160 files=443644880 iters=60 fap=7514868056 tx=270000 bytes/tx=26347 maxRec=47424 recs>1MB=0 exec p50=847us p99.9=3122us max=106ms
+[267.5s] drive tx=280000  len=8236253736 kept=461315208 files=535744048 iters=62 fap=7774938528 tx=280000 bytes/tx=26347 maxRec=47424 recs>1MB=0 exec p50=846us p99.9=3119us max=106ms
+[277.1s] drive tx=290000  len=8527650760 kept=363359080 files=426365504 iters=64 fap=8164291680 tx=290000 bytes/tx=26350 maxRec=47424 recs>1MB=0 exec p50=846us p99.9=3117us max=106ms
+[286.4s] drive tx=300000  len=8818878616 kept=394914024 files=417178248 iters=67 fap=8423964592 tx=300000 bytes/tx=26351 maxRec=47424 recs>1MB=0 exec p50=846us p99.9=3116us max=106ms
+[286.4s] DRIVE done tx=300000 reachedAt=-1 itersDuring=67 s=284.4
+[286.4s] DRIVE tx=300000 bytes/tx=26351 maxRec=47424 recs>1MB=0 exec p50=846us p99.9=3116us max=106ms
+[286.5s] END state len=8818878616 kept=394914024 files=418878616 iters=67 fap=8423964592
+[286.5s] END head1000 keys=1000 ms=0.4 ns/key=442
+[286.5s] END all keys=333334 ms=390.3 ns/key=1170
+[286.8s] END all keys=333334 keyNodes=37084 follows=370418 klongs=544651 dead=174231 ms=136.1
+[287.2s] END heap=213 MB
+[287.2s] CLOSE ms=1 files=418878616
+[287.2s] DONE

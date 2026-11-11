@@ -1,0 +1,53 @@
+PF1 massdel dir=/Users/f/fl/bench/2026-11-11/pf1/data/d3-1m n=1000000 frac=0.9 maxdrive=100000 report=5000 jar=/Users/f/fl/bench/2026-11-11/pf1/c3:/Users/f/fl/repos/bergdb/releases/2026.3/bergdb-2026.3.jar
+[2.0s] START ms=1967 len=328863128 fap=0 files=328863128 fresh=false
+[2.0s] BEFORE state len=328863128 kept=328863128 files=328863128 iters=0 fap=0
+[2.0s] BEFORE head1000 keys=1000 ms=35.1 ns/key=35064
+[2.1s] BEFORE all keys=1000000 keyNodes=88997 follows=1088997 klongs=1304063 dead=215064 ms=3680.1
+[5.7s] del 0  len=328863128 kept=328863128 files=328863128 iters=0 fap=0
+[6.8s] del 100000  len=349128336 kept=349128336 files=348853592 iters=0 fap=0
+[7.4s] del 200000  len=361462416 kept=361462416 files=361051272 iters=0 fap=0
+[8.0s] del 300000  len=372838904 kept=372838904 files=371415648 iters=0 fap=0
+[8.6s] del 400000  len=384487184 kept=384487184 files=384487184 iters=0 fap=0
+[9.2s] del 500000  len=395518800 kept=395518800 files=395076888 iters=0 fap=0
+[9.8s] del 600000  len=406473784 kept=406473784 files=405691928 iters=0 fap=0
+[10.2s] del 700000  len=417647176 kept=417647176 files=416715960 iters=0 fap=0
+[10.7s] del 800000  len=428973328 kept=428973328 files=428408656 iters=0 fap=0
+[11.2s] DELETE dels=900000 dels/s=164902 s=5.5
+[11.2s] DELETE tx=9000 bytes/tx=7634 maxRec=39680 recs>1MB=0 exec p50=341us p99.9=3856us max=75ms
+[11.2s] AFTER state len=439121240 kept=439121240 files=438935896 iters=1 fap=0
+[11.2s] AFTER live=100000
+[11.2s] AFTER head1000 keys=1000 ms=28.4 ns/key=28447
+[11.2s] AFTER head1000-again keys=1000 ms=26.5 ns/key=26532
+[11.3s] AFTER all keys=100000 ms=123.6 ns/key=1236
+[11.4s] AFTER head1000 keys=1000 keyNodes=87512 follows=88512 klongs=1245398 dead=1156843 ms=42.6
+[11.4s] AFTER all keys=100000 keyNodes=97932 follows=197932 klongs=1400072 dead=1202138 ms=62.4
+[11.5s] AFTER gets gets=100000 us/get=1.16 p50=1.04us p99=2.3us max=0.1ms loads=2035205
+[16.4s] drive tx=5000  len=578724144 kept=478709232 files=477290096 iters=2 fap=100014912 tx=5000 bytes/tx=27404 maxRec=11400256 recs>1MB=1 exec p50=651us p99.9=4530us max=181ms
+[19.9s] drive tx=10000  len=720569640 kept=620554728 files=618373288 iters=3 fap=100014912 tx=10000 bytes/tx=27682 maxRec=28881088 recs>1MB=2 exec p50=561us p99.9=4255us max=335ms
+[23.7s] drive tx=15000  len=863207576 kept=432903480 files=461678008 iters=4 fap=430304096 tx=15000 bytes/tx=27835 maxRec=29397232 recs>1MB=3 exec p50=526us p99.9=3969us max=335ms
+[26.9s] drive tx=20000  len=983475280 kept=438006912 files=483417816 iters=4 fap=545468368 tx=20000 bytes/tx=26831 maxRec=29400240 recs>1MB=5 exec p50=477us p99.9=3877us max=335ms
+[30.5s] drive tx=25000  len=1132743400 kept=439617112 files=531147472 iters=5 fap=693126288 tx=25000 bytes/tx=27357 maxRec=29400496 recs>1MB=6 exec p50=473us p99.9=3852us max=335ms
+[33.9s] drive tx=30000  len=1273130112 kept=435793320 files=472302800 iters=6 fap=837336792 tx=30000 bytes/tx=27416 maxRec=29400832 recs>1MB=7 exec p50=466us p99.9=3755us max=335ms
+[37.4s] drive tx=35000  len=1414550144 kept=422366872 files=513524144 iters=7 fap=992183272 tx=35000 bytes/tx=27487 maxRec=29400864 recs>1MB=8 exec p50=466us p99.9=3648us max=335ms
+[41.0s] drive tx=40000  len=1553428568 kept=414282624 files=452367720 iters=8 fap=1139145944 tx=40000 bytes/tx=27478 maxRec=29400864 recs>1MB=9 exec p50=460us p99.9=3446us max=352ms
+[44.5s] drive tx=45000  len=1697325840 kept=413274512 files=496350384 iters=9 fap=1284051328 tx=45000 bytes/tx=27580 maxRec=29400864 recs>1MB=10 exec p50=458us p99.9=3339us max=352ms
+[48.0s] drive tx=50000  len=1835345640 kept=406524712 files=433773576 iters=10 fap=1428820928 tx=50000 bytes/tx=27544 maxRec=29400864 recs>1MB=11 exec p50=457us p99.9=3240us max=352ms
+[51.5s] drive tx=55000  len=1977211016 kept=399951328 files=475399192 iters=11 fap=1577259688 tx=55000 bytes/tx=27584 maxRec=29400864 recs>1MB=12 exec p50=458us p99.9=3180us max=352ms
+[54.6s] drive tx=60000  len=2075774144 kept=498514456 files=573711936 iters=12 fap=1577259688 tx=60000 bytes/tx=26895 maxRec=29400864 recs>1MB=12 exec p50=455us p99.9=3073us max=352ms
+[58.7s] drive tx=65000  len=2258549312 kept=536561728 files=557744448 iters=13 fap=1721987584 tx=65000 bytes/tx=27367 maxRec=29400864 recs>1MB=15 exec p50=450us p99.9=3122us max=513ms
+[62.1s] drive tx=70000  len=2371385816 kept=502158864 files=569540632 iters=14 fap=1869226952 tx=70000 bytes/tx=26998 maxRec=29400864 recs>1MB=15 exec p50=454us p99.9=3066us max=513ms
+[65.6s] drive tx=75000  len=2512354472 kept=497688880 files=510000000 iters=15 fap=2014665592 tx=75000 bytes/tx=27052 maxRec=29400864 recs>1MB=16 exec p50=455us p99.9=3043us max=513ms
+[68.3s] drive tx=80000  len=2631618064 kept=433574360 files=530495456 iters=15 fap=2198043704 tx=80000 bytes/tx=26710 maxRec=29400864 recs>1MB=18 exec p50=443us p99.9=3038us max=513ms
+[71.9s] drive tx=85000  len=2784268416 kept=441587872 files=483097656 iters=16 fap=2342680544 tx=85000 bytes/tx=26910 maxRec=29400864 recs>1MB=19 exec p50=444us p99.9=3034us max=513ms
+[75.7s] drive tx=90000  len=2927025880 kept=439224592 files=525580880 iters=17 fap=2487801288 tx=90000 bytes/tx=26981 maxRec=29400864 recs>1MB=20 exec p50=446us p99.9=3028us max=513ms
+[79.1s] drive tx=95000  len=3069657944 kept=410025256 files=467845016 iters=18 fap=2659632688 tx=95000 bytes/tx=27042 maxRec=29400864 recs>1MB=21 exec p50=447us p99.9=3020us max=513ms
+[82.8s] drive tx=100000  len=3213110880 kept=408377024 files=411610832 iters=19 fap=2804733856 tx=100000 bytes/tx=27106 maxRec=29400864 recs>1MB=22 exec p50=449us p99.9=3013us max=513ms
+[82.8s] DRIVE done tx=100000 reachedAt=-1 itersDuring=18 s=71.1
+[82.8s] DRIVE tx=100000 bytes/tx=27106 maxRec=29400864 recs>1MB=22 exec p50=449us p99.9=3013us max=513ms
+[82.8s] END state len=3213110880 kept=408377024 files=411610832 iters=19 fap=2804733856
+[82.8s] END head1000 keys=1000 ms=28.4 ns/key=28384
+[82.8s] END all keys=100000 ms=98.8 ns/key=987
+[82.9s] END all keys=100000 keyNodes=98504 follows=198504 klongs=1405613 dead=1207107 ms=69.0
+[83.1s] END heap=217 MB
+[83.1s] CLOSE ms=1 files=413110880
+[83.1s] DONE

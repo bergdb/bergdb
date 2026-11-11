@@ -1,0 +1,7 @@
+PF1 start dir=/Users/f/fl/bench/2026-11-11/pf1/data/d3-10m jar=/Users/f/fl/bench/2026-11-11/pf1/c3:/Users/f/fl/repos/bergdb/releases/2026.3/bergdb-2026.3.jar
+[4.0s] START ms=3912 len=11120638592 fap=1229851984 files=9920638592 fresh=false
+[4.0s] START head1000 keys=1000 ms=2562.8 ns/key=2562768
+[6.5s] START all keys=1000000 ms=5099.2 ns/key=5099
+[11.6s] START all keys=1000000 keyNodes=993735 follows=1993735 klongs=12856006 dead=10862269 ms=5240.7
+[16.9s] START state len=11120638592 kept=9890786608 files=9920638592 iters=0 fap=1229851984
+[16.9s] DONE

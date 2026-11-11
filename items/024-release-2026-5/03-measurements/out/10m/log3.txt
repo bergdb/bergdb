@@ -1,0 +1,15 @@
+PF1 log dir=/Users/f/fl/bench/2026-11-11/pf1/data/d3-10m n=10000000 frac=0.9 maxdrive=50000 report=10000 jar=/Users/f/fl/bench/2026-11-11/pf1/c3:/Users/f/fl/repos/bergdb/releases/2026.3/bergdb-2026.3.jar
+[3.9s] START ms=3855 len=11120638592 fap=1229851984 files=9920638592 fresh=false
+[4.0s] LOG before state len=11120638592 kept=9890786608 files=9920638592 iters=0 fap=1229851984
+[13.9s] log tx=10000  len=11514301304 kept=10284449320 files=10313631304 iters=0 fap=1229851984 tx=10000 bytes/tx=39366 maxRec=122046608 recs>1MB=2 exec p50=620us p99.9=11524us max=1969ms
+[26.9s] log tx=20000  len=11932030288 kept=10702178304 files=10730245216 iters=0 fap=1229851984 tx=20000 bytes/tx=40175 maxRec=162940208 recs>1MB=4 exec p50=639us p99.9=10189us max=2382ms
+[35.8s] log tx=30000  len=12176124408 kept=10946272424 files=10975191080 iters=0 fap=1229851984 tx=30000 bytes/tx=34920 maxRec=162940208 recs>1MB=4 exec p50=765us p99.9=7695us max=2382ms
+[51.1s] log tx=40000  len=12639282792 kept=11409430808 files=11438207432 iters=0 fap=1229851984 tx=40000 bytes/tx=37510 maxRec=209625936 recs>1MB=6 exec p50=778us p99.9=7282us max=3029ms
+[60.2s] log tx=50000  len=12883151864 kept=11653299880 files=11682040776 iters=0 fap=1229851984 tx=50000 bytes/tx=34885 maxRec=209625936 recs>1MB=6 exec p50=787us p99.9=6068us max=3029ms
+[60.2s] LOG done tx=50000 iters=0 s=56.1 tx/s=891
+[60.2s] LOG tx=50000 bytes/tx=34885 maxRec=209625936 recs>1MB=6 exec p50=787us p99.9=6068us max=3029ms
+[60.2s] LOG state len=12883151864 kept=11653299880 files=11682040776 iters=0 fap=1229851984
+[60.2s] LOG head1000 keys=1000 ms=5382.6 ns/key=5382570
+[65.5s] LOG all keys=1000000 keyNodes=1388701 follows=2388701 klongs=18137300 dead=15748597 ms=8773.0
+[74.3s] CLOSE ms=1 files=11683151864
+[74.3s] DONE
