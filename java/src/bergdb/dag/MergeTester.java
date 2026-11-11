@@ -344,6 +344,71 @@ public class MergeTester {
     }
 
     /**
+     * 024-22's MF1 (its J4): a delete in a full leaf makes a rule O first (a time split whose
+     * last version has m - 1 live klongs), whose klong can split the parent and make a new
+     * root, and then merges and root collapse, in one operation. The model's smallest case at
+     * node size 8: twelve keys (the smallest, "/" for the model's empty key, eight of one
+     * segment, three under one 7-byte prefix and one under another), each put in its own
+     * transaction, all again in one, then a put of the smallest, then its delete. In the delete: a rule O and a merge; after it
+     * BU1, every get at every time, and dirtyNodeBound at least the key nodes made dirty.
+     */
+    @Nano
+    public static void testRuleOBeforeAMerge() {
+        final String[] keys = {"/", "/a", "/bbbbbb1", "/bbbbbb2", "/bbbbbb3", "/c", "/dddddd4",
+                "/e", "/f", "/g", "/h", "/i"};
+        Run run = new Run(8);
+        for (String k : keys) {
+            TreeMap<String, String> tr = new TreeMap<String, String>(BYTES);
+            tr.put(k, "v");
+            run.trans(tr);
+        }
+        TreeMap<String, String> all = new TreeMap<String, String>(BYTES);
+        for (String k : keys) all.put(k, "w");
+        run.trans(all);
+        TreeMap<String, String> put = new TreeMap<String, String>(BYTES);
+        put.put("/", "x");
+        run.trans(put);
+        run.checkFill("the put");
+        
+        // The delete, with dirtyNodeBound before it and the key nodes it makes dirty.
+        final Set<Node> dirty = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
+        long bound = run.dag.dirtyNodeBound(run.t, new long[][] {Keys.toSegments("/")},
+                new boolean[] {true}, run.gd());
+        final Dag.PointerListener inner = run.pd.pointerListener;
+        final Dag.NodeChangeListener changes = run.pd.nodeChangeListener;
+        run.pd.pointerListener = new Dag.PointerListener() {
+            public void pointerFollowed(Node pred, int i, Node result, int type) {
+                if (result instanceof KeyNode) dirty.add(result);
+                inner.pointerFollowed(pred, i, result, type);
+            }
+            public void superRootAccessed(TopNode s) {}
+        };
+        run.pd.nodeChangeListener = new Dag.NodeChangeListener() {
+            public void topNodeCreated(TopNode node) {}
+            public void keyNodeCreated(KeyNode node) { dirty.add(node); changes.keyNodeCreated(node); }
+            public void valueNodeCreated(ValueNode node, long[] key) {}
+            public void keyNodeChanged(KeyNode node) { dirty.add(node); }
+            public void keyNodeReplaced(KeyNode node) { dirty.remove(node); }
+            public void keyNodeTakenBack(KeyNode node) {
+                dirty.remove(node);
+                changes.keyNodeTakenBack(node);
+            }
+        };
+        final long merges0 = Dag.statMerges;
+        final int full0 = run.pd.fullNodes;
+        TreeMap<String, String> del = new TreeMap<String, String>(BYTES);
+        del.put("/", null);
+        run.trans(del);
+        Assert.assertTrue("a rule O in the delete", run.pd.fullNodes > full0);
+        Assert.assertTrue("a merge in the delete", Dag.statMerges > merges0);
+        Assert.assertTrue("dirty key nodes " + dirty.size() + ", bound " + bound,
+                dirty.size() <= bound);
+        run.checkFill("the delete");
+        run.checkGets("the delete", 1);
+        run.checkTakenBack("the delete");
+    }
+    
+    /**
      * The thresholds of format 7 (bergdb 024-21, section 2; 024-14, QT1: 8/17/17 at node size
      * 30, scaled to other node sizes): the values at the database's node sizes, h = B / 2
      * below 8 as in 2026.4, no merges there, and V1's conditions (024-11, section 5.4) for
