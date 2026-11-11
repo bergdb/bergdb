@@ -1,0 +1,90 @@
+slot /Users/f/fl/bench/2026-11-11/heavy.lock 18:28:51
+== old round 1 CsBench25 18:28:51
+16 MiB: 93.89 ms (5.596 ms a MB); a 544-byte node: 3.023 us
+16 MiB: 94.08 ms (5.607 ms a MB); a 544-byte node: 3.085 us
+16 MiB: 94.08 ms (5.608 ms a MB); a 544-byte node: 3.092 us
+16 MiB: 94.42 ms (5.628 ms a MB); a 544-byte node: 3.044 us
+16 MiB: 94.02 ms (5.604 ms a MB); a 544-byte node: 3.045 us
+1223058278
+== old round 1 ValueProbe25 18:28:53
+size     what           ms       allocMB  note
+8388608  put0           56.5     11.0     sync 137.9 ms, next small put 0.3 ms, stream +8766752
+8388608  put1           52.1     0.1      sync 81.5 ms, next small put 0.2 ms, stream +8680872
+8388608  put2           51.2     0.0      sync 47.1 ms, next small put 0.1 ms, stream +8657712
+8388608  put3           50.1     0.0      sync 40.7 ms, next small put 0.1 ms, stream +8592480
+8388608  put4           49.3     0.0      sync 33.8 ms, next small put 0.1 ms, stream +8547712
+8388608  put5           48.6     0.0      sync 44.3 ms, next small put 0.1 ms, stream +8526752
+8388608  heap held      0.0      13.0     after 3 puts and a GC, MB
+8388608  get0 r0        56.9     16.9     length 8388608
+8388608  get0 r4        52.5     16.8     length 8388608
+8388608  get1 r4        52.8     16.8     length 8388608
+8388608  get2 r4        52.7     16.8     length 8388608
+8388608  restart        549.1    168.7    heap after 50.7 MB
+8388608  get after      51.6     0.0      length 8388608
+== clone round 1 CsBench25 18:28:57
+16 MiB: 2.02 ms (0.120 ms a MB); a 544-byte node: 0.053 us
+16 MiB: 2.07 ms (0.124 ms a MB); a 544-byte node: 0.057 us
+16 MiB: 2.04 ms (0.122 ms a MB); a 544-byte node: 0.053 us
+16 MiB: 2.02 ms (0.120 ms a MB); a 544-byte node: 0.054 us
+16 MiB: 2.02 ms (0.120 ms a MB); a 544-byte node: 0.053 us
+-1744350268
+== clone round 1 ValueProbe25 18:28:57
+size     what           ms       allocMB  note
+8388608  put0           10.5     11.0     sync 138.1 ms, next small put 0.4 ms, stream +8766960
+8388608  put1           4.6      0.1      sync 83.7 ms, next small put 0.2 ms, stream +8702480
+8388608  put2           4.0      0.0      sync 41.1 ms, next small put 0.1 ms, stream +8657680
+8388608  put3           3.8      0.0      sync 40.7 ms, next small put 0.1 ms, stream +8593664
+8388608  put4           2.4      0.0      sync 31.4 ms, next small put 0.1 ms, stream +8569184
+8388608  put5           2.2      0.0      sync 51.7 ms, next small put 0.1 ms, stream +8526768
+8388608  heap held      0.0      13.0     after 3 puts and a GC, MB
+8388608  get0 r0        4.5      16.9     length 8388608
+8388608  get0 r4        4.1      16.8     length 8388608
+8388608  get1 r4        4.1      16.8     length 8388608
+8388608  get2 r4        3.9      16.8     length 8388608
+8388608  restart        162.9    169.0    heap after 50.8 MB
+8388608  get after      2.3      0.0      length 8388608
+== old round 2 CsBench25 18:28:59
+16 MiB: 95.04 ms (5.665 ms a MB); a 544-byte node: 3.070 us
+16 MiB: 95.41 ms (5.687 ms a MB); a 544-byte node: 3.143 us
+16 MiB: 95.50 ms (5.692 ms a MB); a 544-byte node: 3.124 us
+16 MiB: 95.13 ms (5.670 ms a MB); a 544-byte node: 3.074 us
+16 MiB: 95.53 ms (5.694 ms a MB); a 544-byte node: 3.094 us
+1223058278
+== old round 2 ValueProbe25 18:29:01
+size     what           ms       allocMB  note
+8388608  put0           56.3     11.0     sync 118.5 ms, next small put 0.2 ms, stream +8766752
+8388608  put1           52.6     0.1      sync 78.9 ms, next small put 0.3 ms, stream +8680872
+8388608  put2           52.4     0.0      sync 42.8 ms, next small put 0.1 ms, stream +8657712
+8388608  put3           50.0     0.0      sync 29.7 ms, next small put 0.1 ms, stream +8592480
+8388608  put4           49.4     0.0      sync 31.9 ms, next small put 0.1 ms, stream +8547712
+8388608  put5           48.5     0.0      sync 44.3 ms, next small put 0.1 ms, stream +8526752
+8388608  heap held      0.0      12.8     after 3 puts and a GC, MB
+8388608  get0 r0        56.3     16.9     length 8388608
+8388608  get0 r4        53.0     16.8     length 8388608
+8388608  get1 r4        52.5     16.8     length 8388608
+8388608  get2 r4        52.9     16.8     length 8388608
+8388608  restart        516.1    168.7    heap after 50.4 MB
+8388608  get after      51.0     0.0      length 8388608
+== clone round 2 CsBench25 18:29:05
+16 MiB: 2.02 ms (0.120 ms a MB); a 544-byte node: 0.052 us
+16 MiB: 2.08 ms (0.124 ms a MB); a 544-byte node: 0.058 us
+16 MiB: 2.06 ms (0.123 ms a MB); a 544-byte node: 0.053 us
+16 MiB: 2.07 ms (0.123 ms a MB); a 544-byte node: 0.054 us
+16 MiB: 2.04 ms (0.122 ms a MB); a 544-byte node: 0.054 us
+-1744350268
+== clone round 2 ValueProbe25 18:29:05
+size     what           ms       allocMB  note
+8388608  put0           9.8      11.0     sync 112.8 ms, next small put 0.3 ms, stream +8766960
+8388608  put1           4.3      0.1      sync 78.9 ms, next small put 0.2 ms, stream +8702480
+8388608  put2           3.8      0.0      sync 36.3 ms, next small put 0.1 ms, stream +8657680
+8388608  put3           3.5      0.0      sync 36.8 ms, next small put 0.1 ms, stream +8593664
+8388608  put4           2.4      0.0      sync 28.0 ms, next small put 0.1 ms, stream +8569184
+8388608  put5           2.2      0.0      sync 39.9 ms, next small put 0.1 ms, stream +8526768
+8388608  heap held      0.0      13.0     after 3 puts and a GC, MB
+8388608  get0 r0        4.6      16.9     length 8388608
+8388608  get0 r4        3.9      16.8     length 8388608
+8388608  get1 r4        3.8      16.8     length 8388608
+8388608  get2 r4        4.0      16.8     length 8388608
+8388608  restart        220.7    169.0    heap after 50.8 MB
+8388608  get after      2.7      0.0      length 8388608
+EXIT 0 18:29:07

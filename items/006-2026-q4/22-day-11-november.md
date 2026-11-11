@@ -403,6 +403,17 @@ from them.
   0.29 to 0.31 dead klongs a live one (0.48 to 0.85 with the merges
   alone), stream bytes -3 % to +8.5 %, 13 to 16 % fewer key nodes. The
   landing says that format 7's meaning changes without a new number.
+* 18:45 to 19:04 The reviews of CRC32C (land with fixes: level1's
+  stream-size limits, a node size under 12 untested, 024-02's text) and
+  of the limits (land with fixes: R1, a value over L4 through the public
+  Trans.kvs failed the database when reclaim rewrote it; docs). Both
+  fixed by their agents.
+* 19:24 CRC32C landed: 79f35aa3, the merge of e1a87bec (gates:
+  before-commit, level1 full, unlinkfuzz, level2 to level4 full,
+  conformance small, medium, reclaim, evict, drain, CorruptStreamTester's
+  full set; 48 of 48 StreamDigest digests change). Checksum 5.6 to 0.12
+  ms a MB; an 8 MiB commit 49-57 to 2-11 ms (rough). Its changed tests
+  and level1's raised stream-size limits (QC2) accepted for Frans to see.
 
 
 ## 6. Outcome
