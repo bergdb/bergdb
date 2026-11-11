@@ -179,9 +179,10 @@ public class LargerThanMemory {
             int j = rnd.nextInt(i + 1);
             int x = order[i]; order[i] = order[j]; order[j] = x;
         }
-        for (int i = 0; i < keys; i += 1000) {
+        // Batches of 500, L1 (bergdb 024-24; 1,000 until then).
+        for (int i = 0; i < keys; i += Db.MAX_OPERATIONS) {
             Trans.Builder b = db.trans();
-            for (int j = i; j < Math.min(keys, i + 1000); j++) b.put(key(order[j]), value(order[j], 0));
+            for (int j = i; j < Math.min(keys, i + Db.MAX_OPERATIONS); j++) b.put(key(order[j]), value(order[j], 0));
             execute(b);
         }
         report("load", keys, s);
