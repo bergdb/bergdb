@@ -133,6 +133,39 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
   transaction without such keys writes the bytes it wrote before.
 
 
+### Limits
+
+* **Limits on keys, values and transactions** (bergdb 024-17, 024-24),
+  fixed for every database; a later release may raise them, never lower
+  them. A call over one throws and writes nothing; the database goes on.
+  * **A key is at most 111 bytes**; about 100 characters as a rule of
+    thumb: ASCII letters and digits one byte each, each "/" of a Pub key
+    two, letters such as å, ä and ö two bytes each (UTF-8). Refused with
+    `IllegalArgumentException` by the call that takes the key. Until now a
+    key had no limit.
+  * **A value is at most 8 MiB** (8,388,608 bytes), refused at the put
+    with `IllegalArgumentException`; larger data goes in chunks under keys
+    of their own, with a key that lists them written last.
+  * **A transaction is at most 500 operations** (the keys it puts or
+    deletes; a Pub object put in a directory with k indexes counts up to 1
+    + 2k) **and 32 MiB of keys and values**; its keys, its index entries
+    among them, at most 56 KiB. Refused at the commit with
+    `DbException`. Larger work goes in several transactions, with a key
+    written last that readers look at first.
+  * **An indexed value's levels are at most 111 bytes**, as a key: a put
+    of an object with longer ones for an index of its directory is refused
+    with `IllegalArgumentException` (until now it was taken with no entry,
+    and the index's scans missed it); index such a value by a hash or a
+    prefix. A build over objects put before the index gives them no entry.
+  * A value transformation (Core API) whose result passes 8 MiB fails the
+    database, as one that throws does. A start reads a record's header
+    first, and refuses another format before reading the record.
+  * Gates and tools changed with them: batches of 500 (were 1,000) in
+    PayDemo, PayTest and LargerThanMemory, so bytes a put and time a
+    commit there are not comparable with earlier runs; `performance.sh`'s
+    long keys of 111 bytes (were 120), so its long-key results are not
+    comparable with 2026.4's reference.
+
 ### Known issues and limits
 
 * **Fixed: reclaim with keys in time order** (bergdb 024-07; 2026.4's

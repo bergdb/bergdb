@@ -169,7 +169,8 @@ size: many small databases open at once need heap accordingly
 <li>A transaction is written to storage soon after it returns; sync() waits until it is
 durable, and so does close().</li>
 <li>A long key costs many times its length in the stream and in memory, as a key is stored
-as a path of nodes, one for each 7 bytes: keep keys short ({@link Connection}, "Keys").</li>
+as a path of nodes, one for each 7 bytes: keep keys short ({@link Connection}, "Keys"). A key
+has at most 111 bytes (<a href="#limits">Limits</a>).</li>
 <li>A Connection is for one thread: db.connection() gives each thread its own, the same object
 at each call in the thread, and is the one to use; db.newConnection() makes another, for a
 second view, such as a reader at another lookup time. A call of a connection while another
@@ -202,12 +203,42 @@ indexes, and what happens on errors.</li>
 <li>{@link IndexBuilder} and {@link UseIndexBuilder}: define a user index, and scan it.</li>
 <li>{@link UsePrimaryBuilder}: list the keys of a directory.</li>
 <li>{@link Time}: a time of the database's clock.</li>
-<li>The rules below: <a href="#api">The API and its jar</a>, <a href="#strings">Strings</a>,
+<li>The rules below: <a href="#limits">Limits</a>, <a href="#api">The API and its jar</a>,
+<a href="#strings">Strings</a>,
 <a href="#objects">Objects</a>, <a href="#null">Null and absent fields</a>,
 <a href="#encryption">Encryption</a>.</li>
 </ul>
 
 <h2 id="rules">The rules in full</h2>
+
+<h3 id="limits">Limits</h3>
+
+<p>Keys, values and transactions have fixed limits, the same for every database (bergdb
+024-17, section 6). A call over one throws, and writes nothing; the database goes on. A later
+release may raise them, never lower them.</p>
+<ul>
+<li><b>A key is at most 111 bytes</b> as stored: its UTF-8, and one byte more for each part,
+so each "/" counts two. About 100 characters as a rule of thumb: ASCII letters and digits are
+one byte each, each "/" two, letters such as å, ä and ö two bytes each (UTF-8).
+"/customers/12345678" is 21 bytes. A put or a delete of a longer key throws
+IllegalArgumentException.</li>
+<li><b>A value is at most 8 MiB</b>, 8,388,608 bytes as stored: a byte[]'s bytes, a String's
+UTF-8, an object's stored value, counted before anything is copied. A put of a larger one
+throws IllegalArgumentException. A larger file is put in chunks, under keys of their own, and
+a key that lists them written last.</li>
+<li><b>An indexed value's levels</b>, as an index entry holds them, are at most 111 bytes, as a
+key's: a string level takes its UTF-8 and a byte, a long or a double 8 bytes. A put of an
+object whose levels for an index of its directory are longer throws IllegalArgumentException;
+index such a value by a hash of it, or by a prefix as a level of its own. An index built over
+objects put before it gives such an object no entry.</li>
+<li><b>A transaction</b> (a put, a delete, a w() or an rw()) has at most 500 operations, the
+keys it puts or deletes, and at most 32 MiB of keys and values. An object put at a key of a
+directory with k indexes is up to 1 + 2k operations (the object and, for each index, the
+entry of its old value deleted and of its new one put): 500 objects without indexes, 166
+with one. The keys of the transaction, its index entries among them, take at most 56
+KiB. A transaction over these is refused with DbException at its commit. Larger work is done
+in several transactions, with a key written last that readers look at first.</li>
+</ul>
 
 <h3 id="api">The API and its jar</h3>
 
@@ -238,8 +269,8 @@ a String cut between the two chars of a pair, or <code>"\ud800"</code> decoded f
 The reason: UTF-8 cannot hold a lone surrogate, so the string read back would differ from
 the one put, in Java and in every other language, and BergDB does not change data silently.
 A call that takes a key, a get too, refuses a key with one in the same way. A put refuses
-also a String value whose UTF-8 takes more than 2^31 - 9 bytes, the most that a Java array
-holds.</p>
+also a String value whose UTF-8 takes more than 8 MiB, counted before it is made
+(<a href="#limits">Limits</a>).</p>
 
 <p>A reader may rely on the rule: a string in the database is well-formed UTF-8, and a
 string put reads back equal, in any language.</p>
@@ -306,9 +337,9 @@ reads it back equal. It refuses, with IllegalArgumentException and before anythi
 written, what cannot be stored so, naming its place from the top object, such as
 "inner.names[3]": a null array element (see below); a value whose class is not its field's
 type, such as a subclass; a reference cycle; nesting deeper than 16 levels; a string with a
-lone surrogate (see Strings); a stored value of more than 2^31 - 9 bytes, the largest Java
-array (the format allows 2^31 - 1), counted before anything is copied, the message naming
-the place where the count passes it (bergdb 021-23). An object or an array that the object
+lone surrogate (see Strings); a stored value of more than 8 MiB (<a href="#limits">Limits</a>;
+DbObject alone takes up to 2^31 - 9 bytes, the largest Java array), counted before anything
+is copied, the message naming the place where the count passes it (bergdb 021-23). An object or an array that the object
 refers to twice is stored twice, and a get makes two equal ones: a stored object holds no
 references (bergdb 020-09, section 4.5), so an array of a thousand references to one array
 of 1 MB stores 1 GB. An array put at a key is stored as an object with the field "array", a

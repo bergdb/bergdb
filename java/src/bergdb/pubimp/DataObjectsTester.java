@@ -1628,7 +1628,9 @@ public class DataObjectsTester {
      * into its array's buffer and checked the array's size only then: OutOfMemoryError with
      * a heap below about 5 GB, which in rw() failed the database; above it, "size: a value
      * of ..." without the place. By toDbObject(), put(), w() and rw(): nothing written, and
-     * the database goes on.
+     * the database goes on. Since bergdb 024-24 a put counts against L4, 8 MiB (the package's
+     * Limits), and names the place where the count passes it, such as "parts[7]"; toDbObject()
+     * still against 2^31 - 9.
      */
     @Nano
     public static void testPutTooLarge() {
@@ -1640,34 +1642,47 @@ public class DataObjectsTester {
             Parts parts = new Parts();
             parts.parts = new byte[2100][];
             Arrays.fill(parts.parts, mib);
-            tooLarge(ch, c, "021-23, 2100 references to 1 MiB of bytes", parts, "parts[2047]");
+            tooLarge(ch, c, "021-23, 2100 references to 1 MiB of bytes", parts, "parts[2047]",
+                    "parts[7]");
 
             Rows rows = new Rows();
             rows.rows = new double[240][];
             Arrays.fill(rows.rows, new double[1 << 20]);
-            tooLarge(ch, c, "021-23, 240 references to 2^20 doubles", rows, "rows[227]");
+            tooLarge(ch, c, "021-23, 240 references to 2^20 doubles", rows, "rows[227]",
+                    "rows[0]");
 
             Parts one = new Parts();
             one.parts = new byte[][] {mib};
             PartsArray all = new PartsArray();
             all.all = new Parts[2100];
             Arrays.fill(all.all, one);
-            tooLarge(ch, c, "021-23, 2100 references to an object", all, "all[2047].parts[0]");
+            tooLarge(ch, c, "021-23, 2100 references to an object", all, "all[2047].parts[0]",
+                    "all[7].parts[0]");
 
             byte[][] top = new byte[2100][];
             Arrays.fill(top, mib);
-            tooLarge(ch, c, "021-23, an array at the top", top, "[2047]");
+            tooLarge(ch, c, "021-23, an array at the top", top, "[2047]", "[7]");
         } finally {
             db.close();
         }
         ch.done();
     }
 
-    /** 'x' refused as too large, at 'at', in each way; nothing written; the database on. */
-    private static void tooLarge(Check ch, Connection c, String id, Object x, String at) {
-        String[] mentions = {"too large", "'" + at + "'", ObjectFormat.MAX_ARRAY + " bytes",
+    /**
+     * 'x' refused as too large, by toDbObject() at 'at', by a put at 'atPut' (L4, bergdb
+     * 024-24), in each way; nothing written; the database on.
+     */
+    private static void tooLarge(Check ch, Connection c, String id, Object x, String at,
+            String atPut) {
+        String[] all = {"too large", "'" + at + "'", ObjectFormat.MAX_ARRAY + " bytes",
                 "2^31 - 1"};
-        refusedPut(ch, c, id, null, x, mentions);
+        ch.argRefused(id + ", toDbObject", () -> DbObject.toDbObject(x), null, all);
+        String[] mentions = {"too large", "'" + atPut + "'", bergdb.core.Db.MAX_VALUE_BYTES 
+                + " bytes", "024-17, L4"};
+        String key0 = ch.key();
+        ch.argRefused(id + ", Connection.put", () -> c.put(key0, x), null, mentions);
+        ch.run(id + ", Connection.put", () -> ch.eq(id + ", nothing written", null,
+                c.get(key0, byte[].class)));
         String key = ch.key();
         ch.argRefused(id + ", w()", () -> c.w().put(key, x).execute(), null, mentions);
         ch.argRefused(id + ", rw()", () -> c.rw(env -> env.put(key, x)), null, mentions);

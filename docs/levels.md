@@ -147,6 +147,26 @@ The details:
   (024-16: a `DbException`; the transaction's KVs, its time and the clock
   are given back). The Pub API runs the application's code before it too.
   A refused transaction leaves the database as it was, and it goes on.
+* The limits of 2026.5 (024-17, sections 6 and 8; 024-24), constants in
+  `Db`, the same for every database and node size: a key at most 111 bytes
+  (L2) and a value at most 8 MiB (L4), refused by the `Trans.Builder` call
+  that takes them (`IllegalArgumentException`), BergDB's own longer keys
+  (index entries) through its internal `putLongKey`; a transaction at most
+  500 operations (L1), 56 KiB of keys (L3) and 32 MiB of keys and values
+  (L5), refused by `Db.checkLimits` before the write lock (`DbException`),
+  and a key transformation's keys again in `transformKeys`; the Pub API
+  checks L2 on the ikey, L4, and an indexed value's levels, at most 111
+  bytes (L6; a longer one's put is refused). Within them a transaction's
+  dirty index nodes fit a record at every node size by the count with q
+  (`Limits.dirtyNodes`, `ReleaseFits` proved by `decide`; TP26 checked by
+  `treetest` and C-T8, not proved). The checks of 005-17 and 005-31 stay,
+  as refusals: `checkDirtyNodes` counts a KV with a key or a value
+  transformation coarsely, from the stream's length, so such a
+  transaction within the limits can meet 005-31 (024-24's review, R3),
+  and QL5's step to a `Bug` waits for a count of transformed KVs within
+  the model's bound. A value transformation's result over L4 fails the
+  database (QL6). The reader
+  reads a record's size and format byte first (QL7).
   The size check counts a Core API value transformation's input: its
   result, made after the go point, must keep the transaction within the
   limit, and one whose record does not fit fails the database, as a

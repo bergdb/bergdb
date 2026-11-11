@@ -123,6 +123,8 @@ public class PubTesterIndex {
      * 020-24-17, u17): an empty range at the end, ranges with entries, the whole index,
      * forward and backward, give the payments that there are. Since 021-28 a forward scan
      * ends at its range's end (GetMany.endKey) instead of at the first live key after it.
+     * The 300 payments in two w() of 150, 300 operations each with their entries (one w()
+     * of 600 until bergdb 024-24, over L1 = 500 since).
      */
     @Nano
     public static void testScansBeforeDeletedEntries() {
@@ -130,11 +132,13 @@ public class PubTesterIndex {
         try {
             Connection c = db.newConnection();
             db.indexBuilder("in").dir("/payments/").type("long").field("amount").start().join();
-            WBuilder w = c.w();
-            for (int i = 0; i < 300; i++) {
-                w.put("/payments/" + i, new Payment("f" + (i % 7), "t", i % 50));
+            for (int i0 = 0; i0 < 300; i0 += 150) {
+                WBuilder w = c.w();
+                for (int i = i0; i < i0 + 150; i++) {
+                    w.put("/payments/" + i, new Payment("f" + (i % 7), "t", i % 50));
+                }
+                w.execute();
             }
-            w.execute();
             for (int k = 0; k < 3; k++) {
                 db.indexBuilder("ix2").dir("/payments/").type("string").field("from").start()
                         .join();
@@ -1966,7 +1970,8 @@ public class PubTesterIndex {
     
     @Nano
     public static void testLongs256() {
-        // Tests an index with all byte values 0..255 in a long.
+        // Tests an index with all byte values 0..255 in a long. In two w() of 128 objects,
+        // 256 operations each with their entries (one of 512 until bergdb 024-24, over L1).
         
         Database database = Factory.database().memory().start();
         Connection c = database.newConnection();
@@ -1974,11 +1979,13 @@ public class PubTesterIndex {
         database.indexBuilder("i0").dir("/payments/").type("long")
             .field("amount").start().join();
         
-        WBuilder b = c.w();
-        for (int i = 0; i < 256; i++) {
-            b.put("/payments/" + i, new Payment("" + i, "" + (i+1), i));
+        for (int i0 = 0; i0 < 256; i0 += 128) {
+            WBuilder b = c.w();
+            for (int i = i0; i < i0 + 128; i++) {
+                b.put("/payments/" + i, new Payment("" + i, "" + (i+1), i));
+            }
+            b.execute();
         }
-        b.execute();
         
         Iterator<Payment> iter = c.useIndex("i0", Payment.class).objects().iterator();
         for (int i = 0; i < 256; i++) {
@@ -2578,17 +2585,23 @@ public class PubTesterIndex {
         }
     }
     
-    /** Pages of 100 entries: 250 values in order, forward and backward, with a bound. */
+    /**
+     * Pages of 100 entries: 250 values in order, forward and backward, with a bound. Put in
+     * two w() of 125, 375 operations each with the entries of two indexes (one of 750 until
+     * bergdb 024-24, over L1 = 500).
+     */
     @Nano
     public static void testScanPages() {
         Database db = rows();
         try {
             Connection c = db.newConnection();
-            WBuilder w = c.w();
-            for (int i = 0; i < 250; i++) {
-                w.put("/r/" + i, new Row("p", i, i, new byte[0]));
+            for (int i0 = 0; i0 < 250; i0 += 125) {
+                WBuilder w = c.w();
+                for (int i = i0; i < i0 + 125; i++) {
+                    w.put("/r/" + i, new Row("p", i, i, new byte[0]));
+                }
+                w.execute();
             }
-            w.execute();
             long expected = 0;
             for (Row r : c.useIndex("sn", Row.class).objects()) {
                 Assert.assertEquals(expected++, r.n);

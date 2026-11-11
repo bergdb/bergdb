@@ -417,6 +417,16 @@ final class IndexDefinition {
      *      without calling this, so a put over it and a delete of it work (2026-11-09).
      */
     byte[] entryLevels(String ikey, byte[] value) {
+        return entryLevels(ikey, value, false);
+    }
+    
+    /**
+     * entryLevels(ikey, value), and with 'refuse' a value whose levels would take more than
+     * IndexKeys.MAX_LEVEL_BYTES (L6) is refused, not given no entry (bergdb 024-17, QL4).
+     *
+     * @throws IllegalArgumentException  If 'refuse' and the levels are too long.
+     */
+    private byte[] entryLevels(String ikey, byte[] value, boolean refuse) {
         if (value == null || !Entries.isObjectKey(ikey)) {
             return null;
         }
@@ -452,7 +462,7 @@ final class IndexDefinition {
             default: {
                 int length = ObjectFormat.lengthAt(value, p);
                 if (length >= IndexKeys.MAX_LEVEL_BYTES - size) {
-                    return null;        // E has at least length + 1 bytes
+                    return tooLong(ikey, refuse);       // E has at least length + 1 bytes
                 }
                 size += IndexKeys.escapedLength(value, ObjectFormat.contentAt(value, p),
                         length) + 1;
@@ -460,7 +470,7 @@ final class IndexDefinition {
             }
             }
             if (size > IndexKeys.MAX_LEVEL_BYTES) {
-                return null;
+                return tooLong(ikey, refuse);
             }
             at[i] = p;
         }
@@ -488,6 +498,21 @@ final class IndexDefinition {
         return levels;
     }
 
+    /**
+     * No entry for levels longer than IndexKeys.MAX_LEVEL_BYTES, or with 'refuse' the refusal
+     * of the put (bergdb 024-17, L6 and QL4; 024-24).
+     */
+    private byte[] tooLong(String ikey, boolean refuse) {
+        if (!refuse) {
+            return null;
+        }
+        throw new IllegalArgumentException("The value put at " + ukeyOf(ikey) + " has more "
+                + "than " + IndexKeys.MAX_LEVEL_BYTES + " bytes of encoded levels for the "
+                + "index " + IndexKeys.quote(name) + " (bergdb 024-17, L6): an index entry is "
+                + "a key, and its levels are limited as a key is. Index such a value by a "
+                + "hash of it, or by a prefix as a level of its own.");
+    }
+    
     /** A key as the user gave it, and its ikey: "/p/b (/dp/-b)"; the ikey if it has no ukey. */
     private static String ukeyOf(String ikey) {
         String ukey = PubKeys.i2uOrNull(ikey);
@@ -503,6 +528,21 @@ final class IndexDefinition {
      */
     byte[] entry(String ikey, byte[] value) {
         byte[] levels = entryLevels(ikey, value);
+        return levels == null ? null
+                : IndexKeys.entryKey(generationPrefix, levels, IndexKeys.fileKey(ikey));
+    }
+    
+    /**
+     * entry() of a value that a put writes: one whose levels would take more than
+     * IndexKeys.MAX_LEVEL_BYTES is refused (bergdb 024-17, QL4; 024-24). Until release 2026.5
+     * such a value had no entry, and a scan of the index missed it. A build step of an index
+     * over values put before it existed calls entry(), and such a value has no entry.
+     *
+     * @throws IllegalArgumentException  If so, before anything is written.
+     * @throws DataFormatException  As entryLevels().
+     */
+    byte[] entryForPut(String ikey, byte[] value) {
+        byte[] levels = entryLevels(ikey, value, true);
         return levels == null ? null
                 : IndexKeys.entryKey(generationPrefix, levels, IndexKeys.fileKey(ikey));
     }

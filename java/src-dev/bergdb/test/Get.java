@@ -39,7 +39,7 @@ public class Get {
                 .systemClock()
                 .start();
         
-        int bs = 10000;   // batch size
+        int bs = 500;   // batch size: L1 (bergdb 024-24; 10,000 until then)
         if (bs > n) {
             bs = n;
         }

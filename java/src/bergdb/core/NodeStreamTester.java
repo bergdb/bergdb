@@ -44,6 +44,52 @@ public class NodeStreamTester {
         checkCorruptReadSize(2);
     }
 
+    /**
+     * QL7 (bergdb 024-17, 6.5; 024-24): the reader reads a record's size and format byte
+     * first. A size over the record limit (L7) is corrupt, also where the stream would hold
+     * it; a committed record of another format, older or newer, is refused with
+     * VersioningStreamException by both readers, and an uncommitted one (last byte 0) is
+     * skipped by the iterator as before.
+     */
+    @Nano
+    private static void testRecordHeaderFirst() throws IOException {
+        byte[] bytes = new byte[132];
+        Bytes.intToBytesLE(Integer.MAX_VALUE - 7, bytes, 128);
+        MemoryStream big = new MemoryStream();
+        big.append(bytes, 0, bytes.length);
+        NodeStream ns = new NodeStream(new RecoverableStream(big, new MetaBlock()), new Object());
+        try {
+            ns.readTransBytes(128);
+            throw new AssertionError("a size over L7 was read");
+        } catch (StreamFormatException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("(bergdb 024-17, L7)"));
+        }
+        for (int format : new int[] {6, StoredTrans.RECORD_FORMAT + 1}) {
+            for (int reader = 0; reader < 2; reader++) {
+                int size = 1000;
+                byte[] record = new byte[128 + size];
+                Bytes.intToBytesLE(size, record, 128);
+                record[128 + 4] = (byte) format;
+                record[128 + size - 1] = RecoverableStream.LAST_BYTE;
+                MemoryStream stream = new MemoryStream();
+                stream.append(record, 0, record.length);
+                NodeStream n = new NodeStream(new RecoverableStream(stream, new MetaBlock()),
+                        new Object());
+                try {
+                    if (reader == 0) {
+                        n.readTransBytes(128);
+                    } else {
+                        n.createTransIteratorFromExactStartupPos(128).next();
+                    }
+                    throw new AssertionError("format " + format + " was read");
+                } catch (bergdb.storage.VersioningStreamException e) {
+                    Assert.assertTrue(e.getMessage(), e.getMessage().contains("format version "
+                            + format + ";"));
+                }
+            }
+        }
+    }
+
     private static void checkCorruptReadSize(int reader) throws IOException {
         for (int size : new int[] {Integer.MAX_VALUE, 1 << 30, -1, 0, 6, 7}) {
             byte[] bytes = new byte[132];

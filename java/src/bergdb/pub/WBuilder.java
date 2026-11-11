@@ -59,19 +59,21 @@ public interface WBuilder {
      * (Connection.setEnableKeyReplace(); bergdb 020-24-02, I-6).</p>
      *
      * @throws IllegalArgumentException
-     *             If 'key' is null or otherwise invalid, or if object is null; or if it
-     *             is a String with a lone surrogate, a char of U+D800 to U+DFFF that is not
-     *             part of a surrogate pair, as a key with one is (bergdb 019-44), or whose
-     *             UTF-8 takes more than 2^31 - 9 bytes, the most that a Java array holds
-     *             (bergdb 020-08, section 3); or if it is an object with a string that has
+     *             If 'key' is null or otherwise invalid, or has more than 111 bytes as
+     *             stored, its UTF-8 and a byte for each part (L2), or if object is null; or
+     *             if it is a String with a lone surrogate, a char of U+D800 to U+DFFF that
+     *             is not part of a surrogate pair, as a key with one is (bergdb 019-44), or
+     *             a value of more than 8 MiB, a byte[] or a String's UTF-8 (L4; the
+     *             package's {@linkplain bergdb.pub##limits Limits}; bergdb 024-17); or if
+     *             it is an object with a string that has
      *             one, at any depth: the message names the field, and an array element's
      *             index (bergdb 021-04). Or if the object cannot be stored exactly (the
      *             package's {@linkplain bergdb.pub##objects Objects}; bergdb 020-09): its
      *             class, or a class it reaches, is not a Data Object class; an array in it
      *             has a null element; a value's class is not its field's type; it has a
      *             reference cycle, or is nested deeper than 16 levels of objects and arrays;
-     *             or it is larger than a stored value may be in Java, 2^31 - 9 bytes,
-     *             counted before anything is copied (bergdb 021-23). The message names the
+     *             or its stored value is larger than 8 MiB (L4), counted before anything is
+     *             copied (bergdb 021-23; 024-17). The message names the
      *             class or the place. A null field is not refused: it is left out, absent.
      * @throws IllegalStateException  If execute() was called: the builder is spent.
      */
@@ -89,8 +91,10 @@ public interface WBuilder {
      *             unspent.
      * @throws bergdb.pub.util.DbException
      *             If the transaction is refused, nothing of it written, and the database
-     *             goes on, as for Connection.put(): it is too large, about 1.88 GB in the
-     *             stream, counted as Connection.put() says, or the database is stopping or
+     *             goes on, as for Connection.put(): it passes a limit of a transaction,
+     *             500 operations, 56 KiB of keys or 32 MiB of keys and values (the package's
+     *             {@linkplain bergdb.pub##limits Limits}; bergdb 024-17), or the database is
+     *             stopping or
      *             stopped. Or if key replace makes two of its keys one key, such as a put at
      *             "/t/${transactionTime}.txt" and one at the key with the transaction's time
      *             written out (Connection.setEnableKeyReplace(); bergdb 024-16): it is not
@@ -108,6 +112,11 @@ public interface WBuilder {
      *             before (format 1), at an object key of a directory with a user index,
      *             which no index can take (IndexBuilder, rule 1): nothing is written, and the
      *             database goes on.
+     * @throws IllegalArgumentException
+     *             If one of its puts is of an object whose levels for an index of its
+     *             directory take more than 111 bytes (L6; the package's
+     *             {@linkplain bergdb.pub##limits Limits}; bergdb 024-17, QL4): nothing is
+     *             written, and the database goes on.
      */
     public Transaction execute();
 }

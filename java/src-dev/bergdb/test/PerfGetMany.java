@@ -35,7 +35,7 @@ public class PerfGetMany {
                 .clock(new SystemClock()).build();
         db.start();
         
-        int batchSize = 10000;
+        int batchSize = 500;        // L1 (bergdb 024-24; 10,000 until then)
         if (batchSize > n) {
             batchSize = n;
         }

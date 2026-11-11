@@ -2355,7 +2355,9 @@ public class DbTester {
      * TransSeq.take takes transactions whole, and the startup pos stayed before it for good.
      * Now it is refused before it changes anything, and the database goes on with its
      * startup pos moving; a smaller update, and a load of new keys, are taken. The record
-     * limit is lowered to 200 KB.
+     * limit is lowered to 200 KB. Within L1 (bergdb 024-24): the update of every 20th key,
+     * 500 operations (every 10th, 1,000, until then), and the load in two transactions of
+     * 500 (one of 1,000).
      */
     @Nano("f")
     public static void testTooManyDirtyNodes() {
@@ -2386,11 +2388,11 @@ public class DbTester {
                 db.execute(db.trans().put("/x", "a" + i).build());
             }
             
-            // An update of every 10th key: a record of about 70 KB, and index nodes for more
+            // An update of every 20th key: a record of about 35 KB, and index nodes for more
             // than the record limit.
             clock.setTime(time += 1000);
             Trans.Builder b = db.trans();
-            for (int k = 0; k < 10000; k += 10) {
+            for (int k = 0; k < 10000; k += 20) {
                 b.put(dirtyKey(k), "w");
             }
             long length = db.getStreamLength();
@@ -2409,12 +2411,14 @@ public class DbTester {
                 b.put(dirtyKey(k), "w");
             }
             db.execute(b.build());
-            clock.setTime(time += 1000);
-            b = db.trans();
-            for (int k = 0; k < 1000; k++) {
-                b.put(String.format("/new/%06d", k), "n");
+            for (int k0 = 0; k0 < 1000; k0 += 500) {
+                clock.setTime(time += 1000);
+                b = db.trans();
+                for (int k = k0; k < k0 + 500; k++) {
+                    b.put(String.format("/new/%06d", k), "n");
+                }
+                db.execute(b.build());
             }
-            db.execute(b.build());
             for (int i = 0; i < 500; i++) {
                 clock.setTime(time += 1000);
                 db.execute(db.trans().put("/y", "b" + i).build());

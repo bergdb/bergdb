@@ -291,7 +291,8 @@ def checkTx (p : Params) (P after : PMap) (r : TRec) (x : TTx) : TxResult := Id.
         res := { res with bound := res.bound ++
           [s!"T({i}): {marked} key nodes marked, dirtyNodeBound {bound}"] }
       -- TP26: the bound from the transaction's own sizes as its limits.
-      let lim : Limits := { maxOps := ops.length, maxSegs := (ops.map (·.1.key.length)).foldl max 0 }
+      let lim : Limits := { maxOps := ops.length, maxSegs := (ops.map (·.1.key.length)).foldl max 0,
+                            maxTxSegs := (ops.map (·.1.key.length)).foldl (· + ·) 0 }
       if bound > lim.dirtyNodes p then
         res := { res with bound := res.bound ++
           [s!"T({i}): DirtyBoundFromLimits: dirtyNodeBound {bound}, the limits allow {lim.dirtyNodes p}"] }

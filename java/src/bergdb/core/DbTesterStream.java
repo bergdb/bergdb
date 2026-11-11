@@ -568,7 +568,7 @@ public class DbTesterStream {
     public static void testLargeTransaction() {
         MemoryStream s = new MemoryStream();
         int n = 2;
-        int valueSize = 20*1000*1000;
+        int valueSize = Db.MAX_VALUE_BYTES;     // L4 (bergdb 024-24); 20 MB until then
         Db db = createRandomDb(n, s);  // Make sure we have some data
         
         db.execute(db.trans().put("/large", new byte[valueSize]));
