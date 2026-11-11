@@ -226,3 +226,71 @@ startup pos moves to 1, so that R(2) writes the nodes of D.
 The checker builds P(0) from `TX 0`, and P(i) from P(i−1) and the `NEW` and
 `ADD` lines of `TX i`. `exec` of the instance returns, for transaction i, the
 changes of `TX i`.
+
+## 4. Format 3: the lines of the tree model
+
+Format 3 (`TRACE 3`, since 2026-11-11, bergdb 024-12, section 2.6) is
+format 2 with the lines that the tree model needs (lean/SIS/Tree/*.lean):
+each transaction's operations, the key nodes as klongs, and reads of Java.
+The exporter writes them with the property `tree=1`; `lake exe treecheck`
+(lean/TreeCheck.lean, lean/Check/Tree.lean) reads them, and `tracecheck`
+reads over them. `java/stress/treeconf.sh` runs the exporter and
+`treecheck`. A key is written as `n c1 ... cn`: the number of its segments
+and their compare values (`Keys.toSegments`); `-` stands for no key.
+
+    TREE m g h k                 after CONFIG: the node size M; the bounds of
+                                 the levels, G (the largest segment index of a
+                                 key node, 0 for the first segment's trees) and
+                                 H (the largest height of a key node in its
+                                 segment tree, 0 for a segment leaf); k, the
+                                 primordial key node. A key node in segment s
+                                 at height e has level 1 + (g - s)(h + 1) + e,
+                                 the top node with ordinal o the level
+                                 2 + g(h + 1) + h + o (section 2's NEW lines)
+    BASE b                       in TX i, i > 0, first: the id of the first node
+                                 that T(i) makes; the following get b + 2,
+                                 b + 4 and so on, in the order Java makes them
+                                 (Db.setIdOfNode; a delete's marker uses one)
+    OP P key v                   in TX i, after BASE, in the order the Dag gets
+                                 them (Db.putKvs): a put of the key, v the
+                                 value's hash (as V's, section 1)
+    OP D key                     a delete that deleted
+    OP N key                     a delete that changed nothing (not in the
+                                 record)
+    RANGEF key                   in TX i with a touch (reclaim's steps): the
+    RANGET key                   touch's bounds: the keys after the first
+                                 (`-`: from the first key) up to the second
+                                 (`-`: to the last key); Trans.touchFrom, touchTo
+    KN x l n k1 ... kn           in TX i, after the ADD lines: key node x after
+                                 T(i), for each key node that T(i) made or gave
+                                 an entry (in TX 0: every key node): l is 1 for
+                                 a segment leaf, 0 for an inner node; then its
+                                 n klongs in order, each `T t` (a time klong, t
+                                 a model time), `K c y` (a key klong: compare
+                                 value c, pointee y) or `B b` (a delete bitmap:
+                                 bit j of the number b set if it deletes klong
+                                 j; cumulative, as Java's)
+    GET t key v                  in TX i, after the KN lines: Dag.getOne of the
+                                 key at model time t, after T(i), gave the value
+                                 with hash v, or `-` for none
+    SCAN t d a b n start end r kv1 ... kvr
+                                 in TX i, after the GET lines: Dag.getMany at
+                                 model time t, after T(i): d is F (forward) or
+                                 B (backward); a is 1 if the start key is
+                                 inclusive, b if the end key is; n is the limit
+                                 (GetMany.GetN); start and end are keys or `-`;
+                                 r results follow, each a key and its value's
+                                 hash
+
+The reads of the GET and SCAN lines are at random times from the first
+available time on, of keys of the workload, `gets=N` GET lines and one
+SCAN line a transaction (default 4), from a generator of their own: a
+trace's workload is the same with and without `tree=1`.
+
+A key node made without an entry has one time klong and no other (`KN x l
+1 T t`): the primordial key node, and a space root that a delete emptied
+by a time split. Its history is empty, so the ADD lines do not show it;
+the tree model has an entry for it, the marker (lean/SIS/Tree/Node.lean,
+`marker`: a delete entry without compare values), which `treecheck` adds
+to a key node made without entries and leaves out when it compares
+entries.

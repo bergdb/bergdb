@@ -2973,6 +2973,10 @@ public class Db implements AutoCloseable {
                 kv.transformValue(x.trans.tt, previousValue);
             }
 
+            final TestHooks kvHooks = testHooks;
+            if (kvHooks != null) {
+                kvHooks.kvApplied(kv.getKey(), kv.getValue());
+            }
             dag.putKv(kv.getKey(), kv.getValue(), x.putData);
             endOfOp(false);
             
@@ -3423,6 +3427,14 @@ public class Db implements AutoCloseable {
 
         /** The transaction being executed created a value node. */
         public void valueNodeCreated(ValueNode node, long[] key);
+
+        /**
+         * The transaction being executed is about to give the Dag this operation (Db.putKvs,
+         * before Dag.putKv): the key, and the value after its transformation, null for a
+         * delete; in the order the Dag gets them. A delete that changes nothing is told here
+         * too, and makes no value node (bergdb 024-12, section 2.6: the trace's OP lines).
+         */
+        public default void kvApplied(long[] key, byte[] value) {}
 
         /**
          * The touch of the transaction being executed (Trans.touchFrom, touchTo) visited an
