@@ -42,6 +42,7 @@ high.
 | 026 | 2026.6 work moved from 024 to 026, 024-20 first (026-01) | move (high) | done 07:42 |
 | 024-27 | QR1 kept as is: RwEnvironment's Javadoc, "Refused calls" | coordinator | landed |
 | 026-02 | A public key check: the options, a recommendation; no code | keychk (high) | done 09:39 |
+| 010-04 | Rules, beside the principles: R1 to R4 from 024-27 | coordinator | written |
 
 024-27 lands on its gates, by Frans's decisions of 07:36: its changed
 expected values follow from them.
@@ -90,6 +91,16 @@ from them.
 * 09:39 keychk done (026-02): recommended a class bergdb.pub.Limits
   (the limits as constants, keyBytes, checkKey, levelBytes; one checking
   method shared with put and delete), about a day; QK1 to QK4.
+* 09:58 Frans: QK1 to QK4 wait for the work on 2026.6. On 010: separate
+  principles (about 10, stable) from rules (up to about 100, from
+  decisions, valid for every implementation).
+* 10:07 Frans: "Add 010-03 with the four rules. Keep the principles as
+  they are. Do not edit principles unless I explicitely tell you to."
+  Written as 010-04 (03 was used and removed on 2026-10-27, not reused):
+  R1 a refused call changes nothing, R2 a commit holds all of its
+  accepted calls or none, R3 the database keeps its own structures
+  consistent and the user owns what her keys mean, R4 a safety belt is
+  decided case by case. 010's readme (Frans's open edit) not touched.
 
 
 ## 6. Outcome
