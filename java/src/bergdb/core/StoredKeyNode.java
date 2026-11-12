@@ -74,6 +74,7 @@ public class StoredKeyNode implements StoredNode {
         buffer[offset++] = node.getId();
 
         System.arraycopy(node.klongs, 0, buffer, offset, sz);
+        assert reservedTimeBitsZero(buffer, offset, sz);
         offset += sz;
         
         for (int i = 0; i < sz; i++) {
@@ -83,6 +84,19 @@ public class StoredKeyNode implements StoredNode {
         assert (offset - firstOffset) * 8 == byteSize;
         assert byteSize % 8 == 0;
         return byteSize / 8;
+    }
+
+    /**
+     * True if no time klong of the 'count' klongs at 'offset' has a reserved bit set
+     * (Klong.TIME_RESERVED_BITS; bergdb 024-25, section 12), which parse() refuses.
+     */
+    private static boolean reservedTimeBitsZero(long[] klongs, int offset, int count) {
+        for (int i = offset; i < offset + count; i++) {
+            if (Klong.isTime(klongs[i]) && (klongs[i] & Klong.TIME_RESERVED_BITS) != 0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -181,6 +195,16 @@ public class StoredKeyNode implements StoredNode {
                     && klongType != Klong.INT_TYPE_DELETE_BITMAP) {
                 throw new StreamFormatException("Bad klong type, " + klongType + ", of klong "
                         + i + " of key node at spos " + spos + ".");
+            }
+            // A time klong's reserved bits, 56 to 61, are zero (2026-11-12, bergdb 024-25,
+            // section 12): no writer sets them (toLongs asserts it), and a damaged one was
+            // taken; getTime() ignores them, so reads answered right, but a start with -ea met
+            // KeyNode.addKlong's assert, which compares the whole klong with the time.
+            if (klongType == Klong.INT_TYPE_TIME
+                    && (klongs[i] & Klong.TIME_RESERVED_BITS) != 0) {
+                throw new StreamFormatException("Bad time klong, 0x"
+                        + Long.toHexString(klongs[i]) + " (bits 56 to 61 not zero), klong " + i
+                        + " of key node at spos " + spos + ".");
             }
             if (klongType == Klong.INT_TYPE_KEY && !Spos.isValidOrNull(positions[i])) {
                 throw new StreamFormatException("Bad pointer, " + positions[i] + ", of klong "
@@ -305,6 +329,33 @@ public class StoredKeyNode implements StoredNode {
             String refused = StoredValueNode.parseWithRightChecksum(buffer, size);
             Assert.assertTrue(c[0] + " at " + at + ": " + refused,
                     refused.startsWith((String) c[3]));
+        }
+    }
+    
+    /**
+     * A time klong with one of its reserved bits, 56 to 61, set is refused with a
+     * StreamFormatException (2026-11-12, bergdb 024-25, section 12); a node with the largest
+     * time, Klong.MAX_TIME, is taken. Before, the klong was taken, and a start with -ea met
+     * KeyNode.addKlong's assert (CorruptStreamTester's seeds 20775 and 3971451).
+     */
+    @Nano
+    private static void testRefusesBadTimeKlong() {
+        for (long time : new long[] {5000, Klong.MAX_TIME}) {
+            KeyNode node = new KeyNode();
+            node.addToEnd(Klong.createTime(time), null, Spos.NULL);
+            node.addToEnd(Klong.createKey(StringUtil.toBytes("key")), null, 1234);
+            final int size = getByteSize(node);
+            long[] longs = new long[size / 8];
+            toLongs(node, longs, 0, 200);
+            KeyNode parsed = parse(Bytes.longsToBytesLE(longs), 0, 200).node;
+            Assert.assertEquals(time, Klong.getTime(parsed.getKlong(0)));
+            for (int bit = 56; bit <= 61; bit++) {
+                byte[] buffer = Bytes.longsToBytesLE(longs);
+                buffer[32 + bit / 8] ^= (byte) (1 << (bit % 8));    // klong 0's bit 'bit'
+                String refused = StoredValueNode.parseWithRightChecksum(buffer, size);
+                Assert.assertTrue(time + ", bit " + bit + ": " + refused,
+                        refused.startsWith("Bad time klong"));
+            }
         }
     }
 }

@@ -425,8 +425,95 @@ from them.
   20:21 024-26 started (Opus high, to 02:00): a round of "AI as the user"
   (006-20) against the new algorithms (merges, option 2, CRC32C, the
   limits): bugs first (024-04, aim 1).
+* 21:15 Codex's first run ended at its usage limit (it could not commit:
+  its sandbox makes .git read-only; the coordinator checks and commits).
+  22:13 to 23:07 night.sh's four failures, all from the limits, fixed:
+  one product bug (L6 refused puts that get no entry), two test
+  generators; landed 1f01c5f6. 00:39 024-26's user apps: seven apps,
+  about 900,000 transactions, 3,000 restarts, 1,070 kills, no bug;
+  Javadoc findings U26-1 to U26-8. 01:33 024-19 (node size) done on
+  format 7: keep B = 30; Q1 to Q6. 01:35 024-20 (compact stored form)
+  resumed.
+* 02:30 Codex's second run (23:07 to 02:26, usage limit again) landed
+  after the coordinator's checks (08559fff, Lean only): the writer's
+  frame ported to option 2, merges at most the deletes times the
+  greatest height seen, TP32's bound when no node is made above H + 1,
+  and two proved counterexamples: MergeOpBound as stated is false for
+  transactions that repeat or misorder keys, so it needs the premise
+  that Java's transactions meet (one operation a key, sorted; 024-16).
+  TP32 for sorted transactions is the third run's goal (04:12).
+* 02:30 024-20 (compact stored form) done on format 7: for 2026.6.
+  03:05 a stale constant after CRC32C fixed (reclaim's value-node bytes,
+  6cf6607b). 03:05 to 05:39 night.sh run 2 on main: all OK but one night
+  test: CorruptStreamTester reached 024's open item (a time klong's
+  unused bits not checked); 06:01 fixed and landed (0420c72e; gates
+  before-commit, CorruptStreamTester's night set, level1, level2).
+  04:12 Codex's third run (TP32 for sorted transactions), to 06:40.
 
 
 ## 6. Outcome
 
-Not yet written.
+Written 2026-11-12, 06:35, by coord-1111 (unattended since 2026-11-11,
+17:43).
+
+**Landed on main (15, all pushed, each on its gates):** a780b957 (024-07
+the last touch, 024-10, doubles.py), 379d8acf (024-09 the tie), 51a7224c
+(022-07 the C clone at 2026.4), 1e77cfc6 (024-15 key shape), 47c93e34
+(024-16 one operation a key), b84cf761 (024-12 the tree model in Lean,
+approved by Frans 14:28), e7488080 (024-09's follow-up: LiveAppend in
+the trusted statements, A6 in the gates), 67925924 (024-21 and 024-22
+merges at the delete, record format 7, 8/17/17), 08659847 (024-23
+option 2, theta 7), 79f35aa3 (024-25 CRC32C), 7c255127 (024-24 the
+limits), 1f01c5f6 (the night run's fix: L6, one product bug), 08559fff
+(TP32's proof work in Lean and two counterexamples), 6cf6607b (a stale
+constant after CRC32C), 0420c72e (a time klong's unused bits checked).
+
+**Studies done:** 024-14 (thresholds), 024-17 (limits), 024-18 (dead
+klongs), 024-19 (node size: keep 30), 024-20 (compact stored form: for
+2026.6), 024-26 (user apps: no bug in about 900,000 transactions, 3,000
+restarts, 1,070 kills).
+
+**night.sh:** run 1 (20:18) found four failures, all from the limits,
+fixed by 23:07; run 2 (03:05 to 05:39) all OK but one night test, a
+known open item, fixed by 06:01. Not rerun since.
+
+**Proofs (by the second prover, checked and committed by the
+coordinator):** the writer's frame, merges bounded by the height seen,
+TP32 under a height premise, and MergeOpBound shown false without the
+premise Java guarantees (sorted, one operation a key). TP32 for sorted
+transactions: the third run's result, below.
+
+**For Frans to decide** (each with the coordinator's recommendation):
+
+1. 024-19, Q1 to Q6 (node size): keep B = 30, B a property of the
+   database, thresholds and theta as v*B/30, theta at least 2 (changes
+   one test value and Lean's Params.theta), 62 the hard maximum.
+   Recommended: yes to all.
+2. TP32's statement (024-22): MergeOpBound as written is false; restate
+   it with the premises tx.sorted, tx.wf and a fresh base. Recommended:
+   yes (a change of a statement, so his).
+3. The key klong's unused bits checked like the time klong's: a patch
+   (/Users/f/fl/bench/2026-11-11/tkb/key-klong-bits.patch) that changes
+   one expected refusal text (CorruptStreamTester.testFound021_12).
+   Recommended: yes.
+4. 024-26, U26-5: a WBuilder stays usable after a refused put(), and
+   execute() then commits the rest. Recommended: a refused put makes the
+   builder refuse execute() (all or none). U26-1 to U26-8 otherwise
+   Javadoc fixes, one small agent.
+5. 024-20, QC1 to QC5 (compact stored form): 2026.6, accounting nominal.
+   Recommended as the item says.
+6. To see, accepted under his delegation of 14:48 and 17:43: the changed
+   tests of 024-21 (QJ1), 024-23 (section 4.1), 024-24 (section 3, Q2)
+   and 024-25 (QC2, with level1's raised stream-size limits); 024-23's
+   QO1 to QO3 as their defaults; the trusted Lean diff in 024-09,
+   section 9.2; the commit message of 08559fff says "written by a second
+   prover" (no AI named).
+
+**Corrections by the coordinator:** the key limit's figures given to
+Frans at 14:40 to 14:45 were wrong (TP26 is not proved; 112 bytes are
+17 segments); corrected in 024-17 before he decided 111.
+
+**Usage:** the week at 83 % by usage.sh at 06:30 (Frans reset it at
+18:05; the script did not show the reset). The second prover's runs
+were stopped twice by its own limit.
+

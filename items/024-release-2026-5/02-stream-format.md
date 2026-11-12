@@ -706,7 +706,9 @@ n; the parser reads bytes 13 and 14 as a signed `i16`.
 within the buffer (:94); format 3; prevPos a position or −1
 (`Spos.isValidOrNull`, :121); leaf 0 or 1 (:126); n not negative (:147)
 and the size exactly 32 + 16·n (:153, 019-32); each klong's type 0, 1 or
-3 (:175, 019-32); a key klong's ref a position or −1 (:179, 019-32).
+3 (:175, 019-32); a key klong's ref a position or −1 (:179, 019-32); a
+time klong's bits 56 to 61 zero (`Klong.TIME_RESERVED_BITS`, "Bad time
+klong", since 024-25, section 12).
 At a start, for the startup section's key nodes and the versions it reads
 from before it (`DbStarter.validateKeyNode`, :715;
 `KeyNode.validateStreamNode`, `dag/KeyNode.java`:1762): n at least 1; time
@@ -728,7 +730,8 @@ A klong is an `i64`; its type is bits 62 and 63 (`Klong`'s class comment,
 
 * **Time klong**: `createTime` (:105) asserts the time at most MAX_TIME;
   `getTime` (:178) masks bits 0 to 55. Klong's comment, since 2026.4:
-  bits 56 to 61 "reserved and must be zero in stored times".
+  bits 56 to 61 "reserved and must be zero in stored times"; `parse`
+  refuses a time klong with one of them set since 024-25, section 12.
   `Klong.NULL` (:76), a marker in memory, is a time klong with bit 56 set.
 * **Key klong**: a segment's compare value with bit 62 set
   (`createKey`; section 13): byte j of the segment (j = 0 to 6) in bits
@@ -768,14 +771,14 @@ to 5.3, with the code of `Dag` and `KeyNode`:
   name.
 
 **Tests.** UT: `StoredKeyNode` (`testRefusesKeyCountBeyondTheNode`,
-`testRefusesBadKlongs`), `Klong` (18), `KeyNodeTester`
+`testRefusesBadKlongs`, `testRefusesBadTimeKlong`), `Klong` (18), `KeyNodeTester`
 (`testNodeTextsSameInEveryRun` pins refusal texts), `DbStarter`
 (`testParsedKeyNodeTimeOrder`, `testCheckStreamPointersOfKeyNode`). CST
-(seed 20775 found G1). C: `nwrite.c` (`nw_key_to_longs`), `snode.c`
+(seed 20775 found G1; `testFoundTimeKlongBits`, seed 20404's copy). C: `nwrite.c` (`nw_key_to_longs`), `snode.c`
 (`sn_parse_key`), `klong.c`, `knode.txt`, `klong.txt`.
 
 **Unused and reserved.** Bytes 6 and 7, and 15. A time klong's bits 56
-to 61.
+to 61 (checked since 024-25, section 12).
 A key klong's bits 0 to 2 and its bytes past its length. Klong type 2.
 The ref of a time klong or a bitmap (written −1). Bitmap bits for
 indexes n and above.
@@ -787,6 +790,9 @@ indexes n and above.
   start with -ea fails an assertion in `KeyNode.addKlong`; without -ea the
   database starts and answers right (024's readme). `Klong.NULL` is such
   a value. The fix proposed: "Bad time klong", an SFE, in `parse`.
+  Closed by 024-25, section 12 (2026-11-12): `parse` refuses it, and
+  `toLongs` asserts that no writer sets the bits; found again by CST's
+  seed 20404 (LONG's original 3971451).
 * G2. A key klong's bits 0 to 2, and its data bytes past its length, are
   not checked in a key node. Such a klong compares as another value than
   the key it seems to hold. A value node's key checks bits 0 to 2, 62 and

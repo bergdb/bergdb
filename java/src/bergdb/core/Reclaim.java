@@ -181,8 +181,12 @@ public class Reclaim implements Db.TransactionListener {
      */
     private static final long MAX_STEP_SIZE = 16 * 1000L;
     
-    /** Bytes of a value node besides its key and value (StoredValueNode). */
-    private static final int VALUE_NODE_BYTES = 28;
+    /**
+     * Bytes of a value node besides its key and value: StoredValueNode's, so that a change of
+     * the node's layout changes it too (2026-11-12, bergdb 024-25: it was 28, the size before
+     * the checksum's 4 bytes, here and in testAllowanceCountsIndexNodes).
+     */
+    static final int VALUE_NODE_BYTES = StoredValueNode.VALUE_OVERHEAD;
     
     // internalFraction: the bytes rewritten by an iteration, compared to the growth of the
     // stream while it runs. A small internalFraction will reduce the stream writes but 

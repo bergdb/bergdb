@@ -10,7 +10,8 @@ import java.util.zip.Deflater;
  * The stream reader of bergdb 024-20, written 2026-11-11: where a stream's bytes go, and what
  * candidate encodings of the nodes would have written. It reads the files of a stream
  * directory (*.bergdb) directly, read only, with no BergDB class: the layout of 024-02,
- * sections 5 to 13. One core.
+ * sections 5 to 13. One core. Since 2026-11-12: record format 7 with the 12-byte node header of
+ * 024-25 (node formats 3, 3, 5: the CRC32C sum in bytes 8 to 11; the fields after it moved).
  *
  * java -cp DIR bergdb.core.Scan dir=STREAMDIR [from=POS] [ops=N] [deflate=K] [label=TEXT]
  *   from     count only the records at or after this position (a phase's start)
@@ -286,29 +287,32 @@ public class Scan {
 
     void topNode(byte[] r, int off, int ns, long npos, long tpos) {
         topNodes++;
-        int hh = r[off + 8];
+        // format 3 (024-25): h at 16, the ordinal at 18 to 23, id 24, root time 32, root 40,
+        // then h pairs (position, time) from 48
+        int hh = r[off + 16];
         add("top node", ns - 16L * hh);
         add("top node skip pointers", 16L * hh);
-        long c = 8 + v(off) + 1 + v(le64(r, off + 8) >>> 16) + z(le64(r, off + 16) - tpos) + 8
-                + refT(tpos, le64(r, off + 32));
+        long c = 12 + v(off) + 1 + v(le64(r, off + 16) >>> 16) + z(le64(r, off + 24) - tpos) + 8
+                + refT(tpos, le64(r, off + 40));
         for (int i = 0; i < hh; i++) {
-            c += refT(tpos, le64(r, off + 40 + 16 * i)) + 8;
+            c += refT(tpos, le64(r, off + 48 + 16 * i)) + 8;
         }
         cand("T1 top compact", c);
         cand("T0 top today", ns);
     }
 
     void valueNode(byte[] r, int off, int ns, long npos, boolean del, long tpos) {
-        long id = le64(r, off + 8);
-        int ro = le32(r, off + 16);
+        // format 5 (024-25): id at 12, offset 20, L 24, the value 28; a delete node's key at 24
+        long id = le64(r, off + 12);
+        int ro = le32(r, off + 20);
         int L = 0, ko;
         if (del) {
             deleteNodes++;
-            ko = off + 20;
+            ko = off + 24;
         } else {
             valueNodes++;
-            L = le32(r, off + 20);
-            ko = off + 24 + L;
+            L = le32(r, off + 24);
+            ko = off + 28 + L;
         }
         int ksize = le32(r, ko);
         int k = ksize / 8;
@@ -316,15 +320,15 @@ public class Scan {
         int lastLen = (int) ((lastSeg >>> 3) & 7);
         int klen = 7 * (k - 1) + lastLen;
         String p = del ? "delete node " : "value node ";
-        int hdr = del ? 24 : 28;
+        int hdr = del ? 28 : 32;
         add(p + "header", hdr);
         if (!del) add("value node value", L);
         add(p + "key bytes", klen);
         add(p + "key segment overhead", 8L * k - klen);
         int used = hdr + L + 8 * k;
         add(p + "padding", ns - used);
-        // V1: the 8-byte header word, id relative to tpos, offset v, L v, key length v + bytes
-        long c = 8 + z(id - tpos) + v(ro) + (del ? 0 : v(L) + L) + v(klen) + klen;
+        // V1: the 12-byte node header, id relative to tpos, offset v, L v, key length v + bytes
+        long c = 12 + z(id - tpos) + v(ro) + (del ? 0 : v(L) + L) + v(klen) + klen;
         cand(del ? "V1 delete compact" : "V1 value compact", c);
         cand(del ? "V0 delete today" : "V0 value today", ns);
         // V2: as V1 without the stored offset (the reader knows its record)
@@ -351,12 +355,13 @@ public class Scan {
                 throw new UncheckedIOException(e);
             }
         }
-        boolean leaf = r[off + 16] == 1;
+        // format 3 (024-25): leaf at 12, n at 13 and 14, prevPos 16, id 24, klongs from 32
+        boolean leaf = r[off + 12] == 1;
         if (leaf) leafNodes++; else innerNodes++;
         String p = leaf ? "leaf " : "inner ";
-        int n = (r[off + 17] & 0xff) | (r[off + 18] & 0xff) << 8;
+        int n = (r[off + 13] & 0xff) | (r[off + 14] & 0xff) << 8;
         nHist[Math.min(n, 69)]++;
-        long prev = le64(r, off + 8), id = le64(r, off + 24);
+        long prev = le64(r, off + 16), id = le64(r, off + 24);
         long[] kl = new long[n], rf = new long[n];
         for (int i = 0; i < n; i++) {
             kl[i] = le64(r, off + 32 + 8 * i);
@@ -380,9 +385,9 @@ public class Scan {
             if (d) nd++; else nl++;
         }
         if (leaf) { keyKlongsInLeaves += nl + nd; liveInLeaves += nl; }
-        add(p + "node header", 8);
+        add(p + "node header", 12);
         add(p + "prevPos", 8);
-        add(p + "leaf, n, reserved", 8);
+        add(p + "leaf, n, reserved", 4);
         add(p + "id", 8);
         add(p + "time klongs", 8L * nt);
         add(p + "time klong refs (-1)", 8L * nt);
@@ -396,9 +401,9 @@ public class Scan {
         long k0 = ns;
         // K1: no refs for time and bitmap klongs
         long k1 = 32 + 16L * (nl + nd) + 8L * (nt + nb);
-        // the compact header: the 8-byte header word, leaf + n 1, the node's offset in its
-        // record v, id zigzag relative to tpos, prevPos refT
-        long hdrRel = 8 + 1 + v(off) + z(id - tpos) + refT(tpos, prev);
+        // the compact header: the 12-byte node header with leaf + n in its byte 6 (zero today),
+        // the node's offset in its record v, id zigzag relative to tpos, prevPos refT
+        long hdrRel = 12 + v(off) + z(id - tpos) + refT(tpos, prev);
         // K2: K1 with the compact header
         long k2 = hdrRel + 16L * (nl + nd) + 8L * (nt + nb);
         // K2f: K2 with the refs of key klongs as fixed 6-byte positions
@@ -421,6 +426,7 @@ public class Scan {
         long prevKey = -1, prevTime = -1, prevBmp = 0, prevKeyD = 0;
         long prevKeyLive = -1;
         long sharedBytes = 0;
+        long cTime = 0, cBmp = 0, cLive = 0, cDead = 0;    // encoding C's bytes by kind of klong
         for (int i = 0; i < n; i++) {
             if (i == nPrev) deltaC -= klongC + refsRel;
             int t = (int) (kl[i] >>> 62);
@@ -431,6 +437,7 @@ public class Scan {
                 klongC += c;
                 klongD += c;
                 klongCLive += c;
+                cTime += c;
                 prevTime = tm;
                 k3 += 8;
             } else if (t == 3) {
@@ -439,6 +446,7 @@ public class Scan {
                 klongC += c;
                 klongD += c;
                 klongCLive += c;
+                cBmp += c;
                 prevBmp = kl[i];
                 k3 += 8;
             } else {
@@ -453,6 +461,7 @@ public class Scan {
                 int rr = refT(tpos, rf[i]);
                 refsAbs += refA(tpos, rf[i]);
                 refsRel += rr;
+                if (dead[i]) cDead += c + rr; else cLive += c + rr;
                 if (!dead[i]) {
                     int shl = prevKeyLive < 0 ? 0 : shared(prevKeyLive, cv, len);
                     klongCLive += 1 + len - shl;
@@ -473,6 +482,11 @@ public class Scan {
         cand(p + "C part header", hdrRel);
         cand(p + "C part klongs (tags and bytes)", klongC);
         cand(p + "C part refs", refsRel);
+        cand(p + "C kind time klongs", cTime);
+        cand(p + "C kind bitmaps", cBmp);
+        cand(p + "C kind live key klongs with refs", cLive);
+        cand(p + "C kind dead key klongs with refs", cDead);
+        cand(p + "count nodes", 1);
         cand(p + "count time klongs", nt);
         cand(p + "count bitmap klongs", nb);
         cand(p + "count live key klongs", nl);

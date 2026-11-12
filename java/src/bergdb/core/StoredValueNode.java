@@ -41,6 +41,16 @@ public class StoredValueNode implements StoredNode {
      */
     static final int MIN_SIZE = 28;
     
+    /**
+     * The bytes of a stored value node besides its value's bytes and its key's segments, 8
+     * bytes each, before the zeros to a multiple of 4: the header (NodeChecksum.HEADER_SIZE),
+     * the id, 8; the offset from the transaction, 4; the value's length, 4; and the key's
+     * size, 4. 32 since the checksum's 4 bytes (bergdb 024-25), 28 before. Reclaim's pacing
+     * counts it for each value it rewrites; testValueOverhead compares it with the nodes that
+     * toBytes writes.
+     */
+    public static final int VALUE_OVERHEAD = NodeChecksum.HEADER_SIZE + 8 + 4 + 4 + 4;
+    
     private ValueNode node;
     private long[] key;
 
@@ -295,6 +305,44 @@ public class StoredValueNode implements StoredNode {
         
         Assert.assertEquals(getByteSize(node, key), getByteSize(node2, key));
         Assert.assertArrayEquals(node.value, node2.value);
+    }
+    
+    /**
+     * VALUE_OVERHEAD is the size of a value node that toBytes writes, less its value and its
+     * key, before the zeros to a multiple of 4 (2026-11-12, bergdb 024-25): for values of 0 to
+     * 7 bytes and keys of 1 to 3 segments, the size toBytes returns, the size field it writes
+     * and the bytes it fills, and the node parses back. Until then Reclaim counted 28 bytes,
+     * the size before the checksum's 4 bytes, from a constant of its own, and its test used
+     * the same constant.
+     */
+    @Nano
+    private static void testValueOverhead() {
+        final String[] keys = {"a", "abcdefgh", "abcdefghijklmno"};
+        for (int k = 0; k < keys.length; k++) {
+            final long[] key = Keys.toSegments(keys[k]);
+            Assert.assertEquals(k + 1, key.length);
+            for (int length = 0; length < 8; length++) {
+                final byte[] value = new byte[length];
+                for (int i = 0; i < length; i++) {
+                    value[i] = (byte) (i + 1);
+                }
+                final ValueNode node = new ValueNode(value, Spos.NULL);
+                final int at = 4;
+                final byte[] buffer = new byte[at + 200];
+                java.util.Arrays.fill(buffer, (byte) 0x5a);
+                final int size = toBytes(node, key, buffer, at);
+                final int expected = VALUE_OVERHEAD + length + 8 * key.length;
+                final String where = "key of " + key.length + " segments, value of " + length;
+                Assert.assertEquals(where, expected + (4 - expected % 4) % 4, size);
+                Assert.assertEquals(where, size, Bytes.bytesToIntLE(buffer, at));
+                Assert.assertEquals(where, size, getByteSizeLong(value, key));
+                Assert.assertEquals(where, (byte) 0x5a, buffer[at + size]);
+                Assert.assertEquals(where, (byte) 0x5a, buffer[at - 1]);
+                StoredValueNode stored = parse(buffer, at, 128 + at);
+                Assert.assertArrayEquals(where, value, stored.getNode().value);
+                Assert.assertArrayEquals(key, stored.getKey());
+            }
+        }
     }
     
     @Nano

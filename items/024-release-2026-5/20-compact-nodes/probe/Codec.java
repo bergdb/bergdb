@@ -5,11 +5,15 @@ import java.util.*;
 
 /**
  * bergdb 024-20: encoding C of a key node's body (section 4.9 of the item), a round trip over
- * real nodes, and a micro-benchmark of writing and reading against today's format 2. Written
- * 2026-11-11. Not product code.
+ * real nodes, and a micro-benchmark of writing and reading against today's format. Written
+ * 2026-11-11; since 2026-11-12 against record format 7's key node format 3 (024-25: a 12-byte
+ * node header, the CRC32C sum in bytes 8 to 11, leaf at 12, n at 13, prevPos 16, id 24).
+ * Not product code.
  *
- * Encoding C, after today's 8-byte node header (size, type 20, format, checksum):
- *   byte      leaf << 7 | n                  (n at most 127)
+ * Encoding C, in today's 12-byte node header (size, type 20, format, byte 6, byte 7 zero, the
+ * CRC32C sum of format 3):
+ *   byte 6    leaf << 7 | n                  (n at most 127)
+ * then, from byte 12:
  *   varint    off, the node's offset in its record's bytes (so a node read alone finds its
  *             record's start tpos, as a value node does with its stored offset)
  *   varint    zigzag(id - tpos)
@@ -26,7 +30,7 @@ import java.util.*;
  *             then c bytes, each a bit index from 0 to 61
  * A node that cannot be so encoded (a bitmap that clears a bit, n over 127, a key klong with
  * bits 0 to 2 set, a time klong with bits 56 to 61 set, a time klong's or bitmap's ref other
- * than -1), or whose encoding C is longer than 32 + 16 n bytes, is written in format 2.
+ * than -1), or whose encoding C is longer than 32 + 16 n bytes, is written in format 3.
  *
  * java -cp ... bergdb.core.Codec DUMPFILE [rounds]
  */
@@ -56,11 +60,15 @@ public class Codec {
         return o;
     }
 
-    /** Encodes the body; returns the end offset, or -1 if the node needs format 2. */
+    /** Encodes the node at o; returns its end offset, or -1 if the node needs format 3. */
     static int encode(long tpos, int off, long id, long prev, boolean leaf, long[] kl, long[] rf,
-            int n, byte[] b, int o) {
+            int n, byte[] b, final int o0) {
         if (n > 127) return -1;
-        b[o++] = (byte) ((leaf ? 0x80 : 0) | n);
+        b[o0 + 4] = 20;
+        b[o0 + 5] = 6;
+        b[o0 + 6] = (byte) ((leaf ? 0x80 : 0) | n);
+        b[o0 + 7] = 0;
+        int o = o0 + 12;
         o = putV(b, o, off);
         o = putV(b, o, zz(id - tpos));
         o = ref(b, o, tpos, prev);
@@ -102,6 +110,8 @@ public class Codec {
                 return -1;
             }
         }
+        int size = o - o0;
+        b[o0] = (byte) size; b[o0 + 1] = (byte) (size >>> 8); b[o0 + 2] = 0; b[o0 + 3] = 0;
         return o;
     }
 
@@ -140,8 +150,8 @@ public class Codec {
      * which a reader computes from the node's position and its stored offset.
      */
     int decode(byte[] b, int o, long tpos, long[] kl, long[] rf) {
-        vo = o;
-        int h = b[vo++] & 0xff;
+        int h = b[o + 6] & 0xff;
+        vo = o + 12;
         dLeaf = (h & 0x80) != 0;
         int n = h & 0x7f;
         dN = n;
@@ -179,7 +189,7 @@ public class Codec {
         return vo;
     }
 
-    // ---- today's format 2, the body as StoredKeyNode writes and parses it ----
+    // ---- today's format 3, the body as StoredKeyNode writes and parses it ----
 
     static void putLong(byte[] b, int o, long x) {
         for (int j = 0; j < 8; j++) b[o + j] = (byte) (x >>> (8 * j));
@@ -193,8 +203,9 @@ public class Codec {
 
     static int encode2(long pos, long id, long prev, boolean leaf, long[] kl, long[] rf, int n,
             byte[] b, int o) {
-        putLong(b, o + 8, prev);
-        putLong(b, o + 16, (leaf ? 1 : 0) | (long) n << 8);
+        putLong(b, o, (32 + 16 * n) | 20L << 32 | 3L << 40);
+        putLong(b, o + 8, (leaf ? 1L : 0L) << 32 | (long) n << 40);
+        putLong(b, o + 16, prev);
         putLong(b, o + 24, id);
         for (int i = 0; i < n; i++) putLong(b, o + 32 + 8 * i, kl[i]);
         for (int i = 0; i < n; i++) putLong(b, o + 32 + 8 * n + 8 * i, rf[i]);
@@ -202,9 +213,9 @@ public class Codec {
     }
 
     int decode2(byte[] b, int o, long[] kl, long[] rf) {
-        dPrev = getLong(b, o + 8);
-        dLeaf = b[o + 16] == 1;
-        int n = (b[o + 17] & 0xff) | (b[o + 18] & 0xff) << 8;
+        dPrev = getLong(b, o + 16);
+        dLeaf = b[o + 12] == 1;
+        int n = (b[o + 13] & 0xff) | (b[o + 14] & 0xff) << 8;
         dN = n;
         dId = getLong(b, o + 24);
         for (int i = 0; i < n; i++) kl[i] = getLong(b, o + 32 + 8 * i);
@@ -236,7 +247,7 @@ public class Codec {
             int ns = in.readInt();
             byte[] b = new byte[ns];
             in.readFully(b);
-            int n = (b[17] & 0xff) | (b[18] & 0xff) << 8;
+            int n = (b[13] & 0xff) | (b[14] & 0xff) << 8;
             long[] kl = new long[n], rf = new long[n];
             for (int i = 0; i < n; i++) {
                 kl[i] = getLong(b, 32 + 8 * i);
@@ -244,7 +255,7 @@ public class Codec {
             }
             kls.add(kl);
             rfs.add(rf);
-            meta.add(new long[] {pos, getLong(b, 24), getLong(b, 8), b[16], tpos, noff});
+            meta.add(new long[] {pos, getLong(b, 24), getLong(b, 16), b[12], tpos, noff});
             bytes2 += ns;
         }
         int N = kls.size();
@@ -257,14 +268,14 @@ public class Codec {
         for (int x = 0; x < N; x++) {
             long[] m = meta.get(x);
             long[] kl = kls.get(x), rf = rfs.get(x);
-            int e = encode(m[4], (int) m[5], m[1], m[2], m[3] == 1, kl, rf, kl.length, buf, 8);
+            int e = encode(m[4], (int) m[5], m[1], m[2], m[3] == 1, kl, rf, kl.length, buf, 0);
             if (e < 0 || e > 32 + 16 * kl.length) {
                 fallback++;
                 bytesC += 32 + 16 * kl.length;
                 continue;
             }
             bytesC += e;
-            int d = c.decode(buf, 8, m[4], k2, r2);
+            int d = c.decode(buf, 0, m[4], k2, r2);
             if (d != e || c.dId != m[1] || c.dPrev != m[2] || c.dLeaf != (m[3] == 1) || c.dN != kl.length) {
                 throw new AssertionError("header " + x);
             }
@@ -275,7 +286,7 @@ public class Codec {
                 }
             }
         }
-        System.out.printf("ROUNDTRIP nodes=%d ok, format2=%d bytes, C=%d bytes (%.3f), fallback=%d%n",
+        System.out.printf("ROUNDTRIP nodes=%d ok, format3=%d bytes, C=%d bytes (%.3f), fallback=%d%n",
                 N, bytes2, bytesC, (double) bytesC / bytes2, fallback);
         // the benchmark: write = encode + checksum; read = checksum + decode
         byte[][] enc2 = new byte[N][], encC = new byte[N][];
@@ -284,8 +295,10 @@ public class Codec {
             long[] kl = kls.get(x), rf = rfs.get(x);
             byte[] a = new byte[32 + 16 * kl.length];
             encode2(m[0], m[1], m[2], m[3] == 1, kl, rf, kl.length, a, 0);
+            NodeChecksum.set(a, 0, a.length);
             enc2[x] = a;
-            int e = encode(m[4], (int) m[5], m[1], m[2], m[3] == 1, kl, rf, kl.length, buf, 8);
+            int e = encode(m[4], (int) m[5], m[1], m[2], m[3] == 1, kl, rf, kl.length, buf, 0);
+            NodeChecksum.set(buf, 0, e);
             encC[x] = Arrays.copyOf(buf, e);
         }
         long sink = 0;
@@ -295,26 +308,28 @@ public class Codec {
                 long[] m = meta.get(x);
                 long[] kl = kls.get(x);
                 int e = encode2(m[0], m[1], m[2], m[3] == 1, kl, rfs.get(x), kl.length, buf, 0);
-                sink += NodeChecksum.sumWithZeroReplace(buf, 0, e, 6);
+                NodeChecksum.set(buf, 0, e);
+                sink += buf[8];
             }
             long t1 = System.nanoTime();
             for (int x = 0; x < N; x++) {
                 long[] m = meta.get(x);
                 long[] kl = kls.get(x);
-                int e = encode(m[4], (int) m[5], m[1], m[2], m[3] == 1, kl, rfs.get(x), kl.length, buf, 8);
-                sink += NodeChecksum.sumWithZeroReplace(buf, 0, e, 6);
+                int e = encode(m[4], (int) m[5], m[1], m[2], m[3] == 1, kl, rfs.get(x), kl.length, buf, 0);
+                NodeChecksum.set(buf, 0, e);
+                sink += buf[8];
             }
             long t2 = System.nanoTime();
             for (int x = 0; x < N; x++) {
                 byte[] a = enc2[x];
-                sink += NodeChecksum.sumWithZeroReplace(a, 0, a.length, 6);
+                if (NodeChecksum.sum(a, 0, a.length) != NodeChecksum.stored(a, 0)) throw new AssertionError();
                 sink += c.decode2(a, 0, k2, r2) + k2[0];
             }
             long t3 = System.nanoTime();
             for (int x = 0; x < N; x++) {
                 byte[] a = encC[x];
-                sink += NodeChecksum.sumWithZeroReplace(a, 0, a.length, 6);
-                sink += c.decode(a, 8, meta.get(x)[4], k2, r2) + k2[0];
+                if (NodeChecksum.sum(a, 0, a.length) != NodeChecksum.stored(a, 0)) throw new AssertionError();
+                sink += c.decode(a, 0, meta.get(x)[4], k2, r2) + k2[0];
             }
             long t4 = System.nanoTime();
             for (int x = 0; x < N; x++) {
@@ -323,7 +338,7 @@ public class Codec {
             }
             long t5 = System.nanoTime();
             for (int x = 0; x < N; x++) {
-                sink += c.decode(encC[x], 8, meta.get(x)[4], k2, r2) + k2[0];
+                sink += c.decode(encC[x], 0, meta.get(x)[4], k2, r2) + k2[0];
             }
             long t6 = System.nanoTime();
             if (round >= rounds / 2) {
@@ -346,9 +361,6 @@ public class Codec {
     }
 
     static byte[] withHeader(byte[] a) {
-        int n = (a[17] & 0xff) | (a[18] & 0xff) << 8;
-        a[0] = (byte) a.length; a[1] = (byte) (a.length >>> 8); a[2] = 0; a[3] = 0;
-        a[4] = 20; a[5] = 2;
-        return a;
+        return a;     // encode2 writes format 3's whole header
     }
 }
