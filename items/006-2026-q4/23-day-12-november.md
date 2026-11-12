@@ -48,10 +48,10 @@ high.
 | 024-29 | Reclaim's fraction: previous work, how to compare, the default | frac (high) | done 11:15 |
 | 024-22 | The open proofs TP32, TP33, TP7, TP30, TP10, TP11, TP31 | second prover | |
 | 024-30 | Count gates G1 (BD1), G2 (BD13), G3 (BD10) at 1M keys, a night step | gates (high) | landed |
-| 024-31 | OP4: a cap on the take's pace after a decrease (015-84) | pace (high) | waits for Frans |
+| 024-31 | OP4: a cap on the take's pace after a decrease (015-84) | pace (high) | landed c1137b69 |
 | 024-32 | maintain(), in Core and Pub, with G5 (back to empty by maintain()) | maint (high) | |
-| 024-33 | ST6: the cache's tables shrink | tidy (high) | |
-| 024-34 | OP8: reclaim reads only what it rewrites | tidy (high) | |
+| 024-33 | ST6: the cache's tables shrink | tidy (high) | gated, to land |
+| 024-34 | OP8: reclaim reads only what it rewrites | tidy (high) | gated, to land |
 | 017-11 | A startup distance that follows the database's size: known, plan | sdk (xhigh) | done 13:03 |
 | 021-27 | Db.getTrans inside a record fails the database: option A | gtr (high) | |
 
@@ -246,6 +246,22 @@ from them.
   13:22 (option A).
 * 13:24 Frans: his rule of 13:21 "as a new rule": 010-04, R5, the Core
   API never destroys the KV store.
+* 13:26 Frans on 021-27: "Why is this tricky. It is a read-only
+  operation. It should fail or succeed, but never block the database.
+  This position comes from the user and cannot be fully trusted. It is
+  not from the internal database." gtr told: no walk; the public
+  getTrans refuses what does not parse, an I/O error still fails the
+  database (P7), internal callers keep failing on damage.
+* 13:27 tidy done: 024-33 (ST6 1.06 times the twin's slots after back
+  to empty, was 3.76) and 024-34 (a step's second reads halved, loads 3.6
+  % fewer with a 20 MB cache, stream bytes identical), all gates OK, no
+  changed tests; Q34-1 (a keys-only scan, which changes bytes).
+* 13:35 fracm done (024-29, section 9; 9 minutes of machine time, 1M
+  keys): against 1/4, 3/8 keeps 8 to 29 % less stream beyond the history
+  and cuts the lag after a mass delete by 58 %, for 15 to 27 % more bytes
+  written, 1.3 to 1.7 times the loads a put and 23 % fewer puts a second
+  (one pass); 1/2 more so (38 % fewer puts a second). A changed default
+  changes seven tests and the l3 digests. For Frans: QF1.
 
 
 ## 6. Outcome

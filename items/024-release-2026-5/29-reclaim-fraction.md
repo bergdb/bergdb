@@ -78,6 +78,13 @@ built or run. By the agent "frac" of coord-1112, 11:05 to 11:20.
   10 puts a transaction (about 2 to 2.5 hours), then one timing pass
   (about 1 hour): about 4 to 5 hours of F53, best as a night (section
   6). 0.40 is 26,214 units, 0.399994; 0.375 is exact.
+* **Measured** (2026-11-12, 13:12 to 13:33, section 9): at 1M keys, 10
+  puts a transaction, R short. From 1/4 to 3/8 to 1/2, K_space's worst
+  6.46, 5.70, 4.60; WA_r's worst 0.57, 1.00, 1.47; puts a second (uniform
+  overwrites) −23 % and −38 %; the lag back to empty 4,395, 1,857, 1,850
+  transactions. None meets all of QF29-1's proposed limits; recommended
+  3/8 with the throughput limit at 25 %, else 1/4 with c = 7 (section
+  9.5). Seven tests expect 0.25 (section 9.6).
 * **Recommendation** (after Frans's 11:13 direction). The Pub API keeps
   no setter; one default chosen as the value that works in every regime
   (section 6, "How to decide"). The Core API names three recommended
@@ -631,17 +638,278 @@ also lift the step cap for large transactions is a separate question
   step 1).
 
 
-## 9. State
+## 9. Measurements, 2026-11-12
 
-* **Done** (2026-11-12, 11:05 to 11:20): the mechanism and its names
-  (section 2), previous work from 2009 to 024-05 with sources (section
-  3), the sketch checked against the code (section 4), the comparison
-  (section 5), the plan (section 6), the options (section 7), questions
-  (section 8). Read only; no clone, no branch, nothing run.
-* **Not done**: any measurement; the times of section 6 are estimates
-  (the 011-04 grid's run times were not recorded). The step-cap reading
-  of 024-03 (section 3.6) is an inference from the code and the counts.
-  The 2013 to 2017 history was searched for `internalFraction` only
-  (`git log -S` on a clone of F1-007's bundle in the agent's scratchpad).
-* **To continue**: after QF29-1 to QF29-3, a clone of `main`, Perf's
-  `f=` property on a branch, then section 6's steps in one slot each.
+Frans, 2026-11-12, 12:59: "I don't see a reason this should take
+several hours. Do the measurement now. It is ok to limit database size
+so it takes less than 60 minutes to do this." By the agent "fracm" of
+coord-1112, 12:59 to 14:15. Counts only, from one program; section 6's
+plan (ReclaimCost's grid, Perf at 10M) is replaced by this.
+
+### 9.1 What was run
+
+* **`FracRuns`** (`java/stress/FracRuns.java`, package `bergdb.core`,
+  built on 024-30's `CountGates`, which takes an `f=` property for it),
+  on the branch `024-29-fraction-runs` of the clone
+  `/Users/f/fl/bench/2026-11-12/fracm/clone`. No product code changed.
+* **The databases**: as G3's (024-30, section 3.3): a `FileStream`, the
+  builder's defaults (sd 50 MB, cache indicator 200 MB, eviction on), a
+  test clock of 1 ms a transaction, R = 1 s = 1,000 transactions, n = 1M
+  keys `/k/%010d` (13 bytes), values of 100 bytes, **10 puts a
+  transaction** (so that the step cap does not decide, section 4.2).
+  f is set with `Db.setReclaimInternalFraction` right after the start:
+  16,384, 24,576, 26,214 (0.40, in (a) only) and 32,768 units.
+* **The workloads**, each until the third cut (as G3):
+  * (a) uniform overwrites: a fill in random order, then puts of
+    uniformly random keys (G3's workload, draw for draw);
+  * (b) a queue: a fill in key order, then each transaction puts 10 new
+    keys after every key and deletes the 10 oldest (n keys stay live);
+  * (c) mostly cold: a fill in random order, then puts of random keys
+    among the first 1 % in key order (a contiguous hot range: the other
+    99 % and their key nodes are never written again, the worst case of
+    r);
+  * (d) back to empty: G4 (024-30, section 8) with f set in both the
+    emptied database and its hello-world twin (sd 100 kB there).
+* **The twin of the writes** (Frans: the same workload with R forever):
+  the same transactions, draw for draw, without R. **WA_r** = the
+  stream's growth over the window / the twin's growth over the same
+  transactions − 1, the window from the transaction at which the first
+  iteration is complete to the last. **K_space** = (kept − H_R) / L0
+  after each transaction of the window, its peak and mean, with H_R and
+  L0 as in G3 (the bytes of the user's records within R; the stream
+  after the fill). **The largest record**: the largest record of the
+  phase after the fill, user, step or table. **Loads**: the versions the
+  steps loaded (`Reclaim.Stats.Iteration.loads`), over the run.
+* **Machine time**: one slot, 13:12 to 13:17, two JVMs at a time (4.6
+  minutes for all 17 runs and their twins). The run of (a) at 1/4 is
+  G3 itself: it gives G3's peak, 4.410 at transaction 164,062, to the
+  byte (024-30, section 4).
+* Outputs in `29-reclaim-fraction/`: `work-a.txt` to `work-d.txt` (the
+  `RESULT` lines and one line an iteration), `run.sh` (the command).
+
+### 9.2 The numbers
+
+Workloads (a) to (c); n = 1M, 10 puts a transaction, R = 1,000
+transactions. "Steps a tx": steps a user transaction over the run.
+
+| Work | f    | WA_r  | K_space peak | K_space mean | Largest record | Loads a put | Steps a tx |
+|---|---|---|---|---|---|---|---|
+| a    | 1/4  | 0.567 | 4.410 | 3.234 | 35,176 | 2.44 | 0.41 |
+| a    | 3/8  | 0.996 | 3.589 | 2.709 | 37,136 | 3.73 | 0.62 |
+| a    | 0.40 | 1.091 | 3.472 | 2.640 | 49,096 | 4.03 | 0.66 |
+| a    | 1/2  | 1.469 | 3.078 | 2.402 | 43,984 | 5.47 | 0.79 |
+| b    | 1/4  | 0.367 | 6.178 | 4.459 | 15,480 | 1.72 | 0.28 |
+| b    | 3/8  | 0.644 | 5.704 | 4.121 | 22,008 | 2.29 | 0.38 |
+| b    | 1/2  | 1.005 | 4.602 | 3.324 | 22,616 | 3.48 | 0.57 |
+| c    | 1/4  | 0.358 | 6.458 | 4.748 | 33,304 | 0.87 | 0.14 |
+| c    | 3/8  | 0.559 | 4.578 | 3.428 | 42,616 | 1.44 | 0.24 |
+| c    | 1/2  | 0.781 | 3.649 | 2.819 | 38,504 | 2.17 | 0.36 |
+
+Workload (d), back to empty at 1M keys (G4): the lag (the drive
+transaction from which kept stays within twice the twin's), the first
+cut in the drive, kept at 4 R of drive (T1's point), and G4's M1.
+
+| f   | Lag, tx | First cut | Twin's first cut | Kept at 4 R, bytes | M1 over the twin's |
+|---|---|---|---|---|---|
+| 1/4 | 4,395   | 4,117     | 1,214            | 262,180,912        | 1.072 |
+| 3/8 | 1,857   | 1,585     | 1,202            | 2,093,152          | 0.982 |
+| 1/2 | 1,850   | 1,587     | 1,196            | 2,230,840          | 1.077 |
+
+* **Iterations and cuts**: every run of (a) to (c) had 5 iterations, 4
+  complete, and 3 cuts (the stop rule). The first and third are *full*:
+  they rewrite most live values (a: 59 to 91 % of the KVs scanned; b:
+  55 to 100 %; c: 99 %). The second is *empty*: it rewrites none, as the
+  first moved every live value past its own pStart, the second's cut
+  point (option 3, 011-04). The fourth rewrites 11 to 30 % (c: none).
+  An empty iteration takes 13,335 steps, one a transaction: 1M KVs at 75
+  a step, the step cap paces it, W = 0.14 to 0.47 L0 whatever f.
+* **The largest record** is always a step's record, 15 to 49 kB, about
+  the twin's largest user record (30 kB in a and c, 8 kB in b) and far
+  below G1's 1 MB. f does not change it much: a step scans at most 16 kB
+  whatever f; a larger f makes steps more frequent, not larger.
+* **Loads**: 4.1 to 4.5 million in every run, about 60 a step, 0.8 a KV
+  scanned (the cache, 200 MB, holds less than L0, 245 MB). They
+  depend on the iterations, not on f; but a larger f runs the same
+  iterations in fewer user transactions, so the loads a put rise with
+  the steps a transaction: 1/2 has 2.0 to 2.5 times 1/4's.
+
+### 9.3 Against the sketch (section 4)
+
+* **W follows 1/f where f paces.** The full iterations' growth W: cold
+  (c) 2.81, 1.87, 1.40 L0 at 1/4, 3/8, 1/2, that is 0.70/f each time; (a)
+  1.92, 1.50, 1.24 L0 (0.48/f, 0.56/f, 0.62/f: a shorter iteration
+  leaves fewer keys overwritten since its cut point, so it rewrites
+  more, 69 %, 83 %, 91 %).
+* **K_space follows the upper end of section 4's 1/f to 1.5/f, plus a
+  part that f does not move.** Cold (c): 6.46, 4.58, 3.65. Taking away
+  about 0.55 L0 that does not depend on f (2 sd = 0.41 L0, the cut's
+  wait for the startup position and pSafe; and the empty iteration's
+  0.14 L0, paced by the step cap), the rest is 5.9, 4.0, 3.1 = 1.48/f,
+  1.51/f, 1.55/f. A reading of the numbers, not derived. At 10M keys
+  the sd part is ten times smaller in L0, so K_space would be about 0.4
+  lower; not measured.
+* **Overwrites: the sketch was low.** Section 4.1 predicted 2.4 to 3.6
+  at 1/4 and 1.2 to 1.8 at 1/2 for overwrites (r ≈ 0.3); measured 4.41
+  and 3.08. r is not 0.3 an iteration but 0.6 to 0.9 and 0 in turns,
+  and the peak comes after a full one. From 1/4 to 1/2, K_space falls
+  by 30 % (a), 25 % (b), 43 % (c), not by half.
+* **Reclaim's bytes against f/(1-f)** (0.33, 0.60, 0.67, 1.00): WA_r is
+  0.9 to 1.1 times it in (b) and (c) (0.78 of it at 1/2 in (c), where the
+  empty iterations write little), and 1.5 to 1.7 times it under uniform
+  overwrites (a), as W4 found (1.0 to 1.8): a step's index nodes are
+  written again by the user's records and not all of them are charged
+  (011-04, W4).
+* **Where f does not decide.** R = 1,000 transactions is short: G(R/4)
+  is about 1 MB, far below W, so R never paces (a) to (c). 2 sd (0.41
+  L0) is below every full iteration's W (at least 1.04 L0): sd does not
+  pace either. The step cap paces every empty iteration (above). At 1/2
+  in (a) the full iterations come close to it: 16,222 and 13,334 steps
+  for 13,335 at the least, each step at its 16 kB, but about 0.6 steps
+  a transaction in them; a larger f than 1/2 would hit the cap in this workload
+  at 10 puts a transaction. In (d) the lag is the same at 3/8 and 1/2
+  (1,857, 1,850): from 3/8 on, R and the twin's pace decide (the
+  twin's first cut is at about 1.2 R), and f no longer does.
+* **0.40 against 3/8** (a): K_space 3 % lower, WA_r 9 % higher, the
+  largest record 32 % larger (49 kB, one step). 3/8 stands in for it
+  (QF29-5).
+
+### 9.4 Throughput
+
+One timing pass of (a) at 1/4, 3/8 and 1/2, with both slots
+(`take-timing`), 13:31 to 13:33, one JVM, 4 GB of heap, the runs one
+after the other, `Reclaim.Stats`' touch count off (`timing=1`); output
+`29-reclaim-fraction/timing-a.txt`, command `timing.sh`. The counts are
+those of section 9.2, to the byte (the loads differ by a few hundred in
+4.3 million: they depend on the eviction thread's timing). Puts a
+second in the window (from the first iteration's end to the third cut):
+
+| f    | Puts a second | Against 1/4 | Loads a put |
+|---|---|---|---|
+| 1/4  | 60,981        |             | 2.44        |
+| 3/8  | 47,023        | −23 %       | 3.73        |
+| 1/2  | 37,885        | −38 %       | 5.47        |
+| twin | 164,359       | (R forever, the whole phase) |  |
+
+* One pass, not repeated: its noise is not known.
+* The loss follows the steps a transaction and their loads, not the
+  bytes: a step's scan loads about 60 versions here, as the data (245
+  MB) does not fit the cache (200 MB). This is a worst case for f: a
+  database whose live data is in the cache pays less for each step;
+  with a long R, which paces reclaim (section 4.2), f does not change
+  the total work, only how soon an iteration ends.
+
+### 9.5 Recommendation, against QF29-1's proposed limits
+
+QF29-1's proposed limits (not yet decided by Frans): K_space at most 6
+(BD10's c), WA_r at most 1.0 (reclaim at most doubles the writes),
+updates a second at most 20 % below 1/4's.
+
+| f    | Worst K_space | Worst WA_r | Lag (d) | Within the limits?                          |
+|---|---|---|---|---|
+| 1/4  | 6.458 (c)     | 0.567 (a)  | 4,395   | no: K_space above 6 in (b) and (c)           |
+| 3/8  | 5.704 (b)     | 0.996 (a)  | 1,857   | no: −23 % puts a second in (a), limit −20 %  |
+| 0.40 | 3.472 (a)     | 1.091 (a)  |         | no: WA_r above 1.0 in (a)                    |
+| 1/2  | 4.602 (b)     | 1.469 (a)  | 1,850   | no: WA_r above 1.0 in (a) and (b)            |
+
+Updates a second (9.4, (a) only): 1/4 the reference, 3/8 −23 %, 1/2
+−38 %. **None of the three is within all three proposed limits.** 1/4
+misses the space limit by 3 to 8 % (6.18 and 6.46 against 6, at 1M; at
+10M the sd part is smaller, section 9.3, so about 5.8 to 6.1); 3/8
+misses the throughput limit by 3 points in one unrepeated pass, and is
+at the edge of the writes limit (0.996); 1/2 misses the writes and the
+throughput limits by far.
+
+**Recommendation: 3/8 as the default (24,576 units), with the
+throughput limit at 25 %.** What it buys over 1/4, at 1M keys: the
+stream kept 19 % (a), 8 % (b) and 29 % (c) smaller at its peak, and the
+lag back to empty 58 % shorter (1,857 against 4,395 transactions; T1's
+4 R passes). What it costs: 27 % more stream written in (a) (WA_r 0.996
+against 0.567), 20 % in (b), 15 % in (c); 1.3 to 1.7 times the loads a put;
+23 % fewer puts a second in the worst case measured (uniform overwrites,
+the data larger than the cache, a short R). Aim 3 of 2026.5 (storage
+proportional to the KVs stored, 024-04) and the back-to-empty lag speak
+for it; optimizing for large databases and worst cases first, space and
+the lag are the user's first view. 0.40 behaves as 3/8 within 3 to 9 %
+and crosses the writes limit: not it.
+
+**The alternative**, if Frans holds 20 %: keep 1/4 and set BD10's c to 7
+for 2026.5 (G3's limit can stay 6: G3 is workload (a), 4.41), the lag
+of 4.4 R accepted (G4 drives 40 R). That costs nothing now. The choice
+between the two is QF1 and QF29-1, Frans's: the numbers above are the
+evidence, the weights are his.
+
+### 9.6 What changing the default would cost
+
+* **Tests that expect 0.25.** A trial build with
+  `DEFAULT_INTERNAL_FRACTION = 24576` (branch `024-29-default-trial` of
+  the clone, `0d8bf189`, not for `main`), `before-commit.sh` once in a
+  slot (13:17 to 13:19): BEFORE COMMIT FAILED with these, each an
+  expected value that names the default (a changed expected value: its
+  own commit, Frans's approval):
+  * `DbTester.testReclaimInternalFractionValidation` ("default", 16384);
+  * `DbTesterRestart.testReclaimSettingInForceWritesNothing`,
+    `testStreamWithoutSettingsHasDefaults`,
+    `testReclaimSettingAtEndOfOrdinals`,
+    `testReclaimSettingRefusedAtGoPoint` (0.25 as a new database's or
+    an unchanged value);
+  * `Reclaim.Tester.testUserTransactionLeavesTimesForReclaim` ("the put
+    made a step": its workload is sized to the pace at 0.25);
+  * the f-test `DbTesterRestart.testReclaimSettingsSurviveCuts` (the
+    settings KV's text, `fraction=16384`);
+  * `NanotestForBergDB.databasesStopped` in both groups, a consequence
+    (the failed tests left their databases).
+  * `StorageFaultTester.testStopWhileReading` failed too ("the read did
+    not meet the closed stream"), a race; the other slot ran a level 3
+    gate. Not judged related; to be rerun alone before it is believed.
+* **Digests.** `StreamDigest`'s configurations with reclaim (the l3-*
+  ones, `level3.sh` step 3) get other streams with R finite: an
+  expected-value change for Frans. No digest is stored in the tree
+  (they are compared with a preserved build), so no file changes; the
+  conformance traces with reclaim are made at run time and f is not in
+  the Lean model (section 7).
+* **Gates.** G3 measures K_space at the default: 4.410 at 1/4, 3.589
+  at 3/8 (margin 1.36 to 1.67); its limit of 6 can stay or go down
+  (c = 5 would keep a margin of 1.39 at 3/8; that is QF1's choice). G4's
+  lag falls from 4,395 to 1,857 transactions: T1's drive of 4 R would
+  pass at 1M (Q30-3's runs at 100,000 and 3M keys should use the new
+  default). G1 and G2 do not depend on f by design; not rerun.
+* **Documentation.** `Db.setReclaimInternalFraction` ("0.25 by
+  default"), `Reclaim.DEFAULT_INTERNAL_FRACTION`'s comment,
+  `Database.setRetainDuration`'s Javadoc ("at most a quarter", "four
+  times the live data", the measured sizes of 020-24-06), and
+  `docs/levels.md`, section 6 ("a quarter", 16,384 units).
+  `LimitsTester` follows the constant.
+* **Existing databases.** A database that has set R keeps
+  `fraction=16384` in its stream (section 2.1) and keeps 1/4; only
+  those that set R after the change get 3/8. The C clone (012) keeps
+  0.25 until it follows.
+
+
+## 10. State
+
+* **Measured** (2026-11-12, 12:59 to 14:15, the agent "fracm"; section
+  9): f = 1/4, 3/8, 1/2 (and 0.40 in (a)) at 1M keys in four
+  workloads, counts only, 4.6 minutes of one slot; a trial of the
+  default at 3/8 against `before-commit.sh` (section 9.6).
+  One timing pass of (a) with both slots (13:31 to 13:33, section 9.4).
+* **The code**: clone `/Users/f/fl/bench/2026-11-12/fracm/clone`, branch
+  `024-29-fraction-runs` from `main` at `797267e6`, head `d7bd3bb5`, in
+  Frans's name: `java/stress/FracRuns.java` (new) and `CountGates`'s
+  `f=` property. `before-commit.sh` on `d7bd3bb5`: BEFORE COMMIT OK
+  (65 s, in a slot, 13:34 to 13:35). Not on `main`: the coordinator
+  lands the branch (it adds a stress program only). The trial branch
+  `024-29-default-trial` (`0d8bf189`, worktree `fracm/dflt`) is not for
+  `main`.
+* **Done before** (11:05 to 11:20, the agent "frac"): sections 2 to 8,
+  read only. Section 6's plan is replaced by section 9's runs; its 10M
+  step was not run.
+* **Not done**: 10M keys (K_space about 0.4 lower there by the sd
+  part, section 9.3, not measured); values of 1,000 bytes; the step cap
+  at 1,000 puts a transaction (QF29-4); commit p99.9.
+* **To continue**: Frans decides QF29-1's limits and QF1 (section 9.5).
+  If 3/8: one commit with `DEFAULT_INTERNAL_FRACTION = 24576` and the
+  documentation of section 9.6, and a separate commit with the changed
+  expected values of the seven tests listed there (Frans's approval),
+  then `count-gates.sh` (G3's new value) and `before-commit.sh`. To
+  rerun: `sh 29-reclaim-fraction/run.sh` from the clone's layout (it
+  builds and writes `out/`), one slot, about 5 minutes.
