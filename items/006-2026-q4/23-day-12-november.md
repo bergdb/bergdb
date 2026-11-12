@@ -122,6 +122,17 @@ from them.
 * 10:37 check done (024-28): not ready now; the earliest after one
   release night, and after Frans's decisions on aim 4's proofs, QF1,
   QF3, QF6, QF8 and the small cases (OP4, OP8, ST6, ST7, ST8).
+* 10:42 Frans on QF1: the reclaim fraction (default 0.25) is one of the
+  few settings a user should know; assume a finite retain time; maybe
+  change the default (forever) some day. "By fresh, we must mean one
+  that keeps the same history, same retain period. Otherwise, we are not
+  comparing the same things." The coordinator: 024-03's "fresh" was the
+  live state without history (R was 1,000 transactions, so nearly the
+  same there); the bound's form: kept = H(R) + k L, k about 1/f to 2/f.
+* 10:56 Frans: with retain forever "The storage is proportional. All
+  history is kept and available. The stream grows proportional to the
+  history kept. Cost follows value." The four aims of 024-04 added near
+  the top of 024's readme ("Bugs first" kept as it is).
 
 
 ## 6. Outcome

@@ -12,6 +12,21 @@ operations and storage proportional to the value they bring to the user;
 a Lean model that matches the code. The aim, its reasons and Frans's
 words are in 024-04.
 
+**The aims of 2026.5** (024-04, section 1):
+
+1. **Bugs first**, as always. Frans: "Bugs are always prio."
+2. **Operations are proportional.** No known case at 1M to 100M keys
+   where a Core operation costs time, bytes written or memory out of
+   proportion to its work.
+3. **Storage is proportional.** The KVs stored cost disk and memory in
+   proportion to their count and size. What is deleted or outside the
+   kept history costs nothing, eventually.
+4. **The model matches.** The Lean model describes the algorithm the code
+   runs, and the proofs hold for it.
+
+In one line: **cost follows value**; both storage and operations are
+proportional to the value they bring to the user.
+
 The first theme, 2026-11-10 to 2026-11-11: "a stable stream format"
 (Frans, 2026-11-10, 19:54: "OK, release theme decided, "a stable stream
 format"."). It follows in release 2026.6 (026), when the algorithms have
