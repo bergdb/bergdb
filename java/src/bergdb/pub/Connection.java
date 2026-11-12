@@ -353,7 +353,8 @@ public interface Connection extends ReadInterface {
      * @throws DbException
      *             If the record of the value is malformed internal data: it holds a KV
      *             under BergDB's prefix for reclaim, but is no copy of reclaim's, which only a
-     *             write through the Core's Db makes (bergdb 021-17). The database goes on.
+     *             damaged stream holds (bergdb 021-17; until 024-37 a write through the Core's
+     *             Db made one, which the Core now refuses). The database goes on.
      */
     public TransactionInfo transactionInfo();
 

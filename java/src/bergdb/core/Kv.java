@@ -27,6 +27,13 @@ public final class Kv {
     boolean longKey;
     
     /**
+     * Put or deleted by Trans.Builder's Core calls (putCore(), deleteCore()): its key may be
+     * one that the Core writes itself (Trans.coreKey()), which Db.execute() refuses for any
+     * other KV of a transaction that is not reclaim's (bergdb 024-37; 010-04, R5).
+     */
+    boolean coreWrite;
+    
+    /**
      * The constructor does not copy arrays, just references.
      * Arrays must not be changed by caller after this constructor is called.
      */

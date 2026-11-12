@@ -281,8 +281,8 @@ public class Reclaim implements Db.TransactionListener {
         }
         db.refuseIfTopOrdinalsUsed();   // As a user transaction is refused.
         
-        Trans t = db.trans().put(settingsKey, serializeSettings(retainDuration, internalFraction))
-                .build();
+        Trans t = db.trans()
+                .putCore(settingsKey, serializeSettings(retainDuration, internalFraction)).build();
         t.isInternal = true;
         try {
             db.execute(t);
@@ -612,8 +612,8 @@ public class Reclaim implements Db.TransactionListener {
             final long length = db.getStreamLength();
             final int distance = RecoverableStream.META_BLOCK_DISTANCE;
             final int fill = Math.max(1, (int) (distance - length % distance));
-            executeInternal(db.trans().put(MAINTAIN_FILL_KEY, new byte[fill]).build());
-            executeInternal(db.trans().delete(MAINTAIN_FILL_KEY).build());
+            executeInternal(db.trans().putCore(MAINTAIN_FILL_KEY, new byte[fill]).build());
+            executeInternal(db.trans().deleteCore(MAINTAIN_FILL_KEY).build());
         }
         
         pretruncateIfPossible(now);                                 // M6
@@ -886,7 +886,7 @@ public class Reclaim implements Db.TransactionListener {
         // internalFraction. Their size is known during the step only (Trans.dirtiedBytes),
         // so the row is stored by a value transformation.
         
-        b.put(currentKey, null, new byte[0], new ValueTransformation() {
+        b.putCore(currentKey, null, new byte[0], new ValueTransformation() {
             public byte[] transform(long transTime, byte[] inputValue, byte[] previous) {
                 dirtiedStored[0] = stepTrans[0].dirtiedBytes;
                 next.rewritten += dirtiedStored[0];
@@ -1144,7 +1144,7 @@ public class Reclaim implements Db.TransactionListener {
         if (stats != null) {
             stats.tableBytes += tableBytes.length;
         }
-        Trans t = db.trans().put(tableKey, tableBytes).build();
+        Trans t = db.trans().putCore(tableKey, tableBytes).build();
         t.isInternal = true;
         try {
             db.execute(t);
