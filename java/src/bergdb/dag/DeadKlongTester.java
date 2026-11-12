@@ -108,12 +108,15 @@ public class DeadKlongTester {
         return "/k" + String.format("%03d", i);
     }
 
-    /** theta, Dag.THETA_30 scaled as the thresholds are, from node size 8 (024-23, OD2). */
+    /**
+     * theta, Dag.THETA_30 scaled as the thresholds are, from node size 8 (024-23, OD2), at
+     * least 2 (024-19, Q4: 1 at 8 until 2026-11-12).
+     */
     @Nano
     public static void testTheta() {
         Assert.assertEquals(0, Dag.theta(4));
         Assert.assertEquals(0, Dag.theta(6));
-        Assert.assertEquals(1, Dag.theta(8));
+        Assert.assertEquals(2, Dag.theta(8));
         Assert.assertEquals(3, Dag.theta(14));
         Assert.assertEquals(7, Dag.theta(30));
         Assert.assertEquals(14, Dag.theta(62));
