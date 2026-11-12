@@ -194,6 +194,18 @@ public class DbClock {
     }
     
     /**
+     * Whether a user transaction that began now would get a time, as transactionBegin(true)
+     * asks: not after LAST_USER_TIME. For Db.maintain() (bergdb 024-32), whose internal
+     * transactions must not take the times kept for reclaim's after a user transaction.
+     */
+    public final synchronized boolean userTimeLeft() {
+        long time = clock.getTime();
+        time = time > lastTransactionTime ? time : lastTransactionTime + 1;
+        time = time > lastReadTime ? time : lastReadTime + 1;
+        return time <= LAST_USER_TIME;
+    }
+    
+    /**
      * Must always be called when a write transaction has completed.
      */
     public final synchronized void transactionEnd() {

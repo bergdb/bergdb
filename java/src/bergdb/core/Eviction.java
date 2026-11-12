@@ -458,6 +458,22 @@ public final class Eviction {
     }
 
     /**
+     * The dead hand's step of a call of Db.maintain() (bergdb 024-32): one step, as after a
+     * transaction, where afterTransaction() takes one; so that the objects of ended versions
+     * leave memory after maintain()'s last cut too, when no transaction follows it. Returns
+     * whether a round is in progress, so that maintain() reports more due. The caller holds
+     * Db.writeLock, between transactions.
+     */
+    boolean maintainStep(Db db) {
+        if (schedule == Schedule.RANDOM
+                || (schedule == Schedule.BUDGET && high != Long.MAX_VALUE)) {
+            deadStep(db);
+            return deadRunning;
+        }
+        return false;
+    }
+
+    /**
      * One step of the dead hand (see above): if a cut moved the decided cut position since
      * the last round began, a round begins; a round in progress goes on, DEAD_BATCH units of
      * work and BATCH_NANOS at most, part by part, with the decided cut position now as its

@@ -254,6 +254,55 @@ public class TransSeq implements PosOfTransBeforeFunction {
     }
     
     /**
+     * The take of the empty record of a call of Db.maintain() (bergdb 024-32, section 2.2,
+     * M4), after its share (take()): the oldest transactions, whole, as take() takes them,
+     * while the startup pos is below 'target', a position that reclaim waits for (an
+     * iteration's pEnd or pSafe, each the tpos of a transaction of the section), until the
+     * taken nodes reach 'budget' bytes; the first transaction is taken whatever its size,
+     * so that each call moves the startup pos. A node counts as in take(). The first
+     * transaction that does not fit in 'maxBytes', the room left in the record, is not
+     * taken. A take beyond the share is allowed by the model, whose take policy has the
+     * deadline and any pace (lean/SIS/Bound.lean, takePolicy; T3 holds for every pace).
+     * 
+     * @return The new startup pos, the tpos of the last transaction taken, or currentSp if
+     *      none is taken.
+     */
+    long takeTo(long currentSp, long target, long budget, final TransNodesForMe transNodes,
+            long maxBytes) {
+        long newSp = currentSp;
+        long bytes = 0;
+        
+        while (first != null && newSp < target) {
+            final long cost = recordBytes(first);
+            if (newSp != currentSp && bytes + cost > budget || bytes + cost > maxBytes) {
+                break;
+            }
+            bytes += cost;
+            newSp = first.tpos;
+            
+            for (Node node : first.gotDirtyNodes) {
+                if (node.getType() == Node.TYPE_TOP_NODE) {
+                    transNodes.addTopNode((TopNode) node);
+                } else if (node.getType() == Node.TYPE_KEY_NODE) {
+                    transNodes.addKeyNode((KeyNode) node);
+                }
+                assert node.isIndexNode() : "non-index node in trans seq, " + node.toString();
+            }
+            
+            dirtyCount -= first.gotDirtyNodes.size();
+            ownBytes -= first.ownBytes;
+            first = first.next;
+            size -= 1;
+        }
+        
+        if (first == null) {
+            last = null;
+        }
+        
+        return newSp;
+    }
+    
+    /**
      * The section that take()'s share counts (bergdb 024-31): S - max(0, span - c * sd), c =
      * SHARE_FACTOR_CAP, where S is the section, from the startup pos to the end of the
      * stream, and span the span of the section's transactions, at most S. It is S while the

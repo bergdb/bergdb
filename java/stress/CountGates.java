@@ -54,6 +54,17 @@ import bergdb.stream.FileStream;
  *      at most 2 times the twin's. KeyAccessPath's arrays (ST7) are
  *      printed, not gated. Needs --add-opens java.base/java.util (the slots are
  *      HashMap's table lengths).
+ *   G5 (back to empty by maintain(); bergdb 024-32, 023-03 T1's second drive): G4's
+ *      emptied database and twin, each driven by g5drive calls of Db.maintain() (20 R), one
+ *      every dt of the test clock, with no writes. Kept (the most in the last R) at most
+ *      twice the twin's plus 600,000 bytes (maintain()'s release threshold and a filler,
+ *      Reclaim.MAINTAIN_MIN_RELEASE and META_BLOCK_DISTANCE); the last call that returned
+ *      true within the first 3/4 of the drive (converged, then quiet); as the twin is tiny,
+ *      the key nodes, resident objects and handles at most the larger of twice the twin's
+ *      and the twin's plus 10 (023-03's a_n), the dead KEY klongs the larger of twice the
+ *      twin's and the twin's plus 30 (023-03's C4: B); the heap at most 2 times the twin's, as
+ *      G4; the cache's table slots (ST6) at most the larger of twice the twin's and the
+ *      tables' floor since 024-33, 2^MAP_BITS maps of Table.MIN_CAPACITY slots.
  *
  * Every database is a FileStream in dir with the builder's defaults (startup distance 50
  * MB, cache indicator 200 MB), a test clock (dt time units a transaction) and
@@ -61,15 +72,15 @@ import bergdb.stream.FileStream;
  * Db internals (Reclaim.Stats, the maintenance follower).
  *
  * Usage, from java/ after build.sh (count-gates.sh runs it):
- *   java -Xmx4g -cp build/bergdb.jar:build/stress bergdb.core.CountGates [g1|g2|g3|all]
+ *   java -Xmx4g -cp build/bergdb.jar:build/stress bergdb.core.CountGates [g1|...|g5|all]
  *       [prop=value...]
  * Properties: n=1000000 (keys), valsize=100, retain=1 (seconds of the test clock),
  *   dt=10000 (time units a transaction; R is then 1,000 transactions), dir=build/count-gates-data,
  *   fifo=n*0.06 and overwrites=n*0.02 (G1's transactions), maxdrive=n/20 (G2's most
  *   overwrite transactions a shape), g3batch=10 (puts a G3 transaction), cuts=3 (G3),
  *   g3max=n*2 (G3's most transactions), g4drive=40000 (40 R), g4sd=100000, g4evict=0 (no
- *   eviction in G4), g4kept, g4nodes, g4slots, g4heap (G4's factors, 2). Exits with status
- *   1 if a gate fails.
+ *   eviction in G4 and G5), g4kept, g4nodes, g4slots, g4heap (G4's factors, 2; G5's but
+ *   kept), g5drive=20000 (20 R). Exits with status 1 if a gate fails.
  */
 public class CountGates {
     static final long SEC = Clock.UNITS_PER_SEC;
@@ -476,6 +487,9 @@ public class CountGates {
         long keptMax, reach, klongs, dead, objects, handles, slots, heap, userKeys;
         int pathKlongs, pathNodes;
         long firstCut = -1, lag = -1, kept4R = -1;     // drive transactions; kept at 4 R
+        // G5: the last call that returned true, the calls that wrote, the most bytes and
+        // records of a call, the bytes of the drive.
+        long lastMore = -1, writingCalls, maxCallBytes, maxCallRecords, driveBytes;
 
         String line() {
             return String.format("keptMax=%d reach=%d klongs=%d dead=%d objects=%d handles=%d "
@@ -505,9 +519,19 @@ public class CountGates {
      */
     G4M g4Run(String label, int nn, long heap0, long twinKept)
             throws ReflectiveOperationException {
+        return g4Run("G4", label, nn, heap0, twinKept, false);
+    }
+
+    /**
+     * G4's run (gate "G4"), or G5's (gate "G5", byMaintain): the drive is then maintain()
+     * calls, one every dt of the test clock (023-03, T1's second drive; bergdb 024-32), g5drive
+     * of them (20 R).
+     */
+    G4M g4Run(String gate, String label, int nn, long heap0, long twinKept, boolean byMaintain)
+            throws ReflectiveOperationException {
         int sd = i("g4sd", 100000), dvs = i("g4dvalsize", 1000);
         int rTx = (int) (retain / dt);
-        int drive = i("g4drive", 40 * rTx);
+        int drive = byMaintain ? i("g5drive", 20 * rTx) : i("g4drive", 40 * rTx);
         Run r = new Run(label, sd);
         r.db.setRetainDuration(retain);
         r.exec(r.db.trans().put("/a.txt", HELLO), "create");
@@ -518,12 +542,27 @@ public class CountGates {
                 for (int j = 0; j < 100 && k < nn; j++, k++) b.delete(key(k));
                 r.exec(b, "delete");
             }
-            out(el() + "   G4 " + label + " filled and deleted " + nn + " keys; " + r.state());
+            out(el() + "   " + gate + " " + label + " filled and deleted " + nn + " keys; "
+                    + r.state());
         }
         G4M m = new G4M();
         int cuts0 = r.stats.cuts.size();
+        long len0 = r.db.getStreamLength();
         for (int k = 1; k <= drive; k++) {
-            r.exec(r.db.trans().put("/a.txt", value(dvs, k)), "drive");
+            if (byMaintain) {
+                r.time += dt;
+                r.clock.setTime(r.time);
+                long len = r.db.getStreamLength();
+                long recs = r.stats.user.records + r.stats.step.records + r.stats.table.records;
+                if (r.db.maintain()) m.lastMore = k;
+                long grown = r.db.getStreamLength() - len;
+                if (grown > 0) m.writingCalls++;
+                m.maxCallBytes = Math.max(m.maxCallBytes, grown);
+                m.maxCallRecords = Math.max(m.maxCallRecords, r.stats.user.records
+                        + r.stats.step.records + r.stats.table.records - recs);
+            } else {
+                r.exec(r.db.trans().put("/a.txt", value(dvs, k)), "drive");
+            }
             long kept = r.kept();
             if (k >= drive - rTx) m.keptMax = Math.max(m.keptMax, kept);
             if (k == 4 * rTx) m.kept4R = kept;
@@ -531,8 +570,13 @@ public class CountGates {
             if (twinKept > 0 && kept > 2 * twinKept) m.lag = -1;
             else if (twinKept > 0 && m.lag < 0) m.lag = k;
         }
-        out(el() + "   G4 " + label + " drive " + drive + " transactions; " + r.state()
-                + " firstCut=" + m.firstCut + " lag=" + m.lag + " kept4R=" + m.kept4R);
+        m.driveBytes = r.db.getStreamLength() - len0;
+        out(el() + "   " + gate + " " + label + " drive " + drive
+                + (byMaintain ? " maintain() calls; " : " transactions; ") + r.state()
+                + " firstCut=" + m.firstCut + " lag=" + m.lag + " kept4R=" + m.kept4R
+                + (byMaintain ? " lastTrue=" + m.lastMore + " writingCalls=" + m.writingCalls
+                + " maxCallBytes=" + m.maxCallBytes + " maxCallRecords=" + m.maxCallRecords
+                + " driveBytes=" + m.driveBytes : ""));
         synchronized (r.db.internal().getWriteLock()) {
             Count c = new Count(r.db.internal().nodeCollection().maintenance());
             GetMany g = r.db.newGetMany();
@@ -556,10 +600,10 @@ public class CountGates {
             m.pathNodes = ((Object[]) field(path, "nodes")).length;
         }
         m.heap = usedHeap() - heap0;
-        if (m.userKeys != 1) throw new AssertionError("G4 " + label + ": " + m.userKeys
+        if (m.userKeys != 1) throw new AssertionError(gate + " " + label + ": " + m.userKeys
                 + " user keys, expected 1");
         r.close();
-        out("  G4 " + label + " " + m.line());
+        out("  " + gate + " " + label + " " + m.line());
         return m;
     }
 
@@ -576,6 +620,58 @@ public class CountGates {
         g4Gate("M11 live handles", e.handles, t.handles, d("g4nodes", 2));
         g4Gate("ST6 cache table slots", e.slots, t.slots, d("g4slots", 2));
         g4Gate("heap after a GC", e.heap, t.heap, d("g4heap", 2));
+    }
+
+    // ======== G5 ========
+
+    /**
+     * G5, back to empty by maintain() (bergdb 024-32): G4 with a drive of maintain() calls
+     * instead of overwrites, against a twin driven the same way. Kept is held to twice the
+     * twin's plus the allowance of maintain()'s design (024-32, section 2.2): the release
+     * that an iteration begun by maintain() needs, and a filler; the rest as G4.
+     */
+    void g5() throws ReflectiveOperationException {
+        G4M t = g4Run("G5", "g5-twin", 0, usedHeap(), 0, true);
+        G4M e = g4Run("G5", "g5-emptied", n, usedHeap(), 0, true);
+        long allowance = Reclaim.MAINTAIN_MIN_RELEASE 
+                + bergdb.storage.RecoverableStream.META_BLOCK_DISTANCE;
+        gate("G5", "M1 kept, most in the last R, over twice the twin's plus " + allowance
+                + " (" + e.keptMax + " / " + t.keptMax + ")",
+                (double) e.keptMax / (2 * t.keptMax + allowance), 1, "%.3f");
+        gate("G5", "calls returning true, the last of " + i("g5drive", 20 * (int) (retain / dt))
+                + " (" + e.lastMore + "), over 3/4 of the drive", 
+                (double) e.lastMore / (0.75 * i("g5drive", 20 * (int) (retain / dt))), 1, 
+                "%.3f");
+        // G5's twin is tiny (4 key nodes, 5 objects): the counts are held to the larger of
+        // twice the twin's and the twin's plus a_n = 10 (023-03, section 2.6, the strict
+        // allowance of nodes); the dead klongs, of which the twin has none, to the twin's
+        // plus B = 30, a leaf's klongs (023-03's C4).
+        gateSmall("M4 reachable key nodes", e.reach, t.reach, 10);
+        gateSmall("M5 dead KEY klongs", e.dead, t.dead, 30);
+        gateSmall("M11 resident index objects", e.objects, t.objects, 10);
+        gateSmall("M11 live handles", e.handles, t.handles, 10);
+        // ST6: since 024-33 a map's table shrinks to at least Table.MIN_CAPACITY, and a map
+        // once used keeps that table; the emptied database has used most of the 2^MAP_BITS
+        // maps, the twin 5. So the floor of the tables, 4,096 maps of 16 slots, independent
+        // of n, where twice the twin's is less (024-32, section 4).
+        long floor = (long) Cache3.maps() * Cache3.Table.MIN_CAPACITY;
+        long slotLimit = Math.max(2 * t.slots, floor);
+        gate("G5", "ST6 cache table slots over the larger of twice the twin's and the tables' "
+                + "floor " + floor + " (" + e.slots + " / " + t.slots + ")",
+                (double) e.slots / slotLimit, 1, "%.3f");
+        gateTwin("G5", "heap after a GC", e.heap, t.heap, d("g4heap", 2));
+    }
+
+    /** G5: emptied at most the larger of twice the twin's and the twin's plus 'plus'. */
+    void gateSmall(String what, long emptied, long twin, long plus) {
+        long limit = Math.max(2 * twin, twin + plus);
+        gate("G5", what + " over the larger of twice the twin's and the twin's plus " + plus
+                + " (" + emptied + " / " + twin + ")", (double) emptied / limit, 1, "%.3f");
+    }
+
+    void gateTwin(String name, String what, long emptied, long twin, double factor) {
+        gate(name, what + " over the twin's (" + emptied + " / " + twin + ")",
+                (double) emptied / Math.max(1, twin), factor, "%.3f");
     }
 
     double d(String k, double d) { return p.containsKey(k) ? Double.parseDouble(p.get(k)) : d; }
@@ -609,6 +705,7 @@ public class CountGates {
         if (which.equals("all") || which.equals("g2")) x.g2();
         if (which.equals("all") || which.equals("g3")) x.g3();
         if (which.equals("all") || which.equals("g4")) x.g4();
+        if (which.equals("all") || which.equals("g5")) x.g5();
         rm(x.base);
         out(x.el() + (x.failed ? " COUNT GATES FAILED" : " COUNT GATES OK"));
         System.exit(x.failed ? 1 : 0);

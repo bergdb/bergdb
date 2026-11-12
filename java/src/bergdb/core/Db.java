@@ -742,6 +742,115 @@ public class Db implements AutoCloseable {
     }
     
     /**
+     * Does a bounded part of the database's maintenance now, and returns whether more is due
+     * (bergdb 024-32). Optional: the maintenance goes on in the ordinary operations, at the
+     * application's commits, whether this method is called or not. Frans (2026-11-10, bergdb
+     * 023-04, Y10): "maintainance should be performed while doing other operations on the
+     * database, so the user explicitely calling maintain() should be optional, not a
+     * requirement on the user that she must call maintain." What it adds: a database that
+     * the application no longer writes to does no work by itself (010-01, P3), so with a
+     * finite retain duration its space comes back only with later commits; calls of this
+     * method bring it back without them. Called again and again, with time passing, it
+     * brings a database that has been emptied to about the stream of a fresh one (bergdb
+     * 023-02, F7; java/stress/CountGates.java, G5).
+     * 
+     * <p>One call does, in the database's own internal transactions, at most: the start of
+     * a reclaim iteration, if a quarter of the retain duration has passed since the last
+     * one began, the last one is cut and the new one's cut would release at least 400 kB;
+     * one reclaim step (about 16 kB of KVs scanned); one write of index nodes of the startup
+     * section that an iteration waits for (at most 256 kB beyond one transaction's); one
+     * filler of at most 200 kB, put and deleted, so that a meta block follows the cut point;
+     * the cut, when it is due, after a sync if its table is not yet durable; and a batch of
+     * the eviction's dead hand, which drops the objects of versions that a cut has ended
+     * (Eviction; as after a transaction, with a cache budget). Each part is
+     * no larger than what reclaim does after a commit. With a retain duration of forever
+     * there is nothing to do (Reclaim.maintain; bergdb 024-32, section 2).</p>
+     * 
+     * <p>It runs under the write lock, as a commit does: it waits for a running commit, and
+     * a commit waits for it; reads go on as during commits. The sync, if any, is outside the
+     * lock. What it writes depends on the state and the call's time, as a transaction's
+     * does, so the stream is the same after the same calls (010-01, P2). A call when
+     * nothing is due writes nothing.</p>
+     * 
+     * @return True if more is due now: another call would do more. False if nothing is due
+     *      until time passes (a quarter of the retain duration for the next iteration, the
+     *      retain duration for a cut) or the application writes. A caller that wants the
+     *      space back now calls it until it returns false, and again later.
+     * @throws IllegalDbStateException, DbStoppingException, DbFailedException  On a
+     *      database that is not active, as a transaction (and setRetainDuration()).
+     * @throws DbException  If the database has used its top node ordinals, or has no time
+     *      left for a user transaction (bergdb 005-02, 015-55): as a transaction is refused.
+     *      Nothing is written then.
+     * @throws StreamIoException  If the sync is interrupted, or the database is stopping.
+     */
+    public boolean maintain() {
+        final long durableAt;
+        synchronized (writeLock) {
+            assertDbStateIsActive("maintain");
+            refuseIfTopOrdinalsUsed();
+            if (!dbClock.userTimeLeft()) {
+                throw new DbException("No database time is left for maintain(): the times "
+                        + "after " + DbClock.LAST_USER_TIME + " are kept for reclaim's "
+                        + "internal transactions after a user transaction. Nothing is written.");
+            }
+            final long now = dbClock.currentTime();
+            final boolean more;
+            try {
+                more = reclaim.maintain(now, dbClock.lookupTime(Long.MAX_VALUE));
+            } catch (DbStoppingException | DbFailedException e) {
+                // stop() or close() came during the call (bergdb 015-53): what is committed
+                // stays, and the rest goes on after the next start. Or one of its internal
+                // transactions failed the database.
+                throw e;
+            } catch (Throwable e) {
+                // As reclaim's work within a commit's go point (executeInner): whatever else
+                // throws fails the database, since reclaim's state in memory may be ahead of
+                // the stream. The checks above refuse a call before it changes anything.
+                if (setFailed(e) == DbState.STOPPING || e instanceof Error) {
+                    if (e instanceof Error) throw (Error) e;
+                    throw (RuntimeException) e;
+                }
+                throw new DbFailedException("maintain() failed after it began (the cause); "
+                        + "the database takes no more transactions or reads and must be "
+                        + "restarted: the restart rebuilds it from the stream.", e);
+            }
+            durableAt = reclaim.pendingCutDurableAt();
+            if (durableAt == -1 || getDurableLength() >= durableAt) {
+                reclaim.cutIfDurableNow();
+                // The dead hand (Eviction), as after a transaction: the objects of the
+                // versions that the cut ended leave memory, a batch a call.
+                final boolean dead = maintainEviction();
+                return reclaim.maintainDue(now) || dead;
+            }
+        }
+        
+        // A cut is decided and its table is not yet durable (Reclaim.cutIfDurable): a sync
+        // outside the lock, then the cut.
+        sync(durableAt - 1, SyncLevel.ORDINARY);
+        synchronized (writeLock) {
+            assertDbStateIsActive("maintain");
+            reclaim.cutIfDurableNow();
+            final boolean dead = maintainEviction();
+            return reclaim.maintainDue(dbClock.currentTime()) || dead;
+        }
+    }
+    
+    /** maintain()'s step of the eviction's dead hand; under the write lock. */
+    private boolean maintainEviction() {
+        try {
+            return eviction.maintainStep(this);
+        } catch (Throwable e) {
+            if (setFailed(e) == DbState.STOPPING || e instanceof Error) {
+                if (e instanceof Error) throw (Error) e;
+                throw (RuntimeException) e;
+            }
+            throw new DbFailedException("maintain() failed after it began (the cause); "
+                    + "the database takes no more transactions or reads and must be "
+                    + "restarted: the restart rebuilds it from the stream.", e);
+        }
+    }
+    
+    /**
      * Sets reclaim's internal fraction: the bytes an iteration rewrites, compared to the
      * stream's growth while it runs; 0.25 by default. Used from the next step.
      * 
@@ -2994,6 +3103,19 @@ public class Db implements AutoCloseable {
         
         newSp = transSeq.take(currentSp, nodeStream.getLength(), startupDistance, ownBytes,
                 x.transNodes, StoredTrans.recordLimit - fixedBytes);
+        if (x.trans.maintainTakeTo > newSp) {
+            // The empty record of a maintain() call (bergdb 024-32, section 2.2, M4): more of
+            // D after the share, oldest first, up to the position that reclaim waits for.
+            long bytes = ownBytes + 16L * x.transInfo.gotDirtyNodes.size();
+            for (int i = 0; i < tn.topCount; i++) {
+                bytes += StoredTopNode.getByteSize(tn.topNodes[i]) + 16;
+            }
+            for (int i = 0; i < tn.keyCount; i++) {
+                bytes += StoredKeyNode.getByteSize(tn.keyNodes[i]) + 16;
+            }
+            newSp = transSeq.takeTo(newSp, x.trans.maintainTakeTo, 
+                    Reclaim.MAINTAIN_TAKE_BYTES, x.transNodes, StoredTrans.recordLimit - bytes);
+        }
         x.trans.startupPos = newSp;
         
         // Note: nodeStream.appendNodes() does things beyond writing to stream, it sets spos of nodes.

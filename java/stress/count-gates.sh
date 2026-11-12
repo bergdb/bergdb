@@ -13,11 +13,15 @@
 #      40 R; kept, key nodes, dead klongs, resident objects, handles, the heap,
 #      the cache's table slots (ST6, since 024-33), at most 2 times a
 #      hello-world twin's.
+#   G5 (back to empty by maintain(), bergdb 024-32): as G4, with a drive of 20 R
+#      of maintain() calls and no writes; kept at most 2 times the twin's plus
+#      600 kB, the calls quiet in the last quarter, the rest as G4 (counts of
+#      the tiny twin within twice it or it plus a_n = 10; dead klongs plus 30).
 # A step of night.sh after level4; not in before-commit.sh (it takes minutes).
 # About 2.5 minutes on F53 (2026-11-12). A 10M variant (n=10000000) is not a
 # step; 024-30, section 6, notes it for later.
 #
-# Usage: java/stress/count-gates.sh [g1|g2|g3|all] [prop=value...]
+# Usage: java/stress/count-gates.sh [g1|g2|g3|g4|g5|all] [prop=value...]
 #   the arguments go to CountGates (its class comment lists the properties).
 # Output in java/build/count-gates/count-gates.txt. Prints the gate lines and
 # COUNT GATES OK, or COUNT GATES FAILED and exits with status 1.

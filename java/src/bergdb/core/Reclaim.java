@@ -23,6 +23,7 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.util.Clock;
 import bergdb.pub.util.SyncLevel;
+import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
@@ -516,6 +517,201 @@ public class Reclaim implements Db.TransactionListener {
             pretruncate(pendingCut);
             pendingCut = -1;
         }
+    }
+    
+    /**
+     * The least that the cut of an iteration that maintain() begins must release, in stream
+     * bytes (bergdb 024-32, section 2.2, M1): two meta block distances. With no cut
+     * pending, what a new one releases is the stretch between the last two pStarts;
+     * once a database has converged, that holds an iteration's records and at most one
+     * filler (MAINTAIN_FILL_KEY_NAME, below one meta block distance), so no iteration
+     * begins and the calls return false. And a filler is at most half of what its cut
+     * releases.
+     */
+    static final long MAINTAIN_MIN_RELEASE = 2L * RecoverableStream.META_BLOCK_DISTANCE;
+    
+    /**
+     * The most bytes of index nodes that the take of one maintain() call writes beyond its
+     * share, after its first transaction (TransSeq.takeTo; bergdb 024-32, section 2.2, M4).
+     */
+    static final long MAINTAIN_TAKE_BYTES = 256 * 1024L;
+    
+    /**
+     * maintain()'s filler (bergdb 024-32, section 2.2, M5): put with a value of zeros that
+     * reaches the next meta block, and deleted at once in a transaction of its own, so that
+     * a meta block names a transaction at or after an iteration's pCut and the cut can be
+     * made without the application's writes. Never live after a call.
+     */
+    static final String MAINTAIN_FILL_KEY_NAME = 
+            DbConstants.INTERNAL_PREFIX + "dreclaim/-fill.txt";
+    private static final long[] MAINTAIN_FILL_KEY = Keys.toSegments(MAINTAIN_FILL_KEY_NAME);
+    
+    /**
+     * One call of Db.maintain() (bergdb 024-32, section 2): a bounded part of what reclaim
+     * does after the application's commits, without them, in reclaim's internal
+     * transactions, at most one of each, in this order:
+     * 
+     * <ol>
+     * <li>M1: if no iteration runs, the retain duration is finite, a quarter of it has
+     * passed since the last iteration began, no done iteration waits for its cut
+     * (cutPending),
+     * and the cut that a new iteration leads to releases at least MAINTAIN_MIN_RELEASE, an
+     * iteration begins, as at a commit, with tStart = lastTransTime, the time of the state
+     * at pStart. The commit's condition on the stream's growth is not asked.</li>
+     * <li>M2: a step of the iteration that runs, of MAX_STEP_SIZE, without the commit's
+     * allowance (the internal fraction of the growth).</li>
+     * <li>M3: the safe positions (markSafePositions).</li>
+     * <li>M4: if a done iteration waits for the startup pos, an empty internal transaction
+     * whose take goes on to that position (Trans.maintainTakeTo, TransSeq.takeTo); M3
+     * again.</li>
+     * <li>M5: if an iteration's cut waits for a meta block only, the filler
+     * (MAINTAIN_FILL_KEY_NAME).</li>
+     * <li>M6: the cut, if it is due (pretruncateIfPossible, cutIfDurable).</li>
+     * </ol>
+     * 
+     * The caller holds the write lock and has checked that the database is active.
+     * 
+     * @param now  The time of the call, DbClock.currentTime().
+     * @param lastTransTime  The time of the last transaction.
+     * @return Whether more is due now: maintainDue().
+     */
+    boolean maintain(long now, long lastTransTime) {
+        assert Thread.holdsLock(this.writeLock);
+        
+        if (maintainBeginDue(now)) {                                // M1
+            final long streamSize = db.getStreamLength();
+            IterationInfo it = new IterationInfo();
+            it.pStart = streamSize;
+            it.tStart = lastTransTime;
+            it.pCut = table.rows.isEmpty() ? streamSize : lastPStart();
+            table.rows.add(it);
+            storeTable();
+        }
+        
+        IterationInfo current = currentIteration();                 // M2
+        if (current != null) {
+            step(current, MAX_STEP_SIZE);
+        }
+        
+        markSafePositions();                                        // M3
+        
+        final long target = maintainTakeTarget();                   // M4
+        if (target != -1) {
+            Trans t = db.trans().build();
+            t.isInternal = true;
+            t.maintainTakeTo = target;
+            try {
+                db.execute(t);
+            } catch (RerunException e) {
+                throw new Bug("RerunException for an empty trans unexpected, " + e.getMessage());
+            }
+            markSafePositions();
+        }
+        
+        if (cutWaitsForMetaBlock(now)) {                            // M5
+            final long length = db.getStreamLength();
+            final int distance = RecoverableStream.META_BLOCK_DISTANCE;
+            final int fill = Math.max(1, (int) (distance - length % distance));
+            executeInternal(db.trans().put(MAINTAIN_FILL_KEY, new byte[fill]).build());
+            executeInternal(db.trans().delete(MAINTAIN_FILL_KEY).build());
+        }
+        
+        pretruncateIfPossible(now);                                 // M6
+        cutIfDurable();
+        return maintainDue(now);
+    }
+    
+    /** Executes an internal write-only transaction (maintain()'s filler). */
+    private void executeInternal(Trans t) {
+        t.isInternal = true;
+        try {
+            db.execute(t);
+        } catch (RerunException e) {
+            throw new Bug("RerunException for write-only trans unexpected, " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Whether a call of maintain() now has work (bergdb 024-32, section 2.3): an iteration
+     * runs, a take or a filler is due, a cut waits to be durable, or an iteration may begin.
+     * False when nothing is due until time passes or the application writes.
+     */
+    boolean maintainDue(long now) {
+        return currentIteration() != null || maintainTakeTarget() != -1 
+                || cutWaitsForMetaBlock(now) || pendingCut != -1 || maintainBeginDue(now);
+    }
+    
+    /**
+     * The stream length that must be durable before the pending cut is made, or -1 if no
+     * cut is pending; see cutIfDurable().
+     */
+    long pendingCutDurableAt() {
+        return pendingCut == -1 ? -1 : pendingCutDurableAt;
+    }
+    
+    /** Makes the pending cut if its table is durable; maintain() calls it after a sync. */
+    void cutIfDurableNow() {
+        cutIfDurable();
+    }
+    
+    /** maintain()'s M1 condition; see maintain(). */
+    private boolean maintainBeginDue(long now) {
+        if (retainDuration == Long.MAX_VALUE || currentIteration() != null
+                || now - lastTStart() < retainDuration / ITERATION_DIVISOR) {
+            return false;
+        }
+        for (IterationInfo row : table.rows) {
+            if (cutPending(row)) {
+                return false;
+            }
+        }
+        final long cutAt = table.rows.isEmpty() ? db.getStreamLength() : lastPStart();
+        return cutAt - firstAvailablePos >= MAINTAIN_MIN_RELEASE;
+    }
+    
+    /**
+     * True if 'row' is a done iteration whose cut is still to come: not cut, and its pCut
+     * is after the first available position (an iteration whose pCut is not, such as one
+     * that began when the last one had the same pStart as its pCut, has nothing to cut).
+     */
+    private boolean cutPending(IterationInfo row) {
+        return row.done && !row.cut && row.pCut > firstAvailablePos;
+    }
+    
+    /**
+     * The least position that a done iteration whose cut is pending waits for the startup pos to
+     * reach (pEnd until it is safe, then pSafe), or -1 if none waits (maintain()'s M4).
+     */
+    private long maintainTakeTarget() {
+        final long sp = db.internal().getStartupPosForEvict();
+        long target = -1;
+        for (IterationInfo row : table.rows) {
+            if (!cutPending(row)) {
+                continue;
+            }
+            final long p = row.pSafe == -1 ? row.pEnd : row.pSafe;
+            if (sp < p && (target == -1 || p < target)) {
+                target = p;
+            }
+        }
+        return target;
+    }
+    
+    /**
+     * True if an iteration has all that its cut needs (see pretruncateIfPossible) but a
+     * meta block that names a transaction at or after its pCut (maintain()'s M5).
+     */
+    private boolean cutWaitsForMetaBlock(long now) {
+        final long metaTransPos = db.getLastTransPosOfLastValidMetaBlock();
+        final long startupPos = db.internal().getStartupPosForEvict();
+        for (IterationInfo row : table.rows) {
+            if (row.done && !row.cut && now - retainDuration > row.tEnd
+                    && row.pSafe != -1 && startupPos >= row.pSafe
+                    && row.pCut > firstAvailablePos && metaTransPos < row.pCut) {
+                return true;
+            }
+        }
+        return false;
     }
     
     /** The iteration in progress, the last row of the table if it is not done, or null. */
