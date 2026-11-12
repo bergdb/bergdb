@@ -196,6 +196,8 @@ from them.
   then 024-34) at 12:11, three Claude agents with pace (over the tight
   level's two: pace mostly waits on its runs). ST12 (G4's finding)
   registered in 024-05, not decided.
+* 12:12 Frans: "Eviction off is a test mode not use in production at
+  all! Only for testing." ST12 closed as not a case.
 
 
 ## 6. Outcome

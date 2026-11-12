@@ -278,7 +278,8 @@ by design, levels.md, section 7); `close()` (1 to 2 ms).
   off (the Core's test setup, no budget), the cached objects of deleted
   keys stay resident after back to empty: 15,082 against the twin's
   1,017 at 100,000 keys. With eviction on (the Pub API's default) they
-  go. Not decided.
+  go. **Not a case** (Frans, 2026-11-12, 12:12: "Eviction off is a test
+  mode not use in production at all! Only for testing."): closed.
 
 Not cases: the history with R forever (023-02, R8) and the memory of
 ended versions with `noEvict()` (levels.md, section 7), both by design.
