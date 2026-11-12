@@ -49,7 +49,7 @@ high.
 | 024-22 | The open proofs TP32, TP33, TP7, TP30, TP10, TP11, TP31 | second prover | checkpoint landed 2a7bdc52 |
 | 024-30 | Count gates G1 (BD1), G2 (BD13), G3 (BD10) at 1M keys, a night step | gates (high) | landed |
 | 024-31 | OP4: a cap on the take's pace after a decrease (015-84) | pace (high) | landed c1137b69 |
-| 024-32 | maintain(), in Core and Pub, with G5 (back to empty by maintain()) | maint (high) | gated, to land |
+| 024-32 | maintain(), in Core and Pub, with G5 (back to empty by maintain()) | maint (high) | landed 94edfe6b |
 | 024-33 | ST6: the cache's tables shrink | tidy (high) | landed a156fd51 |
 | 024-34 | OP8: reclaim reads only what it rewrites | tidy (high) | landed a156fd51 |
 | 017-11 | A startup distance that follows the database's size: known, plan | sdk (xhigh) | done 13:03 |
