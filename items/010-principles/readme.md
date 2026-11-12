@@ -49,6 +49,9 @@ and why they are made.
 * **P13**. *KISS*. Keep it simple: the design, the API and its error model,
   the code, the tests and the tools. Also with AI, which can sustain more
   complexity.
+* **P14**. *The Pub API cannot destroy the database's integrity*. Whatever
+  an application does through the Pub API, the database's own structures
+  stay consistent; the Core API can break the Pub layer's, on purpose.
 
 
 Names
@@ -67,12 +70,13 @@ Names
 Files
 =====
 
-* [01-principles.md](01-principles.md). 010-01, the principles P1 to P12:
+* [01-principles.md](01-principles.md). 010-01, the principles P1 to P14:
   no stop-the-world (for readers too), a deterministic stream, calm when
   not used, maintenance proportional to the user's work, bounded startup,
   no interruption for changes, a failed database stops, determinism beyond
   the stream, no global state, no administration, simple before optimal,
-  and a small Core Layer. For each, what it means, where it comes from,
+  a small Core Layer, KISS, and a Pub API that cannot destroy the
+  database's integrity. For each, what it means, where it comes from,
   and how it is applied, with its exceptions.
 * [02-principles-2012.md](02-principles-2012.md). 010-02, the principles
   Frans wrote down from 2008 to 2017 (notes, logs, code, the old website),
@@ -81,6 +85,9 @@ Files
 * 010-03 was removed on 2026-10-27; its contents are in
   [005-53](../005-todo/53-startup-distance-on-the-fly.md). The number is not
   reused.
+* [04-rules.md](04-rules.md). 010-04, the rules: more detailed than the
+  principles and grown from Frans's decisions, each with the principle it
+  serves and the cases it decided; R1 to R4, from 024-27 (P14).
 
 
 Log
@@ -144,3 +151,10 @@ belong to the same running database instance; after close/open, reread and
 recompute. Reads should normally be within about one second of the current
 time, as guidance, not a timeout. Lean's T2 compares a fixed transaction
 sequence; pending read sets and STM admission are outside its scope.
+
+2026-11-12. Added 010-04, the rules, beside the principles (Frans, 09:58:
+"I want to separate principles and rules. Principles should be few (10 or
+so) and stable. [...] We can allow more rules (perhaps up to 100), more
+detailed."; 10:07: "Add 010-03 with the four rules."; 03 was used, so
+04), with R1 to R4 from 024-27, QR1. Added P14, the Pub API cannot
+destroy the database's integrity, and the Core API can (Frans, 10:15).

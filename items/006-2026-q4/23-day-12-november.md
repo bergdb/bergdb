@@ -43,6 +43,7 @@ high.
 | 024-27 | QR1 kept as is: RwEnvironment's Javadoc, "Refused calls" | coordinator | landed |
 | 026-02 | A public key check: the options, a recommendation; no code | keychk (high) | done 09:39 |
 | 010-04 | Rules, beside the principles: R1 to R4 from 024-27 | coordinator | written |
+| 010-01 | P14, the Pub API cannot destroy the database's integrity | coordinator | written |
 
 024-27 lands on its gates, by Frans's decisions of 07:36: its changed
 expected values follow from them.
@@ -101,6 +102,12 @@ from them.
   accepted calls or none, R3 the database keeps its own structures
   consistent and the user owns what her keys mean, R4 a safety belt is
   decided case by case. 010's readme (Frans's open edit) not touched.
+* 10:15 Frans: "Yes, add this as Principle P14. In the details, note
+  that the Core API is different. It can destroy the integrity of the
+  upper Pub layer. This is intentional. Needed, since Pub is implemented
+  by using Core API." Written into 010-01; R1 to R3 serve it; 010's
+  readme: P14, 010-04 and the Log (only these lines committed; Frans's
+  own edit of the readme's top left uncommitted).
 
 
 ## 6. Outcome

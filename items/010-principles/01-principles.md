@@ -631,3 +631,45 @@ interface." And: "Always important. Also with AI, even though more
 complexity can be sustained now."
 
 P11 is the same rule weighed against speed; P13 holds everywhere.
+
+
+P14. The Pub API cannot destroy the database's integrity
+--------------------------------------------------------
+
+Whatever an application does through the Pub API, any calls in any order,
+from any threads, catching the database's exceptions and going on
+included, the database stays consistent: the stream, the Core Layer's
+index, and the Pub layer's own structures, its directories, objects and
+the indexes that the database creates. What the application's own keys
+mean together, such as an entry it writes as an index of its own, is the
+application's responsibility. Frans (2026-11-12): "In general, the rule is
+that use of the Pub API must keep the integrity of the database. Including
+features in the pub layer. This includes indexes. But only indexed created
+by the database itself. [...] the user is responsible for the code in
+Action. The example code is bad as it is. It is broken. But the database
+is not broken." The same in 2012 (010-02, "The Pub API"; the layers note
+of 2012-08): "Public interface to the database. Should remain fairly
+stable. [...] The user of this layer cannot destroy the integrity of the
+database." Made a principle on 2026-11-12, 10:15 (Frans: "Yes, add this as
+Principle P14.").
+
+The Core API is different, on purpose: it can destroy the integrity of the
+Pub layer. Frans (2026-11-12, 10:15): "the Core API is different. It can
+destroy the integrity of the upper Pub layer. This is intentional. Needed,
+since Pub is implemented by using Core API." To the Core Layer, an object,
+a directory and an index entry are keys and values like any other (P12),
+so a program that uses the Core API can write keys and values that break
+them; the Pub layer needs that freedom to be built on the Core API. So
+did the 2012 layers note, of the layer below Pub: "The DB layer is designed
+to suit the DB layer implementation; not to suit the user of the layer."
+
+Where BergDB stands (2026-11-12): the rules R1 to R4 (010-04) say how P14
+is kept, call by call: a refused call changes nothing (R1), a commit holds
+all of its accepted calls or none (R2), the database keeps its own
+structures consistent and the user owns what her keys mean (R3), safety
+belts beyond that are decided case by case (R4). In Java, the entries of
+the database's indexes are made after an rw() action returns, from what it
+wrote, so an action that catches a refusal and goes on cannot leave them
+inconsistent (024-27, QR1). The AI-as-the-user applications (024-26) look
+for breaks of P14 with oracles of their own; they found none in 2026.5's
+new algorithms.

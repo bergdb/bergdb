@@ -37,6 +37,8 @@ the database and the transaction being built as they were before the
 call; the database goes on. Every check of a call is made before the call
 changes anything.
 
+Serves P14 and P7.
+
 Why: P7 already says it of a transaction ("A refused transaction is
 another matter: it changes nothing, and the database goes on"); R1 says it
 of each call within one, so that the user's code can know exactly what a
@@ -57,6 +59,8 @@ R2. A commit holds all of its accepted calls, or none
 A transaction is committed whole, with every call that was accepted into
 it, or not at all. There is no commit of a part of what the user's code
 handed to the database for one transaction.
+
+Serves P14.
 
 Why: the database promises it to the user (the Pub package: "all of them,
 or none"), and the user's code can build on it.
@@ -80,6 +84,9 @@ layer's directories and objects, and the indexes the database creates.
 What the user's own keys mean together, such as an entry she writes as an
 index of her own, is the user's responsibility: the database neither
 checks nor repairs it.
+
+Serves P14: R3 draws its line between the database's integrity and the
+user's responsibility.
 
 Why: Frans, 2026-11-12, 09:16: "In general, the rule is that use of the
 Pub API must keep the integrity of the database. Including features in the
@@ -108,7 +115,7 @@ R4. A safety belt is decided case by case
 
 Beyond R1 to R3, the database may refuse more, to catch a likely mistake
 of the user's code early, where that is cheap and documented. Such a
-safety belt is not part of the database's integrity (R3): each is decided
+safety belt is not part of the database's integrity (P14, R3): each is decided
 by Frans, case by case.
 
 Why: the spoiled builder of 024-27 (Frans, 2026-11-12, 07:36: "B. Ensure
