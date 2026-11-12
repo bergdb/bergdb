@@ -46,14 +46,14 @@ high.
 | 010-01 | P14, the Pub API cannot destroy the database's integrity | coordinator | written |
 | 024-28 | The release checklist of 2026.5 | check (high) | done 10:37 |
 | 024-29 | Reclaim's fraction: previous work, how to compare, the default | frac (high) | done 11:15 |
-| 024-22 | The open proofs TP32, TP33, TP7, TP30, TP10, TP11, TP31 | second prover | |
+| 024-22 | The open proofs TP32, TP33, TP7, TP30, TP10, TP11, TP31 | second prover | checkpoint landed 2a7bdc52 |
 | 024-30 | Count gates G1 (BD1), G2 (BD13), G3 (BD10) at 1M keys, a night step | gates (high) | landed |
 | 024-31 | OP4: a cap on the take's pace after a decrease (015-84) | pace (high) | landed c1137b69 |
 | 024-32 | maintain(), in Core and Pub, with G5 (back to empty by maintain()) | maint (high) | gated, to land |
-| 024-33 | ST6: the cache's tables shrink | tidy (high) | gated, to land |
-| 024-34 | OP8: reclaim reads only what it rewrites | tidy (high) | gated, to land |
+| 024-33 | ST6: the cache's tables shrink | tidy (high) | landed a156fd51 |
+| 024-34 | OP8: reclaim reads only what it rewrites | tidy (high) | landed a156fd51 |
 | 017-11 | A startup distance that follows the database's size: known, plan | sdk (xhigh) | done 13:03 |
-| 021-27 | Db.getTrans inside a record fails the database: option A | gtr (high) | |
+| 021-27 | Db.getTrans inside a record fails the database: refused instead | gtr (high) | gated, to land |
 
 024-27 lands on its gates, by Frans's decisions of 07:36: its changed
 expected values follow from them.
@@ -271,6 +271,19 @@ from them.
 * 13:38 Frans: TP11, option (a): keyWf to say what Keys.toSegments
   makes (each segment below 2^62, its lowest three bits zero), after the
   prover's run; recorded in 024-12.
+* 13:46 The second prover stopped at its own usage limit (resets
+  16:17). Its first checkpoint landed 13:50 (2a7bdc52; lake build 248
+  jobs, 275 theorems, axioms at most propext, Classical.choice,
+  Quot.sound; only imports added to an existing file): TP1 and TP9
+  proved, TP30 reduced to TP7, TP31 and TP33 to stated premises, TP11
+  refuted as stated.
+* 13:50 gtr done (021-27, no walk, by R5): the public Db.getTrans
+  refuses what it cannot read as a committed record with
+  IllegalArgumentException; Db.Internal.getTrans for the database's own
+  positions; the record header's last byte checked before its array;
+  before-commit, level1, level3 OK. Q27-1: a garbage size that passes
+  the header check (about 1 in 65,000) still asks for an array up to 2
+  GB.
 
 
 ## 6. Outcome

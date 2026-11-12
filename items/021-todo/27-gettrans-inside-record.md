@@ -1,7 +1,8 @@
 021-27. Decide: Db.getTrans at a position inside a record fails the database
 ============================================================================
 
-Status: waiting. Kind: Decide. Frans: decision.
+Status: done (branch `021-27-gettrans`, gated; to land).
+Kind: Decide, then Fix. Frans: decided 2026-11-12 (section 3).
 Created 2026-11-09 by Frans Lundberg.
 
 What: the Core's `Db.getTrans(tpos)` given a multiple of 8 inside a
@@ -108,6 +109,137 @@ costs nothing on a good position, but its cases (cuts, records over meta
 blocks) need tests that do not fit before 2026.4's landings close.
 
 
+3. Decision (Frans, 2026-11-12)
+-------------------------------
+
+13:21: "Yes, fix this in a agent at high. This is important. I consider
+it a bug. It does destroy the Core database, the KV store. The Core API
+may damage the integrity of the functionality built on top of it such as
+Pub layer's secondary indexes, but it should not destroy the integrity
+of the KV store itself." The fix was first option A.
+
+13:26, a change of design: "021-27, option A. About this. Why is this
+tricky. It is a read-only operation. It should fail or succeed, but never
+block the database. This position comes from the user and cannot be
+fully trusted. It is not from the internal database." With it the rule
+010-04, R5: the Core API never destroys the KV store; a caller's mistake
+is refused and the database goes on.
+
+So the fix is option D, now right by R5: the paths are split by who gave
+the position. Option A's walk (the records' sizes walked from the meta
+block before `tpos`) had been written in the clone, not committed; it
+was dropped and is not in the branch.
+
+
+4. The fix
+----------
+
+Branch `021-27-gettrans` in the clone (section State), two commits on
+main's `de7227de`.
+
+* **`Db.getTrans(tpos)`, a caller's position.** The checks before the
+  read as before (negative, not a multiple of 8, in a meta block, at or
+  past the end: `IllegalArgumentException`, nothing read; the wait for
+  the writer at or after `appendedEnd`, 021-13). When the read or the
+  parse at `tpos` throws `StreamFormatException` (a bad size, version
+  byte or last byte, a record not committed, a node's checksum, a
+  malformed node; `StreamChecksumException` and
+  `VersioningStreamException` are subclasses), the call throws
+  `IllegalArgumentException` ("Not a position of a transaction, P: the
+  bytes there are not a committed transaction's record (the cause).", the
+  read's exception its cause), and the database goes on.
+  `IllegalArgumentException` because it is the type the same method
+  already throws for the other positions that are not a transaction's
+  (005-34, 005-43) and the Core API's type for a bad argument (020-27,
+  Q2). An I/O error of the read (`StreamIoException`) is the
+  environment's (010-01, P7) and fails the database as before; a read
+  below a cut expires (`LookupTimeNotAvailableException`) as before. An
+  `Error` fails the database as before (019-10).
+* **`Db.Internal.getTrans(tpos)`, the database's own position.** The same
+  read, with today's behaviour: a `StreamFormatException` is damage and
+  fails the database (005-30, 005-34, 005-82).
+* **Not detected, said in the Javadoc:** a position inside a record whose
+  bytes there happen to form a well-formed committed record (a value can
+  hold such bytes) gives a `StoredTrans` of them, of no real transaction.
+  No check against it: the position is the caller's responsibility
+  (010-04, R3's spirit).
+* **The record's header before its array** (`NodeStream.readRecordHeader`).
+  At a caller's position the 4 bytes read as the size can be anything up
+  to the stream's length, and the iterator made an array of that size
+  before it checked the last byte: up to 2 GB, an `OutOfMemoryError`
+  that fails the database. Now the header check refuses a last byte
+  other than 0 and 10, and for an exact start position also 0 (not
+  committed), before the array is made. The same exceptions and messages
+  as the checks after the read; a good record reads as before (one
+  1-byte read was already made there). Left: bytes whose size is at most
+  the stream's length and whose last byte and format byte are both right
+  (about 1 in 65,000 for random bytes, or a value made so) still make the
+  array; on a large stream with a small heap that can be an
+  `OutOfMemoryError`, which fails the database (question Q27-1 below).
+
+Callers of `getTrans` and their path:
+
+| Caller | Position from | Path |
+|---|---|---|
+| `ConnectionImp.transactionInfoInner`       | the last get's `GetData.tpos` | Internal |
+| the same, its loop over reclaim's steps    | a get before the step's time  | Internal |
+| `stress/core-build/CoreDemo`               | `Trans.tpos`, as a user       | public   |
+| `DbTester`, `DbTesterFailure`, `PubTester` | as each test says             | both     |
+
+Reclaim and the start do not call `getTrans`: they read with
+`NodeStream.TransIterator`, unchanged but for the header check above.
+
+The Needs care of option A, with D: the walk is gone, so a cut stream
+and records over several meta blocks need nothing of their own; tests
+check them anyway. A position at or after `appendedEnd` waits for the
+writer first (021-13), then is refused if it is inside the record.
+
+Tests (all unit tests):
+
+* `DbTester.testGetTransInsideARecord`, **turned** (its own commit,
+  `5c2cdb5e`, a changed expected value approved by Frans's 13:21 and
+  13:26): `getTrans(tpos + d)` for d = 8, 16, 24, 512 now
+  `IllegalArgumentException`, then a get, `getTrans(tpos)`, a put and a
+  get work.
+* `DbTester.testGetTransInsideARecordOverMetaBlocks`, new: a record of 20
+  random values and one of 401,000 bytes, over two meta blocks; every
+  multiple of 8 inside it is refused or gives a `StoredTrans` at that
+  position (none fails the database), every one inside the next, last
+  record refused; then the database goes on.
+* `DbTesterFailure.testGetTransBelowTheCut`, more: a position inside a
+  record below a cut expires, one inside a record after it is refused.
+* `DbTesterFailure.testGetTransOfARecordBeingAppended`, more: a reader at
+  `tpos + 8` of the record being appended waits for the writer, then is
+  refused.
+* `DbTesterFailure.testGetTrans` (corrupt reads) and
+  `getTransOfDamagedRecord` (testGetTransChecksum, -Malformed,
+  -BadValueSize): the damage now reached first through `Db.getTrans`,
+  refused, the database goes on; then through `Internal.getTrans`, as
+  `transactionInfo()` reads, which fails the database with today's
+  expectations (their assertions moved to the internal path, not
+  changed). A read error (`failReads`) through `Db.getTrans` fails the
+  database as before.
+* `testGetTransRefusesBadPositions` (positions past the end, in a meta
+  block) unchanged and passing.
+
+Javadoc: `Db.getTrans`'s `@throws IllegalArgumentException` and
+`@throws DbFailedException`, and `Internal.getTrans`. `releases/next.md`:
+a line in the Core API section.
+
+C clone (022): C follows later, not now. `bergdb_get_trans` should then
+do the same (refuse a format failure at a caller's position with
+`BERGDB_ARG`; an internal read for its own positions), and its header's
+contradiction (section 1) goes.
+
+Question for Frans:
+
+* Q27-1. The garbage size that passes the header check makes an array up
+  to the stream's length (at most 2 GB). Bound it for a caller's
+  position (for example, refuse a size over the heap's free memory, or
+  read the record in parts)? Default: leave it, as the chance is small
+  and a value made for it is the caller's own doing.
+
+
 Log
 ---
 
@@ -117,3 +249,25 @@ not fixed (a design choice), options above. The test in commit "021-27"
 in `clone-h31`, to land. Under the gate lock (18:22 to 18:30), on the
 tree of 021-26's commit and this one: `BEFORE COMMIT OK (273 s)` (unit
 1620, f 86, demos), `JAVADOC PUB OK`, `LEVEL 1 OK`.
+
+2026-11-12. Taken by coord-1112's agent gtr (13:22). Option A built in
+the clone, then dropped at Frans's 13:26 (section 3); option D made on
+branch `021-27-gettrans` (section 4). Gates on its head `104de4d9`, each
+in a slot: `BEFORE COMMIT OK (66 s)` (unit 1689, f 89, demos 14),
+`LEVEL 1 OK` (13:38), `LEVEL 3 OK` (13:38 to 13:50).
+
+
+State
+-----
+
+* Done: the fix and the tests, two commits on branch `021-27-gettrans`
+  in clone `/Users/f/fl/bench/2026-11-12/gtr/clone` (from main's
+  `de7227de`): `5c2cdb5e` the turned test, `104de4d9` the fix. The
+  targeted tests pass (DbTester, DbTesterFailure, the Pub testers, 535
+  tests).
+* Gates on `104de4d9`, each in a slot: `BEFORE COMMIT OK (66 s)` (unit
+  1689, f 89, demos 14; 13:33 to 13:34), `LEVEL 1 OK` (13:38),
+  `LEVEL 3 OK` (13:50). Logs in `/Users/f/fl/bench/2026-11-12/gtr/`.
+* Not done: C (022), later; Q27-1 for Frans.
+* To continue: the coordinator lands the branch (two commits, the first
+  the changed expected value).
