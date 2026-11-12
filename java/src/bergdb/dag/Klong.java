@@ -45,8 +45,10 @@ import bergdb.nanotest.Nano;
  * 3 - delete bitmap. 62 bits at 0:0-7:5 are deleted-or-not bits for klongs at index 0 to 61.
  * 
  * TIME KLONG
- * Type = 0, time value in 56 bits (bits 0:0-6:7). The 6 bits at 7:0-7:5 are reserved
- * and must be zero in stored times.
+ * Type = 0, time value in 56 bits (bits 0:0-6:7). The 6 bits at 7:0-7:5 (bits 56 to 61)
+ * are reserved and must be zero in stored times: StoredKeyNode.parse refuses a time klong
+ * with one of them set (bergdb 024-25, section 12). Klong.NULL, a marker, has bit 56 set
+ * and is never stored.
  * </pre>
  */
 public class Klong {
@@ -68,6 +70,13 @@ public class Klong {
     public static final int INT_TYPE_TIME   = 0;
     public static final int INT_TYPE_KEY    = 1;
     public static final int INT_TYPE_DELETE_BITMAP = 3;
+    
+    /**
+     * The reserved bits of a TIME klong, bits 56 to 61, between its 56-bit time and its type:
+     * zero in every time klong that createTime() makes, since a time is at most MAX_TIME
+     * (bergdb 024-25, section 12).
+     */
+    public static final long TIME_RESERVED_BITS = 0x3f00000000000000L;
     
     /** The maximum number of key bytes in one klong. */
     public static final int MAX_SIZE = 7;
