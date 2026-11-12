@@ -36,6 +36,13 @@ Work moved here from 2026.5:
   under Frans's delegation, 2026-11-12, 12:33): after runs at 100,000
   and 3M keys show how back to empty's lag grows with the keys; printed,
   not gated, until then.
+* **A value transformation that throws or passes 8 MiB refuses the
+  transaction instead of failing the database** (024-35, finding 2;
+  010-04, R5; Frans, 2026-11-12, 14:42: "Yes to R5 and for 2026.6. I
+  don't see it as a bug, but something to change anyhow."): run the
+  Core's value transformations before the go point, as 024-16 did for
+  key transformations (`Db.transformKeys`). 2026.5 names it in its
+  Known issues.
 
 
 Proposed for 2026.6, not decided

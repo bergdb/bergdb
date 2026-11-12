@@ -333,6 +333,9 @@ from them.
   current; docs/ holds only log.md; references in code comments, the
   level scripts, AGENTS.md, README.md and items/readme.md; old items
   keep their links (44 now broken, history).
+* 14:42 Frans on value transformations: "Yes to R5 and for 2026.6. I
+  don't see it as a bug, but something to change anyhow." In 026's
+  readme and R5's cases; 2026.5's notes name it as a known issue.
 
 
 ## 6. Outcome
