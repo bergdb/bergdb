@@ -174,6 +174,17 @@ from them.
 * 11:53 gates done (024-30): G1 108,912 B of 1 MB, G2 1.296 of 2, G3
   4.41 of 6, all PASS on main; G1 and G2 FAIL on release 2026.4; before-
   commit OK, count-gates.sh OK (125 s). Landed and pushed.
+* 11:52 Frans: G4 yes, "but with a comment for ST7. There may be a
+  performance reason for KeyAccessPath.clear() to work as it does. It is
+  better to close ST7 as neglectable than to degrade performance." gates
+  resumed for G4 (11:52): ST7 measured, not gated, not changed.
+* 12:01 gates done with G4 (back to empty at 1M keys): all within 2
+  times the twin after 40 R (stream 1.07, key nodes 1.00, dead klongs
+  1.33, resident 1.08, heap 1.46) but the cache's table slots (ST6,
+  3.76, printed as known); the first cut after the deletes at drive
+  transaction 4,117 (the twin's 1,214), within 2 times the twin's stream
+  after 4,395 (4.4 R). Landed and pushed. Q30-3 (gate the lag), Q30-4
+  (ST6: fix or close).
 
 
 ## 6. Outcome

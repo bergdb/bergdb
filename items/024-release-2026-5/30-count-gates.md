@@ -1,6 +1,6 @@
 # 024-30. Count gates for aims 2 and 3 at 1M keys
 
-Created 2026-11-12 by Frans Lundberg. Status: open (built and gated on a branch; not yet on `main`).
+Created 2026-11-12 by Frans Lundberg. Status: open (G1 to G3 on `main`; G4 built and gated on a branch).
 
 Release 2026.5's aims 2 and 3 (024-04, section 1): operations and
 storage are proportional. 024-04, section 4: each aim becomes bounds with
@@ -31,6 +31,17 @@ from `main` at `e404dab7`.
   as 024-05 proposed c = 6, and needs no fix to pass.
 * Every count is deterministic (fixed seeds, a test clock): a rerun on
   the same code gives the same numbers.
+* **G4, back to empty** (Frans, 2026-11-12, 11:47 and 11:52; sections 8
+  and 9): 023-03's T1 at 1M keys, put and deleted, then a drive of 40 R
+  against a hello-world twin. On `main` kept, key nodes, dead klongs,
+  resident objects, handles and the heap after a GC are 1.00 to 1.46
+  times the twin's (limit 2). Two findings: **the cache's table slots
+  (ST6) stay at 3.76 times the twin's** (226,400 against 60,272;
+  reported, not counted, the fix is a separate decision), and **the
+  emptied database needs 4.4 R of drive to converge** (its first cut at
+  transaction 4,117, the twin's at 1,214), so T1's fixed drive of 4 R
+  would fail it at 1M. ST7 is printed only: closed as negligible by
+  Frans's word.
 
 
 ## 2. What was built
@@ -208,6 +219,8 @@ slot at 11:46 to 11:49; output in `30-count-gates/release-2026.4.txt`.
   other workloads for G3 (hot, cold, 1,000-byte values, 024-29, section
   5.3): out of scope.
 * **ST4's dead klongs** are printed (G2's detail lines), not gated.
+* **G4**: ST6 is reported, not counted; the lag is printed, not gated
+  (Q30-3); no 10M run.
 
 
 ## 7. Questions for Frans
@@ -219,11 +232,141 @@ slot at 11:46 to 11:49; output in `30-count-gates/release-2026.4.txt`.
 * **Q30-2. H_R, the user's records only.** Reclaim's own records within
   R count as overhead (section 3.3). Recommended: keep it so; it is the
   stricter reading.
+* **Q30-3. Gate G4's lag?** The emptied database converges after 4.4 R
+  of drive at 1M keys (section 9). A gate such as "within twice the
+  twin's kept from 8 R on" would catch a cleanup that falls further
+  behind. Recommended: yes, after one run at 100,000 and 3M keys shows
+  how the lag grows with n.
+* **Q30-4. ST6.** The handle tables keep their peak size (section 9).
+  Fix it (shrink at a removal below a quarter of the capacity), or
+  close it as negligible like ST7 (about 0.9 MB at 1M keys)? Not
+  decided here; the gate line reports it.
 
 
-## 8. State
+## 8. G4, back to empty: the quantities
 
-* **Done** (2026-11-12, 11:36 to 11:53): `CountGates.java`,
+Frans, 2026-11-12, 11:47: "I think a general test is the back-to-empty
+test. Big database, then all kvs removed, check eventual resource
+consumption. Does it go towards something similar to a fresh empty
+database?" Approved as a fourth gate at 11:52. It is 023-03's T1 (the
+hello-world convergence test, section 2; its prototype CleanupRule) at
+1M keys, with the memory side added: the cache's tables (ST6, 024-05),
+KeyAccessPath's arrays (ST7) and the heap after a GC.
+
+**Workload**, two databases one after the other (`CountGates g4`), each
+on a `FileStream`, startup distance 100 kB (T1's), R = 1 s of a test
+clock that advances 1 ms a transaction, the test id, and the builder's
+default cache (indicator 200 MB, eviction on):
+
+* **The emptied database**: set R; put "/a.txt" = "Hello world!"; fill
+  n = 1M keys `/k/%010d` in key order, values of 100 bytes, 100 a
+  transaction; delete them all in key order, 100 a transaction; then
+  **the drive**: 40,000 transactions (40 R), each one overwrite of
+  "/a.txt" with 1,000 bytes.
+* **The twin**: the same without the fill and the deletes: R, "/a.txt",
+  the same drive.
+
+**Two choices against T1, from the calibration:**
+
+* **A drive of 40 R, not T1's 4 R.** At 1M keys the emptied database's
+  first cut in the drive comes at transaction 4,117: after 4 R it still
+  keeps 262 MB against the twin's 2.0 MB, and every measure fails
+  (`30-count-gates/g4-drive-4R-evict.txt`). By 40 R it has converged
+  (section 9). The lag is printed, not gated (Q30-3).
+* **Eviction on, not T1's `noEvict`.** With eviction off the resident
+  objects of the deleted keys stay after the stream has converged: at
+  100,000 keys after 4 R, kept 1.01 times the twin's, but 15,082
+  resident objects against 1,017 (a trial, not kept as a file); at 1M
+  after 4 R, 143,915 against 1,017 (`g4-drive-4R-noevict.txt`). The
+  eviction's own passes drop them; users run with eviction on, so the
+  gate does too (`g4evict=0` gives T1's setting).
+
+**The measures**, taken at the end of the drive, under the write lock,
+the other gates' databases closed:
+
+* **M1, kept**: `getStreamLength() - getFirstAvailablePos()`, the most
+  after each of the last 1,001 transactions of the drive (the last R).
+* **M4, reachable key nodes; M5, dead KEY klongs**: CleanupRule's
+  counting follower on a scan of every key (the internal ones too) at
+  the latest time, as in G2: the distinct key nodes, and the KEY klongs
+  in them that are deleted or shadowed. The scan must find exactly one
+  user key, "/a.txt".
+* **M11**: the resident index objects (`Residents.objects()`) and the
+  live handles (`Cache3.handles()`), in the running database (T1 takes
+  them after a restart and a probe).
+* **ST6, the cache's table slots**: the sum of the table lengths of
+  `Cache3`'s `HashMap`s, read by reflection (024-05's "slots"; A's
+  `CacheCapacity`, 023-08). Needs `--add-opens java.base/java.util`,
+  which `count-gates.sh` passes.
+* **ST7, KeyAccessPath's arrays**: the lengths of the writer's
+  `PutData.keyAccessPath` arrays (klongs and nodes), by reflection.
+  **Printed, not gated, and KeyAccessPath unchanged**: Frans, 11:52,
+  "There may be a performance reason for KeyAccessPath.clear() to work
+  as it does. It is better to close ST7 as neglectable than to degrade
+  performance." ST7 is closed as negligible by Frans's word.
+* **The heap after a GC**: the used heap after four `System.gc()` calls
+  with the database open, minus the same before it was made.
+* **The lag** (printed): the first drive transaction after which kept
+  stays at most twice the twin's M1, and the first cut in the drive.
+
+**The gates**: each measure of the emptied database over the twin's at
+most 2 (`g4kept`, `g4nodes`, `g4slots`, `g4heap`). The factor: the
+calibration's ratios are 1.00 to 1.46; 2 leaves a margin of 1.37 or
+more, and at 4 R it fails M1, M5, M11 and the heap. ST6 fails on `main`; its line says
+FAIL and the next line "known ... not counted", and it does not change
+the exit status (`g4st6=gate` counts it), so that the night step stays
+green for the other gates until ST6's fix is decided.
+
+
+## 9. G4 on `main`: the numbers
+
+One run of `count-gates.sh` (all four gates) on `ce1c932c`, 11:57 to
+12:00, in a slot; output `30-count-gates/gate-ce1c932c.txt`. G1 to G3
+gave the same counts as section 4, to the byte. G4 took 8 s; the four
+gates 136 s.
+
+| Measure                     | Emptied     | Twin        | Ratio | Limit | Margin | Result  |
+|---|---|---|---|---|---|---|
+| M1, kept, most in last R    | 2,618,568   | 2,442,256   | 1.072 | 2     | 1.87   | PASS    |
+| M4, reachable key nodes     | 6           | 6           | 1.000 | 2     | 2.00   | PASS    |
+| M5, dead KEY klongs         | 24          | 18          | 1.333 | 2     | 1.50   | PASS    |
+| M11, resident objects       | 469         | 434         | 1.081 | 2     | 1.85   | PASS    |
+| M11, live handles           | 469         | 434         | 1.081 | 2     | 1.85   | PASS    |
+| ST6, table slots            | 226,400     | 60,272      | 3.756 | 2     | 0.53   | known   |
+| heap after a GC, bytes      | 19,094,584  | 13,066,920  | 1.461 | 2     | 1.37   | PASS    |
+| ST7, path arrays (printed)  | 665, 665    | 16, 16      |       |       |        |         |
+| first cut in the drive      | 4,117       | 1,214       |       |       |        |         |
+| lag, transactions           | 4,395       |             |       |       |        |         |
+
+* **Back to empty holds, eventually, but for the tables.** After 40 R
+  the database that held 1M keys keeps the stream, the index and the
+  resident objects of a fresh hello-world database within 0 to 33 %;
+  its heap is 6 MB larger (ST6's extra slots are about 0.7 MB of it;
+  the rest is not broken down).
+* **ST6, a finding, not fixed here**: the handle tables keep the size
+  they reached with 1M keys, 226,400 slots, 3.76 times the twin's (its
+  own tables grew to 60,272 in the drive). In references that is about
+  0.9 MB with compressed pointers (my arithmetic). 024-05: "A shrink at
+  a resize". The fix is a separate decision.
+* **The lag, a finding**: the emptied database's first cut comes 2,903
+  transactions after the twin's, and kept is within twice the twin's
+  from transaction 4,395 (4.4 R). T1's fixed drive (4 R; 023-03, section
+  2.3) would fail at 1M on `main` by a little. Whether the lag grows
+  with n is not measured here (at 100,000 keys it was within 4 R).
+* **ST7**: the writer's path arrays have 665 entries after the fill and
+  the deletes, against 16; about 8 kB. Closed as negligible (above).
+
+
+## 10. State
+
+* **G4** (2026-11-12, 11:53 to 12:03): on the branch `024-30-g4` of
+  the same clone, from `main` at `2f5e684c`, head `ce1c932c`, in
+  Frans's name: G4 in `CountGates.java`, `count-gates.sh` (G4, the
+  `--add-opens`), `night.sh`'s header. Gates on `ce1c932c`:
+  `count-gates.sh` COUNT GATES OK (136 s, in a slot); `before-commit.sh`:
+  BEFORE COMMIT OK (66 s, in a slot, 12:00 to 12:01). Not on `main`: the coordinator lands the branch. Open:
+  ST6's fix and Q30-3, Q30-4 (section 7).
+* **G1 to G3, done** (2026-11-12, 11:36 to 11:53): `CountGates.java`,
   `count-gates.sh` and the night step, committed on the branch
   `024-30-count-gates` of the clone
   `/Users/f/fl/bench/2026-11-12/gates/clone`, head `bfba0928` (from

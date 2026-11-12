@@ -298,8 +298,10 @@ Files
   night.sh step (`stress/count-gates.sh`, about 2.5 minutes): G1 the
   largest record (BD1, margin 9.2), G2 key nodes against a twin (BD13,
   1.30 of 2), G3 the stream kept beyond the history within R (BD10, 4.41
-  of 6); G1 and G2 fail on 2026.4. On main since 2026-11-12. Q30-1,
-  Q30-2.
+  of 6); G1 and G2 fail on 2026.4. G4, back to empty (023-03's T1):
+  within 2 times the hello-world twin but the cache's table slots (ST6,
+  3.76, a known failure); about 4.4 R of drive to converge. On main
+  since 2026-11-12. Q30-1 to Q30-4.
 
 
 Log

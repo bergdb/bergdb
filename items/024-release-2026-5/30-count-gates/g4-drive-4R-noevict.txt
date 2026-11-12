@@ -1,0 +1,15 @@
+CountGates g4 n=1000000 valsize=100 retain=10000000 dt=10000 {g4evict=0, dir=build/cg-trial}
+[0.2s]   G4 g4-twin drive 4000 transactions; len=5699672 kept=1965168 iters=16 cuts=11
+  G4 g4-twin keptMax=2277080 reach=6 klongs=19 dead=10 objects=1017 handles=1017 slots=14224 heap=17204344 pathKlongs=16 pathNodes=16 userKeys=1
+[5.8s]   G4 g4-emptied filled and deleted 1000000 keys; len=293053672 kept=254432632 iters=5 cuts=4
+[5.8s]   G4 g4-emptied drive 4000 transactions; len=300801952 kept=262180912 iters=10 cuts=4
+  G4 g4-emptied keptMax=262180912 reach=6 klongs=31 dead=22 objects=143915 handles=143915 slots=263904 heap=291063216 pathKlongs=665 pathNodes=665 userKeys=1
+  G4 ST7, not gated (closed as negligible by Frans, 2026-11-12): KeyAccessPath arrays 665 klongs, 665 nodes; the twin's 16, 16
+G4 M1 kept, most in the last R over the twin's (262180912 / 2277080) value 115.139 limit 2.000 margin 0.02 FAIL
+G4 M4 reachable key nodes over the twin's (6 / 6) value 1.000 limit 2.000 margin 2.00 PASS
+G4 M5 dead KEY klongs over the twin's (22 / 10) value 2.200 limit 2.000 margin 0.91 FAIL
+G4 M11 resident index objects over the twin's (143915 / 1017) value 141.509 limit 2.000 margin 0.01 FAIL
+G4 M11 live handles over the twin's (143915 / 1017) value 141.509 limit 2.000 margin 0.01 FAIL
+G4 ST6 cache table slots over the twin's (263904 / 14224) value 18.553 limit 2.000 margin 0.11 FAIL
+G4 heap after a GC over the twin's (291063216 / 17204344) value 16.918 limit 2.000 margin 0.12 FAIL
+[6.0s] COUNT GATES FAILED
