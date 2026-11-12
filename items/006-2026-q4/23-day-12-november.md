@@ -198,6 +198,11 @@ from them.
   registered in 024-05, not decided.
 * 12:12 Frans: "Eviction off is a test mode not use in production at
   all! Only for testing." ST12 closed as not a case.
+* 12:22 Frans: aim 4, "Yes, good plan": 2026.5 ships with conformance
+  and the proofs that hold, the open ones named in the notes; what the
+  second prover proves in time lands. The release night: "Sounds good,
+  but I will be back after coffee, no need to plan the unattended night
+  yet." Step 5: asked which QF questions need his input.
 
 
 ## 6. Outcome
