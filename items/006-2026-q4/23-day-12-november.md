@@ -72,7 +72,7 @@ from them.
   before-commit (62 s), lake build (215 jobs), level1, level2 (with the
   Lean conformance) OK; five changed tests, each its own commit; QR1
   (spoil an rw() action that catches a refused put?), QR2 (550 in the
-  Eviction test). 08:16 landed as a7dfb6f7; 024-23's QO2 marked decided.
+  Eviction test). 08:14 landed as a7dfb6f7, pushed; 024-23's QO2 marked decided.
 
 
 ## 6. Outcome

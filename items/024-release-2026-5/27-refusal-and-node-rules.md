@@ -312,6 +312,8 @@ its own (before-commit on `cb5dab4a`, the head but for releases/next.md):
 * **QR2. testLoweredBudgetAfterPinsFell** (section 6): keep 550, or let
   the test search its count? Recommended: keep 550 now; the search when
   it moves again.
+  **Decided** (Frans, 2026-11-12, 08:51: "QR2, as recommended."): keep
+  550.
 
 
 ## 9. State
