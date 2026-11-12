@@ -1,7 +1,7 @@
 /-
 Self-indexed streams in Lean: the theorems T1 and T2.
 
-Section numbers refer to theory/sis-model.md. Trusted part: the statements.
+Section numbers refer to sis-model.md (bergdb 027-01). Trusted part: the statements.
 The proofs are in SIS/Proof/; the proofs here only connect them.
 -/
 import SIS.Assumptions

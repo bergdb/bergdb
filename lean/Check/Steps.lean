@@ -1,5 +1,5 @@
 /-
-The trace checker: the checks (bergdb 011-11, 8.5; docs/trace-format.md).
+The trace checker: the checks (bergdb 011-11, 8.5; 027-02).
 
 Not part of the trusted part. The checker runs the model's own `init` and
 `step` (SIS/Algorithm.lean) with the switches of `Opts`: marking in step 3

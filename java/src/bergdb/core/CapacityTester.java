@@ -793,7 +793,7 @@ public class CapacityTester {
      * 015-15): each resident index object is counted, with at most its bytes
      * (Residents.bytesOf), and with its bytes unless the writer changed it since its last
      * count (dirty: D's objects, counted with their size at the last count until written,
-     * docs/levels.md, section 7); the resident bytes are the sum of the counts and the
+     * bergdb 027-01, levels.md section 7); the resident bytes are the sum of the counts and the
      * object counter their number.
      */
     private static void checkCounts(Db db) {

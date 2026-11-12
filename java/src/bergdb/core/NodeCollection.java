@@ -661,7 +661,7 @@ public class NodeCollection implements PointerFollower {
     }
 
     /**
-     * Sets Rule R (docs/sis-model.md, 6.2) for this process: newById maps the id of
+     * Sets Rule R (bergdb 027-01, sis-model.md 6.2) for this process: newById maps the id of
      * each index node that has a version in the startup section to the position of its
      * newest version there. Key node versions from the section are cut back to their
      * state at startupTime when read. Called by DbStarter.

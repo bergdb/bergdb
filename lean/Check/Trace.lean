@@ -1,5 +1,5 @@
 /-
-The trace checker (bergdb 011-11, section 2; docs/trace-format.md): the BergDB
+The trace checker (bergdb 011-11, section 2; 027-02): the BergDB
 instance of the model's `Spec`, and the reading of a trace written by
 java/stress/TraceExport.java.
 
@@ -172,7 +172,7 @@ def parseLine (t : Trace) (n : Nat) (line : String) : Trace :=
   | [] => t
   | "TRACE" :: v :: _ =>
     if v == "1" || v == "2" || v == "3" then t else bad "unknown trace format"
-  -- Trace format 3 (bergdb 024-12; docs/trace-format.md, section 4): the lines of the
+  -- Trace format 3 (bergdb 024-12; 027-02, section 4): the lines of the
   -- tree model, which Check/Tree.lean reads; this checker reads over them.
   | "TREE" :: _ => t
   | "BASE" :: _ => t

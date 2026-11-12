@@ -143,7 +143,7 @@ public class DbStarter {
 
     private void createMaps() {
         //
-        // * Creates newById, Rule R (docs/sis-model.md, 6.2): the id of each index node
+        // * Creates newById, Rule R (bergdb 027-01, sis-model.md 6.2): the id of each index node
         //      with a version in the startup section, to the position of its newest
         //      version there. Top nodes included.
         // * Creates posToId: the id of each index node version in the section, and of
@@ -488,7 +488,7 @@ public class DbStarter {
      * stored, so it is not rerun (until bergdb 024-07 it made dirty every index node of a
      * key range); and a node that the still-dirty test keeps dirty is a
      * got-dirty node of the record that wrote it, whose puts need not reach it. D is
-     * rebuilt from the stored ids (docs/sis-model.md, 6.2, step 2), not from the rerun.
+     * rebuilt from the stored ids (bergdb 027-01, sis-model.md 6.2, step 2), not from the rerun.
      * 
      * @throws StreamFormatException  If the node read has another id.
      */

@@ -1,7 +1,7 @@
 /-
 The tree checker: checks a trace of format 3 (java/stress/TraceExport.java with
 tree=1) against the tree model, SIS/Tree/*.lean (bergdb 024-12, section 2.7;
-docs/trace-format.md, section 4).
+bergdb 027-02, section 4).
 
 Usage: lake exe treecheck TRACE [--norun]
 

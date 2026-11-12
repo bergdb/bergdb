@@ -6,7 +6,7 @@ import bergdb.stream.MemoryStream;
 /**
  * Minimal reproduction, 2026-10-12: deleting a key that does not exist, when
  * the key is 7 bytes or longer (two key segments), breaks the next restart.
- * See docs/levels.md.
+ * See bergdb 027-01, levels.md.
  *
  * Usage: java -cp bergdb.jar:. bergdb.core.DeleteRepro /k/1000
  */

@@ -8,7 +8,7 @@ import bergdb.pub.util.SyncLevel;
 import bergdb.stream.CutStream;
 
 /**
- * Randomized stress test of reclaim (level 3, docs/levels.md), written
+ * Randomized stress test of reclaim (level 3, bergdb 027-01, levels.md), written
  * 2026-10-13, modeled on RestartStress. Reclaim is on (a retain duration of
  * 1 to 5 s), the stream is a CutStream, which refuses reads below the cut,
  * and the database is restarted between sessions. Before and after every

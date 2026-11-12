@@ -6,8 +6,8 @@ This file is kept up to date; the evidence and the history are in the
 items, cited by their IDs. Until 2026-10-26 this file also held its history
 (drafts 1 to 8, the reviews of 13 and 14 October, the measurements, the
 bugs found and fixed): that text is
-[011-04](../items/011-docs-archive/04-levels.md), where the code and the
-items cite its sections (W1, "Level 3 cost" and so on). [log.md](log.md) is
+[011-04](../../011-docs-archive/04-levels.md), where the code and the
+items cite its sections (W1, "Level 3 cost" and so on). [log.md](../../../docs/log.md) is
 the dated log.
 
 The sections are numbered, and a number is not reused: "levels.md, 6" stays
@@ -20,16 +20,16 @@ Level 3.
 |---|---|---|---|
 | 0 | Multiversion map in memory: puts, deletes, latest and historical lookups, scans; no restart | Passes the tests run | 011-04, "Evidence" |
 | 1 | + restart by replaying the whole stream | Passes the tests run | `level1.sh`; 011-04, "The level 1 bugs" |
-| 2 | + bounded startup: startup reads only the tail of the stream | Passes the tests run, also under load and with crashes; aligned with the proved Lean model | [011-11](../items/011-docs-archive/11-level2-alignment.md); 011-04, "Level 2 under load", "Bounds, measured", "Crash tests" |
-| 3 | + reclaim: cut the front of the stream | Passes the tests run, a two-hour disk soak and the power-loss ordering checks; aligned with the proved Lean model of reclaim | [001-07](../items/001-lean-model-levels-3-4/07-level3-alignment.md), [001-09](../items/001-lean-model-levels-3-4/09-level3-soak.md), [011-07](../items/011-docs-archive/07-level3-durability.md); 011-04, "Level 3 cost" |
-| 4 | + eviction: data larger than memory | Passes the tests run; on by default; with handles since 2026-10-26, eviction in bounded steps, without a stop-the-world of its own; a database six times its memory budget runs on disk; aligned with the proved Lean model, with handles | [009-05](../items/009-handles/05-handles-alignment.md), [001-08](../items/001-lean-model-levels-3-4/08-level4-alignment.md), [001-10](../items/001-lean-model-levels-3-4/10-level4-evidence.md), [009-03](../items/009-handles/03-measurements.md) |
+| 2 | + bounded startup: startup reads only the tail of the stream | Passes the tests run, also under load and with crashes; aligned with the proved Lean model | [011-11](../../011-docs-archive/11-level2-alignment.md); 011-04, "Level 2 under load", "Bounds, measured", "Crash tests" |
+| 3 | + reclaim: cut the front of the stream | Passes the tests run, a two-hour disk soak and the power-loss ordering checks; aligned with the proved Lean model of reclaim | [001-07](../../001-lean-model-levels-3-4/07-level3-alignment.md), [001-09](../../001-lean-model-levels-3-4/09-level3-soak.md), [011-07](../../011-docs-archive/07-level3-durability.md); 011-04, "Level 3 cost" |
+| 4 | + eviction: data larger than memory | Passes the tests run; on by default; with handles since 2026-10-26, eviction in bounded steps, without a stop-the-world of its own; a database six times its memory budget runs on disk; aligned with the proved Lean model, with handles | [009-05](../../009-handles/05-handles-alignment.md), [001-08](../../001-lean-model-levels-3-4/08-level4-alignment.md), [001-10](../../001-lean-model-levels-3-4/10-level4-evidence.md), [009-03](../../009-handles/03-measurements.md) |
 
 Each level includes the ones before it; Level 3 needs Level 2, as startup
 cannot replay a stream whose front is cut. BergDB has no replication
 since 2026-11-04 (section 9). What BergDB is to do, the requirements R1 to
 R7 and the invariants INV-LOOKUP, INV-RESTART, INV-CRASH, INV-RECLAIM and
-INV-EVICT, is the problem statement, [011-01](../items/011-docs-archive/01-problem.md);
-its design principles are [010-01](../items/010-principles/01-principles.md).
+INV-EVICT, is the problem statement, [011-01](../../011-docs-archive/01-problem.md);
+its design principles are [010-01](../../010-principles/01-principles.md).
 The Lean proofs concern the abstract model, which includes reclaim and
 eviction; Java's runs are checked against it, not proved, and concurrency
 and resource bounds are not in it.
@@ -37,7 +37,7 @@ and resource bounds are not in it.
 The levels are the Core's. The Pub API's other part, objects (values
 that are neither a `String` nor a `byte[]`) and user indexes, with the
 primary scan, is section 11: experimental in 2026.3
-([018-01](../items/018-release-2026-3/01-plan.md), D2 and D6), redone for
+([018-01](../../018-release-2026-3/01-plan.md), D2 and D6), redone for
 2026.4 as part of the API that a release promises.
 
 The Core Layer is a simple key-value datastore: both keys and values are
@@ -45,7 +45,7 @@ byte arrays, with transactions and history. It knows nothing of objects or
 user indexes: to it an object is a byte array, and an index's definitions
 and entries are keys like any other, under `/#i/`. Objects and indexes are
 the Pub layer's (`pubimp`), built on the Core's four data methods
-([010-01](../items/010-principles/01-principles.md), P12).
+([010-01](../../010-principles/01-principles.md), P12).
 
 
 ## 2. Checks
@@ -89,7 +89,7 @@ the Pub layer's (`pubimp`), built on the Core's four data methods
   set. It has no fixed time; it is started when the machine has room for
   it. Its report is in `java/build/night/`.
 * `cd lean && lake build` checks every proof of the model. The trace
-  checker reads traces in the format of [trace-format.md](trace-format.md).
+  checker reads traces in the format of [trace-format.md](../02-trace-format.md).
 
 
 ## 3. A transaction or a read that fails
@@ -313,7 +313,7 @@ the database runs, with one call, and the stream keeps the new value
 
 Theory: [sis-model.md](sis-model.md), an abstract model with Rule A and
 Rule R and the theorems T1 (recovery) and T2 (restart invariance), proved in
-Lean ([../lean/](../lean/README.md)), with BergDB's bookkeeping and its
+Lean ([../lean/](../../../lean/README.md)), with BergDB's bookkeeping and its
 virtual root, and with the physical layer of lazy reading (lemma M, T1-L,
 CC, T2-L). They prove the model, not the Java code.
 
@@ -429,7 +429,7 @@ How it works in Java:
   klongs can take above theta. The rerun of a record does the same; no
   field.
 
-Alignment: [011-11](../items/011-docs-archive/11-level2-alignment.md)
+Alignment: [011-11](../../011-docs-archive/11-level2-alignment.md)
 maps Java's state to the model's (section 2) and keeps the register of
 where they differ. The trace checker runs the model's own `init` and `step`
 on traces of Java runs: every transaction must be a step of the model with
@@ -441,7 +441,7 @@ trace and no run of A2A3Check2 may adopt a node below its old parent.
 
 The key tree itself (puts with their splits, the delete path, gets, scans,
 reclaim's touch) is a Lean definition since 2026-11-11 (`lean/SIS/Tree`,
-[024-12](../items/024-release-2026-5/12-tree-model.md)): `treeSpec`, an
+[024-12](../../024-release-2026-5/12-tree-model.md)): `treeSpec`, an
 instance of the model's structure whose transaction is the tree's own, where
 the trace checker takes each transaction's change from the trace. The tree
 checker (`lake exe treecheck`, `java/stress/treeconf.sh`; step 8 of
@@ -459,19 +459,19 @@ Limits:
 
 * The bound on the startup section is proved in Lean for a startup pos
   policy that keeps up with a distance (T3,
-  [007-01](../items/007-bounds/01-startup-bound.md)), and for BergDB's own
+  [007-01](../../007-bounds/01-startup-bound.md)), and for BergDB's own
   take, with any share (`T3_take`,
-  [007-08](../items/007-bounds/08-step4-take-in-lean.md)): the section
+  [007-08](../../007-bounds/08-step4-take-in-lean.md)): the section
   without its last record stays below twice the startup distance, and
   after a decrease of it, it shrinks with every commit until it is below
   twice the new one, and then stays below it, by the deadline at the span
-  ([007-03](../items/007-bounds/03-plan.md), step 3 and D4). The proof
+  ([007-03](../../007-bounds/03-plan.md), step 3 and D4). The proof
   leaves out the record limit, which can stop a record from taking what is
   due. It leaves out the stream's meta blocks too, but they make no
   difference to the take: when it runs, the stream's length (`getLength()`)
   is where the new record begins (`getNextPos()`), as a meta block is written
   with the record that ends at its position
-  ([005-68](../items/005-todo/68-fix-take-stream-length.md)). The model's
+  ([005-68](../../005-todo/68-fix-take-stream-length.md)). The model's
   take gives Java's startup pos on 300 generated cases. Its share and
   dither are Java's, in integers, in units of 2^-16 (005-79; in the model
   since 024-09, which did 015-03), and `level2.sh` compares the two sides
@@ -479,7 +479,7 @@ Limits:
   (`TakeCheck check` with `lake build`). Until 005-79 both were the double
   rule of 2026-10-28, which over 3 million of TakeCheck's cases differs
   from the integer take in 13, each taking one transaction fewer
-  ([lean/README.md](../lean/README.md)).
+  ([lean/README.md](../../../lean/README.md)).
   `T3_take` holds for any share, so the bound covers both. T3 is not all of
   bounded startup: the records at the ends of the section (T4) and a cold
   start's reads through references into older records are not bounded by a
@@ -498,8 +498,8 @@ Limits:
   with the take before 007-03's step 3 in the same runs: 24 and 36
   percent more at 50 and 200 MB, since the section no longer goes past the
   startup distance, and 13 percent less at 1000 MB
-  ([007-06](../items/007-bounds/06-debt-test.md), sections 1 and 4;
-  [007-07](../items/007-bounds/07-step3-paced-take.md), section 10). Its
+  ([007-06](../../007-bounds/06-debt-test.md), sections 1 and 4;
+  [007-07](../../007-bounds/07-step3-paced-take.md), section 10). Its
   own record is 68 bytes of it (005-38). With 50M keys it is measured only
   with the take before step 3: 1,013, 673 and 299 bytes (005-38).
 * The largest record in those runs: 0.34 to 1.9 MB, against 2.6 to 4.6 MB
@@ -521,7 +521,7 @@ Limits:
   The physical layer's assumptions (M47) were argued too until 024-09:
   they are proved from the assumptions that C-A checks on every trace
   (A2 to A5, TREE) and from the checker's reading of a node's entries
-  ([lean/README.md](../lean/README.md)).
+  ([lean/README.md](../../../lean/README.md)).
 
 
 ## 6. Level 3: reclaim
@@ -592,9 +592,9 @@ How it works (`Reclaim`; the class comment has the details):
 
 Evidence: the Lean model of reclaim is proved (recovery, reads and restarts
 after safe cuts) and Java's reclaim is aligned with it,
-[001-07](../items/001-lean-model-levels-3-4/07-level3-alignment.md); a
+[001-07](../../001-lean-model-levels-3-4/07-level3-alignment.md); a
 two-hour soak on disk passes
-([001-09](../items/001-lean-model-levels-3-4/09-level3-soak.md)); the
+([001-09](../../001-lean-model-levels-3-4/09-level3-soak.md)); the
 power-loss ordering of section 8; and the steps of `level3.sh`. The cost:
 011-04, "Level 3 cost" and W4.
 
@@ -627,7 +627,7 @@ its batches until the resident bytes are at most the budget, also when no
 other call follows (005-52), or until what is left cannot go (015-70).
 
 How it works, with handles since 2026-10-26 (item
-[009](../items/009-handles/readme.md); `dag/Handle.java`,
+[009](../../009-handles/readme.md); `dag/Handle.java`,
 `core/Cache3.java`, `core/Eviction.java`, `core/Residents.java`). Until
 then eviction unswizzled pointers and released what no resident pointer
 named, with a sweep that walked every resident object (item 004).
@@ -704,19 +704,19 @@ named, with a sweep that walked every resident object (item 004).
 
 Evidence: the Lean model proves that with any eviction schedule the
 records, D and the answers are those without eviction (T-CACHE, T-READ,
-T2-C, T-PIN; [001-08](../items/001-lean-model-levels-3-4/08-level4-alignment.md),
+T2-C, T-PIN; [001-08](../../001-lean-model-levels-3-4/08-level4-alignment.md),
 section 5), for handles (`tc_handles`, `tr_handles`, `t2_handles`,
 `tr_handles_restarts`, `tp_handles`; the mapping and its register in
-[009-05](../items/009-handles/05-handles-alignment.md)), also with reclaim's
+[009-05](../../009-handles/05-handles-alignment.md)), also with reclaim's
 cuts (`t9_handles`, `t12_handles`; 005-62, which removed the model and the
 proofs of the design before handles). Java is checked
 against it: the audit (INV-CAN, the pins, INV-SLOT; test-only), the
 checker's C-P on Java's physical states and its C-H on Java's handle state
 (`conformance.sh evict`; 009-05, section 4), and `EvictionInvariance`.
 A database of 20 million keys, six times its memory budget, runs on disk
-([001-10](../items/001-lean-model-levels-3-4/10-level4-evidence.md)).
+([001-10](../../001-lean-model-levels-3-4/10-level4-evidence.md)).
 Against release 2026.1
-([009-03](../items/009-handles/03-measurements.md)): with ZGC the longest
+([009-03](../../009-handles/03-measurements.md)): with ZGC the longest
 get from the OS cache at 10M keys is 3.45 ms (7.3 s before), and the heap
 holds 130 bytes per KV (191).
 
@@ -750,7 +750,7 @@ Limits:
   s1 when its heap ran short), s1's disk (gets from the device of 64 to 74
   ms, where single random reads take up to 58 ms, and one get of 2,760 ms
   under the kernel's memory reclaim;
-  [009-03](../items/009-handles/03-measurements.md), section 9), a
+  [009-03](../../009-handles/03-measurements.md), section 9), a
   writer's waits for room in the write buffer when the disk stalls, and
   readers' waits for a core. Item 009's target 2 is met in P4's soak and
   the pause probe (009-01, section 1). Readers' waits for a core: in
@@ -761,7 +761,7 @@ Limits:
   2026-11-06). With 7 readers 0.4 gets in a million take over 10 ms, the
   longest 33 ms, off core too. So use at most as many readers as the
   cores less the collector's workers
-  ([015-86](../items/015-todo/86-gets-with-8-readers.md), Results, Q-A of
+  ([015-86](../../015-todo/86-gets-with-8-readers.md), Results, Q-A of
   night 006-12).
 * Loads in memory, with no eviction, are 8 to 20 percent slower than before
   handles.
@@ -794,7 +794,7 @@ Limits:
   force between the prefix removals of reclaim's cuts, the failures of
   deferred cuts passed on) is tested under a fault model, and native audits
   confirm `F_FULLFSYNC` on macOS/APFS and `fsync` in a Linux VM
-  ([011-07](../items/011-docs-archive/07-level3-durability.md);
+  ([011-07](../../011-docs-archive/07-level3-durability.md);
   `PowerLossTest` in `level3.sh`). Not established: physical power cycling,
   other storage providers and Windows.
 * The crash contract (014-01, section 7; Frans, 2026-11-05): BergDB
@@ -888,12 +888,12 @@ are a long-term topic, 017-03.
 ## 10. Open work
 
 What is left to do is in the items, not here: the index of
-[items/readme.md](../items/readme.md), the open entries of
-[015-todo](../items/015-todo/readme.md) and
-[019-todo](../items/019-todo/readme.md), and bounded startup in
-[007](../items/007-bounds/readme.md) (T4).
+[items/readme.md](../../readme.md), the open entries of
+[015-todo](../../015-todo/readme.md) and
+[019-todo](../../019-todo/readme.md), and bounded startup in
+[007](../../007-bounds/readme.md) (T4).
 Where BergDB departs from its design principles is in
-[010-01](../items/010-principles/01-principles.md).
+[010-01](../../010-principles/01-principles.md).
 
 
 ## 11. Objects and user indexes
@@ -903,8 +903,8 @@ redone for 2026.4 from 2026.3's experimental code (item 020): what it
 promises, where each rule is written, and what checks it. The decisions
 are Frans's of 2026-11-08 and those taken under his delegation of that
 evening, each with its record:
-[020-02](../items/020-release-2026-4/02-objects-design.md), sections 4 and
-5.1b, and [020-01](../items/020-release-2026-4/01-inventory.md), section
+[020-02](../../020-release-2026-4/02-objects-design.md), sections 4 and
+5.1b, and [020-01](../../020-release-2026-4/01-inventory.md), section
 14.1. The Javadoc of `bergdb.pub` states the promises for users (the
 package's "Objects" and "Null and absent fields", `IndexBuilder`,
 `UseIndexBuilder`, `UsePrimaryBuilder`).
@@ -912,7 +912,7 @@ package's "Objects" and "Null and absent fields", `IndexBuilder`,
 **The API.** The packages `bergdb.pub` and `bergdb.pub.util`, and the
 Core's `Db` with the types of its signatures; everything else,
 `bergdb.pubimp` included, is not API, whatever is public in it
-([020-10](../items/020-release-2026-4/10-indexes-design.md), section 7).
+([020-10](../../020-release-2026-4/10-indexes-design.md), section 7).
 `java/build.sh` makes `build/bergdb-release.jar`, the jar a release ships:
 the classes of `src` only. The stored object is API since 020-10's step
 B3: `DbObject`, its `Builder`, `DbArray`, `DbValue` and the value classes
@@ -926,7 +926,7 @@ and a put checks a user's `DbObject` by the full check and stores a copy.
 **Writes through the Core.** The Core is root: `Db` writes any key, the
 Pub API's too, and refuses none (010-01, P12). The rules are in `Db`'s
 Javadoc
-([020-22](../items/020-release-2026-4/22-core-writes-and-pub-integrity.md),
+([020-22](../../020-release-2026-4/22-core-writes-and-pub-integrity.md),
 section 5; Frans, 2026-11-09): keys that start with neither `/d`, `/-` nor
 `/#` are the Core user's; the Pub API's keys may be written, but only the
 Pub API's writes keep its indexes, so a Core put at an object key of an
@@ -939,7 +939,7 @@ whatever was written; a well-formed Core write of BergDB's keys is
 undefined (020-22, section 5.4).
 
 **Stored objects, format 2.** The spec is
-[020-07](../items/020-release-2026-4/07-object-spec.md), under 018-01's
+[020-07](../../020-release-2026-4/07-object-spec.md), under 018-01's
 rule that Frans approves a change of the stored format (020-02, section
 4.12). A stored object is the header byte `0x82` and an object: a table of
 its fields' ends and the fields in the order of their names' unsigned
@@ -960,7 +960,7 @@ from its data (020-02, section 4.11). A put over one and a delete of one
 work, in an indexed directory too: it has no index entries.
 
 **Data Objects and the conversion.** The rules are
-[020-09](../items/020-release-2026-4/09-conversion-rules.md); the code,
+[020-09](../../020-release-2026-4/09-conversion-rules.md); the code,
 two layers (020-02, section 5.1b): `DbObject` and its stored bytes, exact,
 and `DataObjects`, the binding of Java's classes to them. A Data Object
 class is public, with a public no-argument constructor; it stores its
@@ -980,10 +980,10 @@ class that is not a Data Object, checked first also at a key without a
 value, and for a constructor that throws. `put(Object)`, the field `key`
 and `MissingKeyFieldException` are gone: a field named `key` is an
 ordinary field. The plan and its record, step by step:
-[020-08](../items/020-release-2026-4/08-implementation-plan.md), section 8.
+[020-08](../../020-release-2026-4/08-implementation-plan.md), section 8.
 
 **User indexes.** The design is
-[020-10](../items/020-release-2026-4/10-indexes-design.md). An index has
+[020-10](../../020-release-2026-4/10-indexes-design.md). An index has
 one directory (its own values, not its subdirectories'), 1 to 8 levels,
 and one field per level, a name or a nested path; a level is of type
 `long`, `double`, `string` (code-point order) or `bytes` (unsigned byte

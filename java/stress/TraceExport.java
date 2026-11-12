@@ -30,7 +30,7 @@ import bergdb.stream.MemoryStream;
 /**
  * Writes a trace of a Java run in the terms of the Lean model, for the checker in lean/
  * (lake exe tracecheck). The mapping from Java to the model (α) is in bergdb 011-11, section 2;
- * the trace format is docs/trace-format.md. Written 2026-10-15 for F1-008-11, WP C1.
+ * the trace format is bergdb 027-02. Written 2026-10-15 for F1-008-11, WP C1.
  *
  * Run A executes a deterministic workload without restarts and records, after every
  * transaction, the changes to P, the record R(i) and D. Run B (probe=K) executes the same
@@ -60,7 +60,7 @@ import bergdb.stream.MemoryStream;
  *   valsize=N  value sizes 1..N bytes (default 20)
  *   probe=K    run B: a restart after every K transactions (default 0: no run B)
  *   live=1     LIVE lines: Java's own live children, for each node, at each of its times
- *   tree=1     trace format 3 (bergdb 024-12, section 2.6; docs/trace-format.md, section 4):
+ *   tree=1     trace format 3 (bergdb 024-12, section 2.6; 027-02, section 4):
  *              the lines the tree model needs: TREE, BASE, OP, KN, GET and SCAN; gets=N: N GET lines and one SCAN line after each transaction (default 4)
  *   retain=S   reclaim on, with a retain duration of S seconds, as RestartInvariance's option
  *              (default 0: off); transactions are then 0.01 to 0.2 s apart
@@ -1071,7 +1071,7 @@ public class TraceExport {
     /** The first touches go to this list: that of the last restart's record. */
     List<String> curFirsts = null;
 
-    /** Records the first touches of run B as FIRST lines (docs/trace-format.md, 2). */
+    /** Records the first touches of run B as FIRST lines (bergdb 027-02, 2). */
     final NodeCollection.FirstTouchListener firstTouches = new NodeCollection.FirstTouchListener() {
         public void firstTouch(long id, long ref, Node result, boolean read, boolean cutBack) {
             if (curFirsts == null) return;

@@ -1,7 +1,7 @@
 /-
 Self-indexed streams in Lean: the structure P.
 
-Section numbers refer to theory/sis-model.md. This file is part of the
+Section numbers refer to sis-model.md (bergdb 027-01). This file is part of the
 trusted part: the definitions that the theorems are about.
 -/
 

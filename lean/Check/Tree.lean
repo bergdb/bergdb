@@ -1,5 +1,5 @@
 /-
-The tree checker (bergdb 024-12, section 2.7; docs/trace-format.md, section
+The tree checker (bergdb 024-12, section 2.7; 027-02, section
 4): reads the lines of trace format 3 and runs the tree model
 (SIS/Tree/*.lean) against Java's run. Not part of the trusted part: this file
 only says how a trace becomes the model's objects, and what is compared.

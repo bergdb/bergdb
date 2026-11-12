@@ -1,5 +1,5 @@
 #!/bin/sh
-# Level 3 regression check (docs/levels.md): reclaim, which cuts the front
+# Level 3 regression check (bergdb 027-01, levels.md): reclaim, which cuts the front
 # of the stream. Not a commit gate (java/before-commit.sh is, since
 # 2026-10-20); run it after larger changes.
 #

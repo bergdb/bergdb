@@ -1,7 +1,7 @@
 /-
 Self-indexed streams in Lean: the algorithm, transaction by transaction.
 
-Section numbers refer to theory/sis-model.md. Trusted part.
+Section numbers refer to sis-model.md (bergdb 027-01). Trusted part.
 -/
 import SIS.Stream
 

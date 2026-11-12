@@ -65,8 +65,8 @@ import bergdb.stream.MemoryStream;
  * (LookupTimeNotAvailableException), an interrupt of the thread, a stop of the database, a
  * RuntimeException or an Error (Fault).
  *
- * <p>The checks, by the rules of 020-10, sections 3.2, 6.1 and 6.2, and of docs/levels.md,
- * section 3 (errors and interrupts):</p>
+ * <p>The checks, by the rules of 020-10, sections 3.2, 6.1 and 6.2, and of bergdb 027-01,
+ * levels.md section 3 (errors and interrupts):</p>
  * <ol>
  * <li><b>Calls.</b> A creation or a deletion that a fault refused before its commit threw
  *     the fault and changed nothing, in memory or in the stream, and the same call then
@@ -915,7 +915,7 @@ public final class IndexJobsHarness {
             case INTERRUPT:
                 if (!o.interrupted) {
                     finding("interrupt flag kept", o.what + " cleared the thread's interrupt "
-                            + "flag (docs/levels.md, section 3; 005-46)");
+                            + "flag (bergdb 027-01, levels.md section 3; 005-46)");
                 }
                 if (o.returned()) {
                     return DONE;
@@ -945,7 +945,7 @@ public final class IndexJobsHarness {
             case ERROR:
                 if (o.thrown != injected) {
                     finding("Error as it is", o + ", not the Error injected at " + p
-                            + " as it is (docs/levels.md, section 3)");
+                            + " as it is (bergdb 027-01, levels.md section 3)");
                 }
                 alive(o.what);      // A finding if the database goes on.
                 return p.afterCommit() ? DONE : NOT_DONE;
@@ -970,8 +970,8 @@ public final class IndexJobsHarness {
                 if (alive(o.what)) {
                     finding("throw after the commit", o + " after its commit, and the database "
                             + "goes on with the change made: refused or done (020-10, 3.2); "
-                            + "an exception after a commit fails the database (docs/levels.md, "
-                            + "section 3)");
+                            + "an exception after a commit fails the database (bergdb 027-01, "
+                            + "levels.md section 3)");
                     broken = true;
                 }
                 return DONE;
@@ -1572,7 +1572,7 @@ public final class IndexJobsHarness {
          * The values of the directory's own keys in the restarted database, as Java values: each
          * read back as its bytes and taken from the values the harness wrote. For a database
          * that did not fail, the model's exactly; after a failure, a write that returned may be
-         * missing (docs/levels.md, section 3), so f is over the data read back.
+         * missing (bergdb 027-01, levels.md section 3), so f is over the data read back.
          */
         Map<String, Object> readBack(Database d) {
             TreeMap<String, Object> values = new TreeMap<String, Object>();

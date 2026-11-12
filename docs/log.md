@@ -2,8 +2,9 @@ BergDB development log, 2026
 ============================
 
 Dated entries from 12 October 2026 of intermediate results while the code and
-the theory were developed. They are history. [levels.md](levels.md) gives the
-reviewed status. References to the former `docs/level2-design.md` and
+the theory were developed. They are history.
+[levels.md](../items/027-algorithms/01-docs-2026-11-12/levels.md) (027-01) gives
+the reviewed status as of 2026-11-12. References to the former `docs/level2-design.md` and
 `docs/level2-review.md` are historical: both were consolidated into
 `levels.md` on 13 October. Commit ids in this log and in the other documents
 (`49aa48d`, `be61ed6`, `ebe5f77`, ...) name commits in Frans's earlier
@@ -714,7 +715,7 @@ with every schedule (24 runs); the four gates, full, and every record R8's
 outcome of the plan's 1.2 for Level 4 point by point
 ([level4-alignment.md](../items/001-lean-model-levels-3-4/08-level4-alignment.md), section 8), Level 4 in
 [levels.md](../items/011-docs-archive/04-levels.md), the status in `README.md`, `problem.md` (R5, R6,
-Q10), [sis-model.md](sis-model.md) (section 15) and `lean/README.md`.
+Q10), [sis-model.md](../items/027-algorithms/01-docs-2026-11-12/sis-model.md) (section 15) and `lean/README.md`.
 
 2026-10-18. `docs/sis-model.md`, section 15: added by Claude (Opus 5.5,
 Claude Code), bergdb item 001. (Moved here from the section's first line on
@@ -1201,7 +1202,7 @@ docs/handles-alignment.md describe it.
 `levels.md`, rewritten from 1,805 lines to 390 (the current state, level by
 level, with the evidence by item ID), `sis-model.md`, `trace-format.md` (new:
 section 9 of the Level 2 alignment), this log and `sources/`;
-[readme.md](readme.md) says where the other documents went. Those written in
+[readme.md](../items/027-algorithms/01-docs-2026-11-12/docs-readme.md) says where the other documents went. Those written in
 an item went to it (001-07 to 001-11, 009-05); those that no item owns went
 to the new item 011-docs-archive (011-01 to 011-11), with `levels.md` as it
 was until today as 011-04, and `lean/References/` beside 011-08. The code and

@@ -1,6 +1,6 @@
 /-
 The entry values of the BergDB instance of the model's `Spec`, and its `ptrs`
-and `live` (bergdb 011-11, section 2.4; docs/trace-format.md, section 1).
+and `live` (bergdb 011-11, section 2.4; 027-02, section 1).
 
 Moved here from Check/Trace.lean on 2026-11-11 (bergdb 024-12, section 2.5),
 unchanged and with their names, so that the tree model (SIS/Tree/*.lean), which

@@ -92,7 +92,7 @@ import bergdb.pubimp.IndexReference.Write;
  * Each transaction also writes a stamp, its ID at /x/sTHREAD.txt, so that the database tells
  * which transaction of a thread was its last.</p>
  *
- * <p><b>The promises checked</b> (docs/levels.md, sections 3 and 8; Database's Javadoc on
+ * <p><b>The promises checked</b> (bergdb 027-01, levels.md sections 3 and 8; Database's Javadoc on
  * errors, stop() and sync(); bergdb 020-10, sections 3.2, 4 to 6):</p>
  * <ol>
  * <li>The start after a kill succeeds (a DatabaseNotCreatedException only before any start
