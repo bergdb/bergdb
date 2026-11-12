@@ -117,4 +117,26 @@ def main():
             100.0 * s['K3'] / max(1, p['idx']), 100.0 * s['K4'] / max(1, p['idx']),
             100.0 * s['K5'] / max(1, p['idx']), r.get('fill'), r.get('phase'), r.get('recsize')))
 
+    print()
+    print('Encoding C by kind of klong (024-19): a written key node, leaves and inner nodes together')
+    print('%-16s %8s %6s | %5s %5s %5s %5s | %6s %6s %6s %6s %6s | %6s %6s' % (
+        'run', 'nodes', 'n', 'time', 'bmp', 'live', 'dead', 'hdrC', 'B/time', 'B/bmp', 'B/live',
+        'B/dead', 'today', 'C'))
+    for r, p in rows:
+        k = r['cand']
+        kc = lambda s: g(k, 'leaf ' + s) + g(k, 'inner ' + s)
+        nodes = kc('count nodes')
+        if not nodes:
+            continue
+        nt, nb, nl, nd = (kc('count time klongs'), kc('count bitmap klongs'),
+                          kc('count live key klongs'), kc('count dead key klongs'))
+        n = nt + nb + nl + nd
+        print('%-16s %8d %6.2f | %5.2f %5.2f %5.2f %5.2f | %6.1f %6.2f %6.2f %6.2f %6.2f | %6.1f %6.1f' % (
+            r['name'], nodes, n / nodes, nt / nodes, nb / nodes, nl / nodes, nd / nodes,
+            kc('C part header') / nodes, kc('C kind time klongs') / max(1, nt),
+            kc('C kind bitmaps') / max(1, nb),
+            kc('C kind live key klongs with refs') / max(1, nl),
+            kc('C kind dead key klongs with refs') / max(1, nd),
+            kc('K0 today') / nodes, kc('K4 K3 + compact klongs, shared prefix') / nodes))
+
 main()

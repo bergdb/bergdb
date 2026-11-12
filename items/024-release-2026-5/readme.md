@@ -221,20 +221,19 @@ Files
   3c with merges. Measuring patches named; nothing at 10M. Probes in
   18-dead-klongs/.
 * 19-node-size.md. 024-19, the node size: which, and one fixed constant
-  or not. Postponed 2026-11-11, 11:50, until the merges are in (024-21),
-  with what was done: what the size is today (62 a hard ceiling by the
-  delete bitmap; 005-38's earlier measurements), the prediction, the
-  counts at 1M keys (a flat optimum: 30 and 62 within 2 % in the bytes
-  an overwrite writes; 8 is 57 to 71 % above), a draft of the options.
-  Nothing at 10M, no times, no recommendation. Outputs in 19-node-size/.
+  or not. Postponed 2026-11-11, 11:50, until the merges were in; done
+  2026-11-12, 01:33, on format 7 (merges, option 2, CRC32C): 1M and 10M
+  counts, times at 1M. Recommended: keep B = 30, B a property of the
+  database (8, 14, 30, 62) with the thresholds and theta scaled v*B/30,
+  theta at least 2, 62 the hard maximum. Q1 to Q6. Outputs in
+  19-node-size/.
 * 20-compact-nodes.md. 024-20, a more compact stored form of an index
-  node. Postponed 2026-11-11, 11:50, until the merges are in (024-21),
-  with what was done: the stored form today, byte for byte (a key node
-  is written whole each time); interim numbers at 1M keys (under random
-  overwrites the index nodes are 57 % of the stream, 223 of 393 bytes a
-  put; a compact encoding of the key node needs 41 to 43 % of today's
-  index bytes; the JDK's Deflater does no better). No recommendation.
-  The probe in 20-compact-nodes/.
+  node. Postponed 2026-11-11, 11:50; done 2026-11-12, 02:30, on format
+  7: encoding C keeps 38 to 47 % of the index bytes in every workload,
+  with compact value nodes, frames and top nodes the stream 19 to 52 %
+  smaller; recommended for 2026.6 with the stable stream format, the
+  accounting nominal. QC1 to QC5; found Reclaim.VALUE_NODE_BYTES stale
+  after 024-25. The probe in 20-compact-nodes/.
 * 21-merges-java.md. 024-21, merges at the delete in Java, record
   format 7 (2026.4's databases refused): P5's merge ported to main, the
   thresholds 8/17/17 at node size 30 (024-14, QT1), named constants,
