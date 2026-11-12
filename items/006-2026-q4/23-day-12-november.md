@@ -348,6 +348,18 @@ from them.
   fetched as the branch 020-29-index-proof (23 commits, not merged);
   night failures fixed and landed when gated and no expected value
   changes; no new optional work above 92 % of the week.
+* 14:54 OT2 landed (c49351e1); 15:02 CA3 landed (335e2578): every
+  change for 2026.5's candidate on main.
+* 15:03 rel5 started (024-38): the release notes completed, commit A, the
+  night's conductor as 2026.4's (020-31), the morning's scripts without
+  the tag (Frans tags).
+* 15:29 rel5 done (024-38): commit A bf9ab5af (BuildInfo 2026.5,
+  next.md complete, StreamDigest's digests before and after; gated:
+  before-commit, lake build); the conductor runs since 15:18, night.sh
+  large since 15:20; s1's JDK runs, the OT2 probe and the fuzz beside
+  it; the morning's scripts stop before the tag. No landings of code on
+  main until commit B (to-main.sh stops otherwise): the second prover's
+  results wait for the morning.
 
 
 ## 6. Outcome

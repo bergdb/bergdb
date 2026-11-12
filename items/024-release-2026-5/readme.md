@@ -331,6 +331,11 @@ Files
 * 37-core-keys.md. 024-37, CA3 fixed (010-04, R5): the Core refuses a
   caller's puts and deletes under its own keys (/#i/-dummy and
   /#i/dreclaim/); its own writes pass. On main since 2026-11-12.
+* 38-release.md. 024-38, the release of 2026.5: commit A (bf9ab5af, on
+  release-2026.5-a, gated), the release night from 2026-11-12, 15:18 (F53:
+  night.sh large, the performance comparison with 2026.4, jcstress,
+  checks, Android, the queue; s1: JDK 27 and 17, the OT2 probe, fuzz),
+  the morning's scripts without the tag.
 
 
 Log
