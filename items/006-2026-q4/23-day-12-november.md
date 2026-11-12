@@ -49,7 +49,7 @@ high.
 | 024-22 | The open proofs TP32, TP33, TP7, TP30, TP10, TP11, TP31 | second prover | |
 | 024-30 | Count gates G1 (BD1), G2 (BD13), G3 (BD10) at 1M keys, a night step | gates (high) | landed |
 | 024-31 | OP4: a cap on the take's pace after a decrease (015-84) | pace (high) | landed c1137b69 |
-| 024-32 | maintain(), in Core and Pub, with G5 (back to empty by maintain()) | maint (high) | |
+| 024-32 | maintain(), in Core and Pub, with G5 (back to empty by maintain()) | maint (high) | gated, to land |
 | 024-33 | ST6: the cache's tables shrink | tidy (high) | gated, to land |
 | 024-34 | OP8: reclaim reads only what it rewrites | tidy (high) | gated, to land |
 | 017-11 | A startup distance that follows the database's size: known, plan | sdk (xhigh) | done 13:03 |
@@ -262,6 +262,12 @@ from them.
   written, 1.3 to 1.7 times the loads a put and 23 % fewer puts a second
   (one pass); 1/2 more so (38 % fewer puts a second). A changed default
   changes seven tests and the l3 digests. For Frans: QF1.
+* 13:36 maint done (024-32): maintain() in Core and Pub (begin, step,
+  take, filler, cut, dead hand; returns whether more is due now); G5: an
+  emptied idle database from 254 MB to 83 kB of stream by maintain()
+  alone; no change of the Lean model or the trace format (two new
+  conformance configurations pass); before-commit, level1, level3,
+  count-gates OK; no changed expected values. Q32-1 to Q32-5.
 
 
 ## 6. Outcome

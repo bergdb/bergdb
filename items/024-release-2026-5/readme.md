@@ -309,6 +309,16 @@ Files
   unchanged with a constant setting (StreamDigest 48 of 48). Branch
   024-31-pace-cap, waits for Frans (the rule, three changed expected
   values).
+* 32-maintain.md. 024-32, `Db.maintain()` and `Database.maintain()`:
+  optional, bounded calls that drive reclaim, the take, the cut and the
+  dead hand while the application does not write (Frans, 2026-11-12,
+  12:10); G5, back to empty by maintain() alone, at 1M keys. Q32-1 to
+  Q32-5.
+* 33-cache-tables.md. 024-33, the cache's tables shrink (ST6): 1.06
+  times a hello-world twin's slots after back to empty, was 3.76.
+* 34-reclaim-reads.md. 024-34, a reclaim step reads a key again only
+  when its value is before pCut (OP8): second reads halved, stream bytes
+  unchanged. Q34-1.
 
 
 Log
