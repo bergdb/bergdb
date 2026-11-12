@@ -157,6 +157,10 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
   position inside a record whose bytes there happen to form a committed
   record still gives that record. The Pub API's `transactionInfo()`,
   whose position is a get's, still takes a bad record there for damage.
+  A size over 1 MiB at the caller's position is believed only when a
+  walk of the records' sizes from the meta block before it reaches the
+  position (Q27-1): bytes inside a record that read as a size of up to
+  2 GB are refused before an array of that size is made.
 
 
 ### Limits

@@ -2728,6 +2728,76 @@ public class DbTester {
         }
     }
     
+    /**
+     * bergdb 021-27, Q27-1: a value crafted so that a position inside it passes the header
+     * check (a size of about the record's rest, its last byte LAST_BYTE, the format byte
+     * right) is refused before the record's array is made: the size, over 1 MiB, is believed
+     * only after the walk of the records' sizes reaches the position, and here it passes
+     * over it (the cause says so; without the walk the read made an array of that size and
+     * failed later, in the parse). The value is 3 MB, over 15 meta blocks; eight candidates
+     * at offsets 65 k + 0..7 in it, one of them at a multiple of 8, whichever the value's
+     * position. The real record of 3 MB at its start is still read, and the database goes on.
+     */
+    @Nano
+    public static void testGetTransCraftedSizeInsideARecord() {
+        final int n = 3 * 1000 * 1000;
+        final byte[] v = new byte[n];
+        final int[] offP = new int[8];
+        final int[] size = new int[8];
+        for (int k = 0; k < 8; k++) {
+            offP[k] = 65 * k;
+            final int offL = n - 100 + 8 * k;
+            size[k] = offL - offP[k] + 1;
+            Bytes.intToBytesLE(size[k], v, offP[k]);
+            v[offP[k] + 4] = StoredTrans.RECORD_FORMAT;
+            v[offL] = RecoverableStream.LAST_BYTE;
+        }
+        assertTrue("over the limit", size[7] > NodeStream.CALLERS_SIZE_LIMIT);
+        Db db = Db.builder().testSetup().start();
+        try {
+            Trans t = db.trans().put("/v", v).build();
+            db.execute(t);
+            
+            // The value's position: its first bytes in the record's bytes.
+            final byte[] record = db.internal().nodeStream().readTransBytes(t.tpos);
+            int d = -1;
+            for (int i = 0; i + 8 <= record.length && d == -1; i++) {
+                boolean match = true;
+                for (int j = 0; j < 8; j++) {
+                    match &= record[i + j] == v[j];
+                }
+                d = match ? i : -1;
+            }
+            assertTrue("the value in the record", d > 0);
+            final long valueStart = RecoverableStream.getSpos(t.tpos, d);
+            int aligned = 0;
+            for (int k = 0; k < 8; k++) {
+                final long p = RecoverableStream.getSpos(valueStart, offP[k]);
+                if (p % 8 != 0) {
+                    continue;
+                }
+                aligned++;
+                IllegalArgumentException e = null;
+                try {
+                    db.getTrans(p);
+                } catch (IllegalArgumentException x) {
+                    e = x;
+                }
+                assertTrue("refused, " + p, e != null);
+                assertEquals("refused before the array: " + e.getCause(), "A size of " + size[k]
+                        + " bytes at stream pos " + p + ", which is inside the record at "
+                        + t.tpos + ", not a record's start.", e.getCause().getMessage());
+            }
+            assertEquals("one candidate at a multiple of 8", 1, aligned);
+            assertEquals("the record of 3 MB at its start", t.tt, db.getTrans(t.tpos).tt);
+            assertArrayEquals(v, DbUtil.get(db, "/v"));
+            db.execute(db.trans().put("/b", "b0").build());
+            assertEquals("b0", DbUtil.getString(db, "/b"));
+        } finally {
+            db.stop();
+        }
+    }
+    
     // ======== sync(), bergdb 005-44 ========
     
     /**

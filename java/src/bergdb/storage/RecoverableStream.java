@@ -666,6 +666,35 @@ public class RecoverableStream {
     }
     
     /**
+     * A record's start at or before 'spos', to walk the records forward from by their sizes
+     * (2026-11-12, bergdb 021-27, Q27-1; NodeStream.recordHolding()): the transaction that
+     * the last valid meta block at or before 'spos' names, if there is one at or after the
+     * first position; otherwise the first record after the first position. That is a
+     * record's start: the first record, after meta block 0, in a stream not cut; reclaim
+     * cuts at a record's start (Reclaim: pCut is a transaction's nextPos). Unlike
+     * getPosOfTransCompletedBefore(), it does not search after 'spos' in a cut stream. A walk
+     * from it reads the headers of the records between that meta block and 'spos' and of the
+     * one that reaches over the block; more only if meta blocks are not valid. 'spos' must
+     * not be in a meta block. Any thread may call it.
+     *
+     * @throws StreamIoException
+     * @throws StreamFormatException  if a meta block is malformed
+     */
+    public long getRecordStartBefore(long spos) {
+        final long firstPos = aos.getFirstPos();
+        final long inBlock = firstPos % META_BLOCK_DISTANCE;
+        long result = inBlock < META_BLOCK_SIZE ? firstPos - inBlock + META_BLOCK_SIZE : firstPos;
+        MetaBlock meta = readAValidMetaBlock(aos, spos);
+        if (meta != null) {
+            long named = meta.getLastTransSpos();
+            if (named != Constants.SposNULL && named >= firstPos) {
+                result = named;
+            }
+        }
+        return result;
+    }
+    
+    /**
      * Reads and returns the last valid meta block that starts before or at
      * 'spos'. If no such meta block exists, null is returned.
      * 
