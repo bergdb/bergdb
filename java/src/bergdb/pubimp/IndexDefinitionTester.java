@@ -598,6 +598,59 @@ public class IndexDefinitionTester {
         assertNull(ls.entryLevels("/dp/-k", ObjectFormatTester.codecWrite(o)));
     }
 
+    /**
+     * L6 refuses a put only of a value that would have an entry but for its levels' length
+     * (bergdb 024-24, section 9): with a long first level and a later level absent, of
+     * another type or NaN, the value has no entry and its put is taken. The night run of
+     * 2026-11-11 found it (IndexHarness, seed 20261111001: c of 56 NULs, 113 bytes, and b a
+     * long where the index has a string).
+     */
+    @Nano
+    public static void testFunctionLimitNoEntry() {
+        IndexDefinition d = new IndexDefinition("n", "/p/", 1, false,
+                new String[] {"string", "long", "string", "double"},
+                new String[][] {{"c"}, {"n", "a"}, {"b"}, {"d"}});
+        final String d0 = "\"d\":d0000000000000000";
+        final String na = "\"n\":{\"a\":i1}";
+        // No entry: b a long, n.a a string, n not an object, d absent, d NaN.
+        final String[] noEntry = {"{\"b\":i0," + d0 + "}", "{" + na + ",\"b\":i0," + d0 + "}",
+                "{\"n\":{\"a\":s\"x\"},\"b\":s\"x\"," + d0 + "}",
+                "{\"n\":i1,\"b\":s\"x\"," + d0 + "}", "{" + na + ",\"b\":s\"x\"}",
+                "{" + na + ",\"b\":s\"x\",\"d\":d7ff8000000000000}"};
+        for (String c : new String[] {repeat("\u0000", 56), repeat("x", 111),
+                repeat("x", 1 << 20)}) {
+            for (String vn : noEntry) {
+                Obj o = obj(vn);
+                o.fields.put("c", new Str(chars(c)));
+                byte[] b = ObjectFormatTester.codecWrite(o);
+                assertNull(vn, d.entryLevels("/dp/-k", b));
+                assertNull(vn, d.entryForPut("/dp/-k", b));
+            }
+            Obj o = obj("{" + na + ",\"b\":s\"x\"," + d0 + "}");
+            o.fields.put("c", new Str(chars(c)));
+            assertRefusedL6(d, ObjectFormatTester.codecWrite(o));
+        }
+
+        // Too long only with a later string level: refused too.
+        Obj o = obj("{" + na + "," + d0 + "}");
+        o.fields.put("c", new Str(repeat("x", 60)));
+        o.fields.put("b", new Str(repeat("x", 60)));
+        assertRefusedL6(d, ObjectFormatTester.codecWrite(o));
+        o.fields.put("b", new Str(repeat("x", 111 - 61 - 8 - 8 - 1)));
+        byte[] b = ObjectFormatTester.codecWrite(o);
+        Assert.assertEquals(111, d.entryLevels("/dp/-k", b).length);
+        Assert.assertTrue("at L6", d.entryForPut("/dp/-k", b) != null);
+    }
+
+    private static void assertRefusedL6(IndexDefinition d, byte[] value) {
+        try {
+            d.entryForPut("/dp/-k", value);
+            throw new AssertionError("a put of levels over L6 was taken");
+        } catch (IllegalArgumentException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("(bergdb 024-17, L6)"));
+        }
+    }
+
     /** entry(): the generation's prefix, the levels, K (020-10, sections 4.1 and 4.4). */
     @Nano
     public static void testEntry() {

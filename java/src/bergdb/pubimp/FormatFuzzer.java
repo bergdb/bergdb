@@ -3617,7 +3617,10 @@ public final class FormatFuzzer {
                 break;
             }
             }
-            core.execute(core.trans().put(key, value).build());
+            // As BergDB writes its own keys: under /#, longer than L2 too (bergdb 024-24,
+            // section 9; a changed key may grow past 111 bytes).
+            core.execute(core.trans().putLongKey(bergdb.dag.Keys.toSegments(key), null, value,
+                    null).build());
             db.sync();
         } finally {
             db.close();
@@ -4076,6 +4079,18 @@ public final class FormatFuzzer {
         FormatFuzzer f = new FormatFuzzer(1);
         f.run("starts", 0, 200, Long.MAX_VALUE);
         bergdb.nanotest.Assert.assertEquals(f.stats.toString(), 200, f.stats.iterations);
+    }
+
+    /**
+     * Area starts, seed 20768010, iteration 28990: a changed internal key of 114 bytes, over
+     * L2, which a start must read as BergDB's own keys under /# may be (the night run of
+     * 2026-11-11 found the Core's L2 refusal of its put; bergdb 024-24, section 9).
+     */
+    @Nano
+    public static void testFuzzStartsLongKey() {
+        FormatFuzzer f = new FormatFuzzer(20768010);
+        f.run("starts", 28990, 1, Long.MAX_VALUE);
+        bergdb.nanotest.Assert.assertEquals(f.stats.toString(), 1, f.stats.iterations);
     }
     
     /** Area guesses: 5,000 iterations of seed 1. */

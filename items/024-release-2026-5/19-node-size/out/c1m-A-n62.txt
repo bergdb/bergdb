@@ -1,8 +1,9 @@
 NS run ns=62 n=1000000 shape=k13 order=random vs=100 batch=100 ups=1000000 retain=1 dir=/Users/f/fl/bench/2026-11-11/nsize/data/a
 [0.1s] START ns=62 maxNodeSize=62
-[9.5s] FILL n=1000000 shape=k13 order=random vs=100 batch=100 bytesPerPut=308.8 bytesPerTx=22096 maxRec=50288 kept=308771760 keptPerKey=308.8 puts/s=107604 iters=0
-[9.5s] TREE-FILL keys=1000000 keyNodes=40537 klongs=1501839 keyKlongs=1225560 live=1040539 stored=25326608 storedPerKey=25.3 klongsPerNode=37.0 livePerNode=25.7 path=6.00 pathMax=6
-[27.5s] UPD ups=1000000 ubatch=100 retain=1 bytesPerPut=399.9 (last 80%) bytesPerTx=36626 maxRec=79984 kept=631628920 keptPerKey=631.6 len=731646488 iters=1 puts/s=63508
-[27.5s] TREE-UPD keys=1000000 keyNodes=49749 klongs=2142870 keyKlongs=1588383 live=1049751 stored=35877888 storedPerKey=35.9 klongsPerNode=43.1 livePerNode=21.1 path=6.00 pathMax=6
-[30.7s] CLOSED files=631646488
-[31.0s] DONE
+[7.1s] FILL n=1000000 shape=k13 order=random vs=100 batch=100 bytesPerPut=319.4 bytesPerTx=22622 maxRec=49968 kept=319366960 keptPerKey=319.4 puts/s=144823 iters=0
+[7.1s] TREE-FILL keys=1000000 keyNodes=37369 klongs=1427825 keyKlongs=1167565 live=1037371 stored=24041008 storedPerKey=24.0 klongsPerNode=38.2 livePerNode=27.8 path=6.00 pathMax=6
+[18.8s] UPD ups=1000000 ubatch=100 retain=1 bytesPerPut=385.6 (last 80%) bytesPerTx=36285 maxRec=73776 kept=632348128 keptPerKey=632.3 len=732354656 iters=1 puts/s=99741
+[18.8s] TREE-UPD keys=1000000 keyNodes=43933 klongs=1693276 keyKlongs=1347420 live=1043935 stored=28498272 storedPerKey=28.5 klongsPerNode=38.5 livePerNode=23.8 path=6.00 pathMax=6
+[20.8s] DAG merges=0 mergesTwo=0 compactions=69344
+[20.8s] CLOSED files=632354656
+[20.8s] DONE

@@ -423,6 +423,9 @@ final class IndexDefinition {
     /**
      * entryLevels(ikey, value), and with 'refuse' a value whose levels would take more than
      * IndexKeys.MAX_LEVEL_BYTES (L6) is refused, not given no entry (bergdb 024-17, QL4).
+     * Only a value that would have an entry but for that is refused: one that has no entry
+     * for another reason, such as a later level absent, of another type or NaN, is not
+     * (bergdb 024-24, section 9).
      *
      * @throws IllegalArgumentException  If 'refuse' and the levels are too long.
      */
@@ -444,6 +447,7 @@ final class IndexDefinition {
         int n = types.length;
         int[] at = new int[n];
         int size = 0;
+        boolean over = false;               // L6 passed; refused only if every level is there
         for (int i = 0; i < n; i++) {
             int p = find(value, pathBytes[i]);
             if (p < 0 || ObjectFormat.typeAt(value, p) != types[i]) {
@@ -460,9 +464,13 @@ final class IndexDefinition {
                 size += 8;
                 break;
             default: {
+                if (over) {
+                    break;                      // not counted: too long already
+                }
                 int length = ObjectFormat.lengthAt(value, p);
                 if (length >= IndexKeys.MAX_LEVEL_BYTES - size) {
-                    return tooLong(ikey, refuse);       // E has at least length + 1 bytes
+                    over = true;                // E has at least length + 1 bytes
+                    break;
                 }
                 size += IndexKeys.escapedLength(value, ObjectFormat.contentAt(value, p),
                         length) + 1;
@@ -470,9 +478,12 @@ final class IndexDefinition {
             }
             }
             if (size > IndexKeys.MAX_LEVEL_BYTES) {
-                return tooLong(ikey, refuse);
+                over = true;
             }
             at[i] = p;
+        }
+        if (over) {
+            return tooLong(ikey, refuse);
         }
 
         byte[] levels = new byte[size];

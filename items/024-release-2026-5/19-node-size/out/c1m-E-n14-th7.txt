@@ -1,0 +1,9 @@
+NS run ns=14 n=1000000 shape=k13 order=random vs=100 batch=100 retain=1 ubatch=1 ups=200000 dir=/Users/f/fl/bench/2026-11-11/nsize/data/ey
+[0.1s] START ns=14 maxNodeSize=14
+[9.7s] FILL n=1000000 shape=k13 order=random vs=100 batch=100 bytesPerPut=418.0 bytesPerTx=28122 maxRec=65744 kept=418019752 keptPerKey=418.0 puts/s=104850 iters=0
+[9.7s] TREE-FILL keys=1000000 keyNodes=224947 klongs=1984217 keyKlongs=1510581 live=1224949 stored=38945776 storedPerKey=38.9 klongsPerNode=8.8 livePerNode=5.4 path=10.00 pathMax=10
+[17.4s] UPD ups=200000 ubatch=1 retain=1 bytesPerPut=507.5 (last 80%) bytesPerTx=474 maxRec=43072 kept=440514744 keptPerKey=440.5 len=540538392 iters=2 puts/s=38502
+[17.4s] TREE-UPD keys=1000000 keyNodes=254460 klongs=2256907 keyKlongs=1685846 live=1254462 stored=44253232 storedPerKey=44.3 klongsPerNode=8.9 livePerNode=4.9 path=10.00 pathMax=10
+[20.2s] DAG merges=0 mergesTwo=0 compactions=0
+[20.2s] CLOSED files=440538392
+[20.2s] DONE

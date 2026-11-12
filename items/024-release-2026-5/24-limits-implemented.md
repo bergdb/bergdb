@@ -309,6 +309,133 @@ unchanged (32 + 16 x size). `ReleaseFits`' doc now says that it makes
   build`'s `decide`.
 
 
+## 9. Fix after the night run, 2026-11-11
+
+By l6fix, a subagent of the day's coordinator, 22:11 to 23:08.
+
+**The failure.** The night run on main `f5ac2600` (this item landed as
+`7c255127`) failed twice with the same assertion of `IndexHarness`
+("refused for L6 by NAME, but no write's levels are too long"): the
+night test `IndexHarness.testSeedsLong`, seed 20768001, step 296 (index
+`i0`, the put of `/h/a/kå`), and `harness-soak`'s job 6 h2, `-Devict=every
+-Daudit=10 IndexHarness 20261111001 2000 4 1 300 0 0 100`, step 192
+(index `ä`, the put of `/h/a/k9`). Both repeat in seconds on the night's
+jar.
+
+**The cause: the product code.** The soak's case shows it. The index
+`ä` has the levels `[string c, long n.a, string b]`; the put was of
+`{"b": 0, "c": 56 NULs, "x.y": 0}`. Its `c` level is 56 x 2 + 1 = 113
+bytes (each 00 written as two), over L6, but `n.a` is absent and `b` is
+a long where the index has a string: the value has no entry at all.
+`IndexDefinition.entryLevels` read the levels in order and returned the
+refusal (`tooLong`) at the first level whose running size passed 111
+bytes, before it looked at the later levels. 024-17's L6 (section 6.1)
+limits an *indexed* value, one that has an entry, and `IndexBuilder`'s
+rules (its Javadoc) give an entry only if every level's field is found
+with the level's kind; the length rule comes after. The harness's
+oracle (`IndexReference.tooLong`: every level found and of its kind,
+then the sum over 111) says that, so the oracle was right and the code
+wrong. A user saw a put refused for an index that never indexes the
+value; before 024-24 such a value had no entry and was taken.
+
+**The fix** (`IndexDefinition.entryLevels`): a level that passes L6
+sets a flag `over` instead of returning; the loop goes on through the
+later levels, each of which still returns "no entry" if it is absent,
+of another kind or NaN; only after the loop does `over` return
+`tooLong` (refused for a put, no entry for a build). A string level
+after `over` is checked for its kind but not measured, so a value with
+a string of a megabyte costs no more than before.
+
+**The build path (Q1).** A build over existing objects calls
+`entryLevels(ikey, value)` without the refusal (`UseIndexBuilderImp`),
+where "too long" and "no entry" are both null: it had no such error
+and does not change. `FormatFuzzer`'s L6 expectation calls
+`entryForPut` itself on one-level indexes, where the order of levels
+cannot matter.
+
+**The test.** `IndexDefinitionTester.testFunctionLimitNoEntry`: an index
+`[string c, long n.a, string b, double d]`, `c` of 56 NULs (113 bytes),
+111 x's and 1 MiB of x's, with each of six values that have no entry
+(`b` a long, `n.a` a string, `n` not an object, `d` absent, `d` NaN, and
+the soak's own shape): `entryLevels` and `entryForPut` give null, no
+refusal; with every level present the put is refused; levels over 111
+only with the later string `b` are refused, and 111 bytes exactly are
+taken. It fails on the code before the fix and passes after. The two
+failing runs pass on the fix (seed 20768001 to step 400 in 3 s, the
+soak's command in 60 s).
+
+**Not changed.** R9 (section 7) stays: `IndexHarness` checks that a
+refusal has a cause, not that every put with too long levels is
+refused; `testFunctionLimitNoEntry` and `testFunctionLimit` hold the
+other direction at the unit level.
+
+**Does L6 depend on the key?** No. Two of the three L6 failures were
+at `/h/.../kå`, but `entryLevels` uses the key only to see that it is
+an object key (no suffix, or `.obj`) and to name it in the message;
+the count is over the value's levels alone. `kå` is one of
+`IndexHarness.OBJECT_NAMES`' 16 names, which `KillRestartHarness`
+shares; the soak's failure was at `k9`.
+
+Two more failures of the same night came from the limits, both in a
+harness that did not know them (the coordinator added them to this
+fix at 22:27):
+
+**(a) fuzz, area starts, seed 20768010, iteration 28990**: "The key has
+114 bytes, more than 111 (bergdb 024-17, L2)", thrown by
+`Trans.Builder.put` in `FormatFuzzer.startsOne`. The area changes one
+of BergDB's internal keys under `/#i/` (a definition's or a marker's
+key, by `mutateBytes`, which may add bytes) and writes it through the
+Core, then checks what a start reads. BergDB writes its own keys under
+`/#` with `putLongKey`, which allows them past L2 (024-17, section 6.2 (a));
+an index entry may take about 500 bytes. A start must read such keys,
+so the area keeps its inputs and writes them as BergDB does:
+`putLongKey` (which still refuses a long key outside `/#`). Test:
+`FormatFuzzer.testFuzzStartsLongKey` runs that iteration (unit group).
+
+**(b) kill-restart**: a child failed with an L6 refusal of a put at
+`/h/d/kå` for the index `i1` (database seed 3059697745756165568, run
+1). `KillRestartHarness` makes its values with `IndexHarness`'s
+generators, whose `LONG_STRINGS` are since 024-24 at and around 111
+bytes; a refused put threw out of the child's writer, and its journal
+has no way to say "refused" (a `T` line without `C` is a transaction
+in flight at the kill). The harness checks kills and restarts, and
+`IndexHarness` and the unit tests check L6, so its values now stay
+within L6: `KillRestartHarness.cut` cuts a string longer than 18 chars
+(only the `LONG_STRINGS`, ASCII) to 18, at most 37 bytes as a level
+(18 00s, each written as two, and the final 00); every other string or
+byte[] of the generators takes at most 17 bytes, and `def()` makes at
+most 3 levels, so a definition's levels take at most 111 bytes. Test:
+`KillRestartHarness.testWithinL6` (2,000 transactions against 100
+definitions with `IndexReference.tooLong`; it fails with the cut at
+1,000 chars); `Pack` now lists the class, so its test runs in the unit
+group (0.6 s). The kept database was gone with the night's clone, so
+whether that put had an entry is not known; with (b) it does not
+matter.
+
+**Branch.** `024-24-l6fix` from main `bf68084b`, in
+`/Users/f/fl/bench/2026-11-11/l6fix/clone`, three commits, Java only:
+`222b25a4` (L6, `IndexDefinition.java`, `IndexDefinitionTester.java`),
+`28738173` (a, `FormatFuzzer.java`), `18d76c37` (b,
+`KillRestartHarness.java`, `Pack.java`).
+
+**Gates.** On `222b25a4`: before-commit OK (88 s), the night tests of
+`IndexHarness` OK (158 s, today's seeds, 20768001 among them). On
+`18d76c37`, the head, one slot at a time, 22:30 to 23:07, all rc = 0
+(`l6fix/gates.sh`, summary `l6fix/gates.out`, logs in `l6fix/logs/`):
+
+| Gate                                              | Result, time                  |
+|---------------------------------------------------|-------------------------------|
+| before-commit                                     | BEFORE COMMIT OK, 87 s        |
+| night.sh tests -c IndexHarness (seeds 20768000-7) | SUCCESS, 161 s                |
+| the soak's job 6 h2 (seed 20261111001)            | IndexHarness OK, 60 s         |
+| FormatFuzzer starts 20768010, 90 s (to 117,650)   | FUZZ OK                       |
+| fuzz.sh 2                                         | FUZZ OK, 120 s                |
+| kill-restart.sh 1000                              | KILL RESTART OK, 1,425 s      |
+| harness-soak.sh -r 2                              | HARNESS SOAK OK, 94 s         |
+| level1 full                                       | LEVEL 1 OK, 144 s             |
+
+
+
 ## State
 
 2026-11-11, 20:19.
@@ -322,3 +449,8 @@ unchanged (32 + 16 x size). `ReleaseFits`' doc now says that it makes
   024-17 (section 7, R3); the notes R6, R8 to R11 (section 7).
 * **To continue** (if main moves before landing): merge main, rerun
   before-commit, level1, level2 (`lim3/gate.sh`).
+* **Landed** as `7c255127`. **The night's fixes** (section 9), 23:08:
+  branch `024-24-l6fix`, head **`18d76c37`** (three commits on main
+  `bf68084b`; main had no commit after it at 23:07), in
+  `/Users/f/fl/bench/2026-11-11/l6fix/clone`; every gate of section 9
+  passed on it. Ready to land.
