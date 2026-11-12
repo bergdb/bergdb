@@ -53,6 +53,7 @@ high.
 | 024-33 | ST6: the cache's tables shrink | tidy (high) | |
 | 024-34 | OP8: reclaim reads only what it rewrites | tidy (high) | |
 | 017-11 | A startup distance that follows the database's size: known, plan | sdk (xhigh) | done 13:03 |
+| 021-27 | Db.getTrans inside a record fails the database: option A | gtr (high) | |
 
 024-27 lands on its gates, by Frans's decisions of 07:36: its changed
 expected values follow from them.
@@ -234,6 +235,17 @@ from them.
   (c = 2; StreamDigest identical, 48 of 48); at 10M keys the largest
   record halved, the catch-up 4.5 times longer (1000 to 100 MB); gates
   OK. Waits for Frans: the rule, and commit B's changed expected values.
+* 13:09 Frans approved 024-31 (the span rule, c = 2, and its changed
+  expected values); merged in /Users/f/fl/bench/2026-11-12/land/clone,
+  gated there before main moves.
+* 13:21 Frans on 021-27: "Yes, fix this in a agent at high. This is
+  important. I consider it a bug. It does destroy the Core database, the
+  KV store. The Core API may damage the integrity of the functionality
+  built on top of it such as Pub layer's secondary indexes, but it
+  should not destroy the integrity of the KV store itself." gtr started
+  13:22 (option A).
+* 13:24 Frans: his rule of 13:21 "as a new rule": 010-04, R5, the Core
+  API never destroys the KV store.
 
 
 ## 6. Outcome

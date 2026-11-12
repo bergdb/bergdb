@@ -116,3 +116,31 @@ R4. Removed
 R4, "A safety belt is decided case by case", was removed on 2026-11-12,
 10:19 (Frans: "Remove Rule R4."), minutes after it was written. Its number
 is not reused.
+
+
+R5. The Core API never destroys the KV store
+--------------------------------------------
+
+A call of the Core API, whatever its arguments, keeps the integrity of
+the Core's key-value store: a caller's mistake, such as a position that
+is not a transaction's, is refused with an exception to the caller, and
+the database goes on. The Core API may break what is built on it (the Pub
+layer's directories, objects and indexes are keys and values to it, P14),
+but not the store itself: its stream, its index, its availability. A
+database fails (P7) for damage, a failed environment or a bug, never for a
+caller's misuse of an API.
+
+Serves P14 and P7.
+
+Why: Frans, 2026-11-12, 13:21: "I consider it a bug. It does destroy the
+Core database, the KV store. The Core API may damage the integrity of the
+functionality built on top of it such as Pub layer's secondary indexes,
+but it should not destroy the integrity of the KV store itself." The
+same rule for arguments, earlier: a bad argument of the Core API is
+refused with `IllegalArgumentException` (020-27, Q2).
+
+Cases:
+
+* 021-27: `Db.getTrans` at a position inside a record failed the
+  database; refused with `IllegalArgumentException` since 2026-11-12
+  (option A).
