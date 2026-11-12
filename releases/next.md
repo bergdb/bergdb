@@ -225,3 +225,13 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
   Known issues, its first entry): the heap that ran out in a user's commit
   and the record limit that stopped reclaim at about 104M keys (Core API,
   above).
+* **Fixed: on Linux, a new database in a new directory refused as in use**
+  (bergdb 024-36, OT2; 2026.4's Known issues): `FileStream` now closes
+  `bergdb.lock` and removes the directory from its set of locked
+  directories in one step, under the monitor under which a start checks
+  that set, so a start in the same JVM right after a close (as a background
+  close after `stop()` of a database whose directory was deleted) no longer
+  finds a new directory's reused inode still listed. Left: a start in
+  another class loader of the same JVM can still, rarely, be refused in
+  that moment; a retry works. Test
+  `FileStream.testNoStartSeesAClosedLockStillListed`.

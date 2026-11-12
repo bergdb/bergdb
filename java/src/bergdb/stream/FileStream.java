@@ -950,22 +950,44 @@ public class FileStream implements AppendOnlyStream {
     /**
      * Releases the directory's lock, if this stream holds it; the file stays (bergdb 005-63).
      * The lock file is closed before the directory leaves the system properties and
-     * LOCKED_DIRS.
+     * LOCKED_DIRS, all in one hold of LOCKED_DIRS's monitor, under which lockDir() checks
+     * (2026-11-12, bergdb 024-36, OT2). So a start in this copy of the class sees the
+     * directory either before the close, still held, or after it, gone from LOCKED_DIRS,
+     * never the lock file closed and the keys still listed.
+     *
+     * Why that matters: closing the lock file closes the last open file of a directory that
+     * was deleted while the stream closed, and Linux ext4 then gives the directory's inode at
+     * once to the next new directory (see checkDirectory()). Before, a start in such a new,
+     * empty directory, in the moment between the close and the removal, found its file key
+     * still in LOCKED_DIRS and was refused as in use by another database (s1, JDK 17: 10 in
+     * 30,000 runs of a probe; 006-17, section 6.2). The start reads its key before it takes
+     * the monitor, but a new directory can have the freed inode only if it was made after
+     * the close, so its check, under the monitor, comes after the removal.
+     *
+     * The file is closed first, as a start in this JVM must not open a second channel of it
+     * while it is open (LOCKED_DIRS's comment); the properties go in the same hold, so a
+     * start of this copy that has passed LOCKED_DIRS cannot lose its new property to this
+     * remove (the value is the copy's, the same for both streams). Left: a start in another copy of the class (another class loader, bergdb 015-24)
+     * checks the properties without this monitor and can still, rarely, be refused in that
+     * moment. Lock order: this stream's monitor, then LOCKED_DIRS; lockDir() takes them one
+     * at a time, not nested.
      */
     private synchronized void unlockDir() throws IOException {
         if (lockFile == null) {
             return;
         }
-        try {
-            lockFile.close();       // Releases the lock.
-        } finally {
-            lockFile = null;
-            System.getProperties().remove(PROPERTY_PREFIX + lockKey, COPY);
-            System.getProperties().remove(PROPERTY_PREFIX + lockPathKey, COPY);
-            LOCKED_DIRS.remove(lockKey);
-            LOCKED_DIRS.remove(lockPathKey);
-            lockKey = null;
-            lockPathKey = null;
+        synchronized (LOCKED_DIRS) {
+            try {
+                lockFile.close();       // Releases the lock.
+            } finally {
+                lockFile = null;
+                System.getProperties().remove(PROPERTY_PREFIX + lockKey, COPY);
+                System.getProperties().remove(PROPERTY_PREFIX + lockPathKey, COPY);
+                LOCKED_DIRS.remove(lockKey);
+                LOCKED_DIRS.remove(lockPathKey);
+                lockKey = null;
+                lockPathKey = null;
+            }
         }
     }
 
@@ -2951,6 +2973,70 @@ public class FileStream implements AppendOnlyStream {
     }
     
     // ---- bergdb 005-63: one stream per directory ----
+    
+    /**
+     * bergdb 024-36 (OT2): a start never finds a directory still in LOCKED_DIRS after the
+     * close has closed its lock file. The test holds the monitor of the system properties, so
+     * that the closing thread stops in unlockDir() at the removal of its property, right
+     * after the lock file's close; a second thread then checks LOCKED_DIRS as lockDir() does,
+     * under its monitor. Before, the check went through at once and found the key listed,
+     * with the lock file closed: on Linux, a new directory that got the deleted directory's
+     * inode in that moment was refused as in use. Now the check waits until the close has
+     * removed the keys. Does not need a reused inode, so it fails before the fix on every
+     * system.
+     */
+    @Nano
+    static void testNoStartSeesAClosedLockStillListed(TestEnvironment c) throws Exception {
+        File dir = c.createTempDir();
+        FileStream f = new FileStream(dir);
+        Object key = lockKey(dir);
+        IOException[] closeError = new IOException[1];
+        boolean[] listed = new boolean[1];
+        Thread closer = new Thread(() -> {
+            try {
+                f.close();
+            } catch (IOException e) {
+                closeError[0] = e;
+            }
+        }, "closer");
+        Thread checker = new Thread(() -> {
+            synchronized (LOCKED_DIRS) {
+                listed[0] = LOCKED_DIRS.contains(key);
+            }
+        }, "checker");
+        boolean fileClosed;
+        synchronized (System.getProperties()) {
+            closer.start();
+            awaitState(closer, Thread.State.BLOCKED, null);
+            try (RandomAccessFile other = new RandomAccessFile(new File(dir, LOCK_NAME), "rw")) {
+                // The lock file is closed: a new channel in this JVM gets its lock.
+                fileClosed = other.getChannel().tryLock(LOCK_POS, 1, false) != null;
+            }
+            checker.start();
+            awaitState(checker, Thread.State.BLOCKED, Thread.State.TERMINATED);
+        }
+        closer.join();
+        checker.join();
+        if (closeError[0] != null) {
+            throw closeError[0];
+        }
+        Assert.assertTrue("the closer stopped before the lock file's close", fileClosed);
+        Assert.assertFalse("a start found the directory listed after its lock file was closed",
+                listed[0]);
+        new FileStream(dir).close();
+    }
+    
+    /** Waits, at most 10 s, until the thread is in one of the states (the second may be null). */
+    private static void awaitState(Thread t, Thread.State a, Thread.State b) 
+            throws InterruptedException {
+        long end = System.nanoTime() + 10_000_000_000L;
+        while (t.getState() != a && t.getState() != b) {
+            if (t.getState() == Thread.State.TERMINATED || System.nanoTime() > end) {
+                throw new AssertionError(t.getName() + " is " + t.getState() + ", not " + a);
+            }
+            Thread.sleep(1);
+        }
+    }
     
     /**
      * bergdb 005-63: a second FileStream on the directory in the same JVM is refused, also by
