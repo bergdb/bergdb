@@ -46,6 +46,9 @@ high.
 | 010-01 | P14, the Pub API cannot destroy the database's integrity | coordinator | written |
 | 024-28 | The release checklist of 2026.5 | check (high) | done 10:37 |
 | 024-29 | Reclaim's fraction: previous work, how to compare, the default | frac (high) | done 11:15 |
+| 024-22 | The open proofs TP32, TP33, TP7, TP30, TP10, TP11, TP31 | second prover | |
+| 024-30 | Count gates G1 (BD1), G2 (BD13), G3 (BD10) at 1M keys, a night step | gates (high) | |
+| 024-31 | OP4: a cap on the take's pace after a decrease (015-84) | pace (high) | |
 
 024-27 lands on its gates, by Frans's decisions of 07:36: its changed
 expected values follow from them.
@@ -149,6 +152,18 @@ from them.
   cap (16 kB a user transaction) often paces reclaim, not f; a plan of
   4 to 5 h of F53 for 1/4, 3/8, 1/2; QF29-1 to QF29-5. Frans waits for
   it before deciding.
+* 11:16 Frans: "Next thing! Let's work towards 2026.5. Quickly." The
+  coordinator's fast path (aim 4 by conformance and the proofs that
+  hold, count gates BD1, BD13, BD10, OP4's cap, the small cases to 026,
+  the QF defaults, releases/next.md, the release recipe tonight).
+* 11:21 Frans: "Step 1. Could you run these with Codex now? GPT-6.1 Sol
+  at Max, to prove these." The second prover started 11:22 on the open
+  proofs in order TP32, TP33, TP7, TP30, TP10 and TP11, TP31 (clone
+  /Users/f/fl/bench/2026-11-12/cx/clone, branch 024-22-proofs; stop
+  2026-11-13, 06:30; the coordinator checks and lands).
+* 11:35 Frans: step 2, "Yes, start it. Use an Opus agent at high."
+  (gates started 11:36, 024-30, at 1M keys only); step 3, a plan first.
+* 11:38 Frans: step 3, "Yes, start it." (pace started 11:39, 024-31).
 
 
 ## 6. Outcome
