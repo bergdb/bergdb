@@ -169,14 +169,15 @@ def decreaseB (b m : Nat) (sts : List (DB Val Tr2)) (size : Record Val Tr2 → N
   bytes2 < 2000
 
 -- A decrease from 2000 to 400 after T(40), with BergDB's pace. Before it the
--- section is below 4000; right after it, 1016 and 816, above the new d_h of 800,
--- so "below twice the new setting at once" is false; the deadline is at the span
--- there, and the section shrinks until it is below 800 at T(43) and stays below
--- (T3_take_decrease); every step meets T3_take_step.
+-- section is below 4000; right after it, 1232 and 1080, above the new d_h of
+-- 800, so "below twice the new setting at once" is false; the deadline is at the
+-- span there, and the section shrinks until it is below 800 at T(43) and stays
+-- below (T3_take_decrease); every step meets T3_take_step. Until the cap of the
+-- share's factor (bergdb 024-31) the pace took more there: 1016 and 816.
 #guard stepBoundB (sdDecrease 2000 400 40) (states2 (javaTake bytes2 own2 (sdDecrease 2000 400 40)) 1 90)
 #guard decreaseB 400 40 (states2 (javaTake bytes2 own2 (sdDecrease 2000 400 40)) 1 90)
 #guard ((spans (states2 (javaTake bytes2 own2 (sdDecrease 2000 400 40)) 1 90)).drop 40).take 4 ==
-  [1296, 1016, 816, 680]
+  [1296, 1232, 1080, 672]
 -- The same with restarts: the same stream as without.
 #guard (runRestarts spec2 (algo2 (javaTake bytes2 own2 (sdDecrease 2000 400 40))) (randomTs 1 90)).S ==
   (run spec2 (algo2 (javaTake bytes2 own2 (sdDecrease 2000 400 40))) ((randomTs 1 90).map (·.1))).S
@@ -229,9 +230,10 @@ prints the number of transactions taken in each. `takeCase` makes the same
 cases as streams of the model, with the same generator, and runs `javaTake` on
 them: the results are the same in all 300. In the cases, the deadline takes a
 transaction in 107, the span is longer than twice the setting in 95, the share
-takes more than the deadline in 213, and the share stops the take before its
-last transaction in 163 (TakeCheck's counts, the same on 2026-10-28 and on
-2026-11-11); with the double rule of 2026-10-28, the deadline alone gave other
+takes more than the deadline in 198, and the share stops the take before its
+last transaction in 163 (TakeCheck's counts on 2026-11-12, with the cap of
+bergdb 024-31; on 2026-10-28 and on 2026-11-11, before it, 213 and 163); with
+the double rule of 2026-10-28, the deadline alone gave other
 results in 213 cases, a dither of 0.5 in 52, and counting the got-dirty nodes
 of T(i) in D, which Java adds after the take, in 11. -/
 
@@ -283,21 +285,23 @@ def takeCase (c : Nat) : Nat :=
     List.replicate extra (0, a + n)
   javaTake caseSize (fun t => t.1) (fun _ => 10 + sd) S D (a + n) (48 + o, 0) - (a - 1)
 
-/-- `TakeCheck 300`'s output, JDK 27: on 2026-10-28 with the double rule
-(`f89846d`), and the same on 2026-11-11 with the integer take of release
-2026.4 (bergdb 024-09). -/
+/-- `TakeCheck 300`'s output, JDK 27, on 2026-11-12 with the cap of the
+share's factor at 2 (bergdb 024-31), which changed 56 of the 300, each to
+fewer transactions, all with a span over twice the setting. Before it: on
+2026-10-28 with the double rule (`f89846d`), and the same on 2026-11-11 with
+the integer take of release 2026.4 (bergdb 024-09). -/
 def javaTakes : List Nat :=
-  [0, 2, 1, 0, 3, 6, 1, 3, 2, 8, 5, 0, 0, 5, 1, 0, 9, 2, 0, 0, 1, 8, 2, 1, 1, 2, 0, 3,
-   0, 4, 3, 7, 5, 2, 0, 0, 1, 2, 1, 0, 4, 1, 1, 1, 2, 0, 10, 3, 1, 1, 0, 1, 3, 3, 9, 1,
-   0, 3, 1, 1, 0, 0, 6, 4, 2, 7, 2, 1, 2, 1, 2, 0, 1, 1, 1, 4, 4, 8, 1, 5, 1, 9, 3, 2,
-   2, 2, 0, 0, 2, 6, 3, 3, 1, 1, 5, 0, 1, 0, 2, 2, 12, 0, 0, 0, 2, 3, 0, 4, 3, 0, 3, 8,
-   4, 3, 2, 1, 1, 1, 0, 3, 1, 5, 1, 5, 2, 10, 10, 2, 1, 1, 9, 1, 11, 0, 1, 1, 1, 0, 4,
-   3, 4, 3, 2, 2, 1, 0, 9, 11, 0, 2, 2, 0, 3, 9, 1, 1, 5, 10, 3, 3, 0, 4, 3, 3, 1, 1, 0,
-   0, 2, 6, 3, 0, 5, 2, 0, 1, 4, 2, 3, 1, 7, 10, 2, 2, 2, 0, 10, 0, 0, 6, 1, 0, 0, 7, 0,
-   0, 1, 4, 0, 2, 1, 1, 2, 2, 0, 4, 8, 4, 1, 0, 2, 0, 1, 2, 10, 3, 5, 3, 5, 2, 3, 1, 2,
-   2, 1, 2, 0, 1, 2, 1, 0, 1, 5, 0, 9, 2, 3, 5, 1, 2, 4, 1, 6, 0, 1, 4, 0, 1, 5, 6, 1,
-   2, 2, 1, 0, 1, 2, 3, 0, 0, 4, 0, 3, 2, 2, 2, 7, 0, 2, 2, 9, 1, 5, 3, 6, 1, 1, 2, 1,
-   0, 5, 9, 3, 2, 1, 7, 0, 0, 7, 0, 0, 3, 2, 0, 5, 0, 1, 0, 1, 2]
+  [0, 2, 1, 0, 3, 5, 1, 3, 2, 6, 4, 0, 0, 5, 1, 0, 9, 2, 0, 0, 1, 5, 2, 1, 1, 2, 0, 2,
+   0, 4, 3, 7, 5, 2, 0, 0, 1, 2, 1, 0, 3, 1, 1, 1, 2, 0, 10, 3, 1, 1, 0, 1, 3, 3, 2, 1,
+   0, 3, 1, 1, 0, 0, 4, 4, 2, 7, 2, 1, 2, 1, 2, 0, 1, 1, 1, 2, 4, 5, 1, 5, 1, 7, 2, 2,
+   2, 2, 0, 0, 2, 4, 3, 3, 1, 1, 2, 0, 1, 0, 1, 2, 12, 0, 0, 0, 2, 3, 0, 3, 3, 0, 3, 5,
+   2, 3, 2, 1, 1, 1, 0, 3, 1, 4, 1, 4, 2, 3, 4, 2, 1, 1, 2, 1, 7, 0, 1, 1, 1, 0, 4, 3,
+   4, 3, 2, 2, 1, 0, 8, 11, 0, 2, 2, 0, 3, 3, 1, 1, 3, 4, 3, 3, 0, 4, 3, 3, 1, 1, 0, 0,
+   2, 2, 3, 0, 4, 2, 0, 1, 4, 2, 2, 1, 3, 4, 2, 2, 2, 0, 5, 0, 0, 2, 1, 0, 0, 5, 0, 0,
+   1, 2, 0, 2, 1, 1, 2, 2, 0, 2, 2, 2, 1, 0, 2, 0, 1, 2, 3, 2, 5, 3, 3, 2, 2, 1, 2, 2,
+   1, 2, 0, 1, 2, 1, 0, 1, 4, 0, 6, 1, 3, 3, 1, 2, 4, 1, 5, 0, 1, 4, 0, 1, 2, 3, 1, 2,
+   2, 1, 0, 1, 2, 3, 0, 0, 1, 0, 3, 2, 2, 2, 7, 0, 2, 2, 5, 1, 2, 3, 6, 1, 1, 2, 1, 0,
+   5, 9, 3, 2, 1, 3, 0, 0, 5, 0, 0, 3, 2, 0, 5, 0, 1, 0, 1, 2]
 
 #guard (List.range 300).map takeCase == javaTakes
 

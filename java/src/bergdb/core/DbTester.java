@@ -2088,7 +2088,9 @@ public class DbTester {
             span = span(db);
         }
         db.close();
-        assertTrue("below 2 sd after " + below, below >= 0 && below < 60);
+        // 116 commits with the cap of the share's factor at 2 (bergdb 024-31), which makes
+        // the catch-up longer and its records smaller; below 60 before it.
+        assertTrue("below 2 sd after " + below, below >= 0 && below < 150);
     }
     
     /** The nodes of D: the nodes that got dirty in the transactions of TransSeq. */
