@@ -44,8 +44,8 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
   entries (deleted or overwritten keys and children, which lookups before
   the write still read) replaces the node by its current version with the
   write applied, as a full node is replaced; theta is 7 at node size 30
-  (1, 3 and 14 at 8, 14 and 62). In 2026.4 a node kept up to B such
-  entries until it filled. Counted at 1M keys with a retain duration of
+  (2, 3 and 14 at 8, 14 and 62; at least 2, bergdb 024-19, Q4). In
+  2026.4 a node kept up to B such entries until it filled. Counted at 1M keys with a retain duration of
   1 s (bergdb 024-23, section 7; 024-18's probe): under random overwrites
   0.48 dead entries a live one with the merges alone, 0.31 with the rule;
   in a cold database that reclaim rewrites 0.83 down to 0.29; after
@@ -138,6 +138,12 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
 * **Limits on keys, values and transactions** (bergdb 024-17, 024-24),
   fixed for every database; a later release may raise them, never lower
   them. A call over one throws and writes nothing; the database goes on.
+  **A refused put or delete spoils its builder** (bergdb 024-26, U26-5,
+  024-27; Frans, 2026-11-12): the Pub API's `WBuilder` and the Core's
+  `Trans.Builder` then write nothing, and their `execute()` (Core:
+  `build()`) and every later call throw `IllegalStateException`, also if
+  the caller caught the refusal. In 2026.4 a caller that caught it and
+  went on committed the other operations.
   * **A key is at most 111 bytes**; about 100 characters as a rule of
     thumb: ASCII letters and digits one byte each, each "/" of a Pub key
     two, letters such as å, ä and ö two bytes each (UTF-8). Refused with
