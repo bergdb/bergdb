@@ -55,6 +55,9 @@ high.
 | 017-11 | A startup distance that follows the database's size: known, plan | sdk (xhigh) | done 13:03 |
 | 021-27 | Db.getTrans inside a record fails the database: refused instead | gtr (high) | landed 3ffe0b51 |
 | 024-35 | A double-check for open work forgotten for 2026.5 | sweep (high) | done 14:19 |
+| 027 | The algorithms of BergDB: skeleton; docs/ moved in as a snapshot | docsmv (high) | landed 734742dc |
+| 024-36 | OT2, the Linux "directory in use" race, fixed | ot2 (high) | |
+| 024-37 | CA3: the Core refuses a caller's writes to the Core's own keys | ca3 (high) | |
 
 024-27 lands on its gates, by Frans's decisions of 07:36: its changed
 expected values follow from them.
@@ -312,6 +315,24 @@ from them.
   2026.5, a ready patch), CA3 (a Core put under the Core's own keys
   stops every later start: R5), next.md without today's landings and
   known issues, QF3's curve, no performance comparison with 2026.4.
+* 14:27 Frans: create the algorithms item as a skeleton only; move
+  everything from docs/ into it as a snapshot (sources/ kept; not
+  updated); "the division of functionality into "levels" was very
+  useful to get the old code base stability [...] Now, I don't know how
+  important this division it." docsmv started 14:29 (item 027; the
+  trace format kept current as 027-02, an exception for Frans to
+  confirm).
+* 14:32 Frans: "Some type of log is good to have. Let's keep log.md for
+  now." docs/log.md stays in place, maintained; docsmv told.
+* 14:33 Frans: "OT2; fix it." ot2 started 14:33 (024-36).
+* 14:34 Frans: "CA3, as recommended." ca3 started 14:35 (024-37).
+* 14:37 Frans: the release notes agent as recommended, after docsmv,
+  ot2 and ca3 have landed.
+* 14:40 docsmv done, landed 734742dc: 027's skeleton (14 planned
+  sections), 027-01 the snapshot of docs/, 027-02 the trace format kept
+  current; docs/ holds only log.md; references in code comments, the
+  level scripts, AGENTS.md, README.md and items/readme.md; old items
+  keep their links (44 now broken, history).
 
 
 ## 6. Outcome
