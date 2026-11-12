@@ -161,6 +161,20 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
   walk of the records' sizes from the meta block before it reaches the
   position (Q27-1): bytes inside a record that read as a size of up to
   2 GB are refused before an array of that size is made.
+* **The Core refuses a caller's writes at its own keys** (bergdb 024-37;
+  010-04, R5; CA3, 022-06-2's U2-8). The key `/#i/-dummy` and reclaim's
+  directory `/#i/dreclaim/` with every key under it are written by the
+  Core alone, and a start reads them: in 2026.4 seven bytes put through
+  `Db` at `/#i/dreclaim/-settings.txt` were taken, and every later start
+  failed with `InternalDataException`. Now a put or a delete there is
+  refused before anything is written, and the database goes on: by the
+  `Trans.Builder` call that takes the key, with
+  `IllegalArgumentException` (it spoils the builder, as a key over the
+  limit does), and by `Db.execute()` with a `DbException` for a key that
+  a key transformation gives and for the internal calls `putLongKey()`
+  and `deleteLongKey()`. The Pub API's keys under `/#i/` (its index
+  definitions, entries and markers, `/#i/di...`) are written as before;
+  reads of the Core's keys are allowed.
 
 
 ### Limits
@@ -225,3 +239,6 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
   Known issues, its first entry): the heap that ran out in a user's commit
   and the record limit that stopped reclaim at about 104M keys (Core API,
   above).
+* **Fixed: a Core put under the Core's own keys** (CA3; bergdb 024-37;
+  024-01, section 5.3): a database that never opened again after a put
+  at `/#i/dreclaim/-settings.txt` through `Db` (Core API, above).

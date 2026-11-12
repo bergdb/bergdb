@@ -168,6 +168,34 @@ public class Trans {
         return Keys.isPrefix(OWN_PREFIX, key);
     }
     
+    /**
+     * Whether a key is one of the keys that the Core writes itself (bergdb 024-37; 010-04,
+     * R5): the key "/#i/-dummy" (DbConstants.DUMMY_KEY, setStartupDistance()'s dummy KV), and
+     * reclaim's directory "/#i/dreclaim/" and every key under it (Reclaim.KEY_PREFIX_SKEY: its
+     * settings, its table, the row of its iteration and maintain()'s filler). A start reads
+     * them and refuses what it cannot take, so a caller's put or delete there could make a
+     * database that never starts again (CA3; 022-06-2, U2-8): the Builder's public calls
+     * refuse such a key with IllegalArgumentException, and Db.execute() refuses a KV at one
+     * that did not come from the Core's own calls (putCore(), deleteCore()) with a
+     * DbException, unless the transaction is reclaim's (isInternal). The Pub API's keys
+     * under "/#i/", "/#i/di..." (its index definitions, entries and markers), are not among
+     * them. Only keys under "/#", the bytes 01 25, are compared further.
+     */
+    static boolean coreKey(long[] key) {
+        return ownKey(key) && (Keys.compareArrays(key, DbConstants.DUMMY_KEY) == 0
+                || Keys.compareArrays(key, Reclaim.KEY_PREFIX_SKEY) == 0
+                || Keys.isPrefix(Reclaim.KEY_PREFIX_SKEY, key));
+    }
+    
+    /** The message of the refusal of a caller's write at one of the Core's own keys. */
+    static String coreKeyMessage(long[] key) {
+        return "The key " + Keys.toDisplayString(Keys.toBytes(key)) + " is one that the Core "
+                + "writes itself, \"/#i/-dummy\" or a key under \"/#i/dreclaim/\": a start reads "
+                + "it, and a put or a delete there could make a database that never starts "
+                + "again. The write is refused, nothing of it is written, and the database goes "
+                + "on (bergdb 010-04, R5; 024-37).";
+    }
+    
     public String toString() {
         String s = "tt:" + tt + ", pos:" + tpos;
         s = isInternal ? s + ", internal" : s;
@@ -219,6 +247,12 @@ public class Trans {
      * takes them, a put or a delete, and nothing is added (Db, "Limits"; bergdb 024-17, L2 and
      * L4); Db.execute() refuses a transaction of more than Db.MAX_OPERATIONS operations (500)
      * or of more bytes than its limits (L1, L3, L5).</p>
+     * <p>A put or a delete at a key that the Core writes itself, "/#i/-dummy" or reclaim's
+     * "/#i/dreclaim/" or a key under it, is refused with IllegalArgumentException by the call
+     * that takes it, and nothing is added (Db, "The Core's own keys are refused"; bergdb 010-04,
+     * R5; 024-37). A key that a key transformation gives there is refused by Db.execute() with
+     * a DbException, and so is a KV of putLongKey() or deleteLongKey() there. The Core's own
+     * writes there use package-private calls.</p>
      * <p>A null key, value, read key or hash array is refused with IllegalArgumentException,
      * and nothing is added (bergdb 020-27, Q2: a null key threw NullPointerException, or
      * AssertionError with -ea, and delete((long[]) null) was taken, so that build() threw);
@@ -267,7 +301,8 @@ public class Trans {
          * @throws IllegalArgumentException  If key or value is null; for a null value, delete()
          *      deletes. If the key has more than Db.MAX_KEY_BYTES bytes (111), or the value
          *      more than Db.MAX_VALUE_BYTES (8 MiB) (Db, "Limits"; bergdb 024-17, L2, L4).
-         *      The call adds nothing and spoils the builder (the class Javadoc).
+         *      If the key is one that the Core writes itself (the class Javadoc; bergdb
+         *      010-04, R5). The call adds nothing and spoils the builder (the class Javadoc).
          * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
          */
         public Builder put(byte[] key, byte[] value) {
@@ -276,7 +311,9 @@ public class Trans {
                 checkKey(key);
                 checkKeyBytes(key.length);
                 checkValue(value);
-                kvs.add(new Kv(Keys.toSegments(key), value));
+                final long[] segments = Keys.toSegments(key);
+                checkNotCoreKey(segments);
+                kvs.add(new Kv(segments, value));
             } catch (RuntimeException | Error e) {
                 spoil("put", e);
                 throw e;
@@ -290,7 +327,8 @@ public class Trans {
          * @throws IllegalArgumentException  If key or value is null, or the key has no segment;
          *      for a null value, delete() deletes. If the key has more than Db.MAX_KEY_BYTES
          *      bytes (111) as stored, or the value more than Db.MAX_VALUE_BYTES (8 MiB) (L2,
-         *      L4). The call adds nothing and spoils the builder (the class Javadoc).
+         *      L4), or the key is one that the Core writes itself (the class Javadoc; bergdb
+         *      010-04, R5). The call adds nothing and spoils the builder (the class Javadoc).
          * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
          */
         public Builder put(long[] key, byte[] value) {
@@ -299,6 +337,7 @@ public class Trans {
                 checkSegments(key);
                 checkKeyBytes(keyBytes(key));
                 checkValue(value);
+                checkNotCoreKey(key);
                 kvs.add(new Kv(key, value));
             } catch (RuntimeException | Error e) {
                 spoil("put", e);
@@ -316,8 +355,9 @@ public class Trans {
          * @throws IllegalArgumentException  If key or value is null, or the key has no segment.
          *      If the key as written has more than Db.MAX_KEY_BYTES bytes (111), or the value
          *      more than Db.MAX_VALUE_BYTES (8 MiB) (L2, L4); the key that the transformation
-         *      gives is checked by Db.execute() (Db, "Limits"). The call adds nothing and
-         *      spoils the builder (the class Javadoc).
+         *      gives is checked by Db.execute() (Db, "Limits"). If the key as written is one
+         *      that the Core writes itself (the class Javadoc; bergdb 010-04, R5). The call
+         *      adds nothing and spoils the builder (the class Javadoc).
          * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
          */
         public Builder put(long[] key, KeyTransformation kt, byte[] value, ValueTransformation vt) {
@@ -326,6 +366,7 @@ public class Trans {
                 checkSegments(key);
                 checkKeyBytes(keyBytes(key));
                 checkValue(value);
+                checkNotCoreKey(key);
                 Kv kv = new Kv(key, value, kt, vt);
                 kvs.add(kv);
             } catch (RuntimeException | Error e) {
@@ -345,7 +386,10 @@ public class Trans {
          * transaction's go point, where a refusal would fail the database, and it copies what
          * a user transaction put, which Db.execute() checked (review rev24, R1). For a user
          * transaction Db.execute() checks each KV (L2 but for BergDB's keys, L4), the
-         * operations (L1), the keys' bytes (L3) and the keys' and values' bytes (L5).
+         * operations (L1), the keys' bytes (L3) and the keys' and values' bytes (L5). A key
+         * that the Core writes itself is not refused here, as reclaim copies those too; in a
+         * transaction that is not reclaim's Db.execute() refuses it with a DbException
+         * (the class Javadoc; bergdb 024-37).
          * 
          * @throws IllegalArgumentException  If key or value is null, the key has no segment,
          *      or it has more than Db.MAX_KEY_BYTES bytes and does not start with 01 25. The
@@ -396,6 +440,61 @@ public class Trans {
         }
         
         /**
+         * The Core's own put, not API (bergdb 024-37): as put(long[], KeyTransformation,
+         * byte[], ValueTransformation), and also at one of the keys the Core writes itself
+         * (coreKey()), which the public calls refuse; Db.execute() lets its KV pass
+         * (Kv.coreWrite). For Db's dummy KV (setStartupDistance()) and reclaim's settings,
+         * table, row and maintain()'s filler (Reclaim).
+         * 
+         * @throws IllegalArgumentException  As put(long[], KeyTransformation, byte[],
+         *      ValueTransformation), but never for a key of the Core's own.
+         * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
+         */
+        Builder putCore(long[] key, KeyTransformation kt, byte[] value, ValueTransformation vt) {
+            checkNotSpoiled("putCore");
+            try {
+                checkSegments(key);
+                checkKeyBytes(keyBytes(key));
+                checkValue(value);
+                Kv kv = new Kv(key, value, kt, vt);
+                kv.coreWrite = true;
+                kvs.add(kv);
+            } catch (RuntimeException | Error e) {
+                spoil("putCore", e);
+                throw e;
+            }
+            return this;
+        }
+        
+        /** The Core's own put, not API: putCore(key, null, value, null). */
+        Builder putCore(long[] key, byte[] value) {
+            return putCore(key, null, value, null);
+        }
+        
+        /**
+         * The Core's own delete, not API (bergdb 024-37): as delete(long[]), and also at one
+         * of the keys the Core writes itself (putCore()).
+         * 
+         * @throws IllegalArgumentException  As delete(long[]), but never for a key of the
+         *      Core's own.
+         * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
+         */
+        Builder deleteCore(long[] key) {
+            checkNotSpoiled("deleteCore");
+            try {
+                checkSegments(key);
+                checkKeyBytes(keyBytes(key));
+                Kv kv = new Kv(key, null);
+                kv.coreWrite = true;
+                kvs.add(kv);
+            } catch (RuntimeException | Error e) {
+                spoil("deleteCore", e);
+                throw e;
+            }
+            return this;
+        }
+        
+        /**
          * Puts the value's UTF-8 bytes at the key's bkey (Keys.toBytes()). The key and the
          * value are Unicode text, stored as well-formed UTF-8 (bergdb 021-04, 021-05).
          *
@@ -403,8 +502,8 @@ public class Trans {
          *      char of U+D800 to U+DFFF that is not part of a surrogate pair: UTF-8 cannot
          *      hold it, and its encoding would write '?' (bergdb 021-05). If key or value is
          *      null, or the key is empty (Keys.toBytes()). If the key or the value is over its
-         *      limit, as for put(byte[], byte[]). The call adds nothing and spoils the
-         *      builder (the class Javadoc).
+         *      limit, or the key is the Core's own, as for put(byte[], byte[]). The call adds
+         *      nothing and spoils the builder (the class Javadoc).
          * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
          */
         public Builder put(String key, String value) {
@@ -431,8 +530,8 @@ public class Trans {
          * 
          * @throws IllegalArgumentException  If key or value is null, or the key is empty or has
          *      a lone surrogate, as for put(String, String); if the key or the value is over
-         *      its limit, as for put(byte[], byte[]). The call adds nothing and spoils the
-         *      builder (the class Javadoc).
+         *      its limit, or the key is the Core's own, as for put(byte[], byte[]). The call
+         *      adds nothing and spoils the builder (the class Javadoc).
          * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
          */
         public Builder put(String key, byte[] value) {
@@ -579,8 +678,9 @@ public class Trans {
          * Deletes the key's value; the key is the String's bkey (Keys.toBytes()).
          * 
          * @throws IllegalArgumentException  If key is null, empty or has a lone surrogate, or
-         *      has more than Db.MAX_KEY_BYTES bytes (111) as stored (L2). The call adds nothing
-         *      and spoils the builder (the class Javadoc).
+         *      has more than Db.MAX_KEY_BYTES bytes (111) as stored (L2), or is one that the
+         *      Core writes itself (the class Javadoc). The call adds nothing and spoils the
+         *      builder (the class Javadoc).
          * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
          */
         public Builder delete(String key) {
@@ -602,7 +702,8 @@ public class Trans {
          * or not: it counts towards Db.MAX_OPERATIONS (L1) as a put does (Db, "Limits").
          * 
          * @throws IllegalArgumentException  If key is null, or has more than Db.MAX_KEY_BYTES
-         *      bytes (111) (L2). The call adds nothing and spoils the builder (the class
+         *      bytes (111) (L2), or is one that the Core writes itself (the class Javadoc;
+         *      bergdb 010-04, R5). The call adds nothing and spoils the builder (the class
          *      Javadoc).
          * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
          */
@@ -611,7 +712,9 @@ public class Trans {
             try {
                 checkKey(key);
                 checkKeyBytes(key.length);
-                kvs.add(new Kv(Keys.toSegments(key), null));
+                final long[] segments = Keys.toSegments(key);
+                checkNotCoreKey(segments);
+                kvs.add(new Kv(segments, null));
             } catch (RuntimeException | Error e) {
                 spoil("delete", e);
                 throw e;
@@ -623,7 +726,8 @@ public class Trans {
          * As delete(byte[]) with the key as segments (Keys.toSegments()).
          * 
          * @throws IllegalArgumentException  If key is null or has no segment, or has more than
-         *      Db.MAX_KEY_BYTES bytes (111) as stored (L2). The call adds nothing and spoils
+         *      Db.MAX_KEY_BYTES bytes (111) as stored (L2), or is one that the Core writes
+         *      itself (the class Javadoc; bergdb 010-04, R5). The call adds nothing and spoils
          *      the builder (the class Javadoc).
          * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
          */
@@ -632,6 +736,7 @@ public class Trans {
             try {
                 checkSegments(key);
                 checkKeyBytes(keyBytes(key));
+                checkNotCoreKey(key);
                 kvs.add(new Kv(key, null));
             } catch (RuntimeException | Error e) {
                 spoil("delete", e);
@@ -725,6 +830,16 @@ public class Trans {
         private static void checkLongKey(long[] key) {
             if (!ownKey(key)) {
                 checkKeyBytes(keyBytes(key));
+            }
+        }
+        
+        /**
+         * A key that the Core writes itself (coreKey()) is refused, and nothing is added
+         * (bergdb 024-37; 010-04, R5).
+         */
+        private static void checkNotCoreKey(long[] key) {
+            if (coreKey(key)) {
+                throw new IllegalArgumentException(coreKeyMessage(key));
             }
         }
         

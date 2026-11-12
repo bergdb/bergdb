@@ -215,15 +215,28 @@ import bergdb.stream.SalsaStream;
  * "/#i/" (DbConstants.INTERNAL_PREFIX): reclaim's state and the Pub API's index definitions,
  * entries and markers. Do not write them. Data there that does not parse is refused with
  * InternalDataException, at a start or at the read that meets it. Data that parses but that
- * BergDB did not write makes values missing from an index's scans, or an index disappear,
- * and in reclaim's keys it can lose data.</li>
+ * BergDB did not write makes values missing from an index's scans, or an index disappear.
+ * Of them, the keys that the Core writes itself are refused (below).</li>
  * </ul>
+ * <p><b>The Core's own keys are refused</b> (bergdb 024-37; 010-04, R5: the Core API never
+ * destroys the key-value store). The key "/#i/-dummy" (the bkey 01 25 6b 01 2f 66 77 6f 6f
+ * 7b), and reclaim's directory "/#i/dreclaim/" with every key under it, are written by the
+ * Core alone. A start reads them, and a value there that the Core did not write could make
+ * a database that never starts again (until release 2026.5 seven bytes put at
+ * "/#i/dreclaim/-settings.txt" did). So a caller's put or delete at one of them is refused
+ * before anything is written, and the database goes on: by the Trans.Builder call that
+ * takes the key, with IllegalArgumentException, which spoils the builder; and by execute(),
+ * with a DbException, for a key that a key transformation gives and for the KVs of the
+ * internal calls Trans.Builder.putLongKey() and deleteLongKey(). The Pub API's keys under
+ * "/#i/" (those that start with "/#i/di") are not refused: the Pub API writes them through
+ * Db. A read of the Core's keys is allowed.</p>
  * <p>The Core writes BergDB's keys itself, also in a database that the Pub API never opens
  * (bergdb 020-24-09, U9-4). A new database has none. setStartupDistance() puts a value of 200
  * kB at "/#i/-dummy" (the bytes 01 25 6b 01 2f 66 77 6f 6f 7b), which stays live, so that
  * reclaim copies it forward as any live value; setRetainDuration() and
  * setReclaimInternalFraction() put reclaim's settings at "/#i/dreclaim/-settings.txt"; and
- * reclaim, when it runs, keeps its state under "/#i/dreclaim/". getMany() returns these keys
+ * reclaim, when it runs, keeps its state under "/#i/dreclaim/", as maintain() its filler
+ * "/#i/dreclaim/-fill.txt", deleted at once. getMany() returns these keys
  * as any other, getTrans() lists them, getTransactionCount() counts their transactions and
  * getKvCount() their KVs. So in every database, used by the Pub API or not, a key whose bytes
  * start with 01 25, the bkey of "/#", is BergDB's: do not write it, and to read only the other
@@ -656,7 +669,7 @@ public class Db implements AutoCloseable {
             this.startupDistance = newDistance;
             this.nodeStream.getMetaBlock().setStartupDistance(dist);
             try {
-                this.execute(trans().put(DbConstants.DUMMY_KEY, dummyValue).build());
+                this.execute(trans().putCore(DbConstants.DUMMY_KEY, dummyValue).build());
             } catch (RuntimeException | Error e) {
                 // Refused, or the database failed and must be restarted, which reads the
                 // stream's setting.
@@ -2612,7 +2625,10 @@ public class Db implements AutoCloseable {
      *             If the transaction is refused before its go point, and the database goes
      *             on: it passes a limit of "Limits" above, its operations (L1), its keys'
      *             bytes (L3) or its keys' and values' bytes (L5), or a key transformation
-     *             gives a key over L2 or the keys over L3 (bergdb 024-17, 024-24); it is too
+     *             gives a key over L2 or the keys over L3 (bergdb 024-17, 024-24); a KV is at
+     *             a key that the Core writes itself, as written (putLongKey(), deleteLongKey())
+     *             or as a key transformation gave it ("The Core's own keys are refused";
+     *             bergdb 024-37); it is too
      *             large for a record (bergdb 005-17), or its dirty index nodes would not fit
      *             in one record (005-31); its key transformations make two of its keys one
      *             key, and its KVs are left as they were (bergdb 024-16; Trans.Builder); the
@@ -2943,6 +2959,7 @@ public class Db implements AutoCloseable {
      */
     private static void checkSize(Trans t) {
         checkLimits(t.kvs);
+        checkCoreKeys(t.kvs);
         long bytes = 0;
         for (Kv kv : t.kvs) {
             bytes += StoredValueNode.getByteSizeLong(kv.getValue(), kv.getKey());
@@ -2951,6 +2968,26 @@ public class Db implements AutoCloseable {
         if (bytes > limit) {
             throw new DbException("The transaction is too large: its values and keys take " 
                     + bytes + " bytes in the stream, more than " + limit + ".");
+        }
+    }
+    
+    /**
+     * Refuses a user transaction with a KV at a key that the Core writes itself
+     * (Trans.coreKey(): "/#i/-dummy", "/#i/dreclaim/" and the keys under it), keys as written,
+     * unless the KV came from Trans.Builder's Core calls (Kv.coreWrite; bergdb 024-37; 010-04,
+     * R5). The Builder's public calls refuse such a key already; this check is for the KVs
+     * that they do not check, those of putLongKey() and deleteLongKey() and those set in
+     * t.kvs (its kvs are public). Called by checkSize(), before the write lock and the go
+     * point; a key that a key transformation gives is checked by transformKeys(). Not for
+     * reclaim's internal transactions, which copy the Core's keys as any live KV.
+     *
+     * @throws DbException
+     */
+    static void checkCoreKeys(Kv[] kvs) {
+        for (Kv kv : kvs) {
+            if (!kv.coreWrite && Trans.coreKey(kv.getKey())) {
+                throw new DbException(Trans.coreKeyMessage(kv.getKey()));
+            }
         }
     }
     
@@ -3395,6 +3432,18 @@ public class Db implements AutoCloseable {
                             + " gave a key of " + k + " bytes, more than " + MAX_KEY_BYTES
                             + " (bergdb 024-17, L2). The transaction is refused; nothing of "
                             + "it is written, and the database goes on.";
+                    giveBack(t, kvs, written, hashes, ttBefore);
+                    throw new DbException(message);
+                }
+            }
+            // A key of the Core's own that a transformation gave (bergdb 024-37; 010-04, R5;
+            // checkCoreKeys() for the keys as written).
+            for (int i = 0; i < kvs.length; i++) {
+                if (written[i] != null && !t.isInternal() && !kvs[i].coreWrite
+                        && Trans.coreKey(kvs[i].getKey())) {
+                    final String message = "The key transformation of " + shown(written[i])
+                            + " gave a key of the Core's own. " 
+                            + Trans.coreKeyMessage(kvs[i].getKey());
                     giveBack(t, kvs, written, hashes, ttBefore);
                     throw new DbException(message);
                 }
