@@ -36,7 +36,8 @@
 #      and SS limits.
 #   4. stress/count-gates.sh: count gates of aims 2 and 3 of release 2026.5
 #      at 1M keys (the largest record, the reachable key nodes against a
-#      twin's, the stream kept under reclaim); about 3 minutes (bergdb 024-30).
+#      twin's, the stream kept under reclaim, back to empty after a fill and
+#      its deletes); about 3 minutes (bergdb 024-30).
 #   5. stress/lean-tests.sh: the Lean model's test programs, sistest,
 #      phystest and reclaimtest, at small sizes; about 4.5 minutes (bergdb
 #      021-03).

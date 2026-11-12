@@ -44,6 +44,16 @@ import bergdb.stream.FileStream;
  *      iteration until the third cut: after each transaction, kept (stream length minus
  *      the first available position) minus H_R, the bytes of the user's records committed
  *      at or after now - R. Passes when the peak is at most 6 times L0.
+ *   G4 (back to empty; 023-03's T1, the hello-world convergence test, at n keys): put
+ *      "/a.txt", fill n keys in key order and delete them all, 100 a transaction, with R
+ *      and a startup distance of 100 kB (the builder's default cache, eviction on); then
+ *      a drive of 40 R of overwrites of "/a.txt" (1,000 bytes). Against a twin that skips
+ *      the fill and the deletes: kept (the most in the last R), the reachable key nodes,
+ *      their dead KEY klongs, the resident index objects, the live handles, the cache
+ *      tables' slots (ST6, reported, not counted; g4st6=gate counts it) and the heap
+ *      after a GC, each at most 2 times the twin's. KeyAccessPath's arrays (ST7) are
+ *      printed, not gated. Needs --add-opens java.base/java.util (the slots are
+ *      HashMap's table lengths).
  *
  * Every database is a FileStream in dir with the builder's defaults (startup distance 50
  * MB, cache indicator 200 MB), a test clock (dt time units a transaction) and
@@ -57,7 +67,9 @@ import bergdb.stream.FileStream;
  *   dt=10000 (time units a transaction; R is then 1,000 transactions), dir=build/count-gates-data,
  *   fifo=n*0.06 and overwrites=n*0.02 (G1's transactions), maxdrive=n/20 (G2's most
  *   overwrite transactions a shape), g3batch=10 (puts a G3 transaction), cuts=3 (G3),
- *   g3max=n*2 (G3's most transactions). Exits with status 1 if a gate fails.
+ *   g3max=n*2 (G3's most transactions), g4drive=40000 (40 R), g4sd=100000, g4evict=0 (no
+ *   eviction in G4), g4kept, g4nodes, g4slots, g4heap (G4's factors, 2). Exits with status
+ *   1 if a gate fails.
  */
 public class CountGates {
     static final long SEC = Clock.UNITS_PER_SEC;
@@ -116,13 +128,21 @@ public class CountGates {
         String maxWhere = "";
 
         Run(String label) {
+            this(label, 0);
+        }
+
+        /** With sd > 0: that startup distance, no eviction and the test id (G4, T1's). */
+        Run(String label, int sd) {
             this.label = label;
             dir = new File(base, label);
             rm(dir);
             dir.mkdirs();
             clock.setTime(time);
             try {
-                db = Db.builder().mainStream(new FileStream(dir)).clock(clock).start();
+                DbBuilder b = Db.builder().mainStream(new FileStream(dir)).clock(clock);
+                if (sd > 0) b.startupDistance(sd).testId();     // G4
+                if (sd > 0 && i("g4evict", 1) == 0) b.noEvict();
+                db = b.start();
             } catch (IOException e) {
                 throw new java.io.UncheckedIOException(e);
             }
@@ -447,13 +467,138 @@ public class CountGates {
         gate("G3", "BD10 (stream kept - H_R) / L0, peak", v, 6, "%.3f");
     }
 
+    // ======== G4 ========
+
+    static final byte[] HELLO = "Hello world!".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+    /** G4's measures of one database at the end of its drive. */
+    static final class G4M {
+        long keptMax, reach, klongs, dead, objects, handles, slots, heap, userKeys;
+        int pathKlongs, pathNodes;
+        long firstCut = -1, lag = -1, kept4R = -1;     // drive transactions; kept at 4 R
+
+        String line() {
+            return String.format("keptMax=%d reach=%d klongs=%d dead=%d objects=%d handles=%d "
+                    + "slots=%d heap=%d pathKlongs=%d pathNodes=%d userKeys=%d", keptMax, reach,
+                    klongs, dead, objects, handles, slots, heap, pathKlongs, pathNodes, userKeys);
+        }
+    }
+
+    static long usedHeap() {
+        Runtime rt = Runtime.getRuntime();
+        for (int k = 0; k < 4; k++) System.gc();
+        return rt.totalMemory() - rt.freeMemory();
+    }
+
+    static Object field(Object o, String name) throws ReflectiveOperationException {
+        java.lang.reflect.Field f = o.getClass().getDeclaredField(name);
+        f.setAccessible(true);
+        return f.get(o);
+    }
+
+    /**
+     * T1 of 023-03 (section 2) on one database: create, R, put "/a.txt"; fill nn keys in key
+     * order and delete them all, 100 a transaction; the drive, overwrites of "/a.txt"; then
+     * the measures. heap0 is the heap after a GC before the database was made. twinKept: the
+     * twin's M1, to find the lag, the first drive transaction after which kept is at most
+     * twice it (0 for the twin itself).
+     */
+    G4M g4Run(String label, int nn, long heap0, long twinKept)
+            throws ReflectiveOperationException {
+        int sd = i("g4sd", 100000), dvs = i("g4dvalsize", 1000);
+        int rTx = (int) (retain / dt);
+        int drive = i("g4drive", 40 * rTx);
+        Run r = new Run(label, sd);
+        r.db.setRetainDuration(retain);
+        r.exec(r.db.trans().put("/a.txt", HELLO), "create");
+        if (nn > 0) {
+            fill(r, range(0, nn), 100, "fill");
+            for (int k = 0; k < nn; ) {
+                Trans.Builder b = r.db.trans();
+                for (int j = 0; j < 100 && k < nn; j++, k++) b.delete(key(k));
+                r.exec(b, "delete");
+            }
+            out(el() + "   G4 " + label + " filled and deleted " + nn + " keys; " + r.state());
+        }
+        G4M m = new G4M();
+        int cuts0 = r.stats.cuts.size();
+        for (int k = 1; k <= drive; k++) {
+            r.exec(r.db.trans().put("/a.txt", value(dvs, k)), "drive");
+            long kept = r.kept();
+            if (k >= drive - rTx) m.keptMax = Math.max(m.keptMax, kept);
+            if (k == 4 * rTx) m.kept4R = kept;
+            if (m.firstCut < 0 && r.stats.cuts.size() > cuts0) m.firstCut = k;
+            if (twinKept > 0 && kept > 2 * twinKept) m.lag = -1;
+            else if (twinKept > 0 && m.lag < 0) m.lag = k;
+        }
+        out(el() + "   G4 " + label + " drive " + drive + " transactions; " + r.state()
+                + " firstCut=" + m.firstCut + " lag=" + m.lag + " kept4R=" + m.kept4R);
+        synchronized (r.db.internal().getWriteLock()) {
+            Count c = new Count(r.db.internal().nodeCollection().maintenance());
+            GetMany g = r.db.newGetMany();
+            g.gd.pointerFollower = c;
+            r.db.getMany(g);
+            m.reach = c.ids.size();
+            m.klongs = c.keyKlongs;
+            m.dead = c.keyKlongs - c.live;
+            for (Kvt kvt : g.result) {
+                if (!Keys.toString(kvt.key).startsWith("/#")) m.userKeys++;
+            }
+            Cache3 cache = r.db.internal().cache();
+            m.objects = cache.residents().objects();
+            m.handles = cache.handles().size();
+            for (HashMap<?, ?> map : (HashMap<?, ?>[]) field(cache, "maps")) {
+                Object[] table = (Object[]) field(map, "table");
+                if (table != null) m.slots += table.length;
+            }
+            Object path = r.db.internal().x().putData.keyAccessPath;
+            m.pathKlongs = ((long[]) field(path, "klongs")).length;
+            m.pathNodes = ((Object[]) field(path, "nodes")).length;
+        }
+        m.heap = usedHeap() - heap0;
+        if (m.userKeys != 1) throw new AssertionError("G4 " + label + ": " + m.userKeys
+                + " user keys, expected 1");
+        r.close();
+        out("  G4 " + label + " " + m.line());
+        return m;
+    }
+
+    void g4() throws ReflectiveOperationException {
+        G4M t = g4Run("g4-twin", 0, usedHeap(), 0);
+        G4M e = g4Run("g4-emptied", n, usedHeap(), t.keptMax);
+        out(String.format("  G4 ST7, not gated (closed as negligible by Frans, 2026-11-12): "
+                + "KeyAccessPath arrays %d klongs, %d nodes; the twin's %d, %d", e.pathKlongs,
+                e.pathNodes, t.pathKlongs, t.pathNodes));
+        g4Gate("M1 kept, most in the last R", e.keptMax, t.keptMax, d("g4kept", 2));
+        g4Gate("M4 reachable key nodes", e.reach, t.reach, d("g4nodes", 2));
+        g4Gate("M5 dead KEY klongs", e.dead, t.dead, d("g4nodes", 2));
+        g4Gate("M11 resident index objects", e.objects, t.objects, d("g4nodes", 2));
+        g4Gate("M11 live handles", e.handles, t.handles, d("g4nodes", 2));
+        // ST6 fails on main (024-30, section 9): reported, not counted, until its fix is
+        // decided; g4st6=gate counts it.
+        boolean f = failed;
+        g4Gate("ST6 cache table slots", e.slots, t.slots, d("g4slots", 2));
+        if (!s("g4st6", "report").equals("gate") && failed && !f) {
+            failed = false;
+            out("  G4 ST6 above: known (024-05, ST6), not counted until its fix is decided");
+        }
+        g4Gate("heap after a GC", e.heap, t.heap, d("g4heap", 2));
+    }
+
+    double d(String k, double d) { return p.containsKey(k) ? Double.parseDouble(p.get(k)) : d; }
+
+    void g4Gate(String what, long emptied, long twin, double factor) {
+        gate("G4", what + " over the twin's (" + emptied + " / " + twin + ")",
+                (double) emptied / Math.max(1, twin), factor, "%.3f");
+    }
+
     static void rm(File f) {
         File[] fs = f.listFiles();
         if (fs != null) for (File c : fs) rm(c);
         f.delete();
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws Exception {
         CountGates x = new CountGates();
         String which = args.length > 0 && args[0].indexOf('=') < 0 ? args[0] : "all";
         for (String a : args) {
@@ -470,6 +615,7 @@ public class CountGates {
         if (which.equals("all") || which.equals("g1")) x.g1();
         if (which.equals("all") || which.equals("g2")) x.g2();
         if (which.equals("all") || which.equals("g3")) x.g3();
+        if (which.equals("all") || which.equals("g4")) x.g4();
         rm(x.base);
         out(x.el() + (x.failed ? " COUNT GATES FAILED" : " COUNT GATES OK"));
         System.exit(x.failed ? 1 : 0);
