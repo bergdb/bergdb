@@ -1298,6 +1298,33 @@ public class CorruptStreamTester {
     }
 
     /**
+     * A time klong with a reserved bit set (bergdb 024-25, section 12), refused at the start.
+     * Found by testFull on 2026-11-12 (its seed 20404): LONG's original of seed 3971451, the
+     * node at offset 1104 of the record at 27920, its klong 0, the time 460, xor 1 at its byte
+     * 39, bit 56; the checksum made right. Before, the start took it, and KeyNode.addKlong's
+     * assert (-ea) compared the whole klong, 2^56 + 460, with the rerun's time 500 (without
+     * -ea it started and answered right: getTime() ignores the bit). Seed 20775 had found it
+     * too (2026-11-10).
+     */
+    @Nano
+    public static void testFoundTimeKlongBits() {
+        Original o = write(LONG, 3971451L);
+        Record rec = o.recordAt(27920);
+        int[] node = null;
+        for (int[] n : rec.nodes) {
+            if (n[0] == 1104) node = n;
+        }
+        byte[] nb = Arrays.copyOfRange(rec.bytes, node[0], node[0] + node[1]);
+        nb[39] ^= (byte) 0x01;
+        Copy c = nodeCopy(o, rec, node, nb, "xor 1 at its byte 39");
+        Outcome out = check(o, c);
+        if (out.failure != null || !out.kind.startsWith("refused")) {
+            throw new AssertionError(c.what + ": " + (out.failure != null ? out.failure
+                    : out.kind));
+        }
+    }
+
+    /**
      * A pointer that a start links by node id, set to a version of a node of another type,
      * its node's checksum made right (bergdb 021-11): each refused at the start. Before, the
      * start's rule 4 (NodeCollection.linkToCanonical) gave the pointer that node's handle,
