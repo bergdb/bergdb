@@ -11,8 +11,8 @@
 #      times the twin's fresh stream, at its peak under steady overwrites.
 #   G4 (back to empty, 023-03's T1): n keys put and deleted, then a drive of
 #      40 R; kept, key nodes, dead klongs, resident objects, handles, the heap,
-#      at most 2 times a hello-world twin's (the cache's table slots, ST6,
-#      reported, not counted).
+#      the cache's table slots (ST6, since 024-33), at most 2 times a
+#      hello-world twin's.
 # A step of night.sh after level4; not in before-commit.sh (it takes minutes).
 # About 2.5 minutes on F53 (2026-11-12). A 10M variant (n=10000000) is not a
 # step; 024-30, section 6, notes it for later.

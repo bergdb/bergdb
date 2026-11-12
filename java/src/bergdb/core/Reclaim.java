@@ -544,6 +544,8 @@ public class Reclaim implements Db.TransactionListener {
      * One step of iteration 'it': scans KVs at time tStart after lastKey, about writeSize
      * bytes of them, rewrites each live value stored before pCut,
      * and stores the table row as it is after the step; all in one internal transaction.
+     * Only a KV whose value the scan found before pCut is read again, at the step's time
+     * (bergdb 024-34).
      * After the last step (the scan reached the end), the iteration is done, and tEnd and
      * pEnd are stored.
      * 
@@ -567,6 +569,7 @@ public class Reclaim implements Db.TransactionListener {
         // 2026-10-18 (bergdb item 001, WP J6): the step's reserve, in index nodes followed.
         final long maxNodes = Math.max(1, stepReserve / stepNodeBytes());
         final boolean[] split = new boolean[] {false};
+        final long[] atCut = new long[2];   // Value loads seen, those at pCut or later (stats).
         
         GetMany g = db.newGetMany();
         g.gd.pointerFollower = maintenance;
@@ -581,6 +584,11 @@ public class Reclaim implements Db.TransactionListener {
             public int handleKvt(Kvt kvt) {
                 size += kvt.key.length * 8 + kvt.value.length + 100;
                 lastKeyOfStep[0] = kvt.key;
+                final long vl = maintenance.valueLoads();
+                if (vl > atCut[0]) {
+                    atCut[0] = vl;
+                    if (Spos.isVpos(kvt.spos) || kvt.spos >= it.pCut) atCut[1]++;
+                }
                 if (maintenance.indexNodes() > maxNodes) {
                     split[0] = true;
                     return ADD_AND_STOP;
@@ -613,11 +621,23 @@ public class Reclaim implements Db.TransactionListener {
         final long valueLimit = StoredTrans.valueLimit();
         long valueNodeBytes = 0;
         int kvs = 0;                        // The KVs of the scan that the step covers.
+        long gets = 0;                      // For stats.
         
         for (Kvt kvt : g.result) {
+            // bergdb 024-34 (024-05, OP8): a KV whose value the scan found at pCut or later,
+            // or not yet written (a vpos), is not rewritten, so it is not read again. Its value
+            // at the step's time is that one, a later one (stored after tStart, so after
+            // pStart), or none, and a record lies wholly before or after pCut, a record
+            // boundary: so the test below would fail for it. Before, every KV of the scan was
+            // read again; the step's puts, its row and so its bytes are the same.
+            if (Spos.isVpos(kvt.spos) || kvt.spos >= it.pCut) {
+                kvs++;
+                continue;
+            }
             GetData gd = db.newGetData();
             gd.pointerFollower = maintenance;
             byte[] value;
+            gets++;
             
             if (stepLookupTime == -1) {         // BUG Fixed 130131, was "1" instead of "-1".
                 value = db.getOne(Long.MAX_VALUE, kvt.key, gd);
@@ -722,6 +742,9 @@ public class Reclaim implements Db.TransactionListener {
             st.maxStepDirtied = Math.max(st.maxStepDirtied, t.dirtiedNodes);
             st.loads += maintenance.loads();
             st.loadBytes += maintenance.loadBytes();
+            st.valueLoads += maintenance.valueLoads();
+            st.scanValueLoadsAtCut += atCut[1];
+            st.gets += gets;
             st.maxStepNodes = Math.max(st.maxStepNodes, scanNodes);
             if (split[0]) st.splitSteps++;
             if (eod[0]) {
@@ -1053,6 +1076,9 @@ public class Reclaim implements Db.TransactionListener {
             long dirtiedStored;         // Bytes of them counted in the allowance.
             long loads;                 // Versions the steps loaded from the stream (WP J6).
             long loadBytes;             // Their memory size.
+            long valueLoads;            // Of the loads, values (bergdb 024-34).
+            long scanValueLoadsAtCut;   // Values the scans loaded stored at pCut or later.
+            long gets;                  // Second reads: a key read again at the step's time.
             long maxStepNodes;          // Most index nodes one step's scan followed.
             long splitSteps;            // Steps that the reserve stopped (setStepReserve).
             final TouchCount touch = new TouchCount();
