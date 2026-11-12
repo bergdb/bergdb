@@ -32,6 +32,10 @@ Work moved here from 2026.5:
   the prototype `p8-steptime`; Frans, 2026-11-12, 12:10, "as
   recommended"): a shorter lag after a mass delete; 024-30's G4 shows
   back to empty converging without it.
+* **G4's lag as a gate** (024-30, Q30-3; decided by the coordinator
+  under Frans's delegation, 2026-11-12, 12:33): after runs at 100,000
+  and 3M keys show how back to empty's lag grows with the keys; printed,
+  not gated, until then.
 
 
 Proposed for 2026.6, not decided
