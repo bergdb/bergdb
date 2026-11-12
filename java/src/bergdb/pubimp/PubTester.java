@@ -4057,11 +4057,12 @@ public class PubTester {
     
     /**
      * bergdb 021-17, R17-1 (its review): a record that holds a user's value and a KV under
-     * reclaim's prefix, written through the Core's Db in one transaction, is malformed
-     * internal data (keys under /# are BergDB's, 020-22). transactionInfo() took it for a
-     * step of reclaim's and followed the value back: with no value of the key before the
-     * record, a Bug that failed the database; with one, the earlier transaction, a wrong
-     * result. Now it is refused with InternalDataException, and the database goes on.
+     * reclaim's prefix, written through the Core's Db in one transaction, was malformed
+     * internal data that transactionInfo() refused with InternalDataException. Since bergdb
+     * 024-37 (010-04, R5) the Core refuses the put under reclaim's prefix itself, with
+     * IllegalArgumentException, so no such record is written: transactionInfo() gives the
+     * last transaction of the Pub API, and the database goes on. (transactionInfo() still
+     * refuses such a record, met in a damaged stream.)
      */
     @Nano
     private static void testTransactionInfoOfAFakeReclaimRecord() {
@@ -4073,20 +4074,26 @@ public class PubTester {
                 if (earlier) {
                     c.put("/x", new byte[] {1});
                 }
-                db.execute(db.trans().put(Keys.toSegments(PubKeys.u2i("/x")), new byte[] {2})
-                        .put(Keys.toSegments(DbConstants.INTERNAL_PREFIX + "dreclaim/-fake.txt"),
-                                new byte[] {9})
-                        .build());
-                Assert.assertEquals(2, c.get("/x", byte[].class)[0]);
+                final long count = db.getTransactionCount();
                 try {
-                    TransactionInfo info = c.transactionInfo();
-                    throw new AssertionError("earlier put " + earlier + ": transactionInfo() "
-                            + "gave the transaction at " + info.time().units());
-                } catch (bergdb.core.InternalDataException e) {
-                    Assert.assertTrue(e.getMessage(), e.getMessage().contains("reclaim's prefix"));
+                    db.trans().put(Keys.toSegments(PubKeys.u2i("/x")), new byte[] {2})
+                            .put(Keys.toSegments(DbConstants.INTERNAL_PREFIX 
+                                    + "dreclaim/-fake.txt"), new byte[] {9});
+                    throw new AssertionError("a put under reclaim's prefix taken");
+                } catch (IllegalArgumentException e) {
+                    Assert.assertTrue(e.getMessage(), 
+                            e.getMessage().contains("is one that the Core writes itself"));
+                }
+                Assert.assertEquals("nothing written", count, db.getTransactionCount());
+                if (earlier) {
+                    Assert.assertEquals(1, c.get("/x", byte[].class)[0]);
+                } else {
+                    Assert.assertNull(c.get("/x", byte[].class));
                 }
                 c.put("/y", "3");               // The database goes on.
                 Assert.assertEquals("3", c.get("/y", String.class));
+                TransactionInfo info = c.transactionInfo();
+                Assert.assertTrue("transactionInfo()", info != null);
             } finally {
                 d.close();
             }

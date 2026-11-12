@@ -837,7 +837,9 @@ public class DbTesterRestart {
             CoreTestClock clock = new CoreTestClock();
             Db db = Db.builder().testSetup(stream).clock(clock).start();
             clock.setTime(10);
-            Trans t = db.trans().put(Reclaim.SETTINGS_KEY_NAME, i < 0 ? good : bad[i]).build();
+            // The Core's own put: a caller's is refused since bergdb 024-37.
+            Trans t = db.trans().putCore(Keys.toSegments(Reclaim.SETTINGS_KEY_NAME),
+                    StringUtil.toBytes(i < 0 ? good : bad[i])).build();
             t.isInternal = true;
             db.execute(t);
             db.sync(SyncLevel.ORDINARY);
