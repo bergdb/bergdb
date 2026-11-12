@@ -143,7 +143,8 @@ Cases:
 
 * 021-27: `Db.getTrans` at a position inside a record failed the
   database; refused with `IllegalArgumentException` since 2026-11-12
-  (option A).
+  (without a walk; above 1 MiB a walk of the record headers confirms
+  a record's start before its array is made, Q27-1).
 * A value transformation (Core API) that throws, or whose result passes
   8 MiB, fails the database in 2026.5: to change in 2026.6 (Frans,
   2026-11-12, 14:42: "Yes to R5 and for 2026.6. I don't see it as a
