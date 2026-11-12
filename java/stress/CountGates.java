@@ -62,8 +62,9 @@ import bergdb.stream.FileStream;
  *      true within the first 3/4 of the drive (converged, then quiet); as the twin is tiny,
  *      the key nodes, resident objects and handles at most the larger of twice the twin's
  *      and the twin's plus 10 (023-03's a_n), the dead KEY klongs the larger of twice the
- *      twin's and the twin's plus 30 (023-03's C4: B); the heap and the cache's table slots
- *      (ST6) at most 2 times the twin's, as G4.
+ *      twin's and the twin's plus 30 (023-03's C4: B); the heap at most 2 times the twin's, as
+ *      G4; the cache's table slots (ST6) at most the larger of twice the twin's and the
+ *      tables' floor since 024-33, 2^MAP_BITS maps of Table.MIN_CAPACITY slots.
  *
  * Every database is a FileStream in dir with the builder's defaults (startup distance 50
  * MB, cache indicator 200 MB), a test clock (dt time units a transaction) and
@@ -649,7 +650,15 @@ public class CountGates {
         gateSmall("M5 dead KEY klongs", e.dead, t.dead, 30);
         gateSmall("M11 resident index objects", e.objects, t.objects, 10);
         gateSmall("M11 live handles", e.handles, t.handles, 10);
-        gateTwin("G5", "ST6 cache table slots", e.slots, t.slots, d("g4slots", 2));
+        // ST6: since 024-33 a map's table shrinks to at least Table.MIN_CAPACITY, and a map
+        // once used keeps that table; the emptied database has used most of the 2^MAP_BITS
+        // maps, the twin 5. So the floor of the tables, 4,096 maps of 16 slots, independent
+        // of n, where twice the twin's is less (024-32, section 4).
+        long floor = (long) Cache3.maps() * Cache3.Table.MIN_CAPACITY;
+        long slotLimit = Math.max(2 * t.slots, floor);
+        gate("G5", "ST6 cache table slots over the larger of twice the twin's and the tables' "
+                + "floor " + floor + " (" + e.slots + " / " + t.slots + ")",
+                (double) e.slots / slotLimit, 1, "%.3f");
         gateTwin("G5", "heap after a GC", e.heap, t.heap, d("g4heap", 2));
     }
 
