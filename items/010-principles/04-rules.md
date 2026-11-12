@@ -110,26 +110,9 @@ Cases:
   (`RwEnvironment.get()`'s Javadoc).
 
 
-R4. A safety belt is decided case by case
------------------------------------------
+R4. Removed
+-----------
 
-Beyond R1 to R3, the database may refuse more, to catch a likely mistake
-of the user's code early, where that is cheap and documented. Such a
-safety belt is not part of the database's integrity (P14, R3): each is decided
-by Frans, case by case.
-
-Why: the spoiled builder of 024-27 (Frans, 2026-11-12, 07:36: "B. Ensure
-the behaviour is clear in the Javadoc."), set beside QR1, where an rw()
-action got no such belt because its code is the user's (R3).
-
-Cases:
-
-* 024-27, U26-5: a refused call spoils a Pub `WBuilder` and a Core
-  `Trans.Builder`: their execute() then throws and writes nothing, and
-  so does every later call (tests `PubTester.testRefusedCallSpoilsWBuilder`,
-  `Trans.testRefusedCallSpoilsBuilder`).
-* 024-27, QR1: no belt for an rw() action (R3).
-
-Open: a safety belt can stop code that is correct by R3, such as a
-builder used to try keys and skip those refused. 026-02's public key check
-would let such code test a key before the call instead of catching.
+R4, "A safety belt is decided case by case", was removed on 2026-11-12,
+10:19 (Frans: "Remove Rule R4."), minutes after it was written. Its number
+is not reused.

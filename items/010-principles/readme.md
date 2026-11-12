@@ -87,7 +87,8 @@ Files
   reused.
 * [04-rules.md](04-rules.md). 010-04, the rules: more detailed than the
   principles and grown from Frans's decisions, each with the principle it
-  serves and the cases it decided; R1 to R4, from 024-27 (P14).
+  serves and the cases it decided; R1 to R3, from 024-27 (P14); R4
+  removed.
 
 
 Log
@@ -158,3 +159,6 @@ so) and stable. [...] We can allow more rules (perhaps up to 100), more
 detailed."; 10:07: "Add 010-03 with the four rules."; 03 was used, so
 04), with R1 to R4 from 024-27, QR1. Added P14, the Pub API cannot
 destroy the database's integrity, and the Core API can (Frans, 10:15).
+
+2026-11-12. R4 removed from 010-04 (Frans, 10:19: "Remove Rule R4."); its
+number is not reused.

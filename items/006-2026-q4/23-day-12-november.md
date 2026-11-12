@@ -42,7 +42,7 @@ high.
 | 026 | 2026.6 work moved from 024 to 026, 024-20 first (026-01) | move (high) | done 07:42 |
 | 024-27 | QR1 kept as is: RwEnvironment's Javadoc, "Refused calls" | coordinator | landed |
 | 026-02 | A public key check: the options, a recommendation; no code | keychk (high) | done 09:39 |
-| 010-04 | Rules, beside the principles: R1 to R4 from 024-27 | coordinator | written |
+| 010-04 | Rules, beside the principles: R1 to R3 from 024-27 (R4 removed) | coordinator | written |
 | 010-01 | P14, the Pub API cannot destroy the database's integrity | coordinator | written |
 
 024-27 lands on its gates, by Frans's decisions of 07:36: its changed
@@ -108,6 +108,8 @@ from them.
   by using Core API." Written into 010-01; R1 to R3 serve it; 010's
   readme: P14, 010-04 and the Log (only these lines committed; Frans's
   own edit of the readme's top left uncommitted).
+* 10:19 Frans: "Remove Rule R4." Removed (its number kept, not reused);
+  P14's "Where BergDB stands" now names R1 to R3.
 
 
 ## 6. Outcome

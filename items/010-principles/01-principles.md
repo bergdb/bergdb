@@ -663,11 +663,10 @@ them; the Pub layer needs that freedom to be built on the Core API. So
 did the 2012 layers note, of the layer below Pub: "The DB layer is designed
 to suit the DB layer implementation; not to suit the user of the layer."
 
-Where BergDB stands (2026-11-12): the rules R1 to R4 (010-04) say how P14
+Where BergDB stands (2026-11-12): the rules R1 to R3 (010-04) say how P14
 is kept, call by call: a refused call changes nothing (R1), a commit holds
-all of its accepted calls or none (R2), the database keeps its own
-structures consistent and the user owns what her keys mean (R3), safety
-belts beyond that are decided case by case (R4). In Java, the entries of
+all of its accepted calls or none (R2), and the database keeps its own
+structures consistent and the user owns what her keys mean (R3). In Java, the entries of
 the database's indexes are made after an rw() action returns, from what it
 wrote, so an action that catches a refusal and goes on cannot leave them
 inconsistent (024-27, QR1). The AI-as-the-user applications (024-26) look
