@@ -353,7 +353,8 @@ public interface Database extends AutoCloseable {
      * about four times the startup distance in a small database, after about 200 MB of puts
      * with the default 50 MB and 20 to 30 MB with 5 MB (measured, bergdb 020-24-03, U3-9),
      * and by more in a database with much live data, which the first iteration rewrites. A
-     * smaller startup distance cuts sooner.
+     * smaller startup distance cuts sooner. A database that is not written to does none of
+     * this by itself; maintain() lets the application ask for it (bergdb 024-32).
      * </p>
      *
      * <p>
@@ -486,6 +487,43 @@ public interface Database extends AutoCloseable {
      * </p>
      */
     public Time getFirstAvailableLookupTime();
+    
+    /**
+     * <p>Does a bounded part of the database's maintenance now, and returns whether more is
+     * due (bergdb 024-32). Calling it is optional: the maintenance goes on while the
+     * application uses the database, at its commits, whether this method is called or not.
+     * In Frans Lundberg's words (2026-11-10): "maintainance should be performed while doing
+     * other operations on the database, so the user explicitely calling maintain() should be
+     * optional, not a requirement on the user that she must call maintain."</p>
+     * 
+     * <p>What it is for: a database that is not used does no work by itself, so with a
+     * finite retain duration (setRetainDuration()) the stream space of deleted and
+     * overwritten data comes back only as the application commits more. An application that
+     * has deleted much and then writes little or nothing can call this method, now and then,
+     * to have the space back without writes of its own. Called again and again, as time
+     * passes, it brings a database that has been emptied to about the size of a fresh one.
+     * With the retain duration forever (the default) there is nothing to do, and it returns
+     * false.</p>
+     * 
+     * <p>Each call's work is small and bounded, about that of a commit's share of the
+     * maintenance: at most one step of the rewriting of old live data, one write of index
+     * nodes, one filler of at most 200 kB that is deleted at once, and the cut of the
+     * stream's front when it is due (after a sync, if needed). It runs in the database's
+     * own transactions, so a commit waits for it and it waits for a commit; reads go on.
+     * A call when nothing is due writes nothing.</p>
+     * 
+     * @return True if more is due now: another call would do more. False if nothing is due
+     *     until time passes (a quarter of the retain duration, or the retain duration) or the
+     *     application writes. To have the space back now, call it until it returns false,
+     *     and again later.
+     * @throws IllegalDbStateException  If the database is stopping or stopped, as a
+     *     transaction does.
+     * @throws DbFailedException  If the database has failed, as a transaction does.
+     * @throws bergdb.pub.util.DbException  If the database takes no more transactions (its
+     *     top node ordinals or its times are used up), as a transaction is refused; nothing
+     *     is written then. Or if the thread is interrupted during the sync.
+     */
+    public boolean maintain();
 
     /**
      * A builder of a user index of the name (bergdb 020-10, section 3.1; see IndexBuilder).

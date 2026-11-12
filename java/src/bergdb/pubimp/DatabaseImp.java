@@ -213,6 +213,10 @@ public class DatabaseImp implements Database {
         return Duration.units(db.getRetainDuration());
     }
     
+    public boolean maintain() {
+        return db.maintain();
+    }
+
     public void setRetainDuration(Duration retainDuration) {
         if (retainDuration == null) {
             // bergdb 020-21, 3: as every null argument of the API, not a NullPointerException.

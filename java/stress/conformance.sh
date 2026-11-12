@@ -104,6 +104,9 @@ reclaim() {
     echo "r-idle  -Dn=400 -Dkeys=50 -Dmaxnode=8 -Dsd=300 -Dops=2 -Dempty=20 -Dnodel=10 -Dretain=1 -Dprobe=10"
     # Trees drained and refilled; must take back a node (bergdb 024-09, step A1).
     echo "r-drain -Dn=400 -Dkeys=30 -Dmaxnode=8 -Dsd=200 -Dops=6 -Ddel=60 -Dretain=1 -Dprobe=10"
+    # maintain() after every user transaction (bergdb 024-32): its steps, its empty records
+    # with a take beyond the share, its fillers and its cuts.
+    echo "r-maint -Dn=300 -Dkeys=30 -Dmaxnode=8 -Dsd=200 -Dops=4 -Ddel=25 -Dretain=1 -Dprobe=10 -Dmaint=1"
 }
 
 evict() {
@@ -134,6 +137,8 @@ evict() {
     # back a node (bergdb 024-09, step A1).
     echo "e-drain   -Dn=200 -Dkeys=30 -Dmaxnode=8 -Dsd=300 -Dops=8 -Ddel=65 -Dprobe=10 -Drune=random -Dereads=20 -Derestart=10"
     echo "e-r-drain -Dn=300 -Dkeys=30 -Dmaxnode=8 -Dsd=200 -Dops=10 -Ddel=65 -Dretain=1 -Dprobe=10 -Drune=random -Dereads=20 -Derestart=25"
+    # maintain() every third transaction, with eviction, reads and restarts (bergdb 024-32).
+    echo "e-r-maint -Dn=300 -Dkeys=30 -Dmaxnode=8 -Dsd=200 -Dops=4 -Ddel=25 -Dretain=1 -Dprobe=10 -Dmaint=3 -Drune=random -Dereads=20 -Derestart=25"
 }
 
 drain() {

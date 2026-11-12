@@ -64,6 +64,9 @@ import bergdb.stream.MemoryStream;
  *              the lines the tree model needs: TREE, BASE, OP, KN, GET and SCAN; gets=N: N GET lines and one SCAN line after each transaction (default 4)
  *   retain=S   reclaim on, with a retain duration of S seconds, as RestartInvariance's option
  *              (default 0: off); transactions are then 0.01 to 0.2 s apart
+ *   maint=K    a call of Db.maintain() after every K-th user transaction, in runs A, B and
+ *              E; its records are in the call of that transaction (bergdb 024-32; default
+ *              0: none)
  *   rune=S     run E: run A's workload with the eviction schedule S (values, every, random,
  *              or budget, the capacity controller, with the budget evictbudget=B; Eviction;
  *              default: no run E); slotevery=N: SLOT lines after every N-th
@@ -138,6 +141,8 @@ public class TraceExport {
     final boolean live = "1".equals(System.getProperty("live"));
     final boolean tree = "1".equals(System.getProperty("tree"));
     final int treeGets = Integer.getInteger("gets", 4);
+    /** maint=K: a call of Db.maintain() after every K-th user transaction (bergdb 024-32). */
+    final int maint = Integer.getInteger("maint", 0);
     final int retain = Integer.getInteger("retain", 0);
     final String runE = System.getProperty("rune", "");
     final int slotEvery = Integer.getInteger("slotevery", 1);
@@ -809,6 +814,7 @@ public class TraceExport {
                 Trans t = b.build();
                 userRec[i] = recs.size();
                 db.execute(t);
+                maintain(db, i);
                 userLast[i] = recs.size() - 1;
                 if (userLast[i] < userRec[i] || recs.get(userRec[i]).tt != t.tt) {
                     error("transaction " + i + ": no record, or not the first of its call");
@@ -1018,6 +1024,17 @@ public class TraceExport {
         }
     }
 
+    /**
+     * With maint=K, a call of maintain() after every K-th user transaction, the same in
+     * runs A, B and E (bergdb 024-32): its records belong to the call of transaction i, as
+     * reclaim's after a commit do.
+     */
+    void maintain(Db db, int i) {
+        if (maint > 0 && (i + 1) % maint == 0) {
+            db.maintain();
+        }
+    }
+
     /** After the call of user transaction i: the cut decided in it, a move of the stream's
      *  first position (the physical cut, at the call's last record), and Java's first
      *  available time against the model's. */
@@ -1113,6 +1130,7 @@ public class TraceExport {
             }
             Trans t = b.build();
             db.execute(t);
+            maintain(db, i);
             // The user record, and the last record of the call (with reclaim, its steps and
             // table stores follow the user record; without, the two are the same).
             Rec recU = recs.get(userRec[i]);
@@ -1180,6 +1198,7 @@ public class TraceExport {
             }
             Trans t = b.build();
             db.execute(t);
+            maintain(db, i);
             Rec recU = recs.get(userRec[i]);
             Rec recA = recs.get(userLast[i]);
             if (t.tpos != recU.tpos) {

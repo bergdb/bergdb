@@ -115,6 +115,14 @@ public class Trans {
      */
     Reclaim.TouchCount touchCount;
     long touchOldBefore;
+    
+    /**
+     * For the empty internal transaction of a call of Db.maintain() (bergdb 024-32), or -1:
+     * after the record's share (TransSeq.take), its take goes on with the oldest
+     * transactions of the startup section, whole, until the startup pos reaches this
+     * position or the taken nodes reach Reclaim.MAINTAIN_TAKE_BYTES (TransSeq.takeTo).
+     */
+    long maintainTakeTo = -1;
 
     /** startupPos stored in stream with transaction. */
     public long startupPos = Spos.NULL;

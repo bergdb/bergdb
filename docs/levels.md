@@ -567,6 +567,17 @@ How it works (`Reclaim`; the class comment has the details):
   meta block names a transaction at pCut or later. Then the reclaim table
   records the cut, the first available lookup time becomes tEnd, and the
   physical cut waits until the table is durable.
+* All of this happens at the application's commits, and a database that
+  is not written to does no work (P3). Since 024-32 an application may
+  also call `Db.maintain()` or `Database.maintain()`, which is optional:
+  each call does a bounded part of the same work without a commit, in
+  reclaim's internal transactions (an iteration begun when its cut would
+  release at least 400 kB and no cut is pending, one step without the
+  fraction's allowance, an empty record whose take moves the startup pos
+  to pEnd or pSafe, a filler of at most 200 kB, put and deleted, when a
+  cut waits for a meta block only, and the cut), and returns whether more
+  is due now. Called again and again as time passes, it brings an emptied
+  database to about a fresh one's stream (`count-gates.sh`, G5).
 * A read admitted before a cut may expire: a read that the cut overtakes
   throws `LookupTimeNotAvailableException`, and the database goes on
   (decision D1 = A, 2026-10-13; 011-04, W1). The retain duration may change
