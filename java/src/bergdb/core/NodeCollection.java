@@ -316,7 +316,7 @@ public class NodeCollection implements PointerFollower {
     public final class MaintenanceFollower implements PointerFollower {
         private final Map<Long, Node> read = new HashMap<Long, Node>();
         private final java.util.HashSet<Long> indexIds = new java.util.HashSet<Long>();
-        private long loads = 0, loadBytes = 0;
+        private long loads = 0, loadBytes = 0, valueLoads = 0;
 
         /** The index nodes followed so far, by id. */
         public int indexNodes() {
@@ -333,9 +333,15 @@ public class NodeCollection implements PointerFollower {
             return loadBytes;
         }
 
+        /** Of the loads so far, the values (bergdb 024-34). */
+        public long valueLoads() {
+            return valueLoads;
+        }
+
         void loaded(Node node) {
             loads++;
             loadBytes += node.getMemSize();
+            if (!node.isIndexNode()) valueLoads++;
         }
 
         public RuntimeException cycle(String message) {
