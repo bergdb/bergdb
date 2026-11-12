@@ -481,6 +481,10 @@ larger one that touches the same code.
   Recommended: yes, as the aim reads; in 2026.5 after OP1, by a design
   study that chooses between merges and the rebuild with GM3's numbers,
   taking a new record format.
+  **Decided by the coordinator under Frans's delegation (2026-11-12,
+  12:33: "Handle the other ones for me.")**: closed. The merges at the
+  delete (024-21) made the gate strict, and 024-30's G2 checks BD13 at 2
+  times the twin (1.30 on main; 16.0 on 2026.4).
 * **QF3. A put's bytes that grow with the logarithm of the keys.**
   Within aim 2, when stated as a function of the startup distance a key
   (BD5)? Recommended: yes; no format lever in 2026.5, GM4 run to price
@@ -488,17 +492,36 @@ larger one that touches the same code.
 * **QF4. Which memory figure gates?** Recommended: both: BD11 (the heap
   with eviction has no term in the keys) and BD12 (MEM a KV at 1M and
   at 10M, with the cost of a one-key segment tree named), after GM1.
+  **Decided by the coordinator under Frans's delegation (2026-11-12,
+  12:33: "Handle the other ones for me.")**: both, as they are: BD12 in
+  `level1.sh` (MEM, MEM10M, SEG; 024-15) and BD11 as LargerThanMemory's
+  pass or fail (`level4.sh`); 024-30's G4 adds the heap after back to
+  empty.
 * **QF5. One-key segment trees (ST1).** A cost of the key's shape to
   document, or a case to fix (a format change)? Recommended: document
   it in 2026.5; a fix only as a study, if QF2 brings a new format.
+  **Decided** (Frans, 2026-11-11, 07:30; 024-08 option (a), made in
+  024-15): a cost of key shape, documented and bounded. Closed.
 * **QF6. Counts or times?** Recommended: the bounds gate on counts
   (the largest record's bytes, key nodes, loads), as 023-03 did; times
   are reported, and BD2 is checked under ZGC in a night step.
+  **Decided by the coordinator under Frans's delegation (2026-11-12,
+  12:33: "Handle the other ones for me.")**: counts gate, times are
+  reported: 024-30's G1 to G4, a `night.sh` step; BD2 (a commit's time)
+  not gated.
 * **QF7. 100M keys.** Shown at 100M, or at 10M with the scale law and
   one run at 100M in key order (GM7)? Recommended: the latter; F53's
   disk does not hold a random fill at 50 MB.
+  **Decided by the coordinator under Frans's delegation (2026-11-12,
+  12:33: "Handle the other ones for me.")**: as recommended: 2026.5
+  claims 10M keys and the scale law (a put's bytes follow sd / K,
+  006-19); no run at 100M.
 * **QF8. The take's bursts.** Recommended: OP4's cap, small; OP5 stays
   a named allowance, as its fix changes the model's step and its proofs.
+  **Decided by the coordinator under Frans's delegation (2026-11-12,
+  12:33: "Handle the other ones for me.")**: OP4's cap in 2026.5 (024-31,
+  Frans's yes of 11:38); OP5 stays a named allowance (Frans, 2026-10-28;
+  010-01, P4).
 
 
 ## 8. State

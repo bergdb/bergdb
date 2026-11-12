@@ -203,6 +203,9 @@ from them.
   second prover proves in time lands. The release night: "Sounds good,
   but I will be back after coffee, no need to plan the unattended night
   yet." Step 5: asked which QF questions need his input.
+* 12:33 Frans: QF3 and QF1 are his to look into; "Handle the other ones
+  for me." The coordinator settled QF2, QF4 to QF8 as recommended in
+  024-05, section 7; Q30-1 and Q30-2 as applied in 024-30.
 
 
 ## 6. Outcome
