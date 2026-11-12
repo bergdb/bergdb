@@ -50,8 +50,8 @@ import bergdb.stream.FileStream;
  *      a drive of 40 R of overwrites of "/a.txt" (1,000 bytes). Against a twin that skips
  *      the fill and the deletes: kept (the most in the last R), the reachable key nodes,
  *      their dead KEY klongs, the resident index objects, the live handles, the cache
- *      tables' slots (ST6, reported, not counted; g4st6=gate counts it) and the heap
- *      after a GC, each at most 2 times the twin's. KeyAccessPath's arrays (ST7) are
+ *      tables' slots (ST6; counted since its fix, 024-33) and the heap after a GC, each
+ *      at most 2 times the twin's. KeyAccessPath's arrays (ST7) are
  *      printed, not gated. Needs --add-opens java.base/java.util (the slots are
  *      HashMap's table lengths).
  *   G5 (back to empty by maintain(); bergdb 024-32, 023-03 T1's second drive): G4's
@@ -62,8 +62,8 @@ import bergdb.stream.FileStream;
  *      true within the first 3/4 of the drive (converged, then quiet); as the twin is tiny,
  *      the key nodes, resident objects and handles at most the larger of twice the twin's
  *      and the twin's plus 10 (023-03's a_n), the dead KEY klongs the larger of twice the
- *      twin's and the twin's plus 30 (023-03's C4: B); the heap at most 2 times the twin's,
- *      as G4 (ST6 reported, not counted).
+ *      twin's and the twin's plus 30 (023-03's C4: B); the heap and the cache's table slots
+ *      (ST6) at most 2 times the twin's, as G4.
  *
  * Every database is a FileStream in dir with the builder's defaults (startup distance 50
  * MB, cache indicator 200 MB), a test clock (dt time units a transaction) and
@@ -590,8 +590,8 @@ public class CountGates {
             Cache3 cache = r.db.internal().cache();
             m.objects = cache.residents().objects();
             m.handles = cache.handles().size();
-            for (HashMap<?, ?> map : (HashMap<?, ?>[]) field(cache, "maps")) {
-                Object[] table = (Object[]) field(map, "table");
+            for (Object t : (Object[]) field(cache, "tables")) {
+                Object[] table = (Object[]) field(field(t, "map"), "table");
                 if (table != null) m.slots += table.length;
             }
             Object path = r.db.internal().x().putData.keyAccessPath;
@@ -617,14 +617,7 @@ public class CountGates {
         g4Gate("M5 dead KEY klongs", e.dead, t.dead, d("g4nodes", 2));
         g4Gate("M11 resident index objects", e.objects, t.objects, d("g4nodes", 2));
         g4Gate("M11 live handles", e.handles, t.handles, d("g4nodes", 2));
-        // ST6 fails on main (024-30, section 9): reported, not counted, until its fix is
-        // decided; g4st6=gate counts it.
-        boolean f = failed;
         g4Gate("ST6 cache table slots", e.slots, t.slots, d("g4slots", 2));
-        if (!s("g4st6", "report").equals("gate") && failed && !f) {
-            failed = false;
-            out("  G4 ST6 above: known (024-05, ST6), not counted until its fix is decided");
-        }
         g4Gate("heap after a GC", e.heap, t.heap, d("g4heap", 2));
     }
 
@@ -656,12 +649,7 @@ public class CountGates {
         gateSmall("M5 dead KEY klongs", e.dead, t.dead, 30);
         gateSmall("M11 resident index objects", e.objects, t.objects, 10);
         gateSmall("M11 live handles", e.handles, t.handles, 10);
-        boolean f = failed;
         gateTwin("G5", "ST6 cache table slots", e.slots, t.slots, d("g4slots", 2));
-        if (!s("g4st6", "report").equals("gate") && failed && !f) {
-            failed = false;
-            out("  G5 ST6 above: known (024-05, ST6), not counted until its fix is decided");
-        }
         gateTwin("G5", "heap after a GC", e.heap, t.heap, d("g4heap", 2));
     }
 

@@ -92,6 +92,12 @@ Files
   database or per start, XChaCha20, authenticated pages, a keyed check, a
   MAC chain), what it must be tested against, and the code kept inside
   BergDB. Created on 2026-11-09 at Frans's request. Open; notes only.
+* [017-11](11-startup-distance-by-size/readme.md). A startup distance
+  that follows the database's size (the number of KVs), as a default
+  users need not think about: what is known (a put's bytes follow sd / K;
+  a start's time and heap follow sd), candidate rules R0 to R6, 14 open
+  questions, a study plan. From 024-05, QF3 (Frans, 2026-11-12, 12:46).
+  Open.
 
 
 Log

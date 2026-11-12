@@ -1,0 +1,16 @@
+CountGates g5 n=1000000 valsize=100 retain=10000000 dt=10000 {dir=build/count-gates-data}
+[0.1s]   G5 g5-twin drive 20000 maintain() calls; len=592 kept=592 iters=0 cuts=0 firstCut=-1 lag=-1 kept4R=592 lastTrue=-1 writingCalls=0 maxCallBytes=0 maxCallRecords=0 driveBytes=0
+  G5 g5-twin keptMax=592 reach=4 klongs=5 dead=0 objects=5 handles=5 slots=80 heap=12230200 pathKlongs=16 pathNodes=16 userKeys=1
+[7.8s]   G5 g5-emptied filled and deleted 1000000 keys; len=293053672 kept=254432632 iters=5 cuts=4
+[8.0s]   G5 g5-emptied drive 20000 maintain() calls; len=294200728 kept=83384 iters=8 cuts=7 firstCut=4117 lag=-1 kept4R=255495912 lastTrue=6130 writingCalls=3124 maxCallBytes=74992 maxCallRecords=5 driveBytes=1147056
+  G5 g5-emptied keptMax=83384 reach=6 klongs=34 dead=25 objects=10 handles=10 slots=225952 heap=18142600 pathKlongs=665 pathNodes=665 userKeys=1
+G5 M1 kept, most in the last R, over twice the twin's plus 600000 (83384 / 592) value 0.139 limit 1.000 margin 7.21 PASS
+G5 calls returning true, the last of 20000 (6130), over 3/4 of the drive value 0.409 limit 1.000 margin 2.45 PASS
+G5 M4 reachable key nodes over the twin's (6 / 4) value 1.500 limit 2.000 margin 1.33 PASS
+G5 M5 dead KEY klongs over the larger of twice the twin's and the twin's plus 30 (25 / 0) value 0.833 limit 1.000 margin 1.20 PASS
+G5 M11 resident index objects over the twin's (10 / 5) value 2.000 limit 2.000 margin 1.00 PASS
+G5 M11 live handles over the twin's (10 / 5) value 2.000 limit 2.000 margin 1.00 PASS
+G5 ST6 cache table slots over the twin's (225952 / 80) value 2824.400 limit 2.000 margin 0.00 FAIL
+  G5 ST6 above: known (024-05, ST6), not counted until its fix is decided
+G5 heap after a GC over the twin's (18142600 / 12230200) value 1.483 limit 2.000 margin 1.35 PASS
+[8.1s] COUNT GATES OK

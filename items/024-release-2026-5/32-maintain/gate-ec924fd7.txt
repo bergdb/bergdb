@@ -1,0 +1,48 @@
+CountGates all n=1000000 valsize=100 retain=10000000 dt=10000 {dir=build/count-gates-data}
+[2.8s]   G1 fill len=202596184 kept=202596184 iters=0 cuts=0
+[43.8s]   G1 FIFO 60000 transactions len=1671762456 kept=949803088 iters=4 cuts=3
+[62.4s]   G1 overwrites 20000 transactions len=2436428264 kept=1076254656 iters=6 cuts=5 keys=1000000
+  G1 records=172473 mean=4416 largest=108912 (overwrite transaction 10187, user) together=0
+G1 BD1 largest record without its values, bytes value 108912 limit 1000000 margin 9.18 PASS
+[68.7s]   G2 sparse fill len=339444312 kept=339444312 iters=0 cuts=0
+[73.9s]   G2 sparse deleted, live=33334 keyNodes=3397 len=442799864 kept=442799864 iters=1 cuts=0
+[77.2s]   G2 sparse drive 8880 transactions, 2 iterations after the deletes; len=640379440 kept=540359472 iters=4 cuts=1
+  G2 sparse keyNodes=3401 klongs=48661 dead=11924 twin keyNodes=2624 ratio=1.296
+[83.6s]   G2 mass fill len=339444312 kept=339444312 iters=0 cuts=0
+[88.6s]   G2 mass deleted, live=100000 keyNodes=9593 len=437869032 kept=437869032 iters=1 cuts=0
+[93.7s]   G2 mass drive 9933 transactions, 2 iterations after the deletes; len=661281520 kept=561261552 iters=4 cuts=1
+  G2 mass keyNodes=9735 klongs=143730 dead=33993 twin keyNodes=7873 ratio=1.237
+G2 BD13 reachable key nodes over the twin's, worst shape value 1.296 limit 2.000 margin 1.54 PASS
+[97.8s]   G3 fill L0=245216944 len=245216944 kept=245216944 iters=0 cuts=0
+[130.8s]   G3 179127 transactions of 10 puts, R = 1000 transactions; len=1444503048 kept=628721600 iters=4 cuts=3
+  G3 peak at transaction 164062: kept=1085304248 H_R=3813640 (all records within R: 7162920) kept-H_R=1081490608 L0=245216944; cuts=3
+G3 BD10 (stream kept - H_R) / L0, peak value 4.410 limit 6.000 margin 1.36 PASS
+[131.5s]   G4 g4-twin drive 40000 transactions; len=62051528 kept=2096752 iters=160 cuts=155 firstCut=1214 lag=-1 kept4R=1965168
+  G4 g4-twin keptMax=2442256 reach=6 klongs=27 dead=18 objects=434 handles=434 slots=60272 heap=14114696 pathKlongs=16 pathNodes=16 userKeys=1
+[139.0s]   G4 g4-emptied filled and deleted 1000000 keys; len=293053672 kept=254432632 iters=5 cuts=4
+[139.3s]   G4 g4-emptied drive 40000 transactions; len=361238832 kept=2392584 iters=154 cuts=149 firstCut=4117 lag=4395 kept4R=262180912
+  G4 g4-emptied keptMax=2618568 reach=6 klongs=33 dead=24 objects=469 handles=469 slots=226368 heap=19099304 pathKlongs=665 pathNodes=665 userKeys=1
+  G4 ST7, not gated (closed as negligible by Frans, 2026-11-12): KeyAccessPath arrays 665 klongs, 665 nodes; the twin's 16, 16
+G4 M1 kept, most in the last R over the twin's (2618568 / 2442256) value 1.072 limit 2.000 margin 1.87 PASS
+G4 M4 reachable key nodes over the twin's (6 / 6) value 1.000 limit 2.000 margin 2.00 PASS
+G4 M5 dead KEY klongs over the twin's (24 / 18) value 1.333 limit 2.000 margin 1.50 PASS
+G4 M11 resident index objects over the twin's (469 / 434) value 1.081 limit 2.000 margin 1.85 PASS
+G4 M11 live handles over the twin's (469 / 434) value 1.081 limit 2.000 margin 1.85 PASS
+G4 ST6 cache table slots over the twin's (226368 / 60272) value 3.756 limit 2.000 margin 0.53 FAIL
+  G4 ST6 above: known (024-05, ST6), not counted until its fix is decided
+G4 heap after a GC over the twin's (19099304 / 14114696) value 1.353 limit 2.000 margin 1.48 PASS
+[139.4s]   G5 g5-twin drive 20000 maintain() calls; len=592 kept=592 iters=0 cuts=0 firstCut=-1 lag=-1 kept4R=592 lastTrue=-1 writingCalls=0 maxCallBytes=0 maxCallRecords=0 driveBytes=0
+  G5 g5-twin keptMax=592 reach=4 klongs=5 dead=0 objects=5 handles=5 slots=80 heap=10965336 pathKlongs=16 pathNodes=16 userKeys=1
+[147.1s]   G5 g5-emptied filled and deleted 1000000 keys; len=293053672 kept=254432632 iters=5 cuts=4
+[147.4s]   G5 g5-emptied drive 20000 maintain() calls; len=294200728 kept=83384 iters=8 cuts=7 firstCut=4117 lag=-1 kept4R=255495912 lastTrue=6130 writingCalls=3124 maxCallBytes=74992 maxCallRecords=5 driveBytes=1147056
+  G5 g5-emptied keptMax=83384 reach=6 klongs=34 dead=25 objects=10 handles=10 slots=225952 heap=18027728 pathKlongs=665 pathNodes=665 userKeys=1
+G5 M1 kept, most in the last R, over twice the twin's plus 600000 (83384 / 592) value 0.139 limit 1.000 margin 7.21 PASS
+G5 calls returning true, the last of 20000 (6130), over 3/4 of the drive value 0.409 limit 1.000 margin 2.45 PASS
+G5 M4 reachable key nodes over the larger of twice the twin's and the twin's plus 10 (6 / 4) value 0.429 limit 1.000 margin 2.33 PASS
+G5 M5 dead KEY klongs over the larger of twice the twin's and the twin's plus 30 (25 / 0) value 0.833 limit 1.000 margin 1.20 PASS
+G5 M11 resident index objects over the larger of twice the twin's and the twin's plus 10 (10 / 5) value 0.667 limit 1.000 margin 1.50 PASS
+G5 M11 live handles over the larger of twice the twin's and the twin's plus 10 (10 / 5) value 0.667 limit 1.000 margin 1.50 PASS
+G5 ST6 cache table slots over the twin's (225952 / 80) value 2824.400 limit 2.000 margin 0.00 FAIL
+  G5 ST6 above: known (024-05, ST6), not counted until its fix is decided
+G5 heap after a GC over the twin's (18027728 / 10965336) value 1.644 limit 2.000 margin 1.22 PASS
+[147.4s] COUNT GATES OK

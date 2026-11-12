@@ -107,8 +107,9 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
   theorems T-COVER and T-LATEST; it rests on a delete's unlink, 023-07,
   section 5.1). The record format is unchanged; the stream's bytes of a
   database with reclaim on change. StreamDigest's configurations that
-  change and the entry that keeps their digests before and after: not
-  yet named (024-07, section 10).
+  change: not isolated (024-07, section 10); every StreamDigest digest
+  changes in 2026.5 anyway with record format 7 and CRC32C (all 48,
+  024-25, section 7).
 * **In a transaction's builder the last call on a key wins, put or
   delete** (bergdb 024-10, R1; Frans, 2026-11-11, 07:08). Of the calls of
   `Trans.Builder` on one key as written, `build()` keeps the one made
@@ -131,6 +132,21 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
   that reaches the index holds one operation a key. In 2026.4 and before
   one of the two was kept (the last put in key order, or a delete). A
   transaction without such keys writes the bytes it wrote before.
+* **The node size is at most 62** (bergdb 024-19, Q6; 024-27; Frans,
+  2026-11-12). The Core API's `DbBuilder` offers 8, 14, 30 and 62, as
+  before, and the Pub API 30, the default (024-19, Q1); now the Dag and a
+  start refuse a larger size too, a meta block that gives one with a
+  clear message (in 2026.4 such a stream named a method that does not
+  exist). Theta, the dead klongs a key node may hold, is at least 2:
+  2 at node size 8 (was 1; 024-19, Q4).
+* **A start checks a time klong's unused bits** (bergdb 024-25, section
+  12; `0420c72e`). A key node whose time klong has any of bits 56 to 61
+  set is refused at the start with a `StreamFormatException` ("Bad time
+  klong") in place of an `AssertionError` with `-ea` (and a start that
+  went on without it). No writer sets those bits, so every database that
+  2026.5 writes opens as before. A damaged stream is caught as a best
+  effort: BergDB relies on the storage for the integrity of its bytes
+  (Frans, 2026-11-12).
 
 
 ### Limits
@@ -144,6 +160,12 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
   `build()`) and every later call throw `IllegalStateException`, also if
   the caller caught the refusal. In 2026.4 a caller that caught it and
   went on committed the other operations.
+  **In an `rw()` action a refused call changes nothing and does not spoil
+  the environment** (bergdb 024-27, QR1; Frans, 2026-11-12): an action
+  that catches the refusal and returns commits its other writes, as
+  before; the action is the application's code, and the database keeps
+  its own indexes consistent either way (010-P14; 010-04, R1 and R3;
+  `RwEnvironment`'s Javadoc, "Refused calls").
   * **A key is at most 111 bytes**; about 100 characters as a rule of
     thumb: ASCII letters and digits one byte each, each "/" of a Pub key
     two, letters such as å, ä and ö two bytes each (UTF-8). Refused with
@@ -171,6 +193,17 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
     commit there are not comparable with earlier runs; `performance.sh`'s
     long keys of 111 bytes (were 120), so its long-key results are not
     comparable with 2026.4's reference.
+
+### Tests and gates
+
+* **Count gates of aims 2 and 3** (bergdb 024-30): `stress/count-gates.sh`,
+  a step of `night.sh` after level4 (about 2.5 minutes), at 1M keys and
+  on counts, not times: the largest record (G1, at most 1 MB), key nodes
+  against a twin built fresh (G2, at most 2 times), the stream kept beyond
+  the history within the retain duration (G3, at most 6 times the live
+  data) and back to empty (G4: 1M keys put and deleted, then within 2
+  times a hello-world database's stream, key nodes, dead klongs, resident
+  objects and heap). Release 2026.4 fails G1 and G2.
 
 ### Known issues and limits
 

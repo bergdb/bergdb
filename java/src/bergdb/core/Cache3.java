@@ -17,12 +17,19 @@ import bergdb.storage.StreamFormatException;
  * The cache ensures there is never more than one Node object with a given
  * node id.
  *
- * <p>The node table is 4,096 HashMaps from node id to object, each with its own lock, the
- * map itself (getLock): a resize stops one map, 1/4,096 of the table (bergdb item 009, step
+ * <p>The node table is 4,096 HashMaps from node id to object, each with its own lock, its
+ * Table (getLock): a resize stops one map, 1/4,096 of the table (bergdb item 009, step
  * 1b; 009-02, T1a and section 8: 0.23 ms at 30 million entries under ZGC, where the 256
  * maps under one lock of before took 11.6 ms). Until 2026-10-25 the maps' values were
  * CacheEntry objects with a reference count that nothing decremented (bergdb item 004-01,
  * section 9).</p>
+ *
+ * <p>A map shrinks as well as grows (bergdb 024-33; 024-05, ST6): HashMap only doubles its
+ * table, so after a fill and a mass delete the 4,096 tables kept their peak size. A removal
+ * that leaves a map's entries under 1/8 of its capacity replaces the map by a copy at a
+ * capacity of at least twice its entries (Table.shrinkIfSparse); HashMap grows it again
+ * above 3/4. So after either a map is 1/4 to 1/2 full, and only a change of its entries
+ * by a factor of at least 1.5 up or 2 down resizes it again.</p>
  *
  * <p>Since bergdb item 009, step 3a, the maps hold handles (dag/Handle.java): the live handle
  * of each index node that has one, and through it the node's one object. A memory pointer of
@@ -49,7 +56,7 @@ public class Cache3 {
     private final Object bigLock;
     private long sizeIndicator;
     private long totalSize;     // total cache size estimation, in bytes
-    private final HashMap<Long, Handle>[] maps;
+    private final Table[] tables;
 
     /**
      * The access clock (bergdb item 001, WP R8, change 4; bergdb 001-08, M23 and
@@ -74,10 +81,10 @@ public class Cache3 {
         this.bigLock = new Object();
         this.dbInfo = dbInfo;
         this.totalSize = INITIAL_CACHE_SIZE;
-        this.maps = new HashMap[1 << MAP_BITS];
+        this.tables = new Table[1 << MAP_BITS];
 
-        for (int i = 0; i < maps.length; i++) {
-            maps[i] = new HashMap<Long, Handle>();
+        for (int i = 0; i < tables.length; i++) {
+            tables[i] = new Table();
         }
 
         synchronized (bigLock) {}
@@ -113,7 +120,7 @@ public class Cache3 {
      *      Node ID.
      */
     public Object getLock(long id) {
-        return map(id);
+        return table(id);
     }
 
     public long totalSize() {
@@ -156,9 +163,9 @@ public class Cache3 {
      */
     public java.util.List<Handle> handles() {
         java.util.ArrayList<Handle> result = new java.util.ArrayList<Handle>();
-        for (HashMap<Long, Handle> m : maps) {
-            synchronized (m) {
-                result.addAll(m.values());
+        for (Table t : tables) {
+            synchronized (t) {
+                result.addAll(t.map.values());
             }
         }
         return result;
@@ -172,9 +179,9 @@ public class Cache3 {
     java.util.List<java.util.Map.Entry<Long, Handle>> entries() {
         java.util.ArrayList<java.util.Map.Entry<Long, Handle>> result =
                 new java.util.ArrayList<java.util.Map.Entry<Long, Handle>>();
-        for (HashMap<Long, Handle> m : maps) {
-            synchronized (m) {
-                for (java.util.Map.Entry<Long, Handle> e : m.entrySet()) {
+        for (Table t : tables) {
+            synchronized (t) {
+                for (java.util.Map.Entry<Long, Handle> e : t.map.entrySet()) {
                     result.add(new java.util.AbstractMap.SimpleImmutableEntry<Long, Handle>(e));
                 }
             }
@@ -188,9 +195,9 @@ public class Cache3 {
      */
     public java.util.List<Node> nodes() {
         java.util.ArrayList<Node> result = new java.util.ArrayList<Node>();
-        for (HashMap<Long, Handle> m : maps) {
-            synchronized (m) {
-                for (Handle h : m.values()) {
+        for (Table t : tables) {
+            synchronized (t) {
+                for (Handle h : t.map.values()) {
                     Node o = h.obj;
                     if (o != null) result.add(o);
                 }
@@ -400,14 +407,16 @@ public class Cache3 {
      * objects that are not detachable (pinned) to 'pinned', for their values and their bytes.
      */
     long[] clockStep(int k, Detachable d, java.util.List<Node> pinned, long max) {
-        HashMap<Long, Handle> m = maps[k];
+        Table t = tables[k];
         long[] c = new long[4];
-        synchronized (m) {
+        synchronized (t) {
+            HashMap<Long, Handle> m = t.map;
             if (m.size() > max) return null;
             java.util.Iterator<Handle> it = m.values().iterator();
             while (it.hasNext()) {
                 if (clockStep(it.next(), d, pinned, c)) it.remove();
             }
+            t.shrinkIfSparse();
         }
         return c;
     }
@@ -418,9 +427,9 @@ public class Cache3 {
      * it, a reference a handle.
      */
     Handle[] mapHandles(int k) {
-        HashMap<Long, Handle> m = maps[k];
-        synchronized (m) {
-            return m.values().toArray(new Handle[m.size()]);
+        Table t = tables[k];
+        synchronized (t) {
+            return t.map.values().toArray(new Handle[t.map.size()]);
         }
     }
 
@@ -435,9 +444,10 @@ public class Cache3 {
      */
     long[] clockStep(int k, Handle[] part, int from, int to, Detachable d,
             java.util.List<Node> pinned) {
-        HashMap<Long, Handle> m = maps[k];
+        Table t = tables[k];
         long[] c = new long[4];
-        synchronized (m) {
+        synchronized (t) {
+            HashMap<Long, Handle> m = t.map;
             for (int j = from; j < to; j++) {
                 Handle h = part[j];
                 if (m.get(h.id) != h) {
@@ -446,6 +456,7 @@ public class Cache3 {
                 }
                 if (clockStep(h, d, pinned, c)) m.remove(h.id);
             }
+            t.shrinkIfSparse();
         }
         return c;
     }
@@ -497,9 +508,10 @@ public class Cache3 {
      */
     long[] deadStep(int k, Handle[] part, int from, int to, long cut, Detachable d,
             java.util.List<Node> kept) {
-        HashMap<Long, Handle> m = maps[k];
+        Table t = tables[k];
         long[] c = new long[3];
-        synchronized (m) {
+        synchronized (t) {
+            HashMap<Long, Handle> m = t.map;
             for (int j = from; j < to; j++) {
                 Handle h = part[j];
                 c[2]++;
@@ -526,6 +538,7 @@ public class Cache3 {
                 }
                 if (o instanceof KeyNode) kept.add(o);
             }
+            t.shrinkIfSparse();
         }
         return c;
     }
@@ -630,19 +643,65 @@ public class Cache3 {
     }
 
     private void internalPut(long id, Handle h) {
-        map(id).put(id, h);
+        table(id).put(id, h);
     }
 
     private Handle internalGet(long id) {
-        return map(id).get(id);
+        return table(id).map.get(id);
     }
 
     private void internalRemove(long id) {
-        map(id).remove(id);
+        Table t = table(id);
+        t.map.remove(id);
+        t.shrinkIfSparse();
     }
 
-    private HashMap<Long, Handle> map(long id) {
-        return maps[mapIndex(id)];
+    private Table table(long id) {
+        return tables[mapIndex(id)];
+    }
+
+    /**
+     * One map of the node table and its lock (getLock), with the map's capacity, the length
+     * of its HashMap's table (bergdb 024-33). The lock is the Table, not the map, since a
+     * shrink replaces the map: every access reads 'map' under the Table's monitor.
+     */
+    static final class Table {
+        /** HashMap's first capacity, and the least a shrink leaves. */
+        static final int MIN_CAPACITY = 16;
+
+        HashMap<Long, Handle> map = new HashMap<Long, Handle>();
+
+        /**
+         * The capacity as HashMap sets it: 16 at the first put, doubled when a put takes the
+         * size over 3/4 of it (put), and what a shrink chose. HashMap also doubles a table
+         * under 64 slots that gets a bin of 8 (treeifyBin), which the hashing makes rare
+         * (testBinsStaySmall); this value is then lower than the table's, and the next shrink
+         * comes later than it would, never sooner.
+         */
+        int capacity = MIN_CAPACITY;
+
+        void put(long id, Handle h) {
+            map.put(id, h);
+            if (map.size() > capacity / 4 * 3) capacity *= 2;
+        }
+
+        /**
+         * Shrinks the map if its entries are under 1/8 of its capacity: a copy with a
+         * capacity of the least power of two that is at least twice the entries (and at
+         * least 16), so 1/4 to 1/2 full. Called under this Table's monitor after a removal,
+         * never during an iteration of the map. Its work, a copy of fewer than capacity / 8
+         * entries, is paid for by the more than capacity / 8 removals since the capacity last
+         * changed: a grow or a shrink leaves more than capacity / 4 entries.
+         */
+        void shrinkIfSparse() {
+            int n = map.size();
+            if (capacity <= MIN_CAPACITY || n >= capacity / 8) return;
+            int c = Math.max(MIN_CAPACITY, Integer.highestOneBit(Math.max(1, 2 * n - 1)) << 1);
+            HashMap<Long, Handle> m = new HashMap<Long, Handle>(c);
+            m.putAll(map);
+            map = m;
+            capacity = c;
+        }
     }
 
     /**
@@ -693,6 +752,44 @@ public class Cache3 {
         Handle h2 = cache.liveOrNewHandle(7);
         Assert.assertTrue(h2 != h1 && !h2.isDead());
         Assert.assertTrue(!cache.evict(h1));    // dead already
+    }
+
+    /**
+     * The tables shrink (bergdb 024-33; 024-05, ST6): 300,000 handles put and then all but
+     * every 100th removed leave each map at most 4 times the capacity its entries need, and
+     * every handle left is found; all removed, each map is back at 16. Then puts grow them
+     * again.
+     */
+    @Nano
+    public static void testTablesShrink() {
+        Cache3 cache = new Cache3(new Cache.DbInfo() {});
+        int n = 300 * 1000;
+        long peak = 0;
+        for (int i = 0; i < n; i++) cache.liveOrNewHandle(2 * i + 1);
+        for (Table t : cache.tables) peak += t.capacity;
+        for (int i = 0; i < n; i++) {
+            if (i % 100 != 0) cache.dropIfEmpty(cache.liveHandle(2 * i + 1));
+        }
+        long sum = 0;
+        for (Table t : cache.tables) {
+            Assert.assertTrue("capacity " + t.capacity + " for " + t.map.size(),
+                    t.capacity == Table.MIN_CAPACITY || t.capacity <= 8 * t.map.size());
+            sum += t.capacity;
+        }
+        Assert.assertTrue("after: " + sum + ", peak: " + peak, sum * 4 < peak);
+        for (int i = 0; i < n; i++) {
+            Handle h = cache.liveHandle(2 * i + 1);
+            Assert.assertTrue((h != null) == (i % 100 == 0));
+            if (h != null) cache.dropIfEmpty(h);
+        }
+        for (Table t : cache.tables) {
+            Assert.assertEquals(0, t.map.size());
+            Assert.assertEquals(Table.MIN_CAPACITY, t.capacity);
+        }
+        for (int i = 0; i < n; i++) cache.liveOrNewHandle(2 * i + 1);
+        sum = 0;
+        for (Table t : cache.tables) sum += t.capacity;
+        Assert.assertEquals(peak, sum);
     }
 
     /**

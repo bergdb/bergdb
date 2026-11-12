@@ -152,6 +152,15 @@ def ditherFp (pos : Nat) : Nat :=
   let z := (z ^^^ (z >>> 27)) * 0x94D049BB133111EB
   ((z ^^^ (z >>> 31)) >>> 48).toNat
 
+/-- The cap c of the share's factor (`TransSeq.SHARE_FACTOR_CAP`, bergdb 024-31,
+015-84): `javaPace` counts the span of the section's transactions,
+`S.span size`, as at most c sd in the section's length L, so L - (span - c sd),
+truncated at 0 (`TransSeq.shareSection`). With a constant setting the span is
+below 2 sd (`T3_take`) and L is unchanged; after a decrease the share's factor
+is at most about c, not the old setting over the new one. Used by no theorem;
+T3 holds for every pace. -/
+def shareFactorCap : Nat := 2
+
 /-- BergDB's pace (`TransSeq.take`, bergdb 005-49; in integers since 005-79):
 the record of T(i) has the share `shareFp` of D, and takes the transactions
 that fit in it; the next one, of which only a part fits, if that part is
@@ -164,15 +173,17 @@ with the same result. D counts the got-dirty nodes of T(s+1), ..., T(i-1),
 Java's `dirtyCount`, without those of T(i), which Java adds to its `TransSeq`
 after the take. `own t` is the own bytes of the record of transaction t
 (`TransSeq.ownBytes`: its value nodes and 48), a function of the transaction
-here; in Java it is that of the value nodes the transaction writes. Used by
-no theorem, which hold for every pace; kept to check the model against Java's
-take (the `#guard`s, TakeCheck). -/
+here; in Java it is that of the value nodes the transaction writes. The
+section's length that the share counts is capped (`shareFactorCap`, bergdb
+024-31). Used by no theorem, which hold for every pace; kept to check the
+model against Java's take (the `#guard`s, TakeCheck). -/
 def javaPace (size : Record V T → Nat) (own : T → Nat) (sd : Time → Nat) : Pace V T :=
   fun S D i tr taken count =>
     let s := lastSp S
     let dirty := (D.filter (fun e => decide (s < e.2 ∧ e.2 < i))).length
     let ownSec := S.cost (fun R => (R.trans.map own).getD 0) (s + 1) S.length
-    let sh := shareFp dirty (own tr) ownSec (S.cost size s S.length) (sd i)
+    let len := S.cost size s S.length - (S.span size - shareFactorCap * sd i)
+    let sh := shareFp dirty (own tr) ownSec len (sd i)
     let u := ditherFp (S.cost size 0 S.length)
     !(decide (sh < (taken + count) * 2 ^ 16) && decide (sh - taken * 2 ^ 16 ≤ u * count))
 

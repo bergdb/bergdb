@@ -302,6 +302,23 @@ Files
   within 2 times the hello-world twin but the cache's table slots (ST6,
   3.76, a known failure); about 4.4 R of drive to converge. On main
   since 2026-11-12. Q30-1 to Q30-4.
+* 31-pace-cap.md. 024-31, the take's pace capped after a decrease of the
+  startup distance (OP4, 015-84): the section's span counted at most to
+  2 sd in the share (c = 2); at 10M keys from 1000 to 100 MB the largest
+  record 1.90 to 0.99 MB, the catch-up 4.5 times longer; the stream
+  unchanged with a constant setting (StreamDigest 48 of 48). Branch
+  024-31-pace-cap, waits for Frans (the rule, three changed expected
+  values).
+* 32-maintain.md. 024-32, `Db.maintain()` and `Database.maintain()`:
+  optional, bounded calls that drive reclaim, the take, the cut and the
+  dead hand while the application does not write (Frans, 2026-11-12,
+  12:10); G5, back to empty by maintain() alone, at 1M keys. Q32-1 to
+  Q32-5.
+* 33-cache-tables.md. 024-33, the cache's tables shrink (ST6): 1.06
+  times a hello-world twin's slots after back to empty, was 3.76.
+* 34-reclaim-reads.md. 024-34, a reclaim step reads a key again only
+  when its value is before pCut (OP8): second reads halved, stream bytes
+  unchanged. Q34-1.
 
 
 Log

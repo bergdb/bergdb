@@ -48,10 +48,12 @@ high.
 | 024-29 | Reclaim's fraction: previous work, how to compare, the default | frac (high) | done 11:15 |
 | 024-22 | The open proofs TP32, TP33, TP7, TP30, TP10, TP11, TP31 | second prover | |
 | 024-30 | Count gates G1 (BD1), G2 (BD13), G3 (BD10) at 1M keys, a night step | gates (high) | landed |
-| 024-31 | OP4: a cap on the take's pace after a decrease (015-84) | pace (high) | |
-| 024-32 | maintain(), in Core and Pub, with G5 (back to empty by maintain()) | maint (high) | |
-| 024-33 | ST6: the cache's tables shrink | tidy (high) | |
-| 024-34 | OP8: reclaim reads only what it rewrites | tidy (high) | |
+| 024-31 | OP4: a cap on the take's pace after a decrease (015-84) | pace (high) | landed c1137b69 |
+| 024-32 | maintain(), in Core and Pub, with G5 (back to empty by maintain()) | maint (high) | gated, to land |
+| 024-33 | ST6: the cache's tables shrink | tidy (high) | gated, to land |
+| 024-34 | OP8: reclaim reads only what it rewrites | tidy (high) | gated, to land |
+| 017-11 | A startup distance that follows the database's size: known, plan | sdk (xhigh) | done 13:03 |
+| 021-27 | Db.getTrans inside a record fails the database: option A | gtr (high) | |
 
 024-27 lands on its gates, by Frans's decisions of 07:36: its changed
 expected values follow from them.
@@ -196,6 +198,79 @@ from them.
   then 024-34) at 12:11, three Claude agents with pace (over the tight
   level's two: pace mostly waits on its runs). ST12 (G4's finding)
   registered in 024-05, not decided.
+* 12:12 Frans: "Eviction off is a test mode not use in production at
+  all! Only for testing." ST12 closed as not a case.
+* 12:22 Frans: aim 4, "Yes, good plan": 2026.5 ships with conformance
+  and the proofs that hold, the open ones named in the notes; what the
+  second prover proves in time lands. The release night: "Sounds good,
+  but I will be back after coffee, no need to plan the unattended night
+  yet." Step 5: asked which QF questions need his input.
+* 12:33 Frans: QF3 and QF1 are his to look into; "Handle the other ones
+  for me." The coordinator settled QF2, QF4 to QF8 as recommended in
+  024-05, section 7; Q30-1 and Q30-2 as applied in 024-30.
+* 12:46 Frans on QF3: for 2026.5 as recommended; a startup distance
+  that follows the number of KVs as a default "users won't need to think
+  about" is "a big step and not for now"; a new 017 topic, written by an
+  agent at xhigh: sdk started 12:47 (017-11).
+* 12:53 Frans: the disk 98 % full (22 GB free; /Users/f/fl/bench 582
+  GB): "Start removing files. You created bench/, so please handle
+  this." Cleanup from 12:54 (log /Users/f/fl/bench/cleanup-2026-11-12.log;
+  unlanded branches bundled to /Users/f/fl/bench/archive-branches/).
+* 12:59 Frans on QF1: "Do the measurement now. It is ok to limit
+  database size so it takes less than 60 minutes [...] Let's see if we
+  can sort this out before the release." fracm started 12:59 (024-29).
+* 13:02 The cleanup done: 22 GB free to 410 GB (55 % used); 516 clones
+  removed, their 368 branches not on main saved as bundles (80 MB) in
+  /Users/f/fl/bench/archive-branches/; 62 of the clones had uncommitted
+  edits of tracked files (probes and scratch), removed without a copy.
+  Kept: 022, 015-02, the Android SDK, today's directories.
+* 13:03 sdk done (017-11): candidate rules R0 to R6; a put's bytes
+  constant only if sd grows with K, which costs about 0.2 to 0.5 s of
+  warm start and 10 to 15 MB of pinned heap a million keys, against P5
+  as written; Frans asked the same question on 2013-04-08; the first
+  steps: his D1 from the tables, GM4 (45 minutes, bytes only).
+* 13:05 pace done (024-31): the rule changed from the brief's (min(S, c
+  sd) changed the stream with a constant setting at the tests' small sd:
+  32 of 48 digests) to a cap of the section's span at 2 sd in the share
+  (c = 2; StreamDigest identical, 48 of 48); at 10M keys the largest
+  record halved, the catch-up 4.5 times longer (1000 to 100 MB); gates
+  OK. Waits for Frans: the rule, and commit B's changed expected values.
+* 13:09 Frans approved 024-31 (the span rule, c = 2, and its changed
+  expected values); merged in /Users/f/fl/bench/2026-11-12/land/clone,
+  gated there before main moves.
+* 13:21 Frans on 021-27: "Yes, fix this in a agent at high. This is
+  important. I consider it a bug. It does destroy the Core database, the
+  KV store. The Core API may damage the integrity of the functionality
+  built on top of it such as Pub layer's secondary indexes, but it
+  should not destroy the integrity of the KV store itself." gtr started
+  13:22 (option A).
+* 13:24 Frans: his rule of 13:21 "as a new rule": 010-04, R5, the Core
+  API never destroys the KV store.
+* 13:26 Frans on 021-27: "Why is this tricky. It is a read-only
+  operation. It should fail or succeed, but never block the database.
+  This position comes from the user and cannot be fully trusted. It is
+  not from the internal database." gtr told: no walk; the public
+  getTrans refuses what does not parse, an I/O error still fails the
+  database (P7), internal callers keep failing on damage.
+* 13:27 tidy done: 024-33 (ST6 1.06 times the twin's slots after back
+  to empty, was 3.76) and 024-34 (a step's second reads halved, loads 3.6
+  % fewer with a 20 MB cache, stream bytes identical), all gates OK, no
+  changed tests; Q34-1 (a keys-only scan, which changes bytes).
+* 13:35 fracm done (024-29, section 9; 9 minutes of machine time, 1M
+  keys): against 1/4, 3/8 keeps 8 to 29 % less stream beyond the history
+  and cuts the lag after a mass delete by 58 %, for 15 to 27 % more bytes
+  written, 1.3 to 1.7 times the loads a put and 23 % fewer puts a second
+  (one pass); 1/2 more so (38 % fewer puts a second). A changed default
+  changes seven tests and the l3 digests. For Frans: QF1.
+* 13:36 maint done (024-32): maintain() in Core and Pub (begin, step,
+  take, filler, cut, dead hand; returns whether more is due now); G5: an
+  emptied idle database from 254 MB to 83 kB of stream by maintain()
+  alone; no change of the Lean model or the trace format (two new
+  conformance configurations pass); before-commit, level1, level3,
+  count-gates OK; no changed expected values. Q32-1 to Q32-5.
+* 13:38 Frans: TP11, option (a): keyWf to say what Keys.toSegments
+  makes (each segment below 2^62, its lowest three bits zero), after the
+  prover's run; recorded in 024-12.
 
 
 ## 6. Outcome

@@ -913,6 +913,19 @@ transaction; S, by `treetest` on the small cases.
 |    |                      | every index node reachable at e has a value |      |
 |    |                      | below it, when a key has a value at e       |      |
 
+**TP11 refuted as stated, 2026-11-12** (the second prover's run,
+`not_scanOK_scanBoundary`; /Users/f/fl/bench/2026-11-12/cx/REPORT.md):
+`keyWf` bounds no compare value, so a key with a compare value of 2^63
+passes it, and a backward scan from the end misses it at the reader's
+end marker `cvHi` = 2^63 - 1. Java makes no such key (`Klong.
+getCompareValue`: "A compare value is non-negative and below 2^62; its
+lowest three bits are zero."). **Decided** (Frans, 2026-11-12, 13:38,
+"Yes", to option (a)): `keyWf` is to say what `Keys.toSegments` makes,
+every segment below 2^62 with its lowest three bits zero; a change of a
+trusted definition, made after the prover's run of 2026-11-12, with
+TP11 proved for it next. Proofs that use `keyWf` are rechecked by `lake
+build`.
+
 (T) for 27: `tracecheck`'s CUT-live checks it at every cut of a trace
 (024-07), and C-T6 checks what it follows from, `NonEmptyOK` and
 `KindsOK`, after every transaction. (T) for 14 and 16: `tracecheck`'s

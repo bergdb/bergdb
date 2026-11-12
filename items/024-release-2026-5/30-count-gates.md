@@ -229,18 +229,26 @@ slot at 11:46 to 11:49; output in `30-count-gates/release-2026.4.txt`.
   is 4.4 kB, so the 1 MB floor decides, and a record of 0.99 MB would
   pass. Keep BD1 as stated (recommended: yes; the gate catches the
   faults known, 16.7 MB), or a lower floor such as 256 kB?
+  **Decided by the coordinator under Frans's delegation** (2026-11-12,
+  12:33: "Handle the other ones for me."): keep BD1 as stated.
 * **Q30-2. H_R, the user's records only.** Reclaim's own records within
   R count as overhead (section 3.3). Recommended: keep it so; it is the
   stricter reading.
+  **Decided by the coordinator under Frans's delegation** (2026-11-12,
+  12:33: "Handle the other ones for me."): keep it so.
 * **Q30-3. Gate G4's lag?** The emptied database converges after 4.4 R
   of drive at 1M keys (section 9). A gate such as "within twice the
   twin's kept from 8 R on" would catch a cleanup that falls further
   behind. Recommended: yes, after one run at 100,000 and 3M keys shows
   how the lag grows with n.
+  **Decided by the coordinator under Frans's delegation** (2026-11-12,
+  12:33: "Handle the other ones for me."): yes, after the runs at 100,000
+  and 3M keys, in 2026.6 (026); printed, not gated, until then.
 * **Q30-4. ST6.** The handle tables keep their peak size (section 9).
   Fix it (shrink at a removal below a quarter of the capacity), or
   close it as negligible like ST7 (about 0.9 MB at 1M keys)? Not
   decided here; the gate line reports it.
+  **Decided** (Frans, 2026-11-12, 12:10): fixed in 2026.5, 024-33.
 
 
 ## 8. G4, back to empty: the quantities

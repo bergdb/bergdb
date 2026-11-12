@@ -1,0 +1,34 @@
+FracRuns n=1000000 valsize=100 retain=10000000 dt=10000 {work=a, dir=build/frac-data-a, fs=0.25,0.375,0.4,0.5}
+[4.3s]   a f=0.2500 fill L0=245216944 len=245216944 kept=245216944 iters=0 cuts=0
+  a f=0.2500 iteration pStart=245218808 W/L0=1.919 steps=20126 kvs=1000001 values=693475 rewritten=0.693 loads=1167057 recordBytes=235523344 maxStepDirtied=18
+  a f=0.2500 iteration pStart=715780864 W/L0=0.236 steps=13335 kvs=1000003 values=0 rewritten=0.000 loads=895420 recordBytes=8750520 maxStepDirtied=5
+  a f=0.2500 iteration pStart=815781448 W/L0=1.692 steps=20244 kvs=1000003 values=590320 rewritten=0.590 loads=1159803 recordBytes=214101856 maxStepDirtied=15
+  a f=0.2500 iteration pStart=1230686232 W/L0=0.462 steps=15806 kvs=1000003 values=112799 rewritten=0.113 loads=946683 recordBytes=52388632 maxStepDirtied=15
+[38.5s]   a f=0.2500 179127 transactions of 10; len=1444503048 kept=628721600 iters=4 cuts=3 firstIterationDoneAt=69337 peakTx=164062 peakKept=1085304248 peakH_R=3813640
+[42.5s]   a f=0.3750 fill L0=245222088 len=245222088 kept=245222088 iters=0 cuts=0
+  a f=0.3750 iteration pStart=245223952 W/L0=1.500 steps=19104 kvs=1000001 values=824986 rewritten=0.825 loads=1037305 recordBytes=251944680 maxStepDirtied=17
+  a f=0.3750 iteration pStart=613137368 W/L0=0.220 steps=13335 kvs=1000003 values=0 rewritten=0.000 loads=894176 recordBytes=8169096 maxStepDirtied=5
+  a f=0.3750 iteration pStart=713138760 W/L0=1.289 steps=19039 kvs=1000003 values=673909 rewritten=0.674 loads=1060667 recordBytes=222229680 maxStepDirtied=16
+  a f=0.3750 iteration pStart=1029258696 W/L0=0.452 steps=13351 kvs=1000003 values=158581 rewritten=0.159 loads=965029 recordBytes=63305952 maxStepDirtied=14
+[81.7s]   a f=0.3750 113987 transactions of 10; len=1240147784 kept=527009024 iters=4 cuts=3 firstIterationDoneAt=37819 peakTx=104196 peakKept=883885848 peakH_R=3761464
+[86.2s]   a f=0.4000 fill L0=245222088 len=245222088 kept=245222088 iters=0 cuts=0
+  a f=0.4000 iteration pStart=245223952 W/L0=1.440 steps=18788 kvs=1000001 values=845814 rewritten=0.846 loads=1020505 recordBytes=252093776 maxStepDirtied=17
+  a f=0.4000 iteration pStart=598387328 W/L0=0.216 steps=13335 kvs=1000003 values=0 rewritten=0.000 loads=893028 recordBytes=7967688 maxStepDirtied=5
+  a f=0.4000 iteration pStart=698391848 W/L0=1.231 steps=18409 kvs=1000003 values=685185 rewritten=0.685 loads=1049133 recordBytes=221754136 maxStepDirtied=18
+  a f=0.4000 iteration pStart=1000322160 W/L0=0.460 steps=13351 kvs=1000003 values=166588 rewritten=0.167 loads=968966 recordBytes=65634232 maxStepDirtied=16
+[115.9s]   a f=0.4000 105366 transactions of 10; len=1213906848 kept=515515000 iters=4 cuts=3 firstIterationDoneAt=33293 peakTx=96036 peakKept=855017256 peakH_R=3708488
+[119.5s]   a f=0.5000 fill L0=245222088 len=245222088 kept=245222088 iters=0 cuts=0
+  a f=0.5000 iteration pStart=245223952 W/L0=1.243 steps=16222 kvs=1000001 values=914387 rewritten=0.914 loads=967558 recordBytes=251711336 maxStepDirtied=19
+  a f=0.5000 iteration pStart=549998872 W/L0=0.205 steps=13335 kvs=1000003 values=0 rewritten=0.000 loads=884272 recordBytes=7746904 maxStepDirtied=5
+  a f=0.5000 iteration pStart=649999080 W/L0=1.042 steps=13334 kvs=1000003 values=714797 rewritten=0.715 loads=1025209 recordBytes=214624752 maxStepDirtied=21
+  a f=0.5000 iteration pStart=905482008 W/L0=0.475 steps=13335 kvs=1000003 values=193701 rewritten=0.194 loads=987737 recordBytes=70972704 maxStepDirtied=15
+[145.1s]   a f=0.5000 77779 transactions of 10; len=1122914280 kept=472915200 iters=4 cuts=3 firstIterationDoneAt=18779 peakTx=70338 peakKept=758314288 peakH_R=3603960
+[148.6s]   a f=inf fill L0=245216944 len=245216944 kept=245216944 iters=0 cuts=0
+[159.9s]   a f=inf 179127 transactions of 10; len=973857416 kept=973857416 iters=0 cuts=0 firstIterationDoneAt=-1 peakTx=0 peakKept=0 peakH_R=0
+RESULT work f units tx k1 cuts iters steps WA_r share_step share_table Kpeak Kmean maxRec maxStepRec maxX loads loads/step W/L0 rewritten
+RESULT a 0.2500 16384 179127 69337 3 5 73745 0.567 0.819 0.000 4.410 3.234 35176 35176 27984 4366528 59.21 1.077 0.349
+RESULT a 0.3750 24576 113987 37819 3 5 70705 0.996 1.396 0.000 3.589 2.709 37136 37136 27548 4251778 60.13 0.865 0.414
+RESULT a 0.4000 26214 105366 33293 3 5 69937 1.091 1.514 0.000 3.472 2.640 49096 49096 37760 4251071 60.78 0.837 0.424
+RESULT a 0.5000 32768 77779 18779 3 5 61570 1.469 1.930 0.000 3.078 2.402 43984 43984 32796 4257399 69.15 0.741 0.456
+  a twin: L0=245216944 growth a transaction 4068 bytes, maxRec=30216
+[160.0s] FRACRUNS DONE
