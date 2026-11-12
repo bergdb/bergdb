@@ -61,9 +61,11 @@ theorem shortCounterexampleTx_fresh :
   intro q hq
   exact of_decide_eq_true (List.all_eq_true.mp hf q hq)
 
-/-- TP32 fails even with merge thresholds satisfying TP28, well-formed keys,
-and fresh ids. The final transaction lacks strict key order and uniqueness. -/
-theorem not_mergeOpBound_shortCounterexample : ¬ MergeOpBound shortCounterexampleParams := by
+/-- TP32 as first stated fails even with merge thresholds satisfying TP28,
+well-formed keys, and fresh ids. The final transaction lacks strict key order
+and uniqueness. It refutes `MergeOpBoundAny`, not TP32: the transaction is not sorted, which
+TP32 (`MergeOpBound`) requires as Java does since bergdb 024-16. -/
+theorem not_mergeOpBound_shortCounterexample : ¬ MergeOpBoundAny shortCounterexampleParams := by
   intro hb
   have hi : Within shortCounterexampleParams [] := by simp [Within]
   have hc := shortCounterexampleStats_eq

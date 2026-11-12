@@ -60,8 +60,10 @@ theorem tp32CounterexampleTx_fresh :
   intro q hq
   exact of_decide_eq_true (List.all_eq_true.mp hf q hq)
 
-/-- TP32 permits a final transaction with repeated, unordered keys. -/
-theorem not_mergeOpBound_counterexample : ¬ MergeOpBound tp32CounterexampleParams := by
+/-- TP32 as first stated permits a final transaction with repeated, unordered keys.
+It refutes `MergeOpBoundAny`, not TP32: the transaction is not sorted, which
+TP32 (`MergeOpBound`) requires as Java does since bergdb 024-16. -/
+theorem not_mergeOpBound_counterexample : ¬ MergeOpBoundAny tp32CounterexampleParams := by
   intro hb
   have hi : Within tp32CounterexampleParams [] := by simp [Within]
   have hc := tp32CounterexampleStats_eq

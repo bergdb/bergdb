@@ -109,8 +109,9 @@ theorem sorted_merge_bound_can_be_tight :
     · change ¬ w.merges ≤ deletesOf sortedTightTx bs * 0
       omega
 
-/-- All the intended transaction preconditions hold for the tight witness.
-Thus H cannot replace H+1 in the proposed sorted theorem. -/
+/-- All the intended transaction preconditions hold for the tight witness: TP32's
+(`MergeOpBound`, restated 2026-11-12) and TP28. Thus H cannot replace H+1 in
+TP32. -/
 theorem sorted_merge_bound_sharp_witness :
     MergeParamsOK sortedTightParams ∧ Within sortedTightParams sortedTightHistory ∧
     sortedTightTx.sorted = true ∧ sortedTightTx.wf = true ∧

@@ -129,11 +129,39 @@ def deletesOf (tx : Tx) (noops : List Bool) : Nat :=
 
 /-- TP32, CB1 of 024-11: a delete merges at most once a level of its segment
 tree below the root, so a transaction's merges are at most its deletes times
-H + 1. -/
+H + 1; for a transaction as Java gives it to the Dag, after a run within reach.
+Its premises on tx are those `Within` puts on every earlier transaction, and
+`NoBug` (TP8) on its last one; `treecheck` checks the first two on Java's
+traces (C-T7):
+* `tx.sorted`: its keys strictly increasing, so one operation a key, in key
+  order. Since bergdb 024-16 (S3, section 12) every transaction that reaches
+  the index is so: a user's (the builder keeps the last call on a key, S1; the
+  commit refuses two keys made one, S2) and reclaim's alike.
+* `tx.wf`: every key as `Keys.toSegments` makes it (bergdb 024-12, section 2:
+  `Key.wf`), the only keys the Dag gets.
+* The fresh base: its first id above every id of P (Java: a record's position
+  is above every earlier one; bergdb 024-12, D8).
+Without them it is false (`MergeOpBoundAny`, 2026-11-12). Stated, not proved;
+it follows from a premise on the heights the writer reaches
+(`mergeOpBound_of_transientHeight`, `mergeOpBound_of_outsideHeight`). -/
 def MergeOpBound (p : Params) : Prop :=
+  ∀ ts, Within p ts → ∀ tx : Tx, tx.sorted = true → tx.wf = true →
+    (∀ q ∈ treeRun p ts, q.1 < tx.base) → ∀ noops w,
+    execW p tx (ts.length + 1) (view (treeSpec p) (treeRun p ts) ts.length) = .ok (noops, w) →
+    w.merges ≤ deletesOf tx noops * (p.H + 1)
+
+/-- TP32 as first stated, until 2026-11-12: for every transaction after a run
+within reach, without TP32's premises on it. False: a transaction that repeats
+and misorders keys merges more (`not_mergeOpBound_counterexample`,
+`not_mergeOpBound_shortCounterexample`); Java makes none since bergdb 024-16. -/
+def MergeOpBoundAny (p : Params) : Prop :=
   ∀ ts, Within p ts → ∀ (tx : Tx) noops w,
     execW p tx (ts.length + 1) (view (treeSpec p) (treeRun p ts) ts.length) = .ok (noops, w) →
     w.merges ≤ deletesOf tx noops * (p.H + 1)
+
+/-- The unconditional form implies TP32, which only adds premises. -/
+theorem mergeOpBound_of_any (p : Params) (h : MergeOpBoundAny p) : MergeOpBound p :=
+  fun ts hw tx _ _ _ noops w he => h ts hw tx noops w he
 
 /-- The merges, the deletes that deleted and the space splits of each
 transaction of a run. -/

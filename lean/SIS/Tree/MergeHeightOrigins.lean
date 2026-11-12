@@ -84,13 +84,27 @@ theorem execW_seenHeightBound_of_outside (p : Params) (tx : Tx) (i : Time) (v : 
   · omega
   · exact ho (x,g,height) (hm x g height hx (by omega))
 
-/-- Only the heights of exceptional creations need checking for TP32. -/
+/-- Only the heights of exceptional creations need checking for TP32's bound
+of one transaction, any transaction. -/
 theorem execW_mergeOpBound_of_outsideHeight (p : Params) (tx : Tx) (i : Time) (v : View BVal)
     (bs : List Bool) (w : W) (h : execW p tx i v = .ok (bs,w))
     (ho : ∀ q ∈ w.outside, q.2.2 ≤ p.H+1) :
     w.merges ≤ deletesOf tx bs * (p.H+1) := by
   apply execW_mergeOpBound_of_transientHeight p tx i v bs w h
   exact execW_seenHeightBound_of_outside p tx i v bs w (p.H+1) h (by omega) ho
+
+/-- TP32 (`MergeOpBound`, restated 2026-11-12) follows when every transaction
+it speaks of (sorted, well formed, a fresh base, after a run within reach)
+makes no node outside the bounds above H + 1. That premise is not proved: it
+is the step left for TP32. -/
+theorem mergeOpBound_of_outsideHeight (p : Params)
+    (ho : ∀ ts, Within p ts → ∀ tx : Tx, tx.sorted = true → tx.wf = true →
+      (∀ q ∈ treeRun p ts, q.1 < tx.base) → ∀ bs w,
+      execW p tx (ts.length + 1) (view (treeSpec p) (treeRun p ts) ts.length) = .ok (bs, w) →
+      ∀ q ∈ w.outside, q.2.2 ≤ p.H+1) :
+    MergeOpBound p :=
+  fun ts hw tx hs hf hb bs w h =>
+    execW_mergeOpBound_of_outsideHeight p tx _ _ bs w h (ho ts hw tx hs hf hb bs w h)
 
 /-- When no node was created outside the bounds, the root level is excluded
 and H itself suffices. -/
