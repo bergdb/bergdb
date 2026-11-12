@@ -1,0 +1,350 @@
+# 026-02. A public key check: options and a recommendation
+
+Created 2026-11-12 by Frans Lundberg. Status: open.
+
+Frans, 2026-11-12, 09:34: "Add a todo item for public key-checking. There
+are some options. [...] Investigate the options and recommend an
+implementation. No need to implement it. This can be done for next
+release."
+
+The background is 024-27, QR1 (decided 09:34): an `rw()` action that
+catches a refused `env.put()` and returns normally commits its other
+writes, and stays so; since 024-27 a refused call spoils a `WBuilder` and
+a Core `Trans.Builder`. Either way a user who wants to handle a key that
+is too long (skip it, shorten it, use another key) cannot ask in advance
+whether a key fits: the Pub API has no public check, and the rule is
+subtle (024-26, U26-3). A study, no product code. Made by the agent
+"keychk" of coord-1112. Cite the options as "026-02, option A", the
+questions as "026-02, QK1".
+
+
+## 1. In short
+
+Written 09:40 (2026-11-12). Done; section 9 has the state.
+
+* **Recommended: option A with A2**, a small final class
+  `bergdb.pub.Limits` in the Pub API: the six limits as constants, and
+  three static methods, `keyBytes(String key)` (a key's bytes as stored),
+  `checkKey(String key)` (throws the very `IllegalArgumentException` that
+  a put or a delete throws for the key) and `levelBytes(Object level)`
+  (one level's bytes in an index entry, for L6). No database, no
+  connection: the key rule depends on the key alone.
+* **One source of truth**: put, delete and `checkKey` call one method of
+  `pubimp`; a property test compares `keyBytes` and `checkKey` with what
+  a put on a memory database does, for random and boundary keys.
+* **Not recommended**: a `tryPut` (option B), a builder's remaining room
+  (option C, not knowable before the commit when objects are indexed), a
+  dry-run put on a connection (option D, later if asked), and a doc-only
+  answer (option F; the rule is too subtle to leave to each user).
+* **The Core API** (option E) needs no new method: a byte[] key's
+  stored size is its length, and `Db.MAX_KEY_BYTES` is public; one
+  sentence in Db's Limits says so. The C clone (022) is not concerned.
+* **Size**: about 1 day: half a day for the code and tests, a quarter for
+  the Javadoc, the rest for a gate (before-commit.sh) and a review.
+* **Questions**: QK1 to QK4 (section 8): the class's name and place,
+  a boolean check beside the throwing one, `levelBytes` now or later,
+  and whether 2026.5 takes it after all.
+
+
+## 2. What refuses today
+
+Read 09:35 to 09:38 on main `c6c3bcf2`.
+
+| Limit | Refused by | When | Exception |
+|---|---|---|---|
+| L2 key, Pub | `RwEnvironmentImp.checkKeyBytes` | at put, delete | IAE |
+| L2 key, Core | `Trans.Builder.checkKeyBytes` | at the call | IAE |
+| L2, key replace, Core | `Db.transformKeys` | at execute | DbException |
+| L4 value | `checkValueBytes`, `Trans.Builder.checkValue` | at the call | IAE |
+| L6 levels | `IndexDefinition.entryForPut` | at the commit | IAE |
+| L1, L3, L5 | `Db.checkLimits` (from `checkSize`) | at execute | DbException |
+
+IAE: IllegalArgumentException.
+
+* **L2 in the Pub API.** `PubKeys.u2i(ukey)` makes the ikey ("/a/b" is
+  "/da/-b": a byte after each '/') and refuses a bad form (null, empty,
+  no leading '/', a trailing '/', "//", a lone surrogate); then
+  `checkKeyBytes(ukey, ikey)` refuses an ikey whose UTF-8 has more than
+  111 bytes. The bkey is the ikey's UTF-8 with each byte shifted
+  (`dag.Keys.toBytes`), so the ikey's UTF-8 size is the stored size
+  exactly; U+0000 and U+0001 are one byte in a key (two only in an index
+  level). Key replace keeps a key's length ("${transactionTime}" is 18
+  chars, the time 18 digits), so the key as written is checked.
+* **Also key-related at a put**: `checkReplaceInDirectory` refuses
+  "${transactionTime}" in an object key's directory when key replace is
+  on (020-14, X1), and an object at a key with a suffix is refused. Both
+  depend on the connection's setting or the value, not on the key alone.
+* **L6** is refused at the commit, for the indexes active on the
+  directory then (`RwEnvironmentImp.indexEntries`): in an `rw()` after
+  the action returned, in a `w()` at `execute()`. A string level takes
+  its UTF-8, one byte more for each U+0000 and U+0001, and a terminating
+  byte; a bytes level likewise (`IndexKeys.escapedLength`); a long or a
+  double 8 bytes; the levels of an entry at most 111 bytes in all.
+* **L1, L3, L5** are counted on the Core transaction, after the Pub API
+  has added the index entries: an object at a directory with k indexes
+  costs 1 to 1 + 2k operations, by its old value (024-26, U26-7).
+* **A `get()` or `exists()`** of a key over 111 bytes returns null or
+  false (U26-6): it does not tell a user that a put would be refused.
+
+
+## 3. What a user needs
+
+1. Before a put or a delete, to know whether the key is accepted, and if
+   not, how far over it is (to shorten it, or to pick a hashed key).
+2. To know it without a database or a connection: keys are often made
+   in code far from the transaction, and validated at input.
+3. The same answer that the put gives, in this release and later ones
+   (the limits may be raised, never lowered: 024-17, 6.3).
+4. For an indexed directory, the same for the levels of an object (L6),
+   which a user meets less often but with a subtler rule (U26-3).
+5. In a `w()`, not to spoil the builder; in an `rw()`, not to rely on
+   catching an `IllegalArgumentException` that may mean several things
+   (a bad form, a long key, a null object, an object at a suffix key).
+
+
+## 4. The options
+
+### 4.1 Option A: a static check in the Pub API
+
+```java
+public final class Limits {                 // bergdb.pub
+    public static final int MAX_KEY_BYTES = Db.MAX_KEY_BYTES;          // 111, L2
+    public static final int MAX_VALUE_BYTES = Db.MAX_VALUE_BYTES;      // 8 MiB, L4
+    public static final int MAX_OPERATIONS = Db.MAX_OPERATIONS;        // 500, L1
+    public static final int MAX_TRANS_KEY_BYTES = Db.MAX_TRANS_KEY_BYTES;  // 56 KiB, L3
+    public static final long MAX_TRANS_BYTES = Db.MAX_TRANS_BYTES;     // 32 MiB, L5
+    public static final int MAX_LEVEL_BYTES = Db.MAX_KEY_BYTES;        // 111, L6
+
+    /** The key's bytes as stored; IllegalArgumentException if not a valid key. */
+    public static int keyBytes(String key) { ... }
+
+    /** Throws the IllegalArgumentException that put() or delete() throws for the key. */
+    public static void checkKey(String key) { ... }
+}
+```
+
+What the user writes:
+
+```java
+String key = "/files/" + name;
+if (Limits.keyBytes(key) > Limits.MAX_KEY_BYTES) {
+    key = "/files/#" + sha256Hex(name);     // a key that always fits
+}
+b.put(key, data);
+```
+
+* **Where.** A class of its own, `Limits`, named as the package's
+  section "Limits", so the Javadoc of each constant is the rule and the
+  package's section links to it. Alternatives: static methods on the
+  `Connection` interface (Java 17 allows them; discoverable, but a
+  connection is a per-thread object, and the check needs none); a class
+  `Keys` (clashes in name with `bergdb.dag.Keys`, which `pubimp` imports
+  widely); `Factory` (it starts databases, not this).
+* **Which arguments.** The key alone, as put and delete check it. Not
+  key and value: L4 for a byte[] or a String is plain for the user, and
+  an object's stored size needs its serialization (option D).
+* **keyBytes and checkKey.** `keyBytes` answers "how far over", which
+  shortening needs; it throws for a key of a bad form, whatever its
+  length, so its answer is the stored size of a key that can be stored.
+  `checkKey` throws exactly what put and delete throw for the key: the
+  same message, so a user's log shows the same text either way. A
+  boolean `isKey(String)` is easy to add (QK2); left out to keep one way.
+* **Scope, said in the Javadoc**: the key's form and L2. A put may still
+  refuse the call for its value, an object at a key with a suffix, or
+  "${transactionTime}" in an object key's directory with key replace on.
+* **Constants.** Today a Pub user meets the limits only as numbers in
+  the package's Javadoc, or through the Core's `Db`, which the Pub API
+  does not ask a user to read. They are compile-time constants, inlined
+  in user code; that is safe, as a later release only raises a limit.
+* **Keeping in step.** One method in `pubimp`, say
+  `PubKeys.checkedIkey(String ukey)`, does `u2i` and `checkKeyBytes`;
+  `RwEnvironmentImp.put` and `delete` call it, and so do `checkKey` and
+  `keyBytes`. The constants are `Db`'s, by reference.
+* **Test.** A property test: for random keys (ASCII, two-, three- and
+  four-byte UTF-8, U+0000, many '/', the 110 to 112 byte boundary, a bad
+  form, "${transactionTime}" with key replace on and off), `checkKey`
+  throws if and only if a put on a memory database throws, with the same
+  message, and `keyBytes` equals the bkey's length that the put stored
+  (`Keys.toBytes(ikey).length`, read back by a scan of the Core).
+* **C clone (022).** No: it is the Core in C, without the Pub API.
+
+### 4.2 Option A2: an index level's size (L6)
+
+```java
+    /** A level's bytes in an index entry: Long, Integer, Double 8; a String, a byte[] ... */
+    public static int levelBytes(Object level) { ... }
+```
+
+The user sums the levels of an index, which he defined, and compares
+with `MAX_LEVEL_BYTES`. It is the U26-3 rule as code: the two-byte
+U+0000, U+0001 and 0x00, 0x01, and the terminating byte. Static and
+exact: the user knows his index's levels; the race of option D (an index
+made between a check and the commit) does not arise, as the user asks
+about an index he names. Kept in step by calling `IndexKeys.escapedLength`,
+the product's counter, and tested against `IndexReference.encodedSize`,
+the test oracle's independent one, for random levels, and against a put
+of an object with those levels at the 111 and 112 byte boundary.
+
+### 4.3 Option B: a "try" put
+
+`boolean WBuilder.tryPut(String key, Object value)` and the same on
+`RwEnvironment`: false, and nothing added and nothing spoiled, if the put
+would be refused. What the user writes: `if (!b.tryPut(k, v)) { ... }`.
+
+* It doubles the write calls of two interfaces (put and delete, on
+  `WBuilder` and `RwEnvironment`), and answers only yes or no: a user
+  who shortens a key still needs the size (option A).
+* A false hides which rule refused: a bad form is a bug in the caller,
+  a long key a case to handle. A result object fixes that at more API.
+* It cannot cover L6 or L1, L3, L5, which are refused at the commit.
+* Kept in step for free (it runs the put), tested as the put. Not
+  recommended: option A gives the same with less API and more answer.
+
+### 4.4 Option C: a builder's remaining room (L1, L3, L5)
+
+`int WBuilder.operations()` or `remainingOperations()`, and the same
+for key bytes and bytes.
+
+* Exact only for plain values. An object put at an indexed directory
+  costs 1 to 1 + 2k operations and some key bytes by its old value and
+  the indexes active at the commit (`indexEntries`), known only then; a
+  builder's count before it would be a lower bound, and a user who fills
+  a builder to it may still be refused, so the promise would be weak.
+* For plain values the user counts himself: one operation a key (the
+  last call on a key wins), a key's `keyBytes`, a value's length. The
+  package's Limits says so today, with 500 and 166 as examples.
+* Not recommended. If wanted later, `Transaction` could report what a
+  committed transaction took, which is exact (an item of its own).
+
+### 4.5 Option D: a dry run on a connection
+
+`void Connection.checkPut(String key, Object value)`: every check of a
+put without the write: the key, L4 on the stored value, the object rules,
+and L6 for the directory's indexes active now.
+
+* Covers what option A cannot: an object's stored size, and L6 without
+  the user summing levels. Costs a serialization, as the put does.
+* L6 is checked against the indexes of now; one made before the commit
+  may still refuse (state, not a pure function; the Javadoc must say it).
+* Kept in step if it runs the put's own code into a scratch environment
+  (`RwEnvironmentImp.put` and `entryForPut`); about 1.5 to 2 days with
+  tests. Not recommended now: A and A2 meet the need of section 3 at a
+  fraction; D is a later item if users ask (QK3).
+
+### 4.6 Option E: the Core API
+
+* A byte[] key: its stored size is its length; a String key of
+  `Trans.Builder.put(String, ...)`: its UTF-8 (no byte after '/', unlike
+  the Pub API). `Db.MAX_KEY_BYTES` and the other limits are public.
+* So no method: one sentence in Db's Limits, "a key fits if
+  `key.length <= Db.MAX_KEY_BYTES`", and the Pub check is not built on
+  a Core method (it is the ikey's UTF-8 size, a Pub rule).
+* A key that a key transformation makes longer is refused at execute
+  (DbException, `Db.transformKeys`); only BergDB's own transformations
+  are in the Pub API, and they keep the length.
+* C clone (022): its update to 2026.5 takes the limits; a check there
+  would be the same comparison. Nothing for this item.
+
+### 4.7 Option F: only document the rule
+
+The package's Limits and Connection's "Keys" give the rule; add an
+example ("/customers/12345678" is 21 bytes is there). Costs nothing to
+keep, but each user writes the count himself, and U26-3 shows that a
+careful reader (app 3 of 024-26) found the rule's edges by testing. The
+example of option A goes into the Javadoc in any case.
+
+### 4.8 Option G, a note: a subclass of the exception
+
+A `KeyTooLongException extends IllegalArgumentException` would let an
+`rw()` action catch only the long key. Compatible, but one class a limit,
+and it helps only after the call; a `WBuilder` is spoiled by then. Not
+recommended; option A answers before the call.
+
+
+## 5. Comparison
+
+| Option | Answers before the call | Gives the size | New API | Days |
+|---|---|---|---|---|
+| A, Limits.keyBytes, checkKey | yes, exact | yes | 1 class, 2 methods | 0.75 |
+| A2, Limits.levelBytes | yes, exact for a named index | yes | 1 method | 0.25 |
+| B, tryPut | no, it is the call | no | 4 methods | 0.5 |
+| C, remaining room | a lower bound | partly | 3 methods | 1 |
+| D, Connection.checkPut | yes, for the indexes of now | no | 1 method | 1.5 to 2 |
+| E, Core | yes (length) | yes | none, 1 sentence | 0 |
+| F, documents only | by hand | by hand | none | 0.1 |
+
+
+## 6. Recommendation
+
+Options A and A2, with E's sentence and F's example: `bergdb.pub.Limits`
+with the six constants, `keyBytes`, `checkKey` and `levelBytes`. Each is
+a pure function of its argument, exact in this release, and built on the
+code that refuses, so it cannot drift without a failing test. It meets
+section 3's needs 1 to 5 but the object's stored size (L4 for an object)
+and L1, L3, L5, which a user meets far less often, and which depend on
+the commit.
+
+
+## 7. The plan
+
+In a clone, on a branch `026-02-limits`; about 1 day.
+
+1. **pubimp** (1 hour): `PubKeys.checkedIkey(String ukey)`, the form
+   checks of `u2i` and L2 (`checkKeyBytes` moved from
+   `RwEnvironmentImp` to `PubKeys`); `RwEnvironmentImp.put` and `delete`
+   call it. `IndexKeys.levelBytes(Object)` from `escapedLength` and the
+   8 of a number.
+2. **bergdb/pub/Limits.java** (2 hours with its Javadoc): the constants,
+   each with its rule from the package's Limits (L1 to L6) and its ID;
+   `keyBytes`, `checkKey`, `levelBytes`; the example of section 4.1 and
+   one for a level sum. A null argument is refused with
+   `IllegalArgumentException` that names it (020-27, Q2).
+3. **Javadoc** (1 hour): the package's Limits links each limit to its
+   constant and says "Limits.checkKey() checks a key before a call";
+   Connection's "Keys", `WBuilder` (a refused call spoils it: check
+   first) and `RwEnvironment`'s "Refused calls" link to it; Db's Limits
+   gets option E's sentence.
+4. **Tests** (2 hours), in `PubTesterLongKeys` (no new tester to list):
+   the property test of section 4.1 (a few thousand random keys, about a
+   second); the boundary keys 111 and 112 bytes of each kind; a
+   `levelBytes` test against `IndexReference.encodedSize` and a put of an
+   object at 111 and 112 bytes of levels in an indexed directory; a
+   constants test (`Limits.X == Db.X`).
+5. **Release jar**: `stress/release-jar/ReleaseDemo.java` calls
+   `Limits.checkKey` once, so that the jar check (`build.sh`, check 3)
+   compiles user code against it.
+6. **releases/next.md**: a line under the Pub API's additions.
+7. **Gate**: `java/before-commit.sh` once on the head (a slot). No Lean
+   change (the model has the Core's limits, not the Pub key rule), no
+   level script, no performance run: the put's path gains no work (the
+   same calls, moved into one method).
+
+No changed expected value in an existing test is foreseen; the messages
+of put and delete stay as they are.
+
+
+## 8. Questions for Frans
+
+* **QK1. The name and place.** `bergdb.pub.Limits` (recommended), static
+  methods on `Connection`, or another class name?
+* **QK2. A boolean too?** `Limits.isKey(String)` beside `checkKey` and
+  `keyBytes`. Recommended: no, one way (`keyBytes(k) <= MAX_KEY_BYTES`).
+* **QK3. Levels now, the dry run later?** `levelBytes` (A2) with the key
+  check, and `Connection.checkPut` (option D) only if users ask.
+  Recommended: yes.
+* **QK4. Which release?** 2026.6 as Frans said; it is about a day and
+  touches no format, so 2026.5 could take it if its plan has room.
+  Recommended: 2026.6, as said.
+
+
+## 9. State
+
+Written 09:40, 2026-11-12, by "keychk" of coord-1112. **Done**: the study,
+the recommendation and the plan. No code, no clone, no probe; nothing
+runs, no slot held.
+
+* **Main tree**: this file only; not committed. 026's readme needs its
+  index line (the coordinator adds it).
+* **For Frans**: QK1 to QK4 (section 8).
+* **To continue**: once Frans answers, an agent follows section 7 in a
+  clone, on a branch for the coordinator to land.

@@ -41,7 +41,7 @@ high.
 | 024-27 | U26-5 B, theta at least 2, 62 the largest size, U26 Javadoc | rules (high) | landed a7dfb6f7 |
 | 026 | 2026.6 work moved from 024 to 026, 024-20 first (026-01) | move (high) | done 07:42 |
 | 024-27 | QR1 kept as is: RwEnvironment's Javadoc, "Refused calls" | coordinator | landed |
-| 026-02 | A public key check: the options, a recommendation; no code | keychk (high) | running |
+| 026-02 | A public key check: the options, a recommendation; no code | keychk (high) | done 09:39 |
 
 024-27 lands on its gates, by Frans's decisions of 07:36: its changed
 expected values follow from them.
@@ -86,7 +86,10 @@ from them.
   todo for a public key check, studied by an agent at high, for the next
   release (026-02). keychk started; the Javadoc by the coordinator in
   /Users/f/fl/bench/2026-11-12/qr1/clone (5a7f644d), before-commit
-  OK (64 s), landed 09:37 and pushed.
+  OK (64 s), landed 09:36 and pushed.
+* 09:39 keychk done (026-02): recommended a class bergdb.pub.Limits
+  (the limits as constants, keyBytes, checkKey, levelBytes; one checking
+  method shared with put and delete), about a day; QK1 to QK4.
 
 
 ## 6. Outcome
