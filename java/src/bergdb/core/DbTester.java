@@ -2629,14 +2629,15 @@ public class DbTester {
     }
     
     /**
-     * bergdb 021-27, open (found by a black-box user of the C port (022), U2-4): getTrans at
-     * a multiple of 8 inside a committed transaction's record, not at its start, passes the
-     * checks of testGetTransRefusesBadPositions, reads the bytes there as a record, and fails
-     * the database, as the Javadoc says ("the bytes at 'tpos' are not a committed
-     * transaction"): DbFailedException, and every later call throws it until a restart. A
-     * caller's wrong position is not told apart from damage at a transaction's position;
-     * 021-27 has the options. This test keeps today's behaviour: a fix that refuses such a
-     * position with IllegalArgumentException, the database going on, changes it.
+     * bergdb 021-27 (found by a black-box user of the C port (022), U2-4): getTrans at a
+     * multiple of 8 inside a committed transaction's record, not at its start, passes the
+     * checks of testGetTransRefusesBadPositions and reads the bytes there as a record. It
+     * failed the database (DbFailedException, and every later call threw it until a
+     * restart). Since 2026-11-12 (Frans: a read-only call with a position from the caller
+     * "should fail or succeed, but never block the database"; 010-04, R5) Db.getTrans()
+     * takes the position as a caller's and refuses it: IllegalArgumentException, the read's
+     * StreamFormatException its cause, and the database goes on. Until then this test kept
+     * the old behaviour, as its Javadoc said it.
      */
     @Nano
     public static void testGetTransInsideARecord() {
@@ -2654,13 +2655,14 @@ public class DbTester {
                 } catch (Throwable x) {
                     e = x;
                 }
-                assertTrue("tpos + " + offset + ": " + e, e instanceof DbFailedException);
-                try {
-                    DbUtil.getString(db, "/a");
-                    throw new AssertionError("the database went on, tpos + " + offset);
-                } catch (DbFailedException expected) {
-                    // The database has failed.
-                }
+                assertTrue("tpos + " + offset + ": " + e, e instanceof IllegalArgumentException);
+                assertTrue("the position, " + e, e.getMessage().startsWith(
+                        "Not a position of a transaction, " + (t.tpos + offset) + ":"));
+                assertEquals("the database goes on, tpos + " + offset, value,
+                        DbUtil.getString(db, "/a"));
+                assertEquals(t.tt, db.getTrans(t.tpos).tt);
+                db.execute(db.trans().put("/b", "b0").build());
+                assertEquals("b0", DbUtil.getString(db, "/b"));
             } finally {
                 db.stop();
             }
