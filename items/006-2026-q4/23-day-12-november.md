@@ -52,7 +52,7 @@ high.
 | 024-32 | maintain(), in Core and Pub, with G5 (back to empty by maintain()) | maint (high) | |
 | 024-33 | ST6: the cache's tables shrink | tidy (high) | |
 | 024-34 | OP8: reclaim reads only what it rewrites | tidy (high) | |
-| 017-11 | A startup distance that follows the database's size: known, plan | sdk (xhigh) | |
+| 017-11 | A startup distance that follows the database's size: known, plan | sdk (xhigh) | done 13:03 |
 
 024-27 lands on its gates, by Frans's decisions of 07:36: its changed
 expected values follow from them.
@@ -211,6 +211,23 @@ from them.
   that follows the number of KVs as a default "users won't need to think
   about" is "a big step and not for now"; a new 017 topic, written by an
   agent at xhigh: sdk started 12:47 (017-11).
+* 12:53 Frans: the disk 98 % full (22 GB free; /Users/f/fl/bench 582
+  GB): "Start removing files. You created bench/, so please handle
+  this." Cleanup from 12:54 (log /Users/f/fl/bench/cleanup-2026-11-12.log;
+  unlanded branches bundled to /Users/f/fl/bench/archive-branches/).
+* 12:59 Frans on QF1: "Do the measurement now. It is ok to limit
+  database size so it takes less than 60 minutes [...] Let's see if we
+  can sort this out before the release." fracm started 12:59 (024-29).
+* 13:02 The cleanup done: 22 GB free to 410 GB (55 % used); 516 clones
+  removed, their 368 branches not on main saved as bundles (80 MB) in
+  /Users/f/fl/bench/archive-branches/; 62 of the clones had uncommitted
+  edits of tracked files (probes and scratch), removed without a copy.
+  Kept: 022, 015-02, the Android SDK, today's directories.
+* 13:03 sdk done (017-11): candidate rules R0 to R6; a put's bytes
+  constant only if sd grows with K, which costs about 0.2 to 0.5 s of
+  warm start and 10 to 15 MB of pinned heap a million keys, against P5
+  as written; Frans asked the same question on 2013-04-08; the first
+  steps: his D1 from the tables, GM4 (45 minutes, bytes only).
 
 
 ## 6. Outcome
