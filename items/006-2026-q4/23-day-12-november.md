@@ -53,7 +53,7 @@ high.
 | 024-33 | ST6: the cache's tables shrink | tidy (high) | landed a156fd51 |
 | 024-34 | OP8: reclaim reads only what it rewrites | tidy (high) | landed a156fd51 |
 | 017-11 | A startup distance that follows the database's size: known, plan | sdk (xhigh) | done 13:03 |
-| 021-27 | Db.getTrans inside a record fails the database: refused instead | gtr (high) | gated, to land |
+| 021-27 | Db.getTrans inside a record fails the database: refused instead | gtr (high) | landed 3ffe0b51 |
 
 024-27 lands on its gates, by Frans's decisions of 07:36: its changed
 expected values follow from them.
@@ -288,6 +288,11 @@ from them.
   single way to do a maintain step.
 * 13:52 Frans: "For 2026.5, land maintain() as built." The single step
   and the simple form registered as 026-03.
+* 14:01 maint: main merged into 024-32 (head 5edb773a); before-commit,
+  level1, level3, level4 quick, count-gates, e-r-maint OK. G5 found a
+  floor of ST6 since 024-33: a used map keeps at least 16 slots, so an
+  emptied database keeps up to 4,096 x 16 slots (about 256 kB) whatever
+  its size; G5 allows that floor.
 
 
 ## 6. Outcome

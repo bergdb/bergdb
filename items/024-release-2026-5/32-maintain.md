@@ -201,7 +201,7 @@ the same calls after it write the same bytes (tested, 3.3).
 
 ## 3. What was built
 
-On the branch `024-32-maintain` of the clone (section 7 has the head).
+On the branch `024-32-maintain` of the clone (section 8 has the head).
 Touched files, none of them the pace or tidy agents' (024-31's
 `TransSeq.shareFp` and `take`, 024-33's cache tables, 024-34's reclaim
 reads): `TransSeq` gets a new method beside `take`, `Reclaim` new methods
@@ -369,26 +369,48 @@ overturned.
   (P12, 2026-11-09). Recommended: as built.
 
 
-## 7. State
+## 7. The merge with main (a156fd51) and its gates
 
-2026-11-12, 13:37. **Done.**
+The coordinator, 13:38: merge `main` (024-31's `shareSection`, 024-33
+and 024-34's cache tables and reclaim reads, ST6 counted in G4) and
+gate again. Conflicts in `TransSeq` (`takeTo` beside `shareSection`,
+both kept) and in `count-gates.sh`'s header; `Reclaim`, `CountGates`
+and `docs/levels.md` merged by themselves. Merge commit `ef10ff95`.
+
+G5 now counts ST6. The first count failed (49,584 slots against the
+twin's 80): since 024-33 a map shrinks to at least 16 slots and keeps
+its table once used, and the emptied database has used 3,099 of the
+4,096 maps, the twin 5. That is a floor independent of n, 4,096 times
+16 = 65,536 slots (about 256 kB), so G5 holds ST6 to the larger of twice
+the twin's and that floor (`5edb773a`). A map that empties could drop
+its table altogether; that is 024-33's to decide, not done here.
+
+| Gate (head)                          | Result                                         |
+|---|---|
+| before-commit.sh (ef10ff95)          | BEFORE COMMIT OK (unit 1,695, F 89), 73 s      |
+| level1.sh (ef10ff95)                 | LEVEL 1 OK                                     |
+| level3.sh (ef10ff95)                 | LEVEL 3 OK, 486 s; 35 traces, C-CUT 0 of 799   |
+| count-gates.sh (5edb773a)            | COUNT GATES OK, 130 s; G5 ST6 0.754 of its limit |
+| level4.sh quick (5edb773a)           | LEVEL 4 OK, 123 s; 18 traces, C-P, C-H 0 fail  |
+| e-r-maint seeds 1 to 3 (5edb773a)    | TRACECHECK OK each                             |
+
+`5edb773a` changes only `CountGates.java` after `ef10ff95`. Output:
+`32-maintain/gate-5edb773a.txt`. ST6's count moved by a few slots
+between runs (49,584, 49,392): the eviction thread's timing.
+
+
+## 8. State
+
+2026-11-12, 14:02. **Done; merged with main and gated.**
 
 * **Clone** `/Users/f/fl/bench/2026-11-12/maint/clone`, branch
-  `024-32-maintain` from `main` at `288c973e`, head `ec924fd7`, two
-  commits in Frans's name: the feature (`c8becd28`) and the dead hand's
-  step with G5's tolerances (`ec924fd7`). Not on `main`: the coordinator
-  lands the branch.
-* **Done**: design (section 2), code and unit tests (section 3), G5 at
-  1M keys (section 4), the gates on the head (section 5: before-commit,
-  level1, level3 with conformance and `lake build`, count-gates, all
-  OK). No existing test's expected value changed.
-* **Not done**: `level4.sh` (its new configuration e-r-maint checked by
-  hand); a 10M run of G5; Frans's answers to Q32-1 to Q32-5 (section 6).
-* **To continue**: merge the branch (files touched: section 3; a merge
-  with 024-31's `TransSeq` change meets `takeTo` beside `take`, and
-  `Db.store`'s four lines after the take's call). The clone's
-  `lean/.lake` is a copy of the main tree's, not tracked.
-
-**Decided** (Frans, 2026-11-12, 13:52): "For 2026.5, land maintain() as
-built." Q32-1 to Q32-5 as built. The single maintenance step and the
-simple form for 2026.6: 026-03.
+  `024-32-maintain`, head `5edb773a`, in Frans's name: `c8becd28` (the
+  feature), `ec924fd7` (the dead hand's step, G5's tolerances),
+  `ef10ff95` (merge of `main` at `a156fd51`), `5edb773a` (G5's ST6
+  floor). Not pushed; the coordinator lands it.
+* **Gates**: section 5 (before the merge) and section 7 (after it), all
+  OK. No existing test's expected value changed.
+* **Not done**: `level4.sh` full; G5 at 10M; Frans's answers to Q32-1
+  to Q32-5 (section 6).
+* **To continue**: land the branch. The clone's `lean/.lake` is a copy
+  of the main tree's, not tracked.
