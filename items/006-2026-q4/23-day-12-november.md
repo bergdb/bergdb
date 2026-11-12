@@ -268,6 +268,9 @@ from them.
   alone; no change of the Lean model or the trace format (two new
   conformance configurations pass); before-commit, level1, level3,
   count-gates OK; no changed expected values. Q32-1 to Q32-5.
+* 13:38 Frans: TP11, option (a): keyWf to say what Keys.toSegments
+  makes (each segment below 2^62, its lowest three bits zero), after the
+  prover's run; recorded in 024-12.
 
 
 ## 6. Outcome
