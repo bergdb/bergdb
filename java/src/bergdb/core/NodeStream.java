@@ -222,7 +222,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
     }
     
     public byte[] readTransBytes(long tpos) {
-        int size = readRecordHeader(tpos, 7);
+        int size = readRecordHeader(tpos, 7, false, false);
         
         byte[] buffer = new byte[size];
         rstream.read(tpos, buffer, 0, size);
@@ -237,11 +237,18 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      * VersioningStreamException before its bytes are read: until 2026.5 the whole record was
      * read into one array first, so that a start on an older stream whose last record was
      * 1.5 GB needed 1.5 GB of heap to refuse it.
+     * 
+     * <p>With 'record' (2026-11-12, bergdb 021-27) a last byte other than 0 (not committed)
+     * and RecoverableStream.LAST_BYTE (committed) is corrupt, and with 'committed' a last byte
+     * of 0 too, as the TransIterator checks them after the read: so before the record's array
+     * is made. Db.getTrans() reads at a caller's position, which can be inside a record, where
+     * the bytes give a size up to the stream's length: an array that large could fail the
+     * database with an OutOfMemoryError before the position was refused.</p>
      *
      * @throws StreamFormatException
      * @throws VersioningStreamException
      */
-    private int readRecordHeader(long tpos, int min) {
+    private int readRecordHeader(long tpos, int min, boolean record, boolean committed) {
         byte[] header = new byte[4];
         rstream.read(tpos, header, 0, 4);
         int size = Bytes.bytesToIntLE(header, 0);
@@ -259,6 +266,13 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         // uncommitted one, a crash's tail, is skipped by the iterator, as before.
         byte[] b = new byte[1];
         rstream.read(RecoverableStream.getSpos(tpos, size - 1), b, 0, 1);
+        if (record && b[0] != 0 && b[0] != RecoverableStream.LAST_BYTE) {
+            throw new StreamFormatException("Bad lastByte: " + ((int) b[0]));
+        }
+        if (committed && b[0] == 0) {
+            throw new StreamFormatException("Transaction at start pos " + tpos
+                    + " is not committed (its last byte is 0).");
+        }
         if (b[0] == RecoverableStream.LAST_BYTE) {
             header = new byte[5];
             rstream.read(tpos, header, 0, 5);
@@ -439,7 +453,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
 
                 // The header first (bergdb 024-17, QL7): a size over the record limit is
                 // corrupt, another format refused, before the record is read.
-                int size = readRecordHeader(tpos, 16);
+                int size = readRecordHeader(tpos, 16, true, exactStartPos && tpos == startPos);
 
                 byte[] buffer = new byte[size];
                 rstream.read(tpos, buffer, 0, size);

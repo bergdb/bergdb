@@ -861,7 +861,10 @@ public class DbTesterFailure {
      * Db.getTrans, the Pub API's Connection.transactionInfo(): a read error fails the
      * database, and after it getTrans is refused (it read on after a failure). So does a
      * format error (here, a corrupt read) since bergdb 005-34, which made the positions that
-     * a get gives right; before it, a format error did not fail the database.
+     * a get gives right; before it, a format error did not fail the database. Since bergdb
+     * 021-27 a format error fails the database only for a position the database has given
+     * (Internal.getTrans(), as transactionInfo() reads); Db.getTrans() takes the position as
+     * a caller's and refuses it with IllegalArgumentException, and the database goes on.
      */
     @Nano
     public static void testGetTrans() {
@@ -876,12 +879,27 @@ public class DbTesterFailure {
 
             if (corrupt) {
                 s.corruptReads = true;
+                IllegalArgumentException refused = null;
+                try {
+                    db.getTrans(t.tpos);
+                } catch (IllegalArgumentException ex) {
+                    refused = ex;
+                }
+                Assert.assertTrue("a caller's position refused",
+                        refused != null && refused.getCause() instanceof StreamFormatException);
+                s.corruptReads = false;
+                Assert.assertEquals("the database goes on", "a0", DbUtil.getString(db, "/a"));
+                s.corruptReads = true;
             } else {
                 s.failReads = true;
             }
             DbFailedException e = null;
             try {
-                db.getTrans(t.tpos);
+                if (corrupt) {
+                    db.internal().getTrans(t.tpos);
+                } else {
+                    db.getTrans(t.tpos);
+                }
             } catch (DbFailedException ex) {
                 e = ex;
             }
@@ -968,9 +986,24 @@ public class DbTesterFailure {
                 reader.start();
                 waitUntilBlockedOnTheWriteLockOrDone(reader, what, got);
                 
+                // A position inside the record waits too, then is refused (bergdb 021-27).
+                final Object[] gotInside = new Object[1];
+                Thread inside = new Thread(() -> {
+                    try {
+                        gotInside[0] = db.getTrans(tpos + 8);
+                    } catch (Throwable e) {
+                        gotInside[0] = e;
+                    }
+                });
+                inside.start();
+                waitUntilBlockedOnTheWriteLockOrDone(inside, what + ", inside", gotInside);
+                
                 s.holdAppends = false;
                 writer.join(10 * 1000);
                 reader.join(10 * 1000);
+                inside.join(10 * 1000);
+                Assert.assertTrue(what + ": inside the record, refused, " + gotInside[0],
+                        gotInside[0] instanceof IllegalArgumentException);
                 Assert.assertTrue(what + ": the writer, " + thrown[0], 
                         !writer.isAlive() && thrown[0] == null);
                 Assert.assertTrue(what + ": the transaction, " + got[0],
@@ -1029,7 +1062,8 @@ public class DbTesterFailure {
      * throws a LookupTimeNotAvailableException, and the database goes on, as for a read
      * that a cut has overtaken (bergdb 011-04, W1). The stream below was cut directly until
      * 2026-11-06, so the database's first position did not see the cut (bergdb 015-80,
-     * review R4's C2).
+     * review R4's C2). A position inside a record below the cut expires so too, and one
+     * inside a record after it is refused with IllegalArgumentException (bergdb 021-27).
      */
     @Nano
     public static void testGetTransBelowTheCut() throws IOException {
@@ -1051,6 +1085,20 @@ public class DbTesterFailure {
             expired = e;
         }
         Assert.assertTrue("expired", expired != null);
+        expired = null;
+        try {
+            db.getTrans(t1.tpos + 8);
+        } catch (LookupTimeNotAvailableException e) {
+            expired = e;
+        }
+        Assert.assertTrue("inside a record below the cut, expired", expired != null);
+        IllegalArgumentException refused = null;
+        try {
+            db.getTrans(t2.tpos + 8);
+        } catch (IllegalArgumentException e) {
+            refused = e;
+        }
+        Assert.assertTrue("inside a record after the cut, refused", refused != null);
         Assert.assertEquals("the database goes on", t2.tt, db.getTrans(t2.tpos).tt);
         db.execute(db.trans().put("/c", "c0").build());
         Assert.assertEquals("c0", DbUtil.getString(db, "/c"));
@@ -1127,7 +1175,10 @@ public class DbTesterFailure {
      * size flipped; 2, the value's size -1, with the checksum made right. getTrans of the
      * first fails the database, and every later transaction and read is refused with that
      * cause, getTrans of the second too; nothing is appended. Damage in the reads only: the
-     * restart reads both, and getTrans gives them.
+     * restart reads both, and getTrans gives them. Since bergdb 021-27 that is
+     * Internal.getTrans(), for a position the database has given, as transactionInfo()
+     * reads; Db.getTrans() takes the position as a caller's and refuses it first, with
+     * IllegalArgumentException, the damage its cause, and the database goes on.
      */
     private static void getTransOfDamagedRecord(int damage) throws IOException {
         FaultStream s = new FaultStream();
@@ -1169,9 +1220,20 @@ public class DbTesterFailure {
         s.patchAt = vpos;
         s.patch = node;
 
-        DbFailedException e = null;
+        IllegalArgumentException refused1 = null;
         try {
             db.getTrans(t1.tpos);
+        } catch (IllegalArgumentException ex) {
+            refused1 = ex;
+        }
+        Assert.assertTrue("a caller's position refused: " + refused1,
+                refused1 != null && refused1.getCause().getClass() == cause);
+        Assert.assertEquals("the database goes on", t2.tt, db.getTrans(t2.tpos).tt);
+        Assert.assertEquals("b0", DbUtil.getString(db, "/b"));
+
+        DbFailedException e = null;
+        try {
+            db.internal().getTrans(t1.tpos);
         } catch (DbFailedException ex) {
             e = ex;
         } catch (RuntimeException ex) {

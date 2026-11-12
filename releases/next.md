@@ -147,6 +147,16 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
   2026.5 writes opens as before. A damaged stream is caught as a best
   effort: BergDB relies on the storage for the integrity of its bytes
   (Frans, 2026-11-12).
+* **`Db.getTrans` refuses a position that is not a transaction's**
+  (bergdb 021-27; 010-04, R5). A multiple of 8 inside a record, not at
+  its start, read the bytes there as a record and failed the database
+  (`DbFailedException`; a database in memory was lost). Now any position
+  whose bytes are not a committed transaction's record is refused with
+  `IllegalArgumentException` (the read's `StreamFormatException` the
+  cause), and the database goes on; only an I/O error fails it. A
+  position inside a record whose bytes there happen to form a committed
+  record still gives that record. The Pub API's `transactionInfo()`,
+  whose position is a get's, still takes a bad record there for damage.
 
 
 ### Limits

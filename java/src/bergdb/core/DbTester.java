@@ -2669,6 +2669,63 @@ public class DbTester {
         }
     }
     
+    /**
+     * bergdb 021-27: every multiple of 8 inside a record that reaches over two meta blocks,
+     * of random values and keys, is refused by getTrans with IllegalArgumentException, or
+     * gives a StoredTrans where the bytes there happen to form a committed record (the
+     * caller's position is the caller's responsibility; none is expected here); the database
+     * goes on. The positions in the meta blocks inside the record are refused before the
+     * read (bergdb 005-34). Last, a position inside the last record, at the stream's end.
+     */
+    @Nano
+    public static void testGetTransInsideARecordOverMetaBlocks() {
+        final int d = RecoverableStream.META_BLOCK_DISTANCE;
+        final Random random = new Random(2127);
+        final byte[] big = new byte[2 * d + 1000];
+        random.nextBytes(big);
+        Db db = Db.builder().testSetup().start();
+        try {
+            Trans.Builder b = db.trans();
+            for (int i = 0; i < 20; i++) {
+                byte[] v = new byte[random.nextInt(200)];
+                random.nextBytes(v);
+                b.put("/k" + i, v);
+            }
+            b.put("/big", big);
+            Trans t = b.build();
+            db.execute(t);
+            assertTrue("over two meta blocks", t.lastPos / d - t.tpos / d == 2);
+            Trans t2 = db.trans().put("/a", "a0").build();
+            db.execute(t2);
+            int refused = 0;
+            for (long pos = t.tpos + 8; pos < t.lastPos; pos += 8) {
+                try {
+                    StoredTrans st = db.getTrans(pos);
+                    assertTrue("a record of the bytes at " + pos, st.tpos == pos);
+                } catch (IllegalArgumentException e) {
+                    refused++;
+                }
+            }
+            assertTrue("refused " + refused, refused > (t.lastPos - t.tpos) / 8 - 5);
+            assertTrue("the end's record", t2.tpos + 16 < t2.lastPos);
+            for (long pos = t2.tpos + 8; pos < t2.lastPos; pos += 8) {
+                try {
+                    db.getTrans(pos);
+                    throw new AssertionError("taken, " + pos);
+                } catch (IllegalArgumentException e) {
+                    // Expected.
+                }
+            }
+            assertEquals("the database goes on", t.tt, db.getTrans(t.tpos).tt);
+            assertEquals(t2.tt, db.getTrans(t2.tpos).tt);
+            assertArrayEquals(big, DbUtil.get(db, "/big"));
+            db.execute(db.trans().put("/b", "b0").build());
+            assertEquals("b0", DbUtil.getString(db, "/b"));
+        } finally {
+            db.stop();
+        }
+    }
+    
     // ======== sync(), bergdb 005-44 ========
     
     /**
