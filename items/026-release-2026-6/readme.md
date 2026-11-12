@@ -59,6 +59,10 @@ Files
   compact value nodes, frames and top nodes the stream 19 to 52 %
   smaller; for 2026.6 (Frans, 2026-11-12, QC1). QC2 to QC5 wait for
   this release. The probe in 01-compact-nodes/.
+* 02-public-key-check.md. 026-02, a public key check, so that a user can
+  test a key (and maybe a value or a transaction) against the limits
+  before a call (Frans, 2026-11-12, 09:34; from 024-27, QR1): the
+  options and a recommendation, no code yet.
 
 
 Log

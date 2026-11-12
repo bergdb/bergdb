@@ -309,6 +309,18 @@ its own (before-commit on `cb5dab4a`, the head but for releases/next.md):
   too (the commit then throws `IllegalStateException`, nothing written)?
   Recommended: yes, for the same "all of them, or none"; a small change
   in `RwEnvironmentImp` and its Javadoc. Not made: outside the decision.
+  **Decided** (Frans, 2026-11-12, 09:34: "So, this is decided. Keep as
+  is, ensure its in the Javadoc."): the rw environment is not spoiled; a
+  refused call changes nothing, and an action that catches it and returns
+  commits its other writes. The reason (Frans, 09:16): "the rule is that
+  use of the Pub API must keep the integrity of the database. Including
+  features in the pub layer. This includes indexes. But only indexed
+  created by the database itself. [...] the user is responsible for the
+  code in Action. The example code is bad as it is. It is broken. But the
+  database is not broken." The database's index entries are made after
+  the action returns, from what it wrote (RwTransaction). Said in
+  `RwEnvironment`'s Javadoc ("Refused calls"). A public key check, so
+  that a user can test a key before a call: 026-02.
 * **QR2. testLoweredBudgetAfterPinsFell** (section 6): keep 550, or let
   the test search its count? Recommended: keep 550 now; the search when
   it moves again.

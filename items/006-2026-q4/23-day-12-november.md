@@ -40,6 +40,8 @@ high.
 | 024-22 | TP32 restated with the premises Java meets (coord-1111's tp32s) | tp32s (xhigh) | landed c0a8cadf |
 | 024-27 | U26-5 B, theta at least 2, 62 the largest size, U26 Javadoc | rules (high) | landed a7dfb6f7 |
 | 026 | 2026.6 work moved from 024 to 026, 024-20 first (026-01) | move (high) | done 07:42 |
+| 024-27 | QR1 kept as is: RwEnvironment's Javadoc, "Refused calls" | coordinator | landed |
+| 026-02 | A public key check: the options, a recommendation; no code | keychk (high) | running |
 
 024-27 lands on its gates, by Frans's decisions of 07:36: its changed
 expected values follow from them.
@@ -73,6 +75,18 @@ from them.
   Lean conformance) OK; five changed tests, each its own commit; QR1
   (spoil an rw() action that catches a refused put?), QR2 (550 in the
   Eviction test). 08:14 landed as a7dfb6f7, pushed; 024-23's QO2 marked decided.
+* 08:51 Frans: QR2 as recommended (keep 550).
+* 09:16 Frans on QR1, the line between the user's and the database's
+  responsibility: "use of the Pub API must keep the integrity of the
+  database. Including features in the pub layer. This includes indexes.
+  But only indexed created by the database itself. [...] the user is
+  responsible for the code in Action. [...] This is a borderline case."
+* 09:34 Frans: QR1 decided, keep as is, in the Javadoc; a place for
+  fundamental rules like this one to be proposed and discussed first; a
+  todo for a public key check, studied by an agent at high, for the next
+  release (026-02). keychk started; the Javadoc by the coordinator in
+  /Users/f/fl/bench/2026-11-12/qr1/clone (5a7f644d), before-commit
+  OK (64 s), landed 09:37 and pushed.
 
 
 ## 6. Outcome
