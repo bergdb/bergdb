@@ -59,9 +59,11 @@ import bergdb.stream.FileStream;
  *      every dt of the test clock, with no writes. Kept (the most in the last R) at most
  *      twice the twin's plus 600,000 bytes (maintain()'s release threshold and a filler,
  *      Reclaim.MAINTAIN_MIN_RELEASE and META_BLOCK_DISTANCE); the last call that returned
- *      true within the first 3/4 of the drive (converged, then quiet); the key nodes, dead
- *      klongs, resident objects, handles and heap at most 2 times the twin's, as G4 (ST6
- *      reported, not counted).
+ *      true within the first 3/4 of the drive (converged, then quiet); as the twin is tiny,
+ *      the key nodes, resident objects and handles at most the larger of twice the twin's
+ *      and the twin's plus 10 (023-03's a_n), the dead KEY klongs the larger of twice the
+ *      twin's and the twin's plus 30 (023-03's C4: B); the heap at most 2 times the twin's,
+ *      as G4 (ST6 reported, not counted).
  *
  * Every database is a FileStream in dir with the builder's defaults (startup distance 50
  * MB, cache indicator 200 MB), a test clock (dt time units a transaction) and
@@ -646,10 +648,14 @@ public class CountGates {
                 + " (" + e.lastMore + "), over 3/4 of the drive", 
                 (double) e.lastMore / (0.75 * i("g5drive", 20 * (int) (retain / dt))), 1, 
                 "%.3f");
-        gateTwin("G5", "M4 reachable key nodes", e.reach, t.reach, d("g4nodes", 2));
-        gateTwin("G5", "M5 dead KEY klongs", e.dead, t.dead, d("g4nodes", 2));
-        gateTwin("G5", "M11 resident index objects", e.objects, t.objects, d("g4nodes", 2));
-        gateTwin("G5", "M11 live handles", e.handles, t.handles, d("g4nodes", 2));
+        // G5's twin is tiny (4 key nodes, 5 objects): the counts are held to the larger of
+        // twice the twin's and the twin's plus a_n = 10 (023-03, section 2.6, the strict
+        // allowance of nodes); the dead klongs, of which the twin has none, to the twin's
+        // plus B = 30, a leaf's klongs (023-03's C4).
+        gateSmall("M4 reachable key nodes", e.reach, t.reach, 10);
+        gateSmall("M5 dead KEY klongs", e.dead, t.dead, 30);
+        gateSmall("M11 resident index objects", e.objects, t.objects, 10);
+        gateSmall("M11 live handles", e.handles, t.handles, 10);
         boolean f = failed;
         gateTwin("G5", "ST6 cache table slots", e.slots, t.slots, d("g4slots", 2));
         if (!s("g4st6", "report").equals("gate") && failed && !f) {
@@ -657,6 +663,13 @@ public class CountGates {
             out("  G5 ST6 above: known (024-05, ST6), not counted until its fix is decided");
         }
         gateTwin("G5", "heap after a GC", e.heap, t.heap, d("g4heap", 2));
+    }
+
+    /** G5: emptied at most the larger of twice the twin's and the twin's plus 'plus'. */
+    void gateSmall(String what, long emptied, long twin, long plus) {
+        long limit = Math.max(2 * twin, twin + plus);
+        gate("G5", what + " over the larger of twice the twin's and the twin's plus " + plus
+                + " (" + emptied + " / " + twin + ")", (double) emptied / limit, 1, "%.3f");
     }
 
     void gateTwin(String name, String what, long emptied, long twin, double factor) {

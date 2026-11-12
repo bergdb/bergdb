@@ -15,7 +15,8 @@
 #      reported, not counted).
 #   G5 (back to empty by maintain(), bergdb 024-32): as G4, with a drive of 20 R
 #      of maintain() calls and no writes; kept at most 2 times the twin's plus
-#      600 kB, the calls quiet in the last quarter, the rest as G4.
+#      600 kB, the calls quiet in the last quarter, the rest as G4 (counts of
+#      the tiny twin within twice it or it plus a_n = 10; dead klongs plus 30).
 # A step of night.sh after level4; not in before-commit.sh (it takes minutes).
 # About 2.5 minutes on F53 (2026-11-12). A 10M variant (n=10000000) is not a
 # step; 024-30, section 6, notes it for later.

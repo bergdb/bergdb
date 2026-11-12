@@ -760,7 +760,9 @@ public class Db implements AutoCloseable {
      * one reclaim step (about 16 kB of KVs scanned); one write of index nodes of the startup
      * section that an iteration waits for (at most 256 kB beyond one transaction's); one
      * filler of at most 200 kB, put and deleted, so that a meta block follows the cut point;
-     * the cut, when it is due, after a sync if its table is not yet durable. Each part is
+     * the cut, when it is due, after a sync if its table is not yet durable; and a batch of
+     * the eviction's dead hand, which drops the objects of versions that a cut has ended
+     * (Eviction; as after a transaction, with a cache budget). Each part is
      * no larger than what reclaim does after a commit. With a retain duration of forever
      * there is nothing to do (Reclaim.maintain; bergdb 024-32, section 2).</p>
      * 
@@ -815,7 +817,10 @@ public class Db implements AutoCloseable {
             durableAt = reclaim.pendingCutDurableAt();
             if (durableAt == -1 || getDurableLength() >= durableAt) {
                 reclaim.cutIfDurableNow();
-                return more && reclaim.maintainDue(now);
+                // The dead hand (Eviction), as after a transaction: the objects of the
+                // versions that the cut ended leave memory, a batch a call.
+                final boolean dead = maintainEviction();
+                return reclaim.maintainDue(now) || dead;
             }
         }
         
@@ -825,7 +830,23 @@ public class Db implements AutoCloseable {
         synchronized (writeLock) {
             assertDbStateIsActive("maintain");
             reclaim.cutIfDurableNow();
-            return reclaim.maintainDue(dbClock.currentTime());
+            final boolean dead = maintainEviction();
+            return reclaim.maintainDue(dbClock.currentTime()) || dead;
+        }
+    }
+    
+    /** maintain()'s step of the eviction's dead hand; under the write lock. */
+    private boolean maintainEviction() {
+        try {
+            return eviction.maintainStep(this);
+        } catch (Throwable e) {
+            if (setFailed(e) == DbState.STOPPING || e instanceof Error) {
+                if (e instanceof Error) throw (Error) e;
+                throw (RuntimeException) e;
+            }
+            throw new DbFailedException("maintain() failed after it began (the cause); "
+                    + "the database takes no more transactions or reads and must be "
+                    + "restarted: the restart rebuilds it from the stream.", e);
         }
     }
     

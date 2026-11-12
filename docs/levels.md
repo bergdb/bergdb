@@ -575,8 +575,8 @@ How it works (`Reclaim`; the class comment has the details):
   release at least 400 kB and no cut is pending, one step without the
   fraction's allowance, an empty record whose take moves the startup pos
   to pEnd or pSafe, a filler of at most 200 kB, put and deleted, when a
-  cut waits for a meta block only, and the cut), and returns whether more
-  is due now. Called again and again as time passes, it brings an emptied
+  cut waits for a meta block only, the cut, and a batch of the eviction's
+  dead hand), and returns whether more is due now. Called again and again as time passes, it brings an emptied
   database to about a fresh one's stream (`count-gates.sh`, G5).
 * A read admitted before a cut may expire: a read that the cut overtakes
   throws `LookupTimeNotAvailableException`, and the database goes on

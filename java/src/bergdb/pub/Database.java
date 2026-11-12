@@ -508,7 +508,9 @@ public interface Database extends AutoCloseable {
      * <p>Each call's work is small and bounded, about that of a commit's share of the
      * maintenance: at most one step of the rewriting of old live data, one write of index
      * nodes, one filler of at most 200 kB that is deleted at once, and the cut of the
-     * stream's front when it is due (after a sync, if needed). It runs in the database's
+     * stream's front when it is due (after a sync, if needed), and a batch of the release
+     * from memory of what the cut has ended (with a cache budget, the default). It runs in
+     * the database's
      * own transactions, so a commit waits for it and it waits for a commit; reads go on.
      * A call when nothing is due writes nothing.</p>
      * 
