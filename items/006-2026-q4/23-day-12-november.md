@@ -54,6 +54,7 @@ high.
 | 024-34 | OP8: reclaim reads only what it rewrites | tidy (high) | landed a156fd51 |
 | 017-11 | A startup distance that follows the database's size: known, plan | sdk (xhigh) | done 13:03 |
 | 021-27 | Db.getTrans inside a record fails the database: refused instead | gtr (high) | landed 3ffe0b51 |
+| 024-35 | A double-check for open work forgotten for 2026.5 | sweep (high) | |
 
 024-27 lands on its gates, by Frans's decisions of 07:36: its changed
 expected values follow from them.
@@ -296,6 +297,14 @@ from them.
 * 14:07 Frans on QF1: 1/4 kept for 2026.5; larger databases, three
   recommended fractions and one default for 2026.6 (026-04); the
   measurements tonight if the machine has time.
+* 14:09 Frans on Q27-1: "fix it." gtr resumed 14:09 (021-27, the size
+  bound for a caller's position).
+* 14:12 Frans: "Start a new agent to search for other open things we
+  have forgotten that should be included in the release. Just a
+  double-check." sweep started 14:12 (024-35).
+* 14:16 gtr done with Q27-1: above 1 MiB the public getTrans confirms a
+  record's start by walking the record headers before making its array;
+  before-commit and level1 OK; landed 4dadb80c.
 
 
 ## 6. Outcome
