@@ -6,7 +6,7 @@ J=$B/clone/java/build/bergdb.jar
 O=/Users/f/fl/repos/bergdb/items/024-release-2026-5/19-node-size/out
 SET=$1; shift
 SIZES=${*:-8 14 30 62 126 254}
-run() { nice -n 5 java -Xmx4g -XX:+UseSerialGC -XX:ActiveProcessorCount=1 -cp $B/cls:$J bergdb.core.NS "$@"; }
+run() { nice -n 5 java -Xmx4g -XX:+UseSerialGC -XX:ActiveProcessorCount=1 -cp $B/cls2:$J bergdb.core.NS "$@"; }
 for ns in $SIZES; do
   f=$O/c1m-$SET-n$ns.txt
   case $SET in

@@ -14,7 +14,7 @@ def kv(line):
 def parse(path):
     r = {}
     for line in open(path):
-        for tag in ("FILL", "TREE-FILL", "UPD", "TREE-UPD", "RESTART"):
+        for tag in ("FILL", "TREE-FILL", "UPD", "TREE-UPD", "RESTART", "DAG"):
             if re.search(r"\] %s " % tag, line):
                 r[tag] = kv(line)
         m = re.search(r"\] (WARM|COLD) (\S+) (.*)", line)
@@ -64,6 +64,12 @@ def main():
                 f(u.get("bytesPerPut")), tu.get("keyNodes", "-"), f(tu.get("livePerNode"), 1),
                 f(tu.get("storedPerKey"), 1), f(u.get("keptPerKey")),
                 (" " + r["ERR"]) if "ERR" in r else ""))
+        dag = [(b, r["DAG"]) for b, r in rows if "DAG" in r]
+        if dag:
+            print("| B | merges | of them two | compactions |")
+            for b, d in dag:
+                print("| %d | %s | %s | %s |" % (b, d.get("merges"), d.get("mergesTwo"),
+                                                d.get("compactions")))
         extra = [(b, r) for b, r in rows if "WARM-gets2" in r or "RESTART" in r]
         if extra:
             print("| B | warm us/get | loads/get | scan ns/key | restart ms | cold loads/get"

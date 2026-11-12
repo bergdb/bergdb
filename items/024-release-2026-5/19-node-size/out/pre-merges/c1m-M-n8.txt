@@ -1,0 +1,6 @@
+NS mem ns=8 n=1000000 shape=mem
+MEM ns=8 shape=mem n=1000000 251.4 bytes/KV
+[4.7s] DONE
+NS mem ns=8 n=1000000 shape=k24
+MEM ns=8 shape=k24 n=1000000 238.5 bytes/KV
+[4.8s] DONE

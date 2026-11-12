@@ -287,6 +287,9 @@ public class NS {
                 for (int k = 0; k < n; k++) live[k] = oldest + k;
             }
             out(el() + " " + tree("TREE-UPD", live));
+            out(String.format("%s DAG merges=%d mergesTwo=%d compactions=%d", el(),
+                    bergdb.dag.Dag.statMerges, bergdb.dag.Dag.statMergesTwo,
+                    bergdb.dag.Dag.statCompactions));
         }
         int g = i("gets", 0);
         if (g > 0) {

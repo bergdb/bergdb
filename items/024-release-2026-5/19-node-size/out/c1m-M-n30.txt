@@ -1,6 +1,6 @@
 NS mem ns=30 n=1000000 shape=mem
 MEM ns=30 shape=mem n=1000000 129.1 bytes/KV
-[2.4s] DONE
+[2.3s] DONE
 NS mem ns=30 n=1000000 shape=k24
 MEM ns=30 shape=k24 n=1000000 126.0 bytes/KV
-[2.8s] DONE
+[2.5s] DONE

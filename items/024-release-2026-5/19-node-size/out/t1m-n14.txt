@@ -1,0 +1,19 @@
+load before:  1:28  up 23 days, 18:13, 5 users, load averages: 3.49 3.22 2.98 01:28:50
+NS run ns=14 n=1000000 shape=k13 order=random vs=100 batch=100 ups=500000 retain=1 gets=1000000 scan=1 restart=1 dir=/Users/f/fl/bench/2026-11-11/nsize/data/t
+[0.1s] START ns=14 maxNodeSize=14
+[7.0s] FILL n=1000000 shape=k13 order=random vs=100 batch=100 bytesPerPut=414.7 bytesPerTx=27976 maxRec=61792 kept=414696440 keptPerKey=414.7 puts/s=146454 iters=0
+[7.0s] TREE-FILL keys=1000000 keyNodes=226683 klongs=1915632 keyKlongs=1446878 live=1226685 stored=37903968 storedPerKey=37.9 klongsPerNode=8.5 livePerNode=5.4 path=10.00 pathMax=10
+[13.5s] UPD ups=500000 ubatch=100 retain=1 bytesPerPut=455.3 (last 80%) bytesPerTx=43672 maxRec=85824 kept=552996920 keptPerKey=553.0 len=653002584 iters=1 puts/s=101725
+[13.5s] TREE-UPD keys=1000000 keyNodes=279769 klongs=2320052 keyKlongs=1680885 live=1279771 stored=46073440 storedPerKey=46.1 klongsPerNode=8.3 livePerNode=4.6 path=10.00 pathMax=10
+[15.5s] DAG merges=0 mergesTwo=0 compactions=133867
+[15.5s] WARM gets1 gets=1000000 us/get=2.94 loads/get=0.906 resident=199970264
+[18.5s] WARM gets2 gets=1000000 us/get=2.79 loads/get=0.831 resident=199539645
+[21.2s] WARM scan1 keys=1000000 ms=1572.9 ns/key=1572 loads/key=1.008
+[22.8s] WARM scan2 keys=1000000 ms=1719.8 ns/key=1719 loads/key=1.148
+[24.5s] CLOSED files=553002584
+[26.5s] RESTART ms=1976 len=653002584
+[26.5s] COLD cold-gets gets=1000000 us/get=3.30 loads/get=0.873 resident=199977606
+[29.8s] COLD cold-gets2 gets=1000000 us/get=2.70 loads/get=0.799 resident=199650928
+[32.5s] COLD scan1 keys=1000000 ms=1453.8 ns/key=1453 loads/key=0.993
+[34.0s] DONE
+load after:  1:29  up 23 days, 18:14, 5 users, load averages: 3.27 3.19 2.98 01:29:24
