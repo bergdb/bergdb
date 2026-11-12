@@ -340,7 +340,10 @@ New statements, `lean/SIS/Tree/MergeProps.lean`, each a `def ... : Prop`
 | 31 | `NodeCountBound`      | TH3, BU1's count: key nodes <= S + (n +    | S, T |
 |    |                       | S - 1) / (m - 1) at every time             |      |
 | 32 | `MergeOpBound`        | CB1: a transaction's merges <= its         | S    |
-|    |                       | deletes x (H + 1)                          |      |
+|    |                       | deletes x (H + 1); since 2026-11-12 for a  |      |
+|    |                       | transaction as Java gives it (024-16):     |      |
+|    |                       | sorted, keys well formed, a fresh base.    |      |
+|    |                       | Without them false (`MergeOpBoundAny`)     |      |
 | 33 | `MergeAmortized`      | CB3: merges <= deletes + 2 x space splits  | S    |
 |    |                       | over every run from R(0)                   |      |
 | 34 | `MergeSizeOK`         | V5 of the merge: m1 at most c klongs, or   | PROVED |
@@ -1027,6 +1030,19 @@ count on the combination's 239 traces OK. The branch is in int's
 combined landing head (`024-13-int-m`). Wrapped up at the coordinator's
 word: `set6.sh` skipped for today, the proofs left for a later agent
 (section 11), dead klongs to "o2" (024-23).
+
+2026-11-12: TP32 restated with the premises Java meets (Frans, 07:26);
+the unconditional form is false (two counterexamples, `08559fff`).
+`MergeOpBound` now takes, of the final transaction, `NoBug`'s premises,
+which `Within` puts on every earlier one: sorted (one operation a key,
+in key order, since 024-16, S3), keys well formed, a fresh base. The
+old form is `MergeOpBoundAny`, which the two counterexamples refute
+(neither transaction is sorted). TP32 follows from the old form, or
+from a premise on the heights the writer reaches
+(`mergeOpBound_of_transientHeight`, `mergeOpBound_of_outsideHeight`).
+Not proved. `treetest` checks CB1 per operation, on sorted transactions
+only; `treecheck` does not check it. Branch `024-22-tp32-restate`, head
+`cb57e5c8` (agent "tp32s"), `lake build` OK (215 jobs).
 
 ## 11. State
 

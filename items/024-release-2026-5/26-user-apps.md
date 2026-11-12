@@ -256,6 +256,11 @@ No bug so far. Javadoc and API findings:
   catches the exception and calls `execute()` commits the other puts. The
   package says a `w()` writes "all of them, or none"; the Javadoc could
   say that a refused call leaves the builder as before it.
+  **Decided** (Frans, 2026-11-12, 07:36, "B. Ensure the behaviour is
+  clear in the Javadoc."): a refused call spoils the builder, the
+  `WBuilder` and the Core's `Trans.Builder` alike, so that its
+  `execute()` writes nothing; made in 024-27, with U26-1 to U26-4 and
+  U26-8.
 * **U26-6 (note).** `get()` of a key over 111 bytes returns null and
   `exists()` false, where a put or a delete throws. Consistent with
   "Keys" in Connection; a user may expect the same refusal.

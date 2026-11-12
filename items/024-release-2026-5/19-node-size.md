@@ -760,8 +760,11 @@ be designed after the algorithms are settled.
 07:26, to the coordinator's summary "keep 30, theta at least 2, 62 the
 maximum": "OK, good. Let's keep 30. Document this."). B = 30 stays the
 default and the Pub API's size, on this study's numbers (section 6): the
-only size within 10 % of the best in every set and in MEM. Q2 to Q6 are
-open, each with its recommendation below.
+only size within 10 % of the best in every set and in MEM. **Decided, Q4 and Q6** (Frans, 2026-11-12,
+07:36, "Yes I confirm", to the coordinator's question "theta at least 2,
+and 62 the maximum?"): the floor of theta is 2 (2 at B = 8), and 62 is
+the largest node size; made in 024-27. Q2, Q3 and Q5 are open, each with
+its recommendation below.
 
 Cite as "024-19, Q1". Each with a recommendation; none blocks other
 work, as main already behaves as recommended except in Q4 and Q5.

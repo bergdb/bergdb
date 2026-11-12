@@ -36,6 +36,7 @@ The list
 | [006-20](20-ai-as-the-user-testing.md) | 2026-11-09 | AI as the user: black-box application testing, the method and the 12 applications of 020-24 as its example |
 | [006-21](21-day-10-november.md) | 2026-11-10 | Day work of 10 November (a Tuesday), with the coordinator coord-1110: 2026.4 paused for 020-30, the plan, the progress and the outcome |
 | [006-22](22-day-11-november.md) | 2026-11-11 | Day work of 11 November (a Wednesday), with the coordinator coord-1111: the aim of 2026.5, the plan, the progress and the outcome |
+| [006-23](23-day-12-november.md) | 2026-11-12 | Day work of 12 November (a Thursday), with the coordinator coord-1112: the plan, the progress and the outcome |
 
 
 Files
