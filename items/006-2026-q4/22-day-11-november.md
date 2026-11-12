@@ -425,6 +425,23 @@ from them.
   20:21 024-26 started (Opus high, to 02:00): a round of "AI as the user"
   (006-20) against the new algorithms (merges, option 2, CRC32C, the
   limits): bugs first (024-04, aim 1).
+* 21:15 Codex's first run ended at its usage limit (it could not commit:
+  its sandbox makes .git read-only; the coordinator checks and commits).
+  22:13 to 23:07 night.sh's four failures, all from the limits, fixed:
+  one product bug (L6 refused puts that get no entry), two test
+  generators; landed 1f01c5f6. 00:39 024-26's user apps: seven apps,
+  about 900,000 transactions, 3,000 restarts, 1,070 kills, no bug;
+  Javadoc findings U26-1 to U26-8. 01:33 024-19 (node size) done on
+  format 7: keep B = 30; Q1 to Q6. 01:35 024-20 (compact stored form)
+  resumed.
+* 02:30 Codex's second run (23:07 to 02:26, usage limit again) landed
+  after the coordinator's checks (08559fff, Lean only): the writer's
+  frame ported to option 2, merges at most the deletes times the
+  greatest height seen, TP32's bound when no node is made above H + 1,
+  and two proved counterexamples: MergeOpBound as stated is false for
+  transactions that repeat or misorder keys, so it needs the premise
+  that Java's transactions meet (one operation a key, sorted; 024-16).
+  TP32 for sorted transactions is the third run's goal (04:12).
 
 
 ## 6. Outcome
