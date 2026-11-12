@@ -456,7 +456,7 @@ from them.
 Written 2026-11-12, 06:35, by coord-1111 (unattended since 2026-11-11,
 17:43).
 
-**Landed on main (15, all pushed, each on its gates):** a780b957 (024-07
+**Landed on main (all pushed, each on its gates):** a780b957 (024-07
 the last touch, 024-10, doubles.py), 379d8acf (024-09 the tie), 51a7224c
 (022-07 the C clone at 2026.4), 1e77cfc6 (024-15 key shape), 47c93e34
 (024-16 one operation a key), b84cf761 (024-12 the tree model in Lean,
@@ -466,7 +466,9 @@ merges at the delete, record format 7, 8/17/17), 08659847 (024-23
 option 2, theta 7), 79f35aa3 (024-25 CRC32C), 7c255127 (024-24 the
 limits), 1f01c5f6 (the night run's fix: L6, one product bug), 08559fff
 (TP32's proof work in Lean and two counterexamples), 6cf6607b (a stale
-constant after CRC32C), 0420c72e (a time klong's unused bits checked).
+constant after CRC32C), 0420c72e (a time klong's unused bits checked),
+and 2c37bfeb (06:41, TP32's groundwork for sorted transactions: 180
+theorems). 16 in all.
 
 **Studies done:** 024-14 (thresholds), 024-17 (limits), 024-18 (dead
 klongs), 024-19 (node size: keep 30), 024-20 (compact stored form: for
@@ -480,8 +482,11 @@ known open item, fixed by 06:01. Not rerun since.
 **Proofs (by the second prover, checked and committed by the
 coordinator):** the writer's frame, merges bounded by the height seen,
 TP32 under a height premise, and MergeOpBound shown false without the
-premise Java guarantees (sorted, one operation a key). TP32 for sorted
-transactions: the third run's result, below.
+premise Java guarantees (sorted, one operation a key). The third run
+(04:12 to 06:37, stopped by its usage limit, which resets at 09:12)
+added the groundwork for sorted transactions (2c37bfeb); TP32 for sorted
+transactions is neither proved nor refuted. Its reports:
+/Users/f/fl/bench/2026-11-11/cx/REPORT-tp32*.md.
 
 **For Frans to decide** (each with the coordinator's recommendation):
 
