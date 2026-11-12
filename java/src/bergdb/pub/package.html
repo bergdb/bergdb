@@ -81,7 +81,10 @@ System.out.println(a.owner + " " + a.balance);    // Ann 100
 <h2 id="w">Several writes at once</h2>
 
 <p>A write-only transaction, w(), puts and deletes several keys at once: all of them, or none.
-Every put above was a transaction of its own.</p>
+Every put above was a transaction of its own. A put() or delete() of the builder that is
+refused, as one of a key over 111 bytes (<a href="#limits">Limits</a>), spoils the builder:
+its execute() then writes nothing and throws IllegalStateException, also if the refusal was
+caught (WBuilder).</p>
 
 <pre>
 c.w().put("/acc/1002", new Account("Bob", 20))
@@ -214,8 +217,9 @@ indexes, and what happens on errors.</li>
 <h3 id="limits">Limits</h3>
 
 <p>Keys, values and transactions have fixed limits, the same for every database (bergdb
-024-17, section 6). A call over one throws, and writes nothing; the database goes on. A later
-release may raise them, never lower them.</p>
+024-17, section 6). A call over one throws, and writes nothing; the database goes on. A put()
+or delete() of a w() over one spoils its builder, whose execute() then writes nothing
+(WBuilder). A later release may raise them, never lower them.</p>
 <ul>
 <li><b>A key is at most 111 bytes</b> as stored: its UTF-8, and one byte more for each part,
 so each "/" counts two. About 100 characters as a rule of thumb: ASCII letters and digits are
@@ -227,12 +231,15 @@ UTF-8, an object's stored value, counted before anything is copied. A put of a l
 throws IllegalArgumentException. A larger file is put in chunks, under keys of their own, and
 a key that lists them written last.</li>
 <li><b>An indexed value's levels</b>, as an index entry holds them, are at most 111 bytes, as a
-key's: a string level takes its UTF-8 and a byte, a long or a double 8 bytes. A put of an
+key's: a string level takes its UTF-8 and a byte, but the characters U+0000 and U+0001 two
+bytes each; a bytes level its bytes and a byte, but the bytes 0x00 and 0x01 two each (so one
+bytes level holds at most 110 bytes, or 55 zero bytes); a long or a double 8 bytes. A put of an
 object whose levels for an index of its directory are longer throws IllegalArgumentException;
 index such a value by a hash of it, or by a prefix as a level of its own. An index built over
 objects put before it gives such an object no entry.</li>
 <li><b>A transaction</b> (a put, a delete, a w() or an rw()) has at most 500 operations, the
-keys it puts or deletes, and at most 32 MiB of keys and values. An object put at a key of a
+keys it puts or deletes, and at most 32 MiB of keys and values. A delete is an operation whether
+its key has a value or not. An object put at a key of a
 directory with k indexes is up to 1 + 2k operations (the object and, for each index, the
 entry of its old value deleted and of its new one put): 500 objects without indexes, 166
 with one. The keys of the transaction, its index entries among them, take at most 56

@@ -601,8 +601,8 @@ def runMergeSet : IO Bool := do
   pure (a && b && c && d && e && f && g && h && k && l)
 
 /-- The runs with option 2 of dead klongs (bergdb 024-23, section 3), with the
-merges, as record format 7 has them: node sizes 8 (theta 1), 10 and 12 (theta
-2) and 14 (theta 3); prefix 4 (every key put twice) starts in nodes full of dead
+merges, as record format 7 has them: node sizes 8, 10 and 12 (theta 2; at 8
+theta 1 until 2026-11-12, 024-19, Q4) and 14 (theta 3); prefix 4 (every key put twice) starts in nodes full of dead
 klongs; and option 2 alone, at node size 4 (theta 1, forced) and 8. -/
 def runThetaSet : IO Bool := do
   let a ← runExhaustive 8 3 12 2 false true true

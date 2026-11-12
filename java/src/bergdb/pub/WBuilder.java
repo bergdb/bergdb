@@ -11,6 +11,16 @@ package bergdb.pub;
  * <p>Of several puts and deletes of one key, the last one counts: a put after a delete
  * puts, a delete after a put deletes (bergdb 015-40, 020-25).</p>
  *
+ * <p><b>A refused put() or delete() spoils the builder</b> (bergdb 024-26, U26-5): the
+ * transaction writes all of its puts and deletes, or none. A put() or delete() that throws,
+ * as one refused with IllegalArgumentException for its key or value (a key over 111 bytes, a
+ * value over 8 MiB; the package's {@linkplain bergdb.pub##limits Limits}), adds nothing to
+ * the transaction and spoils the builder: execute() then throws IllegalStateException and
+ * writes nothing, also when the caller caught the refusal, and so does every later put() and
+ * delete(), at once. The message names the first refused call, and its exception is the
+ * cause. For the other writes, get a new builder and put them again. Until release 2026.5 a
+ * caller that caught the refusal and called execute() committed the other puts.</p>
+ *
  * <p>execute() spends the builder, also when it throws, except when it throws because
  * another thread is in a call of the connection (below), which leaves the builder unspent:
  * a later put(), delete() or execute() throws IllegalStateException (bergdb 020-21, 2;
@@ -31,8 +41,11 @@ public interface WBuilder {
      * Adds a delete operation to the write transaction. The operation deletes the database entry
      * with the given key if it exists, otherwise, the operation has no effect.
      *
-     * @throws IllegalArgumentException  If 'key' is null or otherwise invalid.
-     * @throws IllegalStateException  If execute() was called: the builder is spent.
+     * @throws IllegalArgumentException  If 'key' is null or otherwise invalid, or has more
+     *             than 111 bytes as stored (L2). The delete is not added, and the builder is
+     *             spoiled: execute() writes nothing (the class Javadoc).
+     * @throws IllegalStateException  If execute() was called: the builder is spent. Or if
+     *             the builder is spoiled: an earlier put() or delete() was refused.
      */
     public WBuilder delete(String key);
     
@@ -75,7 +88,10 @@ public interface WBuilder {
      *             or its stored value is larger than 8 MiB (L4), counted before anything is
      *             copied (bergdb 021-23; 024-17). The message names the
      *             class or the place. A null field is not refused: it is left out, absent.
-     * @throws IllegalStateException  If execute() was called: the builder is spent.
+     *             The put is not added, and the builder is spoiled: execute() writes
+     *             nothing (the class Javadoc).
+     * @throws IllegalStateException  If execute() was called: the builder is spent. Or if
+     *             the builder is spoiled: an earlier put() or delete() was refused.
      */
     public WBuilder put(String key, Object object);
     
@@ -88,7 +104,9 @@ public interface WBuilder {
      * @throws IllegalStateException  If execute() was called before: the builder is spent.
      *             Or if another thread is in a call of the connection (Connection,
      *             "Threads"; bergdb 021-22): nothing is run, and the builder is left
-     *             unspent.
+     *             unspent. Or if the builder is spoiled: a put() or delete() of it was
+     *             refused, and nothing is written, none of its other puts and deletes
+     *             either (the class Javadoc); the message names the first refused call.
      * @throws bergdb.pub.util.DbException
      *             If the transaction is refused, nothing of it written, and the database
      *             goes on, as for Connection.put(): it passes a limit of a transaction,

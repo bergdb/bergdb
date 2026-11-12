@@ -1045,6 +1045,38 @@ public class DbTesterRestart {
     }
     
     /**
+     * Bergdb 024-19, Q6: 62 is the largest node size. A meta block that gives 63 or 126, which
+     * no BergDB writes, is refused with a StreamFormatException that names the size and 62,
+     * whatever size the start uses, and the start writes nothing. Before, the message named
+     * DbBuilder.maxNodeSize126(), which does not exist.
+     */
+    @Nano
+    private static void testNodeSizeAbove62Refused() throws IOException {
+        CoreTestClock clock = new CoreTestClock();
+        MemoryStream s = new MemoryStream();
+        Db db = Db.builder().testSetup(s).clock(clock).start();
+        clock.setTime(10);
+        db.execute(db.trans().put("key1", "value1"));
+        db.sync(SyncLevel.ORDINARY);
+        db.close();
+        Assert.assertTrue("one meta block", s.getLength() < RecoverableStream.META_BLOCK_DISTANCE);
+        for (int bad : new int[] {63, 126}) {
+            MemoryStream.TestAccess.write(s, new byte[] {(byte) bad, 0}, 44);   // u16, LE
+            for (int size : new int[] {30, 62}) {
+                MemoryStream m = s.copy();
+                try {
+                    nodeSize(Db.builder().testSetup(m).clock(clock), size).start();
+                    throw new AssertionError("started a database of node size " + bad);
+                } catch (StreamFormatException e) {
+                    Assert.assertTrue(e.getMessage(), e.getMessage().contains(
+                            "maximum node size " + bad + ", above 62, the largest"));
+                }
+                Assert.assertArrayEquals("the stream as it was", bytesOf(s), bytesOf(m));
+            }
+        }
+    }
+    
+    /**
      * Bergdb 019-01: the version at offset 4 of a meta block is an int, and a block whose
      * bytes 6 or 7 are not 0 is refused with a VersioningStreamException, as a block of
      * another version is, and the start writes nothing. Every BergDB writes 154 as an int

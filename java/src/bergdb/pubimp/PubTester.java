@@ -1252,6 +1252,56 @@ public class PubTester {
         manyObjects(200);
     }
     
+    /**
+     * bergdb 024-26, U26-5 (Frans, 2026-11-12, option B; 024-27): a refused put() or delete()
+     * spoils the WBuilder. After a put of a key over 111 bytes, a delete of one, or a put of
+     * null is refused and caught, each later put(), delete() and execute() throws
+     * IllegalStateException that names the refused call, with the refusal as its cause, and
+     * nothing of the builder is written. A new builder works. Until 2026-11-12 execute()
+     * committed the other puts.
+     */
+    @Nano
+    public static void testRefusedCallSpoilsWBuilder() {
+        final String longKey = "/" + "k".repeat(Db.MAX_KEY_BYTES) + ".txt";
+        final String[] calls = {"put", "delete", "put"};
+        Database db = Factory.database().memory().start();
+        try {
+            Connection c = db.connection();
+            for (int i = 0; i < calls.length; i++) {
+                final WBuilder b = c.w().put("/a" + i + ".txt", "a");
+                IllegalArgumentException refusal = null;
+                try {
+                    switch (i) {
+                    case 0: b.put(longKey, "x"); break;
+                    case 1: b.delete(longKey); break;
+                    default: b.put("/c.txt", null); break;
+                    }
+                    throw new AssertionError("not refused: " + i);
+                } catch (IllegalArgumentException e) {
+                    refusal = e;
+                }
+                Runnable[] later = {() -> b.put("/b.txt", "b"), () -> b.delete("/b.txt"),
+                        () -> b.execute(), () -> b.execute()};
+                for (int j = 0; j < later.length; j++) {
+                    try {
+                        later[j].run();
+                        throw new AssertionError("spoiled builder took call " + j + ", " + i);
+                    } catch (IllegalStateException e) {
+                        Assert.assertTrue(e.getMessage(), e.getMessage().contains(
+                                "spoiled builder: its " + calls[i] + "() was refused"));
+                        Assert.assertTrue("the cause", refusal == e.getCause());
+                    }
+                }
+                Assert.assertNull(c.get("/a" + i + ".txt", String.class));
+                Assert.assertNull(c.get("/b.txt", String.class));
+            }
+            c.w().put("/a0.txt", "a").execute();
+            Assert.assertEquals("a", c.get("/a0.txt", String.class));
+        } finally {
+            db.stop();
+        }
+    }
+    
     private static void manyObjects(int count) {        
         Database db = Factory.database().memory().start();
         Connection c = db.connection();

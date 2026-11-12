@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import bergdb.dag.GetData;
 import bergdb.dag.GetMany;
@@ -684,6 +685,19 @@ public class DbTesterJavadoc {
         }
     }
 
+    /**
+     * Each of the 'count' builders had a call refused, and is spoiled (Trans.Builder; bergdb
+     * 024-26, U26-5; 024-27): build() throws IllegalStateException, the refusal its cause.
+     */
+    private static void assertSpoiled(List<Trans.Builder> made, int count) {
+        Assert.assertEquals("builders", count, made.size());
+        for (Trans.Builder x : made) {
+            Throwable e = thrown(() -> x.build());
+            Assert.assertTrue("spoiled: " + e, e instanceof IllegalStateException
+                    && e.getCause() instanceof IllegalArgumentException);
+        }
+    }
+
     private static void assertNullRefused(String[] params, Call[] calls) {
         Assert.assertEquals("cases", params.length, calls.length);
         for (int i = 0; i < calls.length; i++) {
@@ -783,35 +797,43 @@ public class DbTesterJavadoc {
      * Trans.Builder refuses a null key, value, read key or hash array with
      * IllegalArgumentException that names it (bergdb 020-27, Q2): a null key threw
      * NullPointerException, or AssertionError with -ea, and delete((long[]) null) was taken,
-     * and build() threw. Nothing is added by a refusal. The transformations of put(long[],
-     * KeyTransformation, byte[], ValueTransformation) may be null.
+     * and build() threw. A refusal adds nothing and spoils its builder: build() then throws
+     * IllegalStateException (bergdb 024-26, U26-5; 024-27), so each call has a builder of
+     * its own. The transformations of put(long[], KeyTransformation, byte[],
+     * ValueTransformation) may be null.
      */
     @Nano
     public static void testTransBuilderNullArguments() {
-        final Trans.Builder b = new Trans.Builder();
-        b.put("k", "v");
+        final List<Trans.Builder> made = new ArrayList<>();
+        final Supplier<Trans.Builder> nb = () -> {
+            Trans.Builder x = new Trans.Builder().put("k", "v");
+            made.add(x);
+            return x;
+        };
         final byte[] v = {1};
         final long[] k = Keys.toSegments("k2");
         String[] params = {"key", "key", "key", "key", "key", "key", "key", "key", "key",
             "key", "hashes", "value", "value", "value", "value", "value"};
         Call[] calls = {
-            () -> b.put((byte[]) null, v),
-            () -> b.put((long[]) null, v),
-            () -> b.put((long[]) null, null, v, null),
-            () -> b.put((String) null, "v"),
-            () -> b.put((String) null, v),
-            () -> b.delete((byte[]) null),
-            () -> b.delete((long[]) null),
-            () -> b.delete((String) null),
-            () -> b.keyRead((long[]) null),
-            () -> b.keyRead((String) null),
-            () -> b.addReadHashes(null, 0),
-            () -> b.put(Keys.toBytes("k2"), null),
-            () -> b.put(k, null),
-            () -> b.put(k, null, null, null),
-            () -> b.put("k2", (String) null),
-            () -> b.put("k2", (byte[]) null)};
+            () -> nb.get().put((byte[]) null, v),
+            () -> nb.get().put((long[]) null, v),
+            () -> nb.get().put((long[]) null, null, v, null),
+            () -> nb.get().put((String) null, "v"),
+            () -> nb.get().put((String) null, v),
+            () -> nb.get().delete((byte[]) null),
+            () -> nb.get().delete((long[]) null),
+            () -> nb.get().delete((String) null),
+            () -> nb.get().keyRead((long[]) null),
+            () -> nb.get().keyRead((String) null),
+            () -> nb.get().addReadHashes(null, 0),
+            () -> nb.get().put(Keys.toBytes("k2"), null),
+            () -> nb.get().put(k, null),
+            () -> nb.get().put(k, null, null, null),
+            () -> nb.get().put("k2", (String) null),
+            () -> nb.get().put("k2", (byte[]) null)};
         assertNullRefused(params, calls);
+        assertSpoiled(made, calls.length);
+        final Trans.Builder b = new Trans.Builder().put("k", "v");
         b.put(k, null, v, null);
         Trans t = b.build();
         Assert.assertEquals("kvs", 2, t.kvs.length);
@@ -845,7 +867,9 @@ public class DbTesterJavadoc {
      * condition that answers none of the four (with -ea it failed the database, without it
      * was CONTINUE); GetN and PrefixN with a negative count (no KV); addReadHashes() with a
      * length outside 0 to hashes.length (without -ea an ArrayIndexOutOfBoundsException, some
-     * hashes added). Each message names the argument; the database goes on, unchanged.
+     * hashes added). Each message names the argument; the database goes on, unchanged. Each
+     * Trans.Builder call has a builder of its own, which the refusal spoils (bergdb 024-26,
+     * U26-5; 024-27).
      */
     @Nano
     public static void testRangeArguments() {
@@ -865,22 +889,27 @@ public class DbTesterJavadoc {
                 }
                 public void eod() {}
             };
-            final Trans.Builder b = db.trans();
+            final List<Trans.Builder> made = new ArrayList<>();     // one a call (024-27)
+            final Supplier<Trans.Builder> b = () -> {
+                Trans.Builder x = db.trans();
+                made.add(x);
+                return x;
+            };
             String[] params = {"key", "key", "key", "key", "keySegments", "g.startKey",
                 "g.result", "handleKvt", "maxCount", "maxCount", "length", "length"};
             Call[] calls = {
-                () -> b.put(none, v),
-                () -> b.put(none, null, v, null),
-                () -> b.delete(none),
-                () -> b.keyRead(none),
+                () -> b.get().put(none, v),
+                () -> b.get().put(none, null, v, null),
+                () -> b.get().delete(none),
+                () -> b.get().keyRead(none),
                 () -> db.getOne(LATEST, none, db.newGetData()),
                 () -> db.getMany(emptyStart),
                 () -> db.getMany(notEmpty),
                 () -> db.getMany(badAnswer),
                 () -> new GetMany.GetN(-1),
                 () -> new GetMany.PrefixN(Keys.toSegments("k"), -1),
-                () -> b.addReadHashes(new long[] {1}, 2),
-                () -> b.addReadHashes(new long[] {1}, -1)};
+                () -> b.get().addReadHashes(new long[] {1}, 2),
+                () -> b.get().addReadHashes(new long[] {1}, -1)};
             long length = db.getStreamLength();
             for (int i = 0; i < calls.length; i++) {
                 String about = "call " + i + ", " + params[i];
@@ -891,7 +920,8 @@ public class DbTesterJavadoc {
                         e.getMessage().contains(params[i]));
             }
             Assert.assertEquals("unchanged", 2, notEmpty.result.size());
-            Trans t = b.put("k2", "v2").build();
+            assertSpoiled(made, 6);
+            Trans t = b.get().put("k2", "v2").build();
             Assert.assertEquals("nothing added", 1, t.kvs.length);
             Assert.assertEquals("no read hash", 0, t.readKeyHashes.length);
             db.execute(t);

@@ -68,11 +68,11 @@ def Params.withMerges (p : Params) : Params :=
            splitAbove := 17 * p.M / 30, mergeMax := 17 * p.M / 30 }
 
 /-- Option 2's theta of record format 7 for node size M (Frans, 2026-11-11:
-024-18, QD1, theta 7 at node size 30; 024-23, OD2): 7 M / 30, at least 1, so 1
+024-18, QD1, theta 7 at node size 30; 024-23, OD2): 7 M / 30, at least 2, so 2
 at 8, 3 at 14, 14 at 62; 0 (off) below node size 8, where record format 7
-merges nothing either (Java's `Dag.theta`). Other node sizes are open with
-024-14's QT2. -/
-def Params.thetaFor (M : Nat) : Nat := if M < 8 then 0 else max 1 (7 * M / 30)
+merges nothing either (Java's `Dag.theta`). The floor was 1 until 2026-11-12
+(Frans, 024-19, Q4). Other node sizes are open with 024-14's QT2. -/
+def Params.thetaFor (M : Nat) : Nat := if M < 8 then 0 else max 2 (7 * M / 30)
 
 /-- The writer with option 2 of record format 7 (bergdb 024-23). -/
 def Params.withTheta (p : Params) : Params := { p with theta := Params.thetaFor p.M }

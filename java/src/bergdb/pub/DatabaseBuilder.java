@@ -222,7 +222,12 @@ public interface DatabaseBuilder {
      *             A VersioningStreamException, a StreamFormatException, also if the database
      *             holds an index of BergDB 2026.3 and before: such a database does not start,
      *             and is made again from its data (the package's
-     *             {@linkplain bergdb.pub##objects Objects}; bergdb 020-08).
+     *             {@linkplain bergdb.pub##objects Objects}; bergdb 020-08). And a
+     *             VersioningStreamException if a release before 2026.5 wrote the database
+     *             (record format 6 of 2026.4, 5 of 2026.1 to 2026.3): this release does not
+     *             open it, the message names the release that does, and the start, as create()
+     *             on its directory, changes no file; its data is moved with that release, as
+     *             the release notes say (bergdb 024-26, U26-8).
      * @throws DatabaseNotCreatedException
      *             If the database's creation did not complete: a crash, as a power loss,
      *             while it was created left a part of it, and no data (bergdb 005-33). The
