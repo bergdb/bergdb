@@ -489,6 +489,12 @@ larger one that touches the same code.
   Within aim 2, when stated as a function of the startup distance a key
   (BD5)? Recommended: yes; no format lever in 2026.5, GM4 run to price
   them, and the startup distance a key in the documentation.
+  **Decided** (Frans, 2026-11-12, 12:46): for 2026.5 as recommended (a
+  put's bytes stated as a function of sd / K; the default sd fixed; the
+  curve documented). "QF3 is really important to me. [...] a startup
+  distance that depends on the size of the database in number of KVs
+  could perhaps be a default users won't need to think about. This is a
+  big step and not for now." The study: 017-11.
 * **QF4. Which memory figure gates?** Recommended: both: BD11 (the heap
   with eviction has no term in the keys) and BD12 (MEM a KV at 1M and
   at 10M, with the cost of a one-key segment tree named), after GM1.

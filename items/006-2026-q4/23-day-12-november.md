@@ -52,6 +52,7 @@ high.
 | 024-32 | maintain(), in Core and Pub, with G5 (back to empty by maintain()) | maint (high) | |
 | 024-33 | ST6: the cache's tables shrink | tidy (high) | |
 | 024-34 | OP8: reclaim reads only what it rewrites | tidy (high) | |
+| 017-11 | A startup distance that follows the database's size: known, plan | sdk (xhigh) | |
 
 024-27 lands on its gates, by Frans's decisions of 07:36: its changed
 expected values follow from them.
@@ -206,6 +207,10 @@ from them.
 * 12:33 Frans: QF3 and QF1 are his to look into; "Handle the other ones
   for me." The coordinator settled QF2, QF4 to QF8 as recommended in
   024-05, section 7; Q30-1 and Q30-2 as applied in 024-30.
+* 12:46 Frans on QF3: for 2026.5 as recommended; a startup distance
+  that follows the number of KVs as a default "users won't need to think
+  about" is "a big step and not for now"; a new 017 topic, written by an
+  agent at xhigh: sdk started 12:47 (017-11).
 
 
 ## 6. Outcome
