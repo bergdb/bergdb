@@ -18,6 +18,16 @@ package bergdb.pub;
  * that has not made its change by then, throws IllegalStateException and changes nothing,
  * so the action should wait for its threads before it returns. Each run of the action has
  * an environment of its own: one kept from an earlier run stays closed.</p>
+ *
+ * <p>Refused calls (bergdb 024-27, QR1). A put or a delete that throws
+ * IllegalArgumentException, for its arguments or a limit (the package's
+ * {@linkplain bergdb.pub##limits Limits}), changes nothing in the transaction. The action is
+ * the application's code, and the environment is not spoiled by a refusal, unlike a
+ * WBuilder: an action that lets the exception propagate commits nothing, but one that catches
+ * it and returns normally commits its other puts and deletes. The database keeps its own
+ * structures consistent either way: the entries of its indexes are made after the action
+ * returns, from what the action wrote. What the action's own keys mean together, such as an
+ * entry it writes as an index of its own, is the action's responsibility.</p>
  * 
  * @author Frans Lundberg
  */
@@ -70,6 +80,8 @@ public interface RwEnvironment extends ReadInterface {
      * @throws IllegalArgumentException if 'key' is null or otherwise of an invalid format,
      *             or has more than 111 bytes as stored (L2; the package's
      *             {@linkplain bergdb.pub##limits Limits}).
+     *             A refused call changes nothing; the action decides what follows (the
+     *             class Javadoc, "Refused calls").
      */
     public void delete(String key);
     
@@ -96,6 +108,8 @@ public interface RwEnvironment extends ReadInterface {
      *             lone surrogate or over 8 MiB (L4), or an object with a string that has one, as
      *             for WBuilder.put() (bergdb 019-44, 021-04; 020-08, section 3); or if the
      *             object cannot be stored exactly, as for WBuilder.put() (bergdb 020-09).
+     *             A refused call changes nothing; the action decides what follows (the
+     *             class Javadoc, "Refused calls").
      */
     public void put(String key, Object object);
     
