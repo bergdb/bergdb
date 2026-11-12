@@ -1,14 +1,17 @@
+By Frans Lundberg, created 2026-10-26, actively maintained.
+
+
 010-principles
 ==============
 
-Created 2026-10-26 by Frans Lundberg. Status: open.
-
-BergDB's design principles, in Frans's words: what BergDB promises about
-its behaviour, beyond the results of its operations. The principles guide
+BergDB's design principles. The principles guide
 the design and the decisions of other items; this item records them, how
-they are applied in BergDB's development, and the open questions. Mostly
-they are followed; a few simple principles will always need exceptions,
-and each exception is justified.
+they are applied in BergDB's development.
+
+The implementation of BergDB must follow these principles.
+Exceptions are allowed only if approved by Frans Lundberg.
+Exceptions must be justified and documented here in this item.
+
 
 
 Principles

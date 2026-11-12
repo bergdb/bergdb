@@ -110,6 +110,11 @@ from them.
   own edit of the readme's top left uncommitted).
 * 10:19 Frans: "Remove Rule R4." Removed (its number kept, not reused);
   P14's "Where BergDB stands" now names R1 to R3.
+* 10:23 Frans, on P2's details: it is for accepted transactions; the
+  STM's state is not kept across a restart, so a transaction may be
+  accepted or refused depending on a restart between two transactions,
+  "This is acceptable."; a refusal under overload too. Written into P2
+  (010-01). Committed with Frans's own edit of 010's readme, at his word.
 
 
 ## 6. Outcome

@@ -128,10 +128,18 @@ accepted transactions produces the same bytes. Frans's goal of
 2015-12-28: "a restart can be inserted between any two transactions
 without affecting the bytes in the stream".
 
-Acceptance need not be deterministic. STM may refuse a transaction
-request because of a conflict or insufficient validation history.
-Requests may also be refused because the database lacks resources.
-A restart may affect which requests are accepted. Such refusals do not
+P2 is about the accepted transactions only (Frans, 2026-11-12, 10:23:
+"Ensure this is for accepted transactions."). Acceptance need not be
+deterministic. STM may refuse a transaction request because of a
+conflict or insufficient validation history. A request may also be
+refused because the database lacks resources, under overload (Frans:
+"A transaction could also be rejected due to an overload condition.").
+And a restart may change which requests are accepted: the STM's state,
+the history of recent writes that it validates a transaction's reads
+against, is in memory and is not kept across a restart (005-70, "RW
+lifecycle and Lean"), so a transaction may be accepted or refused
+depending on whether the database was restarted between it and an
+earlier transaction. Frans: "This is acceptable." Such refusals do not
 violate P2: runs with different accepted transaction sequences may
 produce different streams.
 
