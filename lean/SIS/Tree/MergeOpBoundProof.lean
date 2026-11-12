@@ -1,7 +1,7 @@
 /-
 Merge counts in the writer (bergdb 024-22, TP32).
 -/
-import SIS.Tree.MergeFrame
+import SIS.Tree.MergeFrameDead
 import SIS.Tree.MergeHeightTags
 
 namespace SIS.Tree

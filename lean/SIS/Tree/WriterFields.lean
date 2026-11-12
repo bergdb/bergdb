@@ -1,4 +1,4 @@
-import SIS.Tree.MergeFrame
+import SIS.Tree.MergeFrameDead
 
 namespace SIS.Tree
 
@@ -168,10 +168,10 @@ theorem fields_replaceOrAdd (last : KNode) (ins : List (Nat × NodeId)) :
     | split
     | contradiction
 
-theorem fields_handleFullWith (up : NodeId → List (Nat × NodeId) → M Unit)
-    (depth : Nat) (x : NodeId) (ins : List (Nat × NodeId)) (last : KNode)
+theorem fields_handleFullWith_compact (up : NodeId → List (Nat × NodeId) → M Unit)
+    (depth : Nat) (x : NodeId) (ins : List (Nat × NodeId)) (last : KNode) (compact : Bool)
     (hup : ∀ q more, KeepsFields (up q more)) :
-    KeepsFields (handleFullWith up depth x ins last) := by
+    KeepsFields (handleFullWith up depth x ins last compact) := by
   intro c w hw
   unfold handleFullWith
   repeat' first
@@ -184,6 +184,12 @@ theorem fields_handleFullWith (up : NodeId → List (Nat × NodeId) → M Unit)
     | split
     | contradiction
 
+theorem fields_handleFullWith (up : NodeId → List (Nat × NodeId) → M Unit)
+    (depth : Nat) (x : NodeId) (ins : List (Nat × NodeId)) (last : KNode)
+    (hup : ∀ q more, KeepsFields (up q more)) :
+    KeepsFields (handleFullWith up depth x ins last) := by
+  exact fields_handleFullWith_compact up depth x ins last false hup
+
 theorem fields_throw {α : Type} (e : String) : KeepsFields (throw e : M α) := by
   intro c w hw
   exact writerWP_throw _ _ _ _
@@ -193,24 +199,33 @@ theorem fields_appendKlongs (depth : Nat) (x : NodeId) (ins : List (Nat × NodeI
   induction depth generalizing x ins with
   | zero =>
     intro c w hw
-    rw [appendKlongs_step]
+    rw [appendKlongs_step_dead]
     repeat' first
       | fiSimplify
       | fiCore
-      | fiUse (fields_handleFullWith _ _ _ _ _ (fun _ _ => fields_throw _))
+      | fiUse (fields_handleFullWith_compact _ _ _ _ _ _ (fun _ _ => fields_throw _))
       | wpSplit
       | split
       | contradiction
   | succ depth ih =>
     intro c w hw
-    rw [appendKlongs_step]
+    rw [appendKlongs_step_dead]
     repeat' first
       | fiSimplify
       | fiCore
-      | fiUse (fields_handleFullWith _ _ _ _ _ (fun q more => ih q more))
+      | fiUse (fields_handleFullWith_compact _ _ _ _ _ _ (fun q more => ih q more))
       | wpSplit
       | split
       | contradiction
+
+theorem fields_handleFull_compact (depth : Nat) (x : NodeId) (last : KNode) (compact : Bool) :
+    KeepsFields (handleFull depth x last compact) := by
+  unfold handleFull
+  refine fields_handleFullWith_compact _ _ _ _ _ _ ?_
+  intro q more
+  cases depth with
+  | zero => exact fields_throw _
+  | succ d => exact fields_appendKlongs _ _ _
 
 theorem fields_handleFull (depth : Nat) (x : NodeId) (last : KNode) :
     KeepsFields (handleFull depth x last) := by
@@ -237,6 +252,7 @@ theorem fields_descendLte (cv fuel : Nat) (x : NodeId) :
       | contradiction
 
 macro "fiAppend" : tactic => `(tactic| first
+  | fiUse (fields_handleFull_compact _ _ _ _)
   | fiUse (fields_appendKlongs _ _ _)
   | fiUse (fields_handleFull _ _ _)
   | fiUse (fields_descendLte _ _ _))

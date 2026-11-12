@@ -43,5 +43,6 @@ import SIS.Tree.Top
 import SIS.Tree.MergeProps
 import SIS.Tree.DeadProps
 import SIS.Tree.MergeOpBoundProof
+import SIS.Tree.MergeProofBundle
 import SIS.Proof.TreeRoot
 import SIS.Proof.TreeInit

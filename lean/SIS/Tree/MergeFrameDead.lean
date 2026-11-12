@@ -1,5 +1,9 @@
+/-
+Frame lemmas for the writer, including dead-klong compaction.
+-/
 import SIS.Tree.MergeProps
 import SIS.Tree.WriterWP
+import SIS.Tree.WriterSteps
 
 namespace SIS.Tree
 
@@ -254,11 +258,11 @@ theorem mergesLe_of_wp {α : Type} {k : Nat} {f : M α}
   exact hf c w r v h
 
 set_option maxHeartbeats 500000 in
-theorem mergesLe_handleFullWith
+theorem mergesLe_handleFullWith_compact
     (up : NodeId → List (Nat × NodeId) → M Unit)
-    (depth : Nat) (x : NodeId) (ins : List (Nat × NodeId)) (last : KNode)
+    (depth : Nat) (x : NodeId) (ins : List (Nat × NodeId)) (last : KNode) (compact : Bool)
     (hup : ∀ q more, MergesLe 0 (up q more)) :
-    MergesLe 0 (handleFullWith up depth x ins last) := by
+    MergesLe 0 (handleFullWith up depth x ins last compact) := by
   apply mergesLe_of_wp
   intro c w
   unfold handleFullWith
@@ -276,18 +280,12 @@ theorem mergesLe_handleFullWith
     | split
     | ((try simp only [Nat.add_zero] at *); omega)
 
-/-- Unfolds one append step without expanding its recursive calls. -/
-theorem appendKlongs_step (depth : Nat) (x : NodeId) (ins : List (Nat × NodeId)) :
-    appendKlongs depth x ins = (do
-      let c ← read
-      let n ← getNode x
-      if n.size + ins.length + 1 > c.p.M then
-        let up : NodeId → List (Nat × NodeId) → M Unit := match depth with
-          | 0 => fun _ _ => throw "corrupt: a split's parent above depth 0"
-          | d + 1 => fun q more => appendKlongs d q more
-        handleFullWith up depth x ins (n.lastVersion c.i)
-      else addKeys x ins) := by
-  cases depth <;> rfl
+theorem mergesLe_handleFullWith
+    (up : NodeId → List (Nat × NodeId) → M Unit)
+    (depth : Nat) (x : NodeId) (ins : List (Nat × NodeId)) (last : KNode)
+    (hup : ∀ q more, MergesLe 0 (up q more)) :
+    MergesLe 0 (handleFullWith up depth x ins last) := by
+  exact mergesLe_handleFullWith_compact up depth x ins last false hup
 
 theorem mergesLe_appendKlongs (depth : Nat) (x : NodeId) (ins : List (Nat × NodeId)) :
     MergesLe 0 (appendKlongs depth x ins) := by
@@ -295,7 +293,7 @@ theorem mergesLe_appendKlongs (depth : Nat) (x : NodeId) (ins : List (Nat × Nod
   | zero =>
     apply mergesLe_of_wp
     intro c w
-    rw [appendKlongs_step]
+    rw [appendKlongs_step_dead]
     wpSimplify
     refine writerWP_of_mergesLe (mergesLe_getNode 0 x) _ _ _ ?_
     intro n v hn
@@ -305,15 +303,22 @@ theorem mergesLe_appendKlongs (depth : Nat) (x : NodeId) (ins : List (Nat × Nod
       intro r v1 h1
       simp only [Nat.add_zero] at *
       omega
-    · refine writerWP_of_mergesLe (mergesLe_addKeys x ins) _ _ _ ?_
-      intro r v1 h1
-      simp only [Nat.add_zero] at *
-      omega
+    · split
+      · refine writerWP_of_mergesLe
+          (mergesLe_handleFullWith_compact (fun _ _ => throw "corrupt: a split's parent above depth 0")
+            _ x ins (n.lastVersion c.i) true (fun _ _ => mergesLe_throw _ _)) _ _ _ ?_
+        intro r v1 h1
+        simp only [Nat.add_zero] at *
+        omega
+      · refine writerWP_of_mergesLe (mergesLe_addKeys x ins) _ _ _ ?_
+        intro r v1 h1
+        simp only [Nat.add_zero] at *
+        omega
 
   | succ depth ih =>
     apply mergesLe_of_wp
     intro c w
-    rw [appendKlongs_step]
+    rw [appendKlongs_step_dead]
     wpSimplify
     refine writerWP_of_mergesLe (mergesLe_getNode 0 x) _ _ _ ?_
     intro n v hn
@@ -323,10 +328,26 @@ theorem mergesLe_appendKlongs (depth : Nat) (x : NodeId) (ins : List (Nat × Nod
       intro r v1 h1
       simp only [Nat.add_zero] at *
       omega
-    · refine writerWP_of_mergesLe (mergesLe_addKeys x ins) _ _ _ ?_
-      intro r v1 h1
-      simp only [Nat.add_zero] at *
-      omega
+    · split
+      · refine writerWP_of_mergesLe
+          (mergesLe_handleFullWith_compact (fun q more => appendKlongs depth q more)
+            _ x ins (n.lastVersion c.i) true (fun q more => ih q more)) _ _ _ ?_
+        intro r v1 h1
+        simp only [Nat.add_zero] at *
+        omega
+      · refine writerWP_of_mergesLe (mergesLe_addKeys x ins) _ _ _ ?_
+        intro r v1 h1
+        simp only [Nat.add_zero] at *
+        omega
+
+theorem mergesLe_handleFull_compact (d : Nat) (x : NodeId) (last : KNode) (compact : Bool) :
+    MergesLe 0 (handleFull d x last compact) := by
+  unfold handleFull
+  refine mergesLe_handleFullWith_compact _ _ _ _ _ _ ?_
+  intro q more
+  cases d with
+  | zero => exact mergesLe_throw _ _
+  | succ d => exact mergesLe_appendKlongs d q more
 
 theorem mergesLe_handleFull (d : Nat) (x : NodeId) (last : KNode) :
     MergesLe 0 (handleFull d x last) := by
@@ -339,6 +360,7 @@ theorem mergesLe_handleFull (d : Nat) (x : NodeId) (last : KNode) :
 
 macro "wpFrame3" : tactic => `(tactic| first
   | (with_unfolding_none refine writerWP_of_mergesLe (mergesLe_appendKlongs _ _ _) _ _ _ ?_; intro _ _ _)
+  | (with_unfolding_none refine writerWP_of_mergesLe (mergesLe_handleFull_compact _ _ _ _) _ _ _ ?_; intro _ _ _)
   | (with_unfolding_none refine writerWP_of_mergesLe (mergesLe_handleFull _ _ _) _ _ _ ?_; intro _ _ _)
   | wpFrame)
 
