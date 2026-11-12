@@ -38,7 +38,7 @@ high.
 | ID | Task | Agent | Result |
 |---|---|---|---|
 | 024-22 | TP32 restated with the premises Java meets (coord-1111's tp32s) | tp32s (xhigh) | landed c0a8cadf |
-| 024-27 | U26-5 B, theta at least 2, 62 the largest size, U26 Javadoc | rules (high) | |
+| 024-27 | U26-5 B, theta at least 2, 62 the largest size, U26 Javadoc | rules (high) | landed a7dfb6f7 |
 | 026 | 2026.6 work moved from 024 to 026, 024-20 first (026-01) | move (high) | done 07:42 |
 
 024-27 lands on its gates, by Frans's decisions of 07:36: its changed
@@ -68,6 +68,11 @@ from them.
   else of 2026.5 was decided for 2026.6; what is only proposed for it
   (024-19 Q5, 024-22 QM1, 024-02 section 21, 024-01 OT4, PA5, PA9) is
   listed in 026's readme for Frans.
+* 08:13 rules done: branch 024-27-rules, head 40275fd7, gates on it
+  before-commit (62 s), lake build (215 jobs), level1, level2 (with the
+  Lean conformance) OK; five changed tests, each its own commit; QR1
+  (spoil an rw() action that catches a refused put?), QR2 (550 in the
+  Eviction test). 08:16 landed as a7dfb6f7; 024-23's QO2 marked decided.
 
 
 ## 6. Outcome

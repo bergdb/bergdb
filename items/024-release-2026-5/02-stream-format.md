@@ -284,9 +284,26 @@ bytes long (`RecoverableStream.META_BLOCK_SIZE`, :59;
 | 16  | 8  | `i64` | lastTrans     | the last record appended before it, or −1      |
 | 24  | 16 | bytes | database id   | 16 bytes, random (`DatabaseId`)                |
 | 40  | 4  | `i32` | startup dist. | the setting in force, sd, in bytes             |
-| 44  | 2  | `u16` | max node size | 8, 14, 30 or 62 (005-50)                       |
+| 44  | 2  | `u16` | max node size | 8, 14, 30 or 62 (005-50, 024-19)               |
 | 46  | 81 | zero  | reserved      | zero                                           |
 | 127 | 1  | `u8`  | last byte     | 10: the block is valid                         |
+
+**The node size** (B, field 44; Frans, 2026-11-12, 024-19, Q1 and Q6;
+made in 024-27). B is 8, 14, 30 or 62, the most klongs of a key node:
+30 is the default and the Pub API's only size; 8, 14 and 62 are chosen
+by the Core API (`DbBuilder.maxNodeSize8()` to `maxNodeSize62()`). 62 is
+the largest, because a delete bitmap names 62 klongs, one for each klong
+index of its node (section 11.2): no writer makes a database of a larger
+size; `Dag` refuses one when it is made (`Dag.MAX_NODE_SIZE`,
+`DagTester.testNodeSizeAbove62Refused`); and a start refuses a meta
+block that gives one as damaged, before any write
+(`Db.refuseOtherNodeSize`, `DbTesterRestart.testNodeSizeAbove62Refused`).
+The writer's rules of record format 7 are functions of B, so that a
+start's rerun of a record makes the same nodes: the thresholds m, h and
+c (024-14), and theta, the most dead key klongs a key node holds after
+a write: 7 B / 30 by integer division, at least 2, so 2, 3, 7 and 14 at
+8, 14, 30 and 62 (`Dag.theta`, the Lean model's `Params.thetaFor`;
+024-23; the floor 2, not 1, by 024-19, Q4).
 
 **Written by.** `MetaBlock.initBlock` (:73): magic, version, last byte,
 lastTrans −1. `Db.writePrimordialTransaction` (`Db.java`:1344): id,
@@ -311,7 +328,8 @@ recovery copies the last valid block whole, reserved bytes included
   own position; an SFE before recovery writes.
 * `Db.refuseOtherNodeSize` (`Db.java`:1312), on the last valid block:
   0 is a `VersioningStreamException` (a database before 2026-10-27);
-  another size than the start's is an SFE. Both before any write.
+  a size above 62 is an SFE (since 024-27); another size than the
+  start's is an SFE. All before any write.
 
 **Tests.** UT: `MetaBlock` (4), `RecoverableStream` (37, among them
 `crashInMetaBlockHeader`, `testReadMetaBlock1`), `DbTesterRestart`
@@ -768,7 +786,9 @@ to 5.3, with the code of `Dag` and `KeyNode`:
   the take-back (section 8.2);
 * the bound on n: at most the maximum node size, + 1 transiently
   (`KeyNode.check`, :1633), and at most 62 klongs that a bitmap can
-  name.
+  name (62 the largest node size, section 6);
+* at most theta dead key klongs after every write (section 6; a
+  writer's rule, not checked on reading).
 
 **Tests.** UT: `StoredKeyNode` (`testRefusesKeyCountBeyondTheNode`,
 `testRefusesBadKlongs`, `testRefusesBadTimeKlong`), `Klong` (18), `KeyNodeTester`

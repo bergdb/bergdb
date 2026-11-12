@@ -612,6 +612,9 @@ could go on; each is a default that Frans may overturn.
   bytes at B = 30; 024-18, 6.1). Recommended: **keep it for 2026.5**, and
   decide B = 8's theta with 024-14's QT2 and the node-size study
   (024-19).
+  **Decided** by 024-19, Q4 (Frans, 2026-11-12, 07:36): theta at least
+  2, so 2 at 8; made in 024-27 (on main since a7dfb6f7). The text above
+  describes theta as first built.
 * **QO3. Databases made between the two landings.** The rule is part of
   format 7 without a new format number: a database written by the
   merges' code without this rule reruns differently with it. Only
