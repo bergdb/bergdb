@@ -388,3 +388,7 @@ overturned.
   with 024-31's `TransSeq` change meets `takeTo` beside `take`, and
   `Db.store`'s four lines after the take's call). The clone's
   `lean/.lake` is a copy of the main tree's, not tracked.
+
+**Decided** (Frans, 2026-11-12, 13:52): "For 2026.5, land maintain() as
+built." Q32-1 to Q32-5 as built. The single maintenance step and the
+simple form for 2026.6: 026-03.

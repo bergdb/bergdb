@@ -284,6 +284,10 @@ from them.
   before-commit, level1, level3 OK. Q27-1: a garbage size that passes
   the header check (about 1 in 65,000) still asks for an array up to 2
   GB.
+* 13:44 Frans on maintain(): the sync, ordinary transactions only, one
+  single way to do a maintain step.
+* 13:52 Frans: "For 2026.5, land maintain() as built." The single step
+  and the simple form registered as 026-03.
 
 
 ## 6. Outcome

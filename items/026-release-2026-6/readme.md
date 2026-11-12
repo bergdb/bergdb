@@ -75,6 +75,10 @@ Files
   test a key (and maybe a value or a transaction) against the limits
   before a call (Frans, 2026-11-12, 09:34; from 024-27, QR1): the
   options and a recommendation, no code yet.
+* 03-single-maintenance-step.md. 026-03, one maintenance step for a
+  commit and for `maintain()`, and the simple form (ordinary
+  transactions with filler) to consider (Frans, 2026-11-12, 13:44 and
+  13:52; from 024-32).
 
 
 Log
