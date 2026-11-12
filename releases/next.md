@@ -12,6 +12,28 @@ that keeps its digests before and after (bergdb 018-01, section 2).
 Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
 
 
+### Pub API
+
+* **`Database.maintain()`: the maintenance on request, a new method**
+  (bergdb 024-32; Frans, 2026-11-12, 12:10 and 13:52; 023-04, Y10). With a
+  finite retain duration, reclaim moves on only at the application's
+  commits (010-01, P3), so a database that was emptied and is no longer
+  written kept its stream. A call does a bounded part of the maintenance
+  in the database's own transactions: at most one reclaim step, one write
+  of index nodes by the take, one filler of at most 200 kB that is put and
+  deleted at once to reach a meta block, the cut when it is due (after a
+  sync, if needed), and a batch of the release from memory of what the cut
+  ended; it returns true if more is due now. A call when nothing is due
+  writes nothing; with the retain duration forever (the default) it
+  returns false. Calling it is optional: the maintenance goes on at the
+  commits as before, whether it is called or not. It writes records of
+  kinds that exist only: no format, model or trace change (the
+  conformance configurations `r-maint` and `e-r-maint` pass). G5 (Tests
+  and gates): 1M keys put and deleted, then `maintain()` alone, no writes:
+  the stream from 254 MB to 83 kB, at most 75 kB and 5 records a call.
+  The Core's `Db.maintain()` is the same.
+
+
 ### Core API
 
 * **Merges at the delete; record format 7** (bergdb 024-21; 024-11, MG).
@@ -175,6 +197,62 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
   and `deleteLongKey()`. The Pub API's keys under `/#i/` (its index
   definitions, entries and markers, `/#i/di...`) are written as before;
   reads of the Core's keys are allowed.
+* **The take's pace is capped after a decrease of the startup distance**
+  (bergdb 024-31; 015-84, 024-05's OP4; Frans, 2026-11-12, 13:09). Each
+  record writes its share of the startup section's dirty index nodes (the
+  take, 007-07), and the share grew with the section's span over the
+  startup distance: right after a decrease from 1000 to 100 MB in one call
+  a record took up to 10 times its usual share, and at 50M keys the
+  catch-up's records were 13 to 15 MB (2026.4's Known issues, Limits). Now
+  the share counts the span of the section's transactions as at most twice
+  the startup distance (`TransSeq.SHARE_FACTOR_CAP`, 2). At 10M keys the
+  catch-up's largest record from 1000 to 100 MB is 0.99 MB (was 1.90),
+  from 200 to 50 MB 2.36 MB (was 4.12); the catch-up is longer: from 1000
+  to 100 MB the section is below twice the new distance after 2.88M puts
+  and 1,451 MB of stream (was 0.64M and 795 MB), and it shrinks at every
+  record meanwhile. With a startup distance that was not lowered the span
+  stays below twice it (T3), so the stream is the same, byte for byte
+  (StreamDigest 48 of 48 identical before and after). The Lean model's
+  pace mirrors it; `T3_take` holds for any pace.
+* **`Db.maintain()`**: the Pub API's `Database.maintain()` (above) in the
+  Core API (bergdb 024-32).
+* **The cache's tables shrink after deletes** (bergdb 024-33, ST6; Frans,
+  2026-11-12, 12:10). The node table, 4,096 hash maps, kept its largest
+  size after a fill and a mass delete: at 1M keys put and deleted 226,400
+  slots against a fresh database's 60,272 (3.76 times). Now a removal that
+  leaves a map under 1/8 of its capacity copies it to a capacity of at
+  least twice its entries, and at least 16 slots: 63,744 slots, 1.06 times
+  (G4). A copy follows at least capacity / 8 removals, so the cost is
+  constant a removal, amortized; `performance.sh ab` at 1M keys showed no
+  change beyond the runs' spread. No byte of the stream changes. A floor
+  is left (Known issues).
+* **A reclaim step reads again only the values it may rewrite** (bergdb
+  024-34, OP8; Frans, 2026-11-12, 12:10). A step read each live KV of its
+  scan again at its time, also one whose value the scan found at pCut or
+  later, which it never rewrites. That second read is now skipped: at 1M
+  keys the second reads halve (4,208,912 to 2,063,799); with a cache of 20
+  MB the loads fall 3.6 %, since the follower caches each version a step.
+  The same puts and the same stream bytes (StreamDigest 48 of 48
+  identical). The scan still loads every value it passes, as a step's size
+  counts the values' lengths; a scan of keys only would change the bytes
+  (024-34, Q34-1; not in 2026.5).
+
+
+### Format
+
+* **StreamDigest: all 48 digests change** (bergdb 018-01, section 2;
+  024-38). Against release 2026.4's digests (its `baseline.zip`,
+  `baseline/f53/digests.txt`), the decided digests of all 12
+  configurations differ, the 8 of `l2-*` and the 4 of `l3-*`, in each of
+  the four modes (48 of 48); in each configuration the four modes give the
+  same stream. The causes are record format 7, with its merges, theta and
+  CRC32C (024-21, 024-23, 024-25), and the last touch (024-07), whose
+  configurations are not isolated (024-07, section 10). The take's cap
+  (024-31), reclaim's reads (024-34), the cache's tables (024-33) and
+  `maintain()` (024-32) change none: 48 of 48 identical before and after
+  each. The digests before and after, and their comparison:
+  `items/024-release-2026-5/38-release/` (`digests-base.txt`,
+  `digests-new.txt`, `compare.txt`).
 
 
 ### Limits
@@ -214,8 +292,9 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
     and the index's scans missed it); index such a value by a hash or a
     prefix. A build over objects put before the index gives them no entry.
   * A value transformation (Core API) whose result passes 8 MiB fails the
-    database, as one that throws does. A start reads a record's header
-    first, and refuses another format before reading the record.
+    database, as one that throws does (Known issues). A start reads a
+    record's header first, and refuses another format before reading the
+    record.
   * Gates and tools changed with them: batches of 500 (were 1,000) in
     PayDemo, PayTest and LargerThanMemory, so bytes a put and time a
     commit there are not comparable with earlier runs; `performance.sh`'s
@@ -231,7 +310,27 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
   the history within the retain duration (G3, at most 6 times the live
   data) and back to empty (G4: 1M keys put and deleted, then within 2
   times a hello-world database's stream, key nodes, dead klongs, resident
-  objects and heap). Release 2026.4 fails G1 and G2.
+  objects and heap; since 024-33 also the cache's table slots, ST6). Release
+  2026.4 fails G1 and G2.
+* **G5, back to empty by `maintain()` alone** (bergdb 024-32, section 4),
+  in `count-gates.sh` beside G1 to G4: 1M keys put and deleted, then
+  20,000 calls of `maintain()` and no writes: the stream kept falls from
+  254 MB to 83 kB (the limit: twice a fresh twin's plus 600 kB), quiet
+  after call 6,130; resident objects 10 against the twin's 5; the cache's
+  slots within the floor of ST6 (Known issues). Two new conformance
+  configurations, `r-maint` and `e-r-maint`, trace databases driven by
+  `maintain()` (`TraceExport` `maint=K`) and pass the Lean checker.
+
+### Documentation
+
+* **`docs/` moved into item 027** (bergdb 027; Frans, 2026-11-12, 14:17,
+  14:27 and 14:32). `levels.md`, `sis-model.md`, `sources/` and the
+  readme are 027-01, a snapshot of 2026-11-12, not updated; the trace
+  format is 027-02, kept current with the code; `docs/` holds only
+  `log.md`, the development log. Code comments, the level scripts and the
+  repository's readme cite them by ID. 2026.4's notes link `docs/` at
+  their release commit.
+
 
 ### Known issues and limits
 
@@ -252,3 +351,135 @@ Emptied at release 2026.4 (2026-11-11), whose notes hold what was there.
 * **Fixed: a Core put under the Core's own keys** (CA3; bergdb 024-37;
   024-01, section 5.3): a database that never opened again after a put
   at `/#i/dreclaim/-settings.txt` through `Db` (Core API, above).
+* **Fixed: `Db.getTrans` at a position inside a record** (bergdb 021-27;
+  2026.4's Known issues, "Open at the release"): it is refused and the
+  database goes on (Core API, above).
+* **Fixed: a damaged time klong whose unused bits are set** (bergdb
+  024-25, section 12; 2026.4's Known issues): a start refuses it (Core
+  API, above).
+
+**New in 2026.5:**
+
+* **Aim 4, the model: proved in part, the rest checked by conformance**
+  (bergdb 024-04, aim 4; 024-28, section 6; Frans, 2026-11-12, 12:22:
+  2026.5 ships with conformance and the proofs that hold, the open ones
+  named here). Proved: the tie of the model to the stream (`PhysStep`),
+  the last touch's cut (T-COVER, T-LATEST), `T3_take`, the tree's spec
+  (TP13, TP17, TP18), TP1 and TP9, the merge's local parts, and that the
+  limits' nodes fit a record (`ReleaseFits`). Not proved: TP7 (the tree's
+  invariants), TP10 (a get), TP30 (V1 kept, the large part of the
+  B-tree's proof; reduced to TP7), TP31 (BU1, the fill of a key node), TP32
+  (the merges of a transaction, restated for sorted transactions) and
+  TP33 (CB3, a potential);
+  TP11 (a scan) is refuted as stated, for keys that Java does not make,
+  and its fix is decided: the model's `keyWf` is to say what
+  `Keys.toSegments` makes (024-12; Frans, 2026-11-12, 13:38); and T4, the
+  records at the startup section's ends, and a cold start's reads (007).
+  What is not proved is checked by conformance: Java's traces are run
+  against the model at every night's gate (`night.sh`'s level scripts
+  and conformance steps; the large set in the release night) and hold on
+  every traced state (024-12: 115 traces, with merges 260, with theta
+  222).
+* **An emptied database keeps the cache's tables at a floor of about
+  256 kB** (bergdb 024-32, section 7; ST6 after 024-33). A map of the node
+  table that was used keeps at least 16 slots, so a database brought back
+  to empty keeps up to 4,096 maps of 16 slots, about 256 kB, whatever its
+  size before (3,099 maps after 1M keys; a fresh database uses 5). G4 and
+  G5 allow that floor.
+* **Moved to 2026.6** (bergdb 024-05; 026): ST8, the 10 MB write buffer
+  that every database allocates at its start, whatever its size; P8, the
+  lag after a mass delete: an emptied database needs about 4.4 retain
+  durations of further writes before its stream comes back near a fresh
+  one's (G4: the first cut after the deletes at transaction 4,117, the
+  twin's at 1,214; `maintain()` does it without writes).
+* **A single put's record of about 0.25 MB now and then** (bergdb
+  024-05, OP5, a named allowance; Frans, 2026-10-28; 010-01, P4). The
+  take writes whole transactions: with single puts alone at 10M keys a
+  record is at most 0.23 to 0.29 MB, the mean under 1 kB; with a batch of
+  500 now and then among single puts a put's record reached 209 kB
+  against a mean of 576 bytes (sd 1 MB, 20,000 keys; 007-07, section
+  7.1). Large as a ratio, small in bytes; it grows with the batch.
+* **A value transformation (Core API) that throws or passes 8 MiB fails
+  the database** (bergdb 010-04, R5; 024-24, QL6; Limits, above), as
+  in 2026.4; a restart has the state before its transaction. To change in
+  2026.6 (Frans, 2026-11-12, 14:42: "I don't see it
+  as a bug, but something to change anyhow.").
+* **A put's stream bytes grow with the keys at a fixed startup distance**
+  (bergdb 024-05, QF3, OP3 and BD5; 017-11, section 2.1; Frans,
+  2026-11-12, 12:46). A put makes the index nodes on its path dirty, and
+  the take writes each dirty node whole about once a startup distance of
+  stream, so the puts in between share its write: a put's bytes are a
+  function of the startup distance a key, sd / K, for a key shape, a
+  value size and a node size. For 32-byte KVs (24-byte keys, 8-byte
+  values), uniform updates and retention forever, bytes a put by sd a
+  key: about 270 at 50 bytes (1M keys and 50 MB, the model), 190 at 100
+  bytes (10M keys and 1000 MB), 524 at 20 bytes (10M keys and 200 MB),
+  854 and 867 at 5 bytes (1M keys and 5 MB; 10M keys and 50 MB), 1,244
+  at 1 byte (50M keys and 50 MB), about 1,380 at 0.5 bytes (100M keys and
+  50 MB, the model); the rest measured, the law within about 15 %. So at
+  the default 50 MB each tenfold growth of the keys adds about 400 to 650
+  bytes a put, and a startup distance that grows with the keys keeps it
+  constant, at the price of a start's time and heap (a warm start 2 to 5
+  s at 50 MB, 8 to 20 s at 200 MB, 40 to 100 s at 1000 MB; 017-11,
+  section 2.2). Reclaim adds at most about a third; larger values write
+  fewer index bytes over the user's bytes. The default stays 50 MB, which
+  suits up to about 10M keys; beyond that, 200 to 1000 MB. A default that
+  follows the keys is studied in 017-11, not for 2026.5.
+* **The stream kept under reclaim: about 4.5 to 6 times the live data
+  beyond the history** (bergdb 024-05, QF1, decided by Frans, 2026-11-12,
+  14:07; 024-30, G3; 024-29, section 9). With a finite retain duration,
+  reclaim may rewrite a quarter of the stream's growth (its internal
+  fraction, 1/4 since BergDB's first commit, kept for 2026.5). The stream
+  then holds the records within the retain duration, the history, and
+  beyond them up to about 6 times a fresh database of the same live keys:
+  G3 measures 4.41 at 1M keys under uniform overwrites and fails above 6,
+  in every `night.sh`. A larger fraction keeps less for more bytes written
+  (at 1M keys 3/8 keeps 8 to 29 % less, for 15 to 27 % more bytes and 23
+  % fewer puts a second). The fraction is no Pub API setting; three
+  recommended fractions and a default, measured on larger databases, are
+  for 2026.6 (026-04).
+
+**From 2026.4's Known issues and limits** (`releases/2026.4/readme.md`),
+each as it is in 2026.5:
+
+* **Fixed**: reclaim with keys in time order (024-07), on Linux a new
+  directory refused as in use (024-36), `Db.getTrans` inside a record
+  (021-27), a damaged time klong (024-25), a Core put under the Core's own
+  keys (024-37; part of "Writes through the Core that the rules leave
+  undefined"), all above. 2026.4's two fixed entries (021-25's log keyed
+  by time, the puts slowed after reclaim passed deleted keys) stay fixed.
+* **Changed: a leaf keeps the entries of its deleted keys** (023-08, Q5):
+  now underfull key nodes are merged at the delete (024-21), and a key
+  node holds at most theta dead entries (024-23), so a node that is
+  written keeps few; G2 holds the reachable key nodes within twice a fresh
+  twin's (1.30 at 1M keys; 16.0 on 2026.4).
+* **Changed: a decrease of the startup distance at 50M keys**, records of
+  13 to 15 MB: the take's cap (024-31) halves the catch-up's largest
+  records at 10M keys; not measured again at 50M.
+* **Changed: a long key's still-dirty loop is quadratic** (021-16, Q1;
+  024-05, OP6): a user's key is now at most 111 bytes (L2), so no user's
+  key reaches it; the loop is as before for BergDB's own long keys.
+* **Changed: other damage that a start does not detect** (019-30, 019-31,
+  019-33): CRC32C sees every change of up to 32 adjacent bits (019-33's
+  0x00 to 0xff is seen) and a start checks a time klong's unused bits;
+  BergDB still assumes correct storage, and its checks are a best effort.
+* **Changed: the documentation**: `docs/` is now a snapshot of 2026-11-12
+  in item 027-01 (levels.md, sis-model.md, sources/), not kept current;
+  the trace format is 027-02, kept current; `docs/` holds `log.md` only
+  (Documentation, below).
+* **Still so**: after a mass delete, more dirty top nodes for a while
+  (023-03, section 10); a lost or cut last stream file (020-24-08, U8-1);
+  a transaction larger than the startup distance (020-24-13, U13-7; now at
+  most 32 MiB, L5); the user indexes' threads, a job's status that lags
+  its index, a fair lock for builds (020-18, O1 and O2; 020-29, section
+  7); the Core's other writes that the rules leave undefined (020-22,
+  sections 5 and 6); the API's wishes (020-24-13, 020-24-14); a corrupt
+  record header (015-73; no checksum covers it in format 7 either); at
+  most as many busy readers as the cores less the collector's workers
+  (015-86); the collectors; overload; a small commit after a large
+  transaction (007-07, sections 7.1 and 7.2); D's loose bound (005-38);
+  the default startup distance (above, the put's bytes); loads in memory
+  8 to 20 % slower than before handles; bounded startup, T4 and a cold
+  start not proved (above, aim 4); the files after a physical cut
+  (005-72); concurrency outside the Lean model; power loss; the JDKs and
+  systems tested: JDK 27 and 17, macOS and Linux, an Android emulator.
