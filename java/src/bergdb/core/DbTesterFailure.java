@@ -1100,6 +1100,11 @@ public class DbTesterFailure {
         }
         Assert.assertTrue("inside a record after the cut, refused", refused != null);
         Assert.assertEquals("the database goes on", t2.tt, db.getTrans(t2.tpos).tt);
+        // A record over 1 MiB is read at a caller's position after a walk from the cut, as no
+        // meta block after the cut is at or before it (bergdb 021-27, Q27-1).
+        Trans t3 = db.trans().put("/d", new byte[1100 * 1000]).build();
+        db.execute(t3);
+        Assert.assertEquals("a large record after the cut", t3.tt, db.getTrans(t3.tpos).tt);
         db.execute(db.trans().put("/c", "c0").build());
         Assert.assertEquals("c0", DbUtil.getString(db, "/c"));
         db.close();
