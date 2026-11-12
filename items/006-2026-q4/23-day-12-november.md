@@ -47,7 +47,7 @@ high.
 | 024-28 | The release checklist of 2026.5 | check (high) | done 10:37 |
 | 024-29 | Reclaim's fraction: previous work, how to compare, the default | frac (high) | done 11:15 |
 | 024-22 | The open proofs TP32, TP33, TP7, TP30, TP10, TP11, TP31 | second prover | |
-| 024-30 | Count gates G1 (BD1), G2 (BD13), G3 (BD10) at 1M keys, a night step | gates (high) | |
+| 024-30 | Count gates G1 (BD1), G2 (BD13), G3 (BD10) at 1M keys, a night step | gates (high) | landed |
 | 024-31 | OP4: a cap on the take's pace after a decrease (015-84) | pace (high) | |
 
 024-27 lands on its gates, by Frans's decisions of 07:36: its changed
@@ -164,6 +164,16 @@ from them.
 * 11:35 Frans: step 2, "Yes, start it. Use an Opus agent at high."
   (gates started 11:36, 024-30, at 1M keys only); step 3, a plan first.
 * 11:38 Frans: step 3, "Yes, start it." (pace started 11:39, 024-31).
+* 11:47 Frans on ST6: "will they never be released? It is ugly. If we
+  would go from 10M keys to zero, the cost is unproportional high [...]
+  I think a general test is the back-to-empty test. Big database, then
+  all kvs removed, check eventual resource consumption. Does it go
+  towards something similar to a fresh empty database?" The coordinator:
+  that is 023-03's T1; proposed G4 (back-to-empty at 1M, with the cache's
+  tables, the path arrays and the heap added).
+* 11:53 gates done (024-30): G1 108,912 B of 1 MB, G2 1.296 of 2, G3
+  4.41 of 6, all PASS on main; G1 and G2 FAIL on release 2026.4; before-
+  commit OK, count-gates.sh OK (125 s). Landed and pushed.
 
 
 ## 6. Outcome

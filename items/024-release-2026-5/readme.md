@@ -294,6 +294,12 @@ Files
   (same history kept), a measurement plan for 1/4, 3/8 and 1/2, three
   recommended values; a step cap of 16 kB a transaction found; QF29-1 to
   QF29-5.
+* 30-count-gates.md. 024-30, count gates of aims 2 and 3 at 1M keys, a
+  night.sh step (`stress/count-gates.sh`, about 2.5 minutes): G1 the
+  largest record (BD1, margin 9.2), G2 key nodes against a twin (BD13,
+  1.30 of 2), G3 the stream kept beyond the history within R (BD10, 4.41
+  of 6); G1 and G2 fail on 2026.4. On main since 2026-11-12. Q30-1,
+  Q30-2.
 
 
 Log

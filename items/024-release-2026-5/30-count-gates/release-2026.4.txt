@@ -1,0 +1,20 @@
+CountGates all n=1000000 valsize=100 retain=10000000 dt=10000 {dir=build/count-gates-data}
+[3.5s]   G1 fill len=195371064 kept=195371064 iters=0 cuts=0
+[55.7s]   G1 FIFO 60000 transactions len=1659853280 kept=950224512 iters=4 cuts=3
+[85.7s]   G1 overwrites 20000 transactions len=2420149160 kept=1066881392 iters=6 cuts=5 keys=1000000
+  G1 records=172221 mean=4712 largest=16693984 (FIFO transaction 9544, user) together=0
+G1 BD1 largest record without its values, bytes value 16693984 limit 1000000 margin 0.06 FAIL
+[94.1s]   G2 sparse fill len=328061928 kept=328061928 iters=0 cuts=0
+[99.9s]   G2 sparse deleted, live=33334 keyNodes=42075 len=432358664 kept=432358664 iters=1 cuts=0
+[104.6s]   G2 sparse drive 8370 transactions, 2 iterations after the deletes; len=641634816 kept=541623312 iters=4 cuts=1
+  G2 sparse keyNodes=42170 klongs=357907 dead=282401 twin keyNodes=2631 ratio=16.028
+[113.1s]   G2 mass fill len=328061928 kept=328061928 iters=0 cuts=0
+[118.8s]   G2 mass deleted, live=100000 keyNodes=9863 len=418925800 kept=418925800 iters=0 cuts=0
+[122.7s]   G2 mass drive 6354 transactions, 2 iterations after the deletes; len=555795864 kept=455784360 iters=3 cuts=1
+  G2 mass keyNodes=11106 klongs=162228 dead=51120 twin keyNodes=7896 ratio=1.407
+G2 BD13 reachable key nodes over the twin's, worst shape value 16.028 limit 2.000 margin 0.12 FAIL
+[127.9s]   G3 fill L0=236407296 len=236407296 kept=236407296 iters=0 cuts=0
+[176.3s]   G3 182195 transactions of 10 puts, R = 1000 transactions; len=1462017560 kept=666870040 iters=4 cuts=3
+  G3 peak at transaction 165050: kept=1092919952 H_R=4357768 (all records within R: 7051992) kept-H_R=1088562184 L0=236407296; cuts=3
+G3 BD10 (stream kept - H_R) / L0, peak value 4.605 limit 6.000 margin 1.30 PASS
+[176.3s] COUNT GATES FAILED
