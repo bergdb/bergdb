@@ -324,6 +324,10 @@ Files
   the Core's own keys that stops every later start (R5), the notes
   without today's landings and known issues, QF3's curve not in
   levels.md, no performance comparison with 2026.4; smaller points.
+* 36-ot2-lock-race.md. 024-36, OT2 fixed: FileStream.unlockDir closes
+  the lock file and frees the directory in one hold of the monitor that
+  lockDir checks under; s1 JDK 17: 19 refusals in 60,000 tests before, 0
+  after. On main since 2026-11-12.
 
 
 Log
