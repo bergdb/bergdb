@@ -79,6 +79,9 @@ Files
   commit and for `maintain()`, and the simple form (ordinary
   transactions with filler) to consider (Frans, 2026-11-12, 13:44 and
   13:52; from 024-32).
+* 04-reclaim-fraction-settings.md. 026-04, reclaim's fraction: measured
+  at larger databases, three recommended values and one default
+  (Frans, 2026-11-12, 14:07; 2026.5 keeps 1/4).
 
 
 Log

@@ -476,6 +476,9 @@ larger one that touches the same code.
   that constant within aim 3, or is a lower one wanted, at the price of
   more bytes a put? Recommended: accept it for 2026.5 as BD10 with c =
   6, a gate on today's; decide the fraction after OP1's fix and GM7.
+  **Decided** (Frans, 2026-11-12, 14:07): 1/4 is kept for 2026.5; the
+  measurements at 1M keys are in 024-29, section 9; larger databases,
+  three recommended fractions and one default for 2026.6: 026-04.
 * **QF2. Does aim 3 make strict the gate?** BD13 (twice the twin's key
   nodes) in place of 2026.4's bounded allowance, with ST4's dead klongs.
   Recommended: yes, as the aim reads; in 2026.5 after OP1, by a design

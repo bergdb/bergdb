@@ -293,6 +293,9 @@ from them.
   floor of ST6 since 024-33: a used map keeps at least 16 slots, so an
   emptied database keeps up to 4,096 x 16 slots (about 256 kB) whatever
   its size; G5 allows that floor.
+* 14:07 Frans on QF1: 1/4 kept for 2026.5; larger databases, three
+  recommended fractions and one default for 2026.6 (026-04); the
+  measurements tonight if the machine has time.
 
 
 ## 6. Outcome

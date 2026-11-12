@@ -913,3 +913,7 @@ evidence, the weights are his.
   then `count-gates.sh` (G3's new value) and `before-commit.sh`. To
   rerun: `sh 29-reclaim-fraction/run.sh` from the clone's layout (it
   builds and writes `out/`), one slot, about 5 minutes.
+
+**Decided** (Frans, 2026-11-12, 14:07): "1/4 is good for this release,
+keep it." Larger databases, three recommended fractions and one default
+for 2026.6: 026-04.
