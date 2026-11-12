@@ -44,6 +44,7 @@ high.
 | 026-02 | A public key check: the options, a recommendation; no code | keychk (high) | done 09:39 |
 | 010-04 | Rules, beside the principles: R1 to R3 from 024-27 (R4 removed) | coordinator | written |
 | 010-01 | P14, the Pub API cannot destroy the database's integrity | coordinator | written |
+| 024-28 | The release checklist of 2026.5 | check (high) | done 10:37 |
 
 024-27 lands on its gates, by Frans's decisions of 07:36: its changed
 expected values follow from them.
@@ -115,6 +116,12 @@ from them.
   accepted or refused depending on a restart between two transactions,
   "This is acceptable."; a refusal under overload too. Written into P2
   (010-01). Committed with Frans's own edit of 010's readme, at his word.
+* 10:32 Frans: night.sh needed now? (the change since run 2 is small);
+  yes to the checklist agent; walk through QF1 to QF8. check started
+  10:33.
+* 10:37 check done (024-28): not ready now; the earliest after one
+  release night, and after Frans's decisions on aim 4's proofs, QF1,
+  QF3, QF6, QF8 and the small cases (OP4, OP8, ST6, ST7, ST8).
 
 
 ## 6. Outcome

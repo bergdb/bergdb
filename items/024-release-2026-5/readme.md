@@ -269,6 +269,11 @@ Files
   2026-11-12 made: a refused call spoils the builder (024-26, U26-5),
   the Javadoc of U26-1 to U26-4 and U26-8, theta at least 2 and 62 the
   largest node size (024-19, Q4 and Q6).
+* 28-release-checklist.md. 024-28, the release checklist of 2026.5 (on
+  2026-11-12, 10:37): not ready; blocking: a clean night on today's code
+  and the 2026.4 release recipe on format 7, aim 4's open proofs, the
+  bounds of aims 2 and 3 not yet tests; the decisions for Frans and the
+  small cases still open.
 
 
 Log
