@@ -30,6 +30,24 @@ public class TransSeq implements PosOfTransBeforeFunction {
     private long dirtyCount;     // D: the got-dirty nodes of the transactions, for take()
     private long ownBytes;       // O: the own bytes of their records, ownBytes()
     
+    /**
+     * The cap c of the share's factor S / sd in take() (bergdb 024-31, 015-84): the share
+     * counts the span of the section's transactions, from the tpos of the oldest to that of
+     * the newest, as at most c * sd, so S is replaced by S - max(0, span - c * sd)
+     * (shareSection()). After a decrease of the setting with one call, S is still the old
+     * section, and S / sd starts at the old setting over the new one, 10 from 1000 to 100
+     * MB: without the cap the commits of the catch-up wrote records of 13 to 15 MB at 50M
+     * keys, 12 to 14 times the new mean (bergdb 007-07, section 11.2; OP4 of 024-05). With
+     * it a record's share is at most about c times the one it would have with the section
+     * at sd. With a constant setting the span is below 2 * sd (T3), so with c = 2 the cap
+     * never binds and the stream is as without it; it binds only while the span is over
+     * 2 * sd after a decrease, when the deadline is at the span. The deadline is unchanged:
+     * it still takes every transaction that begins at the span or more before the end, so
+     * the section shrinks with every record until it is below 2 * sd (bergdb 007-07, section
+     * 10.4). T3 holds for every pace (bergdb 007-08).
+     */
+    static final int SHARE_FACTOR_CAP = 2;
+    
     public boolean isEmpty() {
         return first == null;
     }
@@ -97,7 +115,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
      * of the startup section, in proportion to the stream it adds:</p>
      * 
      * <pre>
-     *     share = D * (o / O) * (S / sd)
+     *     share = D * (o / O) * (S' / sd),   S' = S - max(0, span - c * sd)
      * </pre>
      * 
      * <p>where o is the record's own bytes (ownBytes()), O the own bytes of the records of
@@ -109,7 +127,12 @@ public class TransSeq implements PosOfTransBeforeFunction {
      * 010, P4). D / O is the rate at which the section's commits made nodes dirty. At that
      * rate a commit writes as many nodes as it makes dirty while the section is sd long,
      * more while it is longer, fewer while it is shorter; so the actual startup distance,
-     * such that the stream's length minus it is the startup pos, stays near the setting.</p>
+     * such that the stream's length minus it is the startup pos, stays near the setting.
+     * S' is S with the span of the section's transactions counted as at most c * sd, c =
+     * SHARE_FACTOR_CAP (shareSection(), bergdb 024-31): after a decrease of the setting the
+     * factor S' / sd is at most about c, not the old setting over the new one, so no commit
+     * of the catch-up writes many times the share of a section at the setting. With a
+     * constant setting the span is below 2 * sd and S' = S.</p>
      * 
      * <p>The share is computed in integers, once per take (bergdb 005-79; in doubles from
      * 2026-10-28, f89846d, until then; 2026.1 had no pace): in units of 2^-16 of a node,
@@ -174,7 +197,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
         final long hardSp = streamLength - Math.max(2L * startupDistance, span());
         // The share and the dither in units of 2^-16 (bergdb 005-79).
         final long share = shareFp(dirtyCount, recordOwnBytes, ownBytes, 
-                streamLength - currentSp, startupDistance);
+                shareSection(streamLength - currentSp, span(), startupDistance), startupDistance);
         final long u = ditherFp(streamLength);
         
         long taken = 0;
@@ -228,6 +251,18 @@ public class TransSeq implements PosOfTransBeforeFunction {
         }
         
         return newSp;
+    }
+    
+    /**
+     * The section that take()'s share counts (bergdb 024-31): S - max(0, span - c * sd), c =
+     * SHARE_FACTOR_CAP, where S is the section, from the startup pos to the end of the
+     * stream, and span the span of the section's transactions, at most S. It is S while the
+     * span is at most c * sd, so always with a constant setting (T3: the span is below
+     * 2 * sd); after a decrease, (S - span) + c * sd, the records at the section's two ends
+     * and c times the setting. The result is at most S, so shareFp()'s bounds hold.
+     */
+    static long shareSection(long S, long span, int sd) {
+        return S - Math.max(0, span - SHARE_FACTOR_CAP * (long) sd);
     }
     
     /**
@@ -839,6 +874,88 @@ public class TransSeq implements PosOfTransBeforeFunction {
         }
         Assert.assertTrue("below 2 sd after " + below, below >= 0 && below <= 20);
         Assert.assertEquals(25000, length - sp, 5000);
+    }
+    
+    /**
+     * The cap of the share's factor (bergdb 024-31, 015-84). Right after a decrease of the
+     * setting from 1000 to 100 MB the section is still about 1000 MB, its transactions'
+     * span 999 MB; the share counts the section as 201 MB, c = SHARE_FACTOR_CAP times the
+     * new setting and the 1 MB outside the span, not 1000 MB: 2.01 times the steady share,
+     * that of a section of 100 MB with the same D, o and O, not ten times. While the span is
+     * at most c * sd, as with a constant setting, the share is as without the cap.
+     * D = 3,000,000 nodes, O = 10^9 own bytes, o = 10^6: the steady share is 3,000 nodes.
+     */
+    @Nano
+    public static void testShareCap() {
+        Assert.assertEquals(2, SHARE_FACTOR_CAP);
+        final int sd = 100000000;
+        final long D = 3000000, O = 1000000000L, o = 1000000;
+        final long steady = shareFp(D, o, O, sd, sd);
+        Assert.assertEquals(3000L << 16, steady);
+        // The decrease: S 1000 MB, the span 999 MB.
+        final long S = 1000000000L;
+        Assert.assertEquals(201000000L, shareSection(S, S - 1000000, sd));
+        Assert.assertEquals(6030L << 16, shareFp(D, o, O, shareSection(S, S - 1000000, sd), sd));
+        // A span of at most 2 sd, as with a constant setting: the section as it is.
+        Assert.assertEquals(250000000L, shareSection(250000000L, 2L * sd, sd));
+        Assert.assertEquals(150000000L, shareSection(150000000L, 140000000L, sd));
+        Assert.assertEquals(4500L << 16, shareFp(D, o, O, shareSection(3L * sd / 2, sd, sd), sd));
+        // Just over: one byte less.
+        Assert.assertEquals(250000000L - 1, shareSection(250000000L, 2L * sd + 1, sd));
+    }
+    
+    /**
+     * A decrease of the setting by ten, from 100,000 to 10,000, as from 1000 to 100 MB, with
+     * the cap of the share's factor (bergdb 024-31). Records of 1000 own bytes and 100 bytes
+     * for each node taken, each a transaction of 10 got-dirty nodes. In steady state a record
+     * takes 10 nodes. After the decrease no record takes more than c + 1 transactions, (c +
+     * 1) * 10 nodes, where without the cap the share was 100 nodes; and the section without
+     * its last record, the span of the transactions after the take, shrinks with every
+     * record while it is at least 2 sd (the deadline's ratchet, bergdb 007-07), and stays
+     * below 2 sd once it is.
+     */
+    @Nano
+    public static void testDecreaseCapped() {
+        final int[] taken = new int[1];
+        final TransNodesForMe counter = new TransNodesForMe() {
+            public void addTopNode(TopNode node) { taken[0]++; }
+            public void addKeyNode(KeyNode node) { taken[0]++; }
+        };
+        TransSeq s = new TransSeq();
+        long length = 0;
+        long sp = -1;
+        int sd = 100000;
+        int below = -1;
+        long lastSpan = 0;
+        int most = 0;
+        for (int i = 0; i < 2000; i++) {
+            if (i == 1000) {
+                sd = 10000;
+                lastSpan = s.span();
+            }
+            taken[0] = 0;
+            sp = s.take(sp, length, sd, 1000, counter, Long.MAX_VALUE);
+            final long section = s.span();     // without this record's transaction
+            s.add(paceInfo(length, 10, 1000));
+            length += 1000 + 100 * taken[0];
+            if (i < 1000) {
+                continue;
+            }
+            most = Math.max(most, taken[0]);
+            if (below < 0) {
+                if (section < 2L * sd) {
+                    below = i - 1000;
+                } else {
+                    Assert.assertTrue("i=" + i, i == 1000 || section < lastSpan);
+                }
+            } else {
+                Assert.assertTrue("i=" + i + ", " + section, section < 2L * sd);
+            }
+            lastSpan = section;
+        }
+        Assert.assertTrue("most " + most, most <= 10 * (SHARE_FACTOR_CAP + 1));
+        Assert.assertTrue("below 2 sd after " + below, below > 0 && below <= 200);
+        Assert.assertEquals(10000, length - sp, 3000);
     }
     
     /**

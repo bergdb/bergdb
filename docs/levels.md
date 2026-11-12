@@ -324,7 +324,11 @@ How it works in Java:
   proportion to the stream it adds, so that the startup section stays near
   the startup distance's setting, its target size; and, the deadline,
   every transaction that begins twice the setting or more before the end
-  of the stream (005-49; 007-03, step 3). After a decrease of the setting,
+  of the stream (005-49; 007-03, step 3). The share counts the span of
+  the section's transactions as at most twice the setting, so that after
+  a decrease no commit writes many times the share of a section at the
+  setting; with a constant setting the span is below twice the setting
+  and the cap does not bind (024-31). After a decrease of the setting,
   the share follows the new setting at once, and while the section's
   transactions span more than twice the new setting, the deadline is at
   that span, which shrinks with every commit, instead of writing what lies
