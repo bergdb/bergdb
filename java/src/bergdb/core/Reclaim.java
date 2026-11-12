@@ -544,6 +544,8 @@ public class Reclaim implements Db.TransactionListener {
      * One step of iteration 'it': scans KVs at time tStart after lastKey, about writeSize
      * bytes of them, rewrites each live value stored before pCut,
      * and stores the table row as it is after the step; all in one internal transaction.
+     * Only a KV whose value the scan found before pCut is read again, at the step's time
+     * (bergdb 024-34).
      * After the last step (the scan reached the end), the iteration is done, and tEnd and
      * pEnd are stored.
      * 
@@ -622,6 +624,16 @@ public class Reclaim implements Db.TransactionListener {
         long gets = 0;                      // For stats.
         
         for (Kvt kvt : g.result) {
+            // bergdb 024-34 (024-05, OP8): a KV whose value the scan found at pCut or later,
+            // or not yet written (a vpos), is not rewritten, so it is not read again. Its value
+            // at the step's time is that one, a later one (stored after tStart, so after
+            // pStart), or none, and a record lies wholly before or after pCut, a record
+            // boundary: so the test below would fail for it. Before, every KV of the scan was
+            // read again; the step's puts, its row and so its bytes are the same.
+            if (Spos.isVpos(kvt.spos) || kvt.spos >= it.pCut) {
+                kvs++;
+                continue;
+            }
             GetData gd = db.newGetData();
             gd.pointerFollower = maintenance;
             byte[] value;

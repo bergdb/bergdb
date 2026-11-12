@@ -548,6 +548,8 @@ How it works (`Reclaim`; the class comment has the details):
   nothing; in one internal transaction it rewrites each live value
   stored before pCut: a put of the same key and value, which makes the
   index nodes on the key's path dirty, so that they are written again.
+  It reads a KV again at the current time only if the scan found its
+  value before pCut: one found at pCut or later is not rewritten (024-34).
   A step makes dirty the nodes on the paths of its own puts only
   (`Db.touchPaths`, 024-07): since format 6 a delete unlinks the nodes it
   empties, and since format 7 merges those it leaves underfull, so every
