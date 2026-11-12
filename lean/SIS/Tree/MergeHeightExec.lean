@@ -85,12 +85,25 @@ theorem execW_mergeRootSeenHeightBound (p : Params) (tx : Tx) (i : Time) (v : Vi
   apply execW_mergeRootHeightBound_of_cache p tx i v noops w _ h
   exact le_maxSeenHeight w.gh
 
-/-- TP32 follows when temporary nodes are at most one height above H. This
-premise allows a root made and taken back within a successful operation. -/
+/-- TP32's bound for one transaction, any transaction, when temporary nodes are
+at most one height above H. This premise allows a root made and taken back
+within a successful operation. -/
 theorem execW_mergeOpBound_of_transientHeight (p : Params) (tx : Tx) (i : Time) (v : View BVal)
     (noops : List Bool) (w : W) (h : execW p tx i v = .ok (noops,w))
     (hc : SeenHeightBound (p.H+1) w) :
     w.merges ≤ deletesOf tx noops * (p.H+1) :=
   execW_mergeRootHeightBound_of_cache p tx i v noops w (p.H+1) h hc
+
+/-- TP32 (`MergeOpBound`, restated 2026-11-12) follows when every transaction
+it speaks of (sorted, well formed, a fresh base, after a run within reach)
+keeps the heights the writer sees within H + 1. That premise is not proved. -/
+theorem mergeOpBound_of_transientHeight (p : Params)
+    (hc : ∀ ts, Within p ts → ∀ tx : Tx, tx.sorted = true → tx.wf = true →
+      (∀ q ∈ treeRun p ts, q.1 < tx.base) → ∀ noops w,
+      execW p tx (ts.length + 1) (view (treeSpec p) (treeRun p ts) ts.length) = .ok (noops, w) →
+      SeenHeightBound (p.H+1) w) :
+    MergeOpBound p :=
+  fun ts hw tx hs hf hb noops w h =>
+    execW_mergeOpBound_of_transientHeight p tx _ _ noops w h (hc ts hw tx hs hf hb noops w h)
 
 end SIS.Tree

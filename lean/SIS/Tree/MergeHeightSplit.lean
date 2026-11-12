@@ -659,7 +659,9 @@ theorem execW_mergeSpaceSplitBound (p : Params) (tx : Tx) (i : Time) (v : View B
     (execW_heightSplitBound p tx i v bs w h)
 
 /-- At most one space split is a sufficient, independently counted premise
-for H+1. It is not asserted here for all sorted transactions. -/
+for H+1. It is not asserted here for all sorted transactions; were it true of
+every transaction TP32 (`MergeOpBound`) speaks of, TP32 would follow, as in
+`mergeOpBound_of_transientHeight`. -/
 theorem execW_mergeOpBound_of_oneSpaceSplit (p : Params) (tx : Tx) (i : Time) (v : View BVal)
     (bs : List Bool) (w : W) (h : execW p tx i v = .ok (bs,w)) (hs : w.spaceSplits ≤ 1) :
     w.merges ≤ deletesOf tx bs * (p.H+1) := by
