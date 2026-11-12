@@ -361,9 +361,6 @@ class RwEnvironmentImp implements RwEnvironment {
      * @throws IllegalArgumentException
      */
     public void put(String ukey, Object object) {
-        // Implementation here must match the Java object creation. Currently (June 2013) this
-        // is made in pubimp.KvToObjectImp.createObject().
-        
         checkOpen();
         if (object == null) {
             throw new IllegalArgumentException("object == null not allowed");

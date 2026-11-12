@@ -234,8 +234,8 @@ settings below the API's least, and one status lag of BergDB (low).
 1. **Tag 2026.4 from `03ce6ec`?** The night is clean but for the JDK 17
    test race above, and the soak's findings block nothing. Rec: yes,
    after 2 and 3.
-2. **Before the tag: replace `releases/next.md`'s known issue with
-   021-25's draft** ("The note for the tag"). Rec: yes; the present note
+2. **Before the tag**: replace `releases/next.md`'s known issue with
+   021-25's draft ("The note for the tag"). Rec: yes; the present note
    understates it (020-24-18, U18-2).
 3. **Before the tag: the read-path fix 021-28?** Branch
    `scan-deleted-keys` in `/Users/f/fl/bench/2026-11-09/clone-q34`
