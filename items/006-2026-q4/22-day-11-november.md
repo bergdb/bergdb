@@ -518,6 +518,19 @@ transactions is neither proved nor refuted. Its reports:
 Frans at 14:40 to 14:45 were wrong (TP26 is not proved; 112 bytes are
 17 segments); corrected in 024-17 before he decided 111.
 
+**Frans's answers, 2026-11-12, 07:26:** 1. "OK, good. Let's keep 30.
+Document this." (024-19, Q1, recorded). 2. TP32 restated with the
+premise, "in a separate agent. Opus at xhigh" (started 07:28). 3. The
+key klong patch: "In general, we are focusing too much on a corrupted
+stream. Sure, we want a corrupted stream (not an unwritten tail) to
+produce an error message when we open the database. But this is best
+effort, we do assume correct bytes from storage [...] The assumption
+made is that the storage layer (filesystem or whatever) will handle
+integrity (checksums etc) for us." So the patch is not applied, and
+work on catching damaged bytes is low priority. 4. U26-5: "Tell me
+more", pros and cons given. 5. "QC1. For 2026.6 as recommended.
+QC2,3,4,5 should wait" (024-20, 026, recorded).
+
 **Usage:** the week at 83 % by usage.sh at 06:30 (Frans reset it at
 18:05; the script did not show the reset). The second prover's runs
 were stopped twice by its own limit.
