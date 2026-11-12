@@ -302,6 +302,13 @@ Files
   within 2 times the hello-world twin but the cache's table slots (ST6,
   3.76, a known failure); about 4.4 R of drive to converge. On main
   since 2026-11-12. Q30-1 to Q30-4.
+* 31-pace-cap.md. 024-31, the take's pace capped after a decrease of the
+  startup distance (OP4, 015-84): the section's span counted at most to
+  2 sd in the share (c = 2); at 10M keys from 1000 to 100 MB the largest
+  record 1.90 to 0.99 MB, the catch-up 4.5 times longer; the stream
+  unchanged with a constant setting (StreamDigest 48 of 48). Branch
+  024-31-pace-cap, waits for Frans (the rule, three changed expected
+  values).
 
 
 Log

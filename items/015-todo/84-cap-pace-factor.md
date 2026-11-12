@@ -1,6 +1,8 @@
 015-84. Investigate: a decrease's commits grow with the keys: cap the pace's factor S/sd?
 =========================================================================================
 
+Made in 024-31 (2026-11-12).
+
 Status: open. Kind: investigate. Created 2026-10-29 as 005-77; moved here
 on 2026-11-05 at Frans's decision (decided 2026-11-04/05), untouched: what
 follows is 005-77's as it was when it moved.

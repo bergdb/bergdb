@@ -48,7 +48,7 @@ high.
 | 024-29 | Reclaim's fraction: previous work, how to compare, the default | frac (high) | done 11:15 |
 | 024-22 | The open proofs TP32, TP33, TP7, TP30, TP10, TP11, TP31 | second prover | |
 | 024-30 | Count gates G1 (BD1), G2 (BD13), G3 (BD10) at 1M keys, a night step | gates (high) | landed |
-| 024-31 | OP4: a cap on the take's pace after a decrease (015-84) | pace (high) | |
+| 024-31 | OP4: a cap on the take's pace after a decrease (015-84) | pace (high) | waits for Frans |
 | 024-32 | maintain(), in Core and Pub, with G5 (back to empty by maintain()) | maint (high) | |
 | 024-33 | ST6: the cache's tables shrink | tidy (high) | |
 | 024-34 | OP8: reclaim reads only what it rewrites | tidy (high) | |
@@ -228,6 +228,12 @@ from them.
   warm start and 10 to 15 MB of pinned heap a million keys, against P5
   as written; Frans asked the same question on 2013-04-08; the first
   steps: his D1 from the tables, GM4 (45 minutes, bytes only).
+* 13:05 pace done (024-31): the rule changed from the brief's (min(S, c
+  sd) changed the stream with a constant setting at the tests' small sd:
+  32 of 48 digests) to a cap of the section's span at 2 sd in the share
+  (c = 2; StreamDigest identical, 48 of 48); at 10M keys the largest
+  record halved, the catch-up 4.5 times longer (1000 to 100 MB); gates
+  OK. Waits for Frans: the rule, and commit B's changed expected values.
 
 
 ## 6. Outcome
