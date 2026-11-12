@@ -1,7 +1,7 @@
 Self-indexed streams in Lean
 ============================
 
-The model of [../docs/sis-model.md](../docs/sis-model.md) in Lean 4:
+The model of sis-model.md (bergdb 027-01, [sis-model.md](../items/027-algorithms/01-docs-2026-11-12/sis-model.md)) in Lean 4:
 the definitions, the assumptions, and the theorems T1 (recovery) and T2
 (restart invariance), and those below, with their proofs. See Status.
 
@@ -15,7 +15,7 @@ checker (`Check/`, `TraceCheck.lean`). Reviewed 2026-10-13 at the `ebe5f77`
 documentation cutoff, before item 001: the abstract model with the exact
 still-dirty test.
 What an implementation must meet is in sis-model.md, section 11; how Java
-is checked against the model, in [levels.md](../docs/levels.md).
+is checked against the model, in 027-01's [levels.md](../items/027-algorithms/01-docs-2026-11-12/levels.md).
 
 Since bergdb 024-12 (2026-11-11) the model also has BergDB's key tree, as
 definitions that run and as stated properties, without proofs, in SIS/Tree/:
@@ -36,7 +36,7 @@ its `liveSub`, and that the model's `run` has the tree's structure
 (SIS/Proof/TreeInit.lean); `liveSub` and `LiveAppend` (TP13 and TP15,
 Check/TreeLive.lean). The tree checker (`Check/Tree.lean`,
 `Check/TreeRun.lean`, `TreeCheck.lean`: `lake exe treecheck`) runs the tree
-against Java's traces of format 3 (../docs/trace-format.md, section 4;
+against Java's traces of format 3 (027-02, section 4;
 `java/stress/treeconf.sh`): each transaction's change from Java's structure,
 and the whole run of `init` and `step` with the tree's `exec` from R(0),
 whose records and D must be Java's. `lake exe treetest` (TreeTest.lean;
@@ -865,7 +865,7 @@ Not trusted, tests only:
 * Check/ and TraceCheck.lean: the trace checker, `lake exe tracecheck`. It
   checks traces of Java runs against the model's definitions
   ([011-11](../items/011-docs-archive/11-level2-alignment.md), section 8.5;
-  [docs/trace-format.md](../docs/trace-format.md)). `sh test-traces/run.sh` runs
+  [027-02](../items/027-algorithms/02-trace-format.md)). `sh test-traces/run.sh` runs
   its tests. Since bergdb item 001's L5 it reads trace format 2 and checks
   C-L, every first touch after a restart
   against the rule of SIS/Phys.lean (`firstFailures`), and in C-S the top
@@ -1058,7 +1058,7 @@ run):
 
 Checked by running: the `#guard`s of `lake build`, the random runs of
 `sistest`, `phystest` and `reclaimtest` (Build and run), and Java's traces
-by `tracecheck` ([levels.md](../docs/levels.md)).
+by `tracecheck` (027-01's [levels.md](../items/027-algorithms/01-docs-2026-11-12/levels.md)).
 
 Not done:
 

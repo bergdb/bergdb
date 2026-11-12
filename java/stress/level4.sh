@@ -1,5 +1,5 @@
 #!/bin/sh
-# Level 4 regression check (docs/levels.md): eviction, data and index larger than
+# Level 4 regression check (bergdb 027-01, levels.md): eviction, data and index larger than
 # memory. Not a commit gate (java/before-commit.sh is, since 2026-10-20); run it after
 # larger changes. Written 2026-10-18 for bergdb item 001, WP J9.
 #

@@ -11,10 +11,14 @@ database.
 This repository holds three things that belong together, and the work on
 them:
 
-* `docs/`. The current state in words: the feature levels, what works
-  and where the evidence is (start with [docs/levels.md](docs/levels.md)),
-  the model of self-indexed streams, the trace format, and the development
-  log. See [docs/readme.md](docs/readme.md).
+* The current state in words is item 027, the algorithms of BergDB
+  ([items/027-algorithms](items/027-algorithms/readme.md)), a skeleton so
+  far; until it is written, read 027-01, the former `docs/` as of
+  2026-11-12, a snapshot: the feature levels, what works and where the
+  evidence is (start with its [levels.md](items/027-algorithms/01-docs-2026-11-12/levels.md)), the model of
+  self-indexed streams. The trace format is 027-02 and the stream format
+  024-02, both kept current. `docs/` holds the development log,
+  [docs/log.md](docs/log.md).
 * `lean/`. The abstract model in Lean 4 and machine-checked proofs of
   recovery (T1) and restart invariance (T2). See [lean/README.md](lean/README.md).
 * `java/`. The Java implementation, its build script and the regression and
@@ -103,7 +107,7 @@ Status
 | 3 | + reclaim: cut the front of the stream | Passes the tests run, a two-hour disk soak and the power-loss ordering checks; aligned with the proved Lean model of reclaim |
 | 4 | + eviction: data larger than memory | Passes the tests run, on by default; with handles since 2026-10-26, eviction in bounded steps, without a stop-the-world of its own (bergdb item 009); a database six times its memory budget runs on disk; aligned with the proved Lean model of eviction, with handles |
 
-Evidence and limits are in [docs/levels.md](docs/levels.md), including the
+Evidence and limits are in 027-01's [levels.md](items/027-algorithms/01-docs-2026-11-12/levels.md), including the
 FileStream durability report,
 [011-07](items/011-docs-archive/07-level3-durability.md). The Lean proofs
 concern the abstract model, which since bergdb item 001 includes reclaim and
@@ -126,8 +130,8 @@ BergDB's own stored format, format 2, with no null; Data Objects (public
 classes with public fields) put exactly and read best effort; user indexes
 of one directory and up to 8 typed levels, kept by every write and checked
 at every scan; and the primary scan of a directory. Their promises and the
-harnesses that check them are in [docs/levels.md](docs/levels.md),
-section 11.
+harnesses that check them are in 027-01's
+[levels.md](items/027-algorithms/01-docs-2026-11-12/levels.md), section 11.
 
 A known limit. The bound on the startup section (T3) is proved for
 BergDB's own startup pos policy since 2026-10-28, in the Lean model of its
@@ -156,7 +160,7 @@ The collector's pauses
 come on top: use ZGC, or Shenandoah in its default mode, without
 generations; with G1 they reach hundreds of milliseconds under eviction. A
 slow disk shows through too, in reads that miss the caches and in a writer
-that fills the write buffer. Details in docs/levels.md, section 7.
+that fills the write buffer. Details in 027-01's levels.md, section 7.
 
 
 Notes
@@ -170,7 +174,8 @@ Notes
   first commit is kept. Frans: see F1-007, repo f1.
 * The original 2012 to 2017 design notes and the git history of the 2017
   source are not part of this repository. The four documents that the theory
-  builds on are in `docs/sources/`.
+  builds on are in 027-01's
+  [sources/](items/027-algorithms/01-docs-2026-11-12/sources/).
 
 
 License

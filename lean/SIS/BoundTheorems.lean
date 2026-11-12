@@ -1,6 +1,6 @@
 /-
 Self-indexed streams in Lean: bounds, part 1, the theorem T3 (bergdb item 007;
-docs/sis-model.md, section 10).
+bergdb 027-01, sis-model.md section 10).
 
 Trusted part: the statements. The proofs are in SIS/Proof/Bound.lean and,
 for BergDB's take, SIS/Proof/BoundTake.lean; the proofs here only connect them.

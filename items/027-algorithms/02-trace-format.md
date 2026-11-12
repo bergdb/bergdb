@@ -1,12 +1,14 @@
-# BergDB trace format
+# 027-02. BergDB trace format
+
+Moved from docs/trace-format.md on 2026-11-12; kept current.
 
 The format of the traces that connect the Java code with the Lean model: what
 Java writes and the checker reads. Kept up to date with the exporter and the
 checker. Until 2026-10-26 it was section 9 of the Level 2 alignment, now
-[011-11](../items/011-docs-archive/11-level2-alignment.md), which has its
+[011-11](../011-docs-archive/11-level2-alignment.md), which has its
 history (written 2026-10-15 for F1-008-11, WP B3, and extended by items 001
 and 009); the mapping α that the traces express is in 011-11, section 2,
-and for handles in [009-05](../items/009-handles/05-handles-alignment.md).
+and for handles in [009-05](../009-handles/05-handles-alignment.md).
 
 The exporter (`java/stress/TraceExport.java`) writes a trace of a Java run in
 the terms of the Lean model; the trace checker (`lake exe tracecheck` in

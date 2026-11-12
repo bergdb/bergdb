@@ -6,8 +6,12 @@ reports, reviews. This file holds the rules and the index.
 
 An item is a place to work with freedom: to try things, keep dead ends and
 logs, without cluttering the current state of BergDB. The current state is
-`java/`, `lean/` and the few documents in `docs/` that are kept up to date
-with them, starting with [docs/levels.md](../docs/levels.md).
+`java/`, `lean/` and the few items that are kept up to date with them:
+the algorithms of BergDB (027), the trace format (027-02) and the stream
+format (024-02). Until 027 is written, read 027-01's
+[levels.md](027-algorithms/01-docs-2026-11-12/levels.md) first, part of
+the snapshot of the former `docs/`, moved into 027-01 on 2026-11-12;
+`docs/` keeps only the development log, [docs/log.md](../docs/log.md).
 
 
 Names
@@ -72,15 +76,16 @@ Items and the current state
   scripts and `lake build` never read it. Code in an item is a prototype, a
   patch or a tool for that item only.
 * A result leaves an item on purpose: code moves into `java/` or `lean/`,
-  passing the gates. A finding changes `docs/` only as far as the current
-  state changes, usually a few lines in `docs/levels.md` that cite the item
-  as evidence; the report, the alignment, the evidence and the log stay in
-  the item. A new document is a subitem, not a file in `docs/`
-  ([docs/readme.md](../docs/readme.md)).
+  passing the gates. A finding changes a maintained description (027,
+  027-02, 024-02) only as far as the current state changes, usually a few
+  lines that cite the item as evidence; the report, the alignment, the
+  evidence and the log stay in the item. A new document is a subitem.
 * A code experiment too large for the item directory runs on a git branch
   or worktree. The item records the branch and the outcome.
-* A finished item is history. It is not kept up to date, like
-  [docs/log.md](../docs/log.md).
+* A finished item is history. It is not kept up to date, like the
+  snapshot of the former `docs/`,
+  [027-01](027-algorithms/01-docs-2026-11-12/readme.md), and the entries
+  of [docs/log.md](../docs/log.md).
 * Work on BergDB before this index (2026-10-16), including the Level 2
   alignment, is in item 011, in [docs/log.md](../docs/log.md), and in the f1
   repo's F1-007 and F1-008.
@@ -177,3 +182,7 @@ Index
 * **026-release-2026-6** (open). Release 2026.6, after 2026.5: its plan,
   its decisions and the work towards it. Preliminary theme: a stable
   stream.
+* **027-algorithms** (open). The algorithms of BergDB as they are, kept
+  current with `java/` and `lean/`, for every implementation; a skeleton
+  so far. Holds the former `docs/` as a snapshot (027-01) and the trace
+  format, kept current (027-02).

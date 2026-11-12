@@ -1,8 +1,10 @@
 # bergdb repository instructions
 
 BergDB is an append-only database for Java with a Lean model of its
-algorithm. [README.md](README.md) describes the repo; start reading at
-[docs/levels.md](docs/levels.md).
+algorithm. [README.md](README.md) describes the repo. Its algorithms are
+item 027, [items/027-algorithms](items/027-algorithms/readme.md); until 027
+is written, start reading at 027-01's [levels.md](items/027-algorithms/01-docs-2026-11-12/levels.md),
+a snapshot of the former `docs/` of 2026-11-12.
 
 ## Items
 
@@ -11,11 +13,13 @@ algorithm. [README.md](README.md) describes the repo; start reading at
 - A bare number such as `024` or `024-01` in a request means an item or a
   subitem in `items/`, unless the context says otherwise.
 - Experiments, plans, progress logs and reports belong in an item, not in
-  `java/`, `lean/` or `docs/`.
-- `docs/` holds only what is kept up to date with the code: `levels.md`,
-  `sis-model.md`, `trace-format.md`, the log `log.md` and `sources/`
-  ([docs/readme.md](docs/readme.md)). A new document is a subitem, not a
-  file in `docs/`.
+  `java/` or `lean/`.
+- The maintained descriptions are items, kept up to date with the code:
+  027 (the algorithms of BergDB), 027-02 (the trace format) and 024-02
+  (the stream format). The other former files of `docs/` are 027-01 since
+  2026-11-12, a snapshot that is not updated. A new document is a subitem.
+- `docs/` holds only `docs/log.md`, the development log (Frans, 2026-11-12:
+  "Let's keep log.md for now").
 - Cite a document by its ID and section (`001-08, section 5.5`; in code
   comments `bergdb 001-08, section 5.5`), not by its path.
 

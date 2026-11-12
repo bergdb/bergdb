@@ -988,7 +988,7 @@ public class StorageFaultTester {
      * A stop() at a read of the workload's thread, which then goes on only when the stop's
      * close has ended (2026-11-06, bergdb 019-43): the read meets the closed stream ("File
      * closed"), the storage records it as failed, and the call throws StreamIoException, as a
-     * read while the database stops does (docs/levels.md, section 3). Nothing that returned is
+     * read while the database stops does (027-01, levels.md section 3). Nothing that returned is
      * lost, and close() returns normally. Harness 6.2's oracle counted it as a failure before
      * the close that no call reported; with JDK 17 the stop's thread sometimes closed the
      * stream before the read, on s1 and F53. Calls 1 (a transaction's warm-up) and 3 (a get).

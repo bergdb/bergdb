@@ -6,7 +6,7 @@ import bergdb.common.Util;
 
 /**
  * A test stream that enforces pretruncate exactly, written 2026-10-13 for the
- * level 3 tests (docs/levels.md). It wraps a MemoryStream; after
+ * level 3 tests (bergdb 027-01, levels.md). It wraps a MemoryStream; after
  * pretruncate(p), getFirstPos() is p and a read of any byte below p throws.
  * MemoryStream drops whole 1 MB arrays and FileStream whole files, so a read
  * just below the cut would otherwise pass unnoticed.

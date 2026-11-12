@@ -1318,7 +1318,7 @@ public class DbTesterRestart {
     /**
      * Level 2, restarts with bounded startup: puts, deletes, short and long keys, and
      * transactions with one to twenty keys; after each restart, every key is checked at
-     * the latest time and at earlier times. See docs/levels.md.
+     * the latest time and at earlier times. See bergdb 027-01, levels.md.
      * Fails without DbStarter.canonicalNode()'s use of the stored position (a delete of
      * a key that does not exist). Larger: testLevel2RestartsKeepAllValuesF.
      */
@@ -1340,7 +1340,7 @@ public class DbTesterRestart {
     
     /**
      * Level 2: the stream with restarts is the same, byte for byte, as without (T2 in
-     * docs/sis-model.md). Fails without NodeCollection.resolvePointers().
+     * bergdb 027-01, sis-model.md). Fails without NodeCollection.resolvePointers().
      * Larger: testLevel2SameStreamWithRestartsF.
      */
     @Nano private static void testLevel2SameStreamWithRestarts() throws java.io.IOException {

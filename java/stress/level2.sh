@@ -1,5 +1,5 @@
 #!/bin/sh
-# Level 2 regression check (docs/levels.md):
+# Level 2 regression check (bergdb 027-01, levels.md):
 # restart with bounded startup, where startup reads only the tail of the
 # stream. Not a commit gate (java/before-commit.sh is, since 2026-10-20);
 # run it after larger changes.
@@ -18,7 +18,7 @@
 #      size, with 3000 keys and with 50 keys (small trees); and, full only,
 #      the default settings on disk past 50 MB with deletes.
 #   4. RestartInvariance: the same transactions with and without restarts
-#      give the same stream, byte for byte (T2 in docs/sis-model.md), and
+#      give the same stream, byte for byte (T2 in bergdb 027-01, sis-model.md), and
 #      the same dirty set, node identity and lookups. Startup distances from
 #      100 bytes up, node sizes 8 to 62, long keys, transactions of up to 40
 #      keys, a restart after every transaction; mostly idle runs (30 percent

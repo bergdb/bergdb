@@ -1693,7 +1693,7 @@ public class Dag {
         // model's emptyKeyNext runs it (treetest, theta forced below 8; bergdb 024-23, R3).
         if (room && !deadFull(node, inPlace ? 1 : 2)) {
             // The bitmap first: in the model's terms a bitmap deletes the klongs before it with
-            // the compare values of its new bits (docs/trace-format.md, "D"); the empty key is
+            // the compare values of its new bits (bergdb 027-02, "D"); the empty key is
             // not one of them, so the order is free.
             if (hasTransDel) {
                 node.klongs[sz - 1] = union;    // the transaction's own bitmap, no reader sees it

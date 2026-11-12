@@ -1,5 +1,5 @@
 #!/bin/sh
-# Level 1 regression check (docs/levels.md): BergDB as a multiversion map
+# Level 1 regression check (bergdb 027-01, levels.md): BergDB as a multiversion map
 # in memory, with restart by replaying the whole stream. Not a commit gate
 # (java/before-commit.sh is, since 2026-10-20); run it after larger changes.
 #
@@ -17,7 +17,7 @@
 #      size (30); also node sizes 8, 14 and 62, 50 keys (small trees, more
 #      splits of the root), on disk, and without restarts (level 0).
 #   5. RestartInvariance: the same transactions with and without restarts
-#      give the same stream, byte for byte (T2 in docs/sis-model.md), and
+#      give the same stream, byte for byte (T2 in bergdb 027-01, sis-model.md), and
 #      the same dirty set, node ids and lookups.
 #   6. Props, the 2014-2017 property suite (bergdb.dev.props; bergdb item
 #      006-02): MEM, heap bytes per KV, and SS, stream bytes per user byte,

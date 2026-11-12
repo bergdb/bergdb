@@ -1350,7 +1350,7 @@ public class StoredTrans {
     /**
      * The same transaction must give the same bytes, whatever the serializer serialized
      * before. Needed for streams that are the same byte for byte with and without
-     * restarts (T2 in docs/sis-model.md). Regression test for a bug found 2026-10-12
+     * restarts (T2 in bergdb 027-01, sis-model.md). Regression test for a bug found 2026-10-12
      * (level 2): the alignment padding of value nodes was not
      * written, so a reused buffer gave other padding bytes and checksums.
      */

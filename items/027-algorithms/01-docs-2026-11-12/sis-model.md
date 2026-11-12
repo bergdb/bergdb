@@ -12,14 +12,14 @@ theorems in plain English. T1, recovery: after a crash, startup gives back
 the database as it was after the last complete transaction. T2, restart
 invariance: a restart does not change what the database appends to the
 stream. Both are proven in the Lean proof assistant
-([../lean/](../lean/README.md)). Each definition here is one definition in
+([../lean/](../../../lean/README.md)). Each definition here is one definition in
 Lean, and each theorem one Lean theorem, so this text is also the guide to
 reading the Lean files. Draft 1 was the problem statement before the
 proofs; section 14 lists what the proofs changed.
 
 Builds on Frans's [startup.md](sources/startup.md) and
 [v5](sources/self-indexed_streams_v5_130704.pdf),
-and on [011-03](../items/011-docs-archive/03-startup-invariants.md). Uses the notation of
+and on [011-03](../../011-docs-archive/03-startup-invariants.md). Uses the notation of
 startup.md where it can, all defined below: the database state
 DB = <P, D, S>, where P is the data, D the dirty nodes and S the stream;
 the transactions T(i); the startup positions s(i); and the got-dirty sets
@@ -36,7 +36,7 @@ Review, 2026-10-13: the model and proof scope are unchanged at `ebe5f77`.
 [levels.md](levels.md) records Java's tested status and what remains to
 show that the Java code implements the model. Fresh Lean build, randomized
 and axiom checks passed during the documentation review; details are in
-the Lean model's log, [011-12](../items/011-docs-archive/12-lean-status-log.md).
+the Lean model's log, [011-12](../../011-docs-archive/12-lean-status-log.md).
 
 
 1 Summary
@@ -191,7 +191,7 @@ balanced binary tree with rotations does not automatically supply A4 with
 fixed levels, since a child can become its parent's parent.
 
 Since 2026-10-16, BergDB's Java transactions are built to meet A2 and A3
-(F1-008-11; mismatch M1 of [011-11](../items/011-docs-archive/11-level2-alignment.md)). Two
+(F1-008-11; mismatch M1 of [011-11](../../011-docs-archive/11-level2-alignment.md)). Two
 checkers check A2 to A5, with the levels of 011-11, section
 8.4, on every transaction of their runs: the trace checker, which runs the
 Lean model on traces of Java runs (section 13), and the Java tier, a Java
@@ -413,7 +413,7 @@ be in the section. The Lean model found this (section 13).
 --------------------
 
 Since 2026-10-16 (F1-008-11, option (a) of
-[011-11](../items/011-docs-archive/11-level2-alignment.md), sections 8.2 and 8.6), the root
+[011-11](../../011-docs-archive/11-level2-alignment.md), sections 8.2 and 8.6), the root
 can be virtual (`Spec.virt`), as in BergDB, which has no root node but a
 chain of top nodes. Each top node points to the B-tree's root node of its
 time and to some older top nodes; the newest, the super root, is the entry
@@ -474,7 +474,7 @@ T(4) together with B, and needed no Rule R.
 =======================
 
 These hold after every transaction i of every run. They are the steps of the
-proofs, which are checked in Lean ([../lean/SIS/Proof/](../lean/SIS/Proof/));
+proofs, which are checked in Lean ([../lean/SIS/Proof/](../../../lean/SIS/Proof/));
 the text gives the ideas. The Lean names are in section 13.
 
 INV-1 D is exact. D holds exactly the nodes in gd(j) for s(i) < j <= i,
@@ -618,9 +618,9 @@ being on the access path.
   so are the stream's meta blocks, which make no difference to the take
   (bergdb 005-68). The size of the records at the ends
   of the section (T4) and the rest are open
-  ([../items/007-bounds/](../items/007-bounds/readme.md)).
+  ([../items/007-bounds/](../../007-bounds/readme.md)).
 * Reclaim: cutting the front of the stream (INV-RECLAIM of
-  [011-01](../items/011-docs-archive/01-problem.md); level 3 of levels.md), and eviction and the
+  [011-01](../../011-docs-archive/01-problem.md); level 3 of levels.md), and eviction and the
   cache (the planned T5; level 4): not in sections 2 to 9; bergdb item 001
   added both, with their theorems (section 15).
 * Concurrency, sync levels and torn records. A record is assumed complete
@@ -706,7 +706,7 @@ implementation must meet them.
 13 Lean
 =======
 
-The model in Lean is in [../lean/](../lean/README.md).
+The model in Lean is in [../lean/](../../../lean/README.md).
 
 * Milestone 1 (2026-10-12): the definitions of sections 3 to 6, the
   assumptions, and the statements of T1 and T2. The trusted part, the
@@ -728,7 +728,7 @@ The model in Lean is in [../lean/](../lean/README.md).
   virtual root (sections 3.4, 6 and 9; 011-12, the changes to the trusted
   part). The trace checker (lean/Check/, `tracecheck`) runs the
   model's `init` and `step` on traces of Java runs
-  ([trace-format.md](trace-format.md); [011-11](../items/011-docs-archive/11-level2-alignment.md),
+  ([trace-format.md](../02-trace-format.md); [011-11](../../011-docs-archive/11-level2-alignment.md),
   section 10).
 
 The lemmas of section 8, by Lean name:
@@ -796,12 +796,12 @@ what Java holds in memory and how it evicts (Level 4 of levels.md), and how
 the front of the stream is cut (Level 3), each with its theorems, proved in
 Lean with
 only the standard axioms. The definitions and statements are in
-[../lean/](../lean/README.md) ("What to read"); the design and its reasons
-in [011-11](../items/011-docs-archive/11-level2-alignment.md), section 13 (the physical
-layer, part 1), [001-08](../items/001-lean-model-levels-3-4/08-level4-alignment.md), section 5
-(eviction) and [001-07](../items/001-lean-model-levels-3-4/07-level3-alignment.md), sections 2 and 5
+[../lean/](../../../lean/README.md) ("What to read"); the design and its reasons
+in [011-11](../../011-docs-archive/11-level2-alignment.md), section 13 (the physical
+layer, part 1), [001-08](../../001-lean-model-levels-3-4/08-level4-alignment.md), section 5
+(eviction) and [001-07](../../001-lean-model-levels-3-4/07-level3-alignment.md), sections 2 and 5
 (reclaim). Since bergdb item 009 BergDB evicts with handles
-([009-02](../items/009-handles/02-implementation-plan.md), section 4), and since
+([009-02](../../009-handles/02-implementation-plan.md), section 4), and since
 bergdb 005-62 (2026-10-28) the model of eviction is that one only.
 
 15.1 Memory: objects, pointers, handles
@@ -835,7 +835,7 @@ memory; no walk, and nothing about the pointers that hold the handle. The
 pinned objects are the root's and the canonical objects of D. The physical
 writer writes from the pointers and the pinned set (`HMem.refOf`, the record
 rule): a version names the latest version of each pointee (Option K of
-[011-05](../items/011-docs-archive/05-level4-plan.md)), with no table of all
+[011-05](../../011-docs-archive/05-level4-plan.md)), with no table of all
 nodes. Before handles, the model had Java's earlier design: memory slots and
 stream slots, with eviction as unswizzle and release (`SIS/Evict.lean`, until
 bergdb 005-62).

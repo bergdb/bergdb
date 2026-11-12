@@ -1,6 +1,6 @@
 /-
 Self-indexed streams in Lean: bounds, part 1, the length of the startup
-section (bergdb item 007; docs/sis-model.md, section 10, the planned T3).
+section (bergdb item 007; 027-01, sis-model.md section 10, the planned T3).
 
 Trusted part: the definitions that T3 is about. The statements are in
 SIS/BoundTheorems.lean. Added 2026-10-23. Since 2026-10-28 (bergdb 007-08,

@@ -1,4 +1,4 @@
-# The example of docs/trace-format.md, 3. Expected: TRACECHECK OK.
+# The example of bergdb 027-02, section 3. Expected: TRACECHECK OK.
 TRACE 1
 CONFIG example
 TX 0
