@@ -1,7 +1,8 @@
 021-27. Decide: Db.getTrans at a position inside a record fails the database
 ============================================================================
 
-Status: done (branch `021-27-gettrans`, gated; to land).
+Status: done; landed (3ffe0b51); Q27-1 fixed on branch
+`021-27-size-bound`, gated, to land (section 5).
 Kind: Decide, then Fix. Frans: decided 2026-11-12 (section 3).
 Created 2026-11-09 by Frans Lundberg.
 
@@ -175,7 +176,8 @@ main's `de7227de`.
   the stream's length and whose last byte and format byte are both right
   (about 1 in 65,000 for random bytes, or a value made so) still make the
   array; on a large stream with a small heap that can be an
-  `OutOfMemoryError`, which fails the database (question Q27-1 below).
+  `OutOfMemoryError`, which fails the database (question Q27-1 below;
+  fixed, section 5).
 
 Callers of `getTrans` and their path:
 
@@ -238,6 +240,69 @@ Question for Frans:
   position (for example, refuse a size over the heap's free memory, or
   read the record in parts)? Default: leave it, as the chance is small
   and a value made for it is the caller's own doing.
+  **Decided, Frans, 2026-11-12, 14:09: "fix it."** (010-04, R5: a
+  caller's misuse must never fail the database; an `OutOfMemoryError`
+  from a garbage size would.) Section 5.
+
+
+5. Q27-1: a large size believed only at a record's start
+--------------------------------------------------------
+
+Branch `021-27-size-bound` in the clone, from main's `8247d9a8` (with
+021-27 landed, 3ffe0b51), commit `79797459`.
+
+What: the public `Db.getTrans(tpos)` reads with
+`NodeStream.createTransIteratorAtCallersPos(tpos)`. When the header's
+size at `tpos` (after the checks of section 4: range, last byte, format
+byte) is over `NodeStream.CALLERS_SIZE_LIMIT`, 1 MiB, the iterator first
+calls `NodeStream.recordHolding(tpos)`, before the record's array is
+made. It walks the records forward by their sizes, reading each one's
+header (`readRecordHeader`), from `RecoverableStream.getRecordStartBefore
+(tpos)`: the record that the last valid meta block at or before `tpos`
+names, if it is at or after the first position; else the first record
+after the first position (meta block 0's end in a stream not cut; the
+cut, a record's start, in a cut one). `getSpos()` skips meta blocks, also
+those inside records. Reached `tpos`: the record is read as before.
+Passed over it: `StreamFormatException` ("A size of S bytes at stream
+pos P, which is inside the record at Q, not a record's start."), which
+the public path turns into `IllegalArgumentException`, its cause; the
+database goes on. A bad header or meta block on the way, or a start
+after `tpos`: `StreamFormatException`, refused so too. A read of the
+walk below a cut expires, as the read at `tpos` does.
+
+When and by whom: on every public `getTrans` whose header size is over
+1 MiB, by the reader's thread, after 021-13's wait for the writer (the
+records before `tpos` are then in the stream in whole).
+`Internal.getTrans` (transactionInfo) is unchanged: its positions are
+the database's.
+
+Why (a), the walk, and not (b), a read in bounded parts: the walk is
+option A's code, local to one branch of `next()`, and costs nothing for
+a record of at most 1 MiB, nearly all of them; a real record over 1 MiB
+at its start (reclaim's, the take's, maintain()'s) costs the walk once:
+the headers of the records from the meta block before it, at most one
+block distance (200 kB) of records, three small reads each. (b) would
+still need the whole record in one array for the parse
+(`StoredTrans.parse` takes one array), so it bounds nothing unless the
+parse is changed too. No record at its true start is refused, and no
+`OutOfMemoryError` is caught. The bound, 1 MiB, is a cost choice only:
+any size up to it is allocated, as for any read of a record.
+
+Tests:
+
+* `DbTester.testGetTransCraftedSizeInsideARecord`, new: a value of 3 MB
+  (over 15 meta blocks) with eight crafted candidates (size of about the
+  record's rest, the format byte, `LAST_BYTE` at its end), one at a
+  multiple of 8 whatever the value's position. That position is refused
+  with the walk's cause, so before the array; without the walk (checked
+  by turning it off) the read made the 3 MB array and failed later, in
+  the parse. The real 3 MB record at its start is still read; the
+  database goes on.
+* `DbTesterFailure.testGetTransBelowTheCut`, more: a record of 1.1 MB
+  after the cut, at its start, is read: its walk starts at the cut, as
+  no meta block after the cut is at or before it.
+
+`releases/next.md`: a sentence added to 021-27's Core API line.
 
 
 Log
@@ -256,6 +321,12 @@ branch `021-27-gettrans` (section 4). Gates on its head `104de4d9`, each
 in a slot: `BEFORE COMMIT OK (66 s)` (unit 1689, f 89, demos 14),
 `LEVEL 1 OK` (13:38), `LEVEL 3 OK` (13:38 to 13:50).
 
+2026-11-12. Landed by the coordinator (3ffe0b51). Q27-1 decided by
+Frans (14:09, "fix it."), fixed by gtr on branch `021-27-size-bound`
+(section 5). Gates on its head `79797459`, each in a slot:
+`BEFORE COMMIT OK (63 s)` (unit 1697, f 89, demos 14; 14:12 to 14:13),
+`LEVEL 1 OK` (14:13 to 14:16).
+
 
 State
 -----
@@ -268,6 +339,10 @@ State
 * Gates on `104de4d9`, each in a slot: `BEFORE COMMIT OK (66 s)` (unit
   1689, f 89, demos 14; 13:33 to 13:34), `LEVEL 1 OK` (13:38),
   `LEVEL 3 OK` (13:50). Logs in `/Users/f/fl/bench/2026-11-12/gtr/`.
-* Not done: C (022), later; Q27-1 for Frans.
-* To continue: the coordinator lands the branch (two commits, the first
-  the changed expected value).
+* Landed on main: 3ffe0b51.
+* Q27-1: branch `021-27-size-bound` in the same clone, from main's
+  `8247d9a8`, head `79797459`. `BEFORE COMMIT OK (63 s)`, `LEVEL 1 OK`,
+  each in a slot. Logs `before-commit-2.txt`, `level1-2.txt` in
+  `/Users/f/fl/bench/2026-11-12/gtr/`.
+* Not done: C (022), later.
+* To continue: the coordinator lands `021-27-size-bound`.
