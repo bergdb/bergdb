@@ -54,7 +54,7 @@ high.
 | 024-34 | OP8: reclaim reads only what it rewrites | tidy (high) | landed a156fd51 |
 | 017-11 | A startup distance that follows the database's size: known, plan | sdk (xhigh) | done 13:03 |
 | 021-27 | Db.getTrans inside a record fails the database: refused instead | gtr (high) | landed 3ffe0b51 |
-| 024-35 | A double-check for open work forgotten for 2026.5 | sweep (high) | |
+| 024-35 | A double-check for open work forgotten for 2026.5 | sweep (high) | done 14:19 |
 
 024-27 lands on its gates, by Frans's decisions of 07:36: its changed
 expected values follow from them.
@@ -305,6 +305,13 @@ from them.
 * 14:16 gtr done with Q27-1: above 1 MiB the public getTrans confirms a
   record's start by walking the record headers before making its array;
   before-commit and level1 OK; landed 4dadb80c.
+* 14:17 Frans: coherent documentation of the algorithms is missing; he
+  wants it as a proper, maintained item. The coordinator: agree; an item
+  "The algorithms of BergDB", kept current like 024-02; a skeleton first.
+* 14:19 sweep done (024-35): OT2 (the Linux lock race, promised for
+  2026.5, a ready patch), CA3 (a Core put under the Core's own keys
+  stops every later start: R5), next.md without today's landings and
+  known issues, QF3's curve, no performance comparison with 2026.4.
 
 
 ## 6. Outcome

@@ -319,6 +319,11 @@ Files
 * 34-reclaim-reads.md. 024-34, a reclaim step reads a key again only
   when its value is before pCut (OP8): second reads halved, stream bytes
   unchanged. Q34-1.
+* 35-release-sweep.md. 024-35, a double-check before the candidate
+  (2026-11-12, 14:19): OT2's Linux lock race not fixed, a Core put under
+  the Core's own keys that stops every later start (R5), the notes
+  without today's landings and known issues, QF3's curve not in
+  levels.md, no performance comparison with 2026.4; smaller points.
 
 
 Log
