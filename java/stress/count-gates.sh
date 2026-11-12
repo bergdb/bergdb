@@ -9,6 +9,10 @@
 #      every 30th key kept, and after a mass delete, and two reclaim iterations.
 #   G3 (BD10): the stream kept, less the user's records within R, at most 6
 #      times the twin's fresh stream, at its peak under steady overwrites.
+#   G4 (back to empty, 023-03's T1): n keys put and deleted, then a drive of
+#      40 R; kept, key nodes, dead klongs, resident objects, handles, the heap,
+#      at most 2 times a hello-world twin's (the cache's table slots, ST6,
+#      reported, not counted).
 # A step of night.sh after level4; not in before-commit.sh (it takes minutes).
 # About 2.5 minutes on F53 (2026-11-12). A 10M variant (n=10000000) is not a
 # step; 024-30, section 6, notes it for later.
@@ -28,7 +32,8 @@ mkdir -p $OUT || exit 1
     { tail -20 $OUT/build.txt; echo "COUNT GATES FAILED: build"; exit 1; }
 
 s=$(date +%s)
-$JAVA -Xmx4g -cp build/bergdb.jar:build/stress bergdb.core.CountGates "$@" \
+$JAVA -Xmx4g --add-opens java.base/java.util=ALL-UNNAMED \
+    -cp build/bergdb.jar:build/stress bergdb.core.CountGates "$@" \
     dir=build/count-gates-data > $OUT/count-gates.txt 2>&1
 status=$?
 grep -E '^(G[0-9] |  G[0-9] )' $OUT/count-gates.txt
