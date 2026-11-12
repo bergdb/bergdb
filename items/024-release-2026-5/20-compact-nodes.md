@@ -683,6 +683,11 @@ against 16 today. "n" counts every klong; the rows' kinds add to it.
 
 ## 8. Questions for Frans
 
+**Decided, QC1: the compact stored form is for release 2026.6** (Frans,
+2026-11-12, 07:26: "QC1. For 2026.6 as recommended. QC2,3,4,5 should
+wait since it is for 2026.6."). QC2 to QC5 wait for 2026.6's work on the
+stream format (026).
+
 Cite as "024-20, QC1". Each with a recommendation; none blocks other
 work.
 

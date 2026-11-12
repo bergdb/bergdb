@@ -224,7 +224,8 @@ Files
 * 19-node-size.md. 024-19, the node size: which, and one fixed constant
   or not. Postponed 2026-11-11, 11:50, until the merges were in; done
   2026-11-12, 01:33, on format 7 (merges, option 2, CRC32C): 1M and 10M
-  counts, times at 1M. Recommended: keep B = 30, B a property of the
+  counts, times at 1M. Decided (Frans, 2026-11-12): B = 30 kept.
+  Recommended: B a property of the
   database (8, 14, 30, 62) with the thresholds and theta scaled v*B/30,
   theta at least 2, 62 the hard maximum. Q1 to Q6. Outputs in
   19-node-size/.
@@ -232,8 +233,8 @@ Files
   node. Postponed 2026-11-11, 11:50; done 2026-11-12, 02:30, on format
   7: encoding C keeps 38 to 47 % of the index bytes in every workload,
   with compact value nodes, frames and top nodes the stream 19 to 52 %
-  smaller; recommended for 2026.6 with the stable stream format, the
-  accounting nominal. QC1 to QC5; found Reclaim.VALUE_NODE_BYTES stale
+  smaller; for 2026.6 (Frans, 2026-11-12, QC1), with the stable stream
+  format; QC2 to QC5 wait for it. QC1 to QC5; found Reclaim.VALUE_NODE_BYTES stale
   after 024-25. The probe in 20-compact-nodes/.
 * 21-merges-java.md. 024-21, merges at the delete in Java, record
   format 7 (2026.4's databases refused): P5's merge ported to main, the
