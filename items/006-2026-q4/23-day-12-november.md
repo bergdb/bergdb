@@ -336,6 +336,18 @@ from them.
 * 14:42 Frans on value transformations: "Yes to R5 and for 2026.6. I
   don't see it as a bug, but something to change anyhow." In 026's
   readme and R5's cases; 2026.5's notes name it as a known issue.
+* 14:45 Frans: 027 a placeholder only, no planned sections (done,
+  106c7c60).
+* 14:49 Frans left ("I need to go. Ready to work unattended?"; /effort
+  high). Unattended until 2026-11-13 07:00, with the defaults of the
+  coordinator's 14:46 message: the release night of 2026.5 (after ot2,
+  ca3 and the notes agent: the candidate, then night.sh, night.sh large,
+  the performance comparison with 2026.4, the queue check on F53; s1's
+  JDK 17 and 27 runs, fuzz and the OT2 probe; then 026-04's runs at 10M
+  keys); no tag; the second prover's run 2 from 16:21; 020-29's bundle
+  fetched as the branch 020-29-index-proof (23 commits, not merged);
+  night failures fixed and landed when gated and no expected value
+  changes; no new optional work above 92 % of the week.
 
 
 ## 6. Outcome
