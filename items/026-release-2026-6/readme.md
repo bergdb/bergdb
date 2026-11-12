@@ -25,6 +25,14 @@ Work moved here from 2026.5:
   accounting, the startup distance's unit, reclaim's charge, delta
   writes) wait for this release's work on the format.
 
+* **The 10 MB write buffer of a started database** (024-05, ST8; 024-01,
+  PA7; Frans, 2026-11-12, 12:10, "As recommended"): a buffer that grows
+  with use or a setting, and the cost per database in the Javadoc.
+* **Each reclaim step scans at its own time** (024-05, OP9: P8 of 023-05,
+  the prototype `p8-steptime`; Frans, 2026-11-12, 12:10, "as
+  recommended"): a shorter lag after a mass delete; 024-30's G4 shows
+  back to empty converging without it.
+
 
 Proposed for 2026.6, not decided
 ================================

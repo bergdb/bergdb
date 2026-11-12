@@ -49,6 +49,9 @@ high.
 | 024-22 | The open proofs TP32, TP33, TP7, TP30, TP10, TP11, TP31 | second prover | |
 | 024-30 | Count gates G1 (BD1), G2 (BD13), G3 (BD10) at 1M keys, a night step | gates (high) | landed |
 | 024-31 | OP4: a cap on the take's pace after a decrease (015-84) | pace (high) | |
+| 024-32 | maintain(), in Core and Pub, with G5 (back to empty by maintain()) | maint (high) | |
+| 024-33 | ST6: the cache's tables shrink | tidy (high) | |
+| 024-34 | OP8: reclaim reads only what it rewrites | tidy (high) | |
 
 024-27 lands on its gates, by Frans's decisions of 07:36: its changed
 expected values follow from them.
@@ -185,6 +188,14 @@ from them.
   transaction 4,117 (the twin's 1,214), within 2 times the twin's stream
   after 4,395 (4.4 R). Landed and pushed. Q30-3 (gate the lag), Q30-4
   (ST6: fix or close).
+* 12:10 Frans on step 4: ST8 to 026 ("As recommended"); OP8 "Do for
+  this release. This changes the reclaim algorithm, or its
+  implementation at least. Want this in place for solid internal
+  algos."; P8 to 026; maintain() "No, I want this now. In this
+  release."; ST6 fixed in 2026.5. Started maint (024-32) and tidy (024-33
+  then 024-34) at 12:11, three Claude agents with pace (over the tight
+  level's two: pace mostly waits on its runs). ST12 (G4's finding)
+  registered in 024-05, not decided.
 
 
 ## 6. Outcome

@@ -163,6 +163,10 @@ it changes the record format or the rerun. "none": neither.
   129 ms under G1: likely the collector's, which P1 does not count; not
   shown. `dirtyNodeBound`'s over-count only lowers the largest
   transaction accepted.
+  **Decided** (Frans, 2026-11-12, 12:10): in 2026.5, "Want this in
+  place for solid internal algos."; made in 024-34.
+  **Decided** (Frans, 2026-11-12, 12:10): P8 moves to 2026.6 (026); G4
+  (024-30) shows back to empty converging without it, in about 4.4 R.
 
 Within the aim on the numbers: a get at 10M (1.9 loads and 7.8 µs,
 against 0.37 loads and 2.2 µs at 1M); scans after a mass delete (101 key
@@ -262,6 +266,19 @@ by design, levels.md, section 7); `close()` (1 to 2 ms).
 * **ST9, ST10.** Both follow sd, not the keys. D's 1.6 to 2.9 times is
   005-38's, before the paced take; since, the debt is at most 1.10 sd at
   50M keys. In the heap D takes 2 to 2.5 times its stream bytes (006-19).
+  **Decided** (Frans, 2026-11-12, 12:10): fixed in 2026.5, 024-33; G4
+  (024-30) measured 3.76 times a hello-world twin's slots after back to
+  empty.
+  **Closed as negligible** (Frans, 2026-11-12, 11:52: "There may be a
+  performance reason for KeyAccessPath.clear() to work as it does. It is
+  better to close ST7 as neglectable than to degrade performance.");
+  G4 prints it (665 entries against 16), not gated.
+  **Decided** (Frans, 2026-11-12, 12:10): moved to 2026.6 (026).
+* **ST12, found 2026-11-12 by G4 (024-30, section 9).** With eviction
+  off (the Core's test setup, no budget), the cached objects of deleted
+  keys stay resident after back to empty: 15,082 against the twin's
+  1,017 at 100,000 keys. With eviction on (the Pub API's default) they
+  go. Not decided.
 
 Not cases: the history with R forever (023-02, R8) and the memory of
 ended versions with `noEvict()` (levels.md, section 7), both by design.
