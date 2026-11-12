@@ -230,12 +230,8 @@ Files
   theta at least 2, 62 the hard maximum. Q1 to Q6. Outputs in
   19-node-size/.
 * 20-compact-nodes.md. 024-20, a more compact stored form of an index
-  node. Postponed 2026-11-11, 11:50; done 2026-11-12, 02:30, on format
-  7: encoding C keeps 38 to 47 % of the index bytes in every workload,
-  with compact value nodes, frames and top nodes the stream 19 to 52 %
-  smaller; for 2026.6 (Frans, 2026-11-12, QC1), with the stable stream
-  format; QC2 to QC5 wait for it. QC1 to QC5; found Reclaim.VALUE_NODE_BYTES stale
-  after 024-25. The probe in 20-compact-nodes/.
+  node: moved to 2026.6 (026) on 2026-11-12, now 026-01 (Frans, 07:39;
+  QC1, 07:26: "For 2026.6 as recommended"). A stub here leads there.
 * 21-merges-java.md. 024-21, merges at the delete in Java, record
   format 7 (2026.4's databases refused): P5's merge ported to main, the
   thresholds 8/17/17 at node size 30 (024-14, QT1), named constants,
@@ -342,3 +338,9 @@ current. The reading of 2026-11-10, 19:52 (above) belongs to the first
 theme. Started beside 024-04: 024-05 (the aim against the known cases:
 the list, the bounds, the tests) and 024-06 (the model gap: what the
 Lean model covers of 2026.4's algorithm).
+
+2026-11-12. 024-20, the compact stored form, moved to 2026.6 as 026-01
+(Frans, 07:39: "go through the current work and move things for 2026.6
+to 026. In particular this 024-20 should move there."); a stub left at
+024-20. Nothing else of 2026.5 was decided for 2026.6; what is only
+proposed for it is listed in 026's readme.

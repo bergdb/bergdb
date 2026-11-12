@@ -39,6 +39,7 @@ high.
 |---|---|---|---|
 | 024-22 | TP32 restated with the premises Java meets (coord-1111's tp32s) | tp32s (xhigh) | landed c0a8cadf |
 | 024-27 | U26-5 B, theta at least 2, 62 the largest size, U26 Javadoc | rules (high) | |
+| 026 | 2026.6 work moved from 024 to 026, 024-20 first (026-01) | move (high) | done 07:42 |
 
 024-27 lands on its gates, by Frans's decisions of 07:36: its changed
 expected values follow from them.
@@ -59,6 +60,14 @@ from them.
   axiom in the diff; `#print axioms` standard; the statement diff as
   briefed). Left open by tp32s: MergeParamsOK (TP28) is not a premise of
   TP32; Java meets it; to add only if a proof needs it.
+* 07:39 rules started (024-27).
+* 07:40 Frans, 07:39: "Start a new agent at high to go through the
+  current work and move things for 2026.6 to 026. In particular this
+  024-20 should move there." move started.
+* 07:42 move done: 024-20 is now 026-01 (a stub left at 024-20); nothing
+  else of 2026.5 was decided for 2026.6; what is only proposed for it
+  (024-19 Q5, 024-22 QM1, 024-02 section 21, 024-01 OT4, PA5, PA9) is
+  listed in 026's readme for Frans.
 
 
 ## 6. Outcome
