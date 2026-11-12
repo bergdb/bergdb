@@ -247,14 +247,15 @@ import bergdb.stream.SalsaStream;
  * bytes. About 100 characters as a rule of thumb: ASCII letters and digits are one byte each,
  * letters such as å, ä and ö two (UTF-8), and each "/" of a Pub key two (its ikey has a byte
  * for each part). A longer key is refused by the Trans.Builder call that takes it, with an
- * IllegalArgumentException; a key that a key transformation makes longer, by execute(), with a
- * DbException (L2).</li>
+ * IllegalArgumentException, which spoils the builder (Trans.Builder); a key that a key
+ * transformation makes longer, by execute(), with a DbException (L2).</li>
  * <li><b>A value</b> has at most MAX_VALUE_BYTES = 8 MiB, 8,388,608 bytes, refused by the
  * Trans.Builder call that takes it with an IllegalArgumentException (L4). A value
  * transformation's result over it fails the database, as an exception of the transformation
  * does (ValueTransformation).</li>
  * <li><b>A transaction</b> has at most MAX_OPERATIONS = 500 operations, the KVs it puts or
- * deletes, one a key (Trans.Builder.build()) (L1); at most MAX_TRANS_KEY_BYTES = 56 KiB,
+ * deletes, one a key (Trans.Builder.build()) (L1): a delete counts whether its key has a value
+ * or not, though one of a key without a value stores nothing (getTrans()); at most MAX_TRANS_KEY_BYTES = 56 KiB,
  * 57,344 bytes, of keys (L3); and at most MAX_TRANS_BYTES = 32 MiB of keys and values (L5).
  * execute() refuses one over them with a DbException. L3 binds only on BergDB's own keys,
  * which may be longer than a user's (the Pub API's index entries): 500 keys of 111 bytes are
@@ -1393,7 +1394,8 @@ public class Db implements AutoCloseable {
      * as recovery does first. Before, a start with another size reran the startup section
      * with it, which splits nodes otherwise, and failed with what looked like a corrupt
      * stream ("node ... not found"); or it started, and the stream it then wrote could not
-     * be started again, with either size (bergdb 005-50, question 3).
+     * be started again, with either size (bergdb 005-50, question 3). A size above
+     * Dag.MAX_NODE_SIZE, 62, is refused as a damaged block (bergdb 024-19, Q6).
      *
      * @throws StreamFormatException
      * @throws VersioningStreamException  no size: a database written before 2026-10-27
@@ -1408,6 +1410,13 @@ public class Db implements AutoCloseable {
             throw new VersioningStreamException("The database's meta block has no maximum node "
                     + "size: it was written by a version of BergDB before 2026-10-27, which "
                     + "this one does not start (bergdb 005-50). The start has written nothing.");
+        }
+        if (size > Dag.MAX_NODE_SIZE) {
+            // No release makes one: 62 is the largest (bergdb 024-19, Q6). A damaged block.
+            throw new StreamFormatException("The database's meta block gives the maximum node "
+                    + "size " + size + ", above " + Dag.MAX_NODE_SIZE + ", the largest node "
+                    + "size of BergDB (bergdb 024-19, Q6): the block is damaged, or the stream "
+                    + "is not BergDB's. The start has written nothing.");
         }
         if (size != maxNodeSize) {
             throw new StreamFormatException("The database's maximum node size is " + size
@@ -2400,6 +2409,8 @@ public class Db implements AutoCloseable {
      * Same as "execute(b.build())"; AVOID using this method.
      * 
      * @throws IllegalArgumentException  If b is null (bergdb 020-27, Q2).
+     * @throws IllegalStateException  If b is spoiled: a call of it was refused, and nothing
+     *      is written (Trans.Builder; bergdb 024-26, U26-5).
      */
     public final void execute(Trans.Builder b) {
         if (b == null) {

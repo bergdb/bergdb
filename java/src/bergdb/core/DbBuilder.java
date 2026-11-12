@@ -158,9 +158,9 @@ public class DbBuilder {
     }
 
     /**
-     * Maximum node size 30, the default and the Pub API's. It must stay the same for a
-     * database: it is in the stream from the creation, and a start with another size is
-     * refused (bergdb 005-50).
+     * Maximum node size 30, the default and the Pub API's only size (bergdb 024-19, Q1). It
+     * must stay the same for a database: it is in the stream from the creation, and a start
+     * with another size is refused (bergdb 005-50).
      */
     public DbBuilder maxNodeSize30() {
         this.maxNodeSize = 32 - 2;
@@ -168,8 +168,10 @@ public class DbBuilder {
     }
 
     /**
-     * Maximum node size 62. It must stay the same for a database: it is in the stream from
-     * the creation, and a start with another size is refused (bergdb 005-50).
+     * Maximum node size 62, the largest: a delete bitmap names 62 klongs of its node, and no
+     * larger size can be chosen (bergdb 024-19, Q6). It must stay the same for a database: it
+     * is in the stream from the creation, and a start with another size is refused (bergdb
+     * 005-50).
      */
     public DbBuilder maxNodeSize62() {
         this.maxNodeSize = 64 - 2;

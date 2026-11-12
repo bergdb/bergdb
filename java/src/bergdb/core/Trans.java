@@ -208,13 +208,24 @@ public class Trans {
      * read time and the keys read: Db's "Optimistic transactions".</p>
      * <p>A key of more than Db.MAX_KEY_BYTES bytes (111) and a value of more than
      * Db.MAX_VALUE_BYTES (8 MiB) are refused with IllegalArgumentException by the call that
-     * takes them, and nothing is added (Db, "Limits"; bergdb 024-17, L2 and L4); Db.execute()
-     * refuses a transaction of more than Db.MAX_OPERATIONS operations (500) or of more bytes
-     * than its limits (L1, L3, L5).</p>
+     * takes them, a put or a delete, and nothing is added (Db, "Limits"; bergdb 024-17, L2 and
+     * L4); Db.execute() refuses a transaction of more than Db.MAX_OPERATIONS operations (500)
+     * or of more bytes than its limits (L1, L3, L5).</p>
      * <p>A null key, value, read key or hash array is refused with IllegalArgumentException,
      * and nothing is added (bergdb 020-27, Q2: a null key threw NullPointerException, or
      * AssertionError with -ea, and delete((long[]) null) was taken, so that build() threw);
      * delete() removes a key's value.</p>
+     * <p><b>A refused call spoils the builder</b> (Frans, 2026-11-12; bergdb 024-26, U26-5):
+     * a transaction holds every operation that its builder's calls asked for, or none is
+     * built. A call that throws, as one refused for its arguments or a limit with
+     * IllegalArgumentException (each method's Throws), adds nothing, and spoils the builder:
+     * from then on build() and Db.execute(Trans.Builder) throw IllegalStateException, whose
+     * message names the first refused call and whose cause is its exception, and nothing is
+     * built or written; and every later call on the builder throws that IllegalStateException
+     * too, at once, so that a caller who catches the refusal and goes on learns it at the
+     * next call, not at the commit. Until 2026-11-12 the builder went on, and build() gave a
+     * transaction of the other calls. For another transaction, make a new builder
+     * (Db.trans()). A Trans that build() gave before the refusal is not changed.</p>
      */
     public static class Builder {
         // Note This class does not enforce uniqueness of elements in keyReadSet, kvs, vkeyHashes.
@@ -224,6 +235,9 @@ public class Trans {
         private ArrayList<Long> readHashes;    // hashes of keys read.
         private ArrayList<Long> virtualWriteHashes;    // virtual key hashes for virtual writes
         private WarmupGetData warmupGetData;
+        /** The first call's exception that spoiled the builder, or null (class Javadoc). */
+        private Throwable refusal;
+        private String refusedCall;
         
         public Builder() {
             kvs = new ArrayList<Kv>();
@@ -245,12 +259,20 @@ public class Trans {
          * @throws IllegalArgumentException  If key or value is null; for a null value, delete()
          *      deletes. If the key has more than Db.MAX_KEY_BYTES bytes (111), or the value
          *      more than Db.MAX_VALUE_BYTES (8 MiB) (Db, "Limits"; bergdb 024-17, L2, L4).
+         *      The call adds nothing and spoils the builder (the class Javadoc).
+         * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
          */
         public Builder put(byte[] key, byte[] value) {
-            checkKey(key);
-            checkKeyBytes(key.length);
-            checkValue(value);
-            kvs.add(new Kv(Keys.toSegments(key), value));
+            checkNotSpoiled("put");
+            try {
+                checkKey(key);
+                checkKeyBytes(key.length);
+                checkValue(value);
+                kvs.add(new Kv(Keys.toSegments(key), value));
+            } catch (RuntimeException | Error e) {
+                spoil("put", e);
+                throw e;
+            }
             return this;
         }
         
@@ -258,13 +280,22 @@ public class Trans {
          * As put(byte[], byte[]) with the key as segments (Keys.toSegments()).
          * 
          * @throws IllegalArgumentException  If key or value is null, or the key has no segment;
-         *      for a null value, delete() deletes.
+         *      for a null value, delete() deletes. If the key has more than Db.MAX_KEY_BYTES
+         *      bytes (111) as stored, or the value more than Db.MAX_VALUE_BYTES (8 MiB) (L2,
+         *      L4). The call adds nothing and spoils the builder (the class Javadoc).
+         * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
          */
         public Builder put(long[] key, byte[] value) {
-            checkSegments(key);
-            checkKeyBytes(keyBytes(key));
-            checkValue(value);
-            kvs.add(new Kv(key, value));
+            checkNotSpoiled("put");
+            try {
+                checkSegments(key);
+                checkKeyBytes(keyBytes(key));
+                checkValue(value);
+                kvs.add(new Kv(key, value));
+            } catch (RuntimeException | Error e) {
+                spoil("put", e);
+                throw e;
+            }
             return this;
         }
         
@@ -275,13 +306,24 @@ public class Trans {
          * the class Javadoc).
          * 
          * @throws IllegalArgumentException  If key or value is null, or the key has no segment.
+         *      If the key as written has more than Db.MAX_KEY_BYTES bytes (111), or the value
+         *      more than Db.MAX_VALUE_BYTES (8 MiB) (L2, L4); the key that the transformation
+         *      gives is checked by Db.execute() (Db, "Limits"). The call adds nothing and
+         *      spoils the builder (the class Javadoc).
+         * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
          */
         public Builder put(long[] key, KeyTransformation kt, byte[] value, ValueTransformation vt) {
-            checkSegments(key);
-            checkKeyBytes(keyBytes(key));
-            checkValue(value);
-            Kv kv = new Kv(key, value, kt, vt);
-            kvs.add(kv);
+            checkNotSpoiled("put");
+            try {
+                checkSegments(key);
+                checkKeyBytes(keyBytes(key));
+                checkValue(value);
+                Kv kv = new Kv(key, value, kt, vt);
+                kvs.add(kv);
+            } catch (RuntimeException | Error e) {
+                spoil("put", e);
+                throw e;
+            }
             return this;
         }
         
@@ -298,18 +340,26 @@ public class Trans {
          * operations (L1), the keys' bytes (L3) and the keys' and values' bytes (L5).
          * 
          * @throws IllegalArgumentException  If key or value is null, the key has no segment,
-         *      or it has more than Db.MAX_KEY_BYTES bytes and does not start with 01 25.
+         *      or it has more than Db.MAX_KEY_BYTES bytes and does not start with 01 25. The
+         *      call adds nothing and spoils the builder (the class Javadoc).
+         * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
          */
         public Builder putLongKey(long[] key, KeyTransformation kt, byte[] value, 
                 ValueTransformation vt) {
-            checkSegments(key);
-            checkLongKey(key);
-            if (value == null) {
-                checkValue(value);
+            checkNotSpoiled("putLongKey");
+            try {
+                checkSegments(key);
+                checkLongKey(key);
+                if (value == null) {
+                    checkValue(value);
+                }
+                Kv kv = new Kv(key, value, kt, vt);
+                kv.longKey = true;
+                kvs.add(kv);
+            } catch (RuntimeException | Error e) {
+                spoil("putLongKey", e);
+                throw e;
             }
-            Kv kv = new Kv(key, value, kt, vt);
-            kv.longKey = true;
-            kvs.add(kv);
             return this;
         }
         
@@ -318,14 +368,22 @@ public class Trans {
          * Db.MAX_KEY_BYTES under "/#" (putLongKey()).
          * 
          * @throws IllegalArgumentException  If key is null or has no segment, or it has more
-         *      than Db.MAX_KEY_BYTES bytes and does not start with 01 25.
+         *      than Db.MAX_KEY_BYTES bytes and does not start with 01 25. The call adds nothing
+         *      and spoils the builder (the class Javadoc).
+         * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
          */
         public Builder deleteLongKey(long[] key) {
-            checkSegments(key);
-            checkLongKey(key);
-            Kv kv = new Kv(key, null);
-            kv.longKey = true;
-            kvs.add(kv);
+            checkNotSpoiled("deleteLongKey");
+            try {
+                checkSegments(key);
+                checkLongKey(key);
+                Kv kv = new Kv(key, null);
+                kv.longKey = true;
+                kvs.add(kv);
+            } catch (RuntimeException | Error e) {
+                spoil("deleteLongKey", e);
+                throw e;
+            }
             return this;
         }
         
@@ -336,18 +394,27 @@ public class Trans {
          * @throws IllegalArgumentException  If the key or the value has a lone surrogate, a
          *      char of U+D800 to U+DFFF that is not part of a surrogate pair: UTF-8 cannot
          *      hold it, and its encoding would write '?' (bergdb 021-05). If key or value is
-         *      null, or the key is empty (Keys.toBytes()).
+         *      null, or the key is empty (Keys.toBytes()). If the key or the value is over its
+         *      limit, as for put(byte[], byte[]). The call adds nothing and spoils the
+         *      builder (the class Javadoc).
+         * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
          */
         public Builder put(String key, String value) {
-            checkKey(key);
-            checkValue(value);
-            if (StringUtil.hasLoneSurrogate(value)) {
-                throw new IllegalArgumentException("The value has a lone surrogate, a char "
-                        + "of U+D800 to U+DFFF that is not part of a surrogate pair. BergDB "
-                        + "stores every string as well-formed UTF-8, which cannot hold one "
-                        + "(bergdb 021-04, 021-05).");
+            checkNotSpoiled("put");
+            try {
+                checkKey(key);
+                checkValue(value);
+                if (StringUtil.hasLoneSurrogate(value)) {
+                    throw new IllegalArgumentException("The value has a lone surrogate, a char "
+                            + "of U+D800 to U+DFFF that is not part of a surrogate pair. BergDB "
+                            + "stores every string as well-formed UTF-8, which cannot hold one "
+                            + "(bergdb 021-04, 021-05).");
+                }
+                put(Keys.toBytes(key), StringUtil.toBytes(value));
+            } catch (RuntimeException | Error e) {
+                spoil("put", e);
+                throw e;
             }
-            put(Keys.toBytes(key), StringUtil.toBytes(value));
             return this;
         }
         
@@ -355,12 +422,21 @@ public class Trans {
          * Puts the value at the key's bkey (Keys.toBytes()).
          * 
          * @throws IllegalArgumentException  If key or value is null, or the key is empty or has
-         *      a lone surrogate, as for put(String, String).
+         *      a lone surrogate, as for put(String, String); if the key or the value is over
+         *      its limit, as for put(byte[], byte[]). The call adds nothing and spoils the
+         *      builder (the class Javadoc).
+         * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
          */
         public Builder put(String key, byte[] value) {
-            checkKey(key);
-            checkValue(value);
-            put(Keys.toBytes(key), value);
+            checkNotSpoiled("put");
+            try {
+                checkKey(key);
+                checkValue(value);
+                put(Keys.toBytes(key), value);
+            } catch (RuntimeException | Error e) {
+                spoil("put", e);
+                throw e;
+            }
             return this;
         }
         
@@ -371,11 +447,17 @@ public class Trans {
          * Long.MAX_VALUE by default, which checks nothing; a time that Db.currentTime() or a
          * read's actual lookup time gave.
          * 
-         * @throws IllegalArgumentException  If lookupTime is negative.
+         * @throws IllegalArgumentException  If lookupTime is negative. The call sets nothing
+         *      and spoils the builder (the class Javadoc).
+         * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
          */
         public Builder lookupTime(long lookupTime) {
+            checkNotSpoiled("lookupTime");
             if (lookupTime < 0) {
-                throw new IllegalArgumentException("lookupTime = " + lookupTime);
+                IllegalArgumentException e = new IllegalArgumentException("lookupTime = "
+                        + lookupTime);
+                spoil("lookupTime", e);
+                throw e;
             }
             
             this.builderLookupTime = lookupTime;
@@ -385,15 +467,25 @@ public class Trans {
         /**
          * Adds a key that the transaction read, as segments (Keys.toSegments()), with a value
          * or without: a put or a delete of it by a transaction after the read time
-         * (lookupTime()) is a conflict. Kept as its hash, Keys.hash().
+         * (lookupTime()) is a conflict. Kept as its hash, Keys.hash(). Its length is not
+         * checked: Db.MAX_KEY_BYTES (L2) is a limit of the keys a transaction writes, and a
+         * read key is only a hash.
          * 
-         * @throws IllegalArgumentException  If key is null or has no segment.
+         * @throws IllegalArgumentException  If key is null or has no segment. The call adds
+         *      nothing and spoils the builder (the class Javadoc).
+         * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
          */
         public Builder keyRead(long[] key) {
-            checkSegments(key);
-            long[] segments = key;
-            long hash = Keys.hash(segments);
-            readHashes.add(hash);
+            checkNotSpoiled("keyRead");
+            try {
+                checkSegments(key);
+                long[] segments = key;
+                long hash = Keys.hash(segments);
+                readHashes.add(hash);
+            } catch (RuntimeException | Error e) {
+                spoil("keyRead", e);
+                throw e;
+            }
             return this;
         }
         
@@ -401,23 +493,39 @@ public class Trans {
          * As keyRead(long[]) of the key's segments (Keys.toSegments()).
          * 
          * @throws IllegalArgumentException  If key is null, empty or has a lone surrogate
-         *      (Keys.toBytes()).
+         *      (Keys.toBytes()). The call adds nothing and spoils the builder (the class
+         *      Javadoc).
+         * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
          */
         public Builder keyRead(String key) {
-            checkKey(key);
-            long[] segments = Keys.toSegments(key);
-            return keyRead(segments);
+            checkNotSpoiled("keyRead");
+            try {
+                checkKey(key);
+                long[] segments = Keys.toSegments(key);
+                return keyRead(segments);
+            } catch (RuntimeException | Error e) {
+                spoil("keyRead", e);
+                throw e;
+            }
         }
         
         /**
          * Adds a hash that the transaction read: a key's, Keys.hash(), as keyRead() adds, or a
          * virtual one, that a transaction writes with addVirtualWriteHash().
          * 
-         * @throws IllegalArgumentException  If hash is negative.
+         * @throws IllegalArgumentException  If hash is negative. The call adds nothing and
+         *      spoils the builder (the class Javadoc).
+         * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
          */
         public final Builder addReadHash(long hash) {
-            checkHash(hash);
-            readHashes.add(hash);
+            checkNotSpoiled("addReadHash");
+            try {
+                checkHash(hash);
+                readHashes.add(hash);
+            } catch (RuntimeException | Error e) {
+                spoil("addReadHash", e);
+                throw e;
+            }
             return this;
         }
         
@@ -425,9 +533,22 @@ public class Trans {
          * As addReadHash() for each of the first 'length' hashes.
          * 
          * @throws IllegalArgumentException  If hashes is null, length is outside 0 to
-         *      hashes.length, or one of the hashes is negative; nothing is added then.
+         *      hashes.length, or one of the hashes is negative; nothing is added then, and the
+         *      call spoils the builder (the class Javadoc).
+         * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
          */
         public final Builder addReadHashes(long[] hashes, final int length) {
+            checkNotSpoiled("addReadHashes");
+            try {
+                addReadHashes0(hashes, length);
+            } catch (RuntimeException | Error e) {
+                spoil("addReadHashes", e);
+                throw e;
+            }
+            return this;
+        }
+        
+        private void addReadHashes0(long[] hashes, final int length) {
             if (hashes == null) {
                 throw new IllegalArgumentException("hashes == null not allowed");
             }
@@ -444,43 +565,70 @@ public class Trans {
             for (int i = 0; i < length; i++) {
                 readHashes.add(hashes[i]);
             }
-            return this;
         }
         
         /**
          * Deletes the key's value; the key is the String's bkey (Keys.toBytes()).
          * 
-         * @throws IllegalArgumentException  If key is null, empty or has a lone surrogate.
+         * @throws IllegalArgumentException  If key is null, empty or has a lone surrogate, or
+         *      has more than Db.MAX_KEY_BYTES bytes (111) as stored (L2). The call adds nothing
+         *      and spoils the builder (the class Javadoc).
+         * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
          */
         public Builder delete(String key) {
-            checkKey(key);
-            return delete(Keys.toBytes(key));
+            checkNotSpoiled("delete");
+            try {
+                checkKey(key);
+                return delete(Keys.toBytes(key));
+            } catch (RuntimeException | Error e) {
+                spoil("delete", e);
+                throw e;
+            }
         }
 
         /**
          * Deletes the key's value. A delete of a key without a value stores nothing
          * (Db.getTrans()). Of this builder's calls on the key the last one counts: the
          * delete replaces a put made before it, and a put made after it replaces the delete
-         * (build()).
+         * (build()). A delete is an operation of the transaction whether the key has a value
+         * or not: it counts towards Db.MAX_OPERATIONS (L1) as a put does (Db, "Limits").
          * 
-         * @throws IllegalArgumentException  If key is null.
+         * @throws IllegalArgumentException  If key is null, or has more than Db.MAX_KEY_BYTES
+         *      bytes (111) (L2). The call adds nothing and spoils the builder (the class
+         *      Javadoc).
+         * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
          */
         public Builder delete(byte[] key) {
-            checkKey(key);
-            checkKeyBytes(key.length);
-            kvs.add(new Kv(Keys.toSegments(key), null));
+            checkNotSpoiled("delete");
+            try {
+                checkKey(key);
+                checkKeyBytes(key.length);
+                kvs.add(new Kv(Keys.toSegments(key), null));
+            } catch (RuntimeException | Error e) {
+                spoil("delete", e);
+                throw e;
+            }
             return this;
         }
         
         /**
          * As delete(byte[]) with the key as segments (Keys.toSegments()).
          * 
-         * @throws IllegalArgumentException  If key is null or has no segment.
+         * @throws IllegalArgumentException  If key is null or has no segment, or has more than
+         *      Db.MAX_KEY_BYTES bytes (111) as stored (L2). The call adds nothing and spoils
+         *      the builder (the class Javadoc).
+         * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
          */
         public Builder delete(long[] key) {
-            checkSegments(key);
-            checkKeyBytes(keyBytes(key));
-            kvs.add(new Kv(key, null));
+            checkNotSpoiled("delete");
+            try {
+                checkSegments(key);
+                checkKeyBytes(keyBytes(key));
+                kvs.add(new Kv(key, null));
+            } catch (RuntimeException | Error e) {
+                spoil("delete", e);
+                throw e;
+            }
             return this;
         }
 
@@ -490,12 +638,44 @@ public class Trans {
          * read time then gets RerunException, so that transactions that share no key can
          * conflict (Db, "Optimistic transactions").
          * 
-         * @throws IllegalArgumentException  If hash is negative.
+         * @throws IllegalArgumentException  If hash is negative. The call adds nothing and
+         *      spoils the builder (the class Javadoc).
+         * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
          */
         public Builder addVirtualWriteHash(long hash) {
-            checkHash(hash);
-            virtualWriteHashes.add(hash);
+            checkNotSpoiled("addVirtualWriteHash");
+            try {
+                checkHash(hash);
+                virtualWriteHashes.add(hash);
+            } catch (RuntimeException | Error e) {
+                spoil("addVirtualWriteHash", e);
+                throw e;
+            }
             return this;
+        }
+        
+        /**
+         * Spoils the builder with the call's exception, unless an earlier one did (bergdb
+         * 024-27; the class Javadoc); the call then throws e.
+         */
+        private void spoil(String call, Throwable e) {
+            if (refusal == null) {
+                refusal = e;
+                refusedCall = call;
+            }
+        }
+        
+        /**
+         * Refuses a call on a spoiled builder (the class Javadoc): with IllegalStateException
+         * that names the first refused call, its exception the cause.
+         */
+        private void checkNotSpoiled(String call) {
+            if (refusal != null) {
+                throw new IllegalStateException(call + "() on a spoiled Trans.Builder: its "
+                        + refusedCall + "() was refused (" + refusal + "), so the transaction "
+                        + "would lack an operation, and nothing of it is built or written; "
+                        + "make a new builder (bergdb 024-26, U26-5; 024-27).", refusal);
+            }
         }
         
         /** A null key refused (bergdb 020-27, Q2). */
@@ -583,8 +763,13 @@ public class Trans {
          * transformations make two of its keys one key is refused at the commit (bergdb
          * 024-16; Db.transformKeys). Until release 2026.4 the last put was kept, or a delete if
          * there was no put (bergdb 015-40).
+         * 
+         * @throws IllegalStateException  If the builder is spoiled: a call was refused, so the
+         *      transaction would lack what it asked for; nothing is built (the class Javadoc).
+         *      The message names the first refused call, and the cause is its exception.
          */
         public Trans build() {
+            checkNotSpoiled("build");
             // We use a TreeMap to sort and to avoid duplicates.
             // Could be done while we add KVs too.
             
@@ -634,6 +819,65 @@ public class Trans {
             }
         }
         new Trans.Builder().put("k?\uD83D\uDE00", "v?\uD83D\uDE00");     // pairs are text
+    }
+    
+    /**
+     * bergdb 024-26, U26-5 (Frans, 2026-11-12, option B; 024-27): a call refused for its
+     * arguments or a limit spoils the Trans.Builder. For each refusal (a key over 111 bytes in
+     * a put and in a delete, a value over 8 MiB, a null value, a negative hash, a negative
+     * read time, a null read key), every later call, build() and Db.execute(Builder) throw
+     * IllegalStateException that names the refused call, with the refusal as its cause, and
+     * nothing is written. A Trans built before the refusal still runs. Until 2026-11-12 the
+     * builder went on, and its build() gave the other operations.
+     */
+    @Nano
+    static void testRefusedCallSpoilsBuilder() {
+        final byte[] longKey = new byte[Db.MAX_KEY_BYTES + 1];
+        final String[] calls = {"put", "delete", "put", "put", "addReadHash", "lookupTime",
+                "keyRead"};
+        final Db db = Db.builder().testSetup().start();
+        try {
+            for (int i = 0; i < calls.length; i++) {
+                final Trans.Builder b = db.trans().put("a" + i, "1");
+                final Trans before = b.build();
+                IllegalArgumentException refusal = null;
+                try {
+                    switch (i) {
+                    case 0: b.put(longKey, new byte[1]); break;
+                    case 1: b.delete(longKey); break;
+                    case 2: b.put(new byte[] {1}, new byte[Db.MAX_VALUE_BYTES + 1]); break;
+                    case 3: b.put("k", (byte[]) null); break;
+                    case 4: b.addReadHash(-1); break;
+                    case 5: b.lookupTime(-1); break;
+                    default: b.keyRead((String) null); break;
+                    }
+                    throw new AssertionError("not refused: " + i);
+                } catch (IllegalArgumentException e) {
+                    refusal = e;
+                }
+                Runnable[] later = {() -> b.put("b", "2"), () -> b.delete("b"),
+                        () -> b.keyRead("b"), () -> b.addVirtualWriteHash(1),
+                        () -> b.lookupTime(1), () -> b.build(), () -> db.execute(b)};
+                for (int j = 0; j < later.length; j++) {
+                    try {
+                        later[j].run();
+                        throw new AssertionError("spoiled builder took call " + j + ", " + i);
+                    } catch (IllegalStateException e) {
+                        Assert.assertTrue(e.getMessage(), e.getMessage().contains(
+                                "spoiled Trans.Builder: its " + calls[i] + "() was refused"));
+                        Assert.assertTrue("the cause", refusal == e.getCause());
+                    }
+                }
+                Assert.assertNull(DbUtil.get(db, Long.MAX_VALUE, "a" + i));
+                db.execute(before);
+                Assert.assertArrayEquals(StringUtil.toBytes("1"),
+                        DbUtil.get(db, Long.MAX_VALUE, "a" + i));
+            }
+            db.execute(db.trans().put("c", "3"));         // a new builder works
+            Assert.assertArrayEquals(StringUtil.toBytes("3"), DbUtil.get(db, Long.MAX_VALUE, "c"));
+        } finally {
+            db.close();
+        }
     }
     
     /** bergdb 005-21: a negative key hash is refused when the transaction is built. */

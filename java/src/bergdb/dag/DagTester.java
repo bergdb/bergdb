@@ -664,6 +664,33 @@ public class DagTester {
      * first iterations without the in-place repoint of Dag.spaceSplitInPlace, the segment
      * leaf's second klong of tt to the new root shadowing the one that still named the root.
      */
+    /**
+     * 62 is the largest node size (bergdb 024-19, Q6): a Dag of 63 or more is refused when it
+     * is made, by both constructors, with a message that names 62; 62 is taken.
+     */
+    @Nano
+    public static void testNodeSizeAbove62Refused() {
+        Assert.assertEquals(62, Dag.MAX_NODE_SIZE);
+        Assert.assertEquals(Dag.MAX_NODE_SIZE, Klong.DELETE_BITS.length);
+        Dag.createEmpty(0, 62, DUMMY_POINTER_FOLLOWER, Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
+        for (int b : new int[] {63, 64, 126}) {
+            try {
+                Dag.createEmpty(0, b, DUMMY_POINTER_FOLLOWER,
+                        Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
+                throw new AssertionError("createEmpty took node size " + b);
+            } catch (IllegalArgumentException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains(
+                        "The node size " + b + " is above 62, the largest"));
+            }
+            try {
+                new Dag(null, b);
+                throw new AssertionError("new Dag took node size " + b);
+            } catch (IllegalArgumentException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("above 62"));
+            }
+        }
+    }
+    
     @Nano
     public static void testNoKlongNamesATakenBackNode() {
         Random r = new Random(1);

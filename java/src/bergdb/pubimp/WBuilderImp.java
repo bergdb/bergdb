@@ -14,6 +14,10 @@ import bergdb.pub.WBuilder;
  * Until 2026-11-09 the threads' puts broke the environment's HashMaps: some were lost, with
  * no error, or a thread spun in the map for as long as the JVM ran.</p>
  * 
+ * <p>A put() or delete() that throws spoils the builder (WBuilder; bergdb 024-26, U26-5;
+ * 024-27): 'refusal' keeps the first such exception, and every later call, execute() too,
+ * throws IllegalStateException with it as the cause, before anything runs.</p>
+ * 
  * @see bergdb.pub.WBuilder
  * @author Frans Lundberg
  */
@@ -21,6 +25,8 @@ class WBuilderImp implements WBuilder {
     private ConnectionImp connection;
     private RwEnvironmentImp env;
     private boolean spent;                  // execute() was called (bergdb 020-21, 2)
+    private Throwable refusal;              // the first refused call's exception, or null
+    private String refusedCall;
     
     public WBuilderImp(ConnectionImp connection) {
         assert connection != null;
@@ -30,17 +36,30 @@ class WBuilderImp implements WBuilder {
     
     /**
      * @throws IllegalArgumentException  
-     *      If 'key' is null or otherwise invalid, or if object is null.
+     *      If 'key' is null or otherwise invalid, or if object is null; the builder is then
+     *      spoiled.
      */
     public synchronized WBuilder put(String ukey, Object object) {
         checkNotSpent("put");
-        env.put(ukey, object);
+        checkNotSpoiled("put");
+        try {
+            env.put(ukey, object);
+        } catch (RuntimeException | Error e) {
+            spoil("put", e);
+            throw e;
+        }
         return this;
     }
     
     public synchronized WBuilder delete(String ukey) {
         checkNotSpent("delete");
-        env.delete(ukey);
+        checkNotSpoiled("delete");
+        try {
+            env.delete(ukey);
+        } catch (RuntimeException | Error e) {
+            spoil("delete", e);
+            throw e;
+        }
         return this;
     }
     
@@ -50,10 +69,11 @@ class WBuilderImp implements WBuilder {
      * 
      * @throws DbException if the database is faulty.
      * @throws IllegalStateException  If another thread is in a call of the connection; the
-     *      builder is not spent then.
+     *      builder is not spent then. If the builder is spoiled: nothing runs.
      */
     public synchronized Transaction execute() {
         checkNotSpent("execute");
+        checkNotSpoiled("execute");
         final boolean outer = connection.enter();
         try {
             spent = true;
@@ -74,6 +94,28 @@ class WBuilderImp implements WBuilder {
         if (spent) {
             throw new IllegalStateException(call + "() after execute(): the builder is spent; "
                     + "get a new one with Connection.w().");
+        }
+    }
+    
+    /** Keeps the first refused call's exception (the class Javadoc). */
+    private void spoil(String call, Throwable e) {
+        if (refusal == null) {
+            refusal = e;
+            refusedCall = call;
+        }
+    }
+    
+    /**
+     * A builder is spoiled by a refused put() or delete() (WBuilder; bergdb 024-26, U26-5):
+     * until 2026-11-12 a caller that caught the refusal and called execute() committed the
+     * other operations, against the package's "all of them, or none".
+     */
+    private void checkNotSpoiled(String call) {
+        if (refusal != null) {
+            throw new IllegalStateException(call + "() on a spoiled builder: its " + refusedCall
+                    + "() was refused (" + refusal + "), so the transaction would lack an "
+                    + "operation; nothing of it is written. Get a new builder with "
+                    + "Connection.w() (bergdb 024-26, U26-5).", refusal);
         }
     }
 }

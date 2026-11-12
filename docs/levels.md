@@ -419,8 +419,8 @@ How it works in Java:
   merges alone allow B, and reclaim's rewrites, which are puts, compact
   the cold leaves that they take above theta. A compaction keeps every
   live klong, so the fill (m, BU1) does not change. theta is 7 at node
-  size 30, 7 B / 30 at the others, at least 1, none below 8 (`Dag.theta`;
-  024-14's QT2 open).
+  size 30, 7 B / 30 at the others, at least 2, none below 8 (`Dag.theta`;
+  024-19, Q4; 024-14's QT2 open).
   `Dag.dirtyNodeBound` counts one overflow at least for a node that its
   klongs can take above theta. The rerun of a record does the same; no
   field.

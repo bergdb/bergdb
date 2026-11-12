@@ -45,17 +45,42 @@ public class Dag {
     private final TopDs topDs;
     private final int maxNodeSize;
     
+    /**
+     * The largest node size, 62 (Frans, 2026-11-12; bergdb 024-19, Q6): a delete bitmap is one
+     * klong of 62 bits, one for each klong index of its node (Klong.DELETE_BITS; bergdb 024-02,
+     * section 11.2). DbBuilder offers 8, 14, 30 (the default and the Pub API's) and 62; a Dag
+     * refuses a larger size when it is made (checkNodeSize).
+     */
+    public static final int MAX_NODE_SIZE = 62;
+    
+    /** @throws IllegalArgumentException  If maxNodeSize is above MAX_NODE_SIZE, 62. */
     public Dag(TopNode superRoot, int maxNodeSize) {
+        checkNodeSize(maxNodeSize);
         this.topDs = new TopDs(superRoot);
         this.maxNodeSize = maxNodeSize;
     }
     
     /**
+     * Refuses a node size above MAX_NODE_SIZE (bergdb 024-19, Q6). Until 2026-11-12 a Dag took
+     * any size, and one above 62 failed at its first delete bit beyond 61 (024-19, 2.2).
+     */
+    private static void checkNodeSize(int maxNodeSize) {
+        if (maxNodeSize > MAX_NODE_SIZE) {
+            throw new IllegalArgumentException("The node size " + maxNodeSize + " is above "
+                    + MAX_NODE_SIZE + ", the largest: a delete bitmap names " + MAX_NODE_SIZE
+                    + " klongs of its node (bergdb 024-19, Q6).");
+        }
+    }
+    
+    /**
      * Factory method to create minimal Dag with two nodes: a top node and a key node.
      * The database is empty; no KVs.
+     * 
+     * @throws IllegalArgumentException  If maxNodeSize is above MAX_NODE_SIZE, 62.
      */
     public static Dag createEmpty(long time, int maxNodeSize, PointerFollower pointerFollower, 
             Dag.PointerCreatedListener pointerCreationListener) {
+        checkNodeSize(maxNodeSize);
         return new Dag(time, maxNodeSize, pointerFollower, pointerCreationListener);
     }
     
@@ -1864,14 +1889,20 @@ public class Dag {
     /** theta at node size 30 (Frans, 2026-11-11; bergdb 024-18, QD1). */
     static final int THETA_30 = 7;
 
+    /** The least theta from node size 8 (Frans, 2026-11-12; bergdb 024-19, Q4). */
+    static final int THETA_MIN = 2;
+
     /**
-     * theta for node size 'b': THETA_30 * b / 30 by integer division, at least 1, from node size
-     * 8 (1 at 8, 3 at 14, 14 at 62); 0, off, below it, where format 7 merges nothing either
+     * theta for node size 'b': THETA_30 * b / 30 by integer division, at least 2, from node size
+     * 8 (2 at 8, 3 at 14, 14 at 62); 0, off, below it, where format 7 merges nothing either
      * (bergdb 024-23, OD2; other node sizes are open with 024-14's QT2). A rule of record
-     * format 7, as the thresholds are.
+     * format 7, as the thresholds are. The floor was 1 until 2026-11-12 (Frans, 024-19, Q4):
+     * theta 1 at 8 compacted a node at every second dead klong and cost 25 percent of the
+     * bytes a put (024-19, section 4.5).
      */
     public static int theta(int b) {
-        return b < MERGE_MIN_NODE_SIZE ? 0 : Math.max(1, THETA_30 * b / THRESHOLDS_NODE_SIZE);
+        return b < MERGE_MIN_NODE_SIZE ? 0
+                : Math.max(THETA_MIN, THETA_30 * b / THRESHOLDS_NODE_SIZE);
     }
 
     /** Compactions made by option 2; written by the writer only. */

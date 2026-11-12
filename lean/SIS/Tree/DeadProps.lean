@@ -21,15 +21,15 @@ open SIS SIS.Check
 
 /-! ## theta -/
 
-/-- theta at the node sizes of a database (024-23, OD2): 1, 3, 7 and 14 at 8,
-14, 30 and 62; off below 8. -/
+/-- theta at the node sizes of a database (024-23, OD2; 024-19, Q4): 2, 3, 7 and
+14 at 8, 14, 30 and 62; off below 8. -/
 theorem thetaFor_values :
-    Params.thetaFor 8 = 1 ∧ Params.thetaFor 14 = 3 ∧ Params.thetaFor 30 = 7 ∧
+    Params.thetaFor 8 = 2 ∧ Params.thetaFor 14 = 3 ∧ Params.thetaFor 30 = 7 ∧
       Params.thetaFor 62 = 14 ∧ Params.thetaFor 6 = 0 := by
   decide
 
-/-- From node size 8 theta is on. -/
-theorem thetaFor_pos (m : Nat) (h : 8 ≤ m) : 1 ≤ Params.thetaFor m := by
+/-- From node size 8 theta is on, and at least 2 (024-19, Q4). -/
+theorem thetaFor_pos (m : Nat) (h : 8 ≤ m) : 2 ≤ Params.thetaFor m := by
   simp only [Params.thetaFor, show ¬ m < 8 from by omega, ↓reduceIte]
   omega
 
