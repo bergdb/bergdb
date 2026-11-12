@@ -2631,14 +2631,15 @@ public class DbTester {
     }
     
     /**
-     * bergdb 021-27, open (found by a black-box user of the C port (022), U2-4): getTrans at
-     * a multiple of 8 inside a committed transaction's record, not at its start, passes the
-     * checks of testGetTransRefusesBadPositions, reads the bytes there as a record, and fails
-     * the database, as the Javadoc says ("the bytes at 'tpos' are not a committed
-     * transaction"): DbFailedException, and every later call throws it until a restart. A
-     * caller's wrong position is not told apart from damage at a transaction's position;
-     * 021-27 has the options. This test keeps today's behaviour: a fix that refuses such a
-     * position with IllegalArgumentException, the database going on, changes it.
+     * bergdb 021-27 (found by a black-box user of the C port (022), U2-4): getTrans at a
+     * multiple of 8 inside a committed transaction's record, not at its start, passes the
+     * checks of testGetTransRefusesBadPositions and reads the bytes there as a record. It
+     * failed the database (DbFailedException, and every later call threw it until a
+     * restart). Since 2026-11-12 (Frans: a read-only call with a position from the caller
+     * "should fail or succeed, but never block the database"; 010-04, R5) Db.getTrans()
+     * takes the position as a caller's and refuses it: IllegalArgumentException, the read's
+     * StreamFormatException its cause, and the database goes on. Until then this test kept
+     * the old behaviour, as its Javadoc said it.
      */
     @Nano
     public static void testGetTransInsideARecord() {
@@ -2656,16 +2657,74 @@ public class DbTester {
                 } catch (Throwable x) {
                     e = x;
                 }
-                assertTrue("tpos + " + offset + ": " + e, e instanceof DbFailedException);
-                try {
-                    DbUtil.getString(db, "/a");
-                    throw new AssertionError("the database went on, tpos + " + offset);
-                } catch (DbFailedException expected) {
-                    // The database has failed.
-                }
+                assertTrue("tpos + " + offset + ": " + e, e instanceof IllegalArgumentException);
+                assertTrue("the position, " + e, e.getMessage().startsWith(
+                        "Not a position of a transaction, " + (t.tpos + offset) + ":"));
+                assertEquals("the database goes on, tpos + " + offset, value,
+                        DbUtil.getString(db, "/a"));
+                assertEquals(t.tt, db.getTrans(t.tpos).tt);
+                db.execute(db.trans().put("/b", "b0").build());
+                assertEquals("b0", DbUtil.getString(db, "/b"));
             } finally {
                 db.stop();
             }
+        }
+    }
+    
+    /**
+     * bergdb 021-27: every multiple of 8 inside a record that reaches over two meta blocks,
+     * of random values and keys, is refused by getTrans with IllegalArgumentException, or
+     * gives a StoredTrans where the bytes there happen to form a committed record (the
+     * caller's position is the caller's responsibility; none is expected here); the database
+     * goes on. The positions in the meta blocks inside the record are refused before the
+     * read (bergdb 005-34). Last, a position inside the last record, at the stream's end.
+     */
+    @Nano
+    public static void testGetTransInsideARecordOverMetaBlocks() {
+        final int d = RecoverableStream.META_BLOCK_DISTANCE;
+        final Random random = new Random(2127);
+        final byte[] big = new byte[2 * d + 1000];
+        random.nextBytes(big);
+        Db db = Db.builder().testSetup().start();
+        try {
+            Trans.Builder b = db.trans();
+            for (int i = 0; i < 20; i++) {
+                byte[] v = new byte[random.nextInt(200)];
+                random.nextBytes(v);
+                b.put("/k" + i, v);
+            }
+            b.put("/big", big);
+            Trans t = b.build();
+            db.execute(t);
+            assertTrue("over two meta blocks", t.lastPos / d - t.tpos / d == 2);
+            Trans t2 = db.trans().put("/a", "a0").build();
+            db.execute(t2);
+            int refused = 0;
+            for (long pos = t.tpos + 8; pos < t.lastPos; pos += 8) {
+                try {
+                    StoredTrans st = db.getTrans(pos);
+                    assertTrue("a record of the bytes at " + pos, st.tpos == pos);
+                } catch (IllegalArgumentException e) {
+                    refused++;
+                }
+            }
+            assertTrue("refused " + refused, refused > (t.lastPos - t.tpos) / 8 - 5);
+            assertTrue("the end's record", t2.tpos + 16 < t2.lastPos);
+            for (long pos = t2.tpos + 8; pos < t2.lastPos; pos += 8) {
+                try {
+                    db.getTrans(pos);
+                    throw new AssertionError("taken, " + pos);
+                } catch (IllegalArgumentException e) {
+                    // Expected.
+                }
+            }
+            assertEquals("the database goes on", t.tt, db.getTrans(t.tpos).tt);
+            assertEquals(t2.tt, db.getTrans(t2.tpos).tt);
+            assertArrayEquals(big, DbUtil.get(db, "/big"));
+            db.execute(db.trans().put("/b", "b0").build());
+            assertEquals("b0", DbUtil.getString(db, "/b"));
+        } finally {
+            db.stop();
         }
     }
     

@@ -220,7 +220,9 @@ class ConnectionImp implements Connection {
         
         // A record that the writer has not appended in whole yet: getTrans waits for it
         // (bergdb 021-13). It threw IllegalArgumentException, or failed the database.
-        StoredTrans stored = db.getTrans(getData.tpos);
+        // Internal.getTrans(): the position is the database's, a get's, so a record there that
+        // is not a committed transaction is damage (bergdb 021-27).
+        StoredTrans stored = db.internal().getTrans(getData.tpos);
         
         // A record of reclaim's is not the transaction that wrote the value: reclaim has
         // rewritten the value, in a step of its own, so that the transaction that wrote it
@@ -275,7 +277,7 @@ class ConnectionImp implements Connection {
                 throw notACopy(stored, "the key's value before it is not stored before it, "
                         + "but at " + before.tpos);
             }
-            stored = db.getTrans(before.tpos);
+            stored = db.internal().getTrans(before.tpos);
         }
         final StoredTrans storedTrans = stored;
         
