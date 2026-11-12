@@ -55,7 +55,8 @@ own", and section 7):
 
 From the release night of 2026.4 (2026-11-10):
 
-* **A time klong's unused bits** (56 to 61) are not checked:
+* **Done 2026-11-12 (0420c72e; 024-25, section 12).** **A time klong's
+  unused bits** (56 to 61) are not checked:
   `StoredKeyNode.parse` should refuse a time klong whose bits 56 to 61 are
   not zero ("Bad time klong", a `StreamFormatException`, beside its check
   of the klong's type, 019-32). Found by CorruptStreamTester's seed 20775

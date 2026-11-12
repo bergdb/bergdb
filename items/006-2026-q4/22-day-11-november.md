@@ -442,6 +442,13 @@ from them.
   transactions that repeat or misorder keys, so it needs the premise
   that Java's transactions meet (one operation a key, sorted; 024-16).
   TP32 for sorted transactions is the third run's goal (04:12).
+* 02:30 024-20 (compact stored form) done on format 7: for 2026.6.
+  03:05 a stale constant after CRC32C fixed (reclaim's value-node bytes,
+  6cf6607b). 03:05 to 05:39 night.sh run 2 on main: all OK but one night
+  test: CorruptStreamTester reached 024's open item (a time klong's
+  unused bits not checked); 06:01 fixed and landed (0420c72e; gates
+  before-commit, CorruptStreamTester's night set, level1, level2).
+  04:12 Codex's third run (TP32 for sorted transactions), to 06:40.
 
 
 ## 6. Outcome
