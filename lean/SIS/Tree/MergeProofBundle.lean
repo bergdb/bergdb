@@ -7,3 +7,6 @@ import SIS.Tree.MergeSortedExamples
 import SIS.Tree.MergeRootWrites
 import SIS.Tree.MergeHeightSplit
 import SIS.Tree.MergeLiveOrder
+import SIS.Tree.MergeProtectedMerge
+import SIS.Tree.MergePathCache
+import SIS.Tree.MergeSortedTight
