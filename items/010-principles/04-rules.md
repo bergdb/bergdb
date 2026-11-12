@@ -145,6 +145,9 @@ Cases:
   database; refused with `IllegalArgumentException` since 2026-11-12
   (without a walk; above 1 MiB a walk of the record headers confirms
   a record's start before its array is made, Q27-1).
+* CA3 (024-37): a Core put under the Core's own keys
+  (`/#i/dreclaim/-settings.txt`) made every later start fail; refused
+  since 2026-11-12, `/#i/-dummy` and `/#i/dreclaim/` reserved to the Core.
 * A value transformation (Core API) that throws, or whose result passes
   8 MiB, fails the database in 2026.5: to change in 2026.6 (Frans,
   2026-11-12, 14:42: "Yes to R5 and for 2026.6. I don't see it as a

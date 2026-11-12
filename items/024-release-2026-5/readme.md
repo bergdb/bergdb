@@ -328,6 +328,9 @@ Files
   the lock file and frees the directory in one hold of the monitor that
   lockDir checks under; s1 JDK 17: 19 refusals in 60,000 tests before, 0
   after. On main since 2026-11-12.
+* 37-core-keys.md. 024-37, CA3 fixed (010-04, R5): the Core refuses a
+  caller's puts and deletes under its own keys (/#i/-dummy and
+  /#i/dreclaim/); its own writes pass. On main since 2026-11-12.
 
 
 Log
