@@ -448,7 +448,7 @@ public class ReclaimCost {
                 stepDirt += it.dirtiedNodes;
                 stepDirtBytes += it.dirtiedBytes;
                 steps += it.steps;
-                valBytes += it.valueBytes + 28 * it.values;
+                valBytes += it.valueBytes + StoredValueNode.VALUE_OVERHEAD * it.values;
                 maxStepDirt = Math.max(maxStepDirt, it.maxStepDirtied);
             }
             if (iters > 0) {
