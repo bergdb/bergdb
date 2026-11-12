@@ -45,6 +45,7 @@ high.
 | 010-04 | Rules, beside the principles: R1 to R3 from 024-27 (R4 removed) | coordinator | written |
 | 010-01 | P14, the Pub API cannot destroy the database's integrity | coordinator | written |
 | 024-28 | The release checklist of 2026.5 | check (high) | done 10:37 |
+| 024-29 | Reclaim's fraction: previous work, how to compare, the default | frac (high) | done 11:15 |
 
 024-27 lands on its gates, by Frans's decisions of 07:36: its changed
 expected values follow from them.
@@ -133,6 +134,21 @@ from them.
   history is kept and available. The stream grows proportional to the
   history kept. Cost follows value." The four aims of 024-04 added near
   the top of 024's readme ("Bugs first" kept as it is).
+* 11:04 Frans: investigate 0.25, 0.40 and 0.50 as the default of
+  reclaim's fraction; previous work first; how to judge and compare;
+  guidance for users; maybe a few distinct settings. frac started
+  (11:05), 024-29.
+* 11:13 Frans: the Pub API without a setter for the fraction "may not
+  be so bad actually. If we can find a internal fraction that always
+  works, that is good. Advanced users could still set it using core
+  layer if really needed. [...] But for the sake of testing, it still
+  seems right to define three recommended values somehow." Sent to frac.
+* 11:15 frac done (024-29): 0.25 since the 2013 Git's first commit, no
+  reason recorded (Frans's 2012-07 note: fixed, 0.4 to 0.7 of the user's
+  writes, "not needed as a setting"); 0.5 measured once (011-04); a step
+  cap (16 kB a user transaction) often paces reclaim, not f; a plan of
+  4 to 5 h of F53 for 1/4, 3/8, 1/2; QF29-1 to QF29-5. Frans waits for
+  it before deciding.
 
 
 ## 6. Outcome

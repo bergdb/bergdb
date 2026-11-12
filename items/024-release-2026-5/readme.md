@@ -289,6 +289,11 @@ Files
   and the 2026.4 release recipe on format 7, aim 4's open proofs, the
   bounds of aims 2 and 3 not yet tests; the decisions for Frans and the
   small cases still open.
+* 29-reclaim-fraction.md. 024-29, reclaim's internal fraction (0.25
+  since 2013): previous work and where 0.25 came from, how to compare
+  (same history kept), a measurement plan for 1/4, 3/8 and 1/2, three
+  recommended values; a step cap of 16 kB a transaction found; QF29-1 to
+  QF29-5.
 
 
 Log
