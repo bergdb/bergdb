@@ -34,27 +34,30 @@
 #      EvictionInvariance, LargerThanMemory, ...), conformance with the Lean
 #      model (the small, drain, reclaim and evict sets), and level1.sh's MEM
 #      and SS limits.
-#   4. stress/lean-tests.sh: the Lean model's test programs, sistest,
+#   4. stress/count-gates.sh: count gates of aims 2 and 3 of release 2026.5
+#      at 1M keys (the largest record, the reachable key nodes against a
+#      twin's, the stream kept under reclaim); about 3 minutes (bergdb 024-30).
+#   5. stress/lean-tests.sh: the Lean model's test programs, sistest,
 #      phystest and reclaimtest, at small sizes; about 4.5 minutes (bergdb
 #      021-03).
-#   5. The night tests.
-#   6. stress/harness-soak.sh -r 2: two rounds of the Pub layer's randomized
+#   6. The night tests.
+#   7. stress/harness-soak.sh -r 2: two rounds of the Pub layer's randomized
 #      harnesses (IndexHarness, IndexJobsHarness, PrimaryHarness, the object
 #      codec's and the Data Objects' properties) with other seeds and larger
 #      sizes than the night tests' runs; about 4 minutes (bergdb 020-17).
-#   7. stress/fuzz.sh 12: FormatFuzzer's six areas, the readers of bytes that
+#   8. stress/fuzz.sh 12: FormatFuzzer's six areas, the readers of bytes that
 #      2026.4 added, each against its spec, for 12 minutes, with new seeds
 #      each day (bergdb 020-16).
-#   8. stress/unlinkfuzz.sh: UnlinkFuzz, the fuzzer of the Dag's delete path
+#   9. stress/unlinkfuzz.sh: UnlinkFuzz, the fuzzer of the Dag's delete path
 #      (the upward unlink and the take-back of bergdb 023-05), on its fixed
 #      list of configurations, each with a fixed block of seeds and a block
 #      of new seeds each day; about 5 minutes (bergdb 024-09, step A1).
-#   9. stress/kill-restart.sh 1000: the Pub layer's kill-and-restart harness,
+#  10. stress/kill-restart.sh 1000: the Pub layer's kill-and-restart harness,
 #      its self-check and 1,000 kills of a child JVM with SIGKILL, each start
 #      checked against the journal of the children before; about 26 minutes
 #      (bergdb 020-15).
-#  10. stress/conformance.sh medium: 9 traces of 120 to 500 transactions.
-#  11. With "large": stress/conformance.sh large, 12 traces of 1,000 to 5,000
+#  11. stress/conformance.sh medium: 9 traces of 120 to 500 transactions.
+#  12. With "large": stress/conformance.sh large, 12 traces of 1,000 to 5,000
 #      transactions at node sizes 8 to 62; about 5 hours, most of it the two
 #      l-big62 traces.
 # It writes build/night/RUN/report.txt (the commit, the JDK, each step's last
@@ -126,6 +129,8 @@ step level1 sh stress/level1.sh
 step level2 sh stress/level2.sh
 step level3 sh stress/level3.sh
 step level4 sh stress/level4.sh
+# Count gates of aims 2 and 3 at 1M keys (bergdb 024-30).
+step count-gates sh stress/count-gates.sh
 step lean-tests sh stress/lean-tests.sh
 # The tree model's small cases (bergdb 024-12): lake exe treetest, on one core.
 step tree-tests sh stress/tree-tests.sh
