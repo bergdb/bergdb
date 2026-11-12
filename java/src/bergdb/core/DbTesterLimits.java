@@ -243,7 +243,9 @@ public class DbTesterLimits {
 
     /**
      * L4: a value of 8 MiB is taken, one of 8 MiB and a byte refused by the call that takes
-     * it with IllegalArgumentException, nothing added to the builder.
+     * it with IllegalArgumentException, which spoils the builder: its execute() throws
+     * IllegalStateException and writes nothing, not even the builder's other put (bergdb
+     * 024-26, U26-5; 024-27; until 2026-11-12 it wrote that put).
      */
     @Nano
     public static void testValueBytes() {
@@ -256,19 +258,25 @@ public class DbTesterLimits {
             final long count = db.getTransactionCount();
             byte[] over = new byte[Db.MAX_VALUE_BYTES + 1];
             String text = "8388609 bytes, more than 8388608 (bergdb 024-17, L4)";
-            Trans.Builder b = db.trans().put("/x", "x");
+            Trans.Builder[] b = new Trans.Builder[4];
+            for (int i = 0; i < b.length; i++) {
+                b[i] = db.trans().put("/x", "x");
+            }
             refused("put(byte[], byte[])", IllegalArgumentException.class, text,
-                    () -> b.put(bytes("/y"), over));
+                    () -> b[0].put(bytes("/y"), over));
             refused("put(String, byte[])", IllegalArgumentException.class, text,
-                    () -> b.put("/y", over));
+                    () -> b[1].put("/y", over));
             refused("put(long[], byte[])", IllegalArgumentException.class, text,
-                    () -> b.put(Keys.toSegments("/y"), over));
+                    () -> b[2].put(Keys.toSegments("/y"), over));
             refused("put(long[], kt, byte[], vt)", IllegalArgumentException.class, text,
-                    () -> b.put(Keys.toSegments("/y"), null, over, null));
-            db.execute(b.build());              // the builder holds /x alone
+                    () -> b[3].put(Keys.toSegments("/y"), null, over, null));
+            for (Trans.Builder x : b) {         // spoiled (024-27): nothing written
+                refused("execute()", IllegalStateException.class, "() was refused",
+                        () -> db.execute(x));
+            }
             Assert.assertNull(DbUtil.get(db, "/y"));
-            Assert.assertEquals("x", new String(DbUtil.get(db, "/x")));
-            goesOn("L4", db, count + 1);
+            Assert.assertNull(DbUtil.get(db, "/x"));
+            goesOn("L4", db, count);
         } finally {
             db.close();
         }
