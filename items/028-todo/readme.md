@@ -108,6 +108,7 @@ Open
 | [028-08](08-sd-crash-inside-setter.md) | Investigate | A crash inside setStartupDistance's own record | none | open |
 | [028-09](09-startup-pos-own-record.md) | Investigate | CheckStartupPos accepts a record's own position | none | open |
 | [028-10](10-public-start-params.md) | Investigate | The public Db.start(StartParams) takes unchecked values | none | open |
+| [028-11](11-startup-stale-texts.md) | Fix | Texts that disagree with the code, found by 027-11 | P5 only | open |
 
 
 Closed
