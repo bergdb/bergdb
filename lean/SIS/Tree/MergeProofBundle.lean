@@ -34,7 +34,8 @@ import SIS.Tree.TreeGet
 import SIS.Tree.WalkEdges
 import SIS.Tree.KeyEncodingWitness
 import SIS.Tree.ScanFuelBound
-import SIS.Tree.LongKeyRun
+import SIS.Tree.ScanSetup
+import SIS.Tree.HistoricalScan
 import SIS.Tree.RunEncoding
 import SIS.Tree.NodeMap
 import SIS.Tree.RunPrefix

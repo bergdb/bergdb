@@ -94,38 +94,24 @@ theorem nextGo_key_length (p : Params) (v : View BVal) (t : Time) (req : ScanReq
                 exact Nat.le_trans hb (by dsimp only at *; omega)
 
 /-- A first forward result from the beginning cannot have more segments
-than the fixed `nextGo` fuel. -/
+than the parameter-derived `nextGo` fuel. -/
 theorem scan_forward_one_key_length (p : Params) (v : View BVal) (t : Time)
-    (kv : Kvt) (h : kv ∈ scan p v t {} 1) : kv.key.length ≤ scanFuel := by
+    (kv : Kvt) (h : kv ∈ scan p v t {} 1) : kv.key.length ≤ (2 * p.fuel + 2) := by
   unfold scan at h
   cases hr : rootAt v t with
   | none => simp [hr] at h
   | some r =>
     simp only [hr, scanGo, List.length_nil, Nat.le_zero_eq, Nat.one_ne_zero,
       ↓reduceIte] at h
-    cases hn : nextGo p v t {} scanFuel (chainSetup p v t {} r) with
+    cases hn : nextGo p v t {} (2 * p.fuel + 2) (chainSetup p v t {} r) with
     | mk result ch =>
       cases result with
       | none => simp [hn] at h
       | some found =>
         have heq : kv = found := by simpa [hn, scanGo] using h
         subst kv
-        have hb := nextGo_key_length p v t {} scanFuel (chainSetup p v t {} r)
+        have hb := nextGo_key_length p v t {} (2 * p.fuel + 2) (chainSetup p v t {} r)
           found (by rw [hn])
         simpa only [chainSetup_forward_segs, List.length_nil, Nat.zero_add] using hb
-
-/-- A first forward scan from the beginning that gives the reference map's
-first KV gives a key of at most `scanFuel` segments: TP11 holds only for runs
-whose keys are that short (its premise). -/
-theorem scanEq_first_key_length (p : Params) (ts : List Tx) (t : Time)
-    (he : (scan p (viewOf (treeRun p ts)) t {} 1).map (fun kv => (kv.key, kv.h)) =
-      refScan ts t {} 1)
-    (key : Key) (value : Nat) (hk : (key, value) ∈ refScan ts t {} 1) :
-    key.length ≤ scanFuel := by
-  rw [← he] at hk
-  obtain ⟨kv, hkv, hpair⟩ := List.mem_map.mp hk
-  have hkey : kv.key = key := congrArg Prod.fst hpair
-  rw [← hkey]
-  exact scan_forward_one_key_length p _ t kv hkv
 
 end SIS.Tree

@@ -177,8 +177,11 @@ structure Kvt where
 def Chain.done (ch : Chain) : Chain := { ch with links := [], segs := [] }
 
 /-- `Chain.next`: the next KV in the scan's order, and the chain after it; none
-at the end. The first argument bounds the steps: each one goes up a link, goes
-down one, or ends. -/
+at the end. The fuel argument bounds key-node visits: a step goes up a link,
+goes down one, or ends. `scanGo` supplies `2 * p.fuel + 2`: a sound chain
+climbs at most one whole path, then descends at most one whole path. Nonempty
+children and compare values between the sentinels prevent a descent from
+backtracking before it finds a value (bergdb 024-12, TP7 and TP11). -/
 def nextGo (p : Params) (view : View BVal) (t : Time) (req : ScanReq) :
     Nat → Chain → Option Kvt × Chain
   | 0, ch => (none, ch.done)
@@ -221,20 +224,16 @@ def nextGo (p : Params) (view : View BVal) (t : Time) (req : ScanReq) :
                             segs := if n.leaf then ch.segs ++ [fd.c] else ch.segs,
                             seen := fd.y :: ch.seen }
 
-/-- The steps a scan may take before it is cut short: one for each key node it
-enters or leaves on its way to the next KV. ScanOK (TP11) assumes keys of at most
-`scanFuel` segments. A run within L3 (keys of about 8,192 segments at most,
-bergdb 024-24) does not reach it unless its node trees are millions of levels
-high. -/
-def scanFuel : Nat := 2 ^ 40
-
-/-- The loop of `Dag.getMany` with `GetMany.GetN`: at most `limit` KVs. -/
+/-- The loop of `Dag.getMany` with `GetMany.GetN`: at most `limit` KVs.
+Each `nextGo` gets twice the parameter path bound plus two steps, enough
+to climb the chain, descend to the next value, or finish with an empty chain.
+The bound grows with G and H; it imposes no fixed limit on key or tree size. -/
 def scanGo (p : Params) (view : View BVal) (t : Time) (req : ScanReq) (limit : Nat) :
     Nat → Chain → List Kvt → List Kvt
   | 0, _, acc => acc
   | f + 1, ch, acc =>
     if acc.length ≥ limit then acc else
-      match nextGo p view t req scanFuel ch with
+      match nextGo p view t req (2 * p.fuel + 2) ch with
       | (none, _) => acc
       | (some kv, ch') => scanGo p view t req limit f ch' (acc ++ [kv])
 
