@@ -83,7 +83,7 @@ theorem writerWP_put_timeSplit_tree (c : Ctx) (base : View BVal) (hvc : ViewCohe
       wNode c.p base w L = some n → n.leaf = true →
       (∀ s, Klong.time s ∈ n.ks → s ≤ c.i) ∧
       ¬ (n.size + 1 < c.p.M ∧ deadOver c.p (n.add c.i (.key cv w.next)) = false) ∧
-      n.firstTime ≠ some c.i ∧ (n.lastVersion c.i).size ≤ c.p.splitAbove ∧
+      n.firstTime ≠ some c.i ∧ (c.p.M ≤ n.size + 1 → (n.lastVersion c.i).size ≤ c.p.splitAbove) ∧
       wValue base w L = none ∧ L ≠ w.top.rootKey)
     (hparent : ∀ q qn, (q, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
       wNode c.p base w q = some qn → qn.leaf = false →

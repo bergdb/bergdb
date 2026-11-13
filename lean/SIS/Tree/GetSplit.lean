@@ -282,11 +282,11 @@ def TimeSplitAfter (c : Ctx) (w w' : W) (L q : NodeId) (n qn : KNode) (k1 cv v :
       else if x = w.next then some ⟨n.leaf, l.ks⟩
       else w.nodes.lookup x
 
-theorem writerWP_handleFullWith_timeSplit (d' : Nat) (L q : NodeId) (n qn : KNode)
+theorem writerWP_handleFullWith_timeSplit_gen (d' : Nat) (L q : NodeId) (n qn : KNode)
     (k1 cv v : Nat) (compact : Bool) (c : Ctx) (w : W)
     (hlk : w.nodes.lookup L = some n) (hlq : w.nodes.lookup q = some qn)
     (hqL : q ≠ L) (hql : qn.leaf = false) (hfirst : n.firstTime ≠ some c.i)
-    (hsplit : (n.lastVersion c.i).size ≤ c.p.splitAbove)
+    (hcs : (!compact && decide ((n.lastVersion c.i).size > c.p.splitAbove)) = false)
     (hpq : (w.path[d']?).map (·.2) = some q) (hpk : w.path[d' + 1]? = some (some k1, L))
     (hroomq : qn.size + 1 + 1 ≤ c.p.M) (hdeadq : ∀ y, deadOver c.p (qn.add c.i (.key k1 y)) = false)
     (hny : w.nodes.lookup w.next = none) :
@@ -310,9 +310,7 @@ theorem writerWP_handleFullWith_timeSplit (d' : Nat) (L q : NodeId) (n qn : KNod
     rw [hpq]
     simp only [writerWP_bind]
     rw [writerWP_getNode_known q qn c w hlq]
-    have hsz : decide ((n.lastVersion c.i).size > c.p.splitAbove) = false := by
-      simp only [decide_eq_false_iff_not, gt_iff_lt, Nat.not_lt]; exact hsplit
-    simp only [writerWP_pure, hql, hsz, Bool.and_false, Bool.false_eq_true, ↓reduceIte]
+    simp only [writerWP_pure, hql, hcs, Bool.false_eq_true, ↓reduceIte]
     have hfinal : ∀ (l : KNode), l.leaf = n.leaf → klongsWf l.ks = true →
         (∀ s, Klong.time s ∈ l.ks → s ≤ c.i) →
         (∀ q', l.live.lookup q' = [(cv, v)].foldl (pairLookupStep q') (n.live.lookup q')) →
@@ -379,6 +377,23 @@ theorem writerWP_handleFullWith_timeSplit (d' : Nat) (L q : NodeId) (n qn : KNod
           subst hw2
           exact hfinal l hl_leaf hl_wf hl_times hl_look _ rfl rfl rfl rfl
 
+theorem writerWP_handleFullWith_timeSplit (d' : Nat) (L q : NodeId) (n qn : KNode)
+    (k1 cv v : Nat) (compact : Bool) (c : Ctx) (w : W)
+    (hlk : w.nodes.lookup L = some n) (hlq : w.nodes.lookup q = some qn)
+    (hqL : q ≠ L) (hql : qn.leaf = false) (hfirst : n.firstTime ≠ some c.i)
+    (hsplit : (n.lastVersion c.i).size ≤ c.p.splitAbove)
+    (hpq : (w.path[d']?).map (·.2) = some q) (hpk : w.path[d' + 1]? = some (some k1, L))
+    (hroomq : qn.size + 1 + 1 ≤ c.p.M) (hdeadq : ∀ y, deadOver c.p (qn.add c.i (.key k1 y)) = false)
+    (hny : w.nodes.lookup w.next = none) :
+    WriterWP (handleFullWith (fun q more => appendKlongs d' q more) (d' + 1) L [(cv, v)]
+      (n.lastVersion c.i) compact) c w
+      (fun _ w' => TimeSplitAfter c w w' L q n qn k1 cv v) := by
+  apply writerWP_handleFullWith_timeSplit_gen d' L q n qn k1 cv v compact c w hlk hlq hqL hql hfirst
+    _ hpq hpk hroomq hdeadq hny
+  have hsz : decide ((n.lastVersion c.i).size > c.p.splitAbove) = false := by
+    simp only [decide_eq_false_iff_not, gt_iff_lt, Nat.not_lt]; exact hsplit
+  rw [hsz, Bool.and_false]
+
 theorem writerWP_appendKlongs_timeSplit (d' : Nat) (L q : NodeId) (n qn : KNode)
     (k1 cv v : Nat) (c : Ctx) (w : W)
     (hlk : w.nodes.lookup L = some n) (hlq : w.nodes.lookup q = some qn)
@@ -405,6 +420,37 @@ theorem writerWP_appendKlongs_timeSplit (d' : Nat) (L q : NodeId) (n qn : KNode)
       | false => exact absurd ⟨hlt, h⟩ hfull
     simp only [List.foldl_cons, List.foldl_nil, hd, ↓reduceIte]
     exact hts true
+
+theorem writerWP_appendKlongs_timeSplit_gen (d' : Nat) (L q : NodeId) (n qn : KNode)
+    (k1 cv v : Nat) (c : Ctx) (w : W)
+    (hlk : w.nodes.lookup L = some n) (hlq : w.nodes.lookup q = some qn)
+    (hqL : q ≠ L) (hql : qn.leaf = false) (hfirst : n.firstTime ≠ some c.i)
+    (hfull : ¬ (n.size + 1 < c.p.M ∧ deadOver c.p (n.add c.i (.key cv v)) = false))
+    (hsplit : c.p.M ≤ n.size + 1 → (n.lastVersion c.i).size ≤ c.p.splitAbove)
+    (hpq : (w.path[d']?).map (·.2) = some q) (hpk : w.path[d' + 1]? = some (some k1, L))
+    (hroomq : qn.size + 1 + 1 ≤ c.p.M) (hdeadq : ∀ y, deadOver c.p (qn.add c.i (.key k1 y)) = false)
+    (hny : w.nodes.lookup w.next = none) :
+    WriterWP (appendKlongs (d' + 1) L [(cv, v)]) c w
+      (fun _ w' => TimeSplitAfter c w w' L q n qn k1 cv v) := by
+  rw [appendKlongs_step_dead]
+  simp only [writerWP_bind, writerWP_read]
+  rw [writerWP_getNode_known L n c w hlk]
+  have hts := fun compact hcs => writerWP_handleFullWith_timeSplit_gen d' L q n qn k1 cv v compact c w
+    hlk hlq hqL hql hfirst hcs hpq hpk hroomq hdeadq hny
+  split
+  · rename_i hsize
+    apply hts false
+    have h1 : c.p.M ≤ n.size + 1 := by simp at hsize; omega
+    simp only [Bool.not_false, Bool.true_and, decide_eq_false_iff_not, gt_iff_lt, Nat.not_lt]
+    exact hsplit h1
+  · rename_i hsize
+    have hlt : n.size + 1 < c.p.M := by simp at hsize; omega
+    have hd : deadOver c.p (n.add c.i (.key cv v)) = true := by
+      cases h : deadOver c.p (n.add c.i (.key cv v)) with
+      | true => rfl
+      | false => exact absurd ⟨hlt, h⟩ hfull
+    simp only [List.foldl_cons, List.foldl_nil, hd, ↓reduceIte]
+    exact hts true (by simp)
 
 /-! ## The reading through generic readers, a leaf changed -/
 
@@ -1066,7 +1112,7 @@ theorem writerWP_put_timeSplit_key (c : Ctx) (base : View BVal) (hvc : ViewCoher
       wNode c.p base w L = some n → n.leaf = true →
       (∀ s, Klong.time s ∈ n.ks → s ≤ c.i) ∧
       ¬ (n.size + 1 < c.p.M ∧ deadOver c.p (n.add c.i (.key cv w.next)) = false) ∧
-      n.firstTime ≠ some c.i ∧ (n.lastVersion c.i).size ≤ c.p.splitAbove ∧
+      n.firstTime ≠ some c.i ∧ (c.p.M ≤ n.size + 1 → (n.lastVersion c.i).size ≤ c.p.splitAbove) ∧
       wValue base w L = none ∧ L ≠ w.top.rootKey)
     (hparent : ∀ q qn, (q, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
       wNode c.p base w q = some qn → qn.leaf = false →
@@ -1176,7 +1222,7 @@ theorem writerWP_put_timeSplit_key (c : Ctx) (base : View BVal) (hvc : ViewCoher
     | some _ =>
       have := hsrcw3 _ (by rw [h']; rfl)
       omega
-  refine writerWP_mono (writerWP_appendKlongs_timeSplit d' L q n qn k1 cv w3.next c _
+  refine writerWP_mono (writerWP_appendKlongs_timeSplit_gen d' L q n qn k1 cv w3.next c _
     (by simpa using hlk3) (by simpa using hlq) hqL hql hfirst (by rw [hnext3]; exact hfull) hsplit
     (by simpa using hpq) (by simpa using hpk) hroomq (hdeadq k1) (by simpa using hny)) ?_
   intro _ wf hTS
@@ -1310,6 +1356,9 @@ theorem writerWP_put_timeSplit_seg (c : Ctx) (base : View BVal) (hvc : ViewCoher
         else wGet c.p c.i base w key') := by
   apply writerWP_put_timeSplit_key c base hvc pre cv h rk w
     (htreeK := fun x xn cc z hx hn hz _ => htree x xn cc z hx hn hz)
+    (hleaf := fun L n h1 h2 h3 => by
+      obtain ⟨a1, a2, a3, a4, a5, a6⟩ := hleaf L n h1 h2 h3
+      exact ⟨a1, a2, a3, fun _ => a4, a5, a6⟩)
   all_goals assumption
 
 end SIS.Tree
