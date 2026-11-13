@@ -1201,4 +1201,93 @@ theorem writerWP_put_spaceSpace (c : Ctx) (base : View BVal) (hvc : ViewCoherent
   simp only [Op.key, Op.value]
   rfl
 
+/-- `SpaceSplitAfterIns` for a last version given. -/
+def SpaceSplitAfterLast (c : Ctx) (w w' : W) (L q : NodeId) (n qn : KNode) (k1 : Nat)
+    (last : KNode) (ins : List (Nat × NodeId)) : Prop :=
+  w'.taken = w.taken ∧ w'.top = w.top ∧ w'.vals = w.vals ∧
+    ∀ x, w'.nodes.lookup x =
+      if x = L then some (n.toPrev (c.i - 1))
+      else if x = q then some ((qn.add c.i (.key k1 w.next)).add c.i
+        (.key (halves n.leaf c.i last ins).2.2 (w.next + 2)))
+      else if x = w.next then some (halves n.leaf c.i last ins).1
+      else if x = w.next + 2 then some (halves n.leaf c.i last ins).2.1
+      else w.nodes.lookup x
+
+set_option linter.unusedSimpArgs false in
+theorem writerWP_handleFullWith_spaceSplitLast (d' : Nat) (L q : NodeId) (n qn : KNode)
+    (k1 : Nat) (last : KNode) (ins : List (Nat × NodeId)) (c : Ctx) (w : W)
+    (hlk : w.nodes.lookup L = some n) (hlq : w.nodes.lookup q = some qn)
+    (hqL : q ≠ L) (hql : qn.leaf = false) (hfirst : n.firstTime ≠ some c.i)
+    (hsplit : c.p.splitAbove < last.size)
+    (hpq : (w.path[d']?).map (·.2) = some q) (hpk : w.path[d' + 1]? = some (some k1, L))
+    (hroomq : qn.size + 2 + 1 ≤ c.p.M)
+    (hdeadq : ∀ y1 sc y2, deadOver c.p ((qn.add c.i (.key k1 y1)).add c.i (.key sc y2)) = false)
+    (hn1 : w.nodes.lookup w.next = none) (hn2 : w.nodes.lookup (w.next + 2) = none) :
+    WriterWP (handleFullWith (fun q more => appendKlongs d' q more) (d' + 1) L ins
+      last false) c w
+      (fun _ w' => SpaceSplitAfterLast c w w' L q n qn k1 last ins) := by
+  unfold handleFullWith
+  simp only [writerWP_bind, writerWP_read]
+  rw [writerWP_getNode_known L n c w hlk]
+  refine writerWP_ghOf_cached L n c w hlk _ (fun gh => ?_)
+  have hnew : (n.firstTime == some c.i) = false := by simpa using hfirst
+  simp only [hnew]
+  unfold parentAt pathNode
+  simp only [writerWP_bind, writerWP_get]
+  cases hp : w.path[d']? with
+  | none => rw [hp] at hpq; cases hpq
+  | some e =>
+    rw [hp] at hpq
+    simp only [Option.map_some, Option.some.injEq] at hpq
+    simp only [writerWP_pure]
+    rw [hpq]
+    simp only [writerWP_bind]
+    rw [writerWP_getNode_known q qn c w hlq]
+    have hsz : decide (last.size > c.p.splitAbove) = true := by
+      simpa using hsplit
+    simp only [writerWP_pure, hql, hsz, Bool.not_false, Bool.true_and, ↓reduceIte,
+      Bool.false_eq_true]
+    simp only [newKey, fresh, setMadeFor, klongAt, note, writerWP_bind, writerWP_modify,
+      writerWP_get, writerWP_set, writerWP_read, writerWP_pure]
+    split
+    all_goals (try split)
+    all_goals (
+      simp only [writerWP_bind, writerWP_modify, writerWP_pure, hpk, putNode]
+      refine writerWP_mono (writerWP_appendKlongs_room2 d' q qn k1 w.next _ (w.next + 2) c _
+        (by
+          simp only [lookup_upsert]
+          have h1 : q ≠ w.next + 2 := fun h => by rw [h, hn2] at hlq; cases hlq
+          have h2 : q ≠ w.next := fun h => by rw [h, hn1] at hlq; cases hlq
+          simp [h1, h2, List.lookup_append, hlq]) hroomq (hdeadq _ _ _)) ?_
+      intro _ w2 hw2
+      subst hw2
+      rw [writerWP_getNode_known L n c _ (by
+        simp only [lookup_upsert]
+        have h1 : L ≠ w.next + 2 := fun h => by rw [h, hn2] at hlk; cases hlk
+        have h2 : L ≠ w.next := fun h => by rw [h, hn1] at hlk; cases hlk
+        simp [hqL.symm, h1, h2, List.lookup_append, hlk])]
+      simp only [putNode, writerWP_modify]
+      refine ⟨rfl, rfl, rfl, ?_⟩
+      intro x
+      simp only [lookup_upsert, List.lookup_append]
+      by_cases hxL : x = L
+      · simp [hxL]
+      · simp only [hxL, ↓reduceIte]
+        by_cases hxq : x = q
+        · simp [hxq]
+        · simp only [hxq, ↓reduceIte]
+          by_cases hx2 : x = w.next + 2
+          · have hx1 : x ≠ w.next := by omega
+            simp [hx2]
+          · simp only [hx2, ↓reduceIte]
+            by_cases hx1 : x = w.next
+            · simp [hx1]
+            · simp only [hx1, ↓reduceIte]
+              cases h : w.nodes.lookup x with
+              | some m => rfl
+              | none =>
+                have hb1 : (x == w.next) = false := by simpa using hx1
+                have hb2 : (x == w.next + 2) = false := by simpa using hx2
+                simp [List.lookup, hb1, hb2])
+
 end SIS.Tree
