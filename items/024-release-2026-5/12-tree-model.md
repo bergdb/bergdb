@@ -1260,11 +1260,10 @@ kept only as steps. Proved on the way, on the standard axioms:
 Open: `OpGetOKUnder p (RunReadOK p)`, the writer's refinement of the
 map, every rule but those above (the splits whose grandparent is full
 too, or whose parent is full and the space root or a segment root, or
-made by the transaction, a delete's space split in place or below a
-full parent, a put that makes
-more than one new segment or a new segment below a full leaf, a delete
-with merges on, the upward delete, LE-b, the
-merges, root collapse), with its
+made by the transaction; a delete into a leaf whose parent is full, and
+a delete's space split in place; a put that makes more than one new
+segment or a new segment below a full leaf; a delete with merges on,
+the upward delete, LE-b, the merges, root collapse), with its
 invariant inside a transaction: TREE inside it is cost's `WriterTreeOK`
 (the coordinator, 2026-11-13), and it must also give the search tree's
 order, klongs well formed and fresh ids; checked, not proved, on about 900 pseudo-random
