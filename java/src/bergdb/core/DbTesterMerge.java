@@ -347,7 +347,10 @@ public class DbTesterMerge {
             }
         } finally {
             stop[0] = true;
-            for (Thread t : readers) t.join();
+            for (Thread t : readers) {
+                t.join(60_000);
+                Assert.assertFalse("a reader thread did not end within 60 s", t.isAlive());
+            }
             db.close();
         }
         Assert.assertTrue(String.valueOf(failure.get()), failure.get() == null);

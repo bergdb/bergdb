@@ -954,7 +954,8 @@ public class PubTesterJavadoc {
             final Connection[] other = new Connection[1];
             Thread thread = new Thread(() -> other[0] = db.connection());
             thread.start();
-            thread.join();
+            thread.join(60_000);
+            Assert.assertFalse("the connection thread did not end within 60 s", thread.isAlive());
             Assert.assertTrue(other[0] != null && other[0] != c);
 
             Time t1 = c.put("/a.txt", "1").getTime();

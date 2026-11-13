@@ -126,7 +126,10 @@ public class StorageContractTester {
         } finally {
             release.countDown();
             if (writer != null) {
-                writer.join();
+                writer.join(60_000);
+                if (writer.isAlive()) {
+                    throw new AssertionError("the writer thread did not end within 60 s");
+                }
             }
             synchronized (writeLock) {
                 try {
@@ -271,7 +274,10 @@ public class StorageContractTester {
             writerFailure = e;
         } finally {
             for (Thread r : readers) {
-                r.join();
+                r.join(60_000);
+                if (r.isAlive()) {
+                    throw new AssertionError("a reader thread did not end within 60 s");
+                }
             }
             synchronized (writeLock) {
                 try {

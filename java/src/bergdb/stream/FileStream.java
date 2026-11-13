@@ -3015,8 +3015,10 @@ public class FileStream implements AppendOnlyStream {
             checker.start();
             awaitState(checker, Thread.State.BLOCKED, Thread.State.TERMINATED);
         }
-        closer.join();
-        checker.join();
+        closer.join(60_000);
+        Assert.assertFalse("the closer thread did not end within 60 s", closer.isAlive());
+        checker.join(60_000);
+        Assert.assertFalse("the checker thread did not end within 60 s", checker.isAlive());
         if (closeError[0] != null) {
             throw closeError[0];
         }
@@ -3349,7 +3351,8 @@ public class FileStream implements AppendOnlyStream {
                 ts[i].start();
             }
             for (Thread t : ts) {
-                t.join();
+                t.join(60_000);
+                Assert.assertFalse("an opening thread did not end within 60 s", t.isAlive());
             }
             if (!failures.isEmpty()) {
                 throw new AssertionError("round " + round + ": " + failures, failures.get(0));
@@ -3416,7 +3419,8 @@ public class FileStream implements AppendOnlyStream {
             Files.move(replacement.toPath(), dir.toPath());
         } finally {
             resume.countDown();
-            appender.join();
+            appender.join(60_000);
+            Assert.assertFalse("the appender thread did not end within 60 s", appender.isAlive());
         }
         IOException closeFailure = null;
         try {

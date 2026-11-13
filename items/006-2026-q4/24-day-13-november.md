@@ -44,10 +44,21 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 |---|---|---|---|
 | 024-38 | The tag's record: 024-38 done, 024's log | coordinator | b3f64bb1 |
 | 021-28, 021-29 | Two todos registered | coordinator | 9f32bff9 |
-| 024-22 | Land the second prover's run 2; ScanOK's premise (B) | tp11b (high) | running |
+| 024-22 | Land the second prover's run 2; ScanOK's premise (B) | tp11b (high) | landed 59510cb5 |
+| 024-12 | TP11 option C: the scan's fuel from the parameters; then TP11, TP7 | Codex run 3 (Sol xhigh) | running |
+| 026-04 | The back-to-empty lag at 10M keys, understood | frac (high) | done 07:44: the phase of reclaim's iteration at the deletes' end (a step scans at its iteration's start), not f; keep 1/4; P8 cures it |
+| 021-29 | Unit tests that wait with no timeout | waits (high) | landed dc69b7a6 |
 
 
 ## 4. Progress
 
 * 06:33 coord-1113 started; coord-1112 closed 06:35.
 * 06:47 Frans: TP11 option B; land run 2. Agent tp11b started.
+* 06:57 tp11b landed 59510cb5: ScanOK's key premise; false theorems deleted; lake build 272 jobs, axioms standard. Open: a premise on the parameters for the positive TP11 proof (024-12).
+* 07:21 Frans: option C instead of B ("OK, do C as recommended"): the proofs for every key length and tree size, no fixed constant; the scan's fuel from the parameters (`Params.fuel`, as the get's). Codex run 3 at xhigh started 07:22 (/Users/f/fl/bench/2026-11-13/cx3/).
+* 07:24 Frans away until 09:00; unattended.
+* 07:30 Frans 07:30: "Raise the limit to 98% of the usage" (was 95 %).
+* 07:30 Frans 07:28: "Let's spend the AI usage left." 026-04 (frac) and 021-29 (waits) started at high.
+* 07:36 021-29 landed dc69b7a6 (38 waits bounded, tests only; before-commit OK on 59510cb5 = main).
+* 07:44 026-04 explained (frac): the lag follows the phase of reclaim's iterations against n, flipping order three times between 1M and 10M; predicted and measured to within 2 %; keep 1/4; P8 (023-05) removes it.
+* 07:38 limits (021-28) started.

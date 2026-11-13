@@ -954,7 +954,9 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         s.start();
         s.append(new byte[] {1, 2, 3}, 0, 3);
         s.stop();
-        s.consumer.join();
+        s.consumer.join(60_000);
+        Assert.assertFalse("the consumer thread did not end within 60 s of stop()",
+                s.consumer.isAlive());
         synchronized (s) {
             Assert.assertTrue("stopped", s.buffer == null);
         }
@@ -1074,7 +1076,8 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         } finally {
             release.countDown();
             if (closer != null) {
-                closer.join();
+                closer.join(60_000);
+                Assert.assertFalse("the closer thread did not end within 60 s", closer.isAlive());
             }
             b.close();
         }
@@ -1150,10 +1153,12 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         } finally {
             m.hold.countDown();
             if (writer != null) {
-                writer.join();
+                writer.join(60_000);
+                Assert.assertFalse("the writer thread did not end within 60 s", writer.isAlive());
             }
             if (closer != null) {
-                closer.join();
+                closer.join(60_000);
+                Assert.assertFalse("the closer thread did not end within 60 s", closer.isAlive());
             }
             b.close();
         }
@@ -1472,7 +1477,8 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         } finally {
             release.countDown();
             if (writer != null) {
-                writer.join();
+                writer.join(60_000);
+                Assert.assertFalse("the writer thread did not end within 60 s", writer.isAlive());
             }
             b.close();
         }

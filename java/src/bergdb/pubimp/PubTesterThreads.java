@@ -504,7 +504,8 @@ public class PubTesterThreads {
         start.countDown();
         for (Thread t : threads) {
             try {
-                t.join();
+                t.join(60_000);
+                Assert.assertFalse("a test thread did not end within 60 s", t.isAlive());
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }

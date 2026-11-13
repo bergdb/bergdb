@@ -197,7 +197,8 @@ public class ReclaimMaintainTester {
             synchronized (stop) {
                 stop[0] = true;
             }
-            reader.join();
+            reader.join(60_000);
+            Assert.assertFalse("the reader thread did not end within 60 s", reader.isAlive());
             if (failure.get() != null) throw new AssertionError("the reader", failure.get());
             checkReads(r, live, n);
 

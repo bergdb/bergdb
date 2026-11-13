@@ -260,7 +260,9 @@ public class NanotestForBergDB {
         } finally {
             done.countDown();
             for (Thread th : threads) {
-                th.join();
+                th.join(60_000);
+                Assert.assertFalse("a thread named as a database thread did not end within 60 s",
+                        th.isAlive());
             }
         }
     }

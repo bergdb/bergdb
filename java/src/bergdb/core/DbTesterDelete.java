@@ -576,7 +576,9 @@ public class DbTesterDelete {
             Thread thread = new Thread(run);
             thread.start();
             try {
-                thread.join();
+                thread.join(60_000);
+                Assert.assertFalse("the execute() thread did not end within 60 s",
+                        thread.isAlive());
             } catch (InterruptedException x) {
                 throw new RuntimeException(x);
             }
