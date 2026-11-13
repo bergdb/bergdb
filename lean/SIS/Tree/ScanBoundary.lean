@@ -15,8 +15,8 @@ attribute [local cbv_opaque] appendKlongs putSegs
   | nil => rfl
   | cons cv rest => cases rest <;> rfl
 
-/-- The scan's upper sentinel is finite, whereas the stated key predicate
-places no upper bound on compare values. -/
+/-- The scan's upper sentinel is finite. This example uses an unrestricted
+writer input, excluded by the corrected key predicate. -/
 def scanBoundaryParams : Params :=
   ({ M := 8, G := 0, H := 0 } : Params).withMerges.withTheta
 
@@ -30,25 +30,6 @@ def scanBoundaryReq : ScanReq := { forward := false }
 
 theorem scanBoundaryParams_ok : MergeParamsOK scanBoundaryParams := by
   exact mergeParamsOK_withMerges ({ M := 8, G := 0, H := 0 } : Params) (by decide)
-
-theorem scanBoundaryHistory_within : Within scanBoundaryParams scanBoundaryHistory := by
-  constructor
-  · intro tx htx
-    have heq : tx = scanBoundaryTx := by simpa [scanBoundaryHistory] using htx
-    subst tx
-    decide +kernel
-  · intro j hj
-    have hj0 : j = 0 := by simpa [scanBoundaryHistory] using Nat.lt_one_iff.mp hj
-    subst j
-    constructor
-    · intro q hq
-      have hq' : q.1 ∈ (treeRun scanBoundaryParams
-          (scanBoundaryHistory.take 0)).map Prod.fst :=
-        List.mem_map.mpr ⟨q, hq, rfl⟩
-      simp [treeRun, initStruct, scanBoundaryHistory, root] at hq'
-      change q.1 < 3
-      omega
-    · cbv
 
 theorem scanBoundary_result :
     (scan scanBoundaryParams (viewOf (treeRun scanBoundaryParams scanBoundaryHistory))
@@ -68,13 +49,15 @@ theorem scanBoundary_get :
       1 scanBoundaryKey = some 1 := by
   cbv
 
-/-- TP11 fails even at valid merge thresholds, on one put and a backward
-scan of one result: the key passes keyWf but exceeds cvHi. -/
-theorem not_scanOK_scanBoundary : ¬ ScanOK scanBoundaryParams := by
+/-- This unrestricted writer input is excluded by the corrected key predicate. -/
+theorem scanBoundaryKey_not_wf : keyWf scanBoundaryKey = false := by
+  decide +kernel
+
+theorem scanBoundaryHistory_not_within : ¬ Within scanBoundaryParams scanBoundaryHistory := by
   intro h
-  have he := h scanBoundaryHistory scanBoundaryHistory_within 1 (by decide)
-    scanBoundaryReq 1 (by decide +kernel)
-  rw [scanBoundary_result, scanBoundary_reference] at he
-  cases he
+  have hw := (h.1 scanBoundaryTx (by simp [scanBoundaryHistory])).2
+  have hn : scanBoundaryTx.wf = false := by decide +kernel
+  rw [hn] at hw
+  cases hw
 
 end SIS.Tree

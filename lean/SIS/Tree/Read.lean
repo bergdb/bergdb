@@ -221,7 +221,11 @@ def nextGo (p : Params) (view : View BVal) (t : Time) (req : ScanReq) :
                             segs := if n.leaf then ch.segs ++ [fd.c] else ch.segs,
                             seen := fd.y :: ch.seen }
 
-/-- The steps a scan may take before it is cut short; no run reaches it. -/
+/-- The steps a scan may take before it is cut short: one for each key node it
+enters or leaves on its way to the next KV. ScanOK (TP11) assumes keys of at most
+`scanFuel` segments. A run within L3 (keys of about 8,192 segments at most,
+bergdb 024-24) does not reach it unless its node trees are millions of levels
+high. -/
 def scanFuel : Nat := 2 ^ 40
 
 /-- The loop of `Dag.getMany` with `GetMany.GetN`: at most `limit` KVs. -/

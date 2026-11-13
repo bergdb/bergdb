@@ -43,12 +43,13 @@ def sortedKeys : List Key → Bool
   | a :: b :: r => keyLt a b && sortedKeys (b :: r)
   | _ => true
 
-/-- `Key.wf`: a key as `Keys.toSegments` makes it: every segment but the last
-has 7 bytes, the last has fewer. -/
+/-- `Key.wf`: a key as `Keys.toSegments` makes it: every segment is below
+2^62 with its lowest three bits zero; every segment but the last has 7 bytes,
+the last has fewer. -/
 def keyWf : Key → Bool
   | [] => false
-  | [c] => segLen c != 7
-  | c :: r => segLen c == 7 && keyWf r
+  | [c] => c < 2^62 && c % 8 == 0 && segLen c != 7
+  | c :: r => c < 2^62 && c % 8 == 0 && segLen c == 7 && keyWf r
 
 /-- A transaction: the id of the first node it makes (024-12, D8: Java's record
 position plus one), its operations in the order the Dag gets them, and the

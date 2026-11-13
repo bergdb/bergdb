@@ -1,4 +1,5 @@
 import SIS.Tree.SegmentGet
+import SIS.Tree.KeyWellFormed
 
 namespace SIS.Tree
 
@@ -121,8 +122,8 @@ def treeContents (p : Params) (v : View BVal) (t : Time) :
             | some h => [([q.1],h)]
         else treeContents p v t f q.2)
 
-theorem treeContents_keyWf (p : Params) (v : View BVal) (t f x : Nat) :
-    ∀ q ∈ treeContents p v t f x, keyWf q.1 = true := by
+theorem treeContents_keyShape (p : Params) (v : View BVal) (t f x : Nat) :
+    ∀ q ∈ treeContents p v t f x, keyShape q.1 = true := by
   induction f generalizing x with
   | zero => simp [treeContents]
   | succ f ih =>
@@ -144,14 +145,14 @@ theorem treeContents_keyWf (p : Params) (v : View BVal) (t f x : Nat) :
           obtain ⟨child,hchild,rfl⟩ := List.mem_map.mp hkv
           have hchildwf := ih q.2 child hchild
           cases hkey : child.1 with
-          | nil => simp [hkey,keyWf] at hchildwf
-          | cons c rest => simpa [keyWf,hlen,hkey] using hchildwf
+          | nil => simp [hkey,keyShape] at hchildwf
+          | cons c rest => simpa [keyShape,hlen,hkey] using hchildwf
         · simp only [show (segLen q.1 == 7) = false by simp [hlen],Bool.false_eq_true,↓reduceIte] at hkv
           cases hv : valueOf v q.2 with
           | none => simp [hv] at hkv
           | some h =>
             have he : kv = ([q.1],h) := by simpa [hv] using hkv
-            simp [he,keyWf,hlen]
+            simp [he,keyShape,hlen]
 
 theorem treeContents_first_range (p : Params) (v : View BVal) (t f x lo : Nat)
     (hi : Option Nat) (hs : KeyTreeSound p v t f x lo hi) :

@@ -93,7 +93,7 @@ theorem getFrom_treeContents (p : Params) (v : View BVal) (t f x lo : Nat)
           simpa only [getEq,hn,hleaf,↓reduceIte] using searchEqSpec n t cv hwf
         cases rest with
         | nil =>
-          have hterminal : segLen cv ≠ 7 := by simpa only [keyWf,bne_iff_ne] using hkey
+          have hterminal : segLen cv ≠ 7 := ((keyWf_singleton cv).mp hkey).2.2
           change ((getEq p v t cv p.fuel x).bind (valueOf v) = some value) ↔ _
           rw [heq]
           constructor
@@ -110,8 +110,8 @@ theorem getFrom_treeContents (p : Params) (v : View BVal) (t f x lo : Nat)
             · simp only [hlong,beq_self_eq_true,↓reduceIte] at hmem
               obtain ⟨child,hchild,he⟩ := List.mem_map.mp hmem
               have hshape : q.1 = cv ∧ child.1 = [] := List.cons.inj (congrArg Prod.fst he)
-              have hw := treeContents_keyWf p v t f q.2 child hchild
-              simp [hshape.2,keyWf] at hw
+              have hw := treeContents_keyShape p v t f q.2 child hchild
+              simp [hshape.2,keyShape] at hw
             · simp only [show (segLen q.1 == 7) = false by simp [hlong],Bool.false_eq_true,↓reduceIte] at hmem
               cases hv : valueOf v q.2 with
               | none => simp [hv] at hmem
@@ -122,8 +122,8 @@ theorem getFrom_treeContents (p : Params) (v : View BVal) (t f x lo : Nat)
                 have hy := lookup_some_of_mem (n.liveAt_keys_nodup t) hq
                 simp [hcv,hy,hv,hval]
         | cons a rest =>
-          have hlong : segLen cv = 7 ∧ keyWf (a::rest) = true := by
-            simpa only [keyWf,Bool.and_eq_true,beq_iff_eq] using hkey
+          have hlong : segLen cv = 7 ∧ keyWf (a::rest) = true :=
+            ((keyWf_cons_cons cv a rest).mp hkey).2.2
           change (match getEq p v t cv p.fuel x with
             | some y => if (knodeOf p v y).isSome then getFrom p v t (a::rest) y else none
             | none => none) = some value ↔ _

@@ -1,4 +1,5 @@
 import SIS.Tree.SortedKeys
+import SIS.Tree.KeyWellFormed
 
 namespace SIS.Tree
 
@@ -16,14 +17,10 @@ theorem keyWf_segment_length (key : Key) (g cv : Nat)
       subst cv
       cases rest with
       | nil =>
-        have hs : segLen x ≠ 7 := by simpa only [keyWf,bne_iff_ne] using hw
+        have hs : segLen x ≠ 7 := ((keyWf_singleton x).mp hw).2.2
         simp [hs]
       | cons y rest =>
-        change (segLen x == 7 && keyWf (y :: rest)) = true at hw
-        have hs : segLen x = 7 := by
-          have hh : (segLen x == 7) = true ∧ keyWf (y :: rest) = true := by
-            simpa only [Bool.and_eq_true] using hw
-          simpa only [beq_iff_eq] using hh.1
+        have hs : segLen x = 7 := ((keyWf_cons_cons x y rest).mp hw).2.2.1
         simp [hs]
   | succ g ih =>
     cases key with
@@ -32,11 +29,7 @@ theorem keyWf_segment_length (key : Key) (g cv : Nat)
       cases rest with
       | nil => simp at hc
       | cons y rest =>
-        change (segLen x == 7 && keyWf (y :: rest)) = true at hw
-        have htail : keyWf (y :: rest) = true := by
-          have hh : (segLen x == 7) = true ∧ keyWf (y :: rest) = true := by
-            simpa only [Bool.and_eq_true] using hw
-          exact hh.2
+        have htail : keyWf (y :: rest) = true := ((keyWf_cons_cons x y rest).mp hw).2.2.2
         have hh := ih (y :: rest) htail hc
         simpa only [List.length_cons,Nat.add_lt_add_iff_right,Nat.add_left_inj] using hh
 
