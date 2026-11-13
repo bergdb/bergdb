@@ -1,7 +1,7 @@
 # 026-06. A value transformation that throws or passes 8 MiB refuses the transaction
 
 Created 2026-11-13 by Frans Lundberg. Status: open (on the branch
-`026-06-value-transformation`, gated, not landed; section 11).
+`026-06-value-transformation`, gated, ready to land; section 11).
 
 For release 2026.6: a value transformation (Core API) that throws, or
 whose result passes 8 MiB, refuses its transaction with a `DbException`
@@ -42,7 +42,8 @@ questions Q1 to Q4; cite them as "026-06, D3".
   transaction in the same way; in 2026.5 it fails the database.
 * **No stream change** (section 6): the same calls in the same order
   with the same inputs give the same values and the same records.
-* **Gates** on `322cafed`: section 8.
+* **Gates** on `322cafed`: before-commit, level1 and level3 OK
+  (section 8).
 
 
 ## 2. What was there
@@ -300,6 +301,17 @@ approval). Each expected a failed database:
   `testErrorIsThrownAsItIs` (an `Error` after the go point) and
   `testWriterWaitingForTheLock`. Their asserts are unchanged.
 
+At `8bd6e3a7` alone (the code, before `f28b6832`), the test classes of
+the Core's transactions (`DbTester`, `DbTesterDelete`, `DbTesterFailure`,
+`DbTesterLimits`, `DbTesterCoreKeys`, `DbTesterJavadoc`, `LimitsTester`)
+fail in exactly these: `testTransformedValueBeyondRecordLimit`,
+`testValueTransformationThrows`, `testWriterWaitingForTheLock`,
+`testTransformedValueOverL4`, `LimitsTester.testSeeds`, and
+`databasesStopped`, which names the two of `DbTesterFailure` as leaving
+a database open (each threw before its close); `testErrorIsThrownAsItIs`
+passes there (an `Error` before the go point fails the database too) and
+moved to the hook for its claim (08:27).
+
 Not changed: `DbTester.testValueTransformation1` and `2` (the time, an
 atomic increment), `DbTesterDelete`'s rows with value transformations
 (T10: no value transformation runs when the keys collide, still so: the
@@ -345,7 +357,21 @@ On `322cafed`, the code's head, one slot at a time
 in `vt/logs/`); the commits after it change only `items/` and
 `releases/next.md`.
 
-(Results: see State; filled in when the run ends.)
+| Gate                                       | When           | Result                          |
+|--------------------------------------------|----------------|---------------------------------|
+| `java/before-commit.sh`                    | 08:25 to 08:26 | BEFORE COMMIT OK, 68 s          |
+| `java/stress/level1.sh`, full              | 08:26 to 08:29 | LEVEL 1 OK, 160 s; MEM 130      |
+| `lake build` (the checker, for level3)     | 08:29 to 08:33 | OK, 291 jobs, 270 s             |
+| `java/stress/level3.sh`, full              | 08:33 to 08:41 | LEVEL 3 OK, 497 s               |
+
+* level1: MEM 130 (at most 131), MEM10M 127.1, as before.
+* level3: ReclaimStress, RestartInvariance, CrashTest, ReclaimReaders,
+  LoadTest (6 restarts after cuts), PowerLossTest, conformance (35
+  traces, TRACECHECK OK, 799 CUT lines), InterruptStress 60 s: all OK.
+* The Lean build was a full one: the clone's `.lake` was copied from the
+  main tree, which was out of date too (main's `lake build --no-build`:
+  SIS.Basic, BergDB.Index.Model); no Lean file changed here.
+* No failure, nothing rerun.
 
 
 ## 9. What C must change later
@@ -379,13 +405,18 @@ change.
 
 ## 11. State
 
-2026-11-13, 08:40.
+2026-11-13, 08:43.
 
-* **Done:** sections 1 to 7, 9, 10; the code and tests on branch
-  `026-06-value-transformation`, head `322cafed` (code), in
-  `/Users/f/fl/bench/2026-11-13/vt/clone`, from main `ee5712c5`.
-* **Running:** the gates (section 8).
-* **To continue:** if a gate fails, read its log in
-  `/Users/f/fl/bench/2026-11-13/vt/logs/`; rerun one failure alone before
-  believing it (two slots). If main moves before landing: merge main,
-  rerun before-commit and level1.
+* **Ready to land.** Branch `026-06-value-transformation` in
+  `/Users/f/fl/bench/2026-11-13/vt/clone`, from main `ee5712c5`: code
+  head `322cafed` (gated, section 8), then one commit of items and
+  `releases/next.md` only. The coordinator lands it (`--no-ff` or a
+  fast-forward; the commits are in Frans's name).
+* **Done:** sections 1 to 10.
+* **Open for Frans:** Q1 to Q4 (section 10). If Q2 is no, leave out
+  `322cafed` (its test and Javadoc go with it; `next.md`'s sentence on key
+  transformations and D9 then go too).
+* **On landing:** 010-04's case line under R5 (the value transformation,
+  "to change in 2026.6") can say done since 026-06; not edited here.
+* **To continue** if main moves before landing: merge main, rerun
+  before-commit and level1 (`vt/gates.sh` runs all four steps).
