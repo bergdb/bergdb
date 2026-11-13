@@ -84,7 +84,14 @@ of D is on the access path of a change of the last lev(x) + 1 startup
 sections (`T4_debt`), so D is at most the access paths of the last H + 1
 sections (`T4_debt_count`), and with TREE at most (H + 1) times their
 changes plus their touched nodes (`T4_debt_tree`), H the root's level.
-007-01 says "about the last two sections"; the proof gives lev(x) + 1.
+007-01 says "about the last two sections"; the proof gives lev(x) + 1, and
+SIS/BoundT4Example.lean has a run, checked by running, where two do not
+suffice. A cold start's reads are bounded too (SIS/BoundCold.lean,
+SIS/BoundColdTheorems.lean): the lazy startup gives out at most the
+section's index nodes, the writer paths and new nodes of the section's
+transactions, and |D| + 2 handles (`coldReads_lazy`, `coldReads_handles`,
+`coldReads_run`), and with TREE H + 1 nodes per node a transaction changes,
+touches or makes unreachable (`coldReads_tree`).
 
 Since bergdb item 009 (2026-10-25) the model also has handles: SIS/Handle.lean
 models 009's design of the physical layer (one handle per node, pointers that
@@ -227,6 +234,7 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
     import SIS.ReclaimTheorems
     import SIS.BoundTheorems
     import SIS.BoundT4Theorems
+    import SIS.BoundColdTheorems
     #print axioms SIS.T1_recovery
     #print axioms SIS.T1_crash
     #print axioms SIS.T1_nodes
@@ -262,6 +270,11 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
     #print axioms SIS.T4_debt
     #print axioms SIS.T4_debt_count
     #print axioms SIS.T4_debt_tree
+    #print axioms SIS.T4_debt_restarts
+    #print axioms SIS.coldReads_lazy
+    #print axioms SIS.coldReads_handles
+    #print axioms SIS.coldReads_run
+    #print axioms SIS.coldReads_tree
 
 Each prints `[propext, Classical.choice, Quot.sound]`, or a part of it
 (`LM_cutTo`, `T3_section` and `T3_restarts` need no `Classical.choice`).
@@ -522,7 +535,22 @@ its section in sis-model.md.
   (`T4_debt`), the debt counted by the access paths of the last H + 1
   sections, for nodes of D on levels up to H (`T4_debt_count`), and with
   TREE after every transaction by the changes of those sections
-  (`T4_debt_tree`).
+  (`T4_debt_tree`); the debt with restarts (`T4_debt_restarts`).
+* SIS/BoundT4Example.lean (bergdb item 007): T4 by running, a run with the
+  exact test where a node of D has its last change below it three sections
+  back, so 007-01's "about the last two sections" fails, and
+  `DebtByChanges` holds.
+* SIS/BoundCold.lean, SIS/BoundColdTheorems.lean (007-03, step 6; 005-58).
+  Bounds, part 3, a cold start's reads: what the lazy startup's rerun
+  reaches, the writer's paths, new nodes and gd of the section's
+  transactions (`rerunReach`); the handles the lazy startup gives out, one
+  for each object it makes, so each version it reads, are at most the
+  section's index nodes + `rerunReach` + 2, from any stream
+  (`coldReads_lazy`), also with handles and with Java's rule 4 by position
+  (`coldReads_handles`); after a run, with the run's own paths and D
+  (`coldReads_run`); with TREE, H + 1 nodes for each node a transaction
+  creates, gives an entry, touches or makes unreachable (`removedAt`,
+  `coldReads_tree`).
 
 The proofs, in SIS/Proof/ (not needed for reading the statements):
 
@@ -859,6 +887,12 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
   the ancestors of a node are on distinct levels (`anc_level_inj`,
   `anc_count`), the access path of a change (`accessPath_count`),
   `debt_tree_exact`.
+* BoundCold. Each step of the lazy startup takes at most one new handle per
+  node it reads or creates (`Mem.follow_next`, `Mem.reachOnPath_next`,
+  `Mem.applyChange_next`, `Mem.canonicalNode_next`), so the startup's
+  (`lazyStartup_next`); on a run's stream the rerun's paths are the run's
+  (`rerunReach_st`) and its gd's are D (`sum_gd_eq_D`); with TREE a writer
+  path has H + 1 nodes per node changed (`pathOf_count`).
 
 Not trusted, tests only:
 
@@ -1157,7 +1191,8 @@ run):
   `T3_take`, `T3_take_restarts`, `T3_take_decrease`,
   `T3_take_decrease_restarts`, `T3_take_rerun`, `T3_take_reads`; 007-08);
   T4 (`T4_record`, `T4_records`, `T4_ends`, `T4_debt`, `T4_debt_count`,
-  `T4_debt_tree`; 2026-11-13).
+  `T4_debt_tree`, `T4_debt_restarts`; 2026-11-13); a cold start's reads (`coldReads_lazy`,
+  `coldReads_handles`, `coldReads_run`; 2026-11-13).
 
 Checked by running: the `#guard`s of `lake build`, the random runs of
 `sistest`, `phystest` and `reclaimtest` (Build and run), and Java's traces
@@ -1167,7 +1202,9 @@ Not done:
 
 * The bounds (bergdb item 007): T4 for BergDB's still-dirty test (Rule A
   keeps nodes in D through dead pointers; T4 is proved for the exact test),
-  and whether two sections suffice for D (T4 proves lev + 1). T3 for
+  and a bound on the nodes a transaction makes unreachable (`removedAt`,
+  in `coldReads_tree`; one per split in BergDB, not an assumption of the
+  model). T3 for
   BergDB's take is proved without its record limit (bergdb 007-08). The stream's meta blocks are
   not modelled either, but they make no difference to the take: when it
   runs, the stream's length is where the new record begins (bergdb 005-68).

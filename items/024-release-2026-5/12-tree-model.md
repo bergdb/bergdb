@@ -1030,10 +1030,14 @@ at 09:02; run 5 goes on from there (from 09:37, at max).
 Claude provers beside the second prover). Who holds what:
 
 * TP7 `InvPreserved`: "tp7" (Claude, Fable) and the second prover
-  (Codex), independently, compared when both stop.
+  (Codex), independently, compared when both stop. The second prover
+  cancelled at 12:07 (Frans: its week's budget is nearly spent); its run
+  5, as it stopped, is checked for landing.
 * `LatestGetOK` and `LatestScanOK` (TP10 and TP11 from TP7): "latest".
 * TP32 `MergeOpBound` and TP33 `MergeAmortized`: "cost".
-* T4, the startup section's ends (007): "t4".
+* T4, the startup section's ends (007): "t4"; done at 12:26. From 12:27 "t43": T4's debt for BergDB's own
+  still-dirty test, the cold start's reads without the |D| term, a bound on
+  the nodes a change makes unreachable.
 
 Landed checkpoints:
 
@@ -1045,6 +1049,58 @@ Landed checkpoints:
   an earlier time (`CacheGood.lean`, `WriterGood.lean`). Checked: `lake
   build` 310 jobs, 82 theorems on the standard axioms, no statement
   changed.
+* 12:21, "latest", `c008bff1` (merged as `3f225564`): TP10 and TP11 at
+  the latest time reduced to `OpGetOK` and `CommitGetOK`, the paragraph
+  below. Checked: `lake build` 316 jobs, 128 theorems on the standard
+  axioms, no statement changed.
+* 12:21, "t4", `9f59e364` (merged as `622897b1`): T4 proved (007), on a
+  new statement. In plain words: every record at the ends of a startup
+  section holds that section's transaction and only versions of its data
+  nodes and of the dirty nodes D, at most (its data nodes) + |D| of them;
+  each node of D lies on the access path of a change of the last
+  lev + 1 sections, lev its level; so |D| is bounded by the changes of
+  the last H + 1 sections, H the root's level. The definitions it rests
+  on are new (`lean/SIS/BoundT4.lean`, from 007-01's prose): **for
+  Frans to review** that they say what 007-01 means. Finding: 007-01's
+  "about the last two sections" is lev + 1 sections in the proof (a
+  dirty child may lie one section further back per level); two sections
+  is open. Checked: `lake build` 315 jobs, 63 theorems on the standard
+  axioms; main with both checkpoints 321 jobs.
+* 12:27, "latest", `5c80a139` (merged as `68aa78c8`): `CommitGetOK`
+  proved from a smaller premise, `OverlayLiftOK` (the writer's last
+  state, node by node, is the structure after the transaction); so TP10
+  and TP11 rest on TP7, `OpGetOK` and `OverlayLiftOK`. A finding, proved:
+  TP7's invariant alone allows two keys to share a segment tree, and then
+  a valid transaction changes a key it does not name
+  (`sharedSegment_changes_other_key`); the writer never makes such a
+  structure, so `OpGetOK`'s proof carries TREE in its own invariant.
+  `OverlayLiftOK` is also the lift that TP7's `LatestInvOK` needs: "tp7"
+  takes it or says so. Checked: 323 jobs, 38 theorems on the standard
+  axioms.
+* 12:30, the second prover's run 5, its last (`585a46c3`, merged as
+  `31290858`): TP7 partial, four files (the export history, klong history
+  times, the space split's dead bound, the writer cache's uniqueness); a
+  fifth, unfinished when it stopped, left out. Checked: 325 jobs, 78
+  theorems on the standard axioms.
+* 12:30, "t4", `48bfe93f` (merged as `8af385a0`): a cold start's reads
+  bounded (`coldReads_lazy`, `coldReads_handles`, `coldReads_run`,
+  `coldReads_tree`; definitions `rerunReach` and `removedAt` in
+  `lean/SIS/BoundCold.lean`, for Frans's review): the handles a lazy
+  startup gives out, so its reads, are at most the section's index nodes,
+  the writer's paths and new nodes of the rerun, |D| and 2; with TREE, a
+  path is at most H + 1 nodes per change, counting a split's replaced
+  nodes. T4's debt with restarts (`T4_debt_restarts`). **007-01's "about
+  the last two sections" is false in general**: `BoundT4Example.lean`, a
+  run of 8 transactions on a 5-level tree, has a node of D on level 3
+  whose last change below is three sections back (checked by running,
+  `#guard`; the kernel cannot reduce the model's sort). Written up in
+  007-09. Checked: 327 jobs, 23 theorems on the standard axioms.
+* 12:35, "cost", `07e02625` (merged as `b2c7e9c0`): proved with no
+  premise, a transaction's merges into two nodes are at most its deletes
+  that deleted (`execW_twoMerges_le_deletes`); TP33 reduced to
+  `OneMergeStep` (`mergeAmortized_of_oneMergeStep`). TP32 open. Checked:
+  78 theorems on the standard axioms; main with the four checkpoints of
+  12:27 to 12:35 together, 334 jobs.
 
 **TP10 and TP11 at the latest time, reduced, 2026-11-13** (prover
 "latest", 10:37 to 12:50, branch `024-12-latest`). **TP10 and TP11

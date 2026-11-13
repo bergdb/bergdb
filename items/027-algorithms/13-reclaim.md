@@ -1,7 +1,8 @@
 # 027-13. Reclaim
 
-Created 2026-11-13 by Frans Lundberg. Status: reviewed (2026-11-13), for
-Frans to read (the pilot part of 027-04, section 5.1, step 3).
+Created 2026-11-13 by Frans Lundberg. Status: read by Frans (2026-11-13,
+12:34: "027-13 is good! I looks really good."); the pilot part of 027-04,
+section 5.1, step 3, and the template for the other parts.
 
 Part 9 of 027 (027-04, section 2.3; Level 3): how the front of the stream
 is cut. The rule as `main` has it at 5be794b8 (2026-11-13; `java/` and
@@ -527,3 +528,7 @@ sections 3, 4, 7 and 9 fixed; 1.6 matches the code. The note for the
 reviewer became "For the code's comments" and a fix of 027-03, section
 15; its items 7 and 8 (026's readme, 026-11's status) went to the
 coordinator.
+
+2026-11-13. Read by Frans (12:34: "027-13 is good! I looks really good."):
+the pilot is accepted as the template for the other parts (027-04,
+section 5.1).

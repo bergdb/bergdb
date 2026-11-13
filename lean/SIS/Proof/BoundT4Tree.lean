@@ -9,6 +9,7 @@ are at most H + 1 of them, H the root's level. The access path of a change is
 such nodes for the changed nodes, and the touched nodes.
 -/
 import SIS.Proof.BoundT4Debt
+import SIS.Proof.Restart
 
 set_option linter.unusedSectionVars false
 
@@ -320,5 +321,30 @@ theorem debt_tree_exact (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : Run
         (x :: L') hnd hL
       rw [← hl] at this
       exact this
+
+/-! ### Runs with restarts -/
+
+/-- With restarts after any transactions, D, the stream and the nodes are those
+of the run without restarts (T1, T2), so T4's debt holds as it is. -/
+theorem debtByChanges_restarts (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool))
+    (hok : RunOK sp al (ts.map (·.1))) (hex : al.stillDirty = exactTest sp) (hv : sp.virt = false) :
+    ∀ e ∈ (runRestarts sp al ts).D, ∃ τ,
+      spIter (runRestarts sp al ts).S (levelOf (runRestarts sp al ts).P e.1 + 1) ts.length < τ ∧
+        τ ≤ ts.length ∧ onAccessPath sp al (ts.map (·.1)) τ e.1 := by
+  have hst : AlgOK sp al := algOK_of sp al (Or.inr ⟨hv, hex⟩)
+  have h := T2_strong sp al ts hok hst ts.length (Nat.le_refl _)
+  rw [List.take_length] at h
+  have hl : (ts.map (·.1)).length = ts.length := List.length_map _
+  rw [← hl, st_length] at h
+  obtain ⟨hS, hD, hP⟩ := h
+  have hdebt := debtByChanges_exact sp al (ts.map (·.1)) hok hex hv
+  intro e he
+  rw [hD] at he
+  obtain ⟨τ, h1, h2, h3⟩ := hdebt e he
+  have hlv : levelOf (runRestarts sp al ts).P e.1 = levelOf (run sp al (ts.map (·.1))).P e.1 := by
+    unfold levelOf; rw [hP e.1]
+  refine ⟨τ, ?_, by rw [← hl]; exact h2, h3⟩
+  rw [hS, hlv, ← hl]
+  exact h1
 
 end SIS
