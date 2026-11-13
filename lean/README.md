@@ -284,6 +284,8 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
     #print axioms SIS.T4_debt_java_count
     #print axioms SIS.T4_debt_java_tree
     #print axioms SIS.T4_debt_java_restarts
+    #print axioms SIS.T4_debt_java_height
+    #print axioms SIS.T4_debt_java_height_count
     #print axioms SIS.coldReads_lazy
     #print axioms SIS.coldReads_handles
     #print axioms SIS.coldReads_run
@@ -561,7 +563,10 @@ its section in sis-model.md.
   reach the access paths of the last H + 1 sections (`T4_debt_java_count`); with
   TREE and at most Q pointer parents per node (`ptrParents`), at most
   1 + Q + ... + Q^H (`geomSum`) times `T4_debt_tree`'s bound
-  (`T4_debt_java_tree`).
+  (`T4_debt_java_tree`). The same by height in the pointer graph in place of
+  level (`PtrHeightLe`, `DebtByChainsH`, `T4_debt_java_height`,
+  `T4_debt_java_height_count`), since in 024-12's tree model a level is a
+  code. All with a virtual root too (BergDB's shape).
 * SIS/BoundT4JavaExample.lean (bergdb item 007): T4 with BergDB's test by
   running, a family of runs with the same last sections in which D holds the
   m nodes that replacements took out of the tree, kept by their old pointers to
@@ -1223,7 +1228,8 @@ run):
   `T3_take_decrease_restarts`, `T3_take_rerun`, `T3_take_reads`; 007-08);
   T4 (`T4_record`, `T4_records`, `T4_ends`, `T4_debt`, `T4_debt_count`,
   `T4_debt_tree`, `T4_debt_restarts`; with BergDB's test `T4_debt_java`,
-  `T4_debt_java_count`, `T4_debt_java_tree`, `T4_debt_java_restarts`;
+  `T4_debt_java_count`, `T4_debt_java_tree`, `T4_debt_java_restarts`,
+  `T4_debt_java_height`, `T4_debt_java_height_count`;
   2026-11-13); a cold start's reads (`coldReads_lazy`,
   `coldReads_handles`, `coldReads_run`; 2026-11-13).
 

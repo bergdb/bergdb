@@ -67,4 +67,25 @@ def geomSum (Q : Nat) : Nat → Nat
   | 0 => 1
   | h + 1 => 1 + Q * geomSum Q h
 
+/-- Every chain of pointers, live or dead, down from x has at most h steps:
+x's height in the pointer graph is at most h (0 for a node without pointers).
+In SIS's model a node's level is any number that falls along pointers (A4); in
+024-12's tree model it is a code of segment and height, so lev(x) + 1 says
+little there. The height counts the nodes on a path down from x instead:
+for an index node of BergDB's tree, its height above the data nodes, but for a
+top node, whose dead skip pointers lead to older top nodes, more. -/
+def PtrHeightLe (sp : Spec V T) (P : Struct V) : Nat → NodeId → Prop
+  | 0, x => ∀ n, P.get? x = some n → pointees sp n.hist = []
+  | h + 1, x => ∀ n, P.get? x = some n → ∀ y ∈ pointees sp n.hist, PtrHeightLe sp P h y
+
+/-- T4's debt with BergDB's test, by height in place of level: after the run
+ts, of k = ts.length transactions, every node x of D whose height in the
+pointer graph is at most h (`PtrHeightLe`) reaches, through pointers live or
+dead, a node on the access path of the change of a transaction of the last
+h + 1 startup sections, spIter S (h + 1) k < τ ≤ k. -/
+def DebtByChainsH (sp : Spec V T) (al : Algo V T) (ts : List T) : Prop :=
+  let db := run sp al ts
+  ∀ e ∈ db.D, ∀ h, PtrHeightLe sp db.P h e.1 → ∃ τ z, spIter db.S (h + 1) ts.length < τ ∧
+    τ ≤ ts.length ∧ PtrBelow sp db.P e.1 z ∧ onAccessPath sp al ts τ z
+
 end SIS

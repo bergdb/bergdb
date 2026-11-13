@@ -436,4 +436,120 @@ theorem debtByChains_restarts (sp : Spec V T) (al : Algo V T) (ts : List (T × B
   rw [hS, hlv, ← hl]
   exact h1
 
+/-! ### By height -/
+
+section ChainH
+
+variable {sp : Spec V T} {al : Algo V T} {ts : List T}
+
+/-- With BergDB's test, a node y of D after T(j), j ≤ K, got dirty in step 3 of
+some T(i + 1), s(j) < i + 1 ≤ j, on the access path of its change; or was put
+back in step 7 of such a T(i + 1) through a pointee y1, which was in D after
+T(i + 1), and which y points to in the state after T(K). -/
+theorem java_D_cases (hok : RunOK sp al ts) (hst : AlgOK sp al) (hj : al.stillDirty = javaTest sp)
+    {K : Nat} (hK : K ≤ ts.length) {y : NodeId} {j d : Nat} (hjK : j ≤ K)
+    (hyd : (y, d) ∈ (st sp al ts j).D) :
+    ∃ i, spAt (st sp al ts K).S j < i + 1 ∧ i + 1 ≤ j ∧
+      (onAccessPath sp al ts (i + 1) y ∨
+        ∃ nK y1 d1, (st sp al ts K).P.get? y = some nK ∧ y1 ∈ pointees sp nK.hist ∧
+          (y1, d1) ∈ (st sp al ts (i + 1)).D) := by
+  have hinvj := inv_st sp al ts hok hst j (by omega)
+  have hyd' := hyd
+  rw [hinvj.inv1] at hyd'
+  obtain ⟨hsd, hdl, R, hR, hyR⟩ := sectionD_mem hyd'
+  have hlenj := hinvj.len
+  obtain ⟨i, rfl⟩ : ∃ i, d = i + 1 := ⟨d - 1, by omega⟩
+  have hi : i < ts.length := by omega
+  rw [st_rec hok hst (i := i) (j := j) (by omega) (by omega), Option.some.injEq] at hR
+  subst hR
+  rw [parts_R] at hyR
+  have hsj : spAt (st sp al ts K).S j = lastSp (st sp al ts j).S := spAt_st hok hst hK hjK
+  refine ⟨i, by omega, by omega, ?_⟩
+  rcases List.mem_append.mp hyR with hg3 | hr7
+  · exact Or.inl (onAccessPath_gd3 hok hst hi hg3)
+  · right
+    have hinvi := inv_st sp al ts hok hst i (by omega)
+    obtain ⟨n, hn, y1, hy1, hy1D⟩ := step_r7_java hj hinvi hr7
+    have hPn : (parts sp al (st sp al ts i) ts[i]).P = (st sp al ts (i + 1)).P := by
+      rw [st_succ sp al ts hi]; rfl
+    have hDn : (parts sp al (st sp al ts i) ts[i]).r7.1 = (st sp al ts (i + 1)).D := by
+      rw [st_succ sp al ts hi]; rfl
+    rw [hPn] at hn
+    rw [hDn, inD_iff] at hy1D
+    obtain ⟨d1, hd1⟩ := hy1D
+    obtain ⟨e, he, hye⟩ := (mem_pointees sp n.hist y1).mp hy1
+    obtain ⟨nK, hnK, -, hnKh⟩ := st_hist_sub hok hst (j := i + 1) (K := K) (by omega) hK hn
+    exact ⟨nK, y1, d1, hnK, (mem_pointees sp nK.hist y1).mpr ⟨e, hnKh e he, hye⟩, hd1⟩
+
+/-- The induction by height (BergDB's test), in the state after T(K). -/
+theorem java_chain_h (hok : RunOK sp al ts) (hst : AlgOK sp al) (hj : al.stillDirty = javaTest sp)
+    {K : Nat} (hK : K ≤ ts.length) : ∀ h, ∀ y, PtrHeightLe sp (st sp al ts K).P h y →
+      ∀ j ≤ K, ∀ d, (y, d) ∈ (st sp al ts j).D →
+      ∃ τ z, spIter (st sp al ts K).S (h + 1) j < τ ∧ τ ≤ j ∧
+        PtrBelow sp (st sp al ts K).P y z ∧ onAccessPath sp al ts τ z := by
+  have hle := spAt_st_le hok hst hK
+  have hmono := spAt_st_mono hok hst hK
+  intro h
+  induction h with
+  | zero =>
+    intro y hy j hjK d hyd
+    obtain ⟨i, h1, h2, hc⟩ := java_D_cases hok hst hj hK hjK hyd
+    rcases hc with hc | ⟨nK, y1, d1, hnK, hy1, -⟩
+    · exact ⟨i + 1, y, by show spAt (st sp al ts K).S j < i + 1; exact h1, h2,
+        PtrBelow.refl y, hc⟩
+    · rw [hy nK hnK] at hy1; cases hy1
+  | succ h ih =>
+    intro y hy j hjK d hyd
+    obtain ⟨i, h1, h2, hc⟩ := java_D_cases hok hst hj hK hjK hyd
+    have hsplit : spIter (st sp al ts K).S (h + 1 + 1) j =
+        spIter (st sp al ts K).S (h + 1) (spAt (st sp al ts K).S j) := rfl
+    rcases hc with hc | ⟨nK, y1, d1, hnK, hy1, hd1⟩
+    · have := spIter_le (st sp al ts K).S K hle (h + 1) (spAt (st sp al ts K).S j)
+        (by have := hle j hjK; omega)
+      exact ⟨i + 1, y, by omega, h2, PtrBelow.refl y, hc⟩
+    · obtain ⟨τ, z, g1, g2, g3, g4⟩ := ih y1 (hy nK hnK y1 hy1) (i + 1) (by omega) d1 hd1
+      have hm := spIter_mono (st sp al ts K).S K hle hmono (h + 1)
+        (spAt (st sp al ts K).S j) (i + 1) (by omega) (by omega)
+      exact ⟨τ, z, by omega, by omega, PtrBelow.step nK hnK hy1 g3, g4⟩
+
+end ChainH
+
+/-- T4, the debt of D, with BergDB's test, by height. -/
+theorem debtByChainsH_java (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp al ts)
+    (hj : al.stillDirty = javaTest sp) : DebtByChainsH sp al ts := by
+  have hst : AlgOK sp al := algOK_of sp al (Or.inl hj)
+  have hK : ts.length ≤ ts.length := Nat.le_refl _
+  show ∀ e ∈ (run sp al ts).D, ∀ h, PtrHeightLe sp (run sp al ts).P h e.1 → ∃ τ z,
+    spIter (run sp al ts).S (h + 1) ts.length < τ ∧ τ ≤ ts.length ∧
+      PtrBelow sp (run sp al ts).P e.1 z ∧ onAccessPath sp al ts τ z
+  rw [← st_length sp al ts]
+  rintro ⟨x, d⟩ hxd h hh
+  exact java_chain_h hok hst hj hK h x hh ts.length hK d hxd
+
+/-- T4's debt with BergDB's test, by height, counted: with every node of D of
+height at most H, as `debt_count_java` with the last H + 1 sections. -/
+theorem debt_count_java_h (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp al ts)
+    (hj : al.stillDirty = javaTest sp) (H : Nat)
+    (hH : ∀ e ∈ (run sp al ts).D, PtrHeightLe sp (run sp al ts).P H e.1) (N : Nat → Nat)
+    (hN : ∀ τ (L : List NodeId), L.Nodup →
+      (∀ x ∈ L, ∃ z, PtrBelow sp (run sp al ts).P x z ∧ onAccessPath sp al ts τ z) →
+        L.length ≤ N τ) :
+    (run sp al ts).D.length ≤
+      ((List.range' (spIter (run sp al ts).S (H + 1) ts.length + 1)
+        (ts.length - spIter (run sp al ts).S (H + 1) ts.length)).map N).sum := by
+  have hst : AlgOK sp al := algOK_of sp al (Or.inl hj)
+  have hK : ts.length ≤ ts.length := Nat.le_refl _
+  have hinvK := inv_st sp al ts hok hst ts.length hK
+  rw [st_length] at hinvK
+  have hdebt := debtByChainsH_java sp al ts hok hj
+  rw [← List.length_map (f := (·.1))]
+  apply nodup_length_le_sum (fun τ x => ∃ z, PtrBelow sp (run sp al ts).P x z ∧
+    onAccessPath sp al ts τ z) N hN _ _ hinvK.dNodup
+  intro x hx
+  obtain ⟨e, he, rfl⟩ := List.mem_map.mp hx
+  obtain ⟨τ, z, h1, h2, h3, h4⟩ := hdebt e he H (hH e he)
+  refine ⟨τ, ?_, z, h3, h4⟩
+  rw [List.mem_range'_1]
+  omega
+
 end SIS

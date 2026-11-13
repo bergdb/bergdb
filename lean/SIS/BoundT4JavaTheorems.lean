@@ -74,4 +74,27 @@ theorem T4_debt_java_restarts (sp : Spec V T) (al : Algo V T) (ts : List (T × B
       PtrBelow sp db.P e.1 z ∧ onAccessPath sp al (ts.map (·.1)) τ z :=
   debtByChains_restarts sp al ts hok hj
 
+/-- T4's debt with BergDB's test, by height (in place of level, which in 024-12's
+tree model is a code; `PtrHeightLe`): with the assumptions of `T4_debt_java`,
+every node x of D whose height in the pointer graph is at most h reaches,
+through pointers live or dead, a node on the access path of a change of the
+last h + 1 startup sections (`DebtByChainsH`). With a virtual root too. -/
+theorem T4_debt_java_height (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp al ts)
+    (hj : al.stillDirty = javaTest sp) : DebtByChainsH sp al ts :=
+  debtByChainsH_java sp al ts hok hj
+
+/-- T4's debt with BergDB's test, by height, counted: if every node of D has
+height at most H in the pointer graph, D has at most N (a + 1) + ... + N k
+nodes, a = spIter S (H + 1) k, for any N such that N τ bounds the nodes that
+reach, through pointers, the access path of T(τ). -/
+theorem T4_debt_java_height_count (sp : Spec V T) (al : Algo V T) (ts : List T)
+    (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest sp) (H : Nat)
+    (hH : ∀ e ∈ (run sp al ts).D, PtrHeightLe sp (run sp al ts).P H e.1) (N : Nat → Nat)
+    (hN : ∀ τ (L : List NodeId), L.Nodup →
+      (∀ x ∈ L, ∃ z, PtrBelow sp (run sp al ts).P x z ∧ onAccessPath sp al ts τ z) →
+        L.length ≤ N τ) :
+    let a := spIter (run sp al ts).S (H + 1) ts.length
+    (run sp al ts).D.length ≤ ((List.range' (a + 1) (ts.length - a)).map N).sum :=
+  debt_count_java_h sp al ts hok hj H hH N hN
+
 end SIS
