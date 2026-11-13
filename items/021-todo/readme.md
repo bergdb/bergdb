@@ -231,3 +231,6 @@ the list for 2026.4 would open at 2026.3's release. By coord-1106.
 2026.4 (its own workload, ReclaimFifo, on the release commit: 139 cuts in
 1M transactions, a 15 MB directory, against 15 cuts and 135 MB on `main`
 before 023; 020-31, section 4).
+
+2026-11-13. New todo entries go to 028-todo since today (Frans, 10:18);
+no entry here is open.

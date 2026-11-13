@@ -442,3 +442,6 @@ BEFORE COMMIT OK.
 `Cache3.dropIfEmpty`); a start's admission missed the large values of its
 section's first transaction (fixed in `Db.startInner`); level4.sh OK,
 BEFORE COMMIT OK.
+
+2026-11-13. New todo entries go to 028-todo since today (Frans, 10:18);
+no entry here is open.
