@@ -91,3 +91,4 @@ import SIS.Tree.WriterNonemptyMerge
 import SIS.Tree.OverlayPtrs
 import SIS.Tree.WriterTreeSplit
 import SIS.Tree.WriterTreeSpace
+import SIS.Tree.WriterTreeDelete
