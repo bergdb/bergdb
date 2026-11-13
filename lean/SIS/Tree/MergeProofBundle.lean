@@ -159,6 +159,7 @@ import SIS.Tree.GetCaseBridge
 import SIS.Tree.GetOpAssembly
 import SIS.Tree.GetOpCases
 import SIS.Tree.ChainShape
+import SIS.Tree.GetNewSegsTree
 import SIS.Tree.WriterTreeInnerHalves
 import SIS.Tree.WriterTreeSpaceSpace
 import SIS.Tree.WriterTreeDelFull
@@ -252,6 +253,7 @@ import SIS.Tree.TakeDeadCascade
 import SIS.Tree.TakeDeadCases
 import SIS.Tree.TakeBackRunJ
 import SIS.Tree.DelMergeBook
+import SIS.Tree.MergeTreeInv
 import SIS.Tree.TakeBackRunJ2
 import SIS.Tree.TakeDeadAssembly
 import SIS.Tree.TakeDeadNewSeg
