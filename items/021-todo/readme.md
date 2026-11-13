@@ -1,7 +1,8 @@
 021-todo
 ========
 
-Created 2026-11-06 by Frans Lundberg. Status: open.
+Created 2026-11-06 by Frans Lundberg. Status: done (2026-11-13):
+every entry closed; new entries go to 028-todo.
 
 Short tasks for release 2026.4, "a bug-free database" (020): faults to
 fix, things to investigate, decisions to prepare, changes to make, each
@@ -231,3 +232,6 @@ the list for 2026.4 would open at 2026.3's release. By coord-1106.
 2026.4 (its own workload, ReclaimFifo, on the release commit: 139 cuts in
 1M transactions, a 15 MB directory, against 15 cuts and 135 MB on `main`
 before 023; 020-31, section 4).
+
+2026-11-13. New todo entries go to 028-todo since today (Frans, 10:18);
+no entry here is open. The item done (Frans, 10:20: "Yes.").

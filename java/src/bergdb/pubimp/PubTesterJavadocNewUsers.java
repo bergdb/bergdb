@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Set;
 
 import bergdb.core.Db;
+import bergdb.core.TestNodeSize;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
@@ -435,7 +436,7 @@ public class PubTesterJavadocNewUsers {
     @Nano
     public static void testDroppedIteratorsHoldNothing() {
         TestClock clock = new TestClock();
-        Db db = Db.builder().testSetup(new CutStream()).clock(clock).maxNodeSize8()
+        Db db = TestNodeSize.builder(8).testSetup(new CutStream()).clock(clock)
                 .startupDistance(2000).build();
         Database d = DatabaseImp.createAndStart(db);
         try {

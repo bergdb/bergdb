@@ -106,12 +106,9 @@ public class RestartStress {
             }
             stream = fileStream;
         }
-        DbBuilder b = Db.builder().testSetup(stream).clock(clock);
+        DbBuilder b = (maxNode == 0 ? Db.builder() : TestNodeSize.builder(maxNode))
+                .testSetup(stream).clock(clock);
         if (startupDistance > 0) b.startupDistance(startupDistance);
-        if (maxNode == 8) b.maxNodeSize8();
-        if (maxNode == 14) b.maxNodeSize14();
-        if (maxNode == 30) b.maxNodeSize30();
-        if (maxNode == 62) b.maxNodeSize62();
         return b.start();
     }
 

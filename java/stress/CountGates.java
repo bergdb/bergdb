@@ -53,7 +53,9 @@ import bergdb.stream.FileStream;
  *      tables' slots (ST6; counted since its fix, 024-33) and the heap after a GC, each
  *      at most 2 times the twin's. KeyAccessPath's arrays (ST7) are
  *      printed, not gated. Needs --add-opens java.base/java.util (the slots are
- *      HashMap's table lengths).
+ *      HashMap's table lengths). The lag: the first drive transaction from which kept
+ *      stays at most twice the twin's M1 (the most in its last R), at most 2 R (bergdb
+ *      026-11).
  *   G5 (back to empty by maintain(); bergdb 024-32, 023-03 T1's second drive): G4's
  *      emptied database and twin, each driven by g5drive calls of Db.maintain() (20 R), one
  *      every dt of the test clock, with no writes. Kept (the most in the last R) at most
@@ -81,7 +83,8 @@ import bergdb.stream.FileStream;
  *   overwrite transactions a shape), g3batch=10 (puts a G3 transaction), cuts=3 (G3),
  *   g3max=n*2 (G3's most transactions), g4drive=40000 (40 R), g4sd=100000, g4evict=0 (no
  *   eviction in G4 and G5), g4kept, g4nodes, g4slots, g4heap (G4's factors, 2; G5's but
- *   kept), g5drive=20000 (20 R). Exits with status 1 if a gate fails.
+ *   kept), g4lag=2 (G4's lag, in R), g5drive=20000 (20 R). Exits with status 1 if a gate
+ *   fails.
  */
 public class CountGates {
     static final long SEC = Clock.UNITS_PER_SEC;
@@ -636,6 +639,16 @@ public class CountGates {
                 + "KeyAccessPath arrays %d klongs, %d nodes; the twin's %d, %d", e.pathKlongs,
                 e.pathNodes, t.pathKlongs, t.pathNodes));
         g4Gate("M1 kept, most in the last R", e.keptMax, t.keptMax, d("g4kept", 2));
+        // The lag (bergdb 026-11; Frans, 2026-11-13, 09:41, "Yes" to 026-05's Q4): the first
+        // drive transaction from which kept stays at most twice the twin's M1, over R =
+        // retain / dt transactions (1,000), at most g4lag = 2. Since 026-05 it is about
+        // R/4 + 25 + R at every n (026-05, section 6); before, it grew with n. A database
+        // that keeps more than twice the twin's at the drive's end has no lag and fails.
+        long rTx = retain / dt;
+        gate("G4", "lag over R, the drive transactions until kept stays at most twice the "
+                + "twin's M1 (" + (e.lag < 0 ? "never" : e.lag) + " / " + rTx + ")",
+                e.lag < 0 ? Double.POSITIVE_INFINITY : (double) e.lag / rTx, d("g4lag", 2),
+                "%.3f");
         g4Gate("M4 reachable key nodes", e.reach, t.reach, d("g4nodes", 2));
         g4Gate("M5 dead KEY klongs", e.dead, t.dead, d("g4nodes", 2));
         g4Gate("M11 resident index objects", e.objects, t.objects, d("g4nodes", 2));

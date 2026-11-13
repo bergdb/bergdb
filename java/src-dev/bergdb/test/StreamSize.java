@@ -3,6 +3,7 @@ package bergdb.test;
 import bergdb.core.Db;
 import bergdb.core.DbBuilder;
 import bergdb.core.KeyFactory;
+import bergdb.core.TestNodeSize;
 import bergdb.core.Trans;
 import bergdb.nanotest.SimpleTestEnvironment;
 import bergdb.nanotest.Nano;
@@ -84,10 +85,10 @@ public class StreamSize {
         c.report("notes", "Average transaction stream size vs maxNodeSize");
         
         DbBuilder[] builders = new DbBuilder[] {
-                Db.builder().maxNodeSize8(),
-                Db.builder().maxNodeSize14(),
-                Db.builder().maxNodeSize30(),
-                Db.builder().maxNodeSize62()
+                TestNodeSize.builder(8),
+                TestNodeSize.builder(14),
+                TestNodeSize.builder(30),
+                TestNodeSize.builder(62)
         };
         
         int[] sizes = new int[]{8, 14, 30, 62};
