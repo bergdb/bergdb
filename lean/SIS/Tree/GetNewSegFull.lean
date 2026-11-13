@@ -289,7 +289,7 @@ theorem writerWP_put_newSegFullR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
       ¬ ChainRoom c xn → c.p.splitAbove < (xn.lastVersion c.i).size →
       ∀ q qn K, TReach (wNode c.p base w) c.i w.top.rootKey q →
         wNode c.p base w q = some qn → (K, x) ∈ qn.liveAt c.i →
-        qn.leaf = false ∨ (xn.firstTime ≠ some c.i ∧ OrdG c (wNode c.p base w) w.top.rootKey))
+        qn.leaf = false ∨ OrdG c (wNode c.p base w) w.top.rootKey)
     (hcur : ∀ L n, (L, c0) ∈ eqVisits (wNode c.p base w) c.i c0 c.p.fuel rk0 →
       wNode c.p base w L = some n → n.leaf = true →
       n.searchEq c.i c0 = none ∧ ¬ n.size + 1 < c.p.M ∧
@@ -524,9 +524,9 @@ theorem writerWP_put_newSegFullR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
         · exact Or.inl h0
         · refine Or.inr ⟨hi, ?_⟩
           rcases hspaceG _ _ (hreachX i h2) (hXN i h2) hnr hsp _ _ _ (hreachX (i - 1) (by omega))
-            (hXN (i - 1) (by omega)) (hKP i hi h2).2 with h | ⟨hft, hord⟩
+            (hXN (i - 1) (by omega)) (hKP i hi h2).2 with h | hord
           · exact Or.inl h
-          · refine Or.inr ⟨hft, fun i' h1' h2' hnr' hql' hsp' c' z hz => ?_⟩
+          · refine Or.inr (fun _ i' h1' h2' hnr' hql' hsp' c' z hz => ?_)
             exact hord _ _ _ _ _ (hreachX (i' - 1) (by omega)) (hXN (i' - 1) (by omega)) hql'
               (hKP i' (by omega) (by omega)).2 (hXN i' (by omega)) hnr' hsp' c' z hz)
       P.length (by omega) ws1 [(c0, w.next)] (Or.inl ⟨c0, w.next, rfl⟩)
