@@ -261,6 +261,11 @@ changed nodes and their ancestors), or in step 7, taken and still dirty.
   the nodes changed in about the last two sections and their ancestors at
   those times: at most h times those changes, with A4 for h and TREE (one
   current parent).
+
+  Note, 2026-11-13: proved for the exact test, a node x of D is on the
+  access path of a change of the last lev(x) + 1 sections, so h + 1 for a
+  tree of height h; two do not suffice (007-09, section 4).
+
 * With BergDB's test (Rule A over all pointers), a written node stays dirty
   while any pointee is in D, so nodes that are no longer current stay dirty
   too (sis-model.md, section 11). They are 20 to 46 percent of the index
