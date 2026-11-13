@@ -53,7 +53,8 @@ The fix: `Db.checkStartupPos` refuses s(k) >= k (before: s(k) > k) with
 a `StreamFormatException`, "The record at k has startupPos k, the
 record's own position." The test,
 `DbTesterRestart.testOwnPositionStartupPosRefused`, also asserts
-s(i) < i for each record it writes. 027-11, section 1.4, says so.
+s(i) < i for each record it writes. 027-11, section 1.4, says so, and
+027-03's list of the refusals at a start.
 
 Log
 ---

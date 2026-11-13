@@ -122,11 +122,11 @@ just after the record's end gives the new one too
 (`testCrashInsideSetStartupDistance`). Until 028-09, a startupPos equal
 to its own record's position was taken: a section of R(k) alone, whose
 transaction is not rerun, so every key that no index node of R(k) held
-was gone, and the next commit wrote that s again (`testOwnPositionStartupPosRefused`).
-`Db.start(StartParams)`, public, with other
-params than `StartParams.NULL` (only `NULL` is passed in `java/`), takes
-the caller's s and sd as they are, and skips the walk above with its
-checks, `MetaBlock.checkFormat` and the new lastTrans: an s after the
+was gone, and the next commit wrote that s again
+(`testOwnPositionStartupPosRefused`). `Db.start(StartParams)`, public,
+with other params than `StartParams.NULL` (only `NULL` is passed in
+`java/`), takes the caller's s and sd as they are, and skips the walk
+above with its checks, `MetaBlock.checkFormat` and the new lastTrans: an s after the
 stream's starts without the keys before it, and the next commit keeps it
 so, while an sd is for the run only (`testStartParamsTakenUnchecked`); a
 bug by R5, its fix Frans's choice (028-10).

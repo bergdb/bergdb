@@ -488,7 +488,8 @@ pairs) is 41 bytes and 7 zeros: 48.
   015-72). Each an SFE.
 * At a start, for the records it walks (`Db.getStartupPosFromLastTransaction`,
   :1000; `Db.checkStartupPos`, :1046, 015-75): startupPos not negative, a
-  multiple of 8, 0 or at least 128, and not after the record.
+  multiple of 8, 0 or at least 128, and before the record (its own
+  position too is refused since 028-09).
 * For the startup section (`DbStarter.validateTransactions`, :635):
   positions and times strictly increasing; times from 0 to 2^56 − 1
   (:664); each key node validated (section 11).
