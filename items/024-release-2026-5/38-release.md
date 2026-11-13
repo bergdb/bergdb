@@ -1,7 +1,8 @@
 # 024-38. The release of 2026.5
 
-Created 2026-11-12 by Frans Lundberg. Status: the night runs (from
-15:18); the morning's scripts are ready; the tag is Frans's.
+Created 2026-11-12 by Frans Lundberg. Status: done (2026-11-13): the
+tag `release-2026.5` on A `bf9ab5af`, made by Frans at 06:27 and pushed;
+commit B `e9ed4ac9`; `releases/2026.5/`.
 
 The release night of 2026.5, made as 2026.4's (020-31) by the agent
 "rel5" of the day's coordinator (coord-1112), from 15:03: the release
@@ -212,3 +213,6 @@ reason for the faster writes, checked before and after 79f35aa3). The tag
 notes are documentation and may be corrected after the release without
 touching the binaries or SHA256SUMS (Frans, 06:22 to 06:32: "fine as is.
 Releases may be unattended too.").
+
+2026-11-13, 06:36. Done: Frans made the tag `release-2026.5` on A
+(`bf9ab5af`) at 06:27 and pushed it.
