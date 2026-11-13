@@ -132,3 +132,4 @@ import SIS.Tree.WriterTreeCollapseSeg
 import SIS.Tree.WriterTreeCascade
 import SIS.Tree.WriterTreeCascadePut
 import SIS.Tree.PutInvDelFull
+import SIS.Tree.WriterTreeInnerHalves
