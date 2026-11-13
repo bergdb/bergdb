@@ -49,7 +49,7 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 | 024-12 | TP7, the tree's invariants | Codex run 4 (Sol max) | partial, landed 6caf8750: klong well-formedness through the writer |
 | 024-12 | TP7, continued | Codex run 5 (Sol max) | running |
 | 024, 015 | Statuses after the release; post-release notes (021-27, 020-29) | tidy (high) | committed ee5712c5 |
-| 026-05 | P8: each reclaim step scans at its own time | p8 (xhigh) | running |
+| 026-05 | P8: each reclaim step scans at its own time | p8 (xhigh) | landed fe5000ec: back to empty's lag about 1,270 at every n and f |
 | 026-06 | A value transformation's failure refuses the transaction | vt (high) | landed 8bd6e3a7..944b4868 |
 | 026-07 | The write buffer grows with use (ST8) | wb (high) | running |
 | 026-04 | The back-to-empty lag at 10M keys, understood | frac (high) | done 07:44: the phase of reclaim's iteration at the deletes' end (a step scans at its iteration's start), not f; keep 1/4; P8 cures it |
@@ -86,3 +86,6 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 * 09:33 Frans, 026-02: Q9-1 `keyBytes` returns long, "Yes"; the new dependency of pub on core (D3) not accepted: "This needs to be discussed. A new package dependency." -> "Yes" to taking the constants through pubimp. The agent keys changes it.
 * 09:36 026-02 landed 59c6e4b6: `bergdb.pub.Limits` (keyBytes, checkKey, the constants through pubimp).
 * 09:37 Codex run 4 stopped by itself at 09:02 (TP7 partial, 137 theorems); checked (lake 306 jobs, axioms standard) and landed 6caf8750. Run 5 started 09:37 at max, told not to stop at a checkpoint.
+* 09:38 Frans: Q34-1 option (b) for 2026.6 after P8: 026-09 registered.
+* 09:42 Frans 09:41: 026-05's Q1 to Q4 "Yes to all four." P8 merged with main, gated again before landing.
+* 09:54 026-05 (P8) landed fe5000ec, gated on the merged tree (before-commit, level1, level3).

@@ -1,6 +1,8 @@
 # 026-05. Each reclaim step scans at its own time
 
-Created 2026-11-13 by Frans Lundberg. Status: open.
+Created 2026-11-13 by Frans Lundberg. Status: done; on main since
+2026-11-13 (`fe5000ec`); Q1 to Q4 yes (Frans, 09:41). Follow-up: G4's
+lag as a gate (Q4).
 
 For release 2026.6: P8 of 023-05 ("each reclaim step scans at its own
 time", the prototype `p8-steptime`), decided for 2026.6 (024-05, OP9;
@@ -352,7 +354,19 @@ Frans may overturn it.
   here).
 
 
+Decided (Frans, 2026-11-13, 09:41, "Yes to all four."): Q1 the pending
+cut's fix, Q2 the scan's result and no second read, Q3 the work ahead of
+a mass delete, Q4 G4's lag a gate at 2 R once this is on main.
+
+
 ## 9. State
+
+2026-11-13, 09:54. **Landed** by coord-1113: merged with main
+(`fe5000ec`, main's 026-02 and the prover's run 4 in it) and gated again
+on that tree: before-commit, level1, level3 OK
+(/Users/f/fl/bench/2026-11-13/p8/land-*.txt); main fast-forwarded to it,
+pushed. Next: G4's lag as a gate (Q4), and 026-09 on top of this.
+
 
 2026-11-13, 09:40. Done; ready to land. Clone
 /Users/f/fl/bench/2026-11-13/p8/clone, branch `026-05-step-time`:

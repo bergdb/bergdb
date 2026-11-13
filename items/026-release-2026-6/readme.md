@@ -100,7 +100,8 @@ Files
 * 05-reclaim-step-time.md. 026-05, each reclaim step scans at its own
   time (P8 of 023-05, with 023-08's fault 13 fixed): the change on a
   branch, the cut's argument, the gates, and back to empty's lag after a
-  mass delete before and after (024-05, OP9; 026-04, section 4).
+  mass delete before and after (024-05, OP9; 026-04, section 4); done, on
+  main since 2026-11-13 (Q1 to Q4 yes, Frans 09:41).
 * 06-value-transformation-refusal.md. 026-06, a value transformation
   that throws or passes 8 MiB refuses its transaction, before the go
   point (`Db.transformValues`), and the database goes on (010-04, R5);
