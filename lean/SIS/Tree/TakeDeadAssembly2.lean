@@ -3,23 +3,16 @@ The take-back's assembly with case (3) split (bergdb 024-12, TP7): a put of a
 key with no leaf makes its new segments below a leaf with room (proved,
 `writerWP_put_newSegs_j2`), below a full leaf (`PutNewSegFullCase`, open), or
 fails. The state predicate `TakeS2` adds that the transaction's first id is at
-or below the next id.
+or below the next id. `PutNewSegFullCase` is latest's (GetOpCases.lean).
 -/
 import SIS.Tree.TakeDeadNewSeg
+import SIS.Tree.GetOpCases
 
 set_option autoImplicit false
 
 namespace SIS.Tree
 
 open SIS SIS.Check
-
-/-- (3) below a full leaf: the leaf of the key's prefix has no klong of the next
-segment and no room. -/
-def PutNewSegFullCase (c : Ctx) (base : View BVal) (w : W) (op : Op) : Prop :=
-  ∃ pre c0 tail h rk0 L n, op = .put (pre ++ c0 :: tail) h ∧ tail ≠ [] ∧
-    segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk0 ∧
-    (L, c0) ∈ eqVisits (wNode c.p base w) c.i c0 c.p.fuel rk0 ∧ wNode c.p base w L = some n ∧
-    n.leaf = true ∧ n.searchEq c.i c0 = none ∧ ¬ n.size + 1 < c.p.M
 
 /-- The state predicate: `TakeS` and the transaction's first id at or below the
 next id. -/
@@ -90,7 +83,7 @@ theorem opJ2Case_putNewSeg (p : Params) (R : Struct BVal → Time → Prop) (S :
       intro _ w' h' _
       exact h'
     · exact hfull ts tx hw hr z top hz htop ops op post hops r w hpre hT hS hJ
-        ⟨pre, c0, tail, h, rk0, L, n, hop, htail, hrk0, hL, hn, hnl, hnone, hroom⟩
+        ⟨pre, c0, tail, h, rk0, L, n, hop, ⟨htail, hrk0, hL, hn, hnl, hnone⟩, hroom⟩
   · subst hop
     unfold putKv pathClear findRoot pathAdd
     wpSimplify
