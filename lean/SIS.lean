@@ -45,6 +45,9 @@ import SIS.BoundColdDropExample
 import SIS.BoundHeight
 import SIS.BoundHeightTheorems
 import SIS.BoundHeightExample
+import SIS.BoundColdDropJ
+import SIS.BoundColdDropJTheorems
+import SIS.BoundColdDropJExample
 import SIS.Tree.Val
 import SIS.Tree.Node
 import SIS.Tree.Exec
