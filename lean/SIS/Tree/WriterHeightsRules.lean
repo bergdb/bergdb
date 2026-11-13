@@ -15,16 +15,16 @@ open SIS SIS.Check
 
 /-- The key access path goes one height down at every inner node of it that is
 not taken back. -/
-def PathHt (c : Ctx) (w : W) : Prop :=
+def PathHt (H : NodeId → Nat → Prop) (w : W) : Prop :=
   ∀ d a q cv y, w.path[d]? = some (a, q) → w.path[d + 1]? = some (some cv, y) →
-    ∀ g h, (q, g, h) ∈ w.gh → w.taken.contains q = false → h ≠ 0 → HasHt c w y (h - 1)
+    ∀ g h, (q, g, h) ∈ w.gh → w.taken.contains q = false → h ≠ 0 → HasHt H w y (h - 1)
 
 /-- The state of the walk of the heights, with B the transaction's first id:
 the overlay's heights, the key access path's, and what is not taken back: the
 path's nodes, the space root, every id below B. -/
-structure HtInv (B : NodeId) (c : Ctx) (w : W) : Prop where
-  cache : HtCache c w
-  path : PathHt c w
+structure HtInv (H : NodeId → Nat → Prop) (B : NodeId) (c : Ctx) (w : W) : Prop where
+  cache : HtCache c H w
+  path : PathHt H w
   pathGh : ∀ (d : Nat) (a : Option Nat) (q : NodeId), w.path[d]? = some (a, q) →
     d + 1 < w.path.length → q ∈ w.gh.map (·.1)
   pathFree : ∀ (d : Nat) (a : Option Nat) (q : NodeId), w.path[d]? = some (a, q) →
@@ -35,9 +35,9 @@ structure HtInv (B : NodeId) (c : Ctx) (w : W) : Prop where
 
 /-- What the view must meet besides `ViewHeights`: B is above its ids and above
 every pointer of its key nodes. -/
-structure ViewHtOK (B : NodeId) (c : Ctx) : Prop where
+structure ViewHtOK (H : NodeId → Nat → Prop) (B : NodeId) (c : Ctx) : Prop where
   ids : ViewIdsBelow B c.view
-  heights : ViewHeights c
+  heights : ViewHeights H B c
   ptrs : ∀ x nd, c.view x = some nd → ∀ cv y, Klong.key cv y ∈ klongsOf nd.hist → y < B
   times : ∀ x nd, c.view x = some nd → ∀ t, Klong.time t ∈ klongsOf nd.hist → t ≤ c.i
 
@@ -45,8 +45,8 @@ theorem ht_mem_ids {w : W} {x : NodeId} {g h : Nat} (hm : (x, g, h) ∈ w.gh) :
     x ∈ w.gh.map (·.1) :=
   List.mem_map.mpr ⟨_, hm, rfl⟩
 
-theorem HtCache.congr {c : Ctx} {w v : W} (hc : HtCache c w) (hn : v.nodes = w.nodes)
-    (hg : v.gh = w.gh) (ht : v.taken = w.taken) : HtCache c v := by
+theorem HtCache.congr {c : Ctx} {H : NodeId → Nat → Prop} {w v : W} (hc : HtCache c H w) (hn : v.nodes = w.nodes)
+    (hg : v.gh = w.gh) (ht : v.taken = w.taken) : HtCache c H v := by
   intro x n g h hn' hg' htk
   rw [hn] at hn'; rw [hg] at hg'; rw [ht] at htk
   exact (hc x n g h hn' hg' htk).mono (fun q hq => by rw [hg]; exact hq)
@@ -56,9 +56,9 @@ theorem ht_free_of_eq {w v : W} (ht : v.taken = w.taken) :
     ∀ y, w.taken.contains y = false → v.taken.contains y = false := fun y h => by rw [ht]; exact h
 
 /-- The fields that the walk reads kept. -/
-theorem HtInv.frame {B : NodeId} {c : Ctx} {w : W} (hi : HtInv B c w) (v : W)
+theorem HtInv.frame {B : NodeId} {c : Ctx} {H : NodeId → Nat → Prop} {w : W} (hi : HtInv H B c w) (v : W)
     (hn : v.nodes = w.nodes) (hg : v.gh = w.gh) (hp : v.path = w.path)
-    (ht : v.taken = w.taken) (htop : v.top.rootKey = w.top.rootKey) : HtInv B c v := by
+    (ht : v.taken = w.taken) (htop : v.top.rootKey = w.top.rootKey) : HtInv H B c v := by
   have hgm : ∀ q ∈ w.gh, q ∈ v.gh := fun q hq => by rw [hg]; exact hq
   have hf := ht_free_of_eq ht
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
@@ -83,24 +83,24 @@ theorem HtInv.frame {B : NodeId} {c : Ctx} {w : W} (hi : HtInv B c w) (v : W)
     exact hi.pathSome d a q h1
 
 /-- The same with the path emptied. -/
-theorem HtInv.clear {B : NodeId} {c : Ctx} {w : W} (hi : HtInv B c w) (v : W)
+theorem HtInv.clear {B : NodeId} {c : Ctx} {H : NodeId → Nat → Prop} {w : W} (hi : HtInv H B c w) (v : W)
     (hn : v.nodes = w.nodes) (hg : v.gh = w.gh) (hp : v.path = [])
-    (ht : v.taken = w.taken) (htop : v.top.rootKey = w.top.rootKey) : HtInv B c v := by
-  have h0 : HtInv B c { w with path := [] } :=
+    (ht : v.taken = w.taken) (htop : v.top.rootKey = w.top.rootKey) : HtInv H B c v := by
+  have h0 : HtInv H B c { w with path := [] } :=
     ⟨fun x n g h hn hg' htk => (hi.cache x n g h hn hg' htk).mono (fun q hq => hq) (fun y hy => hy),
       by intro d a q cv y h1; simp at h1, by intro d a q h1; simp at h1,
       by intro d a q h1; simp at h1, hi.rootFree, hi.takenAbove, by intro d a q h1; simp at h1⟩
   exact h0.frame v hn hg hp ht htop
 
 /-- A node of the view loaded into the overlay. -/
-theorem HtInv.load {B : NodeId} {c : Ctx} {w : W} (hb : Book B c w)
-    (hvo : ViewHtOK B c) (hi : HtInv B c w) (x : NodeId)
+theorem HtInv.load {B : NodeId} {c : Ctx} {H : NodeId → Nat → Prop} {w : W} (hb : Book B c w)
+    (hvo : ViewHtOK H B c) (hi : HtInv H B c w) (x : NodeId)
     (nd : Node BVal) (hnd : c.view x = some nd) (hd : nd.isData = false)
     (hlv : nd.level ≤ c.p.keyMax) (hn0 : w.nodes.lookup x = none) (v : W)
     (hn : v.nodes = w.nodes ++ [(x, ⟨c.p.heightOf nd.level == 0, klongsOf nd.hist⟩)])
     (hg : v.gh = (x, c.p.segOf nd.level, c.p.heightOf nd.level) :: w.gh)
     (hp : v.path = w.path) (ht : v.taken = w.taken) (htop : v.top.rootKey = w.top.rootKey) :
-    HtInv B c v := by
+    HtInv H B c v := by
   have hxn : x ∉ w.nodes.map (·.1) := bk_not_mem_ids_of_lookup _ x hn0
   have hxg : x ∉ w.gh.map (·.1) := by
     intro h; apply hxn; rw [hb.ids]; exact List.mem_reverse.mpr h
@@ -136,8 +136,8 @@ theorem HtInv.load {B : NodeId} {c : Ctx} {w : W} (hb : Book B c w)
             exact hvo.ptrs x nd hnd cv z ((prefixAt_prefix _ _).subset hm)
         refine ⟨fun cv z hz => ⟨hfree z (hptr cv z (Or.inl hz)), fun h0 => ?_⟩,
           fun cv z hz => ⟨hfree z (hptr cv z (Or.inr hz)), fun h0 => ?_⟩, hvo.times x nd hnd⟩
-        · exact Or.inr ((hvo.heights x nd hnd hd hlv h0).1 cv z hz)
-        · exact Or.inr ((hvo.heights x nd hnd hd hlv h0).2 cv z hz)
+        · exact Or.inr (hvo.heights.live x nd hnd hd hlv h0 cv z hz)
+        · exact Or.inr (hvo.heights.prev x nd hnd hd hlv h0 cv z hz)
       · exact absurd (ht_mem_ids hg') hxg
   · intro d a q cv y h1 h2 g h hg' htk hh
     rw [hp] at h1 h2; rw [hg] at hg'; rw [ht] at htk
@@ -161,11 +161,11 @@ theorem HtInv.load {B : NodeId} {c : Ctx} {w : W} (hb : Book B c w)
     exact hi.pathSome d a q h1
 
 /-- A new key node meeting `NodeHt` for its height. -/
-theorem HtInv.create {B : NodeId} {c : Ctx} {w : W} (hb : Book B c w)
-    (hi : HtInv B c w) (g h : Nat) (N : KNode) (hks : NodeHt c w h N) (v : W)
+theorem HtInv.create {B : NodeId} {c : Ctx} {H : NodeId → Nat → Prop} {w : W} (hb : Book B c w)
+    (hi : HtInv H B c w) (g h : Nat) (N : KNode) (hks : NodeHt c H w h N) (v : W)
     (hn : v.nodes = w.nodes ++ [(w.next, N)]) (hg : v.gh = (w.next, g, h) :: w.gh)
     (hp : v.path = w.path) (ht : v.taken = w.taken) (htop : v.top.rootKey = w.top.rootKey) :
-    HtInv B c v := by
+    HtInv H B c v := by
   have hxg := kd_next_not hb
   have hxn : w.next ∉ w.nodes.map (·.1) := by
     rw [hb.ids]; intro h; exact hxg (List.mem_reverse.mp h)
@@ -208,11 +208,11 @@ theorem HtInv.create {B : NodeId} {c : Ctx} {w : W} (hb : Book B c w)
     exact hi.pathSome d a q h1
 
 /-- A node of the overlay stored again, meeting `NodeHt` for its height. -/
-theorem HtInv.store {B : NodeId} {c : Ctx} {w : W} (hi : HtInv B c w)
+theorem HtInv.store {B : NodeId} {c : Ctx} {H : NodeId → Nat → Prop} {w : W} (hi : HtInv H B c w)
     (x : NodeId) (n' n0 : KNode) (hl : w.nodes.lookup x = some n0)
-    (hks : ∀ g h, (x, g, h) ∈ w.gh → w.taken.contains x = false → NodeHt c w h n')
+    (hks : ∀ g h, (x, g, h) ∈ w.gh → w.taken.contains x = false → NodeHt c H w h n')
     (v : W) (hn : v.nodes = upsert w.nodes x n') (hg : v.gh = w.gh) (hp : v.path = w.path)
-    (ht : v.taken = w.taken) (htop : v.top.rootKey = w.top.rootKey) : HtInv B c v := by
+    (ht : v.taken = w.taken) (htop : v.top.rootKey = w.top.rootKey) : HtInv H B c v := by
   have hgm : ∀ q ∈ w.gh, q ∈ v.gh := fun q hq => by rw [hg]; exact hq
   have hf := ht_free_of_eq ht
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
@@ -240,12 +240,12 @@ theorem HtInv.store {B : NodeId} {c : Ctx} {w : W} (hi : HtInv B c w)
 
 /-- A node of the key access path added after its last node q, by a live klong
 of q that names y. -/
-theorem HtInv.add {B : NodeId} {c : Ctx} {w : W} (hi : HtInv B c w) (cv : Nat) (y : NodeId)
+theorem HtInv.add {B : NodeId} {c : Ctx} {H : NodeId → Nat → Prop} {w : W} (hi : HtInv H B c w) (cv : Nat) (y : NodeId)
     (hy : w.taken.contains y = false)
     (hlast : ∀ a q, w.path.getLast? = some (a, q) → q ∈ w.gh.map (·.1) ∧
-      ∀ g h, (q, g, h) ∈ w.gh → w.taken.contains q = false → h ≠ 0 → HasHt c w y (h - 1))
+      ∀ g h, (q, g, h) ∈ w.gh → w.taken.contains q = false → h ≠ 0 → HasHt H w y (h - 1))
     (v : W) (hn : v.nodes = w.nodes) (hg : v.gh = w.gh) (hp : v.path = w.path ++ [(some cv, y)])
-    (ht : v.taken = w.taken) (htop : v.top.rootKey = w.top.rootKey) : HtInv B c v := by
+    (ht : v.taken = w.taken) (htop : v.top.rootKey = w.top.rootKey) : HtInv H B c v := by
   have hgm : ∀ q ∈ w.gh, q ∈ v.gh := fun q hq => by rw [hg]; exact hq
   have hf := ht_free_of_eq ht
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
