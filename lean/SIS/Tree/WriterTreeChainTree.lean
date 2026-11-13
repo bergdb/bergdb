@@ -582,4 +582,52 @@ theorem treeOK_rootSpaceInPlaceStep (N1 N2 : NodeId → Option KNode) (t : Time)
   · exact Or.inr (Or.inl h)
 
 
+/-- The halves of a node's last version with klongs put (InsOK), as links of
+the node with the klongs put, cut at the divider, a live compare value of the
+node above 0. -/
+theorem chain_halves_facts (t : Time) (n : KNode) (ins : List (Nat × NodeId)) (hins : InsOK n ins)
+    (h2 : 2 ≤ n.live.length) (hnt : ∀ s, Klong.time s ∈ n.ks → s ≤ t) (hnwf : klongsWf n.ks = true) :
+    ∃ r : Nat × NodeId, (halves n.leaf t (n.lastVersion t) ins).2.2 = r.1 ∧ 0 < r.1 ∧ r ∈ n.live ∧
+      (∀ c z, (c, z) ∈ (halves n.leaf t (n.lastVersion t) ins).1.liveAt t → c < r.1 ∧
+        (c, z) ∈ (ins.foldl (fun n (cv, y) => n.add t (.key cv y)) n).liveAt t) ∧
+      (∀ c z, (c, z) ∈ (halves n.leaf t (n.lastVersion t) ins).2.1.liveAt t → ∃ c0, r.1 ≤ c0 ∧
+        c = splitLocalCv n.leaf r.1 c0 ∧
+        (c0, z) ∈ (ins.foldl (fun n (cv, y) => n.add t (.key cv y)) n).liveAt t) := by
+  obtain ⟨r, hr⟩ := divider_exists n (by omega)
+  have hrm := divider_mem_live n r hr
+  have hsc := divider_pos' n r h2 hr
+  obtain ⟨a, more, hins_eq, hside⟩ := hins.side r hrm
+  obtain ⟨hdiv, hfh, hsh⟩ := halves_links n.leaf t n rfl a more r hr hsc hside
+  rw [← hins_eq] at hdiv hfh hsh
+  refine ⟨r, hdiv, hsc, hrm, ?_, ?_⟩
+  · intro c z h
+    obtain ⟨h1, h2'⟩ := hfh c z h
+    exact ⟨h1, KNode.addKeys_liveAt_of_fold t ins _ hnwf hnt c z h2'⟩
+  · intro c z h
+    obtain ⟨c0, h1, h2', h3⟩ := hsh c z h
+    exact ⟨c0, h1, h2', KNode.addKeys_liveAt_of_fold t ins _ hnwf hnt c0 z h3⟩
+
+/-- A node with links among another's, in place of a node of a tree, keeps a
+tree and reaches less. -/
+theorem treeOK_updN_sub (N : NodeId → Option KNode) (t : Time) (r x : NodeId) (m m' : KNode)
+    (hT : TreeOK (updN N x m) t r) (hsub : ∀ c z, (c, z) ∈ m'.liveAt t → (c, z) ∈ m.liveAt t) :
+    TreeOK (updN N x m') t r ∧ ∀ z, TReach (updN N x m') t r z → TReach (updN N x m) t r z := by
+  have hl : ∀ y c z, TLink (updN N x m') t y c z → TLink (updN N x m) t y c z := by
+    intro y c z hl
+    obtain ⟨mm, hm, hc⟩ := hl
+    by_cases hy : y = x
+    · rw [hy, updN_self] at hm; simp only [Option.some.injEq] at hm; subst hm
+      exact ⟨m, by rw [hy, updN_self], hsub c z hc⟩
+    · rw [updN_ne _ _ _ _ hy] at hm
+      exact ⟨mm, by rw [updN_ne _ _ _ _ hy]; exact hm, hc⟩
+  refine ⟨treeOK_of_sublinks _ _ t r hT ?_ hl, ?_⟩
+  · by_cases hr : r = x
+    · rw [hr, updN_self]; exact ⟨_, rfl⟩
+    · obtain ⟨rm, hrm⟩ := hT.rootKey
+      rw [updN_ne _ _ _ _ hr] at hrm ⊢; exact ⟨rm, hrm⟩
+  · intro z hz
+    induction hz with
+    | root => exact TReach.root
+    | link _ hlk ih => exact TReach.link ih (hl _ _ _ hlk)
+
 end SIS.Tree
