@@ -140,6 +140,8 @@ import SIS.Tree.GetDelSplit
 import SIS.Tree.GetFinal
 import SIS.Tree.GetDelCascade
 import SIS.Tree.GetInPlaceCascade
+import SIS.Tree.GetCascadeGen
+import SIS.Tree.GetCascadeChain
 import SIS.Tree.WriterTreeInnerHalves
 import SIS.Tree.WriterTreeSpaceSpace
 import SIS.Tree.WriterTreeDelFull
