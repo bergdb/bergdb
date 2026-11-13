@@ -46,7 +46,7 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 | 021-28, 021-29 | Two todos registered | coordinator | 9f32bff9 |
 | 024-22 | Land the second prover's run 2; ScanOK's premise (B) | tp11b (high) | landed 59510cb5 |
 | 024-12 | TP11 option C: the scan's fuel from the parameters; then TP11, TP7 | Codex run 3 (Sol xhigh) | running |
-| 026-04 | The back-to-empty lag at 10M keys, understood | frac (high) | running |
+| 026-04 | The back-to-empty lag at 10M keys, understood | frac (high) | done 07:44: the phase of reclaim's iteration at the deletes' end (a step scans at its iteration's start), not f; keep 1/4; P8 cures it |
 | 021-29 | Unit tests that wait with no timeout | waits (high) | landed dc69b7a6 |
 
 
@@ -60,3 +60,5 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 * 07:30 Frans 07:30: "Raise the limit to 98% of the usage" (was 95 %).
 * 07:30 Frans 07:28: "Let's spend the AI usage left." 026-04 (frac) and 021-29 (waits) started at high.
 * 07:36 021-29 landed dc69b7a6 (38 waits bounded, tests only; before-commit OK on 59510cb5 = main).
+* 07:44 026-04 explained (frac): the lag follows the phase of reclaim's iterations against n, flipping order three times between 1M and 10M; predicted and measured to within 2 %; keep 1/4; P8 (023-05) removes it.
+* 07:38 limits (021-28) started.

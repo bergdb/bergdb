@@ -1,0 +1,180 @@
+# 026-04, section 4: back to empty (workload d), the iteration X running when the deletes end.
+# FracRuns work=d g4its=1 on branch 026-04-lag (clone /Users/f/fl/bench/2026-11-13/frac/clone),
+# 2026-11-13, 07:30 to 07:42. Times in drive transactions (negative: before the drive;
+# the fill is the 2n/100 .. n/100 transactions before it, the deletes the last n/100).
+# kvs = KVs live at X's tStart, scanned by X; lag - tEnd = the two cuts after X (about 1.28 R).
+n=1000000 f=0.2500 X: tStart=-9323 kvs=932304 steps=12432 values=0 tEnd=3116 kvs/300=3107 firstCut=4117 lag=4395 lag-tEnd=1279
+n=1000000 f=0.3750 X: tStart=-1737 kvs=173704 steps=2317 values=2 tEnd=584 kvs/300=579 firstCut=1585 lag=1857 lag-tEnd=1273
+n=2000000 f=0.2500 X: tStart=-13853 kvs=1385304 steps=18472 values=2 tEnd=4626 kvs/300=4617 firstCut=5627 lag=5907 lag-tEnd=1281
+n=2000000 f=0.3750 X: tStart=-21737 kvs=1826304 steps=24374 values=268494 tEnd=2700 kvs/300=6087 firstCut=3701 lag=3971 lag-tEnd=1271
+n=2000000 f=0.5000 X: tStart=-21746 kvs=1825404 steps=24339 values=296528 tEnd=2594 kvs/300=6084 firstCut=3595 lag=3860 lag-tEnd=1266
+n=3000000 f=0.2500 X: tStart=-33853 kvs=2614704 steps=35351 values=215827 tEnd=3240 kvs/300=8715 firstCut=4241 lag=4521 lag-tEnd=1281
+n=3000000 f=0.3750 X: tStart=-17384 kvs=1738404 steps=23180 values=0 tEnd=5800 kvs/300=5794 firstCut=6801 lag=7068 lag-tEnd=1268
+n=3000000 f=0.5000 X: tStart=-17405 kvs=1740504 steps=23208 values=0 tEnd=5806 kvs/300=5801 firstCut=6807 lag=7071 lag-tEnd=1265
+n=4000000 f=0.2500 X: tStart=-8353 kvs=835304 steps=11139 values=0 tEnd=2792 kvs/300=2784 firstCut=3793 lag=4066 lag-tEnd=1274
+n=4000000 f=0.3750 X: tStart=-37384 kvs=3738404 steps=49847 values=0 tEnd=12467 kvs/300=12461 firstCut=13468 lag=13736 lag-tEnd=1269
+n=4000000 f=0.5000 X: tStart=-37405 kvs=3740504 steps=49874 values=0 tEnd=12472 kvs/300=12468 firstCut=13473 lag=13737 lag-tEnd=1265
+n=6000000 f=0.2500 X: tStart=-53900 kvs=5390004 steps=71868 values=0 tEnd=17974 kvs/300=17966 firstCut=18975 lag=19253 lag-tEnd=1279
+n=6000000 f=0.3750 X: tStart=-20560 kvs=2056004 steps=27415 values=2 tEnd=6859 kvs/300=6853 firstCut=7860 lag=8128 lag-tEnd=1269
+n=6000000 f=0.5000 X: tStart=-20609 kvs=2060904 steps=27480 values=2 tEnd=6874 kvs/300=6869 firstCut=7875 lag=8138 lag-tEnd=1264
+n=10000000 f=0.2500 X: tStart=-20338 kvs=2033804 steps=27119 values=2 tEnd=6787 kvs/300=6779 firstCut=7788 lag=8064 lag-tEnd=1277
+n=10000000 f=0.3750 X: tStart=-100560 kvs=9944004 steps=132634 values=71253 tEnd=32233 kvs/300=33146 firstCut=33234 lag=33501 lag-tEnd=1268
+
+# The iterations of the emptied databases up to the first after X (fill, deletes, drive).
+## d1m f=0.2500
+  ITER tStart=-19988 pStart=200576 tEnd=-19955 pEnd=1039640 steps=21 kvs=1202 values=1202 dirtied=209
+  ITER tStart=-19738 pStart=5053232 tEnd=-19386 pEnd=11659592 steps=350 kvs=26204 values=0 dirtied=114
+  ITER tStart=-19386 pStart=11678856 tEnd=-18261 pEnd=38598608 steps=927 kvs=61404 values=26202 dirtied=4742
+  ITER tStart=-18261 pStart=38621040 tEnd=-15893 pEnd=91060240 steps=2338 kvs=173904 values=35200 dirtied=6565
+  ITER tStart=-15893 pStart=91078576 tEnd=-9323 pEnd=238031040 steps=5864 kvs=410704 values=138702 dirtied=25480
+  ITER tStart=-9323 pStart=238037720 tEnd=3116 pEnd=299359584 steps=12432 kvs=932304 values=0 dirtied=1778
+  ITER tStart=3117 pStart=299362744 tEnd=3141 pEnd=299404464 steps=1 kvs=4 values=1 dirtied=1
+## d1m f=0.3750
+  ITER tStart=-19988 pStart=204504 tEnd=-19969 pEnd=773552 steps=17 kvs=1202 values=1202 dirtied=198
+  ITER tStart=-19738 pStart=5052816 tEnd=-19386 pEnd=11640072 steps=350 kvs=26204 values=0 dirtied=110
+  ITER tStart=-19386 pStart=11662776 tEnd=-18564 pEnd=32787480 steps=820 kvs=61404 values=26202 dirtied=4592
+  ITER tStart=-18564 pStart=32808352 tEnd=-16647 pEnd=76713336 steps=1915 kvs=143604 values=35200 dirtied=6391
+  ITER tStart=-16647 pStart=76732504 tEnd=-12174 pEnd=185405488 steps=4471 kvs=335304 values=108402 dirtied=19660
+  ITER tStart=-12174 pStart=185425160 tEnd=-1737 pEnd=325445016 steps=10435 kvs=782604 values=226900 dirtied=39106
+  ITER tStart=-1737 pStart=325451112 tEnd=584 pEnd=336671480 steps=2317 kvs=173704 values=2 dirtied=331
+  ITER tStart=585 pStart=336673376 tEnd=604 pEnd=336700448 steps=1 kvs=4 values=0 dirtied=0
+## d2m f=0.2500
+  ITER tStart=-39988 pStart=200576 tEnd=-39955 pEnd=1039640 steps=21 kvs=1202 values=1202 dirtied=209
+  ITER tStart=-39738 pStart=5053232 tEnd=-39386 pEnd=11659592 steps=350 kvs=26204 values=0 dirtied=114
+  ITER tStart=-39386 pStart=11678856 tEnd=-38261 pEnd=38598608 steps=927 kvs=61404 values=26202 dirtied=4742
+  ITER tStart=-38261 pStart=38621040 tEnd=-35893 pEnd=91060240 steps=2338 kvs=173904 values=35200 dirtied=6565
+  ITER tStart=-35893 pStart=91078576 tEnd=-29323 pEnd=246741792 steps=5864 kvs=410704 values=138702 dirtied=25604
+  ITER tStart=-29323 pStart=246760792 tEnd=-13853 pEnd=520203640 steps=14689 kvs=1067704 values=272000 dirtied=49365
+  ITER tStart=-13853 pStart=520208936 tEnd=4626 pEnd=611552912 steps=18472 kvs=1385304 values=2 dirtied=2644
+  ITER tStart=4627 pStart=611556120 tEnd=4653 pEnd=611598120 steps=1 kvs=4 values=0 dirtied=0
+## d2m f=0.3750
+  ITER tStart=-39988 pStart=204504 tEnd=-39969 pEnd=773552 steps=17 kvs=1202 values=1202 dirtied=198
+  ITER tStart=-39738 pStart=5052816 tEnd=-39386 pEnd=11640072 steps=350 kvs=26204 values=0 dirtied=110
+  ITER tStart=-39386 pStart=11662776 tEnd=-38564 pEnd=32787480 steps=820 kvs=61404 values=26202 dirtied=4592
+  ITER tStart=-38564 pStart=32808352 tEnd=-36647 pEnd=76713336 steps=1915 kvs=143604 values=35200 dirtied=6391
+  ITER tStart=-36647 pStart=76732504 tEnd=-32174 pEnd=185405488 steps=4471 kvs=335304 values=108402 dirtied=19660
+  ITER tStart=-32174 pStart=185425160 tEnd=-21737 pEnd=433429272 steps=10435 kvs=782604 values=226900 dirtied=41138
+  ITER tStart=-21737 pStart=433445096 tEnd=2700 pEnd=651700568 steps=24374 kvs=1826304 values=268494 dirtied=48811
+  ITER tStart=2701 pStart=651702512 tEnd=2715 pEnd=651730120 steps=1 kvs=4 values=0 dirtied=0
+## d2m f=0.5000
+  ITER tStart=-39988 pStart=204504 tEnd=-39969 pEnd=782120 steps=17 kvs=1202 values=1202 dirtied=200
+  ITER tStart=-39738 pStart=5041688 tEnd=-39386 pEnd=11644368 steps=350 kvs=26204 values=0 dirtied=108
+  ITER tStart=-39386 pStart=11663552 tEnd=-38565 pEnd=32760512 steps=819 kvs=61404 values=26202 dirtied=4565
+  ITER tStart=-38565 pStart=32780728 tEnd=-36649 pEnd=76647128 steps=1914 kvs=143504 values=35200 dirtied=6391
+  ITER tStart=-36649 pStart=76667064 tEnd=-32178 pEnd=185271232 steps=4469 kvs=335104 values=108302 dirtied=19603
+  ITER tStart=-32178 pStart=185289784 tEnd=-21746 pEnd=433258560 steps=10430 kvs=782204 values=226800 dirtied=41218
+  ITER tStart=-21746 pStart=433278320 tEnd=2594 pEnd=657848048 steps=24339 kvs=1825404 values=296528 dirtied=53428
+  ITER tStart=2595 pStart=657851080 tEnd=2606 pEnd=657871424 steps=1 kvs=4 values=0 dirtied=0
+## d3m f=0.2500
+  ITER tStart=-59988 pStart=200576 tEnd=-59955 pEnd=1039640 steps=21 kvs=1202 values=1202 dirtied=209
+  ITER tStart=-59738 pStart=5053232 tEnd=-59386 pEnd=11659592 steps=350 kvs=26204 values=0 dirtied=114
+  ITER tStart=-59386 pStart=11678856 tEnd=-58261 pEnd=38598608 steps=927 kvs=61404 values=26202 dirtied=4742
+  ITER tStart=-58261 pStart=38621040 tEnd=-55893 pEnd=91060240 steps=2338 kvs=173904 values=35200 dirtied=6565
+  ITER tStart=-55893 pStart=91078576 tEnd=-49323 pEnd=246741792 steps=5864 kvs=410704 values=138702 dirtied=25604
+  ITER tStart=-49323 pStart=246760792 tEnd=-33853 pEnd=599846712 steps=14689 kvs=1067704 values=272000 dirtied=50410
+  ITER tStart=-33853 pStart=599865880 tEnd=3240 pEnd=906929280 steps=35351 kvs=2614704 values=215827 dirtied=43668
+  ITER tStart=3241 pStart=906932376 tEnd=3269 pEnd=906974304 steps=1 kvs=4 values=0 dirtied=0
+## d3m f=0.3750
+  ITER tStart=-59988 pStart=204504 tEnd=-59969 pEnd=773552 steps=17 kvs=1202 values=1202 dirtied=198
+  ITER tStart=-59738 pStart=5052816 tEnd=-59386 pEnd=11640072 steps=350 kvs=26204 values=0 dirtied=110
+  ITER tStart=-59386 pStart=11662776 tEnd=-58564 pEnd=32787480 steps=820 kvs=61404 values=26202 dirtied=4592
+  ITER tStart=-58564 pStart=32808352 tEnd=-56647 pEnd=76713336 steps=1915 kvs=143604 values=35200 dirtied=6391
+  ITER tStart=-56647 pStart=76732504 tEnd=-52174 pEnd=185405488 steps=4471 kvs=335304 values=108402 dirtied=19660
+  ITER tStart=-52174 pStart=185425160 tEnd=-41737 pEnd=433429272 steps=10435 kvs=782604 values=226900 dirtied=41138
+  ITER tStart=-41737 pStart=433445096 tEnd=-17384 pEnd=856456056 steps=24351 kvs=1826304 values=555702 dirtied=98513
+  ITER tStart=-17384 pStart=856464608 tEnd=5800 pEnd=971109016 steps=23180 kvs=1738404 values=0 dirtied=3320
+  ITER tStart=5801 pStart=971110912 tEnd=5818 pEnd=971140128 steps=1 kvs=4 values=1 dirtied=1
+## d3m f=0.5000
+  ITER tStart=-59988 pStart=204504 tEnd=-59969 pEnd=782120 steps=17 kvs=1202 values=1202 dirtied=200
+  ITER tStart=-59738 pStart=5041688 tEnd=-59386 pEnd=11644368 steps=350 kvs=26204 values=0 dirtied=108
+  ITER tStart=-59386 pStart=11663552 tEnd=-58565 pEnd=32760512 steps=819 kvs=61404 values=26202 dirtied=4565
+  ITER tStart=-58565 pStart=32780728 tEnd=-56649 pEnd=76647128 steps=1914 kvs=143504 values=35200 dirtied=6391
+  ITER tStart=-56649 pStart=76667064 tEnd=-52178 pEnd=185271232 steps=4469 kvs=335104 values=108302 dirtied=19603
+  ITER tStart=-52178 pStart=185289784 tEnd=-41746 pEnd=433258560 steps=10430 kvs=782204 values=226800 dirtied=41218
+  ITER tStart=-41746 pStart=433278320 tEnd=-17405 pEnd=855830536 steps=24339 kvs=1825404 values=555402 dirtied=98440
+  ITER tStart=-17405 pStart=855836768 tEnd=5806 pEnd=970640024 steps=23208 kvs=1740504 values=0 dirtied=3322
+  ITER tStart=5807 pStart=970642896 tEnd=5820 pEnd=970664496 steps=1 kvs=4 values=1 dirtied=1
+## d4m f=0.2500
+  ITER tStart=-79988 pStart=200576 tEnd=-79955 pEnd=1039640 steps=21 kvs=1202 values=1202 dirtied=209
+  ITER tStart=-79738 pStart=5053232 tEnd=-79386 pEnd=11659592 steps=350 kvs=26204 values=0 dirtied=114
+  ITER tStart=-79386 pStart=11678856 tEnd=-78261 pEnd=38598608 steps=927 kvs=61404 values=26202 dirtied=4742
+  ITER tStart=-78261 pStart=38621040 tEnd=-75893 pEnd=91060240 steps=2338 kvs=173904 values=35200 dirtied=6565
+  ITER tStart=-75893 pStart=91078576 tEnd=-69323 pEnd=246741792 steps=5864 kvs=410704 values=138702 dirtied=25604
+  ITER tStart=-69323 pStart=246760792 tEnd=-53853 pEnd=599846712 steps=14689 kvs=1067704 values=272000 dirtied=50410
+  ITER tStart=-53853 pStart=599865880 tEnd=-8353 pEnd=1209982640 steps=36651 kvs=2614704 values=694069 dirtied=125410
+  ITER tStart=-8353 pStart=1209989928 tEnd=2792 pEnd=1264906088 steps=11139 kvs=835304 values=0 dirtied=1596
+  ITER tStart=2793 pStart=1264909768 tEnd=2819 pEnd=1264949792 steps=1 kvs=4 values=1 dirtied=1
+## d4m f=0.3750
+  ITER tStart=-79988 pStart=204504 tEnd=-79969 pEnd=773552 steps=17 kvs=1202 values=1202 dirtied=198
+  ITER tStart=-79738 pStart=5052816 tEnd=-79386 pEnd=11640072 steps=350 kvs=26204 values=0 dirtied=110
+  ITER tStart=-79386 pStart=11662776 tEnd=-78564 pEnd=32787480 steps=820 kvs=61404 values=26202 dirtied=4592
+  ITER tStart=-78564 pStart=32808352 tEnd=-76647 pEnd=76713336 steps=1915 kvs=143604 values=35200 dirtied=6391
+  ITER tStart=-76647 pStart=76732504 tEnd=-72174 pEnd=185405488 steps=4471 kvs=335304 values=108402 dirtied=19660
+  ITER tStart=-72174 pStart=185425160 tEnd=-61737 pEnd=433429272 steps=10435 kvs=782604 values=226900 dirtied=41138
+  ITER tStart=-61737 pStart=433445096 tEnd=-37384 pEnd=986857480 steps=24351 kvs=1826304 values=555702 dirtied=100279
+  ITER tStart=-37384 pStart=986863600 tEnd=12467 pEnd=1234335528 steps=49847 kvs=3738404 values=0 dirtied=7134
+  ITER tStart=12468 pStart=1234338744 tEnd=12481 pEnd=1234366304 steps=1 kvs=4 values=1 dirtied=1
+## d4m f=0.5000
+  ITER tStart=-79988 pStart=204504 tEnd=-79969 pEnd=782120 steps=17 kvs=1202 values=1202 dirtied=200
+  ITER tStart=-79738 pStart=5041688 tEnd=-79386 pEnd=11644368 steps=350 kvs=26204 values=0 dirtied=108
+  ITER tStart=-79386 pStart=11663552 tEnd=-78565 pEnd=32760512 steps=819 kvs=61404 values=26202 dirtied=4565
+  ITER tStart=-78565 pStart=32780728 tEnd=-76649 pEnd=76647128 steps=1914 kvs=143504 values=35200 dirtied=6391
+  ITER tStart=-76649 pStart=76667064 tEnd=-72178 pEnd=185271232 steps=4469 kvs=335104 values=108302 dirtied=19603
+  ITER tStart=-72178 pStart=185289784 tEnd=-61746 pEnd=433258560 steps=10430 kvs=782204 values=226800 dirtied=41218
+  ITER tStart=-61746 pStart=433278320 tEnd=-37405 pEnd=986300856 steps=24339 kvs=1825404 values=555402 dirtied=100218
+  ITER tStart=-37405 pStart=986306944 tEnd=12472 pEnd=1233970696 steps=49874 kvs=3740504 values=0 dirtied=7138
+  ITER tStart=12473 pStart=1233973736 tEnd=12483 pEnd=1233997152 steps=1 kvs=4 values=1 dirtied=1
+## d6m f=0.2500
+  ITER tStart=-119988 pStart=200576 tEnd=-119955 pEnd=1039640 steps=21 kvs=1202 values=1202 dirtied=209
+  ITER tStart=-119738 pStart=5053232 tEnd=-119386 pEnd=11659592 steps=350 kvs=26204 values=0 dirtied=114
+  ITER tStart=-119386 pStart=11678856 tEnd=-118261 pEnd=38598608 steps=927 kvs=61404 values=26202 dirtied=4742
+  ITER tStart=-118261 pStart=38621040 tEnd=-115893 pEnd=91060240 steps=2338 kvs=173904 values=35200 dirtied=6565
+  ITER tStart=-115893 pStart=91078576 tEnd=-109323 pEnd=246741792 steps=5864 kvs=410704 values=138702 dirtied=25604
+  ITER tStart=-109323 pStart=246760792 tEnd=-93853 pEnd=599846712 steps=14689 kvs=1067704 values=272000 dirtied=50410
+  ITER tStart=-93853 pStart=599865880 tEnd=-53900 pEnd=1461886760 steps=36767 kvs=2614704 values=795702 dirtied=146314
+  ITER tStart=-53900 pStart=1461893008 tEnd=17974 pEnd=1819635208 steps=71868 kvs=5390004 values=0 dirtied=10281
+  ITER tStart=17975 pStart=1819637880 tEnd=18001 pEnd=1819678896 steps=1 kvs=4 values=1 dirtied=2
+## d6m f=0.3750
+  ITER tStart=-119988 pStart=204504 tEnd=-119969 pEnd=773552 steps=17 kvs=1202 values=1202 dirtied=198
+  ITER tStart=-119738 pStart=5052816 tEnd=-119386 pEnd=11640072 steps=350 kvs=26204 values=0 dirtied=110
+  ITER tStart=-119386 pStart=11662776 tEnd=-118564 pEnd=32787480 steps=820 kvs=61404 values=26202 dirtied=4592
+  ITER tStart=-118564 pStart=32808352 tEnd=-116647 pEnd=76713336 steps=1915 kvs=143604 values=35200 dirtied=6391
+  ITER tStart=-116647 pStart=76732504 tEnd=-112174 pEnd=185405488 steps=4471 kvs=335304 values=108402 dirtied=19660
+  ITER tStart=-112174 pStart=185425160 tEnd=-101737 pEnd=433429272 steps=10435 kvs=782604 values=226900 dirtied=41138
+  ITER tStart=-101737 pStart=433445096 tEnd=-77384 pEnd=1020706952 steps=24351 kvs=1826304 values=555702 dirtied=100753
+  ITER tStart=-77384 pStart=1020726160 tEnd=-20560 pEnd=1869698416 steps=56822 kvs=4261604 values=1270600 dirtied=221725
+  ITER tStart=-20560 pStart=1869705008 tEnd=6859 pEnd=2005938648 steps=27415 kvs=2056004 values=2 dirtied=3924
+  ITER tStart=6860 pStart=2005940568 tEnd=6877 pEnd=2005968376 steps=1 kvs=4 values=0 dirtied=0
+## d6m f=0.5000
+  ITER tStart=-119988 pStart=204504 tEnd=-119969 pEnd=782120 steps=17 kvs=1202 values=1202 dirtied=200
+  ITER tStart=-119738 pStart=5041688 tEnd=-119386 pEnd=11644368 steps=350 kvs=26204 values=0 dirtied=108
+  ITER tStart=-119386 pStart=11663552 tEnd=-118565 pEnd=32760512 steps=819 kvs=61404 values=26202 dirtied=4565
+  ITER tStart=-118565 pStart=32780728 tEnd=-116649 pEnd=76647128 steps=1914 kvs=143504 values=35200 dirtied=6391
+  ITER tStart=-116649 pStart=76667064 tEnd=-112178 pEnd=185271232 steps=4469 kvs=335104 values=108302 dirtied=19603
+  ITER tStart=-112178 pStart=185289784 tEnd=-101746 pEnd=433258560 steps=10430 kvs=782204 values=226800 dirtied=41218
+  ITER tStart=-101746 pStart=433278320 tEnd=-77405 pEnd=1019883944 steps=24339 kvs=1825404 values=555402 dirtied=100675
+  ITER tStart=-77405 pStart=1019903712 tEnd=-20609 pEnd=1868658608 steps=56794 kvs=4259504 values=1270000 dirtied=221638
+  ITER tStart=-20609 pStart=1868663936 tEnd=6874 pEnd=2005116560 steps=27480 kvs=2060904 values=2 dirtied=3933
+  ITER tStart=6875 pStart=2005119152 tEnd=6888 pEnd=2005140256 steps=1 kvs=4 values=0 dirtied=0
+## d10m f=0.2500
+  ITER tStart=-199988 pStart=200576 tEnd=-199955 pEnd=1039640 steps=21 kvs=1202 values=1202 dirtied=209
+  ITER tStart=-199738 pStart=5053232 tEnd=-199386 pEnd=11659592 steps=350 kvs=26204 values=0 dirtied=114
+  ITER tStart=-199386 pStart=11678856 tEnd=-198261 pEnd=38598608 steps=927 kvs=61404 values=26202 dirtied=4742
+  ITER tStart=-198261 pStart=38621040 tEnd=-195893 pEnd=91060240 steps=2338 kvs=173904 values=35200 dirtied=6565
+  ITER tStart=-195893 pStart=91078576 tEnd=-189323 pEnd=246741792 steps=5864 kvs=410704 values=138702 dirtied=25604
+  ITER tStart=-189323 pStart=246760792 tEnd=-173853 pEnd=599846712 steps=14689 kvs=1067704 values=272000 dirtied=50410
+  ITER tStart=-173853 pStart=599865880 tEnd=-133900 pEnd=1541356008 steps=36767 kvs=2614704 values=795702 dirtied=147384
+  ITER tStart=-133900 pStart=1541375600 tEnd=-20338 pEnd=3067631424 steps=92049 kvs=6610004 values=1746137 dirtied=313640
+  ITER tStart=-20338 pStart=3067636736 tEnd=6787 pEnd=3202203208 steps=27119 kvs=2033804 values=2 dirtied=3883
+  ITER tStart=6788 pStart=3202205672 tEnd=6808 pEnd=3202248056 steps=1 kvs=4 values=0 dirtied=0
+## d10m f=0.3750
+  ITER tStart=-199988 pStart=204504 tEnd=-199969 pEnd=773552 steps=17 kvs=1202 values=1202 dirtied=198
+  ITER tStart=-199738 pStart=5052816 tEnd=-199386 pEnd=11640072 steps=350 kvs=26204 values=0 dirtied=110
+  ITER tStart=-199386 pStart=11662776 tEnd=-198564 pEnd=32787480 steps=820 kvs=61404 values=26202 dirtied=4592
+  ITER tStart=-198564 pStart=32808352 tEnd=-196647 pEnd=76713336 steps=1915 kvs=143604 values=35200 dirtied=6391
+  ITER tStart=-196647 pStart=76732504 tEnd=-192174 pEnd=185405488 steps=4471 kvs=335304 values=108402 dirtied=19660
+  ITER tStart=-192174 pStart=185425160 tEnd=-181737 pEnd=433429272 steps=10435 kvs=782604 values=226900 dirtied=41138
+  ITER tStart=-181737 pStart=433445096 tEnd=-157384 pEnd=1020706952 steps=24351 kvs=1826304 values=555702 dirtied=100753
+  ITER tStart=-157384 pStart=1020726160 tEnd=-100560 pEnd=2390005984 steps=56822 kvs=4261604 values=1270600 dirtied=230879
+  ITER tStart=-100560 pStart=2390025312 tEnd=32233 pEnd=3081766704 steps=132634 kvs=9944004 values=71253 dirtied=31353
+  ITER tStart=32234 pStart=3081769808 tEnd=32248 pEnd=3081796896 steps=1 kvs=4 values=0 dirtied=0
