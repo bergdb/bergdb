@@ -119,9 +119,9 @@ theorem putInvT_timeSpace (c : Ctx) (base : View BVal) (w w' : W) (hI : PutInv c
     (hgn : wNode c.p base w g = some gn) (hgl : gn.leaf = false)
     (hg : ReachS (wNode c.p base w) c.i w.top.rootKey g)
     (hkq : (kq, q) ∈ gn.live) (hk1 : (k1, L) ∈ qn.live)
-    (hrangeq : ∀ c' z, (c', z) ∈ qn.live →
+    (hrangeq : ∀ c' z, (c', z) ∈ qn.live → 0 < c' →
       kq ≤ c' ∧ ∀ c'' z', (c'', z') ∈ gn.live → kq < c'' → c' < c'')
-    (hsc : ∃ zs, (sc, zs) ∈ qn.live)
+    (hsc : ∃ zs, (sc, zs) ∈ qn.live) (hsc0 : 0 < sc)
     (htk : w'.taken = w.taken) (htop : w'.top = w.top)
     (hN'g : wNode c.p base w' g = some ((gn.add c.i (.key kq Q1)).add c.i (.key sc Q2)))
     (hN'yL : wNode c.p base w' yL = some l) (hll : l.leaf = true)
@@ -172,7 +172,7 @@ theorem putInvT_timeSpace (c : Ctx) (base : View BVal) (w w' : W) (hI : PutInv c
   have hold : LeafOrderAt qn k1 n := hI.order q qn L n k1 hrq hqn hql hn hnl hk1
   have hscg : kq ≤ sc ∧ ∀ c'' z', (c'', z') ∈ gn.live → kq < c'' → sc < c'' := by
     obtain ⟨zs, hzs⟩ := hsc
-    exact hrangeq sc zs hzs
+    exact hrangeq sc zs hzs hsc0
   have hg1wf := KNode.add_key_wf gn c.i kq Q1 hgwf
   have hg1t := KNode.add_times gn c.i (.key kq Q1) (fun s h => by cases h) hgt
   have hg2t := KNode.add_times _ c.i (.key sc Q2) (fun s h => by cases h) hg1t
@@ -409,7 +409,7 @@ theorem putInv_put_timeSpace (c : Ctx) (base : View BVal) (B : NodeId) (top0 : T
       n.firstTime ≠ some c.i ∧ (c.p.M ≤ n.size + 1 → (n.lastVersion c.i).size ≤ c.p.splitAbove))
     (hparent : c.p.M < qn.size + 1 + 1 ∧ qn.firstTime ≠ some c.i ∧
       c.p.splitAbove < (qn.lastVersion c.i).size ∧ 2 ≤ qn.live.length)
-    (hrangeq : ∀ c' z, (c', z) ∈ qn.live →
+    (hrangeq : ∀ c' z, (c', z) ∈ qn.live → 0 < c' →
       kq ≤ c' ∧ ∀ c'' z', (c'', z') ∈ gn.live → kq < c'' → c' < c'')
     (hgp : gn.size + 2 + 1 ≤ c.p.M ∧
       ∀ y1 sc y2, deadOver c.p ((gn.add c.i (.key kq y1)).add c.i (.key sc y2)) = false) :
@@ -483,7 +483,7 @@ theorem putInv_put_timeSpace (c : Ctx) (base : View BVal) (B : NodeId) (top0 : T
   refine putInvT_timeSpace c base w w' hI cv r0.1 k1 kq w.next (w.next + 2) (w.next + 2 + 2)
     (w.next + 2 + 2 + 2) L q g n qn gn l out.1 out.2.1 (Nat.le_refl _) (by omega) (by omega)
     (by omega) (by omega) (by omega) (by omega) (by omega) (by omega) (by omega) hNL hnl hNq hql
-    hNg hgl hrg hkql hk1l hrangeq (divider_mem qn r0 hr0) htk (h'top.trans h4top) ?_ ?_
+    hNg hgl hrg hkql hk1l hrangeq (divider_mem qn r0 hr0) hsc0 htk (h'top.trans h4top) ?_ ?_
     (by rw [hll]; exact hnl) hlt (live_of_lookup l n cv w.next hlk) ?_ hfl.1
     hht.1 hf1 ?_ hfl.2 hht.2 hf2 ?_
     (parentBound_gen c base w hI pre cv rk L hrk hvisL q qn k1 hrq hNq hql hk1l)
@@ -494,5 +494,40 @@ theorem putInv_put_timeSpace (c : Ctx) (base : View BVal) (B : NodeId) (top0 : T
   · intro x hxL hxq hxg hxyL hxQ1 hxQ2
     rw [← hW4]
     simp only [wNode, htk, h4t, h'nodes, hxL, hxq, hxg, hxyL, hxQ1, hxQ2, ↓reduceIte]
+
+/-- The walk's ranges give the premise on an inner child's compare values: for
+a reachable inner node g and its inner child q under kq, every nonzero live
+compare value of q is at least kq and below g's next klong. -/
+theorem rangeq_of_rangeOrder (N : NodeId → Option KNode) (t : Time) (r : NodeId)
+    (hR : RangeOrder N t r)
+    (htimes : ∀ x n, N x = some n → ∀ s, Klong.time s ∈ n.ks → s ≤ t)
+    (g q : NodeId) (gn qn : KNode) (kq : Nat) (hg : ReachS N t r g) (hgn : N g = some gn)
+    (hgl : gn.leaf = false) (hqn : N q = some qn) (hql : qn.leaf = false) (hkq : (kq, q) ∈ gn.live) :
+    ∀ c' z, (c', z) ∈ qn.live → 0 < c' →
+      kq ≤ c' ∧ ∀ c'' z', (c'', z') ∈ gn.live → kq < c'' → c' < c'' := by
+  intro c' z hz hpos
+  obtain ⟨lo, hi, hgr⟩ := reachR_of_reachS N t r g hg
+  have hgt := htimes g gn hgn
+  have hqt := htimes q qn hqn
+  have hk' : (kq, q) ∈ gn.liveAt t := by rw [KNode.liveAt_of_times gn t hgt]; exact hkq
+  obtain ⟨b, hb⟩ := childBounds_exists (gn.liveAt t) hi (kq, q) hk'
+  have hqr := ReachR.inner g gn lo hi kq q b hgr hgn hgl hb
+  have hz2 : (c', z) ∈ qn.liveAt t := by rw [KNode.liveAt_of_times qn t hqt]; exact hz
+  obtain ⟨hlow, hhigh⟩ := hR q _ b qn hqr hqn (c', z) hz2
+  simp only [hql, Bool.false_eq_true, ↓reduceIte] at hlow
+  refine ⟨?_, ?_⟩
+  · by_cases h0 : kq = 0
+    · omega
+    · have : (kq == 0) = false := by simpa using h0
+      simp only [this, Bool.false_eq_true, ↓reduceIte] at hlow
+      omega
+  · intro c'' z' hz3 hlt
+    have hz4 : (c'', z') ∈ gn.liveAt t := by rw [KNode.liveAt_of_times gn t hgt]; exact hz3
+    obtain ⟨upper, hub, hle⟩ := childBounds_next_le (gn.liveAt t) hi (KNode.liveAt_order gn t) (kq, q)
+      b hb (c'', z') hz4 hlt
+    rw [hub] at hhigh
+    simp only [UpperBound] at hhigh
+    simp only at hle
+    omega
 
 end SIS.Tree
