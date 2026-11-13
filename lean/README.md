@@ -75,6 +75,17 @@ rules give the same startup pos on the 300 cases, and over 3 * 10^6 of
 TakeCheck's cases they differ in 13, the integer rule taking one transaction
 more (the review of 005-79's Part B).
 
+Since 2026-11-13 (bergdb item 007) the model also has T4, stated as new
+definitions from 007-01's prose (5.1 and 6; SIS/BoundT4.lean,
+SIS/BoundT4Theorems.lean): every record R(i) is bounded by the debt D before
+T(i), with no assumption (`T4_record`, `T4_records`, `T4_ends` for R(s) and
+R(k)); and with the exact still-dirty test and a written root, every node x
+of D is on the access path of a change of the last lev(x) + 1 startup
+sections (`T4_debt`), so D is at most the access paths of the last H + 1
+sections (`T4_debt_count`), and with TREE at most (H + 1) times their
+changes plus their touched nodes (`T4_debt_tree`), H the root's level.
+007-01 says "about the last two sections"; the proof gives lev(x) + 1.
+
 Since bergdb item 009 (2026-10-25) the model also has handles: SIS/Handle.lean
 models 009's design of the physical layer (one handle per node, pointers that
 hold handles, eviction without walks;
@@ -215,6 +226,7 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
     import SIS.PhysTheorems
     import SIS.ReclaimTheorems
     import SIS.BoundTheorems
+    import SIS.BoundT4Theorems
     #print axioms SIS.T1_recovery
     #print axioms SIS.T1_crash
     #print axioms SIS.T1_nodes
@@ -244,6 +256,12 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
     #print axioms SIS.T3_take_decrease_restarts
     #print axioms SIS.T3_take_rerun
     #print axioms SIS.T3_take_reads
+    #print axioms SIS.T4_record
+    #print axioms SIS.T4_records
+    #print axioms SIS.T4_ends
+    #print axioms SIS.T4_debt
+    #print axioms SIS.T4_debt_count
+    #print axioms SIS.T4_debt_tree
 
 Each prints `[propext, Classical.choice, Quot.sound]`, or a part of it
 (`LM_cutTo`, `T3_section` and `T3_restarts` need no `Classical.choice`).
@@ -488,6 +506,23 @@ its section in sis-model.md.
   since (`T3_take_decrease`, `T3_take_decrease_restarts`); what startup
   reruns and reads (`T3_take_rerun`, `T3_take_reads`). No assumption but the
   policy.
+* SIS/BoundT4.lean (007-01, 5.1 and 6). Bounds, part 2, T4 as new
+  definitions from 007-01's prose, quoted there: the startup pos of record j
+  and its iterates, the last n sections (`spAt`, `spIter`); a node's level
+  (`levelOf`); a node on the access path of the change of T(τ), or touched
+  by it (`onAccessPath`), and that change (`changeAt`); a record bounded by
+  the debt before its transaction (`RecordBound`, `RecordByDebt`); every
+  node of D on the access path of a change of the last lev + 1 sections
+  (`DebtByChanges`).
+* SIS/BoundT4Theorems.lean (007-01, 5.1 and 6). T4: every record that a
+  transaction appends is bounded by the debt before it, on any database
+  with a stream (`T4_record`), in a run (`T4_records`), at the ends of the
+  startup section, R(s) and R(k) (`T4_ends`), with no assumption; with
+  `RunOK`, the exact still-dirty test and a written root, `DebtByChanges`
+  (`T4_debt`), the debt counted by the access paths of the last H + 1
+  sections, for nodes of D on levels up to H (`T4_debt_count`), and with
+  TREE after every transaction by the changes of those sections
+  (`T4_debt_tree`).
 
 The proofs, in SIS/Proof/ (not needed for reading the statements):
 
@@ -810,6 +845,20 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
   distance in it (`section_step_of`, `take_step`); folds of steps, each
   followed by a restart or not (`fold_length`, `fold_bound`,
   `fold_decrease`).
+* BoundT4, BoundT4Debt, BoundT4Tree. T4 (bergdb item 007): the record of a
+  step (`recordByDebt_step`, `recordBound_run`); a change below a node at an
+  earlier time puts it on the access path then (`reachFrom_entry_back`,
+  `onAccessPath_of_below`); lemma G, a version good at r' and not at a later
+  t has an entry below it in between (`Inv.stale_entry`); the iterates of
+  the startup pos (`spIter_le`, `spIter_mono`, `spIter_anti`); a node of D
+  is not written while in D (`st_D_not_written`); a taken node's version
+  names the latest versions of its lower pointees (`step_ref_lower`); a
+  child's access path lifts to its parent (`onAccessPath_lift`); the
+  induction on the level (`debt_main`, which does not use the still-dirty
+  test), `debtByChanges_exact`, the count (`debt_count_exact`); with TREE,
+  the ancestors of a node are on distinct levels (`anc_level_inj`,
+  `anc_count`), the access path of a change (`accessPath_count`),
+  `debt_tree_exact`.
 
 Not trusted, tests only:
 
@@ -1106,7 +1155,9 @@ run):
 * Bounds (bergdb item 007): T3 (`T3_section`, `T3_restarts`, `T3_reads`,
   `T3_rerun`, `T3_bounded`), and T3 for BergDB's take (`T3_take_step`,
   `T3_take`, `T3_take_restarts`, `T3_take_decrease`,
-  `T3_take_decrease_restarts`, `T3_take_rerun`, `T3_take_reads`; 007-08).
+  `T3_take_decrease_restarts`, `T3_take_rerun`, `T3_take_reads`; 007-08);
+  T4 (`T4_record`, `T4_records`, `T4_ends`, `T4_debt`, `T4_debt_count`,
+  `T4_debt_tree`; 2026-11-13).
 
 Checked by running: the `#guard`s of `lake build`, the random runs of
 `sistest`, `phystest` and `reclaimtest` (Build and run), and Java's traces
@@ -1114,8 +1165,10 @@ by `tracecheck` (027-01's [levels.md](../items/027-algorithms/01-docs-2026-11-12
 
 Not done:
 
-* The bounds: T4 (D) (bergdb item 007). T3 for BergDB's take is proved
-  without its record limit (bergdb 007-08). The stream's meta blocks are
+* The bounds (bergdb item 007): T4 for BergDB's still-dirty test (Rule A
+  keeps nodes in D through dead pointers; T4 is proved for the exact test),
+  and whether two sections suffice for D (T4 proves lev + 1). T3 for
+  BergDB's take is proved without its record limit (bergdb 007-08). The stream's meta blocks are
   not modelled either, but they make no difference to the take: when it
   runs, the stream's length is where the new record begins (bergdb 005-68).
 * Reclaim's theorems: T-SCHEME (R6), that Java's scheme gives safe cuts:
