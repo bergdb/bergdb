@@ -279,10 +279,14 @@ moved when it became a transient:
 | `level1.sh`                  | `c9ce76de` | LEVEL 1 OK: MEM 129, SEG 226.5, MEM10M 127.1 |
 | `before-commit.sh`           | `b7f6b1c3` | BEFORE COMMIT OK (65 s), main merged    |
 | `level1.sh`                  | `b7f6b1c3` | LEVEL 1 OK: MEM 129, SEG 226.9, MEM10M 127.0 |
+| `before-commit.sh`           | `c64bb271` | BEFORE COMMIT OK (64 s), 2 s delay      |
+| `level1.sh`                  | `c64bb271` | LEVEL 1 OK: MEM 129, SEG 226.3, MEM10M 127.1 |
+| `count-gates.sh all`         | `c64bb271` | COUNT GATES OK (G4 1.456, G5 1.616)     |
 
 Logs in `/Users/f/fl/bench/2026-11-13/wb/`: `before-commit.log`,
 `level1.log`, `count-all-final.log`, `before-commit2.log`,
-`level1-2.log`, `before-commit3.log`, `level1-3.log`; G4, G5 on the way: `count-g4-new.log`,
+`level1-2.log`, `before-commit3.log`, `level1-3.log`, `before-commit4.log`,
+`level1-4.log`, `count-all-4.log`; G4, G5 on the way: `count-g4-new.log`,
 `count-g5-new.log`, `count-g5-base.log`, `count-g5-new2.log`,
 `count-g4-final.log`, `count-g5-final.log`. The timing comparison:
 section 5.3.
@@ -302,11 +306,14 @@ Recorded from the coordinator's relay, 2026-11-13.
 * **Q2. The cache tables, 0.31 MB a database** (section 4): recommended
   as a separate small entry for 2026.6, with the many-small-databases
   case as its measure (the 4,096 tables made at the first use of each).
-  **Open** (Frans, 09:59): "Yes, it is significant for certain
+  Frans, 09:59: "Yes, it is significant for certain
   applications. Around a factory of 2 better. However, I don't like
   just adding the tables. We get a violation of back-to-empty, so to
-  say." The discussion goes on with the coordinator; no code here, the
-  tables stay as they are in this item.
+  say." **Answer** (Frans, 10:06): "Keep it as is, KISS. Complexity
+  and code size are costs too. Easy to implement later if ever
+  needed." Cache3's tables stay as they are; no entry.
+* **The buffer's largest size** (not a question of this item; Frans,
+  10:05): "Keep 10 MB." No study.
 * **Q3. The shrink delay**, a constant, 1 s: recommended as it is.
   **Answer** (Frans, 09:59): "OK, keep it as a constant, but use 2
   seconds." Done: `shrinkDelayMs` 2000, its Javadoc and
@@ -325,11 +332,13 @@ Recorded from the coordinator's relay, 2026-11-13.
 
 ## 9. State
 
-2026-11-13, 09:15. **Done, ready to land.** Clone
+2026-11-13, 10:08. **Done, ready to land.** Clone
 `/Users/f/fl/bench/2026-11-13/wb/clone`, branch `026-07-write-buffer`:
 `c8b81d9e` (the buffer that grows, its tests, the Javadoc), `c9ce76de`
-(MEM and G4, G5's heap measures, section 6), the item, `b7f6b1c3`
-(main merged at `20535a1d`, 026-06), and this item's last commit. Gates
-on `b7f6b1c3` (section 7): before-commit and level1 OK; count-gates OK
-on `c9ce76de`; timing compared (section 5.3). Open: Q1 to Q4 for
-Frans (section 8). The coordinator lands the branch.
+(MEM and G4, G5's heap measures, section 6), `b7f6b1c3` and `18d3a378`
+(main merged at `20535a1d` and at `ce020e6b`), `c64bb271` (the shrink
+delay 2 s, Q3), and item commits. Gates on `c64bb271` (section 7):
+before-commit, level1 and count-gates OK; the timing comparison
+(section 5.3) was made with the 1 s delay, which does not change a
+flush or a force. Frans answered Q1 to Q4 and kept 10 MB (section 8);
+nothing open. The coordinator lands the branch.
