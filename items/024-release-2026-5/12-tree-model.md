@@ -1300,8 +1300,15 @@ below a top node with room** (`writerWP_appendKlongs_chainR`,
 induction it follows; the steps `getFromR_timeLevel`,
 `getFromR_spaceLevel`, `getFromR_updN_unreach`, `GetCascadeGen.lean`):
 after `appendKlongs j (X j) ins` the writer's state reads as the state
-with ins put in X j. Still open: the put and delete rules on it, and
-in-place splits, a root or segment-root top. The design: one induction
+with ins put in X j. On it, at 16:50, **proved: the put and the
+delete into a leaf below such a chain**, the leaf split by its size,
+time or space, or its delete's bitmap (`writerWP_put_chain`,
+`writerWP_del_chain`, `GetCascadePut.lean`; a delete's time split in
+place for a leaf the transaction made). Still open: in-place splits
+inside the chain, a root or segment-root top, a top without room for
+two klongs (cost extends the chain to these as
+`writerWP_appendKlongs_chainG`), a delete's space split in place, a put
+that makes more than one new segment. The design: one induction
 over the writer's `appendKlongs (d + 1) x ins` instead of a rule per
 depth. Its statement: after it, the writer's state reads as the
 state before with x replaced by x with ins put (the node of the room
