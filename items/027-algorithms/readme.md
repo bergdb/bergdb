@@ -109,7 +109,7 @@ Files
 * [04-outline-proposal.md](04-outline-proposal.md). 027-04, a proposed
   outline for 027, for Frans to react to: 14 parts by mechanism in the
   levels' order, three other organisations, five questions, and how the
-  writing could go on with him; open, not a decision.
+  writing could go on with him; decided (Frans, 2026-11-13, 11:09).
 
 
 The parts, in reading order (027-04; stubs until written):
