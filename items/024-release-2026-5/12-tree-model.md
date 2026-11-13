@@ -1546,6 +1546,35 @@ and its status:
           nothing put for the one-node chain X 0 = L, Nn 0 = n, and keeps
           the path. Its premise is that the last version is a time klong
           and key klongs of distinct compare values.
+    TP7's `LatestInvOK` assembled from its parts (latest, 00:10, from the
+    coordinator at 23:50; `InvAssembly.lean`). Not proved yet: the parts
+    `NonEmptyOK`, `RootsOK` and `FillOK` (latest's, next), `HeightLiveOK`
+    (cost's) and `RangeAtOK` (putinv's `RangeOrder`, on P).
+    - `invOK_of_parts`: the walk at t finds no fault when the space root is
+      a key node and every key node is sound as it is. The kinds and the
+      live heights must hold. The reachable nodes must meet `NonEmptyOK`,
+      `LeftmostOK`, `RootsOK` (new: an inner segment root has two live
+      klongs) and `FillOK`. And `RangeAtOK` (new) must hold: `RangeOrder`
+      on P's key nodes from the space root.
+    - The walk's fuel needs no premise. The walk reaches the nodes of
+      `WalkVisit`, and along its edges the level falls by one at least
+      (`level_inner`, `level_seg`, `walkVisit_key`). The space root's level
+      is at most `keyMax`, which is below the fuel (`keyMax_lt_fuel`).
+    - A node the walk reaches is in `nodesRootsAt` with its flag
+      (`walkVisit_mem`) and in `RangeOrder`'s reach with its bounds
+      (`walkVisit_reachR`). So the statements over `keyNodesAt` and
+      `nodesRootsAt` reach every node the walk checks.
+    - `latestInvOK_of_parts` and `invPreserved_of_open` are the run level,
+      under `MergeParamsOK`. From TP4 come `KeyNodesOK`
+      (`keyNodesOK_of_pointers`), the space root (`treeRun_rootKeyOK`), the
+      kinds (`treeRun_kindsAllOK`) and `LeftmostOK` (`leftmostOK_latest`).
+      Left as premises: TP4, `DeadAllOK`, `HeightLiveOK`, `NonEmptyOK`,
+      `RootsOK`, `FillOK` and `RangeAtOK`.
+    - Not void (`#guard invAsmCheck`): a run within reach with merges on
+      (node size 8, m = 2, h = c = 4). It has thirty puts, then twenty-two
+      deletes that merge 14 key nodes down to 3. At its last time the walk
+      finds no fault, and the Bool forms of `NonEmptyOK`, `RootsOK`,
+      `FillOK` and `RootKeyOK` hold.
     Removed (latest, 23:08, as agreed with cost and the coordinator, after
     putinv's take-back moved to F2 at 65b84e5b): `DescentOKF`,
     `MergePathCond`, `opGetCaseOK_delMergeF`, `writerWP_mergeUp_delF`,
