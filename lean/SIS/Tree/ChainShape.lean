@@ -497,7 +497,7 @@ not reach, unchanged; a chain node left behind with its klongs before the
 transaction; or a node of time c.i whose shadowed klongs
 are as `ChainShadow` says, a chain node among them made by the transaction; or
 the node where the cascade ends. -/
-def CascadeShape (c : Ctx) (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode) (s D : Nat)
+def CascadeNodeShape (c : Ctx) (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode) (s D : Nat)
     (ins : List (Nat × NodeId)) (z : NodeId) (zn : KNode) : Prop :=
   (∃ i, s ≤ i ∧ i ≤ D ∧ z = X i ∧ zn = Nn i) ∨
   (∃ i, s ≤ i ∧ i ≤ D ∧ z = X i ∧ zn = (Nn i).toPrev (c.i - 1)) ∨
@@ -514,7 +514,7 @@ def ShapePost (c : Ctx) (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNo
   (∀ z, z < w.next → (∀ i, s ≤ i → i ≤ D → z ≠ X i) → w'.nodes.lookup z = w.nodes.lookup z) ∧
   (∀ z, w'.next ≤ z → w'.nodes.lookup z = none) ∧
   ∀ z zn, w'.nodes.lookup z = some zn → (w.next ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ D ∧ z = X i) →
-    CascadeShape c X K Nn s D ins z zn
+    CascadeNodeShape c X K Nn s D ins z zn
 
 /-- A shape after the cascade from D + 1's parent step, from the klongs ins'
 that the split of X (D + 1) puts into X D, is a shape of the cascade from
@@ -525,7 +525,7 @@ theorem cascadeShape_lift (c : Ctx) (X : Nat → NodeId) (K : Nat → Nat) (Nn :
     (hpar : ∀ q ∈ ins', ∀ y, (q.1, y) ∈ (Nn D).liveAt c.i →
       q.1 = K (D + 1) ∧ y = X (D + 1) ∧ (Nn (D + 1)).firstTime ≠ some c.i)
     (hzx : z ≠ X (D + 1)) (hs : s ≤ D)
-    (h : CascadeShape c X K Nn s D ins' z zn) : CascadeShape c X K Nn s (D + 1) ins z zn := by
+    (h : CascadeNodeShape c X K Nn s D ins' z zn) : CascadeNodeShape c X K Nn s (D + 1) ins z zn := by
   rcases h with ⟨i, h1, h2, h3, h4⟩ | ⟨i, h1, h2, h3, h4⟩ | ⟨hsh, hft⟩ | ⟨j, h1, h2, h3, htop⟩
   · exact Or.inl ⟨i, h1, by omega, h3, h4⟩
   · exact Or.inr (Or.inl ⟨i, h1, by omega, h3, h4⟩)
@@ -902,7 +902,7 @@ theorem writerWP_appendKlongs_chainShape (c : Ctx)
           w3.next = w2.next →
           (∀ z, z ≠ X (s + (e + 1)) → w3.nodes.lookup z = w2.nodes.lookup z) →
           (∀ zn, w3.nodes.lookup (X (s + (e + 1))) = some zn →
-            CascadeShape c X K Nn s (s + (e + 1)) ins (X (s + (e + 1))) zn) →
+            CascadeNodeShape c X K Nn s (s + (e + 1)) ins (X (s + (e + 1))) zn) →
           ShapePost c X K Nn s (s + (e + 1)) ins w w3 := by
         intro w1 ins' w2 w3 hnd hpar h1next h1low h1new ⟨h2next, h2frame, h2fr, h2sh⟩ h3next h3n h3x
         refine ⟨by omega, ?_, ?_, ?_⟩

@@ -1439,7 +1439,7 @@ The shapes of the nodes a cascade makes or changes (prover "latest",
 `writerWP_appendKlongs_chainGRV` that concern the writer's nodes, with
 `ChainOrd` at every level and the klongs put ordered by compare value.
 After `appendKlongs (s + e)`, every node with an id from the next id on,
-or on the chain, is one of these (`CascadeShape`):
+or on the chain, is one of these (`CascadeNodeShape`):
 
 - a chain node that the cascade did not reach, unchanged;
 - a chain node left behind with its klongs before the transaction;
