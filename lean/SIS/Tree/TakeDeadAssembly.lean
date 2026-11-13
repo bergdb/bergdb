@@ -164,4 +164,58 @@ theorem opJ2Case_delRoom (p : Params) (R : Struct BVal → Time → Prop)
   intro _ w' h _
   exact h
 
+/-! ## `LeafVals` from the walk of the kinds -/
+
+/-- A leaf's klong of a last segment's compare value names a value: by the
+overlay's kinds for a cached leaf, by the view's for one of the base. -/
+theorem leafVals_of_kinds (K : KindOracle) (B : NodeId) (c : Ctx) (base : View BVal) (w : W)
+    (hkc : KindCache K w) (hvk : ViewKinds K B c)
+    (hvals : ∀ q ∈ w.vals, B ≤ q.1 ∧ q.1 < w.next ∧ q.1 ∉ w.gh.map (·.1)) (hb : Book B c w)
+    (hbaseNew : ∀ z, B ≤ z → knodeOf c.p base z = none)
+    (hbaseVal : ∀ z, K.val z → knodeOf c.p base z = none)
+    (hbaseView : ∀ x n, knodeOf c.p base x = some n → ∃ nd, c.view x = some nd ∧ nd.isData = false ∧
+      nd.level ≤ c.p.keyMax ∧ n = ⟨c.p.heightOf nd.level == 0, klongsOf nd.hist⟩) :
+    LeafVals c base B w := by
+  intro pre cv L n hkey hK y hy
+  obtain ⟨_, _, _, hn, hnl⟩ := hK
+  have hcv : segLen cv ≠ 7 := segLen_last_of_keyWf pre cv hkey
+  have hk : Klong.key cv y ∈ n.ks := KNode.liveAt_key_mem n c.i cv y hy
+  have hval : IsValId K w y := by
+    have hLt : w.taken.contains L = false := by
+      cases h : w.taken.contains L with
+      | false => rfl
+      | true =>
+        have : wNode c.p base w L = none := by simp only [wNode, h, ↓reduceIte]
+        rw [this] at hn; cases hn
+    cases hl : w.nodes.lookup L with
+    | some m =>
+      have hm : wNode c.p base w L = some m := by
+        simp only [wNode, hLt, Bool.false_eq_true, ↓reduceIte, hl]
+      rw [hn] at hm
+      cases hm
+      have hmem := mem_ids_of_lookup w.nodes L n hl
+      have hxg : L ∈ w.gh.map (·.1) := by
+        rw [← List.mem_reverse, ← hb.ids]
+        exact List.mem_map.mpr ⟨(L, n), hmem, rfl⟩
+      obtain ⟨⟨L', g, h⟩, hq, hL'⟩ := List.mem_map.mp hxg
+      simp only at hL'
+      subst hL'
+      have hh : h = 0 := by
+        have := hb.leaf L' n g h hmem hq
+        rw [hnl] at this
+        simpa using this.symm
+      subst hh
+      exact ((hkc L' n g 0 hmem hq cv y hk).2 rfl).2 hcv
+    | none =>
+      have hkn : knodeOf c.p base L = some n := by
+        simp only [wNode, hLt, Bool.false_eq_true, ↓reduceIte, hl] at hn
+        exact hn
+      obtain ⟨nd, hnd, hd, hlv, rfl⟩ := hbaseView L n hkn
+      have hh : c.p.heightOf nd.level = 0 := by simpa using hnl
+      exact Or.inr ((hvk.klongs L nd hnd hd hlv cv y hk).2 hh |>.2 hcv)
+  refine ⟨wNode_val_none K B c base w hvk hvals hb hbaseNew hbaseVal y hval, ?_⟩
+  rcases hval with ⟨hh, hm⟩ | hv
+  · exact Or.inr (List.mem_map.mpr ⟨_, hm, rfl⟩)
+  · exact Or.inl (hvk.oldVal y hv)
+
 end SIS.Tree
