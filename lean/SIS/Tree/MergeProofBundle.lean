@@ -263,3 +263,4 @@ import SIS.Tree.DelMergeCaseF
 import SIS.Tree.TakeCachedKeep
 import SIS.Tree.TakeDeadChain
 import SIS.Tree.TakeDeadPutFull
+import SIS.Tree.TakeDeadNewSegFull
