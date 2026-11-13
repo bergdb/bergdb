@@ -347,4 +347,117 @@ theorem mem_prefixAt_of_lt (ks : List Klong) (t : Time) (j : Nat) (k : Klong)
   rw [hk] at h1
   exact List.mem_of_getElem? h1
 
+/-! ## (B) by the klongs of the transaction's time -/
+
+/-- (B) in the form every rule keeps: a node with a klong of time t (one the
+transaction changed) is reached from the space root. With the klongs of the
+nodes before the transaction below B (`Good`), it gives `LiveReachedN`. -/
+def TtReachedN (N : NodeId → Option KNode) (t : Time) (r : NodeId) : Prop :=
+  ∀ q qn, N q = some qn → Klong.time t ∈ qn.ks → TReach N t r q
+
+theorem time_le_of_mem_prefixAt (ks : List Klong) (t s : Time) (h : Klong.time s ∈ prefixAt ks t) :
+    s ≤ t := by
+  unfold prefixAt at h
+  induction ks with
+  | nil => cases h
+  | cons k ks ih =>
+    cases k with
+    | time u =>
+      by_cases hu : u ≤ t
+      · simp only [List.takeWhile_cons, hu, decide_true, ↓reduceIte, List.mem_cons,
+          Klong.time.injEq] at h
+        rcases h with h | h
+        · omega
+        · exact ih h
+      · simp [hu] at h
+    | key c y =>
+      simp only [List.takeWhile_cons, ↓reduceIte, List.mem_cons, reduceCtorEq, false_or] at h
+      exact ih h
+    | del b =>
+      simp only [List.takeWhile_cons, ↓reduceIte, List.mem_cons, reduceCtorEq, false_or] at h
+      exact ih h
+
+theorem time_not_mem_prefixAt (ks : List Klong) (t : Time) (hpos : 0 < t) :
+    Klong.time t ∉ prefixAt ks (t - 1) := by
+  intro h
+  have := time_le_of_mem_prefixAt ks (t - 1) t h
+  omega
+
+/-- A klong of ks not among those of time t comes after a time klong later than t. -/
+theorem later_time_of_not_mem_prefixAt (ks : List Klong) (t : Time) (k : Klong) (hk : k ∈ ks)
+    (hn : k ∉ prefixAt ks t) : ∃ s, Klong.time s ∈ ks ∧ t < s := by
+  unfold prefixAt at hn
+  induction ks with
+  | nil => cases hk
+  | cons k0 ks ih =>
+    cases k0 with
+    | time u =>
+      by_cases hu : u ≤ t
+      · simp only [List.takeWhile_cons, hu, decide_true, ↓reduceIte, List.mem_cons, not_or] at hn
+        rcases List.mem_cons.mp hk with he | hk'
+        · exact absurd he hn.1
+        · obtain ⟨s, hs, hts⟩ := ih hk' hn.2
+          exact ⟨s, List.mem_cons_of_mem _ hs, hts⟩
+      · exact ⟨u, List.mem_cons_self, by omega⟩
+    | key c y =>
+      simp only [List.takeWhile_cons, ↓reduceIte, List.mem_cons, not_or] at hn
+      rcases List.mem_cons.mp hk with he | hk'
+      · exact absurd he hn.1
+      · obtain ⟨s, hs, hts⟩ := ih hk' hn.2
+        exact ⟨s, List.mem_cons_of_mem _ hs, hts⟩
+    | del b =>
+      simp only [List.takeWhile_cons, ↓reduceIte, List.mem_cons, not_or] at hn
+      rcases List.mem_cons.mp hk with he | hk'
+      · exact absurd he hn.1
+      · obtain ⟨s, hs, hts⟩ := ih hk' hn.2
+        exact ⟨s, List.mem_cons_of_mem _ hs, hts⟩
+
+/-- A node unlinked at time t > 0, well formed and of no later time, has no klong
+of time t. -/
+theorem unlinked_no_time (n : KNode) (t : Time) (hpos : 0 < t) (hw : klongsWf n.ks = true)
+    (ht : ∀ s, Klong.time s ∈ n.ks → s ≤ t) :
+    Klong.time t ∉ (if n.lastTime == some t then n.toPrev (t - 1) else n).ks := by
+  split
+  · exact time_not_mem_prefixAt n.ks t hpos
+  · rename_i hlt
+    intro hm
+    exact hlt (by rw [KNode.lastTime_of_mem_max n t hw hm ht]; simp)
+
+/-- (B) after root collapse at a segment root x: x taken back, or without a
+klong of time t. -/
+theorem ttReachedN_segCollapse (N1 N2 : NodeId → Option KNode) (t : Time) (r q x y : NodeId)
+    (qn qn2 xn : KNode) (k1 : Nat) (hT : TreeOK N1 t r)
+    (hq : TReach N1 t r q) (hqn : N1 q = some qn) (hk1 : (k1, x) ∈ qn.liveAt t)
+    (hxn : N1 x = some xn) (honly : ∀ c z, (c, z) ∈ xn.liveAt t → z = y)
+    (hN2q : N2 q = some qn2) (hq2a : (k1, y) ∈ qn2.liveAt t)
+    (hq2b : ∀ c z, (c, z) ∈ qn.liveAt t → c ≠ k1 → (c, z) ∈ qn2.liveAt t)
+    (hN2 : ∀ z, z ≠ q → z ≠ x → N2 z = N1 z) (hL : TtReachedN N1 t r)
+    (hx2 : ∀ xn2, N2 x = some xn2 → Klong.time t ∉ xn2.ks) :
+    TtReachedN N2 t r := by
+  have hR := reach_segCollapse N1 N2 t r q x y qn qn2 xn k1 hT hq hqn hk1 hxn honly hN2q hq2a hq2b hN2
+  have hxR : TReach N1 t r x := TReach.link hq ⟨qn, hqn, hk1⟩
+  have hqx : q ≠ x := fun h => hT.no_self_link x k1 hxR ⟨qn, by rw [← h]; exact hqn, hk1⟩
+  intro u un hu hm
+  by_cases hux : u = x
+  · rw [hux] at hu
+    exact absurd hm (hx2 un hu)
+  · by_cases huq : u = q
+    · rw [huq]; exact (hR q hq).1 hqx
+    · rw [hN2 u huq hux] at hu
+      exact (hR u (hL u un hu hm)).1 hux
+
+/-- (B) after root collapse at the space root r: r taken back, or without a
+klong of time t. -/
+theorem ttReachedN_spaceCollapse (N1 N2 : NodeId → Option KNode) (t : Time) (r y : NodeId)
+    (rn : KNode) (hrn : N1 r = some rn) (honly : ∀ c z, (c, z) ∈ rn.liveAt t → z = y)
+    (hN2 : ∀ z, z ≠ r → N2 z = N1 z) (hL : TtReachedN N1 t r)
+    (hr2 : ∀ rn2, N2 r = some rn2 → Klong.time t ∉ rn2.ks) :
+    TtReachedN N2 t y := by
+  intro u un hu hm
+  by_cases hur : u = r
+  · rw [hur] at hu
+    exact absurd hm (hr2 un hu)
+  · rw [hN2 u hur] at hu
+    exact reach_spaceCollapse N1 N2 t r y rn hrn honly hN2 u (hL u un hu hm) hur
+
 end SIS.Tree

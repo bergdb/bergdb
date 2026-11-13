@@ -1,12 +1,9 @@
 /-
-Root collapse keeps the take-back's (B) (bergdb 024-12, TP4; TakeBackRun.lean):
-prover cost's loop `writerWP_collapseRoot_coll` with J = `TakeJ`, (B) at
-node-map level (`LiveReachedN`) and two facts of the nodes before the
-transaction that its steps need: their klongs before the transaction's time
-name nodes below B (`OldBelowN`), and they have a first time before it
-(`OldStartN`, so a node made by the transaction is at or above B). The root that
-gives way is taken back (`takeBackRoot`) or keeps its klongs before the
-transaction (`unlink`, `unlinked_live_below`).
+Root collapse keeps the take-back's (B) (bergdb 024-12, TP4; TakeBackRun.lean)
+in the form every rule keeps, `TtReachedN`: a node with a klong of the
+transaction's time is reached. Prover cost's loop `writerWP_collapseRoot_coll`
+with J = `TakeJ`; the root that gives way is taken back (`takeBackRoot`) or
+keeps no klong of the transaction's time (`unlink`, `unlinked_no_time`).
 -/
 import SIS.Tree.TakeInvTree
 import SIS.Tree.WriterKindsRules
@@ -17,30 +14,15 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
-/-- The nodes below B have a first time before t. -/
-def OldStartN (N : NodeId → Option KNode) (t : Time) (B : NodeId) : Prop :=
-  ∀ q qn, N q = some qn → q < B → ∃ s, s < t ∧ qn.firstTime = some s
+/-- What root collapse keeps of (B): `TtReachedN` of the writer's nodes. -/
+def TakeJ (c : Ctx) (base : View BVal) (v : W) : Prop :=
+  TtReachedN (wNode c.p base v) c.i v.top.rootKey
 
-/-- What root collapse keeps of (B): `LiveReachedN`, `OldBelowN`, `OldStartN`. -/
-def TakeJ (c : Ctx) (base : View BVal) (B : NodeId) (v : W) : Prop :=
-  LiveReachedN (wNode c.p base v) c.i v.top.rootKey B ∧ OldBelowN (wNode c.p base v) c.i B ∧
-  OldStartN (wNode c.p base v) c.i B
-
-theorem takeJ_of_readsAs (c : Ctx) (base : View BVal) (B : NodeId) (v v' : W)
-    (h : TakeJ c base B v) (hr : ReadsAs c.p base v v') : TakeJ c base B v' := by
+theorem takeJ_of_readsAs (c : Ctx) (base : View BVal) (v v' : W)
+    (h : TakeJ c base v) (hr : ReadsAs c.p base v v') : TakeJ c base v' := by
   unfold TakeJ
   rw [hr.1, hr.2.1]
   exact h
-
-/-- A node of the transaction's time t is at or above B. -/
-theorem ge_of_firstTime (N : NodeId → Option KNode) (t : Time) (B : NodeId) (hO : OldStartN N t B)
-    (q : NodeId) (qn : KNode) (hq : N q = some qn) (hf : qn.firstTime = some t) : B ≤ q := by
-  rcases Nat.lt_or_ge q B with h | h
-  · obtain ⟨s, hs, hf'⟩ := hO q qn hq h
-    rw [hf] at hf'
-    cases hf'
-    omega
-  · exact h
 
 /-- `unlink` of a cached node: its klongs of the transaction dropped if its last
 time is the transaction's, nothing else changed. -/
@@ -111,13 +93,13 @@ segment leaf `leaf` of the path, keeps `TakeJ` (cost's
 `writerWP_takeBackRoot_seg_coll`). -/
 theorem writerWP_takeBackRoot_seg_take (x : NodeId) (d only : Nat) (n : KNode) (leaf : NodeId)
     (ln : KNode) (k : Nat) (c : Ctx) (base : View BVal) (w0 v : W) (hI : CollGetInv c base w0 v)
-    (B : NodeId) (hJ : TakeJ c base B v)
+    (hJ : TakeJ c base v)
     (hlf : TReach (wNode c.p base v) c.i v.top.rootKey leaf)
     (hlkL : v.nodes.lookup leaf = some ln) (hlnl : ln.leaf = true) (hk : (k, x) ∈ ln.liveAt c.i)
     (hlkx : v.nodes.lookup x = some n) (honly : n.onlyLiveKlong = some only)
-    (hcv : n.cv? only = some 0) (hxl : n.leaf = false) (hmade : n.firstTime = some c.i)
+    (hcv : n.cv? only = some 0) (hxl : n.leaf = false)
     (hpd : (v.path[d]?).map (·.2) = some leaf) (hpk : v.path[d + 1]? = some (some k, x)) :
-    WriterWP (takeBackRoot x (d + 1) only) c v (fun _ v' => TakeJ c base B v') := by
+    WriterWP (takeBackRoot x (d + 1) only) c v (fun _ v' => TakeJ c base v') := by
   have hLt : v.taken.contains leaf = false := hI.1.2.1 leaf hlf
   have hwL : wNode c.p base v leaf = some ln := by
     simp only [wNode, hLt, Bool.false_eq_true, ↓reduceIte, hlkL]
@@ -169,7 +151,7 @@ theorem writerWP_takeBackRoot_seg_take (x : NodeId) (d only : Nat) (n : KNode) (
           simp [this]
         have hfin : ∀ w' : W, w'.vals = v.vals → w'.taken = x :: v.taken →
             w'.nodes = upsert v.nodes leaf (ln.repoint j child) → w'.top = v.top →
-            TakeJ c base B w' := by
+            TakeJ c base w' := by
           intro w' h'v h't h'n h'top
           have hL' : wNode c.p base w' leaf = some (ln.repoint j child) := by
             simp only [wNode, h't, hLt', Bool.false_eq_true, ↓reduceIte, h'n, lookup_upsert]
@@ -177,48 +159,16 @@ theorem writerWP_takeBackRoot_seg_take (x : NodeId) (d only : Nat) (n : KNode) (
             intro y hyl hyx
             simp only [wNode, h't, hyt y hyx, h'n, lookup_upsert, hyl, ↓reduceIte]
           have hX : wNode c.p base w' x = none := by simp [wNode, h't]
-          have hjk := kd_linkIndex_some ln x k j hj
-          have hBx : B ≤ x := ge_of_firstTime _ _ _ hJ.2.2 x n hwx hmade
-          have hlen : (prefixAt ln.ks (c.i - 1)).length ≤ j := by
-            rcases Nat.lt_or_ge j (prefixAt ln.ks (c.i - 1)).length with hlt | hge
-            · have := hJ.2.1 leaf ln hwL k x (mem_prefixAt_of_lt ln.ks _ j _ hlt hjk)
-              omega
-            · exact hge
-          have hpre : prefixAt (ln.repoint j child).ks (c.i - 1) = prefixAt ln.ks (c.i - 1) := by
-            unfold KNode.repoint
-            rw [hjk]
-            exact prefixAt_set_late ln.ks (c.i - 1) j k child hlen
-              (fun k0 h0 => by rw [hjk] at h0; cases h0; exact ⟨k, x, rfl⟩)
-          refine ⟨?_, ?_, ?_⟩
-          · rw [h'top]
-            exact liveReachedN_segCollapse (wNode c.p base v) (wNode c.p base w') c.i v.top.rootKey leaf
-              x child B ln (ln.repoint j child) n k hT hlf hwL hk hwx
-              (fun c' z hz => by
-                rw [KNode.liveAt_of_times n c.i hnt] at hz
-                exact ((hlv c' z).mp hz).2)
-              hL' (KNode.repoint_liveAt_new ln x child k j c.i hj hlnt)
-              (fun c' z hz hck => KNode.repoint_liveAt_keep ln x child k j c.i hj hlnt c' z hz hck)
-              hoth hJ.1 (fun xn2 h => by rw [hX] at h; cases h)
-          · intro z zn hz cv y hky
-            by_cases hzl : z = leaf
-            · rw [hzl, hL'] at hz
-              cases hz
-              rw [hpre] at hky
-              exact hJ.2.1 leaf ln hwL cv y hky
-            · by_cases hzx : z = x
-              · rw [hzx, hX] at hz; cases hz
-              · rw [hoth z hzl hzx] at hz
-                exact hJ.2.1 z zn hz cv y hky
-          · intro z zn hz hzB
-            by_cases hzl : z = leaf
-            · rw [hzl, hL'] at hz
-              cases hz
-              rw [KNode.firstTime_repoint]
-              exact hJ.2.2 leaf ln hwL (by rw [← hzl]; exact hzB)
-            · by_cases hzx : z = x
-              · rw [hzx, hX] at hz; cases hz
-              · rw [hoth z hzl hzx] at hz
-                exact hJ.2.2 z zn hz hzB
+          unfold TakeJ
+          rw [h'top]
+          exact ttReachedN_segCollapse (wNode c.p base v) (wNode c.p base w') c.i v.top.rootKey leaf
+            x child ln (ln.repoint j child) n k hT hlf hwL hk hwx
+            (fun c' z hz => by
+              rw [KNode.liveAt_of_times n c.i hnt] at hz
+              exact ((hlv c' z).mp hz).2)
+            hL' (KNode.repoint_liveAt_new ln x child k j c.i hj hlnt)
+            (fun c' z hz hck => KNode.repoint_liveAt_keep ln x child k j c.i hj hlnt c' z hz hck)
+            hoth hJ (fun xn2 h => by rw [hX] at h; cases h)
         exact hfin _ rfl rfl rfl rfl
     · exact writerWP_throw _ _ _ _
 
@@ -227,7 +177,7 @@ path, the leaf with room for the klong to x's child, keeps `TakeJ` (cost's
 `writerWP_replaceRoot_seg_coll`). -/
 theorem writerWP_replaceRoot_seg_take (x : NodeId) (d only : Nat) (n : KNode) (leaf : NodeId)
     (ln : KNode) (k : Nat) (c : Ctx) (base : View BVal) (w0 v : W) (hI : CollGetInv c base w0 v)
-    (B : NodeId) (hpos : 0 < c.i) (hJ : TakeJ c base B v)
+    (hpos : 0 < c.i) (hJ : TakeJ c base v)
     (hlf : TReach (wNode c.p base v) c.i v.top.rootKey leaf)
     (hlkL : v.nodes.lookup leaf = some ln) (hlnl : ln.leaf = true) (hk : (k, x) ∈ ln.liveAt c.i)
     (hlkx : v.nodes.lookup x = some n) (honly : n.onlyLiveKlong = some only)
@@ -235,7 +185,7 @@ theorem writerWP_replaceRoot_seg_take (x : NodeId) (d only : Nat) (n : KNode) (l
     (hpd : (v.path[d]?).map (·.2) = some leaf) (hpk : v.path[d + 1]? = some (some k, x))
     (hroom : ln.size + 1 + 1 ≤ c.p.M)
     (hdead : ∀ y, deadOver c.p (ln.add c.i (.key k y)) = false) :
-    WriterWP (replaceRoot x (d + 1) only) c v (fun _ v' => TakeJ c base B v') := by
+    WriterWP (replaceRoot x (d + 1) only) c v (fun _ v' => TakeJ c base v') := by
   have hLt : v.taken.contains leaf = false := hI.1.2.1 leaf hlf
   have hwL : wNode c.p base v leaf = some ln := by
     simp only [wNode, hLt, Bool.false_eq_true, ↓reduceIte, hlkL]
@@ -286,51 +236,19 @@ theorem writerWP_replaceRoot_seg_take (x : NodeId) (d only : Nat) (n : KNode) (l
         some (if n.lastTime == some c.i then n.toPrev (c.i - 1) else n) := by
       simp only [wNode, h1t, hxt, Bool.false_eq_true, ↓reduceIte, lookup_upsert, Ne.symm hlx, h1x]
     have hnwf := hI.2.2.2.1 x n hxR hwx
-    refine ⟨?_, ?_, ?_⟩
-    · show LiveReachedN _ c.i w1.top.rootKey B
-      rw [show w1.top.rootKey = v.top.rootKey by rw [h1top]]
-      exact liveReachedN_segCollapse (wNode c.p base v) _ c.i v.top.rootKey leaf
-        x child B ln (ln.add c.i (.key k child)) n k hT hlf hwL hk hwx
-        (fun c' z hz => by
-          rw [KNode.liveAt_of_times n c.i hnt] at hz
-          exact ((hlv c' z).mp hz).2)
-        hL' (KNode.add_liveAt_new ln k child c.i hlnwf hlnt)
-        (fun c' z hz hck => KNode.add_liveAt_keep ln k child c.i hlnwf hlnt c' z hz hck)
-        hoth hJ.1 (fun xn2 h => by
-          rw [hX] at h
-          cases h
-          exact unlinked_live_below n c.i B hpos (hJ.2.1 x n hwx) hnwf hnt)
-    · intro z zn hz cv y hky
-      by_cases hzl : z = leaf
-      · rw [hzl, hL'] at hz
-        cases hz
-        rw [KNode.prefixAt_add ln c.i _ hpos] at hky
-        exact hJ.2.1 leaf ln hwL cv y hky
-      · by_cases hzx : z = x
-        · rw [hzx, hX] at hz
-          cases hz
-          apply hJ.2.1 x n hwx cv y
-          split at hky
-          · simpa [KNode.toPrev, prefixAt_idem] using hky
-          · exact hky
-        · rw [hoth z hzl hzx] at hz
-          exact hJ.2.1 z zn hz cv y hky
-    · intro z zn hz hzB
-      by_cases hzl : z = leaf
-      · rw [hzl, hL'] at hz
-        cases hz
-        obtain ⟨s, hs, hf⟩ := hJ.2.2 leaf ln hwL (by rw [← hzl]; exact hzB)
-        exact ⟨s, hs, KNode.firstTime_add_some ln c.i _ s hf⟩
-      · by_cases hzx : z = x
-        · rw [hzx, hX] at hz
-          cases hz
-          obtain ⟨s, hs, hf⟩ := hJ.2.2 x n hwx (by rw [← hzx]; exact hzB)
-          refine ⟨s, hs, ?_⟩
-          split
-          · exact KNode.firstTime_toPrev n (c.i - 1) s hf (by omega)
-          · exact hf
-        · rw [hoth z hzl hzx] at hz
-          exact hJ.2.2 z zn hz hzB
+    show TtReachedN _ c.i w1.top.rootKey
+    rw [show w1.top.rootKey = v.top.rootKey by rw [h1top]]
+    exact ttReachedN_segCollapse (wNode c.p base v) _ c.i v.top.rootKey leaf
+      x child ln (ln.add c.i (.key k child)) n k hT hlf hwL hk hwx
+      (fun c' z hz => by
+        rw [KNode.liveAt_of_times n c.i hnt] at hz
+        exact ((hlv c' z).mp hz).2)
+      hL' (KNode.add_liveAt_new ln k child c.i hlnwf hlnt)
+      (fun c' z hz hck => KNode.add_liveAt_keep ln k child c.i hlnwf hlnt c' z hz hck)
+      hoth hJ (fun xn2 h => by
+        rw [hX] at h
+        cases h
+        exact unlinked_no_time n c.i hpos hnwf hnt)
 
 
 /-! ## The steps at the space root, and the loop -/
@@ -355,47 +273,31 @@ theorem writerWP_replaceRoot_spaceT (x : NodeId) (only : Nat) (n : KNode) (child
 
 /-- The collapse steps at the space root keep `TakeJ`. -/
 theorem writerWP_rootStep_space_take (x : NodeId) (only : Nat) (n : KNode) (c : Ctx)
-    (base : View BVal) (w0 v : W) (hI : CollGetInv c base w0 v) (B : NodeId) (hpos : 0 < c.i)
-    (hJ : TakeJ c base B v) (hx : x = v.top.rootKey)
-    (hlkx : v.nodes.lookup x = some n) (honly : n.onlyLiveKlong = some only)
-    (hcv : n.cv? only = some 0) (hxl : n.leaf = false) :
-    WriterWP (takeBackRoot x 0 only) c v (fun _ v' => TakeJ c base B v') ∧
-    WriterWP (replaceRoot x 0 only) c v (fun _ v' => TakeJ c base B v') := by
+    (base : View BVal) (w0 v : W) (hI : CollGetInv c base w0 v) (hpos : 0 < c.i)
+    (hJ : TakeJ c base v) (hx : x = v.top.rootKey)
+    (hlkx : v.nodes.lookup x = some n) (honly : n.onlyLiveKlong = some only) :
+    WriterWP (takeBackRoot x 0 only) c v (fun _ v' => TakeJ c base v') ∧
+    WriterWP (replaceRoot x 0 only) c v (fun _ v' => TakeJ c base v') := by
   have hxt : v.taken.contains x = false := by rw [hx]; exact hI.1.2.1 _ TReach.root
   have hwx : wNode c.p base v x = some n := by
     simp only [wNode, hxt, Bool.false_eq_true, ↓reduceIte, hlkx]
   have hroot : wNode c.p base v v.top.rootKey = some n := by rw [← hx]; exact hwx
   have hnt := hI.1.2.2.1 _ n TReach.root hroot
   have hnwf := hI.2.2.2.1 _ n TReach.root hroot
-  -- the facts after a step, from the root's node after it
   have hfin : ∀ child, n.ptr? only = some child → ∀ w3 : W, w3.top.rootKey = child →
       (∀ z, z ≠ x → wNode c.p base w3 z = wNode c.p base v z) →
-      (∀ xn2, wNode c.p base w3 x = some xn2 → (∀ c' z, (c', z) ∈ xn2.liveAt c.i → z < B) ∧
-        (∀ cv y, Klong.key cv y ∈ prefixAt xn2.ks (c.i - 1) → y < B) ∧
-        (x < B → ∃ s, s < c.i ∧ xn2.firstTime = some s)) →
-      TakeJ c base B w3 := by
+      (∀ xn2, wNode c.p base w3 x = some xn2 → Klong.time c.i ∉ xn2.ks) →
+      TakeJ c base w3 := by
     intro child hptr w3 h3top hN2 hx2
     obtain ⟨c0, _, hlv⟩ := onlyLiveKlong_live_iff n only child honly hptr
-    refine ⟨?_, ?_, ?_⟩
-    · rw [h3top]
-      refine liveReachedN_spaceCollapse (wNode c.p base v) (wNode c.p base w3) c.i v.top.rootKey child
-        B n hroot ?_ (fun z hz => hN2 z (by rw [hx]; exact hz)) hJ.1
-        (fun xn2 h => (hx2 xn2 (by rw [hx]; exact h)).1)
-      intro c' z hz
-      rw [KNode.liveAt_of_times n c.i hnt] at hz
-      exact ((hlv c' z).mp hz).2
-    · intro z zn hz cv y hky
-      by_cases hzx : z = x
-      · rw [hzx] at hz
-        exact (hx2 zn hz).2.1 cv y hky
-      · rw [hN2 z hzx] at hz
-        exact hJ.2.1 z zn hz cv y hky
-    · intro z zn hz hzB
-      by_cases hzx : z = x
-      · rw [hzx] at hz hzB
-        exact (hx2 zn hz).2.2 hzB
-      · rw [hN2 z hzx] at hz
-        exact hJ.2.2 z zn hz hzB
+    unfold TakeJ
+    rw [h3top]
+    refine ttReachedN_spaceCollapse (wNode c.p base v) (wNode c.p base w3) c.i v.top.rootKey child
+      n hroot ?_ (fun z hz => hN2 z (by rw [hx]; exact hz)) hJ
+      (fun xn2 h => hx2 xn2 (by rw [hx]; exact h))
+    intro c' z hz
+    rw [KNode.liveAt_of_times n c.i hnt] at hz
+    exact ((hlv c' z).mp hz).2
   constructor
   · cases hp : n.ptr? only with
     | none =>
@@ -428,46 +330,35 @@ theorem writerWP_rootStep_space_take (x : NodeId) (only : Nat) (n : KNode) (c : 
       intro xn2 h
       rw [hX] at h
       cases h
-      refine ⟨unlinked_live_below n c.i B hpos (hJ.2.1 x n hwx) hnwf hnt, ?_, ?_⟩
-      · intro cv y hky
-        apply hJ.2.1 x n hwx cv y
-        split at hky
-        · simpa [KNode.toPrev, prefixAt_idem] using hky
-        · exact hky
-      · intro hxB
-        obtain ⟨s, hs, hf⟩ := hJ.2.2 x n hwx hxB
-        refine ⟨s, hs, ?_⟩
-        split
-        · exact KNode.firstTime_toPrev n (c.i - 1) s hf (by omega)
-        · exact hf
+      exact unlinked_no_time n c.i hpos hnwf hnt
 
 /-- Root collapse at any segment keeps `CollGetInv` and `TakeJ`, given room in
 the segment leaf above each segment root that is replaced (cost's
 `writerWP_collapseRoot_coll` with J = `TakeJ`). -/
 theorem writerWP_collapseRoot_take (key : Key) (seg : Nat) (c : Ctx) (base : View BVal)
-    (hvc : ViewCoherent c base) (w0 : W) (B : NodeId) (hpos : 0 < c.i)
-    (hroom : ∀ v x n leaf ln k, CollGetInv c base w0 v → TakeJ c base B v → SegDesc c base x v →
+    (hvc : ViewCoherent c base) (w0 : W) (hpos : 0 < c.i)
+    (hroom : ∀ v x n leaf ln k, CollGetInv c base w0 v → TakeJ c base v → SegDesc c base x v →
       v.nodes.lookup x = some n → n.leaf = false → n.firstTime ≠ some c.i →
       TReach (wNode c.p base v) c.i v.top.rootKey leaf → v.nodes.lookup leaf = some ln →
       ln.leaf = true → (k, x) ∈ ln.liveAt c.i →
       ln.size + 1 + 1 ≤ c.p.M ∧ ∀ y, deadOver c.p (ln.add c.i (.key k y)) = false) :
-    ∀ fuel v, CollGetInv c base w0 v → TakeJ c base B v →
+    ∀ fuel v, CollGetInv c base w0 v → TakeJ c base v →
       WriterWP (collapseRoot key seg fuel) c v (fun _ v' => CollGetInv c base w0 v' ∧
-        TakeJ c base B v') := by
-  refine writerWP_collapseRoot_coll key seg c base hvc w0 (TakeJ c base B)
-    (fun v v' hJ hr => takeJ_of_readsAs c base B v v' hJ hr) hroom ?_ ?_
-  · intro v x n only hI hJ hP hlk hxl hm honly hcv
+        TakeJ c base v') := by
+  refine writerWP_collapseRoot_coll key seg c base hvc w0 (TakeJ c base)
+    (fun v v' hJ hr => takeJ_of_readsAs c base v v' hJ hr) hroom ?_ ?_
+  · intro v x n only hI hJ hP hlk hxl _ honly hcv
     obtain ⟨_, ps, hvp, hlf, hend, hcache, hlast⟩ := hP
     rcases hlast with hps | ⟨ps0, k, L, ln, hps, hL, hLn, hLl⟩
     · subst hps
       have hx : x = v.top.rootKey := by rw [← hend]; rfl
       rw [hvp]
-      exact (writerWP_rootStep_space_take x only n c base w0 v hI B hpos hJ hx hlk honly hcv hxl).1
+      exact (writerWP_rootStep_space_take x only n c base w0 v hI hpos hJ hx hlk honly).1
     · subst hps
       obtain ⟨hLr, hLlk, hk, hlen, hpd, hpk⟩ := segDesc_seg c base x v ps0 k L ln hvp hlf hcache hL hLn
       rw [hlen]
-      exact writerWP_takeBackRoot_seg_take x ps0.length only n L ln k c base w0 v hI B hJ hLr hLlk hLl
-        hk hlk honly hcv hxl hm hpd hpk
+      exact writerWP_takeBackRoot_seg_take x ps0.length only n L ln k c base w0 v hI hJ hLr hLlk hLl
+        hk hlk honly hcv hxl hpd hpk
   · intro v x n only hI hJ hP hlk hxl hm honly hcv
     have hP0 := hP
     obtain ⟨_, ps, hvp, hlf, hend, hcache, hlast⟩ := hP
@@ -475,12 +366,12 @@ theorem writerWP_collapseRoot_take (key : Key) (seg : Nat) (c : Ctx) (base : Vie
     · subst hps
       have hx : x = v.top.rootKey := by rw [← hend]; rfl
       rw [hvp]
-      exact (writerWP_rootStep_space_take x only n c base w0 v hI B hpos hJ hx hlk honly hcv hxl).2
+      exact (writerWP_rootStep_space_take x only n c base w0 v hI hpos hJ hx hlk honly).2
     · subst hps
       obtain ⟨hLr, hLlk, hk, hlen, hpd, hpk⟩ := segDesc_seg c base x v ps0 k L ln hvp hlf hcache hL hLn
       obtain ⟨hroom1, hdead⟩ := hroom v x n L ln k hI hJ hP0 hlk hxl hm hLr hLlk hLl hk
       rw [hlen]
-      exact writerWP_replaceRoot_seg_take x ps0.length only n L ln k c base w0 v hI B hpos hJ hLr hLlk
+      exact writerWP_replaceRoot_seg_take x ps0.length only n L ln k c base w0 v hI hpos hJ hLr hLlk
         hLl hk hlk honly hcv hxl hpd hpk hroom1 hdead
 
 end SIS.Tree
