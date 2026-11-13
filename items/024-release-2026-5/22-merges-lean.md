@@ -1138,12 +1138,71 @@ keeps it also for nodes the transaction made (`writerWP_merge_made_tree`,
 back); root collapse at the space root, the whole loop
 (`writerWP_collapseRoot_space`, `WriterTreeCollapse.lean`); LE-b with room
 (`writerWP_emptyKeyNext_tree`, `WriterTreeLeb.lean`); root collapse at a
-segment root, one step (`WriterTreeCollapseSeg.lean`); the cascades of prover
-latest's `TimeSplit2After` and `SpaceSplitTimeAfter` as state lemmas and as
-whole puts (`WriterTreeCascade.lean`, `WriterTreeCascadePut.lean`). Not yet: a merge whose parent is full or
-compacted; the mergeUp loop and the delete as a whole; the take-back of the
-upward unlink; the cascade with an inner space split (latest's
-`TimeSpaceAfter`) and deeper cascades.
+segment root, one step (`WriterTreeCollapseSeg.lean`); the four cascades of
+prover latest, a leaf split under a full parent split under a grandparent
+with room (`TimeSplit2After`, `SpaceSplitTimeAfter`, `TimeSpaceAfter`,
+`SpaceSpaceAfter`), as state lemmas and as whole puts
+(`WriterTreeCascade.lean`, `WriterTreeCascadePut.lean`,
+`WriterTreeInnerHalves.lean`, `WriterTreeSpaceSpace.lean`; the live klongs of
+an inner node's halves with klongs put, `halves_inner_cons_live`). The deletes
+into a segment leaf below an inner parent with room, the merges off, as prover
+putinv's: the bitmap, the full leaf's time split or space split, in place or
+not (`writerWP_del_leafBelow_tree`, `writerWP_del_leafBelow2_tree`;
+`WriterTreeDelFull.lean`, `WriterTreeDelSpace.lean`). With `PutInv` (024-12):
+`OpTreeInvOK`, each operation from a state that meets `PutInv` keeps the tree,
+which with putinv's `OpPutInvOK` gives `PutInv` at every reached state
+(`putInv_reached_inv`); and each of putinv's rules, the four cascades too,
+keeps `PutInv` with no premise on the tree after (`putInv_*_full`;
+`WriterTreeInv.lean`, `WriterTreeCascadeInv.lean`). Depth in a tree: every
+path to a node has one length (`PathLen.depth_unique`), so a change of a node's
+child does not change what reaches the node (`tReach_updN_parent`;
+`WriterTreeDepth.lean`). Cascades of any depth (`WriterTreeCascadeGen.lean`,
+`WriterTreeCascadeGen2.lean`): `appendKlongs j (X j) ins` along the access
+path's nodes X s .. X D, X s with room for two klongs, the others existed
+before the transaction, each node's compare values in the range of its
+parent's klongs (prover latest's form, which putinv's `RangeOrder` gives),
+keeps the writer's tree (`writerWP_appendKlongs_chain`; time splits only,
+`writerWP_appendKlongs_timeChain`). The proof is by induction up the path: the
+tree with the klongs put in X j (a tree that is not the writer's state) is a
+tree, and each split moves that tree one level up (`treeOK_timeSplit_gen`,
+`treeOK_spaceSplit_gen`); the writer's split leaves the parent's step open
+(`writerWP_handleFullWith_time_up`, `_space_up`), for prover latest's get side.
+The cascade of any kind (`writerWP_appendKlongs_chainG`, `WriterTreeChainG.lean`;
+the writer's steps in `WriterTreeChainSteps.lean`, the tree's in
+`WriterTreeChainTree.lean`): also a split below a segment leaf (a new inner
+node above the halves, `treeOK_segSpaceStep`), splits in place of nodes the
+transaction made at any level (below a leaf, the leaf repointed:
+`treeOK_segSpaceInPlaceStep`), and a top at the space root that splits, in
+time or space, in place or not, with a new root (`treeOK_rootTimeStep`,
+`treeOK_rootSpaceStep`, `treeOK_rootSpaceInPlaceStep`). Its premises: the
+cascade stops at a node with room or at the space root, a full node below an
+inner parent has its compare values in that parent's link's range, and a node
+that space splits has two live klongs. A delete's leaf split below the cascade
+(`WriterTreeDelChain.lean`): a last version given, whose live klongs are among
+the leaf's, split in time or space, in place or not, below an inner node or a
+segment leaf, then the cascade (`writerWP_delSplit_chainG`); for the delete's
+last version `lastVersionGivenDel`, h at least 2 (`writerWP_delLeaf_chainG`,
+its halves by `delLast_halves`); and a delete's leaf that is the space root
+(`writerWP_delRootSplit_tree`).
+The reading (TP10's `OpGetOK`) after the writer's merge of two nodes the
+transaction did not make, into one node or two, the parent reached, inner, with
+room: every key reads as before (`writerWP_merge_get`, `WriterGetMergeTail.lean`;
+its tail `writerWP_mergeTail_get`), the siblings' compare values from putinv's
+`RangeOrder` (`mrg_child_range`) and `mergeIdx`'s choice (the siblings adjacent
+in the parent); by the tree lemmas `getFromR_mergeOne` and `getFromR_mergeTwo`
+(`WriterGetMerge.lean`, a merge into two read as a merge into one at an unused
+id, then a split). The same for nodes the transaction made
+(`writerWP_merge_made_get`, `WriterGetMergeMade.lean`: `retarget` keeps the
+parent's live klongs, as none of them names a merged node after `mergeParent`;
+the merged nodes, taken back, had no value). Root collapse at the space root,
+the writer's loop, keeps the reading (`writerWP_collapseRoot_space_get`,
+`WriterGetCollapse.lean`): an inner root whose only live klong is the empty
+key's reads every key as its child (`getFromR_collapse`), given a premise on
+the fuel: every path from the root is shorter than `fuel`, which the heights
+bound.
+Not yet: the whole put and delete around the cascade; a merge whose parent is
+full or compacted;
+the mergeUp loop and the delete as a whole; the take-back of the upward unlink.
 Their premises beyond TREE: the ids from w's next one on in neither the
 base nor a live klong (`hbaseF`, `hfreshT`).
 
