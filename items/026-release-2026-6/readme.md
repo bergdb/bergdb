@@ -130,6 +130,12 @@ Files
   `count-gates.sh`: at most 2 R (2,000 drive transactions) at 1M keys;
   1,281 on `main` (margin 1.56), 4,395 without 026-05 (fails); on branch
   `026-11-lag-gate`, to land.
+* 12-stable-format-plan.md. 026-12, the stable stream format: a draft
+  plan for Frans (10:24): 11 questions, SF1 to SF11, merged from 027-03's
+  Q1 to Q23 and section 21, 026-01's QC2 to QC5, 024-22's QM1, 024-01's
+  OT4, PA5 and PA9, 017-08 and 017-11; each with its options, what it
+  depends on and a recommendation; the decisions already taken quoted;
+  the order, and three measurements (M1 to M3); none decided.
 
 
 Log
