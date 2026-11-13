@@ -300,3 +300,6 @@ import SIS.Tree.TakeMergeTail
 import SIS.Tree.TakeMergeAny
 import SIS.Tree.TakeFullLast
 import SIS.Tree.DelStepsFull
+import SIS.Tree.DelStepsKd
+import SIS.Tree.DelStepsUpK
+import SIS.Tree.DelStepsF3
