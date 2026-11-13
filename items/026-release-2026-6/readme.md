@@ -107,6 +107,11 @@ Files
   point (`Db.transformValues`), and the database goes on (010-04, R5);
   also a key transformation that throws (Q2); done, on main since
   2026-11-13 (Q1 to Q4 yes, Frans 08:45).
+* 07-write-buffer.md. 026-07, the write buffer grows with use: 64 KiB
+  at the start, doubled when an append does not fit, up to 10 MB, back
+  after 2 idle seconds; a small file database holds 0.67 MB of heap, not
+  11.1 MB (024-05, ST8; 024-01, PA7). Code on branch
+  `026-07-write-buffer`; the probes in 07-write-buffer/.
 * 08-fixed-node-size.md. 026-08, the node size fixed at 30 for users,
   the other sizes for tests only (Frans, 2026-11-13, 09:21); registered.
 * 09-keys-only-scan.md. 026-09, reclaim's scan without the values it

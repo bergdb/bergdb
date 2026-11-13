@@ -325,7 +325,8 @@ public class DbBuilder {
      * @param stream
      *      The output database stream.
      * @param bufferSize
-     *      Buffer size in bytes; a value below 100 is taken as 100.
+     *      Buffer size in bytes, the largest; a value below 100 is taken as 100. The buffer
+     *      starts smaller, at most 64 KiB, and grows with use (BufferedStream, bergdb 026-07).
      * @param bufferTime  
      *      Maximum time in milliseconds to buffer the data 
      *      before the buffer is flushed; a value below 10 is taken as 10.
