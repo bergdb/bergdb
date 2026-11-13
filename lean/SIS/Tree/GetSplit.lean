@@ -406,4 +406,166 @@ theorem writerWP_appendKlongs_timeSplit (d' : Nat) (L q : NodeId) (n qn : KNode)
     simp only [List.foldl_cons, List.foldl_nil, hd, ↓reduceIte]
     exact hts true
 
+/-! ## The reading through generic readers, a leaf changed -/
+
+theorem getFromR_leaf_change_seg (N1 N2 : NodeId → Option KNode) (V1 V2 : NodeId → Option Nat)
+    (i : Time) (fuel : Nat) (hfuel : 1 ≤ fuel) (L : NodeId) (pre : List Nat) (cv : Nat)
+    (r rk : NodeId) (n n2 : KNode)
+    (hN : ∀ x, x ≠ L → N1 x = N2 x)
+    (hn : N1 L = some n) (hn2 : N2 L = some n2) (hl : n.leaf = true) (hl2 : n2.leaf = true)
+    (hs : ∀ c', c' ≠ cv → (n.searchEq i c').map (·.y) = (n2.searchEq i c').map (·.y))
+    (hrk : segRootR N1 i fuel pre r = some rk) (hcv : cv ∉ pre)
+    (hvisL : (L, cv) ∈ eqVisits N1 i cv fuel rk)
+    (huniq : ∀ key' x m, keyWf key' = true → (x, cv) ∈ fromVisits N1 i fuel key' r →
+      (x, cv) ∈ eqVisits N1 i cv fuel rk → N1 x = some m → m.leaf = true → key' = pre ++ [cv])
+    (hV : ∀ key' x c' m y, key' ≠ pre ++ [cv] → (x, c') ∈ fromVisits N1 i fuel key' r →
+      N1 x = some m → m.leaf = true → (m.searchEq i c').map (·.y) = some y → V1 y = V2 y) :
+    getFromR N2 V2 i fuel (pre ++ [cv]) r = ((n2.searchEq i cv).map (·.y)).bind V2 ∧
+      ∀ key', keyWf key' = true → key' ≠ pre ++ [cv] →
+        getFromR N2 V2 i fuel key' r = getFromR N1 V1 i fuel key' r := by
+  have hsome : ∀ x, (N1 x).isSome = (N2 x).isSome := by
+    intro x
+    by_cases hx : x = L
+    · subst hx; rw [hn, hn2]; rfl
+    · rw [hN x hx]
+  have hagree : ∀ (q : NodeId × Nat), q.2 ≠ cv → AgreeAt N1 N2 i q.1 q.2 := by
+    intro q hq
+    by_cases hx : q.1 = L
+    · right
+      exact ⟨n, n2, hx ▸ hn, hx ▸ hn2, hl, hl2, hs q.2 hq⟩
+    · exact Or.inl (hN q.1 hx)
+  constructor
+  · rw [getFromR_append, ← segRootR_frame N1 N2 i fuel cv hsome pre r
+      (fun q _ hq => hagree q hq) hcv, hrk]
+    simp only [Option.bind_some, getFromR]
+    rw [getEqR_change_leaf N1 N2 i cv L n2 hn2 hl2 fuel rk (fun q _ hq => hN q.1 hq) hvisL
+      (fun n1 h1 => by rw [hn] at h1; cases h1; exact hl)]
+  · intro key' hkey' hk
+    symm
+    apply getFromR_leaf_change N1 N2 V1 V2 i fuel hfuel L cv hN ⟨n, n2, hn, hn2, hl, hl2, hs⟩ key' r
+    · intro hmem
+      exact hk (huniq key' L n hkey' hmem hvisL hn hl)
+    · intro x c' m y hx hm hml hsy
+      exact hV key' x c' m y hk hx hm hml hsy
+
+/-! ## Reachability through live klongs -/
+
+/-- The nodes reachable from r at time t through klongs live then. -/
+inductive ReachS (N : NodeId → Option KNode) (t : Time) (r : NodeId) : NodeId → Prop
+  | root : ReachS N t r r
+  | step (x : NodeId) (n : KNode) (c : Nat) (z : NodeId) :
+      ReachS N t r x → N x = some n → (c, z) ∈ n.liveAt t → ReachS N t r z
+
+theorem KNode.searchLte_mem (n : KNode) (t : Time) (c : Int) (fd : Found)
+    (h : n.searchLte t c = some fd) : (fd.c, fd.y) ∈ n.liveAt t :=
+  ((n.searchLte_spec t c).1 fd h).1
+
+theorem KNode.searchEq_mem (n : KNode) (t : Time) (c : Nat) (fd : Found)
+    (hw : klongsWf n.ks = true) (h : n.searchEq t c = some fd) : (c, fd.y) ∈ n.liveAt t := by
+  have hs := searchEqSpec n t c hw
+  rw [h] at hs
+  exact lookup_some_mem hs.symm
+
+/-- The time split's move as a renaming: in the reader before it, with the
+leaf L already holding its new content m, L is renamed to the new node y, and
+q's klong k1, the one klong that names L, names y. -/
+theorem renSim_timeSplit (N M2 : NodeId → Option KNode) (t : Time) (r L q y : NodeId)
+    (qn m : KNode) (k1 : Nat)
+    (hqL : q ≠ L) (hyL : y ≠ L) (hyq : y ≠ q)
+    (hNL : N L = some m) (hNq : N q = some qn) (hql : qn.leaf = false)
+    (hqwf : klongsWf qn.ks = true) (hqt : ∀ s, Klong.time s ∈ qn.ks → s ≤ t)
+    (hk1 : (k1, L) ∈ qn.live) (honly : ∀ c z, (c, z) ∈ qn.liveAt t → z = L → c = k1)
+    (hM2y : M2 y = some m) (hM2q : M2 q = some (qn.add t (.key k1 y)))
+    (hM2 : ∀ x, x ≠ L → x ≠ q → x ≠ y → M2 x = N x)
+    (hwf : ∀ x xn, ReachS N t r x → N x = some xn → klongsWf xn.ks = true)
+    (hnotL : ∀ x xn, ReachS N t r x → x ≠ q → N x = some xn → ∀ c z, (c, z) ∈ xn.liveAt t → z ≠ L)
+    (hnoty : ∀ x xn, ReachS N t r x → N x = some xn → ∀ c z, (c, z) ∈ xn.liveAt t → z ≠ y) :
+    RenSim N M2 t (fun x => x ≠ y ∧ ReachS N t r x) L y := by
+  -- the targets of a reachable node's searches, renamed
+  have hclos : ∀ x xn, ReachS N t r x → N x = some xn → ∀ c z, (c, z) ∈ xn.liveAt t →
+      z ≠ y ∧ ReachS N t r z :=
+    fun x xn hx hn c z hz => ⟨hnoty x xn hx hn c z hz, ReachS.step x xn c z hx hn hz⟩
+  have hsame : ∀ x xn, ReachS N t r x → x ≠ q → N x = some xn → ∀ c,
+      (xn.leaf = true → ((xn.searchEq t c).map (·.y)).map (fun z => if z = L then y else z) =
+          (xn.searchEq t c).map (·.y) ∧
+          ∀ fd, xn.searchEq t c = some fd → fd.y ≠ y ∧ ReachS N t r fd.y) ∧
+      (xn.leaf = false → ((xn.searchLte t c).map (·.y)).map (fun z => if z = L then y else z) =
+          (xn.searchLte t c).map (·.y) ∧
+          ∀ fd, xn.searchLte t c = some fd → fd.y ≠ y ∧ ReachS N t r fd.y) := by
+    intro x xn hx hxq hn c
+    have hw := hwf x xn hx hn
+    constructor
+    · intro _
+      refine ⟨?_, fun fd hfd => hclos x xn hx hn c fd.y (KNode.searchEq_mem xn t c fd hw hfd)⟩
+      cases hfd : xn.searchEq t c with
+      | none => rfl
+      | some fd =>
+        have := hnotL x xn hx hxq hn c fd.y (KNode.searchEq_mem xn t c fd hw hfd)
+        simp [this]
+    · intro _
+      refine ⟨?_, fun fd hfd => hclos x xn hx hn fd.c fd.y (KNode.searchLte_mem xn t c fd hfd)⟩
+      cases hfd : xn.searchLte t c with
+      | none => rfl
+      | some fd =>
+        have := hnotL x xn hx hxq hn fd.c fd.y (KNode.searchLte_mem xn t c fd hfd)
+        simp [this]
+  intro x ⟨hxy, hx⟩
+  by_cases hxL : x = L
+  · subst hxL
+    simp only [↓reduceIte]
+    rw [hNL, hM2y]
+    refine ⟨rfl, ?_⟩
+    intro n1 n2 h1 h2
+    cases h1; cases h2
+    refine ⟨rfl, fun c => ?_⟩
+    have := hsame x m hx (fun h => hqL h.symm) hNL c
+    exact ⟨fun hl => (this.1 hl), fun hl => (this.2 hl)⟩
+  · simp only [hxL, ↓reduceIte]
+    by_cases hxq : x = q
+    · subst hxq
+      rw [hNq, hM2q]
+      refine ⟨rfl, ?_⟩
+      intro n1 n2 h1 h2
+      have e1 : n1 = qn := (Option.some.inj h1).symm
+      have e2 : n2 = qn.add t (.key k1 y) := (Option.some.inj h2).symm
+      subst e1 e2
+      have hleaf : (n1.add t (.key k1 y)).leaf = n1.leaf := KNode.add_leaf _ _ _
+      refine ⟨hleaf.symm, fun c => ⟨fun hl => absurd (hql ▸ hl) (by simp), fun _ => ?_⟩⟩
+      have hL1 := KNode.liveAt_of_times n1 t hqt
+      have hadd := KNode.add_key_searchLte n1 t k1 y hqwf hqt ⟨L, hk1⟩ c
+      refine ⟨?_, fun fd hfd => hclos x n1 hx hNq fd.c fd.y (KNode.searchLte_mem n1 t c fd hfd)⟩
+      cases hfd : n1.searchLte t c with
+      | none =>
+        rw [hfd] at hadd
+        cases h2 : (n1.add t (.key k1 y)).searchLte t c with
+        | none => rfl
+        | some f2 => rw [h2] at hadd; cases hadd
+      | some fd =>
+        rw [hfd] at hadd
+        cases h2 : (n1.add t (.key k1 y)).searchLte t c with
+        | none => rw [h2] at hadd; cases hadd
+        | some f2 =>
+          rw [h2] at hadd
+          simp only [Option.map_some, Option.some.injEq, Prod.mk.injEq] at hadd
+          simp only [Option.map_some, Option.some.injEq]
+          rw [hadd.2]
+          have hmem := KNode.searchLte_mem n1 t c fd hfd
+          by_cases hc : fd.c = k1
+          · have hy : fd.y = L := by
+              rw [hL1] at hmem
+              rw [hc] at hmem
+              exact Option.some.inj ((lookup_some_of_mem (KNode.live_keys_nodup n1) hmem).symm.trans
+                (lookup_some_of_mem (KNode.live_keys_nodup n1) hk1))
+            simp [hc, hy]
+          · have hy : fd.y ≠ L := fun h => hc (honly fd.c fd.y hmem h)
+            simp [hc, hy]
+    · rw [hM2 x hxL hxq hxy]
+      refine ⟨rfl, ?_⟩
+      intro n1 n2 h1 h2
+      rw [h1] at h2
+      cases h2
+      refine ⟨rfl, fun c => ?_⟩
+      have := hsame x n1 hx hxq h1 c
+      exact ⟨fun hl => this.1 hl, fun hl => this.2 hl⟩
+
 end SIS.Tree
