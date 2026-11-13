@@ -252,4 +252,18 @@ theorem treeOK_timeSplit_gen (N N' : NodeId → Option KNode) (t : Time) (r q L 
       (fun u c' => if u = L then (y, c') else (u, c')) hr' hlinks hNewGone z hz
     exact ⟨h1, h2⟩
 
+/-- A lookup that agrees with N on the nodes of depth below n reaches the
+nodes of depth n that N reaches. -/
+theorem tReach_of_agree_short (N N' : NodeId → Option KNode) (t : Time) (r : NodeId) :
+    ∀ n z, PathLen N t r z n → (∀ x k, PathLen N t r x k → k < n → N' x = N x) →
+      TReach N' t r z := by
+  intro n z h
+  induction h with
+  | root => intro _; exact TReach.root
+  | @link x c y n hx hl ih =>
+    intro hag
+    have h1 := ih (fun x' k hk hlt => hag x' k hk (by omega))
+    obtain ⟨xn, hxn, hc⟩ := hl
+    exact TReach.link h1 ⟨xn, by rw [hag x n hx (by omega)]; exact hxn, hc⟩
+
 end SIS.Tree
