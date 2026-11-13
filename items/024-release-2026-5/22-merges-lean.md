@@ -1167,8 +1167,19 @@ tree with the klongs put in X j (a tree that is not the writer's state) is a
 tree, and each split moves that tree one level up (`treeOK_timeSplit_gen`,
 `treeOK_spaceSplit_gen`); the writer's split leaves the parent's step open
 (`writerWP_handleFullWith_time_up`, `_space_up`), for prover latest's get side.
-Not yet: a top at the space root or a segment root, splits in place in the
-chain, and the whole put around it; a merge whose parent is full or compacted;
+The cascade of any kind (`writerWP_appendKlongs_chainG`, `WriterTreeChainG.lean`;
+the writer's steps in `WriterTreeChainSteps.lean`, the tree's in
+`WriterTreeChainTree.lean`): also a split below a segment leaf (a new inner
+node above the halves, `treeOK_segSpaceStep`), splits in place of nodes the
+transaction made at any level (below a leaf, the leaf repointed:
+`treeOK_segSpaceInPlaceStep`), and a top at the space root that splits, in
+time or space, in place or not, with a new root (`treeOK_rootTimeStep`,
+`treeOK_rootSpaceStep`, `treeOK_rootSpaceInPlaceStep`). Its premises: the
+cascade stops at a node with room or at the space root, a full node below an
+inner parent has its compare values in that parent's link's range, and a node
+that space splits has two live klongs.
+Not yet: the delete's leaf split as the cascade's bottom, and the whole put
+around the cascade; a merge whose parent is full or compacted;
 the mergeUp loop and the delete as a whole; the take-back of the upward unlink.
 Their premises beyond TREE: the ids from w's next one on in neither the
 base nor a live klong (`hbaseF`, `hfreshT`).
