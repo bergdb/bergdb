@@ -1784,3 +1784,17 @@ nodes keep their size). On `main` at `08659847` SS is 1.51 (1.10, 1.20,
 transactions of 100 KVs of 100 bytes, gains 4 bytes a KV of 100, so 0.04
 to 0.05 more stream bytes a user byte; SS4 is 0.01 lower (not looked
 into). The limits keep one step of 0.01 above the new values.
+
+2026-11-13. Release 2026.5, internal, as planned in item 024 (024-38):
+commit A, `bf9ab5a`, where `BuildInfo` says 2026.5, tested in its night of
+12 to 13 November: `night.sh large` (NIGHT OK, 420 minutes, with its large
+conformance set and the count gates G1 to G5), a performance comparison with
+release 2026.4, jcstress, StreamDigest and the Lean axioms, Android,
+024-07's queue at 10M keys on F53; the tests on the jars with JDK 27 and 17,
+OT2's probe and UnlinkFuzz (85,700 seeds, no failure) on s1. Solid
+algorithms (024-04): record format 7 with merges at the delete, theta and
+CRC32C, the last touch by paths, the limits, the take's cap, `maintain()`;
+databases of 2026.4 are refused. `releases/2026.5/` holds the users' jar,
+the source, the Pub API's Javadoc, the release notes and the outputs of the
+runs. Frans makes the tag `release-2026.5` on A. After it, `BuildInfo` says
+2026.6-dev.
