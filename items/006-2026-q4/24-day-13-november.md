@@ -53,7 +53,7 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 | 026-06 | A value transformation's failure refuses the transaction | vt (high) | landed 8bd6e3a7..944b4868 |
 | 026-07 | The write buffer grows with use (ST8) | wb (high) | landed: an empty database 0.67 MB of heap, not 11.1 |
 | 026-11 | G4's lag a gate at 2 R | lag (xhigh) | landed 343fff05: 1.28 R on main, 4.40 R without P8 |
-| 026-10 | idByPos after back to empty | idpos (xhigh) | running |
+| 026-10 | idByPos after back to empty | idpos (xhigh) | landed: G4 heap 1.08, G5 1.47 on the plain heaps |
 | 026-08 | The node size 30 for users | ns30 (xhigh) | landed 000fca5b |
 | 026-09 | Reclaim's keys-only scan | kscan (xhigh) | running |
 | 026-12 | The stable format: a draft plan for Frans | sfplan (xhigh) | running |
@@ -109,3 +109,4 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 * 10:38 026-08 landed 000fca5b (node size 30 for users). 027-04 written (92ab6713).
 * 10:47 to 10:53: every subagent stopped on API errors (403, authentication) after an account change; Frans logged in again at 10:52; all seven resumed.
 * 11:12 Frans 11:09 on 027-04: Q1 to Q4 as recommended (Q2: "Core is really the thing here", the Pub layer a last part); Q5: 027 with Lean the authority, Java comments may repeat or summarize. Stubs 027-05 to 027-18 made (58c87d27).
+* 11:35 026-10 landed (Frans 11:31: Q1 keep the KeyModSet change; Q2 is 028-01).

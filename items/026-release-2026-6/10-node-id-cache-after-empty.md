@@ -1,8 +1,7 @@
 # 026-10. The node-id cache after back to empty
 
-Created 2026-11-13 by Frans Lundberg. Status: done on branch
-`026-10-idbypos`, ready to land; Q1 and Q2 (section 7) decided here by
-their recommendations.
+Created 2026-11-13 by Frans Lundberg. Status: done; on main since
+2026-11-13 (Q1 and Q2 decided, section 7).
 
 For release 2026.6, found by 026-07: with the write buffer no longer a
 fixed 10 MB on both sides, G4 and G5 (024-30, the count gates' heap
@@ -245,7 +244,19 @@ Frans may overturn it.
   scanned), not this item.
 
 
+Decided (Frans, 2026-11-13): Q1 at 11:31, "Yes, keep the change. Good
+one." (he asked first how it works and whether it needs a
+stop-the-world: no; `forgetUpTo` is constant time under the write lock
+the cut already holds, `forgetIdsBelow` 0.3 to 6 ms under its own lock);
+Q2 at 11:32, a 028 entry: 028-01.
+
+
 ## 8. State
+
+2026-11-13, 11:35. **Landed** by coord-1113 (merge of `026-10-idbypos`),
+gated on the merged tree: before-commit, level1, count-gates (the agent)
+and level3 (the coordinator, /Users/f/fl/bench/2026-11-13/idpos/land-l3.txt).
+
 
 2026-11-13, 10:58. **Done, ready to land.** Clone
 /Users/f/fl/bench/2026-11-13/idpos/clone, branch `026-10-idbypos`:
