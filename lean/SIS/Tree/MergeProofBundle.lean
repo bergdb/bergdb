@@ -145,6 +145,7 @@ import SIS.Tree.GetCascadeChain
 import SIS.Tree.GetCascadePut
 import SIS.Tree.GetNewSegs
 import SIS.Tree.GetCascadeIP
+import SIS.Tree.GetCascadeChainG
 import SIS.Tree.WriterTreeInnerHalves
 import SIS.Tree.WriterTreeSpaceSpace
 import SIS.Tree.WriterTreeDelFull
@@ -181,3 +182,7 @@ import SIS.Tree.RangeMerge
 import SIS.Tree.RangeNewSeg
 import SIS.Tree.RangeUp
 import SIS.Tree.RangeChainG
+import SIS.Tree.RangeDelChainG
+import SIS.Tree.RangeChainGW
+import SIS.Tree.RangePutG
+import SIS.Tree.RangeDelG
