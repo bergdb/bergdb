@@ -562,7 +562,7 @@ theorem writerWP_put_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent
         (fun u c' _ hl => by have := hlinksAll u c' w.next hl; omega))
   simp only [Nat.zero_add, hXD, hn, Option.getD_some] at hchain
   refine writerWP_mono hchain ?_
-  intro _ wf ⟨_, ⟨hftop, hft, _, _, hfv⟩, _, _, _, hR⟩
+  intro _ wf ⟨_, ⟨hftop, hft, _, _, hfv⟩, _, _, _, hR, _⟩
   have hadm : ∀ z, (w.next + 2 ≤ z ∨ ∃ i, 0 ≤ i ∧ i ≤ P.length ∧ z = nodeAt w.top.rootKey P i) →
       wValue base ws z = none := by
     intro z hz
