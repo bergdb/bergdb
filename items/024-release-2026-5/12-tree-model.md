@@ -1531,6 +1531,69 @@ and its status:
         - The open obligations of case (4) are now `DelStepsOKF3` (putinv),
           `MergeStepOKF3`'s untaken and SegFits parts, `CollapseStepOKF4`
           and TP4 (from the take-back's run-level induction).
+      - For putinv's `MergeRootJ2OKF` (a merge whose parent is the space
+        root), the root's split now has what `writerWP_handleFull_lastVF2`
+        and `writerWP_handleFull_lastShape` give one level down (latest,
+        23:59; `MergeRootShape.lean`):
+        - `writerWP_handleFull_rootVF2` is `writerWP_handleFull_rootVF` with
+          the reach back (`writerWP_handleFull_rootReach`). The nodes the
+          tree with the root's last version reaches, but the root, are
+          reached after. The root is reached after, or holds its klongs
+          before the transaction. Every node cached from the next id on is
+          reached after. No order premise is needed: the root has no
+          parent.
+        - `writerWP_handleFull_rootShape` gives `ShapePost` from 0 with
+          nothing put for the one-node chain X 0 = L, Nn 0 = n, and keeps
+          the path. Its premise is that the last version is a time klong
+          and key klongs of distinct compare values.
+    TP7's `LatestInvOK` assembled from its parts (latest, 00:10, from the
+    coordinator at 23:50; `InvAssembly.lean`). Not proved yet: the parts
+    `NonEmptyOK`, `RootsOK` and `FillOK` (latest's, next), `HeightLiveOK`
+    (cost's) and `RangeAtOK` (putinv's `RangeOrder`, on P).
+    - `invOK_of_parts`: the walk at t finds no fault when the space root is
+      a key node and every key node is sound as it is. The kinds and the
+      live heights must hold. The reachable nodes must meet `NonEmptyOK`,
+      `LeftmostOK`, `RootsOK` (new: an inner segment root has two live
+      klongs) and `FillOK`. And `RangeAtOK` (new) must hold: `RangeOrder`
+      on P's key nodes from the space root.
+    - The walk's fuel needs no premise. The walk reaches the nodes of
+      `WalkVisit`, and along its edges the level falls by one at least
+      (`level_inner`, `level_seg`, `walkVisit_key`). The space root's level
+      is at most `keyMax`, which is below the fuel (`keyMax_lt_fuel`).
+    - A node the walk reaches is in `nodesRootsAt` with its flag
+      (`walkVisit_mem`) and in `RangeOrder`'s reach with its bounds
+      (`walkVisit_reachR`). So the statements over `keyNodesAt` and
+      `nodesRootsAt` reach every node the walk checks.
+    - `latestInvOK_of_parts` and `invPreserved_of_open` are the run level,
+      under `MergeParamsOK`. From TP4 come `KeyNodesOK`
+      (`keyNodesOK_of_pointers`), the space root (`treeRun_rootKeyOK`), the
+      kinds (`treeRun_kindsAllOK`) and `LeftmostOK` (`leftmostOK_latest`).
+      Left as premises: TP4, `DeadAllOK`, `HeightLiveOK`, `NonEmptyOK`,
+      `RootsOK`, `FillOK` and `RangeAtOK`.
+    - Not void (`#guard invAsmCheck`): a run within reach with merges on
+      (node size 8, m = 2, h = c = 4). It has thirty puts, then twenty-two
+      deletes that merge 14 key nodes down to 3. At its last time the walk
+      finds no fault, and the Bool forms of `NonEmptyOK`, `RootsOK`,
+      `FillOK` and `RootKeyOK` hold.
+    `NonEmptyOK`, `RootsOK`, `FillOK` and `RangeAtOK` reduced to the
+    operation cases (latest, 00:19; `LiveCounts.lean`, `LiveCases.lean`):
+    - `LiveCounts` is the three conditions as an invariant of the writer's
+      tree, over the nodes reached through live klongs with the walk's
+      flags (`FReach`).
+    - At a transaction's first state it follows from TP7's invariant at the
+      time before (`liveCounts_init`, by `walk_of_fReach`).
+    - The operations keep it as the obligation `QLive` of the cases
+      (`OpCaseOK`, as TP10's three posts). `live_reached` gives it at every
+      state between the operations.
+    - At the last state, the commit's lift turns it into the three parts of
+      the next run (`liveCounts_commit`). It turns `joint_reached`'s
+      `RangeOrder` into `RangeAtOK` (`rangeAtOK_commit`).
+    - `latestInvOK_of_cases` and `invPreserved_of_cases` give TP7 under
+      `MergeParamsOK`, by induction on the runs. The premises are TP4,
+      `DeadAllOK`, `HeightLiveOK`, `TreeAt`, TP10's posts of the cases (1)
+      to (4), and `QLive` of the cases (1) to (4).
+    - `QLive` of case (1), a put into a leaf with room, is proved
+      (`liveCase_putLeafRoom`). Open: `QLive` of (2), (3) and (4).
     Removed (latest, 23:08, as agreed with cost and the coordinator, after
     putinv's take-back moved to F2 at 65b84e5b): `DescentOKF`,
     `MergePathCond`, `opGetCaseOK_delMergeF`, `writerWP_mergeUp_delF`,

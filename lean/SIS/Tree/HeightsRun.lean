@@ -3,7 +3,9 @@ The heights of P's key nodes after every run (bergdb 024-22, step 4; 024-12,
 TP7's open (b)): the walk of the heights through a transaction's operations
 (`ht_reached`, `execW_htCache`) and the step of a run (`heightAllOK_step`), by
 induction over the run's transactions (`treeRun_heightAllOK`), as
-`treeRun_kindsAllOK`. TP7's `HeightLiveOK` follows (`treeRun_heightLiveOK`).
+`treeRun_kindsAllOK`. TP7's `HeightLiveOK` follows (`treeRun_heightLiveOK`), and with it latest's
+assembly of TP7 takes `OpHtDelOK` in place of the live heights
+(`invPreserved_of_open_htDel`).
 
 The delete is a named premise, `OpHtDelOK`: a delete, from a state that the
 transaction's earlier operations reach, keeps the walk's state. The put is
@@ -12,6 +14,7 @@ proved (`ht_putKv_put`).
 import SIS.Tree.HeightsStep
 import SIS.Tree.KindsRun
 import SIS.Tree.PutInvInit
+import SIS.Tree.InvAssembly
 
 set_option autoImplicit false
 
@@ -230,5 +233,18 @@ theorem treeRun_heightLiveOK (p : Params) (hM : 2 ≤ p.M)
     HeightLiveOK p (treeRun p ts) ts.length :=
   heightLiveOK_of_all p _ _ (treeRun_heightAllOK p hM hP hdel ts hw)
     (ht_keyNodesAt_key p _ _)
+
+/-- latest's `invPreserved_of_open` with the live heights from the walk: the
+delete side of the walk (`OpHtDelOK`) in place of `HeightLiveOK`. -/
+theorem invPreserved_of_open_htDel (p : Params) (hp : MergeParamsOK p)
+    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
+    (hD : ∀ ts, Within p ts → DeadAllOK p (treeRun p ts))
+    (hdel : OpHtDelOK p)
+    (hNE : ∀ ts, Within p ts → NonEmptyOK p (treeRun p ts) ts.length)
+    (hRT : ∀ ts, Within p ts → RootsOK p (treeRun p ts) ts.length)
+    (hF : ∀ ts, Within p ts → FillOK p (treeRun p ts) ts.length)
+    (hO : ∀ ts, Within p ts → RangeAtOK p (treeRun p ts) ts.length) : InvPreserved p :=
+  invPreserved_of_open p hp hP hD
+    (treeRun_heightLiveOK p (by have := mergeParamsOK_M p hp; omega) hP hdel) hNE hRT hF hO
 
 end SIS.Tree
