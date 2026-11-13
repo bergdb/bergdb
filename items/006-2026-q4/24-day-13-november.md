@@ -46,7 +46,8 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 | 021-28, 021-29 | Two todos registered | coordinator | 9f32bff9 |
 | 024-22 | Land the second prover's run 2; ScanOK's premise (B) | tp11b (high) | landed 59510cb5 |
 | 024-12 | TP11 option C: the scan's fuel from the parameters; then TP11, TP7 | Codex run 3 (Sol xhigh) | landed 2e71a297: C made; TP11 reduced to TP7 + LatestScanOK |
-| 024-12 | TP7, the tree's invariants | Codex run 4 (Sol max) | running |
+| 024-12 | TP7, the tree's invariants | Codex run 4 (Sol max) | partial, landed 6caf8750: klong well-formedness through the writer |
+| 024-12 | TP7, continued | Codex run 5 (Sol max) | running |
 | 024, 015 | Statuses after the release; post-release notes (021-27, 020-29) | tidy (high) | committed ee5712c5 |
 | 026-05 | P8: each reclaim step scans at its own time | p8 (xhigh) | running |
 | 026-06 | A value transformation's failure refuses the transaction | vt (high) | landed 8bd6e3a7..944b4868 |
@@ -76,3 +77,12 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 * 08:12 tidy done: 024's subitems' statuses (3 open: 02, 12, 22), 015 has no open entry, post-release notes for 021-27 and 020-29.
 * 08:41 Frans back.
 * 08:47 Frans 08:45 "yes to all" (026-06 Q1 to Q4): 026-06 landed (value and key transformations refuse; gated before-commit, level1, level3); 010-04's R5 line done.
+* 08:47 Frans: "Use effort xhigh as default for new agents. We have plenty of AI usage left."
+* 08:51 Frans 08:50, yes: 027-02 the trace format kept current; 024-02 moves into 027 as 027-03 (agent sf).
+* 08:55 Frans: 024-19 Q2 "Yes as recommended", Q3 "as built" (ea6d1d41).
+* 09:12 Frans 09:11, 026-02: QK1 `bergdb.pub.Limits`, QK2 no `isKey`, QK3 "Leave it out. We can easy add it if requested." (no `levelBytes`, no `checkPut`), QK4 2026.6. Agent keys started.
+* 09:21 Frans 09:17 and 09:21: the node size fixed at 30 for users, other sizes for tests only: 026-08 registered (3ed1ee7d); 024-19's Q2 revised, Q5 dropped.
+* 09:24 Frans 09:23: QM1 and 027-03's section 21 decided work for 2026.6.
+* 09:33 Frans, 026-02: Q9-1 `keyBytes` returns long, "Yes"; the new dependency of pub on core (D3) not accepted: "This needs to be discussed. A new package dependency." -> "Yes" to taking the constants through pubimp. The agent keys changes it.
+* 09:36 026-02 landed 59c6e4b6: `bergdb.pub.Limits` (keyBytes, checkKey, the constants through pubimp).
+* 09:37 Codex run 4 stopped by itself at 09:02 (TP7 partial, 137 theorems); checked (lake 306 jobs, axioms standard) and landed 6caf8750. Run 5 started 09:37 at max, told not to stop at a checkpoint.
