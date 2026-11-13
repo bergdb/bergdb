@@ -166,6 +166,9 @@ import SIS.Tree.MergeLastOrd
 import SIS.Tree.LevelShape
 import SIS.Tree.MergeGOrd
 import SIS.Tree.RangeMergeF2
+import SIS.Tree.RangeMergeRoot
+import SIS.Tree.DelMergeCaseF3
+import SIS.Tree.CollapseCascade
 import SIS.Tree.WriterTreeInnerHalves
 import SIS.Tree.WriterTreeSpaceSpace
 import SIS.Tree.WriterTreeDelFull
@@ -295,3 +298,6 @@ import SIS.Tree.WriterHeightsDelNode
 import SIS.Tree.WriterHeightsDel
 import SIS.Tree.HeightsHolder
 import SIS.Tree.WriterHeightsCollapse
+import SIS.Tree.TakeMergeFull
+import SIS.Tree.TakeMergeTail
+import SIS.Tree.TakeMergeAny
