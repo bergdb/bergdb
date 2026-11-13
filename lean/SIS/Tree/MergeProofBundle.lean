@@ -130,3 +130,4 @@ import SIS.Tree.GetChain
 import SIS.Tree.GetInnerSplit
 import SIS.Tree.GetSpaceSpace
 import SIS.Tree.PutInvDelFull
+import SIS.Tree.GetDelSplit
