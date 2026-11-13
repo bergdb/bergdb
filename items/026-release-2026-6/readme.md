@@ -89,6 +89,11 @@ Files
 * 04-reclaim-fraction-settings.md. 026-04, reclaim's fraction: measured
   at larger databases, three recommended values and one default
   (Frans, 2026-11-12, 14:07; 2026.5 keeps 1/4).
+* 07-write-buffer.md. 026-07, the write buffer grows with use: 64 KiB
+  at the start, doubled when an append does not fit, up to 10 MB, back
+  after an idle second; a small file database holds 0.67 MB of heap, not
+  11.1 MB (024-05, ST8; 024-01, PA7). Code on branch
+  `026-07-write-buffer`; the probes in 07-write-buffer/.
 
 
 Log

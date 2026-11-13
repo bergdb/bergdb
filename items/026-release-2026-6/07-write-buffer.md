@@ -237,7 +237,20 @@ moved when it became a transient:
 
 ## 7. Gates
 
-PLACEHOLDER
+| Gate                         | Head       | Result                                  |
+|---|---|---|
+| `before-commit.sh`           | `c8b81d9e` | BEFORE COMMIT OK (67 s)                 |
+| `level1.sh`                  | `c8b81d9e` | FAILED at Props: MEM 138 (section 6)    |
+| `count-gates.sh all`         | `c9ce76de` | COUNT GATES OK (G4 1.423, G5 1.597)     |
+| `before-commit.sh`           | `c9ce76de` | BEFORE COMMIT OK (75 s)                 |
+| `level1.sh`                  | `c9ce76de` | LEVEL 1 OK: MEM 129, SEG 226.5, MEM10M 127.1 |
+
+Logs in `/Users/f/fl/bench/2026-11-13/wb/`: `before-commit.log`,
+`level1.log`, `count-all-final.log`, `before-commit2.log`,
+`level1-2.log`; G4, G5 on the way: `count-g4-new.log`,
+`count-g5-new.log`, `count-g5-base.log`, `count-g5-new2.log`,
+`count-g4-final.log`, `count-g5-final.log`. The timing comparison:
+section 5.3.
 
 
 ## 8. Questions for Frans
