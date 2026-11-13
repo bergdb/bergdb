@@ -1366,11 +1366,14 @@ and its status:
     follow from them: `putBook_merge`, `putBook_collapseRoot` and
     `putBook_getNode` (`DelMergeBook.lean`) give the books after, and
     `putInv_after_step` builds the rest. The obligations, all open:
-    - `MergeStepOK`: a merge of the loop keeps the writer's tree, its reached
-      nodes not taken back, the walk's ranges and inner children (`StepInv`),
-      and the state after it fits the fuel (StepFits for a merge). The tree
-      half is cost's merge tree lemmas from the invariants; their halves
-      premise is stated for every last version, which a caller cannot give.
+    - `MergeStepOK`: a merge of the loop keeps its reached nodes not taken
+      back (the take-back's `ReachedFree`), the walk's ranges and inner
+      children (`StepInv`), and the state after it fits the fuel (StepFits for
+      a merge). The tree after the merge is proved from the invariants
+      (`writerWP_merge_tree_inv`, `MergeTreeInv.lean`). It uses the tree
+      lemmas with their halves premise derived from the sorted last version
+      (`hhalves_of_sorted`, `writerWP_merge_any_treeS`,
+      `writerWP_merge_root_treeS`).
     - `DescentOK`: the loop's descent keeps `DelInv` and gives the path facts
       down to the node it stops at. It also gives the merge's two named
       conditions (`MergePathCond`): no space split in place below a segment

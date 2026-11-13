@@ -18,6 +18,7 @@ fuel, and the reading of the delete) from cost's merge and collapse lemmas
   `appendDeleteKlong` with its cascade are inside it).
 -/
 import SIS.Tree.GetMergeInv
+import SIS.Tree.MergeTreeInv
 import SIS.Tree.WriterMergeUpLoop
 
 set_option autoImplicit false
@@ -41,19 +42,20 @@ def MergePathCond (c : Ctx) (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat →
       ∀ c' z, (c', z) ∈ (⟨(Nn (d - 1)).leaf, last.ks⟩ : KNode).live → 0 < c' →
       K (d - 1) ≤ c' ∧ ∀ c'' z', (c'', z') ∈ (Nn (d - 2)).live → K (d - 1) < c'' → c' < c'')
 
-/-- What a step inside the delete keeps that the books and the reading do not
-give: the writer's tree, its reached nodes not taken back, the walk's ranges and
-inner children there. With the books (`DelMergeBook.lean`) they give `PutInv`
-and `PutInvG` after the step (`putInv_of_parts`). -/
+/-- What a merge inside the delete keeps that the books, cost's tree lemma
+(`writerWP_merge_tree_inv`) and the reading do not give: its reached nodes not
+taken back (the take-back's `ReachedFree`), the walk's ranges and inner children
+there. With the books and the tree they give `PutInv` and `PutInvG` after the
+merge (`putInv_of_parts`). -/
 def StepInv (c : Ctx) (base : View BVal) (v : W) : Prop :=
-  TreeOK (wNode c.p base v) c.i v.top.rootKey ∧
   (∀ y, ReachS (wNode c.p base v) c.i v.top.rootKey y → v.taken.contains y = false) ∧
   RangeOrder (wNode c.p base v) c.i v.top.rootKey ∧
   InnerChildrenExist (wNode c.p base v) c.i v.top.rootKey
 
-/-- Obligation (StepFits for a merge, and the merge's tree facts): a merge of the
-loop, from a state inside a delete, keeps `StepInv`, and the state after it fits
-the fuel. PutInv and PutInvG after it follow from the books. -/
+/-- Obligation (StepFits for a merge, the take-back's reached nodes, the ranges):
+a merge of the loop, from a state inside a delete, keeps `StepInv`, and the state
+after it fits the fuel. PutInv and PutInvG after it follow from the books and
+cost's tree lemma. -/
 def MergeStepOK (c : Ctx) (base : View BVal) : Prop :=
   ∀ (w0 : W) (key : Key) (x q : NodeId) (d : Nat) (v : W) (qn xn : KNode),
     DelInv c base w0 key v → 0 < d → (v.path[d]?).map (·.2) = some x →
@@ -209,9 +211,11 @@ theorem writerWP_mergeUp_del (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
                 hxX (by rw [hqn]; exact hql') hsa2 hcap hc1 hc2 hc3
               have hms := hM w0 k0 ex.2 eq.2 d v3 qn xn hI3 hd (by rw [hp3, hp2, hex]; rfl)
                 (by rw [hp3, hp2, heq]; rfl) (hkeep3 _ _ hl2) hql' hl3 hcnt'
-              refine writerWP_mono (writerWP_and (writerWP_and hmg hms)
-                (putBook_merge ex.2 d c base B1 t1 hB1 v3 hb3)) ?_
-              rintro r v4 ⟨⟨hread4, ⟨hT4, hu4, hR4, hICE4⟩, hF4⟩, hb4⟩
+              have htr := writerWP_merge_tree_inv ex.2 d c base hvc v3 hI3.1 hI3.2.1 hI3.2.2.1 X K Nn hP3 hd
+                hxX (by rw [hqn]; exact hql') hsa2 hcap hc3
+              refine writerWP_mono (writerWP_and (writerWP_and (writerWP_and hmg hms)
+                (putBook_merge ex.2 d c base B1 t1 hB1 v3 hb3)) htr) ?_
+              rintro r v4 ⟨⟨⟨hread4, ⟨hu4, hR4, hICE4⟩, hF4⟩, hb4⟩, hT4⟩
               obtain ⟨hP4, hG4⟩ := putInv_after_step c base v4 B1 t1 hB1 hb4 hT4 hu4 hR4
               have hI4 : DelInv c base w0 k0 v4 :=
                 ⟨hP4, hG4, hR4, hICE4, hF4, fun key' hk => by rw [hread4 hF4 key']; exact hI3.2.2.2.2.2.1 key' hk,
