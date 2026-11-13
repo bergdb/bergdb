@@ -1103,8 +1103,21 @@ Landed checkpoints:
   12:27 to 12:35 together, 334 jobs.
 
 **TP10 and TP11 at the latest time, reduced, 2026-11-13** (prover
-"latest", 10:37 to 11:55, branch `024-12-latest`). Proved, on the
-standard axioms:
+"latest", 10:37 to 12:50, branch `024-12-latest`). **TP10 and TP11
+follow from TP7, the run's key nodes sound and TREE for them, and the
+two statements about the writer under premises on the run's structure**
+(`getOK_of_runRead`, `scanOK_of_runRead`, `GetUnder.lean`): `OpGetOKUnder
+p (RunReadOK p)` and `OverlayLiftOKUnder p (RunReadOK p)`, where
+`RunReadOK` is TP7's invariant at the run's last time, `PointersOK`,
+`KeyNodesOK` (tp7's, `InvLatest.lean`) and `KeyTreeOK` (TREE for key
+nodes: two live klongs of reachable key nodes name one node only if they
+are one klong). For any other premise R: `getOK_of_under`,
+`scanOK_of_under`, and `opGetOKUnder_mono`, `overlayLiftOKUnder_mono` to
+meet the premises of tp7's lift. The first forms, `OpGetOK` and
+`OverlayLiftOK` without premises (`getOK_of_op_overlay`), ask nothing of
+the run's structure; tp7 reported that the lift fails from a malformed
+structure (a klong to an id not in P, an empty key node), so they are
+kept only as steps. Proved on the way, on the standard axioms:
 
 * **The scan needs nothing of the writer beyond the get.**
   `latestScanOK_of_latestGet` (`ScanLatest.lean`): `LatestScanOK p` from
@@ -1115,13 +1128,13 @@ standard axioms:
   contents are the reference's `refKvs` when every get is `refGet`
   (`rootContents_eq_refKvs`). So TP11 follows from TP7 and
   `LatestGetOK` (`scanOK_of_latestGet`).
-* **The get, one transaction at a time.** `TxGetOK` (`GetLatest.lean`,
-  a new Prop): after a transaction within reach, a get at its time
-  gives, for a key of one of its operations, that operation's value, and
-  for any other key what a get gave at the time before.
-  `latestGetOK_of_txGet`: `LatestGetOK` from `TxGetOK` alone (the first
-  state has no key; a structure reads at the time after its last entry
-  as at that entry's time, `get_succ_of_timesLE`).
+* **The get, one transaction at a time.** `TxGetOK` (`GetLatest.lean`):
+  after a transaction within reach, a get at its time gives, for a key
+  of one of its operations, that operation's value, and for any other
+  key what a get gave at the time before. `latestGetOK_of_txGet`:
+  `LatestGetOK` from `TxGetOK` alone (the first state has no key; a
+  structure reads at the time after its last entry as at that entry's
+  time, `get_succ_of_timesLE`).
 * **The transaction's step, from the writer.** `txGetOK_of_writer`
   (`GetWriter.lean`): `TxGetOK` from three statements about the
   writer's state, read through it (its own nodes, values and super root
@@ -1129,36 +1142,56 @@ standard axioms:
   first state reads as P at the time before, proved (`initGetOK`);
   `OpGetOK`, each operation changes what the state reads by itself
   alone; `CommitGetOK`, the structure after the transaction reads as
-  the last state. So TP10 and TP11 follow from TP7, `OpGetOK` and
-  `CommitGetOK` (`getOK_of_op_commit`, `scanOK_of_op_commit`).
+  the last state.
+* **The structure after the transaction, from the writer's own nodes.**
+  `commitGetOK_of_lift` and `commitLiftOK_of_overlay` (`GetCommit.lean`):
+  `CommitGetOK` from `OverlayLiftOK`: each node of the writer's last
+  state that it did not take back is, as a key node, the structure's
+  node of its id; the transaction took back only nodes of its own ids,
+  and not the super root it made. The super root, the values and the
+  writer's other nodes are proved (`CommitInv`, `MadeNodes`, kept by
+  every rule of the writer through `WriterStateInvariant`).
+* **`OpGetOK` from an invariant inside a transaction.**
+  `opGetOK_of_invariant` (`GetOpInv.lean`): from any invariant of the
+  writer's state that its first state meets and that each operation
+  keeps while it changes the reading by itself alone. The first rules,
+  each from the premises an invariant must give (no node of the key's
+  path taken back, the leaf's klongs well formed and of no later time,
+  the next id fresh, and the uniqueness of the key's search at its
+  leaf, which TREE gives), for keys of any number of segments whose
+  prefix is there (`GetFrame.lean`): a put into a segment leaf with room
+  (`writerWP_put_room_seg`), a delete of a key without a value
+  (`writerWP_del_noop_seg`), a delete by a bitmap that leaves the leaf a
+  live klong, merges off (`writerWP_del_bitmap_seg`). The tools: the
+  frame of a reading (`getFromR_frame`, `getFromR_leaf_change`: what a
+  key's reading visits, each node with the compare value it searches
+  there), a node moved to a new id (`getFromR_ren`, for the splits),
+  the time split's last version with the put
+  (`writerWP_replaceOrAdd_last`).
+* **TP7's invariant is not enough for `OpGetOK`**, proved:
+  `sharedSegment_changes_other_key` (`SharedSegment.lean`): a structure
+  without faults at 1 (`InvOK`, `PointersOK`) in which two long segments
+  name one tree of the next segment, and a transaction with every
+  premise `Within` asks of it (keys in order and well formed, a fresh
+  base, no error) give a structure without faults at 2 in which a key
+  that no operation names has another value. TP7's ranges bound no
+  segment root, so they allow such sharing; runs within reach have none,
+  since the writer makes each segment root new. An invariant for
+  `OpGetOK` must exclude it: no key node named by two klongs live at
+  the time (TREE, as TP16 states it for the model); in
+  `writerWP_put_room` it is the premise that no other key searches the
+  key's compare value at its leaf.
 
-* **The structure after the transaction, from its key nodes.**
-  `commitGetOK_of_lift` (`GetCommit.lean`): `CommitGetOK` from
-  `CommitLiftOK` (a new Prop): the structure's key nodes after the
-  transaction are those the writer's last state reads (its own copies,
-  P's for the others, none for a node taken back), it took back only
-  nodes of its own ids, and not the super root it made. The super root
-  and the values are proved (`CommitInv`, kept by every rule of the
-  writer through `WriterStateInvariant`). So TP10 and TP11 follow from
-  TP7, `OpGetOK` and `CommitLiftOK` (`getOK_of_op_lift`,
-  `scanOK_of_op_lift`).
-
-Open: `OpGetOK`, the writer's refinement of the map, every rule; it
-needs an invariant of the writer's state inside a transaction (TP7's
-holds between transactions only). `CommitLiftOK`, the lift of the
-writer's key nodes through `changesOf` and `Struct.apply`, which TP7's
-`LatestInvOK` needs too (the walk asks `entriesOf` of a node's klongs to
-be its history; tp7's `Good` is its first part). **Neither follows from TP7's invariant alone**, proved:
-`sharedSegment_changes_other_key` (`SharedSegment.lean`): a structure
-without faults at 1 (`InvOK`, `PointersOK`) in which two long segments
-name one tree of the next segment, and a transaction with every premise
-`Within` asks of it (keys in order and well formed, a fresh base, no
-error) give a structure without faults at 2 in which a key that no
-operation names has another value. TP7's ranges bound no segment root,
-so they allow such sharing; runs within reach have none, since the
-writer makes each segment root new. A proof of `OpGetOK` needs that as
-part of its invariant inside a transaction: no key node is named by two
-klongs live at the time (TREE, as TP16 states it for the model).
+Open: `OpGetOKUnder p (RunReadOK p)`, the writer's refinement of the
+map, every rule but the three above (the splits, the upward delete,
+LE-b, the merges, root collapse), with its invariant inside a
+transaction; checked, not proved, on about 900 pseudo-random
+transactions of the model (node sizes 4 to 10, H 0 to 8, merges and
+theta), operation by operation, no difference. `KeyTreeOK` after every
+run within reach (TREE; TP16 states it for the model). The lift,
+`OverlayLiftOKUnder`, which TP7's `LatestInvOK` needs too, is tp7's (the
+coordinator, 2026-11-13); its premises are to meet `RunReadOK` through
+`overlayLiftOKUnder_mono` when tp7's `ApplyBridge.lean` lands.
 
 (T) for 27: `tracecheck`'s CUT-live checks it at every cut of a trace
 (024-07), and C-T6 checks what it follows from, `NonEmptyOK` and
