@@ -758,7 +758,7 @@ theorem opGetCaseOK_putNewSeg (p : Params) (R : Struct BVal → Time → Prop)
           subst he1 he2
           exact ⟨hnone, hroom, hkeys, hnotpre⟩)) ?_
       intro _ w' hpost hfit key' hk
-      exact hpost (Or.inl hfit) key' hk
+      exact hpost.2.2.2 (Or.inl hfit) key' hk
   · unfold putKv pathClear findRoot pathAdd
     wpSimplify
     generalize hw2 : ({ ({ w with path := [] } : W) with

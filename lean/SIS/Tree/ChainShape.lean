@@ -490,7 +490,7 @@ def CascadeTop (c : Ctx) (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KN
     (ins'.map Prod.fst).Nodup ∧ ∀ q ∈ ins', ∀ y, (q.1, y) ∈ (Nn j).liveAt c.i →
       q.1 = K (j + 1) ∧ y = X (j + 1) ∧ (Nn (j + 1)).firstTime ≠ some c.i) ∨
   (j < D ∧ ∃ k1 idx r, (Nn j).linkIndex (X (j + 1)) k1 = some idx ∧ zn = (Nn j).repoint idx r ∧
-    (Nn (j + 1)).firstTime = some c.i)
+    (Nn (j + 1)).firstTime = some c.i ∧ (Nn j).leaf = true)
 
 /-- A node z, zn after a cascade from D with ins: a chain node the cascade did
 not reach, unchanged; a chain node left behind with its klongs before the
@@ -500,7 +500,8 @@ the node where the cascade ends. -/
 def CascadeNodeShape (c : Ctx) (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode) (s D : Nat)
     (ins : List (Nat × NodeId)) (z : NodeId) (zn : KNode) : Prop :=
   (∃ i, s ≤ i ∧ i ≤ D ∧ z = X i ∧ zn = Nn i) ∨
-  (∃ i, s ≤ i ∧ i ≤ D ∧ z = X i ∧ zn = (Nn i).toPrev (c.i - 1)) ∨
+  (∃ i, s ≤ i ∧ i ≤ D ∧ z = X i ∧ zn = (Nn i).toPrev (c.i - 1) ∧
+    (Nn i).firstTime ≠ some c.i) ∨
   (ShadowOK c.i zn (ChainShadow c X Nn s D ins) ∧
     ∀ i, s ≤ i → i ≤ D → z = X i → (Nn i).firstTime = some c.i) ∨
   (∃ j, s ≤ j ∧ j ≤ D ∧ z = X j ∧ CascadeTop c X K Nn D ins j zn)
@@ -726,7 +727,7 @@ theorem writerWP_appendKlongs_chainShape (c : Ctx)
             by_cases h1 : z = X 0
             · simp only [h1, ↓reduceIte, Option.some.injEq] at h
               subst h
-              exact Or.inr (Or.inl ⟨0, Nat.le_refl _, Nat.le_refl _, h1, rfl⟩)
+              exact Or.inr (Or.inl ⟨0, Nat.le_refl _, Nat.le_refl _, h1, rfl, hmade⟩)
             · by_cases h2 : z = w.next
               · subst h2
                 simp only [h1, ↓reduceIte, Option.some.injEq] at h
@@ -823,7 +824,7 @@ theorem writerWP_appendKlongs_chainShape (c : Ctx)
             by_cases h1 : z = X 0
             · simp only [h1, ↓reduceIte, Option.some.injEq] at h
               subst h
-              exact Or.inr (Or.inl ⟨0, Nat.le_refl _, Nat.le_refl _, h1, rfl⟩)
+              exact Or.inr (Or.inl ⟨0, Nat.le_refl _, Nat.le_refl _, h1, rfl, hmade⟩)
             · have hnot : ∀ i, 0 ≤ i → i ≤ 0 → z = X i → False := fun i _ h2' h3' => by
                 have : i = 0 := by omega
                 subst this; exact h1 h3'
@@ -1017,7 +1018,7 @@ theorem writerWP_appendKlongs_chainShape (c : Ctx)
               rw [lookup_upsert] at h
               simp only [↓reduceIte, Option.some.injEq] at h
               subst h
-              exact Or.inr (Or.inl ⟨s + (e + 1), by omega, Nat.le_refl _, rfl, rfl⟩)
+              exact Or.inr (Or.inl ⟨s + (e + 1), by omega, Nat.le_refl _, rfl, rfl, hmade⟩)
       -- the space split
       have hSPACE : c.p.splitAbove < ((Nn (s + (e + 1))).lastVersion c.i).size →
           WriterWP (handleFullWith (fun q more => appendKlongs (s + e) q more) (s + e + 1)
@@ -1129,7 +1130,7 @@ theorem writerWP_appendKlongs_chainShape (c : Ctx)
                   simp only [h1, ↓reduceIte, Option.some.injEq] at h
                   subst h
                   exact Or.inr (Or.inr (Or.inr ⟨s + e, by omega, by omega, rfl, Or.inr (Or.inr
-                    ⟨by omega, K (s + (e + 1)), idx, w.next + 2, hidx, rfl, hmade⟩)⟩))
+                    ⟨by omega, K (s + (e + 1)), idx, w.next + 2, hidx, rfl, hmade, hqlf⟩)⟩))
                 · have hnot : ∀ i, s ≤ i → i ≤ s + (e + 1) → z = X i → z = X i ∧ i ≤ s + e := by
                     intro i h1' h2' h3'
                     refine ⟨h3', ?_⟩
@@ -1219,7 +1220,7 @@ theorem writerWP_appendKlongs_chainShape (c : Ctx)
                 rw [lookup_upsert] at h
                 simp only [↓reduceIte, Option.some.injEq] at h
                 subst h
-                exact Or.inr (Or.inl ⟨s + (e + 1), by omega, Nat.le_refl _, rfl, rfl⟩)
+                exact Or.inr (Or.inl ⟨s + (e + 1), by omega, Nat.le_refl _, rfl, rfl, hmade⟩)
           | true =>
             apply writerWP_handleFullWith_segSpace_up (s + e) (X (s + (e + 1))) (X (s + e))
               (Nn (s + (e + 1))) (Nn (s + e)) (K (s + (e + 1))) ins c w hlk hlq hqlf hmade hsp hpq hpk
@@ -1278,7 +1279,7 @@ theorem writerWP_appendKlongs_chainShape (c : Ctx)
                 rw [lookup_upsert] at h
                 simp only [↓reduceIte, Option.some.injEq] at h
                 subst h
-                exact Or.inr (Or.inl ⟨s + (e + 1), by omega, Nat.le_refl _, rfl, rfl⟩)
+                exact Or.inr (Or.inl ⟨s + (e + 1), by omega, Nat.le_refl _, rfl, rfl, hmade⟩)
       rw [appendKlongs_step_dead]
       simp only [writerWP_bind, writerWP_read]
       rw [writerWP_getNode_known _ _ c w hlk]
