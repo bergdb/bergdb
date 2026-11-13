@@ -501,4 +501,239 @@ theorem getFromR_mergeOne (N N' : NodeId → Option KNode) (V : NodeId → Optio
         · exact ih y hyR hyl hyr
         · rfl
 
+/-! ## The merge into two nodes: the merged node's halves -/
+
+/-- A node of klongs `newKlongs t l` has l's pairs live, if l's compare values
+are distinct. -/
+theorem mrg_newKlongs_liveAt_iff (b : Bool) (t : Time) (l : List (Nat × NodeId))
+    (hnd : (l.map Prod.fst).Nodup) (c : Nat) (z : NodeId) :
+    (c, z) ∈ (⟨b, newKlongs t l⟩ : KNode).liveAt t ↔ (c, z) ∈ l := by
+  constructor
+  · exact liveAt_newKlongs_mem b t t l c z
+  · intro h
+    rw [KNode.liveAt_of_times _ t (newKlongs_times t l)]
+    apply mem_of_lookup_nodup
+    rw [KNode.newKlongs_live_lookup_fold, pairLookupFold_eq_lookup l c hnd]
+    exact lookup_of_mem_nodup _ hnd c z h
+
+/-- In a list sorted by compare value, cut at h with g the first compare value
+of the rest: a search below g in the first part finds what it finds in the
+list; at or above g, in the rest with its first klong renamed (an inner node's
+empty key), what it finds in the list. -/
+theorem mrg_split_search (E : List (Nat × NodeId)) (hs : E.Pairwise (fun a b => a.1 < b.1)) (h : Nat)
+    (g : Nat) (yg : NodeId) (hg : (E.drop h).head? = some (g, yg)) (inner : Bool)
+    (M F S : KNode) (t : Time) (hMt : ∀ s, Klong.time s ∈ M.ks → s ≤ t)
+    (hFt : ∀ s, Klong.time s ∈ F.ks → s ≤ t) (hSt : ∀ s, Klong.time s ∈ S.ks → s ≤ t)
+    (hM : ∀ c z, (c, z) ∈ M.liveAt t ↔ (c, z) ∈ E)
+    (hF : ∀ c z, (c, z) ∈ F.liveAt t ↔ (c, z) ∈ E.take h)
+    (hS : ∀ c z, (c, z) ∈ S.liveAt t ↔ (c, z) ∈ (if inner then renameHead 0 (E.drop h) else E.drop h)) :
+    (∀ c : Nat, c < g → (F.searchLte t c).map (·.y) = (M.searchLte t c).map (·.y)) ∧
+    (∀ c : Nat, g ≤ c → (S.searchLte t c).map (·.y) = (M.searchLte t c).map (·.y)) ∧
+    (∀ c : Nat, c < g → (F.liveAt t).lookup c = (M.liveAt t).lookup c) ∧
+    (inner = false → ∀ c : Nat, g ≤ c → (S.liveAt t).lookup c = (M.liveAt t).lookup c) := by
+  obtain ⟨tl, htl⟩ : ∃ tl, E.drop h = (g, yg) :: tl := by
+    cases hd : E.drop h with
+    | nil => rw [hd] at hg; cases hg
+    | cons a rest => rw [hd] at hg; simp only [List.head?_cons, Option.some.injEq] at hg; exact ⟨rest, by rw [hg]⟩
+  have hsplit : (E.take h ++ E.drop h).Pairwise (fun a b => a.1 < b.1) := by rw [List.take_append_drop]; exact hs
+  have hcross : ∀ a ∈ E.take h, ∀ b ∈ E.drop h, a.1 < b.1 := (List.pairwise_append.mp hsplit).2.2
+  have hdrop_s : (E.drop h).Pairwise (fun a b => a.1 < b.1) := (List.pairwise_append.mp hsplit).2.1
+  rw [htl] at hdrop_s hcross
+  have hgtl : ∀ b ∈ tl, g < b.1 := (List.pairwise_cons.mp hdrop_s).1
+  have hfirst_lt : ∀ a ∈ E.take h, a.1 < g := fun a ha => hcross a ha (g, yg) List.mem_cons_self
+  have hmemE : ∀ q, q ∈ E ↔ q ∈ E.take h ∨ q ∈ (g, yg) :: tl := by
+    intro q
+    rw [← htl]
+    constructor
+    · intro hq
+      rw [← List.take_append_drop h E] at hq
+      exact List.mem_append.mp hq
+    · rintro (hq | hq)
+      · exact List.mem_of_mem_take hq
+      · exact List.mem_of_mem_drop hq
+  have hSmem : ∀ c z, (c, z) ∈ S.liveAt t ↔ (c = (if inner then 0 else g) ∧ z = yg) ∨ (c, z) ∈ tl := by
+    intro c z
+    rw [hS c z, htl]
+    cases inner <;> simp [renameHead]
+  refine ⟨?_, ?_, ?_, ?_⟩
+  · intro c hc
+    rcases mrg_searchLte_cases M t c with ⟨hn, hall⟩ | ⟨fd, hfd, hfm, hfle, hfmax⟩
+    · rw [hn, mrg_searchLte_none F t hFt c (fun k y hk =>
+        hall k y ((hM k y).mpr (List.mem_of_mem_take ((hF k y).mp hk))))]
+    · rw [hfd]
+      have hfE := (hM _ _).mp hfm
+      have hfF : (fd.c, fd.y) ∈ E.take h := by
+        rcases (hmemE _).mp hfE with h1 | h1
+        · exact h1
+        · exfalso
+          rcases List.mem_cons.mp h1 with h2 | h2
+          · simp only [Prod.mk.injEq] at h2; omega
+          · have := hgtl _ h2; simp only at this; omega
+      exact mrg_searchLte_y F t hFt c fd.c fd.y ((hF _ _).mpr hfF) hfle
+        (fun k' y' hk' hkc => hfmax k' y' ((hM _ _).mpr (List.mem_of_mem_take ((hF _ _).mp hk'))) hkc)
+  · intro c hc
+    have hgE : (g, yg) ∈ E := (hmemE _).mpr (Or.inr List.mem_cons_self)
+    rcases mrg_searchLte_cases M t c with ⟨_, hall⟩ | ⟨fd, hfd, hfm, hfle, hfmax⟩
+    · have := hall g yg ((hM _ _).mpr hgE); omega
+    · rw [hfd]
+      have hfE := (hM _ _).mp hfm
+      have hge : g ≤ fd.c := hfmax g yg ((hM _ _).mpr hgE) hc
+      rcases (hmemE _).mp hfE with h1 | h1
+      · have := hfirst_lt _ h1; simp only at this; omega
+      · rcases List.mem_cons.mp h1 with h2 | h2
+        · -- the head of the rest
+          simp only [Prod.mk.injEq] at h2
+          obtain ⟨h2c, h2y⟩ := h2
+          show _ = some fd.y
+          rw [h2y]
+          apply mrg_searchLte_y S t hSt c (if inner then 0 else g) yg ((hSmem _ _).mpr (Or.inl ⟨rfl, rfl⟩))
+            (by cases inner <;> simp <;> omega)
+          intro k' y' hk' hkc
+          rcases (hSmem k' y').mp hk' with ⟨hk1, _⟩ | hk1
+          · rw [hk1]; exact Nat.le_refl _
+          · have h3 := hfmax k' y' ((hM _ _).mpr ((hmemE _).mpr (Or.inr (List.mem_cons_of_mem _ hk1)))) hkc
+            have h4 := hgtl _ hk1
+            simp only at h4
+            omega
+        · apply mrg_searchLte_y S t hSt c fd.c fd.y ((hSmem _ _).mpr (Or.inr h2)) hfle
+          intro k' y' hk' hkc
+          rcases (hSmem k' y').mp hk' with ⟨hk1, _⟩ | hk1
+          · rw [hk1]; cases inner <;> simp <;> omega
+          · exact hfmax k' y' ((hM _ _).mpr ((hmemE _).mpr (Or.inr (List.mem_cons_of_mem _ hk1)))) hkc
+  · intro c hc
+    apply mrg_lookup_eq_of_iff F M t hFt hMt c
+    intro z
+    rw [hF c z, hM c z]
+    constructor
+    · exact List.mem_of_mem_take
+    · intro hz
+      rcases (hmemE _).mp hz with h1 | h1
+      · exact h1
+      · exfalso
+        rcases List.mem_cons.mp h1 with h2 | h2
+        · simp only [Prod.mk.injEq] at h2; omega
+        · have := hgtl _ h2; simp only at this; omega
+  · intro hin c hc
+    apply mrg_lookup_eq_of_iff S M t hSt hMt c
+    intro z
+    rw [hSmem c z, hM c z, hin]
+    simp only [Bool.false_eq_true, ↓reduceIte]
+    constructor
+    · rintro (⟨h1, h2⟩ | h1)
+      · exact (hmemE _).mpr (Or.inr (by rw [h1, h2]; exact List.mem_cons_self))
+      · exact (hmemE _).mpr (Or.inr (List.mem_cons_of_mem _ h1))
+    · intro hz
+      rcases (hmemE _).mp hz with h1 | h1
+      · have := hfirst_lt _ h1; simp only at this; omega
+      · rcases List.mem_cons.mp h1 with h2 | h2
+        · simp only [Prod.mk.injEq] at h2; exact Or.inl h2
+        · exact Or.inr h2
+
+/-- The parent after a merge into two nodes m1 and m2, from the parent after a
+merge into one node vM: what found vM finds m1 below g, m2 from g on. -/
+theorem mrg_parent_search_two (pn pnm pn2 : KNode) (t : Time) (cL cR g : Nat) (vM m1 m2 : NodeId)
+    (h2t : ∀ s, Klong.time s ∈ pn2.ks → s ≤ t)
+    (hgL : cL < g) (hgU : ∀ k z, (k, z) ∈ pn.liveAt t → cR < k → g < k)
+    (hadj : ∀ k z, (k, z) ∈ pn.liveAt t → k ≤ cL ∨ cR ≤ k) (hlt : cL < cR)
+    (hvM : ∀ k, (k, vM) ∉ pn.liveAt t)
+    (hm : ∀ c z, (c, z) ∈ pnm.liveAt t ↔ (c = cL ∧ z = vM) ∨ ((c, z) ∈ pn.liveAt t ∧ c ≠ cL ∧ c ≠ cR))
+    (h2 : ∀ c z, (c, z) ∈ pn2.liveAt t ↔ (c = g ∧ z = m2) ∨ (c ≠ g ∧ c = cL ∧ z = m1) ∨
+      (c ≠ g ∧ c ≠ cL ∧ c ≠ cR ∧ (c, z) ∈ pn.liveAt t)) :
+    ∀ c : Nat, (pn2.searchLte t c).map (·.y) =
+      (pnm.searchLte t c).map (fun fd => if fd.y = vM then (if c < g then m1 else m2) else fd.y) := by
+  intro c
+  -- g is no compare value of pn's but cR
+  have hgk : ∀ k z, (k, z) ∈ pn.liveAt t → k ≠ cR → k ≠ g := by
+    intro k z hk hkR hkg
+    rcases hadj k z hk with h | h
+    · omega
+    · have := hgU k z hk (by omega); omega
+  rcases mrg_searchLte_cases pnm t c with ⟨hn, hall⟩ | ⟨fd, hfd, hfm, hfle, hfmax⟩
+  · rw [hn]
+    have hcL : c < cL := hall cL vM ((hm _ _).mpr (Or.inl ⟨rfl, rfl⟩))
+    rw [mrg_searchLte_none pn2 t h2t c (by
+      intro k y hk
+      rcases (h2 k y).mp hk with ⟨hk1, _⟩ | ⟨_, hk1, _⟩ | ⟨_, h3, h4, h5⟩
+      · omega
+      · omega
+      · exact hall k y ((hm _ _).mpr (Or.inr ⟨h5, h3, h4⟩)))]
+    rfl
+  · rw [hfd]
+    simp only [Option.map_some]
+    rcases (hm _ _).mp hfm with ⟨hc1, hy1⟩ | ⟨hfp, hc1, hc2⟩
+    · rw [ite_eq_left_of_eq_true _ _ (eq_true hy1)]
+      by_cases hcg : c < g
+      · rw [ite_eq_left_of_eq_true _ _ (eq_true hcg)]
+        apply mrg_searchLte_y pn2 t h2t c cL m1 ((h2 _ _).mpr (Or.inr (Or.inl ⟨by omega, rfl, rfl⟩)))
+          (by omega)
+        intro k' y' hk' hkc
+        rcases (h2 k' y').mp hk' with ⟨hk1, _⟩ | ⟨_, hk1, _⟩ | ⟨_, h3, h4, h5⟩
+        · omega
+        · omega
+        · have := hfmax k' y' ((hm _ _).mpr (Or.inr ⟨h5, h3, h4⟩)) hkc; omega
+      · rw [ite_eq_right_of_eq_false _ _ (eq_false hcg)]
+        apply mrg_searchLte_y pn2 t h2t c g m2 ((h2 _ _).mpr (Or.inl ⟨rfl, rfl⟩)) (by omega)
+        intro k' y' hk' hkc
+        rcases (h2 k' y').mp hk' with ⟨hk1, _⟩ | ⟨_, hk1, _⟩ | ⟨_, h3, h4, h5⟩
+        · omega
+        · omega
+        · have := hfmax k' y' ((hm _ _).mpr (Or.inr ⟨h5, h3, h4⟩)) hkc; omega
+    · have hyv : fd.y ≠ vM := fun h => hvM fd.c (h ▸ hfp)
+      rw [ite_eq_right_of_eq_false _ _ (eq_false hyv)]
+      apply mrg_searchLte_y pn2 t h2t c fd.c fd.y
+        ((h2 _ _).mpr (Or.inr (Or.inr ⟨hgk _ _ hfp hc2, hc1, hc2, hfp⟩))) hfle
+      intro k' y' hk' hkc
+      rcases (h2 k' y').mp hk' with ⟨hk1, _⟩ | ⟨_, hk1, _⟩ | ⟨_, h3, h4, h5⟩
+      · -- g ≤ c: fd.c is above cL, so above cR
+        have hcL := hfmax cL vM ((hm _ _).mpr (Or.inl ⟨rfl, rfl⟩)) (by omega)
+        rcases hadj fd.c fd.y hfp with h | h
+        · omega
+        · have := hgU fd.c fd.y hfp (by omega); omega
+      · exact hfmax cL vM ((hm _ _).mpr (Or.inl ⟨rfl, rfl⟩)) (by omega) |> fun h => by omega
+      · exact hfmax k' y' ((hm _ _).mpr (Or.inr ⟨h5, h3, h4⟩)) hkc
+
+/-- The parent after a merge into one node vM, as a node: its live klongs but
+cR's, cL's naming vM. -/
+def mrgPnm (pn : KNode) (t : Time) (cL cR : Nat) (vM : NodeId) : KNode :=
+  ⟨false, newKlongs t (((pn.liveAt t).filter (fun q => q.1 != cR)).map
+    (fun q => if q.1 = cL then (cL, vM) else q))⟩
+
+theorem mrgPnm_liveAt (pn : KNode) (t : Time) (cL cR : Nat) (vM : NodeId)
+    (hpt : ∀ s, Klong.time s ∈ pn.ks → s ≤ t) (hc : cL ≠ cR) (hL : ∃ y, (cL, y) ∈ pn.liveAt t) :
+    ∀ c z, (c, z) ∈ (mrgPnm pn t cL cR vM).liveAt t ↔
+      (c = cL ∧ z = vM) ∨ ((c, z) ∈ pn.liveAt t ∧ c ≠ cL ∧ c ≠ cR) := by
+  have hnd0 : ((pn.liveAt t).map Prod.fst).Nodup := by
+    rw [KNode.liveAt_of_times pn t hpt]; exact KNode.live_keys_nodup pn
+  have hkeys : (((pn.liveAt t).filter (fun q => q.1 != cR)).map
+      (fun q => if q.1 = cL then (cL, vM) else q)).map Prod.fst =
+      ((pn.liveAt t).filter (fun q => q.1 != cR)).map Prod.fst := by
+    rw [List.map_map]
+    apply List.map_congr_left
+    intro q _
+    simp only [Function.comp_apply]
+    split
+    · rename_i h; exact h.symm
+    · rfl
+  have hnd : ((((pn.liveAt t).filter (fun q => q.1 != cR)).map
+      (fun q => if q.1 = cL then (cL, vM) else q)).map Prod.fst).Nodup := by
+    rw [hkeys]
+    exact List.Nodup.sublist (List.Sublist.map _ List.filter_sublist) hnd0
+  intro c z
+  unfold mrgPnm
+  rw [mrg_newKlongs_liveAt_iff false t _ hnd c z]
+  simp only [List.mem_map, List.mem_filter, bne_iff_ne, ne_eq]
+  constructor
+  · rintro ⟨q, ⟨hq, hqR⟩, he⟩
+    split at he
+    · rename_i h1
+      simp only [Prod.mk.injEq] at he
+      exact Or.inl ⟨he.1.symm, he.2.symm⟩
+    · rename_i h1
+      subst he
+      exact Or.inr ⟨hq, h1, hqR⟩
+  · rintro (⟨hc1, hz1⟩ | ⟨h1, h2, h3⟩)
+    · obtain ⟨y, hy⟩ := hL
+      exact ⟨(cL, y), ⟨hy, hc⟩, by simp [hc1, hz1]⟩
+    · exact ⟨(c, z), ⟨h1, h3⟩, by simp [h2]⟩
+
 end SIS.Tree
