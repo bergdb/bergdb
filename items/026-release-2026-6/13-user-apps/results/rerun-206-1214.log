@@ -1,0 +1,3 @@
+12:14:51 round 0 drive: kept at the end 11974 kB, twin 12131 kB (twin's largest 12131 kB), lag 1481 (R 500, lag/R 2.96), live 1
+12:15:26 round 1 drive: kept at the end 9829 kB, twin 8166 kB (twin's largest 12079 kB), lag 3965 (R 1000, lag/R 3.97), live 1
+12:15:26 OK BackToEmpty seed 206 node 30 keys 300000: 32448 transactions, 30 restarts, 87 checks, 20 cuts checked at the oldest state, 67886 ms

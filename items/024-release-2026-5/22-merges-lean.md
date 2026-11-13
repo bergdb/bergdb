@@ -1046,6 +1046,61 @@ Not proved. `treetest` checks CB1 per operation, on sorted transactions
 only; `treecheck` does not check it. Branch `024-22-tp32-restate`, head
 `cb57e5c8` (agent "tp32s"), `lake build` OK (215 jobs).
 
+2026-11-13, agent "cost" (coord-1113): TP32 and TP33, not proved.
+Branch `024-22-cost`. Proved, with no premise: a transaction's merges
+into two nodes are at most its deletes that deleted
+(`execW_twoMerges_le_deletes`: `mergeUp` returns after one, and a delete
+runs it at most once; the frame lemmas for the note "merge.two" are in
+`MergeTwoFrame.lean`, about 260 s to build). TP33 reduced
+(`MergeNodeCount.lean`): from the step of any potential that is zero on
+R(0) (`mergeAmortized_of_potentialStep`); with the count of the reachable
+key nodes that are not the root of their segment tree (`nonRootCount`, no
+fill needed) to `NodeCountStep`; and with the bound above to
+`OneMergeStep`: that count at P@i and the merges into one node at most
+that count at P@(i - 1) and twice the space splits
+(`mergeAmortized_of_oneMergeStep`). A merge into one node removes one
+such node, a space split adds at most two, nothing else adds one. The
+step held on every transaction of random runs (scratch, not kept: M = 8,
+H = 2, G = 0 and 1, theta on and off, about 1,200 transactions). It held
+for each operation too, with the count taken on the writer's own tree
+(its nodes over P@(i - 1), from its super root, at time i: 13,000
+operations at M = 8 and 10), and that count equals the count of P@(i - 1)
+before the first operation and of P@i after the last. So a proof goes by
+operation, as TP10's get in `GetWriter.lean` (`MergeNodeCountOps.lean`):
+the count on the writer's first state is P@(i - 1)'s (`initCountOK`,
+proved); on its last state it is P@i's, from the lift of the writer's key
+nodes (`commitCountOK_of_lift`; `CommitLiftOK` is TP10's premise too);
+and each operation keeps the step (`OpCountOK`, open). So TP33 follows
+from `OpCountOK` and `CommitLiftOK` (`mergeAmortized_of_opCount_lift`).
+`OpCountOK` needs the writer's tree to be a tree between operations: TP7's
+B-tree proof carried through a transaction.
+
+TP32: open; the gap is still a premise on the heights the writer reaches
+(`mergeOpBound_of_transientHeight`). TP7 does not give it: TP7 speaks of
+the trees between transactions, and a prefix of the transaction that
+ends above H fails `boundsOK`, so it is no run within reach. Searches
+(scratch, M = 8): no sorted counterexample. At H = 0, every sorted
+transaction over 14 to 16 key positions from 7 initial trees, cut where
+its deletes passed its merges by more than 1 to 3; at H = 0 and 1,
+random ones, 20,000 to 50,000 a tree, theta on and off, and at H = 0 six
+sets of thresholds outside TP28. In the random ones no successful
+transaction reached height H + 2. A route, not formalized: in a sorted
+transaction no later operation reaches a key below the current one. A
+node whose keys are all below it holds m or more live klongs (V1), so it
+is never the merged node, only a sibling that the merged node joins;
+and a split keeps the smallest m or more in its first half. So the nodes
+of a height with m or more such children never become fewer. One at
+height H + 1, or two at H in one segment tree, keep that tree above H to
+the end, and `boundsOK` fails. A root at H + 2 needs one at H + 1 with h
+or more children, made by splits at H whose left halves become such
+nodes as the operations pass them; what is left to show is that too few
+of them can stay ahead of the operations. It needs V1 and the key ranges
+of the writer's tree between operations, that is TP7 within a
+transaction. At M = 8 by hand they are too few; at larger M and H it is
+not clear (dense trees give more), and if a successful sorted transaction
+can reach H + 2 there, TP32 may still hold, by the deletes that merge
+less, but then it needs a potential, not a bound on the heights.
+
 ## 11. State
 
 Final for today: 2026-11-11, 16:05 (agent "mgl" of coord-1111). Nothing

@@ -1,0 +1,908 @@
+2026-11-13 10:41:33
+Full thread dump OpenJDK 64-Bit Server VM (27.0.1.0.3 mixed mode, sharing)
+                 JDK version: OpenJDK Runtime Environment Homebrew (27.0.1) (build 27.0.1.0.3)
+
+Threads class SMR info:
+_java_thread_list=0x0000007964628120, length=70, elements={
+0x0000000104e9d700, 0x0000007964d11000, 0x0000007964d11800, 0x0000007964d12000,
+0x0000007964d12800, 0x0000007964d13000, 0x0000007964d13800, 0x0000007964d18000,
+0x0000007964d18800, 0x0000007964d19000, 0x0000007964f49800, 0x00000079645a8000,
+0x00000079645aa000, 0x00000079645ab000, 0x00000079645bc000, 0x00000079645bf800,
+0x00000079645c1000, 0x00000079645c2000, 0x00000079645c3000, 0x0000007964f4a800,
+0x00000079645cc000, 0x00000079645cd000, 0x00000079645cf000, 0x00000079645d4000,
+0x00000079645d5000, 0x00000079645d6000, 0x00000079645d7000, 0x00000079645e0000,
+0x00000079645e1000, 0x00000079645e2000, 0x00000079645e3000, 0x00000079645e9000,
+0x00000079645e8800, 0x00000079645eb000, 0x00000079645e3800, 0x00000079645f4800,
+0x00000079645f5800, 0x00000079645f6800, 0x00000079645f7800, 0x0000007964f48000,
+0x00000079645f8800, 0x00000079645f9800, 0x00000079645fa800, 0x00000079645fb800,
+0x0000007964600800, 0x0000007964602800, 0x0000007964603800, 0x0000007964604800,
+0x0000007964605800, 0x0000007964606800, 0x0000007964614800, 0x0000007964615800,
+0x0000007964617000, 0x0000007964bfc000, 0x0000007964bfd000, 0x0000007964bfe000,
+0x0000007964bff000, 0x000000796461d000, 0x000000796461e000, 0x000000796461f000,
+0x0000007964621000, 0x000000796462e800, 0x000000796462f800, 0x000000796409f000,
+0x00000079640b4800, 0x00000079646de800, 0x00000079640b4000, 0x000000796409e800,
+0x000000796409c000, 0x000000796409c800
+}
+
+"main" #3 [5891] prio=5 os_prio=31 cpu=283.74ms elapsed=211.73s tid=0x0000000104e9d700 nid=5891 in Object.wait()  [0x000000016b8f2000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Thread.join(java.base@27.0.1.0.3/Thread.java:1924)
+	- locked <0x0000000135261e58> (a java.lang.Thread)
+	at java.lang.Thread.join(java.base@27.0.1.0.3/Thread.java:1990)
+	at Buffers.many(Buffers.java:99)
+	at Buffers.main(Buffers.java:40)
+
+"Reference Handler" #13 [23555] daemon prio=10 os_prio=31 cpu=0.56ms elapsed=211.72s tid=0x0000007964d11000 nid=23555 waiting on condition  [0x000000016c85e000]
+   java.lang.Thread.State: RUNNABLE
+	at java.lang.ref.Reference.waitForReferencePendingList(java.base@27.0.1.0.3/Native Method)
+	at java.lang.ref.Reference.processPendingReferences(java.base@27.0.1.0.3/Reference.java:240)
+	at java.lang.ref.Reference$ReferenceHandler.run(java.base@27.0.1.0.3/Reference.java:202)
+
+"Finalizer" #14 [29187] daemon prio=8 os_prio=31 cpu=0.11ms elapsed=211.72s tid=0x0000007964d11800 nid=29187 in Object.wait()  [0x000000016ca6a000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <0x0000000132832140> (a java.lang.Object)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at java.lang.ref.ReferenceQueue.remove0(java.base@27.0.1.0.3/ReferenceQueue.java:136)
+	at java.lang.ref.ReferenceQueue.remove(java.base@27.0.1.0.3/ReferenceQueue.java:214)
+	- locked <0x0000000132832140> (a java.lang.Object)
+	at java.lang.ref.Finalizer$FinalizerThread.run(java.base@27.0.1.0.3/Finalizer.java:165)
+
+"Signal Dispatcher" #15 [28675] daemon prio=9 os_prio=31 cpu=0.28ms elapsed=211.72s tid=0x0000007964d12000 nid=28675 waiting on condition  [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"Service Thread" #16 [24323] daemon prio=9 os_prio=31 cpu=4.39ms elapsed=211.72s tid=0x0000007964d12800 nid=24323 runnable  [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"Monitor Deflation Thread" #17 [24579] daemon prio=9 os_prio=31 cpu=8.07ms elapsed=211.72s tid=0x0000007964d13000 nid=24579 runnable  [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"C2 CompilerThread0" #18 [27907] daemon prio=9 os_prio=31 cpu=396.80ms elapsed=211.72s tid=0x0000007964d13800 nid=27907 waiting on condition  [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+   No compile task
+
+"C1 CompilerThread0" #21 [25091] daemon prio=9 os_prio=31 cpu=241.30ms elapsed=211.72s tid=0x0000007964d18000 nid=25091 waiting on condition  [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+   No compile task
+
+"Notification Thread" #22 [27651] daemon prio=9 os_prio=31 cpu=0.10ms elapsed=211.72s tid=0x0000007964d18800 nid=27651 runnable  [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"Common-Cleaner" #23 [25603] daemon prio=8 os_prio=31 cpu=0.39ms elapsed=211.72s tid=0x0000007964d19000 nid=25603 in Object.wait()  [0x000000016d8be000]
+   java.lang.Thread.State: TIMED_WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.ref.ReferenceQueue.remove0(java.base@27.0.1.0.3/ReferenceQueue.java:122)
+	at java.lang.ref.ReferenceQueue.remove(java.base@27.0.1.0.3/ReferenceQueue.java:200)
+	- locked <0x0000000132832280> (a java.lang.Object)
+	at jdk.internal.ref.CleanerImpl.run(java.base@27.0.1.0.3/CleanerImpl.java:146)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+	at jdk.internal.misc.InnocuousThread.run(java.base@27.0.1.0.3/InnocuousThread.java:148)
+
+"BufferedStream-consumer-27" #27 [42755] daemon prio=5 os_prio=31 cpu=31.78ms elapsed=211.55s tid=0x0000007964f49800 nid=42755 in Object.wait()  [0x000000016e2fa000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000132946e88> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-29" #29 [34307] daemon prio=5 os_prio=31 cpu=1.43ms elapsed=211.48s tid=0x00000079645a8000 nid=34307 in Object.wait()  [0x000000016e712000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000132a1bd60> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-31" #31 [34819] daemon prio=5 os_prio=31 cpu=0.78ms elapsed=211.43s tid=0x00000079645aa000 nid=34819 in Object.wait()  [0x000000016eb2a000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <0x0000000132b11750> (a bergdb.storage.BufferedStream)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000132b11750> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-33" #33 [41475] daemon prio=5 os_prio=31 cpu=0.63ms elapsed=211.40s tid=0x00000079645ab000 nid=41475 in Object.wait()  [0x000000016ef42000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <0x00000001329fd3f0> (a bergdb.storage.BufferedStream)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x00000001329fd3f0> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-34" #34 [35331] daemon prio=5 os_prio=31 cpu=31.79ms elapsed=211.37s tid=0x00000079645bc000 nid=35331 in Object.wait()  [0x000000016f14e000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x00000001329ff0e0> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-37" #37 [35843] daemon prio=5 os_prio=31 cpu=1.42ms elapsed=211.30s tid=0x00000079645bf800 nid=35843 in Object.wait()  [0x000000016f566000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x00000001329ff340> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-39" #39 [40451] daemon prio=5 os_prio=31 cpu=30.57ms elapsed=211.26s tid=0x00000079645c1000 nid=40451 in Object.wait()  [0x000000016f97e000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x00000001329fd650> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-40" #40 [39939] daemon prio=5 os_prio=31 cpu=0.61ms elapsed=211.23s tid=0x00000079645c2000 nid=39939 in Object.wait()  [0x000000016fb8a000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <0x00000001329fd780> (a bergdb.storage.BufferedStream)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x00000001329fd780> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-41" #41 [36867] daemon prio=5 os_prio=31 cpu=1.57ms elapsed=211.22s tid=0x00000079645c3000 nid=36867 in Object.wait()  [0x000000016fd96000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x00000001329ff470> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-42" #42 [39171] daemon prio=5 os_prio=31 cpu=1.21ms elapsed=211.19s tid=0x0000007964f4a800 nid=39171 in Object.wait()  [0x000000016ffa2000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x00000001329ff5a0> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-43" #43 [38915] daemon prio=5 os_prio=31 cpu=30.68ms elapsed=211.17s tid=0x00000079645cc000 nid=38915 in Object.wait()  [0x00000001701ae000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x00000001329fd8b0> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-44" #44 [37635] daemon prio=5 os_prio=31 cpu=34.03ms elapsed=211.15s tid=0x00000079645cd000 nid=37635 in Object.wait()  [0x00000001703ba000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x00000001329ff6d0> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-46" #46 [38659] daemon prio=5 os_prio=31 cpu=21.40ms elapsed=211.10s tid=0x00000079645cf000 nid=38659 in Object.wait()  [0x00000001707d2000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000132dc6880> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-47" #47 [65283] daemon prio=5 os_prio=31 cpu=0.65ms elapsed=211.09s tid=0x00000079645d4000 nid=65283 in Object.wait()  [0x00000001709de000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000133835dc0> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-48" #48 [43779] daemon prio=5 os_prio=31 cpu=1.30ms elapsed=211.06s tid=0x00000079645d5000 nid=43779 in Object.wait()  [0x0000000170bea000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000132dc69b0> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-49" #49 [64771] daemon prio=5 os_prio=31 cpu=40.42ms elapsed=211.04s tid=0x00000079645d6000 nid=64771 in Object.wait()  [0x0000000170df6000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000133835ef0> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-50" #50 [44291] daemon prio=5 os_prio=31 cpu=0.64ms elapsed=211.02s tid=0x00000079645d7000 nid=44291 in Object.wait()  [0x0000000171002000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000132dc6ae0> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-51" #51 [64259] daemon prio=5 os_prio=31 cpu=0.75ms elapsed=211.00s tid=0x00000079645e0000 nid=64259 in Object.wait()  [0x000000017120e000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000133836020> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-52" #52 [64003] daemon prio=5 os_prio=31 cpu=29.90ms elapsed=210.98s tid=0x00000079645e1000 nid=64003 in Object.wait()  [0x000000017141a000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000132dc6c10> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-53" #53 [45059] daemon prio=5 os_prio=31 cpu=25.62ms elapsed=210.96s tid=0x00000079645e2000 nid=45059 in Object.wait()  [0x0000000171626000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000133836150> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-54" #54 [63491] daemon prio=5 os_prio=31 cpu=1.14ms elapsed=210.93s tid=0x00000079645e3000 nid=63491 in Object.wait()  [0x0000000171832000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000133235e50> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-55" #55 [45571] daemon prio=5 os_prio=31 cpu=32.12ms elapsed=210.91s tid=0x00000079645e9000 nid=45571 in Object.wait()  [0x0000000171a3e000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000133c00070> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-56" #56 [62979] daemon prio=5 os_prio=31 cpu=0.63ms elapsed=210.89s tid=0x00000079645e8800 nid=62979 in Object.wait()  [0x0000000171c4a000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000133235f80> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-57" #57 [46339] daemon prio=5 os_prio=31 cpu=0.75ms elapsed=210.87s tid=0x00000079645eb000 nid=46339 in Object.wait()  [0x0000000171e56000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000133c001a0> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-58" #58 [46595] daemon prio=5 os_prio=31 cpu=1.32ms elapsed=210.85s tid=0x00000079645e3800 nid=46595 in Object.wait()  [0x0000000172062000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x00000001332360b0> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-59" #59 [62467] daemon prio=5 os_prio=31 cpu=0.61ms elapsed=210.82s tid=0x00000079645f4800 nid=62467 in Object.wait()  [0x000000017226e000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x000000013420c730> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-60" #60 [47363] daemon prio=5 os_prio=31 cpu=0.71ms elapsed=210.81s tid=0x00000079645f5800 nid=47363 in Object.wait()  [0x000000017247a000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x00000001339feaf0> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-61" #61 [62211] daemon prio=5 os_prio=31 cpu=0.71ms elapsed=210.79s tid=0x00000079645f6800 nid=62211 in Object.wait()  [0x0000000172686000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x00000001339fee80> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-62" #62 [47875] daemon prio=5 os_prio=31 cpu=0.69ms elapsed=210.77s tid=0x00000079645f7800 nid=47875 in Object.wait()  [0x0000000172892000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000135260f38> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-63" #63 [48131] daemon prio=5 os_prio=31 cpu=0.60ms elapsed=210.75s tid=0x0000007964f48000 nid=48131 in Object.wait()  [0x0000000172a9e000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000133ba28a0> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-64" #64 [48387] daemon prio=5 os_prio=31 cpu=0.70ms elapsed=210.73s tid=0x00000079645f8800 nid=48387 in Object.wait()  [0x0000000172caa000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000134a07520> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-65" #65 [61187] daemon prio=5 os_prio=31 cpu=1.37ms elapsed=210.71s tid=0x00000079645f9800 nid=61187 in Object.wait()  [0x0000000172eb6000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000134a9a350> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-66" #66 [49155] daemon prio=5 os_prio=31 cpu=0.65ms elapsed=210.69s tid=0x00000079645fa800 nid=49155 in Object.wait()  [0x00000001730c2000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000133b2c5c0> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-67" #67 [49667] daemon prio=5 os_prio=31 cpu=28.88ms elapsed=210.67s tid=0x00000079645fb800 nid=49667 in Object.wait()  [0x00000001732ce000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000134846868> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-68" #68 [60675] daemon prio=5 os_prio=31 cpu=0.59ms elapsed=210.65s tid=0x0000007964600800 nid=60675 in Object.wait()  [0x00000001734da000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x00000001347aea78> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-69" #69 [50179] daemon prio=5 os_prio=31 cpu=1.56ms elapsed=210.62s tid=0x0000007964602800 nid=50179 in Object.wait()  [0x00000001736e6000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x00000001338baac8> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-70" #70 [60163] daemon prio=5 os_prio=31 cpu=0.72ms elapsed=210.61s tid=0x0000007964603800 nid=60163 in Object.wait()  [0x00000001738f2000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x00000001339c9760> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-71" #71 [59907] daemon prio=5 os_prio=31 cpu=1.64ms elapsed=210.58s tid=0x0000007964604800 nid=59907 in Object.wait()  [0x0000000173afe000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x000000013473c700> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-72" #72 [50947] daemon prio=5 os_prio=31 cpu=31.10ms elapsed=210.56s tid=0x0000007964605800 nid=50947 in Object.wait()  [0x0000000173d0a000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x00000001338783d8> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-73" #73 [59651] daemon prio=5 os_prio=31 cpu=0.62ms elapsed=210.54s tid=0x0000007964606800 nid=59651 in Object.wait()  [0x0000000173f16000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000134591390> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-75" #75 [51459] daemon prio=5 os_prio=31 cpu=0.72ms elapsed=210.50s tid=0x0000007964614800 nid=51459 in Object.wait()  [0x000000017432e000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x000000013440b4c8> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-76" #76 [51971] daemon prio=5 os_prio=31 cpu=0.62ms elapsed=210.48s tid=0x0000007964615800 nid=51971 in Object.wait()  [0x000000017453a000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000134520580> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-77" #77 [52227] daemon prio=5 os_prio=31 cpu=1.28ms elapsed=210.46s tid=0x0000007964617000 nid=52227 in Object.wait()  [0x0000000174746000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x00000001341a9bc8> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-78" #78 [52739] daemon prio=5 os_prio=31 cpu=0.80ms elapsed=210.44s tid=0x0000007964bfc000 nid=52739 in Object.wait()  [0x0000000174952000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000134314800> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-79" #79 [53251] daemon prio=5 os_prio=31 cpu=0.66ms elapsed=210.41s tid=0x0000007964bfd000 nid=53251 in Object.wait()  [0x0000000174b5e000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000133f301c8> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-80" #80 [58115] daemon prio=5 os_prio=31 cpu=1.61ms elapsed=210.39s tid=0x0000007964bfe000 nid=58115 in Object.wait()  [0x0000000174d6a000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x000000013413c230> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-81" #81 [57859] daemon prio=5 os_prio=31 cpu=29.18ms elapsed=210.36s tid=0x0000007964bff000 nid=57859 in Object.wait()  [0x0000000174f76000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x00000001335e1578> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-83" #83 [57091] daemon prio=5 os_prio=31 cpu=21.75ms elapsed=210.33s tid=0x000000796461d000 nid=57091 in Object.wait()  [0x000000017538e000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000133e0f608> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-84" #84 [54275] daemon prio=5 os_prio=31 cpu=1.00ms elapsed=210.31s tid=0x000000796461e000 nid=54275 in Object.wait()  [0x000000017559a000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000133d02c10> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-85" #85 [54531] daemon prio=5 os_prio=31 cpu=1.50ms elapsed=210.28s tid=0x000000796461f000 nid=54531 in Object.wait()  [0x00000001757a6000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000133d95a40> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-87" #87 [56067] daemon prio=5 os_prio=31 cpu=1.61ms elapsed=210.24s tid=0x0000007964621000 nid=56067 in Object.wait()  [0x0000000175bbe000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000133793a68> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"Thread-66" #95 [85763] prio=5 os_prio=31 cpu=21.00ms elapsed=210.16s tid=0x000000796462e800 nid=85763 waiting for monitor entry  [0x0000000176c1e000]
+   java.lang.Thread.State: BLOCKED (on object monitor)
+	at bergdb.pubimp.DatabaseImp.createAndStart(DatabaseImp.java:89)
+	- waiting to lock <0x00000001329485f0> (a java.lang.Class for bergdb.pubimp.DatabaseImp)
+	at bergdb.pubimp.DatabaseBuilderImp.start(DatabaseBuilderImp.java:256)
+	at Buffers.reopen(Buffers.java:242)
+	- locked <0x00000001334b9da0> (a Buffers$Slot)
+	at Buffers.lambda$many$3(Buffers.java:85)
+	at Buffers$$Lambda/0x000007c00107f800.run(Unknown Source)
+	at Buffers.run(Buffers.java:136)
+	at Buffers.lambda$many$2(Buffers.java:85)
+	at Buffers$$Lambda/0x000007c00107a000.run(Unknown Source)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"Thread-68" #97 [67587] prio=5 os_prio=31 cpu=69.61ms elapsed=210.16s tid=0x000000796462f800 nid=67587 in Object.wait()  [0x0000000177036000]
+   java.lang.Thread.State: TIMED_WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at bergdb.storage.StorageManager.sync(StorageManager.java:272)
+	- locked <0x00000001347af660> (a java.lang.Object)
+	at bergdb.core.Db.syncCreation(Db.java:1463)
+	at bergdb.core.Db.handleEmptyStream(Db.java:1443)
+	at bergdb.core.Db.startInner(Db.java:1108)
+	at bergdb.core.Db.start(Db.java:1058)
+	- locked <0x00000001347af670> (a bergdb.core.Db$ReadSync)
+	- locked <0x00000001347af668> (a bergdb.core.Db$WriteLock)
+	at bergdb.core.Db.start(Db.java:1014)
+	at bergdb.pubimp.DatabaseImp.createAndStart(DatabaseImp.java:92)
+	- locked <0x00000001329485f0> (a java.lang.Class for bergdb.pubimp.DatabaseImp)
+	at bergdb.pubimp.DatabaseBuilderImp.start(DatabaseBuilderImp.java:256)
+	at Buffers.spareCycle(Buffers.java:253)
+	at Buffers.lambda$many$5(Buffers.java:88)
+	at Buffers$$Lambda/0x000007c00107b800.run(Unknown Source)
+	at Buffers.run(Buffers.java:136)
+	at Buffers.lambda$many$4(Buffers.java:88)
+	at Buffers$$Lambda/0x000007c00107a400.run(Unknown Source)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-106" #106 [36359] daemon prio=5 os_prio=31 cpu=0.21ms elapsed=210.08s tid=0x000000796409f000 nid=36359 in Object.wait()  [0x000000016f772000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x00000001348c33a0> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-107" #107 [82183] daemon prio=5 os_prio=31 cpu=0.19ms elapsed=210.05s tid=0x00000079640b4800 nid=82183 in Object.wait()  [0x00000001759b2000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x00000001349bc0b8> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-108" #108 [42247] daemon prio=5 os_prio=31 cpu=0.22ms elapsed=209.35s tid=0x00000079646de800 nid=42247 in Object.wait()  [0x000000016e91e000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x00000001348c34d0> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-114" #114 [55567] daemon prio=5 os_prio=31 cpu=0.27ms elapsed=209.09s tid=0x00000079640b4000 nid=55567 in Object.wait()  [0x0000000178096000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x00000001348c1c38> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-115" #115 [38159] daemon prio=5 os_prio=31 cpu=0.23ms elapsed=208.65s tid=0x000000796409e800 nid=38159 in Object.wait()  [0x00000001705c6000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x0000000134ed5340> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"BufferedStream-consumer-120" #120 [86799] daemon prio=5 os_prio=31 cpu=0.24ms elapsed=207.53s tid=0x000000796409c000 nid=86799 in Object.wait()  [0x000000016daca000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait0(java.base@27.0.1.0.3/Native Method)
+	- waiting on <no object reference available>
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:391)
+	at java.lang.Object.wait(java.base@27.0.1.0.3/Object.java:353)
+	at bergdb.storage.BufferedStream.consume(BufferedStream.java:266)
+	- locked <0x000000014a722918> (a bergdb.storage.BufferedStream)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:228)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:207)
+	at java.lang.Thread.runWith(java.base@27.0.1.0.3/Thread.java:1540)
+	at java.lang.Thread.run(java.base@27.0.1.0.3/Thread.java:1527)
+
+"Attach Listener" #121 [23051] daemon prio=9 os_prio=31 cpu=0.87ms elapsed=27.27s tid=0x000000796409c800 nid=23051 waiting on condition  [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"GC Thread#8" os_prio=31 cpu=279.39ms elapsed=210.16s tid=0x000000796527dc00 nid=68611 runnable  
+
+"GC Thread#7" os_prio=31 cpu=284.13ms elapsed=210.16s tid=0x000000796527d400 nid=83203 runnable  
+
+"GC Thread#6" os_prio=31 cpu=283.83ms elapsed=210.16s tid=0x000000796527cc00 nid=83715 runnable  
+
+"GC Thread#5" os_prio=31 cpu=268.26ms elapsed=210.16s tid=0x000000796527c800 nid=68355 runnable  
+
+"GC Thread#4" os_prio=31 cpu=301.12ms elapsed=210.16s tid=0x000000796527c400 nid=84227 runnable  
+
+"GC Thread#3" os_prio=31 cpu=276.21ms elapsed=210.16s tid=0x000000796527c000 nid=67843 runnable  
+
+"G1 Conc#1" os_prio=31 cpu=218.19ms elapsed=211.41s tid=0x0000007965207000 nid=41731 runnable  
+
+"GC Thread#2" os_prio=31 cpu=312.11ms elapsed=211.53s tid=0x0000007965204c00 nid=33795 runnable  
+
+"GC Thread#1" os_prio=31 cpu=320.18ms elapsed=211.56s tid=0x0000007965146000 nid=43011 runnable  
+
+"G1 Conc#0" os_prio=31 cpu=213.16ms elapsed=211.56s tid=0x0000007965145800 nid=43267 runnable  
+
+"G1 Main Marker" os_prio=31 cpu=1.98ms elapsed=211.56s tid=0x0000007965145400 nid=25859 runnable  
+
+"VM Thread" os_prio=31 cpu=103.43ms elapsed=211.73s tid=0x0000007965078c00 nid=20483 runnable  
+
+"VM Periodic Task Thread" os_prio=31 cpu=0.73ms elapsed=211.73s tid=0x000000796507a000 nid=16911 waiting on condition  
+
+"G1 Service" os_prio=31 cpu=106.36ms elapsed=211.74s tid=0x0000000104ea9c00 nid=16387 runnable  
+
+"G1 Refinement Workers#0" os_prio=31 cpu=0.40ms elapsed=211.74s tid=0x0000007965078000 nid=13827 runnable  
+
+"G1 Refine Control" os_prio=31 cpu=81.86ms elapsed=211.74s tid=0x0000000104ea8ec0 nid=14339 runnable  
+
+"GC Thread#0" os_prio=31 cpu=310.12ms elapsed=211.74s tid=0x0000000104ea54e0 nid=14851 runnable  
+
+JNI global refs: 9, weak refs: 0
+

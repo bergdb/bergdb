@@ -1,0 +1,21 @@
+== KillEmpty parent 301 data/kill-3/b5 250 10 2500
+12:43:54 kills 25, clean exits 0, databases 3, last recovered 1666, synced 1700, node 30, retain 3000
+12:44:45 kills 46, clean exits 4, databases 5, last recovered 5050, synced 6052, node 30, retain 1000
+12:45:31 kills 70, clean exits 5, databases 8, last recovered 3359, synced 4709, node 30, retain 1000
+12:46:27 kills 95, clean exits 5, databases 10, last recovered 3203, synced 4556, node 30, retain 1000
+12:47:13 kills 115, clean exits 10, databases 13, last recovered 4607, synced 4641, node 30, retain 1000
+12:48:11 kills 138, clean exits 12, databases 15, last recovered 6222, synced 7650, node 30, retain 1000
+12:49:13 kills 160, clean exits 15, databases 18, last recovered 1666, synced 3094, node 30, retain 1000
+12:50:05 kills 182, clean exits 18, databases 20, last recovered 6207, synced 7531, node 30, retain 1000
+12:50:53 kills 204, clean exits 21, databases 23, last recovered 1717, synced 3043, node 30, retain 1000
+12:51:44 kills 227, clean exits 23, databases 25, last recovered 3791, synced 5287, node 30, retain 3000
+12:52:32 kills 249, clean exits 26, databases 28, last recovered 1690, synced 3060, node 30, retain 1000
+12:52:35 OK KillEmpty seed 301: 250 kills (19 aimed at the start), 26 clean exits, 28 databases, 258 recoveries checked, 567 s
+== Buffers kill 302 data/kill-3/b3k 60 12
+12:53:35 kills 10, committed transactions seen 10203, lost after 2 s: 0
+12:54:30 kills 20, committed transactions seen 22217, lost after 2 s: 0
+12:55:24 kills 30, committed transactions seen 34335, lost after 2 s: 0
+12:56:16 kills 40, committed transactions seen 43269, lost after 2 s: 0
+12:57:15 kills 50, committed transactions seen 55166, lost after 2 s: 0
+12:58:13 kills 60, committed transactions seen 65267, lost after 2 s: 0
+12:58:13 OK Buffers kill seed 302: 60 kills, 12 databases, 65267 committed transactions seen, 0 databases lost a transaction committed 2 s or more before the kill, 337 s

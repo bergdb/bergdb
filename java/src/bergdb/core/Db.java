@@ -53,12 +53,16 @@ import bergdb.stream.SalsaStream;
  * for tests; Trans.Builder, and Trans as a transaction to execute with its outputs tt, tpos,
  * lastPos and nextPos; GetData; GetMany and its stop conditions; Kvt;
  * StoredTrans as getTrans() gives it; StartInfo; the key conversions Keys.toSegments() and
- * Keys.toBytes(); FileStream and MemoryStream as a stream for DbBuilder; and the exceptions
- * that their Javadoc names. Everything else that is reachable from them is internal, whatever
- * is public, and may change without notice: among others Db.internal() and Db.Internal,
- * Db.ExecuteData, Db.TestHooks, TestNodeSize, Db.StartParams and the listeners, lookupTime(),
- * checkNodes(), the members that their Javadoc calls internal or for tests, Trans's other
- * fields, GetMany.Chain, and the stream classes beyond making a stream.</p>
+ * Keys.toBytes(); ValueTransformation and KeyTransformation, which Trans.Builder's put()
+ * takes, and what a key transformation uses (KeyTransformation.transform()): Trans.kvs,
+ * Kv.getKey() and Kv.setKey(), Trans.writeKeyHashes, Trans.tt and Keys.hash() (bergdb
+ * 026-06; 026-13, U13-6); FileStream and MemoryStream as a stream for DbBuilder; and the
+ * exceptions that their Javadoc names. Everything else that is reachable from them is
+ * internal, whatever is public, and may change without notice: among others Db.internal()
+ * and Db.Internal, Db.ExecuteData, Db.TestHooks, TestNodeSize, Db.StartParams and the
+ * listeners, lookupTime(), checkNodes(), the members that their Javadoc calls internal or
+ * for tests, Trans's other fields, GetMany.Chain, and the stream classes beyond making a
+ * stream.</p>
  * 
  * <p>An object of this class provides access to the data in the database. This
  * class is the main class of the internal low-level database implementation.
@@ -646,7 +650,10 @@ public class Db implements AutoCloseable {
      * negative value is refused with IllegalArgumentException and changes nothing. On a
      * database that is not active the call throws as a transaction does
      * (IllegalDbStateException, DbStoppingException, DbFailedException), and a call that
-     * is refused leaves the setting as it was.
+     * is refused leaves the setting as it was. With a finite retain duration the setting
+     * also paces reclaim: an iteration begins at a commit only after more than twice it of
+     * stream since the last one began, so a larger distance cuts later and keeps more of
+     * the stream (setRetainDuration(); bergdb 026-13, U13-4).
      */
     public void setStartupDistance(int newDistance) {
         //
@@ -748,6 +755,24 @@ public class Db implements AutoCloseable {
      * (bergdb 005-02); a call that is refused, or whose commit fails, leaves the value as
      * it was.
      * 
+     * <p>How commits pace reclaim (bergdb 027-13, sections 1.2 to 1.7; 011-04): it works in
+     * iterations, not as the duration passes. One begins at a user transaction's commit
+     * when the stream has grown by more than twice the startup distance
+     * (getStartupDistance()) since the last one began, and a quarter of the duration has
+     * passed since then. At the commits that follow, it rewrites the live values stored
+     * before its cut point, the position where the iteration before it began (its own start
+     * for the first), a step at a commit, while it has rewritten less than the internal
+     * fraction (a quarter by default, setReclaimInternalFraction()) of what the stream has
+     * grown by since it began. When it has rewritten them all, its end is older than the
+     * retain duration and the startup section has moved past it, the stream is cut at its
+     * cut point and getFirstAvailableLookupTime() moves. So however short the duration,
+     * nothing is cut before the stream has grown by about four times the startup distance
+     * in a small database, and by more in one with much live data, which the first
+     * iteration rewrites; a smaller startup distance cuts sooner and keeps less. After a
+     * mass delete, commits give the space back only as they grow the stream, and slow
+     * writes give it back many retain durations later; maintain() begins iterations by the
+     * clock, without commits (bergdb 026-13, U13-4).</p>
+     * 
      * @param duration
      *            Number of time units (see Clock.UNITS_PER_SEC), at least one second.
      * @throws IllegalArgumentException  If duration is less than one second.
@@ -767,17 +792,27 @@ public class Db implements AutoCloseable {
      * application's commits, whether this method is called or not. Frans (2026-11-10, bergdb
      * 023-04, Y10): "maintainance should be performed while doing other operations on the
      * database, so the user explicitely calling maintain() should be optional, not a
-     * requirement on the user that she must call maintain." What it adds: a database that
-     * the application no longer writes to does no work by itself (010-01, P3), so with a
-     * finite retain duration its space comes back only with later commits; calls of this
-     * method bring it back without them. Called again and again, with time passing, it
-     * brings a database that has been emptied to about the stream of a fresh one (bergdb
-     * 023-02, F7; java/stress/CountGates.java, G5).
+     * requirement on the user that she must call maintain." What it adds: a database does
+     * no work by itself (010-01, P3), so with a finite retain duration the space of deleted
+     * and overwritten data comes back only as the application's commits grow the stream: a
+     * reclaim iteration begins at a commit only after more than twice the startup distance
+     * of stream since the last one began (setRetainDuration()). Calls of this method begin
+     * iterations and do their steps by the clock, without that growth. So they help a
+     * database that the application no longer writes to, and one that it writes to slowly
+     * after deleting much: in bergdb 026-13's C2 (30,000 keys deleted, then one value of
+     * 900 bytes overwritten every 5 ms, a startup distance of 1 MB, a retain duration R of
+     * 1 s), commits alone still kept 6.4 MB of stream at 10 R, and with calls until false
+     * after each commit 1.2 MB were kept at 2 R (026-13, U13-4). Called again and again,
+     * with time passing, it brings a database that has been emptied to within about 400 kB
+     * of the stream of a fresh one, as an iteration begins only if its cut would release at
+     * least 400 kB (below; bergdb 023-02, F7; java/stress/CountGates.java, G5; 026-13,
+     * U13-5; 027-13, section 1.10).
      * 
      * <p>One call does, in the database's own internal transactions, at most: the start of
      * a reclaim iteration, if a quarter of the retain duration has passed since the last
-     * one began, the last one is cut and the new one's cut would release at least 400 kB;
-     * one reclaim step (about 16 kB of KVs scanned); one write of index nodes of the startup
+     * one began, no done iteration waits for its cut (not cut, its pCut after the first
+     * available position; Reclaim.cutPending) and the new one's cut would release at least
+     * 400 kB; one reclaim step (about 16 kB of KVs scanned); one write of index nodes of the startup
      * section that an iteration waits for (at most 256 kB beyond one transaction's); one
      * filler of at most 200 kB, put and deleted, so that a meta block follows the cut point;
      * the cut, when it is due, after a sync if its table is not yet durable; and a batch of
@@ -1022,7 +1057,7 @@ public class Db implements AutoCloseable {
      * @throws IllegalDbStateException
      *             If start() has been called already, or stop(): nothing is closed then.
      * @throws DbFailedException
-     *             If a read of reclaim's settings or table, the last step of the startup,
+     *             If a read of reclaim's settings or table, a step after the database is active,
      *             fails on the storage (bergdb 005-30).
      */
     public StartInfo start() {        
@@ -1057,7 +1092,7 @@ public class Db implements AutoCloseable {
      * @throws IllegalDbStateException
      *          If start() has been called already, or stop(): nothing is closed then.
      * @throws DbFailedException
-     *          If a read of reclaim's settings or table, the last step of the startup,
+     *          If a read of reclaim's settings or table, a step after the database is active,
      *          fails on the storage (bergdb 005-30).
      */
     public StartInfo start(StartParams params) {
@@ -1215,7 +1250,8 @@ public class Db implements AutoCloseable {
             MetaBlock meta = nodeStream.getMetaBlock();
             meta.checkFormat();
             
-            // From meta saves 8 bytes per trans (4% stream space trans with one kv of size 10-90).
+            // The startup pos from the last committed record, which stores it (bergdb 027-03,
+            // section 8.1); the startup distance from the meta block.
             params.startupPos = getStartupPosFromLastTransaction(meta.getLastTransSpos());
             params.startupDistance = meta.getStartupDistance();
         }
@@ -1779,10 +1815,9 @@ public class Db implements AutoCloseable {
     }
 
     /**
-     * If 'node' is not dirty, it is added to the gotDirty nodes and
-     * it dirty flag is set.
-     * 
-     * @return True if 'node' got dirty.
+     * Makes an index node that is not dirty dirty and adds it to the got-dirty nodes; in a
+     * transaction with a touch (a reclaim step) it also counts it in Trans.dirtiedNodes and
+     * its stored size now in dirtiedBytes. Outside a transaction (no transInfo), nothing.
      */
     private void makeDirtyIfNeeded(final Node node) {
         assert x != null : "x is null";
