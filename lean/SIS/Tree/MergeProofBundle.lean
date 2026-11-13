@@ -90,6 +90,7 @@ import SIS.Tree.WriterTreeVisits
 import SIS.Tree.WriterNonemptyMerge
 import SIS.Tree.OverlayPtrs
 import SIS.Tree.WriterTreeSplit
+import SIS.Tree.PointersRun
 import SIS.Tree.WriterTreeSpace
 import SIS.Tree.GetTree
 import SIS.Tree.GetSpaceSplit
@@ -106,3 +107,8 @@ import SIS.Tree.WriterTreePut2
 import SIS.Tree.WriterTreeMergeLive
 import SIS.Tree.WriterTreeMergeW
 import SIS.Tree.WriterTreeMergeOp
+import SIS.Tree.GetKeyTree
+import SIS.Tree.GetLeafRoot
+import SIS.Tree.GetLeafBelow
+import SIS.Tree.GetPutInv
+import SIS.Tree.GetSegRoot

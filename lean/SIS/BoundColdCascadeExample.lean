@@ -34,9 +34,15 @@ when the parent of the two merges in its turn, it loses both of them. Each
 height of the cascade costs two pointers, not one, so the count is about
 2 (H + 1) per operation, not (H + 1). The upward unlink (`Dag.deleteUpward`)
 and the splits cost one a height; the merges at the delete (024-22) two.
+
+With TREE, k is at most the nodes a transaction makes unreachable
+(`DropStepJ_dropped_removed`): 11 at T(92). Over the whole run, of the 23
+transactions with two merges or more, 8 make more than H + 1 nodes unreachable
+and none more than 2 (H + 1) (`cascades`).
 -/
 import SIS.BoundColdDropJExample
 import SIS.BoundHeight
+import SIS.Tree.MergeProps
 
 namespace SIS.BoundColdCascadeExample
 
@@ -112,5 +118,39 @@ def c92 : Changes BVal := exec ppm txs[91]! 92 (view (treeSpec ppm) P91 91)
 -- k = (H + 1) x (its operations) = 8.
 #guard dropStepJB (treeSpec ppm) bvalW P91 92 c92 10
 #guard !dropStepJB (treeSpec ppm) bvalW P91 92 c92 ((7 + 1) * txs[91]!.ops.length)
+
+/-- The root's live height at t, up to 30, by running. -/
+def heightB (P : Struct BVal) (t : Time) : Nat :=
+  ((List.range 30).find? (fun h => liveHeightB P t h root)).getD 99
+
+/-- Over the whole run T(1) to T(201), for each transaction whose writer makes
+two merges or more (a cascade; `execW`'s count): its time, its merges, the
+nodes it makes unreachable (`removedAt`), the root's live height before it,
+and its operations. -/
+def cascades : List (Nat × Nat × Nat × Nat × Nat) :=
+  let r := (txs.zipIdx).foldl (fun (acc : Struct BVal × List (Nat × Nat × Nat × Nat × Nat))
+      (q : Tx × Nat) =>
+    let (P, out) := acc
+    let j := q.2
+    let c := exec ppm q.1 (j + 1) (view (treeSpec ppm) P j)
+    let mg := match execW ppm q.1 (j + 1) (view (treeSpec ppm) P j) with
+      | .ok (_, w) => w.merges
+      | .error _ => 0
+    let out' := if 2 ≤ mg then
+        out ++ [(j + 1, mg, (removedAt (treeSpec ppm) P c (j + 1)).length, heightB P j,
+          q.1.ops.length)]
+      else out
+    (P.apply (j + 1) c, out')) (initStruct ppm, [])
+  r.2
+
+-- 23 cascades. The nodes made unreachable exceed (H + 1) per operation in 8
+-- of them (11 at T(92) and T(131) with H = 7), and stay at most 2 (H + 1) per
+-- operation in all: the conjecture of the file's header, checked here only.
+-- (One `#guard`, as each evaluates the run anew.)
+#guard
+  let cs := cascades
+  cs.length == 23 &&
+    (cs.filter (fun q => decide ((q.2.2.2.1 + 1) * q.2.2.2.2 < q.2.2.1))).length == 8 &&
+    cs.all (fun q => decide (q.2.2.1 ≤ 2 * (q.2.2.2.1 + 1) * q.2.2.2.2))
 
 end SIS.BoundColdCascadeExample
