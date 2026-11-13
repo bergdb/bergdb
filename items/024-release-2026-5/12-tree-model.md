@@ -1095,16 +1095,33 @@ standard axioms:
   the last state. So TP10 and TP11 follow from TP7, `OpGetOK` and
   `CommitGetOK` (`getOK_of_op_commit`, `scanOK_of_op_commit`).
 
+* **The structure after the transaction, from its key nodes.**
+  `commitGetOK_of_lift` (`GetCommit.lean`): `CommitGetOK` from
+  `CommitLiftOK` (a new Prop): the structure's key nodes after the
+  transaction are those the writer's last state reads (its own copies,
+  P's for the others, none for a node taken back), it took back only
+  nodes of its own ids, and not the super root it made. The super root
+  and the values are proved (`CommitInv`, kept by every rule of the
+  writer through `WriterStateInvariant`). So TP10 and TP11 follow from
+  TP7, `OpGetOK` and `CommitLiftOK` (`getOK_of_op_lift`,
+  `scanOK_of_op_lift`).
+
 Open: `OpGetOK`, the writer's refinement of the map, every rule; it
 needs an invariant of the writer's state inside a transaction (TP7's
-holds between transactions only). `CommitGetOK`, the lift of the
-writer's last state through `changesOf` and `Struct.apply`, which TP7's
+holds between transactions only). `CommitLiftOK`, the lift of the
+writer's key nodes through `changesOf` and `Struct.apply`, which TP7's
 `LatestInvOK` needs too (the walk asks `entriesOf` of a node's klongs to
-be its history). A note for both: TP7's invariant does not exclude two
-klongs live at t that name one key node (ranges bound no segment root),
-and a put into such a shared segment tree would change two keys; the
-proofs need the writer's own fact that each segment root it makes is
-new (TREE, as TP16 states it for the model).
+be its history; tp7's `Good` is its first part). **Neither follows from TP7's invariant alone**, proved:
+`sharedSegment_changes_other_key` (`SharedSegment.lean`): a structure
+without faults at 1 (`InvOK`, `PointersOK`) in which two long segments
+name one tree of the next segment, and a transaction with every premise
+`Within` asks of it (keys in order and well formed, a fresh base, no
+error) give a structure without faults at 2 in which a key that no
+operation names has another value. TP7's ranges bound no segment root,
+so they allow such sharing; runs within reach have none, since the
+writer makes each segment root new. A proof of `OpGetOK` needs that as
+part of its invariant inside a transaction: no key node is named by two
+klongs live at the time (TREE, as TP16 states it for the model).
 
 (T) for 27: `tracecheck`'s CUT-live checks it at every cut of a trace
 (024-07), and C-T6 checks what it follows from, `NonEmptyOK` and

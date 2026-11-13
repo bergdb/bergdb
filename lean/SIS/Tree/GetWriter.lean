@@ -89,12 +89,14 @@ def wNode (p : Params) (base : View BVal) (w : W) (x : NodeId) : Option KNode :=
     | some n => some n
     | none => knodeOf p base x
 
-/-- The value of node y as the writer's state w has it: a value it made, or
-the base's. -/
+/-- The value of node y as the writer's state w has it: none if the
+transaction took y back; else a value it made, or the base's. -/
 def wValue (base : View BVal) (w : W) (y : NodeId) : Option Nat :=
-  match w.vals.lookup y with
-  | some h => some h
-  | none => valueOf base y
+  if w.taken.contains y then none
+  else
+    match w.vals.lookup y with
+    | some h => some h
+    | none => valueOf base y
 
 /-- A get at time i through the writer's state w over the base, from its super
 root's space root. -/
