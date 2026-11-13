@@ -1,6 +1,8 @@
 # 024-18. Dead klongs in live nodes: their cost and three options, measured
 
-Created 2026-11-11 by Frans Lundberg. Status: open.
+Created 2026-11-11 by Frans Lundberg. Status: done (2026-11-11): QD1
+decided, option 2 with theta 7 (Frans, 14:27), made in 024-23; QD2 to
+QD5 not answered (024-28, section 8).
 
 A study for Frans's decision on dead klongs in live key nodes (024-05,
 ST4; 024-11, U5 and QU3): what a dead klong is and costs, from the code;
@@ -860,3 +862,5 @@ recommended (option 2 gives the bound with R forever).
 * **To continue**: QD1 to QD5 with Frans. For 3c as a rule: a field in a
   step's record (QD4), its rerun at a start, a test with restarts, then
   10M on 024-21's branch with `tools/job8.sh` sets g0 and g3c.
+
+2026-11-13. Status set after the release (coord-1113).

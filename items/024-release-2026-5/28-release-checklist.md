@@ -1,6 +1,8 @@
 # 024-28. The release checklist of 2026.5
 
-Created 2026-11-12 by Frans Lundberg. Status: open.
+Created 2026-11-12 by Frans Lundberg. Status: done (2026-11-12), read
+only; overtaken by the release (024-38), its blocking questions decided
+on 2026-11-12 (006-23).
 
 What stands between `main` on 2026-11-12 (last code commit `5a7f644d`,
 09:35, landed as `10408f2b`; items to `ee76b784`, 10:24) and release
@@ -333,3 +335,5 @@ low priority (Frans, 2026-11-12, 07:26: "best effort").
   `e7488080` made 024-12's TP15 a proved line.
 * **To continue:** after Frans's answers to section 8's blocking list,
   turn section 7 into the night's plan (020-31's scripts).
+
+2026-11-13. Status set after the release (coord-1113).

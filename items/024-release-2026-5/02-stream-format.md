@@ -1,6 +1,8 @@
 # 024-02. The stream format: the skeleton
 
-Created 2026-11-11 by Frans Lundberg. Status: open.
+Created 2026-11-11 by Frans Lundberg. Status: open: the draft, kept
+current with the code until the stable format of release 2026.6 (026;
+024-04, section 5).
 
 The skeleton of a specification of BergDB's stream format, the first
 work item of release 2026.5, written when its theme was "a stable stream
@@ -1514,3 +1516,5 @@ header, node formats 3, 3, 5): sections 9 to 12, G7, G13 (closed), Q14
 and 21.1, after 024-25's review (rev25, R2); 8.1 and 8.2 now say record
 format 7 (024-21, 024-23 and 024-25 in a paragraph; format 6's text kept
 below it). The rest of the subitem as it was.
+
+2026-11-13. Status set after the release (coord-1113).

@@ -1,6 +1,8 @@
 # 024-23. Dead klongs: option 2, theta 7
 
-Created 2026-11-11 by Frans Lundberg. Status: open.
+Created 2026-11-11 by Frans Lundberg. Status: done (2026-11-11): on
+`main` since `08659847`. QO2 decided (024-19, Q4); QO1 and QO3 as built,
+not marked answered.
 
 Option 2 of 024-18 (compaction at the write) built as a change of its
 own, after the merges (024-21, 024-22), model first (024-04, section 6):
@@ -646,3 +648,5 @@ the coordinator, who lands it.
 * **Nothing runs; no slot is held.** Scratch: `o2/plant/lean` (the
   controls of 5.3), `o2/probe2` (the probes of 4.1), `o2/probe3`,
   `o2/out1m`, `o2/runs`, `o2/logs`.
+
+2026-11-13. Status set after the release (coord-1113).

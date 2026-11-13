@@ -30,11 +30,7 @@ them keep working.
 Open
 ----
 
-| ID | Kind | What | Status |
-|---|---|---|---|
-| [015-03](03-lean-follows-005-79.md) | Implement | Lean follows 005-79's integer take | done | 2026-11-11 |
-| [015-18](18-night-large-after-release.md) | Implement | Run night.sh large on the release, after 2026.2 | open |
-| [015-84](84-cap-pace-factor.md) | Investigate | Cap the pace's factor S/sd: a decrease's records grow with the keys | open |
+None: the last three closed on 2026-11-13.
 
 
 Closed
@@ -42,6 +38,9 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [015-84](84-cap-pace-factor.md) | Investigate | Cap the pace's factor S/sd: a decrease's records grow with the keys | done | 2026-11-13 |
+| [015-18](18-night-large-after-release.md) | Implement | Run night.sh large on the release, after 2026.2 | done | 2026-11-13 |
+| [015-03](03-lean-follows-005-79.md) | Implement | Lean follows 005-79's integer take | done | 2026-11-11 |
 | [015-49](49-review-s2-faults.md) | Fix | Review S2's 27 faults of the indexes and the objects | done | 2026-11-09 |
 | [015-46](46-string-at-object-key-index.md) | Fix | A String or byte[] at an object key in an indexed directory breaks ... | done | 2026-11-09 |
 | [015-43](43-object-index-read-time.md) | Fix | Index work reads the indexes before the read time: a new or ... | done | 2026-11-09 |
@@ -326,3 +325,8 @@ closed in about a day; open-ended, long-term and strategy topics go to
 006-15: release 2026.4's objects (020-08) and indexes (020-10) fixed them,
 each with its test in `before-commit.sh`; the commits and tests in each
 entry's log and in 020-11.
+
+2026-11-13. 015-84 (made in 024-31) and 015-18 (`night.sh large` in
+release 2026.5's night, 024-38) closed after release 2026.5; 015-03's
+row, done since 2026-11-11, moved to Closed (coord-1113). No entry is
+open.

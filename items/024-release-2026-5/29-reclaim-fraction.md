@@ -1,6 +1,8 @@
 # 024-29. Reclaim's fraction: previous work, how to compare, the default
 
-Created 2026-11-12 by Frans Lundberg. Status: open.
+Created 2026-11-12 by Frans Lundberg. Status: decided (Frans,
+2026-11-12, 14:07): 1/4 kept for 2026.5; larger databases and the other
+values in 2026.6, 026-04.
 
 Frans, 2026-11-12, 11:04 (006-23, section 5): "I want to investigate
 0.25, 0.40, 0.50 for this factor. As default. There has been studies of
@@ -917,3 +919,5 @@ evidence, the weights are his.
 **Decided** (Frans, 2026-11-12, 14:07): "1/4 is good for this release,
 keep it." Larger databases, three recommended fractions and one default
 for 2026.6: 026-04.
+
+2026-11-13. Status set after the release (coord-1113).

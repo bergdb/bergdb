@@ -1,6 +1,8 @@
 # 024-11. Underfill: a design study of the fix
 
-Created 2026-11-11 by Frans Lundberg. Status: open.
+Created 2026-11-11 by Frans Lundberg. Status: done (2026-11-11), the
+design study: the merges made in 024-21 and 024-22 (`67925924`); QU1 to
+QU8 not marked answered here (QU4 by 024-14's QT1, QU6 by 024-22's QM1).
 
 A design study, no Java or Lean code: how release 2026.5 removes
 underfilled key nodes, the second largest known case against its aim
@@ -675,3 +677,5 @@ file only (677 lines: the probe and the model were not in the brief).
   full, `lean/`.
 * **To continue.** Frans's answers to QU1 to QU4; then section 7's
   step 2.
+
+2026-11-13. Status set after the release (coord-1113).

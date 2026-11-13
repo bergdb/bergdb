@@ -1,6 +1,8 @@
 # 024-27. Refused calls, theta's floor and the largest node size
 
-Created 2026-11-12 by Frans Lundberg. Status: open.
+Created 2026-11-12 by Frans Lundberg. Status: done (2026-11-12): on
+`main` since `a7dfb6f7`, QR1's Javadoc since `10408f2b`; QR1 and QR2
+decided.
 
 Four decisions of Frans, 2026-11-12, 07:36, made in Java, Lean and the
 documents, as one branch for the coordinator to land:
@@ -347,3 +349,5 @@ gate of the brief OK (section 7). Nothing runs; no slot is held.
   decisions; the Eviction one is a setup change, QR2); QR1 (rw()).
 * **To continue**: the coordinator lands the branch; a line at 024-23's
   QO2 (section 4) closes it there.
+
+2026-11-13. Status set after the release (coord-1113).

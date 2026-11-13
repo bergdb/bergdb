@@ -1,6 +1,8 @@
 # 024-12. The tree model: BergDB's key tree in Lean, run against Java
 
-Created 2026-11-11 by Frans Lundberg. Status: open.
+Created 2026-11-11 by Frans Lundberg. Status: open: on `main` since
+`b84cf761`; the proofs go on (section 6: TP7, TP10, TP11; the second
+prover's run 4 from 2026-11-13, 07:54).
 
 The main step towards aim 4 of release 2026.5 (024-04, "the model
 matches"): the key tree of release 2026.4 (`Dag`, `KeyNode`, `GetMany`,
@@ -1302,3 +1304,5 @@ is held.
   lake build treetest && .lake/build/bin/treetest`. The Lean files name
   the Java method each definition restates; section 2 is the design,
   6.2 Frans's decisions of the day that touch the model.
+
+2026-11-13. Status set after the release (coord-1113).

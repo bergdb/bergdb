@@ -1,6 +1,7 @@
 # 024-01. Inventory for 2026.5
 
-Created 2026-11-10 by Frans Lundberg. Status: open.
+Created 2026-11-10 by Frans Lundberg. Status: done (2026-11-10): the
+inventory; Frans chose the theme on 2026-11-11 (024-04).
 
 An inventory of the candidates for release 2026.5, so that Frans can
 choose a theme and a scope (Frans, 2026-11-10, 19:24: "About 2026.5. I
@@ -966,3 +967,5 @@ the API that 2026.4 has just made a stable baseline (O16-1).
 
 2026-11-10. Written at Frans's request (19:24 to 19:26), read only at
 `main` `329d78f3` and `023-core` `b7874541`. Nothing decided.
+
+2026-11-13. Status set after the release (coord-1113).

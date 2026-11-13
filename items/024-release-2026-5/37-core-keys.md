@@ -1,7 +1,7 @@
 # 024-37. CA3: the Core refuses a caller's writes at its own keys
 
-Created 2026-11-12 by Frans Lundberg. Status: done on the branch
-`ca3-core-keys`, head `9b3fd89d` (not on `main`); gated (section 5).
+Created 2026-11-12 by Frans Lundberg. Status: done (2026-11-12): on
+`main` since `335e2578`.
 
 Frans, 2026-11-12, 14:34: "CA3, as recommended." CA3 (024-01, section
 5.3; 020-11, section 11; 022-06-2, U2-8; 024-35, finding 2): a Core put
@@ -185,3 +185,5 @@ On the branch head (section 6), each in a slot:
   fake reclaim record any more (section 4); it would need a stream edited
   by hand. `core/doc-files/key-encoding.md` not changed.
 * **To continue**: land the branch, resolving `releases/next.md`.
+
+2026-11-13. Status set after the release (coord-1113).

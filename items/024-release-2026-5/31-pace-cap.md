@@ -1,7 +1,8 @@
 # 024-31. Cap the take's pace after a decrease of the startup distance
 
 Created 2026-11-12 by an agent ("pace") of the day's coordinator
-(coord-1112). Status: done, branch ready to land; for Frans: section 10.
+(coord-1112). Status: done (2026-11-12): on `main` since `c1137b69`
+(Frans, 13:09: section 10 approved). Not done: the 50M run of section 9.
 
 Frans, 2026-11-12, 11:38, on OP4 of 024-05 and QF8 (the take's bursts):
 "Yes, start it." The issue is 015-84: since 007-07 a record takes its
@@ -312,3 +313,5 @@ prints catchup.py's and ratchet.py's lines.
 * **Open.** Frans's answers to section 10; the 50M run of section 9 (a
   night step); 015-84's other questions not asked here (the commit
   times, the quick suite's tail, DlProbe) stay with 015-84.
+
+2026-11-13. Status set after the release (coord-1113).

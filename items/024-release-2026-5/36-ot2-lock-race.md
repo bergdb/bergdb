@@ -1,6 +1,7 @@
 # 024-36. OT2: the Linux "directory in use" race, fixed
 
-Created 2026-11-12 by Frans Lundberg. Status: done (on branch `ot2-unlock-race`, to land).
+Created 2026-11-12 by Frans Lundberg. Status: done (2026-11-12): on
+`main` since `c49351e1`.
 
 Frans, 2026-11-12, 14:33: "OT2; fix it." OT2 (024-01, section 11.2;
 024-35, finding 1; 006-17, section 6.2; 2026.4's Known issues: "The fix
@@ -194,3 +195,5 @@ Done, 2026-11-12, 14:55.
 * Gated on that head: BEFORE COMMIT OK, LEVEL 1 OK. s1 probe: 19 to 0.
 * Not done: landing on `main` (the coordinator's). After landing, 024-01
   section 11.2 and 024-35 finding 1 can point here.
+
+2026-11-13. Status set after the release (coord-1113).

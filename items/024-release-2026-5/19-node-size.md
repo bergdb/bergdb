@@ -1,6 +1,8 @@
 # 024-19. The node size: which, and one fixed constant or not
 
-Created 2026-11-11 by Frans Lundberg. Status: open.
+Created 2026-11-11 by Frans Lundberg. Status: done (2026-11-12): Q1, Q4
+and Q6 decided (Frans, 2026-11-12), made in 024-27; Q2 and Q3 not
+answered; Q5 proposed for 2026.6 (026's readme).
 
 A study with measurements, no product code: what the node size B is
 today, what the theory says a larger or smaller B does in BergDB's
@@ -866,3 +868,5 @@ this file and `19-node-size/`.
   a quiet machine; the thresholds at 62 under 024-14's thrash rules and
   UnlinkFuzz (section 9); and, after 024-20, section 3.1's model rerun
   with the compact form's bytes (section 7).
+
+2026-11-13. Status set after the release (coord-1113).

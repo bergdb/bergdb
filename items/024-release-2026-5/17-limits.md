@@ -1,6 +1,7 @@
 # 024-17. The limits of BergDB
 
-Created 2026-11-11 by Frans Lundberg. Status: open.
+Created 2026-11-11 by Frans Lundberg. Status: decided (2026-11-11):
+every question decided (section 8); made in 024-24 and 024-25.
 
 The limits of a transaction (operations, bytes), of a key, of a value
 and of a record: what they are today (main, `68c3917e`, with 024-07
@@ -1560,3 +1561,5 @@ MiB, L5 32 MiB, the rest as recommended). Arithmetic and reading only.
   `treeconf.sh` against it; then the implementation subitem (checks in
   `Trans.Builder` and `Db.execute`, the Javadoc "Limits", the tests and
   harnesses of 6.2 (e) and F3).
+
+2026-11-13. Status set after the release (coord-1113).

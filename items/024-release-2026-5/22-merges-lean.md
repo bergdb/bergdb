@@ -1,6 +1,8 @@
 # 024-22. Merges at the delete in the Lean tree model
 
-Created 2026-11-11 by Frans Lundberg. Status: open.
+Created 2026-11-11 by Frans Lundberg. Status: open: on `main` since
+`67925924`, the first proofs since `2a7bdc52`; TP30 to TP33 not proved
+(024-28, section 6), the second prover's runs go on.
 
 The model's half of the one algorithm that release 2026.5 ("solid
 algorithms", 024-04) still has to put in place: merges at the delete
@@ -1100,3 +1102,5 @@ of mine runs or holds a slot.
   Java built there).
 * **Logs:** `/Users/f/fl/bench/2026-11-11/mgl/runs/` (each script there
   takes its own slot with `slot.sh`).
+
+2026-11-13. Status set after the release (coord-1113).

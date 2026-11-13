@@ -1,7 +1,7 @@
 # 024-09. The tie repaired: A1 to A4 of the model gap
 
-Created 2026-11-11. Status: open (done on the branch `024-09-tie`, not on
-`main`; section 8 has the exact state).
+Created 2026-11-11. Status: done (2026-11-11): on `main` since
+`379d8acf` (024-13), the follow-up since `e7488080`.
 
 The first step towards aim 4 of release 2026.5 (024-04: "the model
 matches"): the four weak points that 024-06, section 4.4, found in the
@@ -915,3 +915,5 @@ On the branch's head `751bb653`, each run in its own hold of a slot, from
   `sh /Users/f/fl/bench/2026-11-11/fu/gates/chain.sh NAME` (NAME:
   before-commit, level2, conf-medium, conf-reclaim, conf-evict), the Lean
   gates with `gates/lean-gates.sh`.
+
+2026-11-13. Status set after the release (coord-1113).

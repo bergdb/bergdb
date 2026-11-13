@@ -1,6 +1,7 @@
 # 024-33. The cache's tables shrink (ST6)
 
-Created 2026-11-12 by Frans Lundberg. Status: open.
+Created 2026-11-12 by Frans Lundberg. Status: done (2026-11-12): on
+`main` since `a156fd51`.
 
 Frans, 2026-11-12, 12:10, for release 2026.5: ST6 "As recommended" (fix
 it). ST6 (024-05, section 3; 023-08, section 4): after a fill and a mass
@@ -123,3 +124,5 @@ PART 1 GATED, head `d6e67fa0` (branch `024-33-cache-tables`), 12:45.
 * Not done: nothing of the brief.
 * To continue: the coordinator lands the branch. 024-34's branch
   `024-34-reclaim-reads` starts at this head.
+
+2026-11-13. Status set after the release (coord-1113).
