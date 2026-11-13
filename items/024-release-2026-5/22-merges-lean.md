@@ -1267,7 +1267,9 @@ with room or full, when the state after fits the fuel or no new root is made
 (`ChainNoNewRoot`). Its limits: a full parent that existed before the
 transaction, below an inner node, its last version not space split
 (`hnospace`); open: the space split of the full parent, in place or not, and the
-parent a segment root (below a segment leaf). `InnerChildrenExist` (`ChildrenExist.lean`) is the Prop agreed
+parent a segment root (below a segment leaf). The merges' loop at tree level
+(`writerWP_mergeUp_tree`): it keeps the tree and a caller's invariant when each
+merge does; its descents read as before (`writerWP_descendToHeight_readsU`). `InnerChildrenExist` (`ChildrenExist.lean`) is the Prop agreed
 with prover putinv, who proves it for the writer's states.
 Not yet: the whole put and delete around the cascade; a merge whose parent is
 full or compacted;
