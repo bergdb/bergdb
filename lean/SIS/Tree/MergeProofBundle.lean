@@ -232,3 +232,5 @@ import SIS.Tree.TakeDeadCollapse
 import SIS.Tree.TakeDeadMerge
 import SIS.Tree.TakeCascade
 import SIS.Tree.TakeDeadDelete
+import SIS.Tree.TakeDeadUp
+import SIS.Tree.TakeDeadUpW
