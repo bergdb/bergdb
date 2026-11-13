@@ -97,4 +97,73 @@ theorem getFromR_fuel_mono (N : NodeId → Option KNode) (V : NodeId → Option 
         · exact ih y (getEqR_reach N t r0 c hwf f r y hr hg)
         · rfl
 
+/-! ## The per-segment fuel premise
+
+`SegFits N t (fuel - 1) r`: every path inside one segment tree reached from r,
+from a node through inner nodes, is shorter than the fuel. It is the premise of
+the readings over a new root (a space split grows one segment's tree by a
+level). The fuel is per segment (`getEqR`), so this per-segment form, not the
+whole path from the space root (`PathsFit`), is what the writer's states inside
+a transaction can meet; that they all do is an open premise (`boundsOK` checks
+the bounds at the transaction's end). -/
+
+/-- What N reaches from r, N' reaches, when they agree on N's reached nodes. -/
+theorem ReachS.of_agree (N N' : NodeId → Option KNode) (t : Time) (r : NodeId)
+    (h : ∀ y, ReachS N t r y → N' y = N y) : ∀ x, ReachS N t r x → ReachS N' t r x := by
+  intro x hx
+  induction hx with
+  | root => exact ReachS.root
+  | step x n c z hx hn hz ih =>
+    exact ReachS.step x n c z ih (by rw [h x hx]; exact hn) hz
+
+/-- The depth below x is N''s when N and N' agree on the nodes N reaches from x. -/
+theorem SegDepthLe.of_agree (N N' : NodeId → Option KNode) (t : Time) :
+    ∀ d x, (∀ y, ReachS N t x y → N' y = N y) → SegDepthLe N' t d x → SegDepthLe N t d x := by
+  intro d
+  induction d with
+  | zero =>
+    intro x h hd n hn
+    exact hd n (by rw [h x ReachS.root]; exact hn)
+  | succ d ih =>
+    intro x h hd n hn hl c y hy
+    have hy' : ReachS N t x y := ReachS.step x n c y ReachS.root hn hy
+    exact ih y (fun z hz => h z (reachS_trans N t x y hy' z hz))
+      (hd n (by rw [h x ReachS.root]; exact hn) hl c y hy)
+
+/-- `SegFits` of N' gives N's when they agree on the nodes N reaches. -/
+theorem SegFits.of_agree (N N' : NodeId → Option KNode) (t : Time) (d : Nat) (r : NodeId)
+    (h : ∀ x, TReach N t r x → N' x = N x) (hf : SegFits N' t d r) : SegFits N t d r := by
+  have h' : ∀ y, ReachS N t r y → N' y = N y := fun y hy => h y (reachS_tReach _ _ _ _ hy)
+  intro x hx
+  exact SegDepthLe.of_agree N N' t d x (fun y hy => h' y (reachS_trans N t r x hx y hy))
+    (hf x (ReachS.of_agree N N' t r h' x hx))
+
+/-- The depth below x in N' is at most N's when every node N' reaches from x is
+N's or a leaf. -/
+theorem SegDepthLe.of_sub (N N' : NodeId → Option KNode) (t : Time) :
+    ∀ d x, (∀ y n', ReachS N' t x y → N' y = some n' → n'.leaf = true ∨ N y = some n') →
+      SegDepthLe N t d x → SegDepthLe N' t d x := by
+  intro d
+  induction d with
+  | zero =>
+    intro x hmap hd n hn
+    rcases hmap x n ReachS.root hn with h | h
+    · exact h
+    · exact hd n h
+  | succ d ih =>
+    intro x hmap hd n hn hl c y hy
+    rcases hmap x n ReachS.root hn with h | h
+    · rw [h] at hl; cases hl
+    · have hy' : ReachS N' t x y := ReachS.step x n c y ReachS.root hn hy
+      exact ih y (fun z n' hz hzn => hmap z n' (reachS_trans N' t x y hy' z hz) hzn) (hd n h hl c y hy)
+
+/-- `SegFits` of N gives N''s when N reaches what N' reaches from r and every
+node N' reaches is N's or a leaf. -/
+theorem SegFits.of_sub (N N' : NodeId → Option KNode) (t : Time) (d : Nat) (r : NodeId)
+    (hreach : ∀ x, ReachS N' t r x → ReachS N t r x)
+    (hmap : ∀ y n', ReachS N' t r y → N' y = some n' → n'.leaf = true ∨ N y = some n')
+    (hf : SegFits N t d r) : SegFits N' t d r :=
+  fun x hx => SegDepthLe.of_sub N N' t d x
+    (fun y n' hy hyn => hmap y n' (reachS_trans N' t r x hx y hy) hyn) (hf x (hreach x hx))
+
 end SIS.Tree
