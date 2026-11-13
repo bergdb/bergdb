@@ -131,7 +131,7 @@ theorem writerWP_appendKlongs_chainGRV (c : Ctx) (base : View BVal)
         (∀ z, TReach (wNode c.p base w') c.i w'.top.rootKey z →
           TReach (updN (wNode c.p base w) (X (s + e))
             (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + e)))) c.i
-            w.top.rootKey z ∨ w.next ≤ z) ∧
+            w.top.rootKey z ∨ (w.next ≤ z ∧ z < w'.next)) ∧
         (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
         (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ s + e ∧ z = X i) → Val z = none) →
           ∀ key, getFromR (wNode c.p base w') Val c.i c.p.fuel key w'.top.rootKey =
@@ -155,7 +155,7 @@ theorem writerWP_appendKlongs_chainGRV (c : Ctx) (base : View BVal)
         (∀ z, TReach (wNode c.p base w') c.i w'.top.rootKey z →
           TReach (updN (wNode c.p base w) (X (s + e))
             (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + e)))) c.i
-            w.top.rootKey z ∨ w.next ≤ z) ∧
+            w.top.rootKey z ∨ (w.next ≤ z ∧ z < w'.next)) ∧
         (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
         (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ s + e ∧ z = X i) → Val z = none) →
           ∀ key, getFromR (wNode c.p base w') Val c.i c.p.fuel key w'.top.rootKey =
@@ -306,7 +306,7 @@ theorem writerWP_appendKlongs_chainGRV (c : Ctx) (base : View BVal)
             (∀ z, TReach (wNode c.p base w') c.i w'.top.rootKey z →
               TReach (updN (wNode c.p base w) (X 0)
                 (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn 0))) c.i
-                w.top.rootKey z ∨ w.next ≤ z) ∧
+                w.top.rootKey z ∨ (w.next ≤ z ∧ z < w'.next)) ∧
             (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
             (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ ∃ i, 0 ≤ i ∧ i ≤ 0 ∧ z = X i) → Val z = none) →
               ∀ key, getFromR (wNode c.p base w') Val c.i c.p.fuel key w'.top.rootKey =
@@ -428,7 +428,7 @@ theorem writerWP_appendKlongs_chainGRV (c : Ctx) (base : View BVal)
             (∀ z, TReach (wNode c.p base w') c.i w'.top.rootKey z →
               TReach (updN (wNode c.p base w) (X 0)
                 (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn 0))) c.i
-                w.top.rootKey z ∨ w.next ≤ z) ∧
+                w.top.rootKey z ∨ (w.next ≤ z ∧ z < w'.next)) ∧
             (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
             (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ ∃ i, 0 ≤ i ∧ i ≤ 0 ∧ z = X i) → Val z = none) →
               ∀ key, getFromR (wNode c.p base w') Val c.i c.p.fuel key w'.top.rootKey =
@@ -580,7 +580,7 @@ theorem writerWP_appendKlongs_chainGRV (c : Ctx) (base : View BVal)
           (New : NodeId → Prop),
           InsOK (Nn (s + e)) ins' → (∀ q ∈ ins', q.2 < w1.next) →
           w1.path = w.path → w1.taken = w.taken → w1.top = w.top → w.next + 2 ≤ w1.next →
-          w1.vals = w.vals → (∀ z, New z → w.next ≤ z) →
+          w1.vals = w.vals → (∀ z, New z → w.next ≤ z ∧ z < w1.next) →
           (∀ z, z < w.next → w1.nodes.lookup z = w.nodes.lookup z) →
           wNode c.p base w1 = N1 →
           TreeOK N1 c.i w.top.rootKey →
@@ -614,7 +614,7 @@ theorem writerWP_appendKlongs_chainGRV (c : Ctx) (base : View BVal)
               (∀ z, TReach (wNode c.p base w3) c.i w3.top.rootKey z →
                 TReach (updN (wNode c.p base w) (X (s + (e + 1)))
                   (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) c.i
-                  w.top.rootKey z ∨ w.next ≤ z) ∧
+                  w.top.rootKey z ∨ (w.next ≤ z ∧ z < w3.next)) ∧
               (∀ z zn, wNode c.p base w3 z = some zn → klongsWf zn.ks = true) ∧
               (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ s + (e + 1) ∧ z = X i) → Val z = none) →
                 ∀ key, getFromR (wNode c.p base w3) Val c.i c.p.fuel key w3.top.rootKey =
@@ -684,8 +684,11 @@ theorem writerWP_appendKlongs_chainGRV (c : Ctx) (base : View BVal)
           · rw [hN1, h1top] at h'
             rcases (hRV1 z h').1 with h'' | h''
             · exact Or.inl h''
-            · exact Or.inr (hNew z h'')
-          · exact Or.inr (by omega)
+            · have h3x' : w3.next = w2.next := by rw [← hw3]
+              have := hNew z h''
+              exact Or.inr ⟨this.1, by omega⟩
+          · have h3x' : w3.next = w2.next := by rw [← hw3]
+            exact Or.inr (by omega)
         · intro z zn h
           rw [hN3] at h
           by_cases hz : z = X (s + (e + 1))
@@ -726,7 +729,7 @@ theorem writerWP_appendKlongs_chainGRV (c : Ctx) (base : View BVal)
             (∀ z, TReach (wNode c.p base w') c.i w'.top.rootKey z →
               TReach (updN (wNode c.p base w) (X (s + (e + 1)))
                 (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) c.i
-                w.top.rootKey z ∨ w.next ≤ z) ∧
+                w.top.rootKey z ∨ (w.next ≤ z ∧ z < w'.next)) ∧
             (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
             (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ s + (e + 1) ∧ z = X i) → Val z = none) →
               ∀ key, getFromR (wNode c.p base w') Val c.i c.p.fuel key w'.top.rootKey =
@@ -861,7 +864,7 @@ theorem writerWP_appendKlongs_chainGRV (c : Ctx) (base : View BVal)
             (∀ z, TReach (wNode c.p base w') c.i w'.top.rootKey z →
               TReach (updN (wNode c.p base w) (X (s + (e + 1)))
                 (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) c.i
-                w.top.rootKey z ∨ w.next ≤ z) ∧
+                w.top.rootKey z ∨ (w.next ≤ z ∧ z < w'.next)) ∧
             (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
             (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ s + (e + 1) ∧ z = X i) → Val z = none) →
               ∀ key, getFromR (wNode c.p base w') Val c.i c.p.fuel key w'.top.rootKey =
@@ -1060,7 +1063,7 @@ theorem writerWP_appendKlongs_chainGRV (c : Ctx) (base : View BVal)
             (∀ z, TReach (wNode c.p base w') c.i w'.top.rootKey z →
               TReach (updN (wNode c.p base w) (X (s + (e + 1)))
                 (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) c.i
-                w.top.rootKey z ∨ w.next ≤ z) ∧
+                w.top.rootKey z ∨ (w.next ≤ z ∧ z < w'.next)) ∧
             (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
             (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ s + (e + 1) ∧ z = X i) → Val z = none) →
               ∀ key, getFromR (wNode c.p base w') Val c.i c.p.fuel key w'.top.rootKey =
@@ -1129,7 +1132,7 @@ theorem writerWP_appendKlongs_chainGRV (c : Ctx) (base : View BVal)
             (∀ z, TReach (wNode c.p base w') c.i w'.top.rootKey z →
               TReach (updN (wNode c.p base w) (X (s + (e + 1)))
                 (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) c.i
-                w.top.rootKey z ∨ w.next ≤ z) ∧
+                w.top.rootKey z ∨ (w.next ≤ z ∧ z < w'.next)) ∧
             (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
             (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ s + (e + 1) ∧ z = X i) → Val z = none) →
               ∀ key, getFromR (wNode c.p base w') Val c.i c.p.fuel key w'.top.rootKey =
@@ -1400,7 +1403,7 @@ theorem writerWP_appendKlongs_chainGR (c : Ctx) (base : View BVal)
   refine writerWP_mono (writerWP_appendKlongs_chainGRV c base path0 s D X K Nn hX hK hlinkK hrange
     hlen hwf htimes htop hdist hspace e hle w ins h1 h2 h3 h4 h5 h6 h7 h8 h9 hW hV) ?_
   rintro _ w' ⟨hT, hb, hf, hr, hW', hR, _⟩
-  refine ⟨hT, hb, hf, hr, hW', fun key => ?_⟩
+  refine ⟨hT, hb, hf, fun z hz => (hr z hz).imp id (fun h => h.1), hW', fun key => ?_⟩
   have hv : wValue base w' = wValue base w := by
     funext a; simp only [wValue, hb.2.1, hb.2.2.2.2]
   rw [hv]; exact hR _ hVal key
