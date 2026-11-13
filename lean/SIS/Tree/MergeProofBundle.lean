@@ -220,3 +220,4 @@ import SIS.Tree.TakeInvCollapse
 import SIS.Tree.TakeBackRunT
 import SIS.Tree.TakeInvUp
 import SIS.Tree.TakeInvMerge
+import SIS.Tree.TakeBackDead
