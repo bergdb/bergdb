@@ -338,4 +338,49 @@ theorem takenNotValOK_of (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Time
   exact execW_takenNotVal (kindOracleOf p (treeRun p ts)) p tx (ts.length + 1) _ noops w hM hwf
     (viewIdsBelow_view p (treeRun p ts) ts.length tx.base hfresh) hvk he
 
+/-! ## TP7's take-back from the open cases -/
+
+/-- The state predicate of the take-back's assembly: `PutInv` and `LeafVals`. -/
+def TakeS (p : Params) (ts : List Tx) (tx : Tx) (w : W) : Prop :=
+  PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w ∧
+    LeafVals (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w
+
+/-- TP7's take-back statement (`TakeBackOKUnder p (RunLinksOK p)`) from: the
+run induction's Q with P's pointers and kinds; the writer's tree under the run
+premise (latest's `opTreeOKUnder_of_any`); `PutInv` at every state between
+operations (latest's `joint_reached`); P's key nodes starting before the next
+transaction; and the take-back's five open operation cases (2), (3), (4), (7),
+(9). The cases (1), (5), (6), (8) are proved. -/
+theorem takeBackOK_of_cases (p : Params) (hM : 2 ≤ p.M) (Q : Struct BVal → Time → Prop)
+    (hQ0 : Q (initStruct p) 0)
+    (hQs : ∀ ts tx, Within p (ts ++ [tx]) → RunTreeQ p Q (treeRun p ts) ts.length →
+      RunLinksOK p (treeRun p (ts ++ [tx])) (ts.length + 1) →
+      TreeAt p (treeRun p (ts ++ [tx])) (ts.length + 1) →
+      Q (treeRun p (ts ++ [tx])) (ts.length + 1))
+    (hQP : ∀ P t, Q P t → PointersOK P) (hQK : ∀ P t, Q P t → KindsAllOK p P)
+    (ho : OpTreeOKUnder p (RunTreeQ p Q))
+    (hPI : StateOK p (RunTreeQ p Q) (fun ts _ w => PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w))
+    (hB : BaseStartOK p (RunTreeQ p Q))
+    (c2 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS p) PutLeafFullCase)
+    (c3 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS p) PutNewSegCase)
+    (c4 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS p) DelMergeCase)
+    (c7 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS p) DelEmptyCase)
+    (c9 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS p) DelFullCase) :
+    TakeBackOKUnder p (RunLinksOK p) := by
+  have hSI : ∀ ts tx w, TakeS p ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w :=
+    fun _ _ _ h => h.1
+  have hSV : ∀ ts tx w, TakeS p ts tx w → LeafVals (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w :=
+    fun _ _ _ h => h.2
+  have hS : StateOK p (RunTreeQ p Q) (TakeS p) := by
+    intro ts tx hw hr z top hz htop pre post hsplit r w h
+    exact ⟨hPI ts tx hw hr z top hz htop pre post hsplit r w h,
+      leafVals_reached p hM ts tx hw top pre post hsplit r w h (hQP _ _ hr.2.2) (hQK _ _ hr.2.2)⟩
+  have hSRF : ∀ ts tx w, TakeS p ts tx w → ReachedFree p (treeRun p ts) (ts.length + 1) w :=
+    fun ts _ w h y hy => h.1.untaken y (tReach_reachS _ _ _ _ hy)
+  have hO : OpJ2OK p (RunTreeQ p Q) (TakeS p) :=
+    opJ2OK_of_cases p _ _ (opJ2Case_putLeafRoom p _ _ hSI hSV) c2 c3 c4
+      (opJ2Case_delNoLeaf p _ _ hSI) (opJ2Case_delNoop p _ _ hSI) c7 (opJ2Case_delRoom p _ _ hSI hSV) c9
+  exact takeBackOK_of_jointJ2 p hM Q hQ0 hQs ho (TakeS p) hO hS hSRF hB
+    (takenNotValOK_of p hM _ (fun _ _ h => hQP _ _ h.2.2) (fun _ _ h => hQK _ _ h.2.2))
+
 end SIS.Tree
