@@ -110,3 +110,7 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 * 10:47 to 10:53: every subagent stopped on API errors (403, authentication) after an account change; Frans logged in again at 10:52; all seven resumed.
 * 11:12 Frans 11:09 on 027-04: Q1 to Q4 as recommended (Q2: "Core is really the thing here", the Pub layer a last part); Q5: 027 with Lean the authority, Java comments may repeat or summarize. Stubs 027-05 to 027-18 made (58c87d27).
 * 11:35 026-10 landed (Frans 11:31: Q1 keep the KeyModSet change; Q2 is 028-01).
+* 11:36 Frans 11:34: the reclaim pilot of 027 (027-13): an agent drafts, a second reviews against the code.
+* 12:08 Frans 12:07: no more Codex runs today (its budget nearly used; the Claude provers go on). Its run 5's partial TP7 work is checked and landed if clean.
+* 12:14 Frans 12:11: the model's scope as an item, "prio now as all major algorithms are stabilizing": 026-14 (reclaim as a whole, the format as bytes, the conflict check; the assumption list).
+* 12:22 Pushed: the provers' checkpoints "latest" (TP10 and TP11 at the latest time reduced to OpGetOK and CommitGetOK) and "t4" (T4 proved, its new definitions for Frans to review), main with both built (321 jobs); 026-14. 024-12's board updated.
