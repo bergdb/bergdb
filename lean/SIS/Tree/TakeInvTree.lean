@@ -460,4 +460,32 @@ theorem ttReachedN_spaceCollapse (N1 N2 : NodeId → Option KNode) (t : Time) (r
   · rw [hN2 u hur] at hu
     exact reach_spaceCollapse N1 N2 t r y rn hrn honly hN2 u (hL u un hu hm) hur
 
+/-! ## A node changed in place -/
+
+/-- A node x changed in place to n', which keeps every live klong of x's node
+but those to no node (values): every node reached before is reached after, or
+is no node. The bridge from the writer's tree to the tree with a cascade's
+klongs put into the node appended to. -/
+theorem reach_updN_keep (N : NodeId → Option KNode) (t : Time) (r x : NodeId) (n n' : KNode)
+    (hx : N x = some n)
+    (hkeep : ∀ c u, (c, u) ∈ n.liveAt t → (∃ c', (c', u) ∈ n'.liveAt t) ∨ N u = none) :
+    ∀ u, TReach N t r u → TReach (updN N x n') t r u ∨ N u = none := by
+  intro u hu
+  induction hu with
+  | root => exact Or.inl TReach.root
+  | @link a c u ha hl ih =>
+    obtain ⟨an, han, hau⟩ := hl
+    have haR : TReach (updN N x n') t r a := by
+      rcases ih with h | h
+      · exact h
+      · rw [h] at han; cases han
+    by_cases hax : a = x
+    · rw [hax, hx] at han
+      cases han
+      rcases hkeep c u hau with ⟨c', hc'⟩ | h
+      · rw [hax] at haR
+        exact Or.inl (TReach.link haR ⟨n', by simp [updN], hc'⟩)
+      · exact Or.inr h
+    · exact Or.inl (TReach.link haR ⟨an, by simp [updN, hax, han], hau⟩)
+
 end SIS.Tree
