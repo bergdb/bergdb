@@ -161,6 +161,7 @@ import SIS.Tree.GetOpCases
 import SIS.Tree.ChainShape
 import SIS.Tree.GetNewSegsTree
 import SIS.Tree.GetDescentOK
+import SIS.Tree.DelMergeCaseF2
 import SIS.Tree.WriterTreeInnerHalves
 import SIS.Tree.WriterTreeSpaceSpace
 import SIS.Tree.WriterTreeDelFull
