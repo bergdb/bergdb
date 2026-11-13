@@ -1327,34 +1327,55 @@ segment root reads alike for the keys not through it,
 `getFromR_override_off`). At 18:45, **proved: the space root's space
 split, in place or not**, in the cascade (`writerWP_appendKlongs_chainGRV`)
 and in the put rules: the reading from the new root is the reading from
-the old one when the writer's state after the operation has its paths
-within the fuel (`PathsFit`, cost's, `FuelPaths.lean`;
-`getFromR_newRootRead`, `GetNewRoot.lean`). Still open: a segment
-root's space split below a segment leaf (`hspace` leaves it out: its
-new root is not the top, and the premise must reach it through the
-cascade above); the delete's leaf when it is the space root or below a
-segment leaf, and the delete with the space root's space split.
+the old one (`getFromR_newRootRead`, `GetNewRoot.lean`). At 19:15,
+**proved: the delete along the whole access path with the space root's
+space split** (`writerWP_del_accessPathR`, on
+`writerWP_appendKlongs_chainGRQ`), **its leaf's time split below a
+segment leaf** (`getFromR_timeSplit_delAny`, `GetDelVirtual.lean`: the
+leaf with its last version in place, then the split as a step of the
+tree), **and the delete in a space whose root is a leaf**, by its bitmap
+or the root's time or space split under a new root, in place too
+(`writerWP_del_leafRootR`, `GetDelRoot.lean`). The rules whose cascade
+may reach the space root are stated as R versions
+(`writerWP_put_accessPathR`, `writerWP_put_newSegFullR`,
+`writerWP_del_accessPathR`): their reading holds when the writer's state
+after the operation meets the fuel premise below, or when the space root
+does not space split (`RootStays`); the earlier statements, whose
+premises exclude the space root's space split, are their corollaries.
+Still open: a segment root's space split below a segment leaf (`hspace`
+leaves it out: its new root is not the top, and the premise must reach
+it through the cascade above), for the put and for the delete's leaf.
 
-The reader's fuel (prover "latest", 2026-11-13, 18:15): TP10's `get`
-(`Read.lean`, `getFrom`) and `getFromR` give every segment's descent
-`Params.fuel` = (G + 1)(H + 2) + 2 steps, from the parameters, not from
-the state. Once every descent fits, more fuel reads the same
+The reader's fuel (prover "latest", 2026-11-13, 18:15; 19:15): TP10's
+`get` (`Read.lean`, `getFrom`) and `getFromR` give every segment's
+descent `Params.fuel` = (G + 1)(H + 2) + 2 steps, from the parameters,
+not from the state. Once every descent fits, more fuel reads the same
 (`getFromR_fuel_mono`, `GetFuel.lean`), so the fuel restricts nothing
 where `SegFits N t d r` holds with d < fuel: every segment tree reached
-from r has depth at most d (`SegDepthLe`). A space split that makes a
-new root grows a segment's tree by one level, and its reading needs that
-level within the fuel: those cases take `PathsFit` of the writer's
-state after the operation as a premise (cost's `PathsFit N t r fuel`,
-`FuelPaths.lean`: every path from r, through all segments, is shorter
-than the fuel; one Prop for all provers). Open premise: it holds for trees within that height, not for every run;
-inside a transaction each new root adds a level (a node made above the
-level bounds is recorded in `outside`, MF3, and refused at the
-transaction's end if still there). It is the per-segment form of the
-deferred height bound of bounded startup: `LiveHeightLe P t H root`
-bounds the nodes on every live path from the root, across segments, by
-H, so it gives every segment tree a depth below H; the writer's tree
-inside a transaction can exceed it by the new roots it makes. The design: one induction
-over the writer's `appendKlongs (d + 1) x ins` instead of a rule per
+from r has depth at most d (`SegDepthLe`, which counts only the links
+out of inner nodes; a segment leaf ends the segment). A space split
+that makes a new root grows one segment's tree by a level, and its
+reading needs that level within the fuel: those cases take, as a
+premise, `SegFits` of the writer's state after the operation with d =
+fuel - 1, that is, every path inside one segment tree is shorter than
+the fuel (one Prop for all provers, agreed with cost at 19:10). Open
+premise: it holds for the states of a transaction that ends OK, not for
+every state a rule can make. Cost's finding (`cost/fit/Fit.lean`): a
+put whose descent goes through a segment tree of depth fuel - 1 can
+split its root and reach depth fuel; that transaction then fails at its
+end (`boundsOK`). The first form, `PathsFit` (every path from the space
+root, through all segments, shorter than the fuel), fails even in
+transactions that end OK: with M = 8, G = 1, H = 0, 1000 puts below
+one key and then 1000 deletes grow a segment tree to height 5
+mid-transaction, and the transaction ends OK. `SegFits` relates to the
+deferred height bound of bounded startup, `LiveHeightLe P t H root`,
+which bounds the nodes on every live path from the root by H and so
+every segment tree's depth; the writer's tree inside a transaction can
+exceed it by the new roots it makes (a node made above the level bounds
+is recorded in `outside`, MF3, and refused at the transaction's end if
+still there).
+
+The design: one induction over the writer's `appendKlongs (d + 1) x ins` instead of a rule per
 depth. Its statement: after it, the writer's state reads as the
 state before with x replaced by x with ins put (the node of the room
 case), every key alike; the nodes it made have ids from the next one

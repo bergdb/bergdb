@@ -1,5 +1,6 @@
 import SIS.Tree.GetCascadeIP
 import SIS.Tree.FuelPaths
+import SIS.Tree.GetFuel
 
 set_option autoImplicit false
 
@@ -10,8 +11,8 @@ open SIS SIS.Check
 /-! Splits that make a new root (bergdb 024-12, TP10): the space root's space
 split, or a segment root's space split below a segment leaf, puts a new inner
 node R above the halves. A reader from R takes one level more than from the old
-node; when the old node's paths fit one level less than the fuel (`PathsFit`),
-it finds the same. -/
+node; when the new root's segment tree has depth below the fuel (`SegDepthLe`,
+`GetFuel.lean`), it finds the same. -/
 
 /-- Paths in N are paths in N' when N' agrees with N on the nodes N reaches. -/
 theorem PathLen.of_agree (N N' : NodeId → Option KNode) (t : Time) (r : NodeId)
@@ -28,8 +29,8 @@ theorem PathsFit.of_agree (N N' : NodeId → Option KNode) (t : Time) (r : NodeI
   fun z k hz => hf z k (PathLen.of_agree N N' t r h z k hz)
 
 /-- The reading from a new root Y over the halves F and S of the node x's
-contents xv is the reading from x, when x's paths fit one level less than the
-fuel. -/
+contents xv is the reading from x, when Y's segment tree has depth at most
+fuel - 1 (every path inside it shorter than the fuel). -/
 theorem getFromR_newRootRead (V A : NodeId → Option KNode) (Val : NodeId → Option Nat)
     (t : Time) (fuel : Nat) (x F S Y : NodeId) (xv f s : KNode) (sc : Nat)
     (hVx : V x = some xv) (hAY : A Y = some ⟨false, newKlongs t [(0, F), (sc, S)]⟩)
@@ -43,7 +44,7 @@ theorem getFromR_newRootRead (V A : NodeId → Option KNode) (Val : NodeId → O
     (hwf : ∀ z zn, ReachS V t x z → V z = some zn → klongsWf zn.ks = true)
     (hagree : ∀ z, ReachS V t x z → z ≠ x → A z = V z)
     (hnox : ∀ z zn c, ReachS V t x z → V z = some zn → (c, x) ∉ zn.liveAt t)
-    (hfit : PathsFit A t Y fuel) (hfuel2 : 2 ≤ fuel) :
+    (hfit : SegDepthLe A t (fuel - 1) Y) (hfuel2 : 2 ≤ fuel) :
     ∀ key, getFromR A Val t fuel key Y = getFromR V Val t fuel key x := by
   -- the nodes below a node other than x are not x
   have hbelow : ∀ y z, ReachS V t x y → y ≠ x → ReachS V t y z → ReachS V t x z ∧ z ≠ x := by
@@ -104,17 +105,25 @@ theorem getFromR_newRootRead (V A : NodeId → Option KNode) (Val : NodeId → O
           obtain ⟨c1, hl1⟩ := hYZ
           have hmem2 := KNode.searchLte_mem zn t c fd2 h2
           rw [he] at hmem2
-          have hP2 : PathLen A t Y fd.y 2 :=
-            PathLen.link (PathLen.link PathLen.root hl1) ⟨zn, hZ, hmem2⟩
-          have hfy := hfit.reached fd.y 2 hP2
-          have hagy : ∀ u, TReach V t fd.y u → A u = V u := by
+          have hagy : ∀ u, ReachS V t fd.y u → A u = V u := by
             intro u hu
-            have hu' := reachS_trans V t x fd.y hry u (tReach_reachS _ _ _ _ hu)
-            exact hagree u hu' (hbelow fd.y u hry hyx (tReach_reachS _ _ _ _ hu)).2
-          exact (getEqR_fuel_succ V t fd.y c f2 fd.y 0 PathLen.root
-            (fun z k hz => by
-              have := hfy z k (PathLen.of_agree V A t fd.y hagy z k hz)
-              omega)).symm
+            have hu' := reachS_trans V t x fd.y hry u hu
+            exact hagree u hu' (hbelow fd.y u hry hyx hu).2
+          -- Z is one level below Y, fd.y two
+          have hZd : SegDepthLe A t f2 Z := by
+            obtain ⟨yn, hyn, hyc⟩ := hl1
+            rw [hAY] at hyn; cases hyn
+            have h1 : fuel - 1 = f2 + 1 := by omega
+            rw [h1] at hfit
+            exact hfit _ hAY rfl c1 Z hyc
+          cases f2 with
+          | zero =>
+            have := hZd zn hZ
+            rw [hzl, hxl] at this; cases this
+          | succ f3 =>
+            have hyd : SegDepthLe A t f3 fd.y := hZd zn hZ (by rw [hzl, hxl]) fd2.c fd.y hmem2
+            have hyV := SegDepthLe.of_agree V A t f3 fd.y hagy hyd
+            exact getEqR_fuel_mono V t c f3 fd.y hyV (f3 + 1) (f3 + 1 + 1) (by omega) (by omega)
   have hget : ∀ c, getEqR A t c fuel Y = getEqR V t c fuel x := by
     intro c
     obtain ⟨f2, hf2⟩ : ∃ f2, fuel = f2 + 2 := ⟨fuel - 2, by omega⟩
