@@ -100,10 +100,7 @@ Open
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins and sequential keys | none | open |
-| [028-03](03-write-buffer-sentence.md) | Fix | The package's write buffer sentence | none | open |
 | [028-04](04-null-value-transformation.md) | Fix | What a null result of a value transformation does | decision | open |
-| [028-05](05-core-api-transformations.md) | Fix | The Core API names the transformations | none | open |
-| [028-06](06-maintain-and-pacing-javadoc.md) | Fix | What maintain() adds, and how reclaim is paced, in the Core's Javadoc | none | open |
 | [028-07](07-start-lock-across-sync.md) | Investigate | One start's sync blocks every start of the JVM | none | open |
 | [028-08](08-sd-crash-inside-setter.md) | Investigate | A crash inside setStartupDistance's own record | none | open |
 | [028-09](09-startup-pos-own-record.md) | Investigate | CheckStartupPos accepts a record's own position | none | open |
@@ -116,6 +113,9 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-06](06-maintain-and-pacing-javadoc.md) | Fix | maintain() and pacing, Core Javadoc | none | done | 2026-11-13 |
+| [028-05](05-core-api-transformations.md) | Fix | The Core API names the transformations | none | done | 2026-11-13 |
+| [028-03](03-write-buffer-sentence.md) | Fix | The package's write buffer sentence | none | done | 2026-11-13 |
 | [028-02](02-reclaim-comments.md) | Fix | Reclaim's and Db's comments that disagree with the code | none | done | 2026-11-13 |
 
 
