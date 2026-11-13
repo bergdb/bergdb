@@ -1138,12 +1138,15 @@ keeps it also for nodes the transaction made (`writerWP_merge_made_tree`,
 back); root collapse at the space root, the whole loop
 (`writerWP_collapseRoot_space`, `WriterTreeCollapse.lean`); LE-b with room
 (`writerWP_emptyKeyNext_tree`, `WriterTreeLeb.lean`); root collapse at a
-segment root, one step (`WriterTreeCollapseSeg.lean`); the cascades of prover
-latest's `TimeSplit2After` and `SpaceSplitTimeAfter` as state lemmas and as
-whole puts (`WriterTreeCascade.lean`, `WriterTreeCascadePut.lean`). Not yet: a merge whose parent is full or
-compacted; the mergeUp loop and the delete as a whole; the take-back of the
-upward unlink; the cascade with an inner space split (latest's
-`TimeSpaceAfter`) and deeper cascades.
+segment root, one step (`WriterTreeCollapseSeg.lean`); the four cascades of
+prover latest, a leaf split under a full parent split under a grandparent
+with room (`TimeSplit2After`, `SpaceSplitTimeAfter`, `TimeSpaceAfter`,
+`SpaceSpaceAfter`), as state lemmas and as whole puts
+(`WriterTreeCascade.lean`, `WriterTreeCascadePut.lean`,
+`WriterTreeInnerHalves.lean`, `WriterTreeSpaceSpace.lean`; the live klongs of
+an inner node's halves with klongs put, `halves_inner_cons_live`). Not yet: a
+merge whose parent is full or compacted; the mergeUp loop and the delete as a
+whole; the take-back of the upward unlink; cascades above the grandparent.
 Their premises beyond TREE: the ids from w's next one on in neither the
 base nor a live klong (`hbaseF`, `hfreshT`).
 
