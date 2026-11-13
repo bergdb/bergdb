@@ -121,6 +121,10 @@ import SIS.Tree.WriterTreeSegSplit
 import SIS.Tree.WriterTreeSegInPlace
 import SIS.Tree.WriterTreeSegLeaf
 import SIS.Tree.WriterTreeNewSeg
+import SIS.Tree.WriterTreeRetarget
+import SIS.Tree.WriterTreeMergeMade
+import SIS.Tree.WriterTreeCollapse
+import SIS.Tree.WriterTreeLeb
 import SIS.Tree.PutInvRoot
 import SIS.Tree.GetChain
 import SIS.Tree.GetInnerSplit
