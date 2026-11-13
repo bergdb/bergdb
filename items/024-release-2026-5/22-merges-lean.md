@@ -1177,9 +1177,23 @@ time or space, in place or not, with a new root (`treeOK_rootTimeStep`,
 `treeOK_rootSpaceStep`, `treeOK_rootSpaceInPlaceStep`). Its premises: the
 cascade stops at a node with room or at the space root, a full node below an
 inner parent has its compare values in that parent's link's range, and a node
-that space splits has two live klongs.
-Not yet: the delete's leaf split as the cascade's bottom, and the whole put
-around the cascade; a merge whose parent is full or compacted;
+that space splits has two live klongs. A delete's leaf split below the cascade
+(`WriterTreeDelChain.lean`): a last version given, whose live klongs are among
+the leaf's, split in time or space, in place or not, below an inner node or a
+segment leaf, then the cascade (`writerWP_delSplit_chainG`); for the delete's
+last version `lastVersionGivenDel`, h at least 2 (`writerWP_delLeaf_chainG`,
+its halves by `delLast_halves`); and a delete's leaf that is the space root
+(`writerWP_delRootSplit_tree`).
+The reading (TP10's `OpGetOK`) after the writer's merge of two nodes the
+transaction did not make, into one node or two, the parent reached, inner, with
+room: every key reads as before (`writerWP_merge_get`, `WriterGetMergeTail.lean`;
+its tail `writerWP_mergeTail_get`), the siblings' compare values from putinv's
+`RangeOrder` (`mrg_child_range`) and `mergeIdx`'s choice (the siblings adjacent
+in the parent); by the tree lemmas `getFromR_mergeOne` and `getFromR_mergeTwo`
+(`WriterGetMerge.lean`, a merge into two read as a merge into one at an unused
+id, then a split).
+Not yet: the whole put and delete around the cascade; a merge whose parent is
+full or compacted;
 the mergeUp loop and the delete as a whole; the take-back of the upward unlink.
 Their premises beyond TREE: the ids from w's next one on in neither the
 base nor a live klong (`hbaseF`, `hfreshT`).
