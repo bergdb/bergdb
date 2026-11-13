@@ -111,7 +111,7 @@ theorem ht_newSuperRoot (y : NodeId) (c : Ctx) (w : W) (hvo : ViewHtOK B c) (hb 
       | (refine ⟨?_, ?_, ?_, ?_, ?_⟩ <;> first | trivial | rfl)
   · rintro _ v ⟨⟨hb', hk'⟩, hn, hg, hp, ht, htop⟩
     have h0 : HtInv B c { w with top := { w.top with rootKey := y } } :=
-      ⟨hi.cache, hi.path, hi.pathGh, hi.pathFree, hy, hi.takenAbove, hi.pathSome⟩
+      ⟨hi.cache.congr rfl rfl rfl, hi.path, hi.pathGh, hi.pathFree, hy, hi.takenAbove, hi.pathSome⟩
     exact ⟨hb', h0.frame v hn hg hp ht htop, hk', hp, ht⟩
 
 /-- A read of key node x. -/
@@ -229,7 +229,7 @@ theorem ht_findRoot (c : Ctx) (w : W) (hvo : ViewHtOK B c) (hb : Book B c w)
     simp [hp0]
   · rintro r v ⟨⟨hb', hk'⟩, hn, hg, hp, ht, htop, hr⟩
     have h0 : HtInv B c { w with path := [(none, r)] } := by
-      refine ⟨hi.cache, ?_, ?_, ?_, hi.rootFree, hi.takenAbove, ?_⟩
+      refine ⟨hi.cache.congr rfl rfl rfl, ?_, ?_, ?_, hi.rootFree, hi.takenAbove, ?_⟩
       · intro d a q cv y h1 h2
         have := (List.getElem?_eq_some_iff.mp h2).1
         simp at this
@@ -252,8 +252,8 @@ theorem ht_findRoot (c : Ctx) (w : W) (hvo : ViewHtOK B c) (hb : Book B c w)
 of q, with q's overlay node n. -/
 theorem ht_pathAdd (cv : Nat) (y : NodeId) (c : Ctx) (w : W) (hvo : ViewHtOK B c)
     (hb : Book B c w) (hi : HtInv B c w) (a : Option Nat) (q : NodeId) (n : KNode)
-    (hlast : w.path.getLast? = some (a, q)) (hq : w.nodes.lookup q = some n)
-    (hlive : (cv, y) ∈ n.live) :
+    (hlast : w.path.getLast? = some (a, q)) (hq : w.nodes.lookup q = some n) (c0 : Nat)
+    (hlive : (c0, y) ∈ n.live) :
     WriterWP (pathAdd (some cv) y) c w (fun _ v => Book B c v ∧ HtInv B c v ∧ Kept w v ∧
       v.path = w.path ++ [(some cv, y)] ∧ v.taken = w.taken) := by
   have hqf : w.taken.contains q = false := by
@@ -266,14 +266,14 @@ theorem ht_pathAdd (cv : Nat) (y : NodeId) (c : Ctx) (w : W) (hvo : ViewHtOK B c
     (?_ : WriterWP (pathAdd (some cv) y) c w (fun _ v => HtInv B c v ∧
       v.path = w.path ++ [(some cv, y)] ∧ v.taken = w.taken))) ?_
   · simp only [pathAdd, writerWP_modify]
-    refine ⟨HtInv.add hi cv y (hN.1 cv y hlive).1 ?_ _ rfl rfl rfl rfl rfl, by trivial, by trivial⟩
+    refine ⟨HtInv.add hi cv y (hN.1 c0 y hlive).1 ?_ _ rfl rfl rfl rfl rfl, by trivial, by trivial⟩
     intro a' q' hl'
     rw [hlast] at hl'
     simp only [Option.some.injEq, Prod.mk.injEq] at hl'
     obtain ⟨rfl, rfl⟩ := hl'
     refine ⟨ht_mem_ids hm0, fun g h hg _ hh => ?_⟩
     obtain ⟨rfl, rfl⟩ := kd_tag_eq hb hm0 hg
-    exact (hN.1 cv y hlive).2 hh
+    exact (hN.1 c0 y hlive).2 hh
   · rintro _ v ⟨⟨hb', hk'⟩, hi', hp, ht⟩
     exact ⟨hb', hi', hk', hp, ht⟩
 
