@@ -13,6 +13,15 @@ up through a cascade of splits (`writerWP_appendKlongs_chainGRV`), then the new
 segment leaves are made below it (`writerWP_putSegs_new`). A reader reaches the
 new segment leaf only through the key's prefix; its tree changes nothing else. -/
 
+/-- Paths in N are paths in N' when N's links from the nodes it reaches are N''s. -/
+theorem PathLen.of_sublinks (N N' : NodeId → Option KNode) (t : Time) (r : NodeId)
+    (h : ∀ u c z, TReach N t r u → TLink N t u c z → TLink N' t u c z) :
+    ∀ z k, PathLen N t r z k → PathLen N' t r z k := by
+  intro z k hz
+  induction hz with
+  | root => exact PathLen.root
+  | link hp hl ih => exact PathLen.link ih (h _ _ _ hp.reach hl)
+
 /-- An empty segment leaf has no live klong. -/
 theorem KNode.empty_liveAt (t : Time) (c : Nat) (z : NodeId) :
     (c, z) ∉ (⟨true, []⟩ : KNode).liveAt t := by
@@ -276,7 +285,7 @@ theorem writerWP_put_newSegFull (c : Ctx) (base : View BVal) (hvc : ViewCoherent
       ¬ ChainRoom c xn → c.p.splitAbove < (xn.lastVersion c.i).size → 2 ≤ xn.live.length)
     (hspaceG : ∀ x xn, TReach (wNode c.p base w) c.i w.top.rootKey x → wNode c.p base w x = some xn →
       ¬ ChainRoom c xn → c.p.splitAbove < (xn.lastVersion c.i).size →
-      x ≠ w.top.rootKey ∧ ∀ q qn K, TReach (wNode c.p base w) c.i w.top.rootKey q →
+      ∀ q qn K, TReach (wNode c.p base w) c.i w.top.rootKey q →
         wNode c.p base w q = some qn → (K, x) ∈ qn.liveAt c.i → qn.leaf = false)
     (hcur : ∀ L n, (L, c0) ∈ eqVisits (wNode c.p base w) c.i c0 c.p.fuel rk0 →
       wNode c.p base w L = some n → n.leaf = true →
@@ -285,7 +294,8 @@ theorem writerWP_put_newSegFull (c : Ctx) (base : View BVal) (hvc : ViewCoherent
         (L, c0) ∈ fromVisits (wNode c.p base w) c.i c.p.fuel key' w.top.rootKey →
         ∃ rest', key' = pre ++ c0 :: rest') ∧
       ∀ c', (L, c') ∉ fromVisits (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey) :
-    WriterWP (putKv (.put (pre ++ c0 :: tail) h)) c w (fun _ w' => ∀ key', keyWf key' = true →
+    WriterWP (putKv (.put (pre ++ c0 :: tail) h)) c w (fun _ w' =>
+      PathsFit (wNode c.p base w') c.i w'.top.rootKey c.p.fuel → ∀ key', keyWf key' = true →
       wGet c.p c.i base w' key' =
         if Op.key (.put (pre ++ c0 :: tail) h) == key' then Op.value (.put (pre ++ c0 :: tail) h)
         else wGet c.p c.i base w key') := by
@@ -461,6 +471,7 @@ theorem writerWP_put_newSegFull (c : Ctx) (base : View BVal) (hvc : ViewCoherent
       WriterWP pathSize c ws1 (fun a1 w' =>
         WriterWP (appendKlongs (a1 - 1) L [(c0, w3.next)]) c w' (fun _ w'' =>
           WriterWP (putSegs (pre ++ c0 :: tail) (some h) tail w3.next) c w'' (fun _ w' =>
+            PathsFit (wNode c.p base w') c.i w'.top.rootKey c.p.fuel →
             ∀ key', keyWf key' = true → wGet c.p c.i base w' key' =
               if Op.key (.put (pre ++ c0 :: tail) h) == key' then Op.value (.put (pre ++ c0 :: tail) h)
               else wGet c.p c.i base w key'))) := by
@@ -504,12 +515,10 @@ theorem writerWP_put_newSegFull (c : Ctx) (base : View BVal) (hvc : ViewCoherent
       (Or.inr rfl)
       (fun i i' _ h2 _ h4 he => hdistP i i' h2 h4 he)
       (fun i _ h2 hnr hsp => by
-        obtain ⟨hne, hpar⟩ := hspaceG _ _ (hreachX i h2) (hXN i h2) hnr hsp
-        have hi : 0 < i := by
-          rcases Nat.eq_zero_or_pos i with h0 | h0
-          · exfalso; apply hne; rw [h0, nodeAt_zero]
-          · exact h0
-        exact ⟨hi, hpar _ _ _ (hreachX (i - 1) (by omega)) (hXN (i - 1) (by omega)) (hKP i hi h2).2⟩)
+        rcases Nat.eq_zero_or_pos i with h0 | hi
+        · exact Or.inl h0
+        · exact Or.inr ⟨hi, hspaceG _ _ (hreachX i h2) (hXN i h2) hnr hsp _ _ _ (hreachX (i - 1) (by omega))
+            (hXN (i - 1) (by omega)) (hKP i hi h2).2⟩)
       P.length (by omega) ws1 [(c0, w.next)] (Or.inl ⟨c0, w.next, rfl⟩)
       (by intro q hq; simp at hq; rw [hq, g2]; simp)
       g6
@@ -576,7 +585,7 @@ theorem writerWP_put_newSegFull (c : Ctx) (base : View BVal) (hvc : ViewCoherent
     refine writerWP_mono (writerWP_putSegs_new c base (pre ++ c0 :: tail) h hM hfuel tail htail wf1
       w.next hlkc htkc (by omega) hfreshc) ?_
     rintro _ wf ⟨k1, k2, _, k4, k5, _, k7, k8⟩
-    intro key' hkey'
+    intro hfit key' hkey'
     unfold wGet
     -- the trees and values involved
     have hVd_some : (wNode c.p base wf1 w.next).isSome = true := by
@@ -636,26 +645,6 @@ theorem writerWP_put_newSegFull (c : Ctx) (base : View BVal) (hvc : ViewCoherent
             subst hseg
             simp only [getFromR, hg, Option.bind_some, Vd, ↓reduceIte]
           · cases hseg
-    have hA_d : getFromR (wNode c.p base wf1) Vd c.i c.p.fuel (pre ++ [c0]) wf1.top.rootKey = some 1 := by
-      rw [hR1 Vd hadm_d, hws1N, hw1top]; exact hVA_d
-    have hsegA : segRootR (wNode c.p base wf1) c.i c.p.fuel (pre ++ [c0]) wf1.top.rootKey =
-        some w.next := by
-      rw [getFromR_append] at hA_d
-      rw [segRootR_snoc]
-      cases hs : segRootR (wNode c.p base wf1) c.i c.p.fuel pre wf1.top.rootKey with
-      | none => rw [hs] at hA_d; cases hA_d
-      | some rk' =>
-        rw [hs] at hA_d
-        simp only [Option.bind_some, getFromR] at hA_d ⊢
-        cases hg : getEqR (wNode c.p base wf1) c.i c0 c.p.fuel rk' with
-        | none => rw [hg] at hA_d; cases hA_d
-        | some y =>
-          rw [hg] at hA_d
-          simp only [Option.bind_some, Vd] at hA_d
-          by_cases hy : y = w.next
-          · subst hy; simp only [hVd_some, ↓reduceIte]
-          · simp only [hy, ↓reduceIte] at hA_d; cases hA_d
-    -- (ii) what wf1 reaches has ids below its next id
     have hlinkVA : ∀ u c' z, TLink (updN (updN (wNode c.p base w) w.next ⟨true, []⟩) L
         (n.add c.i (.key c0 w.next))) c.i u c' z → z < ws1.next := by
       intro u c' z hl
@@ -690,6 +679,43 @@ theorem writerWP_put_newSegFull (c : Ctx) (base : View BVal) (hvc : ViewCoherent
     have hA' : ∀ z, z ≠ w.next → z < wf1.next → wNode c.p base wf z = wNode c.p base wf1 z := by
       intro z h1 h2
       simp only [wNode, k1, k4 z h2 h1]
+    have hfit1 : PathsFit (wNode c.p base wf1) c.i wf1.top.rootKey c.p.fuel := by
+      rw [k2] at hfit
+      intro z k hz
+      apply hfit z k
+      apply PathLen.of_sublinks _ _ c.i _ _ z k hz
+      intro u c' z' hu hl
+      obtain ⟨mm, hm, hc⟩ := hl
+      have hun : u ≠ w.next := by
+        intro he
+        rw [he] at hm
+        have : wNode c.p base wf1 w.next = some ⟨true, []⟩ := by
+          simp only [wNode, htkc, Bool.false_eq_true, ↓reduceIte, hlkc]
+        rw [this] at hm
+        simp only [Option.some.injEq] at hm
+        subst hm
+        exact KNode.empty_liveAt c.i c' z' hc
+      exact ⟨mm, by rw [hA' u hun (hlt u (tReach_reachS _ _ _ _ hu))]; exact hm, hc⟩
+    have hA_d : getFromR (wNode c.p base wf1) Vd c.i c.p.fuel (pre ++ [c0]) wf1.top.rootKey = some 1 := by
+      rw [hR1 Vd hadm_d (Or.inl hfit1), hws1N, hw1top]; exact hVA_d
+    have hsegA : segRootR (wNode c.p base wf1) c.i c.p.fuel (pre ++ [c0]) wf1.top.rootKey =
+        some w.next := by
+      rw [getFromR_append] at hA_d
+      rw [segRootR_snoc]
+      cases hs : segRootR (wNode c.p base wf1) c.i c.p.fuel pre wf1.top.rootKey with
+      | none => rw [hs] at hA_d; cases hA_d
+      | some rk' =>
+        rw [hs] at hA_d
+        simp only [Option.bind_some, getFromR] at hA_d ⊢
+        cases hg : getEqR (wNode c.p base wf1) c.i c0 c.p.fuel rk' with
+        | none => rw [hg] at hA_d; cases hA_d
+        | some y =>
+          rw [hg] at hA_d
+          simp only [Option.bind_some, Vd] at hA_d
+          by_cases hy : y = w.next
+          · subst hy; simp only [hVd_some, ↓reduceIte]
+          · simp only [hy, ↓reduceIte] at hA_d; cases hA_d
+    -- (ii) what wf1 reaches has ids below its next id
     have hV' : ∀ a, a < wf1.next → wValue base wf a = wValue base wf1 a := by
       intro a ha
       simp only [wValue, k1, k5 a ha]
@@ -729,7 +755,7 @@ theorem writerWP_put_newSegFull (c : Ctx) (base : View BVal) (hvc : ViewCoherent
     · have hoff := getFromR_override_off (wNode c.p base wf1) (wNode c.p base wf) (wValue base wf1)
         (wValue base wf) c.i c.p.fuel hfuel wf1.top.rootKey w.next wf1.next (pre ++ [c0]) hT1 hW1
         hsegA hlt hA' hV' key' (fun q hq he => hthr ⟨q, hq, he⟩)
-      rw [hoff, hvw, hR1 (wValue base ws1) hadm_v key', hws1N, hw1top, hVw1]
+      rw [hoff, hvw, hR1 (wValue base ws1) hadm_v (Or.inl hfit1) key', hws1N, hw1top, hVw1]
       simp only [List.foldl_cons, List.foldl_nil]
       have hempty : ∀ rest', rest' ≠ [] → getFromR (updN (updN (wNode c.p base w) w.next ⟨true, []⟩) L
           (n.add c.i (.key c0 w.next))) (wValue base w) c.i c.p.fuel rest' w.next = none := by
