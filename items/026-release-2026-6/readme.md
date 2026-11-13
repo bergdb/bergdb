@@ -136,6 +136,10 @@ Files
   depends on and a recommendation; the decisions already taken quoted;
   the order, and three measurements (M1 to M3); none decided.
 
+* 14-model-scope.md. 026-14, the Lean model's scope: the boundary as it
+  is, three additions in order of value (reclaim as a whole, the stream
+  format as bytes, the commit's conflict check), the assumption list, what
+  stays out; proposed, for Frans to decide (2026-11-13, 12:11).
 
 Log
 ===

@@ -1,15 +1,16 @@
 # 027-13. Reclaim
 
-Created 2026-11-13 by Frans Lundberg. Status: draft (the pilot part of
-027-04, section 5.1, step 3; not yet reviewed).
+Created 2026-11-13 by Frans Lundberg. Status: reviewed (2026-11-13), for
+Frans to read (the pilot part of 027-04, section 5.1, step 3).
 
 Part 9 of 027 (027-04, section 2.3; Level 3): how the front of the stream
-is cut. The rule as `main` has it at 0870e7ea (2026-11-13), read from the
-code. It replaces 027-01's `levels.md`, section 6, and `sis-model.md`,
-section 15.3, both stale since 026-05. The bytes are 027-03's; the take,
-D, Rule A and the startup pos are part 6's (until it is written, 027-01's
-`sis-model.md`, sections 5 and 6). Each claim carries one status word of
-027-04, section 2.2.
+is cut. The rule as `main` has it at 5be794b8 (2026-11-13; `java/` and
+`lean/` as at 0870e7ea), read from the code. It replaces 027-01's
+`levels.md`, section 6, and `sis-model.md`, section 15.3, both stale
+since 026-05 (there a step scans at tStart and reads each KV again). The
+bytes are 027-03's; the take, D, Rule A and the startup pos are part 6's
+(until it is written, 027-01's `sis-model.md`, sections 5 and 6). Each
+claim carries one status word of 027-04, section 2.2.
 
 
 ## 1. What it does
@@ -30,26 +31,27 @@ cut, and lookups before the iteration's end time are refused.
 * **f**, the internal fraction, an integer in units of 2^-16, from 66 to
   58,982 (0.001 to 0.90); the default 16,384 (1/4). A decimal x becomes
   round(x * 65,536), halves up.
-* **Kept in the stream**, in the internal KV `/#i/dreclaim/-settings.txt`,
-  the exact text `retain=R\nfraction=f\n` (027-03, section 15). A call
-  that sets R or f refuses a value out of range before it writes
-  anything; with the values in force it writes nothing; otherwise it
-  commits one internal transaction with the KV, and the new values hold
-  from the next transaction. Without the KV the defaults hold.
-* **sd**, the startup distance in force; **sp**, the startup pos of the
-  last record written; **mp**, the position of the transaction that the
-  last valid meta block names (027-03, section 6), where recovery starts.
-* **fa** and **fp**, the first available lookup time and position: 0
-  until the first cut.
+* **Kept in the stream**, in the KV `/#i/dreclaim/-settings.txt`, the
+  exact text `retain=R\nfraction=f\n` (027-03, section 15); without it
+  the defaults hold. A call that sets R or f refuses a value out of range
+  before it writes anything; with the values in force it writes nothing;
+  otherwise it commits one internal transaction with the KV, and the new
+  values hold from the next transaction.
+* **sd**, the startup distance in force; **sp**, the startup pos that the
+  take set for the last record written, which that record stores (after a
+  start, the one read from the last record); **mp**, the position of the
+  transaction that the last valid meta block names (027-03, section 6),
+  where recovery starts; **fa** and **fp**, the first available lookup
+  time and position, 0 until the first cut.
 * **The table**: one row an iteration, in `/#i/dreclaim/-table.txt`; the
-  row of the iteration in progress also in `/#i/dreclaim/-current.txt`. A
-  row: pStart, tStart, pCut, E (the end key), lastKey, kvCount,
-  rewritten, done, tEnd, pEnd, pSafe, cut. The current iteration is the
-  table's last row if it is not done.
+  row of the iteration in progress also in `/#i/dreclaim/-current.txt`,
+  as its last step left it. A row: pStart, tStart, pCut, E (the end key),
+  lastKey, kvCount, rewritten, done, tEnd, pEnd, pSafe, cut. The current
+  iteration is the table's last row if it is not done.
 * **Internal transactions.** Reclaim writes only in transactions of its
   own, each with its own time; user transactions are refused in the last
-  1,024 times, which are kept for them. Reclaim reacts to user
-  transactions only.
+  1,024 times and top node ordinals, kept for them. Reclaim reacts to
+  user transactions only.
 * **Constants**: MIN_STEP 10,000 bytes; MAX_STEP 16,000; VN 32 (a value
   node's bytes besides its key and value); META 200,000 (the meta block
   distance); MIN_RELEASE 400,000; TAKE_MORE 262,144; RESERVE 4 MiB (a
@@ -93,57 +95,58 @@ transaction:
 
 ### 1.4. A step
 
-step(it, W) is one internal transaction:
+step(it, W) is one internal transaction, at its own time ts:
 
-1. **The scan** (since 026-05): the live KVs at the latest state, the
-   step's own time, forward from the first key after lastKey (from the
-   first key if none), up to E inclusive. If E is none, or lastKey is at
-   or after E, there is no scan, and this step is the last.
+1. **The scan** (since 026-05): the live KVs at the latest state (the
+   last commit's time, just before ts), forward from the first key after
+   lastKey (from the first key if none), up to E inclusive (to the last
+   key for a row stored without E, before 026-05). If E is none, or
+   lastKey is at or after E, there is no scan, and this step is the last.
 2. **Each KV met**, in key order, with p its value node's position (none
-   if not yet written):
+   if not yet written), s its key's segments and v its value's bytes:
    * rewrite := p < pCut;
-   * if rewrite, and the step holds a KV to rewrite already, and the
-     value nodes' bytes with this one would pass the value limit (7/8 of
-     the record limit, 027-03, section 8.3): stop before this KV, which
-     is the next step's first;
+   * if rewrite, and the step holds a KV to rewrite already, and their
+     value nodes with this one's would pass the value limit (7/8 of the
+     record limit, 027-03, section 8.3; a value node is 32 + 8 s + v
+     bytes, rounded up to a multiple of 4): stop before this KV, which is
+     the next step's first;
    * lastKey := its key; kvCount += 1;
-   * if p < pStart: size += 8 s + v + 100 (s the key's segments, v the
-     value's bytes); only these KVs count (023-08, fault 13);
+   * if p < pStart: size += 8 s + v + 100; only these KVs count (023-08,
+     fault 13);
    * stop after this KV if the scan has followed more than max(1,
-     RESERVE div NB) index nodes (the step is split), or else if
+     RESERVE div NB) distinct index nodes (the step is split), or else if
      size > W;
    * keep it if rewrite; walk past it otherwise.
 
-   If the scan passes E or reaches the last key without a stop, this
-   step is the last.
-3. **The puts**: for each KV kept, a put of the same key and value, and
-   a read of the key at the scan's time; rewritten += 8 s + v + VN each.
-   Then a put of the row at `-current.txt`: it with the new lastKey,
-   kvCount and rewritten, plus the bytes of the index nodes that the
-   transaction made dirty before this put, each at its size when it got
-   dirty. The row is the last call on its key, so it replaces a rewrite
-   of that key.
-4. **The touch** (024-07): before the puts, every index node on the path
-   of each key of the transaction at its time, from the top node down to
-   the segment leaf that holds the key's entry or would, becomes dirty;
-   these marks stay even when a put then replaces the node. No other
-   node is touched.
-5. **Commit.** A conflict, which the write lock rules out (argued),
-   would drop the step; the same step would come at a later call.
-6. **The end.** After the last step: done := true; tEnd := its time;
-   pEnd := its record's position; the table is stored.
-
-Why the cut loses no value (REWRITES; argued, 026-05, section 3.1): a
-value stored before pCut that a lookup at a time t >= tEnd reads was
-written at or before tStart (every record before pStart was), and its
-key had no write until t, so it was live with that value from tStart to
-t. Its key is then at most E; the steps' ranges join and cover every key
-up to E; and the step whose range holds the key met it live at its own
-time and put it again before tEnd. The index nodes need no touch of a
-key range (024-07, section 4): each one a lookup reaches has a live key
-below it, but an empty space root (LIVEBELOW, part 4's delete path), and
-that key's put after pCut, the user's or a step's, made it dirty; the
-space root is on the path of every step's row.
+   If the scan passes E or the last key without a stop, this step is the
+   last.
+3. **The transaction**: the KVs kept and the row, one KV a key, applied
+   in key order.
+   * **The touch** (024-07), first: every index node on the path at ts of
+     each of its keys that is not dirty becomes dirty. A path is the super
+     root, the space root and, in each segment's tree, the nodes down to
+     the segment leaf of the key's segment, or to where no key has the
+     segment. These marks stay even when a put then replaces the node. No
+     other node is touched.
+   * **The rewrites**: for each KV kept, a put of the same key and value,
+     with a read of the key at the scan's time; rewritten += 8 s + v + VN
+     each.
+   * **The row**, at `-current.txt`, in its place in key order: it with
+     the new lastKey, kvCount and rewritten, plus the dirty bytes: the
+     stored size of each index node that the transaction made dirty
+     before the row's put (by the touch, or by the rewrites of keys before
+     the row's key), each at its size at the end of the operation that
+     made it dirty, also if a later put replaces it. Nodes dirty before
+     the step, and those that later puts make dirty, are not counted. The
+     row is the last call on its key: it replaces a rewrite of that key,
+     whose bytes stay counted.
+4. **Commit.** A step cannot conflict: the scan and the commit hold the
+   write lock, so no key is written after the scan's time (argued; no
+   test). A step that conflicted would be dropped, to come again at a
+   later call.
+5. **The end.** After the last step: done := true; tEnd := ts; pEnd :=
+   the step's record's position; the table is stored, in a transaction of
+   its own.
 
 ### 1.5. The safe positions
 
@@ -160,16 +163,15 @@ decideCut(now), with now the user transaction's time, or the call's time
 in `maintain()` (1.10). A row is a candidate if it is done, now - R >
 tEnd, pSafe is known and sp >= pSafe, mp >= pCut, and pCut > fp. Of the
 candidates, C is the one with the largest pStart. If there is none, or C
-is cut already, nothing happens. Otherwise:
+is cut already, nothing happens. Otherwise, in this order:
 
 1. the rows with pStart below C's are removed, C is marked cut, and the
    table is stored;
 2. fa := C.tEnd and fp := C.pCut: from here, lookups before fa are
    refused (1.8);
-3. caches of what the cut makes unreadable may be dropped; Java drops
-   the node ids it read below pCut and its key hashes of writes at or
-   before tEnd (026-10), so a transaction that read at a time before fa
-   may be rerun as a conflict;
+3. caches of what the cut makes unreadable may be dropped (Java: the
+   node ids read below pCut, the key hashes of writes at or before tEnd;
+   026-10), so a transaction that read before fa may be rerun;
 4. a cut still pending whose table is durable is made first (1.7;
    026-05, section 2.5);
 5. C.pCut becomes the pending cut, to be made when the stream is durable
@@ -180,8 +182,7 @@ is cut already, nothing happens. Otherwise:
 makeCutIfDurable(): if a cut is pending and the stream is durable up to
 its mark, the storage drops the stream before pCut, and nothing is
 pending. The storage may keep more: a file storage drops whole files
-(027-03, section 4). A read below the storage's first position fails with
-an error of its own. Durable first, so that a crash cannot lose the table
+(027-03, section 4). Durable first, so that a crash cannot lose the table
 that marks the cut once the front is gone.
 
 ### 1.8. Reads and the retention
@@ -196,8 +197,9 @@ that marks the cut once the front is gone.
 * Each cut keeps the duration in force when it is decided: fa = tEnd <
   now - R then. fa never moves back, and a larger R does not bring back
   what was cut. R may change at any time (011-04, W2). Set to forever
-  while an iteration runs, it runs to its end; no cut and no iteration
-  follow until R is finite again.
+  while an iteration runs, the iteration runs to its end and a pending
+  cut is still made; no cut is decided and no iteration begins until R
+  is finite again.
 
 ### 1.9. A start
 
@@ -207,8 +209,7 @@ newest row marked cut gives fa := its tEnd and fp := its pCut (0 and 0
 without one). If the storage's first position is below fp, the cut is
 made now: a crash came between the table and the cut. Nothing else is
 kept, so a restart does not change what reclaim writes (INV-RESTART).
-Startup on a cut stream is part 7's (rule 4 by position skips the
-pointers below the first position).
+Startup on a cut stream is part 7's.
 
 ### 1.10. maintain()
 
@@ -223,17 +224,18 @@ the call's time, in internal transactions, at most once each, in order:
   least MIN_RELEASE after fp: begin(pStart = the stream length, tStart =
   the time of the last transaction), with E at that time. No condition
   on the stream's growth.
-* **M2**: step(it, MAX_STEP) if an iteration runs, without the
-  allowance.
+* **M2**: step(it, MAX_STEP) if an iteration runs, without the allowance.
 * **M3**: markSafe().
 * **M4**: of the rows waiting for their cut whose wait position (pEnd
   while pSafe is unknown, then pSafe) is after sp, the least such
-  position, if any: an empty internal transaction whose take writes,
-  beyond its share, more of D oldest first, up to it, at most TAKE_MORE
-  bytes of index nodes (part 6). Then markSafe() again.
-* **M5**: if a row meets every condition of 1.6 but mp >= pCut: a
-  filler, a put of `/#i/dreclaim/-fill.txt` with max(1, META - L mod
-  META) zero bytes (L the stream length), then its delete, two
+  position, if any: an empty internal transaction whose take, after its
+  share, goes on with whole transactions of the startup section, oldest
+  first, while sp is below that position: the first whatever its size,
+  then each while the bytes taken (counted as the take counts them, part
+  6) stay within TAKE_MORE and the record. Then markSafe() again.
+* **M5**: if a row, not cut, meets every condition of 1.6 but has mp <
+  pCut: a filler, a put of `/#i/dreclaim/-fill.txt` with max(1, META - L
+  mod META) zero bytes (L the stream length), then its delete, two
   transactions, so that a meta block names a transaction at or after
   pCut.
 * **M6**: decideCut(now), makeCutIfDurable().
@@ -252,272 +254,260 @@ pending, M1's condition holds, or the dead hand has more.
   live after a call (027-03, section 15: the texts; the row is read
   leniently, the settings strictly). Reclaim's transactions are ordinary
   records (027-03, section 8): a step's holds its puts, its row and the
-  got-dirty ids of its touch and puts. Nothing of a scan is stored; E is
-  stored with the row.
+  got-dirty ids of its touch and puts. Nothing of a scan is stored.
 
 
 ## 3. Invariants
 
 * **INV-RECLAIM** (011-01): from fa on, lookups give what they gave
-  before the cut. Proved in the model for a safe cut (`CutOK`: T8, T9);
-  that Java's cuts are safe is checked (T-SCHEME, below).
-* **REWRITES** (1.4): argued; checked (C-CUT's part 2); gated
-  (`testIterationRewritesAllOldValues`, `testStepScansAtItsOwnTime`,
-  `testEndKeyBoundsTheScan`).
-* **LIVEBELOW** (part 4): checked at every cut (C-CUT, `CUT-live`);
-  gated (UnlinkFuzz in the night).
-* **COVER** and **LATEST**: from REWRITES and LIVEBELOW, every node
+  before the cut. Proved in the model for a safe cut (`CutOK`; T8, T9);
+  that Java's cuts are safe is T-SCHEME.
+* **REWRITES**: every value stored before pCut that a lookup from tEnd on
+  reads is rewritten. Argued (026-05, section 3.1): it was written by
+  tStart and its key had no write since, so the key was live from tStart
+  on and is at most E; the steps' ranges cover every key up to E, and the
+  step whose range holds it rewrote it.
+  Checked (C-CUT's part 2); gated (`testIterationRewritesAllOldValues`,
+  `testStepScansAtItsOwnTime`, `testEndKeyBoundsTheScan`).
+* **LIVEBELOW** (part 4): each index node a lookup reaches, but an empty
+  space root, has a live key below it, and that key's last put (the
+  user's at pCut or later, or a step's rewrite) made the node dirty; so
+  no key range needs a touch, and the space root is on every step's
+  row's path (024-07, section 4). Checked at every cut (C-CUT,
+  `CUT-live`); gated (UnlinkFuzz).
+* **COVER**, **LATEST**: with REWRITES and LIVEBELOW, every node
   reachable from tEnd on has its latest version at pCut or later once sp
-  >= pEnd. Proved (`T_cover`, `T_latest`).
+  >= pEnd. Proved in the model (`T_cover`, `T_latest`).
 * **T-SCHEME**: Java's waits (1.5, 1.6) give `CutOK`. Checked: C-CUT at
-  every cut of every reclaim trace (026-05: 0 of 794 cuts failing in
-  level3's set, 0 of 479 in its own traces), and in the model by running
-  (`checkSchemeC`). Not proved: open.
+  every cut of every reclaim trace (026-05: 0 of 794 failing in level3's
+  set, 0 of 479 in its own), and `checkSchemeC`. Not proved: open.
 * **The touch on the paths** (`TouchOnPaths`): checked (C-A,
-  `touchPath`); gated (`testStepDirtiesItsPathsOnly`).
-* **INV-RESTART**: a run with restarts writes the stream of the run
-  without them, the same cuts too. Proved in the model (`T12_restartCut`,
-  `T12_handles`); gated (RestartInvariance with reclaim, `level3.sh`).
+  `touchPath`); gated (`testStepDirtiesItsPathsOnly`). **No conflict in
+  a step** (1.4): argued; no test.
+* **INV-RESTART**: a run with restarts writes the stream and the cuts of
+  the run without them. Proved in the model for safe cuts
+  (`T12_restartCut`, `T12_handles`); gated (RestartInvariance, level3).
 * **Retention** (1.8): argued; gated (ReclaimRetentionTester,
-  ReclaimStress).
-* **Crash**: the table is durable before the physical cut. Gated
+  ReclaimStress). **Crash**, the table durable before the cut: gated
   (`testCutIsMadeAfterDecisionIsDurable`, CrashTest, PowerLossTest).
-* **Readers**: a read that a cut overtakes expires and never fails the
-  database. Gated (ReclaimReaderTester, ReclaimReaders).
+  **Readers**, a read that a cut overtakes expires: gated
+  (ReclaimReaderTester, ReclaimReaders).
 
 
 ## 4. Costs and bounds
 
-* **A step**: at most one a user transaction, and one a `maintain()`
-  call. It counts at most MAX_STEP bytes of KVs stored before pStart and
-  one KV more; it walks the KVs put since pStart up to the reserve (about
-  2,759 index nodes at the default node size, 026-05). Argued.
-* **A step's values**: within the value limit, unless it is one KV.
-  Argued; gated (`testStepWithinValueLimit`,
-  `testLastStepWithinRecordLimit`).
-* **A step's dirty nodes** (024-07, B1; 024-05, BD7): at most 3 h s + 3
-  a put, h a segment tree's height, s the key's segments. Argued; gated
-  (`testStepDirtiesItsPathsOnly`); checked (`touchPath`).
-* **Internal transactions after a user transaction**: at most five (the
-  table at a start, a step, the table at an end, the safe positions, the
-  cut). Argued (`Db`'s margin of 1,024 top node ordinals).
-* **An iteration's rewrites**: at most f of the stream's growth since
-  pStart, through the allowance, unless paced by MAX_STEP, R div 4 or 2
-  sd (024-29, section 4.2). Argued. Reclaim wrote 26 to 38 percent of all
-  stream bytes at f = 1/4: measured (011-04, W4).
-* **An iteration's length**: at most (the KV bytes live at tStart) /
-  MAX_STEP steps, whatever the user puts ahead of the scan. Argued
-  (026-05, section 2.3); a chase at the reserve: open (section 9).
-* **The stream kept** (BD10, G3): less the user's records within R, at
-  most 6 times a fresh twin's stream. Gated (`count-gates.sh`, night;
-  4.401 measured, 026-05). Its form, G(R) + j W: argued (024-29); not
-  derived: open (017-04).
+* **A step** (one a commit, one a `maintain()` call) counts at most W
+  bytes of KVs stored before pStart and one KV more, and walks those put
+  since up to the reserve (about 2,759 index nodes at the default node
+  size, 026-05): argued. Its values: within the value limit unless it is
+  one KV; argued; gated (`testStepWithinValueLimit`,
+  `testLastStepWithinRecordLimit`). Its dirty nodes: at most 3 h s + 3 a
+  put, h a segment tree's height (024-07, B1; 024-05, BD7); argued;
+  gated (`testStepDirtiesItsPathsOnly`).
+* **After a user transaction**: at most five internal transactions
+  (begin, a step, the end, the safe positions, the cut); argued (the
+  margin of 1,024 times and top node ordinals).
+* **An iteration's rewrites**: about f of the stream's growth since
+  pStart, by the allowance at commits (a step may pass it by its dirty
+  bytes and one KV; `maintain()`'s steps have none), unless paced by
+  MAX_STEP, R div 4 or 2 sd (024-29, section 4.2): argued; 26 to 38
+  percent of all stream bytes at f = 1/4: measured (011-04, W4).
+* **An iteration's length**: at most about (the counted bytes of the KVs
+  live at tStart) / W steps, W from MIN_STEP to MAX_STEP, whatever the
+  user puts ahead of the scan, plus steps that the value limit or the
+  reserve ends early: argued (026-05, section 2.3, says / MAX_STEP).
+* **The stream kept** (BD10, G3), less the user's records within R: at
+  most 6 times a fresh twin's; gated (`count-gates.sh`); 4.401 measured
+  (026-05). Its form, G(R) + j W: argued (024-29), not derived (017-04).
 * **Back to empty** (G4): kept, key nodes, heap and the rest at most 2
-  times the twin's; the lag at most 2 R transactions (026-11). Gated;
-  1,265 to 1,286 measured at 1M to 10M keys and every f (026-05). G5,
-  the same by `maintain()` calls: gated.
-* **The largest record** with reclaim on (G1, BD1): at most the larger of
-  1 MB and 5 times the mean. Gated.
-* **A `maintain()` call**: one step, TAKE_MORE beyond one transaction's
-  take, a filler below META. Argued; gated (ReclaimMaintainTester).
+  times the twin's, the lag at most 2 R (2,000 transactions in G4's
+  workload, 026-11): gated; the lag 1,265 to 1,286 transactions at 1M to
+  10M keys and every f: measured (026-05). G5, by `maintain()`: gated.
+* **The largest record** with reclaim on (G1, BD1): at most the larger
+  of 1 MB and 5 times the mean; gated. **A `maintain()` call**: one
+  step, TAKE_MORE beyond its first taken transaction, a filler of at
+  most META bytes; argued; gated (ReclaimMaintainTester).
 * **Pauses** (P1): the physical cut waits for the storage's append in
-  progress, 19.85 ms at the longest on s1 (015-80, 019-36): measured.
-  The forget of 1.6, step 3: 0.3 to 6 ms (026-10): measured.
-* **The disk**: whole files, 6 to 9 percent more than the stream kept.
-  Measured (011-04, W5d).
+  progress, 19.85 ms at the longest on s1 (015-80, 019-36); 1.6's forget
+  0.3 to 6 ms (026-10): measured. **The disk**: whole files, 6 to 9
+  percent more than the stream kept: measured (011-04, W5d).
 
 
 ## 5. In the model
 
-* **Definitions** (lean/SIS/Reclaim.lean, trusted): `Version.stub`,
-  `Record.cut` and `cutStream c S` (the records before c keep stubs:
-  node, record number, no history); `ReadsAt` and `ReadsPhys` (the
-  versions a lookup, or a read in the running process, may follow);
-  `CutOK` (c <= f; every version a read from f on may follow is at c or
-  later; every node of D has its latest version at c or later, with
-  references below c to latest versions only; the top at c or later);
-  `SameFrom`, `ExecRootOK`, `VirtLiveOK`, `PolicyCutOK`,
-  `runRestartsCut`. The touch is `Changes.touch`; f is `Record.fa`.
-  `TouchOnPaths` in ReclaimTheorems.lean; `runHandlesCut` and
-  `runHandlesCutPos` in HandleReclaimTheorems.lean.
-* **Proved** (lean/SIS/Proof/, the Cut and HandleCut files):
-  * T13' (`T13_markTouch`): with touches, step 3 marks exactly the index
-    nodes not in D that are dirty or touched;
-  * T-COVER (`T_cover`): at an iteration's end e, if every reachable
-    data node is at c or later and every reachable index node has a data
-    node below it, every reachable index node is in D or at c or later;
-  * T-LATEST (`T_latest`): with the same premises, in every later state
-    whose startup pos is at e or later, every node reachable from e on
-    has its latest version at c or later;
-  * T8 (`T8_recoverCut`): after a safe cut, a startup from the cut
-    stream gives the same lookups from f on, and the same D;
-  * T9 (`T9_handles`): reads through the handles from f on give the same
-    on the cut stream as on the whole one;
-  * T12 (`T12_restartCut`; with eviction `T12_handles`): a run that
-    restarts from safe cut streams appends the records of the run
-    without restarts;
-  * `Rule4PosCut_handles`, `RunPosCut_handles` (005-62): Java's rule 4
-    by position after a cut is rule 4 by node id.
+* **Definitions** (lean/SIS/Reclaim.lean, trusted): `cutStream` (the
+  records before c keep stubs), `ReadsAt` and `ReadsPhys` (what a lookup,
+  or a read in the running process, may follow), `CutOK` (c <= fa; all
+  that a read from fa on may follow at c or later; each node of D with
+  its latest version at c or later, its references below c naming latest
+  versions; the top at c or later), `SameFrom`, `ExecRootOK`,
+  `VirtLiveOK`, `PolicyCutOK`, `runRestartsCut`, `Changes.touch`,
+  `Record.fa` (fa); `TouchOnPaths`, `runHandlesCut`, `runHandlesCutPos`.
+* **Proved** (stated in ReclaimTheorems.lean and
+  HandleReclaimTheorems.lean, proofs in lean/SIS/Proof/): T13'
+  (`T13_markTouch`): step 3 marks exactly the index nodes not in D that
+  are dirty or touched. T-COVER (`T_cover`): at an iteration's end e,
+  with every reachable data node at c or later and a data node below
+  every reachable index node, every reachable index node is in D or at c
+  or later. T-LATEST (`T_latest`): with the same premises, in every
+  later state with its startup pos at e or later, every node reachable
+  from e on has its latest version at c or later. T8 (`T8_recoverCut`)
+  and T9 (`T9_handles`): a startup from, and reads through the handles
+  on, a safely cut stream give the same lookups from fa on (and T8 the
+  same D). T12 (`T12_restartCut`, with eviction `T12_handles`): a run
+  that restarts from safe cut streams appends the records of the run
+  without restarts. `Rule4PosCut_handles`, `RunPosCut_handles` (005-62):
+  rule 4 by position after a cut is rule 4 by node id.
 * **Assumptions**: `RunOK` (A2 to A5, TREE), Java's still-dirty test and
   marking, `LiveAppend`, `EvictRunOK`; for T8 and T12 `ExecRootOK`,
-  `VirtLiveOK`, `PolicyCutOK`.
-* **Stated, not proved**: nothing. T-SCHEME has no statement; it is
+  `VirtLiveOK`, `PolicyCutOK`. REWRITES and LIVEBELOW are premises.
+  **Stated, not proved**: nothing; T-SCHEME has no statement and is
   checked by running (`checkSchemeC` in SIS/ReclaimExample.lean, `lake
-  exe reclaimtest`, with and without a touch; 024-07, section 4.3).
+  exe reclaimtest`; 024-07, section 4.3).
 * **Left out**: keys, the scan and E, R and the times, the table, the
   allowance and the step sizes, the durable wait, the storage's files,
-  reads in flight, `maintain()` (its transactions are records like any),
-  the settings. REWRITES and LIVEBELOW are Java's premises.
-* **Conformance** (027-02: `TOUCH`, `FA`, `CUT`, `PHYSCUT`;
-  lean/Check/Steps.lean): C-A (TouchOK, `touchPath`), C-S (the model's
-  step against Java's records and D on the cut stream), C-CUT (`CutOK`
-  at every cut Java decides, with `CUT-live`), C-L (the first touches
-  after restarts from the cut stream); C-P and C-H with eviction.
+  reads in flight, `maintain()` (its records are like any), the settings.
+* **Conformance** (027-02's `TOUCH`, `FA`, `CUT`, `PHYSCUT`; Check/Steps
+  and TraceCheck.lean): C-A (TouchOK, `touchPath`), C-S (the model's
+  step against Java's records, D on the cut stream), C-CUT (`CutOK` at
+  every cut Java decides; `CUT-live`), C-L (the first touches after
+  restarts); C-P and C-H with eviction.
 
 
 ## 6. In Java
 
 * `core/Reclaim`: `transactionCompleted` (1.2), `lastKeyAt` (E), `step`
   (1.4), `markSafePositions` (1.5), `pretruncateIfPossible` (1.6),
-  `cutIfDurable` (1.7), `initFromDb` (1.9), `maintain` (1.10),
-  `setSettings`, `fractionOf`, `IterationInfo` and `IterationTable` (the
-  rows); the class comment.
-* `core/Db`: `executeInner` (calls `transactionCompleted` in the go
-  point); `putKvs` and `touchPaths` (the touch, by `Dag.followPath`);
-  `makeDirtyIfNeeded` (a step's dirty bytes); `cutDecided`
-  (`NodeCollection.forgetIdsBelow`, `KeyModSet.forgetUpTo`); `maintain`;
-  `setRetainDuration`, `setReclaimInternalFraction`;
-  `expiredIfReadBelowCut`; the take's `maintainTakeTo`
-  (`TransSeq.takeTo`).
-* `dag/GetMany` (`endKey`, the stop conditions); the step reads through
-  `NodeCollection.MaintenanceFollower`, which keeps nothing in memory.
-* `stream`: `AppendOnlyStream.pretruncate`, `FileStream` (whole files),
-  `CutStream` (exact, for tests), `ReadBelowFirstPosException`.
+  `cutIfDurable` (1.7), `initFromDb` (1.9), `maintain` and its
+  conditions (1.10), `setSettings`, `fractionOf`, `IterationInfo`,
+  `IterationTable`; the class comment.
+* `core/Db`: `executeInner`, `putKvs`, `touchPaths`, `makeDirtyIfNeeded`
+  (`Trans.dirtiedBytes`), `cutDecided`, `maintain`, `store` (M4,
+  `TransSeq.takeTo`), `expiredIfReadBelowCut`, the setters; `KeyModSet`
+  (a step's read time, the latest, is never before its first bin, so no
+  conflict); `DbClock` (the 1,024 times kept); `dag/GetMany` (`endKey`);
+  `NodeCollection.MaintenanceFollower` (a step's reads, kept nowhere);
+  `stream`: `AppendOnlyStream.pretruncate`, `FileStream`, `CutStream`,
+  `ReadBelowFirstPosException`.
 * The Pub API: `Database.setRetainDuration`, `Database.maintain`; no
-  setter of f (024-29).
-* The C clone (012) has release 2026.2's reclaim (`reclaim.c`), before
-  024-07, 024-32, 024-34 and 026-05; it does not follow this part.
+  setter of f (024-29). The C clone (012) has release 2026.2's reclaim
+  (`reclaim.c`), before 024-07, 024-32, 024-34 and 026-05.
 
 
 ## 7. Tests
 
-* **Unit tests**, gated by `before-commit.sh`: `Reclaim`'s (38; among
-  them the steps' `testStepScansAtItsOwnTime`,
-  `testEndKeyBoundsTheScan`, `testQueueBeforeAKeyEnds`,
-  `testRandomPutsAheadDoNotSlowTheScan`, `testAllowanceCountsIndexNodes`,
-  `testStepReserveSplitsSteps`; the cut's `testPretruncate`,
-  `testSafePosAfterTheCallsRecords`, `testCutKeepsMetaBlockTransaction`,
-  `testEmptiedSubtreesAfterCut`; the restarts' `testRestartAfterCut`,
-  `testCrashBeforeIterationEnd`, `testRestartResumesIteration`);
-  ReclaimRetentionTester (7, R changed); ReclaimReaderTester (8);
-  ReclaimMaintainTester (4); DbTesterRestart's
-  `testReclaimSettingsKeptOverRestarts` and
-  `testMalformedSettingsRefusedAtStart`.
-* **`level3.sh`** (night, full): ReclaimStress, RestartInvariance with
-  reclaim, CrashTest, ReclaimReaders, LoadTest with a check after every
-  cut, PowerLossTest, the conformance's reclaim set, InterruptStress.
-* **The night** also: `count-gates.sh` (G1, G3, G4 with its lag, G5),
-  the conformance's `drain` set, `lean-tests.sh` (reclaimtest),
-  UnlinkFuzz.
-* By hand: ReclaimCost (`Reclaim.Stats`), FracRuns (026-04).
+* **Gated by `before-commit.sh`**: `Reclaim`'s 38 tests, among them
+  section 3's and `testAllowanceCountsIndexNodes`,
+  `testStepReserveSplitsSteps`, `testQueueBeforeAKeyEnds`,
+  `testCutKeepsMetaBlockTransaction`, `testRestartResumesIteration`;
+  ReclaimRetentionTester (7),
+  ReclaimReaderTester (8), ReclaimMaintainTester (4); two of
+  DbTesterRestart's (`testReclaimSettingsKeptOverRestarts`,
+  `testMalformedSettingsRefusedAtStart`).
+* **In the night**: `level3.sh` (ReclaimStress, RestartInvariance,
+  CrashTest, ReclaimReaders, LoadTest with a restart and a check after
+  every cut, PowerLossTest, the conformance's reclaim set,
+  InterruptStress); `count-gates.sh` (G1, G3, G4 with its lag, G5); the
+  conformance's `drain` set; `lean-tests.sh` (reclaimtest); UnlinkFuzz.
+  By hand: ReclaimCost (`Reclaim.Stats`); FracRuns (026-04), not on
+  `main`.
 
 
 ## 8. Principles and rules
 
-* **P1**, no stop-the-world: a step is bounded by its paths (024-07). A
+* **P1**, no stop-the-world: a step is bounded by its paths (024-07); a
   deviation: the physical cut waits for the storage's append (015-80).
-* **P2**, a deterministic stream: R and f are in the stream (015-87);
-  `maintain()` writes as its calls and their times decide. RESERVE is
-  not in the stream: a test setting, below its default only.
-* **P3**, calm when not used: reclaim works at the user's commits and
-  `maintain()` calls only, so a quiet database keeps its stream until
-  either comes.
-* **P4**, maintenance proportional to the user's work: one step a
-  commit, within f of the growth and MAX_STEP of scan; a step's uncounted
-  walk (1.4) is bounded by the reserve only.
-* **P10**, few settings: R and f; the Pub API sets R only.
-* **P12**: reclaim treats every key and value as bytes, BergDB's own
-  too; its own keys are reserved, and a caller's put there is refused
-  (024-37, CA3; 010-04, R5).
-* **R1**: a refused setter call or `maintain()` call changes nothing.
+  **P2**, a deterministic stream: R and f are in the stream (015-87);
+  `maintain()` writes as its calls and their times decide; RESERVE, a
+  test setting below its default only, is not in the stream.
+* **P3**, calm when not used: reclaim works at commits and `maintain()`
+  calls only. **P4**, maintenance proportional to the user's work: one
+  step a commit, within f of the growth and MAX_STEP of scan; a step's
+  uncounted walk (1.4) is bounded by the reserve only.
+* **P10**, few settings: R and f; the Pub API sets R only. **P12**:
+  reclaim treats every key and value as bytes, BergDB's own too; its own
+  keys are reserved, and a caller's put or delete there is refused
+  (024-37, CA3; 010-04, R5). **R1**: a refused setter call or
+  `maintain()` call changes nothing.
 
 
 ## 9. Limits and open work
 
 * T-SCHEME is checked, not proved; 001-07's register rows M32, M33, M36,
-  M41 and M48 are argued or checked. REWRITES and LIVEBELOW are argued
-  for Java; the tree model (024-12) could make them theorems.
+  M41 and M48 are argued or checked. REWRITES, LIVEBELOW and a step's
+  commit without conflict are argued for Java; the tree model (024-12)
+  could make the first two theorems.
 * 026-09, a keys-only scan (024-34, Q34-1, option b): registered for
-  2026.6, not on `main`. Today a step loads the value of every KV it
-  walks, also those it does not rewrite (43 percent of its loads at 1M
-  keys with a 20 MB cache, 024-34).
-* A chase at the reserve: a user who puts, ahead of the scan and before
-  E, more than a reserve's worth of index nodes in every transaction
-  keeps an iteration going (026-05, section 7). Not seen.
-* Work ahead of an ascending mass delete: up to 12 percent more stream
-  written (026-05, section 6; accepted, its Q3).
-* f's three recommended values and one default: 026-04, open.
-* The bounds on the stream kept and the lag (BD8, BD10) are measured and
-  gated, not derived (017-04).
-* Protected long-lived reads, which a cut would wait for (D1 = B): not
-  built.
+  2026.6, not on `main`; today a step loads the value of every KV it
+  walks (43 percent of its loads not rewritten, 1M keys, 20 MB cache).
+* A chase at the reserve (026-05, section 7): puts ahead of the scan,
+  before E, of more than a reserve's worth of index nodes in every
+  transaction keep an iteration going; not seen. Ahead of an ascending
+  mass delete, up to 12 percent more stream written (026-05, section 6;
+  accepted, its Q3).
+* Open: f's recommended values and default (026-04); the stream kept and
+  the lag (BD8, BD10) are gated, not derived (017-04); protected
+  long-lived reads that a cut would wait for (D1 = B) are not built.
 * The row's text: Java's `HashMap` line order, a lenient parser, no
-  version (027-03, G16 and Q9; 026-12). A row of 2026.5 or before has no
-  E: its scan is bounded by the count only.
+  version (027-03, G16, Q9; 026-12). E came with 026-05 before Q9, which
+  027-03's Q8 asked for first: a reader without E (2026.5 and before)
+  would ignore a row's E and drop it at its next store.
 
 
 ## 10. Evidence
 
-* 001-07: Level 3 in Lean, the alignment, T-SCHEME's argument (section
-  5) and the register. 001-09: the two-hour soak on disk.
-* 011-04: the rework of 2026-10-13, "Level 3 cost", W1 to W5.
-* 015-50: a step within the value limit. 015-54: pSafe after the call's
-  records. 015-80, 019-36: the cut's wait. 015-87: the settings kept.
-* 023-05, P8, and 023-08 (fault 13, check V8): the scan at a step's time.
-* 024-07: the last touch, T-COVER, T-LATEST, the bounds B1 to B4.
-* 024-29, 026-04: the fraction and the lag's mechanism.
-* 024-30, 026-11: the count gates and G4's lag.
-* 024-32: `maintain()`. 024-34: reads only what it rewrites (OP8).
-* 026-05: each step at its own time, E, the count, the pending cut.
-* 026-10: the forget at a decided cut.
+001-07 (Level 3 in Lean, T-SCHEME's argument, the register); 001-09 (the
+soak on disk); 011-04 (the rework of 2026-10-13, W1 to W5); 015-50 (a
+step within the value limit); 015-54 (pSafe after the call's records);
+015-80, 019-36 (the cut's wait); 015-87 (the settings kept); 023-05, P8,
+and 023-08, fault 13 (the scan at a step's time); 024-07 (the last touch,
+T-COVER, T-LATEST, B1 to B4); 024-29, 026-04 (the fraction, the lag's
+mechanism); 024-30, 026-11 (the count gates, G4's lag); 024-32
+(`maintain()`); 024-34 (OP8); 026-05 (each step at its own time, E, the
+count, the pending cut); 026-10 (the forget at a decided cut).
 
 
-Note for the reviewer
-=====================
+For the code's comments
+=======================
 
-Where the code on `main` (0870e7ea) and a text disagree; the code was
-taken as right:
+Java comments on `main` (5be794b8) that disagree with the code, for a
+028 entry; the code is right in each, and Java was not changed.
 
-1. 027-01's `levels.md`, section 6: a step scans at tStart and reads a KV
-   again; since 026-05 it scans at its own time and the scan gives the
-   values.
-2. `Reclaim`'s class comment: an iteration starts when the stream has
-   grown "by twice" sd; the code asks for more than twice. A step comes
-   when the bytes are "below" f of the growth; the code asks for an
-   allowance above MIN_STEP, and a step of min(allowance, MAX_STEP).
-3. `Reclaim.pretruncateIfPossible`'s Javadoc cuts "at the pStart" of an
-   iteration that "starts at or before" mp's transaction; the code cuts
-   at pCut and asks mp >= pCut (the Javadoc is older than pCut).
-4. `IterationInfo.kvCount`'s comment, "total number of KVs in the
-   database for the iteration lookup time": since 026-05, the KVs that
-   the steps' ranges covered.
-5. `Db.maintain`'s Javadoc begins an iteration when "the last one is
-   cut"; the code asks that no done row waits for its cut (pCut > fp),
-   so a done row with pCut <= fp does not block.
-6. 027-03, section 15: its table of keys lacks `/#i/dreclaim/-fill.txt`
-   (024-32), and says a step's touch writes `-current.txt` (it is the
-   row every step puts). Its Q8 (section 20) says E needs Q9 first; E
-   landed with 026-05 without it.
-7. 026-11's status and its line in 026's readme say "on the branch, to
-   land"; it is on `main` (fe947c7c). 026-10's line in 026's readme says
-   "Code on branch"; merged (e4ac051f).
-8. The brief put 026-09 on a branch; its item says registered, and no
-   branch of that name is in the main repository.
-
-First to check: 1.4's accounting (what counts toward size, rewritten and
-the row's dirty bytes), which a second implementation must match byte
-for byte; and 1.6's conditions against `pretruncateIfPossible` and
-`cutWaitsForMetaBlock`.
+1. `Reclaim.java`:40, class comment: "has grown by twice the startup
+   distance". Read: "by more than twice".
+2. `Reclaim.java`:46 to 47, class comment: a step comes "when the bytes
+   rewritten so far are below internalFraction times the stream growth".
+   Read: "when the allowance, internalFraction of the growth since
+   pStart (fractionOf) less the bytes rewritten, is above MIN_STEP_SIZE;
+   the step's size is min(allowance, MAX_STEP_SIZE)".
+3. `Reclaim.java`:78 to 79 (class comment) and :1012
+   (`markSafePositions`): the startup pos "has passed" pEnd and pSafe.
+   Read: "has reached" (startupPos >= pEnd, >= pSafe).
+4. `Reclaim.java`:127 to 129, `KEY_PREFIX_SKEY`: "a step or the table".
+   Read: "a step, the table, the settings or maintain()'s filler".
+5. `Reclaim.java`:806 to 808, `step`'s Javadoc: "a write of the key
+   between them makes the step run again". Read: "would make the step
+   run again; none can come, as the scan and the commit hold the write
+   lock (bergdb 027-13, section 1.4)".
+6. `Reclaim.java`:1101 to 1104, `pretruncateIfPossible`'s Javadoc, older
+   than pCut: cuts "at the pStart" of an iteration that "starts at or
+   before the transaction named by the last valid meta block". Read: "at
+   the pCut of the done iteration with the largest pStart that is safe
+   (startupPos >= pSafe), ended before now minus the retain duration,
+   with its pCut at or before that transaction and after the first
+   available position".
+7. `Reclaim.java`:1420, `IterationInfo.kvCount`: "total number of KVs in
+   the database for the iteration lookup time". Read: "the KVs that the
+   steps' scans met so far, walked or kept (bergdb 026-05)".
+8. `Db.java`:779, `maintain`'s Javadoc: begins an iteration if "the last
+   one is cut". Read: "if no done iteration waits for its cut (not cut,
+   its pCut after the first available position; Reclaim.cutPending)".
+9. `Db.java`:1782 to 1785, `makeDirtyIfNeeded`'s Javadoc: "@return True
+   if 'node' got dirty" on a void method, and nothing on what it counts.
+   Read: "Makes an index node that is not dirty dirty and adds it to the
+   got-dirty nodes; in a transaction with a touch (a reclaim step) it
+   also adds it and its stored size now to Trans.dirtiedNodes and
+   dirtiedBytes."
 
 
 Log
@@ -529,3 +519,11 @@ recommended").
 2026-11-13. The draft, the pilot part (Frans, 11:34, "Yes" to the
 reclaim pilot), from the code at 0870e7ea, the Lean files and the items
 of section 10. By an agent of coord-1113.
+
+2026-11-13. Reviewed against the code at 5be794b8 and the Lean files by
+a second agent of coord-1113 (027-04, section 5.2): 1.4 (the step's
+accounting made exact; its commit argued, untested), 1.8, 1.10 (M4),
+sections 3, 4, 7 and 9 fixed; 1.6 matches the code. The note for the
+reviewer became "For the code's comments" and a fix of 027-03, section
+15; its items 7 and 8 (026's readme, 026-11's status) went to the
+coordinator.
