@@ -61,6 +61,10 @@ import SIS.Tree.NormalizedDead
 import SIS.Tree.SplitMergeDead
 import SIS.Tree.WriterHistory
 import SIS.Tree.KeyLevels
+import SIS.Tree.ExportHistory
+import SIS.Tree.WriterCacheUnique
+import SIS.Tree.SpaceSplitDeadBound
+import SIS.Tree.KlongHistoryTime
 import SIS.Tree.WalkNil
 import SIS.Tree.InvLatest
 import SIS.Tree.WriterGood
