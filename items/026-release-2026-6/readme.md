@@ -122,8 +122,10 @@ Files
   does not rewrite (024-34, Q34-1, option b; Frans, 2026-11-13, 09:38);
   registered, after 026-05.
 * 10-node-id-cache-after-empty.md. 026-10, `NodeCollection.idByPos`
-  after back to empty (found by 026-07; G4 and G5 then gate the plain
-  heaps); registered.
+  after back to empty (found by 026-07): a decided cut forgets the node
+  ids below it and `KeyModSet`'s key hashes before it (the 2.2 MB of
+  `long[]`), and G4 and G5 gate the plain heaps. Code on branch
+  `026-10-idbypos`; the probes in 10-node-id-cache-after-empty/.
 * 11-lag-gate.md. 026-11, G4's back-to-empty lag a gate of
   `count-gates.sh`: at most 2 R (2,000 drive transactions) at 1M keys;
   1,281 on `main` (margin 1.56), 4,395 without 026-05 (fails); on branch

@@ -69,13 +69,22 @@ public class NodeCollection implements PointerFollower {
      */
     private volatile boolean reconstructing = false;
     
-    /** Node ids read from node headers, by position; see idOf(). */
+    /**
+     * Node ids read from node headers, by position; see idOf(). An LRU of at most 100,000
+     * entries; those below a cut go when Reclaim decides it (forgetIdsBelow). Guarded by
+     * idLock, as forgetIdsBelow replaces the map.
+     */
+    private Map<Long, Long> idByPos = newIdMap();
+    private final Object idLock = new Object();
+    
     @SuppressWarnings("serial")
-    private final Map<Long, Long> idByPos = new LinkedHashMap<Long, Long>(1024, 0.75f, true) {
-        protected boolean removeEldestEntry(Map.Entry<Long, Long> eldest) {
-            return size() > 100 * 1000;
-        }
-    };
+    private static Map<Long, Long> newIdMap() {
+        return new LinkedHashMap<Long, Long>(1024, 0.75f, true) {
+            protected boolean removeEldestEntry(Map.Entry<Long, Long> eldest) {
+                return size() > 100 * 1000;
+            }
+        };
+    }
     
     /**
      * Told of every first touch of a stream pointer; for tests only (bergdb item 001,
@@ -897,7 +906,7 @@ public class NodeCollection implements PointerFollower {
             return pos;
         }
         
-        synchronized (idByPos) {
+        synchronized (idLock) {
             Long id = idByPos.get(pos);
             if (id != null) {
                 return id;
@@ -905,10 +914,36 @@ public class NodeCollection implements PointerFollower {
         }
         
         long id = nodeStream.readNodeHeader(pos).id();
-        synchronized (idByPos) {
+        synchronized (idLock) {
             idByPos.put(pos, id);
         }
         return id;
+    }
+    
+    /**
+     * Forgets the node ids of the positions below 'pos', the first available position of a
+     * cut that Reclaim has just decided (Db.cutDecided, under the write lock; bergdb 026-10).
+     * The versions there are dead for every lookup time still available. Until 026-10 only
+     * newer entries pushed such entries out, and a database emptied and then quiet kept up
+     * to 100,000 (49,900 and 4.4 MB in CountGates' G5). Forgetting an entry is always
+     * correct, as the id at a position never changes: idOf() reads the header again if
+     * asked, as it can be until the stream is cut (its callers skip the positions below the
+     * stream's first position, which moves when the cut's table is durable, and in a
+     * FileStream by whole files). A HashMap keeps its table when entries go: if less than a
+     * quarter is kept, the entries kept go to a new map, in their LRU order, whose table
+     * fits them. A call looks at most 100,000 entries: up to 3 ms, 6 ms at the first call
+     * (026-10, section 4).
+     */
+    void forgetIdsBelow(long pos) {
+        synchronized (idLock) {
+            int before = idByPos.size();
+            idByPos.keySet().removeIf(p -> p < pos);
+            if (idByPos.size() < before / 4) {
+                Map<Long, Long> kept = newIdMap();
+                kept.putAll(idByPos);
+                idByPos = kept;
+            }
+        }
     }
     
     
@@ -1493,6 +1528,28 @@ public class NodeCollection implements PointerFollower {
         c.linkToCanonical(parent, new HashMap<Long, Long>(), testByPos(c), true);
         Assert.assertTrue("the loaded object", parent.getPointerNode(1) == loaded);
         Assert.assertTrue("the object of the vpos", parent.getPointerNode(2) == created);
+    }
+    
+    /**
+     * The node ids of the positions below a cut go at the cut (bergdb 026-10); the others
+     * stay, and idOf() of one of them reads no header.
+     */
+    @Nano
+    private static void testForgetIdsBelow() {
+        TestStream stream = new TestStream();
+        stream.nodes.put(100L, testKeyNode(101, 100, 10));
+        stream.nodes.put(200L, testKeyNode(102, 200, 10));
+        NodeCollection c = new NodeCollection(testDbInfo(), stream);
+        Assert.assertEquals(101L, c.idOf(100));
+        Assert.assertEquals(102L, c.idOf(200));
+        Assert.assertEquals(101L, c.idOf(100));
+        Assert.assertEquals("cached", 2, stream.headerReads);
+        
+        c.forgetIdsBelow(200);
+        Assert.assertEquals(102L, c.idOf(200));
+        Assert.assertEquals("kept: no header read", 2, stream.headerReads);
+        Assert.assertEquals(101L, c.idOf(100));
+        Assert.assertEquals("forgotten: read again", 3, stream.headerReads);
     }
     
     /**
