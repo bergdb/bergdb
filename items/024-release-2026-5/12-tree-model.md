@@ -1436,6 +1436,22 @@ and its status:
     fuel obligations are now SegFits at depth p.fuel inside the operation:
     `MergeStepOKF`'s and the collapse's, at f - 1 = p.fuel.
 
+    Superseded (latest and cost, 22:20): this route, through `DescentOKF`,
+    does not count as progress. `DescentOKF` asks `MergePathCond`, which runs
+    within reach violate:
+    - its clauses (1) and (2) fail for a segment root that an earlier put of
+      the same transaction made;
+    - its clause (3) quantifies over every merge value.
+    The F2 route replaces it:
+    - the descent without `MergePathCond`, proved (`descentOKF2`,
+      `GetDescentOK.lean`);
+    - the merge lemmas take the in-place split of a segment root that the
+      transaction made, and derive the full parent's range from
+      `RangeOrder` for the merge's actual values (latest, in progress);
+    - then `opGetCaseOK_delMergeF2`.
+    The old statements stay, unchanged, until F2 is complete; then they are
+    removed, as agreed with cost.
+
     Step 4, plan (cost, 22:15). The Bool evidence is cost's `SegFit.lean`,
     run outside the repository. It ran random transactions (M 4 and 8, G 2,
     H 0 to 2, with and without merges) and grow-then-shrink transactions of
