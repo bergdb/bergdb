@@ -1103,7 +1103,7 @@ Landed checkpoints:
   12:27 to 12:35 together, 334 jobs.
 
 **TP10 and TP11 at the latest time, reduced, 2026-11-13** (prover
-"latest", 10:37 to 15:40, branch `024-12-latest`). **TP10 and TP11
+"latest", 10:37 to 15:55, branch `024-12-latest`). **TP10 and TP11
 follow from TP7, the run's key nodes sound and TREE for them, and the
 two statements about the writer under premises on the run's structure**
 (`getOK_of_runRead`, `scanOK_of_runRead`, `GetUnder.lean`): `OpGetOKUnder
@@ -1228,7 +1228,10 @@ kept only as steps. Proved on the way, on the standard axioms:
   leaf that existed before the transaction (`writerWP_del_leafBelow2`,
   under `PutInv` `writerWP_del_leafBelow2_inv`, `GetDelSplit.lean`; the
   reading: `getFromR_timeSplit_del`, `getFromR_spaceSplit_del`; the
-  writer's side with putinv's lemmas of `PutInvDelFull.lean`).
+  writer's side with putinv's lemmas of `PutInvDelFull.lean`), and a
+  delete whose leaf's time split fills its parent, time split or space
+  split below a grandparent with room (`writerWP_del_timeSplit2`,
+  `writerWP_del_timeSpace`, `GetDelCascade.lean`).
   With the
   writer's tree (cost's `WriterTreeOK`): `OpGetTreeOK` and
   `opGetOKUnder_of_tree` (`GetTree.lean`), and the split rules with
@@ -1243,6 +1246,13 @@ kept only as steps. Proved on the way, on the standard axioms:
   `KNode.splitParent_searchLte`, for the space splits), the time split's
   last version with the put
   (`writerWP_replaceOrAdd_last`).
+* **The chain from the writer's invariant.** `getOK_of_putInv`,
+  `scanOK_of_putInv` (`GetFinal.lean`): TP10 and TP11 from TP7, a run
+  premise R after every run within reach that gives the run's links,
+  P's tree and TP7's invariant, cost's `OpTreeOK`, putinv's
+  `OpPutInvOK`, tp7's lift under R, and `OpGetPutInvOK`: every
+  operation from a state that meets `PutInv` changes the reading by
+  itself alone. The rules above are its cases.
 * **TP7's invariant is not enough for `OpGetOK`**, proved:
   `sharedSegment_changes_other_key` (`SharedSegment.lean`): a structure
   without faults at 1 (`InvOK`, `PointersOK`) in which two long segments
@@ -1260,8 +1270,8 @@ kept only as steps. Proved on the way, on the standard axioms:
 Open: `OpGetOKUnder p (RunReadOK p)`, the writer's refinement of the
 map, every rule but those above (the splits whose grandparent is full
 too, or whose parent is full and the space root or a segment root, or
-made by the transaction; a delete into a leaf whose parent is full, and
-a delete's space split in place; a put that makes more than one new
+made by the transaction; a delete's space split that fills the leaf's
+parent, and a delete's space split in place; a put that makes more than one new
 segment or a new segment below a full leaf; a delete with merges on,
 the upward delete, LE-b, the merges, root collapse), with its
 invariant inside a transaction: TREE inside it is cost's `WriterTreeOK`
