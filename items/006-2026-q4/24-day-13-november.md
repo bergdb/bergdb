@@ -52,6 +52,10 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 | 026-05 | P8: each reclaim step scans at its own time | p8 (xhigh) | landed fe5000ec: back to empty's lag about 1,270 at every n and f |
 | 026-06 | A value transformation's failure refuses the transaction | vt (high) | landed 8bd6e3a7..944b4868 |
 | 026-07 | The write buffer grows with use (ST8) | wb (high) | landed: an empty database 0.67 MB of heap, not 11.1 |
+| 026-11 | G4's lag a gate at 2 R | lag (xhigh) | landed 343fff05: 1.28 R on main, 4.40 R without P8 |
+| 026-10 | idByPos after back to empty | idpos (xhigh) | running |
+| 026-08 | The node size 30 for users | ns30 (xhigh) | running |
+| 026-09 | Reclaim's keys-only scan | kscan (xhigh) | running |
 | 026-04 | The back-to-empty lag at 10M keys, understood | frac (high) | done 07:44: the phase of reclaim's iteration at the deletes' end (a step scans at its iteration's start), not f; keep 1/4; P8 cures it |
 | 021-29 | Unit tests that wait with no timeout | waits (high) | landed dc69b7a6 |
 | 021-28 | Unit tests with fixed time limits | limits (high) | landed ffa39b4e |
@@ -93,3 +97,6 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 * 10:05 Frans: the buffer's maximum stays 10 MB ("Keep 10 MB."); no study.
 * 10:06 Frans on 026-07's Q2: "Keep it as is, KISS. Complexity and code size are costs too. Easy to implement later if ever needed." (Cache3's tables unchanged). 026-10 registered (idByPos after back to empty).
 * 10:09 026-07 landed (gated on main with P8: before-commit, level1, count-gates).
+* 10:11 Frans 10:09: "Sure, do them. As suggested." 026-11 (G4's lag as a gate), 026-10, 026-08, 026-09 started at xhigh.
+* 10:18 026-11 landed 343fff05: G4's lag a gate at 2 R.
+* 10:20 Frans 10:13 and 10:18: a todo list apart from the release items; 028-todo created, not tied to a release ("The release item itself will decided the scope of the release."); existing items stay where they are. The rule in items/readme.md, "Todos and release items".
