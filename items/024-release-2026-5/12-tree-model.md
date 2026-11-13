@@ -1531,6 +1531,21 @@ and its status:
         - The open obligations of case (4) are now `DelStepsOKF3` (putinv),
           `MergeStepOKF3`'s untaken and SegFits parts, `CollapseStepOKF4`
           and TP4 (from the take-back's run-level induction).
+      - For putinv's `MergeRootJ2OKF` (a merge whose parent is the space
+        root), the root's split now has what `writerWP_handleFull_lastVF2`
+        and `writerWP_handleFull_lastShape` give one level down (latest,
+        23:59; `MergeRootShape.lean`):
+        - `writerWP_handleFull_rootVF2` is `writerWP_handleFull_rootVF` with
+          the reach back (`writerWP_handleFull_rootReach`). The nodes the
+          tree with the root's last version reaches, but the root, are
+          reached after. The root is reached after, or holds its klongs
+          before the transaction. Every node cached from the next id on is
+          reached after. No order premise is needed: the root has no
+          parent.
+        - `writerWP_handleFull_rootShape` gives `ShapePost` from 0 with
+          nothing put for the one-node chain X 0 = L, Nn 0 = n, and keeps
+          the path. Its premise is that the last version is a time klong
+          and key klongs of distinct compare values.
     Removed (latest, 23:08, as agreed with cost and the coordinator, after
     putinv's take-back moved to F2 at 65b84e5b): `DescentOKF`,
     `MergePathCond`, `opGetCaseOK_delMergeF`, `writerWP_mergeUp_delF`,
