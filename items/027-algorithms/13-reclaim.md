@@ -468,49 +468,6 @@ mechanism); 024-30, 026-11 (the count gates, G4's lag); 024-32
 count, the pending cut); 026-10 (the forget at a decided cut).
 
 
-For the code's comments
-=======================
-
-Java comments on `main` (5be794b8) that disagree with the code, for a
-028 entry; the code is right in each, and Java was not changed.
-
-1. `Reclaim.java`:40, class comment: "has grown by twice the startup
-   distance". Read: "by more than twice".
-2. `Reclaim.java`:46 to 47, class comment: a step comes "when the bytes
-   rewritten so far are below internalFraction times the stream growth".
-   Read: "when the allowance, internalFraction of the growth since
-   pStart (fractionOf) less the bytes rewritten, is above MIN_STEP_SIZE;
-   the step's size is min(allowance, MAX_STEP_SIZE)".
-3. `Reclaim.java`:78 to 79 (class comment) and :1012
-   (`markSafePositions`): the startup pos "has passed" pEnd and pSafe.
-   Read: "has reached" (startupPos >= pEnd, >= pSafe).
-4. `Reclaim.java`:127 to 129, `KEY_PREFIX_SKEY`: "a step or the table".
-   Read: "a step, the table, the settings or maintain()'s filler".
-5. `Reclaim.java`:806 to 808, `step`'s Javadoc: "a write of the key
-   between them makes the step run again". Read: "would make the step
-   run again; none can come, as the scan and the commit hold the write
-   lock (bergdb 027-13, section 1.4)".
-6. `Reclaim.java`:1101 to 1104, `pretruncateIfPossible`'s Javadoc, older
-   than pCut: cuts "at the pStart" of an iteration that "starts at or
-   before the transaction named by the last valid meta block". Read: "at
-   the pCut of the done iteration with the largest pStart that is safe
-   (startupPos >= pSafe), ended before now minus the retain duration,
-   with its pCut at or before that transaction and after the first
-   available position".
-7. `Reclaim.java`:1420, `IterationInfo.kvCount`: "total number of KVs in
-   the database for the iteration lookup time". Read: "the KVs that the
-   steps' scans met so far, walked or kept (bergdb 026-05)".
-8. `Db.java`:779, `maintain`'s Javadoc: begins an iteration if "the last
-   one is cut". Read: "if no done iteration waits for its cut (not cut,
-   its pCut after the first available position; Reclaim.cutPending)".
-9. `Db.java`:1782 to 1785, `makeDirtyIfNeeded`'s Javadoc: "@return True
-   if 'node' got dirty" on a void method, and nothing on what it counts.
-   Read: "Makes an index node that is not dirty dirty and adds it to the
-   got-dirty nodes; in a transaction with a touch (a reclaim step) it
-   also adds it and its stored size now to Trans.dirtiedNodes and
-   dirtiedBytes."
-
-
 Log
 ===
 
@@ -532,3 +489,5 @@ coordinator.
 2026-11-13. Read by Frans (12:34: "027-13 is good! I looks really good."):
 the pilot is accepted as the template for the other parts (027-04,
 section 5.1).
+
+2026-11-13. The comments fixed in Java (028-02).
