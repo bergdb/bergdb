@@ -94,3 +94,8 @@ import SIS.Tree.WriterTreeSpace
 import SIS.Tree.GetTree
 import SIS.Tree.GetSpaceSplit
 import SIS.Tree.GetInPlace
+import SIS.Tree.WriterTreeDelete
+import SIS.Tree.WriterTreeRepoint
+import SIS.Tree.WriterTreeMerge
+import SIS.Tree.WriterTreeInPlace
+import SIS.Tree.GetRootSplit

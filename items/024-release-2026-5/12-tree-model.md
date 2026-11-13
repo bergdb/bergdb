@@ -1103,7 +1103,7 @@ Landed checkpoints:
   12:27 to 12:35 together, 334 jobs.
 
 **TP10 and TP11 at the latest time, reduced, 2026-11-13** (prover
-"latest", 10:37 to 13:40, branch `024-12-latest`). **TP10 and TP11
+"latest", 10:37 to 13:55, branch `024-12-latest`). **TP10 and TP11
 follow from TP7, the run's key nodes sound and TREE for them, and the
 two statements about the writer under premises on the run's structure**
 (`getOK_of_runRead`, `scanOK_of_runRead`, `GetUnder.lean`): `OpGetOKUnder
@@ -1173,7 +1173,12 @@ kept only as steps. Proved on the way, on the standard axioms:
   parent's next klong); a put into a full leaf that the transaction
   made: the time split in place (`writerWP_put_timeInPlace_seg`) and the
   space split in place below an inner parent with room
-  (`writerWP_put_spaceSplitInPlace_key`, `GetInPlace.lean`). With the
+  (`writerWP_put_spaceSplitInPlace_key`, `GetInPlace.lean`); a put of a
+  key of one segment into the space root, a full leaf: the space split
+  and the time split of the root, a new super root naming the new root
+  (`writerWP_put_rootSpaceSplit`, `writerWP_put_rootTimeSplit`), and the
+  space split in place of a root the transaction made
+  (`writerWP_put_rootSpaceSplitInPlace`, `GetRootSplit.lean`). With the
   writer's tree (cost's `WriterTreeOK`): `OpGetTreeOK` and
   `opGetOKUnder_of_tree` (`GetTree.lean`), and the split rules with
   `TreeOK` for TREE (`*_tree`, through cost's `htree_of_treeOK`). The
@@ -1202,9 +1207,10 @@ kept only as steps. Proved on the way, on the standard axioms:
   key's compare value at its leaf.
 
 Open: `OpGetOKUnder p (RunReadOK p)`, the writer's refinement of the
-map, every rule but those above (the splits of a segment root or the
-space root, the splits whose parent is full, a put that makes a new
-segment, the upward delete, LE-b, the merges, root collapse), with its
+map, every rule but those above (the splits of a segment root below a
+segment leaf, the splits whose parent is full, a put that makes a new
+segment, a delete into a full leaf, the upward delete, LE-b, the
+merges, root collapse), with its
 invariant inside a transaction: TREE inside it is cost's `WriterTreeOK`
 (the coordinator, 2026-11-13), and it must also give the search tree's
 order, klongs well formed and fresh ids; checked, not proved, on about 900 pseudo-random
