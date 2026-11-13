@@ -137,3 +137,4 @@ import SIS.Tree.PutInvDelFull
 import SIS.Tree.WriterTreeInnerHalves
 import SIS.Tree.WriterTreeSpaceSpace
 import SIS.Tree.WriterTreeDelFull
+import SIS.Tree.WriterTreeInv
