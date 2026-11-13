@@ -22,13 +22,15 @@ def tbReach (N : NodeId → Option KNode) (t : Time) (r : NodeId) : Nat → List
       | some n => (n.liveAt t).map (·.2)
       | none => [])).eraseDups.filter (fun y => !s.contains y))
 
-/-- (A) and (B) as a Bool, over the overlay's nodes and P's. -/
+/-- (A) and (B) as a Bool, over the overlay's nodes and P's: (B) as
+`LiveReached` and as `TtReachedN` (TakeBackRunT.lean). -/
 def tbInvB (p : Params) (P : Struct BVal) (t : Time) (B : NodeId) (w : W) : Bool :=
   let N := wNode p (viewOf P) w
   let rs := tbReach N t w.top.rootKey 40
   rs.all (fun y => !w.taken.contains y) &&
   (w.nodes.map (·.1) ++ P.map (·.1)).all (fun q => match N q with
-    | some qn => (qn.liveAt t).all (fun cy => decide (cy.2 < B) || rs.contains q)
+    | some qn => (qn.liveAt t).all (fun cy => decide (cy.2 < B) || rs.contains q) &&
+      (!qn.ks.contains (.time t) || rs.contains q)
     | none => true)
 
 /-- (C) as a Bool. -/
