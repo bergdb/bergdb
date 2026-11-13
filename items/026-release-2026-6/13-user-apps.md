@@ -26,12 +26,15 @@ Written 12:45; section 7 has the exact state.
 
 * **Twelve programs**, about 3,600 lines of Java, in
   `/Users/f/fl/bench/2026-11-13/apps/` (a copy in this item's directory,
-  `13-user-apps/`), on the release jar of `main` at `9c9650d6` (the
-  first runs at `eefd8bb4`).
-* **No bug found in BergDB** on `9c9650d6`, in 2.2 million transformer
-  commits beside 700,000 refusals, 2 million Pub transactions on 150
-  databases, 600,000 B1 transactions with 550 restarts and 1,388 cuts
-  checked at the oldest state, and about 650 SIGKILLs: no wrong value
+  `13-user-apps/`), on the release jar of `main` at `9c9650d6`, and
+  for the last round at `3b05fdf7` (`main` of 12:40, with 026-10's
+  cuts that forget node ids and key hashes); the first runs at
+  `eefd8bb4`.
+* **No bug found in BergDB** on the two jars, in 3.3 million
+  transformer commits beside 1.05 million refusals, 3 million Pub
+  transactions on 150 databases, 850,000 B1 transactions with 750
+  restarts and 1,870 cuts checked at the oldest state, and about 1,000
+  SIGKILLs: no wrong value
   at any time, no refusal that wrote anything, no database failed by a
   refusal, no recovery short of a synced transaction, no transaction
   lost 2 s before a kill. Seven FAILs of the apps' checks: five were
@@ -221,6 +224,10 @@ The logs are in `results/` of this item's directory.
 | 12:28 | `9c9650d6` | B1 seed 341, the drive by the distance in force | OK |
 | 12:28 to 12:42 | `9c9650d6` | `run.sh kill 2` | all OK |
 | 12:30 to 12:32 | `9c9650d6` | `run.sh quick 2`, the final apps | all OK |
+| 12:43 to 12:46 | `3b05fdf7` | `run.sh quick 3` | all OK |
+| 12:43 to 12:58 | `3b05fdf7` | `run.sh kill 3` | all OK |
+| 12:44 | `3b05fdf7` | C2 SlowDrive, both ways | as on `9c9650d6` |
+| 12:46 to 13:02 | `3b05fdf7` | `run.sh soak 3` | all OK |
 
 Soak 1 (`results/soak-1-1136.log`) ran 14 B1 (12 at 30,000 keys and
 startup distances of 400 kB to 1 MB, one at 200,000 keys with a cache
@@ -297,6 +304,16 @@ wrote 3 startup distances, not 6 (U13-4 once more: 5.8 MB kept, the
 twin 2.2 MB). B1 now takes `getStartupDistance()`; the seed passes, lag
 8.7 R at R = 200 (`results/rerun-341-1228.log`).
 
+The last round, on `3b05fdf7` (`main` at `d6ac8426`, merged at 12:42,
+with 026-10, which changes what a cut forgets): quick 3, kill 3 (250
+SIGKILLs in B5, 258 recoveries checked; 60 in B3 kill, 65,267
+committed transactions seen, none lost) and soak 3 (14 B1 with B1's
+round 3 seeds, all passing, 245,000 transactions, 199 restarts, 484
+cuts checked; four B2, 1.09 million transformer commits, 347,000
+refusals; B3 at 150 databases, 972,000 transactions, 19 kB a database
+after the syncs; three B4; A6; two A5; B2b; B3b), all OK. C2 gives the
+same kept streams to the kB (`results/slowdrive-3b05fdf7-1243.log`).
+
 
 ## 4. Findings
 
@@ -357,6 +374,7 @@ findings:
   deleted, then overwrites of one key of 900 bytes every 5 ms (R = 200),
   a startup distance of 1 MB, beside a fresh twin with the same drive:
 
+      javac -cp bergdb-release.jar -d out c2-slow-drive/SlowDrive.java
       java -cp bergdb-release.jar:out SlowDrive 1000000 5 10            commits alone
       java -cp bergdb-release.jar:out SlowDrive 1000000 5 10 maintain   maintain() after each
 
@@ -498,23 +516,24 @@ is the coordinator's to add (this agent writes only its own item):
 
 ## 7. State
 
-Written 12:40.
+Written 13:05.
 
-* **Done**: twelve programs on the release jar of `9c9650d6` (`main` of
-  11:23), at node size 30; the runs of section 3 (quick twice, soaks 1
-  and 2, kills 1 and 2, B1's round 3); the findings U13-1 to U13-6, Q1
-  and five proposed 028-todo entries. No bug found in BergDB. The apps,
-  `run.sh`, the logs and the jstack of U13-3 copied into
+* **Done**: twelve programs; the runs of section 3 on the release jars
+  of `9c9650d6` and `3b05fdf7` (quick three times, soaks 1 to 3, kills
+  1 to 3, B1's round 3), the last round all OK; the findings U13-1 to
+  U13-6, Q1 and five proposed 028-todo entries. No bug found in BergDB.
+  The apps, `run.sh`, the logs and the jstack of U13-3 copied into
   `13-user-apps/`. No product code changed.
-* **Not done**: the 028-todo entries and the 026 proposal of Q1 are for
-  the coordinator to register; none is filed.
+* **Not done**: the 028-todo entries and Q1's line for 026's proposals
+  are for the coordinator to register; none is filed.
 * **Where**: `/Users/f/fl/bench/2026-11-13/apps/` (the working copy: the
-  sources, `run.sh`, `results/`, the node-62 database of C1 in
+  sources, `run.sh`, `results/`, the jars, the node-62 database of C1 in
   `old-dbs/`); the clone in `clone/`, branch `026-13-user-apps`, items
-  only (this file, its directory and the Files line in 026's readme).
-* **To continue**: a new round is `sh run.sh soak N`, `sh run.sh kill
+  only (this file, its directory and the Files line in 026's readme),
+  `main` merged at 12:42.
+* **To continue**: a new round is `sh run.sh soak N` and `sh run.sh kill
   N` with N of 4 or more, one slot each, with a release jar beside
-  `run.sh`.
+  `run.sh` as `bergdb-release.jar`.
 
 
 Log
@@ -529,4 +548,6 @@ rebuilt on `9c9650d6`, the apps at node size 30 (026-08), C1 added.
 B1 FAILs, reproduced by C2 (11:39); B3's heap check made to count from
 the syncs (B3c, 11:57); kill 1 all OK (12:09); soak 2 (12:10 to 12:25),
 B1 round 3 and quick 2: three app bugs fixed in B1 and Common, all OK
-after; Q1 and the proposed entries written (12:40).
+after; Q1 and the proposed entries written (12:40). `main` merged
+(12:42, with 026-10), the jar rebuilt: quick 3, soak 3 and kill 3 all
+OK (12:43 to 13:02).
