@@ -151,9 +151,9 @@ theorem writerWP_appendDeleteKlong_rangeGen (c : Ctx) (base : View BVal) (hvc : 
 set_option maxHeartbeats 1600000 in
 /-- A delete, the merges off, of a key whose descent from its last segment's
 root rk ends with the chain XX 0 to XX m, as prover latest's `writerWP_del_chain`
-(h at least 2): the leaf's bitmap, its time split (in place for a leaf the
-transaction made) or space split, and the splits of the chain above it keep
-the walk's ranges (`RangeOrder`). -/
+(h at least 2): the leaf's bitmap, its time split or space split (each in place
+for a leaf the transaction made), and the splits of the chain above it keep the
+walk's ranges (`RangeOrder`). -/
 theorem rangeOrder_del_chain (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (pre : List Nat) (cv : Nat) (rk : NodeId) (w : W)
     (S0 : List (Option Nat × NodeId)) (m : Nat) (XX : Nat → NodeId) (KK : Nat → Nat)
@@ -187,9 +187,6 @@ theorem rangeOrder_del_chain (c : Ctx) (base : View BVal) (hvc : ViewCoherent c 
     (hdist : ∀ j j', j ≤ m → j' ≤ m → XX j = XX j' → j = j')
     (hne : bitsUnion (NN m).lastBitmap ((NN m).bitsOf cv) ≠ (NN m).lastBitmap)
     (hkeep : (NN m).allKeysIn (bitsUnion (NN m).lastBitmap ((NN m).bitsOf cv)) = false)
-    (hspL : ¬ ((∃ old, (NN m).ks.getLast? = some (.del old)) ∧ (NN m).lastTime = some c.i) →
-      c.p.M ≤ (NN m).size + 1 → c.p.splitAbove < ((NN m).lastVersionGivenDel c.i
-        (bitsUnion (NN m).lastBitmap ((NN m).bitsOf cv))).size → (NN m).firstTime ≠ some c.i)
     (hR : RangeOrder (wNode c.p base w) c.i w.top.rootKey) :
     WriterWP (putKv (.del (pre ++ [cv]))) c w (fun _ w' =>
       RangeOrder (wNode c.p base w') c.i w'.top.rootKey) := by
@@ -565,6 +562,27 @@ theorem rangeOrder_del_chain (c : Ctx) (base : View BVal) (hvc : ViewCoherent c 
     refine rangeOrder_agree _ _ c.i _ h2R ?_
     intro z hz
     exact updN_ne _ _ _ _ (fun h => hxR2 (h ▸ hz))
+  -- the delete's last version as pairs
+  obtain ⟨pairs, hpks, hps⟩ :=
+    KNode.lastVersionGivenDel_order (NN m) c.i (bitsUnion (NN m).lastBitmap ((NN m).bitsOf cv))
+  have hlastE : (NN m).lastVersionGivenDel c.i (bitsUnion (NN m).lastBitmap ((NN m).bitsOf cv)) =
+      ⟨true, newKlongs c.i pairs⟩ := by
+    rw [← hleq, hleafm, hpks]; rfl
+  have hpn : (pairs.map Prod.fst).Nodup :=
+    List.pairwise_map.mpr (hps.imp (by intro a b hab; omega))
+  have hpl : ∀ c', pairs.lookup c' = if c' == cv then none else (NN m).live.lookup c' := by
+    intro c'
+    rw [← hlook0 c', hlastE, KNode.newKlongs_live_lookup_fold, pairLookupFold_eq_lookup pairs c' hpn]
+  have hpairsN : ∀ c' z, (c', z) ∈ pairs → (c', z) ∈ (NN m).live := by
+    intro c' z hm
+    have hl := lookup_some_of_mem hpn hm
+    rw [hpl] at hl
+    by_cases hc : c' = cv
+    · rw [hc] at hl; simp at hl
+    · have hc' : (c' == cv) = false := by simpa using hc
+      rw [hc'] at hl
+      simp only [Bool.false_eq_true, ↓reduceIte] at hl
+      exact lookup_some_mem hl
   -- a space split of the leaf, which existed before
   have hcascadeS : ∀ (s : String),
       c.p.splitAbove < ((NN m).lastVersionGivenDel c.i
@@ -575,16 +593,6 @@ theorem rangeOrder_del_chain (c : Ctx) (base : View BVal) (hvc : ViewCoherent c 
         false) c ({ w3 with trail := s :: w3.trail } : W) (fun _ w4 =>
           RangeOrder (wNode c.p base w4) c.i w4.top.rootKey) := by
     intro s hbig hfirst
-    obtain ⟨pairs, hpks, hps⟩ :=
-      KNode.lastVersionGivenDel_order (NN m) c.i (bitsUnion (NN m).lastBitmap ((NN m).bitsOf cv))
-    have hlastE : (NN m).lastVersionGivenDel c.i (bitsUnion (NN m).lastBitmap ((NN m).bitsOf cv)) =
-        ⟨true, newKlongs c.i pairs⟩ := by
-      rw [← hleq, hleafm, hpks]; rfl
-    have hpn : (pairs.map Prod.fst).Nodup :=
-      List.pairwise_map.mpr (hps.imp (by intro a b hab; omega))
-    have hpl : ∀ c', pairs.lookup c' = if c' == cv then none else (NN m).live.lookup c' := by
-      intro c'
-      rw [← hlook0 c', hlastE, KNode.newKlongs_live_lookup_fold, pairLookupFold_eq_lookup pairs c' hpn]
     have hpne : pairs ≠ [] := by
       intro he
       rw [hlastE, he] at hbig
@@ -600,16 +608,6 @@ theorem rangeOrder_del_chain (c : Ctx) (base : View BVal) (hvc : ViewCoherent c 
     obtain ⟨hscr, hfh, hsh⟩ := halves_nil_links c.i pairs hps r hr
     have hHt := halves_nil_times c.i pairs
     have hHwf := halves_newKlongs_wf true c.i pairs []
-    have hpairsN : ∀ c' z, (c', z) ∈ pairs → (c', z) ∈ (NN m).live := by
-      intro c' z hm
-      have hl := lookup_some_of_mem hpn hm
-      rw [hpl] at hl
-      by_cases hc : c' = cv
-      · rw [hc] at hl; simp at hl
-      · have hc' : (c' == cv) = false := by simpa using hc
-        rw [hc'] at hl
-        simp only [Bool.false_eq_true, ↓reduceIte] at hl
-        exact lookup_some_mem hl
     have hrmemN : r ∈ (NN m).live := hpairsN r.1 r.2 (List.mem_of_mem_drop (List.mem_of_head? hr))
     obtain ⟨hs1, hs2, hs3, hs4, hs5, hs6⟩ := hlast s
     generalize hw3' : ({ w3 with trail := s :: w3.trail } : W) = w3' at hs1 hs2 hs3 hs4 hs5 hs6
@@ -822,6 +820,204 @@ theorem rangeOrder_del_chain (c : Ctx) (base : View BVal) (hvc : ViewCoherent c 
     refine rangeOrder_agree _ _ c.i _ h2R ?_
     intro z hz
     exact updN_ne _ _ _ _ (fun h => hxR2 (h ▸ hz))
+  -- a space split in place of the leaf, which the transaction made
+  have hcascadeSIP : ∀ (s : String),
+      c.p.splitAbove < ((NN m).lastVersionGivenDel c.i
+        (bitsUnion (NN m).lastBitmap ((NN m).bitsOf cv))).size →
+      (NN m).firstTime = some c.i →
+      WriterWP (handleFullWith (fun q more => appendKlongs (d + (m - 1)) q more) (d + (m - 1) + 1)
+        (XX m) [] ((NN m).lastVersionGivenDel c.i (bitsUnion (NN m).lastBitmap ((NN m).bitsOf cv)))
+        false) c ({ w3 with trail := s :: w3.trail } : W) (fun _ w4 =>
+          RangeOrder (wNode c.p base w4) c.i w4.top.rootKey) := by
+    intro s hbig hfirst
+    have hpne : pairs ≠ [] := by
+      intro he
+      rw [hlastE, he] at hbig
+      simp [KNode.size, newKlongs] at hbig
+      omega
+    obtain ⟨r, hr⟩ : ∃ r, (pairs.drop (pairs.length / 2)).head? = some r := by
+      cases hd : (pairs.drop (pairs.length / 2)) with
+      | nil =>
+        have : pairs.length ≤ pairs.length / 2 := List.drop_eq_nil_iff.mp hd
+        have : pairs.length = 0 := by omega
+        exact absurd (List.eq_nil_of_length_eq_zero this) hpne
+      | cons a _ => exact ⟨a, rfl⟩
+    obtain ⟨hscr, hfh, hsh⟩ := halves_nil_links c.i pairs hps r hr
+    have hHt := halves_nil_times c.i pairs
+    have hHwf := halves_newKlongs_wf true c.i pairs []
+    obtain ⟨hs1, hs2, hs3, hs4, hs5, hs6⟩ := hlast s
+    generalize hw3' : ({ w3 with trail := s :: w3.trail } : W) = w3' at hs1 hs2 hs3 hs4 hs5 hs6
+    have hnx : w3'.next = w.next := by rw [hs4, hnext3]
+    apply writerWP_handleFullWith_spaceInPlace_up_last (d + (m - 1)) (XX m) (XX (m - 1)) (NN m)
+      (NN (m - 1)) _ c w3' (by rw [hs1]; exact hlkL) (by rw [hs1]; exact hlkX (m - 1) (by omega))
+      hql hfirst hbig (by rw [hs3]; exact hpq') (by rw [hnx]; exact hXlt m (Nat.le_refl _))
+    intro w1 h1n h1t h1top h1path h1next h1vals
+    rw [hleafm, hlastE] at h1n ⊢
+    generalize hH : halves true c.i ⟨true, newKlongs c.i pairs⟩ [] = H at h1n hscr hfh hsh hHt hHwf ⊢
+    have hXq1 : XX (m - 1) ≠ w.next := fun h => by have := hXlt (m - 1) (by omega); omega
+    have hXL1 : XX m ≠ w.next := fun h => by have := hXlt m (Nat.le_refl _); omega
+    have htkL : w3'.taken.contains (XX m) = false := by rw [hs2, hr03.2.2.1]; exact hLt
+    have htk0 : w3'.taken.contains w3'.next = false := by
+      rw [hs2, hr03.2.2.1, hnx]; exact hntake _ (Nat.le_refl _)
+    have hN1 : wNode c.p base w1 = updN (updN (wNode c.p base w) (XX m) H.1) w.next H.2.1 := by
+      rw [wNode_two_updN c.p base w3' w1 _ _ _ _ h1n h1t (by rw [hnx]; exact hXL1) htkL htk0,
+        hw3N w3' hs1 hs2, hnx]
+    rw [hnx] at h1n h1next
+    rw [hnx]
+    have h1t' : w1.taken = w3.taken := by rw [h1t, hs2]
+    have hf' : ∀ c' z, (c', z) ∈ H.1.liveAt c.i → (c', z) ∈ (NN m).liveAt c.i ∧ c' < H.2.2 := by
+      intro c' z h
+      rw [KNode.liveAt_of_times _ c.i hHt.1] at h
+      obtain ⟨h1, h2⟩ := hfh c' z h
+      rw [hscr]
+      exact ⟨by rw [KNode.liveAt_of_times _ c.i hnt]; exact hpairsN _ _ h2, h1⟩
+    have hs' : ∀ c' z, (c', z) ∈ H.2.1.liveAt c.i → (c', z) ∈ (NN m).liveAt c.i ∧ H.2.2 ≤ c' := by
+      intro c' z h
+      rw [KNode.liveAt_of_times _ c.i hHt.2] at h
+      obtain ⟨h1, h2⟩ := hsh c' z h
+      rw [hscr]
+      exact ⟨by rw [KNode.liveAt_of_times _ c.i hnt]; exact hpairsN _ _ h2, h1⟩
+    -- the leaf with its first half: links among the leaf's
+    have hsubf : ∀ x c' y, TLink (updN (wNode c.p base w) (XX m) H.1) c.i x c' y →
+        TLink (wNode c.p base w) c.i x c' y := by
+      intro x c' y hl
+      obtain ⟨mm, hm, hc⟩ := hl
+      by_cases hx : x = XX m
+      · subst hx
+        rw [updN_self] at hm
+        simp only [Option.some.injEq] at hm
+        subst hm
+        exact ⟨_, hnL, (hf' c' y hc).1⟩
+      · rw [updN_ne _ _ _ _ hx] at hm; exact ⟨mm, hm, hc⟩
+    have hreachf := tReach_of_sublinks _ _ c.i w.top.rootKey hsubf
+    have hTf : TreeOK (updN (wNode c.p base w) (XX m) H.1) c.i w.top.rootKey :=
+      treeOK_of_node_shrink _ _ c.i _ (XX m) (NN m) H.1 hT hnL (updN_self _ _ _)
+        (fun y hy => updN_ne _ _ _ _ hy) (fun c' z h => (hf' c' z h).1)
+    have hnf : ¬ TReach (updN (wNode c.p base w) (XX m) H.1) c.i w.top.rootKey w.next :=
+      fun h => hyRW _ (Nat.le_refl _) (hreachf _ h)
+    have hagree : ∀ x, TReach (updN (wNode c.p base w) (XX m) H.1) c.i w.top.rootKey x →
+        wNode c.p base w1 x = updN (wNode c.p base w) (XX m) H.1 x := by
+      intro x hx
+      have hxn : x ≠ w.next := fun h => by subst h; exact hnf hx
+      rw [hN1, updN_ne _ _ _ _ hxn]
+    have hlinkT : ∀ j, j < m → TLink (wNode c.p base w) c.i (XX j) (KK (j + 1)) (XX (j + 1)) :=
+      fun j hj => ⟨NN j, hNN j (by omega), hlinksK j hj⟩
+    have hTA := treeOK_spaceSplitInPlace_sub (wNode c.p base w)
+      (updN (wNode c.p base w1) (XX (m - 1)) ([(H.2.2, w.next)].foldl
+        (fun n (cv, y) => n.add c.i (.key cv y)) (NN (m - 1))))
+      c.i w.top.rootKey (XX (m - 1)) (XX m) w.next (NN (m - 1)) (NN m) H.1 H.2.1 (KK m) H.2.2
+      hT (reachS_tReach _ _ _ _ hrq) hqn hkl hqwf hqt hnL (updN_self _ _ _)
+      (by rw [updN_ne _ _ _ _ hqL.symm, hN1, updN_ne _ _ _ _ hXL1]; exact updN_self _ _ _)
+      (by rw [updN_ne _ _ _ _ hXq1.symm, hN1]; exact updN_self _ _ _)
+      hf' hs'
+      (by
+        intro z hz1 hz2 hz3
+        rw [updN_ne _ _ _ _ hz2, hN1, updN_ne _ _ _ _ hz3, updN_ne _ _ _ _ hz1])
+      (hfreshN _ (Nat.le_refl _))
+      (fun u c' _ hl => hnoLinkW _ (Nat.le_refl _) u c' hl)
+    have hHl : H.1.leaf = true ∧ H.2.1.leaf = true := by
+      rw [← hH]; exact halves_leaf_flags _ _ _ _
+    have hp2 : 2 ≤ pairs.length := by
+      rw [hlastE] at hbig
+      simp [KNode.size, newKlongs] at hbig
+      omega
+    have hrmemN' : r ∈ (NN m).live := hpairsN r.1 r.2 (List.mem_of_mem_drop (List.mem_of_head? hr))
+    have hlow : ∃ c0 z0, (c0, z0) ∈ (NN m).liveAt c.i ∧ c0 < H.2.2 := by
+      obtain ⟨a, ha⟩ : ∃ a, a ∈ pairs.take (pairs.length / 2) := by
+        cases h : pairs.take (pairs.length / 2) with
+        | nil =>
+          exfalso
+          have := congrArg List.length h
+          simp only [List.length_take, List.length_nil] at this
+          omega
+        | cons a _ => exact ⟨a, List.mem_cons_self⟩
+      have halt := halves_left_lt_divider pairs (pairs.length / 2) hps r hr a ha
+      refine ⟨a.1, a.2, ?_, by rw [hscr]; exact halt⟩
+      rw [KNode.liveAt_of_times _ c.i hnt]
+      exact hpairsN _ _ (List.mem_of_mem_take ha)
+    have hqwf0 := hqwf
+    have hRV := rangeOrder_spaceInPlaceStep (wNode c.p base w)
+      (updN (wNode c.p base w1) (XX (m - 1)) ([(H.2.2, w.next)].foldl
+        (fun n (cv, y) => n.add c.i (.key cv y)) (NN (m - 1))))
+      c.i w.top.rootKey hR hT (XX (m - 1)) (XX m) w.next (NN (m - 1)) (NN m) H.1 H.2.1
+      ([(H.2.2, w.next)].foldl (fun n (cv, y) => n.add c.i (.key cv y)) (NN (m - 1)))
+      (KK m) H.2.2 (reachS_tReach _ _ _ _ hrq) hqn hql hkl hnL (hfreshN _ (Nat.le_refl _))
+      (fun u c' _ hl => hnoLinkW _ (Nat.le_refl _) u c' hl)
+      ⟨r.2, by rw [hscr, KNode.liveAt_of_times _ c.i hnt]; exact hrmemN'⟩ hlow
+      (updN_self _ _ _)
+      (by simp only [List.foldl_cons, List.foldl_nil, KNode.add_leaf]; exact hql)
+      (fun c' z h => by
+        rcases KNode.add_key_liveAt_mem _ c.i _ _ hqwf hqt c' z h with h1 | h1
+        · exact Or.inl h1
+        · exact Or.inr h1)
+      (KNode.addKeys_liveAt_of_fold c.i _ _ hqwf hqt _ _ (by simp [pairLookupStep]))
+      (by rw [updN_ne _ _ _ _ hqL.symm, hN1, updN_ne _ _ _ _ hXL1]; exact updN_self _ _ _)
+      (by rw [hHl.1, hleafm]) hf'
+      (by rw [updN_ne _ _ _ _ hXq1.symm, hN1]; exact updN_self _ _ _)
+      (by rw [hHl.2, hleafm])
+      (by
+        intro c' z h
+        obtain ⟨h1, h2⟩ := hs' c' z h
+        exact ⟨c', h2, h1, by simp [hleafm]⟩)
+      (by
+        intro z hz1 hz2 hz3
+        rw [updN_ne _ _ _ _ hz1, hN1, updN_ne _ _ _ _ hz3, updN_ne _ _ _ _ hz2])
+    have hchain := hchainPre w1 [(H.2.2, w.next)] (Or.inl ⟨_, _, rfl⟩)
+      (by
+        intro q hq
+        simp only [List.mem_cons, List.not_mem_nil, or_false] at hq
+        subst hq
+        rw [h1next]; dsimp only; omega)
+      (by rw [h1path, hs3])
+      (by
+        intro i h1 h2
+        have hx := hXlt (i - d) (by omega)
+        have hxL : XX (i - d) ≠ XX m := fun he => by
+          have := hdist (i - d) m (by omega) (Nat.le_refl _) he; omega
+        constructor
+        · show w1.nodes.lookup (XX (i - d)) = some (NN (i - d))
+          rw [h1n]
+          simp only [hxL, show XX (i - d) ≠ w.next by omega, ↓reduceIte, hs1]
+          exact hlkX (i - d) (by omega)
+        · show w1.taken.contains (XX (i - d)) = false
+          rw [h1t', hr03.2.2.1]; exact htkX (i - d) (by omega))
+      (by
+        rw [h1top, hs5, hr03.2.1, hN1]
+        exact treeOK_updN_unreach _ c.i _ _ _ hTf hnf)
+      (by
+        intro i h1 h2
+        rw [h1top, hs5, hr03.2.1]
+        exact tReach_to_agree _ _ _ _ hagree _ (tReach_chain_updN _ c.i _ hT m XX KK hlinkT (i - d)
+          (by omega) (reachS_tReach _ _ _ _ (hreachX (i - d) (by omega))) H.1))
+      (by
+        intro z hz
+        rw [h1next] at hz
+        refine ⟨?_, by rw [h1t', hr03.2.2.1]; exact hntake z (by omega), (hbase z (by omega)).1⟩
+        have hzL : z ≠ XX m := fun h => by have := hXlt m (Nat.le_refl _); omega
+        rw [h1n]
+        simp only [hzL, show z ≠ w.next by omega, ↓reduceIte, hs1]
+        cases h' : w3.nodes.lookup z with
+        | none => rfl
+        | some _ => have := hsrcw3 z (by rw [h']; rfl); omega)
+      (by
+        intro u c' z hl
+        rw [hN1] at hl
+        rw [h1next]
+        obtain ⟨mm, hm, hc⟩ := hl
+        by_cases hu2 : u = w.next
+        · rw [hu2, updN_self] at hm
+          simp only [Option.some.injEq] at hm
+          subst hm
+          have := hlinksAll _ _ _ ⟨_, hnL, (hs' c' z hc).1⟩
+          omega
+        · rw [updN_ne _ _ _ _ hu2] at hm
+          have := hlinksAll u c' z (hsubf u c' z ⟨mm, hm, hc⟩); omega)
+      (by rw [h1top, hs5, hr03.2.1]; simp only [hdm1]; exact hTA)
+      (by rw [h1top, hs5, hr03.2.1]; simp only [hdm1]; exact hRV)
+    simp only [hdm1] at hchain
+    refine writerWP_mono hchain ?_
+    rintro _ w2 ⟨_, _, _, _, h2R⟩
+    exact h2R
   -- the leaf's bitmap, its time split or its space split
   refine writerWP_mono (post := fun _ w4 => RangeOrder (wNode c.p base w4) c.i w4.top.rootKey)
     ?_ ?_
@@ -830,7 +1026,10 @@ theorem rangeOrder_del_chain (c : Ctx) (base : View BVal) (hvc : ViewCoherent c 
           (bitsUnion (NN m).lastBitmap ((NN m).bitsOf cv))).size
     · obtain ⟨hnotTD, hfull, hbig⟩ := hsp
       exact writerWP_appendDeleteKlong_spaceGen c (XX m) (NN m) cv (d + (m - 1)) w3 _ hlkL hne hnotTD
-        hfull (fun s => hcascadeS s hbig (hspL hnotTD hfull hbig))
+        hfull (fun s => by
+          by_cases hf : (NN m).firstTime = some c.i
+          · exact hcascadeSIP s hbig hf
+          · exact hcascadeS s hbig hf)
     · exact writerWP_appendDeleteKlong_rangeGen c base hvc w w3 hR cv (d + (m - 1)) (XX m) (NN m) hnL
         hnt hr03 hlkL hne (fun h1 h2 => Nat.le_of_not_lt (fun h3 => hsp ⟨h1, h2, h3⟩)) hcascadeT
   · intro _ w4 hT4
