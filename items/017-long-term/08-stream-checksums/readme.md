@@ -15,6 +15,13 @@ checksum. Nothing here is planned.
 Frans's words
 -------------
 
+Frans, 2026-11-13, 06:01, on hearing that the node checksum (Fletcher-16,
+CRC32C since 024-25) came with the 2017 code: "This is not the time or
+place to decide this. But good to know. I conclude that the current
+implementation is inconsistent in this regard. We should either assume
+the storage may be corrupted or we assume if cannot be (except that tail
+could be unwritten)."
+
 Frans, 2026-11-06, 10:42, deciding 019-30, 019-31 and 019-33, each as
 recommended (option (a), outside the fault model for 2026.3, as 015-73):
 "Yes, as recommended. BergDB assumes correct storage. Which makes sense.
