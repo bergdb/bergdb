@@ -130,3 +130,4 @@ import SIS.Tree.PutInvRoot
 import SIS.Tree.GetChain
 import SIS.Tree.GetInnerSplit
 import SIS.Tree.PutInvDelFull
+import SIS.Tree.LeftHist
