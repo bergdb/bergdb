@@ -1518,6 +1518,19 @@ and its status:
         2 to 4 transactions of puts and deletes; M was 8 or 10. It held at
         all 96 replaceRoots at a segment root, 32 of them with a full
         segment leaf. In every one, x had a klong of the transaction.
+      - Item 3 is done (latest, 23:48; `CollapseCascade.lean`):
+        - `writerWP_replaceRoot_seg_cascadeF` is the replaceRoot step with
+          the leaf's cascade.
+        - `writerWP_collapseRoot_collF4` is the collapse loop without
+          `hroom`, carrying the books and the kinds. Its times and values
+          come from `PutInvG`, its children from the kinds.
+        - `opGetCaseOK_delMergeF4` is case (4) with `CollapseStepOKF4`, which
+          has no room part and two parts instead: SegFits after a
+          replaceRoot at a segment root (cost's HeightInv route) and
+          `CollapseUnlinkOK` (the take-back's).
+        - The open obligations of case (4) are now `DelStepsOKF3` (putinv),
+          `MergeStepOKF3`'s untaken and SegFits parts, `CollapseStepOKF4`
+          and TP4 (from the take-back's run-level induction).
     Removed (latest, 23:08, as agreed with cost and the coordinator, after
     putinv's take-back moved to F2 at 65b84e5b): `DescentOKF`,
     `MergePathCond`, `opGetCaseOK_delMergeF`, `writerWP_mergeUp_delF`,
