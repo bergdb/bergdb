@@ -291,3 +291,5 @@ import SIS.Tree.DelStepsBook
 import SIS.Tree.HeightsStep
 import SIS.Tree.DelStepsUpWalk
 import SIS.Tree.DelStepsEmpty
+import SIS.Tree.WriterHeightsDelNode
+import SIS.Tree.WriterHeightsDel
