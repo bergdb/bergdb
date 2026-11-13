@@ -84,4 +84,39 @@ theorem innerChildren_of_kinds (p : Params) (P : Struct BVal) (B : NodeId) (c : 
         obtain ⟨hzd, hzl, _⟩ := (hK y nd hpy hd hlv' cc z hk nz hz).1 hh
         exact hofP nz hz hzd hzl
 
+/-- `innerChildren_of_kinds` at a state that a prefix of a transaction's
+operations reaches, in a run within reach, from TP4 for every run: the books
+and the kinds of the overlay there by the walk (`kd_ops`), the kinds of the
+structure by `treeRun_kindsAllOK`. -/
+theorem innerChildren_reached (p : Params) (hM : 2 ≤ p.M)
+    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
+    (ts : List Tx) (tx : Tx) (hw : Within p (ts ++ [tx])) (top : Top)
+    (pre post : List Op) (hsplit : tx.ops = pre ++ post) (r : List Bool) (w : W)
+    (h : (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w))
+    (hun : ∀ x, TReach (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey x →
+      w.taken.contains x = false) :
+    ∀ y yn cc z, TReach (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey y →
+      wNode p (viewOf (treeRun p ts)) w y = some yn → yn.leaf = false →
+      (cc, z) ∈ yn.liveAt (ts.length + 1) →
+      ∃ m, wNode p (viewOf (treeRun p ts)) w z = some m := by
+  have hwts : Within p ts := by
+    have := within_take p (ts ++ [tx]) hw ts.length
+    simpa using this
+  have hfresh : ∀ q ∈ treeRun p ts, q.1 < tx.base := by
+    have := (hw.2 ts.length (by simp)).1
+    simpa using this
+  have hwf : tx.wf = true := (hw.1 tx (by simp)).2
+  have hkeys : ∀ op ∈ pre, keyWf op.key = true := by
+    intro op hop
+    unfold Tx.wf at hwf
+    exact List.all_eq_true.mp hwf op (by rw [hsplit]; exact List.mem_append_left _ hop)
+  have hK := treeRun_kindsAllOK p hM hP ts hwts
+  have hkd := kd_ops (kindOracleOf p (treeRun p ts)) tx.base (appendFrameOK tx.base) pre
+    (ctxOf p ts) (wInit tx top)
+    (viewIdsBelow_rootless _ _ (viewIdsBelow_view p (treeRun p ts) ts.length tx.base hfresh))
+    (viewKinds_of p (treeRun p ts) ts.length tx.base hfresh (treeRun_timesLE p ts) (hP ts hwts) hK)
+    (book_start _ _ top) (kdInv_start _ _ top) hM hkeys r w h
+  exact innerChildren_of_kinds p (treeRun p ts) tx.base (ctxOf p ts) w rfl hK (hP ts hwts) hkd.1
+    hkd.2.1.cache hun
+
 end SIS.Tree
