@@ -8,6 +8,7 @@ transaction), which the state predicate gives.
 -/
 import SIS.Tree.TakeBackRunJ2
 import SIS.Tree.TakeDeadCases
+import SIS.Tree.ChildrenKinds
 
 set_option autoImplicit false
 
@@ -217,5 +218,124 @@ theorem leafVals_of_kinds (K : KindOracle) (B : NodeId) (c : Ctx) (base : View B
   rcases hval with ⟨hh, hm⟩ | hv
   · exact Or.inr (List.mem_map.mpr ⟨_, hm, rfl⟩)
   · exact Or.inl (hvk.oldVal y hv)
+
+/-! ## `LeafVals` with the base's leaves by a premise -/
+
+/-- A leaf's klong of a last segment's compare value names a value: by the
+overlay's kinds for a cached leaf, by the view's for one of the base. -/
+theorem leafVals_of_kindsB (K : KindOracle) (B : NodeId) (c : Ctx) (base : View BVal) (w : W)
+    (hkc : KindCache K w) (hvk : ViewKinds K B c)
+    (hvals : ∀ q ∈ w.vals, B ≤ q.1 ∧ q.1 < w.next ∧ q.1 ∉ w.gh.map (·.1)) (hb : Book B c w)
+    (hbaseNew : ∀ z, B ≤ z → knodeOf c.p base z = none)
+    (hbaseVal : ∀ z, K.val z → knodeOf c.p base z = none)
+    (hbaseLeaf : ∀ x n, knodeOf c.p base x = some n → n.leaf = true → ∀ cv y,
+      Klong.key cv y ∈ n.ks → segLen cv ≠ 7 → K.val y) :
+    LeafVals c base B w := by
+  intro pre cv L n hkey hK y hy
+  obtain ⟨_, _, _, hn, hnl⟩ := hK
+  have hcv : segLen cv ≠ 7 := segLen_last_of_keyWf pre cv hkey
+  have hk : Klong.key cv y ∈ n.ks := KNode.liveAt_key_mem n c.i cv y hy
+  have hval : IsValId K w y := by
+    have hLt : w.taken.contains L = false := by
+      cases h : w.taken.contains L with
+      | false => rfl
+      | true =>
+        have : wNode c.p base w L = none := by simp only [wNode, h, ↓reduceIte]
+        rw [this] at hn; cases hn
+    cases hl : w.nodes.lookup L with
+    | some m =>
+      have hm : wNode c.p base w L = some m := by
+        simp only [wNode, hLt, Bool.false_eq_true, ↓reduceIte, hl]
+      rw [hn] at hm
+      cases hm
+      have hmem := mem_ids_of_lookup w.nodes L n hl
+      have hxg : L ∈ w.gh.map (·.1) := by
+        rw [← List.mem_reverse, ← hb.ids]
+        exact List.mem_map.mpr ⟨(L, n), hmem, rfl⟩
+      obtain ⟨⟨L', g, h⟩, hq, hL'⟩ := List.mem_map.mp hxg
+      simp only at hL'
+      subst hL'
+      have hh : h = 0 := by
+        have := hb.leaf L' n g h hmem hq
+        rw [hnl] at this
+        simpa using this.symm
+      subst hh
+      exact ((hkc L' n g 0 hmem hq cv y hk).2 rfl).2 hcv
+    | none =>
+      have hkn : knodeOf c.p base L = some n := by
+        simp only [wNode, hLt, Bool.false_eq_true, ↓reduceIte, hl] at hn
+        exact hn
+      exact Or.inr (hbaseLeaf L n hkn hnl cv y hk hcv)
+  refine ⟨wNode_val_none K B c base w hvk hvals hb hbaseNew hbaseVal y hval, ?_⟩
+  rcases hval with ⟨hh, hm⟩ | hv
+  · exact Or.inr (List.mem_map.mpr ⟨_, hm, rfl⟩)
+  · exact Or.inl (hvk.oldVal y hv)
+
+/-- `LeafVals` at every state that a prefix of a transaction's operations
+reaches: the books and the overlay's kinds by the walk (`kd_ops`), the base's
+by `KindsAllOK` and `PointersOK` of P. -/
+theorem leafVals_reached (p : Params) (hM : 2 ≤ p.M) (ts : List Tx) (tx : Tx)
+    (hw : Within p (ts ++ [tx])) (top : Top) (pre post : List Op) (hsplit : tx.ops = pre ++ post)
+    (r : List Bool) (w : W) (h : (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w))
+    (hPt : PointersOK (treeRun p ts)) (hK : KindsAllOK p (treeRun p ts)) :
+    LeafVals (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w := by
+  have hfresh : ∀ q ∈ treeRun p ts, q.1 < tx.base := by
+    have := (hw.2 ts.length (by simp)).1
+    simpa using this
+  have hwf : tx.wf = true := (hw.1 tx (by simp)).2
+  have hkeys : ∀ op ∈ pre, keyWf op.key = true := by
+    intro op hop
+    unfold Tx.wf at hwf
+    exact List.all_eq_true.mp hwf op (by rw [hsplit]; exact List.mem_append_left _ hop)
+  have hvk := viewKinds_of p (treeRun p ts) ts.length tx.base hfresh (treeRun_timesLE p ts) hPt hK
+  have hkd := kd_ops (kindOracleOf p (treeRun p ts)) tx.base (appendFrameOK tx.base) pre
+    (ctxOf p ts) (wInit tx top)
+    (viewIdsBelow_rootless _ _ (viewIdsBelow_view p (treeRun p ts) ts.length tx.base hfresh))
+    hvk (book_start _ _ top) (kdInv_start _ _ top) hM hkeys r w h
+  refine leafVals_of_kindsB (kindOracleOf p (treeRun p ts)) tx.base (ctxOf p ts) _ w hkd.2.1.cache hvk
+    hkd.2.1.vals hkd.1 ?_ ?_ ?_
+  · intro z hz
+    show knodeOf p (viewOf (treeRun p ts)) z = none
+    cases hk : knodeOf p (viewOf (treeRun p ts)) z with
+    | none => rfl
+    | some n =>
+      obtain ⟨nd, hg, _, _, _⟩ := knodeOf_viewOf p _ z n hk
+      have := hfresh _ (mem_of_get? hg)
+      simp only at this
+      omega
+  · rintro z ⟨ny, hny, hd⟩
+    show knodeOf p (viewOf (treeRun p ts)) z = none
+    cases hk : knodeOf p (viewOf (treeRun p ts)) z with
+    | none => rfl
+    | some n =>
+      obtain ⟨nd, hg, hd', _, _⟩ := knodeOf_viewOf p _ z n hk
+      rw [hny] at hg
+      cases hg
+      rw [hd] at hd'
+      cases hd'
+  · intro x n hk hnl cv y hky hcv
+    obtain ⟨nd, hg, hd, hlv, rfl⟩ := knodeOf_viewOf p _ x n (by exact hk)
+    have hh : p.heightOf nd.level = 0 := by simpa using hnl
+    obtain ⟨e, he, hv⟩ := klongsOf_key_mem nd.hist cv y hky
+    have hy := hPt _ (mem_of_get? hg) e he y (by rw [hv]; simp [bptrs])
+    obtain ⟨ny, hny⟩ := Option.isSome_iff_exists.mp hy
+    exact ⟨ny, hny, ((hK x nd hg hd hlv cv y hky ny hny).2 hh).2 hcv⟩
+
+/-- No node taken back is a value at a transaction's end, for runs whose
+structure has its pointers and kinds (`execW_takenNotVal`). -/
+theorem takenNotValOK_of (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Time → Prop)
+    (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P) :
+    TakenNotValOK p R := by
+  intro ts tx hw hr noops w hrun
+  have hfresh : ∀ q ∈ treeRun p ts, q.1 < tx.base := by
+    have := (hw.2 ts.length (by simp)).1
+    simpa using this
+  have hwf : tx.wf = true := (hw.1 tx (by simp)).2
+  have he : execW p tx (ts.length + 1) (view (treeSpec p) (treeRun p ts) (ts.length + 1 - 1)) =
+      .ok (noops, w) := hrun
+  have hvk := viewKinds_of p (treeRun p ts) ts.length tx.base hfresh (treeRun_timesLE p ts)
+    (hRP _ _ hr) (hRK _ _ hr)
+  exact execW_takenNotVal (kindOracleOf p (treeRun p ts)) p tx (ts.length + 1) _ noops w hM hwf
+    (viewIdsBelow_view p (treeRun p ts) ts.length tx.base hfresh) hvk he
 
 end SIS.Tree
