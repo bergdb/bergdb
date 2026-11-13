@@ -884,7 +884,8 @@ transaction; S, by `treetest` on the small cases.
 | 10 | `GetOK`              | a multiversion map: a get at t gives the    | T, S |
 |    |                      | last put at or before t, unless deleted     |      |
 | 11 | `ScanOK`             | a scan at t gives the map's KVs in range,   | T, S |
-|    |                      | in order, both ways, with the end key       |      |
+|    |                      | in order, both ways, with the end key; for  |      |
+|    |                      | keys of at most `scanFuel` segments         |      |
 | 12 | `NoopOK`             | a delete without a value changes nothing    | T, S |
 | 13 | `SpecOKTree`         | `SpecOK`, `VirtInit` of `treeSpec`          | PROVED |
 | 14 | `RunOKTree`          | `RunOK`: A2 to A5, ids, data nodes,         | (T), S |
@@ -925,6 +926,60 @@ every segment below 2^62 with its lowest three bits zero; a change of a
 trusted definition, made after the prover's run of 2026-11-12, with
 TP11 proved for it next. Proofs that use `keyWf` are rechecked by `lake
 build`.
+
+**TP11 refuted again, and decided, 2026-11-13.** The second prover's
+run 2 (2026-11-12, 16:21 to 21:45, branch `024-22-proofs-2`;
+/Users/f/fl/bench/2026-11-12/cx2/REPORT.md) made the change of `keyWf`
+(every segment below 2^62 with its lowest three bits zero) and found
+TP11 false a second way: `keyWf` allows a key of any length, and
+`scan` stops after `scanFuel` = 2^40 steps (`nextGo`), so a run of one
+put of a key of 2^40 + 1 segments, within `Within` at valid merge
+parameters, scans wrong. **Decided** (Frans, 2026-11-13, 06:47, "Yes",
+006-24, section 1): "option B, `keyWf` unchanged (what
+`Keys.toSegments` makes, any length); `ScanOK` gets a premise, every
+key of the run at most `scanFuel` segments, which Java meets by L3
+(57,344 bytes a transaction, about 8,192 segments); `scanFuel`'s
+comment corrected. Rejected: A, `keyWf` bounded at L2's 16 segments
+(BergDB's own long keys pass L2, so runs Java makes would leave
+`Within`); C, a fuel from the structure (changes the trusted reader).
+Also yes: land the run 2 now, and delete the two false theorems instead
+of keeping unbuilt modules."
+
+What changed (Lean, branch `024-22-proofs-2`):
+
+* `ScanOK` (`SIS/Tree/Props.lean`) has the premise
+  `∀ tx ∈ ts, ∀ op ∈ tx.ops, op.key.length ≤ scanFuel` after
+  `Within p ts`; its docstring and `scanFuel`'s (`SIS/Tree/Read.lean`)
+  say so and name L3 (024-24).
+* Deleted, false with the new `keyWf`: `treeContents_keyWf`
+  (`TreeReadModel.lean`; in its place `treeContents_keyShape`, the
+  segment lengths only, and for the views of a run
+  `treeRun_treeContents_keyWf`, `RunEncoding.lean`), and
+  `scanBoundaryHistory_within` and `not_scanOK_scanBoundary`
+  (`ScanBoundary.lean`: the key 2^63 is no longer well-formed,
+  `scanBoundaryKey_not_wf`, `scanBoundaryHistory_not_within`). Both
+  modules keep their names and are built; no `.lean` file of `lean/` is
+  outside the build.
+* Kept of the long-key refutation, which the new `ScanOK` no longer
+  meets: `scan_needs_keyBound` (`LongKeyRun.lean`), the premise is
+  needed (without it the property is false for the long-key run), and
+  the key-length bound of a scan, `scan_forward_one_key_length` and
+  `scanEq_first_key_length` (`ScanFuelBound.lean`): a first forward scan
+  gives a key of at most `scanFuel` segments.
+
+What is left: the positive proof of TP11, a later run. A caution for
+it (found while making the change, not proved): `scanFuel` counts the
+key nodes `nextGo` enters and leaves on its way to the next KV, not
+segments. An inner node on a key's path costs a step without a
+segment, and so does each return up after a long key; a key of exactly
+`scanFuel` segments with one inner node on its path, or next to a
+two-level tree, still runs out of fuel. So the premise as decided is
+likely not enough when H > 0, and no premise on key length alone
+bounds the trees' heights. A premise on the parameters would be: every
+path of a run within `Within` has at most `p.fuel` = (G + 1)(H + 2) + 2
+key nodes (`Params.fuel`, the level bounds G and H that `Within`
+enforces), so `2 * p.fuel ≤ scanFuel` or the like; Java's G and H are
+far below. That is for Frans to decide before the positive run.
 
 (T) for 27: `tracecheck`'s CUT-live checks it at every cut of a trace
 (024-07), and C-T6 checks what it follows from, `NonEmptyOK` and
