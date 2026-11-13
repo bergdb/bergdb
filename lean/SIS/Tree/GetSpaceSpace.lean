@@ -844,8 +844,9 @@ parent q, an inner node that existed before the transaction and is full by its
 size with the two klongs to L's halves, with more than h klongs in its last
 version, at least two of them live, below the grandparent g with room for two
 klongs: the space splits of L and of q change the reading by the put alone. The
-keys of L's and of q's live klongs lie between their parents' klongs to them and
-the next ones (`hrange`, `hrangeq`), and neither q nor L reaches g. -/
+keys of L's live klongs and of q's but the empty key's lie between their
+parents' klongs to them and the next ones (`hrange`, `hrangeq`), and neither q
+nor L reaches g. -/
 theorem writerWP_put_spaceSpace (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (pre : List Nat) (cv h : Nat) (rk : NodeId) (w : W)
     (S0 : List (Option Nat × NodeId)) (kq k1 : Nat) (q L : NodeId) (n qn gn : KNode)
@@ -869,7 +870,7 @@ theorem writerWP_put_spaceSpace (c : Ctx) (base : View BVal) (hvc : ViewCoherent
       2 ≤ qn.live.length ∧ wValue base w q = none ∧ q ≠ w.top.rootKey)
     (hrange : ∀ c' z, (c', z) ∈ n.live →
       k1 ≤ c' ∧ ∀ c'' z', (c'', z') ∈ qn.live → k1 < c'' → c' < c'')
-    (hrangeq : ∀ c' z, (c', z) ∈ qn.live →
+    (hrangeq : ∀ c' z, (c', z) ∈ qn.live → 0 < c' →
       kq ≤ c' ∧ ∀ c'' z', (c'', z') ∈ gn.live → kq < c'' → c' < c'')
     (hgp : (∀ s, Klong.time s ∈ gn.ks → s ≤ c.i) ∧ gn.size + 2 + 1 ≤ c.p.M ∧
       ∀ y1 sc y2, deadOver c.p ((gn.add c.i (.key kq y1)).add c.i (.key sc y2)) = false)
@@ -1101,12 +1102,12 @@ theorem writerWP_put_spaceSpace (c : Ctx) (base : View BVal) (hvc : ViewCoherent
     have := halves_left_lt_divider qn.live _ qn.live_order r hr a ha
     omega
   have hrmem : r ∈ qn.live := List.mem_of_mem_drop (List.mem_of_head? hr)
-  have hkqr : kq ≤ r.1 := (hrangeq r.1 r.2 hrmem).1
+  have hkqr : kq ≤ r.1 := (hrangeq r.1 r.2 hrmem hsc).1
   have hgap : ∀ c' z, (c', z) ∈ gn.live → c' ≤ kq ∨ r.1 < c' := by
     intro c' z hcz
     by_cases hle : c' ≤ kq
     · exact Or.inl hle
-    · exact Or.inr ((hrangeq r.1 r.2 hrmem).2 c' z hcz (by omega))
+    · exact Or.inr ((hrangeq r.1 r.2 hrmem hsc).2 c' z hcz (by omega))
   -- the divider of L's halves, between k1 and q's next key
   obtain ⟨rL, hrL⟩ : ∃ rL, (n.live.drop (n.live.length / 2)).head? = some rL := by
     cases h' : n.live.drop (n.live.length / 2) with
