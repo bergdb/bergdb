@@ -157,3 +157,4 @@ import SIS.Tree.WriterGetMerge
 import SIS.Tree.WriterGetMergeIdx
 import SIS.Tree.WriterGetMergeOp
 import SIS.Tree.WriterTreeChainSteps
+import SIS.Tree.WriterTreeChainTree
