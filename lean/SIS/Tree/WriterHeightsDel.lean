@@ -218,7 +218,9 @@ theorem ht_descendToSegmentRoot (B : NodeId) (key : Key) (segment : Nat)
     (c : Ctx) (w : W) (hvo : ViewHtOK H B c) (hb : Book B c w) (hi : HtInv H B c w)
     (hkw : ViewKlongsWf c.p c.view) (hwf : WriterKlongsWf w) :
     WriterWP (descendToSegmentRoot key segment) c w (fun r v => Book B c v ∧ HtInv H B c v ∧
-      HtLe w v ∧ HtPathLast v r ∧ PathFreeTo v v.path.length ∧ WriterKlongsWf v) := by
+      HtLe w v ∧ HtPathLast v r ∧ PathFreeTo v v.path.length ∧ WriterKlongsWf v ∧
+      ∀ a q, 2 ≤ v.path.length → v.path[v.path.length - 2]? = some (a, q) →
+        ∃ g, (q, g, 0) ∈ v.gh) := by
   unfold descendToSegmentRoot
   htSimp
   refine writerWP_mono (writerWP_and (ht_pathClear B c w hvo hb hi) (klongsWf_pathClear c w hkw hwf)) ?_
@@ -227,13 +229,16 @@ theorem ht_descendToSegmentRoot (B : NodeId) (key : Key) (segment : Nat)
     (klongsWf_findRoot c w1 hkw hwf1)) ?_
   rintro root w2 ⟨⟨hb2, hi2, hk2, hp2, ht2, hpf2⟩, hwf2⟩
   refine writerWP_mono (ht_foldlM _ _ c (fun node v => Book B c v ∧ HtInv H B c v ∧
-      HtPathLast v node ∧ PathFreeTo v v.path.length ∧ WriterKlongsWf v)
-    ?_ root w2 ⟨hb2, hi2, ⟨none, by rw [hp2]; rfl⟩, by rw [hp2]; exact hpf2, hwf2⟩) ?_
-  · intro node cv u ⟨hbu, hiu, hlu, hpfu, hwfu⟩
+      HtPathLast v node ∧ PathFreeTo v v.path.length ∧ WriterKlongsWf v ∧
+      ∀ a q, 2 ≤ v.path.length → v.path[v.path.length - 2]? = some (a, q) →
+        ∃ g, (q, g, 0) ∈ v.gh)
+    ?_ root w2 ⟨hb2, hi2, ⟨none, by rw [hp2]; rfl⟩, by rw [hp2]; exact hpf2, hwf2,
+      fun a q h2 _ => by rw [hp2] at h2; simp at h2⟩) ?_
+  · rintro node cv u ⟨hbu, hiu, hlu, hpfu, hwfu, -⟩
     htSimp
     refine writerWP_mono (writerWP_and (ht_descendLte B cv c.p.fuel node c u hvo hbu hiu hpfu
       (Or.inl hlu)) (klongsWf_descendLte cv c.p.fuel node c u hkw hwfu)) ?_
-    rintro leaf u1 ⟨⟨hb3, hi3, hle3, hlast, -, hpf3⟩, hwf3⟩
+    rintro leaf u1 ⟨⟨hb3, hi3, hle3, hlast, ⟨nl, hnl, hnll⟩, hpf3⟩, hwf3⟩
     have hl3 : HtPathLast u1 leaf := by
       rcases hlast with h | ⟨rfl, hp, -⟩
       · exact h
@@ -259,11 +264,27 @@ theorem ht_descendToSegmentRoot (B : NodeId) (key : Key) (segment : Nat)
         (ht_getLast_of ha4) hl4 cv (ht_searchEq_live hnwf hN.3 hfd) hlf)
         (klongsWf_pathAdd (some fd.c) fd.y c u2 hkw hwf4)) ?_
       rintro _ u3 ⟨⟨hb5, hi5, hk5, hp5, ht5, hyf⟩, hwf5⟩
-      exact ⟨⟨hb5, hi5, ⟨some fd.c, by rw [hp5]; exact kd_pathLast_append _ _⟩,
-        PathFreeTo.append hpf4 _ hp5 ht5 hyf, hwf5⟩,
+      have hg0 : h = 0 := kd_h0 hb4 hl4 hm (by
+        obtain ⟨n', hn', hlf'⟩ := hle4.1.1 leaf nl hnl
+        rw [hl4] at hn'; cases hn'; rw [hlf']; exact hnll)
+      subst hg0
+      refine ⟨⟨hb5, hi5, ⟨some fd.c, by rw [hp5]; exact kd_pathLast_append _ _⟩,
+        PathFreeTo.append hpf4 _ hp5 ht5 hyf, hwf5, ?_⟩,
         hle3.trans (hle4.trans ⟨hk5, ht5⟩)⟩
-  · rintro r v ⟨⟨hb3, hi3, hl3, hpf3, hwf3⟩, hle3⟩
-    exact ⟨hb3, hi3, HtLe.trans ⟨hk1, ht1⟩ (HtLe.trans ⟨hk2, ht2⟩ hle3), hl3, hpf3, hwf3⟩
+      intro a' q h2 hq
+      rw [hp5] at hq
+      simp only [List.length_append, List.length_singleton] at hq
+      have hq' : u2.path[u2.path.length - 1]? = some (a', q) := by
+        rw [List.getElem?_append_left (by omega)] at hq
+        have : u2.path.length + 1 - 2 = u2.path.length - 1 := by omega
+        rw [this] at hq
+        exact hq
+      rw [ha4] at hq'
+      simp only [Option.some.injEq, Prod.mk.injEq] at hq'
+      obtain ⟨-, rfl⟩ := hq'
+      exact ⟨g, HtLe.gh' hm ⟨hk5, ht5⟩⟩
+  · rintro r v ⟨⟨hb3, hi3, hl3, hpf3, hwf3, hsg3⟩, hle3⟩
+    exact ⟨hb3, hi3, HtLe.trans ⟨hk1, ht1⟩ (HtLe.trans ⟨hk2, ht2⟩ hle3), hl3, hpf3, hwf3, hsg3⟩
 
 /-- The descent by height from x, the path's last node. -/
 theorem ht_descendHeight (B : NodeId) (cv h fuel : Nat) :
@@ -317,7 +338,7 @@ theorem ht_descendToHeight (B : NodeId) (key : Key) (g h : Nat) (c : Ctx) (w : W
   unfold descendToHeight
   htSimp
   refine writerWP_mono (ht_descendToSegmentRoot B key g c w hvo hb hi hkw hwf) ?_
-  rintro root w1 ⟨hb1, hi1, hle1, hl1, hpf1, -⟩
+  rintro root w1 ⟨hb1, hi1, hle1, hl1, hpf1, -, -⟩
   split
   · exact writerWP_throw _ _ _ _
   · rename_i cv _
@@ -351,8 +372,8 @@ theorem htKs_lastVersion_ite {c : Ctx} {w : W} {h : Nat} {n : KNode} (hn : NodeH
     kdKs (HtP c H w h)
       (n.lastVersionGivenDel t (if b then bitsUnion n.lastBitmap (n.bitsOf cR) else n.lastBitmap)).ks := by
   by_cases hb : b
-  · rw [if_pos hb]; exact htKs_lastVersion_del hn t cR
-  · rw [if_neg hb]; exact htKs_lastVersion hn t
+  · simp only [hb, ↓reduceIte]; exact htKs_lastVersion_del hn t cR
+  · simp only [hb, ↓reduceIte]; exact htKs_lastVersion hn t
 
 syntax "htFlatMP" : tactic
 macro_rules
