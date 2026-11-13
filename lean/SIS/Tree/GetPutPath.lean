@@ -1,4 +1,6 @@
 import SIS.Tree.GetCascadePut
+import SIS.Tree.GetDelVirtual
+import SIS.Tree.WriterTreeDelChain
 
 set_option autoImplicit false
 
@@ -842,7 +844,11 @@ theorem writerWP_del_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
     (hleafG : ∀ L n, (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
       wNode c.p base w L = some n → n.leaf = true →
       L ≠ w.top.rootKey ∧ (∀ q qn K, TReach (wNode c.p base w) c.i w.top.rootKey q →
-        wNode c.p base w q = some qn → (K, L) ∈ qn.liveAt c.i → qn.leaf = false ∧ LeafOrderAt qn K n) ∧
+        wNode c.p base w q = some qn → (K, L) ∈ qn.liveAt c.i →
+        (qn.leaf = false ∧ LeafOrderAt qn K n) ∨
+        (qn.leaf = true ∧ (¬ ((∃ old, n.ks.getLast? = some (.del old)) ∧ n.lastTime = some c.i) →
+          c.p.M ≤ n.size + 1 →
+          (n.lastVersionGivenDel c.i (bitsUnion n.lastBitmap (n.bitsOf cv))).size ≤ c.p.splitAbove))) ∧
       bitsUnion n.lastBitmap (n.bitsOf cv) ≠ n.lastBitmap ∧
       n.allKeysIn (bitsUnion n.lastBitmap (n.bitsOf cv)) = false)
     (huniq : ∀ key' x n', keyWf key' = true →
@@ -992,10 +998,21 @@ theorem writerWP_del_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
       have := hlinksK (m - 1) (by omega)
       have he : m - 1 + 1 = m := by omega
       rw [he, hXm] at this; exact this)
-  have hqlP : (NN (m - 1)).leaf = false := hparL.1
-  have hrangeL : ∀ c' z, (c', z) ∈ (NN m).live →
+  have hrangeL : (NN (m - 1)).leaf = false → ∀ c' z, (c', z) ∈ (NN m).live →
       KK m ≤ c' ∧ ∀ c'' z', (c'', z') ∈ (NN (m - 1)).live → KK m < c'' → c' < c'' := by
-    rw [hNm]; exact hparL.2
+    intro hql
+    rcases hparL with h | h
+    · rw [hNm]; exact h.2
+    · rw [hql] at h; cases h.1
+  have hstayL : (NN (m - 1)).leaf = true →
+      ¬ ((∃ old, (NN m).ks.getLast? = some (.del old)) ∧ (NN m).lastTime = some c.i) →
+      c.p.M ≤ (NN m).size + 1 →
+      ((NN m).lastVersionGivenDel c.i (bitsUnion (NN m).lastBitmap ((NN m).bitsOf cv))).size ≤
+        c.p.splitAbove := by
+    intro hqlt
+    rcases hparL with h | h
+    · rw [hqlt] at h; cases h.1
+    · rw [hNm]; exact h.2
   have hdist : ∀ j j', j ≤ m → j' ≤ m → XX j = XX j' → j = j' := by
     intro j j' h1 h2 he; rw [hXX] at he; exact hdistP j j' (by omega) (by omega) he
   have hvisL : (XX m, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk := by rw [hXm]; exact hvisL0
@@ -1062,7 +1079,6 @@ theorem writerWP_del_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
   have hnt := htimesG _ _ hnL
   have hqwf := hwfG _ _ hqn
   have hqt := htimesG _ _ hqn
-  have hql : (NN (m - 1)).leaf = false := hqlP
   have hmm : m - 1 + 1 = m := by omega
   have hkl : (KK m, XX m) ∈ (NN (m - 1)).liveAt c.i := by
     have := hlinksK (m - 1) (by omega); rw [hmm] at this; exact this
@@ -1180,9 +1196,16 @@ theorem writerWP_del_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
     generalize hw3' : ({ w3 with trail := s :: w3.trail } : W) = w3' at hs1 hs2 hs3 hs4 hs5 hs6
     generalize hLv : ((⟨(NN m).leaf, ((NN m).lastVersionGivenDel c.i
       (bitsUnion (NN m).lastBitmap ((NN m).bitsOf cv))).ks⟩ : KNode)) = Lv
-    apply writerWP_handleFullWith_time_up_last (d + (m - 1)) (XX m) (XX (m - 1)) (NN m) (NN (m - 1))
+    have hrqV : ReachS (updN (wNode c.p base w) (XX m) Lv) c.i w.top.rootKey (XX (m - 1)) := by
+      have hq1 : PathLen (wNode c.p base w) c.i w.top.rootKey (XX (m - 1)) (m - 1) := by
+        rw [hXX]; exact hPL (m - 1) (by omega)
+      have hq2 : PathLen (wNode c.p base w) c.i w.top.rootKey (XX m) m := by
+        rw [hXX]; exact hPL m (by omega)
+      exact tReach_reachS _ _ _ _ (tReach_updN_of_short _ c.i _ _ _ (m - 1) _ hq1
+        (fun k hk => by have := PathLen.depth_unique hT _ _ _ hk hq2; omega))
+    apply writerWP_handleFullWith_time_up_last' (d + (m - 1)) (XX m) (XX (m - 1)) (NN m) (NN (m - 1))
       (KK m) _ compact c w3' (by rw [hs1]; exact hlkL) (by rw [hs1]; exact hlkX (m - 1) (by omega))
-      hql hfirst hcs (by rw [hs3]; exact hpq') (by rw [hs3]; exact hpk')
+      hfirst hcs (by rw [hs3]; exact hpq') (by rw [hs3]; exact hpk')
     intro w1 h1n h1t h1top h1path h1next h1vals
     rw [hs4] at h1n h1next
     rw [hs1] at h1n
@@ -1303,11 +1326,11 @@ theorem writerWP_del_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
       · rw [h1next] at h'; have := hXlt m (Nat.le_refl _); omega
     have hv1 : wValue base w1 = wValue base w := by
       funext a; simp only [wValue, h1t', h1vals, hs6, hr03.2.2.1, hr03.2.2.2.1]
-    have hres := getFromR_timeSplit_del (wNode c.p base w)
+    have hres := getFromR_timeSplit_delAny (wNode c.p base w)
       (updN (wNode c.p base w1) (XX (m - 1))
         ([(KK m, w.next)].foldl (fun n (cv, y) => n.add c.i (.key cv y)) (NN (m - 1))))
       (wValue base w) c.i c.p.fuel hfuel w.top.rootKey (XX m) (XX (m - 1)) w.next (NN m)
-      (NN (m - 1)) Lv (KK m) pre cv rk hnL hleafm hnwf hnt hqn hql hqwf hqt hkl'
+      (NN (m - 1)) Lv (KK m) pre cv rk hT hwfR hnL hleafm hnwf hnt hqn hqwf hqt hkl hrqV
       (by rw [← hLv]; exact hleafm) hLvwf hLvt hLvlook
       (by
         rw [updN_ne _ _ _ _ (fun h => by have := hXlt (m - 1) (by omega); omega), hN1]
@@ -1318,11 +1341,9 @@ theorem writerWP_del_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
         rw [updN_ne _ _ _ _ hz2, hN1, updN_ne _ _ _ _ hz3])
       (hnoval _ _ hnL) (hfreshV _ (Nat.le_refl _)) hqL
       (fun h => by have := hXlt m (Nat.le_refl _); omega)
-      (fun h => by have := hXlt (m - 1) (by omega); omega)
-      (hfreshN _ (Nat.le_refl _)) hLroot (fun h => by omega) hrq hrk
-      (keyWf_last_notin pre cv hkey) hvisL huniq hwfR honlyL
-      (fun x xn c' z hx hxn hz => by
-        have := hlinksAll x c' z ⟨xn, hxn, hz⟩; omega)
+      (hfreshN _ (Nat.le_refl _))
+      (fun u c' _ hl => hnoLinkW _ (Nat.le_refl _) u c' hl)
+      hLroot (fun h => by omega) hrk (keyWf_last_notin pre cv hkey) hvisL huniq
     intro hq key' hkey'
     have hq2 := hq.imp (fun hf => PathsFit.of_agree (wNode c.p base w2) _ c.i w2.top.rootKey c.p.fuel
       (fun x hx => by rw [hN4]; exact updN_ne _ _ _ _ (fun he => hxR2 (he ▸ hx))) hf) hstay
@@ -1355,7 +1376,7 @@ theorem writerWP_del_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
       simp only [Bool.false_eq_true, ↓reduceIte] at hl
       exact lookup_some_mem hl
   -- a space split of the leaf, which existed before
-  have hcascadeS : ∀ (s : String),
+  have hcascadeS : (NN (m - 1)).leaf = false → ∀ (s : String),
       c.p.splitAbove < ((NN m).lastVersionGivenDel c.i
         (bitsUnion (NN m).lastBitmap ((NN m).bitsOf cv))).size →
       (NN m).firstTime ≠ some c.i →
@@ -1365,7 +1386,7 @@ theorem writerWP_del_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
           (PathsFit (wNode c.p base w4) c.i w4.top.rootKey c.p.fuel ∨
             RootStays c (wNode c.p base w) w.top.rootKey) → ∀ key', keyWf key' = true →
           wGet c.p c.i base w4 key' = if pre ++ [cv] == key' then none else wGet c.p c.i base w key') := by
-    intro s hbig hfirst
+    intro hql s hbig hfirst
     have hpne : pairs ≠ [] := by
       intro he
       rw [hlastE, he] at hbig
@@ -1455,8 +1476,8 @@ theorem writerWP_del_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
       have h2 : x ≠ w.next + 2 := fun h => by subst h; exact hyRW _ (by omega) hx
       rw [hN1, updN_ne _ _ _ _ h2, updN_ne _ _ _ _ h1]
     have hins : InsOK (NN (m - 1)) [(KK m, w.next), (H.2.2, w.next + 2)] :=
-      Or.inr ⟨KK m, w.next, H.2.2, w.next + 2, rfl, by rw [hscr]; exact (hrangeL r.1 r.2 hrmemN).1,
-        fun c'' z'' hz hlt => by rw [hscr]; exact (hrangeL r.1 r.2 hrmemN).2 c'' z'' hz hlt⟩
+      Or.inr ⟨KK m, w.next, H.2.2, w.next + 2, rfl, by rw [hscr]; exact (hrangeL hql r.1 r.2 hrmemN).1,
+        fun c'' z'' hz hlt => by rw [hscr]; exact (hrangeL hql r.1 r.2 hrmemN).2 c'' z'' hz hlt⟩
     have hv1 : wValue base w1 = wValue base w := by
       funext a; simp only [wValue, h1t', h1vals, hs6, hr03.2.2.1, hr03.2.2.2.1]
     have hchain := hchainPre w1 [(KK m, w.next), (H.2.2, w.next + 2)] (by simp only [hdm1]; exact hins)
@@ -1559,7 +1580,7 @@ theorem writerWP_del_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
         (fun n (cv, y) => n.add c.i (.key cv y)) (NN (m - 1))))
       (wValue base w) c.i c.p.fuel hfuel w.top.rootKey (XX m) (XX (m - 1)) w.next (w.next + 2) (NN m)
       (NN (m - 1)) (KK m) pre cv rk pairs hps hpne hpl hnL hleafm hnwf hnt hqn hql hqwf hqt hkl'
-      hrangeL
+      (hrangeL hql)
       (by rw [hH]; exact updN_self _ _ _)
       (by rw [hH, updN_ne _ _ _ _ hXq1.symm, hN1, updN_ne _ _ _ _ h12', updN_self])
       (by rw [hH, updN_ne _ _ _ _ hXq2.symm, hN1, updN_self])
@@ -1581,7 +1602,7 @@ theorem writerWP_del_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
       (XX m) _ (fun z zn _ h => h2W z zn h) (fun h => hxR2 (reachS_tReach _ _ _ _ h)) key']
     rw [h2R hq2 key', hv1, h1top, hs5, hr03.2.1, hres key' hkey']
   -- a space split in place of the leaf, which the transaction made
-  have hcascadeSIP : ∀ (s : String),
+  have hcascadeSIP : (NN (m - 1)).leaf = false → ∀ (s : String),
       c.p.splitAbove < ((NN m).lastVersionGivenDel c.i
         (bitsUnion (NN m).lastBitmap ((NN m).bitsOf cv))).size →
       (NN m).firstTime = some c.i →
@@ -1591,7 +1612,7 @@ theorem writerWP_del_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
           (PathsFit (wNode c.p base w4) c.i w4.top.rootKey c.p.fuel ∨
             RootStays c (wNode c.p base w) w.top.rootKey) → ∀ key', keyWf key' = true →
           wGet c.p c.i base w4 key' = if pre ++ [cv] == key' then none else wGet c.p c.i base w key') := by
-    intro s hbig hfirst
+    intro hql s hbig hfirst
     have hpne : pairs ≠ [] := by
       intro he
       rw [hlastE, he] at hbig
@@ -1754,7 +1775,7 @@ theorem writerWP_del_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
         (fun n (cv, y) => n.add c.i (.key cv y)) (NN (m - 1))))
       (wValue base w) c.i c.p.fuel hfuel w.top.rootKey (XX m) (XX (m - 1)) w.next (NN m)
       (NN (m - 1)) (KK m) pre cv rk pairs hps hpne hpl hnL hleafm hnwf hnt hqn hql hqwf hqt hkl'
-      hrangeL
+      (hrangeL hql)
       (by rw [hH]; exact updN_self _ _ _)
       (by rw [hH, updN_ne _ _ _ _ hqL.symm, hN1, updN_ne _ _ _ _ hXL1, updN_self])
       (by rw [hH, updN_ne _ _ _ _ hXq1.symm, hN1, updN_self])
@@ -1777,11 +1798,14 @@ theorem writerWP_del_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
         c.p.M ≤ (NN m).size + 1 ∧ c.p.splitAbove < ((NN m).lastVersionGivenDel c.i
           (bitsUnion (NN m).lastBitmap ((NN m).bitsOf cv))).size
     · obtain ⟨hnotTD, hfull, hbig⟩ := hsp
-      exact writerWP_appendDeleteKlong_spaceGen c (XX m) (NN m) cv (d + (m - 1)) w3 _ hlkL hne hnotTD
-        hfull (fun s => by
-          by_cases hf : (NN m).firstTime = some c.i
-          · exact hcascadeSIP s hbig hf
-          · exact hcascadeS s hbig hf)
+      cases hqlb : (NN (m - 1)).leaf with
+      | true => exact absurd hbig (Nat.not_lt.mpr (hstayL hqlb hnotTD hfull))
+      | false =>
+        exact writerWP_appendDeleteKlong_spaceGen c (XX m) (NN m) cv (d + (m - 1)) w3 _ hlkL hne hnotTD
+          hfull (fun s => by
+            by_cases hf : (NN m).firstTime = some c.i
+            · exact hcascadeSIP hqlb s hbig hf
+            · exact hcascadeS hqlb s hbig hf)
     · exact writerWP_appendDeleteKlong_timeGenQ c base hvc pre cv (d + (m - 1)) rk (XX m) (NN m) w w3
         (fun w4 => PathsFit (wNode c.p base w4) c.i w4.top.rootKey c.p.fuel ∨
           RootStays c (wNode c.p base w) w.top.rootKey) hfuel hkey hrk hvisL huniq hwfG hnL hleafm hnt hLt hr03 hlkL hne
@@ -1837,7 +1861,8 @@ theorem writerWP_del_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent
         else wGet c.p c.i base w key') :=
   writerWP_mono (writerWP_del_accessPathR c base hvc pre cv rk w hmerges hsa hkey hrk ht hids hbase hwfG
     htimesG hT hlinksAll hnoval hrangeG hlenG (fun x xn hx hxn hnr hsp => (hspaceG x xn hx hxn hnr hsp).2)
-    hleafG huniq)
+    (fun L n h1 h2 h3 => let ⟨a, b, e, f⟩ := hleafG L n h1 h2 h3
+      ⟨a, fun q qn K x y z => Or.inl (b q qn K x y z), e, f⟩) huniq)
     (fun _ _ hp => hp (Or.inr (fun rn hrn hnr => Nat.le_of_not_lt (fun hsp =>
       (hspaceG _ _ TReach.root hrn hnr hsp).1 rfl))))
 

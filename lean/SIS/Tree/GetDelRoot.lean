@@ -15,37 +15,6 @@ halves, in place for a root the transaction made. The reading after it
 (`writerWP_del_leafRootR`): the key reads as no value, every other key as
 before, when the writer's state after it has its paths within the fuel. -/
 
-/-! ## The reading with the delete's leaf in place -/
-
-/-- The reading of N with the leaf L's contents m, n's live klongs but cv's:
-the delete's key reads as no value, every other key as before. -/
-theorem getFromR_delVirtual (N : NodeId → Option KNode) (Val : NodeId → Option Nat) (i : Time)
-    (fuel : Nat) (hfuel : 1 ≤ fuel) (r L rk : NodeId) (pre : List Nat) (cv : Nat) (n m : KNode)
-    (hNL : N L = some n) (hnl : n.leaf = true) (hml : m.leaf = true)
-    (hs : ∀ c', (m.searchEq i c').map (·.y) = if c' == cv then none else (n.searchEq i c').map (·.y))
-    (hrk : segRootR N i fuel pre r = some rk) (hcv : cv ∉ pre)
-    (hvisL : (L, cv) ∈ eqVisits N i cv fuel rk)
-    (huniq : ∀ key' x m', keyWf key' = true → (x, cv) ∈ fromVisits N i fuel key' r →
-      (x, cv) ∈ eqVisits N i cv fuel rk → N x = some m' → m'.leaf = true → key' = pre ++ [cv]) :
-    ∀ key', keyWf key' = true → getFromR (updN N L m) Val i fuel key' r =
-      if pre ++ [cv] == key' then none else getFromR N Val i fuel key' r := by
-  have hA := getFromR_leaf_change_seg N (updN N L m) Val Val i fuel hfuel L pre cv r rk n m
-    (fun x hx => (updN_ne _ _ _ _ hx).symm) hNL (updN_self _ _ _) hnl hml
-    (fun c' hc' => by
-      rw [hs c']
-      have : (c' == cv) = false := by simpa using hc'
-      rw [this]; rfl)
-    hrk hcv hvisL huniq (fun _ _ _ _ _ _ _ _ _ _ => rfl)
-  intro key' hkey'
-  by_cases hk : pre ++ [cv] = key'
-  · subst hk
-    simp only [beq_self_eq_true, ↓reduceIte]
-    rw [hA.1, hs cv]
-    simp
-  · have hk' : (pre ++ [cv] == key') = false := by simpa using hk
-    simp only [hk', Bool.false_eq_true, ↓reduceIte]
-    exact hA.2 key' hkey' (fun h' => hk h'.symm)
-
 /-- The space root L, a leaf whose nodes reached are below `bound`, with its
 contents m, n's live klongs but cv's, in place: a tree from L whose nodes
 reached are below bound, and whose reading is the delete's. -/
