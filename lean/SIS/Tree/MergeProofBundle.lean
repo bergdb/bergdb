@@ -183,6 +183,10 @@ import SIS.Tree.WriterGetUp
 import SIS.Tree.ChildrenExist
 import SIS.Tree.WriterGetUpW
 import SIS.Tree.WriterGetUpT
+import SIS.Tree.WriterGetUpLeb
+import SIS.Tree.WriterGetUpAll
+import SIS.Tree.WriterGetUpTake
+import SIS.Tree.WriterGetCollapseLoop
 import SIS.Tree.RangeSim
 import SIS.Tree.RangeChain
 import SIS.Tree.RangePut
@@ -206,3 +210,8 @@ import SIS.Tree.RangePath
 import SIS.Tree.RangeNewSegs
 import SIS.Tree.KindsRun
 import SIS.Tree.ChildrenKinds
+import SIS.Tree.RootRun
+import SIS.Tree.RangeUpAll
+import SIS.Tree.RangeUpTake
+import SIS.Tree.TakeBackRun
+import SIS.Tree.TakeBackRunExample

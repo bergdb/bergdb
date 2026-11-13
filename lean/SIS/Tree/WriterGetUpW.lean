@@ -303,7 +303,7 @@ theorem writerWP_deleteUpward_inner_get (c : Ctx) (base : View BVal) (X : Nat �
       m.leaf = true → key' = pre ++ [cv])
     (hstopOK : ∀ s, s < depth → (∀ i, s < i → i < depth →
         (Nn i).allKeysIn (bitsUnion (Nn i).lastBitmap ((Nn i).bitsOf (K (i + 1)))) = true) →
-      (Nn s).leaf = false ∧ K (s + 1) ≠ 0 ∧ (Nn s).size + 1 < c.p.M ∧
+      ((Nn s).leaf = true ∨ K (s + 1) ≠ 0) ∧ (Nn s).size + 1 < c.p.M ∧
       deadOver c.p ((Nn s).setAt ((Nn s).size - 1)
         (.del (bitsUnion (Nn s).lastBitmap ((Nn s).bitsOf (K (s + 1)))))) = false ∧
       deadOver c.p ((Nn s).add c.i (.del (bitsUnion (Nn s).lastBitmap ((Nn s).bitsOf (K (s + 1)))))) =
@@ -320,7 +320,18 @@ theorem writerWP_deleteUpward_inner_get (c : Ctx) (base : View BVal) (X : Nat �
       (∀ c' z, (c', z) ∈ sn'.liveAt c.i ↔ (c', z) ∈ (Nn stop).liveAt c.i ∧ c' ≠ K (stop + 1)) →
       (∀ key', keyWf key' = true →
         wGet c.p c.i base w' key' = if pre ++ [cv] == key' then none else wGet c.p c.i base w key') →
-      WriterWP (collapseRoot (pre ++ [cv]) seg c.p.fuel) c w' (fun _ w'' => Q w'')) :
+      WriterWP (collapseRoot (pre ++ [cv]) seg c.p.fuel) c w' (fun _ w'' => Q w''))
+    (hleafQ : ∀ (stop : Nat) (w' : W) (sn' : KNode), stop < depth →
+      (∀ i, stop < i → i < depth →
+        (Nn i).allKeysIn (bitsUnion (Nn i).lastBitmap ((Nn i).bitsOf (K (i + 1)))) = true) →
+      w'.taken = w.taken → w'.top = w.top → w'.vals = w.vals →
+      (∀ y, y ≠ X stop → (∀ k, stop < k → k ≤ depth → y ≠ X k) → w'.nodes.lookup y = w.nodes.lookup y) →
+      w'.nodes.lookup (X stop) = some sn' → sn'.leaf = (Nn stop).leaf → klongsWf sn'.ks = true →
+      (∀ s, Klong.time s ∈ sn'.ks → s ≤ c.i) →
+      (∀ c' z, (c', z) ∈ sn'.liveAt c.i ↔ (c', z) ∈ (Nn stop).liveAt c.i ∧ c' ≠ K (stop + 1)) →
+      (∀ key', keyWf key' = true →
+        wGet c.p c.i base w' key' = if pre ++ [cv] == key' then none else wGet c.p c.i base w key') →
+      Q w') :
     WriterWP (deleteUpward (X depth) depth cv (pre ++ [cv])) c w (fun _ w' => Q w') := by
   unfold deleteUpward
   simp only [writerWP_bind, writerWP_read]
@@ -337,7 +348,7 @@ theorem writerWP_deleteUpward_inner_get (c : Ctx) (base : View BVal) (X : Nat �
   have hsd' : (stop == depth) = false := by simpa using hsd
   simp only [hsd', Bool.false_eq_true, ↓reduceIte]
   have hsD : stop < depth := by omega
-  obtain ⟨hsl, hK0, hroom, hd1, hd2, hnone⟩ := hstopOK stop hsD hbetween
+  obtain ⟨hkind, hroom, hd1, hd2, hnone⟩ := hstopOK stop hsD hbetween
   rw [writerWP_bind]
   refine (writerWP_note_iff _ c w _).mpr ?_
   generalize hw0 : ({ w with trail := "up.climb" :: w.trail } : W) = w0
@@ -404,11 +415,6 @@ theorem writerWP_deleteUpward_inner_get (c : Ctx) (base : View BVal) (X : Nat �
     exact hlk stop (by omega)
   rw [writerWP_getNode_known _ _ c w2 hls2]
   refine writerWP_ghOf_cached _ _ c w2 hls2 _ (fun gh => ?_)
-  simp only [hsl, Bool.false_eq_true, ↓reduceIte]
-  have hK0' : (K (stop + 1) != 0) = true := by simpa using hK0
-  split
-  · simp only [writerWP_bind]; exact writerWP_throw _ _ _ _
-  simp only [hK0', ↓reduceIte, writerWP_bind, hmerges, Bool.false_eq_true]
   have hst_t : ∀ s', Klong.time s' ∈ (Nn stop).ks → s' ≤ c.i := htimes stop (by omega)
   have hsx : (K (stop + 1), X (stop + 1)) ∈ (Nn stop).liveAt c.i := by
     have := hlinkK (stop + 1) (by omega) (by omega); simpa using this
@@ -420,58 +426,111 @@ theorem writerWP_deleteUpward_inner_get (c : Ctx) (base : View BVal) (X : Nat �
     have := hwf (X stop) (Nn stop) (hreach stop (by omega))
       (by simp only [wNode, htk stop (by omega), Bool.false_eq_true, ↓reduceIte, hlk stop (by omega)])
     exact this
-  refine writerWP_mono (writerWP_appendDeleteKlong_room_frame (X stop) stop (K (stop + 1)) (Nn stop)
-    c w2 hls2 hst_t hswf hneS hroom hd1 hd2) ?_
-  rintro _ w3 ⟨h3t, h3top, h3v, _, _, _, n', h3n, hn'l, hn'w, hn't, hn'lk⟩
-  have h3tw : w3.taken = w.taken := by rw [h3t, h2t, h0t]
-  refine writerWP_mono (hcoll seg stop w3 n' hsD hbetween h3tw (by rw [h3top, h2top, h0top])
-    (by rw [h3v, h2v, h0v])
-    (by
+  -- the chain's facts
+  have hone : ∀ i, stop < i → i < depth → ∀ c' z, (c', z) ∈ (Nn i).liveAt c.i → z = X (i + 1) := by
+    intro i h1 h2 c' z hm
+    have ht := htimes i (by omega)
+    have hm' : (c', z) ∈ (Nn i).live := by rw [← KNode.liveAt_of_times _ c.i ht]; exact hm
+    have hc := allKeysIn_live_cv (Nn i) (K (i + 1)) (hbetween i h1 h2) c' z hm'
+    have hl := hlinkK (i + 1) (by omega) (by omega)
+    rw [show i + 1 - 1 = i by omega] at hl
+    rw [KNode.liveAt_of_times _ c.i ht] at hl
+    have hnd := KNode.live_keys_nodup (Nn i)
+    have e1 := lookup_some_of_mem hnd hm'
+    have e2 := lookup_some_of_mem hnd hl
+    rw [hc] at e1
+    rw [e1] at e2
+    exact Option.some.inj e2
+  have honly : ∀ c' z, (c', z) ∈ (Nn depth).liveAt c.i → c' = cv := by
+    intro c' z hm
+    have hm' : (c', z) ∈ (Nn depth).live := by
+      rw [← KNode.liveAt_of_times _ c.i (htimes depth (Nat.le_refl _))]; exact hm
+    exact allKeysIn_live_cv (Nn depth) cv hall c' z hm'
+  -- the bitmap at the stop node, from any state with w2's nodes
+  have hbit : ∀ (v : W), v.nodes = w2.nodes → v.taken = w2.taken → v.top = w2.top → v.vals = w2.vals →
+      ∀ (post : W → Prop), (∀ w3 n', w3.taken = w.taken → w3.top = w.top → w3.vals = w.vals →
+        (∀ y, y ≠ X stop → (∀ k, stop < k → k ≤ depth → y ≠ X k) →
+          w3.nodes.lookup y = w.nodes.lookup y) →
+        w3.nodes.lookup (X stop) = some n' → n'.leaf = (Nn stop).leaf → klongsWf n'.ks = true →
+        (∀ s, Klong.time s ∈ n'.ks → s ≤ c.i) →
+        (∀ c' z, (c', z) ∈ n'.liveAt c.i ↔ (c', z) ∈ (Nn stop).liveAt c.i ∧ c' ≠ K (stop + 1)) →
+        (∀ key', keyWf key' = true → wGet c.p c.i base w3 key' =
+          if pre ++ [cv] == key' then none else wGet c.p c.i base w key') → post w3) →
+      WriterWP (appendDeleteKlong (X stop) stop (K (stop + 1))) c v (fun _ w3 => post w3) := by
+    intro v hvn hvt hvtop hvv post hpost
+    refine writerWP_mono (writerWP_appendDeleteKlong_room_frame (X stop) stop (K (stop + 1)) (Nn stop)
+      c v (by rw [hvn]; exact hls2) hst_t hswf hneS hroom hd1 hd2) ?_
+    rintro _ w3 ⟨h3t, h3top, h3v, _, _, _, n', h3n, hn'l, hn'w, hn't, hn'lk⟩
+    have h3tw : w3.taken = w.taken := by rw [h3t, hvt, h2t, h0t]
+    have h3top' : w3.top = w.top := by rw [h3top, hvtop, h2top, h0top]
+    have h3v' : w3.vals = w.vals := by rw [h3v, hvv, h2v, h0v]
+    have hfr : ∀ y, y ≠ X stop → (∀ k, stop < k → k ≤ depth → y ≠ X k) →
+        w3.nodes.lookup y = w.nodes.lookup y := by
       intro y hys hnc
       rw [h3n, lookup_upsert]
       simp only [hys, ↓reduceIte]
-      rw [h2n y hnc, h0n])
-    (by rw [h3n, lookup_upsert]; simp) hn'l hn'w hn't
-    (liveAt_iff_of_delete_lookup (Nn stop) n' c.i (K (stop + 1)) hst_t hn't hn'lk) ?_) ?_
-  · intro key' hkw
-    have hV3 : wValue base w3 = wValue base w :=
-      wValue_congr' base w3 w (by rw [h3t, h2t, h0t]) (by rw [h3v, h2v, h0v])
-    have hone : ∀ i, stop < i → i < depth → ∀ c' z, (c', z) ∈ (Nn i).liveAt c.i → z = X (i + 1) := by
-      intro i h1 h2 c' z hm
-      have ht := htimes i (by omega)
-      have hm' : (c', z) ∈ (Nn i).live := by rw [← KNode.liveAt_of_times _ c.i ht]; exact hm
-      have hc := allKeysIn_live_cv (Nn i) (K (i + 1)) (hbetween i h1 h2) c' z hm'
-      have hl := hlinkK (i + 1) (by omega) (by omega)
-      rw [show i + 1 - 1 = i by omega] at hl
-      rw [KNode.liveAt_of_times _ c.i ht] at hl
-      have hnd := KNode.live_keys_nodup (Nn i)
-      have e1 := lookup_some_of_mem hnd hm'
-      have e2 := lookup_some_of_mem hnd hl
-      rw [hc] at e1
-      rw [e1] at e2
-      exact Option.some.inj e2
-    have honly : ∀ c' z, (c', z) ∈ (Nn depth).liveAt c.i → c' = cv := by
-      intro c' z hm
-      have hm' : (c', z) ∈ (Nn depth).live := by
-        rw [← KNode.liveAt_of_times _ c.i (htimes depth (Nat.le_refl _))]; exact hm
-      exact allKeysIn_live_cv (Nn depth) cv hall c' z hm'
+      rw [hvn, h2n y hnc, h0n]
+    have hsn3 : w3.nodes.lookup (X stop) = some n' := by rw [h3n, lookup_upsert]; simp
+    have hlive' := liveAt_iff_of_delete_lookup (Nn stop) n' c.i (K (stop + 1)) hst_t hn't hn'lk
+    refine hpost w3 n' h3tw h3top' h3v' hfr hsn3 hn'l hn'w hn't hlive' ?_
+    intro key' hkw
+    have hV3 : wValue base w3 = wValue base w := wValue_congr' base w3 w h3tw h3v'
+    have hagree : ∀ u, TReach (wNode c.p base w) c.i w.top.rootKey u → u ≠ X stop →
+        (∀ i, stop < i → i ≤ depth → u ≠ X i) → wNode c.p base w3 u = wNode c.p base w u := by
+      intro u _ hus hnc
+      simp only [wNode, h3tw, hfr u hus hnc]
+    have hsnw : wNode c.p base w3 (X stop) = some n' := by
+      simp only [wNode, h3tw, htk stop (by omega), Bool.false_eq_true, ↓reduceIte, hsn3]
     unfold wGet
-    rw [hV3, h3top, h2top, h0top]
-    exact getFromR_up_inner (wNode c.p base w) (wNode c.p base w3) (wValue base w) c.i c.p.fuel hfuel
-      w.top.rootKey X Nn K stop depth hsD pre cv rk hT hR hwf (hreach stop (by omega))
-      (fun i h1 h2 => by simp only [wNode, htk i h2, Bool.false_eq_true, ↓reduceIte, hlk i h2])
-      (fun i h1 h2 => hlinkK i (by omega) h2) hone hleaf honly (fun i h1 h2 => hnoval i h2)
-      (fun i h1 h2 he => by have := hdist i depth (by omega) (Nat.le_refl _) he; omega)
-      hrk hcv hvisL huniq
-      (by
-        intro u hu hus hnc
-        simp only [wNode, h3tw, h3n, lookup_upsert, hus, ↓reduceIte, h2n u hnc, h0n])
-      n' hsl (by simp only [wNode, h3tw, htk stop (by omega), h3n, lookup_upsert, Bool.false_eq_true,
-        ↓reduceIte])
-      (by rw [hn'l]; exact hsl)
-      (liveAt_iff_of_delete_lookup (Nn stop) n' c.i (K (stop + 1)) hst_t hn't hn'lk) key' hkw
-  · intro _ w4 h4
-    simp only [writerWP_pure]
-    exact h4
+    rw [hV3, h3top']
+    cases hl : (Nn stop).leaf with
+    | false =>
+      have hK0 : K (stop + 1) ≠ 0 := by
+        rcases hkind with h | h
+        · rw [hl] at h; cases h
+        · exact h
+      exact getFromR_up_inner (wNode c.p base w) (wNode c.p base w3) (wValue base w) c.i c.p.fuel hfuel
+        w.top.rootKey X Nn K stop depth hsD pre cv rk hT hR hwf (hreach stop (by omega))
+        (fun i h1 h2 => by simp only [wNode, htk i h2, Bool.false_eq_true, ↓reduceIte, hlk i h2])
+        (fun i h1 h2 => hlinkK i (by omega) h2) hone hleaf honly (fun i h1 h2 => hnoval i h2)
+        (fun i h1 h2 he => by have := hdist i depth (by omega) (Nat.le_refl _) he; omega)
+        hrk hcv hvisL huniq hagree n' hl hsnw (by rw [hn'l]; exact hl) hlive' key' hkw
+    | true =>
+      exact getFromR_up_leaf (wNode c.p base w) (wNode c.p base w3) (wValue base w) c.i c.p.fuel hfuel
+        w.top.rootKey X Nn K stop depth hsD pre cv rk hT hR hwf (hreach stop (by omega))
+        (fun i h1 h2 => by simp only [wNode, htk i h2, Bool.false_eq_true, ↓reduceIte, hlk i h2])
+        (fun i h1 h2 => hlinkK i (by omega) h2) hone hleaf honly (fun i h1 h2 => hnoval i h2)
+        (fun i h1 h2 he => by have := hdist i depth (by omega) (Nat.le_refl _) he; omega)
+        hrk hcv hvisL huniq hagree n' hl hsnw (by rw [hn'l]; exact hl) hn'w hlive' key' hkw
+  cases hsl : (Nn stop).leaf with
+  | true =>
+    simp only [↓reduceIte, writerWP_bind]
+    refine (writerWP_note_iff _ c w2 _).mpr ?_
+    refine hbit _ ?_ ?_ ?_ ?_ _ ?_
+    rotate_left 4
+    · intro w3 n' h3t h3top h3v hfr hsn3 hn'l hn'w hn't hlive' hread
+      unfold afterDelete
+      simp only [writerWP_bind, writerWP_read, hmerges, Bool.false_eq_true, ↓reduceIte, writerWP_pure]
+      exact hleafQ stop w3 n' hsD hbetween h3t h3top h3v hfr hsn3 hn'l hn'w hn't hlive' hread
+    all_goals rfl
+  | false =>
+    have hK0 : K (stop + 1) ≠ 0 := by
+      rcases hkind with h | h
+      · rw [hsl] at h; cases h
+      · exact h
+    have hK0' : (K (stop + 1) != 0) = true := by simpa using hK0
+    simp only [Bool.false_eq_true, ↓reduceIte]
+    split
+    · simp only [writerWP_bind]; exact writerWP_throw _ _ _ _
+    simp only [hK0', ↓reduceIte, writerWP_bind, hmerges, Bool.false_eq_true]
+    refine hbit _ ?_ ?_ ?_ ?_ _ ?_
+    rotate_left 4
+    · intro w3 n' h3t h3top h3v hfr hsn3 hn'l hn'w hn't hlive' hread
+      refine writerWP_mono (hcoll seg stop w3 n' hsD hbetween h3t h3top h3v hfr hsn3 hn'l hn'w hn't
+        hlive' hread) ?_
+      intro _ w4 h4
+      simp only [writerWP_pure]
+      exact h4
+    all_goals rfl
 
 end SIS.Tree

@@ -146,8 +146,8 @@ theorem tLink_up_sub (N N' : NodeId → Option KNode) (t : Time) (r : NodeId) (X
     exact ⟨m, hm, hcm⟩
 
 /-- The upward delete at the writer's level, the tree and the reading: the stop
-node inner with room, its klong to the chain not the empty key's, no node of the
-chain made by the transaction, the merges off. The writer's tree after is a tree,
+node with room, a segment leaf or an inner node whose klong to the chain is not
+the empty key's, no node of the chain made by the transaction, the merges off. The writer's tree after is a tree,
 the key reads nothing and every other key as before; at the space root's segment
 root collapse is part of it, at another segment `hcollSeg` gives it. -/
 theorem writerWP_deleteUpward_inner (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
@@ -182,7 +182,7 @@ theorem writerWP_deleteUpward_inner (c : Ctx) (base : View BVal) (hvc : ViewCohe
       m.leaf = true → key' = pre ++ [cv])
     (hstopOK : ∀ s, s < depth → (∀ i, s < i → i < depth →
         (Nn i).allKeysIn (bitsUnion (Nn i).lastBitmap ((Nn i).bitsOf (K (i + 1)))) = true) →
-      (Nn s).leaf = false ∧ K (s + 1) ≠ 0 ∧ (Nn s).size + 1 < c.p.M ∧
+      ((Nn s).leaf = true ∨ K (s + 1) ≠ 0) ∧ (Nn s).size + 1 < c.p.M ∧
       deadOver c.p ((Nn s).setAt ((Nn s).size - 1)
         (.del (bitsUnion (Nn s).lastBitmap ((Nn s).bitsOf (K (s + 1)))))) = false ∧
       deadOver c.p ((Nn s).add c.i (.del (bitsUnion (Nn s).lastBitmap ((Nn s).bitsOf (K (s + 1)))))) =
@@ -200,40 +200,44 @@ theorem writerWP_deleteUpward_inner (c : Ctx) (base : View BVal) (hvc : ViewCohe
         wGet c.p c.i base w' key' = if pre ++ [cv] == key' then none else wGet c.p c.i base w key') := by
   have hN : ∀ i, i ≤ depth → wNode c.p base w (X i) = some (Nn i) := fun i hi => by
     simp only [wNode, htk i hi, Bool.false_eq_true, ↓reduceIte, hlk i hi]
-  apply writerWP_deleteUpward_inner_get c base X Nn K depth cv pre rk w _ hdepth hfuel hp hk hlk htk
-    htimes hdist hne hall hleaf hT hR hwf hreach hlinkK (fun i hi => hnovalAll _ _ (hN i hi))
-    hrk hcv hvisL huniq hstopOK hmerges
-  intro seg stop w' sn' hsD hbetween ht htop hv hnodes hsn' hsl' hsw' hst' hlive' hread
-  -- the tree after, at tree level
-  have hagree : ∀ u, u ≠ X stop → (∀ i, stop < i → i ≤ depth → u ≠ X i) →
-      wNode c.p base w' u = wNode c.p base w u := by
-    intro u hus hnc
-    simp only [wNode, ht, hnodes u hus hnc]
-  have hsnw : wNode c.p base w' (X stop) = some sn' := by
-    simp only [wNode, ht, htk stop (by omega), Bool.false_eq_true, ↓reduceIte, hsn']
-  have hlive1 : ∀ c' z, (c', z) ∈ sn'.liveAt c.i → (c', z) ∈ (Nn stop).liveAt c.i ∧ c' ≠ K (stop + 1) :=
-    fun c' z h => (hlive' c' z).mp h
-  have hdist' : ∀ i i', stop ≤ i → i ≤ depth → stop ≤ i' → i' ≤ depth → X i = X i' → i = i' :=
-    fun i i' _ h2 _ h4 he => hdist i i' h2 h4 he
-  have hNs : ∀ i, stop ≤ i → i ≤ depth → wNode c.p base w (X i) = some (Nn i) := fun i _ h2 => hN i h2
-  have hlinks : ∀ i, stop < i → i ≤ depth → (K i, X i) ∈ (Nn (i - 1)).liveAt c.i :=
-    fun i h1 h2 => hlinkK i (by omega) h2
-  rw [← htop] at hT hR hwf hRt hTimesR hICE hfit hreach hrk huniq
-  have hT' := treeOK_up_inner (wNode c.p base w) (wNode c.p base w') c.i w'.top.rootKey X Nn K stop depth
-    hsD hT (hreach stop (by omega)) hNs hlinks hdist' hagree sn' hsnw hlive1
-  have hsub := tReach_up_sub (wNode c.p base w) (wNode c.p base w') c.i w'.top.rootKey X Nn K stop depth
-    hsD hT (hreach stop (by omega)) hNs hlinks hdist' hagree sn' hsnw hlive1
-  have hlsub := tLink_up_sub (wNode c.p base w) (wNode c.p base w') c.i w'.top.rootKey X Nn K stop depth
-    hsD hT (hreach stop (by omega)) hNs hlinks hdist' hagree sn' hsnw hlive1
-  have hV : wValue base w' = wValue base w := wValue_congr' base w' w ht hv
-  -- a reached node's node after: the stop node's, or the one before
-  have hnode : ∀ y yn, TReach (wNode c.p base w') c.i w'.top.rootKey y → wNode c.p base w' y = some yn →
-      (y = X stop ∧ yn = sn') ∨ wNode c.p base w y = some yn := by
-    intro y yn hy hyn
-    by_cases hys : y = X stop
-    · left; rw [hys, hsnw] at hyn; exact ⟨hys, (Option.some.inj hyn).symm⟩
-    · right; rw [← hagree y hys (hsub y hy).2]; exact hyn
-  have hI : CollGetInv c base w' w' := by
+  have hpost : ∀ (stop : Nat) (w' : W) (sn' : KNode), stop < depth →
+      w'.taken = w.taken → w'.top = w.top → w'.vals = w.vals →
+      (∀ y, y ≠ X stop → (∀ k, stop < k → k ≤ depth → y ≠ X k) → w'.nodes.lookup y = w.nodes.lookup y) →
+      w'.nodes.lookup (X stop) = some sn' → sn'.leaf = (Nn stop).leaf → klongsWf sn'.ks = true →
+      (∀ s, Klong.time s ∈ sn'.ks → s ≤ c.i) →
+      (∀ c' z, (c', z) ∈ sn'.liveAt c.i ↔ (c', z) ∈ (Nn stop).liveAt c.i ∧ c' ≠ K (stop + 1)) →
+      CollGetInv c base w' w' := by
+    intro stop w' sn' hsD ht htop hv hnodes hsn' hsl' hsw' hst' hlive'
+    -- the tree after, at tree level
+    have hagree : ∀ u, u ≠ X stop → (∀ i, stop < i → i ≤ depth → u ≠ X i) →
+        wNode c.p base w' u = wNode c.p base w u := by
+      intro u hus hnc
+      simp only [wNode, ht, hnodes u hus hnc]
+    have hsnw : wNode c.p base w' (X stop) = some sn' := by
+      simp only [wNode, ht, htk stop (by omega), Bool.false_eq_true, ↓reduceIte, hsn']
+    have hlive1 : ∀ c' z, (c', z) ∈ sn'.liveAt c.i → (c', z) ∈ (Nn stop).liveAt c.i ∧ c' ≠ K (stop + 1) :=
+      fun c' z h => (hlive' c' z).mp h
+    have hdist' : ∀ i i', stop ≤ i → i ≤ depth → stop ≤ i' → i' ≤ depth → X i = X i' → i = i' :=
+      fun i i' _ h2 _ h4 he => hdist i i' h2 h4 he
+    have hNs : ∀ i, stop ≤ i → i ≤ depth → wNode c.p base w (X i) = some (Nn i) := fun i _ h2 => hN i h2
+    have hlinks : ∀ i, stop < i → i ≤ depth → (K i, X i) ∈ (Nn (i - 1)).liveAt c.i :=
+      fun i h1 h2 => hlinkK i (by omega) h2
+    rw [← htop] at hT hR hwf hRt hTimesR hICE hfit hreach hrk huniq
+    have hT' := treeOK_up_inner (wNode c.p base w) (wNode c.p base w') c.i w'.top.rootKey X Nn K stop depth
+      hsD hT (hreach stop (by omega)) hNs hlinks hdist' hagree sn' hsnw hlive1
+    have hsub := tReach_up_sub (wNode c.p base w) (wNode c.p base w') c.i w'.top.rootKey X Nn K stop depth
+      hsD hT (hreach stop (by omega)) hNs hlinks hdist' hagree sn' hsnw hlive1
+    have hlsub := tLink_up_sub (wNode c.p base w) (wNode c.p base w') c.i w'.top.rootKey X Nn K stop depth
+      hsD hT (hreach stop (by omega)) hNs hlinks hdist' hagree sn' hsnw hlive1
+    have hV : wValue base w' = wValue base w := wValue_congr' base w' w ht hv
+    -- a reached node's node after: the stop node's, or the one before
+    have hnode : ∀ y yn, TReach (wNode c.p base w') c.i w'.top.rootKey y → wNode c.p base w' y = some yn →
+        (y = X stop ∧ yn = sn') ∨ wNode c.p base w y = some yn := by
+      intro y yn hy hyn
+      by_cases hys : y = X stop
+      · left; rw [hys, hsnw] at hyn; exact ⟨hys, (Option.some.inj hyn).symm⟩
+      · right; rw [← hagree y hys (hsub y hy).2]; exact hyn
+    show CollGetInv c base w' w'
     refine ⟨⟨hT', fun y hy => by rw [ht]; exact hRt y (hsub y hy).1, ?_, ?_⟩, fun _ => rfl, ?_, ?_, ?_⟩
     · intro y yn hy hyn
       rcases hnode y yn hy hyn with ⟨_, rfl⟩ | h
@@ -268,11 +272,18 @@ theorem writerWP_deleteUpward_inner (c : Ctx) (base : View BVal) (hvc : ViewCohe
       rcases hnode y yn hy hyn with ⟨hys, _⟩ | h
       · rw [hys]; exact hnovalAll _ _ (hN stop (by omega))
       · exact hnovalAll y yn h
-  by_cases hseg : seg = 0
-  · subst hseg
-    refine writerWP_mono (writerWP_collapseRoot_space_get (pre ++ [cv]) c base hvc w' c.p.fuel w' hI) ?_
-    intro _ w'' h
-    exact ⟨h.1.1, fun key' hkw => by rw [h.2.1 key']; exact hread key' hkw⟩
-  · exact hcollSeg seg (by omega) w' hI hread
+  apply writerWP_deleteUpward_inner_get c base X Nn K depth cv pre rk w _ hdepth hfuel hp hk hlk htk
+    htimes hdist hne hall hleaf hT hR hwf hreach hlinkK (fun i hi => hnovalAll _ _ (hN i hi))
+    hrk hcv hvisL huniq hstopOK hmerges
+  · intro seg stop w' sn' hsD _ ht htop hv hnodes hsn' hsl' hsw' hst' hlive' hread
+    have hI := hpost stop w' sn' hsD ht htop hv hnodes hsn' hsl' hsw' hst' hlive'
+    by_cases hseg : seg = 0
+    · subst hseg
+      refine writerWP_mono (writerWP_collapseRoot_space_get (pre ++ [cv]) c base hvc w' c.p.fuel w' hI) ?_
+      intro _ w'' h
+      exact ⟨h.1.1, fun key' hkw => by rw [h.2.1 key']; exact hread key' hkw⟩
+    · exact hcollSeg seg (by omega) w' hI hread
+  · intro stop w' sn' hsD _ ht htop hv hnodes hsn' hsl' hsw' hst' hlive' hread
+    exact ⟨(hpost stop w' sn' hsD ht htop hv hnodes hsn' hsl' hsw' hst' hlive').1.1, hread⟩
 
 end SIS.Tree
