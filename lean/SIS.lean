@@ -58,6 +58,9 @@ import SIS.BoundColdReads
 import SIS.BoundColdReadsTheorems
 import SIS.BoundColdReadsExample
 import SIS.BoundColdDropJTreeTheorems
+import SIS.BoundColdCascadeExample
+import SIS.BoundStartupTheorems
+import SIS.BoundColdDropCountTheorems
 import SIS.Tree.Val
 import SIS.Tree.Node
 import SIS.Tree.Exec
