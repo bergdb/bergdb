@@ -166,6 +166,7 @@ import SIS.Tree.WriterTreeChainSteps
 import SIS.Tree.WriterTreeChainTree
 import SIS.Tree.WriterTreeChainG
 import SIS.Tree.WriterTreeDelChain
+import SIS.Tree.WriterGetMergeTail
 import SIS.Tree.RangeSim
 import SIS.Tree.RangeChain
 import SIS.Tree.RangePut
