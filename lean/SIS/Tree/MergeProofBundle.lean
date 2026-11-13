@@ -135,3 +135,4 @@ import SIS.Tree.WriterTreeCascadePut
 import SIS.Tree.GetSpaceSpace
 import SIS.Tree.PutInvDelFull
 import SIS.Tree.GetDelSplit
+import SIS.Tree.GetFinal
