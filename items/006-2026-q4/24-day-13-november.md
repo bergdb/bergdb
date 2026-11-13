@@ -49,7 +49,7 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 | 024-12 | TP7, the tree's invariants | Codex run 4 (Sol max) | running |
 | 026-04 | The back-to-empty lag at 10M keys, understood | frac (high) | done 07:44: the phase of reclaim's iteration at the deletes' end (a step scans at its iteration's start), not f; keep 1/4; P8 cures it |
 | 021-29 | Unit tests that wait with no timeout | waits (high) | landed dc69b7a6 |
-| 021-28 | Unit tests with fixed time limits | limits (high) | landed 6908310a |
+| 021-28 | Unit tests with fixed time limits | limits (high) | landed ffa39b4e |
 
 
 ## 4. Progress
