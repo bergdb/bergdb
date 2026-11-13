@@ -9,6 +9,7 @@ transaction), which the state predicate gives.
 import SIS.Tree.TakeBackRunJ2
 import SIS.Tree.TakeDeadCases
 import SIS.Tree.ChildrenKinds
+import SIS.Tree.GetOpAssembly
 
 set_option autoImplicit false
 
@@ -382,5 +383,34 @@ theorem takeBackOK_of_cases (p : Params) (hM : 2 ≤ p.M) (Q : Struct BVal → T
       (opJ2Case_delNoLeaf p _ _ hSI) (opJ2Case_delNoop p _ _ hSI) c7 (opJ2Case_delRoom p _ _ hSI hSV) c9
   exact takeBackOK_of_jointJ2 p hM Q hQ0 hQs ho (TakeS p) hO hS hSRF hB
     (takenNotValOK_of p hM _ (fun _ _ h => hQP _ _ h.2.2) (fun _ _ h => hQK _ _ h.2.2))
+
+/-! ## With the merges on: the cases (5) to (9) void -/
+
+theorem opJ2CaseOK_void (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop)
+    (P : Ctx → View BVal → W → Op → Prop) (hm : p.merges = true)
+    (hP : ∀ c base w op, P c base w op → c.p.merges = false) : OpJ2CaseOK p R S P := by
+  intro ts _ _ _ _ _ _ _ _ op _ _ _ w _ _ _ _ hPc
+  have h : p.merges = false := hP _ _ _ _ hPc
+  rw [hm] at h
+  cases h
+
+/-- TP7's take-back statement with the merges on: `takeBackOK_of_cases` with the
+cases (5) to (9) void, so only (2), (3) and (4) open. -/
+theorem takeBackOK_of_cases_merges (p : Params) (hM : 2 ≤ p.M) (hm : p.merges = true)
+    (Q : Struct BVal → Time → Prop) (hQ0 : Q (initStruct p) 0)
+    (hQs : ∀ ts tx, Within p (ts ++ [tx]) → RunTreeQ p Q (treeRun p ts) ts.length →
+      RunLinksOK p (treeRun p (ts ++ [tx])) (ts.length + 1) →
+      TreeAt p (treeRun p (ts ++ [tx])) (ts.length + 1) →
+      Q (treeRun p (ts ++ [tx])) (ts.length + 1))
+    (hQP : ∀ P t, Q P t → PointersOK P) (hQK : ∀ P t, Q P t → KindsAllOK p P)
+    (ho : OpTreeOKUnder p (RunTreeQ p Q))
+    (hPI : StateOK p (RunTreeQ p Q) (fun ts _ w => PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w))
+    (hB : BaseStartOK p (RunTreeQ p Q))
+    (c2 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS p) PutLeafFullCase)
+    (c3 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS p) PutNewSegCase)
+    (c4 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS p) DelMergeCase) :
+    TakeBackOKUnder p (RunLinksOK p) :=
+  takeBackOK_of_cases p hM Q hQ0 hQs hQP hQK ho hPI hB c2 c3 c4
+    (opJ2CaseOK_void p _ _ _ hm delEmptyCase_merges) (opJ2CaseOK_void p _ _ _ hm delFullCase_merges)
 
 end SIS.Tree
