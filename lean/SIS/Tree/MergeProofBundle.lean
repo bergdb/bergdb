@@ -185,3 +185,4 @@ import SIS.Tree.RangeChainGW
 import SIS.Tree.RangePutG
 import SIS.Tree.RangeDelG
 import SIS.Tree.RangeMergeW
+import SIS.Tree.RangeMergeMade
