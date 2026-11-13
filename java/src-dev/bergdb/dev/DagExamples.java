@@ -5,6 +5,7 @@ import java.io.IOException;
 import bergdb.common.StringUtil;
 import bergdb.core.Db;
 import bergdb.core.TestClock;
+import bergdb.core.TestNodeSize;
 import bergdb.dag.Dag;
 import bergdb.dag.AccessData;
 import bergdb.dag.Node;
@@ -146,7 +147,7 @@ public class DagExamples {
      */
     public static void noTree() throws IOException {
         TestClock clock = new TestClock();
-        Db db = Db.builder().testSetup().clock(clock).maxNodeSize8().start();
+        Db db = TestNodeSize.builder(8).testSetup().clock(clock).start();
         
         for (int i = 0; i < 10; i++) {
             db.execute(db.trans().put(Keys.toSegments("/firstx/k" + i), StringUtil.toBytes("v" + i)));

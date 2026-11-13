@@ -114,17 +114,28 @@ Files
   11.1 MB (024-05, ST8; 024-01, PA7). Code on branch
   `026-07-write-buffer`; the probes in 07-write-buffer/.
 * 08-fixed-node-size.md. 026-08, the node size fixed at 30 for users,
-  the other sizes for tests only (Frans, 2026-11-13, 09:21); registered.
+  the other sizes for tests only (Frans, 2026-11-13, 09:21): the four
+  `DbBuilder.maxNodeSize` setters package-private, `TestNodeSize` for
+  the tests outside `bergdb.core`; on branch `026-08-node-size`, to
+  land.
 * 09-keys-only-scan.md. 026-09, reclaim's scan without the values it
   does not rewrite (024-34, Q34-1, option b; Frans, 2026-11-13, 09:38);
   registered, after 026-05.
 * 10-node-id-cache-after-empty.md. 026-10, `NodeCollection.idByPos`
-  after back to empty (found by 026-07; G4 and G5 then gate the plain
-  heaps); registered.
+  after back to empty (found by 026-07): a decided cut forgets the node
+  ids below it and `KeyModSet`'s key hashes before it (the 2.2 MB of
+  `long[]`), and G4 and G5 gate the plain heaps. Code on branch
+  `026-10-idbypos`; the probes in 10-node-id-cache-after-empty/.
 * 11-lag-gate.md. 026-11, G4's back-to-empty lag a gate of
   `count-gates.sh`: at most 2 R (2,000 drive transactions) at 1M keys;
   1,281 on `main` (margin 1.56), 4,395 without 026-05 (fails); on branch
   `026-11-lag-gate`, to land.
+* 12-stable-format-plan.md. 026-12, the stable stream format: a draft
+  plan for Frans (10:24): 11 questions, SF1 to SF11, merged from 027-03's
+  Q1 to Q23 and section 21, 026-01's QC2 to QC5, 024-22's QM1, 024-01's
+  OT4, PA5 and PA9, 017-08 and 017-11; each with its options, what it
+  depends on and a recommendation; the decisions already taken quoted;
+  the order, and three measurements (M1 to M3); none decided.
 
 
 Log
