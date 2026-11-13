@@ -221,6 +221,211 @@ theorem treeOK_attach (L L' : NodeId → Option KNode) (t : Time) (r x z : NodeI
     · exact absurd (h1v ▸ TReach.link hyL' h2) hz
     · exact ⟨h1x.trans h2x.symm, h1c.trans h2c.symm⟩
 
+/-- A regrouping below a node x of the tree: the old nodes (reached, each
+named by x or by another old node) are replaced by new ones (not reached),
+whose links go to new nodes or to nodes that old ones named, but not old; x's
+links go to nodes it named that are not old, or to new nodes; every new node is
+named once (by x or by a new node). Elsewhere the lookup is unchanged. A split
+(a space split and the splits above it), a time split, a merge with its parent's
+change: each is one. -/
+theorem treeOK_regroup (L L' : NodeId → Option KNode) (t : Time) (r x : NodeId)
+    (Old New : NodeId → Prop) (ht : TreeOK L t r) (hx : TReach L t r x) (hxOld : ¬ Old x)
+    (hOld : ∀ o, Old o → TReach L t r o ∧ ∃ x0 c, (x0 = x ∨ Old x0) ∧ TLink L t x0 c o)
+    (hNew : ∀ z, New z → ¬ TReach L t r z)
+    (hsame : ∀ y, y ≠ x → ¬ New y → ¬ Old y → L' y = L y)
+    (hxl : ∀ c y, TLink L' t x c y → (TLink L t x c y ∧ ¬ Old y) ∨ New y)
+    (hzl : ∀ z c y, New z → TLink L' t z c y →
+      New y ∨ ((∃ o c0, Old o ∧ TLink L t o c0 y) ∧ ¬ Old y))
+    (hxone : ∀ c c' z, New z → TLink L' t x c z → TLink L' t x c' z → c = c')
+    (hzone : ∀ z c z' c' y, New z → New z' → TLink L' t z c y → TLink L' t z' c' y →
+      z = z' ∧ c = c')
+    (hmix : ∀ c z z' c', New z → New z' → TLink L' t x c z → ¬ TLink L' t z' c' z)
+    (hroot : ∃ n, L' r = some n) : TreeOK L' t r := by
+  have hxNew : ¬ New x := fun h => hNew x h hx
+  -- an old node is named in L only by x or an old node
+  have hOldPar : ∀ o y c, Old o → TReach L t r y → TLink L t y c o → y = x ∨ Old y := by
+    intro o y c ho hy hl
+    obtain ⟨_, x0, c0, hx0, hl0⟩ := hOld o ho
+    have hr0 : TReach L t r x0 := by
+      rcases hx0 with h | h
+      · rw [h]; exact hx
+      · exact (hOld x0 h).1
+    have := (ht.oneLink y c x0 c0 o hy hr0 hl hl0).1
+    rw [this]; exact hx0
+  -- what L' reaches
+  have hb : ∀ y, TReach L' t r y → (TReach L t r y ∧ ¬ Old y) ∨ New y := by
+    intro y hy
+    induction hy with
+    | root =>
+      refine Or.inl ⟨TReach.root, fun ho => ?_⟩
+      obtain ⟨_, x0, c0, hx0, hl0⟩ := hOld r ho
+      have hr0 : TReach L t r x0 := by
+        rcases hx0 with h | h
+        · rw [h]; exact hx
+        · exact (hOld x0 h).1
+      exact ht.rootFree x0 c0 hr0 hl0
+    | @link y0 c y _ hl ih =>
+      rcases ih with ⟨hy0, hy0o⟩ | hy0n
+      · by_cases hyx : y0 = x
+        · rw [hyx] at hl
+          rcases hxl c y hl with ⟨h, ho⟩ | h
+          · exact Or.inl ⟨TReach.link hx h, ho⟩
+          · exact Or.inr h
+        · have hy0n : ¬ New y0 := fun h => hNew y0 h hy0
+          obtain ⟨n, hn, hc, hs⟩ := hl
+          rw [hsame y0 hyx hy0n hy0o] at hn
+          have hL : TLink L t y0 c y := ⟨n, hn, hc, hs⟩
+          refine Or.inl ⟨TReach.link hy0 hL, fun ho => ?_⟩
+          rcases hOldPar y y0 c ho hy0 hL with h | h
+          · exact hyx h
+          · exact hy0o h
+      · rcases hzl y0 c y hy0n hl with h | ⟨⟨o, c0, ho, hlo⟩, hyo⟩
+        · exact Or.inr h
+        · exact Or.inl ⟨TReach.link (hOld o ho).1 hlo, hyo⟩
+  -- each link of L' from a node it reaches
+  have hcls : ∀ y c v, TReach L' t r y → TLink L' t y c v →
+      (y = x ∧ TLink L t x c v ∧ ¬ Old v) ∨ (y = x ∧ New v) ∨ (New y ∧ New v) ∨
+      (New y ∧ ∃ o c0, Old o ∧ TLink L t o c0 v ∧ ¬ Old v) ∨
+      (TReach L t r y ∧ ¬ Old y ∧ y ≠ x ∧ TLink L t y c v) := by
+    intro y c v hy hl
+    by_cases hyx : y = x
+    · rw [hyx] at hl
+      rcases hxl c v hl with ⟨h, ho⟩ | h
+      · exact Or.inl ⟨hyx, h, ho⟩
+      · exact Or.inr (Or.inl ⟨hyx, h⟩)
+    · rcases hb y hy with ⟨hyL, hyo⟩ | hyn
+      · have hy0n : ¬ New y := fun h => hNew y h hyL
+        obtain ⟨n, hn, hc, hs⟩ := hl
+        rw [hsame y hyx hy0n hyo] at hn
+        exact Or.inr (Or.inr (Or.inr (Or.inr ⟨hyL, hyo, hyx, n, hn, hc, hs⟩)))
+      · rcases hzl y c v hyn hl with h | ⟨⟨o, c0, ho, hlo⟩, hvo⟩
+        · exact Or.inr (Or.inr (Or.inl ⟨hyn, h⟩))
+        · exact Or.inr (Or.inr (Or.inr (Or.inl ⟨hyn, o, c0, ho, hlo, hvo⟩)))
+  refine ⟨hroot, ?_, ?_⟩
+  · intro y c hy hl
+    have hrL : TReach L t r r := TReach.root
+    rcases hcls y c r hy hl with ⟨_, h, _⟩ | ⟨_, h⟩ | ⟨_, h⟩ | ⟨_, o, c0, ho, hlo, _⟩ |
+        ⟨hyL, _, _, h⟩
+    · exact ht.rootFree x c hx h
+    · exact hNew r h hrL
+    · exact hNew r h hrL
+    · exact ht.rootFree o c0 (hOld o ho).1 hlo
+    · exact ht.rootFree y c hyL h
+  · intro y1 c1 y2 c2 v hy1 hy2 hl1 hl2
+    have hc1 := hcls y1 c1 v hy1 hl1
+    have hc2 := hcls y2 c2 v hy2 hl2
+    -- a new target is named once
+    by_cases hvn : New v
+    · have hnotL : ∀ y c, TReach L t r y → ¬ TLink L t y c v :=
+        fun y c hy hl => hNew v hvn (TReach.link hy hl)
+      rcases hc1 with ⟨h1x, h1, _⟩ | ⟨h1x, _⟩ | ⟨h1n, _⟩ | ⟨_, o, c0, ho, hlo, _⟩ | ⟨h1L, _, _, h1⟩
+      · exact absurd h1 (hnotL x c1 hx)
+      · rcases hc2 with ⟨h2x, h2, _⟩ | ⟨h2x, _⟩ | ⟨h2n, _⟩ | ⟨_, o, c0, ho, hlo, _⟩ |
+            ⟨h2L, _, _, h2⟩
+        · exact absurd h2 (hnotL x c2 hx)
+        · subst h1x; subst h2x
+          exact ⟨rfl, hxone c1 c2 v hvn hl1 hl2⟩
+        · subst h1x
+          exact absurd hl2 (hmix c1 v y2 c2 hvn h2n hl1)
+        · exact absurd hlo (hnotL o c0 (hOld o ho).1)
+        · exact absurd h2 (hnotL y2 c2 h2L)
+      · rcases hc2 with ⟨h2x, h2, _⟩ | ⟨h2x, _⟩ | ⟨h2n, _⟩ | ⟨_, o, c0, ho, hlo, _⟩ |
+            ⟨h2L, _, _, h2⟩
+        · exact absurd h2 (hnotL x c2 hx)
+        · subst h2x
+          exact absurd hl1 (hmix c2 v y1 c1 hvn h1n hl2)
+        · exact hzone y1 c1 y2 c2 v h1n h2n hl1 hl2
+        · exact absurd hlo (hnotL o c0 (hOld o ho).1)
+        · exact absurd h2 (hnotL y2 c2 h2L)
+      · exact absurd hlo (hnotL o c0 (hOld o ho).1)
+      · exact absurd h1 (hnotL y1 c1 h1L)
+    · -- an old target: the links of L under the links of L'
+      have hsrc : ∀ y c, TReach L' t r y → TLink L' t y c v →
+          (New y ∧ ∃ o c0, Old o ∧ TLink L t o c0 v) ∨ (TReach L t r y ∧ ¬ Old y ∧ TLink L t y c v) := by
+        intro y c hy hl
+        rcases hcls y c v hy hl with ⟨h1x, h1, _⟩ | ⟨_, h⟩ | ⟨_, h⟩ | ⟨h1n, o, c0, ho, hlo, _⟩ |
+            ⟨h1L, h1o, _, h1⟩
+        · rw [h1x]; exact Or.inr ⟨hx, hxOld, h1⟩
+        · exact absurd h hvn
+        · exact absurd h hvn
+        · exact Or.inl ⟨h1n, o, c0, ho, hlo⟩
+        · exact Or.inr ⟨h1L, h1o, h1⟩
+      rcases hsrc y1 c1 hy1 hl1 with ⟨h1n, o1, c01, ho1, hlo1⟩ | ⟨h1L, h1o, h1⟩ <;>
+        rcases hsrc y2 c2 hy2 hl2 with ⟨h2n, o2, c02, ho2, hlo2⟩ | ⟨h2L, h2o, h2⟩
+      · exact hzone y1 c1 y2 c2 v h1n h2n hl1 hl2
+      · have := (ht.oneLink o1 c01 y2 c2 v (hOld o1 ho1).1 h2L hlo1 h2).1
+        rw [this] at ho1
+        exact absurd ho1 h2o
+      · have := (ht.oneLink y1 c1 o2 c02 v h1L (hOld o2 ho2).1 h1 hlo2).1
+        rw [← this] at ho2
+        exact absurd ho2 h1o
+      · exact ht.oneLink y1 c1 y2 c2 v h1L h2L h1 h2
+
+/-- The general form: every link of the new lookup, from a node it reaches,
+names a new node (one the old tree does not reach) or is the transfer `tr` of a
+link of the old tree to the same node (a klong moved to a new node, or kept);
+each new node is named once; the new root is the old one, or a new node that
+nothing names. Then the new lookup has a tree. Every rule of the writer is one:
+`tr` says where each klong of the old tree went. -/
+theorem treeOK_transfer (L L' : NodeId → Option KNode) (t : Time) (r r' : NodeId)
+    (New : NodeId → Prop) (tr : NodeId → Nat → NodeId × Nat)
+    (ht : TreeOK L t r) (hNew : ∀ z, New z → ¬ TReach L t r z)
+    (hr' : r' = r ∨ (New r' ∧ ∀ y c, TReach L' t r' y → ¬ TLink L' t y c r'))
+    (hlinks : ∀ y c v, TReach L' t r' y → TLink L' t y c v →
+      New v ∨ ∃ y0 c0, TReach L t r y0 ∧ TLink L t y0 c0 v ∧ tr y0 c0 = (y, c))
+    (hnewOnce : ∀ y c y' c' z, TReach L' t r' y → TReach L' t r' y' → New z →
+      TLink L' t y c z → TLink L' t y' c' z → y = y' ∧ c = c')
+    (hroot : ∃ n, L' r' = some n) : TreeOK L' t r' := by
+  refine ⟨hroot, ?_, ?_⟩
+  · intro y c hy hl
+    rcases hr' with h | ⟨_, h⟩
+    · rcases hlinks y c r' hy hl with hn | ⟨y0, c0, hy0, hl0, _⟩
+      · rw [h] at hn
+        exact hNew r hn TReach.root
+      · rw [h] at hl0
+        exact ht.rootFree y0 c0 hy0 hl0
+    · exact h y c hy hl
+  · intro y1 c1 y2 c2 v hy1 hy2 hl1 hl2
+    by_cases hvn : New v
+    · exact hnewOnce y1 c1 y2 c2 v hy1 hy2 hvn hl1 hl2
+    · rcases hlinks y1 c1 v hy1 hl1 with h | ⟨y01, c01, hy01, hl01, htr1⟩
+      · exact absurd h hvn
+      rcases hlinks y2 c2 v hy2 hl2 with h | ⟨y02, c02, hy02, hl02, htr2⟩
+      · exact absurd h hvn
+      obtain ⟨he, hc⟩ := ht.oneLink y01 c01 y02 c02 v hy01 hy02 hl01 hl02
+      subst he; subst hc
+      rw [htr1] at htr2
+      simp only [Prod.mk.injEq] at htr2
+      exact htr2
+
+/-- A node reached from a node reached from r is reached from r. -/
+theorem tReach_trans (L : NodeId → Option KNode) (t : Time) (r y : NodeId)
+    (hy : TReach L t r y) : ∀ v, TReach L t y v → TReach L t r v := by
+  intro v hv
+  induction hv with
+  | root => exact hy
+  | link _ hl ih => exact TReach.link ih hl
+
+/-- The tree below a child of the root (root collapse: the child takes the
+root's place). -/
+theorem treeOK_child (L : NodeId → Option KNode) (t : Time) (r y : NodeId) (c : Nat)
+    (ht : TreeOK L t r) (hl : TLink L t r c y) (hy : ∃ n, L y = some n) : TreeOK L t y := by
+  have hyr : TReach L t r y := TReach.link TReach.root hl
+  have hsub := tReach_trans L t r y hyr
+  -- r is not reached from y
+  have hnr : ¬ TReach L t y r := by
+    intro h
+    cases h with
+    | root => exact ht.rootFree r c TReach.root hl
+    | link hz hl' => exact ht.rootFree _ _ (hsub _ hz) hl'
+  refine ⟨hy, ?_, ?_⟩
+  · intro z c' hz hl'
+    have := (ht.oneLink z c' r c y (hsub z hz) TReach.root hl' hl).1
+    rw [this] at hz
+    exact hnr hz
+  · intro x1 c1 x2 c2 v h1 h2 hl1 hl2
+    exact ht.oneLink x1 c1 x2 c2 v (hsub x1 h1) (hsub x2 h2) hl1 hl2
+
 /-! ## The first state, and the state after the transaction -/
 
 /-- The writer's first state has P's tree at the time before: the same nodes,
