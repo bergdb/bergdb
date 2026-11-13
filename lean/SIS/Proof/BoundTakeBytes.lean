@@ -205,4 +205,102 @@ theorem takeB_bound (sp : Spec V T) (al : Algo V T) (size : Record V T → Nat) 
   have := key ts.length (Nat.le_refl _)
   rwa [st_length] at this
 
+/-- T3 for BergDB's take with its byte limit, in transactions: with settings at
+most M in T(1), ..., T(k), every record costing at least m, and the got-dirty
+nodes of each single transaction fitting in the limit (bergdb 005-31), the
+section after T(k) has fewer than 2 M / m + 2 transactions, (n - 2) m < 2 M.
+While the span is at least twice the setting, every record takes at least the
+oldest transaction (`takePolicyB_progress_span`), so the section does not
+grow; below, it is shorter than 2 M. -/
+theorem takeB_count (sp : Spec V T) (al : Algo V T) (size : Record V T → Nat) (sd : Time → Nat)
+    (pace : Pace V T) (nodeB maxB : Nat) (hp : al.policy = takePolicyB size sd pace nodeB maxB)
+    (M m : Nat) (ts : List T) (hM : ∀ i, 0 < i → i ≤ ts.length → sd i ≤ M)
+    (hm : ∀ R ∈ (run sp al ts).S, m ≤ size R)
+    (hfit : ∀ j < ts.length, ∀ τ,
+      ((run sp al (ts.take j)).D.filter (fun e => e.2 == τ)).length * nodeB ≤ maxB) :
+    ((sectionIdx (run sp al ts).S (lastSp (run sp al ts).S)).length - 2) * m < 2 * M ∨
+      (sectionIdx (run sp al ts).S (lastSp (run sp al ts).S)).length ≤ 1 := by
+  have key : ∀ j ≤ ts.length,
+      ((sectionIdx (st sp al ts j).S (lastSp (st sp al ts j).S)).length - 2) * m < 2 * M ∨
+        (sectionIdx (st sp al ts j).S (lastSp (st sp al ts j).S)).length ≤ 1 := by
+    intro j
+    induction j with
+    | zero =>
+      intro _
+      right
+      rw [st_zero]
+      simp [sectionIdx, init_length]
+    | succ j ih =>
+      intro hj
+      have ih := ih (by omega)
+      have hlen : (st sp al ts j).S.length = j + 1 := by
+        rw [st, run_length, List.length_take]; omega
+      have hlen' : (st sp al ts (j + 1)).S.length = j + 2 := by
+        rw [st, run_length, List.length_take]; omega
+      have hS' : (st sp al ts (j + 1)).S = (step sp al (st sp al ts j) ts[j]).S := by
+        rw [st_succ sp al ts (by omega)]
+      have hs' : lastSp (st sp al ts (j + 1)).S = (parts sp al (st sp al ts j) ts[j]).s := by
+        rw [hS', lastSp_step]
+      have hsp := parts_s sp al (st sp al ts j) ts[j]
+      unfold startupPos at hsp
+      have hsle := lastSp_lt_run sp al (ts.take j)
+      simp only [run_length, List.length_take] at hsle
+      have hsl : lastSp (st sp al ts j).S ≤ j := by
+        simp only [st]; omega
+      have hidx : ∀ (S : Stream V T), (sectionIdx S (lastSp S)).length = S.length - 1 - lastSp S := by
+        intro S; simp [sectionIdx]
+      rw [hidx] at ih ⊢
+      rw [hlen] at ih
+      rw [hlen', hs']
+      by_cases hspan : 2 * sd (j + 1) ≤ (st sp al ts j).S.span size
+      · by_cases hne : lastSp (st sp al ts j).S + 1 < (st sp al ts j).S.length
+        · have hfitj := hfit j (by omega) (lastSp (st sp al ts j).S + 1)
+          have hD1 : ((parts sp al (st sp al ts j) ts[j]).D1.filter
+              (fun e => e.2 == lastSp (st sp al ts j).S + 1)).length * nodeB ≤ maxB := by
+            rw [parts_D1, List.filter_append, List.length_append]
+            have : ((parts sp al (st sp al ts j) ts[j]).gd3.map
+                (fun x => (x, (st sp al ts j).S.length))).filter
+                (fun e => e.2 == lastSp (st sp al ts j).S + 1) = [] := by
+              rw [List.filter_eq_nil_iff]
+              intro e he
+              obtain ⟨x, -, rfl⟩ := List.mem_map.mp he
+              simp only [beq_iff_eq]
+              omega
+            rw [this]
+            simpa [st] using hfitj
+          have hpr := takePolicyB_progress_span size sd pace nodeB maxB (st sp al ts j).S
+            (parts sp al (st sp al ts j) ts[j]).D1 (st sp al ts j).S.length ts[j] hne
+            (by rw [hlen]; exact hspan) hD1
+          rw [← hp] at hpr
+          rw [hlen] at hsp hpr hne
+          rcases ih with h | h
+          · left
+            have : j + 2 - 1 - (parts sp al (st sp al ts j) ts[j]).s ≤
+                j + 1 - 1 - lastSp (st sp al ts j).S := by omega
+            exact Nat.lt_of_le_of_lt (Nat.mul_le_mul_right m (by omega)) h
+          · right; omega
+        · right
+          rw [hlen] at hne hsp
+          omega
+      · have hsec : (st sp al ts j).S.cost size (lastSp (st sp al ts j).S + 1)
+            ((st sp al ts j).S.length - 1) < 2 * M := by
+          have := hM (j + 1) (by omega) hj
+          unfold Stream.span at hspan
+          omega
+        have hmj : ∀ R ∈ (st sp al ts j).S, m ≤ size R := by
+          intro R hR
+          apply hm
+          have hpre := st_S_prefix sp al ts (j := j) (j' := ts.length) (by omega) (Nat.le_refl _)
+          rw [st_length] at hpre
+          exact hpre.subset hR
+        have hr := (rerun_of_section size _ hsec hmj).1
+        rw [hidx, hlen] at hr
+        rw [hlen] at hsp
+        left
+        have : j + 2 - 1 - (parts sp al (st sp al ts j) ts[j]).s - 2 ≤
+            j + 1 - 1 - lastSp (st sp al ts j).S - 1 := by omega
+        exact Nat.lt_of_le_of_lt (Nat.mul_le_mul_right m this) hr
+  have := key ts.length (Nat.le_refl _)
+  rwa [st_length] at this
+
 end SIS

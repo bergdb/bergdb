@@ -53,6 +53,7 @@ import SIS.BoundT4GdTheorems
 import SIS.BoundTakeBytes
 import SIS.BoundTakeBytesTheorems
 import SIS.BoundTakeBytesExample
+import SIS.BoundTakeBytesCountTheorems
 import SIS.BoundColdReads
 import SIS.BoundColdReadsTheorems
 import SIS.BoundColdReadsExample

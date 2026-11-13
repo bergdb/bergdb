@@ -91,3 +91,15 @@ def ts2 : List TrB :=
   !(decide (6 ≤ S.span own) && decide (lastSp S + 1 < S.length)) || decide (lastSp S < lastSp S'))
 
 end SIS.BoundTakeBytesExample
+
+namespace SIS.BoundTakeBytesExample
+
+open SIS SIS.Example
+
+-- Case 2 against `T3_takeB_count` (M = 3, m = 1): the section holds at most
+-- 2 M / m + 1 = 7 transactions in every state, while its span reaches 103.
+#guard (List.range (ts2.length + 1)).all (fun j =>
+  let S := (run specB (algoB 1 2) (ts2.take j)).S
+  decide ((sectionIdx S (lastSp S)).length ≤ 7))
+
+end SIS.BoundTakeBytesExample
