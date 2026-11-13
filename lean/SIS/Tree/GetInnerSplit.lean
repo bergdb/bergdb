@@ -489,4 +489,257 @@ theorem writerWP_handleFullWith_timeSpace (d'' : Nat) (L q g : NodeId) (n qn gn 
         · simp only [writerWP_bind, writerWP_modify, writerWP_pure, hpk]
           exact hup l hl_leaf hl_wf hl_times hl_look _ rfl rfl rfl rfl rfl rfl
 
+/-! ## The reading after a leaf's time split and its parent's space split -/
+
+theorem getFromR_timeSpace (N N2 : NodeId → Option KNode) (V V2 : NodeId → Option Nat)
+    (i : Time) (fuel : Nat) (hfuel : 1 ≤ fuel) (root L q g Y Fq Sq v : NodeId)
+    (n qn gn ln : KNode) (k1 kq : Nat) (pre : List Nat) (cv h : Nat) (rk : NodeId)
+    (r : Nat × NodeId) (hr : (qn.live.drop (qn.live.length / 2)).head? = some r) (hsc : 0 < r.1)
+    (hwfG : ∀ x xn, N x = some xn → klongsWf xn.ks = true)
+    (hNL : N L = some n) (hnl : n.leaf = true) (hnt : ∀ s, Klong.time s ∈ n.ks → s ≤ i)
+    (hNq : N q = some qn) (hql : qn.leaf = false) (hqt : ∀ s, Klong.time s ∈ qn.ks → s ≤ i)
+    (hk1 : (k1, L) ∈ qn.live)
+    (hNg : N g = some gn) (hgl : gn.leaf = false) (hgt : ∀ s, Klong.time s ∈ gn.ks → s ≤ i)
+    (hkq : (kq, q) ∈ gn.live) (hkqr : kq ≤ r.1)
+    (hgap : ∀ c' z, (c', z) ∈ gn.live → c' ≤ kq ∨ r.1 < c')
+    (hN2Y : N2 Y = some ln) (hlnl : ln.leaf = true) (hlnwf : klongsWf ln.ks = true)
+    (hlnt : ∀ s, Klong.time s ∈ ln.ks → s ≤ i)
+    (hlnlook : ∀ c, ln.live.lookup c = if cv == c then some v else n.live.lookup c)
+    (hN2g : N2 g = some ((gn.add i (.key kq Fq)).add i
+      (.key (halves qn.leaf i (qn.lastVersion i) [(k1, Y)]).2.2 Sq)))
+    (hN2F : N2 Fq = some (halves qn.leaf i (qn.lastVersion i) [(k1, Y)]).1)
+    (hN2S : N2 Sq = some (halves qn.leaf i (qn.lastVersion i) [(k1, Y)]).2.1)
+    (hN2L : ∀ m, N2 L = some m → klongsWf m.ks = true)
+    (hN2 : ∀ x, x ≠ L → x ≠ q → x ≠ g → x ≠ Y → x ≠ Fq → x ≠ Sq → N2 x = N x)
+    (hV2v : V2 v = some h) (hV2 : ∀ a, a ≠ v → V2 a = V a) (hV2L : V2 L = none)
+    (hV2Y : V2 Y = none)
+    (hqL : q ≠ L) (hYL : Y ≠ L) (hYq : Y ≠ q) (hgq : g ≠ q) (hgL : g ≠ L) (hgY : g ≠ Y)
+    (hFL : Fq ≠ L) (hFq : Fq ≠ q) (hFg : Fq ≠ g) (hFY : Fq ≠ Y)
+    (hSL : Sq ≠ L) (hSq : Sq ≠ q) (hSg : Sq ≠ g) (hSY : Sq ≠ Y) (hFS : Fq ≠ Sq)
+    (hvL : v ≠ L) (hvY : v ≠ Y) (hvq : v ≠ q) (hvF : v ≠ Fq) (hvS : v ≠ Sq)
+    (hNv : N v = none) (hNY : N Y = none) (hNF : N Fq = none) (hNS : N Sq = none)
+    (hrootL : root ≠ L) (hrootY : root ≠ Y) (hrootq : root ≠ q) (hrootF : root ≠ Fq)
+    (hrootS : root ≠ Sq) (hrootv : root ≠ v)
+    (hrq : ReachS N i root q) (hrg : ReachS N i root g)
+    (hnoq : ¬ ReachS N i q g) (hnoL : ¬ ReachS N i L g)
+    (hrk : segRootR N i fuel pre root = some rk) (hcv : cv ∉ pre)
+    (hvisL : (L, cv) ∈ eqVisits N i cv fuel rk)
+    (huniq : ∀ key' x m', keyWf key' = true → (x, cv) ∈ fromVisits N i fuel key' root →
+      (x, cv) ∈ eqVisits N i cv fuel rk → N x = some m' → m'.leaf = true → key' = pre ++ [cv])
+    (honlyL : ∀ x xn c, ReachS N i root x → N x = some xn → (c, L) ∈ xn.liveAt i →
+      x = q ∧ c = k1)
+    (honlyq : ∀ x xn c, ReachS N i root x → N x = some xn → (c, q) ∈ xn.liveAt i →
+      x = g ∧ c = kq)
+    (hfr : ∀ x xn c z, ReachS N i root x → N x = some xn → (c, z) ∈ xn.liveAt i →
+      z ≠ v ∧ z ≠ Y ∧ z ≠ Fq ∧ z ≠ Sq) :
+    ∀ key', keyWf key' = true → getFromR N2 V2 i fuel key' root =
+      if pre ++ [cv] == key' then some h else getFromR N V i fuel key' root := by
+  have hwfR : ∀ x xn, ReachS N i root x → N x = some xn → klongsWf xn.ks = true :=
+    fun x xn _ hn => hwfG x xn hn
+  have hnwf := hwfG L n hNL
+  have hqwf := hwfG q qn hNq
+  have hgwf := hwfG g gn hNg
+  let q1 : KNode := qn.add i (.key k1 Y)
+  let N1 : NodeId → Option KNode := fun x =>
+    if x = q then some q1 else if x = g then some gn
+    else if x = Fq then none else if x = Sq then none else N2 x
+  have hN1q : N1 q = some q1 := by simp [N1]
+  have hN1g : N1 g = some gn := by simp [N1, hgq]
+  have hN1Y : N1 Y = some ln := by simp [N1, hYq, hgY.symm, hFY.symm, hSY.symm, hN2Y]
+  have hN1F : N1 Fq = none := by simp [N1, hFq, hFg]
+  have hN1S : N1 Sq = none := by simp [N1, hSq, hSg]
+  have hN1 : ∀ x, x ≠ L → x ≠ q → x ≠ Y → N1 x = N x := by
+    intro x h1 h2 h3
+    by_cases hxg : x = g
+    · subst hxg; simp [N1, h2, hNg]
+    · by_cases hxF : x = Fq
+      · subst hxF; simp [N1, h2, hxg, hNF]
+      · by_cases hxS : x = Sq
+        · subst hxS; simp [N1, h2, hxg, hxF, hNS]
+        · simp only [N1, h2, hxg, hxF, hxS, ↓reduceIte]
+          exact hN2 x h1 h2 hxg h3 hxF hxS
+  -- step A: N1 reads as the put
+  have hA := getFromR_timeSplit_only N N1 V V2 i fuel hfuel root L q Y v n qn ln k1 pre cv h rk
+    hNL hnl hnwf hnt hNq hql hqwf hqt hk1 hlnl hlnwf hlnt hlnlook hN1Y hN1q hN1 hV2v hV2 hV2L hV2Y
+    hqL hYL hYq hvL hvY hNv hrootL hrootY hrq hrk hcv hvisL huniq hwfR honlyL
+    (fun x xn c z hx hn hz => ⟨(hfr x xn c z hx hn hz).1, (hfr x xn c z hx hn hz).2.1⟩)
+  -- the nodes N1 reaches
+  have hqk1 : (k1, L) ∈ qn.liveAt i := by rw [KNode.liveAt_of_times qn i hqt]; exact hk1
+  have hrL : ReachS N i root L := ReachS.step q qn k1 L hrq hNq hqk1
+  have hqadd : ∀ c z, (c, z) ∈ q1.liveAt i → ((c, z) ∈ qn.liveAt i ∧ c ≠ k1) ∨ z = Y := by
+    intro c z hz
+    have ht2 := KNode.add_times qn i (.key k1 Y) (fun s h => by cases h) hqt
+    rw [KNode.liveAt_of_times _ i ht2] at hz
+    have := lookup_some_of_mem (KNode.live_keys_nodup _) hz
+    rw [KNode.add_key_live_lookup_of_wf qn i k1 c Y hqwf] at this
+    by_cases hc : k1 = c
+    · subst hc; simp at this; exact Or.inr this.symm
+    · have hc' : (k1 == c) = false := by simpa using hc
+      simp only [hc', Bool.false_eq_true, ↓reduceIte] at this
+      left; rw [KNode.liveAt_of_times qn i hqt]
+      exact ⟨lookup_some_mem this, fun h => hc h.symm⟩
+  have hlnmem : ∀ c z, (c, z) ∈ ln.liveAt i → (c, z) ∈ n.liveAt i ∨ z = v := by
+    intro c z hz
+    rw [KNode.liveAt_of_times ln i hlnt] at hz
+    have := lookup_some_of_mem (KNode.live_keys_nodup ln) hz
+    rw [hlnlook] at this
+    by_cases hc : cv = c
+    · subst hc; simp at this; exact Or.inr this.symm
+    · have hc' : (cv == c) = false := by simpa using hc
+      simp only [hc', Bool.false_eq_true, ↓reduceIte] at this
+      left; rw [KNode.liveAt_of_times n i hnt]; exact lookup_some_mem this
+  have hreachNe : ∀ x, ReachS N i root x → x ≠ Y ∧ x ≠ Fq ∧ x ≠ Sq ∧ x ≠ v := by
+    intro x hx
+    cases hx with
+    | root => exact ⟨hrootY, hrootF, hrootS, hrootv⟩
+    | step x' xn c _ hx' hn hz =>
+      have := hfr x' xn c _ hx' hn hz
+      exact ⟨this.2.1, this.2.2.1, this.2.2.2, this.1⟩
+  have hreach1 : ∀ x, ReachS N1 i root x → (ReachS N i root x ∧ x ≠ L) ∨ x = Y ∨ x = v := by
+    intro x hx
+    induction hx with
+    | root => exact Or.inl ⟨ReachS.root, hrootL⟩
+    | step x' xn c z _ hn hz ih =>
+      rcases ih with ⟨hx', hx'L⟩ | hx' | hx'
+      · by_cases hxq : x' = q
+        · subst hxq
+          rw [hN1q] at hn; cases hn
+          rcases hqadd c z hz with ⟨hz', hck⟩ | hzY
+          · left
+            refine ⟨ReachS.step x' qn c z hx' hNq hz', fun hzL => ?_⟩
+            subst hzL
+            exact hck (honlyL x' qn c hx' hNq hz').2
+          · exact Or.inr (Or.inl hzY)
+        · rw [hN1 x' hx'L hxq (hreachNe x' hx').1] at hn
+          left
+          refine ⟨ReachS.step x' xn c z hx' hn hz, fun hzL => ?_⟩
+          subst hzL
+          exact hxq (honlyL x' xn c hx' hn hz).1
+      · subst x'
+        rw [hN1Y] at hn; cases hn
+        rcases hlnmem c z hz with hz' | hzv
+        · left
+          refine ⟨ReachS.step L n c z hrL hNL hz', fun hzL => ?_⟩
+          subst hzL
+          exact hqL (honlyL _ n c hrL hNL hz').1.symm
+        · exact Or.inr (Or.inr hzv)
+      · subst x'
+        have : N1 v = none := by rw [hN1 v hvL hvq hvY, hNv]
+        rw [this] at hn; cases hn
+  -- step B: q split at g into Fq and Sq
+  have hq1wf : klongsWf q1.ks = true := KNode.add_key_wf qn i k1 Y hqwf
+  have hwf1 : ∀ x xn, ReachS N1 i root x → N1 x = some xn → klongsWf xn.ks = true := by
+    intro x xn hx hn
+    rcases hreach1 x hx with ⟨hx', hxL⟩ | hxY | hxv
+    · by_cases hxq : x = q
+      · subst hxq; rw [hN1q] at hn; cases hn; exact hq1wf
+      · rw [hN1 x hxL hxq (hreachNe x hx').1] at hn; exact hwfG x xn hn
+    · subst hxY; rw [hN1Y] at hn; cases hn; exact hlnwf
+    · subst hxv; rw [hN1 x hvL hvq hvY, hNv] at hn; cases hn
+  have hnotq1 : ∀ x xn c z, ReachS N1 i root x → x ≠ g → N1 x = some xn →
+      (c, z) ∈ xn.liveAt i → z ≠ q := by
+    intro x xn c z hx hxg hn hz hzq
+    subst hzq
+    rcases hreach1 x hx with ⟨hx', hxL⟩ | hxY | hxv
+    · by_cases hxq : x = z
+      · subst hxq
+        rw [hN1q] at hn; cases hn
+        rcases hqadd c x hz with ⟨hz', _⟩ | hzY
+        · exact hgq (honlyq x qn c hx' hNq hz').1.symm
+        · exact hYq hzY.symm
+      · rw [hN1 x hxL hxq (hreachNe x hx').1] at hn
+        exact hxg (honlyq x xn c hx' hn hz).1
+    · subst hxY
+      rw [hN1Y] at hn; cases hn
+      rcases hlnmem c z hz with hz' | hzv
+      · exact hgL (honlyq L n c hrL hNL hz').1.symm
+      · exact hvq hzv.symm
+    · subst hxv
+      rw [hN1 x hvL hvq hvY, hNv] at hn; cases hn
+  have hnotFS1 : ∀ x xn c z, ReachS N1 i root x → N1 x = some xn → (c, z) ∈ xn.liveAt i →
+      z ≠ Fq ∧ z ≠ Sq := by
+    intro x xn c z hx hn hz
+    rcases hreach1 x hx with ⟨hx', hxL⟩ | hxY | hxv
+    · by_cases hxq : x = q
+      · subst hxq
+        rw [hN1q] at hn; cases hn
+        rcases hqadd c z hz with ⟨hz', _⟩ | hzY
+        · exact ⟨(hfr x qn c z hx' hNq hz').2.2.1, (hfr x qn c z hx' hNq hz').2.2.2⟩
+        · rw [hzY]; exact ⟨hFY.symm, hSY.symm⟩
+      · rw [hN1 x hxL hxq (hreachNe x hx').1] at hn
+        exact ⟨(hfr x xn c z hx' hn hz).2.2.1, (hfr x xn c z hx' hn hz).2.2.2⟩
+    · subst hxY
+      rw [hN1Y] at hn; cases hn
+      rcases hlnmem c z hz with hz' | hzv
+      · exact ⟨(hfr L n c z hrL hNL hz').2.2.1, (hfr L n c z hrL hNL hz').2.2.2⟩
+      · rw [hzv]; exact ⟨hvF, hvS⟩
+    · subst hxv
+      rw [hN1 x hvL hvq hvY, hNv] at hn; cases hn
+  -- the halves of q with the klong put
+  obtain ⟨hscq, hFl, hSl, hFwf, hSwf, hFt, hSt, hsF, hsS⟩ :=
+    halves_inner_searchLte qn i k1 Y hql hqwf hqt r hr hsc
+  have hg2 : (((gn.add i (.key kq Fq)).add i
+      (.key (halves qn.leaf i (qn.lastVersion i) [(k1, Y)]).2.2 Sq))).leaf = false := by
+    rw [KNode.add_leaf, KNode.add_leaf]; exact hgl
+  have hgsearch : ∀ c : Nat, ((((gn.add i (.key kq Fq)).add i
+      (.key (halves qn.leaf i (qn.lastVersion i) [(k1, Y)]).2.2 Sq))).searchLte i c).map (·.y) =
+      (gn.searchLte i c).map (fun fd => if fd.y = q then
+        (if c < (halves qn.leaf i (qn.lastVersion i) [(k1, Y)]).2.2 then Fq else Sq) else fd.y) := by
+    intro c
+    rw [hscq]
+    have hA := KNode.splitParent_searchLte gn i kq r.1 q Fq Sq hgwf hgt hkq hkqr hgap c
+    rw [hA]
+    cases hs : gn.searchLte i c with
+    | none => rfl
+    | some fd =>
+      simp only [Option.map_some, Option.some.injEq]
+      have hmemfd := KNode.searchLte_mem gn i c fd hs
+      have hyq : fd.y = q ↔ fd.c = kq := by
+        constructor
+        · intro hy
+          rw [hy] at hmemfd
+          exact (honlyq g gn fd.c hrg hNg hmemfd).2
+        · intro hc
+          rw [KNode.liveAt_of_times gn i hgt, hc] at hmemfd
+          exact Option.some.inj ((lookup_some_of_mem (KNode.live_keys_nodup gn) hmemfd).symm.trans
+            (lookup_some_of_mem (KNode.live_keys_nodup gn) hkq))
+      by_cases hc : fd.c = kq
+      · simp only [hc, ↓reduceIte, hyq.mpr hc, Int.ofNat_lt]
+      · have hy : ¬ fd.y = q := fun h => hc (hyq.mp h)
+        simp only [hc, ↓reduceIte, hy]
+  have hrq1 : ReachS N1 i root q := by
+    have htr : ∀ x, ReachS N i root x → ¬ ReachS N i q x → ¬ ReachS N i L x →
+        ReachS N1 i root x := by
+      intro x hx
+      induction hx with
+      | root => intro _ _; exact ReachS.root
+      | step x' xn c z hx' hn hz ih =>
+        intro hq hL
+        have hq' : ¬ ReachS N i q x' := fun h => hq (ReachS.step x' xn c z h hn hz)
+        have hL' : ¬ ReachS N i L x' := fun h => hL (ReachS.step x' xn c z h hn hz)
+        have hx'q : x' ≠ q := by intro he; subst he; exact hq' ReachS.root
+        have hx'L : x' ≠ L := by intro he; subst he; exact hL' ReachS.root
+        have hn1 : N1 x' = some xn := by rw [hN1 x' hx'L hx'q (hreachNe x' hx').1]; exact hn
+        exact ReachS.step x' xn c z (ih hq' hL') hn1 hz
+    have hrg1 : ReachS N1 i root g := htr g hrg hnoq hnoL
+    exact ReachS.step g gn kq q hrg1 hN1g (by rw [KNode.liveAt_of_times gn i hgt]; exact hkq)
+  have hsame1 : ∀ x, x ≠ q → x ≠ g → x ≠ Fq → x ≠ Sq → N2 x = N1 x := by
+    intro x h1 h2 h3 h4
+    simp only [N1, h1, h2, h3, h4, ↓reduceIte]
+  have hget := fun c => getEqR_split_inner N1 N2 i root q g Fq Sq gn _ q1 _ _ _ hN1g hgl hN2g hg2
+    hgsearch hN1q (by simp only [q1, KNode.add_leaf]; exact hql) hrq1 hN2F hFl hN2S hSl
+    (fun c hc => by rw [hscq] at hc; exact hsF c hc) (fun c hc => by rw [hscq] at hc; exact hsS c hc)
+    (fun x h1 h2 h3 h4 => hsame1 x h1 h2 h3 h4)
+    (fun x xn c z hx hxg hn hz => hnotq1 x xn c z hx hxg hn hz)
+    hnotFS1 hgq.symm c
+  have hsim := getFromR_split N1 N2 V2 i fuel root q g Fq Sq hwf1
+    (fun c x hx hxq hxF hxS => (hget c fuel).1 x hx hxq hxF hxS)
+    (fun x h1 h2 h3 h4 => hsame1 x h1 h2 h3 h4) (by rw [hN2g, hN1g]; rfl)
+    (fun x xn c z hx hxg hn hz => hnotq1 x xn c z hx hxg hn hz)
+    (fun xn c z hxn _ hxl => by rw [hN1g] at hxn; cases hxn; rw [hgl] at hxl; cases hxl)
+    (fun x xn c z hx hn hz => ⟨fun _ => (hnotFS1 x xn c z hx hn hz).1, (hnotFS1 x xn c z hx hn hz).2⟩)
+  intro key' hkey'
+  rw [hsim key' root ReachS.root hrootq hrootF hrootS]
+  exact hA key' hkey'
+
 end SIS.Tree
