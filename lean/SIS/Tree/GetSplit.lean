@@ -672,4 +672,102 @@ theorem writerWP_descendLte_cache (cv : Nat) (c : Ctx) (base : View BVal)
           · exact hsrc z h
           · exact Or.inr h
 
+/-! ## Reachability of a key's path -/
+
+theorem eqVisits_reach (N : NodeId → Option KNode) (t : Time) (r0 : NodeId) (cv : Nat) :
+    ∀ (f : Nat) (x z : NodeId) (c : Nat), ReachS N t r0 x → (z, c) ∈ eqVisits N t cv f x →
+      ReachS N t r0 z := by
+  intro f
+  induction f with
+  | zero => intro x z c _ h; simp [eqVisits] at h
+  | succ f ih =>
+    intro x z c hx h
+    simp only [eqVisits, List.mem_cons, Prod.mk.injEq] at h
+    rcases h with ⟨rfl, _⟩ | h
+    · exact hx
+    · cases hn : N x with
+      | none => rw [hn] at h; cases h
+      | some n =>
+        rw [hn] at h
+        simp only at h
+        split at h
+        · cases h
+        · cases hf : n.searchLte t cv with
+          | none => rw [hf] at h; cases h
+          | some fd =>
+            rw [hf] at h
+            exact ih fd.y z c (ReachS.step x n fd.c fd.y hx hn (KNode.searchLte_mem n t cv fd hf)) h
+
+theorem getEqR_reach (N : NodeId → Option KNode) (t : Time) (r0 : NodeId) (cv : Nat)
+    (hwf : ∀ x xn, ReachS N t r0 x → N x = some xn → klongsWf xn.ks = true) :
+    ∀ (f : Nat) (x y : NodeId), ReachS N t r0 x → getEqR N t cv f x = some y → ReachS N t r0 y := by
+  intro f
+  induction f with
+  | zero => intro x y _ h; simp [getEqR] at h
+  | succ f ih =>
+    intro x y hx h
+    simp only [getEqR] at h
+    cases hn : N x with
+    | none => rw [hn] at h; cases h
+    | some n =>
+      rw [hn] at h
+      simp only at h
+      split at h
+      · cases hf : n.searchEq t cv with
+        | none => rw [hf] at h; cases h
+        | some fd =>
+          rw [hf] at h
+          simp only [Option.map_some, Option.some.injEq] at h
+          subst h
+          exact ReachS.step x n cv fd.y hx hn (KNode.searchEq_mem n t cv fd (hwf x n hx hn) hf)
+      · cases hf : n.searchLte t cv with
+        | none => rw [hf] at h; cases h
+        | some fd =>
+          rw [hf] at h
+          exact ih fd.y y (ReachS.step x n fd.c fd.y hx hn (KNode.searchLte_mem n t cv fd hf)) h
+
+theorem segRootR_reach (N : NodeId → Option KNode) (t : Time) (fuel : Nat) (r0 : NodeId)
+    (hwf : ∀ x xn, ReachS N t r0 x → N x = some xn → klongsWf xn.ks = true) :
+    ∀ (pre : List Nat) (r rk : NodeId), ReachS N t r0 r → segRootR N t fuel pre r = some rk →
+      ReachS N t r0 rk := by
+  intro pre
+  induction pre with
+  | nil => intro r rk hr h; simp only [segRootR, Option.some.injEq] at h; subst h; exact hr
+  | cons c rest ih =>
+    intro r rk hr h
+    simp only [segRootR] at h
+    cases hg : getEqR N t c fuel r with
+    | none => rw [hg] at h; cases h
+    | some y =>
+      rw [hg] at h
+      simp only at h
+      split at h
+      · exact ih y rk (getEqR_reach N t r0 c hwf fuel r y hr hg) h
+      · cases h
+
+/-- Reaching through a reader changed at one node L to a node m whose live
+klongs are L's and one more, naming v: what is reached is reached before, or
+is v. -/
+theorem reach_change (N : NodeId → Option KNode) (t : Time) (r0 L v : NodeId) (n m : KNode)
+    (hNL : N L = some n) (hm : ∀ c z, (c, z) ∈ m.liveAt t → (c, z) ∈ n.liveAt t ∨ z = v)
+    (hv : N v = none) (hvL : v ≠ L) :
+    ∀ x, ReachS (fun x => if x = L then some m else N x) t r0 x → ReachS N t r0 x ∨ x = v := by
+  intro x hx
+  induction hx with
+  | root => exact Or.inl ReachS.root
+  | step x xn c z _ hn hz ih =>
+    rcases ih with ih | ih
+    · by_cases hxL : x = L
+      · subst hxL
+        simp only [↓reduceIte, Option.some.injEq] at hn
+        subst hn
+        rcases hm c z hz with h | h
+        · exact Or.inl (ReachS.step x n c z ih hNL h)
+        · exact Or.inr h
+      · simp only [hxL, ↓reduceIte] at hn
+        exact Or.inl (ReachS.step x xn c z ih hn hz)
+    · subst ih
+      simp only [hvL, ↓reduceIte, hv] at hn
+      cases hn
+
 end SIS.Tree
