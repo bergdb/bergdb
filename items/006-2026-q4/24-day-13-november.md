@@ -133,3 +133,4 @@ For Frans to decide
 4. 028-11: P5's sentence in 010-01 (T3 proved for BergDB's own take since 007-08); the proposal is in 028-11.
 
 * 13:27 028-08 not a bug; 028-09 a bug, fixed (a startupPos at its own record is refused: before, a damaged last record started with every key gone); 028-11's texts fixed; 028-10 evaluated, for Frans. Landed (3edef8fa).
+* 14:02 Prover t45: `bounded_startup` proved (007): one theorem that bounds a cold start's reads after any run that meets its explicit premises, joining T3 (count form), T4 and the read bound.

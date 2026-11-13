@@ -1101,6 +1101,30 @@ not clear (dense trees give more), and if a successful sorted transaction
 can reach H + 2 there, TP32 may still hold, by the deletes that merge
 less, but then it needs a potential, not a bound on the heights.
 
+The writer's tree (asked by the coordinator at 12:55, ahead of TP32):
+`WriterTreeOK` (`WriterTree.lean`), the writer's nodes over P@(i - 1), read
+at time i from its super root, are a tree: every live klong is a link (in
+a leaf too, so a value or the next segment's root), no reached node names
+the root, and each node is named by one reached node under one compare
+value. `TLink` was widened to every live klong so that `TreeOK` is TP10's
+TREE premise (`htree_of_treeOK`); it gives the uniqueness of the key's
+search (`visits_unique_of_tree`, `visits_unique_seg_of_tree`). The
+first state has it from P@(i - 1)'s tree, and every later one if each
+operation keeps it (`OpTreeOK`, open; `writerTreeOK_between` with
+`CommitLiftOK`). Proved to keep it, as whole operations on prover
+latest's cases of `OpGetOK`: a put into a leaf with room, a delete with
+no effect, a delete's bitmap with the merges off, the time and space
+splits below a parent with room, both splits in place, and the space
+root's space, time and in-place splits (`WriterTreePut.lean`,
+`WriterTreePut2.lean`, `WriterTreeRoot.lean`); as state lemmas, given the
+writer's state after it: a merge into one node and into two, LE-b's
+relink, root collapse of the space root and of a segment root, the upward
+unlink (`WriterTreeMerge.lean`, `WriterTreeMergeTwo.lean`). Not yet: the
+writer's code of the merges, LE-b, the unlink and collapse; a split whose
+parent is full (the cascade); new segments; the segment roots' splits.
+Their premises beyond TREE: the ids from w's next one on in neither the
+base nor a live klong (`hbaseF`, `hfreshT`).
+
 ## 11. State
 
 Final for today: 2026-11-11, 16:05 (agent "mgl" of coord-1111). Nothing
