@@ -54,6 +54,11 @@ public class Mem {
             db.execute(t);
         }
         
+        // The write buffer grows with use and shrinks after a second with nothing to write
+        // (2026-11-13, bergdb 026-07). The fill grows it to about 8 MB; MEM measures the KVs,
+        // so it waits for the shrink, as the buffer, then 10 MB from the start, was in
+        // emptyMem before. Without the wait MEM was 137.5, not 129.
+        Thread.sleep(2000);
         System.gc(); System.gc(); System.gc();
         long fullMem = usedMem();
         

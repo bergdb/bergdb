@@ -498,6 +498,17 @@ public class CountGates {
         }
     }
 
+    /**
+     * The heap gates of G4 and G5 compare each heap plus the 10 MB write buffer (2026-11-13,
+     * bergdb 026-07): until then every database held the whole buffer from its start, in the
+     * twin's heap and the emptied database's alike, and the gates and their factor 2 were set
+     * on that. Since 026-07 the buffer grows with use and shrinks after an idle second, and
+     * the heap is measured after the shrink; without the constant the emptied database held
+     * 2.0 (G4) and 3.7 (G5) times its twin's heap, mostly NodeCollection.idByPos, an LRU of
+     * up to 100,000 node ids (026-07, section 6). The lines print the heaps without it.
+     */
+    static final long BUFFER = bergdb.storage.StorageManager.DEFAULT_BUFFER_SIZE;
+
     static long usedHeap() {
         Runtime rt = Runtime.getRuntime();
         for (int k = 0; k < 4; k++) System.gc();
@@ -599,6 +610,16 @@ public class CountGates {
             m.pathKlongs = ((long[]) field(path, "klongs")).length;
             m.pathNodes = ((Object[]) field(path, "nodes")).length;
         }
+        // The write buffer grows with use and shrinks after a second with nothing to write
+        // (2026-11-13, bergdb 026-07): the heap is measured after the shrink, so that the
+        // emptied database and its twin are compared without the buffer's transient, as
+        // when both held the whole 10 MB from their start. -Dg4heapwait=MS sets the wait, for
+        // a class histogram of the database with jcmd during it.
+        try {
+            Thread.sleep(Long.getLong("g4heapwait", 2000));
+        } catch (InterruptedException e) {
+            throw new AssertionError(e);
+        }
         m.heap = usedHeap() - heap0;
         if (m.userKeys != 1) throw new AssertionError(gate + " " + label + ": " + m.userKeys
                 + " user keys, expected 1");
@@ -619,7 +640,7 @@ public class CountGates {
         g4Gate("M11 resident index objects", e.objects, t.objects, d("g4nodes", 2));
         g4Gate("M11 live handles", e.handles, t.handles, d("g4nodes", 2));
         g4Gate("ST6 cache table slots", e.slots, t.slots, d("g4slots", 2));
-        g4Gate("heap after a GC", e.heap, t.heap, d("g4heap", 2));
+        g4Gate("heap after a GC", e.heap + BUFFER, t.heap + BUFFER, d("g4heap", 2));
     }
 
     // ======== G5 ========
@@ -659,7 +680,7 @@ public class CountGates {
         gate("G5", "ST6 cache table slots over the larger of twice the twin's and the tables' "
                 + "floor " + floor + " (" + e.slots + " / " + t.slots + ")",
                 (double) e.slots / slotLimit, 1, "%.3f");
-        gateTwin("G5", "heap after a GC", e.heap, t.heap, d("g4heap", 2));
+        gateTwin("G5", "heap after a GC", e.heap + BUFFER, t.heap + BUFFER, d("g4heap", 2));
     }
 
     /** G5: emptied at most the larger of twice the twin's and the twin's plus 'plus'. */
