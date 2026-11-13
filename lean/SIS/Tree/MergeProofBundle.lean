@@ -156,6 +156,8 @@ import SIS.Tree.GetNewRoot
 import SIS.Tree.GetDelRoot
 import SIS.Tree.GetAssembly
 import SIS.Tree.GetCaseBridge
+import SIS.Tree.GetOpAssembly
+import SIS.Tree.GetOpCases
 import SIS.Tree.WriterTreeInnerHalves
 import SIS.Tree.WriterTreeSpaceSpace
 import SIS.Tree.WriterTreeDelFull
@@ -239,6 +241,8 @@ import SIS.Tree.TakeDeadUpW
 import SIS.Tree.HalvesNil
 import SIS.Tree.GetMergeLevel
 import SIS.Tree.SegBalance
+import SIS.Tree.GetMergeAny
+import SIS.Tree.GetMergeRoot
 import SIS.Tree.TakeBackRunU
 import SIS.Tree.TakeDeadCascade
 import SIS.Tree.TakeDeadCases
