@@ -563,7 +563,10 @@ public class EvictionReaderTester {
             }
         } finally {
             stop.set(true);
-            for (Thread th : readers) th.join();
+            for (Thread th : readers) {
+                th.join(60_000);
+                Assert.assertFalse("a reader thread did not end within 60 s", th.isAlive());
+            }
         }
         Assert.assertTrue(problems.size() + " problems, first: " + problems.peek(), problems.isEmpty());
         Assert.assertTrue("reads", reads.get() > 1000);

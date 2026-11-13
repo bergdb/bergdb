@@ -106,7 +106,8 @@ public class StorageManagerTester {
         synchronized (writeLock) {
             manager.append(bytes, 0, bytes.length);
         }
-        t.join();
+        t.join(60_000);
+        Assert.assertFalse("the sync thread did not end within 60 s", t.isAlive());
         
         // 2026-10-27 (bergdb 005-48, group commit): the sync has the buffer written at once.
         // It waited for the timer, 25 to 100 ms here, and the test asserted more than 20 ms.

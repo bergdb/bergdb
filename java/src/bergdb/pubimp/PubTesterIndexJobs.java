@@ -962,7 +962,8 @@ public class PubTesterIndexJobs {
             } finally {
                 stop.set(true);
                 for (Thread t : writers) {
-                    t.join();
+                    t.join(60_000);
+                    Assert.assertFalse("a writer thread did not end within 60 s", t.isAlive());
                 }
             }
             Assert.assertEquals(status.note(), JobStatus.State.ACTIVE, status.state());

@@ -229,7 +229,10 @@ public final class EvictionAccountingTester {
             }
         } finally {
             run.stop.set(true);
-            for (Thread th : readers) th.join();
+            for (Thread th : readers) {
+                th.join(60_000);
+                Assert.assertFalse("a reader thread did not end within 60 s", th.isAlive());
+            }
             run.db.close();
         }
         if (run.failure == null && !run.problems.isEmpty()) {

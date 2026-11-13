@@ -467,7 +467,8 @@ public class DbUtil {
             t.start();
         }
         for (Thread t : threads) {
-            t.join();
+            t.join(60_000);
+            Assert.assertFalse("a conversion thread did not end within 60 s", t.isAlive());
         }
         Assert.assertEquals("wrong strings, e.g. " + example.get(), 0, wrong.get());
     }

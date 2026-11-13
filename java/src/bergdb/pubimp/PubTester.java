@@ -785,7 +785,9 @@ public class PubTester {
                 v1 = env.get("/key1", String.class);
                 v2 = env.get("/key2", String.class);
                 getDone.happened();
-                modifiedKey1.waitForEvent();
+                modifiedKey1.waitForEvent(60_000);
+                Assert.assertTrue("modifiedKey1 (the put of value1B) did not happen within 60 s",
+                        modifiedKey1.didItHappen());
                 String lengthString = "" + (v1.length() + v2.length());
                 env.put("/length", lengthString);
             }
@@ -801,11 +803,14 @@ public class PubTester {
         });
         thread.start();
         
-        getDone.waitForEvent();
+        getDone.waitForEvent(60_000);
+        Assert.assertTrue("getDone (the action's gets) did not happen within 60 s",
+                getDone.didItHappen());
         c2.w().put("/key1", "value1B").execute();
         modifiedKey1.happened();
         
-        thread.join();
+        thread.join(60_000);
+        Assert.assertFalse("the rw thread did not end within 60 s", thread.isAlive());
         
         Assert.assertEquals(2, ((RwTransaction) transactionArray[0]).getRunCount());
         Assert.assertEquals("value2..", v2);
@@ -1649,7 +1654,8 @@ public class PubTester {
                     }
                 });
                 t.start();
-                t.join();
+                t.join(60_000);
+                Assert.assertFalse("the connection thread did not end within 60 s", t.isAlive());
             }
             int kept = n;
             for (int round = 0; round < 50 && kept > 0; round++) {
@@ -4242,7 +4248,9 @@ public class PubTester {
         syncer.join(5000);
         final boolean returned = !syncer.isAlive();
         s.release();
-        syncer.join();
+        syncer.join(60_000);
+        Assert.assertFalse("the sync(ORDINARY) thread did not end within 60 s of the release",
+                syncer.isAlive());
         Assert.assertTrue("sync(ORDINARY) waited for a later transaction", returned);
         d.stop();
     }

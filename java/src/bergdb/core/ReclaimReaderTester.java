@@ -459,7 +459,8 @@ public class ReclaimReaderTester {
             }
         } finally {
             stop.set(true);
-            flipper.join();
+            flipper.join(60_000);
+            Assert.assertFalse("the flipper thread did not end within 60 s", flipper.isAlive());
         }
     }
 

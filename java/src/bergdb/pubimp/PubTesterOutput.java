@@ -187,7 +187,10 @@ public class PubTesterOutput {
                         env.setOutput(value.equals("value1") ? "first" : "second", value);
                         env.setOutput("value", value);
                         readDone.happened();
-                        keyChanged.waitForEvent();
+                        keyChanged.waitForEvent(60_000);
+                        Assert.assertTrue(
+                                "keyChanged (the put of value1B) did not happen within 60 s",
+                                keyChanged.didItHappen());
                         env.put("/copy", value);
                     }
                 });
@@ -195,10 +198,13 @@ public class PubTesterOutput {
         });
         thread.start();
 
-        readDone.waitForEvent();
+        readDone.waitForEvent(60_000);
+        Assert.assertTrue("readDone (the action's read) did not happen within 60 s",
+                readDone.didItHappen());
         db.connection().put("/key1", "value1B");
         keyChanged.happened();
-        thread.join();
+        thread.join(60_000);
+        Assert.assertFalse("the rw thread did not end within 60 s", thread.isAlive());
 
         Transaction t = result[0];
         Assert.assertEquals(2, ((RwTransaction) t).getRunCount());
@@ -243,7 +249,8 @@ public class PubTesterOutput {
         }
 
         for (Thread thread : threads) {
-            thread.join();
+            thread.join(60_000);
+            Assert.assertFalse("a counter thread did not end within 60 s", thread.isAlive());
         }
 
         int n = threadCount * perThread;

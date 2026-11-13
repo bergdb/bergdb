@@ -87,7 +87,7 @@ public class EventToWaitFor {
         Assert.assertFalse(event.didItHappen());
         t.start();
         Assert.assertFalse(event.didItHappen());
-        event.waitForEvent();
-        Assert.assertTrue(event.didItHappen());
+        event.waitForEvent(60_000);
+        Assert.assertTrue("event did not happen within 60 s", event.didItHappen());
     }
 }

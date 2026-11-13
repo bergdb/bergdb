@@ -1504,7 +1504,8 @@ final class IndexHarness {
         }
         for (Thread th : ts) {
             try {
-                th.join();
+                th.join(600_000);
+                check(!th.isAlive(), "a transaction thread did not end within 600 s");
             } catch (InterruptedException e) {
                 throw new AssertionError(e);
             }

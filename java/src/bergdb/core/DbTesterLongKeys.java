@@ -219,7 +219,8 @@ public class DbTesterLongKeys {
             }
         }, "a small stack", 256 * 1024);
         t.start();
-        t.join();
+        t.join(60_000);
+        Assert.assertFalse("the small-stack thread did not end within 60 s", t.isAlive());
         if (failure[0] != null) {
             throw new AssertionError("with a stack of 256 kB: " + failure[0], failure[0]);
         }

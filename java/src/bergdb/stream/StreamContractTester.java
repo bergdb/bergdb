@@ -125,13 +125,15 @@ public class StreamContractTester {
             }
         });
         t.start();
-        entered.await();
+        Assert.assertTrue("the append did not reach the hook within 60 s",
+                entered.await(60, TimeUnit.SECONDS));
         Assert.assertEquals(Kind.OVERLAP, kindOf(s, () -> s.pretruncate(5)));
         Assert.assertEquals(Kind.OVERLAP, kindOf(s, () -> s.getFirstPos()));
         s.tolerate(Kind.OVERLAP);
         Assert.assertEquals(null, kindOf(s, () -> s.getLength()));
         release.countDown();
-        t.join();
+        t.join(60_000);
+        Assert.assertFalse("the append thread did not end within 60 s", t.isAlive());
         s.setHook(null);
         Assert.assertEquals(11, s.getLength());
         Assert.assertEquals(9, s.breaches().size());
