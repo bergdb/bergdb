@@ -181,3 +181,6 @@ import SIS.Tree.RangeNewSeg
 import SIS.Tree.RangeUp
 import SIS.Tree.RangeChainG
 import SIS.Tree.RangeDelChainG
+import SIS.Tree.RangeChainGW
+import SIS.Tree.RangePutG
+import SIS.Tree.RangeDelG
