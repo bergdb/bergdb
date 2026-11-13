@@ -1199,7 +1199,16 @@ the writer's loop, keeps the reading (`writerWP_collapseRoot_space_get`,
 `WriterGetCollapse.lean`): an inner root whose only live klong is the empty
 key's reads every key as its child (`getFromR_collapse`), given a premise on
 the fuel: every path from the root is shorter than `fuel`, which the heights
-bound.
+bound (`PathsFit`, `FuelPaths.lean`, one Prop agreed with prover latest). The
+segment-root collapse steps keep the reading (`writerWP_takeBackRoot_seg_get`,
+`writerWP_replaceRoot_seg_get`, `WriterGetCollapseSeg.lean`: the leaf's klong to
+the root names its child, which reads every rest of a key as the root,
+`getFromR_subst`). The upward delete at tree level (`WriterGetUp.lean`): with
+the key's leaf emptied (latest's `getFromR_leaf_change_seg`), the chain below the
+stop node reads nothing (`chain_deadBelow`), so deleting the stop node's klong to
+it, at an inner node, by LE-b or at a segment leaf, keeps every reading
+(`getFromR_up_inner`, `getFromR_up_leb`, `getFromR_up_leaf`; a search outside a
+node's range finds nothing, `getEqR_none_above`, `getEqR_none_below`).
 Not yet: the whole put and delete around the cascade; a merge whose parent is
 full or compacted;
 the mergeUp loop and the delete as a whole; the take-back of the upward unlink.
