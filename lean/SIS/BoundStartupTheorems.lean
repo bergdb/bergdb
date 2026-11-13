@@ -53,8 +53,10 @@ The assumptions, each one explicit:
 
 For 024-12's tree model (`treeSpec`): proved are `LiveAppend` (TP15,
 `liveAppendTree`), the take's count (T3 holds for any run), and the kept part
-of `DropRunOKJ` with BergDB's weights (`DropRunOKJ_tree`), which leaves the
-count k. Open there: `RunOK` (TP14), TREE (TP16, TP7), the height H (the
+of `DropRunOKJ` with BergDB's weights (`DropRunOKJ_tree`), and with TREE the
+count k is at most the nodes each transaction makes unreachable
+(`DropRunOKJ_tree_removed`; `bounded_startup_tree` is this theorem with that
+count, SIS/BoundColdDropCountTheorems.lean). Open there: `RunOK` (TP14), TREE (TP16, TP7), the height H (the
 writer keeps key trees within G and H, but no theorem gives `LiveHeightLe`),
 Hp and Q (no uniform Q is known for Java: 007-09's second review), Pt (a top
 node has a root pointer and a skip pointer for each set bit of its ordinal,
@@ -63,7 +65,8 @@ the like statement in operations, open), and two that are new:
 
 * K: k is not at most (H + 1) per operation: a merge cascade loses two
   pointers per height (SIS/BoundColdCascadeExample.lean: k = 10 for one delete
-  with H = 7). About 2 (H + 1) per operation is the conjecture.
+  with H = 7, its 11 nodes made unreachable). About 2 (H + 1) per operation is
+  the conjecture.
 * B: each merge follows at most two siblings (`Dag.merge`: the left one, read
   and possibly rejected, then the right one), so B is twice a transaction's
   merges; the merges of an operation at most the tree's height and one is
