@@ -1047,10 +1047,21 @@ Landed checkpoints:
   changed.
 
 **TP10 and TP11 at the latest time, reduced, 2026-11-13** (prover
-"latest", 10:37 to 12:30, branch `024-12-latest`). **TP10 and TP11
-follow from TP7, `OpGetOK` and `OverlayLiftOK`** (`getOK_of_op_overlay`,
-`scanOK_of_op_overlay`, `GetCommit.lean`). Proved on the way, on the
-standard axioms:
+"latest", 10:37 to 12:50, branch `024-12-latest`). **TP10 and TP11
+follow from TP7, the run's key nodes sound and TREE for them, and the
+two statements about the writer under premises on the run's structure**
+(`getOK_of_runRead`, `scanOK_of_runRead`, `GetUnder.lean`): `OpGetOKUnder
+p (RunReadOK p)` and `OverlayLiftOKUnder p (RunReadOK p)`, where
+`RunReadOK` is TP7's invariant at the run's last time, `PointersOK`,
+`KeyNodesOK` (tp7's, `InvLatest.lean`) and `KeyTreeOK` (TREE for key
+nodes: two live klongs of reachable key nodes name one node only if they
+are one klong). For any other premise R: `getOK_of_under`,
+`scanOK_of_under`, and `opGetOKUnder_mono`, `overlayLiftOKUnder_mono` to
+meet the premises of tp7's lift. The first forms, `OpGetOK` and
+`OverlayLiftOK` without premises (`getOK_of_op_overlay`), ask nothing of
+the run's structure; tp7 reported that the lift fails from a malformed
+structure (a klong to an id not in P, an empty key node), so they are
+kept only as steps. Proved on the way, on the standard axioms:
 
 * **The scan needs nothing of the writer beyond the get.**
   `latestScanOK_of_latestGet` (`ScanLatest.lean`): `LatestScanOK p` from
@@ -1087,12 +1098,20 @@ standard axioms:
 * **`OpGetOK` from an invariant inside a transaction.**
   `opGetOK_of_invariant` (`GetOpInv.lean`): from any invariant of the
   writer's state that its first state meets and that each operation
-  keeps while it changes the reading by itself alone. The first rule
-  under such premises: `writerWP_put_room` (`GetFrame.lean`), a put of
-  a key of one segment into a segment leaf with room changes the reading
-  by the put alone, from a frame of the reading (`getFromR_frame`,
-  `getFromR_leaf_change`: what a key's reading visits, each node with
-  the compare value it searches there).
+  keeps while it changes the reading by itself alone. The first rules,
+  each from the premises an invariant must give (no node of the key's
+  path taken back, the leaf's klongs well formed and of no later time,
+  the next id fresh, and the uniqueness of the key's search at its
+  leaf, which TREE gives), for keys of any number of segments whose
+  prefix is there (`GetFrame.lean`): a put into a segment leaf with room
+  (`writerWP_put_room_seg`), a delete of a key without a value
+  (`writerWP_del_noop_seg`), a delete by a bitmap that leaves the leaf a
+  live klong, merges off (`writerWP_del_bitmap_seg`). The tools: the
+  frame of a reading (`getFromR_frame`, `getFromR_leaf_change`: what a
+  key's reading visits, each node with the compare value it searches
+  there), a node moved to a new id (`getFromR_ren`, for the splits),
+  the time split's last version with the put
+  (`writerWP_replaceOrAdd_last`).
 * **TP7's invariant is not enough for `OpGetOK`**, proved:
   `sharedSegment_changes_other_key` (`SharedSegment.lean`): a structure
   without faults at 1 (`InvOK`, `PointersOK`) in which two long segments
@@ -1107,15 +1126,16 @@ standard axioms:
   `writerWP_put_room` it is the premise that no other key searches the
   key's compare value at its leaf.
 
-Open: `OpGetOK`, the writer's refinement of the map, every rule (the
-splits, the upward delete, LE-b, the merges, root collapse), with its
-invariant inside a transaction; checked, not proved, on about 900
-pseudo-random transactions of the model (node sizes 4 to 10, H 0 to 8,
-merges and theta), operation by operation, no difference.
-`OverlayLiftOK`, the lift of the writer's own nodes through `changesOf`
-and `Struct.apply`, which TP7's `LatestInvOK` needs too (the walk asks a
-node's klongs to give its history); left to the TP7 provers (the
-coordinator, 2026-11-13); tp7's `Good` is its first part.
+Open: `OpGetOKUnder p (RunReadOK p)`, the writer's refinement of the
+map, every rule but the three above (the splits, the upward delete,
+LE-b, the merges, root collapse), with its invariant inside a
+transaction; checked, not proved, on about 900 pseudo-random
+transactions of the model (node sizes 4 to 10, H 0 to 8, merges and
+theta), operation by operation, no difference. `KeyTreeOK` after every
+run within reach (TREE; TP16 states it for the model). The lift,
+`OverlayLiftOKUnder`, which TP7's `LatestInvOK` needs too, is tp7's (the
+coordinator, 2026-11-13); its premises are to meet `RunReadOK` through
+`overlayLiftOKUnder_mono` when tp7's `ApplyBridge.lean` lands.
 
 (T) for 27: `tracecheck`'s CUT-live checks it at every cut of a trace
 (024-07), and C-T6 checks what it follows from, `NonEmptyOK` and
