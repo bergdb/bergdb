@@ -173,6 +173,8 @@ import SIS.Tree.MergeRootShape
 import SIS.Tree.InvAssembly
 import SIS.Tree.LiveCounts
 import SIS.Tree.LiveCases
+import SIS.Tree.LiveEdges
+import SIS.Tree.LiveSteps
 import SIS.Tree.WriterTreeInnerHalves
 import SIS.Tree.WriterTreeSpaceSpace
 import SIS.Tree.WriterTreeDelFull
@@ -313,6 +315,12 @@ import SIS.Tree.DelStepsF3
 import SIS.Tree.DelStepsFullGet
 import SIS.Tree.DelStepsFullRoot
 import SIS.Tree.HeightsRun
+import SIS.Tree.TakeMergeRoot
+import SIS.Tree.LinkedUnique
+import SIS.Tree.DelStepsEmptyRoot
+import SIS.Tree.TakeDelMergeF4
+import SIS.Tree.DelStepsBookK
+import SIS.Tree.TakeDelStepsF4
 import SIS.Tree.WriterHeightsMerge
 import SIS.Tree.WriterHeightsDelete
 import SIS.Tree.HeightsDelRun

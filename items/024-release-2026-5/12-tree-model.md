@@ -1593,7 +1593,46 @@ and its status:
       `DeadAllOK`, `HeightLiveOK`, `TreeAt`, TP10's posts of the cases (1)
       to (4), and `QLive` of the cases (1) to (4).
     - `QLive` of case (1), a put into a leaf with room, is proved
-      (`liveCase_putLeafRoom`). Open: `QLive` of (2), (3) and (4).
+      (`liveCase_putLeafRoom`).
+    - `QLive` of (3a) and (3b), new segments below a leaf with room, is
+      proved (latest, 00:26; `liveCase_putNewSeg1Room`,
+      `liveCase_putNewSegsRoom`). The new segment leaves have a live klong
+      each (`writerWP_putSegs_new_live`) and are segment roots
+      (`liveCounts_leafAddNewSet`).
+    - Open: `QLive` of (2), (3c) (the cascade of a full leaf) and (4).
+    - Toward (2) (latest, 00:35; `LiveEdges.lean`): `LiveEdges` is
+      `LiveCounts` link by link (`liveCounts_of_edges`,
+      `edges_of_liveCounts`). Each step of the writer then checks only the
+      links it changes. Two steps are proved: `liveEdges_updN_grow` (a
+      node keeps its kind and live pointees and loses no live klong: a put
+      in room, a time split in place, the top of a cascade) and
+      `liveEdges_copy` (a time split to a new node: a fresh copy of x, and
+      x's parent pointing its klong to it). The counts of a space split's
+      halves are `halves_lastVersionGivenDel_live_fill`
+      (`SplitLiveFill.lean`).
+    - Every split step of the cascade keeps `LiveEdges` (latest, 00:44;
+      `LiveSteps.lean`). Each step lemma takes the hypotheses of cost's
+      matching step of the writer's tree and uses its reach, then adds the
+      counts:
+      - `liveEdges_timeSplit_gen` and `liveEdges_rootTimeStep`: the kinds
+        kept, no live klong lost.
+      - `liveEdges_spaceSplit_gen` and `liveEdges_spaceInPlaceStep`.
+      - `liveEdges_segSpaceStep` and `liveEdges_segSpaceInPlaceStep`.
+      - `liveEdges_rootSpaceStep` and `liveEdges_rootSpaceInPlaceStep`.
+      - `liveEdges_updN_sub`, a time split in place.
+      The halves must be `HalfOK` (a live klong, two, and m), and a new
+      inner root needs two live klongs. Common to all is
+      `liveEdges_of_sim`.
+    - Left for (2) and (3c): the walk of the cascade, with these steps in
+      place of cost's in `writerWP_appendKlongs_chainG`, with the halves'
+      counts from `halves_lastVersionGivenDel_live_fill`. Then the
+      access-path wrapper, as `writerWP_put_accessPathR`.
+    - `LiveCounts` was checked on runs within reach with the merges on
+      (`12-tree-model/live-counts-check.lean.txt`). The parameters were
+      record format 7's thresholds at node sizes 8, 10 and 14 (m = 2, 2
+      and 3). The runs had puts in one and two segments, then deletes that
+      merge and collapse. It held at all 6420 states between operations,
+      none failing.
     Removed (latest, 23:08, as agreed with cost and the coordinator, after
     putinv's take-back moved to F2 at 65b84e5b): `DescentOKF`,
     `MergePathCond`, `opGetCaseOK_delMergeF`, `writerWP_mergeUp_delF`,
