@@ -112,3 +112,4 @@ import SIS.Tree.GetSegRoot
 import SIS.Tree.GetNewSeg
 import SIS.Tree.GetSegInPlace
 import SIS.Tree.GetSegLeaf
+import SIS.Tree.GetChain
