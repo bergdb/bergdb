@@ -17,7 +17,8 @@ import bergdb.stream.SalsaStream;
  * An instance of the class can be used to recover a stream that crashed at any point in the stream.
  * Recovery is done without parsing through the whole stream. This is possible because of 
  * the meta block occurring in the stream at predetermined fixed positions.
- * This class throws DBStreamException when there is an error with the underlying AppendOnlyStream.
+ * This class throws StreamIoException when there is an error with the underlying AppendOnlyStream,
+ * or StreamFormatException when the stream's bytes are not as the format says.
  * </p>
  * 
  * <pre>
@@ -62,9 +63,10 @@ public class RecoverableStream {
     public static final int META_BLOCK_DISTANCE = 200*1000;
     
     /** 
-     * Minimum record size accepted by recovery's walk, retained from the 16-byte header
-     * format. The current record header is 32 bytes; recovery does not parse it. A torn
-     * transaction header completed at recovery must give at least this size.
+     * The least record size that recovery's completion of a torn transaction header gives
+     * (transHeaderFixBytes), retained from the 16-byte header format: the start's walk
+     * refuses 16 and below (NodeStream.readRecordHeader); recovery's own walk refuses sizes
+     * below 5 only. The current record header is 32 bytes; recovery does not parse it.
      */
     public static final int MIN_TRANS_SIZE = 16 + 1;
     
