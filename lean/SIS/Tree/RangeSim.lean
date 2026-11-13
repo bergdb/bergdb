@@ -244,7 +244,8 @@ theorem rangeOrder_timeStep (N1 N2 : NodeId → Option KNode) (t : Time) (r : No
     (hy1 : N1 y = none) (hyfree : ∀ u c, TReach N1 t r u → ¬ TLink N1 t u c y)
     (hN2q : N2 q = some qn2) (hq2l : qn2.leaf = false)
     (hq2 : ∀ c z, (c, z) ∈ qn2.liveAt t → (c = k1 ∧ z = y) ∨ (c ≠ k1 ∧ (c, z) ∈ qn.liveAt t))
-    (hN2y : N2 y = some yn) (hyl : yn.leaf = xn.leaf) (hylive : yn.liveAt t = xn.liveAt t)
+    (hN2y : N2 y = some yn) (hyl : yn.leaf = xn.leaf)
+    (hylive : ∀ c z, (c, z) ∈ yn.liveAt t → (c, z) ∈ xn.liveAt t)
     (hN2 : ∀ z, z ≠ q → z ≠ y → z ≠ x → N2 z = N1 z) :
     RangeOrder N2 t r := by
   have hxR : TReach N1 t r x := TReach.link hq ⟨qn, hqn, hk1⟩
@@ -265,11 +266,12 @@ theorem rangeOrder_timeStep (N1 N2 : NodeId → Option KNode) (t : Time) (r : No
   have hφ : ∀ z, z ≠ y → φ z = z := fun z hz => by simp [φ, hz]
   -- the node of z after, from the node of φ z before
   have hnode : ∀ z m, z ≠ q → z ≠ x → N2 z = some m →
-      ∃ m0, N1 (φ z) = some m0 ∧ m.leaf = m0.leaf ∧ m.liveAt t = m0.liveAt t := by
+      ∃ m0, N1 (φ z) = some m0 ∧ m.leaf = m0.leaf ∧
+        ∀ c z', (c, z') ∈ m.liveAt t → (c, z') ∈ m0.liveAt t := by
     intro z m hzq hzx hm
     by_cases hzy : z = y
     · subst hzy; rw [hN2y] at hm; cases hm; rw [hφy]; exact ⟨xn, hxn, hyl, hylive⟩
-    · rw [hN2 z hzq hzy hzx] at hm; rw [hφ z hzy]; exact ⟨m, hm, rfl, rfl⟩
+    · rw [hN2 z hzq hzy hzx] at hm; rw [hφ z hzy]; exact ⟨m, hm, rfl, fun _ _ h => h⟩
   let G : NodeId → Nat → Option Nat → Prop := fun z lo hi =>
     z ≠ x ∧ ∃ lo0 hi0, ReachR N1 t r (φ z) lo0 hi0 ∧ lo ≤ lo0 ∧ HiLE hi0 hi
   -- a child after of a node reached before: not x but from q's k1, not y but from q's k1
@@ -304,7 +306,7 @@ theorem rangeOrder_timeStep (N1 N2 : NodeId → Option KNode) (t : Time) (r : No
         exact ⟨hz'x, lo1, hi1, by rw [hφ z' hz'y]; exact h3, h4, h5⟩
     · obtain ⟨m0, hm0, hlf, hlv⟩ := hnode z m hzq hzx hm
       have hu := reachR_tReach N1 t r (φ z) lo0 hi0 hz0
-      have hcz0 : (c, z') ∈ m0.liveAt t := by rw [← hlv]; exact hcz
+      have hcz0 : (c, z') ∈ m0.liveAt t := hlv c z' hcz
       have hφq : φ z ≠ q := by
         by_cases hzy : z = y
         · rw [hzy, hφy]; exact hqx.symm
@@ -312,14 +314,14 @@ theorem rangeOrder_timeStep (N1 N2 : NodeId → Option KNode) (t : Time) (r : No
       obtain ⟨hz'x, hz'y⟩ := hchild (φ z) c z' hu ⟨m0, hm0, hcz0⟩ hφq
       obtain ⟨lo1, hi1, h3, h4, h5⟩ := old_child_step N1 t r hR (φ z) m0 lo0 lo hi0 hi hz0 hm0
         (by rw [← hlf]; exact hml) hlo hhi _ hms c z' z' b hcz0 hb
-        (fun r' hr' hlt => ⟨r', by rw [← hlv]; exact hr', hlt, Nat.le_refl _⟩)
+        (fun r' hr' hlt => ⟨r', hlv r'.1 r'.2 hr', hlt, Nat.le_refl _⟩)
       exact ⟨hz'x, lo1, hi1, by rw [hφ z' hz'y]; exact h3, h4, h5⟩
   · intro z lo hi m c z' _ hG hm hml hcz
     obtain ⟨hzx, lo0, hi0, hz0, _, _⟩ := hG
     have hzq : z ≠ q := by intro h; rw [h, hN2q] at hm; cases hm; rw [hq2l] at hml; cases hml
     obtain ⟨m0, hm0, hlf, hlv⟩ := hnode z m hzq hzx hm
     have hu := reachR_tReach N1 t r (φ z) lo0 hi0 hz0
-    have hcz0 : (c, z') ∈ m0.liveAt t := by rw [← hlv]; exact hcz
+    have hcz0 : (c, z') ∈ m0.liveAt t := hlv c z' hcz
     have hφq : φ z ≠ q := by
       intro h; rw [h, hqn] at hm0; cases hm0; rw [hlf, hql] at hml; cases hml
     obtain ⟨hz'x, hz'y⟩ := hchild (φ z) c z' hu ⟨m0, hm0, hcz0⟩ hφq
@@ -339,7 +341,7 @@ theorem rangeOrder_timeStep (N1 N2 : NodeId → Option KNode) (t : Time) (r : No
       · exact ⟨q', h2, rfl⟩
     · obtain ⟨m0, hm0, hlf, hlv⟩ := hnode z m hzq hzx hm
       exact nodeRange_sub m0 m t lo0 lo hi0 hi (hR _ lo0 hi0 m0 hz0 hm0) hlf
-        (fun q' hq' => ⟨q', by rw [← hlv]; exact hq', rfl⟩) hlo hhi
+        (fun q' hq' => ⟨q', hlv q'.1 q'.2 hq', rfl⟩) hlo hhi
 
 /-! ## One range per node -/
 
@@ -917,5 +919,10 @@ theorem rangeOrder_spaceStep (N1 N2 : NodeId → Option KNode) (t : Time) (r : N
         by_cases hcs : c0' = sc
         · simp only [hcs, ↓reduceIte] at hceq; exact Or.inl hceq
         · simp only [hcs, ↓reduceIte] at hceq; right; omega
+
+theorem splitLocalCv_eq (leaf : Bool) (sc c0 : Nat) :
+    splitLocalCv leaf sc c0 = (if c0 = sc ∧ leaf = false then 0 else c0) := by
+  unfold splitLocalCv
+  cases leaf <;> by_cases h : c0 = sc <;> simp [h]
 
 end SIS.Tree
