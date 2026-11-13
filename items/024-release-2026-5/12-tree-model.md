@@ -1303,12 +1303,40 @@ after `appendKlongs j (X j) ins` the writer's state reads as the state
 with ins put in X j. On it, at 16:50, **proved: the put and the
 delete into a leaf below such a chain**, the leaf split by its size,
 time or space, or its delete's bitmap (`writerWP_put_chain`,
-`writerWP_del_chain`, `GetCascadePut.lean`; a delete's time split in
-place for a leaf the transaction made). Still open: in-place splits
-inside the chain, a root or segment-root top, a top without room for
-two klongs (cost extends the chain to these as
-`writerWP_appendKlongs_chainG`), a delete's space split in place, a put
-that makes more than one new segment. The design: one induction
+`writerWP_del_chain`, `GetCascadePut.lean`; the leaf's time and space
+splits in place for a leaf the transaction made). At 18:15, **proved:
+the reading after a cascade of any kind** on cost's
+`writerWP_appendKlongs_chainG` (`writerWP_appendKlongs_chainGRV`,
+`GetCascadeChainG.lean`, for every value lookup without values at the
+new ids and the chain's nodes): in-place time and space splits of nodes
+the transaction made, time splits below segment leaves, the space
+root's time split with a new root, a top without room; and the put and
+delete rules on it (`writerWP_put_chainG`, `writerWP_del_chainG`), and
+a put that makes more than one new segment below a leaf with room
+(`writerWP_put_newSegs`, `GetNewSegs.lean`). Still open: the space
+splits that make a new root (the space root's, or a segment root's
+below a segment leaf; `hspace` leaves them out), the rules along the
+access path across segments (`writerWP_putSegs_prefix_linked` gives the
+path, `GetPutPath.lean`), a new segment below a full leaf.
+
+The reader's fuel (prover "latest", 2026-11-13, 18:15): TP10's `get`
+(`Read.lean`, `getFrom`) and `getFromR` give every segment's descent
+`Params.fuel` = (G + 1)(H + 2) + 2 steps, from the parameters, not from
+the state. Once every descent fits, more fuel reads the same
+(`getFromR_fuel_mono`, `GetFuel.lean`), so the fuel restricts nothing
+where `SegFits N t d r` holds with d < fuel: every segment tree reached
+from r has depth at most d (`SegDepthLe`). A space split that makes a
+new root grows a segment's tree by one level, and its reading needs that
+level within the fuel: those cases will take `SegFits` of the writer's
+state after the operation, with d = fuel - 1, as a premise. Open
+premise: it holds for trees within that height, not for every run;
+inside a transaction each new root adds a level (a node made above the
+level bounds is recorded in `outside`, MF3, and refused at the
+transaction's end if still there). It is the per-segment form of the
+deferred height bound of bounded startup: `LiveHeightLe P t H root`
+bounds the nodes on every live path from the root, across segments, by
+H, so it gives every segment tree a depth below H; the writer's tree
+inside a transaction can exceed it by the new roots it makes. The design: one induction
 over the writer's `appendKlongs (d + 1) x ins` instead of a rule per
 depth. Its statement: after it, the writer's state reads as the
 state before with x replaced by x with ins put (the node of the room
