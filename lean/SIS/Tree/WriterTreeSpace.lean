@@ -753,4 +753,207 @@ theorem treeOK_inPlaceSplitAfter (p : Params) (base : View BVal) (c : Ctx) (w w'
         exact ⟨rm, hrm⟩
 
 
+/-! ## The space split of the space root -/
+
+/-- The tree after a space split of a segment leaf x that is the root, with a
+klong (cv, v) put, into two new halves under a new root R (`split.space3`): the
+new lookup N' has the halves at y1 and y2 and R's klongs naming them; the tree
+is from R. The old root is left behind. -/
+theorem treeOK_rootSplit (N N' : NodeId → Option KNode) (t : Time) (x y1 y2 R v : NodeId)
+    (n : KNode) (cv : Nat) (r0 : Nat × NodeId)
+    (hT : TreeOK N t x) (hxn : N x = some n) (hnleaf : n.leaf = true)
+    (hr0 : (n.live.drop (n.live.length / 2)).head? = some r0)
+    (hnt : ∀ s, Klong.time s ∈ n.ks → s ≤ t)
+    (hN1 : N' y1 = some (halves true t (n.lastVersion t) [(cv, v)]).1)
+    (hN2 : N' y2 = some (halves true t (n.lastVersion t) [(cv, v)]).2.1)
+    (hNR : N' R = some ⟨false, newKlongs t [(0, y1), ((halves true t (n.lastVersion t) [(cv, v)]).2.2, y2)]⟩)
+    (hNv : N' v = N v)
+    (hother : ∀ z, z ≠ x → z ≠ y1 → z ≠ y2 → z ≠ R → N' z = N z)
+    (hf1 : N y1 = none) (hf2 : N y2 = none) (hfR : N R = none) (hvN : N v = none)
+    (h12 : y1 ≠ y2) (h1R : y1 ≠ R) (h2R : y2 ≠ R) (hv1 : v ≠ y1) (hv2 : v ≠ y2) (hvR : v ≠ R)
+    (hfresh : ∀ z, (z = y1 ∨ z = y2 ∨ z = R ∨ z = v) →
+      ∀ u c', TReach N t x u → ¬ TLink N t u c' z) :
+    TreeOK N' t R := by
+  obtain ⟨hsc, hfirst, hsecond⟩ := halves_leaf_live n t hnleaf cv v r0 hr0
+  generalize hout : halves true t (n.lastVersion t) [(cv, v)] = out at *
+  rw [hsc] at hNR
+  have hnlive : n.liveAt t = n.live := KNode.liveAt_of_times n t hnt
+  have hne : ∀ z m, N z = some m → ∀ y, N y = none → z ≠ y := fun z m hz y hy he => by
+    rw [he, hy] at hz; cases hz
+  have hx1 := hne x n hxn y1 hf1
+  have hx2 := hne x n hxn y2 hf2
+  have hxR := hne x n hxn R hfR
+  have hxv := hne x n hxn v hvN
+  have hLlink : ∀ c' z, (c', z) ∈ n.live → TLink N t x c' z := fun c' z h =>
+    ⟨n, hxn, by rw [hnlive]; exact h⟩
+  have hnotR : ∀ z, (z = y1 ∨ z = y2 ∨ z = R ∨ z = v) → ¬ TReach N t x z := by
+    intro z hz
+    rcases hz with h | h | h | h <;> rw [h]
+    · exact not_reach_fresh N t x y1 hT hf1 (hfresh y1 (Or.inl rfl))
+    · exact not_reach_fresh N t x y2 hT hf2 (hfresh y2 (Or.inr (Or.inl rfl)))
+    · exact not_reach_fresh N t x R hT hfR (hfresh R (Or.inr (Or.inr (Or.inl rfl))))
+    · exact not_reach_fresh N t x v hT hvN (hfresh v (Or.inr (Or.inr (Or.inr rfl))))
+  -- the links of the new nodes
+  have hRl : ∀ c' z, TLink N' t R c' z → (c' = 0 ∧ z = y1) ∨ (c' = r0.1 ∧ z = y2) := by
+    intro c' z hl
+    obtain ⟨m, hm, hc⟩ := hl
+    rw [hNR] at hm
+    simp only [Option.some.injEq] at hm
+    subst hm
+    have := liveAt_newKlongs_mem false t t _ c' z hc
+    simp only [List.mem_cons, Prod.mk.injEq, List.mem_nil_iff, or_false] at this
+    exact this
+  have h1l : ∀ c' z, TLink N' t y1 c' z → ((c', z) = (cv, v) ∧ cv < r0.1) ∨
+      ((c', z) ∈ n.live ∧ c' < r0.1) := by
+    intro c' z hl
+    obtain ⟨m, hm, hc⟩ := hl
+    rw [hN1] at hm
+    simp only [Option.some.injEq] at hm
+    subst hm
+    exact hfirst c' z hc
+  have h2l : ∀ c' z, TLink N' t y2 c' z → ((c', z) = (cv, v) ∧ r0.1 ≤ cv) ∨
+      ((c', z) ∈ n.live ∧ r0.1 ≤ c') := by
+    intro c' z hl
+    obtain ⟨m, hm, hc⟩ := hl
+    rw [hN2] at hm
+    simp only [Option.some.injEq] at hm
+    subst hm
+    exact hsecond c' z hc
+  have hvl : ∀ c' z, ¬ TLink N' t v c' z := by
+    intro c' z hl
+    obtain ⟨m, hm, _⟩ := hl
+    rw [hNv, hvN] at hm; cases hm
+  have hnotx : ∀ u c', TReach N t x u → ¬ TLink N t u c' x := fun u c' hu hl => hT.rootFree u c' hu hl
+  apply treeOK_transfer_gone N N' t x R (fun z => z = y1 ∨ z = y2 ∨ z = R ∨ z = v) (fun z => z = x)
+    (fun u c' => if u = x then (if c' < r0.1 then (y1, c') else (y2, c')) else (u, c')) hT hnotR
+  · refine Or.inr ⟨Or.inr (Or.inr (Or.inl rfl)), fun u c' hu hug hl => ?_⟩
+    by_cases huR : u = R
+    · rw [huR] at hl
+      rcases hRl c' R hl with ⟨_, h⟩ | ⟨_, h⟩
+      · exact h1R h.symm
+      · exact h2R h.symm
+    · by_cases hu1 : u = y1
+      · rw [hu1] at hl
+        rcases h1l c' R hl with ⟨h, _⟩ | ⟨h, _⟩
+        · simp only [Prod.mk.injEq] at h; exact hvR h.2.symm
+        · exact hfresh R (Or.inr (Or.inr (Or.inl rfl))) x c' TReach.root (hLlink c' R h)
+      · by_cases hu2 : u = y2
+        · rw [hu2] at hl
+          rcases h2l c' R hl with ⟨h, _⟩ | ⟨h, _⟩
+          · simp only [Prod.mk.injEq] at h; exact hvR h.2.symm
+          · exact hfresh R (Or.inr (Or.inr (Or.inl rfl))) x c' TReach.root (hLlink c' R h)
+        · by_cases huv : u = v
+          · rw [huv] at hl; exact hvl c' R hl
+          · obtain ⟨m, hm, hc⟩ := hl
+            rw [hother u hug hu1 hu2 huR] at hm
+            have huRch : TReach N t x u := by
+              rcases hu with h | h
+              · exact h
+              · rcases h with h | h | h | h
+                · exact absurd h hu1
+                · exact absurd h hu2
+                · exact absurd h huR
+                · exact absurd h huv
+            exact hfresh R (Or.inr (Or.inr (Or.inl rfl))) u c' huRch ⟨m, hm, hc⟩
+  · intro u c' z hu hug hl
+    by_cases huR : u = R
+    · rw [huR] at hl
+      rcases hRl c' z hl with ⟨_, h⟩ | ⟨_, h⟩
+      · exact Or.inl (Or.inl h)
+      · exact Or.inl (Or.inr (Or.inl h))
+    · by_cases hu1 : u = y1
+      · rw [hu1] at hl
+        rcases h1l c' z hl with ⟨h, _⟩ | ⟨h, hlt⟩
+        · simp only [Prod.mk.injEq] at h
+          exact Or.inl (Or.inr (Or.inr (Or.inr h.2)))
+        · refine Or.inr ⟨fun hzx => hnotx x c' TReach.root (by
+            have := hLlink c' z h; rw [hzx] at this; exact this),
+            x, c', TReach.root, hLlink c' z h, by simp [hu1, hlt]⟩
+      · by_cases hu2 : u = y2
+        · rw [hu2] at hl
+          rcases h2l c' z hl with ⟨h, _⟩ | ⟨h, hge⟩
+          · simp only [Prod.mk.injEq] at h
+            exact Or.inl (Or.inr (Or.inr (Or.inr h.2)))
+          · have hnlt : ¬ c' < r0.1 := by omega
+            refine Or.inr ⟨fun hzx => hnotx x c' TReach.root (by
+              have := hLlink c' z h; rw [hzx] at this; exact this),
+              x, c', TReach.root, hLlink c' z h, by simp [hu2, hnlt]⟩
+        · by_cases huv : u = v
+          · rw [huv] at hl; exact absurd hl (hvl c' z)
+          · obtain ⟨m, hm, hc⟩ := hl
+            rw [hother u hug hu1 hu2 huR] at hm
+            have huRch : TReach N t x u := by
+              rcases hu with h | h
+              · exact h
+              · rcases h with h | h | h | h
+                · exact absurd h hu1
+                · exact absurd h hu2
+                · exact absurd h huR
+                · exact absurd h huv
+            have hl0 : TLink N t u c' z := ⟨m, hm, hc⟩
+            exact Or.inr ⟨fun hzx => hnotx u c' huRch (by rw [← hzx]; exact hl0), u, c', huRch,
+              hl0, by simp [hug]⟩
+  · intro u c' u' c'' z hu hug hu' hug' hz hl1 hl2
+    -- each new node is named once
+    have hone : ∀ y d, (TReach N t x y ∨ (y = y1 ∨ y = y2 ∨ y = R ∨ y = v)) → y ≠ x →
+        TLink N' t y d z →
+        (y = R ∧ d = 0 ∧ z = y1) ∨ (y = R ∧ d = r0.1 ∧ z = y2) ∨
+        (z = v ∧ d = cv ∧ ((y = y1 ∧ cv < r0.1) ∨ (y = y2 ∧ r0.1 ≤ cv))) := by
+      intro y d hy hyx hl
+      have hfr : ∀ u c', TReach N t x u → ¬ TLink N t u c' z := hfresh z hz
+      by_cases hyR : y = R
+      · rw [hyR] at hl
+        rcases hRl d z hl with ⟨hd, h⟩ | ⟨hd, h⟩
+        · exact Or.inl ⟨hyR, hd, h⟩
+        · exact Or.inr (Or.inl ⟨hyR, hd, h⟩)
+      · by_cases hy1 : y = y1
+        · rw [hy1] at hl
+          rcases h1l d z hl with ⟨h, hlt⟩ | ⟨h, _⟩
+          · simp only [Prod.mk.injEq] at h
+            exact Or.inr (Or.inr ⟨h.2, h.1, Or.inl ⟨hy1, hlt⟩⟩)
+          · exact absurd (hLlink d z h) (hfr x d TReach.root)
+        · by_cases hy2 : y = y2
+          · rw [hy2] at hl
+            rcases h2l d z hl with ⟨h, hge⟩ | ⟨h, _⟩
+            · simp only [Prod.mk.injEq] at h
+              exact Or.inr (Or.inr ⟨h.2, h.1, Or.inr ⟨hy2, hge⟩⟩)
+            · exact absurd (hLlink d z h) (hfr x d TReach.root)
+          · by_cases hyv : y = v
+            · rw [hyv] at hl; exact absurd hl (hvl d z)
+            · obtain ⟨m, hm, hc⟩ := hl
+              rw [hother y hyx hy1 hy2 hyR] at hm
+              have hyRch : TReach N t x y := by
+                rcases hy with h | h
+                · exact h
+                · rcases h with h | h | h | h
+                  · exact absurd h hy1
+                  · exact absurd h hy2
+                  · exact absurd h hyR
+                  · exact absurd h hyv
+              exact absurd ⟨m, hm, hc⟩ (hfr y d hyRch)
+    rcases hone u c' hu hug hl1 with ⟨a1, b1, c1⟩ | ⟨a1, b1, c1⟩ | ⟨a1, b1, c1⟩ <;>
+      rcases hone u' c'' hu' hug' hl2 with ⟨a2, b2, c2⟩ | ⟨a2, b2, c2⟩ | ⟨a2, b2, c2⟩
+    · exact ⟨a1.trans a2.symm, b1.trans b2.symm⟩
+    · exact absurd (c1.symm.trans c2) h12
+    · exact absurd (a2.symm.trans c1) hv1
+    · exact absurd (c2.symm.trans c1) h12
+    · exact ⟨a1.trans a2.symm, b1.trans b2.symm⟩
+    · exact absurd (a2.symm.trans c1) hv2
+    · exact absurd (a1.symm.trans c2) hv1
+    · exact absurd (a1.symm.trans c2) hv2
+    · refine ⟨?_, b1.trans b2.symm⟩
+      rcases c1 with ⟨h1, hlt⟩ | ⟨h1, hge⟩ <;> rcases c2 with ⟨h2, hlt'⟩ | ⟨h2, hge'⟩
+      · exact h1.trans h2.symm
+      · omega
+      · omega
+      · exact h1.trans h2.symm
+  · intro z hz hzx
+    rw [hzx] at hz
+    rcases hz with h | h | h | h
+    · exact hx1 h
+    · exact hx2 h
+    · exact hxR h
+    · exact hxv h
+  · rw [hNR]; exact ⟨_, rfl⟩
+
 end SIS.Tree
