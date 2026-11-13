@@ -35,6 +35,11 @@ public class StorageManager implements AppendOnlyStream {
     // implicit reference to StorageManager (an anonymous inner class).
     //
     
+    /**
+     * The main stream's largest buffer in bytes, 10 MB. The buffer starts at 64 KiB and grows
+     * with use up to this; a grown buffer shrinks back after 2 seconds with nothing to write
+     * (BufferedStream, 2026-11-13, bergdb 026-07). It was allocated in full at the start.
+     */
     public static final int DEFAULT_BUFFER_SIZE = 10 * 1000000;
     /**
      * The main stream's buffer time in ms. 100 until 2026-10-20, chosen for rotating drives;

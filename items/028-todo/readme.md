@@ -1,0 +1,115 @@
+028-todo
+========
+
+Created 2026-11-13 by Frans Lundberg. Status: open.
+
+Simple tasks on BergDB: faults to fix, things to investigate, decisions to
+prepare, changes to make, each done and closed in about a day, mostly by
+an AI agent, often unattended. Each entry is a subitem with its own ID.
+The list is not tied to a release: an entry names no release, and a
+release item decides which entries its release takes.
+
+Frans, 2026-11-13, 10:13: "I like to have a list of simple todos. Those
+are tasks that AI often can do unattended. The release items like 026
+were meant for bigger things. For planning what to include in a release.
+For open-ended work. Features that may or may not be included in the
+release. Human+AI work. [...] I don't want the big release items hidden
+among 80 simple tasks." And 10:18: "Create a new todo item. The entries
+of the todo item do not need a release, by default. The release item
+itself will decided the scope of the release."
+
+It takes every new todo entry from 2026-11-13. The earlier lists, 019 and
+021, have no open entry; their entries stay where they are.
+
+
+Rules
+=====
+
+What goes where
+---------------
+
+* **Here**: a task with a clear "Done when" that one agent can finish and
+  close in about a day, its gates included, needing from Frans at most a
+  choice between options written in the entry.
+* **A release item** (such as 026): the release's plan and scope, its
+  decisions, and subitems for the bigger work: designs, studies, features
+  that may or may not be included, work that needs Frans's thinking or
+  several steps. It lists the todo entries its release takes, by ID.
+* **017-07, "To consider"**: an idea that Frans may consider some day.
+* **017-long-term**: open-ended, long-term and strategy topics with no
+  fixed "Done when" (017's rules).
+* **006-2026-q4**: small work done at once at Frans's request, such as a
+  summary or a review.
+* An entry that turns out larger moves to an item of its own, or to a
+  release item's subitems; its row moves to Closed with status moved, and
+  its file stays with a link to where the work went.
+
+
+Entries
+-------
+
+* An entry is a file `nn-short-name.md`, or a directory `nn-short-name/`
+  with a `readme.md` when it has scripts or results:
+
+      028-nn. Fix: a short title
+      ==========================
+
+      Status: open. Kind: Fix. Frans: none.
+      Created 2026-11-13 by Frans Lundberg.
+
+      What: the fault or the task, and where it is.
+
+      Why: what goes wrong, or what it is for; the source.
+
+      Frans: none; or the questions; or the options, each in full.
+
+      Done when: the test, the gate, the measurement or the decision
+      that closes it.
+
+      First step: what an agent does first.
+
+
+      Log
+      ---
+
+      2026-11-13. Registered by <session or Frans>.
+
+* Kind: Fix, Investigate, Decide, Implement, Measure.
+* `Frans:` says what the entry needs from him: `none` (an agent does it
+  all), `answers` (questions in the entry), or `decision` (options in
+  full with a recommendation). His answer goes into the entry's log,
+  quoted, with date and time.
+* An agent or a coordinator may take an open entry without asking: it sets
+  the status to `in progress` and names its session in the log; if it
+  stops before the entry is done, it writes a State note.
+* Entries are numbered 028-01 to 028-99, the next after the highest
+  issued; while a coordinator runs, a session asks it for the number
+  (013-02). When the numbers run out, a new todo item continues the list.
+
+
+The list
+========
+
+Two tables: what is left to do, and what is closed (newest first). A
+subitem's own `Status:` line is the source.
+
+
+Open
+----
+
+| ID | Kind | What | Frans | Status |
+|---|---|---|---|---|
+| [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins and sequential keys | none | open |
+
+
+Closed
+------
+
+| ID | Kind | What | Frans | Status | Closed |
+|---|---|---|---|---|---|
+
+
+Log
+===
+
+2026-11-13. Created the item (Frans, 10:13 and 10:18), by coord-1113.

@@ -44,16 +44,25 @@ import bergdb.stream.MemoryStream;
  * one after setStartupDistance() (bergdb 005-61; it was the builder's before). Its cut point pCut is the pStart of the iteration before (the first iteration:
  * its own pStart).</li>
  * <li>Each external transaction allows a step when the bytes rewritten so far are below
- * internalFraction times the stream growth since pStart (fractionOf). A step scans the KVs at time
- * tStart after lastKey and rewrites each live value stored before pCut: a put of the same
+ * internalFraction times the stream growth since pStart (fractionOf). A step scans the KVs at
+ * its own time, the latest state, after lastKey and up to endKey, the last key live at tStart
+ * (found when the iteration starts, and kept in its row), and rewrites each live value stored
+ * before pCut: a put of the same
  * key and value, which makes the index nodes on the key's path dirty, as every put does, so
- * that they are written again. The row of the
+ * that they are written again. Only the KVs whose values are stored before pStart count
+ * toward the step's size, so an iteration takes at most (the KVs live at tStart) / (a step's
+ * size) steps, whatever is put ahead of the scan. Until bergdb 026-05 the scan was at tStart,
+ * and the iteration in progress at a mass delete walked every deleted key (see step()). The
+ * row of the
  * iteration, with the new lastKey, is stored in the same transaction (CURRENT_KEY_NAME);
  * the table is stored when an iteration starts, ends, gets safe or is cut.</li>
- * <li>When the scan reaches the end, the iteration is done; tEnd and pEnd are the time and
+ * <li>When the scan passes endKey or reaches the end, the iteration is done; tEnd and pEnd
+ * are the time and
  * position of the last step. Every node and value reachable at times from tEnd on is then
  * stored at pCut or later, or is dirty and will be written there. A value: by its put, or
- * by the step that rewrote it. An index node: a delete unlinks the nodes it empties
+ * by the step that rewrote it (a value stored before pCut and live at a time t from tEnd on
+ * was live, with that value, from tStart to t, so the step whose range holds its key met it;
+ * step(), bergdb 023-05, P8, section 2.3). An index node: a delete unlinks the nodes it empties
  * (Dag.deleteUpward, format 6), so the node has a live key below it; if nothing below the
  * node changed since pCut, that key's value is stored before pCut, and the step that rewrote
  * it made the node dirty; otherwise the transaction that changed something below it did
@@ -481,6 +490,7 @@ public class Reclaim implements Db.TransactionListener {
             current.pStart = streamSize;
             current.tStart = t.tt;
             current.pCut = table.rows.isEmpty() ? streamSize : lastPStart();
+            current.endKey = lastKeyAt(t.tt);
             table.rows.add(current);
             storeTable();
         }
@@ -557,7 +567,8 @@ public class Reclaim implements Db.TransactionListener {
      * (cutPending),
      * and the cut that a new iteration leads to releases at least MAINTAIN_MIN_RELEASE, an
      * iteration begins, as at a commit, with tStart = lastTransTime, the time of the state
-     * at pStart. The commit's condition on the stream's growth is not asked.</li>
+     * at pStart, and endKey the last key live then (lastKeyAt; bergdb 026-05). The commit's
+     * condition on the stream's growth is not asked.</li>
      * <li>M2: a step of the iteration that runs, of MAX_STEP_SIZE, without the commit's
      * allowance (the internal fraction of the growth).</li>
      * <li>M3: the safe positions (markSafePositions).</li>
@@ -584,6 +595,7 @@ public class Reclaim implements Db.TransactionListener {
             it.pStart = streamSize;
             it.tStart = lastTransTime;
             it.pCut = table.rows.isEmpty() ? streamSize : lastPStart();
+            it.endKey = lastKeyAt(lastTransTime);
             table.rows.add(it);
             storeTable();
         }
@@ -737,17 +749,62 @@ public class Reclaim implements Db.TransactionListener {
     }
     
     /**
-     * One step of iteration 'it': scans KVs at time tStart after lastKey, about writeSize
-     * bytes of them, rewrites each live value stored before pCut,
-     * and stores the table row as it is after the step; all in one internal transaction.
-     * Only a KV whose value the scan found before pCut is read again, at the step's time
-     * (bergdb 024-34).
-     * After the last step (the scan reached the end), the iteration is done, and tEnd and
-     * pEnd are stored.
+     * The last key live at time tt, or IterationInfo.NO_KEY if none was (bergdb 026-05; 023-05,
+     * P8): the endKey of an iteration, found when it starts, at its tStart. A maintenance read
+     * of one KV, backward from the end of the key space. Every key counts, BergDB's own too:
+     * the value of any live key may need a rewrite.
+     */
+    private long[] lastKeyAt(long tt) {
+        GetMany g = db.newGetMany();
+        g.gd.pointerFollower = db.internal().nodeCollection().maintenance();
+        g.setBackward();
+        g.lookupTime = tt;
+        g.stopCondition = new GetMany.GetN(1);
+        db.getMany(g);
+        assert g.actualLookupTime == tt : g.actualLookupTime + " " + tt;
+        return g.result.isEmpty() ? IterationInfo.NO_KEY : g.result.get(0).key;
+    }
+
+    /**
+     * One step of iteration 'it': scans the KVs at the step's own time, the latest state,
+     * after lastKey and up to the iteration's endKey, about writeSize bytes of those stored
+     * before pStart, rewrites each live value stored before pCut, and stores the table row as
+     * it is after the step; all in one internal transaction. After the last step (the scan
+     * passed endKey or reached the end), the iteration is done, and tEnd and pEnd are stored.
+     *
+     * <p>bergdb 026-05 (023-05, P8; Frans's Z14 in 023-06): until then the scan was at tStart,
+     * so the iteration in progress at a mass delete walked every key live at its start, the
+     * deleted ones too, at most 16 kB of them a user transaction (024-05, OP9; 026-04,
+     * section 4: at 10M keys 132,634 steps, and back to empty 33,501 transactions after the
+     * deletes). The scan at the step's time does not meet the deleted keys. No value that a
+     * cut removes is lost: a value stored before pCut that a lookup at a time t from tEnd on
+     * reads was written at or before tStart (every record before pStart was), and its key had
+     * no write after it until t, so the key was live, with that value, at every time from
+     * tStart to t. So it is at most endKey; the ranges of the steps, (lastKey, lastKeyOfStep],
+     * join and cover every key up to endKey; and the step whose range holds the key met it at
+     * its scan time and rewrote it (023-05, P8, section 2.3). The index nodes need nothing
+     * more (the class comment; 024-07). Three rules bound a step and the iteration:</p>
+     *
+     * <ul>
+     * <li>endKey, the last key live at tStart (lastKeyAt), ends the scan (GetMany.endKey): the
+     * keys put after it since tStart are not met, and their values are after pStart. A row
+     * stored before 026-05 has none (null): its scan is not bounded so.</li>
+     * <li>Only a KV whose value is stored before pStart counts toward writeSize. Such a KV was
+     * live at tStart with that value, and the scan moves forward, so an iteration takes at
+     * most (the KVs live at tStart) / writeSize steps, as with the scan at tStart, whatever
+     * the user puts ahead of the scan (review B of 023-07, section 2.6; 023-08, fault 13:
+     * with every KV counted, keys put ahead of the scan kept an iteration from ending). The
+     * step's reserve (maxNodes) bounds the KVs it walks.</li>
+     * <li>Only a KV whose value is stored before pCut enters the scan's result, the KVs to
+     * rewrite; the scan walks past the others (StopCondition.CONTINUE). So the result holds
+     * about writeSize bytes also when the step walks many KVs put since pStart, and a KV at
+     * pCut or later is not read again (bergdb 024-34).</li>
+     * </ul>
      * 
      * <p>A value that a step rewrites, its copy, is the value of its key at one unit before
-     * the step's time: the step reads it at the latest state and puts it with the key as read
-     * (keyRead, readTime), so a write of the key between them makes the step run again
+     * the step's time: the step reads it at the latest state, by the scan (bergdb 026-05;
+     * before, by a second read of the key), and puts it with the key as read (keyRead,
+     * readTime), so a write of the key between them makes the step run again
      * (RerunException). ConnectionImp.transactionInfo() follows a copy back to the
      * transaction that wrote the value by it (bergdb 021-17).</p>
      */
@@ -767,43 +824,6 @@ public class Reclaim implements Db.TransactionListener {
         final boolean[] split = new boolean[] {false};
         final long[] atCut = new long[2];   // Value loads seen, those at pCut or later (stats).
         
-        GetMany g = db.newGetMany();
-        g.gd.pointerFollower = maintenance;
-        g.startKey = it.lastKey;
-        assert g.startKey == null || g.startKey.length > 0;
-        g.inclusive = false;
-        g.lookupTime = it.tStart;
-        g.stopCondition = new GetMany.StopCondition() {
-            private long size = 0;
-                // An approximation of the stream space the KVs of the step.
-            
-            public int handleKvt(Kvt kvt) {
-                size += kvt.key.length * 8 + kvt.value.length + 100;
-                lastKeyOfStep[0] = kvt.key;
-                final long vl = maintenance.valueLoads();
-                if (vl > atCut[0]) {
-                    atCut[0] = vl;
-                    if (Spos.isVpos(kvt.spos) || kvt.spos >= it.pCut) atCut[1]++;
-                }
-                if (maintenance.indexNodes() > maxNodes) {
-                    split[0] = true;
-                    return ADD_AND_STOP;
-                }
-                return size > writeSize ? ADD_AND_STOP : ADD;
-            }
-            
-            public void eod() {
-                eod[0] = true;
-            }
-        };
-        db.getMany(g);
-        final int scanNodes = maintenance.indexNodes();
-        
-        Trans.Builder b = db.trans();
-        long stepLookupTime = -1;
-        long rewritten = 0;
-        long values = 0, valueBytes = 0;    // For stats.
-        
         // bergdb 015-50 (016-06's R7-F1): the step's value nodes stay within
         // StoredTrans.valueLimit(), as a user transaction's do (Db.checkSize). The scan adds
         // KVs until their size passes writeSize, so its last one can be a value of any size;
@@ -814,67 +834,89 @@ public class Reclaim implements Db.TransactionListener {
         // step. Alone, it is within the limit, as its user transaction was (or the transaction
         // of a step before); the step's row comes on top of it, so Db.checkSize does not apply
         // to internal transactions. A step that did not pass the limit is the same as before.
+        // The scan applies the limit since bergdb 026-05 (the loop below did).
         final long valueLimit = StoredTrans.valueLimit();
-        long valueNodeBytes = 0;
-        int kvs = 0;                        // The KVs of the scan that the step covers.
-        long gets = 0;                      // For stats.
+        final long[] kvs = new long[1];     // The KVs of the scan that the step covers.
         
-        for (Kvt kvt : g.result) {
-            // bergdb 024-34 (024-05, OP8): a KV whose value the scan found at pCut or later,
-            // or not yet written (a vpos), is not rewritten, so it is not read again. Its value
-            // at the step's time is that one, a later one (stored after tStart, so after
-            // pStart), or none, and a record lies wholly before or after pCut, a record
-            // boundary: so the test below would fail for it. Before, every KV of the scan was
-            // read again; the step's puts, its row and so its bytes are the same.
-            if (Spos.isVpos(kvt.spos) || kvt.spos >= it.pCut) {
-                kvs++;
-                continue;
-            }
-            GetData gd = db.newGetData();
-            gd.pointerFollower = maintenance;
-            byte[] value;
-            gets++;
+        GetMany g = db.newGetMany();
+        g.gd.pointerFollower = maintenance;
+        g.startKey = it.lastKey;
+        assert g.startKey == null || g.startKey.length > 0;
+        g.inclusive = false;
+        g.lookupTime = Long.MAX_VALUE;      // The step's own time (bergdb 026-05).
+        g.endKey = it.endKey;               // Inclusive; see the guard below for NO_KEY.
+        g.stopCondition = new GetMany.StopCondition() {
+            private long size = 0;
+                // An approximation of the stream space of the KVs stored before pStart.
+            private long valueNodeBytes = 0;    // Of the KVs to rewrite (015-50).
+            private int toRewrite = 0;
             
-            if (stepLookupTime == -1) {         // BUG Fixed 130131, was "1" instead of "-1".
-                value = db.getOne(Long.MAX_VALUE, kvt.key, gd);
-                stepLookupTime = gd.actualLookupTime;
-            } else {
-                value = db.getOne(stepLookupTime, kvt.key, gd);
-            }
-            
-            // If the KV still exists and its value is stored before pStart, it is 
-            // rewritten to the stream.
-            // 2026-10-13 (Reclaim.Tester.testIterationRewritesAllOldValues):
-            // was "gd.kvTime <= tStart". After a time split of the key node, kvTime is
-            // the time of the split, not of the write, so old values were skipped and
-            // then cut away. The position of the value decides what the cut removes.
-            
-            // A value not yet written (tpos Spos.NULL, bergdb 005-34) is after the cut, as
-            // its vpos was.
-            if (value != null && gd.tpos != Spos.NULL && gd.tpos < it.pCut) {
-                final long nodeBytes = StoredValueNode.getByteSizeLong(value, kvt.key);
-                if (values > 0 && valueNodeBytes + nodeBytes > valueLimit) {
-                    lastKeyOfStep[0] = g.result.get(kvs - 1).key;
-                    eod[0] = false;
-                    break;
+            public int handleKvt(Kvt kvt) {
+                final boolean stored = Spos.isValid(kvt.spos) && !Spos.isVpos(kvt.spos);
+                final boolean rewrite = stored && kvt.spos < it.pCut;
+                if (rewrite) {
+                    final long nodeBytes = StoredValueNode.getByteSizeLong(kvt.value, kvt.key);
+                    if (toRewrite > 0 && valueNodeBytes + nodeBytes > valueLimit) {
+                        return STOP;        // The first KV of the next step (015-50).
+                    }
+                    valueNodeBytes += nodeBytes;
+                    toRewrite++;
                 }
-                valueNodeBytes += nodeBytes;
-                b.keyRead(kvt.key);
-                // Note, no mem copy of key and value. The internal call: a live key may be
-                // BergDB's own, longer than Db.MAX_KEY_BYTES (an index entry), and a check
-                // that threw here, inside a user transaction's go point, would fail the
-                // database (bergdb 024-24).
-                b.putLongKey(kvt.key, null, value, null);
-                rewritten += kvt.key.length * 8 + value.length + VALUE_NODE_BYTES;
-                values++;
-                valueBytes += kvt.key.length * 8 + value.length;
+                lastKeyOfStep[0] = kvt.key;
+                kvs[0]++;
+                if (stored && kvt.spos < it.pStart) {
+                    size += kvt.key.length * 8 + kvt.value.length + 100;
+                }
+                final long vl = maintenance.valueLoads();
+                if (vl > atCut[0]) {
+                    atCut[0] = vl;
+                    if (!rewrite) atCut[1]++;
+                }
+                final boolean stop;
+                if (maintenance.indexNodes() > maxNodes) {
+                    split[0] = true;
+                    stop = true;
+                } else {
+                    stop = size > writeSize;
+                }
+                if (rewrite) {
+                    return stop ? ADD_AND_STOP : ADD;
+                }
+                return stop ? STOP : CONTINUE;
             }
-            kvs++;
+            
+            public void eod() {
+                eod[0] = true;
+            }
+        };
+        if (it.endKey != null && (it.endKey.length == 0
+                || (it.lastKey != null && Keys.compareKeys(it.lastKey, it.endKey) >= 0))) {
+            eod[0] = true;      // No key was live at tStart, or the steps covered endKey.
+        } else {
+            db.getMany(g);
+        }
+        final int scanNodes = maintenance.indexNodes();
+            
+        Trans.Builder b = db.trans();
+        long rewritten = 0;
+        long values = 0, valueBytes = 0;    // For stats.
+
+        // The KVs to rewrite: each live at the scan's time, its value stored before pCut.
+        for (Kvt kvt : g.result) {
+            b.keyRead(kvt.key);
+            // Note, no mem copy of key and value. The internal call: a live key may be
+            // BergDB's own, longer than Db.MAX_KEY_BYTES (an index entry), and a check
+            // that threw here, inside a user transaction's go point, would fail the
+            // database (bergdb 024-24).
+            b.putLongKey(kvt.key, null, kvt.value, null);
+            rewritten += kvt.key.length * 8 + kvt.value.length + VALUE_NODE_BYTES;
+            values++;
+            valueBytes += kvt.key.length * 8 + kvt.value.length;
         }
         
         final IterationInfo next = it.copy();
         next.lastKey = lastKeyOfStep[0];
-        next.kvCount += kvs;
+        next.kvCount += kvs[0];
         next.rewritten += rewritten;
         final Trans[] stepTrans = new Trans[1];
         final byte[][] tableBytes = new byte[1][];
@@ -898,8 +940,8 @@ public class Reclaim implements Db.TransactionListener {
         
         Trans t = b.build();
         stepTrans[0] = t;
-        if (stepLookupTime != -1) {
-            t.readTime = stepLookupTime;
+        if (!g.result.isEmpty()) {
+            t.readTime = g.actualLookupTime;    // The scan's time, as each value's read.
         }
         t.isInternal = true;
         
@@ -927,7 +969,7 @@ public class Reclaim implements Db.TransactionListener {
         
         if (st != null) {
             st.steps++;
-            st.kvs += kvs;
+            st.kvs += kvs[0];
             st.values += values;
             st.valueBytes += valueBytes;
             st.recordBytes += t.nextPos - t.tpos;
@@ -940,7 +982,6 @@ public class Reclaim implements Db.TransactionListener {
             st.loadBytes += maintenance.loadBytes();
             st.valueLoads += maintenance.valueLoads();
             st.scanValueLoadsAtCut += atCut[1];
-            st.gets += gets;
             st.maxStepNodes = Math.max(st.maxStepNodes, scanNodes);
             if (split[0]) st.splitSteps++;
             if (eod[0]) {
@@ -1115,7 +1156,15 @@ public class Reclaim implements Db.TransactionListener {
             this.firstAvailableLookupTime = cutRow.tEnd;
             this.firstAvailablePos = cutRow.pCut;
         }
+        db.cutDecided(cutRow.pCut, cutRow.tEnd);       // bergdb 026-10
         
+        // bergdb 026-05: a pending cut whose table is durable is made before the newer one
+        // replaces it. It was dropped: a cut decided at every transaction (iterations of one
+        // step, as 026-05 makes them when the keys are overwritten) left the stream uncut
+        // (Reclaim.Tester.testPretruncate; 023-08, check V8, Q2). The older cut is the one
+        // that cutIfDurable() would have made at the end of the call before; it cuts at or
+        // before the newer one.
+        cutIfDurable();
         pendingCut = cutRow.pCut;
         pendingCutDurableAt = db.getStreamLength();
         
@@ -1261,7 +1310,7 @@ public class Reclaim implements Db.TransactionListener {
             long pStart, tStart;
             long pEnd = -1, tEnd = -1;  // -1 until done.
             long steps;
-            long kvs;                   // KVs scanned at tStart.
+            long kvs;                   // KVs scanned (at the steps' times since 026-05).
             long values;                // Values rewritten (stored before pCut).
             long valueBytes;            // Their key and value bytes.
             long recordBytes;           // Bytes of the step transactions in the stream.
@@ -1274,7 +1323,6 @@ public class Reclaim implements Db.TransactionListener {
             long loadBytes;             // Their memory size.
             long valueLoads;            // Of the loads, values (bergdb 024-34).
             long scanValueLoadsAtCut;   // Values the scans loaded stored at pCut or later.
-            long gets;                  // Second reads: a key read again at the step's time.
             long maxStepNodes;          // Most index nodes one step's scan followed.
             long splitSteps;            // Steps that the reserve stopped (setStepReserve).
             final TouchCount touch = new TouchCount();
@@ -1371,6 +1419,19 @@ public class Reclaim implements Db.TransactionListener {
         long tEnd;
         long kvCount;       // total number of KVs in the database for the iteration lookup time
         long[] lastKey;     // Last key that was iterated, or null if none was iterated.
+        
+        /**
+         * The last key live at tStart, or NO_KEY if none was (bergdb 026-05; 023-05, P8): the
+         * steps scan, each at its own time, the keys after lastKey up to it (Reclaim.step). A
+         * value that needs a rewrite was live at tStart, so its key is at most endKey. Null in
+         * a row stored without it, before 026-05: the scan is then bounded by the end of the
+         * key space only.
+         */
+        long[] endKey;
+        
+        /** The endKey of an iteration that began when no key was live (bergdb 026-05). */
+        static final long[] NO_KEY = new long[0];
+        
         boolean done;
         boolean cut;        // The stream was cut at pCut (2026-10-13).
         long rewritten;     // Approximate bytes rewritten so far (2026-10-13).
@@ -1397,6 +1458,7 @@ public class Reclaim implements Db.TransactionListener {
             tEnd = o.tEnd;
             kvCount = o.kvCount;
             lastKey = o.lastKey;
+            endKey = o.endKey;
             done = o.done;
             cut = o.cut;
             rewritten = o.rewritten;
@@ -1426,6 +1488,11 @@ public class Reclaim implements Db.TransactionListener {
                     b.append(l + " ");
                 }
                 m.put("lastKey", b.toString().trim());
+            }
+            
+            // bergdb 026-05: "none" for NO_KEY; no line for null (a row stored before).
+            if (endKey != null) {
+                m.put("endKey", endKey.length == 0 ? "none" : serializeKey(endKey));
             }
             
             m.put("done", done ? "true" : "false");
@@ -1485,6 +1552,9 @@ public class Reclaim implements Db.TransactionListener {
                 }
             }
             
+            String end = m.get("endKey");      // bergdb 026-05.
+            endKey = end == null ? null : end.equals("none") ? NO_KEY : parseKey(end);
+            
             done = false;
             
             String doneString = m.get("done");
@@ -1507,6 +1577,39 @@ public class Reclaim implements Db.TransactionListener {
             pEnd = m.hasLong("pEnd") ? m.getLong("pEnd") : pStart;
             pSafe = m.hasLong("pSafe") ? m.getLong("pSafe") : -1;
             pCut = m.hasLong("pCut") ? m.getLong("pCut") : pStart;     // Since 2026-10-13.
+        }
+        
+        /** A key as endKey is stored: its segments, decimal, one space between (026-05). */
+        private static String serializeKey(long[] key) {
+            StringBuilder b = new StringBuilder();
+            for (long l : key) {
+                b.append(l + " ");
+            }
+            return b.toString().trim();
+        }
+        
+        /** The key that serializeKey gave as 's'; refuses any other form (026-05). */
+        private static long[] parseKey(String s) {
+            ArrayList<Long> segments = new ArrayList<Long>();
+            for (String part : s.split(" ")) {
+                if (part.length() > 0) {
+                    try {
+                        segments.add(Long.parseLong(part));
+                    } catch (NumberFormatException e) {
+                        throw new InternalDataException("Bad value of endKey in " + TABLE_KEY_NAME 
+                                + ", " + s);
+                    }
+                }
+            }
+            if (segments.isEmpty()) {
+                throw new InternalDataException("Bad value of endKey in " + TABLE_KEY_NAME 
+                        + ", " + s);
+            }
+            long[] key = new long[segments.size()];
+            for (int i = 0; i < key.length; i++) {
+                key[i] = segments.get(i);
+            }
+            return key;
         }
         
         private long getLong(StringMap m, String key) {
@@ -1559,6 +1662,34 @@ public class Reclaim implements Db.TransactionListener {
             Assert.assertEquals(i1.pStart, i2.pStart);
             Assert.assertEquals(i1.tEnd, i2.tEnd);
             Assert.assertEquals(i1.tStart, i2.tStart);
+        }
+        
+        /** The end key of a row, stored and read back (bergdb 026-05). */
+        @Nano
+        private static void testSerializeEndKey() {
+            IterationInfo i1 = new IterationInfo();
+            i1.lastKey = new long[]{123};
+            for (long[] end : new long[][] {{1, -2, 3}, IterationInfo.NO_KEY, null}) {
+                i1.endKey = end;
+                String s = i1.serialize();
+                IterationInfo i2 = new IterationInfo();
+                i2.deserialize(s);
+                if (end == null) {
+                    Assert.assertTrue(s, !s.contains("endKey") && i2.endKey == null);
+                } else {
+                    Assert.assertArrayEquals(end, i2.endKey);
+                }
+            }
+            i1.endKey = new long[]{5};
+            for (String bad : new String[] {"endKey=x\n", "endKey=\n", "endKey=5 y\n"}) {
+                InternalDataException ex = null;
+                try {
+                    new IterationInfo().deserialize(i1.serialize().replace("endKey=5\n", bad));
+                } catch (InternalDataException e) {
+                    ex = e;
+                }
+                Assert.assertTrue(bad, ex != null);
+            }
         }
         
         @Nano
@@ -1862,6 +1993,140 @@ public class Reclaim implements Db.TransactionListener {
             } finally {
                 db.close();
             }
+        }
+        
+        /**
+         * bergdb 026-05 (023-05, P8): a step scans at its own time. An iteration that started
+         * before a mass delete scanned, at its tStart, every key live then, deleted or not, at
+         * most 16 kB a user transaction; now its steps meet the keys live at their own times,
+         * and the keys left are rewritten as before. 2,000 keys, an iteration starts, all but
+         * the last ten are deleted in key order, in four transactions (at most 500 operations
+         * each, 024-17); then the iteration's scans cover at most about a step's 75 keys after
+         * each of them, the ten, "/a" and reclaim's own keys (at tStart they covered the
+         * 2,000), and the ten are stored at pCut or later when it is done.
+         */
+        @Nano
+        public static void testStepScansAtItsOwnTime() {
+            CoreTestClock clock = new CoreTestClock();
+            long time = Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            Db db = Db.builder().testSetup().clock(clock).startupDistance(2000).start();
+            Reclaim reclaim = db.internal().reclaim();
+            Stats stats = reclaim.enableStats();
+            byte[] v = new byte[100];
+            for (int i = 0; i < 2000; i += 20) {
+                Trans.Builder b = db.trans();
+                for (int j = i; j < i + 20; j++) {
+                    b.put("/k/" + (10000 + j), v);
+                }
+                db.execute(b.build());
+            }
+            
+            db.setRetainDuration(1000 * Clock.UNITS_PER_SEC);    // Iterations, but no cut.
+            time += Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            db.execute(db.trans().put("/a", "a").build());
+            IterationInfo it = reclaim.currentIteration();
+            Assert.assertTrue("an iteration started", it != null && it.lastKey == null);
+            Assert.assertArrayEquals(Keys.toSegments("/k/11999"), it.endKey);
+            
+            for (int i = 0; i < 1990; i += 500) {
+                Trans.Builder b = db.trans();
+                for (int j = i; j < Math.min(i + 500, 1990); j++) {
+                    b.delete("/k/" + (10000 + j));
+                }
+                db.execute(b.build());
+            }
+            
+            for (int i = 0; reclaim.lastDoneRow() == null; i++) {
+                Assert.assertTrue("the iteration ends", i < 200);
+                db.execute(db.trans().put("/a", new byte[20 * 1000]).build());
+            }
+            
+            Stats.Iteration st = stats.iterations.get(0);
+            Assert.assertTrue("KVs scanned: " + st.kvs, st.kvs <= 400);
+            long pCut = reclaim.lastDoneRow().pCut;
+            for (int j = 1990; j < 2000; j++) {
+                GetData gd = db.newGetData();
+                db.getOne(Long.MAX_VALUE, Keys.toSegments("/k/" + (10000 + j)), gd);
+                Assert.assertTrue(j + " at " + gd.tpos + ", pCut " + pCut, gd.tpos >= pCut);
+            }
+            db.stop();
+        }
+        
+        /**
+         * bergdb 026-05 (023-05, P8): the end key bounds the scan at the step's time. Keys put
+         * after it since tStart are not met: 500 keys, then 200 new keys after them in every
+         * transaction, 43 kB by the scan's measure, more than a step's 16 kB; the iteration
+         * ends, and its scans cover the 500 keys, "/a" and reclaim's own keys only.
+         */
+        @Nano
+        public static void testEndKeyBoundsTheScan() {
+            CoreTestClock clock = new CoreTestClock();
+            long time = Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            Db db = Db.builder().testSetup().clock(clock).startupDistance(2000).start();
+            Reclaim reclaim = db.internal().reclaim();
+            Stats stats = reclaim.enableStats();
+            byte[] v = new byte[100];
+            for (int i = 0; i < 500; i += 20) {
+                Trans.Builder b = db.trans();
+                for (int j = i; j < i + 20; j++) {
+                    b.put("/k/" + (10000 + j), v);
+                }
+                db.execute(b.build());
+            }
+            
+            db.setRetainDuration(1000 * Clock.UNITS_PER_SEC);    // Iterations, but no cut.
+            time += Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            db.execute(db.trans().put("/a", "a").build());
+            Assert.assertArrayEquals(Keys.toSegments("/k/10499"), 
+                    reclaim.currentIteration().endKey);
+            
+            int next = 200000;
+            for (int i = 0; reclaim.lastDoneRow() == null; i++) {
+                Assert.assertTrue("the iteration ends", i < 300);
+                Trans.Builder b = db.trans();
+                for (int j = 0; j < 200; j++) {
+                    b.put("/k/" + next++, v);
+                }
+                db.execute(b.build());
+            }
+            Stats.Iteration st = stats.iterations.get(0);
+            Assert.assertTrue("KVs scanned: " + st.kvs, st.kvs <= 510);
+            db.stop();
+        }
+        
+        /**
+         * bergdb 026-05: an iteration that Db.maintain() begins has its end key too, the last
+         * key live at its tStart, as one that a commit begins.
+         */
+        @Nano
+        public static void testMaintainBeginsWithEndKey() {
+            CoreTestClock clock = new CoreTestClock();
+            long time = Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            Db db = Db.builder().testSetup().clock(clock).start();
+            Reclaim reclaim = db.internal().reclaim();
+            byte[] v = new byte[100];
+            for (int i = 0; i < 4000; i += 100) {
+                Trans.Builder b = db.trans();
+                for (int j = i; j < i + 100; j++) {
+                    b.put("/k/" + (10000 + j), v);
+                }
+                db.execute(b.build());
+            }
+            db.setRetainDuration(4 * Clock.UNITS_PER_SEC);
+            Assert.assertTrue("no iteration yet", reclaim.currentIteration() == null 
+                    && reclaim.lastDoneRow() == null);
+            time += 2 * Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            db.maintain();
+            IterationInfo it = reclaim.currentIteration();
+            Assert.assertTrue("an iteration began", it != null);
+            Assert.assertArrayEquals(Keys.toSegments("/k/13999"), it.endKey);
+            db.stop();
         }
         
         /**
@@ -2936,10 +3201,12 @@ public class Reclaim implements Db.TransactionListener {
          * Reclaim's liveness with a queue before a key (bergdb 023-08, review C, 5.3, item 2,
          * testProbeQueueBeforeEndKey; its check, section 3): a queue of 1,000 keys, then "/z"
          * after it; then 200 puts at the tail and 200 deletes at the head a transaction. Each
-         * step scans the keys live at the iteration's start, so the iteration ends within 2 x
-         * (the data at tStart) / (the step's 16 kB) + 10 transactions: 1,000 KVs of 216 bytes
-         * by the scan's measure, 37. On 2026-11-10 it ended in 22 on main, 15 with the upward
-         * unlink; P8, which scanned at the step's time, never ended it (fault 13).
+         * step counts the KVs stored before pStart only, those live at the iteration's start
+         * (since bergdb 026-05; before, it scanned at the iteration's start), so the iteration
+         * ends within 2 x (the data at tStart) / (the step's 16 kB) + 10 transactions: 1,000
+         * KVs of 216 bytes by the scan's measure, 37. On 2026-11-10 it ended in 22 on main, 15
+         * with the upward unlink; P8, which scanned at the step's time and counted every KV,
+         * never ended it (fault 13).
          */
         @Nano
         public static void testQueueBeforeAKeyEnds() {
@@ -2979,9 +3246,10 @@ public class Reclaim implements Db.TransactionListener {
         /**
          * Random puts ahead of the scan do not stop an iteration (bergdb 023-08, review B, 2.6;
          * its check, sections 3 and 4.1, from 023-v8-fix's 0f4571fc, without P8's end key):
-         * 500 keys, then 400 new keys a transaction between them. Each step scans the keys live
-         * at the iteration's start, so the iteration ends within 30 transactions (7 on main
-         * and with the fix on 2026-11-10; P8 took 449).
+         * 500 keys, then 400 new keys a transaction between them. Each step counts the KVs
+         * stored before pStart only, those live at the iteration's start (since bergdb 026-05;
+         * before, it scanned at the iteration's start), so the iteration ends within 30
+         * transactions (7 on main and with the fix on 2026-11-10; P8 took 449).
          */
         @Nano
         public static void testRandomPutsAheadDoNotSlowTheScan() {

@@ -36,7 +36,8 @@ Work moved here from 2026.5:
 * **G4's lag as a gate** (024-30, Q30-3; decided by the coordinator
   under Frans's delegation, 2026-11-12, 12:33): after runs at 100,000
   and 3M keys show how back to empty's lag grows with the keys; printed,
-  not gated, until then.
+  not gated, until then. A gate at 2 R once 026-05 is on `main` (Frans,
+  2026-11-13, 09:41, 026-05's Q4); made in 026-11.
 * **A value transformation that throws or passes 8 MiB refuses the
   transaction instead of failing the database** (024-35, finding 2;
   010-04, R5; Frans, 2026-11-12, 14:42: "Yes to R5 and for 2026.6. I
@@ -88,8 +89,8 @@ Files
   before a call (Frans, 2026-11-12, 09:34; from 024-27, QR1): the
   options and a recommendation; done 2026-11-13 as decided (Frans,
   09:11, QK1 to QK4): `bergdb.pub.Limits`, the limits as constants,
-  `keyBytes` and `checkKey`, no `levelBytes`; on branch `026-02-limits`,
-  to land.
+  `keyBytes` and `checkKey`, no `levelBytes`; on main since 2026-11-13
+  (59c6e4b6).
 * 03-single-maintenance-step.md. 026-03, one maintenance step for a
   commit and for `maintain()`, and the simple form (ordinary
   transactions with filler) to consider (Frans, 2026-11-12, 13:44 and
@@ -97,13 +98,43 @@ Files
 * 04-reclaim-fraction-settings.md. 026-04, reclaim's fraction: measured
   at larger databases, three recommended values and one default
   (Frans, 2026-11-12, 14:07; 2026.5 keeps 1/4).
+* 05-reclaim-step-time.md. 026-05, each reclaim step scans at its own
+  time (P8 of 023-05, with 023-08's fault 13 fixed): the change, the
+  cut's argument, the gates, and back to empty's lag after a
+  mass delete before and after (024-05, OP9; 026-04, section 4); done, on
+  main since 2026-11-13 (Q1 to Q4 yes, Frans 09:41).
 * 06-value-transformation-refusal.md. 026-06, a value transformation
   that throws or passes 8 MiB refuses its transaction, before the go
   point (`Db.transformValues`), and the database goes on (010-04, R5);
   also a key transformation that throws (Q2); done, on main since
   2026-11-13 (Q1 to Q4 yes, Frans 08:45).
+* 07-write-buffer.md. 026-07, the write buffer grows with use: 64 KiB
+  at the start, doubled when an append does not fit, up to 10 MB, back
+  after 2 idle seconds; a small file database holds 0.67 MB of heap, not
+  11.1 MB (024-05, ST8; 024-01, PA7). On main since 2026-11-13
+  (bfb6d018); the probes in 07-write-buffer/.
 * 08-fixed-node-size.md. 026-08, the node size fixed at 30 for users,
-  the other sizes for tests only (Frans, 2026-11-13, 09:21); registered.
+  the other sizes for tests only (Frans, 2026-11-13, 09:21): the four
+  `DbBuilder.maxNodeSize` setters package-private, `TestNodeSize` for
+  the tests outside `bergdb.core`; on main since 2026-11-13 (000fca5b).
+* 09-keys-only-scan.md. 026-09, reclaim's scan without the values it
+  does not rewrite (024-34, Q34-1, option b; Frans, 2026-11-13, 09:38);
+  registered, after 026-05.
+* 10-node-id-cache-after-empty.md. 026-10, `NodeCollection.idByPos`
+  after back to empty (found by 026-07): a decided cut forgets the node
+  ids below it and `KeyModSet`'s key hashes before it (the 2.2 MB of
+  `long[]`), and G4 and G5 gate the plain heaps. On main since
+  2026-11-13 (e4ac051f); the probes in 10-node-id-cache-after-empty/.
+* 11-lag-gate.md. 026-11, G4's back-to-empty lag a gate of
+  `count-gates.sh`: at most 2 R (2,000 drive transactions) at 1M keys;
+  1,281 on `main` (margin 1.56), 4,395 without 026-05 (fails); on main
+  since 2026-11-13 (343fff05).
+* 12-stable-format-plan.md. 026-12, the stable stream format: a draft
+  plan for Frans (10:24): 11 questions, SF1 to SF11, merged from 027-03's
+  Q1 to Q23 and section 21, 026-01's QC2 to QC5, 024-22's QM1, 024-01's
+  OT4, PA5 and PA9, 017-08 and 017-11; each with its options, what it
+  depends on and a recommendation; the decisions already taken quoted;
+  the order, and three measurements (M1 to M3); none decided.
 
 
 Log
@@ -126,3 +157,8 @@ the same sections.
 
 2026-11-13. 024-22's QM1 and 027-03's section 21 moved from the
 proposals to the decided work (Frans, 09:23: "Yes, decided work.").
+
+2026-11-13. 026-09 registered: 024-34's Q34-1, option (b), after 026-05
+(Frans, 09:38).
+
+2026-11-13. 026-10 registered (026-07's Q4; Frans, 09:48).

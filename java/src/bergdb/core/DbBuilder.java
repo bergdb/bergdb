@@ -12,10 +12,13 @@ import bergdb.stream.MemoryStream;
 /**
  * An object of this class is used to properly build a Db object: Db.builder() gives one, and
  * start() builds and starts the Db. A Db's user sets the stream (mainStream()), and may set
- * the clock, the cache size indicator, the startup distance and the maximum node size; the
- * defaults are the system clock, 200 MB, 50 MB and 30. Of the other methods, id() and
- * createdTxt() are for the Pub API, and the rest for tests. Db's Javadoc, "Opening a
- * database", has an example (bergdb 020-24-09, U9-6).
+ * the clock, the cache size indicator and the startup distance; the defaults are the system
+ * clock, 200 MB and 50 MB. The maximum node size is 30 for every database a user makes, and
+ * no public method sets it (bergdb 026-08): the stream keeps it, and a start refuses a
+ * database of another size. The sizes 8, 14 and 62 are for BergDB's own tests
+ * (maxNodeSize8(), TestNodeSize). Of the other methods, id() and createdTxt() are for the Pub
+ * API, and the rest for tests. Db's Javadoc, "Opening a database", has an example (bergdb
+ * 020-24-09, U9-6).
  * 
  * <p>Part of the Core API, which Db's Javadoc names ("The Core API"; bergdb 020-27, Q1): for
  * low-level control and the most performance, less stable and less safe than the Pub API,
@@ -140,40 +143,42 @@ public class DbBuilder {
     }
 
     /**
-     * Maximum node size 8. It must stay the same for a database: it is in the stream from
-     * the creation, and a start with another size is refused (bergdb 005-50).
+     * Maximum node size 8, for BergDB's own tests (bergdb 026-08): a small size gives deep
+     * trees with few keys. Every database a user makes has 30; these setters are
+     * package-private, and the tests outside bergdb.core reach them through TestNodeSize. A
+     * database made at a size other than 30 carries no promise that a later release reads it.
+     * The size must stay the same for a database: it is in the stream from the creation, and
+     * a start with another size is refused (bergdb 005-50).
      */
-    public DbBuilder maxNodeSize8() {
+    DbBuilder maxNodeSize8() {
         this.maxNodeSize = 8;
         return this;
     }
 
     /**
-     * Maximum node size 14. It must stay the same for a database: it is in the stream from
-     * the creation, and a start with another size is refused (bergdb 005-50).
+     * Maximum node size 14, for BergDB's own tests, as maxNodeSize8() (bergdb 026-08).
      */
-    public DbBuilder maxNodeSize14() {
+    DbBuilder maxNodeSize14() {
         this.maxNodeSize = 16 - 2;
         return this;
     }
 
     /**
-     * Maximum node size 30, the default and the Pub API's only size (bergdb 024-19, Q1). It
-     * must stay the same for a database: it is in the stream from the creation, and a start
-     * with another size is refused (bergdb 005-50).
+     * Maximum node size 30, the default and the size of every database a user makes, by
+     * either API (bergdb 026-08; 024-19, Q1): for the tests that choose a size, as
+     * maxNodeSize8().
      */
-    public DbBuilder maxNodeSize30() {
+    DbBuilder maxNodeSize30() {
         this.maxNodeSize = 32 - 2;
         return this;
     }
 
     /**
-     * Maximum node size 62, the largest: a delete bitmap names 62 klongs of its node, and no
-     * larger size can be chosen (bergdb 024-19, Q6). It must stay the same for a database: it
-     * is in the stream from the creation, and a start with another size is refused (bergdb
-     * 005-50).
+     * Maximum node size 62, for BergDB's own tests, as maxNodeSize8() (bergdb 026-08). The
+     * largest: a delete bitmap names 62 klongs of its node, and no larger size can be chosen
+     * (bergdb 024-19, Q6).
      */
-    public DbBuilder maxNodeSize62() {
+    DbBuilder maxNodeSize62() {
         this.maxNodeSize = 64 - 2;
         return this;
     }
@@ -325,7 +330,8 @@ public class DbBuilder {
      * @param stream
      *      The output database stream.
      * @param bufferSize
-     *      Buffer size in bytes; a value below 100 is taken as 100.
+     *      Buffer size in bytes, the largest; a value below 100 is taken as 100. The buffer
+     *      starts smaller, at most 64 KiB, and grows with use (BufferedStream, bergdb 026-07).
      * @param bufferTime  
      *      Maximum time in milliseconds to buffer the data 
      *      before the buffer is flushed; a value below 10 is taken as 10.

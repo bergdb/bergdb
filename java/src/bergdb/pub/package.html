@@ -264,6 +264,9 @@ is public in it, and may change in any release. The jar that a release ships, wh
 java/build.sh makes as build/bergdb-release.jar, holds the classes of BergDB's src directory
 only. Objects and user indexes, experimental in 2026.3, are part of the API since 2026.4.</p>
 
+<p>Every database has the node size 30, the most entries of a node of its index, whether this
+API or the Core API made it: nothing sets another, and the stream keeps it (bergdb 026-08).</p>
+
 <h3 id="strings">Strings</h3>
 
 <p>Every string that BergDB stores is Unicode text: a sequence of Unicode scalar values,

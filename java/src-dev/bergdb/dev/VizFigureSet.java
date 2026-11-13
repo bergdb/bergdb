@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 
 import bergdb.core.Db;
+import bergdb.core.TestNodeSize;
 import bergdb.core.Trans;
 
 /**
@@ -33,7 +34,7 @@ public class VizFigureSet {
     }
     
     public void tenShortInOneTrans() throws IOException {
-        Db db = Db.builder().testSetup().maxNodeSize8().start();
+        Db db = TestNodeSize.builder(8).testSetup().start();
         Trans.Builder b = db.trans();
         for (int i = 0; i < 10; i++) {
             b.put("k" + i, "v" + i);
@@ -44,7 +45,7 @@ public class VizFigureSet {
     }
     
     public void tenShortInTenTrans() throws IOException {
-        Db db = Db.builder().testSetup().maxNodeSize8().start();
+        Db db = TestNodeSize.builder(8).testSetup().start();
         for (int i = 0; i < 10; i++) {
             db.execute(db.trans().put("k" + i, "v" + i).build());
         }
@@ -53,7 +54,7 @@ public class VizFigureSet {
     }
     
     public void addedAndDeleted() throws IOException {
-        Db db = Db.builder().testSetup().maxNodeSize8().start();
+        Db db = TestNodeSize.builder(8).testSetup().start();
         db.execute(db.trans().put("a", "v-a").build());
         db.execute(db.trans().delete("a").build());
         VizFigure f = new VizFigure();

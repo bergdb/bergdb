@@ -69,6 +69,21 @@ Small work
   next quarter's item takes the next free number.
 
 
+Todos and release items
+-----------------------
+
+* A simple task with a clear "Done when", that one agent can finish in
+  about a day, is an entry of the todo list, 028-todo since 2026-11-13.
+  It names no release.
+* A release item (such as 026) holds the release's plan and scope, its
+  decisions and its bigger work: designs, studies, features that may or
+  may not be included, work that needs Frans's thinking. It decides which
+  todo entries its release takes and lists them by ID. Frans,
+  2026-11-13: "I don't want the big release items hidden among 80 simple
+  tasks."; "The release item itself will decided the scope of the
+  release."
+
+
 Items and the current state
 ---------------------------
 
@@ -152,17 +167,17 @@ Index
   known issue at the release but in DbObject and user indexes, which are
   experimental; 010's principles hold, and Frans approves any change of
   the stream format. The plan, its decisions and the work towards it.
-* **019-todo** (open). Short tasks on BergDB, each done and closed in a
+* **019-todo** (done). Short tasks on BergDB, each done and closed in a
   day or two, mostly by an AI agent, unattended or after a decision or
   answers from Frans, and all done before the next release but Frans's
-  exceptions; every new todo entry since 2026-11-05. Long-term topics and
-  ideas to consider go to 017.
+  exceptions; new todo entries from 2026-11-05 to 2026-11-13 (028 since).
+  Long-term topics and ideas to consider go to 017.
 * **020-release-2026-4** (open). Release 2026.4: a bug-free database,
   user indexes and the serialization of Java objects (DbObject) included;
   no backwards compatibility needed, the API may change. The plan, its
   decisions and the work towards it; first, an inventory of the non-Core
   part for Frans's keep, simplify or drop decisions.
-* **021-todo** (open). Short tasks for release 2026.4, a bug-free
+* **021-todo** (done). Short tasks for release 2026.4, a bug-free
   database (020): each done and closed in a day or two, mostly by an AI
   agent; every open entry done before 2026.4 but Frans's exceptions. 019
   keeps 2026.3's entries until that release.
@@ -187,3 +202,7 @@ Index
   so far. Holds the former `docs/` as a snapshot (027-01), the trace
   format (027-02) and the stream format (027-03, 024-02 until
   2026-11-13), both kept current.
+* **028-todo** (open). Simple tasks on BergDB, each done in about a day,
+  mostly by an AI agent, often unattended; not tied to a release (a
+  release item decides which it takes). Every new todo entry since
+  2026-11-13.

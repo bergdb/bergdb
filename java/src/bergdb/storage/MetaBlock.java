@@ -23,10 +23,11 @@ import bergdb.nanotest.Nano;
  *                 before the meta block.
  * 24     16       Database ID. 128 random bits, used as unique database ID.
  * 40      4       startupDistance in bytes. Typically 20M.
- * 44      2       maxNodeSize, the maximum node size of the database, an unsigned short
- *                 (DbBuilder.maxNodeSize8() to maxNodeSize62()); a start with another size
- *                 is refused, and so is a stream whose meta block has 0, as those written
- *                 before 2026-10-27 have (bergdb 005-50).
+ * 44      2       maxNodeSize, the maximum node size of the database, an unsigned short:
+ *                 30 in every database a user makes (bergdb 026-08), 8, 14 or 62 in some
+ *                 that BergDB's own tests make; a start with another size is refused, and
+ *                 so is a stream whose meta block has 0, as those written before 2026-10-27
+ *                 have (bergdb 005-50).
  * 46     81       Reserved, must be set to zero.
  * 127     1       META_BLOCK_LAST_BYTE, 10. It indicates that the block is valid.
  * </pre>

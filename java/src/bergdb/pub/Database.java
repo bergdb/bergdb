@@ -95,9 +95,10 @@ import bergdb.pub.util.SyncLevel;
  * during the call.</p>
  * 
  * <p>Stop or close each Database that is started, as a file: nothing else stops it (bergdb
- * 005-55). Until it closes, a started database holds its write buffer, 10 MB of heap
- * whatever its data and settings, one thread and three open files (a file database; bergdb
- * 020-24-10, U10-2; DatabaseBuilder.startupDistanceInMb()). stop() returns at once; close()
+ * 005-55). Until it closes, a started database holds its write buffer, 64 KiB to 10 MB of
+ * heap as its writes need (about 0.7 MB of heap in all for a small file database), one
+ * thread and three open files (a file database; bergdb 026-07; 020-24-10, U10-2;
+ * DatabaseBuilder.startupDistanceInMb()). stop() returns at once; close()
  * waits until the database is closed. Database is
  * AutoCloseable (bergdb 005-59), so a try-with-resources block closes it when the block ends,
  * also when the block throws:</p>
@@ -166,8 +167,9 @@ public interface Database extends AutoCloseable {
      * </p>
      * 
      * <p>The write buffer and the buffer time (bergdb 020-24-10, U10-9). A transaction that
-     * returns is in the write buffer, 10 MB of heap, and the database's thread writes it to
-     * the storage soon after: when a quarter of the buffer is full, when a sync() waits, or
+     * returns is in the write buffer, 64 KiB to 10 MB of heap as the writes need (bergdb
+     * 026-07), and the database's thread writes it to the storage soon after: when 2.5 MB,
+     * a quarter of the largest buffer, are buffered, when a sync() waits, or
      * else once the buffer time, 50 ms, has passed, and with a file storage it is durable
      * once written; a busy disk can make that longer. Neither is a setting in this release.
      * A program that ends without stop() or close() loses what is still in the buffer.

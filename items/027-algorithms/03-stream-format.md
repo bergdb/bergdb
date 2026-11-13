@@ -292,14 +292,24 @@ bytes long (`RecoverableStream.META_BLOCK_SIZE`, :59;
 | 16  | 8  | `i64` | lastTrans     | the last record appended before it, or −1      |
 | 24  | 16 | bytes | database id   | 16 bytes, random (`DatabaseId`)                |
 | 40  | 4  | `i32` | startup dist. | the setting in force, sd, in bytes             |
-| 44  | 2  | `u16` | max node size | 8, 14, 30 or 62 (005-50, 024-19)               |
+| 44  | 2  | `u16` | max node size | 30 (026-08); 8, 14 or 62 only in tests         |
 | 46  | 81 | zero  | reserved      | zero                                           |
 | 127 | 1  | `u8`  | last byte     | 10: the block is valid                         |
 
 **The node size** (B, field 44; Frans, 2026-11-12, 024-19, Q1 and Q6;
-made in 024-27). B is 8, 14, 30 or 62, the most klongs of a key node:
-30 is the default and the Pub API's only size; 8, 14 and 62 are chosen
-by the Core API (`DbBuilder.maxNodeSize8()` to `maxNodeSize62()`). 62 is
+made in 024-27; fixed at 30 by 026-08, Frans, 2026-11-13, 09:21). B,
+the most klongs of a key node, is 30 in the format: every database a
+user makes, by the Pub API or the Core API, has B = 30, and no public
+method sets another. The field is kept, written as 30, and checked: a
+start refuses a block that gives another B, before any write
+(`Db.refuseOtherNodeSize`), so that a later release can allow other
+sizes without a format change (section 21). The sizes 8, 14 and 62 are
+for BergDB's own tests, a small B giving deep trees with few keys
+(`DbBuilder.maxNodeSize8()` to `maxNodeSize62()`, package-private, and
+`TestNodeSize` for the tests outside `bergdb.core`): a database made at
+a test size is outside the format's promise, and no later release need
+read it. The rules below are given for every B, as the code and the
+Lean model (B a parameter) have them. 62 is
 the largest, because a delete bitmap names 62 klongs, one for each klong
 index of its node (section 11.2): no writer makes a database of a larger
 size; `Dag` refuses one when it is made (`Dag.MAX_NODE_SIZE`,
@@ -363,10 +373,10 @@ a field added there.
   D9; the C clone's take guards sd < 1); the builder refuses below 10 and
   `setStartupDistance` clamps to 400,000 to 10^9. The time is checked
   only to be 0 or more; the database id not at all.
-* G19. The maximum node size is given by the start (`DbBuilder`,
-  `maxNodeSize8()` to `maxNodeSize62()`) and compared with the block's,
-  not taken from it: the Pub API always uses 30. A reader of the format
-  could take it from the stream (Q19).
+* G19. The maximum node size is given by the start and compared with the
+  block's, not taken from it: 30 at every start but a test's (026-08;
+  a test's `DbBuilder.maxNodeSize8()` to `maxNodeSize62()`). A reader of
+  the format could take it from the stream (Q19, dropped by 026-08).
 * The meta block has no checksum (017-08). Its validity is its last
   byte.
 
@@ -1053,12 +1063,16 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
 * **`/#i/-dummy`** (`DbConstants.DUMMY_KEY`, :26): a value of
   `RecoverableStream.META_BLOCK_DISTANCE` zero bytes, so that a meta block
   with the new startup distance is written; never read.
-* **A row** (`Reclaim.IterationInfo.serialize`, :1167): a `StringMap`,
-  lines `name=value\n`, UTF-8 (`StringUtil.toBytes`), eleven names:
-  pStart, pCut, tStart, tEnd, kvCount, lastKey, done, cut, rewritten,
-  pEnd, pSafe. Numbers by `"" + long`; done and cut `true` or `false`;
-  lastKey `null` or the segments as signed decimals separated by spaces.
-  **No endKey**: P8 (024-01, CL1) was not taken.
+* **A row** (`Reclaim.IterationInfo.serialize`): a `StringMap`,
+  lines `name=value\n`, UTF-8 (`StringUtil.toBytes`), twelve names:
+  pStart, pCut, tStart, tEnd, kvCount, lastKey, endKey, done, cut,
+  rewritten, pEnd, pSafe. Numbers by `"" + long`; done and cut `true` or
+  `false`; lastKey `null` or the segments as signed decimals separated by
+  spaces; endKey (since 026-05: P8, the last key live at tStart, which
+  bounds the steps' scans) `none` if no key was live then, or the
+  segments as lastKey has them. A row stored before 026-05 has no endKey
+  line, and is read with no bound; any other value is refused
+  (`InternalDataException`, "Bad value of endKey").
 * **The table** (`serialize`, :1356): the rows, each followed by
   `----next----\n`; parsed by `split` (:1376), and a table with no row is
   refused.
@@ -1066,7 +1080,7 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
   `common/StringMap.java`:33): lenient. Lines trimmed; lines without `=`
   skipped; names in any order; unknown names ignored; pStart, tStart,
   tEnd, kvCount, lastKey and done required; cut, rewritten, pEnd, pSafe
-  and pCut have defaults.
+  and pCut have defaults; endKey none (026-05).
 * **The settings** (`serializeSettings`, :300; `parseSettings`, :314;
   015-87): exactly `retain=<long>\nfraction=<int>\n`; retain at least
   `Clock.UNITS_PER_SEC` (`Long.MAX_VALUE` is forever, the default without
@@ -1093,8 +1107,9 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
 **Gaps.**
 
 * G16 and J1. A row's line order is Java's `HashMap` iteration order
-  (`StringMap.serialize`, :101): pCut, tEnd, cut, pStart, tStart, lastKey,
-  rewritten, pEnd, pSafe, done, kvCount, from `String.hashCode` and the
+  (`StringMap.serialize`, :101): pCut, tEnd, endKey, cut, pStart, tStart,
+  lastKey, rewritten, pEnd, pSafe, done, kvCount (endKey since 026-05;
+  the others' order unchanged), from `String.hashCode` and the
   JDK's `HashMap` since Java 8 (`c/src/strmap.h`, :1 to :20, copies it).
   The bytes of every reclaim record depend on it. J2: the numbers' text is
   `Long.toString`'s.
@@ -1293,7 +1308,7 @@ which bytes stay free, so it cannot wait.
 | Q16 | an unknown node type or format: refuse, skip   | node header          | before the freeze  |
 | Q17 | the file layout: part of the format or not     | the directory        | before the freeze  |
 | Q18 | the constants and ranges as numbers            | D, M, limits, signs  | before the freeze  |
-| Q19 | the node size taken from the stream            | meta 44 and 45       | later, additive    |
+| Q19 | the node size taken from the stream            | meta 44 and 45       | dropped, 026-08    |
 | Q20 | the time: 100 ns, 1970, 56 bits, to ~2198      | every time field     | before the freeze  |
 | Q21 | every check a refusal, with or without -ea     | the start's rules    | later, additive    |
 | Q22 | one node a key and the node order, refused     | a record's nodes     | later, additive    |
@@ -1380,10 +1395,12 @@ found here:
   depend on it.
 * **Q18.** The constants as numbers that do not move: D = 200,000, M =
   128, the alignments, the file unit 100,000, the record limit 2^31 − 9,
-  the node sizes 8, 14, 30 and 62; every range unsigned unless said (J4,
+  the node size 30 (026-08); every range unsigned unless said (J4,
   J8).
 * **Q19.** The maximum node size read from the stream, so that a start
-  need not be told (G19). An API change, no byte change.
+  need not be told (G19). An API change, no byte change. Dropped by
+  026-08 (Frans, 2026-11-13, 09:21): with one size, 30, there is nothing
+  to take; the field stays as the hook for a later release.
 * **Q20.** The time: 100 ns since 1970-01-01 UTC, 56 bits, so until about
   the year 2198. Frozen with the format.
 * **Q21.** Every check a refusal, independent of -ea (G14, J3). Later and
@@ -1481,9 +1498,10 @@ For any option, to decide with it:
   rule (Q9, Q10), and the framing's meta version;
 * the corpus (024's readme): databases saved by each release with a
   stable format, of the kinds that SD's configurations make (deletes,
-  reclaim's cuts, large values across meta blocks, each node size, torn
-  tails), with their digests, read by every later release: a night step,
-  as `before-commit.sh` must stay fast.
+  reclaim's cuts, large values across meta blocks, torn tails), at the
+  node size 30 (the test sizes are outside the promise, 026-08), with
+  their digests, read by every later release: a night step, as
+  `before-commit.sh` must stay fast.
 
 
 ## 22. How the specification is filled
@@ -1531,3 +1549,9 @@ a stub left there; the heading, the ID and section 22's "Where it lives"
 changed, the sections and their numbers not. The code's comments cite
 `bergdb 027-03`. By agent sf of coord-1113, on the branch
 `027-03-stream-format`.
+
+2026-11-13. 026-08 (Frans, 09:17 and 09:21): B is 30 in the format;
+the field at byte 44 kept, written and checked; the test sizes 8, 14
+and 62 outside the format's promise (section 6, G19, Q18, Q19, the
+corpus in 21.3). By agent ns30 of coord-1113, on the branch
+`026-08-node-size`.

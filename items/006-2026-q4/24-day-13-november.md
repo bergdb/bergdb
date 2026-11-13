@@ -46,11 +46,20 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 | 021-28, 021-29 | Two todos registered | coordinator | 9f32bff9 |
 | 024-22 | Land the second prover's run 2; ScanOK's premise (B) | tp11b (high) | landed 59510cb5 |
 | 024-12 | TP11 option C: the scan's fuel from the parameters; then TP11, TP7 | Codex run 3 (Sol xhigh) | landed 2e71a297: C made; TP11 reduced to TP7 + LatestScanOK |
-| 024-12 | TP7, the tree's invariants | Codex run 4 (Sol max) | running |
+| 024-12 | TP7, the tree's invariants | Codex run 4 (Sol max) | partial, landed 6caf8750: klong well-formedness through the writer |
+| 024-12 | TP7, continued | Codex run 5 (Sol max) | running |
 | 024, 015 | Statuses after the release; post-release notes (021-27, 020-29) | tidy (high) | committed ee5712c5 |
-| 026-05 | P8: each reclaim step scans at its own time | p8 (xhigh) | running |
+| 026-05 | P8: each reclaim step scans at its own time | p8 (xhigh) | landed fe5000ec: back to empty's lag about 1,270 at every n and f |
 | 026-06 | A value transformation's failure refuses the transaction | vt (high) | landed 8bd6e3a7..944b4868 |
-| 026-07 | The write buffer grows with use (ST8) | wb (high) | running |
+| 026-07 | The write buffer grows with use (ST8) | wb (high) | landed: an empty database 0.67 MB of heap, not 11.1 |
+| 026-11 | G4's lag a gate at 2 R | lag (xhigh) | landed 343fff05: 1.28 R on main, 4.40 R without P8 |
+| 026-10 | idByPos after back to empty | idpos (xhigh) | landed: G4 heap 1.08, G5 1.47 on the plain heaps |
+| 026-08 | The node size 30 for users | ns30 (xhigh) | landed 000fca5b |
+| 026-09 | Reclaim's keys-only scan | kscan (xhigh) | running |
+| 026-12 | The stable format: a draft plan for Frans | sfplan (xhigh) | running |
+| 026-13 | User apps against today's main | apps (xhigh) | running |
+| 027-04 | A proposed outline for 027 | outline (xhigh) | done 92ab6713: 14 parts, Q1 to Q5 for Frans |
+| night | `night.sh` on today's main | coordinator | planned for tonight |
 | 026-04 | The back-to-empty lag at 10M keys, understood | frac (high) | done 07:44: the phase of reclaim's iteration at the deletes' end (a step scans at its iteration's start), not f; keep 1/4; P8 cures it |
 | 021-29 | Unit tests that wait with no timeout | waits (high) | landed dc69b7a6 |
 | 021-28 | Unit tests with fixed time limits | limits (high) | landed ffa39b4e |
@@ -76,3 +85,28 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 * 08:12 tidy done: 024's subitems' statuses (3 open: 02, 12, 22), 015 has no open entry, post-release notes for 021-27 and 020-29.
 * 08:41 Frans back.
 * 08:47 Frans 08:45 "yes to all" (026-06 Q1 to Q4): 026-06 landed (value and key transformations refuse; gated before-commit, level1, level3); 010-04's R5 line done.
+* 08:47 Frans: "Use effort xhigh as default for new agents. We have plenty of AI usage left."
+* 08:51 Frans 08:50, yes: 027-02 the trace format kept current; 024-02 moves into 027 as 027-03 (agent sf).
+* 08:55 Frans: 024-19 Q2 "Yes as recommended", Q3 "as built" (ea6d1d41).
+* 09:12 Frans 09:11, 026-02: QK1 `bergdb.pub.Limits`, QK2 no `isKey`, QK3 "Leave it out. We can easy add it if requested." (no `levelBytes`, no `checkPut`), QK4 2026.6. Agent keys started.
+* 09:21 Frans 09:17 and 09:21: the node size fixed at 30 for users, other sizes for tests only: 026-08 registered (3ed1ee7d); 024-19's Q2 revised, Q5 dropped.
+* 09:24 Frans 09:23: QM1 and 027-03's section 21 decided work for 2026.6.
+* 09:33 Frans, 026-02: Q9-1 `keyBytes` returns long, "Yes"; the new dependency of pub on core (D3) not accepted: "This needs to be discussed. A new package dependency." -> "Yes" to taking the constants through pubimp. The agent keys changes it.
+* 09:36 026-02 landed 59c6e4b6: `bergdb.pub.Limits` (keyBytes, checkKey, the constants through pubimp).
+* 09:37 Codex run 4 stopped by itself at 09:02 (TP7 partial, 137 theorems); checked (lake 306 jobs, axioms standard) and landed 6caf8750. Run 5 started 09:37 at max, told not to stop at a checkpoint.
+* 09:38 Frans: Q34-1 option (b) for 2026.6 after P8: 026-09 registered.
+* 09:42 Frans 09:41: 026-05's Q1 to Q4 "Yes to all four." P8 merged with main, gated again before landing.
+* 09:54 026-05 (P8) landed fe5000ec, gated on the merged tree (before-commit, level1, level3).
+* 10:00 Frans on 026-07: Q1 as recommended, Q4 ok; Q3 "keep it as a constant, but use 2 seconds"; Q2 "significant for certain applications [...] I don't like just adding the tables. We get a violation of back-to-empty" (in discussion); asked whether the 10 MB maximum of the buffer should be discussed.
+* 10:05 Frans: the buffer's maximum stays 10 MB ("Keep 10 MB."); no study.
+* 10:06 Frans on 026-07's Q2: "Keep it as is, KISS. Complexity and code size are costs too. Easy to implement later if ever needed." (Cache3's tables unchanged). 026-10 registered (idByPos after back to empty).
+* 10:09 026-07 landed (gated on main with P8: before-commit, level1, count-gates).
+* 10:11 Frans 10:09: "Sure, do them. As suggested." 026-11 (G4's lag as a gate), 026-10, 026-08, 026-09 started at xhigh.
+* 10:18 026-11 landed 343fff05: G4's lag a gate at 2 R.
+* 10:20 Frans 10:13 and 10:18: a todo list apart from the release items; 028-todo created, not tied to a release ("The release item itself will decided the scope of the release."); existing items stay where they are. The rule in items/readme.md, "Todos and release items".
+* 10:26 Frans 10:24: "Yes to 'start 1 and 2 now, and plan 3 for tonight'." and "create a subagent at xhigh for 027". Started 026-12 (the stable format's plan), 026-13 (user apps), 027-04 (an outline for 027); `night.sh` on main tonight.
+* 10:37 Frans 10:26 and 10:36: proofs with Claude too, as recommended, D on Fable at High: provers latest (LatestGetOK, LatestScanOK), cost (TP32, TP33), t4 (T4), tp7 (TP7, independent of Codex). Codex at its limit since 10:01 (resets 12:23).
+* 10:38 026-08 landed 000fca5b (node size 30 for users). 027-04 written (92ab6713).
+* 10:47 to 10:53: every subagent stopped on API errors (403, authentication) after an account change; Frans logged in again at 10:52; all seven resumed.
+* 11:12 Frans 11:09 on 027-04: Q1 to Q4 as recommended (Q2: "Core is really the thing here", the Pub layer a last part); Q5: 027 with Lean the authority, Java comments may repeat or summarize. Stubs 027-05 to 027-18 made (58c87d27).
+* 11:35 026-10 landed (Frans 11:31: Q1 keep the KeyModSet change; Q2 is 028-01).

@@ -1011,6 +1011,41 @@ is replaced. The second prover's run 3 (07:22 to 07:46, branch
 
 Next: TP7, the prover's run 4 (from 07:54, at max).
 
+**TP7, partial, 2026-11-13** (the second prover's run 4, 07:54 to 09:02,
+at max; branch `024-22-proofs-4`, on main since `6caf8750`;
+/Users/f/fl/bench/2026-11-13/cx4/REPORT.md): one component of TP7
+proved through the whole writer, the klongs' well-formedness, kept by
+every writer rule and by `execW` (`WriterKlong*.lean`,
+`KlongPreservation.lean`), with local results on dead klongs and level
+metadata; 137 theorems, `lake build` 306 jobs, `#print axioms` of all
+137 the standard three only (checked by the coordinator). No
+counterexample within valid parameters. Left (its report, "Remaining
+proof obligations"): the writer invariant linking cached nodes, kinds,
+ordered ranges and paths; order, fill and pointer closure through the
+splits and the upward delete; the lift through `Struct.apply` and
+`treeRun`; `LatestScanOK` and `LatestGetOK`. The run stopped by itself
+at 09:02; run 5 goes on from there (from 09:37, at max).
+
+**The provers' board, 2026-11-13** (coord-1113; Frans, 10:26 and 10:36:
+Claude provers beside the second prover). Who holds what:
+
+* TP7 `InvPreserved`: "tp7" (Claude, Fable) and the second prover
+  (Codex), independently, compared when both stop.
+* `LatestGetOK` and `LatestScanOK` (TP10 and TP11 from TP7): "latest".
+* TP32 `MergeOpBound` and TP33 `MergeAmortized`: "cost".
+* T4, the startup section's ends (007): "t4".
+
+Landed checkpoints:
+
+* 11:37, "tp7", `46ba22cb` (checkpoint 37984b68): TP7 reduced to its
+  latest time, `invPreserved_of_latest` (`InvLatest.lean`): `InvPreserved
+  p` follows from `LatestInvOK p`, `KeyNodesOK` and `PointersOK` of the
+  run's structure, for runs within `Within`; `walk_succ_eq_nil_iff`
+  (`WalkNil.lean`); the first rules that the writer changes no klong of
+  an earlier time (`CacheGood.lean`, `WriterGood.lean`). Checked: `lake
+  build` 310 jobs, 82 theorems on the standard axioms, no statement
+  changed.
+
 (T) for 27: `tracecheck`'s CUT-live checks it at every cut of a trace
 (024-07), and C-T6 checks what it follows from, `NonEmptyOK` and
 `KindsOK`, after every transaction. (T) for 14 and 16: `tracecheck`'s
