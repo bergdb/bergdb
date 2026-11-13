@@ -128,70 +128,6 @@ theorem writerWP_deleteUpward_full (c : Ctx) (L : NodeId) (n : KNode) (d cv : Na
   try simp only [writerWP_pure]
   exact hv'
 
-/-- The take-back of a delete into a full leaf, the merges on, from the
-obligations `DelFullStepOKF` (the delete's invariant after the leaf's bitmap)
-and `DelFullRootJ2OK` (the leaf at the space root): S with `PutInv`,
-`LeafVals`, the walk's ranges and the fuel premise, for runs with their links
-and TP4 at every run, 2 ≤ splitAbove. -/
-theorem delStepsCaseJ2OKF_full (p : Params) (R : Struct BVal → Time → Prop)
-    (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M) (hsa2 : 2 ≤ p.splitAbove)
-    (hRL : ∀ P t, R P t → RunLinksOK p P t)
-    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
-    (hSI : ∀ ts tx w, S ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w)
-    (hSV : ∀ ts tx w, S ts tx w → LeafVals (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w)
-    (hSB : ∀ ts tx w, S ts tx w → tx.base ≤ w.next)
-    (hSR : ∀ ts tx w, S ts tx w →
-      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey)
-    (hSF : ∀ ts tx w, S ts tx w →
-      SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey)
-    (hStep : ∀ ts, DelFullStepOKF (ctxOf p ts) (viewOf (treeRun p ts)))
-    (hRoot : ∀ ts B, DelFullRootJ2OK (ctxOf p ts) (viewOf (treeRun p ts)) B) :
-    DelStepsCaseJ2OKF p R S DelFullM := by
-  intro ts tx hw hr z top _ htop ops op post hops r w hpre hS hJ key hop hPc hA _ _
-  obtain ⟨pre, cv, L0, n0, hop', _, hK, hne0, hkeep0, hfull0⟩ := hPc
-  subst hop'
-  cases hop
-  have hI := hSI ts tx w hS
-  have hRO := hSR ts tx w hS
-  have hkey : keyWf (pre ++ [cv]) = true := within_op_keyWf p ts tx hw ops _ post hops
-  obtain ⟨rk, hrk, _⟩ := keyLeaf_rk hK
-  have hB := putBase_of_run p ts tx hw (hRL _ _ hr)
-  have hbook := putBook_reached p ts tx hw (hRL _ _ hr) z top htop ops r w hpre
-  have hG := putInvG_of_book _ _ tx.base top w hB hbook
-  have hICE := innerChildren_reached p hM hP ts tx hw top ops (.del (pre ++ [cv]) :: post) hops r w hpre
-    (fun x hx => hI.untaken x (tReach_reachS _ _ _ _ hx))
-  have hLV := leafVals_all (hSV ts tx w hS) hkey hrk
-  have hpos : 0 < (ctxOf p ts).i := by simp [ctxOf]
-  refine writerWP_del_toLeafM (ctxOf p ts) _ (viewCoherent_ctxOf p ts) pre cv rk w
-    (PutBook (ctxOf p ts) tx.base top) hbook
-    (fun s f x v hv => putBook_descendLte s f x _ _ tx.base top hB v hv)
-    (fun s x v hv => putBook_pathAdd s x _ _ tx.base top hB v hv)
-    (fun v hv => putBook_pathClear _ _ tx.base top hB v hv) hrk (hI.pathUntaken _) hI.wf _ ?_ ?_
-  · intro v hv
-    unfold fresh
-    wpSimplify
-    exact hv
-  · intro L n P w3 hL hn hnl hr03 hb3 hlk3 hp3' hlinkP hXD hlkX
-    obtain ⟨hne, hkeep, hfull⟩ := keyLeaf_all2 hK hrk
-      (fun _ m => bitsUnion m.lastBitmap (m.bitsOf cv) ≠ m.lastBitmap ∧
-        m.allKeysIn (bitsUnion m.lastBitmap (m.bitsOf cv)) = false ∧ ¬ DelRoom (ctxOf p ts) cv m)
-      ⟨hne0, hkeep0, hfull0⟩ L n hL hn hnl
-    have hPOK := pathOK_of_toLeaf (ctxOf p ts) _ w w3 P n hI hr03 hp3' hlinkP hlkX
-    have hJ3 : TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w3 := takeJ2_of_readsAs _ _ _ w w3 hJ hr03
-    have hJ2 := writerWP_appendDeleteKlong_full_j2_any (ctxOf p ts) _ tx.base hpos (hRoot ts tx.base) w3
-      (putInv_of_readsAs _ _ w w3 hI hr03) (putInvG_of_readsAs _ _ w w3 hG hr03)
-      (by rw [hr03.1, hr03.2.1]; exact hRO) hJ3 (by rw [hr03.2.2.2.2]; exact hSB ts tx w hS) hsa2
-      P.length _ _ _ hPOK cv n (by show (wNode _ _ w (nodeAt w.top.rootKey P P.length)).getD _ = n; rw [hXD, hn]; rfl)
-      hnl hne hfull (fun y hy => by rw [hr03.1]; exact (hLV L n hL hn hnl y hy).1)
-    simp only [hXD] at hJ2
-    refine writerWP_deleteUpward_full (ctxOf p ts) L n P.length cv (pre ++ [cv]) w3 hlk3 hne hkeep
-      (fun v => DelInvF (ctxOf p ts) (viewOf (treeRun p ts)) w (pre ++ [cv]) (p.fuel + 1) v ∧
-        TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base v ∧ tx.base ≤ v.next) _
-      (writerWP_mono (writerWP_and (hStep ts w pre cv rk tx.base top hB hI hRO hICE (hSF ts tx w hS) hkey hrk
-        L n P w3 hL hn hnl hne hkeep hfull hr03 hb3 hlk3 hp3' hlinkP hXD hlkX) hJ2) (fun _ v hv => hv)) ?_
-    intro g h v hv
-    exact writerWP_mono (hA g h v hv) (fun _ v' hv' => hv'.2.1)
-
 /-- The reading of a delete into a full leaf, the merges on, from the
 obligation `DelFullStepOKF`, for runs with their links and TP4 at every run. -/
 theorem delStepsCaseOKF_full (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
@@ -242,27 +178,5 @@ theorem delStepsOKF_of_open3 (p : Params) (R : Struct BVal → Time → Prop) (h
     (c7 : DelStepsCaseOKF p R DelEmptyOtherM)
     (hStep : ∀ ts, DelFullStepOKF (ctxOf p ts) (viewOf (treeRun p ts))) : DelStepsOKF p R :=
   delStepsOKF_of_open2 p R hM hRL hP c7 (delStepsCaseOKF_full p R hM hRL hP hStep)
-
-/-- `DelStepsJ2OKF` with every case proved but the upward delete without room
-(`DelEmptyOtherM`), the full leaf reduced to `DelFullStepOKF` and, at the space
-root, `DelFullRootJ2OK`. -/
-theorem delStepsJ2OKF_of_open3 (p : Params) (R : Struct BVal → Time → Prop)
-    (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M) (hsa2 : 2 ≤ p.splitAbove)
-    (hRL : ∀ P t, R P t → RunLinksOK p P t)
-    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
-    (hSI : ∀ ts tx w, S ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w)
-    (hSV : ∀ ts tx w, S ts tx w → LeafVals (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w)
-    (hSB : ∀ ts tx w, S ts tx w → tx.base ≤ w.next)
-    (hSR : ∀ ts tx w, S ts tx w →
-      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey)
-    (hSF : ∀ ts tx w, S ts tx w →
-      SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey)
-    (hSM : ∀ ts tx w, S ts tx w → ∀ x o, w.madeFor.lookup x = some o → o < tx.base)
-    (c7 : DelStepsCaseJ2OKF p R S DelEmptyOtherM)
-    (hStep : ∀ ts, DelFullStepOKF (ctxOf p ts) (viewOf (treeRun p ts)))
-    (hRoot : ∀ ts B, DelFullRootJ2OK (ctxOf p ts) (viewOf (treeRun p ts)) B) :
-    DelStepsJ2OKF p R S :=
-  delStepsJ2OKF_of_open2 p R S hM hRL hP hSI hSV hSB hSR hSF hSM c7
-    (delStepsCaseJ2OKF_full p R S hM hsa2 hRL hP hSI hSV hSB hSR hSF hStep hRoot)
 
 end SIS.Tree

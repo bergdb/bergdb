@@ -457,37 +457,4 @@ theorem mergeStepJ2OKF_of_root (c : Ctx) (base : View BVal) (hvc : ViewCoherent 
     (fun i h1 h2 => chainOrd_of_ordG c base v d X K Nn hP hO i h1 (by omega))
     (fun i _ h2 => pathOK_depth c base v d X K Nn hP i (by omega))
 
-/-- `MergeFullJ2OKF` from the root's obligation alone. -/
-theorem mergeFullJ2OKF_of_root (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base) (f : Nat)
-    (B : NodeId) (hpos : 0 < c.i) (hcap : 1 ≤ c.p.mergeMax) (hsa2 : 2 ≤ c.p.splitAbove)
-    (hRoot : MergeRootJ2OKF c base f B) : MergeFullJ2OKF c base f B :=
-  fun w0 key x q d v qn xn X K Nn hI hd hx hq hqn hql hxn hcnt hP hXd _ =>
-    mergeStepJ2OKF_of_root c base hvc f B hpos hcap hsa2 hRoot w0 key x q d v qn xn X K Nn hI hd hx hq
-      hqn hql hxn hcnt hP hXd
-
-/-- TP7's take-back statement with the merges on from case (4)'s obligations,
-the merge's own reduced to the parent at the space root (`MergeRootJ2OKF`):
-cost's `MergeStepOKF` and `CollapseStepOKF`, `DelStepsJ2OKF` and the named
-inputs. -/
-theorem takeBackOK_of_mergesFR (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.splitAbove)
-    (hcap : 1 ≤ p.mergeMax) (hm : p.merges = true)
-    (Q : Struct BVal → Time → Prop) (hQ0 : Q (initStruct p) 0)
-    (hQs : ∀ ts tx, Within p (ts ++ [tx]) → RunTreeQ p Q (treeRun p ts) ts.length →
-      RunLinksOK p (treeRun p (ts ++ [tx])) (ts.length + 1) →
-      TreeAt p (treeRun p (ts ++ [tx])) (ts.length + 1) →
-      Q (treeRun p (ts ++ [tx])) (ts.length + 1))
-    (hQP : ∀ P t, Q P t → PointersOK P) (hQK : ∀ P t, Q P t → KindsAllOK p P)
-    (ho : OpTreeOKUnder p (RunTreeQ p Q))
-    (hPI : StateOK p (RunTreeQ p Q) (fun ts _ w => PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w))
-    (hRO : StateOK p (RunTreeQ p Q) (fun ts _ w =>
-      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey))
-    (hDS : DelStepsJ2OKF p (RunTreeQ p Q) (TakeS3 p))
-    (hMS : ∀ ts, MergeStepOKF (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hCo : ∀ ts, CollapseStepOKF (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hMR : ∀ ts B, MergeRootJ2OKF (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1) B) :
-    TakeBackOKUnder p (RunLinksOK p) :=
-  takeBackOK_of_mergesFB p hM hsa hcap hm Q hQ0 hQs hQP hQK ho hPI hRO hDS hMS hCo
-    (fun ts B => mergeFullJ2OKF_of_root (ctxOf p ts) _ (viewCoherent_ctxOf p ts) (p.fuel + 1) B
-      (by simp [ctxOf]) hcap hsa (hMR ts B))
-
 end SIS.Tree
