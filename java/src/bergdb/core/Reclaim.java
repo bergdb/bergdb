@@ -1116,6 +1116,13 @@ public class Reclaim implements Db.TransactionListener {
             this.firstAvailablePos = cutRow.pCut;
         }
         
+        // bergdb 026-05: a pending cut whose table is durable is made before the newer one
+        // replaces it. It was dropped: a cut decided at every transaction (iterations of one
+        // step, as 026-05 makes them when the keys are overwritten) left the stream uncut
+        // (Reclaim.Tester.testPretruncate; 023-08, check V8, Q2). The older cut is the one
+        // that cutIfDurable() would have made at the end of the call before; it cuts at or
+        // before the newer one.
+        cutIfDurable();
         pendingCut = cutRow.pCut;
         pendingCutDurableAt = db.getStreamLength();
         
