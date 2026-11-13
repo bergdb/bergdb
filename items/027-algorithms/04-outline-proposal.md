@@ -552,6 +552,12 @@ stress").
   ID, a Lean name or a class. It reads the code and the Lean files, not
   only the documents. Where the code, the model and the documents
   disagree, it writes a question in the part, not a fix.
+  Changed 2026-11-13 (Frans, 13:01: "The document should document how the
+  algorithms work today. See Java implementation if not sure. Did you
+  find things that should be fixed? Bugs? Then add todos for them."): the
+  part states what the code does, with no questions; a stale document is
+  corrected or gets a 028 entry; a bug or a change to make gets a 028
+  entry; what the model does not cover is an "open" claim.
 * **A second agent reviews the draft** against the code and the Lean
   files, without being given the first agent's conclusions (as 023-07's
   reviews were done).

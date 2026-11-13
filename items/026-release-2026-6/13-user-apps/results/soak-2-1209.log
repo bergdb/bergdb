@@ -1,0 +1,220 @@
+== BackToEmpty 211 30 30000 4 data/b1 8000 0 200000
+12:10:01 round 0 drive: kept at the end 4389 kB, twin 2632 kB (twin's largest 4208 kB), lag 800 (R 500, lag/R 1.60), live 261
+12:10:03 round 1 drive: kept at the end 3482 kB, twin 3250 kB (twin's largest 4149 kB), lag 2000 (R 1000, lag/R 2.00), live 1
+12:10:04 round 2 drive: kept at the end 1577 kB, twin 3790 kB (twin's largest 3790 kB), lag 1732 (R 500, lag/R 3.46), live 1
+12:10:05 round 3 maintain() only: kept at the end 216 kB, twin 201 kB (twin's largest 201 kB), lag 598 (R 200, lag/R 2.99), live 0
+12:10:05 OK BackToEmpty seed 211 node 30 keys 30000: 16932 transactions, 11 restarts, 60 checks, 47 cuts checked at the oldest state, 6093 ms
+  round 0, delete mode 3, drive: kept at the end 4389 kB, twin 2632 kB (twin's largest 4208 kB), lag 800 (R 500, lag/R 1.60), live 261
+  round 1, delete mode 2, drive: kept at the end 3482 kB, twin 3250 kB (twin's largest 4149 kB), lag 2000 (R 1000, lag/R 2.00), live 1
+  round 2, delete mode 2, drive: kept at the end 1577 kB, twin 3790 kB (twin's largest 3790 kB), lag 1732 (R 500, lag/R 3.46), live 1
+  round 3, delete mode 2, maintain() only: kept at the end 216 kB, twin 201 kB (twin's largest 201 kB), lag 598 (R 200, lag/R 2.99), live 0
+== BackToEmpty 212 30 30000 4 data/b1 8000 0 400000
+12:10:07 round 0 maintain() only: kept at the end 191 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 4000 (R 500, lag/R 8.00), live 0
+12:10:09 round 1 drive: kept at the end 4727 kB, twin 4191 kB (twin's largest 4515 kB), lag 1264 (R 1000, lag/R 1.26), live 261
+12:10:10 round 2 maintain() only: kept at the end 323 kB, twin 59 kB (twin's largest 59 kB), lag not reached in 4000 (R 500, lag/R 8.00), live 262
+12:10:11 round 3 maintain() only: kept at the end 143 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 2823 (R 200, lag/R 14.12), live 0
+12:10:11 OK BackToEmpty seed 212 node 30 keys 30000: 8875 transactions, 12 restarts, 64 checks, 38 cuts checked at the oldest state, 5236 ms
+  round 0, delete mode 2, maintain() only: kept at the end 191 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 4000 (R 500, lag/R 8.00), live 0
+  round 1, delete mode 3, drive: kept at the end 4727 kB, twin 4191 kB (twin's largest 4515 kB), lag 1264 (R 1000, lag/R 1.26), live 261
+  round 2, delete mode 3, maintain() only: kept at the end 323 kB, twin 59 kB (twin's largest 59 kB), lag not reached in 4000 (R 500, lag/R 8.00), live 262
+  round 3, delete mode 2, maintain() only: kept at the end 143 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 2823 (R 200, lag/R 14.12), live 0
+== BackToEmpty 215 30 30000 4 data/b1 8000 0 1000000
+12:10:12 round 0 maintain() only: kept at the end 402 kB, twin 49 kB (twin's largest 49 kB), lag not reached in 7058 (R 500, lag/R 14.12), live 260
+12:10:14 round 1 drive: kept at the end 4545 kB, twin 5279 kB (twin's largest 6075 kB), lag 1183 (R 1000, lag/R 1.18), live 1
+12:10:15 round 2 drive: kept at the end 4015 kB, twin 6082 kB (twin's largest 6082 kB), lag 2128 (R 500, lag/R 4.26), live 1
+12:10:17 round 3 maintain() only: kept at the end 68 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 7058 (R 200, lag/R 35.29), live 0
+12:10:17 OK BackToEmpty seed 215 node 30 keys 30000: 15967 transactions, 13 restarts, 90 checks, 27 cuts checked at the oldest state, 5995 ms
+  round 0, delete mode 3, maintain() only: kept at the end 402 kB, twin 49 kB (twin's largest 49 kB), lag not reached in 7058 (R 500, lag/R 14.12), live 260
+  round 1, delete mode 1, drive: kept at the end 4545 kB, twin 5279 kB (twin's largest 6075 kB), lag 1183 (R 1000, lag/R 1.18), live 1
+  round 2, delete mode 1, drive: kept at the end 4015 kB, twin 6082 kB (twin's largest 6082 kB), lag 2128 (R 500, lag/R 4.26), live 1
+  round 3, delete mode 2, maintain() only: kept at the end 68 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 7058 (R 200, lag/R 35.29), live 0
+== BackToEmpty 221 30 30000 4 data/b1 8000 0 200000
+12:10:19 round 0 drive: kept at the end 2914 kB, twin 2358 kB (twin's largest 3187 kB), lag 699 (R 500, lag/R 1.40), live 1
+12:10:20 round 1 maintain() only: kept at the end 524 kB, twin 256 kB (twin's largest 256 kB), lag not reached in 8000 (R 1000, lag/R 8.00), live 261
+12:10:21 round 2 maintain() only: kept at the end 628 kB, twin 253 kB (twin's largest 253 kB), lag not reached in 4000 (R 500, lag/R 8.00), live 263
+12:10:22 round 3 drive: kept at the end 2444 kB, twin 2057 kB (twin's largest 2057 kB), lag 1037 (R 200, lag/R 5.19), live 1
+12:10:22 OK BackToEmpty seed 221 node 30 keys 30000: 6509 transactions, 11 restarts, 64 checks, 23 cuts checked at the oldest state, 5555 ms
+  round 0, delete mode 0, drive: kept at the end 2914 kB, twin 2358 kB (twin's largest 3187 kB), lag 699 (R 500, lag/R 1.40), live 1
+  round 1, delete mode 3, maintain() only: kept at the end 524 kB, twin 256 kB (twin's largest 256 kB), lag not reached in 8000 (R 1000, lag/R 8.00), live 261
+  round 2, delete mode 3, maintain() only: kept at the end 628 kB, twin 253 kB (twin's largest 253 kB), lag not reached in 4000 (R 500, lag/R 8.00), live 263
+  round 3, delete mode 2, drive: kept at the end 2444 kB, twin 2057 kB (twin's largest 2057 kB), lag 1037 (R 200, lag/R 5.19), live 1
+== BackToEmpty 222 30 30000 4 data/b1 8000 0 400000
+12:10:25 round 0 drive: kept at the end 1955 kB, twin 1678 kB (twin's largest 2411 kB), lag 512 (R 500, lag/R 1.02), live 1
+12:10:26 round 1 drive: kept at the end 3752 kB, twin 4475 kB (twin's largest 5445 kB), lag 1042 (R 1000, lag/R 1.04), live 1
+12:10:27 round 2 maintain() only: kept at the end 173 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 4000 (R 500, lag/R 8.00), live 0
+12:10:28 round 3 drive: kept at the end 2193 kB, twin 2399 kB (twin's largest 2399 kB), lag 896 (R 200, lag/R 4.48), live 1
+12:10:28 OK BackToEmpty seed 222 node 30 keys 30000: 15736 transactions, 13 restarts, 66 checks, 45 cuts checked at the oldest state, 5981 ms
+  round 0, delete mode 2, drive: kept at the end 1955 kB, twin 1678 kB (twin's largest 2411 kB), lag 512 (R 500, lag/R 1.02), live 1
+  round 1, delete mode 0, drive: kept at the end 3752 kB, twin 4475 kB (twin's largest 5445 kB), lag 1042 (R 1000, lag/R 1.04), live 1
+  round 2, delete mode 0, maintain() only: kept at the end 173 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 4000 (R 500, lag/R 8.00), live 0
+  round 3, delete mode 2, drive: kept at the end 2193 kB, twin 2399 kB (twin's largest 2399 kB), lag 896 (R 200, lag/R 4.48), live 1
+== BackToEmpty 225 30 30000 4 data/b1 8000 0 1000000
+12:10:30 round 0 maintain() only: kept at the end 97 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 7058 (R 500, lag/R 14.12), live 0
+12:10:32 round 1 drive: kept at the end 6598 kB, twin 4159 kB (twin's largest 5950 kB), lag 1893 (R 1000, lag/R 1.89), live 260
+12:10:33 round 2 drive: kept at the end 5317 kB, twin 6082 kB (twin's largest 6082 kB), lag 1083 (R 500, lag/R 2.17), live 1
+12:10:34 round 3 maintain() only: kept at the end 108 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 7058 (R 200, lag/R 35.29), live 0
+12:10:34 OK BackToEmpty seed 225 node 30 keys 30000: 15966 transactions, 15 restarts, 87 checks, 29 cuts checked at the oldest state, 5459 ms
+  round 0, delete mode 2, maintain() only: kept at the end 97 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 7058 (R 500, lag/R 14.12), live 0
+  round 1, delete mode 3, drive: kept at the end 6598 kB, twin 4159 kB (twin's largest 5950 kB), lag 1893 (R 1000, lag/R 1.89), live 260
+  round 2, delete mode 1, drive: kept at the end 5317 kB, twin 6082 kB (twin's largest 6082 kB), lag 1083 (R 500, lag/R 2.17), live 1
+  round 3, delete mode 1, maintain() only: kept at the end 108 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 7058 (R 200, lag/R 35.29), live 0
+== BackToEmpty 231 30 30000 4 data/b1 8000 0 200000
+12:10:36 round 0 drive: kept at the end 3243 kB, twin 3698 kB (twin's largest 3698 kB), lag 987 (R 500, lag/R 1.97), live 260
+12:10:37 round 1 drive: kept at the end 4278 kB, twin 4526 kB (twin's largest 4607 kB), lag 1258 (R 1000, lag/R 1.26), live 263
+12:10:38 round 2 drive: kept at the end 3447 kB, twin 2669 kB (twin's largest 4027 kB), lag 1035 (R 500, lag/R 2.07), live 263
+12:10:39 round 3 drive: kept at the end 2371 kB, twin 2057 kB (twin's largest 2057 kB), lag 1577 (R 200, lag/R 7.89), live 1
+12:10:39 OK BackToEmpty seed 231 node 30 keys 30000: 18496 transactions, 10 restarts, 61 checks, 46 cuts checked at the oldest state, 5333 ms
+  round 0, delete mode 3, drive: kept at the end 3243 kB, twin 3698 kB (twin's largest 3698 kB), lag 987 (R 500, lag/R 1.97), live 260
+  round 1, delete mode 3, drive: kept at the end 4278 kB, twin 4526 kB (twin's largest 4607 kB), lag 1258 (R 1000, lag/R 1.26), live 263
+  round 2, delete mode 3, drive: kept at the end 3447 kB, twin 2669 kB (twin's largest 4027 kB), lag 1035 (R 500, lag/R 2.07), live 263
+  round 3, delete mode 1, drive: kept at the end 2371 kB, twin 2057 kB (twin's largest 2057 kB), lag 1577 (R 200, lag/R 7.89), live 1
+== BackToEmpty 232 30 30000 4 data/b1 8000 0 400000
+FAIL BackToEmpty seed 232 node 30: drive 3028: prefix 01 gave 4 KVs, expected 1; first 01 / 01
+  after 230 transactions, 1 restarts
+== BackToEmpty 235 30 30000 4 data/b1 8000 0 1000000
+12:10:43 round 0 drive: kept at the end 5618 kB, twin 6060 kB (twin's largest 6060 kB), lag 1883 (R 500, lag/R 3.77), live 1
+12:10:44 round 1 maintain() only: kept at the end 81 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 8000 (R 1000, lag/R 8.00), live 0
+12:10:45 round 2 drive: kept at the end 5174 kB, twin 6425 kB (twin's largest 6425 kB), lag 1888 (R 500, lag/R 3.78), live 261
+12:10:47 round 3 drive: kept at the end 5354 kB, twin 5989 kB (twin's largest 5989 kB), lag 885 (R 200, lag/R 4.43), live 1
+12:10:47 OK BackToEmpty seed 235 node 30 keys 30000: 22067 transactions, 19 restarts, 94 checks, 32 cuts checked at the oldest state, 6325 ms
+  round 0, delete mode 0, drive: kept at the end 5618 kB, twin 6060 kB (twin's largest 6060 kB), lag 1883 (R 500, lag/R 3.77), live 1
+  round 1, delete mode 2, maintain() only: kept at the end 81 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 8000 (R 1000, lag/R 8.00), live 0
+  round 2, delete mode 3, drive: kept at the end 5174 kB, twin 6425 kB (twin's largest 6425 kB), lag 1888 (R 500, lag/R 3.78), live 261
+  round 3, delete mode 1, drive: kept at the end 5354 kB, twin 5989 kB (twin's largest 5989 kB), lag 885 (R 200, lag/R 4.43), live 1
+== BackToEmpty 241 30 30000 4 data/b1 8000 0 200000
+12:10:49 round 0 drive: kept at the end 1963 kB, twin 2358 kB (twin's largest 3187 kB), lag 1514 (R 500, lag/R 3.03), live 1
+12:10:50 round 1 drive: kept at the end 2785 kB, twin 3250 kB (twin's largest 4149 kB), lag 1395 (R 1000, lag/R 1.40), live 1
+12:10:51 round 2 maintain() only: kept at the end 387 kB, twin 201 kB (twin's largest 201 kB), lag 1002 (R 500, lag/R 2.00), live 0
+12:10:52 round 3 maintain() only: kept at the end 386 kB, twin 201 kB (twin's largest 201 kB), lag 402 (R 200, lag/R 2.01), live 0
+12:10:52 OK BackToEmpty seed 241 node 30 keys 30000: 12903 transactions, 11 restarts, 63 checks, 38 cuts checked at the oldest state, 4978 ms
+  round 0, delete mode 2, drive: kept at the end 1963 kB, twin 2358 kB (twin's largest 3187 kB), lag 1514 (R 500, lag/R 3.03), live 1
+  round 1, delete mode 2, drive: kept at the end 2785 kB, twin 3250 kB (twin's largest 4149 kB), lag 1395 (R 1000, lag/R 1.40), live 1
+  round 2, delete mode 0, maintain() only: kept at the end 387 kB, twin 201 kB (twin's largest 201 kB), lag 1002 (R 500, lag/R 2.00), live 0
+  round 3, delete mode 0, maintain() only: kept at the end 386 kB, twin 201 kB (twin's largest 201 kB), lag 402 (R 200, lag/R 2.01), live 0
+== BackToEmpty 242 30 30000 4 data/b1 8000 0 400000
+12:10:54 round 0 drive: kept at the end 2584 kB, twin 1678 kB (twin's largest 2411 kB), lag 625 (R 500, lag/R 1.25), live 1
+12:10:56 round 1 drive: kept at the end 3767 kB, twin 4475 kB (twin's largest 5445 kB), lag 986 (R 1000, lag/R 0.99), live 1
+12:10:57 round 2 drive: kept at the end 2579 kB, twin 1747 kB (twin's largest 2420 kB), lag 1043 (R 500, lag/R 2.09), live 1
+12:10:58 round 3 drive: kept at the end 1683 kB, twin 2399 kB (twin's largest 2399 kB), lag 546 (R 200, lag/R 2.73), live 1
+12:10:58 OK BackToEmpty seed 242 node 30 keys 30000: 19727 transactions, 9 restarts, 64 checks, 56 cuts checked at the oldest state, 5834 ms
+  round 0, delete mode 1, drive: kept at the end 2584 kB, twin 1678 kB (twin's largest 2411 kB), lag 625 (R 500, lag/R 1.25), live 1
+  round 1, delete mode 1, drive: kept at the end 3767 kB, twin 4475 kB (twin's largest 5445 kB), lag 986 (R 1000, lag/R 0.99), live 1
+  round 2, delete mode 2, drive: kept at the end 2579 kB, twin 1747 kB (twin's largest 2420 kB), lag 1043 (R 500, lag/R 2.09), live 1
+  round 3, delete mode 2, drive: kept at the end 1683 kB, twin 2399 kB (twin's largest 2399 kB), lag 546 (R 200, lag/R 2.73), live 1
+== BackToEmpty 245 30 30000 4 data/b1 8000 0 1000000
+12:11:00 round 0 maintain() only: kept at the end 236 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 7058 (R 500, lag/R 14.12), live 0
+12:11:01 round 1 maintain() only: kept at the end 32 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 8000 (R 1000, lag/R 8.00), live 0
+12:11:02 round 2 maintain() only: kept at the end 350 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 7058 (R 500, lag/R 14.12), live 0
+12:11:04 round 3 drive: kept at the end 4778 kB, twin 5989 kB (twin's largest 5989 kB), lag 2187 (R 200, lag/R 10.94), live 1
+12:11:04 OK BackToEmpty seed 245 node 30 keys 30000: 8001 transactions, 17 restarts, 90 checks, 20 cuts checked at the oldest state, 5987 ms
+  round 0, delete mode 0, maintain() only: kept at the end 236 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 7058 (R 500, lag/R 14.12), live 0
+  round 1, delete mode 2, maintain() only: kept at the end 32 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 8000 (R 1000, lag/R 8.00), live 0
+  round 2, delete mode 0, maintain() only: kept at the end 350 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 7058 (R 500, lag/R 14.12), live 0
+  round 3, delete mode 2, drive: kept at the end 4778 kB, twin 5989 kB (twin's largest 5989 kB), lag 2187 (R 200, lag/R 10.94), live 1
+== BackToEmpty 205 30 200000 2 data/b1 8000 4000000
+12:11:23 round 0 maintain() only: kept at the end 83 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 4000 (R 500, lag/R 8.00), live 0
+12:11:41 round 1 drive: kept at the end 2736 kB, twin 4475 kB (twin's largest 5445 kB), lag 977 (R 1000, lag/R 0.98), live 1
+12:11:41 OK BackToEmpty seed 205 node 30 keys 200000: 10834 transactions, 24 restarts, 45 checks, 31 cuts checked at the oldest state, 36528 ms
+  round 0, delete mode 2, maintain() only: kept at the end 83 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 4000 (R 500, lag/R 8.00), live 0
+  round 1, delete mode 1, drive: kept at the end 2736 kB, twin 4475 kB (twin's largest 5445 kB), lag 977 (R 1000, lag/R 0.98), live 1
+== BackToEmpty 206 30 300000 2 data/b1 8000 10000000 2000000
+12:12:12 round 0 drive: kept at the end 9064 kB, twin 4221 kB (twin's largest 4221 kB), lag not reached in 8000 (R 500, lag/R 16.00), live 1
+FAIL BackToEmpty seed 206 node 30: round 0: the kept stream did not come back near the twin's: kept at the end 9064 kB, twin 4221 kB (twin's largest 4221 kB), lag not reached in 8000 (R 500, lag/R 16.00), live 1
+  after 10120 transactions, 18 restarts
+== Transform 201 90 data/b2 30 2 3 2
+12:12:33 commits 123609, refusals 38961 {vt-throws=5603, vt-throws-once=5613, vt-over-L4=5576, kt-over-L2=5540, vt-over-L5=5448, kt-duplicate=5630, kt-throws=5551}, reruns 5613, plain 37120, reads 33776926, stream 959428016, first available pos 905443584
+12:12:53 commits 175208, refusals 55262 {vt-throws=7859, vt-throws-once=8024, vt-over-L4=7930, kt-over-L2=7866, vt-over-L5=7792, kt-duplicate=7946, kt-throws=7845}, reruns 8023, plain 53085, reads 66861575, stream 1626368928, first available pos 1567560856
+12:13:13 commits 219525, refusals 69462 {vt-throws=9913, vt-throws-once=10061, vt-over-L4=9963, kt-over-L2=9968, vt-over-L5=9696, kt-duplicate=9935, kt-throws=9926}, reruns 10061, plain 66522, reads 100110765, stream 2209053360, first available pos 2145362528
+12:13:32 commits 261067, refusals 82663 {vt-throws=11771, vt-throws-once=12006, vt-over-L4=11844, kt-over-L2=11851, vt-over-L5=11559, kt-duplicate=11825, kt-throws=11807}, reruns 12006, plain 79314, reads 133155113, stream 2758603904, first available pos 2688831456
+12:13:43 commits 281070, refusals 89041 {vt-throws=12631, vt-throws-once=12929, vt-over-L4=12751, kt-over-L2=12793, vt-over-L5=12487, kt-duplicate=12705, kt-throws=12745}, reruns 12929, plain 84877, reads 149723217, stream 3011436448, first available pos 2938750944
+12:13:43 end: all ranges, counters and logs as the oracle
+12:13:43 after restart: all ranges, counters and logs as the oracle
+12:13:43 after the refusals alone: all ranges, counters and logs as the oracle
+12:13:43 probe, a null result over a value: committed over a value; the key reads null, at the transaction's time less one 09; getTrans lists 1 value nodes
+12:13:43 probe, after a restart the key reads null
+12:13:43 probe, a value transformation that returns null: committed; the key reads null
+12:13:43 probe, an Error from a value transformation: the Error as it is; then a read throws DbFailedException
+12:13:43 after the probes and a restart: all ranges, counters and logs as the oracle
+12:13:43 OK Transform seed 201 node 30: 281070 transformer commits, 89041 refusals {vt-throws=12631, vt-throws-once=12929, vt-over-L4=12751, kt-over-L2=12793, vt-over-L5=12487, kt-duplicate=12705, kt-throws=12745}, 12929 reruns, 84877 plain transactions, 149723217 group reads, 90868 ms
+== Transform 211 90 data/b2 30 3 4 1
+12:14:04 commits 111834, refusals 35239 {vt-throws=4916, vt-throws-once=5057, vt-over-L4=5022, kt-over-L2=5067, vt-over-L5=5055, kt-throws=5031, kt-duplicate=5091}, reruns 5057, plain 49337, reads 19179332, stream 1026872080, first available pos 958667832
+12:14:24 commits 164236, refusals 51913 {vt-throws=7215, vt-throws-once=7445, vt-over-L4=7476, kt-over-L2=7390, vt-over-L5=7450, kt-throws=7406, kt-duplicate=7531}, reruns 7445, plain 71221, reads 37694169, stream 1709103560, first available pos 1652780440
+12:14:44 commits 206463, refusals 65247 {vt-throws=9057, vt-throws-once=9387, vt-over-L4=9404, kt-over-L2=9308, vt-over-L5=9320, kt-throws=9304, kt-duplicate=9467}, reruns 9387, plain 87873, reads 55729784, stream 2303424104, first available pos 2247539920
+12:15:04 commits 245280, refusals 77918 {vt-throws=10898, vt-throws-once=11188, vt-over-L4=11253, kt-over-L2=11048, vt-over-L5=11131, kt-throws=11118, kt-duplicate=11282}, reruns 11188, plain 103948, reads 73506393, stream 2865509616, first available pos 2795898144
+12:15:14 commits 264464, refusals 84042 {vt-throws=11765, vt-throws-once=12056, vt-over-L4=12136, kt-over-L2=11891, vt-over-L5=12007, kt-throws=12058, kt-duplicate=12129}, reruns 12056, plain 111224, reads 82557319, stream 3133278968, first available pos 3069385072
+12:15:14 end: all ranges, counters and logs as the oracle
+12:15:14 after restart: all ranges, counters and logs as the oracle
+12:15:14 after the refusals alone: all ranges, counters and logs as the oracle
+12:15:14 probe, a null result over a value: committed over a value; the key reads null, at the transaction's time less one 09; getTrans lists 1 value nodes
+12:15:14 probe, after a restart the key reads null
+12:15:14 probe, a value transformation that returns null: committed; the key reads null
+12:15:14 probe, an Error from a value transformation: the Error as it is; then a read throws DbFailedException
+12:15:14 after the probes and a restart: all ranges, counters and logs as the oracle
+12:15:14 OK Transform seed 211 node 30: 264464 transformer commits, 84042 refusals {vt-throws=11765, vt-throws-once=12056, vt-over-L4=12136, kt-over-L2=11891, vt-over-L5=12007, kt-throws=12058, kt-duplicate=12129}, 12056 reruns, 111224 plain transactions, 82557319 group reads, 90987 ms
+== Transform 202 90 data/b2 30 2 3 2
+12:15:35 commits 115322, refusals 36946 {vt-throws=5211, vt-throws-once=5304, vt-over-L4=5263, vt-over-L5=5233, kt-over-L2=5281, kt-duplicate=5274, kt-throws=5380}, reruns 5304, plain 35657, reads 32930212, stream 938711904, first available pos 878965728
+12:15:55 commits 164285, refusals 52473 {vt-throws=7387, vt-throws-once=7501, vt-over-L4=7490, vt-over-L5=7454, kt-over-L2=7541, kt-duplicate=7454, kt-throws=7646}, reruns 7501, plain 51523, reads 65298166, stream 1663412312, first available pos 1603210592
+12:16:15 commits 202433, refusals 64517 {vt-throws=9157, vt-throws-once=9204, vt-over-L4=9190, vt-over-L5=9177, kt-over-L2=9314, kt-duplicate=9093, kt-throws=9382}, reruns 9204, plain 63864, reads 98010901, stream 2312320696, first available pos 2243357888
+12:16:35 commits 237594, refusals 75495 {vt-throws=10743, vt-throws-once=10824, vt-over-L4=10800, vt-over-L5=10649, kt-over-L2=10886, kt-duplicate=10667, kt-throws=10926}, reruns 10824, plain 75140, reads 130343299, stream 2915377928, first available pos 2844246048
+12:16:45 commits 254145, refusals 80791 {vt-throws=11478, vt-throws-once=11600, vt-over-L4=11561, vt-over-L5=11414, kt-over-L2=11612, kt-duplicate=11402, kt-throws=11724}, reruns 11600, plain 80914, reads 146724867, stream 3209515088, first available pos 3140055544
+12:16:45 end: all ranges, counters and logs as the oracle
+12:16:45 after restart: all ranges, counters and logs as the oracle
+12:16:45 after the refusals alone: all ranges, counters and logs as the oracle
+12:16:45 probe, a null result over a value: committed over a value; the key reads null, at the transaction's time less one 09; getTrans lists 1 value nodes
+12:16:45 probe, after a restart the key reads null
+12:16:45 probe, a value transformation that returns null: committed; the key reads null
+12:16:45 probe, an Error from a value transformation: the Error as it is; then a read throws DbFailedException
+12:16:45 after the probes and a restart: all ranges, counters and logs as the oracle
+12:16:45 OK Transform seed 202 node 30: 254145 transformer commits, 80791 refusals {vt-throws=11478, vt-throws-once=11600, vt-over-L4=11561, vt-over-L5=11414, kt-over-L2=11612, kt-duplicate=11402, kt-throws=11724}, 11600 reruns, 80914 plain transactions, 146724867 group reads, 90899 ms
+== Transform 212 90 data/b2 30 3 4 1
+12:17:06 commits 111280, refusals 35203 {vt-throws=4903, vt-throws-once=5128, vt-over-L4=4860, vt-over-L5=5043, kt-over-L2=5195, kt-throws=5107, kt-duplicate=4967}, reruns 5127, plain 49005, reads 18834047, stream 1051794280, first available pos 991568080
+12:17:25 commits 165143, refusals 52327 {vt-throws=7342, vt-throws-once=7576, vt-over-L4=7333, vt-over-L5=7464, kt-over-L2=7643, kt-throws=7532, kt-duplicate=7437}, reruns 7576, plain 69931, reads 36989357, stream 1767378504, first available pos 1701224000
+12:17:46 commits 209143, refusals 66529 {vt-throws=9386, vt-throws-once=9661, vt-over-L4=9303, vt-over-L5=9413, kt-over-L2=9706, kt-throws=9600, kt-duplicate=9460}, reruns 9661, plain 86945, reads 54838926, stream 2420613544, first available pos 2357811080
+12:18:06 commits 249388, refusals 79373 {vt-throws=11250, vt-throws-once=11469, vt-over-L4=11190, vt-over-L5=11150, kt-over-L2=11523, kt-throws=11488, kt-duplicate=11303}, reruns 11469, plain 102093, reads 72474614, stream 3036857280, first available pos 2964835584
+12:18:16 commits 268293, refusals 85368 {vt-throws=12084, vt-throws-once=12325, vt-over-L4=12083, vt-over-L5=12012, kt-over-L2=12405, kt-throws=12332, kt-duplicate=12127}, reruns 12325, plain 109281, reads 81387073, stream 3326467776, first available pos 3261960568
+12:18:16 end: all ranges, counters and logs as the oracle
+12:18:16 after restart: all ranges, counters and logs as the oracle
+12:18:16 after the refusals alone: all ranges, counters and logs as the oracle
+12:18:16 probe, a null result over a value: committed over a value; the key reads null, at the transaction's time less one 09; getTrans lists 1 value nodes
+12:18:16 probe, after a restart the key reads null
+12:18:16 probe, a value transformation that returns null: committed; the key reads null
+12:18:16 probe, an Error from a value transformation: the Error as it is; then a read throws DbFailedException
+12:18:16 after the probes and a restart: all ranges, counters and logs as the oracle
+12:18:16 OK Transform seed 212 node 30: 268293 transformer commits, 85368 refusals {vt-throws=12084, vt-throws-once=12325, vt-over-L4=12083, vt-over-L5=12012, kt-over-L2=12405, kt-throws=12332, kt-duplicate=12127}, 12325 reruns, 109281 plain transactions, 81387073 group reads, 90939 ms
+== Buffers many 201 150 90 data/b3
+12:18:21 opened 150 databases; heap used 93 MB
+12:18:36 bursts 737, transactions 108257, 880 MB, gaps near 2 s 289, reopens 47, spare cycles 47, heap used 1354 MB
+12:18:51 bursts 1734, transactions 264224, 1920 MB, gaps near 2 s 977, reopens 87, spare cycles 109, heap used 1826 MB
+12:19:06 bursts 2837, transactions 431925, 2987 MB, gaps near 2 s 1945, reopens 131, spare cycles 173, heap used 1637 MB
+12:19:21 bursts 4038, transactions 618407, 4342 MB, gaps near 2 s 3061, reopens 176, spare cycles 252, heap used 1930 MB
+12:19:36 bursts 5384, transactions 830355, 5691 MB, gaps near 2 s 4398, reopens 221, spare cycles 329, heap used 1765 MB
+12:19:51 bursts 6743, transactions 1043515, 6960 MB, gaps near 2 s 5743, reopens 264, spare cycles 417, heap used 2085 MB
+12:20:17 heap: 466 MB 10 s after the writes, 462 MB after a close and an open of each (3024 kB a database)
+12:20:17 heap: 8 MB all closed, 98 MB with 150 open (601 kB a database), 900 MB 0.3 s after a fast write to each (5344 kB a database more), 466 MB 3.5 s after (2448 kB a database more than when opened)
+12:20:35 OK Buffers many seed 201: 150 databases, 6743 bursts, 1043515 transactions, 6960 MB, 5743 gaps of 1.5 to 2.5 s, 264 reopens, 417 open-write-close cycles, buffers' heap after 3.5 s idle 26 kB a database, 137 s
+== KeyLimits 201 30000 data/b4
+12:20:40 Core: 4767 String keys taken of 7600
+12:20:40 OK KeyLimits seed 201: 13031 taken, 5548 refused for length, 8244 bad form, 3217 deletes, 13792 messages compared, 868 key-replace puts, 13464 keys kept, 3508 ms
+== KeyLimits 202 30000 data/b4
+12:20:43 Core: 4723 String keys taken of 7600
+12:20:43 OK KeyLimits seed 202: 13067 taken, 5461 refused for length, 8281 bad form, 3231 deletes, 13742 messages compared, 866 key-replace puts, 13548 keys kept, 3432 ms
+== KeyLimits 203 30000 data/b4
+12:20:48 Core: 4783 String keys taken of 7600
+12:20:48 OK KeyLimits seed 203: 13119 taken, 5412 refused for length, 8245 bad form, 3264 deletes, 13657 messages compared, 880 key-replace puts, 13551 keys kept, 4248 ms
+== IndexChurn 201 6000 data/a6 1000 2000
+12:20:55 tx 999: live 1436, restarts 4, checks 2523, old ok 58, cut 0, first available 0
+12:21:06 tx 1999: live 1630, restarts 8, checks 5017, old ok 115, cut 1, first available 17780000118160001
+12:21:17 tx 2999: live 1712, restarts 11, checks 7308, old ok 166, cut 6, first available 17780000363800001
+12:21:27 tx 3999: live 1114, restarts 14, checks 9657, old ok 219, cut 9, first available 17780000478740001
+12:21:37 tx 4999: live 810, restarts 17, checks 11977, old ok 271, cut 13, first available 17780000653020001
+12:21:47 tx 5999: live 670, restarts 20, checks 14355, old ok 325, cut 15, first available 17780000765230001
+12:21:47 OK IndexChurn seed 201: 6000 transactions, 20 restarts, 14442 checks, old reads 327 ok and 15 cut, live 670, 59649 ms
+== Readers 201 30 5000 60 3 data/a5 1000
+12:22:49 OK Readers seed 201 node 30 readers 3 retain 1000: 136714 transactions, 3071 checked reads (1723 full scans), 1030 cut reads, 61028 ms
+== Readers 202 30 20000 60 3 data/a5 1000
+12:23:49 OK Readers seed 202 node 30 readers 3 retain 1000: 43420 transactions, 2001 checked reads (1182 full scans), 1092 cut reads, 60270 ms
+== GivenBack data/gb 300
+12:24:00 OK GivenBack: 300 rounds, 0 reads whose state changed, 0 currentTime() calls that waited over 20 ms for the transaction
+== GivenBack data/gb 300 moving
+12:24:10 OK GivenBack: 300 rounds, 0 reads whose state changed, 0 currentTime() calls that waited over 20 ms for the transaction
+12:24:36 OK Huge: 16 rounds of transactions of 7 to 31 MB

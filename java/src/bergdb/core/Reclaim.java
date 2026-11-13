@@ -37,14 +37,15 @@ import bergdb.stream.MemoryStream;
  * and an exact cut (java/stress/ReclaimStress.java). How it works now:</p>
  * 
  * <ul>
- * <li>An iteration starts at an external transaction when the stream has grown by twice
- * the startup distance since the last iteration started, and a quarter of the retain
+ * <li>An iteration starts at an external transaction when the stream has grown by more
+ * than twice the startup distance since the last iteration started, and a quarter of the retain
  * duration has passed (ITERATION_DIVISOR): pStart is the stream length then, tStart the
  * time. The startup distance is Db's live value: the stream's after start(), and the new
  * one after setStartupDistance() (bergdb 005-61; it was the builder's before). Its cut point pCut is the pStart of the iteration before (the first iteration:
  * its own pStart).</li>
- * <li>Each external transaction allows a step when the bytes rewritten so far are below
- * internalFraction times the stream growth since pStart (fractionOf). A step scans the KVs at
+ * <li>Each external transaction allows a step when the allowance, internalFraction of the
+ * stream growth since pStart (fractionOf) less the bytes rewritten so far, is above
+ * MIN_STEP_SIZE; the step's size is min(allowance, MAX_STEP_SIZE). A step scans the KVs at
  * its own time, the latest state, after lastKey and up to endKey, the last key live at tStart
  * (found when the iteration starts, and kept in its row), and rewrites each live value stored
  * before pCut: a put of the same
@@ -75,8 +76,8 @@ import bergdb.stream.MemoryStream;
  * step every node from the scan's last key to the end of the key space, to write again the
  * nodes that held deleted keys only; with keys put in time order that was every node made
  * since the iteration began, in one transaction (024-03, section 7).</li>
- * <li>The cut waits until the startup pos has passed pEnd (every touched node written
- * once), and then passed pSafe, the stream length at that moment (nodes written before
+ * <li>The cut waits until the startup pos has reached pEnd (every touched node written
+ * once), and then reached pSafe, the stream length at that moment (nodes written before
  * their children and kept dirty by the still-dirty test written once more, now naming the
  * children's new positions). That moment is after the internal records that the external
  * transaction's call appends before the marking (an iteration's table, a step, the table
@@ -126,7 +127,8 @@ public class Reclaim implements Db.TransactionListener {
     
     /**
      * The prefix of reclaim's keys, the table's and the row's: a record with a KV under it
-     * is one of reclaim's transactions, a step or the table (bergdb 005-42).
+     * is one of reclaim's transactions, a step, the table, the settings or maintain()'s
+     * filler (bergdb 005-42).
      */
     public static final long[] KEY_PREFIX_SKEY = 
             Keys.toSegments(DbConstants.INTERNAL_PREFIX + "dreclaim/");
@@ -804,9 +806,10 @@ public class Reclaim implements Db.TransactionListener {
      * <p>A value that a step rewrites, its copy, is the value of its key at one unit before
      * the step's time: the step reads it at the latest state, by the scan (bergdb 026-05;
      * before, by a second read of the key), and puts it with the key as read (keyRead,
-     * readTime), so a write of the key between them makes the step run again
-     * (RerunException). ConnectionImp.transactionInfo() follows a copy back to the
-     * transaction that wrote the value by it (bergdb 021-17).</p>
+     * readTime), so a write of the key between them would fail the step (RerunException),
+     * to be tried again at a later transaction; none can come, as the scan and the commit
+     * hold the write lock (bergdb 027-13, section 1.4). ConnectionImp.transactionInfo()
+     * follows a copy back to the transaction that wrote the value by it (bergdb 021-17).</p>
      */
     private void step(final IterationInfo it, final long writeSize) {
         final long[][] lastKeyOfStep = new long[][] {it.lastKey};
@@ -1009,7 +1012,7 @@ public class Reclaim implements Db.TransactionListener {
     }
     
     /**
-     * Sets pSafe of done iterations whose last step the startup pos has passed: the stream
+     * Sets pSafe of done iterations whose last step the startup pos has reached: the stream
      * length now, after the internal records that the call of transactionCompleted appended
      * before it (bergdb 015-54). See the class comment.
      */
@@ -1098,9 +1101,10 @@ public class Reclaim implements Db.TransactionListener {
     }
     
     /**
-     * Cuts the stream at the pStart of the latest iteration that is done, safe (see the
-     * class comment), ended before the retention window, and starts at or before the
-     * transaction named by the last valid meta block. The table marks that iteration
+     * Cuts the stream at the pCut of the done iteration with the largest pStart that is
+     * safe (startupPos >= pSafe), ended before now minus the retain duration, with its
+     * pCut at or before the transaction named by the last valid meta block and after the
+     * first available position (bergdb 027-13, section 1.6). The table marks that iteration
      * (cut = true) and is written before the cut, so that a restart knows where the
      * stream was cut. The cut itself is made by cutIfDurable().
      * 
@@ -1417,7 +1421,7 @@ public class Reclaim implements Db.TransactionListener {
         long pStart;
         long tStart;
         long tEnd;
-        long kvCount;       // total number of KVs in the database for the iteration lookup time
+        long kvCount;       // The KVs that the steps' scans met so far, walked or kept (026-05).
         long[] lastKey;     // Last key that was iterated, or null if none was iterated.
         
         /**

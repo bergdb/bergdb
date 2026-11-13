@@ -84,5 +84,6 @@ import SIS.Tree.MergeNodeCountOps
 import SIS.Tree.GetFrame
 import SIS.Tree.GetUnder
 import SIS.Tree.WriterTree
+import SIS.Tree.GetSplit
 import SIS.Tree.WriterTreeOps
 import SIS.Tree.WriterTreeVisits

@@ -776,8 +776,9 @@ public class Db implements AutoCloseable {
      * 
      * <p>One call does, in the database's own internal transactions, at most: the start of
      * a reclaim iteration, if a quarter of the retain duration has passed since the last
-     * one began, the last one is cut and the new one's cut would release at least 400 kB;
-     * one reclaim step (about 16 kB of KVs scanned); one write of index nodes of the startup
+     * one began, no done iteration waits for its cut (not cut, its pCut after the first
+     * available position; Reclaim.cutPending) and the new one's cut would release at least
+     * 400 kB; one reclaim step (about 16 kB of KVs scanned); one write of index nodes of the startup
      * section that an iteration waits for (at most 256 kB beyond one transaction's); one
      * filler of at most 200 kB, put and deleted, so that a meta block follows the cut point;
      * the cut, when it is due, after a sync if its table is not yet durable; and a batch of
@@ -1022,7 +1023,7 @@ public class Db implements AutoCloseable {
      * @throws IllegalDbStateException
      *             If start() has been called already, or stop(): nothing is closed then.
      * @throws DbFailedException
-     *             If a read of reclaim's settings or table, the last step of the startup,
+     *             If a read of reclaim's settings or table, a step after the database is active,
      *             fails on the storage (bergdb 005-30).
      */
     public StartInfo start() {        
@@ -1057,7 +1058,7 @@ public class Db implements AutoCloseable {
      * @throws IllegalDbStateException
      *          If start() has been called already, or stop(): nothing is closed then.
      * @throws DbFailedException
-     *          If a read of reclaim's settings or table, the last step of the startup,
+     *          If a read of reclaim's settings or table, a step after the database is active,
      *          fails on the storage (bergdb 005-30).
      */
     public StartInfo start(StartParams params) {
@@ -1215,7 +1216,8 @@ public class Db implements AutoCloseable {
             MetaBlock meta = nodeStream.getMetaBlock();
             meta.checkFormat();
             
-            // From meta saves 8 bytes per trans (4% stream space trans with one kv of size 10-90).
+            // The startup pos from the last committed record, which stores it (bergdb 027-03,
+            // section 8.1); the startup distance from the meta block.
             params.startupPos = getStartupPosFromLastTransaction(meta.getLastTransSpos());
             params.startupDistance = meta.getStartupDistance();
         }
@@ -1779,10 +1781,9 @@ public class Db implements AutoCloseable {
     }
 
     /**
-     * If 'node' is not dirty, it is added to the gotDirty nodes and
-     * it dirty flag is set.
-     * 
-     * @return True if 'node' got dirty.
+     * Makes an index node that is not dirty dirty and adds it to the got-dirty nodes; in a
+     * transaction with a touch (a reclaim step) it also counts it in Trans.dirtiedNodes and
+     * its stored size now in dirtiedBytes. Outside a transaction (no transInfo), nothing.
      */
     private void makeDirtyIfNeeded(final Node node) {
         assert x != null : "x is null";

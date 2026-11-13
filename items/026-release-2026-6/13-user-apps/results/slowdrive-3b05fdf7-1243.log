@@ -1,0 +1,8 @@
+SD 1000000, DT 5 ms, R 200 transactions; after the delete: kept 5988 kB
+  2 R: kept 6438 kB, twin 400 kB; the drive wrote 449 kB
+  3 R: kept 6662 kB, twin 602 kB; the drive wrote 674 kB
+  10 R: kept 6355 kB, twin 2043 kB; the drive wrote 2370 kB
+SD 1000000, DT 5 ms, R 200 transactions, maintain() after each; after the delete: kept 5988 kB
+  2 R: kept 1235 kB, twin 421 kB; the drive wrote 669 kB
+  3 R: kept 483 kB, twin 620 kB; the drive wrote 869 kB
+  10 R: kept 1933 kB, twin 1667 kB; the drive wrote 2319 kB
