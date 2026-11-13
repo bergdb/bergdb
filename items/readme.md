@@ -170,8 +170,8 @@ Index
 * **019-todo** (open). Short tasks on BergDB, each done and closed in a
   day or two, mostly by an AI agent, unattended or after a decision or
   answers from Frans, and all done before the next release but Frans's
-  exceptions; new todo entries from 2026-11-05 to 2026-11-13 (028 since). Long-term topics and
-  ideas to consider go to 017.
+  exceptions; new todo entries from 2026-11-05 to 2026-11-13 (028 since).
+  Long-term topics and ideas to consider go to 017.
 * **020-release-2026-4** (open). Release 2026.4: a bug-free database,
   user indexes and the serialization of Java objects (DbObject) included;
   no backwards compatibility needed, the API may change. The plan, its
