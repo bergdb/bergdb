@@ -565,4 +565,304 @@ theorem writerWP_appendKlongs_timeSplit_tree (base : View BVal) (d' : Nat) (L q 
   exact treeOK_timeSplitAfter c.p base c w w' L q n qn k1 cv v rfl hT hA hwL hwq hqL hqk hq hnt hqt
     hqwf hf1 ht1 hfresh1 hvN hv1 hfreshv
 
+/-! ## The space split in place (a segment leaf the transaction made) -/
+
+/-- The state after a space split in place of a segment leaf L that the
+transaction made, with the klong (cv, v), below an inner parent q with room: L
+keeps the first half, the second is at the next id, q gets a klong of the
+divider naming it. -/
+def InPlaceSplitAfter (c : Ctx) (w w' : W) (L q : NodeId) (n qn : KNode) (cv v : Nat) : Prop :=
+  w'.taken = w.taken ∧ w'.top = w.top ∧ w'.vals = w.vals ∧
+    ∀ x, w'.nodes.lookup x =
+      if x = L then some (halves n.leaf c.i (n.lastVersion c.i) [(cv, v)]).1
+      else if x = q then some (qn.add c.i
+        (.key (halves n.leaf c.i (n.lastVersion c.i) [(cv, v)]).2.2 w.next))
+      else if x = w.next then some (halves n.leaf c.i (n.lastVersion c.i) [(cv, v)]).2.1
+      else w.nodes.lookup x
+
+/-- The tree after a space split in place of a segment leaf below an inner
+parent with room. -/
+theorem treeOK_inPlaceSplitAfter (p : Params) (base : View BVal) (c : Ctx) (w w' : W)
+    (L q : NodeId) (n qn : KNode) (k1 cv v : Nat) (r0 : Nat × NodeId) (hcp : c.p = p)
+    (hT : TreeOK (wNode p base w) c.i w.top.rootKey)
+    (hA : InPlaceSplitAfter c w w' L q n qn cv v)
+    (hLn : wNode p base w L = some n) (hqn : wNode p base w q = some qn) (hqL : q ≠ L)
+    (hqk : (k1, L) ∈ qn.liveAt c.i) (hq : TReach (wNode p base w) c.i w.top.rootKey q)
+    (hnleaf : n.leaf = true) (hr0 : (n.live.drop (n.live.length / 2)).head? = some r0)
+    (hnt : ∀ s, Klong.time s ∈ n.ks → s ≤ c.i) (hqt : ∀ s, Klong.time s ∈ qn.ks → s ≤ c.i)
+    (hqwf : klongsWf qn.ks = true)
+    (hf1 : wNode p base w w.next = none) (hvN : wNode p base w v = none)
+    (ht1 : w.taken.contains w.next = false) (hv1 : v ≠ w.next)
+    (hfresh : ∀ z, (z = w.next ∨ z = v) →
+      ∀ u c', TReach (wNode p base w) c.i w.top.rootKey u → ¬ TLink (wNode p base w) c.i u c' z) :
+    TreeOK (wNode p base w') c.i w'.top.rootKey := by
+  subst hcp
+  obtain ⟨hsc, hfirst, hsecond⟩ := halves_leaf_live n c.i hnleaf cv v r0 hr0
+  unfold InPlaceSplitAfter at hA
+  rw [hnleaf] at hA
+  obtain ⟨h'taken, h'top, _, h'nodes⟩ := hA
+  generalize hout : halves true c.i (n.lastVersion c.i) [(cv, v)] = out at *
+  generalize hN : wNode c.p base w = N at *
+  generalize hr : w.top.rootKey = r at *
+  generalize hy1 : w.next = y1 at *
+  rw [h'top, hr]
+  have hLt : w.taken.contains L = false := by
+    rw [← hN] at hLn; unfold wNode at hLn; split at hLn
+    · cases hLn
+    · rename_i h; simpa using h
+  have hqt' : w.taken.contains q = false := by
+    rw [← hN] at hqn; unfold wNode at hqn; split at hqn
+    · cases hqn
+    · rename_i h; simpa using h
+  have hne : ∀ x m z, N x = some m → N z = none → x ≠ z := fun x m z hx hz he => by
+    rw [he, hz] at hx; cases hx
+  have hL1 := hne L n y1 hLn hf1
+  have hLv := hne L n v hLn hvN
+  have hq1 := hne q qn y1 hqn hf1
+  have hN' : ∀ x, wNode c.p base w' x =
+      if x = L then some out.1
+      else if x = q then some (qn.add c.i (.key out.2.2 y1))
+      else if x = y1 then some out.2.1
+      else N x := by
+    intro x
+    rw [← hN]
+    unfold wNode
+    rw [h'taken, h'nodes x]
+    by_cases hxL : x = L
+    · subst hxL; simp only [hLt, Bool.false_eq_true, ↓reduceIte]
+    · by_cases hxq : x = q
+      · subst hxq; simp only [hqt', hxL, Bool.false_eq_true, ↓reduceIte]
+      · by_cases hx1 : x = y1
+        · subst hx1; simp only [ht1, hxL, hxq, Bool.false_eq_true, ↓reduceIte]
+        · simp only [hxL, hxq, hx1, ↓reduceIte]
+  rw [hsc] at hN'
+  have hnlive : n.liveAt c.i = n.live := KNode.liveAt_of_times n c.i hnt
+  have hqlive : ∀ c' z, (c', z) ∈ (qn.add c.i (.key r0.1 y1)).liveAt c.i →
+      (c' = r0.1 ∧ z = y1) ∨ (c' ≠ r0.1 ∧ (c', z) ∈ qn.liveAt c.i) :=
+    fun c' z h => KNode.add_key_liveAt_mem qn c.i r0.1 y1 hqwf hqt c' z h
+  have hqLlink : TLink N c.i q k1 L := ⟨qn, hqn, hqk⟩
+  have hLreach : TReach N c.i r L := TReach.link hq hqLlink
+  have hLlink : ∀ c' z, (c', z) ∈ n.live → TLink N c.i L c' z := fun c' z h =>
+    ⟨n, hLn, by rw [hnlive]; exact h⟩
+  have hfr : ∀ z, (z = y1 ∨ z = v) → ∀ u c', TReach N c.i r u → ¬ TLink N c.i u c' z := hfresh
+  have hnotR : ∀ z, (z = y1 ∨ z = v) → ¬ TReach N c.i r z := by
+    intro z hz
+    rcases hz with h | h <;> rw [h]
+    · exact not_reach_fresh N c.i r y1 hT hf1 (hfr y1 (Or.inl rfl))
+    · exact not_reach_fresh N c.i r v hT hvN (hfr v (Or.inr rfl))
+  apply treeOK_transfer_gone N (wNode c.p base w') c.i r r (fun z => z = y1 ∨ z = v)
+    (fun _ => False)
+    (fun u c' => if u = L then (if c' < r0.1 then (L, c') else (y1, c')) else (u, c')) hT hnotR
+  · exact Or.inl ⟨rfl, id⟩
+  · intro u c' z hu _ hl
+    obtain ⟨m, hm, hc⟩ := hl
+    rw [hN' u] at hm
+    by_cases huL : u = L
+    · simp only [huL, ↓reduceIte, Option.some.injEq] at hm
+      subst hm
+      rcases hfirst c' z hc with ⟨hcz, _⟩ | ⟨hmem, hlt⟩
+      · simp only [Prod.mk.injEq] at hcz
+        exact Or.inl (Or.inr hcz.2)
+      · exact Or.inr ⟨id, L, c', hLreach, hLlink c' z hmem, by simp [huL, hlt]⟩
+    · simp only [huL, ↓reduceIte] at hm
+      by_cases huq : u = q
+      · subst huq
+        simp only [↓reduceIte, Option.some.injEq] at hm
+        subst hm
+        rcases hqlive c' z hc with ⟨_, hz⟩ | ⟨_, hmem⟩
+        · exact Or.inl (Or.inl hz)
+        · exact Or.inr ⟨id, u, c', hq, ⟨qn, hqn, hmem⟩, by simp [huL]⟩
+      · simp only [huq, ↓reduceIte] at hm
+        by_cases hu1 : u = y1
+        · simp only [hu1, ↓reduceIte, Option.some.injEq] at hm
+          subst hm
+          rcases hsecond c' z hc with ⟨hcz, _⟩ | ⟨hmem, hge⟩
+          · simp only [Prod.mk.injEq] at hcz
+            exact Or.inl (Or.inr hcz.2)
+          · have hnlt : ¬ c' < r0.1 := by omega
+            exact Or.inr ⟨id, L, c', hLreach, hLlink c' z hmem, by simp [hu1, hnlt]⟩
+        · simp only [hu1, ↓reduceIte] at hm
+          have huR : TReach N c.i r u := by
+            rcases hu with h | h
+            · exact h
+            · rcases h with h | h
+              · exact absurd h hu1
+              · rw [h, hvN] at hm; cases hm
+          exact Or.inr ⟨id, u, c', huR, ⟨m, hm, hc⟩, by simp [huL]⟩
+  · intro u c' u' c'' z hu _ hu' _ hz hl hl'
+    have hone : ∀ x d, (TReach N c.i r x ∨ (x = y1 ∨ x = v)) →
+        TLink (wNode c.p base w') c.i x d z →
+        (x = q ∧ d = r0.1 ∧ z = y1) ∨
+        (z = v ∧ d = cv ∧ ((x = L ∧ cv < r0.1) ∨ (x = y1 ∧ r0.1 ≤ cv))) := by
+      intro x d hx hl0
+      obtain ⟨m, hm, hc⟩ := hl0
+      rw [hN' x] at hm
+      by_cases hxL : x = L
+      · simp only [hxL, ↓reduceIte, Option.some.injEq] at hm
+        subst hm
+        rcases hfirst d z hc with ⟨hcz, hlt⟩ | ⟨hmem, _⟩
+        · simp only [Prod.mk.injEq] at hcz
+          exact Or.inr ⟨hcz.2, hcz.1, Or.inl ⟨hxL, hlt⟩⟩
+        · exact absurd (hLlink d z hmem) (hfr z hz L d hLreach)
+      · simp only [hxL, ↓reduceIte] at hm
+        by_cases hxq : x = q
+        · subst hxq
+          simp only [↓reduceIte, Option.some.injEq] at hm
+          subst hm
+          rcases hqlive d z hc with ⟨hd, hzz⟩ | ⟨_, hmem⟩
+          · exact Or.inl ⟨rfl, hd, hzz⟩
+          · exact absurd ⟨qn, hqn, hmem⟩ (hfr z hz x d hq)
+        · simp only [hxq, ↓reduceIte] at hm
+          by_cases hx1 : x = y1
+          · simp only [hx1, ↓reduceIte, Option.some.injEq] at hm
+            subst hm
+            rcases hsecond d z hc with ⟨hcz, hge⟩ | ⟨hmem, _⟩
+            · simp only [Prod.mk.injEq] at hcz
+              exact Or.inr ⟨hcz.2, hcz.1, Or.inr ⟨hx1, hge⟩⟩
+            · exact absurd (hLlink d z hmem) (hfr z hz L d hLreach)
+          · simp only [hx1, ↓reduceIte] at hm
+            have hxR : TReach N c.i r x := by
+              rcases hx with h | h
+              · exact h
+              · rcases h with h | h
+                · exact absurd h hx1
+                · rw [h, hvN] at hm; cases hm
+            exact absurd ⟨m, hm, hc⟩ (hfr z hz x d hxR)
+    rcases hone u c' hu hl with ⟨h1x, h1c, h1z⟩ | ⟨h1z, h1c, h1s⟩ <;>
+      rcases hone u' c'' hu' hl' with ⟨h2x, h2c, h2z⟩ | ⟨h2z, h2c, h2s⟩
+    · exact ⟨h1x.trans h2x.symm, h1c.trans h2c.symm⟩
+    · exact absurd (h2z.symm.trans h1z) hv1
+    · exact absurd (h1z.symm.trans h2z) hv1
+    · refine ⟨?_, h1c.trans h2c.symm⟩
+      rcases h1s with ⟨h1, hlt⟩ | ⟨h1, hge⟩ <;> rcases h2s with ⟨h2, hlt'⟩ | ⟨h2, hge'⟩
+      · exact h1.trans h2.symm
+      · omega
+      · omega
+      · exact h1.trans h2.symm
+  · intro _ _ h; exact h
+  · rw [hN' r]
+    by_cases hrL : r = L
+    · simp [hrL]
+    · simp only [hrL, ↓reduceIte]
+      by_cases hrq : r = q
+      · simp [hrq]
+      · obtain ⟨rm, hrm⟩ := hT.rootKey
+        have hr1 := hne r rm y1 hrm hf1
+        simp only [hrq, hr1, ↓reduceIte]
+        exact ⟨rm, hrm⟩
+
+/-- The writer's space split in place of a segment leaf L that the transaction
+made, below an inner parent q with room for a klong: `InPlaceSplitAfter`. -/
+theorem writerWP_appendKlongs_inPlaceSplit (d' : Nat) (L q : NodeId) (n qn : KNode)
+    (k1 cv v : Nat) (c : Ctx) (w : W)
+    (hlk : w.nodes.lookup L = some n) (hlq : w.nodes.lookup q = some qn)
+    (hqL : q ≠ L) (hql : qn.leaf = false) (hmade : n.firstTime = some c.i)
+    (hfull : c.p.M < n.size + 1 + 1)
+    (hsplit : c.p.splitAbove < (n.lastVersion c.i).size)
+    (hpq : (w.path[d']?).map (·.2) = some q)
+    (hroomq : qn.size + 1 + 1 ≤ c.p.M)
+    (hdeadq : ∀ sc y, deadOver c.p (qn.add c.i (.key sc y)) = false)
+    (hn1 : w.nodes.lookup w.next = none) :
+    WriterWP (appendKlongs (d' + 1) L [(cv, v)]) c w
+      (fun _ w' => InPlaceSplitAfter c w w' L q n qn cv v) := by
+  rw [appendKlongs_step_dead]
+  simp only [writerWP_bind, writerWP_read]
+  rw [writerWP_getNode_known L n c w hlk]
+  have hf : (n.size + [(cv, v)].length + 1 > c.p.M) := by simp; omega
+  simp only [hf, ↓reduceIte]
+  unfold handleFullWith
+  simp only [writerWP_bind, writerWP_read]
+  rw [writerWP_getNode_known L n c w hlk]
+  refine writerWP_ghOf_cached L n c w hlk _ (fun gh => ?_)
+  have hnew : (n.firstTime == some c.i) = true := by simp [hmade]
+  simp only [hnew]
+  unfold parentAt pathNode
+  simp only [writerWP_bind, writerWP_get]
+  cases hp : w.path[d']? with
+  | none => rw [hp] at hpq; cases hpq
+  | some e =>
+    rw [hp] at hpq
+    simp only [Option.map_some, Option.some.injEq] at hpq
+    simp only [writerWP_pure]
+    rw [hpq]
+    simp only [writerWP_bind]
+    rw [writerWP_getNode_known q qn c w hlq]
+    have hsz : decide ((n.lastVersion c.i).size > c.p.splitAbove) = true := by
+      simpa using hsplit
+    simp only [writerWP_pure, hql, hsz, Bool.not_false, Bool.true_and, ↓reduceIte,
+      Bool.false_eq_true, Bool.not_true]
+    simp only [newKey, fresh, setMadeFor, replacedBy, note, writerWP_bind, writerWP_modify,
+      writerWP_get, writerWP_set, writerWP_read, writerWP_pure]
+    split
+    all_goals (
+      simp only [writerWP_bind, writerWP_modify, writerWP_pure]
+      split
+      all_goals (
+        simp only [writerWP_bind, writerWP_modify, writerWP_pure, putNode]
+        refine writerWP_mono (writerWP_appendKlongs_room d' q qn _ w.next c _
+          (by
+            simp only [lookup_upsert]
+            have h2 : q ≠ w.next := fun h => by rw [h, hn1] at hlq; cases hlq
+            simp [hqL, h2, List.lookup_append, hlq]) hroomq (hdeadq _ _)) ?_
+        intro _ w2 hw2
+        subst hw2
+        refine ⟨rfl, rfl, rfl, ?_⟩
+        intro x
+        simp only [lookup_upsert, List.lookup_append]
+        by_cases hxL : x = L
+        · have hL1 : L ≠ w.next := fun h => by rw [h, hn1] at hlk; cases hlk
+          simp [hxL, hqL.symm, hL1]
+        · simp only [hxL, ↓reduceIte]
+          by_cases hxq : x = q
+          · simp [hxq]
+          · simp only [hxq, ↓reduceIte]
+            by_cases hx1 : x = w.next
+            · simp [hx1, hn1]
+            · simp only [hx1, ↓reduceIte]
+              cases h : w.nodes.lookup x with
+              | some m => rfl
+              | none =>
+                have hb1 : (x == w.next) = false := by simpa using hx1
+                simp [List.lookup, hb1])
+)
+
+/-- The rule: a klong (cv, v) of a fresh value put into a full segment leaf that
+the transaction made, below an inner parent with room, split in place: the
+writer's tree is kept. -/
+theorem writerWP_appendKlongs_inPlaceSplit_tree (base : View BVal) (d' : Nat) (L q : NodeId)
+    (n qn : KNode) (k1 cv v : Nat) (c : Ctx) (w : W) (r0 : Nat × NodeId)
+    (hT : TreeOK (wNode c.p base w) c.i w.top.rootKey)
+    (hlk : w.nodes.lookup L = some n) (hlq : w.nodes.lookup q = some qn)
+    (hLt : w.taken.contains L = false) (hqt' : w.taken.contains q = false)
+    (hqL : q ≠ L) (hql : qn.leaf = false) (hmade : n.firstTime = some c.i)
+    (hfull : c.p.M < n.size + 1 + 1)
+    (hsplit : c.p.splitAbove < (n.lastVersion c.i).size)
+    (hpq : (w.path[d']?).map (·.2) = some q)
+    (hroomq : qn.size + 1 + 1 ≤ c.p.M)
+    (hdeadq : ∀ sc y, deadOver c.p (qn.add c.i (.key sc y)) = false)
+    (hqk : (k1, L) ∈ qn.liveAt c.i) (hq : TReach (wNode c.p base w) c.i w.top.rootKey q)
+    (hnleaf : n.leaf = true) (hr0 : (n.live.drop (n.live.length / 2)).head? = some r0)
+    (hnt : ∀ s, Klong.time s ∈ n.ks → s ≤ c.i) (hqt : ∀ s, Klong.time s ∈ qn.ks → s ≤ c.i)
+    (hqwf : klongsWf qn.ks = true)
+    (hf1 : wNode c.p base w w.next = none) (hvN : wNode c.p base w v = none)
+    (ht1 : w.taken.contains w.next = false) (hv1 : v ≠ w.next)
+    (hfresh : ∀ z, (z = w.next ∨ z = v) →
+      ∀ u c', TReach (wNode c.p base w) c.i w.top.rootKey u → ¬ TLink (wNode c.p base w) c.i u c' z) :
+    WriterWP (appendKlongs (d' + 1) L [(cv, v)]) c w
+      (fun _ w' => TreeOK (wNode c.p base w') c.i w'.top.rootKey) := by
+  have hwL : wNode c.p base w L = some n := by
+    simp only [wNode, hLt, Bool.false_eq_true, ↓reduceIte, hlk]
+  have hwq : wNode c.p base w q = some qn := by
+    simp only [wNode, hqt', Bool.false_eq_true, ↓reduceIte, hlq]
+  have hn1 : w.nodes.lookup w.next = none := by
+    unfold wNode at hf1; simp only [ht1, Bool.false_eq_true, ↓reduceIte] at hf1
+    split at hf1
+    · cases hf1
+    · assumption
+  refine writerWP_mono (writerWP_appendKlongs_inPlaceSplit d' L q n qn k1 cv v c w hlk hlq hqL hql
+    hmade hfull hsplit hpq hroomq hdeadq hn1) ?_
+  intro _ w' hA
+  exact treeOK_inPlaceSplitAfter c.p base c w w' L q n qn k1 cv v r0 rfl hT hA hwL hwq hqL hqk hq
+    hnleaf hr0 hnt hqt hqwf hf1 hvN ht1 hv1 hfresh
+
 end SIS.Tree
