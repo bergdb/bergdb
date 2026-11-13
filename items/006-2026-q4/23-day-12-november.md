@@ -400,4 +400,46 @@ from them.
 
 ## 6. Outcome
 
-Not yet.
+Written 2026-11-13, 06:35, by coord-1112 (closing; coord-1113 started
+06:33).
+
+**Release 2026.5 made, except the tag** (Frans tags): commit A bf9ab5af
+in main (b38586e0), commit B e9ed4ac9 with `releases/2026.5/`, the notes
+final in 0edf7fde (024-38). The release night: 9 of 10 steps OK
+(night.sh large, the performance comparison, jcstress, checks, the queue,
+s1's JDK 27 and 17, the OT2 probe, s1's fuzz of 85,700 seeds); Android's
+one failure a test artifact, fixed (3c1f0756) and rerun OK. The writes'
+gain over 2026.4 (+119 to +152 %) comes from CRC32C, checked before and
+after 79f35aa3; the durability is unchanged.
+
+**Landed on 12 November:** 024-27 (a refused call spoils a builder,
+theta at least 2, 62 the largest node size, rw()'s Javadoc), 024-22's
+TP32 restated and the first proof checkpoint (TP1, TP9, 275 theorems),
+024-30 (count gates G1 to G4), 024-31 (the take's pace cap), 024-32
+(maintain(), G5), 024-33 and 024-34 (the cache's tables, reclaim's
+reads), 021-27 (getTrans refuses a caller's bad position, and the size
+bound), 024-36 (OT2), 024-37 (CA3), 027 (the algorithms item, a
+placeholder; docs/ moved in but log.md).
+
+**Decided:** 010-P14, 010-04's rules R1 to R3 and R5; QF1 to QF8; 1/4
+kept; maintain() as built; Q27-1; value transformations for 2026.6;
+026-01 to 026-04 registered; 017-11.
+
+**Open, handed to coord-1113:**
+
+1. The tag `release-2026.5` (Frans; the commands in 024-38), then 024's
+   and 024-38's status and a news entry.
+2. The second prover's run 2 (/Users/f/fl/bench/2026-11-12/cx2/, branch
+   024-22-proofs-2, uncommitted in its clone): keyWf corrected as
+   decided; treeContents_keyWf and ScanBoundary.lean left out of the
+   build; TP11 refuted again by a key longer than the scan's fuel: Frans
+   to decide whether keyWf also bounds a key's length (L2: 16 segments);
+   then check (lake build, axioms, the statement diff) and land.
+3. A todo: unit tests with fixed time limits (Eviction.testInterrupted-
+   WhileAWriterWaits, 2 s) and the two without a timeout (024-35).
+4. 027's questions (the trace format's exception; 024-02's place).
+5. 026-04: the back-to-empty lag at 10M keys is four times shorter at 1/4
+   than at 3/8 or 1/2, the opposite of 1M: to be understood.
+
+Usage: the week at 89 % at 05:48 (Frans's ceiling 95 %, reset Monday
+22:00).
