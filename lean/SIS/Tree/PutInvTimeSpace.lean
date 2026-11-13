@@ -425,7 +425,7 @@ theorem putInv_put_timeSpace (c : Ctx) (base : View BVal) (B : NodeId) (top0 : T
       w.taken.contains q.1 = false := fun q hq =>
     hI.untaken q.1 (fromVisits_reach _ _ _ _ (fun x xn _ hn => hI.wf x xn hn) _ _ q.1 q.2
       ReachS.root hq)
-  apply writerWP_put_seg_append2 c base hB.coherent pre cv h rk w S0 kq k1 q L n qn gn hrk ht
+  apply writerWP_put_seg_append2PI c base hB.coherent pre cv h rk w S0 kq k1 q L n qn gn hrk ht
     hI.ids.1 hI.ids.2.1 hpath hNL hnl hNq hNg hfull
   intro d'' w4 hqv hgv hvisL hql hgl hk1 hkq hqL hgq hgL h4t h4top h4next hlk4 hlq4 hlg4 hsrc4 hW4
     hpg hpq hpk

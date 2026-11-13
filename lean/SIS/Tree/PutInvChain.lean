@@ -10,7 +10,7 @@ open SIS SIS.Check
 /-! `PutInv` kept by the cascades of a put (bergdb 024-12, TP10; prover
 latest's `writerWP_put_timeSplit2`, `writerWP_put_spaceSplitTime`): a leaf L
 split whose inner parent q, full, is split too, below a grandparent g with
-room. The descent to the append (`writerWP_put_seg_append2`), then the state
+room. The descent to the append (`writerWP_put_seg_append2PI`), then the state
 after the writer's split (latest's `TimeSplit2After`, `SpaceSplitTimeAfter`),
 then the parts about the tree. -/
 
@@ -18,7 +18,7 @@ then the parts about the tree. -/
 grandparent g, the parent q and the leaf L, full: after the descent and the
 new value the writer appends the klong to L from a state that reads as w,
 with the value at w's next id and the access path ending at g, q and L. -/
-theorem writerWP_put_seg_append2 (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+theorem writerWP_put_seg_append2PI (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (pre : List Nat) (cv h : Nat) (rk : NodeId) (w : W)
     (S0 : List (Option Nat × NodeId)) (kq k1 : Nat) (q L : NodeId) (n qn gn : KNode)
     (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
@@ -407,7 +407,7 @@ theorem putInv_put_timeSplit2 (c : Ctx) (base : View BVal) (B : NodeId) (top0 : 
       w.taken.contains q.1 = false := fun q hq =>
     hI.untaken q.1 (fromVisits_reach _ _ _ _ (fun x xn _ hn => hI.wf x xn hn) _ _ q.1 q.2
       ReachS.root hq)
-  apply writerWP_put_seg_append2 c base hB.coherent pre cv h rk w S0 kq k1 q L n qn gn hrk ht
+  apply writerWP_put_seg_append2PI c base hB.coherent pre cv h rk w S0 kq k1 q L n qn gn hrk ht
     hI.ids.1 hI.ids.2.1 hpath hNL hnl hNq hNg hfull
   intro d'' w4 hqv hgv hvisL hql hgl hk1 hkq hqL hgq hgL h4t h4top h4next hlk4 hlq4 hlg4 hsrc4 hW4
     hpg hpq hpk
@@ -730,7 +730,7 @@ theorem putInv_put_spaceSplitTime (c : Ctx) (base : View BVal) (B : NodeId) (top
       w.taken.contains q.1 = false := fun q hq =>
     hI.untaken q.1 (fromVisits_reach _ _ _ _ (fun x xn _ hn => hI.wf x xn hn) _ _ q.1 q.2
       ReachS.root hq)
-  apply writerWP_put_seg_append2 c base hB.coherent pre cv h rk w S0 kq k1 q L n qn gn hrk ht
+  apply writerWP_put_seg_append2PI c base hB.coherent pre cv h rk w S0 kq k1 q L n qn gn hrk ht
     hI.ids.1 hI.ids.2.1 hpath hNL hnl hNq hNg (fun h' => by omega)
   intro d'' w4 hqv hgv hvisL hql hgl hk1 hkq hqL hgq hgL h4t h4top h4next hlk4 hlq4 hlg4 hsrc4 hW4
     hpg hpq hpk
