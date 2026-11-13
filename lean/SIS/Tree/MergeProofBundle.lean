@@ -312,3 +312,5 @@ import SIS.Tree.TakeMergeRoot
 import SIS.Tree.LinkedUnique
 import SIS.Tree.DelStepsEmptyRoot
 import SIS.Tree.TakeDelMergeF4
+import SIS.Tree.DelStepsBookK
+import SIS.Tree.TakeDelStepsF4
