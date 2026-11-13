@@ -1,7 +1,8 @@
 019-todo
 ========
 
-Created 2026-11-05 by Frans Lundberg. Status: open.
+Created 2026-11-05 by Frans Lundberg. Status: done (2026-11-13):
+every entry closed; new entries go to 028-todo.
 
 Short tasks on BergDB: faults to fix, things to investigate, decisions to
 prepare, changes to make, each done and closed in a day or two. Most are
@@ -444,4 +445,4 @@ section's first transaction (fixed in `Db.startInner`); level4.sh OK,
 BEFORE COMMIT OK.
 
 2026-11-13. New todo entries go to 028-todo since today (Frans, 10:18);
-no entry here is open.
+no entry here is open. The item done (Frans, 10:20: "Yes.").
