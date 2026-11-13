@@ -901,9 +901,10 @@ theorem writerWP_del_timeSplit2 (c : Ctx) (base : View BVal) (hvc : ViewCoherent
 set_option linter.unusedSimpArgs false in
 /-- The bitmap of a delete in the leaf L, merges off: with room for it, or L
 time split, in place for a leaf the transaction made, or by `hcascade` for one
-that existed before: the state reads as the delete. -/
-theorem writerWP_appendDeleteKlong_timeGen (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
-    (pre : List Nat) (cv d' : Nat) (rk L : NodeId) (n : KNode) (w w3 : W)
+that existed before: the state reads as the delete, when the state after it
+meets Q, a condition that `hcascade` may need. -/
+theorem writerWP_appendDeleteKlong_timeGenQ (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (pre : List Nat) (cv d' : Nat) (rk L : NodeId) (n : KNode) (w w3 : W) (Q : W → Prop)
     (hfuel : 1 ≤ c.p.fuel) (hkey : keyWf (pre ++ [cv]) = true)
     (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
     (hvisL : (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk)
@@ -924,9 +925,9 @@ theorem writerWP_appendDeleteKlong_timeGen (c : Ctx) (base : View BVal) (hvc : V
         c.p.splitAbove)) = false → n.firstTime ≠ some c.i →
       WriterWP (handleFullWith (fun q more => appendKlongs d' q more) (d' + 1) L []
         (n.lastVersionGivenDel c.i (bitsUnion n.lastBitmap (n.bitsOf cv))) compact) c
-        ({ w3 with trail := s :: w3.trail } : W) (fun _ w4 => ∀ key', keyWf key' = true →
+        ({ w3 with trail := s :: w3.trail } : W) (fun _ w4 => Q w4 → ∀ key', keyWf key' = true →
           wGet c.p c.i base w4 key' = if pre ++ [cv] == key' then none else wGet c.p c.i base w key')) :
-    WriterWP (appendDeleteKlong L (d' + 1) cv) c w3 (fun _ w4 => ∀ key', keyWf key' = true →
+    WriterWP (appendDeleteKlong L (d' + 1) cv) c w3 (fun _ w4 => Q w4 → ∀ key', keyWf key' = true →
       wGet c.p c.i base w4 key' = if pre ++ [cv] == key' then none else wGet c.p c.i base w key') := by
   have hnwf := hwfG L n hn
   -- a state whose leaf L changed to n2, n's live klongs but cv's: the delete
@@ -973,7 +974,7 @@ theorem writerWP_appendDeleteKlong_timeGen (c : Ctx) (base : View BVal) (hvc : V
   -- the outcome of a time split of the full leaf
   have htime0' : ∀ (compact : Bool), (!compact && decide (last.size > c.p.splitAbove)) = false →
       ∀ (s : String), WriterWP (handleFullWith (fun q more => appendKlongs d' q more) (d' + 1) L [] last
-        compact) c ({ w3 with trail := s :: w3.trail } : W) (fun _ w4 => ∀ key', keyWf key' = true →
+        compact) c ({ w3 with trail := s :: w3.trail } : W) (fun _ w4 => Q w4 → ∀ key', keyWf key' = true →
           wGet c.p c.i base w4 key' = if pre ++ [cv] == key' then none else wGet c.p c.i base w key') := by
     intro compact hcs s
     by_cases hnew : n.firstTime = some c.i
@@ -982,7 +983,7 @@ theorem writerWP_appendDeleteKlong_timeGen (c : Ctx) (base : View BVal) (hvc : V
       have hr3' : ReadsAs c.p base w w3' := by rw [← hw3']; exact hr3
       refine writerWP_mono (writerWP_handleFullWith_timeInPlace_nilV _ (d' + 1) L n last compact c
         base hvc w3' hlk3' (by rw [hr3'.2.2.1]; exact hLt) hnew hcs) ?_
-      intro _ w4 ⟨h4t, h4top, h4v, hN4⟩
+      intro _ w4 ⟨h4t, h4top, h4v, hN4⟩ _
       refine hleafc ⟨n.leaf, last.ks⟩ w4 hnl (h4top.trans hr3'.2.1) (h4t.trans hr3'.2.2.1)
         (h4v.trans hr3'.2.2.2.1) ?_ (by rw [hN4]; simp) hms
       intro x hx; rw [hN4]; simp only [hx, ↓reduceIte]; rw [hr3'.1]
@@ -991,10 +992,11 @@ theorem writerWP_appendDeleteKlong_timeGen (c : Ctx) (base : View BVal) (hvc : V
   have hroomc : ∀ (n' : KNode) (s : String), n'.leaf = true →
       (∀ c', (n'.searchEq c.i c').map (·.y) =
         if c' == cv then none else (n.searchEq c.i c').map (·.y)) →
-      WriterWP (do note s; putNode L n'; pure false) c w3 (fun _ w4 => ∀ key', keyWf key' = true →
+      WriterWP (do note s; putNode L n'; pure false) c w3 (fun _ w4 => Q w4 → ∀ key', keyWf key' = true →
         wGet c.p c.i base w4 key' = if pre ++ [cv] == key' then none else wGet c.p c.i base w key') := by
     intro n' s hl' hs'
     simp only [note, putNode, writerWP_bind, writerWP_modify, writerWP_pure]
+    intro _
     refine hleafc n' _ hl' hr3.2.1 hr3.2.2.1 hr3.2.2.2.1 ?_ ?_ hs'
     · intro y hy
       rw [← hr3.1]
@@ -1025,7 +1027,7 @@ theorem writerWP_appendDeleteKlong_timeGen (c : Ctx) (base : View BVal) (hvc : V
     simp only [hnb, Bool.not_false, ↓reduceIte]
     have htime : ∀ (compact : Bool) (s : String), (!compact && decide (last.size > c.p.splitAbove)) = false →
         WriterWP (do note s; handleFullWith (fun q more => appendKlongs d' q more) (d' + 1) L [] last compact; pure false)
-          c w3 (fun _ w4 => ∀ key', keyWf key' = true →
+          c w3 (fun _ w4 => Q w4 → ∀ key', keyWf key' = true →
             wGet c.p c.i base w4 key' = if pre ++ [cv] == key' then none else wGet c.p c.i base w key') := by
       intro compact s hcs
       simp only [note, writerWP_bind, writerWP_modify]
@@ -1043,7 +1045,7 @@ theorem writerWP_appendDeleteKlong_timeGen (c : Ctx) (base : View BVal) (hvc : V
         else do
           note "bitmap.full"
           handleFullWith (fun q more => appendKlongs d' q more) (d' + 1) L [] last
-          pure false) c w3 (fun _ w4 => ∀ key', keyWf key' = true →
+          pure false) c w3 (fun _ w4 => Q w4 → ∀ key', keyWf key' = true →
             wGet c.p c.i base w4 key' = if pre ++ [cv] == key' then none else wGet c.p c.i base w key') := by
       intro hnTD
       by_cases hsz : n.size + 1 < c.p.M
@@ -1078,6 +1080,38 @@ theorem writerWP_appendDeleteKlong_timeGen (c : Ctx) (base : View BVal) (hvc : V
       | _ =>
         simp only [hg, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
         exact hrest (fun ⟨⟨old, h⟩, _⟩ => by rw [hg] at h; cases h)
+
+/-- `writerWP_appendDeleteKlong_timeGenQ` with no condition on the state after. -/
+theorem writerWP_appendDeleteKlong_timeGen (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (pre : List Nat) (cv d' : Nat) (rk L : NodeId) (n : KNode) (w w3 : W)
+    (hfuel : 1 ≤ c.p.fuel) (hkey : keyWf (pre ++ [cv]) = true)
+    (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
+    (hvisL : (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk)
+    (huniq : ∀ key' x m, keyWf key' = true →
+      (x, cv) ∈ fromVisits (wNode c.p base w) c.i c.p.fuel key' w.top.rootKey →
+      (x, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      wNode c.p base w x = some m → m.leaf = true → key' = pre ++ [cv])
+    (hwfG : ∀ x xn, wNode c.p base w x = some xn → klongsWf xn.ks = true)
+    (hn : wNode c.p base w L = some n) (hnl : n.leaf = true) (hnt : ∀ s, Klong.time s ∈ n.ks → s ≤ c.i)
+    (hLt : w.taken.contains L = false)
+    (hr3 : ReadsAs c.p base w w3) (hlk3 : w3.nodes.lookup L = some n)
+    (hne : bitsUnion n.lastBitmap (n.bitsOf cv) ≠ n.lastBitmap)
+    (hsplit : ¬ ((∃ old, n.ks.getLast? = some (.del old)) ∧ n.lastTime = some c.i) →
+      c.p.M ≤ n.size + 1 →
+      (n.lastVersionGivenDel c.i (bitsUnion n.lastBitmap (n.bitsOf cv))).size ≤ c.p.splitAbove)
+    (hcascade : ∀ (compact : Bool) (s : String),
+      (!compact && decide ((n.lastVersionGivenDel c.i (bitsUnion n.lastBitmap (n.bitsOf cv))).size >
+        c.p.splitAbove)) = false → n.firstTime ≠ some c.i →
+      WriterWP (handleFullWith (fun q more => appendKlongs d' q more) (d' + 1) L []
+        (n.lastVersionGivenDel c.i (bitsUnion n.lastBitmap (n.bitsOf cv))) compact) c
+        ({ w3 with trail := s :: w3.trail } : W) (fun _ w4 => ∀ key', keyWf key' = true →
+          wGet c.p c.i base w4 key' = if pre ++ [cv] == key' then none else wGet c.p c.i base w key')) :
+    WriterWP (appendDeleteKlong L (d' + 1) cv) c w3 (fun _ w4 => ∀ key', keyWf key' = true →
+      wGet c.p c.i base w4 key' = if pre ++ [cv] == key' then none else wGet c.p c.i base w key') :=
+  writerWP_mono (writerWP_appendDeleteKlong_timeGenQ c base hvc pre cv d' rk L n w w3 (fun _ => True)
+    hfuel hkey hrk hvisL huniq hwfG hn hnl hnt hLt hr3 hlk3 hne hsplit
+    (fun compact s h1 h2 => writerWP_mono (hcascade compact s h1 h2) (fun _ _ h _ => h)))
+    (fun _ _ h => h trivial)
 
 /-! ## The writer: a delete's time split of a leaf whose parent is full and space split -/
 

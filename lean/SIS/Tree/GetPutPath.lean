@@ -403,6 +403,13 @@ theorem pathEnd_append_gen (x : NodeId) (a b : List (Option Nat × NodeId)) :
     simp only [List.nil_append] at this
     rw [this]
 
+/-- The space root r of N does not space split: when a cascade reaches it
+without room (`ChainRoom`), its last version is within the split size. With it,
+the reading after a cascade needs no premise on the fuel
+(`writerWP_appendKlongs_chainGRV`). -/
+def RootStays (c : Ctx) (N : NodeId → Option KNode) (r : NodeId) : Prop :=
+  ∀ rn, N r = some rn → ¬ ChainRoom c rn → (rn.lastVersion c.i).size ≤ c.p.splitAbove
+
 set_option maxHeartbeats 1600000 in
 /-- A put of a key into a full leaf, with the cascade along the whole access path
 from the space root, across segments (`writerWP_appendKlongs_chainGRV` from 0):
@@ -413,8 +420,9 @@ order of a full node's compare values below its inner parent's klong
 parent for a node that space splits (`hspaceG`: the space root may space split
 and get a new root, a segment root below a segment leaf may not). The splits
 change the reading by the put alone, when the writer's state after them has its
-paths within the fuel (`PathsFit`). -/
-theorem writerWP_put_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+paths within the fuel (`PathsFit`), or when the space root does not space split
+(`RootStays`). -/
+theorem writerWP_put_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (pre : List Nat) (cv h : Nat) (rk : NodeId) (w : W)
     (hkey : keyWf (pre ++ [cv]) = true)
     (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
@@ -447,7 +455,8 @@ theorem writerWP_put_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent
       (x, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
       wNode c.p base w x = some n' → n'.leaf = true → key' = pre ++ [cv]) :
     WriterWP (putKv (.put (pre ++ [cv]) h)) c w (fun _ w' =>
-      PathsFit (wNode c.p base w') c.i w'.top.rootKey c.p.fuel → ∀ key', keyWf key' = true →
+      (PathsFit (wNode c.p base w') c.i w'.top.rootKey c.p.fuel ∨
+        RootStays c (wNode c.p base w) w.top.rootKey) → ∀ key', keyWf key' = true →
       wGet c.p c.i base w' key' =
         if Op.key (.put (pre ++ [cv]) h) == key' then Op.value (.put (pre ++ [cv]) h)
         else wGet c.p c.i base w key') := by
@@ -730,10 +739,13 @@ theorem writerWP_put_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent
           subst hs'
           exact hlinksAll x c' fd.y ⟨m', hm', KNode.searchEq_mem m' c.i c' fd (hwfG x m' hm') hfd⟩
       simp only [wValue, hwst, hwsv, lookup_append_single_ne _ _ _ _ (by omega : y ≠ w.next)])
-  intro hfit key' hkey'
+  intro hq key' hkey'
   unfold wGet
   rw [hvf, hR (wValue base ws) (fun z hz => hadm z (by rw [hwsx] at hz; exact hz))
-    (Or.inl hfit) key', hwsN, hwstop, hnext3]
+    (hq.imp id (fun hs ⟨_, hnr, hsp⟩ => Nat.not_le.mpr hsp (hs _ (by
+      have h0 := hXN 0 (Nat.zero_le _)
+      rw [nodeAt_zero] at h0 ⊢
+      exact h0) hnr))) key', hwsN, hwstop, hnext3]
   simp only [List.foldl_cons, List.foldl_nil]
   by_cases hk : pre ++ [cv] = key'
   · subst hk
@@ -745,17 +757,10 @@ theorem writerWP_put_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent
     exact hA.2 key' hkey' (fun h' => hk h'.symm)
 
 
-set_option maxHeartbeats 1600000 in
-/-- A delete, the merges off, from a leaf whose bitmap changes and keeps a live
-klong, with the cascade along the whole access path from the space root, across
-segments (`writerWP_appendKlongs_chainGR` from 0): the leaf's bitmap, its time
-or space split (in place for a leaf the transaction made), and the splits above
-it as their sizes say. The leaf is not the space root and its parent is inner
-with the leaf's compare values in the range of its klong (`hleafG`); the other
-premises are on the nodes reached, as in `writerWP_put_accessPath`. -/
-theorem writerWP_del_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
-    (pre : List Nat) (cv : Nat) (rk : NodeId) (w : W)
-    (hmerges : c.p.merges = false) (hsa : 1 ≤ c.p.splitAbove)
+/-- `writerWP_put_accessPathR` when no node that space splits is the space root
+(`hspaceG`): the reading needs no premise on the fuel. -/
+theorem writerWP_put_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (pre : List Nat) (cv h : Nat) (rk : NodeId) (w : W)
     (hkey : keyWf (pre ++ [cv]) = true)
     (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
     (ht : ∀ q ∈ fromVisits (wNode c.p base w) c.i c.p.fuel (pre ++ [cv]) w.top.rootKey,
@@ -779,6 +784,61 @@ theorem writerWP_del_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent
       ¬ ChainRoom c xn → c.p.splitAbove < (xn.lastVersion c.i).size →
       x ≠ w.top.rootKey ∧ ∀ q qn K, TReach (wNode c.p base w) c.i w.top.rootKey q →
         wNode c.p base w q = some qn → (K, x) ∈ qn.liveAt c.i → qn.leaf = false)
+    (hfullL : ∀ L n, (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      wNode c.p base w L = some n → n.leaf = true →
+      ¬ (n.size + 1 < c.p.M ∧ deadOver c.p (n.add c.i (.key cv w.next)) = false))
+    (huniq : ∀ key' x n', keyWf key' = true →
+      (x, cv) ∈ fromVisits (wNode c.p base w) c.i c.p.fuel key' w.top.rootKey →
+      (x, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      wNode c.p base w x = some n' → n'.leaf = true → key' = pre ++ [cv]) :
+    WriterWP (putKv (.put (pre ++ [cv]) h)) c w (fun _ w' =>
+      ∀ key', keyWf key' = true →
+      wGet c.p c.i base w' key' =
+        if Op.key (.put (pre ++ [cv]) h) == key' then Op.value (.put (pre ++ [cv]) h)
+        else wGet c.p c.i base w key') :=
+  writerWP_mono (writerWP_put_accessPathR c base hvc pre cv h rk w hkey hrk ht hids hbase hwfG htimesG
+    hT hlinksAll hnoval hrangeG hlenG (fun x xn hx hxn hnr hsp => (hspaceG x xn hx hxn hnr hsp).2)
+    hfullL huniq)
+    (fun _ _ hp => hp (Or.inr (fun rn hrn hnr => Nat.le_of_not_lt (fun hsp =>
+      (hspaceG _ _ TReach.root hrn hnr hsp).1 rfl))))
+
+set_option maxHeartbeats 1600000 in
+/-- A delete, the merges off, from a leaf whose bitmap changes and keeps a live
+klong, with the cascade along the whole access path from the space root, across
+segments (`writerWP_appendKlongs_chainGRQ` from 0): the leaf's bitmap, its time
+or space split (in place for a leaf the transaction made), and the splits above
+it as their sizes say, the space root's space split too. The leaf is not the
+space root and its parent is inner with the leaf's compare values in the range
+of its klong (`hleafG`); the other premises are on the nodes reached, as in
+`writerWP_put_accessPathR`. The reading changes by the delete alone when the
+writer's state after it has its paths within the fuel (`PathsFit`) or the space
+root does not space split (`RootStays`). -/
+theorem writerWP_del_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (pre : List Nat) (cv : Nat) (rk : NodeId) (w : W)
+    (hmerges : c.p.merges = false) (hsa : 1 ≤ c.p.splitAbove)
+    (hkey : keyWf (pre ++ [cv]) = true)
+    (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
+    (ht : ∀ q ∈ fromVisits (wNode c.p base w) c.i c.p.fuel (pre ++ [cv]) w.top.rootKey,
+      w.taken.contains q.1 = false)
+    (hids : (∀ z, (w.nodes.lookup z).isSome = true → z < w.next) ∧
+      (∀ z, (c.view z).isSome = true → z < w.next) ∧ (∀ z, w.taken.contains z = true → z < w.next) ∧
+      (∀ q ∈ w.vals, q.1 < w.next) ∧ w.top.rootKey < w.next)
+    (hbase : ∀ z, w.next ≤ z → knodeOf c.p base z = none ∧ valueOf base z = none)
+    (hwfG : ∀ x xn, wNode c.p base w x = some xn → klongsWf xn.ks = true)
+    (htimesG : ∀ x xn, wNode c.p base w x = some xn → ∀ s, Klong.time s ∈ xn.ks → s ≤ c.i)
+    (hT : TreeOK (wNode c.p base w) c.i w.top.rootKey)
+    (hlinksAll : ∀ u c' z, TLink (wNode c.p base w) c.i u c' z → z < w.next)
+    (hnoval : ∀ x xn, wNode c.p base w x = some xn → wValue base w x = none)
+    (hrangeG : ∀ q qn x xn K, TReach (wNode c.p base w) c.i w.top.rootKey q →
+      wNode c.p base w q = some qn → qn.leaf = false → (K, x) ∈ qn.liveAt c.i →
+      wNode c.p base w x = some xn → ¬ ChainRoom c xn → ∀ c' z, (c', z) ∈ xn.live → 0 < c' →
+      K ≤ c' ∧ ∀ c'' z', (c'', z') ∈ qn.live → K < c'' → c' < c'')
+    (hlenG : ∀ x xn, TReach (wNode c.p base w) c.i w.top.rootKey x → wNode c.p base w x = some xn →
+      ¬ ChainRoom c xn → c.p.splitAbove < (xn.lastVersion c.i).size → 2 ≤ xn.live.length)
+    (hspaceG : ∀ x xn, TReach (wNode c.p base w) c.i w.top.rootKey x → wNode c.p base w x = some xn →
+      ¬ ChainRoom c xn → c.p.splitAbove < (xn.lastVersion c.i).size →
+      ∀ q qn K, TReach (wNode c.p base w) c.i w.top.rootKey q →
+        wNode c.p base w q = some qn → (K, x) ∈ qn.liveAt c.i → qn.leaf = false)
     (hleafG : ∀ L n, (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
       wNode c.p base w L = some n → n.leaf = true →
       L ≠ w.top.rootKey ∧ (∀ q qn K, TReach (wNode c.p base w) c.i w.top.rootKey q →
@@ -789,7 +849,9 @@ theorem writerWP_del_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent
       (x, cv) ∈ fromVisits (wNode c.p base w) c.i c.p.fuel key' w.top.rootKey →
       (x, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
       wNode c.p base w x = some n' → n'.leaf = true → key' = pre ++ [cv]) :
-    WriterWP (putKv (.del (pre ++ [cv]))) c w (fun _ w' => ∀ key', keyWf key' = true →
+    WriterWP (putKv (.del (pre ++ [cv]))) c w (fun _ w' =>
+      (PathsFit (wNode c.p base w') c.i w'.top.rootKey c.p.fuel ∨
+        RootStays c (wNode c.p base w) w.top.rootKey) → ∀ key', keyWf key' = true →
       wGet c.p c.i base w' key' =
         if Op.key (.del (pre ++ [cv])) == key' then Op.value (.del (pre ++ [cv]))
         else wGet c.p c.i base w key') := by
@@ -904,6 +966,11 @@ theorem writerWP_del_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent
     intro j hj; rw [hXX, hNNd]; exact hXN j (by omega)
   have hNm : NN m = n := by
     have := hNN m (Nat.le_refl _); rw [hXm, hn] at this; cases this; rfl
+  have hstay : RootStays c (wNode c.p base w) w.top.rootKey →
+      ¬ (d = 0 ∧ ¬ ChainRoom c (NN (0 - d)) ∧ c.p.splitAbove < ((NN (0 - d)).lastVersion c.i).size) := by
+    intro hs ⟨_, hnr, hsp⟩
+    rw [hd0, Nat.zero_sub] at hnr hsp
+    exact Nat.not_le.mpr hsp (hs _ (by rw [← hX0]; exact hNN 0 (Nat.zero_le _)) hnr)
   obtain ⟨hLroot', hLpar, hne, hkeep⟩ := hleafG L n hvisL0 hn hnl
   rw [← hNm] at hne hkeep
   have hm : 1 ≤ m := by
@@ -1046,7 +1113,7 @@ theorem writerWP_del_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent
   rw [hdm]
   -- the chain's premises above the leaf
   have hchainPre := fun (w1 : W) (ins : List (Nat × NodeId)) =>
-    writerWP_appendKlongs_chainGR c base w3.path d (d + (m - 1)) (fun i => XX (i - d))
+    writerWP_appendKlongs_chainGRQ c base w3.path d (d + (m - 1)) (fun i => XX (i - d))
     (fun i => KK (i - d)) (fun i => NN (i - d))
     (fun i h1 h2 => hpX i h1 (by omega))
     (fun i h1 h2 => hpK i h1 (by omega))
@@ -1076,22 +1143,18 @@ theorem writerWP_del_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent
       have := hdist (i - d) (i' - d) (by omega) (by omega) he
       omega)
     (fun i h1 h2 hnr hsp => by
-      obtain ⟨hne', hpar⟩ := hspaceG _ _ (reachS_tReach _ _ _ _ (hreachX (i - d) (by omega)))
+      have hpar := hspaceG _ _ (reachS_tReach _ _ _ _ (hreachX (i - d) (by omega)))
         (hNN (i - d) (by omega)) hnr hsp
-      have hi : d < i := by
-        rcases Nat.lt_or_ge d i with h | h
-        · exact h
-        · exfalso; apply hne'
-          have : i - d = 0 := by omega
-          rw [this]; exact hX0
-      refine ⟨hi, ?_⟩
-      show (NN (i - 1 - d)).leaf = false
-      have hlk : (KK (i - 1 - d + 1), XX (i - 1 - d + 1)) ∈ (NN (i - 1 - d)).liveAt c.i :=
-        hlinksK (i - 1 - d) (by omega)
-      have he2 : i - 1 - d + 1 = i - d := by omega
-      rw [he2] at hlk
-      exact hpar _ _ _ (reachS_tReach _ _ _ _ (hreachX (i - 1 - d) (by omega)))
-        (hNN (i - 1 - d) (by omega)) hlk)
+      rcases Nat.lt_or_ge d i with hi | hi
+      · refine Or.inr ⟨hi, ?_⟩
+        show (NN (i - 1 - d)).leaf = false
+        have hlk : (KK (i - 1 - d + 1), XX (i - 1 - d + 1)) ∈ (NN (i - 1 - d)).liveAt c.i :=
+          hlinksK (i - 1 - d) (by omega)
+        have he2 : i - 1 - d + 1 = i - d := by omega
+        rw [he2] at hlk
+        exact hpar _ _ _ (reachS_tReach _ _ _ _ (hreachX (i - 1 - d) (by omega)))
+          (hNN (i - 1 - d) (by omega)) hlk
+      · exact Or.inl (by omega))
     (m - 1) (Nat.le_refl _) w1 ins
   have hdm1 : d + (m - 1) - d = m - 1 := by omega
   -- the post of the delete
@@ -1108,7 +1171,9 @@ theorem writerWP_del_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent
       (NN m).firstTime ≠ some c.i →
       WriterWP (handleFullWith (fun q more => appendKlongs (d + (m - 1)) q more) (d + (m - 1) + 1)
         (XX m) [] ((NN m).lastVersionGivenDel c.i (bitsUnion (NN m).lastBitmap ((NN m).bitsOf cv)))
-        compact) c ({ w3 with trail := s :: w3.trail } : W) (fun _ w4 => ∀ key', keyWf key' = true →
+        compact) c ({ w3 with trail := s :: w3.trail } : W) (fun _ w4 =>
+          (PathsFit (wNode c.p base w4) c.i w4.top.rootKey c.p.fuel ∨
+            RootStays c (wNode c.p base w) w.top.rootKey) → ∀ key', keyWf key' = true →
           wGet c.p c.i base w4 key' = if pre ++ [cv] == key' then none else wGet c.p c.i base w key') := by
     intro compact s hcs hfirst
     obtain ⟨hs1, hs2, hs3, hs4, hs5, hs6⟩ := hlast s
@@ -1258,14 +1323,16 @@ theorem writerWP_del_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent
       (keyWf_last_notin pre cv hkey) hvisL huniq hwfR honlyL
       (fun x xn c' z hx hxn hz => by
         have := hlinksAll x c' z ⟨xn, hxn, hz⟩; omega)
-    intro key' hkey'
+    intro hq key' hkey'
+    have hq2 := hq.imp (fun hf => PathsFit.of_agree (wNode c.p base w2) _ c.i w2.top.rootKey c.p.fuel
+      (fun x hx => by rw [hN4]; exact updN_ne _ _ _ _ (fun he => hxR2 (he ▸ hx))) hf) hstay
     unfold wGet
     rw [hN4]
     show getFromR (updN (wNode c.p base w2) (XX m) ((NN m).toPrev (c.i - 1))) (wValue base w2) c.i
       c.p.fuel key' w2.top.rootKey = _
     rw [getFromR_updN_unreach' (wNode c.p base w2) (wValue base w2) c.i c.p.fuel w2.top.rootKey
       (XX m) _ (fun z zn _ h => h2W z zn h) (fun h => hxR2 (reachS_tReach _ _ _ _ h)) key']
-    rw [h2R key', hv1, h1top, hs5, hr03.2.1, hres key' hkey']
+    rw [h2R hq2 key', hv1, h1top, hs5, hr03.2.1, hres key' hkey']
   -- the delete's last version as pairs
   obtain ⟨pairs, hpks, hps⟩ :=
     KNode.lastVersionGivenDel_order (NN m) c.i (bitsUnion (NN m).lastBitmap ((NN m).bitsOf cv))
@@ -1294,7 +1361,9 @@ theorem writerWP_del_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent
       (NN m).firstTime ≠ some c.i →
       WriterWP (handleFullWith (fun q more => appendKlongs (d + (m - 1)) q more) (d + (m - 1) + 1)
         (XX m) [] ((NN m).lastVersionGivenDel c.i (bitsUnion (NN m).lastBitmap ((NN m).bitsOf cv)))
-        false) c ({ w3 with trail := s :: w3.trail } : W) (fun _ w4 => ∀ key', keyWf key' = true →
+        false) c ({ w3 with trail := s :: w3.trail } : W) (fun _ w4 =>
+          (PathsFit (wNode c.p base w4) c.i w4.top.rootKey c.p.fuel ∨
+            RootStays c (wNode c.p base w) w.top.rootKey) → ∀ key', keyWf key' = true →
           wGet c.p c.i base w4 key' = if pre ++ [cv] == key' then none else wGet c.p c.i base w key') := by
     intro s hbig hfirst
     have hpne : pairs ≠ [] := by
@@ -1501,14 +1570,16 @@ theorem writerWP_del_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent
       (keyWf_last_notin pre cv hkey) hvisL huniq hwfR honlyL
       (fun x xn c' z hx hxn hz => by
         have := hlinksAll x c' z ⟨xn, hxn, hz⟩; exact ⟨by omega, by omega⟩)
-    intro key' hkey'
+    intro hq key' hkey'
+    have hq2 := hq.imp (fun hf => PathsFit.of_agree (wNode c.p base w2) _ c.i w2.top.rootKey c.p.fuel
+      (fun x hx => by rw [hN4]; exact updN_ne _ _ _ _ (fun he => hxR2 (he ▸ hx))) hf) hstay
     unfold wGet
     rw [hN4]
     show getFromR (updN (wNode c.p base w2) (XX m) ((NN m).toPrev (c.i - 1))) (wValue base w2) c.i
       c.p.fuel key' w2.top.rootKey = _
     rw [getFromR_updN_unreach' (wNode c.p base w2) (wValue base w2) c.i c.p.fuel w2.top.rootKey
       (XX m) _ (fun z zn _ h => h2W z zn h) (fun h => hxR2 (reachS_tReach _ _ _ _ h)) key']
-    rw [h2R key', hv1, h1top, hs5, hr03.2.1, hres key' hkey']
+    rw [h2R hq2 key', hv1, h1top, hs5, hr03.2.1, hres key' hkey']
   -- a space split in place of the leaf, which the transaction made
   have hcascadeSIP : ∀ (s : String),
       c.p.splitAbove < ((NN m).lastVersionGivenDel c.i
@@ -1516,7 +1587,9 @@ theorem writerWP_del_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent
       (NN m).firstTime = some c.i →
       WriterWP (handleFullWith (fun q more => appendKlongs (d + (m - 1)) q more) (d + (m - 1) + 1)
         (XX m) [] ((NN m).lastVersionGivenDel c.i (bitsUnion (NN m).lastBitmap ((NN m).bitsOf cv)))
-        false) c ({ w3 with trail := s :: w3.trail } : W) (fun _ w4 => ∀ key', keyWf key' = true →
+        false) c ({ w3 with trail := s :: w3.trail } : W) (fun _ w4 =>
+          (PathsFit (wNode c.p base w4) c.i w4.top.rootKey c.p.fuel ∨
+            RootStays c (wNode c.p base w) w.top.rootKey) → ∀ key', keyWf key' = true →
           wGet c.p c.i base w4 key' = if pre ++ [cv] == key' then none else wGet c.p c.i base w key') := by
     intro s hbig hfirst
     have hpne : pairs ≠ [] := by
@@ -1691,11 +1764,13 @@ theorem writerWP_del_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent
       hqL hXL1.symm (hfreshN _ (Nat.le_refl _)) hLroot (fun h => by omega) hrq hrk
       (keyWf_last_notin pre cv hkey) hvisL huniq hwfR honlyL
       (fun x xn c' z hx hxn hz => by have := hlinksAll x c' z ⟨xn, hxn, hz⟩; omega)
-    intro key' hkey'
+    intro hq key' hkey'
     unfold wGet
-    rw [h2R key', hv1, h1top, hs5, hr03.2.1, hres key' hkey']
+    rw [h2R (hq.imp id hstay) key', hv1, h1top, hs5, hr03.2.1, hres key' hkey']
   -- the leaf's bitmap, its time split or its space split
-  refine writerWP_mono (post := fun _ w4 => ∀ key', keyWf key' = true →
+  refine writerWP_mono (post := fun _ w4 =>
+      (PathsFit (wNode c.p base w4) c.i w4.top.rootKey c.p.fuel ∨
+        RootStays c (wNode c.p base w) w.top.rootKey) → ∀ key', keyWf key' = true →
       wGet c.p c.i base w4 key' = if pre ++ [cv] == key' then none else wGet c.p c.i base w key')
     ?_ ?_
   · by_cases hsp : ¬ ((∃ old, (NN m).ks.getLast? = some (.del old)) ∧ (NN m).lastTime = some c.i) ∧
@@ -1707,8 +1782,9 @@ theorem writerWP_del_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent
           by_cases hf : (NN m).firstTime = some c.i
           · exact hcascadeSIP s hbig hf
           · exact hcascadeS s hbig hf)
-    · exact writerWP_appendDeleteKlong_timeGen c base hvc pre cv (d + (m - 1)) rk (XX m) (NN m) w w3
-        hfuel hkey hrk hvisL huniq hwfG hnL hleafm hnt hLt hr03 hlkL hne
+    · exact writerWP_appendDeleteKlong_timeGenQ c base hvc pre cv (d + (m - 1)) rk (XX m) (NN m) w w3
+        (fun w4 => PathsFit (wNode c.p base w4) c.i w4.top.rootKey c.p.fuel ∨
+          RootStays c (wNode c.p base w) w.top.rootKey) hfuel hkey hrk hvisL huniq hwfG hnL hleafm hnt hLt hr03 hlkL hne
         (fun h1 h2 => Nat.le_of_not_lt (fun h3 => hsp ⟨h1, h2, h3⟩)) hcascadeT
   · intro _ w4 hT4
     unfold afterDelete fresh
@@ -1716,5 +1792,53 @@ theorem writerWP_del_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent
     simp only [hmerges, Bool.false_eq_true, ↓reduceIte, writerWP_pure]
     simp only [Bool.not_false, ↓reduceIte, writerWP_bind, writerWP_get, writerWP_set, writerWP_pure]
     exact hT4
+
+/-- `writerWP_del_accessPathR` when no node that space splits is the space root
+(`hspaceG`): the reading needs no premise on the fuel. -/
+theorem writerWP_del_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (pre : List Nat) (cv : Nat) (rk : NodeId) (w : W)
+    (hmerges : c.p.merges = false) (hsa : 1 ≤ c.p.splitAbove)
+    (hkey : keyWf (pre ++ [cv]) = true)
+    (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
+    (ht : ∀ q ∈ fromVisits (wNode c.p base w) c.i c.p.fuel (pre ++ [cv]) w.top.rootKey,
+      w.taken.contains q.1 = false)
+    (hids : (∀ z, (w.nodes.lookup z).isSome = true → z < w.next) ∧
+      (∀ z, (c.view z).isSome = true → z < w.next) ∧ (∀ z, w.taken.contains z = true → z < w.next) ∧
+      (∀ q ∈ w.vals, q.1 < w.next) ∧ w.top.rootKey < w.next)
+    (hbase : ∀ z, w.next ≤ z → knodeOf c.p base z = none ∧ valueOf base z = none)
+    (hwfG : ∀ x xn, wNode c.p base w x = some xn → klongsWf xn.ks = true)
+    (htimesG : ∀ x xn, wNode c.p base w x = some xn → ∀ s, Klong.time s ∈ xn.ks → s ≤ c.i)
+    (hT : TreeOK (wNode c.p base w) c.i w.top.rootKey)
+    (hlinksAll : ∀ u c' z, TLink (wNode c.p base w) c.i u c' z → z < w.next)
+    (hnoval : ∀ x xn, wNode c.p base w x = some xn → wValue base w x = none)
+    (hrangeG : ∀ q qn x xn K, TReach (wNode c.p base w) c.i w.top.rootKey q →
+      wNode c.p base w q = some qn → qn.leaf = false → (K, x) ∈ qn.liveAt c.i →
+      wNode c.p base w x = some xn → ¬ ChainRoom c xn → ∀ c' z, (c', z) ∈ xn.live → 0 < c' →
+      K ≤ c' ∧ ∀ c'' z', (c'', z') ∈ qn.live → K < c'' → c' < c'')
+    (hlenG : ∀ x xn, TReach (wNode c.p base w) c.i w.top.rootKey x → wNode c.p base w x = some xn →
+      ¬ ChainRoom c xn → c.p.splitAbove < (xn.lastVersion c.i).size → 2 ≤ xn.live.length)
+    (hspaceG : ∀ x xn, TReach (wNode c.p base w) c.i w.top.rootKey x → wNode c.p base w x = some xn →
+      ¬ ChainRoom c xn → c.p.splitAbove < (xn.lastVersion c.i).size →
+      x ≠ w.top.rootKey ∧ ∀ q qn K, TReach (wNode c.p base w) c.i w.top.rootKey q →
+        wNode c.p base w q = some qn → (K, x) ∈ qn.liveAt c.i → qn.leaf = false)
+    (hleafG : ∀ L n, (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      wNode c.p base w L = some n → n.leaf = true →
+      L ≠ w.top.rootKey ∧ (∀ q qn K, TReach (wNode c.p base w) c.i w.top.rootKey q →
+        wNode c.p base w q = some qn → (K, L) ∈ qn.liveAt c.i → qn.leaf = false ∧ LeafOrderAt qn K n) ∧
+      bitsUnion n.lastBitmap (n.bitsOf cv) ≠ n.lastBitmap ∧
+      n.allKeysIn (bitsUnion n.lastBitmap (n.bitsOf cv)) = false)
+    (huniq : ∀ key' x n', keyWf key' = true →
+      (x, cv) ∈ fromVisits (wNode c.p base w) c.i c.p.fuel key' w.top.rootKey →
+      (x, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      wNode c.p base w x = some n' → n'.leaf = true → key' = pre ++ [cv]) :
+    WriterWP (putKv (.del (pre ++ [cv]))) c w (fun _ w' => ∀ key', keyWf key' = true →
+      wGet c.p c.i base w' key' =
+        if Op.key (.del (pre ++ [cv])) == key' then Op.value (.del (pre ++ [cv]))
+        else wGet c.p c.i base w key') :=
+  writerWP_mono (writerWP_del_accessPathR c base hvc pre cv rk w hmerges hsa hkey hrk ht hids hbase hwfG
+    htimesG hT hlinksAll hnoval hrangeG hlenG (fun x xn hx hxn hnr hsp => (hspaceG x xn hx hxn hnr hsp).2)
+    hleafG huniq)
+    (fun _ _ hp => hp (Or.inr (fun rn hrn hnr => Nat.le_of_not_lt (fun hsp =>
+      (hspaceG _ _ TReach.root hrn hnr hsp).1 rfl))))
 
 end SIS.Tree

@@ -1687,4 +1687,65 @@ theorem writerWP_appendKlongs_chainGR (c : Ctx) (base : View BVal)
     have := (hspace 0 (by omega) (by omega) hnr hsp).1
     omega)) key
 
+/-- `writerWP_appendKlongs_chainGRV` for the writer's values, the space root's
+space split allowed: the reading holds when the state after has its paths within
+the fuel or the chain does not reach a space root that space splits. -/
+theorem writerWP_appendKlongs_chainGRQ (c : Ctx) (base : View BVal)
+    (path0 : List (Option Nat × NodeId)) (s D : Nat) (X : Nat → NodeId) (K : Nat → Nat)
+    (Nn : Nat → KNode)
+    (hX : ∀ i, s ≤ i → i ≤ D → (path0[i]?).map (·.2) = some (X i))
+    (hK : ∀ i, s < i → i ≤ D → path0[i]? = some (some (K i), X i))
+    (hlinkK : ∀ i, s < i → i ≤ D → (K i, X i) ∈ (Nn (i - 1)).liveAt c.i)
+    (hrange : ∀ i, s < i → i ≤ D → ¬ ChainRoom c (Nn i) → (Nn (i - 1)).leaf = false →
+      ∀ c' z, (c', z) ∈ (Nn i).live → 0 < c' →
+      K i ≤ c' ∧ ∀ c'' z', (c'', z') ∈ (Nn (i - 1)).live → K i < c'' → c' < c'')
+    (hlen : ∀ i, s ≤ i → i ≤ D → ¬ ChainRoom c (Nn i) →
+      c.p.splitAbove < ((Nn i).lastVersion c.i).size →
+      2 ≤ (Nn i).live.length)
+    (hwf : ∀ i, s ≤ i → i ≤ D → klongsWf (Nn i).ks = true)
+    (htimes : ∀ i, s ≤ i → i ≤ D → ∀ t, Klong.time t ∈ (Nn i).ks → t ≤ c.i)
+    (htop : ChainRoom c (Nn s) ∨ s = 0)
+    (hdist : ∀ i i', s ≤ i → i ≤ D → s ≤ i' → i' ≤ D → X i = X i' → i = i')
+    (hspace : ∀ i, s ≤ i → i ≤ D → ¬ ChainRoom c (Nn i) →
+      c.p.splitAbove < ((Nn i).lastVersion c.i).size → i = 0 ∨ (s < i ∧ (Nn (i - 1)).leaf = false)) :
+    ∀ e, s + e ≤ D → ∀ (w : W) (ins : List (Nat × NodeId)),
+      InsOK (Nn (s + e)) ins → (∀ q ∈ ins, q.2 < w.next) →
+      w.path = path0 →
+      (∀ i, s ≤ i → i ≤ s + e → w.nodes.lookup (X i) = some (Nn i) ∧ w.taken.contains (X i) = false) →
+      TreeOK (wNode c.p base w) c.i w.top.rootKey →
+      (∀ i, s ≤ i → i ≤ s + e → TReach (wNode c.p base w) c.i w.top.rootKey (X i)) →
+      (∀ z, w.next ≤ z → w.nodes.lookup z = none ∧ w.taken.contains z = false ∧
+        knodeOf c.p base z = none) →
+      (∀ u c' z, TLink (wNode c.p base w) c.i u c' z → z < w.next) →
+      (s = 0 → ¬ ChainRoom c (Nn 0) → w.top.rootKey = X 0) →
+      (∀ z zn, wNode c.p base w z = some zn → klongsWf zn.ks = true) →
+      (∀ z, (w.next ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ s + e ∧ z = X i) → wValue base w z = none) →
+      TreeOK (updN (wNode c.p base w) (X (s + e))
+        (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + e)))) c.i w.top.rootKey →
+      WriterWP (appendKlongs (s + e) (X (s + e)) ins) c w (fun _ w' =>
+        TreeOK (wNode c.p base w') c.i w'.top.rootKey ∧
+        ((w'.top = w.top ∨ (s = 0 ∧ w.next ≤ w'.top.rootKey)) ∧ w'.taken = w.taken ∧ w'.path = w.path ∧ w.next ≤ w'.next ∧ w'.vals = w.vals) ∧
+        (∀ z, z < w.next → (∀ i, s ≤ i → i ≤ s + e → z ≠ X i) →
+          w'.nodes.lookup z = w.nodes.lookup z) ∧
+        (∀ z, TReach (wNode c.p base w') c.i w'.top.rootKey z →
+          TReach (updN (wNode c.p base w) (X (s + e))
+            (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + e)))) c.i
+            w.top.rootKey z ∨ w.next ≤ z) ∧
+        (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
+        ((PathsFit (wNode c.p base w') c.i w'.top.rootKey c.p.fuel ∨
+            ¬ (s = 0 ∧ ¬ ChainRoom c (Nn 0) ∧ c.p.splitAbove < ((Nn 0).lastVersion c.i).size)) →
+          ∀ key, getFromR (wNode c.p base w') (wValue base w') c.i c.p.fuel key w'.top.rootKey =
+          getFromR (updN (wNode c.p base w) (X (s + e))
+            (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + e)))) (wValue base w) c.i
+            c.p.fuel key w.top.rootKey)) := by
+  intro e hle w ins h1 h2 h3 h4 h5 h6 h7 h8 h9 hW hVal hV
+  refine writerWP_mono (writerWP_appendKlongs_chainGRV c base path0 s D X K Nn hX hK hlinkK hrange
+    hlen hwf htimes htop hdist hspace e hle w ins h1 h2 h3 h4 h5 h6 h7 h8 h9 hW hV) ?_
+  rintro _ w' ⟨hT, hb, hf, hr, hW', hR, _⟩
+  refine ⟨hT, hb, hf, fun z hz => (hr z hz).imp id (fun h => h.1), hW', fun hq key => ?_⟩
+  have hv : wValue base w' = wValue base w := by
+    funext a; simp only [wValue, hb.2.1, hb.2.2.2.2]
+  rw [hv]
+  exact hR _ hVal hq key
+
 end SIS.Tree
