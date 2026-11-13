@@ -1,0 +1,5 @@
+12:28:05 round 0 maintain() only: kept at the end 365 kB, twin 201 kB (twin's largest 201 kB), lag 1002 (R 500, lag/R 2.00), live 0
+12:28:07 round 1 maintain() only: kept at the end 352 kB, twin 266 kB (twin's largest 266 kB), lag 3003 (R 1000, lag/R 3.00), live 260
+12:28:09 round 2 drive: kept at the end 2853 kB, twin 3790 kB (twin's largest 3790 kB), lag 921 (R 500, lag/R 1.84), live 1
+12:28:11 round 3 drive: kept at the end 2219 kB, twin 2996 kB (twin's largest 2996 kB), lag 1737 (R 200, lag/R 8.69), live 261
+12:28:11 OK BackToEmpty seed 341 node 30 keys 30000: 7707 transactions, 16 restarts, 69 checks, 27 cuts checked at the oldest state, 9291 ms

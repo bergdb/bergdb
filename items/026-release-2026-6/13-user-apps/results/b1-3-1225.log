@@ -1,0 +1,132 @@
+== BackToEmpty 311 30 30000 4 data/b1 8000 0 200000
+12:25:11 round 0 maintain() only: kept at the end 511 kB, twin 201 kB (twin's largest 201 kB), lag not reached in 4000 (R 500, lag/R 8.00), live 0
+12:25:13 round 1 drive: kept at the end 2539 kB, twin 3250 kB (twin's largest 4149 kB), lag 1442 (R 1000, lag/R 1.44), live 1
+12:25:14 round 2 maintain() only: kept at the end 213 kB, twin 201 kB (twin's largest 201 kB), lag 1503 (R 500, lag/R 3.01), live 0
+12:25:15 round 3 maintain() only: kept at the end 213 kB, twin 201 kB (twin's largest 201 kB), lag 603 (R 200, lag/R 3.02), live 0
+12:25:15 OK BackToEmpty seed 311 node 30 keys 30000: 8922 transactions, 10 restarts, 61 checks, 34 cuts checked at the oldest state, 5049 ms
+  round 0, delete mode 1, maintain() only: kept at the end 511 kB, twin 201 kB (twin's largest 201 kB), lag not reached in 4000 (R 500, lag/R 8.00), live 0
+  round 1, delete mode 1, drive: kept at the end 2539 kB, twin 3250 kB (twin's largest 4149 kB), lag 1442 (R 1000, lag/R 1.44), live 1
+  round 2, delete mode 0, maintain() only: kept at the end 213 kB, twin 201 kB (twin's largest 201 kB), lag 1503 (R 500, lag/R 3.01), live 0
+  round 3, delete mode 1, maintain() only: kept at the end 213 kB, twin 201 kB (twin's largest 201 kB), lag 603 (R 200, lag/R 3.02), live 0
+== BackToEmpty 312 30 30000 4 data/b1 8000 0 400000
+12:25:17 round 0 drive: kept at the end 2124 kB, twin 1678 kB (twin's largest 2411 kB), lag 1075 (R 500, lag/R 2.15), live 1
+12:25:19 round 1 drive: kept at the end 4291 kB, twin 4475 kB (twin's largest 5445 kB), lag 1682 (R 1000, lag/R 1.68), live 1
+12:25:21 round 2 drive: kept at the end 2530 kB, twin 1747 kB (twin's largest 2420 kB), lag 502 (R 500, lag/R 1.00), live 1
+12:25:22 round 3 maintain() only: kept at the end 144 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 2823 (R 200, lag/R 14.12), live 0
+12:25:22 OK BackToEmpty seed 312 node 30 keys 30000: 16895 transactions, 15 restarts, 64 checks, 50 cuts checked at the oldest state, 6855 ms
+  round 0, delete mode 2, drive: kept at the end 2124 kB, twin 1678 kB (twin's largest 2411 kB), lag 1075 (R 500, lag/R 2.15), live 1
+  round 1, delete mode 2, drive: kept at the end 4291 kB, twin 4475 kB (twin's largest 5445 kB), lag 1682 (R 1000, lag/R 1.68), live 1
+  round 2, delete mode 1, drive: kept at the end 2530 kB, twin 1747 kB (twin's largest 2420 kB), lag 502 (R 500, lag/R 1.00), live 1
+  round 3, delete mode 2, maintain() only: kept at the end 144 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 2823 (R 200, lag/R 14.12), live 0
+== BackToEmpty 315 30 30000 4 data/b1 8000 0 1000000
+12:25:24 round 0 maintain() only: kept at the end 104 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 7058 (R 500, lag/R 14.12), live 0
+12:25:26 round 1 drive: kept at the end 6177 kB, twin 5279 kB (twin's largest 6075 kB), lag 1012 (R 1000, lag/R 1.01), live 1
+12:25:27 round 2 maintain() only: kept at the end 197 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 7058 (R 500, lag/R 14.12), live 0
+12:25:28 round 3 drive: kept at the end 5097 kB, twin 5989 kB (twin's largest 5989 kB), lag 1387 (R 200, lag/R 6.94), live 1
+12:25:29 OK BackToEmpty seed 315 node 30 keys 30000: 15993 transactions, 19 restarts, 89 checks, 26 cuts checked at the oldest state, 6726 ms
+  round 0, delete mode 1, maintain() only: kept at the end 104 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 7058 (R 500, lag/R 14.12), live 0
+  round 1, delete mode 2, drive: kept at the end 6177 kB, twin 5279 kB (twin's largest 6075 kB), lag 1012 (R 1000, lag/R 1.01), live 1
+  round 2, delete mode 0, maintain() only: kept at the end 197 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 7058 (R 500, lag/R 14.12), live 0
+  round 3, delete mode 1, drive: kept at the end 5097 kB, twin 5989 kB (twin's largest 5989 kB), lag 1387 (R 200, lag/R 6.94), live 1
+== BackToEmpty 321 30 30000 4 data/b1 8000 0 200000
+12:25:31 round 0 drive: kept at the end 1998 kB, twin 2358 kB (twin's largest 3187 kB), lag 540 (R 500, lag/R 1.08), live 1
+12:25:32 round 1 maintain() only: kept at the end 215 kB, twin 201 kB (twin's largest 201 kB), lag 3003 (R 1000, lag/R 3.00), live 0
+12:25:33 round 2 maintain() only: kept at the end 439 kB, twin 201 kB (twin's largest 201 kB), lag not reached in 4000 (R 500, lag/R 8.00), live 0
+12:25:35 round 3 drive: kept at the end 2590 kB, twin 2231 kB (twin's largest 2231 kB), lag 1076 (R 200, lag/R 5.38), live 261
+12:25:35 OK BackToEmpty seed 321 node 30 keys 30000: 6508 transactions, 16 restarts, 68 checks, 25 cuts checked at the oldest state, 6146 ms
+  round 0, delete mode 2, drive: kept at the end 1998 kB, twin 2358 kB (twin's largest 3187 kB), lag 540 (R 500, lag/R 1.08), live 1
+  round 1, delete mode 2, maintain() only: kept at the end 215 kB, twin 201 kB (twin's largest 201 kB), lag 3003 (R 1000, lag/R 3.00), live 0
+  round 2, delete mode 0, maintain() only: kept at the end 439 kB, twin 201 kB (twin's largest 201 kB), lag not reached in 4000 (R 500, lag/R 8.00), live 0
+  round 3, delete mode 3, drive: kept at the end 2590 kB, twin 2231 kB (twin's largest 2231 kB), lag 1076 (R 200, lag/R 5.38), live 261
+== BackToEmpty 322 30 30000 4 data/b1 8000 0 400000
+12:25:36 round 0 drive: kept at the end 2733 kB, twin 1678 kB (twin's largest 2411 kB), lag 1163 (R 500, lag/R 2.33), live 1
+12:25:38 round 1 drive: kept at the end 3805 kB, twin 4475 kB (twin's largest 5445 kB), lag 1036 (R 1000, lag/R 1.04), live 1
+12:25:39 round 2 drive: kept at the end 2748 kB, twin 1747 kB (twin's largest 2420 kB), lag 692 (R 500, lag/R 1.38), live 1
+12:25:40 round 3 drive: kept at the end 1612 kB, twin 2399 kB (twin's largest 2399 kB), lag 718 (R 200, lag/R 3.59), live 1
+12:25:40 OK BackToEmpty seed 322 node 30 keys 30000: 19735 transactions, 11 restarts, 66 checks, 55 cuts checked at the oldest state, 5567 ms
+  round 0, delete mode 0, drive: kept at the end 2733 kB, twin 1678 kB (twin's largest 2411 kB), lag 1163 (R 500, lag/R 2.33), live 1
+  round 1, delete mode 0, drive: kept at the end 3805 kB, twin 4475 kB (twin's largest 5445 kB), lag 1036 (R 1000, lag/R 1.04), live 1
+  round 2, delete mode 1, drive: kept at the end 2748 kB, twin 1747 kB (twin's largest 2420 kB), lag 692 (R 500, lag/R 1.38), live 1
+  round 3, delete mode 1, drive: kept at the end 1612 kB, twin 2399 kB (twin's largest 2399 kB), lag 718 (R 200, lag/R 3.59), live 1
+== BackToEmpty 325 30 30000 4 data/b1 8000 0 1000000
+12:25:43 round 0 drive: kept at the end 5510 kB, twin 6060 kB (twin's largest 6060 kB), lag 962 (R 500, lag/R 1.92), live 1
+12:25:44 round 1 drive: kept at the end 6018 kB, twin 5279 kB (twin's largest 6075 kB), lag 2963 (R 1000, lag/R 2.96), live 1
+12:25:46 round 2 drive: kept at the end 4997 kB, twin 4289 kB (twin's largest 6151 kB), lag 2251 (R 500, lag/R 4.50), live 260
+12:25:47 round 3 drive: kept at the end 4541 kB, twin 5989 kB (twin's largest 5989 kB), lag 931 (R 200, lag/R 4.66), live 1
+12:25:47 OK BackToEmpty seed 325 node 30 keys 30000: 30088 transactions, 11 restarts, 86 checks, 33 cuts checked at the oldest state, 6384 ms
+  round 0, delete mode 2, drive: kept at the end 5510 kB, twin 6060 kB (twin's largest 6060 kB), lag 962 (R 500, lag/R 1.92), live 1
+  round 1, delete mode 2, drive: kept at the end 6018 kB, twin 5279 kB (twin's largest 6075 kB), lag 2963 (R 1000, lag/R 2.96), live 1
+  round 2, delete mode 3, drive: kept at the end 4997 kB, twin 4289 kB (twin's largest 6151 kB), lag 2251 (R 500, lag/R 4.50), live 260
+  round 3, delete mode 2, drive: kept at the end 4541 kB, twin 5989 kB (twin's largest 5989 kB), lag 931 (R 200, lag/R 4.66), live 1
+== BackToEmpty 331 30 30000 4 data/b1 8000 0 200000
+12:25:49 round 0 drive: kept at the end 3030 kB, twin 2358 kB (twin's largest 3187 kB), lag 1075 (R 500, lag/R 2.15), live 1
+12:25:50 round 1 drive: kept at the end 2901 kB, twin 3250 kB (twin's largest 4149 kB), lag 2103 (R 1000, lag/R 2.10), live 1
+12:25:52 round 2 drive: kept at the end 2656 kB, twin 3573 kB (twin's largest 3573 kB), lag 694 (R 500, lag/R 1.39), live 261
+12:25:52 round 3 drive: kept at the end 2449 kB, twin 2057 kB (twin's largest 2057 kB), lag 1161 (R 200, lag/R 5.81), live 1
+12:25:52 OK BackToEmpty seed 331 node 30 keys 30000: 18495 transactions, 11 restarts, 62 checks, 43 cuts checked at the oldest state, 5547 ms
+  round 0, delete mode 1, drive: kept at the end 3030 kB, twin 2358 kB (twin's largest 3187 kB), lag 1075 (R 500, lag/R 2.15), live 1
+  round 1, delete mode 2, drive: kept at the end 2901 kB, twin 3250 kB (twin's largest 4149 kB), lag 2103 (R 1000, lag/R 2.10), live 1
+  round 2, delete mode 3, drive: kept at the end 2656 kB, twin 3573 kB (twin's largest 3573 kB), lag 694 (R 500, lag/R 1.39), live 261
+  round 3, delete mode 0, drive: kept at the end 2449 kB, twin 2057 kB (twin's largest 2057 kB), lag 1161 (R 200, lag/R 5.81), live 1
+== BackToEmpty 332 30 30000 4 data/b1 8000 0 400000
+12:25:54 round 0 maintain() only: kept at the end 184 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 4000 (R 500, lag/R 8.00), live 0
+12:25:56 round 1 drive: kept at the end 2689 kB, twin 3087 kB (twin's largest 4343 kB), lag 1620 (R 1000, lag/R 1.62), live 261
+12:25:57 round 2 drive: kept at the end 2177 kB, twin 3200 kB (twin's largest 3231 kB), lag 1485 (R 500, lag/R 2.97), live 263
+12:25:58 round 3 maintain() only: kept at the end 198 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 2823 (R 200, lag/R 14.12), live 0
+12:25:58 OK BackToEmpty seed 332 node 30 keys 30000: 12919 transactions, 10 restarts, 64 checks, 36 cuts checked at the oldest state, 5358 ms
+  round 0, delete mode 0, maintain() only: kept at the end 184 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 4000 (R 500, lag/R 8.00), live 0
+  round 1, delete mode 3, drive: kept at the end 2689 kB, twin 3087 kB (twin's largest 4343 kB), lag 1620 (R 1000, lag/R 1.62), live 261
+  round 2, delete mode 3, drive: kept at the end 2177 kB, twin 3200 kB (twin's largest 3231 kB), lag 1485 (R 500, lag/R 2.97), live 263
+  round 3, delete mode 2, maintain() only: kept at the end 198 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 2823 (R 200, lag/R 14.12), live 0
+== BackToEmpty 335 30 30000 4 data/b1 8000 0 1000000
+12:26:00 round 0 drive: kept at the end 4020 kB, twin 6060 kB (twin's largest 6060 kB), lag 1198 (R 500, lag/R 2.40), live 1
+12:26:01 round 1 drive: kept at the end 4428 kB, twin 5279 kB (twin's largest 6075 kB), lag 943 (R 1000, lag/R 0.94), live 1
+12:26:03 round 2 drive: kept at the end 5794 kB, twin 6082 kB (twin's largest 6082 kB), lag 1601 (R 500, lag/R 3.20), live 1
+12:26:05 round 3 drive: kept at the end 5551 kB, twin 5989 kB (twin's largest 5989 kB), lag 1102 (R 200, lag/R 5.51), live 1
+12:26:05 OK BackToEmpty seed 335 node 30 keys 30000: 30072 transactions, 13 restarts, 91 checks, 34 cuts checked at the oldest state, 6702 ms
+  round 0, delete mode 2, drive: kept at the end 4020 kB, twin 6060 kB (twin's largest 6060 kB), lag 1198 (R 500, lag/R 2.40), live 1
+  round 1, delete mode 1, drive: kept at the end 4428 kB, twin 5279 kB (twin's largest 6075 kB), lag 943 (R 1000, lag/R 0.94), live 1
+  round 2, delete mode 2, drive: kept at the end 5794 kB, twin 6082 kB (twin's largest 6082 kB), lag 1601 (R 500, lag/R 3.20), live 1
+  round 3, delete mode 1, drive: kept at the end 5551 kB, twin 5989 kB (twin's largest 5989 kB), lag 1102 (R 200, lag/R 5.51), live 1
+== BackToEmpty 341 30 30000 4 data/b1 8000 0 200000
+12:26:07 round 0 maintain() only: kept at the end 365 kB, twin 201 kB (twin's largest 201 kB), lag 1002 (R 500, lag/R 2.00), live 0
+12:26:08 round 1 maintain() only: kept at the end 352 kB, twin 266 kB (twin's largest 266 kB), lag 3003 (R 1000, lag/R 3.00), live 260
+12:26:09 round 2 drive: kept at the end 2853 kB, twin 3790 kB (twin's largest 3790 kB), lag 921 (R 500, lag/R 1.84), live 1
+12:26:10 round 3 drive: kept at the end 5803 kB, twin 2236 kB (twin's largest 2236 kB), lag not reached in 1600 (R 200, lag/R 8.00), live 261
+FAIL BackToEmpty seed 341 node 30: round 3: the kept stream did not come back near the twin's: kept at the end 5803 kB, twin 2236 kB (twin's largest 2236 kB), lag not reached in 1600 (R 200, lag/R 8.00), live 261
+  after 6484 transactions, 15 restarts
+  round 0, delete mode 0, maintain() only: kept at the end 365 kB, twin 201 kB (twin's largest 201 kB), lag 1002 (R 500, lag/R 2.00), live 0
+  round 1, delete mode 3, maintain() only: kept at the end 352 kB, twin 266 kB (twin's largest 266 kB), lag 3003 (R 1000, lag/R 3.00), live 260
+  round 2, delete mode 2, drive: kept at the end 2853 kB, twin 3790 kB (twin's largest 3790 kB), lag 921 (R 500, lag/R 1.84), live 1
+== BackToEmpty 342 30 30000 4 data/b1 8000 0 400000
+12:26:12 round 0 drive: kept at the end 2210 kB, twin 1678 kB (twin's largest 2411 kB), lag 507 (R 500, lag/R 1.01), live 1
+12:26:13 round 1 maintain() only: kept at the end 298 kB, twin 62 kB (twin's largest 62 kB), lag not reached in 8000 (R 1000, lag/R 8.00), live 261
+12:26:15 round 2 drive: kept at the end 2309 kB, twin 1747 kB (twin's largest 2420 kB), lag 502 (R 500, lag/R 1.00), live 1
+12:26:16 round 3 drive: kept at the end 2301 kB, twin 1978 kB (twin's largest 2411 kB), lag 1217 (R 200, lag/R 6.09), live 261
+12:26:16 OK BackToEmpty seed 342 node 30 keys 30000: 11722 transactions, 12 restarts, 66 checks, 34 cuts checked at the oldest state, 5629 ms
+  round 0, delete mode 2, drive: kept at the end 2210 kB, twin 1678 kB (twin's largest 2411 kB), lag 507 (R 500, lag/R 1.01), live 1
+  round 1, delete mode 3, maintain() only: kept at the end 298 kB, twin 62 kB (twin's largest 62 kB), lag not reached in 8000 (R 1000, lag/R 8.00), live 261
+  round 2, delete mode 2, drive: kept at the end 2309 kB, twin 1747 kB (twin's largest 2420 kB), lag 502 (R 500, lag/R 1.00), live 1
+  round 3, delete mode 3, drive: kept at the end 2301 kB, twin 1978 kB (twin's largest 2411 kB), lag 1217 (R 200, lag/R 6.09), live 261
+== BackToEmpty 345 30 30000 4 data/b1 8000 0 1000000
+12:26:17 round 0 maintain() only: kept at the end 118 kB, twin 50 kB (twin's largest 50 kB), lag not reached in 7058 (R 500, lag/R 14.12), live 260
+12:26:19 round 1 drive: kept at the end 5409 kB, twin 5279 kB (twin's largest 6075 kB), lag 1249 (R 1000, lag/R 1.25), live 1
+12:26:20 round 2 drive: kept at the end 4823 kB, twin 6276 kB (twin's largest 6276 kB), lag 1531 (R 500, lag/R 3.06), live 261
+12:26:21 round 3 maintain() only: kept at the end 169 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 7058 (R 200, lag/R 35.29), live 0
+12:26:21 OK BackToEmpty seed 345 node 30 keys 30000: 15941 transactions, 9 restarts, 86 checks, 26 cuts checked at the oldest state, 5056 ms
+  round 0, delete mode 3, maintain() only: kept at the end 118 kB, twin 50 kB (twin's largest 50 kB), lag not reached in 7058 (R 500, lag/R 14.12), live 260
+  round 1, delete mode 1, drive: kept at the end 5409 kB, twin 5279 kB (twin's largest 6075 kB), lag 1249 (R 1000, lag/R 1.25), live 1
+  round 2, delete mode 3, drive: kept at the end 4823 kB, twin 6276 kB (twin's largest 6276 kB), lag 1531 (R 500, lag/R 3.06), live 261
+  round 3, delete mode 1, maintain() only: kept at the end 169 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 7058 (R 200, lag/R 35.29), live 0
+== BackToEmpty 305 30 200000 2 data/b1 8000 4000000
+12:26:38 round 0 drive: kept at the end 4529 kB, twin 1678 kB (twin's largest 2411 kB), lag 3872 (R 500, lag/R 7.74), live 1
+12:26:52 round 1 drive: kept at the end 4208 kB, twin 4475 kB (twin's largest 5445 kB), lag 1611 (R 1000, lag/R 1.61), live 1
+12:26:52 OK BackToEmpty seed 305 node 30 keys 200000: 14835 transactions, 22 restarts, 48 checks, 41 cuts checked at the oldest state, 30765 ms
+  round 0, delete mode 0, drive: kept at the end 4529 kB, twin 1678 kB (twin's largest 2411 kB), lag 3872 (R 500, lag/R 7.74), live 1
+  round 1, delete mode 0, drive: kept at the end 4208 kB, twin 4475 kB (twin's largest 5445 kB), lag 1611 (R 1000, lag/R 1.61), live 1
+== BackToEmpty 306 30 300000 2 data/b1 16000 10000000 2000000
+12:27:17 round 0 drive: kept at the end 12288 kB, twin 12131 kB (twin's largest 12131 kB), lag 6121 (R 500, lag/R 12.24), live 1
+12:27:43 round 1 drive: kept at the end 8487 kB, twin 8166 kB (twin's largest 12079 kB), lag 6176 (R 1000, lag/R 6.18), live 1
+12:27:43 OK BackToEmpty seed 306 node 30 keys 300000: 32482 transactions, 25 restarts, 88 checks, 16 cuts checked at the oldest state, 51323 ms
+  round 0, delete mode 0, drive: kept at the end 12288 kB, twin 12131 kB (twin's largest 12131 kB), lag 6121 (R 500, lag/R 12.24), live 1
+  round 1, delete mode 0, drive: kept at the end 8487 kB, twin 8166 kB (twin's largest 12079 kB), lag 6176 (R 1000, lag/R 6.18), live 1
