@@ -350,7 +350,8 @@ public class Trans {
          * Puts the value at the key, with a key transformation and a value transformation,
          * each null for none. If the key transformation, at the commit, gives the key of
          * another KV of the transaction, Db.execute() refuses the transaction (bergdb 024-16;
-         * the class Javadoc).
+         * the class Javadoc); so it does if the value transformation throws, or gives a value
+         * over Db.MAX_VALUE_BYTES (ValueTransformation; bergdb 026-06).
          * 
          * @throws IllegalArgumentException  If key or value is null, or the key has no segment.
          *      If the key as written has more than Db.MAX_KEY_BYTES bytes (111), or the value

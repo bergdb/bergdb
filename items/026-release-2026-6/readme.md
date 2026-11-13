@@ -93,6 +93,11 @@ Files
   time (P8 of 023-05, with 023-08's fault 13 fixed): the change on a
   branch, the cut's argument, the gates, and back to empty's lag after a
   mass delete before and after (024-05, OP9; 026-04, section 4).
+* 06-value-transformation-refusal.md. 026-06, a value transformation
+  that throws or passes 8 MiB refuses its transaction, before the go
+  point (`Db.transformValues`), and the database goes on (010-04, R5);
+  also a key transformation that throws (Q2); done, on main since
+  2026-11-13 (Q1 to Q4 yes, Frans 08:45).
 
 
 Log

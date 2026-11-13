@@ -11,10 +11,13 @@ public interface KeyTransformation {
      * This method is allowed to change the key of trans.kvs[index] (Kv.setKey()) and
      * trans.writeKeyHashes[index], and allowed to read trans.tt, the transaction's time.
      * Other data should not be read or modified.
-     * The implementation of this method must not throw any exception. It runs under the
-     * write lock, at the transaction's time, in Db.transformKeys(); an exception there fails
-     * the database (bergdb 005-01), as when it ran after the go point, in Db.putKvs() (until
-     * bergdb 024-16). The new key is checked after the transformations: a key of more than
+     * It runs under the write lock, at the transaction's time, before the transaction's go
+     * point, in Db.transformKeys() (until bergdb 024-16 after the go point, in Db.putKvs()).
+     * A RuntimeException that it throws refuses the transaction with a DbException whose
+     * cause it is: each transformed KV gets its key as written and its write hash back,
+     * nothing of the transaction is written, and the database goes on (bergdb 026-06; 010-04,
+     * R5; until 026-06 the exception failed the database). An Error fails the database (Db,
+     * "Errors"). The new key is checked after the transformations: a key of more than
      * Db.MAX_KEY_BYTES bytes (111, L2), or keys of the transaction of more than
      * Db.MAX_TRANS_KEY_BYTES (L3), refuse the transaction with a DbException, nothing of it
      * written, and the database goes on (Db, "Limits"; bergdb 024-24; until 024-24 the new

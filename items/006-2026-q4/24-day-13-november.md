@@ -49,7 +49,7 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 | 024-12 | TP7, the tree's invariants | Codex run 4 (Sol max) | running |
 | 024, 015 | Statuses after the release; post-release notes (021-27, 020-29) | tidy (high) | committed ee5712c5 |
 | 026-05 | P8: each reclaim step scans at its own time | p8 (xhigh) | running |
-| 026-06 | A value transformation's failure refuses the transaction | vt (high) | running |
+| 026-06 | A value transformation's failure refuses the transaction | vt (high) | landed 8bd6e3a7..944b4868 |
 | 026-07 | The write buffer grows with use (ST8) | wb (high) | running |
 | 026-04 | The back-to-empty lag at 10M keys, understood | frac (high) | done 07:44: the phase of reclaim's iteration at the deletes' end (a step scans at its iteration's start), not f; keep 1/4; P8 cures it |
 | 021-29 | Unit tests that wait with no timeout | waits (high) | landed dc69b7a6 |
@@ -74,3 +74,5 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 * 08:06 Frans 08:04: merge 020-29: landed b0cd3ac4 (lake build 291 jobs, 15 theorems on the standard axioms); 020-29 done.
 * 08:09 Frans: usage reset, "plenty of usage left now". Started 2026.6's decided work: 026-05 (P8, xhigh), 026-06 (value transformations, R5), 026-07 (ST8, the write buffer).
 * 08:12 tidy done: 024's subitems' statuses (3 open: 02, 12, 22), 015 has no open entry, post-release notes for 021-27 and 020-29.
+* 08:41 Frans back.
+* 08:47 Frans 08:45 "yes to all" (026-06 Q1 to Q4): 026-06 landed (value and key transformations refuse; gated before-commit, level1, level3); 010-04's R5 line done.
