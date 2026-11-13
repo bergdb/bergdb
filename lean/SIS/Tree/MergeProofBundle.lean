@@ -228,3 +228,4 @@ import SIS.Tree.TakeBackDead
 import SIS.Tree.RangeFullSplit
 import SIS.Tree.RangeMergeFull
 import SIS.Tree.TakeDeadCollapse
+import SIS.Tree.TakeDeadMerge
