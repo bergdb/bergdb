@@ -11,7 +11,7 @@ import bergdb.nanotest.Nano;
  * polynomial (java.util.zip.CRC32C, as iSCSI's, RFC 3720), of the node's bytes with its
  * checksum field left out: bytes 0 to 7, then bytes 12 to the node's end. It is stored
  * little-endian in bytes 8 to 11, the last four of the node's 12-byte header (bergdb
- * 024-02, section 9). The writer sets it when the node's other bytes are written
+ * 027-03, section 9). The writer sets it when the node's other bytes are written
  * (StoredValueNode.toBytes; for top and key nodes StoredTrans.Serializer, after their
  * longs are copied to the record's bytes); a read checks it before it parses the node
  * (NodeStream.bytesToNode).
