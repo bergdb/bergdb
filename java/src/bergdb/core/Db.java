@@ -2626,7 +2626,8 @@ public class Db implements AutoCloseable {
      *             If the transaction is refused before its go point, and the database goes
      *             on: it passes a limit of "Limits" above, its operations (L1), its keys'
      *             bytes (L3) or its keys' and values' bytes (L5), or a key transformation
-     *             gives a key over L2 or the keys over L3 (bergdb 024-17, 024-24); a value
+     *             gives a key over L2 or the keys over L3 (bergdb 024-17, 024-24), or throws
+     *             a RuntimeException (the cause; bergdb 026-06); a value
      *             transformation throws a RuntimeException (the cause), or gives a value over
      *             L4, or values that take the transaction over L5 or 005-17's size, and its
      *             KVs are left as they were (bergdb 026-06; ValueTransformation); a KV is at
@@ -3380,20 +3381,24 @@ public class Db implements AutoCloseable {
      * The transformed keys and their write hashes as written are kept in 'before', for a
      * refusal by transformValues() too.
      * A transaction that commits keeps its transformed keys, as before. A transformation that
-     * throws fails the database, as when it ran after the go point (KeyTransformation).</p>
+     * throws a RuntimeException refuses the transaction in the same way (bergdb 026-06; 010-04,
+     * R5; until 026-06 it failed the database, as when it ran after the go point); an Error
+     * fails the database (KeyTransformation).</p>
      *
      * @throws DbException  If two KVs have one key after the transformations; if a key that a
      *      transformation gave has more than MAX_KEY_BYTES (L2), or the keys more than
-     *      MAX_TRANS_KEY_BYTES (L3) (bergdb 024-24).
-     * @throws DbFailedException  If a transformation threw.
+     *      MAX_TRANS_KEY_BYTES (L3) (bergdb 024-24); if a transformation threw a
+     *      RuntimeException (the cause; bergdb 026-06).
+     * @throws DbFailedException  If the sort threw: a bug.
      */
     private Kv[] transformKeys(final Trans t, final Before before) {
         final Kv[] kvs = t.kvs;
         long[][] written = null;                // the keys as written of the KVs transformed
         long[] hashes = null;                   // and their write hashes, by index
         final Kv[] sorted;
+        DbException refused = null;             // a transformation threw (bergdb 026-06)
         try {
-            for (int i = 0; i < kvs.length; i++) {
+            for (int i = 0; i < kvs.length && refused == null; i++) {
                 final Kv kv = kvs[i];
                 if (kv.keyTransformation != null) {
                     if (written == null) {
@@ -3404,15 +3409,28 @@ public class Db implements AutoCloseable {
                     }
                     written[i] = kv.getKey();
                     hashes[i] = t.writeKeyHashes[i];
-                    kv.keyTransformation.transform(t, i);
+                    try {
+                        kv.keyTransformation.transform(t, i);
+                    } catch (RuntimeException e) {
+                        // The caller's mistake: refused, and the database goes on (bergdb
+                        // 026-06; 010-04, R5). Until 026-06 it failed the database.
+                        refused = new DbException("The key transformation of " 
+                                + shown(written[i]) + " threw (the cause). The transaction is "
+                                + "refused; nothing of it is written, and the database goes "
+                                + "on (bergdb 026-06).", e);
+                        giveBack(t, before);
+                    }
                 }
             }
             if (written == null) {
                 return kvs;
             }
-            sorted = sortByKey(kvs);
+            sorted = refused == null ? sortByKey(kvs) : null;
         } catch (Throwable e) {
             throw fail(t, e);
+        }
+        if (refused != null) {
+            throw refused;
         }
         try {           // an Error is recorded under the lock (bergdb 019-40)
             for (int i = 1; i < sorted.length; i++) {
