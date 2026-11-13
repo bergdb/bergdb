@@ -1600,6 +1600,16 @@ and its status:
       each (`writerWP_putSegs_new_live`) and are segment roots
       (`liveCounts_leafAddNewSet`).
     - Open: `QLive` of (2), (3c) (the cascade of a full leaf) and (4).
+    - Toward (2) (latest, 00:35; `LiveEdges.lean`): `LiveEdges` is
+      `LiveCounts` link by link (`liveCounts_of_edges`,
+      `edges_of_liveCounts`). Each step of the writer then checks only the
+      links it changes. Two steps are proved: `liveEdges_updN_grow` (a
+      node keeps its kind and live pointees and loses no live klong: a put
+      in room, a time split in place, the top of a cascade) and
+      `liveEdges_copy` (a time split to a new node: a fresh copy of x, and
+      x's parent pointing its klong to it). The counts of a space split's
+      halves are `halves_lastVersionGivenDel_live_fill`
+      (`SplitLiveFill.lean`).
     - `LiveCounts` was checked on runs within reach with the merges on
       (`12-tree-model/live-counts-check.lean.txt`). The parameters were
       record format 7's thresholds at node sizes 8, 10 and 14 (m = 2, 2
