@@ -179,4 +179,111 @@ theorem cascadeShapeJ2_of (c : Ctx) (N : NodeId → Option KNode) (B : NodeId) (
         ge_of_firstTime2 N c.i B hS _ _ (hN (j + 1) (by omega) (by omega)) hf,
         hN (j + 1) (by omega) (by omega), hleaf j h1 hj h3 k1 idx r hl hz', hz'⟩
 
+/-! ## A cascade at the writer's level -/
+
+/-- A cascade of splits keeps the take-back's (B) and (C) together (`TakeJ2`):
+`writerWP_appendKlongs_take`'s premises with `ChainOrd` at every level and the
+klongs put ordered, the books, `TakeJ2` before, B at or below the next id and the
+values below it, the old live pointers of the klongs put below B or values, and
+`hextra`: a chain node left behind is not one the transaction made and a
+repointed top is a segment leaf (to come from latest's shape lemma). -/
+theorem writerWP_appendKlongs_j2 (c : Ctx) (base : View BVal)
+    (path0 : List (Option Nat × NodeId)) (s D : Nat) (X : Nat → NodeId) (K : Nat → Nat)
+    (Nn : Nat → KNode)
+    (hX : ∀ i, s ≤ i → i ≤ D → (path0[i]?).map (·.2) = some (X i))
+    (hK : ∀ i, s < i → i ≤ D → path0[i]? = some (some (K i), X i))
+    (hlinkK : ∀ i, s < i → i ≤ D → (K i, X i) ∈ (Nn (i - 1)).liveAt c.i)
+    (hrange : ∀ i, s < i → i ≤ D → ¬ ChainRoom c (Nn i) → (Nn (i - 1)).leaf = false →
+      ∀ c' z, (c', z) ∈ (Nn i).live → 0 < c' →
+      K i ≤ c' ∧ ∀ c'' z', (c'', z') ∈ (Nn (i - 1)).live → K i < c'' → c' < c'')
+    (hlen : ∀ i, s ≤ i → i ≤ D → ¬ ChainRoom c (Nn i) →
+      c.p.splitAbove < ((Nn i).lastVersion c.i).size →
+      2 ≤ (Nn i).live.length)
+    (hwf : ∀ i, s ≤ i → i ≤ D → klongsWf (Nn i).ks = true)
+    (htimes : ∀ i, s ≤ i → i ≤ D → ∀ t, Klong.time t ∈ (Nn i).ks → t ≤ c.i)
+    (htop : ChainRoom c (Nn s) ∨ s = 0)
+    (hdist : ∀ i i', s ≤ i → i ≤ D → s ≤ i' → i' ≤ D → X i = X i' → i = i')
+    (hspace : ∀ i, s ≤ i → i ≤ D → ¬ ChainRoom c (Nn i) →
+      c.p.splitAbove < ((Nn i).lastVersion c.i).size → i = 0 ∨ (s < i ∧ ((Nn (i - 1)).leaf = false ∨
+        ((Nn i).firstTime ≠ some c.i → ∀ i', s < i' → i' < i → ChainOrd c K Nn i'))))
+    (hord : ∀ i, s < i → i ≤ D → ChainOrd c K Nn i) (B : NodeId) :
+    ∀ e, s + e ≤ D → ∀ (w : W) (ins : List (Nat × NodeId)),
+      InsOK (Nn (s + e)) ins → ins.Pairwise (fun a b => a.1 < b.1) → (∀ q ∈ ins, q.2 < w.next) →
+      w.path = path0 →
+      (∀ i, s ≤ i → i ≤ s + e → w.nodes.lookup (X i) = some (Nn i) ∧ w.taken.contains (X i) = false) →
+      TreeOK (wNode c.p base w) c.i w.top.rootKey →
+      (∀ i, s ≤ i → i ≤ s + e → TReach (wNode c.p base w) c.i w.top.rootKey (X i)) →
+      (∀ z, w.next ≤ z → w.nodes.lookup z = none ∧ w.taken.contains z = false ∧
+        knodeOf c.p base z = none) →
+      (∀ u c' z, TLink (wNode c.p base w) c.i u c' z → z < w.next) →
+      (s = 0 → ¬ ChainRoom c (Nn 0) → w.top.rootKey = X 0) →
+      (∀ z zn, wNode c.p base w z = some zn → klongsWf zn.ks = true) →
+      TreeOK (updN (wNode c.p base w) (X (s + e))
+        (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + e)))) c.i w.top.rootKey →
+      (∀ cc u, (cc, u) ∈ (Nn (s + e)).liveAt c.i →
+        (∃ c', (c', u) ∈ (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + e))).liveAt c.i) ∨
+        wNode c.p base w u = none) →
+      0 < c.i → ViewIdsBelow B c.view → Book B c w → TakeJ2 c base B w → B ≤ w.next →
+      (∀ y ∈ w.vals.map (·.1), y < w.next) →
+      (∀ q ∈ ins, ∀ y, (q.1, y) ∈ (Nn (s + e)).liveAt c.i → y < B ∨ y ∈ w.vals.map (·.1)) →
+      WriterWP (appendKlongs (s + e) (X (s + e)) ins) c w (fun _ w' => ∀ z zn,
+        w'.nodes.lookup z = some zn →
+        (∀ i, s ≤ i → i ≤ s + e → z = X i → zn = (Nn i).toPrev (c.i - 1) → (Nn i).firstTime ≠ some c.i) ∧
+        (∀ j, s ≤ j → j < s + e → z = X j → ∀ k1 idx r, (Nn j).linkIndex (X (j + 1)) k1 = some idx →
+          zn = (Nn j).repoint idx r → (Nn j).leaf = true)) →
+      WriterWP (appendKlongs (s + e) (X (s + e)) ins) c w (fun _ w' => TakeJ2 c base B w') := by
+  intro e hle w ins h1 hpw h2 h3 h4 h5 h6 h7 h8 h9 hW hV hkeepL hpos hvb hbk hJ hBn hvn hins hextra
+  have hnd : (ins.map Prod.fst).Nodup := List.pairwise_map.mpr (hpw.imp (fun h => Nat.ne_of_lt h))
+  have hTt := writerWP_appendKlongs_take c base path0 s D X K Nn hX hK hlinkK hrange hlen hwf htimes htop
+    hdist hspace e hle w ins h1 h2 h3 h4 h5 h6 h7 h8 h9 hW hV hkeepL (fun i h1 h2 => hord i h1 (by omega))
+    hpos hJ.1
+  have hG := writerWP_appendKlongs_chainGRV c base path0 s D X K Nn hX hK hlinkK hrange
+    hlen hwf htimes htop hdist hspace e hle w ins h1 h2 h3 h4 h5 h6 h7 h8 h9 hW hV
+  have hSh := writerWP_appendKlongs_chainShape c path0 s D X K Nn hX hK hlinkK hrange hlen hord htimes
+    htop hdist e hle w ins h1 hpw h3 (fun i a b => ⟨(h4 i a b).1,
+      by
+        rcases Nat.lt_or_ge (X i) w.next with h | h
+        · exact h
+        · have := (h7 (X i) h).1; rw [(h4 i a b).1] at this; cases this⟩)
+    (fun z hz => (h7 z hz).1)
+  have hKp := book_appendKlongs B (s + e) (X (s + e)) ins c w hvb hbk
+  refine writerWP_mono (writerWP_and (writerWP_and (writerWP_and (writerWP_and hTt hG) hSh) hKp)
+    hextra) ?_
+  rintro _ w' ⟨⟨⟨⟨hTt', hG'⟩, hSh'⟩, ⟨_, hKept⟩⟩, hX'⟩
+  obtain ⟨_, ⟨_, ht', _, _, hv'⟩, hf, _⟩ := hG'
+  obtain ⟨_, _, _, hshape⟩ := hSh'
+  obtain ⟨_, hD, hO, hS, hM, hV0⟩ := hJ
+  have hN : ∀ i, s ≤ i → i ≤ s + e → wNode c.p base w (X i) = some (Nn i) := fun i a b => by
+    simp only [wNode, (h4 i a b).2, Bool.false_eq_true, ↓reduceIte, (h4 i a b).1]
+  unfold TakeJ2
+  rw [hv']
+  refine ⟨hTt', ?_⟩
+  refine j2rest_cascade2 (wNode c.p base w) (wNode c.p base w') c.i w.top.rootKey B _ X Nn s (s + e)
+    w.next hpos h5 hD hO hS hM hV0 hN (fun i a b => hwf i a (by omega))
+    (fun i a b => htimes i a (by omega)) h6 hvn ?_ ?_
+  · intro z hz hnc
+    simp only [wNode, ht', hf z hz hnc]
+  · intro z zn hzn hz
+    have htz : w'.taken.contains z = false := by
+      rw [ht']
+      rcases hz with hz | ⟨i, a, b, rfl⟩
+      · exact (h7 z hz).2.1
+      · exact (h4 i a b).2
+    have hlk : w'.nodes.lookup z = some zn := by
+      unfold wNode at hzn
+      rw [htz] at hzn
+      simp only [Bool.false_eq_true, ↓reduceIte] at hzn
+      cases hl : w'.nodes.lookup z with
+      | some m => rw [hl] at hzn; exact hzn
+      | none =>
+        exfalso
+        rw [hl] at hzn
+        rcases hz with hz | ⟨i, a, b, rfl⟩
+        · rw [(h7 z hz).2.2] at hzn; cases hzn
+        · obtain ⟨n', hn', _⟩ := hKept.1 _ _ (h4 i a b).1
+          rw [hl] at hn'; cases hn'
+    obtain ⟨hp1, hp2⟩ := hX' z zn hlk
+    exact cascadeShapeJ2_of c (wNode c.p base w) B _ X K Nn s (s + e) ins w.next hS hM hN
+      (fun i a b => htimes i a (by omega)) hBn hnd hins z zn hz hp1 hp2 (hshape z zn hlk hz)
+
 end SIS.Tree
