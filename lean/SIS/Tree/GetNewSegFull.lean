@@ -288,7 +288,8 @@ theorem writerWP_put_newSegFullR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
     (hspaceG : ∀ x xn, TReach (wNode c.p base w) c.i w.top.rootKey x → wNode c.p base w x = some xn →
       ¬ ChainRoom c xn → c.p.splitAbove < (xn.lastVersion c.i).size →
       ∀ q qn K, TReach (wNode c.p base w) c.i w.top.rootKey q →
-        wNode c.p base w q = some qn → (K, x) ∈ qn.liveAt c.i → qn.leaf = false)
+        wNode c.p base w q = some qn → (K, x) ∈ qn.liveAt c.i →
+        qn.leaf = false ∨ (xn.firstTime ≠ some c.i ∧ OrdG c (wNode c.p base w) w.top.rootKey))
     (hcur : ∀ L n, (L, c0) ∈ eqVisits (wNode c.p base w) c.i c0 c.p.fuel rk0 →
       wNode c.p base w L = some n → n.leaf = true →
       n.searchEq c.i c0 = none ∧ ¬ n.size + 1 < c.p.M ∧
@@ -298,7 +299,7 @@ theorem writerWP_put_newSegFullR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
       ∀ c', (L, c') ∉ fromVisits (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey) :
     WriterWP (putKv (.put (pre ++ c0 :: tail) h)) c w (fun _ w' =>
       (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
-        RootStays c (wNode c.p base w) w.top.rootKey) → ∀ key', keyWf key' = true →
+        NoNewRootG c (wNode c.p base w) w.top.rootKey) → ∀ key', keyWf key' = true →
       wGet c.p c.i base w' key' =
         if Op.key (.put (pre ++ c0 :: tail) h) == key' then Op.value (.put (pre ++ c0 :: tail) h)
         else wGet c.p c.i base w key') := by
@@ -475,7 +476,7 @@ theorem writerWP_put_newSegFullR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
         WriterWP (appendKlongs (a1 - 1) L [(c0, w3.next)]) c w' (fun _ w'' =>
           WriterWP (putSegs (pre ++ c0 :: tail) (some h) tail w3.next) c w'' (fun _ w' =>
             (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
-              RootStays c (wNode c.p base w) w.top.rootKey) →
+              NoNewRootG c (wNode c.p base w) w.top.rootKey) →
             ∀ key', keyWf key' = true → wGet c.p c.i base w' key' =
               if Op.key (.put (pre ++ c0 :: tail) h) == key' then Op.value (.put (pre ++ c0 :: tail) h)
               else wGet c.p c.i base w key'))) := by
@@ -521,8 +522,13 @@ theorem writerWP_put_newSegFullR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
       (fun i _ h2 hnr hsp => by
         rcases Nat.eq_zero_or_pos i with h0 | hi
         · exact Or.inl h0
-        · exact Or.inr ⟨hi, Or.inl (hspaceG _ _ (hreachX i h2) (hXN i h2) hnr hsp _ _ _ (hreachX (i - 1) (by omega))
-            (hXN (i - 1) (by omega)) (hKP i hi h2).2)⟩)
+        · refine Or.inr ⟨hi, ?_⟩
+          rcases hspaceG _ _ (hreachX i h2) (hXN i h2) hnr hsp _ _ _ (hreachX (i - 1) (by omega))
+            (hXN (i - 1) (by omega)) (hKP i hi h2).2 with h | ⟨hft, hord⟩
+          · exact Or.inl h
+          · refine Or.inr ⟨hft, fun i' h1' h2' hnr' hql' hsp' c' z hz => ?_⟩
+            exact hord _ _ _ _ _ (hreachX (i' - 1) (by omega)) (hXN (i' - 1) (by omega)) hql'
+              (hKP i' (by omega) (by omega)).2 (hXN i' (by omega)) hnr' hsp' c' z hz)
       P.length (by omega) ws1 [(c0, w.next)] (Or.inl ⟨c0, w.next, rfl⟩)
       (by intro q hq; simp at hq; rw [hq, g2]; simp)
       g6
@@ -706,11 +712,11 @@ theorem writerWP_put_newSegFullR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
         · subst hyw; rw [hw1e] at hyn; cases hyn; exact Or.inl rfl
         · exact Or.inr (by rw [hA' y hyw (hlt y hy)]; exact hyn)
     have hA_d : getFromR (wNode c.p base wf1) Vd c.i c.p.fuel (pre ++ [c0]) wf1.top.rootKey = some 1 := by
-      rw [hR1 Vd hadm_d (hq.imp hfit1 (fun hs => ⟨fun ⟨_, hnr, hsp⟩ => Nat.not_le.mpr hsp (hs _ (by
+      rw [hR1 Vd hadm_d (hq.imp hfit1 (fun hs => ⟨fun ⟨_, hnr, hsp⟩ => Nat.not_le.mpr hsp (hs.1 _ (by
         dsimp only
         have h0 := hXN 0 (Nat.zero_le _)
         rw [nodeAt_zero] at h0 ⊢
-        exact h0) hnr), fun i hi h2 hnr hsp => hspaceG _ _ (hreachX i h2) (hXN i h2) hnr hsp _ _ _
+        exact h0) hnr), fun i hi h2 hnr hsp => hs.2 _ _ (hreachX i h2) (hXN i h2) hnr hsp _ _ _
           (hreachX (i - 1) (by omega)) (hXN (i - 1) (by omega)) (hKP i hi h2).2⟩)), hws1N, hw1top]
       exact hVA_d
     have hsegA : segRootR (wNode c.p base wf1) c.i c.p.fuel (pre ++ [c0]) wf1.top.rootKey =
@@ -770,11 +776,11 @@ theorem writerWP_put_newSegFullR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
     · have hoff := getFromR_override_off (wNode c.p base wf1) (wNode c.p base wf) (wValue base wf1)
         (wValue base wf) c.i c.p.fuel hfuel wf1.top.rootKey w.next wf1.next (pre ++ [c0]) hT1 hW1
         hsegA hlt hA' hV' key' (fun q hq he => hthr ⟨q, hq, he⟩)
-      rw [hoff, hvw, hR1 (wValue base ws1) hadm_v (hq.imp hfit1 (fun hs => ⟨fun ⟨_, hnr, hsp⟩ => Nat.not_le.mpr hsp (hs _ (by
+      rw [hoff, hvw, hR1 (wValue base ws1) hadm_v (hq.imp hfit1 (fun hs => ⟨fun ⟨_, hnr, hsp⟩ => Nat.not_le.mpr hsp (hs.1 _ (by
         dsimp only
         have h0 := hXN 0 (Nat.zero_le _)
         rw [nodeAt_zero] at h0 ⊢
-        exact h0) hnr), fun i hi h2 hnr hsp => hspaceG _ _ (hreachX i h2) (hXN i h2) hnr hsp _ _ _
+        exact h0) hnr), fun i hi h2 hnr hsp => hs.2 _ _ (hreachX i h2) (hXN i h2) hnr hsp _ _ _
           (hreachX (i - 1) (by omega)) (hXN (i - 1) (by omega)) (hKP i hi h2).2⟩)) key', hws1N, hw1top, hVw1]
       simp only [List.foldl_cons, List.foldl_nil]
       have hempty : ∀ rest', rest' ≠ [] → getFromR (updN (updN (wNode c.p base w) w.next ⟨true, []⟩) L
@@ -847,9 +853,11 @@ theorem writerWP_put_newSegFull (c : Ctx) (base : View BVal) (hvc : ViewCoherent
         if Op.key (.put (pre ++ c0 :: tail) h) == key' then Op.value (.put (pre ++ c0 :: tail) h)
         else wGet c.p c.i base w key') :=
   writerWP_mono (writerWP_put_newSegFullR c base hvc pre c0 h tail htail rk0 w hM hrk ht hids hbase hwfG
-    htimesG hT hlinksAll hnoval hrangeG hlenG (fun x xn hx hxn hnr hsp => (hspaceG x xn hx hxn hnr hsp).2)
+    htimesG hT hlinksAll hnoval hrangeG hlenG (fun x xn hx hxn hnr hsp q qn K hq hqn hk =>
+      Or.inl ((hspaceG x xn hx hxn hnr hsp).2 q qn K hq hqn hk))
     hcur)
-    (fun _ _ hp => hp (Or.inr (fun rn hrn hnr => Nat.le_of_not_lt (fun hsp =>
-      (hspaceG _ _ TReach.root hrn hnr hsp).1 rfl))))
+    (fun _ _ hp => hp (Or.inr ⟨fun rn hrn hnr => Nat.le_of_not_lt (fun hsp =>
+      (hspaceG _ _ TReach.root hrn hnr hsp).1 rfl), fun x xn hx hxn hnr hsp =>
+      (hspaceG x xn hx hxn hnr hsp).2⟩))
 
 end SIS.Tree
