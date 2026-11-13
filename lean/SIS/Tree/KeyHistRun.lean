@@ -137,7 +137,7 @@ theorem keyHistOK_step (p : Params) (P : Struct BVal) (i : Time) (tx : Tx) (bs :
 
 /-! ## Runs -/
 
-theorem treeRun_root (p : Params) (ts : List Tx) :
+theorem treeRun_root_level (p : Params) (ts : List Tx) :
     ∃ r, (treeRun p ts).get? root = some r ∧ p.keyMax < r.level := by
   have hf : ∀ (qs : List (Tx × Nat)) (P : Struct BVal),
       (∃ r, P.get? root = some r ∧ p.keyMax < r.level) →
@@ -195,7 +195,7 @@ theorem treeRun_keyHistOK (p : Params) (ts : List Tx) (hw : Within p ts)
       have htimes := treeRun_timesLE p (ts.take n)
       rw [hlen] at he htimes
       rw [htake, treeRun_snoc, hlen]
-      exact keyHistOK_step p _ (n + 1) ts[n] bs w (by omega) hfresh htimes (treeRun_root p _)
+      exact keyHistOK_step p _ (n + 1) ts[n] bs w (by omega) hfresh htimes (treeRun_root_level p _)
         (ih (by omega))
         (viewLinksOK_of p _ n ts[n].base hfresh htimes (hP n hlt) (hN n hlt)) he
   have h := hk ts.length (Nat.le_refl _)

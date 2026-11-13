@@ -966,6 +966,18 @@ public class Db implements AutoCloseable {
     }
     
     /**
+     * Called by Reclaim, under the write lock, when it has decided a cut: 'pos' and 'time'
+     * are the new first available position and lookup time. The node ids read at positions
+     * below 'pos' and the key hashes of modifications at or before 'time' are forgotten
+     * (bergdb 026-10): until then a database emptied and then quiet kept them, up to
+     * 100,000 node ids (NodeCollection.idOf) and 128,000 key hashes (KeyModSet).
+     */
+    void cutDecided(long pos, long time) {
+        nodeCollection.forgetIdsBelow(pos);
+        keyModSet.forgetUpTo(time);
+    }
+    
+    /**
      * The position of the transaction named by the last valid meta block; recovery starts
      * there. See RecoverableStream.getLastTransSposOfLastValidMetaBlock().
      */

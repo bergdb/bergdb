@@ -4,7 +4,7 @@ as key nodes, is the writer's overlay. `changesOf` gives each key node of the
 overlay that the transaction did not take back the entries of the
 transaction's time; `Struct.apply` adds them to the node's history. Since the
 writer changes no klong of an earlier time (`execW_good`), holds each node
-once (`execW_nodupCache`) and keeps its klongs well formed (`execW_klongsWf`),
+once (`execW_cacheUnique`) and keeps its klongs well formed (`execW_klongsWf`),
 the history after the transaction is that of the overlay's klongs
 (`apply_keyNode`): its klongs are the overlay's. A key node that the
 transaction did not hold is unchanged.
@@ -14,7 +14,8 @@ transaction's end is one about the key nodes of P after it
 (`keyHistOK_step`: klongs well formed, klongs that give the history).
 -/
 import SIS.Tree.WriterGoodOps
-import SIS.Tree.CacheNodup
+import SIS.Tree.WriterCacheUnique
+import SIS.Tree.ExportHistory
 import SIS.Tree.ExportLedger
 import SIS.Tree.EntriesSplit
 import SIS.Tree.WriterHistory
@@ -27,41 +28,6 @@ namespace SIS.Tree
 open SIS SIS.Check
 
 /-! ## Lists -/
-
-theorem pairwise_of_all {α : Type} (R : α → α → Prop) (P : α → Prop) (l : List α)
-    (hl : ∀ a ∈ l, P a) (hR : ∀ a b, P a → P b → R a b) : l.Pairwise R := by
-  induction l with
-  | nil => exact List.Pairwise.nil
-  | cons a l ih =>
-    refine List.pairwise_cons.mpr ⟨?_, ih (fun b hb => hl b (List.mem_cons_of_mem _ hb))⟩
-    intro b hb
-    exact hR a b (hl a List.mem_cons_self) (hl b (List.mem_cons_of_mem _ hb))
-
-/-- A stable sort by id keeps the order of the entries of one id. -/
-theorem filter_mergeSort_fst {α : Type} (l : List (NodeId × α)) (x : NodeId) :
-    (l.mergeSort (fun a b => decide (a.1 ≤ b.1))).filter (fun a => a.1 == x) =
-      l.filter (fun a => a.1 == x) := by
-  have hsub : List.Sublist (l.filter (fun a => a.1 == x))
-      (l.mergeSort (fun a b => decide (a.1 ≤ b.1))) := by
-    apply List.sublist_mergeSort
-    · intro a b c hab hbc
-      simp only [decide_eq_true_eq] at *
-      omega
-    · intro a b
-      simp only [Bool.or_eq_true, decide_eq_true_eq]
-      omega
-    · apply pairwise_of_all _ (fun a => a.1 = x)
-      · intro a ha
-        simpa using (List.mem_filter.mp ha).2
-      · intro a b ha hb
-        simp only [decide_eq_true_eq]
-        omega
-    · exact List.filter_sublist
-  have hfs := hsub.filter (fun a => a.1 == x)
-  rw [List.filter_filter] at hfs
-  simp only [Bool.and_self] at hfs
-  have hperm := (List.mergeSort_perm l (fun a b => decide (a.1 ≤ b.1))).filter (fun a => a.1 == x)
-  exact (hfs.eq_of_length hperm.length_eq.symm).symm
 
 /-- The entries of time i that `changesOf` gives node x from the overlay. -/
 theorem keyAdds_filter (nodes : List (NodeId × KNode)) (taken : List NodeId) (i : Time)
@@ -148,7 +114,7 @@ theorem addsFor_changesOf (i : Time) (w : W) (x : NodeId)
     · cases ha
   unfold addsFor changesOf
   simp only
-  rw [filter_mergeSort_fst, List.filter_append, List.filter_append, hvals, htop, List.append_nil,
+  rw [filter_id_mergeSort, List.filter_append, List.filter_append, hvals, htop, List.append_nil,
     List.append_nil]
   exact keyAdds_filter w.nodes w.taken i x hn
 
@@ -218,7 +184,7 @@ theorem viewKlongsWf_of (p : Params) (P : Struct BVal) (t : Time) (htimes : Stru
 
 /-! ## The key nodes after a transaction -/
 
-theorem newNodeOf_some (c : Changes BVal) (x : NodeId) (nd : Node BVal)
+theorem newNodeOf_new_mem (c : Changes BVal) (x : NodeId) (nd : Node BVal)
     (h : newNodeOf c x = some nd) :
     ∃ nn ∈ c.new, nn.id = x ∧ nd = { level := nn.level, isData := nn.isData, hist := [] } := by
   unfold newNodeOf Struct.get? at h
@@ -267,7 +233,8 @@ theorem apply_keyNode (p : Params) (P : Struct BVal) (i : Time) (tx : Tx) (bs : 
     (P.get? x = some nd' ∧ (w.nodes.lookup x = none ∨ w.taken.contains x = true)) := by
   have hvg := viewGood_of p P i tx.base hpos hfresh htimes hl
   have hgood := execW_good p tx i _ bs w hvg he
-  have hnodup := execW_nodupCache p tx i _ bs w (viewIdsBelow_view p P (i - 1) tx.base hfresh) he
+  have hnodup : (w.nodes.map (·.1)).Nodup :=
+    execW_cacheUnique p tx i _ bs w (viewIdsBelow_view p P (i - 1) tx.base hfresh) he
   have hwf := execW_klongsWf p tx i _ bs w (viewKlongsWf_of p P (i - 1) htimes hH) he
   have halloc := execW_allocatedIds p tx i _ bs w he
   have hledger := execW_ledger p tx i _ bs w he
@@ -293,7 +260,7 @@ theorem apply_keyNode (p : Params) (P : Struct BVal) (i : Time) (tx : Tx) (bs : 
       subst hold
       have hxB : x < tx.base := hfresh _ (mem_of_get? hpx)
       refine ⟨Or.inl ⟨rfl, hxB⟩, ?_⟩
-      apply addsFor_changesOf i w x hnodup.2.2.2.2
+      apply addsFor_changesOf i w x hnodup
       · intro q hq he'
         have := (halloc.2.2 _ (hledger.2.1 q hq)).1
         simp only at this
@@ -310,7 +277,7 @@ theorem apply_keyNode (p : Params) (P : Struct BVal) (i : Time) (tx : Tx) (bs : 
     | none =>
       rw [hpx] at h0
       have h0' : newNodeOf (changesOf i w) x = some nd0 := by simpa using h0
-      obtain ⟨nn, hnn, hid, hnd0⟩ := newNodeOf_some _ x nd0 h0'
+      obtain ⟨nn, hnn, hid, hnd0⟩ := newNodeOf_new_mem _ x nd0 h0'
       obtain ⟨hmade, hnt⟩ := changesOf_new_mem i w nn hnn
       subst hid
       have hB := (halloc.2.2 nn hmade).1
@@ -318,7 +285,7 @@ theorem apply_keyNode (p : Params) (P : Struct BVal) (i : Time) (tx : Tx) (bs : 
       have hnnl : nn.level ≤ p.keyMax := by rw [hnd0] at hl0; exact hl0
       obtain ⟨n0, hn0⟩ := hledger.1 nn hmade hnnd hnnl
       refine ⟨Or.inr ⟨rfl, hB, by rw [hnd0], hnt, n0, hn0⟩, ?_⟩
-      apply addsFor_changesOf i w nn.id hnodup.2.2.2.2
+      apply addsFor_changesOf i w nn.id hnodup
       · intro q hq he'
         have hq' := hledger.2.1 q hq
         have := made_unique tx.base w halloc _ _ hq' hmade he'

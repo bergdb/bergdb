@@ -1,0 +1,69 @@
+diff --git a/java/stress/CountGates.java b/java/stress/CountGates.java
+index 0fdfdeaf..08a6d7cf 100644
+--- a/java/stress/CountGates.java
++++ b/java/stress/CountGates.java
+@@ -82,6 +82,48 @@ import bergdb.stream.FileStream;
+  *   eviction in G4 and G5), g4kept, g4nodes, g4slots, g4heap (G4's factors, 2; G5's but
+  *   kept), g5drive=20000 (20 R). Exits with status 1 if a gate fails.
+  */
++class DebugWalk {   // DEBUG idpos (temporary)
++    static void walk(Object root, String label) {
++        java.util.IdentityHashMap<Object, Boolean> seen = new java.util.IdentityHashMap<>();
++        java.util.ArrayDeque<Object[]> q = new java.util.ArrayDeque<>();
++        java.util.Map<String, long[]> by = new java.util.TreeMap<>();
++        q.add(new Object[] {root, "Db"});
++        seen.put(root, true);
++        while (!q.isEmpty()) {
++            Object[] e = q.poll();
++            Object o = e[0];
++            String ref = (String) e[1];
++            Class<?> c = o.getClass();
++            if (o instanceof Class || o instanceof Thread || o instanceof ClassLoader) continue;
++            if (c.isArray()) {
++                if (o instanceof long[]) {
++                    long[] a = by.computeIfAbsent(ref, k -> new long[2]);
++                    a[0]++;
++                    a[1] += 16 + 8L * ((long[]) o).length;
++                } else if (!c.getComponentType().isPrimitive()) {
++                    for (Object x : (Object[]) o) {
++                        if (x != null && seen.put(x, true) == null) q.add(new Object[] {x, ref});
++                    }
++                }
++                continue;
++            }
++            for (Class<?> k = c; k != null; k = k.getSuperclass()) {
++                for (java.lang.reflect.Field f : k.getDeclaredFields()) {
++                    if (java.lang.reflect.Modifier.isStatic(f.getModifiers()) || f.getType().isPrimitive()) continue;
++                    Object x;
++                    try { f.setAccessible(true); x = f.get(o); } catch (Exception ex) { continue; }
++                    if (x == null || seen.put(x, true) != null) continue;
++                    String r2 = k.getName().startsWith("bergdb") ? k.getSimpleName() + "." + f.getName() : ref;
++                    q.add(new Object[] {x, r2});
++                }
++            }
++        }
++        for (java.util.Map.Entry<String, long[]> en : by.entrySet()) {
++            if (en.getValue()[1] > 20000) CountGates.out("  DEBUGWALK " + label + " " + en.getKey() + " n=" + en.getValue()[0] + " bytes=" + en.getValue()[1]);
++        }
++    }
++}
++
+ public class CountGates {
+     static final long SEC = Clock.UNITS_PER_SEC;
+     static final long MB = 1000000;
+@@ -621,6 +663,15 @@ public class CountGates {
+             throw new AssertionError(e);
+         }
+         m.heap = usedHeap() - heap0;
++        {   // DEBUG idpos (temporary)
++            java.util.Map<?, ?> ib = (java.util.Map<?, ?>) field(r.db.internal().nodeCollection(), "idByPos");
++            long first = r.db.getFirstAvailablePos(), below = 0, min = Long.MAX_VALUE, max = -1;
++            synchronized (ib) {
++                for (Object k : ib.keySet()) { long q = (Long) k; if (q < first) below++; min = Math.min(min, q); max = Math.max(max, q); }
++            }
++            DebugWalk.walk(r.db, label);
++            out("  DEBUG " + label + " idByPos size=" + ib.size() + " below=" + below + " min=" + min + " max=" + max + " first=" + first + " len=" + r.db.getStreamLength());
++        }
+         if (m.userKeys != 1) throw new AssertionError(gate + " " + label + ": " + m.userKeys
+                 + " user keys, expected 1");
+         r.close();
