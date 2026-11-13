@@ -1352,9 +1352,39 @@ and its status:
     a full one (`writerWP_put_newSegFullR`); where the key's walk ends
     at a missing node or at a descent that finds no leaf, the writer
     fails (`writerWP_putSegs_put_fail`).
-  - (4) `DelMergeCase`, a delete with the merges on: open, cost's. Cost's
-    merge rules (`writerWP_merge_full_get`, `writerWP_mergeTail_full_get`)
-    are part of it.
+  - (4) `DelMergeCase`, a delete with the merges on: reduced to named step
+    obligations, cost's (`opGetCaseOK_delMerge`, `DelMergeCase.lean`). The
+    merges' loop, `afterDelete` and the root collapse keep the delete's inner
+    invariant `DelInv`. That invariant is PutInv, its global parts, the walk's
+    ranges, inner children there, the fuel, and the reading of the delete. They
+    keep it by cost's merge and collapse lemmas: `writerWP_mergeUp_del`,
+    `writerWP_afterDelete_del` and `writerWP_collapseRoot_del`. The merge is
+    `writerWP_merge_get_inv`, which derives the merge rules' premises from
+    PutInv, PutInvG, RangeOrder and the path (`PathOK`). It covers every kind of
+    full parent and the space root as parent. The obligations, all open:
+    - `MergeStepOK`: a merge of the loop keeps PutInv, PutInvG, the ranges and
+      inner children, and the state after it fits the fuel. This is StepFits
+      for a merge, and PutInv across a merge; nobody has the latter yet.
+    - `DescentOK`: the loop's descent keeps `DelInv` and gives the path facts
+      down to the node it stops at. It also gives the merge's two named
+      conditions (`MergePathCond`): no space split in place below a segment
+      leaf on the path, and the full parent's last version in the range of its
+      link.
+    - `CollapseStepOK`: the collapse's steps keep PutInv, PutInvG, the ranges
+      and inner children, and a segment leaf has room for a replaced root's
+      klong.
+    - `DelStepsOK`: the delete's other steps, with the merges' steps given. It
+      holds the walk, the leaf's bitmap or split with its cascade (PutInv and
+      the fuel across `appendDeleteKlong` inside the delete), and the upward
+      delete. It is `writerWP_del_accessPathR`, `writerWP_del_bitmap_segR` and
+      `writerWP_deleteUpward_upT` with the merges on.
+
+    The premises 2 ≤ splitAbove and 1 ≤ mergeMax are also needed.
+    `#guard dmCheck dmP dmTs dmTx` shows the hypotheses are not void: a run of
+    twelve puts and then ten deletes with the merges on is within reach, every
+    state between the deletes fits the fuel, and the writer merges in the
+    deletes. StepFits (the inner states fit) is in `MergeStepOK` and
+    `DelStepsOK`; step 4 (`SegBal`, cost) is to discharge it.
   - (5) `DelNoLeafCase`, a delete of a key with no leaf: proved,
     `opGetCaseOK_delNoLeaf`. It changes no reading: the writer's walk
     stops at the first segment that is not there and only reads
