@@ -190,6 +190,7 @@ import SIS.Tree.WriterGetCollapseLoop
 import SIS.Tree.WriterMergeUpLoop
 import SIS.Tree.WriterTreeFullSplit
 import SIS.Tree.WriterTreeMergeFull
+import SIS.Tree.GetMergeFull
 import SIS.Tree.RangeSim
 import SIS.Tree.RangeChain
 import SIS.Tree.RangePut
@@ -225,3 +226,6 @@ import SIS.Tree.TakeBackRunT
 import SIS.Tree.TakeInvUp
 import SIS.Tree.TakeInvMerge
 import SIS.Tree.TakeBackDead
+import SIS.Tree.RangeFullSplit
+import SIS.Tree.RangeMergeFull
+import SIS.Tree.TakeDeadCollapse

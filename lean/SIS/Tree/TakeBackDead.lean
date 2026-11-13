@@ -18,6 +18,8 @@ klongs before the transaction only. Not proved yet; checked on two runs in
 TakeBackRunExample.lean.
 -/
 import SIS.Tree.TakeBackRunT
+import SIS.Tree.WriterKindsRun
+import SIS.Tree.WriterFrame
 
 set_option autoImplicit false
 
@@ -203,5 +205,37 @@ theorem deadTakenLiveOK_of_ops (p : Params) (R : Struct BVal → Time → Prop)
     (viewIdsBelow_view p (treeRun p ts) ts.length tx.base hfresh) hrun
   exact deadTakenLive_of_deadLive p (treeRun p ts) (ts.length + 1) tx.base w hD hU hl.2.1
     (hTV ts tx hw hr noops w hrun)
+
+/-- At a transaction's end no node taken back is a value: taken nodes are key
+nodes of the books (`Book.taken`), values are not (the walk of the kinds'
+`KdInv.vals`). -/
+theorem execW_takenNotVal (K : KindOracle) (p : Params) (tx : Tx) (i : Time) (v : View BVal)
+    (bs : List Bool) (w : W) (hM : 2 ≤ p.M) (hwf : tx.wf = true)
+    (hv : ViewIdsBelow tx.base v)
+    (hk : ViewKinds K tx.base { p := p, i := i, view := rootless v })
+    (he : execW p tx i v = .ok (bs, w)) : ∀ x ∈ w.taken, x ∉ w.vals.map (·.1) := by
+  unfold execW runOps runOpsFrom at he
+  cases hz : lastTop v with
+  | none => simp [hz] at he
+  | some z =>
+    simp only [hz] at he
+    cases ht : topOf p (rootless v) z with
+    | error e => simp [ht] at he
+    | ok top =>
+      simp only [ht] at he
+      have hr := boundsOK_ok p _ bs w he
+      have hkeys : ∀ op ∈ tx.ops, keyWf op.key = true := by
+        intro op hop
+        unfold Tx.wf at hwf
+        exact List.all_eq_true.mp hwf op hop
+      obtain ⟨hbook, hkd, _⟩ := kd_ops K tx.base (appendFrameOK tx.base) tx.ops
+        { p := p, i := i, view := rootless v }
+        { next := tx.base, top := top } (viewIdsBelow_rootless tx.base v hv) hk
+        (book_start _ _ top) (kdInv_start K tx.base top) hM hkeys bs w hr
+      intro x hx hxv
+      obtain ⟨q, hq, hqx⟩ := List.mem_map.mp hxv
+      have h1 := (hkd.vals q hq).2.2
+      rw [hqx] at h1
+      exact h1 (hbook.taken x hx)
 
 end SIS.Tree
