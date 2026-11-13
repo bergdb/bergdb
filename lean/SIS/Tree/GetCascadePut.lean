@@ -660,7 +660,7 @@ theorem writerWP_put_chainG (c : Ctx) (base : View BVal) (hvc : ViewCoherent c b
   have hdm : d + m - d = m := by omega
   simp only [hdm] at hchain
   refine writerWP_mono hchain ?_
-  intro _ wf ⟨_, ⟨hftop, hft, _, _, hfv⟩, _, _, _, hR⟩
+  intro _ wf ⟨_, ⟨hftop, hft, _, _, hfv⟩, _, _, _, hR, _⟩
   have hadm : ∀ z, (w.next + 2 ≤ z ∨ ∃ i, d ≤ i ∧ i ≤ d + m ∧ z = XX (i - d)) →
       wValue base ws z = none := by
     intro z hz
