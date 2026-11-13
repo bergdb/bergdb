@@ -44,6 +44,10 @@ Work moved here from 2026.5:
   Core's value transformations before the go point, as 024-16 did for
   key transformations (`Db.transformKeys`). 2026.5 names it in its
   Known issues.
+* **The node size fixed at 30 for users** (026-08; Frans, 2026-11-13,
+  09:17 and 09:21): the stable format and both APIs know one node size,
+  30; 8, 14 and 62 stay for BergDB's own tests only. Replaces the
+  proposal that a start read B from the meta block (024-19, Q5).
 
 
 Proposed for 2026.6, not decided
@@ -52,9 +56,6 @@ Proposed for 2026.6, not decided
 Each stays where it is until Frans decides; recommended for 2026.6
 there, or implied by this release's theme.
 
-* **The node size read from the meta block** (024-19, Q5; 027-03, Q19):
-  a start takes B from the meta block. Recommended "yes, but in 2026.6
-  with the stable stream format"; open.
 * **Merges "in place and net"** (024-22, QM1): the other way than P5's
   new nodes and take-back, which changes what a record means. Decided:
   P5's way in 2026.5 (Frans, 2026-11-11, 14:34); the other way "a
@@ -96,6 +97,8 @@ Files
   point (`Db.transformValues`), and the database goes on (010-04, R5);
   also a key transformation that throws (Q2); done, on main since
   2026-11-13 (Q1 to Q4 yes, Frans 08:45).
+* 08-fixed-node-size.md. 026-08, the node size fixed at 30 for users,
+  the other sizes for tests only (Frans, 2026-11-13, 09:21); registered.
 
 
 Log
@@ -112,3 +115,6 @@ current work and move things for 2026.6 to 026. In particular this
 2026-11-13. 024-02, the stream format's draft, moved to 027 as 027-03
 (Frans, 08:50: "Yes"), kept current there; this readme cites 027-03,
 the same sections.
+
+2026-11-13. 026-08 registered: the node size fixed at 30 for users
+(Frans, 09:17 and 09:21); 024-19's Q5 dropped from the proposals.

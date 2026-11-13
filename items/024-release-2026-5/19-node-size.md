@@ -2,7 +2,8 @@
 
 Created 2026-11-11 by Frans Lundberg. Status: done (2026-11-12): Q1, Q4
 and Q6 decided (Frans, 2026-11-12), made in 024-27; Q2 and Q3 decided
-as built (Frans, 2026-11-13); Q5 proposed for 2026.6 (026's readme).
+(Frans, 2026-11-13), Q2 revised to B = 30 for users and Q5 dropped
+(026-08).
 
 A study with measurements, no product code: what the node size B is
 today, what the theory says a larger or smaller B does in BergDB's
@@ -779,6 +780,15 @@ database is made; a start with another size is refused
 (`Db.refuseOtherNodeSize`), and another size means copying the KVs into
 a new database. Q5 (2026.6) lets a start take B from the meta block
 instead of repeating it.
+
+**Revised, Q2 and Q5** (Frans, 2026-11-13, 09:17: "Not sure we need this
+at all. Fixed at 30 could be fine. [...] This is something that is easy
+to keep a constant first, then allow variation in later versions if
+needed. The other way around is hard."; 09:21, "Yes", to the
+coordinator's answer): B = 30 for every database a user makes, by both
+APIs; 8, 14 and 62 for BergDB's own tests only; the meta block's field
+kept and checked, the hook for a later release; Q5 dropped. The work is
+026-08, for 2026.6.
 
 Cite as "024-19, Q1". Each with a recommendation; none blocks other
 work, as main already behaves as recommended except in Q4 and Q5.
