@@ -647,4 +647,51 @@ theorem writerWP_del_leafBelow (c : Ctx) (base : View BVal) (hvc : ViewCoherent 
   simp only [Bool.not_false, ↓reduceIte, writerWP_bind, writerWP_get, writerWP_set, writerWP_pure]
   exact hT4
 
+/-- `writerWP_del_leafBelow` under `PutInv`: the premises of
+`putInv_del_leafBelow` give the delete's reading too. -/
+theorem writerWP_del_leafBelow_inv (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (pre : List Nat) (cv : Nat) (rk : NodeId) (w : W) (hI : PutInv c base w)
+    (hmerges : c.p.merges = false) (hkey : keyWf (pre ++ [cv]) = true)
+    (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
+    (hinner : ∀ m, wNode c.p base w rk = some m → m.leaf = false)
+    (hleaf : ∀ L n, (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      wNode c.p base w L = some n → n.leaf = true →
+      bitsUnion n.lastBitmap (n.bitsOf cv) ≠ n.lastBitmap ∧
+      n.allKeysIn (bitsUnion n.lastBitmap (n.bitsOf cv)) = false ∧
+      (c.p.M ≤ n.size + 1 →
+        (n.lastVersionGivenDel c.i (bitsUnion n.lastBitmap (n.bitsOf cv))).size ≤ c.p.splitAbove))
+    (hparent : ∀ q qn, (q, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      wNode c.p base w q = some qn → qn.leaf = false →
+      qn.size + 1 + 1 ≤ c.p.M ∧ ∀ k y, deadOver c.p (qn.add c.i (.key k y)) = false) :
+    WriterWP (putKv (.del (pre ++ [cv]))) c w (fun _ w' => ∀ key', keyWf key' = true →
+      wGet c.p c.i base w' key' =
+        if Op.key (.del (pre ++ [cv])) == key' then Op.value (.del (pre ++ [cv]))
+        else wGet c.p c.i base w key') := by
+  have hfuel : 1 ≤ c.p.fuel := by unfold Params.fuel; omega
+  have hrrk : ReachS (wNode c.p base w) c.i w.top.rootKey rk :=
+    segRootR_reach _ _ _ _ (fun x xn _ hn => hI.wf x xn hn) pre _ rk ReachS.root hrk
+  have hvisR : ∀ x c', (x, c') ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      ReachS (wNode c.p base w) c.i w.top.rootKey x :=
+    fun x c' hx => eqVisits_reach _ _ _ cv c.p.fuel rk x c' hrrk hx
+  refine writerWP_del_leafBelow c base hvc pre cv rk w hfuel hmerges hkey hrk
+    (fun q hq => hI.untaken q.1 (fromVisits_reach _ _ _ _ (fun x xn _ hn => hI.wf x xn hn)
+      (pre ++ [cv]) _ q.1 q.2 ReachS.root hq))
+    hI.ids hI.fresh hinner (fun x xn hn => hI.wf x xn hn) ?_
+    (fun q qn hq hqn hql => by
+      obtain ⟨a2, a3⟩ := hparent q qn hq hqn hql
+      exact ⟨hI.times q qn hqn, a2, a3⟩)
+    (fun key' x _ hkey' h1 h2 _ _ =>
+      visits_unique_seg_of_tree _ _ _ _ hI.tree hI.wf pre cv rk hkey hrk key' x hkey' h1 h2)
+    (fun x xn cc z hx hn hz _ x' xn' cc' hx' hn' hz' =>
+      htree_of_treeOK _ _ _ hI.tree x xn cc z hx hn hz x' xn' cc' hx' hn' hz')
+    hI.links
+  intro L n hL hn hnl
+  obtain ⟨hne, hkeep, hsplit⟩ := hleaf L n hL hn hnl
+  refine ⟨hI.times L n hn, hne, hkeep, hsplit, hI.keyNoValue L n hn, ?_⟩
+  intro hLr
+  have hLrk : L ≠ rk := by
+    intro he; subst he; rw [hinner n hn] at hnl; cases hnl
+  obtain ⟨q, qn, c', hq, hqn, hlink⟩ := eqVisits_parent _ _ cv c.p.fuel rk L hL hLrk
+  exact hI.tree.rootFree q c' (reachS_tReach _ _ _ q (hvisR q cv hq)) ⟨qn, hqn, hLr ▸ hlink⟩
+
 end SIS.Tree
