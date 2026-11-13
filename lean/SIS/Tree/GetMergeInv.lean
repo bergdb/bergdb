@@ -181,53 +181,6 @@ theorem writerWP_merge_get_invF2 (fuelR : Nat) (hfR : 2 ≤ fuelR) (x : NodeId) 
     intro _ w' h hf key
     exact h (Or.inl hf) key
 
-/-- `writerWP_merge_get_invF2` with its former premises, which it does not need:
-no space split in place below a segment leaf (`hNoSSIP`, `hNoSSIPp`) and the full
-parent's range (`hrangeL`). -/
-theorem writerWP_merge_get_invF (fuelR : Nat) (hfR : 2 ≤ fuelR) (x : NodeId) (d : Nat) (c : Ctx) (base : View BVal)
-    (hvc : ViewCoherent c base) (w : W) (hI : PutInv c base w) (hG : PutInvG c base w)
-    (hRO : RangeOrder (wNode c.p base w) c.i w.top.rootKey)
-    (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode) (hP : PathOK c w d X K Nn)
-    (hd0 : 0 < d) (hx : X d = x) (hql : (Nn (d - 1)).leaf = false)
-    (hsa2 : 2 ≤ c.p.splitAbove) (hcap : 1 ≤ c.p.mergeMax)
-    (hNoSSIP : ∀ i, 0 < i → i + 2 ≤ d → (Nn (i - 1)).leaf = true → ¬ ChainRoom c (Nn i) →
-      c.p.splitAbove < ((Nn i).lastVersion c.i).size → (Nn i).firstTime ≠ some c.i)
-    (hNoSSIPp : 2 ≤ d → (Nn (d - 2)).leaf = true → ∀ cL cR m1 m2 last,
-      mergeFullLast (Nn (d - 1)) c.i cL m1 cR m2 = some last → c.p.splitAbove < last.size →
-      (Nn (d - 1)).firstTime ≠ some c.i)
-    (hrangeL : 2 ≤ d → ∀ cL cR m1 m2 last, mergeFullLast (Nn (d - 1)) c.i cL m1 cR m2 = some last →
-      c.p.splitAbove < last.size → (Nn (d - 2)).leaf = false →
-      ∀ c' z, (c', z) ∈ (⟨(Nn (d - 1)).leaf, last.ks⟩ : KNode).live → 0 < c' →
-      K (d - 1) ≤ c' ∧ ∀ c'' z', (c'', z') ∈ (Nn (d - 2)).live → K (d - 1) < c'' → c' < c'') :
-    WriterWP (merge x d) c w (fun _ w' =>
-      SegFits (wNode c.p base w') c.i (fuelR - 1) w'.top.rootKey →
-      ∀ key, wGetAt c.p c.i base w' fuelR key = wGetAt c.p c.i base w fuelR key) := by
-  have _ := hNoSSIP
-  have _ := hNoSSIPp
-  have _ := hrangeL
-  exact writerWP_merge_get_invF2 fuelR hfR x d c base hvc w hI hG hRO X K Nn hP hd0 hx hql hsa2 hcap
-
-/-- `writerWP_merge_get_invF` at the writer's fuel. -/
-theorem writerWP_merge_get_inv (x : NodeId) (d : Nat) (c : Ctx) (base : View BVal)
-    (hvc : ViewCoherent c base) (w : W) (hI : PutInv c base w) (hG : PutInvG c base w)
-    (hRO : RangeOrder (wNode c.p base w) c.i w.top.rootKey)
-    (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode) (hP : PathOK c w d X K Nn)
-    (hd0 : 0 < d) (hx : X d = x) (hql : (Nn (d - 1)).leaf = false)
-    (hsa2 : 2 ≤ c.p.splitAbove) (hcap : 1 ≤ c.p.mergeMax)
-    (hNoSSIP : ∀ i, 0 < i → i + 2 ≤ d → (Nn (i - 1)).leaf = true → ¬ ChainRoom c (Nn i) →
-      c.p.splitAbove < ((Nn i).lastVersion c.i).size → (Nn i).firstTime ≠ some c.i)
-    (hNoSSIPp : 2 ≤ d → (Nn (d - 2)).leaf = true → ∀ cL cR m1 m2 last,
-      mergeFullLast (Nn (d - 1)) c.i cL m1 cR m2 = some last → c.p.splitAbove < last.size →
-      (Nn (d - 1)).firstTime ≠ some c.i)
-    (hrangeL : 2 ≤ d → ∀ cL cR m1 m2 last, mergeFullLast (Nn (d - 1)) c.i cL m1 cR m2 = some last →
-      c.p.splitAbove < last.size → (Nn (d - 2)).leaf = false →
-      ∀ c' z, (c', z) ∈ (⟨(Nn (d - 1)).leaf, last.ks⟩ : KNode).live → 0 < c' →
-      K (d - 1) ≤ c' ∧ ∀ c'' z', (c'', z') ∈ (Nn (d - 2)).live → K (d - 1) < c'' → c' < c'') :
-    WriterWP (merge x d) c w (fun _ w' =>
-      SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey →
-      ∀ key, wGet c.p c.i base w' key = wGet c.p c.i base w key) :=
-  writerWP_merge_get_invF c.p.fuel (by unfold Params.fuel; omega) x d c base hvc w hI hG hRO X K Nn hP hd0 hx hql hsa2 hcap hNoSSIP hNoSSIPp hrangeL
-
 /-! ## The delete's inner invariant -/
 
 /-- `PutInv` is read alike: a state that reads as w has w's invariant. -/

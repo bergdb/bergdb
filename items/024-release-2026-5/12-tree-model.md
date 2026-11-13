@@ -1472,8 +1472,44 @@ and its status:
       change (`ShapePost` from D + 1 with nothing put). `mergeLast_ord`
       (`MergeLastOrd.lean`) gives the merge's last version's `LastOrd`
       from `RangeOrder` (with `MergeGOrd`, `mergeGOrd_two`).
-    The old statements stay, unchanged, until F2 is complete; then they are
-    removed, as agreed with cost.
+    - `MergeStepOKF`'s `RangeOrder` part (latest, 23:16):
+      `writerWP_merge_range_inv` (`RangeMergeRoot.lean`) keeps the walk's
+      ranges across a merge from the state's invariants and the path
+      (`PathOK`). It uses `writerWP_merge_any_range2` below the space root,
+      with the full parent's halves from `RangeOrder` (`mergeLast_halves`).
+      At the space root it uses `writerWP_merge_root_range`, with the root's
+      split by `writerWP_rootSplit_rangeL` (putinv's
+      `writerWP_delRootSplit_range` for any last version, now its
+      corollary). `MergeStepOKF` does not take `PathOK`, so the range part
+      reaches the loop through the F3 obligations.
+    - The F3 route (latest, 23:20; `DelMergeCaseF3.lean`):
+      `opGetCaseOK_delMergeF3` gives `OpGetCaseOK p R DelMergeCase` from
+      `DelStepsOKF3`, `MergeStepOKF3`, `CollapseStepOKF3`, `TxSegFitsOK`,
+      `2 ≤ p.M` and the pointers of every run within reach (TP4,
+      `PointersOK`). TP4 is no new open premise: it comes from the
+      take-back's joint induction at the run level, as in
+      `innerChildren_reached`. The loop invariant is `DelInvF3` = `DelInvF`
+      ∧ `Book` ∧ `KdInv` (the kinds' books, joined by `writerWP_and` with
+      `kd_descendToHeight`, `kd_getNode`, `kd_merge` and `kd_collapseRoot`).
+      After a merge, its ranges are `writerWP_merge_range_inv` and its
+      inner children come from the kinds (`innerChildren_of_kinds`). The
+      collapse's inner children are its own `CollInv`'s.
+      - Open: `MergeStepOKF3` (`PathOK` given) asks only for the reached
+        nodes untaken (putinv's take-back, `ReachedFree`) and SegFits
+        (cost's step 4).
+      - Open: `CollapseStepOKF3` asks for the room (part 1) and the walk's
+        ranges after `takeBackRoot` and `replaceRoot` (parts 2 and 3).
+      - Open: `DelStepsOKF3` is putinv's `DelStepsOKF` on `DelInvF3`.
+    Removed (latest, 23:08, as agreed with cost and the coordinator, after
+    putinv's take-back moved to F2 at 65b84e5b): `DescentOKF`,
+    `MergePathCond`, `opGetCaseOK_delMergeF`, `writerWP_mergeUp_delF`,
+    `writerWP_afterDelete_delF` and `opGetCaseOK'_delMerge`; the route at
+    p.fuel in `DelMergeCase.lean` (`DescentOK`, `MergeStepOK`,
+    `CollapseStepOK`, `DelStepsOK`, `writerWP_mergeUp_del`,
+    `writerWP_afterDelete_del`, `writerWP_collapseRoot_del`,
+    `opGetCaseOK_delMerge`); and the corollaries only they used
+    (`writerWP_merge_get_invF`, `writerWP_merge_get_inv`,
+    `writerWP_merge_tree_inv`). Case (4) is `opGetCaseOK_delMergeF2`.
 
     Step 4, plan (cost, 22:15). The Bool evidence is cost's `SegFit.lean`,
     run outside the repository. It ran random transactions (M 4 and 8, G 2,
@@ -1514,6 +1550,42 @@ and its status:
 
     That is 4000 to 6000 lines in all, more than one night. (A) comes
     first.
+
+    Step 4 (A), state (cost, 23:10). It is also TP7's open (b), at the
+    coordinator's direction, so that one proof serves both.
+    - The invariant (`OverlayHeights.lean`): `HasHt H w y h`, y's height
+      from the writer's books (`gh`) or from an oracle H of P's key nodes,
+      as the kinds' walk has K. `NodeHt c H w h n`: n's live klongs, now
+      and before the transaction (`toPrev`), name nodes not taken back,
+      for an inner node nodes one height below; n has no time after the
+      transaction's. `HtCache`: every overlay node not taken back meets
+      it.
+    - The bridge to step 4: `segDepthEq_of_hasHt`, a key node of height
+      h has its segment tree balanced and of depth h (`SegDepthEq`);
+      `segFits_of_heights` and `segBal_of_heights`: SegFits and SegBal
+      from the heights of the nodes reached.
+    - The walk (`WriterHeightsRules/Steps/Split/Full/Put.lean`), on the
+      books: `HtInv` (HtCache, the path's heights, the path's nodes and
+      the space root not taken back, taken ids at or above the
+      transaction's first id). Every primitive step keeps it, so do a
+      full node's replacement with its cascade (`ht_handleFullWith`,
+      `ht_appendKlongs`) and a put (`ht_putKv_put`, with tp7's
+      `AppendFrameOK` as the kinds' walk takes it).
+    - The run (`HeightsStep.lean`): `HeightAllOK`, every inner key node
+      of P has its live children that are nodes of P one height below
+      it (stronger than TP7's `HeightLiveOK`, `heightLiveOK_of_all`).
+      `heightAllOK_step`: a transaction keeps it when the walk ends with
+      `HtCache` (tp7's `apply_keyNode`). `heightAllOK_init`. The walk's
+      premises at a transaction's start (`viewHeights_of`) and the
+      reading's (`baseHeights_of`) come from `HeightAllOK`,
+      `PointersOK` and `KindsAllOK`.
+    - Left: the delete side of the walk. Its three take-back sites
+      (`takeBack` in the upward delete's loop, `takeBackRoot`, the
+      merge's) take a node back while the path still holds it, and
+      need TP4's holder fact: no live klong of a kept node names the
+      node taken back. That is step 2 of tp7's plan; the delete side
+      will take it as a named premise at the three sites. Then the run
+      induction (as tp7's open (a) for the kinds), (B) and (C).
   - (5) `DelNoLeafCase`, a delete of a key with no leaf: proved,
     `opGetCaseOK_delNoLeaf`. It changes no reading: the writer's walk
     stops at the first segment that is not there and only reads

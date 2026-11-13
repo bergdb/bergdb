@@ -164,6 +164,10 @@ import SIS.Tree.GetDescentOK
 import SIS.Tree.DelMergeCaseF2
 import SIS.Tree.MergeLastOrd
 import SIS.Tree.LevelShape
+import SIS.Tree.MergeGOrd
+import SIS.Tree.RangeMergeF2
+import SIS.Tree.RangeMergeRoot
+import SIS.Tree.DelMergeCaseF3
 import SIS.Tree.WriterTreeInnerHalves
 import SIS.Tree.WriterTreeSpaceSpace
 import SIS.Tree.WriterTreeDelFull
@@ -286,6 +290,7 @@ import SIS.Tree.DelStepsWalk
 import SIS.Tree.DelStepsRoom
 import SIS.Tree.DelStepsUp
 import SIS.Tree.DelStepsBook
+import SIS.Tree.HeightsStep
 import SIS.Tree.DelStepsUpWalk
 import SIS.Tree.DelStepsEmpty
 import SIS.Tree.TakeMergeFull

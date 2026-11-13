@@ -12,12 +12,14 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
+variable {H : NodeId → Nat → Prop}
+
 /-! ## A klong of the right height -/
 
 /-- Klong (cv, y) of a node of height h names a node not taken back, and for an
 inner node a key node one height below. -/
-def HtP (c : Ctx) (w : W) (h : Nat) : Nat → NodeId → Prop :=
-  fun _ y => w.taken.contains y = false ∧ (h ≠ 0 → HasHt c w y (h - 1))
+def HtP (_c : Ctx) (H : NodeId → Nat → Prop) (w : W) (h : Nat) : Nat → NodeId → Prop :=
+  fun _ y => w.taken.contains y = false ∧ (h ≠ 0 → HasHt H w y (h - 1))
 
 /-- A state and a later one: the books' relation, and the same nodes taken back. -/
 def HtLe (w v : W) : Prop := Kept w v ∧ v.taken = w.taken
@@ -30,22 +32,22 @@ theorem HtLe.trans {a b d : W} (h1 : HtLe a b) (h2 : HtLe b d) : HtLe a d :=
 theorem HtLe.gh' {w v : W} {e : NodeId × Nat × Nat} (h : e ∈ w.gh) (hk : HtLe w v) : e ∈ v.gh :=
   hk.1.2 e h
 
-theorem HtP.mono {c : Ctx} {w v : W} {h cv : Nat} {y : NodeId} (hp : HtP c w h cv y)
-    (hk : HtLe w v) : HtP c v h cv y :=
+theorem HtP.mono {c : Ctx} {w v : W} {h cv : Nat} {y : NodeId} (hp : HtP c H w h cv y)
+    (hk : HtLe w v) : HtP c H v h cv y :=
   ⟨by rw [hk.2]; exact hp.1, fun h0 => (hp.2 h0).mono (fun q hq => hk.1.2 q hq)⟩
 
-theorem htKs_mono {c : Ctx} {w v : W} {h : Nat} {ks : List Klong} (hk : kdKs (HtP c w h) ks)
-    (hle : HtLe w v) : kdKs (HtP c v h) ks := fun cv y hm => (hk cv y hm).mono hle
+theorem htKs_mono {c : Ctx} {w v : W} {h : Nat} {ks : List Klong} (hk : kdKs (HtP c H w h) ks)
+    (hle : HtLe w v) : kdKs (HtP c H v h) ks := fun cv y hm => (hk cv y hm).mono hle
 
 theorem htPairs_mono {c : Ctx} {w v : W} {h : Nat} {l : List (Nat × NodeId)}
-    (hk : kdPairs (HtP c w h) l) (hle : HtLe w v) : kdPairs (HtP c v h) l :=
+    (hk : kdPairs (HtP c H w h) l) (hle : HtLe w v) : kdPairs (HtP c H v h) l :=
   fun q hq => (hk q hq).mono hle
 
-theorem NodeHt.htMono {c : Ctx} {w v : W} {h : Nat} {n : KNode} (hn : NodeHt c w h n)
-    (hle : HtLe w v) : NodeHt c v h n :=
+theorem NodeHt.htMono {c : Ctx} {w v : W} {h : Nat} {n : KNode} (hn : NodeHt c H w h n)
+    (hle : HtLe w v) : NodeHt c H v h n :=
   hn.mono (fun q hq => hle.1.2 q hq) (fun y hy => by rw [hle.2]; exact hy)
 
-theorem ht_free (c : Ctx) (w : W) (h : Nat) : kdFree (HtP c w h) := fun _ _ _ hp => hp
+theorem ht_free (c : Ctx) (w : W) (h : Nat) : kdFree (HtP c H w h) := fun _ _ _ hp => hp
 
 /-! ## Nodes of the right heights -/
 
@@ -55,16 +57,16 @@ theorem ht_live_nil {leaf : Bool} {cv : Nat} {y : NodeId} :
   have := ht_live_mem h
   cases this
 
-theorem nodeHt_nil (c : Ctx) (w : W) (h : Nat) (leaf : Bool) : NodeHt c w h ⟨leaf, []⟩ := by
+theorem nodeHt_nil (c : Ctx) (w : W) (h : Nat) (leaf : Bool) : NodeHt c H w h ⟨leaf, []⟩ := by
   refine ⟨fun cv y hy => absurd hy ht_live_nil, fun cv y hy => ?_, fun t ht => by cases ht⟩
   simp only [KNode.toPrev, prefixAt, List.takeWhile_nil] at hy
   exact absurd hy ht_live_nil
 
 /-- A node of the transaction's time whose klongs are of the right height. -/
 theorem nodeHt_of_ks {c : Ctx} {w : W} {h : Nat} {leaf : Bool} {ks : List Klong}
-    (hpos : 0 < c.i) (hks : ∃ r, ks = .time c.i :: r) (hk : kdKs (HtP c w h) ks)
+    (hpos : 0 < c.i) (hks : ∃ r, ks = .time c.i :: r) (hk : kdKs (HtP c H w h) ks)
     (htm : ∀ t, Klong.time t ∈ ks → t ≤ c.i) :
-    NodeHt c w h ⟨leaf, ks⟩ := by
+    NodeHt c H w h ⟨leaf, ks⟩ := by
   refine ⟨fun cv y hy => hk cv y (ht_live_mem hy), fun cv y hy => ?_, htm⟩
   obtain ⟨r, rfl⟩ := hks
   simp only [KNode.toPrev] at hy
@@ -91,9 +93,9 @@ theorem ht_flat_times {i : Time} {ks : List Klong} (hf : FlatAt i ks) :
     cases he
 
 theorem nodeHt_halves {c : Ctx} {w : W} {h : Nat} (hpos : 0 < c.i) (leaf : Bool) (last : KNode)
-    (ins : List (Nat × NodeId)) (hl : kdKs (HtP c w h) last.ks) (hi : kdPairs (HtP c w h) ins)
+    (ins : List (Nat × NodeId)) (hl : kdKs (HtP c H w h) last.ks) (hi : kdPairs (HtP c H w h) ins)
     (hfl : FlatAt c.i last.ks) :
-    NodeHt c w h (halves leaf c.i last ins).1 ∧ NodeHt c w h (halves leaf c.i last ins).2.1 := by
+    NodeHt c H w h (halves leaf c.i last ins).1 ∧ NodeHt c H w h (halves leaf c.i last ins).2.1 := by
   have hk := kdKs_halves leaf c.i (fun _ => ht_free c w h) hl hi
   have ht := ht_halves_time leaf c.i last ins
   have hf := halves_flatAt leaf c.i last ins (FlatAt.flat c.i last.ks hfl)
@@ -107,18 +109,18 @@ theorem nodeHt_halves {c : Ctx} {w : W} {h : Nat} (hpos : 0 < c.i) (leaf : Bool)
 
 /-- A new root above x and y, nodes of height h not taken back. -/
 theorem nodeHt_root {c : Ctx} {w : W} {x y : NodeId} {h : Nat} (hpos : 0 < c.i) (sc : Nat)
-    (hx : HtP c w (h + 1) 0 x) (hy : HtP c w (h + 1) sc y) :
-    NodeHt c w (h + 1) ⟨false, [.time c.i, .key 0 x, .key sc y]⟩ :=
+    (hx : HtP c H w (h + 1) 0 x) (hy : HtP c H w (h + 1) sc y) :
+    NodeHt c H w (h + 1) ⟨false, [.time c.i, .key 0 x, .key sc y]⟩ :=
   nodeHt_of_ks hpos ⟨_, rfl⟩ (kdKs_cons_time _ (kdKs_cons_key hx (kdKs_cons_key hy (kdKs_nil _))))
     (fun t ht => by simp at ht; omega)
 
 theorem ht_P_of {c : Ctx} {w : W} {y : NodeId} {h cv : Nat} (hy : w.taken.contains y = false)
-    (hh : HasHt c w y h) : HtP c w (h + 1) cv y :=
+    (hh : HasHt H w y h) : HtP c H w (h + 1) cv y :=
   ⟨hy, fun _ => by simpa using hh⟩
 
 /-- The version before the transaction keeps its heights. -/
-theorem nodeHt_toPrev {c : Ctx} {w : W} {h : Nat} {n : KNode} (hn : NodeHt c w h n) :
-    NodeHt c w h (n.toPrev (c.i - 1)) := by
+theorem nodeHt_toPrev {c : Ctx} {w : W} {h : Nat} {n : KNode} (hn : NodeHt c H w h n) :
+    NodeHt c H w h (n.toPrev (c.i - 1)) := by
   refine ⟨hn.2, ?_, fun t ht => hn.3 t ((prefixAt_prefix _ _).subset ht)⟩
   rw [ht_toPrev_toPrev]
   exact hn.2
@@ -163,8 +165,8 @@ theorem ht_addFold_times (i : Time) :
 
 /-- Key klongs added at the transaction's time, of the right height. -/
 theorem nodeHt_addFold {c : Ctx} {w : W} {h : Nat} {n : KNode} (hpos : 0 < c.i)
-    (hn : NodeHt c w h n) (ins : List (Nat × NodeId)) (hi : kdPairs (HtP c w h) ins) :
-    NodeHt c w h (ins.foldl (fun n (q : Nat × NodeId) => n.add c.i (.key q.1 q.2)) n) := by
+    (hn : NodeHt c H w h n) (ins : List (Nat × NodeId)) (hi : kdPairs (HtP c H w h) ins) :
+    NodeHt c H w h (ins.foldl (fun n (q : Nat × NodeId) => n.add c.i (.key q.1 q.2)) n) := by
   refine ⟨fun cv y hy => ?_, fun cv y hy => ?_, ?_⟩
   · rcases ht_live_addFold c.i ins n cv y hy with h1 | h1
     · exact hn.1 cv y h1
@@ -215,8 +217,8 @@ theorem ht_swapL_prefixAt {S : NodeId → Prop} (t : Time) :
       exact ⟨Or.inr ⟨a', y, y', rfl, rfl, hs⟩, ht_swapL_prefixAt t hrest⟩
 
 /-- A klong pointed to y, a node of the right height. -/
-theorem nodeHt_repoint {c : Ctx} {w : W} {h : Nat} {n : KNode} (hn : NodeHt c w h n) (j : Nat)
-    (y : NodeId) (hy : ∀ cv, HtP c w h cv y) : NodeHt c w h (n.repoint j y) := by
+theorem nodeHt_repoint {c : Ctx} {w : W} {h : Nat} {n : KNode} (hn : NodeHt c H w h n) (j : Nat)
+    (y : NodeId) (hy : ∀ cv, HtP c H w h cv y) : NodeHt c H w h (n.repoint j y) := by
   unfold KNode.repoint
   split
   · rename_i a y0 hj
@@ -238,7 +240,7 @@ theorem nodeHt_repoint {c : Ctx} {w : W} {h : Nat} {n : KNode} (hn : NodeHt c w 
 
 /-- A time split's node: klongs of the right height at the transaction's time. -/
 theorem nodeHt_flat {c : Ctx} {w : W} {h : Nat} {leaf : Bool} {ks : List Klong} (hpos : 0 < c.i)
-    (hf : FlatAt c.i ks) (hk : kdKs (HtP c w h) ks) : NodeHt c w h ⟨leaf, ks⟩ := by
+    (hf : FlatAt c.i ks) (hk : kdKs (HtP c H w h) ks) : NodeHt c H w h ⟨leaf, ks⟩ := by
   have htm := ht_flat_times hf
   obtain ⟨r, hr, _⟩ := hf
   exact nodeHt_of_ks hpos ⟨r, hr⟩ hk htm
@@ -255,10 +257,10 @@ theorem ht_replaceOrAdd (P : Nat → NodeId → Prop) (last : KNode) (ins : List
 
 /-- The heights a store of an overlay node needs, from its entry in `gh`. -/
 theorem ht_putNode_of (B x : NodeId) (n' : KNode) (c : Ctx) (vr vt w : W)
-    (n0 : KNode) (hb : Book B c w) (hi : HtInv B c w) (hl : vr.nodes.lookup x = some n0)
+    (n0 : KNode) (hb : Book B c w) (hi : HtInv H B c w) (hl : vr.nodes.lookup x = some n0)
     (hkr : HtLe vr w) (hleaf : n'.leaf = n0.leaf) (g h : Nat) (hm : (x, g, h) ∈ vt.gh)
-    (hkt : HtLe vt w) (hks : NodeHt c w h n') :
-    WriterWP (putNode x n') c w (fun _ v => Book B c v ∧ HtInv B c v ∧ HtLe w v ∧
+    (hkt : HtLe vt w) (hks : NodeHt c H w h n') :
+    WriterWP (putNode x n') c w (fun _ v => Book B c v ∧ HtInv H B c v ∧ HtLe w v ∧
       v.path = w.path ∧ v.nodes.lookup x = some n') := by
   obtain ⟨n1, hn1, hl1⟩ := hkr.1.1 x n0 hl
   refine writerWP_mono (ht_putNode B x n' c w hb hi n1 hn1 (hleaf.trans hl1.symm) ?_) ?_

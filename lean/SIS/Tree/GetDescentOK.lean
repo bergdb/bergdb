@@ -7,14 +7,13 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
-/-! The merges' descent inside a delete (bergdb 024-12, case (4); cost's
-`DescentOKF` without `MergePathCond`, whose clauses are facts of the merge, not
-of the state): `descendToHeight` reads only, keeps `DelInvF` and the books, and
-leaves the key access path linked from the space root, every node of it cached
-(`PathOK`). -/
+/-! The merges' descent inside a delete (bergdb 024-12, case (4); the descent's
+obligation, without conditions of the merge on the path): `descendToHeight`
+reads only, keeps `DelInvF` and the books, and leaves the key access path linked
+from the space root, every node of it cached (`PathOK`). -/
 
-/-- `DescentOKF` without `MergePathCond`: the descent keeps `DelInvF` and gives
-the path down to the node it stops at. -/
+/-- The merges' descent keeps `DelInvF` and gives the path down to the node it
+stops at. -/
 def DescentOKF2 (c : Ctx) (base : View BVal) (f : Nat) : Prop :=
   ∀ (w0 : W) (k0 key : Key) (g h : Nat) (v : W), DelInvF c base w0 k0 f v →
     WriterWP (descendToHeight key g h) c v (fun d v' => DelInvF c base w0 k0 f v' ∧
@@ -164,7 +163,7 @@ theorem pathOK_of_linked (c : Ctx) (base : View BVal) (w0 v : W) (ps : List (Opt
     exact hr.2.1 ▸ rfl
 
 /-- The merges' descent keeps `DelInvF` and gives the path down to the node it
-stops at (cost's `DescentOKF` without `MergePathCond`). -/
+stops at. -/
 theorem descentOKF2 (c : Ctx) (base : View BVal) (f : Nat) : DescentOKF2 c base f := by
   intro w0 k0 key g h v hD
   obtain ⟨hI, _, _, _, _, _, B, top0, hB, hbk⟩ := id hD
