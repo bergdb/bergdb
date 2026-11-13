@@ -156,6 +156,8 @@ import SIS.Tree.GetNewRoot
 import SIS.Tree.GetDelRoot
 import SIS.Tree.GetAssembly
 import SIS.Tree.GetCaseBridge
+import SIS.Tree.GetOpAssembly
+import SIS.Tree.GetOpCases
 import SIS.Tree.WriterTreeInnerHalves
 import SIS.Tree.WriterTreeSpaceSpace
 import SIS.Tree.WriterTreeDelFull
