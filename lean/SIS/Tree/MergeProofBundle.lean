@@ -297,3 +297,5 @@ import SIS.Tree.DelStepsEmpty
 import SIS.Tree.TakeMergeFull
 import SIS.Tree.TakeMergeTail
 import SIS.Tree.TakeMergeAny
+import SIS.Tree.TakeFullLast
+import SIS.Tree.DelStepsFull
