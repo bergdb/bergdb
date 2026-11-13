@@ -56,7 +56,7 @@ import bergdb.stream.SalsaStream;
  * Keys.toBytes(); FileStream and MemoryStream as a stream for DbBuilder; and the exceptions
  * that their Javadoc names. Everything else that is reachable from them is internal, whatever
  * is public, and may change without notice: among others Db.internal() and Db.Internal,
- * Db.ExecuteData, Db.TestHooks, Db.StartParams and the listeners, lookupTime(),
+ * Db.ExecuteData, Db.TestHooks, TestNodeSize, Db.StartParams and the listeners, lookupTime(),
  * checkNodes(), the members that their Javadoc calls internal or for tests, Trans's other
  * fields, GetMany.Chain, and the stream classes beyond making a stream.</p>
  * 
@@ -93,9 +93,12 @@ import bergdb.stream.SalsaStream;
  * DbBuilder.build() throws, before a Db is made, does the application close the stream with
  * its close()). FileStream's constructor throws IOException, a DirectoryInUseException for a
  * directory that another stream has open. The builder's defaults: the system clock
- * (currentTime()), a cache budget of 200 MB, a startup distance of 50 MB and the maximum node
- * size 30; of its other methods, id() and createdTxt() are the Pub API's, the rest for tests.
- * An example with keys and values of bytes, which writes, reads and closes:</p>
+ * (currentTime()), a cache budget of 200 MB and a startup distance of 50 MB; of its other
+ * methods, id() and createdTxt() are the Pub API's, the rest for tests. The maximum node size,
+ * the most klongs of a node of the index, is 30 for every database, by this API and the Pub
+ * API, with no method to set it (bergdb 026-08): the stream keeps it, and a start refuses a
+ * database of another size, as BergDB's own tests make at 8, 14 and 62. An example with keys
+ * and values of bytes, which writes, reads and closes:</p>
  * <pre>{@code
  * try (Db db = Db.builder().mainStream(new FileStream(new File("mydb"))).start()) {
  *     byte[] key = {0x10, 0x20};
@@ -1011,8 +1014,8 @@ public class Db implements AutoCloseable {
      * @throws StreamIoException
      * @throws StreamFormatException
      *             Among others, if the database has another maximum node size than this
-     *             start, or none, as one written before 2026-10-27 (bergdb 005-50); the
-     *             start then writes nothing.
+     *             start, 30 but in BergDB's own tests (bergdb 026-08), or none, as one
+     *             written before 2026-10-27 (bergdb 005-50); the start then writes nothing.
      * @throws DatabaseNotCreatedException
      *             If the stream holds a creation that did not complete, and no committed
      *             transaction (bergdb 005-33). The start writes nothing.
@@ -1046,8 +1049,8 @@ public class Db implements AutoCloseable {
      * @throws StreamIoException
      * @throws StreamFormatException
      *          Among others, if the database has another maximum node size than this
-     *          start, or none, as one written before 2026-10-27 (bergdb 005-50); the start
-     *          then writes nothing.
+     *          start, 30 but in BergDB's own tests (bergdb 026-08), or none, as one written
+     *          before 2026-10-27 (bergdb 005-50); the start then writes nothing.
      * @throws DatabaseNotCreatedException
      *          If the stream holds a creation that did not complete, and no committed
      *          transaction (bergdb 005-33). The start writes nothing.
@@ -1533,7 +1536,10 @@ public class Db implements AutoCloseable {
      * with it, which splits nodes otherwise, and failed with what looked like a corrupt
      * stream ("node ... not found"); or it started, and the stream it then wrote could not
      * be started again, with either size (bergdb 005-50, question 3). A size above
-     * Dag.MAX_NODE_SIZE, 62, is refused as a damaged block (bergdb 024-19, Q6).
+     * Dag.MAX_NODE_SIZE, 62, is refused as a damaged block (bergdb 024-19, Q6). A user's
+     * start has the size 30, the only one of a user's database since bergdb 026-08; the sizes
+     * 8, 14 and 62 are for BergDB's own tests (DbBuilder.maxNodeSize8()), and the meta block's
+     * field is kept, written and checked, as a hook for a later release that allows others.
      *
      * @throws StreamFormatException
      * @throws VersioningStreamException  no size: a database written before 2026-10-27
@@ -1558,10 +1564,10 @@ public class Db implements AutoCloseable {
         }
         if (size != maxNodeSize) {
             throw new StreamFormatException("The database's maximum node size is " + size
-                    + ", and this start uses " + maxNodeSize + ". A database must be started "
-                    + "with the node size it was created with: " + size + ", DbBuilder."
-                    + "maxNodeSize" + size + "() (the Pub API uses 30). The start has written "
-                    + "nothing (bergdb 005-50).");
+                    + ", and this start uses " + maxNodeSize + ". BergDB makes and starts "
+                    + "databases of the node size 30 (bergdb 026-08); the other sizes are for "
+                    + "BergDB's own tests, and a database made at one starts only with it. The "
+                    + "start has written nothing (bergdb 005-50).");
         }
     }
     

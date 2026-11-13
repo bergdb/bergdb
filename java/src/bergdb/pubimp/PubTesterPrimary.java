@@ -7,6 +7,7 @@ import java.util.NoSuchElementException;
 import bergdb.common.StringUtil;
 import bergdb.core.Db;
 import bergdb.core.DbConstants;
+import bergdb.core.TestNodeSize;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
@@ -989,7 +990,7 @@ public class PubTesterPrimary {
     @Nano
     public static void testScanBehindCut() {
         TestClock clock = new TestClock();
-        Db core = Db.builder().testSetup(new CutStream()).clock(clock).maxNodeSize8()
+        Db core = TestNodeSize.builder(8).testSetup(new CutStream()).clock(clock)
                 .startupDistance(2000).build();
         Database d = DatabaseImp.createAndStart(core);
         try {
