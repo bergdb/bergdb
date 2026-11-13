@@ -92,4 +92,18 @@ theorem T4_debt_tree (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK 
         (changeAt sp al ts τ).touch.length)).sum :=
   debt_tree_exact sp al ts hok hex hv htree n0 h0
 
+/-- T4's debt with restarts: in a run with restarts (crashes and startups)
+after any transactions (`runRestarts`) whose transactions meet the assumptions,
+with the exact still-dirty test and a written root, every node x of D is on the
+access path of a change of the last lev(x) + 1 startup sections, as in
+`T4_debt`. The records are the run's (`T2_restart`), so `T4_records` holds for
+them as it is. -/
+theorem T4_debt_restarts (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool))
+    (hok : RunOK sp al (ts.map (·.1))) (hex : al.stillDirty = exactTest sp)
+    (hv : sp.virt = false) :
+    let db := runRestarts sp al ts
+    ∀ e ∈ db.D, ∃ τ, spIter db.S (levelOf db.P e.1 + 1) ts.length < τ ∧ τ ≤ ts.length ∧
+      onAccessPath sp al (ts.map (·.1)) τ e.1 :=
+  debtByChanges_restarts sp al ts hok hex hv
+
 end SIS

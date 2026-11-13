@@ -269,6 +269,7 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
     #print axioms SIS.T4_debt
     #print axioms SIS.T4_debt_count
     #print axioms SIS.T4_debt_tree
+    #print axioms SIS.T4_debt_restarts
     #print axioms SIS.coldReads_lazy
     #print axioms SIS.coldReads_handles
     #print axioms SIS.coldReads_run
@@ -532,7 +533,7 @@ its section in sis-model.md.
   (`T4_debt`), the debt counted by the access paths of the last H + 1
   sections, for nodes of D on levels up to H (`T4_debt_count`), and with
   TREE after every transaction by the changes of those sections
-  (`T4_debt_tree`).
+  (`T4_debt_tree`); the debt with restarts (`T4_debt_restarts`).
 * SIS/BoundT4Example.lean (bergdb item 007): T4 by running, a run with the
   exact test where a node of D has its last change below it three sections
   back, so 007-01's "about the last two sections" fails, and
@@ -1185,7 +1186,7 @@ run):
   `T3_take`, `T3_take_restarts`, `T3_take_decrease`,
   `T3_take_decrease_restarts`, `T3_take_rerun`, `T3_take_reads`; 007-08);
   T4 (`T4_record`, `T4_records`, `T4_ends`, `T4_debt`, `T4_debt_count`,
-  `T4_debt_tree`; 2026-11-13); a cold start's reads (`coldReads_lazy`,
+  `T4_debt_tree`, `T4_debt_restarts`; 2026-11-13); a cold start's reads (`coldReads_lazy`,
   `coldReads_handles`, `coldReads_run`; 2026-11-13).
 
 Checked by running: the `#guard`s of `lake build`, the random runs of
