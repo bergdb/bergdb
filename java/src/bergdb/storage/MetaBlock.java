@@ -18,11 +18,11 @@ import bergdb.nanotest.Nano;
  * 4       4       Version of BergDB stream format, an int (154 for this version). Until
  *                 2026-11-05 it was read as an unsigned short, so bytes 6 and 7 were not
  *                 checked; every version of BergDB writes 0 there (bergdb 019-01).
- * 8       8       time, database time as a long.
+ * 8       8       time, the creation's time as a long, set once (Db.writePrimordialTransaction).
  * 16      8       lastTrans, spos of last valid transaction completely written
  *                 before the meta block.
  * 24     16       Database ID. 128 random bits, used as unique database ID.
- * 40      4       startupDistance in bytes. Typically 20M.
+ * 40      4       startupDistance in bytes, the setting in force; 50 MB by default (DbBuilder).
  * 44      2       maxNodeSize, the maximum node size of the database, an unsigned short:
  *                 30 in every database a user makes (bergdb 026-08), 8, 14 or 62 in some
  *                 that BergDB's own tests make; a start with another size is refused, and
@@ -63,7 +63,7 @@ public class MetaBlock {
     private long pos;         // stream pos, only used sometimes
     
     /**
-     * Creates a new MetaBlock with startPos = 0.
+     * Creates a new MetaBlock with lastTrans -1: no record yet.
      */
     public MetaBlock() {
         pos = -1;

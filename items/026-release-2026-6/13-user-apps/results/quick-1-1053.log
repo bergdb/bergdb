@@ -1,0 +1,38 @@
+== BackToEmpty 1 30 20000 3 data/b1 8000
+10:53:27 round 0 drive: kept at the end 2238 kB, twin 3025 kB (twin's largest 3179 kB), lag 1340 (R 500, lag/R 2.68), live 178
+10:53:29 round 1 drive: kept at the end 3271 kB, twin 4475 kB (twin's largest 5445 kB), lag 1045 (R 1000, lag/R 1.05), live 1
+10:53:30 round 2 maintain() only: kept at the end 340 kB, twin 35 kB (twin's largest 35 kB), lag not reached in 4000 (R 500, lag/R 8.00), live 176
+10:53:30 OK BackToEmpty seed 1 node 30 keys 20000: 12459 transactions, 7 restarts, 55 checks, 4875 ms
+  round 0, delete mode 3, drive: kept at the end 2238 kB, twin 3025 kB (twin's largest 3179 kB), lag 1340 (R 500, lag/R 2.68), live 178
+  round 1, delete mode 0, drive: kept at the end 3271 kB, twin 4475 kB (twin's largest 5445 kB), lag 1045 (R 1000, lag/R 1.05), live 1
+  round 2, delete mode 3, maintain() only: kept at the end 340 kB, twin 35 kB (twin's largest 35 kB), lag not reached in 4000 (R 500, lag/R 8.00), live 176
+== Transform 1 20 data/b2 30
+10:53:50 commits 98583, refusals 31099 {vt-throws=4440, vt-throws-once=4395, vt-over-L4=4368, kt-over-L2=4422, vt-over-L5=4493, kt-throws=4559, kt-duplicate=4422}, reruns 4395, plain 19638, reads 24189433, stream 638355344, first available pos 579637608
+10:53:51 commits 99618, refusals 31439 {vt-throws=4491, vt-throws-once=4438, vt-over-L4=4421, kt-over-L2=4471, vt-over-L5=4535, kt-throws=4626, kt-duplicate=4457}, reruns 4438, plain 19936, reads 24510135, stream 648690208, first available pos 579637608
+10:53:51 end: all ranges, counters and logs as the oracle
+10:53:51 after restart: all ranges, counters and logs as the oracle
+10:53:51 after the refusals alone: all ranges, counters and logs as the oracle
+10:53:51 probe, a null result over a value: committed over a value; the key reads null, at the transaction's time less one 09; getTrans lists 1 value nodes
+10:53:51 probe, after a restart the key reads null
+10:53:51 probe, a value transformation that returns null: committed; the key reads null
+10:53:51 probe, an Error from a value transformation: the Error as it is; then a read throws DbFailedException
+10:53:51 after the probes and a restart: all ranges, counters and logs as the oracle
+10:53:51 OK Transform seed 1 node 30: 99618 transformer commits, 31439 refusals {vt-throws=4491, vt-throws-once=4438, vt-over-L4=4421, kt-over-L2=4471, vt-over-L5=4535, kt-throws=4626, kt-duplicate=4457}, 4438 reruns, 19936 plain transactions, 24510135 group reads, 20587 ms
+== Buffers many 1 60 30 data/b3
+10:53:53 opened 60 databases; heap used 38 MB
+10:54:08 bursts 449, transactions 68131, 528 MB, gaps near 2 s 334, reopens 46, spare cycles 49, heap used 646 MB
+10:54:23 bursts 935, transactions 141318, 956 MB, gaps near 2 s 809, reopens 89, spare cycles 114, heap used 1370 MB
+10:54:41 heap: 187 MB 10 s after the writes, 186 MB after a close and an open of each (3022 kB a database)
+10:54:41 heap: 5 MB all closed, 41 MB with 60 open (601 kB a database), 376 MB 0.3 s after a fast write to each (5592 kB a database more), 187 MB 3.5 s after (2444 kB a database more than when opened)
+10:54:47 OK Buffers many seed 1: 60 databases, 936 bursts, 141334 transactions, 963 MB, 809 gaps of 1.5 to 2.5 s, 89 reopens, 114 open-write-close cycles, buffers' heap after 3.5 s idle 23 kB a database, 56 s
+== KeyLimits 1 5000 data/b4
+10:54:49 Core: 864 String keys taken of 1350
+10:54:49 OK KeyLimits seed 1: 2146 taken, 913 refused for length, 1387 bad form, 594 deletes, 2300 messages compared, 153 key-replace puts, 2233 keys kept, 890 ms
+== KillEmpty parent 1 data/b5 12 6 2500
+10:55:10 OK KillEmpty seed 1: 12 kills (1 aimed at the start), 1 clean exits, 3 databases, 12 recoveries checked, 20 s
+== Buffers kill 1 data/b3k 6 8
+10:55:32 OK Buffers kill seed 1: 6 kills, 8 databases, 3408 committed transactions seen, 0 databases lost a transaction committed 2 s or more before the kill, 22 s
+== IndexChurn 1 2000 data/a6 1000
+10:55:38 tx 999: live 1168, restarts 2, checks 2349, old ok 54, cut 0, first available 0
+10:55:47 tx 1999: live 1261, restarts 5, checks 4727, old ok 108, cut 2, first available 17780000241670001
+10:55:47 OK IndexChurn seed 1: 2000 transactions, 5 restarts, 4814 checks, old reads 110 ok and 2 cut, live 1261, 14788 ms

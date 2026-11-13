@@ -520,9 +520,6 @@ public class DbStarter {
     }
 
     /**
-     * @throws AssertionError
-     */
-    /**
      * Rule 4 (bergdb item 001, WP R8, change 1; the Lean model's `HMem.linkD`;
      * bergdb 001-08, M44): every stream pointer of the canonical object of a
      * node of D that names a node with a canonical object gets that node's handle.
@@ -536,7 +533,8 @@ public class DbStarter {
      * versions (byPos); see NodeCollection.linkToCanonical. Before, it read the header at
      * each pointer's position to learn the node's id: a random read for each stream
      * pointer of D, most of a cold startup (007-05). When assertions are on, so in every
-     * test, each pointer is also found by node id, with that read, and a difference fails:
+     * test, each pointer is also found by node id, with that read, and a difference throws
+     * an AssertionError, or a StreamFormatException for a damaged prevPos (checkLinkById):
      * 005-57's argument checked at every startup of the tests.</p>
      */
     private void linkD() {
