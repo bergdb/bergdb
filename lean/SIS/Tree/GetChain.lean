@@ -1039,6 +1039,7 @@ def TimeSplitAfterIns (c : Ctx) (w w' : W) (L q : NodeId) (n qn : KNode) (k1 : N
       else if x = w.next then some ⟨n.leaf, l.ks⟩
       else w.nodes.lookup x
 
+set_option linter.unusedSimpArgs false in
 theorem writerWP_handleFullWith_timeSplitIns (d' : Nat) (L q : NodeId) (n qn : KNode)
     (k1 : Nat) (ins : List (Nat × NodeId)) (compact : Bool) (c : Ctx) (w : W)
     (hlk : w.nodes.lookup L = some n) (hlq : w.nodes.lookup q = some qn)
@@ -1078,7 +1079,8 @@ theorem writerWP_handleFullWith_timeSplitIns (d' : Nat) (L q : NodeId) (n qn : K
           (fun _ w' => TimeSplitAfterIns c w w' L q n qn k1 ins) := by
       intro l hl_leaf hl_wf hl_times hl_look w2 h2t h2top h2v h2n
       have hlk2 : w2.nodes.lookup L = some n := by
-        rw [h2n, lookup_upsert, if_neg (fun h => hqL h.symm), List.lookup_append, hlk]
+        rw [h2n, lookup_upsert]
+        simp only [show L ≠ q from fun h => hqL h.symm, ↓reduceIte, List.lookup_append, hlk]
         rfl
       simp only [writerWP_bind]
       rw [writerWP_getNode_known L n c w2 hlk2]
