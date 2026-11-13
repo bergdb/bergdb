@@ -196,7 +196,35 @@ Log: `/Users/f/fl/bench/2026-11-13/wb/many.log`.
 
 ### 5.3 Write throughput
 
-PLACEHOLDER
+`performance.sh ab base-ee5712c5 wb-c8b81d9e` (preserved builds of
+`main` at `ee5712c5` and of this change; ABBA; both slots held with
+take-timing, 08:57 to 09:11; `FORCE=1`: the machine was 75 % idle,
+`mediaanalysisd` at one core and another session's `tracecheck`, so
+the results are not a reference, as in 024-33). The quick suite, and
+`07-write-buffer/large-tx.suite`: transactions of 1 MB (100 values of
+10 kB) and of 20 MB (200 values of 100 kB, twice the largest buffer),
+and durable commits from 16 threads. Medians of 3 runs:
+
+| Scenario, metric             | main      | 026-07    | Change |
+|---|---|---|---|
+| w-uni-1k-inf, commits/s      | 216,666   | 233,278   | +7.7 % |
+| w-uni-1k-fin, commits/s      | 135,185   | 135,155   | -0.0 % |
+| r-1k-fin, mix commits/s      | 105,043   | 104,637   | -0.4 % |
+| read-1k, get_latest ops/s    | 1,194,690 | 1,203,190 | +0.7 % |
+| w-tx-1m, MB/s                | 452.7     | 451.0     | -0.4 % |
+| w-tx-20m, MB/s               | 425.2     | 420.5     | -1.1 % |
+| d-1k-t16, durable commits/s  | 1,437.8   | 1,462.1   | +1.7 % |
+
+Both comparisons: NO ALERTS. One "EXPLAIN": r-1k-fin's
+`prepare.commit.append.max_us`, 43.7 ms against 124.4 ms; per run
+main 43.7, 40.8, 137.7 and 026-07 50.2, 135.7, 124.4 ms. The largest
+commit is the one a GC pause of the harness falls in (G1, 8 GB:
+`gclog.pause.max_ms` 140 to 168 ms in the write scenarios, the same on
+both sides; w-uni-1k-fin, the same workload, 140.1 against 129.5 ms):
+noise, not the grow. w-tx-1m and w-tx-20m's largest commit: 20.4
+against 15.7 ms and 55.4 against 54.6 ms. Heap after GC, the largest:
+the same within 4 %. Logs: `/Users/f/fl/bench/2026-11-13/wb/perf-quick.log`,
+`perf-largetx.log`; the sessions in the clone's `java/build/perf/runs/`.
 
 
 ## 6. The heap measures of the harness: MEM and G4, G5
@@ -244,10 +272,12 @@ moved when it became a transient:
 | `count-gates.sh all`         | `c9ce76de` | COUNT GATES OK (G4 1.423, G5 1.597)     |
 | `before-commit.sh`           | `c9ce76de` | BEFORE COMMIT OK (75 s)                 |
 | `level1.sh`                  | `c9ce76de` | LEVEL 1 OK: MEM 129, SEG 226.5, MEM10M 127.1 |
+| `before-commit.sh`           | `b7f6b1c3` | BEFORE COMMIT OK (65 s), main merged    |
+| `level1.sh`                  | `b7f6b1c3` | LEVEL 1 OK: MEM 129, SEG 226.9, MEM10M 127.0 |
 
 Logs in `/Users/f/fl/bench/2026-11-13/wb/`: `before-commit.log`,
 `level1.log`, `count-all-final.log`, `before-commit2.log`,
-`level1-2.log`; G4, G5 on the way: `count-g4-new.log`,
+`level1-2.log`, `before-commit3.log`, `level1-3.log`; G4, G5 on the way: `count-g4-new.log`,
 `count-g5-new.log`, `count-g5-base.log`, `count-g5-new2.log`,
 `count-g4-final.log`, `count-g5-final.log`. The timing comparison:
 section 5.3.
@@ -275,15 +305,11 @@ section 5.3.
 
 ## 9. State
 
-2026-11-13, 08:40. Clone `/Users/f/fl/bench/2026-11-13/wb/clone`, branch
-`026-07-write-buffer`, from `main` at `ee5712c5`. Commits: `c8b81d9e`
-(the buffer that grows, its tests, the Javadoc), `c9ce76de` (MEM and
-G4, G5's heap measures, section 6), and this item. Done: the code, the
-heap measurements (section 5.1, 5.2), the first gates (section 7).
-Not done yet: the gates on the head, the timing comparison (section
-5.3; preserved builds `base-ee5712c5` and `wb-c8b81d9e` in the clone's
-`java/build/perf/builds/`, the script
-`/Users/f/fl/bench/2026-11-13/wb/timing.sh` runs both suites with
-take-timing). To continue: run `timing.sh` in the background, fill
-section 5.3 from `perf-quick.log` and `perf-largetx.log` in
-`/Users/f/fl/bench/2026-11-13/wb/`, then the readme's Files line.
+2026-11-13, 09:15. **Done, ready to land.** Clone
+`/Users/f/fl/bench/2026-11-13/wb/clone`, branch `026-07-write-buffer`:
+`c8b81d9e` (the buffer that grows, its tests, the Javadoc), `c9ce76de`
+(MEM and G4, G5's heap measures, section 6), the item, `b7f6b1c3`
+(main merged at `20535a1d`, 026-06), and this item's last commit. Gates
+on `b7f6b1c3` (section 7): before-commit and level1 OK; count-gates OK
+on `c9ce76de`; timing compared (section 5.3). Open: Q1 to Q4 for
+Frans (section 8). The coordinator lands the branch.
