@@ -122,3 +122,10 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
   - 028-08 to 028-10 evaluated with tests, 028-11's texts (P5 for Frans); 028-03, 028-05, 028-06 (Javadoc); 026-09 (keys-only scan) until 15:00;
   - after 20:00: 007-09 brought up to date (the review, the Java-test and height results, t44);
   - about 20:15: `java/night.sh` on main (013-01); quiet from 22:00; the morning's summary in news.md from 06:00.
+* 13:22 026-09 (reclaim's keys-only scan) finished on its branch (`026-09-keys-only-scan`, 7ae4b857, all gates passed), not landed: it changes reclaim and an existing gate's limit, and its 10M numbers are mixed (loads 44 to 60 % fewer, stream written 1.2 to 4.4 % more), so it waits for Frans.
+
+For Frans to decide
+-------------------
+
+1. 026-09: land the keys-only scan (Q1), G5's dead-klong limit from the twin's plus 30 to plus 70 (Q2), the new StreamDigest digests (Q3), `GetMany.valuesBefore` public (Q4). Recommended by its agent: yes to all four. The coordinator's view: land, with the 10M stream-written cost named in the item; the timing pass of 026-04 then shows the net effect. Read: 026-09, items/026-release-2026-6/09-keys-only-scan.md on its branch (clone /Users/f/fl/bench/2026-11-13/kscan/clone).
+2. 028-04: a null result of a value transformation deletes the key: document it (recommended) or refuse it.
