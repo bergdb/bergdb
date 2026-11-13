@@ -1224,7 +1224,17 @@ same klongs but for pointers (`KNode.shapeOf`: size, bitmap, bits, dead count
 and LE-b's node alike, so the room premises carry over), and its live klongs
 but the chain's are the node's (`KNode.retarget_liveAt_ne`, from `oneLink`).
 Its limits: the merges off, root collapse at another segment a premise
-(`hcollSeg`). `InnerChildrenExist` (`ChildrenExist.lean`) is the Prop agreed
+(`hcollSeg`). Root collapse at any segment (`WriterGetCollapseLoop.lean`): the
+loop keeps any invariant that its descent, its node read and its two steps keep
+(`writerWP_collapseRoot_inv`); the descent rebuilds the path as steps linked from
+the space root (`writerWP_descendToSegmentRoot_linked`, `SegDesc`); a step at a
+segment root keeps `CollGetInv` (`collGetInv_segStep`: every path after is one
+before, no shorter, `segCollapse_pathLen`), the take-back and, with room in the
+segment leaf, the replacement (`writerWP_takeBackRoot_seg_coll`,
+`writerWP_replaceRoot_seg_coll`); so `writerWP_collapseRoot_coll` with a caller's
+invariant J and room in the leaf (`hroom`). A full leaf (the cascade, which
+latest's `writerWP_appendKlongs_chainGR` reads) is not taken: `CollGetInv` needs
+the paths within the fuel after it, which no cascade lemma states yet. `InnerChildrenExist` (`ChildrenExist.lean`) is the Prop agreed
 with prover putinv, who proves it for the writer's states.
 Not yet: the whole put and delete around the cascade; a merge whose parent is
 full or compacted;

@@ -185,6 +185,7 @@ import SIS.Tree.WriterGetUpT
 import SIS.Tree.WriterGetUpLeb
 import SIS.Tree.WriterGetUpAll
 import SIS.Tree.WriterGetUpTake
+import SIS.Tree.WriterGetCollapseLoop
 import SIS.Tree.RangeSim
 import SIS.Tree.RangeChain
 import SIS.Tree.RangePut
