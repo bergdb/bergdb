@@ -1,4 +1,5 @@
 import SIS.Tree.GetLatest
+import SIS.Tree.ScanLatest
 import SIS.Tree.WriterWP
 import SIS.Tree.MergeProps
 import SIS.Tree.MergeOpBoundProof
@@ -79,26 +80,32 @@ theorem getFrom_eq_getFromR (p : Params) (v : View BVal) (t : Time) (key : List 
 /-! ## Reading through the writer's state -/
 
 /-- Key node x as the writer's state w has it at the transaction's time: none
-if the transaction took it back; else its own copy, if it has one; else P@(i-1)'s
-(`getNode`). -/
-def wNode (c : Ctx) (w : W) (x : NodeId) : Option KNode :=
+if the transaction took it back; else its own copy, if it has one; else the
+base's (P before the transaction). -/
+def wNode (p : Params) (base : View BVal) (w : W) (x : NodeId) : Option KNode :=
   if w.taken.contains x then none
   else
     match w.nodes.lookup x with
     | some n => some n
-    | none => knodeOf c.p c.view x
+    | none => knodeOf p base x
 
 /-- The value of node y as the writer's state w has it: a value it made, or
-P@(i-1)'s. -/
-def wValue (c : Ctx) (w : W) (y : NodeId) : Option Nat :=
+the base's. -/
+def wValue (base : View BVal) (w : W) (y : NodeId) : Option Nat :=
   match w.vals.lookup y with
   | some h => some h
-  | none => valueOf c.view y
+  | none => valueOf base y
 
-/-- A get at the transaction's time through the writer's state w, from its
-super root's space root. -/
-def wGet (c : Ctx) (w : W) (key : Key) : Option Nat :=
-  getFromR (wNode c w) (wValue c w) c.i c.p.fuel key w.top.rootKey
+/-- A get at time i through the writer's state w over the base, from its super
+root's space root. -/
+def wGet (p : Params) (i : Time) (base : View BVal) (w : W) (key : Key) : Option Nat :=
+  getFromR (wNode p base w) (wValue base w) i p.fuel key w.top.rootKey
+
+/-- A get through the writer's state w of the transaction after the run ts: at
+the transaction's time, over P before it (`treeRun p ts`, all of it: the writer
+itself reads only what is reachable at the time before). -/
+def runGet (p : Params) (ts : List Tx) (w : W) (key : Key) : Option Nat :=
+  wGet p (ts.length + 1) (viewOf (treeRun p ts)) w key
 
 /-- The writer's context for the transaction after the run ts (`runOps`). -/
 def ctxOf (p : Params) (ts : List Tx) : Ctx :=
@@ -109,14 +116,14 @@ def wInit (tx : Tx) (top : Top) : W := { next := tx.base, top := top }
 
 /-! ## The three statements -/
 
-/-- The writer's first state reads as P at the time before: through P@(i-1)
-without the root, from the space root of the super root it takes. -/
+/-- The writer's first state reads as P at the time before: from the space
+root of the super root it takes. Proved: `initGetOK`. -/
 def InitGetOK (p : Params) : Prop :=
   ∀ ts tx, Within p (ts ++ [tx]) → ∀ z top,
     lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z →
     topOf p (ctxOf p ts).view z = .ok top →
     ∀ key, keyWf key = true →
-      wGet (ctxOf p ts) (wInit tx top) key = get p (viewOf (treeRun p ts)) ts.length key
+      runGet p ts (wInit tx top) key = get p (viewOf (treeRun p ts)) ts.length key
 
 /-- Each operation of a transaction within reach changes what the writer's
 state reads by itself alone: its key gets its value (a put's, none after a
@@ -130,17 +137,124 @@ def OpGetOK (p : Params) : Prop :=
     ∀ pre op post, tx.ops = pre ++ op :: post →
     ∀ r w, (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
     WriterWP (putKv op) (ctxOf p ts) w (fun _ w' => ∀ key, keyWf key = true →
-      wGet (ctxOf p ts) w' key =
-        if op.key == key then op.value else wGet (ctxOf p ts) w key)
+      runGet p ts w' key = if op.key == key then op.value else runGet p ts w key)
 
 /-- The structure after a transaction reads at its time as the writer's last
-state: the lift of the writer's state through `changesOf` and `Struct.apply`. -/
+state: the lift of the writer's state through `changesOf` and `Struct.apply`.
+Not proved. -/
 def CommitGetOK (p : Params) : Prop :=
   ∀ ts tx, Within p (ts ++ [tx]) → ∀ noops w,
     runOps p tx.base tx.ops (ts.length + 1) (view (treeSpec p) (treeRun p ts) ts.length) =
       .ok (noops, w) →
     ∀ key, keyWf key = true →
-      get p (viewOf (treeRun p (ts ++ [tx]))) (ts.length + 1) key = wGet (ctxOf p ts) w key
+      get p (viewOf (treeRun p (ts ++ [tx]))) (ts.length + 1) key = runGet p ts w key
+
+/-! ## The writer's first state -/
+
+theorem view_some (p : Params) (P : Struct BVal) (t : Time) (x : NodeId) (nd : Node BVal)
+    (h : view (treeSpec p) P t x = some nd) :
+    ∃ nd0, P.get? x = some nd0 ∧ nd = { nd0 with hist := nd0.hist.upTo t } := by
+  unfold view at h
+  split at h
+  · cases h0 : P.get? x with
+    | none => rw [h0] at h; cases h
+    | some nd0 =>
+      rw [h0] at h
+      cases h
+      exact ⟨nd0, rfl, rfl⟩
+  · cases h
+
+theorem upTo_of_timesLE (P : Struct BVal) (t : Time) (hP : StructTimesLE P t) (x : NodeId)
+    (nd : Node BVal) (h : P.get? x = some nd) : nd.hist.upTo t = nd.hist :=
+  List.filter_eq_self.mpr (fun e he => by
+    have := hP _ (get?_mem P x nd h) e he
+    simp only [decide_eq_true_eq]
+    exact this)
+
+theorem findSome_rootKey (h : History BVal) (t : Time) (y : NodeId)
+    (hf : h.findSome? (fun e => match e.val with
+      | .rootKey y => some (e.time, y)
+      | _ => none) = some (t, y)) :
+    h.findSome? (fun e => match e.val with
+      | .rootKey y => some y
+      | _ => none) = some y := by
+  induction h with
+  | nil => simp at hf
+  | cons e h ih =>
+    rw [List.findSome?_cons] at hf ⊢
+    cases hv : e.val with
+    | rootKey y' =>
+      simp only [hv] at hf ⊢
+      simp only [Option.some.injEq, Prod.mk.injEq] at hf
+      rw [hf.2]
+    | key c y' => simp only [hv] at hf ⊢; exact ih hf
+    | del cs => simp only [hv] at hf ⊢; exact ih hf
+    | skip j z => simp only [hv] at hf ⊢; exact ih hf
+    | top z => simp only [hv] at hf ⊢; exact ih hf
+    | data d => simp only [hv] at hf ⊢; exact ih hf
+
+/-- The space root that the writer's super root names is P's at the time
+before. -/
+theorem rootAt_of_writerTop (p : Params) (ts : List Tx) (z : NodeId) (top : Top)
+    (hz : lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z)
+    (htop : topOf p (ctxOf p ts).view z = .ok top) :
+    rootAt (viewOf (treeRun p ts)) ts.length = some top.rootKey := by
+  have hP := treeRun_timesLE p ts
+  unfold lastTop at hz
+  cases hv : view (treeSpec p) (treeRun p ts) ts.length root with
+  | none => rw [hv] at hz; cases hz
+  | some r =>
+    rw [hv] at hz
+    obtain ⟨nd0, h0, hr⟩ := view_some p _ _ _ _ hv
+    subst hr
+    simp only at hz
+    have htopAt : topAt (viewOf (treeRun p ts)) ts.length = some z := by
+      unfold topAt
+      simp only [viewOf, h0]
+      exact hz
+    unfold rootAt
+    rw [htopAt]
+    simp only [Option.bind_some]
+    unfold topOf at htop
+    simp only [ctxOf, rootless] at htop
+    by_cases hzr : (z == root) = true
+    · simp only [hzr, ↓reduceIte] at htop
+      cases htop
+    · simp only [hzr, Bool.false_eq_true, ↓reduceIte] at htop
+      cases hvz : view (treeSpec p) (treeRun p ts) ts.length z with
+      | none => rw [hvz] at htop; cases htop
+      | some ndz =>
+        rw [hvz] at htop
+        obtain ⟨ndz0, hz0, hzr0⟩ := view_some p _ _ _ _ hvz
+        subst hzr0
+        simp only at htop
+        rw [upTo_of_timesLE _ _ hP z ndz0 hz0] at htop
+        unfold rootKeyOf
+        simp only [viewOf, hz0, Option.bind_some]
+        split at htop
+        · rename_i t y hf
+          simp only [Except.ok.injEq] at htop
+          subst htop
+          exact findSome_rootKey ndz0.hist t y hf
+        · cases htop
+
+/-- `InitGetOK`, proved: the writer's first state reads at the transaction's
+time as P at the time before. -/
+theorem initGetOK (p : Params) : InitGetOK p := by
+  intro ts tx _ z top hz htop key _
+  have hroot := rootAt_of_writerTop p ts z top hz htop
+  have hn : wNode p (viewOf (treeRun p ts)) (wInit tx top) = knodeOf p (viewOf (treeRun p ts)) := by
+    funext x
+    simp [wNode, wInit]
+  have hval : wValue (viewOf (treeRun p ts)) (wInit tx top) = valueOf (viewOf (treeRun p ts)) := by
+    funext y
+    simp [wValue, wInit]
+  unfold runGet wGet
+  rw [hn, hval, ← getFrom_eq_getFromR,
+    getFrom_succ_of_timesLE p _ ts.length (treeRun_timesLE p ts)]
+  unfold get
+  rw [hroot]
+  rfl
 
 /-! ## The composition -/
 
@@ -179,8 +293,8 @@ theorem txGet_fold (p : Params) (ho : OpGetOK p) (ts : List Tx) (tx : Tx)
       (done.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
       ∀ r' w', (todo.mapM putKv) (ctxOf p ts) w = .ok (r', w') →
       ∀ key, keyWf key = true →
-        wGet (ctxOf p ts) w' key =
-          todo.foldl (fun v op => if op.key == key then op.value else v) (wGet (ctxOf p ts) w key) := by
+        runGet p ts w' key =
+          todo.foldl (fun v op => if op.key == key then op.value else v) (runGet p ts w key) := by
   intro todo
   induction todo with
   | nil =>
@@ -243,9 +357,26 @@ theorem txGetOK_of_writer (p : Params) (hi : InitGetOK p) (ho : OpGetOK p)
   rw [hfold, hi ts tx hw z top hz htop key hkey, fold_value_find key tx.ops (Tx.keys_nodup tx hs)]
   rfl
 
-/-- TP10 from TP7 and the three statements about the writer. -/
-theorem getOK_of_writer (p : Params) (hinv : InvPreserved p) (hi : InitGetOK p)
-    (ho : OpGetOK p) (hc : CommitGetOK p) : GetOK p :=
-  getOK_of_txGet p hinv (txGetOK_of_writer p hi ho hc)
+/-- TP10's step for one transaction from the two statements about the writer
+that are not proved. -/
+theorem txGetOK_of_op_commit (p : Params) (ho : OpGetOK p) (hc : CommitGetOK p) :
+    TxGetOK p :=
+  txGetOK_of_writer p (initGetOK p) ho hc
+
+/-- `LatestGetOK` from the writer's refinement of the map, one operation at a
+time, and the lift of its last state. -/
+theorem latestGetOK_of_op_commit (p : Params) (ho : OpGetOK p) (hc : CommitGetOK p) :
+    LatestGetOK p :=
+  latestGetOK_of_txGet p (txGetOK_of_op_commit p ho hc)
+
+/-- TP10 from TP7 and the two statements about the writer. -/
+theorem getOK_of_op_commit (p : Params) (hinv : InvPreserved p) (ho : OpGetOK p)
+    (hc : CommitGetOK p) : GetOK p :=
+  getOK_of_txGet p hinv (txGetOK_of_op_commit p ho hc)
+
+/-- TP11 from TP7 and the two statements about the writer. -/
+theorem scanOK_of_op_commit (p : Params) (hinv : InvPreserved p) (ho : OpGetOK p)
+    (hc : CommitGetOK p) : ScanOK p :=
+  scanOK_of_txGet p hinv (txGetOK_of_op_commit p ho hc)
 
 end SIS.Tree
