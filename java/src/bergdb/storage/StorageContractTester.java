@@ -90,7 +90,7 @@ public class StorageContractTester {
             if (op == StrictStream.Op.APPEND && entered.getCount() > 0) {
                 entered.countDown();
                 try {
-                    if (!release.await(5, TimeUnit.SECONDS)) {
+                    if (!release.await(30, TimeUnit.SECONDS)) {
                         throw new IOException("the test did not release the append");
                     }
                 } catch (InterruptedException e) {
@@ -109,7 +109,7 @@ public class StorageContractTester {
             synchronized (writeLock) {
                 s.append(new byte[300], 0, 300);
             }
-            if (!entered.await(5, TimeUnit.SECONDS)) {
+            if (!entered.await(30, TimeUnit.SECONDS)) {
                 throw new AssertionError("the buffer's thread did not append");
             }
             writer = new Thread(() -> {

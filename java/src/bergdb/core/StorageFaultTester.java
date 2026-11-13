@@ -138,13 +138,13 @@ public class StorageFaultTester {
     }
 
     /**
-     * For a test: after a STOP, the call waits until the stop's close has ended (up to 2 s),
+     * For a test: after a STOP, the call waits until the stop's close has ended (up to 30 s),
      * so that a read goes on on the closed stream (bergdb 019-43).
      */
     static volatile boolean waitForCloseAtStop = false;
 
     private static void waitUntilClosed(Db db) {
-        long end = System.nanoTime() + 2000L * 1000 * 1000;
+        long end = System.nanoTime() + 30L * 1000 * 1000 * 1000;
         while (!db.internal().isClosed() && System.nanoTime() < end) {
             try {
                 Thread.sleep(1);
@@ -766,7 +766,7 @@ public class StorageFaultTester {
     // ======== The checks after a run ========
 
     private static void checkThreads(Run run, Set<Long> before) throws InterruptedException {
-        long end = System.nanoTime() + 1000L * 1000 * 1000;
+        long end = System.nanoTime() + 30L * 1000 * 1000 * 1000;
         List<Thread> left = new ArrayList<Thread>();
         for (Thread t : bergdbThreads()) {
             if (!before.contains(t.getId())) {

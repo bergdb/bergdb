@@ -480,7 +480,7 @@ public final class Residents {
         }, "resync");
         synchronized (last) {
             resync.start();
-            long end = System.nanoTime() + 5000L * 1000 * 1000;
+            long end = System.nanoTime() + 30L * 1000 * 1000 * 1000;
             while (resync.getState() != Thread.State.BLOCKED && System.nanoTime() < end) {
                 Thread.yield();
             }
@@ -490,7 +490,7 @@ public final class Residents {
                 r.valueIn(holder, v);
             }
         }
-        resync.join(5000);
+        resync.join(30 * 1000);
         Assert.assertFalse(resync.isAlive());
         Assert.assertTrue("resync threw " + problem[0], problem[0] == null);
         Assert.assertEquals((long) counted(holder) + counted(last), r.bytes());

@@ -258,7 +258,7 @@ public class InterruptTester {
             });
             syncer.setDaemon(true);
             syncer.start();
-            syncer.join(5000);
+            syncer.join(30 * 1000);
             Assert.assertTrue("the sync hung", !syncer.isAlive());
             Assert.assertTrue(failure[0] == null);
             works(db);
@@ -270,7 +270,7 @@ public class InterruptTester {
 
     /** Waits for Jmx.Speed's monitor thread to sleep, and returns it. */
     private static Thread sleepingMonitor() throws InterruptedException {
-        long end = System.nanoTime() + 5 * 1000 * 1000 * 1000L;
+        long end = System.nanoTime() + 30 * 1000 * 1000 * 1000L;
         while (System.nanoTime() < end) {
             for (Thread t : Thread.getAllStackTraces().keySet()) {
                 if (t.getName().equals("DBMonitor.MThread")

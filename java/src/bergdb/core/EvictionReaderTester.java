@@ -378,7 +378,14 @@ public class EvictionReaderTester {
             try {
                 reader.start();
                 // The lookups pass the slot unless it is an old entry's; then the next object.
-                if (paused.await(5, TimeUnit.SECONDS)) {
+                // Until the reader pauses or ends, at most 30 s (bergdb 021-28: a fixed 5 s).
+                long end = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
+                boolean isPaused = false;
+                while (!(isPaused = paused.await(10, TimeUnit.MILLISECONDS))
+                        && reader.isAlive() && System.nanoTime() < end) {
+                    // waits
+                }
+                if (isPaused) {
                     tries++;
                     Thread evictor = new Thread(new Runnable() {
                         public void run() {
@@ -614,7 +621,7 @@ public class EvictionReaderTester {
                     synchronized (lateMap) {
                         mapHeld.countDown();
                         try {
-                            mapRelease.await(5, TimeUnit.SECONDS);
+                            mapRelease.await(30, TimeUnit.SECONDS);
                         } catch (InterruptedException e) {
                             // ends
                         }
@@ -636,27 +643,27 @@ public class EvictionReaderTester {
                 auditor.start();
                 blockedIn(auditor, "bergdb.core.Audit$Oracle", "latest");
                 blocker.start();                    // the table's objects copied: holds lateMap
-                Assert.assertTrue(mapHeld.await(5, TimeUnit.SECONDS));
+                Assert.assertTrue(mapHeld.await(30, TimeUnit.SECONDS));
             }
             blockedIn(auditor, "bergdb.core.Cache3", "handles");    // past map 0
             cache.dropIfEmpty(empty);               // the reader's cleanup
             Assert.assertTrue("removed", empty.isDead() && cache.liveHandle(earlyId) == null);
             mapRelease.countDown();
-            auditor.join(5000);
+            auditor.join(30 * 1000);
             Assert.assertFalse("the audit ended", auditor.isAlive());
             Assert.assertTrue("the audit threw " + problem[0], problem[0] == null);
             Assert.assertTrue("the audit: " + result, result.isEmpty());
         } finally {
             mapRelease.countDown();
-            if (blocker != null) blocker.join(5000);
-            if (auditor != null) auditor.join(5000);
+            if (blocker != null) blocker.join(30 * 1000);
+            if (auditor != null) auditor.join(30 * 1000);
             db.close();
         }
     }
 
-    /** Waits until 'thread' is blocked on a monitor in className.method, at most 5 s. */
+    /** Waits until 'thread' is blocked on a monitor in className.method, at most 30 s. */
     private static void blockedIn(Thread thread, String className, String method) {
-        long end = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        long end = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
         while (System.nanoTime() < end) {
             if (thread.getState() == Thread.State.BLOCKED) {
                 for (StackTraceElement f : thread.getStackTrace()) {

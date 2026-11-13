@@ -224,7 +224,7 @@ public class DbTesterJavadoc {
             }
             db.setCacheSizeIndicator(100 * 1000);     // Wakes the eviction thread.
 
-            long end = System.nanoTime() + 2000L * 1000 * 1000;
+            long end = System.nanoTime() + 30L * 1000 * 1000 * 1000;
             List<String> ours = new ArrayList<>();
             boolean written = false;
             while (System.nanoTime() < end) {

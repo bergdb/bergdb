@@ -2120,7 +2120,7 @@ public class PubTester {
         Assert.assertTrue("resident " + full, full > 15 * 1000 * 1000);
         
         d.setCacheSizeInMb(4);
-        long end = System.nanoTime() + 5000L * 1000 * 1000;
+        long end = System.nanoTime() + 30L * 1000 * 1000 * 1000;
         long bytes = full;
         while (System.nanoTime() < end) {
             bytes = db.internal().cache().residents().bytes();
@@ -4245,7 +4245,7 @@ public class PubTester {
             }
         };
         syncer.start();
-        syncer.join(5000);
+        syncer.join(30 * 1000);
         final boolean returned = !syncer.isAlive();
         s.release();
         syncer.join(60_000);

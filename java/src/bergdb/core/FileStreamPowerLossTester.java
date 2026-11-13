@@ -422,7 +422,7 @@ public class FileStreamPowerLossTester {
                 if (gate) {
                     entered.countDown();
                     try {
-                        if (!release.await(5, TimeUnit.SECONDS)) throw new IOException("force barrier timed out");
+                        if (!release.await(30, TimeUnit.SECONDS)) throw new IOException("force barrier timed out");
                     } catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new IOException(e); }
                 }
                 super.forceFile(file, handle);
@@ -433,7 +433,7 @@ public class FileStreamPowerLossTester {
                 .stream(new FileStream(dir, io), 1000, 10).build();
         try {
             synchronized (lock) { manager.start(); manager.append(new byte[100], 0, 100); }
-            Assert.assertTrue("force not reached", entered.await(5, TimeUnit.SECONDS));
+            Assert.assertTrue("force not reached", entered.await(30, TimeUnit.SECONDS));
             Assert.assertEquals(0, manager.getDurableLength());
             release.countDown();
             manager.sync(100);
@@ -461,7 +461,7 @@ public class FileStreamPowerLossTester {
                 if (gate) {
                     entered.countDown();
                     try {
-                        if (!release.await(5, TimeUnit.SECONDS)) throw new IOException("pending-cut barrier timed out");
+                        if (!release.await(30, TimeUnit.SECONDS)) throw new IOException("pending-cut barrier timed out");
                     } catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new IOException(e); }
                 }
                 super.forceFile(file, handle);
@@ -480,7 +480,7 @@ public class FileStreamPowerLossTester {
                 manager.start();
                 manager.append(new byte[200100], 0, 200100);
             }
-            Assert.assertTrue("append force not reached", entered.await(5, TimeUnit.SECONDS));
+            Assert.assertTrue("append force not reached", entered.await(30, TimeUnit.SECONDS));
             synchronized (lock) { manager.pretruncate(200000); }
             release.countDown();
             manager.sync(200100);

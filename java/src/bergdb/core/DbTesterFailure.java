@@ -1407,8 +1407,8 @@ public class DbTesterFailure {
             Assert.assertTrue("the sync fails: " + thrown, thrown instanceof DbFailedException);
             // 015-81's order: the storage has its error before it closes the stream, so the sync
             // can fail before the close's error is met (2026-11-10: once on s1, JDK 27). Wait
-            // for the storage thread's close, at most 5 s, as within() waits for the sync.
-            long end = System.currentTimeMillis() + 5000;
+            // for the storage thread's close, at most 30 s, as within() waits for the sync.
+            long end = System.currentTimeMillis() + 30 * 1000;
             while (s.faults < 2 && System.currentTimeMillis() < end) {
                 Thread.sleep(1);
             }

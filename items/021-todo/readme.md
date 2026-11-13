@@ -50,7 +50,6 @@ Open
 
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
-| [021-28](28-tests-fixed-time-limits.md) | Fix | Unit tests with fixed time limits fail under load | none | open |
 
 
 Closed
@@ -58,6 +57,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [021-28](28-tests-fixed-time-limits.md) | Fix | Unit tests with fixed time limits fail under load | none | done | 2026-11-13 |
 | [021-29](29-tests-wait-without-timeout.md) | Fix | Unit tests that wait with no timeout | none | done | 2026-11-13 |
 | [021-27](27-gettrans-inside-record.md) | Decide | getTrans inside a record fails the database | decision | done | 2026-11-12 |
 | [021-25](25-reclaim-fifo.md) | Investigate | Reclaim stops cutting a FIFO in time order | decision | done | 2026-11-11 |

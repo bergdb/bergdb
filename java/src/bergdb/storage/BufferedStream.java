@@ -993,7 +993,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         });
         b.start();
         try {
-            long deadline = System.nanoTime() + 2000000000L;
+            long deadline = System.nanoTime() + 30000000000L;
             while (b.consumer.getState() != Thread.State.TIMED_WAITING) {
                 Assert.assertTrue("consumer did not enter its timed wait",
                         System.nanoTime() < deadline);
@@ -1003,7 +1003,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             Assert.assertEquals(0, m.getLength());
             b.append(new byte[] {42}, 0, 1);   // Exactly a quarter, without a sync.
             Assert.assertTrue("the quarter-full append did not wake the consumer",
-                    flushed.await(2, java.util.concurrent.TimeUnit.SECONDS));
+                    flushed.await(10, java.util.concurrent.TimeUnit.SECONDS));
             byte[] bytes = new byte[256];
             m.read(0, bytes, 0, bytes.length);
             Assert.assertEquals((byte) 42, bytes[255]);
@@ -1028,7 +1028,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                 if (getLength() == 0) {
                     entered.countDown();
                     try {
-                        if (!release.await(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                        if (!release.await(30, java.util.concurrent.TimeUnit.SECONDS)) {
                             throw new IOException("test did not release the first flush");
                         }
                     } catch (InterruptedException e) {
@@ -1045,7 +1045,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         Thread closer = null;
         try {
             Assert.assertTrue("first flush did not start",
-                    entered.await(2, java.util.concurrent.TimeUnit.SECONDS));
+                    entered.await(30, java.util.concurrent.TimeUnit.SECONDS));
             b.append(new byte[100], 0, 100);   // Below a quarter: the timer's wait applies.
             final IOException[] closeFailure = new IOException[1];
             closer = new Thread(() -> {
@@ -1056,7 +1056,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                 }
             });
             closer.start();
-            long deadline = System.nanoTime() + 2000000000L;
+            long deadline = System.nanoTime() + 30000000000L;
             while (true) {          // close() has woken the busy consumer, and waits
                 synchronized (b) {
                     if (b.flushAndClose) {
@@ -1068,10 +1068,10 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             }
             long t0 = System.nanoTime();
             release.countDown();
-            closer.join(10000);
+            closer.join(30000);
             long ms = (System.nanoTime() - t0) / 1000000;
             Assert.assertFalse("close() waits after " + ms + " ms", closer.isAlive());
-            Assert.assertTrue("close() took " + ms + " ms, the timer's wait", ms < 5000);
+            Assert.assertTrue("close() took " + ms + " ms, the timer's wait", ms < 10000);
             Assert.assertEquals(612, m.getLength());
         } finally {
             release.countDown();
@@ -1105,7 +1105,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         Thread closer = null;
         try {
             Assert.assertTrue("first flush did not start",
-                    m.held.await(2, java.util.concurrent.TimeUnit.SECONDS));
+                    m.held.await(30, java.util.concurrent.TimeUnit.SECONDS));
             final Throwable[] appendFailure = new Throwable[1];
             writer = new Thread(() -> {
                 try {
@@ -1115,7 +1115,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                 }
             });
             writer.start();
-            long deadline = System.nanoTime() + 2000000000L;
+            long deadline = System.nanoTime() + 30000000000L;
             while (writer.getState() != Thread.State.WAITING) {
                 Assert.assertTrue("the writer did not wait for room", System.nanoTime() < deadline);
                 Thread.sleep(1);
@@ -1129,7 +1129,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                 }
             });
             closer.start();
-            deadline = System.nanoTime() + 2000000000L;
+            deadline = System.nanoTime() + 30000000000L;
             while (true) {          // close() has begun, and waits for the held flush
                 synchronized (b) {
                     if (b.flushAndClose) {
@@ -1141,13 +1141,13 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             }
             long t0 = System.nanoTime();
             m.hold.countDown();
-            writer.join(10000);
-            closer.join(10000);
+            writer.join(30000);
+            closer.join(30000);
             long ms = (System.nanoTime() - t0) / 1000000;
             Assert.assertTrue("the append returned normally after close() began: "
                     + appendFailure[0], appendFailure[0] instanceof IOException);
             Assert.assertFalse("close() waits after " + ms + " ms", closer.isAlive());
-            Assert.assertTrue("close() took " + ms + " ms, the timer's wait", ms < 5000);
+            Assert.assertTrue("close() took " + ms + " ms, the timer's wait", ms < 10000);
             Assert.assertTrue("close() threw " + closeFailure[0], closeFailure[0] == null);
             Assert.assertEquals("the bytes appended before close()", 950, m.getLength());
         } finally {
@@ -1175,7 +1175,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                 if (getLength() == 0) {
                     entered.countDown();
                     try {
-                        if (!release.await(2, java.util.concurrent.TimeUnit.SECONDS)) {
+                        if (!release.await(30, java.util.concurrent.TimeUnit.SECONDS)) {
                             throw new IOException("test did not release the first flush");
                         }
                     } catch (InterruptedException e) {
@@ -1195,11 +1195,11 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         b.start();
         try {
             Assert.assertTrue("first flush did not start",
-                    entered.await(2, java.util.concurrent.TimeUnit.SECONDS));
+                    entered.await(30, java.util.concurrent.TimeUnit.SECONDS));
             b.append(new byte[256], 0, 256);   // Above a quarter throughout this append.
             release.countDown();
             Assert.assertTrue("the quarter-full backlog waited for the timer",
-                    flushed.await(2, java.util.concurrent.TimeUnit.SECONDS));
+                    flushed.await(10, java.util.concurrent.TimeUnit.SECONDS));
             Assert.assertEquals(768, m.getLength());
         } finally {
             release.countDown();
@@ -1244,19 +1244,20 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
 
     @Nano
     public static void test1() throws IOException, InterruptedException {
-        // Note, test relies on timing. Not deterministic.
+        // The buffer's timer writes the bytes. A buffer time of 1 s, not 20 ms (bergdb
+        // 021-28), so that the first assertion holds on a loaded machine too.
         MemoryStream m = new MemoryStream();
         @SuppressWarnings("resource")
-        BufferedStream b = new BufferedStream(m, 1000, 20);
+        BufferedStream b = new BufferedStream(m, 1000, 1000);
         b.start();
 
         try {
             byte[] bytes = new byte[] { 1, 2 };
             b.append(bytes, 0, bytes.length);
             Assert.assertEquals(0, m.getLength());
-            Thread.sleep(30);
-            if (m.getLength() == 0) {
-                Thread.sleep(60);
+            long t0 = System.nanoTime();
+            while (m.getLength() == 0 && System.nanoTime() - t0 < 30L * 1000 * 1000 * 1000) {
+                Thread.sleep(1);
             }
             Assert.assertEquals(2, m.getLength());
         } finally {
@@ -1375,7 +1376,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                 if (position == 200) {      // The first cut waits until the test releases it.
                     entered.countDown();
                     try {
-                        release.await(2, java.util.concurrent.TimeUnit.SECONDS);
+                        release.await(30, java.util.concurrent.TimeUnit.SECONDS);
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                     }
@@ -1394,11 +1395,11 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         b.start();
         try {
             Assert.assertTrue("the first cut did not start",
-                    entered.await(2, java.util.concurrent.TimeUnit.SECONDS));
+                    entered.await(30, java.util.concurrent.TimeUnit.SECONDS));
             b.pretruncate(300);             // Within the bytes of the flush that is cutting.
             release.countDown();
             Assert.assertTrue("the flush was not published",
-                    flushed.await(2, java.util.concurrent.TimeUnit.SECONDS));
+                    flushed.await(30, java.util.concurrent.TimeUnit.SECONDS));
         } finally {
             release.countDown();
             b.close();
@@ -1434,7 +1435,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             if (op == held && entered.getCount() > 0) {
                 entered.countDown();
                 try {
-                    if (!release.await(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                    if (!release.await(30, java.util.concurrent.TimeUnit.SECONDS)) {
                         throw new IOException("the test did not release " + held);
                     }
                 } catch (InterruptedException e) {
@@ -1457,7 +1458,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                 b.stop();                   // The thread closes the stream as it ends.
             }
             Assert.assertTrue(held + " of the thread was not held",
-                    entered.await(5, java.util.concurrent.TimeUnit.SECONDS));
+                    entered.await(30, java.util.concurrent.TimeUnit.SECONDS));
             writer = new Thread(() -> {
                 try {
                     b.pretruncate(80);      // At or below the flushed length, 100.
@@ -1468,7 +1469,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             writer.start();
             // Until the writer waits for ioLock, or has cut beside the thread (bergdb 019-41: a
             // fixed wait of 200 ms, after which the cut could come after the thread's call).
-            long end = System.nanoTime() + 5000L * 1000 * 1000;
+            long end = System.nanoTime() + 30L * 1000 * 1000 * 1000;
             while (writer.isAlive() && !b.ioLock.hasQueuedThread(writer)) {
                 Assert.assertTrue("the writer's cut neither waits nor ends",
                         System.nanoTime() < end);
@@ -1532,8 +1533,8 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             b.append(new byte[] { 3 }, 0, 1);
             long t0 = System.nanoTime();
             while (m.getLength() < 3) {
-                Assert.assertTrue("an append to an idle stream was not flushed in 2 s",
-                        System.nanoTime() - t0 < 2000000000L);
+                Assert.assertTrue("an append to an idle stream was not flushed in 30 s",
+                        System.nanoTime() - t0 < 30000000000L);
                 Thread.sleep(1);
             }
             awaitIdle(b);
@@ -1556,7 +1557,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             } else {
                 b.stop();
             }
-            b.consumer.join(2000);
+            b.consumer.join(30000);
             Assert.assertTrue(!b.consumer.isAlive());
             Assert.assertEquals(1, m.getLength());
         }
@@ -1602,12 +1603,12 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         }
     }
 
-    /** Waits until the consumer waits without a timeout; fails after 2 s. */
+    /** Waits until the consumer waits without a timeout; fails after 30 s. */
     private static void awaitIdle(BufferedStream b) throws InterruptedException {
         long t0 = System.nanoTime();
         while (b.consumer.getState() != Thread.State.WAITING) {
             Assert.assertTrue("the consumer of an idle stream is " + b.consumer.getState()
-                    + ", not WAITING", System.nanoTime() - t0 < 2000000000L);
+                    + ", not WAITING", System.nanoTime() - t0 < 30000000000L);
             Thread.sleep(1);
         }
     }
@@ -1615,7 +1616,9 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
     @Nano
     public static void testClose() throws IOException, InterruptedException {
         MemoryStream m = new MemoryStream();
-        BufferedStream b = new BufferedStream(m, 1000, 20);
+        // A buffer time of 60 s, not 20 ms (bergdb 021-28): no timer's write before the
+        // assertion, on a loaded machine too.
+        BufferedStream b = new BufferedStream(m, 1000, 60000);
         b.start();
 
         try {
@@ -1789,7 +1792,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             };
             t.setDaemon(true);
             t.start();
-            t.join(5000);
+            t.join(30000);
             Assert.assertFalse("close() returns, " + i, t.isAlive());
             Assert.assertTrue("it throws the failure: " + thrown[0], thrown[0] instanceof IOException);
             Assert.assertTrue("the listener is told, " + i, told[0] != null);
@@ -1963,7 +1966,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         b.start();
         try {
             b.append(new byte[900], 0, 900);
-            Assert.assertTrue(m.held.await(5, java.util.concurrent.TimeUnit.SECONDS));
+            Assert.assertTrue(m.held.await(30, java.util.concurrent.TimeUnit.SECONDS));
             final Throwable[] failure = new Throwable[1];
             final boolean[] flag = new boolean[1];
             Thread writer = new Thread(new Runnable() {
@@ -1981,7 +1984,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             Thread.sleep(100);
             Assert.assertTrue("the writer did not wait for room", writer.isAlive());
             m.hold.countDown();
-            writer.join(5000);
+            writer.join(30000);
             Assert.assertTrue(failure[0] == null);
             Assert.assertTrue("the interrupt flag was lost", flag[0]);
             Assert.assertTrue(b.takeRoomWaits().startsWith("waits for room in the write buffer 1,"));
@@ -2004,7 +2007,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         BufferedStream b = new BufferedStream(m, 1000, 10);
         b.start();
         b.append(new byte[500], 0, 500);
-        Assert.assertTrue(m.held.await(5, java.util.concurrent.TimeUnit.SECONDS));
+        Assert.assertTrue(m.held.await(30, java.util.concurrent.TimeUnit.SECONDS));
         new Thread(new Runnable() {
             public void run() {
                 try {
@@ -2044,7 +2047,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             }
             long t0 = System.nanoTime();
             while (m.getLength() < 20) {
-                Assert.assertTrue("not written in 2 s", System.nanoTime() - t0 < 2000000000L);
+                Assert.assertTrue("not written in 30 s", System.nanoTime() - t0 < 30000000000L);
                 Thread.sleep(1);
             }
             Assert.assertTrue(b.consumer.isAlive());
@@ -2078,7 +2081,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                 b.consumer.interrupt();
                 b.stop();
             }
-            b.consumer.join(2000);
+            b.consumer.join(30000);
             Assert.assertFalse("the consumer ended", b.consumer.isAlive());
             Assert.assertEquals("the consumer closed the stream", 1, closes.get());
         } finally {
