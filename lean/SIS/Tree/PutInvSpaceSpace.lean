@@ -426,4 +426,140 @@ theorem putInvT_spaceSpace (c : Ctx) (base : View BVal) (w w' : W) (hI : PutInv 
         · simp only [h0, ↓reduceIte] at hk1e; exact Or.inr hk1e
     · subst hq'v; rw [hvN'] at hq'n; cases hq'n
 
+/-- A put into a full leaf that existed before the transaction, space split,
+whose inner parent, full with the two klongs and existing before the
+transaction, with more than h klongs in its last version and at least two live,
+is space split too, below a grandparent with room for two klongs, keeps
+`PutInv` (the writer's tree after it given; the rule of
+`writerWP_put_spaceSpace`, with the range premise on the parent's nonzero
+compare values in the grandparent). -/
+theorem putInv_put_spaceSpace (c : Ctx) (base : View BVal) (B : NodeId) (top0 : Top)
+    (hB : PutBase c base B) (pre : List Nat) (cv h : Nat) (rk : NodeId) (w : W)
+    (S0 : List (Option Nat × NodeId)) (kq k1 : Nat) (q L : NodeId) (n qn gn : KNode)
+    (hI : PutInv c base w) (hw : PutBook c B top0 w)
+    (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
+    (hpath : PathFrom (wNode c.p base w) c.i cv rk (S0 ++ [(some kq, q), (some k1, L)]))
+    (hNL : wNode c.p base w L = some n) (hnl : n.leaf = true)
+    (hNq : wNode c.p base w q = some qn) (hNg : wNode c.p base w (pathEnd rk S0) = some gn)
+    (hleaf : c.p.M ≤ n.size + 1 ∧ n.firstTime ≠ some c.i ∧
+      c.p.splitAbove < (n.lastVersion c.i).size ∧ n.live ≠ [])
+    (hparent : c.p.M < qn.size + 2 + 1 ∧ qn.firstTime ≠ some c.i ∧
+      c.p.splitAbove < (qn.lastVersion c.i).size ∧ 2 ≤ qn.live.length)
+    (hrangeq : ∀ c' z, (c', z) ∈ qn.live → 0 < c' →
+      kq ≤ c' ∧ ∀ c'' z', (c'', z') ∈ gn.live → kq < c'' → c' < c'')
+    (hgp : gn.size + 2 + 1 ≤ c.p.M ∧
+      ∀ y1 sc y2, deadOver c.p ((gn.add c.i (.key kq y1)).add c.i (.key sc y2)) = false) :
+    WriterWP (putKv (.put (pre ++ [cv]) h)) c w (fun _ w' =>
+      TreeOK (wNode c.p base w') c.i w'.top.rootKey → PutInv c base w') := by
+  obtain ⟨hfull, hfirst, hsplit, hlive⟩ := hleaf
+  obtain ⟨hqfull, hqfirst, hqsplit, hq2⟩ := hparent
+  obtain ⟨hroomg, hdeadg⟩ := hgp
+  apply writerWP_putInv_of_T c base B top0 _ w hB hw
+  have hrrk : ReachS (wNode c.p base w) c.i w.top.rootKey rk :=
+    segRootR_reach _ _ _ _ (fun x xn _ hn => hI.wf x xn hn) pre _ rk ReachS.root hrk
+  have ht : ∀ q ∈ fromVisits (wNode c.p base w) c.i c.p.fuel (pre ++ [cv]) w.top.rootKey,
+      w.taken.contains q.1 = false := fun q hq =>
+    hI.untaken q.1 (fromVisits_reach _ _ _ _ (fun x xn _ hn => hI.wf x xn hn) _ _ q.1 q.2
+      ReachS.root hq)
+  apply writerWP_put_seg_append2PI c base hB.coherent pre cv h rk w S0 kq k1 q L n qn gn hrk ht
+    hI.ids.1 hI.ids.2.1 hpath hNL hnl hNq hNg (fun h' => by omega)
+  intro d'' w4 hqv hgv hvisL hql hgl hk1 hkq hqL hgq hgL h4t h4top h4next hlk4 hlq4 hlg4 hsrc4 hW4
+    hpg hpq hpk
+  generalize hgdef : pathEnd rk S0 = g at *
+  have hLn := hI.lt_next L n hNL
+  have hfree : ∀ z, w4.next ≤ z → w4.nodes.lookup z = none := by
+    intro z hz
+    cases h' : w4.nodes.lookup z with
+    | none => rfl
+    | some _ => have := hsrc4 _ (by rw [h']; rfl); omega
+  refine writerWP_mono (writerWP_appendKlongs_spaceSpace d'' L q g n qn gn kq k1 cv w.next c w4
+    hlk4 hlq4 hlg4 hqL hgq hgL hql hgl hfirst hqfirst hfull hsplit hqfull hqsplit hpg hpq hpk hroomg
+    hdeadg (hfree _ (Nat.le_refl _)) (hfree _ (by omega)) (hfree _ (by omega))
+    (hfree _ (by omega))) ?_
+  intro _ w' ⟨h't, h'top, _, h'nodes⟩
+  rw [h4next] at h'nodes
+  have hrq : ReachS (wNode c.p base w) c.i w.top.rootKey q :=
+    eqVisits_reach _ _ _ cv c.p.fuel rk q cv hrrk hqv
+  have hrg : ReachS (wNode c.p base w) c.i w.top.rootKey g :=
+    eqVisits_reach _ _ _ cv c.p.fuel rk g cv hrrk hgv
+  have hk1l : (k1, L) ∈ qn.live := by
+    rw [← KNode.liveAt_of_times qn c.i (hI.times q qn hNq)]; exact hk1
+  have hkql : (kq, q) ∈ gn.live := by
+    rw [← KNode.liveAt_of_times gn c.i (hI.times g gn hNg)]; exact hkq
+  have hold : LeafOrderAt qn k1 n := hI.order q qn L n k1 hrq hNq hql hNL hnl hk1l
+  -- the leaf's halves
+  obtain ⟨r0, hr0⟩ := live_ne_nil_head n hlive
+  obtain ⟨hsc, hfh, hsh⟩ := halves_leaf_live n c.i hnl cv w.next r0 hr0
+  have hfl := halves_leaf_flags n.leaf c.i (n.lastVersion c.i) [(cv, w.next)]
+  have hht := halves_times n.leaf n c.i [(cv, w.next)]
+  rw [hnl] at h'nodes hfl hht
+  generalize hout : halves true c.i (n.lastVersion c.i) [(cv, w.next)] = out at *
+  rw [hsc] at h'nodes
+  have hsLm := divider_mem n r0 hr0
+  have hks : k1 ≤ r0.1 := by obtain ⟨zs, hzs⟩ := hsLm; exact (hold r0.1 zs hzs).1
+  -- the parent's halves
+  have hqlive : qn.live ≠ [] := by intro he; rw [he] at hq2; simp at hq2
+  obtain ⟨rq, hrq0⟩ := live_ne_nil_head qn hqlive
+  have hsq0 := divider_pos qn.live (KNode.live_order qn) hq2 rq hrq0
+  have hside : decide (rq.1 ≤ r0.1) = decide (rq.1 ≤ k1) := by
+    by_cases h1 : rq.1 ≤ k1
+    · have h2 : rq.1 ≤ r0.1 := by omega
+      simp [h1, h2]
+    · have hrqm : (rq.1, rq.2) ∈ qn.live := List.mem_of_mem_drop (List.mem_of_mem_head? hrq0)
+      obtain ⟨zs, hzs⟩ := hsLm
+      have := (hold r0.1 zs hzs).2 rq.1 rq.2 hrqm (by omega)
+      have h2 : ¬ rq.1 ≤ r0.1 := by omega
+      simp [h1, h2]
+  obtain ⟨hscq, hf1, hf2⟩ := halves_inner_live2 qn c.i k1 r0.1 (w.next + 2) (w.next + 2 + 2) hql hks
+    rq hrq0 hsq0 hside
+  have hfl2 := halves_leaf_flags qn.leaf c.i (qn.lastVersion c.i) [(k1, w.next + 2), (r0.1, w.next + 2 + 2)]
+  have hht2 := halves_times qn.leaf qn c.i [(k1, w.next + 2), (r0.1, w.next + 2 + 2)]
+  generalize hout2 : halves qn.leaf c.i (qn.lastVersion c.i) [(k1, w.next + 2), (r0.1, w.next + 2 + 2)]
+    = out2 at *
+  rw [hql] at hfl2
+  rw [hscq] at h'nodes
+  have htk : w'.taken = w.taken := h't.trans h4t
+  have hgt : w.taken.contains g = false := (wNode_cases _ _ _ _ _ hNg).1
+  have hFt : w.taken.contains (w.next + 2) = false := hI.untaken_of_ge _ (by omega)
+  have hSt : w.taken.contains (w.next + 2 + 2) = false := hI.untaken_of_ge _ (by omega)
+  have hQ1t : w.taken.contains (w.next + 2 + 2 + 2) = false := hI.untaken_of_ge _ (by omega)
+  have hQ2t : w.taken.contains (w.next + 2 + 2 + 2 + 2) = false := hI.untaken_of_ge _ (by omega)
+  have hqn' := hI.lt_next q qn hNq
+  have hgn' := hI.lt_next g gn hNg
+  have e1 : w.next + 2 ≠ L := by omega
+  have e2 : w.next + 2 ≠ q := by omega
+  have e3 : w.next + 2 ≠ g := by omega
+  have e4 : w.next + 2 + 2 ≠ L := by omega
+  have e5 : w.next + 2 + 2 ≠ q := by omega
+  have e6 : w.next + 2 + 2 ≠ g := by omega
+  have e7 : w.next + 2 + 2 ≠ w.next + 2 := by omega
+  have e8 : w.next + 2 + 2 + 2 ≠ L := by omega
+  have e9 : w.next + 2 + 2 + 2 ≠ q := by omega
+  have e10 : w.next + 2 + 2 + 2 ≠ g := by omega
+  have e11 : w.next + 2 + 2 + 2 ≠ w.next + 2 := by omega
+  have e12 : w.next + 2 + 2 + 2 ≠ w.next + 2 + 2 := by omega
+  have e13 : w.next + 2 + 2 + 2 + 2 ≠ L := by omega
+  have e14 : w.next + 2 + 2 + 2 + 2 ≠ q := by omega
+  have e15 : w.next + 2 + 2 + 2 + 2 ≠ g := by omega
+  have e16 : w.next + 2 + 2 + 2 + 2 ≠ w.next + 2 := by omega
+  have e17 : w.next + 2 + 2 + 2 + 2 ≠ w.next + 2 + 2 := by omega
+  have e18 : w.next + 2 + 2 + 2 + 2 ≠ w.next + 2 + 2 + 2 := by omega
+  refine putInvT_spaceSpace c base w w' hI cv r0.1 k1 kq rq.1 w.next (w.next + 2) (w.next + 2 + 2)
+    (w.next + 2 + 2 + 2) (w.next + 2 + 2 + 2 + 2) L q g n qn gn out.1 out.2.1 out2.1 out2.2.1
+    (Nat.le_refl _) (by omega) (by omega) (by omega) (by omega) (by omega) (by omega) (by omega)
+    (by omega) (by omega) (by omega) (by omega) (by omega) (by omega) (by omega)
+    hNL hnl hNq hql hNg hgl hrg hkql hk1l hrangeq (divider_mem qn rq hrq0) hsq0 htk
+    (h'top.trans h4top) ?_ ?_ ?_ hfl.1 hfl.2 hht.1 hht.2 hfh hsh hsLm ?_ hfl2.1 hht2.1 hf1 ?_
+    hfl2.2 hht2.2 hf2 ?_
+    (parentBound_gen c base w hI pre cv rk L hrk hvisL q qn k1 hrq hNq hql hk1l)
+  · simp only [wNode, htk, hgt, Bool.false_eq_true, ↓reduceIte, h'nodes, hgL, hgq]
+  · simp only [wNode, htk, hFt, Bool.false_eq_true, ↓reduceIte, h'nodes, e1, e2, e3]
+  · simp only [wNode, htk, hSt, Bool.false_eq_true, ↓reduceIte, h'nodes, e4, e5, e6, e7]
+  · simp only [wNode, htk, hQ1t, Bool.false_eq_true, ↓reduceIte, h'nodes, e8, e9, e10, e11, e12]
+  · simp only [wNode, htk, hQ2t, Bool.false_eq_true, ↓reduceIte, h'nodes, e13, e14, e15, e16, e17,
+      e18]
+  · intro x hxL hxq hxg hxF hxS hxQ1 hxQ2
+    rw [← hW4]
+    simp only [wNode, htk, h4t, h'nodes, hxL, hxq, hxg, hxF, hxS, hxQ1, hxQ2, ↓reduceIte]
+
 end SIS.Tree
