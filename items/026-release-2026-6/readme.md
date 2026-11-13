@@ -12,7 +12,8 @@ it later.").
 The theme was first that of 2026.5 (Frans, 2026-11-10, 19:54) and moved
 here when 2026.5 became "solid algorithms" (024-04): the stream format is
 the algorithms' output, so it is made stable when they have stopped
-moving. The specification's draft is 024-02, kept up to date until then.
+moving. The specification's draft is 027-03 (024-02 until 2026-11-13),
+kept up to date with the code.
 
 Work moved here from 2026.5:
 
@@ -43,6 +44,21 @@ Work moved here from 2026.5:
   Core's value transformations before the go point, as 024-16 did for
   key transformations (`Db.transformKeys`). 2026.5 names it in its
   Known issues.
+* **The node size fixed at 30 for users** (026-08; Frans, 2026-11-13,
+  09:17 and 09:21): the stable format and both APIs know one node size,
+  30; 8, 14 and 62 stay for BergDB's own tests only. Replaces the
+  proposal that a start read B from the meta block (024-19, Q5).
+* **Merges "in place and net", studied and decided with the stable
+  format** (024-22, QM1; Frans, 2026-11-13, 09:23: "Yes, decided work."):
+  the other way than P5's new nodes and take-back, which changes what a
+  record means; 2026.5 has P5's way (Frans, 2026-11-11, 14:34). Decided
+  work means it is settled in 2026.6, with measurements, not that the
+  merge changes.
+* **The versioning and compatibility rule and the corpus of saved
+  databases** (027-03, section 21, V-A to V-D, and 21.3; Frans,
+  2026-11-13, 09:23: "Yes, decided work."): a stable format needs its
+  rule; 026-08's node-size field, kept as a hook for a later release,
+  is a first case.
 
 
 Proposed for 2026.6, not decided
@@ -51,17 +67,6 @@ Proposed for 2026.6, not decided
 Each stays where it is until Frans decides; recommended for 2026.6
 there, or implied by this release's theme.
 
-* **The node size read from the meta block** (024-19, Q5; 024-02, Q19):
-  a start takes B from the meta block. Recommended "yes, but in 2026.6
-  with the stable stream format"; open.
-* **Merges "in place and net"** (024-22, QM1): the other way than P5's
-  new nodes and take-back, which changes what a record means. Decided:
-  P5's way in 2026.5 (Frans, 2026-11-11, 14:34); the other way "a
-  candidate for when the format is made stable (2026.6)".
-* **The versioning and compatibility rule** (024-02, section 21, V-A to
-  V-D, "2026.5's rule", none decided) and the corpus of saved databases
-  (024-02, section 21.3): the stable format's own questions, written
-  under 2026.5's first theme; 024-02 stays in 024 until then.
 * **The stable format's open questions of the first theme** (024's Log,
   2026-11-10, the reading of 19:52, accepted for "a stable stream
   format"): the startup distance in a KV (024-01, OT4, "with a format
@@ -97,6 +102,8 @@ Files
   point (`Db.transformValues`), and the database goes on (010-04, R5);
   also a key transformation that throws (Q2); done, on main since
   2026-11-13 (Q1 to Q4 yes, Frans 08:45).
+* 08-fixed-node-size.md. 026-08, the node size fixed at 30 for users,
+  the other sizes for tests only (Frans, 2026-11-13, 09:21); registered.
 
 
 Log
@@ -109,3 +116,13 @@ Log
 current work and move things for 2026.6 to 026. In particular this
 024-20 should move there."); the rest of 2026.5's work proposed for
 2026.6 but not decided listed above.
+
+2026-11-13. 024-02, the stream format's draft, moved to 027 as 027-03
+(Frans, 08:50: "Yes"), kept current there; this readme cites 027-03,
+the same sections.
+
+2026-11-13. 026-08 registered: the node size fixed at 30 for users
+(Frans, 09:17 and 09:21); 024-19's Q5 dropped from the proposals.
+
+2026-11-13. 024-22's QM1 and 027-03's section 21 moved from the
+proposals to the decided work (Frans, 09:23: "Yes, decided work.").
