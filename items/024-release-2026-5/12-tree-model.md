@@ -1273,15 +1273,15 @@ kept only as steps. Proved on the way, on the standard axioms:
   `writerWP_put_room` it is the premise that no other key searches the
   key's compare value at its leaf.
 
-Open: `OpGetOKUnder p (RunReadOK p)`, the writer's refinement of the
-map, every rule but those above (the splits whose grandparent is full
-too, or whose parent is full and the space root or a segment root, or
-made by the transaction and space split in place, or a leaf the
-transaction made below a full parent; a delete's space split in place; a put that
-makes more than one new
-segment or a new segment below a full leaf; a delete with merges on,
-the upward delete, LE-b, the merges, root collapse), with its
-invariant inside a transaction: TREE inside it is cost's `WriterTreeOK`
+Open: `OpGetPutInvOK`, so `OpGetOKUnder p (RunReadOK p)`, the
+writer's refinement of the map, every rule but those above (the splits
+whose grandparent is full too, or whose parent is full and the space
+root or a segment root, or made by the transaction and space split in
+place, or a leaf the transaction made below a full parent; a delete's
+space split in place; a put that makes more than one new segment or a
+new segment below a full leaf; a delete with merges on, the upward
+delete, LE-b, the merges, root collapse), with its invariant inside a
+transaction: TREE inside it is cost's `WriterTreeOK`
 (the coordinator, 2026-11-13), and it must also give the search tree's
 order, klongs well formed and fresh ids; checked, not proved, on about 900 pseudo-random
 transactions of the model (node sizes 4 to 10, H 0 to 8, merges and
@@ -1292,6 +1292,25 @@ tree, cost's `TreeAt` (`keyTreeOK_of_treeAt`, `getOK_of_treeAt`,
 `OverlayLiftOKUnder`, which TP7's `LatestInvOK` needs too, is tp7's (the
 coordinator, 2026-11-13); its premises are to meet `RunReadOK` through
 `overlayLiftOKUnder_mono` when tp7's `ApplyBridge.lean` lands.
+
+The splits of any depth, the way on (prover "latest", 2026-11-13): one
+induction over the writer's `appendKlongs (d + 1) x ins` instead of a
+rule per depth. Its statement: after it, the writer's state reads as the
+state before with x replaced by x with ins put (the node of the room
+case), every key alike; the nodes it made have ids from the next one
+on; the nodes it split are reached no more; nothing else changes. The
+room case is direct (`writerWP_appendKlongs_room`, `_room2`). A split at
+x, whose parent q gets the klongs to x's new nodes, composes the step at
+x with the hypothesis at q: the time split by renaming
+(`renSim_timeSplitGen`, `getFromR_ren`), the space split by compare
+value (`getEqR_split` for a leaf, `getEqR_split_inner` with
+`halves_inner_searchLte_ins` for an inner node, `getFromR_split`), the
+time split in place by `getFromR_congr_node`. The leaf's put or delete
+is the step at the leaf (`getFromR_leaf_change_seg`). The rules above
+are its cases of depth one and two; what the induction adds is the set
+of nodes reached after a cascade (the `hreach1` of the depth-two rules,
+over every level), and TREE and the order at every node of the path,
+which the writer's invariant must give (putinv's `RangeOrder`).
 
 (T) for 27: `tracecheck`'s CUT-live checks it at every cut of a trace
 (024-07), and C-T6 checks what it follows from, `NonEmptyOK` and
