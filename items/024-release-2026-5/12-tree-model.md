@@ -1472,8 +1472,16 @@ and its status:
       change (`ShapePost` from D + 1 with nothing put). `mergeLast_ord`
       (`MergeLastOrd.lean`) gives the merge's last version's `LastOrd`
       from `RangeOrder` (with `MergeGOrd`, `mergeGOrd_two`).
-    The old statements stay, unchanged, until F2 is complete; then they are
-    removed, as agreed with cost.
+    Removed (latest, 23:08, as agreed with cost and the coordinator, after
+    putinv's take-back moved to F2 at 65b84e5b): `DescentOKF`,
+    `MergePathCond`, `opGetCaseOK_delMergeF`, `writerWP_mergeUp_delF`,
+    `writerWP_afterDelete_delF` and `opGetCaseOK'_delMerge`; the route at
+    p.fuel in `DelMergeCase.lean` (`DescentOK`, `MergeStepOK`,
+    `CollapseStepOK`, `DelStepsOK`, `writerWP_mergeUp_del`,
+    `writerWP_afterDelete_del`, `writerWP_collapseRoot_del`,
+    `opGetCaseOK_delMerge`); and the corollaries only they used
+    (`writerWP_merge_get_invF`, `writerWP_merge_get_inv`,
+    `writerWP_merge_tree_inv`). Case (4) is `opGetCaseOK_delMergeF2`.
 
     Step 4, plan (cost, 22:15). The Bool evidence is cost's `SegFit.lean`,
     run outside the repository. It ran random transactions (M 4 and 8, G 2,

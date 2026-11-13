@@ -6,10 +6,9 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
-/-! Case 4 of 024-12's assembly by the F2 route (bergdb 024-12, case (4)):
-`opGetCaseOK_delMergeF`'s reduction without its descent obligation
-(`DescentOKF`, whose `MergePathCond` runs within reach violate). The descent is
-proved (`descentOKF2`), and the merge's reading and tree need only the state's
+/-! Case 4 of 024-12's assembly (bergdb 024-12, case (4)): the reduction of a
+delete with the merges on to step obligations at a reading fuel above the
+writer's. The merges' descent is proved (`descentOKF2`), and the merge's reading and tree need only the state's
 invariants (`writerWP_merge_get_invF2`, `writerWP_merge_tree_inv2`). Left are
 the merge's and the collapse's obligations (`MergeStepOKF`, `CollapseStepOKF`)
 and `DelStepsOKF`. -/
