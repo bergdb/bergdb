@@ -97,3 +97,4 @@ import SIS.Tree.GetInPlace
 import SIS.Tree.WriterTreeDelete
 import SIS.Tree.WriterTreeRepoint
 import SIS.Tree.WriterTreeMerge
+import SIS.Tree.WriterTreeInPlace
