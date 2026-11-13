@@ -1,5 +1,7 @@
 package bergdb.core;
 
+import java.util.Arrays;
+
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
@@ -13,6 +15,7 @@ public class KeyModSet implements IKeyModSet {
     private final Bin[] bins;
     private static final int INITIAL_SIZE_OF_LONG_ARRAY = 4;
     private final int totalSize;
+    private long lastTime = -1;     // The time of the newest add, or -1.
     
     public KeyModSet() {
         this(128*1000);
@@ -103,6 +106,34 @@ public class KeyModSet implements IKeyModSet {
         }
         
         bins[0].add(time, hash);
+        lastTime = time;
+    }
+    
+    /**
+     * Forgets the modifications at or before 'time', the first available lookup time of a
+     * cut that Reclaim has just decided (Db.cutDecided; bergdb 026-10), as far as whole bins
+     * hold them: the newest bins are kept down to the first one that begins at or before
+     * 'time'; if nothing was added after 'time', an empty bin that begins at the last add
+     * is kept, as at a start (setFirstTime). modifiedAfter() answers as before for every
+     * time from 'time' on, and true for an earlier one, as for any time before the first
+     * time: such a transaction is rerun. Until 026-10 the set kept its last 128,000 pairs,
+     * about 2.5 MB, until newer ones pushed them out, also in a database emptied and then
+     * quiet (2.47 MB in CountGates' G5).
+     */
+    void forgetUpTo(long time) {
+        if (lastTime != -1 && lastTime <= time) {
+            Bin empty = new Bin(totalSize / BIN_COUNT);
+            empty.firstTime = lastTime;
+            Arrays.fill(bins, null);
+            bins[0] = empty;
+            return;
+        }
+        for (int i = 0; i < BIN_COUNT - 1 && bins[i] != null; i++) {
+            if (bins[i].firstTime <= time) {
+                Arrays.fill(bins, i + 1, BIN_COUNT, null);
+                return;
+            }
+        }
     }
     
     /**
@@ -236,6 +267,35 @@ public class KeyModSet implements IKeyModSet {
         Assert.assertEquals(112L, s.getFirstTime());
         Assert.assertTrue(s.modifiedAfter(100, 5));
         Assert.assertFalse(s.modifiedAfter(112, 5));
+    }
+    
+    /**
+     * A cut forgets the bins of modifications at or before its time (bergdb 026-10): the
+     * answers from that time on are as before, and true before it.
+     */
+    @Nano
+    public static void testForgetUpTo() {
+        KeyModSet s = new KeyModSet(8);     // 4 bins of 2 pairs
+        s.add(10, 1);
+        s.add(11, 2);
+        s.add(20, 3);
+        s.add(21, 4);
+        s.add(30, 5);                       // the bins begin at 30, 20 and 10
+        s.forgetUpTo(25);                   // the bin of 20 is kept, the one of 10 goes
+        Assert.assertEquals(20L, s.getFirstTime());
+        Assert.assertTrue(s.modifiedAfter(25, 5));
+        Assert.assertFalse(s.modifiedAfter(25, 3));
+        Assert.assertFalse(s.modifiedAfter(20, 1));
+        Assert.assertTrue("before the first time", s.modifiedAfter(15, 1));
+        
+        s.forgetUpTo(30);                   // nothing after 30: an empty bin from 30
+        Assert.assertEquals(30L, s.getFirstTime());
+        Assert.assertFalse(s.modifiedAfter(30, 5));
+        Assert.assertTrue("before the first time", s.modifiedAfter(29, 7));
+        s.add(31, 7);
+        Assert.assertEquals(30L, s.getFirstTime());
+        Assert.assertTrue(s.modifiedAfter(30, 7));
+        Assert.assertFalse(s.modifiedAfter(31, 7));
     }
     
     @Nano
