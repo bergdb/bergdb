@@ -1593,7 +1593,19 @@ and its status:
       `DeadAllOK`, `HeightLiveOK`, `TreeAt`, TP10's posts of the cases (1)
       to (4), and `QLive` of the cases (1) to (4).
     - `QLive` of case (1), a put into a leaf with room, is proved
-      (`liveCase_putLeafRoom`). Open: `QLive` of (2), (3) and (4).
+      (`liveCase_putLeafRoom`).
+    - `QLive` of (3a) and (3b), new segments below a leaf with room, is
+      proved (latest, 00:26; `liveCase_putNewSeg1Room`,
+      `liveCase_putNewSegsRoom`). The new segment leaves have a live klong
+      each (`writerWP_putSegs_new_live`) and are segment roots
+      (`liveCounts_leafAddNewSet`).
+    - Open: `QLive` of (2), (3c) (the cascade of a full leaf) and (4).
+    - `LiveCounts` was checked on runs within reach with the merges on
+      (`12-tree-model/live-counts-check.lean.txt`). The parameters were
+      record format 7's thresholds at node sizes 8, 10 and 14 (m = 2, 2
+      and 3). The runs had puts in one and two segments, then deletes that
+      merge and collapse. It held at all 6420 states between operations,
+      none failing.
     Removed (latest, 23:08, as agreed with cost and the coordinator, after
     putinv's take-back moved to F2 at 65b84e5b): `DescentOKF`,
     `MergePathCond`, `opGetCaseOK_delMergeF`, `writerWP_mergeUp_delF`,
@@ -1673,12 +1685,35 @@ and its status:
       premises at a transaction's start (`viewHeights_of`) and the
       reading's (`baseHeights_of`) come from `HeightAllOK`,
       `PointersOK` and `KindsAllOK`.
-    - Left: the delete side of the walk. Its three take-back sites
-      (`takeBack` in the upward delete's loop, `takeBackRoot`, the
-      merge's) take a node back while the path still holds it, and
-      need TP4's holder fact: no live klong of a kept node names the
-      node taken back. That is step 2 of tp7's plan; the delete side
-      will take it as a named premise at the three sites. Then the run
+    - The delete side (cost, 00:05). The path's nodes are not taken back
+      only up to an index (`PathFreeTo w n`, carried by the steps that
+      use it), since a take-back leaves a taken node on the path. Done:
+      the steps that take nothing back (`ht_handleFull`,
+      `ht_appendDeleteKlong`, `ht_unlink`, `ht_retarget`,
+      `ht_mergeParent`, the descents, `ht_replaceRoot`), a node taken
+      back given that no kept node holds it (`ht_takenBack`,
+      `NoLiveHolder`), `ht_takeBackRoot` given the root's one holder
+      (`HolderAt`), and the collapse's loop (`ht_collapseRoot`).
+      `liveHolder_unique` (`HeightsHolder.lean`) gives the holder fact
+      from the take-back's state: a node of the transaction is named
+      only by klongs of the transaction's time (`OldBelowN`), a node
+      holding one is reached (`TtReachedN`), and one reached klong
+      names it (`TreeOK.oneLink`).
+    - Named hypotheses (Option 1, coordinator 23:40): `ht_collapseRoot`
+      takes an invariant J of the take-back's, kept by its steps
+      (`descendToSegmentRoot`, `getNode`, `takeBackRoot`,
+      `replaceRoot`), that gives `HolderAt` at a made root. putinv's
+      TakeJ2 with CollGetInv (TreeOK) is that J, through
+      `liveHolder_unique`.
+    - Left: the merge's take-back and the upward delete's loop. Between
+      the parent's change and the take-back, putinv's TakeJ2 and TreeOK
+      do not hold (putinv, 23:45). These two carry the holder fact
+      themselves, from the function's start, through the parent's change
+      and its cascade: the walk's "children not taken back" is
+      generalized to "not taken back and not among the nodes the
+      operation takes back". Then `mergeUp`, `afterDelete`, the upward
+      delete (tp7's mis-heighted retarget at the stop node, killed by the
+      stop node's delete) and the delete operation. Then the run
       induction (as tp7's open (a) for the kinds), (B) and (C).
   - (5) `DelNoLeafCase`, a delete of a key with no leaf: proved,
     `opGetCaseOK_delNoLeaf`. It changes no reading: the writer's walk

@@ -81,6 +81,10 @@ end Wrap
 theorem ht_free_le {w v : W} {y : NodeId} (h : w.taken.contains y = false) (hle : HtLe w v) :
     v.taken.contains y = false := by rw [hle.2]; exact h
 
+theorem ht_pf_le {w v : W} {n m : Nat} (h : PathFreeTo w n) (hp : v.path = w.path)
+    (hle : HtLe w v) (hm : m ≤ n) : PathFreeTo v m :=
+  (h.mono hm).congr hp hle.2
+
 theorem ht_P_mk {c : Ctx} {v : W} {y : NodeId} {g h cv : Nat}
     (hy : v.taken.contains y = false) (hm : (y, g, h) ∈ v.gh) : HtP c H v (h + 1) cv y :=
   ⟨hy, fun _ => Or.inl ⟨g, by simpa using hm⟩⟩
@@ -285,7 +289,7 @@ q, the path's node at depth d, and klongs of the right height for it, it keeps
 the state and the path. -/
 def HtUp (H : NodeId → Nat → Prop) (B : NodeId) (up : NodeId → List (Nat × NodeId) → M Unit) (d : Nat) : Prop :=
   ∀ q more c w, ViewHtOK H B c → 0 < c.i → Book B c w → HtInv H B c w →
-    (∃ a, w.path[d]? = some (a, q)) →
+    PathFreeTo w (d + 1) → (∃ a, w.path[d]? = some (a, q)) →
     (∃ g h, (q, g, h) ∈ w.gh ∧ kdPairs (HtP c H w h) more) →
     WriterWP (up q more) c w (fun _ v => Book B c v ∧ HtInv H B c v ∧ HtLe w v ∧ v.path = w.path)
 
@@ -297,12 +301,13 @@ macro "htK1 " hpx:term:max hak:term:max : tactic => `(tactic| (
   have hhtK := kd_k1_eq $hpx $hak hhtY (by htPathEq)
   subst hhtK))
 
-macro "htUpP " hup:term:max hpe:term:max hqm:term:max hqh:term:max : tactic => `(tactic| (
-  (refine writerWP_mono ($hup _ _ _ _ ?htView ?htPos ?htBook ?htInv ?htPathQ ?htMore) ?htPost)
+macro "htUpP " hup:term:max hpe:term:max hqm:term:max hpf:term:max hqh:term:max : tactic => `(tactic| (
+  (refine writerWP_mono ($hup _ _ _ _ ?htView ?htPos ?htBook ?htInv ?htPF ?htPathQ ?htMore) ?htPost)
   case htView => assumption
   case htPos => assumption
   case htBook => htState
   case htInv => assumption
+  case htPF => exact ht_pf_le $hpf (by htPathEq) (by htChain) (by omega)
   case htPathQ => exact ⟨_, kd_path_at $hpe (by htPathEq)⟩
   case htMore =>
     refine ⟨_, _, HtLe.gh' $hqm (by htChain), ?htPairs⟩
@@ -310,12 +315,13 @@ macro "htUpP " hup:term:max hpe:term:max hqm:term:max hqh:term:max : tactic => `
     all_goals exact ht_P_par $hqh (by htFree) (by htTag)
   rintro _ _ ⟨_, _, _, _⟩))
 
-macro "htUpZ " hup:term:max hpe:term:max hqm:term:max hq0:term:max : tactic => `(tactic| (
-  (refine writerWP_mono ($hup _ _ _ _ ?htView ?htPos ?htBook ?htInv ?htPathQ ?htMore) ?htPost)
+macro "htUpZ " hup:term:max hpe:term:max hqm:term:max hpf:term:max hq0:term:max : tactic => `(tactic| (
+  (refine writerWP_mono ($hup _ _ _ _ ?htView ?htPos ?htBook ?htInv ?htPF ?htPathQ ?htMore) ?htPost)
   case htView => assumption
   case htPos => assumption
   case htBook => htState
   case htInv => assumption
+  case htPF => exact ht_pf_le $hpf (by htPathEq) (by htChain) (by omega)
   case htPathQ => exact ⟨_, kd_path_at $hpe (by htPathEq)⟩
   case htMore =>
     refine ⟨_, _, HtLe.gh' $hqm (by htChain), ?htPairs⟩
@@ -360,12 +366,12 @@ theorem ht_handleFullWith (B : NodeId) (up : NodeId → List (Nat × NodeId) →
     (depth : Nat) (x : NodeId) (ins : List (Nat × NodeId)) (last : KNode) (compact : Bool)
     (c : Ctx) (w : W) (hvo : ViewHtOK H B c) (hpos : 0 < c.i) (hb : Book B c w)
     (hi : HtInv H B c w) (g h : Nat) (hx : (x, g, h) ∈ w.gh) (a : Option Nat)
-    (hpx : w.path[depth]? = some (a, x)) (hflat : FlatAt c.i last.ks)
+    (hpx : w.path[depth]? = some (a, x)) (hpf : PathFreeTo w (depth + 1)) (hflat : FlatAt c.i last.ks)
     (hlast : kdKs (HtP c H w h) last.ks) (hins : kdPairs (HtP c H w h) ins)
     (hup : ∀ e, depth = e + 1 → HtUp H B up e) :
     WriterWP (handleFullWith up depth x ins last compact) c w
       (fun _ v => Book B c v ∧ HtInv H B c v ∧ HtLe w v ∧ v.path = w.path) := by
-  have hxf : w.taken.contains x = false := hi.pathFree depth a x hpx
+  have hxf : w.taken.contains x = false := hpf depth a x (by omega) hpx
   unfold handleFullWith
   simp only [writerWP_bind, writerWP_read]
   refine writerWP_mono (hw_getNode B x c w hvo hb hi) ?_
@@ -398,7 +404,7 @@ theorem ht_handleFullWith (B : NodeId) (up : NodeId → List (Nat × NodeId) →
     obtain ⟨⟨q', gq, hq⟩, hqm, hqe⟩ := List.mem_map.mp hqg
     simp only at hqe
     subst hqe
-    have hqf : w.taken.contains q' = false := hi.pathFree e a' q' hpe0
+    have hqf : w.taken.contains q' = false := hpf e a' q' (by omega) hpe0
     obtain ⟨k, hak⟩ : ∃ k, a = some k := by
       cases a with
       | none => exact absurd rfl (hi.pathSome e none x hpx)
@@ -417,7 +423,7 @@ theorem ht_handleFullWith (B : NodeId) (up : NodeId → List (Nat × NodeId) →
         | htStoreRep hqm hq0
         | htCore
         | htRepl
-        | htUpZ hup' hpe0 hqm hq0
+        | htUpZ hup' hpe0 hqm hpf hq0
         | wpSplit
         | split
         | contradiction
@@ -428,7 +434,7 @@ theorem ht_handleFullWith (B : NodeId) (up : NodeId → List (Nat × NodeId) →
         | htK1 hpx hak
         | htCore
         | htRepl
-        | htUpP hup' hpe0 hqm hqh
+        | htUpP hup' hpe0 hqm hpf hqh
         | wpSplit
         | split
         | contradiction
@@ -459,13 +465,13 @@ theorem ht_appendKlongs (B : NodeId) (depth : Nat) :
     ∀ (x : NodeId) (ins : List (Nat × NodeId)) (c : Ctx) (w : W), ViewHtOK H B c → 0 < c.i →
       Book B c w → HtInv H B c w →
       (∃ g h, (x, g, h) ∈ w.gh ∧ kdPairs (HtP c H w h) ins) →
-      (∃ a, w.path[depth]? = some (a, x)) →
+      (∃ a, w.path[depth]? = some (a, x)) → PathFreeTo w (depth + 1) →
       WriterWP (appendKlongs depth x ins) c w
         (fun _ v => Book B c v ∧ HtInv H B c v ∧ HtLe w v ∧ v.path = w.path) := by
   induction depth with
   | zero =>
-    intro x ins c w hvo hpos hb hi ⟨g, h, hx, hins⟩ ⟨a, hpx⟩
-    have hxf : w.taken.contains x = false := hi.pathFree 0 a x hpx
+    intro x ins c w hvo hpos hb hi ⟨g, h, hx, hins⟩ ⟨a, hpx⟩ hpf
+    have hxf : w.taken.contains x = false := hpf 0 a x (by omega) hpx
     rw [appendKlongs_step_dead]
     htSimp
     refine writerWP_mono (hw_getNode B x c w hvo hb hi) ?_
@@ -479,7 +485,7 @@ theorem ht_appendKlongs (B : NodeId) (depth : Nat) :
         (fun _ v => Book B c v ∧ HtInv H B c v ∧ HtLe w v ∧ v.path = w.path) := by
       intro cp
       refine writerWP_mono (ht_handleFullWith B _ 0 x ins _ cp c w1 hvo hpos hb1 hi1 g h hx1 a hpx1
-        (KNode.lastVersion_flatAt n c.i) hlv (htPairs_mono hins hle1) (fun e he => by cases he)) ?_
+        (ht_pf_le hpf hp1 hle1 (Nat.le_refl _)) (KNode.lastVersion_flatAt n c.i) hlv (htPairs_mono hins hle1) (fun e he => by cases he)) ?_
       rintro _ v ⟨hb2, hi2, hle2, hp2⟩
       exact ⟨hb2, hi2, hle1.trans hle2, hp2.trans hp1⟩
     split
@@ -491,8 +497,8 @@ theorem ht_appendKlongs (B : NodeId) (depth : Nat) :
         rintro _ v ⟨hb2, hi2, hle2, hp2⟩
         exact ⟨hb2, hi2, hle1.trans hle2, hp2.trans hp1⟩
   | succ d ih =>
-    intro x ins c w hvo hpos hb hi ⟨g, h, hx, hins⟩ ⟨a, hpx⟩
-    have hxf : w.taken.contains x = false := hi.pathFree (d + 1) a x hpx
+    intro x ins c w hvo hpos hb hi ⟨g, h, hx, hins⟩ ⟨a, hpx⟩ hpf
+    have hxf : w.taken.contains x = false := hpf (d + 1) a x (by omega) hpx
     rw [appendKlongs_step_dead]
     htSimp
     refine writerWP_mono (hw_getNode B x c w hvo hb hi) ?_
@@ -504,14 +510,14 @@ theorem ht_appendKlongs (B : NodeId) (depth : Nat) :
     have hup : ∀ e, d + 1 = e + 1 → HtUp H B (fun q more => appendKlongs d q more) e := by
       intro e he
       cases he
-      intro q more c' w' hvo' hpos' hb' hi' hpq hmore
-      exact ih q more c' w' hvo' hpos' hb' hi' hmore hpq
+      intro q more c' w' hvo' hpos' hb' hi' hpf' hpq hmore
+      exact ih q more c' w' hvo' hpos' hb' hi' hmore hpq hpf'
     have hfin : ∀ cp, WriterWP (handleFullWith (fun q more => appendKlongs d q more)
         (d + 1) x ins (n.lastVersion c.i) cp) c w1
         (fun _ v => Book B c v ∧ HtInv H B c v ∧ HtLe w v ∧ v.path = w.path) := by
       intro cp
       refine writerWP_mono (ht_handleFullWith B _ (d + 1) x ins _ cp c w1 hvo hpos hb1 hi1 g h hx1 a
-        hpx1 (KNode.lastVersion_flatAt n c.i) hlv (htPairs_mono hins hle1) hup) ?_
+        hpx1 (ht_pf_le hpf hp1 hle1 (Nat.le_refl _)) (KNode.lastVersion_flatAt n c.i) hlv (htPairs_mono hins hle1) hup) ?_
       rintro _ v ⟨hb2, hi2, hle2, hp2⟩
       exact ⟨hb2, hi2, hle1.trans hle2, hp2.trans hp1⟩
     split
