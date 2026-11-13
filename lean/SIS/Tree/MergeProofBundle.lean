@@ -241,3 +241,5 @@ import SIS.Tree.GetMergeLevel
 import SIS.Tree.SegBalance
 import SIS.Tree.TakeBackRunU
 import SIS.Tree.TakeDeadCascade
+import SIS.Tree.TakeDeadCases
+import SIS.Tree.TakeBackRunJ
