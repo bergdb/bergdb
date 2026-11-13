@@ -45,7 +45,7 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 | 024-38 | The tag's record: 024-38 done, 024's log | coordinator | b3f64bb1 |
 | 021-28, 021-29 | Two todos registered | coordinator | 9f32bff9 |
 | 024-22 | Land the second prover's run 2; ScanOK's premise (B) | tp11b (high) | landed 59510cb5 |
-| 024-12 | TP11 option C: the scan's fuel from the parameters; then TP11, TP7 | Codex run 3 (Sol xhigh) | done 07:46: C made; TP11 reduced to TP7 + LatestScanOK; check, then land |
+| 024-12 | TP11 option C: the scan's fuel from the parameters; then TP11, TP7 | Codex run 3 (Sol xhigh) | landed 2e71a297: C made; TP11 reduced to TP7 + LatestScanOK |
 | 024-12 | TP7, the tree's invariants | Codex run 4 (Sol max) | running |
 | 026-04 | The back-to-empty lag at 10M keys, understood | frac (high) | done 07:44: the phase of reclaim's iteration at the deletes' end (a step scans at its iteration's start), not f; keep 1/4; P8 cures it |
 | 021-29 | Unit tests that wait with no timeout | waits (high) | landed dc69b7a6 |
@@ -66,3 +66,4 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 * 07:38 limits (021-28) started.
 * 07:54 Frans 07:53: Codex run 4 at Max on TP7, on top of run 3 (/Users/f/fl/bench/2026-11-13/cx4/).
 * 07:59 021-28 landed: the Eviction failure was a race between two reads of a thread's state (not the 2 s deadline); about 90 limits in 20 test files; before-commit OK, and three runs beside 20 CPU hogs OK. Tests only.
+* 08:03 Codex run 3 landed 2e71a297 (lake 278 jobs, axioms of 40 theorems standard); 024-12 updated.

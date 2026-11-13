@@ -884,8 +884,7 @@ transaction; S, by `treetest` on the small cases.
 | 10 | `GetOK`              | a multiversion map: a get at t gives the    | T, S |
 |    |                      | last put at or before t, unless deleted     |      |
 | 11 | `ScanOK`             | a scan at t gives the map's KVs in range,   | T, S |
-|    |                      | in order, both ways, with the end key; for  |      |
-|    |                      | keys of at most `scanFuel` segments         |      |
+|    |                      | in order, both ways, with the end key       |      |
 | 12 | `NoopOK`             | a delete without a value changes nothing    | T, S |
 | 13 | `SpecOKTree`         | `SpecOK`, `VirtInit` of `treeSpec`          | PROVED |
 | 14 | `RunOKTree`          | `RunOK`: A2 to A5, ids, data nodes,         | (T), S |
@@ -980,6 +979,35 @@ path of a run within `Within` has at most `p.fuel` = (G + 1)(H + 2) + 2
 key nodes (`Params.fuel`, the level bounds G and H that `Within`
 enforces), so `2 * p.fuel ≤ scanFuel` or the like; Java's G and H are
 far below. That is for Frans to decide before the positive run.
+
+**TP11 option C, decided and made, 2026-11-13.** Frans, 07:07 to 07:21,
+on the caution above: "I thought we could prove the algorithms for the
+general case, for any size of the key, essentially. If the proofs depend
+on size, they would need to be redone for any size change?"; then "OK, do
+C as recommended." The proofs are to hold for every key length and every
+tree size, with no fixed constant in the model; option B's key premise
+is replaced. The second prover's run 3 (07:22 to 07:46, branch
+`024-22-proofs-3`, merged in `2e71a297`;
+/Users/f/fl/bench/2026-11-13/cx3/REPORT.md):
+
+* `nextGo`'s fuel comes from the parameters, `2 * p.fuel + 2` in
+  `scanGo` (`Read.lean`), as the get's and the writer's descents already
+  take `p.fuel`: a bound that grows with G and H, which every theorem
+  quantifies, so no key length or tree size is excluded. `scanFuel`, the
+  long-key run (`LongKeyRun.lean`, `scan_needs_keyBound`) and the key
+  premise of `ScanOK` are gone.
+* The fuel is enough: proved from TP7's invariant (`ScanAdequacy.lean`
+  and the new `Scan*.lean` modules).
+* TP11 reduced: `scanOK_of_latest` (`HistoricalScan.lean`) proves
+  `ScanOK` from TP7 (`InvPreserved`) and `LatestScanOK`, the scan's
+  correctness at the latest time, as `getOK_of_latest` does for TP10.
+  Both premises open.
+* Checked by the coordinator: `lake build` 278 jobs; `#print axioms` of
+  the 40 theorems of the new and changed modules, the standard three
+  only; no `sorry`; every module imported. The conformance programs'
+  scans as fast as before (the prover's runs).
+
+Next: TP7, the prover's run 4 (from 07:54, at max).
 
 (T) for 27: `tracecheck`'s CUT-live checks it at every cut of a trace
 (024-07), and C-T6 checks what it follows from, `NonEmptyOK` and
