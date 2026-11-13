@@ -1488,9 +1488,17 @@ below a leaf with room; (3b) more new segments below a leaf with room;
   `putInvCase_putNewSeg1Room`, `rangeCase_putNewSeg1Room`, on
   `writerWP_put_newSeg_inv_tree`, `putInv_put_newSeg`,
   `rangeOrder_put_newSegs`).
-- (3b) the ranges proved (`rangeCase_putNewSegsRoom`); the tree and
-  `PutInv` open: their rules make one new segment.
-- (3c) all three open.
+- (3b) all three proved (21:40): the ranges by `rangeCase_putNewSegsRoom`;
+  the tree by `treeCase_putNewSegsRoom` on `writerWP_put_newSegs_tree`, from
+  a tree lemma for the chain of new segment leaves that `putSegs` makes
+  below an empty segment leaf (`writerWP_putSegs_new_tree`,
+  `GetNewSegsTree.lean`); `PutInv` by `putInvCase_putNewSegsRoom`
+  (`putInv_after_op`).
+- (3c) the tree proved (21:40, `treeCase_putNewSegFull`):
+  `writerWP_put_newSegFullR`'s post now also gives the writer's tree, the
+  taken ids kept and the reach bound. Its ranges are open (no rule), and so
+  is `PutInv`, which follows from them by `putInv_after_op` once they are
+  proved.
 - (4) all three open (cost's merges).
 
 The shapes of the nodes a cascade makes or changes (prover "latest",
