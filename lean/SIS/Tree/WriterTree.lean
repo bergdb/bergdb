@@ -398,6 +398,58 @@ theorem treeOK_transfer (L L' : NodeId → Option KNode) (t : Time) (r r' : Node
       simp only [Prod.mk.injEq] at htr2
       exact htr2
 
+/-- `treeOK_transfer` with nodes left behind: the links of the new lookup from
+the nodes of the old tree that are not left behind, and from new nodes, name new
+nodes or are transfers of old links to nodes not left behind. So the nodes left
+behind (a node replaced by a split, or merged) are reached no more, whatever
+their links. -/
+theorem treeOK_transfer_gone (L L' : NodeId → Option KNode) (t : Time) (r r' : NodeId)
+    (New Gone : NodeId → Prop) (tr : NodeId → Nat → NodeId × Nat)
+    (ht : TreeOK L t r) (hNew : ∀ z, New z → ¬ TReach L t r z)
+    (hr' : (r' = r ∧ ¬ Gone r) ∨ (New r' ∧ ∀ y c, (TReach L t r y ∨ New y) → ¬ Gone y →
+      ¬ TLink L' t y c r'))
+    (hlinks : ∀ u c v, (TReach L t r u ∨ New u) → ¬ Gone u → TLink L' t u c v →
+      New v ∨ (¬ Gone v ∧ ∃ y0 c0, TReach L t r y0 ∧ TLink L t y0 c0 v ∧ tr y0 c0 = (u, c)))
+    (hnewOnce : ∀ u c u' c' z, (TReach L t r u ∨ New u) → ¬ Gone u →
+      (TReach L t r u' ∨ New u') → ¬ Gone u' → New z →
+      TLink L' t u c z → TLink L' t u' c' z → u = u' ∧ c = c')
+    (hNewGone : ∀ z, New z → ¬ Gone z)
+    (hroot : ∃ n, L' r' = some n) : TreeOK L' t r' := by
+  have hb : ∀ y, TReach L' t r' y → (TReach L t r y ∨ New y) ∧ ¬ Gone y := by
+    intro y hy
+    induction hy with
+    | root =>
+      rcases hr' with ⟨h, hg⟩ | ⟨h, _⟩
+      · rw [h]; exact ⟨Or.inl TReach.root, hg⟩
+      · exact ⟨Or.inr h, hNewGone _ h⟩
+    | @link u c v _ hl ih =>
+      rcases hlinks u c v ih.1 ih.2 hl with h | ⟨hg, y0, c0, hy0, hl0, _⟩
+      · exact ⟨Or.inr h, hNewGone v h⟩
+      · exact ⟨Or.inl (TReach.link hy0 hl0), hg⟩
+  refine ⟨hroot, ?_, ?_⟩
+  · intro y c hy hl
+    obtain ⟨hy1, hy2⟩ := hb y hy
+    rcases hr' with ⟨h, _⟩ | ⟨_, h⟩
+    · rw [h] at hl
+      rcases hlinks y c r hy1 hy2 hl with hn | ⟨_, y0, c0, hy0, hl0, _⟩
+      · exact hNew r hn TReach.root
+      · exact ht.rootFree y0 c0 hy0 hl0
+    · exact h y c hy1 hy2 hl
+  · intro y1 c1 y2 c2 v hy1 hy2 hl1 hl2
+    obtain ⟨h11, h12⟩ := hb y1 hy1
+    obtain ⟨h21, h22⟩ := hb y2 hy2
+    by_cases hvn : New v
+    · exact hnewOnce y1 c1 y2 c2 v h11 h12 h21 h22 hvn hl1 hl2
+    · rcases hlinks y1 c1 v h11 h12 hl1 with h | ⟨_, y01, c01, hy01, hl01, htr1⟩
+      · exact absurd h hvn
+      rcases hlinks y2 c2 v h21 h22 hl2 with h | ⟨_, y02, c02, hy02, hl02, htr2⟩
+      · exact absurd h hvn
+      obtain ⟨he, hc⟩ := ht.oneLink y01 c01 y02 c02 v hy01 hy02 hl01 hl02
+      subst he; subst hc
+      rw [htr1] at htr2
+      simp only [Prod.mk.injEq] at htr2
+      exact htr2
+
 /-- A node reached from a node reached from r is reached from r. -/
 theorem tReach_trans (L : NodeId → Option KNode) (t : Time) (r y : NodeId)
     (hy : TReach L t r y) : ∀ v, TReach L t y v → TReach L t r v := by
