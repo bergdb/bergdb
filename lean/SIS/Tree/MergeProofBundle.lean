@@ -313,3 +313,4 @@ import SIS.Tree.DelStepsF3
 import SIS.Tree.DelStepsFullGet
 import SIS.Tree.DelStepsFullRoot
 import SIS.Tree.HeightsRun
+import SIS.Tree.TakeMergeRoot
