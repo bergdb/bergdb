@@ -199,7 +199,7 @@ theorem writerWP_appendKlongs_chainGRV (c : Ctx) (base : View BVal)
         (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
         (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ s + e ∧ z = X i) → Val z = none) →
           (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
-            ¬ (s = 0 ∧ ¬ ChainRoom c (Nn 0) ∧ c.p.splitAbove < ((Nn 0).lastVersion c.i).size)) →
+            ChainNoNewRoot c Nn s (s + e)) →
           ∀ key, getFromR (wNode c.p base w') Val c.i c.p.fuel key w'.top.rootKey =
           getFromR (updN (wNode c.p base w) (X (s + e))
             (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + e)))) Val c.i c.p.fuel key
@@ -229,7 +229,7 @@ theorem writerWP_appendKlongs_chainGRV (c : Ctx) (base : View BVal)
         (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
         (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ s + e ∧ z = X i) → Val z = none) →
           (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
-            ¬ (s = 0 ∧ ¬ ChainRoom c (Nn 0) ∧ c.p.splitAbove < ((Nn 0).lastVersion c.i).size)) →
+            ChainNoNewRoot c Nn s (s + e)) →
           ∀ key, getFromR (wNode c.p base w') Val c.i c.p.fuel key w'.top.rootKey =
           getFromR (updN (wNode c.p base w) (X (s + e))
             (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + e)))) Val c.i c.p.fuel key
@@ -389,7 +389,7 @@ theorem writerWP_appendKlongs_chainGRV (c : Ctx) (base : View BVal)
             (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
             (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ ∃ i, 0 ≤ i ∧ i ≤ 0 ∧ z = X i) → Val z = none) →
               (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
-                ¬ (0 = 0 ∧ ¬ ChainRoom c (Nn 0) ∧ c.p.splitAbove < ((Nn 0).lastVersion c.i).size)) →
+                ChainNoNewRoot c Nn 0 0) →
               ∀ key, getFromR (wNode c.p base w') Val c.i c.p.fuel key w'.top.rootKey =
               getFromR (updN (wNode c.p base w) (X 0)
                 (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn 0))) Val c.i c.p.fuel key
@@ -542,7 +542,7 @@ theorem writerWP_appendKlongs_chainGRV (c : Ctx) (base : View BVal)
             (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
             (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ ∃ i, 0 ≤ i ∧ i ≤ 0 ∧ z = X i) → Val z = none) →
               (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
-                ¬ (0 = 0 ∧ ¬ ChainRoom c (Nn 0) ∧ c.p.splitAbove < ((Nn 0).lastVersion c.i).size)) →
+                ChainNoNewRoot c Nn 0 0) →
               ∀ key, getFromR (wNode c.p base w') Val c.i c.p.fuel key w'.top.rootKey =
               getFromR (updN (wNode c.p base w) (X 0)
                 (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn 0))) Val c.i c.p.fuel key
@@ -656,7 +656,7 @@ theorem writerWP_appendKlongs_chainGRV (c : Ctx) (base : View BVal)
             have hfitA : SegDepthLe (wNode c.p base w') c.i (c.p.fuel - 1) (w.next + 2) := by
               rcases hfit with hf' | hf'
               · rw [h'root] at hf'; exact hf' _ ReachS.root
-              · exact absurd ⟨rfl, hNR, hsp⟩ hf'
+              · exact absurd ⟨rfl, hNR, hsp⟩ hf'.1
             rw [h'root, hrk]
             exact getFromR_newRootRead _ (wNode c.p base w') Val c.i c.p.fuel (X 0) (X 0) w.next
               (w.next + 2) _ out.1 out.2.1 r.1 (updN_self _ _ _)
@@ -806,7 +806,7 @@ theorem writerWP_appendKlongs_chainGRV (c : Ctx) (base : View BVal)
             have hfitA : SegDepthLe (wNode c.p base w') c.i (c.p.fuel - 1) (w.next + 2 + 2) := by
               rcases hfit with hf' | hf'
               · rw [h'root] at hf'; exact hf' _ ReachS.root
-              · exact absurd ⟨rfl, hNR, hsp⟩ hf'
+              · exact absurd ⟨rfl, hNR, hsp⟩ hf'.1
             rw [h'root, hrk]
             exact getFromR_newRootRead _ (wNode c.p base w') Val c.i c.p.fuel (X 0) w.next (w.next + 2)
               (w.next + 2 + 2) _ out.1 out.2.1 r.1 (updN_self _ _ _)
@@ -1056,7 +1056,7 @@ theorem writerWP_appendKlongs_chainGRV (c : Ctx) (base : View BVal)
               (∀ z zn, wNode c.p base w3 z = some zn → klongsWf zn.ks = true) ∧
               (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ s + (e + 1) ∧ z = X i) → Val z = none) →
                 (SegFits (wNode c.p base w3) c.i (c.p.fuel - 1) w3.top.rootKey ∨
-                  ¬ (s = 0 ∧ ¬ ChainRoom c (Nn 0) ∧ c.p.splitAbove < ((Nn 0).lastVersion c.i).size)) →
+                  ChainNoNewRoot c Nn s (s + (e + 1))) →
                 ∀ key, getFromR (wNode c.p base w3) Val c.i c.p.fuel key w3.top.rootKey =
                 getFromR (updN (wNode c.p base w) (X (s + (e + 1)))
                   (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) Val c.i c.p.fuel key
@@ -1152,14 +1152,14 @@ theorem writerWP_appendKlongs_chainGRV (c : Ctx) (base : View BVal)
         · intro Val hVal hfit key
           have h3top : w3.top = w2.top := by rw [← hw3]
           have hfit2 : SegFits (wNode c.p base w2) c.i (c.p.fuel - 1) w2.top.rootKey ∨
-              ¬ (s = 0 ∧ ¬ ChainRoom c (Nn 0) ∧ c.p.splitAbove < ((Nn 0).lastVersion c.i).size) := by
+              ChainNoNewRoot c Nn s (s + e) := by
             rcases hfit with hf | hf
             · left
               rw [hN3] at hf
               try rw [h3top] at hf
               exact SegFits.of_agree _ _ c.i _ _
                 (fun x hx => updN_ne _ _ _ _ (fun he : x = X (s + (e + 1)) => hxR2 (he ▸ hx))) hf
-            · exact Or.inr hf
+            · exact Or.inr ⟨hf.1, fun i h1 h2 => hf.2 i h1 (by omega)⟩
           rw [hN3]
           try rw [h3top]
           rw [getFromR_updN_unreach' (wNode c.p base w2) Val c.i c.p.fuel w2.top.rootKey
@@ -1194,7 +1194,7 @@ theorem writerWP_appendKlongs_chainGRV (c : Ctx) (base : View BVal)
             (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
             (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ s + (e + 1) ∧ z = X i) → Val z = none) →
               (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
-                ¬ (s = 0 ∧ ¬ ChainRoom c (Nn 0) ∧ c.p.splitAbove < ((Nn 0).lastVersion c.i).size)) →
+                ChainNoNewRoot c Nn s (s + (e + 1))) →
               ∀ key, getFromR (wNode c.p base w') Val c.i c.p.fuel key w'.top.rootKey =
               getFromR (updN (wNode c.p base w) (X (s + (e + 1)))
                 (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) Val c.i c.p.fuel key
@@ -1370,7 +1370,7 @@ theorem writerWP_appendKlongs_chainGRV (c : Ctx) (base : View BVal)
             (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
             (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ s + (e + 1) ∧ z = X i) → Val z = none) →
               (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
-                ¬ (s = 0 ∧ ¬ ChainRoom c (Nn 0) ∧ c.p.splitAbove < ((Nn 0).lastVersion c.i).size)) →
+                ChainNoNewRoot c Nn s (s + (e + 1))) →
               ∀ key, getFromR (wNode c.p base w') Val c.i c.p.fuel key w'.top.rootKey =
               getFromR (updN (wNode c.p base w) (X (s + (e + 1)))
                 (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) Val c.i c.p.fuel key
@@ -1638,7 +1638,7 @@ theorem writerWP_appendKlongs_chainGRV (c : Ctx) (base : View BVal)
             (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
             (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ s + (e + 1) ∧ z = X i) → Val z = none) →
               (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
-                ¬ (s = 0 ∧ ¬ ChainRoom c (Nn 0) ∧ c.p.splitAbove < ((Nn 0).lastVersion c.i).size)) →
+                ChainNoNewRoot c Nn s (s + (e + 1))) →
               ∀ key, getFromR (wNode c.p base w') Val c.i c.p.fuel key w'.top.rootKey =
               getFromR (updN (wNode c.p base w) (X (s + (e + 1)))
                 (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) Val c.i c.p.fuel key
@@ -1726,7 +1726,7 @@ theorem writerWP_appendKlongs_chainGRV (c : Ctx) (base : View BVal)
             (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
             (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ s + (e + 1) ∧ z = X i) → Val z = none) →
               (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
-                ¬ (s = 0 ∧ ¬ ChainRoom c (Nn 0) ∧ c.p.splitAbove < ((Nn 0).lastVersion c.i).size)) →
+                ChainNoNewRoot c Nn s (s + (e + 1))) →
               ∀ key, getFromR (wNode c.p base w') Val c.i c.p.fuel key w'.top.rootKey =
               getFromR (updN (wNode c.p base w) (X (s + (e + 1)))
                 (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) Val c.i c.p.fuel key
@@ -1962,7 +1962,8 @@ theorem writerWP_appendKlongs_chainGRV (c : Ctx) (base : View BVal)
               rw [h2R Val (fun z hz => hVal z (by
                 rcases hz with h | ⟨i, h1, h2, h3⟩
                 · exact Or.inl (by omega)
-                · exact Or.inr ⟨i, h1, by omega, h3⟩)) hfit key, h1top]
+                · exact Or.inr ⟨i, h1, by omega, h3⟩))
+                (hfit.imp id (fun hf => ⟨hf.1, fun i h1 h2 => hf.2 i h1 (by omega)⟩)) key, h1top]
               have hXqj : X (s + (e + 1)) ≠ X (s + e) := fun h => hqx h.symm
               have hXjn : X (s + (e + 1)) ≠ w.next := by omega
               exact getFromR_spaceInPlaceLevel _ _ Val c.i c.p.fuel w.top.rootKey (X (s + e))
@@ -2112,9 +2113,9 @@ theorem writerWP_appendKlongs_chainGR (c : Ctx) (base : View BVal)
   have hv : wValue base w' = wValue base w := by
     funext a; simp only [wValue, hb.2.1, hb.2.2.2.2]
   rw [hv]
-  exact hR _ hVal (Or.inr (fun ⟨h0, hnr, hsp⟩ => by
+  exact hR _ hVal (Or.inr ⟨fun ⟨h0, hnr, hsp⟩ => by
     have := (hspace 0 (by omega) (by omega) hnr hsp).1
-    omega)) key
+    omega, fun i h1 h2 hnr hsp => (hspace i (by omega) (by omega) hnr hsp).2⟩) key
 
 /-- `writerWP_appendKlongs_chainGRV` for the writer's values, the space root's
 space split allowed: the reading holds when every path inside one segment tree
@@ -2163,7 +2164,7 @@ theorem writerWP_appendKlongs_chainGRQ (c : Ctx) (base : View BVal)
             w.top.rootKey z ∨ w.next ≤ z) ∧
         (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
         ((SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
-            ¬ (s = 0 ∧ ¬ ChainRoom c (Nn 0) ∧ c.p.splitAbove < ((Nn 0).lastVersion c.i).size)) →
+            ChainNoNewRoot c Nn s (s + e)) →
           ∀ key, getFromR (wNode c.p base w') (wValue base w') c.i c.p.fuel key w'.top.rootKey =
           getFromR (updN (wNode c.p base w) (X (s + e))
             (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + e)))) (wValue base w) c.i

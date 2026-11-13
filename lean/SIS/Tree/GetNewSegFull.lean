@@ -706,10 +706,12 @@ theorem writerWP_put_newSegFullR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
         · subst hyw; rw [hw1e] at hyn; cases hyn; exact Or.inl rfl
         · exact Or.inr (by rw [hA' y hyw (hlt y hy)]; exact hyn)
     have hA_d : getFromR (wNode c.p base wf1) Vd c.i c.p.fuel (pre ++ [c0]) wf1.top.rootKey = some 1 := by
-      rw [hR1 Vd hadm_d (hq.imp hfit1 (fun hs ⟨_, hnr, hsp⟩ => Nat.not_le.mpr hsp (hs _ (by
+      rw [hR1 Vd hadm_d (hq.imp hfit1 (fun hs => ⟨fun ⟨_, hnr, hsp⟩ => Nat.not_le.mpr hsp (hs _ (by
+        dsimp only
         have h0 := hXN 0 (Nat.zero_le _)
         rw [nodeAt_zero] at h0 ⊢
-        exact h0) hnr))), hws1N, hw1top]
+        exact h0) hnr), fun i hi h2 hnr hsp => hspaceG _ _ (hreachX i h2) (hXN i h2) hnr hsp _ _ _
+          (hreachX (i - 1) (by omega)) (hXN (i - 1) (by omega)) (hKP i hi h2).2⟩)), hws1N, hw1top]
       exact hVA_d
     have hsegA : segRootR (wNode c.p base wf1) c.i c.p.fuel (pre ++ [c0]) wf1.top.rootKey =
         some w.next := by
@@ -768,10 +770,12 @@ theorem writerWP_put_newSegFullR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
     · have hoff := getFromR_override_off (wNode c.p base wf1) (wNode c.p base wf) (wValue base wf1)
         (wValue base wf) c.i c.p.fuel hfuel wf1.top.rootKey w.next wf1.next (pre ++ [c0]) hT1 hW1
         hsegA hlt hA' hV' key' (fun q hq he => hthr ⟨q, hq, he⟩)
-      rw [hoff, hvw, hR1 (wValue base ws1) hadm_v (hq.imp hfit1 (fun hs ⟨_, hnr, hsp⟩ => Nat.not_le.mpr hsp (hs _ (by
+      rw [hoff, hvw, hR1 (wValue base ws1) hadm_v (hq.imp hfit1 (fun hs => ⟨fun ⟨_, hnr, hsp⟩ => Nat.not_le.mpr hsp (hs _ (by
+        dsimp only
         have h0 := hXN 0 (Nat.zero_le _)
         rw [nodeAt_zero] at h0 ⊢
-        exact h0) hnr))) key', hws1N, hw1top, hVw1]
+        exact h0) hnr), fun i hi h2 hnr hsp => hspaceG _ _ (hreachX i h2) (hXN i h2) hnr hsp _ _ _
+          (hreachX (i - 1) (by omega)) (hXN (i - 1) (by omega)) (hKP i hi h2).2⟩)) key', hws1N, hw1top, hVw1]
       simp only [List.foldl_cons, List.foldl_nil]
       have hempty : ∀ rest', rest' ≠ [] → getFromR (updN (updN (wNode c.p base w) w.next ⟨true, []⟩) L
           (n.add c.i (.key c0 w.next))) (wValue base w) c.i c.p.fuel rest' w.next = none := by

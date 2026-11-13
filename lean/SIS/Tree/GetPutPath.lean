@@ -744,10 +744,12 @@ theorem writerWP_put_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
   intro hq key' hkey'
   unfold wGet
   rw [hvf, hR (wValue base ws) (fun z hz => hadm z (by rw [hwsx] at hz; exact hz))
-    (hq.imp id (fun hs ⟨_, hnr, hsp⟩ => Nat.not_le.mpr hsp (hs _ (by
+    (hq.imp id (fun hs => ⟨fun ⟨_, hnr, hsp⟩ => Nat.not_le.mpr hsp (hs _ (by
+      dsimp only
       have h0 := hXN 0 (Nat.zero_le _)
       rw [nodeAt_zero] at h0 ⊢
-      exact h0) hnr))) key', hwsN, hwstop, hnext3]
+      exact h0) hnr), fun i hi h2 hnr hsp => hspaceG _ _ (hreachX i h2) (hXN i h2) hnr hsp _ _ _
+        (hreachX (i - 1) (by omega)) (hXN (i - 1) (by omega)) (hKP i hi h2).2⟩)) key', hwsN, hwstop, hnext3]
   simp only [List.foldl_cons, List.foldl_nil]
   by_cases hk : pre ++ [cv] = key'
   · subst hk
@@ -1127,6 +1129,19 @@ theorem writerWP_del_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
     rw [he] at this; exact this
   have hdm : d + m = d + (m - 1) + 1 := by omega
   rw [hdm]
+  have hstayC : RootStays c (wNode c.p base w) w.top.rootKey →
+      ChainNoNewRoot c (fun i => NN (i - d)) d (d + (m - 1)) := by
+    intro hs
+    refine ⟨hstay hs, fun i h1 h2 hnr hsp => ?_⟩
+    have hpar := hspaceG _ _ (reachS_tReach _ _ _ _ (hreachX (i - d) (by omega)))
+      (hNN (i - d) (by omega)) hnr hsp
+    show (NN (i - 1 - d)).leaf = false
+    have hlk : (KK (i - 1 - d + 1), XX (i - 1 - d + 1)) ∈ (NN (i - 1 - d)).liveAt c.i :=
+      hlinksK (i - 1 - d) (by omega)
+    have he2 : i - 1 - d + 1 = i - d := by omega
+    rw [he2] at hlk
+    exact hpar _ _ _ (reachS_tReach _ _ _ _ (hreachX (i - 1 - d) (by omega)))
+      (hNN (i - 1 - d) (by omega)) hlk
   -- the chain's premises above the leaf
   have hchainPre := fun (w1 : W) (ins : List (Nat × NodeId)) =>
     writerWP_appendKlongs_chainGRQ c base w3.path d (d + (m - 1)) (fun i => XX (i - d))
@@ -1346,7 +1361,7 @@ theorem writerWP_del_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
       hLroot (fun h => by omega) hrk (keyWf_last_notin pre cv hkey) hvisL huniq
     intro hq key' hkey'
     have hq2 := hq.imp (fun hf => SegFits.of_agree (wNode c.p base w2) _ c.i (c.p.fuel - 1) w2.top.rootKey
-      (fun x hx => by rw [hN4]; exact updN_ne _ _ _ _ (fun he => hxR2 (he ▸ hx))) hf) hstay
+      (fun x hx => by rw [hN4]; exact updN_ne _ _ _ _ (fun he => hxR2 (he ▸ hx))) hf) hstayC
     unfold wGet
     rw [hN4]
     show getFromR (updN (wNode c.p base w2) (XX m) ((NN m).toPrev (c.i - 1))) (wValue base w2) c.i
@@ -1593,7 +1608,7 @@ theorem writerWP_del_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
         have := hlinksAll x c' z ⟨xn, hxn, hz⟩; exact ⟨by omega, by omega⟩)
     intro hq key' hkey'
     have hq2 := hq.imp (fun hf => SegFits.of_agree (wNode c.p base w2) _ c.i (c.p.fuel - 1) w2.top.rootKey
-      (fun x hx => by rw [hN4]; exact updN_ne _ _ _ _ (fun he => hxR2 (he ▸ hx))) hf) hstay
+      (fun x hx => by rw [hN4]; exact updN_ne _ _ _ _ (fun he => hxR2 (he ▸ hx))) hf) hstayC
     unfold wGet
     rw [hN4]
     show getFromR (updN (wNode c.p base w2) (XX m) ((NN m).toPrev (c.i - 1))) (wValue base w2) c.i
@@ -1787,7 +1802,7 @@ theorem writerWP_del_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
       (fun x xn c' z hx hxn hz => by have := hlinksAll x c' z ⟨xn, hxn, hz⟩; omega)
     intro hq key' hkey'
     unfold wGet
-    rw [h2R (hq.imp id hstay) key', hv1, h1top, hs5, hr03.2.1, hres key' hkey']
+    rw [h2R (hq.imp id hstayC) key', hv1, h1top, hs5, hr03.2.1, hres key' hkey']
   -- the leaf's bitmap, its time split or its space split
   refine writerWP_mono (post := fun _ w4 =>
       (SegFits (wNode c.p base w4) c.i (c.p.fuel - 1) w4.top.rootKey ∨
