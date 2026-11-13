@@ -1144,9 +1144,32 @@ with room (`TimeSplit2After`, `SpaceSplitTimeAfter`, `TimeSpaceAfter`,
 `SpaceSpaceAfter`), as state lemmas and as whole puts
 (`WriterTreeCascade.lean`, `WriterTreeCascadePut.lean`,
 `WriterTreeInnerHalves.lean`, `WriterTreeSpaceSpace.lean`; the live klongs of
-an inner node's halves with klongs put, `halves_inner_cons_live`). Not yet: a
-merge whose parent is full or compacted; the mergeUp loop and the delete as a
-whole; the take-back of the upward unlink; cascades above the grandparent.
+an inner node's halves with klongs put, `halves_inner_cons_live`). The deletes
+into a segment leaf below an inner parent with room, the merges off, as prover
+putinv's: the bitmap, the full leaf's time split or space split, in place or
+not (`writerWP_del_leafBelow_tree`, `writerWP_del_leafBelow2_tree`;
+`WriterTreeDelFull.lean`, `WriterTreeDelSpace.lean`). With `PutInv` (024-12):
+`OpTreeInvOK`, each operation from a state that meets `PutInv` keeps the tree,
+which with putinv's `OpPutInvOK` gives `PutInv` at every reached state
+(`putInv_reached_inv`); and each of putinv's rules, the four cascades too,
+keeps `PutInv` with no premise on the tree after (`putInv_*_full`;
+`WriterTreeInv.lean`, `WriterTreeCascadeInv.lean`). Depth in a tree: every
+path to a node has one length (`PathLen.depth_unique`), so a change of a node's
+child does not change what reaches the node (`tReach_updN_parent`;
+`WriterTreeDepth.lean`). Cascades of any depth (`WriterTreeCascadeGen.lean`,
+`WriterTreeCascadeGen2.lean`): `appendKlongs j (X j) ins` along the access
+path's nodes X s .. X D, X s with room for two klongs, the others existed
+before the transaction, each node's compare values in the range of its
+parent's klongs (prover latest's form, which putinv's `RangeOrder` gives),
+keeps the writer's tree (`writerWP_appendKlongs_chain`; time splits only,
+`writerWP_appendKlongs_timeChain`). The proof is by induction up the path: the
+tree with the klongs put in X j (a tree that is not the writer's state) is a
+tree, and each split moves that tree one level up (`treeOK_timeSplit_gen`,
+`treeOK_spaceSplit_gen`); the writer's split leaves the parent's step open
+(`writerWP_handleFullWith_time_up`, `_space_up`), for prover latest's get side.
+Not yet: a top at the space root or a segment root, splits in place in the
+chain, and the whole put around it; a merge whose parent is full or compacted;
+the mergeUp loop and the delete as a whole; the take-back of the upward unlink.
 Their premises beyond TREE: the ids from w's next one on in neither the
 base nor a live klong (`hbaseF`, `hfreshT`).
 
