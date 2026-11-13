@@ -140,6 +140,9 @@ import SIS.Tree.GetDelSplit
 import SIS.Tree.GetFinal
 import SIS.Tree.GetDelCascade
 import SIS.Tree.GetInPlaceCascade
+import SIS.Tree.GetCascadeGen
+import SIS.Tree.GetCascadeChain
+import SIS.Tree.GetCascadePut
 import SIS.Tree.WriterTreeInnerHalves
 import SIS.Tree.WriterTreeSpaceSpace
 import SIS.Tree.WriterTreeDelFull
@@ -159,3 +162,15 @@ import SIS.Tree.WriterGetMergeOp
 import SIS.Tree.WriterTreeChainSteps
 import SIS.Tree.WriterTreeChainTree
 import SIS.Tree.WriterTreeChainG
+import SIS.Tree.RangeSim
+import SIS.Tree.RangeChain
+import SIS.Tree.RangePut
+import SIS.Tree.RangeRun
+import SIS.Tree.RangeOps
+import SIS.Tree.RangeSteps
+import SIS.Tree.RangeCollapse
+import SIS.Tree.RangeDelChain
+import SIS.Tree.RangeLeb
+import SIS.Tree.RangeMerge
+import SIS.Tree.RangeNewSeg
+import SIS.Tree.RangeUp
