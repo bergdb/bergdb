@@ -33,11 +33,20 @@ def tbInvB (p : Params) (P : Struct BVal) (t : Time) (B : NodeId) (w : W) : Bool
       (!qn.ks.contains (.time t) || rs.contains q)
     | none => true)
 
-/-- (C) in `DeadLive`'s form (TakeBackDead.lean) as a Bool: a klong of a kept
-overlay node to a key node of the transaction comes with a live one to it. -/
+/-- `LastLive` as a Bool. -/
+def tbLastLiveB (ks : List Klong) (del : List Nat) (i cv : Nat) : Bool :=
+  !del.contains i && ks.zipIdx.all (fun kj => decide (kj.2 ≤ i) || match kj.1 with
+    | .key c _ => c != cv || del.contains kj.2
+    | _ => true)
+
+/-- (C) in `DeadLive`'s form (TakeBackDead.lean) as a Bool, over the overlay's
+nodes (P's name nodes below B): a klong of a kept node to a node at or above B
+that is no value comes with a live one to it, and in a segment leaf is the last
+live klong of its compare value. -/
 def tbDeadLiveB (B : NodeId) (t : Time) (w : W) : Bool :=
-  w.nodes.all (fun q => w.taken.contains q.1 || q.2.ks.all (fun k => match k with
-    | .key _ y => !(w.gh.map (·.1)).contains y || decide (y < B) || (q.2.liveAt t).any (·.2 == y)
+  w.nodes.all (fun q => w.taken.contains q.1 || q.2.ks.zipIdx.all (fun ki => match ki.1 with
+    | .key cv y => decide (y < B) || (w.vals.map (·.1)).contains y ||
+        ((q.2.liveAt t).any (·.2 == y) && (!q.2.leaf || tbLastLiveB q.2.ks q.2.lastBitmap ki.2 cv))
     | _ => true))
 
 /-- (C) as a Bool. -/
@@ -129,7 +138,7 @@ def tbDeadCount (p : Params) (ts : List Tx) (tx : Tx) : Except String (List Nat)
     let (_, w) ← ((tx.ops.take k).mapM putKv) c (wInit tx top)
     pure (w.nodes.foldl (fun acc q => if w.taken.contains q.1 then acc else
       acc + (q.2.ks.filter (fun k => match k with
-        | .key cv y => (w.gh.map (·.1)).contains y && decide (tx.base ≤ y) &&
+        | .key cv y => !(w.vals.map (·.1)).contains y && decide (tx.base ≤ y) &&
             !((q.2.liveAt (ts.length + 1)).contains (cv, y))
         | _ => false)).length) 0))
 
