@@ -345,6 +345,7 @@ theorem writerWP_deleteUpward_up_get (c : Ctx) (base : View BVal) (X : Nat → N
       w'.nodes.lookup (X stop) = some sn' → sn'.leaf = (Nn stop).leaf → klongsWf sn'.ks = true →
       (∀ s, Klong.time s ∈ sn'.ks → s ≤ c.i) → K (stop + 1) = 0 →
       (jcv, jy) ∈ (Nn stop).liveAt c.i → 0 < jcv →
+      (∀ c' z, (c', z) ∈ (Nn stop).liveAt c.i → c' ≠ 0 → jcv ≤ c') →
       (∀ c' z, (c', z) ∈ sn'.liveAt c.i ↔
         (c' = 0 ∧ z = jy) ∨ ((c', z) ∈ (Nn stop).liveAt c.i ∧ c' ≠ 0 ∧ c' ≠ jcv)) →
       (∀ key', keyWf key' = true →
@@ -564,7 +565,10 @@ theorem writerWP_deleteUpward_up_get (c : Ctx) (base : View BVal) (X : Nat → N
           rw [KNode.liveAt_of_times _ c.i hst_t] at hm
           exact hmin c' z hm hc
       refine writerWP_mono (hcollLeb seg stop w3 n' jcv jy hsD hbetween h3tw h3top' h3v' hfr hsn3 hn'l hn'w
-        hn't hK0 hj hj0 hlive' ?_) ?_
+        hn't hK0 hj hj0 (fun c' z hm hc => by
+          rcases hmin' c' z hm with h | h
+          · exact absurd h hc
+          · exact h) hlive' ?_) ?_
       · intro key' hkw
         have hV3 : wValue base w3 = wValue base w := wValue_congr' base w3 w h3tw h3v'
         have hagree : ∀ u, TReach (wNode c.p base w) c.i w.top.rootKey u → u ≠ X stop →
@@ -678,7 +682,7 @@ theorem writerWP_deleteUpward_up (c : Ctx) (base : View BVal) (hvc : ViewCoheren
   · intro stop w' sn' hsD _ ht htop hv hnodes hsn' hsl' hsw' hst' hlive' hread
     exact ⟨(hpost stop w' sn' id hsD ht htop hv hnodes hsn' hsl' hsw' hst'
       (fun c' z h => ⟨c', ((hlive' c' z).mp h).1, ((hlive' c' z).mp h).2, rfl⟩)).1.1, hread⟩
-  · intro seg stop w' sn' jcv jy hsD _ ht htop hv hnodes hsn' hsl' hsw' hst' hK0 hj hj0 hlive' hread
+  · intro seg stop w' sn' jcv jy hsD _ ht htop hv hnodes hsn' hsl' hsw' hst' hK0 hj hj0 _ hlive' hread
     refine hcollAny seg w' (hpost stop w' sn' (fun c' => if c' = jcv then 0 else c') hsD ht htop hv
       hnodes hsn' hsl' hsw' hst' ?_) hread
     intro c' z h
