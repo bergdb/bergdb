@@ -790,8 +790,8 @@ only, below the parent q, an inner node that existed before the transaction and
 is full by its size, with more than h klongs in its last version, at least two
 of them live, below the grandparent g with room for two klongs: the time split
 of L and the space split of q change the reading by the put alone. The keys of
-q's live klongs lie between kq and g's next key (`hrange`), and neither q nor L
-reaches g. -/
+q's live klongs but the empty key's lie between kq and g's next key
+(`hrange`), and neither q nor L reaches g. -/
 theorem writerWP_put_timeSpace (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (pre : List Nat) (cv h : Nat) (rk : NodeId) (w : W)
     (S0 : List (Option Nat × NodeId)) (kq k1 : Nat) (q L : NodeId) (n qn gn : KNode)
@@ -814,7 +814,7 @@ theorem writerWP_put_timeSpace (c : Ctx) (base : View BVal) (hvc : ViewCoherent 
     (hparent : (∀ s, Klong.time s ∈ qn.ks → s ≤ c.i) ∧ c.p.M < qn.size + 1 + 1 ∧
       qn.firstTime ≠ some c.i ∧ c.p.splitAbove < (qn.lastVersion c.i).size ∧
       2 ≤ qn.live.length ∧ wValue base w q = none ∧ q ≠ w.top.rootKey)
-    (hrange : ∀ c' z, (c', z) ∈ qn.live →
+    (hrange : ∀ c' z, (c', z) ∈ qn.live → 0 < c' →
       kq ≤ c' ∧ ∀ c'' z', (c'', z') ∈ gn.live → kq < c'' → c' < c'')
     (hgp : (∀ s, Klong.time s ∈ gn.ks → s ≤ c.i) ∧ gn.size + 2 + 1 ≤ c.p.M ∧
       ∀ y1 sc y2, deadOver c.p ((gn.add c.i (.key kq y1)).add c.i (.key sc y2)) = false)
@@ -1048,12 +1048,12 @@ theorem writerWP_put_timeSpace (c : Ctx) (base : View BVal) (hvc : ViewCoherent 
     have := halves_left_lt_divider qn.live _ qn.live_order r hr a ha
     omega
   have hrmem : r ∈ qn.live := List.mem_of_mem_drop (List.mem_of_head? hr)
-  have hkqr : kq ≤ r.1 := (hrange r.1 r.2 hrmem).1
+  have hkqr : kq ≤ r.1 := (hrange r.1 r.2 hrmem hsc).1
   have hgap : ∀ c' z, (c', z) ∈ gn.live → c' ≤ kq ∨ r.1 < c' := by
     intro c' z hcz
     by_cases hle : c' ≤ kq
     · exact Or.inl hle
-    · exact Or.inr ((hrange r.1 r.2 hrmem).2 c' z hcz (by omega))
+    · exact Or.inr ((hrange r.1 r.2 hrmem hsc).2 c' z hcz (by omega))
   have hres := getFromR_timeSpace (wNode c.p base w) (wNode c.p base wf) (wValue base w)
     (wValue base wf) c.i c.p.fuel hfuel w.top.rootKey L q g (w.next + 2) (w.next + 2 + 2)
     (w.next + 2 + 2 + 2) w.next n qn gn ⟨n.leaf, l.ks⟩ k1 kq pre cv h rk r hr hsc hwfG hNL hnl

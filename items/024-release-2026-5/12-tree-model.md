@@ -1103,7 +1103,7 @@ Landed checkpoints:
   12:27 to 12:35 together, 334 jobs.
 
 **TP10 and TP11 at the latest time, reduced, 2026-11-13** (prover
-"latest", 10:37 to 15:25, branch `024-12-latest`). **TP10 and TP11
+"latest", 10:37 to 15:40, branch `024-12-latest`). **TP10 and TP11
 follow from TP7, the run's key nodes sound and TREE for them, and the
 two statements about the writer under premises on the run's structure**
 (`getOK_of_runRead`, `scanOK_of_runRead`, `GetUnder.lean`): `OpGetOKUnder
@@ -1221,7 +1221,14 @@ kept only as steps. Proved on the way, on the standard axioms:
   compare value, `halves_inner_searchLte_ins`, `getEqR_split_inner`.
   So a put into a leaf that existed before the transaction, below a
   parent that did too and a grandparent with room for what it gets, has
-  a rule for each split the leaf and the parent can need.
+  a rule for each split the leaf and the parent can need. A delete,
+  merges off, into a leaf below an inner parent with room for two
+  klongs: with room for the bitmap, the time split (also in place, and
+  of a leaf full by its dead klongs only), and the space split of a
+  leaf that existed before the transaction (`writerWP_del_leafBelow2`,
+  under `PutInv` `writerWP_del_leafBelow2_inv`, `GetDelSplit.lean`; the
+  reading: `getFromR_timeSplit_del`, `getFromR_spaceSplit_del`; the
+  writer's side with putinv's lemmas of `PutInvDelFull.lean`).
   With the
   writer's tree (cost's `WriterTreeOK`): `OpGetTreeOK` and
   `opGetOKUnder_of_tree` (`GetTree.lean`), and the split rules with
@@ -1253,10 +1260,10 @@ kept only as steps. Proved on the way, on the standard axioms:
 Open: `OpGetOKUnder p (RunReadOK p)`, the writer's refinement of the
 map, every rule but those above (the splits whose grandparent is full
 too, or whose parent is full and the space root or a segment root, or
-made by the transaction, a put that makes
-more than one new segment or a new segment below a full leaf, a delete
-into a full leaf, a delete with merges on, the upward delete, LE-b, the
-merges, root collapse), with its
+made by the transaction; a delete into a leaf whose parent is full, and
+a delete's space split in place; a put that makes more than one new
+segment or a new segment below a full leaf; a delete with merges on,
+the upward delete, LE-b, the merges, root collapse), with its
 invariant inside a transaction: TREE inside it is cost's `WriterTreeOK`
 (the coordinator, 2026-11-13), and it must also give the search tree's
 order, klongs well formed and fresh ids; checked, not proved, on about 900 pseudo-random
