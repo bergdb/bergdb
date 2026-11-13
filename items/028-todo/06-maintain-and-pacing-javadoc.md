@@ -29,3 +29,6 @@ Log
 ---
 
 2026-11-13. Registered by coord-1113, from 026-13, section 5 (U13-4, U13-5; Q1, option A).
+
+2026-11-13. Frans (13:07) chose 026-13's Q1, A: this entry, now; B, the
+behaviour change, is a proposal in 026's readme.
