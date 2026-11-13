@@ -529,4 +529,160 @@ theorem mergeV_reach (N V : NodeId → Option KNode) (t : Time) (root p l rr m1 
         obtain ⟨h1, h2⟩ := hnotLR u c z huN hlk' hup
         exact ⟨Or.inl (TReach.link huN hlk'), h1, h2⟩
 
+/-- `retarget` read through the writer's nodes: only p's node changes, to itself
+or retargeted. -/
+theorem writerWP_retarget_wNode (p src dst : NodeId) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (w : W) (hpt : w.taken.contains p = false) :
+    WriterWP (retarget p src dst) c w (fun _ w' => w'.taken = w.taken ∧ w'.top = w.top ∧
+      w'.next = w.next ∧ w'.vals = w.vals ∧
+      (∀ y, y ≠ p → wNode c.p base w' y = wNode c.p base w y) ∧
+      ∀ n', wNode c.p base w' p = some n' → ∃ n, wNode c.p base w p = some n ∧
+        (n' = n ∨ ∃ ti, n' = { n with ks := retargetKlongs n.ks ti src dst })) := by
+  unfold retarget
+  simp only [writerWP_bind, writerWP_read]
+  refine writerWP_mono (writerWP_getNode_reads p c w base hvc) ?_
+  intro n w1 ⟨hr1, hl1, hw1⟩
+  have hwp : wNode c.p base w p = some n := hw1 hpt
+  have h1t : w1.taken.contains p = false := by rw [hr1.2.2.1]; exact hpt
+  split
+  · unfold putNode
+    refine (writerWP_modify _ c w1 _).mpr ?_
+    refine ⟨hr1.2.2.1, hr1.2.1, hr1.2.2.2.2, hr1.2.2.2.1, fun y hy => ?_,
+      fun n' hn' => ⟨n, hwp, Or.inr ⟨n.lastTimeIndex.getD 0, ?_⟩⟩⟩
+    · rw [← hr1.1]
+      simp only [wNode, lookup_upsert, hy, ↓reduceIte]
+    · simp only [wNode, h1t, Bool.false_eq_true, ↓reduceIte, lookup_upsert] at hn'
+      exact (Option.some.inj hn').symm
+  · refine (writerWP_pure _ c w1 _).mpr ?_
+    refine ⟨hr1.2.2.1, hr1.2.1, hr1.2.2.2.2, hr1.2.2.2.1, fun y _ => by rw [hr1.1], fun n' hn' => ?_⟩
+    rw [hr1.1, hwp] at hn'
+    exact ⟨n, hwp, Or.inl (Option.some.inj hn').symm⟩
+
+/-- `unlink` read through the writer's nodes: only o's node changes. -/
+theorem writerWP_unlink_wNode (o : NodeId) (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (w : W) :
+    WriterWP (unlink o) c w (fun _ w' => w'.taken = w.taken ∧ w'.top = w.top ∧ w'.next = w.next ∧
+      w'.vals = w.vals ∧ ∀ y, y ≠ o → wNode c.p base w' y = wNode c.p base w y) := by
+  unfold unlink
+  simp only [writerWP_bind, writerWP_read]
+  refine writerWP_mono (writerWP_getNode_reads o c w base hvc) ?_
+  intro n w1 ⟨hr1, _, _⟩
+  split
+  · unfold putNode
+    refine (writerWP_modify _ c w1 _).mpr ?_
+    refine ⟨hr1.2.2.1, hr1.2.1, hr1.2.2.2.2, hr1.2.2.2.1, fun y hy => ?_⟩
+    rw [← hr1.1]
+    simp only [wNode, lookup_upsert, hy, ↓reduceIte]
+  · refine (writerWP_pure _ c w1 _).mpr ?_
+    exact ⟨hr1.2.2.1, hr1.2.1, hr1.2.2.2.2, hr1.2.2.2.1, fun y _ => by rw [hr1.1]⟩
+
+/-- The merge's last loop read through the writer's nodes, p not taken back and
+not a node of the loop: nothing changes but the loop's nodes and p, whose live
+klongs after are its live klongs before, or m1 where one before named a node of
+the loop. -/
+theorem writerWP_mergeCleanup_wNode (p m1 : NodeId) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) :
+    ∀ (xs : List (NodeId × Bool)) (w : W), (∀ q ∈ xs, q.1 ≠ p) → w.taken.contains p = false →
+    WriterWP (forIn xs PUnit.unit (fun q _ => if q.2 = true then (do
+        retarget p q.1 m1
+        takenBack q.1
+        note "merge.takeback"
+        pure (ForInStep.yield PUnit.unit)) else (do
+        unlink q.1
+        pure (ForInStep.yield PUnit.unit)))) c w
+      (fun _ w' => w'.top = w.top ∧ w'.taken.contains p = false ∧
+        (∀ y, y ≠ p → (∀ q ∈ xs, y ≠ q.1) → wNode c.p base w' y = wNode c.p base w y) ∧
+        ∀ n', wNode c.p base w' p = some n' → ∃ n, wNode c.p base w p = some n ∧ n'.leaf = n.leaf ∧
+          ∀ c' z, (c', z) ∈ n'.liveAt c.i →
+            (c', z) ∈ n.liveAt c.i ∨ (z = m1 ∧ ∃ q ∈ xs, (c', q.1) ∈ n.liveAt c.i)) := by
+  intro xs
+  induction xs with
+  | nil =>
+    intro w _ hpt
+    rw [List.forIn_nil]
+    refine (writerWP_pure _ c w _).mpr ?_
+    exact ⟨rfl, hpt, fun _ _ _ => rfl, fun n' h => ⟨n', h, rfl, fun _ _ h => Or.inl h⟩⟩
+  | cons q qs ih =>
+    intro w hne hpt
+    rw [List.forIn_cons]
+    have hqp : q.1 ≠ p := hne q List.mem_cons_self
+    have hrest : ∀ (w1 : W), w1.top = w.top → w1.taken.contains p = false →
+        (∀ y, y ≠ p → y ≠ q.1 → wNode c.p base w1 y = wNode c.p base w y) →
+        (∀ n1, wNode c.p base w1 p = some n1 → ∃ n, wNode c.p base w p = some n ∧ n1.leaf = n.leaf ∧
+          ∀ c' z, (c', z) ∈ n1.liveAt c.i → (c', z) ∈ n.liveAt c.i ∨ (z = m1 ∧ (c', q.1) ∈ n.liveAt c.i)) →
+        WriterWP (forIn qs PUnit.unit (fun q _ => if q.2 = true then (do
+          retarget p q.1 m1
+          takenBack q.1
+          note "merge.takeback"
+          pure (ForInStep.yield PUnit.unit)) else (do
+          unlink q.1
+          pure (ForInStep.yield PUnit.unit)))) c w1
+        (fun _ w' => w'.top = w.top ∧ w'.taken.contains p = false ∧
+          (∀ y, y ≠ p → (∀ q' ∈ q :: qs, y ≠ q'.1) → wNode c.p base w' y = wNode c.p base w y) ∧
+          ∀ n', wNode c.p base w' p = some n' → ∃ n, wNode c.p base w p = some n ∧ n'.leaf = n.leaf ∧
+            ∀ c' z, (c', z) ∈ n'.liveAt c.i →
+              (c', z) ∈ n.liveAt c.i ∨ (z = m1 ∧ ∃ q' ∈ q :: qs, (c', q'.1) ∈ n.liveAt c.i)) := by
+      intro w1 h1top h1pt h1l h1p
+      refine writerWP_mono (ih w1 (fun q' hq' => hne q' (List.mem_cons_of_mem _ hq')) h1pt) ?_
+      intro _ w2 ⟨h2top, h2pt, h2l, h2p⟩
+      refine ⟨h2top.trans h1top, h2pt, fun y hyp hy => ?_, fun n' hn' => ?_⟩
+      · rw [h2l y hyp (fun q' hq' => hy q' (List.mem_cons_of_mem _ hq')),
+          h1l y hyp (hy q List.mem_cons_self)]
+      · obtain ⟨n2, hn2, hl2, hs2⟩ := h2p n' hn'
+        obtain ⟨n1, hn1, hl1, hs1⟩ := h1p n2 hn2
+        refine ⟨n1, hn1, hl2.trans hl1, fun c' z hm => ?_⟩
+        rcases hs2 c' z hm with h | ⟨hz, q', hq', h⟩
+        · rcases hs1 c' z h with h' | ⟨hz', h'⟩
+          · exact Or.inl h'
+          · exact Or.inr ⟨hz', q, List.mem_cons_self, h'⟩
+        · rcases hs1 c' q'.1 h with h' | ⟨_, h'⟩
+          · exact Or.inr ⟨hz, q', List.mem_cons_of_mem _ hq', h'⟩
+          · exact Or.inr ⟨hz, q, List.mem_cons_self, h'⟩
+    by_cases hq2 : q.2 = true
+    · simp only [writerWP_bind, hq2, ↓reduceIte]
+      refine writerWP_mono (writerWP_retarget_wNode p q.1 m1 c base hvc w hpt) ?_
+      intro _ w1 ⟨h1t, h1top, _, _, h1l, h1p⟩
+      refine (writerWP_takenBack_iff _ c w1 _).mpr ?_
+      refine (writerWP_note_iff _ c _ _).mpr ?_
+      refine (writerWP_pure _ c _ _).mpr ?_
+      dsimp only
+      have htk : ∀ y, y ≠ q.1 → (q.1 :: w1.taken).contains y = w.taken.contains y := by
+        intro y hy
+        rw [List.contains_cons, h1t]
+        have : (y == q.1) = false := by simpa using hy
+        simp [this]
+      refine hrest _ h1top (by rw [htk p (Ne.symm hqp)]; exact hpt) (fun y hyp hyq => ?_) (fun n1 hn1 => ?_)
+      · show wNode c.p base { w1 with taken := q.1 :: w1.taken } y = _
+        rw [← h1l y hyp]
+        have hc : (q.1 :: w1.taken).contains y = w1.taken.contains y := by
+          rw [List.contains_cons]
+          have : (y == q.1) = false := by simpa using hyq
+          simp [this]
+        simp only [wNode, hc]
+      · have hn1' : wNode c.p base w1 p = some n1 := by
+          have : wNode c.p base { w1 with taken := q.1 :: w1.taken } p = wNode c.p base w1 p := by
+            have hc : (q.1 :: w1.taken).contains p = w1.taken.contains p := by
+              rw [List.contains_cons]
+              have : (p == q.1) = false := by simpa using (Ne.symm hqp)
+              simp [this]
+            simp only [wNode, hc]
+          rw [← this]; exact hn1
+        obtain ⟨n, hn, he⟩ := h1p n1 hn1'
+        refine ⟨n, hn, ?_, fun c' z hm => ?_⟩
+        · rcases he with he | ⟨ti, he⟩ <;> rw [he]
+        · rcases he with he | ⟨ti, he⟩
+          · rw [he] at hm; exact Or.inl hm
+          · rw [he] at hm
+            rcases KNode.retarget_liveAt n ti q.1 m1 c.i c' z hm with h | ⟨hz, h⟩
+            · exact Or.inl h
+            · exact Or.inr ⟨hz, h⟩
+    · have hq2' : q.2 = false := by simpa using hq2
+      simp only [writerWP_bind, hq2', Bool.false_eq_true, ↓reduceIte]
+      refine writerWP_mono (writerWP_unlink_wNode q.1 c base hvc w) ?_
+      intro _ w1 ⟨h1t, h1top, _, _, h1l⟩
+      refine (writerWP_pure _ c _ _).mpr ?_
+      refine hrest _ h1top (by rw [h1t]; exact hpt) (fun y _ hyq => h1l y hyq) (fun n1 hn1 => ?_)
+      rw [h1l p (Ne.symm hqp)] at hn1
+      exact ⟨n1, hn1, rfl, fun c' z hm => Or.inl hm⟩
+
 end SIS.Tree
