@@ -91,6 +91,136 @@ theorem treeOK_congr_look (look look' : NodeId → Option KNode) (t : Time) (r :
     (h : look = look') (ht : TreeOK look t r) : TreeOK look' t r := by
   subst h; exact ht
 
+/-! ## Changes that keep a tree -/
+
+/-- Lookups that agree on the nodes one of them reaches reach the same nodes. -/
+theorem tReach_of_agree (L L' : NodeId → Option KNode) (t : Time) (r : NodeId)
+    (h : ∀ x, TReach L t r x → L' x = L x) : ∀ y, TReach L' t r y → TReach L t r y := by
+  intro y hy
+  induction hy with
+  | root => exact TReach.root
+  | @link x c y _ hl ih =>
+    obtain ⟨n, hn, hc, hs⟩ := hl
+    rw [h x ih] at hn
+    exact TReach.link ih ⟨n, hn, hc, hs⟩
+
+theorem tReach_to_agree (L L' : NodeId → Option KNode) (t : Time) (r : NodeId)
+    (h : ∀ x, TReach L t r x → L' x = L x) : ∀ y, TReach L t r y → TReach L' t r y := by
+  intro y hy
+  induction hy with
+  | root => exact TReach.root
+  | @link x c y hx hl ih =>
+    obtain ⟨n, hn, hc, hs⟩ := hl
+    rw [← h x hx] at hn
+    exact TReach.link ih ⟨n, hn, hc, hs⟩
+
+/-- A change of nodes that the tree does not reach keeps the tree (a node made
+and not yet linked, a node left out, a node read into the cache unchanged). -/
+theorem treeOK_of_agree (L L' : NodeId → Option KNode) (t : Time) (r : NodeId)
+    (ht : TreeOK L t r) (h : ∀ x, TReach L t r x → L' x = L x) : TreeOK L' t r := by
+  have hb := tReach_of_agree L L' t r h
+  have hlink : ∀ x c y, TReach L' t r x → TLink L' t x c y → TLink L t x c y := by
+    intro x c y hx hl
+    obtain ⟨n, hn, hc, hs⟩ := hl
+    rw [h x (hb x hx)] at hn
+    exact ⟨n, hn, hc, hs⟩
+  refine ⟨?_, ?_, ?_⟩
+  · rw [h r TReach.root]; exact ht.rootKey
+  · intro x c hx hl
+    exact ht.rootFree x c (hb x hx) (hlink x c r hx hl)
+  · intro x c x' c' y hx hx' hl hl'
+    exact ht.oneLink x c x' c' y (hb x hx) (hb x' hx') (hlink x c y hx hl) (hlink x' c' y hx' hl')
+
+/-- A change whose links, from the nodes it reaches, are links of the tree
+(maybe of another compare value of the same node), one a node and target,
+keeps the tree: a klong deleted, a value added or changed in a segment leaf, the
+empty key given the pointer of the next klong (LE-b), a link dropped. -/
+theorem treeOK_of_links (L L' : NodeId → Option KNode) (t : Time) (r : NodeId)
+    (ht : TreeOK L t r) (hroot : ∃ n, L' r = some n)
+    (hsub : ∀ x c y, TReach L' t r x → TLink L' t x c y → ∃ c0, TLink L t x c0 y)
+    (hone : ∀ x c c' y, TReach L' t r x → TLink L' t x c y → TLink L' t x c' y → c = c') :
+    TreeOK L' t r := by
+  have hb : ∀ y, TReach L' t r y → TReach L t r y := by
+    intro y hy
+    induction hy with
+    | root => exact TReach.root
+    | @link x c y hx hl ih =>
+      obtain ⟨c0, h0⟩ := hsub x c y hx hl
+      exact TReach.link ih h0
+  refine ⟨hroot, ?_, ?_⟩
+  · intro x c hx hl
+    obtain ⟨c0, h0⟩ := hsub x c r hx hl
+    exact ht.rootFree x c0 (hb x hx) h0
+  · intro x c x' c' y hx hx' hl hl'
+    obtain ⟨c0, h0⟩ := hsub x c y hx hl
+    obtain ⟨c0', h0'⟩ := hsub x' c' y hx' hl'
+    have hxx := (ht.oneLink x c0 x' c0' y (hb x hx) (hb x' hx') h0 h0').1
+    subst hxx
+    exact ⟨rfl, hone x c c' y hx hl hl'⟩
+
+/-- A link from a node of the tree to a node z that the tree does not reach and
+that has no link (a new segment leaf) keeps the tree; the lookup changes only
+at the linking node. -/
+theorem treeOK_attach (L L' : NodeId → Option KNode) (t : Time) (r x z : NodeId) (cz : Nat)
+    (ht : TreeOK L t r) (hx : TReach L t r x) (hz : ¬ TReach L t r z)
+    (hzl : ∀ c y, ¬ TLink L t z c y)
+    (hother : ∀ y, y ≠ x → L' y = L y)
+    (hlinks : ∀ c y, TLink L' t x c y → TLink L t x c y ∨ (c = cz ∧ y = z))
+    (hroot : ∃ n, L' r = some n) : TreeOK L' t r := by
+  have hzx : z ≠ x := fun he => hz (he ▸ hx)
+  have hlink' : ∀ y c y', TLink L' t y c y' → TLink L t y c y' ∨ (y = x ∧ c = cz ∧ y' = z) := by
+    intro y c y' hl
+    by_cases hy : y = x
+    · subst hy
+      rcases hlinks c y' hl with h | h
+      · exact Or.inl h
+      · exact Or.inr ⟨rfl, h⟩
+    · obtain ⟨n, hn, hc, hs⟩ := hl
+      rw [hother y hy] at hn
+      exact Or.inl ⟨n, hn, hc, hs⟩
+  -- What L' reaches: what L reaches, and z.
+  have hb : ∀ y, TReach L' t r y → TReach L t r y ∨ y = z := by
+    intro y hy
+    induction hy with
+    | root => exact Or.inl TReach.root
+    | @link y0 c y' _ hl ih =>
+      rcases ih with ih | ih
+      · rcases hlink' y0 c y' hl with h | ⟨_, _, h⟩
+        · exact Or.inl (TReach.link ih h)
+        · exact Or.inr h
+      · rw [ih] at hl
+        rcases hlink' z c y' hl with h | ⟨h, _, _⟩
+        · exact absurd h (hzl c y')
+        · exact absurd h hzx
+  refine ⟨hroot, ?_, ?_⟩
+  · intro y c hy hl
+    rcases hb y hy with hy | hy
+    · rcases hlink' y c r hl with h | ⟨_, _, h⟩
+      · exact ht.rootFree y c hy h
+      · exact hz (h ▸ TReach.root)
+    · rw [hy] at hl
+      rcases hlink' z c r hl with h | ⟨h, _, _⟩
+      · exact hzl c r h
+      · exact hzx h
+  · intro y c y' c' v hy hy' hl hl'
+    -- links from z do not exist
+    have hnz : ∀ w0 c0, TReach L' t r w0 → TLink L' t w0 c0 v → TReach L t r w0 := by
+      intro w0 c0 hw0 hl0
+      rcases hb w0 hw0 with h | h
+      · exact h
+      · rw [h] at hl0
+        rcases hlink' z c0 v hl0 with h | ⟨h, _, _⟩
+        · exact absurd h (hzl c0 v)
+        · exact absurd h hzx
+    have hyL := hnz y c hy hl
+    have hyL' := hnz y' c' hy' hl'
+    rcases hlink' y c v hl with h1 | ⟨h1x, h1c, h1v⟩ <;>
+      rcases hlink' y' c' v hl' with h2 | ⟨h2x, h2c, h2v⟩
+    · exact ht.oneLink y c y' c' v hyL hyL' h1 h2
+    · exact absurd (h2v ▸ TReach.link hyL h1) hz
+    · exact absurd (h1v ▸ TReach.link hyL' h2) hz
+    · exact ⟨h1x.trans h2x.symm, h1c.trans h2c.symm⟩
+
 /-! ## The first state, and the state after the transaction -/
 
 /-- The writer's first state has P's tree at the time before: the same nodes,
