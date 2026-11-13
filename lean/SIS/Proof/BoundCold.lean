@@ -6,6 +6,9 @@ handle per node it reads or creates.
 import SIS.BoundCold
 import SIS.Handle
 import SIS.Proof.PhysMem
+import SIS.Proof.PhysPath
+import SIS.Proof.Recovery
+import SIS.Proof.BoundT4Tree
 
 set_option linter.unusedSectionVars false
 
@@ -220,5 +223,120 @@ theorem lazyStartup_next (sp : Spec V T) (S : Stream V T) :
         · simp only [Mem.setTable_next, Mem.addObj_next]
           exact Nat.le_trans (hF _ (fun m x => hstep m x _) 1) (by omega)
         · exact Nat.le_trans (hF _ (fun m x => hstep m x _) 0) (by omega)
+
+/-! ### For a run: the run's own paths and D -/
+
+section Run
+
+variable {sp : Spec V T} {al : Algo V T} {ts : List T}
+
+/-- On the stream after T(k) of a run, `rerunReach` is, over the transactions
+T(j) of the section, the writer's paths in the run's P after T(j - 1), the
+nodes T(j) creates and gd(j). -/
+theorem rerunReach_st (hok : RunOK sp al ts) (hst : AlgOK sp al) {k : Nat} (hk : k ≤ ts.length) :
+    rerunReach sp (st sp al ts k).S =
+      ((sectionIdx (st sp al ts k).S (lastSp (st sp al ts k).S)).map (fun j =>
+        (pathOf sp (st sp al ts (j - 1)).P (changeAt sp al ts j) j).length +
+          (changeAt sp al ts j).new.length +
+          (((st sp al ts k).S[j]?).map (fun R => R.gd.length)).getD 0)).sum := by
+  have hinv := inv_st sp al ts hok hst k hk
+  have hsk : lastSp (st sp al ts k).S ≤ k := by have := hinv.spLt; omega
+  have h0 := base_sameNodes sp al ts hok hst hk
+  unfold rerunReach
+  simp only
+  generalize hs : lastSp (st sp al ts k).S = s at h0 hsk
+  have hidx : sectionIdx (st sp al ts k).S s = List.range' (s + 1) (k - s) := by
+    simp [sectionIdx, hinv.len]
+  rw [hidx]
+  have key : ∀ m, m ≤ k - s →
+      ((List.range' (s + 1) m).foldl (fun (acc : Nat × Struct V) j =>
+        match (st sp al ts k).S[j]? with
+        | some R =>
+          match R.trans with
+          | some tr =>
+            (acc.1 + (pathOf sp acc.2 (sp.exec tr j (view sp acc.2 (j - 1))) j).length +
+              (sp.exec tr j (view sp acc.2 (j - 1))).new.length + R.gd.length,
+              acc.2.apply j (sp.exec tr j (view sp acc.2 (j - 1))))
+          | none => acc
+        | none => acc) (0, baseStruct sp (st sp al ts k).S s true)).1 =
+        ((List.range' (s + 1) m).map (fun j =>
+          (pathOf sp (st sp al ts (j - 1)).P (changeAt sp al ts j) j).length +
+            (changeAt sp al ts j).new.length +
+            (((st sp al ts k).S[j]?).map (fun R => R.gd.length)).getD 0)).sum ∧
+      SameNodes ((List.range' (s + 1) m).foldl (fun (acc : Nat × Struct V) j =>
+        match (st sp al ts k).S[j]? with
+        | some R =>
+          match R.trans with
+          | some tr =>
+            (acc.1 + (pathOf sp acc.2 (sp.exec tr j (view sp acc.2 (j - 1))) j).length +
+              (sp.exec tr j (view sp acc.2 (j - 1))).new.length + R.gd.length,
+              acc.2.apply j (sp.exec tr j (view sp acc.2 (j - 1))))
+          | none => acc
+        | none => acc) (0, baseStruct sp (st sp al ts k).S s true)).2 (st sp al ts (s + m)).P := by
+    intro m
+    induction m with
+    | zero => intro _; simpa using h0
+    | succ m ih =>
+      intro hm
+      obtain ⟨ih1, ih2⟩ := ih (by omega)
+      rw [List.range'_concat, List.foldl_append, List.map_append, List.sum_append]
+      simp only [List.foldl_cons, List.foldl_nil, Nat.one_mul, List.map_cons, List.map_nil,
+        List.sum_cons, List.sum_nil, Nat.add_zero]
+      have hj : s + 1 + m = (s + m) + 1 := by omega
+      rw [hj]
+      have hjl : s + m < ts.length := by omega
+      have hR := st_rec hok hst (i := s + m) (j := k) (by omega) hk
+      have htr : (parts sp al (st sp al ts (s + m)) ts[s + m]).R.trans = some ts[s + m] := by
+        rw [parts_R]
+      rw [hR]
+      simp only [htr]
+      rw [Nat.add_sub_cancel, ih2.view (s + m), pathOf_congr ih2, changeAt_succ (s + m) hjl]
+      refine ⟨?_, ?_⟩
+      · rw [ih1]
+        simp only [Option.map_some, Option.getD_some, chg]
+        omega
+      · rw [show s + (m + 1) = (s + m) + 1 by omega, st_P_succ sp al ts hok hst hjl]
+        exact ih2.apply _ _
+  exact (key (k - s) (Nat.le_refl _)).1
+
+/-- The gd's of the section are D. -/
+theorem sum_gd_eq_D (hok : RunOK sp al ts) (hst : AlgOK sp al) {k : Nat} (hk : k ≤ ts.length) :
+    ((sectionIdx (st sp al ts k).S (lastSp (st sp al ts k).S)).map (fun j =>
+      (((st sp al ts k).S[j]?).map (fun R => R.gd.length)).getD 0)).sum =
+      (st sp al ts k).D.length := by
+  have hinv := inv_st sp al ts hok hst k hk
+  rw [hinv.inv1, sectionD_eq, List.length_flatMap]
+  congr 1
+  apply List.map_congr_left
+  intro j _
+  cases (st sp al ts k).S[j]? with
+  | none => rfl
+  | some R => simp
+
+end Run
+
+theorem sum_map_add (l : List Nat) (f g : Nat → Nat) :
+    (l.map (fun j => f j + g j)).sum = (l.map f).sum + (l.map g).sum := by
+  induction l with
+  | nil => rfl
+  | cons a l ih => simp [ih]; omega
+
+/-- A cold start's reads after a run: the section's nodes, the run's writer
+paths and new nodes of the section's transactions, and D. -/
+theorem coldReads_run_of (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp al ts)
+    (hst : AlgOK sp al) :
+    (lazyStartup sp (run sp al ts).S).next ≤
+      (sectionNodes (run sp al ts).S (lastSp (run sp al ts).S)).length +
+      ((sectionIdx (run sp al ts).S (lastSp (run sp al ts).S)).map (fun j =>
+        (pathOf sp (run sp al (ts.take (j - 1))).P (changeAt sp al ts j) j).length +
+          (changeAt sp al ts j).new.length)).sum + (run sp al ts).D.length + 2 := by
+  have h1 := lazyStartup_next sp (run sp al ts).S
+  have h2 := rerunReach_st hok hst (k := ts.length) (Nat.le_refl _)
+  have h3 := sum_gd_eq_D hok hst (k := ts.length) (Nat.le_refl _)
+  rw [st_length] at h2 h3
+  rw [h2, sum_map_add] at h1
+  rw [h3] at h1
+  simp only [st] at h1
+  omega
 
 end SIS

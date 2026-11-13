@@ -3,8 +3,9 @@ Self-indexed streams in Lean: bounds, part 3, a cold start's reads (bergdb item
 007; 007-03, step 6; 005-57 and 005-58).
 
 Trusted part: the statements. The definition they are about is in
-SIS/BoundCold.lean (`rerunReach`), the proofs in SIS/Proof/BoundCold.lean; the
-proofs here only connect them. Added 2026-11-13.
+SIS/BoundCold.lean (`rerunReach`) and SIS/BoundT4.lean (`changeAt`), the
+proofs in SIS/Proof/BoundCold.lean; the proofs here only connect them. Added
+2026-11-13.
 -/
 import SIS.Proof.BoundCold
 
@@ -35,5 +36,28 @@ theorem coldReads_handles (sp : Spec V T) (S : Stream V T) :
     (handleStartup sp S).nextObj ≤ (sectionNodes S (lastSp S)).length + rerunReach sp S + 2 ∧
       (handleStartupPos sp S).nextObj ≤ (sectionNodes S (lastSp S)).length + rerunReach sp S + 2 :=
   ⟨lazyStartup_next sp S, lazyStartup_next sp S⟩
+
+/-- A cold start's reads after a run (BergDB's still-dirty test, or the exact
+one with a written root, and `RunOK`): the lazy startup from the run's stream
+gives out at most
+
+  (the section's index nodes) + (for each transaction T(j) of the section,
+  s < j ≤ k, the nodes of its writer's paths in the run's P after T(j - 1),
+  and the nodes it creates) + |D| + 2
+
+handles. So a cold start reads the section's nodes in order, at most the
+rerun's writer paths at random, and the debt D (`T4_debt` bounds it with the
+exact test). T3 bounds the transactions of the section (`T3_take_rerun`); a
+bound on a transaction's writer paths, the nodes reachable at j - 1 with a node
+below that T(j) changes, touches or makes unreachable (`pathOf`), is not
+stated here. -/
+theorem coldReads_run (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp al ts)
+    (hst : al.stillDirty = javaTest sp ∨ (sp.virt = false ∧ al.stillDirty = exactTest sp)) :
+    let S := (run sp al ts).S
+    (lazyStartup sp S).next ≤ (sectionNodes S (lastSp S)).length +
+      ((sectionIdx S (lastSp S)).map (fun j =>
+        (pathOf sp (run sp al (ts.take (j - 1))).P (changeAt sp al ts j) j).length +
+          (changeAt sp al ts j).new.length)).sum + (run sp al ts).D.length + 2 :=
+  coldReads_run_of sp al ts hok (algOK_of sp al hst)
 
 end SIS
