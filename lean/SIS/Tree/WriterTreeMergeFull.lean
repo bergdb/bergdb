@@ -8,6 +8,7 @@ import SIS.Tree.WriterGetMergeTail
 import SIS.Tree.PairReplace
 import SIS.Tree.SpaceSplitMap
 import SIS.Tree.MergeLiveOrder
+import SIS.Tree.WriterGetMergeMade
 
 set_option autoImplicit false
 
@@ -236,6 +237,7 @@ theorem writerWP_ite_cases {α : Type} (b : Prop) [Decidable b] (x y : M α) (c 
   · simp only [h, ↓reduceIte]; exact hx h
   · simp only [h, ↓reduceIte]; exact hy h
 
+set_option linter.unusedSimpArgs false in
 /-- `mergeParent` by its two ways: with room, the parent's node `mergeParentNode`
 in place (`hroomP`); else, or with too many dead klongs, `handleFull` of the
 parent's last version `mergeFullLast` (`hfullP`). -/
@@ -326,5 +328,98 @@ theorem writerWP_mergeParent_cases (p : NodeId) (pn : KNode) (depth il cL : Nat)
           simp only [mergeFullLast, hgb, ↓reduceIte, hks]
       · exact writerWP_throw _ _ _ _
       · exact writerWP_throw _ _ _ _
+
+/-- The merge's last loop with any parent node: each node is taken back (its
+parent retargeted to m1) or unlinked; the parent's live klongs after are its
+live klongs before, or m1 where one before named a node of the loop. -/
+theorem writerWP_mergeCleanup_any (p m1 : NodeId) (t : Time) (c : Ctx) :
+    ∀ (xs : List (NodeId × Bool)) (w : W) (n : KNode), (∀ q ∈ xs, q.1 ≠ p) →
+    w.nodes.lookup p = some n →
+    WriterWP (forIn xs PUnit.unit (fun q _ => if q.2 = true then (do
+        retarget p q.1 m1
+        takenBack q.1
+        note "merge.takeback"
+        pure (ForInStep.yield PUnit.unit)) else (do
+        unlink q.1
+        pure (ForInStep.yield PUnit.unit)))) c w
+      (fun _ w' => w'.top = w.top ∧ w'.next = w.next ∧ w'.vals = w.vals ∧
+        (∀ y, (∀ q ∈ xs, y ≠ q.1) → w'.taken.contains y = w.taken.contains y) ∧
+        (∀ y, y ≠ p → (∀ q ∈ xs, y ≠ q.1) → w'.nodes.lookup y = w.nodes.lookup y) ∧
+        ∃ n', w'.nodes.lookup p = some n' ∧ n'.leaf = n.leaf ∧ ∀ c' z, (c', z) ∈ n'.liveAt t →
+          (c', z) ∈ n.liveAt t ∨ (z = m1 ∧ ∃ q ∈ xs, (c', q.1) ∈ n.liveAt t)) := by
+  intro xs
+  induction xs with
+  | nil =>
+    intro w n _ hlk
+    rw [List.forIn_nil]
+    refine (writerWP_pure _ c w _).mpr ?_
+    exact ⟨rfl, rfl, rfl, fun _ _ => rfl, fun _ _ _ => rfl, n, hlk, rfl, fun _ _ h => Or.inl h⟩
+  | cons q qs ih =>
+    intro w n hne hlk
+    rw [List.forIn_cons]
+    have hqp : q.1 ≠ p := hne q List.mem_cons_self
+    have hrest : ∀ (w1 : W) (n1 : KNode), w1.top = w.top → w1.next = w.next → w1.vals = w.vals →
+        (∀ y, y ≠ q.1 → w1.taken.contains y = w.taken.contains y) →
+        (∀ y, y ≠ p → y ≠ q.1 → w1.nodes.lookup y = w.nodes.lookup y) →
+        w1.nodes.lookup p = some n1 → n1.leaf = n.leaf →
+        (∀ c' z, (c', z) ∈ n1.liveAt t → (c', z) ∈ n.liveAt t ∨ (z = m1 ∧ (c', q.1) ∈ n.liveAt t)) →
+        WriterWP (forIn qs PUnit.unit (fun q _ => if q.2 = true then (do
+          retarget p q.1 m1
+          takenBack q.1
+          note "merge.takeback"
+          pure (ForInStep.yield PUnit.unit)) else (do
+          unlink q.1
+          pure (ForInStep.yield PUnit.unit)))) c w1
+        (fun _ w' => w'.top = w.top ∧ w'.next = w.next ∧ w'.vals = w.vals ∧
+          (∀ y, (∀ q' ∈ q :: qs, y ≠ q'.1) → w'.taken.contains y = w.taken.contains y) ∧
+          (∀ y, y ≠ p → (∀ q' ∈ q :: qs, y ≠ q'.1) → w'.nodes.lookup y = w.nodes.lookup y) ∧
+          ∃ n', w'.nodes.lookup p = some n' ∧ n'.leaf = n.leaf ∧ ∀ c' z, (c', z) ∈ n'.liveAt t →
+            (c', z) ∈ n.liveAt t ∨ (z = m1 ∧ ∃ q' ∈ q :: qs, (c', q'.1) ∈ n.liveAt t)) := by
+      intro w1 n1 h1top h1next h1v h1t h1l h1p h1leaf h1sub
+      refine writerWP_mono (ih w1 n1 (fun q' hq' => hne q' (List.mem_cons_of_mem _ hq')) h1p) ?_
+      intro _ w2 ⟨h2top, h2next, h2v, h2t, h2l, n2, h2p, h2leaf, h2sub⟩
+      refine ⟨h2top.trans h1top, h2next.trans h1next, h2v.trans h1v, fun y hy => ?_, fun y hyp hy => ?_,
+        n2, h2p, h2leaf.trans h1leaf, fun c' z hm => ?_⟩
+      · rw [h2t y (fun q' hq' => hy q' (List.mem_cons_of_mem _ hq')),
+          h1t y (hy q List.mem_cons_self)]
+      · rw [h2l y hyp (fun q' hq' => hy q' (List.mem_cons_of_mem _ hq')),
+          h1l y hyp (hy q List.mem_cons_self)]
+      · rcases h2sub c' z hm with h | ⟨hz, q', hq', h⟩
+        · rcases h1sub c' z h with h' | ⟨hz', h'⟩
+          · exact Or.inl h'
+          · exact Or.inr ⟨hz', q, List.mem_cons_self, h'⟩
+        · rcases h1sub c' q'.1 h with h' | ⟨_, h'⟩
+          · exact Or.inr ⟨hz, q', List.mem_cons_of_mem _ hq', h'⟩
+          · exact Or.inr ⟨hz, q, List.mem_cons_self, h'⟩
+    by_cases hq2 : q.2 = true
+    · simp only [writerWP_bind, hq2, ↓reduceIte]
+      refine writerWP_mono (writerWP_retarget_frameV p q.1 m1 n c w hlk) ?_
+      intro _ w1 ⟨h1t, h1top, h1next, h1v, h1l, n1, h1p, h1n⟩
+      refine (writerWP_takenBack_iff _ c w1 _).mpr ?_
+      refine (writerWP_note_iff _ c _ _).mpr ?_
+      refine (writerWP_pure _ c _ _).mpr ?_
+      dsimp only
+      refine hrest _ n1 h1top h1next h1v ?_ ?_ h1p ?_ ?_
+      · intro y hy
+        show (q.1 :: w1.taken).contains y = _
+        rw [List.contains_cons, h1t]
+        have : (y == q.1) = false := by simpa using hy
+        simp [this]
+      · intro y hyp _; exact h1l y hyp
+      · rcases h1n with he | ⟨ti, he⟩ <;> rw [he]
+      · intro c' z hm
+        rcases h1n with he | ⟨ti, he⟩
+        · rw [he] at hm; exact Or.inl hm
+        · rw [he] at hm
+          rcases KNode.retarget_liveAt n ti q.1 m1 t c' z hm with h | ⟨hz, h⟩
+          · exact Or.inl h
+          · exact Or.inr ⟨hz, h⟩
+    · have hq2' : q.2 = false := by simpa using hq2
+      simp only [writerWP_bind, hq2', Bool.false_eq_true, ↓reduceIte]
+      refine writerWP_mono (writerWP_unlink_frameV q.1 c w) ?_
+      intro _ w1 ⟨h1t, h1top, h1next, h1v, h1l⟩
+      refine (writerWP_pure _ c _ _).mpr ?_
+      refine hrest _ n h1top h1next h1v (fun y _ => by rw [h1t]) (fun y hyp hyq => h1l y hyq)
+        (by rw [h1l p (Ne.symm hqp)]; exact hlk) rfl (fun c' z hm => Or.inl hm)
 
 end SIS.Tree
