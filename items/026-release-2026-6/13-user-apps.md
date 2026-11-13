@@ -427,7 +427,9 @@ grown and the shrunk buffer (B3b).
 ## 5. Proposed 028-todo entries
 
 For the coordinator, who registers them (028's form: kind and title,
-What, Why, Frans, Done when, First step). Q1's option B is not an
+What, Why, Frans, Done when, First step). Registered 2026-11-13 as
+028-03 (U13-1), 028-04 (U13-2), 028-05 (U13-6), 028-06 (U13-4, U13-5)
+and 028-07 (U13-3). Q1's option B is not an
 entry: as a design for a release it goes to 026's proposals (section 6).
 
 * **Fix: the package's write buffer sentence (U13-1).** What: bergdb.pub's
