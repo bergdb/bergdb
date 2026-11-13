@@ -1395,7 +1395,7 @@ and its status:
     deletes. StepFits (the inner states fit) is in `MergeStepOK` and
     `DelStepsOK`; step 4 (`SegBal`, cost) is to discharge it.
 
-    Finding (cost, 22:20): StepFits at fuel - 1 is not a per-rule fact. A
+    Finding (cost, 21:35): StepFits at fuel - 1 is not a per-rule fact. A
     delete can space split a full segment root by a merge (one level more)
     and then remove a level by its root collapse, which does not descend. So
     from a segment of depth fuel - 1, a state inside the operation can have
@@ -1404,7 +1404,7 @@ and its status:
     get there is a counting question: a transaction's keys are distinct, so
     a segment grows only by the transaction's own new keys. That is open.
 
-    Decision (coordinator, 22:25): option (a). The reading lemmas that case 4
+    Decision (coordinator, 21:45): option (a). The reading lemmas that case 4
     needs are stated for any fuel f, with the `p.fuel` versions kept as
     corollaries. Inner readings use f = fuel + 1, and `getEqR_fuel_mono`
     brings the operation's end back to `p.fuel`. Step 4 then proves two
@@ -1416,7 +1416,7 @@ and its status:
 
     Case 4's `SegFits` conjuncts change accordingly.
 
-    Done (cost, 23:10): the reading lemmas case 4 needs are generalized in
+    Done (cost, 22:00): the reading lemmas case 4 needs are generalized in
     place to a fuel f (2 ≤ f), with the p.fuel versions kept as one-line
     corollaries under their old names. They are:
     - the collapse's (`CollGetInvF`, `writerWP_collapseRoot_collF`, the space
@@ -1435,6 +1435,46 @@ and its status:
     turns the reading at p.fuel + 1 into `runGet` at the operation's end. The
     fuel obligations are now SegFits at depth p.fuel inside the operation:
     `MergeStepOKF`'s and the collapse's, at f - 1 = p.fuel.
+
+    Step 4, plan (cost, 22:15). The Bool evidence is cost's `SegFit.lean`,
+    run outside the repository. It ran random transactions (M 4 and 8, G 2,
+    H 0 to 2, with and without merges) and grow-then-shrink transactions of
+    1000 keys. In the random runs, every segment tree at every operation
+    boundary was balanced: 0 unbalanced states of about 14,000. SegFits
+    (fuel - 1) held at every boundary checked. The route goes by heights,
+    not depths. The writer knows each key node's height: `gh`, and for a
+    node of P its level (`heightOf`). The invariant, `HeightInv`, is local:
+    every key node is a segment leaf exactly when its height is 0, and an
+    inner node's live children have its height minus one. A rule keeps it
+    when every node it writes has children of the right height.
+    `HeightInv` gives `SegDepthEq (height x) x` for every node, so a
+    segment tree's depth is its root's height and the tree is balanced
+    (`SegBal`). Three pieces are left:
+    - (A) Every rule keeps `HeightInv`, and P has it at every run. After
+      the commit, the transaction's nodes are in the bounds, so
+      heightOf (keyLevel g h) = h.
+    - (B) Inside an operation, the reached nodes' heights are at most
+      fuel. Only a root split adds a height, at most one per segment and
+      operation.
+    - (C) At operation boundaries, SegFits (fuel - 1), by the doomed
+      transaction:
+      - A reached node of height fuel or more was made in the transaction
+        above H (`HeightMarkedPred`). `boundsOK` then fails unless a later
+        operation takes the node back.
+      - An operation takes back only nodes on its path, a sibling of one,
+        or a root that its own split made. A descent that passes a node of
+        height fuel or more throws (`writerWP_descendLte_depth`). So every
+        node taken back has a height below fuel, or was made in the same
+        operation.
+
+    Size estimate:
+    - (A) 2000 to 3000 lines: about 40 writer rules, most of it in the
+      splits' and the merges' node writes, and the commit lift about 500.
+    - (B) 500 to 1000 lines.
+    - (C) 1000 to 2000 lines: the path's heights and every take-back site.
+
+    That is 4000 to 6000 lines in all, more than one night. (A) comes
+    first.
   - (5) `DelNoLeafCase`, a delete of a key with no leaf: proved,
     `opGetCaseOK_delNoLeaf`. It changes no reading: the writer's walk
     stops at the first segment that is not there and only reads
