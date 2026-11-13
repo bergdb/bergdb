@@ -120,7 +120,7 @@ The parts, in reading order (027-04; stubs until written):
 * [08-key-tree-writer.md](08-key-tree-writer.md). 027-08, part 4: the key tree, the writer.
 * [09-transactions.md](09-transactions.md). 027-09, part 5: transactions.
 * [10-self-indexed-stream.md](10-self-indexed-stream.md). 027-10, part 6: the self-indexed stream.
-* [11-startup.md](11-startup.md). 027-11, part 7: startup.
+* [11-startup.md](11-startup.md). 027-11, part 7: startup; reviewed, for Frans to read.
 * [12-memory.md](12-memory.md). 027-12, part 8: memory, handles and eviction.
 * [13-reclaim.md](13-reclaim.md). 027-13, part 9: reclaim; the pilot, reviewed
   against the code and read by Frans (2026-11-13, 12:34: "really good"): the

@@ -80,3 +80,10 @@ import SIS.Tree.GetCommit
 import SIS.Tree.MergeNodeCount
 import SIS.Tree.WriterSizeMerge
 import SIS.Tree.OverlayLift
+import SIS.Tree.MergeNodeCountOps
+import SIS.Tree.GetFrame
+import SIS.Tree.GetUnder
+import SIS.Tree.WriterTree
+import SIS.Tree.GetSplit
+import SIS.Tree.WriterTreeOps
+import SIS.Tree.WriterTreeVisits

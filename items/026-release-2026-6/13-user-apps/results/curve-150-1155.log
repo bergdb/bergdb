@@ -1,0 +1,5 @@
+11:55:15 opened 150 databases; heap used 93 MB
+11:55:45 heap curve after the writes (s: MB): 0.8: 960 1.5: 930 2.1: 927 2.8: 896 3.4: 813 4.1: 468 4.8: 465 5.5: 465 6.2: 465 6.9: 465 7.5: 465 8.2: 465 8.9: 465 9.6: 465 10.3: 465 10.9: 465 11.6: 465
+11:56:00 heap: 465 MB 10 s after the writes, 462 MB after a close and an open of each (3028 kB a database)
+11:56:00 heap: 7 MB all closed, 98 MB with 150 open (601 kB a database), 1089 MB 0.3 s after a fast write to each (6611 kB a database more), 465 MB 3.5 s after (2450 kB a database more than when opened)
+11:56:03 OK Buffers many seed 101: 150 databases, 576 bursts, 91812 transactions, 527 MB, 249 gaps of 1.5 to 2.5 s, 30 reopens, 32 open-write-close cycles, buffers' heap after 3.5 s idle 23 kB a database, 52 s

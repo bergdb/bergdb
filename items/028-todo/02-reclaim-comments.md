@@ -1,7 +1,7 @@
 028-02. Fix: Reclaim's and Db's comments that disagree with the code
 ====================================================================
 
-Status: open. Kind: Fix. Frans: none.
+Status: done (2026-11-13). Kind: Fix. Frans: none.
 Created 2026-11-13 by Frans Lundberg.
 
 What: nine Java comments state a rule of reclaim that the code does not
@@ -34,3 +34,10 @@ Log
 ---
 
 2026-11-13. Registered by coord-1113, from 027-13's review.
+
+2026-11-13. Done by an agent of coord-1113 (Frans, 12:58), with 027-11's
+list of the same kind, in the commit "028-02, 027-11: Java comments that
+disagree with the code, fixed (comments only)" on branch comments-1113:
+the nine comments of 027-13's list, comments only; `java/before-commit.sh`
+printed `BEFORE COMMIT OK`. 027-13's section "For the code's comments" is
+gone.

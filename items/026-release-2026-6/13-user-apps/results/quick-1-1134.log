@@ -1,0 +1,44 @@
+== OldNodeSize old-dbs/b2-node62
+11:34:00 refused: The database's maximum node size is 62, and this start uses 30. BergDB makes and starts databases of the node size 30 (bergdb 026-08); the other sizes are for BergDB's own tests, and a database made at one starts only with it. The start has written nothing (bergdb 005-50).
+11:34:00 OK OldNodeSize: 3 starts refused with StreamFormatException, 5 files unchanged
+== BackToEmpty 1 30 20000 3 data/b1 8000
+11:34:02 round 0 drive: kept at the end 2238 kB, twin 3025 kB (twin's largest 3179 kB), lag 1340 (R 500, lag/R 2.68), live 178
+11:34:03 round 1 drive: kept at the end 3271 kB, twin 4475 kB (twin's largest 5445 kB), lag 1045 (R 1000, lag/R 1.05), live 1
+11:34:04 round 2 maintain() only: kept at the end 340 kB, twin 35 kB (twin's largest 35 kB), lag not reached in 4000 (R 500, lag/R 8.00), live 176
+11:34:04 OK BackToEmpty seed 1 node 30 keys 20000: 12459 transactions, 7 restarts, 55 checks, 38 cuts checked at the oldest state, 3653 ms
+  round 0, delete mode 3, drive: kept at the end 2238 kB, twin 3025 kB (twin's largest 3179 kB), lag 1340 (R 500, lag/R 2.68), live 178
+  round 1, delete mode 0, drive: kept at the end 3271 kB, twin 4475 kB (twin's largest 5445 kB), lag 1045 (R 1000, lag/R 1.05), live 1
+  round 2, delete mode 3, maintain() only: kept at the end 340 kB, twin 35 kB (twin's largest 35 kB), lag not reached in 4000 (R 500, lag/R 8.00), live 176
+== Transform 1 20 data/b2 30
+11:34:24 commits 120317, refusals 38091 {vt-throws=5453, vt-throws-once=5342, vt-over-L4=5392, kt-over-L2=5389, vt-over-L5=5446, kt-throws=5657, kt-duplicate=5412}, reruns 5342, plain 22928, reads 30908358, stream 790747648, first available pos 734011536
+11:34:24 commits 120829, refusals 38256 {vt-throws=5485, vt-throws-once=5365, vt-over-L4=5408, kt-over-L2=5412, vt-over-L5=5465, kt-throws=5688, kt-duplicate=5433}, reruns 5365, plain 23062, reads 31235666, stream 797503344, first available pos 742585800
+11:34:24 end: all ranges, counters and logs as the oracle
+11:34:25 after restart: all ranges, counters and logs as the oracle
+11:34:25 after the refusals alone: all ranges, counters and logs as the oracle
+11:34:25 probe, a null result over a value: committed over a value; the key reads null, at the transaction's time less one 09; getTrans lists 1 value nodes
+11:34:25 probe, after a restart the key reads null
+11:34:25 probe, a value transformation that returns null: committed; the key reads null
+11:34:25 probe, an Error from a value transformation: the Error as it is; then a read throws DbFailedException
+11:34:25 after the probes and a restart: all ranges, counters and logs as the oracle
+11:34:25 OK Transform seed 1 node 30: 120829 transformer commits, 38256 refusals {vt-throws=5485, vt-throws-once=5365, vt-over-L4=5408, kt-over-L2=5412, vt-over-L5=5465, kt-throws=5688, kt-duplicate=5433}, 5365 reruns, 23062 plain transactions, 31235666 group reads, 20671 ms
+== Buffers many 1 60 30 data/b3
+11:34:26 opened 60 databases; heap used 38 MB
+11:34:41 bursts 463, transactions 70818, 608 MB, gaps near 2 s 358, reopens 42, spare cycles 60, heap used 1325 MB
+11:34:56 bursts 1003, transactions 152746, 1130 MB, gaps near 2 s 890, reopens 84, spare cycles 164, heap used 1080 MB
+11:35:13 heap: 187 MB 10 s after the writes, 186 MB after a close and an open of each (3022 kB a database)
+11:35:13 heap: 5 MB all closed, 41 MB with 60 open (601 kB a database), 395 MB 0.3 s after a fast write to each (5907 kB a database more), 187 MB 3.5 s after (2443 kB a database more than when opened)
+11:35:19 OK Buffers many seed 1: 60 databases, 1004 bursts, 152752 transactions, 1135 MB, 890 gaps of 1.5 to 2.5 s, 84 reopens, 165 open-write-close cycles, buffers' heap after 3.5 s idle 23 kB a database, 53 s
+== KeyLimits 1 5000 data/b4
+11:35:20 Core: 864 String keys taken of 1350
+11:35:20 OK KeyLimits seed 1: 2146 taken, 913 refused for length, 1387 bad form, 594 deletes, 2300 messages compared, 153 key-replace puts, 2233 keys kept, 811 ms
+== GivenBack data/gb 50
+11:35:22 OK GivenBack: 50 rounds, 0 reads whose state changed, 0 currentTime() calls that waited over 20 ms for the transaction
+11:35:33 OK Huge: 4 rounds of transactions of 7 to 31 MB
+== KillEmpty parent 1 data/b5 12 6 2500
+11:35:55 OK KillEmpty seed 1: 12 kills (2 aimed at the start), 1 clean exits, 3 databases, 12 recoveries checked, 21 s
+== Buffers kill 1 data/b3k 6 8
+11:36:17 OK Buffers kill seed 1: 6 kills, 8 databases, 4453 committed transactions seen, 0 databases lost a transaction committed 2 s or more before the kill, 22 s
+== IndexChurn 1 2000 data/a6 1000
+11:36:22 tx 999: live 1168, restarts 2, checks 2349, old ok 54, cut 0, first available 0
+11:36:30 tx 1999: live 1261, restarts 5, checks 4727, old ok 108, cut 2, first available 17780000241670001
+11:36:31 OK IndexChurn seed 1: 2000 transactions, 5 restarts, 4814 checks, old reads 110 ok and 2 cut, live 1261, 13238 ms

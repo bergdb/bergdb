@@ -1,0 +1,15 @@
+  round 3, delete mode 1, maintain() only: kept at the end 148 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 1600 (R 200, lag/R 8.00), live 0
+  round 3, delete mode 1, maintain() only: kept at the end 110 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 1600 (R 200, lag/R 8.00), live 0
+  round 3, delete mode 1, maintain() only: kept at the end 187 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 1600 (R 200, lag/R 8.00), live 0
+  round 3, delete mode 1, maintain() only: kept at the end 199 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 1600 (R 200, lag/R 8.00), live 0
+  round 3, delete mode 2, maintain() only: kept at the end 196 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 1600 (R 200, lag/R 8.00), live 0
+  round 3, delete mode 2, maintain() only: kept at the end 178 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 1600 (R 200, lag/R 8.00), live 0
+  round 3, delete mode 2, maintain() only: kept at the end 266 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 1600 (R 200, lag/R 8.00), live 0
+  round 3, delete mode 2, maintain() only: kept at the end 88 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 1600 (R 200, lag/R 8.00), live 0
+  round 3, delete mode 1, maintain() only: kept at the end 32 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 1600 (R 200, lag/R 8.00), live 0
+  round 3, delete mode 1, maintain() only: kept at the end 56 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 1600 (R 200, lag/R 8.00), live 0
+  round 3, delete mode 1, maintain() only: kept at the end 138 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 1600 (R 200, lag/R 8.00), live 0
+  round 3, delete mode 1, maintain() only: kept at the end 408 kB, twin 0 kB (twin's largest 0 kB), lag not reached in 1600 (R 200, lag/R 8.00), live 0
+  round 1, delete mode 1, drive: kept at the end 4112 kB, twin 3519 kB (twin's largest 4290 kB), lag 907 (R 1000, lag/R 0.91), live 1
+  round 1, delete mode 2, drive: kept at the end 7916 kB, twin 4168 kB (twin's largest 7228 kB), lag 2484 (R 1000, lag/R 2.48), live 1
+11:16:37 OK Transform seed 101 node 8: 183084 transformer commits, 57920 refusals {vt-throws=8177, vt-throws-once=8198, vt-over-L4=8431, vt-over-L5=8296, kt-over-L2=8339, kt-throws=8269, kt-duplicate=8210}, 8198 reruns, 67059 plain transactions, 107144697 group reads, 91229 ms
