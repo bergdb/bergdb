@@ -1182,30 +1182,39 @@ theorem writerWP_delLeaf_chainGRange (c : Ctx) (base : View BVal)
     exact ⟨r.1, hr0, hscr, hf, hs, fun hql => hrangeL hql r.1 r.2 hrN⟩
   all_goals assumption
 
-/-- `writerWP_delRootSplit_tree` (prover cost's) with the walk's ranges: the
-space root leaf's split keeps them. -/
-theorem writerWP_delRootSplit_range (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
-    (up : NodeId → List (Nat × NodeId) → M Unit) (L : NodeId) (n : KNode) (cv : Nat)
-    (compact : Bool) (hleaf : n.leaf = true) (hsa2 : 2 ≤ c.p.splitAbove)
-    (hnt : ∀ s, Klong.time s ∈ n.ks → s ≤ c.i)
+/-- The space root L's split with a last version `last` given keeps the walk's
+ranges (prover putinv's `writerWP_delRootSplit_range` for any last version): given
+the tree with L's content replaced by `last` (`hV`), its ranges (`hVR`), the
+halves' facts (`hH`, `hHR`) and that `last` names nodes below the next id
+(`hvx`), the writer's tree after it is a tree whose nodes are reached in that
+tree or new, with the walk's ranges. -/
+theorem writerWP_rootSplit_rangeL (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (up : NodeId → List (Nat × NodeId) → M Unit) (L : NodeId) (n last : KNode)
+    (compact : Bool)
+    (hH : c.p.splitAbove < last.size →
+      ∃ r : Nat × NodeId, 0 < r.1 ∧ (halves n.leaf c.i last []).2.2 = r.1 ∧
+      (∀ c' z, (c', z) ∈ (halves n.leaf c.i last []).1.liveAt c.i →
+        c' < r.1 ∧ (c', z) ∈ (⟨n.leaf, last.ks⟩ : KNode).liveAt c.i) ∧
+      (∀ c' z, (c', z) ∈ (halves n.leaf c.i last []).2.1.liveAt c.i →
+        ∃ c0, r.1 ≤ c0 ∧ c' = splitLocalCv n.leaf r.1 c0 ∧
+          (c0, z) ∈ (⟨n.leaf, last.ks⟩ : KNode).liveAt c.i))
+    (hHR : c.p.splitAbove < last.size → ∀ r, (halves n.leaf c.i last []).2.2 = r →
+      (∃ zs, (r, zs) ∈ (⟨n.leaf, last.ks⟩ : KNode).liveAt c.i) ∧
+      ∃ c0 z0, (c0, z0) ∈ (⟨n.leaf, last.ks⟩ : KNode).liveAt c.i ∧ c0 < r)
     (w : W) (hlk : w.nodes.lookup L = some n) (htk : w.taken.contains L = false)
     (hrk : w.top.rootKey = L)
-    (hT : TreeOK (wNode c.p base w) c.i w.top.rootKey)
     (hS5 : ∀ z, w.next ≤ z → w.nodes.lookup z = none ∧ w.taken.contains z = false ∧
       knodeOf c.p base z = none)
     (hS6 : ∀ u c' z, TLink (wNode c.p base w) c.i u c' z → z < w.next)
-    (hRO : RangeOrder (wNode c.p base w) c.i w.top.rootKey) :
-    WriterWP (handleFullWith up 0 L []
-      (n.lastVersionGivenDel c.i (bitsUnion n.lastBitmap (n.bitsOf cv))) compact) c w
+    (hV : TreeOK (updN (wNode c.p base w) L ⟨n.leaf, last.ks⟩) c.i w.top.rootKey)
+    (hVR : RangeOrder (updN (wNode c.p base w) L ⟨n.leaf, last.ks⟩) c.i w.top.rootKey)
+    (hvx : ∀ c' z, (c', z) ∈ (⟨n.leaf, last.ks⟩ : KNode).liveAt c.i → z < w.next) :
+    WriterWP (handleFullWith up 0 L [] last compact) c w
       (fun _ w' => TreeOK (wNode c.p base w') c.i w'.top.rootKey ∧
         (∀ z, TReach (wNode c.p base w') c.i w'.top.rootKey z →
-          TReach (wNode c.p base w) c.i w.top.rootKey z ∨ w.next ≤ z) ∧
-        RangeOrder (wNode c.p base w') c.i w'.top.rootKey) := by
-  obtain ⟨hleq, hlt, hlsub⟩ := delLast_facts n c.i cv
-  have hH := delLast_halves n c.i cv c.p.splitAbove hleaf hsa2
-  have hHR := delLast_halvesR n c.i cv c.p.splitAbove hleaf hsa2
-  generalize hlast : n.lastVersionGivenDel c.i (bitsUnion n.lastBitmap (n.bitsOf cv)) = last
-    at hleq hlt hlsub hH hHR ⊢
+          TReach (updN (wNode c.p base w) L ⟨n.leaf, last.ks⟩) c.i w.top.rootKey z ∨
+            w.next ≤ z) ∧
+        RangeOrder (wNode c.p base w') c.i w'.top.rootKey ∧ w'.taken = w.taken) := by
   have hLn : L < w.next := by
     rcases Nat.lt_or_ge L w.next with hlt' | hge
     · exact hlt'
@@ -1220,31 +1229,14 @@ theorem writerWP_delRootSplit_range (c : Ctx) (base : View BVal) (hvc : ViewCohe
     simp only [wNode, b, Bool.false_eq_true, ↓reduceIte, a, d]
   have hnoLink : ∀ z, w.next ≤ z → ∀ u c', ¬ TLink (wNode c.p base w) c.i u c' z := by
     intro z hz u c' hl; have := hS6 u c' z hl; omega
-  have hwx : wNode c.p base w L = some n := by
-    simp only [wNode, htk, Bool.false_eq_true, ↓reduceIte, hlk]
-  have hWx : updN (wNode c.p base w) L n = wNode c.p base w := by
-    funext z
-    by_cases hz : z = L
-    · rw [hz, updN_self]; exact hwx.symm
-    · exact updN_ne _ _ _ _ hz
-  have hlastsub : ∀ c' z, (c', z) ∈ (⟨n.leaf, last.ks⟩ : KNode).liveAt c.i → (c', z) ∈ n.liveAt c.i := by
-    intro c' z h
-    rw [hleq, KNode.liveAt_of_times last c.i hlt] at h
-    rw [KNode.liveAt_of_times _ c.i hnt]
-    exact hlsub c' z h
-  obtain ⟨hV, hRV⟩ := treeOK_updN_sub (wNode c.p base w) c.i w.top.rootKey L n
-    ⟨n.leaf, last.ks⟩ (by rw [hWx]; exact hT) hlastsub
-  rw [hWx] at hRV
+  have hRV : ∀ z, TReach (updN (wNode c.p base w) L ⟨n.leaf, last.ks⟩) c.i w.top.rootKey z →
+      TReach (updN (wNode c.p base w) L ⟨n.leaf, last.ks⟩) c.i w.top.rootKey z := fun _ h => h
   have hV0 : TreeOK (updN (wNode c.p base w) L ⟨n.leaf, last.ks⟩) c.i L := by
     rw [hrk] at hV; exact hV
-  have hVR : RangeOrder (updN (wNode c.p base w) L ⟨n.leaf, last.ks⟩) c.i w.top.rootKey :=
-    rangeOrder_updN_sub (wNode c.p base w) c.i w.top.rootKey L n _ (by rw [hWx]; exact hRO) rfl
-      hlastsub
   have hVR0 : RangeOrder (updN (wNode c.p base w) L ⟨n.leaf, last.ks⟩) c.i L := by
     have h := hVR
     rw [hrk] at h; exact h
-  have hvxLinks : ∀ c' z, (c', z) ∈ (⟨n.leaf, last.ks⟩ : KNode).liveAt c.i → z < w.next :=
-    fun c' z h => hS6 _ _ _ ⟨_, hwx, hlastsub c' z h⟩
+  have hvxLinks : ∀ c' z, (c', z) ∈ (⟨n.leaf, last.ks⟩ : KNode).liveAt c.i → z < w.next := hvx
   have hVnone : ∀ z, w.next ≤ z → updN (wNode c.p base w) L ⟨n.leaf, last.ks⟩ z = none := by
     intro z hz
     rw [updN_ne _ _ _ _ (fun h => by omega)]
@@ -1261,12 +1253,12 @@ theorem writerWP_delRootSplit_range (c : Ctx) (base : View BVal) (hvc : ViewCohe
     · rw [updN_ne _ _ _ _ hu] at hm
       exact hnoLink z hz u c' ⟨m, hm, hc⟩
   have hRV0 : ∀ z, TReach (updN (wNode c.p base w) L ⟨n.leaf, last.ks⟩) c.i L z →
-      TReach (wNode c.p base w) c.i w.top.rootKey z := by
+      TReach (updN (wNode c.p base w) L ⟨n.leaf, last.ks⟩) c.i w.top.rootKey z := by
     intro z hz; apply hRV z; rw [hrk]; exact hz
   by_cases hsp : c.p.splitAbove < last.size ∧ compact = false
   · obtain ⟨hsp, hc⟩ := hsp
     subst hc
-    obtain ⟨r, hsc, _, hdiv, hf, hs⟩ := hH hsp
+    obtain ⟨r, hsc, hdiv, hf, hs⟩ := hH hsp
     obtain ⟨hscL, _⟩ := hHR hsp r.1 hdiv
     by_cases hmade : n.firstTime = some c.i
     · -- the root space split in place: the second half and a new root
@@ -1353,7 +1345,7 @@ theorem writerWP_delRootSplit_range (c : Ctx) (base : View BVal) (hvc : ViewCohe
           rw [hw']
           simp only [h1, h2, h3, ↓reduceIte]
           exact (updN_ne _ _ _ _ h1).symm)
-      refine ⟨by rw [h'root]; exact hT', ?_, by rw [h'root]; exact hVR'⟩
+      refine ⟨by rw [h'root]; exact hT', ?_, by rw [h'root]; exact hVR', h't⟩
       intro z hz
       rw [h'root] at hz
       rcases hR' z hz with h | h | h
@@ -1454,7 +1446,7 @@ theorem writerWP_delRootSplit_range (c : Ctx) (base : View BVal) (hvc : ViewCohe
           rw [hw']
           simp only [h1, h2, h3, h4, ↓reduceIte]
           exact (updN_ne _ _ _ _ h1).symm)
-      refine ⟨by rw [h'root]; exact hT', ?_, by rw [h'root]; exact hVR'⟩
+      refine ⟨by rw [h'root]; exact hT', ?_, by rw [h'root]; exact hVR', h't⟩
       intro z hz
       rw [h'root] at hz
       rcases (hR' z hz).1 with h | h | h | h
@@ -1472,10 +1464,10 @@ theorem writerWP_delRootSplit_range (c : Ctx) (base : View BVal) (hvc : ViewCohe
     · -- the root time split in place
       refine writerWP_mono (writerWP_handleFullWith_timeInPlace_nil up 0 L n last compact c base hvc
         w hlk htk hmade hcs) ?_
-      rintro _ w' ⟨_, h'top, hN'⟩
+      rintro _ w' ⟨h't, h'top, hN'⟩
       have hN'' : wNode c.p base w' = updN (wNode c.p base w) L ⟨n.leaf, last.ks⟩ := by
         funext y; rw [hN' y]; rfl
-      refine ⟨by rw [hN'', h'top]; exact hV, ?_, by rw [hN'', h'top]; exact hVR⟩
+      refine ⟨by rw [hN'', h'top]; exact hV, ?_, by rw [hN'', h'top]; exact hVR, h't⟩
       intro z hz
       rw [hN'', h'top] at hz
       exact Or.inl (hRV z hz)
@@ -1504,11 +1496,62 @@ theorem writerWP_delRootSplit_range (c : Ctx) (base : View BVal) (hvc : ViewCohe
           intro z h2 h1
           rw [hN', updN_ne _ _ _ _ h2, updN_ne _ _ _ _ h1]
           exact (updN_ne _ _ _ _ h1).symm)
-      refine ⟨by rw [h'root]; exact hT', ?_, by rw [h'root]; exact hVR'⟩
+      refine ⟨by rw [h'root]; exact hT', ?_, by rw [h'root]; exact hVR', h't⟩
       intro z hz
       rw [h'root] at hz
       rcases (hR' z hz).1 with h | h
       · exact Or.inl (hRV0 z h)
       · exact Or.inr (by omega)
+
+/-- `writerWP_delRootSplit_tree` (prover cost's) with the walk's ranges: the
+space root leaf's split keeps them (`writerWP_rootSplit_rangeL` with a delete's
+last version). -/
+theorem writerWP_delRootSplit_range (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (up : NodeId → List (Nat × NodeId) → M Unit) (L : NodeId) (n : KNode) (cv : Nat)
+    (compact : Bool) (hleaf : n.leaf = true) (hsa2 : 2 ≤ c.p.splitAbove)
+    (hnt : ∀ s, Klong.time s ∈ n.ks → s ≤ c.i)
+    (w : W) (hlk : w.nodes.lookup L = some n) (htk : w.taken.contains L = false)
+    (hrk : w.top.rootKey = L)
+    (hT : TreeOK (wNode c.p base w) c.i w.top.rootKey)
+    (hS5 : ∀ z, w.next ≤ z → w.nodes.lookup z = none ∧ w.taken.contains z = false ∧
+      knodeOf c.p base z = none)
+    (hS6 : ∀ u c' z, TLink (wNode c.p base w) c.i u c' z → z < w.next)
+    (hRO : RangeOrder (wNode c.p base w) c.i w.top.rootKey) :
+    WriterWP (handleFullWith up 0 L []
+      (n.lastVersionGivenDel c.i (bitsUnion n.lastBitmap (n.bitsOf cv))) compact) c w
+      (fun _ w' => TreeOK (wNode c.p base w') c.i w'.top.rootKey ∧
+        (∀ z, TReach (wNode c.p base w') c.i w'.top.rootKey z →
+          TReach (wNode c.p base w) c.i w.top.rootKey z ∨ w.next ≤ z) ∧
+        RangeOrder (wNode c.p base w') c.i w'.top.rootKey) := by
+  obtain ⟨hleq, hlt, hlsub⟩ := delLast_facts n c.i cv
+  have hH := delLast_halves n c.i cv c.p.splitAbove hleaf hsa2
+  have hHR := delLast_halvesR n c.i cv c.p.splitAbove hleaf hsa2
+  generalize hlast : n.lastVersionGivenDel c.i (bitsUnion n.lastBitmap (n.bitsOf cv)) = last
+    at hleq hlt hlsub hH hHR ⊢
+  have hwx : wNode c.p base w L = some n := by
+    simp only [wNode, htk, Bool.false_eq_true, ↓reduceIte, hlk]
+  have hWx : updN (wNode c.p base w) L n = wNode c.p base w := by
+    funext z
+    by_cases hz : z = L
+    · rw [hz, updN_self]; exact hwx.symm
+    · exact updN_ne _ _ _ _ hz
+  have hlastsub : ∀ c' z, (c', z) ∈ (⟨n.leaf, last.ks⟩ : KNode).liveAt c.i → (c', z) ∈ n.liveAt c.i := by
+    intro c' z h
+    rw [hleq, KNode.liveAt_of_times last c.i hlt] at h
+    rw [KNode.liveAt_of_times _ c.i hnt]
+    exact hlsub c' z h
+  obtain ⟨hV, hRV⟩ := treeOK_updN_sub (wNode c.p base w) c.i w.top.rootKey L n
+    ⟨n.leaf, last.ks⟩ (by rw [hWx]; exact hT) hlastsub
+  rw [hWx] at hRV
+  have hVR : RangeOrder (updN (wNode c.p base w) L ⟨n.leaf, last.ks⟩) c.i w.top.rootKey :=
+    rangeOrder_updN_sub (wNode c.p base w) c.i w.top.rootKey L n _ (by rw [hWx]; exact hRO) rfl
+      hlastsub
+  refine writerWP_mono (writerWP_rootSplit_rangeL c base hvc up L n last compact
+    (fun hsp => by
+      obtain ⟨r, h1, _, h3, h4, h5⟩ := hH hsp
+      exact ⟨r, h1, h3, h4, h5⟩) hHR w hlk htk hrk hS5 hS6 hV hVR
+    (fun c' z h => hS6 _ _ _ ⟨_, hwx, hlastsub c' z h⟩)) ?_
+  rintro _ w' ⟨h1, h2, h3, _⟩
+  exact ⟨h1, fun z hz => (h2 z hz).imp_left (hRV z), h3⟩
 
 end SIS.Tree

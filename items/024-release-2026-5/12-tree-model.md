@@ -1472,6 +1472,16 @@ and its status:
       change (`ShapePost` from D + 1 with nothing put). `mergeLast_ord`
       (`MergeLastOrd.lean`) gives the merge's last version's `LastOrd`
       from `RangeOrder` (with `MergeGOrd`, `mergeGOrd_two`).
+    - `MergeStepOKF`'s `RangeOrder` part (latest, 23:16):
+      `writerWP_merge_range_inv` (`RangeMergeRoot.lean`) keeps the walk's
+      ranges across a merge from the state's invariants and the path
+      (`PathOK`). It uses `writerWP_merge_any_range2` below the space root,
+      with the full parent's halves from `RangeOrder` (`mergeLast_halves`).
+      At the space root it uses `writerWP_merge_root_range`, with the root's
+      split by `writerWP_rootSplit_rangeL` (putinv's
+      `writerWP_delRootSplit_range` for any last version, now its
+      corollary). `MergeStepOKF` does not take `PathOK`, so the range part
+      reaches the loop through the F3 obligations (next).
     Removed (latest, 23:08, as agreed with cost and the coordinator, after
     putinv's take-back moved to F2 at 65b84e5b): `DescentOKF`,
     `MergePathCond`, `opGetCaseOK_delMergeF`, `writerWP_mergeUp_delF`,
