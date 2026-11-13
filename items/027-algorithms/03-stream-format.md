@@ -1053,18 +1053,29 @@ spaces are reserved, for whom.
 The ikeys and their bkeys (`DbConstants.INTERNAL_PREFIX`, :21, "/#i/",
 bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
 
-| Key                          | Written by                    | Value              |
+| Key                          | Written by                       | Value                   |
 |---|---|---|
-| `/#i/-dummy`                 | `Db.setStartupDistance`, :569 | 200,000 zero bytes |
-| `/#i/dreclaim/-table.txt`    | `Reclaim.storeTable`, :901    | the table's rows   |
-| `/#i/dreclaim/-current.txt`  | a step's touch, `Reclaim`:653 | the current row    |
-| `/#i/dreclaim/-settings.txt` | `Reclaim.setSettings`, :258   | two lines          |
+| `/#i/-dummy`                 | `Db.setStartupDistance`, :569    | 200,000 zero bytes      |
+| `/#i/dreclaim/-table.txt`    | `Reclaim.storeTable`, :901       | the table's rows        |
+| `/#i/dreclaim/-current.txt`  | every step, `Reclaim.step`, :653 | the current row         |
+| `/#i/dreclaim/-settings.txt` | `Reclaim.setSettings`, :258      | two lines               |
+| `/#i/dreclaim/-fill.txt`     | `Reclaim.maintain` (024-32)      | zero bytes, then delete |
 
 * **`/#i/-dummy`** (`DbConstants.DUMMY_KEY`, :26): a value of
   `RecoverableStream.META_BLOCK_DISTANCE` zero bytes, so that a meta block
   with the new startup distance is written; never read.
-* **A row** (`Reclaim.IterationInfo.serialize`): a `StringMap`,
-  lines `name=value\n`, UTF-8 (`StringUtil.toBytes`), twelve names:
+* **`/#i/dreclaim/-fill.txt`** (`Reclaim.MAINTAIN_FILL_KEY_NAME`; since
+  024-32, after this section's reference, so no line number):
+  `maintain()`'s filler (027-13, section 1.10, M5), a value of max(1,
+  `META_BLOCK_DISTANCE` - L mod `META_BLOCK_DISTANCE`) zero bytes, L the
+  stream length, put and deleted in the next transaction, so that a meta
+  block names a transaction at or after a cut position; never live after
+  the call, never read.
+* **A row** (`Reclaim.IterationInfo.serialize`; every step puts its
+  row at `-current.txt`, by a value transformation that adds the bytes
+  of the index nodes the step made dirty, 027-13, section 1.4): a
+  `StringMap`, lines `name=value\n`, UTF-8 (`StringUtil.toBytes`), twelve
+  names:
   pStart, pCut, tStart, tEnd, kvCount, lastKey, endKey, done, cut,
   rewritten, pEnd, pSafe. Numbers by `"" + long`; done and cut `true` or
   `false`; lastKey `null` or the segments as signed decimals separated by
@@ -1072,15 +1083,20 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
   bounds the steps' scans) `none` if no key was live then, or the
   segments as lastKey has them. A row stored before 026-05 has no endKey
   line, and is read with no bound; any other value is refused
-  (`InternalDataException`, "Bad value of endKey").
+  (`InternalDataException`, "Bad value of endKey"). endKey came with
+  026-05 without Q9, which Q8 (section 20) asked for first: a reader
+  without it (2026.5 and before) ignores the line and drops it at its
+  next store.
 * **The table** (`serialize`, :1356): the rows, each followed by
   `----next----\n`; parsed by `split` (:1376), and a table with no row is
   refused.
 * **Reading a row** (`deserialize`, :1202; `StringMap.parse`,
   `common/StringMap.java`:33): lenient. Lines trimmed; lines without `=`
   skipped; names in any order; unknown names ignored; pStart, tStart,
-  tEnd, kvCount, lastKey and done required; cut, rewritten, pEnd, pSafe
-  and pCut have defaults; endKey none (026-05).
+  tEnd, kvCount, lastKey and done required; cut (false unless `true`),
+  rewritten (0), pEnd (pStart), pSafe (-1) and pCut (pStart) have
+  defaults; no endKey line means no bound (026-05), unlike the text
+  `none`, no key live.
 * **The settings** (`serializeSettings`, :300; `parseSettings`, :314;
   015-87): exactly `retain=<long>\nfraction=<int>\n`; retain at least
   `Clock.UNITS_PER_SEC` (`Long.MAX_VALUE` is forever, the default without
@@ -1117,7 +1133,10 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
   strict: a row with a field of a later version is read, the field
   ignored, and dropped at the next store. The table's text has no version.
 * G17. The Core accepts a user's puts under `/#` (024-01, CA3; C-U2-8),
-  reclaim's keys included; a bad settings value stops the next start.
+  but since 024-37 not at its own keys: a caller's put or delete at
+  `/#i/-dummy`, `/#i/dreclaim/` or a key under it is refused
+  (`Trans.coreKey`), so a caller can no longer put a bad settings value
+  that stops the next start.
 * The dummy's 200,000 bytes are a cost of keeping the startup distance in
   the meta block (Q4).
 
@@ -1555,3 +1574,9 @@ the field at byte 44 kept, written and checked; the test sizes 8, 14
 and 62 outside the format's promise (section 6, G19, Q18, Q19, the
 corpus in 21.3). By agent ns30 of coord-1113, on the branch
 `026-08-node-size`.
+
+2026-11-13. Section 15, from 027-13's review (coord-1113): the key
+`/#i/dreclaim/-fill.txt` of 024-32 added; `-current.txt` is every
+step's row, not its touch's; a missing endKey line told apart from
+`none`, and the row's defaults; endKey's landing without Q9 (Q8); G17
+since 024-37. Section 19's G17 row and section 20's Q8 not changed.

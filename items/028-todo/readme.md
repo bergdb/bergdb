@@ -100,6 +100,7 @@ Open
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins and sequential keys | none | open |
+| [028-02](02-reclaim-comments.md) | Fix | Reclaim's and Db's comments that disagree with the code | none | open |
 
 
 Closed
