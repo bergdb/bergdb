@@ -1,0 +1,31 @@
+FracRuns n=10000000 valsize=100 retain=10000000 dt=10000 {work=a, dir=build/frac-data-a, fs=0.25,0.375,0.5, n=10000000}
+[80.6s]   a f=0.2500 fill L0=6440613984 len=6440613984 kept=6440613984 iters=0 cuts=0
+  a f=0.2500 iteration pStart=6440703928 W/L0=0.918 steps=192079 kvs=10000001 values=8129946 rewritten=0.813 loads=13034133 recordBytes=3899072944 maxStepDirtied=21
+  a f=0.2500 iteration pStart=12355928344 W/L0=0.191 steps=133335 kvs=10000003 values=0 rewritten=0.000 loads=11608613 recordBytes=187029888 maxStepDirtied=5
+  a f=0.2500 iteration pStart=13586868528 W/L0=0.852 steps=191620 kvs=10000003 values=7252393 rewritten=0.725 loads=13057242 recordBytes=3601640640 maxStepDirtied=21
+  a f=0.2500 iteration pStart=19076177040 W/L0=0.263 steps=133359 kvs=10000003 values=806792 rewritten=0.081 loads=11629698 recordBytes=734971104 maxStepDirtied=16
+[1443.7s]   a f=0.2500 1049715 transactions of 10; len=20866126144 kept=7279257616 iters=4 cuts=3 firstIterationDoneAt=406484 peakTx=919649 peakKept=12738728352 peakH_R=7454760
+[1515.9s]   a f=0.3750 fill L0=6441373480 len=6441373480 kept=6441373480 iters=0 cuts=0
+  a f=0.3750 iteration pStart=6441375360 W/L0=0.659 steps=168269 kvs=10000001 values=8981783 rewritten=0.898 loads=11951904 recordBytes=3390284096 maxStepDirtied=22
+  a f=0.3750 iteration pStart=10686135152 W/L0=0.184 steps=133335 kvs=10000003 values=0 rewritten=0.000 loads=11586891 recordBytes=181046080 maxStepDirtied=5
+  a f=0.3750 iteration pStart=11873457560 W/L0=0.609 steps=163160 kvs=10000003 values=7941968 rewritten=0.794 loads=12010445 recordBytes=3125053904 maxStepDirtied=22
+  a f=0.3750 iteration pStart=15798574888 W/L0=0.266 steps=133334 kvs=10000003 values=962641 rewritten=0.096 loads=11623744 recordBytes=799733552 maxStepDirtied=15
+[1854.5s]   a f=0.3750 678735 transactions of 10; len=17610393360 kept=5736935800 iters=4 cuts=3 firstIterationDoneAt=214360 peakTx=228714 peakKept=10789364048 peakH_R=7948792
+[1926.7s]   a f=0.5000 fill L0=6441373480 len=6441373480 kept=6441373480 iters=0 cuts=0
+  a f=0.5000 iteration pStart=6441375360 W/L0=0.545 steps=133334 kvs=10000001 values=9362304 rewritten=0.936 loads=11475144 recordBytes=3041515968 maxStepDirtied=23
+  a f=0.5000 iteration pStart=9950329680 W/L0=0.179 steps=133334 kvs=10000003 values=0 rewritten=0.000 loads=11574781 recordBytes=176937504 maxStepDirtied=5
+  a f=0.5000 iteration pStart=11105984568 W/L0=0.522 steps=133334 kvs=10000003 values=8193202 rewritten=0.819 loads=11639224 recordBytes=2864510280 maxStepDirtied=25
+  a f=0.5000 iteration pStart=14467753600 W/L0=0.265 steps=133336 kvs=10000003 values=1022423 rewritten=0.102 loads=11613935 recordBytes=816580392 maxStepDirtied=17
+[2229.1s]   a f=0.5000 536534 transactions of 10; len=16272937776 kept=5166953208 iters=4 cuts=3 firstIterationDoneAt=133336 peakTx=148579 peakKept=10053903056 peakH_R=7933352
+[2301.1s]   a f=inf fill L0=6440613984 len=6440613984 kept=6440613984 iters=0 cuts=0
+[2523.0s]   a f=inf 1049715 transactions of 10; len=15942535408 kept=15942535408 iters=0 cuts=0 firstIterationDoneAt=-1 peakTx=0 peakKept=0 peakH_R=0
+RESULT work f units tx k1 cuts iters steps WA_r share_step share_table Kpeak Kmean maxRec maxStepRec maxX loads loads/step W/L0 rewritten
+RESULT a 0.2500 16384 1049715 406484 3 5 653264 0.441 1.172 0.000 1.977 1.383 129288 129288 117952 49505279 75.78 0.556 0.405
+PUTS a 0.2500 window 6750 puts/s, whole phase 7701
+RESULT a 0.3750 24576 678735 214360 3 5 601205 0.641 1.531 0.000 1.674 1.014 108104 106168 106624 47425367 78.88 0.430 0.447
+PUTS a 0.3750 window 21453 puts/s, whole phase 20047
+RESULT a 0.5000 32768 536534 133336 3 5 536511 0.743 1.654 0.000 1.560 0.869 108104 106168 106624 46560919 86.78 0.378 0.464
+PUTS a 0.5000 window 20168 puts/s, whole phase 17746
+  a twin: L0=6440613984 growth a transaction 9052 bytes, maxRec=101064
+PUTS a twin whole phase 47312 puts/s
+[2523.4s] FRACRUNS DONE

@@ -1,0 +1,20 @@
+FracRuns n=10000000 valsize=100 retain=10000000 dt=10000 {work=d, dir=build/frac-data-d, fs=0.25,0.375,0.5, n=10000000}
+[1.0s]   G4 frac-d-twin-0.2500 drive 40000 transactions; len=62051528 kept=2096752 iters=160 cuts=155 firstCut=1214 lag=-1 kept4R=1965168
+  G4 frac-d-twin-0.2500 keptMax=2442256 reach=6 klongs=27 dead=18 objects=434 handles=434 slots=60272 heap=16021456 pathKlongs=16 pathNodes=16 userKeys=1
+[90.4s]   G4 frac-d-emptied-0.2500 filled and deleted 10000000 keys; len=3187941432 kept=2588075552 iters=8 cuts=7
+[91.0s]   G4 frac-d-emptied-0.2500 drive 40000 transactions; len=3260280936 kept=2606816 iters=142 cuts=137 firstCut=7788 lag=8064 kept4R=2596292048
+  G4 frac-d-emptied-0.2500 keptMax=2700272 reach=6 klongs=27 dead=18 objects=500 handles=500 slots=262272 heap=24850072 pathKlongs=665 pathNodes=665 userKeys=1
+RESULT d 0.2500 lag=8064 firstCut=7788 twinFirstCut=1214 keptMax=2700272 twinKeptMax=2442256 ratio=1.106 kept4R=2596292048
+[91.7s]   G4 frac-d-twin-0.3750 drive 40000 transactions; len=61254680 kept=2123968 iters=160 cuts=155 firstCut=1202 lag=-1 kept4R=1964736
+  G4 frac-d-twin-0.3750 keptMax=2460136 reach=6 klongs=29 dead=20 objects=450 handles=450 slots=60560 heap=15152208 pathKlongs=16 pathNodes=16 userKeys=1
+[184.3s]   G4 frac-d-emptied-0.3750 filled and deleted 10000000 keys; len=3009606960 kept=2576161864 iters=8 cuts=7
+[188.5s]   G4 frac-d-emptied-0.3750 drive 40000 transactions; len=3095344600 kept=2660792 iters=40 cuts=35 firstCut=33234 lag=33501 kept4R=2584430696
+  G4 frac-d-emptied-0.3750 keptMax=2677472 reach=6 klongs=25 dead=16 objects=515 handles=515 slots=262720 heap=24207888 pathKlongs=665 pathNodes=665 userKeys=1
+RESULT d 0.3750 lag=33501 firstCut=33234 twinFirstCut=1202 keptMax=2677472 twinKeptMax=2460136 ratio=1.088 kept4R=2584430696
+[189.2s]   G4 frac-d-twin-0.5000 drive 40000 transactions; len=60590744 kept=2083840 iters=160 cuts=155 firstCut=1196 lag=-1 kept4R=1865968
+  G4 frac-d-twin-0.5000 keptMax=2367864 reach=6 klongs=28 dead=19 objects=428 handles=428 slots=59664 heap=15129336 pathKlongs=16 pathNodes=16 userKeys=1
+[281.7s]   G4 frac-d-emptied-0.5000 filled and deleted 10000000 keys; len=3012961688 kept=2579683368 iters=8 cuts=7
+[285.8s]   G4 frac-d-emptied-0.5000 drive 40000 transactions; len=3097912752 kept=2338080 iters=42 cuts=37 firstCut=32915 lag=33181 kept4R=2587922712
+  G4 frac-d-emptied-0.5000 keptMax=2672584 reach=6 klongs=35 dead=26 objects=461 handles=461 slots=262656 heap=24172648 pathKlongs=665 pathNodes=665 userKeys=1
+RESULT d 0.5000 lag=33181 firstCut=32915 twinFirstCut=1196 keptMax=2672584 twinKeptMax=2367864 ratio=1.129 kept4R=2587922712
+[285.9s] FRACRUNS DONE
