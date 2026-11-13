@@ -27,7 +27,9 @@ package bergdb.pub;
  * it and returns normally commits its other puts and deletes. The database keeps its own
  * structures consistent either way: the entries of its indexes are made after the action
  * returns, from what the action wrote. What the action's own keys mean together, such as an
- * entry it writes as an index of its own, is the action's responsibility.</p>
+ * entry it writes as an index of its own, is the action's responsibility. A key made by the
+ * program is checked before the call with {@link Limits#checkKey(String)} or
+ * {@link Limits#keyBytes(String)}, which do not depend on a database (bergdb 026-02).</p>
  * 
  * @author Frans Lundberg
  */

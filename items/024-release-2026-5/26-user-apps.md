@@ -1,6 +1,7 @@
 # 024-26. User apps against 2026.5's new algorithms
 
-Created 2026-11-11 by Frans Lundberg. Status: open.
+Created 2026-11-11 by Frans Lundberg. Status: done (2026-11-12): no bug;
+U26-1 to U26-5 and U26-8 made in 024-27 (`a7dfb6f7`).
 
 A round of "AI as the user" testing (006-20) against the algorithms that
 `main` changed on 2026-11-11 for release 2026.5: merges of underfull key
@@ -314,3 +315,5 @@ short runs (20:24 to 20:50).
 
 2026-11-11 to 2026-11-12. The long runs in slots, 22:24 to 00:39; the app's
 range-check bug fixed at 22:47; State written at 00:30.
+
+2026-11-13. Status set after the release (coord-1113).

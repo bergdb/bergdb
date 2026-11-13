@@ -1,6 +1,9 @@
 # 024-24. The limits, implemented
 
-Created 2026-11-11 by Frans Lundberg. Status: open.
+Created 2026-11-11 by Frans Lundberg. Status: done (2026-11-11): on
+`main` since `7c255127`, the night's fix since `1f01c5f6`. Q2 accepted
+by the coordinator under Frans's delegation (024-28, section 8); Q1 not
+answered.
 
 The limits that Frans decided for release 2026.5 (024-17, section 8),
 built into the Lean model, the Java code, the tests and the documents,
@@ -454,3 +457,5 @@ matter.
   `bf68084b`; main had no commit after it at 23:07), in
   `/Users/f/fl/bench/2026-11-11/l6fix/clone`; every gate of section 9
   passed on it. Ready to land.
+
+2026-11-13. Status set after the release (coord-1113).

@@ -8,7 +8,7 @@ An item is a place to work with freedom: to try things, keep dead ends and
 logs, without cluttering the current state of BergDB. The current state is
 `java/`, `lean/` and the few items that are kept up to date with them:
 the algorithms of BergDB (027), the trace format (027-02) and the stream
-format (024-02). Until 027 is written, read 027-01's
+format (027-03). Until 027 is written, read 027-01's
 [levels.md](027-algorithms/01-docs-2026-11-12/levels.md) first, part of
 the snapshot of the former `docs/`, moved into 027-01 on 2026-11-12;
 `docs/` keeps only the development log, [docs/log.md](../docs/log.md).
@@ -77,7 +77,7 @@ Items and the current state
   patch or a tool for that item only.
 * A result leaves an item on purpose: code moves into `java/` or `lean/`,
   passing the gates. A finding changes a maintained description (027,
-  027-02, 024-02) only as far as the current state changes, usually a few
+  027-02, 027-03) only as far as the current state changes, usually a few
   lines that cite the item as evidence; the report, the alignment, the
   evidence and the log stay in the item. A new document is a subitem.
 * A code experiment too large for the item directory runs on a git branch
@@ -138,10 +138,10 @@ Index
 * **014-stream** (open). The stream format and the contract between
   append-only storage and the database; first, startup correction and its
   historical fault model (014-01), promoted from 005-83.
-* **015-todo** (open). The list of things to do on BergDB after 005, with
+* **015-todo** (done). The list of things to do on BergDB after 005, with
   a new numbering from 015-01; it took the new entries from 2026-11-03 to
   2026-11-05, and 005's last open entries (015-84 to 015-88). New entries
-  go to 019 since 2026-11-05.
+  go to 019 since 2026-11-05; every entry closed on 2026-11-13.
 * **016-release-2026-2** (open). Release 2026.2: its scope, the work
   before it and how it is made; the first release with handles (009) and
   bounded startup (007), measured against 2026.1 in turns.
@@ -184,5 +184,6 @@ Index
   stream.
 * **027-algorithms** (open). The algorithms of BergDB as they are, kept
   current with `java/` and `lean/`, for every implementation; a skeleton
-  so far. Holds the former `docs/` as a snapshot (027-01) and the trace
-  format, kept current (027-02).
+  so far. Holds the former `docs/` as a snapshot (027-01), the trace
+  format (027-02) and the stream format (027-03, 024-02 until
+  2026-11-13), both kept current.

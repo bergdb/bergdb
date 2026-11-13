@@ -1,8 +1,7 @@
 # 024-07. The last touch of a reclaim iteration (CL7, OP1)
 
-Created 2026-11-11. Status: open (the fix is built, gated and merged
-into 024-13's integration branch, not yet on `main`; section 13 has the
-exact state).
+Created 2026-11-11. Status: done (2026-11-11): on `main` since
+`a780b957` (024-13).
 
 The largest measured fault against aim 2 of release 2026.5 (024-04: no
 Core operation costs out of proportion to its work): with keys in time
@@ -851,3 +850,5 @@ merged into the integration branch (024-13).
   UnlinkFuzz in the gates); the C clone's pin and StreamDigest's digests
   after the batch of byte changes; a run at 100M keys in time order,
   now that no step can stop it (024-05, GM7).
+
+2026-11-13. Status set after the release (coord-1113).

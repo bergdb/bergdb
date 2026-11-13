@@ -1,6 +1,7 @@
 # 024-04. The aim of release 2026.5: solid algorithms
 
-Created 2026-11-11 by Frans Lundberg. Status: open.
+Created 2026-11-11 by Frans Lundberg. Status: decided (Frans,
+2026-11-11): the aim of release 2026.5, made in 2026.5 (024-38).
 
 The theme and the aims of release 2026.5, as Frans decided them on
 2026-11-11 in a discussion with the day's coordinator (coord-1111). This
@@ -192,3 +193,5 @@ do. The internal core algorithms of the database must be right. This is
 what we want to prove correct. And not change later. So, solid
 algorithms perhaps comes before a "stable stream"?"
 
+
+2026-11-13. Status set after the release (coord-1113).

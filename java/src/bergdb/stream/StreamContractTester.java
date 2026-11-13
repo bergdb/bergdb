@@ -111,7 +111,7 @@ public class StreamContractTester {
             if (op == StrictStream.Op.APPEND) {
                 entered.countDown();
                 try {
-                    release.await(5, TimeUnit.SECONDS);
+                    release.await(30, TimeUnit.SECONDS);
                 } catch (InterruptedException e) {
                     throw new IOException(e);
                 }

@@ -880,5 +880,19 @@ each as it is in 2026.5:
 Post-release notes
 ------------------
 
-None yet. A fault found later that affects 2026.5, its numbers or its
-correctness, is recorded here.
+A fault found later that affects 2026.5, its numbers or its correctness,
+is recorded here. No fault yet.
+
+**Changes since the release:**
+
+* 2026-11-13: 021-27, named as open at the release commit in Known
+  issues and limits, was closed on 2026-11-12: fixed by `3ffe0b51` and
+  `4dadb80c` (`Db.getTrans` at a position inside a record, Core API),
+  both before the release commit and in 2026.5; 021's table still listed
+  it as open there.
+* 2026-11-13: the Lean proof of the user indexes' model (020-29), "on a
+  branch, not in the release" (The Lean model and the C clone), is on
+  `main` since `b0cd3ac4` (Frans, 08:04: "Merge it."): `lake build` 291
+  jobs, its 15 theorems on the standard axioms. It is not in the release
+  commit or the source zip. The jar, the zips and `SHA256SUMS` did not
+  change.

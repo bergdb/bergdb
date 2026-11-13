@@ -1,6 +1,8 @@
 # 024-03. Release 2026.4 measured at 1M and 10M keys (PF1)
 
-Created 2026-11-11. Status: open (100M keys and s1 not measured).
+Created 2026-11-11. Status: done (2026-11-11). Not measured: 100M keys
+and s1; 2026.5 claims 10M keys and the scale law (024-05, QF7, decided
+2026-11-12).
 
 PF1 of 024-01 (section 9.1): release 2026.4 at large sizes, with 2026.3
 beside it where the API allows, to decide CL1, CL2, CL7 and PF3 by
@@ -392,3 +394,5 @@ the FIFOs 06:15 to 06:29 (10M) and 06:27 to 06:29 (1M). Data directories
 deleted after each run; outputs in `03-measurements/out/`. Nothing in the
 main tree changed but this file and `03-measurements/`; nothing
 committed.
+
+2026-11-13. Status set after the release (coord-1113).

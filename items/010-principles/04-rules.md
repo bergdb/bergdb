@@ -151,4 +151,7 @@ Cases:
 * A value transformation (Core API) that throws, or whose result passes
   8 MiB, fails the database in 2026.5: to change in 2026.6 (Frans,
   2026-11-12, 14:42: "Yes to R5 and for 2026.6. I don't see it as a
-  bug, but something to change anyhow."; 026's readme).
+  bug, but something to change anyhow."; 026's readme). Done since
+  2026-11-13 (026-06): the value transformations run before the go point,
+  and one that throws or passes a limit refuses the transaction; so does
+  a key transformation that throws (Frans, 08:45, "yes to all").

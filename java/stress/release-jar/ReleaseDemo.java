@@ -12,6 +12,7 @@ import bergdb.pub.DbLong;
 import bergdb.pub.DbObject;
 import bergdb.pub.DbString;
 import bergdb.pub.Factory;
+import bergdb.pub.Limits;
 import bergdb.pub.Time;
 import bergdb.pub.Transaction;
 import bergdb.stream.FileStream;
@@ -24,7 +25,8 @@ import bergdb.stream.FileStream;
  * values (w(), rw(), a lookup at an earlier time) and a DbObject, built with its
  * Builder, a nested object and a DbArray (bergdb 020-10, step B3: DbObject and its
  * classes in bergdb.pub), on a database in a directory, stops it, starts it again
- * and reads again; and the Core's Db on another directory. Not in a bergdb package,
+ * and reads again; Limits' key check (bergdb 026-02); and the Core's Db on another
+ * directory. Not in a bergdb package,
  * so it sees only what is public.
  *
  * Usage: java -ea -cp bergdb-release.jar ReleaseDemo.java DIR  (DIR new or empty)
@@ -45,6 +47,9 @@ public class ReleaseDemo {
         Time first;
         try (Database database = Factory.database().create(pubDir).start()) {
             Connection c = database.connection();
+            Limits.checkKey("/fruit/apple");
+            check(Limits.keyBytes("/fruit/apple") == 14
+                    && Limits.keyBytes("/" + "k".repeat(110)) == 112, "Limits");
             first = c.put("/fruit/apple", "red").getTime();
             c.w().put("/fruit/banana", "yellow").put("/bytes/b", new byte[] {0, 1, 2}).execute();
             DbArray tags = new DbArray.Builder().add(new DbString("red")).add(new DbLong(7))

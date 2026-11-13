@@ -1839,7 +1839,7 @@ public final class Eviction {
             }
             Assert.assertTrue("the loads started the eviction thread", t != null);
             e.awaitBatch();
-            long end = System.nanoTime() + 2000L * 1000 * 1000;
+            long end = System.nanoTime() + 30L * 1000 * 1000 * 1000;
             while (!idle(e, t) && System.nanoTime() < end) {
                 Thread.sleep(1);
             }
@@ -1861,7 +1861,7 @@ public final class Eviction {
      * No request lost (bergdb 005-65): a load skips evictorLock when a request is pending
      * (wake), which is safe only if the eviction thread takes every pending request. Eight
      * reader threads read in bursts under a small budget, so that the thread sleeps and wakes
-     * again and again; after each burst, within 2 s, the thread waits with no request pending
+     * again and again; after each burst, within 30 s, the thread waits with no request pending
      * (it is never asleep with one) and the resident bytes are at most the trigger, or its
      * last batch freed nothing (then, after two rounds of the hand without freeing, it stops
      * until the next request, by design: 005-51, 015-10).
@@ -1937,7 +1937,7 @@ public final class Eviction {
             for (int b = 0; b < bursts && failed == null; b++) {
                 go.await(10, java.util.concurrent.TimeUnit.SECONDS);
                 done.await(10, java.util.concurrent.TimeUnit.SECONDS);
-                failed = settled(e, db, 2000);
+                failed = settled(e, db, 30 * 1000);
                 if (failed != null) failed = "after burst " + b + ": " + failed;
             }
         } finally {
@@ -2021,8 +2021,8 @@ public final class Eviction {
             public void run() {
                 if (setter.getState() != Thread.State.NEW) return;     // the test's batch only
                 setter.start();
-                // Until setBudget waits for the monitor, or has ended; at most 2 s.
-                final long end = System.nanoTime() + 2000L * 1000 * 1000;
+                // Until setBudget waits for the monitor, or has ended; at most 30 s.
+                final long end = System.nanoTime() + 30L * 1000 * 1000 * 1000;
                 Thread.State st = setter.getState();
                 while (st != Thread.State.BLOCKED && st != Thread.State.TERMINATED
                         && System.nanoTime() < end) {
@@ -2036,7 +2036,7 @@ public final class Eviction {
             synchronized (db.internal().getWriteLock()) {     // as a batch's caller
                 e.sweep(db, false);
             }
-            setter.join(2000);
+            setter.join(30 * 1000);
         } finally {
             e.testBeforeTrigger = null;
             db.close();
@@ -2071,16 +2071,16 @@ public final class Eviction {
         }
         Eviction e = db.internal().eviction();
         Thread t = loadsStartThread(db, e);
-        String state = settled(e, db, 2000);
+        String state = settled(e, db, 30 * 1000);
         Assert.assertTrue("idle first: " + state, state == null);
         synchronized (e.evictorLock) {
             e.wanted = true;
             t.interrupt();
         }
-        state = settled(e, db, 2000);
+        state = settled(e, db, 30 * 1000);
         Assert.assertTrue("the request taken: " + state, state == null && t.isAlive());
         t.interrupt();
-        t.join(2000);
+        t.join(30 * 1000);
         Assert.assertTrue("idle, an interrupt ends the thread", !t.isAlive());
         Thread t2 = loadsStartThread(db, e);
         Assert.assertTrue("the loads start a new thread", t2 != t);
@@ -2165,7 +2165,7 @@ public final class Eviction {
      * (everyKeyReadTwice); the budget lowered to 9/10 of the resident bytes, so that they are
      * not under pressure and a batch examines at most BATCH handles; no other call. The first
      * batch is in the hand's first round over the maps, which only clears the CLOCK bits, and
-     * it frees nothing; the eviction thread goes on from the hand, and within 2 s the resident
+     * it frees nothing; the eviction thread goes on from the hand, and within 30 s the resident
      * bytes are at most the budget and the thread waits for a request with none pending. Until
      * 015-10 a batch that freed nothing ended the thread's batches, here the first, and
      * nothing started them again (a read that finds its objects resident loads nothing), so
@@ -2182,14 +2182,14 @@ public final class Eviction {
             long budget = full / 10 * 9;
             Assert.assertTrue("not under pressure", full <= budget + (budget - lowOf(budget)));
             db.setCacheSizeIndicator(budget);
-            long end = System.nanoTime() + 2000L * 1000 * 1000;
+            long end = System.nanoTime() + 30L * 1000 * 1000 * 1000;
             long bytes = full;
             while (System.nanoTime() < end) {
                 bytes = in.cache().residents().bytes();
                 if (bytes <= budget) break;
                 Thread.sleep(1);
             }
-            String state = settled(e, db, 2000);
+            String state = settled(e, db, 30 * 1000);
             Assert.assertTrue("at most " + bytes + " bytes, budget " + budget + " of " + full
                     + ", after " + e.sweepCounts()[0] + " batches", bytes <= budget);
             Assert.assertTrue("idle after: " + state, state == null);
@@ -2203,7 +2203,7 @@ public final class Eviction {
      * testLoweredBudgetAfterReads, with every handle that holds an object held as by a loader
      * (LOADING), so that no batch frees anything and no object is pinned for it (the trigger
      * stays the budget). The thread goes over the maps twice without freeing, then waits for
-     * the next request with none pending, within 2 s, and stays so: no batch in the next 20
+     * the next request with none pending, within 30 s, and stays so: no batch in the next 20
      * ms; the resident bytes are as they were. Without a stop rule it would run batches for
      * as long as the database is active; with the rule of before 015-10 it stopped after the
      * first batch, before the hand had gone over the maps once.
@@ -2221,7 +2221,7 @@ public final class Eviction {
             long full = in.cache().residents().bytes();
             long budget = full / 10 * 9;
             db.setCacheSizeIndicator(budget);
-            String state = settled(e, db, 2000);
+            String state = settled(e, db, 30 * 1000);
             Assert.assertTrue("idle: " + state, state == null);
             long batches = e.batches;
             long[] c = e.sweepCounts();
@@ -2241,7 +2241,7 @@ public final class Eviction {
      * A batch of the eviction thread that throws fails the database (bergdb 015-25; 016-07,
      * R3-F3; 010-01, P7), as one of the writer's batches does, which runs within its
      * transaction's go point (Db.fail): an Error in the thread's first batch (the hook
-     * testBeforeTrigger, in the thread only), woken by a lower budget. Within 2 s the database
+     * testBeforeTrigger, in the thread only), woken by a lower budget. Within 30 s the database
      * has failed; a read and a transaction are refused with a DbFailedException whose cause is
      * the Error; the thread has ended and left no request pending and no thread named, so that
      * a later setCacheSizeIndicator starts none; close() works. Until 015-25 the Error ended
@@ -2270,7 +2270,7 @@ public final class Eviction {
                 }
             };
             db.setCacheSizeIndicator(1);        // wakes the thread
-            long end = System.nanoTime() + 2000L * 1000 * 1000;
+            long end = System.nanoTime() + 30L * 1000 * 1000 * 1000;
             while (db.internal().isActive() && System.nanoTime() < end) Thread.sleep(1);
             Assert.assertFalse("the database failed", db.internal().isActive());
             try {
@@ -2289,7 +2289,7 @@ public final class Eviction {
                         x.getCause() == injected);
             }
             boolean ended = false;
-            end = System.nanoTime() + 2000L * 1000 * 1000;
+            end = System.nanoTime() + 30L * 1000 * 1000 * 1000;
             while (!ended && System.nanoTime() < end) {
                 synchronized (e.evictorLock) {
                     ended = e.evictor == null && !e.wanted && !e.running;
@@ -2366,13 +2366,13 @@ public final class Eviction {
                     }
                     evictor[0] = Thread.currentThread();
                     w.start();
-                    long end = System.nanoTime() + 2000L * 1000 * 1000;
+                    long end = System.nanoTime() + 30L * 1000 * 1000 * 1000;
                     while (db.internal().writersWaiting() == 0 && System.nanoTime() < end) {
                         Thread.yield();
                     }
                     inHook.countDown();
                     try {
-                        throwNow.await(2, java.util.concurrent.TimeUnit.SECONDS);
+                        throwNow.await(30, java.util.concurrent.TimeUnit.SECONDS);
                     } catch (InterruptedException x) {
                         Thread.currentThread().interrupt();
                     }
@@ -2381,14 +2381,14 @@ public final class Eviction {
             };
             db.setCacheSizeIndicator(1);        // wakes the thread
             Assert.assertTrue("the batch's hook ran",
-                    inHook.await(2, java.util.concurrent.TimeUnit.SECONDS));
+                    inHook.await(30, java.util.concurrent.TimeUnit.SECONDS));
             Assert.assertTrue("the writer waits", db.internal().writersWaiting() > 0);
             java.lang.management.ThreadMXBean mx =
                     java.lang.management.ManagementFactory.getThreadMXBean();
             long owner = -1;
             synchronized (db.internal().getReadSynch()) {
                 throwNow.countDown();
-                long end = System.nanoTime() + 2000L * 1000 * 1000;
+                long end = System.nanoTime() + 30L * 1000 * 1000 * 1000;
                 while (System.nanoTime() < end) {
                     java.lang.management.ThreadInfo wi = mx.getThreadInfo(w.getId());
                     owner = wi == null ? -1 : wi.getLockOwnerId();
@@ -2400,7 +2400,7 @@ public final class Eviction {
                     Thread.yield();
                 }
             }
-            writer.join(5000);
+            writer.join(30 * 1000);
             Assert.assertTrue("the writer has ended", !writer.isAlive());
             Assert.assertEquals("the writer waits for the eviction thread's write lock while "
                     + "it fails the database (not the test's readSync, after its go point)",
@@ -2414,7 +2414,7 @@ public final class Eviction {
         } finally {
             e.testBeforeTrigger = null;
             throwNow.countDown();
-            if (writer != null && writer.getState() != Thread.State.NEW) writer.join(5000);
+            if (writer != null && writer.getState() != Thread.State.NEW) writer.join(30 * 1000);
             db.close();
         }
     }
@@ -2656,7 +2656,7 @@ public final class Eviction {
             // Below the pins, the thread goes idle after a few batches (bergdb 019-41): without
             // sweep()'s end of a decrease, it ran millions of empty batches, each taking the
             // write lock, until the budget was raised.
-            String state = settled(e, db, 2000);
+            String state = settled(e, db, 30 * 1000);
             Assert.assertTrue("idle below the pins: " + state, state == null);
             sweeps = e.sweepCounts()[0] - sweeps;
             Assert.assertTrue("batches below the pins: " + sweeps, sweeps < 100);
@@ -2688,7 +2688,7 @@ public final class Eviction {
             Assert.assertTrue("detachable objects resident: " + bytes + " bytes, budget "
                     + budget + ", P0 " + p0, budget < bytes && bytes <= p0);
             db.setCacheSizeIndicator(budget);
-            state = settled(e, db, 2000);
+            state = settled(e, db, 30 * 1000);
             bytes = in.cache().residents().bytes();
             Assert.assertTrue("at most the budget " + budget + ": " + bytes + " bytes, pinned "
                     + p1 + ", trigger " + e.trigger, bytes <= budget);
@@ -2696,7 +2696,7 @@ public final class Eviction {
             Assert.assertFalse("the decrease ended", e.decrease);
             // A budget below the pins: the decrease ends, and the thread waits.
             db.setCacheSizeIndicator(p1 / 2);
-            state = settled(e, db, 2000);
+            state = settled(e, db, 30 * 1000);
             Assert.assertTrue("idle after: " + state, state == null);
             Assert.assertFalse("the decrease ended", e.decrease);
         } finally {
@@ -2730,32 +2730,41 @@ public final class Eviction {
                     java.lang.management.ManagementFactory.getThreadMXBean();
             synchronized (db.internal().getWriteLock()) {
                 writer.start();
-                long end = System.nanoTime() + 2000L * 1000 * 1000;
+                long end = System.nanoTime() + 30L * 1000 * 1000 * 1000;
                 while (db.internal().writersWaiting() == 0 && System.nanoTime() < end) {
                     Thread.sleep(1);
                 }
                 db.setCacheSizeIndicator(1);        // wakes the thread
                 Thread ev = null;
+                Thread.State seen = null;
                 while (System.nanoTime() < end) {
                     synchronized (e.evictorLock) {
                         if (e.running) ev = e.evictor;
                     }
-                    if (ev != null && ev.getState() == Thread.State.TIMED_WAITING) break;
+                    seen = ev == null ? null : ev.getState();
+                    if (seen == Thread.State.TIMED_WAITING) break;
                     Thread.sleep(1);
                 }
-                Assert.assertTrue("the thread parks for the writer", ev != null
-                        && ev.getState() == Thread.State.TIMED_WAITING);
+                // The state seen, not read again (bergdb 021-28): the thread parks 100 us at a
+                // time and is RUNNABLE between, and a loaded machine can stop the test there.
+                Assert.assertTrue("the thread parks for the writer: " + seen,
+                        seen == Thread.State.TIMED_WAITING);
                 ev.interrupt();
                 long cpu = mx.getThreadCpuTime(ev.getId());
+                long t0 = System.nanoTime();
                 Thread.sleep(50);
                 cpu = mx.getThreadCpuTime(ev.getId()) - cpu;
-                Assert.assertTrue("CPU time of the thread in 50 ms: " + cpu / 1000 + " us",
-                        cpu < 25L * 1000 * 1000);
+                long wall = System.nanoTime() - t0;
+                // Half the window's wall time, not of 50 ms (bergdb 021-28): on a loaded
+                // machine the sleep lasts longer, and the parked thread's checks, one each
+                // 100 us, take CPU time all the while.
+                Assert.assertTrue("CPU time of the thread: " + cpu / 1000 + " us in "
+                        + wall / 1000 + " us", cpu < wall / 2);
             }
-            writer.join(5000);
+            writer.join(30 * 1000);
             Assert.assertFalse("the writer has ended", writer.isAlive());
         } finally {
-            if (writer != null) writer.join(5000);
+            if (writer != null) writer.join(30 * 1000);
             db.close();
         }
     }

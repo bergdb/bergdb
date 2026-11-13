@@ -17,7 +17,7 @@ them:
   2026-11-12, a snapshot: the feature levels, what works and where the
   evidence is (start with its [levels.md](items/027-algorithms/01-docs-2026-11-12/levels.md)), the model of
   self-indexed streams. The trace format is 027-02 and the stream format
-  024-02, both kept current. `docs/` holds the development log,
+  027-03, both kept current. `docs/` holds the development log,
   [docs/log.md](docs/log.md).
 * `lean/`. The abstract model in Lean 4 and machine-checked proofs of
   recovery (T1) and restart invariance (T2). See [lean/README.md](lean/README.md).

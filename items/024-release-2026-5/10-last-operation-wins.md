@@ -1,6 +1,8 @@
 # 024-10. The last operation wins
 
-Created 2026-11-11 by Frans Lundberg. Status: open.
+Created 2026-11-11 by Frans Lundberg. Status: done (2026-11-11): on
+`main` since `a780b957` (024-13); its rule R2 replaced by 024-16's
+refusal (`47c93e34`); QL1 to QL5 not marked decided.
 
 The builder's rule "the last operation wins", put or delete, in Java, for
 release 2026.5 (024's readme, "Planned so far", first point; 024-01,
@@ -605,3 +607,5 @@ coordinator's landing.
   QL2: QL2's is `Db.sortByKey`'s comparator and the rows T2, T6, T7,
   U2, P5; QL1's needs the builder to keep every call until the commit.
   The heavy-run lock is not held by this work.
+
+2026-11-13. Status set after the release (coord-1113).

@@ -1,6 +1,7 @@
 # 024-16. One operation a key, strict
 
-Created 2026-11-11 by Frans Lundberg. Status: open.
+Created 2026-11-11 by Frans Lundberg. Status: done (2026-11-11): on
+`main` since `47c93e34`; QS1 to QS5 not marked answered.
 
 "One operation a key in a transaction" made strict: a transaction fails
 at the commit when key transformations make two of its keys one key. In
@@ -710,3 +711,5 @@ a slot ("thr" timing): before-commit.sh on `3412ee7a`, OK.
   the Pub probe `strict/probes/`.
 * **To continue.** The coordinator lands the three commits after
   the integration agent's gates and Frans's word on QS4.
+
+2026-11-13. Status set after the release (coord-1113).

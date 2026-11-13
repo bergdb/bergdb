@@ -10,3 +10,49 @@ names the StreamDigest configurations whose digests changed and the entry
 that keeps its digests before and after (bergdb 018-01, section 2).
 
 Emptied at release 2026.5 (2026-11-13), whose notes hold what was there.
+
+
+### Pub API
+
+* **`bergdb.pub.Limits`: the limits as constants, and a check of a key
+  before a call, a new class** (bergdb 026-02, option A; Frans,
+  2026-11-13, 09:11, QK1 to QK4). `Limits.MAX_KEY_BYTES` and the other
+  limits, L1 to L6, as constants, the Core's `Db`'s by reference;
+  `Limits.keyBytes(String key)`, a key's bytes as stored (its UTF-8 and
+  one byte more for each '/'), also for a key over the limit, so that a
+  program knows how far over it is; `Limits.checkKey(String key)`, which
+  throws the very `IllegalArgumentException`, with the same message,
+  that a put or a delete throws for the key. Both depend on the key
+  alone, not on a database or a connection. A program no longer learns
+  of a long key from a refused put, which spoils a `WBuilder` (024-27,
+  QR1). A put, a delete and `checkKey` run one check
+  (`PubKeys.checkedIkey`), and a property test compares `keyBytes` and
+  `checkKey` with a put on a memory database. L6, an object's levels in
+  an index entry, has no method: the Javadoc of `Limits` says how to
+  count them (QK3). The Core API gets no method: a key fits if its
+  bytes are at most `Db.MAX_KEY_BYTES`, as Db's Javadoc now says
+  (option E). No stream change; no test's expected value changed.
+
+
+### Core API
+
+* **A value transformation that throws or passes 8 MiB refuses its
+  transaction; the database goes on** (bergdb 026-06; 010-04, R5; Frans,
+  2026-11-12, 14:42). A user transaction's value transformations now
+  run in `Db.execute()` under the write lock, after the key
+  transformations and before the go point, in key order, each with the
+  value as given and the key's value before the transaction, as before.
+  A `RuntimeException` from one, a result over 8 MiB (L4), or results
+  that take the transaction over 32 MiB of keys and values (L5) refuse
+  the transaction with a `DbException` (the exception as its cause):
+  nothing is written, and the `Trans` is left as it was, its values as
+  given, its keys as written, its time given back, so it can be run
+  again. In 2026.5 each failed the database (2026.5's Known issues;
+  024-24, QL6; 015-51). An `Error` still fails it. **A key
+  transformation that throws** a `RuntimeException` is refused in the
+  same way (026-06, D9). No stream change. Tests whose expected values
+  changed: `DbTesterLimits.testTransformedValueOverL4`,
+  `DbTester.testTransformedValueBeyondRecordLimit`, `LimitsTester` (a
+  result above the value limit refused, no run ends by the caller's
+  fault), and three of `DbTesterFailure` that now fail after the go
+  point by a test hook.

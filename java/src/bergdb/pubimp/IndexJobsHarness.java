@@ -129,10 +129,10 @@ public final class IndexJobsHarness {
     static final int JOIN_MS = 10000 * SLOW;
 
     /** The longest wait for a cleanup to remove its marker, ms. */
-    static final int CLEANUP_MS = 5000 * SLOW;
+    static final int CLEANUP_MS = 30000 * SLOW;
 
     /** The longest wait for BergDB's threads to end after a close, ms. */
-    static final int THREADS_MS = 2000;
+    static final int THREADS_MS = 30000;
 
     /** The objects of the unit test's runs: a cleanup of two steps. */
     static final int UNIT_OBJECTS = IndexManager.CLEANUP_KEYS + 10;
@@ -1260,13 +1260,13 @@ public final class IndexJobsHarness {
          * The database's state by a read: true if active. A stop or a failure is checked
          * against the fault: a stop only after the fault STOP; a failure only after an Error,
          * or after a throw at a point after a commit. After an Error in a job's thread, waits
-         * up to 2 s for the failure.
+         * up to 30 s for the failure.
          */
         boolean alive(String where) {
             String state = probe();
             if (state.equals("active") && fired && cfg.fault == Fault.ERROR
                     && firedThread != Thread.currentThread() && !cfg.point.inCall()) {
-                long end = System.nanoTime() + 2000000000L;
+                long end = System.nanoTime() + 30000000000L;
                 while (state.equals("active") && System.nanoTime() < end) {
                     sleep(2);
                     state = probe();

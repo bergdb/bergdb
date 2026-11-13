@@ -16,8 +16,9 @@ import bergdb.stream.MemoryStream;
  * that the Javadoc names and with the exception it names, with nothing written: the database's
  * transactions and values are as before, and it takes the next transaction. L1, operations;
  * L2, a key's bytes (more in DbTesterLongKeys); L3, the key bytes of a transaction; L4, a
- * value's bytes, and a value transformation's result over it, which fails the database (QL6);
- * L5, the keys and values of a transaction.
+ * value's bytes, and a value transformation's result over it, refused since bergdb 026-06
+ * (QL6), as one that throws; L5, the keys and values of a transaction, with the results of
+ * value transformations since 026-06.
  */
 public class DbTesterLimits {
 
@@ -321,9 +322,11 @@ public class DbTesterLimits {
     }
 
     /**
-     * QL6 (bergdb 024-17): a value transformation whose result passes L4 fails the database,
-     * as an exception of the transformation does (ValueTransformation; 015-51); the restart
-     * has the state before the transaction. A result at L4 is taken.
+     * QL6 (bergdb 024-17), changed by bergdb 026-06: a value transformation whose result
+     * passes L4 refuses the transaction with a DbException before its go point, nothing of it
+     * written, and the database goes on; the restart has the state before the transaction
+     * and the one after it. A result at L4 is taken. Until 026-06 the result over L4 failed
+     * the database, as an exception of the transformation did.
      */
     @Nano
     public static void testTransformedValueOverL4() {
@@ -335,15 +338,18 @@ public class DbTesterLimits {
                     (time, in, previous) -> new byte[Db.MAX_VALUE_BYTES]).build());
             Assert.assertEquals(Db.MAX_VALUE_BYTES, DbUtil.get(db, "/t").length);
             db.sync(SyncLevel.ORDINARY);
-            Trans t = db.trans().put(Keys.toSegments("/u"), null, new byte[0],
-                    (time, in, previous) -> new byte[Db.MAX_VALUE_BYTES + 1]).build();
-            try {
-                db.execute(t);
-                throw new AssertionError("a transformed value over L4 was taken");
-            } catch (DbFailedException e) {
-                Assert.assertTrue(String.valueOf(e.getCause()), String.valueOf(
-                        e.getCause().getMessage()).contains("(bergdb 024-17, L4)"));
-            }
+            final long length = stream.getLength();
+            final long count = db.getTransactionCount();
+            final byte[] in = bytes("in");
+            Trans t = db.trans().put(Keys.toSegments("/u"), null, in,
+                    (time, input, previous) -> new byte[Db.MAX_VALUE_BYTES + 1]).build();
+            refused("a result over L4", DbException.class, "gave a value of 8388609 bytes, "
+                    + "more than 8388608 (bergdb 024-17, L4)", () -> db.execute(t));
+            Assert.assertTrue("the value as given", t.kvs[0].getValue() == in);
+            Assert.assertNull(DbUtil.get(db, "/u"));
+            db.sync(SyncLevel.ORDINARY);
+            Assert.assertEquals("nothing appended", length, stream.getLength());
+            goesOn("QL6", db, count);
         } finally {
             db.close();
         }
@@ -351,10 +357,297 @@ public class DbTesterLimits {
         try {
             Assert.assertNull(DbUtil.get(db2, "/u"));
             Assert.assertEquals("a", new String(DbUtil.get(db2, "/a")));
+            Assert.assertEquals("QL6", new String(DbUtil.get(db2, "/after")));
             Assert.assertEquals(Db.MAX_VALUE_BYTES, DbUtil.get(db2, "/t").length);
+            db2.execute(db2.trans().put("/after2", "x").build());
+        } finally {
+            db2.close();
+        }
+    }
+
+    /**
+     * L5 counted with the results of value transformations (bergdb 026-06): four results of
+     * 8 MiB, with their keys' bytes, pass 32 MiB, and the transaction is refused with a
+     * DbException, nothing written, each KV's value as given; with the last result 8 bytes
+     * shorter, the transaction takes 32 MiB exactly and is taken. Until 026-06 L5 counted the
+     * values as given only, and the results were not counted.
+     */
+    @Nano
+    public static void testTransformedValuesOverL5() {
+        Db db = Db.builder().testSetup().start();
+        try {
+            final int big = Db.MAX_VALUE_BYTES;
+            String[] keys = {"/a", "/b", "/c", "/d"};       // two bytes each as stored
+            for (int shorter : new int[] {0, 8}) {
+                final long count = db.getTransactionCount();
+                Trans.Builder b = db.trans();
+                for (int i = 0; i < keys.length; i++) {
+                    final int length = i == keys.length - 1 ? big - shorter : big;
+                    b.put(Keys.toSegments(keys[i]), null, bytes("in"),
+                            (time, in, previous) -> new byte[length]);
+                }
+                Trans t = b.build();
+                if (shorter == 0) {
+                    refused("results over L5", DbException.class, (Db.MAX_TRANS_BYTES + 8)
+                            + " bytes after its value transformations, more than "
+                            + Db.MAX_TRANS_BYTES + " (bergdb 024-17, L5)", () -> db.execute(t));
+                    for (int i = 0; i < keys.length; i++) {
+                        Assert.assertEquals("as given", "in", new String(t.kvs[i].getValue()));
+                        Assert.assertNull(DbUtil.get(db, keys[i]));
+                    }
+                    goesOn("L5 after", db, count);
+                } else {
+                    db.execute(t);
+                    Assert.assertEquals(big - 8, DbUtil.get(db, keys[3]).length);
+                    Assert.assertEquals(count + 1, db.getTransactionCount());
+                }
+            }
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * A value transformation that throws refuses the transaction with a DbException whose
+     * cause is the exception, before the go point, and the database goes on (bergdb 026-06;
+     * 010-04, R5): nothing is written; the Trans is left as it was, the same KVs with their
+     * keys as written (a key transformation's key given back), their values as given (also
+     * that of a transformation that ran before the one that threw) and their write hashes,
+     * and t.tt; the time is given back, so the next transaction takes it. The same Trans then
+     * runs again and commits, each transformation getting the value as given. Until 026-06
+     * the exception failed the database (DbTesterFailure, 003-01's reproduction).
+     */
+    @Nano
+    public static void testValueTransformationThrows() {
+        final TestClock clock = new TestClock();
+        clock.setTime(1000);
+        final MemoryStream stream = new MemoryStream();
+        Db db = Db.builder().testSetup(stream).clock(clock).start();
+        try {
+            db.execute(db.trans().put("/a", "a0").put("/u", "u0").put("/v", "v0").build());
+            db.sync(SyncLevel.ORDINARY);
+            final long length = stream.getLength();
+            final long count = db.getTransactionCount();
+            final long lookup = db.lookupTime(Long.MAX_VALUE);
+
+            final RuntimeException thrown = new IllegalStateException("the transformation fails");
+            final boolean[] throwing = {true};
+            final long[] times = new long[2];
+            final java.util.List<String> inputs = new java.util.ArrayList<String>();
+            final KeyTransformation toKt = (trans, index) -> {
+                long[] key = Keys.toSegments("/kt");
+                trans.kvs[index].setKey(key);
+                trans.writeKeyHashes[index] = Keys.hash(key);
+            };
+            final byte[] uIn = bytes("u1");
+            final byte[] vIn = bytes("v1");
+            Trans t = db.trans()
+                    .put("/a", "a1")
+                    .put(Keys.toSegments("/k"), toKt, bytes("k1"), null)
+                    .put(Keys.toSegments("/u"), null, uIn, (time, in, previous) -> {
+                        inputs.add("u:" + new String(in) + "<-" + new String(previous));
+                        return bytes(new String(in) + "+" + new String(previous));
+                    })
+                    .put(Keys.toSegments("/v"), null, vIn, (time, in, previous) -> {
+                        inputs.add("v:" + new String(in) + "<-" + new String(previous));
+                        times[0] = time;
+                        if (throwing[0]) {
+                            throw thrown;
+                        }
+                        return bytes(new String(in) + "+" + new String(previous));
+                    })
+                    .build();
+            final Kv[] kvs = t.kvs;
+            final Kv[] kvsCopy = kvs.clone();
+            final long[][] keys = new long[kvs.length][];
+            for (int i = 0; i < kvs.length; i++) {
+                keys[i] = kvs[i].getKey();
+            }
+            final long[] hashes = t.writeKeyHashes.clone();
+            final long ttBefore = t.tt;
+
+            DbException e = null;
+            try {
+                db.execute(t);
+            } catch (DbException x) {
+                e = x;
+            }
+            Assert.assertTrue("refused", e != null);
+            Assert.assertTrue("the cause: " + e.getCause(), e.getCause() == thrown);
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains(
+                    "The value transformation of \"/v\" threw (the cause)"));
+            Assert.assertEquals("both ran, in key order", "[u:u1<-u0, v:v1<-v0]",
+                    inputs.toString());
+
+            // The Trans as it was.
+            Assert.assertTrue("the same kvs", t.kvs == kvs);
+            for (int i = 0; i < kvs.length; i++) {
+                Assert.assertTrue("the same Kv " + i, kvs[i] == kvsCopy[i]);
+                Assert.assertTrue("the key as written " + i, kvs[i].getKey() == keys[i]);
+                Assert.assertEquals("the write hash " + i, hashes[i], t.writeKeyHashes[i]);
+                Assert.assertEquals("the hash of the key " + i, Keys.hash(keys[i]),
+                        t.writeKeyHashes[i]);
+            }
+            Assert.assertTrue("/u's value as given", kvs[2].getValue() == uIn);
+            Assert.assertTrue("/v's value as given", kvs[3].getValue() == vIn);
+            Assert.assertEquals("t.tt", ttBefore, t.tt);
+
+            // The database as it was, and going on.
+            Assert.assertTrue("active", db.internal().isActive());
+            Assert.assertEquals("the lookup time", lookup, db.lookupTime(Long.MAX_VALUE));
+            Assert.assertEquals("a0", new String(DbUtil.get(db, "/a")));
+            Assert.assertEquals("u0", new String(DbUtil.get(db, "/u")));
+            Assert.assertEquals("v0", new String(DbUtil.get(db, "/v")));
+            Assert.assertNull(DbUtil.get(db, "/k"));
+            Assert.assertNull(DbUtil.get(db, "/kt"));
+            Assert.assertEquals("the transactions", count, db.getTransactionCount());
+            db.sync(SyncLevel.ORDINARY);
+            Assert.assertEquals("nothing appended", length, stream.getLength());
+
+            // The time given back: the next transaction takes it.
+            Trans t2 = db.trans().put("/b", "b2").build();
+            db.execute(t2);
+            Assert.assertEquals("the refused one's time", times[0], t2.tt);
+
+            // The same Trans again: committed, each transformation given the value as given.
+            throwing[0] = false;
+            inputs.clear();
+            db.execute(t);
+            Assert.assertEquals("[u:u1<-u0, v:v1<-v0]", inputs.toString());
+            Assert.assertEquals("a1", new String(DbUtil.get(db, "/a")));
+            Assert.assertEquals("k1", new String(DbUtil.get(db, "/kt")));
+            Assert.assertNull(DbUtil.get(db, "/k"));
+            Assert.assertEquals("u1+u0", new String(DbUtil.get(db, "/u")));
+            Assert.assertEquals("v1+v0", new String(DbUtil.get(db, "/v")));
+            Assert.assertEquals("the time", times[0], t.tt);
+            Assert.assertTrue("after t2", t.tt > t2.tt);
+        } finally {
+            db.close();
+        }
+        Db db2 = Db.builder().testSetup(stream.copy()).clock(clock).start();
+        try {
+            Assert.assertEquals("b2", new String(DbUtil.get(db2, "/b")));
+            Assert.assertEquals("k1", new String(DbUtil.get(db2, "/kt")));
+            Assert.assertEquals("v1+v0", new String(DbUtil.get(db2, "/v")));
+        } finally {
+            db2.close();
+        }
+    }
+
+    /**
+     * A value transformation that throws an Error: the Error is thrown as it is, and fails
+     * the database, as an Error anywhere in a call does (bergdb 019-10; 026-06); a restart
+     * has the state before the transaction.
+     */
+    @Nano
+    public static void testValueTransformationError() {
+        final MemoryStream stream = new MemoryStream();
+        Db db = Db.builder().testSetup(stream).start();
+        try {
+            db.execute(db.trans().put("/a", "a0").build());
+            final Error thrown = new Error("an Error in the transformation");
+            Trans t = db.trans().put("/a", "a1").put(Keys.toSegments("/b"), null, bytes("b1"),
+                    (time, in, previous) -> {
+                        throw thrown;
+                    }).build();
+            Error error = null;
+            try {
+                db.execute(t);
+            } catch (Error e) {
+                error = e;
+            }
+            Assert.assertTrue("the Error itself", error == thrown);
+            refused("the next transaction", DbFailedException.class, "",
+                    () -> db.execute(db.trans().put("/c", "c").build()));
+        } finally {
+            db.close();
+        }
+        Db db2 = Db.builder().testSetup(stream.copy()).start();
+        try {
+            Assert.assertEquals("a0", new String(DbUtil.get(db2, "/a")));
+            Assert.assertNull(DbUtil.get(db2, "/b"));
             db2.execute(db2.trans().put("/after", "x").build());
         } finally {
             db2.close();
+        }
+    }
+
+    /**
+     * A key transformation that throws a RuntimeException refuses the transaction with a
+     * DbException whose cause is the exception, and the database goes on (bergdb 026-06;
+     * 010-04, R5): the KV it changed before it threw, and one transformed before it, get
+     * their keys as written and write hashes back; no value transformation runs; nothing is
+     * written, and the next transaction takes the time. Until 026-06 the exception failed the
+     * database (KeyTransformation).
+     */
+    @Nano
+    public static void testKeyTransformationThrows() {
+        final TestClock clock = new TestClock();
+        clock.setTime(1000);
+        final MemoryStream stream = new MemoryStream();
+        Db db = Db.builder().testSetup(stream).clock(clock).start();
+        try {
+            db.execute(db.trans().put("/a", "a0").build());
+            db.sync(SyncLevel.ORDINARY);
+            final long length = stream.getLength();
+            final long count = db.getTransactionCount();
+            final RuntimeException thrown = new IllegalStateException("the key fails");
+            final long[] times = new long[1];
+            final boolean[] vtRan = {false};
+            final KeyTransformation toB = (trans, index) -> {
+                long[] key = Keys.toSegments("/b");
+                trans.kvs[index].setKey(key);
+                trans.writeKeyHashes[index] = Keys.hash(key);
+            };
+            final KeyTransformation half = (trans, index) -> {
+                times[0] = trans.tt;
+                long[] key = Keys.toSegments("/c");
+                trans.kvs[index].setKey(key);
+                trans.writeKeyHashes[index] = Keys.hash(key);
+                throw thrown;
+            };
+            Trans t = db.trans()
+                    .put("/a", "a1")
+                    .put(Keys.toSegments("/k1"), toB, bytes("b1"), null)
+                    .put(Keys.toSegments("/k2"), half, bytes("c1"), null)
+                    .put(Keys.toSegments("/v"), null, bytes("v1"), (time, in, previous) -> {
+                        vtRan[0] = true;
+                        return in;
+                    })
+                    .build();
+            final long[][] keys = new long[t.kvs.length][];
+            for (int i = 0; i < keys.length; i++) {
+                keys[i] = t.kvs[i].getKey();
+            }
+            final long[] hashes = t.writeKeyHashes.clone();
+            DbException e = null;
+            try {
+                db.execute(t);
+            } catch (DbException x) {
+                e = x;
+            }
+            Assert.assertTrue("refused", e != null);
+            Assert.assertTrue("the cause: " + e.getCause(), e.getCause() == thrown);
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains(
+                    "The key transformation of \"/k2\" threw (the cause)"));
+            for (int i = 0; i < keys.length; i++) {
+                Assert.assertTrue("the key as written " + i, t.kvs[i].getKey() == keys[i]);
+                Assert.assertEquals("the write hash " + i, hashes[i], t.writeKeyHashes[i]);
+            }
+            Assert.assertFalse("no value transformation ran", vtRan[0]);
+            Assert.assertTrue("active", db.internal().isActive());
+            Assert.assertEquals("a0", new String(DbUtil.get(db, "/a")));
+            Assert.assertNull(DbUtil.get(db, "/b"));
+            Assert.assertNull(DbUtil.get(db, "/c"));
+            Assert.assertNull(DbUtil.get(db, "/v"));
+            Assert.assertEquals("the transactions", count, db.getTransactionCount());
+            db.sync(SyncLevel.ORDINARY);
+            Assert.assertEquals("nothing appended", length, stream.getLength());
+            Trans t2 = db.trans().put("/d", "d2").build();
+            db.execute(t2);
+            Assert.assertEquals("the refused one's time", times[0], t2.tt);
+        } finally {
+            db.close();
         }
     }
 }

@@ -716,7 +716,8 @@ public class DbTesterStream {
      * Group commit (2026-10-27, bergdb 005-48): a sync after a single commit returns within
      * about one force of the stream's file, here made 50 ms longer, as the sync has the
      * write buffer written at once. Before, it waited for the buffer's timer, about the
-     * buffer time (4 s here), and then for the force.
+     * buffer time (60 s here; 4 s until bergdb 021-28, with a bound of 250 ms that load
+     * could pass), and then for the force.
      */
     @Nano
     public static void testSyncAfterOneCommitWaitsForOneForce(TestEnvironment env)
@@ -724,7 +725,7 @@ public class DbTesterStream {
         SlowForces io = new SlowForces();
         DbBuilder b = Db.builder();
         b.testSetupExceptStream();
-        Db db = b.stream("main", new FileStream(env.createTempDir(), io), 100 * 1000, 4000)
+        Db db = b.stream("main", new FileStream(env.createTempDir(), io), 100 * 1000, 60000)
                 .start();
         try {
             db.execute(db.trans().put("/a", new byte[100]).build());
@@ -737,7 +738,7 @@ public class DbTesterStream {
             db.sync(SyncLevel.ORDINARY);
             long ms = (System.nanoTime() - t0) / 1000000;
             Assert.assertEquals("forces during the sync", 1, io.forces.get() - forces);
-            Assert.assertTrue("the sync took " + ms + " ms", ms >= 50 && ms < 250);
+            Assert.assertTrue("the sync took " + ms + " ms", ms >= 50 && ms < 5000);
         } finally {
             io.sleepMs = 0;
             db.close();

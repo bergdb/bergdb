@@ -1,7 +1,7 @@
 015-03. Implement: Lean follows 005-79's integer take
 =====================================================
 
-Status: open. Kind: Implement. Created 2026-11-03 by Frans Lundberg.
+Status: done (2026-11-11). Kind: Implement. Created 2026-11-03 by Frans Lundberg.
 
 After release 2026.2, optional. Lean is a tool, not a release artifact
 (Frans, 2026-11-03, 15:31, 016-01's D7).
@@ -50,3 +50,6 @@ inside a traced run; C-S still takes each record's startup pos from
 Java. TakeCheck is in `level2.sh`, not in `lean-tests.sh` as the note
 above proposed.
 
+
+2026-11-13. The Status line and the readme's row set to done, as the log
+of 2026-11-11 says (coord-1113).

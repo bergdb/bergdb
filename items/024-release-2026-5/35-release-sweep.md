@@ -1,6 +1,7 @@
 # 024-35. A sweep for open work forgotten for 2026.5
 
-Created 2026-11-12 by Frans Lundberg. Status: done (read only).
+Created 2026-11-12 by Frans Lundberg. Status: done (2026-11-12), read
+only.
 
 Frans, 2026-11-12, 14:12: "Start a new agent to search for other open
 things we have forgotten that should be included in the release. Just a
@@ -224,3 +225,5 @@ written.
 * **To continue:** items 1 and 2 need Frans's word or an agent before
   the candidate. Items 3 to 5 are writing for the coordinator or an
   agent. Item 6 is a step for the night's plan.
+
+2026-11-13. Status set after the release (coord-1113).

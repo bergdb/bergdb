@@ -1,6 +1,8 @@
 # 024-13. The integration of 11 November
 
-Created 2026-11-11 by Frans Lundberg. Status: open.
+Created 2026-11-11 by Frans Lundberg. Status: done (2026-11-11): its
+landings `a780b957`, `379d8acf`, `1e77cfc6`, `47c93e34`, `b84cf761` and
+`67925924` (section 10).
 
 The integration branch of the changes to Java and Lean that Frans
 approved on 2026-11-11 at 09:25, merged into one tree and gated as one:
@@ -460,3 +462,5 @@ is started by hand.
   clone: the merges of 024-22 (`90eb124a`) and 024-21 (`4105fc1a`) and of
   `main` at `6f0491fd`; every gate passed (section 9). The working tree
   is clean. Nothing of 024-13 is running; no slot is held.
+
+2026-11-13. Status set after the release (coord-1113).

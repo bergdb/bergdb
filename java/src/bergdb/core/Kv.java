@@ -75,4 +75,12 @@ public final class Kv {
         assert valueTransformation != null;
         value = valueTransformation.transform(transTime, value, previousValue);
     }
+    
+    /**
+     * Sets the value back to the one given, after transformValue(), when Db.execute() refuses
+     * the transaction before its go point (Db.giveBack; bergdb 026-06).
+     */
+    void setValue(byte[] value) {
+        this.value = value;
+    }
 }

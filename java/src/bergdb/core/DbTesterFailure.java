@@ -17,7 +17,9 @@ import bergdb.dag.GetData;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
+import bergdb.dag.Node;
 import bergdb.dag.Spos;
+import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.Platform;
@@ -54,12 +56,15 @@ import bergdb.stream.MemoryStream;
 public class DbTesterFailure {
 
     /**
-     * 003-01's reproduction (2.1): the second put of a transaction has a value transformation
-     * that throws. Before 005-01, /a = a1 was readable after the failure, and the next
-     * transaction wrote it.
+     * 003-01's reproduction (2.1): the second put of a transaction throws, after the go point.
+     * Before 005-01, /a = a1 was readable after the failure, and the next transaction wrote
+     * it. Until bergdb 026-06 a value transformation that threw made the throw, and the test
+     * was testValueTransformationThrows; since then a value transformation runs before the go
+     * point and its exception refuses the transaction (DbTesterLimits), so the test hooks
+     * throw at the put (throwAtPut).
      */
     @Nano
-    public static void testValueTransformationThrows() {
+    public static void testPutThrows() {
         final long auditFailures = Audit.failures();
         MemoryStream s = new MemoryStream();
         Db db = Db.builder().testSetup(s).audit(1).start();
@@ -68,16 +73,18 @@ public class DbTesterFailure {
         final long time = db.lookupTime(Long.MAX_VALUE);
         final long length = s.getLength();
 
-        final IllegalStateException thrown = new IllegalStateException("the transformation fails");
+        final IllegalStateException thrown = new IllegalStateException("the put fails");
         Trans t = db.trans()
                 .put(Keys.toSegments("/a"), null, bytes("a1"), null)
-                .put(Keys.toSegments("/b"), null, bytes("b1"), new ValueTransformation() {
-                    public byte[] transform(long transTime, byte[] inputValue, byte[] previous) {
-                        throw thrown;
-                    }
-                })
+                .put(Keys.toSegments("/b"), null, bytes("b1"), null)
                 .build();
-        DbFailedException e = executeFails(db, t);
+        final DbFailedException e;
+        Db.testHooks = throwAtPut("/b", thrown, null);
+        try {
+            e = executeFails(db, t);
+        } finally {
+            Db.testHooks = null;
+        }
         Assert.assertTrue("the cause", e.getCause() == thrown);
         Assert.assertEquals("the lookup time", time, db.lookupTime(Long.MAX_VALUE));
         assertRefused(db, thrown);
@@ -97,7 +104,9 @@ public class DbTesterFailure {
 
     /**
      * An Error after the go point is thrown as it is, and fails the database: later calls
-     * get a DbFailedException with the Error as the cause.
+     * get a DbFailedException with the Error as the cause. The test hooks throw it at the put
+     * (throwAtPut); until bergdb 026-06 a value transformation did, which now runs before the
+     * go point, where an Error fails the database too (bergdb 019-10; DbTesterLimits).
      */
     @Nano
     public static void testErrorIsThrownAsItIs() {
@@ -106,17 +115,16 @@ public class DbTesterFailure {
 
         final Error thrown = new Error("an Error in the transaction");
         Trans t = db.trans()
-                .put(Keys.toSegments("/a"), null, bytes("a1"), new ValueTransformation() {
-                    public byte[] transform(long transTime, byte[] inputValue, byte[] previous) {
-                        throw thrown;
-                    }
-                })
+                .put(Keys.toSegments("/a"), null, bytes("a1"), null)
                 .build();
         Error error = null;
+        Db.testHooks = throwAtPut("/a", thrown, null);
         try {
             db.execute(t);
         } catch (Error e) {
             error = e;
+        } finally {
+            Db.testHooks = null;
         }
         Assert.assertTrue("the Error itself", error == thrown);
         assertRefused(db, thrown);
@@ -256,18 +264,23 @@ public class DbTesterFailure {
             }
         });
 
-        final IllegalStateException thrown = new IllegalStateException("the transformation fails");
+        final IllegalStateException thrown = new IllegalStateException("the put fails");
         Trans t = db.trans()
                 .put(Keys.toSegments("/a"), null, bytes("a1"), null)
-                .put(Keys.toSegments("/b"), null, bytes("b1"), new ValueTransformation() {
-                    public byte[] transform(long transTime, byte[] inputValue, byte[] previous) {
-                        writer2.start();
-                        waitUntilBlockedOnTheWriteLock(writer2);
-                        throw thrown;
-                    }
-                })
+                .put(Keys.toSegments("/b"), null, bytes("b1"), null)
                 .build();
-        DbFailedException e = executeFails(db, t);
+        final DbFailedException e;
+        Db.testHooks = throwAtPut("/b", thrown, new Runnable() {
+            public void run() {
+                writer2.start();
+                waitUntilBlockedOnTheWriteLock(writer2);
+            }
+        });
+        try {
+            e = executeFails(db, t);
+        } finally {
+            Db.testHooks = null;
+        }
         Assert.assertTrue("the cause", e.getCause() == thrown);
         writer2.join(10 * 1000);
         Assert.assertTrue("the waiting writer is refused: " + waiting[0],
@@ -1407,8 +1420,8 @@ public class DbTesterFailure {
             Assert.assertTrue("the sync fails: " + thrown, thrown instanceof DbFailedException);
             // 015-81's order: the storage has its error before it closes the stream, so the sync
             // can fail before the close's error is met (2026-11-10: once on s1, JDK 27). Wait
-            // for the storage thread's close, at most 5 s, as within() waits for the sync.
-            long end = System.currentTimeMillis() + 5000;
+            // for the storage thread's close, at most 30 s, as within() waits for the sync.
+            long end = System.currentTimeMillis() + 30 * 1000;
             while (s.faults < 2 && System.currentTimeMillis() < end) {
                 Thread.sleep(1);
             }
@@ -1702,6 +1715,34 @@ public class DbTesterFailure {
 
     private static byte[] bytes(String s) {
         return StringUtil.toBytes(s);
+    }
+
+    /**
+     * Test hooks (Db.testHooks) that throw 'thrown', a RuntimeException or an Error, when a
+     * transaction gives the Dag its operation at 'key' (Db.TestHooks.kvApplied, in Db.putKvs,
+     * after the go point), after 'before' has run, if not null. A test sets them around one
+     * execute() and sets Db.testHooks to null after it.
+     */
+    private static Db.TestHooks throwAtPut(final String key, final Throwable thrown,
+            final Runnable before) {
+        final long[] k = Keys.toSegments(key);
+        return new Db.TestHooks() {
+            public void transExecuted(Db.ExecuteData x) {}
+            public void valueNodeCreated(ValueNode node, long[] key) {}
+            public void nodeTouched(Node node) {}
+            public void nodeReplaced(Node node) {}
+            public void kvApplied(long[] key, byte[] value) {
+                if (Arrays.equals(key, k)) {
+                    if (before != null) {
+                        before.run();
+                    }
+                    if (thrown instanceof Error) {
+                        throw (Error) thrown;
+                    }
+                    throw (RuntimeException) thrown;
+                }
+            }
+        };
     }
 
     private static DbFailedException executeFails(Db db, Trans t) {

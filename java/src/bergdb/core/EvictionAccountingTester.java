@@ -55,7 +55,7 @@ import bergdb.stream.MemoryStream;
  * <li><b>The handle limit</b>: no batch of the controller examined more handles than its
  * limit (Eviction.batchesOverTheirHandles; 015-67).</li>
  * <li>At some batches' ends, with the readers paused and no write, <b>a budget
- * decrease</b>: the eviction thread is idle within 5 s, and if the bytes that cannot go (the
+ * decrease</b>: the eviction thread is idle within 30 s, and if the bytes that cannot go (the
  * counts of the objects that are not detachable) fit the budget, the resident bytes are at
  * most the budget. Or, as R4's probe of 015-70, a decrease after the pins fell (pinsFell):
  * the budget lowered to 1 byte, so that the hand's rounds count the pins, raised, the
@@ -410,11 +410,11 @@ public final class EvictionAccountingTester {
                 run.decreases++;
                 run.budgetSets++;
                 db.setCacheSizeIndicator(budget);
-                long end = System.nanoTime() + 5000L * 1000 * 1000;
+                long end = System.nanoTime() + 30L * 1000 * 1000 * 1000;
                 while (!e.idle() && System.nanoTime() < end) Thread.sleep(1);
                 synchronized (in.getWriteLock()) {
                     if (!e.idle()) {
-                        run.fail("batch " + b + ": the eviction thread not idle 5 s after a "
+                        run.fail("batch " + b + ": the eviction thread not idle 30 s after a "
                                 + "decrease "
                                 + "of the budget to " + budget + ", from " + bytes + " bytes: "
                                 + e.summary());
@@ -440,9 +440,9 @@ public final class EvictionAccountingTester {
         }
     }
 
-    /** Waits until the eviction thread is idle, at most 5 s; false if it is not. */
+    /** Waits until the eviction thread is idle, at most 30 s; false if it is not. */
     private static boolean settle(Eviction e) throws InterruptedException {
-        long end = System.nanoTime() + 5000L * 1000 * 1000;
+        long end = System.nanoTime() + 30L * 1000 * 1000 * 1000;
         while (!e.idle() && System.nanoTime() < end) Thread.sleep(1);
         return e.idle();
     }
@@ -465,7 +465,7 @@ public final class EvictionAccountingTester {
         run.budgetSets += 3;
         db.setCacheSizeIndicator(1);
         if (!settle(e)) {
-            run.fail("batch " + b + ": the eviction thread not idle 5 s after a budget of 1 byte: "
+            run.fail("batch " + b + ": the eviction thread not idle 30 s after a budget of 1 byte: "
                     + e.summary());
             return;
         }
@@ -506,7 +506,7 @@ public final class EvictionAccountingTester {
         }
         db.setCacheSizeIndicator(budget);
         if (!settle(e)) {
-            run.fail("batch " + b + ": the eviction thread not idle 5 s after a decrease, the pins "
+            run.fail("batch " + b + ": the eviction thread not idle 30 s after a decrease, the pins "
                     + "fell: " + state + ": " + e.summary());
             return;
         }

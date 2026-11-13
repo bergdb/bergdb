@@ -1,6 +1,8 @@
 # 024-30. Count gates for aims 2 and 3 at 1M keys
 
-Created 2026-11-12 by Frans Lundberg. Status: open (G1 to G3 on `main`; G4 built and gated on a branch).
+Created 2026-11-12 by Frans Lundberg. Status: done (2026-11-12): G1 to
+G3 on `main` since `bf79df56`, G4 since `b5ace72d`; Q30-1 to Q30-4
+decided.
 
 Release 2026.5's aims 2 and 3 (024-04, section 1): operations and
 storage are proportional. 024-04, section 4: each aim becomes bounds with
@@ -393,3 +395,5 @@ gates 136 s.
   worktree of the clone at `/Users/f/fl/bench/2026-11-12/gates/r264`
   (removed when done; `git worktree add ../r264 release-2026.4` and a
   copy of `CountGates.java` make it again: it builds there unchanged).
+
+2026-11-13. Status set after the release (coord-1113).

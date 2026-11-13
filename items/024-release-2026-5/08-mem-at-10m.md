@@ -1,7 +1,8 @@
 # 024-08. MEM at 10M KVs: why 327 heap bytes a KV
 
-Created 2026-11-11. Status: done as a study; its questions for Frans
-are open (section 10).
+Created 2026-11-11. Status: done (2026-11-11), a study: Q1 answered
+(Frans, 07:30; 024-04, section 7); Q2 as recommended in 024-15; Q3's
+correction in 024-03's head.
 
 A study of the known case against aim 3 of release 2026.5 (024-04,
 section 4): release 2026.4 holds 327 heap bytes a KV at 10M KVs where it
@@ -510,3 +511,5 @@ Written 2026-11-11, 07:24.
   header has the arguments; `setup=default dir=DIR` for eviction); a
   run at 10M KVs or with a `FileStream` needs the lock of the common
   brief.
+
+2026-11-13. Status set after the release (coord-1113).

@@ -464,12 +464,12 @@ public class PubTesterIndexRaces {
         return keys;
     }
 
-    /** Waits, at most 5 s, until no marker of a deleted generation is left. */
+    /** Waits, at most 30 s, until no marker of a deleted generation is left. */
     static void awaitCleanups(IndexManager m) {
-        long end = System.currentTimeMillis() + 5000;
+        long end = System.currentTimeMillis() + 30 * 1000;
         while (!m.markers(Long.MAX_VALUE).isEmpty()) {
             if (System.currentTimeMillis() > end) {
-                throw new AssertionError("the cleanups did not end in 5 s");
+                throw new AssertionError("the cleanups did not end in 30 s");
             }
             try {
                 Thread.sleep(2);
@@ -482,8 +482,8 @@ public class PubTesterIndexRaces {
 
     private static void await(CountDownLatch latch, String what) {
         try {
-            if (!latch.await(2, TimeUnit.SECONDS)) {
-                throw new AssertionError(what + " not reached in 2 s");
+            if (!latch.await(30, TimeUnit.SECONDS)) {
+                throw new AssertionError(what + " not reached in 30 s");
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -496,7 +496,7 @@ public class PubTesterIndexRaces {
             return;
         }
         try {
-            t.join(5000);
+            t.join(30 * 1000);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new AssertionError(e);

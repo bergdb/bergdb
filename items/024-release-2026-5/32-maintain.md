@@ -1,6 +1,8 @@
 # 024-32. maintain(): cleanup on request, in release 2026.5
 
-Created 2026-11-12 by Frans Lundberg. Status: done (on the branch `024-32-maintain`, head `ec924fd7`; not on `main`).
+Created 2026-11-12 by Frans Lundberg. Status: done (2026-11-12): on
+`main` since `94edfe6b`; Q32-1 to Q32-5 as built (Frans, 13:52),
+followed in 026-03.
 
 Frans, 2026-11-12, 12:10: "maintain(): [...] No, I want this now. In this
 release." His decision of 2026-11-10, 12:31 (023-04, Y10): "Y10, yes to
@@ -414,3 +416,5 @@ between runs (49,584, 49,392): the eviction thread's timing.
   to Q32-5 (section 6).
 * **To continue**: land the branch. The clone's `lean/.lake` is a copy
   of the main tree's, not tracked.
+
+2026-11-13. Status set after the release (coord-1113).

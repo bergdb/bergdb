@@ -158,6 +158,35 @@ establish, are proved of `blive` (`blive_append`, `blive_sub`), so its
 defined in SIS/Phys.lean. For a trace's instance `LiveAppend` is proved
 (`bspec_liveAppend`); T-READ with handles as the example: `bspec_tr_handles`.
 
+Since bergdb 020-29 (2026-11-09) a second library, `BergDB`, has the user
+indexes of release 2026.4 (020-10 with 020-18's fixes), the protocol that
+020-26 checked with TLC within small bounds, for any number of index names
+and directories: the writers (transactions of any keys, each key's index set
+read under the lock), the builds, the activation, the deletion and the
+cleanup of each name's generations, crashes and restarts
+(BergDB/Index/Model.lean, the trusted part), and 020-26's safety invariants
+proved for every size (BergDB/Index/Theorems.lean): at every lookup time an
+active index's entries are exactly f over the data (`index_is_function`), no
+entry of a live generation is stale, a build covers the keys it passed, every
+generation with entries is live or has a marker, no marker names a live
+generation, a creation's G is new. It imports nothing of SIS. The proofs:
+BergDB/Index/Inv.lean, BergDB/Index/Steps.lean; while a build step holds the
+manager's lock, only writers that could commit when it took the lock can
+refuse it, each once (BergDB/Index/Locked.lean); runs of the model:
+BergDB/Index/Example.lean. Liveness over runs with weak and strong fairness
+(BergDB/Index/Liveness.lean): a cleanup ends (`cleanup_ends`, weak fairness
+of its thread, finitely many crashes), so no generation that is not live
+keeps entries for ever (`no_orphans`, BergDB/Index/Orphans.lean), and a
+build ends, its definition active or deleted (`build_ends`, strong fairness
+of the build's thread, the manager's lock free again and again, finitely
+many crashes and retries); the lock is free again and again under weak
+fairness of its holders (`lock_released`, `build_ends_wf`,
+BergDB/Index/Release.lean); a run in which weak fairness does not give
+BuildEnds, with two names and definition changes without end
+(`weak_fairness_not_enough`, BergDB/Index/Starve.lean), and with finitely
+many definition changes it does (`build_ends_weak`,
+BergDB/Index/Finite.lean).
+
 
 Build and run
 =============
@@ -167,6 +196,7 @@ Needs elan (`brew install elan-init`). The toolchain version is in
 
     cd lean
     lake build              # checks every file but the test programs, runs the #guard tests
+    lake build BergDB       # the user indexes' library alone (020-29)
     lake exe sistest 20 40  # random runs: 20 seeds, 40 transactions each (7 min)
     lake exe phystest 20 40 # the physical layer on random runs (7 min)
     lake exe reclaimtest 20 30     # reclaim: random runs with cuts (1 min)
@@ -261,6 +291,28 @@ And `PhysRunOK` from the other assumptions (bergdb 024-09), each printing
     #print axioms SIS.Check.blive_sub
     #print axioms SIS.Check.bspec_physRunOK
     #print axioms SIS.Check.bspec_tr_handles
+
+The user indexes' theorems (BergDB/Index/Theorems.lean, Liveness.lean,
+Orphans.lean, Release.lean, Finite.lean and Starve.lean, 020-29) the same
+way, each printing
+`[propext, Classical.choice, Quot.sound]`:
+
+    import BergDB
+    #print axioms BergDB.Index.reach_inv
+    #print axioms BergDB.Index.index_is_function
+    #print axioms BergDB.Index.no_stale_entry
+    #print axioms BergDB.Index.build_covers
+    #print axioms BergDB.Index.gens_accounted
+    #print axioms BergDB.Index.start_accepted
+    #print axioms BergDB.Index.gen_fresh
+    #print axioms BergDB.Index.locked_phase
+    #print axioms BergDB.Index.cleanup_ends
+    #print axioms BergDB.Index.build_ends
+    #print axioms BergDB.Index.weak_fairness_not_enough
+    #print axioms BergDB.Index.no_orphans
+    #print axioms BergDB.Index.lock_released
+    #print axioms BergDB.Index.build_ends_wf
+    #print axioms BergDB.Index.build_ends_weak
 
 
 What to read

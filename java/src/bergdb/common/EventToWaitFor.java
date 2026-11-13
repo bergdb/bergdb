@@ -34,16 +34,23 @@ public class EventToWaitFor {
     /**
      * Waits for event to occur, or returns immediately if it has occurred. The
      * method also returns immediately if the calling thread is interrupted.
-     * Waiting is constrained by the time parameter.
+     * Waiting is constrained by the time parameter, 0 for no limit. A spurious
+     * wakeup waits on until the event or the end of the time (bergdb 021-28).
      * 
      * @param time Maximum time to wait in milliseconds.
      */
     public synchronized void waitForEvent(long time) {
+        final long end = System.nanoTime() + time * 1000000L;
         try {
-            if (!hasHappened) {
-                wait(time);
-                if (!hasHappened) {
-                    return;
+            while (!hasHappened) {
+                if (time == 0) {
+                    wait();
+                } else {
+                    long ms = (end - System.nanoTime() + 999999) / 1000000;
+                    if (ms <= 0) {
+                        return;
+                    }
+                    wait(ms);
                 }
             }
         } catch (InterruptedException e) {
@@ -71,9 +78,13 @@ public class EventToWaitFor {
     @Nano
     private static void test2() {
         final EventToWaitFor event = new EventToWaitFor();
+        // The thread waits for 'go' (bergdb 021-28): with a sleep of 10 ms only, a loaded
+        // machine could run it before the second assertFalse.
+        final java.util.concurrent.CountDownLatch go = new java.util.concurrent.CountDownLatch(1);
         Thread t = new Thread(new Runnable() {
             public void run() {
                 try {
+                    go.await();
                     Thread.sleep(10);
                 } catch (InterruptedException e) {
                     // empty
@@ -87,6 +98,7 @@ public class EventToWaitFor {
         Assert.assertFalse(event.didItHappen());
         t.start();
         Assert.assertFalse(event.didItHappen());
+        go.countDown();
         event.waitForEvent(60_000);
         Assert.assertTrue("event did not happen within 60 s", event.didItHappen());
     }

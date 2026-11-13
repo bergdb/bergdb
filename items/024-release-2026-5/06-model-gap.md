@@ -1,6 +1,8 @@
 # 024-06. The model gap: the Lean model against release 2026.4's code
 
-Created 2026-11-11 by Frans Lundberg. Status: open.
+Created 2026-11-11 by Frans Lundberg. Status: done (2026-11-11), a
+study: its A made in 024-09, its B in 024-12 and 024-22; questions 5 and
+8 not answered (024-28, section 6).
 
 For aim 4 of 024-04, "the model matches": what the Lean model in `lean/`
 describes, how the Java code of release 2026.4 is tied to it, where the
@@ -531,3 +533,5 @@ T-SCHEME's argument whole (4.4, point 2); the sizes of 5.1, which are
 guesses from the model's history. Not read in full: `SIS/Proof/` (its
 statements through lean/README.md), `KeyNode.java`, `Reclaim.java`.
 Open: Frans's answers to section 7.
+
+2026-11-13. Status set after the release (coord-1113).

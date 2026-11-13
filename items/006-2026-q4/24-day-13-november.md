@@ -45,9 +45,15 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 | 024-38 | The tag's record: 024-38 done, 024's log | coordinator | b3f64bb1 |
 | 021-28, 021-29 | Two todos registered | coordinator | 9f32bff9 |
 | 024-22 | Land the second prover's run 2; ScanOK's premise (B) | tp11b (high) | landed 59510cb5 |
-| 024-12 | TP11 option C: the scan's fuel from the parameters; then TP11, TP7 | Codex run 3 (Sol xhigh) | running |
+| 024-12 | TP11 option C: the scan's fuel from the parameters; then TP11, TP7 | Codex run 3 (Sol xhigh) | landed 2e71a297: C made; TP11 reduced to TP7 + LatestScanOK |
+| 024-12 | TP7, the tree's invariants | Codex run 4 (Sol max) | running |
+| 024, 015 | Statuses after the release; post-release notes (021-27, 020-29) | tidy (high) | committed ee5712c5 |
+| 026-05 | P8: each reclaim step scans at its own time | p8 (xhigh) | running |
+| 026-06 | A value transformation's failure refuses the transaction | vt (high) | landed 8bd6e3a7..944b4868 |
+| 026-07 | The write buffer grows with use (ST8) | wb (high) | running |
 | 026-04 | The back-to-empty lag at 10M keys, understood | frac (high) | done 07:44: the phase of reclaim's iteration at the deletes' end (a step scans at its iteration's start), not f; keep 1/4; P8 cures it |
 | 021-29 | Unit tests that wait with no timeout | waits (high) | landed dc69b7a6 |
+| 021-28 | Unit tests with fixed time limits | limits (high) | landed ffa39b4e |
 
 
 ## 4. Progress
@@ -62,3 +68,11 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 * 07:36 021-29 landed dc69b7a6 (38 waits bounded, tests only; before-commit OK on 59510cb5 = main).
 * 07:44 026-04 explained (frac): the lag follows the phase of reclaim's iterations against n, flipping order three times between 1M and 10M; predicted and measured to within 2 %; keep 1/4; P8 (023-05) removes it.
 * 07:38 limits (021-28) started.
+* 07:54 Frans 07:53: Codex run 4 at Max on TP7, on top of run 3 (/Users/f/fl/bench/2026-11-13/cx4/).
+* 07:57 021-28 landed: the Eviction failure was a race between two reads of a thread's state (not the 2 s deadline); about 90 limits in 20 test files; before-commit OK, and three runs beside 20 CPU hogs OK. Tests only.
+* 07:58 Codex run 3 landed 2e71a297 (lake 278 jobs, axioms of 40 theorems standard); 024-12 updated.
+* 08:06 Frans 08:04: merge 020-29: landed b0cd3ac4 (lake build 291 jobs, 15 theorems on the standard axioms); 020-29 done.
+* 08:09 Frans: usage reset, "plenty of usage left now". Started 2026.6's decided work: 026-05 (P8, xhigh), 026-06 (value transformations, R5), 026-07 (ST8, the write buffer).
+* 08:12 tidy done: 024's subitems' statuses (3 open: 02, 12, 22), 015 has no open entry, post-release notes for 021-27 and 020-29.
+* 08:41 Frans back.
+* 08:47 Frans 08:45 "yes to all" (026-06 Q1 to Q4): 026-06 landed (value and key transformations refuse; gated before-commit, level1, level3); 010-04's R5 line done.

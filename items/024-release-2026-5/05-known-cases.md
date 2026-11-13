@@ -1,6 +1,7 @@
 # 024-05. The aim against what is known
 
-Created 2026-11-11 by Frans Lundberg. Status: open.
+Created 2026-11-11 by Frans Lundberg. Status: done (2026-11-11); QF1 to
+QF8 decided on 2026-11-11 and 2026-11-12 (section 7).
 
 Aims 2 and 3 of release 2026.5 (024-04, section 1: operations are
 proportional, storage is proportional) against everything measured or
@@ -556,3 +557,5 @@ larger one that touches the same code.
   run each. The readme's line for this file is the coordinator's.
 * **Next.** Frans's answers to QF1 to QF8; GM1 to GM3; then the bounds
   that stand become tests (section 6, step 1).
+
+2026-11-13. Status set after the release (coord-1113).

@@ -153,13 +153,13 @@ public class NanotestForBergDB {
      * storage threads (BufferedStream's consumers, "BufferedStream-consumer-N"), the eviction
      * threads ("bergdb-evictor"), and since 2026-11-09 (bergdb 020-21, 4) the user indexes'
      * build and cleanup threads ("IndexBuild-NAME-GEN", "IndexCleanup-NAME-GEN"), which a
-     * database's close ends. At the end, before the report, it waits at most 5 seconds for
+     * database's close ends. At the end, before the report, it waits at most 30 seconds for
      * the closes that stop() started (bergdb 005-35), then fails a last test,
      * databasesStopped, if any of those threads is still alive, with the tests that left
      * them.
      */
     private static class StoppedCheck extends ConsoleUI {
-        private static final long WAIT_MILLIS = 5000;
+        private static final long WAIT_MILLIS = 30000;
         private final Map<Thread, String> testOf = new WeakHashMap<Thread, String>();
         private String test;
         

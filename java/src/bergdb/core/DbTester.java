@@ -2297,13 +2297,14 @@ public class DbTester {
     }
     
     /**
-     * bergdb 015-51 (016-06's R7-F2): a value transformation runs after the go point, so
-     * checkSize sees its input, not its result. A result that takes the transaction past
-     * StoredTrans.valueLimit() is the caller's fault, as an exception of the transformation
-     * is (ValueTransformation's Javadoc): one that does not fit the record fails the
-     * database when the record is made, which appends nothing, and a restart has the state
-     * before the transaction. The record limit is lowered to 100 kB. The test pins the
-     * contract that the Javadoc now states; the code was not changed.
+     * bergdb 015-51 (016-06's R7-F2), changed by bergdb 026-06: a result of a value
+     * transformation that takes the transaction past StoredTrans.valueLimit() is refused
+     * before the go point, as a value given directly is (Db.transformValues): a DbException,
+     * nothing written, and the database goes on; a restart has the state before the
+     * transaction and the one after it. Until 026-06 the transformation ran after the go
+     * point, checkSize saw its input only, and a result whose record did not fit failed the
+     * database when the record was made (the caller's fault, 015-51). The record limit is
+     * lowered to 100 kB.
      */
     @Nano
     public static void testTransformedValueBeyondRecordLimit() {
@@ -2320,19 +2321,19 @@ public class DbTester {
                         return new byte[120 * 1000];
                     }
                 });
+                db.sync(SyncLevel.ORDINARY);
+                final long length = stream.getLength();
                 try {
                     db.execute(b.build());
                     throw new AssertionError("a transformed value above the limit was taken");
-                } catch (DbFailedException e) {
-                    assertTrue(String.valueOf(e.getCause()), 
-                            e.getCause().getMessage().contains("more than the limit"));
+                } catch (DbException e) {
+                    assertTrue(e.getMessage(), e.getMessage().contains("after its value "
+                            + "transformations") && e.getMessage().contains("(bergdb 005-17)"));
                 }
-                try {
-                    db.execute(db.trans().put("/x", "x").build());
-                    throw new AssertionError("a failed database took a transaction");
-                } catch (DbFailedException e) {
-                    // expected
-                }
+                assertEquals("nothing appended", length, stream.getLength());
+                assertTrue(DbUtil.get(db, Long.MAX_VALUE, "/t") == null);
+                db.execute(db.trans().put("/x", "x").build());
+                assertArrayEquals(StringUtil.toBytes("x"), DbUtil.get(db, Long.MAX_VALUE, "/x"));
             } finally {
                 db.close();
             }
@@ -2344,8 +2345,9 @@ public class DbTester {
         try {
             assertArrayEquals(StringUtil.toBytes("a"), DbUtil.get(db, Long.MAX_VALUE, "/a"));
             assertTrue(DbUtil.get(db, Long.MAX_VALUE, "/t") == null);
-            db.execute(db.trans().put("/x", "x").build());
             assertArrayEquals(StringUtil.toBytes("x"), DbUtil.get(db, Long.MAX_VALUE, "/x"));
+            db.execute(db.trans().put("/y", "y").build());
+            assertArrayEquals(StringUtil.toBytes("y"), DbUtil.get(db, Long.MAX_VALUE, "/y"));
         } finally {
             db.stop();
         }

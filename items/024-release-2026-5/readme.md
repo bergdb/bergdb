@@ -96,20 +96,23 @@ Files
   candidates in eight areas, four possible themes ((A) consolidate
   2026.4, (B) large databases measured on a calm Core, recommended, (C)
   strict cleanup, (D) the Pub API), and the questions for Frans in order.
-  Nothing decided.
+  Done 2026-11-10; the theme chosen in 024-04.
 * 02-stream-format.md. 024-02, the stream format's specification: the
   skeleton, written from release 2026.4's code (on 012-02's description
   of format 5): the structures from the files to the bits, field tables
   for the meta block, the record and the nodes; the gaps where the code
   accepts what a spec should refuse (G1 to G21) and its Java dependences
   (J1 to J8); the open format questions (Q1 to Q23, Q14 and Q16 first);
-  the options for versioning, none decided.
+  the options for versioning, none decided. Moved to 027 on 2026-11-13,
+  now 027-03, kept current (Frans, 08:50: "Yes"). A stub here leads
+  there.
 * 03-measurements.md. 024-03, release 2026.4 measured at 1M and 10M keys
   beside 2026.3 (PF1): the same speed and MEM; a mass delete fixed (101
   nodes against 882,271); P8 not needed on these numbers (CL1); merges'
   underfill measured (CL2); the last touch the biggest fault measured
   (CL7: a 200 MB record and 21 s at 10M, old); the stream under steady
-  overwrites. Outputs in 03-measurements/.
+  overwrites. Outputs in 03-measurements/. Done; 100M keys and s1 not
+  measured (024-05, QF7).
 * 04-aim.md. 024-04, the aim of release 2026.5, "solid algorithms"
   (Frans, 2026-11-11), the document the release's work cites: bugs
   first; operations proportional; storage proportional; the model
@@ -117,20 +120,22 @@ Files
   for algorithms before a stable stream format, the known cases against
   the aim (CL7, CL2, MEM at 10M KVs), and what stays of the stream
   format's work (024-02 kept current; Q14 and Q16 maybe, not decided).
+  Decided.
 * 05-known-cases.md. 024-05, the aim against what is known: every known
   case against aims 2 and 3 with its figures checked at the source (OP1
   the last touch, OP2/ST2 the underfill, ST3 the stream kept, OP3 a
   put's bytes, ST4 dead klongs and the small ones); proposed bounds (BD1
   to BD13) with the tests that check them or none; what is not measured
-  (100M keys; GM1 to GM8); a proposed order; questions QF1 to QF8.
-  Corrects 024-03: a get at 10M loads 1.9 nodes, not 25.
+  (100M keys; GM1 to GM8); a proposed order; questions QF1 to QF8, all
+  decided. Corrects 024-03: a get at 10M loads 1.9 nodes, not 25.
 * 06-model-gap.md. 024-06, the gap between the Lean model and release
   2026.4's code: the model is the theory of the stream and of memory,
   with the transaction's change an opaque function, so no proof broke
   and none covers the key tree; four weak points in the tie (PhysStep,
   T-SCHEME's argument, the draining configurations, javaTake); the work
   in an order (A the tie, B the tree in Lean run against Java, C and D
-  its proofs, E the costs); questions 1 to 8.
+  its proofs, E the costs); questions 1 to 8, of which 5 and 8 are not
+  answered. Done.
 * 07-last-touch.md. 024-07, the last touch of a reclaim iteration
   (CL7, OP1) fixed: a reclaim step makes dirty the index nodes on the
   paths of its own puts only (`Db.touchPaths` in place of the key
@@ -143,8 +148,8 @@ Files
   two segments and gets a key node of its own, about 226 heap bytes);
   shown by runs that separate shape from count, and a breakdown by
   class; the cost of key shape for a user, a proposed bound with three
-  Mem runs, options (a) to (d), questions Q1 to Q3. Outputs in
-  08-mem-at-10m/.
+  Mem runs, options (a) to (d), questions Q1 to Q3 (answered or made).
+  Done. Outputs in 08-mem-at-10m/.
 * 09-tie.md. 024-09, the tie of the Lean model and release 2026.4's code
   repaired (024-06's A1 to A4): T-SCHEME's argument written again for
   2026.4's code (it holds; checked on 90 reclaim traces); the draining
@@ -157,10 +162,9 @@ Files
   operation wins" (CA1) in Java: the rule made exact (R1 for the calls
   on one key as written, R2 for the KVs that key transformations make
   one key: the later call), the 34 cases of which 11 differ from 2026.4,
-  the change on the branch 024-10-last-operation-wins (not on main), its
-  tests, two expected values changed (for Frans to approve), the same
-  stream bytes without repeated keys, what C must change; questions QL1
-  to QL5.
+  the change, its tests, two expected values changed, the same stream
+  bytes without repeated keys, what C must change; questions QL1 to QL5.
+  On main since a780b957 (024-13); R2 replaced by 024-16's refusal.
 * 11-underfill.md. 024-11, the design study of the underfill's fix
   (OP2/ST2 of 024-05): the bound BU1 (every key node that is not a
   segment tree's root holds at least a quarter of a node's klongs, after
@@ -170,12 +174,14 @@ Files
   to TH4, costs CB1 to CB4), a probe on P5's build and a model of the
   fill rules, a plan of about two weeks, questions QU1 to QU8. The
   probe's scripts and outputs and the model in 11-underfill/ (copied by
-  the coordinator from the study's bench directory).
+  the coordinator from the study's bench directory). Done: the merges
+  made in 024-21 and 024-22.
 * 13-integration.md. 024-13, the integration branch of the day's
   approved changes, gated as one tree: `doubles.py` in 3 s, not 188 s
   (before-commit.sh about 80 s again), 024-10 and 024-07 merged; the
   gates' results. Landed as a780b957; then 024-09 merged and gated,
-  landed as 379d8acf.
+  landed as 379d8acf; later 1e77cfc6, 47c93e34, b84cf761 and 67925924.
+  Done.
 * 12-tree-model.md. 024-12, the model of BergDB's key tree in Lean, run
   against Java (024-06's B0 to B2): trace format 3 with keys; the tree
   in `lean/SIS/Tree/` as an instance of `Spec` (the searches, get,
@@ -187,7 +193,7 @@ Files
   few proved. Branch 024-12-tree-model. Approved by Frans 2026-11-11,
   14:28; on main since 14:56, the merge of 480f83da (gated: lake build,
   treetest, no sorry or axiom, test-traces, before-commit, level1 to
-  level3 full).
+  level3 full). Open: the proofs go on (section 6: TP7, TP10, TP11).
 * 14-merge-thresholds.md. 024-14, the merge's thresholds measured in
   Java at 1M and 10M keys, on a measuring build (P5's merge with fault
   12's fix, the thresholds as run parameters; not landed): the sets P5
@@ -196,7 +202,7 @@ Files
   (dense) times the twin's key nodes, main up to 21.5; the put path's
   price (m8 1 % more bytes a put, dense 4 %); the recommendation m8;
   what is not measured. Probe, scripts and outputs in
-  14-merge-thresholds/.
+  14-merge-thresholds/. QT1 decided, m8 (made in 024-21); QT2 open.
 * 15-key-shape-cost.md. 024-15, the cost of key shape documented and
   bounded (024-08, option (a)): Javadoc in `Connection` and `Db` on what
   costs a key node of its own (about 226 heap bytes) and what eviction
@@ -223,8 +229,8 @@ Files
   size at 1M and 10M keys and of values of 16 MiB; the derivation of
   the node bound; a proposed table L1 to L8 (1,000 operations, 256
   bytes a key, 16 MiB a value, 64 MiB a transaction); the idea of
-  database sizes S, M, L for later; questions QL1 to QL10. Probes and
-  outputs in 17-limits/.
+  database sizes S, M, L for later; questions QL1 to QL12, all decided,
+  made in 024-24 and 024-25. Probes and outputs in 17-limits/.
 * 18-dead-klongs.md. 024-18, dead klongs in live nodes: what one costs
   (16 bytes each time its node is written, 24 heap bytes, a klong more
   in every lookup), the counts at 100k and 1M keys (0.4 to 0.5 per live
@@ -235,14 +241,16 @@ Files
   leave nodes not changed since the iteration began as last versions)
   costs 0 to 3 % bytes and takes the cold case to 0.15. Recommended:
   3c with merges. Measuring patches named; nothing at 10M. Probes in
-  18-dead-klongs/.
+  18-dead-klongs/. Decided (QD1): option 2, theta 7, made in 024-23;
+  QD2 to QD5 not answered.
 * 19-node-size.md. 024-19, the node size: which, and one fixed constant
   or not. Postponed 2026-11-11, 11:50, until the merges were in; done
   2026-11-12, 01:33, on format 7 (merges, option 2, CRC32C): 1M and 10M
   counts, times at 1M. Decided (Frans, 2026-11-12): B = 30 kept.
   Recommended: B a property of the
   database (8, 14, 30, 62) with the thresholds and theta scaled v*B/30,
-  theta at least 2, 62 the hard maximum. Q1 to Q6. Outputs in
+  theta at least 2, 62 the hard maximum. Q1 to Q6: Q1, Q4, Q6 decided
+  (024-27), Q2 and Q3 not answered, Q5 proposed for 2026.6. Outputs in
   19-node-size/.
 * 20-compact-nodes.md. 024-20, a more compact stored form of an index
   node: moved to 2026.6 (026) on 2026-11-12, now 026-01 (Frans, 07:39;
@@ -257,7 +265,7 @@ Files
 * 22-merges-lean.md. 024-22, merges at the delete in 024-12's Lean model
   of the key tree, at 8/17/17; Java equal to it on 260 traces (54,877
   and 4,080 transactions); TP28, TP34 to TP38 proved, TP30 to TP33 left.
-  On main with 024-21 (16:54).
+  On main with 024-21 (16:54). Open: TP30 to TP33, the proofs go on.
 * 23-dead-klongs-option2.md. 024-23, dead klongs in live nodes, option 2
   with theta 7 (Frans, 2026-11-11, 024-18 QD1), model first: the rule in
   the Lean tree model and in Java, at most theta dead klongs a node
@@ -288,12 +296,12 @@ Files
   2026-11-12, 10:37): not ready; blocking: a clean night on today's code
   and the 2026.4 release recipe on format 7, aim 4's open proofs, the
   bounds of aims 2 and 3 not yet tests; the decisions for Frans and the
-  small cases still open.
+  small cases still open. Overtaken by the release (024-38).
 * 29-reclaim-fraction.md. 024-29, reclaim's internal fraction (0.25
   since 2013): previous work and where 0.25 came from, how to compare
   (same history kept), a measurement plan for 1/4, 3/8 and 1/2, three
   recommended values; a step cap of 16 kB a transaction found; QF29-1 to
-  QF29-5.
+  QF29-5. Decided (Frans, 14:07): 1/4 kept; larger databases in 026-04.
 * 30-count-gates.md. 024-30, count gates of aims 2 and 3 at 1M keys, a
   night.sh step (`stress/count-gates.sh`, about 2.5 minutes): G1 the
   largest record (BD1, margin 9.2), G2 key nodes against a twin (BD13,
@@ -306,19 +314,19 @@ Files
   startup distance (OP4, 015-84): the section's span counted at most to
   2 sd in the share (c = 2); at 10M keys from 1000 to 100 MB the largest
   record 1.90 to 0.99 MB, the catch-up 4.5 times longer; the stream
-  unchanged with a constant setting (StreamDigest 48 of 48). Branch
-  024-31-pace-cap, waits for Frans (the rule, three changed expected
-  values).
+  unchanged with a constant setting (StreamDigest 48 of 48). On main
+  since 2026-11-12, c1137b69 (Frans, 13:09).
 * 32-maintain.md. 024-32, `Db.maintain()` and `Database.maintain()`:
   optional, bounded calls that drive reclaim, the take, the cut and the
   dead hand while the application does not write (Frans, 2026-11-12,
   12:10); G5, back to empty by maintain() alone, at 1M keys. Q32-1 to
-  Q32-5.
+  Q32-5, as built. On main since 2026-11-12, 94edfe6b.
 * 33-cache-tables.md. 024-33, the cache's tables shrink (ST6): 1.06
-  times a hello-world twin's slots after back to empty, was 3.76.
+  times a hello-world twin's slots after back to empty, was 3.76. On
+  main since 2026-11-12, a156fd51.
 * 34-reclaim-reads.md. 024-34, a reclaim step reads a key again only
   when its value is before pCut (OP8): second reads halved, stream bytes
-  unchanged. Q34-1.
+  unchanged. On main since 2026-11-12, a156fd51. Q34-1 open, for Frans.
 * 35-release-sweep.md. 024-35, a double-check before the candidate
   (2026-11-12, 14:19): OT2's Linux lock race not fixed, a Core put under
   the Core's own keys that stops every later start (R5), the notes
@@ -417,3 +425,20 @@ proposed for it is listed in 026's readme.
 `bf9ab5af` (Frans, 06:27, pushed), commit B `e9ed4ac9`, `releases/2026.5/`
 (024-38). The release night was clean but for one Android test, a test
 artifact fixed in `3c1f0756`.
+
+2026-11-13. The subitems' statuses set after the release (coord-1113;
+Frans, 08:03: "yes do it"), each from its State and the landing commits.
+Done or decided: all but three. Open: 024-02, the stream format's draft,
+kept current until the stable format of 2026.6 (026); 024-12 and 024-22,
+the proofs of the tree model (TP7, TP10 and TP11; TP30 to TP33), which
+go on after the release (the second prover's runs). 024-20 is a stub,
+moved to 026-01. Questions that no one answered are named in the Status
+lines of their subitems: 024-06 (5, 8), 024-14 (QT2), 024-18 (QD2 to
+QD5), 024-19 (Q2, Q3; Q5 for 2026.6), 024-21 (QJ2), 024-24 (Q1), 024-25
+(QC1, QC3), 024-34 (Q34-1, for Frans, not in 026). 024 stays open.
+
+2026-11-13. 024-02, the stream format, moved to 027 as 027-03, kept
+current there (Frans, 08:50: "Yes", to 027's question "Move it into 027
+when 2026.5 is done?"); a stub left at 024-02, its sections and their
+numbers unchanged in 027-03. Of the three open subitems, 024-12 and
+024-22 remain.

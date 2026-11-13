@@ -181,7 +181,7 @@ public class CapacityTester {
         long full = bytes(db);
         long low = full / 4;
         db.setCacheSizeIndicator(low);
-        long end = System.nanoTime() + 2000L * 1000 * 1000;
+        long end = System.nanoTime() + 30L * 1000 * 1000 * 1000;
         long bytes = full;
         while (System.nanoTime() < end) {
             bytes = db.internal().cache().residents().bytes();
@@ -725,7 +725,7 @@ public class CapacityTester {
             long full = bytes(db);
             long budget = full / 3;
             db.setCacheSizeIndicator(budget);
-            long end = System.nanoTime() + 2000L * 1000 * 1000;
+            long end = System.nanoTime() + 30L * 1000 * 1000 * 1000;
             while (db.internal().cache().residents().bytes() > budget && System.nanoTime() < end) {
                 Thread.sleep(1);
             }

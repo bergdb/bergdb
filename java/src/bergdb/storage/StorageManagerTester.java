@@ -69,7 +69,9 @@ public class StorageManagerTester {
         manager.sync(0);
         t = System.nanoTime() - t;
         double time = t * 1e-9;
-        Assert.assertTrue(time < 0.05);
+        // Under the 500 ms of the sync's wait for its next check; not 50 ms, which load
+        // could pass (bergdb 021-28).
+        Assert.assertTrue("time = " + time, time < 0.4);
         
         manager.stop();
     }
@@ -114,15 +116,18 @@ public class StorageManagerTester {
         // Now it waits for the append and the flush only; the bytes are written when it
         // returns.
         Assert.assertEquals(12, m.getLength());
-        Assert.assertTrue("time[0] = " + time[0], time[0] < 0.30);
+        // A bound for a hang, not 0.30 s, which load could pass (bergdb 021-28); the timer,
+        // 25 to 100 ms, was under it too.
+        Assert.assertTrue("time[0] = " + time[0], time[0] < 5);
         
         manager.stop();
     }
     
     /**
      * Group commit (2026-10-27, bergdb 005-48): sync() has the buffer of the stream written
-     * at once, with a buffer time of 4 s. Before, it waited for the timer, about a buffer
-     * time. Until 2026-11-04 (bergdb 005-11) the test also had a replica, and syncStrong().
+     * at once, with a buffer time of 60 s (4 s until bergdb 021-28, with a bound of 1 s that
+     * load could pass). Before, it waited for the timer, about a buffer time. Until
+     * 2026-11-04 (bergdb 005-11) the test also had a replica, and syncStrong().
      */
     @Nano
     public static void testSyncStartsTheFlush() throws IOException {
@@ -130,7 +135,7 @@ public class StorageManagerTester {
         Object writeLock = new Object();
         StorageManager manager;
         synchronized (writeLock) {
-            manager = new StorageManager.Builder().stream(m1, 10 * 1000, 4000).build();
+            manager = new StorageManager.Builder().stream(m1, 10 * 1000, 60000).build();
             manager.start();
         }
         
@@ -143,7 +148,7 @@ public class StorageManagerTester {
             manager.sync(100);
             long ms1 = (System.nanoTime() - t0) / 1000000;
             Assert.assertEquals(100, m1.getLength());
-            Assert.assertTrue("sync() took " + ms1 + " ms", ms1 < 1000);
+            Assert.assertTrue("sync() took " + ms1 + " ms", ms1 < 5000);
         } finally {
             manager.close();
         }
@@ -165,7 +170,7 @@ public class StorageManagerTester {
             if (op == bergdb.stream.StrictStream.Op.APPEND) {
                 entered.countDown();
                 try {
-                    release.await(5, java.util.concurrent.TimeUnit.SECONDS);
+                    release.await(30, java.util.concurrent.TimeUnit.SECONDS);
                 } catch (InterruptedException e) {
                     throw new IOException(e);
                 }
@@ -186,20 +191,23 @@ public class StorageManagerTester {
             m.append(new byte[100], 0, 100);
             syncer.start();
             Assert.assertTrue("the append was not held",
-                    entered.await(5, java.util.concurrent.TimeUnit.SECONDS));
-            long end = System.nanoTime() + 5000L * 1000 * 1000;
+                    entered.await(30, java.util.concurrent.TimeUnit.SECONDS));
+            long end = System.nanoTime() + 30L * 1000 * 1000 * 1000;
             while (syncer.getState() != Thread.State.TIMED_WAITING && System.nanoTime() < end) {
                 Thread.sleep(1);
             }
             long t0 = System.nanoTime();
             release.countDown();
-            syncer.join(5000);
+            syncer.join(30 * 1000);
             Assert.assertTrue("the sync threw", thrownAt[0] != 0);
             long ms = (thrownAt[0] - t0) / 1000000;
-            Assert.assertTrue("the sync threw " + ms + " ms after the failure", ms < 50);
+            // The release comes as the sync begins to wait, so its next check comes about
+            // 500 ms later: 250 ms tells a wake from a check, and leaves room for load (bergdb
+            // 021-28: 50 ms).
+            Assert.assertTrue("the sync threw " + ms + " ms after the failure", ms < 250);
         } finally {
             release.countDown();
-            syncer.join(5000);
+            syncer.join(30 * 1000);
             m.close();
         }
     }

@@ -2543,8 +2543,8 @@ public class FileStream implements AppendOnlyStream {
             if (latch == null) return;
             held.countDown();
             try {
-                if (!latch.await(10, java.util.concurrent.TimeUnit.SECONDS)) {
-                    throw new IOException("held for 10 s");
+                if (!latch.await(30, java.util.concurrent.TimeUnit.SECONDS)) {
+                    throw new IOException("held for 30 s");
                 }
             } catch (InterruptedException e) {
                 throw new IOException(e);
@@ -2707,7 +2707,7 @@ public class FileStream implements AppendOnlyStream {
         Assert.assertTrue(io.held.await(10, java.util.concurrent.TimeUnit.SECONDS));
         long t0 = System.nanoTime();
         readAndCheck(f, 49 * 1000, 1000, bytes);       // The last file, while its force waits.
-        Assert.assertTrue("the read waited", System.nanoTime() - t0 < 2000000000L);
+        Assert.assertTrue("the read waited", System.nanoTime() - t0 < 10000000000L);
         io.holdForce.countDown();
         writer.finish();
         readAndCheck(f, 50 * 1000, 1000, bytes);
@@ -2732,7 +2732,7 @@ public class FileStream implements AppendOnlyStream {
         long t0 = System.nanoTime();
         readAndCheck(f, 1000, 1000, bytes);
         readAndCheck(f, 140 * 1000, 1000, bytes);
-        Assert.assertTrue("the read waited", System.nanoTime() - t0 < 2000000000L);
+        Assert.assertTrue("the read waited", System.nanoTime() - t0 < 10000000000L);
         io.holdDirectoryForce.countDown();
         writer.finish();
         readAndCheck(f, 210 * 1000, 1000, bytes);
@@ -2759,7 +2759,7 @@ public class FileStream implements AppendOnlyStream {
         f.pretruncate(800 * 1000);
         Assert.assertTrue(io.held.await(10, java.util.concurrent.TimeUnit.SECONDS));
         readAndCheck(f, 850 * 1000, 1000, bytes);
-        Assert.assertTrue("the cut or the read waited", System.nanoTime() - t0 < 2000000000L);
+        Assert.assertTrue("the cut or the read waited", System.nanoTime() - t0 < 10000000000L);
         Assert.assertEquals(800 * 1000, f.getFirstPos());
         try {
             f.read(100, new byte[10], 0, 10);

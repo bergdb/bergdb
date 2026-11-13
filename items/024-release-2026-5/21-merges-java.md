@@ -1,6 +1,9 @@
 # 024-21. Merges at the delete, in Java
 
-Created 2026-11-11 by Frans Lundberg. Status: open.
+Created 2026-11-11 by Frans Lundberg. Status: done (2026-11-11): on
+`main` since `67925924`, with 024-22. QJ1 accepted by the coordinator
+under Frans's delegation (024-28, section 8); QJ2 not answered; QJ3
+decided by rule.
 
 The one algorithm that release 2026.5 ("solid algorithms", 024-04)
 still has to put in place: merges of underfull key nodes at the delete
@@ -839,3 +842,5 @@ of this item is done; the branch is in int's combined landing head
   restarts placed after the first cut).
 * **Dead klongs** (Frans, 14:27: 024-18's QD1, option 2 with theta 7)
   went to the agent "o2" as item 024-23, from the combined head.
+
+2026-11-13. Status set after the release (coord-1113).

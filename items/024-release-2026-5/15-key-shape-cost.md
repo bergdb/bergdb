@@ -1,6 +1,7 @@
 # 024-15. The memory cost of key shape: documented and bounded
 
-Created 2026-11-11 by Frans Lundberg. Status: done; the branch is to be landed.
+Created 2026-11-11 by Frans Lundberg. Status: done (2026-11-11): on
+`main` since `1e77cfc6`.
 
 Option (a) of 024-08, section 9, carried out: the memory cost of a key's
 shape documented where a user and a reader of the algorithm look, and
@@ -207,3 +208,5 @@ Written 2026-11-11, 12:02. Status: done; the branch is for the coordinator to la
   `024-15-key-shape-cost` from main `0da2cdd4`, head `877ddf20`.
 * **To continue:** land the branch on main (the coordinator); nothing
   else is pending in this item.
+
+2026-11-13. Status set after the release (coord-1113).
