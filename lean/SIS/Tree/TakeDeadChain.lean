@@ -286,4 +286,34 @@ theorem writerWP_appendKlongs_j2 (c : Ctx) (base : View BVal)
     exact cascadeShapeJ2_of c (wNode c.p base w) B _ X K Nn s (s + e) ins w.next hS hM hN
       (fun i a b => htimes i a (by omega)) hBn hnd hins z zn hz hp1 hp2 (hshape z zn hlk hz)
 
+/-- The facts of a cascade that `writerWP_appendKlongs_j2` takes beyond latest's
+shape lemma (`hextra`), on that lemma's premises: the chain's nodes stay cached, a
+chain node left behind is not one the transaction made, and a repointed top is a
+segment leaf. Asked of latest's `writerWP_appendKlongs_chainShape`. -/
+def ChainExtraOK (c : Ctx) : Prop :=
+  ∀ (path0 : List (Option Nat × NodeId)) (s D : Nat) (X : Nat → NodeId) (K : Nat → Nat)
+    (Nn : Nat → KNode),
+    (∀ i, s ≤ i → i ≤ D → (path0[i]?).map (·.2) = some (X i)) →
+    (∀ i, s < i → i ≤ D → path0[i]? = some (some (K i), X i)) →
+    (∀ i, s < i → i ≤ D → (K i, X i) ∈ (Nn (i - 1)).liveAt c.i) →
+    (∀ i, s < i → i ≤ D → ¬ ChainRoom c (Nn i) → (Nn (i - 1)).leaf = false →
+      ∀ c' z, (c', z) ∈ (Nn i).live → 0 < c' →
+      K i ≤ c' ∧ ∀ c'' z', (c'', z') ∈ (Nn (i - 1)).live → K i < c'' → c' < c'') →
+    (∀ i, s ≤ i → i ≤ D → ¬ ChainRoom c (Nn i) →
+      c.p.splitAbove < ((Nn i).lastVersion c.i).size → 2 ≤ (Nn i).live.length) →
+    (∀ i, s < i → i ≤ D → ChainOrd c K Nn i) →
+    (∀ i, s ≤ i → i ≤ D → ∀ t, Klong.time t ∈ (Nn i).ks → t ≤ c.i) →
+    (ChainRoom c (Nn s) ∨ s = 0) →
+    (∀ i i', s ≤ i → i ≤ D → s ≤ i' → i' ≤ D → X i = X i' → i = i') →
+    ∀ e, s + e ≤ D → ∀ (w : W) (ins : List (Nat × NodeId)),
+      InsOK (Nn (s + e)) ins → ins.Pairwise (fun a b => a.1 < b.1) → w.path = path0 →
+      (∀ i, s ≤ i → i ≤ s + e → w.nodes.lookup (X i) = some (Nn i) ∧ X i < w.next) →
+      (∀ z, w.next ≤ z → w.nodes.lookup z = none) →
+      WriterWP (appendKlongs (s + e) (X (s + e)) ins) c w (fun _ w' =>
+        (∀ i, s ≤ i → i ≤ s + e → (w'.nodes.lookup (X i)).isSome = true) ∧ ∀ z zn,
+        w'.nodes.lookup z = some zn →
+        (∀ i, s ≤ i → i ≤ s + e → z = X i → zn = (Nn i).toPrev (c.i - 1) → (Nn i).firstTime ≠ some c.i) ∧
+        (∀ j, s ≤ j → j < s + e → z = X j → ∀ k1 idx r, (Nn j).linkIndex (X (j + 1)) k1 = some idx →
+          zn = (Nn j).repoint idx r → (Nn j).leaf = true))
+
 end SIS.Tree

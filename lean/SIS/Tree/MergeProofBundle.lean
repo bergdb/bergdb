@@ -257,3 +257,4 @@ import SIS.Tree.TakeDeadAssembly
 import SIS.Tree.TakeDeadNewSeg
 import SIS.Tree.TakeDeadAssembly2
 import SIS.Tree.TakeDeadChain
+import SIS.Tree.TakeDeadPutFull
