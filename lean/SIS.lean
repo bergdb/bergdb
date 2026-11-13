@@ -34,6 +34,9 @@ import SIS.BoundExample
 import SIS.BoundT4
 import SIS.BoundT4Theorems
 import SIS.BoundT4Example
+import SIS.BoundT4Java
+import SIS.BoundT4JavaTheorems
+import SIS.BoundT4JavaExample
 import SIS.BoundCold
 import SIS.BoundColdTheorems
 import SIS.Tree.Val
