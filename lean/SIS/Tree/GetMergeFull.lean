@@ -117,7 +117,8 @@ theorem writerWP_handleFull_timeV (c : Ctx) (base : View BVal)
     (htop : ChainRoom c (Nn s) ∨ s = 0)
     (hdist : ∀ i i', s ≤ i → i ≤ D + 1 → s ≤ i' → i' ≤ D + 1 → X i = X i' → i = i')
     (hspace : ∀ i, s ≤ i → i ≤ D → ¬ ChainRoom c (Nn i) →
-      c.p.splitAbove < ((Nn i).lastVersion c.i).size → i = 0 ∨ (s < i ∧ (Nn (i - 1)).leaf = false))
+      c.p.splitAbove < ((Nn i).lastVersion c.i).size → i = 0 ∨ (s < i ∧ ((Nn (i - 1)).leaf = false ∨
+        ((Nn i).firstTime ≠ some c.i ∧ ∀ i', s < i' → i' < i → ChainOrd c K Nn i'))))
     (last : KNode) (compact : Bool) (w : W)
     (hfirst : (Nn (D + 1)).firstTime ≠ some c.i)
     (hcs : (!compact && decide (last.size > c.p.splitAbove)) = false)
@@ -141,7 +142,7 @@ theorem writerWP_handleFull_timeV (c : Ctx) (base : View BVal)
         (∀ z zn, TReach (wNode c.p base w') c.i w'.top.rootKey z → wNode c.p base w' z = some zn →
           klongsWf zn.ks = true) ∧
         ((SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
-          ¬ (s = 0 ∧ ¬ ChainRoom c (Nn 0) ∧ c.p.splitAbove < ((Nn 0).lastVersion c.i).size)) →
+          ChainNoNewRoot c Nn s D) →
         ∀ key, getFromR (wNode c.p base w') (wValue base w') c.i c.p.fuel key w'.top.rootKey =
           getFromR (updN (wNode c.p base w) (X (D + 1)) ⟨(Nn (D + 1)).leaf, last.ks⟩) (wValue base w)
             c.i c.p.fuel key w.top.rootKey)) := by
@@ -389,7 +390,8 @@ theorem writerWP_mergeTail_full_get (c : Ctx) (base : View BVal) (x : NodeId) (d
     (htop : ChainRoom c (Nn s) ∨ s = 0)
     (hdist : ∀ i i', s ≤ i → i ≤ D + 1 → s ≤ i' → i' ≤ D + 1 → X i = X i' → i = i')
     (hspace : ∀ i, s ≤ i → i ≤ D → ¬ ChainRoom c (Nn i) →
-      c.p.splitAbove < ((Nn i).lastVersion c.i).size → i = 0 ∨ (s < i ∧ (Nn (i - 1)).leaf = false))
+      c.p.splitAbove < ((Nn i).lastVersion c.i).size → i = 0 ∨ (s < i ∧ ((Nn (i - 1)).leaf = false ∨
+        ((Nn i).firstTime ≠ some c.i ∧ ∀ i', s < i' → i' < i → ChainOrd c K Nn i'))))
     (hXp : X (D + 1) = p) (hNp : Nn (D + 1) = pn)
     (hS2 : ∀ i, s ≤ i → i ≤ D + 1 →
       w3.nodes.lookup (X i) = some (Nn i) ∧ w3.taken.contains (X i) = false)
@@ -411,7 +413,7 @@ theorem writerWP_mergeTail_full_get (c : Ctx) (base : View BVal) (x : NodeId) (d
       last.size ≤ c.p.splitAbove) :
     WriterWP (mergeTail c x d p pn xn leftSome l ln il r rn ir) c w3
       (fun _ w' => (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
-          ¬ (s = 0 ∧ ¬ ChainRoom c (Nn 0) ∧ c.p.splitAbove < ((Nn 0).lastVersion c.i).size)) →
+          ChainNoNewRoot c Nn s D) →
         ∀ key, wGet c.p c.i base w' key = wGet c.p c.i base w3 key) := by
   -- the tree's facts
   have hpL : (cL, l) ∈ pn.liveAt c.i := by
@@ -1311,7 +1313,8 @@ theorem writerWP_merge_full_get (x : NodeId) (d : Nat) (c : Ctx) (base : View BV
     (htop : ChainRoom c (Nn s) ∨ s = 0)
     (hdist : ∀ i i', s ≤ i → i ≤ D + 1 → s ≤ i' → i' ≤ D + 1 → X i = X i' → i = i')
     (hspace : ∀ i, s ≤ i → i ≤ D → ¬ ChainRoom c (Nn i) →
-      c.p.splitAbove < ((Nn i).lastVersion c.i).size → i = 0 ∨ (s < i ∧ (Nn (i - 1)).leaf = false))
+      c.p.splitAbove < ((Nn i).lastVersion c.i).size → i = 0 ∨ (s < i ∧ ((Nn (i - 1)).leaf = false ∨
+        ((Nn i).firstTime ≠ some c.i ∧ ∀ i', s < i' → i' < i → ChainOrd c K Nn i'))))
     (hS2 : ∀ i, s ≤ i → i ≤ D + 1 →
       w.nodes.lookup (X i) = some (Nn i) ∧ w.taken.contains (X i) = false)
     (hS4 : ∀ i, s ≤ i → i ≤ D + 1 → TReach (wNode c.p base w) c.i w.top.rootKey (X i))
@@ -1332,7 +1335,7 @@ theorem writerWP_merge_full_get (x : NodeId) (d : Nat) (c : Ctx) (base : View BV
       last.size ≤ c.p.splitAbove) :
     WriterWP (merge x d) c w (fun _ w' =>
       (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
-          ¬ (s = 0 ∧ ¬ ChainRoom c (Nn 0) ∧ c.p.splitAbove < ((Nn 0).lastVersion c.i).size)) →
+          ChainNoNewRoot c Nn s D) →
       ∀ key, wGet c.p c.i base w' key = wGet c.p c.i base w key) := by
   obtain ⟨hidn, hidv, hidt⟩ := hids
   have hfree : ∀ z, w.next ≤ z → wNode c.p base w z = none ∧ w.taken.contains z = false := by
@@ -1379,7 +1382,7 @@ theorem writerWP_merge_full_get (x : NodeId) (d : Nat) (c : Ctx) (base : View BV
         (x = l ∨ x = r) → wNode c.p base w l = some ln → wNode c.p base w r = some rn →
         WriterWP (mergeTail c x d e.2 pn0 xn leftSome l ln il r rn ir) c w3
           (fun _ w' => (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
-            ¬ (s = 0 ∧ ¬ ChainRoom c (Nn 0) ∧ c.p.splitAbove < ((Nn 0).lastVersion c.i).size)) →
+            ChainNoNewRoot c Nn s D) →
             ∀ key, wGet c.p c.i base w' key = wGet c.p c.i base w key) := by
       intro leftSome l ln il r rn ir cL cR xn w3 hr3 hpre3 hsrc3 hp3 hL hLL hR' hRL hclt hadj hll hrl
         hxlr hln hrn
@@ -1538,7 +1541,7 @@ theorem writerWP_merge_full_get (x : NodeId) (d : Nat) (c : Ctx) (base : View BV
               let __x ← sibling e.2 pn0 ia0 !xn.leaf
               mergeTail c x d e.2 pn0 xn false x xn ix __x.1 __x.2 ia0) c wb
               (fun _ w' => (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
-                ¬ (s = 0 ∧ ¬ ChainRoom c (Nn 0) ∧ c.p.splitAbove < ((Nn 0).lastVersion c.i).size)) →
+                ChainNoNewRoot c Nn s D) →
                 ∀ key, wGet c.p c.i base w' key = wGet c.p c.i base w key) := by
           intro wb ia0 cva hrb hpreb hsrcb hpb hLa hax hia
           rw [writerWP_bind]
