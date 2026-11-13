@@ -1447,7 +1447,13 @@ and its status:
       `GetDescentOK.lean`);
     - the merge lemmas take the in-place split of a segment root that the
       transaction made, and derive the full parent's range from
-      `RangeOrder` for the merge's actual values (latest, in progress);
+      `RangeOrder` for the merge's actual values (latest, in progress).
+      The full parent's level is done: `writerWP_handleFull_lastVF2`
+      (`GetMergeLevel.lean`) takes the in-place space split below a segment
+      leaf, asks the cascade's order only for a node the transaction did
+      not make, and adds the reach back that putinv asked for (under
+      `ChainOrd` and `LastOrd`, the last version's order below an inner
+      parent). `writerWP_handleFull_lastVF` is its corollary, unchanged;
     - then `opGetCaseOK_delMergeF2`.
     The old statements stay, unchanged, until F2 is complete; then they are
     removed, as agreed with cost.
