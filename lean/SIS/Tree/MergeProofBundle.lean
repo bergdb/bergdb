@@ -160,3 +160,5 @@ import SIS.Tree.WriterGetMerge
 import SIS.Tree.RangeSim
 import SIS.Tree.RangeChain
 import SIS.Tree.RangePut
+import SIS.Tree.RangeRun
+import SIS.Tree.RangeOps
