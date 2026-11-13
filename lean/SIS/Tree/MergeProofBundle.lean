@@ -148,6 +148,7 @@ import SIS.Tree.GetCascadeIP
 import SIS.Tree.GetCascadeChainG
 import SIS.Tree.GetPutPath
 import SIS.Tree.GetFuel
+import SIS.Tree.GetNewSegFull
 import SIS.Tree.WriterTreeInnerHalves
 import SIS.Tree.WriterTreeSpaceSpace
 import SIS.Tree.WriterTreeDelFull
