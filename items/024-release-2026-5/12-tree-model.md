@@ -1575,6 +1575,25 @@ and its status:
       deletes that merge 14 key nodes down to 3. At its last time the walk
       finds no fault, and the Bool forms of `NonEmptyOK`, `RootsOK`,
       `FillOK` and `RootKeyOK` hold.
+    `NonEmptyOK`, `RootsOK`, `FillOK` and `RangeAtOK` reduced to the
+    operation cases (latest, 00:19; `LiveCounts.lean`, `LiveCases.lean`):
+    - `LiveCounts` is the three conditions as an invariant of the writer's
+      tree, over the nodes reached through live klongs with the walk's
+      flags (`FReach`).
+    - At a transaction's first state it follows from TP7's invariant at the
+      time before (`liveCounts_init`, by `walk_of_fReach`).
+    - The operations keep it as the obligation `QLive` of the cases
+      (`OpCaseOK`, as TP10's three posts). `live_reached` gives it at every
+      state between the operations.
+    - At the last state, the commit's lift turns it into the three parts of
+      the next run (`liveCounts_commit`). It turns `joint_reached`'s
+      `RangeOrder` into `RangeAtOK` (`rangeAtOK_commit`).
+    - `latestInvOK_of_cases` and `invPreserved_of_cases` give TP7 under
+      `MergeParamsOK`, by induction on the runs. The premises are TP4,
+      `DeadAllOK`, `HeightLiveOK`, `TreeAt`, TP10's posts of the cases (1)
+      to (4), and `QLive` of the cases (1) to (4).
+    - `QLive` of case (1), a put into a leaf with room, is proved
+      (`liveCase_putLeafRoom`). Open: `QLive` of (2), (3) and (4).
     Removed (latest, 23:08, as agreed with cost and the coordinator, after
     putinv's take-back moved to F2 at 65b84e5b): `DescentOKF`,
     `MergePathCond`, `opGetCaseOK_delMergeF`, `writerWP_mergeUp_delF`,

@@ -171,6 +171,8 @@ import SIS.Tree.DelMergeCaseF3
 import SIS.Tree.CollapseCascade
 import SIS.Tree.MergeRootShape
 import SIS.Tree.InvAssembly
+import SIS.Tree.LiveCounts
+import SIS.Tree.LiveCases
 import SIS.Tree.WriterTreeInnerHalves
 import SIS.Tree.WriterTreeSpaceSpace
 import SIS.Tree.WriterTreeDelFull
