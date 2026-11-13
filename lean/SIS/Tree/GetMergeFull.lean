@@ -15,6 +15,85 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
+/-- The live klongs of `mergeFullLast` as the merge's reading lemmas take them
+(`getFromR_mergeOne`, `getFromR_mergeTwo`). -/
+theorem mergeFullLast_iff (pn : KNode) (t : Time) (cL : Nat) (m1 : NodeId) (cR : Nat)
+    (m2 : Option (NodeId × Nat)) (last : KNode) (h : mergeFullLast pn t cL m1 cR m2 = some last)
+    (hpt : ∀ s, Klong.time s ∈ pn.ks → s ≤ t) :
+    (m2 = none → ∀ cc z, (cc, z) ∈ last.liveAt t ↔
+      (cc = cL ∧ z = m1) ∨ ((cc, z) ∈ pn.liveAt t ∧ cc ≠ cL ∧ cc ≠ cR)) ∧
+    (∀ y g, m2 = some (y, g) → ∀ cc z, (cc, z) ∈ last.liveAt t ↔
+      (cc = g ∧ z = y) ∨ (cc ≠ g ∧ cc = cL ∧ z = m1) ∨
+        (cc ≠ g ∧ cc ≠ cL ∧ cc ≠ cR ∧ (cc, z) ∈ pn.liveAt t)) := by
+  obtain ⟨pairs, hks⟩ := mergeFullLast_ks pn t cL m1 cR m2 last h
+  have htl : ∀ s, Klong.time s ∈ last.ks → s ≤ t := by rw [hks]; exact newKlongs_times t pairs
+  obtain ⟨_, hnone, hsome⟩ := mergeFullLast_lookup pn t cL m1 cR m2 last h
+  have hl : ∀ cc z, (cc, z) ∈ last.liveAt t ↔ last.live.lookup cc = some z := by
+    intro cc z
+    rw [KNode.liveAt_of_times last t htl]
+    exact ⟨lookup_of_mem_nodup _ (KNode.live_keys_nodup last) cc z, mem_of_lookup_nodup _ cc z⟩
+  have hp : ∀ cc z, (cc, z) ∈ pn.liveAt t ↔ pn.live.lookup cc = some z := by
+    intro cc z
+    rw [KNode.liveAt_of_times pn t hpt]
+    exact ⟨lookup_of_mem_nodup _ (KNode.live_keys_nodup pn) cc z, mem_of_lookup_nodup _ cc z⟩
+  refine ⟨fun h0 cc z => ?_, fun y g hy cc z => ?_⟩
+  · rw [hl, hnone h0 cc, hp]
+    by_cases h1 : cc = cL
+    · rw [ite_eq_left_of_eq_true _ _ (eq_true h1)]
+      constructor
+      · intro he; exact Or.inl ⟨h1, (Option.some.inj he).symm⟩
+      · rintro (⟨_, rfl⟩ | ⟨_, h2, _⟩)
+        · rfl
+        · exact absurd h1 h2
+    · rw [ite_eq_right_of_eq_false _ _ (eq_false h1)]
+      by_cases h2 : cc = cR
+      · rw [ite_eq_left_of_eq_true _ _ (eq_true h2)]
+        constructor
+        · intro he; cases he
+        · rintro (⟨h, _⟩ | ⟨_, _, h⟩)
+          · exact absurd h h1
+          · exact absurd h2 h
+      · rw [ite_eq_right_of_eq_false _ _ (eq_false h2)]
+        constructor
+        · intro he; exact Or.inr ⟨he, h1, h2⟩
+        · rintro (⟨h, _⟩ | ⟨he, _, _⟩)
+          · exact absurd h h1
+          · exact he
+  · rw [hl, hsome y g hy cc, hp]
+    by_cases h0 : cc = g
+    · rw [ite_eq_left_of_eq_true _ _ (eq_true h0)]
+      constructor
+      · intro he; exact Or.inl ⟨h0, (Option.some.inj he).symm⟩
+      · rintro (⟨_, rfl⟩ | ⟨h, _⟩ | ⟨h, _⟩)
+        · rfl
+        · exact absurd h0 h
+        · exact absurd h0 h
+    · rw [ite_eq_right_of_eq_false _ _ (eq_false h0)]
+      by_cases h1 : cc = cL
+      · rw [ite_eq_left_of_eq_true _ _ (eq_true h1)]
+        constructor
+        · intro he; exact Or.inr (Or.inl ⟨h0, h1, (Option.some.inj he).symm⟩)
+        · rintro (⟨h, _⟩ | ⟨_, _, rfl⟩ | ⟨_, h, _⟩)
+          · exact absurd h h0
+          · rfl
+          · exact absurd h1 h
+      · rw [ite_eq_right_of_eq_false _ _ (eq_false h1)]
+        by_cases h2 : cc = cR
+        · rw [ite_eq_left_of_eq_true _ _ (eq_true h2)]
+          constructor
+          · intro he; cases he
+          · rintro (⟨h, _⟩ | ⟨_, h, _⟩ | ⟨_, _, h, _⟩)
+            · exact absurd h h0
+            · exact absurd h h1
+            · exact absurd h2 h
+        · rw [ite_eq_right_of_eq_false _ _ (eq_false h2)]
+          constructor
+          · intro he; exact Or.inr (Or.inr ⟨h0, h1, h2, he⟩)
+          · rintro (⟨h, _⟩ | ⟨_, h, _⟩ | ⟨_, _, _, he⟩)
+            · exact absurd h h0
+            · exact absurd h h1
+            · exact he
+
 set_option maxHeartbeats 1600000 in
 /-- A time split, not in place, of the path's node x = X (D + 1) below an inner
 parent X D, with any last version `last`: the writer's state after it and its
@@ -58,12 +137,14 @@ theorem writerWP_handleFull_timeV (c : Ctx) (base : View BVal)
     (hvx : ∀ c' z, (c', z) ∈ (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).liveAt c.i → z < w.next)
     (hxwf : klongsWf last.ks = true) (hxt : ∀ s, Klong.time s ∈ last.ks → s ≤ c.i) :
     WriterWP (handleFullWith (fun q more => appendKlongs D q more) (D + 1) (X (D + 1)) [] last compact)
-      c w (fun _ w' =>
-        (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
+      c w (fun _ w' => ¬ TReach (wNode c.p base w') c.i w'.top.rootKey (X (D + 1)) ∧
+        (∀ z zn, TReach (wNode c.p base w') c.i w'.top.rootKey z → wNode c.p base w' z = some zn →
+          klongsWf zn.ks = true) ∧
+        ((SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
           ¬ (s = 0 ∧ ¬ ChainRoom c (Nn 0) ∧ c.p.splitAbove < ((Nn 0).lastVersion c.i).size)) →
         ∀ key, getFromR (wNode c.p base w') (wValue base w') c.i c.p.fuel key w'.top.rootKey =
           getFromR (updN (wNode c.p base w) (X (D + 1)) ⟨(Nn (D + 1)).leaf, last.ks⟩) (wValue base w)
-            c.i c.p.fuel key w.top.rootKey) := by
+            c.i c.p.fuel key w.top.rootKey)) := by
   obtain ⟨hlkx, htkx⟩ := hS2 (D + 1) (by omega) (Nat.le_refl _)
   obtain ⟨hlkq, htkq⟩ := hS2 D hsD (by omega)
   have hpq : (w.path[D]?).map (·.2) = some (X D) := by rw [hS1]; exact hX D hsD (by omega)
@@ -239,7 +320,14 @@ theorem writerWP_handleFull_timeV (c : Ctx) (base : View BVal)
       rw [updN_ne _ _ _ _ hz2, hN1, updN_ne _ _ _ _ hz3, updN_ne _ _ _ _ hz1])
     (by rw [hVal _ (Or.inr ⟨D + 1, by omega, Nat.le_refl _, rfl⟩), hVal _ (Or.inl (Nat.le_refl _))])
     hrY hrx
-  intro hq key'
+  refine ⟨fun h => ?_, fun z zn hz hzn => ?_, fun hq key' => ?_⟩
+  · rw [hN4] at h
+    exact hxR2 (tReach_updN_unreach _ c.i _ _ _ hxR2 _ h)
+  · rw [hN4] at hz hzn
+    have hz2 := tReach_updN_unreach _ c.i _ _ _ hxR2 _ hz
+    have hzx : z ≠ X (D + 1) := fun he => hxR2 (by rw [← he]; exact hz2)
+    rw [updN_ne _ _ _ _ hzx] at hzn
+    exact h2W z zn hzn
   have hq2 := hq.imp (fun hf => SegFits.of_agree (wNode c.p base w2) _ c.i (c.p.fuel - 1)
     w2.top.rootKey (fun x hx => by rw [hN4]; exact updN_ne _ _ _ _ (fun he => hxR2 (he ▸ hx))) hf) id
   show getFromR (wNode c.p base { w2 with nodes := upsert w2.nodes (X (D + 1)) ((Nn (D + 1)).toPrev (c.i - 1)) })
