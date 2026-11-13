@@ -153,6 +153,7 @@ import SIS.Tree.GetPutPath
 import SIS.Tree.GetFuel
 import SIS.Tree.GetNewSegFull
 import SIS.Tree.GetNewRoot
+import SIS.Tree.GetDelRoot
 import SIS.Tree.WriterTreeInnerHalves
 import SIS.Tree.WriterTreeSpaceSpace
 import SIS.Tree.WriterTreeDelFull
@@ -218,3 +219,7 @@ import SIS.Tree.RangeUpTake
 import SIS.Tree.TakeBackRun
 import SIS.Tree.TakeBackRunExample
 import SIS.Tree.RangeCollapseSeg
+import SIS.Tree.TakeInvTree
+import SIS.Tree.TakeInvCollapse
+import SIS.Tree.TakeBackRunT
+import SIS.Tree.TakeInvUp
