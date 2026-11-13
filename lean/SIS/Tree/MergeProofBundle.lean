@@ -137,5 +137,7 @@ import SIS.Tree.PutInvDelFull
 import SIS.Tree.LeftHist
 import SIS.Tree.PutInvSpaceSpace
 import SIS.Tree.GetDelSplit
+import SIS.Tree.GetFinal
+import SIS.Tree.GetDelCascade
 import SIS.Tree.WriterTreeInnerHalves
 import SIS.Tree.WriterTreeSpaceSpace
