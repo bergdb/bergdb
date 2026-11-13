@@ -65,5 +65,5 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 * 07:44 026-04 explained (frac): the lag follows the phase of reclaim's iterations against n, flipping order three times between 1M and 10M; predicted and measured to within 2 %; keep 1/4; P8 (023-05) removes it.
 * 07:38 limits (021-28) started.
 * 07:54 Frans 07:53: Codex run 4 at Max on TP7, on top of run 3 (/Users/f/fl/bench/2026-11-13/cx4/).
-* 07:59 021-28 landed: the Eviction failure was a race between two reads of a thread's state (not the 2 s deadline); about 90 limits in 20 test files; before-commit OK, and three runs beside 20 CPU hogs OK. Tests only.
-* 08:03 Codex run 3 landed 2e71a297 (lake 278 jobs, axioms of 40 theorems standard); 024-12 updated.
+* 07:57 021-28 landed: the Eviction failure was a race between two reads of a thread's state (not the 2 s deadline); about 90 limits in 20 test files; before-commit OK, and three runs beside 20 CPU hogs OK. Tests only.
+* 07:58 Codex run 3 landed 2e71a297 (lake 278 jobs, axioms of 40 theorems standard); 024-12 updated.
