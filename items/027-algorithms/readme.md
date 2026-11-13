@@ -4,7 +4,7 @@
 Created 2026-11-12 by Frans Lundberg. Status: open.
 
 The algorithms of BergDB as they are, kept current with `java/` and
-`lean/`, as 024-02 is for the stream format. Language-neutral: for every
+`lean/`, as the stream format (027-03) is. Language-neutral: for every
 implementation of BergDB (Java, C and those to come). Each algorithm with
 what it does, its invariants, its cost bounds (024-04's aims 2 and 3,
 024-05's bounds, 024-30's gates), its Lean counterpart (the definitions,
@@ -51,13 +51,13 @@ Everything that was in `docs/` but the log moved into this item on
   `docs-readme.md`) are 027-01, a snapshot: not updated since. Until a
   part of 027 is written, 027-01's `levels.md` and `sis-model.md` are
   the best description of what they cover, as of 2026-11-12.
-* **One exception, for Frans to overturn:** `trace-format.md` is 027-02
-  and is **kept current**, not a snapshot. The trace exporter
-  (`java/stress/TraceExport.java`) and the checkers (`lean/Check/*.lean`,
-  `lake exe tracecheck`, `lake exe treecheck`) implement it, and it must
-  change with them; a frozen copy would be wrong at the next format
-  change. Overturning it means freezing it in 027-01 and writing the trace
-  format into 027 itself.
+* **One exception, kept** (Frans, 2026-11-13, 08:50: "Yes", to "The
+  trace format's exception (027-02 kept current, not a snapshot): keep
+  it?"): `trace-format.md` is 027-02 and is **kept current**, not a
+  snapshot. The trace exporter (`java/stress/TraceExport.java`) and the
+  checkers (`lean/Check/*.lean`, `lake exe tracecheck`, `lake exe
+  treecheck`) implement it, and it must change with them; a frozen copy
+  would be wrong at the next format change.
 
 * `log.md` stays in `docs/`, the development log, still written: Frans,
   2026-11-12, 14:32: "Some type of log is good to have. Let's keep log.md
@@ -68,14 +68,28 @@ scripts, `night.sh`, `conformance.sh`, `build.sh`, `before-commit.sh`).
 The code's comments cite 027-01 and 027-02 by ID.
 
 
+The stream format
+=================
+
+The description of BergDB's stream format, written on 2026-11-11 as
+024-02 in release 2026.5's item, moved into this item on 2026-11-13 as
+027-03 (Frans, 08:50: "Yes", to "024-02, the stream format, is a
+maintained description inside a release item. Move it into 027 when
+2026.5 is done?"). 2026.5 is released; 027-03 is kept current with the
+code, and release 2026.6's work on a stable format (026) edits it here.
+A stub at 024-02 leads to it. Its sections kept their numbers: "024-02,
+section 21" is "027-03, section 21". The code's comments cite
+`bergdb 027-03`; old items keep their citations of 024-02 (items are
+history).
+
+
 Questions for Frans
 ===================
 
-* The trace format's exception (027-02 kept current, not a snapshot):
-  keep it? Default: keep.
-* 024-02, the stream format, is a maintained description inside a release
-  item. Move it into 027 when 2026.5 is done? Default: leave it where it
-  is until then.
+None open. The two of 2026-11-12 were answered on 2026-11-13, 08:50
+(Frans: "Yes" to both): the trace format's exception is kept (section
+"The former docs/"), and 024-02 moved into 027 as 027-03 (section "The
+stream format").
 
 
 Files
@@ -87,6 +101,11 @@ Files
 * [02-trace-format.md](02-trace-format.md). 027-02, the format of the
   traces that connect the Java code with the Lean model's checkers, moved
   from `docs/trace-format.md`; kept current.
+* [03-stream-format.md](03-stream-format.md). 027-03, the stream
+  format: the structures from the files to the bits, the gaps where the
+  code accepts what a specification should refuse, the open format
+  questions, the options for versioning; moved from 024-02 on
+  2026-11-13; kept current.
 
 
 Log
@@ -103,11 +122,20 @@ the branch `027-algorithms`.
 placeholder only, its structure to be worked out later with Frans
 (14:45).
 
+2026-11-13. Frans's answers to the two questions (08:50, "Yes"): the
+trace format's exception kept, 027-02 kept current; 024-02, the stream
+format, moved in as 027-03, kept current (`git mv`, a stub at 024-02).
+The references in `java/`, `AGENTS.md`, `README.md` and
+`items/readme.md`, and in 024's and 026's readmes, point to 027-03; old
+items keep 024-02. By agent sf of coord-1113, on the branch
+`027-03-stream-format`.
+
 
 State
 =====
 
 Done: the placeholder, 027-01 and 027-02 moved (`docs/` keeps only
-`log.md`), the references changed. Next: the structure and contents,
+`log.md`), the references changed; 027-03 moved from 024-02
+(2026-11-13). No question open. Next: the structure and contents,
 later, with Frans.
 
