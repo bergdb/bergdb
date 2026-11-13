@@ -1313,11 +1313,21 @@ the transaction made, time splits below segment leaves, the space
 root's time split with a new root, a top without room; and the put and
 delete rules on it (`writerWP_put_chainG`, `writerWP_del_chainG`), and
 a put that makes more than one new segment below a leaf with room
-(`writerWP_put_newSegs`, `GetNewSegs.lean`). Still open: the space
-splits that make a new root (the space root's, or a segment root's
-below a segment leaf; `hspace` leaves them out), the rules along the
-access path across segments (`writerWP_putSegs_prefix_linked` gives the
-path, `GetPutPath.lean`), a new segment below a full leaf.
+(`writerWP_put_newSegs`, `GetNewSegs.lean`). At 18:20, **proved: the
+put and delete rules with the cascade along the whole access path from
+the space root, across segments** (`writerWP_put_accessPath`,
+`writerWP_del_accessPath`, `GetPutPath.lean`, on the writer's path
+`writerWP_putSegs_prefix_linked`; their premises are on the nodes
+reached: the order below an inner parent, two live klongs in a node
+that space splits, no space split that makes a new root), **and a put
+that makes new segments below a full leaf** (`writerWP_put_newSegFull`,
+`GetNewSegFull.lean`: the cascade for the klong to the new segment
+leaf, then the new segment leaves; a tree that differs only below one
+segment root reads alike for the keys not through it,
+`getFromR_override_off`). Still open: the space splits that make a new
+root (the space root's, or a segment root's below a segment leaf;
+`hspace` leaves them out); the delete's leaf when it is the space root
+or below a segment leaf.
 
 The reader's fuel (prover "latest", 2026-11-13, 18:15): TP10's `get`
 (`Read.lean`, `getFrom`) and `getFromR` give every segment's descent

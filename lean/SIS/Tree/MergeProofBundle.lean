@@ -151,6 +151,7 @@ import SIS.Tree.GetCascadeIP
 import SIS.Tree.GetCascadeChainG
 import SIS.Tree.GetPutPath
 import SIS.Tree.GetFuel
+import SIS.Tree.GetNewSegFull
 import SIS.Tree.WriterTreeInnerHalves
 import SIS.Tree.WriterTreeSpaceSpace
 import SIS.Tree.WriterTreeDelFull
@@ -177,6 +178,9 @@ import SIS.Tree.FuelPaths
 import SIS.Tree.WriterGetCollapse
 import SIS.Tree.WriterGetCollapseSeg
 import SIS.Tree.WriterGetUp
+import SIS.Tree.ChildrenExist
+import SIS.Tree.WriterGetUpW
+import SIS.Tree.WriterGetUpT
 import SIS.Tree.RangeSim
 import SIS.Tree.RangeChain
 import SIS.Tree.RangePut
