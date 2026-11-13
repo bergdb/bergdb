@@ -1103,7 +1103,7 @@ Landed checkpoints:
   12:27 to 12:35 together, 334 jobs.
 
 **TP10 and TP11 at the latest time, reduced, 2026-11-13** (prover
-"latest", 10:37 to 14:20, branch `024-12-latest`). **TP10 and TP11
+"latest", 10:37 to 14:40, branch `024-12-latest`). **TP10 and TP11
 follow from TP7, the run's key nodes sound and TREE for them, and the
 two statements about the writer under premises on the run's structure**
 (`getOK_of_runRead`, `scanOK_of_runRead`, `GetUnder.lean`): `OpGetOKUnder
@@ -1184,8 +1184,14 @@ kept only as steps. Proved on the way, on the standard axioms:
   time split and the space split into a new segment root
   (`writerWP_put_segTimeSplit`, `writerWP_put_segSpaceSplit`,
   `GetSegRoot.lean`; one more premise, that segment leaf not reached
-  from the split leaf; the reading through a link moved to a new tree,
-  `getFromR_graft`). Together (`writerWP_put_leafRoot`,
+  from the split leaf, which the writer's tree gives,
+  `notReach_parent_of_tree`; the reading through a link moved to a new
+  tree, `getFromR_graft`), and for a leaf the transaction made the space
+  split in place, the segment leaf's klong repointed in place
+  (`writerWP_put_segSpaceSplitInPlace`, `GetSegInPlace.lean`,
+  `KNode.repoint_live_lookup`); a put of a key whose last segment has no
+  tree yet, a new segment leaf below a leaf with room
+  (`writerWP_put_newSeg`, `GetNewSeg.lean`). Together (`writerWP_put_leafRoot`,
   `GetLeafRoot.lean`; `writerWP_put_leafBelow`, `GetLeafBelow.lean`):
   every put of a key of one segment into a space whose root is a leaf,
   and every put of a key whose prefix is there into a leaf below inner
@@ -1193,7 +1199,11 @@ kept only as steps. Proved on the way, on the standard axioms:
   under one invariant of the writer's state, `PutInv` (the writer's
   tree, well formed klongs of no later time, fresh ids, no reachable
   node taken back, the search tree's order at leaves: `GetPutInv.lean`,
-  `writerWP_put_leafRoot_inv`, `writerWP_put_leafBelow_inv`). With the
+  `writerWP_put_leafRoot_inv`, `writerWP_put_leafBelow_inv`; and in
+  `GetSegLeaf.lean` every put into a segment's root, a leaf below the
+  segment leaf of the segment before with room,
+  `writerWP_put_segLeaf_inv`, and the new segment,
+  `writerWP_put_newSeg_inv`). With the
   writer's tree (cost's `WriterTreeOK`): `OpGetTreeOK` and
   `opGetOKUnder_of_tree` (`GetTree.lean`), and the split rules with
   `TreeOK` for TREE (`*_tree`, through cost's `htree_of_treeOK`). The
@@ -1222,10 +1232,10 @@ kept only as steps. Proved on the way, on the standard axioms:
   key's compare value at its leaf.
 
 Open: `OpGetOKUnder p (RunReadOK p)`, the writer's refinement of the
-map, every rule but those above (the space split in place of a
-segment root below a segment leaf, the splits whose parent is full, a
-put that makes a new segment, a delete into a full leaf, a delete with
-merges on, the upward delete, LE-b, the merges, root collapse), with its
+map, every rule but those above (the splits whose parent is full, a
+put that makes more than one new segment or a new segment below a full
+leaf, a delete into a full leaf, a delete with merges on, the upward
+delete, LE-b, the merges, root collapse), with its
 invariant inside a transaction: TREE inside it is cost's `WriterTreeOK`
 (the coordinator, 2026-11-13), and it must also give the search tree's
 order, klongs well formed and fresh ids; checked, not proved, on about 900 pseudo-random
