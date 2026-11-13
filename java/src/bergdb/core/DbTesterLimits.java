@@ -16,8 +16,9 @@ import bergdb.stream.MemoryStream;
  * that the Javadoc names and with the exception it names, with nothing written: the database's
  * transactions and values are as before, and it takes the next transaction. L1, operations;
  * L2, a key's bytes (more in DbTesterLongKeys); L3, the key bytes of a transaction; L4, a
- * value's bytes, and a value transformation's result over it, which fails the database (QL6);
- * L5, the keys and values of a transaction.
+ * value's bytes, and a value transformation's result over it, refused since bergdb 026-06
+ * (QL6), as one that throws; L5, the keys and values of a transaction, with the results of
+ * value transformations since 026-06.
  */
 public class DbTesterLimits {
 
@@ -321,9 +322,11 @@ public class DbTesterLimits {
     }
 
     /**
-     * QL6 (bergdb 024-17): a value transformation whose result passes L4 fails the database,
-     * as an exception of the transformation does (ValueTransformation; 015-51); the restart
-     * has the state before the transaction. A result at L4 is taken.
+     * QL6 (bergdb 024-17), changed by bergdb 026-06: a value transformation whose result
+     * passes L4 refuses the transaction with a DbException before its go point, nothing of it
+     * written, and the database goes on; the restart has the state before the transaction
+     * and the one after it. A result at L4 is taken. Until 026-06 the result over L4 failed
+     * the database, as an exception of the transformation did.
      */
     @Nano
     public static void testTransformedValueOverL4() {
@@ -335,15 +338,18 @@ public class DbTesterLimits {
                     (time, in, previous) -> new byte[Db.MAX_VALUE_BYTES]).build());
             Assert.assertEquals(Db.MAX_VALUE_BYTES, DbUtil.get(db, "/t").length);
             db.sync(SyncLevel.ORDINARY);
-            Trans t = db.trans().put(Keys.toSegments("/u"), null, new byte[0],
-                    (time, in, previous) -> new byte[Db.MAX_VALUE_BYTES + 1]).build();
-            try {
-                db.execute(t);
-                throw new AssertionError("a transformed value over L4 was taken");
-            } catch (DbFailedException e) {
-                Assert.assertTrue(String.valueOf(e.getCause()), String.valueOf(
-                        e.getCause().getMessage()).contains("(bergdb 024-17, L4)"));
-            }
+            final long length = stream.getLength();
+            final long count = db.getTransactionCount();
+            final byte[] in = bytes("in");
+            Trans t = db.trans().put(Keys.toSegments("/u"), null, in,
+                    (time, input, previous) -> new byte[Db.MAX_VALUE_BYTES + 1]).build();
+            refused("a result over L4", DbException.class, "gave a value of 8388609 bytes, "
+                    + "more than 8388608 (bergdb 024-17, L4)", () -> db.execute(t));
+            Assert.assertTrue("the value as given", t.kvs[0].getValue() == in);
+            Assert.assertNull(DbUtil.get(db, "/u"));
+            db.sync(SyncLevel.ORDINARY);
+            Assert.assertEquals("nothing appended", length, stream.getLength());
+            goesOn("QL6", db, count);
         } finally {
             db.close();
         }
@@ -351,8 +357,9 @@ public class DbTesterLimits {
         try {
             Assert.assertNull(DbUtil.get(db2, "/u"));
             Assert.assertEquals("a", new String(DbUtil.get(db2, "/a")));
+            Assert.assertEquals("QL6", new String(DbUtil.get(db2, "/after")));
             Assert.assertEquals(Db.MAX_VALUE_BYTES, DbUtil.get(db2, "/t").length);
-            db2.execute(db2.trans().put("/after", "x").build());
+            db2.execute(db2.trans().put("/after2", "x").build());
         } finally {
             db2.close();
         }
