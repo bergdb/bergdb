@@ -215,25 +215,88 @@ changed.
 
 ## 5. Gates
 
-On the branch's head; logs in /Users/f/fl/bench/2026-11-13/p8/runs/.
+On d9822ebe (the change, before main moved) and on 57cbb21e, the
+branch merged with `main` 20535a1d (026-06 landed at 08:47; the
+coordinator's message): the gated tree is the one that lands. Logs in
+/Users/f/fl/bench/2026-11-13/p8/runs/ (`before-commit.txt`,
+`level1.txt`, `level3.txt`, `level4.txt` for d9822ebe; `final-*.txt` and
+`final.log` for 57cbb21e).
 
-| Gate | Result |
-|---|---|
-| `before-commit.sh`            | BEFORE COMMIT OK (68 s; unit 1,704, f 89, demos 14), d9822ebe |
-| `level1.sh`                   | (to run) |
-| `level3.sh`, full             | (to run) |
-| `level4.sh quick`             | (to run) |
-| `count-gates.sh`              | (to run) |
+| Gate | d9822ebe | 57cbb21e |
+|---|---|---|
+| `before-commit.sh` | OK (68 s; unit 1,704, f 89, demos 14) | OK (71 s) |
+| `level3.sh`, full  | OK (8 min 15 s)                        | OK (7 min 23 s) |
+| `level1.sh`        | OK (MEM 129, SS 1.53)                  | OK (MEM 129, SS 1.53) |
+| `level4.sh quick`  | OK (conformance evict 18 of 18)        | OK (18 of 18) |
+| `count-gates.sh`   | -                                      | COUNT GATES OK (137 s) |
+
+* **level3** on both heads: ReclaimStress 4 x 50 rounds, 0 failures,
+  every round with a cut; RestartInvariance with reclaim, four
+  configurations: the stream identical with and without restarts, the
+  same cut; CrashTest, ReclaimReaders, LoadTest (6 restarts with a full
+  check after a cut), PowerLossTest, InterruptStress OK; the conformance
+  with reclaim: 35 of 35 traces TRACECHECK OK, C-CUT 0 of 794 cuts
+  failing.
+* **level4 quick** (d9822ebe): the conformance with eviction, 18 of 18
+  traces, C-P and C-H 0 of 4,886 transactions failing; LargerThanMemory
+  OK.
+* **count-gates** (57cbb21e), against `main`'s counts (026-07's run at
+  08:31, whose change is the write buffer; its G4 kept is 026-04's on
+  `main`, 2,618,568): G1's largest record 112,048 bytes (108,912); G3
+  4.401 (4.410); G4 kept 0.959 of the twin's (1.072), resident objects
+  1.071 (1.081); G5 kept 0.015 (0.139), and `maintain()` quiet after call
+  3,015 of 20,000 (6,130).
+* **level2** not run: its conformance has no reclaim (no `retain`), so
+  reclaim's traces do not enter it.
+* **026-05's own traces** (`runs/traces.sh`, as P8's `p8traces.sh`; the
+  build of d9822ebe copied to p8/after/), each checked by the Lean
+  checker (C-A with TouchOK, C-S, C-CUT; C-P and C-H for run E), three
+  seeds each: heavy deletes (`del=60`, 800 transactions, 200 keys), bulk
+  puts in key order (`bulk=20`), long keys (`long=1`), run E with random
+  eviction, and `maintain()` after every third transaction (`maint=3`).
+  15 of 15 TRACECHECK OK, C-CUT 0 of 479 cuts failing (s-maint 115 to
+  121 cuts each), C-P and C-H 0 failing. Summary:
+  runs/traces/summary.txt.
 
 
 ## 6. The lag after a mass delete
 
 026-04's workload (d) (024-30's G4: n keys put in key order, 100 a
-transaction, all deleted in key order, then the drive; R = 1,000
-transactions): FracRuns with `g4its=1` on a branch of this head with
-026-04-lag's three commits cherry-picked (not to land).
+transaction, all deleted in key order, 100 a transaction, then a drive of
+40 R; R = 1,000 transactions; as 026-04, section 4.1): FracRuns with `g4its=1`, on the
+branch `026-05-lag` (57cbb21e with 026-04-lag's three commits
+cherry-picked, 412b97fc, 28df3457, 33e9ea54; not to land) in the worktree
+/Users/f/fl/bench/2026-11-13/p8/lag; one slot, 09:18 to 09:25. Outputs:
+p8/runs/d1m.txt, d4m.txt, d10m.txt (`runs/lag.sh`, `runs/lag-an.py`,
+026-04's). "Before" is 026-04, section 4.2 (`main`).
 
-(to run)
+| n   | f   | Lag before | Lag after | X's end after | X's KVs walked | X's steps |
+|---|---|---|---|---|---|---|
+| 1M  | 1/4 | 4,395      | 1,281     | 0             | 564,732        | 7,709     |
+| 1M  | 3/8 | 1,857      | 1,272     | 0             | 162,479        | 2,168     |
+| 1M  | 1/2 | 1,850      | 1,266     | 0             | 163,844        | 2,186     |
+| 4M  | 1/4 | 4,066      | 1,286     | 0             | 1,038,835      | 13,853    |
+| 4M  | 3/8 | 13,736     | 1,273     | 0             | 2,367,611      | 32,856    |
+| 4M  | 1/2 | 13,737     | 1,265     | 0             | 2,750,622      | 37,267    |
+| 10M | 1/4 | 8,064      | 1,279     | 0             | 2,554,819      | 34,066    |
+| 10M | 3/8 | 33,501     | 1,273     | 0             | 40,306         | 539       |
+| 10M | 1/2 | 33,181     | 1,268     | 0             | 56,610         | 756       |
+
+* **The lag is 1,265 to 1,286 transactions at every n and f**, as 026-04,
+  section 4.3 expected (about 1,280): the iteration X that runs when the
+  deletes end ends with them (X's end 0, the last delete transaction, in
+  every run), so the lag is the two iterations after it, R/4 + about
+  25 + R. It no longer grows with n (before: up to n/300 + 1,280).
+* **The stream after the drive**: kept 2.26 to 2.39 MB at the end, as
+  before; kept 4 R into the drive 2.14 to 2.30 MB at every n and f
+  (before: up to 2,596 MB at 10M, 1/4).
+* **The cost: work ahead of the deletes** (section 7). X's steps run just
+  ahead of the delete front and rewrite values that a later delete
+  removes (4M, 1/2: 782,791 values; 3/8: 402,179). The stream written by
+  the end of the drive, against `main`: 1M +0.4 % (1/4 and 3/8); 4M
+  +0.04 %, +6.0 %, +12.3 % (1/4, 3/8, 1/2: 1,438 MB against 1,281 MB);
+  10M +0.5 % and +6.9 % (1/4, 3/8; 1/2 not in 026-04's run). Within the
+  internal fraction: every step is allowed by it.
 
 
 ## 7. Risks and limits
@@ -250,10 +313,11 @@ transactions): FracRuns with `g4its=1` on a branch of this head with
   iteration going while such transactions last; each step still moves
   the scan by a reserve's worth. Not seen; it needs transactions near
   the size limit, all in the range ahead of the scan.
-* **Work ahead of an ascending mass delete** (023-05 P8, section 5.4): the
-  steps run just ahead of the deletes and rewrite values that the next
-  transaction deletes, within the internal fraction (P8's Q2/D5,
-  recommended accept).
+* **Work ahead of an ascending mass delete** (023-05 P8, section 5.4;
+  section 6): the steps run just ahead of the deletes and rewrite values
+  that a later transaction deletes, within the internal fraction: up to
+  12 % more stream written over workload (d) at 4M and f = 1/2, 0 to 7 %
+  at 1/4 and 3/8 (P8's Q2, 023-07's D5, recommended accept; Q3 here).
 * **A row of 2026.5 or before** has no E: its iteration's scan is not
   bounded by E, only by the count; it ends as on V8's branch.
 * **Bytes.** Reclaim's records change (other steps, E in the row), so
@@ -261,12 +325,38 @@ transactions): FracRuns with `g4its=1` on a branch of this head with
   record format change, no rerun rule.
 
 
-## 8. State
+## 8. Questions for Frans
 
-2026-11-13, 08:40. Clone /Users/f/fl/bench/2026-11-13/p8/clone, branch
-`026-05-step-time` from `main` 614f8600. Commits: 94421dd0 (2.5, the
-pending cut), d9822ebe (sections 2.1 to 2.4, the tests, 024-02),
-then this item. BEFORE COMMIT OK on d9822ebe. Next: level3 full,
-level1, level4 quick, count-gates, 026-05's own traces
-(runs/traces.sh), the lag runs of section 6 (worktree
-/Users/f/fl/bench/2026-11-13/p8/lag, branch `026-05-lag`, runs/lag.sh).
+Each is decided here by the recommendation, so that the work goes on;
+Frans may overturn it.
+
+* **Q1. The pending cut (2.5)**, its own commit (94421dd0): a durable
+  pending cut is made before a newer decision replaces it. Recommended:
+  yes (check V8's Q2, 023-08); it keeps `testPretruncate` as it is,
+  where V8 changed the test.
+* **Q2. The scan's result and the second read (2.4)**: my addition to
+  P8 and V8; the result holds the KVs to rewrite only, and their values
+  come from the scan. Recommended: yes; it bounds what a step holds and
+  halves the reads of a step that rewrites.
+* **Q3. Work ahead of an ascending mass delete** (P8's Q2, 023-07's D5):
+  accept. Recommended: yes, within the internal fraction.
+* **Q4. G4's lag as a gate** (024-30, Q30-3; 026's readme): with 026-05
+  the lag is 1,265 to 1,286 transactions at 1M, 4M and 10M and every f
+  (section 6), R/4 + about 25 + R; a gate at 2 R (2,000 transactions at
+  G4's R) is independent of n and has a margin of 1.55. Recommended: make
+  it a gate once 026-05 is on `main` (a change of CountGates, not made
+  here).
+
+
+## 9. State
+
+2026-11-13, 09:30. Done; ready to land. Clone
+/Users/f/fl/bench/2026-11-13/p8/clone, branch `026-05-step-time`:
+94421dd0 (2.5, the pending cut), d9822ebe (2.1 to 2.4, the tests,
+024-02's row text), 73cad7c7 (this item), 57cbb21e (merge of `main`
+20535a1d), then this item's results. Every gate of section 5 OK on
+57cbb21e; the lag of section 6 measured (1,265 to 1,286 at every n and
+f). No expected value of an existing test changed. The lag branch
+`026-05-lag` (worktree /Users/f/fl/bench/2026-11-13/p8/lag) is not to
+land. Open: Frans's Q1 to Q4 (section 8), each decided here by its
+recommendation.
