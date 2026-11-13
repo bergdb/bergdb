@@ -288,3 +288,5 @@ import SIS.Tree.DelStepsUp
 import SIS.Tree.DelStepsBook
 import SIS.Tree.DelStepsUpWalk
 import SIS.Tree.DelStepsEmpty
+import SIS.Tree.TakeMergeFull
+import SIS.Tree.TakeMergeTail
