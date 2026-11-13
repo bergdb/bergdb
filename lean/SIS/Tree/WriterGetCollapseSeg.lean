@@ -234,7 +234,7 @@ theorem getFromR_segCollapse (N N' : NodeId → Option KNode) (V : NodeId → Op
 /-- `takeBackRoot` at a segment root x that the transaction made, below the
 segment leaf `leaf`: the leaf's klong k names x's child in place, x is taken
 back; every key reads as before. -/
-theorem writerWP_takeBackRoot_seg_get (x : NodeId) (d only : Nat) (n : KNode) (leaf : NodeId)
+theorem writerWP_takeBackRoot_seg_getF (fuelR : Nat) (hfR : 2 ≤ fuelR) (x : NodeId) (d only : Nat) (n : KNode) (leaf : NodeId)
     (ln : KNode) (k : Nat) (c : Ctx) (base : View BVal) (w : W)
     (hT : TreeOK (wNode c.p base w) c.i w.top.rootKey)
     (hlf : TReach (wNode c.p base w) c.i w.top.rootKey leaf)
@@ -247,11 +247,11 @@ theorem writerWP_takeBackRoot_seg_get (x : NodeId) (d only : Nat) (n : KNode) (l
     (hpd : (w.path[d]?).map (·.2) = some leaf) (hpk : w.path[d + 1]? = some (some k, x))
     (hwf : ∀ u un, ReachS (wNode c.p base w) c.i w.top.rootKey u → wNode c.p base w u = some un →
       klongsWf un.ks = true)
-    (hfit : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey)
+    (hfit : SegFits (wNode c.p base w) c.i (fuelR - 1) w.top.rootKey)
     (hnoval : ∀ u un, wNode c.p base w u = some un → wValue base w u = none)
     (hchild : ∀ cc z, (cc, z) ∈ n.liveAt c.i → ∃ m, wNode c.p base w z = some m) :
     WriterWP (takeBackRoot x (d + 1) only) c w (fun _ w' =>
-      ∀ key, wGet c.p c.i base w' key = wGet c.p c.i base w key) := by
+      ∀ key, wGetAt c.p c.i base w' fuelR key = wGetAt c.p c.i base w fuelR key) := by
   have hwL : wNode c.p base w leaf = some ln := by
     simp only [wNode, hLt, Bool.false_eq_true, ↓reduceIte, hlkL]
   have hwx : wNode c.p base w x = some n := by
@@ -292,14 +292,14 @@ theorem writerWP_takeBackRoot_seg_get (x : NodeId) (d only : Nat) (n : KNode) (l
           rw [KNode.liveAt_of_times n c.i hnt]; exact (hlv 0 child).mpr ⟨rfl, rfl⟩)
         have hfin : ∀ w' : W, w'.vals = w.vals → w'.taken = x :: w.taken →
             w'.nodes = upsert w.nodes leaf (ln.repoint j child) → w'.top = w.top →
-            ∀ key, wGet c.p c.i base w' key = wGet c.p c.i base w key := by
+            ∀ key, wGetAt c.p c.i base w' fuelR key = wGetAt c.p c.i base w fuelR key := by
           intro w' h'v h't h'n h'top key
           have hV : wValue base w' = wValue base w :=
             wValue_eq_of_taken base w w' h'v (fun z => z = x) (fun z hz => by rw [h't]; exact hyt z hz)
               (fun z hz => by rw [hz]; exact ⟨hxt, hnoval x n hwx⟩)
-          unfold wGet
+          unfold wGetAt
           rw [hV, h'top]
-          refine getFromR_segCollapse (wNode c.p base w) _ (wValue base w) c.i c.p.fuel w.top.rootKey
+          refine getFromR_segCollapse (wNode c.p base w) _ (wValue base w) c.i fuelR w.top.rootKey
             leaf x child k ln (ln.repoint j child) n hT hlf hwL ?_ hlnl
             (by rw [mrg_repoint_leaf]; exact hlnl)
             hlnwf (by rw [KNode.repoint_klongsWf]; exact hlnwf) hlnt
@@ -312,9 +312,30 @@ theorem writerWP_takeBackRoot_seg_get (x : NodeId) (d only : Nat) (n : KNode) (l
         exact hfin _ rfl rfl rfl rfl
     · exact writerWP_throw _ _ _ _
 
+/-- `writerWP_takeBackRoot_seg_getF` at the writer's fuel. -/
+theorem writerWP_takeBackRoot_seg_get (x : NodeId) (d only : Nat) (n : KNode) (leaf : NodeId)
+    (ln : KNode) (k : Nat) (c : Ctx) (base : View BVal) (w : W)
+    (hT : TreeOK (wNode c.p base w) c.i w.top.rootKey)
+    (hlf : TReach (wNode c.p base w) c.i w.top.rootKey leaf)
+    (hlkL : w.nodes.lookup leaf = some ln) (hLt : w.taken.contains leaf = false)
+    (hlnt : ∀ s, Klong.time s ∈ ln.ks → s ≤ c.i) (hlnwf : klongsWf ln.ks = true)
+    (hlnl : ln.leaf = true) (hk : (k, x) ∈ ln.liveAt c.i)
+    (hlkx : w.nodes.lookup x = some n) (hxt : w.taken.contains x = false)
+    (hnt : ∀ s, Klong.time s ∈ n.ks → s ≤ c.i) (honly : n.onlyLiveKlong = some only)
+    (hcv : n.cv? only = some 0) (hxl : n.leaf = false)
+    (hpd : (w.path[d]?).map (·.2) = some leaf) (hpk : w.path[d + 1]? = some (some k, x))
+    (hwf : ∀ u un, ReachS (wNode c.p base w) c.i w.top.rootKey u → wNode c.p base w u = some un →
+      klongsWf un.ks = true)
+    (hfit : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey)
+    (hnoval : ∀ u un, wNode c.p base w u = some un → wValue base w u = none)
+    (hchild : ∀ cc z, (cc, z) ∈ n.liveAt c.i → ∃ m, wNode c.p base w z = some m) :
+    WriterWP (takeBackRoot x (d + 1) only) c w (fun _ w' =>
+      ∀ key, wGet c.p c.i base w' key = wGet c.p c.i base w key) :=
+  writerWP_takeBackRoot_seg_getF c.p.fuel (by unfold Params.fuel; omega) x d only n leaf ln k c base w hT hlf hlkL hLt hlnt hlnwf hlnl hk hlkx hxt hnt honly hcv hxl hpd hpk hwf hfit hnoval hchild
+
 /-- `replaceRoot` at a segment root x below the segment leaf `leaf` with room:
 x is unlinked, the leaf gets a klong k to x's child; every key reads as before. -/
-theorem writerWP_replaceRoot_seg_get (x : NodeId) (d only : Nat) (n : KNode) (leaf : NodeId)
+theorem writerWP_replaceRoot_seg_getF (fuelR : Nat) (hfR : 2 ≤ fuelR) (x : NodeId) (d only : Nat) (n : KNode) (leaf : NodeId)
     (ln : KNode) (k : Nat) (c : Ctx) (base : View BVal) (w : W)
     (hT : TreeOK (wNode c.p base w) c.i w.top.rootKey)
     (hlf : TReach (wNode c.p base w) c.i w.top.rootKey leaf)
@@ -329,11 +350,11 @@ theorem writerWP_replaceRoot_seg_get (x : NodeId) (d only : Nat) (n : KNode) (le
     (hdead : ∀ y, deadOver c.p (ln.add c.i (.key k y)) = false)
     (hwf : ∀ u un, ReachS (wNode c.p base w) c.i w.top.rootKey u → wNode c.p base w u = some un →
       klongsWf un.ks = true)
-    (hfit : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey)
+    (hfit : SegFits (wNode c.p base w) c.i (fuelR - 1) w.top.rootKey)
     (hnoval : ∀ u un, wNode c.p base w u = some un → wValue base w u = none)
     (hchild : ∀ cc z, (cc, z) ∈ n.liveAt c.i → ∃ m, wNode c.p base w z = some m) :
     WriterWP (replaceRoot x (d + 1) only) c w (fun _ w' =>
-      ∀ key, wGet c.p c.i base w' key = wGet c.p c.i base w key) := by
+      ∀ key, wGetAt c.p c.i base w' fuelR key = wGetAt c.p c.i base w fuelR key) := by
   have hwL : wNode c.p base w leaf = some ln := by
     simp only [wNode, hLt, Bool.false_eq_true, ↓reduceIte, hlkL]
   have hwx : wNode c.p base w x = some n := by
@@ -364,11 +385,11 @@ theorem writerWP_replaceRoot_seg_get (x : NodeId) (d only : Nat) (n : KNode) (le
         wValue base w := wValue_congr' base _ w h1t h1v
     obtain ⟨m, hm⟩ := hchild 0 child (by
       rw [KNode.liveAt_of_times n c.i hnt]; exact (hlv 0 child).mpr ⟨rfl, rfl⟩)
-    unfold wGet
+    unfold wGetAt
     rw [hV]
     simp only
     rw [h1top]
-    refine getFromR_segCollapse (wNode c.p base w) _ (wValue base w) c.i c.p.fuel w.top.rootKey
+    refine getFromR_segCollapse (wNode c.p base w) _ (wValue base w) c.i fuelR w.top.rootKey
       leaf x child k ln (ln.add c.i (.key k child)) n hT hlf hwL ?_ hlnl
       (by rw [KNode.add_leaf]; exact hlnl) hlnwf (KNode.add_key_wf ln c.i k child hlnwf) hlnt
       (KNode.add_times ln c.i (.key k child) (fun s h => by cases h) hlnt)
@@ -378,5 +399,28 @@ theorem writerWP_replaceRoot_seg_get (x : NodeId) (d only : Nat) (n : KNode) (le
     · intro y hyl hyx
       simp only [wNode, h1t, lookup_upsert, hyl, ↓reduceIte, h1l y hyx]
     · rw [hnoval child m hm, hnoval x n hwx]
+
+/-- `writerWP_replaceRoot_seg_getF` at the writer's fuel. -/
+theorem writerWP_replaceRoot_seg_get (x : NodeId) (d only : Nat) (n : KNode) (leaf : NodeId)
+    (ln : KNode) (k : Nat) (c : Ctx) (base : View BVal) (w : W)
+    (hT : TreeOK (wNode c.p base w) c.i w.top.rootKey)
+    (hlf : TReach (wNode c.p base w) c.i w.top.rootKey leaf)
+    (hlkL : w.nodes.lookup leaf = some ln) (hLt : w.taken.contains leaf = false)
+    (hlnwf : klongsWf ln.ks = true) (hlnt : ∀ s, Klong.time s ∈ ln.ks → s ≤ c.i)
+    (hlnl : ln.leaf = true) (hk : (k, x) ∈ ln.liveAt c.i)
+    (hlkx : w.nodes.lookup x = some n) (hxt : w.taken.contains x = false)
+    (hnt : ∀ s, Klong.time s ∈ n.ks → s ≤ c.i) (honly : n.onlyLiveKlong = some only)
+    (hcv : n.cv? only = some 0) (hxl : n.leaf = false)
+    (hpd : (w.path[d]?).map (·.2) = some leaf) (hpk : w.path[d + 1]? = some (some k, x))
+    (hroom : ln.size + 1 + 1 ≤ c.p.M)
+    (hdead : ∀ y, deadOver c.p (ln.add c.i (.key k y)) = false)
+    (hwf : ∀ u un, ReachS (wNode c.p base w) c.i w.top.rootKey u → wNode c.p base w u = some un →
+      klongsWf un.ks = true)
+    (hfit : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey)
+    (hnoval : ∀ u un, wNode c.p base w u = some un → wValue base w u = none)
+    (hchild : ∀ cc z, (cc, z) ∈ n.liveAt c.i → ∃ m, wNode c.p base w z = some m) :
+    WriterWP (replaceRoot x (d + 1) only) c w (fun _ w' =>
+      ∀ key, wGet c.p c.i base w' key = wGet c.p c.i base w key) :=
+  writerWP_replaceRoot_seg_getF c.p.fuel (by unfold Params.fuel; omega) x d only n leaf ln k c base w hT hlf hlkL hLt hlnwf hlnt hlnl hk hlkx hxt hnt honly hcv hxl hpd hpk hroom hdead hwf hfit hnoval hchild
 
 end SIS.Tree

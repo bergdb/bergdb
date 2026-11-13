@@ -252,8 +252,8 @@ theorem segCollapse_pathLen (L L' : NodeId → Option KNode) (t : Time) (r0 lf r
 klong k to the root rt names rt's child y instead, with lf's new node a well-formed
 leaf of no later time; nothing else changes but lf and rt, whose taking back is
 the only change of the taken nodes; and every key reads as before. -/
-theorem collGetInv_segStep (c : Ctx) (base : View BVal) (w0 v v' : W) (lf rt y : NodeId)
-    (k cc : Nat) (ln ln' rn : KNode) (hI : CollGetInv c base w0 v)
+theorem collGetInv_segStepF (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx) (base : View BVal) (w0 v v' : W) (lf rt y : NodeId)
+    (k cc : Nat) (ln ln' rn : KNode) (hI : CollGetInvF c base w0 v fuelR)
     (hlf : TReach (wNode c.p base v) c.i v.top.rootKey lf) (hln : wNode c.p base v lf = some ln)
     (hk : (k, rt) ∈ ln.liveAt c.i) (hrn : wNode c.p base v rt = some rn) (hy : (cc, y) ∈ rn.liveAt c.i)
     (hln' : wNode c.p base v' lf = some ln') (hl'leaf : ln'.leaf = true)
@@ -262,8 +262,8 @@ theorem collGetInv_segStep (c : Ctx) (base : View BVal) (w0 v v' : W) (lf rt y :
     (hother : ∀ z, z ≠ lf → z ≠ rt → wNode c.p base v' z = wNode c.p base v z)
     (htop : v'.top = v.top) (hv : v'.vals = v.vals)
     (ht : ∀ z, z ≠ rt → v'.taken.contains z = v.taken.contains z)
-    (hread : ∀ key, wGet c.p c.i base v' key = wGet c.p c.i base v key) :
-    CollGetInv c base w0 v' := by
+    (hread : ∀ key, wGetAt c.p c.i base v' fuelR key = wGetAt c.p c.i base v fuelR key) :
+    CollGetInvF c base w0 v' fuelR := by
   obtain ⟨⟨hT, hU, hTi, hICE⟩, hG, hD, hW, hNV⟩ := hI
   have hT' := treeOK_collapseSegment (wNode c.p base v) (wNode c.p base v') c.i v.top.rootKey lf rt y
     k cc ln ln' rn hT hlf hln hk hrn hy hln' hlinks hother
@@ -323,16 +323,31 @@ theorem collGetInv_segStep (c : Ctx) (base : View BVal) (w0 v v' : W) (lf rt y :
     · rw [hzl]; exact hNV lf ln hlf hln
     · exact hNV z zn (by have := (hR z hz).2; rw [htop] at this; exact this) h
 
+/-- `collGetInv_segStepF` at the writer's fuel. -/
+theorem collGetInv_segStep (c : Ctx) (base : View BVal) (w0 v v' : W) (lf rt y : NodeId)
+    (k cc : Nat) (ln ln' rn : KNode) (hI : CollGetInv c base w0 v)
+    (hlf : TReach (wNode c.p base v) c.i v.top.rootKey lf) (hln : wNode c.p base v lf = some ln)
+    (hk : (k, rt) ∈ ln.liveAt c.i) (hrn : wNode c.p base v rt = some rn) (hy : (cc, y) ∈ rn.liveAt c.i)
+    (hln' : wNode c.p base v' lf = some ln') (hl'leaf : ln'.leaf = true)
+    (hlwf' : klongsWf ln'.ks = true) (hlt' : ∀ s, Klong.time s ∈ ln'.ks → s ≤ c.i)
+    (hlinks : ∀ c' z, (c', z) ∈ ln'.liveAt c.i → (c' = k ∧ z = y) ∨ ((c', z) ∈ ln.liveAt c.i ∧ c' ≠ k))
+    (hother : ∀ z, z ≠ lf → z ≠ rt → wNode c.p base v' z = wNode c.p base v z)
+    (htop : v'.top = v.top) (hv : v'.vals = v.vals)
+    (ht : ∀ z, z ≠ rt → v'.taken.contains z = v.taken.contains z)
+    (hread : ∀ key, wGet c.p c.i base v' key = wGet c.p c.i base v key) :
+    CollGetInv c base w0 v' :=
+  collGetInv_segStepF c.p.fuel (by unfold Params.fuel; omega) c base w0 v v' lf rt y k cc ln ln' rn hI hlf hln hk hrn hy hln' hl'leaf hlwf' hlt' hlinks hother htop hv ht hread
+
 /-- `takeBackRoot` at a segment root x that the transaction made, below the
 segment leaf `leaf` of the path, keeps `CollGetInv`. -/
-theorem writerWP_takeBackRoot_seg_coll (x : NodeId) (d only : Nat) (n : KNode) (leaf : NodeId)
-    (ln : KNode) (k : Nat) (c : Ctx) (base : View BVal) (w0 v : W) (hI : CollGetInv c base w0 v)
+theorem writerWP_takeBackRoot_seg_collF (fuelR : Nat) (hfR : 2 ≤ fuelR) (x : NodeId) (d only : Nat) (n : KNode) (leaf : NodeId)
+    (ln : KNode) (k : Nat) (c : Ctx) (base : View BVal) (w0 v : W) (hI : CollGetInvF c base w0 v fuelR)
     (hlf : TReach (wNode c.p base v) c.i v.top.rootKey leaf)
     (hlkL : v.nodes.lookup leaf = some ln) (hlnl : ln.leaf = true) (hk : (k, x) ∈ ln.liveAt c.i)
     (hlkx : v.nodes.lookup x = some n) (honly : n.onlyLiveKlong = some only)
     (hcv : n.cv? only = some 0) (hxl : n.leaf = false)
     (hpd : (v.path[d]?).map (·.2) = some leaf) (hpk : v.path[d + 1]? = some (some k, x)) :
-    WriterWP (takeBackRoot x (d + 1) only) c v (fun _ v' => CollGetInv c base w0 v') := by
+    WriterWP (takeBackRoot x (d + 1) only) c v (fun _ v' => CollGetInvF c base w0 v' fuelR) := by
   have hLt : v.taken.contains leaf = false := hI.1.2.1 leaf hlf
   have hwL : wNode c.p base v leaf = some ln := by
     simp only [wNode, hLt, Bool.false_eq_true, ↓reduceIte, hlkL]
@@ -384,7 +399,7 @@ theorem writerWP_takeBackRoot_seg_coll (x : NodeId) (d only : Nat) (n : KNode) (
           simp [this]
         have hfin : ∀ w' : W, w'.vals = v.vals → w'.taken = x :: v.taken →
             w'.nodes = upsert v.nodes leaf (ln.repoint j child) → w'.top = v.top →
-            CollGetInv c base w0 w' := by
+            CollGetInvF c base w0 w' fuelR := by
           intro w' h'v h't h'n h'top
           have hL' : wNode c.p base w' leaf = some (ln.repoint j child) := by
             simp only [wNode, h't, hLt', Bool.false_eq_true, ↓reduceIte, h'n, lookup_upsert]
@@ -408,14 +423,14 @@ theorem writerWP_takeBackRoot_seg_coll (x : NodeId) (d only : Nat) (n : KNode) (
           have hV : wValue base w' = wValue base v :=
             wValue_eq_of_taken base v w' h'v (fun z => z = x) (fun z hz => by rw [h't]; exact hyt z hz)
               (fun z hz => by rw [hz]; exact ⟨hxt, hI.2.2.2.2 x n hxR hwx⟩)
-          refine collGetInv_segStep c base w0 v w' leaf x child k 0 ln (ln.repoint j child) n hI hlf hwL
+          refine collGetInv_segStepF fuelR hfR c base w0 v w' leaf x child k 0 ln (ln.repoint j child) n hI hlf hwL
             hk hwx hcl hL' (by rw [mrg_repoint_leaf]; exact hlnl)
             (by rw [KNode.repoint_klongsWf]; exact hlnwf) (KNode.repoint_times ln j child c.i hlnt)
             hlinks hoth h'top h'v (fun z hz => by rw [h't]; exact hyt z hz) ?_
           intro key
-          unfold wGet
+          unfold wGetAt
           rw [hV, h'top]
-          exact getFromR_segCollapse (wNode c.p base v) _ (wValue base v) c.i c.p.fuel v.top.rootKey
+          exact getFromR_segCollapse (wNode c.p base v) _ (wValue base v) c.i fuelR v.top.rootKey
             leaf x child k ln (ln.repoint j child) n hT hlf hwL hL' hlnl
             (by rw [mrg_repoint_leaf]; exact hlnl)
             hlnwf (by rw [KNode.repoint_klongsWf]; exact hlnwf) hlnt
@@ -425,10 +440,21 @@ theorem writerWP_takeBackRoot_seg_coll (x : NodeId) (d only : Nat) (n : KNode) (
         exact hfin _ rfl rfl rfl rfl
     · exact writerWP_throw _ _ _ _
 
+/-- `writerWP_takeBackRoot_seg_collF` at the writer's fuel. -/
+theorem writerWP_takeBackRoot_seg_coll (x : NodeId) (d only : Nat) (n : KNode) (leaf : NodeId)
+    (ln : KNode) (k : Nat) (c : Ctx) (base : View BVal) (w0 v : W) (hI : CollGetInv c base w0 v)
+    (hlf : TReach (wNode c.p base v) c.i v.top.rootKey leaf)
+    (hlkL : v.nodes.lookup leaf = some ln) (hlnl : ln.leaf = true) (hk : (k, x) ∈ ln.liveAt c.i)
+    (hlkx : v.nodes.lookup x = some n) (honly : n.onlyLiveKlong = some only)
+    (hcv : n.cv? only = some 0) (hxl : n.leaf = false)
+    (hpd : (v.path[d]?).map (·.2) = some leaf) (hpk : v.path[d + 1]? = some (some k, x)) :
+    WriterWP (takeBackRoot x (d + 1) only) c v (fun _ v' => CollGetInv c base w0 v') :=
+  writerWP_takeBackRoot_seg_collF c.p.fuel (by unfold Params.fuel; omega) x d only n leaf ln k c base w0 v hI hlf hlkL hlnl hk hlkx honly hcv hxl hpd hpk
+
 /-- `replaceRoot` at a segment root x below the segment leaf `leaf` of the path,
 the leaf with room for the klong to x's child, keeps `CollGetInv`. -/
-theorem writerWP_replaceRoot_seg_coll (x : NodeId) (d only : Nat) (n : KNode) (leaf : NodeId)
-    (ln : KNode) (k : Nat) (c : Ctx) (base : View BVal) (w0 v : W) (hI : CollGetInv c base w0 v)
+theorem writerWP_replaceRoot_seg_collF (fuelR : Nat) (hfR : 2 ≤ fuelR) (x : NodeId) (d only : Nat) (n : KNode) (leaf : NodeId)
+    (ln : KNode) (k : Nat) (c : Ctx) (base : View BVal) (w0 v : W) (hI : CollGetInvF c base w0 v fuelR)
     (hlf : TReach (wNode c.p base v) c.i v.top.rootKey leaf)
     (hlkL : v.nodes.lookup leaf = some ln) (hlnl : ln.leaf = true) (hk : (k, x) ∈ ln.liveAt c.i)
     (hlkx : v.nodes.lookup x = some n) (honly : n.onlyLiveKlong = some only)
@@ -436,7 +462,7 @@ theorem writerWP_replaceRoot_seg_coll (x : NodeId) (d only : Nat) (n : KNode) (l
     (hpd : (v.path[d]?).map (·.2) = some leaf) (hpk : v.path[d + 1]? = some (some k, x))
     (hroom : ln.size + 1 + 1 ≤ c.p.M)
     (hdead : ∀ y, deadOver c.p (ln.add c.i (.key k y)) = false) :
-    WriterWP (replaceRoot x (d + 1) only) c v (fun _ v' => CollGetInv c base w0 v') := by
+    WriterWP (replaceRoot x (d + 1) only) c v (fun _ v' => CollGetInvF c base w0 v' fuelR) := by
   have hLt : v.taken.contains leaf = false := hI.1.2.1 leaf hlf
   have hwL : wNode c.p base v leaf = some ln := by
     simp only [wNode, hLt, Bool.false_eq_true, ↓reduceIte, hlkL]
@@ -485,7 +511,7 @@ theorem writerWP_replaceRoot_seg_coll (x : NodeId) (d only : Nat) (n : KNode) (l
       simp only [wNode, h1t, lookup_upsert, hyl, ↓reduceIte, h1l y hyx]
     have hV : wValue base { w1 with nodes := upsert w1.nodes leaf (ln.add c.i (.key k child)) } =
         wValue base v := wValue_congr' base _ v h1t h1v
-    refine collGetInv_segStep c base w0 v _ leaf x child k 0 ln (ln.add c.i (.key k child)) n hI hlf hwL
+    refine collGetInv_segStepF fuelR hfR c base w0 v _ leaf x child k 0 ln (ln.add c.i (.key k child)) n hI hlf hwL
       hk hwx hcl hL' (by rw [KNode.add_leaf]; exact hlnl) (KNode.add_key_wf ln c.i k child hlnwf)
       (KNode.add_times ln c.i (.key k child) (fun s h => by cases h) hlnt) ?_ hoth h1top h1v
       (fun z _ => by simp only [h1t]) ?_
@@ -494,25 +520,38 @@ theorem writerWP_replaceRoot_seg_coll (x : NodeId) (d only : Nat) (n : KNode) (l
       · exact Or.inl ⟨h1, h2⟩
       · exact Or.inr ⟨h2, h1⟩
     · intro key
-      unfold wGet
+      unfold wGetAt
       rw [hV]
       simp only
       rw [h1top]
-      exact getFromR_segCollapse (wNode c.p base v) _ (wValue base v) c.i c.p.fuel v.top.rootKey
+      exact getFromR_segCollapse (wNode c.p base v) _ (wValue base v) c.i fuelR v.top.rootKey
         leaf x child k ln (ln.add c.i (.key k child)) n hT hlf hwL hL' hlnl
         (by rw [KNode.add_leaf]; exact hlnl) hlnwf (KNode.add_key_wf ln c.i k child hlnwf) hlnt
         (KNode.add_times ln c.i (.key k child) (fun s h => by cases h) hlnt)
         (fun cc => KNode.add_key_live_lookup_of_wf ln c.i k cc child hlnwf) hk hwx hxl hlv hnt ⟨m, hm⟩
         hoth hwfS hI.2.2.1 (by rw [hI.2.2.2.2 child m hchR hm, hI.2.2.2.2 x n hxR hwx]) key
 
+/-- `writerWP_replaceRoot_seg_collF` at the writer's fuel. -/
+theorem writerWP_replaceRoot_seg_coll (x : NodeId) (d only : Nat) (n : KNode) (leaf : NodeId)
+    (ln : KNode) (k : Nat) (c : Ctx) (base : View BVal) (w0 v : W) (hI : CollGetInv c base w0 v)
+    (hlf : TReach (wNode c.p base v) c.i v.top.rootKey leaf)
+    (hlkL : v.nodes.lookup leaf = some ln) (hlnl : ln.leaf = true) (hk : (k, x) ∈ ln.liveAt c.i)
+    (hlkx : v.nodes.lookup x = some n) (honly : n.onlyLiveKlong = some only)
+    (hcv : n.cv? only = some 0) (hxl : n.leaf = false)
+    (hpd : (v.path[d]?).map (·.2) = some leaf) (hpk : v.path[d + 1]? = some (some k, x))
+    (hroom : ln.size + 1 + 1 ≤ c.p.M)
+    (hdead : ∀ y, deadOver c.p (ln.add c.i (.key k y)) = false) :
+    WriterWP (replaceRoot x (d + 1) only) c v (fun _ v' => CollGetInv c base w0 v') :=
+  writerWP_replaceRoot_seg_collF c.p.fuel (by unfold Params.fuel; omega) x d only n leaf ln k c base w0 v hI hlf hlkL hlnl hk hlkx honly hcv hxl hpd hpk hroom hdead
+
 /-- The collapse steps at the space root keep `CollGetInv` (the steps of
 `writerWP_collapseRoot_space_get`). -/
-theorem writerWP_rootStep_space_coll (x : NodeId) (only : Nat) (n : KNode) (c : Ctx)
-    (base : View BVal) (w0 v : W) (hI : CollGetInv c base w0 v) (hx : x = v.top.rootKey)
+theorem writerWP_rootStep_space_collF (fuelR : Nat) (hfR : 2 ≤ fuelR) (x : NodeId) (only : Nat) (n : KNode) (c : Ctx)
+    (base : View BVal) (w0 v : W) (hI : CollGetInvF c base w0 v fuelR) (hx : x = v.top.rootKey)
     (hlkx : v.nodes.lookup x = some n) (honly : n.onlyLiveKlong = some only)
     (hcv : n.cv? only = some 0) (hxl : n.leaf = false) :
-    WriterWP (takeBackRoot x 0 only) c v (fun _ v' => CollGetInv c base w0 v') ∧
-    WriterWP (replaceRoot x 0 only) c v (fun _ v' => CollGetInv c base w0 v') := by
+    WriterWP (takeBackRoot x 0 only) c v (fun _ v' => CollGetInvF c base w0 v' fuelR) ∧
+    WriterWP (replaceRoot x 0 only) c v (fun _ v' => CollGetInvF c base w0 v' fuelR) := by
   have hxt : v.taken.contains x = false := by rw [hx]; exact hI.1.2.1 _ TReach.root
   have hroot : wNode c.p base v v.top.rootKey = some n := by
     rw [← hx]; simp only [wNode, hxt, Bool.false_eq_true, ↓reduceIte, hlkx]
@@ -520,7 +559,7 @@ theorem writerWP_rootStep_space_coll (x : NodeId) (only : Nat) (n : KNode) (c : 
       w3.vals = v.vals →
       (∀ z, z ≠ v.top.rootKey → w3.taken.contains z = v.taken.contains z) →
       (∀ z, z ≠ v.top.rootKey → w3.nodes.lookup z = v.nodes.lookup z) →
-      CollGetInv c base w0 w3 := by
+      CollGetInvF c base w0 w3 fuelR := by
     intro child hptr w3 h3top h3v h3t h3n
     obtain ⟨c0, hk0, hlv⟩ := onlyLiveKlong_live_iff n only child honly hptr
     have hc0 : c0 = 0 := by
@@ -528,7 +567,7 @@ theorem writerWP_rootStep_space_coll (x : NodeId) (only : Nat) (n : KNode) (c : 
       rw [h1] at hcv
       simpa using hcv
     subst hc0
-    exact collGetInv_step c base w0 v w3 child n hI hroot hxl hlv h3top h3v h3t h3n
+    exact collGetInv_stepF fuelR hfR c base w0 v w3 child n hI hroot hxl hlv h3top h3v h3t h3n
   constructor
   · cases hp : n.ptr? only with
     | none =>
@@ -557,6 +596,15 @@ theorem writerWP_rootStep_space_coll (x : NodeId) (only : Nat) (n : KNode) (c : 
       apply hstep child hp w3 h3top h3v
       · intro z _; rw [h3t]
       · intro z hz; exact h3n z (by rw [hx]; exact hz)
+
+/-- `writerWP_rootStep_space_collF` at the writer's fuel. -/
+theorem writerWP_rootStep_space_coll (x : NodeId) (only : Nat) (n : KNode) (c : Ctx)
+    (base : View BVal) (w0 v : W) (hI : CollGetInv c base w0 v) (hx : x = v.top.rootKey)
+    (hlkx : v.nodes.lookup x = some n) (honly : n.onlyLiveKlong = some only)
+    (hcv : n.cv? only = some 0) (hxl : n.leaf = false) :
+    WriterWP (takeBackRoot x 0 only) c v (fun _ v' => CollGetInv c base w0 v') ∧
+    WriterWP (replaceRoot x 0 only) c v (fun _ v' => CollGetInv c base w0 v') :=
+  writerWP_rootStep_space_collF c.p.fuel (by unfold Params.fuel; omega) x only n c base w0 v hI hx hlkx honly hcv hxl
 
 /-- The descent's facts at a state: the path is the space root and steps linked
 from it, ending at x, each node but the last in the writer's nodes; the last
@@ -636,6 +684,69 @@ theorem segDesc_seg (c : Ctx) (base : View BVal) (x : NodeId) (v : W)
 the caller's that the reads keep and the two steps keep, given room in the
 segment leaf above each segment root that is replaced (`hroom`; a full leaf, a
 cascade, is not taken here). -/
+theorem writerWP_collapseRoot_collF (fuelR : Nat) (hfR : 2 ≤ fuelR) (key : Key) (seg : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (w0 : W) (J : W → Prop)
+    (hJra : ∀ v v', J v → ReadsAs c.p base v v' → J v')
+    (hroom : ∀ v x n leaf ln k, CollGetInvF c base w0 v fuelR → J v → SegDesc c base x v →
+      v.nodes.lookup x = some n → n.leaf = false → n.firstTime ≠ some c.i →
+      TReach (wNode c.p base v) c.i v.top.rootKey leaf → v.nodes.lookup leaf = some ln →
+      ln.leaf = true → (k, x) ∈ ln.liveAt c.i →
+      ln.size + 1 + 1 ≤ c.p.M ∧ ∀ y, deadOver c.p (ln.add c.i (.key k y)) = false)
+    (hJT : ∀ v x n only, CollGetInvF c base w0 v fuelR → J v → SegDesc c base x v →
+      v.nodes.lookup x = some n → n.leaf = false → n.firstTime = some c.i →
+      n.onlyLiveKlong = some only → n.cv? only = some 0 →
+      WriterWP (takeBackRoot x (v.path.length - 1) only) c v (fun _ v' => J v'))
+    (hJR : ∀ v x n only, CollGetInvF c base w0 v fuelR → J v → SegDesc c base x v →
+      v.nodes.lookup x = some n → n.leaf = false → n.firstTime ≠ some c.i →
+      n.onlyLiveKlong = some only → n.cv? only = some 0 →
+      WriterWP (replaceRoot x (v.path.length - 1) only) c v (fun _ v' => J v')) :
+    ∀ fuel v, CollGetInvF c base w0 v fuelR → J v →
+      WriterWP (collapseRoot key seg fuel) c v (fun _ v' => CollGetInvF c base w0 v' fuelR ∧ J v') := by
+  intro fuel v hI hJ
+  refine writerWP_collapseRoot_inv key seg c (fun v => CollGetInvF c base w0 v fuelR ∧ J v) (SegDesc c base)
+    ?_ ?_ ?_ ?_ fuel v ⟨hI, hJ⟩
+  · rintro v ⟨hI, hJ⟩
+    refine writerWP_mono (writerWP_descendToSegmentRoot_linked key seg c base hvc v hI.1.2.1 hI.2.2.2.1) ?_
+    rintro x v' ⟨hr, _, hx, ps, hvp, hlf, hend, hcache, hlast⟩
+    refine ⟨⟨collGetInv_of_readsAsF fuelR hfR c base w0 v v' hr hI, hJra v v' hJ hr⟩, ?_⟩
+    unfold SegDesc
+    rw [hr.1, hr.2.1]
+    exact ⟨hx, ps, hvp, hlf, hend, hcache, hlast⟩
+  · rintro x v ⟨hI, hJ⟩ hP
+    refine writerWP_mono (writerWP_and (writerWP_getNode_all x c v base hvc) (writerWP_getNode_cache x c v)) ?_
+    rintro n v' ⟨⟨hr, hl, _, hpre, _⟩, _, _, hp⟩
+    exact ⟨⟨collGetInv_of_readsAsF fuelR hfR c base w0 v v' hr hI, hJra v v' hJ hr⟩,
+      segDesc_of_readsAs c base x v v' hP hr hpre hp, hl, hp⟩
+  · rintro x v n only ⟨hI, hJ⟩ hP hlk hxl hm _ honly hcv
+    refine writerWP_and ?_ (hJT v x n only hI hJ hP hlk hxl hm honly hcv)
+    obtain ⟨_, ps, hvp, hlf, hend, hcache, hlast⟩ := hP
+    rcases hlast with hps | ⟨ps0, k, L, ln, hps, hL, hLn, hLl⟩
+    · subst hps
+      have hx : x = v.top.rootKey := by rw [← hend]; rfl
+      rw [hvp]
+      exact (writerWP_rootStep_space_collF fuelR hfR x only n c base w0 v hI hx hlk honly hcv hxl).1
+    · subst hps
+      obtain ⟨hLr, hLlk, hk, hlen, hpd, hpk⟩ := segDesc_seg c base x v ps0 k L ln hvp hlf hcache hL hLn
+      rw [hlen]
+      exact writerWP_takeBackRoot_seg_collF fuelR hfR x ps0.length only n L ln k c base w0 v hI hLr hLlk hLl hk hlk
+        honly hcv hxl hpd hpk
+  · rintro x v n only ⟨hI, hJ⟩ hP hlk hxl hm honly hcv
+    refine writerWP_and ?_ (hJR v x n only hI hJ hP hlk hxl hm honly hcv)
+    have hP' := hP
+    obtain ⟨_, ps, hvp, hlf, hend, hcache, hlast⟩ := hP
+    rcases hlast with hps | ⟨ps0, k, L, ln, hps, hL, hLn, hLl⟩
+    · subst hps
+      have hx : x = v.top.rootKey := by rw [← hend]; rfl
+      rw [hvp]
+      exact (writerWP_rootStep_space_collF fuelR hfR x only n c base w0 v hI hx hlk honly hcv hxl).2
+    · subst hps
+      obtain ⟨hLr, hLlk, hk, hlen, hpd, hpk⟩ := segDesc_seg c base x v ps0 k L ln hvp hlf hcache hL hLn
+      obtain ⟨hr1, hr2⟩ := hroom v x n L ln k hI hJ hP' hlk hxl hm hLr hLlk hLl hk
+      rw [hlen]
+      exact writerWP_replaceRoot_seg_collF fuelR hfR x ps0.length only n L ln k c base w0 v hI hLr hLlk hLl hk hlk
+        honly hcv hxl hpd hpk hr1 hr2
+
+/-- `writerWP_collapseRoot_collF` at the writer's fuel. -/
 theorem writerWP_collapseRoot_coll (key : Key) (seg : Nat) (c : Ctx) (base : View BVal)
     (hvc : ViewCoherent c base) (w0 : W) (J : W → Prop)
     (hJra : ∀ v v', J v → ReadsAs c.p base v v' → J v')
@@ -653,49 +764,7 @@ theorem writerWP_collapseRoot_coll (key : Key) (seg : Nat) (c : Ctx) (base : Vie
       n.onlyLiveKlong = some only → n.cv? only = some 0 →
       WriterWP (replaceRoot x (v.path.length - 1) only) c v (fun _ v' => J v')) :
     ∀ fuel v, CollGetInv c base w0 v → J v →
-      WriterWP (collapseRoot key seg fuel) c v (fun _ v' => CollGetInv c base w0 v' ∧ J v') := by
-  intro fuel v hI hJ
-  refine writerWP_collapseRoot_inv key seg c (fun v => CollGetInv c base w0 v ∧ J v) (SegDesc c base)
-    ?_ ?_ ?_ ?_ fuel v ⟨hI, hJ⟩
-  · rintro v ⟨hI, hJ⟩
-    refine writerWP_mono (writerWP_descendToSegmentRoot_linked key seg c base hvc v hI.1.2.1 hI.2.2.2.1) ?_
-    rintro x v' ⟨hr, _, hx, ps, hvp, hlf, hend, hcache, hlast⟩
-    refine ⟨⟨collGetInv_of_readsAs c base w0 v v' hr hI, hJra v v' hJ hr⟩, ?_⟩
-    unfold SegDesc
-    rw [hr.1, hr.2.1]
-    exact ⟨hx, ps, hvp, hlf, hend, hcache, hlast⟩
-  · rintro x v ⟨hI, hJ⟩ hP
-    refine writerWP_mono (writerWP_and (writerWP_getNode_all x c v base hvc) (writerWP_getNode_cache x c v)) ?_
-    rintro n v' ⟨⟨hr, hl, _, hpre, _⟩, _, _, hp⟩
-    exact ⟨⟨collGetInv_of_readsAs c base w0 v v' hr hI, hJra v v' hJ hr⟩,
-      segDesc_of_readsAs c base x v v' hP hr hpre hp, hl, hp⟩
-  · rintro x v n only ⟨hI, hJ⟩ hP hlk hxl hm _ honly hcv
-    refine writerWP_and ?_ (hJT v x n only hI hJ hP hlk hxl hm honly hcv)
-    obtain ⟨_, ps, hvp, hlf, hend, hcache, hlast⟩ := hP
-    rcases hlast with hps | ⟨ps0, k, L, ln, hps, hL, hLn, hLl⟩
-    · subst hps
-      have hx : x = v.top.rootKey := by rw [← hend]; rfl
-      rw [hvp]
-      exact (writerWP_rootStep_space_coll x only n c base w0 v hI hx hlk honly hcv hxl).1
-    · subst hps
-      obtain ⟨hLr, hLlk, hk, hlen, hpd, hpk⟩ := segDesc_seg c base x v ps0 k L ln hvp hlf hcache hL hLn
-      rw [hlen]
-      exact writerWP_takeBackRoot_seg_coll x ps0.length only n L ln k c base w0 v hI hLr hLlk hLl hk hlk
-        honly hcv hxl hpd hpk
-  · rintro x v n only ⟨hI, hJ⟩ hP hlk hxl hm honly hcv
-    refine writerWP_and ?_ (hJR v x n only hI hJ hP hlk hxl hm honly hcv)
-    have hP' := hP
-    obtain ⟨_, ps, hvp, hlf, hend, hcache, hlast⟩ := hP
-    rcases hlast with hps | ⟨ps0, k, L, ln, hps, hL, hLn, hLl⟩
-    · subst hps
-      have hx : x = v.top.rootKey := by rw [← hend]; rfl
-      rw [hvp]
-      exact (writerWP_rootStep_space_coll x only n c base w0 v hI hx hlk honly hcv hxl).2
-    · subst hps
-      obtain ⟨hLr, hLlk, hk, hlen, hpd, hpk⟩ := segDesc_seg c base x v ps0 k L ln hvp hlf hcache hL hLn
-      obtain ⟨hr1, hr2⟩ := hroom v x n L ln k hI hJ hP' hlk hxl hm hLr hLlk hLl hk
-      rw [hlen]
-      exact writerWP_replaceRoot_seg_coll x ps0.length only n L ln k c base w0 v hI hLr hLlk hLl hk hlk
-        honly hcv hxl hpd hpk hr1 hr2
+      WriterWP (collapseRoot key seg fuel) c v (fun _ v' => CollGetInv c base w0 v' ∧ J v') :=
+  writerWP_collapseRoot_collF c.p.fuel (by unfold Params.fuel; omega) key seg c base hvc w0 J hJra hroom hJT hJR
 
 end SIS.Tree
