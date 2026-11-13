@@ -114,3 +114,4 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 * 12:08 Frans 12:07: no more Codex runs today (its budget nearly used; the Claude provers go on). Its run 5's partial TP7 work is checked and landed if clean.
 * 12:14 Frans 12:11: the model's scope as an item, "prio now as all major algorithms are stabilizing": 026-14 (reclaim as a whole, the format as bytes, the conflict check; the assumption list).
 * 12:22 Pushed: the provers' checkpoints "latest" (TP10 and TP11 at the latest time reduced to OpGetOK and CommitGetOK) and "t4" (T4 proved, its new definitions for Frans to review), main with both built (321 jobs); 026-14. 024-12's board updated.
+* 12:34 Frans read 027-13, the reclaim pilot: "027-13 is good! I looks really good." The template for the other parts.
