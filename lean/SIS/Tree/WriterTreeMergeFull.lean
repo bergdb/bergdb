@@ -685,4 +685,85 @@ theorem writerWP_mergeCleanup_wNode (p m1 : NodeId) (c : Ctx) (base : View BVal)
       rw [h1l p (Ne.symm hqp)] at hn1
       exact ⟨n1, hn1, rfl, fun c' z hm => Or.inl hm⟩
 
+/-- The merge's full parent p, at depth D + 1 of the path below the cascade's
+nodes X s .. X D: `handleFull` of its last version `mergeFullLast` keeps the
+tree, given that the tree with p's node replaced by it is one and reaches
+neither merged sibling l nor r (`hV`), and the cascade's premises
+(`writerWP_fullSplit_chainG`). After it the siblings are not reached and p is
+not taken back. -/
+theorem writerWP_mergeFull_branch (c : Ctx) (base : View BVal)
+    (path0 : List (Option Nat × NodeId)) (s D : Nat) (X : Nat → NodeId) (K : Nat → Nat)
+    (Nn : Nat → KNode) (hsD : s ≤ D)
+    (hX : ∀ i, s ≤ i → i ≤ D + 1 → (path0[i]?).map (·.2) = some (X i))
+    (hK : ∀ i, s < i → i ≤ D + 1 → path0[i]? = some (some (K i), X i))
+    (hlinkK : ∀ i, s < i → i ≤ D + 1 → (K i, X i) ∈ (Nn (i - 1)).liveAt c.i)
+    (hrange : ∀ i, s < i → i ≤ D → ¬ ChainRoom c (Nn i) → (Nn (i - 1)).leaf = false →
+      ∀ c' z, (c', z) ∈ (Nn i).live → 0 < c' →
+      K i ≤ c' ∧ ∀ c'' z', (c'', z') ∈ (Nn (i - 1)).live → K i < c'' → c' < c'')
+    (hlen : ∀ i, s ≤ i → i ≤ D → ¬ ChainRoom c (Nn i) →
+      c.p.splitAbove < ((Nn i).lastVersion c.i).size →
+      2 ≤ (Nn i).live.length)
+    (hwf : ∀ i, s ≤ i → i ≤ D + 1 → klongsWf (Nn i).ks = true)
+    (htimes : ∀ i, s ≤ i → i ≤ D + 1 → ∀ t, Klong.time t ∈ (Nn i).ks → t ≤ c.i)
+    (htop : ChainRoom c (Nn s) ∨ s = 0)
+    (hdist : ∀ i i', s ≤ i → i ≤ D + 1 → s ≤ i' → i' ≤ D + 1 → X i = X i' → i = i')
+    (p l r m1 : NodeId) (m2 : Option (NodeId × Nat)) (pn : KNode) (cL cR : Nat)
+    (hXp : X (D + 1) = p) (hNp : Nn (D + 1) = pn)
+    (hhalves : ∀ last, mergeFullLast pn c.i cL m1 cR m2 = some last →
+      c.p.splitAbove < last.size → ∃ r0 : Nat, 0 < r0 ∧
+      (halves (Nn (D + 1)).leaf c.i last []).2.2 = r0 ∧
+      (∀ c' z, (c', z) ∈ (halves (Nn (D + 1)).leaf c.i last []).1.liveAt c.i → c' < r0 ∧
+        (c', z) ∈ (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).liveAt c.i) ∧
+      (∀ c' z, (c', z) ∈ (halves (Nn (D + 1)).leaf c.i last []).2.1.liveAt c.i → ∃ c0, r0 ≤ c0 ∧
+        c' = splitLocalCv (Nn (D + 1)).leaf r0 c0 ∧
+        (c0, z) ∈ (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).liveAt c.i) ∧
+      ((Nn D).leaf = false →
+        K (D + 1) ≤ r0 ∧ ∀ c'' z', (c'', z') ∈ (Nn D).live → K (D + 1) < c'' → r0 < c''))
+    (w6 : W) (h6path : w6.path = path0)
+    (h6S2 : ∀ i, s ≤ i → i ≤ D + 1 →
+      w6.nodes.lookup (X i) = some (Nn i) ∧ w6.taken.contains (X i) = false)
+    (h6T : TreeOK (wNode c.p base w6) c.i w6.top.rootKey)
+    (h6S4 : ∀ i, s ≤ i → i ≤ D + 1 → TReach (wNode c.p base w6) c.i w6.top.rootKey (X i))
+    (h6S5 : ∀ z, w6.next ≤ z → w6.nodes.lookup z = none ∧ w6.taken.contains z = false ∧
+      knodeOf c.p base z = none)
+    (h6S6 : ∀ u c' z, TLink (wNode c.p base w6) c.i u c' z → z < w6.next)
+    (h6R0 : s = 0 → w6.top.rootKey = X 0)
+    (hV : ∀ last, mergeFullLast pn c.i cL m1 cR m2 = some last →
+      TreeOK (updN (wNode c.p base w6) p ⟨pn.leaf, last.ks⟩) c.i w6.top.rootKey ∧
+      (∀ z, TReach (updN (wNode c.p base w6) p ⟨pn.leaf, last.ks⟩) c.i w6.top.rootKey z →
+        z ≠ l ∧ z ≠ r) ∧
+      ∀ c' z, (c', z) ∈ (⟨pn.leaf, last.ks⟩ : KNode).liveAt c.i → z < w6.next)
+    (hlr : l < w6.next ∧ r < w6.next) :
+    ∀ last compact s', mergeFullLast pn c.i cL m1 cR m2 = some last →
+      WriterWP (handleFull (D + 1) p last compact) c ({ w6 with trail := s' :: w6.trail } : W)
+        (fun _ w7 => TreeOK (wNode c.p base w7) c.i w7.top.rootKey ∧
+          ¬ TReach (wNode c.p base w7) c.i w7.top.rootKey l ∧
+          ¬ TReach (wNode c.p base w7) c.i w7.top.rootKey r ∧
+          w7.taken = w6.taken ∧ w7.vals = w6.vals) := by
+  intro last compact s' hlast
+  obtain ⟨hVt, hVlr, hvx⟩ := hV last hlast
+  have hN6 : wNode c.p base ({ w6 with trail := s' :: w6.trail } : W) = wNode c.p base w6 := rfl
+  show WriterWP (handleFullWith (fun q more => appendKlongs D q more) (D + 1) p [] last compact) c _ _
+  rw [← hXp]
+  have hVt' : TreeOK (updN (wNode c.p base ({ w6 with trail := s' :: w6.trail } : W)) (X (D + 1))
+      (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode)) c.i ({ w6 with trail := s' :: w6.trail } : W).top.rootKey := by
+    rw [hN6, hXp, hNp]; exact hVt
+  have hvx' : ∀ c' z, (c', z) ∈ (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).liveAt c.i →
+      z < ({ w6 with trail := s' :: w6.trail } : W).next := by
+    rw [hNp]; exact hvx
+  refine writerWP_mono (writerWP_fullSplit_chainG c base path0 s D X K Nn last compact hsD hX hK hlinkK
+    hrange hlen hwf htimes htop hdist (hhalves last hlast) _ h6path h6S2 (by rw [hN6]; exact h6T)
+    (by rw [hN6]; exact h6S4) h6S5 (by rw [hN6]; exact h6S6) h6R0 hVt' hvx') ?_
+  rintro _ w7 ⟨hT7, ⟨_, ht7, _, _, hv7⟩, _, hreach7⟩
+  have hpt := (h6S2 (D + 1) (by omega) (Nat.le_refl _)).2
+  refine ⟨hT7, fun hl => ?_, fun hr => ?_, ht7, hv7⟩
+  · rcases hreach7 l hl with h | h
+    · rw [hN6, hXp, hNp] at h
+      exact (hVlr l h).1 rfl
+    · have := hlr.1; simp only at h; omega
+  · rcases hreach7 r hr with h | h
+    · rw [hN6, hXp, hNp] at h
+      exact (hVlr r h).2 rfl
+    · have := hlr.2; simp only at h; omega
+
 end SIS.Tree
