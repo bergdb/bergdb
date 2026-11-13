@@ -1415,9 +1415,15 @@ below a leaf with room; (3b) more new segments below a leaf with room;
   `putInvCase_putLeafRoom` on putinv's `putInv_put_room_below`,
   `putInv_put_room_root` and `putInv_put_room_segRoot`, by the place of
   the leaf; `rangeCase_putLeafRoom` on `rangeOrder_put_room`).
-- (2) a put into a full leaf: the ranges proved (`rangeCase_putLeafFull`
-  on putinv's `rangeOrder_put_accessPath`); the tree and `PutInv` open:
-  no rule for a cascade of any depth.
+- (2) a put into a full leaf: all three proved (21:10). The ranges by
+  `rangeCase_putLeafFull` on putinv's `rangeOrder_put_accessPath`; the tree
+  by `treeCase_putLeafFull` on `writerWP_put_accessPathR`, whose post now
+  also gives the writer's tree, the taken ids kept and the nodes reached
+  after reached before or new (from `writerWP_appendKlongs_chainGRV`,
+  `tReach_updN_addKey`); `PutInv` by `putInvCase_putLeafFull`: its global
+  parts from the books, no reached node taken back from the reach bound,
+  and its order from the ranges after (`putInv_after_op`,
+  `leafOrder_of_rangeOrder`).
 - (3a) all three proved (`treeCase_putNewSeg1Room`,
   `putInvCase_putNewSeg1Room`, `rangeCase_putNewSeg1Room`, on
   `writerWP_put_newSeg_inv_tree`, `putInv_put_newSeg`,

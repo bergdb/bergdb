@@ -18,7 +18,11 @@ the rules (bergdb 024-12, TP10; `GetOpAssembly.lean`): the rules' premises from
   `putInvCase_putLeafRoom`, `rangeCase_putLeafRoom`); `PutInv` by the place of
   the leaf: below an inner segment root, the space root, or a segment root
   below a segment leaf.
-* (2) a put into a full leaf: the walk's ranges (`rangeCase_putLeafFull`).
+* (2) a put into a full leaf: all three (`treeCase_putLeafFull`,
+  `putInvCase_putLeafFull`, `rangeCase_putLeafFull`), on
+  `writerWP_put_accessPathR` (the tree, the taken ids kept, the nodes reached
+  after reached before or new) and `rangeOrder_put_accessPath`; `PutInv`'s
+  order from the ranges after (`putInv_after_op`).
 * (3) a put of a key with no leaf, in four parts (`opCaseOK_putNewSeg_of_parts`):
   the writer fails where no new segment is made; one new segment below a leaf
   with room (all three); more new segments below a leaf with room (the
@@ -161,6 +165,86 @@ theorem rangeCase_putLeafFull (p : Params) (R : Struct BVal → Time → Prop)
       deadOver (ctxOf p ts).p (m.add (ctxOf p ts).i (.key cv w.next)) = false)) hfull) hRO) ?_
   intro _ _ h _
   exact h
+
+/-! ## (2) A put into a full leaf: the writer's tree and `PutInv` -/
+
+/-- `PutInv` after an operation from the writer's tree after it, the taken ids
+kept, the nodes reached after it reached before or new, and the walk's ranges
+after it: the global parts from the books, the order from the ranges. -/
+theorem putInv_after_op (p : Params) (ts : List Tx) (tx : Tx) (hw : Within p (ts ++ [tx]))
+    (hRL : RunLinksOK p (treeRun p ts) ts.length) (z : NodeId) (top : Top)
+    (htop : topOf p (ctxOf p ts).view z = .ok top) (ops : List Op) (r : List Bool) (w : W)
+    (hpre : (ops.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w))
+    (hI : PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w) (op : Op) (a : Bool) (w' : W)
+    (hrun : putKv op (ctxOf p ts) w = .ok (a, w')) (htaken : w'.taken = w.taken)
+    (hreach : ∀ x, TReach (wNode p (viewOf (treeRun p ts)) w') (ts.length + 1) w'.top.rootKey x →
+      TReach (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey x ∨ w.next ≤ x)
+    (hR' : RangeOrder (wNode p (viewOf (treeRun p ts)) w') (ts.length + 1) w'.top.rootKey)
+    (hT' : WriterTreeOK p (treeRun p ts) (ts.length + 1) w') :
+    PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w' := by
+  have hB := putBase_of_run p ts tx hw hRL
+  have hbk := putBook_reached p ts tx hw hRL z top htop ops r w hpre
+  have hb' := (putBook_putKv (ctxOf p ts) _ tx.base top op hB w hbk a w' hrun).1
+  have hG' := putInvG_of_book (ctxOf p ts) _ tx.base top w' hB hb'
+  refine putInv_of_parts (ctxOf p ts) _ w' hG' hT' ?_ ?_
+  · intro x hx
+    rcases hreach x (reachS_tReach _ _ _ _ hx) with h | h
+    · rw [htaken]; exact hI.untaken x (tReach_reachS _ _ _ _ h)
+    · rw [htaken]
+      cases hc : w.taken.contains x with
+      | false => rfl
+      | true => have := hI.ids.2.2.1 x hc; omega
+  · exact leafOrder_of_rangeOrder _ _ _ hR' hG'.times
+
+/-- (2), the writer's tree, for 2 ≤ splitAbove and runs with their links. -/
+theorem treeCase_putLeafFull (p : Params) (R : Struct BVal → Time → Prop)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t) (hsa : 2 ≤ p.splitAbove) :
+    OpCaseOK p R (QTree p) PutLeafFullCase := by
+  intro ts tx hw hr z top _ htop ops op post hops r w hpre hI hRO hP
+  obtain ⟨pre, cv, h, L, n, hop, hK, hfull⟩ := hP
+  subst hop
+  have hkey : keyWf (pre ++ [cv]) = true := within_op_keyWf p ts tx hw ops _ post hops
+  obtain ⟨rk, hrk, _⟩ := keyLeaf_rk hK
+  have hG := putInvG_reached p ts tx hw (hRL _ _ hr) z top htop ops r w hpre
+  have hOrd := ordG_of_rangeOrder (ctxOf p ts) _ _ hRO hI.times
+  exact writerWP_mono (writerWP_put_accessPathR (ctxOf p ts) _ (viewCoherent_ctxOf p ts) pre cv h
+    rk w hkey hrk (hI.pathUntaken _) hI.ids hI.fresh hI.wf hI.times hI.tree
+    (fun u c' z ⟨un, hun, hl⟩ => hG.links u un c' z hun hl) hI.keyNoValue
+    (rangeG_of_rangeOrder (ctxOf p ts) _ _ hRO hI.times)
+    (lenG_of_splitAbove (ctxOf p ts) _ _ hsa)
+    (fun _ _ _ _ _ _ _ _ _ _ _ _ => Or.inr hOrd)
+    (keyLeaf_all hK hrk (fun m => ¬ (m.size + 1 < (ctxOf p ts).p.M ∧
+      deadOver (ctxOf p ts).p (m.add (ctxOf p ts).i (.key cv w.next)) = false)) hfull)
+    (hI.keyUniq pre cv rk hkey hrk)) (fun _ _ h => h.1)
+
+/-- (2), `PutInv`, for 2 ≤ splitAbove and runs with their links. -/
+theorem putInvCase_putLeafFull (p : Params) (R : Struct BVal → Time → Prop)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t) (hsa : 2 ≤ p.splitAbove) :
+    OpCaseOK p R (QPutInv p) PutLeafFullCase := by
+  intro ts tx hw hr z top _ htop ops op post hops r w hpre hI hRO hP
+  obtain ⟨pre, cv, h, L, n, hop, hK, hfull⟩ := hP
+  subst hop
+  have hkey : keyWf (pre ++ [cv]) = true := within_op_keyWf p ts tx hw ops _ post hops
+  obtain ⟨rk, hrk, _⟩ := keyLeaf_rk hK
+  have hG := putInvG_reached p ts tx hw (hRL _ _ hr) z top htop ops r w hpre
+  have hOrd := ordG_of_rangeOrder (ctxOf p ts) _ _ hRO hI.times
+  have hfull' := keyLeaf_all hK hrk (fun m => ¬ (m.size + 1 < (ctxOf p ts).p.M ∧
+    deadOver (ctxOf p ts).p (m.add (ctxOf p ts).i (.key cv w.next)) = false)) hfull
+  have h1 := writerWP_put_accessPathR (ctxOf p ts) _ (viewCoherent_ctxOf p ts) pre cv h
+    rk w hkey hrk (hI.pathUntaken _) hI.ids hI.fresh hI.wf hI.times hI.tree
+    (fun u c' z ⟨un, hun, hl⟩ => hG.links u un c' z hun hl) hI.keyNoValue
+    (rangeG_of_rangeOrder (ctxOf p ts) _ _ hRO hI.times)
+    (lenG_of_splitAbove (ctxOf p ts) _ _ hsa)
+    (fun _ _ _ _ _ _ _ _ _ _ _ _ => Or.inr hOrd) hfull' (hI.keyUniq pre cv rk hkey hrk)
+  have h2 := rangeOrder_put_accessPath (ctxOf p ts) _ (viewCoherent_ctxOf p ts) pre cv h
+    rk w hrk (hI.pathUntaken _) hI.ids hI.fresh hI.wf hI.times hI.tree
+    (fun u c' z ⟨un, hun, hl⟩ => hG.links u un c' z hun hl)
+    (rangeG_of_rangeOrder (ctxOf p ts) _ _ hRO hI.times)
+    (lenG_of_splitAbove (ctxOf p ts) _ _ hsa) hfull' hRO
+  intro a w' hrun hT'
+  have e1 := h1 a w' hrun
+  exact putInv_after_op p ts tx hw (hRL _ _ hr) z top htop ops r w hpre hI _ a w' hrun e1.2.1
+    e1.2.2.1 (h2 a w' hrun) hT'
 
 /-! ## (3) A put of a key with no leaf, in parts -/
 
@@ -318,15 +402,13 @@ theorem rangeCase_putNewSegsRoom (p : Params) (R : Struct BVal → Time → Prop
 
 /-- `getOK_scanOK_of_cases_merges` with the cases above proved: for the
 parameters of `MergeParamsOK`, left of the cases are the writer's tree and
-`PutInv` of (2), of (3b) and of (3c), the walk's ranges of (3c), and the
-writer's tree, `PutInv`, the ranges and the reading of (4). -/
+`PutInv` of (3b) and of (3c), the walk's ranges of (3c), and the writer's tree,
+`PutInv`, the ranges and the reading of (4). -/
 theorem getOK_scanOK_of_cases_merges_open (p : Params) (hp : MergeParamsOK p)
     (hinv : InvPreserved p)
     (hlinks : ∀ ts, Within p ts → RunLinksOK p (treeRun p ts) ts.length)
     (htree : ∀ ts, Within p ts → TreeAt p (treeRun p ts) ts.length)
     (hfit : TxSegFitsOK p (RunOK p))
-    (t2 : OpCaseOK p (RunOK p) (QTree p) PutLeafFullCase)
-    (i2 : OpCaseOK p (RunOK p) (QPutInv p) PutLeafFullCase)
     (t3b : OpCaseOK p (RunOK p) (QTree p) PutNewSegsRoomCase)
     (i3b : OpCaseOK p (RunOK p) (QPutInv p) PutNewSegsRoomCase)
     (t3c : OpCaseOK p (RunOK p) (QTree p) PutNewSegFullCase)
@@ -343,9 +425,9 @@ theorem getOK_scanOK_of_cases_merges_open (p : Params) (hp : MergeParamsOK p)
   have hsa : 2 ≤ p.splitAbove := by omega
   have hRL : ∀ P t, RunOK p P t → RunLinksOK p P t := fun _ _ h => h.1
   exact getOK_scanOK_of_cases_merges p hp hinv hlinks htree hfit
-    (treeCase_putLeafRoom p _) t2
+    (treeCase_putLeafRoom p _) (treeCase_putLeafFull p _ hRL hsa)
     (opCaseOK_putNewSeg_of_parts p _ _ (treeCase_putNewSeg1Room p _ hM) t3b t3c) t4
-    (putInvCase_putLeafRoom p _ hRL) i2
+    (putInvCase_putLeafRoom p _ hRL) (putInvCase_putLeafFull p _ hRL hsa)
     (opCaseOK_putNewSeg_of_parts p _ _ (putInvCase_putNewSeg1Room p _ hRL hM) i3b i3c) i4
     (rangeCase_putLeafRoom p _) (rangeCase_putLeafFull p _ hRL hsa)
     (opCaseOK_putNewSeg_of_parts p _ _ (rangeCase_putNewSeg1Room p _ hM)
