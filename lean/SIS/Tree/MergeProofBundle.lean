@@ -168,3 +168,4 @@ import SIS.Tree.RangeDelChain
 import SIS.Tree.RangeLeb
 import SIS.Tree.RangeMerge
 import SIS.Tree.RangeNewSeg
+import SIS.Tree.RangeUp
