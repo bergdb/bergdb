@@ -1,6 +1,9 @@
 import SIS.Tree.GetNewSegs
 import SIS.Tree.WriterTreeNewSeg
 import SIS.Tree.GetPutPath
+import SIS.Tree.RangeNewSegs
+import SIS.Tree.ChainShape
+import SIS.Tree.TakeCachedKeep
 
 set_option autoImplicit false
 
@@ -452,5 +455,124 @@ theorem writerWP_put_newSegs_tree (c : Ctx) (base : View BVal) (hvc : ViewCohere
   split <;>
   · simp only [writerWP_bind, writerWP_modify, writerWP_pure]
     exact hrest _ rfl rfl rfl rfl rfl
+
+/-! ## The walk's ranges after new segment leaves below an empty leaf -/
+
+/-- The walk's ranges after an empty leaf x, whose parents are all leaves, gets
+new segment leaves below it: x and the new nodes (`New`: none before, the root
+not one, none linked from a node reached) are leaves whose live klongs name new
+nodes or no node. -/
+theorem rangeOrder_newChain (N N' : NodeId → Option KNode) (t : Time) (r x : NodeId)
+    (New : NodeId → Prop) (hR : RangeOrder N t r) (hxr : x ≠ r) (hxnew : ¬ New x)
+    (hxpar : ∀ u un c, N u = some un → (c, x) ∈ un.liveAt t → un.leaf = true)
+    (hnew : ∀ z, New z → N z = none ∧ z ≠ r ∧ ∀ u c, TReach N t r u → ¬ TLink N t u c z)
+    (hNl : ∀ z m', (New z ∨ z = x) → N' z = some m' → m'.leaf = true)
+    (hNk : ∀ z m' c z', (New z ∨ z = x) → N' z = some m' → (c, z') ∈ m'.liveAt t →
+      New z' ∨ N' z' = none)
+    (hN' : ∀ z, z ≠ x → ¬ New z → N' z = N z) : RangeOrder N' t r := by
+  have hold : ∀ z m', N' z = some m' → z ≠ x → ¬ New z → N z = some m' := by
+    intro z m' h h1 h2; rw [← hN' z h1 h2]; exact h
+  let G : NodeId → Nat → Option Nat → Prop := fun z lo hi =>
+    (¬ New z ∧ z ≠ x ∧ ∃ lo0 hi0, ReachR N t r z lo0 hi0 ∧ lo ≤ lo0 ∧ HiLE hi0 hi) ∨
+    ((New z ∨ z = x) ∧ lo = 0 ∧ hi = none) ∨ N' z = none
+  apply rangeOrder_of_good N' t r G
+  · exact Or.inl ⟨fun h => (hnew r h).2.1 rfl, fun h => hxr h.symm, 0, none, ReachR.root,
+      Nat.le_refl _, HiLE.refl _⟩
+  · intro z lo hi m' c z' b _ hG hm hml' hb
+    rcases hG with ⟨hzn, hzx, lo0, hi0, hz0, hlo, hhi⟩ | ⟨hzn, _, _⟩ | hG
+    · have hm0 := hold z m' hm hzx hzn
+      have hcz := childBounds_fst _ _ _ _ hb
+      have hz'n : ¬ New z' := fun h =>
+        (hnew z' h).2.2 z c (reachR_tReach N t r z lo0 hi0 hz0) ⟨m', hm0, hcz⟩
+      have hz'x : z' ≠ x := by
+        intro h; subst h
+        have := hxpar z m' c hm0 hcz
+        rw [hml'] at this; cases this
+      obtain ⟨lo1, hi1, h3, h4, h5⟩ := old_child_step N t r hR z m' lo0 lo hi0 hi hz0 hm0 hml' hlo hhi
+        _ (KNode.liveAt_order m' t) c z' z' b hcz hb (fun r' hr' hlt => ⟨r', hr', hlt, Nat.le_refl _⟩)
+      exact Or.inl ⟨hz'n, hz'x, lo1, hi1, h3, h4, h5⟩
+    · rw [hNl z m' hzn hm] at hml'; cases hml'
+    · rw [hG] at hm; cases hm
+  · intro z lo hi m' c z' _ hG hm hml' hcz
+    rcases hG with ⟨hzn, hzx, lo0, hi0, hz0, _, _⟩ | ⟨hzn, _, _⟩ | hG
+    · have hm0 := hold z m' hm hzx hzn
+      have hz'n : ¬ New z' := fun h =>
+        (hnew z' h).2.2 z c (reachR_tReach N t r z lo0 hi0 hz0) ⟨m', hm0, hcz⟩
+      by_cases hz'x : z' = x
+      · exact Or.inr (Or.inl ⟨Or.inr hz'x, rfl, rfl⟩)
+      · exact Or.inl ⟨hz'n, hz'x, 0, none, ReachR.seg z m' lo0 hi0 c z' hz0 hm0 hml' hcz,
+          Nat.le_refl _, HiLE.refl _⟩
+    · rcases hNk z m' c z' hzn hm hcz with h | h
+      · exact Or.inr (Or.inl ⟨Or.inl h, rfl, rfl⟩)
+      · exact Or.inr (Or.inr h)
+    · rw [hG] at hm; cases hm
+  · intro z lo hi m' _ hG hm
+    rcases hG with ⟨hzn, hzx, lo0, hi0, hz0, hlo, hhi⟩ | ⟨hzn, hlo, hhi⟩ | hG
+    · exact nodeRange_wider m' t lo0 lo hi0 hi (hR z lo0 hi0 m' hz0 (hold z m' hm hzx hzn)) hlo hhi
+    · rw [hhi]
+      intro q _
+      simp only [hNl z m' hzn hm, ↓reduceIte]
+      exact ⟨by omega, trivial⟩
+    · rw [hG] at hm; cases hm
+
+/-- The new segment leaves below an empty segment leaf x, whose parents are all
+leaves, keep the walk's ranges. -/
+theorem writerWP_putSegs_new_range (c : Ctx) (base : View BVal) (key : List Nat) (h : Nat)
+    (hM : 2 ≤ c.p.M) (hfuel : 1 ≤ c.p.fuel) (tail : List Nat) (htail : tail ≠ []) (ws : W)
+    (x : NodeId) (hx : ws.nodes.lookup x = some ⟨true, []⟩) (htx : ws.taken.contains x = false)
+    (hxn : x < ws.next)
+    (hfr : ∀ z, ws.next ≤ z → ws.nodes.lookup z = none ∧ ws.taken.contains z = false ∧
+      knodeOf c.p base z = none ∧ valueOf base z = none ∧ ws.vals.lookup z = none)
+    (hR : RangeOrder (wNode c.p base ws) c.i ws.top.rootKey) (hxr : x ≠ ws.top.rootKey)
+    (hxpar : ∀ u un cc, wNode c.p base ws u = some un → (cc, x) ∈ un.liveAt c.i → un.leaf = true)
+    (hRlt : ∀ z, TReach (wNode c.p base ws) c.i ws.top.rootKey z → z < ws.next) :
+    WriterWP (putSegs key (some h) tail x) c ws (fun _ wf =>
+      RangeOrder (wNode c.p base wf) c.i wf.top.rootKey) := by
+  refine writerWP_mono (writerWP_and (writerWP_putSegs_new_shape c base key h hM hfuel tail htail ws x
+    hx htx hxn hfr) (writerWP_putSegs_new c base key h hM hfuel tail htail ws x hx htx hxn hfr)) ?_
+  rintro _ wf ⟨⟨k1, k2, k3, k4, k5, k6⟩, ⟨_, _, _, _, _, _, k7, _⟩⟩
+  have hwf : ∀ z m', (z = x ∨ ws.next ≤ z) → wNode c.p base wf z = some m' →
+      wf.nodes.lookup z = some m' := by
+    intro z m' hz hm
+    unfold wNode at hm
+    rw [k1] at hm
+    have htz : ws.taken.contains z = false := by
+      rcases hz with hz | hz
+      · rw [hz]; exact htx
+      · exact (hfr z hz).2.1
+    rw [htz] at hm
+    simp only [Bool.false_eq_true, ↓reduceIte] at hm
+    cases h' : wf.nodes.lookup z with
+    | some m'' => rw [h'] at hm; exact hm
+    | none =>
+      exfalso
+      rcases hz with hz | hz
+      · subst hz; rw [h'] at k7; cases k7
+      · rw [h'] at hm
+        simp only at hm
+        rw [(hfr z hz).2.2.1] at hm; cases hm
+  have hRlt' : ws.top.rootKey < ws.next := hRlt _ TReach.root
+  rw [k2]
+  refine rangeOrder_newChain (wNode c.p base ws) (wNode c.p base wf) c.i ws.top.rootKey x
+    (fun z => ws.next ≤ z) hR hxr (by omega) hxpar ?_ ?_ ?_ ?_
+  · intro z hz
+    refine ⟨?_, by omega, fun u c' hu hl => ?_⟩
+    · obtain ⟨a1, a2, a3, _, _⟩ := hfr z hz
+      simp only [wNode, a2, Bool.false_eq_true, ↓reduceIte, a1, a3]
+    · have := hRlt z (TReach.link hu hl); omega
+  · intro z m' hz hm
+    have hz' : z = x ∨ ws.next ≤ z := hz.elim (fun h => Or.inr h) (fun h => Or.inl h)
+    exact (k6 z m' hz' (hwf z m' hz' hm)).1
+  · intro z m' c' z' hz hm hc
+    exact Or.inl ((k6 z m' (hz.elim (fun h => Or.inr h) (fun h => Or.inl h))
+      (hwf z m' (hz.elim (fun h => Or.inr h) (fun h => Or.inl h)) hm)).2 c' z' hc)
+  · intro z hzx hzn
+    have hzlt : z < ws.next := by omega
+    unfold wNode
+    rw [k1, k4 z hzlt hzx]
+
+/-- Every klong of every node that N reads names an id below b. -/
+def KlongsBelow (N : NodeId → Option KNode) (b : NodeId) : Prop :=
+  ∀ x xn, N x = some xn → ∀ cv y, Klong.key cv y ∈ xn.ks → y < b
 
 end SIS.Tree
