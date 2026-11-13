@@ -638,7 +638,7 @@ theorem writerWP_put_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent
         rcases Nat.eq_zero_or_pos i with h0 | h0
         · exfalso; apply hne; rw [h0, nodeAt_zero]
         · exact h0
-      exact ⟨hi, hpar _ _ _ (hreachX (i - 1) (by omega)) (hXN (i - 1) (by omega)) (hKP i hi h2).2⟩)
+      exact Or.inr ⟨hi, hpar _ _ _ (hreachX (i - 1) (by omega)) (hXN (i - 1) (by omega)) (hKP i hi h2).2⟩)
     P.length (by omega) ws [(cv, w3.next)] (Or.inl ⟨cv, w3.next, rfl⟩)
     (by intro q hq; simp at hq; rw [hq, hwsx, hnext3]; simp)
     hwsp
@@ -731,8 +731,9 @@ theorem writerWP_put_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent
       simp only [wValue, hwst, hwsv, lookup_append_single_ne _ _ _ _ (by omega : y ≠ w.next)])
   intro key' hkey'
   unfold wGet
-  rw [hvf, hR (wValue base ws) (fun z hz => hadm z (by rw [hwsx] at hz; exact hz)) key', hwsN, hwstop,
-    hnext3]
+  rw [hvf, hR (wValue base ws) (fun z hz => hadm z (by rw [hwsx] at hz; exact hz))
+    (Or.inr (fun ⟨_, hnr, hsp⟩ => (hspaceG _ _ (hreachX 0 (by omega)) (hXN 0 (by omega)) hnr hsp).1
+      (nodeAt_zero _ _))) key', hwsN, hwstop, hnext3]
   simp only [List.foldl_cons, List.foldl_nil]
   by_cases hk : pre ++ [cv] = key'
   · subst hk
