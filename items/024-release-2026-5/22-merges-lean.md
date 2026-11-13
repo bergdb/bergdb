@@ -1307,6 +1307,17 @@ The reading holds when the state after fits the fuel. Without that, it holds
 when no split makes a new root: the space root does not space split, and the
 parent's parent is inner (for d = 1, the root does not space split).
 
+The last version's sortedness is proved (`mergeFullLast_sorted`,
+`MergeFullSorted.lean`). The second new node's first compare value lies between
+the left child's and the parent's next one, and differs from the right child's
+unless it replaces it. So the get-side theorems no longer take `hsorted`; the
+root tree side still does. Case 4 of 024-12's assembly is reduced to named step
+obligations (`opGetCaseOK_delMerge`, `DelMergeCase.lean`; the list is in
+024-12). The merge from the state's invariants is `writerWP_merge_get_inv`
+(`GetMergeInv.lean`): its premises come from PutInv, PutInvG, RangeOrder and the
+path facts (`PathOK`). The merges' loop and the collapse keep the delete's inner
+invariant `DelInv`.
+
 ## 11. State
 
 Final for today: 2026-11-11, 16:05 (agent "mgl" of coord-1111). Nothing
