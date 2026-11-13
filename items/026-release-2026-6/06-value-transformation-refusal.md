@@ -1,7 +1,7 @@
 # 026-06. A value transformation that throws or passes 8 MiB refuses the transaction
 
-Created 2026-11-13 by Frans Lundberg. Status: open (on the branch
-`026-06-value-transformation`, gated, ready to land; section 11).
+Created 2026-11-13 by Frans Lundberg. Status: done; on main since
+2026-11-13 (code `8bd6e3a7`, `f28b6832`, `322cafed`; Q1 to Q4 yes).
 
 For release 2026.6: a value transformation (Core API) that throws, or
 whose result passes 8 MiB, refuses its transaction with a `DbException`
@@ -403,7 +403,18 @@ change.
   needs what the step's puts made dirty.
 
 
+Decided (Frans, 2026-11-13, 08:45, "yes to all"): Q1 the changed tests
+approved; Q2 a key transformation that throws refuses too; Q3 L5 and
+005-17's value limit counted with the results; Q4 reclaim's row stays
+after the go point.
+
+
 ## 11. State
+
+2026-11-13, 08:47. **Landed** on main by coord-1113: the five commits
+put on main `614f8600` (main had moved only in items), the Java identical
+to the gated `322cafed`; pushed. 010-04's R5 case line says done.
+
 
 2026-11-13, 08:43.
 

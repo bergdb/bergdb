@@ -92,8 +92,8 @@ Files
 * 06-value-transformation-refusal.md. 026-06, a value transformation
   that throws or passes 8 MiB refuses its transaction, before the go
   point (`Db.transformValues`), and the database goes on (010-04, R5);
-  also a key transformation that throws (Q2); on the branch
-  `026-06-value-transformation`, gated; Q1 to Q4 for Frans.
+  also a key transformation that throws (Q2); done, on main since
+  2026-11-13 (Q1 to Q4 yes, Frans 08:45).
 
 
 Log
