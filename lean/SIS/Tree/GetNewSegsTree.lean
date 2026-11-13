@@ -2,6 +2,8 @@ import SIS.Tree.GetNewSegs
 import SIS.Tree.WriterTreeNewSeg
 import SIS.Tree.GetPutPath
 import SIS.Tree.RangeNewSegs
+import SIS.Tree.ChainShape
+import SIS.Tree.TakeCachedKeep
 
 set_option autoImplicit false
 
@@ -568,5 +570,9 @@ theorem writerWP_putSegs_new_range (c : Ctx) (base : View BVal) (key : List Nat)
     have hzlt : z < ws.next := by omega
     unfold wNode
     rw [k1, k4 z hzlt hzx]
+
+/-- Every klong of every node that N reads names an id below b. -/
+def KlongsBelow (N : NodeId → Option KNode) (b : NodeId) : Prop :=
+  ∀ x xn, N x = some xn → ∀ cv y, Klong.key cv y ∈ xn.ks → y < b
 
 end SIS.Tree
