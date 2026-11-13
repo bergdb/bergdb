@@ -31,6 +31,16 @@ import bergdb.stream.StrictStream;
  * The buffer time is then the longest time that bytes nobody syncs on stay buffered.
  * An append that reaches a quarter of the buffer wakes the thread too (bergdb 005-76).
  * 
+ * <p>The buffer grows with use (2026-11-13, bergdb 026-07): it starts at INITIAL_CAPACITY,
+ * or the given capacity if that is smaller, and an append that does not fit doubles it,
+ * as often as needed, up to the given capacity, the largest buffer. A grown buffer
+ * shrinks back to INITIAL_CAPACITY when the thread has had nothing to write for
+ * SHRINK_DELAY_MS. The thread's rules (the quarter, a flush of at most half, a writer that
+ * waits for room) are those of the largest buffer, so the flushes and forces do not
+ * change; only the heap does. It was the given capacity from the start, 10 MB for a
+ * database: every started database held 11 MB of heap, whatever its size (bergdb 024-01,
+ * PA7; 024-05, ST8; 020-24-10, U10-2).
+ * 
  * <p>The underlying stream gets one call at a time, but read(), as AppendOnlyStream's
  * CONCURRENCY says (2026-11-06, bergdb 015-80): the thread's appends, the cuts and the
  * close hold ioLock, and getFirstPos() returns the first position kept after the last cut.
@@ -60,10 +70,44 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
      * Changed under this; read by the thread, and by the others under this.
      */
     private byte[] buffer;
-    private final int bufferCapacity;
-    private final int tenPercentOfBufferCapacity;
+    /**
+     * The buffer's first length, and its length after a shrink: 64 KiB (bergdb 026-07).
+     * A smaller given capacity is used as it is, and the buffer then never grows.
+     */
+    public static final int INITIAL_CAPACITY = 64 * 1024;
+    /**
+     * A grown buffer shrinks to INITIAL_CAPACITY after this long with nothing to write
+     * (bergdb 026-07). The idle thread waits this long once, then without a timeout, as
+     * before (005-14): a grown buffer costs one wake of an idle stream, a first-sized one
+     * none. A field, not final, so that a test can make it short.
+     */
+    long shrinkDelayMs = 1000;
+    /** The buffer's length, buffer.length, from INITIAL_CAPACITY to maxCapacity. Under this. */
+    private int bufferCapacity;
+    /** The largest buffer: the constructor's bufferCapacity (bergdb 026-07). */
+    private final int maxCapacity;
+    /**
+     * The buffer grows up to this: maxCapacity, or the buffer's length after an allocation
+     * failed (an OutOfMemoryError; the writer then waits for room, as with a full buffer of
+     * the largest length) until the next shrink. Under this.
+     */
+    private int growLimit;
+    /** A quarter of the largest buffer, whatever the buffer's length (bergdb 026-07). */
     private final int twentyFivePercentOfBufferCapacity;
+    /** Half the largest buffer: a flush writes at most this (bergdb 026-07). */
     private final int fiftyPercentOfBufferCapacity;
+    /**
+     * The array and its length of the consumer's flush, taken with cSize, under this
+     * (bergdb 026-07): the writer may replace 'buffer' with a grown copy during the flush.
+     * The consumer's only.
+     */
+    private byte[] flushBuffer;
+    private int flushCapacity;
+    /** True while the idle consumer waits for the shrink, from idleSince (System.nanoTime). */
+    private boolean idleTimed;
+    private long idleSince;
+    /** The grows and shrinks of the buffer, for tests (bergdb 026-07). Under this. */
+    private int grows, shrinks;
     private long streamLength; // underlying stream length
     private long totalLength; // total length: buffered in memory + stream
                               // length
@@ -118,7 +162,8 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
      * @param stream
      *            The output stream.
      * @param bufferCapacity
-     *            Capacity of the buffer in bytes.
+     *            Capacity of the buffer in bytes, its largest: the buffer starts at
+     *            INITIAL_CAPACITY, or this if smaller, and grows with use (bergdb 026-07).
      * @param bufferTime
      *            The approximate maximum time to buffer data in milliseconds.
      */
@@ -137,13 +182,14 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
 
         this.appendListener = new NullAppendListener();
         this.stream = stream;
-        this.bufferCapacity = bufferCapacity;
-        this.tenPercentOfBufferCapacity = bufferCapacity / 10;
+        this.maxCapacity = bufferCapacity;
+        this.growLimit = bufferCapacity;
+        this.bufferCapacity = Math.min(bufferCapacity, INITIAL_CAPACITY);     // bergdb 026-07
         this.twentyFivePercentOfBufferCapacity = bufferCapacity / 4;
         this.fiftyPercentOfBufferCapacity = bufferCapacity / 2;
         this.waitTime = bufferTime / 4;
         this.waitsBeforeFlush = 4;
-        buffer = new byte[bufferCapacity];
+        buffer = new byte[this.bufferCapacity];
         streamLength = stream.getLength();
         totalLength = streamLength;
         firstPos = stream.getFirstPos();
@@ -215,9 +261,12 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                     // one wait later).
                     while (pStart == cStart && waitCount >= waitsBeforeFlush && !stop && !flushAndClose) {
                         idle = true;
-                        wait();
+                        if (!waitToShrink()) {
+                            wait();
+                        }
                     }
                     idle = false;
+                    idleTimed = false;
                     if (stop) {
                         break A;
                     }
@@ -226,7 +275,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                     // Nor while a close waits for buffered bytes (bergdb 020-13, bug 4): its
                     // wake came during a flush, and the close waited a whole wait time, a
                     // quarter of the buffer time, for nothing.
-                    if (!syncWaits() && !closeWaits()
+                    if (!syncWaits() && !closeWaits() && !nearlyFull()
                             && pStart - cStart < twentyFivePercentOfBufferCapacity) {
                         wait(waitTime);
                     }
@@ -251,12 +300,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                     continue;
                 }
 
-                cSize = (int) (pStart - cStart);
-                // Here, we have a reserved interval [cStart, cStart + cSize - 1] for the
-                // consumer that the producer must respect (must not use).
-
-                assert cSize <= bufferCapacity : "Bad cSize " + cSize + ", bufferCapacity="
-                        + bufferCapacity;
+                takeFlush();
                 waitCount = 0;
 
                 if (stop) {
@@ -303,6 +347,22 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         }
     }
 
+    /**
+     * Takes what is buffered for the consumer's next flush: cSize, and the array and its
+     * length (bergdb 026-07; see flushBuffer). Under this.
+     */
+    private void takeFlush() {
+        assert Thread.holdsLock(this);
+        cSize = (int) (pStart - cStart);
+        // Here, we have a reserved interval [cStart, cStart + cSize - 1] for the
+        // consumer that the producer must respect (must not use).
+
+        assert cSize <= bufferCapacity : "Bad cSize " + cSize + ", bufferCapacity="
+                + bufferCapacity;
+        flushBuffer = buffer;
+        flushCapacity = bufferCapacity;
+    }
+
     private final boolean shouldFlush() {
         assert Thread.holdsLock(this);
         long sizeAvailableToFlush = pStart - cStart;
@@ -313,6 +373,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         // transaction size"). 34 of 24,000 closes in a test (005-14, CloseRace).
         boolean result = sizeAvailableToFlush > 0 && (flushAndClose
                 || sizeAvailableToFlush >= twentyFivePercentOfBufferCapacity
+                || nearlyFull()                 // bergdb 026-07
                 || waitCount >= waitsBeforeFlush
                 || flushTo > cStart);           // a sync waits (bergdb 005-48)
         return result;
@@ -322,6 +383,85 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
     private boolean syncWaits() {
         assert Thread.holdsLock(this);
         return flushTo > cStart && pStart > cStart;
+    }
+    
+    /**
+     * True when less than a tenth of the buffer is free (bergdb 026-07). Only a buffer that
+     * could not grow gets there before the quarter, after a failed allocation: the writer
+     * then waits for room, and the consumer writes at once, not after the timer.
+     */
+    private boolean nearlyFull() {
+        assert Thread.holdsLock(this);
+        return bufferCapacity - (pStart - cStart) < bufferCapacity / 10;
+    }
+    
+    /**
+     * The idle consumer's wait for the shrink (bergdb 026-07), with nothing buffered: false at
+     * once for a buffer of its first length, and the consumer then waits without a timeout.
+     * Else the first call of an idle time notes its start and waits until shrinkDelayMs has
+     * passed since, and a call after that shrinks the buffer to INITIAL_CAPACITY and
+     * returns false. Nothing is buffered and no flush runs, so no byte is copied.
+     */
+    private boolean waitToShrink() throws InterruptedException {
+        assert Thread.holdsLock(this) && pStart == cStart;
+        if (bufferCapacity <= INITIAL_CAPACITY) {
+            return false;
+        }
+        long now = System.nanoTime();
+        if (!idleTimed) {
+            idleTimed = true;
+            idleSince = now;
+        }
+        long left = shrinkDelayMs - (now - idleSince) / 1000000;
+        if (left > 0) {
+            wait(left);
+            return true;
+        }
+        try {
+            buffer = new byte[INITIAL_CAPACITY];
+        } catch (OutOfMemoryError e) {
+            return false;       // Keeps the grown buffer; the next idle time tries again.
+        }
+        bufferCapacity = INITIAL_CAPACITY;
+        growLimit = maxCapacity;
+        shrinks++;
+        return false;
+    }
+    
+    /**
+     * Grows the buffer so that it holds what is buffered and 'length' bytes more, doubling
+     * its length as often as needed, up to growLimit (bergdb 026-07). The writer's, when an
+     * append does not fit. The buffered bytes are copied to the same positions of the new
+     * ring; a flush in progress goes on with the old array, whose bytes it writes do not
+     * change (see flushBuffer). An OutOfMemoryError of the allocation keeps the buffer as it
+     * is, and sets growLimit to its length until the next shrink: the writer then waits for
+     * room, as at the largest length.
+     */
+    private void grow(int length) {
+        assert Thread.holdsLock(this);
+        long buffered = pStart - cStart;
+        long capacity = bufferCapacity;
+        while (capacity < buffered + length && capacity < growLimit) {
+            capacity *= 2;
+        }
+        int newCapacity = (int) Math.min(capacity, growLimit);
+        byte[] b;
+        try {
+            b = new byte[newCapacity];
+        } catch (OutOfMemoryError e) {
+            growLimit = bufferCapacity;
+            return;
+        }
+        for (long pos = cStart; pos < pStart; ) {
+            int from = (int) (pos % bufferCapacity);
+            int to = (int) (pos % newCapacity);
+            int n = (int) Math.min(pStart - pos, Math.min(bufferCapacity - from, newCapacity - to));
+            System.arraycopy(buffer, from, b, to, n);
+            pos += n;
+        }
+        buffer = b;
+        bufferCapacity = newCapacity;
+        grows++;
     }
     
     /** True when close() waits for bytes that are still buffered (bergdb 020-13, bug 4). */
@@ -337,8 +477,13 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         // We do not flush more than half of the buffer to leave room for
         // producer to add data
         // while consumer is writing (flushing) to underlying filesystem.
+        // Half of the largest buffer (bergdb 026-07): a smaller one grows to make room.
+        // The array and its length taken with cSize: the writer may grow the buffer now.
 
-        assert cSize <= buffer.length;
+        final byte[] flushBuffer = this.flushBuffer;
+        final int flushCapacity = this.flushCapacity;
+        this.flushBuffer = null;    // Not kept after a grow or a shrink.
+        assert cSize <= flushBuffer.length;
 
         final int sizeToFlush = cSize > fiftyPercentOfBufferCapacity ? fiftyPercentOfBufferCapacity
                 : cSize;
@@ -346,16 +491,16 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         // 0 bytes would append the whole buffer (index2 is then index1 - 1); see shouldFlush().
         assert sizeToFlush > 0 : "bad sizeToFlush: " + sizeToFlush;
 
-        int index1 = (int) (cStart % bufferCapacity);
-        int index2 = (int) ((cStart + sizeToFlush - 1) % bufferCapacity);
+        int index1 = (int) (cStart % flushCapacity);
+        int index2 = (int) ((cStart + sizeToFlush - 1) % flushCapacity);
         IOException ex = null;
 
         try {
             if (index2 >= index1) {     // Was '>', which wrote wrong bytes for a 1-byte flush.
-                appendToStream(index1, sizeToFlush);
+                appendToStream(flushBuffer, index1, sizeToFlush);
             } else {
-                appendToStream(index1, bufferCapacity - index1);
-                appendToStream(0, index2 + 1);
+                appendToStream(flushBuffer, index1, flushCapacity - index1);
+                appendToStream(flushBuffer, 0, index2 + 1);
             }
         } catch (IOException e) {
             ex = e;
@@ -431,7 +576,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
     }
 
     /** One append to the underlying stream, holding ioLock (bergdb 015-80). */
-    private void appendToStream(int offset, int length) throws IOException {
+    private void appendToStream(byte[] buffer, int offset, int length) throws IOException {
         ioLock.lock();
         try {
             stream.append(buffer, offset, length);
@@ -641,11 +786,16 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
 
                 while (length > 0) {
                     int available = availableBufferSize();
-                    if (available < length && available < tenPercentOfBufferCapacity) {
+                    if (available < length && bufferCapacity < growLimit) {
+                        grow(length);       // bergdb 026-07
+                        available = availableBufferSize();
+                    }
+                    if (available < length && available < bufferCapacity / 10) {
                         if (waitStart == 0) {
                             waitStart = System.nanoTime();
                         }
                         try {
+                            notifyAll();    // A nearly full buffer is written at once (026-07).
                             wait(); // wait for consumer to write to output stream
                         } catch (InterruptedException e) {
                             // 2026-10-27 (bergdb 005-46): not interruptible. The interrupt threw
@@ -981,6 +1131,126 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         }
     }
 
+    /** The byte of stream position 'pos' in the tests of growth (bergdb 026-07). */
+    private static byte growByte(long pos) {
+        return (byte) (pos * 31 + (pos >> 9));
+    }
+    
+    private static byte[] growBytes(long pos, int length) {
+        byte[] bytes = new byte[length];
+        for (int i = 0; i < length; i++) {
+            bytes[i] = growByte(pos + i);
+        }
+        return bytes;
+    }
+    
+    /**
+     * bergdb 026-07: the buffer starts at INITIAL_CAPACITY, grows to hold an append that does
+     * not fit, its bytes read back the same from the grown buffer, and it shrinks back when
+     * the consumer has been idle for shrinkDelayMs; an idle consumer with a first-sized
+     * buffer waits without a timeout (005-14).
+     */
+    @Nano
+    public static void testGrowsAndShrinks() throws Exception {
+        MemoryStream m = new MemoryStream();
+        BufferedStream b = new BufferedStream(m, 1500000, 20);
+        b.shrinkDelayMs = 50;
+        synchronized (b) {
+            Assert.assertEquals(INITIAL_CAPACITY, b.buffer.length);
+        }
+        b.append(growBytes(0, 200000), 0, 200000);     // Not started: nothing is flushed.
+        synchronized (b) {
+            Assert.assertEquals(4 * INITIAL_CAPACITY, b.buffer.length);
+            Assert.assertEquals(1, b.grows);
+        }
+        b.append(growBytes(200000, 900000), 0, 900000);   // Doubled to past the largest.
+        synchronized (b) {
+            Assert.assertEquals(1500000, b.buffer.length);
+            Assert.assertEquals(2, b.grows);
+        }
+        b.start();
+        try {
+            byte[] bytes = new byte[1100000];
+            b.read(0, bytes, 0, bytes.length);
+            for (int i = 0; i < bytes.length; i++) {
+                Assert.assertEquals(growByte(i), bytes[i]);
+            }
+            b.flushSoon(1100000);
+            awaitIdle(b);
+            synchronized (b) {
+                Assert.assertEquals(INITIAL_CAPACITY, b.buffer.length);
+                Assert.assertEquals(1, b.shrinks);
+            }
+            Assert.assertEquals(1100000, m.getLength());
+            b.append(growBytes(1100000, 100), 0, 100);
+            b.flushSoon(1100100);
+            awaitIdle(b);
+        } finally {
+            b.close();
+        }
+        Assert.assertEquals(1100100, m.getLength());
+        byte[] bytes = new byte[1100100];
+        m.read(0, bytes, 0, bytes.length);
+        for (int i = 0; i < bytes.length; i++) {
+            Assert.assertEquals(growByte(i), bytes[i]);
+        }
+    }
+    
+    /**
+     * bergdb 026-07: the writer grows the buffer while the consumer writes from it, with the
+     * ring wrapped at both lengths, and every byte reaches the stream in order; reads of
+     * buffered bytes during it give the stream's bytes. Appends of 1 to 70,000 bytes.
+     */
+    @Nano
+    public static void testGrowsDuringFlushes() throws Exception {
+        MemoryStream m = new MemoryStream() {
+            @Override public void append(byte[] source, int offset, int length) throws IOException {
+                try {
+                    Thread.sleep(2);   // A force's latency, so that the backlog grows.
+                } catch (InterruptedException e) {
+                    throw new IOException(e);
+                }
+                super.append(source, offset, length);
+            }
+        };
+        BufferedStream b = new BufferedStream(m, 2000000, 20);
+        b.shrinkDelayMs = 20;
+        b.start();
+        java.util.Random random = new java.util.Random(26007);
+        long pos = 0;
+        try {
+            for (int round = 0; round < 3; round++) {
+                for (int i = 0; i < 300; i++) {
+                    int length = i == 0 ? 100000     // Grows each round.
+                            : 1 + (i % 7 == 0 ? random.nextInt(70000) : random.nextInt(3000));
+                    b.append(growBytes(pos, length), 0, length);
+                    pos += length;
+                    int n = (int) Math.min(pos, 5000);
+                    long at = pos - n;
+                    byte[] read = new byte[n];
+                    b.read(at, read, 0, n);
+                    for (int k = 0; k < n; k++) {
+                        Assert.assertEquals(growByte(at + k), read[k]);
+                    }
+                }
+                b.flushSoon(pos);
+                awaitIdle(b);     // After the shrink.
+            }
+            synchronized (b) {
+                Assert.assertTrue("grows " + b.grows, b.grows >= 3);
+                Assert.assertTrue("shrinks " + b.shrinks, b.shrinks >= 3);
+            }
+        } finally {
+            b.close();
+        }
+        Assert.assertEquals(pos, m.getLength());
+        byte[] bytes = new byte[(int) pos];
+        m.read(0, bytes, 0, bytes.length);
+        for (int i = 0; i < bytes.length; i++) {
+            Assert.assertEquals(growByte(i), bytes[i]);
+        }
+    }
+    
     /** bergdb 005-76: reaching a quarter wakes a consumer in its timed wait. */
     @Nano
     public static void testQuarterWakesConsumer() throws Exception {
@@ -1594,7 +1864,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         synchronized (b) {
             b.flushAndClose = true;
             Assert.assertTrue(b.shouldFlush());
-            b.cSize = (int) (b.pStart - b.cStart);
+            b.takeFlush();
         }
         b.flushToStream();
         Assert.assertEquals(7, m.getLength());
