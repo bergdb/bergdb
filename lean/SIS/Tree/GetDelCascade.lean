@@ -2248,4 +2248,56 @@ theorem getFromR_delSpaceTime (N N2 : NodeId → Option KNode) (V : NodeId → O
   rw [← hren key']
   exact hA key' hkey'
 
+/-! ## The bitmap of a delete, the leaf's space split given -/
+
+set_option linter.unusedSimpArgs false in
+/-- The bitmap of a delete in the full leaf L with no bitmap of the transaction
+last, full by its size, whose last version without the key has more than h
+klongs: the writer space splits L, here by `hcascade`. -/
+theorem writerWP_appendDeleteKlong_spaceGen (c : Ctx) (L : NodeId) (n : KNode) (cv d' : Nat)
+    (w3 : W) (post : Bool → W → Prop)
+    (hlk3 : w3.nodes.lookup L = some n)
+    (hne : bitsUnion n.lastBitmap (n.bitsOf cv) ≠ n.lastBitmap)
+    (hnotTD : ¬ ((∃ old, n.ks.getLast? = some (.del old)) ∧ n.lastTime = some c.i))
+    (hfull : c.p.M ≤ n.size + 1)
+    (hcascade : ∀ (s : String), WriterWP (handleFullWith (fun q more => appendKlongs d' q more)
+      (d' + 1) L [] (n.lastVersionGivenDel c.i (bitsUnion n.lastBitmap (n.bitsOf cv))) false) c
+      ({ w3 with trail := s :: w3.trail } : W) (fun _ w4 => post false w4)) :
+    WriterWP (appendDeleteKlong L (d' + 1) cv) c w3 post := by
+  generalize hU : bitsUnion n.lastBitmap (n.bitsOf cv) = U at hne hcascade
+  generalize hlast : n.lastVersionGivenDel c.i U = last at hcascade
+  unfold appendDeleteKlong handleFull
+  simp only [writerWP_bind, writerWP_read]
+  rw [writerWP_getNode_known L n c w3 hlk3]
+  split
+  · exact writerWP_throw _ _ _ _
+  · rw [hU, hlast]
+    have hnb : (U == n.lastBitmap) = false := by simpa using hne
+    simp only [hnb, Bool.not_false, ↓reduceIte]
+    have hsz : ¬ n.size + 1 < c.p.M := by omega
+    have hspace : ∀ (s : String), WriterWP (do
+          note s
+          handleFullWith (fun q more => appendKlongs d' q more) (d' + 1) L [] last
+          pure false)
+        c w3 post := by
+      intro s
+      simp only [note, writerWP_bind, writerWP_modify]
+      exact writerWP_mono (hcascade s) (fun _ w4 h => by simp only [writerWP_pure]; exact h)
+    cases hg : n.ks.getLast? with
+    | none =>
+      simp only [Bool.false_and, Bool.false_eq_true, ↓reduceIte, hsz]
+      exact hspace _
+    | some k =>
+      cases k with
+      | del old =>
+        cases hlt' : (n.lastTime == some c.i) with
+        | false =>
+          simp only [hlt', Bool.and_false, Bool.false_eq_true, ↓reduceIte, hsz]
+          exact hspace _
+        | true =>
+          exact absurd ⟨⟨old, hg⟩, by simpa using hlt'⟩ hnotTD
+      | _ =>
+        simp only [Bool.false_and, Bool.false_eq_true, ↓reduceIte, hsz]
+        exact hspace _
+
 end SIS.Tree
