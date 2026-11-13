@@ -156,3 +156,4 @@ import SIS.Tree.PutInvQIP
 import SIS.Tree.WriterGetMerge
 import SIS.Tree.WriterGetMergeIdx
 import SIS.Tree.WriterGetMergeOp
+import SIS.Tree.WriterTreeChainSteps
