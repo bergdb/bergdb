@@ -119,7 +119,9 @@ theorem writerWP_handleFull_lastV (c : Ctx) (base : View BVal)
     (fun i h1 h2 => hX i h1 (by omega)) (fun i h1 h2 => hK i h1 (by omega))
     (fun i h1 h2 => hlinkK i h1 (by omega)) hrange hlen
     (fun i h1 h2 => hwf i h1 (by omega)) (fun i h1 h2 => htimes i h1 (by omega)) htop
-    (fun i i' h1 h2 h3 h4 => hdist i i' h1 (by omega) h3 (by omega)) hspace (D - s) (by omega)
+    (fun i i' h1 h2 h3 h4 => hdist i i' h1 (by omega) h3 (by omega))
+    (fun i h1 h2 h3 h4 => (hspace i h1 h2 h3 h4).imp id
+      (fun h => ⟨h.1, h.2.imp id (fun h' _ => h'.2)⟩)) (D - s) (by omega)
   have hsD' : s + (D - s) = D := by omega
   rw [hsD'] at hchain
   have hj : s < D + 1 := by omega
@@ -293,7 +295,7 @@ theorem writerWP_handleFull_lastV (c : Ctx) (base : View BVal)
       (by rw [hN1]; exact hW1)
       (by rw [hN1, h1top]; exact hV1)
     refine writerWP_mono hpar ?_
-    rintro _ w2 ⟨hT2, ⟨h2top, h2t, h2path, h2next, h2vals⟩, h2frame, h2reach, h2W, h2R, _, h2RB⟩
+    rintro _ w2 ⟨hT2, ⟨h2top, h2t, h2path, h2next, h2vals⟩, h2frame, h2reach, h2W, h2R, _, h2RB, _⟩
     have hlk2 : w2.nodes.lookup (X (D + 1)) = some (Nn (D + 1)) := by
       rw [h2frame _ (by have := hXlt (D + 1) (by omega) (Nat.le_refl _); omega)
         (fun i h1 h2 he => by have := hdist _ _ (by omega) (Nat.le_refl _) h1 (by omega) he; omega),
