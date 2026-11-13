@@ -1,7 +1,7 @@
 # 026-11. G4's back-to-empty lag as a gate
 
-Created 2026-11-13 by Frans Lundberg. Status: done; on the branch
-`026-11-lag-gate`, to land.
+Created 2026-11-13 by Frans Lundberg. Status: done; on main since
+2026-11-13 (343fff05).
 
 For release 2026.6: the lag of 024-30's G4 (back to empty after a mass
 delete) becomes a gate of `count-gates.sh`, and so of `night.sh`'s
