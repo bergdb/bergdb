@@ -834,4 +834,77 @@ theorem writerWP_mergeFull_branch (c : Ctx) (base : View BVal)
       exact (hVlr r h).2 rfl
     · have := hlr.2; simp only at h; omega
 
+/-- A tree is reached alike in a node map that agrees on its reached nodes. -/
+theorem tReach_of_agree_fwd (L L' : NodeId → Option KNode) (t : Time) (r : NodeId)
+    (h : ∀ x, TReach L t r x → L' x = L x) : ∀ y, TReach L t r y → TReach L' t r y := by
+  intro y hy
+  induction hy with
+  | root => exact TReach.root
+  | @link x c y hx hl ih =>
+    obtain ⟨n, hn, hc⟩ := hl
+    exact TReach.link ih ⟨n, by rw [h x hx]; exact hn, hc⟩
+
+/-- The merge's state before its parent's change: the nodes below the next id
+nx as before, new nodes from nx on naming nodes below nx, the path and the taken
+nodes as before. Then the cascade's state facts hold of it. -/
+theorem mergeState_facts (c : Ctx) (base : View BVal) (N : NodeId → Option KNode) (root : NodeId)
+    (nx : Nat) (w3 S : W) (s D : Nat) (X : Nat → NodeId) (Nn : Nat → KNode)
+    (hT : TreeOK N c.i root) (hN3 : wNode c.p base w3 = N) (h3top : w3.top.rootKey = root)
+    (hfree : ∀ z, nx ≤ z → N z = none ∧ w3.taken.contains z = false)
+    (hlinksAll : ∀ u c' z, TLink N c.i u c' z → z < nx)
+    (hbaseF : ∀ z, nx ≤ z → knodeOf c.p base z = none)
+    (hS2 : ∀ i, s ≤ i → i ≤ D + 1 → w3.nodes.lookup (X i) = some (Nn i) ∧ w3.taken.contains (X i) = false)
+    (hS4 : ∀ i, s ≤ i → i ≤ D + 1 → TReach N c.i root (X i))
+    (hR0 : s = 0 → root = X 0)
+    (hSlook : ∀ i, s ≤ i → i ≤ D + 1 → S.nodes.lookup (X i) = w3.nodes.lookup (X i))
+    (hSt : S.taken = w3.taken) (hStop : S.top = w3.top) (hSnx : nx ≤ S.next)
+    (hSlow : ∀ y, y < nx → wNode c.p base S y = N y)
+    (hSnew : ∀ y yn, nx ≤ y → S.nodes.lookup y = some yn → ∀ c' z, (c', z) ∈ yn.liveAt c.i → z < nx)
+    (hShigh : ∀ y, S.next ≤ y → S.nodes.lookup y = none) :
+    (∀ i, s ≤ i → i ≤ D + 1 → S.nodes.lookup (X i) = some (Nn i) ∧ S.taken.contains (X i) = false) ∧
+    TreeOK (wNode c.p base S) c.i S.top.rootKey ∧
+    (∀ i, s ≤ i → i ≤ D + 1 → TReach (wNode c.p base S) c.i S.top.rootKey (X i)) ∧
+    (∀ z, S.next ≤ z → S.nodes.lookup z = none ∧ S.taken.contains z = false ∧ knodeOf c.p base z = none) ∧
+    (∀ u c' z, TLink (wNode c.p base S) c.i u c' z → z < S.next) ∧
+    (s = 0 → S.top.rootKey = X 0) := by
+  have hroot : S.top.rootKey = root := by rw [hStop, h3top]
+  have hNlt : ∀ y yn, N y = some yn → y < nx := by
+    intro y yn hy
+    rcases Nat.lt_or_ge y nx with h | h
+    · exact h
+    · rw [(hfree y h).1] at hy; cases hy
+  have hagree : ∀ y, TReach N c.i root y → wNode c.p base S y = N y := by
+    intro y hy
+    cases hy with
+    | root =>
+      obtain ⟨n, hn⟩ := hT.rootKey
+      exact hSlow _ (hNlt _ n hn)
+    | link hx hl =>
+      obtain ⟨n, hn, hc⟩ := hl
+      exact hSlow _ (hlinksAll _ _ _ ⟨n, hn, hc⟩)
+  refine ⟨fun i h1 h2 => ⟨by rw [hSlook i h1 h2]; exact (hS2 i h1 h2).1, by rw [hSt]; exact (hS2 i h1 h2).2⟩,
+    ?_, ?_, ?_, ?_, fun h => by rw [hroot]; exact hR0 h⟩
+  · rw [hroot]; exact treeOK_of_agree N _ c.i root hT hagree
+  · intro i h1 h2; rw [hroot]; exact tReach_of_agree_fwd N _ c.i root hagree _ (hS4 i h1 h2)
+  · intro z hz
+    refine ⟨hShigh z hz, by rw [hSt]; exact (hfree z (by omega)).2, hbaseF z (by omega)⟩
+  · intro u c' z hl
+    obtain ⟨un, hun, hc⟩ := hl
+    rcases Nat.lt_or_ge u nx with hu | hu
+    · rw [hSlow u hu] at hun
+      have := hlinksAll u c' z ⟨un, hun, hc⟩; omega
+    · unfold wNode at hun
+      split at hun
+      · cases hun
+      · cases hlk : S.nodes.lookup u with
+        | none =>
+          rw [hlk] at hun
+          simp only at hun
+          rw [hbaseF u hu] at hun; cases hun
+        | some yn =>
+          rw [hlk] at hun
+          simp only [Option.some.injEq] at hun
+          subst hun
+          have := hSnew u yn hu hlk c' z hc; omega
+
 end SIS.Tree
