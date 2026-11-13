@@ -162,3 +162,5 @@ import SIS.Tree.RangeChain
 import SIS.Tree.RangePut
 import SIS.Tree.RangeRun
 import SIS.Tree.RangeOps
+import SIS.Tree.RangeSteps
+import SIS.Tree.RangeCollapse
