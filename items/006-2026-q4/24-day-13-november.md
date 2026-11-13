@@ -54,8 +54,12 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 | 026-07 | The write buffer grows with use (ST8) | wb (high) | landed: an empty database 0.67 MB of heap, not 11.1 |
 | 026-11 | G4's lag a gate at 2 R | lag (xhigh) | landed 343fff05: 1.28 R on main, 4.40 R without P8 |
 | 026-10 | idByPos after back to empty | idpos (xhigh) | running |
-| 026-08 | The node size 30 for users | ns30 (xhigh) | running |
+| 026-08 | The node size 30 for users | ns30 (xhigh) | landed 000fca5b |
 | 026-09 | Reclaim's keys-only scan | kscan (xhigh) | running |
+| 026-12 | The stable format: a draft plan for Frans | sfplan (xhigh) | running |
+| 026-13 | User apps against today's main | apps (xhigh) | running |
+| 027-04 | A proposed outline for 027 | outline (xhigh) | done 92ab6713: 14 parts, Q1 to Q5 for Frans |
+| night | `night.sh` on today's main | coordinator | planned for tonight |
 | 026-04 | The back-to-empty lag at 10M keys, understood | frac (high) | done 07:44: the phase of reclaim's iteration at the deletes' end (a step scans at its iteration's start), not f; keep 1/4; P8 cures it |
 | 021-29 | Unit tests that wait with no timeout | waits (high) | landed dc69b7a6 |
 | 021-28 | Unit tests with fixed time limits | limits (high) | landed ffa39b4e |
@@ -100,3 +104,8 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 * 10:11 Frans 10:09: "Sure, do them. As suggested." 026-11 (G4's lag as a gate), 026-10, 026-08, 026-09 started at xhigh.
 * 10:18 026-11 landed 343fff05: G4's lag a gate at 2 R.
 * 10:20 Frans 10:13 and 10:18: a todo list apart from the release items; 028-todo created, not tied to a release ("The release item itself will decided the scope of the release."); existing items stay where they are. The rule in items/readme.md, "Todos and release items".
+* 10:26 Frans 10:24: "Yes to 'start 1 and 2 now, and plan 3 for tonight'." and "create a subagent at xhigh for 027". Started 026-12 (the stable format's plan), 026-13 (user apps), 027-04 (an outline for 027); `night.sh` on main tonight.
+* 10:37 Frans 10:26 and 10:36: proofs with Claude too, as recommended, D on Fable at High: provers latest (LatestGetOK, LatestScanOK), cost (TP32, TP33), t4 (T4), tp7 (TP7, independent of Codex). Codex at its limit since 10:01 (resets 12:23).
+* 10:38 026-08 landed 000fca5b (node size 30 for users). 027-04 written (92ab6713).
+* 10:47 to 10:53: every subagent stopped on API errors (403, authentication) after an account change; Frans logged in again at 10:52; all seven resumed.
+* 11:12 Frans 11:09 on 027-04: Q1 to Q4 as recommended (Q2: "Core is really the thing here", the Pub layer a last part); Q5: 027 with Lean the authority, Java comments may repeat or summarize. Stubs 027-05 to 027-18 made (58c87d27).

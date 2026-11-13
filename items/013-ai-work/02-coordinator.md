@@ -316,7 +316,10 @@ with a new coordinator every day.
 account change, every subagent stopped on "API Error: 403 [...]
 authentication_failed", old and new ones, Opus and Fable; the session
 itself kept working, and resuming did not help. Frans logged in again
-(`/login`) at 10:52 and everything resumed. Only he can fix it, so at
+(`/login`) at 10:52 and everything resumed; at 11:15 the errors came
+back, Claude asked him to log in again and again, and he restarted the
+computer (about 11:18), after which new agents worked and the stopped ones
+were restarted from their clones. Only he can fix it, so at
 night a check-in that sees it:
 
 * tests with one small new agent; if that fails too, writes `needs a
