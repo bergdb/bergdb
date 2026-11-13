@@ -545,4 +545,41 @@ theorem writerWP_handleFullWith_segSpaceInPlace_term (d' : Nat) (x q : NodeId) (
             · exact writerWP_throw _ _ _ _
 
 
+/-- The writer's time split in place of the space root x, made by the
+transaction: x holds its last version with ins. -/
+theorem writerWP_handleFullWith_timeInPlace_term0 (up : NodeId → List (Nat × NodeId) → M Unit)
+    (x : NodeId) (n : KNode) (ins : List (Nat × NodeId)) (compact : Bool)
+    (c : Ctx) (w : W) (hlk : w.nodes.lookup x = some n) (hfirst : n.firstTime = some c.i)
+    (hcs : (!compact && decide ((n.lastVersion c.i).size > c.p.splitAbove)) = false) :
+    WriterWP (handleFullWith up 0 x ins (n.lastVersion c.i) compact) c w (fun _ w' =>
+      ∃ l : KNode, l.leaf = n.leaf ∧ klongsWf l.ks = true ∧ (∀ s, Klong.time s ∈ l.ks → s ≤ c.i) ∧
+        (∀ q', l.live.lookup q' = ins.foldl (pairLookupStep q') (n.live.lookup q')) ∧
+        w'.taken = w.taken ∧ w'.top = w.top ∧ w'.vals = w.vals ∧ w'.next = w.next ∧
+        w'.path = w.path ∧ w'.nodes = upsert w.nodes x ⟨n.leaf, l.ks⟩) := by
+  unfold handleFullWith
+  simp only [writerWP_bind, writerWP_read]
+  rw [writerWP_getNode_known x n c w hlk]
+  refine writerWP_ghOf_cached x n c w hlk _ (fun gh => ?_)
+  have hnew : (n.firstTime == some c.i) = true := by simp [hfirst]
+  simp only [hnew, parentAt, writerWP_bind, writerWP_pure, hcs, Bool.false_eq_true, ↓reduceIte,
+    Bool.not_true]
+  cases compact with
+  | true =>
+    simp only [↓reduceIte, note, writerWP_bind, writerWP_modify]
+    refine writerWP_mono (writerWP_replaceOrAdd_last n ins c _) ?_
+    rintro l w3 ⟨hw3, hl_leaf, hl_wf, hl_times, hl_look⟩
+    subst hw3
+    split <;>
+    · simp only [putNode, writerWP_bind, writerWP_modify, writerWP_pure]
+      refine ⟨l, hl_leaf, hl_wf, hl_times, hl_look, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;> first | rfl | trivial
+  | false =>
+    simp only [↓reduceIte, note, writerWP_bind, writerWP_modify, Bool.false_eq_true]
+    refine writerWP_mono (writerWP_replaceOrAdd_last n ins c _) ?_
+    rintro l w3 ⟨hw3, hl_leaf, hl_wf, hl_times, hl_look⟩
+    subst hw3
+    split <;>
+    · simp only [putNode, writerWP_bind, writerWP_modify, writerWP_pure]
+      refine ⟨l, hl_leaf, hl_wf, hl_times, hl_look, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;> first | rfl | trivial
+
+
 end SIS.Tree
