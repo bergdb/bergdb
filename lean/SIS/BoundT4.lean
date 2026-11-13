@@ -65,6 +65,15 @@ def onAccessPath (sp : Spec V T) (al : Algo V T) (ts : List T) (τ : Nat) (x : N
     let c := sp.exec tr τ (view sp db.P (τ - 1))
     marked sp (db.P.apply τ c) c τ x = true ∨ x ∈ c.touch
 
+/-- The change of transaction T(τ) of the run ts, made on P after T(τ - 1), as
+`onAccessPath` takes it; no change for τ = 0 or past the run. -/
+def changeAt (sp : Spec V T) (al : Algo V T) (ts : List T) : Nat → Changes V
+  | 0 => { new := [], adds := [] }
+  | j + 1 =>
+    match ts[j]? with
+    | some tr => sp.exec tr (j + 1) (view sp (run sp al (ts.take j)).P j)
+    | none => { new := [], adds := [] }
+
 /-- T4, the record of a transaction (007-01, section 5.1: "A record holds
 T(i), its value nodes, gd(i) and the versions of the nodes taken, which come
 from D. So R(s) and R(k) cost at most a transaction plus the debt."). The
