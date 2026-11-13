@@ -177,14 +177,11 @@ def GetOK (p : Params) : Prop :=
     get p (viewOf (treeRun p ts)) t key = refGet ts t key
 
 /-- TP11. A scan at time t gives the KVs of the map at t in its range, in key
-order, forward or backward, with the end key (SE), for a run whose keys have at
-most `scanFuel` segments each (bergdb 024-12, TP11, Frans 2026-11-13, option B):
-`keyWf` allows a key of any length, and the reader stops after `scanFuel`
-steps. Java meets the premise by L3, at most 57,344 key bytes a transaction,
-about 8,192 segments (bergdb 024-24). Without the premise the property is false
-(`scan_needs_keyBound`). -/
+order, forward or backward, with the end key (SE). The reader's fuel comes
+from the parameters G and H, with no fixed bound on key length or tree size
+(bergdb 024-12, TP11, Frans 2026-11-13, option C). -/
 def ScanOK (p : Params) : Prop :=
-  ∀ ts, Within p ts → (∀ tx ∈ ts, ∀ op ∈ tx.ops, op.key.length ≤ scanFuel) →
+  ∀ ts, Within p ts →
     ∀ t ≤ ts.length, ∀ (req : ScanReq) (limit : Nat), req.wf = true →
     (scan p (viewOf (treeRun p ts)) t req limit).map (fun kv => (kv.key, kv.h)) =
       refScan ts t req limit
