@@ -298,6 +298,10 @@ import SIS.Tree.DelStepsBook
 import SIS.Tree.HeightsStep
 import SIS.Tree.DelStepsUpWalk
 import SIS.Tree.DelStepsEmpty
+import SIS.Tree.WriterHeightsDelNode
+import SIS.Tree.WriterHeightsDel
+import SIS.Tree.HeightsHolder
+import SIS.Tree.WriterHeightsCollapse
 import SIS.Tree.TakeMergeFull
 import SIS.Tree.TakeMergeTail
 import SIS.Tree.TakeMergeAny
@@ -308,3 +312,4 @@ import SIS.Tree.DelStepsUpK
 import SIS.Tree.DelStepsF3
 import SIS.Tree.DelStepsFullGet
 import SIS.Tree.DelStepsFullRoot
+import SIS.Tree.HeightsRun

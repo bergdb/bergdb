@@ -111,7 +111,7 @@ theorem ht_newSuperRoot (y : NodeId) (c : Ctx) (w : W) (hvo : ViewHtOK H B c) (h
       | (refine ⟨?_, ?_, ?_, ?_, ?_⟩ <;> first | trivial | rfl)
   · rintro _ v ⟨⟨hb', hk'⟩, hn, hg, hp, ht, htop⟩
     have h0 : HtInv H B c { w with top := { w.top with rootKey := y } } :=
-      ⟨hi.cache.congr rfl rfl rfl, hi.path, hi.pathGh, hi.pathFree, hy, hi.takenAbove, hi.pathSome⟩
+      ⟨hi.cache.congr rfl rfl rfl, hi.path, hi.pathGh, hy, hi.takenAbove, hi.pathSome⟩
     exact ⟨hb', h0.frame v hn hg hp ht htop, hk', hp, ht⟩
 
 /-- A read of key node x. -/
@@ -220,7 +220,7 @@ theorem ht_pathClear (c : Ctx) (w : W) (hvo : ViewHtOK H B c) (hb : Book B c w)
 theorem ht_findRoot (c : Ctx) (w : W) (hvo : ViewHtOK H B c) (hb : Book B c w)
     (hi : HtInv H B c w) (hp0 : w.path = []) :
     WriterWP findRoot c w (fun r v => Book B c v ∧ HtInv H B c v ∧ Kept w v ∧
-      v.path = [(none, r)] ∧ v.taken = w.taken) := by
+      v.path = [(none, r)] ∧ v.taken = w.taken ∧ PathFreeTo v 1) := by
   refine writerWP_mono (writerWP_and (book_findRoot B c w hvo.ids hb)
     (?_ : WriterWP findRoot c w (fun r v => v.nodes = w.nodes ∧ v.gh = w.gh ∧
       v.path = [(none, r)] ∧ v.taken = w.taken ∧ v.top.rootKey = w.top.rootKey ∧
@@ -229,44 +229,39 @@ theorem ht_findRoot (c : Ctx) (w : W) (hvo : ViewHtOK H B c) (hb : Book B c w)
     simp [hp0]
   · rintro r v ⟨⟨hb', hk'⟩, hn, hg, hp, ht, htop, hr⟩
     have h0 : HtInv H B c { w with path := [(none, r)] } := by
-      refine ⟨hi.cache.congr rfl rfl rfl, ?_, ?_, ?_, hi.rootFree, hi.takenAbove, ?_⟩
+      refine ⟨hi.cache.congr rfl rfl rfl, ?_, ?_, hi.rootFree, hi.takenAbove, ?_⟩
       · intro d a q cv y h1 h2
         have := (List.getElem?_eq_some_iff.mp h2).1
         simp at this
       · intro d a q h1 h2
         simp at h2
       · intro d a q h1
-        have hd := (List.getElem?_eq_some_iff.mp h1).1
-        simp only [List.length_singleton] at hd
-        have : d = 0 := by omega
-        subst this
-        simp only [List.getElem?_cons_zero, Option.some.injEq, Prod.mk.injEq] at h1
-        rw [← h1.2, hr]
-        exact hi.rootFree
-      · intro d a q h1
         have := (List.getElem?_eq_some_iff.mp h1).1
         simp at this
-    exact ⟨hb', h0.frame v hn hg hp ht htop, hk', hp, ht⟩
+    refine ⟨hb', h0.frame v hn hg hp ht htop, hk', hp, ht, ?_⟩
+    intro d a q hd h1
+    have : d = 0 := by omega
+    subst this
+    rw [hp] at h1
+    simp only [List.getElem?_cons_zero, Option.some.injEq, Prod.mk.injEq] at h1
+    rw [← h1.2, hr, ht]
+    exact hi.rootFree
 
 /-- A node added to the key access path after its last node q, by a live klong
 of q, with q's overlay node n. -/
 theorem ht_pathAdd (cv : Nat) (y : NodeId) (c : Ctx) (w : W) (hvo : ViewHtOK H B c)
     (hb : Book B c w) (hi : HtInv H B c w) (a : Option Nat) (q : NodeId) (n : KNode)
     (hlast : w.path.getLast? = some (a, q)) (hq : w.nodes.lookup q = some n) (c0 : Nat)
-    (hlive : (c0, y) ∈ n.live) :
+    (hlive : (c0, y) ∈ n.live) (hqf : w.taken.contains q = false) :
     WriterWP (pathAdd (some cv) y) c w (fun _ v => Book B c v ∧ HtInv H B c v ∧ Kept w v ∧
-      v.path = w.path ++ [(some cv, y)] ∧ v.taken = w.taken) := by
-  have hqf : w.taken.contains q = false := by
-    have hL : w.path ≠ [] := by intro h; rw [h] at hlast; simp at hlast
-    rw [List.getLast?_eq_getElem?] at hlast
-    exact hi.pathFree _ a q hlast
+      v.path = w.path ++ [(some cv, y)] ∧ v.taken = w.taken ∧ w.taken.contains y = false) := by
   obtain ⟨g0, h0, hm0⟩ := kd_tag_of_lookup hb hq
   have hN := hi.cache q n g0 h0 (bk_mem_of_lookup _ _ _ hq) hm0 hqf
   refine writerWP_mono (writerWP_and (book_pathAdd B (some cv) y c w hvo.ids hb)
     (?_ : WriterWP (pathAdd (some cv) y) c w (fun _ v => HtInv H B c v ∧
       v.path = w.path ++ [(some cv, y)] ∧ v.taken = w.taken))) ?_
   · simp only [pathAdd, writerWP_modify]
-    refine ⟨HtInv.add hi cv y (hN.1 c0 y hlive).1 ?_ _ rfl rfl rfl rfl rfl, by trivial, by trivial⟩
+    refine ⟨HtInv.add hi cv y ?_ _ rfl rfl rfl rfl rfl, by trivial, by trivial⟩
     intro a' q' hl'
     rw [hlast] at hl'
     simp only [Option.some.injEq, Prod.mk.injEq] at hl'
@@ -275,7 +270,25 @@ theorem ht_pathAdd (cv : Nat) (y : NodeId) (c : Ctx) (w : W) (hvo : ViewHtOK H B
     obtain ⟨rfl, rfl⟩ := kd_tag_eq hb hm0 hg
     exact (hN.1 c0 y hlive).2 hh
   · rintro _ v ⟨⟨hb', hk'⟩, hi', hp, ht⟩
-    exact ⟨hb', hi', hk', hp, ht⟩
+    exact ⟨hb', hi', hk', hp, ht, (hN.1 c0 y hlive).1⟩
+
+/-- The path free up to its last node, with one more node not taken back. -/
+theorem PathFreeTo.append {w v : W} (h : PathFreeTo w w.path.length) (e : Option Nat × NodeId)
+    (hp : v.path = w.path ++ [e]) (ht : v.taken = w.taken) (he : w.taken.contains e.2 = false) :
+    PathFreeTo v v.path.length := by
+  intro d a q hd hq
+  rw [hp] at hq hd
+  rw [ht]
+  simp only [List.length_append, List.length_singleton] at hd
+  by_cases hlt : d < w.path.length
+  · rw [List.getElem?_append_left hlt] at hq
+    exact h d a q hlt hq
+  · have : d = w.path.length := by omega
+    subst this
+    rw [List.getElem?_append_right (by omega), Nat.sub_self] at hq
+    simp only [List.getElem?_cons_zero, Option.some.injEq] at hq
+    subst hq
+    exact he
 
 end Steps
 
