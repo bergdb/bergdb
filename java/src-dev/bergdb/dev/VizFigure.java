@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import bergdb.core.Db;
+import bergdb.core.TestNodeSize;
 import bergdb.core.Trans;
 import bergdb.dag.Dag;
 import bergdb.dag.Node;
@@ -174,7 +175,7 @@ public class VizFigure {
     }
     
     public static void main1() throws Exception {
-        Db db = Db.builder().testSetup().maxNodeSize8().start();
+        Db db = TestNodeSize.builder(8).testSetup().start();
         int index = 0;
         
         for (int i = 0; i < 1; i++) {

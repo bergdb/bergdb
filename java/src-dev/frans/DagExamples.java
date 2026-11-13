@@ -2,6 +2,7 @@ package frans;
 
 import bergdb.core.Db;
 import bergdb.core.TestClock;
+import bergdb.core.TestNodeSize;
 import bergdb.stream.MemoryStream;
 
 /**
@@ -22,27 +23,27 @@ public class DagExamples {
     
     private void primordial() {
         TestClock clock = new TestClock();
-        Db db = Db.builder().clock(clock).maxNodeSize8().mainStream(new MemoryStream()).start();
+        Db db = TestNodeSize.builder(8).clock(clock).mainStream(new MemoryStream()).start();
         db.printDag(System.out);
     }
     
     private void one() {
         TestClock clock = new TestClock();
-        Db db = Db.builder().clock(clock).maxNodeSize8().mainStream(new MemoryStream()).start();
+        Db db = TestNodeSize.builder(8).clock(clock).mainStream(new MemoryStream()).start();
         db.execute(db.trans().put("key", "value").build());
         db.printDag(System.out);
     }
     
     private void twoInOne() {
         TestClock clock = new TestClock();
-        Db db = Db.builder().clock(clock).maxNodeSize8().mainStream(new MemoryStream()).start();
+        Db db = TestNodeSize.builder(8).clock(clock).mainStream(new MemoryStream()).start();
         db.execute(db.trans().put("k1", "value1").put("k2", "value2").build());
         db.printDag(System.out);
     }
     
     private void twoInTwo() {
         TestClock clock = new TestClock();
-        Db db = Db.builder().clock(clock).maxNodeSize8().mainStream(new MemoryStream()).start();
+        Db db = TestNodeSize.builder(8).clock(clock).mainStream(new MemoryStream()).start();
         db.execute(db.trans().put("k1", "value1"));
         db.execute(db.trans().put("k2", "value2"));
         db.printDag(System.out);
@@ -50,7 +51,7 @@ public class DagExamples {
     
     private void twoTopNodes() {
         TestClock clock = new TestClock();
-        Db db = Db.builder().clock(clock).maxNodeSize8().mainStream(new MemoryStream()).start();
+        Db db = TestNodeSize.builder(8).clock(clock).mainStream(new MemoryStream()).start();
         for (int i = 0; i < 4; i++) {
             db.execute(db.trans().put("key", "value" + (i+2)).build());
         }
@@ -63,7 +64,7 @@ public class DagExamples {
     private void notATree() {
         // Causes one space split of type 2 (space-split-2).
         TestClock clock = new TestClock();
-        Db db = Db.builder().clock(clock).maxNodeSize8().mainStream(new MemoryStream()).start();
+        Db db = TestNodeSize.builder(8).clock(clock).mainStream(new MemoryStream()).start();
         for (int i = 0; i < 5; i++) {
             String index = "" + (i + 2);
             db.execute(db.trans().put("prefix-k" + index, "value" + index).build());
