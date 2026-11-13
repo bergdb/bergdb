@@ -89,6 +89,11 @@ Files
 * 04-reclaim-fraction-settings.md. 026-04, reclaim's fraction: measured
   at larger databases, three recommended values and one default
   (Frans, 2026-11-12, 14:07; 2026.5 keeps 1/4).
+* 06-value-transformation-refusal.md. 026-06, a value transformation
+  that throws or passes 8 MiB refuses its transaction, before the go
+  point (`Db.transformValues`), and the database goes on (010-04, R5);
+  also a key transformation that throws (Q2); on the branch
+  `026-06-value-transformation`, gated; Q1 to Q4 for Frans.
 
 
 Log
