@@ -146,6 +146,7 @@ set_option linter.unusedSimpArgs false in
 by one whose live klongs are x's but cv's; nothing else changes. -/
 theorem writerWP_appendDeleteKlong_room_frame (x : NodeId) (depth cv : Nat) (n : KNode) (c : Ctx)
     (w : W) (hlk : w.nodes.lookup x = some n) (hnt : ∀ s, Klong.time s ∈ n.ks → s ≤ c.i)
+    (hw : klongsWf n.ks = true)
     (hne : bitsUnion n.lastBitmap (n.bitsOf cv) ≠ n.lastBitmap)
     (hroom : n.size + 1 < c.p.M)
     (hdead1 : deadOver c.p (n.setAt (n.size - 1)
@@ -154,7 +155,7 @@ theorem writerWP_appendDeleteKlong_room_frame (x : NodeId) (depth cv : Nat) (n :
     WriterWP (appendDeleteKlong x depth cv) c w (fun _ w' =>
       w'.taken = w.taken ∧ w'.top = w.top ∧ w'.vals = w.vals ∧ w'.path = w.path ∧
       w'.next = w.next ∧ w'.madeFor = w.madeFor ∧
-      ∃ n', w'.nodes = upsert w.nodes x n' ∧ n'.leaf = n.leaf ∧
+      ∃ n', w'.nodes = upsert w.nodes x n' ∧ n'.leaf = n.leaf ∧ klongsWf n'.ks = true ∧
         (∀ s, Klong.time s ∈ n'.ks → s ≤ c.i) ∧
         ∀ c', n'.live.lookup c' = if c' == cv then none else n.live.lookup c') := by
   have hroom' : decide (n.size + 1 < c.p.M) = true := by simpa using hroom
@@ -169,7 +170,7 @@ theorem writerWP_appendDeleteKlong_room_frame (x : NodeId) (depth cv : Nat) (n :
     | none =>
       simp only [hno, hroom', hdead2, Bool.not_false, Bool.false_and, Bool.false_eq_true,
         ↓reduceIte, note, putNode, writerWP_bind, writerWP_modify, writerWP_pure, hgl]
-      exact ⟨trivial, trivial, trivial, trivial, trivial, trivial, _, rfl, KNode.add_leaf _ _ _,
+      exact ⟨trivial, trivial, trivial, trivial, trivial, trivial, _, rfl, KNode.add_leaf _ _ _, KNode.add_delete_wf n c.i cv hw hne,
         KNode.add_times n c.i _ (fun s h => by cases h) hnt, fun c' => n.add_delete_live_lookup c.i cv c'⟩
     | some k =>
       cases k with
@@ -178,19 +179,19 @@ theorem writerWP_appendDeleteKlong_room_frame (x : NodeId) (depth cv : Nat) (n :
         · simp only [hno, hroom', hdead2, hgl, hlt, Bool.not_false, Bool.true_and, Bool.and_false,
             Bool.false_eq_true, ↓reduceIte, note, putNode, writerWP_bind, writerWP_modify,
             writerWP_pure]
-          exact ⟨trivial, trivial, trivial, trivial, trivial, trivial, _, rfl, KNode.add_leaf _ _ _,
+          exact ⟨trivial, trivial, trivial, trivial, trivial, trivial, _, rfl, KNode.add_leaf _ _ _, KNode.add_delete_wf n c.i cv hw hne,
             KNode.add_times n c.i _ (fun s h => by cases h) hnt,
             fun c' => n.add_delete_live_lookup c.i cv c'⟩
         · simp only [hno, hdead1, hgl, hlt, Bool.not_false, Bool.true_and, Bool.and_true,
             Bool.false_eq_true, ↓reduceIte, note, putNode, writerWP_bind, writerWP_modify,
             writerWP_pure]
-          exact ⟨trivial, trivial, trivial, trivial, trivial, trivial, _, rfl, KNode.setAt_leaf _ _ _,
+          exact ⟨trivial, trivial, trivial, trivial, trivial, trivial, _, rfl, KNode.setAt_leaf _ _ _, KNode.setAt_delete_wf n cv old hw hgl,
             KNode.setAt_last_del_times n c.i old _ hgl hnt,
             fun c' => n.setAt_delete_live_lookup cv c' old hgl⟩
       | _ =>
         simp only [hno, hroom', hdead2, hgl, Bool.not_false, Bool.false_and, Bool.false_eq_true,
           ↓reduceIte, note, putNode, writerWP_bind, writerWP_modify, writerWP_pure]
-        exact ⟨trivial, trivial, trivial, trivial, trivial, trivial, _, rfl, KNode.add_leaf _ _ _,
+        exact ⟨trivial, trivial, trivial, trivial, trivial, trivial, _, rfl, KNode.add_leaf _ _ _, KNode.add_delete_wf n c.i cv hw hne,
           KNode.add_times n c.i _ (fun s h => by cases h) hnt,
           fun c' => n.add_delete_live_lookup c.i cv c'⟩
 
@@ -309,7 +310,15 @@ theorem writerWP_deleteUpward_inner_get (c : Ctx) (base : View BVal) (X : Nat �
         false ∧
       ∀ k, s < k → k ≤ depth → (Nn k).firstTime ≠ some c.i)
     (hmerges : c.p.merges = false)
-    (hcoll : ∀ (seg : Nat) (w' : W), (∀ key', keyWf key' = true →
+    (hcoll : ∀ (seg stop : Nat) (w' : W) (sn' : KNode), stop < depth →
+      (∀ i, stop < i → i < depth →
+        (Nn i).allKeysIn (bitsUnion (Nn i).lastBitmap ((Nn i).bitsOf (K (i + 1)))) = true) →
+      w'.taken = w.taken → w'.top = w.top → w'.vals = w.vals →
+      (∀ y, y ≠ X stop → (∀ k, stop < k → k ≤ depth → y ≠ X k) → w'.nodes.lookup y = w.nodes.lookup y) →
+      w'.nodes.lookup (X stop) = some sn' → sn'.leaf = (Nn stop).leaf → klongsWf sn'.ks = true →
+      (∀ s, Klong.time s ∈ sn'.ks → s ≤ c.i) →
+      (∀ c' z, (c', z) ∈ sn'.liveAt c.i ↔ (c', z) ∈ (Nn stop).liveAt c.i ∧ c' ≠ K (stop + 1)) →
+      (∀ key', keyWf key' = true →
         wGet c.p c.i base w' key' = if pre ++ [cv] == key' then none else wGet c.p c.i base w key') →
       WriterWP (collapseRoot (pre ++ [cv]) seg c.p.fuel) c w' (fun _ w'' => Q w'')) :
     WriterWP (deleteUpward (X depth) depth cv (pre ++ [cv])) c w (fun _ w' => Q w') := by
@@ -407,10 +416,23 @@ theorem writerWP_deleteUpward_inner_get (c : Ctx) (base : View BVal) (X : Nat �
     apply KNode.delete_bitmap_changes_of_live
     rw [KNode.liveAt_of_times _ c.i hst_t] at hsx
     exact List.mem_map.mpr ⟨_, hsx, rfl⟩
+  have hswf : klongsWf (Nn stop).ks = true := by
+    have := hwf (X stop) (Nn stop) (hreach stop (by omega))
+      (by simp only [wNode, htk stop (by omega), Bool.false_eq_true, ↓reduceIte, hlk stop (by omega)])
+    exact this
   refine writerWP_mono (writerWP_appendDeleteKlong_room_frame (X stop) stop (K (stop + 1)) (Nn stop)
-    c w2 hls2 hst_t hneS hroom hd1 hd2) ?_
-  rintro _ w3 ⟨h3t, h3top, h3v, _, _, _, n', h3n, hn'l, hn't, hn'lk⟩
-  refine writerWP_mono (hcoll seg w3 ?_) ?_
+    c w2 hls2 hst_t hswf hneS hroom hd1 hd2) ?_
+  rintro _ w3 ⟨h3t, h3top, h3v, _, _, _, n', h3n, hn'l, hn'w, hn't, hn'lk⟩
+  have h3tw : w3.taken = w.taken := by rw [h3t, h2t, h0t]
+  refine writerWP_mono (hcoll seg stop w3 n' hsD hbetween h3tw (by rw [h3top, h2top, h0top])
+    (by rw [h3v, h2v, h0v])
+    (by
+      intro y hys hnc
+      rw [h3n, lookup_upsert]
+      simp only [hys, ↓reduceIte]
+      rw [h2n y hnc, h0n])
+    (by rw [h3n, lookup_upsert]; simp) hn'l hn'w hn't
+    (liveAt_iff_of_delete_lookup (Nn stop) n' c.i (K (stop + 1)) hst_t hn't hn'lk) ?_) ?_
   · intro key' hkw
     have hV3 : wValue base w3 = wValue base w :=
       wValue_congr' base w3 w (by rw [h3t, h2t, h0t]) (by rw [h3v, h2v, h0v])
@@ -433,7 +455,6 @@ theorem writerWP_deleteUpward_inner_get (c : Ctx) (base : View BVal) (X : Nat �
       have hm' : (c', z) ∈ (Nn depth).live := by
         rw [← KNode.liveAt_of_times _ c.i (htimes depth (Nat.le_refl _))]; exact hm
       exact allKeysIn_live_cv (Nn depth) cv hall c' z hm'
-    have h3tw : w3.taken = w.taken := by rw [h3t, h2t, h0t]
     unfold wGet
     rw [hV3, h3top, h2top, h0top]
     exact getFromR_up_inner (wNode c.p base w) (wNode c.p base w3) (wValue base w) c.i c.p.fuel hfuel
