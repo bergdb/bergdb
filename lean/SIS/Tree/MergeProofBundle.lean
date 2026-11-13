@@ -218,3 +218,4 @@ import SIS.Tree.RangeCollapseSeg
 import SIS.Tree.TakeInvTree
 import SIS.Tree.TakeInvCollapse
 import SIS.Tree.TakeBackRunT
+import SIS.Tree.TakeInvUp
