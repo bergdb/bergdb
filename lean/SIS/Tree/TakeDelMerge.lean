@@ -5,7 +5,7 @@ at the reading fuel f = p.fuel + 1 inside the delete (DelMergeCaseF.lean,
 option (a)): the delete's inner invariant with the take-back's (B), (C) and
 node facts (`DelInvJF`: `DelInvF`, `TakeJ2`, B at or below the next id) is kept
 by the merges' loop and the root collapse, given cost's step obligations
-(`MergeStepOKF`, `DescentOKF`, `CollapseStepOKF`) and
+(`MergeStepOKF`, `CollapseStepOKF`; the descent is `descentOKF2`, the F2 route) and
 
 * `MergeFullJ2OKF`: a merge of the loop below a parent without room for the
   merge's klongs in place keeps `TakeJ2` (below a parent with room it is
@@ -19,6 +19,7 @@ ranges and `TakeJ2` together, the steps by cost's `CollapseStepOKF` and the
 take-back's collapse steps (TakeDeadCollapse.lean, here for `CollGetInvF`).
 -/
 import SIS.Tree.DelMergeCaseF
+import SIS.Tree.DelMergeCaseF2
 import SIS.Tree.TakeNextGrows
 import SIS.Tree.TakeDeadNewSegFull
 
@@ -34,21 +35,20 @@ def DelInvJF (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (f : Nat) (B : No
   DelInvF c base w0 key f v ∧ TakeJ2 c base B v ∧ B ≤ v.next
 
 /-- Obligation: a merge of the loop, from a state inside a delete with the path
-down to the merged node and the merge's conditions on it (cost's `PathOK`,
-`MergePathCond`), keeps `TakeJ2`. -/
+down to the merged node (`PathOK`), keeps `TakeJ2`. -/
 def MergeStepJ2OKF (c : Ctx) (base : View BVal) (f : Nat) (B : NodeId) : Prop :=
   ∀ (w0 : W) (key : Key) (x q : NodeId) (d : Nat) (v : W) (qn xn : KNode) (X : Nat → NodeId)
     (K : Nat → Nat) (Nn : Nat → KNode),
     DelInvJF c base w0 key f B v → 0 < d → (v.path[d]?).map (·.2) = some x →
     (v.path[d - 1]?).map (·.2) = some q → v.nodes.lookup q = some qn → qn.leaf = false →
     v.nodes.lookup x = some xn → xn.cnt < c.p.mergeBelow →
-    PathOK c v d X K Nn → MergePathCond c X K Nn d → X d = x →
+    PathOK c v d X K Nn → X d = x →
     WriterWP (merge x d) c v (fun _ v' => TakeJ2 c base B v')
 
 /-- The merges' loop keeps `DelInvJF`, given the obligations at f. -/
 theorem writerWP_mergeUp_delJF (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
     (hvc : ViewCoherent c base) (fuelR : Nat) (hfR : 2 ≤ fuelR) (hM : MergeStepOKF c base fuelR)
-    (hD : DescentOKF c base fuelR) (B : NodeId) (hMJ : MergeStepJ2OKF c base fuelR B)
+    (B : NodeId) (hMJ : MergeStepJ2OKF c base fuelR B)
     (hsa2 : 2 ≤ c.p.splitAbove) (hcap : 1 ≤ c.p.mergeMax) (w0 : W) (k0 : Key) :
     ∀ fuel h merged v, DelInvJF c base w0 k0 fuelR B v →
       WriterWP (mergeUp key g fuel h merged) c v (fun _ v' => DelInvJF c base w0 k0 fuelR B v') := by
@@ -60,7 +60,7 @@ theorem writerWP_mergeUp_delJF (key : Key) (g : Nat) (c : Ctx) (base : View BVal
     unfold mergeUp
     simp only [writerWP_bind, writerWP_read]
     obtain ⟨hI0, hJ0, hB0⟩ := hI
-    refine writerWP_mono (writerWP_and (hD w0 k0 key g h v hI0)
+    refine writerWP_mono (writerWP_and (descentOKF2 c base fuelR w0 k0 key g h v hI0)
       (writerWP_descendToHeight_readsU key g h c base hvc v)) ?_
     intro d v1 ⟨⟨hI1, hPF⟩, hr1⟩
     have hJ1 : TakeJ2 c base B v1 := takeJ2_of_readsAs c base B v v1 hJ0 hr1
@@ -72,7 +72,7 @@ theorem writerWP_mergeUp_delJF (key : Key) (g : Nat) (c : Ctx) (base : View BVal
         cases d with
         | zero => simp at hd0
         | succ _ => omega
-      obtain ⟨X, K, Nn, hP1, hcond⟩ := hPF hd
+      obtain ⟨X, K, Nn, hP1⟩ := hPF
       unfold pathNode
       simp only [writerWP_bind, writerWP_get]
       cases hex : v1.path[d]? with
@@ -127,14 +127,13 @@ theorem writerWP_mergeUp_delJF (key : Key) (g : Nat) (c : Ctx) (base : View BVal
                 exact (Option.some.inj h1).symm
               have hmj := hMJ w0 k0 ex.2 eq.2 d v3 qn xn X K Nn ⟨hI3, hJ3, hBn3⟩ hd
                 (by rw [hp3, hp2, hex]; rfl) (by rw [hp3, hp2, heq]; rfl) (hkeep3 _ _ hl2) hql' hl3 hcnt'
-                hP3 hcond hxX
-              obtain ⟨hc1, hc2, hc3⟩ := hcond
-              have hmg := writerWP_merge_get_invF fuelR hfR ex.2 d c base hvc v3 hI3.1 hI3.2.1 hI3.2.2.1 X K Nn hP3 hd
-                hxX (by rw [hqn]; exact hql') hsa2 hcap hc1 hc2 hc3
+                hP3 hxX
+              have hmg := writerWP_merge_get_invF2 fuelR hfR ex.2 d c base hvc v3 hI3.1 hI3.2.1 hI3.2.2.1 X K Nn hP3 hd
+                hxX (by rw [hqn]; exact hql') hsa2 hcap
               have hms := hM w0 k0 ex.2 eq.2 d v3 qn xn hI3 hd (by rw [hp3, hp2, hex]; rfl)
                 (by rw [hp3, hp2, heq]; rfl) (hkeep3 _ _ hl2) hql' hl3 hcnt'
-              have htr := writerWP_merge_tree_inv ex.2 d c base hvc v3 hI3.1 hI3.2.1 hI3.2.2.1 X K Nn hP3 hd
-                hxX (by rw [hqn]; exact hql') hsa2 hcap hc3
+              have htr := writerWP_merge_tree_inv2 ex.2 d c base hvc v3 hI3.1 hI3.2.1 hI3.2.2.1 X K Nn hP3 hd
+                hxX (by rw [hqn]; exact hql') hsa2 hcap
               refine writerWP_mono (writerWP_and (writerWP_and (writerWP_and (writerWP_and (writerWP_and hmg hms)
                 (putBook_merge ex.2 d c base B1 t1 hB1 v3 hb3)) htr) hmj) (writerWP_merge_next ex.2 d c v3)) ?_
               rintro r v4 ⟨⟨⟨⟨⟨hread4, ⟨hu4, hR4, hICE4⟩, hF4⟩, hb4⟩, hT4⟩, hJ4⟩, hn4⟩
@@ -145,8 +144,6 @@ theorem writerWP_mergeUp_delJF (key : Key) (g : Nat) (c : Ctx) (base : View BVal
               split
               · simp only [writerWP_pure]; exact hI4
               · exact ih (h + 1) true v4 hI4
-
-
 
 /-! ## The collapse -/
 
@@ -480,13 +477,13 @@ theorem writerWP_collapseRoot_delJF (key : Key) (seg : Nat) (c : Ctx) (base : Vi
 /-- `afterDelete` keeps `DelInvJF`, given the obligations at f. -/
 theorem writerWP_afterDelete_delJF (key : Key) (g h : Nat) (c : Ctx) (base : View BVal)
     (hvc : ViewCoherent c base) (f : Nat) (hf2 : 2 ≤ f) (hM : MergeStepOKF c base f)
-    (hD : DescentOKF c base f) (hC : CollapseStepOKF c base f) (B : NodeId)
+    (hC : CollapseStepOKF c base f) (B : NodeId)
     (hMJ : MergeStepJ2OKF c base f B) (hpos : 0 < c.i)
     (hsa2 : 2 ≤ c.p.splitAbove) (hcap : 1 ≤ c.p.mergeMax)
     (w0 : W) (k0 : Key) (v : W) (hI : DelInvJF c base w0 k0 f B v) :
     WriterWP (afterDelete key g h) c v (fun _ v' => DelInvJF c base w0 k0 f B v') :=
   writerWP_afterDelete_inv key g h c (DelInvJF c base w0 k0 f B)
-    (fun v hI => writerWP_mergeUp_delJF key g c base hvc f hf2 hM hD B hMJ hsa2 hcap w0 k0 c.p.fuel h false
+    (fun v hI => writerWP_mergeUp_delJF key g c base hvc f hf2 hM B hMJ hsa2 hcap w0 k0 c.p.fuel h false
       v hI)
     (fun v hI => writerWP_collapseRoot_delJF key g c base hvc f hf2 hC w0 k0 B hpos v hI) v hI
 
@@ -501,7 +498,7 @@ def MergeFullJ2OKF (c : Ctx) (base : View BVal) (f : Nat) (B : NodeId) : Prop :=
     DelInvJF c base w0 key f B v → 0 < d → (v.path[d]?).map (·.2) = some x →
     (v.path[d - 1]?).map (·.2) = some q → v.nodes.lookup q = some qn → qn.leaf = false →
     v.nodes.lookup x = some xn → xn.cnt < c.p.mergeBelow →
-    PathOK c v d X K Nn → MergePathCond c X K Nn d → X d = x →
+    PathOK c v d X K Nn → X d = x →
     ¬ (qn.size + 4 ≤ c.p.M ∧
       ∀ il cL m1 ir cR m2, deadOver c.p (mergeParentNode qn c.i il cL m1 ir cR m2) = false) →
     WriterWP (merge x d) c v (fun _ v' => TakeJ2 c base B v')
@@ -511,7 +508,7 @@ else by the obligation. -/
 theorem mergeStepJ2OKF_of_full (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base) (f : Nat)
     (B : NodeId) (hpos : 0 < c.i) (hcap : 1 ≤ c.p.mergeMax) (hF : MergeFullJ2OKF c base f B) :
     MergeStepJ2OKF c base f B := by
-  intro w0 key x q d v qn xn X K Nn hI hd hx hq hqn hql hxn hcnt hP hcond hXd
+  intro w0 key x q d v qn xn X K Nn hI hd hx hq hqn hql hxn hcnt hP hXd
   by_cases hroom : qn.size + 4 ≤ c.p.M ∧
       ∀ il cL m1 ir cR m2, deadOver c.p (mergeParentNode qn c.i il cL m1 ir cR m2) = false
   · obtain ⟨⟨hPI, hG, hR, _, _, _, _⟩, hJ, hBn⟩ := hI
@@ -541,7 +538,7 @@ theorem mergeStepJ2OKF_of_full (c : Ctx) (base : View BVal) (hvc : ViewCoherent 
     · intro y hy
       obtain ⟨q', hq', rfl⟩ := List.mem_map.mp hy
       exact hPI.ids.2.2.2.1 q' hq'
-  · exact hF w0 key x q d v qn xn X K Nn hI hd hx hq hqn hql hxn hcnt hP hcond hXd hroom
+  · exact hF w0 key x q d v qn xn X K Nn hI hd hx hq hqn hql hxn hcnt hP hXd hroom
 
 /-! ## The case -/
 
@@ -577,7 +574,6 @@ descent and collapse steps, and a merge below a parent without room keeping
 theorem opJ2Case_delMergeF (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop)
     (hS : DelStepsJ2OKF p R S)
     (hM : ∀ ts, MergeStepOKF (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hD : ∀ ts, DescentOKF (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
     (hC : ∀ ts, CollapseStepOKF (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
     (hMF : ∀ ts B, MergeFullJ2OKF (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1) B)
     (hsa2 : 2 ≤ p.splitAbove) (hcap : 1 ≤ p.mergeMax) :
@@ -590,9 +586,9 @@ theorem opJ2Case_delMergeF (p : Params) (R : Struct BVal → Time → Prop) (S :
     hcap (hMF ts tx.base)
   refine writerWP_mono (hS ts tx hw hr z top hz htop pre op post hops r w hpre hSw hJ key hop hmerges
     (fun g h v hv => writerWP_afterDelete_delJF key g h (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
-      (p.fuel + 1) hf2 (hM ts) (hD ts) (hC ts) tx.base hMJ hpos hsa2 hcap w key v hv)
+      (p.fuel + 1) hf2 (hM ts) (hC ts) tx.base hMJ hpos hsa2 hcap w key v hv)
     (fun g h merged v hv => writerWP_mergeUp_delJF key g (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
-      (p.fuel + 1) hf2 (hM ts) (hD ts) tx.base hMJ hsa2 hcap w key p.fuel h merged v hv)
+      (p.fuel + 1) hf2 (hM ts) tx.base hMJ hsa2 hcap w key p.fuel h merged v hv)
     (fun seg v hv => writerWP_collapseRoot_delJF key seg (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
       (p.fuel + 1) hf2 (hC ts) w key tx.base hpos v hv)) ?_
   intro _ w' h' _
@@ -600,8 +596,8 @@ theorem opJ2Case_delMergeF (p : Params) (R : Struct BVal → Time → Prop) (S :
 
 /-- TP7's take-back statement with the merges on, for 2 ≤ splitAbove and
 1 ≤ mergeMax, from the named obligations of case (4) at f = p.fuel + 1: cost's
-`MergeStepOKF`, `DescentOKF` and `CollapseStepOKF`, and `MergeFullJ2OKF` and
-`DelStepsJ2OKF`. -/
+`MergeStepOKF` and `CollapseStepOKF` (the descent is `descentOKF2`), and
+`MergeFullJ2OKF` and `DelStepsJ2OKF`. -/
 theorem takeBackOK_of_mergesF (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.splitAbove)
     (hcap : 1 ≤ p.mergeMax) (hm : p.merges = true)
     (Q : Struct BVal → Time → Prop) (hQ0 : Q (initStruct p) 0)
@@ -617,11 +613,10 @@ theorem takeBackOK_of_mergesF (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.split
     (hB : BaseStartOK p (RunTreeQ p Q))
     (hDS : DelStepsJ2OKF p (RunTreeQ p Q) (TakeS3 p))
     (hMS : ∀ ts, MergeStepOKF (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hDe : ∀ ts, DescentOKF (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
     (hCo : ∀ ts, CollapseStepOKF (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
     (hMF : ∀ ts B, MergeFullJ2OKF (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1) B) :
     TakeBackOKUnder p (RunLinksOK p) :=
   takeBackOK_of_cases_merges4 p hM hsa hm Q hQ0 hQs hQP hQK ho hPI hRO hB
-    (opJ2Case_delMergeF p _ _ hDS hMS hDe hCo hMF hsa hcap)
+    (opJ2Case_delMergeF p _ _ hDS hMS hCo hMF hsa hcap)
 
 end SIS.Tree
