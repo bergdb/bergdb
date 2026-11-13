@@ -117,10 +117,12 @@ The prose says "about the last two sections". The proof gives lev(x) + 1:
 a node taken and still dirty in T(j) is dirty through a child whose latest
 version is not good, and that child may itself have been taken and still dirty
 in an earlier transaction of the section, whose own section begins one section
-further back, and so on down the levels (SIS/Proof/BoundT4Debt.lean). Whether
-two sections always suffice, or a run needs more, is open. For the index
-nodes just above the data nodes (level 1, with data nodes on level 0) the
-bound is the prose's last two sections.
+further back, and so on down the levels (SIS/Proof/BoundT4Debt.lean). Two
+sections do not always suffice: SIS/BoundT4Example.lean has a run that meets
+the assumptions (checked by running) in which a node on level 3 of D has its
+last change below it three sections back. For the index nodes just above the
+data nodes (level 1, with data nodes on level 0) the bound is the prose's last
+two sections.
 
 With BergDB's test (`javaTest`, Rule A over all pointers, live or dead) this
 is not stated: a written node stays in D while any pointee is in D, also one

@@ -33,6 +33,9 @@ import SIS.BoundTheorems
 import SIS.BoundExample
 import SIS.BoundT4
 import SIS.BoundT4Theorems
+import SIS.BoundT4Example
+import SIS.BoundCold
+import SIS.BoundColdTheorems
 import SIS.Tree.Val
 import SIS.Tree.Node
 import SIS.Tree.Exec
