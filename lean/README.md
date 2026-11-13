@@ -612,6 +612,9 @@ its section in sis-model.md.
   (`T4_debt_java_tree_height`) and a cold start's reads
   (`coldReads_height`), with H the root's live height after every
   transaction (for BergDB the tree's height plus one).
+* SIS/BoundHeightExample.lean: by running, the runs of
+  SIS/BoundT4JavaExample.lean meet `DropStep`, and their heights are at most 2,
+  so the bounds by height apply to them.
 * SIS/BoundColdDropExample.lean: a change, with one entry, that makes six nodes
   unreachable in a run that meets the assumptions and TREE, but not `DropStep`.
 
