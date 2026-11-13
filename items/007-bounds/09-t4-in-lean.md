@@ -263,6 +263,9 @@ A cold start's reads:
 Recommended: A. 007-01 stays a record of what was thought, and a reader
 of section 6 sees the correction.
 
+Decided: A (Frans, 2026-11-13, 12:49: "As recommended."); the note is
+in 007-01, section 6.
+
 **Q2. The trusted definitions as they are (section 2).** Options:
 
 * A. Accept them as they are.
@@ -298,3 +301,6 @@ first two cold-start ones without `Classical.choice`); no `sorry`,
 `admit`, `native_decide` or `axiom` in the new files; the example's run,
 printed record by record; `decide +kernel` (section 4, point 2). Not
 rebuilt: 024-12's board reports 327 jobs for `8af385a0`.
+
+2026-11-13. Q1 decided: A (Frans, 12:49); the note added to 007-01,
+section 6.

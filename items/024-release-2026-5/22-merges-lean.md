@@ -1065,10 +1065,15 @@ H = 2, G = 0 and 1, theta on and off, about 1,200 transactions). It held
 for each operation too, with the count taken on the writer's own tree
 (its nodes over P@(i - 1), from its super root, at time i: 13,000
 operations at M = 8 and 10), and that count equals the count of P@(i - 1)
-before the first operation and of P@i after the last. So a proof can go
-by operation: the writer's tree is P's at both ends (the export), and
-each operation keeps the step, which needs the writer's tree to be a tree
-between operations: TP7's B-tree proof carried through a transaction.
+before the first operation and of P@i after the last. So a proof goes by
+operation, as TP10's get in `GetWriter.lean` (`MergeNodeCountOps.lean`):
+the count on the writer's first state is P@(i - 1)'s (`initCountOK`,
+proved); on its last state it is P@i's, from the lift of the writer's key
+nodes (`commitCountOK_of_lift`; `CommitLiftOK` is TP10's premise too);
+and each operation keeps the step (`OpCountOK`, open). So TP33 follows
+from `OpCountOK` and `CommitLiftOK` (`mergeAmortized_of_opCount_lift`).
+`OpCountOK` needs the writer's tree to be a tree between operations: TP7's
+B-tree proof carried through a transaction.
 
 TP32: open; the gap is still a premise on the heights the writer reaches
 (`mergeOpBound_of_transientHeight`). TP7 does not give it: TP7 speaks of
