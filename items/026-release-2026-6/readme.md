@@ -73,6 +73,13 @@ there, or implied by this release's theme.
   format"): the startup distance in a KV (024-01, OT4, "with a format
   change") and a place reserved for objects' storage and encryption
   (024-01, PA5, "study only", and PA9, "not in 2026.5").
+* **Commits give a mass delete's space back by the clock, as
+  `maintain()` does** (026-13, U13-4 and Q1, option B; Frans, 2026-11-13,
+  13:07): a commit begins a reclaim iteration also on `maintain()`'s rule
+  (a quarter of R, a cut that releases 400 kB), so that `maintain()` is
+  optional in effect for a slowly written database. A study first: G4 at
+  026-13 C2's settings and at its own, before and after; taken only for a
+  clear gain. The Javadoc of today's behaviour is 028-06.
 
 
 Files

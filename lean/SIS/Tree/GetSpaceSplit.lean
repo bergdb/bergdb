@@ -1,5 +1,5 @@
 import SIS.Tree.GetTree
-import SIS.Tree.SpaceSplitMap
+import SIS.Tree.WriterTreeSpace
 
 set_option autoImplicit false
 
@@ -177,134 +177,11 @@ theorem KNode.splitParent_searchLte (n : KNode) (t : Time) (k1 sc : Nat) (L F S 
 
 /-! ## The writer's space split below an inner parent with room -/
 
-theorem writerWP_appendKlongs_room2 (d : Nat) (q : NodeId) (qn : KNode) (k1 y1 k2 y2 : Nat)
-    (c : Ctx) (w : W) (hlk : w.nodes.lookup q = some qn) (hroom : qn.size + 2 + 1 ≤ c.p.M)
-    (hdead : deadOver c.p ((qn.add c.i (.key k1 y1)).add c.i (.key k2 y2)) = false) :
-    WriterWP (appendKlongs d q [(k1, y1), (k2, y2)]) c w (fun _ w' =>
-      w' = { w with nodes := upsert w.nodes q ((qn.add c.i (.key k1 y1)).add c.i (.key k2 y2)) }) := by
-  rw [appendKlongs_step_dead]
-  simp only [writerWP_bind, writerWP_read]
-  rw [writerWP_getNode_known q qn c w hlk]
-  have h1 : ¬ (qn.size + [(k1, y1), (k2, y2)].length + 1 > c.p.M) := by simp; omega
-  simp only [h1, ↓reduceIte, List.foldl_cons, List.foldl_nil, hdead,
-    Bool.false_eq_true]
-  unfold addKeys
-  simp only [writerWP_bind, writerWP_read]
-  rw [writerWP_getNode_known q qn c w hlk]
-  simp only [putNode, List.foldl_cons, List.foldl_nil, writerWP_modify]
-
 theorem writerWP_klongAt (d k1 : Nat) (L : NodeId) (c : Ctx) (w : W)
     (h : w.path[d]? = some (some k1, L)) (post : Nat → W → Prop) :
     WriterWP (klongAt d) c w post ↔ post k1 w := by
   unfold klongAt
   simp only [writerWP_bind, writerWP_get, h, writerWP_pure]
-
-/-- The state after a space split of a leaf L below an inner parent q with
-room: the halves of L's last version with the put's klong at the next two ids,
-q's klong k1 names the first, a klong at the second's first compare value names
-the second, L keeps only its klongs before the transaction. -/
-def SpaceSplitAfter (c : Ctx) (w w' : W) (L q : NodeId) (n qn : KNode) (k1 cv v : Nat) : Prop :=
-  w'.taken = w.taken ∧ w'.top = w.top ∧ w'.vals = w.vals ∧
-    ∀ x, w'.nodes.lookup x =
-      if x = L then some (n.toPrev (c.i - 1))
-      else if x = q then some ((qn.add c.i (.key k1 w.next)).add c.i
-        (.key (halves n.leaf c.i (n.lastVersion c.i) [(cv, v)]).2.2 (w.next + 2)))
-      else if x = w.next then some (halves n.leaf c.i (n.lastVersion c.i) [(cv, v)]).1
-      else if x = w.next + 2 then some (halves n.leaf c.i (n.lastVersion c.i) [(cv, v)]).2.1
-      else w.nodes.lookup x
-
-theorem writerWP_handleFullWith_spaceSplit (d' : Nat) (L q : NodeId) (n qn : KNode)
-    (k1 cv v : Nat) (c : Ctx) (w : W)
-    (hlk : w.nodes.lookup L = some n) (hlq : w.nodes.lookup q = some qn)
-    (hqL : q ≠ L) (hql : qn.leaf = false) (hfirst : n.firstTime ≠ some c.i)
-    (hsplit : c.p.splitAbove < (n.lastVersion c.i).size)
-    (hpq : (w.path[d']?).map (·.2) = some q) (hpk : w.path[d' + 1]? = some (some k1, L))
-    (hroomq : qn.size + 2 + 1 ≤ c.p.M)
-    (hdeadq : ∀ a y b z, deadOver c.p ((qn.add c.i (.key a y)).add c.i (.key b z)) = false)
-    (hLn : L < w.next) (hqn : q < w.next) :
-    WriterWP (handleFullWith (fun q more => appendKlongs d' q more) (d' + 1) L [(cv, v)]
-      (n.lastVersion c.i) false) c w
-      (fun _ w' => SpaceSplitAfter c w w' L q n qn k1 cv v) := by
-  unfold handleFullWith
-  simp only [writerWP_bind, writerWP_read]
-  rw [writerWP_getNode_known L n c w hlk]
-  refine writerWP_ghOf_cached L n c w hlk _ (fun gh => ?_)
-  have hnew : (n.firstTime == some c.i) = false := by simpa using hfirst
-  simp only [hnew]
-  unfold parentAt pathNode
-  simp only [writerWP_bind, writerWP_get]
-  cases hp : w.path[d']? with
-  | none => rw [hp] at hpq; cases hpq
-  | some e =>
-    rw [hp] at hpq
-    simp only [Option.map_some, Option.some.injEq] at hpq
-    simp only [writerWP_pure]
-    rw [hpq]
-    simp only [writerWP_bind]
-    rw [writerWP_getNode_known q qn c w hlq]
-    have hsz : decide ((n.lastVersion c.i).size > c.p.splitAbove) = true := by
-      simp only [decide_eq_true_eq, gt_iff_lt]; exact hsplit
-    simp only [writerWP_pure, hql, hsz, Bool.not_false, Bool.true_and, Bool.false_eq_true,
-      ↓reduceIte]
-    have hq1 : q ≠ w.next + 2 := by omega
-    have hq2 : q ≠ w.next := by omega
-    have hL1 : L ≠ w.next + 2 := by omega
-    have hL2 : L ≠ w.next := by omega
-    simp only [newKey, fresh, setMadeFor, note, putNode, writerWP_bind, writerWP_modify,
-      writerWP_get, writerWP_set, writerWP_read, writerWP_pure]
-    split <;>
-    · simp only [writerWP_bind, writerWP_modify, writerWP_pure]
-      refine (writerWP_klongAt (d' + 1) k1 L c _ ?_ _).mpr ?_
-      · exact hpk
-      refine writerWP_mono (writerWP_appendKlongs_room2 d' q qn k1 w.next _ (w.next + 2) c _
-        ?_ hroomq (hdeadq _ _ _ _)) ?_
-      · simp only [lookup_upsert, List.lookup_append, hq1, hq2, ↓reduceIte, hlq]
-        rfl
-      intro _ w2 hw2
-      subst hw2
-      rw [writerWP_getNode_known L n c _ (by
-        simp only [lookup_upsert, List.lookup_append, hqL.symm, hL1, hL2, ↓reduceIte, hlk]; rfl)]
-      refine ⟨rfl, rfl, rfl, ?_⟩
-      intro x
-      simp only [lookup_upsert, List.lookup_append]
-      by_cases hxL : x = L
-      · simp [hxL]
-      · simp only [hxL, ↓reduceIte]
-        by_cases hxq : x = q
-        · simp [hxq]
-        · simp only [hxq, ↓reduceIte]
-          by_cases hx2 : x = w.next + 2
-          · simp [hx2]
-          · simp only [hx2, ↓reduceIte]
-            by_cases hx1 : x = w.next
-            · simp [hx1]
-            · simp only [hx1, ↓reduceIte]
-              cases h : w.nodes.lookup x with
-              | some m => rfl
-              | none =>
-                show ((none : Option KNode).or ([(w.next, { leaf := n.leaf, ks := [] })].lookup x)).or
-                  ([(w.next + 2, { leaf := n.leaf, ks := [] })].lookup x) = none
-                rw [lookup_cons_ne _ _ _ _ hx1, lookup_cons_ne _ _ _ _ hx2]; rfl
-
-theorem writerWP_appendKlongs_spaceSplit (d' : Nat) (L q : NodeId) (n qn : KNode)
-    (k1 cv v : Nat) (c : Ctx) (w : W)
-    (hlk : w.nodes.lookup L = some n) (hlq : w.nodes.lookup q = some qn)
-    (hqL : q ≠ L) (hql : qn.leaf = false) (hfirst : n.firstTime ≠ some c.i)
-    (hfull : c.p.M ≤ n.size + 1)
-    (hsplit : c.p.splitAbove < (n.lastVersion c.i).size)
-    (hpq : (w.path[d']?).map (·.2) = some q) (hpk : w.path[d' + 1]? = some (some k1, L))
-    (hroomq : qn.size + 2 + 1 ≤ c.p.M)
-    (hdeadq : ∀ a y b z, deadOver c.p ((qn.add c.i (.key a y)).add c.i (.key b z)) = false)
-    (hLn : L < w.next) (hqn : q < w.next) :
-    WriterWP (appendKlongs (d' + 1) L [(cv, v)]) c w
-      (fun _ w' => SpaceSplitAfter c w w' L q n qn k1 cv v) := by
-  rw [appendKlongs_step_dead]
-  simp only [writerWP_bind, writerWP_read]
-  rw [writerWP_getNode_known L n c w hlk]
-  have h1 : n.size + [(cv, v)].length + 1 > c.p.M := by simp; omega
-  simp only [h1, ↓reduceIte]
-  exact writerWP_handleFullWith_spaceSplit d' L q n qn k1 cv v c w hlk hlq hqL hql hfirst hsplit
-    hpq hpk hroomq hdeadq hLn hqn
 
 /-! ## The reading after the split -/
 
@@ -839,11 +716,18 @@ theorem writerWP_put_spaceSplit_key (c : Ctx) (base : View BVal) (hvc : ViewCohe
     rw [hnl] at hql
     cases hql
   rw [hlen]
-  have hLlt3 : L < w3.next + 2 := by have := hsrcw3 L (by rw [hlk3]; rfl); omega
-  have hqlt3 : q < w3.next + 2 := by have := hsrcw3 q (by rw [hlq]; rfl); omega
+  have hn1 : w3.nodes.lookup (w3.next + 2) = none := by
+    cases h' : w3.nodes.lookup (w3.next + 2) with
+    | none => rfl
+    | some _ => have := hsrcw3 _ (by rw [h']; rfl); omega
+  have hn2 : w3.nodes.lookup (w3.next + 2 + 2) = none := by
+    cases h' : w3.nodes.lookup (w3.next + 2 + 2) with
+    | none => rfl
+    | some _ => have := hsrcw3 _ (by rw [h']; rfl); omega
   refine writerWP_mono (writerWP_appendKlongs_spaceSplit d' L q n qn k1 cv w3.next c _
-    (by simpa using hlk3) (by simpa using hlq) hqL hql hfirst hfull hsplit
-    (by simpa using hpq) (by simpa using hpk) hroomq hdeadq hLlt3 hqlt3) ?_
+    (by simpa using hlk3) (by simpa using hlq) hqL hql hfirst (by omega) hsplit
+    (by simpa using hpq) (by simpa using hpk) hroomq (fun _ _ _ => hdeadq _ _ _ _)
+    (by simpa using hn1) (by simpa using hn2)) ?_
   intro _ wf hSS
   obtain ⟨hft, hftop, hfv, hfn⟩ := hSS
   simp only at hft hftop hfv hfn
@@ -929,7 +813,7 @@ theorem writerWP_put_spaceSplit_key (c : Ctx) (base : View BVal) (hvc : ViewCohe
   simp only [Op.key, Op.value]
   rfl
 
-/-- The space split rule with the writer's tree and `ValueLinksOK` for TREE. -/
+/-- The space split rule with the writer's tree for TREE. -/
 theorem writerWP_put_spaceSplit_tree (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (pre : List Nat) (cv h : Nat) (rk : NodeId) (w : W) (hfuel : 1 ≤ c.p.fuel)
     (hkey : keyWf (pre ++ [cv]) = true)
@@ -961,7 +845,6 @@ theorem writerWP_put_spaceSplit_tree (c : Ctx) (base : View BVal) (hvc : ViewCoh
     (hwf : ∀ x xn, ReachS (wNode c.p base w) c.i w.top.rootKey x →
       wNode c.p base w x = some xn → klongsWf xn.ks = true)
     (hT : TreeOK (wNode c.p base w) c.i w.top.rootKey)
-    (hv : ValueLinksOK (wNode c.p base w) c.i w.top.rootKey)
     (hfr : ∀ x xn cc z, ReachS (wNode c.p base w) c.i w.top.rootKey x →
       wNode c.p base w x = some xn → (cc, z) ∈ xn.liveAt c.i →
         z ≠ w.next ∧ z ≠ w.next + 2 ∧ z ≠ w.next + 4) :
@@ -970,7 +853,7 @@ theorem writerWP_put_spaceSplit_tree (c : Ctx) (base : View BVal) (hvc : ViewCoh
         if Op.key (.put (pre ++ [cv]) h) == key' then Op.value (.put (pre ++ [cv]) h)
         else wGet c.p c.i base w key') := by
   apply writerWP_put_spaceSplit_key c base hvc pre cv h rk w
-    (htreeK := treeK_of_treeOK _ _ _ hT hv)
+    (htreeK := fun x xn cc z hx hn hz _ => htree_of_treeOK _ _ _ hT x xn cc z hx hn hz)
   all_goals assumption
 
 end SIS.Tree

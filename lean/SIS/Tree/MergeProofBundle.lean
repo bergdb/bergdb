@@ -85,6 +85,12 @@ import SIS.Tree.GetFrame
 import SIS.Tree.GetUnder
 import SIS.Tree.WriterTree
 import SIS.Tree.GetSplit
+import SIS.Tree.WriterTreeOps
+import SIS.Tree.WriterTreeVisits
+import SIS.Tree.WriterNonemptyMerge
+import SIS.Tree.OverlayPtrs
+import SIS.Tree.WriterTreeSplit
+import SIS.Tree.WriterTreeSpace
 import SIS.Tree.GetTree
 import SIS.Tree.GetSpaceSplit
 import SIS.Tree.GetInPlace

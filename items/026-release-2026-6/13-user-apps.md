@@ -515,6 +515,9 @@ is the coordinator's to add (this agent writes only its own item):
   R, a cut that releases 400 kB), so that `maintain()` is optional in
   effect for a slowly written database.
 
+Decided (Frans, 2026-11-13, 13:07: "Yes"): A now, as 028-06; B in 026's
+proposals, studied with G4 and taken only for a clear gain (KISS).
+
 
 ## 7. State
 
