@@ -252,6 +252,7 @@ import SIS.Tree.TakeDeadCascade
 import SIS.Tree.TakeDeadCases
 import SIS.Tree.TakeBackRunJ
 import SIS.Tree.DelMergeBook
+import SIS.Tree.MergeTreeInv
 import SIS.Tree.TakeBackRunJ2
 import SIS.Tree.TakeDeadAssembly
 import SIS.Tree.TakeDeadNewSeg

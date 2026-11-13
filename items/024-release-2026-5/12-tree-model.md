@@ -1366,11 +1366,14 @@ and its status:
     follow from them: `putBook_merge`, `putBook_collapseRoot` and
     `putBook_getNode` (`DelMergeBook.lean`) give the books after, and
     `putInv_after_step` builds the rest. The obligations, all open:
-    - `MergeStepOK`: a merge of the loop keeps the writer's tree, its reached
-      nodes not taken back, the walk's ranges and inner children (`StepInv`),
-      and the state after it fits the fuel (StepFits for a merge). The tree
-      half is cost's merge tree lemmas from the invariants; their halves
-      premise is stated for every last version, which a caller cannot give.
+    - `MergeStepOK`: a merge of the loop keeps its reached nodes not taken
+      back (the take-back's `ReachedFree`), the walk's ranges and inner
+      children (`StepInv`), and the state after it fits the fuel (StepFits for
+      a merge). The tree after the merge is proved from the invariants
+      (`writerWP_merge_tree_inv`, `MergeTreeInv.lean`). It uses the tree
+      lemmas with their halves premise derived from the sorted last version
+      (`hhalves_of_sorted`, `writerWP_merge_any_treeS`,
+      `writerWP_merge_root_treeS`).
     - `DescentOK`: the loop's descent keeps `DelInv` and gives the path facts
       down to the node it stops at. It also gives the merge's two named
       conditions (`MergePathCond`): no space split in place below a segment
@@ -1391,6 +1394,27 @@ and its status:
     state between the deletes fits the fuel, and the writer merges in the
     deletes. StepFits (the inner states fit) is in `MergeStepOK` and
     `DelStepsOK`; step 4 (`SegBal`, cost) is to discharge it.
+
+    Finding (cost, 22:20): StepFits at fuel - 1 is not a per-rule fact. A
+    delete can space split a full segment root by a merge (one level more)
+    and then remove a level by its root collapse, which does not descend. So
+    from a segment of depth fuel - 1, a state inside the operation can have
+    depth fuel. There, the reading with `p.fuel` cannot reach the deepest
+    leaves, though the operation's end reads right. Whether runs within reach
+    get there is a counting question: a transaction's keys are distinct, so
+    a segment grows only by the transaction's own new keys. That is open.
+
+    Decision (coordinator, 22:25): option (a). The reading lemmas that case 4
+    needs are stated for any fuel f, with the `p.fuel` versions kept as
+    corollaries. Inner readings use f = fuel + 1, and `getEqR_fuel_mono`
+    brings the operation's end back to `p.fuel`. Step 4 then proves two
+    things:
+    - every rule keeps SegFits at depth fuel at inner states (`SegBal`);
+    - operation boundaries have SegFits at fuel - 1, by the doomed
+      transaction: a boundary state with depth fuel has nodes outside H, so
+      it throws at a later descent or fails `boundsOK`.
+
+    Case 4's `SegFits` conjuncts change accordingly.
   - (5) `DelNoLeafCase`, a delete of a key with no leaf: proved,
     `opGetCaseOK_delNoLeaf`. It changes no reading: the writer's walk
     stops at the first segment that is not there and only reads
@@ -1586,10 +1610,13 @@ every state a rule can make. Cost's finding (`cost/fit/Fit.lean`): a
 put whose descent goes through a segment tree of depth fuel - 1 can
 split its root and reach depth fuel; that transaction then fails at its
 end (`boundsOK`). The first form, `PathsFit` (every path from the space
-root, through all segments, shorter than the fuel), fails even in
-transactions that end OK: with M = 8, G = 1, H = 0, 1000 puts below
-one key and then 1000 deletes grow a segment tree to height 5
-mid-transaction, and the transaction ends OK. `SegFits` relates to the
+root, through all segments, shorter than the fuel), fails in a
+transaction that the writer runs to its end without error: with M = 8,
+G = 1, H = 0, 1000 puts below one key and then 1000 deletes grow a
+segment tree to height 5 mid-transaction. That transaction is not within
+reach, though: it puts and deletes the same keys, and `Within` requires
+sorted transactions of distinct keys (correction, cost, 2026-11-13,
+22:30). Within reach, `PathsFit` is not refuted. `SegFits` relates to the
 deferred height bound of bounded startup, `LiveHeightLe P t H root`,
 which bounds the nodes on every live path from the root by H and so
 every segment tree's depth; the writer's tree inside a transaction can
@@ -1604,8 +1631,12 @@ writer's own guard, the fuel of a descent, counts one segment tree at a
 time. So `PathsFit` (every path from the space root, through all
 segments, shorter than `p.fuel`) is no invariant of the writer's states.
 The case: M = 8, G = 1, H = 0, fuel 6; a transaction puts 1000 keys
-[120, 64j + 8] below one existing key and deletes them again, and ends
-without error (the 161 nodes made above the bounds are all taken back);
+[120, 64j + 8] below one existing key and deletes them again, and the
+writer ends it without error (the 161 nodes made above the bounds are all
+taken back). It is not within reach: `Within` requires a transaction's
+keys sorted and distinct, so no transaction puts and deletes one key
+(correction, 22:30; within reach the case is open, and a segment there
+grows only as far as the transaction's own new keys take it);
 after its 1000th put the segment tree below 120 has depth 5, so a path
 from the space root has 6 links, 7 to a value. The reads are right: the
 reader's fuel is per segment too. The coordinator's decision (19:20):
