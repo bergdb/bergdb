@@ -1466,6 +1466,12 @@ and its status:
       `OpGetCaseOK p R DelMergeCase` from `DelStepsOKF`, `MergeStepOKF`,
       `CollapseStepOKF` and `TxSegFitsOK`. There is no descent obligation
       and no `MergePathCond`.
+    - For putinv's take-back through a merge's full parent (latest, 22:55):
+      `writerWP_handleFull_lastShape` (`LevelShape.lean`) gives the shapes
+      of the nodes that the full parent's split and its cascade make or
+      change (`ShapePost` from D + 1 with nothing put). `mergeLast_ord`
+      (`MergeLastOrd.lean`) gives the merge's last version's `LastOrd`
+      from `RangeOrder` (with `MergeGOrd`, `mergeGOrd_two`).
     The old statements stay, unchanged, until F2 is complete; then they are
     removed, as agreed with cost.
 
