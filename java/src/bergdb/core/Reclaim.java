@@ -855,7 +855,8 @@ public class Reclaim implements Db.TransactionListener {
         g.valuesBefore = it.pCut;           // The values to rewrite only (bergdb 026-09).
         g.stopCondition = new GetMany.StopCondition() {
             private long size = 0;
-                // An approximation of the stream space of the KVs stored before pStart.
+                // The KVs stored before pStart, counted toward writeSize: their stream space
+                // if stored before pCut, else the key's bytes plus 100 (bergdb 026-09).
             private long valueNodeBytes = 0;    // Of the KVs to rewrite (015-50).
             private int toRewrite = 0;
             
