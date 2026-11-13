@@ -1,6 +1,6 @@
 /-
 The writer's merge keeps the writer's tree, from the invariants of the state
-before it (bergdb 024-22, case 4's `MergeStepOK`): `writerWP_merge_any_tree`
+before it (bergdb 024-22, case 4's `MergeStepOKF`): `writerWP_merge_any_tree`
 and `writerWP_merge_root_tree` with their halves premises derived from the full
 parent's sorted last version (`mergeFullLast_sorted`) and the range of its link.
 -/
@@ -2293,20 +2293,5 @@ theorem writerWP_merge_tree_inv2 (x : NodeId) (d : Nat) (c : Ctx) (base : View B
       (fun i _ hi he => by
         have := hdist i d (by omega) (Nat.le_refl _) (by rw [he, hx]); omega)
       hsa2
-
-/-- `writerWP_merge_tree_inv2` with its former `hrangeL`, which it does not need. -/
-theorem writerWP_merge_tree_inv (x : NodeId) (d : Nat) (c : Ctx) (base : View BVal)
-    (hvc : ViewCoherent c base) (w : W) (hI : PutInv c base w) (hG : PutInvG c base w)
-    (hRO : RangeOrder (wNode c.p base w) c.i w.top.rootKey)
-    (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode) (hP : PathOK c w d X K Nn)
-    (hd0 : 0 < d) (hx : X d = x) (hql : (Nn (d - 1)).leaf = false)
-    (hsa2 : 2 ≤ c.p.splitAbove) (hcap : 1 ≤ c.p.mergeMax)
-    (hrangeL : 2 ≤ d → ∀ cL cR m1 m2 last, mergeFullLast (Nn (d - 1)) c.i cL m1 cR m2 = some last →
-      c.p.splitAbove < last.size → (Nn (d - 2)).leaf = false →
-      ∀ c' z, (c', z) ∈ (⟨(Nn (d - 1)).leaf, last.ks⟩ : KNode).live → 0 < c' →
-      K (d - 1) ≤ c' ∧ ∀ c'' z', (c'', z') ∈ (Nn (d - 2)).live → K (d - 1) < c'' → c' < c'') :
-    WriterWP (merge x d) c w (fun _ w' => TreeOK (wNode c.p base w') c.i w'.top.rootKey) := by
-  have _ := hrangeL
-  exact writerWP_merge_tree_inv2 x d c base hvc w hI hG hRO X K Nn hP hd0 hx hql hsa2 hcap
 
 end SIS.Tree
