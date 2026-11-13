@@ -4,8 +4,8 @@ TP33's `OpCountOK` and TP10's `OpGetOK`): from the writer's super root, through
 its key nodes (`wNode`: its own copies, P's for the others, none for a node it
 took back), at the transaction's time, no node is reached twice and nothing
 links back to the space root (`WriterTreeOK`). A link is a live klong of a node:
-any in an inner node, a long segment's in a segment leaf (the walk of `nodesRoots`
-and of the reads).
+a child of an inner node, the root of the next segment's tree, or a value; so a
+value too is named once (the reads' TREE, `GetSplit.lean`'s `htree`).
 
 The same of P between transactions is `TreeAt`. Proved here: the writer's first
 state has the tree of P (`writerTreeOK_init`), P after the transaction has the
@@ -26,10 +26,10 @@ open SIS SIS.Check
 /-! ## Trees of key nodes -/
 
 /-- A link at time t through the lookup `look`: the klong of compare value c is
-live in key node x and names y; in a segment leaf only a long segment's klong
-(it names the root of the next segment's tree). -/
+live in key node x and names y (a child of an inner node, the root of the next
+segment's tree, or a value). -/
 def TLink (look : NodeId → Option KNode) (t : Time) (x : NodeId) (c : Nat) (y : NodeId) : Prop :=
-  ∃ n, look x = some n ∧ (c, y) ∈ n.liveAt t ∧ (n.leaf = true → segLen c = 7)
+  ∃ n, look x = some n ∧ (c, y) ∈ n.liveAt t
 
 /-- The nodes reached from r by links. -/
 inductive TReach (look : NodeId → Option KNode) (t : Time) (r : NodeId) : NodeId → Prop
@@ -60,10 +60,10 @@ theorem tLink_congr_time (look : NodeId → Option KNode) (t t' : Time)
     (h : ∀ x n, look x = some n → n.liveAt t = n.liveAt t') (x : NodeId) (c : Nat) (y : NodeId) :
     TLink look t x c y ↔ TLink look t' x c y := by
   constructor
-  · rintro ⟨n, hn, hl, hs⟩
-    exact ⟨n, hn, by rw [← h x n hn]; exact hl, hs⟩
-  · rintro ⟨n, hn, hl, hs⟩
-    exact ⟨n, hn, by rw [h x n hn]; exact hl, hs⟩
+  · rintro ⟨n, hn, hl⟩
+    exact ⟨n, hn, by rw [← h x n hn]; exact hl⟩
+  · rintro ⟨n, hn, hl⟩
+    exact ⟨n, hn, by rw [h x n hn]; exact hl⟩
 
 theorem tReach_congr_time (look : NodeId → Option KNode) (t t' : Time) (r : NodeId)
     (h : ∀ x n, look x = some n → n.liveAt t = n.liveAt t') (y : NodeId)
@@ -100,9 +100,9 @@ theorem tReach_of_agree (L L' : NodeId → Option KNode) (t : Time) (r : NodeId)
   induction hy with
   | root => exact TReach.root
   | @link x c y _ hl ih =>
-    obtain ⟨n, hn, hc, hs⟩ := hl
+    obtain ⟨n, hn, hc⟩ := hl
     rw [h x ih] at hn
-    exact TReach.link ih ⟨n, hn, hc, hs⟩
+    exact TReach.link ih ⟨n, hn, hc⟩
 
 theorem tReach_to_agree (L L' : NodeId → Option KNode) (t : Time) (r : NodeId)
     (h : ∀ x, TReach L t r x → L' x = L x) : ∀ y, TReach L t r y → TReach L' t r y := by
@@ -110,9 +110,9 @@ theorem tReach_to_agree (L L' : NodeId → Option KNode) (t : Time) (r : NodeId)
   induction hy with
   | root => exact TReach.root
   | @link x c y hx hl ih =>
-    obtain ⟨n, hn, hc, hs⟩ := hl
+    obtain ⟨n, hn, hc⟩ := hl
     rw [← h x hx] at hn
-    exact TReach.link ih ⟨n, hn, hc, hs⟩
+    exact TReach.link ih ⟨n, hn, hc⟩
 
 /-- A change of nodes that the tree does not reach keeps the tree (a node made
 and not yet linked, a node left out, a node read into the cache unchanged). -/
@@ -121,9 +121,9 @@ theorem treeOK_of_agree (L L' : NodeId → Option KNode) (t : Time) (r : NodeId)
   have hb := tReach_of_agree L L' t r h
   have hlink : ∀ x c y, TReach L' t r x → TLink L' t x c y → TLink L t x c y := by
     intro x c y hx hl
-    obtain ⟨n, hn, hc, hs⟩ := hl
+    obtain ⟨n, hn, hc⟩ := hl
     rw [h x (hb x hx)] at hn
-    exact ⟨n, hn, hc, hs⟩
+    exact ⟨n, hn, hc⟩
   refine ⟨?_, ?_, ?_⟩
   · rw [h r TReach.root]; exact ht.rootKey
   · intro x c hx hl
@@ -175,9 +175,9 @@ theorem treeOK_attach (L L' : NodeId → Option KNode) (t : Time) (r x z : NodeI
       rcases hlinks c y' hl with h | h
       · exact Or.inl h
       · exact Or.inr ⟨rfl, h⟩
-    · obtain ⟨n, hn, hc, hs⟩ := hl
+    · obtain ⟨n, hn, hc⟩ := hl
       rw [hother y hy] at hn
-      exact Or.inl ⟨n, hn, hc, hs⟩
+      exact Or.inl ⟨n, hn, hc⟩
   -- What L' reaches: what L reaches, and z.
   have hb : ∀ y, TReach L' t r y → TReach L t r y ∨ y = z := by
     intro y hy
@@ -272,9 +272,9 @@ theorem treeOK_regroup (L L' : NodeId → Option KNode) (t : Time) (r x : NodeId
           · exact Or.inl ⟨TReach.link hx h, ho⟩
           · exact Or.inr h
         · have hy0n : ¬ New y0 := fun h => hNew y0 h hy0
-          obtain ⟨n, hn, hc, hs⟩ := hl
+          obtain ⟨n, hn, hc⟩ := hl
           rw [hsame y0 hyx hy0n hy0o] at hn
-          have hL : TLink L t y0 c y := ⟨n, hn, hc, hs⟩
+          have hL : TLink L t y0 c y := ⟨n, hn, hc⟩
           refine Or.inl ⟨TReach.link hy0 hL, fun ho => ?_⟩
           rcases hOldPar y y0 c ho hy0 hL with h | h
           · exact hyx h
@@ -295,9 +295,9 @@ theorem treeOK_regroup (L L' : NodeId → Option KNode) (t : Time) (r x : NodeId
       · exact Or.inr (Or.inl ⟨hyx, h⟩)
     · rcases hb y hy with ⟨hyL, hyo⟩ | hyn
       · have hy0n : ¬ New y := fun h => hNew y h hyL
-        obtain ⟨n, hn, hc, hs⟩ := hl
+        obtain ⟨n, hn, hc⟩ := hl
         rw [hsame y hyx hy0n hyo] at hn
-        exact Or.inr (Or.inr (Or.inr (Or.inr ⟨hyL, hyo, hyx, n, hn, hc, hs⟩)))
+        exact Or.inr (Or.inr (Or.inr (Or.inr ⟨hyL, hyo, hyx, n, hn, hc⟩)))
       · rcases hzl y c v hyn hl with h | ⟨⟨o, c0, ho, hlo⟩, hvo⟩
         · exact Or.inr (Or.inr (Or.inl ⟨hyn, h⟩))
         · exact Or.inr (Or.inr (Or.inr (Or.inl ⟨hyn, o, c0, ho, hlo, hvo⟩)))
@@ -598,13 +598,13 @@ theorem treeAt_init (p : Params) : TreeAt p (initStruct p) 0 := by
       | root => rfl
       | link _ hl ih =>
         subst ih
-        obtain ⟨n, hn, hl', _⟩ := hl
+        obtain ⟨n, hn, hl'⟩ := hl
         rw [hk] at hn
         simp only [Option.some.injEq] at hn
         subst hn
         exact absurd hl' (by simp [KNode.liveAt, prefixAt, KNode.delAt, KNode.lastVersionGivenDel])
     subst h1
-    rintro ⟨n, hn, hl, _⟩
+    rintro ⟨n, hn, hl⟩
     rw [hk] at hn
     simp only [Option.some.injEq] at hn
     subst hn
