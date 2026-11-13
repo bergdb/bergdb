@@ -360,6 +360,42 @@ from them.
   it; the morning's scripts stop before the tag. No landings of code on
   main until commit B (to-main.sh stops otherwise): the second prover's
   results wait for the morning.
+* 18:08 The second prover's run 2 ended at its usage limit
+  (/Users/f/fl/bench/2026-11-12/cx2/REPORT.md; uncommitted in its
+  clone): keyWf corrected as decided (each segment below 2^62, lowest
+  three bits zero; the full build passes); the old theorem
+  treeContents_keyWf (false for arbitrary views after the correction) and
+  ScanBoundary.lean left out of the import graph, replaced by
+  treeRun_treeContents_keyWf for actual runs; TP11 refuted again for the
+  corrected keyWf, by a key of 2^40 + 1 segments beyond the scan's fuel:
+  keyWf has no bound on a key's length, where Java's L2 allows 16
+  segments (for Frans); the compare values' encoding proved through the
+  whole writer and every run. To land after commit B, after Frans looks.
+* 23:12 The release night: night.sh large NIGHT OK (420 minutes) on A
+  bf9ab5af; the performance comparison with 2026.4's quick suite: no
+  alerts (run with FORCE, the machine 86 % idle: not a reference; writes
+  of 1 kB values 119 to 142 % more commits a second, a restart 30 %
+  faster); jcstress 8 of 8 OK; s1: JDK 27 and 17 OK, the OT2 probe OK,
+  the fuzz until 04:30.
+* 2026-11-13, 00:12: checks OK (the digests named, the axioms
+  standard); the queue at 10M keys in time order OK; Android FAILED, one
+  of 1,700 unit tests: testClosedDatabasesHoldLittleHeap (48.9 MB for 10
+  closed databases), which passed on Android in 2026.4's night and passes
+  on the JVM; agent andr started to find the cause (no change, no
+  landing; for Frans in the morning). 026-04's runs at 10M keys running.
+* 00:25 andr: the Android failure is not a regression: on ART
+  `System.gc()` starts no collection without a finalization run, so
+  the test measures uncollected write buffers; it failed 26 of 83 runs on
+  A and 21 of 60 on release 2026.4 (passed there by chance). With
+  `Runtime.getRuntime().gc()` 10 closed databases hold about 9 MB on both.
+  Proposed: that one line in the test's heapAfterGc() (as 006-18-03 did
+  in another test); for Frans (38-release/android-finding.md).
+* 2026-11-13, 04:31: the night done, 9 of 10 steps OK: night.sh large,
+  the performance comparison, jcstress, checks, the queue, s1's JDK 27
+  and 17 runs, the OT2 probe, s1's fuzz (85,700 seeds in 8
+  configurations, 0 failures); Android failed (the test's artifact,
+  00:25). clean.sh: NIGHT NOT CLEAN, Android only.
+* 05:10 Frans back. Attended.
 
 
 ## 6. Outcome
