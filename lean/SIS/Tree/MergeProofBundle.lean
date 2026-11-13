@@ -270,3 +270,4 @@ import SIS.Tree.TakeDelMerge
 import SIS.Tree.TakeDeadLast
 import SIS.Tree.TakeBaseStart
 import SIS.Tree.TakeBackMerges
+import SIS.Tree.TakeDeadUpM
