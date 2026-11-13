@@ -1091,7 +1091,10 @@ or more children, made by splits at H whose left halves become such
 nodes as the operations pass them; what is left to show is that too few
 of them can stay ahead of the operations. It needs V1 and the key ranges
 of the writer's tree between operations, that is TP7 within a
-transaction.
+transaction. At M = 8 by hand they are too few; at larger M and H it is
+not clear (dense trees give more), and if a successful sorted transaction
+can reach H + 2 there, TP32 may still hold, by the deletes that merge
+less, but then it needs a potential, not a bound on the heights.
 
 ## 11. State
 
