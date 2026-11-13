@@ -929,4 +929,85 @@ theorem getFromR_timeSplit (N N2 : NodeId → Option KNode) (V V2 : NodeId → O
     simp only [hk', Bool.false_eq_true, ↓reduceIte]
     exact hA.2 key' hkey' (fun h' => hk h'.symm)
 
+
+/-- The walk down a key's prefix, with what it caches. -/
+theorem writerWP_putSegs_prefix_src (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (key : Key) (value : Option Nat) (cv : Nat) (post : Bool → W → Prop) :
+    ∀ (pre : List Nat) (r rk : NodeId) (w : W),
+      (∀ q ∈ fromVisits (wNode c.p base w) c.i c.p.fuel (pre ++ [cv]) r,
+        w.taken.contains q.1 = false) →
+      segRootR (wNode c.p base w) c.i c.p.fuel pre r = some rk →
+      w.path.getLast?.map (·.2) = some r →
+      (∀ w', ReadsAs c.p base w w' → w'.path.getLast?.map (·.2) = some rk →
+        (∀ z, (w'.nodes.lookup z).isSome = true →
+          (w.nodes.lookup z).isSome = true ∨ (c.view z).isSome = true) →
+        WriterWP (setValue rk cv key value) c w' post) →
+      WriterWP (putSegs key value (pre ++ [cv]) r) c w post := by
+  intro pre
+  induction pre with
+  | nil =>
+    intro r rk w _ hrk hp hcont
+    simp only [segRootR, Option.some.injEq] at hrk
+    subst hrk
+    rw [List.nil_append, putSegs.eq_2]
+    exact hcont w (ReadsAs.refl _ _ _) hp (fun z hz => Or.inl hz)
+  | cons s rest ih =>
+    intro r rk w ht hrk hp hcont
+    have hne : rest ++ [cv] ≠ [] := by simp
+    rw [List.cons_append, putSegs.eq_3 key value r s (rest ++ [cv]) hne]
+    simp only [segRootR] at hrk
+    cases hg : getEqR (wNode c.p base w) c.i s c.p.fuel r with
+    | none => rw [hg] at hrk; cases hrk
+    | some y =>
+      rw [hg] at hrk
+      simp only at hrk
+      split at hrk
+      · rename_i hysome
+        obtain ⟨d, rest', he⟩ : ∃ d rest', rest ++ [cv] = d :: rest' := by
+          cases h' : rest ++ [cv] with
+          | nil => exact absurd h' hne
+          | cons d rest' => exact ⟨d, rest', rfl⟩
+        have hvis : ∀ q ∈ fromVisits (wNode c.p base w) c.i c.p.fuel (s :: d :: rest') r,
+            w.taken.contains q.1 = false := by
+          intro q hq; apply ht q; rw [List.cons_append, he]; exact hq
+        simp only [fromVisits] at hvis
+        have ht1 : ∀ q ∈ eqVisits (wNode c.p base w) c.i s c.p.fuel r,
+            w.taken.contains q.1 = false := fun q hq => hvis q (List.mem_append_left _ hq)
+        unfold setNode
+        wpSimplify
+        refine writerWP_mono (writerWP_and (writerWP_descendLte_reads s c base hvc c.p.fuel r w ht1)
+          (writerWP_descendLte_cache s c base hvc c.p.fuel r w ht1)) ?_
+        intro L w3 ⟨⟨hr3, n, hn, hnl, hlk3, _, hget⟩, ⟨_, hsrc3, _⟩⟩
+        rw [writerWP_getNode_known L n c _ hlk3]
+        rw [hg] at hget
+        cases hfd : n.searchEq c.i s with
+        | none => rw [hfd] at hget; cases hget
+        | some fd =>
+          rw [hfd] at hget
+          simp only [Option.map_some, Option.some.injEq] at hget
+          simp only [pathAdd, writerWP_bind, writerWP_modify, writerWP_pure]
+          rw [← hget]
+          generalize hw4 : ({ w3 with path := w3.path ++ [(some fd.c, y)] } : W) = w4
+          have hr04 : ReadsAs c.p base w w4 := by
+            subst hw4
+            exact ReadsAs.trans _ _ _ _ _ hr3 ⟨rfl, rfl, rfl, rfl, rfl⟩
+          refine ih y rk w4 ?_ ?_ (by subst hw4; simp) ?_
+          · intro q hq
+            rw [hr04.2.2.1]
+            rw [hr04.1] at hq
+            apply hvis q
+            apply List.mem_append_right
+            rw [hg]
+            simp only
+            rw [← he]
+            exact hq
+          · rw [hr04.1]; exact hrk
+          · intro w' hr' hp' hsrc'
+            refine hcont w' (ReadsAs.trans _ _ _ _ _ hr04 hr') hp' (fun z hz => ?_)
+            rcases hsrc' z hz with h1 | h1
+            · subst hw4
+              exact hsrc3 z h1
+            · exact Or.inr h1
+      · cases hrk
+
 end SIS.Tree
