@@ -1593,7 +1593,19 @@ and its status:
       `DeadAllOK`, `HeightLiveOK`, `TreeAt`, TP10's posts of the cases (1)
       to (4), and `QLive` of the cases (1) to (4).
     - `QLive` of case (1), a put into a leaf with room, is proved
-      (`liveCase_putLeafRoom`). Open: `QLive` of (2), (3) and (4).
+      (`liveCase_putLeafRoom`).
+    - `QLive` of (3a) and (3b), new segments below a leaf with room, is
+      proved (latest, 00:26; `liveCase_putNewSeg1Room`,
+      `liveCase_putNewSegsRoom`). The new segment leaves have a live klong
+      each (`writerWP_putSegs_new_live`) and are segment roots
+      (`liveCounts_leafAddNewSet`).
+    - Open: `QLive` of (2), (3c) (the cascade of a full leaf) and (4).
+    - `LiveCounts` was checked on runs within reach with the merges on
+      (`12-tree-model/live-counts-check.lean.txt`). The parameters were
+      record format 7's thresholds at node sizes 8, 10 and 14 (m = 2, 2
+      and 3). The runs had puts in one and two segments, then deletes that
+      merge and collapse. It held at all 6420 states between operations,
+      none failing.
     Removed (latest, 23:08, as agreed with cost and the coordinator, after
     putinv's take-back moved to F2 at 65b84e5b): `DescentOKF`,
     `MergePathCond`, `opGetCaseOK_delMergeF`, `writerWP_mergeUp_delF`,
