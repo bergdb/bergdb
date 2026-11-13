@@ -219,24 +219,26 @@ indexes, and what happens on errors.</li>
 <p>Keys, values and transactions have fixed limits, the same for every database (bergdb
 024-17, section 6). A call over one throws, and writes nothing; the database goes on. A put()
 or delete() of a w() over one spoils its builder, whose execute() then writes nothing
-(WBuilder). A later release may raise them, never lower them.</p>
+(WBuilder). A later release may raise them, never lower them. {@link Limits} has them as
+constants, and checks a key before a call: Limits.keyBytes() gives a key's bytes as stored,
+and Limits.checkKey() throws what a put or a delete of the key throws (bergdb 026-02).</p>
 <ul>
 <li><b>A key is at most 111 bytes</b> as stored: its UTF-8, and one byte more for each part,
 so each "/" counts two. About 100 characters as a rule of thumb: ASCII letters and digits are
 one byte each, each "/" two, letters such as å, ä and ö two bytes each (UTF-8).
 "/customers/12345678" is 21 bytes. A put or a delete of a longer key throws
-IllegalArgumentException.</li>
+IllegalArgumentException (Limits.MAX_KEY_BYTES; Limits.keyBytes() counts a key).</li>
 <li><b>A value is at most 8 MiB</b>, 8,388,608 bytes as stored: a byte[]'s bytes, a String's
 UTF-8, an object's stored value, counted before anything is copied. A put of a larger one
 throws IllegalArgumentException. A larger file is put in chunks, under keys of their own, and
-a key that lists them written last.</li>
+a key that lists them written last (Limits.MAX_VALUE_BYTES).</li>
 <li><b>An indexed value's levels</b>, as an index entry holds them, are at most 111 bytes, as a
 key's: a string level takes its UTF-8 and a byte, but the characters U+0000 and U+0001 two
 bytes each; a bytes level its bytes and a byte, but the bytes 0x00 and 0x01 two each (so one
 bytes level holds at most 110 bytes, or 55 zero bytes); a long or a double 8 bytes. A put of an
 object whose levels for an index of its directory are longer throws IllegalArgumentException;
 index such a value by a hash of it, or by a prefix as a level of its own. An index built over
-objects put before it gives such an object no entry.</li>
+objects put before it gives such an object no entry (Limits.MAX_LEVEL_BYTES).</li>
 <li><b>A transaction</b> (a put, a delete, a w() or an rw()) has at most 500 operations, the
 keys it puts or deletes, and at most 32 MiB of keys and values. A delete is an operation whether
 its key has a value or not. An object put at a key of a
@@ -244,7 +246,8 @@ directory with k indexes is up to 1 + 2k operations (the object and, for each in
 entry of its old value deleted and of its new one put): 500 objects without indexes, 166
 with one. The keys of the transaction, its index entries among them, take at most 56
 KiB. A transaction over these is refused with DbException at its commit. Larger work is done
-in several transactions, with a key written last that readers look at first.</li>
+in several transactions, with a key written last that readers look at first
+(Limits.MAX_OPERATIONS, MAX_TRANS_BYTES and MAX_TRANS_KEY_BYTES).</li>
 </ul>
 
 <h3 id="api">The API and its jar</h3>
@@ -457,9 +460,10 @@ encrypted, and writes nothing; the release notes of 2026.4 say how to move its d
 
 <h3 id="dependencies">The package's dependencies</h3>
 
-<p>Depends on: common, nanotest, pub.util, pubimp. Only test code (the @Nano methods)
-uses nanotest. Factory uses pubimp to create a DatabaseBuilder: the circular package
-dependency pub -> pubimp -> pub is by design. Time also uses pubimp's TimeResolver, and
+<p>Depends on: common, core, nanotest, pub.util, pubimp. Only test code (the @Nano methods)
+uses nanotest. Limits takes its constants from core's Db, by reference (bergdb 026-02).
+Factory uses pubimp to create a DatabaseBuilder: the circular package dependency pub ->
+pubimp -> pub is by design. Time also uses pubimp's TimeResolver, and
 DbObject and its value classes pubimp's ObjectFormat (the codec of the stored object format)
 and DataObjects (the conversion of Data Objects; bergdb 020-10, step B3).</p>
 

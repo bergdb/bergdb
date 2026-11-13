@@ -2,6 +2,7 @@ package bergdb.pubimp;
 
 import bergdb.common.Bug;
 import bergdb.common.StringUtil;
+import bergdb.core.Db;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.Connection;
@@ -63,6 +64,65 @@ public class PubKeys {
         
         String ikey = createIKey(ukey);
         return ikey;
+    }
+
+    /**
+     * The ikey of a key that a put or a delete of the Pub API takes: u2i(), the key's form,
+     * then checkKeyBytes(), L2 (bergdb 026-02, option A). RwEnvironmentImp.put() and delete()
+     * call it, and so does Limits.checkKey(), so that the check refuses exactly the keys that
+     * a put and a delete refuse, with the same exception and message; keyBytes() counts the
+     * same bytes after the same u2i(). PubTesterLongKeys.testLimitsMatchPut compares them
+     * with what a put does.
+     *
+     * @throws IllegalArgumentException  If the key is null, of a bad form (u2i()), or has
+     *      more than Db.MAX_KEY_BYTES bytes as stored.
+     */
+    public static String checkedIkey(String ukey) {
+        String ikey = u2i(ukey);
+        checkKeyBytes(ukey, ikey);
+        return ikey;
+    }
+
+    /**
+     * The bytes of a key as stored, its bkey's length, also for a key longer than L2:
+     * storedBytes() of its ikey (Limits.keyBytes(); bergdb 026-02).
+     *
+     * @throws IllegalArgumentException  If the key is null or of a bad form, as u2i().
+     */
+    public static long keyBytes(String ukey) {
+        return storedBytes(u2i(ukey));
+    }
+
+    /**
+     * The bytes of an ikey as stored: its UTF-8, as Keys.toBytes() shifts each byte of the
+     * UTF-8 and adds none. A ukey's ikey has a byte after each '/' ("/a/b" is "/da/-b"), so
+     * each '/' of the ukey counts two; U+0000 is one byte, and a surrogate pair four.
+     */
+    static long storedBytes(String ikey) {
+        return StringUtil.utf8Size(ikey);
+    }
+
+    /**
+     * L2 (bergdb 024-17, 6.2 (a); 024-24): a Pub key is at most Db.MAX_KEY_BYTES bytes as
+     * stored, its ikey: the UTF-8 of the key and one byte more for each part ("/a/b" is
+     * "/da/-b"), so each '/' counts two. Checked at the put and the delete, before anything
+     * is written (checkedIkey(); moved here from RwEnvironmentImp in bergdb 026-02); key
+     * replace keeps a key's length ("${transactionTime}" and the time's 18 digits), so the
+     * key as written is the key as stored.
+     *
+     * @throws IllegalArgumentException  If the key is longer.
+     */
+    static void checkKeyBytes(String ukey, String ikey) {
+        if (3L * ikey.length() <= Db.MAX_KEY_BYTES) {
+            return;     // a char takes at most 3 bytes in UTF-8
+        }
+        long bytes = storedBytes(ikey);
+        if (bytes > Db.MAX_KEY_BYTES) {
+            throw new IllegalArgumentException("The key has " + bytes + " bytes as stored, "
+                    + "more than " + Db.MAX_KEY_BYTES + " (bergdb 024-17, L2): its UTF-8 and a "
+                    + "byte for each part, so each '/' counts two. Key: " 
+                    + (ukey.length() <= 100 ? ukey : ukey.substring(0, 100) + "...") + ".");
+        }
     }
 
     private static String createIKey(String ukey) {

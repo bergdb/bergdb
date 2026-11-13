@@ -12,6 +12,28 @@ that keeps its digests before and after (bergdb 018-01, section 2).
 Emptied at release 2026.5 (2026-11-13), whose notes hold what was there.
 
 
+### Pub API
+
+* **`bergdb.pub.Limits`: the limits as constants, and a check of a key
+  before a call, a new class** (bergdb 026-02, option A; Frans,
+  2026-11-13, 09:11, QK1 to QK4). `Limits.MAX_KEY_BYTES` and the other
+  limits, L1 to L6, as constants, the Core's `Db`'s by reference;
+  `Limits.keyBytes(String key)`, a key's bytes as stored (its UTF-8 and
+  one byte more for each '/'), also for a key over the limit, so that a
+  program knows how far over it is; `Limits.checkKey(String key)`, which
+  throws the very `IllegalArgumentException`, with the same message,
+  that a put or a delete throws for the key. Both depend on the key
+  alone, not on a database or a connection. A program no longer learns
+  of a long key from a refused put, which spoils a `WBuilder` (024-27,
+  QR1). A put, a delete and `checkKey` run one check
+  (`PubKeys.checkedIkey`), and a property test compares `keyBytes` and
+  `checkKey` with a put on a memory database. L6, an object's levels in
+  an index entry, has no method: the Javadoc of `Limits` says how to
+  count them (QK3). The Core API gets no method: a key fits if its
+  bytes are at most `Db.MAX_KEY_BYTES`, as Db's Javadoc now says
+  (option E). No stream change; no test's expected value changed.
+
+
 ### Core API
 
 * **A value transformation that throws or passes 8 MiB refuses its
