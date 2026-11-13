@@ -99,3 +99,4 @@ import SIS.Tree.WriterTreeRepoint
 import SIS.Tree.WriterTreeMerge
 import SIS.Tree.WriterTreeInPlace
 import SIS.Tree.WriterTreeMergeTwo
+import SIS.Tree.WriterTreePut
