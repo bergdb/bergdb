@@ -145,3 +145,5 @@ import SIS.Tree.WriterTreeSpaceSpace
 import SIS.Tree.PutInvDelSeg
 import SIS.Tree.PutInvDelCascade
 import SIS.Tree.PutInvDelSpaceCascade
+import SIS.Tree.PutInvCollapse
+import SIS.Tree.PutInvQIP
