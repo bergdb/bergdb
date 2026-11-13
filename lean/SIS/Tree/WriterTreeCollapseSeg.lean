@@ -35,7 +35,7 @@ theorem writerWP_klongAt_known (d k : Nat) (y : NodeId) (c : Ctx) (w : W)
 
 /-- `replaceRoot` at a segment root x below the segment leaf `leaf` with room:
 the tree is kept. -/
-theorem writerWP_replaceRoot_seg_tree (x : NodeId) (d only : Nat) (n : KNode) (child leaf : NodeId)
+theorem writerWP_replaceRoot_seg_tree (x : NodeId) (d only : Nat) (n : KNode) (leaf : NodeId)
     (ln : KNode) (k : Nat) (c : Ctx) (base : View BVal) (w : W)
     (hT : TreeOK (wNode c.p base w) c.i w.top.rootKey)
     (hlf : TReach (wNode c.p base w) c.i w.top.rootKey leaf)
