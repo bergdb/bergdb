@@ -312,6 +312,23 @@ period. So in unattended mode, work resumes within about half an hour of
 access returning. Recurring jobs expire after 7 days, which is no problem
 with a new coordinator every day.
 
+**Subagents that cannot authenticate.** On 2026-11-13 at 10:47, after an
+account change, every subagent stopped on "API Error: 403 [...]
+authentication_failed", old and new ones, Opus and Fable; the session
+itself kept working, and resuming did not help. Frans logged in again
+(`/login`) at 10:52 and everything resumed. Only he can fix it, so at
+night a check-in that sees it:
+
+* tests with one small new agent; if that fails too, writes `needs a
+  look` in `news.md` once ("log in again") and resumes nothing, so the
+  night does not spin on failing resumes;
+* tests again with one agent at most once an hour;
+* when it works, resumes each stopped agent and writes the gap in the
+  progress.
+
+Frans, 2026-11-13, 10:54: "Glad it happened now, not while you work
+unattended at night."
+
 **A dead session.** VS Code closed or crashed, the machine restarted, or
 the process was killed. The check-ins lived in the session and are gone
 with it.
