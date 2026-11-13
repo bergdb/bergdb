@@ -12,7 +12,8 @@ it later.").
 The theme was first that of 2026.5 (Frans, 2026-11-10, 19:54) and moved
 here when 2026.5 became "solid algorithms" (024-04): the stream format is
 the algorithms' output, so it is made stable when they have stopped
-moving. The specification's draft is 024-02, kept up to date until then.
+moving. The specification's draft is 027-03 (024-02 until 2026-11-13),
+kept up to date with the code.
 
 Work moved here from 2026.5:
 
@@ -43,6 +44,21 @@ Work moved here from 2026.5:
   Core's value transformations before the go point, as 024-16 did for
   key transformations (`Db.transformKeys`). 2026.5 names it in its
   Known issues.
+* **The node size fixed at 30 for users** (026-08; Frans, 2026-11-13,
+  09:17 and 09:21): the stable format and both APIs know one node size,
+  30; 8, 14 and 62 stay for BergDB's own tests only. Replaces the
+  proposal that a start read B from the meta block (024-19, Q5).
+* **Merges "in place and net", studied and decided with the stable
+  format** (024-22, QM1; Frans, 2026-11-13, 09:23: "Yes, decided work."):
+  the other way than P5's new nodes and take-back, which changes what a
+  record means; 2026.5 has P5's way (Frans, 2026-11-11, 14:34). Decided
+  work means it is settled in 2026.6, with measurements, not that the
+  merge changes.
+* **The versioning and compatibility rule and the corpus of saved
+  databases** (027-03, section 21, V-A to V-D, and 21.3; Frans,
+  2026-11-13, 09:23: "Yes, decided work."): a stable format needs its
+  rule; 026-08's node-size field, kept as a hook for a later release,
+  is a first case.
 
 
 Proposed for 2026.6, not decided
@@ -51,17 +67,6 @@ Proposed for 2026.6, not decided
 Each stays where it is until Frans decides; recommended for 2026.6
 there, or implied by this release's theme.
 
-* **The node size read from the meta block** (024-19, Q5; 024-02, Q19):
-  a start takes B from the meta block. Recommended "yes, but in 2026.6
-  with the stable stream format"; open.
-* **Merges "in place and net"** (024-22, QM1): the other way than P5's
-  new nodes and take-back, which changes what a record means. Decided:
-  P5's way in 2026.5 (Frans, 2026-11-11, 14:34); the other way "a
-  candidate for when the format is made stable (2026.6)".
-* **The versioning and compatibility rule** (024-02, section 21, V-A to
-  V-D, "2026.5's rule", none decided) and the corpus of saved databases
-  (024-02, section 21.3): the stable format's own questions, written
-  under 2026.5's first theme; 024-02 stays in 024 until then.
 * **The stable format's open questions of the first theme** (024's Log,
   2026-11-10, the reading of 19:52, accepted for "a stable stream
   format"): the startup distance in a KV (024-01, OT4, "with a format
@@ -81,7 +86,10 @@ Files
 * 02-public-key-check.md. 026-02, a public key check, so that a user can
   test a key (and maybe a value or a transaction) against the limits
   before a call (Frans, 2026-11-12, 09:34; from 024-27, QR1): the
-  options and a recommendation, no code yet.
+  options and a recommendation; done 2026-11-13 as decided (Frans,
+  09:11, QK1 to QK4): `bergdb.pub.Limits`, the limits as constants,
+  `keyBytes` and `checkKey`, no `levelBytes`; on branch `026-02-limits`,
+  to land.
 * 03-single-maintenance-step.md. 026-03, one maintenance step for a
   commit and for `maintain()`, and the simple form (ordinary
   transactions with filler) to consider (Frans, 2026-11-12, 13:44 and
@@ -89,6 +97,11 @@ Files
 * 04-reclaim-fraction-settings.md. 026-04, reclaim's fraction: measured
   at larger databases, three recommended values and one default
   (Frans, 2026-11-12, 14:07; 2026.5 keeps 1/4).
+* 05-reclaim-step-time.md. 026-05, each reclaim step scans at its own
+  time (P8 of 023-05, with 023-08's fault 13 fixed): the change on a
+  branch, the cut's argument, the gates, and back to empty's lag after a
+  mass delete before and after (024-05, OP9; 026-04, section 4); done, on
+  main since 2026-11-13 (Q1 to Q4 yes, Frans 09:41).
 * 06-value-transformation-refusal.md. 026-06, a value transformation
   that throws or passes 8 MiB refuses its transaction, before the go
   point (`Db.transformValues`), and the database goes on (010-04, R5);
@@ -96,9 +109,14 @@ Files
   2026-11-13 (Q1 to Q4 yes, Frans 08:45).
 * 07-write-buffer.md. 026-07, the write buffer grows with use: 64 KiB
   at the start, doubled when an append does not fit, up to 10 MB, back
-  after an idle second; a small file database holds 0.67 MB of heap, not
+  after 2 idle seconds; a small file database holds 0.67 MB of heap, not
   11.1 MB (024-05, ST8; 024-01, PA7). Code on branch
   `026-07-write-buffer`; the probes in 07-write-buffer/.
+* 08-fixed-node-size.md. 026-08, the node size fixed at 30 for users,
+  the other sizes for tests only (Frans, 2026-11-13, 09:21); registered.
+* 09-keys-only-scan.md. 026-09, reclaim's scan without the values it
+  does not rewrite (024-34, Q34-1, option b; Frans, 2026-11-13, 09:38);
+  registered, after 026-05.
 
 
 Log
@@ -111,3 +129,16 @@ Log
 current work and move things for 2026.6 to 026. In particular this
 024-20 should move there."); the rest of 2026.5's work proposed for
 2026.6 but not decided listed above.
+
+2026-11-13. 024-02, the stream format's draft, moved to 027 as 027-03
+(Frans, 08:50: "Yes"), kept current there; this readme cites 027-03,
+the same sections.
+
+2026-11-13. 026-08 registered: the node size fixed at 30 for users
+(Frans, 09:17 and 09:21); 024-19's Q5 dropped from the proposals.
+
+2026-11-13. 024-22's QM1 and 027-03's section 21 moved from the
+proposals to the decided work (Frans, 09:23: "Yes, decided work.").
+
+2026-11-13. 026-09 registered: 024-34's Q34-1, option (b), after 026-05
+(Frans, 09:38).

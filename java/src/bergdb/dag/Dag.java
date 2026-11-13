@@ -47,7 +47,7 @@ public class Dag {
     
     /**
      * The largest node size, 62 (Frans, 2026-11-12; bergdb 024-19, Q6): a delete bitmap is one
-     * klong of 62 bits, one for each klong index of its node (Klong.DELETE_BITS; bergdb 024-02,
+     * klong of 62 bits, one for each klong index of its node (Klong.DELETE_BITS; bergdb 027-03,
      * section 11.2). DbBuilder offers 8, 14, 30 (the default and the Pub API's) and 62; a Dag
      * refuses a larger size when it is made (checkNodeSize).
      */

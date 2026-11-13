@@ -1,7 +1,8 @@
 015-todo
 ========
 
-Created 2026-11-03 by Frans Lundberg. Status: open.
+Created 2026-11-03 by Frans Lundberg. Status: done (2026-11-13): every
+entry closed; new entries go to 019 and 021.
 
 A list of things to do on BergDB: issues to fix, things to investigate,
 decisions to make. Each entry is a subitem with its own ID and a short
@@ -330,3 +331,7 @@ entry's log and in 020-11.
 release 2026.5's night, 024-38) closed after release 2026.5; 015-03's
 row, done since 2026-11-11, moved to Closed (coord-1113). No entry is
 open.
+
+2026-11-13. The item done (Frans, 09:26: "Yes, set 015's status to
+done"): every entry closed; new entries have gone to 019 since
+2026-11-05, and to 021 for its releases.

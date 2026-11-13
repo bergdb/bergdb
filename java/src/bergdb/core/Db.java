@@ -261,7 +261,10 @@ import bergdb.stream.SalsaStream;
  * letters such as å, ä and ö two (UTF-8), and each "/" of a Pub key two (its ikey has a byte
  * for each part). A longer key is refused by the Trans.Builder call that takes it, with an
  * IllegalArgumentException, which spoils the builder (Trans.Builder); a key that a key
- * transformation makes longer, by execute(), with a DbException (L2).</li>
+ * transformation makes longer, by execute(), with a DbException (L2). A key fits if its
+ * bytes, key.length of a byte[] key or the UTF-8 of a String key, are at most
+ * MAX_KEY_BYTES: check that before the call, no method is needed (bergdb 026-02, option E;
+ * bergdb.pub.Limits counts a Pub key, which has a byte more for each part).</li>
  * <li><b>A value</b> has at most MAX_VALUE_BYTES = 8 MiB, 8,388,608 bytes, refused by the
  * Trans.Builder call that takes it with an IllegalArgumentException (L4). A value
  * transformation's result over it is refused by execute(), with a DbException, as an

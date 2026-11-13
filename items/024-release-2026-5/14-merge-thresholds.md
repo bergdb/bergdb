@@ -2,7 +2,7 @@
 
 Created 2026-11-11 by Frans Lundberg. Status: done (2026-11-11): QT1
 decided, m8 (Frans, 14:34), made in 024-21; QT2, the thresholds at other
-node sizes, open (024-19, Q3).
+node sizes, decided as built (024-19, Q3; Frans, 2026-11-13).
 
 Step 2 of 024-11's plan (section 7): the thresholds of merges at the
 delete (MG) measured in Java at 1M and 10M keys, so that Frans can choose
