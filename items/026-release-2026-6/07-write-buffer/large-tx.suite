@@ -1,0 +1,9 @@
+# bergdb 026-07: the write buffer that grows, against large transactions and syncs. Same
+# format as java/stress/performance.suite. Transactions of 1 MB (100 values of 10 kB) and
+# of 20 MB (200 values of 100 kB; more than the largest buffer, 10 MB), and durable
+# commits from 16 threads (group commit). Run with
+# SUITE=<this file> java/stress/performance.sh ab REF CAND.
+
+w-tx-1m      write    3   n=20000 valsize=10000 tsize=100 work=uniform retain=inf ops=3000
+w-tx-20m     write    3   n=2000 valsize=100000 tsize=200 work=uniform retain=inf ops=100
+d-1k-t16     write    3   n=100000 valsize=1000 commit=durable threads=16 ops=1600 warmup=100000
