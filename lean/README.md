@@ -104,7 +104,10 @@ test and TREE the |D| term is not needed (`coldReads_run_noD`,
 `coldReads_tree_noD`), and with `DropStep` (SIS/BoundColdDrop.lean: BergDB
 drops no subtree) a change makes at most as many nodes unreachable as it adds
 entries (`removedAt_bound`), so the reads need no `removedAt` term either
-(`coldReads_tree_drop`).
+(`coldReads_tree_drop`). Counted by the tree's height in place of the root's
+level number (SIS/BoundHeight.lean, SIS/BoundHeightTheorems.lean; in 024-12's
+tree model a level is a code): `coldReads_height` and
+`T4_debt_java_tree_height`.
 
 Since bergdb item 009 (2026-10-25) the model also has handles: SIS/Handle.lean
 models 009's design of the physical layer (one handle per node, pointers that
@@ -250,6 +253,7 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
     import SIS.BoundT4JavaTheorems
     import SIS.BoundColdTheorems
     import SIS.BoundColdDTheorems
+    import SIS.BoundHeightTheorems
     #print axioms SIS.T1_recovery
     #print axioms SIS.T1_crash
     #print axioms SIS.T1_nodes
@@ -300,6 +304,8 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
     #print axioms SIS.coldReads_tree_noD
     #print axioms SIS.removedAt_bound
     #print axioms SIS.coldReads_tree_drop
+    #print axioms SIS.T4_debt_java_tree_height
+    #print axioms SIS.coldReads_height
 
 Each prints `[propext, Classical.choice, Quot.sound]`, or a part of it
 (`LM_cutTo`, `T3_section` and `T3_restarts` need no `Classical.choice`).
@@ -600,6 +606,12 @@ its section in sis-model.md.
   children a node loses, `lostLive`), by which a change makes at most as many
   nodes unreachable as it adds entries (`removedAt_bound`); and the reads
   without `removedAt` (`coldReads_tree_drop`).
+* SIS/BoundHeight.lean, SIS/BoundHeightTheorems.lean (007-09, section 5).
+  Bounds counted by height, not by level number: a node's live height at a
+  time (`LiveHeightLe`); T4's debt with BergDB's test and TREE
+  (`T4_debt_java_tree_height`) and a cold start's reads
+  (`coldReads_height`), with H the root's live height after every
+  transaction (for BergDB the tree's height plus one).
 * SIS/BoundColdDropExample.lean: a change, with one entry, that makes six nodes
   unreachable in a run that meets the assumptions and TREE, but not `DropStep`.
 
@@ -948,6 +960,11 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
   (`lazyStartup_next`); on a run's stream the rerun's paths are the run's
   (`rerunReach_st`) and its gd's are D (`sum_gd_eq_D`); with TREE a writer
   path has H + 1 nodes per node changed (`pathOf_count`).
+* BoundHeight. With TREE the ancestors of a node form one chain
+  (`tree_anc_chain`), at most H + 1 of them (`anc_count_height`); the access
+  path and the writer's paths by height (`accessPath_count_height`,
+  `pathOf_count_height`); the nodes that reach a node through pointers in at
+  most H steps (`ptrUp_count`).
 * BoundColdD. The rerun keeps the lazy startup's invariant, by which the
   nodes of gd(j) are canonical before step 3 comes to them, and gives out per
   transaction its writer's paths and new nodes (`rerun_fold_next`); a node
@@ -1256,7 +1273,8 @@ run):
   `T4_debt_java_height`, `T4_debt_java_height_count`;
   2026-11-13); a cold start's reads (`coldReads_lazy`,
   `coldReads_handles`, `coldReads_run`, `coldReads_run_noD`,
-  `coldReads_tree_noD`, `removedAt_bound`, `coldReads_tree_drop`; 2026-11-13).
+  `coldReads_tree_noD`, `removedAt_bound`, `coldReads_tree_drop`,
+  `coldReads_height`, `T4_debt_java_tree_height`; 2026-11-13).
 
 Checked by running: the `#guard`s of `lake build`, the random runs of
 `sistest`, `phystest` and `reclaimtest` (Build and run), and Java's traces
