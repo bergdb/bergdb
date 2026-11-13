@@ -1481,7 +1481,25 @@ and its status:
       split by `writerWP_rootSplit_rangeL` (putinv's
       `writerWP_delRootSplit_range` for any last version, now its
       corollary). `MergeStepOKF` does not take `PathOK`, so the range part
-      reaches the loop through the F3 obligations (next).
+      reaches the loop through the F3 obligations.
+    - The F3 route (latest, 23:20; `DelMergeCaseF3.lean`):
+      `opGetCaseOK_delMergeF3` gives `OpGetCaseOK p R DelMergeCase` from
+      `DelStepsOKF3`, `MergeStepOKF3`, `CollapseStepOKF3`, `TxSegFitsOK`,
+      `2 ≤ p.M` and the pointers of every run within reach (TP4,
+      `PointersOK`). TP4 is no new open premise: it comes from the
+      take-back's joint induction at the run level, as in
+      `innerChildren_reached`. The loop invariant is `DelInvF3` = `DelInvF`
+      ∧ `Book` ∧ `KdInv` (the kinds' books, joined by `writerWP_and` with
+      `kd_descendToHeight`, `kd_getNode`, `kd_merge` and `kd_collapseRoot`).
+      After a merge, its ranges are `writerWP_merge_range_inv` and its
+      inner children come from the kinds (`innerChildren_of_kinds`). The
+      collapse's inner children are its own `CollInv`'s.
+      - Open: `MergeStepOKF3` (`PathOK` given) asks only for the reached
+        nodes untaken (putinv's take-back, `ReachedFree`) and SegFits
+        (cost's step 4).
+      - Open: `CollapseStepOKF3` asks for the room (part 1) and the walk's
+        ranges after `takeBackRoot` and `replaceRoot` (parts 2 and 3).
+      - Open: `DelStepsOKF3` is putinv's `DelStepsOKF` on `DelInvF3`.
     Removed (latest, 23:08, as agreed with cost and the coordinator, after
     putinv's take-back moved to F2 at 65b84e5b): `DescentOKF`,
     `MergePathCond`, `opGetCaseOK_delMergeF`, `writerWP_mergeUp_delF`,
