@@ -1046,6 +1046,47 @@ Landed checkpoints:
   build` 310 jobs, 82 theorems on the standard axioms, no statement
   changed.
 
+**TP10 and TP11 at the latest time, reduced, 2026-11-13** (prover
+"latest", 10:37 to 11:55, branch `024-12-latest`). Proved, on the
+standard axioms:
+
+* **The scan needs nothing of the writer beyond the get.**
+  `latestScanOK_of_latestGet` (`ScanLatest.lean`): `LatestScanOK p` from
+  `LatestInvOK p` and `LatestGetOK p`. On a tree without faults at t a
+  scan gives the tree's contents at t in its range, in its order, the
+  first `limit` (`scan_eq_contents`; the setup's chain and the next step
+  in `ScanModel.lean`, `ScanNext.lean`, `ScanSetupProof.lean`); the
+  contents are the reference's `refKvs` when every get is `refGet`
+  (`rootContents_eq_refKvs`). So TP11 follows from TP7 and
+  `LatestGetOK` (`scanOK_of_latestGet`).
+* **The get, one transaction at a time.** `TxGetOK` (`GetLatest.lean`,
+  a new Prop): after a transaction within reach, a get at its time
+  gives, for a key of one of its operations, that operation's value, and
+  for any other key what a get gave at the time before.
+  `latestGetOK_of_txGet`: `LatestGetOK` from `TxGetOK` alone (the first
+  state has no key; a structure reads at the time after its last entry
+  as at that entry's time, `get_succ_of_timesLE`).
+* **The transaction's step, from the writer.** `txGetOK_of_writer`
+  (`GetWriter.lean`): `TxGetOK` from three statements about the
+  writer's state, read through it (its own nodes, values and super root
+  first, then P before the transaction: `runGet`): `InitGetOK`, the
+  first state reads as P at the time before, proved (`initGetOK`);
+  `OpGetOK`, each operation changes what the state reads by itself
+  alone; `CommitGetOK`, the structure after the transaction reads as
+  the last state. So TP10 and TP11 follow from TP7, `OpGetOK` and
+  `CommitGetOK` (`getOK_of_op_commit`, `scanOK_of_op_commit`).
+
+Open: `OpGetOK`, the writer's refinement of the map, every rule; it
+needs an invariant of the writer's state inside a transaction (TP7's
+holds between transactions only). `CommitGetOK`, the lift of the
+writer's last state through `changesOf` and `Struct.apply`, which TP7's
+`LatestInvOK` needs too (the walk asks `entriesOf` of a node's klongs to
+be its history). A note for both: TP7's invariant does not exclude two
+klongs live at t that name one key node (ranges bound no segment root),
+and a put into such a shared segment tree would change two keys; the
+proofs need the writer's own fact that each segment root it makes is
+new (TREE, as TP16 states it for the model).
+
 (T) for 27: `tracecheck`'s CUT-live checks it at every cut of a trace
 (024-07), and C-T6 checks what it follows from, `NonEmptyOK` and
 `KindsOK`, after every transaction. (T) for 14 and 16: `tracecheck`'s
