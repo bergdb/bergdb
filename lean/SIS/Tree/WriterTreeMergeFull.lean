@@ -1613,4 +1613,249 @@ theorem writerWP_mergeTail_any_tree (c : Ctx) (base : View BVal) (x : NodeId) (d
           h6old y (hyx y hyl hyr) hym]
 
 
+/-- `sibling` keeps the path. -/
+theorem writerWP_sibling_path (p : NodeId) (pn : KNode) (i : Nat) (inner : Bool) (c : Ctx) (w : W) :
+    WriterWP (sibling p pn i inner) c w (fun _ v => v.path = w.path) := by
+  unfold sibling
+  simp only [writerWP_bind, writerWP_read]
+  split
+  · exact writerWP_throw _ _ _ _
+  · simp only [writerWP_bind]
+    refine writerWP_mono (writerWP_getNode_cache _ c w) ?_
+    intro sn v ⟨_, _, hp⟩
+    split
+    · exact writerWP_throw _ _ _ _
+    · simp only [writerWP_pure]; exact hp
+
+/-- The writer's merge keeps the writer's tree, the parent with room or full
+(`writerWP_merge_made_tree` without its room premises): a full parent p, at
+depth D + 1 of the path, is split with the cascade above it, given the
+cascade's premises (`writerWP_mergeTail_any_tree`). -/
+theorem writerWP_merge_any_tree (x : NodeId) (d : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (w : W)
+    (hT : TreeOK (wNode c.p base w) c.i w.top.rootKey)
+    (hpar : ∀ p, (w.path[d - 1]?).map (·.2) = some p →
+      TReach (wNode c.p base w) c.i w.top.rootKey p ∧ ∃ pn, wNode c.p base w p = some pn ∧
+        klongsWf pn.ks = true ∧ (∀ s, Klong.time s ∈ pn.ks → s ≤ c.i) ∧
+        ∀ cc z zn, (cc, z) ∈ pn.liveAt c.i → wNode c.p base w z = some zn →
+          ∀ s, Klong.time s ∈ zn.ks → s ≤ c.i)
+    (hRt : ∀ y, TReach (wNode c.p base w) c.i w.top.rootKey y → w.taken.contains y = false)
+    (hids : (∀ z, (w.nodes.lookup z).isSome = true → z < w.next) ∧
+      (∀ z, (c.view z).isSome = true → z < w.next) ∧ (∀ z, w.taken.contains z = true → z < w.next))
+    (hbaseF : ∀ z, w.next ≤ z → knodeOf c.p base z = none)
+    (hfreshT : ∀ z, w.next ≤ z → ∀ u c', TReach (wNode c.p base w) c.i w.top.rootKey u →
+      ¬ TLink (wNode c.p base w) c.i u c' z)
+    (hlinksAll : ∀ u c' z, TLink (wNode c.p base w) c.i u c' z → z < w.next)
+    (s D : Nat) (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode) (hsD : s ≤ D)
+    (hd : d - 1 = D + 1)
+    (hX : ∀ i, s ≤ i → i ≤ D + 1 → (w.path[i]?).map (·.2) = some (X i))
+    (hK : ∀ i, s < i → i ≤ D + 1 → w.path[i]? = some (some (K i), X i))
+    (hlinkK : ∀ i, s < i → i ≤ D + 1 → (K i, X i) ∈ (Nn (i - 1)).liveAt c.i)
+    (hrange : ∀ i, s < i → i ≤ D → ¬ ChainRoom c (Nn i) → (Nn (i - 1)).leaf = false →
+      ∀ c' z, (c', z) ∈ (Nn i).live → 0 < c' →
+      K i ≤ c' ∧ ∀ c'' z', (c'', z') ∈ (Nn (i - 1)).live → K i < c'' → c' < c'')
+    (hlen : ∀ i, s ≤ i → i ≤ D → ¬ ChainRoom c (Nn i) →
+      c.p.splitAbove < ((Nn i).lastVersion c.i).size →
+      2 ≤ (Nn i).live.length)
+    (hwf : ∀ i, s ≤ i → i ≤ D + 1 → klongsWf (Nn i).ks = true)
+    (htimes : ∀ i, s ≤ i → i ≤ D + 1 → ∀ t, Klong.time t ∈ (Nn i).ks → t ≤ c.i)
+    (htop : ChainRoom c (Nn s) ∨ s = 0)
+    (hdist : ∀ i i', s ≤ i → i ≤ D + 1 → s ≤ i' → i' ≤ D + 1 → X i = X i' → i = i')
+    (hS2 : ∀ i, s ≤ i → i ≤ D + 1 →
+      w.nodes.lookup (X i) = some (Nn i) ∧ w.taken.contains (X i) = false)
+    (hS4 : ∀ i, s ≤ i → i ≤ D + 1 → TReach (wNode c.p base w) c.i w.top.rootKey (X i))
+    (hR0 : s = 0 → w.top.rootKey = X 0)
+    (hXx : ∀ i, s ≤ i → i ≤ D + 1 → X i ≠ x)
+    (hhalves : ∀ cL cR m1 m2 last, mergeFullLast (Nn (D + 1)) c.i cL m1 cR m2 = some last →
+      c.p.splitAbove < last.size → ∃ r0 : Nat, 0 < r0 ∧
+      (halves (Nn (D + 1)).leaf c.i last []).2.2 = r0 ∧
+      (∀ c' z, (c', z) ∈ (halves (Nn (D + 1)).leaf c.i last []).1.liveAt c.i → c' < r0 ∧
+        (c', z) ∈ (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).liveAt c.i) ∧
+      (∀ c' z, (c', z) ∈ (halves (Nn (D + 1)).leaf c.i last []).2.1.liveAt c.i → ∃ c0, r0 ≤ c0 ∧
+        c' = splitLocalCv (Nn (D + 1)).leaf r0 c0 ∧
+        (c0, z) ∈ (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).liveAt c.i) ∧
+      ((Nn D).leaf = false →
+        K (D + 1) ≤ r0 ∧ ∀ c'' z', (c'', z') ∈ (Nn D).live → K (D + 1) < c'' → r0 < c'')) :
+    WriterWP (merge x d) c w (fun _ w' => TreeOK (wNode c.p base w') c.i w'.top.rootKey) := by
+  obtain ⟨hidn, hidv, hidt⟩ := hids
+  have hfree : ∀ z, w.next ≤ z → wNode c.p base w z = none ∧ w.taken.contains z = false := by
+    intro z hz
+    have htz : w.taken.contains z = false := by
+      cases h' : w.taken.contains z with
+      | false => rfl
+      | true => have := hidt z h'; omega
+    have hnz : w.nodes.lookup z = none := by
+      cases h' : w.nodes.lookup z with
+      | none => rfl
+      | some _ => have := hidn z (by rw [h']; rfl); omega
+    exact ⟨by simp only [wNode, htz, Bool.false_eq_true, ↓reduceIte, hnz, hbaseF z hz], htz⟩
+  unfold merge
+  simp only [writerWP_bind, writerWP_read]
+  unfold pathNode
+  simp only [writerWP_bind, writerWP_get]
+  split
+  · rename_i e he
+    simp only [writerWP_pure]
+    obtain ⟨hpR, pn0, hpn0, hpwf, hpt, hch⟩ := hpar e.2 (by rw [he]; rfl)
+    have hXp : X (D + 1) = e.2 := by
+      have h1 : (w.path[d - 1]?).map (·.2) = some (X (D + 1)) := by
+        rw [hd]; exact hX (D + 1) (by omega) (Nat.le_refl _)
+      rw [he] at h1
+      simp only [Option.map_some, Option.some.injEq] at h1
+      exact h1.symm
+    refine writerWP_mono (writerWP_and (writerWP_getNode_all e.2 c w base hvc)
+      (writerWP_getNode_cache e.2 c w)) ?_
+    intro pn w1 ⟨⟨hr1, hlk1, hwn1, hpre1, hsrc1⟩, _, _, hp1⟩
+    rw [hwn1 (hRt _ hpR)] at hpn0
+    cases hpn0
+    -- the tail from any state that reads as w
+    have tailOK : ∀ (leftSome : Bool) (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId)
+        (rn : KNode) (ir cL cR : Nat) (xn : KNode) (w3 : W), ReadsAs c.p base w w3 →
+        w1.nodes <+: w3.nodes → (∀ z, (w3.nodes.lookup z).isSome = true → z < w.next) →
+        w3.path = w.path →
+        pn0.ks[il]? = some (.key cL l) → LastLive pn0.ks pn0.lastBitmap il cL →
+        pn0.ks[ir]? = some (.key cR r) → LastLive pn0.ks pn0.lastBitmap ir cR → cL ≠ cR →
+        (x = l ∨ x = r) → wNode c.p base w l = some ln → wNode c.p base w r = some rn →
+        WriterWP (mergeTail c x d e.2 pn0 xn leftSome l ln il r rn ir) c w3
+          (fun _ w' => TreeOK (wNode c.p base w') c.i w'.top.rootKey) := by
+      intro leftSome l ln il r rn ir cL cR xn w3 hr3 hpre3 hsrc3 hp3 hL hLL hR hRL hc hxlr hln hrn
+      have hNp : Nn (D + 1) = pn0 := by
+        have h1 := (hS2 (D + 1) (by omega) (Nat.le_refl _)).1
+        rw [hXp] at h1
+        have h2 := lookup_of_prefix _ _ hpre1 _ _ h1
+        rw [hlk1] at h2
+        exact (Option.some.inj h2).symm
+      apply writerWP_mergeTail_any_tree c base x d e.2 pn0 xn leftSome l ln il r rn ir cL cR
+        (wNode c.p base w) w.top.rootKey w.next w3 hT hpR (hwn1 (hRt _ hpR)) hL hLL hR hRL hc hxlr
+        hln hrn hpwf hpt hch hr3.1 (by rw [hr3.2.1]) hr3.2.2.2.2
+        (lookup_of_prefix _ _ hpre3 _ _ hlk1) hsrc3
+        (fun z hz => ⟨(hfree z hz).1, by rw [hr3.2.2.1]; exact (hfree z hz).2⟩) hfreshT hvc hlinksAll
+        hbaseF s D X K Nn hsD hd (by rw [hp3]; exact hX) (by rw [hp3]; exact hK) hlinkK hrange hlen
+        hwf htimes htop hdist hXp hNp
+        (fun i h1 h2 => ⟨lookup_of_prefix _ _ (hpre1.trans hpre3) _ _ (hS2 i h1 h2).1,
+          by rw [hr3.2.2.1]; exact (hS2 i h1 h2).2⟩)
+        hS4
+        hR0 hXx (fun m1 m2 last h => hhalves cL cR m1 m2 last (by rw [hNp]; exact h))
+    have hpn : wNode c.p base w e.2 = some pn0 := hwn1 (hRt _ hpR)
+    -- a klong of p that is the last live one of its compare value names a reached node
+    have hchild : ∀ i cv y, pn0.ks[i]? = some (.key cv y) → LastLive pn0.ks pn0.lastBitmap i cv →
+        (cv, y) ∈ pn0.liveAt c.i ∧ TReach (wNode c.p base w) c.i w.top.rootKey y := by
+      intro i cv y hk hl
+      have hm : (cv, y) ∈ pn0.liveAt c.i := by
+        rw [KNode.liveAt_of_times pn0 c.i hpt]
+        apply mem_of_lookup_nodup
+        rw [KNode.live_lookup]
+        exact keyLookup_of_last _ _ _ i y hk hl
+      exact ⟨hm, TReach.link hpR ⟨pn0, hpn, hm⟩⟩
+    have hptrk : ∀ i cv y, LastLive pn0.ks pn0.lastBitmap i cv → pn0.ptr? i = some y →
+        pn0.ks[i]? = some (.key cv y) := by
+      intro i cv y hl hy
+      obtain ⟨⟨y0, hy0⟩, _, _⟩ := hl
+      simp only [KNode.ptr?, hy0, Option.some.injEq] at hy
+      rw [hy0, hy]
+    refine writerWP_mono (writerWP_and (writerWP_getNode_all x c w1 base hvc)
+      (writerWP_getNode_cache x c w1)) ?_
+    intro xn w2 ⟨⟨hr2, hlk2, hwn2, hpre2, hsrc2⟩, _, _, hp2⟩
+    have hp02 : w2.path = w.path := by rw [hp2, hp1]
+    have hr02 := ReadsAs.trans _ _ _ _ _ hr1 hr2
+    have hpre02 : w1.nodes <+: w2.nodes := hpre2
+    have hsrc02 : ∀ z, (w2.nodes.lookup z).isSome = true → z < w.next := by
+      intro z hz
+      rcases hsrc2 z hz with h | h
+      · rcases hsrc1 z h with h' | h'
+        · exact hidn z h'
+        · exact hidv z h'
+      · exact hidv z h
+    unfold klongAt
+    simp only [writerWP_bind, writerWP_get]
+    split
+    · rename_i cx _ hcx
+      simp only [writerWP_pure]
+      generalize hmi : mergeIdx pn0 cx = mi
+      obtain ⟨ixo, ia, ib⟩ := mi
+      have hML := mergeIdx_last pn0 cx
+      rw [hmi] at hML
+      obtain ⟨hMx, hMa, hMb⟩ := hML
+      split
+      · rename_i ix hix
+        simp only [writerWP_bind, writerWP_pure]
+        have hLx := hMx ix hix
+        refine writerWP_if _ _ _ _ _ _ (fun _ => ?_) (fun hptr => ?_)
+        · simp only [writerWP_bind]; exact writerWP_throw _ _ _ _
+        have hpx : pn0.ptr? ix = some x := by simpa using hptr
+        have hkx := hptrk ix cx x hLx hpx
+        obtain ⟨_, hxR⟩ := hchild ix cx x hkx hLx
+        have hxn : wNode c.p base w x = some xn := by
+          rw [← hr1.1]; exact hwn2 (by rw [hr1.2.2.1]; exact hRt x hxR)
+        -- the step after a sibling is read: both nodes known
+        have hsib : ∀ (wb : W) (i cv : Nat) (sn : NodeId × KNode) (w3 : W),
+            ReadsAs c.p base w wb → w1.nodes <+: wb.nodes →
+            (∀ z, (wb.nodes.lookup z).isSome = true → z < w.next) →
+            LastLive pn0.ks pn0.lastBitmap i cv →
+            pn0.ptr? i = some sn.1 → ReadsAs c.p base wb w3 → wb.nodes <+: w3.nodes →
+            (∀ z, (w3.nodes.lookup z).isSome = true → (wb.nodes.lookup z).isSome = true ∨
+              (c.view z).isSome = true) →
+            (wb.taken.contains sn.1 = false → wNode c.p base wb sn.1 = some sn.2) →
+            pn0.ks[i]? = some (.key cv sn.1) ∧ wNode c.p base w sn.1 = some sn.2 ∧
+              ReadsAs c.p base w w3 ∧ w1.nodes <+: w3.nodes ∧
+              (∀ z, (w3.nodes.lookup z).isSome = true → z < w.next) := by
+          intro wb i cv sn w3 hrb hpreb hsrcb hl hp hr3 hpre3 hsrc3 hwn3
+          have hk := hptrk i cv sn.1 hl hp
+          obtain ⟨_, hsR⟩ := hchild i cv sn.1 hk hl
+          refine ⟨hk, ?_, ReadsAs.trans _ _ _ _ _ hrb hr3, hpreb.trans hpre3, ?_⟩
+          · rw [← hrb.1]; exact hwn3 (by rw [hrb.2.2.1]; exact hRt _ hsR)
+          · intro z hz
+            rcases hsrc3 z hz with h | h
+            · exact hsrcb z h
+            · exact hidv z h
+        -- the right sibling, read from a state wb
+        have hright : ∀ (wb : W) (ia0 cva : Nat), ReadsAs c.p base w wb → w1.nodes <+: wb.nodes →
+            (∀ z, (wb.nodes.lookup z).isSome = true → z < w.next) → wb.path = w.path →
+            LastLive pn0.ks pn0.lastBitmap ia0 cva → cx < cva →
+            WriterWP (do
+              let __x ← sibling e.2 pn0 ia0 !xn.leaf
+              mergeTail c x d e.2 pn0 xn false x xn ix __x.1 __x.2 ia0) c wb
+              (fun _ w' => TreeOK (wNode c.p base w') c.i w'.top.rootKey) := by
+          intro wb ia0 cva hrb hpreb hsrcb hpb hLa hax
+          rw [writerWP_bind]
+          refine writerWP_mono (writerWP_and (writerWP_sibling_all e.2 pn0 ia0 (!xn.leaf) c wb base hvc)
+            (writerWP_sibling_path e.2 pn0 ia0 (!xn.leaf) c wb)) ?_
+          rintro ⟨rs, rsn⟩ w4 ⟨⟨hs1, hr4, _, hwn4, hpre4, hsrc4⟩, hp4⟩
+          obtain ⟨hka, hrn, hr04, hpre14, hsrc04⟩ :=
+            hsib wb ia0 cva (rs, rsn) w4 hrb hpreb hsrcb hLa hs1 hr4 hpre4 hsrc4 hwn4
+          exact tailOK false x xn ix rs rsn ia0 cx cva xn w4 hr04 hpre14 hsrc04 (by rw [hp4, hpb]) hkx hLx
+            hka hLa
+            (by omega) (Or.inl rfl) hxn hrn
+        split
+        · rename_i ib0 cvb
+          obtain ⟨hLb, hbx⟩ := hMb ib0 cvb rfl
+          simp only [writerWP_bind]
+          refine writerWP_mono (writerWP_and (writerWP_sibling_all e.2 pn0 ib0 (!xn.leaf) c w2 base hvc)
+            (writerWP_sibling_path e.2 pn0 ib0 (!xn.leaf) c w2)) ?_
+          rintro ⟨ls, lsn⟩ w3 ⟨⟨hs1, hr3, _, hwn3, hpre3, hsrc3⟩, hp3⟩
+          obtain ⟨hkb, hln, hr03, hpre13, hsrc03⟩ :=
+            hsib w2 ib0 cvb (ls, lsn) w3 hr02 hpre02 hsrc02 hLb hs1 hr3 hpre3 hsrc3 hwn3
+          refine writerWP_if _ _ _ _ _ _ (fun _ => ?_) (fun _ => ?_)
+          · show WriterWP (mergeTail c x d e.2 pn0 xn true ls lsn ib0 x xn ix) c w3 _
+            exact tailOK true ls lsn ib0 x xn ix cvb cx xn w3 hr03 hpre13 hsrc03 (by rw [hp3, hp02]) hkb hLb
+              hkx hLx
+              (by omega) (Or.inr rfl) hln hxn
+          · rw [writerWP_bind, writerWP_pure]
+            dsimp only
+            split
+            · rename_i ia0 cva _
+              obtain ⟨hLa, hax⟩ := hMa ia0 cva rfl
+              exact hright w3 ia0 cva hr03 hpre13 hsrc03 (by rw [hp3, hp02]) hLa hax
+            · exact writerWP_throw _ _ _ _
+        · rw [writerWP_bind, writerWP_pure]
+          dsimp only
+          split
+          · rename_i ia0 cva
+            obtain ⟨hLa, hax⟩ := hMa ia0 cva rfl
+            exact hright w2 ia0 cva hr02 hpre02 hsrc02 hp02 hLa hax
+          · exact writerWP_throw _ _ _ _
+      · exact writerWP_throw _ _ _ _
+    · exact writerWP_throw _ _ _ _
+  · exact writerWP_throw _ _ _ _
+
 end SIS.Tree
