@@ -87,3 +87,4 @@ import SIS.Tree.WriterTree
 import SIS.Tree.GetSplit
 import SIS.Tree.GetTree
 import SIS.Tree.GetSpaceSplit
+import SIS.Tree.GetInPlace
