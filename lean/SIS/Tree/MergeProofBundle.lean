@@ -87,3 +87,4 @@ import SIS.Tree.WriterTree
 import SIS.Tree.GetSplit
 import SIS.Tree.WriterTreeOps
 import SIS.Tree.WriterTreeVisits
+import SIS.Tree.WriterTreeSplit
