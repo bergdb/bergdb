@@ -161,7 +161,6 @@ import SIS.Tree.GetOpCases
 import SIS.Tree.ChainShape
 import SIS.Tree.GetNewSegsTree
 import SIS.Tree.GetDescentOK
-import SIS.Tree.DelMergeCaseF2
 import SIS.Tree.MergeLastOrd
 import SIS.Tree.LevelShape
 import SIS.Tree.MergeGOrd

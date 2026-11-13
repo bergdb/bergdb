@@ -46,9 +46,10 @@ theorem opGetCaseOK_of' (p : Params) (R : Struct BVal → Time → Prop)
 
 States inside a delete are read at a fuel f above the writer's (f = p.fuel + 1),
 so that a merge's root split, which a later collapse undoes, keeps the reading.
-`DelInvF`, `MergeStepOKF`, `CollapseStepOKF` and `DelStepsOKF` are the
-obligations of the reduction at f (`opGetCaseOK_delMergeF2`, `DelMergeCaseF2.lean`); the operation's end reads at p.fuel again
-by `getFromR_fuel_mono`. -/
+`DelInvF` is the delete's invariant at f; the reduction of case (4) on it is
+`opGetCaseOK_delMergeF4` (`CollapseCascade.lean`, with the kinds' books of
+`DelMergeCaseF3.lean`); the operation's end reads at p.fuel again by
+`getFromR_fuel_mono`. -/
 
 /-- Obligation (the collapse's ranges at a fuel f): the collapse's steps keep the
 walk's ranges and inner children, and a segment leaf has room for a replaced

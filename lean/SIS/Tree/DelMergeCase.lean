@@ -3,7 +3,8 @@ Case 4 of 024-12's assembly, a delete with the merges on (bergdb 024-22): the
 parts of the merge's and the collapse's steps that the books, the tree lemmas
 and the reading do not give (`StepInv`, `CollRange`), `PutInv` after a step
 from them, and the path facts carried over. The reduction is at a reading fuel
-above the writer's (`DelMergeCaseF.lean`, `DelMergeCaseF2.lean`).
+above the writer's (`DelMergeCaseF.lean`, `DelMergeCaseF3.lean`,
+`CollapseCascade.lean`).
 -/
 import SIS.Tree.GetMergeInv
 import SIS.Tree.MergeTreeInv

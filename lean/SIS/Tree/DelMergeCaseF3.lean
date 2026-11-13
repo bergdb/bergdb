@@ -1,4 +1,4 @@
-import SIS.Tree.DelMergeCaseF2
+import SIS.Tree.GetDescentOK
 import SIS.Tree.RangeMergeRoot
 import SIS.Tree.ChildrenKinds
 import SIS.Tree.WriterKindsRun
@@ -11,14 +11,15 @@ namespace SIS.Tree
 open SIS SIS.Check
 
 /-! Case 4 of 024-12's assembly with the kinds' walk (bergdb 024-12, case (4)):
-the reduction of `DelMergeCaseF2.lean` with the delete's inner invariant joined
-with the kinds' books (`Book`, `KdInv`; putinv's `kd_merge`, `kd_collapseRoot`,
-`kd_descendToHeight`). The walk's ranges after a merge are proved
-(`writerWP_merge_range_inv`); its inner children come from the kinds
-(`innerChildren_of_kinds`, with the pointers of the run, TP4); the collapse's
-inner children from its own invariant (`CollInv`). Left are the merge's
-reached nodes and fuel (`MergeStepOKF3`), the collapse's ranges and room
-(`CollapseStepOKF3`), and the delete's other steps (`DelStepsOKF3`). -/
+the delete's inner invariant joined with the kinds' books (`DelInvF3`: `Book`,
+`KdInv`; putinv's `kd_merge`, `kd_collapseRoot`, `kd_descendToHeight`). The
+walk's ranges after a merge are proved (`writerWP_merge_range_inv`); its inner
+children come from the kinds (`innerChildren_of_kinds`, with the pointers of
+the run, TP4). The merges' loop keeps `DelInvF3` given the merge's obligation
+(`writerWP_mergeUp_delF3`, `MergeStepOKF3`); `DelStepsOKF3` is the delete's
+other steps. Case (4) itself is `opGetCaseOK_delMergeF4` (`CollapseCascade.lean`),
+whose collapse takes a full segment leaf; this file's route with the collapse's
+room premise was removed when F4 superseded it. -/
 
 /-- The delete's inner invariant with the kinds' books over the book base BK and
 the kinds' oracle KO. -/
@@ -41,102 +42,12 @@ def MergeStepOKF3 (c : Ctx) (base : View BVal) (f : Nat) : Prop :=
       (∀ y, ReachS (wNode c.p base v') c.i v'.top.rootKey y → v'.taken.contains y = false) ∧
       SegFits (wNode c.p base v') c.i (f - 1) v'.top.rootKey)
 
-/-- Obligation (the collapse's ranges and room at a fuel f): `CollapseStepOKF`
-with the walk's ranges for `CollRange`; the collapse's inner children are its
-own invariant's (`CollInv`). -/
-def CollapseStepOKF3 (c : Ctx) (base : View BVal) (f : Nat) : Prop :=
-  (∀ w0 v x n leaf ln k, CollGetInvF c base w0 v f →
-      RangeOrder (wNode c.p base v) c.i v.top.rootKey → SegDesc c base x v →
-      v.nodes.lookup x = some n → n.leaf = false → n.firstTime ≠ some c.i →
-      TReach (wNode c.p base v) c.i v.top.rootKey leaf → v.nodes.lookup leaf = some ln →
-      ln.leaf = true → (k, x) ∈ ln.liveAt c.i →
-      ln.size + 1 + 1 ≤ c.p.M ∧ ∀ y, deadOver c.p (ln.add c.i (.key k y)) = false) ∧
-  (∀ w0 v x n only, CollGetInvF c base w0 v f →
-      RangeOrder (wNode c.p base v) c.i v.top.rootKey → SegDesc c base x v →
-      v.nodes.lookup x = some n → n.leaf = false → n.firstTime = some c.i →
-      n.onlyLiveKlong = some only → n.cv? only = some 0 →
-      WriterWP (takeBackRoot x (v.path.length - 1) only) c v
-        (fun _ v' => RangeOrder (wNode c.p base v') c.i v'.top.rootKey)) ∧
-  (∀ w0 v x n only, CollGetInvF c base w0 v f →
-      RangeOrder (wNode c.p base v) c.i v.top.rootKey → SegDesc c base x v →
-      v.nodes.lookup x = some n → n.leaf = false → n.firstTime ≠ some c.i →
-      n.onlyLiveKlong = some only → n.cv? only = some 0 →
-      WriterWP (replaceRoot x (v.path.length - 1) only) c v
-        (fun _ v' => RangeOrder (wNode c.p base v') c.i v'.top.rootKey))
-
-/-- `CollapseStepOKF3` from its first part, the room in the segment leaf above a
-replaced segment root: the walk's ranges after `takeBackRoot` and `replaceRoot`
-at the space root and at a segment (putinv's `writerWP_rootStep_space_rangeG`,
-`writerWP_takeBackRoot_seg_rangeG`, `writerWP_replaceRoot_seg_rangeG`, as in
-`writerWP_collapseRoot_range`). -/
-theorem collapseStepOKF3_of_room (c : Ctx) (base : View BVal) (f : Nat)
-    (hroom : ∀ w0 v x n leaf ln k, CollGetInvF c base w0 v f →
-      RangeOrder (wNode c.p base v) c.i v.top.rootKey → SegDesc c base x v →
-      v.nodes.lookup x = some n → n.leaf = false → n.firstTime ≠ some c.i →
-      TReach (wNode c.p base v) c.i v.top.rootKey leaf → v.nodes.lookup leaf = some ln →
-      ln.leaf = true → (k, x) ∈ ln.liveAt c.i →
-      ln.size + 1 + 1 ≤ c.p.M ∧ ∀ y, deadOver c.p (ln.add c.i (.key k y)) = false) :
-    CollapseStepOKF3 c base f := by
-  refine ⟨hroom, ?_, ?_⟩
-  · intro w0 v x n only hI hJ hP hlk hxl hm honly hcv
-    obtain ⟨_, ps, hvp, hlf, hend, hcache, hlast⟩ := hP
-    rcases hlast with hps | ⟨ps0, k, L, ln, hps, hL, hLn, hLl⟩
-    · subst hps
-      have hx : x = v.top.rootKey := by rw [← hend]; rfl
-      rw [hvp]
-      exact (writerWP_rootStep_space_rangeG x only n c base v _ _ _ hI hJ hx hlk honly hcv hxl).1
-    · subst hps
-      obtain ⟨hLr, hLlk, hk, hlen, hpd, hpk⟩ := segDesc_seg c base x v ps0 k L ln hvp hlf hcache hL hLn
-      rw [hlen]
-      exact writerWP_takeBackRoot_seg_rangeG x ps0.length only n L ln k c base v _ _ _ hI hJ hLr hLlk
-        hLl hk hlk honly hcv hxl hpd hpk
-  · intro w0 v x n only hI hJ hP hlk hxl hm honly hcv
-    have hP0 := hP
-    obtain ⟨_, ps, hvp, hlf, hend, hcache, hlast⟩ := hP
-    rcases hlast with hps | ⟨ps0, k, L, ln, hps, hL, hLn, hLl⟩
-    · subst hps
-      have hx : x = v.top.rootKey := by rw [← hend]; rfl
-      rw [hvp]
-      exact (writerWP_rootStep_space_rangeG x only n c base v _ _ _ hI hJ hx hlk honly hcv hxl).2
-    · subst hps
-      obtain ⟨hLr, hLlk, hk, hlen, hpd, hpk⟩ := segDesc_seg c base x v ps0 k L ln hvp hlf hcache hL hLn
-      obtain ⟨hroom1, hdead⟩ := hroom w0 v x n L ln k hI hJ hP0 hlk hxl hm hLr hLlk hLl hk
-      rw [hlen]
-      exact writerWP_replaceRoot_seg_rangeG x ps0.length only n L ln k c base v _ _ _ hI hJ hLr hLlk
-        hLl hk hlk honly hcv hxl hpd hpk hroom1 hdead
-
 /-- Inner children from the kinds' walk, kept generic in the context: at the
 operation level `innerChildren_of_kinds` gives it, with the pointers of the run. -/
 def ICEFromKinds (c : Ctx) (base : View BVal) (KO : KindOracle) (BK : NodeId) : Prop :=
   ∀ v, Book BK c v → KdInv KO BK v →
     (∀ y, TReach (wNode c.p base v) c.i v.top.rootKey y → v.taken.contains y = false) →
     InnerChildrenExist (wNode c.p base v) c.i v.top.rootKey
-
-/-- The collapse keeps `DelInvF3`. -/
-theorem writerWP_collapseRoot_delF3 (key : Key) (seg : Nat) (c : Ctx) (base : View BVal)
-    (hvc : ViewCoherent c base) (f : Nat) (hf2 : 2 ≤ f) (hC : CollapseStepOKF3 c base f) (w0 : W)
-    (k0 : Key) (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
-    (v : W) (hI : DelInvF3 c base w0 k0 f KO BK v) :
-    WriterWP (collapseRoot key seg c.p.fuel) c v (fun _ v' => DelInvF3 c base w0 k0 f KO BK v') := by
-  obtain ⟨⟨hP, hG, hR, hICE, hF, hread, B, top0, hB, hbook⟩, hbk, hik⟩ := hI
-  have hCI : CollGetInvF c base v v f := by
-    refine ⟨⟨hP.tree, fun y hy => hP.untaken y (tReach_reachS _ _ _ _ hy),
-      fun y yn _ h => hP.times y yn h, fun y yn cc z hy hyn hl hc => hICE y yn cc z hy hyn hl hc⟩,
-      fun _ => rfl, hF, fun y yn _ h => hP.wf y yn h, fun y yn _ h => hP.keyNoValue y yn h⟩
-  refine writerWP_mono (writerWP_and (writerWP_and (writerWP_collapseRoot_collF f hf2 key seg c base
-    hvc v (fun v => RangeOrder (wNode c.p base v) c.i v.top.rootKey)
-    (fun v v' hJ hr => by
-      show RangeOrder (wNode c.p base v') c.i v'.top.rootKey
-      rw [hr.1, hr.2.1]; exact hJ)
-    (hC.1 v) (hC.2.1 v) (hC.2.2 v) c.p.fuel v hCI hR)
-    (putBook_collapseRoot key seg c.p.fuel c base B top0 hB v hbook))
-    (kd_collapseRoot KO BK key seg c.p.fuel c v hv hk hbk hik)) ?_
-  rintro _ v' ⟨⟨⟨⟨⟨hT', hu', _, hICE'⟩, hread', hF', _, _⟩, hR'⟩, hbook'⟩, hbk', hik', _⟩
-  obtain ⟨hP', hG'⟩ := putInv_after_step c base v' B top0 hB hbook' hT'
-    (fun y hy => hu' y (reachS_tReach _ _ _ _ hy)) hR'
-  refine ⟨⟨hP', hG', hR', hICE', hF', fun key' hk' => ?_, B, top0, hB, hbook'⟩, hbk', hik'⟩
-  rw [hread' key']
-  exact hread key' hk'
 
 set_option maxHeartbeats 1600000 in
 /-- The merges' loop keeps `DelInvF3`, given the merge's obligation at f: the
@@ -246,20 +157,6 @@ theorem writerWP_mergeUp_delF3 (key : Key) (g : Nat) (c : Ctx) (base : View BVal
               · simp only [writerWP_pure]; exact ⟨hI4, hbk4, hik4⟩
               · exact ih (h + 1) true v4 ⟨hI4, hbk4, hik4⟩
 
-/-- `afterDelete` keeps `DelInvF3`, given the merge's and the collapse's
-obligations at f. -/
-theorem writerWP_afterDelete_delF3 (key : Key) (g h : Nat) (c : Ctx) (base : View BVal)
-    (hvc : ViewCoherent c base) (fuelR : Nat) (hfR : 2 ≤ fuelR) (hM : MergeStepOKF3 c base fuelR)
-    (hC : CollapseStepOKF3 c base fuelR)
-    (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
-    (hICEk : ICEFromKinds c base KO BK) (hsa2 : 2 ≤ c.p.splitAbove)
-    (hcap : 1 ≤ c.p.mergeMax) (w0 : W) (k0 : Key) (v : W) (hI : DelInvF3 c base w0 k0 fuelR KO BK v) :
-    WriterWP (afterDelete key g h) c v (fun _ v' => DelInvF3 c base w0 k0 fuelR KO BK v') :=
-  writerWP_afterDelete_inv key g h c (DelInvF3 c base w0 k0 fuelR KO BK)
-    (fun v hI => writerWP_mergeUp_delF3 key g c base hvc fuelR hfR hM KO BK hv hk hICEk hsa2 hcap w0 k0
-      c.p.fuel h false v hI)
-    (fun v hI => writerWP_collapseRoot_delF3 key g c base hvc fuelR hfR hC w0 k0 KO BK hv hk v hI) v hI
-
 /-- Obligation (the delete's other steps, with the kinds' books): `DelStepsOKF`
 with the merges' loop, `afterDelete` and the collapse keeping `DelInvF3` over the
 transaction's base and the run's kinds. -/
@@ -292,51 +189,5 @@ def DelStepsOKF3 (p : Params) (R : Struct BVal → Time → Prop) : Prop :=
       SegFits (wNode p (viewOf (treeRun p ts)) w') (ts.length + 1) (p.fuel - 1) w'.top.rootKey →
       ∀ key', keyWf key' = true →
         runGet p ts w' key' = if op.key == key' then op.value else runGet p ts w key')
-
-/-- Case 4 at the reading fuel p.fuel + 1 inside the delete, with the kinds'
-books: `OpGetCaseOK'` from the merge's, the collapse's and the other steps'
-obligations, given the pointers of every run within reach (TP4, for the kinds;
-`innerChildren_reached` takes it too). -/
-theorem opGetCaseOK'_delMerge3 (p : Params) (R : Struct BVal → Time → Prop) (hS : DelStepsOKF3 p R)
-    (hM : ∀ ts, MergeStepOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hC : ∀ ts, CollapseStepOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hsa2 : 2 ≤ p.splitAbove) (hcap : 1 ≤ p.mergeMax) (hMM : 2 ≤ p.M)
-    (hPtr : ∀ ts, Within p ts → PointersOK (treeRun p ts)) :
-    OpGetCaseOK' p R DelMergeCase := by
-  have hf2 : 2 ≤ p.fuel + 1 := by unfold Params.fuel; omega
-  intro ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF0 hP
-  obtain ⟨key, hop, hmerges⟩ := hP
-  have hwts : Within p ts := by
-    have := within_take p (ts ++ [tx]) hw ts.length
-    simpa using this
-  have hfresh : ∀ q ∈ treeRun p ts, q.1 < tx.base := by
-    have := (hw.2 ts.length (by simp)).1
-    simpa using this
-  have hK := treeRun_kindsAllOK p hMM hPtr ts hwts
-  have hv : ViewIdsBelow tx.base (ctxOf p ts).view :=
-    viewIdsBelow_rootless _ _ (viewIdsBelow_view p (treeRun p ts) ts.length tx.base hfresh)
-  have hk : ViewKinds (kindOracleOf p (treeRun p ts)) tx.base (ctxOf p ts) :=
-    viewKinds_of p (treeRun p ts) ts.length tx.base hfresh (treeRun_timesLE p ts) (hPtr ts hwts) hK
-  have hICEk : ICEFromKinds (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) tx.base :=
-    fun v hb hi hun => innerChildren_of_kinds p (treeRun p ts) tx.base (ctxOf p ts) v rfl hK
-      (hPtr ts hwts) hb hi.cache hun
-  exact hS ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF0 key hop hmerges
-    (fun g h v hv' => writerWP_afterDelete_delF3 key g h (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
-      (p.fuel + 1) hf2 (hM ts) (hC ts) _ _ hv hk hICEk hsa2 hcap w key v hv')
-    (fun g h merged v hv' => writerWP_mergeUp_delF3 key g (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
-      (p.fuel + 1) hf2 (hM ts) _ _ hv hk hICEk hsa2 hcap w key p.fuel h merged v hv')
-    (fun seg v hv' => writerWP_collapseRoot_delF3 key seg (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
-      (p.fuel + 1) hf2 (hC ts) w key _ _ hv hk v hv')
-
-/-- Case 4 (`OpGetCaseOK`) from the merge's, the collapse's and the other steps'
-obligations with the kinds' books, the fuel premise along transactions
-(`TxSegFitsOK`) and the pointers of every run within reach (TP4). -/
-theorem opGetCaseOK_delMergeF3 (p : Params) (R : Struct BVal → Time → Prop) (hS : DelStepsOKF3 p R)
-    (hM : ∀ ts, MergeStepOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hC : ∀ ts, CollapseStepOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hsa2 : 2 ≤ p.splitAbove) (hcap : 1 ≤ p.mergeMax) (hMM : 2 ≤ p.M)
-    (hPtr : ∀ ts, Within p ts → PointersOK (treeRun p ts)) (hfit : TxSegFitsOK p R) :
-    OpGetCaseOK p R DelMergeCase :=
-  opGetCaseOK_of' p R DelMergeCase (opGetCaseOK'_delMerge3 p R hS hM hC hsa2 hcap hMM hPtr) hfit
 
 end SIS.Tree

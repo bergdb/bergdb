@@ -19,7 +19,7 @@ ranges and `TakeJ2` together, the steps by cost's `CollapseStepOKF` and the
 take-back's collapse steps (TakeDeadCollapse.lean, here for `CollGetInvF`).
 -/
 import SIS.Tree.DelMergeCaseF
-import SIS.Tree.DelMergeCaseF2
+import SIS.Tree.GetDescentOK
 import SIS.Tree.TakeNextGrows
 import SIS.Tree.TakeDeadNewSegFull
 
