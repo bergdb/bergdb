@@ -174,6 +174,8 @@ import SIS.Tree.FuelPaths
 import SIS.Tree.WriterGetCollapse
 import SIS.Tree.WriterGetCollapseSeg
 import SIS.Tree.WriterGetUp
+import SIS.Tree.ChildrenExist
+import SIS.Tree.WriterGetUpW
 import SIS.Tree.RangeSim
 import SIS.Tree.RangeChain
 import SIS.Tree.RangePut
