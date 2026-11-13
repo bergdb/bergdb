@@ -644,7 +644,8 @@ theorem writerWP_mergeCleanup_wNode (p m1 : NodeId) (c : Ctx) (base : View BVal)
         pure (ForInStep.yield PUnit.unit)) else (do
         unlink q.1
         pure (ForInStep.yield PUnit.unit)))) c w
-      (fun _ w' => w'.top = w.top ∧ w'.taken.contains p = false ∧
+      (fun _ w' => w'.top = w.top ∧ w'.taken.contains p = false ∧ w'.vals = w.vals ∧
+        (∀ y, (∀ q ∈ xs, y ≠ q.1) → w'.taken.contains y = w.taken.contains y) ∧
         (∀ y, y ≠ p → (∀ q ∈ xs, y ≠ q.1) → wNode c.p base w' y = wNode c.p base w y) ∧
         ((∃ n, wNode c.p base w p = some n) → ∃ n', wNode c.p base w' p = some n') ∧
         ∀ n', wNode c.p base w' p = some n' → ∃ n, wNode c.p base w p = some n ∧ n'.leaf = n.leaf ∧
@@ -656,12 +657,14 @@ theorem writerWP_mergeCleanup_wNode (p m1 : NodeId) (c : Ctx) (base : View BVal)
     intro w _ hpt
     rw [List.forIn_nil]
     refine (writerWP_pure _ c w _).mpr ?_
-    exact ⟨rfl, hpt, fun _ _ _ => rfl, fun h => h, fun n' h => ⟨n', h, rfl, fun _ _ h => Or.inl h⟩⟩
+    exact ⟨rfl, hpt, rfl, fun _ _ => rfl, fun _ _ _ => rfl, fun h => h,
+      fun n' h => ⟨n', h, rfl, fun _ _ h => Or.inl h⟩⟩
   | cons q qs ih =>
     intro w hne hpt
     rw [List.forIn_cons]
     have hqp : q.1 ≠ p := hne q List.mem_cons_self
-    have hrest : ∀ (w1 : W), w1.top = w.top → w1.taken.contains p = false →
+    have hrest : ∀ (w1 : W), w1.top = w.top → w1.taken.contains p = false → w1.vals = w.vals →
+        (∀ y, y ≠ q.1 → w1.taken.contains y = w.taken.contains y) →
         (∀ y, y ≠ p → y ≠ q.1 → wNode c.p base w1 y = wNode c.p base w y) →
         ((∃ n, wNode c.p base w p = some n) → ∃ n1, wNode c.p base w1 p = some n1) →
         (∀ n1, wNode c.p base w1 p = some n1 → ∃ n, wNode c.p base w p = some n ∧ n1.leaf = n.leaf ∧
@@ -673,16 +676,19 @@ theorem writerWP_mergeCleanup_wNode (p m1 : NodeId) (c : Ctx) (base : View BVal)
           pure (ForInStep.yield PUnit.unit)) else (do
           unlink q.1
           pure (ForInStep.yield PUnit.unit)))) c w1
-        (fun _ w' => w'.top = w.top ∧ w'.taken.contains p = false ∧
+        (fun _ w' => w'.top = w.top ∧ w'.taken.contains p = false ∧ w'.vals = w.vals ∧
+          (∀ y, (∀ q' ∈ q :: qs, y ≠ q'.1) → w'.taken.contains y = w.taken.contains y) ∧
           (∀ y, y ≠ p → (∀ q' ∈ q :: qs, y ≠ q'.1) → wNode c.p base w' y = wNode c.p base w y) ∧
           ((∃ n, wNode c.p base w p = some n) → ∃ n', wNode c.p base w' p = some n') ∧
           ∀ n', wNode c.p base w' p = some n' → ∃ n, wNode c.p base w p = some n ∧ n'.leaf = n.leaf ∧
             ∀ c' z, (c', z) ∈ n'.liveAt c.i →
               (c', z) ∈ n.liveAt c.i ∨ (z = m1 ∧ ∃ q' ∈ q :: qs, (c', q'.1) ∈ n.liveAt c.i)) := by
-      intro w1 h1top h1pt h1l h1ex h1p
+      intro w1 h1top h1pt h1v h1tk h1l h1ex h1p
       refine writerWP_mono (ih w1 (fun q' hq' => hne q' (List.mem_cons_of_mem _ hq')) h1pt) ?_
-      intro _ w2 ⟨h2top, h2pt, h2l, h2ex, h2p⟩
-      refine ⟨h2top.trans h1top, h2pt, fun y hyp hy => ?_, fun he => h2ex (h1ex he), fun n' hn' => ?_⟩
+      intro _ w2 ⟨h2top, h2pt, h2v, h2tk, h2l, h2ex, h2p⟩
+      refine ⟨h2top.trans h1top, h2pt, h2v.trans h1v, fun y hy => ?_, fun y hyp hy => ?_,
+        fun he => h2ex (h1ex he), fun n' hn' => ?_⟩
+      · rw [h2tk y (fun q' hq' => hy q' (List.mem_cons_of_mem _ hq')), h1tk y (hy q List.mem_cons_self)]
       · rw [h2l y hyp (fun q' hq' => hy q' (List.mem_cons_of_mem _ hq')),
           h1l y hyp (hy q List.mem_cons_self)]
       · obtain ⟨n2, hn2, hl2, hs2⟩ := h2p n' hn'
@@ -698,7 +704,7 @@ theorem writerWP_mergeCleanup_wNode (p m1 : NodeId) (c : Ctx) (base : View BVal)
     by_cases hq2 : q.2 = true
     · simp only [writerWP_bind, hq2, ↓reduceIte]
       refine writerWP_mono (writerWP_retarget_wNode p q.1 m1 c base hvc w hpt) ?_
-      intro _ w1 ⟨h1t, h1top, _, _, h1l, h1ex, h1p⟩
+      intro _ w1 ⟨h1t, h1top, _, h1v, h1l, h1ex, h1p⟩
       refine (writerWP_takenBack_iff _ c w1 _).mpr ?_
       refine (writerWP_note_iff _ c _ _).mpr ?_
       refine (writerWP_pure _ c _ _).mpr ?_
@@ -714,7 +720,8 @@ theorem writerWP_mergeCleanup_wNode (p m1 : NodeId) (c : Ctx) (base : View BVal)
           have : (p == q.1) = false := by simpa using (Ne.symm hqp)
           simp [this]
         simp only [wNode, hc]
-      refine hrest _ h1top (by rw [htk p (Ne.symm hqp)]; exact hpt) (fun y hyp hyq => ?_)
+      refine hrest _ h1top (by rw [htk p (Ne.symm hqp)]; exact hpt) h1v (fun y hyq => htk y hyq)
+        (fun y hyp hyq => ?_)
         (fun _ => by
           obtain ⟨n1, hn1⟩ := h1ex
           exact ⟨n1, by show wNode c.p base { w1 with taken := q.1 :: w1.taken } p = _; rw [hwq]; exact hn1⟩)
@@ -746,9 +753,9 @@ theorem writerWP_mergeCleanup_wNode (p m1 : NodeId) (c : Ctx) (base : View BVal)
     · have hq2' : q.2 = false := by simpa using hq2
       simp only [writerWP_bind, hq2', Bool.false_eq_true, ↓reduceIte]
       refine writerWP_mono (writerWP_unlink_wNode q.1 c base hvc w) ?_
-      intro _ w1 ⟨h1t, h1top, _, _, h1l⟩
+      intro _ w1 ⟨h1t, h1top, _, h1v, h1l⟩
       refine (writerWP_pure _ c _ _).mpr ?_
-      refine hrest _ h1top (by rw [h1t]; exact hpt) (fun y _ hyq => h1l y hyq)
+      refine hrest _ h1top (by rw [h1t]; exact hpt) h1v (fun y _ => by rw [h1t]) (fun y _ hyq => h1l y hyq)
         (fun he => by rw [h1l p (Ne.symm hqp)]; exact he) (fun n1 hn1 => ?_)
       rw [h1l p (Ne.symm hqp)] at hn1
       exact ⟨n1, hn1, rfl, fun c' z hm => Or.inl hm⟩
@@ -1343,7 +1350,7 @@ theorem writerWP_mergeTail_any_tree (c : Ctx) (base : View BVal) (x : NodeId) (d
         rintro _ w7 ⟨hT7, hl7, hr7, ht7, _⟩
         refine writerWP_mono (writerWP_mergeCleanup_wNode p m1 c base hvc _ w7 (hne' _ _)
           (by rw [ht7, h6taken]; exact hpT)) ?_
-        rintro _ w8 ⟨h8top, _, h8l, h8ex, h8p⟩
+        rintro _ w8 ⟨h8top, _, _, _, h8l, h8ex, h8p⟩
         try simp only [writerWP_pure]
         rw [h8top]
         refine treeOK_after_cleanup (wNode c.p base w7) (wNode c.p base w8) c.i w7.top.rootKey p l r m1
@@ -1546,7 +1553,7 @@ theorem writerWP_mergeTail_any_tree (c : Ctx) (base : View BVal) (x : NodeId) (d
         rintro _ w11 ⟨hT11, hl11, hr11, ht11, _⟩
         refine writerWP_mono (writerWP_mergeCleanup_wNode p m1 c base hvc _ w11 (hne' _ _)
           (by rw [ht11, h8taken]; exact hpT)) ?_
-        rintro _ w12 ⟨h12top, _, h12l, h12ex, h12p⟩
+        rintro _ w12 ⟨h12top, _, _, _, h12l, h12ex, h12p⟩
         try simp only [writerWP_pure]
         rw [h12top]
         refine treeOK_after_cleanup (wNode c.p base w11) (wNode c.p base w12) c.i w11.top.rootKey p l r m1

@@ -626,7 +626,7 @@ theorem writerWP_mergeTail_any_range (c : Ctx) (base : View BVal) (x : NodeId) (
         rintro _ w7 ⟨hT7, hl7, hr7, ht7, _, hRO7⟩
         refine writerWP_mono (writerWP_mergeCleanup_wNode p m1 c base hvc _ w7 (hne' _ _)
           (by rw [ht7, h6taken]; exact hpT)) ?_
-        rintro _ w8 ⟨h8top, _, h8l, h8ex, h8p⟩
+        rintro _ w8 ⟨h8top, _, _, _, h8l, h8ex, h8p⟩
         try simp only [writerWP_pure]
         rw [h8top]
         refine rangeOrder_after_cleanup (wNode c.p base w7) (wNode c.p base w8) c.i w7.top.rootKey p l r m1
@@ -976,7 +976,7 @@ theorem writerWP_mergeTail_any_range (c : Ctx) (base : View BVal) (x : NodeId) (
         rintro _ w11 ⟨hT11, hl11, hr11, ht11, _, hRO11⟩
         refine writerWP_mono (writerWP_mergeCleanup_wNode p m1 c base hvc _ w11 (hne' _ _)
           (by rw [ht11, h8taken]; exact hpT)) ?_
-        rintro _ w12 ⟨h12top, _, h12l, h12ex, h12p⟩
+        rintro _ w12 ⟨h12top, _, _, _, h12l, h12ex, h12p⟩
         try simp only [writerWP_pure]
         rw [h12top]
         refine rangeOrder_after_cleanup (wNode c.p base w11) (wNode c.p base w12) c.i w11.top.rootKey p l r m1

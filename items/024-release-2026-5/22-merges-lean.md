@@ -1255,7 +1255,21 @@ siblings are then not reached (`mergeV_reach`) and the last loop keeps the tree
 keeps the tree with the parent full or with room, given the cascade's premises
 for the path above the parent (as for the delete) and the halves of its last
 version (`hhalves`). Not taken: the parent the space root (d = 1), whose split
-makes a new root. `InnerChildrenExist` (`ChildrenExist.lean`) is the Prop agreed
+makes a new root. The reading (`GetMergeFull.lean`): a time split of a node with
+any last version below an inner parent, with its cascade, reads as the tree with
+the node's content replaced by that version (`writerWP_handleFull_timeV`, from
+latest's `getFromR_timeLevel` and `writerWP_appendKlongs_chainGRQ`, as in
+`writerWP_del_accessPathR`); that tree reads as before the merge
+(`getFromR_mergeOne`, `getFromR_mergeTwo`, with the full last version's live
+klongs, `mergeFullLast_iff`). So `writerWP_merge_full_get` and
+`writerWP_mergeTail_full_get`: the writer's merge keeps the reading, the parent
+with room or full, when the state after fits the fuel or no new root is made
+(`ChainNoNewRoot`). Its limits: a full parent that existed before the
+transaction, below an inner node, its last version not space split
+(`hnospace`); open: the space split of the full parent, in place or not, and the
+parent a segment root (below a segment leaf). The merges' loop at tree level
+(`writerWP_mergeUp_tree`): it keeps the tree and a caller's invariant when each
+merge does; its descents read as before (`writerWP_descendToHeight_readsU`). `InnerChildrenExist` (`ChildrenExist.lean`) is the Prop agreed
 with prover putinv, who proves it for the writer's states.
 Not yet: the whole put and delete around the cascade; a merge whose parent is
 full or compacted;

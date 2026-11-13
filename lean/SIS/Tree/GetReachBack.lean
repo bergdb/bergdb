@@ -374,4 +374,104 @@ theorem chain_reachS (N : NodeId → Option KNode) (t : Time) (X : Nat → NodeI
       obtain ⟨hN, hk⟩ := hl b (by omega) (by omega)
       exact ReachS.step (X b) (Nn b) (K (b + 1)) (X (b + 1)) hr hN hk
 
+/-- The reading through a space split in place of a segment root x below a
+segment leaf q: in A, x holds its first half f, S the second, the new segment
+root Y their klongs, and q's klong K, repointed in place, names Y. If V is a tree
+from r and Y's segment tree has depth below the fuel, the readings agree. -/
+theorem getFromR_segSpaceInPlaceLevel (V A : NodeId → Option KNode) (Val : NodeId → Option Nat)
+    (t : Time) (fuel : Nat) (hfuel2 : 2 ≤ fuel) (r q x S Y : NodeId) (qn xv f s : KNode) (K sc j : Nat)
+    (hT : TreeOK V t r) (hwfV : ∀ z zn, ReachS V t r z → V z = some zn → klongsWf zn.ks = true)
+    (hVq : V q = some qn) (hrq : ReachS V t r q) (hql : qn.leaf = true)
+    (hqwf : klongsWf qn.ks = true) (hqt : ∀ s, Klong.time s ∈ qn.ks → s ≤ t)
+    (hKx : (K, x) ∈ qn.liveAt t) (hqx : q ≠ x) (hj : qn.linkIndex x K = some j) (hVx : V x = some xv)
+    (hVS : V S = none) (hVY : V Y = none)
+    (hnoNew : ∀ u c z, ReachS V t r u → TLink V t u c z → z ≠ S ∧ z ≠ Y)
+    (hAY : A Y = some ⟨false, newKlongs t [(0, x), (sc, S)]⟩)
+    (hAF : A x = some f) (hAS : A S = some s) (hfl : f.leaf = xv.leaf) (hsl : s.leaf = xv.leaf)
+    (hleafF : xv.leaf = true → ∀ c, c < sc → (f.searchEq t c).map (·.y) = (xv.searchEq t c).map (·.y))
+    (hleafS : xv.leaf = true → ∀ c, sc ≤ c → (s.searchEq t c).map (·.y) = (xv.searchEq t c).map (·.y))
+    (hinF : xv.leaf = false → ∀ c : Nat, c < sc →
+      (f.searchLte t c).map (·.y) = (xv.searchLte t c).map (·.y))
+    (hinS : xv.leaf = false → ∀ c : Nat, sc ≤ c →
+      (s.searchLte t c).map (·.y) = (xv.searchLte t c).map (·.y))
+    (hAq : A q = some (qn.repoint j Y))
+    (hA : ∀ z, z ≠ x → z ≠ q → z ≠ S → z ≠ Y → A z = V z)
+    (hVal : Val x = Val Y) (hrY : r ≠ Y) (hrx : r ≠ x) (hrS : r ≠ S)
+    (hfit : SegDepthLe A t (fuel - 1) Y) :
+    ∀ key, getFromR A Val t fuel key r = getFromR V Val t fuel key r := by
+  have hYx : Y ≠ x := fun h => by rw [h, hVx] at hVY; cases hVY
+  have hSx : S ≠ x := fun h => by rw [h, hVx] at hVS; cases hVS
+  have hk1 : (K, x) ∈ qn.live := by rw [← KNode.liveAt_of_times qn t hqt]; exact hKx
+  have hrqT := reachS_tReach V t r q hrq
+  have hrx' : ReachS V t r x := ReachS.step q qn K x hrq hVq hKx
+  have hnotq : ∀ z, ReachS V t x z → z ≠ q := notReach_parent V t r q x K hT hrqT ⟨qn, hVq, hKx⟩
+  have honly : ∀ z zn c, ReachS V t r z → V z = some zn → (c, x) ∈ zn.liveAt t → z = q ∧ c = K :=
+    fun z zn c hz hzn hc => hT.oneLink z c q K x (reachS_tReach V t r z hz) hrqT ⟨zn, hzn, hc⟩
+      ⟨qn, hVq, hKx⟩
+  have hnoxV : ∀ z zn c, ReachS V t x z → V z = some zn → (c, x) ∉ zn.liveAt t := by
+    intro z zn c hz hzn hc
+    exact hnotq z hz (honly z zn c (reachS_trans V t r x hrx' z hz) hzn hc).1
+  have hnewx : ∀ z, ReachS V t x z → z ≠ S ∧ z ≠ Y := by
+    intro z hz
+    cases hz with
+    | root => exact ⟨hSx.symm, hYx.symm⟩
+    | step u un c _ hu hun hmem =>
+      exact hnoNew u c z (reachS_trans V t r x hrx' u hu) ⟨un, hun, hmem⟩
+  have hsub : ∀ key, key ≠ [] → getFromR A Val t fuel key Y = getFromR V Val t fuel key x := by
+    intro key _
+    refine getFromR_newRootRead V A Val t fuel x x S Y xv f s sc hVx hAY hAF hAS hfl hsl hleafF hleafS
+      hinF hinS ?_ ?_ hnoxV hfit hfuel2 key
+    · intro z zn hz hzn
+      exact hwfV z zn (reachS_trans V t r x hrx' z hz) hzn
+    · intro z hz hzx
+      obtain ⟨h2, h3⟩ := hnewx z hz
+      exact hA z hzx (hnotq z hz) h2 h3
+  have hrwf : klongsWf (qn.repoint j Y).ks = true := by rw [KNode.repoint_klongsWf]; exact hqwf
+  have hrt := KNode.repoint_times qn j Y t hqt
+  have hqs : ∀ c, ((qn.repoint j Y).searchEq t c).map (·.y) =
+      ((qn.searchEq t c).map (·.y)).map (fun z => if z = x then Y else z) := by
+    intro c
+    rw [KNode.searchEq_live _ t hrwf hrt c, KNode.repoint_live_lookup qn x Y K j hj c,
+      KNode.searchEq_live qn t hqwf hqt c]
+    by_cases hc : K = c
+    · subst hc
+      rw [lookup_some_of_mem (KNode.live_keys_nodup qn) hk1]
+      simp
+    · have hb : (K == c) = false := by simpa using hc
+      rw [hb]
+      simp only [Bool.false_eq_true, ↓reduceIte]
+      cases hlk : qn.live.lookup c with
+      | none => rfl
+      | some z =>
+        have hzx : z ≠ x := by
+          intro hzx
+          rw [hzx] at hlk
+          have hm := lookup_some_mem hlk
+          rw [← KNode.liveAt_of_times qn t hqt] at hm
+          exact hc (honly q qn c hrq hVq hm).2.symm
+        simp [hzx]
+  have hg := getFromR_graft V A Val t fuel r q x Y (fun z => z = x ∨ z = Y ∨ z = S) qn
+    (qn.repoint j Y) hVq hAq hql (by unfold KNode.repoint; split <;> exact hql) hqs (Or.inl rfl) hwfV
+    (fun z _ hD hzq => hA z (fun h => hD (Or.inl h)) hzq (fun h => hD (Or.inr (Or.inr h)))
+      (fun h => hD (Or.inr (Or.inl h))))
+    (by
+      intro z zn c y hz _ hzq hzn hy hD
+      rcases hD with hD | hD | hD
+      · subst hD; exact hzq (honly z zn c hz hzn hy).1
+      · subst hD; exact (hnoNew z c y hz ⟨zn, hzn, hy⟩).2 rfl
+      · subst hD; exact (hnoNew z c y hz ⟨zn, hzn, hy⟩).1 rfl)
+    (by
+      intro c y hy hD
+      rcases hD with hD | hD | hD
+      · exact hD
+      · subst hD; exact absurd rfl (hnoNew q c y hrq ⟨qn, hVq, hy⟩).2
+      · subst hD; exact absurd rfl (hnoNew q c y hrq ⟨qn, hVq, hy⟩).1)
+    hsub (by rw [hAY, hVx]; rfl) hVal.symm
+  intro key
+  exact hg key r ReachS.root (fun h => by
+    rcases h with h | h | h
+    · exact hrx h
+    · exact hrY h
+    · exact hrS h)
+
 end SIS.Tree

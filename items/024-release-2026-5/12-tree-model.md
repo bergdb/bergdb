@@ -1358,10 +1358,15 @@ cascade and in the put and delete rules along the access path
 reached after the cascade, so `SegFits` of the state after bounds its
 segment tree; `hspaceG`'s second case, with the tree in order, `OrdG`).
 The reading needs no fuel premise when no new root is made along the
-chain (`ChainNoNewRoot`, `NoNewRootG`). Still open: the same split for
-a segment root the transaction made (the segment leaf's klong repointed
-in place), and the delete's leaf when it space splits below a segment
-leaf.
+chain (`ChainNoNewRoot`, `NoNewRootG`). At 20:25, **proved: the same
+split for a segment root the transaction made**, the segment leaf's
+klong repointed in place to the new segment root
+(`getFromR_segSpaceInPlaceLevel`), and **for putinv's take-back: the
+cascade's chain nodes and new nodes after it**
+(`writerWP_appendKlongs_chainReachNew`: every chain node is reached or
+holds its version before the transaction, `toPrev`; every node the
+cascade made is reached). Still open: the delete's leaf when it space
+splits below a segment leaf.
 
 The reader's fuel (prover "latest", 2026-11-13, 18:15; 19:15): TP10's
 `get` (`Read.lean`, `getFrom`) and `getFromR` give every segment's
