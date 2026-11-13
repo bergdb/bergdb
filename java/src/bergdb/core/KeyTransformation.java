@@ -10,7 +10,11 @@ public interface KeyTransformation {
     /**
      * This method is allowed to change the key of trans.kvs[index] (Kv.setKey()) and
      * trans.writeKeyHashes[index], and allowed to read trans.tt, the transaction's time.
-     * Other data should not be read or modified.
+     * Other data should not be read or modified. A transformation that changes the key sets
+     * trans.writeKeyHashes[index] to the new key's hash, Keys.hash(newKey), as the Pub API's
+     * does (RwEnvironmentImp.entryTransformation()): Db.execute() does not compute it again,
+     * and it is the hash by which a transaction that read the key before this one's time
+     * conflicts with it (Db, "Threads").
      * It runs under the write lock, at the transaction's time, before the transaction's go
      * point, in Db.transformKeys() (until bergdb 024-16 after the go point, in Db.putKvs()).
      * A RuntimeException that it throws refuses the transaction with a DbException whose
