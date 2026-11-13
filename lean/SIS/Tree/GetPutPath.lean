@@ -1169,7 +1169,7 @@ theorem writerWP_del_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
       (hNN (i - 1 - d) (by omega)) hlk
   -- the chain's premises above the leaf
   have hchainPre := fun (w1 : W) (ins : List (Nat × NodeId)) =>
-    writerWP_appendKlongs_chainGRQ c base w3.path d (d + (m - 1)) (fun i => XX (i - d))
+    writerWP_appendKlongs_chainGRQ2 c base w3.path d (d + (m - 1)) (fun i => XX (i - d))
     (fun i => KK (i - d)) (fun i => NN (i - d))
     (fun i h1 h2 => hpX i h1 (by omega))
     (fun i h1 h2 => hpK i h1 (by omega))
