@@ -1125,7 +1125,14 @@ into one node or two, with the parent on the path reached, room in it for
 four klongs and no compaction, and the two nodes not made by the
 transaction; on the way, `mergeIdx` chooses the last live klong of each
 compare value (`mergeIdx_last`), and the parent's live klongs after are
-known (`mpNode_live_lookup`). Not yet: a merge of nodes the transaction made
+known (`mpNode_live_lookup`). Under prover latest's writer invariant
+`PutInv`, every put at leaf level without an inner split keeps the tree, as
+latest's `OpGetOK` cases: `writerWP_put_leafRoot_tree`,
+`writerWP_put_leafBelow_tree` (`WriterTreePutInv.lean`),
+`writerWP_put_segLeaf_tree` (a segment root that is a leaf: its time split,
+space split and space split in place under a new segment root,
+`WriterTreeSegRoot.lean`, `WriterTreeSegSplit.lean`, `WriterTreeSegInPlace.lean`)
+and `writerWP_put_newSeg_inv_tree` (`WriterTreeNewSeg.lean`). Not yet: a merge of nodes the transaction made
 (retarget, take-back), a merge whose parent is full; the writer's code of
 LE-b, the unlink and collapse; a split whose parent is full (the cascade);
 new segments; the segment roots' splits.

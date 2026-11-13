@@ -4,7 +4,7 @@ The merge's parent at the level of a node's live klongs (bergdb 024-22,
 physical key klong of it that the bitmap does not delete (`mergeIdx_last`),
 so that klong is the live one (`keyLookup_of_last`), and pointing it in place
 changes the live lookup at that compare value only
-(`KNode.repoint_live_lookup`).
+(`KNode.repoint_last_live_lookup`).
 -/
 import SIS.Tree.WriterTreePut2
 import SIS.Tree.PhysicalSelection
@@ -232,7 +232,7 @@ theorem keyLookup_of_last (del : List Nat) (c : Nat) (ks : List Klong) (i : Nat)
 
 /-- A compare value's last live klong pointed in place to y: the live lookup
 of that compare value is y, of the others as before. -/
-theorem KNode.repoint_live_lookup (n : KNode) (i c0 : Nat) (old y : NodeId)
+theorem KNode.repoint_last_live_lookup (n : KNode) (i c0 : Nat) (old y : NodeId)
     (hk : n.ks[i]? = some (.key c0 old)) (hl : LastLive n.ks n.lastBitmap i c0) (c : Nat) :
     (n.repoint i y).live.lookup c = if c = c0 then some y else n.live.lookup c := by
   have hrep : n.repoint i y = { n with ks := n.ks.set i (.key c0 y) } := by
@@ -543,7 +543,7 @@ theorem mpNode_live_lookup (pn : KNode) (tt : Time) (il cL : Nat) (m1 : NodeId)
     cases lip with
     | true =>
       simp only [↓reduceIte]
-      exact ⟨by rw [KNode.repoint_klongsWf]; exact hw1, KNode.repoint_live_lookup n1 il cL l m1 hk1 hl1⟩
+      exact ⟨by rw [KNode.repoint_klongsWf]; exact hw1, KNode.repoint_last_live_lookup n1 il cL l m1 hk1 hl1⟩
     | false =>
       simp only [Bool.false_eq_true, ↓reduceIte]
       refine ⟨KNode.add_key_wf n1 tt cL m1 hw1, fun c' => ?_⟩
@@ -597,7 +597,7 @@ theorem mpNode_live_lookup (pn : KNode) (tt : Time) (il cL : Nat) (m1 : NodeId)
       cases rip with
       | true =>
         simp only [↓reduceIte]
-        rw [KNode.repoint_live_lookup _ ir g r y hk2 hl2 c, hlk2 c]
+        rw [KNode.repoint_last_live_lookup _ ir g r y hk2 hl2 c, hlk2 c]
         by_cases h1 : c = g
         · simp [h1]
         · simp only [h1, ↓reduceIte]
