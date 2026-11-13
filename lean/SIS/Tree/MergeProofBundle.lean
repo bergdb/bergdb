@@ -128,3 +128,4 @@ import SIS.Tree.WriterTreeLeb
 import SIS.Tree.PutInvRoot
 import SIS.Tree.GetChain
 import SIS.Tree.GetInnerSplit
+import SIS.Tree.WriterTreeCollapseSeg
