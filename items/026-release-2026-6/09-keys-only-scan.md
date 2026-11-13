@@ -1,7 +1,7 @@
 # 026-09. Reclaim's scan without the values it does not rewrite
 
-Created 2026-11-13 by Frans Lundberg. Status: open (made on a branch,
-being measured).
+Created 2026-11-13 by Frans Lundberg. Status: made on a branch,
+measured and gated; to land (Q1).
 
 For release 2026.6: option (b) of 024-34's Q34-1. A reclaim step's scan
 does not follow a value pointer whose stream position is at the cut
@@ -181,7 +181,30 @@ liveness tests. No expected value of an existing test changed.
 
 ## 5. Gates
 
-(To come.)
+First on `ab2d4aed` (the branch with `main` `9c9650d6` merged), one
+slot each; logs in kscan/runs/gates-ab2d4aed/:
+
+* `java/before-commit.sh`: BEFORE COMMIT OK (65 s; 1,714 unit tests,
+  89 f-tests), gate-bc.txt.
+* `java/stress/level1.sh`: LEVEL 1 OK (159 s; MEM 129, SS 1.53),
+  gate-l1.txt.
+* `java/stress/level3.sh` (full): LEVEL 3 OK (498 s); RestartInvariance
+  with reclaim, stream identical in its four configurations; the
+  conformance with the Lean model, 35 traces, TRACECHECK OK 35, C-CUT 0
+  of 794 CUT lines fail; gate-l3.txt.
+* `java/stress/count-gates.sh`: COUNT GATES OK (164 s), as in section
+  6.3 (G3 4.389, G5's dead klongs 32 against Q2's limit 70), and
+  026-11's lag gate: 1,285 drive transactions, the limit 2,000;
+  gate-cg.txt.
+* `java/stress/level4.sh quick`: LEVEL 4 OK (140 s); the conformance
+  with eviction, 18 traces, C-P and C-H 0 of 4,886 transactions fail;
+  gate-l4.txt.
+
+`main` then moved (026-10 landed, `e4ac051f`, and the provers' Lean
+checkpoints), merged without conflict as `8e0de02b`; the gates again on
+it, logs in kscan/runs/gate-*.txt:
+
+* GATES2
 
 
 ## 6. Before and after: counts
@@ -240,7 +263,53 @@ then a drive of 40 R), with `g4its=1`:
 
 ### 6.2 026-04's workloads at 10M keys, f = 1/4
 
-(To come: running.)
+As 6.1 with n = 10M. `main`'s runs end at their third cut; the
+branch's at the same transaction as `main`'s (`cuts=99 max=...`,
+kscan/runs/rest2.sh), so that the window of WA_r and K (from the end
+of the first iteration, the same transaction in both, to the last) is
+the same. Workload (a) also ended at its own third cut (`a, 3 cuts`;
+kscan/runs/after-10m-a-3cuts.txt). Outputs
+kscan/runs/{before,after}-10m-*.txt; written in GB.
+
+| Run               | Steps   | Loads      | A step | WA_r  | K peak | K mean | Written |
+|---|---|---|---|---|---|---|---|
+| a, main           | 568,053 | 43,477,456 | 76.5   | 0.447 | 1.970  | 1.383  | 20.73   |
+| a, 026-09         | 491,210 | 21,687,214 | 44.2   | 0.510 | 1.933  | 1.346  | 21.10   |
+| a, 026-09, 3 cuts | 453,506 | 19,678,153 | 43.4   | 0.497 | 1.933  | 1.379  | 19.76   |
+| b, main           | 582,109 | 39,729,831 | 68.3   | 0.393 | 5.556  | 3.960  | 12.87   |
+| b, 026-09         | 477,651 | 19,814,545 | 41.5   | 0.428 | 5.572  | 3.959  | 13.02   |
+| c, main           | 682,339 | 45,124,635 | 66.1   | 0.454 | 2.226  | 1.637  | 21.13   |
+| c, 026-09         | 572,022 | 25,147,242 | 44.0   | 0.471 | 2.200  | 1.614  | 21.22   |
+
+* **The loads fall by 44 to 55 %, the steps by 14 to 20 %**, as at 1M.
+  On `main` the steps load about 4 values or nodes a user put (a:
+  43.5M loads in 10.4M puts), with 026-09 about 2.
+* **The iterations with nothing to rewrite** take 44 to 46 % fewer
+  steps (a: 125,167 to 69,961; b: 133,333 to 72,465; c: 133,251 to
+  72,440), load 88 to 92 % less (b: 11,650,249 to 1,283,879), and span
+  about half the stream (W/L0, b: 0.279 to 0.151; c: 0.056 to 0.031).
+* **K is the same or lower**: within 0.3 % in (b), 1.2 to 1.4 % lower
+  in (c), 1.9 to 2.7 % lower in (a).
+* **WA_r rises by 4 to 14 %** (c 0.454 to 0.471, b 0.393 to 0.428,
+  a 0.447 to 0.510): the stream written in the window grows 1.2 to 4.4 %.
+  At 1M the change was -4 to +1 %. The cause is the pacing (2.2): the
+  iteration that rewrites starts sooner after the last one that
+  rewrote, so fewer of its values were overwritten or deleted meanwhile
+  and it rewrites more (b's third iteration: 7,062,743 values against
+  6,598,418), and the cuts come a little sooner (so K is lower). On
+  `main` an M KV's value counted as if it were to be rewritten, which
+  slowed the iterations that rewrite nothing, and so the cuts and the
+  rewrites: 026-09 moves reclaim a little along the trade between the
+  stream kept and the stream written that f sets (026-04).
+
+Workload (d) at 10M (`g4its=1`), as at 1M:
+
+* The lag: 1,279 to 1,294 transactions; G4's kept over the twin's:
+  1.006 to 0.981.
+* **The stream written by the end of the drive: 3,278.0 to 3,504.5 MB
+  (+6.9 %)**; the kept stream after the deletes 2,615.2 to 1,964.9 MB
+  (-25 %); the values rewritten during the fill and the deletes
+  3,055,178 to 3,961,273 (+30 %), in 11 iterations against 9.
 
 ### 6.3 The count gates (`count-gates.sh`, 1M keys)
 
@@ -293,12 +362,33 @@ step bytes, MB.
 | hot                   | 0.2193 / 0.2201   | 0.1355 / 0.1359   | 452.5, 450.8 | 146.8, 143.7 |
 | cold                  | 0.2458 / 0.2463   | 0.1411 / 0.1415   | 434.8, 433.5 | 122.2, 120.6 |
 
-Slightly better everywhere: up to 1.5 % more WE, 1 % more SE, up to 3.7
-% fewer step bytes. (1,000-byte values: to come.)
+| Work, 1,000-byte values | WE, main / 026-09 | SE, main / 026-09 | Kept MB      | sB MB        |
+|---|---|---|---|---|
+| uniform                 | 0.5324 / 0.5422   | 0.4032 / 0.4104   | 151.2, 148.5 | 569.4, 537.2 |
+| hot                     | 0.6016 / 0.6068   | 0.2758 / 0.2778   | 223.4, 221.7 | 444.7, 431.2 |
+| cold                    | 0.6429 / 0.6484   | 0.2671 / 0.2680   | 230.9, 230.2 | 385.1, 372.4 |
+
+Slightly better everywhere, at both value sizes: up to 1.8 % more WE,
+1.8 % more SE, 3 to 6 % fewer step bytes (outputs
+kscan/runs/{before,after}-rc-*.txt and -rc1000-*.txt). Here the
+database is small (30 MB live) and the cuts come often, unlike
+section 6.2.
 
 ### 6.5 StreamDigest
 
-(To come.)
+`StreamDigest all` with `main`'s jar and with the branch's (kscan/runs/sd.sh;
+outputs sd-before.txt, sd-after.txt, sd-compare.txt): 12 of 48 digests
+differ, all four runs (plain, reads, restarts, restarts-once) of three
+configurations with reclaim; the four runs of each still agree with one
+another, as RestartInvariance requires. The configurations without
+reclaim (l2-*) and l3-node14 (50 keys) are the same.
+
+* l3-every1: the stream 1,837,024 to 1,815,920 bytes (-1.1 %).
+* l3-node8: 6,945,376 to 6,986,120 (+0.6 %).
+* l3-node62: 8,506,808 to 8,074,064 (-5.1 %).
+
+No test pins these digests; they are a reference for later changes
+that must not change the records, and for the C clone (022). Q3.
 
 
 ## 7. Risks and limits
@@ -309,13 +399,18 @@ Slightly better everywhere: up to 1.5 % more WE, 1 % more SE, up to 3.7
   with 1,000-byte values. Each costs a walk in the index (and the loads
   of index nodes not resident), no value load. The reserve (about 2,759
   index nodes followed) bounds a step as before.
+* **The pacing.** An iteration that rewrites nothing ends sooner, so
+  the cuts come sooner: at 10M keys reclaim writes 1.2 to 4.4 % more of
+  the stream and keeps 0 to 2.7 % less (section 6.2); back to empty
+  writes about 7 % more before its drive (6.1, 6.2), within the
+  internal fraction.
 * **The count is a pacing measure, no longer an estimate of stream
   space** for class M (it was "an approximation of the stream space of
   the KVs stored before pStart"). A step's record is bounded by class
   R, counted in full, as before.
 * **Bytes.** Other step boundaries, so other records after the first
   iteration: StreamDigest's digests of the configurations with reclaim
-  change (section 5); no record format change, no rerun rule. The C
+  change (section 6.5); no record format change, no rerun rule. The C
   clone (022) follows releases, so it gets a new reference only if it
   follows 2026.6.
 
@@ -325,7 +420,21 @@ Slightly better everywhere: up to 1.5 % more WE, 1 % more SE, up to 3.7
 Each is decided here by its recommendation, so that the work goes on;
 Frans may overturn it.
 
-* **Q1. Land 026-09?** (To come, from the 10M runs.)
+* **Q1. Land 026-09?** The numbers (sections 6.1 to 6.4): the steps'
+  loads fall by 44 to 60 % and the steps by 14 to 20 %, at 1M and 10M
+  keys. At 1M the stream kept and the stream written are the same
+  (within 1.1 %). At 10M, over the same window, the stream kept is 0
+  to 2.7 % lower and the stream written 1.2 to 4.4 % higher (WA_r +4 to
+  +14 %): the pacing of section 2.2. Back to empty writes about 7 %
+  more by the end of its drive, its lag the same. ReclaimCost is
+  slightly better. Every gate passes, G5 with Q2's limit.
+  Recommended: land. The loads it drops are reads from the stream of
+  values that the step does not rewrite, about 2 of `main`'s 4 loads a
+  user put at 10M (024-04: operations proportional to their work);
+  the writes it adds are appends, a few % of the stream, on the trade
+  between the stream kept and written that f sets (026-04). Not
+  measured: time (no timing slot today); 026-04's timing pass at 10M,
+  if run after 026-09 lands, shows the net.
 * **Q2. G5's limit on dead klongs** (section 6.3): 026-09 gives 32 at
   1M keys against the limit 30 (the twin's plus B = 30, 023-03's C4),
   a phase of the six leaves of BergDB's own keys, each at most theta
@@ -353,13 +462,13 @@ Log
 State
 =====
 
-2026-11-13, 11:05. Clone /Users/f/fl/bench/2026-11-13/kscan/clone,
-branch `026-09-keys-only-scan` from `main` `c91443d8`: `9667109b` (the
-change and its two tests), `c9521d6b` (G5's dead-klong limit, Q2), this
-item uncommitted. Done: the change, the unit tests, the 1M counts, the
-count gates, ReclaimCost at 100-byte values (section 6). Running, in
-slots, detached (nohup): the 10M runs, kscan/runs/before-chain4.log and
-after-chain4.log (meas2.sh, chain2.sh). Not done: the 10M tables,
-StreamDigest (kscan/runs/sd.sh), ReclaimCost at 1,000 bytes (rc2.sh),
-026-05's traces (traces.sh, after level3 built the checker), main
-merged in, the gates (section 5), Q1's recommendation.
+2026-11-13, 12:35. The first agent stopped on API errors at about
+11:15; the second ("kscan" again) continued. Clone
+/Users/f/fl/bench/2026-11-13/kscan/clone, branch `026-09-keys-only-scan`:
+`9667109b` (the change and its two tests), `c9521d6b` (G5's limit, Q2),
+`53ed98e1` (this item), main merged (`ab2d4aed`, then `8e0de02b`).
+Done: the change, the tests, the counts at 1M and 10M, ReclaimCost,
+StreamDigest, the gates on `ab2d4aed`, Q1's recommendation. Running,
+detached (nohup): kscan/runs/gates.sh bc l1 l3 cg l4 traces on
+`8e0de02b`, log kscan/runs/gates.log, outputs kscan/runs/gate-*.txt (and
+traces/summary.txt). Not done: section 5's second round (GATES2).

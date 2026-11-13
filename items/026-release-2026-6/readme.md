@@ -118,8 +118,10 @@ Files
   `DbBuilder.maxNodeSize` setters package-private, `TestNodeSize` for
   the tests outside `bergdb.core`; on main since 2026-11-13 (000fca5b).
 * 09-keys-only-scan.md. 026-09, reclaim's scan without the values it
-  does not rewrite (024-34, Q34-1, option b; Frans, 2026-11-13, 09:38);
-  registered, after 026-05.
+  does not rewrite (024-34, Q34-1, option b; Frans, 2026-11-13, 09:38):
+  `GetMany.valuesBefore`; the steps' loads 44 to 60 % fewer, the steps
+  14 to 20 % fewer, at 10M keys 1 to 4 % more stream written; on branch
+  `026-09-keys-only-scan`, to land (Q1, recommended) with Q2 to Q4.
 * 10-node-id-cache-after-empty.md. 026-10, `NodeCollection.idByPos`
   after back to empty (found by 026-07): a decided cut forgets the node
   ids below it and `KeyModSet`'s key hashes before it (the 2.2 MB of
