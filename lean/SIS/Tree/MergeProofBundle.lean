@@ -263,3 +263,8 @@ import SIS.Tree.DelMergeCaseF
 import SIS.Tree.TakeCachedKeep
 import SIS.Tree.TakeDeadChain
 import SIS.Tree.TakeDeadPutFull
+import SIS.Tree.OverlayHeights
+import SIS.Tree.HeightsNode
+import SIS.Tree.WriterHeightsRules
+import SIS.Tree.WriterHeightsSteps
+import SIS.Tree.WriterHeightsSplit
