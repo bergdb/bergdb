@@ -106,6 +106,10 @@ Files
   code accepts what a specification should refuse, the open format
   questions, the options for versioning; moved from 024-02 on
   2026-11-13; kept current.
+* [04-outline-proposal.md](04-outline-proposal.md). 027-04, a proposed
+  outline for 027, for Frans to react to: 14 parts by mechanism in the
+  levels' order, three other organisations, five questions, and how the
+  writing could go on with him; open, not a decision.
 
 
 Log
