@@ -153,7 +153,7 @@ theorem writerWP_appendKlongs_timeChain (c : Ctx) (base : View BVal)
         w.top.rootKey →
       WriterWP (appendKlongs (s + e) (X (s + e)) [(k, y)]) c w (fun _ w' =>
         TreeOK (wNode c.p base w') c.i w'.top.rootKey ∧
-        (w'.top = w.top ∧ w'.taken = w.taken ∧ w'.path = w.path ∧ w.next ≤ w'.next) ∧
+        (w'.top = w.top ∧ w'.taken = w.taken ∧ w'.path = w.path ∧ w.next ≤ w'.next ∧ w'.vals = w.vals) ∧
         (∀ z, z < w.next → (∀ i, s ≤ i → i ≤ s + e → z ≠ X i) →
           w'.nodes.lookup z = w.nodes.lookup z) ∧
         (∀ z, TReach (wNode c.p base w') c.i w'.top.rootKey z →
@@ -168,7 +168,7 @@ theorem writerWP_appendKlongs_timeChain (c : Ctx) (base : View BVal)
         w.top.rootKey →
       WriterWP (appendKlongs (s + e) (X (s + e)) [(k, y)]) c w (fun _ w' =>
         TreeOK (wNode c.p base w') c.i w'.top.rootKey ∧
-        (w'.top = w.top ∧ w'.taken = w.taken ∧ w'.path = w.path ∧ w.next ≤ w'.next) ∧
+        (w'.top = w.top ∧ w'.taken = w.taken ∧ w'.path = w.path ∧ w.next ≤ w'.next ∧ w'.vals = w.vals) ∧
         (∀ z, z < w.next → (∀ i, s ≤ i → i ≤ s + e → z ≠ X i) →
           w'.nodes.lookup z = w.nodes.lookup z) ∧
         (∀ z, TReach (wNode c.p base w') c.i w'.top.rootKey z →
@@ -182,7 +182,7 @@ theorem writerWP_appendKlongs_timeChain (c : Ctx) (base : View BVal)
     have hN : wNode c.p base { w with nodes := upsert w.nodes (X (s + e)) ((Nn (s + e)).add c.i
         (.key k y)) } = updN (wNode c.p base w) (X (s + e)) ((Nn (s + e)).add c.i (.key k y)) :=
       wNode_upsert_updN c.p base w _ _ _ rfl rfl htk
-    refine ⟨?_, ⟨rfl, rfl, rfl, Nat.le_refl _⟩, ?_, ?_⟩
+    refine ⟨?_, ⟨rfl, rfl, rfl, Nat.le_refl _, rfl⟩, ?_, ?_⟩
     · rw [hN]; exact hV
     · intro z _ hz
       show (upsert w.nodes _ _).lookup z = _
@@ -220,7 +220,7 @@ theorem writerWP_appendKlongs_timeChain (c : Ctx) (base : View BVal)
           WriterWP (handleFullWith (fun q more => appendKlongs (s + e) q more) (s + e + 1)
             (X (s + (e + 1))) [(k, y)] ((Nn (s + (e + 1))).lastVersion c.i) compact) c w (fun _ w' =>
             TreeOK (wNode c.p base w') c.i w'.top.rootKey ∧
-            (w'.top = w.top ∧ w'.taken = w.taken ∧ w'.path = w.path ∧ w.next ≤ w'.next) ∧
+            (w'.top = w.top ∧ w'.taken = w.taken ∧ w'.path = w.path ∧ w.next ≤ w'.next ∧ w'.vals = w.vals) ∧
             (∀ z, z < w.next → (∀ i, s ≤ i → i ≤ s + (e + 1) → z ≠ X i) →
               w'.nodes.lookup z = w.nodes.lookup z) ∧
             (∀ z, TReach (wNode c.p base w') c.i w'.top.rootKey z →
@@ -229,7 +229,7 @@ theorem writerWP_appendKlongs_timeChain (c : Ctx) (base : View BVal)
         intro compact hcs
         apply writerWP_handleFullWith_time_up (s + e) (X (s + (e + 1))) (X (s + e)) (Nn (s + (e + 1)))
           (Nn (s + e)) (K (s + (e + 1))) [(k, y)] compact c w hlk hlq hql hfirst hcs hpq hpk
-        intro l hl_leaf hl_wf hl_times hl_look w1 h1n h1t h1top h1path h1next _
+        intro l hl_leaf hl_wf hl_times hl_look w1 h1n h1t h1top h1path h1next h1vals
         -- facts of the state before the parent's step
         obtain ⟨hfree0, htk0, _⟩ := hS5 w.next (Nat.le_refl _)
         have hN1 : wNode c.p base w1 = updN (wNode c.p base w) w.next ⟨(Nn (s + (e + 1))).leaf, l.ks⟩ :=
@@ -332,7 +332,7 @@ theorem writerWP_appendKlongs_timeChain (c : Ctx) (base : View BVal)
           (by rw [h1next]; omega)
           (by rw [h1top]; exact hT1V)
         refine writerWP_mono hpar ?_
-        rintro _ w2 ⟨hT2, ⟨h2top, h2t, h2path, h2next⟩, h2frame, h2reach⟩
+        rintro _ w2 ⟨hT2, ⟨h2top, h2t, h2path, h2next, h2vals⟩, h2frame, h2reach⟩
         -- the node keeps its klongs before the transaction; it is reached no more
         have hlk2 : w2.nodes.lookup (X (s + (e + 1))) = some (Nn (s + (e + 1))) := by
           rw [h2frame _ (by rw [h1next]; have := hXlt (s + (e + 1)) (by omega) (Nat.le_refl _); omega)
@@ -354,13 +354,14 @@ theorem writerWP_appendKlongs_timeChain (c : Ctx) (base : View BVal)
           · rw [h1top] at h'
             exact (hR1V _ h').2 rfl
           · rw [h1next] at h'; have := hXlt (s + (e + 1)) (by omega) (Nat.le_refl _); omega
-        refine ⟨?_, ⟨?_, ?_, ?_, ?_⟩, ?_, ?_⟩
+        refine ⟨?_, ⟨?_, ?_, ?_, ?_, ?_⟩, ?_, ?_⟩
         · rw [hN3]
           exact treeOK_updN_unreach _ c.i _ _ _ hT2 hxR2
         · rw [h2top, h1top]
         · rw [h2t, h1t]
         · rw [h2path, h1path]
         · rw [h1next] at h2next; omega
+        · rw [h2vals, h1vals]
         · intro z hz hzX
           rw [lookup_upsert, ite_eq_right_of_eq_false _ _ (eq_false (hzX _ (by omega) (Nat.le_refl _))),
             h2frame z (by rw [h1next]; omega) (fun i h1 h2 => hzX i h1 (by omega)), h1n,
@@ -412,7 +413,7 @@ theorem writerWP_handleFullWith_space_up (d' : Nat) (x q : NodeId) (n qn : KNode
         if z = w.next then some (halves n.leaf c.i (n.lastVersion c.i) ins).1
         else if z = w.next + 2 then some (halves n.leaf c.i (n.lastVersion c.i) ins).2.1
         else w.nodes.lookup z) → w1.taken = w.taken → w1.top = w.top → w1.path = w.path →
-        w1.next = w.next + 2 + 2 →
+        w1.next = w.next + 2 + 2 → w1.vals = w.vals →
         WriterWP (appendKlongs d' q [(k1, w.next),
           ((halves n.leaf c.i (n.lastVersion c.i) ins).2.2, w.next + 2)]) c w1 (fun _ w2 =>
           WriterWP (do let m ← getNode x; putNode x (m.toPrev (c.i - 1))) c w2 (fun _ w3 => Q w3))) :
@@ -445,8 +446,8 @@ theorem writerWP_handleFullWith_space_up (d' : Nat) (x q : NodeId) (n qn : KNode
     all_goals (try split)
     all_goals (
       simp only [writerWP_bind, writerWP_modify, writerWP_pure, hpk, putNode]
-      refine writerWP_mono (hup _ ?_ ?_ ?_ ?_ ?_) ?_
-      rotate_left 5
+      refine writerWP_mono (hup _ ?_ ?_ ?_ ?_ ?_ ?_) ?_
+      rotate_left 6
       · intro _ w2 h
         simpa only [writerWP_bind, putNode, writerWP_modify] using h
       · intro z
