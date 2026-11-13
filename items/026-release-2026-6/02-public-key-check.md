@@ -373,9 +373,10 @@ QK3 are his.
 * **`bergdb.pub.Limits`**, new: a final class with no instances. The
   constants `MAX_OPERATIONS` (L1), `MAX_KEY_BYTES` (L2),
   `MAX_TRANS_KEY_BYTES` (L3), `MAX_VALUE_BYTES` (L4), `MAX_TRANS_BYTES`
-  (L5, a long) and `MAX_LEVEL_BYTES` (L6), each `= Db.X` (L6 is
-  `Db.MAX_KEY_BYTES`), so compile-time constants; each with its rule and
-  ID in its Javadoc. Two static methods:
+  (L5, a long) and `MAX_LEVEL_BYTES` (L6), each `= PubKeys.X`, which is
+  `Db.X` (L6 is `IndexKeys.MAX_LEVEL_BYTES`, `Db.MAX_KEY_BYTES`), so
+  compile-time constants (D3, revised); each with its rule and ID in its
+  Javadoc. Two static methods:
 
   ```java
   public static long keyBytes(String key)   // a key's bytes as stored
@@ -403,7 +404,8 @@ QK3 are his.
   option E's sentence (a Core key fits if its bytes, a byte[]'s length or
   a String's UTF-8, are at most `MAX_KEY_BYTES`; no method).
   `javadoc-pub.sh` passes.
-* **pub's package.html** lists core among its dependencies (D3).
+* **pub's dependencies as before**: common, nanotest, pub.util and
+  pubimp; the constants come through pubimp's `PubKeys` (D3, revised).
 * **ReleaseDemo** (`build.sh`, check 3) calls `Limits.checkKey` and
   `Limits.keyBytes` ("/fruit/apple" is 14 bytes, "/" and 110 letters
   112), so user code is compiled against the release jar's `Limits`.
@@ -423,11 +425,17 @@ QK3 are his.
   the property test checks that `keyBytes` is over 111 exactly when
   `checkKey` throws L2's message, and that both give the same message
   for a bad form.
-* **D3. The package pub depends on core**: the constants are `Db`'s by
-  reference, as decided (QK1), and `deps.py` checks each package's list,
-  so pub's package.html names core now (before, pub reached core only
-  through pubimp). Constants in pubimp that are `Db`'s would avoid the
-  line at the cost of a hop, for no safety.
+* **D3. The constants come through pubimp; pub does not depend on
+  core.** First built with `Limits.X = Db.X` and core added to pub's
+  package.html list, which `deps.py` checks (`0c516160`). Frans,
+  2026-11-13, on that: "Tell me why it is needed and how it was avoided
+  before", and at 09:32 "Yes" to option 1, to avoid the new package
+  dependency through pubimp (through the coordinator, coord-1113). So
+  since `67132219`: `PubKeys.MAX_OPERATIONS` and the four other limits
+  are `Db`'s, `PubKeys.MAX_LEVEL_BYTES` is `IndexKeys.MAX_LEVEL_BYTES`
+  (the index code's L6, package-private), all compile-time constants, and
+  `Limits.X = PubKeys.X`; pub's package.html is as before, as pub
+  reaches pubimp already (Factory, Time, DbObject). `deps.py` passes.
 * **D4. No null check of its own**: `checkKey(null)` and `keyBytes(null)`
   throw what a put of null throws, "null is not a valid key.", which
   names it (020-27, Q2), so that the message is the put's.
@@ -484,12 +492,20 @@ other:
 * **`java/javadoc-pub.sh`**: JAVADOC PUB OK (doclint on the new class
   and links).
 
+Again on `67132219` (D3 revised, after the coordinator's merge of main,
+`cbafdd49`), one slot (heavy), 09:34 to 09:35:
+`java/before-commit.sh` BEFORE COMMIT OK (63 s; deps.py: 9 packages as
+their package.html allows) and `java/javadoc-pub.sh` JAVADOC PUB OK.
+Log: `/Users/f/fl/bench/2026-11-13/keys/gates2.txt`. Level 1 was not run
+again: the change moves six constants, with the same values.
+
 No level script beyond level 1, no performance run, no Lean change: the
 put's path has the same calls (section 7, step 7).
 
 ### 9.5 Questions for Frans
 
-* **Q9-1. `keyBytes` a long or an int?** A long (D1), exact for any
+* **Q9-1. `keyBytes` a long or an int?** **Decided** (Frans,
+  2026-11-13, 09:29): a long, as built ("Yes"). A long (D1), exact for any
   String; an int as in section 4.1's sketch reads a little simpler in
   user code (`int n = Limits.keyBytes(k)`), with a clamp at
   `Integer.MAX_VALUE` for keys of more than 2 GB as stored. Recommended:
@@ -498,19 +514,18 @@ put's path has the same calls (section 7, step 7).
 
 ## 10. State
 
-2026-11-13, 09:27, by "keys" of coord-1113.
+2026-11-13, 09:36, by "keys" of coord-1113.
 
 * **Ready to land.** Branch `026-02-limits` in
-  `/Users/f/fl/bench/2026-11-13/keys/clone`, from main `ea6d1d41`: the
-  code's commit `0c516160` (gated, section 9.4), then one commit of
-  items only (this file and 026's readme). The commits are in Frans's
-  name; the coordinator lands them.
-* **Done:** sections 9.1 to 9.4, as decided in section 8; the entry in
-  `releases/next.md` (with the code's commit).
-* **Open for Frans:** Q9-1 (section 9.5), `keyBytes` a long (as built) or
-  an int.
+  `/Users/f/fl/bench/2026-11-13/keys/clone`: the code `0c516160`, the
+  items `9d3c6fe3`, the coordinator's merge of main `cbafdd49`, D3
+  revised `67132219` (gated, section 9.4), then one commit of items only
+  (this file). The commits are in Frans's name; the coordinator lands
+  them.
+* **Done:** sections 9.1 to 9.4, as decided in section 8; Q9-1 and D3
+  decided by Frans (09:29, 09:32); the entry in `releases/next.md`.
+* **Open:** nothing.
 * **To continue** if main moves before landing: merge main into the
-  branch, run `java/before-commit.sh` again (one slot), and
-  `java/stress/level1.sh` if Java under `java/src` changed on main.
+  branch, run `java/before-commit.sh` again (one slot).
 * The study's state of 2026-11-12 (written 09:40 by "keychk"): the
   study, the recommendation and the plan, no code; done.
