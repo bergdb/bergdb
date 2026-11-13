@@ -135,6 +135,12 @@ Files
   OT4, PA5 and PA9, 017-08 and 017-11; each with its options, what it
   depends on and a recommendation; the decisions already taken quoted;
   the order, and three measurements (M1 to M3); none decided.
+* 13-user-apps.md. 026-13, a round of "AI as the user" testing (006-20)
+  against 2026.6's changes on `main` (026-02, 026-05, 026-06, 026-07,
+  026-08): twelve programs with their own oracles, SIGKILLs of child
+  JVMs; no bug in BergDB; U13-1 to U13-6, Javadoc findings and one
+  question (Q1: commits pace reclaim by the stream, `maintain()` by the
+  clock); proposed 028-todo entries. The apps in 13-user-apps/.
 
 * 14-model-scope.md. 026-14, the Lean model's scope: the boundary as it
   is, three additions in order of value (reclaim as a whole, the stream
