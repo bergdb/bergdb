@@ -587,4 +587,335 @@ theorem rangeOrder_agree (N N' : NodeId → Option KNode) (t : Time) (r : NodeId
   rw [hag z (reachR_tReach N t r z lo hi h0)] at hm
   exact hR z lo hi m h0 hm
 
+/-- `isNext_hiLE` with the old child's compare value c0 and the new one's c
+apart, and the new high bound reached also by an old later compare value. -/
+theorem isNext_hiLE2 (l0 l : List (Nat × NodeId)) (hi0 hi : Option Nat) (c0 c : Nat)
+    (b0 b : Option Nat) (h0 : IsNext l0 hi0 c0 b0) (h : IsNext l hi c b)
+    (hend : HiLE hi0 hi ∨ ∃ r ∈ l0, c0 < r.1 ∧ HiLE (some r.1) hi)
+    (hold : ∀ r ∈ l0, UpperBound hi0 r.1)
+    (hlater : ∀ r ∈ l, c < r.1 → ∃ r0 ∈ l0, c0 < r0.1 ∧ r0.1 ≤ r.1) : HiLE b0 b := by
+  rcases h with ⟨hb, _⟩ | ⟨r, hr, hb, hlt, _⟩
+  · rw [hb]
+    rcases h0 with ⟨hb0, hall⟩ | ⟨r0, hr0, hb0, _, hmin⟩
+    · rw [hb0]
+      rcases hend with hend | ⟨r, hr, hlt, _⟩
+      · exact hend
+      · have := hall r hr; omega
+    · rw [hb0]
+      rcases hend with hend | ⟨r, hr, hlt, hle⟩
+      · exact hiLE_some_of_upper hi r0.1 (upperBound_of_hiLE hi0 hi r0.1 hend (hold r0 hr0))
+      · have h1 : HiLE (some r0.1) (some r.1) := ⟨r0.1, rfl, hmin r hr hlt⟩
+        exact HiLE.trans _ _ _ h1 hle
+  · rw [hb]
+    obtain ⟨r1, hr1, hlt1, hle1⟩ := hlater r hr hlt
+    rcases h0 with ⟨_, hall⟩ | ⟨r0, hr0, hb0, _, hmin⟩
+    · have := hall r1 hr1; omega
+    · rw [hb0]
+      exact ⟨r0.1, rfl, Nat.le_trans (hmin r1 hr1 hlt1) hle1⟩
+
+theorem ite_zero_eq (c lo : Nat) (hc : c ≠ 0) : (if c == 0 then lo else c) = c := by
+  have : (c == 0) = false := by simpa using hc
+  simp [this]
+
+/-! ## A space split -/
+
+/-- The walk's ranges after a space split of x below its inner parent q, from a
+tree N1 in which x holds its klongs to put: the first half F holds x's live
+klongs below the divider sc, the second half S those at or above it (sc as the
+empty key in an inner node), q's klong k1 names F and its klong sc names S; x is
+reached no more. -/
+theorem rangeOrder_spaceStep (N1 N2 : NodeId → Option KNode) (t : Time) (r : NodeId)
+    (hR : RangeOrder N1 t r) (hT : TreeOK N1 t r)
+    (q x F S : NodeId) (qn xn fn sn qn2 : KNode) (k1 sc : Nat)
+    (hq : TReach N1 t r q) (hqn : N1 q = some qn) (hql : qn.leaf = false)
+    (hk1 : (k1, x) ∈ qn.liveAt t) (hxn : N1 x = some xn)
+    (hF1 : N1 F = none) (hS1 : N1 S = none) (hFS : F ≠ S)
+    (hFfree : ∀ u c, TReach N1 t r u → ¬ TLink N1 t u c F)
+    (hSfree : ∀ u c, TReach N1 t r u → ¬ TLink N1 t u c S)
+    (hsc : ∃ zs, (sc, zs) ∈ xn.liveAt t) (hlow : ∃ c0 z0, (c0, z0) ∈ xn.liveAt t ∧ c0 < sc)
+    (hN2q : N2 q = some qn2) (hq2l : qn2.leaf = false)
+    (hq2 : ∀ c z, (c, z) ∈ qn2.liveAt t →
+      (c = sc ∧ z = S) ∨ (c = k1 ∧ z = F) ∨ (c ≠ k1 ∧ (c, z) ∈ qn.liveAt t))
+    (hq2sc : (sc, S) ∈ qn2.liveAt t)
+    (hN2F : N2 F = some fn) (hfl : fn.leaf = xn.leaf)
+    (hf : ∀ c z, (c, z) ∈ fn.liveAt t → (c, z) ∈ xn.liveAt t ∧ c < sc)
+    (hN2S : N2 S = some sn) (hsl : sn.leaf = xn.leaf)
+    (hs : ∀ c z, (c, z) ∈ sn.liveAt t → ∃ c0, sc ≤ c0 ∧ (c0, z) ∈ xn.liveAt t ∧
+      c = (if c0 = sc ∧ xn.leaf = false then 0 else c0))
+    (hN2 : ∀ z, z ≠ q → z ≠ F → z ≠ S → z ≠ x → N2 z = N1 z) :
+    RangeOrder N2 t r := by
+  have hxR : TReach N1 t r x := TReach.link hq ⟨qn, hqn, hk1⟩
+  have hFq : F ≠ q := by intro h; rw [h, hqn] at hF1; cases hF1
+  have hFx : F ≠ x := by intro h; rw [h, hxn] at hF1; cases hF1
+  have hSq : S ≠ q := by intro h; rw [h, hqn] at hS1; cases hS1
+  have hSx : S ≠ x := by intro h; rw [h, hxn] at hS1; cases hS1
+  have hqx : q ≠ x := by
+    intro h
+    exact hT.no_self_link x k1 hxR ⟨qn, by rw [← h]; exact hqn, hk1⟩
+  have hrx : r ≠ x := by
+    intro h; exact hT.rootFree q k1 hq ⟨qn, hqn, h ▸ hk1⟩
+  have hrF : r ≠ F := by
+    intro h; obtain ⟨m, hm⟩ := hT.rootKey; rw [h, hF1] at hm; cases hm
+  have hrS : r ≠ S := by
+    intro h; obtain ⟨m, hm⟩ := hT.rootKey; rw [h, hS1] at hm; cases hm
+  have honly : ∀ u c, TReach N1 t r u → TLink N1 t u c x → u = q ∧ c = k1 := fun u c hu hl =>
+    hT.oneLink u c q k1 x hu hq hl ⟨qn, hqn, hk1⟩
+  have hchild : ∀ u c z, TReach N1 t r u → TLink N1 t u c z → u ≠ q → z ≠ x ∧ z ≠ F ∧ z ≠ S := by
+    intro u c z hu hl huq
+    exact ⟨fun h => huq (honly u c hu (h ▸ hl)).1, fun h => hFfree u c hu (h ▸ hl),
+      fun h => hSfree u c hu (h ▸ hl)⟩
+  have hxchild : ∀ c z, (c, z) ∈ xn.liveAt t → z ≠ x ∧ z ≠ F ∧ z ≠ S := by
+    intro c z hz
+    refine hchild x c z hxR ⟨xn, hxn, hz⟩ hqx.symm
+  obtain ⟨c0, z0, hz0, hc0⟩ := hlow
+  have hsc0 : 0 < sc := by omega
+  -- the facts of x's range below a range of q
+  have hxrange : ∀ lo0 hi0, ReachR N1 t r q lo0 hi0 → ∀ b0,
+      ((k1, x), b0) ∈ childBounds (qn.liveAt t) hi0 →
+      k1 < sc ∧ lo0 < sc ∧ UpperBound b0 sc ∧ UpperBound hi0 sc := by
+    intro lo0 hi0 hq0 b0 hb0
+    have hx0 := ReachR.inner q qn lo0 hi0 k1 x b0 hq0 hqn hql hb0
+    have hxr := hR x _ b0 xn hx0 hxn
+    have hqr := hR q lo0 hi0 qn hq0 hqn
+    obtain ⟨zs, hzs⟩ := hsc
+    obtain ⟨hscl, hscu⟩ := hxr (sc, zs) hzs
+    obtain ⟨hc0l, _⟩ := hxr (c0, z0) hz0
+    obtain ⟨hk1l, hk1u⟩ := hqr (k1, x) hk1
+    simp only [hql, Bool.false_eq_true, ↓reduceIte] at hk1l
+    have hb0u : UpperBound hi0 sc := by
+      rcases (childBounds_isNext _ hi0 (KNode.liveAt_order qn t) _ _ hb0).2 with
+        ⟨hb, _⟩ | ⟨r', hr', hb, _, _⟩
+      · rw [hb] at hscu; exact hscu
+      · rw [hb] at hscu
+        have := (hqr r' hr').2
+        cases hi0 with
+        | none => trivial
+        | some h0 => simp only [UpperBound] at this hscu ⊢; omega
+    cases hxl : xn.leaf with
+    | true =>
+      simp only [hxl, ↓reduceIte] at hscl hc0l
+      by_cases hk : k1 = 0
+      · subst hk
+        simp only [beq_self_eq_true, ↓reduceIte] at hscl hc0l
+        exact ⟨hsc0, by omega, hscu, hb0u⟩
+      · rw [ite_zero_eq k1 lo0 hk] at hscl hc0l
+        exact ⟨by omega, by omega, hscu, hb0u⟩
+    | false =>
+      simp only [hxl, Bool.false_eq_true, ↓reduceIte] at hscl
+      by_cases hk : k1 = 0
+      · subst hk
+        simp only [beq_self_eq_true, ↓reduceIte] at hscl
+        exact ⟨hsc0, by omega, hscu, hb0u⟩
+      · rw [ite_zero_eq k1 lo0 hk] at hscl
+        exact ⟨by omega, by omega, hscu, hb0u⟩
+  let G : NodeId → Nat → Option Nat → Prop := fun z lo hi => z ≠ x ∧
+    ((z ≠ F ∧ z ≠ S ∧ ∃ lo0 hi0, ReachR N1 t r z lo0 hi0 ∧ lo ≤ lo0 ∧ HiLE hi0 hi) ∨
+     (z = F ∧ hi = some sc ∧ ∃ lo0 hi0, ReachR N1 t r x lo0 hi0 ∧ lo ≤ lo0) ∨
+     (z = S ∧ lo = sc ∧ ∃ lo0 hi0, ReachR N1 t r x lo0 hi0 ∧ HiLE hi0 hi))
+  apply rangeOrder_of_good N2 t r G
+  · exact ⟨hrx, Or.inl ⟨hrF, hrS, 0, none, ReachR.root, Nat.le_refl _, HiLE.refl _⟩⟩
+  · intro z lo hi m c z' b _ hG hm hml hb
+    obtain ⟨hzx, hG⟩ := hG
+    have hcz := childBounds_fst _ _ _ _ hb
+    have hms := KNode.liveAt_order m t
+    rcases hG with ⟨hzF, hzS, lo0, hi0, hz0, hlo, hhi⟩ | ⟨hzF, hhs, lo0, hi0, hx0, hlo⟩ |
+      ⟨hzS, hls, lo0, hi0, hx0, hhi⟩
+    · by_cases hzq : z = q
+      · subst hzq
+        rw [hN2q] at hm; cases hm
+        obtain ⟨b0, hb0⟩ := childBounds_exists (qn.liveAt t) hi0 (k1, x) hk1
+        obtain ⟨hk1sc, _, hscb0, _⟩ := hxrange lo0 hi0 hz0 b0 hb0
+        have hx0 := ReachR.inner z qn lo0 hi0 k1 x b0 hz0 hqn hql hb0
+        have hnb0 := (childBounds_isNext _ hi0 (KNode.liveAt_order qn t) _ _ hb0).2
+        have hqold : ∀ r' ∈ qn.liveAt t, UpperBound hi0 r'.1 := fun r' hr' =>
+          (hR z lo0 hi0 qn hz0 hqn r' hr').2
+        -- a compare value of q after k1 is above sc
+        have habove : ∀ r' ∈ qn.liveAt t, k1 < r'.1 → sc < r'.1 := by
+          intro r' hr' hlt
+          rcases hnb0 with ⟨_, hall⟩ | ⟨nx, hnx, hbn, _, hmin⟩
+          · have := hall r' hr'; omega
+          · rw [hbn] at hscb0; simp only [UpperBound] at hscb0
+            have := hmin r' hr' hlt; omega
+        rcases hq2 c z' hcz with ⟨h1, h2⟩ | ⟨h1, h2⟩ | ⟨h1, h2⟩
+        · rw [h1, h2] at hb ⊢
+          refine ⟨hSx, Or.inr (Or.inr ⟨rfl, ite_zero_eq sc lo (by omega), _, b0, hx0, ?_⟩)⟩
+          refine isNext_hiLE2 _ _ hi0 hi k1 sc b0 b hnb0
+            (childBounds_isNext _ hi hms _ _ hb).2 (Or.inl hhi) hqold ?_
+          intro r' hr' hlt
+          rcases hq2 r'.1 r'.2 hr' with ⟨h3, _⟩ | ⟨h3, _⟩ | ⟨_, h3⟩
+          · omega
+          · omega
+          · exact ⟨r', h3, by omega, Nat.le_refl _⟩
+        · rw [h1, h2] at hb ⊢
+          have hbF : b = some sc := by
+            refine isNext_unique _ hi k1 b (some sc) (childBounds_isNext _ hi hms _ _ hb).2 ?_
+            right
+            refine ⟨(sc, S), hq2sc, rfl, hk1sc, ?_⟩
+            intro r' hr' hlt
+            rcases hq2 r'.1 r'.2 hr' with ⟨h3, _⟩ | ⟨h3, _⟩ | ⟨_, h3⟩
+            · simp only; omega
+            · omega
+            · have := habove r' h3 hlt; simp only; omega
+          refine ⟨hFx, Or.inr (Or.inl ⟨rfl, hbF, _, b0, hx0, ?_⟩)⟩
+          by_cases hk : k1 = 0
+          · rw [hk]; simp only [beq_self_eq_true, ↓reduceIte]; exact hlo
+          · have e1 := ite_zero_eq k1 lo hk; have e2 := ite_zero_eq k1 lo0 hk; omega
+        · have hz'x : z' ≠ x := fun h => h1 (honly z c hq ⟨qn, hqn, h ▸ h2⟩).2
+          have hz'F : z' ≠ F := fun h => hFfree z c hq ⟨qn, hqn, h ▸ h2⟩
+          have hz'S : z' ≠ S := fun h => hSfree z c hq ⟨qn, hqn, h ▸ h2⟩
+          have hlater : ∀ r' ∈ qn2.liveAt t, c < r'.1 →
+              ∃ r0 ∈ qn.liveAt t, c < r0.1 ∧ r0.1 ≤ r'.1 := by
+            intro r' hr' hlt
+            rcases hq2 r'.1 r'.2 hr' with ⟨h3, _⟩ | ⟨h3, _⟩ | ⟨_, h3⟩
+            · -- sc after c: c is below k1
+              have hck : c < k1 := by
+                rcases Nat.lt_or_ge c k1 with hck | hck
+                · exact hck
+                · have := habove (c, z') h2 (by simp only; omega); simp only at this; omega
+              exact ⟨(k1, x), hk1, hck, by simp only; omega⟩
+            · exact ⟨(k1, x), hk1, by simp only; omega, by simp only; omega⟩
+            · exact ⟨r', h3, hlt, Nat.le_refl _⟩
+          obtain ⟨lo1, hi1, h3, h4, h5⟩ := old_child_step N1 t r hR z qn lo0 lo hi0 hi hz0 hqn hql
+            hlo hhi _ hms c z' z' b h2 hb hlater
+          exact ⟨hz'x, Or.inl ⟨hz'F, hz'S, lo1, hi1, h3, h4, h5⟩⟩
+      · have hm0 : N1 z = some m := by rw [← hN2 z hzq hzF hzS hzx]; exact hm
+        have hu := reachR_tReach N1 t r z lo0 hi0 hz0
+        obtain ⟨hz'x, hz'F, hz'S⟩ := hchild z c z' hu ⟨m, hm0, hcz⟩ hzq
+        obtain ⟨lo1, hi1, h3, h4, h5⟩ := old_child_step N1 t r hR z m lo0 lo hi0 hi hz0 hm0 hml
+          hlo hhi _ hms c z' z' b hcz hb (fun r' hr' hlt => ⟨r', hr', hlt, Nat.le_refl _⟩)
+        exact ⟨hz'x, Or.inl ⟨hz'F, hz'S, lo1, hi1, h3, h4, h5⟩⟩
+    · subst hzF hhs
+      rw [hN2F] at hm; cases hm
+      obtain ⟨hc1, hc2⟩ := hf c z' hcz
+      have hxl : xn.leaf = false := by rw [← hfl]; exact hml
+      obtain ⟨b0, hb0⟩ := childBounds_exists (xn.liveAt t) hi0 (c, z') hc1
+      have hz'0 := ReachR.inner x xn lo0 hi0 c z' b0 hx0 hxn hxl hb0
+      obtain ⟨hz'x, hz'F, hz'S⟩ := hxchild c z' hc1
+      refine ⟨hz'x, Or.inl ⟨hz'F, hz'S, _, b0, hz'0, ?_, ?_⟩⟩
+      · by_cases hk : c = 0
+        · subst hk; simp only [beq_self_eq_true, ↓reduceIte]; exact hlo
+        · have e1 := ite_zero_eq c lo hk; have e2 := ite_zero_eq c lo0 hk; omega
+      · obtain ⟨zs, hzs⟩ := hsc
+        exact isNext_hiLE2 _ _ hi0 (some sc) c c b0 b
+          (childBounds_isNext _ hi0 (KNode.liveAt_order xn t) _ _ hb0).2
+          (childBounds_isNext _ _ hms _ _ hb).2 (Or.inr ⟨(sc, zs), hzs, hc2, HiLE.refl _⟩)
+          (fun r' hr' => (hR x lo0 hi0 xn hx0 hxn r' hr').2)
+          (fun r' hr' hlt => ⟨r', (hf r'.1 r'.2 hr').1, hlt, Nat.le_refl _⟩)
+    · subst hzS
+      rw [hls]
+      rw [hN2S] at hm; cases hm
+      have hxl : xn.leaf = false := by rw [← hsl]; exact hml
+      obtain ⟨c0', hc0', hc1, hceq⟩ := hs c z' hcz
+      simp only [hxl, and_true] at hceq
+      obtain ⟨b0, hb0⟩ := childBounds_exists (xn.liveAt t) hi0 (c0', z') hc1
+      have hz'0 := ReachR.inner x xn lo0 hi0 c0' z' b0 hx0 hxn hxl hb0
+      obtain ⟨hz'x, hz'F, hz'S⟩ := hxchild c0' z' hc1
+      refine ⟨hz'x, Or.inl ⟨hz'F, hz'S, _, b0, hz'0, ?_, ?_⟩⟩
+      · rw [ite_zero_eq c0' lo0 (by omega)]
+        by_cases hcs : c0' = sc
+        · simp only [hcs, ↓reduceIte] at hceq
+          subst hceq
+          simp only [beq_self_eq_true, ↓reduceIte]
+          omega
+        · simp only [hcs, ↓reduceIte] at hceq
+          rw [hceq, ite_zero_eq c0' sc (by omega)]
+          exact Nat.le_refl _
+      · refine isNext_hiLE2 _ _ hi0 hi c0' c b0 b
+          (childBounds_isNext _ hi0 (KNode.liveAt_order xn t) _ _ hb0).2
+          (childBounds_isNext _ _ hms _ _ hb).2 (Or.inl hhi)
+          (fun r' hr' => (hR x lo0 hi0 xn hx0 hxn r' hr').2) ?_
+        intro r' hr' hlt
+        obtain ⟨c0'', hc0'', hc1', hceq'⟩ := hs r'.1 r'.2 hr'
+        simp only [hxl, and_true] at hceq'
+        by_cases hcs' : c0'' = sc
+        · simp only [hcs', ↓reduceIte] at hceq'; omega
+        · simp only [hcs', ↓reduceIte] at hceq'
+          refine ⟨(c0'', r'.2), hc1', ?_, by simp only; omega⟩
+          simp only
+          by_cases hcs : c0' = sc
+          · omega
+          · simp only [hcs, ↓reduceIte] at hceq; omega
+  · intro z lo hi m c z' _ hG hm hml hcz
+    obtain ⟨hzx, hG⟩ := hG
+    rcases hG with ⟨hzF, hzS, lo0, hi0, hz0, _, _⟩ | ⟨hzF, _, lo0, hi0, hx0, _⟩ |
+      ⟨hzS, _, lo0, hi0, hx0, _⟩
+    · have hzq : z ≠ q := by intro h; rw [h, hN2q] at hm; cases hm; rw [hq2l] at hml; cases hml
+      have hm0 : N1 z = some m := by rw [← hN2 z hzq hzF hzS hzx]; exact hm
+      obtain ⟨hz'x, hz'F, hz'S⟩ := hchild z c z' (reachR_tReach N1 t r z lo0 hi0 hz0)
+        ⟨m, hm0, hcz⟩ hzq
+      exact ⟨hz'x, Or.inl ⟨hz'F, hz'S, 0, none, ReachR.seg z m lo0 hi0 c z' hz0 hm0 hml hcz,
+        Nat.le_refl _, HiLE.refl _⟩⟩
+    · subst hzF
+      rw [hN2F] at hm; cases hm
+      have hc1 := (hf c z' hcz).1
+      obtain ⟨hz'x, hz'F, hz'S⟩ := hxchild c z' hc1
+      exact ⟨hz'x, Or.inl ⟨hz'F, hz'S, 0, none,
+        ReachR.seg x xn lo0 hi0 c z' hx0 hxn (by rw [← hfl]; exact hml) hc1, Nat.le_refl _,
+        HiLE.refl _⟩⟩
+    · subst hzS
+      rw [hN2S] at hm; cases hm
+      obtain ⟨c0', _, hc1, _⟩ := hs c z' hcz
+      obtain ⟨hz'x, hz'F, hz'S⟩ := hxchild c0' z' hc1
+      exact ⟨hz'x, Or.inl ⟨hz'F, hz'S, 0, none,
+        ReachR.seg x xn lo0 hi0 c0' z' hx0 hxn (by rw [← hsl]; exact hml) hc1, Nat.le_refl _,
+        HiLE.refl _⟩⟩
+  · intro z lo hi m _ hG hm
+    obtain ⟨hzx, hG⟩ := hG
+    rcases hG with ⟨hzF, hzS, lo0, hi0, hz0, hlo, hhi⟩ | ⟨hzF, hhs, lo0, hi0, hx0, hlo⟩ |
+      ⟨hzS, hls, lo0, hi0, hx0, hhi⟩
+    · by_cases hzq : z = q
+      · subst hzq
+        rw [hN2q] at hm; cases hm
+        obtain ⟨b0, hb0⟩ := childBounds_exists (qn.liveAt t) hi0 (k1, x) hk1
+        obtain ⟨_, hlosc, _, hhisc⟩ := hxrange lo0 hi0 hz0 b0 hb0
+        have hqr := hR z lo0 hi0 qn hz0 hqn
+        intro q' hq'
+        simp only [hq2l, Bool.false_eq_true, ↓reduceIte]
+        rcases hq2 q'.1 q'.2 hq' with ⟨h1, _⟩ | ⟨h1, _⟩ | ⟨_, h3⟩
+        · rw [h1]
+          exact ⟨Or.inr (by omega), upperBound_of_hiLE hi0 hi sc hhi hhisc⟩
+        · obtain ⟨h4, h5⟩ := hqr (k1, x) hk1
+          simp only [hql, Bool.false_eq_true, ↓reduceIte] at h4
+          rw [h1]
+          exact ⟨by omega, upperBound_of_hiLE hi0 hi k1 hhi h5⟩
+        · obtain ⟨h4, h5⟩ := hqr q' h3
+          simp only [hql, Bool.false_eq_true, ↓reduceIte] at h4
+          exact ⟨by omega, upperBound_of_hiLE hi0 hi q'.1 hhi h5⟩
+      · have hm0 : N1 z = some m := by rw [← hN2 z hzq hzF hzS hzx]; exact hm
+        exact nodeRange_wider m t lo0 lo hi0 hi (hR z lo0 hi0 m hz0 hm0) hlo hhi
+    · subst hzF hhs
+      rw [hN2F] at hm; cases hm
+      have hxr := hR x lo0 hi0 xn hx0 hxn
+      intro q' hq'
+      obtain ⟨h1, h2⟩ := hf q'.1 q'.2 hq'
+      obtain ⟨h3, _⟩ := hxr q' h1
+      refine ⟨?_, by simp only [UpperBound]; exact h2⟩
+      rw [hfl]
+      cases hxl : xn.leaf with
+      | true => simp only [hxl, ↓reduceIte] at h3 ⊢; omega
+      | false => simp only [hxl, Bool.false_eq_true, ↓reduceIte] at h3 ⊢; omega
+    · subst hzS
+      rw [hls]
+      rw [hN2S] at hm; cases hm
+      have hxr := hR x lo0 hi0 xn hx0 hxn
+      intro q' hq'
+      obtain ⟨c0', hc0', hc1, hceq⟩ := hs q'.1 q'.2 hq'
+      obtain ⟨_, h4⟩ := hxr _ hc1
+      have hup : UpperBound hi q'.1 := by
+        have := upperBound_of_hiLE hi0 hi c0' hhi h4
+        cases hi with
+        | none => trivial
+        | some h => simp only [UpperBound] at this ⊢; by_cases hcs : c0' = sc ∧ xn.leaf = false
+                    · simp only [hcs, and_self, ↓reduceIte] at hceq; omega
+                    · simp only [hcs, ↓reduceIte] at hceq; omega
+      refine ⟨?_, hup⟩
+      rw [hsl]
+      cases hxl : xn.leaf with
+      | true => simp only [hxl, ↓reduceIte, Bool.true_eq_false, and_false] at hceq ⊢; omega
+      | false =>
+        simp only [hxl, Bool.false_eq_true, ↓reduceIte, and_true] at hceq ⊢
+        by_cases hcs : c0' = sc
+        · simp only [hcs, ↓reduceIte] at hceq; exact Or.inl hceq
+        · simp only [hcs, ↓reduceIte] at hceq; right; omega
+
 end SIS.Tree
