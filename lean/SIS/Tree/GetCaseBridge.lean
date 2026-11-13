@@ -591,7 +591,7 @@ theorem opGetCaseOK_putLeafFull (p : Params) (R : Struct BVal → Time → Prop)
       deadOver (ctxOf p ts).p (m.add (ctxOf p ts).i (.key cv w.next)) = false)) hfull)
     (hI.keyUniq pre cv rk hkey hrk)) ?_
   intro _ w' hpost hfit key hk
-  exact hpost (Or.inl hfit) key hk
+  exact hpost.2.2.2 (Or.inl hfit) key hk
 
 /-! ## A put of a key with no leaf -/
 

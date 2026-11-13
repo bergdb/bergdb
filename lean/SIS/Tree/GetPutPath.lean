@@ -428,6 +428,32 @@ def NoNewRootG (c : Ctx) (N : NodeId → Option KNode) (r : NodeId) : Prop :=
     c.p.splitAbove < (xn.lastVersion c.i).size → ∀ q qn K, TReach N c.i r q → N q = some qn →
       (K, x) ∈ qn.liveAt c.i → qn.leaf = false
 
+/-- The nodes reached after a leaf L gets a klong to a fresh id y: those reached
+before, and y. -/
+theorem tReach_updN_addKey (N : NodeId → Option KNode) (t : Time) (r L y : NodeId) (n : KNode)
+    (cv : Nat) (hn : N L = some n) (hwf : klongsWf n.ks = true)
+    (htimes : ∀ s, Klong.time s ∈ n.ks → s ≤ t) (hy : N y = none) :
+    ∀ z, TReach (updN N L (n.add t (.key cv y))) t r z → TReach N t r z ∨ z = y := by
+  have hLy : L ≠ y := fun he => by rw [he, hy] at hn; cases hn
+  intro z hz
+  induction hz with
+  | root => exact Or.inl TReach.root
+  | @link u c z _ hl ih =>
+    obtain ⟨m, hm, hc⟩ := hl
+    by_cases hu : u = L
+    · subst hu
+      rw [updN_self] at hm
+      cases hm
+      rcases KNode.add_key_liveAt_mem n t cv y hwf htimes c z hc with ⟨_, hzy⟩ | ⟨_, hc'⟩
+      · exact Or.inr hzy
+      · rcases ih with h | h
+        · exact Or.inl (TReach.link h ⟨n, hn, hc'⟩)
+        · exact absurd h hLy
+    · rw [updN_ne _ _ _ _ hu] at hm
+      rcases ih with h | h
+      · exact Or.inl (TReach.link h ⟨m, hm, hc⟩)
+      · subst h; rw [hy] at hm; cases hm
+
 set_option maxHeartbeats 1600000 in
 /-- A put of a key into a full leaf, with the cascade along the whole access path
 from the space root, across segments (`writerWP_appendKlongs_chainGRV` from 0):
@@ -474,11 +500,14 @@ theorem writerWP_put_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
       (x, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
       wNode c.p base w x = some n' → n'.leaf = true → key' = pre ++ [cv]) :
     WriterWP (putKv (.put (pre ++ [cv]) h)) c w (fun _ w' =>
-      (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
+      TreeOK (wNode c.p base w') c.i w'.top.rootKey ∧ w'.taken = w.taken ∧
+      (∀ x, TReach (wNode c.p base w') c.i w'.top.rootKey x →
+        TReach (wNode c.p base w) c.i w.top.rootKey x ∨ w.next ≤ x) ∧
+      ((SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
         NoNewRootG c (wNode c.p base w) w.top.rootKey) → ∀ key', keyWf key' = true →
       wGet c.p c.i base w' key' =
         if Op.key (.put (pre ++ [cv]) h) == key' then Op.value (.put (pre ++ [cv]) h)
-        else wGet c.p c.i base w key') := by
+        else wGet c.p c.i base w key')) := by
   obtain ⟨hidn, hidv, hidt, hidvals, hidr⟩ := hids
   have hfuel : 1 ≤ c.p.fuel := by unfold Params.fuel; omega
   have hwfR : ∀ x xn, ReachS (wNode c.p base w) c.i w.top.rootKey x →
@@ -713,7 +742,24 @@ theorem writerWP_put_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
         (fun u c' _ hl => by have := hlinksAll u c' w.next hl; omega))
   simp only [Nat.zero_add, hXD, hn, Option.getD_some] at hchain
   refine writerWP_mono hchain ?_
-  intro _ wf ⟨_, ⟨hftop, hft, _, _, hfv⟩, _, _, _, hR, _⟩
+  intro _ wf ⟨hTf, ⟨hftop, hft, _, _, hfv⟩, _, hreachf, _, hR, _⟩
+  have hwnext : wNode c.p base w w.next = none := by
+    simp only [wNode, hntake w.next (Nat.le_refl _), Bool.false_eq_true, ↓reduceIte,
+      (hbase w.next (Nat.le_refl _)).1]
+    cases h' : w.nodes.lookup w.next with
+    | none => rfl
+    | some _ => have := hidn w.next (by rw [h']; rfl); omega
+  refine ⟨hTf, by rw [hft, hwst], ?_, ?_⟩
+  · intro x hx
+    rcases hreachf x hx with h1 | ⟨h1, _⟩
+    · rw [hwsN, hwstop, hnext3] at h1
+      simp only [List.foldl_cons, List.foldl_nil] at h1
+      rcases tReach_updN_addKey (wNode c.p base w) c.i w.top.rootKey L w.next n cv hn (hwfG _ _ hn)
+        (htimesG _ _ hn) hwnext x h1 with h2 | h2
+      · exact Or.inl h2
+      · exact Or.inr (by omega)
+    · rw [hwsx] at h1
+      exact Or.inr (by omega)
   have hadm : ∀ z, (w.next + 2 ≤ z ∨ ∃ i, 0 ≤ i ∧ i ≤ P.length ∧ z = nodeAt w.top.rootKey P i) →
       wValue base ws z = none := by
     intro z hz
@@ -826,7 +872,7 @@ theorem writerWP_put_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent
     hT hlinksAll hnoval hrangeG hlenG (fun x xn hx hxn hnr hsp q qn K hq hqn hk =>
       Or.inl ((hspaceG x xn hx hxn hnr hsp).2 q qn K hq hqn hk))
     hfullL huniq)
-    (fun _ _ hp => hp (Or.inr ⟨fun rn hrn hnr => Nat.le_of_not_lt (fun hsp =>
+    (fun _ _ hp => hp.2.2.2 (Or.inr ⟨fun rn hrn hnr => Nat.le_of_not_lt (fun hsp =>
       (hspaceG _ _ TReach.root hrn hnr hsp).1 rfl), fun x xn hx hxn hnr hsp =>
       (hspaceG x xn hx hxn hnr hsp).2⟩))
 
