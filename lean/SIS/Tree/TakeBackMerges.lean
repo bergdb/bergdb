@@ -31,7 +31,7 @@ theorem takeBackOK_of_cases4B (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.split
   takeBackOK_of_cases4 p hM hsa Q hQ0 hQs hQP hQK ho hPI hRO (baseStartOK_runTreeQ p Q) c4 c7 c9
 
 /-- `takeBackOK_of_mergesF` without `BaseStartOK`: with the merges on, TP7's
-take-back from case (4)'s obligations (cost's `MergeStepOKF`, `DescentOKF`,
+take-back from case (4)'s obligations (cost's `MergeStepOKF`,
 `CollapseStepOKF`; `MergeFullJ2OKF`, `DelStepsJ2OKF`) and the named inputs. -/
 theorem takeBackOK_of_mergesFB (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.splitAbove)
     (hcap : 1 ≤ p.mergeMax) (hm : p.merges = true)
@@ -47,11 +47,10 @@ theorem takeBackOK_of_mergesFB (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.spli
       RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey))
     (hDS : DelStepsJ2OKF p (RunTreeQ p Q) (TakeS3 p))
     (hMS : ∀ ts, MergeStepOKF (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hDe : ∀ ts, DescentOKF (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
     (hCo : ∀ ts, CollapseStepOKF (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
     (hMF : ∀ ts B, MergeFullJ2OKF (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1) B) :
     TakeBackOKUnder p (RunLinksOK p) :=
   takeBackOK_of_mergesF p hM hsa hcap hm Q hQ0 hQs hQP hQK ho hPI hRO (baseStartOK_runTreeQ p Q)
-    hDS hMS hDe hCo hMF
+    hDS hMS hCo hMF
 
 end SIS.Tree

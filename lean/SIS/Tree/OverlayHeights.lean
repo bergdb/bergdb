@@ -26,11 +26,12 @@ def HasHt (c : Ctx) (w : W) (y : NodeId) (h : Nat) : Prop :=
 
 /-- The live klongs of node n of height h, and of its version before the
 transaction, name nodes not taken back, and for an inner node key nodes one
-height below it. -/
-def NodeHt (c : Ctx) (w : W) (h : Nat) (n : KNode) : Prop :=
-  (∀ cv y, (cv, y) ∈ n.live → w.taken.contains y = false ∧ (h ≠ 0 → HasHt c w y (h - 1))) ∧
-  (∀ cv y, (cv, y) ∈ (n.toPrev (c.i - 1)).live →
-    w.taken.contains y = false ∧ (h ≠ 0 → HasHt c w y (h - 1)))
+height below it; n has no time after the transaction's. -/
+structure NodeHt (c : Ctx) (w : W) (h : Nat) (n : KNode) : Prop where
+  live : ∀ cv y, (cv, y) ∈ n.live → w.taken.contains y = false ∧ (h ≠ 0 → HasHt c w y (h - 1))
+  prev : ∀ cv y, (cv, y) ∈ (n.toPrev (c.i - 1)).live →
+    w.taken.contains y = false ∧ (h ≠ 0 → HasHt c w y (h - 1))
+  times : ∀ t, Klong.time t ∈ n.ks → t ≤ c.i
 
 /-- Every node of the overlay that is not taken back meets `NodeHt` for its
 height: its live children are not taken back, and an inner node's are one height
@@ -70,7 +71,7 @@ theorem NodeHt.mono {c : Ctx} {w v : W} {h : Nat} {n : KNode} (hn : NodeHt c w h
     (hg : ∀ q ∈ w.gh, q ∈ v.gh) (ht : ∀ y, w.taken.contains y = false → v.taken.contains y = false) :
     NodeHt c v h n :=
   ⟨fun cv y hy => ⟨ht y (hn.1 cv y hy).1, fun h0 => ((hn.1 cv y hy).2 h0).mono hg⟩,
-   fun cv y hy => ⟨ht y (hn.2 cv y hy).1, fun h0 => ((hn.2 cv y hy).2 h0).mono hg⟩⟩
+   fun cv y hy => ⟨ht y (hn.2 cv y hy).1, fun h0 => ((hn.2 cv y hy).2 h0).mono hg⟩, hn.3⟩
 
 section Facts
 
