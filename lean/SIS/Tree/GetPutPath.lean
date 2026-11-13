@@ -465,7 +465,7 @@ theorem writerWP_put_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
       ¬ ChainRoom c xn → c.p.splitAbove < (xn.lastVersion c.i).size →
       ∀ q qn K, TReach (wNode c.p base w) c.i w.top.rootKey q →
         wNode c.p base w q = some qn → (K, x) ∈ qn.liveAt c.i →
-        qn.leaf = false ∨ (xn.firstTime ≠ some c.i ∧ OrdG c (wNode c.p base w) w.top.rootKey))
+        qn.leaf = false ∨ OrdG c (wNode c.p base w) w.top.rootKey)
     (hfullL : ∀ L n, (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
       wNode c.p base w L = some n → n.leaf = true →
       ¬ (n.size + 1 < c.p.M ∧ deadOver c.p (n.add c.i (.key cv w.next)) = false))
@@ -668,9 +668,9 @@ theorem writerWP_put_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
       · exact Or.inl h0
       · refine Or.inr ⟨hi, ?_⟩
         rcases hspaceG _ _ (hreachX i h2) (hXN i h2) hnr hsp _ _ _ (hreachX (i - 1) (by omega))
-          (hXN (i - 1) (by omega)) (hKP i hi h2).2 with h | ⟨hft, hord⟩
+          (hXN (i - 1) (by omega)) (hKP i hi h2).2 with h | hord
         · exact Or.inl h
-        · refine Or.inr ⟨hft, fun i' h1' h2' hnr' hql' hsp' c' z hz => ?_⟩
+        · refine Or.inr (fun _ i' h1' h2' hnr' hql' hsp' c' z hz => ?_)
           exact hord _ _ _ _ _ (hreachX (i' - 1) (by omega)) (hXN (i' - 1) (by omega)) hql'
             (hKP i' (by omega) (by omega)).2 (hXN i' (by omega)) hnr' hsp' c' z hz)
     P.length (by omega) ws [(cv, w3.next)] (Or.inl ⟨cv, w3.next, rfl⟩)
@@ -867,7 +867,7 @@ theorem writerWP_del_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
       ¬ ChainRoom c xn → c.p.splitAbove < (xn.lastVersion c.i).size →
       ∀ q qn K, TReach (wNode c.p base w) c.i w.top.rootKey q →
         wNode c.p base w q = some qn → (K, x) ∈ qn.liveAt c.i →
-        qn.leaf = false ∨ (xn.firstTime ≠ some c.i ∧ OrdG c (wNode c.p base w) w.top.rootKey))
+        qn.leaf = false ∨ OrdG c (wNode c.p base w) w.top.rootKey)
     (hleafG : ∀ L n, (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
       wNode c.p base w L = some n → n.leaf = true →
       L ≠ w.top.rootKey ∧ (∀ q qn K, TReach (wNode c.p base w) c.i w.top.rootKey q →
@@ -1208,9 +1208,9 @@ theorem writerWP_del_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
         have he2 : i - 1 - d + 1 = i - d := by omega
         rw [he2] at hlk
         rcases hpar _ _ _ (reachS_tReach _ _ _ _ (hreachX (i - 1 - d) (by omega)))
-          (hNN (i - 1 - d) (by omega)) hlk with h | ⟨hft, hord⟩
+          (hNN (i - 1 - d) (by omega)) hlk with h | hord
         · exact Or.inl h
-        · refine Or.inr ⟨hft, fun i' h1' h2' hnr' hql' hsp' c' z hz => ?_⟩
+        · refine Or.inr (fun _ i' h1' h2' hnr' hql' hsp' c' z hz => ?_)
           have hlk' : (KK (i' - 1 - d + 1), XX (i' - 1 - d + 1)) ∈ (NN (i' - 1 - d)).liveAt c.i :=
             hlinksK (i' - 1 - d) (by omega)
           have he3 : i' - 1 - d + 1 = i' - d := by omega
