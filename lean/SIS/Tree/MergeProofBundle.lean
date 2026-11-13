@@ -123,3 +123,4 @@ import SIS.Tree.WriterTreeSegLeaf
 import SIS.Tree.WriterTreeNewSeg
 import SIS.Tree.WriterTreeRetarget
 import SIS.Tree.WriterTreeMergeMade
+import SIS.Tree.WriterTreeCollapse
