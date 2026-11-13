@@ -1103,7 +1103,7 @@ Landed checkpoints:
   12:27 to 12:35 together, 334 jobs.
 
 **TP10 and TP11 at the latest time, reduced, 2026-11-13** (prover
-"latest", 10:37 to 13:10, branch `024-12-latest`). **TP10 and TP11
+"latest", 10:37 to 13:40, branch `024-12-latest`). **TP10 and TP11
 follow from TP7, the run's key nodes sound and TREE for them, and the
 two statements about the writer under premises on the run's structure**
 (`getOK_of_runRead`, `scanOK_of_runRead`, `GetUnder.lean`): `OpGetOKUnder
@@ -1164,14 +1164,28 @@ kept only as steps. Proved on the way, on the standard axioms:
   (`writerWP_del_noop_seg`), a delete by a bitmap that leaves the leaf a
   live klong, merges off (`writerWP_del_bitmap_seg`); a put into a full
   leaf that existed before the transaction, below an inner parent with
-  room, without a space split: the time split (`writerWP_put_timeSplit_seg`,
-  `GetSplit.lean`; its further premises are TREE and fresh ids on the
-  nodes reachable through the writer's state, as cost's `WriterTreeOK`
-  is to give). The tools: the
+  room: the time split, also of a leaf full by its dead klongs only
+  (`writerWP_put_timeSplit_key`, `GetSplit.lean`; its further premises
+  are TREE for key nodes and fresh ids on the nodes reachable through
+  the writer's state), and the space split (`writerWP_put_spaceSplit_key`,
+  `GetSpaceSplit.lean`; one more premise, the search tree's order: the
+  leaf's compare values lie between its parent's klong to it and the
+  parent's next klong); a put into a full leaf that the transaction
+  made: the time split in place (`writerWP_put_timeInPlace_seg`) and the
+  space split in place below an inner parent with room
+  (`writerWP_put_spaceSplitInPlace_key`, `GetInPlace.lean`). With the
+  writer's tree (cost's `WriterTreeOK`): `OpGetTreeOK` and
+  `opGetOKUnder_of_tree` (`GetTree.lean`), and the split rules with
+  `TreeOK` for TREE (`*_tree`, through cost's `htree_of_treeOK`). The
+  writer's side of the space split is cost's (`SpaceSplitAfter`). The
+  tools: the
   frame of a reading (`getFromR_frame`, `getFromR_leaf_change`: what a
   key's reading visits, each node with the compare value it searches
-  there), a node moved to a new id (`getFromR_ren`, for the splits),
-  the time split's last version with the put
+  there), a node moved to a new id (`getFromR_ren`, for the time
+  split), a parent whose klong to a leaf now names two halves by
+  compare value (`getEqR_split`, `getFromR_split`,
+  `KNode.splitParent_searchLte`, for the space splits), the time split's
+  last version with the put
   (`writerWP_replaceOrAdd_last`).
 * **TP7's invariant is not enough for `OpGetOK`**, proved:
   `sharedSegment_changes_other_key` (`SharedSegment.lean`): a structure
@@ -1188,10 +1202,12 @@ kept only as steps. Proved on the way, on the standard axioms:
   key's compare value at its leaf.
 
 Open: `OpGetOKUnder p (RunReadOK p)`, the writer's refinement of the
-map, every rule but the four above (the space splits, the time splits in
-place and of roots, the upward delete, LE-b, the merges, root collapse),
-with its invariant inside a transaction (TREE inside it is cost's
-`WriterTreeOK`, the coordinator, 2026-11-13); checked, not proved, on about 900 pseudo-random
+map, every rule but those above (the splits of a segment root or the
+space root, the splits whose parent is full, a put that makes a new
+segment, the upward delete, LE-b, the merges, root collapse), with its
+invariant inside a transaction: TREE inside it is cost's `WriterTreeOK`
+(the coordinator, 2026-11-13), and it must also give the search tree's
+order, klongs well formed and fresh ids; checked, not proved, on about 900 pseudo-random
 transactions of the model (node sizes 4 to 10, H 0 to 8, merges and
 theta), operation by operation, no difference. `KeyTreeOK` after every
 run within reach (TREE; TP16 states it for the model). The lift,
