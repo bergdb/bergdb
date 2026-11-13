@@ -86,7 +86,10 @@ Files
 * 02-public-key-check.md. 026-02, a public key check, so that a user can
   test a key (and maybe a value or a transaction) against the limits
   before a call (Frans, 2026-11-12, 09:34; from 024-27, QR1): the
-  options and a recommendation, no code yet.
+  options and a recommendation; done 2026-11-13 as decided (Frans,
+  09:11, QK1 to QK4): `bergdb.pub.Limits`, the limits as constants,
+  `keyBytes` and `checkKey`, no `levelBytes`; on branch `026-02-limits`,
+  to land.
 * 03-single-maintenance-step.md. 026-03, one maintenance step for a
   commit and for `maintain()`, and the simple form (ordinary
   transactions with filler) to consider (Frans, 2026-11-12, 13:44 and
@@ -105,6 +108,9 @@ Files
   2026-11-13 (Q1 to Q4 yes, Frans 08:45).
 * 08-fixed-node-size.md. 026-08, the node size fixed at 30 for users,
   the other sizes for tests only (Frans, 2026-11-13, 09:21); registered.
+* 09-keys-only-scan.md. 026-09, reclaim's scan without the values it
+  does not rewrite (024-34, Q34-1, option b; Frans, 2026-11-13, 09:38);
+  registered, after 026-05.
 
 
 Log
@@ -127,3 +133,6 @@ the same sections.
 
 2026-11-13. 024-22's QM1 and 027-03's section 21 moved from the
 proposals to the decided work (Frans, 09:23: "Yes, decided work.").
+
+2026-11-13. 026-09 registered: 024-34's Q34-1, option (b), after 026-05
+(Frans, 09:38).

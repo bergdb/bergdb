@@ -347,8 +347,7 @@ class RwEnvironmentImp implements RwEnvironment {
         // Null values allowed in a HashMap.
         
         checkOpen();
-        String ikey = PubKeys.u2i(ukey);
-        checkKeyBytes(ukey, ikey);
+        String ikey = PubKeys.checkedIkey(ukey);    // the key's form and L2 (bergdb 026-02)
 
         if (Entries.isObjectKey(ikey)) {
             writeObject(ikey, new ObjectInfo(ikey, null, null));
@@ -366,8 +365,7 @@ class RwEnvironmentImp implements RwEnvironment {
             throw new IllegalArgumentException("object == null not allowed");
         }
         
-        String ikey = PubKeys.u2i(ukey);
-        checkKeyBytes(ukey, ikey);
+        String ikey = PubKeys.checkedIkey(ukey);    // the key's form and L2 (bergdb 026-02)
         checkReplaceInDirectory(ukey, ikey);
         Class<?> clazz = object.getClass();
         
@@ -390,28 +388,6 @@ class RwEnvironmentImp implements RwEnvironment {
                     enableKeyReplace ? getKeyTransformation(ikey) : null);
             checkValueBytes(ukey, info.value.length);   // a DbObject's own bytes
             writeObject(ikey, info);
-        }
-    }
-    
-    /**
-     * L2 (bergdb 024-17, 6.2 (a); 024-24): a Pub key is at most Db.MAX_KEY_BYTES bytes as
-     * stored, its ikey: the UTF-8 of the key and one byte more for each part ("/a/b" is
-     * "/da/-b"), so each '/' counts two. Checked at the put and the delete, before anything
-     * is written; key replace keeps a key's length ("${transactionTime}" and the time's 18
-     * digits), so the key as written is the key as stored.
-     *
-     * @throws IllegalArgumentException  If the key is longer.
-     */
-    static void checkKeyBytes(String ukey, String ikey) {
-        if (3L * ikey.length() <= Db.MAX_KEY_BYTES) {
-            return;     // a char takes at most 3 bytes in UTF-8
-        }
-        long bytes = StringUtil.utf8Size(ikey);
-        if (bytes > Db.MAX_KEY_BYTES) {
-            throw new IllegalArgumentException("The key has " + bytes + " bytes as stored, "
-                    + "more than " + Db.MAX_KEY_BYTES + " (bergdb 024-17, L2): its UTF-8 and a "
-                    + "byte for each part, so each '/' counts two. Key: " 
-                    + (ukey.length() <= 100 ? ukey : ukey.substring(0, 100) + "...") + ".");
         }
     }
     
@@ -607,7 +583,7 @@ class RwEnvironmentImp implements RwEnvironment {
             }
         }
         
-        // The user's keys and values were checked at the put (L2, L4: checkKeyBytes,
+        // The user's keys and values were checked at the put (L2, L4: PubKeys.checkedIkey,
         // checkValueBytes); kvOps also holds a build step's index entries (set()), and indexOps
         // the entries of the objects put, BergDB's own keys, which may be longer than L2: so
         // the internal calls (bergdb 024-17, 6.2 (a); 024-24). Db.execute() checks L1, L3 and

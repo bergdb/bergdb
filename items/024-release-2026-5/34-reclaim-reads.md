@@ -1,8 +1,8 @@
 # 024-34. Reclaim reads only what it rewrites (OP8)
 
 Created 2026-11-12 by Frans Lundberg. Status: done (2026-11-12): on
-`main` since `a156fd51`. Open: Q34-1 waits for Frans, not moved to 026
-(024-35, finding 7).
+`main` since `a156fd51`. Q34-1 decided (Frans, 2026-11-13, 09:38):
+option (b) in 2026.6, as 026-09, after 026-05; (a) until then.
 
 Frans, 2026-11-12, 12:10, for release 2026.5: OP8 "Do for this release.
 This changes the reclaim algorithm, or its implementation at least. Want
