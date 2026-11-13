@@ -849,7 +849,7 @@ nx as before, new nodes from nx on naming nodes below nx, the path and the taken
 nodes as before. Then the cascade's state facts hold of it. -/
 theorem mergeState_facts (c : Ctx) (base : View BVal) (N : NodeId → Option KNode) (root : NodeId)
     (nx : Nat) (w3 S : W) (s D : Nat) (X : Nat → NodeId) (Nn : Nat → KNode)
-    (hT : TreeOK N c.i root) (hN3 : wNode c.p base w3 = N) (h3top : w3.top.rootKey = root)
+    (hT : TreeOK N c.i root) (h3top : w3.top.rootKey = root)
     (hfree : ∀ z, nx ≤ z → N z = none ∧ w3.taken.contains z = false)
     (hlinksAll : ∀ u c' z, TLink N c.i u c' z → z < nx)
     (hbaseF : ∀ z, nx ≤ z → knodeOf c.p base z = none)
@@ -906,5 +906,65 @@ theorem mergeState_facts (c : Ctx) (base : View BVal) (N : NodeId → Option KNo
           simp only [Option.some.injEq] at hun
           subst hun
           have := hSnew u yn hu hlk c' z hc; omega
+
+/-- `ghOf` reads as before. -/
+theorem writerWP_ghOf_reads (x : NodeId) (c : Ctx) (w : W) (base : View BVal)
+    (hvc : ViewCoherent c base) :
+    WriterWP (ghOf x) c w (fun _ v => ReadsAs c.p base w v) := by
+  unfold ghOf
+  simp only [writerWP_bind]
+  refine writerWP_mono (writerWP_getNode_reads x c w base hvc) ?_
+  intro _ v ⟨hr, _, _⟩
+  simp only [writerWP_get]
+  split
+  · simp only [writerWP_pure]; exact hr
+  · exact writerWP_throw _ _ _ _
+
+/-- The live klongs of the merge's full parent as `treeOK_mergeOneAfter` and
+`treeOK_mergeTwoAfter` take them. -/
+theorem mergeFullLast_liveAt (pn : KNode) (t : Time) (cL : Nat) (m1 : NodeId) (cR : Nat)
+    (m2 : Option (NodeId × Nat)) (last : KNode) (h : mergeFullLast pn t cL m1 cR m2 = some last)
+    (hpt : ∀ s, Klong.time s ∈ pn.ks → s ≤ t) :
+    (∀ s, Klong.time s ∈ last.ks → s ≤ t) ∧ last.leaf = pn.leaf ∧
+    (m2 = none → ∀ cc z, (cc, z) ∈ last.liveAt t →
+      (cc = cL ∧ z = m1) ∨ ((cc, z) ∈ pn.liveAt t ∧ cc ≠ cL ∧ cc ≠ cR)) ∧
+    (∀ y g, m2 = some (y, g) → ∀ cc z, (cc, z) ∈ last.liveAt t →
+      (cc = cL ∧ z = m1) ∨ (cc = g ∧ z = y) ∨ ((cc, z) ∈ pn.liveAt t ∧ cc ≠ cL ∧ cc ≠ cR)) := by
+  obtain ⟨pairs, hks⟩ := mergeFullLast_ks pn t cL m1 cR m2 last h
+  have htl : ∀ s, Klong.time s ∈ last.ks → s ≤ t := by rw [hks]; exact newKlongs_times t pairs
+  obtain ⟨hleaf, hnone, hsome⟩ := mergeFullLast_lookup pn t cL m1 cR m2 last h
+  have hpn : ∀ cc z, pn.live.lookup cc = some z → (cc, z) ∈ pn.liveAt t := by
+    intro cc z hz
+    rw [KNode.liveAt_of_times pn t hpt]
+    exact mem_of_lookup_nodup _ cc z hz
+  have hl : ∀ cc z, (cc, z) ∈ last.liveAt t → last.live.lookup cc = some z := by
+    intro cc z hm
+    rw [KNode.liveAt_of_times last t htl] at hm
+    exact lookup_of_mem_nodup _ (KNode.live_keys_nodup last) cc z hm
+  refine ⟨htl, hleaf, fun h0 cc z hm => ?_, fun y g hy cc z hm => ?_⟩
+  · have hlk := hl cc z hm
+    rw [hnone h0 cc] at hlk
+    by_cases h1 : cc = cL
+    · rw [ite_eq_left_of_eq_true _ _ (eq_true h1)] at hlk
+      exact Or.inl ⟨h1, (Option.some.inj hlk).symm⟩
+    · rw [ite_eq_right_of_eq_false _ _ (eq_false h1)] at hlk
+      by_cases h2 : cc = cR
+      · rw [ite_eq_left_of_eq_true _ _ (eq_true h2)] at hlk; cases hlk
+      · rw [ite_eq_right_of_eq_false _ _ (eq_false h2)] at hlk
+        exact Or.inr ⟨hpn cc z hlk, h1, h2⟩
+  · have hlk := hl cc z hm
+    rw [hsome y g hy cc] at hlk
+    by_cases h0 : cc = g
+    · rw [ite_eq_left_of_eq_true _ _ (eq_true h0)] at hlk
+      exact Or.inr (Or.inl ⟨h0, (Option.some.inj hlk).symm⟩)
+    · rw [ite_eq_right_of_eq_false _ _ (eq_false h0)] at hlk
+      by_cases h1 : cc = cL
+      · rw [ite_eq_left_of_eq_true _ _ (eq_true h1)] at hlk
+        exact Or.inl ⟨h1, (Option.some.inj hlk).symm⟩
+      · rw [ite_eq_right_of_eq_false _ _ (eq_false h1)] at hlk
+        by_cases h2 : cc = cR
+        · rw [ite_eq_left_of_eq_true _ _ (eq_true h2)] at hlk; cases hlk
+        · rw [ite_eq_right_of_eq_false _ _ (eq_false h2)] at hlk
+          exact Or.inr (Or.inr ⟨hpn cc z hlk, h1, h2⟩)
 
 end SIS.Tree
