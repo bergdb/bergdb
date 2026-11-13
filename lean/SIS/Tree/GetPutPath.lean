@@ -649,8 +649,8 @@ theorem writerWP_put_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
     (fun i _ h2 hnr hsp => by
       rcases Nat.eq_zero_or_pos i with h0 | hi
       · exact Or.inl h0
-      · exact Or.inr ⟨hi, hspaceG _ _ (hreachX i h2) (hXN i h2) hnr hsp _ _ _ (hreachX (i - 1) (by omega))
-          (hXN (i - 1) (by omega)) (hKP i hi h2).2⟩)
+      · exact Or.inr ⟨hi, Or.inl (hspaceG _ _ (hreachX i h2) (hXN i h2) hnr hsp _ _ _ (hreachX (i - 1) (by omega))
+          (hXN (i - 1) (by omega)) (hKP i hi h2).2)⟩)
     P.length (by omega) ws [(cv, w3.next)] (Or.inl ⟨cv, w3.next, rfl⟩)
     (by intro q hq; simp at hq; rw [hq, hwsx, hnext3]; simp)
     hwsp
@@ -1177,7 +1177,7 @@ theorem writerWP_del_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
       have hpar := hspaceG _ _ (reachS_tReach _ _ _ _ (hreachX (i - d) (by omega)))
         (hNN (i - d) (by omega)) hnr hsp
       rcases Nat.lt_or_ge d i with hi | hi
-      · refine Or.inr ⟨hi, ?_⟩
+      · refine Or.inr ⟨hi, Or.inl ?_⟩
         show (NN (i - 1 - d)).leaf = false
         have hlk : (KK (i - 1 - d + 1), XX (i - 1 - d + 1)) ∈ (NN (i - 1 - d)).liveAt c.i :=
           hlinksK (i - 1 - d) (by omega)

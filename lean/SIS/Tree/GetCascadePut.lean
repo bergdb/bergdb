@@ -605,7 +605,7 @@ theorem writerWP_put_chainG (c : Ctx) (base : View BVal) (hvc : ViewCoherent c b
     (fun i h1 h2 hnr _ => by
       by_cases hi : i = d
       · subst hi; simp only [Nat.sub_self] at hnr; exact absurd htop hnr
-      · refine Or.inr ⟨by omega, ?_⟩
+      · refine Or.inr ⟨by omega, Or.inl ?_⟩
         show (NN (i - 1 - d)).leaf = false
         exact hinner (i - 1 - d) (by omega))
     m (Nat.le_refl _) ws [(cv, w3.next)] (Or.inl ⟨cv, w3.next, rfl⟩)

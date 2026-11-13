@@ -521,8 +521,8 @@ theorem writerWP_put_newSegFullR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
       (fun i _ h2 hnr hsp => by
         rcases Nat.eq_zero_or_pos i with h0 | hi
         · exact Or.inl h0
-        · exact Or.inr ⟨hi, hspaceG _ _ (hreachX i h2) (hXN i h2) hnr hsp _ _ _ (hreachX (i - 1) (by omega))
-            (hXN (i - 1) (by omega)) (hKP i hi h2).2⟩)
+        · exact Or.inr ⟨hi, Or.inl (hspaceG _ _ (hreachX i h2) (hXN i h2) hnr hsp _ _ _ (hreachX (i - 1) (by omega))
+            (hXN (i - 1) (by omega)) (hKP i hi h2).2)⟩)
       P.length (by omega) ws1 [(c0, w.next)] (Or.inl ⟨c0, w.next, rfl⟩)
       (by intro q hq; simp at hq; rw [hq, g2]; simp)
       g6

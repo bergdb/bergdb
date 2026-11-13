@@ -339,4 +339,39 @@ def ChainNoNewRoot (c : Ctx) (Nn : Nat → KNode) (s L : Nat) : Prop :=
   ∀ i, s < i → i ≤ L → ¬ ChainRoom c (Nn i) → c.p.splitAbove < ((Nn i).lastVersion c.i).size →
     (Nn (i - 1)).leaf = false
 
+/-- A tree has no cycles: two nodes that reach each other are one. -/
+theorem reach_antisymm (N : NodeId → Option KNode) (t : Time) (r a b : NodeId)
+    (hT : TreeOK N t r) (ha : TReach N t r a) (hab : ReachS N t a b) (hba : ReachS N t b a) :
+    a = b := by
+  obtain ⟨da, hda⟩ := ha.pathLen
+  obtain ⟨k1, hk1⟩ := reachS_pathFromLen N t a b hab
+  obtain ⟨k2, hk2⟩ := reachS_pathFromLen N t b a hba
+  have h1 := hda.append hk1
+  have h2 := h1.append hk2
+  have := PathLen.depth_unique hT _ _ _ hda h2
+  have hk : k1 = 0 := by omega
+  subst hk
+  cases hk1 with
+  | refl => rfl
+
+/-- A chain of links X a .. X b reaches from X a to X b. -/
+theorem chain_reachS (N : NodeId → Option KNode) (t : Time) (X : Nat → NodeId) (K : Nat → Nat)
+    (Nn : Nat → KNode) (a : Nat) :
+    ∀ b, a ≤ b → (∀ i, a ≤ i → i < b → N (X i) = some (Nn i) ∧ (K (i + 1), X (i + 1)) ∈ (Nn i).liveAt t) →
+      ReachS N t (X a) (X b) := by
+  intro b
+  induction b with
+  | zero =>
+    intro h _
+    have : a = 0 := by omega
+    subst this
+    exact ReachS.root
+  | succ b ih =>
+    intro h hl
+    rcases Nat.eq_or_lt_of_le h with h' | h'
+    · rw [h']; exact ReachS.root
+    · have hr := ih (by omega) (fun i h1 h2 => hl i h1 (by omega))
+      obtain ⟨hN, hk⟩ := hl b (by omega) (by omega)
+      exact ReachS.step (X b) (Nn b) (K (b + 1)) (X (b + 1)) hr hN hk
+
 end SIS.Tree
