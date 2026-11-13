@@ -166,9 +166,13 @@ whose commit has begun completes; another call that runs at the stop, such as an
 action runs, throws IllegalDbStateException and writes nothing ({@link Database#stop()}).
 Before System.exit(), and in a shutdown hook, call close(): the JVM does not wait for the
 background close of stop() then.</li>
-<li>Each started database holds a write buffer of 10 MB of heap until it closes, whatever its
-size: many small databases open at once need heap accordingly
-({@link DatabaseBuilder#startupDistanceInMb(int)}).</li>
+<li>Each started database holds a write buffer of heap until it closes: 64 KiB at the start,
+whatever its size, up to 10 MB while it writes faster than the storage takes the writes, and
+back to 64 KiB after 2 seconds with nothing to write; a small file database holds about 0.7 MB
+of heap in all ({@link DatabaseBuilder#startupDistanceInMb(int)}). What many databases open in
+one JVM must set is the cache budget: by default each database's cache may grow to a fifth of
+the JVM's maximum heap, so give each a budget that leaves room for the others
+({@link DatabaseBuilder#cacheSizeInMb(int)}).</li>
 <li>A transaction is written to storage soon after it returns; sync() waits until it is
 durable, and so does close().</li>
 <li>A long key costs many times its length in the stream and in memory, as a key is stored

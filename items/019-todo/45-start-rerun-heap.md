@@ -56,6 +56,11 @@ and 2.0M `Long`s of the maps (about 80 MB), and the rerun's 1.33M new
 The records and the maps are garbage when the start returns; the rerun's
 values are the database's, as when it ran.
 
+Note, 2026-11-13 (028-11, from 027-11's review): not all of the maps.
+Rule R keeps a copy of newById, one entry for each index node of the
+section, with the startup pos and time, for the process's life (027-11,
+section 2); the records, posMap and posToId are garbage.
+
 **The budget during the start.** The rerun's loads of nodes outside the
 section start the capacity controller as a running database's loads do
 (the load listener): 254 sweeps after loads in the start of the 200 MB
@@ -129,3 +134,6 @@ Log
 020-10's B1 and H2's first part): the probe and its runs, the limit in
 docs/levels.md, section 7; by design, not a fault; no code changed;
 BEFORE COMMIT OK.
+
+2026-11-13. A dated note after the paragraph of the class histograms
+(028-11): Rule R's copy of newById stays after the start.
