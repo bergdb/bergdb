@@ -112,25 +112,25 @@ public class KeyModSet implements IKeyModSet {
     /**
      * Forgets the modifications at or before 'time', the first available lookup time of a
      * cut that Reclaim has just decided (Db.cutDecided; bergdb 026-10), as far as whole bins
-     * hold them: the newest bins are kept down to the first one that begins at or before
-     * 'time'; if nothing was added after 'time', an empty bin that begins at the last add
-     * is kept, as at a start (setFirstTime). modifiedAfter() answers as before for every
-     * time from 'time' on, and true for an earlier one, as for any time before the first
-     * time: such a transaction is rerun. Until 026-10 the set kept its last 128,000 pairs,
-     * about 2.5 MB, until newer ones pushed them out, also in a database emptied and then
-     * quiet (2.47 MB in CountGates' G5).
+     * hold them: the bins are kept down to the first one that begins at or before 'time',
+     * and the older ones go. If that is the newest bin, a new bin begins at the last add, so
+     * that a later cut forgets the pairs before it; the old one goes at once if the last add
+     * is at or before 'time'. modifiedAfter() answers as before for every time from 'time'
+     * on, and true for an earlier one, as for any time before the first time: such a
+     * transaction is rerun. Until 026-10 the set kept its last 128,000 pairs, about 2.5 MB,
+     * until newer ones pushed them out, also in a database emptied and then quiet (2.47 MB
+     * in CountGates' G5).
      */
     void forgetUpTo(long time) {
-        if (lastTime != -1 && lastTime <= time) {
-            Bin empty = new Bin(totalSize / BIN_COUNT);
-            empty.firstTime = lastTime;
-            Arrays.fill(bins, null);
-            bins[0] = empty;
-            return;
-        }
-        for (int i = 0; i < BIN_COUNT - 1 && bins[i] != null; i++) {
+        for (int i = 0; i < BIN_COUNT && bins[i] != null; i++) {
             if (bins[i].firstTime <= time) {
                 Arrays.fill(bins, i + 1, BIN_COUNT, null);
+                if (i == 0 && bins[0].size > 0) {
+                    Bin next = new Bin(totalSize / BIN_COUNT);
+                    next.firstTime = lastTime;
+                    bins[1] = lastTime <= time ? null : bins[0];
+                    bins[0] = next;
+                }
                 return;
             }
         }
@@ -296,6 +296,16 @@ public class KeyModSet implements IKeyModSet {
         Assert.assertEquals(30L, s.getFirstTime());
         Assert.assertTrue(s.modifiedAfter(30, 7));
         Assert.assertFalse(s.modifiedAfter(31, 7));
+        
+        s.forgetUpTo(30);                   // the newest bin begins at 30: a new one at 31
+        Assert.assertEquals(30L, s.getFirstTime());
+        Assert.assertTrue(s.modifiedAfter(30, 7));
+        s.add(40, 8);
+        s.forgetUpTo(35);                   // the bin of 31 is the first at or before 35
+        Assert.assertEquals(31L, s.getFirstTime());
+        Assert.assertTrue(s.modifiedAfter(35, 8));
+        Assert.assertFalse(s.modifiedAfter(35, 7));
+        Assert.assertTrue("before the first time", s.modifiedAfter(30, 7));
     }
     
     @Nano
