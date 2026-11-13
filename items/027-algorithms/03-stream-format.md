@@ -1,14 +1,20 @@
-# 024-02. The stream format: the skeleton
+# 027-03. The stream format: the skeleton
 
-Created 2026-11-11 by Frans Lundberg. Status: open: the draft, kept
-current with the code until the stable format of release 2026.6 (026;
-024-04, section 5).
+Moved from 024-02 on 2026-11-13 (Frans, 08:50: "Yes"); kept current. It
+was 024-02 until 2026-11-13: a citation of "024-02, section N" (or of
+its G1 to G21, J1 to J8, Q1 to Q23) means the same here; the sections
+kept their numbers.
+
+Created 2026-11-11 by Frans Lundberg, as 024-02. Status: open: the
+draft, kept current with the code; release 2026.6's work on a stable
+format (026; 024-04, section 5) edits it.
 
 The skeleton of a specification of BergDB's stream format, the first
 work item of release 2026.5, written when its theme was "a stable stream
 format" (Frans, 2026-11-10, 19:54). Since 2026-11-11 the theme of 2026.5
 is "solid algorithms" (024-04) and the stable format is release 2026.6's
-(026); this draft is kept current until then (024-04, section 5). Where
+(026); this draft is kept current (024-04, section 5; 027-03 since
+2026-11-13). Where
 the text below says what 2026.5 decides for a stable format, read it with
 that change. It lists every structure of the
 stream, from the files to the bits, as numbered sections, so that the
@@ -1496,10 +1502,10 @@ For any option, to decide with it:
   Q14 and Q16 (they decide which later changes are additive), then the
   rest; 2026.5's format changes are batched, so that C and SD change once
   (024-01, CC2).
-* **Where it lives.** This subitem until the format is frozen. 012-01's
-  D6b planned a `docs/stream-format.md`; a document in `docs/` is kept up
-  to date with the code, which a frozen format's specification would be.
-  Frans decides at the freeze.
+* **Where it lives.** 027-03, kept current with the code, since
+  2026-11-13 (Frans, 08:50: "Yes"; 024-02 until then). 012-01's D6b
+  planned a `docs/stream-format.md`; a document in `docs/` was kept up
+  to date with the code, as a maintained subitem of 027 is now.
 
 
 ## 23. Log
@@ -1518,3 +1524,10 @@ format 7 (024-21, 024-23 and 024-25 in a paragraph; format 6's text kept
 below it). The rest of the subitem as it was.
 
 2026-11-13. Status set after the release (coord-1113).
+
+2026-11-13. Moved into 027 as 027-03 (Frans, 08:50, "Yes", to 027's
+question): `git mv` from `items/024-release-2026-5/02-stream-format.md`,
+a stub left there; the heading, the ID and section 22's "Where it lives"
+changed, the sections and their numbers not. The code's comments cite
+`bergdb 027-03`. By agent sf of coord-1113, on the branch
+`027-03-stream-format`.

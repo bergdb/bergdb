@@ -103,7 +103,9 @@ Files
   for the meta block, the record and the nodes; the gaps where the code
   accepts what a spec should refuse (G1 to G21) and its Java dependences
   (J1 to J8); the open format questions (Q1 to Q23, Q14 and Q16 first);
-  the options for versioning, none decided.
+  the options for versioning, none decided. Moved to 027 on 2026-11-13,
+  now 027-03, kept current (Frans, 08:50: "Yes"). A stub here leads
+  there.
 * 03-measurements.md. 024-03, release 2026.4 measured at 1M and 10M keys
   beside 2026.3 (PF1): the same speed and MEM; a mass delete fixed (101
   nodes against 882,271); P8 not needed on these numbers (CL1); merges'
@@ -434,3 +436,9 @@ moved to 026-01. Questions that no one answered are named in the Status
 lines of their subitems: 024-06 (5, 8), 024-14 (QT2), 024-18 (QD2 to
 QD5), 024-19 (Q2, Q3; Q5 for 2026.6), 024-21 (QJ2), 024-24 (Q1), 024-25
 (QC1, QC3), 024-34 (Q34-1, for Frans, not in 026). 024 stays open.
+
+2026-11-13. 024-02, the stream format, moved to 027 as 027-03, kept
+current there (Frans, 08:50: "Yes", to 027's question "Move it into 027
+when 2026.5 is done?"); a stub left at 024-02, its sections and their
+numbers unchanged in 027-03. Of the three open subitems, 024-12 and
+024-22 remain.
