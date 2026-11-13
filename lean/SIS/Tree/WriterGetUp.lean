@@ -9,6 +9,8 @@ leaf (`getFromR_dropLeafKlong`), keeps every reading.
 import SIS.Tree.WriterGetCollapseSeg
 import SIS.Tree.RangeSim
 import SIS.Tree.FuelPaths
+import SIS.Tree.WriterTreeChainG
+import SIS.Tree.RangeOps
 
 set_option autoImplicit false
 
@@ -833,5 +835,325 @@ theorem getFromR_dropLeafKlong (N N' : NodeId → Option KNode) (V : NodeId → 
               have hm := KNode.searchLte_mem un t cv fd hfd
               have hl : TLink N t u fd.c fd.y := ⟨un, hN, hm⟩
               exact ih fd.y (TReach.link hu hl) (fun hD => hus (hout fd.c fd.y hl hD).1)
+
+/-! ## The emptied chain -/
+
+/-- The access path's nodes X (s+1) .. X D below the stop node: each has its live
+klongs naming the next, and the last, X D, is a leaf with no live klong. Then
+every search from X (s+1) ends in nothing. -/
+theorem chain_deadBelow (N : NodeId → Option KNode) (V : NodeId → Option Nat) (t : Time)
+    (fuel : Nat) (X : Nat → NodeId) (Nn : Nat → KNode) (s D : Nat) (hsD : s < D)
+    (hN : ∀ i, s < i → i ≤ D → N (X i) = some (Nn i))
+    (hwf : ∀ i, s < i → i ≤ D → klongsWf (Nn i).ks = true)
+    (hone : ∀ i, s < i → i < D → ∀ c z, (c, z) ∈ (Nn i).liveAt t → z = X (i + 1))
+    (hleaf : (Nn D).leaf = true) (hempty : ∀ c z, (c, z) ∉ (Nn D).liveAt t)
+    (hnoval : ∀ i, s + 1 < i → i ≤ D → V (X i) = none) :
+    DeadBelow N V t fuel (X (s + 1)) := by
+  have key : ∀ k, k ≤ D - (s + 1) → DeadBelow N V t fuel (X (D - k)) := by
+    intro k
+    induction k with
+    | zero =>
+      intro _
+      exact deadBelow_emptyLeaf N V t fuel (X D) (Nn D) (hN D (by omega) (Nat.le_refl _)) hleaf
+        (hwf D (by omega) (Nat.le_refl _)) hempty
+    | succ k ih =>
+      intro hk
+      have hi : D - (k + 1) + 1 = D - k := by omega
+      have hnext := ih (by omega)
+      have hone' := hone (D - (k + 1)) (by omega) (by omega)
+      rw [hi] at hone'
+      have hNi := hN (D - (k + 1)) (by omega) (by omega)
+      cases hl : (Nn (D - (k + 1))).leaf with
+      | false => exact deadBelow_inner N V t fuel _ _ _ hNi hl hone' hnext
+      | true =>
+        exact deadBelow_leaf N V t fuel _ _ _ hNi hl (hwf _ (by omega) (by omega)) hone'
+          (deadAt_of_deadBelow N V t fuel _ (by
+            have := hnoval (D - k) (by omega) (by omega); exact this) hnext)
+  have := key (D - (s + 1)) (Nat.le_refl _)
+  have he : D - (D - (s + 1)) = s + 1 := by omega
+  rw [he] at this
+  exact this
+
+/-! ## The upward delete at tree level -/
+
+/-- The empty leaf: a node with no live klong. -/
+def emptyLeaf (t : Time) : KNode := ⟨true, newKlongs t []⟩
+
+theorem emptyLeaf_liveAt (t : Time) : ∀ c z, (c, z) ∉ (emptyLeaf t).liveAt t := by
+  intro c z h
+  have := (mrg_newKlongs_liveAt_iff true t [] (by simp) c z).mp h
+  simp at this
+
+/-- The tree with the key's leaf X D emptied (the key's delete, a node that is no
+writer's): it reads every key as N but the key, which reads nothing; it is a
+tree with the walk's ranges; the stop node X s is reached; below X (s + 1),
+every search ends in nothing. -/
+theorem up_prep (N : NodeId → Option KNode) (V : NodeId → Option Nat) (t : Time) (fuel : Nat)
+    (hfuel : 1 ≤ fuel) (r : NodeId) (X : Nat → NodeId) (Nn : Nat → KNode) (K : Nat → Nat)
+    (s D : Nat) (hsD : s < D) (pre : List Nat) (cv : Nat) (rk : NodeId)
+    (hT : TreeOK N t r) (hR : RangeOrder N t r)
+    (hwf : ∀ x xn, TReach N t r x → N x = some xn → klongsWf xn.ks = true)
+    (hXs : TReach N t r (X s))
+    (hN : ∀ i, s ≤ i → i ≤ D → N (X i) = some (Nn i))
+    (hlinkK : ∀ i, s < i → i ≤ D → (K i, X i) ∈ (Nn (i - 1)).liveAt t)
+    (hone : ∀ i, s < i → i < D → ∀ c z, (c, z) ∈ (Nn i).liveAt t → z = X (i + 1))
+    (hleaf : (Nn D).leaf = true) (honly : ∀ c z, (c, z) ∈ (Nn D).liveAt t → c = cv)
+    (hnoval : ∀ i, s + 1 < i → i ≤ D → V (X i) = none)
+    (hdist : ∀ i, s ≤ i → i < D → X i ≠ X D)
+    (hrk : segRootR N t fuel pre r = some rk) (hcv : cv ∉ pre)
+    (hvisL : (X D, cv) ∈ eqVisits N t cv fuel rk)
+    (huniq : ∀ key' x m, keyWf key' = true → (x, cv) ∈ fromVisits N t fuel key' r →
+      (x, cv) ∈ eqVisits N t cv fuel rk → N x = some m → m.leaf = true → key' = pre ++ [cv]) :
+    (∀ key', keyWf key' = true → getFromR (updN N (X D) (emptyLeaf t)) V t fuel key' r =
+      if pre ++ [cv] == key' then none else getFromR N V t fuel key' r) ∧
+    TreeOK (updN N (X D) (emptyLeaf t)) t r ∧ RangeOrder (updN N (X D) (emptyLeaf t)) t r ∧
+    (∀ x xn, TReach (updN N (X D) (emptyLeaf t)) t r x → updN N (X D) (emptyLeaf t) x = some xn →
+      klongsWf xn.ks = true) ∧
+    TReach (updN N (X D) (emptyLeaf t)) t r (X s) ∧
+    DeadBelow (updN N (X D) (emptyLeaf t)) V t fuel (X (s + 1)) ∧
+    (∀ u i, s < i → i ≤ D → u = X i → TReach (updN N (X D) (emptyLeaf t)) t (X (s + 1)) u) ∧
+    (∀ u, TReach (updN N (X D) (emptyLeaf t)) t r u → TReach N t r u) := by
+  have hWx : updN N (X D) (Nn D) = N := by
+    funext z
+    by_cases hz : z = X D
+    · rw [hz, updN_self, hN D (by omega) (Nat.le_refl _)]
+    · exact updN_ne _ _ _ _ hz
+  have hsubL : ∀ c z, (c, z) ∈ (emptyLeaf t).liveAt t → (c, z) ∈ (Nn D).liveAt t :=
+    fun c z h => absurd h (emptyLeaf_liveAt t c z)
+  obtain ⟨hTa, hRa⟩ := treeOK_updN_sub N t r (X D) (Nn D) (emptyLeaf t) (by rw [hWx]; exact hT) hsubL
+  rw [hWx] at hRa
+  have hlink : ∀ i, s < i → i ≤ D → ∃ k, TLink N t (X (i - 1)) k (X i) := by
+    intro i h1 h2
+    exact ⟨K i, Nn (i - 1), hN (i - 1) (by omega) (by omega), hlinkK i h1 h2⟩
+  have hanc := chain_anc_reach N t r X s D hT hXs hlink (emptyLeaf t)
+  have hLD : N (X D) = some (Nn D) := hN D (by omega) (Nat.le_refl _)
+  have hreachX : ∀ k, s + k ≤ D → TReach N t r (X (s + k)) := by
+    intro k
+    induction k with
+    | zero => intro _; simpa using hXs
+    | succ k ih =>
+      intro hk
+      obtain ⟨c, hc⟩ := hlink (s + (k + 1)) (by omega) hk
+      have h1 : s + (k + 1) - 1 = s + k := by omega
+      rw [h1] at hc
+      exact TReach.link (ih (by omega)) hc
+  have hXi : ∀ i, s ≤ i → i ≤ D → TReach N t r (X i) := by
+    intro i h1 h2
+    have := hreachX (i - s) (by omega)
+    rwa [show s + (i - s) = i by omega] at this
+  have hwD := hwf (X D) (Nn D) (hXi D (by omega) (Nat.le_refl _)) hLD
+  have hsubR : ∀ u, TReach (updN N (X D) (emptyLeaf t)) t r u → TReach N t r u :=
+    tReach_of_sublinks N _ t r (fun x c y hl => by
+      obtain ⟨m, hm, hcm⟩ := hl
+      by_cases hx : x = X D
+      · rw [hx, updN_self] at hm
+        cases hm
+        exact absurd hcm (emptyLeaf_liveAt t c y)
+      · rw [updN_ne _ _ _ _ hx] at hm; exact ⟨m, hm, hcm⟩)
+  have hlook0 : ∀ c', ((emptyLeaf t).searchEq t c').map (·.y) = none := by
+    intro c'
+    rw [searchEqSpec (emptyLeaf t) t c' (klongsWf_newKlongs t [])]
+    cases h : ((emptyLeaf t).liveAt t).lookup c' with
+    | none => rfl
+    | some z => exact absurd (lookup_some_mem h) (emptyLeaf_liveAt t c' z)
+  -- the leaf's change
+  obtain ⟨hk, hother⟩ := getFromR_leaf_change_seg N (updN N (X D) (emptyLeaf t)) V V t fuel hfuel
+    (X D) pre cv r rk (Nn D) (emptyLeaf t) (fun x hx => (updN_ne _ _ _ _ hx).symm) hLD
+    (updN_self _ _ _) hleaf rfl
+    (by
+      intro c' hc'
+      rw [hlook0 c', searchEqSpec _ t c' hwD]
+      cases h : ((Nn D).liveAt t).lookup c' with
+      | none => rfl
+      | some z => exact absurd (honly c' z (lookup_some_mem h)) hc')
+    hrk hcv hvisL huniq (fun _ _ _ _ _ _ _ _ _ _ => rfl)
+  refine ⟨?_, hTa, ?_, ?_, hanc s (Nat.le_refl _) hsD, ?_, ?_, hsubR⟩
+  · intro key' hkw
+    by_cases he : pre ++ [cv] = key'
+    · subst he
+      rw [hk, hlook0 cv]
+      simp
+    · have hb : (pre ++ [cv] == key') = false := by simpa using he
+      rw [hb]
+      exact hother key' hkw (Ne.symm he)
+  · exact rangeOrder_shrink N _ t r (X D) (Nn D) (emptyLeaf t) hR hLD (fun y => rfl)
+      (by rw [hleaf]; rfl) hsubL
+  · intro x xn hx hxn
+    by_cases hxD : x = X D
+    · rw [hxD, updN_self] at hxn
+      cases hxn
+      exact klongsWf_newKlongs t []
+    · rw [updN_ne _ _ _ _ hxD] at hxn
+      exact hwf x xn (hsubR x hx) hxn
+  · apply chain_deadBelow (updN N (X D) (emptyLeaf t)) V t fuel X
+      (fun i => if i = D then emptyLeaf t else Nn i) s D hsD
+    · intro i h1 h2
+      by_cases hi : i = D
+      · subst hi; simp only [↓reduceIte]; exact updN_self _ _ _
+      · simp only [hi, ↓reduceIte]
+        rw [updN_ne _ _ _ _ (hdist i (by omega) (by omega))]
+        exact hN i (by omega) h2
+    · intro i h1 h2
+      by_cases hi : i = D
+      · simp only [hi, ↓reduceIte]; exact klongsWf_newKlongs t []
+      · simp only [hi, ↓reduceIte]
+        exact hwf (X i) (Nn i) (hXi i (by omega) h2) (hN i (by omega) h2)
+    · intro i h1 h2
+      have hi : i ≠ D := by omega
+      simp only [hi, ↓reduceIte]
+      exact hone i h1 h2
+    · simp [emptyLeaf]
+    · simp only [↓reduceIte]; exact emptyLeaf_liveAt t
+    · exact hnoval
+  · intro u i h1 h2 hu
+    subst hu
+    have hch : ∀ k, s + 1 + k ≤ D →
+        TReach (updN N (X D) (emptyLeaf t)) t (X (s + 1)) (X (s + 1 + k)) := by
+      intro k
+      induction k with
+      | zero => intro _; exact TReach.root
+      | succ k ih =>
+        intro hk
+        have hsrc : X (s + 1 + k) ≠ X D := hdist (s + 1 + k) (by omega) (by omega)
+        have hlk : (K (s + 1 + (k + 1)), X (s + 1 + (k + 1))) ∈ (Nn (s + 1 + k)).liveAt t := by
+          have := hlinkK (s + 1 + (k + 1)) (by omega) hk
+          rwa [show s + 1 + (k + 1) - 1 = s + 1 + k by omega] at this
+        exact TReach.link (c := K (s + 1 + (k + 1))) (ih (by omega))
+          ⟨Nn (s + 1 + k), by rw [updN_ne _ _ _ _ hsrc]; exact hN _ (by omega) (by omega), hlk⟩
+    have := hch (i - (s + 1)) (by omega)
+    rwa [show s + 1 + (i - (s + 1)) = i by omega] at this
+
+/-- The upward delete at tree level, the stop node X s inner: the key's leaf X D
+emptied, the chain X (s + 1) .. X D left out, X s's klong K (s + 1) to it deleted
+(N' agrees with N but at X s and the chain): the key reads nothing, every other
+key as before. -/
+theorem getFromR_up_inner (N N' : NodeId → Option KNode) (V : NodeId → Option Nat) (t : Time)
+    (fuel : Nat) (hfuel : 1 ≤ fuel) (r : NodeId) (X : Nat → NodeId) (Nn : Nat → KNode) (K : Nat → Nat)
+    (s D : Nat) (hsD : s < D) (pre : List Nat) (cv : Nat) (rk : NodeId)
+    (hT : TreeOK N t r) (hR : RangeOrder N t r)
+    (hwf : ∀ x xn, TReach N t r x → N x = some xn → klongsWf xn.ks = true)
+    (hXs : TReach N t r (X s))
+    (hN : ∀ i, s ≤ i → i ≤ D → N (X i) = some (Nn i))
+    (hlinkK : ∀ i, s < i → i ≤ D → (K i, X i) ∈ (Nn (i - 1)).liveAt t)
+    (hone : ∀ i, s < i → i < D → ∀ c z, (c, z) ∈ (Nn i).liveAt t → z = X (i + 1))
+    (hleaf : (Nn D).leaf = true) (honly : ∀ c z, (c, z) ∈ (Nn D).liveAt t → c = cv)
+    (hnoval : ∀ i, s < i → i ≤ D → V (X i) = none)
+    (hdist : ∀ i, s ≤ i → i < D → X i ≠ X D)
+    (hrk : segRootR N t fuel pre r = some rk) (hcv : cv ∉ pre)
+    (hvisL : (X D, cv) ∈ eqVisits N t cv fuel rk)
+    (huniq : ∀ key' x m, keyWf key' = true → (x, cv) ∈ fromVisits N t fuel key' r →
+      (x, cv) ∈ eqVisits N t cv fuel rk → N x = some m → m.leaf = true → key' = pre ++ [cv])
+    (hagree : ∀ u, TReach N t r u → u ≠ X s → (∀ i, s < i → i ≤ D → u ≠ X i) → N' u = N u)
+    (sn' : KNode) (hsl : (Nn s).leaf = false) (hsn' : N' (X s) = some sn') (hsl' : sn'.leaf = false)
+    (hlive' : ∀ c z, (c, z) ∈ sn'.liveAt t ↔ (c, z) ∈ (Nn s).liveAt t ∧ c ≠ K (s + 1)) :
+    ∀ key', keyWf key' = true → getFromR N' V t fuel key' r =
+      if pre ++ [cv] == key' then none else getFromR N V t fuel key' r := by
+  obtain ⟨hk, hTa, hRa, hwfa, hXsa, hdead, hchain, hsubR⟩ := up_prep N V t fuel hfuel r X Nn K s D hsD
+    pre cv rk hT hR hwf hXs hN hlinkK hone hleaf honly (fun i h1 h2 => hnoval i (by omega) h2) hdist
+    hrk hcv hvisL huniq
+  have hsa : updN N (X D) (emptyLeaf t) (X s) = some (Nn s) := by
+    rw [updN_ne _ _ _ _ (hdist s (Nat.le_refl _) hsD)]; exact hN s (Nat.le_refl _) (by omega)
+  have hsx : (K (s + 1), X (s + 1)) ∈ (Nn s).liveAt t := by
+    have := hlinkK (s + 1) (by omega) (by omega); simpa using this
+  have hother : ∀ u, TReach (updN N (X D) (emptyLeaf t)) t r u → u ≠ X s →
+      ¬ TReach (updN N (X D) (emptyLeaf t)) t (X (s + 1)) u → N' u = updN N (X D) (emptyLeaf t) u := by
+    intro u hu hus huD
+    have hnc : ∀ i, s < i → i ≤ D → u ≠ X i := fun i h1 h2 he => huD (hchain u i h1 h2 he)
+    rw [updN_ne _ _ _ _ (hnc D hsD (Nat.le_refl _))]
+    exact hagree u (hsubR u hu) hus hnc
+  intro key' hkw
+  rw [← hk key' hkw]
+  exact getFromR_dropKlong _ N' V t fuel r (X s) (X (s + 1)) (K (s + 1)) (Nn s) sn' hTa hRa hwfa
+    hXsa hsa hsl hsx hsn' hsl' hlive' hdead hother key'
+
+/-- The upward delete at tree level, LE-b at the inner stop node X s, whose empty
+key's klong names the chain: it names jy, the next child, whose klong jcv is
+deleted. -/
+theorem getFromR_up_leb (N N' : NodeId → Option KNode) (V : NodeId → Option Nat) (t : Time)
+    (fuel : Nat) (hfuel : 1 ≤ fuel) (r : NodeId) (X : Nat → NodeId) (Nn : Nat → KNode) (K : Nat → Nat)
+    (s D : Nat) (hsD : s < D) (pre : List Nat) (cv : Nat) (rk : NodeId)
+    (hT : TreeOK N t r) (hR : RangeOrder N t r)
+    (hwf : ∀ x xn, TReach N t r x → N x = some xn → klongsWf xn.ks = true)
+    (hXs : TReach N t r (X s))
+    (hN : ∀ i, s ≤ i → i ≤ D → N (X i) = some (Nn i))
+    (hlinkK : ∀ i, s < i → i ≤ D → (K i, X i) ∈ (Nn (i - 1)).liveAt t)
+    (hone : ∀ i, s < i → i < D → ∀ c z, (c, z) ∈ (Nn i).liveAt t → z = X (i + 1))
+    (hleaf : (Nn D).leaf = true) (honly : ∀ c z, (c, z) ∈ (Nn D).liveAt t → c = cv)
+    (hnoval : ∀ i, s < i → i ≤ D → V (X i) = none)
+    (hdist : ∀ i, s ≤ i → i < D → X i ≠ X D)
+    (hrk : segRootR N t fuel pre r = some rk) (hcv : cv ∉ pre)
+    (hvisL : (X D, cv) ∈ eqVisits N t cv fuel rk)
+    (huniq : ∀ key' x m, keyWf key' = true → (x, cv) ∈ fromVisits N t fuel key' r →
+      (x, cv) ∈ eqVisits N t cv fuel rk → N x = some m → m.leaf = true → key' = pre ++ [cv])
+    (hagree : ∀ u, TReach N t r u → u ≠ X s → (∀ i, s < i → i ≤ D → u ≠ X i) → N' u = N u)
+    (sn' : KNode) (jy : NodeId) (jcv : Nat) (hK0 : K (s + 1) = 0)
+    (hsl : (Nn s).leaf = false) (hsj : (jcv, jy) ∈ (Nn s).liveAt t) (hj0 : 0 < jcv)
+    (hmin : ∀ c z, (c, z) ∈ (Nn s).liveAt t → c = 0 ∨ jcv ≤ c)
+    (hsn' : N' (X s) = some sn') (hsl' : sn'.leaf = false)
+    (hlive' : ∀ c z, (c, z) ∈ sn'.liveAt t ↔
+      (c = 0 ∧ z = jy) ∨ ((c, z) ∈ (Nn s).liveAt t ∧ c ≠ 0 ∧ c ≠ jcv)) :
+    ∀ key', keyWf key' = true → getFromR N' V t fuel key' r =
+      if pre ++ [cv] == key' then none else getFromR N V t fuel key' r := by
+  obtain ⟨hk, hTa, hRa, hwfa, hXsa, hdead, hchain, hsubR⟩ := up_prep N V t fuel hfuel r X Nn K s D hsD
+    pre cv rk hT hR hwf hXs hN hlinkK hone hleaf honly (fun i h1 h2 => hnoval i (by omega) h2) hdist
+    hrk hcv hvisL huniq
+  have hsa : updN N (X D) (emptyLeaf t) (X s) = some (Nn s) := by
+    rw [updN_ne _ _ _ _ (hdist s (Nat.le_refl _) hsD)]; exact hN s (Nat.le_refl _) (by omega)
+  have hsx : (K (s + 1), X (s + 1)) ∈ (Nn s).liveAt t := by
+    have := hlinkK (s + 1) (by omega) (by omega); simpa using this
+  have hother : ∀ u, TReach (updN N (X D) (emptyLeaf t)) t r u → u ≠ X s →
+      ¬ TReach (updN N (X D) (emptyLeaf t)) t (X (s + 1)) u → N' u = updN N (X D) (emptyLeaf t) u := by
+    intro u hu hus huD
+    have hnc : ∀ i, s < i → i ≤ D → u ≠ X i := fun i h1 h2 he => huD (hchain u i h1 h2 he)
+    rw [updN_ne _ _ _ _ (hnc D hsD (Nat.le_refl _))]
+    exact hagree u (hsubR u hu) hus hnc
+  intro key' hkw
+  rw [← hk key' hkw]
+  rw [hK0] at hsx
+  exact getFromR_lebDrop _ N' V t fuel r (X s) (X (s + 1)) jy jcv (Nn s) sn' hTa hRa hwfa
+    hXsa hsa hsl hsx hsj hj0 hmin hsn' hsl' hlive' hdead hother key'
+
+/-- The upward delete at tree level, the stop node X s a segment leaf, its klong
+K (s + 1) to the emptied segment tree deleted. -/
+theorem getFromR_up_leaf (N N' : NodeId → Option KNode) (V : NodeId → Option Nat) (t : Time)
+    (fuel : Nat) (hfuel : 1 ≤ fuel) (r : NodeId) (X : Nat → NodeId) (Nn : Nat → KNode) (K : Nat → Nat)
+    (s D : Nat) (hsD : s < D) (pre : List Nat) (cv : Nat) (rk : NodeId)
+    (hT : TreeOK N t r) (hR : RangeOrder N t r)
+    (hwf : ∀ x xn, TReach N t r x → N x = some xn → klongsWf xn.ks = true)
+    (hXs : TReach N t r (X s))
+    (hN : ∀ i, s ≤ i → i ≤ D → N (X i) = some (Nn i))
+    (hlinkK : ∀ i, s < i → i ≤ D → (K i, X i) ∈ (Nn (i - 1)).liveAt t)
+    (hone : ∀ i, s < i → i < D → ∀ c z, (c, z) ∈ (Nn i).liveAt t → z = X (i + 1))
+    (hleaf : (Nn D).leaf = true) (honly : ∀ c z, (c, z) ∈ (Nn D).liveAt t → c = cv)
+    (hnoval : ∀ i, s < i → i ≤ D → V (X i) = none)
+    (hdist : ∀ i, s ≤ i → i < D → X i ≠ X D)
+    (hrk : segRootR N t fuel pre r = some rk) (hcv : cv ∉ pre)
+    (hvisL : (X D, cv) ∈ eqVisits N t cv fuel rk)
+    (huniq : ∀ key' x m, keyWf key' = true → (x, cv) ∈ fromVisits N t fuel key' r →
+      (x, cv) ∈ eqVisits N t cv fuel rk → N x = some m → m.leaf = true → key' = pre ++ [cv])
+    (hagree : ∀ u, TReach N t r u → u ≠ X s → (∀ i, s < i → i ≤ D → u ≠ X i) → N' u = N u)
+    (sn' : KNode) (hsl : (Nn s).leaf = true) (hsn' : N' (X s) = some sn') (hsl' : sn'.leaf = true)
+    (hsw' : klongsWf sn'.ks = true)
+    (hlive' : ∀ c z, (c, z) ∈ sn'.liveAt t ↔ (c, z) ∈ (Nn s).liveAt t ∧ c ≠ K (s + 1)) :
+    ∀ key', keyWf key' = true → getFromR N' V t fuel key' r =
+      if pre ++ [cv] == key' then none else getFromR N V t fuel key' r := by
+  obtain ⟨hk, hTa, hRa, hwfa, hXsa, hdead, hchain, hsubR⟩ := up_prep N V t fuel hfuel r X Nn K s D hsD
+    pre cv rk hT hR hwf hXs hN hlinkK hone hleaf honly (fun i h1 h2 => hnoval i (by omega) h2) hdist
+    hrk hcv hvisL huniq
+  have hsa : updN N (X D) (emptyLeaf t) (X s) = some (Nn s) := by
+    rw [updN_ne _ _ _ _ (hdist s (Nat.le_refl _) hsD)]; exact hN s (Nat.le_refl _) (by omega)
+  have hsx : (K (s + 1), X (s + 1)) ∈ (Nn s).liveAt t := by
+    have := hlinkK (s + 1) (by omega) (by omega); simpa using this
+  have hother : ∀ u, TReach (updN N (X D) (emptyLeaf t)) t r u → u ≠ X s →
+      ¬ TReach (updN N (X D) (emptyLeaf t)) t (X (s + 1)) u → N' u = updN N (X D) (emptyLeaf t) u := by
+    intro u hu hus huD
+    have hnc : ∀ i, s < i → i ≤ D → u ≠ X i := fun i h1 h2 he => huD (hchain u i h1 h2 he)
+    rw [updN_ne _ _ _ _ (hnc D hsD (Nat.le_refl _))]
+    exact hagree u (hsubR u hu) hus hnc
+  intro key' hkw
+  rw [← hk key' hkw]
+  exact getFromR_dropLeafKlong _ N' V t fuel r (X s) (X (s + 1)) (K (s + 1)) (Nn s) sn' hTa hwfa
+    hXsa hsa hsl hsx hsn' hsl' hsw' hlive'
+    (deadAt_of_deadBelow _ V t fuel _ (hnoval (s + 1) (by omega) (by omega)) hdead) hother key'
 
 end SIS.Tree
