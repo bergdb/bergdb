@@ -502,6 +502,24 @@ part cites them in one line, so a new measurement does not make 027
 stale.
 
 
+**Decided** (Frans, 2026-11-13, 11:09):
+
+* **Q1**: "as recommended": the levels only as the reading order and a
+  map (b).
+* **Q2**: "Core is really the thing here. Good to have a separate last
+  section for the Pub layer." The Core is 027's subject; the Pub layer's
+  objects and user indexes are the last part (027-18).
+* **Q3**: "as recommended": one subitem per part, created as stubs in
+  reading order, 027-05 to 027-18 (made 2026-11-13).
+* **Q4**: "as recommended": as much of the model's mathematics as
+  `sis-model.md` has, without proofs.
+* **Q5**: "027 holds the exact rule as the authority. Together with Lean,
+  this is the authority. However, Java comments may duplicate this when
+  suitable for readability; or summarize it. Good to have comments that
+  makes it possible to understand whether the code really implement what
+  is should."
+
+
 ## 5. How the writing could proceed
 
 ### 5.1. Order
