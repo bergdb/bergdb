@@ -2,7 +2,7 @@
 The take-back's (C) and the node facts through a cascade of splits (bergdb
 024-12, TP4; `J2N`, TakeDeadCollapse.lean), at node-map level, against the node
 shapes agreed with latest for `writerWP_appendKlongs_chainGRV`: every node the
-cascade changed or made (`CascadeShape`) is a chain node left behind
+cascade changed or made (`CascadeShapeJ`) is a chain node left behind
 (`toPrev`), a last version or a split's half (`ShadowShaped`: a time klong of t,
 then key klongs, a klong with a later one of its compare value naming a node
 below B or a value), or the top with its klongs put in (key klongs added whose
@@ -260,7 +260,7 @@ theorem deadLiveK_repoint (N : NodeId → Option KNode) (t : Time) (r B : NodeId
 a chain node the transaction did not make left behind, a last version at or
 above B, or the top X s with key klongs added or its klong to a segment root
 pointed in place. -/
-def CascadeShape (N : NodeId → Option KNode) (t : Time) (B : NodeId) (vals : List NodeId)
+def CascadeShapeJ (N : NodeId → Option KNode) (t : Time) (B : NodeId) (vals : List NodeId)
     (X : Nat → NodeId) (Nn : Nat → KNode) (s e : Nat) (z : NodeId) (zn : KNode) : Prop :=
   (∃ i, s ≤ i ∧ i ≤ s + e ∧ z = X i ∧ (Nn i).firstTime ≠ some t ∧ zn = (Nn i).toPrev (t - 1)) ∨
   (ShadowShaped t B vals zn ∧ B ≤ z) ∨
@@ -272,7 +272,7 @@ def CascadeShape (N : NodeId → Option KNode) (t : Time) (B : NodeId) (vals : L
       zn = (Nn s).repoint j y)))
 
 /-- (C) and the node facts after a cascade: every node changed or made of a
-`CascadeShape`, the others below nx as before. -/
+`CascadeShapeJ`, the others below nx as before. -/
 theorem j2rest_cascade (N N' : NodeId → Option KNode) (t : Time) (r B : NodeId) (vals : List NodeId)
     (X : Nat → NodeId) (Nn : Nat → KNode) (s e : Nat) (nx : NodeId) (hpos : 0 < t)
     (hT : TreeOK N t r) (hD : DeadLiveN N t B vals) (hO : OldBelowN N t B) (hS : OldStartN N t B)
@@ -282,7 +282,7 @@ theorem j2rest_cascade (N N' : NodeId → Option KNode) (t : Time) (r B : NodeId
     (hsR : TReach N t r (X s)) (hvnx : ∀ y ∈ vals, y < nx)
     (hother : ∀ z, z < nx → (∀ i, s ≤ i → i ≤ s + e → z ≠ X i) → N' z = N z)
     (hshape : ∀ z zn, N' z = some zn → (nx ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ s + e ∧ z = X i) →
-      CascadeShape N t B vals X Nn s e z zn) :
+      CascadeShapeJ N t B vals X Nn s e z zn) :
     DeadLiveN N' t B vals ∧ OldBelowN N' t B ∧ OldStartN N' t B ∧ MadeStartN N' t B ∧
       ValsNoNodeN N' vals := by
   have hNs := hN s (Nat.le_refl _) (by omega)
