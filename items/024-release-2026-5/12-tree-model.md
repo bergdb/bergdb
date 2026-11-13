@@ -1081,11 +1081,17 @@ needs an invariant of the writer's state inside a transaction (TP7's
 holds between transactions only). `CommitGetOK`, the lift of the
 writer's last state through `changesOf` and `Struct.apply`, which TP7's
 `LatestInvOK` needs too (the walk asks `entriesOf` of a node's klongs to
-be its history). A note for both: TP7's invariant does not exclude two
-klongs live at t that name one key node (ranges bound no segment root),
-and a put into such a shared segment tree would change two keys; the
-proofs need the writer's own fact that each segment root it makes is
-new (TREE, as TP16 states it for the model).
+be its history). **Neither follows from TP7's invariant alone**, proved:
+`sharedSegment_changes_other_key` (`SharedSegment.lean`): a structure
+without faults at 1 (`InvOK`, `PointersOK`) in which two long segments
+name one tree of the next segment, and a transaction with every premise
+`Within` asks of it (keys in order and well formed, a fresh base, no
+error) give a structure without faults at 2 in which a key that no
+operation names has another value. TP7's ranges bound no segment root,
+so they allow such sharing; runs within reach have none, since the
+writer makes each segment root new. A proof of `OpGetOK` needs that as
+part of its invariant inside a transaction: no key node is named by two
+klongs live at the time (TREE, as TP16 states it for the model).
 
 (T) for 27: `tracecheck`'s CUT-live checks it at every cut of a trace
 (024-07), and C-T6 checks what it follows from, `NonEmptyOK` and
