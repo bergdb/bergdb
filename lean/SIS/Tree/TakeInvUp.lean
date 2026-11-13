@@ -7,6 +7,7 @@ keeps no klong of the transaction's time (`ChainFate`).
 -/
 import SIS.Tree.TakeInvCollapse
 import SIS.Tree.WriterGetUpTake
+import SIS.Tree.WriterKindsRules
 
 set_option autoImplicit false
 
@@ -766,5 +767,150 @@ theorem takeInv_deleteUpward_upT (c : Ctx) (base : View BVal) (hvc : ViewCoheren
       c.p.fuel w' hI hJ) ?_
     intro _ w'' ⟨hI'', hJ''⟩
     exact ⟨hI''.1.2.1, hJ''⟩
+
+/-! ## The emptied leaf's live klongs name values, by the kinds -/
+
+theorem segLen_last_of_keyWf (pre : List Nat) (cv : Nat) (h : keyWf (pre ++ [cv]) = true) :
+    segLen cv ≠ 7 := by
+  induction pre with
+  | nil =>
+    simp only [List.nil_append, keyWf, Bool.and_eq_true, bne_iff_ne, ne_eq] at h
+    exact h.2
+  | cons a pre ih =>
+    apply ih
+    cases pre with
+    | nil =>
+      simp only [List.cons_append, List.nil_append, keyWf, Bool.and_eq_true] at h
+      simpa [keyWf] using h.2
+    | cons b pre' =>
+      simp only [List.cons_append, keyWf, Bool.and_eq_true] at h
+      simpa [keyWf] using h.2
+
+/-- A value of the kinds is no node of the writer's tree: no cached node is a
+value (the books' tags, `ViewKinds`), and the base has none. -/
+theorem wNode_val_none (K0 : KindOracle) (B : NodeId) (c : Ctx) (base : View BVal) (w : W)
+    (hvk : ViewKinds K0 B c) (hvals : ∀ q ∈ w.vals, B ≤ q.1 ∧ q.1 < w.next ∧ q.1 ∉ w.gh.map (·.1))
+    (hb : Book B c w) (hbaseNew : ∀ z, B ≤ z → knodeOf c.p base z = none)
+    (hbaseVal : ∀ z, K0.val z → knodeOf c.p base z = none) (z : NodeId) (hz : IsValId K0 w z) :
+    wNode c.p base w z = none := by
+  have hnot : z ∉ w.nodes.map (·.1) := by
+    rw [hb.ids, List.mem_reverse]
+    intro hm
+    rcases hz with ⟨hh, hzv⟩ | hzv
+    · exact (hvals _ hzv).2.2 hm
+    · obtain ⟨⟨z', g, h⟩, hq, hz'⟩ := List.mem_map.mp hm
+      simp only at hz'
+      subst hz'
+      rcases hb.tag z' g h hq with ⟨nd, hnd, hd, hl, _, _⟩ | ⟨hBz, _, _⟩
+      · exact hvk.notBoth z' _ (hvk.node z' nd hnd hd hl) hzv
+      · have := hvk.oldVal z' hzv
+        omega
+  have hlk : w.nodes.lookup z = none := by
+    rw [List.lookup_eq_none_iff]
+    intro q hq
+    simp only [bne_iff_ne, ne_eq]
+    intro hqz
+    apply hnot
+    exact List.mem_map.mpr ⟨q, hq, hqz.symm⟩
+  unfold wNode
+  split
+  · rfl
+  · rw [hlk]
+    rcases hz with ⟨hh, hzv⟩ | hzv
+    · exact hbaseNew z (hvals _ hzv).1
+    · exact hbaseVal z hzv
+
+/-- The live klongs of a cached segment leaf whose live compare values are a
+key's last segment name values, so no node of the writer's tree. -/
+theorem leafKids_none (K0 : KindOracle) (B : NodeId) (c : Ctx) (base : View BVal) (w : W)
+    (hvk : ViewKinds K0 B c) (hkc : KindCache K0 w)
+    (hvals : ∀ q ∈ w.vals, B ≤ q.1 ∧ q.1 < w.next ∧ q.1 ∉ w.gh.map (·.1)) (hb : Book B c w)
+    (hbaseNew : ∀ z, B ≤ z → knodeOf c.p base z = none)
+    (hbaseVal : ∀ z, K0.val z → knodeOf c.p base z = none)
+    (x : NodeId) (n : KNode) (hx : w.nodes.lookup x = some n) (hleaf : n.leaf = true)
+    (t : Time) (cv : Nat) (hcv : segLen cv ≠ 7) (honly : ∀ c' z, (c', z) ∈ n.liveAt t → c' = cv) :
+    ∀ c' z, (c', z) ∈ n.liveAt t → wNode c.p base w z = none := by
+  intro c' z hm
+  have hmem := mem_ids_of_lookup w.nodes x n hx
+  have hxg : x ∈ w.gh.map (·.1) := by
+    rw [← List.mem_reverse, ← hb.ids]
+    exact List.mem_map.mpr ⟨(x, n), hmem, rfl⟩
+  obtain ⟨⟨x', g, h⟩, hq, hx'⟩ := List.mem_map.mp hxg
+  simp only at hx'
+  subst hx'
+  have hh : h = 0 := by
+    have := hb.leaf x' n g h hmem hq
+    rw [hleaf] at this
+    simpa using this.symm
+  subst hh
+  have hk := hkc x' n g 0 hmem hq c' z (KNode.liveAt_key_mem n t c' z hm)
+  have hc' := honly c' z hm
+  subst hc'
+  exact wNode_val_none K0 B c base w hvk hvals hb hbaseNew hbaseVal z ((hk.2 rfl).2 hcv)
+
+/-- `takeInv_deleteUpward_upT` with its premise on the emptied leaf from the
+walk of the kinds: the leaf's one live compare value is the key's last segment,
+whose klong names a value. -/
+theorem takeInv_deleteUpward_upT_kinds (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (X : Nat → NodeId) (Nn : Nat → KNode) (K : Nat → Nat) (depth cv : Nat) (pre : List Nat)
+    (rk : NodeId) (w : W) (hdepth : 0 < depth) (hfuel : 1 ≤ c.p.fuel) (hpos : 0 < c.i)
+    (hp : ∀ i, i ≤ depth → (w.path[i]?).map (·.2) = some (X i))
+    (hk : ∀ i, 0 < i → i ≤ depth → w.path[i]? = some (some (K i), X i))
+    (hlk : ∀ i, i ≤ depth → w.nodes.lookup (X i) = some (Nn i))
+    (htk : ∀ i, i ≤ depth → w.taken.contains (X i) = false)
+    (htimes : ∀ i, i ≤ depth → ∀ s, Klong.time s ∈ (Nn i).ks → s ≤ c.i)
+    (hdist : ∀ i i', i ≤ depth → i' ≤ depth → X i = X i' → i = i')
+    (hne : bitsUnion (Nn depth).lastBitmap ((Nn depth).bitsOf cv) ≠ (Nn depth).lastBitmap)
+    (hall : (Nn depth).allKeysIn (bitsUnion (Nn depth).lastBitmap ((Nn depth).bitsOf cv)) = true)
+    (hleaf : (Nn depth).leaf = true)
+    (hT : TreeOK (wNode c.p base w) c.i w.top.rootKey)
+    (hR : RangeOrder (wNode c.p base w) c.i w.top.rootKey)
+    (hwf : ∀ x xn, TReach (wNode c.p base w) c.i w.top.rootKey x → wNode c.p base w x = some xn →
+      klongsWf xn.ks = true)
+    (hRt : ∀ y, TReach (wNode c.p base w) c.i w.top.rootKey y → w.taken.contains y = false)
+    (hTimesR : ∀ y yn, TReach (wNode c.p base w) c.i w.top.rootKey y → wNode c.p base w y = some yn →
+      ∀ s, Klong.time s ∈ yn.ks → s ≤ c.i)
+    (hICE : InnerChildrenExist (wNode c.p base w) c.i w.top.rootKey)
+    (hfit : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey)
+    (hnovalAll : ∀ y yn, wNode c.p base w y = some yn → wValue base w y = none)
+    (hreach : ∀ i, i ≤ depth → TReach (wNode c.p base w) c.i w.top.rootKey (X i))
+    (hlinkK : ∀ i, 0 < i → i ≤ depth → (K i, X i) ∈ (Nn (i - 1)).liveAt c.i)
+    (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk) (hcv : cv ∉ pre)
+    (hvisL : (X depth, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk)
+    (huniq : ∀ key' x m, keyWf key' = true →
+      (x, cv) ∈ fromVisits (wNode c.p base w) c.i c.p.fuel key' w.top.rootKey →
+      (x, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk → wNode c.p base w x = some m →
+      m.leaf = true → key' = pre ++ [cv])
+    (hstopOK : ∀ s, s < depth → (∀ i, s < i → i < depth →
+        (Nn i).allKeysIn (bitsUnion (Nn i).lastBitmap ((Nn i).bitsOf (K (i + 1)))) = true) →
+      (((Nn s).leaf = true ∨ K (s + 1) ≠ 0) → (Nn s).size + 1 < c.p.M ∧
+        deadOver c.p ((Nn s).setAt ((Nn s).size - 1)
+          (.del (bitsUnion (Nn s).lastBitmap ((Nn s).bitsOf (K (s + 1)))))) = false ∧
+        deadOver c.p ((Nn s).add c.i (.del (bitsUnion (Nn s).lastBitmap ((Nn s).bitsOf (K (s + 1)))))) =
+          false) ∧
+      ((Nn s).leaf = false → K (s + 1) = 0 → (Nn s).size + 3 ≤ c.p.M ∧
+        ∀ b1 b2 e jcv jy, deadOver c.p (lebNode (Nn s) c.i b1 b2 e jcv jy) = false))
+    (hmerges : c.p.merges = false)
+    (K0 : KindOracle) (B : NodeId) (hvk : ViewKinds K0 B c) (hkc : KindCache K0 w)
+    (hvals : ∀ q ∈ w.vals, B ≤ q.1 ∧ q.1 < w.next ∧ q.1 ∉ w.gh.map (·.1)) (hb : Book B c w)
+    (hbaseNew : ∀ z, B ≤ z → knodeOf c.p base z = none)
+    (hbaseVal : ∀ z, K0.val z → knodeOf c.p base z = none) (hkey : keyWf (pre ++ [cv]) = true)
+    (hTt : TtReachedN (wNode c.p base w) c.i w.top.rootKey)
+    (hroom : ∀ w0 v x n leaf ln k, CollGetInv c base w0 v → TakeJ c base v → SegDesc c base x v →
+      v.nodes.lookup x = some n → n.leaf = false → n.firstTime ≠ some c.i →
+      TReach (wNode c.p base v) c.i v.top.rootKey leaf → v.nodes.lookup leaf = some ln →
+      ln.leaf = true → (k, x) ∈ ln.liveAt c.i →
+      ln.size + 1 + 1 ≤ c.p.M ∧ ∀ y, deadOver c.p (ln.add c.i (.key k y)) = false) :
+    WriterWP (deleteUpward (X depth) depth cv (pre ++ [cv])) c w (fun _ w' =>
+      (∀ y, TReach (wNode c.p base w') c.i w'.top.rootKey y → w'.taken.contains y = false) ∧
+      TtReachedN (wNode c.p base w') c.i w'.top.rootKey) := by
+  refine takeInv_deleteUpward_upT c base hvc X Nn K depth cv pre rk w hdepth hfuel hpos hp hk hlk htk
+    htimes hdist hne hall hleaf hT hR hwf hRt hTimesR hICE hfit hnovalAll hreach hlinkK hrk hcv hvisL
+    huniq hstopOK hmerges ?_ hTt hroom
+  refine leafKids_none K0 B c base w hvk hkc hvals hb hbaseNew hbaseVal (X depth) (Nn depth)
+    (hlk depth (Nat.le_refl _)) hleaf c.i cv (segLen_last_of_keyWf pre cv hkey) ?_
+  intro c' z hm
+  rw [KNode.liveAt_of_times _ c.i (htimes depth (Nat.le_refl _))] at hm
+  exact allKeysIn_live_cv (Nn depth) cv hall c' z hm
 
 end SIS.Tree

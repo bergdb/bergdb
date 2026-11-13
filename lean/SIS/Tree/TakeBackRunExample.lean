@@ -33,6 +33,22 @@ def tbInvB (p : Params) (P : Struct BVal) (t : Time) (B : NodeId) (w : W) : Bool
       (!qn.ks.contains (.time t) || rs.contains q)
     | none => true)
 
+/-- `LastLive` as a Bool. -/
+def tbLastLiveB (ks : List Klong) (del : List Nat) (i cv : Nat) : Bool :=
+  !del.contains i && ks.zipIdx.all (fun kj => decide (kj.2 ≤ i) || match kj.1 with
+    | .key c _ => c != cv || del.contains kj.2
+    | _ => true)
+
+/-- (C) in `DeadLive`'s form (TakeBackDead.lean) as a Bool, over the overlay's
+nodes (P's name nodes below B): a klong of a kept node to a node at or above B
+that is no value comes with a live one to it, and in a segment leaf is the last
+live klong of its compare value. -/
+def tbDeadLiveB (B : NodeId) (t : Time) (w : W) : Bool :=
+  w.nodes.all (fun q => w.taken.contains q.1 || q.2.ks.zipIdx.all (fun ki => match ki.1 with
+    | .key cv y => decide (y < B) || (w.vals.map (·.1)).contains y ||
+        ((q.2.liveAt t).any (·.2 == y) && (!q.2.leaf || tbLastLiveB q.2.ks q.2.lastBitmap ki.2 cv))
+    | _ => true))
+
 /-- (C) as a Bool. -/
 def tbDeadB (t : Time) (w : W) : Bool :=
   w.nodes.all (fun q => w.taken.contains q.1 || q.2.ks.all (fun k => match k with
@@ -45,8 +61,8 @@ def tbEndB (w : W) : Bool :=
     | .key _ y => !w.taken.contains y
     | _ => true)) && !w.taken.contains w.top.rootKey
 
-/-- The checks on transaction tx after ts: (A) and (B) at every state between
-operations, (C) and the take-back at the last, the nodes taken back and the
+/-- The checks on transaction tx after ts: (A), (B) and `DeadLive` at every state
+between operations, (C) and the take-back at the last, the nodes taken back and the
 rules that ran. -/
 def tbCheck (p : Params) (ts : List Tx) (tx : Tx) :
     Except String (List Bool × Bool × Bool × List NodeId × List String) := do
@@ -57,7 +73,7 @@ def tbCheck (p : Params) (ts : List Tx) (tx : Tx) :
   let top ← topOf p c.view z
   let invs ← (List.range (tx.ops.length + 1)).mapM (fun k => do
     let (_, w) ← ((tx.ops.take k).mapM putKv) c (wInit tx top)
-    pure (tbInvB p P (ts.length + 1) tx.base w))
+    pure (tbInvB p P (ts.length + 1) tx.base w && tbDeadLiveB tx.base (ts.length + 1) w))
   let (_, w) ← (tx.ops.mapM putKv) c (wInit tx top)
   pure (invs, tbDeadB (ts.length + 1) w, tbEndB w, w.taken, w.trail.eraseDups)
 
@@ -109,5 +125,25 @@ def tbTx2 : Tx := {base := 400, ops := ((List.range 10).map (fun j => .put [1, 8
   ((List.range 12).map (fun j => .del [j % 3, 8*j+8]))}
 
 #guard tbOK tbP2 [tbPre2] tbTx2 ["up.takeback", "rc.takeback.segment", "rc.takeback.space"]
+
+/-- The dead klongs of kept overlay nodes to key nodes of the transaction, at
+every state between operations: `DeadLive` is not void on the second run. -/
+def tbDeadCount (p : Params) (ts : List Tx) (tx : Tx) : Except String (List Nat) := do
+  let P := treeRun p ts
+  let v := view (treeSpec p) P ts.length
+  let some z := lastTop v | throw "no top"
+  let c := ctxOf p ts
+  let top ← topOf p c.view z
+  (List.range (tx.ops.length + 1)).mapM (fun k => do
+    let (_, w) ← ((tx.ops.take k).mapM putKv) c (wInit tx top)
+    pure (w.nodes.foldl (fun acc q => if w.taken.contains q.1 then acc else
+      acc + (q.2.ks.filter (fun k => match k with
+        | .key cv y => !(w.vals.map (·.1)).contains y && decide (tx.base ≤ y) &&
+            !((q.2.liveAt (ts.length + 1)).contains (cv, y))
+        | _ => false)).length) 0))
+
+#guard (match tbDeadCount tbP2 [tbPre2] tbTx2 with
+  | .ok l => l.any (fun n => decide (0 < n))
+  | .error _ => false)
 
 end SIS.Tree
