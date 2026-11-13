@@ -9,6 +9,7 @@ import SIS.Tree.WriterGetMergeMade
 import SIS.Tree.WriterTreeCollapse
 import SIS.Tree.GetSegRoot
 import SIS.Tree.FuelPaths
+import SIS.Tree.WGetAt
 
 set_option autoImplicit false
 
@@ -241,25 +242,42 @@ def CollGetInv (c : Ctx) (base : View BVal) (w0 w : W) : Prop :=
   (∀ y yn, TReach (wNode c.p base w) c.i w.top.rootKey y → wNode c.p base w y = some yn →
     wValue base w y = none)
 
-theorem collGetInv_of_readsAs (c : Ctx) (base : View BVal) (w0 w v : W) (hr : ReadsAs c.p base w v)
-    (h : CollGetInv c base w0 w) : CollGetInv c base w0 v := by
+/-- `CollGetInv` with the reading and the fuel premise at a fuel f. -/
+def CollGetInvF (c : Ctx) (base : View BVal) (w0 w : W) (f : Nat) : Prop :=
+  CollInv c base w ∧ (∀ key, wGetAt c.p c.i base w f key = wGetAt c.p c.i base w0 f key) ∧
+  SegFits (wNode c.p base w) c.i (f - 1) w.top.rootKey ∧
+  (∀ y yn, TReach (wNode c.p base w) c.i w.top.rootKey y → wNode c.p base w y = some yn →
+    klongsWf yn.ks = true) ∧
+  (∀ y yn, TReach (wNode c.p base w) c.i w.top.rootKey y → wNode c.p base w y = some yn →
+    wValue base w y = none)
+
+theorem collGetInv_iff (c : Ctx) (base : View BVal) (w0 w : W) :
+    CollGetInv c base w0 w ↔ CollGetInvF c base w0 w c.p.fuel := Iff.rfl
+
+theorem collGetInv_of_readsAsF (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx) (base : View BVal) (w0 w v : W) (hr : ReadsAs c.p base w v)
+    (h : CollGetInvF c base w0 w fuelR) : CollGetInvF c base w0 v fuelR := by
   have hV : wValue base v = wValue base w := wValue_congr' base v w hr.2.2.1 hr.2.2.2.1
   obtain ⟨h1, h2, h3, h4, h5⟩ := h
   refine ⟨collInv_of_readsAs c base w v hr h1, fun key => ?_, ?_, ?_, ?_⟩
-  · rw [← h2 key]; unfold wGet; rw [hr.1, hr.2.1, hV]
+  · rw [← h2 key]; unfold wGetAt; rw [hr.1, hr.2.1, hV]
   · rw [hr.1, hr.2.1]; exact h3
   · rw [hr.1, hr.2.1]; exact h4
   · rw [hr.1, hr.2.1, hV]; exact h5
 
+/-- `collGetInv_of_readsAsF` at the writer's fuel. -/
+theorem collGetInv_of_readsAs (c : Ctx) (base : View BVal) (w0 w v : W) (hr : ReadsAs c.p base w v)
+    (h : CollGetInv c base w0 w) : CollGetInv c base w0 v :=
+  collGetInv_of_readsAsF c.p.fuel (by unfold Params.fuel; omega) c base w0 w v hr h
+
 /-- One collapse step keeps `CollGetInv`: the root r, inner, with only the live
 klong (0, y), the super root now naming y, the values kept, nothing else changed
 but r and its taking back. -/
-theorem collGetInv_step (c : Ctx) (base : View BVal) (w0 w w' : W) (y : NodeId) (n : KNode)
-    (h : CollGetInv c base w0 w) (hrn : wNode c.p base w w.top.rootKey = some n) (hrl : n.leaf = false)
+theorem collGetInv_stepF (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx) (base : View BVal) (w0 w w' : W) (y : NodeId) (n : KNode)
+    (h : CollGetInvF c base w0 w fuelR) (hrn : wNode c.p base w w.top.rootKey = some n) (hrl : n.leaf = false)
     (hlive : ∀ cc z, (cc, z) ∈ n.live ↔ cc = 0 ∧ z = y)
     (htop : w'.top.rootKey = y) (hv : w'.vals = w.vals)
     (ht : ∀ z, z ≠ w.top.rootKey → w'.taken.contains z = w.taken.contains z)
-    (hn : ∀ z, z ≠ w.top.rootKey → w'.nodes.lookup z = w.nodes.lookup z) : CollGetInv c base w0 w' := by
+    (hn : ∀ z, z ≠ w.top.rootKey → w'.nodes.lookup z = w.nodes.lookup z) : CollGetInvF c base w0 w' fuelR := by
   obtain ⟨hI, hG, hD, hW, hNV⟩ := h
   have hnt := hI.2.2.1 _ n TReach.root hrn
   have hRy : (0, y) ∈ n.liveAt c.i := by
@@ -276,9 +294,9 @@ theorem collGetInv_step (c : Ctx) (base : View BVal) (w0 w w' : W) (y : NodeId) 
   refine ⟨collInv_step c base w w' y 0 hI hl (fun m hm => by rw [hrn] at hm; cases hm; exact hrl)
     htop ht hn, fun key => ?_, ?_, ?_, ?_⟩
   · rw [← hG key]
-    unfold wGet
+    unfold wGetAt
     rw [hV, htop]
-    exact getFromR_collapse (wNode c.p base w) (wNode c.p base w') (wValue base w) c.i c.p.fuel
+    exact getFromR_collapse (wNode c.p base w) (wNode c.p base w') (wValue base w) c.i fuelR
       w.top.rootKey y n hI.1 hrn hrl hlive hnt hN
       (fun x xn hx hxn => hW x xn (reachS_tReach _ _ _ _ hx) hxn) (hD _ ReachS.root) key
   · -- what y reaches after, r reached before, with the same nodes
@@ -300,11 +318,20 @@ theorem collGetInv_step (c : Ctx) (base : View BVal) (w0 w w' : W) (y : NodeId) 
     rw [hV]
     exact hNV z zn h1 hzn
 
+/-- `collGetInv_stepF` at the writer's fuel. -/
+theorem collGetInv_step (c : Ctx) (base : View BVal) (w0 w w' : W) (y : NodeId) (n : KNode)
+    (h : CollGetInv c base w0 w) (hrn : wNode c.p base w w.top.rootKey = some n) (hrl : n.leaf = false)
+    (hlive : ∀ cc z, (cc, z) ∈ n.live ↔ cc = 0 ∧ z = y)
+    (htop : w'.top.rootKey = y) (hv : w'.vals = w.vals)
+    (ht : ∀ z, z ≠ w.top.rootKey → w'.taken.contains z = w.taken.contains z)
+    (hn : ∀ z, z ≠ w.top.rootKey → w'.nodes.lookup z = w.nodes.lookup z) : CollGetInv c base w0 w' :=
+  collGetInv_stepF c.p.fuel (by unfold Params.fuel; omega) c base w0 w w' y n h hrn hrl hlive htop hv ht hn
+
 /-- Root collapse at the space root keeps `CollGetInv`, so the reading of every key. -/
-theorem writerWP_collapseRoot_space_get (key : Key) (c : Ctx) (base : View BVal)
+theorem writerWP_collapseRoot_space_getF (fuelR : Nat) (hfR : 2 ≤ fuelR) (key : Key) (c : Ctx) (base : View BVal)
     (hvc : ViewCoherent c base) (w0 : W) :
-    ∀ (fuel : Nat) (w : W), CollGetInv c base w0 w →
-      WriterWP (collapseRoot key 0 fuel) c w (fun _ w' => CollGetInv c base w0 w') := by
+    ∀ (fuel : Nat) (w : W), CollGetInvF c base w0 w fuelR →
+      WriterWP (collapseRoot key 0 fuel) c w (fun _ w' => CollGetInvF c base w0 w' fuelR) := by
   intro fuel
   induction fuel with
   | zero => intro w _; exact writerWP_throw _ _ _ _
@@ -317,12 +344,12 @@ theorem writerWP_collapseRoot_space_get (key : Key) (c : Ctx) (base : View BVal)
       path := ([] : List (Option Nat × NodeId)) ++ [(none, w.top.rootKey)] } : W) = w1
     have hr01 : ReadsAs c.p base w w1 := by subst hw1; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
     have hp1 : w1.path = [(none, w.top.rootKey)] := by subst hw1; rfl
-    have hI1 := collGetInv_of_readsAs c base w0 w w1 hr01 hI
+    have hI1 := collGetInv_of_readsAsF fuelR hfR c base w0 w w1 hr01 hI
     refine writerWP_mono (writerWP_and (writerWP_getNode_all _ c w1 base hvc)
       (writerWP_getNode_cache w.top.rootKey c w1)) ?_
     intro n w2 ⟨⟨hr12, hlk2, hwn2, _, _⟩, ⟨_, _, hp2⟩⟩
     have hr02 := ReadsAs.trans _ _ _ _ _ hr01 hr12
-    have hI2 := collGetInv_of_readsAs c base w0 w w2 hr02 hI
+    have hI2 := collGetInv_of_readsAsF fuelR hfR c base w0 w w2 hr02 hI
     have htop2 : w2.top.rootKey = w.top.rootKey := by rw [hr02.2.1]
     have htop1 : w1.top.rootKey = w.top.rootKey := by rw [hr01.2.1]
     have hroot0 : wNode c.p base w2 w.top.rootKey = some n := by
@@ -350,7 +377,7 @@ theorem writerWP_collapseRoot_space_get (key : Key) (c : Ctx) (base : View BVal)
                 w3.vals = w2.vals →
                 (∀ z, z ≠ w.top.rootKey → w3.taken.contains z = w2.taken.contains z) →
                 (∀ z, z ≠ w.top.rootKey → w3.nodes.lookup z = w2.nodes.lookup z) →
-                CollGetInv c base w0 w3 := by
+                CollGetInvF c base w0 w3 fuelR := by
               intro child hptr w3 h3top h3v h3t h3n
               obtain ⟨c0, hk0, hlv⟩ := onlyLiveKlong_live_iff n only child honly hptr
               have hc0 : c0 = 0 := by
@@ -358,7 +385,7 @@ theorem writerWP_collapseRoot_space_get (key : Key) (c : Ctx) (base : View BVal)
                 rw [h1] at hcv
                 simpa using hcv
               subst hc0
-              apply collGetInv_step c base w0 w2 w3 child n hI2 hroot hleaf' hlv h3top h3v
+              apply collGetInv_stepF fuelR hfR c base w0 w2 w3 child n hI2 hroot hleaf' hlv h3top h3v
               · intro z hz; rw [htop2] at hz; exact h3t z hz
               · intro z hz; rw [htop2] at hz; exact h3n z hz
             simp only [Nat.sub_self]
@@ -396,6 +423,13 @@ theorem writerWP_collapseRoot_space_get (key : Key) (c : Ctx) (base : View BVal)
                 apply hstep child hp w3 h3top h3v
                 · intro z _; rw [h3t]
                 · intro z hz; exact h3n z hz
+
+/-- `writerWP_collapseRoot_space_getF` at the writer's fuel. -/
+theorem writerWP_collapseRoot_space_get (key : Key) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (w0 : W) :
+    ∀ (fuel : Nat) (w : W), CollGetInv c base w0 w →
+      WriterWP (collapseRoot key 0 fuel) c w (fun _ w' => CollGetInv c base w0 w') :=
+  writerWP_collapseRoot_space_getF c.p.fuel (by unfold Params.fuel; omega) key c base hvc w0
 
 /-- Root collapse at the space root keeps the reading of every key, from a state
 whose tree is a tree with `CollInv`'s facts, every segment tree shallower than
