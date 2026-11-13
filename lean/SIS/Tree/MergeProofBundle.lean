@@ -235,6 +235,16 @@ import SIS.Tree.RangeFullSplit
 import SIS.Tree.RangeMergeFull
 import SIS.Tree.TakeDeadCollapse
 import SIS.Tree.TakeDeadMerge
+import SIS.Tree.TakeCascade
+import SIS.Tree.TakeDeadDelete
+import SIS.Tree.TakeDeadUp
+import SIS.Tree.TakeDeadUpW
 import SIS.Tree.HalvesNil
 import SIS.Tree.GetMergeLevel
 import SIS.Tree.SegBalance
+import SIS.Tree.GetMergeAny
+import SIS.Tree.GetMergeRoot
+import SIS.Tree.TakeBackRunU
+import SIS.Tree.TakeDeadCascade
+import SIS.Tree.TakeDeadCases
+import SIS.Tree.TakeBackRunJ
