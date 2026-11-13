@@ -36,7 +36,8 @@ Work moved here from 2026.5:
 * **G4's lag as a gate** (024-30, Q30-3; decided by the coordinator
   under Frans's delegation, 2026-11-12, 12:33): after runs at 100,000
   and 3M keys show how back to empty's lag grows with the keys; printed,
-  not gated, until then.
+  not gated, until then. A gate at 2 R once 026-05 is on `main` (Frans,
+  2026-11-13, 09:41, 026-05's Q4); made in 026-11.
 * **A value transformation that throws or passes 8 MiB refuses the
   transaction instead of failing the database** (024-35, finding 2;
   010-04, R5; Frans, 2026-11-12, 14:42: "Yes to R5 and for 2026.6. I
@@ -120,6 +121,10 @@ Files
 * 10-node-id-cache-after-empty.md. 026-10, `NodeCollection.idByPos`
   after back to empty (found by 026-07; G4 and G5 then gate the plain
   heaps); registered.
+* 11-lag-gate.md. 026-11, G4's back-to-empty lag a gate of
+  `count-gates.sh`: at most 2 R (2,000 drive transactions) at 1M keys;
+  1,281 on `main` (margin 1.56), 4,395 without 026-05 (fails); on branch
+  `026-11-lag-gate`, to land.
 
 
 Log
