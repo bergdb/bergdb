@@ -229,4 +229,102 @@ theorem mergeFullLast_lookup (pn : KNode) (tt : Time) (cL : Nat) (m1 : NodeId) (
             · subst h2; simp [h1, Ne.symm h1]
             · simp [h1, h2, Ne.symm h1, Ne.symm h2]
 
+theorem writerWP_ite_cases {α : Type} (b : Prop) [Decidable b] (x y : M α) (c : Ctx) (w : W)
+    (post : α → W → Prop) (hx : b → WriterWP x c w post) (hy : ¬ b → WriterWP y c w post) :
+    WriterWP (if b then x else y) c w post := by
+  by_cases h : b
+  · simp only [h, ↓reduceIte]; exact hx h
+  · simp only [h, ↓reduceIte]; exact hy h
+
+/-- `mergeParent` by its two ways: with room, the parent's node `mergeParentNode`
+in place (`hroomP`); else, or with too many dead klongs, `handleFull` of the
+parent's last version `mergeFullLast` (`hfullP`). -/
+theorem writerWP_mergeParent_cases (p : NodeId) (pn : KNode) (depth il cL : Nat) (m1 : NodeId)
+    (ir cR : Nat) (m2 : Option (NodeId × Nat)) (c : Ctx) (w : W) (post : Unit → W → Prop)
+    (hlk : w.nodes.lookup p = some pn)
+    (hroomP : ∀ s : String, post () ({ ({ w with trail := s :: w.trail } : W) with
+      nodes := upsert w.nodes p (mergeParentNode pn c.i il cL m1 ir cR m2) } : W))
+    (hfullP : ∀ (last : KNode) (compact : Bool) (s : String),
+      mergeFullLast pn c.i cL m1 cR m2 = some last →
+      WriterWP (handleFull depth p last compact) c ({ w with trail := s :: w.trail } : W) post) :
+    WriterWP (mergeParent p depth il cL m1 ir cR m2) c w post := by
+  cases m2 with
+  | none =>
+    unfold mergeParent
+    simp only [writerWP_bind, writerWP_read]
+    rw [writerWP_getNode_known p pn c w hlk]
+    apply writerWP_ite_cases
+    · intro _
+      apply writerWP_ite_cases
+      · intro _
+        simp only [note, writerWP_bind, writerWP_modify, writerWP_pure]
+        split
+        · rename_i ks hks
+          apply hfullP
+          simp only [mergeFullLast] at hks ⊢
+          simp only [hks]
+        · exact writerWP_throw _ _ _ _
+        · exact writerWP_throw _ _ _ _
+      · intro _
+        simp only [note, putNode, writerWP_bind, writerWP_modify]
+        exact hroomP _
+    · intro _
+      simp only [note, writerWP_bind, writerWP_modify, writerWP_pure]
+      split
+      · rename_i ks hks
+        apply hfullP
+        simp only [mergeFullLast] at hks ⊢
+        simp only [hks]
+      · exact writerWP_throw _ _ _ _
+      · exact writerWP_throw _ _ _ _
+  | some yg =>
+    obtain ⟨y, g⟩ := yg
+    unfold mergeParent
+    simp only [writerWP_bind, writerWP_read]
+    rw [writerWP_getNode_known p pn c w hlk]
+    apply writerWP_ite_cases
+    · intro _
+      apply writerWP_ite_cases
+      · intro _
+        simp only [note, writerWP_bind, writerWP_modify, writerWP_pure]
+        split
+        · rename_i ks hks
+          by_cases hg : g = cR
+          · have hgb : (g != cR) = false := by simp [hg]
+            simp only [hgb, Bool.false_eq_true, ↓reduceIte, writerWP_bind, writerWP_pure] at hks ⊢
+            split
+            · rename_i ks2 hks2
+              apply hfullP
+              simp only [mergeFullLast, hgb, Bool.false_eq_true, ↓reduceIte, hks, hks2]
+            · exact writerWP_throw _ _ _ _
+            · exact writerWP_throw _ _ _ _
+          · have hgb : (g != cR) = true := by simp [hg]
+            simp only [hgb, ↓reduceIte] at hks ⊢
+            apply hfullP
+            simp only [mergeFullLast, hgb, ↓reduceIte, hks]
+        · exact writerWP_throw _ _ _ _
+        · exact writerWP_throw _ _ _ _
+      · intro _
+        simp only [note, putNode, writerWP_bind, writerWP_modify]
+        exact hroomP _
+    · intro _
+      simp only [note, writerWP_bind, writerWP_modify, writerWP_pure]
+      split
+      · rename_i ks hks
+        by_cases hg : g = cR
+        · have hgb : (g != cR) = false := by simp [hg]
+          simp only [hgb, Bool.false_eq_true, ↓reduceIte, writerWP_bind, writerWP_pure] at hks ⊢
+          split
+          · rename_i ks2 hks2
+            apply hfullP
+            simp only [mergeFullLast, hgb, Bool.false_eq_true, ↓reduceIte, hks, hks2]
+          · exact writerWP_throw _ _ _ _
+          · exact writerWP_throw _ _ _ _
+        · have hgb : (g != cR) = true := by simp [hg]
+          simp only [hgb, ↓reduceIte] at hks ⊢
+          apply hfullP
+          simp only [mergeFullLast, hgb, ↓reduceIte, hks]
+      · exact writerWP_throw _ _ _ _
+      · exact writerWP_throw _ _ _ _
+
 end SIS.Tree
