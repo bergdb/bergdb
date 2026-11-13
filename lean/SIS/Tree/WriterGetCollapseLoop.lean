@@ -203,4 +203,300 @@ theorem writerWP_descendToSegmentRoot_linked (key : Key) (seg : Nat) (c : Ctx) (
       · exact Or.inl h
       · exact Or.inr ⟨ps0, k, L, ln, h1, h2, by rw [← hN1]; exact h3, h4⟩
 
+/-! ## Root collapse at a segment root keeps `CollGetInv` -/
+
+/-- A segment-root collapse at node-map level: the leaf lf's klong k to the
+root rt names rt's child y instead; nothing else changes but at lf and rt. Every
+path from r0 after is a path before, as long or longer, that avoids rt. -/
+theorem segCollapse_pathLen (L L' : NodeId → Option KNode) (t : Time) (r0 lf rt y : NodeId)
+    (k c : Nat) (ln ln' rn : KNode) (ht : TreeOK L t r0)
+    (hlf : TReach L t r0 lf) (hln : L lf = some ln) (hk : (k, rt) ∈ ln.liveAt t)
+    (hrn : L rt = some rn) (hy : (c, y) ∈ rn.liveAt t)
+    (hln' : L' lf = some ln')
+    (hlinks : ∀ c' z, (c', z) ∈ ln'.liveAt t → (c' = k ∧ z = y) ∨ ((c', z) ∈ ln.liveAt t ∧ c' ≠ k))
+    (hother : ∀ x, x ≠ lf → x ≠ rt → L' x = L x) :
+    ∀ z n, PathLen L' t r0 z n → z ≠ rt ∧ ∃ m, n ≤ m ∧ PathLen L t r0 z m := by
+  have hlk : TLink L t lf k rt := ⟨ln, hln, hk⟩
+  have hrtR : TReach L t r0 rt := TReach.link hlf hlk
+  have hry : TLink L t rt c y := ⟨rn, hrn, hy⟩
+  have hrty : rt ≠ y := fun h => ht.no_self_link rt c hrtR (by rw [← h] at hry; exact hry)
+  have hnamert : ∀ u c', TReach L t r0 u → TLink L t u c' rt → u = lf ∧ c' = k :=
+    fun u c' hu hl' => ht.oneLink u c' lf k rt hu hlf hl' hlk
+  intro z n hz
+  induction hz with
+  | root =>
+    refine ⟨fun h => ht.rootFree lf k hlf (by rw [h]; exact hlk), 0, Nat.le_refl _, PathLen.root⟩
+  | @link u c' z n hu hl ih =>
+    obtain ⟨hurt, m, hnm, hum⟩ := ih
+    have huR : TReach L t r0 u := hum.reach
+    obtain ⟨un, hun, hcz⟩ := hl
+    by_cases hul : u = lf
+    · rw [hul, hln'] at hun
+      cases hun
+      rcases hlinks c' z hcz with ⟨_, hz⟩ | ⟨hmem, hck⟩
+      · rw [hz]
+        refine ⟨Ne.symm hrty, m + 2, by omega, ?_⟩
+        have h1 : PathLen L t r0 rt (m + 1) := PathLen.link (by rw [← hul]; exact hum) hlk
+        exact PathLen.link h1 hry
+      · have hl0 : TLink L t lf c' z := ⟨ln, hln, hmem⟩
+        refine ⟨fun hzr => ?_, m + 1, by omega, PathLen.link (by rw [← hul]; exact hum) hl0⟩
+        rw [hzr] at hl0
+        exact hck (hnamert lf c' hlf hl0).2
+    · rw [hother u hul hurt] at hun
+      have hl0 : TLink L t u c' z := ⟨un, hun, hcz⟩
+      refine ⟨fun hzr => ?_, m + 1, by omega, PathLen.link hum hl0⟩
+      rw [hzr] at hl0
+      exact hul (hnamert u c' huR hl0).1
+
+/-- One collapse step at a segment root keeps `CollGetInv`: the leaf lf's
+klong k to the root rt names rt's child y instead, with lf's new node a well-formed
+leaf of no later time; nothing else changes but lf and rt, whose taking back is
+the only change of the taken nodes; and every key reads as before. -/
+theorem collGetInv_segStep (c : Ctx) (base : View BVal) (w0 v v' : W) (lf rt y : NodeId)
+    (k cc : Nat) (ln ln' rn : KNode) (hI : CollGetInv c base w0 v)
+    (hlf : TReach (wNode c.p base v) c.i v.top.rootKey lf) (hln : wNode c.p base v lf = some ln)
+    (hk : (k, rt) ∈ ln.liveAt c.i) (hrn : wNode c.p base v rt = some rn) (hy : (cc, y) ∈ rn.liveAt c.i)
+    (hln' : wNode c.p base v' lf = some ln') (hl'leaf : ln'.leaf = true)
+    (hlwf' : klongsWf ln'.ks = true) (hlt' : ∀ s, Klong.time s ∈ ln'.ks → s ≤ c.i)
+    (hlinks : ∀ c' z, (c', z) ∈ ln'.liveAt c.i → (c' = k ∧ z = y) ∨ ((c', z) ∈ ln.liveAt c.i ∧ c' ≠ k))
+    (hother : ∀ z, z ≠ lf → z ≠ rt → wNode c.p base v' z = wNode c.p base v z)
+    (htop : v'.top = v.top) (hv : v'.vals = v.vals)
+    (ht : ∀ z, z ≠ rt → v'.taken.contains z = v.taken.contains z)
+    (hread : ∀ key, wGet c.p c.i base v' key = wGet c.p c.i base v key) :
+    CollGetInv c base w0 v' := by
+  obtain ⟨⟨hT, hU, hTi, hICE⟩, hG, hD, hW, hNV⟩ := hI
+  have hT' := treeOK_collapseSegment (wNode c.p base v) (wNode c.p base v') c.i v.top.rootKey lf rt y
+    k cc ln ln' rn hT hlf hln hk hrn hy hln' hlinks hother
+  have hP := segCollapse_pathLen (wNode c.p base v) (wNode c.p base v') c.i v.top.rootKey lf rt y
+    k cc ln ln' rn hT hlf hln hk hrn hy hln' hlinks hother
+  have hR : ∀ z, TReach (wNode c.p base v') c.i v.top.rootKey z →
+      z ≠ rt ∧ TReach (wNode c.p base v) c.i v.top.rootKey z := by
+    intro z hz
+    obtain ⟨n, hn⟩ := hz.pathLen
+    obtain ⟨h1, m, _, h2⟩ := hP z n hn
+    exact ⟨h1, h2.reach⟩
+  have hV : wValue base v' = wValue base v :=
+    wValue_eq_of_taken base v v' hv (fun z => z = rt) (fun z hz => ht z hz)
+      (fun z hz => by rw [hz]; exact ⟨hU rt (TReach.link hlf ⟨ln, hln, hk⟩), hNV rt rn
+        (TReach.link hlf ⟨ln, hln, hk⟩) hrn⟩)
+  -- a reached node's node after: lf's new node, or the one before
+  have hnode : ∀ z zn, TReach (wNode c.p base v') c.i v.top.rootKey z → wNode c.p base v' z = some zn →
+      (z = lf ∧ zn = ln') ∨ wNode c.p base v z = some zn := by
+    intro z zn hz hzn
+    by_cases hzl : z = lf
+    · left; rw [hzl, hln'] at hzn; exact ⟨hzl, (Option.some.inj hzn).symm⟩
+    · right; rw [← hother z hzl (hR z hz).1]; exact hzn
+  rw [← htop] at hT' hR hnode hP
+  refine ⟨⟨hT', fun z hz => ?_, fun z zn hz hzn => ?_, fun z zn c' z' hz hzn hzl hmem => ?_⟩,
+    fun key => by rw [hread key]; exact hG key, ?_, fun z zn hz hzn => ?_, fun z zn hz hzn => ?_⟩
+  · obtain ⟨h1, h2⟩ := hR z hz
+    rw [ht z h1]; rw [htop] at h2; exact hU z h2
+  · rcases hnode z zn hz hzn with ⟨_, rfl⟩ | h
+    · exact hlt'
+    · exact hTi z zn (by have := (hR z hz).2; rw [htop] at this; exact this) h
+  · rcases hnode z zn hz hzn with ⟨_, rfl⟩ | h
+    · rw [hl'leaf] at hzl; cases hzl
+    · have hzR := (hR z hz).2
+      rw [htop] at hzR
+      have hz'R : TReach (wNode c.p base v') c.i v'.top.rootKey z' :=
+        TReach.link hz ⟨zn, hzn, hmem⟩
+      by_cases hz'l : z' = lf
+      · exact ⟨ln', by rw [hz'l]; exact hln'⟩
+      · rw [hother z' hz'l (hR z' hz'R).1]
+        have hmem' : (c', z') ∈ zn.liveAt c.i := hmem
+        exact hICE z zn c' z' hzR h hzl hmem'
+  · intro z n hz
+    obtain ⟨_, m, hnm, hm⟩ := hP z n hz
+    have := hD z m (by rw [htop] at hm; exact hm)
+    omega
+  · rcases hnode z zn hz hzn with ⟨_, rfl⟩ | h
+    · exact hlwf'
+    · exact hW z zn (by have := (hR z hz).2; rw [htop] at this; exact this) h
+  · rw [hV]
+    rcases hnode z zn hz hzn with ⟨hzl, _⟩ | h
+    · rw [hzl]; exact hNV lf ln hlf hln
+    · exact hNV z zn (by have := (hR z hz).2; rw [htop] at this; exact this) h
+
+/-- `takeBackRoot` at a segment root x that the transaction made, below the
+segment leaf `leaf` of the path, keeps `CollGetInv`. -/
+theorem writerWP_takeBackRoot_seg_coll (x : NodeId) (d only : Nat) (n : KNode) (leaf : NodeId)
+    (ln : KNode) (k : Nat) (c : Ctx) (base : View BVal) (w0 v : W) (hI : CollGetInv c base w0 v)
+    (hlf : TReach (wNode c.p base v) c.i v.top.rootKey leaf)
+    (hlkL : v.nodes.lookup leaf = some ln) (hlnl : ln.leaf = true) (hk : (k, x) ∈ ln.liveAt c.i)
+    (hlkx : v.nodes.lookup x = some n) (honly : n.onlyLiveKlong = some only)
+    (hcv : n.cv? only = some 0) (hxl : n.leaf = false)
+    (hpd : (v.path[d]?).map (·.2) = some leaf) (hpk : v.path[d + 1]? = some (some k, x)) :
+    WriterWP (takeBackRoot x (d + 1) only) c v (fun _ v' => CollGetInv c base w0 v') := by
+  have hLt : v.taken.contains leaf = false := hI.1.2.1 leaf hlf
+  have hwL : wNode c.p base v leaf = some ln := by
+    simp only [wNode, hLt, Bool.false_eq_true, ↓reduceIte, hlkL]
+  have hxR : TReach (wNode c.p base v) c.i v.top.rootKey x := TReach.link hlf ⟨ln, hwL, hk⟩
+  have hxt : v.taken.contains x = false := hI.1.2.1 x hxR
+  have hwx : wNode c.p base v x = some n := by
+    simp only [wNode, hxt, Bool.false_eq_true, ↓reduceIte, hlkx]
+  have hlnt := hI.1.2.2.1 leaf ln hlf hwL
+  have hlnwf := hI.2.2.2.1 leaf ln hlf hwL
+  have hnt := hI.1.2.2.1 x n hxR hwx
+  have hT := hI.1.1
+  have hlx : leaf ≠ x := fun h => hT.no_self_link leaf k hlf ⟨ln, hwL, by rw [h]; exact hk⟩
+  have hwfS : ∀ u un, ReachS (wNode c.p base v) c.i v.top.rootKey u → wNode c.p base v u = some un →
+      klongsWf un.ks = true := fun u un hu hun => hI.2.2.2.1 u un (reachS_tReach _ _ _ _ hu) hun
+  unfold takeBackRoot
+  simp only [writerWP_bind, writerWP_read]
+  rw [writerWP_getNode_known x n c v hlkx]
+  cases hp : n.ptr? only with
+  | none => exact writerWP_throw _ _ _ _
+  | some child =>
+    obtain ⟨c0, hk0, hlv⟩ := onlyLiveKlong_live_iff n only child honly hp
+    have hc0 : c0 = 0 := by
+      have h1 : n.cv? only = some c0 := by simp [KNode.cv?, hk0]
+      rw [h1] at hcv; simpa using hcv
+    subst hc0
+    have hcl : (0, child) ∈ n.liveAt c.i := by
+      rw [KNode.liveAt_of_times n c.i hnt]; exact (hlv 0 child).mpr ⟨rfl, rfl⟩
+    have hchR : TReach (wNode c.p base v) c.i v.top.rootKey child := TReach.link hxR ⟨n, hwx, hcl⟩
+    obtain ⟨m, hm⟩ := hI.1.2.2.2 x n 0 child hxR hwx hxl hcl
+    simp only [note, writerWP_bind, writerWP_modify]
+    refine writerWP_pathNode_known d leaf c _ (by exact hpd) _ ?_
+    rw [writerWP_getNode_known leaf ln c _ (by simpa using hlkL)]
+    refine writerWP_klongAt_known (d + 1) k x c _ (by exact hpk) _ ?_
+    split
+    · rename_i j hj
+      split
+      · exact writerWP_throw _ _ _ _
+      · simp only [putNode, writerWP_bind, writerWP_modify]
+        refine (writerWP_takenBack_iff x c _ _).mpr ?_
+        simp only
+        have hLt' : (x :: v.taken).contains leaf = false := by
+          rw [List.contains_cons]
+          have : (leaf == x) = false := by simpa using hlx
+          rw [this, Bool.false_or]; exact hLt
+        have hyt : ∀ y, y ≠ x → (x :: v.taken).contains y = v.taken.contains y := by
+          intro y hyx
+          rw [List.contains_cons]
+          have : (y == x) = false := by simpa using hyx
+          simp [this]
+        have hfin : ∀ w' : W, w'.vals = v.vals → w'.taken = x :: v.taken →
+            w'.nodes = upsert v.nodes leaf (ln.repoint j child) → w'.top = v.top →
+            CollGetInv c base w0 w' := by
+          intro w' h'v h't h'n h'top
+          have hL' : wNode c.p base w' leaf = some (ln.repoint j child) := by
+            simp only [wNode, h't, hLt', Bool.false_eq_true, ↓reduceIte, h'n, lookup_upsert]
+          have hoth : ∀ y, y ≠ leaf → y ≠ x → wNode c.p base w' y = wNode c.p base v y := by
+            intro y hyl hyx
+            simp only [wNode, h't, hyt y hyx, h'n, lookup_upsert, hyl, ↓reduceIte]
+          have hlinks : ∀ c' z, (c', z) ∈ (ln.repoint j child).liveAt c.i →
+              (c' = k ∧ z = child) ∨ ((c', z) ∈ ln.liveAt c.i ∧ c' ≠ k) := by
+            intro c' z hmm
+            rw [KNode.liveAt_of_times _ c.i (KNode.repoint_times ln j child c.i hlnt)] at hmm
+            have hlk := lookup_of_mem_nodup _ (KNode.live_keys_nodup _) c' z hmm
+            rw [KNode.repoint_live_lookup ln x child k j hj c'] at hlk
+            by_cases hck : k = c'
+            · subst hck; simp at hlk; exact Or.inl ⟨rfl, hlk.symm⟩
+            · have hb : (k == c') = false := by simpa using hck
+              rw [hb] at hlk
+              simp only [Bool.false_eq_true, ↓reduceIte] at hlk
+              refine Or.inr ⟨?_, Ne.symm hck⟩
+              rw [KNode.liveAt_of_times ln c.i hlnt]
+              exact mem_of_lookup_nodup _ c' z hlk
+          have hV : wValue base w' = wValue base v :=
+            wValue_eq_of_taken base v w' h'v (fun z => z = x) (fun z hz => by rw [h't]; exact hyt z hz)
+              (fun z hz => by rw [hz]; exact ⟨hxt, hI.2.2.2.2 x n hxR hwx⟩)
+          refine collGetInv_segStep c base w0 v w' leaf x child k 0 ln (ln.repoint j child) n hI hlf hwL
+            hk hwx hcl hL' (by rw [mrg_repoint_leaf]; exact hlnl)
+            (by rw [KNode.repoint_klongsWf]; exact hlnwf) (KNode.repoint_times ln j child c.i hlnt)
+            hlinks hoth h'top h'v (fun z hz => by rw [h't]; exact hyt z hz) ?_
+          intro key
+          unfold wGet
+          rw [hV, h'top]
+          exact getFromR_segCollapse (wNode c.p base v) _ (wValue base v) c.i c.p.fuel v.top.rootKey
+            leaf x child k ln (ln.repoint j child) n hT hlf hwL hL' hlnl
+            (by rw [mrg_repoint_leaf]; exact hlnl)
+            hlnwf (by rw [KNode.repoint_klongsWf]; exact hlnwf) hlnt
+            (KNode.repoint_times ln j child c.i hlnt)
+            (KNode.repoint_live_lookup ln x child k j hj) hk hwx hxl hlv hnt ⟨m, hm⟩ hoth hwfS hI.2.2.1
+            (by rw [hI.2.2.2.2 child m hchR hm, hI.2.2.2.2 x n hxR hwx]) key
+        exact hfin _ rfl rfl rfl rfl
+    · exact writerWP_throw _ _ _ _
+
+/-- `replaceRoot` at a segment root x below the segment leaf `leaf` of the path,
+the leaf with room for the klong to x's child, keeps `CollGetInv`. -/
+theorem writerWP_replaceRoot_seg_coll (x : NodeId) (d only : Nat) (n : KNode) (leaf : NodeId)
+    (ln : KNode) (k : Nat) (c : Ctx) (base : View BVal) (w0 v : W) (hI : CollGetInv c base w0 v)
+    (hlf : TReach (wNode c.p base v) c.i v.top.rootKey leaf)
+    (hlkL : v.nodes.lookup leaf = some ln) (hlnl : ln.leaf = true) (hk : (k, x) ∈ ln.liveAt c.i)
+    (hlkx : v.nodes.lookup x = some n) (honly : n.onlyLiveKlong = some only)
+    (hcv : n.cv? only = some 0) (hxl : n.leaf = false)
+    (hpd : (v.path[d]?).map (·.2) = some leaf) (hpk : v.path[d + 1]? = some (some k, x))
+    (hroom : ln.size + 1 + 1 ≤ c.p.M)
+    (hdead : ∀ y, deadOver c.p (ln.add c.i (.key k y)) = false) :
+    WriterWP (replaceRoot x (d + 1) only) c v (fun _ v' => CollGetInv c base w0 v') := by
+  have hLt : v.taken.contains leaf = false := hI.1.2.1 leaf hlf
+  have hwL : wNode c.p base v leaf = some ln := by
+    simp only [wNode, hLt, Bool.false_eq_true, ↓reduceIte, hlkL]
+  have hxR : TReach (wNode c.p base v) c.i v.top.rootKey x := TReach.link hlf ⟨ln, hwL, hk⟩
+  have hxt : v.taken.contains x = false := hI.1.2.1 x hxR
+  have hwx : wNode c.p base v x = some n := by
+    simp only [wNode, hxt, Bool.false_eq_true, ↓reduceIte, hlkx]
+  have hlnt := hI.1.2.2.1 leaf ln hlf hwL
+  have hlnwf := hI.2.2.2.1 leaf ln hlf hwL
+  have hnt := hI.1.2.2.1 x n hxR hwx
+  have hT := hI.1.1
+  have hlx : leaf ≠ x := fun h => hT.no_self_link leaf k hlf ⟨ln, hwL, by rw [h]; exact hk⟩
+  have hwfS : ∀ u un, ReachS (wNode c.p base v) c.i v.top.rootKey u → wNode c.p base v u = some un →
+      klongsWf un.ks = true := fun u un hu hun => hI.2.2.2.1 u un (reachS_tReach _ _ _ _ hu) hun
+  unfold replaceRoot
+  simp only [writerWP_bind, writerWP_read]
+  rw [writerWP_getNode_known x n c v hlkx]
+  cases hp : n.ptr? only with
+  | none => exact writerWP_throw _ _ _ _
+  | some child =>
+    obtain ⟨c0, hk0, hlv⟩ := onlyLiveKlong_live_iff n only child honly hp
+    have hc0 : c0 = 0 := by
+      have h1 : n.cv? only = some c0 := by simp [KNode.cv?, hk0]
+      rw [h1] at hcv; simpa using hcv
+    subst hc0
+    have hcl : (0, child) ∈ n.liveAt c.i := by
+      rw [KNode.liveAt_of_times n c.i hnt]; exact (hlv 0 child).mpr ⟨rfl, rfl⟩
+    have hchR : TReach (wNode c.p base v) c.i v.top.rootKey child := TReach.link hxR ⟨n, hwx, hcl⟩
+    obtain ⟨m, hm⟩ := hI.1.2.2.2 x n 0 child hxR hwx hxl hcl
+    simp only [note, writerWP_bind, writerWP_modify]
+    refine writerWP_pathNode_known d leaf c _ (by exact hpd) _ ?_
+    refine writerWP_klongAt_known (d + 1) k x c _ (by exact hpk) _ ?_
+    refine writerWP_mono (writerWP_unlink_frameV x c _) ?_
+    intro _ w1 ⟨h1t, h1top, _, h1v, h1l⟩
+    have hlk1 : w1.nodes.lookup leaf = some ln := by rw [h1l leaf hlx]; exact hlkL
+    refine writerWP_mono (writerWP_appendKlongs_room d leaf ln k child c w1 hlk1 hroom (hdead _)) ?_
+    intro _ w2 h2
+    subst h2
+    have hL' : wNode c.p base { w1 with nodes := upsert w1.nodes leaf (ln.add c.i (.key k child)) } leaf =
+        some (ln.add c.i (.key k child)) := by
+      simp only [wNode, h1t, hLt, Bool.false_eq_true, ↓reduceIte, lookup_upsert]
+    have hoth : ∀ y, y ≠ leaf → y ≠ x →
+        wNode c.p base { w1 with nodes := upsert w1.nodes leaf (ln.add c.i (.key k child)) } y =
+          wNode c.p base v y := by
+      intro y hyl hyx
+      simp only [wNode, h1t, lookup_upsert, hyl, ↓reduceIte, h1l y hyx]
+    have hV : wValue base { w1 with nodes := upsert w1.nodes leaf (ln.add c.i (.key k child)) } =
+        wValue base v := wValue_congr' base _ v h1t h1v
+    refine collGetInv_segStep c base w0 v _ leaf x child k 0 ln (ln.add c.i (.key k child)) n hI hlf hwL
+      hk hwx hcl hL' (by rw [KNode.add_leaf]; exact hlnl) (KNode.add_key_wf ln c.i k child hlnwf)
+      (KNode.add_times ln c.i (.key k child) (fun s h => by cases h) hlnt) ?_ hoth h1top h1v
+      (fun z _ => by simp only [h1t]) ?_
+    · intro c' z hmm
+      rcases KNode.add_key_liveAt_mem ln c.i k child hlnwf hlnt c' z hmm with ⟨h1, h2⟩ | ⟨h1, h2⟩
+      · exact Or.inl ⟨h1, h2⟩
+      · exact Or.inr ⟨h2, h1⟩
+    · intro key
+      unfold wGet
+      rw [hV]
+      simp only
+      rw [h1top]
+      exact getFromR_segCollapse (wNode c.p base v) _ (wValue base v) c.i c.p.fuel v.top.rootKey
+        leaf x child k ln (ln.add c.i (.key k child)) n hT hlf hwL hL' hlnl
+        (by rw [KNode.add_leaf]; exact hlnl) hlnwf (KNode.add_key_wf ln c.i k child hlnwf) hlnt
+        (KNode.add_times ln c.i (.key k child) (fun s h => by cases h) hlnt)
+        (fun cc => KNode.add_key_live_lookup_of_wf ln c.i k cc child hlnwf) hk hwx hxl hlv hnt ⟨m, hm⟩
+        hoth hwfS hI.2.2.1 (by rw [hI.2.2.2.2 child m hchR hm, hI.2.2.2.2 x n hxR hwx]) key
+
 end SIS.Tree
