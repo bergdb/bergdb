@@ -231,3 +231,4 @@ import SIS.Tree.RangeMergeFull
 import SIS.Tree.TakeDeadCollapse
 import SIS.Tree.TakeDeadMerge
 import SIS.Tree.TakeCascade
+import SIS.Tree.TakeDeadDelete
