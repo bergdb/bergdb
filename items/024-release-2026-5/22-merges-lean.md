@@ -1184,6 +1184,14 @@ segment leaf, then the cascade (`writerWP_delSplit_chainG`); for the delete's
 last version `lastVersionGivenDel`, h at least 2 (`writerWP_delLeaf_chainG`,
 its halves by `delLast_halves`); and a delete's leaf that is the space root
 (`writerWP_delRootSplit_tree`).
+The reading (TP10's `OpGetOK`) after the writer's merge of two nodes the
+transaction did not make, into one node or two, the parent reached, inner, with
+room: every key reads as before (`writerWP_merge_get`, `WriterGetMergeTail.lean`;
+its tail `writerWP_mergeTail_get`), the siblings' compare values from putinv's
+`RangeOrder` (`mrg_child_range`) and `mergeIdx`'s choice (the siblings adjacent
+in the parent); by the tree lemmas `getFromR_mergeOne` and `getFromR_mergeTwo`
+(`WriterGetMerge.lean`, a merge into two read as a merge into one at an unused
+id, then a split).
 Not yet: the whole put and delete around the cascade; a merge whose parent is
 full or compacted;
 the mergeUp loop and the delete as a whole; the take-back of the upward unlink.
