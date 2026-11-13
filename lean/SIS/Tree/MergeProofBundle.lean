@@ -301,3 +301,4 @@ import SIS.Tree.WriterHeightsCollapse
 import SIS.Tree.TakeMergeFull
 import SIS.Tree.TakeMergeTail
 import SIS.Tree.TakeMergeAny
+import SIS.Tree.HeightsRun
