@@ -144,3 +144,4 @@ import SIS.Tree.WriterTreeInv
 import SIS.Tree.WriterTreeDelSpace
 import SIS.Tree.WriterTreeCascadeInv
 import SIS.Tree.WriterTreeCascadeGen
+import SIS.Tree.WriterTreeCascadeGen2
