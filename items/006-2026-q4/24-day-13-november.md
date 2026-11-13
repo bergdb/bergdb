@@ -129,3 +129,7 @@ For Frans to decide
 
 1. 026-09: land the keys-only scan (Q1), G5's dead-klong limit from the twin's plus 30 to plus 70 (Q2), the new StreamDigest digests (Q3), `GetMany.valuesBefore` public (Q4). Recommended by its agent: yes to all four. The coordinator's view: land, with the 10M stream-written cost named in the item; the timing pass of 026-04 then shows the net effect. Read: 026-09, items/026-release-2026-6/09-keys-only-scan.md on its branch (clone /Users/f/fl/bench/2026-11-13/kscan/clone).
 2. 028-04: a null result of a value transformation deletes the key: document it (recommended) or refuse it.
+3. 028-10: the public `Db.start(StartParams)` is a bug by R5 (a later startup pos loses keys for good); options A remove the parameters (recommended), B package-private, C check them. Read: 028-10.
+4. 028-11: P5's sentence in 010-01 (T3 proved for BergDB's own take since 007-08); the proposal is in 028-11.
+
+* 13:27 028-08 not a bug; 028-09 a bug, fixed (a startupPos at its own record is refused: before, a damaged last record started with every key gone); 028-11's texts fixed; 028-10 evaluated, for Frans. Landed (3edef8fa).
