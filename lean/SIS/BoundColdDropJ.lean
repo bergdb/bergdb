@@ -42,8 +42,12 @@ whose klong the transaction deletes or replaces in it: a delete's compare
 value in the emptied leaf and in each node of the climb (one a level of the
 delete's path, `deleteUpward`), or the klong that a put or delete replaces in
 a node that its write splits (`appendDeleteKlong` and the put's
-`handleFullNode` with `node.lastVersionGivenDel`). So for Java, k ≤ (h + 1)
-times the operations of the transaction, h the height of the tree; the
+`handleFullNode` with `node.lastVersionGivenDel`). This file first read that
+as k ≤ (h + 1) times the operations, h the height of the tree; that is false
+with merges (SIS/BoundColdCascadeExample.lean: a parent whose two children
+merge loses both, k = 10 at h = 7 for one delete). With TREE, k is at most
+the nodes the change makes unreachable (`DropStepJ_dropped_removed`); a
+bound on those per operation, about 2 (h + 1) in the runs checked, is open. The
 `#guard`s of SIS/BoundColdDropJExample.lean check `DropStepJ` with BergDB's
 `bvalW` on runs of 024-12's tree model (`treeSpec`).
 -/
