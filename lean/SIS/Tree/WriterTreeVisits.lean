@@ -1,18 +1,52 @@
 /-
 What the writer's tree gives the reads (bergdb 024-12, TP10, `OpGetOK`): in a
-tree a node is reached through the same number of segment links on every path
-(`tPath_unique`); so a node that the search of a key of one segment visits in
+tree a node is reached through the same number of links of segment leaves on
+every path (`tPath_unique`); so a node that the search of a key of one segment visits in
 the space root's tree is visited by no other key (`visits_unique_of_tree`): the
 premise `huniq` of `writerWP_put_room` (`GetFrame.lean`), which TP7's invariant
-lacks (`sharedSegment_changes_other_key`).
+lacks (`sharedSegment_changes_other_key`). And the tree is `GetSplit.lean`'s
+TREE premise (`htree_of_treeOK`).
 -/
-import SIS.Tree.WriterTreeOps
+import SIS.Tree.WriterTree
+import SIS.Tree.GetSplit
 
 set_option autoImplicit false
 
 namespace SIS.Tree
 
 open SIS SIS.Check
+
+theorem mem_of_lookup_nodup {β : Type} (l : List (Nat × β)) (a : Nat) (b : β)
+    (h : l.lookup a = some b) : (a, b) ∈ l := by
+  obtain ⟨l1, l2, hl, _⟩ := List.lookup_eq_some_iff.mp h
+  rw [hl]; simp
+
+theorem lookup_of_mem_nodup {β : Type} (l : List (Nat × β)) (hn : (l.map Prod.fst).Nodup)
+    (a : Nat) (b : β) (h : (a, b) ∈ l) : l.lookup a = some b := by
+  induction l with
+  | nil => cases h
+  | cons q l ih =>
+    rcases q with ⟨a', b'⟩
+    simp only [List.map_cons, List.nodup_cons] at hn
+    rcases List.mem_cons.mp h with hm | hm
+    · simp only [Prod.mk.injEq] at hm
+      rcases hm with ⟨h1, h2⟩
+      subst h1; subst h2
+      simp
+    · have hne : a ≠ a' := by
+        intro he
+        apply hn.1
+        rw [← he]
+        exact List.mem_map.mpr ⟨(a, b), hm, rfl⟩
+      have hb : (a == a') = false := by simpa using hne
+      simp only [List.lookup_cons, hb]
+      exact ih hn.2 hm
+
+/-- The key of one segment: its compare value is no long segment's. -/
+theorem keyWf_single_segLen (cv : Nat) (h : keyWf [cv] = true) : segLen cv ≠ 7 := by
+  simp only [keyWf, Bool.and_eq_true, bne_iff_ne, ne_eq] at h
+  exact h.2
+
 
 /-- Reached from r through k links of segment leaves (to the next segment's
 tree) and any number of inner links. -/
@@ -106,7 +140,7 @@ theorem eqVisits_tPath (L : NodeId → Option KNode) (t : Time) (r : NodeId) (cv
             simp only at hm
             have hlive : (fd.c, fd.y) ∈ n.liveAt t :=
               mem_of_lookup_nodup _ fd.c fd.y (n.searchLte_liveAt_lookup t cv fd hs)
-            have hlink : TLink L t y fd.c fd.y := ⟨n, hn, hlive, fun h => by rw [hl] at h; cases h⟩
+            have hlink : TLink L t y fd.c fd.y := ⟨n, hn, hlive⟩
             exact ih fd.y k (TPath.inner hy hn hl hlink) x c hm
 
 /-- The search of a compare value through one segment tree, if it finds a
@@ -143,7 +177,7 @@ theorem getEqR_leaf (L : NodeId → Option KNode) (t : Time) (r : NodeId) (cv : 
           simp only at h
           have hlive : (fd.c, fd.y) ∈ n.liveAt t :=
             mem_of_lookup_nodup _ fd.c fd.y (n.searchLte_liveAt_lookup t cv fd hs)
-          have hlink : TLink L t y fd.c fd.y := ⟨n, hn, hlive, fun h => by rw [hl] at h; cases h⟩
+          have hlink : TLink L t y fd.c fd.y := ⟨n, hn, hlive⟩
           exact ih fd.y k z (TPath.inner hy hn hl hlink) h
 
 /-- The reading of a key visits its first segment's tree through no segment
@@ -174,7 +208,7 @@ theorem fromVisits_tPath (L : NodeId → Option KNode) (t : Time) (r : NodeId) (
           rw [hg] at hm
           simp only at hm
           obtain ⟨lx, ln, hlp, hln, hll, hlive⟩ := getEqR_leaf L t r c1 hwf fuel y k z hy hg
-          have hlink : TLink L t lx c1 z := ⟨ln, hln, hlive, fun _ => hlen⟩
+          have hlink : TLink L t lx c1 z := ⟨ln, hln, hlive⟩
           have hz : TPath L t r z (k + 1) := TPath.seg hlp hln hll hlink
           rcases ih z (k + 1) hrest hz x c hm with ⟨hx, _⟩ | ⟨k', hk', hx⟩
           · exact Or.inr ⟨k + 1, Nat.lt_succ_self k, hx⟩
@@ -203,5 +237,22 @@ theorem visits_unique_of_tree (L : NodeId → Option KNode) (t : Time) (r : Node
         exact absurd hlen (keyWf_single_segLen c1 hcv)
   · have := tPath_unique L t r ht x 0 hx0 k' hx'
     omega
+
+/-- The reads' reach (`GetSplit.lean`) is the tree's. -/
+theorem reachS_tReach (L : NodeId → Option KNode) (t : Time) (r x : NodeId)
+    (h : ReachS L t r x) : TReach L t r x := by
+  induction h with
+  | root => exact TReach.root
+  | step x n c z _ hn hc ih => exact TReach.link ih ⟨n, hn, hc⟩
+
+/-- The tree is the TREE premise of `GetSplit.lean`'s lemmas (`htree`): of the
+nodes reached, one live klong names a node at most. -/
+theorem htree_of_treeOK (L : NodeId → Option KNode) (t : Time) (r : NodeId) (ht : TreeOK L t r) :
+    ∀ x xn cc z, ReachS L t r x → L x = some xn → (cc, z) ∈ xn.liveAt t →
+      ∀ x' xn' cc', ReachS L t r x' → L x' = some xn' → (cc', z) ∈ xn'.liveAt t →
+        x = x' ∧ cc = cc' := by
+  intro x xn cc z hx hxn hc x' xn' cc' hx' hxn' hc'
+  exact ht.oneLink x cc x' cc' z (reachS_tReach L t r x hx) (reachS_tReach L t r x' hx')
+    ⟨xn, hxn, hc⟩ ⟨xn', hxn', hc'⟩
 
 end SIS.Tree
