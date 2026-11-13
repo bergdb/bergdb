@@ -900,4 +900,175 @@ theorem getFromR_spaceSplit_del (N N2 : NodeId → Option KNode) (V : NodeId →
     simp only [hk', Bool.false_eq_true, ↓reduceIte]
     exact hA.2 key' hkey' (fun h' => hk h'.symm)
 
+set_option linter.unusedSimpArgs false in
+/-- The bitmap of a delete in a full leaf L that existed before the transaction,
+with no bitmap of the transaction last, full by its size, whose last version
+without the key has more than h klongs, below the inner parent q with room for
+two klongs, the merges off: the space split reads as the delete. -/
+theorem writerWP_appendDeleteKlong_space (c : Ctx) (base : View BVal)
+    (pre : List Nat) (cv k1 d' : Nat) (rk L q : NodeId) (n qn : KNode) (w w3 : W)
+    (hfuel : 1 ≤ c.p.fuel) (hsa : 1 ≤ c.p.splitAbove) (hkey : keyWf (pre ++ [cv]) = true)
+    (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
+    (hvisL : (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk)
+    (huniq : ∀ key' x m, keyWf key' = true →
+      (x, cv) ∈ fromVisits (wNode c.p base w) c.i c.p.fuel key' w.top.rootKey →
+      (x, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      wNode c.p base w x = some m → m.leaf = true → key' = pre ++ [cv])
+    (hwfG : ∀ x xn, wNode c.p base w x = some xn → klongsWf xn.ks = true)
+    (hids : (∀ z, (w.nodes.lookup z).isSome = true → z < w.next) ∧
+      (∀ z, (c.view z).isSome = true → z < w.next) ∧ (∀ z, w.taken.contains z = true → z < w.next) ∧
+      (∀ q ∈ w.vals, q.1 < w.next) ∧ w.top.rootKey < w.next)
+    (hbase : ∀ z, w.next ≤ z → knodeOf c.p base z = none ∧ valueOf base z = none)
+    (hn : wNode c.p base w L = some n) (hnl : n.leaf = true) (hnt : ∀ s, Klong.time s ∈ n.ks → s ≤ c.i)
+    (hLroot : L ≠ w.top.rootKey)
+    (hfirst : n.firstTime ≠ some c.i)
+    (hnotTD : ¬ ((∃ old, n.ks.getLast? = some (.del old)) ∧ n.lastTime = some c.i))
+    (hfull : c.p.M ≤ n.size + 1)
+    (hqn : wNode c.p base w q = some qn) (hql : qn.leaf = false)
+    (hqt : ∀ s, Klong.time s ∈ qn.ks → s ≤ c.i) (hk1 : (k1, L) ∈ qn.live) (hqL : q ≠ L)
+    (hqtk : w.taken.contains q = false)
+    (hrange : ∀ c' z, (c', z) ∈ n.live →
+      k1 ≤ c' ∧ ∀ c'' z', (c'', z') ∈ qn.live → k1 < c'' → c' < c'')
+    (hrq : ReachS (wNode c.p base w) c.i w.top.rootKey q)
+    (honlyL : ∀ x xn c', ReachS (wNode c.p base w) c.i w.top.rootKey x →
+      wNode c.p base w x = some xn → (c', L) ∈ xn.liveAt c.i → x = q ∧ c' = k1)
+    (hlinks : ∀ x xn cc z, ReachS (wNode c.p base w) c.i w.top.rootKey x →
+      wNode c.p base w x = some xn → (cc, z) ∈ xn.liveAt c.i → z < w.next)
+    (hr3 : ReadsAs c.p base w w3)
+    (hlk3 : w3.nodes.lookup L = some n) (hlq3 : w3.nodes.lookup q = some qn)
+    (hsrc3 : ∀ z, (w3.nodes.lookup z).isSome = true → z < w.next)
+    (hpq : (w3.path[d']?).map (·.2) = some q) (hpk : w3.path[d' + 1]? = some (some k1, L))
+    (hne : bitsUnion n.lastBitmap (n.bitsOf cv) ≠ n.lastBitmap)
+    (hsplit : c.p.splitAbove <
+      (n.lastVersionGivenDel c.i (bitsUnion n.lastBitmap (n.bitsOf cv))).size)
+    (hroomq : qn.size + 2 + 1 ≤ c.p.M)
+    (hdeadq : ∀ y1 sc y2, deadOver c.p ((qn.add c.i (.key k1 y1)).add c.i (.key sc y2)) = false) :
+    WriterWP (appendDeleteKlong L (d' + 1) cv) c w3 (fun _ w4 => ∀ key', keyWf key' = true →
+      wGet c.p c.i base w4 key' = if pre ++ [cv] == key' then none else wGet c.p c.i base w key') := by
+  obtain ⟨hidn, hidv, hidt, hidvals, hidr⟩ := hids
+  have hnwf := hwfG L n hn
+  have hqwf := hwfG q qn hqn
+  have hnext3 : w3.next = w.next := hr3.2.2.2.2
+  have hwfR : ∀ x xn, ReachS (wNode c.p base w) c.i w.top.rootKey x →
+      wNode c.p base w x = some xn → klongsWf xn.ks = true := fun x xn _ hn => hwfG x xn hn
+  -- the last version without cv
+  obtain ⟨hleq, _, _⟩ := delLast_facts n c.i cv
+  have hlook0 := KNode.delete_live_lookup n c.i cv
+  obtain ⟨pairs, hpks, hps⟩ :=
+    KNode.lastVersionGivenDel_order n c.i (bitsUnion n.lastBitmap (n.bitsOf cv))
+  generalize hU : bitsUnion n.lastBitmap (n.bitsOf cv) = U at hne hsplit hleq hlook0 hpks
+  generalize hlast : n.lastVersionGivenDel c.i U = last at hleq hsplit hlook0 hpks
+  have hlastE : last = ⟨true, newKlongs c.i pairs⟩ := by
+    rw [← hleq, hnl, hpks]; rfl
+  have hpn : (pairs.map Prod.fst).Nodup :=
+    List.pairwise_map.mpr (hps.imp (by intro a b hab; omega))
+  have hpl : ∀ c', pairs.lookup c' = if c' == cv then none else n.live.lookup c' := by
+    intro c'
+    rw [← hlook0 c', hlastE, KNode.newKlongs_live_lookup_fold, pairLookupFold_eq_lookup pairs c' hpn]
+  have hpne : pairs ≠ [] := by
+    intro he
+    rw [hlastE, he] at hsplit
+    simp [KNode.size, newKlongs] at hsplit
+    omega
+  have hntake : ∀ z, w.next ≤ z → w.taken.contains z = false := by
+    intro z hz
+    cases h' : w.taken.contains z with
+    | false => rfl
+    | true => have := hidt z h'; omega
+  have hnodenone : ∀ z, w.next ≤ z → w.nodes.lookup z = none := by
+    intro z hz
+    cases h' : w.nodes.lookup z with
+    | none => rfl
+    | some _ => have := hidn z (by rw [h']; rfl); omega
+  have hfreshN : ∀ z, w.next ≤ z → wNode c.p base w z = none := by
+    intro z hz
+    simp only [wNode, hntake z hz, Bool.false_eq_true, ↓reduceIte, hnodenone z hz,
+      (hbase z hz).1]
+  have hLlt : L < w.next := hsrc3 L (by rw [hlk3]; rfl)
+  have hqlt : q < w.next := hsrc3 q (by rw [hlq3]; rfl)
+  unfold appendDeleteKlong handleFull
+  simp only [writerWP_bind, writerWP_read]
+  rw [writerWP_getNode_known L n c w3 hlk3]
+  split
+  · exact writerWP_throw _ _ _ _
+  · rw [hU, hlast]
+    have hnb : (U == n.lastBitmap) = false := by simpa using hne
+    simp only [hnb, Bool.not_false, ↓reduceIte]
+    have hsz : ¬ n.size + 1 < c.p.M := by omega
+    have hspace : ∀ (s : String), WriterWP (do
+          note s
+          handleFullWith (fun q more => appendKlongs d' q more) (d' + 1) L [] last
+          pure false)
+        c w3 (fun _ w4 => ∀ key', keyWf key' = true →
+          wGet c.p c.i base w4 key' = if pre ++ [cv] == key' then none else wGet c.p c.i base w key') := by
+      intro s
+      simp only [note, writerWP_bind, writerWP_modify]
+      generalize hw3' : ({ w3 with trail := s :: w3.trail } : W) = w3'
+      have hlk3' : w3'.nodes.lookup L = some n := by rw [← hw3']; exact hlk3
+      have hlq3' : w3'.nodes.lookup q = some qn := by rw [← hw3']; exact hlq3
+      have hsrc3' : ∀ z, (w3'.nodes.lookup z).isSome = true → z < w.next := by
+        rw [← hw3']; exact hsrc3
+      have hpq' : (w3'.path[d']?).map (·.2) = some q := by rw [← hw3']; exact hpq
+      have hpk' : w3'.path[d' + 1]? = some (some k1, L) := by rw [← hw3']; exact hpk
+      have hr3' : ReadsAs c.p base w w3' := by rw [← hw3']; exact hr3
+      have hnext3' : w3'.next = w.next := hr3'.2.2.2.2
+      have hn1 : w3'.nodes.lookup w3'.next = none := by
+        cases h' : w3'.nodes.lookup w3'.next with
+        | none => rfl
+        | some _ => have := hsrc3' _ (by rw [h']; rfl); omega
+      have hn2 : w3'.nodes.lookup (w3'.next + 2) = none := by
+        cases h' : w3'.nodes.lookup (w3'.next + 2) with
+        | none => rfl
+        | some _ => have := hsrc3' _ (by rw [h']; rfl); omega
+      refine writerWP_mono (writerWP_handleFullWith_spaceSplitLast d' L q n qn k1 last [] c w3'
+        hlk3' hlq3' hqL hql hfirst hsplit hpq' hpk' hroomq hdeadq hn1 hn2) ?_
+      intro _ w4 ⟨h4t, h4top, h4v, h4nodes⟩
+      simp only [writerWP_pure]
+      rw [hnext3'] at h4nodes
+      rw [hnl, hlastE] at h4nodes
+      have htk : w4.taken = w.taken := h4t.trans hr3'.2.2.1
+      have hvl : w4.vals = w.vals := h4v.trans hr3'.2.2.2.1
+      have htp : w4.top = w.top := h4top.trans hr3'.2.1
+      have hV4 : wValue base w4 = wValue base w := by
+        funext a; simp only [wValue, htk, hvl]
+      have hres := getFromR_spaceSplit_del (wNode c.p base w) (wNode c.p base w4) (wValue base w)
+        c.i c.p.fuel hfuel w.top.rootKey L q w.next (w.next + 2) n qn k1 pre cv rk pairs hps hpne hpl
+        hn hnl hnwf hnt hqn hql hqwf hqt hk1 hrange
+        (by simp only [wNode, htk, hqtk, Bool.false_eq_true, ↓reduceIte, h4nodes, hqL])
+        (by
+          simp only [wNode, htk, hntake _ (Nat.le_refl _), Bool.false_eq_true, ↓reduceIte, h4nodes,
+            show w.next ≠ L by omega, show w.next ≠ q by omega])
+        (by
+          simp only [wNode, htk, hntake (w.next + 2) (by omega), Bool.false_eq_true, ↓reduceIte,
+            h4nodes, show w.next + 2 ≠ L by omega, show w.next + 2 ≠ q by omega,
+            show w.next + 2 ≠ w.next by omega])
+        (by
+          intro x hxL hxq hxF hxS
+          rw [← hr3'.1]
+          simp only [wNode, htk, hr3'.2.2.1, h4nodes, hxL, hxq, hxF, hxS, ↓reduceIte])
+        hqL (by omega) (hfreshN _ (Nat.le_refl _))
+        hLroot.symm (by omega) (by omega) hrq hrk (keyWf_last_notin pre cv hkey) hvisL huniq hwfR
+        honlyL
+        (fun x xn cc z hx hxn hz => by
+          have := hlinks x xn cc z hx hxn hz; exact ⟨by omega, by omega⟩)
+      intro key' hkey'
+      unfold wGet
+      rw [htp, hV4, hres key' hkey']
+    cases hg : n.ks.getLast? with
+    | none =>
+      simp only [Bool.false_and, Bool.false_eq_true, ↓reduceIte, hsz]
+      exact hspace _
+    | some k =>
+      cases k with
+      | del old =>
+        cases hlt' : (n.lastTime == some c.i) with
+        | false =>
+          simp only [hlt', Bool.and_false, Bool.false_eq_true, ↓reduceIte, hsz]
+          exact hspace _
+        | true =>
+          exact absurd ⟨⟨old, hg⟩, by simpa using hlt'⟩ hnotTD
+      | _ =>
+        simp only [Bool.false_and, Bool.false_eq_true, ↓reduceIte, hsz]
+        exact hspace _
+
 end SIS.Tree
