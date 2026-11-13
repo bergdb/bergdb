@@ -422,4 +422,111 @@ theorem writerWP_mergeCleanup_any (p m1 : NodeId) (t : Time) (c : Ctx) :
       refine hrest _ n h1top h1next h1v (fun y _ => by rw [h1t]) (fun y hyp hyq => h1l y hyq)
         (by rw [h1l p (Ne.symm hqp)]; exact hlk) rfl (fun c' z hm => Or.inl hm)
 
+/-- After a merge's last loop: the tree is kept when the loop's nodes l and r are
+not reached, the parent p's live klongs after are its live klongs before or name
+m1 where one before named l or r, and nothing else changed. -/
+theorem treeOK_after_cleanup (N N' : NodeId → Option KNode) (t : Time) (root p l r m1 : NodeId)
+    (hT : TreeOK N t root) (hl : ¬ TReach N t root l) (hr : ¬ TReach N t root r)
+    (hroot : ∃ n, N' root = some n)
+    (hother : ∀ y, y ≠ p → y ≠ l → y ≠ r → N' y = N y)
+    (hp : ∀ n', N' p = some n' → ∃ n, N p = some n ∧ ∀ c z, (c, z) ∈ n'.liveAt t →
+      (c, z) ∈ n.liveAt t ∨ (z = m1 ∧ ((c, l) ∈ n.liveAt t ∨ (c, r) ∈ n.liveAt t))) :
+    TreeOK N' t root := by
+  -- every link after from a node reached before is a link before
+  have hstep : ∀ x c y, TReach N t root x → TLink N' t x c y → TLink N t x c y := by
+    intro x c y hx hlk
+    obtain ⟨m, hm, hc⟩ := hlk
+    by_cases hxp : x = p
+    · subst hxp
+      obtain ⟨n, hn, hsub⟩ := hp m hm
+      rcases hsub c y hc with h | ⟨_, h | h⟩
+      · exact ⟨n, hn, h⟩
+      · exact absurd (TReach.link hx ⟨n, hn, h⟩) hl
+      · exact absurd (TReach.link hx ⟨n, hn, h⟩) hr
+    · have hxl : x ≠ l := fun he => hl (he ▸ hx)
+      have hxr : x ≠ r := fun he => hr (he ▸ hx)
+      rw [hother x hxp hxl hxr] at hm
+      exact ⟨m, hm, hc⟩
+  have hreach : ∀ y, TReach N' t root y → TReach N t root y := by
+    intro y hy
+    induction hy with
+    | root => exact TReach.root
+    | link hx hlk ih => exact TReach.link ih (hstep _ _ _ ih hlk)
+  apply treeOK_of_links N N' t root hT hroot
+  · intro x c y hx hlk
+    exact ⟨c, hstep x c y (hreach x hx) hlk⟩
+  · intro x c c' y hx h1 h2
+    have hxN := hreach x hx
+    exact (hT.oneLink x c x c' y hxN hxN (hstep x c y hxN h1) (hstep x c' y hxN h2)).2
+
+/-- The tree with a merge's parent p naming the new nodes m1 (and m2) instead of
+the merged siblings l and rr: every node it reaches was reached before or is new,
+and neither l nor rr is reached. -/
+theorem mergeV_reach (N V : NodeId → Option KNode) (t : Time) (root p l rr m1 : NodeId)
+    (m2 : Option NodeId) (pn ln rn pn' : KNode) (cL cR : Nat)
+    (hT : TreeOK N t root) (hp : TReach N t root p) (hpn : N p = some pn)
+    (hl : (cL, l) ∈ pn.liveAt t) (hrr : (cR, rr) ∈ pn.liveAt t)
+    (hln : N l = some ln) (hrn : N rr = some rn)
+    (hVp : V p = some pn')
+    (hpn' : ∀ c z, (c, z) ∈ pn'.liveAt t →
+      z = m1 ∨ some z = m2 ∨ ((c, z) ∈ pn.liveAt t ∧ c ≠ cL ∧ c ≠ cR))
+    (hVm : ∀ m mn, (m = m1 ∨ some m = m2) → V m = some mn → ∀ c z, (c, z) ∈ mn.liveAt t →
+      (∃ c0, (c0, z) ∈ ln.liveAt t) ∨ (∃ c0, (c0, z) ∈ rn.liveAt t))
+    (hother : ∀ y, y ≠ p → y ≠ l → y ≠ rr → y ≠ m1 → some y ≠ m2 → V y = N y)
+    (hm1N : ¬ TReach N t root m1) (hm2N : ∀ m, some m = m2 → ¬ TReach N t root m) :
+    ∀ z, TReach V t root z → (TReach N t root z ∨ z = m1 ∨ some z = m2) ∧ z ≠ l ∧ z ≠ rr := by
+  have hlink_l : TLink N t p cL l := ⟨pn, hpn, hl⟩
+  have hlink_r : TLink N t p cR rr := ⟨pn, hpn, hrr⟩
+  have hlR : TReach N t root l := TReach.link hp hlink_l
+  have hrR : TReach N t root rr := TReach.link hp hlink_r
+  have hpl : p ≠ l := fun h => hT.no_self_link p cL hp (by rw [← h] at hlink_l; exact hlink_l)
+  have hpr : p ≠ rr := fun h => hT.no_self_link p cR hp (by rw [← h] at hlink_r; exact hlink_r)
+  -- a node linked before is neither l nor rr unless p links it by cL or cR
+  have hnotLR : ∀ u c z, TReach N t root u → TLink N t u c z → u ≠ p → z ≠ l ∧ z ≠ rr := by
+    intro u c z hu hlk hup
+    refine ⟨fun he => hup ?_, fun he => hup ?_⟩
+    · rw [he] at hlk; exact (hT.oneLink u c p cL l hu hp hlk hlink_l).1
+    · rw [he] at hlk; exact (hT.oneLink u c p cR rr hu hp hlk hlink_r).1
+  intro z hz
+  induction hz with
+  | root =>
+    refine ⟨Or.inl TReach.root, fun h => ?_, fun h => ?_⟩
+    · exact hT.rootFree p cL hp (by rw [← h] at hlink_l; exact hlink_l)
+    · exact hT.rootFree p cR hp (by rw [← h] at hlink_r; exact hlink_r)
+  | @link u c z hu hlk ih =>
+    obtain ⟨hu', hul, hur⟩ := ih
+    obtain ⟨un, hun, hcz⟩ := hlk
+    by_cases hup : u = p
+    · subst hup
+      rw [hVp] at hun
+      cases hun
+      rcases hpn' c z hcz with h | h | ⟨hm, h1, h2⟩
+      · subst h
+        exact ⟨Or.inr (Or.inl rfl), fun he => hm1N (he ▸ hlR), fun he => hm1N (he ▸ hrR)⟩
+      · exact ⟨Or.inr (Or.inr h), fun he => hm2N z h (he ▸ hlR), fun he => hm2N z h (he ▸ hrR)⟩
+      · refine ⟨Or.inl (TReach.link hp ⟨pn, hpn, hm⟩), fun he => h1 ?_, fun he => h2 ?_⟩
+        · rw [he] at hm; exact (hT.oneLink u c u cL l hp hp ⟨pn, hpn, hm⟩ hlink_l).2
+        · rw [he] at hm; exact (hT.oneLink u c u cR rr hp hp ⟨pn, hpn, hm⟩ hlink_r).2
+    · by_cases hm : u = m1 ∨ some u = m2
+      · rcases hVm u un hm hun c z hcz with ⟨c0, h0⟩ | ⟨c0, h0⟩
+        · have hlz : TLink N t l c0 z := ⟨ln, hln, h0⟩
+          refine ⟨Or.inl (TReach.link hlR hlz), fun he => ?_, fun he => ?_⟩
+          · rw [he] at hlz; exact hT.no_self_link l c0 hlR hlz
+          · rw [he] at hlz; exact hpl (hT.oneLink l c0 p cR rr hlR hp hlz hlink_r).1.symm
+        · have hrz : TLink N t rr c0 z := ⟨rn, hrn, h0⟩
+          refine ⟨Or.inl (TReach.link hrR hrz), fun he => ?_, fun he => ?_⟩
+          · rw [he] at hrz; exact hpr (hT.oneLink rr c0 p cL l hrR hp hrz hlink_l).1.symm
+          · rw [he] at hrz; exact hT.no_self_link rr c0 hrR hrz
+      · have hum1 : u ≠ m1 := fun h => hm (Or.inl h)
+        have hum2 : some u ≠ m2 := fun h => hm (Or.inr h)
+        have huN : TReach N t root u := by
+          rcases hu' with h | h | h
+          · exact h
+          · exact absurd h hum1
+          · exact absurd h hum2
+        rw [hother u hup hul hur hum1 hum2] at hun
+        have hlk' : TLink N t u c z := ⟨un, hun, hcz⟩
+        obtain ⟨h1, h2⟩ := hnotLR u c z huN hlk' hup
+        exact ⟨Or.inl (TReach.link huN hlk'), h1, h2⟩
+
 end SIS.Tree
