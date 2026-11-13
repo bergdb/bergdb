@@ -192,3 +192,4 @@ import SIS.Tree.RangePutG
 import SIS.Tree.RangeDelG
 import SIS.Tree.RangeMergeW
 import SIS.Tree.RangeMergeMade
+import SIS.Tree.RangePath
