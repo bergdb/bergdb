@@ -131,5 +131,6 @@ import SIS.Tree.GetInnerSplit
 import SIS.Tree.WriterTreeCollapseSeg
 import SIS.Tree.WriterTreeCascade
 import SIS.Tree.WriterTreeCascadePut
+import SIS.Tree.GetSpaceSpace
 import SIS.Tree.PutInvDelFull
 import SIS.Tree.WriterTreeInnerHalves
