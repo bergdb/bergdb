@@ -1103,7 +1103,7 @@ Landed checkpoints:
   12:27 to 12:35 together, 334 jobs.
 
 **TP10 and TP11 at the latest time, reduced, 2026-11-13** (prover
-"latest", 10:37 to 13:55, branch `024-12-latest`). **TP10 and TP11
+"latest", 10:37 to 15:15, branch `024-12-latest`). **TP10 and TP11
 follow from TP7, the run's key nodes sound and TREE for them, and the
 two statements about the writer under premises on the run's structure**
 (`getOK_of_runRead`, `scanOK_of_runRead`, `GetUnder.lean`): `OpGetOKUnder
@@ -1178,7 +1178,47 @@ kept only as steps. Proved on the way, on the standard axioms:
   and the time split of the root, a new super root naming the new root
   (`writerWP_put_rootSpaceSplit`, `writerWP_put_rootTimeSplit`), and the
   space split in place of a root the transaction made
-  (`writerWP_put_rootSpaceSplitInPlace`, `GetRootSplit.lean`). With the
+  (`writerWP_put_rootSpaceSplitInPlace`, `GetRootSplit.lean`); a put
+  into a segment's root, a full leaf that existed before the
+  transaction, below the segment leaf of the key's segment before: the
+  time split and the space split into a new segment root
+  (`writerWP_put_segTimeSplit`, `writerWP_put_segSpaceSplit`,
+  `GetSegRoot.lean`; one more premise, that segment leaf not reached
+  from the split leaf, which the writer's tree gives,
+  `notReach_parent_of_tree`; the reading through a link moved to a new
+  tree, `getFromR_graft`), and for a leaf the transaction made the space
+  split in place, the segment leaf's klong repointed in place
+  (`writerWP_put_segSpaceSplitInPlace`, `GetSegInPlace.lean`,
+  `KNode.repoint_live_lookup`); a put of a key whose last segment has no
+  tree yet, a new segment leaf below a leaf with room
+  (`writerWP_put_newSeg`, `GetNewSeg.lean`). Together (`writerWP_put_leafRoot`,
+  `GetLeafRoot.lean`; `writerWP_put_leafBelow`, `GetLeafBelow.lean`):
+  every put of a key of one segment into a space whose root is a leaf,
+  and every put of a key whose prefix is there into a leaf below inner
+  nodes with room for two klongs, changes the reading by itself alone;
+  under one invariant of the writer's state, `PutInv` (the writer's
+  tree, well formed klongs of no later time, fresh ids, no reachable
+  node taken back, the search tree's order at leaves: `GetPutInv.lean`,
+  `writerWP_put_leafRoot_inv`, `writerWP_put_leafBelow_inv`; and in
+  `GetSegLeaf.lean` every put into a segment's root, a leaf below the
+  segment leaf of the segment before with room,
+  `writerWP_put_segLeaf_inv`, and the new segment,
+  `writerWP_put_newSeg_inv`). The first splits whose parent is full,
+  the parent an inner node that existed before the transaction, time
+  split, below a grandparent with room: after a time split of the leaf
+  (`writerWP_put_timeSplit2`) and after a space split of the leaf
+  (`writerWP_put_spaceSplitTime`, `GetChain.lean`; the reading: the
+  leaf's split as before, then the parent renamed at the grandparent,
+  `renSim_timeSplitGen`; the whole access path of a descent, `PathFrom`);
+  the first space split of an inner node: after a time split of the
+  leaf, the parent full by its size with more than h klongs in its last
+  version, below a grandparent with room for two klongs
+  (`writerWP_put_timeSpace`, `GetInnerSplit.lean`; two more premises, the
+  search tree's order at the parent and neither the parent nor the leaf
+  reaching the grandparent; the reading: an inner node's halves find
+  what it found, by compare value, `halves_inner_searchLte`,
+  `getEqR_split_inner`).
+  With the
   writer's tree (cost's `WriterTreeOK`): `OpGetTreeOK` and
   `opGetOKUnder_of_tree` (`GetTree.lean`), and the split rules with
   `TreeOK` for TREE (`*_tree`, through cost's `htree_of_treeOK`). The
@@ -1207,16 +1247,20 @@ kept only as steps. Proved on the way, on the standard axioms:
   key's compare value at its leaf.
 
 Open: `OpGetOKUnder p (RunReadOK p)`, the writer's refinement of the
-map, every rule but those above (the splits of a segment root below a
-segment leaf, the splits whose parent is full, a put that makes a new
-segment, a delete into a full leaf, the upward delete, LE-b, the
+map, every rule but those above (the splits whose parent is full but for
+the three, among them the space splits of an inner node after a space
+split below it, a put that makes
+more than one new segment or a new segment below a full leaf, a delete
+into a full leaf, a delete with merges on, the upward delete, LE-b, the
 merges, root collapse), with its
 invariant inside a transaction: TREE inside it is cost's `WriterTreeOK`
 (the coordinator, 2026-11-13), and it must also give the search tree's
 order, klongs well formed and fresh ids; checked, not proved, on about 900 pseudo-random
 transactions of the model (node sizes 4 to 10, H 0 to 8, merges and
 theta), operation by operation, no difference. `KeyTreeOK` after every
-run within reach (TREE; TP16 states it for the model). The lift,
+run within reach (TREE; TP16 states it for the model) follows from P's
+tree, cost's `TreeAt` (`keyTreeOK_of_treeAt`, `getOK_of_treeAt`,
+`GetKeyTree.lean`). The lift,
 `OverlayLiftOKUnder`, which TP7's `LatestInvOK` needs too, is tp7's (the
 coordinator, 2026-11-13); its premises are to meet `RunReadOK` through
 `overlayLiftOKUnder_mono` when tp7's `ApplyBridge.lean` lands.

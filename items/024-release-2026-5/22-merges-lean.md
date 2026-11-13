@@ -1119,9 +1119,28 @@ root's space, time and in-place splits (`WriterTreePut.lean`,
 `WriterTreePut2.lean`, `WriterTreeRoot.lean`); as state lemmas, given the
 writer's state after it: a merge into one node and into two, LE-b's
 relink, root collapse of the space root and of a segment root, the upward
-unlink (`WriterTreeMerge.lean`, `WriterTreeMergeTwo.lean`). Not yet: the
-writer's code of the merges, LE-b, the unlink and collapse; a split whose
-parent is full (the cascade); new segments; the segment roots' splits.
+unlink (`WriterTreeMerge.lean`, `WriterTreeMergeTwo.lean`). The writer's
+code of the merge keeps it too (`writerWP_merge_tree`, `WriterTreeMergeOp.lean`):
+into one node or two, with the parent on the path reached, room in it for
+four klongs and no compaction, and the two nodes not made by the
+transaction; on the way, `mergeIdx` chooses the last live klong of each
+compare value (`mergeIdx_last`), and the parent's live klongs after are
+known (`mpNode_live_lookup`). Under prover latest's writer invariant
+`PutInv`, every put at leaf level without an inner split keeps the tree, as
+latest's `OpGetOK` cases: `writerWP_put_leafRoot_tree`,
+`writerWP_put_leafBelow_tree` (`WriterTreePutInv.lean`),
+`writerWP_put_segLeaf_tree` (a segment root that is a leaf: its time split,
+space split and space split in place under a new segment root,
+`WriterTreeSegRoot.lean`, `WriterTreeSegSplit.lean`, `WriterTreeSegInPlace.lean`)
+and `writerWP_put_newSeg_inv_tree` (`WriterTreeNewSeg.lean`). The merge
+keeps it also for nodes the transaction made (`writerWP_merge_made_tree`,
+`WriterTreeMergeMade.lean`: the parent's klongs retargeted, the nodes taken
+back); root collapse at the space root, the whole loop
+(`writerWP_collapseRoot_space`, `WriterTreeCollapse.lean`); LE-b with room
+(`writerWP_emptyKeyNext_tree`, `WriterTreeLeb.lean`). Not yet: a merge whose parent is full or
+compacted; the mergeUp loop and the delete as a whole; collapse of a segment
+root; the take-back of the upward unlink; a split whose parent is full (the
+cascade, prover latest).
 Their premises beyond TREE: the ids from w's next one on in neither the
 base nor a live klong (`hbaseF`, `hfreshT`).
 

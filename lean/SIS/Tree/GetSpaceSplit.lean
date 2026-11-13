@@ -597,7 +597,7 @@ the put alone. The premises are those of the time split rule
 (`writerWP_put_timeSplit_key`), and the search tree's order for L below its
 parent: L's compare values lie between the parent's klong to L and its next
 one. -/
-theorem writerWP_put_spaceSplit_key (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+theorem writerWP_put_spaceSplit_ord (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (pre : List Nat) (cv h : Nat) (rk : NodeId) (w : W) (hfuel : 1 ≤ c.p.fuel)
     (hkey : keyWf (pre ++ [cv]) = true)
     (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
@@ -619,7 +619,7 @@ theorem writerWP_put_spaceSplit_key (c : Ctx) (base : View BVal) (hvc : ViewCohe
       ∀ a y b z, deadOver c.p ((qn.add c.i (.key a y)).add c.i (.key b z)) = false)
     (hrange : ∀ q qn L n k1, (q, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
       wNode c.p base w q = some qn → qn.leaf = false → wNode c.p base w L = some n →
-      (k1, L) ∈ qn.live →
+      n.leaf = true → (k1, L) ∈ qn.live →
       ∀ c' z, (c', z) ∈ n.live → k1 ≤ c' ∧ ∀ c'' z', (c'', z') ∈ qn.live → k1 < c'' → c' < c'')
     (huniq : ∀ key' x n, keyWf key' = true →
       (x, cv) ∈ fromVisits (wNode c.p base w) c.i c.p.fuel key' w.top.rootKey →
@@ -769,7 +769,7 @@ theorem writerWP_put_spaceSplit_key (c : Ctx) (base : View BVal) (hvc : ViewCohe
   have hres := getFromR_spaceSplit (wNode c.p base w) (wNode c.p base wf) (wValue base w)
     (wValue base wf) c.i c.p.fuel hfuel w.top.rootKey L q (w.next + 2) (w.next + 2 + 2) w.next n qn
     k1 pre cv h rk hn hnl (hwf L n hrL hn) htimes hlive hq hql (hwf q qn hrq hq) hqt hk1
-    (hrange q qn L n k1 hqv hq hql hn hk1)
+    (hrange q qn L n k1 hqv hq hql hn hnl hk1)
     (by
       have hqt' : wf.taken.contains q = false := by
         rw [hft]; exact ht (q, cv) (fromVisits_append _ _ _ pre cv _ rk hrk _ hqv)
@@ -812,6 +812,52 @@ theorem writerWP_put_spaceSplit_key (c : Ctx) (base : View BVal) (hvc : ViewCohe
   rw [hftop, hres key' hkey']
   simp only [Op.key, Op.value]
   rfl
+
+/-- `writerWP_put_spaceSplit_ord` with the order premise for every child. -/
+theorem writerWP_put_spaceSplit_key (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (pre : List Nat) (cv h : Nat) (rk : NodeId) (w : W) (hfuel : 1 ≤ c.p.fuel)
+    (hkey : keyWf (pre ++ [cv]) = true)
+    (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
+    (ht : ∀ q ∈ fromVisits (wNode c.p base w) c.i c.p.fuel (pre ++ [cv]) w.top.rootKey,
+      w.taken.contains q.1 = false)
+    (hids : (∀ z, (w.nodes.lookup z).isSome = true → z < w.next) ∧
+      (∀ z, (c.view z).isSome = true → z < w.next) ∧ (∀ z, w.taken.contains z = true → z < w.next) ∧
+      (∀ q ∈ w.vals, q.1 < w.next) ∧ w.top.rootKey < w.next)
+    (hbase : knodeOf c.p base w.next = none)
+    (hinner : ∀ m, wNode c.p base w rk = some m → m.leaf = false)
+    (hleaf : ∀ L n, (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      wNode c.p base w L = some n → n.leaf = true →
+      (∀ s, Klong.time s ∈ n.ks → s ≤ c.i) ∧ c.p.M ≤ n.size + 1 ∧
+      n.firstTime ≠ some c.i ∧ c.p.splitAbove < (n.lastVersion c.i).size ∧
+      n.live ≠ [] ∧ L ≠ w.top.rootKey)
+    (hparent : ∀ q qn, (q, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      wNode c.p base w q = some qn → qn.leaf = false →
+      (∀ s, Klong.time s ∈ qn.ks → s ≤ c.i) ∧ qn.size + 2 + 1 ≤ c.p.M ∧
+      ∀ a y b z, deadOver c.p ((qn.add c.i (.key a y)).add c.i (.key b z)) = false)
+    (hrange : ∀ q qn L n k1, (q, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      wNode c.p base w q = some qn → qn.leaf = false → wNode c.p base w L = some n →
+      (k1, L) ∈ qn.live →
+      ∀ c' z, (c', z) ∈ n.live → k1 ≤ c' ∧ ∀ c'' z', (c'', z') ∈ qn.live → k1 < c'' → c' < c'')
+    (huniq : ∀ key' x n, keyWf key' = true →
+      (x, cv) ∈ fromVisits (wNode c.p base w) c.i c.p.fuel key' w.top.rootKey →
+      (x, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      wNode c.p base w x = some n → n.leaf = true → key' = pre ++ [cv])
+    (hwf : ∀ x xn, ReachS (wNode c.p base w) c.i w.top.rootKey x →
+      wNode c.p base w x = some xn → klongsWf xn.ks = true)
+    (htreeK : ∀ x xn cc z, ReachS (wNode c.p base w) c.i w.top.rootKey x →
+      wNode c.p base w x = some xn → (cc, z) ∈ xn.liveAt c.i → (wNode c.p base w z).isSome = true →
+      ∀ x' xn' cc', ReachS (wNode c.p base w) c.i w.top.rootKey x' →
+        wNode c.p base w x' = some xn' → (cc', z) ∈ xn'.liveAt c.i → x = x' ∧ cc = cc')
+    (hfr : ∀ x xn cc z, ReachS (wNode c.p base w) c.i w.top.rootKey x →
+      wNode c.p base w x = some xn → (cc, z) ∈ xn.liveAt c.i →
+        z ≠ w.next ∧ z ≠ w.next + 2 ∧ z ≠ w.next + 4) :
+    WriterWP (putKv (.put (pre ++ [cv]) h)) c w (fun _ w' => ∀ key', keyWf key' = true →
+      wGet c.p c.i base w' key' =
+        if Op.key (.put (pre ++ [cv]) h) == key' then Op.value (.put (pre ++ [cv]) h)
+        else wGet c.p c.i base w key') := by
+  apply writerWP_put_spaceSplit_ord c base hvc pre cv h rk w
+    (hrange := fun q qn L n k1 h1 h2 h3 h4 _ h5 => hrange q qn L n k1 h1 h2 h3 h4 h5)
+  all_goals assumption
 
 /-- The space split rule with the writer's tree for TREE. -/
 theorem writerWP_put_spaceSplit_tree (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
