@@ -8,6 +8,7 @@ the reading (`writerWP_collapseRoot_space_get`).
 import SIS.Tree.WriterGetMergeMade
 import SIS.Tree.WriterTreeCollapse
 import SIS.Tree.GetSegRoot
+import SIS.Tree.FuelPaths
 
 set_option autoImplicit false
 
@@ -146,30 +147,6 @@ theorem onlyLiveKlong_live_iff (n : KNode) (i : Nat) (y : NodeId) (h : n.onlyLiv
       exact hlk0
   · cases h
 
-/-! ## Fuel -/
-
-/-- A search with one more fuel finds the same, when the tree below is shallow. -/
-theorem getEqR_fuel_succ (N : NodeId → Option KNode) (t : Time) (r : NodeId) (cv : Nat) :
-    ∀ f x a, PathLen N t r x a → (∀ z k, PathLen N t r z k → k < a + f) →
-      getEqR N t cv (f + 1) x = getEqR N t cv f x := by
-  intro f
-  induction f with
-  | zero => intro x a hx hall; have := hall x a hx; omega
-  | succ f ih =>
-    intro x a hx hall
-    cases hN : N x with
-    | none => simp only [getEqR, hN]
-    | some n =>
-      simp only [getEqR, hN]
-      split
-      · rfl
-      · cases hfd : n.searchLte t cv with
-        | none => rfl
-        | some fd =>
-          simp only
-          exact ih fd.y (a + 1) (PathLen.link hx ⟨n, hN, KNode.searchLte_mem n t cv fd hfd⟩)
-            (fun z k hz => by have := hall z k hz; omega)
-
 /-! ## The reading after a root collapse -/
 
 /-- The root R, inner, whose only live klong is the empty key's to y, gives way
@@ -181,7 +158,7 @@ theorem getFromR_collapse (N N' : NodeId → Option KNode) (V : NodeId → Optio
     (hnt : ∀ s, Klong.time s ∈ n.ks → s ≤ t)
     (hother : ∀ x, x ≠ R → N' x = N x)
     (hwf : ∀ x xn, ReachS N t R x → N x = some xn → klongsWf xn.ks = true)
-    (hdepth : ∀ z k, PathLen N t R z k → k < fuel) :
+    (hdepth : PathsFit N t R fuel) :
     ∀ key, getFromR N' V t fuel key y = getFromR N V t fuel key R := by
   obtain ⟨f, hf⟩ : ∃ f, fuel = f + 1 := ⟨fuel - 1, by have := hdepth R 0 PathLen.root; omega⟩
   have hRy : (0, y) ∈ n.liveAt t := by
@@ -258,7 +235,7 @@ reading of a state w0, every path from the root shorter than the fuel, the
 reached nodes well formed and of no value. -/
 def CollGetInv (c : Ctx) (base : View BVal) (w0 w : W) : Prop :=
   CollInv c base w ∧ (∀ key, wGet c.p c.i base w key = wGet c.p c.i base w0 key) ∧
-  (∀ z k, PathLen (wNode c.p base w) c.i w.top.rootKey z k → k < c.p.fuel) ∧
+  PathsFit (wNode c.p base w) c.i w.top.rootKey c.p.fuel ∧
   (∀ y yn, TReach (wNode c.p base w) c.i w.top.rootKey y → wNode c.p base w y = some yn →
     klongsWf yn.ks = true) ∧
   (∀ y yn, TReach (wNode c.p base w) c.i w.top.rootKey y → wNode c.p base w y = some yn →
@@ -433,7 +410,7 @@ whose tree is a tree with `CollInv`'s facts, every path from the root shorter
 than the fuel, and the reached nodes well formed and of no value. -/
 theorem writerWP_collapseRoot_space_reads (key : Key) (c : Ctx) (base : View BVal)
     (hvc : ViewCoherent c base) (fuel : Nat) (w : W) (hI : CollInv c base w)
-    (hD : ∀ z k, PathLen (wNode c.p base w) c.i w.top.rootKey z k → k < c.p.fuel)
+    (hD : PathsFit (wNode c.p base w) c.i w.top.rootKey c.p.fuel)
     (hW : ∀ y yn, TReach (wNode c.p base w) c.i w.top.rootKey y → wNode c.p base w y = some yn →
       klongsWf yn.ks = true)
     (hNV : ∀ y yn, TReach (wNode c.p base w) c.i w.top.rootKey y → wNode c.p base w y = some yn →
