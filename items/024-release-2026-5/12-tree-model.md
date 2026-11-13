@@ -1103,7 +1103,7 @@ Landed checkpoints:
   12:27 to 12:35 together, 334 jobs.
 
 **TP10 and TP11 at the latest time, reduced, 2026-11-13** (prover
-"latest", 10:37 to 16:10, branch `024-12-latest`). **TP10 and TP11
+"latest", 10:37 to 16:30, branch `024-12-latest`). **TP10 and TP11
 follow from TP7, the run's key nodes sound and TREE for them, and the
 two statements about the writer under premises on the run's structure**
 (`getOK_of_runRead`, `scanOK_of_runRead`, `GetUnder.lean`): `OpGetOKUnder
@@ -1293,9 +1293,17 @@ tree, cost's `TreeAt` (`keyTreeOK_of_treeAt`, `getOK_of_treeAt`,
 coordinator, 2026-11-13); its premises are to meet `RunReadOK` through
 `overlayLiftOKUnder_mono` when tp7's `ApplyBridge.lean` lands.
 
-The splits of any depth, the way on (prover "latest", 2026-11-13): one
-induction over the writer's `appendKlongs (d + 1) x ins` instead of a
-rule per depth. Its statement: after it, the writer's state reads as the
+The splits of any depth (prover "latest", 2026-11-13, 16:30): **proved
+for time and space splits of nodes that existed before the transaction,
+below a top node with room** (`writerWP_appendKlongs_chainR`,
+`GetCascadeChain.lean`, on cost's `writerWP_appendKlongs_chain`, whose
+induction it follows; the steps `getFromR_timeLevel`,
+`getFromR_spaceLevel`, `getFromR_updN_unreach`, `GetCascadeGen.lean`):
+after `appendKlongs j (X j) ins` the writer's state reads as the state
+with ins put in X j. Still open: the put and delete rules on it, and
+in-place splits, a root or segment-root top. The design: one induction
+over the writer's `appendKlongs (d + 1) x ins` instead of a rule per
+depth. Its statement: after it, the writer's state reads as the
 state before with x replaced by x with ins put (the node of the room
 case), every key alike; the nodes it made have ids from the next one
 on; the nodes it split are reached no more; nothing else changes. The
