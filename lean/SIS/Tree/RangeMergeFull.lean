@@ -7,6 +7,7 @@ merge's last loop after it (`rangeOrder_after_cleanup`).
 import SIS.Tree.WriterTreeMergeFull
 import SIS.Tree.RangeFullSplit
 import SIS.Tree.RangeMergeMade
+import SIS.Tree.MergeGOrd
 
 set_option autoImplicit false
 
@@ -183,8 +184,9 @@ set_option maxHeartbeats 3200000 in
 `writerWP_mergeTail_made_range`; a full parent split with its last version
 (`writerWP_mergeFull_branchRange`, the tree with it put in in order by
 `rangeOrder_mergeOne`/`rangeOrder_mergeTwo`), then the merged nodes left behind
-(`rangeOrder_after_cleanup`). -/
-theorem writerWP_mergeTail_any_range (c : Ctx) (base : View BVal) (x : NodeId) (d : Nat) (p : NodeId)
+(`rangeOrder_after_cleanup`). The full parent's halves are asked for the merge's
+values only (`MergeGOrd`). -/
+theorem writerWP_mergeTail_any_range2 (c : Ctx) (base : View BVal) (x : NodeId) (d : Nat) (p : NodeId)
     (pn xn : KNode) (leftSome : Bool) (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId)
     (rn : KNode) (ir : Nat) (cL cR : Nat) (N : NodeId → Option KNode) (root : NodeId) (nx : Nat)
     (w3 : W) (hT : TreeOK N c.i root) (hp : TReach N c.i root p) (hpn : N p = some pn)
@@ -223,7 +225,7 @@ theorem writerWP_mergeTail_any_range (c : Ctx) (base : View BVal) (x : NodeId) (
     (hR0 : s = 0 → root = X 0)
     (hXx : ∀ i, s ≤ i → i ≤ D + 1 → X i ≠ x)
     (hhalves : ∀ m1 m2 last, mergeFullLast pn c.i cL m1 cR m2 = some last →
-      c.p.splitAbove < last.size → ∃ r0 : Nat, 0 < r0 ∧
+      MergeGOrd ln rn cR m2 c.i → c.p.splitAbove < last.size → ∃ r0 : Nat, 0 < r0 ∧
       (halves (Nn (D + 1)).leaf c.i last []).2.2 = r0 ∧
       (∀ c' z, (c', z) ∈ (halves (Nn (D + 1)).leaf c.i last []).1.liveAt c.i → c' < r0 ∧
         (c', z) ∈ (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).liveAt c.i) ∧
@@ -233,7 +235,7 @@ theorem writerWP_mergeTail_any_range (c : Ctx) (base : View BVal) (x : NodeId) (
       ((Nn D).leaf = false →
         K (D + 1) ≤ r0 ∧ ∀ c'' z', (c'', z') ∈ (Nn D).live → K (D + 1) < c'' → r0 < c''))
     (hhalvesR : ∀ m1 m2 last, mergeFullLast pn c.i cL m1 cR m2 = some last →
-      c.p.splitAbove < last.size → ∀ r0, (halves (Nn (D + 1)).leaf c.i last []).2.2 = r0 →
+      MergeGOrd ln rn cR m2 c.i → c.p.splitAbove < last.size → ∀ r0, (halves (Nn (D + 1)).leaf c.i last []).2.2 = r0 →
       (∃ zs, (r0, zs) ∈ (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).liveAt c.i) ∧
       ∃ c0 z0, (c0, z0) ∈ (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).liveAt c.i ∧ c0 < r0)
     (hpleaf : pn.leaf = false) (hclt : cL < cR) (hcap : 1 ≤ c.p.mergeMax)
@@ -618,10 +620,10 @@ theorem writerWP_mergeTail_any_range (c : Ctx) (base : View BVal) (x : NodeId) (
           · intro y hyp _ _ hym
             exact hVN y hyp hym
         have hbr := writerWP_mergeFull_branchRange c base w3.path s D X K Nn hsD hX hK hlinkK hrange hlen hwf
-          htimes htop hdist p l r m1 none pn cL cR hXp hNp (hhalves m1 none) w6
+          htimes htop hdist p l r m1 none pn cL cR hXp hNp (fun last h => hhalves m1 none last h (fun _ _ hh => by cases hh)) w6
           (by rw [h6p, h5p, h4p]) h6S2 h6T h6S4 h6S5 h6S6 h6R0 hV6
           ⟨by rw [h6next, h5next, hw4m1]; omega, by rw [h6next, h5next, hw4m1]; omega⟩
-          (hhalvesR m1 none) hVR6 last compact s7 hlast
+          (fun last h => hhalvesR m1 none last h (fun _ _ hh => by cases hh)) hVR6 last compact s7 hlast
         refine writerWP_mono hbr ?_
         rintro _ w7 ⟨hT7, hl7, hr7, ht7, _, hRO7⟩
         refine writerWP_mono (writerWP_mergeCleanup_wNode p m1 c base hvc _ w7 (hne' _ _)
@@ -968,10 +970,12 @@ theorem writerWP_mergeTail_any_range (c : Ctx) (base : View BVal) (x : NodeId) (
             simp
           · intro y hyp _ _ hym hym2
             exact hVN y hyp hym hym2
+        have hGO2 : MergeGOrd ln rn cR (some (m1 + 2, g2)) c.i :=
+          mergeGOrd_two _ ln rn c.i cR _ g2 yg (m1 + 2) hlt hrt hsortE (by omega) hgs
         have hbr := writerWP_mergeFull_branchRange c base w3.path s D X K Nn hsD hX hK hlinkK hrange hlen hwf
-          htimes htop hdist p l r m1 (some (m1 + 2, g2)) pn cL cR hXp hNp (hhalves m1 (some (m1 + 2, g2)))
+          htimes htop hdist p l r m1 (some (m1 + 2, g2)) pn cL cR hXp hNp (fun last h => hhalves m1 (some (m1 + 2, g2)) last h hGO2)
           w8 (by rw [h8p, h7p, h6p, h5p, h4p]) h8S2 h8T h8S4 h8S5 h8S6 h8R0 hV8
-          ⟨by omega, by omega⟩ (hhalvesR m1 (some (m1 + 2, g2))) hVR8 last compact s9 hlast
+          ⟨by omega, by omega⟩ (fun last h => hhalvesR m1 (some (m1 + 2, g2)) last h hGO2) hVR8 last compact s9 hlast
         refine writerWP_mono hbr ?_
         rintro _ w11 ⟨hT11, hl11, hr11, ht11, _, hRO11⟩
         refine writerWP_mono (writerWP_mergeCleanup_wNode p m1 c base hvc _ w11 (hne' _ _)
@@ -1086,6 +1090,73 @@ theorem writerWP_mergeTail_any_range (c : Ctx) (base : View BVal) (x : NodeId) (
         unfold wNode
         rw [h10tc y hyl hyr, h10l' y hyp hyl hyr, h8l, lookup_append_single_ne _ _ _ _ hym2,
           h6old y (hyx y hyl hyr) hym]
+
+/-- `writerWP_mergeTail_any_range2` with the halves for every merge value. -/
+theorem writerWP_mergeTail_any_range (c : Ctx) (base : View BVal) (x : NodeId) (d : Nat) (p : NodeId)
+    (pn xn : KNode) (leftSome : Bool) (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId)
+    (rn : KNode) (ir : Nat) (cL cR : Nat) (N : NodeId → Option KNode) (root : NodeId) (nx : Nat)
+    (w3 : W) (hT : TreeOK N c.i root) (hp : TReach N c.i root p) (hpn : N p = some pn)
+    (hL : pn.ks[il]? = some (.key cL l)) (hLL : LastLive pn.ks pn.lastBitmap il cL)
+    (hR : pn.ks[ir]? = some (.key cR r)) (hRL : LastLive pn.ks pn.lastBitmap ir cR)
+    (hc : cL ≠ cR) (hxlr : x = l ∨ x = r) (hln : N l = some ln) (hrn : N r = some rn)
+    (hpwf : klongsWf pn.ks = true) (hpt : ∀ s, Klong.time s ∈ pn.ks → s ≤ c.i)
+    (hch : ∀ cc z zn, (cc, z) ∈ pn.liveAt c.i → N z = some zn →
+      ∀ s, Klong.time s ∈ zn.ks → s ≤ c.i)
+    (hN3 : wNode c.p base w3 = N) (h3top : w3.top.rootKey = root) (h3next : w3.next = nx)
+    (h3p : w3.nodes.lookup p = some pn) (h3src : ∀ z, (w3.nodes.lookup z).isSome = true → z < nx)
+    (hfree : ∀ z, nx ≤ z → N z = none ∧ w3.taken.contains z = false)
+    (hfreshT : ∀ z, nx ≤ z → ∀ u c', TReach N c.i root u → ¬ TLink N c.i u c' z)
+    (hvc : ViewCoherent c base)
+    (hlinksAll : ∀ u c' z, TLink N c.i u c' z → z < nx)
+    (hbaseF : ∀ z, nx ≤ z → knodeOf c.p base z = none)
+    (s D : Nat) (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode) (hsD : s ≤ D)
+    (hd : d - 1 = D + 1)
+    (hX : ∀ i, s ≤ i → i ≤ D + 1 → (w3.path[i]?).map (·.2) = some (X i))
+    (hK : ∀ i, s < i → i ≤ D + 1 → w3.path[i]? = some (some (K i), X i))
+    (hlinkK : ∀ i, s < i → i ≤ D + 1 → (K i, X i) ∈ (Nn (i - 1)).liveAt c.i)
+    (hrange : ∀ i, s < i → i ≤ D → ¬ ChainRoom c (Nn i) → (Nn (i - 1)).leaf = false →
+      ∀ c' z, (c', z) ∈ (Nn i).live → 0 < c' →
+      K i ≤ c' ∧ ∀ c'' z', (c'', z') ∈ (Nn (i - 1)).live → K i < c'' → c' < c'')
+    (hlen : ∀ i, s ≤ i → i ≤ D → ¬ ChainRoom c (Nn i) →
+      c.p.splitAbove < ((Nn i).lastVersion c.i).size →
+      2 ≤ (Nn i).live.length)
+    (hwf : ∀ i, s ≤ i → i ≤ D + 1 → klongsWf (Nn i).ks = true)
+    (htimes : ∀ i, s ≤ i → i ≤ D + 1 → ∀ t, Klong.time t ∈ (Nn i).ks → t ≤ c.i)
+    (htop : ChainRoom c (Nn s) ∨ s = 0)
+    (hdist : ∀ i i', s ≤ i → i ≤ D + 1 → s ≤ i' → i' ≤ D + 1 → X i = X i' → i = i')
+    (hXp : X (D + 1) = p) (hNp : Nn (D + 1) = pn)
+    (hS2 : ∀ i, s ≤ i → i ≤ D + 1 →
+      w3.nodes.lookup (X i) = some (Nn i) ∧ w3.taken.contains (X i) = false)
+    (hS4 : ∀ i, s ≤ i → i ≤ D + 1 → TReach N c.i root (X i))
+    (hR0 : s = 0 → root = X 0)
+    (hXx : ∀ i, s ≤ i → i ≤ D + 1 → X i ≠ x)
+    (hhalves : ∀ m1 m2 last, mergeFullLast pn c.i cL m1 cR m2 = some last →
+      c.p.splitAbove < last.size → ∃ r0 : Nat, 0 < r0 ∧
+      (halves (Nn (D + 1)).leaf c.i last []).2.2 = r0 ∧
+      (∀ c' z, (c', z) ∈ (halves (Nn (D + 1)).leaf c.i last []).1.liveAt c.i → c' < r0 ∧
+        (c', z) ∈ (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).liveAt c.i) ∧
+      (∀ c' z, (c', z) ∈ (halves (Nn (D + 1)).leaf c.i last []).2.1.liveAt c.i → ∃ c0, r0 ≤ c0 ∧
+        c' = splitLocalCv (Nn (D + 1)).leaf r0 c0 ∧
+        (c0, z) ∈ (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).liveAt c.i) ∧
+      ((Nn D).leaf = false →
+        K (D + 1) ≤ r0 ∧ ∀ c'' z', (c'', z') ∈ (Nn D).live → K (D + 1) < c'' → r0 < c''))
+    (hhalvesR : ∀ m1 m2 last, mergeFullLast pn c.i cL m1 cR m2 = some last →
+      c.p.splitAbove < last.size → ∀ r0, (halves (Nn (D + 1)).leaf c.i last []).2.2 = r0 →
+      (∃ zs, (r0, zs) ∈ (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).liveAt c.i) ∧
+      ∃ c0 z0, (c0, z0) ∈ (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).liveAt c.i ∧ c0 < r0)
+    (hpleaf : pn.leaf = false) (hclt : cL < cR) (hcap : 1 ≤ c.p.mergeMax)
+    (hadj : ∀ cc z, (cc, z) ∈ pn.liveAt c.i → cc ≤ cL ∨ cR ≤ cc)
+    (hll : ln.leaf = xn.leaf) (hrl : rn.leaf = xn.leaf)
+    (hlrange : ∀ cc z, (cc, z) ∈ ln.liveAt c.i → cc < cR)
+    (hllow : ∀ cc z, (cc, z) ∈ ln.liveAt c.i →
+      ((!xn.leaf) = true → cc = 0 ∨ cL < cc) ∧ ((!xn.leaf) = false → cL ≤ cc))
+    (hrrange : ∀ cc z, (cc, z) ∈ rn.liveAt c.i →
+      ((!xn.leaf) = true → cc = 0 ∨ cR < cc) ∧ ((!xn.leaf) = false → cR ≤ cc))
+    (hrup : ∀ k z, (k, z) ∈ pn.liveAt c.i → cR < k → ∀ cc z', (cc, z') ∈ rn.liveAt c.i → cc < k)
+    (hRO : RangeOrder N c.i root) :
+    WriterWP (mergeTail c x d p pn xn leftSome l ln il r rn ir) c w3
+      (fun _ w' => RangeOrder (wNode c.p base w') c.i w'.top.rootKey) :=
+  writerWP_mergeTail_any_range2 c base x d p pn xn leftSome l ln il r rn ir cL cR N root nx w3 hT hp hpn hL hLL hR hRL hc hxlr hln hrn hpwf hpt hch hN3 h3top h3next h3p h3src hfree hfreshT hvc hlinksAll hbaseF s D X K Nn hsD hd hX hK hlinkK hrange hlen hwf htimes htop hdist hXp hNp hS2 hS4 hR0 hXx (fun m1 m2 last h _ => hhalves m1 m2 last h) (fun m1 m2 last h _ => hhalvesR m1 m2 last h) hpleaf hclt hcap hadj hll hrl hlrange hllow hrrange hrup hRO
 
 /-- The writer's merge keeps the walk's ranges, the parent with room or full
 (cost's `writerWP_merge_any_tree` with `RangeOrder`). -/
