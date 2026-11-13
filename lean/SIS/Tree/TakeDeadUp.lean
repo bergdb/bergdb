@@ -470,4 +470,166 @@ theorem lebNode_facts (n : KNode) (tt : Time) (htd lip : Bool) (e jcv : Nat) (jy
       rw [hm, List.findSome?_append, hs]
       rfl
 
+/-! ## (C) and the node facts after the upward delete, at node-map level -/
+
+/-- A chain node after the upward delete: taken back if the transaction made it,
+else unlinked from its node, perhaps retargeted. -/
+def ChainFateN (N' : NodeId → Option KNode) (t : Time) (B : NodeId) (n : KNode) (x : NodeId) : Prop :=
+  (n.firstTime = some t → N' x = none) ∧
+  (n.firstTime ≠ some t → ∃ S, RetFormS t B n S ∧ N' x = some (unlinkedNode S t))
+
+/-- (C) and the node facts after the upward delete, before root collapse: the
+chain below the stop node taken back or unlinked (`ChainFateN`); the stop node
+from S, its node retargeted from the chain's top if the transaction made it,
+with S's klongs before t and first time, S's key klongs or klongs to nodes
+`Extra` names (which it names live, in an inner node), every live child of the
+stop node but the chain's kept, and in a leaf the last live klongs but the
+chain's kept. -/
+theorem j2rest_up (N N' : NodeId → Option KNode) (t : Time) (B : NodeId) (vals : List NodeId)
+    (X : Nat → NodeId) (Nn : Nat → KNode) (stop depth cs : Nat) (hsD : stop < depth) (hpos : 0 < t)
+    (hD : DeadLiveN N t B vals) (hO : OldBelowN N t B) (hS : OldStartN N t B)
+    (hM : MadeStartN N t B) (hV : ValsNoNodeN N vals)
+    (hN : ∀ i, stop ≤ i → i ≤ depth → N (X i) = some (Nn i))
+    (hdist : ∀ i i', stop ≤ i → i ≤ depth → stop ≤ i' → i' ≤ depth → X i = X i' → i = i')
+    (hfate : ∀ k, stop < k → k ≤ depth → ChainFateN N' t B (Nn k) (X k))
+    (hwfs : klongsWf (Nn stop).ks = true) (hts : ∀ s, Klong.time s ∈ (Nn stop).ks → s ≤ t)
+    (hlink : (cs, X (stop + 1)) ∈ (Nn stop).liveAt t)
+    (S sn' : KNode) (Extra : NodeId → Prop) (hSf : RetFormS t B (Nn stop) S)
+    (hSm : (Nn (stop + 1)).firstTime = some t → RetFrom t B (Nn stop) (X (stop + 1)) S)
+    (hsn : N' (X stop) = some sn')
+    (hspre : prefixAt sn'.ks (t - 1) = prefixAt S.ks (t - 1))
+    (hsft : ∀ s, S.firstTime = some s → sn'.firstTime = some s)
+    (hskey : ∀ (i c : Nat) (y : NodeId), sn'.ks[i]? = some (Klong.key c y) →
+      S.ks[i]? = some (Klong.key c y) ∨ Extra y)
+    (hsextra : ∀ y, Extra y → (∃ c, (c, y) ∈ sn'.liveAt t) ∧ sn'.leaf = false)
+    (hskeep : ∀ c y, (c, y) ∈ (Nn stop).liveAt t → c ≠ cs → ∃ c', (c', y) ∈ sn'.liveAt t)
+    (hsleaf : sn'.leaf = true → S.leaf = true ∧
+      ∀ (i c : Nat), LastLive S.ks S.lastBitmap i c → c ≠ cs → LastLive sn'.ks sn'.lastBitmap i c)
+    (hother : ∀ u, u ≠ X stop → (∀ k, stop < k → k ≤ depth → u ≠ X k) → N' u = N u) :
+    DeadLiveN N' t B vals ∧ OldBelowN N' t B ∧ OldStartN N' t B ∧ MadeStartN N' t B ∧
+      ValsNoNodeN N' vals := by
+  have hNs := hN stop (Nat.le_refl _) (by omega)
+  have hXs : ∀ k, stop < k → k ≤ depth → X stop ≠ X k :=
+    fun k h1 h2 he => by have := hdist _ _ (Nat.le_refl _) (by omega) (by omega) h2 he; omega
+  -- the stop node's prefix and first time
+  have hspre' : prefixAt sn'.ks (t - 1) = prefixAt (Nn stop).ks (t - 1) := by
+    rw [hspre, retFormS_prefix t B (Nn stop) S hSf hpos]
+  have hsft' : ∀ s, (Nn stop).firstTime = some s → sn'.firstTime = some s := by
+    intro s hs; apply hsft; rw [retFormS_firstTime t B (Nn stop) S hSf]; exact hs
+  -- a klong of the stop node's node to the chain's top at or above B is none left
+  have hnotop : ∀ (i c : Nat), S.ks[i]? = some (Klong.key c (X (stop + 1))) → B ≤ X (stop + 1) → False := by
+    intro i c hk hB
+    have hmade := hM _ _ (hN (stop + 1) (by omega) (by omega)) hB
+    rcases retFrom_key t B (Nn stop) (X (stop + 1)) S (hSm hmade) i c _ hk with h | ⟨h1, h2⟩
+    · omega
+    · obtain ⟨ti, hti, hle⟩ := h2 rfl
+      obtain ⟨hlt, _⟩ := hSm hmade
+      obtain ⟨ti', hti', hk'⟩ := KNode.lastTime_anchor (Nn stop) t hlt
+      rw [hti] at hti'; cases hti'
+      have hne : i ≠ ti := fun he => by rw [he, hk'] at h1; cases h1
+      have hm := key_before_last_time (Nn stop).ks t ti hwfs hk' i (by omega) _ h1
+      have := hO _ _ hNs c _ hm
+      omega
+  -- (C) at the stop node
+  have hDs : DeadLiveK sn' t B vals := by
+    intro i c' y hi hB hv
+    rcases hskey i c' y hi with hS' | hE
+    · have hSB : ¬ y < B := by omega
+      rcases retFormS_key t B (Nn stop) S hSf i c' y hS' with h | h0
+      · exact absurd h hSB
+      · obtain ⟨⟨c, hc⟩, hleafN⟩ := hD _ _ hNs i c' y h0 hB hv
+        have hccs : c ≠ cs := by
+          intro he
+          rw [he] at hc
+          have := KNode.liveAt_fun _ _ _ _ _ hlink hc
+          rw [← this] at hS' hB
+          exact hnotop i c' hS' hB
+        refine ⟨hskeep c y hc hccs, fun hl => ?_⟩
+        obtain ⟨hSl, hLL⟩ := hsleaf hl
+        have hNl : (Nn stop).leaf = true := by rw [← retFormS_leaf t B (Nn stop) S hSf]; exact hSl
+        have hL0 := hleafN hNl
+        have hc'cs : c' ≠ cs := by
+          intro he
+          rw [he] at hL0 h0 hS'
+          have hlv := liveAt_of_lastLive (Nn stop) t hts i cs y h0 hL0
+          have := KNode.liveAt_fun _ _ _ _ _ hlink hlv
+          rw [← this] at hS' hB
+          exact hnotop i cs hS' hB
+        exact hLL i c' (retFormS_lastLive t B (Nn stop) S hSf i c' hL0) hc'cs
+    · obtain ⟨hlive, hinner⟩ := hsextra y hE
+      exact ⟨hlive, fun hl => by rw [hinner] at hl; cases hl⟩
+  -- a chain node unlinked: below B, its node's facts
+  have hunl : ∀ k, stop < k → k ≤ depth → ∀ un, N' (X k) = some un →
+      X k < B ∧ ∃ S0, RetFormS t B (Nn k) S0 ∧ un = unlinkedNode S0 t := by
+    intro k h1 h2 un hun
+    obtain ⟨hm, hu⟩ := hfate k h1 h2
+    by_cases hf : (Nn k).firstTime = some t
+    · rw [hm hf] at hun; cases hun
+    · obtain ⟨S0, hS0, he⟩ := hu hf
+      rw [he] at hun; cases hun
+      exact ⟨lt_of_firstTime_ne N t B hM _ _ (hN k (by omega) h2) hf, S0, hS0, rfl⟩
+  have hunpre : ∀ k, stop < k → k ≤ depth → ∀ S0, RetFormS t B (Nn k) S0 →
+      prefixAt (unlinkedNode S0 t).ks (t - 1) = prefixAt (Nn k).ks (t - 1) := by
+    intro k _ _ S0 hS0
+    rw [(unlinked_facts S0 t hpos).1, retFormS_prefix t B (Nn k) S0 hS0 hpos]
+  have hchain : ∀ u, (∃ k, stop < k ∧ k ≤ depth ∧ u = X k) ∨ u = X stop ∨ N' u = N u := by
+    intro u
+    by_cases h : ∃ k, stop < k ∧ k ≤ depth ∧ u = X k
+    · exact Or.inl h
+    · by_cases hs : u = X stop
+      · exact Or.inr (Or.inl hs)
+      · exact Or.inr (Or.inr (hother u hs (fun k h1 h2 he => h ⟨k, h1, h2, he⟩)))
+  refine ⟨?_, ?_, ?_, ?_, ?_⟩
+  · intro u un hu i cv y hi hB hv
+    rcases hchain u with ⟨k, h1, h2, rfl⟩ | rfl | he
+    · obtain ⟨hkB, S0, hS0, rfl⟩ := hunl k h1 h2 un hu
+      unfold unlinkedNode at hi
+      split at hi
+      · have hm : Klong.key cv y ∈ prefixAt S0.ks (t - 1) := List.mem_of_getElem? hi
+        rw [retFormS_prefix t B (Nn k) S0 hS0 hpos] at hm
+        have := hO _ _ (hN k (by omega) h2) cv y hm
+        omega
+      · rename_i hne
+        have hlt0 := retFormS_lastTime t B (Nn k) S0 hS0
+        have hS0n : S0 = Nn k := by
+          rcases hS0 with h | ⟨hlt, _⟩
+          · exact h
+          · exfalso; apply hne; rw [hlt0, hlt]; simp
+        subst hS0n
+        have := hD _ _ (hN k (by omega) h2) i cv y hi hB hv
+        unfold unlinkedNode
+        simp only [hne, Bool.false_eq_true, ↓reduceIte]
+        exact this
+    · rw [hsn] at hu; cases hu; exact hDs i cv y hi hB hv
+    · rw [he] at hu; exact hD u un hu i cv y hi hB hv
+  · intro u un hu cv y hk
+    rcases hchain u with ⟨k, h1, h2, rfl⟩ | rfl | he
+    · obtain ⟨_, S0, hS0, rfl⟩ := hunl k h1 h2 un hu
+      rw [hunpre k h1 h2 S0 hS0] at hk
+      exact hO _ _ (hN k (by omega) h2) cv y hk
+    · rw [hsn] at hu; cases hu
+      rw [hspre'] at hk; exact hO _ _ hNs cv y hk
+    · rw [he] at hu; exact hO u un hu cv y hk
+  · intro u un hu huB
+    rcases hchain u with ⟨k, h1, h2, rfl⟩ | rfl | he
+    · obtain ⟨_, S0, hS0, rfl⟩ := hunl k h1 h2 un hu
+      obtain ⟨s, hs, hf⟩ := hS _ _ (hN k (by omega) h2) huB
+      refine ⟨s, hs, (unlinked_facts S0 t hpos).2 s hs ?_⟩
+      rw [retFormS_firstTime t B (Nn k) S0 hS0]; exact hf
+    · rw [hsn] at hu; cases hu
+      obtain ⟨s, hs, hf⟩ := hS _ _ hNs huB
+      exact ⟨s, hs, hsft' s hf⟩
+    · rw [he] at hu; exact hS u un hu huB
+  · intro u un hu huB
+    rcases hchain u with ⟨k, h1, h2, rfl⟩ | rfl | he
+    · have := (hunl k h1 h2 un hu).1; omega
+    · rw [hsn] at hu; cases hu
+      exact hsft' t (hM _ _ hNs huB)
+    · rw [he] at hu; exact hM u un hu huB
+  · intro y hy
+    rcases hchain y with ⟨k, h1, h2, rfl⟩ | rfl | he
+    · have := hV _ hy; rw [hN k (by omega) h2] at this; cases this
+    · have := hV _ hy; rw [hNs] at this; cases this
+    · rw [he]; exact hV y hy
+
 end SIS.Tree
