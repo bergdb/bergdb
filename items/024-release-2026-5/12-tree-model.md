@@ -1103,7 +1103,7 @@ Landed checkpoints:
   12:27 to 12:35 together, 334 jobs.
 
 **TP10 and TP11 at the latest time, reduced, 2026-11-13** (prover
-"latest", 10:37 to 12:50, branch `024-12-latest`). **TP10 and TP11
+"latest", 10:37 to 13:10, branch `024-12-latest`). **TP10 and TP11
 follow from TP7, the run's key nodes sound and TREE for them, and the
 two statements about the writer under premises on the run's structure**
 (`getOK_of_runRead`, `scanOK_of_runRead`, `GetUnder.lean`): `OpGetOKUnder
@@ -1162,7 +1162,12 @@ kept only as steps. Proved on the way, on the standard axioms:
   prefix is there (`GetFrame.lean`): a put into a segment leaf with room
   (`writerWP_put_room_seg`), a delete of a key without a value
   (`writerWP_del_noop_seg`), a delete by a bitmap that leaves the leaf a
-  live klong, merges off (`writerWP_del_bitmap_seg`). The tools: the
+  live klong, merges off (`writerWP_del_bitmap_seg`); a put into a full
+  leaf that existed before the transaction, below an inner parent with
+  room, without a space split: the time split (`writerWP_put_timeSplit_seg`,
+  `GetSplit.lean`; its further premises are TREE and fresh ids on the
+  nodes reachable through the writer's state, as cost's `WriterTreeOK`
+  is to give). The tools: the
   frame of a reading (`getFromR_frame`, `getFromR_leaf_change`: what a
   key's reading visits, each node with the compare value it searches
   there), a node moved to a new id (`getFromR_ren`, for the splits),
@@ -1183,9 +1188,10 @@ kept only as steps. Proved on the way, on the standard axioms:
   key's compare value at its leaf.
 
 Open: `OpGetOKUnder p (RunReadOK p)`, the writer's refinement of the
-map, every rule but the three above (the splits, the upward delete,
-LE-b, the merges, root collapse), with its invariant inside a
-transaction; checked, not proved, on about 900 pseudo-random
+map, every rule but the four above (the space splits, the time splits in
+place and of roots, the upward delete, LE-b, the merges, root collapse),
+with its invariant inside a transaction (TREE inside it is cost's
+`WriterTreeOK`, the coordinator, 2026-11-13); checked, not proved, on about 900 pseudo-random
 transactions of the model (node sizes 4 to 10, H 0 to 8, merges and
 theta), operation by operation, no difference. `KeyTreeOK` after every
 run within reach (TREE; TP16 states it for the model). The lift,
