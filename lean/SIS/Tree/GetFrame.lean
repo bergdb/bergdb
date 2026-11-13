@@ -2,6 +2,10 @@ import SIS.Tree.GetOpInv
 import SIS.Tree.KlongAppend
 import SIS.Tree.NodeMap
 import SIS.Tree.KlongPreservation
+import SIS.Tree.TimeSplitMap
+import SIS.Tree.KlongWellFormed
+import SIS.Tree.MergeLiveOrder
+import SIS.Tree.WriterSteps
 
 set_option autoImplicit false
 
@@ -1627,5 +1631,42 @@ theorem getFromR_ren (N1 N2 : NodeId → Option KNode) (V1 V2 : NodeId → Optio
         split
         · exact ih z hz
         · rfl
+
+/-! ## A put into a full leaf that the transaction made: a time split in place -/
+
+theorem writerWP_replaceOrAdd_last (n : KNode) (ins : List (Nat × NodeId)) (c : Ctx) (w : W) :
+    WriterWP (replaceOrAdd (n.lastVersion c.i) ins) c w (fun out v => v = w ∧
+      out.leaf = n.leaf ∧ klongsWf out.ks = true ∧ (∀ s, Klong.time s ∈ out.ks → s ≤ c.i) ∧
+      ∀ q, out.live.lookup q = ins.foldl (pairLookupStep q) (n.live.lookup q)) := by
+  obtain ⟨pairs, hks, horder⟩ := n.lastVersionGivenDel_order c.i n.lastBitmap
+  have hnd : (pairs.map Prod.fst).Nodup := List.pairwise_map.mpr
+    (horder.imp (by intro a b hab; omega))
+  have he : n.lastVersion c.i = ⟨n.leaf, newKlongs c.i pairs⟩ := by
+    unfold KNode.lastVersion
+    cases hout : n.lastVersionGivenDel c.i n.lastBitmap
+    rw [hout] at hks
+    simp only at hks
+    subst hks
+    simp only [newKlongs, KNode.mk.injEq, and_true]
+    have h2 : (n.lastVersionGivenDel c.i n.lastBitmap).leaf = n.leaf := rfl
+    rw [hout] at h2
+    exact h2
+  have hlookup : ∀ q, pairs.lookup q = n.live.lookup q := by
+    intro q
+    have hh := n.lastVersionGivenDel_pairs_lookup c.i n.lastBitmap q
+    rw [KNode.live_lookup]
+    simpa [hks, List.filterMap_map, Function.comp_def] using hh
+  rw [he]
+  refine writerWP_mono (writerWP_replaceOrAdd_map n.leaf pairs ins hnd c w) ?_
+  rintro out v ⟨hleaf, ⟨more, hmore, _⟩, hmap, hv⟩
+  refine ⟨hv, hleaf, by rw [hmore]; exact klongsWf_newKlongs _ _, ?_, ?_⟩
+  · intro s hs
+    rw [hmore] at hs
+    simp only [newKlongs, List.mem_cons, List.mem_map] at hs
+    rcases hs with hs | ⟨q, _, hq⟩
+    · cases hs; exact Nat.le_refl _
+    · cases hq
+  · intro q
+    rw [hmap, hlookup]
 
 end SIS.Tree
