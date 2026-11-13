@@ -210,7 +210,7 @@ theorem collGetInv_after_upT (c : Ctx) (base : View BVal) (X : Nat → NodeId) (
     (hTimesR : ∀ y yn, TReach (wNode c.p base w) c.i w.top.rootKey y → wNode c.p base w y = some yn →
       ∀ s, Klong.time s ∈ yn.ks → s ≤ c.i)
     (hICE : InnerChildrenExist (wNode c.p base w) c.i w.top.rootKey)
-    (hfit : PathsFit (wNode c.p base w) c.i w.top.rootKey c.p.fuel)
+    (hfit : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey)
     (hnovalAll : ∀ y yn, wNode c.p base w y = some yn → wValue base w y = none)
     (hreach : ∀ i, i ≤ depth → TReach (wNode c.p base w) c.i w.top.rootKey (X i))
     (hlinkK : ∀ i, 0 < i → i ≤ depth → (K i, X i) ∈ (Nn (i - 1)).liveAt c.i)
@@ -280,11 +280,15 @@ theorem collGetInv_after_upT (c : Ctx) (base : View BVal) (X : Nat → NodeId) (
           rw [← hsl']; exact hyl
         · rw [h] at hm0; cases hm0; exact hyl
       exact hICE y m0 cc0 z hyN hm0 hm0l hcm0
-  · intro z k hz
-    apply hfit z k
-    induction hz with
-    | root => exact PathLen.root
-    | link hx hl ih => obtain ⟨c0, h0⟩ := hlsub _ _ _ hx.reach hl; exact PathLen.link ih h0
+  · refine segFits_transfer _ _ c.i _ _ _ hfit
+      (fun u hu => tReach_reachS _ _ _ _ (hsub u (reachS_tReach _ _ _ _ hu)).1)
+      (fun u un' hu hun' hl => ?_)
+    rcases hnode u un' (reachS_tReach _ _ _ _ hu) hun' with ⟨hus, rfl⟩ | h
+    · refine ⟨Nn stop, by rw [hus]; exact hN stop (by omega), by rw [← hsl']; exact hl,
+        fun c' y' hy' => ?_⟩
+      obtain ⟨c0, h1, _, _⟩ := hlive' c' y' hy'
+      exact ⟨c0, h1⟩
+    · exact ⟨un', h, hl, fun c' y' hy' => ⟨c', hy'⟩⟩
   · intro y yn hy hyn
     rcases hnode y yn hy hyn with ⟨_, rfl⟩ | h
     · exact hsw'
@@ -766,7 +770,7 @@ theorem writerWP_deleteUpward_upT (c : Ctx) (base : View BVal) (hvc : ViewCohere
     (hTimesR : ∀ y yn, TReach (wNode c.p base w) c.i w.top.rootKey y → wNode c.p base w y = some yn →
       ∀ s, Klong.time s ∈ yn.ks → s ≤ c.i)
     (hICE : InnerChildrenExist (wNode c.p base w) c.i w.top.rootKey)
-    (hfit : PathsFit (wNode c.p base w) c.i w.top.rootKey c.p.fuel)
+    (hfit : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey)
     (hnovalAll : ∀ y yn, wNode c.p base w y = some yn → wValue base w y = none)
     (hreach : ∀ i, i ≤ depth → TReach (wNode c.p base w) c.i w.top.rootKey (X i))
     (hlinkK : ∀ i, 0 < i → i ≤ depth → (K i, X i) ∈ (Nn (i - 1)).liveAt c.i)

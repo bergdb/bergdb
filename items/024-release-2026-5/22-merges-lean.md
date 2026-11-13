@@ -1234,7 +1234,13 @@ segment leaf, the replacement (`writerWP_takeBackRoot_seg_coll`,
 `writerWP_replaceRoot_seg_coll`); so `writerWP_collapseRoot_coll` with a caller's
 invariant J and room in the leaf (`hroom`). A full leaf (the cascade, which
 latest's `writerWP_appendKlongs_chainGR` reads) is not taken: `CollGetInv` needs
-the paths within the fuel after it, which no cascade lemma states yet. `InnerChildrenExist` (`ChildrenExist.lean`) is the Prop agreed
+the paths within the fuel after it, which no cascade lemma states yet.
+The fuel premise is per segment since 2026-11-13, 19:20 (the coordinator's
+decision on cost's finding, written in 024-12): `CollGetInv` and the collapse
+and upward-delete lemmas take latest's `SegFits N t (p.fuel - 1) r` in place of
+`PathsFit`, which no transaction keeps when a segment tree grows above H inside
+it (`segFits_transfer`, `SegDepthLe.of_inner`, `FuelPaths.lean`); prover putinv's
+`RangeUpAll`, `RangeUpTake` and `RangeCollapseSeg` take it too. `InnerChildrenExist` (`ChildrenExist.lean`) is the Prop agreed
 with prover putinv, who proves it for the writer's states.
 Not yet: the whole put and delete around the cascade; a merge whose parent is
 full or compacted;

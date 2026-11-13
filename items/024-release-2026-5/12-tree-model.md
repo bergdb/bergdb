@@ -1375,6 +1375,31 @@ exceed it by the new roots it makes (a node made above the level bounds
 is recorded in `outside`, MF3, and refused at the transaction's end if
 still there).
 
+**The whole path is not capped (prover "cost", 2026-11-13, 19:15).**
+Within a transaction a segment tree may grow above H, because the bounds
+G and H are checked only at the transaction's end (`boundsOK`), and the
+writer's own guard, the fuel of a descent, counts one segment tree at a
+time. So `PathsFit` (every path from the space root, through all
+segments, shorter than `p.fuel`) is no invariant of the writer's states.
+The case: M = 8, G = 1, H = 0, fuel 6; a transaction puts 1000 keys
+[120, 64j + 8] below one existing key and deletes them again, and ends
+without error (the 161 nodes made above the bounds are all taken back);
+after its 1000th put the segment tree below 120 has depth 5, so a path
+from the space root has 6 links, 7 to a value. The reads are right: the
+reader's fuel is per segment too. The coordinator's decision (19:20):
+the premise is per segment, latest's `SegFits N t (p.fuel - 1) r`
+(`GetFuel.lean`): every path inside one segment tree is shorter than
+the fuel. Checked as a Bool at every operation of grow-and-shrink
+transactions (M = 4 and 8, merges off and on, two and three segments)
+and of random runs: it held at every state of every transaction that
+ended without error; the one state without it (M = 4, a 7th put making
+depth 6 = fuel) belongs to a transaction whose next descent there throws
+(`/Users/f/fl/bench/2026-11-13/cost/fit/`). It is not kept by every
+single rule (that put does not throw), only along a transaction that
+succeeds; a rule can keep the bound one level higher, `SegFits N t
+p.fuel r`, as a descent through a tree that deep throws (not yet
+proved).
+
 The design: one induction over the writer's `appendKlongs (d + 1) x ins` instead of a rule per
 depth. Its statement: after it, the writer's state reads as the
 state before with x replaced by x with ins put (the node of the room
