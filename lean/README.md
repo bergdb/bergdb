@@ -99,7 +99,12 @@ SIS/BoundColdTheorems.lean): the lazy startup gives out at most the
 section's index nodes, the writer paths and new nodes of the section's
 transactions, and |D| + 2 handles (`coldReads_lazy`, `coldReads_handles`,
 `coldReads_run`), and with TREE H + 1 nodes per node a transaction changes,
-touches or makes unreachable (`coldReads_tree`).
+touches or makes unreachable (`coldReads_tree`). With BergDB's still-dirty
+test and TREE the |D| term is not needed (`coldReads_run_noD`,
+`coldReads_tree_noD`), and with `DropStep` (SIS/BoundColdDrop.lean: BergDB
+drops no subtree) a change makes at most as many nodes unreachable as it adds
+entries (`removedAt_bound`), so the reads need no `removedAt` term either
+(`coldReads_tree_drop`).
 
 Since bergdb item 009 (2026-10-25) the model also has handles: SIS/Handle.lean
 models 009's design of the physical layer (one handle per node, pointers that
@@ -244,6 +249,7 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
     import SIS.BoundT4Theorems
     import SIS.BoundT4JavaTheorems
     import SIS.BoundColdTheorems
+    import SIS.BoundColdDTheorems
     #print axioms SIS.T1_recovery
     #print axioms SIS.T1_crash
     #print axioms SIS.T1_nodes
@@ -290,6 +296,10 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
     #print axioms SIS.coldReads_handles
     #print axioms SIS.coldReads_run
     #print axioms SIS.coldReads_tree
+    #print axioms SIS.coldReads_run_noD
+    #print axioms SIS.coldReads_tree_noD
+    #print axioms SIS.removedAt_bound
+    #print axioms SIS.coldReads_tree_drop
 
 Each prints `[propext, Classical.choice, Quot.sound]`, or a part of it
 (`LM_cutTo`, `T3_section` and `T3_restarts` need no `Classical.choice`).
@@ -583,6 +593,15 @@ its section in sis-model.md.
   (`coldReads_run`); with TREE, H + 1 nodes for each node a transaction
   creates, gives an entry, touches or makes unreachable (`removedAt`,
   `coldReads_tree`).
+* SIS/BoundColdDrop.lean, SIS/BoundColdDTheorems.lean (007-03, step 6). A
+  cold start's reads without the |D| term, with BergDB's test and TREE
+  (`coldReads_run_noD`, `coldReads_tree_noD`); an assumption on BergDB's tree,
+  that a change drops no subtree (`DropStep`, `DropRunOK`, with the live
+  children a node loses, `lostLive`), by which a change makes at most as many
+  nodes unreachable as it adds entries (`removedAt_bound`); and the reads
+  without `removedAt` (`coldReads_tree_drop`).
+* SIS/BoundColdDropExample.lean: a change, with one entry, that makes six nodes
+  unreachable in a run that meets the assumptions and TREE, but not `DropStep`.
 
 The proofs, in SIS/Proof/ (not needed for reading the statements):
 
@@ -929,6 +948,11 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
   (`lazyStartup_next`); on a run's stream the rerun's paths are the run's
   (`rerunReach_st`) and its gd's are D (`sum_gd_eq_D`); with TREE a writer
   path has H + 1 nodes per node changed (`pathOf_count`).
+* BoundColdD. The rerun keeps the lazy startup's invariant, by which the
+  nodes of gd(j) are canonical before step 3 comes to them, and gives out per
+  transaction its writer's paths and new nodes (`rerun_fold_next`); a node
+  made unreachable lost its live parent pointer at a node given entries
+  (`removedAt_le_adds`).
 
 Not trusted, tests only:
 
@@ -1231,7 +1255,8 @@ run):
   `T4_debt_java_count`, `T4_debt_java_tree`, `T4_debt_java_restarts`,
   `T4_debt_java_height`, `T4_debt_java_height_count`;
   2026-11-13); a cold start's reads (`coldReads_lazy`,
-  `coldReads_handles`, `coldReads_run`; 2026-11-13).
+  `coldReads_handles`, `coldReads_run`, `coldReads_run_noD`,
+  `coldReads_tree_noD`, `removedAt_bound`, `coldReads_tree_drop`; 2026-11-13).
 
 Checked by running: the `#guard`s of `lake build`, the random runs of
 `sistest`, `phystest` and `reclaimtest` (Build and run), and Java's traces
@@ -1242,9 +1267,8 @@ Not done:
 * The bounds (bergdb item 007): T4 for BergDB's still-dirty test counted
   without an assumption on the pointer parents (`T4_debt_java_tree` takes Q;
   SIS/BoundT4JavaExample.lean shows that the last sections alone do not bound
-  D), and a bound on the nodes a transaction makes unreachable (`removedAt`,
-  in `coldReads_tree`; one per split in BergDB, not an assumption of the
-  model). T3 for
+  D); `DropStep`, which bounds the nodes a transaction makes unreachable
+  (`removedAt_bound`), is an assumption, not checked on Java's runs. T3 for
   BergDB's take is proved without its record limit (bergdb 007-08). The stream's meta blocks are
   not modelled either, but they make no difference to the take: when it
   runs, the stream's length is where the new record begins (bergdb 005-68).
