@@ -12,7 +12,8 @@
 #   G4 (back to empty, 023-03's T1): n keys put and deleted, then a drive of
 #      40 R; kept, key nodes, dead klongs, resident objects, handles, the heap,
 #      the cache's table slots (ST6, since 024-33), at most 2 times a
-#      hello-world twin's.
+#      hello-world twin's; the lag, the drive until kept stays at most twice the
+#      twin's, at most 2 R (bergdb 026-11).
 #   G5 (back to empty by maintain(), bergdb 024-32): as G4, with a drive of 20 R
 #      of maintain() calls and no writes; kept at most 2 times the twin's plus
 #      600 kB, the calls quiet in the last quarter, the rest as G4 (counts of
