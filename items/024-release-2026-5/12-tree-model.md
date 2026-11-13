@@ -1610,6 +1610,23 @@ and its status:
       x's parent pointing its klong to it). The counts of a space split's
       halves are `halves_lastVersionGivenDel_live_fill`
       (`SplitLiveFill.lean`).
+    - Every split step of the cascade keeps `LiveEdges` (latest, 00:44;
+      `LiveSteps.lean`). Each step lemma takes the hypotheses of cost's
+      matching step of the writer's tree and uses its reach, then adds the
+      counts:
+      - `liveEdges_timeSplit_gen` and `liveEdges_rootTimeStep`: the kinds
+        kept, no live klong lost.
+      - `liveEdges_spaceSplit_gen` and `liveEdges_spaceInPlaceStep`.
+      - `liveEdges_segSpaceStep` and `liveEdges_segSpaceInPlaceStep`.
+      - `liveEdges_rootSpaceStep` and `liveEdges_rootSpaceInPlaceStep`.
+      - `liveEdges_updN_sub`, a time split in place.
+      The halves must be `HalfOK` (a live klong, two, and m), and a new
+      inner root needs two live klongs. Common to all is
+      `liveEdges_of_sim`.
+    - Left for (2) and (3c): the walk of the cascade, with these steps in
+      place of cost's in `writerWP_appendKlongs_chainG`, with the halves'
+      counts from `halves_lastVersionGivenDel_live_fill`. Then the
+      access-path wrapper, as `writerWP_put_accessPathR`.
     - `LiveCounts` was checked on runs within reach with the merges on
       (`12-tree-model/live-counts-check.lean.txt`). The parameters were
       record format 7's thresholds at node sizes 8, 10 and 14 (m = 2, 2
