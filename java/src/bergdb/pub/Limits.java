@@ -1,6 +1,5 @@
 package bergdb.pub;
 
-import bergdb.core.Db;
 import bergdb.pubimp.PubKeys;
 
 /**
@@ -50,9 +49,9 @@ import bergdb.pubimp.PubKeys;
  * index entries of the objects it puts: an object put at a key of a directory with k
  * indexes is up to 1 + 2k operations. The package's Limits gives the count.</p>
  *
- * <p>The constants are the Core's, Db's, by reference, and compile-time constants: code
- * compiled against them keeps the numbers of its release, which is safe, as a later
- * release only raises a limit.</p>
+ * <p>The constants are the Core's, by reference, and compile-time constants: code compiled
+ * against them keeps the numbers of its release, which is safe, as a later release only
+ * raises a limit.</p>
  *
  * @author Frans Lundberg
  */
@@ -66,7 +65,7 @@ public final class Limits {
      * its objects. A delete counts whether its key has a value or not. A transaction over it
      * is refused at its commit with DbException (bergdb 024-17, L1).
      */
-    public static final int MAX_OPERATIONS = Db.MAX_OPERATIONS;
+    public static final int MAX_OPERATIONS = PubKeys.MAX_OPERATIONS;
 
     /**
      * L2: the most bytes of a key as stored, 111: its UTF-8, and one byte more for each part,
@@ -74,7 +73,7 @@ public final class Limits {
      * a put() or delete() of a longer key throws IllegalArgumentException, as checkKey() does
      * (bergdb 024-17, L2).
      */
-    public static final int MAX_KEY_BYTES = Db.MAX_KEY_BYTES;
+    public static final int MAX_KEY_BYTES = PubKeys.MAX_KEY_BYTES;
 
     /**
      * L3: the most bytes of the keys of a transaction, 56 KiB, 57,344 bytes, the keys of its
@@ -82,7 +81,7 @@ public final class Limits {
      * BergDB's own longer keys. A transaction over it is refused at its commit with
      * DbException (bergdb 024-17, L3).
      */
-    public static final int MAX_TRANS_KEY_BYTES = Db.MAX_TRANS_KEY_BYTES;
+    public static final int MAX_TRANS_KEY_BYTES = PubKeys.MAX_TRANS_KEY_BYTES;
 
     /**
      * L4: the most bytes of a value as stored, 8 MiB, 8,388,608 bytes: a byte[]'s bytes, a
@@ -90,13 +89,13 @@ public final class Limits {
      * IllegalArgumentException; a larger file is put in chunks, under keys of their own
      * (bergdb 024-17, L4).
      */
-    public static final int MAX_VALUE_BYTES = Db.MAX_VALUE_BYTES;
+    public static final int MAX_VALUE_BYTES = PubKeys.MAX_VALUE_BYTES;
 
     /**
      * L5: the most bytes of the keys and values of a transaction, 32 MiB. A transaction over
      * it is refused at its commit with DbException (bergdb 024-17, L5).
      */
-    public static final long MAX_TRANS_BYTES = Db.MAX_TRANS_BYTES;
+    public static final long MAX_TRANS_BYTES = PubKeys.MAX_TRANS_BYTES;
 
     /**
      * L6: the most bytes of an object's levels in an entry of an index, 111, as a key's. The
@@ -104,7 +103,7 @@ public final class Limits {
      * of its directory are longer is refused at its commit with IllegalArgumentException
      * (bergdb 024-17, L6; 024-26, U26-3).
      */
-    public static final int MAX_LEVEL_BYTES = Db.MAX_KEY_BYTES;
+    public static final int MAX_LEVEL_BYTES = PubKeys.MAX_LEVEL_BYTES;
 
     /**
      * The bytes of a key as stored, to compare with MAX_KEY_BYTES: its UTF-8, and one byte

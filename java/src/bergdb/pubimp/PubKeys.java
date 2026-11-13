@@ -21,6 +21,30 @@ public class PubKeys {
     public static final char FILE_PREFIX = '-';
     
     public static final char DIR_PREFIX = 'd';
+
+    // ======== Limits (bergdb 026-02, D3) ========
+    // The limits of bergdb.pub.Limits, the Core's Db's by reference, here so that the package
+    // pub does not depend on core (its package.html; Frans, 2026-11-13, 09:32): as Factory
+    // reaches pubimp for a DatabaseBuilder, Limits reaches it for these. Compile-time
+    // constants; L6 is IndexKeys', which the index code checks.
+
+    /** L1, Db.MAX_OPERATIONS (bergdb 024-17). */
+    public static final int MAX_OPERATIONS = Db.MAX_OPERATIONS;
+
+    /** L2, Db.MAX_KEY_BYTES, which checkKeyBytes() checks (bergdb 024-17). */
+    public static final int MAX_KEY_BYTES = Db.MAX_KEY_BYTES;
+
+    /** L3, Db.MAX_TRANS_KEY_BYTES (bergdb 024-17). */
+    public static final int MAX_TRANS_KEY_BYTES = Db.MAX_TRANS_KEY_BYTES;
+
+    /** L4, Db.MAX_VALUE_BYTES (bergdb 024-17). */
+    public static final int MAX_VALUE_BYTES = Db.MAX_VALUE_BYTES;
+
+    /** L5, Db.MAX_TRANS_BYTES (bergdb 024-17). */
+    public static final long MAX_TRANS_BYTES = Db.MAX_TRANS_BYTES;
+
+    /** L6, IndexKeys.MAX_LEVEL_BYTES, Db.MAX_KEY_BYTES (bergdb 024-17). */
+    public static final int MAX_LEVEL_BYTES = IndexKeys.MAX_LEVEL_BYTES;
     
     /**
      * Converts a ukey to an ikey according to doc/2013-key-encoding.txt.

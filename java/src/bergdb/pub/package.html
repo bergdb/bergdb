@@ -460,10 +460,9 @@ encrypted, and writes nothing; the release notes of 2026.4 say how to move its d
 
 <h3 id="dependencies">The package's dependencies</h3>
 
-<p>Depends on: common, core, nanotest, pub.util, pubimp. Only test code (the @Nano methods)
-uses nanotest. Limits takes its constants from core's Db, by reference (bergdb 026-02).
-Factory uses pubimp to create a DatabaseBuilder: the circular package dependency pub ->
-pubimp -> pub is by design. Time also uses pubimp's TimeResolver, and
+<p>Depends on: common, nanotest, pub.util, pubimp. Only test code (the @Nano methods)
+uses nanotest. Factory uses pubimp to create a DatabaseBuilder: the circular package
+dependency pub -> pubimp -> pub is by design. Time also uses pubimp's TimeResolver, and
 DbObject and its value classes pubimp's ObjectFormat (the codec of the stored object format)
 and DataObjects (the conversion of Data Objects; bergdb 020-10, step B3).</p>
 
