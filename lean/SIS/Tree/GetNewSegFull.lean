@@ -1,5 +1,6 @@
 import SIS.Tree.GetPutPath
 import SIS.Tree.GetNewSegs
+import SIS.Tree.GetNewSegsTree
 
 set_option autoImplicit false
 
@@ -298,11 +299,14 @@ theorem writerWP_put_newSegFullR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
         ∃ rest', key' = pre ++ c0 :: rest') ∧
       ∀ c', (L, c') ∉ fromVisits (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey) :
     WriterWP (putKv (.put (pre ++ c0 :: tail) h)) c w (fun _ w' =>
-      (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
+      TreeOK (wNode c.p base w') c.i w'.top.rootKey ∧ w'.taken = w.taken ∧
+      (∀ z, TReach (wNode c.p base w') c.i w'.top.rootKey z →
+        TReach (wNode c.p base w) c.i w.top.rootKey z ∨ w.next ≤ z) ∧
+      ((SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
         NoNewRootG c (wNode c.p base w) w.top.rootKey) → ∀ key', keyWf key' = true →
       wGet c.p c.i base w' key' =
         if Op.key (.put (pre ++ c0 :: tail) h) == key' then Op.value (.put (pre ++ c0 :: tail) h)
-        else wGet c.p c.i base w key') := by
+        else wGet c.p c.i base w key')) := by
   obtain ⟨hidn, hidv, hidt, hidvals, hidr⟩ := hids
   have hfuel : 1 ≤ c.p.fuel := by unfold Params.fuel; omega
   have hwfR : ∀ x xn, ReachS (wNode c.p base w) c.i w.top.rootKey x →
@@ -475,11 +479,14 @@ theorem writerWP_put_newSegFullR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
       WriterWP pathSize c ws1 (fun a1 w' =>
         WriterWP (appendKlongs (a1 - 1) L [(c0, w3.next)]) c w' (fun _ w'' =>
           WriterWP (putSegs (pre ++ c0 :: tail) (some h) tail w3.next) c w'' (fun _ w' =>
-            (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
+            TreeOK (wNode c.p base w') c.i w'.top.rootKey ∧ w'.taken = w.taken ∧
+            (∀ z, TReach (wNode c.p base w') c.i w'.top.rootKey z →
+              TReach (wNode c.p base w) c.i w.top.rootKey z ∨ w.next ≤ z) ∧
+            ((SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
               NoNewRootG c (wNode c.p base w) w.top.rootKey) →
             ∀ key', keyWf key' = true → wGet c.p c.i base w' key' =
               if Op.key (.put (pre ++ c0 :: tail) h) == key' then Op.value (.put (pre ++ c0 :: tail) h)
-              else wGet c.p c.i base w key'))) := by
+              else wGet c.p c.i base w key')))) := by
     intro ws1 g1 g2 g3 g4 g5 g6
     have hws1N : wNode c.p base ws1 = updN (wNode c.p base w) w.next ⟨true, []⟩ := by
       rw [wNode_append_updN c.p base w3 ws1 _ g1 g3 hfree0
@@ -592,9 +599,37 @@ theorem writerWP_put_newSegFullR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
       cases h' : w3.nodes.lookup z with
       | none => rfl
       | some _ => have := hsrcw3 z (by rw [h']; rfl); omega
-    refine writerWP_mono (writerWP_putSegs_new c base (pre ++ c0 :: tail) h hM hfuel tail htail wf1
-      w.next hlkc htkc (by omega) hfreshc) ?_
-    rintro _ wf ⟨k1, k2, _, k4, k5, _, k7, k8⟩
+    have hRw : ∀ z, TReach (wNode c.p base w) c.i w.top.rootKey z → z < w.next := by
+      intro z hz
+      induction hz with
+      | root => exact hidr
+      | link _ hl _ => exact hlinksAll _ _ _ hl
+    have hRlt1 : ∀ z, TReach (wNode c.p base wf1) c.i wf1.top.rootKey z → z < wf1.next := by
+      intro z hz
+      rcases hreach1 z hz with h1 | ⟨_, h1⟩
+      · rw [hws1N, hw1top] at h1
+        simp only [List.foldl_cons, List.foldl_nil] at h1
+        rcases tReach_newSegStepN (wNode c.p base w) c.i w.top.rootKey L w.next n c0 hn (hwfG _ _ hn)
+          (htimesG _ _ hn) (hfreshN _ (Nat.le_refl _)) (by omega) z h1 with h2 | h2
+        · have := hRw z h2; omega
+        · omega
+      · exact h1
+    refine writerWP_mono (writerWP_and (writerWP_putSegs_new c base (pre ++ c0 :: tail) h hM hfuel tail
+      htail wf1 w.next hlkc htkc (by omega) hfreshc) (writerWP_putSegs_new_tree c base (pre ++ c0 :: tail)
+      h hM hfuel tail htail wf1 w.next hlkc htkc (by omega) hfreshc hT1 hRlt1)) ?_
+    rintro _ wf ⟨⟨k1, k2, _, k4, k5, _, k7, k8⟩, ⟨t1, t2, _, t4⟩⟩
+    refine ⟨t1, by rw [t2, hft, hw1t], ?_, ?_⟩
+    · intro z hz
+      rcases t4 z hz with h1 | h1
+      · rcases hreach1 z h1 with h2 | ⟨h2, _⟩
+        · rw [hws1N, hw1top] at h2
+          simp only [List.foldl_cons, List.foldl_nil] at h2
+          rcases tReach_newSegStepN (wNode c.p base w) c.i w.top.rootKey L w.next n c0 hn (hwfG _ _ hn)
+            (htimesG _ _ hn) (hfreshN _ (Nat.le_refl _)) (by omega) z h2 with h3 | h3
+          · exact Or.inl h3
+          · exact Or.inr (by omega)
+        · exact Or.inr (by omega)
+      · exact Or.inr (by omega)
     intro hq key' hkey'
     unfold wGet
     -- the trees and values involved
@@ -856,7 +891,7 @@ theorem writerWP_put_newSegFull (c : Ctx) (base : View BVal) (hvc : ViewCoherent
     htimesG hT hlinksAll hnoval hrangeG hlenG (fun x xn hx hxn hnr hsp q qn K hq hqn hk =>
       Or.inl ((hspaceG x xn hx hxn hnr hsp).2 q qn K hq hqn hk))
     hcur)
-    (fun _ _ hp => hp (Or.inr ⟨fun rn hrn hnr => Nat.le_of_not_lt (fun hsp =>
+    (fun _ _ hp => hp.2.2.2 (Or.inr ⟨fun rn hrn hnr => Nat.le_of_not_lt (fun hsp =>
       (hspaceG _ _ TReach.root hrn hnr hsp).1 rfl), fun x xn hx hxn hnr hsp =>
       (hspaceG x xn hx hxn hnr hsp).2⟩))
 

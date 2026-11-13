@@ -159,6 +159,7 @@ import SIS.Tree.GetCaseBridge
 import SIS.Tree.GetOpAssembly
 import SIS.Tree.GetOpCases
 import SIS.Tree.ChainShape
+import SIS.Tree.GetNewSegsTree
 import SIS.Tree.WriterTreeInnerHalves
 import SIS.Tree.WriterTreeSpaceSpace
 import SIS.Tree.WriterTreeDelFull
