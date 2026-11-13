@@ -1500,6 +1500,37 @@ and its status:
       - Open: `CollapseStepOKF3` asks for the room (part 1) and the walk's
         ranges after `takeBackRoot` and `replaceRoot` (parts 2 and 3).
       - Open: `DelStepsOKF3` is putinv's `DelStepsOKF` on `DelInvF3`.
+      - `CollapseStepOKF3` follows from its room part alone
+        (`collapseStepOKF3_of_room`, latest, 23:23).
+      - The room part is not true in general: a segment leaf can be full.
+        Item 3 (latest, in progress) replaces it by a replaceRoot step with
+        the leaf's cascade. That step takes SegFits after the cascade as a
+        premise (cost's HeightInv route). It also takes a named premise,
+        owned by the take-back: `CollapseUnlinkOK`. When the segment root x
+        has a klong of the transaction (`n.lastTime = some c.i`), the tree
+        with x's previous version, `updN (wNode c.p base v) x (n.toPrev
+        (c.i - 1))`, is a tree from the space root, and that version names
+        ids below the next id. `unlink x` leaves that tree before the
+        leaf's cascade starts.
+      - `CollapseUnlinkOK` was checked on runs within reach with the merges
+        on (`12-tree-model/collapse-unlink-check.lean.txt`). The runs had
+        two and three segments, first-segment leaves of 1 to 13 values, and
+        2 to 4 transactions of puts and deletes; M was 8 or 10. It held at
+        all 96 replaceRoots at a segment root, 32 of them with a full
+        segment leaf. In every one, x had a klong of the transaction.
+      - Item 3 is done (latest, 23:48; `CollapseCascade.lean`):
+        - `writerWP_replaceRoot_seg_cascadeF` is the replaceRoot step with
+          the leaf's cascade.
+        - `writerWP_collapseRoot_collF4` is the collapse loop without
+          `hroom`, carrying the books and the kinds. Its times and values
+          come from `PutInvG`, its children from the kinds.
+        - `opGetCaseOK_delMergeF4` is case (4) with `CollapseStepOKF4`, which
+          has no room part and two parts instead: SegFits after a
+          replaceRoot at a segment root (cost's HeightInv route) and
+          `CollapseUnlinkOK` (the take-back's).
+        - The open obligations of case (4) are now `DelStepsOKF3` (putinv),
+          `MergeStepOKF3`'s untaken and SegFits parts, `CollapseStepOKF4`
+          and TP4 (from the take-back's run-level induction).
     Removed (latest, 23:08, as agreed with cost and the coordinator, after
     putinv's take-back moved to F2 at 65b84e5b): `DescentOKF`,
     `MergePathCond`, `opGetCaseOK_delMergeF`, `writerWP_mergeUp_delF`,

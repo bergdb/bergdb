@@ -168,6 +168,7 @@ import SIS.Tree.MergeGOrd
 import SIS.Tree.RangeMergeF2
 import SIS.Tree.RangeMergeRoot
 import SIS.Tree.DelMergeCaseF3
+import SIS.Tree.CollapseCascade
 import SIS.Tree.WriterTreeInnerHalves
 import SIS.Tree.WriterTreeSpaceSpace
 import SIS.Tree.WriterTreeDelFull
