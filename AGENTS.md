@@ -15,7 +15,7 @@ a snapshot of the former `docs/` of 2026-11-12.
 - Experiments, plans, progress logs and reports belong in an item, not in
   `java/` or `lean/`.
 - The maintained descriptions are items, kept up to date with the code:
-  027 (the algorithms of BergDB), 027-02 (the trace format) and 024-02
+  027 (the algorithms of BergDB), 027-02 (the trace format) and 027-03
   (the stream format). The other former files of `docs/` are 027-01 since
   2026-11-12, a snapshot that is not updated. A new document is a subitem.
 - `docs/` holds only `docs/log.md`, the development log (Frans, 2026-11-12:
