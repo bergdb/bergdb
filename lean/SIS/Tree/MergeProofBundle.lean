@@ -178,3 +178,4 @@ import SIS.Tree.RangeMerge
 import SIS.Tree.RangeNewSeg
 import SIS.Tree.RangeUp
 import SIS.Tree.RangeChainG
+import SIS.Tree.RangeDelChainG
