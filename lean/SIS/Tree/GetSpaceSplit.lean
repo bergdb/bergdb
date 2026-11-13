@@ -324,7 +324,7 @@ theorem getEqR_split (Nm N2 : NodeId → Option KNode) (t : Time) (r0 L q F S : 
     (hsame : ∀ x, x ≠ L → x ≠ q → x ≠ F → x ≠ S → N2 x = Nm x)
     (hnotL : ∀ x xn c z, ReachS Nm t r0 x → x ≠ q → Nm x = some xn → (c, z) ∈ xn.liveAt t → z ≠ L)
     (hnotFS : ∀ x xn c z, ReachS Nm t r0 x → Nm x = some xn → (c, z) ∈ xn.liveAt t →
-      z ≠ F ∧ z ≠ S) (c : Nat) :
+      (z ≠ L → z ≠ F) ∧ z ≠ S) (c : Nat) :
     ∀ (fu : Nat) (x : NodeId), ReachS Nm t r0 x → x ≠ L → x ≠ F → x ≠ S →
       getEqR N2 t c fu x = getEqR Nm t c fu x := by
   -- reading a leaf the split made, or L, for a compare value routed to it
@@ -371,7 +371,7 @@ theorem getEqR_split (Nm N2 : NodeId → Option KNode) (t : Time) (r0 L q F S : 
           · simp only [hL, ↓reduceIte] at hs
             rw [hs]
             have hfs := hnotFS x qn fd.c fd.y hx hNq hmem
-            exact ih fd.y hrfd hL hfs.1 hfs.2
+            exact ih fd.y hrfd hL (hfs.1 hL) hfs.2
     · have he := hsame x hxL hxq hxF hxS
       simp only [getEqR, he]
       cases hn : Nm x with
@@ -387,7 +387,8 @@ theorem getEqR_split (Nm N2 : NodeId → Option KNode) (t : Time) (r0 L q F S : 
             have hmem := KNode.searchLte_mem xn t c fd h1
             have hrfd : ReachS Nm t r0 fd.y := ReachS.step x xn fd.c fd.y hx hn hmem
             have hfs := hnotFS x xn fd.c fd.y hx hn hmem
-            exact ih fd.y hrfd (hnotL x xn fd.c fd.y hx hxq hn hmem) hfs.1 hfs.2
+            have hnL := hnotL x xn fd.c fd.y hx hxq hn hmem
+            exact ih fd.y hrfd hnL (hfs.1 hnL) hfs.2
 
 /-- What a descent finds is named by a live klong of a leaf that it reaches. -/
 theorem getEqR_leaf_link (N : NodeId → Option KNode) (t : Time) (r0 : NodeId) (cv : Nat)
@@ -431,7 +432,7 @@ theorem getFromR_split (Nm N2 : NodeId → Option KNode) (V : NodeId → Option 
     (hnotL : ∀ x xn c z, ReachS Nm t r0 x → x ≠ q → Nm x = some xn → (c, z) ∈ xn.liveAt t → z ≠ L)
     (hqL : ∀ xn c z, Nm q = some xn → (c, z) ∈ xn.liveAt t → xn.leaf = true → z ≠ L)
     (hnotFS : ∀ x xn c z, ReachS Nm t r0 x → Nm x = some xn → (c, z) ∈ xn.liveAt t →
-      z ≠ F ∧ z ≠ S) :
+      (z ≠ L → z ≠ F) ∧ z ≠ S) :
     ∀ (key : List Nat) (r : NodeId), ReachS Nm t r0 r → r ≠ L → r ≠ F → r ≠ S →
       getFromR N2 V t fuel key r = getFromR Nm V t fuel key r := by
   intro key
@@ -462,10 +463,10 @@ theorem getFromR_split (Nm N2 : NodeId → Option KNode) (V : NodeId → Option 
         have hsome : (N2 z).isSome = (Nm z).isSome := by
           by_cases hzq : z = q
           · rw [hzq]; exact hq
-          · rw [hsame z hzL hzq hfs.1 hfs.2]
+          · rw [hsame z hzL hzq (hfs.1 hzL) hfs.2]
         rw [hsome]
         split
-        · exact ih z hz hzL hfs.1 hfs.2
+        · exact ih z hz hzL (hfs.1 hzL) hfs.2
         · rfl
 
 theorem newKlongs_times (t : Time) (l : List (Nat × NodeId)) :
@@ -585,6 +586,9 @@ theorem getFromR_spaceSplit (N N2 : NodeId → Option KNode) (V V2 : NodeId → 
       rcases hreach x hx with hx' | hxv
       · exact (hfr x xn c z hx' hn hz).2
       · subst hxv; rw [hNv] at hn; cases hn
+  have hnotFS' : ∀ x xn c z, ReachS Nm i root x → Nm x = some xn → (c, z) ∈ xn.liveAt i →
+      (z ≠ L → z ≠ F) ∧ z ≠ S := fun x xn c z hx hn hz =>
+    ⟨fun _ => (hnotFS x xn c z hx hn hz).1, (hnotFS x xn c z hx hn hz).2⟩
   -- the halves
   have hlv := KNode.lastVersion_eq_newKlongs n i
   rw [hnl] at hlv
@@ -674,9 +678,9 @@ theorem getFromR_spaceSplit (N N2 : NodeId → Option KNode) (V V2 : NodeId → 
     rw [hN2 x h1 h2 h3 h4, hNm x h1]
   have hsim := getFromR_split Nm N2 V2 i fuel root L q F S hwfm
     (fun c x hx hxL hxF hxS => getEqR_split Nm N2 i root L q F S qn _ m f s r.1 hNmq hql hN2q hq2l
-      hqsearch hNmL hml hN2F hfl hN2S hsl hleafF hleafS hsame hnotL hnotFS c fuel x hx hxL hxF hxS)
+      hqsearch hNmL hml hN2F hfl hN2S hsl hleafF hleafS hsame hnotL hnotFS' c fuel x hx hxL hxF hxS)
     hsame (by rw [hN2q, hNmq]; rfl) hnotL
-    (fun xn c z hxn _ hxl => by rw [hNmq] at hxn; cases hxn; rw [hql] at hxl; cases hxl) hnotFS
+    (fun xn c z hxn _ hxl => by rw [hNmq] at hxn; cases hxn; rw [hql] at hxl; cases hxl) hnotFS'
   have hs : ∀ c', c' ≠ cv → (n.searchEq i c').map (·.y) = (m.searchEq i c').map (·.y) := by
     intro c' hc'
     rw [KNode.searchEq_live n i hnwf hnt, KNode.searchEq_live m i hmwf hmt, hmlook]
