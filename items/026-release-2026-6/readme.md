@@ -81,7 +81,10 @@ Files
 * 02-public-key-check.md. 026-02, a public key check, so that a user can
   test a key (and maybe a value or a transaction) against the limits
   before a call (Frans, 2026-11-12, 09:34; from 024-27, QR1): the
-  options and a recommendation, no code yet.
+  options and a recommendation; done 2026-11-13 as decided (Frans,
+  09:11, QK1 to QK4): `bergdb.pub.Limits`, the limits as constants,
+  `keyBytes` and `checkKey`, no `levelBytes`; on branch `026-02-limits`,
+  to land.
 * 03-single-maintenance-step.md. 026-03, one maintenance step for a
   commit and for `maintain()`, and the simple form (ordinary
   transactions with filler) to consider (Frans, 2026-11-12, 13:44 and
