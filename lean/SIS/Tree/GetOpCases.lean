@@ -450,19 +450,90 @@ theorem treeCase_putNewSegFull (p : Params) (R : Struct BVal → Time → Prop)
         (ctxOf p ts).p.fuel pre w.top.rootKey) ⟨hat.2.2.2.2.2, hroom, hkeys, hnotpre⟩))
     (fun _ _ h => h.1)
 
+/-- Every klong of every node that the writer's state reads names an id below
+its next one, from the books. -/
+theorem klongsBelow_of_book (c : Ctx) (base : View BVal) (B : NodeId) (top0 : Top) (w : W)
+    (hB : PutBase c base B) (hw : PutBook c B top0 w) : KlongsBelow (wNode c.p base w) w.next := by
+  have hBn : B ≤ w.next := hw.fresh.1
+  intro x xn h cv y hk
+  rcases (wNode_cases _ _ _ _ _ h).2 with hl | ⟨_, hkn⟩
+  · rcases hw.ptrs.klongs (x, xn) (mem_of_lookup_some _ _ _ hl) cv y hk with hz' | hz'
+    · exact Nat.lt_of_lt_of_le hz' hBn
+    · obtain ⟨m, hm, he⟩ := List.mem_map.mp hz'
+      rw [← he]; exact (hw.alloc.2.2 m hm).2
+  · have := (hB.knode x xn hkn).2.2 cv y hk; omega
+
+/-- The walk's ranges and `PutInv` of (3c), for 2 ≤ M, 2 ≤ splitAbove and runs with
+their links. -/
+theorem rangeOrder_putNewSegFull (p : Params) (ts : List Tx) (tx : Tx) (hw : Within p (ts ++ [tx]))
+    (hRL : RunLinksOK p (treeRun p ts) ts.length) (z : NodeId) (top : Top)
+    (htop : topOf p (ctxOf p ts).view z = .ok top) (ops : List Op) (r : List Bool) (w : W)
+    (hpre : (ops.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w))
+    (hI : PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w)
+    (hRO : RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey)
+    (hM : 2 ≤ p.M) (hsa : 2 ≤ p.splitAbove) (pre : List Nat) (c0 h : Nat) (tail : List Nat)
+    (rk0 L : NodeId) (n : KNode)
+    (hat : NewSegAt (ctxOf p ts) (viewOf (treeRun p ts)) w pre c0 tail rk0 L n)
+    (hroom : ¬ n.size + 1 < p.M) :
+    WriterWP (putKv (.put (pre ++ c0 :: tail) h)) (ctxOf p ts) w (fun _ w' =>
+      TreeOK (wNode p (viewOf (treeRun p ts)) w') (ts.length + 1) w'.top.rootKey ∧
+      w'.taken = w.taken ∧
+      (∀ x, TReach (wNode p (viewOf (treeRun p ts)) w') (ts.length + 1) w'.top.rootKey x →
+        TReach (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey x ∨ w.next ≤ x) ∧
+      RangeOrder (wNode p (viewOf (treeRun p ts)) w') (ts.length + 1) w'.top.rootKey) := by
+  have hG := putInvG_reached p ts tx hw hRL z top htop ops r w hpre
+  have hOrd := ordG_of_rangeOrder (ctxOf p ts) _ _ hRO hI.times
+  have hKB := klongsBelow_of_book (ctxOf p ts) _ tx.base top w (putBase_of_run p ts tx hw hRL)
+    (putBook_reached p ts tx hw hRL z top htop ops r w hpre)
+  obtain ⟨hkeys, hnotpre⟩ := newSeg_leaf_keys hI pre c0 rk0 L hat.2.1 hat.2.2.1
+  exact writerWP_mono (writerWP_put_newSegFullR (ctxOf p ts) _ (viewCoherent_ctxOf p ts) pre c0
+    h tail hat.1 rk0 w hM hat.2.1 (hI.pathUntaken _) hI.ids hI.fresh hI.wf hI.times hI.tree
+    (fun u c' z ⟨un, hun, hl⟩ => hG.links u un c' z hun hl) hI.keyNoValue
+    (rangeG_of_rangeOrder (ctxOf p ts) _ _ hRO hI.times)
+    (lenG_of_splitAbove (ctxOf p ts) _ _ hsa)
+    (fun _ _ _ _ _ _ _ _ _ _ _ _ => Or.inr hOrd)
+    (newSegAt_one hat (fun L' m => m.searchEq (ctxOf p ts).i c0 = none ∧
+      ¬ m.size + 1 < (ctxOf p ts).p.M ∧
+      (∀ key', keyWf key' = true →
+        (L', c0) ∈ fromVisits (wNode (ctxOf p ts).p (viewOf (treeRun p ts)) w) (ctxOf p ts).i
+          (ctxOf p ts).p.fuel key' w.top.rootKey → ∃ rest', key' = pre ++ c0 :: rest') ∧
+      ∀ c', (L', c') ∉ fromVisits (wNode (ctxOf p ts).p (viewOf (treeRun p ts)) w) (ctxOf p ts).i
+        (ctxOf p ts).p.fuel pre w.top.rootKey) ⟨hat.2.2.2.2.2, hroom, hkeys, hnotpre⟩))
+    (fun _ _ h => ⟨h.1, h.2.1, h.2.2.1, h.2.2.2.2 hRO hOrd hKB⟩)
+
+/-- (3c), the walk's ranges. -/
+theorem rangeCase_putNewSegFull (p : Params) (R : Struct BVal → Time → Prop)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.splitAbove) :
+    OpCaseOK p R (QRange p) PutNewSegFullCase := by
+  intro ts tx hw hr z top _ htop ops op _ _ r w hpre hI hRO hP
+  obtain ⟨pre, c0, tail, h, rk0, L, n, hop, hat, hroom⟩ := hP
+  subst hop
+  exact writerWP_mono (rangeOrder_putNewSegFull p ts tx hw (hRL _ _ hr) z top htop ops r w hpre hI hRO
+    hM hsa pre c0 h tail rk0 L n hat hroom) (fun _ _ h _ => h.2.2.2)
+
+/-- (3c), `PutInv`. -/
+theorem putInvCase_putNewSegFull (p : Params) (R : Struct BVal → Time → Prop)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.splitAbove) :
+    OpCaseOK p R (QPutInv p) PutNewSegFullCase := by
+  intro ts tx hw hr z top _ htop ops op _ _ r w hpre hI hRO hP
+  obtain ⟨pre, c0, tail, h, rk0, L, n, hop, hat, hroom⟩ := hP
+  subst hop
+  intro a w' hrun hT'
+  have e1 := rangeOrder_putNewSegFull p ts tx hw (hRL _ _ hr) z top htop ops r w hpre hI hRO hM hsa pre
+    c0 h tail rk0 L n hat hroom a w' hrun
+  exact putInv_after_op p ts tx hw (hRL _ _ hr) z top htop ops r w hpre hI _ a w' hrun e1.2.1
+    e1.2.2.1 e1.2.2.2 hT'
+
 /-! ## TP10 and TP11 with these cases proved -/
 
 /-- `getOK_scanOK_of_cases_merges` with the cases above proved: for the
-parameters of `MergeParamsOK`, left of the cases are `PutInv` and the walk's
-ranges of (3c), and the writer's tree, `PutInv`, the ranges and the reading of
-(4). -/
+parameters of `MergeParamsOK`, left of the cases are the writer's tree, `PutInv`,
+the ranges and the reading of (4): the cases (1) to (3) are proved. -/
 theorem getOK_scanOK_of_cases_merges_open (p : Params) (hp : MergeParamsOK p)
     (hinv : InvPreserved p)
     (hlinks : ∀ ts, Within p ts → RunLinksOK p (treeRun p ts) ts.length)
     (htree : ∀ ts, Within p ts → TreeAt p (treeRun p ts) ts.length)
     (hfit : TxSegFitsOK p (RunOK p))
-    (i3c : OpCaseOK p (RunOK p) (QPutInv p) PutNewSegFullCase)
-    (r3c : OpCaseOK p (RunOK p) (QRange p) PutNewSegFullCase)
     (t4 : OpCaseOK p (RunOK p) (QTree p) DelMergeCase)
     (i4 : OpCaseOK p (RunOK p) (QPutInv p) DelMergeCase)
     (r4 : OpCaseOK p (RunOK p) (QRange p) DelMergeCase)
@@ -479,10 +550,10 @@ theorem getOK_scanOK_of_cases_merges_open (p : Params) (hp : MergeParamsOK p)
       (treeCase_putNewSegFull p _ hRL hM hsa)) t4
     (putInvCase_putLeafRoom p _ hRL) (putInvCase_putLeafFull p _ hRL hsa)
     (opCaseOK_putNewSeg_of_parts p _ _ (putInvCase_putNewSeg1Room p _ hRL hM)
-      (putInvCase_putNewSegsRoom p _ hRL hM) i3c) i4
+      (putInvCase_putNewSegsRoom p _ hRL hM) (putInvCase_putNewSegFull p _ hRL hM hsa)) i4
     (rangeCase_putLeafRoom p _) (rangeCase_putLeafFull p _ hRL hsa)
     (opCaseOK_putNewSeg_of_parts p _ _ (rangeCase_putNewSeg1Room p _ hM)
-      (rangeCase_putNewSegsRoom p _ hM) r3c) r4
+      (rangeCase_putNewSegsRoom p _ hM) (rangeCase_putNewSegFull p _ hRL hM hsa)) r4
     c4
 
 end SIS.Tree
