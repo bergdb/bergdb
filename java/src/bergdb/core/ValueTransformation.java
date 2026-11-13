@@ -12,18 +12,23 @@ public interface ValueTransformation {
      * Transform the value 'inputValue' to a new byte array as output. The previous value
      * for the key is available and may be used to compute the new value.
      * 
-     * <p>The implementation of this method must not throw any exception, as for
-     * KeyTransformation. It runs after the transaction's go point, in Db.putKvs(), where
-     * nothing refuses a transaction; an exception there fails the database (bergdb 005-01).
-     * The previous value is the one before the transaction.</p>
+     * <p>It runs in Db.execute(), under the write lock, at the transaction's time, after the
+     * key transformations and before the transaction's go point (Db.transformValues; bergdb
+     * 026-06): the transformations of a transaction run one at a time, in the order of the
+     * transaction's keys as the key transformations left them. The previous value is the one
+     * before the transaction. It should be quick: other writers wait for the lock.</p>
      * 
-     * <p>Its result is not size-checked (bergdb 015-51). The check of the transaction's size
-     * before the go point (Db.checkSize, bergdb 005-17) counts inputValue: the result must
-     * keep the transaction's value nodes, with its other values, within
-     * StoredTrans.valueLimit(), 7/8 of the record limit (about 1.88 GB), as a value given
-     * directly must. A larger result is the caller's fault, as an exception is: one whose
-     * record does not fit the record limit fails the database when the record is made,
-     * and the transaction is not in the stream.</p>
+     * <p>A transformation that throws a RuntimeException refuses the transaction with a
+     * DbException whose cause is the exception; nothing of the transaction is written, and the
+     * database goes on (bergdb 010-04, R5). Its result is checked as a value given directly:
+     * a value of more than Db.MAX_VALUE_BYTES (8 MiB, L4), or keys and values of the
+     * transaction of more than Db.MAX_TRANS_BYTES (32 MiB, L5), counted with the results,
+     * refuse the transaction in the same way (Db, "Limits"). A refused transaction is left as
+     * it was before the call: each KV with a value transformation has its value as given
+     * again, so that the Trans can be run again. An Error, such as an OutOfMemoryError, fails
+     * the database, as anywhere in a call (Db, "Errors"). Until bergdb 026-06 (release 2026.5)
+     * the transformation ran after the go point, and an exception or a result over L4 failed
+     * the database.</p>
      * 
      * @param transTime The time of the transaction. Also functions as a unique transaction
      * ID.

@@ -264,8 +264,8 @@ import bergdb.stream.SalsaStream;
  * transformation makes longer, by execute(), with a DbException (L2).</li>
  * <li><b>A value</b> has at most MAX_VALUE_BYTES = 8 MiB, 8,388,608 bytes, refused by the
  * Trans.Builder call that takes it with an IllegalArgumentException (L4). A value
- * transformation's result over it fails the database, as an exception of the transformation
- * does (ValueTransformation).</li>
+ * transformation's result over it is refused by execute(), with a DbException, as an
+ * exception of the transformation is (ValueTransformation; bergdb 026-06).</li>
  * <li><b>A transaction</b> has at most MAX_OPERATIONS = 500 operations, the KVs it puts or
  * deletes, one a key (Trans.Builder.build()) (L1): a delete counts whether its key has a value
  * or not, though one of a key without a value stores nothing (getTrans()); at most MAX_TRANS_KEY_BYTES = 56 KiB,
@@ -283,8 +283,9 @@ import bergdb.stream.SalsaStream;
  * stay, as refusals before the go point. A transaction with key or value transformations
  * can still meet 005-31's: the check counts a transformed KV coarsely, from the stream's
  * length (at node size 62, 500 such KVs of 111-byte keys on a stream of 258 kB; review
- * rev24, R3). A value transformation's result is not counted by L5, and one whose record
- * does not fit fails the database (005-17; ValueTransformation).</p>
+ * rev24, R3). A value transformation's result counts for L5, and for 005-17's size,
+ * as a value given directly: execute() checks them after the transformations, before the go
+ * point (bergdb 026-06; ValueTransformation).</p>
  * 
  * <p><b>Errors</b> (2026-11-06, bergdb 019-10; 010-01, P7). BergDB assumes a sound
  * environment: correct storage, a stream that returns the bytes appended to it, and enough
@@ -367,8 +368,8 @@ public class Db implements AutoCloseable {
     
     /**
      * L4: the most bytes of a value, 8 MiB (bergdb 024-17, L4). Checked by the Trans.Builder
-     * call that takes the value; a value transformation's result over it fails the database
-     * (024-17, QL6; ValueTransformation).
+     * call that takes the value; a value transformation's result over it refuses the
+     * transaction, by execute(), with a DbException (bergdb 026-06; ValueTransformation).
      */
     public static final int MAX_VALUE_BYTES = 8 * 1024 * 1024;
     
@@ -2625,7 +2626,10 @@ public class Db implements AutoCloseable {
      *             If the transaction is refused before its go point, and the database goes
      *             on: it passes a limit of "Limits" above, its operations (L1), its keys'
      *             bytes (L3) or its keys' and values' bytes (L5), or a key transformation
-     *             gives a key over L2 or the keys over L3 (bergdb 024-17, 024-24); a KV is at
+     *             gives a key over L2 or the keys over L3 (bergdb 024-17, 024-24); a value
+     *             transformation throws a RuntimeException (the cause), or gives a value over
+     *             L4, or values that take the transaction over L5 or 005-17's size, and its
+     *             KVs are left as they were (bergdb 026-06; ValueTransformation); a KV is at
      *             a key that the Core writes itself, as written (putLongKey(), deleteLongKey())
      *             or as a key transformation gave it ("The Core's own keys are refused";
      *             bergdb 024-37); it is too
@@ -2737,7 +2741,7 @@ public class Db implements AutoCloseable {
         }
         t.warmupGetData.pointerFollower = x.getData.pointerFollower;
         warmup(t);
-        final long ttBefore = t.tt;         // a refusal gives it back (transformKeys)
+        final Before before = new Before(t.tt);     // a refusal gives it back (giveBack)
         
         writersWaiting.incrementAndGet();
         synchronized (writeLock) {
@@ -2780,7 +2784,15 @@ public class Db implements AutoCloseable {
             // The key transformations, at t.tt, and the refusal of a transaction that they
             // leave with two KVs at one key (bergdb 024-16): before the go point, so that the
             // refusal leaves everything as it was. Until 024-16 they ran in putKvs().
-            final Kv[] kvs = transformKeys(t, ttBefore);
+            final Kv[] kvs = transformKeys(t, before);
+            
+            // The value transformations of a user transaction, at t.tt, and the refusal of one
+            // that throws or whose values pass the limits (bergdb 026-06; 010-04, R5): before
+            // the go point too. Until 026-06 they ran in putKvs(), where that failed the
+            // database. Reclaim's row stays there (transformValues()).
+            if (!t.isInternal()) {
+                transformValues(t, kvs, before);
+            }
             
             // The go point. From here nothing refuses the transaction and nothing is undone:
             // whatever throws fails the database (bergdb 005-01).
@@ -3320,24 +3332,18 @@ public class Db implements AutoCloseable {
         // The KVs in key order, one a key, after the key transformations (transformKeys; bergdb
         // 023-08, section 7, Q4; 024-16): the index gets a transaction's operations in the order
         // of their keys, whatever the order a transformation left them in, so two transactions
-        // with the same operations run the same and write the same stream. Value
-        // transformations stay in the put loop: each reads the previous value at tt, as before.
+        // with the same operations run the same and write the same stream. A user
+        // transaction's value transformations ran before the go point, in this order
+        // (transformValues(), bergdb 026-06); an internal transaction's, the row of a reclaim
+        // step, run in the put loop: each reads the previous value at tt, as before.
         // The record holds the KVs put, and the startup's rerun applies them in their stored
         // order, this order, and does not sort.
         for (int i = 0; i < kvs.length; i++) {
             Kv kv = kvs[i];
 
-            if (kv.valueTransformation != null) {
+            if (kv.valueTransformation != null && x.trans.isInternal()) {
                 final byte[] previousValue = this.getOne(x.trans.tt, kv.getKey(), x.getData);
                 kv.transformValue(x.trans.tt, previousValue);
-                final byte[] v = kv.getValue();
-                if (v != null && v.length > MAX_VALUE_BYTES && !x.trans.isInternal()) {
-                    // After the go point: the database fails (bergdb 024-17, QL6; 015-51).
-                    throw new IllegalStateException("A value transformation gave a value of "
-                            + v.length + " bytes, more than " + MAX_VALUE_BYTES + " (bergdb "
-                            + "024-17, L4): the caller's fault, as an exception of the "
-                            + "transformation; the database fails (ValueTransformation).");
-                }
             }
 
             final TestHooks kvHooks = testHooks;
@@ -3369,8 +3375,10 @@ public class Db implements AutoCloseable {
      *
      * <p>A refusal leaves everything as it was before the call: each transformed KV gets its
      * key as written back, and its write hash, so that the Trans can be run again, and t.tt
-     * gets ttBefore, its value before the call; the time is given back
-     * (DbClock.transactionCancel()); nothing has been put, written or recorded.
+     * gets its value before the call, before.tt; the time is given back
+     * (DbClock.transactionCancel()); nothing has been put, written or recorded (giveBack()).
+     * The transformed keys and their write hashes as written are kept in 'before', for a
+     * refusal by transformValues() too.
      * A transaction that commits keeps its transformed keys, as before. A transformation that
      * throws fails the database, as when it ran after the go point (KeyTransformation).</p>
      *
@@ -3379,7 +3387,7 @@ public class Db implements AutoCloseable {
      *      MAX_TRANS_KEY_BYTES (L3) (bergdb 024-24).
      * @throws DbFailedException  If a transformation threw.
      */
-    private Kv[] transformKeys(final Trans t, final long ttBefore) {
+    private Kv[] transformKeys(final Trans t, final Before before) {
         final Kv[] kvs = t.kvs;
         long[][] written = null;                // the keys as written of the KVs transformed
         long[] hashes = null;                   // and their write hashes, by index
@@ -3391,6 +3399,8 @@ public class Db implements AutoCloseable {
                     if (written == null) {
                         written = new long[kvs.length][];
                         hashes = new long[kvs.length];
+                        before.keys = written;
+                        before.hashes = hashes;
                     }
                     written[i] = kv.getKey();
                     hashes[i] = t.writeKeyHashes[i];
@@ -3415,7 +3425,7 @@ public class Db implements AutoCloseable {
                         + shown(sorted[i].getKey()) + ". The transaction is refused; "
                         + "nothing of it is written, and the database goes on: a "
                         + "transaction has one operation a key (bergdb 024-16).";
-                giveBack(t, kvs, written, hashes, ttBefore);
+                giveBack(t, before);
                 throw new DbException(message);
             }
             // The limits on the keys as transformed (bergdb 024-17, 5.1; 024-24): L2 for each
@@ -3432,7 +3442,7 @@ public class Db implements AutoCloseable {
                             + " gave a key of " + k + " bytes, more than " + MAX_KEY_BYTES
                             + " (bergdb 024-17, L2). The transaction is refused; nothing of "
                             + "it is written, and the database goes on.";
-                    giveBack(t, kvs, written, hashes, ttBefore);
+                    giveBack(t, before);
                     throw new DbException(message);
                 }
             }
@@ -3444,7 +3454,7 @@ public class Db implements AutoCloseable {
                     final String message = "The key transformation of " + shown(written[i])
                             + " gave a key of the Core's own. " 
                             + Trans.coreKeyMessage(kvs[i].getKey());
-                    giveBack(t, kvs, written, hashes, ttBefore);
+                    giveBack(t, before);
                     throw new DbException(message);
                 }
             }
@@ -3453,7 +3463,7 @@ public class Db implements AutoCloseable {
                         + " bytes after its key transformations, more than "
                         + MAX_TRANS_KEY_BYTES + " (bergdb 024-17, L3). The transaction is "
                         + "refused; nothing of it is written, and the database goes on.";
-                giveBack(t, kvs, written, hashes, ttBefore);
+                giveBack(t, before);
                 throw new DbException(message);
             }
         } catch (Error e) {
@@ -3463,19 +3473,150 @@ public class Db implements AutoCloseable {
     }
     
     /**
-     * Leaves a transaction that transformKeys() refuses as it was before the call: each
-     * transformed KV gets its key as written back, and its write hash; t.tt gets ttBefore,
-     * and the time is given back (DbClock.transactionCancel()).
+     * Leaves a transaction that transformKeys() or transformValues() refuses as it was before
+     * the call: each KV that a key transformation changed gets its key as written back, and
+     * its write hash; each KV with a value transformation that has run gets its value as
+     * given back (bergdb 026-06); t.tt gets before.tt, and the time is given back
+     * (DbClock.transactionCancel()).
      */
-    private void giveBack(Trans t, Kv[] kvs, long[][] written, long[] hashes, long ttBefore) {
+    private void giveBack(Trans t, Before before) {
+        final Kv[] kvs = t.kvs;
         for (int j = 0; j < kvs.length; j++) {
-            if (written[j] != null) {
-                kvs[j].setKey(written[j]);
-                t.writeKeyHashes[j] = hashes[j];
+            if (before.keys != null && before.keys[j] != null) {
+                kvs[j].setKey(before.keys[j]);
+                t.writeKeyHashes[j] = before.hashes[j];
+            }
+            if (before.values != null && kvs[j].valueTransformation != null) {
+                kvs[j].setValue(before.values[j]);
             }
         }
-        t.tt = ttBefore;
+        t.tt = before.tt;
         dbClock.transactionCancel();
+    }
+    
+    /**
+     * What a refusal under the write lock gives back to its transaction (giveBack(); bergdb
+     * 024-16, S5; 026-06): t.tt before the call; the keys as written and the write hashes of
+     * the KVs that a key transformation changed, by their index in t.kvs (null where none,
+     * all null if no KV has a key transformation); the values as given of the KVs with a value
+     * transformation, by index (null if none has one). Made by executeInner() for each
+     * transaction; the arrays only for a transaction with transformations.
+     */
+    private static final class Before {
+        final long tt;
+        long[][] keys;
+        long[] hashes;
+        byte[][] values;
+        
+        Before(long tt) {
+            this.tt = tt;
+        }
+    }
+    
+    /**
+     * Runs every value transformation of a user transaction, at its time t.tt, in the order of
+     * 'kvs', the KVs to put in key order as transformKeys() gave them, and checks the values
+     * they give (bergdb 026-06; 010-04, R5). Called under writeLock after transformKeys(),
+     * before the go point, so that a refusal leaves everything as it was. Until 026-06 the
+     * transformations ran in putKvs(), after the go point, where an exception of one, or a
+     * value over L4, failed the database (bergdb 024-24, QL6; 015-51). Each transformation
+     * gets the KV's value as given and the value of its key before the transaction, read at
+     * t.tt as putKvs() read it: the transaction has one operation a key (bergdb 024-16, S3),
+     * so none of its puts comes before. The order and the values are those of putKvs(), so
+     * the stream is the same.
+     * 
+     * <p>Not for reclaim's internal transactions, whose transformations run in putKvs(): the
+     * row of a reclaim step stores the bytes of the index nodes that the step's touch and puts
+     * made dirty (Reclaim.step, Trans.dirtiedBytes), known only there; a step keeps its
+     * values within the limits itself.</p>
+     * 
+     * <p>A transformation that throws a RuntimeException, a value over MAX_VALUE_BYTES (L4),
+     * keys and values of more than MAX_TRANS_BYTES (L5), or value nodes of more than
+     * StoredTrans.valueLimit() (bergdb 005-17), counted with the values that the
+     * transformations gave, refuse the transaction with a DbException: giveBack() gives each
+     * KV with a value transformation its value as given, the key transformations' keys and
+     * write hashes, and the time back; nothing has been put, written or recorded. A
+     * transaction that commits keeps the transformed values in its KVs, as before. An Error
+     * fails the database (bergdb 019-10), and so does a read that fails on the storage
+     * (005-30).</p>
+     * 
+     * @throws DbException  If the transaction is refused.
+     * @throws DbFailedException  If a read of a previous value failed on the storage.
+     */
+    private void transformValues(final Trans t, final Kv[] kvs, final Before before) {
+        final Kv[] own = t.kvs;
+        for (int i = 0; i < own.length; i++) {
+            if (own[i].valueTransformation != null) {
+                if (before.values == null) {
+                    before.values = new byte[own.length][];
+                }
+                before.values[i] = own[i].getValue();
+            }
+        }
+        if (before.values == null) {
+            return;
+        }
+        
+        try {           // an Error is recorded under the lock (bergdb 019-40)
+            long bytes = 0;             // L5's count: keys and values
+            long nodeBytes = 0;         // 005-17's count: the value nodes
+            for (Kv kv : kvs) {
+                if (kv.valueTransformation != null) {
+                    final byte[] previous;
+                    try {
+                        previous = getOne(t.tt, kv.getKey(), x.getData);
+                    } catch (RuntimeException e) {
+                        // As in putKvs(): a read that fails on the storage has failed the
+                        // database (failOnStorage()), and anything else is a bug.
+                        throw fail(t, e);
+                    }
+                    try {
+                        kv.transformValue(t.tt, previous);
+                    } catch (RuntimeException e) {
+                        final String message = "The value transformation of " 
+                                + shown(kv.getKey()) + " threw (the cause). The transaction "
+                                + "is refused; nothing of it is written, and the database "
+                                + "goes on (bergdb 026-06).";
+                        giveBack(t, before);
+                        throw new DbException(message, e);
+                    }
+                    final byte[] v = kv.getValue();
+                    if (v != null && v.length > MAX_VALUE_BYTES) {
+                        final String message = "The value transformation of " 
+                                + shown(kv.getKey()) + " gave a value of " + v.length 
+                                + " bytes, more than " + MAX_VALUE_BYTES + " (bergdb 024-17, "
+                                + "L4). The transaction is refused; nothing of it is written, "
+                                + "and the database goes on (bergdb 026-06).";
+                        giveBack(t, before);
+                        throw new DbException(message);
+                    }
+                }
+                final byte[] v = kv.getValue();
+                bytes += Trans.keyBytes(kv.getKey()) + (v == null ? 0 : v.length);
+                nodeBytes += StoredValueNode.getByteSizeLong(v, kv.getKey());
+            }
+            if (bytes > MAX_TRANS_BYTES) {
+                final String message = "The keys and values of the transaction have " + bytes 
+                        + " bytes after its value transformations, more than " 
+                        + MAX_TRANS_BYTES + " (bergdb 024-17, L5). The transaction is "
+                        + "refused; nothing of it is written, and the database goes on "
+                        + "(bergdb 026-06).";
+                giveBack(t, before);
+                throw new DbException(message);
+            }
+            final long limit = StoredTrans.valueLimit();
+            if (nodeBytes > limit) {
+                final String message = "The transaction is too large after its value "
+                        + "transformations: its values and keys take " + nodeBytes 
+                        + " bytes in the stream, more than " + limit + " (bergdb 005-17). "
+                        + "The transaction is refused; nothing of it is written, and the "
+                        + "database goes on (bergdb 026-06).";
+                giveBack(t, before);
+                throw new DbException(message);
+            }
+        } catch (Error e) {
+            throw failed(e);
+        }
     }
     
     /** A KV's key as written, for transformKeys()'s message. */
