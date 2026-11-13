@@ -117,6 +117,62 @@ def CommitCountOK (p : Params) : Prop :=
     nonRootCount p (treeRun p (ts ++ [tx])) (ts.length + 1) =
       wCount p (treeRun p ts) w (ts.length + 1)
 
+/-! ## The walk's dependence on the nodes it reaches -/
+
+/-- The key nodes that the walk of `nrWalk` reaches from x (x first, if the
+lookup has it). -/
+def nrVisits (look : NodeId → Option KNode) (t : Time) : Nat → NodeId → List NodeId
+  | 0, _ => []
+  | f + 1, x =>
+    match look x with
+    | none => [x]
+    | some n =>
+      x :: (n.liveAt t).flatMap (fun (c, y) =>
+        if n.leaf then (if segLen c != 7 then [] else nrVisits look t f y)
+        else nrVisits look t f y)
+
+/-- The walk depends only on the nodes it reaches: two lookups that agree on
+them give the same count. So a node that the writer makes, or changes, where
+the walk does not reach it, leaves the count as it is. -/
+theorem nrWalk_eq_of_agree (look look' : NodeId → Option KNode) (t : Time) :
+    ∀ f x b, (∀ y ∈ nrVisits look t f x, look' y = look y) →
+      nrWalk look' t f x b = nrWalk look t f x b := by
+  intro f
+  induction f with
+  | zero => intro x b _; rfl
+  | succ f ih =>
+    intro x b h
+    have hx : look' x = look x := h x (by
+      simp only [nrVisits]
+      cases look x <;> simp)
+    simp only [nrWalk, hx]
+    cases hl : look x with
+    | none => rfl
+    | some n =>
+      simp only
+      congr 2
+      apply List.map_congr_left
+      intro q hq
+      rcases q with ⟨c, y⟩
+      have hmem : ∀ z ∈ (if n.leaf then (if segLen c != 7 then [] else nrVisits look t f y)
+          else nrVisits look t f y), look' z = look z := by
+        intro z hz
+        apply h z
+        simp only [nrVisits, hl, List.mem_cons, List.mem_flatMap]
+        exact Or.inr ⟨(c, y), hq, hz⟩
+      simp only
+      split
+      · split
+        · rfl
+        · rename_i hleaf hseg
+          refine ih y true (fun z hz => hmem z ?_)
+          simp only [hleaf, hseg, ↓reduceIte]
+          exact hz
+      · rename_i hleaf
+        refine ih y false (fun z hz => hmem z ?_)
+        simp only [hleaf]
+        exact hz
+
 /-! ## The first state -/
 
 /-- The walk at two times is the same when every node looked up has the same
