@@ -85,3 +85,4 @@ import SIS.Tree.GetFrame
 import SIS.Tree.GetUnder
 import SIS.Tree.WriterTree
 import SIS.Tree.GetSplit
+import SIS.Tree.GetTree
