@@ -631,4 +631,254 @@ theorem scanOK_of_op_lift (p : Params) (hinv : InvPreserved p) (ho : OpGetOK p)
     (hl : CommitLiftOK p) : ScanOK p :=
   scanOK_of_op_commit p hinv ho (commitGetOK_of_lift p hl)
 
+/-! ## The lift of the writer's own nodes -/
+
+/-- Every key node that the writer made is one of its own nodes; its other
+allocations are values or above the key levels (top nodes). -/
+def MadeNodes (c : Ctx) (w : W) : Prop :=
+  ∀ m ∈ w.made, m.isData = false → (w.nodes.lookup m.id).isSome = true ∨ c.p.keyMax < m.level
+
+theorem lookup_isSome_append {β : Type} (l l' : List (NodeId × β)) (x : NodeId)
+    (h : (l.lookup x).isSome = true) : ((l ++ l').lookup x).isSome = true := by
+  rw [List.lookup_append]
+  cases hl : l.lookup x with
+  | none => rw [hl] at h; cases h
+  | some b => rfl
+
+theorem lookup_isSome_upsert (ns : List (NodeId × KNode)) (x y : NodeId) (n : KNode)
+    (h : (ns.lookup y).isSome = true) : ((upsert ns x n).lookup y).isSome = true := by
+  unfold upsert
+  split
+  · rw [List.lookup_isSome_iff] at h ⊢
+    obtain ⟨q, hq, he⟩ := h
+    refine ⟨if q.1 == x then (x, n) else q, List.mem_map.mpr ⟨q, hq, rfl⟩, ?_⟩
+    split
+    · rename_i hqx
+      simp only [beq_iff_eq] at he hqx ⊢
+      rw [he, hqx]
+    · exact he
+  · exact lookup_isSome_append ns _ y h
+
+theorem madeNodes_mono (c : Ctx) (w w' : W) (hw : MadeNodes c w) (hmade : w'.made = w.made)
+    (hn : ∀ y, (w.nodes.lookup y).isSome = true → (w'.nodes.lookup y).isSome = true) :
+    MadeNodes c w' := by
+  intro m hm hd
+  rw [hmade] at hm
+  rcases hw m hm hd with h | h
+  · exact Or.inl (hn _ h)
+  · exact Or.inr h
+
+@[instance_reducible]
+def madeNodesInvariant : WriterStateInvariant where
+  pred := MadeNodes
+  load := by
+    intro x c w hw
+    unfold getNode
+    simp only [writerWP_bind, writerWP_get]
+    split
+    · simpa only [writerWP_pure] using hw
+    · simp only [writerWP_bind, writerWP_read]
+      split
+      · split
+        · exact writerWP_throw _ _ _ _
+        · simp only [writerWP_bind, writerWP_set, writerWP_pure]
+          exact madeNodes_mono c w _ hw rfl (fun y h => lookup_isSome_append _ _ y h)
+      · exact writerWP_throw _ _ _ _
+  store := by
+    intro x n c w hw
+    simp only [putNode, writerWP_modify]
+    exact madeNodes_mono c w _ hw rfl (fun y h => lookup_isSome_upsert _ x y n h)
+  create := by
+    intro g h leaf ks c w hw
+    unfold newKey fresh
+    wpSimplify
+    split <;> wpSimplify <;>
+    · intro m hm hd
+      simp only [List.mem_append, List.mem_singleton] at hm
+      rcases hm with hm | rfl
+      · rcases hw m hm hd with h | h
+        · exact Or.inl (lookup_isSome_append _ _ _ h)
+        · exact Or.inr h
+      · left
+        rw [List.lookup_append]
+        cases hl : w.nodes.lookup w.next with
+        | some b => rfl
+        | none => simp
+  value := by
+    intro h c w hw
+    unfold newValue fresh
+    wpSimplify
+    intro m hm hd
+    simp only [List.mem_append, List.mem_singleton] at hm
+    rcases hm with hm | rfl
+    · exact hw m hm hd
+    · cases hd
+  allocate := by
+    intro c w hw
+    unfold fresh
+    wpSimplify
+    exact hw
+  trace := by
+    intro s c w hw
+    simp only [note, writerWP_modify]
+    exact hw
+  provenance := by
+    intro x old c w hw
+    unfold setMadeFor
+    split
+    · simp only [writerWP_modify]; exact hw
+    · simpa only [writerWP_pure] using hw
+  take := by
+    intro x c w hw
+    simp only [takenBack, writerWP_modify]
+    exact hw
+  clear := by
+    intro c w hw
+    simp only [pathClear, writerWP_modify]
+    exact hw
+  path := by
+    intro cv x c w hw
+    simp only [pathAdd, writerWP_modify]
+    exact hw
+  top := by
+    intro x c w hw
+    unfold newSuperRoot note fresh
+    wpSimplify
+    split
+    · wpSimplify
+      exact hw
+    · wpSimplify
+      intro m hm hd
+      simp only [List.mem_append, List.mem_singleton] at hm
+      rcases hm with hm | rfl
+      · exact hw m hm hd
+      · right
+        simp only [Params.topLevel]
+        omega
+  mergeCounter := by intro c w hw; exact hw
+  splitCounter := by intro c w hw; exact hw
+
+theorem madeNodes_of_runOps (p : Params) (ts : List Tx) (tx : Tx) (noops : List Bool) (w : W)
+    (hrun : runOps p tx.base tx.ops (ts.length + 1)
+      (view (treeSpec p) (treeRun p ts) ts.length) = .ok (noops, w)) :
+    MadeNodes (ctxOf p ts) w := by
+  obtain ⟨z, top0, _, _, hops⟩ := runOps_ok p _ _ _ _ noops w hrun
+  letI := madeNodesInvariant
+  exact state_ops tx.ops (ctxOf p ts) (wInit tx top0) (by
+    change MadeNodes (ctxOf p ts) (wInit tx top0)
+    intro m hm
+    simp [wInit] at hm) noops w hops
+
+/-- The lift of the writer's own key nodes: after a transaction within reach,
+each node of the writer's last state that it did not take back is, as a key
+node, the structure's node of its id; the transaction took back only nodes of
+its own ids; and not the super root it made. With the writer's other nodes,
+values and super root (proved), this is `CommitLiftOK`. Not proved: TP7's
+`LatestInvOK` needs it too (the walk asks a node's klongs to give its
+history). -/
+def OverlayLiftOK (p : Params) : Prop :=
+  ∀ ts tx, Within p (ts ++ [tx]) → ∀ noops w,
+    runOps p tx.base tx.ops (ts.length + 1) (view (treeSpec p) (treeRun p ts) ts.length) =
+      .ok (noops, w) →
+    (∀ x n, w.nodes.lookup x = some n → w.taken.contains x = false →
+      knodeOf p (viewOf (treeRun p (ts ++ [tx]))) x = some n) ∧
+    (∀ x ∈ w.taken, tx.base ≤ x) ∧
+    (w.newTop = true → w.taken.contains w.top.id = false)
+
+theorem commitLiftOK_of_overlay (p : Params) (ho : OverlayLiftOK p) : CommitLiftOK p := by
+  intro ts tx hw noops w hrun
+  obtain ⟨hov, htaken, htopt⟩ := ho ts tx hw noops w hrun
+  refine ⟨?_, htaken, htopt⟩
+  have hbase : ∀ q ∈ treeRun p ts, q.1 < tx.base := by
+    have h := (hw.2 ts.length (by simp)).1
+    have hj : (ts ++ [tx])[ts.length]'(by simp) = tx := by simp
+    have ht : (ts ++ [tx]).take ts.length = ts := by simp
+    rw [hj, ht] at h
+    exact h
+  have halloc : AllocatedIds tx.base w := execW_allocatedIds p tx _ _ noops w hrun
+  have hmn := madeNodes_of_runOps p ts tx noops w hrun
+  obtain ⟨z, top0, _, _, hinv⟩ := commitInv_of_runOps p ts tx noops w hrun
+  obtain ⟨_, _, hnt, hvm, _, _⟩ := hinv
+  have hroot := treeRun_root p ts
+  intro x
+  have hov' := hov x
+  rw [treeRun_snoc_changes p ts tx noops w hrun] at hov' ⊢
+  generalize hP : treeRun p ts = P at hov' hbase hroot ⊢
+  generalize hi : ts.length + 1 = i at hov' ⊢
+  obtain ⟨ndr, hndr, hlr, hdr⟩ := hroot
+  have madeGe : ∀ m ∈ w.made, tx.base ≤ m.id := fun m hm => (halloc.2.2 m hm).1
+  by_cases hty : w.taken.contains x = true
+  · have hge := htaken x (by simpa using hty)
+    have hPx := get?_none_of_ge P tx.base x hbase hge
+    have hNx := newNodeOf_changesOf_none i w x (fun m _ hid => by rw [← hid] at hty ⊢; exact hty)
+    have hty2 : x ∈ w.taken := by simpa using hty
+    simp [knodeOf, viewOf, get?_apply, hPx, hNx, wNode, hty2]
+  · have hty' : w.taken.contains x = false := by simpa using hty
+    have hty3 : x ∉ w.taken := by simpa using hty
+    cases hl : w.nodes.lookup x with
+    | some n =>
+      rw [hov' n hl hty']
+      simp [wNode, hty3, hl]
+    | none =>
+      have hwn : wNode p (viewOf P) w x = knodeOf p (viewOf P) x := by
+        simp [wNode, hty3, hl]
+      rw [hwn]
+      have hnokey : ∀ q ∈ w.nodes, q.1 ≠ x := by
+        intro q hq hqx
+        have := List.lookup_eq_none_iff.mp hl q hq
+        simp [hqx] at this
+      cases hPx : P.get? x with
+      | some nd =>
+        have hlt : x < tx.base := hbase _ (get?_mem P x nd hPx)
+        by_cases hxr : x = root
+        · subst hxr
+          rw [hndr] at hPx
+          cases hPx
+          have := rootLevel_gt p
+          simp [knodeOf, viewOf, get?_apply_of_get? hndr, hndr, hlr, hdr, this]
+        · have hA : addsFor (changesOf i w) i x = [] :=
+            List.eq_nil_iff_forall_not_mem.mpr (fun e he => by
+              obtain ⟨_, hm⟩ := mem_addsFor.mp he
+              rcases mem_changesOf_adds i w x e.val hm with ⟨q, hq, _, hqy⟩ | ⟨h', hh', _⟩ |
+                  ⟨hnt', hr⟩
+              · exact hnokey q hq hqy
+              · have := madeGe _ (hvm _ hh')
+                simp only at this
+                omega
+              · rcases hr with ⟨hxr', _⟩ | ⟨hxt, _⟩
+                · exact hxr hxr'
+                · obtain ⟨m, hm, hmid, _, _⟩ := hnt hnt'
+                  have := madeGe m hm
+                  rw [hmid, ← hxt] at this
+                  omega)
+          simp [knodeOf, viewOf, get?_apply_of_get? hPx, hPx, hA]
+      | none =>
+        have hk0 : knodeOf p (viewOf P) x = none := by simp [knodeOf, viewOf, hPx]
+        rw [hk0]
+        cases hNx : newNodeOf (changesOf i w) x with
+        | none => simp [knodeOf, viewOf, get?_apply, hPx, hNx]
+        | some nd =>
+          obtain ⟨m, hm, hid, _, hnd⟩ := newNodeOf_changesOf_some i w x nd hNx
+          subst hnd
+          cases hmd : m.isData with
+          | true => simp [knodeOf, viewOf, get?_apply, hPx, hNx, hmd]
+          | false =>
+            rcases hmn m hm hmd with hs | hlv
+            · rw [hid, hl] at hs
+              cases hs
+            · have hlv' : p.keyMax < m.level := hlv
+              simp [knodeOf, viewOf, get?_apply, hPx, hNx, hmd, hlv']
+
+/-- TP10 from TP7, the writer's refinement of the map and the lift of its own
+nodes. -/
+theorem getOK_of_op_overlay (p : Params) (hinv : InvPreserved p) (ho : OpGetOK p)
+    (hl : OverlayLiftOK p) : GetOK p :=
+  getOK_of_op_lift p hinv ho (commitLiftOK_of_overlay p hl)
+
+/-- TP11 from TP7, the writer's refinement of the map and the lift of its own
+nodes. -/
+theorem scanOK_of_op_overlay (p : Params) (hinv : InvPreserved p) (ho : OpGetOK p)
+    (hl : OverlayLiftOK p) : ScanOK p :=
+  scanOK_of_op_lift p hinv ho (commitLiftOK_of_overlay p hl)
+
 end SIS.Tree
