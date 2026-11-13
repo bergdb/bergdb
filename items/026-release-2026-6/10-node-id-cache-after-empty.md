@@ -1,6 +1,8 @@
 # 026-10. The node-id cache after back to empty
 
-Created 2026-11-13 by Frans Lundberg. Status: STATUS_PLACEHOLDER
+Created 2026-11-13 by Frans Lundberg. Status: done on branch
+`026-10-idbypos`, ready to land; Q1 and Q2 (section 7) decided here by
+their recommendations.
 
 For release 2026.6, found by 026-07: with the write buffer no longer a
 fixed 10 MB on both sides, G4 and G5 (024-30, the count gates' heap
@@ -204,7 +206,22 @@ which ST6's own gate holds to the tables' floor (024-33), and
 
 ## 6. Gates
 
-GATES_PLACEHOLDER
+On `67ba0aed` (`main` `92ab6713` merged; the commits after it are
+items only). Logs in /Users/f/fl/bench/2026-11-13/idpos/:
+
+* `before-commit.sh`: BEFORE COMMIT OK (91 s), `before-commit.log`.
+* `level1.sh`: LEVEL 1 OK, MEM 129, SEG 226.2, MEM10M 127.1, SS 1.53,
+  `level1.log`.
+* `count-gates.sh all`: COUNT GATES OK, G4's heap 1.075
+  (2,926,488 / 2,721,184), G5's heap 1.470 (897,544 / 610,536), G4's
+  lag 1,281 (026-11's gate), `count-all-3.log`.
+
+On the way: `count-all-1.log` (the old bins only: G5 2.257, FAIL),
+`count-all-2.log` (the change, before the merge: OK, G4 1.076, G5
+1.474), `cmp-base.txt` and `cmp-fix.txt` (section 1's reads and
+section 5's first two lines, with temporary counters), `g5walk.txt`,
+`fix-g4.txt`, `fix-g5.txt` (the walk of section 2). No expected value of
+an existing test changed.
 
 
 ## 7. Questions for Frans
@@ -230,7 +247,14 @@ Frans may overturn it.
 
 ## 8. State
 
-STATE_PLACEHOLDER
+2026-11-13, 10:58. **Done, ready to land.** Clone
+/Users/f/fl/bench/2026-11-13/idpos/clone, branch `026-10-idbypos`:
+`104502a3` (the change: `Db.cutDecided`, `forgetIdsBelow`,
+`forgetUpTo`, the tests, `CountGates`' plain heaps), `cd21bbae` (merge
+of `main`), `990bd997` (`KeyModSet`'s new bin at a cut), `67ba0aed`
+(merge of `main` `92ab6713`), and item commits. Every gate of section 6
+OK on `67ba0aed`. Open: Frans's Q1 and Q2 (section 7), each decided
+here by its recommendation; Q2 would be a 028 entry, not made here.
 
 
 Log
@@ -238,4 +262,5 @@ Log
 
 2026-11-13. Registered by coord-1113 (026-07's Q4; Frans, 09:48).
 
-2026-11-13. Made by idpos (coord-1113) on branch `026-10-idbypos`.
+2026-11-13. Made by idpos (coord-1113) on branch `026-10-idbypos`;
+gates OK on `67ba0aed` (section 6). Done, ready to land.
