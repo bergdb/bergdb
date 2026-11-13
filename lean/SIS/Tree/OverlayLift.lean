@@ -8,13 +8,18 @@ flag (`Book`: the level of a node of P, or of a made node within the level
 bounds); the nodes taken back are the transaction's; its own top node is not
 taken back.
 
-`overlayLift_step` is one transaction, from the structure before it: its
-pointers name nodes of P (TP4), every key node has a history, and the klongs
-of every key node are well formed and give its history.
+`overlayLiftOKUnder_links` is the lift for every transaction after a run
+whose structure has pointers to nodes of P (TP4), a history for every key
+node, and klongs of every key node that are well formed and give its
+history (`OverlayLiftOKUnder`, SIS/Tree/GetUnder.lean). With the three for
+every run within reach it is `OverlayLiftOK` (`overlayLiftOK_of_links`).
 -/
 import SIS.Tree.OverlayBook
 import SIS.Tree.KeyHistRun
 import SIS.Tree.GetCommit
+import SIS.Tree.GetUnder
+import SIS.Tree.WriterBookMerge
+import SIS.Tree.WriterTakenOps
 import SIS.Tree.KeyLevels
 
 set_option autoImplicit false
@@ -112,5 +117,40 @@ theorem overlayLift_of_book (p : Params) (P : Struct BVal) (i : Time) (tx : Tx) 
     | true =>
       have hm : w.top.id ∈ w.taken := by simpa using hc
       exact (hnot (hbook.taken _ hm)).elim
+
+/-- The lift of the writer's overlay, after a run whose structure has TP4, a
+history for every key node, and klongs that give the histories. -/
+theorem overlayLiftOKUnder_links (p : Params) :
+    OverlayLiftOKUnder p (fun P _ => PointersOK P ∧ KeyHistOK p P ∧ KeyNonempty p P) := by
+  intro ts tx hw hR noops w hrun
+  obtain ⟨hP, hH, hN⟩ := hR
+  have hfresh : ∀ q ∈ treeRun p ts, q.1 < tx.base := by
+    have h := (hw.2 ts.length (by simp)).1
+    have hj : (ts ++ [tx])[ts.length]'(by simp) = tx := by simp
+    have ht : (ts ++ [tx]).take ts.length = ts := by simp
+    rw [hj, ht] at h
+    exact h
+  have htimes : StructTimesLE (treeRun p ts) (ts.length + 1 - 1) := treeRun_timesLE p ts
+  have hl : ViewLinksOK tx.base p (view (treeSpec p) (treeRun p ts) (ts.length + 1 - 1)) :=
+    viewLinksOK_of p _ _ tx.base hfresh htimes hP hN
+  have he : execW p tx (ts.length + 1) (view (treeSpec p) (treeRun p ts) (ts.length + 1 - 1)) =
+      .ok (noops, w) := hrun
+  have hbook := execW_book p tx (ts.length + 1) _ noops w
+    (viewIdsBelow_view p (treeRun p ts) (ts.length + 1 - 1) tx.base hfresh) he
+  have htaken := execW_takenAbove p tx (ts.length + 1) _ noops w
+    (viewGood_of p (treeRun p ts) (ts.length + 1) tx.base (by omega) hfresh htimes hl) he
+  rw [treeRun_snoc_changes p ts tx noops w hrun]
+  exact overlayLift_of_book p (treeRun p ts) (ts.length + 1) tx noops w (by omega) hfresh htimes
+    (treeRun_root_level p ts) hH hl he hbook htaken
+
+/-- `OverlayLiftOK` from TP4 and a history for every key node, after every
+run within reach. -/
+theorem overlayLiftOK_of_links (p : Params)
+    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
+    (hN : ∀ ts, Within p ts → KeyNonempty p (treeRun p ts)) : OverlayLiftOK p := by
+  apply overlayLiftOK_of_under p _ ?_ (overlayLiftOKUnder_links p)
+  intro ts hw
+  exact ⟨hP ts hw, treeRun_keyHistOK p ts hw
+    (fun k _ => hP _ (within_take p ts hw k)) (fun k _ => hN _ (within_take p ts hw k)), hN ts hw⟩
 
 end SIS.Tree
