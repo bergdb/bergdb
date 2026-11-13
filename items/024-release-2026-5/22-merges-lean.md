@@ -1191,7 +1191,15 @@ its tail `writerWP_mergeTail_get`), the siblings' compare values from putinv's
 `RangeOrder` (`mrg_child_range`) and `mergeIdx`'s choice (the siblings adjacent
 in the parent); by the tree lemmas `getFromR_mergeOne` and `getFromR_mergeTwo`
 (`WriterGetMerge.lean`, a merge into two read as a merge into one at an unused
-id, then a split).
+id, then a split). The same for nodes the transaction made
+(`writerWP_merge_made_get`, `WriterGetMergeMade.lean`: `retarget` keeps the
+parent's live klongs, as none of them names a merged node after `mergeParent`;
+the merged nodes, taken back, had no value). Root collapse at the space root,
+the writer's loop, keeps the reading (`writerWP_collapseRoot_space_get`,
+`WriterGetCollapse.lean`): an inner root whose only live klong is the empty
+key's reads every key as its child (`getFromR_collapse`), given a premise on
+the fuel: every path from the root is shorter than `fuel`, which the heights
+bound.
 Not yet: the whole put and delete around the cascade; a merge whose parent is
 full or compacted;
 the mergeUp loop and the delete as a whole; the take-back of the upward unlink.
