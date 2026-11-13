@@ -1453,8 +1453,19 @@ and its status:
       leaf, asks the cascade's order only for a node the transaction did
       not make, and adds the reach back that putinv asked for (under
       `ChainOrd` and `LastOrd`, the last version's order below an inner
-      parent). `writerWP_handleFull_lastVF` is its corollary, unchanged;
-    - then `opGetCaseOK_delMergeF2`.
+      parent). `writerWP_handleFull_lastVF` is its corollary, unchanged.
+      The merge lemmas are done (latest, 22:50):
+      `writerWP_mergeTail_any_getF2`, `writerWP_merge_any_getF2`,
+      `writerWP_merge_get_invF2`, `writerWP_mergeTail_any_treeS2`,
+      `writerWP_merge_any_treeS2` and `writerWP_merge_tree_inv2`. They
+      need neither `hNoSSIP`, `hNoSSIPp` nor `hrangeL`. The full parent's
+      range comes from `RangeOrder` for the merge's actual values
+      (`mergeLast_range`, with `MergeGOK` for the second node's compare
+      value). The old statements are their corollaries, unchanged;
+    - then `opGetCaseOK_delMergeF2` (`DelMergeCaseF2.lean`), proved:
+      `OpGetCaseOK p R DelMergeCase` from `DelStepsOKF`, `MergeStepOKF`,
+      `CollapseStepOKF` and `TxSegFitsOK`. There is no descent obligation
+      and no `MergePathCond`.
     The old statements stay, unchanged, until F2 is complete; then they are
     removed, as agreed with cost.
 
