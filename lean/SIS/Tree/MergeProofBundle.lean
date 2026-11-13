@@ -198,3 +198,4 @@ import SIS.Tree.RangeMergeMade
 import SIS.Tree.RangePath
 import SIS.Tree.RangeNewSegs
 import SIS.Tree.KindsRun
+import SIS.Tree.ChildrenKinds
