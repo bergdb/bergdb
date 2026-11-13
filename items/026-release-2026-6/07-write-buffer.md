@@ -82,8 +82,8 @@ All in `BufferedStream` (bergdb 026-07 in its comments):
 1. **Start.** The buffer's length is `min(bufferCapacity,
    INITIAL_CAPACITY)`, `INITIAL_CAPACITY` = 64 KiB. `bufferCapacity`,
    the constructor's argument, is now the largest length (`maxCapacity`).
-   A given capacity of 64 KiB or less (every `BufferedStream` unit test
-   but two) behaves as before.
+   A given capacity of 64 KiB or less (nearly every `BufferedStream`
+   unit test) behaves as before.
 2. **Grow.** When: an append finds less room than its length, and the
    buffer is below its limit (`growLimit`, normally `maxCapacity`). Who:
    the writer, in `append`, under the object's monitor, before it would
