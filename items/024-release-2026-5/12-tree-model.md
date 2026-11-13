@@ -1293,6 +1293,74 @@ tree, cost's `TreeAt` (`keyTreeOK_of_treeAt`, `getOK_of_treeAt`,
 coordinator, 2026-11-13); its premises are to meet `RunReadOK` through
 `overlayLiftOKUnder_mono` when tp7's `ApplyBridge.lean` lands.
 
+The assembly of TP10 and TP11 (prover "latest", 2026-11-13, 20:50):
+`getOK_scanOK_of_open` (`GetAssembly.lean`) proves `GetOK` and `ScanOK`
+(Props.lean, unchanged) from the named premises below.
+`getOK_scanOK_of_open_runOK` is the same theorem with the run premise R
+fixed to `RunOK`: the run's links, P's tree and TP7's invariant.
+`opGetPutInvOK_of_cases` builds `OpGetPutInvOK` from the nine
+operation cases, using `opCase_cover`: every operation from every state
+is in one of the cases. The `#guard asmCheck asmP asmTx` shows the
+premises are not void: a transaction within reach (twelve puts in a
+second segment, node size 8, G 1, H 2) meets `Within`'s conditions, and
+every state between its operations meets the fuel premise. Each premise
+and its status:
+
+- `InvPreserved p` (TP7): open here; it is the TP7 provers' target.
+- Every run within reach has its links (`RunLinksOK`): open here.
+  `runLinksOK_of_takeBack` gives it from the take-back discipline
+  (`TakeBackOKUnder p (RunLinksOK p)`) and 2 ≤ M.
+- Every run within reach has its tree (`TreeAt`): open here.
+  `treeAt_run` gives it from `OpTreeOK` and `CommitLiftOK`.
+- TP7's invariant at the run (`InvOK`): proved inside the theorem, from
+  `InvPreserved`.
+- tp7's lift (`OverlayLiftOKUnder`): proved for `RunOK`
+  (`overlayLiftOKUnder_links`).
+- The writer's tree at every operation (`OpTreeOK p`): open here; it is
+  cost's target.
+- `PutInv` kept by every operation (`OpPutInvOK p R`): open here; it is
+  putinv's target. `opPutInvOK_of_T` reduces it to `OpPutInvTOK`.
+- The walk's ranges kept by every operation (`OpRangeOK p R`): open here;
+  it is putinv's target.
+- The fuel premise along a transaction (`TxSegFitsOK p R`): open. Every
+  state between operations of a transaction within reach has every path
+  inside one segment tree shorter than the fuel. Cost's finding: true for
+  transactions that end OK, not after every single rule. It holds in the
+  `#guard` example.
+- The nine operation cases (`OpGetCaseOK p R` of each case): from a state
+  between operations that meets `PutInv` and `RangeOrder` (`RangeOrder`
+  at every such state follows from `OpRangeOK`, `rangeOrder_reached`),
+  the operation changes the reading by itself alone when the state after
+  it meets the fuel premise. All nine are open as stated. For seven of
+  them, the rules at the writer's level are proved, but their premises
+  (the order below a parent, two live klongs in a node that space splits,
+  the inner parent or `OrdG`, the key's uniqueness at its leaf) are not
+  yet derived from `PutInv` and `RangeOrder`:
+  - (1) `PutLeafRoomCase`, a put into its leaf with room:
+    `writerWP_put_room_seg`.
+  - (2) `PutLeafFullCase`, a put into a full leaf:
+    `writerWP_put_accessPathR`, with every split along the access path,
+    the space root's and a segment root's space split included.
+  - (3) `PutNewSegCase`, a put that makes new segments:
+    `writerWP_put_newSegs` (the leaf above has room) and
+    `writerWP_put_newSegFullR` (it is full).
+  - (4) `DelMergeCase`, a delete with the merges on: no rule here. Cost's
+    merge rules (`writerWP_merge_full_get`, `writerWP_mergeTail_full_get`)
+    are part of it.
+  - (5) `DelNoLeafCase`, a delete of a key with no leaf: no rule yet.
+  - (6) `DelNoopCase`, a delete that changes no bitmap:
+    `writerWP_del_noop_seg`.
+  - (7) `DelEmptyCase`, a delete that empties its leaf (the upward
+    delete): no rule here. Cost's `writerWP_deleteUpward_up_get` and
+    `writerWP_deleteUpward_upT_get` are part of it.
+  - (8) `DelRoomCase`, a delete into its leaf with room:
+    `writerWP_del_bitmap_seg`.
+  - (9) `DelFullCase`, a delete into a full leaf: `writerWP_del_accessPathR`
+    (the leaf below an inner node, split in time or space, in place too;
+    below a segment leaf, in time; with every split above) and
+    `writerWP_del_leafRootR` (the leaf is the space root). Still open:
+    the leaf's space split below a segment leaf.
+
 The splits of any depth (prover "latest", 2026-11-13, 16:30): **proved
 for time and space splits of nodes that existed before the transaction,
 below a top node with room** (`writerWP_appendKlongs_chainR`,
@@ -1358,10 +1426,15 @@ cascade and in the put and delete rules along the access path
 reached after the cascade, so `SegFits` of the state after bounds its
 segment tree; `hspaceG`'s second case, with the tree in order, `OrdG`).
 The reading needs no fuel premise when no new root is made along the
-chain (`ChainNoNewRoot`, `NoNewRootG`). Still open: the same split for
-a segment root the transaction made (the segment leaf's klong repointed
-in place), and the delete's leaf when it space splits below a segment
-leaf.
+chain (`ChainNoNewRoot`, `NoNewRootG`). At 20:25, **proved: the same
+split for a segment root the transaction made**, the segment leaf's
+klong repointed in place to the new segment root
+(`getFromR_segSpaceInPlaceLevel`), and **for putinv's take-back: the
+cascade's chain nodes and new nodes after it**
+(`writerWP_appendKlongs_chainReachNew`: every chain node is reached or
+holds its version before the transaction, `toPrev`; every node the
+cascade made is reached). Still open: the delete's leaf when it space
+splits below a segment leaf.
 
 The reader's fuel (prover "latest", 2026-11-13, 18:15; 19:15): TP10's
 `get` (`Read.lean`, `getFrom`) and `getFromR` give every segment's
