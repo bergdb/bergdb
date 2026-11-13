@@ -32,11 +32,12 @@ theorem getFromR_collapse_reach (N N' : NodeId → Option KNode) (V : NodeId →
     (hnt : ∀ s, Klong.time s ∈ n.ks → s ≤ t)
     (hother : ∀ x, ReachS N t R x → x ≠ R → N' x = N x)
     (hwf : ∀ x xn, ReachS N t R x → N x = some xn → klongsWf xn.ks = true)
-    (hdepth : PathsFit N t R fuel) :
+    (hdepth : SegDepthLe N t (fuel - 1) R) :
     ∀ key, getFromR N' V t fuel key y = getFromR N V t fuel key R := by
-  obtain ⟨f, hf⟩ : ∃ f, fuel = f + 1 := ⟨fuel - 1, by have := hdepth R 0 PathLen.root; omega⟩
   have hRy : (0, y) ∈ n.liveAt t := by
     rw [KNode.liveAt_of_times n t hnt]; exact (hlive 0 y).mpr ⟨rfl, rfl⟩
+  obtain ⟨d', hd', hch⟩ := hdepth.of_inner hRn hRl
+  obtain ⟨f, hf⟩ : ∃ f, fuel = f + 1 := ⟨fuel - 1, by omega⟩
   have hlink : TLink N t R 0 y := ⟨n, hRn, hRy⟩
   have hyR : y ≠ R := fun h => hT.rootFree R 0 TReach.root (by rw [h] at hlink; exact hlink)
   have hlinks : ∀ x xn c z, ReachS N t R x → N x = some xn → (c, z) ∈ xn.liveAt t →
@@ -49,8 +50,7 @@ theorem getFromR_collapse_reach (N N' : NodeId → Option KNode) (V : NodeId →
   have hfirst : ∀ c, getEqR N' t c fuel y = getEqR N t c fuel R := by
     intro c
     rw [getEqR_avoid N N' t R (fun u => u = R) hsame hlinks c fuel y hyS hyR, hf,
-      getEqR_fuel_succ N t R c f y 1 (PathLen.link PathLen.root hlink)
-        (fun z k hz => by have := hdepth z k hz; omega)]
+      getEqR_fuel_mono N t c d' y (hch 0 y hRy) (f + 1) f (by omega) (by omega)]
     simp only [getEqR, hRn, hRl, Bool.false_eq_true, ↓reduceIte]
     have hs := KNode.searchLte_of_max n t hnt c 0 y ((hlive 0 y).mpr ⟨rfl, rfl⟩) (by omega)
       (fun q hq _ => by have := ((hlive q.1 q.2).mp hq).1; omega)
@@ -180,7 +180,7 @@ theorem getFromR_segCollapse (N N' : NodeId → Option KNode) (V : NodeId → Op
     (hy : ∃ m, N y = some m)
     (hother : ∀ u, u ≠ L → u ≠ x → N' u = N u)
     (hwf : ∀ u un, ReachS N t r u → N u = some un → klongsWf un.ks = true)
-    (hfit : PathsFit N t r fuel) (hV : V y = V x) :
+    (hfit : SegFits N t (fuel - 1) r) (hV : V y = V x) :
     ∀ key, getFromR N' V t fuel key r = getFromR N V t fuel key r := by
   have hlkL : TLink N t L k x := ⟨ln, hL, hk⟩
   have hxR : TReach N t r x := TReach.link hLr hlkL
@@ -227,16 +227,7 @@ theorem getFromR_segCollapse (N N' : NodeId → Option KNode) (V : NodeId → Op
       (fun u un hu hun => hwf u un (by
         obtain ⟨b, hb⟩ := (reachS_tReach N t x u hu).pathLen
         exact tReach_reachS N t r u (ha.append hb.toFrom).reach) hun)
-      (by
-        intro z kk hz
-        have := hfit z (a + kk) (ha.append hz.toFrom)
-        have h0 : 0 < a := by
-          rcases Nat.eq_zero_or_pos a with h | h
-          · subst h
-            cases ha with
-            | root => exact absurd rfl hxr
-          · exact h
-        omega) rest
+      (hfit x (tReach_reachS N t r x hxR)) rest
 
 /-! ## The writer's collapse steps at a segment root -/
 
@@ -256,7 +247,7 @@ theorem writerWP_takeBackRoot_seg_get (x : NodeId) (d only : Nat) (n : KNode) (l
     (hpd : (w.path[d]?).map (·.2) = some leaf) (hpk : w.path[d + 1]? = some (some k, x))
     (hwf : ∀ u un, ReachS (wNode c.p base w) c.i w.top.rootKey u → wNode c.p base w u = some un →
       klongsWf un.ks = true)
-    (hfit : PathsFit (wNode c.p base w) c.i w.top.rootKey c.p.fuel)
+    (hfit : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey)
     (hnoval : ∀ u un, wNode c.p base w u = some un → wValue base w u = none)
     (hchild : ∀ cc z, (cc, z) ∈ n.liveAt c.i → ∃ m, wNode c.p base w z = some m) :
     WriterWP (takeBackRoot x (d + 1) only) c w (fun _ w' =>
@@ -338,7 +329,7 @@ theorem writerWP_replaceRoot_seg_get (x : NodeId) (d only : Nat) (n : KNode) (le
     (hdead : ∀ y, deadOver c.p (ln.add c.i (.key k y)) = false)
     (hwf : ∀ u un, ReachS (wNode c.p base w) c.i w.top.rootKey u → wNode c.p base w u = some un →
       klongsWf un.ks = true)
-    (hfit : PathsFit (wNode c.p base w) c.i w.top.rootKey c.p.fuel)
+    (hfit : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey)
     (hnoval : ∀ u un, wNode c.p base w u = some un → wValue base w u = none)
     (hchild : ∀ cc z, (cc, z) ∈ n.liveAt c.i → ∃ m, wNode c.p base w z = some m) :
     WriterWP (replaceRoot x (d + 1) only) c w (fun _ w' =>

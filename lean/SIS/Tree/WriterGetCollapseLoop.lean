@@ -305,10 +305,16 @@ theorem collGetInv_segStep (c : Ctx) (base : View BVal) (w0 v v' : W) (lf rt y :
       · rw [hother z' hz'l (hR z' hz'R).1]
         have hmem' : (c', z') ∈ zn.liveAt c.i := hmem
         exact hICE z zn c' z' hzR h hzl hmem'
-  · intro z n hz
-    obtain ⟨_, m, hnm, hm⟩ := hP z n hz
-    have := hD z m (by rw [htop] at hm; exact hm)
-    omega
+  · rw [htop]
+    refine segFits_transfer _ _ c.i _ _ _ hD
+      (fun u hu => tReach_reachS _ _ _ _ (by
+        have := (hR u (by rw [htop]; exact reachS_tReach _ _ _ _ hu)).2; rw [htop] at this; exact this))
+      (fun u un' hu hun' hl => ?_)
+    have hu' : TReach (wNode c.p base v') c.i v'.top.rootKey u := by
+      rw [htop]; exact reachS_tReach _ _ _ _ hu
+    rcases hnode u un' hu' hun' with ⟨_, rfl⟩ | h
+    · rw [hl'leaf] at hl; cases hl
+    · exact ⟨un', h, hl, fun c' y' hy' => ⟨c', hy'⟩⟩
   · rcases hnode z zn hz hzn with ⟨_, rfl⟩ | h
     · exact hlwf'
     · exact hW z zn (by have := (hR z hz).2; rw [htop] at this; exact this) h
@@ -619,7 +625,7 @@ theorem segDesc_seg (c : Ctx) (base : View BVal) (x : NodeId) (v : W)
   · rw [hvp, ← hnat]
     unfold nodeAt
     have hlen : ps0.length < (v.top.rootKey :: (ps0 ++ [(some k, x)]).map (·.2)).length := by
-      simp only [List.length_cons, List.length_map, List.length_append, List.length_singleton]; omega
+      simp only [List.length_cons, List.length_map, List.length_append]; omega
     rw [List.getElem?_eq_getElem hlen]
     simp only [Option.getD_some]
     rw [← List.getElem?_map, List.map_cons, List.getElem?_eq_getElem (by simpa using hlen)]

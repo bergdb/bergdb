@@ -151,18 +151,19 @@ theorem onlyLiveKlong_live_iff (n : KNode) (i : Nat) (y : NodeId) (h : n.onlyLiv
 
 /-- The root R, inner, whose only live klong is the empty key's to y, gives way
 to y: every key reads from y in N', which agrees with N but at R, as from R in
-N, when every path from R is shorter than the fuel. -/
+N, when R's segment tree is shallower than the fuel (`SegDepthLe`). -/
 theorem getFromR_collapse (N N' : NodeId → Option KNode) (V : NodeId → Option Nat) (t : Time)
     (fuel : Nat) (R y : NodeId) (n : KNode) (hT : TreeOK N t R) (hRn : N R = some n)
     (hRl : n.leaf = false) (hlive : ∀ c z, (c, z) ∈ n.live ↔ c = 0 ∧ z = y)
     (hnt : ∀ s, Klong.time s ∈ n.ks → s ≤ t)
     (hother : ∀ x, x ≠ R → N' x = N x)
     (hwf : ∀ x xn, ReachS N t R x → N x = some xn → klongsWf xn.ks = true)
-    (hdepth : PathsFit N t R fuel) :
+    (hdepth : SegDepthLe N t (fuel - 1) R) :
     ∀ key, getFromR N' V t fuel key y = getFromR N V t fuel key R := by
-  obtain ⟨f, hf⟩ : ∃ f, fuel = f + 1 := ⟨fuel - 1, by have := hdepth R 0 PathLen.root; omega⟩
   have hRy : (0, y) ∈ n.liveAt t := by
     rw [KNode.liveAt_of_times n t hnt]; exact (hlive 0 y).mpr ⟨rfl, rfl⟩
+  obtain ⟨d', hd', hch⟩ := hdepth.of_inner hRn hRl
+  obtain ⟨f, hf⟩ : ∃ f, fuel = f + 1 := ⟨fuel - 1, by omega⟩
   have hlink : TLink N t R 0 y := ⟨n, hRn, hRy⟩
   have hyR : y ≠ R := fun h => hT.rootFree R 0 TReach.root (by rw [h] at hlink; exact hlink)
   have hlinks : ∀ x xn c z, ReachS N t R x → N x = some xn → (c, z) ∈ xn.liveAt t →
@@ -175,8 +176,7 @@ theorem getFromR_collapse (N N' : NodeId → Option KNode) (V : NodeId → Optio
   have hfirst : ∀ c, getEqR N' t c fuel y = getEqR N t c fuel R := by
     intro c
     rw [getEqR_avoid N N' t R (fun u => u = R) hsame hlinks c fuel y hyS hyR, hf,
-      getEqR_fuel_succ N t R c f y 1 (PathLen.link PathLen.root hlink)
-        (fun z k hz => by have := hdepth z k hz; omega)]
+      getEqR_fuel_mono N t c d' y (hch 0 y hRy) (f + 1) f (by omega) (by omega)]
     simp only [getEqR, hRn, hRl, Bool.false_eq_true, ↓reduceIte]
     have hs := KNode.searchLte_of_max n t hnt c 0 y ((hlive 0 y).mpr ⟨rfl, rfl⟩) (by omega)
       (fun q hq _ => by have := ((hlive q.1 q.2).mp hq).1; omega)
@@ -231,11 +231,11 @@ theorem writerWP_takeBackRoot_spaceV (x : NodeId) (only : Nat) (n : KNode) (chil
   exact ⟨h2r, by simp only; rw [h2t], h2n, h2v⟩
 
 /-- What root collapse at the space root keeps for the reading: `CollInv`, the
-reading of a state w0, every path from the root shorter than the fuel, the
-reached nodes well formed and of no value. -/
+reading of a state w0, every segment tree reached shallower than the fuel
+(`SegFits`), the reached nodes well formed and of no value. -/
 def CollGetInv (c : Ctx) (base : View BVal) (w0 w : W) : Prop :=
   CollInv c base w ∧ (∀ key, wGet c.p c.i base w key = wGet c.p c.i base w0 key) ∧
-  PathsFit (wNode c.p base w) c.i w.top.rootKey c.p.fuel ∧
+  SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey ∧
   (∀ y yn, TReach (wNode c.p base w) c.i w.top.rootKey y → wNode c.p base w y = some yn →
     klongsWf yn.ks = true) ∧
   (∀ y yn, TReach (wNode c.p base w) c.i w.top.rootKey y → wNode c.p base w y = some yn →
@@ -280,22 +280,14 @@ theorem collGetInv_step (c : Ctx) (base : View BVal) (w0 w w' : W) (y : NodeId) 
     rw [hV, htop]
     exact getFromR_collapse (wNode c.p base w) (wNode c.p base w') (wValue base w) c.i c.p.fuel
       w.top.rootKey y n hI.1 hrn hrl hlive hnt hN
-      (fun x xn hx hxn => hW x xn (reachS_tReach _ _ _ _ hx) hxn) hD key
-  · -- a path from y after is one from r before, one longer
-    have hpath : ∀ z k, PathLen (wNode c.p base w') c.i y z k →
-        PathLen (wNode c.p base w) c.i w.top.rootKey z (k + 1) := by
-      intro z k hz
-      induction hz with
-      | root => exact PathLen.link PathLen.root hl
-      | @link x cc z' k' hx hlk ih =>
-        obtain ⟨mm, hm, hc⟩ := hlk
-        have hxr := (hreach x hx.reach).2
-        rw [hN x hxr] at hm
-        exact PathLen.link ih ⟨mm, hm, hc⟩
-    intro z k hz
-    rw [htop] at hz
-    have := hD z (k + 1) (hpath z k hz)
-    omega
+      (fun x xn hx hxn => hW x xn (reachS_tReach _ _ _ _ hx) hxn) (hD _ ReachS.root) key
+  · -- what y reaches after, r reached before, with the same nodes
+    rw [htop]
+    refine segFits_transfer _ _ c.i _ _ _ hD (fun u hu => ?_) (fun u un' hu hun' hl => ?_)
+    · exact tReach_reachS _ _ _ _ (hreach u (reachS_tReach _ _ _ _ hu)).1
+    · have hur := (hreach u (reachS_tReach _ _ _ _ hu)).2
+      rw [hN u hur] at hun'
+      exact ⟨un', hun', hl, fun c' y' hy' => ⟨c', hy'⟩⟩
   · intro z zn hz hzn
     rw [htop] at hz
     obtain ⟨h1, h2⟩ := hreach z hz
@@ -406,11 +398,11 @@ theorem writerWP_collapseRoot_space_get (key : Key) (c : Ctx) (base : View BVal)
                 · intro z hz; exact h3n z hz
 
 /-- Root collapse at the space root keeps the reading of every key, from a state
-whose tree is a tree with `CollInv`'s facts, every path from the root shorter
-than the fuel, and the reached nodes well formed and of no value. -/
+whose tree is a tree with `CollInv`'s facts, every segment tree shallower than
+the fuel (`SegFits`), and the reached nodes well formed and of no value. -/
 theorem writerWP_collapseRoot_space_reads (key : Key) (c : Ctx) (base : View BVal)
     (hvc : ViewCoherent c base) (fuel : Nat) (w : W) (hI : CollInv c base w)
-    (hD : PathsFit (wNode c.p base w) c.i w.top.rootKey c.p.fuel)
+    (hD : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey)
     (hW : ∀ y yn, TReach (wNode c.p base w) c.i w.top.rootKey y → wNode c.p base w y = some yn →
       klongsWf yn.ks = true)
     (hNV : ∀ y yn, TReach (wNode c.p base w) c.i w.top.rootKey y → wNode c.p base w y = some yn →

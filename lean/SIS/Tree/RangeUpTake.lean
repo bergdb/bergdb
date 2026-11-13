@@ -36,7 +36,7 @@ theorem rangeOrder_deleteUpward_upT (c : Ctx) (base : View BVal) (hvc : ViewCohe
     (hTimesR : ∀ y yn, TReach (wNode c.p base w) c.i w.top.rootKey y → wNode c.p base w y = some yn →
       ∀ s, Klong.time s ∈ yn.ks → s ≤ c.i)
     (hICE : InnerChildrenExist (wNode c.p base w) c.i w.top.rootKey)
-    (hfit : PathsFit (wNode c.p base w) c.i w.top.rootKey c.p.fuel)
+    (hfit : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey)
     (hnovalAll : ∀ y yn, wNode c.p base w y = some yn → wValue base w y = none)
     (hreach : ∀ i, i ≤ depth → TReach (wNode c.p base w) c.i w.top.rootKey (X i))
     (hlinkK : ∀ i, 0 < i → i ≤ depth → (K i, X i) ∈ (Nn (i - 1)).liveAt c.i)
