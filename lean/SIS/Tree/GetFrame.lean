@@ -1,6 +1,7 @@
 import SIS.Tree.GetOpInv
 import SIS.Tree.KlongAppend
 import SIS.Tree.NodeMap
+import SIS.Tree.KlongPreservation
 
 set_option autoImplicit false
 
@@ -600,5 +601,284 @@ theorem writerWP_put_room (c : Ctx) (base : View BVal) (hvc : ViewCoherent c bas
       exact hk (huniq key' L n hkey' hmem hvisL hn hnl).symm
     · intro x c' m y hx hm hml hs
       exact hV y (hfresh key' x c' m y hx hm hml hs)
+
+/-! ## The reading after a change of one leaf -/
+
+/-- After a change of the leaf L of a key of one segment, at its compare value
+alone, the key reads what L's new search gives, and every other key what it
+read; given that no other key searches that compare value at L. -/
+theorem wGet_leaf_change (p : Params) (base : View BVal) (i : Time) (w w' : W) (L : NodeId)
+    (cv : Nat) (n n2 : KNode) (hfuel : 1 ≤ p.fuel) (htop : w'.top = w.top)
+    (hN : ∀ x, x ≠ L → wNode p base w x = wNode p base w' x)
+    (hn : wNode p base w L = some n) (hn2 : wNode p base w' L = some n2)
+    (hl : n.leaf = true) (hl2 : n2.leaf = true)
+    (hs : ∀ c', c' ≠ cv → (n.searchEq i c').map (·.y) = (n2.searchEq i c').map (·.y))
+    (hvisL : (L, cv) ∈ eqVisits (wNode p base w) i cv p.fuel w.top.rootKey)
+    (huniq : ∀ key' x m, keyWf key' = true →
+      (x, cv) ∈ fromVisits (wNode p base w) i p.fuel key' w.top.rootKey →
+      (x, cv) ∈ eqVisits (wNode p base w) i cv p.fuel w.top.rootKey →
+      wNode p base w x = some m → m.leaf = true → key' = [cv])
+    (hV : ∀ key' x c' m y, key' ≠ [cv] →
+      (x, c') ∈ fromVisits (wNode p base w) i p.fuel key' w.top.rootKey →
+      wNode p base w x = some m → m.leaf = true → (m.searchEq i c').map (·.y) = some y →
+      wValue base w y = wValue base w' y) :
+    wGet p i base w' [cv] = ((n2.searchEq i cv).map (·.y)).bind (wValue base w') ∧
+      ∀ key', keyWf key' = true → key' ≠ [cv] →
+        wGet p i base w' key' = wGet p i base w key' := by
+  constructor
+  · unfold wGet
+    rw [htop]
+    simp only [getFromR]
+    rw [getEqR_change_leaf (wNode p base w) (wNode p base w') i cv L n2 hn2 hl2 p.fuel
+      w.top.rootKey (fun q _ hq => hN q.1 hq) hvisL
+      (fun n1 h1 => by rw [hn] at h1; cases h1; exact hl)]
+  · intro key' hkey' hk
+    unfold wGet
+    rw [htop]
+    symm
+    apply getFromR_leaf_change (wNode p base w) (wNode p base w') (wValue base w)
+      (wValue base w') i p.fuel hfuel L cv hN ⟨n, n2, hn, hn2, hl, hl2, hs⟩ key' w.top.rootKey
+    · intro hmem
+      exact hk (huniq key' L n hkey' hmem hvisL hn hl)
+    · intro x c' m y hx hm hml hsy
+      exact hV key' x c' m y hk hx hm hml hsy
+
+/-! ## A delete of a key that has no value -/
+
+theorem KNode.searchEq_noop (n : KNode) (t : Time) (cv : Nat) (hw : klongsWf n.ks = true)
+    (ht : ∀ s, Klong.time s ∈ n.ks → s ≤ t)
+    (hu : bitsUnion n.lastBitmap (n.bitsOf cv) = n.lastBitmap) :
+    (n.searchEq t cv).map (·.y) = none := by
+  rw [KNode.searchEq_live n t hw ht, KNode.delete_lookup_noop n cv hu cv]
+  simp
+
+/-- A delete of a key of one segment that has no value changes nothing that the
+writer's state reads, and the key reads none. -/
+theorem writerWP_del_noop (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (cv : Nat) (w : W)
+    (ht : ∀ q ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel w.top.rootKey,
+      w.taken.contains q.1 = false)
+    (hleaf : ∀ L n, (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel w.top.rootKey →
+      wNode c.p base w L = some n → n.leaf = true →
+      klongsWf n.ks = true ∧ (∀ s, Klong.time s ∈ n.ks → s ≤ c.i) ∧
+      bitsUnion n.lastBitmap (n.bitsOf cv) = n.lastBitmap) :
+    WriterWP (putKv (.del [cv])) c w (fun _ w' => ∀ key', keyWf key' = true →
+      wGet c.p c.i base w' key' =
+        if Op.key (.del [cv]) == key' then Op.value (.del [cv]) else wGet c.p c.i base w key') := by
+  unfold putKv pathClear findRoot pathAdd
+  wpSimplify
+  rw [putSegs.eq_2]
+  unfold setValue
+  wpSimplify
+  generalize hw2 : ({ ({ w with path := [] } : W) with
+    path := ([] : List (Option Nat × NodeId)) ++ [(none, w.top.rootKey)] } : W) = w2
+  have hr02 : ReadsAs c.p base w w2 := by subst hw2; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
+  have ht2 : ∀ q ∈ eqVisits (wNode c.p base w2) c.i cv c.p.fuel w.top.rootKey,
+      w2.taken.contains q.1 = false := by
+    rw [hr02.1, hr02.2.2.1]; exact ht
+  refine writerWP_mono (writerWP_descendLte_reads cv c base hvc c.p.fuel w.top.rootKey w2 ht2) ?_
+  intro L w3 ⟨hr23, n, hn, hnl, hlk3, hvisL, hget⟩
+  rw [hr02.1] at hn hvisL hget
+  have hr03 := ReadsAs.trans _ _ _ _ _ hr02 hr23
+  obtain ⟨hwf, htimes, hnoop⟩ := hleaf L n hvisL hn hnl
+  unfold pathSize deleteUpward
+  wpSimplify
+  rw [writerWP_getNode_known L n c _ hlk3]
+  have hnoopb : (bitsUnion n.lastBitmap (n.bitsOf cv) == n.lastBitmap) = true := by
+    rw [hnoop]; simp
+  simp only [hnoopb, ↓reduceIte, writerWP_pure, Bool.not_true, Bool.false_eq_true]
+  intro key' hkey'
+  have hsame : wGet c.p c.i base w3 key' = wGet c.p c.i base w key' := by
+    unfold wGet
+    rw [hr03.1, hr03.2.1, ReadsAs.value _ _ _ _ hr03]
+  rw [hsame]
+  by_cases hk : [cv] = key'
+  · subst hk
+    simp only [Op.key, beq_self_eq_true, ↓reduceIte, Op.value]
+    unfold wGet
+    simp only [getFromR]
+    rw [hget, KNode.searchEq_noop n c.i cv hwf htimes hnoop]
+    rfl
+  · have hk' : ([cv] == key') = false := by simpa using hk
+    simp only [Op.key, hk', Bool.false_eq_true, ↓reduceIte]
+
+/-! ## A delete that leaves its leaf a live klong (merges off) -/
+
+theorem writerWP_ghOf_cached (x : NodeId) (n : KNode) (c : Ctx) (w : W)
+    (hn : w.nodes.lookup x = some n) (post : Nat × Nat → W → Prop) (hp : ∀ gh, post gh w) :
+    WriterWP (ghOf x) c w post := by
+  unfold ghOf
+  simp only [writerWP_bind]
+  rw [writerWP_getNode_known x n c w hn]
+  simp only [writerWP_get]
+  split
+  · simp only [writerWP_pure]; exact hp _
+  · exact writerWP_throw _ _ _ _
+
+/-- The last klong is a bitmap. -/
+def lastIsDel (ks : List Klong) : Bool :=
+  match ks.getLast? with
+  | some (.del _) => true
+  | _ => false
+
+theorem lastIsDel_some (ks : List Klong) (h : lastIsDel ks = true) :
+    ∃ old, ks.getLast? = some (.del old) := by
+  unfold lastIsDel at h
+  split at h
+  · rename_i old hl; exact ⟨old, hl⟩
+  · cases h
+
+theorem KNode.setAt_leaf (n : KNode) (i : Nat) (k : Klong) : (n.setAt i k).leaf = n.leaf := rfl
+
+theorem KNode.setAt_last_times (n : KNode) (old bits : List Nat) (t : Time)
+    (hlast : n.ks.getLast? = some (.del old)) (ht : ∀ s, Klong.time s ∈ n.ks → s ≤ t) :
+    ∀ s, Klong.time s ∈ (n.setAt (n.size - 1) (.del bits)).ks → s ≤ t := by
+  obtain ⟨pre, hpre⟩ := List.getLast?_eq_some_iff.mp hlast
+  have hnew : (n.setAt (n.size - 1) (.del bits)).ks = pre ++ [.del bits] := by
+    simp [KNode.setAt, KNode.size, hpre]
+  intro s hs
+  rw [hnew] at hs
+  rcases List.mem_append.mp hs with hs | hs
+  · exact ht s (by rw [hpre]; exact List.mem_append_left _ hs)
+  · simp at hs
+
+/-- A delete of a key of one segment whose leaf keeps a live klong, by a bitmap
+in place or a new bitmap without compaction, merges off: the key reads none,
+every other key what it read. -/
+theorem writerWP_del_bitmap (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (cv : Nat) (w : W) (hfuel : 1 ≤ c.p.fuel) (hmerges : c.p.merges = false)
+    (ht : ∀ q ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel w.top.rootKey,
+      w.taken.contains q.1 = false)
+    (hleaf : ∀ L n, (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel w.top.rootKey →
+      wNode c.p base w L = some n → n.leaf = true →
+      klongsWf n.ks = true ∧ (∀ s, Klong.time s ∈ n.ks → s ≤ c.i) ∧
+      bitsUnion n.lastBitmap (n.bitsOf cv) ≠ n.lastBitmap ∧
+      n.allKeysIn (bitsUnion n.lastBitmap (n.bitsOf cv)) = false ∧
+      deadOver c.p (n.setAt (n.size - 1) (.del (bitsUnion n.lastBitmap (n.bitsOf cv)))) = false ∧
+      deadOver c.p (n.add c.i (.del (bitsUnion n.lastBitmap (n.bitsOf cv)))) = false ∧
+      (lastIsDel n.ks = false ∨ n.lastTime ≠ some c.i → n.size + 1 < c.p.M))
+    (huniq : ∀ key' x m, keyWf key' = true →
+      (x, cv) ∈ fromVisits (wNode c.p base w) c.i c.p.fuel key' w.top.rootKey →
+      (x, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel w.top.rootKey →
+      wNode c.p base w x = some m → m.leaf = true → key' = [cv]) :
+    WriterWP (putKv (.del [cv])) c w (fun _ w' => ∀ key', keyWf key' = true →
+      wGet c.p c.i base w' key' =
+        if Op.key (.del [cv]) == key' then Op.value (.del [cv]) else wGet c.p c.i base w key') := by
+  unfold putKv pathClear findRoot pathAdd
+  wpSimplify
+  rw [putSegs.eq_2]
+  unfold setValue
+  wpSimplify
+  generalize hw2 : ({ ({ w with path := [] } : W) with
+    path := ([] : List (Option Nat × NodeId)) ++ [(none, w.top.rootKey)] } : W) = w2
+  have hr02 : ReadsAs c.p base w w2 := by subst hw2; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
+  have ht2 : ∀ q ∈ eqVisits (wNode c.p base w2) c.i cv c.p.fuel w.top.rootKey,
+      w2.taken.contains q.1 = false := by
+    rw [hr02.1, hr02.2.2.1]; exact ht
+  refine writerWP_mono (writerWP_descendLte_reads cv c base hvc c.p.fuel w.top.rootKey w2 ht2) ?_
+  intro L w3 ⟨hr23, n, hn, hnl, hlk3, hvisL, hget⟩
+  rw [hr02.1] at hn hvisL hget
+  have hr03 := ReadsAs.trans _ _ _ _ _ hr02 hr23
+  obtain ⟨hwf, htimes, hne, hkeep, hd1, hd2, hroom⟩ := hleaf L n hvisL hn hnl
+  have hLt : w.taken.contains L = false := ht (L, cv) hvisL
+  suffices hfin : ∀ (n2 : KNode) (w6 : W), n2.leaf = true → w6.top = w.top →
+      w6.taken = w.taken → w6.vals = w.vals →
+      (∀ x, w6.nodes.lookup x = if x = L then some n2 else w3.nodes.lookup x) →
+      (∀ c', ((n2.searchEq c.i c').map (·.y)) =
+        if c' == cv then none else (n.searchEq c.i c').map (·.y)) →
+      ∀ key', keyWf key' = true → wGet c.p c.i base w6 key' =
+        if Op.key (.del [cv]) == key' then Op.value (.del [cv])
+        else wGet c.p c.i base w key' by
+    unfold pathSize deleteUpward
+    wpSimplify
+    rw [writerWP_getNode_known L n c _ hlk3]
+    have hnb : (bitsUnion n.lastBitmap (n.bitsOf cv) == n.lastBitmap) = false := by
+      simpa using hne
+    simp only [hnb, Bool.false_eq_true, ↓reduceIte, hkeep, Bool.not_false]
+    wpSimplify
+    refine writerWP_ghOf_cached L n c _ hlk3 _ (fun gh => ?_)
+    unfold appendDeleteKlong
+    wpSimplify
+    rw [writerWP_getNode_known L n c _ hlk3]
+    split
+    · exact writerWP_throw _ _ _ _
+    · simp only [hnb, Bool.not_false, ↓reduceIte]
+      have hcont : ∀ (n2 : KNode), n2.leaf = true →
+          (∀ c', ((n2.searchEq c.i c').map (·.y)) =
+            if c' == cv then none else (n.searchEq c.i c').map (·.y)) →
+          ∀ (s : String), WriterWP (do note s; putNode L n2; pure false) c w3 (fun _ w' =>
+            WriterWP (afterDelete [cv] gh.1 gh.2) c w' (fun _ w'' =>
+              WriterWP (do let _ ← fresh; pure false) c w''
+                (fun _ w''' => ∀ key', keyWf key' = true → wGet c.p c.i base w''' key' =
+                  if Op.key (.del [cv]) == key' then Op.value (.del [cv])
+                  else wGet c.p c.i base w key'))) := by
+        intro n2 hl2 hs2 s
+        unfold note putNode afterDelete
+        wpSimplify
+        simp only [hmerges, Bool.false_eq_true, ↓reduceIte, writerWP_pure]
+        unfold fresh
+        wpSimplify
+        refine hfin n2 _ hl2 ?_ ?_ ?_ ?_ hs2
+        · exact hr03.2.1
+        · exact hr03.2.2.1
+        · exact hr03.2.2.2.1
+        · intro x; exact lookup_upsert _ _ _ _
+      have hsetAt : ∀ old, n.ks.getLast? = some (.del old) →
+          ∀ c', (((n.setAt (n.size - 1) (.del (bitsUnion n.lastBitmap (n.bitsOf cv)))).searchEq
+            c.i c').map (·.y)) = if c' == cv then none else (n.searchEq c.i c').map (·.y) := by
+        intro old hlast c'
+        have hw' := KNode.setAt_delete_wf n cv old hwf hlast
+        rw [KNode.searchEq_live _ c.i hw' (KNode.setAt_last_times n old _ c.i hlast htimes),
+          KNode.setAt_delete_live_lookup n cv c' old hlast, KNode.searchEq_live n c.i hwf htimes]
+      have hadd : ∀ c', (((n.add c.i (.del (bitsUnion n.lastBitmap (n.bitsOf cv)))).searchEq
+            c.i c').map (·.y)) = if c' == cv then none else (n.searchEq c.i c').map (·.y) := by
+        intro c'
+        have hw' := KNode.add_delete_wf n c.i cv hwf hne
+        rw [KNode.searchEq_live _ c.i hw' (KNode.add_times n c.i _ (fun s h => by cases h) htimes),
+          KNode.add_delete_live_lookup n c.i cv c', KNode.searchEq_live n c.i hwf htimes]
+      split
+      · rename_i _ old hlast
+        by_cases hlt : n.lastTime = some c.i
+        · have hb : (n.lastTime == some c.i) = true := by simp [hlt]
+          simp only [hb, Bool.and_self, ↓reduceIte, hd1, Bool.false_eq_true]
+          exact hcont _ (by rw [KNode.setAt_leaf]; exact hnl) (hsetAt old hlast) _
+        · have hb : (n.lastTime == some c.i) = false := by simpa using hlt
+          have hsize : n.size + 1 < c.p.M := hroom (Or.inr hlt)
+          simp only [hb, Bool.and_false, Bool.false_eq_true, ↓reduceIte, hsize, decide_true, hd2]
+          exact hcont _ (by rw [KNode.add_leaf]; exact hnl) hadd _
+      · rename_i _ hnot
+        have hld : lastIsDel n.ks = false := by
+          unfold lastIsDel
+          split
+          · rename_i old hl
+            exact absurd hl (hnot old)
+          · rfl
+        have hsize : n.size + 1 < c.p.M := hroom (Or.inl hld)
+        simp only [Bool.false_and, Bool.false_eq_true, ↓reduceIte, hsize, decide_true, hd2]
+        exact hcont _ (by rw [KNode.add_leaf]; exact hnl) hadd _
+  intro n2 w6 hl2 h6top h6taken h6vals h6nodes hs2
+  have hN : ∀ x, x ≠ L → wNode c.p base w x = wNode c.p base w6 x := by
+    intro x hx
+    rw [← hr03.1]
+    simp only [wNode, h6taken, h6nodes, if_neg hx, hr03.2.2.1]
+  have hNL : wNode c.p base w6 L = some n2 := by
+    simp only [wNode, h6taken, hLt, Bool.false_eq_true, ↓reduceIte, h6nodes, if_pos rfl]
+  have hV : ∀ y, wValue base w y = wValue base w6 y := by
+    intro y; simp only [wValue, h6taken, h6vals]
+  obtain ⟨hown, hother⟩ := wGet_leaf_change c.p base c.i w w6 L cv n n2 hfuel h6top hN hn hNL
+    hnl hl2 (fun c' hc' => by
+      rw [hs2 c']
+      have hb : (c' == cv) = false := by simpa using hc'
+      rw [hb]; rfl)
+    hvisL huniq (fun _ _ _ _ y _ _ _ _ _ => hV y)
+  intro key' hkey'
+  by_cases hk : [cv] = key'
+  · subst hk
+    simp only [Op.key, beq_self_eq_true, ↓reduceIte, Op.value]
+    rw [hown, hs2 cv]
+    simp
+  · have hk' : ([cv] == key') = false := by simpa using hk
+    simp only [Op.key, hk', Bool.false_eq_true, ↓reduceIte]
+    exact hother key' hkey' (fun h => hk h.symm)
 
 end SIS.Tree
