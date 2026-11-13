@@ -13,6 +13,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import bergdb.core.Db;
+import bergdb.core.TestNodeSize;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
@@ -1131,8 +1132,8 @@ public class PubTesterJavadoc {
     @Nano
     public static void testIndexScanBehindCut() {
         TestClock clock = new TestClock();
-        Db core = Db.builder().testSetup(new CutStream())
-                .clock(clock).maxNodeSize8().startupDistance(2000).build();
+        Db core = TestNodeSize.builder(8).testSetup(new CutStream())
+                .clock(clock).startupDistance(2000).build();
         final Database d = DatabaseImp.createAndStart(core);
         try {
             d.setRetainDuration(Duration.seconds(1));

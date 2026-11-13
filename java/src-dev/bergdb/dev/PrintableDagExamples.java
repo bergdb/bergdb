@@ -2,6 +2,7 @@ package bergdb.dev;
 
 import bergdb.core.Db;
 import bergdb.core.CoreTestClock;
+import bergdb.core.TestNodeSize;
 
 /**
  * Executable class that prints examples of the db graph.
@@ -56,7 +57,7 @@ public class PrintableDagExamples {
         
         
         clock = new CoreTestClock();
-        db = Db.builder().testSetup().clock(clock).maxNodeSize8().start();
+        db = TestNodeSize.builder(8).testSetup().clock(clock).start();
         for (int i = 0; i < 7; i++) {
             clock.setTime(1000 + i * 10);
             db.execute(db.trans().put("k" + i, "v" + i).build());

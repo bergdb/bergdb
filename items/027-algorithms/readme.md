@@ -106,7 +106,28 @@ Files
   code accepts what a specification should refuse, the open format
   questions, the options for versioning; moved from 024-02 on
   2026-11-13; kept current.
+* [04-outline-proposal.md](04-outline-proposal.md). 027-04, a proposed
+  outline for 027, for Frans to react to: 14 parts by mechanism in the
+  levels' order, three other organisations, five questions, and how the
+  writing could go on with him; decided (Frans, 2026-11-13, 11:09).
 
+
+The parts, in reading order (027-04; stubs until written):
+
+* [05-overview.md](05-overview.md). 027-05, part 1: overview, what BergDB is and what it promises.
+* [06-terms.md](06-terms.md). 027-06, part 2: terms.
+* [07-key-tree-reads.md](07-key-tree-reads.md). 027-07, part 3: the key tree, structure and reads.
+* [08-key-tree-writer.md](08-key-tree-writer.md). 027-08, part 4: the key tree, the writer.
+* [09-transactions.md](09-transactions.md). 027-09, part 5: transactions.
+* [10-self-indexed-stream.md](10-self-indexed-stream.md). 027-10, part 6: the self-indexed stream.
+* [11-startup.md](11-startup.md). 027-11, part 7: startup.
+* [12-memory.md](12-memory.md). 027-12, part 8: memory, handles and eviction.
+* [13-reclaim.md](13-reclaim.md). 027-13, part 9: reclaim; a draft, the pilot (2026-11-13), not yet reviewed.
+* [14-storage.md](14-storage.md). 027-14, part 10: storage and durability.
+* [15-failures.md](15-failures.md). 027-15, part 11: failures.
+* [16-costs-and-bounds.md](16-costs-and-bounds.md). 027-16, part 12: costs and bounds, the index.
+* [17-model-and-checks.md](17-model-and-checks.md). 027-17, part 13: the model and its checks, the index.
+* [18-objects-and-indexes.md](18-objects-and-indexes.md). 027-18, part 14: objects and user indexes (the Pub layer).
 
 Log
 ===
@@ -139,3 +160,9 @@ Done: the placeholder, 027-01 and 027-02 moved (`docs/` keeps only
 (2026-11-13). No question open. Next: the structure and contents,
 later, with Frans.
 
+2026-11-13. 027-04's outline decided (Frans, 11:09; its section 4): the
+Core is the subject, the Pub layer the last part; the levels only as
+the reading order; one subitem per part, 027-05 to 027-18, made as
+stubs; 027 with Lean is the authority for the exact rules, and the
+code's comments may repeat or summarize them, so that a reader can tell
+whether the code does what it should.

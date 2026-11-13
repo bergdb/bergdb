@@ -21,6 +21,7 @@ import bergdb.core.DbStoppingException;
 import bergdb.core.DbTester;
 import bergdb.core.DbTesterFailure;
 import bergdb.core.Eviction;
+import bergdb.core.TestNodeSize;
 import bergdb.dag.Keys;
 import bergdb.dag.Klong;
 import bergdb.nanotest.Assert;
@@ -113,7 +114,7 @@ public class PubTester {
                 throw readError;
             }
         });
-        db = DatabaseImp.createAndStart(Db.builder().testSetup(s).maxNodeSize8()
+        db = DatabaseImp.createAndStart(TestNodeSize.builder(8).testSetup(s)
                 .startupDistance(1000).evictionSchedule(Eviction.Schedule.EVERY, 1).build());
         try {
             final Connection c = db.connection();
@@ -2167,7 +2168,7 @@ public class PubTester {
     @Nano
     public static void testFirstAvailableLookupTime2() {
         TestClock clock = new TestClock();
-        Db db = Db.builder().testSetup(new CutStream()).clock(clock).maxNodeSize8()
+        Db db = TestNodeSize.builder(8).testSetup(new CutStream()).clock(clock)
                 .startupDistance(2000).build();
         Database d = DatabaseImp.createAndStart(db);
         Duration retain = Duration.seconds(1);
@@ -3127,13 +3128,13 @@ public class PubTester {
     
     /**
      * Bergdb 005-50: the Pub API, which uses maximum node size 30, refuses a database that
-     * the core API created with another size, with the core's StreamFormatException, which
-     * says what to do, and writes nothing.
+     * a test created with another size (TestNodeSize, bergdb 026-08), with the core's
+     * StreamFormatException, and writes nothing.
      */
     @Nano
     private static void testOtherNodeSizeRefused() {
         MemoryStream m = new MemoryStream();
-        Db db = Db.builder().testSetup(m).maxNodeSize8().start();
+        Db db = TestNodeSize.builder(8).testSetup(m).start();
         db.execute(db.trans().put("key", "value"));
         db.sync(SyncLevel.ORDINARY);
         db.close();
@@ -3954,7 +3955,7 @@ public class PubTester {
     @Nano
     private static void testTransactionInfoAfterReclaim() {
         TestClock clock = new TestClock();
-        Db db = Db.builder().testSetup(new CutStream()).clock(clock).maxNodeSize8()
+        Db db = TestNodeSize.builder(8).testSetup(new CutStream()).clock(clock)
                 .startupDistance(2000).build();
         Database d = DatabaseImp.createAndStart(db);
         d.setRetainDuration(Duration.seconds(1));
@@ -4005,7 +4006,7 @@ public class PubTester {
     @Nano
     private static void testTransactionInfoOfReclaimsCopy() {
         TestClock clock = new TestClock();
-        Db db = Db.builder().testSetup(new CutStream()).clock(clock).maxNodeSize8()
+        Db db = TestNodeSize.builder(8).testSetup(new CutStream()).clock(clock)
                 .startupDistance(2000).build();
         Database d = DatabaseImp.createAndStart(db);
         try {
@@ -4141,7 +4142,7 @@ public class PubTester {
     @Nano
     private static void testTransactionInfoAgainstOracle() {
         TestClock clock = new TestClock();
-        Db db = Db.builder().testSetup(new CutStream()).clock(clock).maxNodeSize8()
+        Db db = TestNodeSize.builder(8).testSetup(new CutStream()).clock(clock)
                 .startupDistance(2000).build();
         Database d = DatabaseImp.createAndStart(db);
         try {
