@@ -4,6 +4,7 @@ The take-back's (B) and (C) together per operation case (bergdb 024-12, TP7;
 the rule lemmas with the room of the branch the writer takes (`DelRoom`).
 -/
 import SIS.Tree.TakeDeadUpW
+import SIS.Tree.TakeDeadCascade
 import SIS.Tree.GetCaseBridge
 
 set_option autoImplicit false
@@ -193,5 +194,167 @@ theorem writerWP_del_room_j2 (c : Ctx) (base : View BVal) (hvc : ViewCoherent c 
   unfold fresh
   wpSimplify
   exact hJ4
+
+/-! ## (5) and (6): deletes that read only -/
+
+/-- (5) A delete of a key with no leaf reads only, so it keeps `TakeJ2`. -/
+theorem writerWP_del_noLeaf_j2 (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (key : Key) (B : NodeId) (w : W) (hne : key ≠ [])
+    (ht : ∀ q ∈ fromVisits (wNode c.p base w) c.i c.p.fuel key w.top.rootKey,
+      w.taken.contains q.1 = false)
+    (hno : NoLeafFrom (wNode c.p base w) c.i c.p.fuel key w.top.rootKey)
+    (hJ : TakeJ2 c base B w) :
+    WriterWP (putKv (.del key)) c w (fun _ w' => TakeJ2 c base B w') := by
+  unfold putKv pathClear findRoot pathAdd
+  wpSimplify
+  generalize hw2 : ({ ({ w with path := [] } : W) with
+    path := ([] : List (Option Nat × NodeId)) ++ [(none, w.top.rootKey)] } : W) = w2
+  have hr02 : ReadsAs c.p base w w2 := by subst hw2; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
+  refine writerWP_mono (writerWP_putSegs_del_noLeaf c base hvc key key w.top.rootKey w2 hne ?_ ?_) ?_
+  · intro q hq
+    rw [hr02.2.2.1]
+    rw [hr02.1] at hq
+    exact ht q hq
+  · rw [hr02.1]; exact hno
+  · intro _ w' hr'
+    exact takeJ2_of_readsAs c base B w w' hJ (ReadsAs.trans _ _ _ _ _ hr02 hr')
+
+/-- (6) A delete whose bitmap changes nothing reads only, so it keeps `TakeJ2`. -/
+theorem writerWP_del_noop_j2 (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (pre : List Nat) (cv : Nat) (rk B : NodeId) (w : W)
+    (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
+    (ht : ∀ q ∈ fromVisits (wNode c.p base w) c.i c.p.fuel (pre ++ [cv]) w.top.rootKey,
+      w.taken.contains q.1 = false)
+    (hleaf : ∀ L n, (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      wNode c.p base w L = some n → n.leaf = true →
+      bitsUnion n.lastBitmap (n.bitsOf cv) = n.lastBitmap)
+    (hJ : TakeJ2 c base B w) :
+    WriterWP (putKv (.del (pre ++ [cv]))) c w (fun _ w' => TakeJ2 c base B w') := by
+  unfold putKv pathClear findRoot pathAdd
+  wpSimplify
+  generalize hw2 : ({ ({ w with path := [] } : W) with
+    path := ([] : List (Option Nat × NodeId)) ++ [(none, w.top.rootKey)] } : W) = w2
+  have hr02 : ReadsAs c.p base w w2 := by subst hw2; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
+  refine writerWP_putSegs_prefix c base hvc (pre ++ [cv]) none cv _ pre w.top.rootKey rk w2
+    (by rw [hr02.1, hr02.2.2.1]; exact ht) (by rw [hr02.1]; exact hrk) ?_
+  intro w2' hr2'
+  have hr0 := ReadsAs.trans _ _ _ _ _ hr02 hr2'
+  unfold setValue
+  wpSimplify
+  have ht2 : ∀ q ∈ eqVisits (wNode c.p base w2') c.i cv c.p.fuel rk,
+      w2'.taken.contains q.1 = false := by
+    rw [hr0.1, hr0.2.2.1]
+    exact fun q hq => ht q (fromVisits_append _ _ _ pre cv _ rk hrk q hq)
+  refine writerWP_mono (writerWP_descendLte_reads cv c base hvc c.p.fuel rk w2' ht2) ?_
+  intro L w3 ⟨hr23, n, hn, hnl, hlk3, hvisL, _⟩
+  rw [hr0.1] at hn hvisL
+  have hr03 := ReadsAs.trans _ _ _ _ _ hr0 hr23
+  have hnoop := hleaf L n hvisL hn hnl
+  unfold pathSize deleteUpward
+  wpSimplify
+  rw [writerWP_getNode_known L n c _ hlk3]
+  have hnoopb : (bitsUnion n.lastBitmap (n.bitsOf cv) == n.lastBitmap) = true := by
+    rw [hnoop]; simp
+  simp only [hnoopb, ↓reduceIte, writerWP_pure, Bool.not_true, Bool.false_eq_true]
+  exact takeJ2_of_readsAs c base B w w3 hJ hr03
+
+/-! ## (1) A put into a leaf with room -/
+
+/-- `J2N` with a value that is no node added to the values. -/
+theorem j2N_vals_add (N : NodeId → Option KNode) (t : Time) (r B : NodeId) (vals : List NodeId)
+    (y : NodeId) (hJ : J2N N t r B vals) (hy : N y = none) : J2N N t r B (vals ++ [y]) := by
+  obtain ⟨hTt, hD, hO, hS, hM, hV⟩ := hJ
+  refine ⟨hTt, fun q qn hq i cv z hi hB hv => hD q qn hq i cv z hi hB
+    (fun h => hv (List.mem_append_left _ h)), hO, hS, hM, fun z hz => ?_⟩
+  rcases List.mem_append.mp hz with h | h
+  · exact hV z h
+  · rw [List.mem_singleton.mp h]; exact hy
+
+/-- (1) with the take-back's (B) and (C): `writerWP_put_room_seg`'s premises with
+`TakeJ2` before, the leaf reached and its klong of cv naming no node, below B or
+a value, and the next id no node. -/
+theorem writerWP_put_room_j2 (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (pre : List Nat) (cv h : Nat) (rk B : NodeId) (w : W) (hpos : 0 < c.i)
+    (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
+    (ht : ∀ q ∈ fromVisits (wNode c.p base w) c.i c.p.fuel (pre ++ [cv]) w.top.rootKey,
+      w.taken.contains q.1 = false)
+    (hleaf : ∀ L n, (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      wNode c.p base w L = some n → n.leaf = true →
+      klongsWf n.ks = true ∧ (∀ s, Klong.time s ∈ n.ks → s ≤ c.i) ∧
+      n.size + 1 < c.p.M ∧ deadOver c.p (n.add c.i (.key cv w.next)) = false)
+    (hJ : TakeJ2 c base B w)
+    (hLR : ∀ L, (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      TReach (wNode c.p base w) c.i w.top.rootKey L)
+    (hcvL : ∀ L n, (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      wNode c.p base w L = some n → n.leaf = true → ∀ y, (cv, y) ∈ n.liveAt c.i →
+      wNode c.p base w y = none ∧ (y < B ∨ y ∈ w.vals.map (·.1)))
+    (hnextN : wNode c.p base w w.next = none) :
+    WriterWP (putKv (.put (pre ++ [cv]) h)) c w (fun _ w' => TakeJ2 c base B w') := by
+  unfold putKv pathClear findRoot pathAdd
+  wpSimplify
+  generalize hw2 : ({ ({ w with path := [] } : W) with
+    path := ([] : List (Option Nat × NodeId)) ++ [(none, w.top.rootKey)] } : W) = w2
+  have hr02 : ReadsAs c.p base w w2 := by subst hw2; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
+  refine writerWP_putSegs_prefix c base hvc (pre ++ [cv]) (some h) cv _ pre w.top.rootKey rk w2
+    (by rw [hr02.1, hr02.2.2.1]; exact ht) (by rw [hr02.1]; exact hrk) ?_
+  intro w2' hr2'
+  have hr0 := ReadsAs.trans _ _ _ _ _ hr02 hr2'
+  unfold setValue
+  wpSimplify
+  have ht2 : ∀ q ∈ eqVisits (wNode c.p base w2') c.i cv c.p.fuel rk,
+      w2'.taken.contains q.1 = false := by
+    rw [hr0.1, hr0.2.2.1]
+    exact fun q hq => ht q (fromVisits_append _ _ _ pre cv _ rk hrk q hq)
+  refine writerWP_mono (writerWP_descendLte_reads cv c base hvc c.p.fuel rk w2' ht2) ?_
+  intro L w3 ⟨hr23, n, hn, hnl, hlk3, hvisL, _⟩
+  rw [hr0.1] at hn hvisL
+  have hr03 := ReadsAs.trans _ _ _ _ _ hr0 hr23
+  obtain ⟨hwf, htimes, hroom, hdead⟩ := hleaf L n hvisL hn hnl
+  unfold newValue fresh
+  wpSimplify
+  rw [writerWP_getNode_known L n c _ (by simpa using hlk3)]
+  have hnext3 : w3.next = w.next := hr03.2.2.2.2
+  have hcond : (decide (n.size + 1 < c.p.M) && !deadOver c.p (n.add c.i (.key cv w3.next))) = true := by
+    rw [hnext3, hdead]; simp [hroom]
+  simp only [hcond, ↓reduceIte, putNode, writerWP_bind, writerWP_modify, writerWP_pure]
+  suffices hfin : ∀ w6 : W, w6.taken = w.taken → w6.top = w.top →
+      w6.vals = w.vals ++ [(w.next, h)] →
+      (∀ x, w6.nodes.lookup x = if x = L then some (n.add c.i (.key cv w.next))
+        else w3.nodes.lookup x) → TakeJ2 c base B w6 by
+    refine hfin _ hr03.2.2.1 hr03.2.1 ?_ ?_
+    · simp only; rw [hr03.2.2.2.1, hnext3]
+    · intro x; simp only; rw [lookup_upsert, hnext3]
+  intro w6 h6taken h6top h6vals h6nodes
+  have hLt : w.taken.contains L = false :=
+    ht (L, cv) (fromVisits_append _ _ _ pre cv _ rk hrk _ hvisL)
+  have hN6 : wNode c.p base w6 = updN (wNode c.p base w) L (n.add c.i (.key cv w.next)) := by
+    funext x
+    by_cases hx : x = L
+    · rw [hx, updN_self]
+      simp only [wNode, h6taken, hLt, Bool.false_eq_true, ↓reduceIte, h6nodes]
+    · rw [← hr03.1]
+      simp only [updN, hx, ↓reduceIte, wNode, h6taken, h6nodes, hr03.2.2.1]
+  have hlive : ∀ cc u, (cc, u) ∈ n.liveAt c.i →
+      (∃ c', (c', u) ∈ (n.add c.i (.key cv w.next)).liveAt c.i) ∨ wNode c.p base w u = none := by
+    intro cc u hm
+    by_cases hc : cc = cv
+    · rw [hc] at hm; exact Or.inr (hcvL L n hvisL hn hnl u hm).1
+    · exact Or.inl ⟨cc, KNode.add_liveAt_keep n cv w.next c.i hwf htimes cc u hm hc⟩
+  have hreach := reach_updN_keep (wNode c.p base w) c.i w.top.rootKey L n _ hn hlive
+  have hJ1 : J2N (updN (wNode c.p base w) L (n.add c.i (.key cv w.next))) c.i w.top.rootKey B
+      (w.vals.map (·.1)) :=
+    j2_change_one (wNode c.p base w) _ c.i w.top.rootKey w.top.rootKey B _ L n _ hJ hn
+      (updN_self _ _ _) (fun z hz => by simp [updN, hz]) (KNode.prefixAt_add n c.i _ hpos)
+      (fun s hs => KNode.firstTime_add_some n c.i _ s hs)
+      (deadLiveK_addKey n c.i B _ cv w.next hwf htimes (deadLiveK_of_N _ _ _ _ hJ.2.1 L n hn)
+        (fun z hz => (hcvL L n hvisL hn hnl z hz).2))
+      hreach (fun _ => by
+        rcases hreach L (hLR L hvisL) with h | h
+        · exact h
+        · rw [h] at hn; cases hn)
+  have hLn : L ≠ w.next := fun he => by rw [he, hnextN] at hn; cases hn
+  unfold TakeJ2
+  rw [hN6, h6top, h6vals, List.map_append]
+  exact j2N_vals_add _ c.i w.top.rootKey B _ w.next hJ1 (by simp [updN, Ne.symm hLn, hnextN])
 
 end SIS.Tree
