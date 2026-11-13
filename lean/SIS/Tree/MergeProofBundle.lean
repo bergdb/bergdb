@@ -116,3 +116,4 @@ import SIS.Tree.WriterTreePutInv
 import SIS.Tree.GetNewSeg
 import SIS.Tree.GetSegInPlace
 import SIS.Tree.GetSegLeaf
+import SIS.Tree.WriterTreeSegRoot
