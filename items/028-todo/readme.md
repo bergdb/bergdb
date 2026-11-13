@@ -102,10 +102,7 @@ Open
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins and sequential keys | none | open |
 | [028-04](04-null-value-transformation.md) | Fix | What a null result of a value transformation does | decision | open |
 | [028-07](07-start-lock-across-sync.md) | Investigate | One start's sync blocks every start of the JVM | none | open |
-| [028-08](08-sd-crash-inside-setter.md) | Investigate | A crash inside setStartupDistance's own record | none | open |
-| [028-09](09-startup-pos-own-record.md) | Investigate | CheckStartupPos accepts a record's own position | none | open |
-| [028-10](10-public-start-params.md) | Investigate | The public Db.start(StartParams) takes unchecked values | none | open |
-| [028-11](11-startup-stale-texts.md) | Fix | Texts that disagree with the code, found by 027-11 | P5 only | open |
+| [028-10](10-public-start-params.md) | Investigate | The public Db.start(StartParams) takes unchecked values | decision | evaluated, for Frans |
 
 
 Closed
@@ -113,6 +110,9 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-11](11-startup-stale-texts.md) | Fix | Texts that disagree with the code, found by 027-11 | P5 only | done | 2026-11-13 |
+| [028-09](09-startup-pos-own-record.md) | Investigate | CheckStartupPos accepts a record's own position | none | done | 2026-11-13 |
+| [028-08](08-sd-crash-inside-setter.md) | Investigate | A crash inside setStartupDistance's own record | none | done | 2026-11-13 |
 | [028-06](06-maintain-and-pacing-javadoc.md) | Fix | maintain() and pacing, Core Javadoc | none | done | 2026-11-13 |
 | [028-05](05-core-api-transformations.md) | Fix | The Core API names the transformations | none | done | 2026-11-13 |
 | [028-03](03-write-buffer-sentence.md) | Fix | The package's write buffer sentence | none | done | 2026-11-13 |
@@ -123,3 +123,6 @@ Log
 ===
 
 2026-11-13. Created the item (Frans, 10:13 and 10:18), by coord-1113.
+
+2026-11-13. 028-08, 028-09 and 028-11 done, 028-10 evaluated, for Frans
+(a decision), by an agent of coord-1113.
