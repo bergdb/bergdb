@@ -260,10 +260,10 @@ set_option maxHeartbeats 1600000 in
 has no klong of c0 and is full: the leaf's klong to the new segment leaf goes up
 through a cascade along the whole access path (`writerWP_appendKlongs_chainGRV`
 from the space root), and the new segment leaves below it hold the rest of the
-key. The reading changes by the put alone, when the writer's state after it has
-its paths within the fuel (`PathsFit`) or the space root does not space split
-(`RootStays`). The premises on the nodes reached are those of
-`writerWP_put_accessPathR`. -/
+key. The reading changes by the put alone, when every path inside one segment
+tree of the writer's state after it is shorter than the fuel (`SegFits`) or the
+space root does not space split (`RootStays`). The premises on the nodes
+reached are those of `writerWP_put_accessPathR`. -/
 theorem writerWP_put_newSegFullR (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (pre : List Nat) (c0 h : Nat) (tail : List Nat) (htail : tail ≠ []) (rk0 : NodeId) (w : W)
     (hM : 2 ≤ c.p.M)
@@ -297,7 +297,7 @@ theorem writerWP_put_newSegFullR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
         ∃ rest', key' = pre ++ c0 :: rest') ∧
       ∀ c', (L, c') ∉ fromVisits (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey) :
     WriterWP (putKv (.put (pre ++ c0 :: tail) h)) c w (fun _ w' =>
-      (PathsFit (wNode c.p base w') c.i w'.top.rootKey c.p.fuel ∨
+      (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
         RootStays c (wNode c.p base w) w.top.rootKey) → ∀ key', keyWf key' = true →
       wGet c.p c.i base w' key' =
         if Op.key (.put (pre ++ c0 :: tail) h) == key' then Op.value (.put (pre ++ c0 :: tail) h)
@@ -474,7 +474,7 @@ theorem writerWP_put_newSegFullR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
       WriterWP pathSize c ws1 (fun a1 w' =>
         WriterWP (appendKlongs (a1 - 1) L [(c0, w3.next)]) c w' (fun _ w'' =>
           WriterWP (putSegs (pre ++ c0 :: tail) (some h) tail w3.next) c w'' (fun _ w' =>
-            (PathsFit (wNode c.p base w') c.i w'.top.rootKey c.p.fuel ∨
+            (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
               RootStays c (wNode c.p base w) w.top.rootKey) →
             ∀ key', keyWf key' = true → wGet c.p c.i base w' key' =
               if Op.key (.put (pre ++ c0 :: tail) h) == key' then Op.value (.put (pre ++ c0 :: tail) h)
@@ -683,25 +683,28 @@ theorem writerWP_put_newSegFullR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
     have hA' : ∀ z, z ≠ w.next → z < wf1.next → wNode c.p base wf z = wNode c.p base wf1 z := by
       intro z h1 h2
       simp only [wNode, k1, k4 z h2 h1]
-    have hfit1 : PathsFit (wNode c.p base wf) c.i wf.top.rootKey c.p.fuel →
-        PathsFit (wNode c.p base wf1) c.i wf1.top.rootKey c.p.fuel := by
+    have hfit1 : SegFits (wNode c.p base wf) c.i (c.p.fuel - 1) wf.top.rootKey →
+        SegFits (wNode c.p base wf1) c.i (c.p.fuel - 1) wf1.top.rootKey := by
       intro hfit
       rw [k2] at hfit
-      intro z k hz
-      apply hfit z k
-      apply PathLen.of_sublinks _ _ c.i _ _ z k hz
-      intro u c' z' hu hl
-      obtain ⟨mm, hm, hc⟩ := hl
-      have hun : u ≠ w.next := by
-        intro he
-        rw [he] at hm
-        have : wNode c.p base wf1 w.next = some ⟨true, []⟩ := by
-          simp only [wNode, htkc, Bool.false_eq_true, ↓reduceIte, hlkc]
-        rw [this] at hm
-        simp only [Option.some.injEq] at hm
-        subst hm
-        exact KNode.empty_liveAt c.i c' z' hc
-      exact ⟨mm, by rw [hA' u hun (hlt u (tReach_reachS _ _ _ _ hu))]; exact hm, hc⟩
+      have hw1e : wNode c.p base wf1 w.next = some ⟨true, []⟩ := by
+        simp only [wNode, htkc, Bool.false_eq_true, ↓reduceIte, hlkc]
+      refine SegFits.of_sub _ _ c.i _ _ ?_ ?_ hfit
+      · intro x hx
+        induction hx with
+        | root => exact ReachS.root
+        | step u un c' z hu hun hc ih =>
+          have hun' : u ≠ w.next := by
+            intro he
+            rw [he, hw1e] at hun
+            simp only [Option.some.injEq] at hun
+            subst hun
+            exact KNode.empty_liveAt c.i c' z hc
+          exact ReachS.step u un c' z ih (by rw [hA' u hun' (hlt u hu)]; exact hun) hc
+      · intro y n' hy hyn
+        by_cases hyw : y = w.next
+        · subst hyw; rw [hw1e] at hyn; cases hyn; exact Or.inl rfl
+        · exact Or.inr (by rw [hA' y hyw (hlt y hy)]; exact hyn)
     have hA_d : getFromR (wNode c.p base wf1) Vd c.i c.p.fuel (pre ++ [c0]) wf1.top.rootKey = some 1 := by
       rw [hR1 Vd hadm_d (hq.imp hfit1 (fun hs ⟨_, hnr, hsp⟩ => Nat.not_le.mpr hsp (hs _ (by
         have h0 := hXN 0 (Nat.zero_le _)

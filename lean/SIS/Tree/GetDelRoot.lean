@@ -13,7 +13,8 @@ open SIS SIS.Check
 full and split, in time with a new root, or in space with a new root over its
 halves, in place for a root the transaction made. The reading after it
 (`writerWP_del_leafRootR`): the key reads as no value, every other key as
-before, when the writer's state after it has its paths within the fuel. -/
+before, when every path inside one segment tree of the writer's state after it
+is shorter than the fuel (`SegFits`). -/
 
 /-- The space root L, a leaf whose nodes reached are below `bound`, with its
 contents m, n's live klongs but cv's, in place: a tree from L whose nodes
@@ -93,9 +94,9 @@ theorem getFromR_delRootTime (N A : NodeId → Option KNode) (Val : NodeId → O
 
 /-- After a space split of the space root L, a leaf, for a delete: the new root
 Y over the halves F and S of L's last version without cv, `newKlongs i pairs`;
-the nodes below `bound` but L are kept (F is L for a split in place). When the
-paths from Y fit the fuel, the delete's key reads as no value, every other key
-as before. -/
+the nodes below `bound` but L are kept (F is L for a split in place). When Y's
+segment tree has depth below the fuel, the delete's key reads as no value,
+every other key as before. -/
 theorem getFromR_delRootSpace (N A : NodeId → Option KNode) (Val : NodeId → Option Nat) (i : Time)
     (fuel : Nat) (hfuel2 : 2 ≤ fuel) (L F S Y : NodeId) (n : KNode) (cv bound : Nat)
     (pairs : List (Nat × NodeId)) (hps : CvSorted pairs) (hpne : pairs ≠ [])
@@ -109,7 +110,7 @@ theorem getFromR_delRootSpace (N A : NodeId → Option KNode) (Val : NodeId → 
     (hAF : A F = some (halves true i ⟨true, newKlongs i pairs⟩ []).1)
     (hAS : A S = some (halves true i ⟨true, newKlongs i pairs⟩ []).2.1)
     (hA : ∀ z, z ≠ L → z < bound → A z = N z)
-    (hfit : PathsFit A i Y fuel)
+    (hfit : SegDepthLe A i (fuel - 1) Y)
     (hvisL : (L, cv) ∈ eqVisits N i cv fuel L)
     (huniq : ∀ key' x m', keyWf key' = true → (x, cv) ∈ fromVisits N i fuel key' L →
       (x, cv) ∈ eqVisits N i cv fuel L → N x = some m' → m'.leaf = true → key' = [] ++ [cv]) :
@@ -336,7 +337,8 @@ set_option maxHeartbeats 800000 in
 /-- The bitmap of a delete of [cv] in the space root, a leaf: with room, the
 root loses cv's klong; full, it is split in time (in place for a root the
 transaction made) or in space (in place or not) under a new root. The state
-reads as the delete, when its paths fit the fuel. -/
+reads as the delete, when every path inside one segment tree of it is shorter
+than the fuel. -/
 theorem writerWP_appendDeleteKlong_rootR (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (cv : Nat) (n : KNode) (w w3 : W)
     (hkey : keyWf [cv] = true) (hsa : 1 ≤ c.p.splitAbove)
@@ -354,7 +356,7 @@ theorem writerWP_appendDeleteKlong_rootR (c : Ctx) (base : View BVal) (hvc : Vie
       (x, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel w.top.rootKey →
       wNode c.p base w x = some m' → m'.leaf = true → key' = [] ++ [cv]) :
     WriterWP (appendDeleteKlong w.top.rootKey 0 cv) c w3 (fun _ w4 =>
-      PathsFit (wNode c.p base w4) c.i w4.top.rootKey c.p.fuel → ∀ key', keyWf key' = true →
+      SegFits (wNode c.p base w4) c.i (c.p.fuel - 1) w4.top.rootKey → ∀ key', keyWf key' = true →
         wGet c.p c.i base w4 key' = if [] ++ [cv] == key' then none else wGet c.p c.i base w key') := by
   have hfuel : 2 ≤ c.p.fuel := by unfold Params.fuel; omega
   have hLt : w.taken.contains w.top.rootKey = false := (wNode_cases _ _ _ _ _ hroot).1
@@ -451,7 +453,7 @@ theorem writerWP_appendDeleteKlong_rootR (c : Ctx) (base : View BVal) (hvc : Vie
             hnext3, Ne.symm hF])
         (fun z h1 h2 => hN4 w4 s h4t z h1 h2 (by
           rw [h4n z]; simp only [h1, show z ≠ w3.next by omega, show z ≠ w3.next + 2 by omega, ↓reduceIte]))
-        hfit hvisL huniq key' hkey'
+        (hfit _ ReachS.root) hvisL huniq key' hkey'
     · -- the halves and a new root
       refine writerWP_mono (writerWP_handleFullWith_rootSpaceSplit_nilV _ w.top.rootKey n last c _
         hlk3 hmade hbig (by show w.top.rootKey < w3.next; omega)) ?_
@@ -483,9 +485,9 @@ theorem writerWP_appendDeleteKlong_rootR (c : Ctx) (base : View BVal) (hvc : Vie
           rw [h4n z]
           simp only [hz1, show z ≠ w3.next by omega, show z ≠ w3.next + 2 by omega,
             show z ≠ w3.next + 2 + 2 by omega, ↓reduceIte]))
-        hfit hvisL huniq key' hkey'
+        (hfit _ ReachS.root) hvisL huniq key' hkey'
   · refine writerWP_appendDeleteKlong_timeGenD c base hvc [] cv 0 w.top.rootKey w.top.rootKey n w w3
-      (fun w4 => PathsFit (wNode c.p base w4) c.i w4.top.rootKey c.p.fuel) (by omega) hkey rfl hvisL
+      (fun w4 => SegFits (wNode c.p base w4) c.i (c.p.fuel - 1) w4.top.rootKey) (by omega) hkey rfl hvisL
       huniq hwfG hroot hnl hnt hLt hr3 hlk3 hne
       (fun h1 h2 => by rw [hlastd]; exact Nat.le_of_not_lt (fun h3 => hsp ⟨h1, h2, h3⟩))
       (fun compact s hcs hfirst => ?_)
@@ -515,8 +517,8 @@ set_option maxHeartbeats 800000 in
 merges off, whose bitmap changes: the root loses cv's klong (it may be emptied
 and kept, the upward delete's first case), or is split, in time or in space,
 under a new root, in place for a root the transaction made. The reading changes
-by the delete alone, when the writer's state after it has its paths within the
-fuel (`PathsFit`). -/
+by the delete alone, when every path inside one segment tree of the writer's
+state after it is shorter than the fuel (`SegFits`). -/
 theorem writerWP_del_leafRootR (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (cv : Nat) (w : W) (n : KNode)
     (hmerges : c.p.merges = false) (hsa : 1 ≤ c.p.splitAbove)
@@ -535,7 +537,7 @@ theorem writerWP_del_leafRootR (c : Ctx) (base : View BVal) (hvc : ViewCoherent 
       (x, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel w.top.rootKey →
       wNode c.p base w x = some m' → m'.leaf = true → key' = [cv]) :
     WriterWP (putKv (.del [cv])) c w (fun _ w' =>
-      PathsFit (wNode c.p base w') c.i w'.top.rootKey c.p.fuel → ∀ key', keyWf key' = true →
+      SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey → ∀ key', keyWf key' = true →
       wGet c.p c.i base w' key' =
         if Op.key (.del [cv]) == key' then Op.value (.del [cv]) else wGet c.p c.i base w key') := by
   obtain ⟨hidn, hidv, hidt, _, _⟩ := hids
@@ -602,10 +604,10 @@ theorem writerWP_del_leafRootR (c : Ctx) (base : View BVal) (hvc : ViewCoherent 
   have hcore := writerWP_appendDeleteKlong_rootR c base hvc cv n w w3 hkey hsa hroot hnl hwfG htimesG hT
     hlinksAll htkfresh hr03 hlk3' hsrcw3 hne huniq
   -- the continuation after the bitmap: the merges off, the marker's id
-  have hcont : ∀ (w4 : W), (PathsFit (wNode c.p base w4) c.i w4.top.rootKey c.p.fuel →
+  have hcont : ∀ (w4 : W), (SegFits (wNode c.p base w4) c.i (c.p.fuel - 1) w4.top.rootKey →
       ∀ key', keyWf key' = true →
         wGet c.p c.i base w4 key' = if [] ++ [cv] == key' then none else wGet c.p c.i base w key') →
-      WriterWP fresh c w4 (fun _ w5 => PathsFit (wNode c.p base w5) c.i w5.top.rootKey c.p.fuel →
+      WriterWP fresh c w4 (fun _ w5 => SegFits (wNode c.p base w5) c.i (c.p.fuel - 1) w5.top.rootKey →
         ∀ key', keyWf key' = true →
         wGet c.p c.i base w5 key' = if [cv] == key' then none else wGet c.p c.i base w key') := by
     intro w4 h4
