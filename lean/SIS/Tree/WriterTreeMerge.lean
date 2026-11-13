@@ -266,4 +266,124 @@ theorem treeOK_of_node_relink (L L' : NodeId → Option KNode) (t : Time) (r x :
     · rw [hother y hyx] at hm
       exact (ht.oneLink y c y c' z (hb y hy) (hb y hy) ⟨m, hm, hc⟩ ⟨m, hm, hc'⟩).2
 
+/-! ## Root collapse -/
+
+/-- The space root replaced by its one child (root collapse at the space root):
+the tree from the child, whatever becomes of the old root. -/
+theorem treeOK_collapseSpace (L L' : NodeId → Option KNode) (t : Time) (r y : NodeId) (c : Nat)
+    (ht : TreeOK L t r) (hl : TLink L t r c y) (hy : ∃ n, L y = some n)
+    (hother : ∀ x, x ≠ r → L' x = L x) : TreeOK L' t y := by
+  have hty := treeOK_child L t r y c ht hl hy
+  have hyr : TReach L t r y := TReach.link TReach.root hl
+  have hsub := tReach_trans L t r y hyr
+  -- the old root is not reached from y
+  have hnr : ∀ x, TReach L t y x → x ≠ r := by
+    intro x hx hxr
+    rw [hxr] at hx
+    cases hx with
+    | root => exact ht.rootFree r c TReach.root hl
+    | link hz hl' => exact ht.rootFree _ _ (hsub _ hz) hl'
+  exact treeOK_of_agree L L' t y hty (fun x hx => hother x (hnr x hx))
+
+/-- A segment root replaced by its one child: the segment leaf's klong k naming
+the root names the child; the root is left behind. -/
+theorem treeOK_collapseSegment (L L' : NodeId → Option KNode) (t : Time) (r0 lf rt y : NodeId)
+    (k c : Nat) (ln ln' rn : KNode) (ht : TreeOK L t r0)
+    (hlf : TReach L t r0 lf) (hln : L lf = some ln) (hk : (k, rt) ∈ ln.liveAt t)
+    (hrn : L rt = some rn) (hy : (c, y) ∈ rn.liveAt t)
+    (hln' : L' lf = some ln')
+    (hlinks : ∀ c' z, (c', z) ∈ ln'.liveAt t → (c' = k ∧ z = y) ∨ ((c', z) ∈ ln.liveAt t ∧ c' ≠ k))
+    (hother : ∀ x, x ≠ lf → x ≠ rt → L' x = L x) : TreeOK L' t r0 := by
+  have hlk : TLink L t lf k rt := ⟨ln, hln, hk⟩
+  have hrtR : TReach L t r0 rt := TReach.link hlf hlk
+  have hry : TLink L t rt c y := ⟨rn, hrn, hy⟩
+  have hlfrt : lf ≠ rt := fun h => ht.no_self_link lf k hlf (by rw [← h] at hlk; exact hlk)
+  have hrty : rt ≠ y := fun h => ht.no_self_link rt c hrtR (by rw [← h] at hry; exact hry)
+  have hnamert : ∀ u c', TReach L t r0 u → TLink L t u c' rt → u = lf ∧ c' = k :=
+    fun u c' hu hl' => ht.oneLink u c' lf k rt hu hlf hl' hlk
+  apply treeOK_transfer_gone L L' t r0 r0 (fun _ => False) (fun z => z = rt)
+    (fun u c' => if u = rt ∧ c' = c then (lf, k) else (u, c')) ht (fun _ h => h.elim)
+  · refine Or.inl ⟨rfl, fun h => ht.rootFree lf k hlf (by rw [h]; exact hlk)⟩
+  · intro u c' z hu hug hl'
+    have huR : TReach L t r0 u := by
+      rcases hu with h | h
+      · exact h
+      · exact h.elim
+    obtain ⟨m, hm, hcm⟩ := hl'
+    by_cases hul : u = lf
+    · rw [hul, hln'] at hm
+      simp only [Option.some.injEq] at hm
+      subst hm
+      rcases hlinks c' z hcm with ⟨hck, hz⟩ | ⟨hmem, hck⟩
+      · refine Or.inr ⟨by rw [hz]; exact Ne.symm hrty, rt, c, hrtR, by rw [hz]; exact hry, ?_⟩
+        simp [hul, hck]
+      · have hl0 : TLink L t lf c' z := ⟨ln, hln, hmem⟩
+        refine Or.inr ⟨fun hzr => ?_, lf, c', hlf, hl0, ?_⟩
+        · rw [hzr] at hl0
+          exact hck (hnamert lf c' hlf hl0).2
+        · simp [hul, hlfrt]
+    · rw [hother u hul hug] at hm
+      have hl0 : TLink L t u c' z := ⟨m, hm, hcm⟩
+      refine Or.inr ⟨fun hzr => ?_, u, c', huR, hl0, ?_⟩
+      · rw [hzr] at hl0
+        exact hul (hnamert u c' huR hl0).1
+      · simp [hug]
+  · intro _ _ _ _ z _ _ _ _ hz
+    exact hz.elim
+  · intro _ h; exact h.elim
+  · by_cases hr : r0 = lf
+    · rw [hr, hln']; exact ⟨_, rfl⟩
+    · have hrrt : r0 ≠ rt := fun h => ht.rootFree lf k hlf (by rw [h]; exact hlk)
+      rw [hother r0 hr hrrt]; exact ht.rootKey
+
+/-! ## The upward unlink -/
+
+/-- A node s drops its link to y0 (the upward unlink: the delete emptied the
+chain below s), and the nodes left behind, y0 and nodes that only nodes left
+behind name, may change in any way: the tree is kept. -/
+theorem treeOK_dropSubtree (L L' : NodeId → Option KNode) (t : Time) (r s y0 : NodeId)
+    (cs : Nat) (sn sn' : KNode) (Gone : NodeId → Prop) (ht : TreeOK L t r)
+    (hs : TReach L t r s) (hsn : L s = some sn) (hcs : (cs, y0) ∈ sn.liveAt t)
+    (hsn' : L' s = some sn')
+    (hslinks : ∀ c z, (c, z) ∈ sn'.liveAt t → (c, z) ∈ sn.liveAt t ∧ c ≠ cs)
+    (hsG : ¬ Gone s) (hGr : ¬ Gone r)
+    (hG : ∀ g, Gone g → g = y0 ∨ ∀ u c, TReach L t r u → TLink L t u c g → Gone u)
+    (hother : ∀ x, x ≠ s → ¬ Gone x → L' x = L x) : TreeOK L' t r := by
+  have hsy : TLink L t s cs y0 := ⟨sn, hsn, hcs⟩
+  have hnotG : ∀ u c z, TReach L t r u → ¬ Gone u → TLink L t u c z → u ≠ s ∨ c ≠ cs →
+      ¬ Gone z := by
+    intro u c z hu hug hl hne hz
+    rcases hG z hz with h | h
+    · rw [h] at hl
+      obtain ⟨h1, h2⟩ := ht.oneLink u c s cs y0 hu hs hl hsy
+      rcases hne with hne | hne
+      · exact hne h1
+      · exact hne h2
+    · exact hug (h u c hu hl)
+  apply treeOK_transfer_gone L L' t r r (fun _ => False) Gone (fun u c => (u, c)) ht
+    (fun _ h => h.elim)
+  · exact Or.inl ⟨rfl, hGr⟩
+  · intro u c z hu hug hl
+    have huR : TReach L t r u := by
+      rcases hu with h | h
+      · exact h
+      · exact h.elim
+    obtain ⟨m, hm, hcm⟩ := hl
+    by_cases hus : u = s
+    · rw [hus, hsn'] at hm
+      simp only [Option.some.injEq] at hm
+      subst hm
+      obtain ⟨hmem, hc⟩ := hslinks c z hcm
+      have hl0 : TLink L t s c z := ⟨sn, hsn, hmem⟩
+      exact Or.inr ⟨hnotG s c z hs hsG hl0 (Or.inr hc), s, c, hs, hl0, by rw [hus]⟩
+    · rw [hother u hus hug] at hm
+      have hl0 : TLink L t u c z := ⟨m, hm, hcm⟩
+      exact Or.inr ⟨hnotG u c z huR hug hl0 (Or.inl hus), u, c, huR, hl0, rfl⟩
+  · intro _ _ _ _ z _ _ _ _ hz
+    exact hz.elim
+  · intro _ h; exact h.elim
+  · by_cases hr : r = s
+    · rw [hr, hsn']; exact ⟨_, rfl⟩
+    · rw [hother r hr hGr]; exact ht.rootKey
+
 end SIS.Tree
