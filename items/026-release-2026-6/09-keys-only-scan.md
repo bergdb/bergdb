@@ -202,9 +202,26 @@ slot each; logs in kscan/runs/gates-ab2d4aed/:
 
 `main` then moved (026-10 landed, `e4ac051f`, and the provers' Lean
 checkpoints), merged without conflict as `8e0de02b`; the gates again on
-it, logs in kscan/runs/gate-*.txt:
+it, logs in kscan/runs/gates-8e0de02b/:
 
-* GATES2
+* before-commit: BEFORE COMMIT OK (68 s); level1: LEVEL 1 OK (156 s).
+* level3 (full): LEVEL 3 OK (694 s): RestartInvariance with reclaim,
+  stream identical in its four configurations; the conformance, 35
+  traces, C-CUT 0 of 794 CUT lines fail.
+* count-gates: COUNT GATES OK (200 s), the same values as on
+  `ab2d4aed` (G3 4.389, the lag 1,285, G5's dead klongs 32 of 70), the
+  heaps now plain (026-10).
+* level4 quick: LEVEL 4 OK (219 s); C-P and C-H 0 of 4,886
+  transactions fail.
+* 026-05's own reclaim traces (kscan/runs/traces.sh: heavy deletes,
+  sorted bulk puts, long keys, eviction, `maintain()` calls, three
+  seeds each, a restart every ten transactions): 15 traces, TRACECHECK
+  OK 15, C-CUT 0 of 481 CUT lines fail; traces-summary.txt.
+
+`main` moved once more (Java comments and Javadoc only, 028-02 and
+028-03 to 028-06, and Lean proofs), merged without conflict; with one
+comment of `Reclaim.step` made to say what the count is (`9f2915fb`),
+the head: BEFORE COMMIT OK (65 s), kscan/runs/gate-bc.txt.
 
 
 ## 6. Before and after: counts
@@ -243,10 +260,12 @@ written: the stream's length at the end.
   12,518 to 6,996; b: 13,333 to 7,247; c: 13,326 to 7,245) and load
   almost nothing (a: 876,694 to 8,320). 026-04, section 4.3, noted that
   such iterations are paced by the step's 16 kB of scan.
-* **The stream kept and written: no worse.** K peak and mean within 1 %
-  (G3's 4.401 to 4.389), WA_r within 0.02, the stream written the same
-  or up to 1.1 % less. The iterations that rewrite (class R) take about
-  as many steps as before: their R values count in full, as before.
+* **The stream kept and written: no worse at 1M.** K peak and mean
+  within 1 % (G3's 4.401 to 4.389), WA_r within 0.02, the stream
+  written the same or up to 1.1 % less. The iterations that rewrite
+  (class R) take about as many steps as before: their R values count in
+  full, as before. (At 10M, section 6.2, reclaim writes 1.2 to 4.4 %
+  more of the stream.)
 
 Workload (d), back to empty (G4's: 1M keys put in key order and deleted,
 then a drive of 40 R), with `g4its=1`:
@@ -443,9 +462,10 @@ Frans may overturn it.
   a_n more nodes than the twin's), in its own commit `c9521d6b`.
   Changes the limit of an existing gate.
 * **Q3. The stream's bytes** (section 6.5): the steps after the first
-  iteration end elsewhere, so the configurations with reclaim get other
-  StreamDigest digests; no test pins a digest. Recommended: accept, as
-  026-09's decision foresaw.
+  iteration end elsewhere, so three configurations with reclaim get
+  other StreamDigest digests (12 of 48: l3-every1, l3-node8,
+  l3-node62); no test pins a digest. Recommended: accept, as 026-09's
+  decision foresaw.
 * **Q4. `GetMany.valuesBefore` public**: the Core API's `GetMany`
   fields are public and `Reclaim` (bergdb.core) cannot reach a package
   field of bergdb.dag. Recommended: a public field whose Javadoc says it
@@ -458,17 +478,27 @@ Log
 
 2026-11-13. Registered by coord-1113 (Frans, 09:38), from 024-34's Q34-1.
 
+2026-11-13, 10:10 to 11:15. The change, its tests, the 1M counts, the
+count gates, ReclaimCost at 100 bytes (agent "kscan"; stopped on API
+errors).
+
+2026-11-13, 11:22 to 12:35. Continued: the 10M runs of the branch over
+`main`'s window (the first run of (a) had ended at its own third cut,
+a shorter window, so WA_r did not compare), ReclaimCost at 1,000 bytes,
+StreamDigest, `main` merged three times, the gates, Q1.
+
 
 State
 =====
 
-2026-11-13, 12:35. The first agent stopped on API errors at about
-11:15; the second ("kscan" again) continued. Clone
-/Users/f/fl/bench/2026-11-13/kscan/clone, branch `026-09-keys-only-scan`:
-`9667109b` (the change and its two tests), `c9521d6b` (G5's limit, Q2),
-`53ed98e1` (this item), main merged (`ab2d4aed`, then `8e0de02b`).
-Done: the change, the tests, the counts at 1M and 10M, ReclaimCost,
-StreamDigest, the gates on `ab2d4aed`, Q1's recommendation. Running,
-detached (nohup): kscan/runs/gates.sh bc l1 l3 cg l4 traces on
-`8e0de02b`, log kscan/runs/gates.log, outputs kscan/runs/gate-*.txt (and
-traces/summary.txt). Not done: section 5's second round (GATES2).
+2026-11-13, 13:18. Done, for the coordinator to land. Clone
+/Users/f/fl/bench/2026-11-13/kscan/clone, branch `026-09-keys-only-scan`,
+head: this item's last commit, on `9f2915fb`. Commits: `9667109b` (the
+change and its two tests), `c9521d6b` (G5's dead-klong limit, Q2, its
+own commit), `9f2915fb` (a comment), the items, and merges of `main`
+(last `6f5a67fc`, `main` `a4fbe890`). The gates passed (section 5):
+the full set on `8e0de02b`, before-commit on `9f2915fb`. Q1 to Q4
+(section 8) applied as recommended. The runs and logs in
+/Users/f/fl/bench/2026-11-13/kscan/runs/; the worktrees kscan/before
+and kscan/after (branches `026-09-before`, `026-09-after`) are for
+measuring only, not to land.
