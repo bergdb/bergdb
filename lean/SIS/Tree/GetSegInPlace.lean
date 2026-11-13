@@ -758,7 +758,7 @@ theorem writerWP_put_segSpaceSplitInPlace (c : Ctx) (base : View BVal) (hvc : Vi
       (by
         have hqt' : wf.taken.contains q = false := by
           rw [hft]; exact ht (q, k1) (hvk1 _ hvisq)
-        simp only [wNode, hqt', Bool.false_eq_true, ↓reduceIte, hfn, hqL, hfdc])
+        simp only [wNode, hqt', Bool.false_eq_true, ↓reduceIte, hfn, hqL])
       (by unfold KNode.repoint; split <;> simp [KNode.setAt, hql])
       (by rw [KNode.repoint_klongsWf]; exact hwf q qn hrq' hq)
       hqt5
