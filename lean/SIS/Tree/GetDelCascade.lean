@@ -1467,4 +1467,245 @@ theorem getFromR_delTimeSpace (N N2 : NodeId → Option KNode) (V : NodeId → O
   rw [hsim key' root ReachS.root hrootq hrootF hrootS]
   exact hA key' hkey'
 
+/-! ## The rule: a delete into a leaf whose parent is full and space split -/
+
+/-- A delete, the merges off, of a key whose access path from the segment root
+rk ends with g, q, L (`PathFrom`), by a bitmap in the segment leaf L, which
+keeps a live klong, the inner parent q full by its size with more than h klongs
+in its last version, at least two of them live, space split if L splits, below
+the grandparent g with room for two klongs: with room for the bitmap, or L time
+split (in place for a leaf the transaction made). The delete changes the
+reading by itself alone. -/
+theorem writerWP_del_timeSpace (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (pre : List Nat) (cv : Nat) (rk : NodeId) (w : W)
+    (S0 : List (Option Nat × NodeId)) (kq k1 : Nat) (q L : NodeId) (n qn gn : KNode)
+    (hmerges : c.p.merges = false) (hkey : keyWf (pre ++ [cv]) = true)
+    (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
+    (ht : ∀ q ∈ fromVisits (wNode c.p base w) c.i c.p.fuel (pre ++ [cv]) w.top.rootKey,
+      w.taken.contains q.1 = false)
+    (hids : (∀ z, (w.nodes.lookup z).isSome = true → z < w.next) ∧
+      (∀ z, (c.view z).isSome = true → z < w.next) ∧ (∀ z, w.taken.contains z = true → z < w.next) ∧
+      (∀ q ∈ w.vals, q.1 < w.next) ∧ w.top.rootKey < w.next)
+    (hbase : ∀ z, w.next ≤ z → knodeOf c.p base z = none ∧ valueOf base z = none)
+    (hwfG : ∀ x xn, wNode c.p base w x = some xn → klongsWf xn.ks = true)
+    (hpath : PathFrom (wNode c.p base w) c.i cv rk (S0 ++ [(some kq, q), (some k1, L)]))
+    (hNL : wNode c.p base w L = some n) (hnl : n.leaf = true)
+    (hNq : wNode c.p base w q = some qn) (hNg : wNode c.p base w (pathEnd rk S0) = some gn)
+    (hleaf : (∀ s, Klong.time s ∈ n.ks → s ≤ c.i) ∧
+      bitsUnion n.lastBitmap (n.bitsOf cv) ≠ n.lastBitmap ∧
+      n.allKeysIn (bitsUnion n.lastBitmap (n.bitsOf cv)) = false ∧
+      (¬ ((∃ old, n.ks.getLast? = some (.del old)) ∧ n.lastTime = some c.i) →
+        c.p.M ≤ n.size + 1 →
+        (n.lastVersionGivenDel c.i (bitsUnion n.lastBitmap (n.bitsOf cv))).size ≤ c.p.splitAbove) ∧
+      wValue base w L = none ∧ L ≠ w.top.rootKey)
+    (hparent : (∀ s, Klong.time s ∈ qn.ks → s ≤ c.i) ∧ c.p.M < qn.size + 1 + 1 ∧
+      qn.firstTime ≠ some c.i ∧ c.p.splitAbove < (qn.lastVersion c.i).size ∧
+      2 ≤ qn.live.length ∧ q ≠ w.top.rootKey)
+    (hrange : ∀ c' z, (c', z) ∈ qn.live → 0 < c' →
+      kq ≤ c' ∧ ∀ c'' z', (c'', z') ∈ gn.live → kq < c'' → c' < c'')
+    (hgp : (∀ s, Klong.time s ∈ gn.ks → s ≤ c.i) ∧ gn.size + 2 + 1 ≤ c.p.M ∧
+      ∀ y1 sc y2, deadOver c.p ((gn.add c.i (.key kq y1)).add c.i (.key sc y2)) = false)
+    (hacyc : ¬ ReachS (wNode c.p base w) c.i q (pathEnd rk S0) ∧
+      ¬ ReachS (wNode c.p base w) c.i L (pathEnd rk S0))
+    (huniq : ∀ key' x n', keyWf key' = true →
+      (x, cv) ∈ fromVisits (wNode c.p base w) c.i c.p.fuel key' w.top.rootKey →
+      (x, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      wNode c.p base w x = some n' → n'.leaf = true → key' = pre ++ [cv])
+    (htreeK : ∀ x xn cc z, ReachS (wNode c.p base w) c.i w.top.rootKey x →
+      wNode c.p base w x = some xn → (cc, z) ∈ xn.liveAt c.i → (wNode c.p base w z).isSome = true →
+      ∀ x' xn' cc', ReachS (wNode c.p base w) c.i w.top.rootKey x' →
+        wNode c.p base w x' = some xn' → (cc', z) ∈ xn'.liveAt c.i → x = x' ∧ cc = cc')
+    (hlinks : ∀ x xn cc z, ReachS (wNode c.p base w) c.i w.top.rootKey x →
+      wNode c.p base w x = some xn → (cc, z) ∈ xn.liveAt c.i → z < w.next) :
+    WriterWP (putKv (.del (pre ++ [cv]))) c w (fun _ w' => ∀ key', keyWf key' = true →
+      wGet c.p c.i base w' key' =
+        if Op.key (.del (pre ++ [cv])) == key' then Op.value (.del (pre ++ [cv]))
+        else wGet c.p c.i base w key') := by
+  obtain ⟨hidn, hidv, hidt, hidvals, hidr⟩ := hids
+  obtain ⟨hnt, hne, hkeep, hsplit, hLval, hLroot⟩ := hleaf
+  obtain ⟨hqt, hqfull, hqfirst, hqsplit, hq2, hqroot⟩ := hparent
+  obtain ⟨hgt, hroomg, hdeadg⟩ := hgp
+  have hfuel : 1 ≤ c.p.fuel := by unfold Params.fuel; omega
+  have hwfR : ∀ x xn, ReachS (wNode c.p base w) c.i w.top.rootKey x →
+      wNode c.p base w x = some xn → klongsWf xn.ks = true := fun x xn _ hn => hwfG x xn hn
+  obtain ⟨gn', qn', fdg, fdq, hg', hgl, hgs, hkq, hgy, hq', hql, hqs, hk1, hqy⟩ :=
+    PathFrom.last_two _ _ _ S0 rk _ _ q L hpath
+  rw [hNg] at hg'; cases hg'
+  rw [hNq] at hq'; cases hq'
+  have hqL : q ≠ L := by intro he; subst he; rw [hNq] at hNL; cases hNL; rw [hql] at hnl; cases hnl
+  have hrrk : ReachS (wNode c.p base w) c.i w.top.rootKey rk :=
+    segRootR_reach _ _ _ _ hwfR pre _ rk ReachS.root hrk
+  apply writerWP_del_path c base hvc pre cv rk w S0 kq k1 q L n qn gn hrk ht hidn hidv hwfG
+    hpath hNL hnl hNq hNg
+  intro d'' w3 hr3 hlk3 hlq3 hlg3 hsrc3 hpg hpq hpk hvisL hqv hgv
+  obtain ⟨g, hgdef⟩ : ∃ g, g = pathEnd rk S0 := ⟨_, rfl⟩
+  rw [← hgdef] at hNg hlg3 hpg hgv hacyc
+  have hgL : g ≠ L := by intro he; rw [he] at hNg; rw [hNL] at hNg; cases hNg; rw [hgl] at hnl; cases hnl
+  have hgq : g ≠ q := by
+    intro he
+    rw [he] at hNg; rw [hNq] at hNg; cases hNg
+    rw [hqs] at hgs; cases hgs
+    exact hqL (hgy.symm.trans hqy)
+  have hkqc : fdg.c = kq := by simpa using hkq.symm
+  have hk1c : fdq.c = k1 := by simpa using hk1.symm
+  have hk1L : (k1, L) ∈ qn.live := by
+    have := KNode.searchLte_mem qn c.i cv fdq hqs
+    rw [KNode.liveAt_of_times qn c.i hqt, hk1c, hqy] at this; exact this
+  have hkqg : (kq, q) ∈ gn.live := by
+    have := KNode.searchLte_mem gn c.i cv fdg hgs
+    rw [KNode.liveAt_of_times gn c.i hgt, hkqc, hgy] at this; exact this
+  have hrq : ReachS (wNode c.p base w) c.i w.top.rootKey q :=
+    eqVisits_reach _ _ _ cv c.p.fuel rk q cv hrrk hqv
+  have hrg : ReachS (wNode c.p base w) c.i w.top.rootKey g :=
+    eqVisits_reach _ _ _ cv c.p.fuel rk g cv hrrk hgv
+  have hLt : w.taken.contains L = false :=
+    ht (L, cv) (fromVisits_append _ _ _ pre cv _ rk hrk _ hvisL)
+  have hgtk : w.taken.contains g = false :=
+    ht (g, cv) (fromVisits_append _ _ _ pre cv _ rk hrk _ hgv)
+  -- the divider of q's halves
+  obtain ⟨r, hr⟩ : ∃ r, (qn.live.drop (qn.live.length / 2)).head? = some r := by
+    cases h' : qn.live.drop (qn.live.length / 2) with
+    | nil => have := congrArg List.length h'; simp at this; omega
+    | cons a _ => exact ⟨a, rfl⟩
+  have hsc : 0 < r.1 := by
+    obtain ⟨a, ha⟩ : ∃ a, a ∈ qn.live.take (qn.live.length / 2) := by
+      cases h' : qn.live.take (qn.live.length / 2) with
+      | nil =>
+        have := congrArg List.length h'
+        rw [List.length_take] at this; simp only [List.length_nil] at this; omega
+      | cons a _ => exact ⟨a, by simp⟩
+    have := halves_left_lt_divider qn.live _ qn.live_order r hr a ha
+    omega
+  have hrmem : r ∈ qn.live := List.mem_of_mem_drop (List.mem_of_head? hr)
+  have hkqr : kq ≤ r.1 := (hrange r.1 r.2 hrmem hsc).1
+  have hgap : ∀ c' z, (c', z) ∈ gn.live → c' ≤ kq ∨ r.1 < c' := by
+    intro c' z hcz
+    by_cases hle : c' ≤ kq
+    · exact Or.inl hle
+    · exact Or.inr ((hrange r.1 r.2 hrmem hsc).2 c' z hcz (by omega))
+  have hntake : ∀ z, w.next ≤ z → w.taken.contains z = false := by
+    intro z hz
+    cases h' : w.taken.contains z with
+    | false => rfl
+    | true => have := hidt z h'; omega
+  have hvalnone : ∀ z, w.next ≤ z → w.vals.lookup z = none := by
+    intro z hz
+    apply List.lookup_eq_none_iff.mpr
+    intro q' hq'
+    have := hidvals q' hq'
+    simp only [bne_iff_ne, ne_eq]
+    omega
+  have hnodenone : ∀ z, w.next ≤ z → w.nodes.lookup z = none := by
+    intro z hz
+    cases h' : w.nodes.lookup z with
+    | none => rfl
+    | some _ => have := hidn z (by rw [h']; rfl); omega
+  have hfreshN : ∀ z, w.next ≤ z → wNode c.p base w z = none := by
+    intro z hz
+    simp only [wNode, hntake z hz, Bool.false_eq_true, ↓reduceIte, hnodenone z hz,
+      (hbase z hz).1]
+  have hfreshV : ∀ z, w.next ≤ z → wValue base w z = none := by
+    intro z hz
+    simp only [wValue, hntake z hz, Bool.false_eq_true, ↓reduceIte, hvalnone z hz,
+      (hbase z hz).2]
+  have hLlt : L < w.next := hsrc3 L (by rw [hlk3]; rfl)
+  have hqlt : q < w.next := hsrc3 q (by rw [hlq3]; rfl)
+  have hglt : g < w.next := hsrc3 g (by rw [hlg3]; rfl)
+  have hnwf := hwfG L n hNL
+  obtain ⟨hleq, hlt, _⟩ := delLast_facts n c.i cv
+  have hlook0 := KNode.delete_live_lookup n c.i cv
+  have hwf0 := KNode.lastVersionGivenDel_wf n c.i (bitsUnion n.lastBitmap (n.bitsOf cv))
+  unfold deleteUpward
+  simp only [writerWP_bind, writerWP_read]
+  rw [writerWP_getNode_known L n c _ hlk3]
+  have hnb : (bitsUnion n.lastBitmap (n.bitsOf cv) == n.lastBitmap) = false := by
+    simpa using hne
+  simp only [hnb, Bool.false_eq_true, ↓reduceIte, hkeep, Bool.not_false]
+  wpSimplify
+  refine writerWP_ghOf_cached L n c _ hlk3 _ (fun gh => ?_)
+  refine writerWP_mono (writerWP_appendDeleteKlong_timeGen c base hvc pre cv (d'' + 1) rk L n w w3
+    hfuel hkey hrk hvisL huniq hwfG hNL hnl hnt hLt hr3 hlk3 hne hsplit ?_) ?_
+  · intro compact s hcs hnew
+    generalize hw3' : ({ w3 with trail := s :: w3.trail } : W) = w3'
+    have hlk3' : w3'.nodes.lookup L = some n := by rw [← hw3']; exact hlk3
+    have hlq3' : w3'.nodes.lookup q = some qn := by rw [← hw3']; exact hlq3
+    have hlg3' : w3'.nodes.lookup g = some gn := by rw [← hw3']; exact hlg3
+    have hsrc3' : ∀ z, (w3'.nodes.lookup z).isSome = true → z < w.next := by
+      rw [← hw3']; exact hsrc3
+    have hpg' : (w3'.path[d'']?).map (·.2) = some g := by rw [← hw3']; exact hpg
+    have hpq' : w3'.path[d'' + 1]? = some (some kq, q) := by rw [← hw3']; exact hpq
+    have hpk' : w3'.path[d'' + 1 + 1]? = some (some k1, L) := by rw [← hw3']; exact hpk
+    have hr3' : ReadsAs c.p base w w3' := by rw [← hw3']; exact hr3
+    have hnext3' : w3'.next = w.next := hr3'.2.2.2.2
+    have hny : w3'.nodes.lookup w3'.next = none := by
+      cases h' : w3'.nodes.lookup w3'.next with
+      | none => rfl
+      | some _ => have := hsrc3' _ (by rw [h']; rfl); omega
+    have hny2 : w3'.nodes.lookup (w3'.next + 2) = none := by
+      cases h' : w3'.nodes.lookup (w3'.next + 2) with
+      | none => rfl
+      | some _ => have := hsrc3' _ (by rw [h']; rfl); omega
+    have hny3 : w3'.nodes.lookup (w3'.next + 2 + 2) = none := by
+      cases h' : w3'.nodes.lookup (w3'.next + 2 + 2) with
+      | none => rfl
+      | some _ => have := hsrc3' _ (by rw [h']; rfl); omega
+    refine writerWP_mono (writerWP_handleFullWith_delTimeSpace d'' L q g n qn gn kq k1 _ compact c w3'
+      hlk3' hlq3' hlg3' hqL hgq hgL hql hgl hnew hqfirst hcs hqfull hqsplit hpg' hpq' hpk' hroomg
+      hdeadg hny hny2 hny3 (by rw [hnext3']; exact hLlt)) ?_
+    intro _ w4 ⟨h4t, h4top, h4v, h4nodes⟩
+    rw [hnext3'] at h4nodes
+    have htk : w4.taken = w.taken := h4t.trans hr3'.2.2.1
+    have hvl : w4.vals = w.vals := h4v.trans hr3'.2.2.2.1
+    have htp : w4.top = w.top := h4top.trans hr3'.2.1
+    have hV4 : wValue base w4 = wValue base w := by
+      funext a; simp only [wValue, htk, hvl]
+    have hres := getFromR_delTimeSpace (wNode c.p base w) (wNode c.p base w4) (wValue base w)
+      c.i c.p.fuel hfuel w.top.rootKey L q g w.next (w.next + 2) (w.next + 2 + 2) n qn gn
+      ⟨n.leaf, (n.lastVersionGivenDel c.i (bitsUnion n.lastBitmap (n.bitsOf cv))).ks⟩
+      k1 kq pre cv rk r hr hsc hwfG hNL hnl hnt hNq hql hqt hk1L hNg hgl hgt hkqg hkqr hgap
+      (by
+        simp only [wNode, htk, hntake _ (Nat.le_refl _), Bool.false_eq_true, ↓reduceIte, h4nodes,
+          show w.next ≠ L by omega, show w.next ≠ q by omega, show w.next ≠ g by omega])
+      hnl hwf0 hlt (by intro c'; rw [hleq]; exact hlook0 c')
+      (by simp only [wNode, htk, hgtk, Bool.false_eq_true, ↓reduceIte, h4nodes, hgL, hgq])
+      (by
+        simp only [wNode, htk, hntake (w.next + 2) (by omega), Bool.false_eq_true, ↓reduceIte,
+          h4nodes, show w.next + 2 ≠ L by omega, show w.next + 2 ≠ q by omega,
+          show w.next + 2 ≠ g by omega, show w.next + 2 ≠ w.next by omega])
+      (by
+        simp only [wNode, htk, hntake (w.next + 2 + 2) (by omega), Bool.false_eq_true, ↓reduceIte,
+          h4nodes, show w.next + 2 + 2 ≠ L by omega, show w.next + 2 + 2 ≠ q by omega,
+          show w.next + 2 + 2 ≠ g by omega, show w.next + 2 + 2 ≠ w.next by omega,
+          show w.next + 2 + 2 ≠ w.next + 2 by omega])
+      (by
+        intro m hm
+        simp only [wNode, htk, hLt, Bool.false_eq_true, ↓reduceIte, h4nodes,
+          Option.some.injEq] at hm
+        rw [← hm]; exact KNode.toPrev_wf n _ hnwf)
+      (by
+        intro x hxL hxq hxg hxY hxF hxS
+        rw [← hr3'.1]
+        simp only [wNode, htk, hr3'.2.2.1, h4nodes, hxL, hxq, hxg, hxY, hxF, hxS, ↓reduceIte])
+      hLval (hfreshV _ (Nat.le_refl _))
+      hqL (by omega) (by omega) hgq hgL (by omega) (by omega) (by omega) (by omega) (by omega)
+      (by omega) (by omega) (by omega) (by omega) (by omega)
+      (hfreshN _ (Nat.le_refl _)) (hfreshN _ (by omega)) (hfreshN _ (by omega))
+      hLroot.symm (by omega) hqroot.symm (by omega) (by omega)
+      hrq hrg hacyc.1 hacyc.2 hrk (keyWf_last_notin pre cv hkey) hvisL huniq
+      (fun x xn c' hx hxn hz => htreeK x xn c' L hx hxn hz (by simp [hNL]) q qn k1 hrq hNq
+        (by rw [KNode.liveAt_of_times qn c.i hqt]; exact hk1L))
+      (fun x xn c' hx hxn hz => htreeK x xn c' q hx hxn hz (by simp [hNq]) g gn kq hrg hNg
+        (by rw [KNode.liveAt_of_times gn c.i hgt]; exact hkqg))
+      (fun x xn cc z hx hxn hz => by
+        have := hlinks x xn cc z hx hxn hz; exact ⟨by omega, by omega, by omega⟩)
+    intro key' hkey'
+    unfold wGet
+    rw [htp, hV4, hres key' hkey']
+  · intro _ w4 hT4
+    unfold afterDelete fresh
+    wpSimplify
+    simp only [hmerges, Bool.false_eq_true, ↓reduceIte, writerWP_pure]
+    simp only [Bool.not_false, ↓reduceIte, writerWP_bind, writerWP_get, writerWP_set, writerWP_pure]
+    exact hT4
+
 end SIS.Tree
