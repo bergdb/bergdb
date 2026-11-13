@@ -1306,7 +1306,7 @@ theorem writerWP_del_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
     simp only [hdm1] at hchain
     rw [hs4, hnext3]
     refine writerWP_mono hchain ?_
-    rintro _ w2 ⟨_, ⟨h2top, h2t, _, h2next, h2vals⟩, h2frame, h2reach, h2W, h2R⟩
+    rintro _ w2 ⟨_, ⟨h2top, h2t, _, h2next, h2vals⟩, h2frame, h2reach, h2W, h2R, _⟩
     have hlkL2 : w2.nodes.lookup (XX m) = some (NN m) := by
       rw [h2frame _ (by rw [h1next]; have := hXlt m (Nat.le_refl _); omega)
         (fun i h1 h2 he => by have := hdist m (i - d) (Nat.le_refl _) (by omega) he; omega),
@@ -1557,7 +1557,7 @@ theorem writerWP_del_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
       (by rw [h1top, hs5, hr03.2.1]; simp only [hdm1]; exact hTA)
     simp only [hdm1] at hchain
     refine writerWP_mono hchain ?_
-    rintro _ w2 ⟨_, ⟨h2top, h2t, _, h2next, h2vals⟩, h2frame, h2reach, h2W, h2R⟩
+    rintro _ w2 ⟨_, ⟨h2top, h2t, _, h2next, h2vals⟩, h2frame, h2reach, h2W, h2R, _⟩
     have hlkL2 : w2.nodes.lookup (XX m) = some (NN m) := by
       rw [h2frame _ (by rw [h1next]; have := hXlt m (Nat.le_refl _); omega)
         (fun i h1 h2 he => by have := hdist m (i - d) (Nat.le_refl _) (by omega) he; omega), h1n]
@@ -1769,7 +1769,7 @@ theorem writerWP_del_accessPathR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
       (by rw [h1top, hs5, hr03.2.1]; simp only [hdm1]; exact hTA)
     simp only [hdm1] at hchain
     refine writerWP_mono hchain ?_
-    rintro _ w2 ⟨_, _, _, _, _, h2R⟩
+    rintro _ w2 ⟨_, _, _, _, _, h2R, _⟩
     have hres := getFromR_spaceSplitInPlace_del (wNode c.p base w)
       (updN (wNode c.p base w1) (XX (m - 1)) ([(H.2.2, w.next)].foldl
         (fun n (cv, y) => n.add c.i (.key cv y)) (NN (m - 1))))

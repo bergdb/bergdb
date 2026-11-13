@@ -570,7 +570,7 @@ theorem writerWP_put_newSegFullR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
         exact hTV)
     simp only [Nat.zero_add, hXD, hn, Option.getD_some] at hchain
     refine writerWP_mono hchain ?_
-    intro _ wf1 ⟨hT1, ⟨hftop, hft, hfpath, hfnext, hfv⟩, hframe1, hreach1, hW1, hR1, hab1⟩
+    intro _ wf1 ⟨hT1, ⟨hftop, hft, hfpath, hfnext, hfv⟩, hframe1, hreach1, hW1, hR1, hab1, _⟩
     rw [hnext3] at hfree0
     have hlkc : wf1.nodes.lookup w.next = some ⟨true, []⟩ := by
       rw [hframe1 w.next (by omega) (fun i _ h2 he => by have := hXlt i h2; omega), g1]
