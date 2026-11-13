@@ -1219,9 +1219,9 @@ kept only as steps. Proved on the way, on the standard axioms:
   the parent nor the leaf reaching the grandparent; the reading: an
   inner node's halves find what it found with the klongs put, by
   compare value, `halves_inner_searchLte_ins`, `getEqR_split_inner`.
-  So every put into a leaf that existed before the transaction, below a
-  parent that did too and a grandparent with room, is proved, whatever
-  splits the leaf and the parent need.
+  So a put into a leaf that existed before the transaction, below a
+  parent that did too and a grandparent with room for what it gets, has
+  a rule for each split the leaf and the parent can need.
   With the
   writer's tree (cost's `WriterTreeOK`): `OpGetTreeOK` and
   `opGetOKUnder_of_tree` (`GetTree.lean`), and the split rules with
