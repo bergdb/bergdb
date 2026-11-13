@@ -36,9 +36,11 @@ import bergdb.pub.util.SyncLevel;
  * and has no "//" and no lone surrogate (bergdb 015-49); every call that takes a key refuses
  * another key, and null, with IllegalArgumentException. A put or a delete refuses a key of
  * more than 111 bytes as stored, its UTF-8 and one byte more for each '/' (the package's
- * {@linkplain bergdb.pub##limits Limits}; bergdb 024-17, L2). A key is stored as a path of key
- * nodes, a level for each 7 bytes of the key, so that a key costs stream bytes, memory and
- * time in proportion to its length, many times what a value of that length costs. In a test
+ * {@linkplain bergdb.pub##limits Limits}; bergdb 024-17, L2); {@link Limits#keyBytes(String)}
+ * counts them and {@link Limits#checkKey(String)} checks a key before a call. A key is
+ * stored as a path of key nodes, a level for each 7 bytes of the key, so that a key costs
+ * stream bytes, memory and time in proportion to its length, many times what a value of
+ * that length costs. In a test
  * of 200,000 keys, each with a String value of 11 bytes, written 1,000 to a transaction, a
  * key of 13 bytes took about 70 bytes of the stream, and a key of 114 bytes whose first 100
  * differ from key to key about 1,200 to 1,400 bytes; keys of 120 bytes that shared their

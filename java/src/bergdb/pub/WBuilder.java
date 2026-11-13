@@ -19,7 +19,9 @@ package bergdb.pub;
  * writes nothing, also when the caller caught the refusal, and so does every later put() and
  * delete(), at once. The message names the first refused call, and its exception is the
  * cause. For the other writes, get a new builder and put them again. Until release 2026.5 a
- * caller that caught the refusal and called execute() committed the other puts.</p>
+ * caller that caught the refusal and called execute() committed the other puts. A key made
+ * by the program is checked before the call with {@link Limits#checkKey(String)} or
+ * {@link Limits#keyBytes(String)} (bergdb 026-02).</p>
  *
  * <p>execute() spends the builder, also when it throws, except when it throws because
  * another thread is in a call of the connection (below), which leaves the builder unspent:
