@@ -12,6 +12,8 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
+variable {H : NodeId → Nat → Prop}
+
 /-- x is the key access path's last node. -/
 def HtPathLast (w : W) (x : NodeId) : Prop := ∃ a, w.path[w.path.length - 1]? = some (a, x)
 
@@ -20,7 +22,7 @@ theorem ht_getLast_of {w : W} {a : Option Nat} {x : NodeId}
   rw [List.getLast?_eq_getElem?]; exact h
 
 /-- A live klong at the transaction's time of a node of the right times. -/
-theorem ht_live_of_liveAt {c : Ctx} {w : W} {h : Nat} {n : KNode} (hn : NodeHt c w h n)
+theorem ht_live_of_liveAt {c : Ctx} {w : W} {h : Nat} {n : KNode} (hn : NodeHt c H w h n)
     {cv : Nat} {y : NodeId} (hy : (cv, y) ∈ n.liveAt c.i) : (cv, y) ∈ n.live := by
   rw [KNode.liveAt_of_times n c.i hn.3] at hy
   exact hy
@@ -29,9 +31,9 @@ theorem ht_live_of_liveAt {c : Ctx} {w : W} {h : Nat} {n : KNode} (hn : NodeHt c
 segment leaf off the path: it stops at a segment leaf, the path's last node
 (or x itself, the empty leaf, with the path as it was). -/
 theorem ht_descendLte (B : NodeId) (cv fuel : Nat) :
-    ∀ (x : NodeId) (c : Ctx) (w : W), ViewHtOK B c → Book B c w → HtInv B c w →
+    ∀ (x : NodeId) (c : Ctx) (w : W), ViewHtOK H B c → Book B c w → HtInv H B c w →
       (HtPathLast w x ∨ w.nodes.lookup x = some ⟨true, []⟩) →
-      WriterWP (descendLte cv fuel x) c w (fun r v => Book B c v ∧ HtInv B c v ∧ HtLe w v ∧
+      WriterWP (descendLte cv fuel x) c w (fun r v => Book B c v ∧ HtInv H B c v ∧ HtLe w v ∧
         (HtPathLast v r ∨ (r = x ∧ v.path = w.path ∧ v.nodes.lookup r = some ⟨true, []⟩)) ∧
         ∃ n, v.nodes.lookup r = some n ∧ n.leaf = true) := by
   induction fuel with
@@ -77,22 +79,22 @@ theorem ht_descendLte (B : NodeId) (cv fuel : Nat) :
 
 /-- A node's last stored version with a key klong added at the transaction's time. -/
 theorem nodeHt_add {c : Ctx} {w : W} {h : Nat} {n : KNode} (hpos : 0 < c.i)
-    (hn : NodeHt c w h n) {cv : Nat} {y : NodeId} (hy : HtP c w h cv y) :
-    NodeHt c w h (n.add c.i (.key cv y)) :=
+    (hn : NodeHt c H w h n) {cv : Nat} {y : NodeId} (hy : HtP c H w h cv y) :
+    NodeHt c H w h (n.add c.i (.key cv y)) :=
   nodeHt_addFold hpos hn [(cv, y)] (kdPairs_cons hy kdPairs_nil')
 
 theorem ht_P_val {c : Ctx} {w : W} {y : NodeId} {cv : Nat} (hy : w.taken.contains y = false) :
-    HtP c w 0 cv y := ⟨hy, fun h0 => absurd rfl h0⟩
+    HtP c H w 0 cv y := ⟨hy, fun h0 => absurd rfl h0⟩
 
 set_option maxHeartbeats 1600000 in
 /-- `setValue` of a put from segRoot, the path's last node, or an empty
 segment leaf off the path. -/
 theorem ht_setValue_put (B : NodeId) (segRoot : NodeId) (cv : Nat) (key : Key) (hv0 : Nat)
-    (c : Ctx) (w : W) (hvo : ViewHtOK B c) (hpos : 0 < c.i) (hb : Book B c w)
-    (hi : HtInv B c w) (hM : 2 ≤ c.p.M)
+    (c : Ctx) (w : W) (hvo : ViewHtOK H B c) (hpos : 0 < c.i) (hb : Book B c w)
+    (hi : HtInv H B c w) (hM : 2 ≤ c.p.M)
     (hr : HtPathLast w segRoot ∨ w.nodes.lookup segRoot = some ⟨true, []⟩) :
     WriterWP (setValue segRoot cv key (some hv0)) c w
-      (fun _ v => Book B c v ∧ HtInv B c v ∧ HtLe w v) := by
+      (fun _ v => Book B c v ∧ HtInv H B c v ∧ HtLe w v) := by
   unfold setValue
   htSimp
   refine writerWP_mono (ht_descendLte B cv c.p.fuel segRoot c w hvo hb hi hr) ?_
@@ -145,7 +147,7 @@ theorem ht_setValue_put (B : NodeId) (segRoot : NodeId) (cv : Nat) (key : Key) (
 
 /-- Every node of the key access path is a key node of the overlay when its
 last node is. -/
-theorem ht_path_in_gh {B : NodeId} {c : Ctx} {w : W} (hi : HtInv B c w) {x : NodeId}
+theorem ht_path_in_gh {B : NodeId} {c : Ctx} {H : NodeId → Nat → Prop} {w : W} (hi : HtInv H B c w) {x : NodeId}
     (hpl : HtPathLast w x) (hx : x ∈ w.gh.map (·.1)) : ∀ e ∈ w.path, e.2 ∈ w.gh.map (·.1) := by
   intro e he
   obtain ⟨d, hd⟩ := List.mem_iff_getElem?.mp he
@@ -173,10 +175,10 @@ set_option maxHeartbeats 1600000 in
 leaf off the path: the tree of the next segment, the path's last node, or a new
 empty segment leaf off the path. -/
 theorem ht_setNode_put (B : NodeId) (hframe : AppendFrameOK B) (segRoot : NodeId)
-    (cv : Nat) (c : Ctx) (w : W) (hvo : ViewHtOK B c) (hpos : 0 < c.i) (hb : Book B c w)
-    (hi : HtInv B c w) (hM : 2 ≤ c.p.M) (hkw : ViewKlongsWf c.p c.view) (hwf : WriterKlongsWf w)
+    (cv : Nat) (c : Ctx) (w : W) (hvo : ViewHtOK H B c) (hpos : 0 < c.i) (hb : Book B c w)
+    (hi : HtInv H B c w) (hM : 2 ≤ c.p.M) (hkw : ViewKlongsWf c.p c.view) (hwf : WriterKlongsWf w)
     (hr : HtPathLast w segRoot ∨ w.nodes.lookup segRoot = some ⟨true, []⟩) :
-    WriterWP (setNode segRoot cv true) c w (fun r v => Book B c v ∧ HtInv B c v ∧ HtLe w v ∧
+    WriterWP (setNode segRoot cv true) c w (fun r v => Book B c v ∧ HtInv H B c v ∧ HtLe w v ∧
       ∀ y, r = some y → HtPathLast v y ∨ v.nodes.lookup y = some ⟨true, []⟩) := by
   unfold setNode
   htSimp
@@ -195,7 +197,7 @@ theorem ht_setNode_put (B : NodeId) (hframe : AppendFrameOK B) (segRoot : NodeId
       · right
         rw [hl0] at he
         exact Option.some.inj he
-  have hN0 : NodeHt c w1 0 n0 := by
+  have hN0 : NodeHt c H w1 0 n0 := by
     rcases hcase with ⟨a, ha⟩ | rfl
     · exact ht_cache_at hl0 hi1 hm (hi1.pathFree _ a cur ha) (HtLe.refl _)
     · exact nodeHt_nil c w1 0 true
@@ -237,7 +239,7 @@ theorem ht_setNode_put (B : NodeId) (hframe : AppendFrameOK B) (segRoot : NodeId
       have hle15 : HtLe w1 w5 := hle3.trans (hle4.trans hle5)
       obtain ⟨n5, hl5, hlf5⟩ := hle15.1.1 cur n0 hl0
       have hm5 := HtLe.gh' hm hle15
-      have hcf5 : HtP c w5 0 cv child := ht_P_val hcf
+      have hcf5 : HtP c H w5 0 cv child := ht_P_val hcf
       split
       · htSimp
         refine writerWP_mono (writerWP_and (ht_putNode_of B cur _ c w1 w1 w5 n0 hb5 hi5 hl0 hle15
@@ -281,11 +283,11 @@ theorem ht_setNode_put (B : NodeId) (hframe : AppendFrameOK B) (segRoot : NodeId
 /-- The loop of a put over the key's segments. -/
 theorem ht_putSegs_put (B : NodeId) (hframe : AppendFrameOK B) (key : Key) (hv0 : Nat)
     (segs : List Nat) :
-    ∀ (r : NodeId) (c : Ctx) (w : W), ViewHtOK B c → 0 < c.i → Book B c w → HtInv B c w →
+    ∀ (r : NodeId) (c : Ctx) (w : W), ViewHtOK H B c → 0 < c.i → Book B c w → HtInv H B c w →
       2 ≤ c.p.M → ViewKlongsWf c.p c.view → WriterKlongsWf w →
       (HtPathLast w r ∨ w.nodes.lookup r = some ⟨true, []⟩) →
       WriterWP (putSegs key (some hv0) segs r) c w
-        (fun _ v => Book B c v ∧ HtInv B c v ∧ HtLe w v) := by
+        (fun _ v => Book B c v ∧ HtInv H B c v ∧ HtLe w v) := by
   induction segs with
   | nil => intro r c w _ _ _ _ _ _ _ _; exact writerWP_throw _ _ _ _
   | cons cv rest ih =>
@@ -308,9 +310,9 @@ theorem ht_putSegs_put (B : NodeId) (hframe : AppendFrameOK B) (key : Key) (hv0 
 
 /-- A put keeps the heights. -/
 theorem ht_putKv_put (B : NodeId) (hframe : AppendFrameOK B) (key : Key) (hv0 : Nat) (c : Ctx)
-    (w : W) (hvo : ViewHtOK B c) (hpos : 0 < c.i) (hb : Book B c w) (hi : HtInv B c w)
+    (w : W) (hvo : ViewHtOK H B c) (hpos : 0 < c.i) (hb : Book B c w) (hi : HtInv H B c w)
     (hM : 2 ≤ c.p.M) (hkw : ViewKlongsWf c.p c.view) (hwf : WriterKlongsWf w) :
-    WriterWP (putKv (.put key hv0)) c w (fun _ v => Book B c v ∧ HtInv B c v ∧ HtLe w v) := by
+    WriterWP (putKv (.put key hv0)) c w (fun _ v => Book B c v ∧ HtInv H B c v ∧ HtLe w v) := by
   unfold putKv
   htSimp
   refine writerWP_mono (writerWP_and (ht_pathClear B c w hvo hb hi) (klongsWf_pathClear c w hkw hwf)) ?_
