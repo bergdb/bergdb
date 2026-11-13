@@ -346,8 +346,8 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   020-24-07's U7-1 and U7-3): `DatabaseBuilder.cryptoKey()` and
   `CryptoKey` gone, the code kept internal and tested, an earlier
   release's encrypted database refused; done right later, 017-10.
-* 29-index-proof/, on a branch, not merged: `020-29-index-proof` in
-  `/Users/f/fl/bench/2026-11-09/clone-l29`. 020-29, a Lean proof, for
+* 29-index-proof/, on main since 2026-11-13 (b0cd3ac4, merged after
+  release 2026.5). 020-29, a Lean proof, for
   every size, of 020-26 section 3's safety invariants (no `sorry`), in a
   wider model (several index names and directories, transactions of any
   keys), and liveness: cleanups end; builds end under strong fairness of

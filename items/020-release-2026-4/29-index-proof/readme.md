@@ -1,7 +1,8 @@
 020-29-index-proof
 ==================
 
-Created 2026-11-09 by Frans Lundberg. Status: open.
+Created 2026-11-09 by Frans Lundberg. Status: done; on main since
+2026-11-13 (b0cd3ac4).
 
 A Lean proof, for every size, of the safety invariants of 2026.4's user
 indexes that 020-26 checked with TLC within small bounds: the protocol of
@@ -689,3 +690,11 @@ Log
 Each step: `lake build BergDB` clean, no `sorry`, the standard axioms only.
 Nothing in 2026.4. For the coordinator: a line for this subitem in 020's
 readme, Files.
+
+2026-11-13. Merged into main (b0cd3ac4; Frans, 08:04: "Merge it."),
+after release 2026.5, by coord-1113: `lean/README.md` keeps both its
+sections (024-09's and this one's), `lakefile.toml`'s default targets
+are main's with `BergDB` added. Checked on the merged tree: `lake build`
+of every default target, 291 jobs; `#print axioms` of the 15 theorems
+that the README lists, the standard three only; no `sorry`, `admit`,
+`axiom`, `native_decide`. Logs: /Users/f/fl/bench/2026-11-13/ix/.
