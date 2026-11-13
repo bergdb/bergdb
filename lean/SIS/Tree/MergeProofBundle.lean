@@ -214,3 +214,4 @@ import SIS.Tree.RangeUpAll
 import SIS.Tree.RangeUpTake
 import SIS.Tree.TakeBackRun
 import SIS.Tree.TakeBackRunExample
+import SIS.Tree.RangeCollapseSeg
