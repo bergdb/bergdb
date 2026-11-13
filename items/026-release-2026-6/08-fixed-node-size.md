@@ -184,16 +184,42 @@ Questions for Frans
 Gates
 =====
 
-To run on the branch's head after main is merged (State).
+Logs in `/Users/f/fl/bench/2026-11-13/ns30/`; the level scripts' own
+logs in the clone's `java/build/level1/` and `java/build/level2/`.
+
+* `java/before-commit.sh` on `babea6b2` (main `c91443d8` and the code
+  commit): BEFORE COMMIT OK (68 s), 1712 unit tests, 89 f-tests, demos
+  (`before-commit.log`).
+* `java/stress/level1.sh` (full) on `9d346c25`: LEVEL 1 OK, 10:24 to
+  10:27 (`level1.log`): DagFuzz at 8, 14, 30, 62; RestartStress at the
+  default and at 8, 14, 62 (through `TestNodeSize`), 50 keys, on disk,
+  no restarts; RestartInvariance; Props (MEM 127.1 at 10M keys, SS
+  within its limits).
+* `java/stress/level2.sh quick` on `9d346c25`: LEVEL 2 OK, 10:27 to
+  10:29 (`level2.log`): RestartStress at sd 1000 for 8, 14, 30 and 62,
+  RestartInvariance (node 8, 14, 62), CrashTest (node 8), treeconf, the
+  A2A3 and drain configurations, conformance (14 traces) and drain (10),
+  TRACECHECK OK, TAKECHECK OK. Lean built (`lake build`, up to date,
+  the `.lake` of a clone with the same `lean/` tree).
+* After main moved (`fe947c7c`, `CountGates.java`, package `bergdb.core`;
+  items only otherwise), merged as `c3aa52fe`; `java/before-commit.sh`
+  again: BEFORE COMMIT OK (70 s) (`before-commit-2.log`). Since
+  `9d346c25` only `java/stress/CountGates.java` and
+  `java/stress/count-gates.sh` changed under `java/`, neither run by
+  level 1 or 2, and CountGates does not set a node size.
 
 
 State
 =====
 
-2026-11-13, 10:20. Code, Javadoc, 027-03 and releases/next.md done and
-committed in the clone `/Users/f/fl/bench/2026-11-13/ns30/clone`, branch
-`026-08-node-size`; the gates running. Logs in
-`/Users/f/fl/bench/2026-11-13/ns30/`.
+2026-11-13, 10:37. Done, to land: code, Javadoc, 027-03,
+releases/next.md, this item and its Files line, committed in the clone
+`/Users/f/fl/bench/2026-11-13/ns30/clone`, branch `026-08-node-size`,
+main merged at `eefd8bb4`; every gate passed (Gates). Open: Frans's
+answers to Q1 and Q2 (both applied as recommended). To continue: if he
+wants `maxNodeSize30()` back as a public no-op, make it public again
+with a Javadoc that says it changes nothing; if he wants the hook out of
+the release jar, the Pub layer's testers must leave `src` first.
 
 
 Log
@@ -201,6 +227,6 @@ Log
 
 2026-11-13. Registered by coord-1113 (Frans, 09:17 and 09:21).
 
-2026-11-13, 10:09 to 10:20. Made by agent ns30 of coord-1113 on the
+2026-11-13, 10:09 to 10:37. Made by agent ns30 of coord-1113 on the
 branch `026-08-node-size`: the setters package-private,
-`TestNodeSize`, the Javadoc, 027-03, releases/next.md.
+`TestNodeSize`, the Javadoc, 027-03, releases/next.md; gates passed.
