@@ -1213,11 +1213,12 @@ writer's level, `writerWP_deleteUpward_inner` (`WriterGetUpW.lean`,
 `WriterGetUpT.lean`): the climb (`writerWP_climb`), the chain unlinked, the stop
 node's bitmap with room, root collapse at the space root; the writer's tree
 after is a tree (`treeOK_up_inner`) and the key reads nothing, every other key
-as before. Its limits: the stop node inner and its klong to the chain not the
-empty key's (LE-b and a stop at a segment leaf: the tree-level lemmas are there,
-the writer's steps not), no node of the chain made by the transaction (no
-take-back), the merges off, root collapse at another segment a premise
-(`hcollSeg`). `InnerChildrenExist` (`ChildrenExist.lean`) is the Prop agreed
+as before. `writerWP_deleteUpward_up` (`WriterGetUpAll.lean`) takes every stop:
+a segment leaf, an inner node by a bitmap, or by LE-b when its klong to the
+chain is the empty key's (`writerWP_emptyKeyNext_room_frame`,
+`lebNode_live_lookup`; the tree relinked, `treeOK_dropSubtree_tr`), each with
+room. Its limits: no node of the chain made by the transaction (no take-back),
+the merges off, root collapse at another segment a premise (`hcollSeg`). `InnerChildrenExist` (`ChildrenExist.lean`) is the Prop agreed
 with prover putinv, who proves it for the writer's states.
 Not yet: the whole put and delete around the cascade; a merge whose parent is
 full or compacted;
