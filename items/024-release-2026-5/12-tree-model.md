@@ -1352,9 +1352,45 @@ and its status:
     a full one (`writerWP_put_newSegFullR`); where the key's walk ends
     at a missing node or at a descent that finds no leaf, the writer
     fails (`writerWP_putSegs_put_fail`).
-  - (4) `DelMergeCase`, a delete with the merges on: open, cost's. Cost's
-    merge rules (`writerWP_merge_full_get`, `writerWP_mergeTail_full_get`)
-    are part of it.
+  - (4) `DelMergeCase`, a delete with the merges on: reduced to named step
+    obligations, cost's (`opGetCaseOK_delMerge`, `DelMergeCase.lean`). The
+    merges' loop, `afterDelete` and the root collapse keep the delete's inner
+    invariant `DelInv`. That invariant is PutInv, its global parts, the walk's
+    ranges, inner children there, the fuel, and the reading of the delete. They
+    keep it by cost's merge and collapse lemmas: `writerWP_mergeUp_del`,
+    `writerWP_afterDelete_del` and `writerWP_collapseRoot_del`. The merge is
+    `writerWP_merge_get_inv`, which derives the merge rules' premises from
+    PutInv, PutInvG, RangeOrder and the path (`PathOK`). It covers every kind of
+    full parent and the space root as parent. `DelInv` carries the books
+    (`PutBook`). PutInv and PutInvG after a merge and after the collapse
+    follow from them: `putBook_merge`, `putBook_collapseRoot` and
+    `putBook_getNode` (`DelMergeBook.lean`) give the books after, and
+    `putInv_after_step` builds the rest. The obligations, all open:
+    - `MergeStepOK`: a merge of the loop keeps the writer's tree, its reached
+      nodes not taken back, the walk's ranges and inner children (`StepInv`),
+      and the state after it fits the fuel (StepFits for a merge). The tree
+      half is cost's merge tree lemmas from the invariants; their halves
+      premise is stated for every last version, which a caller cannot give.
+    - `DescentOK`: the loop's descent keeps `DelInv` and gives the path facts
+      down to the node it stops at. It also gives the merge's two named
+      conditions (`MergePathCond`): no space split in place below a segment
+      leaf on the path, and the full parent's last version in the range of its
+      link.
+    - `CollapseStepOK`: the collapse's steps keep the walk's ranges and inner
+      children (`CollRange`), and a segment leaf has room for a replaced
+      root's klong. The collapse's tree comes from cost's collapse lemma.
+    - `DelStepsOK`: the delete's other steps, with the merges' steps given. It
+      holds the walk, the leaf's bitmap or split with its cascade (PutInv and
+      the fuel across `appendDeleteKlong` inside the delete), and the upward
+      delete. It is `writerWP_del_accessPathR`, `writerWP_del_bitmap_segR` and
+      `writerWP_deleteUpward_upT` with the merges on.
+
+    The premises 2 ≤ splitAbove and 1 ≤ mergeMax are also needed.
+    `#guard dmCheck dmP dmTs dmTx` shows the hypotheses are not void: a run of
+    twelve puts and then ten deletes with the merges on is within reach, every
+    state between the deletes fits the fuel, and the writer merges in the
+    deletes. StepFits (the inner states fit) is in `MergeStepOK` and
+    `DelStepsOK`; step 4 (`SegBal`, cost) is to discharge it.
   - (5) `DelNoLeafCase`, a delete of a key with no leaf: proved,
     `opGetCaseOK_delNoLeaf`. It changes no reading: the writer's walk
     stops at the first segment that is not there and only reads
@@ -1432,6 +1468,30 @@ below a leaf with room; (3b) more new segments below a leaf with room;
   `PutInv` open: their rules make one new segment.
 - (3c) all three open.
 - (4) all three open (cost's merges).
+
+The shapes of the nodes a cascade makes or changes (prover "latest",
+2026-11-13, 21:30; for prover putinv's take-back (C); `ChainShape.lean`):
+`writerWP_appendKlongs_chainShape`. It takes the premises of
+`writerWP_appendKlongs_chainGRV` that concern the writer's nodes, with
+`ChainOrd` at every level and the klongs put ordered by compare value.
+After `appendKlongs (s + e)`, every node with an id from the next id on,
+or on the chain, is one of these (`CascadeNodeShape`):
+
+- a chain node that the cascade did not reach, unchanged;
+- a chain node left behind with its klongs before the transaction;
+- a node of time c.i (a time klong, then key klongs; `ShadowOK`). A chain
+  node of this kind is one the transaction made. A key klong shadowed by
+  a later klong of its compare value names either a split child that was
+  copied, or a live klong of the bottom node for a compare value put
+  there (`ChainShadow`). Halves of a space split shadow like this
+  (`halves_shadow`). A time split's last version, a new root and a new
+  segment root shadow nothing (`writerWP_replaceOrAdd_lastN`,
+  `shadowOK_root`).
+- the node where the cascade ends (`CascadeTop`), one of three kinds:
+  - the bottom node with the klongs put;
+  - a node with the klongs of the split below added, in compare order,
+    shadowing only the old klong to a split child that was copied;
+  - a segment leaf whose klong to a child split in place is repointed.
 
 The splits of any depth (prover "latest", 2026-11-13, 16:30): **proved
 for time and space splits of nodes that existed before the transaction,

@@ -447,8 +447,7 @@ theorem writerWP_mergeTail_root_get (c : Ctx) (base : View BVal) (x : NodeId) (d
     (hfreshV : ∀ z, nx ≤ z → wValue base w3 z = none)
     (hd : d - 1 = 0) (hroot : root = p)
     (hsa2 : 2 ≤ c.p.splitAbove)
-    (hsorted : ∀ m1 m2 last, mergeFullLast pn c.i cL m1 cR m2 = some last →
-      ∃ pairs, last.ks = newKlongs c.i pairs ∧ CvSorted pairs) :
+ :
     WriterWP (mergeTail c x d p pn xn leftSome l ln il r rn ir) c w3
       (fun _ w' => (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
           (∀ m1 m2 last, mergeFullLast pn c.i cL m1 cR m2 = some last →
@@ -845,7 +844,8 @@ theorem writerWP_mergeTail_root_get (c : Ctx) (base : View BVal) (x : NodeId) (d
           · rw [h3]
             obtain ⟨hl3, ht3⟩ := hS2 i h1 h2
             exact hnoval _ (Nn i) (by rw [← hNw3]; simp only [wNode, ht3, Bool.false_eq_true, ↓reduceIte, hl3])
-        obtain ⟨pairsS, hksS, hsS⟩ := hsorted m1 none last hlast
+        obtain ⟨pairsS, hksS, hsS⟩ := mergeFullLast_sorted pn c.i cL m1 cR none last hlast
+          (fun _ _ h => by cases h)
         have hxe : (⟨pn.leaf, last.ks⟩ : KNode) = ⟨pn.leaf, newKlongs c.i pairsS⟩ := by rw [hksS]
         have hlastV : (⟨pn.leaf, last.ks⟩ : KNode).lastVersion c.i = last := by
           rw [hxe, KNode.lastVersion_newKlongs_sorted _ _ _ hsS, ← hksS]; exact hlasteq
@@ -1235,7 +1235,21 @@ theorem writerWP_mergeTail_root_get (c : Ctx) (base : View BVal) (x : NodeId) (d
           · rw [h3]
             obtain ⟨hl3, ht3⟩ := hS2 i h1 h2
             exact hnoval _ (Nn i) (by rw [← hNw3]; simp only [wNode, ht3, Bool.false_eq_true, ↓reduceIte, hl3])
-        obtain ⟨pairsS, hksS, hsS⟩ := hsorted m1 (some (m1 + 2, g2)) last hlast
+        have hg2none : ∀ y g, some (m1 + 2, g2) = some (y, g) → g ≠ cR → pn.live.lookup g = none := by
+          intro y g hyg hgc
+          simp only [Option.some.injEq, Prod.mk.injEq] at hyg
+          obtain ⟨_, rfl⟩ := hyg
+          cases hlk : pn.live.lookup g2 with
+          | none => rfl
+          | some z =>
+            exfalso
+            have hm : (g2, z) ∈ pn.liveAt c.i := by
+              rw [KNode.liveAt_of_times pn c.i hpt]; exact mem_of_lookup_nodup _ _ _ hlk
+            rcases hadj g2 z hm with h | h
+            · omega
+            · have := hgU g2 z hm (by omega); omega
+        obtain ⟨pairsS, hksS, hsS⟩ := mergeFullLast_sorted pn c.i cL m1 cR (some (m1 + 2, g2)) last
+          hlast hg2none
         have hxe : (⟨pn.leaf, last.ks⟩ : KNode) = ⟨pn.leaf, newKlongs c.i pairsS⟩ := by rw [hksS]
         have hlastV : (⟨pn.leaf, last.ks⟩ : KNode).lastVersion c.i = last := by
           rw [hxe, KNode.lastVersion_newKlongs_sorted _ _ _ hsS, ← hksS]; exact hlasteq
@@ -1445,10 +1459,7 @@ theorem writerWP_merge_root_get (x : NodeId) (d : Nat) (c : Ctx) (base : View BV
     (hlinksAll : ∀ u c' z, TLink (wNode c.p base w) c.i u c' z → z < w.next)
     (hfreshV : ∀ z, w.next ≤ z → wValue base w z = none)
     (hd : d - 1 = 0) (hpath0 : (w.path[0]?).map (·.2) = some w.top.rootKey)
-    (hsa2 : 2 ≤ c.p.splitAbove)
-    (hsorted : ∀ pn, wNode c.p base w w.top.rootKey = some pn →
-      ∀ cL cR m1 m2 last, mergeFullLast pn c.i cL m1 cR m2 = some last →
-      ∃ pairs, last.ks = newKlongs c.i pairs ∧ CvSorted pairs) :
+    (hsa2 : 2 ≤ c.p.splitAbove) :
     WriterWP (merge x d) c w (fun _ w' =>
       (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
           (∀ pn, wNode c.p base w w.top.rootKey = some pn →
@@ -1565,7 +1576,7 @@ theorem writerWP_merge_root_get (x : NodeId) (d : Nat) (c : Ctx) (base : View BV
           rw [wValue_congr' base w3 w hr3.2.2.1 hr3.2.2.2.1]; exact hnoval y yn hy)
         hvc hlinksAll hbaseF
         (fun z hz => by rw [wValue_congr' base w3 w hr3.2.2.1 hr3.2.2.2.1]; exact hfreshV z hz)
-        hd hXp hsa2 (fun m1 m2 last h => hsorted pn0 hNp cL cR m1 m2 last h)) ?_
+        hd hXp hsa2) ?_
       intro _ w' h hq key
       rw [h (hq.imp id (fun hn m1 m2 last hl => hn pn0 hNp cL cR m1 m2 last hl)) key]
       unfold wGet
