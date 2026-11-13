@@ -165,3 +165,4 @@ import SIS.Tree.RangeOps
 import SIS.Tree.RangeSteps
 import SIS.Tree.RangeCollapse
 import SIS.Tree.RangeDelChain
+import SIS.Tree.RangeLeb
