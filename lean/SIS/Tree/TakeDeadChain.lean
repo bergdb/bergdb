@@ -183,10 +183,11 @@ theorem cascadeShapeJ2_of (c : Ctx) (N : NodeId → Option KNode) (B : NodeId) (
 
 /-- A cascade of splits keeps the take-back's (B) and (C) together (`TakeJ2`):
 `writerWP_appendKlongs_take`'s premises with `ChainOrd` at every level and the
-klongs put ordered, the books, `TakeJ2` before, B at or below the next id and the
+klongs put ordered, `TakeJ2` before, B at or below the next id and the
 values below it, the old live pointers of the klongs put below B or values, and
-`hextra`: a chain node left behind is not one the transaction made and a
-repointed top is a segment leaf (to come from latest's shape lemma). -/
+`hextra`: the chain's nodes stay cached, a chain node left behind is not one the
+transaction made and a repointed top is a segment leaf (to come from latest's
+shape lemma). -/
 theorem writerWP_appendKlongs_j2 (c : Ctx) (base : View BVal)
     (path0 : List (Option Nat × NodeId)) (s D : Nat) (X : Nat → NodeId) (K : Nat → Nat)
     (Nn : Nat → KNode)
@@ -223,16 +224,17 @@ theorem writerWP_appendKlongs_j2 (c : Ctx) (base : View BVal)
       (∀ cc u, (cc, u) ∈ (Nn (s + e)).liveAt c.i →
         (∃ c', (c', u) ∈ (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + e))).liveAt c.i) ∨
         wNode c.p base w u = none) →
-      0 < c.i → ViewIdsBelow B c.view → Book B c w → TakeJ2 c base B w → B ≤ w.next →
+      0 < c.i → TakeJ2 c base B w → B ≤ w.next →
       (∀ y ∈ w.vals.map (·.1), y < w.next) →
       (∀ q ∈ ins, ∀ y, (q.1, y) ∈ (Nn (s + e)).liveAt c.i → y < B ∨ y ∈ w.vals.map (·.1)) →
-      WriterWP (appendKlongs (s + e) (X (s + e)) ins) c w (fun _ w' => ∀ z zn,
+      WriterWP (appendKlongs (s + e) (X (s + e)) ins) c w (fun _ w' =>
+        (∀ i, s ≤ i → i ≤ s + e → (w'.nodes.lookup (X i)).isSome = true) ∧ ∀ z zn,
         w'.nodes.lookup z = some zn →
         (∀ i, s ≤ i → i ≤ s + e → z = X i → zn = (Nn i).toPrev (c.i - 1) → (Nn i).firstTime ≠ some c.i) ∧
         (∀ j, s ≤ j → j < s + e → z = X j → ∀ k1 idx r, (Nn j).linkIndex (X (j + 1)) k1 = some idx →
           zn = (Nn j).repoint idx r → (Nn j).leaf = true)) →
       WriterWP (appendKlongs (s + e) (X (s + e)) ins) c w (fun _ w' => TakeJ2 c base B w') := by
-  intro e hle w ins h1 hpw h2 h3 h4 h5 h6 h7 h8 h9 hW hV hkeepL hpos hvb hbk hJ hBn hvn hins hextra
+  intro e hle w ins h1 hpw h2 h3 h4 h5 h6 h7 h8 h9 hW hV hkeepL hpos hJ hBn hvn hins hextra
   have hnd : (ins.map Prod.fst).Nodup := List.pairwise_map.mpr (hpw.imp (fun h => Nat.ne_of_lt h))
   have hTt := writerWP_appendKlongs_take c base path0 s D X K Nn hX hK hlinkK hrange hlen hwf htimes htop
     hdist hspace e hle w ins h1 h2 h3 h4 h5 h6 h7 h8 h9 hW hV hkeepL (fun i h1 h2 => hord i h1 (by omega))
@@ -246,10 +248,8 @@ theorem writerWP_appendKlongs_j2 (c : Ctx) (base : View BVal)
         · exact h
         · have := (h7 (X i) h).1; rw [(h4 i a b).1] at this; cases this⟩)
     (fun z hz => (h7 z hz).1)
-  have hKp := book_appendKlongs B (s + e) (X (s + e)) ins c w hvb hbk
-  refine writerWP_mono (writerWP_and (writerWP_and (writerWP_and (writerWP_and hTt hG) hSh) hKp)
-    hextra) ?_
-  rintro _ w' ⟨⟨⟨⟨hTt', hG'⟩, hSh'⟩, ⟨_, hKept⟩⟩, hX'⟩
+  refine writerWP_mono (writerWP_and (writerWP_and (writerWP_and hTt hG) hSh) hextra) ?_
+  rintro _ w' ⟨⟨⟨hTt', hG'⟩, hSh'⟩, hcached, hX'⟩
   obtain ⟨_, ⟨_, ht', _, _, hv'⟩, hf, _⟩ := hG'
   obtain ⟨_, _, _, hshape⟩ := hSh'
   obtain ⟨_, hD, hO, hS, hM, hV0⟩ := hJ
@@ -280,8 +280,8 @@ theorem writerWP_appendKlongs_j2 (c : Ctx) (base : View BVal)
         rw [hl] at hzn
         rcases hz with hz | ⟨i, a, b, rfl⟩
         · rw [(h7 z hz).2.2] at hzn; cases hzn
-        · obtain ⟨n', hn', _⟩ := hKept.1 _ _ (h4 i a b).1
-          rw [hl] at hn'; cases hn'
+        · have := hcached i a b
+          rw [hl] at this; cases this
     obtain ⟨hp1, hp2⟩ := hX' z zn hlk
     exact cascadeShapeJ2_of c (wNode c.p base w) B _ X K Nn s (s + e) ins w.next hS hM hN
       (fun i a b => htimes i a (by omega)) hBn hnd hins z zn hz hp1 hp2 (hshape z zn hlk hz)
