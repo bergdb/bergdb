@@ -306,3 +306,5 @@ import SIS.Tree.DelStepsFull
 import SIS.Tree.DelStepsKd
 import SIS.Tree.DelStepsUpK
 import SIS.Tree.DelStepsF3
+import SIS.Tree.DelStepsFullGet
+import SIS.Tree.DelStepsFullRoot
