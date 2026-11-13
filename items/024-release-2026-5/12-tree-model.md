@@ -1293,7 +1293,8 @@ tree, cost's `TreeAt` (`keyTreeOK_of_treeAt`, `getOK_of_treeAt`,
 coordinator, 2026-11-13); its premises are to meet `RunReadOK` through
 `overlayLiftOKUnder_mono` when tp7's `ApplyBridge.lean` lands.
 
-The assembly of TP10 and TP11 (prover "latest", 2026-11-13, 20:50):
+The assembly of TP10 and TP11 (prover "latest", 2026-11-13, 20:50;
+the cases at 20:55):
 `getOK_scanOK_of_open` (`GetAssembly.lean`) proves `GetOK` and `ScanOK`
 (Props.lean, unchanged) from the named premises below.
 `getOK_scanOK_of_open_runOK` is the same theorem with the run premise R
@@ -1331,35 +1332,106 @@ and its status:
   between operations that meets `PutInv` and `RangeOrder` (`RangeOrder`
   at every such state follows from `OpRangeOK`, `rangeOrder_reached`),
   the operation changes the reading by itself alone when the state after
-  it meets the fuel premise. All nine are open as stated. For seven of
-  them, the rules at the writer's level are proved, but their premises
-  (the order below a parent, two live klongs in a node that space splits,
-  the inner parent or `OrdG`, the key's uniqueness at its leaf) are not
-  yet derived from `PutInv` and `RangeOrder`:
-  - (1) `PutLeafRoomCase`, a put into its leaf with room:
-    `writerWP_put_room_seg`.
-  - (2) `PutLeafFullCase`, a put into a full leaf:
-    `writerWP_put_accessPathR`, with every split along the access path,
-    the space root's and a segment root's space split included.
-  - (3) `PutNewSegCase`, a put that makes new segments:
-    `writerWP_put_newSegs` (the leaf above has room) and
-    `writerWP_put_newSegFullR` (it is full).
-  - (4) `DelMergeCase`, a delete with the merges on: no rule here. Cost's
+  it meets the fuel premise. Six are proved (`GetCaseBridge.lean`). The
+  rules' premises come from `PutInv` (klongs well formed, no node on the
+  key's path taken back, the next id free, the key's uniqueness at its
+  leaf), from `RangeOrder` (the order below a parent and `OrdG`:
+  `rangeG_of_rangeOrder`, `ordG_of_rangeOrder`), from the global parts
+  of `PutInv`, which hold at every state of a run with its links (every
+  link below the next id: `putInvG_reached`), and from 2 ≤ splitAbove
+  (two live klongs in a node that space splits: `lenG_of_splitAbove`).
+  - (1) `PutLeafRoomCase`, a put into its leaf with room: proved,
+    `opGetCaseOK_putLeafRoom` (on `writerWP_put_room_seg`).
+  - (2) `PutLeafFullCase`, a put into a full leaf: proved for
+    2 ≤ splitAbove and runs with their links, `opGetCaseOK_putLeafFull`
+    (on `writerWP_put_accessPathR`, every split along the access path,
+    the space root's and a segment root's space split included).
+  - (3) `PutNewSegCase`, a put of a key with no leaf: proved for 2 ≤ M,
+    2 ≤ splitAbove and runs with their links, `opGetCaseOK_putNewSeg`.
+    New segments below a leaf with room (`writerWP_put_newSegs_inv`) or
+    a full one (`writerWP_put_newSegFullR`); where the key's walk ends
+    at a missing node or at a descent that finds no leaf, the writer
+    fails (`writerWP_putSegs_put_fail`).
+  - (4) `DelMergeCase`, a delete with the merges on: open, cost's. Cost's
     merge rules (`writerWP_merge_full_get`, `writerWP_mergeTail_full_get`)
     are part of it.
-  - (5) `DelNoLeafCase`, a delete of a key with no leaf: no rule yet.
-  - (6) `DelNoopCase`, a delete that changes no bitmap:
-    `writerWP_del_noop_seg`.
+  - (5) `DelNoLeafCase`, a delete of a key with no leaf: proved,
+    `opGetCaseOK_delNoLeaf`. It changes no reading: the writer's walk
+    stops at the first segment that is not there and only reads
+    (`writerWP_putSegs_del_noLeaf`), and the key reads as no value
+    (`getFromR_noLeaf`).
+  - (6) `DelNoopCase`, a delete that changes no bitmap: proved,
+    `opGetCaseOK_delNoop` (on `writerWP_del_noop_seg`).
   - (7) `DelEmptyCase`, a delete that empties its leaf (the upward
-    delete): no rule here. Cost's `writerWP_deleteUpward_up_get` and
-    `writerWP_deleteUpward_upT_get` are part of it.
-  - (8) `DelRoomCase`, a delete into its leaf with room:
-    `writerWP_del_bitmap_seg`.
-  - (9) `DelFullCase`, a delete into a full leaf: `writerWP_del_accessPathR`
-    (the leaf below an inner node, split in time or space, in place too;
-    below a segment leaf, in time; with every split above) and
-    `writerWP_del_leafRootR` (the leaf is the space root). Still open:
-    the leaf's space split below a segment leaf.
+    delete): open, cost's. Cost's `writerWP_deleteUpward_up_get` and
+    `writerWP_deleteUpward_upT_get` are part of it. Void with the merges
+    on (`opGetCaseOK_delEmpty_merges`).
+  - (8) `DelRoomCase`, a delete into its leaf with room: proved,
+    `opGetCaseOK_delRoom`, on `writerWP_del_bitmap_segR`: the rule
+    `writerWP_del_bitmap_seg` with the room that the writer checks for
+    the branch it takes (`DelRoom`); the old rule asked for the room of
+    both branches.
+  - (9) `DelFullCase`, a delete into a full leaf: open. The rules
+    `writerWP_del_accessPathR` (the leaf below an inner node, split in
+    time or space, in place too; below a segment leaf, in time; with
+    every split above) and `writerWP_del_leafRootR` (the leaf is the
+    space root) are proved; missing are the leaf's space split below a
+    segment leaf and the bridge. Void with the merges on
+    (`opGetCaseOK_delFull_merges`), so it is open only for parameters
+    with the merges off; it waits (coordinator).
+
+With the six cases: `getOK_scanOK_of_open_cases` gives `GetOK` and
+`ScanOK` for 2 ≤ M and 2 ≤ splitAbove from the premises above, of the
+cases only (4), (7) and (9). `getOK_scanOK_of_open_merges` does it for
+the parameters of `MergeParamsOK` (those of
+`invPreserved_of_latest_pointers`): there the merges are on, (7) and (9)
+are void, and of the cases only (4) is left.
+
+The three premises about each operation, over the same cases (prover
+"latest", 2026-11-13, 21:05; `GetOpAssembly.lean`, `GetOpCases.lean`):
+the writer's tree (`OpTreeOK`), `PutInv` (`OpPutInvOK`) and the walk's
+ranges (`OpRangeOK`). Each is stated per case as `OpCaseOK p R Q P`, with
+the posts `QTree`, `QPutInv` and `QRange`: from a state between
+operations that meets `PutInv`, `RangeOrder` and the case P, the state
+after the operation meets Q. The rules need `PutInv` and `RangeOrder` at
+the state before, so the three are carried together along a transaction
+(`joint_reached`). From them come the three premises in the forms the
+assembly takes (`opTreeOK_of_any`, `opPutInvOK_of_any`,
+`opRangeOK_of_any`, and cost's `OpTreeInvOK`, `opTreeInvOK_of_any`).
+`OpTreeOK` has no premise on the run: it comes out for runs that all meet
+R, so `runTree_joint`, which takes `OpTreeOK` to give the runs their
+tree, needs a form with R at the run to use it. `getOK_scanOK_of_cases`
+gives TP10 and TP11 from the cases (for 2 ≤ M and 2 ≤ splitAbove), and
+`getOK_scanOK_of_cases_merges` for `MergeParamsOK`, where the cases (5)
+to (9) are void for all four posts (`opCaseOK_void`). Case (3) comes from
+four parts (`opCaseOK_putNewSeg_of_parts`): where the put makes no new
+segment the writer fails, which proves every post; (3a) one new segment
+below a leaf with room; (3b) more new segments below a leaf with room;
+(3c) new segments below a full leaf. Status under `MergeParamsOK`
+(`getOK_scanOK_of_cases_merges_open` takes the open ones):
+
+- (1) a put into its leaf with room: all three proved
+  (`treeCase_putLeafRoom` on cost's `writerWP_put_room_seg_tree`;
+  `putInvCase_putLeafRoom` on putinv's `putInv_put_room_below`,
+  `putInv_put_room_root` and `putInv_put_room_segRoot`, by the place of
+  the leaf; `rangeCase_putLeafRoom` on `rangeOrder_put_room`).
+- (2) a put into a full leaf: all three proved (21:10). The ranges by
+  `rangeCase_putLeafFull` on putinv's `rangeOrder_put_accessPath`; the tree
+  by `treeCase_putLeafFull` on `writerWP_put_accessPathR`, whose post now
+  also gives the writer's tree, the taken ids kept and the nodes reached
+  after reached before or new (from `writerWP_appendKlongs_chainGRV`,
+  `tReach_updN_addKey`); `PutInv` by `putInvCase_putLeafFull`: its global
+  parts from the books, no reached node taken back from the reach bound,
+  and its order from the ranges after (`putInv_after_op`,
+  `leafOrder_of_rangeOrder`).
+- (3a) all three proved (`treeCase_putNewSeg1Room`,
+  `putInvCase_putNewSeg1Room`, `rangeCase_putNewSeg1Room`, on
+  `writerWP_put_newSeg_inv_tree`, `putInv_put_newSeg`,
+  `rangeOrder_put_newSegs`).
+- (3b) the ranges proved (`rangeCase_putNewSegsRoom`); the tree and
+  `PutInv` open: their rules make one new segment.
+- (3c) all three open.
+- (4) all three open (cost's merges).
 
 The splits of any depth (prover "latest", 2026-11-13, 16:30): **proved
 for time and space splits of nodes that existed before the transaction,
