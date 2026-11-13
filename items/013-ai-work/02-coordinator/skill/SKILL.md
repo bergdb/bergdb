@@ -125,7 +125,7 @@ work goes on with something else.
    * finish it: gate it, then send today's coordinator the files, your
      hunks of shared files, and the gate results, and let it commit;
    * or hand it over: write its State note in its item, then send today's
-     coordinator the task and the item (or register a 019 entry).
+     coordinator the task and the item (or register a 028 entry).
 3. Write the plan's Outcome. Add a `news.md` entry if anything changed
    since the morning summary.
 4. Delete all check-ins (CronList, CronDelete); stop the watchdog. Set
