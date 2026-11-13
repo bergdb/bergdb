@@ -1,9 +1,24 @@
 BergDB 2026.5
 =============
 
-Released 2026-11-13 by Frans Lundberg. **Internal: not published, not for
-production.** As planned in bergdb item 024
+Released 2026-11-13 by Frans Lundberg. As planned in bergdb item 024
 ([../../items/024-release-2026-5/readme.md](../../items/024-release-2026-5/readme.md)).
+
+*Theme*: Solid algorithms. 
+
+Result.
+
+* No known bugs. 
+
+* Solid algorithms. 
+  - Well tested. Unit tests (nanotests), f-tests, AI user applications.
+  - Lean model, good coverage, mostly proved.
+
+* Cost proportional to value. 
+  - No big writes. No unproportional write size.
+  - No stop-the-world. No unproportial time consumption.
+  - All maintenance is gradual. Piggy-back to user operations
+    or optionally through single maintain() method.
 
 Solid algorithms (024-04; Frans, 2026-11-11): bugs first; operations
 proportional to their work; storage proportional to the KVs stored; the
@@ -33,13 +48,15 @@ BergDB also runs on Android, checked on an emulator.
 Files
 -----
 
-| File                         | What                                                     |
-|------------------------------|----------------------------------------------------------|
-| `bergdb-2026.5.jar`          | `java/build.sh`'s users' jar of the release commit       |
-| `bergdb-2026.5-src.zip`      | `git archive` of the release commit, in `bergdb-2026.5/` |
-| `bergdb-2026.5-javadoc.zip`  | The Pub API's Javadoc, in `bergdb-2026.5-javadoc/`       |
-| `baseline.zip`               | The outputs of the gates and the tests                   |
-| `SHA256SUMS`                 | Check with `shasum -a 256 -c SHA256SUMS`                 |
+* `bergdb-2026.5.jar`: the users' jar of the release commit, made by
+  `java/build.sh`.
+* `bergdb-2026.5-src.zip`: the source of the release commit, made by
+  `git archive`, in the directory `bergdb-2026.5/`.
+* `bergdb-2026.5-javadoc.zip`: the Pub API's Javadoc, in the directory
+  `bergdb-2026.5-javadoc/`.
+* `baseline.zip`: the outputs of the gates and the tests.
+* `SHA256SUMS`: the files' checksums; check them with
+  `shasum -a 256 -c SHA256SUMS`.
 
 * The jar is `build/bergdb-release.jar`, as in 2026.4 (020-10, section
   7): the classes and resources of `java/src` only, for Java 17, with no
@@ -80,27 +97,20 @@ Identity
 What it is
 ----------
 
-An in-process, append-only database for Java: a multiversion ordered map
-from (key, time) to value, kept in one append-only stream, with a Lean
-model of its algorithm ([README.md](../../README.md)). The levels, as
-027-01's snapshot of the documentation
-([levels.md](../../items/027-algorithms/01-docs-2026-11-12/levels.md),
-section 1) has them:
+An in-process, append-only database for Java, with a Lean model of its
+algorithm ([README.md](../../README.md)). Every transaction is kept in
+one append-only stream, and the database answers historic queries: a
+read at any available time sees the database as it was at that time,
+with every query that the latest time offers, the secondary indexes
+included. A start is bounded, whatever the size of the database; reclaim
+cuts the front of the stream when a finite retention allows it; and the
+data may be larger than memory.
 
-| Level | Features | Status |
-|---|---|---|
-| 0 | Multiversion map in memory              | Passes the tests run                              |
-| 1 | + restart by replaying the whole stream | Passes the tests run                              |
-| 2 | + bounded startup (self-indexed stream) | Passes the tests run, under load and with crashes |
-| 3 | + reclaim: cut the front of the stream  | Passes the tests run and a two-hour disk soak     |
-| 4 | + eviction: data larger than memory     | Passes the tests run; on by default               |
-
-* Levels 2 to 4 are aligned with the proved Lean model: startup, reclaim,
-  and eviction with handles (009-05). Since 2026.5 the model also has the
-  key tree (024-12): Java's index after each transaction is checked
-  against it by traces, merges and theta included (`level2.sh` to
-  `level4.sh`, `conformance.sh`, `treeconf.sh`), on the release commit
-  too (Verification).
+* Startup, reclaim and eviction (with handles, 009-05) are aligned with
+  the proved Lean model. Since 2026.5 the model also has the key tree
+  (024-12): Java's index after each transaction is checked against it by
+  traces, merges and theta included, on every gate and on the release
+  commit too (Verification).
 * A delete removes the index nodes that it empties and merges an
   underfull key node with a sibling, so the index holds at most a fixed
   multiple of a fresh one's key nodes whatever was deleted (024-21; G2).
@@ -126,9 +136,6 @@ Defaults that matter, as in 2026.4:
 * Infinite retention (`Database.setRetainDuration` sets another, kept in
   the stream). With a finite one, reclaim's internal fraction is 1/4, not
   a setting of the Pub API: Known issues, the stream kept under reclaim.
-* Eviction on, with handles; the budget is the cache size (the Pub API's
-  default a fifth of the JVM's maximum heap, within 4 to 100,000 MB; 200
-  MB in the Core API).
 * The collector: ZGC (`-XX:+UseZGC`), or Shenandoah without generations.
   With G1, eviction brings pauses of hundreds of milliseconds and full
   collections (Requirements).
@@ -678,6 +685,17 @@ that it prints:
 
 Long keys are of 111 bytes in both runs (024-24), so they compare with each
 other, not with 2026.4's own reference.
+
+The main reason for the faster writes and restarts is the node checksum:
+CRC32C in place of Fletcher-16 (024-25). Fletcher-16 took about 5.6 ms a
+MB, CRC32C about 0.12 ms a MB, and every node written, or read at a
+start, is checksummed. Checked on 2026-11-13 with the commits just before
+and after that change (5ae33359 and 79f35aa3; `w-uni-1k-inf`, one run
+each, F53 not quiet): 93,892 against 236,737 commits a second (+152%),
+and a restart of 0.705 against 0.463 s (-34%); so the whole gain over
+2026.4 comes with that one commit. The durability is the same as in
+2026.4: no sync was removed or weakened, and the buffer time and the sync
+levels have the same defaults.
 
 StreamDigest's digests (`baseline.zip`, `f53/digests.txt`) are the
 reference for the next release.
