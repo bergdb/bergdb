@@ -113,7 +113,7 @@ theorem onlyAll_fold (del : List Nat) (ks : List Klong) :
   rwa [List.reverse_reverse] at this
 
 /-- A node with an only live klong i naming y: its live klongs are that one. -/
-theorem onlyLiveKlong_live (n : KNode) (i : Nat) (y : NodeId) (h : n.onlyLiveKlong = some i)
+theorem onlyLiveKlong_live_iff (n : KNode) (i : Nat) (y : NodeId) (h : n.onlyLiveKlong = some i)
     (hy : n.ptr? i = some y) :
     ∃ c, n.ks[i]? = some (.key c y) ∧ ∀ c' z, (c', z) ∈ n.live ↔ c' = c ∧ z = y := by
   have hfA := onlyAll_fold n.lastBitmap n.ks
@@ -383,7 +383,7 @@ theorem writerWP_collapseRoot_space_get (key : Key) (c : Ctx) (base : View BVal)
                 (∀ z, z ≠ w.top.rootKey → w3.nodes.lookup z = w2.nodes.lookup z) →
                 CollGetInv c base w0 w3 := by
               intro child hptr w3 h3top h3v h3t h3n
-              obtain ⟨c0, hk0, hlv⟩ := onlyLiveKlong_live n only child honly hptr
+              obtain ⟨c0, hk0, hlv⟩ := onlyLiveKlong_live_iff n only child honly hptr
               have hc0 : c0 = 0 := by
                 have h1 : n.cv? only = some c0 := by simp [KNode.cv?, hk0]
                 rw [h1] at hcv
