@@ -56,3 +56,17 @@ Emptied at release 2026.5 (2026-11-13), whose notes hold what was there.
   result above the value limit refused, no run ends by the caller's
   fault), and three of `DbTesterFailure` that now fail after the go
   point by a test hook.
+* **The node size is 30 for every database; `DbBuilder`'s setters of it
+  are gone** (bergdb 026-08; Frans, 2026-11-13, 09:17 and 09:21).
+  `DbBuilder.maxNodeSize8()`, `maxNodeSize14()`, `maxNodeSize30()` and
+  `maxNodeSize62()` are no longer public: a database made by the Core
+  API has the node size 30, as one made by the Pub API always had, and
+  the stream format promises that size only (027-03, section 6). A
+  program that called
+  `maxNodeSize30()` drops the call; one that made a database at 8, 14 or
+  62 cannot start it with this release, which refuses it, as before,
+  with a `StreamFormatException` that writes nothing (the meta block's
+  node-size field is kept and checked, a hook for a later release that
+  allows other sizes). The other sizes stay for BergDB's own tests
+  (`bergdb.core.TestNodeSize`, not API). No stream change; no test's
+  expected value changed.

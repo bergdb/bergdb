@@ -155,6 +155,16 @@ network outage, with work half done.
      agent with SendMessage: "Continue your task from where you stopped,
      or from your item's State note; access to Claude is back." Note it
      in the events.
+   * **Agents that fail on authentication** ("API Error: 403",
+     `authentication_failed`): test with one new agent that only answers
+     "OK". If it fails too, only Frans can fix it (he logs in again; at
+     10:47 on 2026-11-13 an account change stopped every subagent, the
+     session itself kept working). Write `news.md` once (`needs a look`:
+     "subagents fail to authenticate since HH:MM; log in again (/login)"),
+     note it in the events, and resume nothing; at each later check-in
+     test again with one agent, at most once an hour. When it works,
+     resume each stopped agent (SendMessage, or a new agent from its
+     item's State note) and write the gap in the progress.
    * **A background command**: check its process and its output file. A
      finished one gets read and acted on.
    * **The timeline**: a step that is overdue is started.
