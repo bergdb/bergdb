@@ -1,0 +1,39 @@
+2026-11-13 14:02:39 start s-r4.9: -Dtb.keys=1000000 -Dtb.sd=5000000 -Dtb.tx=100 -Dtb.utx=100 -Dtb.updates=10000000 -Dtb.recordLimit=4880000
+2026-11-13 14:02:39 start r1m-sd50: -Dtb.keys=1000000 -Dtb.ring=1500000000 -Dtb.sd=50000000 -Dtb.updates=20000000
+2026-11-13 14:04:33 end s-r4.9: TAKEBYTESPROBE OK
+2026-11-13 14:04:33 start s-r4.9-big78k: -Dtb.keys=1000000 -Dtb.sd=5000000 -Dtb.tx=100 -Dtb.utx=100 -Dtb.updates=10000000 -Dtb.recordLimit=4880000 -Dtb.big=78000 -Dtb.bigEvery=10
+2026-11-13 14:04:54 end r1m-sd50: TAKEBYTESPROBE OK
+2026-11-13 14:04:54 start r1m-sd1000: -Dtb.keys=1000000 -Dtb.ring=1500000000 -Dtb.sd=1000000000 -Dtb.updates=20000000
+2026-11-13 14:06:30 end r1m-sd1000: TAKEBYTESPROBE OK
+2026-11-13 14:06:30 start r1m-one-sd50: -Dtb.keys=1000000 -Dtb.ring=1500000000 -Dtb.sd=50000000 -Dtb.utx=1 -Dtb.updates=5000000
+2026-11-13 14:06:36 end s-r4.9-big78k: TAKEBYTESPROBE OK
+2026-11-13 14:06:36 start s-r1: -Dtb.keys=1000000 -Dtb.sd=5000000 -Dtb.tx=100 -Dtb.utx=100 -Dtb.updates=10000000 -Dtb.recordLimit=1000000
+2026-11-13 14:08:30 end r1m-one-sd50: TAKEBYTESPROBE OK
+2026-11-13 14:08:30 start r1m-big-sd50: -Dtb.keys=1000000 -Dtb.ring=1500000000 -Dtb.sd=50000000 -Dtb.updates=10000000 -Dtb.big=33000000 -Dtb.bigEvery=100 -Dtb.bigCount=50
+2026-11-13 14:08:31 end s-r1: TAKEBYTESPROBE OK
+2026-11-13 14:08:31 start s-r1-big800k: -Dtb.keys=1000000 -Dtb.sd=5000000 -Dtb.tx=100 -Dtb.utx=100 -Dtb.updates=10000000 -Dtb.recordLimit=1000000 -Dtb.big=800000 -Dtb.bigEvery=10
+2026-11-13 14:09:39 end r1m-big-sd50: TAKEBYTESPROBE OK
+2026-11-13 14:09:39 start r1m-big-sd10: -Dtb.keys=1000000 -Dtb.ring=1500000000 -Dtb.sd=10000000 -Dtb.updates=5000000 -Dtb.big=33000000 -Dtb.bigEvery=10 -Dtb.bigCount=60
+2026-11-13 14:10:16 end s-r1-big800k: TAKEBYTESPROBE OK
+2026-11-13 14:10:16 start s-r0.5: -Dtb.keys=1000000 -Dtb.sd=5000000 -Dtb.tx=100 -Dtb.utx=100 -Dtb.updates=10000000 -Dtb.recordLimit=500000 -Dtb.utx=50 -Dtb.tx=50
+2026-11-13 14:10:26 end r1m-big-sd10: TAKEBYTESPROBE OK
+2026-11-13 14:10:26 1M DONE
+2026-11-13 14:10:27 start r10m-sd1000: -Dtb.keys=10000000 -Dtb.ring=1300000000 -Dtb.sd=1000000000 -Dtb.updates=30000000
+2026-11-13 14:12:27 end s-r0.5: TAKEBYTESPROBE OK
+2026-11-13 14:12:27 start s-r0.5-big400k: -Dtb.keys=1000000 -Dtb.sd=5000000 -Dtb.tx=100 -Dtb.utx=100 -Dtb.updates=10000000 -Dtb.recordLimit=500000 -Dtb.utx=50 -Dtb.tx=50 -Dtb.big=400000 -Dtb.bigEvery=10
+2026-11-13 14:14:02 end r10m-sd1000: TAKEBYTESPROBE OK
+2026-11-13 14:14:02 start r10m-sdmax: -Dtb.keys=10000000 -Dtb.ring=1300000000 -Dtb.sd=2147483647 -Dtb.updates=40000000
+2026-11-13 14:14:17 end s-r0.5-big400k: TAKEBYTESPROBE OK
+2026-11-13 14:14:17 start s-r1-one: -Dtb.keys=1000000 -Dtb.sd=5000000 -Dtb.tx=100 -Dtb.utx=100 -Dtb.updates=10000000 -Dtb.recordLimit=1000000 -Dtb.utx=1 -Dtb.updates=2000000
+2026-11-13 14:14:42 end s-r1-one: TAKEBYTESPROBE OK
+2026-11-13 14:14:42 start s-r1-one-big800k: -Dtb.keys=1000000 -Dtb.sd=5000000 -Dtb.tx=100 -Dtb.utx=100 -Dtb.updates=10000000 -Dtb.recordLimit=1000000 -Dtb.utx=1 -Dtb.updates=2000000 -Dtb.big=800000 -Dtb.bigEvery=200
+2026-11-13 14:15:08 end s-r1-one-big800k: TAKEBYTESPROBE OK
+2026-11-13 14:15:08 start s-r1-sd1-big850k: -Dtb.keys=1000000 -Dtb.sd=5000000 -Dtb.tx=100 -Dtb.utx=100 -Dtb.updates=10000000 -Dtb.recordLimit=1000000 -Dtb.sd=1000000 -Dtb.big=850000 -Dtb.bigEvery=10
+2026-11-13 14:17:54 end s-r1-sd1-big850k: TAKEBYTESPROBE OK
+2026-11-13 14:17:54 start s-r1-one-big850k: -Dtb.keys=1000000 -Dtb.sd=5000000 -Dtb.tx=100 -Dtb.utx=100 -Dtb.updates=10000000 -Dtb.recordLimit=1000000 -Dtb.utx=1 -Dtb.updates=2000000 -Dtb.big=850000 -Dtb.bigEvery=20
+2026-11-13 14:18:27 end s-r1-one-big850k: TAKEBYTESPROBE OK
+2026-11-13 14:18:27 SCALED DONE
+2026-11-13 14:18:43 end r10m-sdmax: TAKEBYTESPROBE OK
+2026-11-13 14:18:43 start r10m-big-sd1000: -Dtb.keys=10000000 -Dtb.ring=1300000000 -Dtb.sd=1000000000 -Dtb.updates=20000000 -Dtb.big=33000000 -Dtb.bigEvery=200 -Dtb.bigCount=40
+2026-11-13 14:21:07 end r10m-big-sd1000: TAKEBYTESPROBE OK
+2026-11-13 14:21:07 10M DONE

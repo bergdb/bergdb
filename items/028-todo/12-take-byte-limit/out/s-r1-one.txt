@@ -1,0 +1,5 @@
+TakeBytesProbe: 1000000 keys, sd 5000000, tx 100, utx 1, updates 2000000, record limit 1000000, big 0 every 100
+load: stream 539758304, records 10000; stops past the deadline 0 (all 0); span max 1.063 sd (this phase 1.063); debt max 4734080 (this phase 4734080, 0.947 sd); room min 990656; debt / room max 4.7689; largest record 153120, largest take 147744; records the deadline took in 0; largest transaction's nodes 105056 when taken, 104160 when added; due taken max 0 bytes, against the room 0.0000
+updates: stream 2265726160, records 2010000; stops past the deadline 0 (all 0); span max 1.067 sd (this phase 1.067); debt max 4734080 (this phase 4550160, 0.910 sd); room min 990656; debt / room max 4.7689; largest record 153120, largest take 147744; records the deadline took in 0; largest transaction's nodes 105056 when taken, 104160 when added; due taken max 0 bytes, against the room 0.0000
+total: 2010000 records, 25.0 s
+TAKEBYTESPROBE OK

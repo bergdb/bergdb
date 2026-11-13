@@ -15,6 +15,15 @@ and with them the lift of the writer's overlay (`overlayLiftOK_of_takeBack`),
 TP5 under valid parameters (`treeRun_sizeOK`), and TP7 from its latest time,
 the take-back discipline and the bound on dead klongs
 (`invPreserved_of_takeBack`).
+
+The last two of the three, and TP5, need of the writer only what is proved;
+TP4 after the earlier transactions is enough (`runLinksOK_of_pointers`,
+`treeRun_sizeOK_of_pointers`). So TP7, which has TP4 in it, gives the lift
+of the writer's overlay (`overlayLiftOK_of_invPreserved`), and TP10 and TP11
+follow from TP7 and the writer's refinement of the map alone
+(`getOK_of_inv_op`, `scanOK_of_inv_op`). TP7 itself, under valid parameters,
+is its latest time, TP4 and the bound on dead klongs
+(`invPreserved_of_latest_pointers`), the last one void without option 2.
 -/
 import SIS.Tree.OverlayLift
 import SIS.Tree.PointersStep
@@ -216,10 +225,92 @@ theorem sizeOK_init (p : Params) (hM : 1 ≤ p.M) : SizeOK p (initStruct p) := b
     · simp [Params.topLevel] at hx
       exact absurd (of_decide_eq_true hx.1) (by omega)
 
-/-- TP5 for every run within reach, under valid parameters, from the
-take-back discipline. -/
-theorem treeRun_sizeOK (p : Params) (hp : MergeParamsOK p)
-    (hT : TakeBackOKUnder p (RunLinksOK p)) (ts : List Tx) (hw : Within p ts) :
+/-! ## From TP4 alone
+
+A history for every key node and klongs that give the histories need no
+statement about the writer beyond TP4 after the earlier transactions: so
+TP7, which has TP4 in it, gives the lift of the writer's overlay. -/
+
+/-- One transaction keeps a history for every key node, from TP4 before it. -/
+theorem keyNonempty_step (p : Params) (hM : 2 ≤ p.M) (ts : List Tx) (tx : Tx)
+    (hw : Within p (ts ++ [tx])) (hR : RunLinksOK p (treeRun p ts) ts.length) :
+    KeyHistOK p (treeRun p (ts ++ [tx])) ∧ KeyNonempty p (treeRun p (ts ++ [tx])) := by
+  obtain ⟨hP, hH, hN⟩ := hR
+  obtain ⟨bs, w, he0⟩ := execW_success_of_within_snoc p ts tx hw
+  have hrun : runOps p tx.base tx.ops (ts.length + 1)
+      (view (treeSpec p) (treeRun p ts) ts.length) = .ok (bs, w) := he0
+  have hfresh : ∀ q ∈ treeRun p ts, q.1 < tx.base := by
+    have h := (hw.2 ts.length (by simp)).1
+    have hj : (ts ++ [tx])[ts.length]'(by simp) = tx := by simp
+    have ht : (ts ++ [tx]).take ts.length = ts := by simp
+    rw [hj, ht] at h
+    exact h
+  have htimes : StructTimesLE (treeRun p ts) (ts.length + 1 - 1) := treeRun_timesLE p ts
+  have hl : ViewLinksOK tx.base p (view (treeSpec p) (treeRun p ts) (ts.length + 1 - 1)) :=
+    viewLinksOK_of p _ _ tx.base hfresh htimes hP hN
+  have he : execW p tx (ts.length + 1) (view (treeSpec p) (treeRun p ts) (ts.length + 1 - 1)) =
+      .ok (bs, w) := hrun
+  have hvg := viewGood_of p (treeRun p ts) (ts.length + 1) tx.base (by omega) hfresh htimes hl
+  have hne := execW_nonempty p tx (ts.length + 1) _ bs w hM hvg he
+  rw [treeRun_snoc_changes p ts tx bs w hrun]
+  refine ⟨?_, ?_⟩
+  · rw [← apply_exec_eq p (treeRun p ts) tx (ts.length + 1) _ bs w he]
+    exact keyHistOK_step p (treeRun p ts) (ts.length + 1) tx bs w (by omega) hfresh htimes
+      (treeRun_root_level p ts) hH hl he
+  · intro x nd' hx hd hlv
+    rcases apply_keyNode p (treeRun p ts) (ts.length + 1) tx bs w (by omega) hfresh htimes
+      (treeRun_root_level p ts) hH hl he x nd' hx hd hlv with ⟨n, hlook, _, _, hk, _⟩ | ⟨hp0, _⟩
+    · intro hnil
+      rw [hnil] at hk
+      exact hne (x, n) (mem_ids_of_lookup w.nodes x n hlook) hk.symm
+    · exact hN x nd' hp0 hd hlv
+
+/-- TP4 after every run within reach gives the klongs that give the
+histories and a history for every key node, after every run within reach. -/
+theorem runLinksOK_of_pointers (p : Params) (hM : 2 ≤ p.M)
+    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts)) (ts : List Tx) (hw : Within p ts) :
+    RunLinksOK p (treeRun p ts) ts.length := by
+  have hk : ∀ n, n ≤ ts.length → RunLinksOK p (treeRun p (ts.take n)) n := by
+    intro n
+    induction n with
+    | zero => intro _; exact runLinksOK_init p
+    | succ n ih =>
+      intro hn
+      have hlt : n < ts.length := by omega
+      have htake : ts.take (n + 1) = ts.take n ++ [ts[n]] := List.take_succ_eq_append_getElem hlt
+      have hwn : Within p (ts.take n ++ [ts[n]]) := by
+        rw [← htake]; exact within_take p ts hw (n + 1)
+      have hr : RunLinksOK p (treeRun p (ts.take n)) (ts.take n).length := ih (by omega)
+      obtain ⟨h1, h2⟩ := keyNonempty_step p hM (ts.take n) ts[n] hwn hr
+      rw [htake]
+      exact ⟨hP _ hwn, h1, h2⟩
+  have h := hk ts.length (Nat.le_refl _)
+  rwa [List.take_length] at h
+
+/-- The lift of the writer's overlay from TP4. -/
+theorem overlayLiftOK_of_pointers (p : Params) (hM : 2 ≤ p.M)
+    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts)) : OverlayLiftOK p :=
+  overlayLiftOK_of_under p _ (fun ts hw => runLinksOK_of_pointers p hM hP ts hw)
+    (overlayLiftOKUnder_links p)
+
+/-- The lift of the writer's overlay from TP7. -/
+theorem overlayLiftOK_of_invPreserved (p : Params) (hM : 2 ≤ p.M) (hinv : InvPreserved p) :
+    OverlayLiftOK p :=
+  overlayLiftOK_of_pointers p hM (fun ts hw => (hinv ts hw ts.length (Nat.le_refl _)).2)
+
+/-- TP10 from TP7 and the writer's refinement of the map. -/
+theorem getOK_of_inv_op (p : Params) (hM : 2 ≤ p.M) (hinv : InvPreserved p) (ho : OpGetOK p) :
+    GetOK p :=
+  getOK_of_op_overlay p hinv ho (overlayLiftOK_of_invPreserved p hM hinv)
+
+/-- TP11 from TP7 and the writer's refinement of the map. -/
+theorem scanOK_of_inv_op (p : Params) (hM : 2 ≤ p.M) (hinv : InvPreserved p) (ho : OpGetOK p) :
+    ScanOK p :=
+  scanOK_of_op_overlay p hinv ho (overlayLiftOK_of_invPreserved p hM hinv)
+
+/-- TP5 for every run within reach, under valid parameters, from TP4. -/
+theorem treeRun_sizeOK_of_pointers (p : Params) (hp : MergeParamsOK p)
+    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts)) (ts : List Tx) (hw : Within p ts) :
     SizeOK p (treeRun p ts) := by
   have hM := mergeParamsOK_M p hp
   have hk : ∀ n, n ≤ ts.length → SizeOK p (treeRun p (ts.take n)) := by
@@ -234,17 +325,15 @@ theorem treeRun_sizeOK (p : Params) (hp : MergeParamsOK p)
       intro hn
       have hlt : n < ts.length := by omega
       have htake : ts.take (n + 1) = ts.take n ++ [ts[n]] := List.take_succ_eq_append_getElem hlt
-      have hlen : (ts.take n).length = n := by
-        simp only [List.length_take]; omega
       have hwn : Within p (ts.take n ++ [ts[n]]) := by
         rw [← htake]; exact within_take p ts hw (n + 1)
-      obtain ⟨hP, hH, hN⟩ := runLinksOK_of_takeBack p (by omega) hT (ts.take n)
+      obtain ⟨hP', hH, hN⟩ := runLinksOK_of_pointers p (by omega) hP (ts.take n)
         (within_take p ts hw n)
       obtain ⟨bs, w, he0⟩ := execW_success_of_within_snoc p (ts.take n) ts[n] hwn
       have hfresh := (hw.2 n hlt).1
       have htimes : StructTimesLE (treeRun p (ts.take n)) ((ts.take n).length + 1 - 1) :=
         treeRun_timesLE p (ts.take n)
-      have hl := viewLinksOK_of p _ _ ts[n].base hfresh htimes hP hN
+      have hl := viewLinksOK_of p _ _ ts[n].base hfresh htimes hP' hN
       have hrun : runOps p ts[n].base ts[n].ops ((ts.take n).length + 1)
           (view (treeSpec p) (treeRun p (ts.take n)) (ts.take n).length) = .ok (bs, w) := he0
       rw [htake, treeRun_snoc_changes p (ts.take n) ts[n] bs w hrun]
@@ -253,15 +342,44 @@ theorem treeRun_sizeOK (p : Params) (hp : MergeParamsOK p)
   have h := hk ts.length (Nat.le_refl _)
   rwa [List.take_length] at h
 
+/-- TP7 under valid parameters from the invariants at each run's last time,
+TP4 and the bound on dead klongs: TP5, the klongs' well-formedness and the
+histories follow. -/
+theorem invPreserved_of_latest_pointers (p : Params) (hp : MergeParamsOK p) (hL : LatestInvOK p)
+    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
+    (hD : ∀ ts, Within p ts → DeadAllOK p (treeRun p ts)) : InvPreserved p := by
+  have hM := mergeParamsOK_M p hp
+  exact invPreserved_of_parts p hL hP
+    (fun ts hw => treeRun_sizeOK_of_pointers p hp hP ts hw)
+    (fun ts hw => (runLinksOK_of_pointers p (by omega) hP ts hw).2.2) hD
+
+/-- Without option 2 (theta 0) the bound on dead klongs asks nothing. -/
+theorem deadAllOK_of_theta_zero (p : Params) (h0 : p.theta = 0) (P : Struct BVal) :
+    DeadAllOK p P := fun _ _ _ hne => (hne h0).elim
+
+/-- TP7 under valid parameters without option 2: from the invariants at each
+run's last time and TP4. -/
+theorem invPreserved_of_latest_pointers_theta0 (p : Params) (hp : MergeParamsOK p)
+    (h0 : p.theta = 0) (hL : LatestInvOK p)
+    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts)) : InvPreserved p :=
+  invPreserved_of_latest_pointers p hp hL hP (fun _ _ => deadAllOK_of_theta_zero p h0 _)
+
+/-! ## From the take-back discipline -/
+
+/-- TP5 for every run within reach, under valid parameters, from the
+take-back discipline. -/
+theorem treeRun_sizeOK (p : Params) (hp : MergeParamsOK p)
+    (hT : TakeBackOKUnder p (RunLinksOK p)) (ts : List Tx) (hw : Within p ts) :
+    SizeOK p (treeRun p ts) :=
+  treeRun_sizeOK_of_pointers p hp
+    (fun ts hw => pointersOK_of_takeBack p (by have := mergeParamsOK_M p hp; omega) hT ts hw) ts hw
+
 /-- TP7 under valid parameters, from the invariants at each run's last time,
 the take-back discipline and the bound on dead klongs. -/
 theorem invPreserved_of_takeBack (p : Params) (hp : MergeParamsOK p) (hL : LatestInvOK p)
     (hT : TakeBackOKUnder p (RunLinksOK p))
-    (hD : ∀ ts, Within p ts → DeadAllOK p (treeRun p ts)) : InvPreserved p := by
-  have hM := mergeParamsOK_M p hp
-  exact invPreserved_of_parts p hL
-    (fun ts hw => (runLinksOK_of_takeBack p (by omega) hT ts hw).1)
-    (fun ts hw => treeRun_sizeOK p hp hT ts hw)
-    (fun ts hw => (runLinksOK_of_takeBack p (by omega) hT ts hw).2.2) hD
+    (hD : ∀ ts, Within p ts → DeadAllOK p (treeRun p ts)) : InvPreserved p :=
+  invPreserved_of_latest_pointers p hp hL
+    (fun ts hw => pointersOK_of_takeBack p (by have := mergeParamsOK_M p hp; omega) hT ts hw) hD
 
 end SIS.Tree
