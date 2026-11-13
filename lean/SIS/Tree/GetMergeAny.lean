@@ -8,6 +8,7 @@ neither merged node.
 -/
 import SIS.Tree.GetMergeLevel
 import SIS.Tree.GetMergeFull
+import SIS.Tree.MergeFullSorted
 
 set_option autoImplicit false
 
@@ -125,7 +126,7 @@ with room or full, a full parent split in any of its kinds
 (`writerWP_handleFull_lastV`): `writerWP_mergeTail_full_get` without its
 premises that the parent existed before the transaction, sits below an inner node
 and is not split in space. The parent's last version is a time klong and sorted
-key klongs (`hsorted`); for a space split its live compare values are in the
+key klongs (`mergeFullLast_sorted`); for a space split its live compare values are in the
 range of its link (`hrangeL`) and it is not split in place below a segment leaf
 (`hspaceL`). The reading holds when the state after fits the fuel, or no split
 makes a new root (the space root does not space split, and the parent's parent
@@ -185,8 +186,6 @@ theorem writerWP_mergeTail_any_get (c : Ctx) (base : View BVal) (x : NodeId) (d 
     (hR0 : s = 0 → root = X 0)
     (hXx : ∀ i, s ≤ i → i ≤ D + 1 → X i ≠ x)
     (hsa2 : 2 ≤ c.p.splitAbove)
-    (hsorted : ∀ m1 m2 last, mergeFullLast pn c.i cL m1 cR m2 = some last →
-      ∃ pairs, last.ks = newKlongs c.i pairs ∧ CvSorted pairs)
     (hrangeL : ∀ m1 m2 last, mergeFullLast pn c.i cL m1 cR m2 = some last →
       c.p.splitAbove < last.size → (Nn D).leaf = false →
       ∀ c' z, (c', z) ∈ (⟨pn.leaf, last.ks⟩ : KNode).live → 0 < c' →
@@ -571,7 +570,8 @@ theorem writerWP_mergeTail_any_get (c : Ctx) (base : View BVal) (x : NodeId) (d 
           · rw [h3]
             obtain ⟨hl3, ht3⟩ := hS2 i h1 h2
             exact hnoval _ (Nn i) (by rw [← hNw3]; simp only [wNode, ht3, Bool.false_eq_true, ↓reduceIte, hl3])
-        obtain ⟨pairsS, hksS, hsS⟩ := hsorted m1 none last hlast
+        obtain ⟨pairsS, hksS, hsS⟩ := mergeFullLast_sorted pn c.i cL m1 cR none last hlast
+          (fun _ _ h => by cases h)
         have hxe : (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode) = ⟨pn.leaf, newKlongs c.i pairsS⟩ := by
           rw [hNp, hksS]
         have hlastV : (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).lastVersion c.i = last := by
@@ -969,7 +969,21 @@ theorem writerWP_mergeTail_any_get (c : Ctx) (base : View BVal) (x : NodeId) (d 
           · rw [h3]
             obtain ⟨hl3, ht3⟩ := hS2 i h1 h2
             exact hnoval _ (Nn i) (by rw [← hNw3]; simp only [wNode, ht3, Bool.false_eq_true, ↓reduceIte, hl3])
-        obtain ⟨pairsS, hksS, hsS⟩ := hsorted m1 (some (m1 + 2, g2)) last hlast
+        have hg2none : ∀ y g, some (m1 + 2, g2) = some (y, g) → g ≠ cR → pn.live.lookup g = none := by
+          intro y g hyg hgc
+          simp only [Option.some.injEq, Prod.mk.injEq] at hyg
+          obtain ⟨_, rfl⟩ := hyg
+          cases hlk : pn.live.lookup g2 with
+          | none => rfl
+          | some z =>
+            exfalso
+            have hm : (g2, z) ∈ pn.liveAt c.i := by
+              rw [KNode.liveAt_of_times pn c.i hpt]; exact mem_of_lookup_nodup _ _ _ hlk
+            rcases hadj g2 z hm with h | h
+            · omega
+            · have := hgU g2 z hm (by omega); omega
+        obtain ⟨pairsS, hksS, hsS⟩ := mergeFullLast_sorted pn c.i cL m1 cR (some (m1 + 2, g2)) last
+          hlast hg2none
         have hxe : (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode) = ⟨pn.leaf, newKlongs c.i pairsS⟩ := by
           rw [hNp, hksS]
         have hlastV : (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).lastVersion c.i = last := by
@@ -1213,8 +1227,6 @@ theorem writerWP_merge_any_get (x : NodeId) (d : Nat) (c : Ctx) (base : View BVa
     (hR0 : s = 0 → w.top.rootKey = X 0)
     (hXx : ∀ i, s ≤ i → i ≤ D + 1 → X i ≠ x)
     (hsa2 : 2 ≤ c.p.splitAbove)
-    (hsorted : ∀ cL cR m1 m2 last, mergeFullLast (Nn (D + 1)) c.i cL m1 cR m2 = some last →
-      ∃ pairs, last.ks = newKlongs c.i pairs ∧ CvSorted pairs)
     (hrangeL : ∀ cL cR m1 m2 last, mergeFullLast (Nn (D + 1)) c.i cL m1 cR m2 = some last →
       c.p.splitAbove < last.size → (Nn D).leaf = false →
       ∀ c' z, (c', z) ∈ (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).live → 0 < c' →
@@ -1344,7 +1356,6 @@ theorem writerWP_merge_any_get (x : NodeId) (d : Nat) (c : Ctx) (base : View BVa
         (fun i h1 h2 => ⟨lookup_of_prefix _ _ (hpre1.trans hpre3) _ _ (hS2 i h1 h2).1,
           by rw [hr3.2.2.1]; exact (hS2 i h1 h2).2⟩)
         hS4 hR0 hXx hsa2
-        (fun m1 m2 last h => hsorted cL cR m1 m2 last (by rw [hNp]; exact h))
         (fun m1 m2 last h => by rw [← hNp]; exact hrangeL cL cR m1 m2 last (by rw [hNp]; exact h))
         (fun m1 m2 last h => by rw [← hNp]; exact hspaceL cL cR m1 m2 last (by rw [hNp]; exact h))) ?_
       intro _ w' h hq key
