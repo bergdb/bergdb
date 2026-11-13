@@ -568,4 +568,108 @@ theorem renSim_timeSplit (N M2 : NodeId → Option KNode) (t : Time) (r L q y : 
       have := hsame x n1 hx hxq h1 c
       exact ⟨fun hl => this.1 hl, fun hl => this.2 hl⟩
 
+/-! ## What a descent caches -/
+
+theorem writerWP_getNode_cache2 (x : NodeId) (c : Ctx) (w : W) :
+    WriterWP (getNode x) c w (fun _ v => w.nodes.IsPrefix v.nodes ∧
+      ∀ z, (v.nodes.lookup z).isSome = true →
+        (w.nodes.lookup z).isSome = true ∨ (c.view z).isSome = true) := by
+  unfold getNode
+  simp only [writerWP_bind, writerWP_get]
+  split
+  · simp only [writerWP_pure]
+    exact ⟨List.prefix_refl _, fun z h => Or.inl h⟩
+  · rename_i hn
+    simp only [writerWP_bind, writerWP_read]
+    split
+    · rename_i nd hv
+      split
+      · exact writerWP_throw _ _ _ _
+      · simp only [writerWP_bind, writerWP_set, writerWP_pure]
+        refine ⟨⟨_, rfl⟩, fun z hz => ?_⟩
+        rw [List.lookup_append] at hz
+        cases h : w.nodes.lookup z with
+        | some _ => exact Or.inl rfl
+        | none =>
+          rw [h] at hz
+          right
+          by_cases hzx : z = x
+          · subst hzx; rw [hv]; rfl
+          · exfalso
+            have : ([(x, ({ leaf := c.p.heightOf nd.level == 0, ks := klongsOf nd.hist } : KNode))].lookup z) = none := by
+              show (match z == x with | true => _ | false => none) = none
+              rw [show (z == x) = false by simpa using hzx]
+            rw [this] at hz
+            cases hz
+    · exact writerWP_throw _ _ _ _
+
+/-- A descent caches every node of the key's path that the state reads, and
+caches only nodes it had or that the writer's view has. -/
+theorem writerWP_descendLte_cache (cv : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) :
+    ∀ (f : Nat) (x : NodeId) (w : W),
+    (∀ q ∈ eqVisits (wNode c.p base w) c.i cv f x, w.taken.contains q.1 = false) →
+    WriterWP (descendLte cv f x) c w (fun _ v =>
+      (∀ q qn, (q, cv) ∈ eqVisits (wNode c.p base w) c.i cv f x →
+        wNode c.p base w q = some qn → v.nodes.lookup q = some qn) ∧
+      (∀ z, (v.nodes.lookup z).isSome = true →
+        (w.nodes.lookup z).isSome = true ∨ (c.view z).isSome = true) ∧
+      w.nodes.IsPrefix v.nodes) := by
+  intro f
+  induction f with
+  | zero => intro x w _; exact writerWP_throw _ _ _ _
+  | succ f ih =>
+    intro x w ht
+    unfold descendLte
+    simp only [writerWP_bind, writerWP_read]
+    refine writerWP_mono (writerWP_and (writerWP_getNode_reads x c w base hvc)
+      (writerWP_getNode_cache2 x c w)) ?_
+    intro n v ⟨⟨hrv, hlk, hwn⟩, hpre, hsrc⟩
+    have hx := hwn (ht (x, cv) (by simp [eqVisits]))
+    split
+    · rename_i hleaf
+      simp only [writerWP_pure]
+      refine ⟨?_, hsrc, hpre⟩
+      intro q qn hq hqn
+      simp only [eqVisits, hx, hleaf, ↓reduceIte, List.mem_cons, List.mem_nil_iff, or_false,
+        Prod.mk.injEq] at hq
+      rw [hq.1] at hqn ⊢
+      rw [hx] at hqn
+      cases hqn
+      exact hlk
+    · rename_i hleaf
+      split
+      · exact writerWP_throw _ _ _ _
+      · rename_i fd hfd
+        simp only [pathAdd, writerWP_bind, writerWP_modify]
+        have hr01 : ReadsAs c.p base w { v with path := v.path ++ [(some fd.c, fd.y)] } :=
+          ReadsAs.trans _ _ _ _ _ hrv ⟨by funext y; rfl, rfl, rfl, rfl, rfl⟩
+        have hvis : ∀ q ∈ eqVisits (wNode c.p base { v with path := v.path ++ [(some fd.c, fd.y)] })
+            c.i cv f fd.y,
+            ({ v with path := v.path ++ [(some fd.c, fd.y)] } : W).taken.contains q.1 = false := by
+          intro q hq
+          rw [hr01.1] at hq
+          rw [hr01.2.2.1]
+          apply ht q
+          simp only [eqVisits, hx, hleaf, Bool.false_eq_true, ↓reduceIte, hfd, List.mem_cons]
+          exact Or.inr hq
+        refine writerWP_mono (writerWP_and (ih fd.y _ hvis)
+          (writerWP_descendLte_reads cv c base hvc f fd.y _ hvis)) ?_
+        intro L v2 ⟨⟨hcache, hsrc2, hpre2⟩, ⟨hr2, _⟩⟩
+        rw [hr01.1] at hcache
+        refine ⟨?_, ?_, hpre.trans hpre2⟩
+        · intro q qn hq hqn
+          simp only [eqVisits, hx, hleaf, Bool.false_eq_true, ↓reduceIte, hfd, List.mem_cons,
+            Prod.mk.injEq] at hq
+          rcases hq with ⟨hqx, _⟩ | hq
+          · subst hqx
+            rw [hx] at hqn
+            cases hqn
+            exact hpre2.lookup_eq_some hlk
+          · exact hcache q qn hq hqn
+        · intro z hz
+          rcases hsrc2 z hz with h | h
+          · exact hsrc z h
+          · exact Or.inr h
+
 end SIS.Tree
