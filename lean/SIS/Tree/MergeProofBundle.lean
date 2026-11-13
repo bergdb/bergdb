@@ -81,3 +81,4 @@ import SIS.Tree.MergeNodeCount
 import SIS.Tree.WriterSizeMerge
 import SIS.Tree.OverlayLift
 import SIS.Tree.MergeNodeCountOps
+import SIS.Tree.WriterTree
