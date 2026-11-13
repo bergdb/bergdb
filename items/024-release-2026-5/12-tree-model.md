@@ -1415,6 +1415,26 @@ and its status:
       it throws at a later descent or fails `boundsOK`.
 
     Case 4's `SegFits` conjuncts change accordingly.
+
+    Done (cost, 23:10): the reading lemmas case 4 needs are generalized in
+    place to a fuel f (2 ≤ f), with the p.fuel versions kept as one-line
+    corollaries under their old names. They are:
+    - the collapse's (`CollGetInvF`, `writerWP_collapseRoot_collF`, the space
+      root's and a segment's steps);
+    - the merge's (`writerWP_handleFull_lastVF` on latest's
+      `writerWP_appendKlongs_chainGRVf`, `writerWP_handleFull_rootVF`,
+      `writerWP_merge_any_getF`, `writerWP_merge_root_getF`,
+      `writerWP_merge_get_invF`).
+
+    `wGetAt` is the reading at f. Case 4 at f = p.fuel + 1 is
+    `opGetCaseOK_delMergeF` (`DelMergeCaseF.lean`): `OpGetCaseOK p R
+    DelMergeCase` from `TxSegFitsOK p R` and the obligations at p.fuel + 1
+    (`DelStepsOKF`, `MergeStepOKF`, `DescentOKF`, `CollapseStepOKF`). It goes
+    through `OpGetCaseOK'`, which adds the fuel premise of the state before
+    the operation, and the bridge `opGetCaseOK_of'`. `runGet_of_delInvF`
+    turns the reading at p.fuel + 1 into `runGet` at the operation's end. The
+    fuel obligations are now SegFits at depth p.fuel inside the operation:
+    `MergeStepOKF`'s and the collapse's, at f - 1 = p.fuel.
   - (5) `DelNoLeafCase`, a delete of a key with no leaf: proved,
     `opGetCaseOK_delNoLeaf`. It changes no reading: the writer's walk
     stops at the first segment that is not there and only reads

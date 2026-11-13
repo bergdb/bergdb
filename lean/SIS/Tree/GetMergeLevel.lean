@@ -60,7 +60,7 @@ of `last` only (a split in place). For a space split, `last` has two live
 klongs (`hlen2`), its live compare values are in the range of its link in an
 inner parent (`hrangeL`), and the split is not in place below a segment leaf
 (`hspaceL`). -/
-theorem writerWP_handleFull_lastV (c : Ctx) (base : View BVal)
+theorem writerWP_handleFull_lastVF (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx) (base : View BVal)
     (path0 : List (Option Nat × NodeId)) (s D : Nat) (X : Nat → NodeId) (K : Nat → Nat)
     (Nn : Nat → KNode) (hsD : s ≤ D)
     (hX : ∀ i, s ≤ i → i ≤ D + 1 → (path0[i]?).map (·.2) = some (X i))
@@ -110,13 +110,13 @@ theorem writerWP_handleFull_lastV (c : Ctx) (base : View BVal)
         TReach (updN (wNode c.p base w) (X (D + 1)) (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode)) c.i w.top.rootKey z ∨ (w.next ≤ z ∧ z < w'.next)) ∧
       (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
       (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ D + 1 ∧ z = X i) → Val z = none) →
-        (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
+        (SegFits (wNode c.p base w') c.i (fuelR - 1) w'.top.rootKey ∨
           (ChainNoNewRoot c Nn s D ∧ LevelNoRoot c Nn D last compact)) →
-        ∀ key, getFromR (wNode c.p base w') Val c.i c.p.fuel key w'.top.rootKey =
-          getFromR (updN (wNode c.p base w) (X (D + 1)) (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode)) Val c.i c.p.fuel key w.top.rootKey) ∧
+        ∀ key, getFromR (wNode c.p base w') Val c.i fuelR key w'.top.rootKey =
+          getFromR (updN (wNode c.p base w) (X (D + 1)) (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode)) Val c.i fuelR key w.top.rootKey) ∧
       (TReach (wNode c.p base w') c.i w'.top.rootKey (X (D + 1)) →
         ∀ n, wNode c.p base w' (X (D + 1)) = some n → ∀ cv y, Klong.key cv y ∈ n.ks → Klong.key cv y ∈ last.ks)) := by
-  have hchain := writerWP_appendKlongs_chainGRV c base path0 s D X K Nn
+  have hchain := writerWP_appendKlongs_chainGRVf c base path0 s D X K Nn fuelR hfR
     (fun i h1 h2 => hX i h1 (by omega)) (fun i h1 h2 => hK i h1 (by omega))
     (fun i h1 h2 => hlinkK i h1 (by omega)) hrange hlen
     (fun i h1 h2 => hwf i h1 (by omega)) (fun i h1 h2 => htimes i h1 (by omega)) htop
@@ -254,13 +254,13 @@ theorem writerWP_handleFull_lastV (c : Ctx) (base : View BVal)
             (∃ c', (c', z) ∈ (ins'.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn D)).liveAt c.i) →
             w.next ≤ z →
             SegDepthLe (updN N1 (X D) (ins'.foldl (fun n (cv, y) => n.add c.i (.key cv y))
-              (Nn D))) c.i (c.p.fuel - 1) z) ∨
+              (Nn D))) c.i (fuelR - 1) z) ∨
           LevelNoRoot c Nn D last compact) →
         ∀ key, getFromR (updN N1 (X D) (ins'.foldl (fun n (cv, y) => n.add c.i (.key cv y))
-        (Nn D))) Val c.i c.p.fuel key w.top.rootKey =
+        (Nn D))) Val c.i fuelR key w.top.rootKey =
         getFromR (updN (wNode c.p base w) (X (D + 1))
           ((⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode)))
-          Val c.i c.p.fuel key w.top.rootKey) →
+          Val c.i fuelR key w.top.rootKey) →
       WriterWP (appendKlongs D (X D) ins') c w1 (fun _ w2 =>
         WriterWP (do let m ← getNode (X (D + 1)); putNode (X (D + 1)) (m.toPrev (c.i - 1)))
           c w2 (fun _ w3 =>
@@ -274,11 +274,11 @@ theorem writerWP_handleFull_lastV (c : Ctx) (base : View BVal)
               w.top.rootKey z ∨ (w.next ≤ z ∧ z < w3.next)) ∧
           (∀ z zn, wNode c.p base w3 z = some zn → klongsWf zn.ks = true) ∧
           (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ D + 1 ∧ z = X i) → Val z = none) →
-            (SegFits (wNode c.p base w3) c.i (c.p.fuel - 1) w3.top.rootKey ∨
+            (SegFits (wNode c.p base w3) c.i (fuelR - 1) w3.top.rootKey ∨
               (ChainNoNewRoot c Nn s D ∧ LevelNoRoot c Nn D last compact)) →
-            ∀ key, getFromR (wNode c.p base w3) Val c.i c.p.fuel key w3.top.rootKey =
+            ∀ key, getFromR (wNode c.p base w3) Val c.i fuelR key w3.top.rootKey =
             getFromR (updN (wNode c.p base w) (X (D + 1))
-              ((⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode))) Val c.i c.p.fuel key
+              ((⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode))) Val c.i fuelR key
               w.top.rootKey) ∧
             (TReach (wNode c.p base w3) c.i w3.top.rootKey (X (D + 1)) →
               ∀ n, wNode c.p base w3 (X (D + 1)) = some n → ∀ cv y, Klong.key cv y ∈ n.ks →
@@ -357,7 +357,7 @@ theorem writerWP_handleFull_lastV (c : Ctx) (base : View BVal)
         exact h2W z zn h
     · intro Val hVal hfit key
       have h3top : w3.top = w2.top := by rw [← hw3]
-      have hfit2 : SegFits (wNode c.p base w2) c.i (c.p.fuel - 1) w2.top.rootKey ∨
+      have hfit2 : SegFits (wNode c.p base w2) c.i (fuelR - 1) w2.top.rootKey ∨
           ChainNoNewRoot c Nn s D := by
         rcases hfit with hf | hf
         · left
@@ -368,7 +368,7 @@ theorem writerWP_handleFull_lastV (c : Ctx) (base : View BVal)
         · exact Or.inr hf.1
       rw [hN3]
       try rw [h3top]
-      rw [getFromR_updN_unreach' (wNode c.p base w2) Val c.i c.p.fuel w2.top.rootKey
+      rw [getFromR_updN_unreach' (wNode c.p base w2) Val c.i fuelR w2.top.rootKey
         (X (D + 1)) _ (fun z zn _ h => h2W z zn h)
         (fun h => hxR2 (reachS_tReach _ _ _ _ h)) key]
       rw [h2R Val (fun z hz => hVal z (by
@@ -379,7 +379,7 @@ theorem writerWP_handleFull_lastV (c : Ctx) (base : View BVal)
       rcases hfit with hf | hf
       · left
         intro hHS z ⟨c', hc'⟩ hzn
-        have hf2 : SegFits (wNode c.p base w2) c.i (c.p.fuel - 1) w2.top.rootKey := by
+        have hf2 : SegFits (wNode c.p base w2) c.i (fuelR - 1) w2.top.rootKey := by
           rw [hN3] at hf
           try rw [h3top] at hf
           exact SegFits.of_agree _ _ c.i _ _
@@ -458,10 +458,10 @@ theorem writerWP_handleFull_lastV (c : Ctx) (base : View BVal)
             TReach (updN (wNode c.p base w) (X (D + 1)) (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode)) c.i w.top.rootKey z ∨ (w.next ≤ z ∧ z < w'.next)) ∧
           (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
           (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ D + 1 ∧ z = X i) → Val z = none) →
-            (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
+            (SegFits (wNode c.p base w') c.i (fuelR - 1) w'.top.rootKey ∨
               (ChainNoNewRoot c Nn s D ∧ LevelNoRoot c Nn D last compact)) →
-            ∀ key, getFromR (wNode c.p base w') Val c.i c.p.fuel key w'.top.rootKey =
-              getFromR (updN (wNode c.p base w) (X (D + 1)) (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode)) Val c.i c.p.fuel key w.top.rootKey) ∧
+            ∀ key, getFromR (wNode c.p base w') Val c.i fuelR key w'.top.rootKey =
+              getFromR (updN (wNode c.p base w) (X (D + 1)) (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode)) Val c.i fuelR key w.top.rootKey) ∧
           (TReach (wNode c.p base w') c.i w'.top.rootKey (X (D + 1)) →
             ∀ n, wNode c.p base w' (X (D + 1)) = some n → ∀ cv y, Klong.key cv y ∈ n.ks →
               Klong.key cv y ∈ last.ks)) := by
@@ -545,7 +545,7 @@ theorem writerWP_handleFull_lastV (c : Ctx) (base : View BVal)
         intro Val hVal _
         cases hqlf : (Nn D).leaf with
         | false =>
-          exact getFromR_timeLevel _ _ Val c.i c.p.fuel w.top.rootKey (X D)
+          exact getFromR_timeLevel _ _ Val c.i fuelR w.top.rootKey (X D)
             (X (D + 1)) w.next (Nn D) _ ⟨(Nn (D + 1)).leaf, last.ks⟩
             (K (D + 1)) hV hwfV hVq hrqV hqlf hqwf hqtimes hkl hqx (updN_self _ _ _) hxv_wf
             hxv_t (hVfr w.next (Nat.le_refl _))
@@ -557,7 +557,7 @@ theorem writerWP_handleFull_lastV (c : Ctx) (base : View BVal)
             (by intro z h1 h2 h3; rw [updN_ne _ _ _ _ h2, updN_ne _ _ _ _ h3, updN_ne _ _ _ _ h1])
             (hvalx Val hVal w.next (Nat.le_refl _)) (hrootN w.next (Nat.le_refl _)) hrootX
         | true =>
-          exact getFromR_segTimeLevel _ _ Val c.i c.p.fuel w.top.rootKey (X D)
+          exact getFromR_segTimeLevel _ _ Val c.i fuelR w.top.rootKey (X D)
             (X (D + 1)) w.next (Nn D) _ ⟨(Nn (D + 1)).leaf, last.ks⟩
             (K (D + 1)) hV hwfV hVq hrqV hqlf hqwf hqtimes hkl hqx (updN_self _ _ _) hxv_wf
             hxv_t (hVfr w.next (Nat.le_refl _))
@@ -581,10 +581,10 @@ theorem writerWP_handleFull_lastV (c : Ctx) (base : View BVal)
             TReach (updN (wNode c.p base w) (X (D + 1)) (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode)) c.i w.top.rootKey z ∨ (w.next ≤ z ∧ z < w'.next)) ∧
           (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
           (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ D + 1 ∧ z = X i) → Val z = none) →
-            (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
+            (SegFits (wNode c.p base w') c.i (fuelR - 1) w'.top.rootKey ∨
               (ChainNoNewRoot c Nn s D ∧ LevelNoRoot c Nn D last compact)) →
-            ∀ key, getFromR (wNode c.p base w') Val c.i c.p.fuel key w'.top.rootKey =
-              getFromR (updN (wNode c.p base w) (X (D + 1)) (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode)) Val c.i c.p.fuel key w.top.rootKey) ∧
+            ∀ key, getFromR (wNode c.p base w') Val c.i fuelR key w'.top.rootKey =
+              getFromR (updN (wNode c.p base w) (X (D + 1)) (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode)) Val c.i fuelR key w.top.rootKey) ∧
           (TReach (wNode c.p base w') c.i w'.top.rootKey (X (D + 1)) →
             ∀ n, wNode c.p base w' (X (D + 1)) = some n → ∀ cv y, Klong.key cv y ∈ n.ks →
               Klong.key cv y ∈ last.ks)) := by
@@ -746,7 +746,7 @@ theorem writerWP_handleFull_lastV (c : Ctx) (base : View BVal)
           · rw [updN_ne _ _ _ _ hz1] at h; exact hW z zn h)
       (by
         intro Val hVal _
-        exact getFromR_spaceLevel _ _ Val c.i c.p.fuel w.top.rootKey (X D) (X (D + 1))
+        exact getFromR_spaceLevel _ _ Val c.i fuelR w.top.rootKey (X D) (X (D + 1))
           w.next (w.next + 2) (Nn D) _ out.1 out.2.1 (K (D + 1)) r.1 hV hwfV hVq hrqV
           hql hqwf hqtimes hkl hqx hrK.1
           (fun c' z hcz => by
@@ -779,10 +779,10 @@ theorem writerWP_handleFull_lastV (c : Ctx) (base : View BVal)
             TReach (updN (wNode c.p base w) (X (D + 1)) (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode)) c.i w.top.rootKey z ∨ (w.next ≤ z ∧ z < w'.next)) ∧
           (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
           (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ D + 1 ∧ z = X i) → Val z = none) →
-            (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
+            (SegFits (wNode c.p base w') c.i (fuelR - 1) w'.top.rootKey ∨
               (ChainNoNewRoot c Nn s D ∧ LevelNoRoot c Nn D last compact)) →
-            ∀ key, getFromR (wNode c.p base w') Val c.i c.p.fuel key w'.top.rootKey =
-              getFromR (updN (wNode c.p base w) (X (D + 1)) (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode)) Val c.i c.p.fuel key w.top.rootKey) ∧
+            ∀ key, getFromR (wNode c.p base w') Val c.i fuelR key w'.top.rootKey =
+              getFromR (updN (wNode c.p base w) (X (D + 1)) (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode)) Val c.i fuelR key w.top.rootKey) ∧
           (TReach (wNode c.p base w') c.i w'.top.rootKey (X (D + 1)) →
             ∀ n, wNode c.p base w' (X (D + 1)) = some n → ∀ cv y, Klong.key cv y ∈ n.ks →
               Klong.key cv y ∈ last.ks)) := by
@@ -822,10 +822,10 @@ theorem writerWP_handleFull_lastV (c : Ctx) (base : View BVal)
             TReach (updN (wNode c.p base w) (X (D + 1)) (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode)) c.i w.top.rootKey z ∨ (w.next ≤ z ∧ z < w'.next)) ∧
           (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
           (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ D + 1 ∧ z = X i) → Val z = none) →
-            (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
+            (SegFits (wNode c.p base w') c.i (fuelR - 1) w'.top.rootKey ∨
               (ChainNoNewRoot c Nn s D ∧ LevelNoRoot c Nn D last compact)) →
-            ∀ key, getFromR (wNode c.p base w') Val c.i c.p.fuel key w'.top.rootKey =
-              getFromR (updN (wNode c.p base w) (X (D + 1)) (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode)) Val c.i c.p.fuel key w.top.rootKey) ∧
+            ∀ key, getFromR (wNode c.p base w') Val c.i fuelR key w'.top.rootKey =
+              getFromR (updN (wNode c.p base w) (X (D + 1)) (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode)) Val c.i fuelR key w.top.rootKey) ∧
           (TReach (wNode c.p base w') c.i w'.top.rootKey (X (D + 1)) →
             ∀ n, wNode c.p base w' (X (D + 1)) = some n → ∀ cv y, Klong.key cv y ∈ n.ks →
               Klong.key cv y ∈ last.ks)) := by
@@ -1012,7 +1012,7 @@ theorem writerWP_handleFull_lastV (c : Ctx) (base : View BVal)
         (hfit.imp id (fun hf => hf.1)) key, h1top]
       have hXqj : X (D + 1) ≠ X D := fun h => hqx h.symm
       have hXjn : X (D + 1) ≠ w.next := by omega
-      exact getFromR_spaceInPlaceLevel _ _ Val c.i c.p.fuel w.top.rootKey (X D)
+      exact getFromR_spaceInPlaceLevel _ _ Val c.i fuelR w.top.rootKey (X D)
         (X (D + 1)) w.next (Nn D) _ out.1 out.2.1 (K (D + 1)) r.1 hV hwfV hVq
         hrqV hql' hqwf hqtimes hkl hqx hrK.1
         (fun c' z hcz => by
@@ -1058,10 +1058,10 @@ theorem writerWP_handleFull_lastV (c : Ctx) (base : View BVal)
             TReach (updN (wNode c.p base w) (X (D + 1)) (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode)) c.i w.top.rootKey z ∨ (w.next ≤ z ∧ z < w'.next)) ∧
           (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
           (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ D + 1 ∧ z = X i) → Val z = none) →
-            (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
+            (SegFits (wNode c.p base w') c.i (fuelR - 1) w'.top.rootKey ∨
               (ChainNoNewRoot c Nn s D ∧ LevelNoRoot c Nn D last compact)) →
-            ∀ key, getFromR (wNode c.p base w') Val c.i c.p.fuel key w'.top.rootKey =
-              getFromR (updN (wNode c.p base w) (X (D + 1)) (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode)) Val c.i c.p.fuel key w.top.rootKey) ∧
+            ∀ key, getFromR (wNode c.p base w') Val c.i fuelR key w'.top.rootKey =
+              getFromR (updN (wNode c.p base w) (X (D + 1)) (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode)) Val c.i fuelR key w.top.rootKey) ∧
           (TReach (wNode c.p base w') c.i w'.top.rootKey (X (D + 1)) →
             ∀ n, wNode c.p base w' (X (D + 1)) = some n → ∀ cv y, Klong.key cv y ∈ n.ks →
               Klong.key cv y ∈ last.ks)) := by
@@ -1071,7 +1071,7 @@ theorem writerWP_handleFull_lastV (c : Ctx) (base : View BVal)
       rcases hspaceL (by rw [hcf]; simpa using hsp) with h | h
       · rw [hqlf] at h; cases h
       · exact h.2
-    have hfuel4 : 2 ≤ c.p.fuel := by unfold Params.fuel; omega
+    have hfuel4 : 2 ≤ fuelR := hfR
     have h2l := hlen2 hsp
     obtain ⟨r, hdiv0, hsc, hrm, hfh0, hsh0⟩ := halves_facts_nil c.i (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode) h2l hlt
     have hhalf0 := halves_read_nil c.i (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode) h2l hlt hlwf
@@ -1252,7 +1252,7 @@ theorem writerWP_handleFull_lastV (c : Ctx) (base : View BVal)
         rcases hHF with hHF | hNo
         · have hdR := hHF (fun i' h1 h2 => hord i' h1 (by omega)) (w.next + 2 + 2)
             ⟨K (D + 1), KNode.add_key_liveAt_self _ c.i _ _ hqwf hqtimes⟩ (by omega)
-          exact getFromR_segSpaceLevel _ _ Val c.i c.p.fuel hfuel4 w.top.rootKey (X D)
+          exact getFromR_segSpaceLevel _ _ Val c.i fuelR hfuel4 w.top.rootKey (X D)
             (X (D + 1)) w.next (w.next + 2) (w.next + 2 + 2) (Nn D) _ out.1 out.2.1
             (K (D + 1)) r.1 hV hwfV hVq hrqV hqlf hqwf hqtimes hkl hqx (updN_self _ _ _)
             (hVfr w.next (Nat.le_refl _)) (hVfr (w.next + 2) (by omega))
@@ -1303,5 +1303,64 @@ theorem writerWP_handleFull_lastV (c : Ctx) (base : View BVal)
     by_cases hmade : (Nn (D + 1)).firstTime = some c.i
     · exact hstepTI hmade hcs
     · exact hstepT hmade hcs
+
+/-- `writerWP_handleFull_lastVF` at the writer's fuel. -/
+theorem writerWP_handleFull_lastV (c : Ctx) (base : View BVal)
+    (path0 : List (Option Nat × NodeId)) (s D : Nat) (X : Nat → NodeId) (K : Nat → Nat)
+    (Nn : Nat → KNode) (hsD : s ≤ D)
+    (hX : ∀ i, s ≤ i → i ≤ D + 1 → (path0[i]?).map (·.2) = some (X i))
+    (hK : ∀ i, s < i → i ≤ D + 1 → path0[i]? = some (some (K i), X i))
+    (hlinkK : ∀ i, s < i → i ≤ D + 1 → (K i, X i) ∈ (Nn (i - 1)).liveAt c.i)
+    (hrange : ∀ i, s < i → i ≤ D → ¬ ChainRoom c (Nn i) → (Nn (i - 1)).leaf = false →
+      ∀ c' z, (c', z) ∈ (Nn i).live → 0 < c' →
+      K i ≤ c' ∧ ∀ c'' z', (c'', z') ∈ (Nn (i - 1)).live → K i < c'' → c' < c'')
+    (hlen : ∀ i, s ≤ i → i ≤ D → ¬ ChainRoom c (Nn i) →
+      c.p.splitAbove < ((Nn i).lastVersion c.i).size →
+      2 ≤ (Nn i).live.length)
+    (hwf : ∀ i, s ≤ i → i ≤ D + 1 → klongsWf (Nn i).ks = true)
+    (htimes : ∀ i, s ≤ i → i ≤ D + 1 → ∀ t, Klong.time t ∈ (Nn i).ks → t ≤ c.i)
+    (htop : ChainRoom c (Nn s) ∨ s = 0)
+    (hdist : ∀ i i', s ≤ i → i ≤ D + 1 → s ≤ i' → i' ≤ D + 1 → X i = X i' → i = i')
+    (hspace : ∀ i, s ≤ i → i ≤ D → ¬ ChainRoom c (Nn i) →
+      c.p.splitAbove < ((Nn i).lastVersion c.i).size → i = 0 ∨ (s < i ∧ ((Nn (i - 1)).leaf = false ∨
+        ((Nn i).firstTime ≠ some c.i ∧ ∀ i', s < i' → i' < i → ChainOrd c K Nn i'))))
+    (last : KNode) (compact : Bool)
+    (hlwf : klongsWf last.ks = true) (hlt : ∀ s, Klong.time s ∈ last.ks → s ≤ c.i)
+    (hlastV : (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).lastVersion c.i = last)
+    (hlen2 : c.p.splitAbove < last.size → 2 ≤ (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).live.length)
+    (hrangeL : c.p.splitAbove < last.size → (Nn D).leaf = false →
+      ∀ c' z, (c', z) ∈ (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).live → 0 < c' →
+      K (D + 1) ≤ c' ∧ ∀ c'' z', (c'', z') ∈ (Nn D).live → K (D + 1) < c'' → c' < c'')
+    (hspaceL : (!compact && decide (last.size > c.p.splitAbove)) = true →
+      (Nn D).leaf = false ∨ ((Nn (D + 1)).firstTime ≠ some c.i ∧ ∀ i', s < i' → i' < D + 1 → ChainOrd c K Nn i'))
+    (w : W) (hS1 : w.path = path0)
+    (hS2 : ∀ i, s ≤ i → i ≤ D + 1 →
+      w.nodes.lookup (X i) = some (Nn i) ∧ w.taken.contains (X i) = false)
+    (hS3 : TreeOK (wNode c.p base w) c.i w.top.rootKey)
+    (hS4 : ∀ i, s ≤ i → i ≤ D + 1 → TReach (wNode c.p base w) c.i w.top.rootKey (X i))
+    (hS5 : ∀ z, w.next ≤ z → w.nodes.lookup z = none ∧ w.taken.contains z = false ∧
+      knodeOf c.p base z = none)
+    (hS6 : ∀ u c' z, TLink (wNode c.p base w) c.i u c' z → z < w.next)
+    (hR0 : s = 0 → ¬ ChainRoom c (Nn 0) → w.top.rootKey = X 0)
+    (hW : ∀ z zn, wNode c.p base w z = some zn → klongsWf zn.ks = true)
+    (hV : TreeOK (updN (wNode c.p base w) (X (D + 1)) (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode)) c.i w.top.rootKey)
+    (hvx : ∀ c' z, (c', z) ∈ (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).liveAt c.i → z < w.next) :
+    WriterWP (handleFullWith (fun q more => appendKlongs D q more) (D + 1) (X (D + 1)) [] last compact)
+      c w (fun _ w' =>
+      TreeOK (wNode c.p base w') c.i w'.top.rootKey ∧
+      ((w'.top = w.top ∨ (s = 0 ∧ w.next ≤ w'.top.rootKey)) ∧ w'.taken = w.taken ∧ w'.path = w.path ∧
+        w.next ≤ w'.next ∧ w'.vals = w.vals) ∧
+      (∀ z, z < w.next → (∀ i, s ≤ i → i ≤ D + 1 → z ≠ X i) → w'.nodes.lookup z = w.nodes.lookup z) ∧
+      (∀ z, TReach (wNode c.p base w') c.i w'.top.rootKey z →
+        TReach (updN (wNode c.p base w) (X (D + 1)) (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode)) c.i w.top.rootKey z ∨ (w.next ≤ z ∧ z < w'.next)) ∧
+      (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
+      (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ D + 1 ∧ z = X i) → Val z = none) →
+        (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
+          (ChainNoNewRoot c Nn s D ∧ LevelNoRoot c Nn D last compact)) →
+        ∀ key, getFromR (wNode c.p base w') Val c.i c.p.fuel key w'.top.rootKey =
+          getFromR (updN (wNode c.p base w) (X (D + 1)) (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode)) Val c.i c.p.fuel key w.top.rootKey) ∧
+      (TReach (wNode c.p base w') c.i w'.top.rootKey (X (D + 1)) →
+        ∀ n, wNode c.p base w' (X (D + 1)) = some n → ∀ cv y, Klong.key cv y ∈ n.ks → Klong.key cv y ∈ last.ks)) :=
+  writerWP_handleFull_lastVF c.p.fuel (by unfold Params.fuel; omega) c base path0 s D X K Nn hsD hX hK hlinkK hrange hlen hwf htimes htop hdist hspace last compact hlwf hlt hlastV hlen2 hrangeL hspaceL w hS1 hS2 hS3 hS4 hS5 hS6 hR0 hW hV hvx
 
 end SIS.Tree

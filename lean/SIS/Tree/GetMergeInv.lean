@@ -82,7 +82,7 @@ down to x (`PathOK`), the parent X (d - 1) inner. Named premises: no space split
 in place below a segment leaf on the path above the parent (`hNoSSIP`) or at the
 parent (`hNoSSIPp`), and the full parent's last version in the range of its link
 (`hrangeL`). -/
-theorem writerWP_merge_get_inv (x : NodeId) (d : Nat) (c : Ctx) (base : View BVal)
+theorem writerWP_merge_get_invF (fuelR : Nat) (hfR : 2 ≤ fuelR) (x : NodeId) (d : Nat) (c : Ctx) (base : View BVal)
     (hvc : ViewCoherent c base) (w : W) (hI : PutInv c base w) (hG : PutInvG c base w)
     (hRO : RangeOrder (wNode c.p base w) c.i w.top.rootKey)
     (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode) (hP : PathOK c w d X K Nn)
@@ -98,8 +98,8 @@ theorem writerWP_merge_get_inv (x : NodeId) (d : Nat) (c : Ctx) (base : View BVa
       ∀ c' z, (c', z) ∈ (⟨(Nn (d - 1)).leaf, last.ks⟩ : KNode).live → 0 < c' →
       K (d - 1) ≤ c' ∧ ∀ c'' z', (c'', z') ∈ (Nn (d - 2)).live → K (d - 1) < c'' → c' < c'') :
     WriterWP (merge x d) c w (fun _ w' =>
-      SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey →
-      ∀ key, wGet c.p c.i base w' key = wGet c.p c.i base w key) := by
+      SegFits (wNode c.p base w') c.i (fuelR - 1) w'.top.rootKey →
+      ∀ key, wGetAt c.p c.i base w' fuelR key = wGetAt c.p c.i base w fuelR key) := by
   have hP' := hP
   obtain ⟨hX, hK, hS2, hlink, h0⟩ := hP'
   have hT := hI.tree
@@ -149,13 +149,13 @@ theorem writerWP_merge_get_inv (x : NodeId) (d : Nat) (c : Ctx) (base : View BVa
     simp only [wValue, htz, Bool.false_eq_true, ↓reduceIte, hvz, (hI.fresh z hz).2]
   by_cases hd1 : d = 1
   · subst hd1
-    refine writerWP_mono (writerWP_merge_root_get x 1 c base hvc w hT hpar hRt hids hbaseF hfreshT hRO
+    refine writerWP_mono (writerWP_merge_root_getF fuelR hfR x 1 c base hvc w hT hpar hRt hids hbaseF hfreshT hRO
       hcap hI.times hI.wf hI.keyNoValue hlinksAll hfreshV rfl
       (by rw [hX 0 (by omega), h0]) hsa2) ?_
     intro _ w' h hf key
     exact h (Or.inl hf) key
   · have hd2 : 2 ≤ d := by omega
-    refine writerWP_mono (writerWP_merge_any_get x d c base hvc w hT hpar hRt hids hbaseF hfreshT hRO
+    refine writerWP_mono (writerWP_merge_any_getF fuelR hfR x d c base hvc w hT hpar hRt hids hbaseF hfreshT hRO
       hcap hI.times hI.wf hI.keyNoValue hlinksAll hfreshV 0 (d - 2) X K Nn (Nat.zero_le _)
       (by omega)
       (fun i _ hi => hX i (by omega))
@@ -202,6 +202,27 @@ theorem writerWP_merge_get_inv (x : NodeId) (d : Nat) (c : Ctx) (base : View BVa
             chainOrd_of_ordG c base w d X K Nn hP hO i' h1 (by omega)⟩)) ?_
     intro _ w' h hf key
     exact h (Or.inl hf) key
+
+/-- `writerWP_merge_get_invF` at the writer's fuel. -/
+theorem writerWP_merge_get_inv (x : NodeId) (d : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (w : W) (hI : PutInv c base w) (hG : PutInvG c base w)
+    (hRO : RangeOrder (wNode c.p base w) c.i w.top.rootKey)
+    (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode) (hP : PathOK c w d X K Nn)
+    (hd0 : 0 < d) (hx : X d = x) (hql : (Nn (d - 1)).leaf = false)
+    (hsa2 : 2 ≤ c.p.splitAbove) (hcap : 1 ≤ c.p.mergeMax)
+    (hNoSSIP : ∀ i, 0 < i → i + 2 ≤ d → (Nn (i - 1)).leaf = true → ¬ ChainRoom c (Nn i) →
+      c.p.splitAbove < ((Nn i).lastVersion c.i).size → (Nn i).firstTime ≠ some c.i)
+    (hNoSSIPp : 2 ≤ d → (Nn (d - 2)).leaf = true → ∀ cL cR m1 m2 last,
+      mergeFullLast (Nn (d - 1)) c.i cL m1 cR m2 = some last → c.p.splitAbove < last.size →
+      (Nn (d - 1)).firstTime ≠ some c.i)
+    (hrangeL : 2 ≤ d → ∀ cL cR m1 m2 last, mergeFullLast (Nn (d - 1)) c.i cL m1 cR m2 = some last →
+      c.p.splitAbove < last.size → (Nn (d - 2)).leaf = false →
+      ∀ c' z, (c', z) ∈ (⟨(Nn (d - 1)).leaf, last.ks⟩ : KNode).live → 0 < c' →
+      K (d - 1) ≤ c' ∧ ∀ c'' z', (c'', z') ∈ (Nn (d - 2)).live → K (d - 1) < c'' → c' < c'') :
+    WriterWP (merge x d) c w (fun _ w' =>
+      SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey →
+      ∀ key, wGet c.p c.i base w' key = wGet c.p c.i base w key) :=
+  writerWP_merge_get_invF c.p.fuel (by unfold Params.fuel; omega) x d c base hvc w hI hG hRO X K Nn hP hd0 hx hql hsa2 hcap hNoSSIP hNoSSIPp hrangeL
 
 /-! ## The delete's inner invariant -/
 
