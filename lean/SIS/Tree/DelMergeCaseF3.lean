@@ -2,6 +2,7 @@ import SIS.Tree.DelMergeCaseF2
 import SIS.Tree.RangeMergeRoot
 import SIS.Tree.ChildrenKinds
 import SIS.Tree.WriterKindsRun
+import SIS.Tree.RangeCollapseSeg
 
 set_option autoImplicit false
 
@@ -62,6 +63,47 @@ def CollapseStepOKF3 (c : Ctx) (base : View BVal) (f : Nat) : Prop :=
       n.onlyLiveKlong = some only → n.cv? only = some 0 →
       WriterWP (replaceRoot x (v.path.length - 1) only) c v
         (fun _ v' => RangeOrder (wNode c.p base v') c.i v'.top.rootKey))
+
+/-- `CollapseStepOKF3` from its first part, the room in the segment leaf above a
+replaced segment root: the walk's ranges after `takeBackRoot` and `replaceRoot`
+at the space root and at a segment (putinv's `writerWP_rootStep_space_rangeG`,
+`writerWP_takeBackRoot_seg_rangeG`, `writerWP_replaceRoot_seg_rangeG`, as in
+`writerWP_collapseRoot_range`). -/
+theorem collapseStepOKF3_of_room (c : Ctx) (base : View BVal) (f : Nat)
+    (hroom : ∀ w0 v x n leaf ln k, CollGetInvF c base w0 v f →
+      RangeOrder (wNode c.p base v) c.i v.top.rootKey → SegDesc c base x v →
+      v.nodes.lookup x = some n → n.leaf = false → n.firstTime ≠ some c.i →
+      TReach (wNode c.p base v) c.i v.top.rootKey leaf → v.nodes.lookup leaf = some ln →
+      ln.leaf = true → (k, x) ∈ ln.liveAt c.i →
+      ln.size + 1 + 1 ≤ c.p.M ∧ ∀ y, deadOver c.p (ln.add c.i (.key k y)) = false) :
+    CollapseStepOKF3 c base f := by
+  refine ⟨hroom, ?_, ?_⟩
+  · intro w0 v x n only hI hJ hP hlk hxl hm honly hcv
+    obtain ⟨_, ps, hvp, hlf, hend, hcache, hlast⟩ := hP
+    rcases hlast with hps | ⟨ps0, k, L, ln, hps, hL, hLn, hLl⟩
+    · subst hps
+      have hx : x = v.top.rootKey := by rw [← hend]; rfl
+      rw [hvp]
+      exact (writerWP_rootStep_space_rangeG x only n c base v _ _ _ hI hJ hx hlk honly hcv hxl).1
+    · subst hps
+      obtain ⟨hLr, hLlk, hk, hlen, hpd, hpk⟩ := segDesc_seg c base x v ps0 k L ln hvp hlf hcache hL hLn
+      rw [hlen]
+      exact writerWP_takeBackRoot_seg_rangeG x ps0.length only n L ln k c base v _ _ _ hI hJ hLr hLlk
+        hLl hk hlk honly hcv hxl hpd hpk
+  · intro w0 v x n only hI hJ hP hlk hxl hm honly hcv
+    have hP0 := hP
+    obtain ⟨_, ps, hvp, hlf, hend, hcache, hlast⟩ := hP
+    rcases hlast with hps | ⟨ps0, k, L, ln, hps, hL, hLn, hLl⟩
+    · subst hps
+      have hx : x = v.top.rootKey := by rw [← hend]; rfl
+      rw [hvp]
+      exact (writerWP_rootStep_space_rangeG x only n c base v _ _ _ hI hJ hx hlk honly hcv hxl).2
+    · subst hps
+      obtain ⟨hLr, hLlk, hk, hlen, hpd, hpk⟩ := segDesc_seg c base x v ps0 k L ln hvp hlf hcache hL hLn
+      obtain ⟨hroom1, hdead⟩ := hroom w0 v x n L ln k hI hJ hP0 hlk hxl hm hLr hLlk hLl hk
+      rw [hlen]
+      exact writerWP_replaceRoot_seg_rangeG x ps0.length only n L ln k c base v _ _ _ hI hJ hLr hLlk
+        hLl hk hlk honly hcv hxl hpd hpk hroom1 hdead
 
 /-- Inner children from the kinds' walk, kept generic in the context: at the
 operation level `innerChildren_of_kinds` gives it, with the pointers of the run. -/

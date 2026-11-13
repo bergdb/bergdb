@@ -17,9 +17,12 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
-/-- The collapse steps at the space root keep the walk's ranges. -/
-theorem writerWP_rootStep_space_range (x : NodeId) (only : Nat) (n : KNode) (c : Ctx)
-    (base : View BVal) (w0 v : W) (hI : CollGetInv c base w0 v)
+/-- The collapse steps at the space root keep the walk's ranges.
+For any state with `CollInv` and well-formed klongs (`CollGetInv`, `CollGetInvF`). -/
+theorem writerWP_rootStep_space_rangeG (x : NodeId) (only : Nat) (n : KNode) (c : Ctx)
+    (base : View BVal) (v : W) (A B E : Prop)
+    (hI : CollInv c base v ∧ A ∧ B ∧ (∀ y yn, TReach (wNode c.p base v) c.i v.top.rootKey y →
+      wNode c.p base v y = some yn → klongsWf yn.ks = true) ∧ E)
     (hR : RangeOrder (wNode c.p base v) c.i v.top.rootKey) (hx : x = v.top.rootKey)
     (hlkx : v.nodes.lookup x = some n) (honly : n.onlyLiveKlong = some only)
     (hcv : n.cv? only = some 0) (hxl : n.leaf = false) :
@@ -71,11 +74,26 @@ theorem writerWP_rootStep_space_range (x : NodeId) (only : Nat) (n : KNode) (c :
       · intro z _; rw [h3t]
       · intro z hz; exact h3n z (by rw [hx]; exact hz)
 
+/-- The collapse steps at the space root keep the walk's ranges. -/
+theorem writerWP_rootStep_space_range (x : NodeId) (only : Nat) (n : KNode) (c : Ctx)
+    (base : View BVal) (w0 v : W) (hI : CollGetInv c base w0 v)
+    (hR : RangeOrder (wNode c.p base v) c.i v.top.rootKey) (hx : x = v.top.rootKey)
+    (hlkx : v.nodes.lookup x = some n) (honly : n.onlyLiveKlong = some only)
+    (hcv : n.cv? only = some 0) (hxl : n.leaf = false) :
+    WriterWP (takeBackRoot x 0 only) c v (fun _ v' =>
+      RangeOrder (wNode c.p base v') c.i v'.top.rootKey) ∧
+    WriterWP (replaceRoot x 0 only) c v (fun _ v' =>
+      RangeOrder (wNode c.p base v') c.i v'.top.rootKey) :=
+  writerWP_rootStep_space_rangeG x only n c base v _ _ _ hI hR hx hlkx honly hcv hxl
+
 /-- `takeBackRoot` at a segment root x that the transaction made, below the
 segment leaf `leaf` of the path, keeps the walk's ranges (cost's
-`writerWP_takeBackRoot_seg_coll`). -/
-theorem writerWP_takeBackRoot_seg_range (x : NodeId) (d only : Nat) (n : KNode) (leaf : NodeId)
-    (ln : KNode) (k : Nat) (c : Ctx) (base : View BVal) (w0 v : W) (hI : CollGetInv c base w0 v)
+`writerWP_takeBackRoot_seg_coll`).
+For any state with `CollInv` and well-formed klongs (`CollGetInv`, `CollGetInvF`). -/
+theorem writerWP_takeBackRoot_seg_rangeG (x : NodeId) (d only : Nat) (n : KNode) (leaf : NodeId)
+    (ln : KNode) (k : Nat) (c : Ctx) (base : View BVal) (v : W) (A B E : Prop)
+    (hI : CollInv c base v ∧ A ∧ B ∧ (∀ y yn, TReach (wNode c.p base v) c.i v.top.rootKey y →
+      wNode c.p base v y = some yn → klongsWf yn.ks = true) ∧ E)
     (hR : RangeOrder (wNode c.p base v) c.i v.top.rootKey)
     (hlf : TReach (wNode c.p base v) c.i v.top.rootKey leaf)
     (hlkL : v.nodes.lookup leaf = some ln) (hlnl : ln.leaf = true) (hk : (k, x) ∈ ln.liveAt c.i)
@@ -170,11 +188,29 @@ theorem writerWP_takeBackRoot_seg_range (x : NodeId) (d only : Nat) (n : KNode) 
         exact hfin _ rfl rfl rfl rfl
     · exact writerWP_throw _ _ _ _
 
+/-- `takeBackRoot` at a segment root x that the transaction made, below the
+segment leaf `leaf` of the path, keeps the walk's ranges (cost's
+`writerWP_takeBackRoot_seg_coll`). -/
+theorem writerWP_takeBackRoot_seg_range (x : NodeId) (d only : Nat) (n : KNode) (leaf : NodeId)
+    (ln : KNode) (k : Nat) (c : Ctx) (base : View BVal) (w0 v : W) (hI : CollGetInv c base w0 v)
+    (hR : RangeOrder (wNode c.p base v) c.i v.top.rootKey)
+    (hlf : TReach (wNode c.p base v) c.i v.top.rootKey leaf)
+    (hlkL : v.nodes.lookup leaf = some ln) (hlnl : ln.leaf = true) (hk : (k, x) ∈ ln.liveAt c.i)
+    (hlkx : v.nodes.lookup x = some n) (honly : n.onlyLiveKlong = some only)
+    (hcv : n.cv? only = some 0) (hxl : n.leaf = false)
+    (hpd : (v.path[d]?).map (·.2) = some leaf) (hpk : v.path[d + 1]? = some (some k, x)) :
+    WriterWP (takeBackRoot x (d + 1) only) c v (fun _ v' =>
+      RangeOrder (wNode c.p base v') c.i v'.top.rootKey) :=
+  writerWP_takeBackRoot_seg_rangeG x d only n leaf ln k c base v _ _ _ hI hR hlf hlkL hlnl hk hlkx honly hcv hxl hpd hpk
+
 /-- `replaceRoot` at a segment root x below the segment leaf `leaf` of the
 path, the leaf with room for the klong to x's child, keeps the walk's ranges
-(cost's `writerWP_replaceRoot_seg_coll`). -/
-theorem writerWP_replaceRoot_seg_range (x : NodeId) (d only : Nat) (n : KNode) (leaf : NodeId)
-    (ln : KNode) (k : Nat) (c : Ctx) (base : View BVal) (w0 v : W) (hI : CollGetInv c base w0 v)
+(cost's `writerWP_replaceRoot_seg_coll`).
+For any state with `CollInv` and well-formed klongs (`CollGetInv`, `CollGetInvF`). -/
+theorem writerWP_replaceRoot_seg_rangeG (x : NodeId) (d only : Nat) (n : KNode) (leaf : NodeId)
+    (ln : KNode) (k : Nat) (c : Ctx) (base : View BVal) (v : W) (A B E : Prop)
+    (hI : CollInv c base v ∧ A ∧ B ∧ (∀ y yn, TReach (wNode c.p base v) c.i v.top.rootKey y →
+      wNode c.p base v y = some yn → klongsWf yn.ks = true) ∧ E)
     (hR : RangeOrder (wNode c.p base v) c.i v.top.rootKey)
     (hlf : TReach (wNode c.p base v) c.i v.top.rootKey leaf)
     (hlkL : v.nodes.lookup leaf = some ln) (hlnl : ln.leaf = true) (hk : (k, x) ∈ ln.liveAt c.i)
@@ -244,6 +280,23 @@ theorem writerWP_replaceRoot_seg_range (x : NodeId) (d only : Nat) (n : KNode) (
       · exact Or.inl ⟨h1, h2⟩
       · exact Or.inr ⟨h1, h2⟩
 
+
+/-- `replaceRoot` at a segment root x below the segment leaf `leaf` of the
+path, the leaf with room for the klong to x's child, keeps the walk's ranges
+(cost's `writerWP_replaceRoot_seg_coll`). -/
+theorem writerWP_replaceRoot_seg_range (x : NodeId) (d only : Nat) (n : KNode) (leaf : NodeId)
+    (ln : KNode) (k : Nat) (c : Ctx) (base : View BVal) (w0 v : W) (hI : CollGetInv c base w0 v)
+    (hR : RangeOrder (wNode c.p base v) c.i v.top.rootKey)
+    (hlf : TReach (wNode c.p base v) c.i v.top.rootKey leaf)
+    (hlkL : v.nodes.lookup leaf = some ln) (hlnl : ln.leaf = true) (hk : (k, x) ∈ ln.liveAt c.i)
+    (hlkx : v.nodes.lookup x = some n) (honly : n.onlyLiveKlong = some only)
+    (hcv : n.cv? only = some 0) (hxl : n.leaf = false)
+    (hpd : (v.path[d]?).map (·.2) = some leaf) (hpk : v.path[d + 1]? = some (some k, x))
+    (hroom : ln.size + 1 + 1 ≤ c.p.M)
+    (hdead : ∀ y, deadOver c.p (ln.add c.i (.key k y)) = false) :
+    WriterWP (replaceRoot x (d + 1) only) c v (fun _ v' =>
+      RangeOrder (wNode c.p base v') c.i v'.top.rootKey) :=
+  writerWP_replaceRoot_seg_rangeG x d only n leaf ln k c base v _ _ _ hI hR hlf hlkL hlnl hk hlkx honly hcv hxl hpd hpk hroom hdead
 
 /-- Root collapse at any segment keeps `CollGetInv` and the walk's ranges, given
 room in the segment leaf above each segment root that is replaced (cost's
