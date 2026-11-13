@@ -116,3 +116,9 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 * 12:22 Pushed: the provers' checkpoints "latest" (TP10 and TP11 at the latest time reduced to OpGetOK and CommitGetOK) and "t4" (T4 proved, its new definitions for Frans to review), main with both built (321 jobs); 026-14. 024-12's board updated.
 * 12:34 Frans read 027-13, the reclaim pilot: "027-13 is good! I looks really good." The template for the other parts.
 * 12:49 Frans: slots kept as two guards (timing alone, memory) with six as a net, "As recommended"; 007-09 Q1: A, a dated note in 007-01, section 6.
+* 13:10 Unattended until 07:00 tomorrow (Frans, 13:09: "Unattended mode! I will likely check in at 16:00 or so. If I don't work until 07:00 tomorrow."). What runs:
+  - the provers until 20:00 ("latest", "cost", "tp7"); their checkpoints landed as they come (check, combined build, push);
+  - "t44" until 20:00: the bounds as the second review of T4's definitions asks (007-09, `09-t4-in-lean/second-review.md`: DropStep false for Java; reads, not objects; RecordBound; the take's skip past maxBytes);
+  - 028-08 to 028-10 evaluated with tests, 028-11's texts (P5 for Frans); 028-03, 028-05, 028-06 (Javadoc); 026-09 (keys-only scan) until 15:00;
+  - after 20:00: 007-09 brought up to date (the review, the Java-test and height results, t44);
+  - about 20:15: `java/night.sh` on main (013-01); quiet from 22:00; the morning's summary in news.md from 06:00.
