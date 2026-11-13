@@ -1493,6 +1493,30 @@ below a leaf with room; (3b) more new segments below a leaf with room;
 - (3c) all three open.
 - (4) all three open (cost's merges).
 
+The shapes of the nodes a cascade makes or changes (prover "latest",
+2026-11-13, 21:30; for prover putinv's take-back (C); `ChainShape.lean`):
+`writerWP_appendKlongs_chainShape`. It takes the premises of
+`writerWP_appendKlongs_chainGRV` that concern the writer's nodes, with
+`ChainOrd` at every level and the klongs put ordered by compare value.
+After `appendKlongs (s + e)`, every node with an id from the next id on,
+or on the chain, is one of these (`CascadeNodeShape`):
+
+- a chain node that the cascade did not reach, unchanged;
+- a chain node left behind with its klongs before the transaction;
+- a node of time c.i (a time klong, then key klongs; `ShadowOK`). A chain
+  node of this kind is one the transaction made. A key klong shadowed by
+  a later klong of its compare value names either a split child that was
+  copied, or a live klong of the bottom node for a compare value put
+  there (`ChainShadow`). Halves of a space split shadow like this
+  (`halves_shadow`). A time split's last version, a new root and a new
+  segment root shadow nothing (`writerWP_replaceOrAdd_lastN`,
+  `shadowOK_root`).
+- the node where the cascade ends (`CascadeTop`), one of three kinds:
+  - the bottom node with the klongs put;
+  - a node with the klongs of the split below added, in compare order,
+    shadowing only the old klong to a split child that was copied;
+  - a segment leaf whose klong to a child split in place is repointed.
+
 The splits of any depth (prover "latest", 2026-11-13, 16:30): **proved
 for time and space splits of nodes that existed before the transaction,
 below a top node with room** (`writerWP_appendKlongs_chainR`,
