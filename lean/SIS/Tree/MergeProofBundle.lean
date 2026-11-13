@@ -174,3 +174,4 @@ import SIS.Tree.RangeLeb
 import SIS.Tree.RangeMerge
 import SIS.Tree.RangeNewSeg
 import SIS.Tree.RangeUp
+import SIS.Tree.RangeChainG
