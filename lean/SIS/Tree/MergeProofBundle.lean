@@ -284,3 +284,4 @@ import SIS.Tree.DelStepsWalk
 import SIS.Tree.DelStepsRoom
 import SIS.Tree.DelStepsUp
 import SIS.Tree.DelStepsBook
+import SIS.Tree.HeightsStep

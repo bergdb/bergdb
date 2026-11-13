@@ -12,13 +12,13 @@ open SIS SIS.Check
 
 section Steps
 
-variable (B : NodeId)
+variable (B : NodeId) {H : NodeId → Nat → Prop}
 
 /-- A step that keeps the books and the walk's state, the path and the nodes
 taken back. -/
-def HtKeeps {α : Type} (f : M α) : Prop :=
-  ∀ c w, ViewHtOK B c → Book B c w → HtInv B c w →
-    WriterWP f c w (fun _ v => Book B c v ∧ HtInv B c v ∧ Kept w v ∧ v.path = w.path ∧
+def HtKeeps (H : NodeId → Nat → Prop) {α : Type} (f : M α) : Prop :=
+  ∀ c w, ViewHtOK H B c → Book B c w → HtInv H B c w →
+    WriterWP f c w (fun _ v => Book B c v ∧ HtInv H B c v ∧ Kept w v ∧ v.path = w.path ∧
       v.taken = w.taken)
 
 /-- Every field that the walk reads is kept. -/
@@ -27,19 +27,19 @@ def HtFrame {α : Type} (f : M α) : Prop :=
     v.taken = w.taken ∧ v.top.rootKey = w.top.rootKey)
 
 theorem ht_keeps_of_frame {α : Type} {f : M α} (hbk : KeepsBook B f) (hf : HtFrame f) :
-    HtKeeps B f := by
+    HtKeeps B H f := by
   intro c w hvo hb hi
   refine writerWP_mono (writerWP_and (hbk c w hvo.ids hb) (hf c w)) ?_
   rintro _ v ⟨⟨hb', hk'⟩, hn, hg, hp, ht, htop⟩
   exact ⟨hb', hi.frame v hn hg hp ht htop, hk', hp, ht⟩
 
-theorem ht_writerWP {α : Type} {f : M α} (hf : HtKeeps B f) (c : Ctx) (w : W)
-    (post : α → W → Prop) (hvo : ViewHtOK B c) (hb : Book B c w) (hi : HtInv B c w)
-    (hp : ∀ r v, Book B c v → HtInv B c v → Kept w v → v.path = w.path → v.taken = w.taken →
+theorem ht_writerWP {α : Type} {f : M α} (hf : HtKeeps B H f) (c : Ctx) (w : W)
+    (post : α → W → Prop) (hvo : ViewHtOK H B c) (hb : Book B c w) (hi : HtInv H B c w)
+    (hp : ∀ r v, Book B c v → HtInv H B c v → Kept w v → v.path = w.path → v.taken = w.taken →
       post r v) : WriterWP f c w post :=
   writerWP_mono (hf c w hvo hb hi) (fun r v h => hp r v h.1 h.2.1 h.2.2.1 h.2.2.2.1 h.2.2.2.2)
 
-theorem ht_throw {α : Type} (e : String) : HtKeeps B (throw e : M α) := by
+theorem ht_throw {α : Type} (e : String) : HtKeeps B H (throw e : M α) := by
   intro c w _ _ _
   exact writerWP_throw _ _ _ _
 
@@ -59,14 +59,14 @@ theorem htFrame_newValue (h : Nat) : HtFrame (newValue h) := by unfold newValue 
 theorem htFrame_setMadeFor (m : NodeId) (o : Option NodeId) : HtFrame (setMadeFor m o) := by
   unfold setMadeFor; htFrameTac
 
-theorem ht_note (s : String) : HtKeeps B (note s) :=
+theorem ht_note (s : String) : HtKeeps B H (note s) :=
   ht_keeps_of_frame B (book_note B s) (htFrame_note s)
-theorem ht_fresh : HtKeeps B fresh := ht_keeps_of_frame B (book_fresh B) htFrame_fresh
+theorem ht_fresh : HtKeeps B H fresh := ht_keeps_of_frame B (book_fresh B) htFrame_fresh
 
 /-- A new value: its id is fresh, so not taken back. -/
-theorem ht_newValue (h : Nat) (c : Ctx) (w : W) (hvo : ViewHtOK B c) (hb : Book B c w)
-    (hi : HtInv B c w) :
-    WriterWP (newValue h) c w (fun x v => Book B c v ∧ HtInv B c v ∧ Kept w v ∧
+theorem ht_newValue (h : Nat) (c : Ctx) (w : W) (hvo : ViewHtOK H B c) (hb : Book B c w)
+    (hi : HtInv H B c w) :
+    WriterWP (newValue h) c w (fun x v => Book B c v ∧ HtInv H B c v ∧ Kept w v ∧
       v.path = w.path ∧ v.taken = w.taken ∧ x = w.next) := by
   refine writerWP_mono (writerWP_and (book_newValue B h c w hvo.ids hb)
     (writerWP_and (htFrame_newValue h c w)
@@ -76,7 +76,7 @@ theorem ht_newValue (h : Nat) (c : Ctx) (w : W) (hvo : ViewHtOK B c) (hb : Book 
   · rintro x v ⟨⟨hb', hk'⟩, ⟨hn, hg, hp, ht, htop⟩, hx⟩
     exact ⟨hb', hi.frame v hn hg hp ht htop, hk', hp, ht, hx⟩
 
-theorem ht_setMadeFor (m : NodeId) (o : Option NodeId) : HtKeeps B (setMadeFor m o) := by
+theorem ht_setMadeFor (m : NodeId) (o : Option NodeId) : HtKeeps B H (setMadeFor m o) := by
   intro c w hvo hb hi
   refine writerWP_mono (writerWP_and (book_setMadeFor B m o c w hvo.ids hb)
     (htFrame_setMadeFor m o c w)) ?_
@@ -88,17 +88,17 @@ theorem ht_counter (c : Ctx) (w : W) (f : W → W) (post : Unit → W → Prop)
     (hn : (f w).nodes = w.nodes) (hg : (f w).gh = w.gh) (hp : (f w).path = w.path)
     (ht : (f w).taken = w.taken) (htop : (f w).top.rootKey = w.top.rootKey)
     (hbk : ∀ {c : Ctx} {w : W}, Book B c w → Book B c (f w)) (hb : Book B c w)
-    (hi : HtInv B c w)
-    (hq : ∀ v, Book B c v → HtInv B c v → Kept w v → v.path = w.path → v.taken = w.taken →
+    (hi : HtInv H B c w)
+    (hq : ∀ v, Book B c v → HtInv H B c v → Kept w v → v.path = w.path → v.taken = w.taken →
       post () v) :
     WriterWP (modify f) c w post := by
   rw [writerWP_modify]
   exact hq _ (hbk hb) (hi.frame _ hn hg hp ht htop) (Kept.same hn hg) hp ht
 
 /-- The space root: a node not taken back. -/
-theorem ht_newSuperRoot (y : NodeId) (c : Ctx) (w : W) (hvo : ViewHtOK B c) (hb : Book B c w)
-    (hi : HtInv B c w) (hy : w.taken.contains y = false) :
-    WriterWP (newSuperRoot y) c w (fun _ v => Book B c v ∧ HtInv B c v ∧ Kept w v ∧
+theorem ht_newSuperRoot (y : NodeId) (c : Ctx) (w : W) (hvo : ViewHtOK H B c) (hb : Book B c w)
+    (hi : HtInv H B c w) (hy : w.taken.contains y = false) :
+    WriterWP (newSuperRoot y) c w (fun _ v => Book B c v ∧ HtInv H B c v ∧ Kept w v ∧
       v.path = w.path ∧ v.taken = w.taken) := by
   refine writerWP_mono (writerWP_and (book_newSuperRoot B y c w hvo.ids hb)
     (?_ : WriterWP (newSuperRoot y) c w (fun _ v => v.nodes = w.nodes ∧ v.gh = w.gh ∧
@@ -110,17 +110,17 @@ theorem ht_newSuperRoot (y : NodeId) (c : Ctx) (w : W) (hvo : ViewHtOK B c) (hb 
       | split
       | (refine ⟨?_, ?_, ?_, ?_, ?_⟩ <;> first | trivial | rfl)
   · rintro _ v ⟨⟨hb', hk'⟩, hn, hg, hp, ht, htop⟩
-    have h0 : HtInv B c { w with top := { w.top with rootKey := y } } :=
+    have h0 : HtInv H B c { w with top := { w.top with rootKey := y } } :=
       ⟨hi.cache.congr rfl rfl rfl, hi.path, hi.pathGh, hi.pathFree, hy, hi.takenAbove, hi.pathSome⟩
     exact ⟨hb', h0.frame v hn hg hp ht htop, hk', hp, ht⟩
 
 /-- A read of key node x. -/
-theorem ht_getNode (x : NodeId) (c : Ctx) (w : W) (hvo : ViewHtOK B c) (hb : Book B c w)
-    (hi : HtInv B c w) :
-    WriterWP (getNode x) c w (fun n v => Book B c v ∧ HtInv B c v ∧ Kept w v ∧
+theorem ht_getNode (x : NodeId) (c : Ctx) (w : W) (hvo : ViewHtOK H B c) (hb : Book B c w)
+    (hi : HtInv H B c w) :
+    WriterWP (getNode x) c w (fun n v => Book B c v ∧ HtInv H B c v ∧ Kept w v ∧
       v.nodes.lookup x = some n ∧ v.path = w.path ∧ v.taken = w.taken) := by
   refine writerWP_mono (writerWP_and (book_getNode B x c w hvo.ids hb)
-    (?_ : WriterWP (getNode x) c w (fun _ v => HtInv B c v ∧ v.path = w.path ∧
+    (?_ : WriterWP (getNode x) c w (fun _ v => HtInv H B c v ∧ v.path = w.path ∧
       v.taken = w.taken))) ?_
   · unfold getNode
     simp only [writerWP_bind, writerWP_get]
@@ -146,9 +146,9 @@ theorem ht_getNode (x : NodeId) (c : Ctx) (w : W) (hvo : ViewHtOK B c) (hb : Boo
     exact ⟨hb', hi', hk', hl, hp, ht⟩
 
 /-- The segment and the height of key node x. -/
-theorem ht_ghOf (x : NodeId) (c : Ctx) (w : W) (hvo : ViewHtOK B c) (hb : Book B c w)
-    (hi : HtInv B c w) :
-    WriterWP (ghOf x) c w (fun r v => Book B c v ∧ HtInv B c v ∧ Kept w v ∧
+theorem ht_ghOf (x : NodeId) (c : Ctx) (w : W) (hvo : ViewHtOK H B c) (hb : Book B c w)
+    (hi : HtInv H B c w) :
+    WriterWP (ghOf x) c w (fun r v => Book B c v ∧ HtInv H B c v ∧ Kept w v ∧
       v.path = w.path ∧ v.taken = w.taken ∧ (x, r.1, r.2) ∈ v.gh ∧
       ∃ n, v.nodes.lookup x = some n ∧ n.leaf = (r.2 == 0)) := by
   unfold ghOf
@@ -165,13 +165,13 @@ theorem ht_ghOf (x : NodeId) (c : Ctx) (w : W) (hvo : ViewHtOK B c) (hb : Book B
 
 /-- A store of key node x of the overlay, meeting `NodeHt` for its height. -/
 theorem ht_putNode (x : NodeId) (n' : KNode) (c : Ctx) (w : W) (hb : Book B c w)
-    (hi : HtInv B c w) (n0 : KNode) (hl : w.nodes.lookup x = some n0)
+    (hi : HtInv H B c w) (n0 : KNode) (hl : w.nodes.lookup x = some n0)
     (hleaf : n'.leaf = n0.leaf)
-    (hks : ∀ g h, (x, g, h) ∈ w.gh → w.taken.contains x = false → NodeHt c w h n') :
-    WriterWP (putNode x n') c w (fun _ v => Book B c v ∧ HtInv B c v ∧ Kept w v ∧
+    (hks : ∀ g h, (x, g, h) ∈ w.gh → w.taken.contains x = false → NodeHt c H w h n') :
+    WriterWP (putNode x n') c w (fun _ v => Book B c v ∧ HtInv H B c v ∧ Kept w v ∧
       v.path = w.path ∧ v.taken = w.taken ∧ v.nodes.lookup x = some n') := by
   refine writerWP_mono (writerWP_and (book_putNode B x n' c w hb ⟨n0, hl, hleaf⟩)
-    (?_ : WriterWP (putNode x n') c w (fun _ v => HtInv B c v ∧ v.path = w.path ∧
+    (?_ : WriterWP (putNode x n') c w (fun _ v => HtInv H B c v ∧ v.path = w.path ∧
       v.taken = w.taken ∧ v.nodes.lookup x = some n'))) ?_
   · simp only [putNode, writerWP_modify]
     refine ⟨HtInv.store hi x n' n0 hl hks _ rfl rfl rfl rfl rfl, by trivial, by trivial, ?_⟩
@@ -183,14 +183,14 @@ theorem ht_putNode (x : NodeId) (n' : KNode) (c : Ctx) (w : W) (hb : Book B c w)
 
 /-- A new key node meeting `NodeHt` for its height. -/
 theorem ht_newKey (g h : Nat) (leaf : Bool) (ks : List Klong) (c : Ctx) (w : W)
-    (hb : Book B c w) (hi : HtInv B c w) (hleaf : leaf = (h == 0))
-    (hks : NodeHt c w h ⟨leaf, ks⟩) :
-    WriterWP (newKey g h leaf ks) c w (fun x v => Book B c v ∧ HtInv B c v ∧ Kept w v ∧
+    (hb : Book B c w) (hi : HtInv H B c w) (hleaf : leaf = (h == 0))
+    (hks : NodeHt c H w h ⟨leaf, ks⟩) :
+    WriterWP (newKey g h leaf ks) c w (fun x v => Book B c v ∧ HtInv H B c v ∧ Kept w v ∧
       v.path = w.path ∧ v.taken = w.taken ∧ v.nodes.lookup x = some ⟨leaf, ks⟩ ∧
       (x, g, h) ∈ v.gh ∧ x = w.next ∧ x ∉ w.gh.map (·.1)) := by
   have hxg := kd_next_not hb
   refine writerWP_mono (writerWP_and (book_newKey B g h leaf ks c w hb hleaf)
-    (?_ : WriterWP (newKey g h leaf ks) c w (fun x v => HtInv B c v ∧
+    (?_ : WriterWP (newKey g h leaf ks) c w (fun x v => HtInv H B c v ∧
       v.path = w.path ∧ v.taken = w.taken ∧ (x, g, h) ∈ v.gh ∧ x = w.next))) ?_
   · unfold newKey fresh
     simp only [writerWP_bind, writerWP_read, writerWP_get, writerWP_set, writerWP_pure]
@@ -204,9 +204,9 @@ theorem ht_newKey (g h : Nat) (leaf : Bool) (ks : List Klong) (c : Ctx) (w : W)
   · rintro x v ⟨⟨hb', hk', hlk⟩, hi', hp, ht, hg, hx⟩
     exact ⟨hb', hi', hk', hp, ht, hlk, hg, hx, by rw [hx]; exact hxg⟩
 
-theorem ht_pathClear (c : Ctx) (w : W) (hvo : ViewHtOK B c) (hb : Book B c w)
-    (hi : HtInv B c w) :
-    WriterWP pathClear c w (fun _ v => Book B c v ∧ HtInv B c v ∧ Kept w v ∧
+theorem ht_pathClear (c : Ctx) (w : W) (hvo : ViewHtOK H B c) (hb : Book B c w)
+    (hi : HtInv H B c w) :
+    WriterWP pathClear c w (fun _ v => Book B c v ∧ HtInv H B c v ∧ Kept w v ∧
       v.path = [] ∧ v.taken = w.taken) := by
   refine writerWP_mono (writerWP_and (book_pathClear B c w hvo.ids hb)
     (?_ : WriterWP pathClear c w (fun _ v => v.nodes = w.nodes ∧ v.gh = w.gh ∧
@@ -217,9 +217,9 @@ theorem ht_pathClear (c : Ctx) (w : W) (hvo : ViewHtOK B c) (hb : Book B c w)
     exact ⟨hb', hi.clear v hn hg hp ht htop, hk', hp, ht⟩
 
 /-- The space root starts an empty key access path. -/
-theorem ht_findRoot (c : Ctx) (w : W) (hvo : ViewHtOK B c) (hb : Book B c w)
-    (hi : HtInv B c w) (hp0 : w.path = []) :
-    WriterWP findRoot c w (fun r v => Book B c v ∧ HtInv B c v ∧ Kept w v ∧
+theorem ht_findRoot (c : Ctx) (w : W) (hvo : ViewHtOK H B c) (hb : Book B c w)
+    (hi : HtInv H B c w) (hp0 : w.path = []) :
+    WriterWP findRoot c w (fun r v => Book B c v ∧ HtInv H B c v ∧ Kept w v ∧
       v.path = [(none, r)] ∧ v.taken = w.taken) := by
   refine writerWP_mono (writerWP_and (book_findRoot B c w hvo.ids hb)
     (?_ : WriterWP findRoot c w (fun r v => v.nodes = w.nodes ∧ v.gh = w.gh ∧
@@ -228,7 +228,7 @@ theorem ht_findRoot (c : Ctx) (w : W) (hvo : ViewHtOK B c) (hb : Book B c w)
   · simp only [findRoot, pathAdd, writerWP_bind, writerWP_get, writerWP_modify, writerWP_pure]
     simp [hp0]
   · rintro r v ⟨⟨hb', hk'⟩, hn, hg, hp, ht, htop, hr⟩
-    have h0 : HtInv B c { w with path := [(none, r)] } := by
+    have h0 : HtInv H B c { w with path := [(none, r)] } := by
       refine ⟨hi.cache.congr rfl rfl rfl, ?_, ?_, ?_, hi.rootFree, hi.takenAbove, ?_⟩
       · intro d a q cv y h1 h2
         have := (List.getElem?_eq_some_iff.mp h2).1
@@ -250,11 +250,11 @@ theorem ht_findRoot (c : Ctx) (w : W) (hvo : ViewHtOK B c) (hb : Book B c w)
 
 /-- A node added to the key access path after its last node q, by a live klong
 of q, with q's overlay node n. -/
-theorem ht_pathAdd (cv : Nat) (y : NodeId) (c : Ctx) (w : W) (hvo : ViewHtOK B c)
-    (hb : Book B c w) (hi : HtInv B c w) (a : Option Nat) (q : NodeId) (n : KNode)
+theorem ht_pathAdd (cv : Nat) (y : NodeId) (c : Ctx) (w : W) (hvo : ViewHtOK H B c)
+    (hb : Book B c w) (hi : HtInv H B c w) (a : Option Nat) (q : NodeId) (n : KNode)
     (hlast : w.path.getLast? = some (a, q)) (hq : w.nodes.lookup q = some n) (c0 : Nat)
     (hlive : (c0, y) ∈ n.live) :
-    WriterWP (pathAdd (some cv) y) c w (fun _ v => Book B c v ∧ HtInv B c v ∧ Kept w v ∧
+    WriterWP (pathAdd (some cv) y) c w (fun _ v => Book B c v ∧ HtInv H B c v ∧ Kept w v ∧
       v.path = w.path ++ [(some cv, y)] ∧ v.taken = w.taken) := by
   have hqf : w.taken.contains q = false := by
     have hL : w.path ≠ [] := by intro h; rw [h] at hlast; simp at hlast
@@ -263,7 +263,7 @@ theorem ht_pathAdd (cv : Nat) (y : NodeId) (c : Ctx) (w : W) (hvo : ViewHtOK B c
   obtain ⟨g0, h0, hm0⟩ := kd_tag_of_lookup hb hq
   have hN := hi.cache q n g0 h0 (bk_mem_of_lookup _ _ _ hq) hm0 hqf
   refine writerWP_mono (writerWP_and (book_pathAdd B (some cv) y c w hvo.ids hb)
-    (?_ : WriterWP (pathAdd (some cv) y) c w (fun _ v => HtInv B c v ∧
+    (?_ : WriterWP (pathAdd (some cv) y) c w (fun _ v => HtInv H B c v ∧
       v.path = w.path ++ [(some cv, y)] ∧ v.taken = w.taken))) ?_
   · simp only [pathAdd, writerWP_modify]
     refine ⟨HtInv.add hi cv y (hN.1 c0 y hlive).1 ?_ _ rfl rfl rfl rfl rfl, by trivial, by trivial⟩

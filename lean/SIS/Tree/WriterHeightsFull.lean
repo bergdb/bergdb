@@ -11,30 +11,32 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
+variable {H : NodeId → Nat → Prop}
+
 /-! ## The steps with `HtLe` -/
 
 section Wrap
 
 variable (B : NodeId)
 
-theorem hw_getNode (x : NodeId) (c : Ctx) (w : W) (hvo : ViewHtOK B c) (hb : Book B c w)
-    (hi : HtInv B c w) :
-    WriterWP (getNode x) c w (fun n v => Book B c v ∧ HtInv B c v ∧ HtLe w v ∧
+theorem hw_getNode (x : NodeId) (c : Ctx) (w : W) (hvo : ViewHtOK H B c) (hb : Book B c w)
+    (hi : HtInv H B c w) :
+    WriterWP (getNode x) c w (fun n v => Book B c v ∧ HtInv H B c v ∧ HtLe w v ∧
       v.nodes.lookup x = some n ∧ v.path = w.path) :=
   writerWP_mono (ht_getNode B x c w hvo hb hi)
     (fun _ _ h => ⟨h.1, h.2.1, ⟨h.2.2.1, h.2.2.2.2.2⟩, h.2.2.2.1, h.2.2.2.2.1⟩)
 
-theorem hw_ghOf (x : NodeId) (c : Ctx) (w : W) (hvo : ViewHtOK B c) (hb : Book B c w)
-    (hi : HtInv B c w) :
-    WriterWP (ghOf x) c w (fun r v => Book B c v ∧ HtInv B c v ∧ HtLe w v ∧
+theorem hw_ghOf (x : NodeId) (c : Ctx) (w : W) (hvo : ViewHtOK H B c) (hb : Book B c w)
+    (hi : HtInv H B c w) :
+    WriterWP (ghOf x) c w (fun r v => Book B c v ∧ HtInv H B c v ∧ HtLe w v ∧
       v.path = w.path ∧ (x, r.1, r.2) ∈ v.gh ∧
       ∃ n, v.nodes.lookup x = some n ∧ n.leaf = (r.2 == 0)) :=
   writerWP_mono (ht_ghOf B x c w hvo hb hi)
     (fun _ _ h => ⟨h.1, h.2.1, ⟨h.2.2.1, h.2.2.2.2.1⟩, h.2.2.2.1, h.2.2.2.2.2⟩)
 
-theorem hw_keeps {α : Type} {f : M α} (hf : HtKeeps B f) (c : Ctx) (w : W)
-    (hvo : ViewHtOK B c) (hb : Book B c w) (hi : HtInv B c w) :
-    WriterWP f c w (fun _ v => Book B c v ∧ HtInv B c v ∧ HtLe w v ∧ v.path = w.path) :=
+theorem hw_keeps {α : Type} {f : M α} (hf : HtKeeps B H f) (c : Ctx) (w : W)
+    (hvo : ViewHtOK H B c) (hb : Book B c w) (hi : HtInv H B c w) :
+    WriterWP f c w (fun _ v => Book B c v ∧ HtInv H B c v ∧ HtLe w v ∧ v.path = w.path) :=
   writerWP_mono (hf c w hvo hb hi)
     (fun _ _ h => ⟨h.1, h.2.1, ⟨h.2.2.1, h.2.2.2.2⟩, h.2.2.2.1⟩)
 
@@ -47,9 +49,9 @@ theorem ht_free_of_fresh {c : Ctx} {w : W} (hb : Book B c w) {x : NodeId}
     exact absurd this hx
 
 theorem hw_newKey (g h : Nat) (leaf : Bool) (ks : List Klong) (c : Ctx) (w : W)
-    (hb : Book B c w) (hi : HtInv B c w) (hleaf : leaf = (h == 0))
-    (hks : NodeHt c w h ⟨leaf, ks⟩) :
-    WriterWP (newKey g h leaf ks) c w (fun x v => Book B c v ∧ HtInv B c v ∧ HtLe w v ∧
+    (hb : Book B c w) (hi : HtInv H B c w) (hleaf : leaf = (h == 0))
+    (hks : NodeHt c H w h ⟨leaf, ks⟩) :
+    WriterWP (newKey g h leaf ks) c w (fun x v => Book B c v ∧ HtInv H B c v ∧ HtLe w v ∧
       v.path = w.path ∧ v.nodes.lookup x = some ⟨leaf, ks⟩ ∧ (x, g, h) ∈ v.gh ∧
       v.taken.contains x = false ∧ x ∉ w.gh.map (·.1)) :=
   writerWP_mono (ht_newKey B g h leaf ks c w hb hi hleaf hks)
@@ -57,9 +59,9 @@ theorem hw_newKey (g h : Nat) (leaf : Bool) (ks : List Klong) (c : Ctx) (w : W)
       hh.2.2.2.2.2.2.1, by rw [hh.2.2.2.2.1]; exact ht_free_of_fresh B hb hh.2.2.2.2.2.2.2.2,
       hh.2.2.2.2.2.2.2.2⟩)
 
-theorem hw_newSuperRoot (y : NodeId) (c : Ctx) (w : W) (hvo : ViewHtOK B c) (hb : Book B c w)
-    (hi : HtInv B c w) (hy : w.taken.contains y = false) :
-    WriterWP (newSuperRoot y) c w (fun _ v => Book B c v ∧ HtInv B c v ∧ HtLe w v ∧
+theorem hw_newSuperRoot (y : NodeId) (c : Ctx) (w : W) (hvo : ViewHtOK H B c) (hb : Book B c w)
+    (hi : HtInv H B c w) (hy : w.taken.contains y = false) :
+    WriterWP (newSuperRoot y) c w (fun _ v => Book B c v ∧ HtInv H B c v ∧ HtLe w v ∧
       v.path = w.path) :=
   writerWP_mono (ht_newSuperRoot B y c w hvo hb hi hy)
     (fun _ _ h => ⟨h.1, h.2.1, ⟨h.2.2.1, h.2.2.2.2⟩, h.2.2.2.1⟩)
@@ -68,8 +70,8 @@ theorem hw_counter (c : Ctx) (w : W) (f : W → W) (post : Unit → W → Prop)
     (hn : (f w).nodes = w.nodes) (hg : (f w).gh = w.gh) (hp : (f w).path = w.path)
     (ht : (f w).taken = w.taken) (htop : (f w).top.rootKey = w.top.rootKey)
     (hbk : ∀ {c : Ctx} {w : W}, Book B c w → Book B c (f w)) (hb : Book B c w)
-    (hi : HtInv B c w)
-    (hq : ∀ v, Book B c v → HtInv B c v → HtLe w v → v.path = w.path → post () v) :
+    (hi : HtInv H B c w)
+    (hq : ∀ v, Book B c v → HtInv H B c v → HtLe w v → v.path = w.path → post () v) :
     WriterWP (modify f) c w post :=
   ht_counter B c w f post hn hg hp ht htop hbk hb hi
     (fun v h1 h2 h3 h4 h5 => hq v h1 h2 ⟨h3, h5⟩ h4)
@@ -80,20 +82,20 @@ theorem ht_free_le {w v : W} {y : NodeId} (h : w.taken.contains y = false) (hle 
     v.taken.contains y = false := by rw [hle.2]; exact h
 
 theorem ht_P_mk {c : Ctx} {v : W} {y : NodeId} {g h cv : Nat}
-    (hy : v.taken.contains y = false) (hm : (y, g, h) ∈ v.gh) : HtP c v (h + 1) cv y :=
+    (hy : v.taken.contains y = false) (hm : (y, g, h) ∈ v.gh) : HtP c H v (h + 1) cv y :=
   ⟨hy, fun _ => Or.inl ⟨g, by simpa using hm⟩⟩
 
 /-- A pair for a parent of height hq, one above h, or a segment leaf. -/
 theorem ht_P_par {c : Ctx} {v : W} {y : NodeId} {g h hq cv : Nat} (hqh : hq ≠ 0 → hq = h + 1)
-    (hy : v.taken.contains y = false) (hm : (y, g, h) ∈ v.gh) : HtP c v hq cv y := by
+    (hy : v.taken.contains y = false) (hm : (y, g, h) ∈ v.gh) : HtP c H v hq cv y := by
   refine ⟨hy, fun h0 => ?_⟩
   rw [hqh h0]
   exact Or.inl ⟨g, by simpa using hm⟩
 
 /-- A node of the overlay read at an earlier state meets `NodeHt` for its height. -/
 theorem ht_cache_at {B : NodeId} {c : Ctx} {vr v : W} {x : NodeId} {n : KNode} {g h : Nat}
-    (hl : vr.nodes.lookup x = some n) (hi : HtInv B c vr) (hm : (x, g, h) ∈ vr.gh)
-    (hf : vr.taken.contains x = false) (hk : HtLe vr v) : NodeHt c v h n :=
+    (hl : vr.nodes.lookup x = some n) (hi : HtInv H B c vr) (hm : (x, g, h) ∈ vr.gh)
+    (hf : vr.taken.contains x = false) (hk : HtLe vr v) : NodeHt c H v h n :=
   (hi.cache x n g h (bk_mem_of_lookup _ _ _ hl) hm hf).htMono hk
 
 /-- The key klongs of a node's last version are its live klongs. -/
@@ -113,8 +115,8 @@ theorem ht_mem_live_of_key {n : KNode} {cv : Nat} {y : NodeId}
 
 /-- A node's last version has the klongs of the right height of a node that
 meets `NodeHt`. -/
-theorem htKs_lastVersion {c : Ctx} {w : W} {h : Nat} {n : KNode} (hn : NodeHt c w h n) (t : Time) :
-    kdKs (HtP c w h) (n.lastVersion t).ks := by
+theorem htKs_lastVersion {c : Ctx} {w : W} {h : Nat} {n : KNode} (hn : NodeHt c H w h n) (t : Time) :
+    kdKs (HtP c H w h) (n.lastVersion t).ks := by
   intro cv y hm
   exact hn.1 cv y (ht_mem_live_of_key (ht_lastVersion_key hm))
 
@@ -150,7 +152,7 @@ macro "htState" : tactic => `(tactic| first
 
 macro "htNode" : tactic => `(tactic| (
   (with_unfolding_none guard_target = WriterWP (getNode _) _ _ _)
-  (refine writerWP_mono (hw_getNode ?htB _ _ _ ?htView ?htBook ?htInv) ?htPost)
+  (refine writerWP_mono (hw_getNode (H := ?htO) ?htB _ _ _ ?htView ?htBook ?htInv) ?htPost)
   case htView => assumption
   case htBook => htState
   case htInv => assumption
@@ -158,7 +160,7 @@ macro "htNode" : tactic => `(tactic| (
 
 macro "htGh" : tactic => `(tactic| (
   (with_unfolding_none guard_target = WriterWP (ghOf _) _ _ _)
-  (refine writerWP_mono (hw_ghOf ?htB _ _ _ ?htView ?htBook ?htInv) ?htPost)
+  (refine writerWP_mono (hw_ghOf (H := ?htO) ?htB _ _ _ ?htView ?htBook ?htInv) ?htPost)
   case htView => assumption
   case htBook => htState
   case htInv => assumption
@@ -180,46 +182,46 @@ macro "htRead" : tactic => `(tactic| first
 
 macro "htCnt" : tactic => `(tactic| (
   (with_unfolding_none guard_target = WriterWP (modify _) _ _ _)
-  (refine hw_counter ?htB _ _ _ _ rfl rfl rfl rfl rfl ?htBk ?htBook ?htInv ?htPost)
+  (refine hw_counter (H := ?htO) ?htB _ _ _ _ rfl rfl rfl rfl rfl ?htBk ?htBook ?htInv ?htPost)
   case htBk => intro _ _ hbk; first | exact book_spaceSplits hbk _ | exact book_merges hbk _
   case htBook => htState
   case htInv => assumption
   intro _ _ _ _ _))
 
 macro "htUse " h:term : tactic => `(tactic| (
-  (with_unfolding_none refine writerWP_mono (hw_keeps ?htB $h _ _ ?htView ?htBook ?htInv) ?htPost)
+  (with_unfolding_none refine writerWP_mono (hw_keeps (H := ?htO) ?htB $h _ _ ?htView ?htBook ?htInv) ?htPost)
   case htView => assumption
   case htBook => htState
   case htInv => assumption
   rintro _ _ ⟨_, _, _, _⟩))
 
 macro "htDone" : tactic => `(tactic| (
-  (with_unfolding_none guard_target = Book _ _ _ ∧ HtInv _ _ _ ∧ HtLe _ _ ∧ _)
+  (with_unfolding_none guard_target = Book _ _ _ ∧ HtInv _ _ _ _ ∧ HtLe _ _ ∧ _)
   refine ⟨by htState, by assumption, by htChain, by htPathEq⟩))
 
 /-- Klongs of the right height for a node's entry. -/
 syntax "htNodeTac" : tactic
 macro_rules
   | `(tactic| htNodeTac) => `(tactic| first
-    | ((with_unfolding_none guard_target = NodeHt _ _ _ ⟨_, []⟩)
+    | ((with_unfolding_none guard_target = NodeHt _ _ _ _ ⟨_, []⟩)
        exact nodeHt_nil _ _ _ _)
-    | ((with_unfolding_none guard_target = NodeHt _ _ _ (halves _ _ _ _).1)
+    | ((with_unfolding_none guard_target = NodeHt _ _ _ _ (halves _ _ _ _).1)
        exact (nodeHt_halves (by assumption) _ _ _ (htKs_mono (by assumption) (by htChain))
         (htPairs_mono (by assumption) (by htChain)) (by assumption)).1)
-    | ((with_unfolding_none guard_target = NodeHt _ _ _ (halves _ _ _ _).2.1)
+    | ((with_unfolding_none guard_target = NodeHt _ _ _ _ (halves _ _ _ _).2.1)
        exact (nodeHt_halves (by assumption) _ _ _ (htKs_mono (by assumption) (by htChain))
         (htPairs_mono (by assumption) (by htChain)) (by assumption)).2)
-    | ((with_unfolding_none guard_target = NodeHt _ _ _ ⟨false, [.time _, .key 0 _, .key _ _]⟩)
+    | ((with_unfolding_none guard_target = NodeHt _ _ _ _ ⟨false, [.time _, .key 0 _, .key _ _]⟩)
        exact nodeHt_root (by assumption) _ (ht_P_mk (by htFree) (by htTag))
         (ht_P_mk (by htFree) (by htTag)))
-    | ((with_unfolding_none guard_target = NodeHt _ _ _ (KNode.toPrev _ _))
+    | ((with_unfolding_none guard_target = NodeHt _ _ _ _ (KNode.toPrev _ _))
        exact nodeHt_toPrev (ht_cache_at (by assumption) (by assumption) (by htTag) (by htFree)
         (by htChain)))
     | exact nodeHt_flat (by assumption) (by assumption) (htKs_mono (by assumption) (by htChain)))
 
 macro "htStore" : tactic => `(tactic| (
   (with_unfolding_none guard_target = WriterWP (putNode _ _) _ _ _)
-  (refine writerWP_mono (ht_putNode_of ?htB _ _ _ ?htVr ?htVt _ ?htN ?htBook ?htInv ?htLook ?htKr ?htLeaf ?htG ?htH ?htTagM ?htKt ?htKs) ?htPost)
+  (refine writerWP_mono (ht_putNode_of (H := ?htO) ?htB _ _ _ ?htVr ?htVt _ ?htN ?htBook ?htInv ?htLook ?htKr ?htLeaf ?htG ?htH ?htTagM ?htKt ?htKs) ?htPost)
   case htBook => htState
   case htInv => assumption
   case htLook => assumption
@@ -232,7 +234,7 @@ macro "htStore" : tactic => `(tactic| (
 
 macro "htCreate" : tactic => `(tactic| (
   (with_unfolding_none guard_target = WriterWP (newKey _ _ _ _) _ _ _)
-  (refine writerWP_mono (hw_newKey ?htB _ _ _ _ _ _ ?htBook ?htInv ?htH ?htKs) ?htPost)
+  (refine writerWP_mono (hw_newKey (H := ?htO) ?htB _ _ _ _ _ _ ?htBook ?htInv ?htH ?htKs) ?htPost)
   case htBook => htState
   case htInv => assumption
   case htH => kdHeight
@@ -241,7 +243,7 @@ macro "htCreate" : tactic => `(tactic| (
 
 macro "htSuper" : tactic => `(tactic| (
   (with_unfolding_none guard_target = WriterWP (newSuperRoot _) _ _ _)
-  (refine writerWP_mono (hw_newSuperRoot ?htB _ _ _ ?htView ?htBook ?htInv ?htY) ?htPost)
+  (refine writerWP_mono (hw_newSuperRoot (H := ?htO) ?htB _ _ _ ?htView ?htBook ?htInv ?htY) ?htPost)
   case htView => assumption
   case htBook => htState
   case htInv => assumption
@@ -263,7 +265,7 @@ macro "htCore" : tactic => `(tactic| first
   | exact writerWP_throw _ _ _ _)
 
 theorem ht_P_zero {c : Ctx} {v : W} {y : NodeId} {hq cv : Nat}
-    (hy : v.taken.contains y = false) (h0 : hq = 0) : HtP c v hq cv y :=
+    (hy : v.taken.contains y = false) (h0 : hq = 0) : HtP c H v hq cv y :=
   ⟨hy, fun h' => absurd h0 h'⟩
 
 theorem ht_hq_zero {B : NodeId} {c : Ctx} {vr : W} {q : NodeId} {pn : KNode} {gq hq : Nat}
@@ -281,11 +283,11 @@ theorem ht_ptr_mem' {n : KNode} {i : Nat} {y : NodeId} (h : n.ptr? i = some y) :
 /-- What `appendKlongs` one level up does for `handleFullWith`: for the parent
 q, the path's node at depth d, and klongs of the right height for it, it keeps
 the state and the path. -/
-def HtUp (B : NodeId) (up : NodeId → List (Nat × NodeId) → M Unit) (d : Nat) : Prop :=
-  ∀ q more c w, ViewHtOK B c → 0 < c.i → Book B c w → HtInv B c w →
+def HtUp (H : NodeId → Nat → Prop) (B : NodeId) (up : NodeId → List (Nat × NodeId) → M Unit) (d : Nat) : Prop :=
+  ∀ q more c w, ViewHtOK H B c → 0 < c.i → Book B c w → HtInv H B c w →
     (∃ a, w.path[d]? = some (a, q)) →
-    (∃ g h, (q, g, h) ∈ w.gh ∧ kdPairs (HtP c w h) more) →
-    WriterWP (up q more) c w (fun _ v => Book B c v ∧ HtInv B c v ∧ HtLe w v ∧ v.path = w.path)
+    (∃ g h, (q, g, h) ∈ w.gh ∧ kdPairs (HtP c H w h) more) →
+    WriterWP (up q more) c w (fun _ v => Book B c v ∧ HtInv H B c v ∧ HtLe w v ∧ v.path = w.path)
 
 macro "htK1 " hpx:term:max hak:term:max : tactic => `(tactic| (
   (with_unfolding_none guard_target = WriterWP (klongAt _) _ _ _)
@@ -324,7 +326,7 @@ macro "htUpZ " hup:term:max hpe:term:max hqm:term:max hq0:term:max : tactic => `
 /-- The store of the segment leaf's klong of x pointed to x's replacement. -/
 macro "htStoreRep " hqm:term:max hq0:term:max : tactic => `(tactic| (
   (with_unfolding_none guard_target = WriterWP (putNode _ (KNode.repoint _ _ _)) _ _ _)
-  (refine writerWP_mono (ht_putNode_of ?htB _ _ _ ?htVr _ _ ?htN ?htBook ?htInv ?htLook ?htKr ?htLeaf _ _ $hqm ?htKt ?htKs) ?htPost)
+  (refine writerWP_mono (ht_putNode_of (H := ?htO) ?htB _ _ _ ?htVr _ _ ?htN ?htBook ?htInv ?htLook ?htKr ?htLeaf _ _ $hqm ?htKt ?htKs) ?htPost)
   case htBook => htState
   case htInv => assumption
   case htLook => assumption
@@ -356,13 +358,13 @@ set_option maxRecDepth 20000 in
 depth and a last version and klongs of the right height for x. -/
 theorem ht_handleFullWith (B : NodeId) (up : NodeId → List (Nat × NodeId) → M Unit)
     (depth : Nat) (x : NodeId) (ins : List (Nat × NodeId)) (last : KNode) (compact : Bool)
-    (c : Ctx) (w : W) (hvo : ViewHtOK B c) (hpos : 0 < c.i) (hb : Book B c w)
-    (hi : HtInv B c w) (g h : Nat) (hx : (x, g, h) ∈ w.gh) (a : Option Nat)
+    (c : Ctx) (w : W) (hvo : ViewHtOK H B c) (hpos : 0 < c.i) (hb : Book B c w)
+    (hi : HtInv H B c w) (g h : Nat) (hx : (x, g, h) ∈ w.gh) (a : Option Nat)
     (hpx : w.path[depth]? = some (a, x)) (hflat : FlatAt c.i last.ks)
-    (hlast : kdKs (HtP c w h) last.ks) (hins : kdPairs (HtP c w h) ins)
-    (hup : ∀ e, depth = e + 1 → HtUp B up e) :
+    (hlast : kdKs (HtP c H w h) last.ks) (hins : kdPairs (HtP c H w h) ins)
+    (hup : ∀ e, depth = e + 1 → HtUp H B up e) :
     WriterWP (handleFullWith up depth x ins last compact) c w
-      (fun _ v => Book B c v ∧ HtInv B c v ∧ HtLe w v ∧ v.path = w.path) := by
+      (fun _ v => Book B c v ∧ HtInv H B c v ∧ HtLe w v ∧ v.path = w.path) := by
   have hxf : w.taken.contains x = false := hi.pathFree depth a x hpx
   unfold handleFullWith
   simp only [writerWP_bind, writerWP_read]
@@ -404,7 +406,7 @@ theorem ht_handleFullWith (B : NodeId) (up : NodeId → List (Nat × NodeId) →
     have hqh : hq ≠ 0 → hq = h + 1 := by
       intro h0
       have hh := hi.path e a' q' k x hpe0 (by rw [hpx, hak]) gq hq hqm hqf h0
-      have := hasHt_tag hb hvo.ids hx hh
+      have := hasHt_tag hb hvo.heights hx hh
       omega
     have hup' := hup e rfl
     clear hup
@@ -434,11 +436,11 @@ theorem ht_handleFullWith (B : NodeId) (up : NodeId → List (Nat × NodeId) →
 /-! ## `appendKlongs` -/
 
 theorem ht_addKeys (B : NodeId) (x : NodeId) (ins : List (Nat × NodeId))
-    (c : Ctx) (w : W) (hvo : ViewHtOK B c) (hpos : 0 < c.i) (hb : Book B c w)
-    (hi : HtInv B c w) (g h : Nat) (hx : (x, g, h) ∈ w.gh) (hxf : w.taken.contains x = false)
-    (hins : kdPairs (HtP c w h) ins) :
+    (c : Ctx) (w : W) (hvo : ViewHtOK H B c) (hpos : 0 < c.i) (hb : Book B c w)
+    (hi : HtInv H B c w) (g h : Nat) (hx : (x, g, h) ∈ w.gh) (hxf : w.taken.contains x = false)
+    (hins : kdPairs (HtP c H w h) ins) :
     WriterWP (addKeys x ins) c w
-      (fun _ v => Book B c v ∧ HtInv B c v ∧ HtLe w v ∧ v.path = w.path) := by
+      (fun _ v => Book B c v ∧ HtInv H B c v ∧ HtLe w v ∧ v.path = w.path) := by
   unfold addKeys
   htSimp
   refine writerWP_mono (hw_getNode B x c w hvo hb hi) ?_
@@ -454,12 +456,12 @@ theorem ht_addKeys (B : NodeId) (x : NodeId) (ins : List (Nat × NodeId))
 /-- `appendKlongs` at x, the path's node at `depth`, with klongs of the right
 height for x. -/
 theorem ht_appendKlongs (B : NodeId) (depth : Nat) :
-    ∀ (x : NodeId) (ins : List (Nat × NodeId)) (c : Ctx) (w : W), ViewHtOK B c → 0 < c.i →
-      Book B c w → HtInv B c w →
-      (∃ g h, (x, g, h) ∈ w.gh ∧ kdPairs (HtP c w h) ins) →
+    ∀ (x : NodeId) (ins : List (Nat × NodeId)) (c : Ctx) (w : W), ViewHtOK H B c → 0 < c.i →
+      Book B c w → HtInv H B c w →
+      (∃ g h, (x, g, h) ∈ w.gh ∧ kdPairs (HtP c H w h) ins) →
       (∃ a, w.path[depth]? = some (a, x)) →
       WriterWP (appendKlongs depth x ins) c w
-        (fun _ v => Book B c v ∧ HtInv B c v ∧ HtLe w v ∧ v.path = w.path) := by
+        (fun _ v => Book B c v ∧ HtInv H B c v ∧ HtLe w v ∧ v.path = w.path) := by
   induction depth with
   | zero =>
     intro x ins c w hvo hpos hb hi ⟨g, h, hx, hins⟩ ⟨a, hpx⟩
@@ -474,7 +476,7 @@ theorem ht_appendKlongs (B : NodeId) (depth : Nat) :
     have hpx1 : w1.path[0]? = some (a, x) := by rw [hp1]; exact hpx
     have hfin : ∀ cp, WriterWP (handleFullWith (fun _ _ => throw "corrupt: a split's parent above depth 0")
         0 x ins (n.lastVersion c.i) cp) c w1
-        (fun _ v => Book B c v ∧ HtInv B c v ∧ HtLe w v ∧ v.path = w.path) := by
+        (fun _ v => Book B c v ∧ HtInv H B c v ∧ HtLe w v ∧ v.path = w.path) := by
       intro cp
       refine writerWP_mono (ht_handleFullWith B _ 0 x ins _ cp c w1 hvo hpos hb1 hi1 g h hx1 a hpx1
         (KNode.lastVersion_flatAt n c.i) hlv (htPairs_mono hins hle1) (fun e he => by cases he)) ?_
@@ -499,14 +501,14 @@ theorem ht_appendKlongs (B : NodeId) (depth : Nat) :
     have hN := ht_cache_at hl1 hi1 hx1 (ht_free_le hxf hle1) (HtLe.refl _)
     have hlv := htKs_lastVersion hN c.i
     have hpx1 : w1.path[d + 1]? = some (a, x) := by rw [hp1]; exact hpx
-    have hup : ∀ e, d + 1 = e + 1 → HtUp B (fun q more => appendKlongs d q more) e := by
+    have hup : ∀ e, d + 1 = e + 1 → HtUp H B (fun q more => appendKlongs d q more) e := by
       intro e he
       cases he
       intro q more c' w' hvo' hpos' hb' hi' hpq hmore
       exact ih q more c' w' hvo' hpos' hb' hi' hmore hpq
     have hfin : ∀ cp, WriterWP (handleFullWith (fun q more => appendKlongs d q more)
         (d + 1) x ins (n.lastVersion c.i) cp) c w1
-        (fun _ v => Book B c v ∧ HtInv B c v ∧ HtLe w v ∧ v.path = w.path) := by
+        (fun _ v => Book B c v ∧ HtInv H B c v ∧ HtLe w v ∧ v.path = w.path) := by
       intro cp
       refine writerWP_mono (ht_handleFullWith B _ (d + 1) x ins _ cp c w1 hvo hpos hb1 hi1 g h hx1 a
         hpx1 (KNode.lastVersion_flatAt n c.i) hlv (htPairs_mono hins hle1) hup) ?_

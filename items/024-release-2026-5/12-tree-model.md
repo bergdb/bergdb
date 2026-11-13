@@ -1508,6 +1508,42 @@ and its status:
 
     That is 4000 to 6000 lines in all, more than one night. (A) comes
     first.
+
+    Step 4 (A), state (cost, 23:10). It is also TP7's open (b), at the
+    coordinator's direction, so that one proof serves both.
+    - The invariant (`OverlayHeights.lean`): `HasHt H w y h`, y's height
+      from the writer's books (`gh`) or from an oracle H of P's key nodes,
+      as the kinds' walk has K. `NodeHt c H w h n`: n's live klongs, now
+      and before the transaction (`toPrev`), name nodes not taken back,
+      for an inner node nodes one height below; n has no time after the
+      transaction's. `HtCache`: every overlay node not taken back meets
+      it.
+    - The bridge to step 4: `segDepthEq_of_hasHt`, a key node of height
+      h has its segment tree balanced and of depth h (`SegDepthEq`);
+      `segFits_of_heights` and `segBal_of_heights`: SegFits and SegBal
+      from the heights of the nodes reached.
+    - The walk (`WriterHeightsRules/Steps/Split/Full/Put.lean`), on the
+      books: `HtInv` (HtCache, the path's heights, the path's nodes and
+      the space root not taken back, taken ids at or above the
+      transaction's first id). Every primitive step keeps it, so do a
+      full node's replacement with its cascade (`ht_handleFullWith`,
+      `ht_appendKlongs`) and a put (`ht_putKv_put`, with tp7's
+      `AppendFrameOK` as the kinds' walk takes it).
+    - The run (`HeightsStep.lean`): `HeightAllOK`, every inner key node
+      of P has its live children that are nodes of P one height below
+      it (stronger than TP7's `HeightLiveOK`, `heightLiveOK_of_all`).
+      `heightAllOK_step`: a transaction keeps it when the walk ends with
+      `HtCache` (tp7's `apply_keyNode`). `heightAllOK_init`. The walk's
+      premises at a transaction's start (`viewHeights_of`) and the
+      reading's (`baseHeights_of`) come from `HeightAllOK`,
+      `PointersOK` and `KindsAllOK`.
+    - Left: the delete side of the walk. Its three take-back sites
+      (`takeBack` in the upward delete's loop, `takeBackRoot`, the
+      merge's) take a node back while the path still holds it, and
+      need TP4's holder fact: no live klong of a kept node names the
+      node taken back. That is step 2 of tp7's plan; the delete side
+      will take it as a named premise at the three sites. Then the run
+      induction (as tp7's open (a) for the kinds), (B) and (C).
   - (5) `DelNoLeafCase`, a delete of a key with no leaf: proved,
     `opGetCaseOK_delNoLeaf`. It changes no reading: the writer's walk
     stops at the first segment that is not there and only reads
