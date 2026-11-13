@@ -5,6 +5,7 @@ choice the largest below (`mergeIdx_right_min`, `mergeIdx_left_max`), so no
 live klong of the parent lies between the two klongs that the merge joins.
 -/
 import SIS.Tree.WriterGetMerge
+import SIS.Tree.PutInvRange
 
 set_option autoImplicit false
 
@@ -273,5 +274,47 @@ theorem mergeIdx_left_max (n : KNode) (cx : Nat) (ib : Nat) (cb : Nat)
   rw [KNode.live_lookup] at hlk
   obtain ⟨j, hj, hjd⟩ := keyLookup_some_kept n.lastBitmap c z n.ks hlk
   exact (mergeMinMaxOK_fold n.lastBitmap cx n.ks).2.1 ib cb h j c z hj hjd hc
+
+/-! ## The siblings' ranges, from the walk's ranges (putinv's `RangeOrder`) -/
+
+/-- A child x of a reached inner node p by klong k: its compare values but the
+empty key of an inner node lie above k (at or above, in a leaf), when k is not
+the empty key, and below every live compare value of p above k. -/
+theorem mrg_child_range (N : NodeId → Option KNode) (t : Time) (r : NodeId)
+    (hR : RangeOrder N t r)
+    (p : NodeId) (pn : KNode) (hp : ReachS N t r p) (hpn : N p = some pn) (hpl : pn.leaf = false)
+    (k : Nat) (x : NodeId) (xn : KNode) (hk : (k, x) ∈ pn.liveAt t) (hxn : N x = some xn) :
+    (∀ c z, (c, z) ∈ xn.liveAt t → (xn.leaf = true → 0 < k → k ≤ c) ∧
+      (xn.leaf = false → c = 0 ∨ (0 < k → k < c))) ∧
+    (∀ c'' z'', (c'', z'') ∈ pn.liveAt t → k < c'' → ∀ c z, (c, z) ∈ xn.liveAt t → c < c'') := by
+  obtain ⟨lo, hi, hpr⟩ := reachR_of_reachS N t r p hp
+  obtain ⟨b, hb⟩ := childBounds_exists (pn.liveAt t) hi (k, x) hk
+  have hxr := ReachR.inner p pn lo hi k x b hpr hpn hpl hb
+  have hrange := hR x _ b xn hxr hxn
+  have hsorted := KNode.liveAt_order pn t
+  refine ⟨?_, ?_⟩
+  · intro c z hz
+    obtain ⟨hlow, _⟩ := hrange (c, z) hz
+    refine ⟨fun hl hk0 => ?_, fun hl => ?_⟩
+    · simp only [hl, ↓reduceIte] at hlow
+      have : (k == 0) = false := by simpa using (by omega : k ≠ 0)
+      simp only [this, Bool.false_eq_true, ↓reduceIte] at hlow
+      exact hlow
+    · simp only [hl, Bool.false_eq_true, ↓reduceIte] at hlow
+      rcases hlow with h | h
+      · exact Or.inl h
+      · right
+        intro hk0
+        have : (k == 0) = false := by simpa using (by omega : k ≠ 0)
+        simp only [this, Bool.false_eq_true, ↓reduceIte] at h
+        exact h
+  · intro c'' z'' hz'' hlt c z hz
+    obtain ⟨_, hhigh⟩ := hrange (c, z) hz
+    obtain ⟨upper, hub, hle⟩ := childBounds_next_le (pn.liveAt t) hi hsorted (k, x) b hb
+      (c'', z'') hz'' hlt
+    rw [hub] at hhigh
+    simp only [UpperBound] at hhigh
+    simp only at hle
+    omega
 
 end SIS.Tree
