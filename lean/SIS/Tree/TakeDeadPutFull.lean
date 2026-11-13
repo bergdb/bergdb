@@ -1,7 +1,7 @@
 /-
 Case (2) of the take-back, a put into a full leaf (bergdb 024-12, TP7): latest's
-`writerWP_put_accessPathR` with the cascade by `writerWP_appendKlongs_j2`, given
-`ChainExtraOK` (asked of latest's shape lemma).
+`writerWP_put_accessPathR` with the cascade by `writerWP_appendKlongs_j2`; the
+chain's nodes stay cached by `chainExtraOK`.
 -/
 import SIS.Tree.TakeDeadChain
 import SIS.Tree.GetPutPath
@@ -44,9 +44,9 @@ theorem writerWP_put_full_j2 (c : Ctx) (base : View BVal) (hvc : ViewCoherent c 
     (hJ : TakeJ2 c base B w) (hBn : B ≤ w.next)
     (hLV : ∀ L n, (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
       wNode c.p base w L = some n → n.leaf = true → ∀ y, (cv, y) ∈ n.liveAt c.i →
-      wNode c.p base w y = none ∧ (y < B ∨ y ∈ w.vals.map (·.1)))
-    (hext : ChainExtraOK c) :
+      wNode c.p base w y = none ∧ (y < B ∨ y ∈ w.vals.map (·.1))) :
     WriterWP (putKv (.put (pre ++ [cv]) h)) c w (fun _ w' => TakeJ2 c base B w') := by
+  have hext : ChainExtraOK c := chainExtraOK c
   obtain ⟨hidn, hidv, hidt, hidvals, hidr⟩ := hids
   have hfuel : 1 ≤ c.p.fuel := by unfold Params.fuel; omega
   have hwfR : ∀ x xn, ReachS (wNode c.p base w) c.i w.top.rootKey x →
@@ -353,7 +353,7 @@ theorem writerWP_put_full_j2 (c : Ctx) (base : View BVal) (hvc : ViewCoherent c 
 
 /-- (2) A put into a full leaf keeps `J2At`, from `PutInv`, `LeafVals`, B at or
 below the next id and the walk's ranges, for 2 ≤ splitAbove and runs with their
-links, given `ChainExtraOK`. -/
+links. -/
 theorem opJ2Case_putLeafFull (p : Params) (R : Struct BVal → Time → Prop)
     (S : List Tx → Tx → W → Prop)
     (hRL : ∀ P t, R P t → RunLinksOK p P t) (hsa : 2 ≤ p.splitAbove)
@@ -361,8 +361,7 @@ theorem opJ2Case_putLeafFull (p : Params) (R : Struct BVal → Time → Prop)
     (hSV : ∀ ts tx w, S ts tx w → LeafVals (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w)
     (hSB : ∀ ts tx w, S ts tx w → tx.base ≤ w.next)
     (hSR : ∀ ts tx w, S ts tx w →
-      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey)
-    (hext : ∀ ts, ChainExtraOK (ctxOf p ts)) :
+      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey) :
     OpJ2CaseOK p R S PutLeafFullCase := by
   intro ts tx hw hr z top _ htop ops op post hops r w hpre _ hS hJ hP
   obtain ⟨pre, cv, h, L, n, hop, hK, hfull⟩ := hP
@@ -380,7 +379,7 @@ theorem opJ2Case_putLeafFull (p : Params) (R : Struct BVal → Time → Prop)
     (fun _ _ _ _ _ _ _ _ _ _ _ _ => Or.inr hOrd)
     (keyLeaf_all hK hrk (fun m => ¬ (m.size + 1 < (ctxOf p ts).p.M ∧
       deadOver (ctxOf p ts).p (m.add (ctxOf p ts).i (.key cv w.next)) = false)) hfull)
-    (by simp [ctxOf]) hOrd hJ (hSB ts tx w hS) (leafVals_all (hSV ts tx w hS) hkey hrk) (hext ts)) ?_
+    (by simp [ctxOf]) hOrd hJ (hSB ts tx w hS) (leafVals_all (hSV ts tx w hS) hkey hrk)) ?_
   intro _ w' h' _
   exact h'
 
@@ -390,7 +389,7 @@ theorem opJ2Case_putLeafFull (p : Params) (R : Struct BVal → Time → Prop)
 def TakeS3 (p : Params) (ts : List Tx) (tx : Tx) (w : W) : Prop :=
   TakeS2 p ts tx w ∧ RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey
 
-/-- TP7's take-back statement with case (2) from `ChainExtraOK`: open are (3)
+/-- TP7's take-back statement with case (2): open are (3)
 below a full leaf, (4), (7), (9). -/
 theorem takeBackOK_of_cases3 (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.splitAbove)
     (Q : Struct BVal → Time → Prop) (hQ0 : Q (initStruct p) 0)
@@ -403,7 +402,7 @@ theorem takeBackOK_of_cases3 (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.splitA
     (hPI : StateOK p (RunTreeQ p Q) (fun ts _ w => PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w))
     (hRO : StateOK p (RunTreeQ p Q) (fun ts _ w =>
       RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey))
-    (hB : BaseStartOK p (RunTreeQ p Q)) (hext : ∀ ts, ChainExtraOK (ctxOf p ts))
+    (hB : BaseStartOK p (RunTreeQ p Q))
     (c3 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS3 p) PutNewSegFullCase)
     (c4 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS3 p) DelMergeCase)
     (c7 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS3 p) DelEmptyCase)
@@ -426,7 +425,7 @@ theorem takeBackOK_of_cases3 (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.splitA
     fun ts _ w h y hy => h.1.1.1.untaken y (tReach_reachS _ _ _ _ hy)
   have hO : OpJ2OK p (RunTreeQ p Q) (TakeS3 p) :=
     opJ2OK_of_cases p _ _ (opJ2Case_putLeafRoom p _ _ hSI hSV)
-      (opJ2Case_putLeafFull p _ _ (fun _ _ h => h.1) hsa hSI hSV hSB hSR hext)
+      (opJ2Case_putLeafFull p _ _ (fun _ _ h => h.1) hsa hSI hSV hSB hSR)
       (opJ2Case_putNewSeg p _ _ hM hSI hSB c3) c4
       (opJ2Case_delNoLeaf p _ _ hSI) (opJ2Case_delNoop p _ _ hSI) c7 (opJ2Case_delRoom p _ _ hSI hSV) c9
   exact takeBackOK_of_jointJ2 p hM Q hQ0 hQs ho (TakeS3 p) hO hS hSRF hB
@@ -444,11 +443,11 @@ theorem takeBackOK_of_cases_merges3 (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p
     (hPI : StateOK p (RunTreeQ p Q) (fun ts _ w => PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w))
     (hRO : StateOK p (RunTreeQ p Q) (fun ts _ w =>
       RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey))
-    (hB : BaseStartOK p (RunTreeQ p Q)) (hext : ∀ ts, ChainExtraOK (ctxOf p ts))
+    (hB : BaseStartOK p (RunTreeQ p Q))
     (c3 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS3 p) PutNewSegFullCase)
     (c4 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS3 p) DelMergeCase) :
     TakeBackOKUnder p (RunLinksOK p) :=
-  takeBackOK_of_cases3 p hM hsa Q hQ0 hQs hQP hQK ho hPI hRO hB hext c3 c4
+  takeBackOK_of_cases3 p hM hsa Q hQ0 hQs hQP hQK ho hPI hRO hB c3 c4
     (opJ2CaseOK_void p _ _ _ hm delEmptyCase_merges) (opJ2CaseOK_void p _ _ _ hm delFullCase_merges)
 
 end SIS.Tree

@@ -9,6 +9,7 @@ transaction repointed). `CascadeShapeJ2` is that shape in the form (C) needs,
 -/
 import SIS.Tree.TakeDeadAssembly2
 import SIS.Tree.ChainShape
+import SIS.Tree.TakeCachedKeep
 
 set_option autoImplicit false
 
@@ -137,9 +138,7 @@ theorem liveAt_of_linkIndex (n : KNode) (t : Time) (x : NodeId) (k j : Nat)
   rw [hm, List.getElem?_cons_succ] at hj'
   exact hpost _ (List.mem_of_getElem? hj') y' rfl
 
-/-- latest's shape of a node after a cascade in the form (C) needs, given that a
-chain node left behind is not one the transaction made and a repointed top is a
-segment leaf. -/
+/-- latest's shape of a node after a cascade in the form (C) needs. -/
 theorem cascadeShapeJ2_of (c : Ctx) (N : NodeId → Option KNode) (B : NodeId) (vals : List NodeId)
     (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode) (s D : Nat) (ins : List (Nat × NodeId))
     (nx : NodeId) (hS : OldStartN N c.i B) (hM : MadeStartN N c.i B)
@@ -148,14 +147,10 @@ theorem cascadeShapeJ2_of (c : Ctx) (N : NodeId → Option KNode) (B : NodeId) (
     (hBnx : B ≤ nx) (hinsN : (ins.map Prod.fst).Nodup)
     (hins : ∀ q ∈ ins, ∀ y, (q.1, y) ∈ (Nn D).liveAt c.i → y < B ∨ y ∈ vals)
     (z : NodeId) (zn : KNode) (hz : nx ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ D ∧ z = X i)
-    (hprev : ∀ i, s ≤ i → i ≤ D → z = X i → zn = (Nn i).toPrev (c.i - 1) →
-      (Nn i).firstTime ≠ some c.i)
-    (hleaf : ∀ j, s ≤ j → j < D → z = X j → ∀ k1 idx r, (Nn j).linkIndex (X (j + 1)) k1 = some idx →
-      zn = (Nn j).repoint idx r → (Nn j).leaf = true)
     (h : CascadeNodeShape c X K Nn s D ins z zn) : CascadeShapeJ2 N c.i B vals X Nn s D z zn := by
   rcases h with ⟨i, h1, h2, h3, h4⟩ | ⟨i, h1, h2, h3, h4⟩ | ⟨hsh, hft⟩ | ⟨j, h1, h2, h3, htop⟩
   · exact Or.inl ⟨i, h1, h2, h3, h4⟩
-  · exact Or.inr (Or.inl ⟨i, h1, h2, h3, hprev i h1 h2 h3 h4, h4⟩)
+  · exact Or.inr (Or.inl ⟨i, h1, h2, h3, h4.2, h4.1⟩)
   · refine Or.inr (Or.inr (Or.inl ⟨⟨hsh.1, fun a b cv y y' hab ha hb => ?_⟩, ?_⟩))
     · rcases hsh.2 a b cv y y' hab ha hb with ⟨i, a1, a2, a3, a4⟩ | ⟨c0, a1, a2⟩
       · left
@@ -167,7 +162,7 @@ theorem cascadeShapeJ2_of (c : Ctx) (N : NodeId → Option KNode) (B : NodeId) (
       · omega
       · exact ge_of_firstTime2 N c.i B hS _ _ (hN i h1 h2) (hft i h1 h2 rfl)
   · refine Or.inr (Or.inr (Or.inr ⟨j, h1, h2, h3, ?_⟩))
-    rcases htop with ⟨hj, hz'⟩ | ⟨hj, ins', hz', hnd, hq⟩ | ⟨hj, k1, idx, r, hl, hz', hf⟩
+    rcases htop with ⟨hj, hz'⟩ | ⟨hj, ins', hz', hnd, hq⟩ | ⟨hj, k1, idx, r, hl, hz', hf, hlf⟩
     · subst hj
       exact Or.inl ⟨ins, hz', hinsN, hins⟩
     · refine Or.inl ⟨ins', hz', hnd, fun q hq' y hy => Or.inl ?_⟩
@@ -177,7 +172,7 @@ theorem cascadeShapeJ2_of (c : Ctx) (N : NodeId → Option KNode) (B : NodeId) (
     · exact Or.inr ⟨idx, k1, X (j + 1), r, Nn (j + 1), hl,
         liveAt_of_linkIndex (Nn j) c.i (X (j + 1)) k1 idx hl (hts j h1 (by omega)),
         ge_of_firstTime2 N c.i B hS _ _ (hN (j + 1) (by omega) (by omega)) hf,
-        hN (j + 1) (by omega) (by omega), hleaf j h1 hj h3 k1 idx r hl hz', hz'⟩
+        hN (j + 1) (by omega) (by omega), hlf, hz'⟩
 
 /-! ## A cascade at the writer's level -/
 
@@ -185,9 +180,7 @@ theorem cascadeShapeJ2_of (c : Ctx) (N : NodeId → Option KNode) (B : NodeId) (
 `writerWP_appendKlongs_take`'s premises with `ChainOrd` at every level and the
 klongs put ordered, `TakeJ2` before, B at or below the next id and the
 values below it, the old live pointers of the klongs put below B or values, and
-`hextra`: the chain's nodes stay cached, a chain node left behind is not one the
-transaction made and a repointed top is a segment leaf (to come from latest's
-shape lemma). -/
+`hextra`: the chain's nodes stay cached (`chainExtraOK`). -/
 theorem writerWP_appendKlongs_j2 (c : Ctx) (base : View BVal)
     (path0 : List (Option Nat × NodeId)) (s D : Nat) (X : Nat → NodeId) (K : Nat → Nat)
     (Nn : Nat → KNode)
@@ -228,11 +221,7 @@ theorem writerWP_appendKlongs_j2 (c : Ctx) (base : View BVal)
       (∀ y ∈ w.vals.map (·.1), y < w.next) →
       (∀ q ∈ ins, ∀ y, (q.1, y) ∈ (Nn (s + e)).liveAt c.i → y < B ∨ y ∈ w.vals.map (·.1)) →
       WriterWP (appendKlongs (s + e) (X (s + e)) ins) c w (fun _ w' =>
-        (∀ i, s ≤ i → i ≤ s + e → (w'.nodes.lookup (X i)).isSome = true) ∧ ∀ z zn,
-        w'.nodes.lookup z = some zn →
-        (∀ i, s ≤ i → i ≤ s + e → z = X i → zn = (Nn i).toPrev (c.i - 1) → (Nn i).firstTime ≠ some c.i) ∧
-        (∀ j, s ≤ j → j < s + e → z = X j → ∀ k1 idx r, (Nn j).linkIndex (X (j + 1)) k1 = some idx →
-          zn = (Nn j).repoint idx r → (Nn j).leaf = true)) →
+        ∀ i, s ≤ i → i ≤ s + e → (w'.nodes.lookup (X i)).isSome = true) →
       WriterWP (appendKlongs (s + e) (X (s + e)) ins) c w (fun _ w' => TakeJ2 c base B w') := by
   intro e hle w ins h1 hpw h2 h3 h4 h5 h6 h7 h8 h9 hW hV hkeepL hpos hJ hBn hvn hins hextra
   have hnd : (ins.map Prod.fst).Nodup := List.pairwise_map.mpr (hpw.imp (fun h => Nat.ne_of_lt h))
@@ -249,7 +238,7 @@ theorem writerWP_appendKlongs_j2 (c : Ctx) (base : View BVal)
         · have := (h7 (X i) h).1; rw [(h4 i a b).1] at this; cases this⟩)
     (fun z hz => (h7 z hz).1)
   refine writerWP_mono (writerWP_and (writerWP_and (writerWP_and hTt hG) hSh) hextra) ?_
-  rintro _ w' ⟨⟨⟨hTt', hG'⟩, hSh'⟩, hcached, hX'⟩
+  rintro _ w' ⟨⟨⟨hTt', hG'⟩, hSh'⟩, hcached⟩
   obtain ⟨_, ⟨_, ht', _, _, hv'⟩, hf, _⟩ := hG'
   obtain ⟨_, _, _, hshape⟩ := hSh'
   obtain ⟨_, hD, hO, hS, hM, hV0⟩ := hJ
@@ -282,14 +271,12 @@ theorem writerWP_appendKlongs_j2 (c : Ctx) (base : View BVal)
         · rw [(h7 z hz).2.2] at hzn; cases hzn
         · have := hcached i a b
           rw [hl] at this; cases this
-    obtain ⟨hp1, hp2⟩ := hX' z zn hlk
     exact cascadeShapeJ2_of c (wNode c.p base w) B _ X K Nn s (s + e) ins w.next hS hM hN
-      (fun i a b => htimes i a (by omega)) hBn hnd hins z zn hz hp1 hp2 (hshape z zn hlk hz)
+      (fun i a b => htimes i a (by omega)) hBn hnd hins z zn hz (hshape z zn hlk hz)
 
-/-- The facts of a cascade that `writerWP_appendKlongs_j2` takes beyond latest's
-shape lemma (`hextra`), on that lemma's premises: the chain's nodes stay cached, a
-chain node left behind is not one the transaction made, and a repointed top is a
-segment leaf. Asked of latest's `writerWP_appendKlongs_chainShape`. -/
+/-- The fact of a cascade that `writerWP_appendKlongs_j2` takes beyond latest's
+shape lemma (`hextra`), on that lemma's premises: the chain's nodes stay cached.
+Proved below (`chainExtraOK`). -/
 def ChainExtraOK (c : Ctx) : Prop :=
   ∀ (path0 : List (Option Nat × NodeId)) (s D : Nat) (X : Nat → NodeId) (K : Nat → Nat)
     (Nn : Nat → KNode),
@@ -310,10 +297,14 @@ def ChainExtraOK (c : Ctx) : Prop :=
       (∀ i, s ≤ i → i ≤ s + e → w.nodes.lookup (X i) = some (Nn i) ∧ X i < w.next) →
       (∀ z, w.next ≤ z → w.nodes.lookup z = none) →
       WriterWP (appendKlongs (s + e) (X (s + e)) ins) c w (fun _ w' =>
-        (∀ i, s ≤ i → i ≤ s + e → (w'.nodes.lookup (X i)).isSome = true) ∧ ∀ z zn,
-        w'.nodes.lookup z = some zn →
-        (∀ i, s ≤ i → i ≤ s + e → z = X i → zn = (Nn i).toPrev (c.i - 1) → (Nn i).firstTime ≠ some c.i) ∧
-        (∀ j, s ≤ j → j < s + e → z = X j → ∀ k1 idx r, (Nn j).linkIndex (X (j + 1)) k1 = some idx →
-          zn = (Nn j).repoint idx r → (Nn j).leaf = true))
+        ∀ i, s ≤ i → i ≤ s + e → (w'.nodes.lookup (X i)).isSome = true)
+
+/-- The chain's nodes stay cached through a cascade: the writer never drops a
+cached node (`writerWP_appendKlongs_cached`). -/
+theorem chainExtraOK (c : Ctx) : ChainExtraOK c := by
+  intro path0 s D X K Nn _ _ _ _ _ _ _ _ _ e _ w ins _ _ _ hS _
+  refine writerWP_mono (writerWP_appendKlongs_cached _ _ _ c w) ?_
+  intro _ w' h i a b
+  exact h _ (by rw [(hS i a b).1]; rfl)
 
 end SIS.Tree
