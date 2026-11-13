@@ -1,6 +1,6 @@
 /-
 The upward delete with the merges on keeps the take-back's facts up to its
-continuations (bergdb 024-12, TP7, case (4)'s `DelStepsJ2OKF`):
+continuations (bergdb 024-12, TP7, case (4)'s delete steps):
 `writerWP_deleteUpward_upT_getJM` is `writerWP_deleteUpward_upT_getJ` with the
 merges' loop and `afterDelete` in the continuations.
 -/

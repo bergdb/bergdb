@@ -1988,26 +1988,4 @@ theorem mergeRootJ2OKF_holds (c : Ctx) (base : View BVal) (f : Nat) (B : NodeId)
       have := hI.ids.2.2.2.1 _ he
       simpa using this)
 
-/-- TP7's take-back statement with the merges on from case (4)'s obligations:
-cost's `MergeStepOKF` and `CollapseStepOKF`, `DelStepsJ2OKF` and the named
-inputs; every merge's own is proved. -/
-theorem takeBackOK_of_mergesFR2 (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.splitAbove)
-    (hcap : 1 ≤ p.mergeMax) (hm : p.merges = true)
-    (Q : Struct BVal → Time → Prop) (hQ0 : Q (initStruct p) 0)
-    (hQs : ∀ ts tx, Within p (ts ++ [tx]) → RunTreeQ p Q (treeRun p ts) ts.length →
-      RunLinksOK p (treeRun p (ts ++ [tx])) (ts.length + 1) →
-      TreeAt p (treeRun p (ts ++ [tx])) (ts.length + 1) →
-      Q (treeRun p (ts ++ [tx])) (ts.length + 1))
-    (hQP : ∀ P t, Q P t → PointersOK P) (hQK : ∀ P t, Q P t → KindsAllOK p P)
-    (ho : OpTreeOKUnder p (RunTreeQ p Q))
-    (hPI : StateOK p (RunTreeQ p Q) (fun ts _ w => PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w))
-    (hRO : StateOK p (RunTreeQ p Q) (fun ts _ w =>
-      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey))
-    (hDS : DelStepsJ2OKF p (RunTreeQ p Q) (TakeS3 p))
-    (hMS : ∀ ts, MergeStepOKF (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hCo : ∀ ts, CollapseStepOKF (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1)) :
-    TakeBackOKUnder p (RunLinksOK p) :=
-  takeBackOK_of_mergesFR p hM hsa hcap hm Q hQ0 hQs hQP hQK ho hPI hRO hDS hMS hCo
-    (fun ts B => mergeRootJ2OKF_holds _ _ _ B (by simp [ctxOf]) hcap hsa)
-
 end SIS.Tree

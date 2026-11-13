@@ -1,11 +1,11 @@
 /-
-Case (4)'s delete steps with the merges on, the reading (cost's `DelStepsOKF`)
-and the take-back (`DelStepsJ2OKF`) together (bergdb 024-12, TP7 and TP10). The
+Case (4)'s delete steps with the merges on, the reading (cost's `DelStepsOKF`;
+the take-back's are on the F3 route, TakeDelStepsF4.lean) (bergdb 024-12, TP7 and TP10). The
 delete splits as the merges-off cases (5) to (9) do: no leaf, a noop, a leaf
 that empties (the upward delete), a leaf that keeps a live klong with room for
 the bitmap, or full. Each obligation is restricted to one of them
-(`DelStepsCaseOKF`, `DelStepsCaseJ2OKF`), and the two obligations follow from
-the five (`delStepsOKF_of_cases`, `delStepsJ2OKF_of_cases`). The read-only cases
+(`DelStepsCaseOKF`), and the obligation follows from the five
+(`delStepsOKF_of_cases`). The read-only cases
 are proved here.
 -/
 import SIS.Tree.TakeDelMerge
@@ -92,27 +92,6 @@ def DelStepsCaseOKF (p : Params) (R : Struct BVal → Time → Prop)
       ∀ key', keyWf key' = true →
         runGet p ts w' key' = if op.key == key' then op.value else runGet p ts w key')
 
-/-- `DelStepsJ2OKF` for the deletes of one case P. -/
-def DelStepsCaseJ2OKF (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop)
-    (P : Ctx → View BVal → W → Op → Prop) : Prop :=
-  ∀ ts tx, Within p (ts ++ [tx]) → R (treeRun p ts) ts.length → ∀ z top,
-    lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z →
-    topOf p (ctxOf p ts).view z = .ok top →
-    ∀ pre op post, tx.ops = pre ++ op :: post →
-    ∀ r w, (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
-    S ts tx w → TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w →
-    ∀ key, op = .del key → P (ctxOf p ts) (viewOf (treeRun p ts)) w op →
-    (∀ g h v, DelInvJF (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) tx.base v →
-      WriterWP (afterDelete key g h) (ctxOf p ts) v
-        (fun _ v' => DelInvJF (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) tx.base v')) →
-    (∀ g h merged v, DelInvJF (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) tx.base v →
-      WriterWP (mergeUp key g p.fuel h merged) (ctxOf p ts) v
-        (fun _ v' => DelInvJF (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) tx.base v')) →
-    (∀ seg v, DelInvJF (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) tx.base v →
-      WriterWP (collapseRoot key seg p.fuel) (ctxOf p ts) v
-        (fun _ v' => DelInvJF (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) tx.base v')) →
-    WriterWP (putKv op) (ctxOf p ts) w (fun _ w' => TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w')
-
 /-- `DelStepsOKF` from its five cases. -/
 theorem delStepsOKF_of_cases (p : Params) (R : Struct BVal → Time → Prop)
     (c5 : DelStepsCaseOKF p R DelNoLeafM) (c6 : DelStepsCaseOKF p R DelNoopM)
@@ -125,20 +104,6 @@ theorem delStepsOKF_of_cases (p : Params) (R : Struct BVal → Time → Prop)
   · exact c7 ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop (hop ▸ h) hA hMU hCR
   · exact c8 ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop (hop ▸ h) hA hMU hCR
   · exact c9 ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop (hop ▸ h) hA hMU hCR
-
-/-- `DelStepsJ2OKF` from its five cases. -/
-theorem delStepsJ2OKF_of_cases (p : Params) (R : Struct BVal → Time → Prop)
-    (S : List Tx → Tx → W → Prop)
-    (c5 : DelStepsCaseJ2OKF p R S DelNoLeafM) (c6 : DelStepsCaseJ2OKF p R S DelNoopM)
-    (c7 : DelStepsCaseJ2OKF p R S DelEmptyM) (c8 : DelStepsCaseJ2OKF p R S DelRoomM)
-    (c9 : DelStepsCaseJ2OKF p R S DelFullM) : DelStepsJ2OKF p R S := by
-  intro ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop hm hA hMU hCR
-  rcases delMerge_cover (ctxOf p ts) (viewOf (treeRun p ts)) w key hm with h | h | h | h | h
-  · exact c5 ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop (hop ▸ h) hA hMU hCR
-  · exact c6 ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop (hop ▸ h) hA hMU hCR
-  · exact c7 ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop (hop ▸ h) hA hMU hCR
-  · exact c8 ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop (hop ▸ h) hA hMU hCR
-  · exact c9 ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop (hop ▸ h) hA hMU hCR
 
 /-! ## The read-only cases -/
 
@@ -183,24 +148,6 @@ theorem delStepsCaseOKF_noLeaf (p : Params) (R : Struct BVal → Time → Prop) 
     · have hk' : (key == key') = false := by simpa using hk
       simp only [Op.key, hk', Bool.false_eq_true, ↓reduceIte]
 
-/-- No leaf: the take-back. -/
-theorem delStepsCaseJ2OKF_noLeaf (p : Params) (R : Struct BVal → Time → Prop)
-    (S : List Tx → Tx → W → Prop)
-    (hSI : ∀ ts tx w, S ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w) :
-    DelStepsCaseJ2OKF p R S DelNoLeafM := by
-  intro ts tx hw _ _ _ _ _ ops op post hops _ w _ hS hJ _ _ hP _ _ _
-  obtain ⟨key, hop, _, hno⟩ := hP
-  subst hop
-  have hI := hSI ts tx w hS
-  have hkey : keyWf key = true := within_op_keyWf p ts tx hw ops _ post hops
-  have hne : key ≠ [] := by intro h; subst h; simp [keyWf] at hkey
-  have hno' : NoLeafFrom (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) p.fuel key
-      w.top.rootKey := by
-    rintro ⟨pre, cv, rk, L, n, hsplit, hrk, hvis, hn, hnl⟩
-    exact hno ⟨pre, cv, L, n, hsplit, rk, hrk, hvis, hn, hnl⟩
-  exact writerWP_del_noLeaf_j2 (ctxOf p ts) _ (viewCoherent_ctxOf p ts) key tx.base w
-    hne (hI.pathUntaken key) hno' hJ
-
 /-- A noop: the reading. -/
 theorem delStepsCaseOKF_noop (p : Params) (R : Struct BVal → Time → Prop) :
     DelStepsCaseOKF p R DelNoopM := by
@@ -215,19 +162,5 @@ theorem delStepsCaseOKF_noop (p : Params) (R : Struct BVal → Time → Prop) :
       ⟨hI.wf L n hn, hI.times L n hn, hnoop⟩)) ?_
   intro _ w' hpost _ key hk
   exact hpost key hk
-
-/-- A noop: the take-back. -/
-theorem delStepsCaseJ2OKF_noop (p : Params) (R : Struct BVal → Time → Prop)
-    (S : List Tx → Tx → W → Prop)
-    (hSI : ∀ ts tx w, S ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w) :
-    DelStepsCaseJ2OKF p R S DelNoopM := by
-  intro ts tx _ _ _ _ _ _ _ op _ _ _ w _ hS hJ _ _ hP _ _ _
-  obtain ⟨pre, cv, L, n, hop, _, hK, hnoop⟩ := hP
-  subst hop
-  have hI := hSI ts tx w hS
-  obtain ⟨rk, hrk, _⟩ := keyLeaf_rk hK
-  exact writerWP_del_noop_j2 (ctxOf p ts) _ (viewCoherent_ctxOf p ts) pre cv rk tx.base
-    w hrk (hI.pathUntaken _) (keyLeaf_all hK hrk (fun m => bitsUnion m.lastBitmap (m.bitsOf cv) = m.lastBitmap)
-      hnoop) hJ
 
 end SIS.Tree

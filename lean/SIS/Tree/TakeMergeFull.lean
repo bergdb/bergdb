@@ -1,6 +1,6 @@
 /-
 A merge below a parent without room keeps the take-back's (B), (C) and node
-facts (bergdb 024-12, TP7, case (4)'s `MergeFullJ2OKF`): the node-map step
+facts (bergdb 024-12, TP7, case (4)'s merges): the node-map step
 (`j2rest_mergeFull`): the parent's cascade (latest's shapes, `CascadeShapeJ2`),
 the merged nodes made at t, and the two nodes merged taken back or unlinked.
 -/
