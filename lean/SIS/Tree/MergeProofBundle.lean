@@ -101,3 +101,4 @@ import SIS.Tree.WriterTreeInPlace
 import SIS.Tree.WriterTreeMergeTwo
 import SIS.Tree.WriterTreePut
 import SIS.Tree.GetRootSplit
+import SIS.Tree.WriterTreeRoot
