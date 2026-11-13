@@ -121,3 +121,4 @@ import SIS.Tree.WriterTreeSegSplit
 import SIS.Tree.WriterTreeSegInPlace
 import SIS.Tree.WriterTreeSegLeaf
 import SIS.Tree.WriterTreeNewSeg
+import SIS.Tree.PutInvRoot
