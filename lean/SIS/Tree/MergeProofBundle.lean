@@ -75,3 +75,4 @@ import SIS.Tree.GetCommit
 import SIS.Tree.MergeNodeCount
 import SIS.Tree.GetFrame
 import SIS.Tree.GetUnder
+import SIS.Tree.GetSplit
