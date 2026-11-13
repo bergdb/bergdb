@@ -1047,12 +1047,16 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
 * **`/#i/-dummy`** (`DbConstants.DUMMY_KEY`, :26): a value of
   `RecoverableStream.META_BLOCK_DISTANCE` zero bytes, so that a meta block
   with the new startup distance is written; never read.
-* **A row** (`Reclaim.IterationInfo.serialize`, :1167): a `StringMap`,
-  lines `name=value\n`, UTF-8 (`StringUtil.toBytes`), eleven names:
-  pStart, pCut, tStart, tEnd, kvCount, lastKey, done, cut, rewritten,
-  pEnd, pSafe. Numbers by `"" + long`; done and cut `true` or `false`;
-  lastKey `null` or the segments as signed decimals separated by spaces.
-  **No endKey**: P8 (024-01, CL1) was not taken.
+* **A row** (`Reclaim.IterationInfo.serialize`): a `StringMap`,
+  lines `name=value\n`, UTF-8 (`StringUtil.toBytes`), twelve names:
+  pStart, pCut, tStart, tEnd, kvCount, lastKey, endKey, done, cut,
+  rewritten, pEnd, pSafe. Numbers by `"" + long`; done and cut `true` or
+  `false`; lastKey `null` or the segments as signed decimals separated by
+  spaces; endKey (since 026-05: P8, the last key live at tStart, which
+  bounds the steps' scans) `none` if no key was live then, or the
+  segments as lastKey has them. A row stored before 026-05 has no endKey
+  line, and is read with no bound; any other value is refused
+  (`InternalDataException`, "Bad value of endKey").
 * **The table** (`serialize`, :1356): the rows, each followed by
   `----next----\n`; parsed by `split` (:1376), and a table with no row is
   refused.
@@ -1060,7 +1064,7 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
   `common/StringMap.java`:33): lenient. Lines trimmed; lines without `=`
   skipped; names in any order; unknown names ignored; pStart, tStart,
   tEnd, kvCount, lastKey and done required; cut, rewritten, pEnd, pSafe
-  and pCut have defaults.
+  and pCut have defaults; endKey none (026-05).
 * **The settings** (`serializeSettings`, :300; `parseSettings`, :314;
   015-87): exactly `retain=<long>\nfraction=<int>\n`; retain at least
   `Clock.UNITS_PER_SEC` (`Long.MAX_VALUE` is forever, the default without
@@ -1087,8 +1091,9 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
 **Gaps.**
 
 * G16 and J1. A row's line order is Java's `HashMap` iteration order
-  (`StringMap.serialize`, :101): pCut, tEnd, cut, pStart, tStart, lastKey,
-  rewritten, pEnd, pSafe, done, kvCount, from `String.hashCode` and the
+  (`StringMap.serialize`, :101): pCut, tEnd, endKey, cut, pStart, tStart,
+  lastKey, rewritten, pEnd, pSafe, done, kvCount (endKey since 026-05;
+  the others' order unchanged), from `String.hashCode` and the
   JDK's `HashMap` since Java 8 (`c/src/strmap.h`, :1 to :20, copies it).
   The bytes of every reclaim record depend on it. J2: the numbers' text is
   `Long.toString`'s.
