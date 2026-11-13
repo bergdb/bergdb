@@ -409,9 +409,11 @@ from the space root, across segments (`writerWP_appendKlongs_chainGRV` from 0):
 each node splits as its sizes say, in place if the transaction made it, or
 keeps its room and ends the cascade. The premises on the nodes reached: the
 order of a full node's compare values below its inner parent's klong
-(`hrangeG`), two live klongs in a node that space splits (`hlenG`), and no space
-split that makes a new root (`hspaceG`). The splits change the reading by the
-put alone. -/
+(`hrangeG`), two live klongs in a node that space splits (`hlenG`), and an inner
+parent for a node that space splits (`hspaceG`: the space root may space split
+and get a new root, a segment root below a segment leaf may not). The splits
+change the reading by the put alone, when the writer's state after them has its
+paths within the fuel (`PathsFit`). -/
 theorem writerWP_put_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (pre : List Nat) (cv h : Nat) (rk : NodeId) (w : W)
     (hkey : keyWf (pre ++ [cv]) = true)
@@ -435,7 +437,7 @@ theorem writerWP_put_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent
       ¬ ChainRoom c xn → c.p.splitAbove < (xn.lastVersion c.i).size → 2 ≤ xn.live.length)
     (hspaceG : ∀ x xn, TReach (wNode c.p base w) c.i w.top.rootKey x → wNode c.p base w x = some xn →
       ¬ ChainRoom c xn → c.p.splitAbove < (xn.lastVersion c.i).size →
-      x ≠ w.top.rootKey ∧ ∀ q qn K, TReach (wNode c.p base w) c.i w.top.rootKey q →
+      ∀ q qn K, TReach (wNode c.p base w) c.i w.top.rootKey q →
         wNode c.p base w q = some qn → (K, x) ∈ qn.liveAt c.i → qn.leaf = false)
     (hfullL : ∀ L n, (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
       wNode c.p base w L = some n → n.leaf = true →
@@ -444,7 +446,8 @@ theorem writerWP_put_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent
       (x, cv) ∈ fromVisits (wNode c.p base w) c.i c.p.fuel key' w.top.rootKey →
       (x, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
       wNode c.p base w x = some n' → n'.leaf = true → key' = pre ++ [cv]) :
-    WriterWP (putKv (.put (pre ++ [cv]) h)) c w (fun _ w' => ∀ key', keyWf key' = true →
+    WriterWP (putKv (.put (pre ++ [cv]) h)) c w (fun _ w' =>
+      PathsFit (wNode c.p base w') c.i w'.top.rootKey c.p.fuel → ∀ key', keyWf key' = true →
       wGet c.p c.i base w' key' =
         if Op.key (.put (pre ++ [cv]) h) == key' then Op.value (.put (pre ++ [cv]) h)
         else wGet c.p c.i base w key') := by
@@ -633,12 +636,10 @@ theorem writerWP_put_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent
     (Or.inr rfl)
     (fun i i' _ h2 _ h4 he => hdistP i i' h2 h4 he)
     (fun i _ h2 hnr hsp => by
-      obtain ⟨hne, hpar⟩ := hspaceG _ _ (hreachX i h2) (hXN i h2) hnr hsp
-      have hi : 0 < i := by
-        rcases Nat.eq_zero_or_pos i with h0 | h0
-        · exfalso; apply hne; rw [h0, nodeAt_zero]
-        · exact h0
-      exact ⟨hi, hpar _ _ _ (hreachX (i - 1) (by omega)) (hXN (i - 1) (by omega)) (hKP i hi h2).2⟩)
+      rcases Nat.eq_zero_or_pos i with h0 | hi
+      · exact Or.inl h0
+      · exact Or.inr ⟨hi, hspaceG _ _ (hreachX i h2) (hXN i h2) hnr hsp _ _ _ (hreachX (i - 1) (by omega))
+          (hXN (i - 1) (by omega)) (hKP i hi h2).2⟩)
     P.length (by omega) ws [(cv, w3.next)] (Or.inl ⟨cv, w3.next, rfl⟩)
     (by intro q hq; simp at hq; rw [hq, hwsx, hnext3]; simp)
     hwsp
@@ -729,10 +730,10 @@ theorem writerWP_put_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent
           subst hs'
           exact hlinksAll x c' fd.y ⟨m', hm', KNode.searchEq_mem m' c.i c' fd (hwfG x m' hm') hfd⟩
       simp only [wValue, hwst, hwsv, lookup_append_single_ne _ _ _ _ (by omega : y ≠ w.next)])
-  intro key' hkey'
+  intro hfit key' hkey'
   unfold wGet
-  rw [hvf, hR (wValue base ws) (fun z hz => hadm z (by rw [hwsx] at hz; exact hz)) key', hwsN, hwstop,
-    hnext3]
+  rw [hvf, hR (wValue base ws) (fun z hz => hadm z (by rw [hwsx] at hz; exact hz))
+    (Or.inl hfit) key', hwsN, hwstop, hnext3]
   simp only [List.foldl_cons, List.foldl_nil]
   by_cases hk : pre ++ [cv] = key'
   · subst hk
