@@ -1114,8 +1114,8 @@ pseudo-random transactions of the model (node sizes 4 to 10, H 0 to 8,
 merges and theta), operation by operation, no difference.
 `OverlayLiftOK`, the lift of the writer's own nodes through `changesOf`
 and `Struct.apply`, which TP7's `LatestInvOK` needs too (the walk asks a
-node's klongs to give its history); left to the TP7 provers (coord-1113,
-12:3x), tp7's `Good` is its first part.
+node's klongs to give its history); left to the TP7 provers (the
+coordinator, 2026-11-13); tp7's `Good` is its first part.
 
 (T) for 27: `tracecheck`'s CUT-live checks it at every cut of a trace
 (024-07), and C-T6 checks what it follows from, `NonEmptyOK` and
