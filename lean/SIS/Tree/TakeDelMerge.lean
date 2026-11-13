@@ -8,7 +8,7 @@ collapse steps for `CollGetInvF` (`writerWP_takeBackRoot_seg_j2F`,
 latest's F3/F4 route (TakeDelMergeF4.lean, TakeDelStepsF4.lean).
 -/
 import SIS.Tree.DelMergeCaseF
-import SIS.Tree.DelMergeCaseF2
+import SIS.Tree.GetDescentOK
 import SIS.Tree.TakeNextGrows
 import SIS.Tree.TakeDeadNewSegFull
 
