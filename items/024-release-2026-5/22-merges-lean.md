@@ -1119,9 +1119,16 @@ root's space, time and in-place splits (`WriterTreePut.lean`,
 `WriterTreePut2.lean`, `WriterTreeRoot.lean`); as state lemmas, given the
 writer's state after it: a merge into one node and into two, LE-b's
 relink, root collapse of the space root and of a segment root, the upward
-unlink (`WriterTreeMerge.lean`, `WriterTreeMergeTwo.lean`). Not yet: the
-writer's code of the merges, LE-b, the unlink and collapse; a split whose
-parent is full (the cascade); new segments; the segment roots' splits.
+unlink (`WriterTreeMerge.lean`, `WriterTreeMergeTwo.lean`). The writer's
+code of the merge keeps it too (`writerWP_merge_tree`, `WriterTreeMergeOp.lean`):
+into one node or two, with the parent on the path reached, room in it for
+four klongs and no compaction, and the two nodes not made by the
+transaction; on the way, `mergeIdx` chooses the last live klong of each
+compare value (`mergeIdx_last`), and the parent's live klongs after are
+known (`mpNode_live_lookup`). Not yet: a merge of nodes the transaction made
+(retarget, take-back), a merge whose parent is full; the writer's code of
+LE-b, the unlink and collapse; a split whose parent is full (the cascade);
+new segments; the segment roots' splits.
 Their premises beyond TREE: the ids from w's next one on in neither the
 base nor a live klong (`hbaseF`, `hfreshT`).
 
