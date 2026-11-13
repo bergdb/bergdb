@@ -205,4 +205,52 @@ theorem writerWP_put_segLeaf_inv (c : Ctx) (base : View BVal) (hvc : ViewCoheren
             have := hI.links x xn cc z hx hn hz
             exact ⟨by omega, by omega⟩)
 
+/-- `writerWP_put_newSeg` under `PutInv`: a put of a key pre ++ [c0, cl] whose
+prefix is there and whose leaf for c0 has no klong of c0 and room. -/
+theorem writerWP_put_newSeg_inv (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (pre : List Nat) (c0 cl h : Nat) (rk0 : NodeId) (w : W) (hI : PutInv c base w) (hM : 2 ≤ c.p.M)
+    (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk0)
+    (hcur : ∀ L n, (L, c0) ∈ eqVisits (wNode c.p base w) c.i c0 c.p.fuel rk0 →
+      wNode c.p base w L = some n → n.leaf = true →
+      n.searchEq c.i c0 = none ∧ n.size + 1 < c.p.M) :
+    WriterWP (putKv (.put (pre ++ [c0, cl]) h)) c w (fun _ w' => ∀ key', keyWf key' = true →
+      wGet c.p c.i base w' key' =
+        if Op.key (.put (pre ++ [c0, cl]) h) == key' then Op.value (.put (pre ++ [c0, cl]) h)
+        else wGet c.p c.i base w key') := by
+  have hwfR : ∀ x xn, ReachS (wNode c.p base w) c.i w.top.rootKey x →
+      wNode c.p base w x = some xn → klongsWf xn.ks = true := fun x xn _ hn => hI.wf x xn hn
+  have hrkp : TPathK (wNode c.p base w) c.i w.top.rootKey rk0 pre := by
+    have := segRootR_tPathK _ _ _ _ hI.wf pre _ [] rk0 TPathK.root hrk
+    simpa using this
+  refine writerWP_put_newSeg c base hvc pre c0 cl h rk0 w hM hrk
+    (fun q hq => hI.untaken q.1 (fromVisits_reach _ _ _ _ hwfR _ _ q.1 q.2 ReachS.root hq))
+    hI.ids hI.fresh ?_ hwfR hI.links
+  intro L n hL hn hnl
+  obtain ⟨hnone, hroom⟩ := hcur L n hL hn hnl
+  have hLp := (eqVisits_tPathK _ _ _ c0 _ rk0 pre hrkp L c0 hL).1
+  refine ⟨hI.wf L n hn, hI.times L n hn, hnone, hroom, ?_, ?_⟩
+  · intro key' _ h1
+    obtain ⟨j, hxj, hj⟩ := fromVisits_tPathK _ _ _ _ hI.wf key' _ [] TPathK.root L c0 h1
+    simp only [List.nil_append] at hxj
+    have htake : key'.take j = pre := tPathK_unique _ _ _ hI.tree L _ hxj pre hLp
+    have hsplit : key' = pre ++ key'.drop j := by rw [← htake, List.take_append_drop]
+    have hdrop : (key'.drop j).head? = some c0 := by rw [List.head?_drop]; exact hj
+    cases hd : key'.drop j with
+    | nil => rw [hd] at hdrop; cases hdrop
+    | cons d rest =>
+      rw [hd] at hdrop hsplit
+      simp only [List.head?_cons, Option.some.injEq] at hdrop
+      subst hdrop
+      exact ⟨rest, hsplit⟩
+  · intro c' h1
+    obtain ⟨j, hxj, hj⟩ := fromVisits_tPathK _ _ _ _ hI.wf pre _ [] TPathK.root L c' h1
+    simp only [List.nil_append] at hxj
+    have htake : pre.take j = pre := tPathK_unique _ _ _ hI.tree L _ hxj pre hLp
+    have hjlt : j < pre.length := by
+      have := List.getElem?_eq_some_iff.mp hj
+      exact this.1
+    have hlen := congrArg List.length htake
+    simp only [List.length_take] at hlen
+    omega
+
 end SIS.Tree
