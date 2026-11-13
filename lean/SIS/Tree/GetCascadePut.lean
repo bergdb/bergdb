@@ -605,7 +605,7 @@ theorem writerWP_put_chainG (c : Ctx) (base : View BVal) (hvc : ViewCoherent c b
     (fun i h1 h2 hnr _ => by
       by_cases hi : i = d
       · subst hi; simp only [Nat.sub_self] at hnr; exact absurd htop hnr
-      · refine Or.inr ⟨by omega, ?_⟩
+      · refine Or.inr ⟨by omega, Or.inl ?_⟩
         show (NN (i - 1 - d)).leaf = false
         exact hinner (i - 1 - d) (by omega))
     m (Nat.le_refl _) ws [(cv, w3.next)] (Or.inl ⟨cv, w3.next, rfl⟩)
@@ -713,7 +713,9 @@ theorem writerWP_put_chainG (c : Ctx) (base : View BVal) (hvc : ViewCoherent c b
   intro key' hkey'
   unfold wGet
   rw [hvf, hR (wValue base ws) (fun z hz => hadm z (by rw [hwsx] at hz; exact hz))
-    (Or.inr (fun ⟨_, hnr, _⟩ => hnr (by simpa using htop))) key', hwsN, hwstop, hnext3]
+    (Or.inr ⟨fun ⟨_, hnr, _⟩ => hnr (by simpa using htop), fun i h1 h2 _ _ => by
+      show (NN (i - 1 - d)).leaf = false
+      exact hinner (i - 1 - d) (by omega)⟩) key', hwsN, hwstop, hnext3]
   simp only [List.foldl_cons, List.foldl_nil]
   by_cases hk : pre ++ [cv] = key'
   · subst hk

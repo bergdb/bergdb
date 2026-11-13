@@ -1342,9 +1342,26 @@ may reach the space root are stated as R versions
 after the operation meets the fuel premise below, or when the space root
 does not space split (`RootStays`); the earlier statements, whose
 premises exclude the space root's space split, are their corollaries.
-Still open: a segment root's space split below a segment leaf (`hspace`
-leaves it out: its new root is not the top, and the premise must reach
-it through the cascade above), for the put and for the delete's leaf.
+At 20:10, **proved: the cascade keeps what the tree reached**
+(`writerWP_appendKlongs_chainReach`, a lemma of its own and the last
+conjunct of `writerWP_appendKlongs_chainGRV` and `_chainGRQ`, agreed
+with putinv): every node that the tree with the klongs put into X (s +
+e) reaches, but the chain's nodes, is reached after the cascade, when
+every node that space splits below an inner parent has its compare
+values in its range (`ChainOrd`: a leaf's from the parent's klong on, an
+inner node's but its first above it; `RangeOrder` gives it, and without
+it a split whose divider is the parent's klong drops a first half that
+no read reaches). With it, **proved: a segment root's space split below
+a segment leaf, for a node the transaction did not make**, in the
+cascade and in the put and delete rules along the access path
+(`getFromR_segSpaceLevel`, `GetReachBack.lean`: the new segment root is
+reached after the cascade, so `SegFits` of the state after bounds its
+segment tree; `hspaceG`'s second case, with the tree in order, `OrdG`).
+The reading needs no fuel premise when no new root is made along the
+chain (`ChainNoNewRoot`, `NoNewRootG`). Still open: the same split for
+a segment root the transaction made (the segment leaf's klong repointed
+in place), and the delete's leaf when it space splits below a segment
+leaf.
 
 The reader's fuel (prover "latest", 2026-11-13, 18:15; 19:15): TP10's
 `get` (`Read.lean`, `getFrom`) and `getFromR` give every segment's

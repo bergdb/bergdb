@@ -224,4 +224,154 @@ theorem chainOrd_div (c : Ctx) (K : Nat → Nat) (Nn : Nat → KNode) (i : Nat)
     · omega
     · exact h
 
+/-- The reading through a space split of a segment root x below a segment leaf
+q: in V, x holds xv; in A, the new segment root Y holds klongs to the halves F
+and S of xv, and q's klong K names Y. If V is a tree from r and Y's segment tree
+has depth below the fuel, the readings agree. -/
+theorem getFromR_segSpaceLevel (V A : NodeId → Option KNode) (Val : NodeId → Option Nat) (t : Time)
+    (fuel : Nat) (hfuel2 : 2 ≤ fuel) (r q x F S Y : NodeId) (qn xv f s : KNode) (K sc : Nat)
+    (hT : TreeOK V t r) (hwfV : ∀ z zn, ReachS V t r z → V z = some zn → klongsWf zn.ks = true)
+    (hVq : V q = some qn) (hrq : ReachS V t r q) (hql : qn.leaf = true)
+    (hqwf : klongsWf qn.ks = true) (hqt : ∀ s, Klong.time s ∈ qn.ks → s ≤ t)
+    (hKx : (K, x) ∈ qn.liveAt t) (hqx : q ≠ x) (hVx : V x = some xv)
+    (hVF : V F = none) (hVS : V S = none) (hVY : V Y = none)
+    (hnoNew : ∀ u c z, ReachS V t r u → TLink V t u c z → z ≠ F ∧ z ≠ S ∧ z ≠ Y)
+    (hAY : A Y = some ⟨false, newKlongs t [(0, F), (sc, S)]⟩)
+    (hAF : A F = some f) (hAS : A S = some s) (hfl : f.leaf = xv.leaf) (hsl : s.leaf = xv.leaf)
+    (hleafF : xv.leaf = true → ∀ c, c < sc → (f.searchEq t c).map (·.y) = (xv.searchEq t c).map (·.y))
+    (hleafS : xv.leaf = true → ∀ c, sc ≤ c → (s.searchEq t c).map (·.y) = (xv.searchEq t c).map (·.y))
+    (hinF : xv.leaf = false → ∀ c : Nat, c < sc →
+      (f.searchLte t c).map (·.y) = (xv.searchLte t c).map (·.y))
+    (hinS : xv.leaf = false → ∀ c : Nat, sc ≤ c →
+      (s.searchLte t c).map (·.y) = (xv.searchLte t c).map (·.y))
+    (hAq : A q = some (qn.add t (.key K Y)))
+    (hA : ∀ z, z ≠ x → z ≠ q → z ≠ F → z ≠ S → z ≠ Y → A z = V z)
+    (hVal : Val x = Val Y) (hrY : r ≠ Y) (hrx : r ≠ x) (hrF : r ≠ F) (hrS : r ≠ S)
+    (hfit : SegDepthLe A t (fuel - 1) Y) :
+    ∀ key, getFromR A Val t fuel key r = getFromR V Val t fuel key r := by
+  have hYx : Y ≠ x := fun h => by rw [h, hVx] at hVY; cases hVY
+  have hYq : Y ≠ q := fun h => by rw [h, hVq] at hVY; cases hVY
+  have hFx : F ≠ x := fun h => by rw [h, hVx] at hVF; cases hVF
+  have hSx : S ≠ x := fun h => by rw [h, hVx] at hVS; cases hVS
+  have hFq : F ≠ q := fun h => by rw [h, hVq] at hVF; cases hVF
+  have hSq : S ≠ q := fun h => by rw [h, hVq] at hVS; cases hVS
+  have hk1 : (K, x) ∈ qn.live := by rw [← KNode.liveAt_of_times qn t hqt]; exact hKx
+  have hrqT := reachS_tReach V t r q hrq
+  have hrx' : ReachS V t r x := ReachS.step q qn K x hrq hVq hKx
+  have hnotq : ∀ z, ReachS V t x z → z ≠ q := notReach_parent V t r q x K hT hrqT ⟨qn, hVq, hKx⟩
+  have honly : ∀ z zn c, ReachS V t r z → V z = some zn → (c, x) ∈ zn.liveAt t → z = q ∧ c = K :=
+    fun z zn c hz hzn hc => hT.oneLink z c q K x (reachS_tReach V t r z hz) hrqT ⟨zn, hzn, hc⟩
+      ⟨qn, hVq, hKx⟩
+  have hnoxV : ∀ z zn c, ReachS V t x z → V z = some zn → (c, x) ∉ zn.liveAt t := by
+    intro z zn c hz hzn hc
+    exact hnotq z hz (honly z zn c (reachS_trans V t r x hrx' z hz) hzn hc).1
+  -- the nodes below x are none of the new ones
+  have hnewx : ∀ z, ReachS V t x z → z ≠ F ∧ z ≠ S ∧ z ≠ Y := by
+    intro z hz
+    cases hz with
+    | root => exact ⟨hFx.symm, hSx.symm, hYx.symm⟩
+    | step u un c _ hu hun hmem =>
+      exact hnoNew u c z (reachS_trans V t r x hrx' u hu) ⟨un, hun, hmem⟩
+  -- the tree from Y in A reads as the tree from x in V
+  have hsub : ∀ key, key ≠ [] → getFromR A Val t fuel key Y = getFromR V Val t fuel key x := by
+    intro key _
+    refine getFromR_newRootRead V A Val t fuel x F S Y xv f s sc hVx hAY hAF hAS hfl hsl hleafF hleafS
+      hinF hinS ?_ ?_ hnoxV hfit hfuel2 key
+    · intro z zn hz hzn
+      exact hwfV z zn (reachS_trans V t r x hrx' z hz) hzn
+    · intro z hz hzx
+      obtain ⟨h1, h2, h3⟩ := hnewx z hz
+      exact hA z hzx (hnotq z hz) h1 h2 h3
+  have hqs : ∀ c, ((qn.add t (.key K Y)).searchEq t c).map (·.y) =
+      ((qn.searchEq t c).map (·.y)).map (fun z => if z = x then Y else z) := by
+    intro c
+    rw [KNode.add_key_searchEq qn t K Y hqwf hqt c, KNode.searchEq_live qn t hqwf hqt c]
+    by_cases hc : K = c
+    · subst hc
+      rw [lookup_some_of_mem (KNode.live_keys_nodup qn) hk1]
+      simp
+    · have hb : (K == c) = false := by simpa using hc
+      rw [hb]
+      simp only [Bool.false_eq_true, ↓reduceIte]
+      cases hlk : qn.live.lookup c with
+      | none => rfl
+      | some z =>
+        have hzx : z ≠ x := by
+          intro hzx
+          rw [hzx] at hlk
+          have hm := lookup_some_mem hlk
+          rw [← KNode.liveAt_of_times qn t hqt] at hm
+          exact hc (honly q qn c hrq hVq hm).2.symm
+        simp [hzx]
+  have hg := getFromR_graft V A Val t fuel r q x Y (fun z => z = x ∨ z = Y ∨ z = F ∨ z = S) qn
+    (qn.add t (.key K Y)) hVq hAq hql (by rw [KNode.add_leaf]; exact hql) hqs (Or.inl rfl) hwfV
+    (fun z _ hD hzq => hA z (fun h => hD (Or.inl h)) hzq (fun h => hD (Or.inr (Or.inr (Or.inl h))))
+      (fun h => hD (Or.inr (Or.inr (Or.inr h)))) (fun h => hD (Or.inr (Or.inl h))))
+    (by
+      intro z zn c y hz _ hzq hzn hy hD
+      rcases hD with hD | hD | hD | hD
+      · subst hD; exact hzq (honly z zn c hz hzn hy).1
+      · subst hD; exact (hnoNew z c y hz ⟨zn, hzn, hy⟩).2.2 rfl
+      · subst hD; exact (hnoNew z c y hz ⟨zn, hzn, hy⟩).1 rfl
+      · subst hD; exact (hnoNew z c y hz ⟨zn, hzn, hy⟩).2.1 rfl)
+    (by
+      intro c y hy hD
+      rcases hD with hD | hD | hD | hD
+      · exact hD
+      · subst hD; exact absurd rfl (hnoNew q c y hrq ⟨qn, hVq, hy⟩).2.2
+      · subst hD; exact absurd rfl (hnoNew q c y hrq ⟨qn, hVq, hy⟩).1
+      · subst hD; exact absurd rfl (hnoNew q c y hrq ⟨qn, hVq, hy⟩).2.1)
+    hsub (by rw [hAY, hVx]; rfl) hVal.symm
+  intro key
+  exact hg key r ReachS.root (fun h => by
+    rcases h with h | h | h | h
+    · exact hrx h
+    · exact hrY h
+    · exact hrF h
+    · exact hrS h)
+
+/-- No new root in a cascade's chain X s .. X L: the space root (s = 0) that
+splits does not space split, and every node that space splits has an inner
+parent (no segment root's space split below a segment leaf). Then the reading
+after the cascade needs no fuel premise. -/
+def ChainNoNewRoot (c : Ctx) (Nn : Nat → KNode) (s L : Nat) : Prop :=
+  ¬ (s = 0 ∧ ¬ ChainRoom c (Nn 0) ∧ c.p.splitAbove < ((Nn 0).lastVersion c.i).size) ∧
+  ∀ i, s < i → i ≤ L → ¬ ChainRoom c (Nn i) → c.p.splitAbove < ((Nn i).lastVersion c.i).size →
+    (Nn (i - 1)).leaf = false
+
+/-- A tree has no cycles: two nodes that reach each other are one. -/
+theorem reach_antisymm (N : NodeId → Option KNode) (t : Time) (r a b : NodeId)
+    (hT : TreeOK N t r) (ha : TReach N t r a) (hab : ReachS N t a b) (hba : ReachS N t b a) :
+    a = b := by
+  obtain ⟨da, hda⟩ := ha.pathLen
+  obtain ⟨k1, hk1⟩ := reachS_pathFromLen N t a b hab
+  obtain ⟨k2, hk2⟩ := reachS_pathFromLen N t b a hba
+  have h1 := hda.append hk1
+  have h2 := h1.append hk2
+  have := PathLen.depth_unique hT _ _ _ hda h2
+  have hk : k1 = 0 := by omega
+  subst hk
+  cases hk1 with
+  | refl => rfl
+
+/-- A chain of links X a .. X b reaches from X a to X b. -/
+theorem chain_reachS (N : NodeId → Option KNode) (t : Time) (X : Nat → NodeId) (K : Nat → Nat)
+    (Nn : Nat → KNode) (a : Nat) :
+    ∀ b, a ≤ b → (∀ i, a ≤ i → i < b → N (X i) = some (Nn i) ∧ (K (i + 1), X (i + 1)) ∈ (Nn i).liveAt t) →
+      ReachS N t (X a) (X b) := by
+  intro b
+  induction b with
+  | zero =>
+    intro h _
+    have : a = 0 := by omega
+    subst this
+    exact ReachS.root
+  | succ b ih =>
+    intro h hl
+    rcases Nat.eq_or_lt_of_le h with h' | h'
+    · rw [h']; exact ReachS.root
+    · have hr := ih (by omega) (fun i h1 h2 => hl i h1 (by omega))
+      obtain ⟨hN, hk⟩ := hl b (by omega) (by omega)
+      exact ReachS.step (X b) (Nn b) (K (b + 1)) (X (b + 1)) hr hN hk
+
 end SIS.Tree
