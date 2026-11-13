@@ -779,4 +779,121 @@ theorem writerWP_appendDeleteKlong_get2 (c : Ctx) (base : View BVal) (hvc : View
         simp only [hg, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
         exact hrest (fun ⟨⟨old, h⟩, _⟩ => by rw [hg] at h; cases h)
 
+/-! ## The rule: a delete into a leaf whose parent is full and time split -/
+
+/-- A delete, the merges off, of a key whose access path from the segment root
+rk ends with g, q, L (`PathFrom`), by a bitmap in the segment leaf L, which
+keeps a live klong, the inner parent q full and time split if L splits, below
+the grandparent g with room: with room for the bitmap, or L time split (in place
+for a leaf the transaction made). The delete changes the reading by itself
+alone. -/
+theorem writerWP_del_timeSplit2 (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (pre : List Nat) (cv : Nat) (rk : NodeId) (w : W)
+    (S0 : List (Option Nat × NodeId)) (kq k1 : Nat) (q L : NodeId) (n qn gn : KNode)
+    (hmerges : c.p.merges = false) (hkey : keyWf (pre ++ [cv]) = true)
+    (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
+    (ht : ∀ q ∈ fromVisits (wNode c.p base w) c.i c.p.fuel (pre ++ [cv]) w.top.rootKey,
+      w.taken.contains q.1 = false)
+    (hids : (∀ z, (w.nodes.lookup z).isSome = true → z < w.next) ∧
+      (∀ z, (c.view z).isSome = true → z < w.next) ∧ (∀ z, w.taken.contains z = true → z < w.next) ∧
+      (∀ q ∈ w.vals, q.1 < w.next) ∧ w.top.rootKey < w.next)
+    (hbase : ∀ z, w.next ≤ z → knodeOf c.p base z = none ∧ valueOf base z = none)
+    (hwfG : ∀ x xn, wNode c.p base w x = some xn → klongsWf xn.ks = true)
+    (hpath : PathFrom (wNode c.p base w) c.i cv rk (S0 ++ [(some kq, q), (some k1, L)]))
+    (hNL : wNode c.p base w L = some n) (hnl : n.leaf = true)
+    (hNq : wNode c.p base w q = some qn) (hNg : wNode c.p base w (pathEnd rk S0) = some gn)
+    (hleaf : (∀ s, Klong.time s ∈ n.ks → s ≤ c.i) ∧
+      bitsUnion n.lastBitmap (n.bitsOf cv) ≠ n.lastBitmap ∧
+      n.allKeysIn (bitsUnion n.lastBitmap (n.bitsOf cv)) = false ∧
+      (¬ ((∃ old, n.ks.getLast? = some (.del old)) ∧ n.lastTime = some c.i) →
+        c.p.M ≤ n.size + 1 →
+        (n.lastVersionGivenDel c.i (bitsUnion n.lastBitmap (n.bitsOf cv))).size ≤ c.p.splitAbove) ∧
+      wValue base w L = none ∧ L ≠ w.top.rootKey)
+    (hparent : (∀ s, Klong.time s ∈ qn.ks → s ≤ c.i) ∧
+      ¬ (qn.size + 1 < c.p.M ∧ deadOver c.p (qn.add c.i (.key k1 w.next)) = false) ∧
+      qn.firstTime ≠ some c.i ∧
+      (c.p.M ≤ qn.size + 1 → (qn.lastVersion c.i).size ≤ c.p.splitAbove) ∧
+      wValue base w q = none ∧ q ≠ w.top.rootKey)
+    (hgp : (∀ s, Klong.time s ∈ gn.ks → s ≤ c.i) ∧ gn.size + 1 + 1 ≤ c.p.M ∧
+      ∀ y, deadOver c.p (gn.add c.i (.key kq y)) = false)
+    (huniq : ∀ key' x n', keyWf key' = true →
+      (x, cv) ∈ fromVisits (wNode c.p base w) c.i c.p.fuel key' w.top.rootKey →
+      (x, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      wNode c.p base w x = some n' → n'.leaf = true → key' = pre ++ [cv])
+    (htreeK : ∀ x xn cc z, ReachS (wNode c.p base w) c.i w.top.rootKey x →
+      wNode c.p base w x = some xn → (cc, z) ∈ xn.liveAt c.i → (wNode c.p base w z).isSome = true →
+      ∀ x' xn' cc', ReachS (wNode c.p base w) c.i w.top.rootKey x' →
+        wNode c.p base w x' = some xn' → (cc', z) ∈ xn'.liveAt c.i → x = x' ∧ cc = cc')
+    (hlinks : ∀ x xn cc z, ReachS (wNode c.p base w) c.i w.top.rootKey x →
+      wNode c.p base w x = some xn → (cc, z) ∈ xn.liveAt c.i → z < w.next) :
+    WriterWP (putKv (.del (pre ++ [cv]))) c w (fun _ w' => ∀ key', keyWf key' = true →
+      wGet c.p c.i base w' key' =
+        if Op.key (.del (pre ++ [cv])) == key' then Op.value (.del (pre ++ [cv]))
+        else wGet c.p c.i base w key') := by
+  obtain ⟨hnt, hne, hkeep, hsplit, hLval, hLroot⟩ := hleaf
+  obtain ⟨hqt, hqfull, hqfirst, hqsplit, hqval, hqroot⟩ := hparent
+  obtain ⟨hgt, hroomg, hdeadg⟩ := hgp
+  have hfuel : 1 ≤ c.p.fuel := by unfold Params.fuel; omega
+  have hwfR : ∀ x xn, ReachS (wNode c.p base w) c.i w.top.rootKey x →
+      wNode c.p base w x = some xn → klongsWf xn.ks = true := fun x xn _ hn => hwfG x xn hn
+  obtain ⟨gn', qn', fdg, fdq, hg', hgl, hgs, hkq, hgy, hq', hql, hqs, hk1, hqy⟩ :=
+    PathFrom.last_two _ _ _ S0 rk _ _ q L hpath
+  rw [hNg] at hg'; cases hg'
+  rw [hNq] at hq'; cases hq'
+  have hqL : q ≠ L := by intro he; subst he; rw [hNq] at hNL; cases hNL; rw [hql] at hnl; cases hnl
+  have hrrk : ReachS (wNode c.p base w) c.i w.top.rootKey rk :=
+    segRootR_reach _ _ _ _ hwfR pre _ rk ReachS.root hrk
+  apply writerWP_del_path c base hvc pre cv rk w S0 kq k1 q L n qn gn hrk ht hids.1 hids.2.1 hwfG
+    hpath hNL hnl hNq hNg
+  intro d'' w3 hr3 hlk3 hlq3 hlg3 hsrc3 hpg hpq hpk hvisL hqv hgv
+  obtain ⟨g, hgdef⟩ : ∃ g, g = pathEnd rk S0 := ⟨_, rfl⟩
+  rw [← hgdef] at hNg hlg3 hpg hgv
+  have hgL : g ≠ L := by intro he; rw [he] at hNg; rw [hNL] at hNg; cases hNg; rw [hgl] at hnl; cases hnl
+  have hgq : g ≠ q := by
+    intro he
+    rw [he] at hNg; rw [hNq] at hNg; cases hNg
+    rw [hqs] at hgs; cases hgs
+    exact hqL (hgy.symm.trans hqy)
+  have hkqc : fdg.c = kq := by simpa using hkq.symm
+  have hk1c : fdq.c = k1 := by simpa using hk1.symm
+  have hk1L : (k1, L) ∈ qn.live := by
+    have := KNode.searchLte_mem qn c.i cv fdq hqs
+    rw [KNode.liveAt_of_times qn c.i hqt, hk1c, hqy] at this; exact this
+  have hkqg : (kq, q) ∈ gn.live := by
+    have := KNode.searchLte_mem gn c.i cv fdg hgs
+    rw [KNode.liveAt_of_times gn c.i hgt, hkqc, hgy] at this; exact this
+  have hrq : ReachS (wNode c.p base w) c.i w.top.rootKey q :=
+    eqVisits_reach _ _ _ cv c.p.fuel rk q cv hrrk hqv
+  have hrg : ReachS (wNode c.p base w) c.i w.top.rootKey g :=
+    eqVisits_reach _ _ _ cv c.p.fuel rk g cv hrrk hgv
+  have hLt : w.taken.contains L = false :=
+    ht (L, cv) (fromVisits_append _ _ _ pre cv _ rk hrk _ hvisL)
+  have hgtk : w.taken.contains g = false :=
+    ht (g, cv) (fromVisits_append _ _ _ pre cv _ rk hrk _ hgv)
+  have hqtk : w.taken.contains q = false :=
+    ht (q, cv) (fromVisits_append _ _ _ pre cv _ rk hrk _ hqv)
+  unfold deleteUpward
+  simp only [writerWP_bind, writerWP_read]
+  rw [writerWP_getNode_known L n c _ hlk3]
+  have hnb : (bitsUnion n.lastBitmap (n.bitsOf cv) == n.lastBitmap) = false := by
+    simpa using hne
+  simp only [hnb, Bool.false_eq_true, ↓reduceIte, hkeep, Bool.not_false]
+  wpSimplify
+  refine writerWP_ghOf_cached L n c _ hlk3 _ (fun gh => ?_)
+  refine writerWP_mono (writerWP_appendDeleteKlong_get2 c base hvc pre cv k1 kq d'' rk L q g n qn gn
+    w w3 hfuel hkey hrk hvisL huniq hwfG hids hbase hNL hnl hnt hLt hLval hLroot hNq hql hqt hk1L
+    hqL hrq hqfirst hNg hgl hgt hkqg hgq hgL hgtk hrg
+    (fun x xn c' hx hxn hz => htreeK x xn c' q hx hxn hz (by simp [hNq]) g gn kq hrg hNg
+      (by rw [KNode.liveAt_of_times gn c.i hgt]; exact hkqg))
+    hqval hqroot
+    (fun x xn c' hx hxn hz => htreeK x xn c' L hx hxn hz (by simp [hNL]) q qn k1 hrq hNq
+      (by rw [KNode.liveAt_of_times qn c.i hqt]; exact hk1L))
+    hlinks hr3 hlk3 hlq3 hlg3 hsrc3 hpg hpq hpk hne hsplit hqfull hqsplit hroomg hdeadg) ?_
+  intro _ w4 hT4
+  unfold afterDelete fresh
+  wpSimplify
+  simp only [hmerges, Bool.false_eq_true, ↓reduceIte, writerWP_pure]
+  simp only [Bool.not_false, ↓reduceIte, writerWP_bind, writerWP_get, writerWP_set, writerWP_pure]
+  exact hT4
+
 end SIS.Tree
