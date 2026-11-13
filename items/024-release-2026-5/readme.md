@@ -335,7 +335,8 @@ Files
   release-2026.5-a, gated), the release night from 2026-11-12, 15:18 (F53:
   night.sh large, the performance comparison with 2026.4, jcstress,
   checks, Android, the queue; s1: JDK 27 and 17, the OT2 probe, fuzz),
-  the morning's scripts without the tag.
+  the morning's scripts without the tag. Done 2026-11-13: the tag
+  `release-2026.5` on A, commit B `e9ed4ac9`.
 
 
 Log
@@ -411,3 +412,8 @@ Lean model covers of 2026.4's algorithm).
 to 026. In particular this 024-20 should move there."); a stub left at
 024-20. Nothing else of 2026.5 was decided for 2026.6; what is only
 proposed for it is listed in 026's readme.
+
+2026-11-13. Release 2026.5 made: the tag `release-2026.5` on A
+`bf9ab5af` (Frans, 06:27, pushed), commit B `e9ed4ac9`, `releases/2026.5/`
+(024-38). The release night was clean but for one Android test, a test
+artifact fixed in `3c1f0756`.

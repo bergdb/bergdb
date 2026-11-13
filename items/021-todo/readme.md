@@ -50,7 +50,8 @@ Open
 
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
-| [021-27](27-gettrans-inside-record.md) | Decide | getTrans inside a record fails the database | decision | done 2026-11-12 |
+| [021-28](28-tests-fixed-time-limits.md) | Fix | Unit tests with fixed time limits fail under load | none | open |
+| [021-29](29-tests-wait-without-timeout.md) | Fix | Unit tests that wait with no timeout | none | open |
 
 
 Closed
@@ -58,6 +59,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [021-27](27-gettrans-inside-record.md) | Decide | getTrans inside a record fails the database | decision | done | 2026-11-12 |
 | [021-25](25-reclaim-fifo.md) | Investigate | Reclaim stops cutting a FIFO in time order | decision | done | 2026-11-11 |
 | [021-06](06-read-side-ill-formed-utf8.md) | Investigate | Ill-formed UTF-8 from another writer, read by Java | answers | done | 2026-11-09 |
 | [021-10](10-entries-suffix-dot-in-dir.md) | Fix | A '.' in a directory makes no key there an object key | none | done | 2026-11-09 |

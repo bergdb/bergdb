@@ -765,7 +765,9 @@ public class PubTesterJavadocNewUsers {
     private static long heapAfterGc() throws InterruptedException {
         Runtime r = Runtime.getRuntime();
         for (int i = 0; i < 3; i++) {
-            System.gc();
+            // Runtime.gc(), not System.gc(): on Android (ART) System.gc() starts no collection
+            // unless finalization ran before it (bergdb 024-38, android-finding.md; 006-18-03).
+            Runtime.getRuntime().gc();
             Thread.sleep(20);
         }
         return r.totalMemory() - r.freeMemory();

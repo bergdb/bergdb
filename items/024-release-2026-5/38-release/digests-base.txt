@@ -1,0 +1,157 @@
+CONFIG l2-sd100 seed=1 del=1 n=2000 sd=100 keys=500 every=100 long=1 bigtrans=20
+  l2-sd100 plain: 0 lookups
+DIGEST l2-sd100 plain length=5131920 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=56d42886eedff9f600798e2660cb285986e38378bb79593463bd4e9a424b1639 sha256=56d42886eedff9f600798e2660cb285986e38378bb79593463bd4e9a424b1639
+  l2-sd100 plain: 208 ms
+  l2-sd100 reads: 16000 lookups
+DIGEST l2-sd100 reads length=5131920 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=56d42886eedff9f600798e2660cb285986e38378bb79593463bd4e9a424b1639 sha256=56d42886eedff9f600798e2660cb285986e38378bb79593463bd4e9a424b1639
+  l2-sd100 reads: 90 ms
+  l2-sd100 restarts: 16000 lookups
+DIGEST l2-sd100 restarts length=5131920 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=56d42886eedff9f600798e2660cb285986e38378bb79593463bd4e9a424b1639 sha256=56d42886eedff9f600798e2660cb285986e38378bb79593463bd4e9a424b1639
+  l2-sd100 restarts: 180 ms
+  l2-sd100 restarts-once: 16000 lookups
+DIGEST l2-sd100 restarts-once length=5131920 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=56d42886eedff9f600798e2660cb285986e38378bb79593463bd4e9a424b1639 sha256=56d42886eedff9f600798e2660cb285986e38378bb79593463bd4e9a424b1639
+  l2-sd100 restarts-once: 132 ms
+CONFIG l2-sd1000-node8 seed=1 del=1 n=2000 sd=1000 keys=500 every=100 maxnode=8 long=1 bigtrans=10
+  l2-sd1000-node8 plain: 0 lookups
+DIGEST l2-sd1000-node8 plain length=4347144 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=9de0a54ce5a49d9423ec415a8f3051a7c6551946c5304110823561fb744730ea sha256=9de0a54ce5a49d9423ec415a8f3051a7c6551946c5304110823561fb744730ea
+  l2-sd1000-node8 plain: 58 ms
+  l2-sd1000-node8 reads: 16000 lookups
+DIGEST l2-sd1000-node8 reads length=4347144 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=9de0a54ce5a49d9423ec415a8f3051a7c6551946c5304110823561fb744730ea sha256=9de0a54ce5a49d9423ec415a8f3051a7c6551946c5304110823561fb744730ea
+  l2-sd1000-node8 reads: 65 ms
+  l2-sd1000-node8 restarts: 16000 lookups
+DIGEST l2-sd1000-node8 restarts length=4347144 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=9de0a54ce5a49d9423ec415a8f3051a7c6551946c5304110823561fb744730ea sha256=9de0a54ce5a49d9423ec415a8f3051a7c6551946c5304110823561fb744730ea
+  l2-sd1000-node8 restarts: 141 ms
+  l2-sd1000-node8 restarts-once: 16000 lookups
+DIGEST l2-sd1000-node8 restarts-once length=4347144 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=9de0a54ce5a49d9423ec415a8f3051a7c6551946c5304110823561fb744730ea sha256=9de0a54ce5a49d9423ec415a8f3051a7c6551946c5304110823561fb744730ea
+  l2-sd1000-node8 restarts-once: 113 ms
+CONFIG l2-sd10000-node14 seed=1 del=1 n=2000 sd=10000 keys=500 every=200 maxnode=14 long=1
+  l2-sd10000-node14 plain: 0 lookups
+DIGEST l2-sd10000-node14 plain length=2477400 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=706a00df1045ec8255fef4514df4d2cf60f8994f4f7cf0a0d5ce8c791ec8f390 sha256=706a00df1045ec8255fef4514df4d2cf60f8994f4f7cf0a0d5ce8c791ec8f390
+  l2-sd10000-node14 plain: 27 ms
+  l2-sd10000-node14 reads: 8000 lookups
+DIGEST l2-sd10000-node14 reads length=2477400 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=706a00df1045ec8255fef4514df4d2cf60f8994f4f7cf0a0d5ce8c791ec8f390 sha256=706a00df1045ec8255fef4514df4d2cf60f8994f4f7cf0a0d5ce8c791ec8f390
+  l2-sd10000-node14 reads: 32 ms
+  l2-sd10000-node14 restarts: 8000 lookups
+DIGEST l2-sd10000-node14 restarts length=2477400 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=706a00df1045ec8255fef4514df4d2cf60f8994f4f7cf0a0d5ce8c791ec8f390 sha256=706a00df1045ec8255fef4514df4d2cf60f8994f4f7cf0a0d5ce8c791ec8f390
+  l2-sd10000-node14 restarts: 55 ms
+  l2-sd10000-node14 restarts-once: 8000 lookups
+DIGEST l2-sd10000-node14 restarts-once length=2477400 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=706a00df1045ec8255fef4514df4d2cf60f8994f4f7cf0a0d5ce8c791ec8f390 sha256=706a00df1045ec8255fef4514df4d2cf60f8994f4f7cf0a0d5ce8c791ec8f390
+  l2-sd10000-node14 restarts-once: 54 ms
+CONFIG l2-sd100000-node62 seed=1 del=1 n=2000 sd=100000 keys=1000 every=200 maxnode=62 bigtrans=40 valsize=400
+  l2-sd100000-node62 plain: 0 lookups
+DIGEST l2-sd100000-node62 plain length=2531344 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=ddb507b413ddf8ce386f0f12fc309f4ddbfa91be7a87de9cc601b130ab5f2b61 sha256=ddb507b413ddf8ce386f0f12fc309f4ddbfa91be7a87de9cc601b130ab5f2b61
+  l2-sd100000-node62 plain: 32 ms
+  l2-sd100000-node62 reads: 13000 lookups
+DIGEST l2-sd100000-node62 reads length=2531344 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=ddb507b413ddf8ce386f0f12fc309f4ddbfa91be7a87de9cc601b130ab5f2b61 sha256=ddb507b413ddf8ce386f0f12fc309f4ddbfa91be7a87de9cc601b130ab5f2b61
+  l2-sd100000-node62 reads: 35 ms
+  l2-sd100000-node62 restarts: 13000 lookups
+DIGEST l2-sd100000-node62 restarts length=2531344 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=ddb507b413ddf8ce386f0f12fc309f4ddbfa91be7a87de9cc601b130ab5f2b61 sha256=ddb507b413ddf8ce386f0f12fc309f4ddbfa91be7a87de9cc601b130ab5f2b61
+  l2-sd100000-node62 restarts: 79 ms
+  l2-sd100000-node62 restarts-once: 13000 lookups
+DIGEST l2-sd100000-node62 restarts-once length=2531344 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=ddb507b413ddf8ce386f0f12fc309f4ddbfa91be7a87de9cc601b130ab5f2b61 sha256=ddb507b413ddf8ce386f0f12fc309f4ddbfa91be7a87de9cc601b130ab5f2b61
+  l2-sd100000-node62 restarts-once: 75 ms
+CONFIG l2-every1 seed=1 del=1 n=400 sd=500 keys=100 every=1 long=1
+  l2-every1 plain: 0 lookups
+DIGEST l2-every1 plain length=514616 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=8295ed2545b2c1b5f3e6d7d181c80655464d1d90c3bac4cfd528e094b678425a sha256=8295ed2545b2c1b5f3e6d7d181c80655464d1d90c3bac4cfd528e094b678425a
+  l2-every1 plain: 5 ms
+  l2-every1 reads: 160000 lookups
+DIGEST l2-every1 reads length=514616 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=8295ed2545b2c1b5f3e6d7d181c80655464d1d90c3bac4cfd528e094b678425a sha256=8295ed2545b2c1b5f3e6d7d181c80655464d1d90c3bac4cfd528e094b678425a
+  l2-every1 reads: 45 ms
+  l2-every1 restarts: 160000 lookups
+DIGEST l2-every1 restarts length=514616 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=8295ed2545b2c1b5f3e6d7d181c80655464d1d90c3bac4cfd528e094b678425a sha256=8295ed2545b2c1b5f3e6d7d181c80655464d1d90c3bac4cfd528e094b678425a
+  l2-every1 restarts: 492 ms
+  l2-every1 restarts-once: 160000 lookups
+DIGEST l2-every1 restarts-once length=514616 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=8295ed2545b2c1b5f3e6d7d181c80655464d1d90c3bac4cfd528e094b678425a sha256=8295ed2545b2c1b5f3e6d7d181c80655464d1d90c3bac4cfd528e094b678425a
+  l2-every1 restarts-once: 475 ms
+CONFIG l2-idle-1 seed=1 del=1 n=400 sd=100 keys=100 every=1 long=1 empty=30 nodel=20
+  l2-idle-1 plain: 0 lookups
+DIGEST l2-idle-1 plain length=222104 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=47704b7d265f91d927f8ff469c1e96e9fb4e9659c55dd8d74dc5881398c061cd sha256=47704b7d265f91d927f8ff469c1e96e9fb4e9659c55dd8d74dc5881398c061cd
+  l2-idle-1 plain: 3 ms
+  l2-idle-1 reads: 160000 lookups
+DIGEST l2-idle-1 reads length=222104 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=47704b7d265f91d927f8ff469c1e96e9fb4e9659c55dd8d74dc5881398c061cd sha256=47704b7d265f91d927f8ff469c1e96e9fb4e9659c55dd8d74dc5881398c061cd
+  l2-idle-1 reads: 35 ms
+  l2-idle-1 restarts: 160000 lookups
+DIGEST l2-idle-1 restarts length=222104 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=47704b7d265f91d927f8ff469c1e96e9fb4e9659c55dd8d74dc5881398c061cd sha256=47704b7d265f91d927f8ff469c1e96e9fb4e9659c55dd8d74dc5881398c061cd
+  l2-idle-1 restarts: 411 ms
+  l2-idle-1 restarts-once: 160000 lookups
+DIGEST l2-idle-1 restarts-once length=222104 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=47704b7d265f91d927f8ff469c1e96e9fb4e9659c55dd8d74dc5881398c061cd sha256=47704b7d265f91d927f8ff469c1e96e9fb4e9659c55dd8d74dc5881398c061cd
+  l2-idle-1 restarts-once: 404 ms
+CONFIG l2-idle-2 seed=2 del=1 n=400 sd=100 keys=100 every=1 long=1 empty=30 nodel=20
+  l2-idle-2 plain: 0 lookups
+DIGEST l2-idle-2 plain length=222112 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=098934fdac9b73b1f000310931245496e157852fd19a6305b0a3ebac7c25c4af sha256=098934fdac9b73b1f000310931245496e157852fd19a6305b0a3ebac7c25c4af
+  l2-idle-2 plain: 2 ms
+  l2-idle-2 reads: 160000 lookups
+DIGEST l2-idle-2 reads length=222112 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=098934fdac9b73b1f000310931245496e157852fd19a6305b0a3ebac7c25c4af sha256=098934fdac9b73b1f000310931245496e157852fd19a6305b0a3ebac7c25c4af
+  l2-idle-2 reads: 34 ms
+  l2-idle-2 restarts: 160000 lookups
+DIGEST l2-idle-2 restarts length=222112 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=098934fdac9b73b1f000310931245496e157852fd19a6305b0a3ebac7c25c4af sha256=098934fdac9b73b1f000310931245496e157852fd19a6305b0a3ebac7c25c4af
+  l2-idle-2 restarts: 384 ms
+  l2-idle-2 restarts-once: 160000 lookups
+DIGEST l2-idle-2 restarts-once length=222112 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=098934fdac9b73b1f000310931245496e157852fd19a6305b0a3ebac7c25c4af sha256=098934fdac9b73b1f000310931245496e157852fd19a6305b0a3ebac7c25c4af
+  l2-idle-2 restarts-once: 377 ms
+CONFIG l2-default-100MB seed=1 sd=0 n=12000 keys=3000 valsize=8000 every=4000 del=1
+  l2-default-100MB plain: 0 lookups
+DIGEST l2-default-100MB plain length=79175656 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=fce3e13f8cf4aed7b23e324dcd3f815a52f319fdd876439a74162e69a2156202 sha256=fce3e13f8cf4aed7b23e324dcd3f815a52f319fdd876439a74162e69a2156202
+  l2-default-100MB plain: 584 ms
+  l2-default-100MB reads: 9900 lookups
+DIGEST l2-default-100MB reads length=79175656 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=fce3e13f8cf4aed7b23e324dcd3f815a52f319fdd876439a74162e69a2156202 sha256=fce3e13f8cf4aed7b23e324dcd3f815a52f319fdd876439a74162e69a2156202
+  l2-default-100MB reads: 591 ms
+  l2-default-100MB restarts: 9900 lookups
+DIGEST l2-default-100MB restarts length=79175656 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=fce3e13f8cf4aed7b23e324dcd3f815a52f319fdd876439a74162e69a2156202 sha256=fce3e13f8cf4aed7b23e324dcd3f815a52f319fdd876439a74162e69a2156202
+  l2-default-100MB restarts: 985 ms
+  l2-default-100MB restarts-once: 9900 lookups
+DIGEST l2-default-100MB restarts-once length=79175656 firstPos=0 firstAvailablePos=0 firstAvailableTime=0 sha256all=fce3e13f8cf4aed7b23e324dcd3f815a52f319fdd876439a74162e69a2156202 sha256=fce3e13f8cf4aed7b23e324dcd3f815a52f319fdd876439a74162e69a2156202
+  l2-default-100MB restarts-once: 1002 ms
+CONFIG l3-every1 seed=1 del=1 retain=1 n=1000 sd=500 keys=100 every=1 long=1
+  l3-every1 plain: 0 lookups
+DIGEST l3-every1 plain length=1883528 firstPos=1000000 firstAvailablePos=1673112 firstAvailableTime=998100011 sha256all=9c916b66c4fe7f239c5f44da8171d1cbab2ef5f936db017637ebbaf2c87f9766 sha256=23834074061b62b35d038c82f32360a2cfaf87a8af4baeda023e66c4efbcd27e
+  l3-every1 plain: 32 ms
+  l3-every1 reads: 164235 lookups
+DIGEST l3-every1 reads length=1883528 firstPos=1000000 firstAvailablePos=1673112 firstAvailableTime=998100011 sha256all=9c916b66c4fe7f239c5f44da8171d1cbab2ef5f936db017637ebbaf2c87f9766 sha256=23834074061b62b35d038c82f32360a2cfaf87a8af4baeda023e66c4efbcd27e
+  l3-every1 reads: 90 ms
+  l3-every1 restarts: 164235 lookups
+DIGEST l3-every1 restarts length=1883528 firstPos=1000000 firstAvailablePos=1673112 firstAvailableTime=998100011 sha256all=9c916b66c4fe7f239c5f44da8171d1cbab2ef5f936db017637ebbaf2c87f9766 sha256=23834074061b62b35d038c82f32360a2cfaf87a8af4baeda023e66c4efbcd27e
+  l3-every1 restarts: 1273 ms
+  l3-every1 restarts-once: 164235 lookups
+DIGEST l3-every1 restarts-once length=1883528 firstPos=1000000 firstAvailablePos=1673112 firstAvailableTime=998100011 sha256all=9c916b66c4fe7f239c5f44da8171d1cbab2ef5f936db017637ebbaf2c87f9766 sha256=23834074061b62b35d038c82f32360a2cfaf87a8af4baeda023e66c4efbcd27e
+  l3-every1 restarts-once: 1199 ms
+CONFIG l3-node8 seed=1 del=1 retain=1 n=2000 sd=1000 keys=500 every=50 maxnode=8 long=1 bigtrans=10
+  l3-node8 plain: 0 lookups
+DIGEST l3-node8 plain length=7175352 firstPos=5000000 firstAvailablePos=5907888 firstAvailableTime=2027300011 sha256all=07e2a8ee1c9e1b90c8ec4eed1b0dba2589f1c9378a5591466a7e9069afd64602 sha256=c573d3bfecca505f4a3d04896f71ffd5e6867e4a1b6a35952f57294afec9cd05
+  l3-node8 plain: 87 ms
+  l3-node8 reads: 21477 lookups
+DIGEST l3-node8 reads length=7175352 firstPos=5000000 firstAvailablePos=5907888 firstAvailableTime=2027300011 sha256all=07e2a8ee1c9e1b90c8ec4eed1b0dba2589f1c9378a5591466a7e9069afd64602 sha256=c573d3bfecca505f4a3d04896f71ffd5e6867e4a1b6a35952f57294afec9cd05
+  l3-node8 reads: 102 ms
+  l3-node8 restarts: 21477 lookups
+DIGEST l3-node8 restarts length=7175352 firstPos=5000000 firstAvailablePos=5907888 firstAvailableTime=2027300011 sha256all=07e2a8ee1c9e1b90c8ec4eed1b0dba2589f1c9378a5591466a7e9069afd64602 sha256=c573d3bfecca505f4a3d04896f71ffd5e6867e4a1b6a35952f57294afec9cd05
+  l3-node8 restarts: 188 ms
+  l3-node8 restarts-once: 21477 lookups
+DIGEST l3-node8 restarts-once length=7175352 firstPos=5000000 firstAvailablePos=5907888 firstAvailableTime=2027300011 sha256all=07e2a8ee1c9e1b90c8ec4eed1b0dba2589f1c9378a5591466a7e9069afd64602 sha256=c573d3bfecca505f4a3d04896f71ffd5e6867e4a1b6a35952f57294afec9cd05
+  l3-node8 restarts-once: 185 ms
+CONFIG l3-node14 seed=1 del=1 retain=1 n=2000 sd=3000 keys=50 every=37 maxnode=14
+  l3-node14 plain: 0 lookups
+DIGEST l3-node14 plain length=1640160 firstPos=1000000 firstAvailablePos=1516000 firstAvailableTime=2051300011 sha256all=63fcd1ff069ee6aa5618136c53a3d96cec654ff506dc2d6e656cf322cdab0ab1 sha256=f464a97f5ea7b81139579ed6eb35193df10f685bd340821953385378f95acc3d
+  l3-node14 plain: 18 ms
+  l3-node14 reads: 5860 lookups
+DIGEST l3-node14 reads length=1640160 firstPos=1000000 firstAvailablePos=1516000 firstAvailableTime=2051300011 sha256all=63fcd1ff069ee6aa5618136c53a3d96cec654ff506dc2d6e656cf322cdab0ab1 sha256=f464a97f5ea7b81139579ed6eb35193df10f685bd340821953385378f95acc3d
+  l3-node14 reads: 20 ms
+  l3-node14 restarts: 5860 lookups
+DIGEST l3-node14 restarts length=1640160 firstPos=1000000 firstAvailablePos=1516000 firstAvailableTime=2051300011 sha256all=63fcd1ff069ee6aa5618136c53a3d96cec654ff506dc2d6e656cf322cdab0ab1 sha256=f464a97f5ea7b81139579ed6eb35193df10f685bd340821953385378f95acc3d
+  l3-node14 restarts: 84 ms
+  l3-node14 restarts-once: 5860 lookups
+DIGEST l3-node14 restarts-once length=1640160 firstPos=1000000 firstAvailablePos=1516000 firstAvailableTime=2051300011 sha256all=63fcd1ff069ee6aa5618136c53a3d96cec654ff506dc2d6e656cf322cdab0ab1 sha256=f464a97f5ea7b81139579ed6eb35193df10f685bd340821953385378f95acc3d
+  l3-node14 restarts-once: 84 ms
+CONFIG l3-node62 seed=1 del=1 retain=1 n=2000 sd=10000 keys=1000 every=100 maxnode=62 bigtrans=40 valsize=400
+  l3-node62 plain: 0 lookups
+DIGEST l3-node62 plain length=10343584 firstPos=9000000 firstAvailablePos=9209240 firstAvailableTime=2049500011 sha256all=1a78c0bcb25a85aa3a140d5dd1bfcf89324eabc40c1037ca82123b48ffc0b515 sha256=96c54270b6cc55678b743c98f536abab9a4662e5631fd71247b5e8bbffe9f48c
+  l3-node62 plain: 111 ms
+  l3-node62 reads: 20780 lookups
+DIGEST l3-node62 reads length=10343584 firstPos=9000000 firstAvailablePos=9209240 firstAvailableTime=2049500011 sha256all=1a78c0bcb25a85aa3a140d5dd1bfcf89324eabc40c1037ca82123b48ffc0b515 sha256=96c54270b6cc55678b743c98f536abab9a4662e5631fd71247b5e8bbffe9f48c
+  l3-node62 reads: 120 ms
+  l3-node62 restarts: 20780 lookups
+DIGEST l3-node62 restarts length=10343584 firstPos=9000000 firstAvailablePos=9209240 firstAvailableTime=2049500011 sha256all=1a78c0bcb25a85aa3a140d5dd1bfcf89324eabc40c1037ca82123b48ffc0b515 sha256=96c54270b6cc55678b743c98f536abab9a4662e5631fd71247b5e8bbffe9f48c
+  l3-node62 restarts: 174 ms
+  l3-node62 restarts-once: 20780 lookups
+DIGEST l3-node62 restarts-once length=10343584 firstPos=9000000 firstAvailablePos=9209240 firstAvailableTime=2049500011 sha256all=1a78c0bcb25a85aa3a140d5dd1bfcf89324eabc40c1037ca82123b48ffc0b515 sha256=96c54270b6cc55678b743c98f536abab9a4662e5631fd71247b5e8bbffe9f48c
+  l3-node62 restarts-once: 172 ms
+Done: 12 configurations, 4 modes; the modes give the same stream

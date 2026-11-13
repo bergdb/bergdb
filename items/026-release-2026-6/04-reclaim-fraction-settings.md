@@ -50,7 +50,41 @@ measurements for larger databases, that is."
 4. The step cap at large transactions (024-29, QF29-4).
 
 
+## 3. Measured at 10M keys, 2026-11-12 night
+
+On commit A of 2026.5 (bf9ab5af), in the release night (024-38, step
+frac, 23:20 to 00:25), with 024-29's program at 10M keys; counts. Outputs
+in `04-reclaim-fraction-settings/10m-work-*.txt`. K = the stream kept
+beyond the user's records within R, in units of the twin's fresh stream
+(peak and mean); WA_r = reclaim's extra stream bytes a user byte.
+
+| Workload | f | WA_r | K peak | K mean | loads a step |
+|---|---|---|---|---|---|
+| a, uniform overwrites | 1/4 | 0.44 | 1.98 | 1.38 | 75.8 |
+| a | 3/8 | 0.64 | 1.67 | 1.01 | 78.9 |
+| a | 1/2 | 0.74 | 1.56 | 0.87 | 86.8 |
+| b, a queue | 1/4 | 0.40 | 5.58 | 3.97 | 69.0 |
+| b | 3/8 | 0.71 | 5.05 | 3.60 | 67.5 |
+| b | 1/2 | 1.12 | 3.90 | 2.74 | 68.7 |
+| c, cold, 1 % hot | 1/4 | 0.45 | 2.23 | 1.64 | 66.1 |
+| c | 3/8 | 0.83 | 1.73 | 1.10 | 66.9 |
+| c | 1/2 | 1.43 | 1.55 | 0.84 | 67.9 |
+
+Back to empty (d), the lag in transactions of drive until the stream kept
+is within twice the twin's: 8,064 at 1/4, 33,501 at 3/8, 33,181 at 1/2
+(the twin's first cut at about 1,200 in each).
+
+First reading (the coordinator's, for Frans): at 10M keys K is much lower
+than at 1M (024-29, section 9: workload a 4.41 at 1/4, here 1.98), so the
+stream kept beyond the history is well within G3's 6 at every f but in
+the queue; a higher f costs reclaim's writes in proportion (0.44 to 0.74
+in a, 0.45 to 1.43 in c); and back to empty is about four times faster
+at 1/4 than at 3/8 or 1/2 here, the opposite of 1M's result: to be
+understood before a default changes. Not measured: times (counts only).
+
+
 ## 3. State
 
-2026-11-12, 14:07: registered. The larger measurements may run tonight
-if the machine has time beside the release night of 2026.5.
+2026-11-12, 14:07: registered. 2026-11-13, 01:15: the runs at 10M keys done
+(section 3); next: understand the back-to-empty lag, times, then the
+three values and the default.
