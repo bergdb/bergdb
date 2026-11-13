@@ -103,6 +103,7 @@ Open
 | [028-04](04-null-value-transformation.md) | Fix | What a null result of a value transformation does | decision | open |
 | [028-07](07-start-lock-across-sync.md) | Investigate | One start's sync blocks every start of the JVM | none | open |
 | [028-10](10-public-start-params.md) | Investigate | The public Db.start(StartParams) takes unchecked values | decision | evaluated, for Frans |
+| [028-12](12-take-byte-limit.md) | Investigate | Can the take's byte limit stop the startup section's bound? | none | open |
 
 
 Closed
@@ -111,7 +112,6 @@ Closed
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
 | [028-11](11-startup-stale-texts.md) | Fix | Texts that disagree with the code, found by 027-11 | P5 only | done | 2026-11-13 |
-| [028-12](12-take-byte-limit.md) | Investigate | Can the take's byte limit stop the startup section's bound? | none | open |
 | [028-09](09-startup-pos-own-record.md) | Investigate | CheckStartupPos accepts a record's own position | none | done | 2026-11-13 |
 | [028-08](08-sd-crash-inside-setter.md) | Investigate | A crash inside setStartupDistance's own record | none | done | 2026-11-13 |
 | [028-06](06-maintain-and-pacing-javadoc.md) | Fix | maintain() and pacing, Core Javadoc | none | done | 2026-11-13 |
