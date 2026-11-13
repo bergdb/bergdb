@@ -58,8 +58,8 @@ All in `Reclaim` (java/src/bergdb/core/Reclaim.java).
   NO_KEY, else the segments as lastKey has them), stored with the table
   in the same call and in every step's row after it. A row without the
   line (stored before 026-05) is read with endKey null: no bound; a bad
-  value is refused (`InternalDataException`), as for lastKey. 024-02's
-  section on the internal texts says so.
+  value is refused (`InternalDataException`), as for lastKey. 027-03's
+  section on the internal texts (024-02 until 2026-11-13) says so.
 
 ### 2.2 The scan at the step's time
 
@@ -230,6 +230,10 @@ coordinator's message): the gated tree is the one that lands. Logs in
 | `level4.sh quick`  | OK (conformance evict 18 of 18)        | OK (18 of 18) |
 | `count-gates.sh`   | -                                      | COUNT GATES OK (137 s) |
 
+`before-commit.sh` again on d2ff5fb8 (`main` 4f191556 merged; its Java
+changes are two comments): BEFORE COMMIT OK (62 s; unit 1,708, f 89,
+demos 14), runs/final2-before-commit.txt.
+
 * **level3** on both heads: ReclaimStress 4 x 50 rounds, 0 failures,
   every round with a cut; RestartInvariance with reclaim, four
   configurations: the stream identical with and without restarts, the
@@ -350,13 +354,16 @@ Frans may overturn it.
 
 ## 9. State
 
-2026-11-13, 09:30. Done; ready to land. Clone
+2026-11-13, 09:40. Done; ready to land. Clone
 /Users/f/fl/bench/2026-11-13/p8/clone, branch `026-05-step-time`:
-94421dd0 (2.5, the pending cut), d9822ebe (2.1 to 2.4, the tests,
-024-02's row text), 73cad7c7 (this item), 57cbb21e (merge of `main`
-20535a1d), then this item's results. Every gate of section 5 OK on
-57cbb21e; the lag of section 6 measured (1,265 to 1,286 at every n and
-f). No expected value of an existing test changed. The lag branch
-`026-05-lag` (worktree /Users/f/fl/bench/2026-11-13/p8/lag) is not to
-land. Open: Frans's Q1 to Q4 (section 8), each decided here by its
-recommendation.
+94421dd0 (2.5, the pending cut), d9822ebe (2.1 to 2.4, the tests, the
+row's text in 024-02, now 027-03), 73cad7c7 (this item), 57cbb21e
+(merge of `main` 20535a1d), 6bbe9594 (this item's results), d2ff5fb8
+(merge of `main` 4f191556: 024-02 moved to 027-03, so the row's text
+went with it; `main`'s Java changes there are two comments), then this
+State. Every gate of section 5 OK on 57cbb21e; before-commit again on
+d2ff5fb8 (section 5). The lag of section 6 measured: 1,265 to 1,286 at
+every n and f. No expected value of an existing test changed. The lag
+branch `026-05-lag` (worktree /Users/f/fl/bench/2026-11-13/p8/lag) is
+not to land. Open: Frans's Q1 to Q4 (section 8), each decided here by
+its recommendation.
