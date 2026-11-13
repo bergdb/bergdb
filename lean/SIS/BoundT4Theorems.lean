@@ -53,4 +53,21 @@ theorem T4_debt (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp al
     (hex : al.stillDirty = exactTest sp) (hv : sp.virt = false) : DebtByChanges sp al ts :=
   debtByChanges_exact sp al ts hok hex hv
 
+/-- T4, the debt counted (007-01, section 6: "at most h times those changes"):
+with the assumptions of `T4_debt`, if every node of D is on a level up to H
+(the root's level bounds it, by A4), then D has at most as many nodes as the
+access paths of the changes of T(a + 1), ..., T(k), the transactions of the
+last H + 1 startup sections, a = spIter S (H + 1) k: for any N such that N τ
+bounds the number of distinct nodes on the access path of T(τ)'s change
+(`onAccessPath`), |D| ≤ N (a + 1) + ... + N k. With TREE (one current parent),
+the access path of a change is its changed and touched nodes and their
+ancestors, at most H + 1 per changed node; that count is not proved here. -/
+theorem T4_debt_count (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp al ts)
+    (hex : al.stillDirty = exactTest sp) (hv : sp.virt = false) (H : Nat)
+    (hH : ∀ e ∈ (run sp al ts).D, levelOf (run sp al ts).P e.1 ≤ H) (N : Nat → Nat)
+    (hN : ∀ τ (L : List NodeId), L.Nodup → (∀ x ∈ L, onAccessPath sp al ts τ x) → L.length ≤ N τ) :
+    let a := spIter (run sp al ts).S (H + 1) ts.length
+    (run sp al ts).D.length ≤ ((List.range' (a + 1) (ts.length - a)).map N).sum :=
+  debt_count_exact sp al ts hok hex hv H hH N hN
+
 end SIS

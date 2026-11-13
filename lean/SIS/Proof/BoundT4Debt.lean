@@ -879,4 +879,75 @@ theorem debtByChanges_exact (sp : Spec V T) (al : Algo V T) (ts : List T) (hok :
 
 end Main
 
+/-! ### Counting the debt -/
+
+theorem length_filter_add (l : List NodeId) (f : NodeId → Bool) :
+    l.length = (l.filter f).length + (l.filter (fun x => !f x)).length := by
+  induction l with
+  | nil => rfl
+  | cons x l ih =>
+    cases hx : f x <;> simp [hx, ih] <;> omega
+
+/-- A list without repeats whose every element satisfies Q τ for some τ of W is
+at most as long as the sum over W of the bounds N τ on such lists for one τ. -/
+theorem nodup_length_le_sum (Q : Nat → NodeId → Prop) (N : Nat → Nat)
+    (hN : ∀ τ (L : List NodeId), L.Nodup → (∀ x ∈ L, Q τ x) → L.length ≤ N τ) :
+    ∀ (W : List Nat) (L : List NodeId), L.Nodup → (∀ x ∈ L, ∃ τ ∈ W, Q τ x) →
+      L.length ≤ (W.map N).sum := by
+  classical
+  intro W
+  induction W with
+  | nil =>
+    intro L _ hL
+    cases L with
+    | nil => simp
+    | cons x L => obtain ⟨τ, hτ, -⟩ := hL x (by simp); simp at hτ
+  | cons τ0 W ih =>
+    intro L hnd hL
+    rw [length_filter_add L (fun x => decide (Q τ0 x))]
+    have h1 := hN τ0 (L.filter (fun x => decide (Q τ0 x))) (hnd.filter _)
+      (fun x hx => by simpa using (List.mem_filter.mp hx).2)
+    have h2 := ih (L.filter (fun x => !decide (Q τ0 x))) (hnd.filter _) (by
+      intro x hx
+      obtain ⟨hxL, hq⟩ := List.mem_filter.mp hx
+      obtain ⟨τ, hτ, hQ⟩ := hL x hxL
+      rcases List.mem_cons.mp hτ with rfl | hτ
+      · simp [hQ] at hq
+      · exact ⟨τ, hτ, hQ⟩)
+    simp only [List.map_cons, List.sum_cons]
+    omega
+
+/-- T4, the debt counted: with every node of D on a level up to H, D has at
+most as many nodes as the access paths of the transactions of the last H + 1
+sections, for any bound N τ on the number of nodes on the access path of
+T(τ). -/
+theorem debt_count_exact (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp al ts)
+    (hex : al.stillDirty = exactTest sp) (hv : sp.virt = false) (H : Nat)
+    (hH : ∀ e ∈ (run sp al ts).D, levelOf (run sp al ts).P e.1 ≤ H) (N : Nat → Nat)
+    (hN : ∀ τ (L : List NodeId), L.Nodup → (∀ x ∈ L, onAccessPath sp al ts τ x) → L.length ≤ N τ) :
+    (run sp al ts).D.length ≤
+      ((List.range' (spIter (run sp al ts).S (H + 1) ts.length + 1)
+        (ts.length - spIter (run sp al ts).S (H + 1) ts.length)).map N).sum := by
+  have hst : AlgOK sp al := algOK_of sp al (Or.inr ⟨hv, hex⟩)
+  have hK : ts.length ≤ ts.length := Nat.le_refl _
+  have hinvK := inv_st sp al ts hok hst ts.length hK
+  rw [st_length] at hinvK
+  have hle := spAt_st_le hok hst hK
+  have hmono := spAt_st_mono hok hst hK
+  rw [st_length] at hle hmono
+  have hdebt := debtByChanges_exact sp al ts hok hex hv
+  rw [← List.length_map (f := (·.1))]
+  apply nodup_length_le_sum (fun τ x => onAccessPath sp al ts τ x) N hN _ _ hinvK.dNodup
+  intro x hx
+  obtain ⟨e, he, rfl⟩ := List.mem_map.mp hx
+  obtain ⟨τ, h1, h2, h3⟩ := hdebt e he
+  have hanti := spIter_anti (run sp al ts).S ts.length hle hmono ts.length hK
+    (H - levelOf (run sp al ts).P e.1) (levelOf (run sp al ts).P e.1 + 1)
+  have hlv := hH e he
+  rw [show levelOf (run sp al ts).P e.1 + 1 + (H - levelOf (run sp al ts).P e.1) = H + 1 by omega]
+    at hanti
+  refine ⟨τ, ?_, h3⟩
+  rw [List.mem_range'_1]
+  omega
+
 end SIS
