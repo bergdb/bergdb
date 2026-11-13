@@ -1436,6 +1436,39 @@ and its status:
     fuel obligations are now SegFits at depth p.fuel inside the operation:
     `MergeStepOKF`'s and the collapse's, at f - 1 = p.fuel.
 
+    Superseded (latest and cost, 22:20): this route, through `DescentOKF`,
+    does not count as progress. `DescentOKF` asks `MergePathCond`, which runs
+    within reach violate:
+    - its clauses (1) and (2) fail for a segment root that an earlier put of
+      the same transaction made;
+    - its clause (3) quantifies over every merge value.
+    The F2 route replaces it:
+    - the descent without `MergePathCond`, proved (`descentOKF2`,
+      `GetDescentOK.lean`);
+    - the merge lemmas take the in-place split of a segment root that the
+      transaction made, and derive the full parent's range from
+      `RangeOrder` for the merge's actual values (latest, in progress).
+      The full parent's level is done: `writerWP_handleFull_lastVF2`
+      (`GetMergeLevel.lean`) takes the in-place space split below a segment
+      leaf, asks the cascade's order only for a node the transaction did
+      not make, and adds the reach back that putinv asked for (under
+      `ChainOrd` and `LastOrd`, the last version's order below an inner
+      parent). `writerWP_handleFull_lastVF` is its corollary, unchanged.
+      The merge lemmas are done (latest, 22:50):
+      `writerWP_mergeTail_any_getF2`, `writerWP_merge_any_getF2`,
+      `writerWP_merge_get_invF2`, `writerWP_mergeTail_any_treeS2`,
+      `writerWP_merge_any_treeS2` and `writerWP_merge_tree_inv2`. They
+      need neither `hNoSSIP`, `hNoSSIPp` nor `hrangeL`. The full parent's
+      range comes from `RangeOrder` for the merge's actual values
+      (`mergeLast_range`, with `MergeGOK` for the second node's compare
+      value). The old statements are their corollaries, unchanged;
+    - then `opGetCaseOK_delMergeF2` (`DelMergeCaseF2.lean`), proved:
+      `OpGetCaseOK p R DelMergeCase` from `DelStepsOKF`, `MergeStepOKF`,
+      `CollapseStepOKF` and `TxSegFitsOK`. There is no descent obligation
+      and no `MergePathCond`.
+    The old statements stay, unchanged, until F2 is complete; then they are
+    removed, as agreed with cost.
+
     Step 4, plan (cost, 22:15). The Bool evidence is cost's `SegFit.lean`,
     run outside the repository. It ran random transactions (M 4 and 8, G 2,
     H 0 to 2, with and without merges) and grow-then-shrink transactions of

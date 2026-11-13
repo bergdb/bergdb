@@ -161,6 +161,7 @@ import SIS.Tree.GetOpCases
 import SIS.Tree.ChainShape
 import SIS.Tree.GetNewSegsTree
 import SIS.Tree.GetDescentOK
+import SIS.Tree.DelMergeCaseF2
 import SIS.Tree.WriterTreeInnerHalves
 import SIS.Tree.WriterTreeSpaceSpace
 import SIS.Tree.WriterTreeDelFull
@@ -278,3 +279,8 @@ import SIS.Tree.TakeBackMerges
 import SIS.Tree.TakeDeadUpM
 import SIS.Tree.WriterHeightsFull
 import SIS.Tree.WriterHeightsPut
+import SIS.Tree.DelStepsMerge
+import SIS.Tree.DelStepsWalk
+import SIS.Tree.DelStepsRoom
+import SIS.Tree.DelStepsUp
+import SIS.Tree.DelStepsBook
