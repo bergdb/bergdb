@@ -111,7 +111,7 @@ public interface DatabaseBuilder {
      * <p>Every started database also holds its write buffer, from its start until it closes
      * (Database.stop()): 64 KiB at the start, whatever its data, startup distance and budget.
      * The buffer grows with the write rate, up to 10 MB, when writes come faster than the
-     * storage takes them, and shrinks back to 64 KiB after a second with nothing to write
+     * storage takes them, and shrinks back to 64 KiB after 2 seconds with nothing to write
      * (bergdb 026-07). So a small started database holds about 0.7 MB of heap (a file
      * database; a memory database about 1.7 MB, its stream included), one thread and three
      * open files, and up to 10 MB more while it writes fast. Until release 2026.6 the buffer

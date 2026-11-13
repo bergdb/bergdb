@@ -8,7 +8,7 @@ import bergdb.pub.*;
 /**
  * bergdb 026-07: the heap of started small databases. Starts N file databases (and N
  * memory databases), each with one small put and a sync, and prints the heap after GC per
- * database; then one burst of 1 kB puts in one database, the heap at once and after 2 s
+ * database; then one burst of 1 kB puts in one database, the heap at once and after 3 s
  * of no writes. Usage: java -cp build/classes:. HeapProbe DIR N
  */
 public class HeapProbe {
@@ -60,9 +60,9 @@ public class HeapProbe {
         long burst = used();
         System.out.printf("after a burst of 20,000 1 kB puts (%.0f ms): +%.2f MB%n",
                 (t1 - t0) / 1e6, (burst - mems) / 1e6);
-        Thread.sleep(2000);
+        Thread.sleep(3000);
         long idle = used();
-        System.out.printf("2 s later, no writes: +%.2f MB%n", (idle - mems) / 1e6);
+        System.out.printf("3 s later, no writes: +%.2f MB%n", (idle - mems) / 1e6);
         for (Database d : dbs) {
             d.close();
         }

@@ -35,7 +35,7 @@ import bergdb.stream.StrictStream;
  * or the given capacity if that is smaller, and an append that does not fit doubles it,
  * as often as needed, up to the given capacity, the largest buffer. A grown buffer
  * shrinks back to INITIAL_CAPACITY when the thread has had nothing to write for
- * SHRINK_DELAY_MS. The thread's rules (the quarter, a flush of at most half, a writer that
+ * shrinkDelayMs, 2 s. The thread's rules (the quarter, a flush of at most half, a writer that
  * waits for room) are those of the largest buffer, so the flushes and forces do not
  * change; only the heap does. It was the given capacity from the start, 10 MB for a
  * database: every started database held 11 MB of heap, whatever its size (bergdb 024-01,
@@ -76,12 +76,13 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
      */
     public static final int INITIAL_CAPACITY = 64 * 1024;
     /**
-     * A grown buffer shrinks to INITIAL_CAPACITY after this long with nothing to write
-     * (bergdb 026-07). The idle thread waits this long once, then without a timeout, as
+     * A grown buffer shrinks to INITIAL_CAPACITY after this long with nothing to write,
+     * 2 s (bergdb 026-07; Frans, 2026-11-13, 09:59: "keep it as a constant, but use 2
+     * seconds"; it was 1 s). The idle thread waits this long once, then without a timeout, as
      * before (005-14): a grown buffer costs one wake of an idle stream, a first-sized one
      * none. A field, not final, so that a test can make it short.
      */
-    long shrinkDelayMs = 1000;
+    long shrinkDelayMs = 2000;
     /** The buffer's length, buffer.length, from INITIAL_CAPACITY to maxCapacity. Under this. */
     private int bufferCapacity;
     /** The largest buffer: the constructor's bufferCapacity (bergdb 026-07). */

@@ -12,7 +12,7 @@ database 11 MB, target near nothing").
 
 Done in the clone, branch `026-07-write-buffer` (section 9): the buffer
 starts at 64 KiB, doubles when an append does not fit, up to 10 MB, and
-shrinks back after a second with nothing to write. A small file database
+shrinks back after 2 seconds with nothing to write. A small file database
 now holds 0.67 MB of heap, not 11.10 MB; write throughput unchanged
 (section 5).
 
@@ -104,7 +104,8 @@ All in `BufferedStream` (bergdb 026-07 in its comments):
    length, as before, so P1's accounting of room waits is unchanged.
 4. **Shrink.** When: the consumer has gone idle (nothing buffered for a
    whole buffer time, 005-14's untimed wait) with a grown buffer, and
-   stays idle for `shrinkDelayMs`, 1 s. Who: the consumer thread, in
+   stays idle for `shrinkDelayMs`, 2 s (1 s until Frans's Q3, section
+   8). Who: the consumer thread, in
    `waitToShrink()`, under the monitor. How: it waits once with that
    timeout (an append, a sync, `stop()` or `close()` ends the wait, and
    the idle time starts again at the next idle); after it, the buffer is
@@ -112,7 +113,7 @@ All in `BufferedStream` (bergdb 026-07 in its comments):
    consumer waits without a timeout as before. A first-sized buffer's
    idle consumer waits without a timeout at once: 005-14's "an idle
    stream does not wake the thread" holds, but for one wake after a
-   grown buffer's idle second.
+   grown buffer's idle time.
 5. **An allocation that fails** (`OutOfMemoryError` of a grow) keeps
    the buffer and sets `growLimit` to its length until the next shrink:
    the writer then waits for room as at the largest length. Since the
@@ -178,7 +179,10 @@ database, no sync, and the heap at once and after 2 s with no writes
 
 So the buffer grew to about 10 MB in the burst and shrank back after the
 idle second. Logs: `/Users/f/fl/bench/2026-11-13/wb/heap-base.log`,
-`heap-new.log`.
+`heap-new.log`. Again with the shrink delay of 2 s (Q3) and the probe's
+wait of 3 s, on the branch after the merge of `ce020e6b`: 0.67 MB and
+1.65 MB a database, +36.51 MB after the burst, +26.09 MB 3 s later
+(`heap-new2.log`).
 
 ### 5.2 Many small databases (U10-2's case)
 
@@ -237,7 +241,8 @@ moved when it became a transient:
   database held the 10 MB buffer; now the fill grows the buffer to
   about 8 MB and MEM rose from 129.3 to 137.5, and `level1.sh` failed
   ("MEM 138, more than 131"). The KVs cost the same. `Mem` now waits
-  2 s after the fill, for the buffer's shrink, before it measures:
+  3 s after the fill (2 s with a delay of 1 s), for the buffer's
+  shrink, before it measures:
   MEM 129.3 again, its meaning since 2015 (the buffer outside the
   difference). No limit changed.
 * **G4 and G5's heap gates** (024-30, 024-32, `count-gates.sh`, a
@@ -246,7 +251,7 @@ moved when it became a transient:
   about 17 MB with 12 MB (G5 on `ee5712c5`: 1.40). Without it, measured
   right after the drive, G5's twin, which writes nothing in its drive,
   held 1.9 MB and the emptied database 17.5 MB with a grown buffer:
-  9.3, FAIL. Measured after the shrink (`g4Run` now waits 2 s;
+  9.3, FAIL. Measured after the shrink (`g4Run` now waits 3 s, 2 s with a delay of 1 s;
   `-Dg4heapwait=MS` sets the wait): G4 8.1 MB against 4.0 MB, 2.009,
   FAIL by a hair; G5 7.1 MB against 1.9 MB, 3.74, FAIL. **The buffer
   had hidden this.** A class histogram of G5's emptied database in its
@@ -283,7 +288,9 @@ Logs in `/Users/f/fl/bench/2026-11-13/wb/`: `before-commit.log`,
 section 5.3.
 
 
-## 8. Questions for Frans
+## 8. Questions for Frans, and his answers
+
+Recorded from the coordinator's relay, 2026-11-13.
 
 * **Q1. A setting of the largest buffer in the Pub API?** Options: (a)
   none, the buffer grows by itself (this item); (b) a
@@ -291,16 +298,29 @@ section 5.3.
   wants a bound on the 10 MB, or a writer of very large transactions
   that wants more. Recommended: (a) for 2026.6; the Core API keeps its
   `DbBuilder.stream(..., bufferSize, bufferTime)` for advanced users.
+  **Answer** (Frans, 09:48): no Pub setting, as recommended.
 * **Q2. The cache tables, 0.31 MB a database** (section 4): recommended
   as a separate small entry for 2026.6, with the many-small-databases
   case as its measure (the 4,096 tables made at the first use of each).
-* **Q3. The shrink delay, 1 s**, a constant: recommended as it is.
+  **Open** (Frans, 09:59): "Yes, it is significant for certain
+  applications. Around a factory of 2 better. However, I don't like
+  just adding the tables. We get a violation of back-to-empty, so to
+  say." The discussion goes on with the coordinator; no code here, the
+  tables stay as they are in this item.
+* **Q3. The shrink delay**, a constant, 1 s: recommended as it is.
+  **Answer** (Frans, 09:59): "OK, keep it as a constant, but use 2
+  seconds." Done: `shrinkDelayMs` 2000, its Javadoc and
+  `DatabaseBuilder`'s; MEM waits 3 s and G4, G5's heap measure 3 s
+  (`-Dg4heapwait`), more than the delay. The tests set their own
+  delays (20 and 50 ms) and do not change.
 * **Q4. G4 and G5's heap without the buffer** (section 6): (a) keep
   the 10 MB constant in the gates (as now); (b) gate the plain heaps,
   and accept FAIL until `idByPos` is bounded by something that shrinks
   (cleared at back to empty, or sized by the cache budget); (c) (b)
   after such a fix, as a 2026.6 entry. Recommended: (c), with (a)
-  until then.
+  until then. **Answer** (Frans, 09:48): ok; G4 and G5 compare the
+  heap plus the 10 MB (`CountGates.BUFFER`) until `idByPos` shrinks at
+  back to empty, a 2026.6 entry that the coordinator registers.
 
 
 ## 9. State

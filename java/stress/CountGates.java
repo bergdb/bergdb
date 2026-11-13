@@ -502,7 +502,7 @@ public class CountGates {
      * The heap gates of G4 and G5 compare each heap plus the 10 MB write buffer (2026-11-13,
      * bergdb 026-07): until then every database held the whole buffer from its start, in the
      * twin's heap and the emptied database's alike, and the gates and their factor 2 were set
-     * on that. Since 026-07 the buffer grows with use and shrinks after an idle second, and
+     * on that. Since 026-07 the buffer grows with use and shrinks after 2 idle seconds, and
      * the heap is measured after the shrink; without the constant the emptied database held
      * 2.0 (G4) and 3.7 (G5) times its twin's heap, mostly NodeCollection.idByPos, an LRU of
      * up to 100,000 node ids (026-07, section 6). The lines print the heaps without it.
@@ -610,13 +610,13 @@ public class CountGates {
             m.pathKlongs = ((long[]) field(path, "klongs")).length;
             m.pathNodes = ((Object[]) field(path, "nodes")).length;
         }
-        // The write buffer grows with use and shrinks after a second with nothing to write
+        // The write buffer grows with use and shrinks after 2 s with nothing to write
         // (2026-11-13, bergdb 026-07): the heap is measured after the shrink, so that the
         // emptied database and its twin are compared without the buffer's transient, as
         // when both held the whole 10 MB from their start. -Dg4heapwait=MS sets the wait, for
         // a class histogram of the database with jcmd during it.
         try {
-            Thread.sleep(Long.getLong("g4heapwait", 2000));
+            Thread.sleep(Long.getLong("g4heapwait", 3000));
         } catch (InterruptedException e) {
             throw new AssertionError(e);
         }
