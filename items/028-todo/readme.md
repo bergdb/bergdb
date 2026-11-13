@@ -105,6 +105,9 @@ Open
 | [028-05](05-core-api-transformations.md) | Fix | The Core API names the transformations | none | open |
 | [028-06](06-maintain-and-pacing-javadoc.md) | Fix | What maintain() adds, and how reclaim is paced, in the Core's Javadoc | none | open |
 | [028-07](07-start-lock-across-sync.md) | Investigate | One start's sync blocks every start of the JVM | none | open |
+| [028-08](08-sd-crash-inside-setter.md) | Investigate | A crash inside setStartupDistance's own record | none | open |
+| [028-09](09-startup-pos-own-record.md) | Investigate | CheckStartupPos accepts a record's own position | none | open |
+| [028-10](10-public-start-params.md) | Investigate | The public Db.start(StartParams) takes unchecked values | none | open |
 
 
 Closed
