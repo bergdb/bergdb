@@ -90,7 +90,8 @@ suffice. A cold start's reads are bounded too (SIS/BoundCold.lean,
 SIS/BoundColdTheorems.lean): the lazy startup gives out at most the
 section's index nodes, the writer paths and new nodes of the section's
 transactions, and |D| + 2 handles (`coldReads_lazy`, `coldReads_handles`,
-`coldReads_run`).
+`coldReads_run`), and with TREE H + 1 nodes per node a transaction changes,
+touches or makes unreachable (`coldReads_tree`).
 
 Since bergdb item 009 (2026-10-25) the model also has handles: SIS/Handle.lean
 models 009's design of the physical layer (one handle per node, pointers that
@@ -273,6 +274,7 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
     #print axioms SIS.coldReads_lazy
     #print axioms SIS.coldReads_handles
     #print axioms SIS.coldReads_run
+    #print axioms SIS.coldReads_tree
 
 Each prints `[propext, Classical.choice, Quot.sound]`, or a part of it
 (`LM_cutTo`, `T3_section` and `T3_restarts` need no `Classical.choice`).
@@ -546,7 +548,9 @@ its section in sis-model.md.
   section's index nodes + `rerunReach` + 2, from any stream
   (`coldReads_lazy`), also with handles and with Java's rule 4 by position
   (`coldReads_handles`); after a run, with the run's own paths and D
-  (`coldReads_run`).
+  (`coldReads_run`); with TREE, H + 1 nodes for each node a transaction
+  creates, gives an entry, touches or makes unreachable (`removedAt`,
+  `coldReads_tree`).
 
 The proofs, in SIS/Proof/ (not needed for reading the statements):
 
@@ -887,7 +891,8 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
   node it reads or creates (`Mem.follow_next`, `Mem.reachOnPath_next`,
   `Mem.applyChange_next`, `Mem.canonicalNode_next`), so the startup's
   (`lazyStartup_next`); on a run's stream the rerun's paths are the run's
-  (`rerunReach_st`) and its gd's are D (`sum_gd_eq_D`).
+  (`rerunReach_st`) and its gd's are D (`sum_gd_eq_D`); with TREE a writer
+  path has H + 1 nodes per node changed (`pathOf_count`).
 
 Not trusted, tests only:
 
@@ -1197,8 +1202,9 @@ Not done:
 
 * The bounds (bergdb item 007): T4 for BergDB's still-dirty test (Rule A
   keeps nodes in D through dead pointers; T4 is proved for the exact test),
-  and a bound on one transaction's writer paths for the cold start's reads
-  (with TREE, as for D's access paths). T3 for
+  and a bound on the nodes a transaction makes unreachable (`removedAt`,
+  in `coldReads_tree`; one per split in BergDB, not an assumption of the
+  model). T3 for
   BergDB's take is proved without its record limit (bergdb 007-08). The stream's meta blocks are
   not modelled either, but they make no difference to the take: when it
   runs, the stream's length is where the new record begins (bergdb 005-68).

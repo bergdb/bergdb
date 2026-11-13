@@ -339,4 +339,102 @@ theorem coldReads_run_of (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : Ru
   simp only [st] at h1
   omega
 
+/-! ### With TREE: a writer path is at most a node per level for each node changed -/
+
+/-- With TREE at j - 1, the writer's paths for the change c at time j have at
+most H + 1 nodes, H the root's level, for each node c creates, gives an entry,
+touches or makes unreachable. -/
+theorem pathOf_count {sp : Spec V T} {P : Struct V} {j : Time} (htree : treeAt sp P (j - 1))
+    {n0 : Node V} (h0 : P.get? root = some n0) (c : Changes V) :
+    (pathOf sp P c j).length ≤ (n0.level + 1) *
+      (c.new.length + c.adds.length + c.touch.length + (removedAt sp P c j).length) := by
+  have hnd : (pathOf sp P c j).Nodup := by
+    unfold pathOf
+    exact nodup_filter (nodup_eraseDups _) _
+  have h := nodup_length_le_sum (fun z x => AncAt sp P (j - 1) z x) (fun _ => n0.level + 1)
+    (fun z L hndL hL => anc_count htree h0 z L hndL hL)
+    (c.new.map (·.id) ++ c.adds.map (·.1) ++ c.touch ++ removedAt sp P c j) (pathOf sp P c j) hnd
+    (by
+      intro x hx
+      obtain ⟨hr, n, hn, hany⟩ := mem_pathOf hx
+      obtain ⟨z, hz, hcz⟩ := List.any_eq_true.mp hany
+      refine ⟨z, ?_, hr, n, hn, hz⟩
+      simp only [Bool.or_eq_true, Bool.and_eq_true, Bool.not_eq_true'] at hcz
+      rcases hcz with (hch | ht) | ⟨hrz, hnr⟩
+      · unfold changed at hch
+        simp only [Bool.or_eq_true, List.any_eq_true, beq_iff_eq] at hch
+        rcases hch with ⟨nn, hnn, rfl⟩ | ⟨a, ha, rfl⟩
+        · simp only [List.mem_append, List.mem_map]
+          exact Or.inl (Or.inl (Or.inl ⟨nn, hnn, rfl⟩))
+        · simp only [List.mem_append, List.mem_map]
+          exact Or.inl (Or.inl (Or.inr ⟨a, ha, rfl⟩))
+      · simp only [List.mem_append]
+        exact Or.inl (Or.inr (List.contains_iff_mem.mp ht))
+      · simp only [List.mem_append]
+        right
+        unfold removedAt
+        refine List.mem_filter.mpr ⟨List.mem_eraseDups.mpr ?_, by simp [hnr]⟩
+        simpa [reachable] using hrz)
+  rw [sum_map_const] at h
+  simp only [List.length_append, List.length_map] at h
+  rw [Nat.mul_comm]
+  exact h
+
+theorem sum_map_le (l : List Nat) (f g : Nat → Nat) (h : ∀ j ∈ l, f j ≤ g j) :
+    (l.map f).sum ≤ (l.map g).sum := by
+  induction l with
+  | nil => exact Nat.le_refl _
+  | cons a l ih =>
+    simp only [List.map_cons, List.sum_cons]
+    have h1 := h a (by simp)
+    have h2 := ih (fun j hj => h j (by simp [hj]))
+    omega
+
+/-- A cold start's reads after a run with TREE: a node per level of the tree,
+H + 1, for each node a transaction of the section creates, gives an entry,
+touches or makes unreachable, besides the section's nodes, the new nodes and
+D. -/
+theorem coldReads_tree_of (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp al ts)
+    (hst : AlgOK sp al) (htree0 : treeAt sp (run sp al []).P 0) (htree : TreeRunOK sp al ts)
+    (n0 : Node V) (h0 : (run sp al ts).P.get? root = some n0) :
+    (lazyStartup sp (run sp al ts).S).next ≤
+      (sectionNodes (run sp al ts).S (lastSp (run sp al ts).S)).length +
+      ((sectionIdx (run sp al ts).S (lastSp (run sp al ts).S)).map (fun j =>
+        (n0.level + 1) * ((changeAt sp al ts j).new.length + (changeAt sp al ts j).adds.length +
+          (changeAt sp al ts j).touch.length +
+          (removedAt sp (run sp al (ts.take (j - 1))).P (changeAt sp al ts j) j).length) +
+        (changeAt sp al ts j).new.length)).sum + (run sp al ts).D.length + 2 := by
+  have h := coldReads_run_of sp al ts hok hst
+  have hK : ts.length ≤ ts.length := Nat.le_refl _
+  have hinvK := inv_st sp al ts hok hst ts.length hK
+  rw [st_length] at hinvK
+  have hle := sum_map_le (sectionIdx (run sp al ts).S (lastSp (run sp al ts).S))
+    (fun j => (pathOf sp (run sp al (ts.take (j - 1))).P (changeAt sp al ts j) j).length +
+      (changeAt sp al ts j).new.length)
+    (fun j => (n0.level + 1) * ((changeAt sp al ts j).new.length +
+      (changeAt sp al ts j).adds.length + (changeAt sp al ts j).touch.length +
+      (removedAt sp (run sp al (ts.take (j - 1))).P (changeAt sp al ts j) j).length) +
+      (changeAt sp al ts j).new.length) (by
+      intro j hj
+      simp only [sectionIdx, List.mem_range'_1, run_length] at hj
+      have hj1 : j - 1 ≤ ts.length := by omega
+      -- TREE after T(j - 1), and the root's level then.
+      have htj : treeAt sp (run sp al (ts.take (j - 1))).P (j - 1) := by
+        rcases Nat.eq_zero_or_pos (j - 1) with h0' | hpos
+        · rw [h0', List.take_zero]; exact htree0
+        · obtain ⟨j', hj'⟩ : ∃ j', j - 1 = j' + 1 := ⟨j - 2, by omega⟩
+          rw [hj']
+          exact htree j' (by omega)
+      have hinvj := inv_st sp al ts hok hst (j - 1) hj1
+      obtain ⟨nr, hnr⟩ := Option.isSome_iff_exists.mp hinvj.rootIn
+      have hg := st_grow sp al ts hok hst (j := j - 1) (j' := ts.length) hj1 hK
+      obtain ⟨nrK, hnrK, hl, -, -⟩ := hg root nr hnr
+      rw [st_length, h0, Option.some.injEq] at hnrK
+      subst hnrK
+      have := pathOf_count (P := (st sp al ts (j - 1)).P) (j := j) htj hnr (changeAt sp al ts j)
+      rw [← hl] at this
+      simp only [st] at this
+      omega)
+  omega
+
 end SIS

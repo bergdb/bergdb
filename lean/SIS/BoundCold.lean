@@ -41,4 +41,9 @@ def rerunReach (sp : Spec V T) (S : Stream V T) : Nat :=
       | none => acc
     | none => acc) (0, baseStruct sp S s true)).1
 
+/-- The nodes that the change c at time j makes unreachable: reachable at j - 1
+in P, not at j after the change. In BergDB a node that a split replaces. -/
+def removedAt (sp : Spec V T) (P : Struct V) (c : Changes V) (j : Time) : List NodeId :=
+  (reachList sp P (j - 1)).eraseDups.filter (fun z => !reachable sp (P.apply j c) j z)
+
 end SIS

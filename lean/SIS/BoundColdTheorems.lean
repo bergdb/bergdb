@@ -60,4 +60,29 @@ theorem coldReads_run (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK
           (changeAt sp al ts j).new.length)).sum + (run sp al ts).D.length + 2 :=
   coldReads_run_of sp al ts hok (algOK_of sp al hst)
 
+/-- A cold start's reads after a run, with TREE (007-03, step 6: "at most a node
+per level of the tree for each key rerun"): with the assumptions of
+`coldReads_run`, TREE in the initial structure and after every transaction
+(`TreeRunOK`), and H the root's level after the run, the lazy startup gives out
+at most
+
+  (the section's index nodes) + (for each transaction T(j) of the section,
+  (H + 1) times the nodes it creates, gives entries (`Changes.adds`), touches
+  or makes unreachable (`removedAt`), and the nodes it creates) + |D| + 2
+
+handles. In BergDB a node that a transaction makes unreachable is one a split
+replaces, a child of a node given an entry. -/
+theorem coldReads_tree (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp al ts)
+    (hst : al.stillDirty = javaTest sp ∨ (sp.virt = false ∧ al.stillDirty = exactTest sp))
+    (htree0 : treeAt sp (run sp al []).P 0) (htree : TreeRunOK sp al ts)
+    (n0 : Node V) (h0 : (run sp al ts).P.get? root = some n0) :
+    let S := (run sp al ts).S
+    (lazyStartup sp S).next ≤ (sectionNodes S (lastSp S)).length +
+      ((sectionIdx S (lastSp S)).map (fun j =>
+        (n0.level + 1) * ((changeAt sp al ts j).new.length + (changeAt sp al ts j).adds.length +
+          (changeAt sp al ts j).touch.length +
+          (removedAt sp (run sp al (ts.take (j - 1))).P (changeAt sp al ts j) j).length) +
+        (changeAt sp al ts j).new.length)).sum + (run sp al ts).D.length + 2 :=
+  coldReads_tree_of sp al ts hok (algOK_of sp al hst) htree0 htree n0 h0
+
 end SIS
