@@ -1079,4 +1079,153 @@ theorem writerWP_appendDeleteKlong_timeGen (c : Ctx) (base : View BVal) (hvc : V
         simp only [hg, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
         exact hrest (fun ⟨⟨old, h⟩, _⟩ => by rw [hg] at h; cases h)
 
+/-! ## The writer: a delete's time split of a leaf whose parent is full and space split -/
+
+/-- `TimeSpaceAfter` for a delete: L's last version `last` at the next id. -/
+def DelTimeSpaceAfter (c : Ctx) (w w' : W) (L q g : NodeId) (n qn gn : KNode)
+    (kq k1 : Nat) (last : KNode) : Prop :=
+    w'.taken = w.taken ∧ w'.top = w.top ∧ w'.vals = w.vals ∧
+    ∀ x, w'.nodes.lookup x =
+      if x = L then some (n.toPrev (c.i - 1))
+      else if x = q then some (qn.toPrev (c.i - 1))
+      else if x = g then some ((gn.add c.i (.key kq (w.next + 2))).add c.i
+        (.key (halves qn.leaf c.i (qn.lastVersion c.i) [(k1, w.next)]).2.2 (w.next + 2 + 2)))
+      else if x = w.next then some ⟨n.leaf, last.ks⟩
+      else if x = w.next + 2 then some (halves qn.leaf c.i (qn.lastVersion c.i) [(k1, w.next)]).1
+      else if x = w.next + 2 + 2 then
+        some (halves qn.leaf c.i (qn.lastVersion c.i) [(k1, w.next)]).2.1
+      else w.nodes.lookup x
+
+set_option linter.unusedSimpArgs false in
+theorem writerWP_handleFullWith_delTimeSpace (d'' : Nat) (L q g : NodeId) (n qn gn : KNode)
+    (kq k1 : Nat) (last : KNode) (compact : Bool) (c : Ctx) (w : W)
+    (hlk : w.nodes.lookup L = some n) (hlq : w.nodes.lookup q = some qn)
+    (hlg : w.nodes.lookup g = some gn)
+    (hqL : q ≠ L) (hgq : g ≠ q) (hgL : g ≠ L) (hql : qn.leaf = false) (hgl : gn.leaf = false)
+    (hfirst : n.firstTime ≠ some c.i) (hqfirst : qn.firstTime ≠ some c.i)
+    (hcs : (!compact && decide (last.size > c.p.splitAbove)) = false)
+    (hqfull : c.p.M < qn.size + 1 + 1)
+    (hqsplit : c.p.splitAbove < (qn.lastVersion c.i).size)
+    (hpg : (w.path[d'']?).map (·.2) = some g) (hpq : w.path[d'' + 1]? = some (some kq, q))
+    (hpk : w.path[d'' + 1 + 1]? = some (some k1, L))
+    (hroomg : gn.size + 2 + 1 ≤ c.p.M)
+    (hdeadg : ∀ y1 sc y2, deadOver c.p ((gn.add c.i (.key kq y1)).add c.i (.key sc y2)) = false)
+    (hny : w.nodes.lookup w.next = none) (hny2 : w.nodes.lookup (w.next + 2) = none)
+    (hny3 : w.nodes.lookup (w.next + 2 + 2) = none)
+    (hLn : L < w.next) :
+    WriterWP (handleFullWith (fun q more => appendKlongs (d'' + 1) q more) (d'' + 1 + 1) L []
+      last compact) c w
+      (fun _ w' => DelTimeSpaceAfter c w w' L q g n qn gn kq k1 last) := by
+  have hpq' : (w.path[d'' + 1]?).map (·.2) = some q := by rw [hpq]; rfl
+  unfold handleFullWith
+  simp only [writerWP_bind, writerWP_read]
+  rw [writerWP_getNode_known L n c w hlk]
+  refine writerWP_ghOf_cached L n c w hlk _ (fun gh => ?_)
+  have hnew : (n.firstTime == some c.i) = false := by simpa using hfirst
+  simp only [hnew]
+  unfold parentAt pathNode
+  simp only [writerWP_bind, writerWP_get]
+  cases hp : w.path[d'' + 1]? with
+  | none => rw [hp] at hpq'; cases hpq'
+  | some e =>
+    rw [hp] at hpq'
+    simp only [Option.map_some, Option.some.injEq] at hpq'
+    simp only [writerWP_pure]
+    rw [hpq']
+    simp only [writerWP_bind]
+    rw [writerWP_getNode_known q qn c w hlq]
+    simp only [writerWP_pure, hql, hcs, Bool.false_eq_true, ↓reduceIte]
+    have hfinal : ∀ w2 : W, w2.taken = w.taken → w2.top = w.top → w2.vals = w.vals →
+        (∀ x, w2.nodes.lookup x =
+          if x = q then some (qn.toPrev (c.i - 1))
+          else if x = g then some ((gn.add c.i (.key kq (w.next + 2))).add c.i
+            (.key (halves qn.leaf c.i (qn.lastVersion c.i) [(k1, w.next)]).2.2 (w.next + 2 + 2)))
+          else if x = w.next + 2 then some (halves qn.leaf c.i (qn.lastVersion c.i) [(k1, w.next)]).1
+          else if x = w.next + 2 + 2 then
+            some (halves qn.leaf c.i (qn.lastVersion c.i) [(k1, w.next)]).2.1
+          else (w.nodes ++ [(w.next, ({ leaf := n.leaf, ks := last.ks } : KNode))]).lookup x) →
+        WriterWP (do let n ← getNode L; putNode L (n.toPrev (c.i - 1))) c w2
+          (fun _ w' => DelTimeSpaceAfter c w w' L q g n qn gn kq k1 last) := by
+      intro w2 h2t h2top h2v h2n
+      have hlk2 : w2.nodes.lookup L = some n := by
+        rw [h2n]
+        simp only [show L ≠ q from fun h => hqL h.symm, show L ≠ g from fun h => hgL h.symm,
+          show L ≠ w.next + 2 by omega, show L ≠ w.next + 2 + 2 by omega, ↓reduceIte,
+          List.lookup_append, hlk]
+        rfl
+      simp only [writerWP_bind]
+      rw [writerWP_getNode_known L n c w2 hlk2]
+      simp only [putNode, writerWP_modify]
+      refine ⟨h2t, h2top, h2v, ?_⟩
+      · intro x
+        show (upsert _ L _).lookup x = _
+        rw [lookup_upsert, h2n]
+        by_cases hxL : x = L
+        · simp [hxL]
+        · simp only [hxL, ↓reduceIte]
+          by_cases hxq : x = q
+          · simp [hxq]
+          · simp only [hxq, ↓reduceIte]
+            by_cases hxg : x = g
+            · simp [hxg]
+            · simp only [hxg, ↓reduceIte, List.lookup_append]
+              by_cases hx3 : x = w.next + 2 + 2
+              · simp [hx3, show w.next + 2 + 2 ≠ w.next by omega,
+                  show w.next + 2 + 2 ≠ w.next + 2 by omega]
+              · by_cases hx2 : x = w.next + 2
+                · simp [hx2, show w.next + 2 ≠ w.next by omega]
+                · simp only [hx2, hx3, ↓reduceIte]
+                  by_cases hxy : x = w.next
+                  · subst hxy; rw [hny]; simp [List.lookup]
+                  · simp only [hxy, ↓reduceIte]
+                    cases h : w.nodes.lookup x with
+                    | some m => rfl
+                    | none =>
+                      show (none : Option KNode).or ([(w.next, { leaf := n.leaf, ks := last.ks })].lookup x) = none
+                      rw [lookup_cons_ne _ _ _ _ hxy]; rfl
+    have hup : ∀ w1 : W, w1.nodes = w.nodes ++ [(w.next, ({ leaf := n.leaf, ks := last.ks } : KNode))] →
+        w1.next = w.next + 2 → w1.path = w.path → w1.taken = w.taken → w1.top = w.top →
+        w1.vals = w.vals →
+        WriterWP (appendKlongs (d'' + 1) q [(k1, w.next)]) c w1 (fun _ w' =>
+          WriterWP (do let n ← getNode L; putNode L (n.toPrev (c.i - 1))) c w'
+            (fun _ w'' => DelTimeSpaceAfter c w w'' L q g n qn gn kq k1 last)) := by
+      intro w1 h1n h1x h1p h1t h1top h1v
+      refine writerWP_mono (writerWP_appendKlongs_spaceSplit d'' q g qn gn kq k1 w.next c w1
+        (by rw [h1n, List.lookup_append, hlq]; rfl) (by rw [h1n, List.lookup_append, hlg]; rfl)
+        hgq hgl hqfirst hqfull hqsplit (by rw [h1p]; exact hpg) (by rw [h1p]; exact hpq)
+        hroomg (fun y1 sc y2 => hdeadg y1 sc y2)
+        (by
+          rw [h1n, h1x, List.lookup_append, hny2]
+          show ([(w.next, ({ leaf := n.leaf, ks := last.ks } : KNode))].lookup (w.next + 2)) = none
+          rw [lookup_cons_ne _ _ _ _ (by omega)]; rfl)
+        (by
+          rw [h1n, h1x, List.lookup_append, hny3]
+          show ([(w.next, ({ leaf := n.leaf, ks := last.ks } : KNode))].lookup (w.next + 2 + 2)) = none
+          rw [lookup_cons_ne _ _ _ _ (by omega)]; rfl)) ?_
+      intro _ w2 ⟨h2t, h2top, h2v, h2n⟩
+      refine hfinal w2
+        (by rw [h2t, h1t]) (by rw [h2top, h1top]) (by rw [h2v, h1v]) ?_
+      intro x; rw [h2n x, h1x, h1n]
+    split
+    · simp only [note, writerWP_bind, writerWP_modify]
+      refine writerWP_mono (writerWP_replaceOrAdd_nil last c _) ?_
+      rintro l w1 ⟨hw1, hl⟩
+      subst w1 hl
+      split <;>
+      · simp only [newKey, fresh, setMadeFor, klongAt, note, writerWP_bind, writerWP_modify,
+          writerWP_get, writerWP_set, writerWP_read, writerWP_pure]
+        split <;>
+        · simp only [writerWP_bind, writerWP_modify, writerWP_pure, hpk]
+          exact hup _ rfl rfl rfl rfl rfl rfl
+    · simp only [writerWP_bind]
+      refine writerWP_mono (writerWP_replaceOrAdd_nil last c _) ?_
+      rintro l w1 ⟨hw1, hl⟩
+      subst w1 hl
+      split <;>
+      · simp only [newKey, fresh, setMadeFor, klongAt, note, writerWP_bind, writerWP_modify,
+          writerWP_get, writerWP_set, writerWP_read, writerWP_pure]
+        split <;>
+        · simp only [writerWP_bind, writerWP_modify, writerWP_pure, hpk]
+          exact hup _ rfl rfl rfl rfl rfl rfl
+
 end SIS.Tree
