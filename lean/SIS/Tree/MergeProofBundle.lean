@@ -250,3 +250,4 @@ import SIS.Tree.GetMergeInv
 import SIS.Tree.TakeDeadCascade
 import SIS.Tree.TakeDeadCases
 import SIS.Tree.TakeBackRunJ
+import SIS.Tree.DelMergeBook

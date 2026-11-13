@@ -41,13 +41,19 @@ def MergePathCond (c : Ctx) (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat →
       ∀ c' z, (c', z) ∈ (⟨(Nn (d - 1)).leaf, last.ks⟩ : KNode).live → 0 < c' →
       K (d - 1) ≤ c' ∧ ∀ c'' z', (c'', z') ∈ (Nn (d - 2)).live → K (d - 1) < c'' → c' < c'')
 
-/-- The invariants a step inside the delete keeps, but the reading. -/
+/-- What a step inside the delete keeps that the books and the reading do not
+give: the writer's tree, its reached nodes not taken back, the walk's ranges and
+inner children there. With the books (`DelMergeBook.lean`) they give `PutInv`
+and `PutInvG` after the step (`putInv_of_parts`). -/
 def StepInv (c : Ctx) (base : View BVal) (v : W) : Prop :=
-  PutInv c base v ∧ PutInvG c base v ∧ RangeOrder (wNode c.p base v) c.i v.top.rootKey ∧
+  TreeOK (wNode c.p base v) c.i v.top.rootKey ∧
+  (∀ y, ReachS (wNode c.p base v) c.i v.top.rootKey y → v.taken.contains y = false) ∧
+  RangeOrder (wNode c.p base v) c.i v.top.rootKey ∧
   InnerChildrenExist (wNode c.p base v) c.i v.top.rootKey
 
-/-- Obligation (StepFits and PutInv across a merge): a merge of the loop, from a
-state inside a delete, keeps `StepInv` and the state after it fits the fuel. -/
+/-- Obligation (StepFits for a merge, and the merge's tree facts): a merge of the
+loop, from a state inside a delete, keeps `StepInv`, and the state after it fits
+the fuel. PutInv and PutInvG after it follow from the books. -/
 def MergeStepOK (c : Ctx) (base : View BVal) : Prop :=
   ∀ (w0 : W) (key : Key) (x q : NodeId) (d : Nat) (v : W) (qn xn : KNode),
     DelInv c base w0 key v → 0 < d → (v.path[d]?).map (·.2) = some x →
@@ -63,40 +69,57 @@ def DescentOK (c : Ctx) (base : View BVal) : Prop :=
     WriterWP (descendToHeight key g h) c v (fun d v' => DelInv c base w0 k0 v' ∧
       (0 < d → ∃ X K Nn, PathOK c v' d X K Nn ∧ MergePathCond c X K Nn d))
 
-/-- Obligation (PutInv across the collapse): the collapse's steps keep `StepInv`,
-and a segment leaf has room for a replaced root's klong
-(`writerWP_collapseRoot_coll`'s premises). -/
+/-- Obligation (the collapse's ranges): the collapse's steps keep the walk's
+ranges and inner children, and a segment leaf has room for a replaced root's
+klong (`writerWP_collapseRoot_coll`'s premises). PutInv after the collapse
+follows from the books and the collapse's tree facts. -/
+def CollRange (c : Ctx) (base : View BVal) (v : W) : Prop :=
+  RangeOrder (wNode c.p base v) c.i v.top.rootKey ∧ InnerChildrenExist (wNode c.p base v) c.i v.top.rootKey
+
 def CollapseStepOK (c : Ctx) (base : View BVal) : Prop :=
-  (∀ w0 v x n leaf ln k, CollGetInv c base w0 v → StepInv c base v → SegDesc c base x v →
+  (∀ w0 v x n leaf ln k, CollGetInv c base w0 v → CollRange c base v → SegDesc c base x v →
       v.nodes.lookup x = some n → n.leaf = false → n.firstTime ≠ some c.i →
       TReach (wNode c.p base v) c.i v.top.rootKey leaf → v.nodes.lookup leaf = some ln →
       ln.leaf = true → (k, x) ∈ ln.liveAt c.i →
       ln.size + 1 + 1 ≤ c.p.M ∧ ∀ y, deadOver c.p (ln.add c.i (.key k y)) = false) ∧
-  (∀ w0 v x n only, CollGetInv c base w0 v → StepInv c base v → SegDesc c base x v →
+  (∀ w0 v x n only, CollGetInv c base w0 v → CollRange c base v → SegDesc c base x v →
       v.nodes.lookup x = some n → n.leaf = false → n.firstTime = some c.i →
       n.onlyLiveKlong = some only → n.cv? only = some 0 →
-      WriterWP (takeBackRoot x (v.path.length - 1) only) c v (fun _ v' => StepInv c base v')) ∧
-  (∀ w0 v x n only, CollGetInv c base w0 v → StepInv c base v → SegDesc c base x v →
+      WriterWP (takeBackRoot x (v.path.length - 1) only) c v (fun _ v' => CollRange c base v')) ∧
+  (∀ w0 v x n only, CollGetInv c base w0 v → CollRange c base v → SegDesc c base x v →
       v.nodes.lookup x = some n → n.leaf = false → n.firstTime ≠ some c.i →
       n.onlyLiveKlong = some only → n.cv? only = some 0 →
-      WriterWP (replaceRoot x (v.path.length - 1) only) c v (fun _ v' => StepInv c base v'))
+      WriterWP (replaceRoot x (v.path.length - 1) only) c v (fun _ v' => CollRange c base v'))
+
+/-- `PutInv` and `PutInvG` after a step, from the books after it and the step's
+tree facts. -/
+theorem putInv_after_step (c : Ctx) (base : View BVal) (v : W) (B : NodeId) (top0 : Top)
+    (hB : PutBase c base B) (hb : PutBook c B top0 v)
+    (hT : TreeOK (wNode c.p base v) c.i v.top.rootKey)
+    (hu : ∀ y, ReachS (wNode c.p base v) c.i v.top.rootKey y → v.taken.contains y = false)
+    (hR : RangeOrder (wNode c.p base v) c.i v.top.rootKey) :
+    PutInv c base v ∧ PutInvG c base v := by
+  have hG := putInvG_of_book c base B top0 v hB hb
+  exact ⟨putInv_of_parts c base v hG hT hu (leafOrder_of_rangeOrder _ _ _ hR hG.times), hG⟩
 
 /-- The collapse keeps `DelInv`. -/
 theorem writerWP_collapseRoot_del (key : Key) (seg : Nat) (c : Ctx) (base : View BVal)
     (hvc : ViewCoherent c base) (hC : CollapseStepOK c base) (w0 : W) (k0 : Key) (v : W)
     (hI : DelInv c base w0 k0 v) :
     WriterWP (collapseRoot key seg c.p.fuel) c v (fun _ v' => DelInv c base w0 k0 v') := by
-  obtain ⟨hP, hG, hR, hICE, hF, hread⟩ := hI
+  obtain ⟨hP, hG, hR, hICE, hF, hread, B, top0, hB, hbook⟩ := hI
   have hCI : CollGetInv c base v v := by
     refine ⟨⟨hP.tree, fun y hy => hP.untaken y (tReach_reachS _ _ _ _ hy),
       fun y yn _ h => hP.times y yn h, fun y yn cc z hy hyn hl hc => hICE y yn cc z hy hyn hl hc⟩,
       fun _ => rfl, hF, fun y yn _ h => hP.wf y yn h, fun y yn _ h => hP.keyNoValue y yn h⟩
-  refine writerWP_mono (writerWP_collapseRoot_coll key seg c base hvc v (StepInv c base)
-    (fun v v' hJ hr => ⟨putInv_of_readsAs c base v v' hJ.1 hr, putInvG_of_readsAs c base v v' hJ.2.1 hr,
-      by rw [hr.1, hr.2.1]; exact hJ.2.2.1, by rw [hr.1, hr.2.1]; exact hJ.2.2.2⟩)
-    (hC.1 v) (hC.2.1 v) (hC.2.2 v) c.p.fuel v hCI ⟨hP, hG, hR, hICE⟩) ?_
-  rintro _ v' ⟨⟨_, hread', hF', _, _⟩, hJ'⟩
-  refine ⟨hJ'.1, hJ'.2.1, hJ'.2.2.1, hJ'.2.2.2, hF', fun key' hk => ?_⟩
+  refine writerWP_mono (writerWP_and (writerWP_collapseRoot_coll key seg c base hvc v (CollRange c base)
+    (fun v v' hJ hr => ⟨by rw [hr.1, hr.2.1]; exact hJ.1, by rw [hr.1, hr.2.1]; exact hJ.2⟩)
+    (hC.1 v) (hC.2.1 v) (hC.2.2 v) c.p.fuel v hCI ⟨hR, hICE⟩)
+    (putBook_collapseRoot key seg c.p.fuel c base B top0 hB v hbook)) ?_
+  rintro _ v' ⟨⟨⟨⟨hT', hu', _, _⟩, hread', hF', _, _⟩, hR', hICE'⟩, hbook'⟩
+  obtain ⟨hP', hG'⟩ := putInv_after_step c base v' B top0 hB hbook' hT'
+    (fun y hy => hu' y (reachS_tReach _ _ _ _ hy)) hR'
+  refine ⟨hP', hG', hR', hICE', hF', fun key' hk => ?_, B, top0, hB, hbook'⟩
   rw [hread' key']
   exact hread key' hk
 
@@ -143,10 +166,11 @@ theorem writerWP_mergeUp_del (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
         | none => exact writerWP_throw _ _ _ _
         | some eq =>
           simp only [writerWP_pure]
-          refine writerWP_mono (writerWP_and (writerWP_getNode_all eq.2 c v1 base hvc)
-            (writerWP_getNode_cache eq.2 c v1)) ?_
-          rintro qn v2 ⟨⟨hr2, hl2, _, hpre2, _⟩, _, _, hp2⟩
-          have hI2 := delInv_of_readsAs c base w0 k0 v1 v2 hI1 hr2
+          obtain ⟨B1, t1, hB1, hb1⟩ := hI1.2.2.2.2.2.2
+          refine writerWP_mono (writerWP_and (writerWP_and (writerWP_getNode_all eq.2 c v1 base hvc)
+            (writerWP_getNode_cache eq.2 c v1)) (putBook_getNode eq.2 c base B1 t1 hB1 v1 hb1)) ?_
+          rintro qn v2 ⟨⟨⟨hr2, hl2, _, hpre2, _⟩, _, _, hp2⟩, hb2⟩
+          have hI2 := delInv_of_readsAs c base w0 k0 v1 v2 hI1 hr2 ⟨B1, t1, hB1, hb2⟩
           have hkeep2 : ∀ z zn, v1.nodes.lookup z = some zn → v2.nodes.lookup z = some zn :=
             fun z zn h => lookup_of_prefix _ _ hpre2 _ _ h
           have hP2 := pathOK_transport c v1 v2 d X K Nn hP1 hp2 hkeep2 hr2.2.2.1 hr2.2.1
@@ -155,10 +179,10 @@ theorem writerWP_mergeUp_del (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
           · rename_i hql
             have hql' : qn.leaf = false := by simpa using hql
             rw [writerWP_bind]
-            refine writerWP_mono (writerWP_and (writerWP_getNode_all ex.2 c v2 base hvc)
-              (writerWP_getNode_cache ex.2 c v2)) ?_
-            rintro xn v3 ⟨⟨hr3, hl3, _, hpre3, _⟩, _, _, hp3⟩
-            have hI3 := delInv_of_readsAs c base w0 k0 v2 v3 hI2 hr3
+            refine writerWP_mono (writerWP_and (writerWP_and (writerWP_getNode_all ex.2 c v2 base hvc)
+              (writerWP_getNode_cache ex.2 c v2)) (putBook_getNode ex.2 c base B1 t1 hB1 v2 hb2)) ?_
+            rintro xn v3 ⟨⟨⟨hr3, hl3, _, hpre3, _⟩, _, _, hp3⟩, hb3⟩
+            have hI3 := delInv_of_readsAs c base w0 k0 v2 v3 hI2 hr3 ⟨B1, t1, hB1, hb3⟩
             have hkeep3 : ∀ z zn, v2.nodes.lookup z = some zn → v3.nodes.lookup z = some zn :=
               fun z zn h => lookup_of_prefix _ _ hpre3 _ _ h
             have hP3 := pathOK_transport c v2 v3 d X K Nn hP2 hp3 hkeep3 hr3.2.2.1 hr3.2.1
@@ -185,10 +209,13 @@ theorem writerWP_mergeUp_del (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
                 hxX (by rw [hqn]; exact hql') hsa2 hcap hc1 hc2 hc3
               have hms := hM w0 k0 ex.2 eq.2 d v3 qn xn hI3 hd (by rw [hp3, hp2, hex]; rfl)
                 (by rw [hp3, hp2, heq]; rfl) (hkeep3 _ _ hl2) hql' hl3 hcnt'
-              refine writerWP_mono (writerWP_and hmg hms) ?_
-              rintro r v4 ⟨hread4, ⟨hP4, hG4, hR4, hICE4⟩, hF4⟩
+              refine writerWP_mono (writerWP_and (writerWP_and hmg hms)
+                (putBook_merge ex.2 d c base B1 t1 hB1 v3 hb3)) ?_
+              rintro r v4 ⟨⟨hread4, ⟨hT4, hu4, hR4, hICE4⟩, hF4⟩, hb4⟩
+              obtain ⟨hP4, hG4⟩ := putInv_after_step c base v4 B1 t1 hB1 hb4 hT4 hu4 hR4
               have hI4 : DelInv c base w0 k0 v4 :=
-                ⟨hP4, hG4, hR4, hICE4, hF4, fun key' hk => by rw [hread4 hF4 key']; exact hI3.2.2.2.2.2 key' hk⟩
+                ⟨hP4, hG4, hR4, hICE4, hF4, fun key' hk => by rw [hread4 hF4 key']; exact hI3.2.2.2.2.2.1 key' hk,
+                  B1, t1, hB1, hb4⟩
               split
               · simp only [writerWP_pure]; exact hI4
               · exact ih (h + 1) true v4 hI4

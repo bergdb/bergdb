@@ -1361,18 +1361,24 @@ and its status:
     `writerWP_afterDelete_del` and `writerWP_collapseRoot_del`. The merge is
     `writerWP_merge_get_inv`, which derives the merge rules' premises from
     PutInv, PutInvG, RangeOrder and the path (`PathOK`). It covers every kind of
-    full parent and the space root as parent. The obligations, all open:
-    - `MergeStepOK`: a merge of the loop keeps PutInv, PutInvG, the ranges and
-      inner children, and the state after it fits the fuel. This is StepFits
-      for a merge, and PutInv across a merge; nobody has the latter yet.
+    full parent and the space root as parent. `DelInv` carries the books
+    (`PutBook`). PutInv and PutInvG after a merge and after the collapse
+    follow from them: `putBook_merge`, `putBook_collapseRoot` and
+    `putBook_getNode` (`DelMergeBook.lean`) give the books after, and
+    `putInv_after_step` builds the rest. The obligations, all open:
+    - `MergeStepOK`: a merge of the loop keeps the writer's tree, its reached
+      nodes not taken back, the walk's ranges and inner children (`StepInv`),
+      and the state after it fits the fuel (StepFits for a merge). The tree
+      half is cost's merge tree lemmas from the invariants; their halves
+      premise is stated for every last version, which a caller cannot give.
     - `DescentOK`: the loop's descent keeps `DelInv` and gives the path facts
       down to the node it stops at. It also gives the merge's two named
       conditions (`MergePathCond`): no space split in place below a segment
       leaf on the path, and the full parent's last version in the range of its
       link.
-    - `CollapseStepOK`: the collapse's steps keep PutInv, PutInvG, the ranges
-      and inner children, and a segment leaf has room for a replaced root's
-      klong.
+    - `CollapseStepOK`: the collapse's steps keep the walk's ranges and inner
+      children (`CollRange`), and a segment leaf has room for a replaced
+      root's klong. The collapse's tree comes from cost's collapse lemma.
     - `DelStepsOK`: the delete's other steps, with the merges' steps given. It
       holds the walk, the leaf's bitmap or split with its cascade (PutInv and
       the fuel across `appendDeleteKlong` inside the delete), and the upward
