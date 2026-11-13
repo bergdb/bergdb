@@ -31,10 +31,12 @@ import bergdb.stream.CutStream;
  * DbException for a reason the Javadoc gives (its size, its index nodes, the time), and
  * the database goes on with nothing of it written; or it is committed and every value
  * reads back. A transaction within the limits is committed. The database never fails, and
- * after a restart it holds every committed value and setting and takes commits. The
- * exception (bergdb 018-01, section 6.4; 015-51): a value transformation's result above
- * the value limit is the caller's fault; a database that fails after one is counted so,
- * the transaction must not be in the stream, and the run ends.</p>
+ * after a restart it holds every committed value and setting and takes commits. Since
+ * bergdb 026-06 without exception: a value transformation's result counts as a value given
+ * directly, so one that takes the transaction's value nodes above the value limit is
+ * refused before the go point. Until then such a result was the caller's fault (018-01,
+ * section 6.4; 015-51): a database that failed after one was counted so, and the run
+ * ended.</p>
  *
  * <p>Since bergdb 024-24 the limits of 024-17 too: keys of up to 111 bytes, the most (L2),
  * and of 112, which the Trans.Builder call refuses with IllegalArgumentException, nothing
@@ -93,8 +95,6 @@ public class LimitsTester {
         long committed, refusedSize, refusedTime, refusedNodes, refusedClock,
                 refusedOrdinals, refusedLimits, settings,
                 restarts, cuts, iterations;
-        boolean callersFault;
-        String callersFaultNote = "";
 
         void add(Result o) {
             committed += o.committed;
@@ -116,8 +116,7 @@ public class LimitsTester {
                     + refusedOrdinals + " top node ordinals, " + refusedLimits + " limits of "
                     + "024-17; "
                     + settings + " settings calls, " + restarts + " restarts, " + cuts
-                    + " cuts, " + iterations + " reclaim iterations"
-                    + (callersFault ? "; ended by the caller's fault: " + callersFaultNote : "");
+                    + " cuts, " + iterations + " reclaim iterations";
         }
     }
 
@@ -137,7 +136,7 @@ public class LimitsTester {
         final long cacheSize;
         final boolean evictRandom;
         final int endPhaseAt;          // the step where the clock goes to the last times; -1
-        final int faultAt;             // the step of the caller's fault; -1 for none
+        final int faultAt;             // a result above the value limit (026-06); -1: none
         /** The second top node's ordinal, near the last (bergdb 005-02); 0: not given. */
         final long secondOrdinal;
 
@@ -152,8 +151,6 @@ public class LimitsTester {
         Db db;
         int step;
         boolean endPhase;
-        /** A transformation's result above the value limit was committed (015-51). */
-        boolean tainted;
         long lastUserTime = -1;
         /** The largest clock time in range that the database has seen: reads take it too. */
         long maxClock = -1;
@@ -213,7 +210,7 @@ public class LimitsTester {
             note("start: record limit " + recordLimit + ", value limit " + valueLimit()
                     + ", startup distance " + builderDistance + ", cache " + cacheSize
                     + (smallNodes ? ", node size 8" : "") + (evictRandom ? ", evict random" : "")
-                    + ", end phase at " + endPhaseAt + ", caller's fault at " + faultAt
+                    + ", end phase at " + endPhaseAt + ", result over the limit at " + faultAt
                     + (secondOrdinal > 0 ? ", second top ordinal " + secondOrdinal : ""));
             if (r.nextInt(4) != 0) {
                 try {
@@ -363,8 +360,8 @@ public class LimitsTester {
 
         /**
          * Executes ops as one transaction, at the clock's time. Returns true if it was
-         * committed. callers: a transformation's result above the value limit, the caller's
-         * fault (015-51).
+         * committed. callers: a transformation's result above the value limit, refused since
+         * bergdb 026-06 (until then the caller's fault, 015-51).
          */
         boolean execute(List<Op> ops, String what, boolean callers) {
             Trans.Builder b = db.trans();
@@ -409,10 +406,6 @@ public class LimitsTester {
             try {
                 db.execute(t);
             } catch (DbFailedException e) {
-                if (callers || tainted) {
-                    callersFault(ops, callers, e);
-                    return false;
-                }
                 fail(what + ": the database failed", e.getCause() != null ? e.getCause() : e);
             } catch (DbException e) {
                 // Db checks the size first, then under the write lock the top node
@@ -420,7 +413,12 @@ public class LimitsTester {
                 // the one given.
                 String m = String.valueOf(e.getMessage());
                 boolean holds;
-                if (m.contains("outside the range")) {
+                if (m.contains("after its value transformations")) {
+                    // Db.transformValues (bergdb 026-06): the results' value nodes over the
+                    // value limit, as values given directly.
+                    holds = madeBytes(ops) > valueLimit();
+                    result.refusedSize++;
+                } else if (m.contains("outside the range")) {
                     holds = clockOut;
                     result.refusedClock++;
                 } else if (m.contains("The transaction is too large: its values")) {
@@ -466,11 +464,10 @@ public class LimitsTester {
             check(t.tt <= DbClock.LAST_USER_TIME, what + ": taken at " + t.tt
                     + ", after the last user time");
             lastUserTime = t.tt;
-            if (callers) {
-                // Its record fitted: the value is in, and later failures are the caller's.
-                tainted = true;
-                note("  a transformation's result above the value limit was taken");
-            }
+            check(!callers, what + ": a transformation's result above the value limit was "
+                    + "taken (bergdb 026-06)");
+            check(madeBytes(ops) <= valueLimit(), what + ": taken with " + madeBytes(ops)
+                    + " bytes after its transformations, over the value limit " + valueLimit());
             for (Op op : ops) {
                 ref.put(op.key, op.vt != null ? op.made : op.value);
             }
@@ -483,60 +480,14 @@ public class LimitsTester {
             return true;
         }
 
-        /**
-         * The database failed after a value transformation whose result is above the value
-         * limit: the caller's fault (bergdb 018-01, section 6.4; 015-51). The transaction
-         * must not be in the stream: a restart has the state before it, and takes commits.
-         * The run ends.
-         */
-        void callersFault(List<Op> ops, boolean atOnce, DbFailedException e) {
-            Throwable c = e.getCause() != null ? e.getCause() : e;
-            note("  failed, the caller's fault: " + c);
-            result.callersFault = true;
-            result.callersFaultNote = (atOnce ? "the transformation's record did not fit: "
-                    : "after a transformation's result above the limit was taken: ")
-                    + c.getMessage();
-            stop();
-            stream = stream.copy();
-            try {
-                db = start(stream);
-            } catch (RuntimeException e2) {
-                if (atOnce) {
-                    fail("the restart after the caller's fault failed", e2);
-                }
-                // A larger value taken before may fail every start; the caller's too.
-                result.callersFaultNote += "; the restart failed too: " + e2;
-                db = null;
-                return;
+        /** The value nodes of ops with the results of their transformations (026-06). */
+        long madeBytes(List<Op> ops) {
+            long n = 0;
+            for (Op op : ops) {
+                n += StoredValueNode.getByteSizeLong(op.vt != null && op.made != null ? op.made
+                        : op.value, Keys.toSegments(op.key));
             }
-            if (atOnce) {
-                // Its record did not fit, and nothing of it is in the stream; or it was
-                // taken, and a later transaction of the same call failed (reclaim's step,
-                // which rewrites the value with its row): then it is in.
-                boolean recordTooLarge = String.valueOf(c.getMessage())
-                        .contains("The record of the transaction would take");
-                for (Op op : ops) {
-                    byte[] actual = DbUtil.get(db, Long.MAX_VALUE, op.key);
-                    if (!recordTooLarge && op.made != null && Arrays.equals(op.made, actual)) {
-                        ref.put(op.key, op.made);
-                        tainted = true;
-                    }
-                    checkKey(op.key);
-                }
-            }
-            try {
-                checkAll();
-                List<Op> one = new ArrayList<Op>();
-                one.add(new Op("/k/after", new byte[] {1}, null));
-                if (execute(one, "put after the restart", false) || !atOnce) {
-                    return;
-                }
-            } catch (AssertionError e2) {
-                if (atOnce) {
-                    throw e2;
-                }
-                result.callersFaultNote += "; after the restart: " + e2.getMessage();
-            }
+            return n;
         }
 
         // ======== Values ========
@@ -679,7 +630,8 @@ public class LimitsTester {
          * A put with a value transformation that grows the value: its result is a value of
          * the given length, made of its input and the previous value. Within the limit
          * (resultBytes: the result's node at most what is left of the value limit), or,
-         * for the caller's fault, above it.
+         * for the caller's fault, above it, which is refused (bergdb 026-06). With a second
+         * KV, a result near the limit may take the transaction above it: refused too.
          */
         void transform(boolean callers) {
             String k = r.nextBoolean() ? bigKey() : smallKey();
@@ -786,9 +738,6 @@ public class LimitsTester {
                 case 2: setFraction(); break;
                 default: setCacheSize();
             }
-            if (result.callersFault) {
-                return;
-            }
             checkActive();
             updateCuts();
         }
@@ -814,10 +763,6 @@ public class LimitsTester {
                         + "setStartupDistance changed the setting");
                 return;
             } catch (DbFailedException e) {
-                if (tainted) {
-                    callersFault(new ArrayList<Op>(), false, e);
-                    return;
-                }
                 fail("setStartupDistance(" + v + "): the database failed", e.getCause());
             } catch (DbException e) {
                 String m = String.valueOf(e.getMessage());
@@ -852,10 +797,6 @@ public class LimitsTester {
                         + "the setting");
                 return;
             } catch (DbFailedException e) {
-                if (tainted) {
-                    callersFault(new ArrayList<Op>(), false, e);
-                    return;
-                }
                 fail("setRetainDuration(" + v + "): the database failed", e.getCause());
             } catch (DbException e) {
                 String m = String.valueOf(e.getMessage());
@@ -881,10 +822,6 @@ public class LimitsTester {
                 check(!valid, "setReclaimInternalFraction(" + v + ") refused: " + e);
                 return;
             } catch (DbFailedException e) {
-                if (tainted) {
-                    callersFault(new ArrayList<Op>(), false, e);
-                    return;
-                }
                 fail("setReclaimInternalFraction(" + v + "): the database failed", e.getCause());
             } catch (DbException e) {
                 String m = String.valueOf(e.getMessage());
@@ -941,7 +878,7 @@ public class LimitsTester {
             maxClock = Math.max(maxClock, now.get());
             if (step == faultAt) {
                 transform(true);
-                return db != null && !result.callersFault;
+                return true;
             }
             int x = r.nextInt(100);
             if (x < 35) {
@@ -968,12 +905,12 @@ public class LimitsTester {
                 restart();
             } else {
                 putSmall();
-                if (!ref.isEmpty() && !result.callersFault) {
+                if (!ref.isEmpty()) {
                     String k = ref.keySet().toArray(new String[0])[r.nextInt(ref.size())];
                     checkKey(k);
                 }
             }
-            return !result.callersFault;
+            return true;
         }
     }
 
@@ -989,14 +926,12 @@ public class LimitsTester {
                     break;
                 }
             }
-            if (!run.result.callersFault) {
-                run.step = steps;
-                run.checkAll();
-                run.restart();
-                List<Run.Op> one = new ArrayList<Run.Op>();
-                one.add(run.new Op("/k/last", new byte[] {7}, null));
-                run.execute(one, "put after the last restart", false);
-            }
+            run.step = steps;
+            run.checkAll();
+            run.restart();
+            List<Run.Op> one = new ArrayList<Run.Op>();
+            one.add(run.new Op("/k/last", new byte[] {7}, null));
+            run.execute(one, "put after the last restart", false);
             run.result.iterations += run.db == null ? 0 : run.db.getReclaimIterationCount();
             return run.result;
         } finally {
@@ -1040,14 +975,11 @@ public class LimitsTester {
         c.out().println("LimitsTester: seeds " + base + " to " + (base + 19)
                 + ", 500 steps each");
         Result total = new Result();
-        int callers = 0;
         for (long seed = base; seed < base + 20; seed++) {
             Result res = run(seed, 500);
             total.add(res);
-            callers += res.callersFault ? 1 : 0;
         }
-        c.out().println("LimitsTester: " + total + "; " + callers
-                + " runs ended by the caller's fault");
+        c.out().println("LimitsTester: " + total);
     }
 
     /** Usage: LimitsTester [SEED [STEPS [RUNS]]]. */
@@ -1057,18 +989,15 @@ public class LimitsTester {
         int runs = args.length > 2 ? Integer.parseInt(args[2]) : 1;
         boolean verbose = Boolean.getBoolean("bergdb.limits.verbose");
         Result total = new Result();
-        int callers = 0;
         for (int i = 0; i < runs; i++) {
             Result res = run(seed + i, steps);
             total.add(res);
-            callers += res.callersFault ? 1 : 0;
-            if (verbose || res.callersFault) {
+            if (verbose) {
                 System.out.println("LimitsTester: seed " + (seed + i) + ": " + res);
             }
         }
         System.out.println("LimitsTester: seeds " + seed + " to " + (seed + runs - 1) + ", "
-                + steps + " steps: " + total + "; " + callers
-                + " runs ended by the caller's fault");
+                + steps + " steps: " + total);
         System.out.println("LimitsTester OK");
     }
 }
