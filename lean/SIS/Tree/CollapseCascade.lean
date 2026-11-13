@@ -368,4 +368,358 @@ theorem writerWP_replaceRoot_seg_cascadeF (fuelR : Nat) (hfR : 2 ≤ fuelR) (x :
       unfold wGetAt at this
       exact this
 
+/-! ## The collapse loop without the room premise -/
+
+/-- The collapse's steps keep the fresh cache, the writer's state invariants. -/
+theorem freshCache_takeBackRoot {base : NodeId} (x : NodeId) (depth only : Nat) :
+    KeepsFreshCache base (takeBackRoot x depth only) := by
+  intro c w hview hw
+  repeat' first
+    | wpSimplify
+    | frDeleteSimplify
+    | frCore base
+    | frAppend base
+    | wpSplit
+    | split
+    | contradiction
+
+theorem freshCache_replaceRoot {base : NodeId} (x : NodeId) (depth only : Nat) :
+    KeepsFreshCache base (replaceRoot x depth only) := by
+  intro c w hview hw
+  repeat' first
+    | wpSimplify
+    | frDeleteSimplify
+    | frCore base
+    | frAppend base
+    | wpSplit
+    | split
+    | contradiction
+
+section
+variable [inv : WriterStateInvariant]
+
+theorem state_takeBackRoot (x : NodeId) (depth only : Nat) : KeepsState (takeBackRoot x depth only) := by
+  intro c w hw
+  repeat' first
+    | siSimplify
+    | siDeleteSimplify
+    | siCore
+    | siAppend
+    | wpSplit
+    | split
+    | contradiction
+
+theorem state_replaceRoot (x : NodeId) (depth only : Nat) : KeepsState (replaceRoot x depth only) := by
+  intro c w hw
+  repeat' first
+    | siSimplify
+    | siDeleteSimplify
+    | siCore
+    | siAppend
+    | wpSplit
+    | split
+    | contradiction
+
+end
+
+
+theorem putBook_takeBackRoot (x : NodeId) (depth only : Nat) (c : Ctx) (base : View BVal) (B : NodeId)
+    (top0 : Top) (hB : PutBase c base B) (w : W) (hw : PutBook c B top0 w) (hx : B ≤ x) :
+    WriterWP (takeBackRoot x depth only) c w (fun _ w' => PutBook c B top0 w') :=
+  putBook_of_keeps _ c base B top0 hB w hw (klongsWf_takeBackRoot x depth only)
+    (fun c' w' hv hw' => good_takeBackRoot B x depth only c' w' hv hw' hx) (book_takeBackRoot B x depth only)
+    (@state_takeBackRoot (allocatedIdsInvariant B) x depth only)
+    (@state_takeBackRoot (commitInvariant top0) x depth only)
+    (freshCache_takeBackRoot x depth only) (ptrs_takeBackRoot _ x depth only)
+
+theorem putBook_replaceRoot (x : NodeId) (depth only : Nat) (c : Ctx) (base : View BVal) (B : NodeId)
+    (top0 : Top) (hB : PutBase c base B) (w : W) (hw : PutBook c B top0 w) :
+    WriterWP (replaceRoot x depth only) c w (fun _ w' => PutBook c B top0 w') :=
+  putBook_of_keeps _ c base B top0 hB w hw (klongsWf_replaceRoot x depth only)
+    (good_replaceRoot B x depth only) (book_replaceRoot B x depth only)
+    (@state_replaceRoot (allocatedIdsInvariant B) x depth only)
+    (@state_replaceRoot (commitInvariant top0) x depth only)
+    (freshCache_replaceRoot x depth only) (ptrs_replaceRoot _ x depth only)
+
+theorem putBook_descendToSegmentRoot (key : Key) (seg : Nat) (c : Ctx) (base : View BVal) (B : NodeId)
+    (top0 : Top) (hB : PutBase c base B) (w : W) (hw : PutBook c B top0 w) :
+    WriterWP (descendToSegmentRoot key seg) c w (fun _ w' => PutBook c B top0 w') :=
+  putBook_of_keeps _ c base B top0 hB w hw (klongsWf_descendToSegmentRoot key seg)
+    (good_descendToSegmentRoot B key seg) (book_descendToSegmentRoot B key seg)
+    (@state_descendToSegmentRoot (allocatedIdsInvariant B) key seg)
+    (@state_descendToSegmentRoot (commitInvariant top0) key seg)
+    (freshCache_descendToSegmentRoot key seg) (ptrs_descendToSegmentRoot _ key seg)
+
+/-- The nodes of a linked path: its end, or a node before it, which has a node. -/
+theorem linkedFrom_mem (N : NodeId → Option KNode) (t : Time) (r : NodeId)
+    (ps : List (Option Nat × NodeId)) (h : LinkedFrom N t r ps) :
+    ∀ z ∈ r :: ps.map (·.2), z = pathEnd r ps ∨
+      (z ∈ (r :: ps.map (·.2)).dropLast ∧ ∃ zn, N z = some zn) := by
+  induction h with
+  | nil x =>
+    intro z hz
+    simp only [List.map_nil, List.mem_singleton] at hz
+    left; rw [hz]; rfl
+  | cons x n k y rest hn _ _ ih =>
+    intro z hz
+    simp only [List.map_cons, List.mem_cons] at hz
+    have hpe : pathEnd x ((some k, y) :: rest) = pathEnd y rest := by
+      unfold pathEnd
+      cases rest with
+      | nil => rfl
+      | cons e es =>
+        rw [List.getLast?_cons_cons]
+        cases h : (e :: es).getLast? with
+        | none => simp at h
+        | some q => rfl
+    rcases hz with hz | hz
+    · right
+      refine ⟨?_, n, by rw [hz]; exact hn⟩
+      rw [hz]; simp
+    · rcases ih z (by simpa using hz) with h | ⟨h1, h2⟩
+      · left; rw [hpe]; exact h
+      · right
+        refine ⟨?_, h2⟩
+        simp only [List.map_cons, List.dropLast_cons_cons] at h1 ⊢
+        exact List.mem_cons_of_mem _ h1
+
+/-- The path down to a segment root is cached, given the segment root. -/
+theorem pathCached_of_segDesc (c : Ctx) (base : View BVal) (x : NodeId) (v : W) (n : KNode)
+    (h : SegDesc c base x v) (hlk : v.nodes.lookup x = some n) : PathCached v := by
+  obtain ⟨_, ps, hvp, hlf, hend, hcache, _⟩ := h
+  intro e he
+  rw [hvp] at he
+  have hz : e.2 ∈ v.top.rootKey :: ps.map (·.2) := by
+    rcases List.mem_cons.mp he with h1 | h1
+    · rw [h1]; exact List.mem_cons_self
+    · exact List.mem_cons_of_mem _ (List.mem_map_of_mem h1)
+  rcases linkedFrom_mem _ _ _ ps hlf e.2 hz with h1 | ⟨h1, zn, h2⟩
+  · rw [h1, hend]; exact ⟨n, hlk⟩
+  · exact ⟨zn, hcache e.2 h1 zn h2⟩
+
+/-- The last entry of the key's path down to a segment root names it. -/
+theorem segDesc_pathLast (c : Ctx) (base : View BVal) (x : NodeId) (v : W) (h : SegDesc c base x v) :
+    ∃ a, v.path[v.path.length - 1]? = some (a, x) := by
+  obtain ⟨_, ps, hvp, _, hend, _, hlast⟩ := h
+  rcases hlast with hps | ⟨ps0, k, L, ln, hps, _, _, _⟩
+  · subst hps
+    refine ⟨none, ?_⟩
+    rw [hvp]
+    simp only [List.length_singleton, Nat.sub_self, List.getElem?_cons_zero, Option.some.injEq,
+      Prod.mk.injEq, true_and]
+    exact hend
+  · subst hps
+    refine ⟨some k, ?_⟩
+    rw [hvp]
+    have hend' : x = x := rfl
+    simp
+
+set_option maxHeartbeats 1600000 in
+/-- The root collapse keeps `CollGetInvF`, the walk's ranges, the books and the
+kinds' walk, with no room premise: a replaceRoot at a segment root takes the
+leaf's cascade (`writerWP_replaceRoot_seg_cascadeF`), given that the state after
+it fits the fuel (`hfits`, cost's HeightInv route) and `CollapseUnlinkOK`
+(`hunl`, the take-back's). -/
+theorem writerWP_collapseRoot_collF4 (fuelR : Nat) (hfR : 2 ≤ fuelR) (key : Key) (seg : Nat) (c : Ctx)
+    (base : View BVal) (hvc : ViewCoherent c base) (w0 : W) (B : NodeId) (top0 : Top)
+    (hB : PutBase c base B) (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view)
+    (hk : ViewKinds KO BK c) (hICEk : ICEFromKinds c base KO BK) (hsa2 : 2 ≤ c.p.splitAbove)
+    (hfits : ∀ v x n only, CollGetInvF c base w0 v fuelR →
+      RangeOrder (wNode c.p base v) c.i v.top.rootKey → SegDesc c base x v →
+      v.nodes.lookup x = some n → n.leaf = false → n.firstTime ≠ some c.i →
+      n.onlyLiveKlong = some only → n.cv? only = some 0 →
+      WriterWP (replaceRoot x (v.path.length - 1) only) c v
+        (fun _ v' => SegFits (wNode c.p base v') c.i (fuelR - 1) v'.top.rootKey))
+    (hunl : ∀ v x n, CollGetInvF c base w0 v fuelR → SegDesc c base x v →
+      v.nodes.lookup x = some n → n.leaf = false → n.firstTime ≠ some c.i →
+      CollapseUnlinkOK c base v x n) :
+    ∀ fuel v, CollGetInvF c base w0 v fuelR → RangeOrder (wNode c.p base v) c.i v.top.rootKey →
+      PutBook c B top0 v → Book BK c v → KdInv KO BK v →
+      WriterWP (collapseRoot key seg fuel) c v (fun _ v' => CollGetInvF c base w0 v' fuelR ∧
+        RangeOrder (wNode c.p base v') c.i v'.top.rootKey ∧ PutBook c B top0 v' ∧ Book BK c v' ∧
+        KdInv KO BK v') := by
+  intro fuel v hI hR hb hbk hik
+  refine writerWP_collapseRoot_inv key seg c (fun v => CollGetInvF c base w0 v fuelR ∧
+      RangeOrder (wNode c.p base v) c.i v.top.rootKey ∧ PutBook c B top0 v ∧ Book BK c v ∧
+      KdInv KO BK v) (SegDesc c base) ?_ ?_ ?_ ?_ fuel v ⟨hI, hR, hb, hbk, hik⟩
+  · rintro v ⟨hI, hR, hb, hbk, hik⟩
+    refine writerWP_mono (writerWP_and (writerWP_and
+      (writerWP_descendToSegmentRoot_linked key seg c base hvc v hI.1.2.1 hI.2.2.2.1)
+      (putBook_descendToSegmentRoot key seg c base B top0 hB v hb))
+      (kd_descendToSegmentRoot KO BK key seg c v hv hk hbk hik)) ?_
+    rintro x v' ⟨⟨⟨hr, _, hx, ps, hvp, hlf, hend, hcache, hlast⟩, hb'⟩, hbk', hik', _, _⟩
+    refine ⟨⟨collGetInv_of_readsAsF fuelR hfR c base w0 v v' hr hI, by rw [hr.1, hr.2.1]; exact hR,
+      hb', hbk', hik'⟩, ?_⟩
+    unfold SegDesc
+    rw [hr.1, hr.2.1]
+    exact ⟨hx, ps, hvp, hlf, hend, hcache, hlast⟩
+  · rintro x v ⟨hI, hR, hb, hbk, hik⟩ hP
+    refine writerWP_mono (writerWP_and (writerWP_and (writerWP_and (writerWP_getNode_all x c v base hvc)
+      (writerWP_getNode_cache x c v)) (putBook_getNode x c base B top0 hB v hb))
+      (kd_getNode KO BK x c v hv hk hbk hik)) ?_
+    rintro n v' ⟨⟨⟨⟨hr, hl, _, hpre, _⟩, _, _, hp⟩, hb'⟩, hbk', hik', _⟩
+    exact ⟨⟨collGetInv_of_readsAsF fuelR hfR c base w0 v v' hr hI, by rw [hr.1, hr.2.1]; exact hR,
+      hb', hbk', hik'⟩, segDesc_of_readsAs c base x v v' hP hr hpre hp, hl, hp⟩
+  · rintro x v n only ⟨hI, hR, hb, hbk, hik⟩ hP hlk hxl hm _ honly hcv
+    obtain ⟨g, h, hgh⟩ := kd_tag_of_lookup hbk hlk
+    have hh : h ≠ 0 := by
+      intro h0; subst h0
+      have := kd_leaf hbk hlk hgh
+      simp at this; rw [this] at hxl; cases hxl
+    obtain ⟨a, hpa⟩ := segDesc_pathLast c base x v hP
+    have hBx : B ≤ x := Blank.ge B c x hB.good
+      (blank_of_firstTime B c x n hB.good.pos (cacheGood_lookup B c v hb.good x n hlk) (by simp [hm]))
+    have hcr : WriterWP (takeBackRoot x (v.path.length - 1) only) c v
+        (fun _ v' => CollGetInvF c base w0 v' fuelR ∧ RangeOrder (wNode c.p base v') c.i v'.top.rootKey) := by
+      obtain ⟨_, ps, hvp, hlf, hend, hcache, hlast⟩ := hP
+      rcases hlast with hps | ⟨ps0, k, L, ln, hps, hL, hLn, hLl⟩
+      · subst hps
+        have hx : x = v.top.rootKey := by rw [← hend]; rfl
+        rw [hvp]
+        exact writerWP_and
+          (writerWP_rootStep_space_collF fuelR hfR x only n c base w0 v hI hx hlk honly hcv hxl).1
+          (writerWP_rootStep_space_rangeG x only n c base v _ _ _ hI hR hx hlk honly hcv hxl).1
+      · subst hps
+        obtain ⟨hLr, hLlk, hk', hlen, hpd, hpk⟩ := segDesc_seg c base x v ps0 k L ln hvp hlf hcache hL hLn
+        rw [hlen]
+        exact writerWP_and
+          (writerWP_takeBackRoot_seg_collF fuelR hfR x ps0.length only n L ln k c base w0 v hI hLr hLlk
+            hLl hk' hlk honly hcv hxl hpd hpk)
+          (writerWP_takeBackRoot_seg_rangeG x ps0.length only n L ln k c base v _ _ _ hI hR hLr hLlk
+            hLl hk' hlk honly hcv hxl hpd hpk)
+    refine writerWP_mono (writerWP_and (writerWP_and hcr
+      (putBook_takeBackRoot x _ only c base B top0 hB v hb hBx))
+      (kd_takeBackRoot KO BK x _ only c v hv hk hbk hik a hpa g h hgh hh)) ?_
+    rintro _ v' ⟨⟨⟨hI', hR'⟩, hb'⟩, hbk', hik', _, _⟩
+    exact ⟨hI', hR', hb', hbk', hik'⟩
+  · rintro x v n only ⟨hI, hR, hb, hbk, hik⟩ hP hlk hxl hm honly hcv
+    obtain ⟨g, h, hgh⟩ := kd_tag_of_lookup hbk hlk
+    have hh : h ≠ 0 := by
+      intro h0; subst h0
+      have := kd_leaf hbk hlk hgh
+      simp at this; rw [this] at hxl; cases hxl
+    obtain ⟨a, hpa⟩ := segDesc_pathLast c base x v hP
+    have hG := putInvG_of_book c base B top0 v hB hb
+    have hPC := pathCached_of_segDesc c base x v n hP hlk
+    have hU := hunl v x n hI hP hlk hxl hm
+    have hfit := hfits v x n only hI hR hP hlk hxl hm honly hcv
+    have hbook := putBook_replaceRoot x (v.path.length - 1) only c base B top0 hB v hb
+    have hkd := kd_replaceRoot KO BK x _ only c v hv hk hbk hik a hpa g h hgh hh
+    obtain ⟨_, ps, hvp, hlf, hend, hcache, hlast⟩ := hP
+    rcases hlast with hps | ⟨ps0, k, L, ln, hps, hL, hLn, hLl⟩
+    · subst hps
+      have hx : x = v.top.rootKey := by rw [← hend]; rfl
+      have hrg := (writerWP_rootStep_space_rangeG x only n c base v _ _ _ hI hR hx hlk honly hcv hxl).2
+      have hcl := (writerWP_rootStep_space_collF fuelR hfR x only n c base w0 v hI hx hlk honly hcv hxl).2
+      rw [hvp] at hbook hkd ⊢
+      refine writerWP_mono (writerWP_and (writerWP_and (writerWP_and hcl hrg) hbook) hkd) ?_
+      rintro _ v' ⟨⟨⟨hI', hR'⟩, hb'⟩, hbk', hik', _, _⟩
+      exact ⟨hI', hR', hb', hbk', hik'⟩
+    · subst hps
+      obtain ⟨hLr, hLlk, hk', hlen, hpd, hpk⟩ := segDesc_seg c base x v ps0 k L ln hvp hlf hcache hL hLn
+      rw [hlen] at hfit hbook hkd ⊢
+      have hcas := writerWP_replaceRoot_seg_cascadeF fuelR hfR x only n L ln k ps0 c base w0 v hI hR hG hsa2
+        hvp hlf hPC hLr hLlk hLl hk' hpd hpk hlk honly hcv hxl hU
+      refine writerWP_mono (writerWP_and (writerWP_and (writerWP_and hcas hfit) hbook) hkd) ?_
+      rintro _ v' ⟨⟨⟨⟨hT', hU', hW', _, _, hread', hR'⟩, hf'⟩, hb'⟩, hbk', hik', _, _⟩
+      have hG' := putInvG_of_book c base B top0 v' hB hb'
+      refine ⟨⟨⟨hT', hU', fun y yn _ hy => hG'.times y yn hy,
+        fun y yn cc z hy hyn hl hc => hICEk v' hbk' hik' hU' y yn cc z hy hyn hl hc⟩,
+        hread' hf', hf', fun y yn _ hy => hW' y yn hy, fun y yn _ hy => hG'.keyNoValue y yn hy⟩,
+        hR', hb', hbk', hik'⟩
+
+/-! ## Case 4 without the collapse's room premise -/
+
+/-- Obligation (the collapse at a fuel f, with no room premise): a replaceRoot at
+a segment root leaves a state that fits f (cost's HeightInv route), and the
+take-back's `CollapseUnlinkOK` holds there. The collapse's ranges are proved
+(`writerWP_collapseRoot_collF4`). -/
+def CollapseStepOKF4 (c : Ctx) (base : View BVal) (f : Nat) : Prop :=
+  (∀ w0 v x n only, CollGetInvF c base w0 v f → RangeOrder (wNode c.p base v) c.i v.top.rootKey →
+      SegDesc c base x v → v.nodes.lookup x = some n → n.leaf = false → n.firstTime ≠ some c.i →
+      n.onlyLiveKlong = some only → n.cv? only = some 0 →
+      WriterWP (replaceRoot x (v.path.length - 1) only) c v
+        (fun _ v' => SegFits (wNode c.p base v') c.i (f - 1) v'.top.rootKey)) ∧
+  (∀ w0 v x n, CollGetInvF c base w0 v f → SegDesc c base x v → v.nodes.lookup x = some n →
+      n.leaf = false → n.firstTime ≠ some c.i → CollapseUnlinkOK c base v x n)
+
+/-- The collapse keeps `DelInvF3`, given `CollapseStepOKF4`. -/
+theorem writerWP_collapseRoot_delF4 (key : Key) (seg : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (f : Nat) (hf2 : 2 ≤ f) (hC : CollapseStepOKF4 c base f) (w0 : W)
+    (k0 : Key) (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
+    (hICEk : ICEFromKinds c base KO BK) (hsa2 : 2 ≤ c.p.splitAbove)
+    (v : W) (hI : DelInvF3 c base w0 k0 f KO BK v) :
+    WriterWP (collapseRoot key seg c.p.fuel) c v (fun _ v' => DelInvF3 c base w0 k0 f KO BK v') := by
+  obtain ⟨⟨hP, hG, hR, hICE, hF, hread, B, top0, hB, hbook⟩, hbk, hik⟩ := hI
+  have hCI : CollGetInvF c base v v f := by
+    refine ⟨⟨hP.tree, fun y hy => hP.untaken y (tReach_reachS _ _ _ _ hy),
+      fun y yn _ h => hP.times y yn h, fun y yn cc z hy hyn hl hc => hICE y yn cc z hy hyn hl hc⟩,
+      fun _ => rfl, hF, fun y yn _ h => hP.wf y yn h, fun y yn _ h => hP.keyNoValue y yn h⟩
+  refine writerWP_mono (writerWP_collapseRoot_collF4 f hf2 key seg c base hvc v B top0 hB KO BK hv hk
+    hICEk hsa2 (hC.1 v) (hC.2 v) c.p.fuel v hCI hR hbook hbk hik) ?_
+  rintro _ v' ⟨⟨⟨hT', hu', _, hICE'⟩, hread', hF', _, _⟩, hR', hbook', hbk', hik'⟩
+  obtain ⟨hP', hG'⟩ := putInv_after_step c base v' B top0 hB hbook' hT'
+    (fun y hy => hu' y (reachS_tReach _ _ _ _ hy)) hR'
+  refine ⟨⟨hP', hG', hR', hICE', hF', fun key' hk' => ?_, B, top0, hB, hbook'⟩, hbk', hik'⟩
+  rw [hread' key']
+  exact hread key' hk'
+
+/-- `afterDelete` keeps `DelInvF3`, given the merge's obligation and `CollapseStepOKF4`. -/
+theorem writerWP_afterDelete_delF4 (key : Key) (g h : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (fuelR : Nat) (hfR : 2 ≤ fuelR) (hM : MergeStepOKF3 c base fuelR)
+    (hC : CollapseStepOKF4 c base fuelR)
+    (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
+    (hICEk : ICEFromKinds c base KO BK) (hsa2 : 2 ≤ c.p.splitAbove)
+    (hcap : 1 ≤ c.p.mergeMax) (w0 : W) (k0 : Key) (v : W) (hI : DelInvF3 c base w0 k0 fuelR KO BK v) :
+    WriterWP (afterDelete key g h) c v (fun _ v' => DelInvF3 c base w0 k0 fuelR KO BK v') :=
+  writerWP_afterDelete_inv key g h c (DelInvF3 c base w0 k0 fuelR KO BK)
+    (fun v hI => writerWP_mergeUp_delF3 key g c base hvc fuelR hfR hM KO BK hv hk hICEk hsa2 hcap w0 k0
+      c.p.fuel h false v hI)
+    (fun v hI => writerWP_collapseRoot_delF4 key g c base hvc fuelR hfR hC w0 k0 KO BK hv hk hICEk hsa2
+      v hI) v hI
+
+/-- Case 4 at the reading fuel p.fuel + 1 inside the delete, with no room premise
+of the collapse: `OpGetCaseOK'` from `DelStepsOKF3`, `MergeStepOKF3`,
+`CollapseStepOKF4` and the pointers of every run within reach (TP4). -/
+theorem opGetCaseOK'_delMerge4 (p : Params) (R : Struct BVal → Time → Prop) (hS : DelStepsOKF3 p R)
+    (hM : ∀ ts, MergeStepOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hC : ∀ ts, CollapseStepOKF4 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hsa2 : 2 ≤ p.splitAbove) (hcap : 1 ≤ p.mergeMax) (hMM : 2 ≤ p.M)
+    (hPtr : ∀ ts, Within p ts → PointersOK (treeRun p ts)) :
+    OpGetCaseOK' p R DelMergeCase := by
+  have hf2 : 2 ≤ p.fuel + 1 := by unfold Params.fuel; omega
+  intro ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF0 hP
+  obtain ⟨key, hop, hmerges⟩ := hP
+  have hwts : Within p ts := by
+    have := within_take p (ts ++ [tx]) hw ts.length
+    simpa using this
+  have hfresh : ∀ q ∈ treeRun p ts, q.1 < tx.base := by
+    have := (hw.2 ts.length (by simp)).1
+    simpa using this
+  have hK := treeRun_kindsAllOK p hMM hPtr ts hwts
+  have hv : ViewIdsBelow tx.base (ctxOf p ts).view :=
+    viewIdsBelow_rootless _ _ (viewIdsBelow_view p (treeRun p ts) ts.length tx.base hfresh)
+  have hk : ViewKinds (kindOracleOf p (treeRun p ts)) tx.base (ctxOf p ts) :=
+    viewKinds_of p (treeRun p ts) ts.length tx.base hfresh (treeRun_timesLE p ts) (hPtr ts hwts) hK
+  have hICEk : ICEFromKinds (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) tx.base :=
+    fun v hb hi hun => innerChildren_of_kinds p (treeRun p ts) tx.base (ctxOf p ts) v rfl hK
+      (hPtr ts hwts) hb hi.cache hun
+  exact hS ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF0 key hop hmerges
+    (fun g h v hv' => writerWP_afterDelete_delF4 key g h (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
+      (p.fuel + 1) hf2 (hM ts) (hC ts) _ _ hv hk hICEk hsa2 hcap w key v hv')
+    (fun g h merged v hv' => writerWP_mergeUp_delF3 key g (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
+      (p.fuel + 1) hf2 (hM ts) _ _ hv hk hICEk hsa2 hcap w key p.fuel h merged v hv')
+    (fun seg v hv' => writerWP_collapseRoot_delF4 key seg (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
+      (p.fuel + 1) hf2 (hC ts) w key _ _ hv hk hICEk hsa2 v hv')
+
+/-- Case 4 (`OpGetCaseOK`) with no room premise of the collapse: from
+`DelStepsOKF3`, `MergeStepOKF3`, `CollapseStepOKF4`, `TxSegFitsOK` and TP4. -/
+theorem opGetCaseOK_delMergeF4 (p : Params) (R : Struct BVal → Time → Prop) (hS : DelStepsOKF3 p R)
+    (hM : ∀ ts, MergeStepOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hC : ∀ ts, CollapseStepOKF4 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hsa2 : 2 ≤ p.splitAbove) (hcap : 1 ≤ p.mergeMax) (hMM : 2 ≤ p.M)
+    (hPtr : ∀ ts, Within p ts → PointersOK (treeRun p ts)) (hfit : TxSegFitsOK p R) :
+    OpGetCaseOK p R DelMergeCase :=
+  opGetCaseOK_of' p R DelMergeCase (opGetCaseOK'_delMerge4 p R hS hM hC hsa2 hcap hMM hPtr) hfit
+
 end SIS.Tree
