@@ -47,7 +47,7 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 | 024-22 | Land the second prover's run 2; ScanOK's premise (B) | tp11b (high) | landed 59510cb5 |
 | 024-12 | TP11 option C: the scan's fuel from the parameters; then TP11, TP7 | Codex run 3 (Sol xhigh) | landed 2e71a297: C made; TP11 reduced to TP7 + LatestScanOK |
 | 024-12 | TP7, the tree's invariants | Codex run 4 (Sol max) | running |
-| 024, 015 | Statuses after the release; post-release notes (021-27, 020-29) | tidy (high) | committed (below) |
+| 024, 015 | Statuses after the release; post-release notes (021-27, 020-29) | tidy (high) | committed ee5712c5 |
 | 026-05 | P8: each reclaim step scans at its own time | p8 (xhigh) | running |
 | 026-06 | A value transformation's failure refuses the transaction | vt (high) | running |
 | 026-07 | The write buffer grows with use (ST8) | wb (high) | running |
