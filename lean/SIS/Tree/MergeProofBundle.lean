@@ -73,3 +73,4 @@ import SIS.Tree.GetWriter
 import SIS.Tree.SharedSegment
 import SIS.Tree.GetCommit
 import SIS.Tree.MergeNodeCount
+import SIS.Tree.MergeNodeCountOps
