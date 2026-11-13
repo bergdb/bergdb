@@ -382,7 +382,7 @@ theorem putInv_put_timeSplit_below (c : Ctx) (base : View BVal) (B : NodeId) (to
     (hleaf : ∀ L n, (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
       wNode c.p base w L = some n → n.leaf = true →
       ¬ (n.size + 1 < c.p.M ∧ deadOver c.p (n.add c.i (.key cv w.next)) = false) ∧
-      n.firstTime ≠ some c.i ∧ (n.lastVersion c.i).size ≤ c.p.splitAbove)
+      n.firstTime ≠ some c.i ∧ (c.p.M ≤ n.size + 1 → (n.lastVersion c.i).size ≤ c.p.splitAbove))
     (hparent : ∀ q qn, (q, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
       wNode c.p base w q = some qn → qn.leaf = false →
       qn.size + 1 + 1 ≤ c.p.M ∧ ∀ k y, deadOver c.p (qn.add c.i (.key k y)) = false) :
@@ -405,7 +405,7 @@ theorem putInv_put_timeSplit_below (c : Ctx) (base : View BVal) (B : NodeId) (to
     cases h' : w4.nodes.lookup w4.next with
     | none => rfl
     | some _ => have := hsrc4 _ (by rw [h']; rfl); omega
-  refine writerWP_mono (writerWP_appendKlongs_timeSplit d' L q n qn k1 cv w.next c w4 hlk4 hlq4
+  refine writerWP_mono (writerWP_appendKlongs_timeSplit_gen d' L q n qn k1 cv w.next c w4 hlk4 hlq4
     hqL hql hfirst hfull hsplit hpq hpk hroomq (fun y => hdeadq k1 y) hny) ?_
   intro _ w' ⟨l, hll, _, hlt, hlk, h't, h'top, _, h'nodes⟩
   have hLt : w.taken.contains L = false := (wNode_cases _ _ _ _ _ hn).1
