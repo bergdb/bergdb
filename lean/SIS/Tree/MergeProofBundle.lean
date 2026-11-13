@@ -173,6 +173,8 @@ import SIS.Tree.MergeRootShape
 import SIS.Tree.InvAssembly
 import SIS.Tree.LiveCounts
 import SIS.Tree.LiveCases
+import SIS.Tree.LiveEdges
+import SIS.Tree.LiveSteps
 import SIS.Tree.WriterTreeInnerHalves
 import SIS.Tree.WriterTreeSpaceSpace
 import SIS.Tree.WriterTreeDelFull
