@@ -1487,4 +1487,145 @@ theorem writerWP_del_bitmap_seg (c : Ctx) (base : View BVal) (hvc : ViewCoherent
     simp only [Op.key, hk', Bool.false_eq_true, ↓reduceIte]
     exact hother key' hkey' (fun h => hk h.symm)
 
+/-! ## A node moved to a new id -/
+
+/-- Reader N2 is reader N1 with node L at id y (ren: L to y, any other id to
+itself), on the ids of the domain D: same kinds, and searches that give the
+renamed pointers. -/
+def RenSim (N1 N2 : NodeId → Option KNode) (t : Time) (D : NodeId → Prop) (L y : NodeId) :
+    Prop :=
+  ∀ x, D x →
+    let x2 := if x = L then y else x
+    ((N1 x).isSome = (N2 x2).isSome) ∧ ∀ n1 n2, N1 x = some n1 → N2 x2 = some n2 →
+      n1.leaf = n2.leaf ∧ ∀ c,
+        (n1.leaf = true → ((n1.searchEq t c).map (·.y)).map (fun z => if z = L then y else z) =
+          (n2.searchEq t c).map (·.y) ∧ ∀ fd, n1.searchEq t c = some fd → D fd.y) ∧
+        (n1.leaf = false → ((n1.searchLte t c).map (·.y)).map (fun z => if z = L then y else z) =
+          (n2.searchLte t c).map (·.y) ∧ ∀ fd, n1.searchLte t c = some fd → D fd.y)
+
+theorem getEqR_ren (N1 N2 : NodeId → Option KNode) (t : Time) (D : NodeId → Prop) (L y : NodeId)
+    (hS : RenSim N1 N2 t D L y) (c : Nat) :
+    ∀ (f : Nat) (x : NodeId), D x →
+      (getEqR N1 t c f x).map (fun z => if z = L then y else z) =
+        getEqR N2 t c f (if x = L then y else x) := by
+  intro f
+  induction f with
+  | zero => intro x _; rfl
+  | succ f ih =>
+    intro x hx
+    obtain ⟨hsome, hrest⟩ := hS x hx
+    simp only [getEqR]
+    cases h1 : N1 x with
+    | none =>
+      rw [h1] at hsome
+      cases h2 : N2 (if x = L then y else x) with
+      | none => rfl
+      | some n2 => rw [h2] at hsome; cases hsome
+    | some n1 =>
+      rw [h1] at hsome
+      cases h2 : N2 (if x = L then y else x) with
+      | none => rw [h2] at hsome; cases hsome
+      | some n2 =>
+        obtain ⟨hl, hc⟩ := hrest n1 n2 h1 h2
+        simp only
+        cases hl1 : n1.leaf with
+        | true =>
+          rw [hl1] at hl
+          simp only [← hl, ↓reduceIte]
+          exact ((hc c).1 hl1).1
+        | false =>
+          rw [hl1] at hl
+          simp only [← hl, Bool.false_eq_true, ↓reduceIte]
+          obtain ⟨hs, hD⟩ := (hc c).2 hl1
+          cases hf1 : n1.searchLte t c with
+          | none =>
+            rw [hf1] at hs
+            cases hf2 : n2.searchLte t c with
+            | none => rfl
+            | some f2 => rw [hf2] at hs; cases hs
+          | some f1 =>
+            rw [hf1] at hs
+            cases hf2 : n2.searchLte t c with
+            | none => rw [hf2] at hs; cases hs
+            | some f2 =>
+              rw [hf2] at hs
+              simp only [Option.map_some, Option.some.injEq] at hs
+              simp only
+              rw [← hs]
+              exact ih f1.y (hD f1 hf1)
+
+theorem getEqR_ren_dom (N1 N2 : NodeId → Option KNode) (t : Time) (D : NodeId → Prop)
+    (L y : NodeId) (hS : RenSim N1 N2 t D L y) (c : Nat) :
+    ∀ (f : Nat) (x z : NodeId), D x → getEqR N1 t c f x = some z → D z := by
+  intro f
+  induction f with
+  | zero => intro x z _ h; simp [getEqR] at h
+  | succ f ih =>
+    intro x z hx h
+    obtain ⟨_, hrest⟩ := hS x hx
+    simp only [getEqR] at h
+    cases h1 : N1 x with
+    | none => rw [h1] at h; cases h
+    | some n1 =>
+      rw [h1] at h
+      simp only at h
+      cases h2 : N2 (if x = L then y else x) with
+      | none =>
+        have hs := (hS x hx).1
+        rw [h1, h2] at hs
+        cases hs
+      | some n2 =>
+        obtain ⟨_, hc⟩ := hrest n1 n2 h1 h2
+        split at h
+        · rename_i hl1
+          cases hf : n1.searchEq t c with
+          | none => rw [hf] at h; cases h
+          | some fd =>
+            rw [hf] at h
+            simp only [Option.map_some, Option.some.injEq] at h
+            rw [← h]
+            exact ((hc c).1 hl1).2 fd hf
+        · rename_i hl1
+          simp only [Bool.not_eq_true] at hl1
+          cases hf : n1.searchLte t c with
+          | none => rw [hf] at h; cases h
+          | some fd =>
+            rw [hf] at h
+            simp only at h
+            exact ih fd.y z (((hc c).2 hl1).2 fd hf) h
+
+/-- A reading through a reader with node L moved to id y is the reading before,
+from the renamed root, given values that the move keeps. -/
+theorem getFromR_ren (N1 N2 : NodeId → Option KNode) (V1 V2 : NodeId → Option Nat)
+    (t : Time) (fuel : Nat) (D : NodeId → Prop) (L y : NodeId) (hS : RenSim N1 N2 t D L y)
+    (hV : ∀ a, V1 a = V2 (if a = L then y else a)) :
+    ∀ (key : List Nat) (r : NodeId), D r →
+      getFromR N1 V1 t fuel key r = getFromR N2 V2 t fuel key (if r = L then y else r) := by
+  intro key
+  induction key with
+  | nil => intro r _; rfl
+  | cons cv rest ih =>
+    intro r hr
+    have he := getEqR_ren N1 N2 t D L y hS cv fuel r hr
+    cases rest with
+    | nil =>
+      simp only [getFromR]
+      rw [← he]
+      cases hg : getEqR N1 t cv fuel r with
+      | none => rfl
+      | some z => simp only [Option.map_some, Option.bind_some]; exact hV z
+    | cons d rest' =>
+      simp only [getFromR]
+      rw [← he]
+      cases hg : getEqR N1 t cv fuel r with
+      | none => rfl
+      | some z =>
+        simp only [Option.map_some]
+        have hz : D z := getEqR_ren_dom N1 N2 t D L y hS cv fuel r z hr hg
+        have hsome : (N1 z).isSome = (N2 (if z = L then y else z)).isSome := (hS z hz).1
+        rw [← hsome]
+        split
+        · exact ih z hz
+        · rfl
+
 end SIS.Tree
