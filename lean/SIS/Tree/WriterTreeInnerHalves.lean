@@ -481,4 +481,125 @@ theorem writerWP_appendKlongs_timeSpace_tree (base : View BVal) (d'' : Nat) (L q
   · exact hv3
   · exact hfresh
 
+/-- `writerWP_put_timeSpace` keeps the writer's tree: the leaf split in time,
+its full parent in space, the grandparent with room for two klongs. -/
+theorem writerWP_put_timeSpace_tree (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (pre : List Nat) (cv h : Nat) (rk : NodeId) (w : W)
+    (S0 : List (Option Nat × NodeId)) (kq k1 : Nat) (q L : NodeId) (n qn gn : KNode)
+    (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
+    (ht : ∀ q ∈ fromVisits (wNode c.p base w) c.i c.p.fuel (pre ++ [cv]) w.top.rootKey,
+      w.taken.contains q.1 = false)
+    (hids : (∀ z, (w.nodes.lookup z).isSome = true → z < w.next) ∧
+      (∀ z, (c.view z).isSome = true → z < w.next) ∧ (∀ z, w.taken.contains z = true → z < w.next))
+    (hbaseF : ∀ z, w.next ≤ z → knodeOf c.p base z = none)
+    (hwf : ∀ x xn, ReachS (wNode c.p base w) c.i w.top.rootKey x →
+      wNode c.p base w x = some xn → klongsWf xn.ks = true)
+    (hpath : PathFrom (wNode c.p base w) c.i cv rk (S0 ++ [(some kq, q), (some k1, L)]))
+    (hNL : wNode c.p base w L = some n) (hnl : n.leaf = true)
+    (hNq : wNode c.p base w q = some qn) (hNg : wNode c.p base w (pathEnd rk S0) = some gn)
+    (hleaf : (∀ s, Klong.time s ∈ n.ks → s ≤ c.i) ∧
+      ¬ (n.size + 1 < c.p.M ∧ deadOver c.p (n.add c.i (.key cv w.next)) = false) ∧
+      n.firstTime ≠ some c.i ∧ (c.p.M ≤ n.size + 1 → (n.lastVersion c.i).size ≤ c.p.splitAbove))
+    (hparent : (∀ s, Klong.time s ∈ qn.ks → s ≤ c.i) ∧ c.p.M < qn.size + 1 + 1 ∧
+      qn.firstTime ≠ some c.i ∧ c.p.splitAbove < (qn.lastVersion c.i).size ∧
+      2 ≤ qn.live.length)
+    (hgp : (∀ s, Klong.time s ∈ gn.ks → s ≤ c.i) ∧ gn.size + 2 + 1 ≤ c.p.M ∧
+      ∀ y1 sc y2, deadOver c.p ((gn.add c.i (.key kq y1)).add c.i (.key sc y2)) = false)
+    (hT : TreeOK (wNode c.p base w) c.i w.top.rootKey)
+    (hfreshT : ∀ z, w.next ≤ z → ∀ u c', TReach (wNode c.p base w) c.i w.top.rootKey u →
+      ¬ TLink (wNode c.p base w) c.i u c' z) :
+    WriterWP (putKv (.put (pre ++ [cv]) h)) c w (fun _ w' =>
+      TreeOK (wNode c.p base w') c.i w'.top.rootKey) := by
+  obtain ⟨hidn, hidv, hidt⟩ := hids
+  obtain ⟨htimes, hfull, hfirst, hsplit⟩ := hleaf
+  obtain ⟨hqt, hqfull, hqfirst, hqsplit, hq2⟩ := hparent
+  obtain ⟨hgt, hroomg, hdeadg⟩ := hgp
+  have hfree : ∀ z, w.next ≤ z → wNode c.p base w z = none := by
+    intro z hz
+    have htz : w.taken.contains z = false := by
+      cases h' : w.taken.contains z with
+      | false => rfl
+      | true => have := hidt z h'; omega
+    have hnz : w.nodes.lookup z = none := by
+      cases h' : w.nodes.lookup z with
+      | none => rfl
+      | some _ => have := hidn z (by rw [h']; rfl); omega
+    simp only [wNode, htz, Bool.false_eq_true, ↓reduceIte, hnz, hbaseF z hz]
+  have htn : ∀ z, w.next ≤ z → w.taken.contains z = false := by
+    intro z hz
+    cases h' : w.taken.contains z with
+    | false => rfl
+    | true => have := hidt z h'; omega
+  have hrrk : ReachS (wNode c.p base w) c.i w.top.rootKey rk :=
+    segRootR_reach _ _ _ _ hwf pre _ rk ReachS.root hrk
+  obtain ⟨r0, hr0'⟩ : ∃ r0, (qn.live.drop (qn.live.length / 2)).head? = some r0 := by
+    cases hd : (qn.live.drop (qn.live.length / 2)).head? with
+    | some r0 => exact ⟨r0, rfl⟩
+    | none =>
+      exfalso
+      rw [List.head?_eq_none_iff, List.drop_eq_nil_iff] at hd
+      omega
+  apply writerWP_put_seg_append2 c base hvc pre cv h rk w S0 kq k1 q L n hrk ht hidn hidv hpath hNL hnl
+    hfull
+  intro qn' gn' d'' w5 hNq' hNg' hqv hgv hLv ⟨fdg, fdq, hgs, hkqc, hgy, hqs, hk1c, hqy⟩ hgl hql
+    h5t h5top h5next h5L h5q h5g h5src hW5 hpg hpq hpk
+  rw [hNq] at hNq'; cases hNq'
+  rw [hNg] at hNg'; cases hNg'
+  have hgR : ReachS (wNode c.p base w) c.i w.top.rootKey (pathEnd rk S0) :=
+    eqVisits_reach _ _ _ cv c.p.fuel rk _ cv hrrk hgv
+  have hgk : (kq, q) ∈ gn.liveAt c.i := by
+    have := KNode.searchLte_mem gn c.i cv fdg hgs; rw [hkqc, hgy] at this; exact this
+  have hqk : (k1, L) ∈ qn.liveAt c.i := by
+    have := KNode.searchLte_mem qn c.i cv fdq hqs; rw [hk1c, hqy] at this; exact this
+  have hLt : w.taken.contains L = false := ht (L, cv) (fromVisits_append _ _ _ pre cv _ rk hrk _ hLv)
+  have hqt' : w.taken.contains q = false := ht (q, cv) (fromVisits_append _ _ _ pre cv _ rk hrk _ hqv)
+  have hgt' : w.taken.contains (pathEnd rk S0) = false :=
+    ht (_, cv) (fromVisits_append _ _ _ pre cv _ rk hrk _ hgv)
+  have hLn : L < w5.next := by have := h5src L (by rw [h5L]; rfl); omega
+  apply writerWP_appendKlongs_timeSpace_tree base d'' L q (pathEnd rk S0) n qn gn kq k1 cv w.next
+    c w5 r0
+  · rw [hW5, h5top]; exact hT
+  · rw [hW5, h5top]; exact reachS_tReach _ _ _ _ hgR
+  · exact h5L
+  · exact h5q
+  · exact h5g
+  · rw [h5t]; exact hLt
+  · rw [h5t]; exact hqt'
+  · rw [h5t]; exact hgt'
+  · exact hgk
+  · exact hqk
+  · exact hwf _ gn hgR hNg
+  · exact hgt
+  · exact hqt
+  · exact htimes
+  · exact hr0'
+  · exact hql
+  · exact hgl
+  · exact hfirst
+  · exact hqfirst
+  · exact hfull
+  · exact hsplit
+  · exact hqfull
+  · exact hqsplit
+  · exact hpg
+  · exact hpq
+  · exact hpk
+  · exact hroomg
+  · exact hdeadg
+  · rw [hW5, h5next]; exact hfree _ (by omega)
+  · rw [hW5, h5next]; exact hfree _ (by omega)
+  · rw [hW5, h5next]; exact hfree _ (by omega)
+  · rw [h5next, h5t]; exact htn _ (by omega)
+  · rw [h5next, h5t]; exact htn _ (by omega)
+  · rw [h5next, h5t]; exact htn _ (by omega)
+  · rw [hW5]; exact hfree _ (Nat.le_refl _)
+  · rw [h5next]; omega
+  · rw [h5next]; omega
+  · rw [h5next]; omega
+  · exact hLn
+  · intro z hz u c' hu
+    rw [hW5, h5top] at *
+    rw [h5next] at hz
+    exact hfreshT z (by omega) u c' hu
+
 end SIS.Tree
