@@ -1132,10 +1132,15 @@ latest's `OpGetOK` cases: `writerWP_put_leafRoot_tree`,
 `writerWP_put_segLeaf_tree` (a segment root that is a leaf: its time split,
 space split and space split in place under a new segment root,
 `WriterTreeSegRoot.lean`, `WriterTreeSegSplit.lean`, `WriterTreeSegInPlace.lean`)
-and `writerWP_put_newSeg_inv_tree` (`WriterTreeNewSeg.lean`). Not yet: a merge of nodes the transaction made
-(retarget, take-back), a merge whose parent is full; the writer's code of
-LE-b, the unlink and collapse; a split whose parent is full (the cascade);
-new segments; the segment roots' splits.
+and `writerWP_put_newSeg_inv_tree` (`WriterTreeNewSeg.lean`). The merge
+keeps it also for nodes the transaction made (`writerWP_merge_made_tree`,
+`WriterTreeMergeMade.lean`: the parent's klongs retargeted, the nodes taken
+back); root collapse at the space root, the whole loop
+(`writerWP_collapseRoot_space`, `WriterTreeCollapse.lean`); LE-b with room
+(`writerWP_emptyKeyNext_tree`, `WriterTreeLeb.lean`). Not yet: a merge whose parent is full or
+compacted; the mergeUp loop and the delete as a whole; collapse of a segment
+root; the take-back of the upward unlink; a split whose parent is full (the
+cascade, prover latest).
 Their premises beyond TREE: the ids from w's next one on in neither the
 base nor a live klong (`hbaseF`, `hfreshT`).
 
