@@ -6,6 +6,7 @@ split, with the klongs to the new nodes put into the parent (or the tree at
 the end). Each step keeps a tree and says what N2 reaches.
 -/
 import SIS.Tree.WriterTreeChainSteps
+import SIS.Tree.WriterGetMerge
 
 set_option autoImplicit false
 
@@ -262,6 +263,323 @@ theorem treeOK_rootTimeStep (N1 N2 : NodeId → Option KNode) (t : Time) (x y : 
     exact absurd hl1 (hno u c' hu hug)
   · exact hNewGone
   · exact ⟨yn, hN2y⟩
+
+
+theorem mrg_R0_liveAt (t : Time) (x : NodeId) :
+    ∀ c z, (c, z) ∈ (⟨false, newKlongs t [(0, x)]⟩ : KNode).liveAt t ↔ c = 0 ∧ z = x := by
+  intro c z
+  rw [mrg_newKlongs_liveAt_iff false t [(0, x)] (by simp) c z]
+  simp
+
+/-- A space split of x below a segment leaf q: halves F and S under a new
+segment root R, whose live klongs are (0, F) and (sc, S); q's klong k1 names
+R; x is left behind. -/
+theorem treeOK_segSpaceStep (N1 N2 : NodeId → Option KNode) (t : Time) (r q x F S R : NodeId)
+    (qn vx f s rn qn2 : KNode) (k1 sc : Nat) (loc : Nat → Nat) (hsc : 0 < sc)
+    (hT : TreeOK N1 t r) (hq : TReach N1 t r q) (hqn : N1 q = some qn) (hqk : (k1, x) ∈ qn.liveAt t)
+    (hxn : N1 x = some vx)
+    (hN2q : N2 q = some qn2) (hq2k : (k1, R) ∈ qn2.liveAt t)
+    (hq2 : ∀ c z, (c, z) ∈ qn2.liveAt t → (c = k1 ∧ z = R) ∨ (c ≠ k1 ∧ (c, z) ∈ qn.liveAt t))
+    (hN2R : N2 R = some rn) (hrn : ∀ c z, (c, z) ∈ rn.liveAt t → (c = 0 ∧ z = F) ∨ (c = sc ∧ z = S))
+    (hN2F : N2 F = some f) (hN2S : N2 S = some s)
+    (hf : ∀ c z, (c, z) ∈ f.liveAt t → c < sc ∧ (c, z) ∈ vx.liveAt t)
+    (hs : ∀ c z, (c, z) ∈ s.liveAt t → ∃ c0, sc ≤ c0 ∧ c = loc c0 ∧ (c0, z) ∈ vx.liveAt t)
+    (hother : ∀ z, z ≠ x → z ≠ q → z ≠ F → z ≠ S → z ≠ R → N2 z = N1 z)
+    (hfresh : ∀ z, (z = F ∨ z = S ∨ z = R) → N1 z = none ∧ ∀ u c', TReach N1 t r u → ¬ TLink N1 t u c' z)
+    (hFS : F ≠ S) (hFR : F ≠ R) (hSR : S ≠ R) :
+    TreeOK N2 t r ∧ ∀ z, TReach N2 t r z → (TReach N1 t r z ∨ z = F ∨ z = S ∨ z = R) ∧ z ≠ x := by
+  obtain ⟨hFN, hFF⟩ := hfresh F (Or.inl rfl)
+  obtain ⟨hSN, hSF⟩ := hfresh S (Or.inr (Or.inl rfl))
+  obtain ⟨hRN, hRF⟩ := hfresh R (Or.inr (Or.inr rfl))
+  have hqx_link : TLink N1 t q k1 x := ⟨qn, hqn, hqk⟩
+  have hx : TReach N1 t r x := TReach.link hq hqx_link
+  have hqR : q ≠ R := fun h => by rw [h, hRN] at hqn; cases hqn
+  have hxR : x ≠ R := fun h => by rw [h, hRN] at hxn; cases hxn
+  have hqx : q ≠ x := fun h => hT.no_self_link q k1 hq (by rw [← h] at hqx_link; exact hqx_link)
+  have hRm := mrg_R0_liveAt t x
+  let Nm : NodeId → Option KNode := fun z =>
+    if z = R then some ⟨false, newKlongs t [(0, x)]⟩ else if z = q then some qn2 else N1 z
+  have hNmR : Nm R = some ⟨false, newKlongs t [(0, x)]⟩ := by simp [Nm]
+  have hNmq : Nm q = some qn2 := by simp [Nm, hqR]
+  have hNmo : ∀ z, z ≠ q → z ≠ R → Nm z = N1 z := by intro z h1 h2; simp [Nm, h1, h2]
+  obtain ⟨hTm, hRm'⟩ := treeOK_insertAbove N1 Nm t r q x R qn qn2 _ k1 hT hq hqn hqk hNmq hq2 hNmR
+    (fun c z h => (hRm c z).mp h) hNmo hRN hRF
+  -- q and R are reached in the tree with R
+  have hqm : TReach Nm t r q := by
+    obtain ⟨a, ha⟩ := hq.pathLen
+    apply tReach_of_agree_short N1 Nm t r a q ha
+    intro y k hk hka
+    have hyq : y ≠ q := fun he => by
+      rw [he] at hk; have := PathLen.depth_unique hT a q k ha hk; omega
+    have hyR : y ≠ R := fun he => not_reach_fresh N1 t r R hT hRN hRF (he ▸ hk.reach)
+    exact hNmo y hyq hyR
+  have hRreach : TReach Nm t r R := TReach.link hqm ⟨qn2, hNmq, hq2k⟩
+  have hNmx : Nm x = some vx := by rw [hNmo x (Ne.symm hqx) hxR]; exact hxn
+  -- what the tree with R links: no link to F or S
+  have hNmF : ∀ z, (z = F ∨ z = S) → Nm z = none ∧ ∀ u c', TReach Nm t r u → ¬ TLink Nm t u c' z := by
+    intro z hz
+    have hzq : z ≠ q := fun h => by
+      rcases hz with h' | h' <;> rw [← h, h'] at hqn
+      · rw [hFN] at hqn; cases hqn
+      · rw [hSN] at hqn; cases hqn
+    have hzR : z ≠ R := by rcases hz with h' | h' <;> rw [h'] <;> assumption
+    have hzN : N1 z = none := by rcases hz with h' | h' <;> rw [h'] <;> assumption
+    have hzF : ∀ u c', TReach N1 t r u → ¬ TLink N1 t u c' z := by
+      rcases hz with h' | h' <;> rw [h'] <;> assumption
+    refine ⟨by rw [hNmo z hzq hzR]; exact hzN, fun u c' hu hl => ?_⟩
+    obtain ⟨mm, hm, hc⟩ := hl
+    by_cases huR : u = R
+    · rw [huR, hNmR] at hm; simp only [Option.some.injEq] at hm; subst hm
+      have := ((hRm c' z).mp hc).2
+      rw [this] at hzN; rw [hzN] at hxn; cases hxn
+    · by_cases huq : u = q
+      · rw [huq, hNmq] at hm; simp only [Option.some.injEq] at hm; subst hm
+        rcases hq2 c' z hc with ⟨_, h⟩ | ⟨_, h⟩
+        · exact hzR h
+        · exact hzF q c' hq ⟨qn, hqn, h⟩
+      · rw [hNmo u huq huR] at hm
+        have huN : TReach N1 t r u := by
+          rcases hRm' u hu with h | h
+          · exact h
+          · exact absurd h huR
+        exact hzF u c' huN ⟨mm, hm, hc⟩
+  obtain ⟨hTF, hFm⟩ := hNmF F (Or.inl rfl)
+  obtain ⟨hTS, hSm⟩ := hNmF S (Or.inr rfl)
+  obtain ⟨hT2, hR2⟩ := treeOK_spaceSplit_gen Nm N2 t r R x F S ⟨false, newKlongs t [(0, x)]⟩ vx f s rn
+    0 sc loc hTm hRreach hNmR ((hRm 0 x).mpr ⟨rfl, rfl⟩) hNmx hN2R
+    (by
+      intro c z hc
+      rcases hrn c z hc with ⟨h1, h2⟩ | ⟨h1, h2⟩
+      · exact Or.inr (Or.inl ⟨by omega, h1, h2⟩)
+      · exact Or.inl ⟨h1, h2⟩)
+    hN2F hN2S hf hs
+    (by
+      intro z h1 h2 h3 h4
+      by_cases hzq : z = q
+      · rw [hzq, hN2q, hNmq]
+      · rw [hother z h1 hzq h3 h4 h2, hNmo z hzq h2])
+    hTF hTS hFS
+    (by
+      intro z hz
+      rcases hz with h | h
+      · rw [h]; exact hFm
+      · rw [h]; exact hSm)
+  refine ⟨hT2, fun z hz => ?_⟩
+  obtain ⟨h1, h2⟩ := hR2 z hz
+  refine ⟨?_, h2⟩
+  rcases h1 with h | h | h
+  · rcases hRm' z h with h' | h'
+    · exact Or.inl h'
+    · exact Or.inr (Or.inr (Or.inr h'))
+  · exact Or.inr (Or.inl h)
+  · exact Or.inr (Or.inr (Or.inl h))
+
+
+/-- A space split in place of x below a segment leaf q: x keeps its klongs
+below sc, the new node S those at or above it, a new segment root R has (0, x)
+and (sc, S), and q's klong k1 names R. -/
+theorem treeOK_segSpaceInPlaceStep (N1 N2 : NodeId → Option KNode) (t : Time) (r q x S R : NodeId)
+    (qn vx f s rn qn2 : KNode) (k1 sc : Nat) (loc : Nat → Nat) (hsc : 0 < sc)
+    (hT : TreeOK N1 t r) (hq : TReach N1 t r q) (hqn : N1 q = some qn) (hqk : (k1, x) ∈ qn.liveAt t)
+    (hxn : N1 x = some vx)
+    (hN2q : N2 q = some qn2) (hq2k : (k1, R) ∈ qn2.liveAt t)
+    (hq2 : ∀ c z, (c, z) ∈ qn2.liveAt t → (c = k1 ∧ z = R) ∨ (c ≠ k1 ∧ (c, z) ∈ qn.liveAt t))
+    (hN2R : N2 R = some rn) (hrn : ∀ c z, (c, z) ∈ rn.liveAt t → (c = 0 ∧ z = x) ∨ (c = sc ∧ z = S))
+    (hN2x : N2 x = some f) (hN2S : N2 S = some s)
+    (hf : ∀ c z, (c, z) ∈ f.liveAt t → c < sc ∧ (c, z) ∈ vx.liveAt t)
+    (hs : ∀ c z, (c, z) ∈ s.liveAt t → ∃ c0, sc ≤ c0 ∧ c = loc c0 ∧ (c0, z) ∈ vx.liveAt t)
+    (hother : ∀ z, z ≠ x → z ≠ q → z ≠ S → z ≠ R → N2 z = N1 z)
+    (hfresh : ∀ z, (z = S ∨ z = R) → N1 z = none ∧ ∀ u c', TReach N1 t r u → ¬ TLink N1 t u c' z)
+    (hSR : S ≠ R) :
+    TreeOK N2 t r ∧ ∀ z, TReach N2 t r z → TReach N1 t r z ∨ z = S ∨ z = R := by
+  obtain ⟨hSN, hSF⟩ := hfresh S (Or.inl rfl)
+  obtain ⟨hRN, hRF⟩ := hfresh R (Or.inr rfl)
+  have hqx_link : TLink N1 t q k1 x := ⟨qn, hqn, hqk⟩
+  have hqR : q ≠ R := fun h => by rw [h, hRN] at hqn; cases hqn
+  have hxR : x ≠ R := fun h => by rw [h, hRN] at hxn; cases hxn
+  have hqx : q ≠ x := fun h => hT.no_self_link q k1 hq (by rw [← h] at hqx_link; exact hqx_link)
+  have hRm := mrg_R0_liveAt t x
+  let Nm : NodeId → Option KNode := fun z =>
+    if z = R then some ⟨false, newKlongs t [(0, x)]⟩ else if z = q then some qn2 else N1 z
+  have hNmR : Nm R = some ⟨false, newKlongs t [(0, x)]⟩ := by simp [Nm]
+  have hNmq : Nm q = some qn2 := by simp [Nm, hqR]
+  have hNmo : ∀ z, z ≠ q → z ≠ R → Nm z = N1 z := by intro z h1 h2; simp [Nm, h1, h2]
+  obtain ⟨hTm, hRm'⟩ := treeOK_insertAbove N1 Nm t r q x R qn qn2 _ k1 hT hq hqn hqk hNmq hq2 hNmR
+    (fun c z h => (hRm c z).mp h) hNmo hRN hRF
+  have hqm : TReach Nm t r q := by
+    obtain ⟨a, ha⟩ := hq.pathLen
+    apply tReach_of_agree_short N1 Nm t r a q ha
+    intro y k hk hka
+    have hyq : y ≠ q := fun he => by
+      rw [he] at hk; have := PathLen.depth_unique hT a q k ha hk; omega
+    have hyR : y ≠ R := fun he => not_reach_fresh N1 t r R hT hRN hRF (he ▸ hk.reach)
+    exact hNmo y hyq hyR
+  have hRreach : TReach Nm t r R := TReach.link hqm ⟨qn2, hNmq, hq2k⟩
+  have hNmx : Nm x = some vx := by rw [hNmo x (Ne.symm hqx) hxR]; exact hxn
+  have hSq : S ≠ q := fun h => by rw [← h, hSN] at hqn; cases hqn
+  have hNmS : Nm S = none := by rw [hNmo S hSq hSR]; exact hSN
+  have hSm : ∀ u c', TReach Nm t r u → ¬ TLink Nm t u c' S := by
+    intro u c' hu hl
+    obtain ⟨mm, hm, hc⟩ := hl
+    by_cases huR : u = R
+    · rw [huR, hNmR] at hm; simp only [Option.some.injEq] at hm; subst hm
+      have := ((hRm c' S).mp hc).2
+      rw [this] at hSN; rw [hSN] at hxn; cases hxn
+    · by_cases huq : u = q
+      · rw [huq, hNmq] at hm; simp only [Option.some.injEq] at hm; subst hm
+        rcases hq2 c' S hc with ⟨_, h⟩ | ⟨_, h⟩
+        · exact hSR h
+        · exact hSF q c' hq ⟨qn, hqn, h⟩
+      · rw [hNmo u huq huR] at hm
+        have huN : TReach N1 t r u := by
+          rcases hRm' u hu with h | h
+          · exact h
+          · exact absurd h huR
+        exact hSF u c' huN ⟨mm, hm, hc⟩
+  obtain ⟨hT2, hR2⟩ := treeOK_spaceInPlaceStep Nm N2 t r R x S ⟨false, newKlongs t [(0, x)]⟩ vx f s rn
+    0 sc loc hTm hRreach hNmR ((hRm 0 x).mpr ⟨rfl, rfl⟩) hNmx hN2R
+    (by
+      intro c z hc
+      rcases hrn c z hc with ⟨h1, h2⟩ | ⟨h1, h2⟩
+      · exact Or.inr ⟨by omega, (hRm c z).mpr ⟨h1, h2⟩⟩
+      · exact Or.inl ⟨h1, h2⟩)
+    hN2x hN2S hf hs
+    (by
+      intro z h1 h2 h3
+      by_cases hzq : z = q
+      · rw [hzq, hN2q, hNmq]
+      · rw [hother z h1 hzq h3 h2, hNmo z hzq h2])
+    hNmS hSm
+  refine ⟨hT2, fun z hz => ?_⟩
+  rcases hR2 z hz with h | h
+  · rcases hRm' z h with h' | h'
+    · exact Or.inl h'
+    · exact Or.inr (Or.inr h')
+  · exact Or.inr (Or.inl h)
+
+/-- A space split of the space root x: halves F and S under a new space root R
+with (0, F) and (sc, S); x is left behind. -/
+theorem treeOK_rootSpaceStep (N1 N2 : NodeId → Option KNode) (t : Time) (x F S R : NodeId)
+    (vx f s rn : KNode) (sc : Nat) (loc : Nat → Nat) (hsc : 0 < sc)
+    (hT : TreeOK N1 t x) (hxn : N1 x = some vx)
+    (hN2R : N2 R = some rn) (hrn : ∀ c z, (c, z) ∈ rn.liveAt t → (c = 0 ∧ z = F) ∨ (c = sc ∧ z = S))
+    (hN2F : N2 F = some f) (hN2S : N2 S = some s)
+    (hf : ∀ c z, (c, z) ∈ f.liveAt t → c < sc ∧ (c, z) ∈ vx.liveAt t)
+    (hs : ∀ c z, (c, z) ∈ s.liveAt t → ∃ c0, sc ≤ c0 ∧ c = loc c0 ∧ (c0, z) ∈ vx.liveAt t)
+    (hother : ∀ z, z ≠ x → z ≠ F → z ≠ S → z ≠ R → N2 z = N1 z)
+    (hfresh : ∀ z, (z = F ∨ z = S ∨ z = R) → N1 z = none ∧ ∀ u c', TReach N1 t x u → ¬ TLink N1 t u c' z)
+    (hFS : F ≠ S) (hFR : F ≠ R) (hSR : S ≠ R) :
+    TreeOK N2 t R ∧ ∀ z, TReach N2 t R z → (TReach N1 t x z ∨ z = F ∨ z = S ∨ z = R) ∧ z ≠ x := by
+  obtain ⟨hFN, hFF⟩ := hfresh F (Or.inl rfl)
+  obtain ⟨hSN, hSF⟩ := hfresh S (Or.inr (Or.inl rfl))
+  obtain ⟨hRN, hRF⟩ := hfresh R (Or.inr (Or.inr rfl))
+  have hxR : x ≠ R := fun h => by rw [h, hRN] at hxn; cases hxn
+  have hRm := mrg_R0_liveAt t x
+  let Nm : NodeId → Option KNode := fun z => if z = R then some ⟨false, newKlongs t [(0, x)]⟩ else N1 z
+  have hNmR : Nm R = some ⟨false, newKlongs t [(0, x)]⟩ := by simp [Nm]
+  have hNmo : ∀ z, z ≠ R → Nm z = N1 z := by intro z h; simp [Nm, h]
+  have hTm := treeOK_newRootAbove N1 Nm t x R _ hT hRN hRF hNmR (fun c z h => (hRm c z).mp h) hNmo
+  have hRm' := tReach_newRootAbove N1 Nm t x R _ hT hRN hRF hNmR (fun c z h => (hRm c z).mp h) hNmo
+  have hNmx : Nm x = some vx := by rw [hNmo x hxR]; exact hxn
+  have hNmF : ∀ z, (z = F ∨ z = S) → Nm z = none ∧ ∀ u c', TReach Nm t R u → ¬ TLink Nm t u c' z := by
+    intro z hz
+    have hzR : z ≠ R := by rcases hz with h' | h' <;> rw [h'] <;> assumption
+    have hzN : N1 z = none := by rcases hz with h' | h' <;> rw [h'] <;> assumption
+    have hzF : ∀ u c', TReach N1 t x u → ¬ TLink N1 t u c' z := by
+      rcases hz with h' | h' <;> rw [h'] <;> assumption
+    refine ⟨by rw [hNmo z hzR]; exact hzN, fun u c' hu hl => ?_⟩
+    obtain ⟨mm, hm, hc⟩ := hl
+    by_cases huR : u = R
+    · rw [huR, hNmR] at hm; simp only [Option.some.injEq] at hm; subst hm
+      have := ((hRm c' z).mp hc).2
+      rw [this] at hzN; rw [hzN] at hxn; cases hxn
+    · rw [hNmo u huR] at hm
+      have huN : TReach N1 t x u := by
+        rcases hRm' u hu with h | h
+        · exact absurd h huR
+        · exact h
+      exact hzF u c' huN ⟨mm, hm, hc⟩
+  obtain ⟨hTF, hFm⟩ := hNmF F (Or.inl rfl)
+  obtain ⟨hTS, hSm⟩ := hNmF S (Or.inr rfl)
+  obtain ⟨hT2, hR2⟩ := treeOK_spaceSplit_gen Nm N2 t R R x F S ⟨false, newKlongs t [(0, x)]⟩ vx f s rn
+    0 sc loc hTm TReach.root hNmR ((hRm 0 x).mpr ⟨rfl, rfl⟩) hNmx hN2R
+    (by
+      intro c z hc
+      rcases hrn c z hc with ⟨h1, h2⟩ | ⟨h1, h2⟩
+      · exact Or.inr (Or.inl ⟨by omega, h1, h2⟩)
+      · exact Or.inl ⟨h1, h2⟩)
+    hN2F hN2S hf hs
+    (by intro z h1 h2 h3 h4; rw [hother z h1 h3 h4 h2, hNmo z h2])
+    hTF hTS hFS
+    (by
+      intro z hz
+      rcases hz with h | h
+      · rw [h]; exact hFm
+      · rw [h]; exact hSm)
+  refine ⟨hT2, fun z hz => ?_⟩
+  obtain ⟨h1, h2⟩ := hR2 z hz
+  refine ⟨?_, h2⟩
+  rcases h1 with h | h | h
+  · rcases hRm' z h with h' | h'
+    · exact Or.inr (Or.inr (Or.inr h'))
+    · exact Or.inl h'
+  · exact Or.inr (Or.inl h)
+  · exact Or.inr (Or.inr (Or.inl h))
+
+/-- A space split in place of the space root x: x keeps its klongs below sc,
+the new node S those at or above it, and a new space root R has (0, x) and
+(sc, S). -/
+theorem treeOK_rootSpaceInPlaceStep (N1 N2 : NodeId → Option KNode) (t : Time) (x S R : NodeId)
+    (vx f s rn : KNode) (sc : Nat) (loc : Nat → Nat) (hsc : 0 < sc)
+    (hT : TreeOK N1 t x) (hxn : N1 x = some vx)
+    (hN2R : N2 R = some rn) (hrn : ∀ c z, (c, z) ∈ rn.liveAt t → (c = 0 ∧ z = x) ∨ (c = sc ∧ z = S))
+    (hN2x : N2 x = some f) (hN2S : N2 S = some s)
+    (hf : ∀ c z, (c, z) ∈ f.liveAt t → c < sc ∧ (c, z) ∈ vx.liveAt t)
+    (hs : ∀ c z, (c, z) ∈ s.liveAt t → ∃ c0, sc ≤ c0 ∧ c = loc c0 ∧ (c0, z) ∈ vx.liveAt t)
+    (hother : ∀ z, z ≠ x → z ≠ S → z ≠ R → N2 z = N1 z)
+    (hfresh : ∀ z, (z = S ∨ z = R) → N1 z = none ∧ ∀ u c', TReach N1 t x u → ¬ TLink N1 t u c' z)
+    (hSR : S ≠ R) :
+    TreeOK N2 t R ∧ ∀ z, TReach N2 t R z → TReach N1 t x z ∨ z = S ∨ z = R := by
+  obtain ⟨hSN, hSF⟩ := hfresh S (Or.inl rfl)
+  obtain ⟨hRN, hRF⟩ := hfresh R (Or.inr rfl)
+  have hxR : x ≠ R := fun h => by rw [h, hRN] at hxn; cases hxn
+  have hRm := mrg_R0_liveAt t x
+  let Nm : NodeId → Option KNode := fun z => if z = R then some ⟨false, newKlongs t [(0, x)]⟩ else N1 z
+  have hNmR : Nm R = some ⟨false, newKlongs t [(0, x)]⟩ := by simp [Nm]
+  have hNmo : ∀ z, z ≠ R → Nm z = N1 z := by intro z h; simp [Nm, h]
+  have hTm := treeOK_newRootAbove N1 Nm t x R _ hT hRN hRF hNmR (fun c z h => (hRm c z).mp h) hNmo
+  have hRm' := tReach_newRootAbove N1 Nm t x R _ hT hRN hRF hNmR (fun c z h => (hRm c z).mp h) hNmo
+  have hNmx : Nm x = some vx := by rw [hNmo x hxR]; exact hxn
+  have hNmS : Nm S = none := by rw [hNmo S hSR]; exact hSN
+  have hSm : ∀ u c', TReach Nm t R u → ¬ TLink Nm t u c' S := by
+    intro u c' hu hl
+    obtain ⟨mm, hm, hc⟩ := hl
+    by_cases huR : u = R
+    · rw [huR, hNmR] at hm; simp only [Option.some.injEq] at hm; subst hm
+      have := ((hRm c' S).mp hc).2
+      rw [this] at hSN; rw [hSN] at hxn; cases hxn
+    · rw [hNmo u huR] at hm
+      have huN : TReach N1 t x u := by
+        rcases hRm' u hu with h | h
+        · exact absurd h huR
+        · exact h
+      exact hSF u c' huN ⟨mm, hm, hc⟩
+  obtain ⟨hT2, hR2⟩ := treeOK_spaceInPlaceStep Nm N2 t R R x S ⟨false, newKlongs t [(0, x)]⟩ vx f s rn
+    0 sc loc hTm TReach.root hNmR ((hRm 0 x).mpr ⟨rfl, rfl⟩) hNmx hN2R
+    (by
+      intro c z hc
+      rcases hrn c z hc with ⟨h1, h2⟩ | ⟨h1, h2⟩
+      · exact Or.inr ⟨by omega, (hRm c z).mpr ⟨h1, h2⟩⟩
+      · exact Or.inl ⟨h1, h2⟩)
+    hN2x hN2S hf hs
+    (by intro z h1 h2 h3; rw [hother z h1 h3 h2, hNmo z h2])
+    hNmS hSm
+  refine ⟨hT2, fun z hz => ?_⟩
+  rcases hR2 z hz with h | h
+  · rcases hRm' z h with h' | h'
+    · exact Or.inr (Or.inr h')
+    · exact Or.inl h'
+  · exact Or.inr (Or.inl h)
 
 
 end SIS.Tree
