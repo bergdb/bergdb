@@ -10,6 +10,7 @@ reads as the tree with the node's content replaced by the last version
 with nothing put).
 -/
 import SIS.Tree.HalvesNil
+import SIS.Tree.WGetAt
 import SIS.Tree.WriterTreeDelChain
 import SIS.Tree.GetCascadePut
 

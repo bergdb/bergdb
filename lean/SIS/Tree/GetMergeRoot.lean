@@ -23,9 +23,9 @@ set_option maxHeartbeats 4000000 in
 own last version (`hlastV`), names nodes below the next id (`hvx`) and makes a
 tree of the root's (`hV`): the writer's tree after it is a tree whose nodes are
 reached there or new, and it reads as that tree when the root does not space
-split or the state after fits the fuel. L is not reached after, or holds key
-klongs of `last` only. -/
-theorem writerWP_handleFull_rootV (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+split or the state after fits the fuel f (any f of at least 2; the reading
+at f). L is not reached after, or holds key klongs of `last` only. -/
+theorem writerWP_handleFull_rootVF (f : Nat) (hf2 : 2 ≤ f) (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (up : NodeId → List (Nat × NodeId) → M Unit) (L : NodeId) (n last : KNode) (compact : Bool)
     (hlwf : klongsWf last.ks = true) (hlt : ∀ s, Klong.time s ∈ last.ks → s ≤ c.i)
     (hlastV : (⟨n.leaf, last.ks⟩ : KNode).lastVersion c.i = last)
@@ -44,10 +44,10 @@ theorem writerWP_handleFull_rootV (c : Ctx) (base : View BVal) (hvc : ViewCohere
         TReach (updN (wNode c.p base w) L ⟨n.leaf, last.ks⟩) c.i w.top.rootKey z ∨ w.next ≤ z) ∧
       (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
       (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ z = L) → Val z = none) →
-        (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
+        (SegFits (wNode c.p base w') c.i (f - 1) w'.top.rootKey ∨
           (!compact && decide (last.size > c.p.splitAbove)) = false) →
-        ∀ key, getFromR (wNode c.p base w') Val c.i c.p.fuel key w'.top.rootKey =
-          getFromR (updN (wNode c.p base w) L ⟨n.leaf, last.ks⟩) Val c.i c.p.fuel key w.top.rootKey) ∧
+        ∀ key, getFromR (wNode c.p base w') Val c.i f key w'.top.rootKey =
+          getFromR (updN (wNode c.p base w) L ⟨n.leaf, last.ks⟩) Val c.i f key w.top.rootKey) ∧
       (TReach (wNode c.p base w') c.i w'.top.rootKey L →
         ∀ m, wNode c.p base w' L = some m → ∀ cv y, Klong.key cv y ∈ m.ks → Klong.key cv y ∈ last.ks)) := by
   have hLn : L < w.next := by
@@ -102,7 +102,7 @@ theorem writerWP_handleFull_rootV (c : Ctx) (base : View BVal) (hvc : ViewCohere
   by_cases hsp : c.p.splitAbove < last.size ∧ compact = false
   · obtain ⟨hsp, hc⟩ := hsp
     subst hc
-    have hfuel4 : 2 ≤ c.p.fuel := by unfold Params.fuel; omega
+    have hfuel4 : 2 ≤ f := hf2
     have h2l := hlen2 hsp
     obtain ⟨r, hdiv0, hsc, _, hfh0, hsh0⟩ := halves_facts_nil c.i (⟨n.leaf, last.ks⟩ : KNode) h2l hlt
     have hhalf0 := halves_read_nil c.i (⟨n.leaf, last.ks⟩ : KNode) h2l hlt hlwf
@@ -204,12 +204,12 @@ theorem writerWP_handleFull_rootV (c : Ctx) (base : View BVal) (hvc : ViewCohere
               exact klongsWf_newKlongs c.i [(0, L), (r.1, w.next)]
             · simp only [h1, h2, h3, ↓reduceIte] at h; exact hW z zn h
       · intro Val _ hfit key
-        have hfitA : SegDepthLe (wNode c.p base w') c.i (c.p.fuel - 1) (w.next + 2) := by
+        have hfitA : SegDepthLe (wNode c.p base w') c.i (f - 1) (w.next + 2) := by
           rcases hfit with hf' | hf'
           · rw [h'root] at hf'; exact hf' _ ReachS.root
           · simp at hf'; omega
         rw [h'root, hrk]
-        exact getFromR_newRootRead _ (wNode c.p base w') Val c.i c.p.fuel L L w.next
+        exact getFromR_newRootRead _ (wNode c.p base w') Val c.i f L L w.next
           (w.next + 2) _ out.1 out.2.1 r.1 (updN_self _ _ _)
           (by rw [hw']; simp only [hRx, hRF, ↓reduceIte]; rfl)
           (by rw [hw']; simp only [↓reduceIte])
@@ -313,12 +313,12 @@ theorem writerWP_handleFull_rootV (c : Ctx) (base : View BVal) (hvc : ViewCohere
                 exact klongsWf_newKlongs c.i [(0, w.next), (r.1, w.next + 2)]
               · simp only [h1, h2, h3, h4, ↓reduceIte] at h; exact hW z zn h
       · intro Val _ hfit key
-        have hfitA : SegDepthLe (wNode c.p base w') c.i (c.p.fuel - 1) (w.next + 2 + 2) := by
+        have hfitA : SegDepthLe (wNode c.p base w') c.i (f - 1) (w.next + 2 + 2) := by
           rcases hfit with hf' | hf'
           · rw [h'root] at hf'; exact hf' _ ReachS.root
           · simp at hf'; omega
         rw [h'root, hrk]
-        exact getFromR_newRootRead _ (wNode c.p base w') Val c.i c.p.fuel L w.next (w.next + 2)
+        exact getFromR_newRootRead _ (wNode c.p base w') Val c.i f L w.next (w.next + 2)
           (w.next + 2 + 2) _ out.1 out.2.1 r.1 (updN_self _ _ _)
           (by rw [hw']; simp only [hRx, hRF, hRS, ↓reduceIte]; rfl)
           (by rw [hw']; simp only [hFx, ↓reduceIte])
@@ -400,7 +400,7 @@ theorem writerWP_handleFull_rootV (c : Ctx) (base : View BVal) (hvc : ViewCohere
         have hnf : ¬ TReach (updN (wNode c.p base w) L ⟨n.leaf, last.ks⟩) c.i L w.next :=
           not_reach_fresh _ c.i _ _ hV0 (hVnone w.next (Nat.le_refl _))
             (hVfresh w.next (Nat.le_refl _))
-        refine getFromR_rename_root _ (wNode c.p base w') Val c.i c.p.fuel L w.next _
+        refine getFromR_rename_root _ (wNode c.p base w') Val c.i f L w.next _
           ⟨n.leaf, last.ks⟩ (updN_self _ _ _) (by rw [hN']; exact updN_self _ _ _)
           rfl (fun _ _ => rfl) (fun _ _ => rfl) hV0wf ?_ hnoxV key
         intro z hz hzX
@@ -410,12 +410,41 @@ theorem writerWP_handleFull_rootV (c : Ctx) (base : View BVal) (hvc : ViewCohere
         rw [h'root] at h
         exact absurd rfl (hR' L h).2
 
+/-- `writerWP_handleFull_rootVF` at the writer's fuel. -/
+theorem writerWP_handleFull_rootV (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (up : NodeId → List (Nat × NodeId) → M Unit) (L : NodeId) (n last : KNode) (compact : Bool)
+    (hlwf : klongsWf last.ks = true) (hlt : ∀ s, Klong.time s ∈ last.ks → s ≤ c.i)
+    (hlastV : (⟨n.leaf, last.ks⟩ : KNode).lastVersion c.i = last)
+    (hlen2 : c.p.splitAbove < last.size → 2 ≤ (⟨n.leaf, last.ks⟩ : KNode).live.length)
+    (w : W) (hlk : w.nodes.lookup L = some n) (htk : w.taken.contains L = false)
+    (hrk : w.top.rootKey = L)
+    (hS5 : ∀ z, w.next ≤ z → w.nodes.lookup z = none ∧ w.taken.contains z = false ∧
+      knodeOf c.p base z = none)
+    (hS6 : ∀ u c' z, TLink (wNode c.p base w) c.i u c' z → z < w.next)
+    (hW : ∀ z zn, wNode c.p base w z = some zn → klongsWf zn.ks = true)
+    (hV : TreeOK (updN (wNode c.p base w) L ⟨n.leaf, last.ks⟩) c.i w.top.rootKey)
+    (hvx : ∀ c' z, (c', z) ∈ (⟨n.leaf, last.ks⟩ : KNode).liveAt c.i → z < w.next) :
+    WriterWP (handleFullWith up 0 L [] last compact) c w (fun _ w' =>
+      TreeOK (wNode c.p base w') c.i w'.top.rootKey ∧ w'.taken = w.taken ∧ w'.vals = w.vals ∧
+      (∀ z, TReach (wNode c.p base w') c.i w'.top.rootKey z →
+        TReach (updN (wNode c.p base w) L ⟨n.leaf, last.ks⟩) c.i w.top.rootKey z ∨ w.next ≤ z) ∧
+      (∀ z zn, wNode c.p base w' z = some zn → klongsWf zn.ks = true) ∧
+      (∀ Val : NodeId → Option Nat, (∀ z, (w.next ≤ z ∨ z = L) → Val z = none) →
+        (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
+          (!compact && decide (last.size > c.p.splitAbove)) = false) →
+        ∀ key, getFromR (wNode c.p base w') Val c.i c.p.fuel key w'.top.rootKey =
+          getFromR (updN (wNode c.p base w) L ⟨n.leaf, last.ks⟩) Val c.i c.p.fuel key w.top.rootKey) ∧
+      (TReach (wNode c.p base w') c.i w'.top.rootKey L →
+        ∀ m, wNode c.p base w' L = some m → ∀ cv y, Klong.key cv y ∈ m.ks → Klong.key cv y ∈ last.ks)) :=
+  writerWP_handleFull_rootVF c.p.fuel (by unfold Params.fuel; omega) c base hvc up L n last compact hlwf hlt
+    hlastV hlen2 w hlk htk hrk hS5 hS6 hW hV hvx
+
 set_option maxHeartbeats 3200000 in
 /-- `writerWP_mergeTail_any_get` for the parent at the space root (d = 1): a full
 root splits in time or in space, in place or not, with a new root but for the
 time split in place (`writerWP_handleFull_rootV`). The reading holds when the
 state after fits the fuel or the root does not space split. -/
-theorem writerWP_mergeTail_root_get (c : Ctx) (base : View BVal) (x : NodeId) (d : Nat) (p : NodeId)
+theorem writerWP_mergeTail_root_getF (f : Nat) (hf2 : 2 ≤ f) (c : Ctx) (base : View BVal) (x : NodeId) (d : Nat) (p : NodeId)
     (pn xn : KNode) (leftSome : Bool) (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId)
     (rn : KNode) (ir : Nat) (cL cR : Nat) (N : NodeId → Option KNode) (root : NodeId) (nx : Nat)
     (w3 : W) (hT : TreeOK N c.i root) (hp : TReach N c.i root p) (hpn : N p = some pn)
@@ -449,10 +478,10 @@ theorem writerWP_mergeTail_root_get (c : Ctx) (base : View BVal) (x : NodeId) (d
     (hsa2 : 2 ≤ c.p.splitAbove)
  :
     WriterWP (mergeTail c x d p pn xn leftSome l ln il r rn ir) c w3
-      (fun _ w' => (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
+      (fun _ w' => (SegFits (wNode c.p base w') c.i (f - 1) w'.top.rootKey ∨
           (∀ m1 m2 last, mergeFullLast pn c.i cL m1 cR m2 = some last →
             last.size ≤ c.p.splitAbove)) →
-        ∀ key, wGet c.p c.i base w' key = wGet c.p c.i base w3 key) := by
+        ∀ key, wGetAt c.p c.i base w' f key = wGetAt c.p c.i base w3 f key) := by
   -- the tree's facts
   have hpL : (cL, l) ∈ pn.liveAt c.i := by
     rw [KNode.liveAt_of_times pn c.i hpt]
@@ -856,7 +885,7 @@ theorem writerWP_mergeTail_root_get (c : Ctx) (base : View BVal) (x : NodeId) (d
           omega
         obtain ⟨hlk6p, htk6p⟩ := h6S2 (D + 1) (by omega) (Nat.le_refl _)
         rw [hXp, hNp] at hlk6p; rw [hXp] at htk6p
-        have hlevel := writerWP_handleFull_rootV c base hvc (fun _ _ => throw "corrupt: a split's parent above depth 0")
+        have hlevel := writerWP_handleFull_rootVF f hf2 c base hvc (fun _ _ => throw "corrupt: a split's parent above depth 0")
           p pn last compact hlwf htl hlastV hlen2
           ({ w6 with trail := s7 :: w6.trail } : W) hlk6p htk6p
           (by show w6.top.rootKey = p; rw [h6top', hroot]) h6S5 h6S6 hW6 hVt hvx
@@ -926,21 +955,21 @@ theorem writerWP_mergeTail_root_get (c : Ctx) (base : View BVal) (x : NodeId) (d
               rw [h8tk y (hcl' _ _ y (fun h => hy (Or.inl h)) (fun h => hy (Or.inr h))), ht7, h6taken])
             hlrS
         have hq7 := hq.imp (fun hf => SegFits.of_agree (wNode c.p base w7) (wNode c.p base w8) c.i
-          (c.p.fuel - 1) w7.top.rootKey (fun y hy => hag y (tReach_reachS _ _ _ _ hy))
+          (f - 1) w7.top.rootKey (fun y hy => hag y (tReach_reachS _ _ _ _ hy))
           (by rw [← h8top]; exact hf)) (fun h => (by have := h m1 none last hlast; cases compact <;> simp <;> omega :
             (!compact && decide (last.size > c.p.splitAbove)) = false))
-        unfold wGet
+        unfold wGetAt
         rw [hV8, h8top]
-        rw [getFromR_avoid (wNode c.p base w7) (wNode c.p base w8) (wValue base w7) c.i c.p.fuel
+        rw [getFromR_avoid (wNode c.p base w7) (wNode c.p base w8) (wValue base w7) c.i f
           w7.top.rootKey (fun _ => False) (fun z zn hz hzn => hW7 z zn (reachS_tReach _ _ _ _ hz) hzn)
           (fun y hy _ => hag y hy) (fun _ _ _ _ _ _ _ h => h) key _ ReachS.root id]
         have hv7w : wValue base w7 = wValue base w6 := wValue_congr' base w7 w6 ht7 hv7
         rw [hv7w, hR7 (wValue base w6) (fun z hz => hVal6 z (hz.imp id (fun h =>
           ⟨D + 1, by omega, Nat.le_refl _, by rw [h, hXp]⟩))) hq7 key]
         show getFromR (updN (wNode c.p base w6) p ⟨pn.leaf, last.ks⟩) (wValue base w6) c.i
-          c.p.fuel key w6.top.rootKey = _
+          f key w6.top.rootKey = _
         rw [hlasteq, hv6, h6top', hN3, h3top]
-        refine getFromR_mergeOne N (updN (wNode c.p base w6) p last) (wValue base w3) c.i c.p.fuel root
+        refine getFromR_mergeOne N (updN (wNode c.p base w6) p last) (wValue base w3) c.i f root
           p l r m1 pn ln rn last ⟨!!xn.leaf, newKlongs c.i first⟩ (!xn.leaf) cL cR
           hT hp hpn hpleaf hpL hpR hclt hadj hln hrn hll' hrl' hlrange hrrange hrhead ?_ rfl ?_
           (updN_self _ _ _) (by rw [hleafl]; exact hpleaf) (hiffN rfl) ?_ hm1notR htimesN
@@ -987,9 +1016,9 @@ theorem writerWP_mergeTail_root_get (c : Ctx) (base : View BVal) (x : NodeId) (d
         rw [mergeParentNode_eq]
         exact mpNode_times pn c.i il cL m1 ir cR none _ _ _ (hhtd _) hpt)
       intro _ key
-      unfold wGet
+      unfold wGetAt
       rw [hV8, h8top, h7top, h6top', hN3, h3top]
-      refine getFromR_mergeOne N (wNode c.p base w8) (wValue base w3) c.i c.p.fuel root p l r m1 pn ln
+      refine getFromR_mergeOne N (wNode c.p base w8) (wValue base w3) c.i f root p l r m1 pn ln
         rn pn8 ⟨!!xn.leaf, newKlongs c.i first⟩ (!xn.leaf) cL cR
         hT hp hpn hpleaf hpL hpR hclt hadj hln hrn hll' hrl' hlrange hrrange hrhead ?_ rfl ?_ ?_
         (by rw [h8leaf, mrg_mergeParentNode_leaf]; exact hpleaf)
@@ -1260,7 +1289,7 @@ theorem writerWP_mergeTail_root_get (c : Ctx) (base : View BVal) (x : NodeId) (d
           omega
         obtain ⟨hlk8p, htk8p⟩ := h8S2 (D + 1) (by omega) (Nat.le_refl _)
         rw [hXp, hNp] at hlk8p; rw [hXp] at htk8p
-        have hlevel := writerWP_handleFull_rootV c base hvc (fun _ _ => throw "corrupt: a split's parent above depth 0")
+        have hlevel := writerWP_handleFull_rootVF f hf2 c base hvc (fun _ _ => throw "corrupt: a split's parent above depth 0")
           p pn last compact hlwf htl hlastV hlen2
           ({ w8 with trail := s9 :: w8.trail } : W) hlk8p htk8p
           (by show w8.top.rootKey = p; rw [h8top', hroot]) h8S5 h8S6 hW8 hVt hvx
@@ -1330,21 +1359,21 @@ theorem writerWP_mergeTail_root_get (c : Ctx) (base : View BVal) (x : NodeId) (d
               rw [h12tk y (hcl' _ _ y (fun h => hy (Or.inl h)) (fun h => hy (Or.inr h))), ht11, h8taken])
             hlrS
         have hq11 := hq.imp (fun hf => SegFits.of_agree (wNode c.p base w11) (wNode c.p base w12) c.i
-          (c.p.fuel - 1) w11.top.rootKey (fun y hy => hag y (tReach_reachS _ _ _ _ hy))
+          (f - 1) w11.top.rootKey (fun y hy => hag y (tReach_reachS _ _ _ _ hy))
           (by rw [← h12top]; exact hf)) (fun h => (by have := h m1 (some (m1 + 2, g2)) last hlast; cases compact <;> simp <;> omega :
             (!compact && decide (last.size > c.p.splitAbove)) = false))
-        unfold wGet
+        unfold wGetAt
         rw [hV12, h12top]
-        rw [getFromR_avoid (wNode c.p base w11) (wNode c.p base w12) (wValue base w11) c.i c.p.fuel
+        rw [getFromR_avoid (wNode c.p base w11) (wNode c.p base w12) (wValue base w11) c.i f
           w11.top.rootKey (fun _ => False) (fun z zn hz hzn => hW11 z zn (reachS_tReach _ _ _ _ hz) hzn)
           (fun y hy _ => hag y hy) (fun _ _ _ _ _ _ _ h => h) key _ ReachS.root id]
         have hv11w : wValue base w11 = wValue base w8 := wValue_congr' base w11 w8 ht11 hv11
         rw [hv11w, hR11 (wValue base w8) (fun z hz => hVal8 z (hz.imp id (fun h =>
           ⟨D + 1, by omega, Nat.le_refl _, by rw [h, hXp]⟩))) hq11 key]
         show getFromR (updN (wNode c.p base w8) p ⟨pn.leaf, last.ks⟩) (wValue base w8) c.i
-          c.p.fuel key w8.top.rootKey = _
+          f key w8.top.rootKey = _
         rw [hlasteq, hv8, h8top', hN3, h3top]
-        refine getFromR_mergeTwo N (updN (wNode c.p base w8) p last) (wValue base w3) c.i c.p.fuel root
+        refine getFromR_mergeTwo N (updN (wNode c.p base w8) p last) (wValue base w3) c.i f root
           p l r m1 (m1 + 2) (m1 + 2 + 2) pn ln rn last
           ⟨!!xn.leaf, newKlongs c.i first⟩ ⟨!!xn.leaf, newKlongs c.i ks2⟩ (!xn.leaf) cL cR
           (((mergeList (!xn.leaf) cR ln.live rn.live).length + 1) / 2) g2 yg
@@ -1405,9 +1434,9 @@ theorem writerWP_mergeTail_root_get (c : Ctx) (base : View BVal) (x : NodeId) (d
         rw [mergeParentNode_eq]
         exact mpNode_times pn c.i il cL m1 ir cR (some (m1 + 2, g2)) _ _ _ (hhtd _) hpt)
       intro _ key
-      unfold wGet
+      unfold wGetAt
       rw [hV10, h10top, h9top, h8top, h7top, h6top', hN3, h3top]
-      refine getFromR_mergeTwo N (wNode c.p base w10) (wValue base w3) c.i c.p.fuel root p l r m1
+      refine getFromR_mergeTwo N (wNode c.p base w10) (wValue base w3) c.i f root p l r m1
         (m1 + 2) (m1 + 2 + 2) pn ln rn pn10
         ⟨!!xn.leaf, newKlongs c.i first⟩ ⟨!!xn.leaf, newKlongs c.i ks2⟩ (!xn.leaf) cL cR
         (((mergeList (!xn.leaf) cR ln.live rn.live).length + 1) / 2) g2 yg
@@ -1435,10 +1464,51 @@ theorem writerWP_mergeTail_root_get (c : Ctx) (base : View BVal) (x : NodeId) (d
         have hzn : m1 ≤ z := by rcases hz with hz | hz | hz <;> omega
         exact ⟨(hfree z hzn).1, hfreshT z hzn⟩
 
+/-- `writerWP_mergeTail_root_getF` at the writer's fuel. -/
+theorem writerWP_mergeTail_root_get (c : Ctx) (base : View BVal) (x : NodeId) (d : Nat) (p : NodeId)
+    (pn xn : KNode) (leftSome : Bool) (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId)
+    (rn : KNode) (ir : Nat) (cL cR : Nat) (N : NodeId → Option KNode) (root : NodeId) (nx : Nat)
+    (w3 : W) (hT : TreeOK N c.i root) (hp : TReach N c.i root p) (hpn : N p = some pn)
+    (hL : pn.ks[il]? = some (.key cL l)) (hLL : LastLive pn.ks pn.lastBitmap il cL)
+    (hR : pn.ks[ir]? = some (.key cR r)) (hRL : LastLive pn.ks pn.lastBitmap ir cR)
+    (hc : cL ≠ cR) (hxlr : x = l ∨ x = r) (hln : N l = some ln) (hrn : N r = some rn)
+    (hpwf : klongsWf pn.ks = true) (hpt : ∀ s, Klong.time s ∈ pn.ks → s ≤ c.i)
+    (hch : ∀ cc z zn, (cc, z) ∈ pn.liveAt c.i → N z = some zn →
+      ∀ s, Klong.time s ∈ zn.ks → s ≤ c.i)
+    (hN3 : wNode c.p base w3 = N) (h3top : w3.top.rootKey = root) (h3next : w3.next = nx)
+    (h3p : w3.nodes.lookup p = some pn) (h3src : ∀ z, (w3.nodes.lookup z).isSome = true → z < nx)
+    (hfree : ∀ z, nx ≤ z → N z = none ∧ w3.taken.contains z = false)
+    (hfreshT : ∀ z, nx ≤ z → ∀ u c', TReach N c.i root u → ¬ TLink N c.i u c' z)
+    (hpleaf : pn.leaf = false) (hclt : cL < cR) (hcap : 1 ≤ c.p.mergeMax)
+    (hadj : ∀ cc z, (cc, z) ∈ pn.liveAt c.i → cc ≤ cL ∨ cR ≤ cc)
+    (hll : ln.leaf = xn.leaf) (hrl : rn.leaf = xn.leaf)
+    (hlrange : ∀ cc z, (cc, z) ∈ ln.liveAt c.i → cc < cR)
+    (hllow : ∀ cc z, (cc, z) ∈ ln.liveAt c.i →
+      ((!xn.leaf) = true → cc = 0 ∨ cL < cc) ∧ ((!xn.leaf) = false → cL ≤ cc))
+    (hrrange : ∀ cc z, (cc, z) ∈ rn.liveAt c.i →
+      ((!xn.leaf) = true → cc = 0 ∨ cR < cc) ∧ ((!xn.leaf) = false → cR ≤ cc))
+    (hrup : ∀ k z, (k, z) ∈ pn.liveAt c.i → cR < k → ∀ cc z', (cc, z') ∈ rn.liveAt c.i → cc < k)
+    (htimesN : ∀ y yn, N y = some yn → ∀ s, Klong.time s ∈ yn.ks → s ≤ c.i)
+    (hwfN : ∀ y yn, N y = some yn → klongsWf yn.ks = true)
+    (hnoval : ∀ y yn, N y = some yn → wValue base w3 y = none)
+    (hvc : ViewCoherent c base)
+    (hlinksAll : ∀ u c' z, TLink N c.i u c' z → z < nx)
+    (hbaseF : ∀ z, nx ≤ z → knodeOf c.p base z = none)
+    (hfreshV : ∀ z, nx ≤ z → wValue base w3 z = none)
+    (hd : d - 1 = 0) (hroot : root = p)
+    (hsa2 : 2 ≤ c.p.splitAbove)
+ :
+    WriterWP (mergeTail c x d p pn xn leftSome l ln il r rn ir) c w3
+      (fun _ w' => (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
+          (∀ m1 m2 last, mergeFullLast pn c.i cL m1 cR m2 = some last →
+            last.size ≤ c.p.splitAbove)) →
+        ∀ key, wGet c.p c.i base w' key = wGet c.p c.i base w3 key) :=
+  writerWP_mergeTail_root_getF c.p.fuel (by unfold Params.fuel; omega) c base x d p pn xn leftSome l ln il r rn ir cL cR N root nx w3 hT hp hpn hL hLL hR hRL hc hxlr hln hrn hpwf hpt hch hN3 h3top h3next h3p h3src hfree hfreshT hpleaf hclt hcap hadj hll hrl hlrange hllow hrrange hrup htimesN hwfN hnoval hvc hlinksAll hbaseF hfreshV hd hroot hsa2
+
 /-- `writerWP_merge_any_get` with the parent at the space root (d = 1,
 `writerWP_mergeTail_root_get`): the reading holds when the state after fits the
 fuel or the root does not space split. -/
-theorem writerWP_merge_root_get (x : NodeId) (d : Nat) (c : Ctx) (base : View BVal)
+theorem writerWP_merge_root_getF (f : Nat) (hf2 : 2 ≤ f) (x : NodeId) (d : Nat) (c : Ctx) (base : View BVal)
     (hvc : ViewCoherent c base) (w : W)
     (hT : TreeOK (wNode c.p base w) c.i w.top.rootKey)
     (hpar : ∀ p, (w.path[d - 1]?).map (·.2) = some p →
@@ -1461,11 +1531,11 @@ theorem writerWP_merge_root_get (x : NodeId) (d : Nat) (c : Ctx) (base : View BV
     (hd : d - 1 = 0) (hpath0 : (w.path[0]?).map (·.2) = some w.top.rootKey)
     (hsa2 : 2 ≤ c.p.splitAbove) :
     WriterWP (merge x d) c w (fun _ w' =>
-      (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
+      (SegFits (wNode c.p base w') c.i (f - 1) w'.top.rootKey ∨
           (∀ pn, wNode c.p base w w.top.rootKey = some pn →
             ∀ cL cR m1 m2 last, mergeFullLast pn c.i cL m1 cR m2 = some last →
               last.size ≤ c.p.splitAbove)) →
-      ∀ key, wGet c.p c.i base w' key = wGet c.p c.i base w key) := by
+      ∀ key, wGetAt c.p c.i base w' f key = wGetAt c.p c.i base w f key) := by
   obtain ⟨hidn, hidv, hidt⟩ := hids
   have hfree : ∀ z, w.next ≤ z → wNode c.p base w z = none ∧ w.taken.contains z = false := by
     intro z hz
@@ -1510,11 +1580,11 @@ theorem writerWP_merge_root_get (x : NodeId) (d : Nat) (c : Ctx) (base : View BV
         ln.leaf = xn.leaf → rn.leaf = xn.leaf →
         (x = l ∨ x = r) → wNode c.p base w l = some ln → wNode c.p base w r = some rn →
         WriterWP (mergeTail c x d e.2 pn0 xn leftSome l ln il r rn ir) c w3
-          (fun _ w' => (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
+          (fun _ w' => (SegFits (wNode c.p base w') c.i (f - 1) w'.top.rootKey ∨
             (∀ pn, wNode c.p base w w.top.rootKey = some pn →
             ∀ cL cR m1 m2 last, mergeFullLast pn c.i cL m1 cR m2 = some last →
               last.size ≤ c.p.splitAbove)) →
-            ∀ key, wGet c.p c.i base w' key = wGet c.p c.i base w key) := by
+            ∀ key, wGetAt c.p c.i base w' f key = wGetAt c.p c.i base w f key) := by
       intro leftSome l ln il r rn ir cL cR xn w3 hr3 hpre3 hsrc3 hp3 hL hLL hR' hRL hclt hadj hll hrl
         hxlr hln hrn
       have hNp : wNode c.p base w w.top.rootKey = some pn0 := by rw [hXp]; exact hpn
@@ -1532,7 +1602,7 @@ theorem writerWP_merge_root_get (x : NodeId) (d : Nat) (c : Ctx) (base : View BV
         hpleaf cL l ln hmemL hln
       obtain ⟨hrr1, hrr2⟩ := mrg_child_range (wNode c.p base w) c.i w.top.rootKey hR e.2 pn0 hpRS hpn
         hpleaf cR r rn hmemR hrn
-      refine writerWP_mono (writerWP_mergeTail_root_get c base x d e.2 pn0 xn leftSome l ln il r rn ir cL cR
+      refine writerWP_mono (writerWP_mergeTail_root_getF f hf2 c base x d e.2 pn0 xn leftSome l ln il r rn ir cL cR
         (wNode c.p base w) w.top.rootKey w.next w3 hT hpR hpn hL hLL hR' hRL (by omega) hxlr
         hln hrn hpwf hpt hch hr3.1 (by rw [hr3.2.1]) hr3.2.2.2.2
         (lookup_of_prefix _ _ hpre3 _ _ hlk1) hsrc3
@@ -1579,7 +1649,7 @@ theorem writerWP_merge_root_get (x : NodeId) (d : Nat) (c : Ctx) (base : View BV
         hd hXp hsa2) ?_
       intro _ w' h hq key
       rw [h (hq.imp id (fun hn m1 m2 last hl => hn pn0 hNp cL cR m1 m2 last hl)) key]
-      unfold wGet
+      unfold wGetAt
       rw [hr3.1, hr3.2.1, wValue_congr' base w3 w hr3.2.2.1 hr3.2.2.2.1]
     -- a klong of p that is the last live one of its compare value names a reached node
     have hchild : ∀ i cv y, pn0.ks[i]? = some (.key cv y) → LastLive pn0.ks pn0.lastBitmap i cv →
@@ -1660,11 +1730,11 @@ theorem writerWP_merge_root_get (x : NodeId) (d : Nat) (c : Ctx) (base : View BV
             WriterWP (do
               let __x ← sibling e.2 pn0 ia0 !xn.leaf
               mergeTail c x d e.2 pn0 xn false x xn ix __x.1 __x.2 ia0) c wb
-              (fun _ w' => (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
+              (fun _ w' => (SegFits (wNode c.p base w') c.i (f - 1) w'.top.rootKey ∨
                 (∀ pn, wNode c.p base w w.top.rootKey = some pn →
             ∀ cL cR m1 m2 last, mergeFullLast pn c.i cL m1 cR m2 = some last →
               last.size ≤ c.p.splitAbove)) →
-                ∀ key, wGet c.p c.i base w' key = wGet c.p c.i base w key) := by
+                ∀ key, wGetAt c.p c.i base w' f key = wGetAt c.p c.i base w f key) := by
           intro wb ia0 cva hrb hpreb hsrcb hpb hLa hax hia
           rw [writerWP_bind]
           refine writerWP_mono (writerWP_and (writerWP_sibling_leaf e.2 pn0 ia0 (!xn.leaf) c wb base hvc)
@@ -1716,6 +1786,37 @@ theorem writerWP_merge_root_get (x : NodeId) (d : Nat) (c : Ctx) (base : View BV
       · exact writerWP_throw _ _ _ _
     · exact writerWP_throw _ _ _ _
   · exact writerWP_throw _ _ _ _
+
+/-- `writerWP_merge_root_getF` at the writer's fuel. -/
+theorem writerWP_merge_root_get (x : NodeId) (d : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (w : W)
+    (hT : TreeOK (wNode c.p base w) c.i w.top.rootKey)
+    (hpar : ∀ p, (w.path[d - 1]?).map (·.2) = some p →
+      TReach (wNode c.p base w) c.i w.top.rootKey p ∧ ∃ pn, wNode c.p base w p = some pn ∧
+        pn.leaf = false ∧ klongsWf pn.ks = true ∧ (∀ s, Klong.time s ∈ pn.ks → s ≤ c.i) ∧
+        ∀ cc z zn, (cc, z) ∈ pn.liveAt c.i → wNode c.p base w z = some zn →
+          ∀ s, Klong.time s ∈ zn.ks → s ≤ c.i)
+    (hRt : ∀ y, TReach (wNode c.p base w) c.i w.top.rootKey y → w.taken.contains y = false)
+    (hids : (∀ z, (w.nodes.lookup z).isSome = true → z < w.next) ∧
+      (∀ z, (c.view z).isSome = true → z < w.next) ∧ (∀ z, w.taken.contains z = true → z < w.next))
+    (hbaseF : ∀ z, w.next ≤ z → knodeOf c.p base z = none)
+    (hfreshT : ∀ z, w.next ≤ z → ∀ u c', TReach (wNode c.p base w) c.i w.top.rootKey u →
+      ¬ TLink (wNode c.p base w) c.i u c' z)
+    (hR : RangeOrder (wNode c.p base w) c.i w.top.rootKey) (hcap : 1 ≤ c.p.mergeMax)
+    (htimesN : ∀ y yn, wNode c.p base w y = some yn → ∀ s, Klong.time s ∈ yn.ks → s ≤ c.i)
+    (hwfN : ∀ y yn, wNode c.p base w y = some yn → klongsWf yn.ks = true)
+    (hnoval : ∀ y yn, wNode c.p base w y = some yn → wValue base w y = none)
+    (hlinksAll : ∀ u c' z, TLink (wNode c.p base w) c.i u c' z → z < w.next)
+    (hfreshV : ∀ z, w.next ≤ z → wValue base w z = none)
+    (hd : d - 1 = 0) (hpath0 : (w.path[0]?).map (·.2) = some w.top.rootKey)
+    (hsa2 : 2 ≤ c.p.splitAbove) :
+    WriterWP (merge x d) c w (fun _ w' =>
+      (SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey ∨
+          (∀ pn, wNode c.p base w w.top.rootKey = some pn →
+            ∀ cL cR m1 m2 last, mergeFullLast pn c.i cL m1 cR m2 = some last →
+              last.size ≤ c.p.splitAbove)) →
+      ∀ key, wGet c.p c.i base w' key = wGet c.p c.i base w key) :=
+  writerWP_merge_root_getF c.p.fuel (by unfold Params.fuel; omega) x d c base hvc w hT hpar hRt hids hbaseF hfreshT hR hcap htimesN hwfN hnoval hlinksAll hfreshV hd hpath0 hsa2
 
 set_option maxHeartbeats 3200000 in
 /-- `writerWP_mergeTail_any_tree` for the parent at the space root (d = 1): a
