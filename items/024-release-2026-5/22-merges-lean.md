@@ -1240,7 +1240,22 @@ decision on cost's finding, written in 024-12): `CollGetInv` and the collapse
 and upward-delete lemmas take latest's `SegFits N t (p.fuel - 1) r` in place of
 `PathsFit`, which no transaction keeps when a segment tree grows above H inside
 it (`segFits_transfer`, `SegDepthLe.of_inner`, `FuelPaths.lean`); prover putinv's
-`RangeUpAll`, `RangeUpTake` and `RangeCollapseSeg` take it too. `InnerChildrenExist` (`ChildrenExist.lean`) is the Prop agreed
+`RangeUpAll`, `RangeUpTake` and `RangeCollapseSeg` take it too. The merges'
+loop for any invariant its steps keep (`writerWP_mergeUp_inv`,
+`writerWP_afterDelete_inv`, `WriterMergeUpLoop.lean`). The merge with a full
+parent at tree level (`WriterTreeMergeFull.lean`): `mergeParent` goes one of two
+ways (`writerWP_mergeParent_cases`); the full way hands `handleFull` the
+parent's last version with the new pointers (`mergeFullLast`), whose live klongs
+are `mergeParentNode`'s (`mergeFullLast_lookup`); the delete's split with its
+cascade, generalized to any last version whose tree is a tree
+(`writerWP_fullSplit_chainG`, `WriterTreeFullSplit.lean`), splits it; the merged
+siblings are then not reached (`mergeV_reach`) and the last loop keeps the tree
+(`writerWP_mergeCleanup_wNode`, `treeOK_after_cleanup`). So
+`writerWP_merge_any_tree` and `writerWP_mergeTail_any_tree`: the writer's merge
+keeps the tree with the parent full or with room, given the cascade's premises
+for the path above the parent (as for the delete) and the halves of its last
+version (`hhalves`). Not taken: the parent the space root (d = 1), whose split
+makes a new root. `InnerChildrenExist` (`ChildrenExist.lean`) is the Prop agreed
 with prover putinv, who proves it for the writer's states.
 Not yet: the whole put and delete around the cascade; a merge whose parent is
 full or compacted;
