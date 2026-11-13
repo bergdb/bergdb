@@ -646,7 +646,12 @@ public class Db implements AutoCloseable {
      * negative value is refused with IllegalArgumentException and changes nothing. On a
      * database that is not active the call throws as a transaction does
      * (IllegalDbStateException, DbStoppingException, DbFailedException), and a call that
-     * is refused leaves the setting as it was.
+     * is refused leaves the setting as it was. A crash inside the call starts with the new
+     * setting if it comes after the meta block within the record and with the old one if
+     * before, also as the record is aborted, its dummy value lost: a start takes the
+     * setting from the last valid meta block. Not a bug: the setting is not data, both
+     * values are valid, and a crash just after the record's end gives the new one too
+     * (bergdb 028-08; 027-11, section 1.4).
      */
     public void setStartupDistance(int newDistance) {
         //
@@ -1269,8 +1274,10 @@ public class Db implements AutoCloseable {
     
     /**
      * Refuses a record whose startupPos cannot be one that the take wrote: negative, not a
-     * multiple of the record alignment, in the first meta block (only 0 is), or after the
-     * record's own position. Checks, not asserts, as no checksum covers a record's header
+     * multiple of the record alignment, in the first meta block (only 0 is), or at or after
+     * the record's own position: a record's take takes only the transactions before it
+     * (TransSeq.take), and a section of the last record alone lost every key (bergdb
+     * 028-09). Checks, not asserts, as no checksum covers a record's header
      * (bergdb 015-75; before, an assert only). They do not show that the position is a
      * record that the take reached (015-73).
      * 
@@ -1285,8 +1292,8 @@ public class Db implements AutoCloseable {
             problem = "not a multiple of " + RecoverableStream.TRANS_ALIGNMENT;
         } else if (sp != 0 && sp < RecoverableStream.META_BLOCK_SIZE) {
             problem = "in the first meta block";
-        } else if (sp > storedTrans.tpos) {
-            problem = "after the record";
+        } else if (sp >= storedTrans.tpos) {
+            problem = sp == storedTrans.tpos ? "the record's own position" : "after the record";
         } else {
             return;
         }

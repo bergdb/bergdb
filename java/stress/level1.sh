@@ -1,6 +1,7 @@
 #!/bin/sh
 # Level 1 regression check (bergdb 027-01, levels.md): BergDB as a multiversion map
-# in memory, with restart by replaying the whole stream. Not a commit gate
+# in memory, with restart by replaying nearly the whole stream (bergdb 027-11, section
+# 1.11). Not a commit gate
 # (java/before-commit.sh is, since 2026-10-20); run it after larger changes.
 #
 # Usage: java/stress/level1.sh [quick]
@@ -12,7 +13,7 @@
 #   2. DagFuzz: the Dag alone, transactions with many keys (two new space
 #      roots in one transaction, bug fixed 2026-10-12), node sizes 8 to 62.
 #   3. DeleteRepro, the delete bug fixed 2026-10-12.
-#   4. RestartStress with restarts by full replay: deletes, 7-byte keys,
+#   4. RestartStress with restarts by replay: deletes, 7-byte keys,
 #      several keys per transaction, 25 restarts per round, default node
 #      size (30); also node sizes 8, 14 and 62, 50 keys (small trees, more
 #      splits of the root), on disk, and without restarts (level 0).
@@ -26,8 +27,10 @@
 #      shape (bergdb 024-08, section 7; 024-15): MEM with keys of 7 bytes, a
 #      segment tree of one key each, minus MEM; and (full only, about 20 s)
 #      MEM at 10M keys that share their first 7 bytes.
-# The startup distance is set to 200 MB, larger than any stream here, so
-# startup always replays the whole stream. Logs go to build/level1/.
+# The startup distance is set to 200 MB, larger than any stream here, so startup
+# replays nearly the whole stream: since bergdb 005-49 the take writes a share of the
+# dirty index nodes also while the startup section is shorter than the setting, so the
+# startup pos moves now and then (027-11, section 1.11). Logs go to build/level1/.
 # Set JAVA_HOME or PATH for the JDK; the build needs javac too.
 
 cd "$(dirname "$0")/.."

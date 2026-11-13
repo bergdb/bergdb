@@ -328,6 +328,165 @@ public class DbTesterRestart {
     }
 
     /** The bytes of the record at 'tpos', which must not span a meta block. */
+    /**
+     * A crash inside the record that Db.setStartupDistance writes (bergdb 028-08): the
+     * setting is in the meta block that the record holds, so a crash after that block and
+     * before the record's end starts with the new setting, though the record is aborted
+     * (its dummy value is not there), and a later start keeps it; a crash inside the block
+     * starts with the old one. Not a bug: the setting is not data, both values are valid
+     * settings, and a caller whose process stopped inside the call cannot tell the cases
+     * apart, as a crash just after the record's end gives the new setting too (bergdb
+     * 027-11, section 1.4).
+     */
+    @Nano
+    public static void testCrashInsideSetStartupDistance() throws IOException {
+        final int md = RecoverableStream.META_BLOCK_DISTANCE;
+        MemoryStream stream = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        long before, after;
+        try (Db db = Db.builder().testSetup(stream).clock(clock)
+                .startupDistance(1000000).start()) {
+            clock.setTime(10);
+            db.execute(db.trans().put("/a", "1"));
+            before = db.getStreamLength();
+            clock.setTime(20);
+            db.setStartupDistance(2000000);
+            after = db.getStreamLength();
+        }
+        long block = (before / md + 1) * md;        // the meta block inside the record
+        Assert.assertTrue("a block inside the record", 
+                block > before && block + RecoverableStream.META_BLOCK_SIZE < after - 8);
+        
+        long[] cuts = {after, after - 8, block + RecoverableStream.META_BLOCK_SIZE, 
+                block + RecoverableStream.META_BLOCK_SIZE - 1, block};
+        int[] expected = {2000000, 2000000, 2000000, 1000000, 1000000};
+        for (int i = 0; i < cuts.length; i++) {
+            MemoryStream cut = stream.copy();
+            cut.truncate(cuts[i]);
+            for (int start = 0; start < 2; start++) {
+                try (Db db = Db.builder().testSetup(cut).clock(clock)
+                        .startupDistance(1000000).start()) {
+                    String at = "cut at " + cuts[i] + ", start " + start;
+                    Assert.assertEquals(at, expected[i], db.getStartupDistance());
+                    Assert.assertEquals(at, "1", DbUtil.getString(db, "/a"));
+                    byte[] dummy = db.getOne(Long.MAX_VALUE, DbConstants.DUMMY_KEY, 
+                            db.newGetData());
+                    Assert.assertEquals(at + ", the setter's record committed", 
+                            cuts[i] == after, dummy != null);
+                }
+                cut = cut.copy();       // a closed MemoryStream refuses appends
+            }
+        }
+    }
+
+    /**
+     * A last record whose startupPos is its own position is refused with a
+     * StreamFormatException (bergdb 028-09): the take never writes it, as a record's take
+     * takes the transactions before it only (TransSeq.take, s(i) < i). Before the fix, the
+     * start took a section of that record alone, whose transaction a start does not rerun:
+     * with no index node in the record, every key was gone, and the next commit wrote the
+     * same startupPos, so a later start lost them too.
+     */
+    @Nano
+    public static void testOwnPositionStartupPosRefused() throws IOException {
+        MemoryStream stream = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        long c = 0;
+        try (Db db = Db.builder().testSetup(stream).clock(clock)
+                .startupDistance(1000000).start()) {
+            for (int i = 1; i <= 4; i++) {
+                clock.setTime(10 * i);
+                Trans t = db.trans().put("/k" + i, "" + i).build();
+                db.execute(t);
+                c = t.tpos;
+                Assert.assertTrue("s(i) < i", t.startupPos < t.tpos);
+            }
+        }
+        MemoryStream corrupt = stream.copy();
+        byte[] bytes = new byte[8];
+        Bytes.longToBytesLE(c, bytes, 0);
+        MemoryStream.TestAccess.write(corrupt, bytes, c + 16);
+        try (Db db = Db.builder().testSetup(corrupt).clock(clock)
+                .startupDistance(1000000).start()) {
+            throw new AssertionError("started with startupPos " + c + ", its own; /k1 = " 
+                    + DbUtil.getString(db, "/k1"));
+        } catch (StreamFormatException expected) {
+            Assert.assertTrue(expected.getMessage(), 
+                    expected.getMessage().contains("startupPos " + c));
+        }
+    }
+
+    /**
+     * Db.start(StartParams) with params other than StartParams.NULL, as it is today
+     * (bergdb 028-10): the start takes the caller's startup pos and startup distance as
+     * they are. A startup pos after the stream's starts without the keys of the
+     * transactions before it, and the next commit writes a startupPos from it, so a
+     * later start loses them too (against R5, 010-04); a position that is not a record's
+     * is refused. A startup distance is in force for the run only: the meta block keeps
+     * the stream's, which a later start takes. The test shows the behaviour that 028-10
+     * evaluated; the fix that Frans chooses there changes it.
+     */
+    @Nano
+    public static void testStartParamsTakenUnchecked() throws IOException {
+        MemoryStream stream = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        ArrayList<Long> tposes = new ArrayList<Long>();
+        try (Db db = Db.builder().testSetup(stream).clock(clock)
+                .startupDistance(1000000).start()) {
+            for (int i = 1; i <= 4; i++) {
+                clock.setTime(10 * i);
+                Trans t = db.trans().put("/k" + i, "" + i).build();
+                db.execute(t);
+                tposes.add(t.tpos);
+                Assert.assertEquals(0, t.startupPos);       // the section is the stream
+            }
+        }
+        
+        // A later startup pos: /k1 and /k2 are gone, also after a commit and a restart.
+        MemoryStream s = stream.copy();
+        Db.StartParams params = new Db.StartParams();
+        params.startupPos = tposes.get(2);
+        params.startupDistance = 1000000;
+        try (Db db = Db.builder().testSetup(s).clock(clock).startupDistance(1000000).build()) {
+            db.start(params);
+            Assert.assertTrue("/k2 gone", DbUtil.getString(db, "/k2") == null);
+            Assert.assertEquals("4", DbUtil.getString(db, "/k4"));
+            clock.setTime(100);
+            Trans t = db.trans().put("/k5", "5").build();
+            db.execute(t);
+            Assert.assertTrue("from the caller's", t.startupPos >= tposes.get(2));
+        }
+        s = s.copy();
+        try (Db db = Db.builder().testSetup(s).clock(clock).startupDistance(1000000).start()) {
+            Assert.assertTrue("/k1 gone", DbUtil.getString(db, "/k1") == null);
+            Assert.assertEquals("5", DbUtil.getString(db, "/k5"));
+        }
+        
+        // A position that is not a record's is refused.
+        params.startupPos = tposes.get(2) + 8;
+        try (Db db = Db.builder().testSetup(stream.copy()).clock(clock)
+                .startupDistance(1000000).build()) {
+            db.start(params);
+            throw new AssertionError("started at " + params.startupPos);
+        } catch (StreamFormatException expected) {
+            // not committed: its last byte is 0
+        }
+        
+        // Another startup distance: for this run only.
+        s = stream.copy();
+        params.startupPos = 0;
+        params.startupDistance = 100;
+        try (Db db = Db.builder().testSetup(s).clock(clock).startupDistance(1000000).build()) {
+            db.start(params);
+            Assert.assertEquals(100, db.getStartupDistance());
+            Assert.assertEquals("1", DbUtil.getString(db, "/k1"));
+        }
+        s = s.copy();
+        try (Db db = Db.builder().testSetup(s).clock(clock).startupDistance(1000000).start()) {
+            Assert.assertEquals(1000000, db.getStartupDistance());
+        }
+    }
+
     private static byte[] readRecord(MemoryStream stream, long tpos) throws IOException {
         byte[] size = new byte[4];
         stream.read(tpos, size, 0, 4);

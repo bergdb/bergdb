@@ -412,7 +412,8 @@ for a failed one, made only by recovery's fill.
   (`fixMetaBlockIfNeeded`, :425); a cut record completed
   (`fixLastTransactionIfNeeded`, :256; `transHeaderFixBytes`, :296, with
   `TORN_HEADER_FILLER` 4, :81) and filled with zeros, its last byte 0.
-* An incomplete creation, at most 264 bytes (`Db.CREATION_LENGTH`, :385):
+* An incomplete creation, at most 272 bytes (`Db.CREATION_LENGTH`, :385;
+  264 until 024-25):
   `RecoverableStream.isIncompleteCreation` (:199) and
   `Db.refuseIncompleteCreation` (:1290): `DatabaseNotCreatedException`,
   nothing written.
@@ -1113,7 +1114,7 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
 * The startup distance is not a KV: it is the meta block's (OT4).
 * The creation writes no KV: its record is an empty root key node and
   the first top node (`Db.writePrimordialTransaction`, :1344; 012-02,
-  section 8.2, with its 264 bytes).
+  section 8.2, with its 264 bytes at format 5; 272 since 024-25).
 
 **Tests.** UT: `DbTesterRestart` (554 to 867,
 `testMalformedSettingsRefusedAtStart`, :817), `StringMap`. C:
@@ -1231,7 +1232,7 @@ decided.**
 * `StreamDigest` (`java/stress/StreamDigest.java`, :76 to :91 for the
   configurations): no Java test calls it; release checks compare the 48
   digests by hand (020-31, section 3).
-* There is no golden stream in `java/`: `Db.CREATION_LENGTH` (264) and
+* There is no golden stream in `java/`: `Db.CREATION_LENGTH` (272) and
   `DbTester.testCrash8InCreation` check the creation's length, not its
   bytes. The only pinned bytes are C's vectors, written by Java at format 5
   (`test/cross/java/Vectors.java`), and the creation's 264 bytes in
