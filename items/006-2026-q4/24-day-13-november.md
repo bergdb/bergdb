@@ -134,3 +134,4 @@ For Frans to decide
 
 * 13:27 028-08 not a bug; 028-09 a bug, fixed (a startupPos at its own record is refused: before, a damaged last record started with every key gone); 028-11's texts fixed; 028-10 evaluated, for Frans. Landed (3edef8fa).
 * 14:02 Prover t45: `bounded_startup` proved (007): one theorem that bounds a cold start's reads after any run that meets its explicit premises, joining T3 (count form), T4 and the read bound.
+5. 028-12: Java's take byte limit never held the take back past the deadline in 18 runs (debt at most about half the room); proposal A: DbBuilder refuses a startup distance above 10^9, as `setStartupDistance` does (recommended), B take a due transaction that does not fit (needs a record split), C no change with the premise written down. Read: 028-12.
