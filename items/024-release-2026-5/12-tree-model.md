@@ -1324,10 +1324,16 @@ that makes new segments below a full leaf** (`writerWP_put_newSegFull`,
 `GetNewSegFull.lean`: the cascade for the klong to the new segment
 leaf, then the new segment leaves; a tree that differs only below one
 segment root reads alike for the keys not through it,
-`getFromR_override_off`). Still open: the space splits that make a new
-root (the space root's, or a segment root's below a segment leaf;
-`hspace` leaves them out); the delete's leaf when it is the space root
-or below a segment leaf.
+`getFromR_override_off`). At 18:45, **proved: the space root's space
+split, in place or not**, in the cascade (`writerWP_appendKlongs_chainGRV`)
+and in the put rules: the reading from the new root is the reading from
+the old one when the writer's state after the operation has its paths
+within the fuel (`PathsFit`, cost's, `FuelPaths.lean`;
+`getFromR_newRootRead`, `GetNewRoot.lean`). Still open: a segment
+root's space split below a segment leaf (`hspace` leaves it out: its
+new root is not the top, and the premise must reach it through the
+cascade above); the delete's leaf when it is the space root or below a
+segment leaf, and the delete with the space root's space split.
 
 The reader's fuel (prover "latest", 2026-11-13, 18:15): TP10's `get`
 (`Read.lean`, `getFrom`) and `getFromR` give every segment's descent
@@ -1337,9 +1343,10 @@ the state. Once every descent fits, more fuel reads the same
 where `SegFits N t d r` holds with d < fuel: every segment tree reached
 from r has depth at most d (`SegDepthLe`). A space split that makes a
 new root grows a segment's tree by one level, and its reading needs that
-level within the fuel: those cases will take `SegFits` of the writer's
-state after the operation, with d = fuel - 1, as a premise. Open
-premise: it holds for trees within that height, not for every run;
+level within the fuel: those cases take `PathsFit` of the writer's
+state after the operation as a premise (cost's `PathsFit N t r fuel`,
+`FuelPaths.lean`: every path from r, through all segments, is shorter
+than the fuel; one Prop for all provers). Open premise: it holds for trees within that height, not for every run;
 inside a transaction each new root adds a level (a node made above the
 level bounds is recorded in `outside`, MF3, and refused at the
 transaction's end if still there). It is the per-segment form of the
