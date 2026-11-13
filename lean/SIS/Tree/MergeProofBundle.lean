@@ -160,6 +160,7 @@ import SIS.Tree.GetOpAssembly
 import SIS.Tree.GetOpCases
 import SIS.Tree.ChainShape
 import SIS.Tree.GetNewSegsTree
+import SIS.Tree.GetDescentOK
 import SIS.Tree.WriterTreeInnerHalves
 import SIS.Tree.WriterTreeSpaceSpace
 import SIS.Tree.WriterTreeDelFull
@@ -268,3 +269,10 @@ import SIS.Tree.HeightsNode
 import SIS.Tree.WriterHeightsRules
 import SIS.Tree.WriterHeightsSteps
 import SIS.Tree.WriterHeightsSplit
+import SIS.Tree.TakeDeadNewSegFull
+import SIS.Tree.TakeNextGrows
+import SIS.Tree.TakeDelMerge
+import SIS.Tree.TakeDeadLast
+import SIS.Tree.TakeBaseStart
+import SIS.Tree.TakeBackMerges
+import SIS.Tree.TakeDeadUpM

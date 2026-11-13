@@ -1554,11 +1554,23 @@ below a leaf with room; (3b) more new segments below a leaf with room;
   below an empty segment leaf (`writerWP_putSegs_new_tree`,
   `GetNewSegsTree.lean`); `PutInv` by `putInvCase_putNewSegsRoom`
   (`putInv_after_op`).
-- (3c) the tree proved (21:40, `treeCase_putNewSegFull`):
-  `writerWP_put_newSegFullR`'s post now also gives the writer's tree, the
-  taken ids kept and the reach bound. Its ranges are open (no rule), and so
-  is `PutInv`, which follows from them by `putInv_after_op` once they are
-  proved.
+- (3c) all three proved (tree 21:40, ranges and `PutInv` 22:10):
+  - `writerWP_put_newSegFullR`'s post gives the writer's tree, the taken
+    ids kept and the reach bound (`treeCase_putNewSegFull`).
+  - It also gives the ranges after the op, given `RangeOrder`, `OrdG` and
+    every klong below the next id (`KlongsBelow`, from the books,
+    `klongsBelow_of_book`). The cascade keeps the ranges by putinv's
+    `writerWP_appendKlongs_chainGRange`.
+  - The new segment leaves below the new empty leaf keep them
+    (`writerWP_putSegs_new_range`, `rangeOrder_newChain`), because the
+    leaf's parents are leaves: a cascade's nodes link a fresh node only by
+    the klongs put into its bottom node, with that node's leaf flag
+    (`writerWP_appendKlongs_chainLeafTargets`, `ChainShape.lean`).
+  - `rangeCase_putNewSegFull`, `putInvCase_putNewSegFull`.
+
+Cases (1) to (3) are proved for all four posts (the writer's tree,
+`PutInv`, the ranges, the reading). Under `MergeParamsOK`,
+`getOK_scanOK_of_cases_merges_open` therefore leaves only case (4).
 - (4) all three open (cost's merges).
 
 The shapes of the nodes a cascade makes or changes (prover "latest",

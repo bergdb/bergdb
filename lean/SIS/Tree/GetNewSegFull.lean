@@ -1,6 +1,7 @@
 import SIS.Tree.GetPutPath
 import SIS.Tree.GetNewSegs
 import SIS.Tree.GetNewSegsTree
+import SIS.Tree.RangeChainG
 
 set_option autoImplicit false
 
@@ -306,7 +307,9 @@ theorem writerWP_put_newSegFullR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
         NoNewRootG c (wNode c.p base w) w.top.rootKey) → ∀ key', keyWf key' = true →
       wGet c.p c.i base w' key' =
         if Op.key (.put (pre ++ c0 :: tail) h) == key' then Op.value (.put (pre ++ c0 :: tail) h)
-        else wGet c.p c.i base w key')) := by
+        else wGet c.p c.i base w key') ∧
+      (RangeOrder (wNode c.p base w) c.i w.top.rootKey → OrdG c (wNode c.p base w) w.top.rootKey →
+        KlongsBelow (wNode c.p base w) w.next → RangeOrder (wNode c.p base w') c.i w'.top.rootKey)) := by
   obtain ⟨hidn, hidv, hidt, hidvals, hidr⟩ := hids
   have hfuel : 1 ≤ c.p.fuel := by unfold Params.fuel; omega
   have hwfR : ∀ x xn, ReachS (wNode c.p base w) c.i w.top.rootKey x →
@@ -486,7 +489,9 @@ theorem writerWP_put_newSegFullR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
               NoNewRootG c (wNode c.p base w) w.top.rootKey) →
             ∀ key', keyWf key' = true → wGet c.p c.i base w' key' =
               if Op.key (.put (pre ++ c0 :: tail) h) == key' then Op.value (.put (pre ++ c0 :: tail) h)
-              else wGet c.p c.i base w key')))) := by
+              else wGet c.p c.i base w key') ∧
+                  (RangeOrder (wNode c.p base w) c.i w.top.rootKey → OrdG c (wNode c.p base w) w.top.rootKey →
+                    KlongsBelow (wNode c.p base w) w.next → RangeOrder (wNode c.p base w') c.i w'.top.rootKey)))) := by
     intro ws1 g1 g2 g3 g4 g5 g6
     have hws1N : wNode c.p base ws1 = updN (wNode c.p base w) w.next ⟨true, []⟩ := by
       rw [wNode_append_updN c.p base w3 ws1 _ g1 g3 hfree0
@@ -582,8 +587,139 @@ theorem writerWP_put_newSegFullR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
         simp only [Nat.zero_add, hXD, hn, Option.getD_some]
         exact hTV)
     simp only [Nat.zero_add, hXD, hn, Option.getD_some] at hchain
-    refine writerWP_mono hchain ?_
-    intro _ wf1 ⟨hT1, ⟨hftop, hft, hfpath, hfnext, hfv⟩, hframe1, hreach1, hW1, hR1, hab1, _⟩
+    have hRchain : WriterWP (appendKlongs P.length L [(c0, w.next)]) c ws1 (fun _ wf1 =>
+        RangeOrder (wNode c.p base w) c.i w.top.rootKey → OrdG c (wNode c.p base w) w.top.rootKey →
+        RangeOrder (wNode c.p base wf1) c.i wf1.top.rootKey ∧
+        LeafTargets c (fun i => nodeAt w.top.rootKey P i)
+          (fun i => (wNode c.p base w (nodeAt w.top.rootKey P i)).getD n) 0 P.length
+          [(c0, w.next)] ws1 wf1) := by
+      by_cases hRO : RangeOrder (wNode c.p base w) c.i w.top.rootKey ∧
+          OrdG c (wNode c.p base w) w.top.rootKey
+      · obtain ⟨hRw, hOrd⟩ := hRO
+        have hRV0 : RangeOrder (updN (updN (wNode c.p base w) w.next ⟨true, []⟩) L
+            (n.add c.i (.key c0 w.next))) c.i w.top.rootKey :=
+          rangeOrder_leafAddNewSet (wNode c.p base w) _ c.i w.top.rootKey L w.next n
+            (n.add c.i (.key c0 w.next)) c0 (fun z => z = w.next) hRw hn hnl (updN_self _ _ _)
+            (by rw [KNode.add_leaf]; exact hnl)
+            (fun c' z hc => by
+              rcases KNode.add_key_liveAt_mem n c.i c0 w.next (hwfG _ _ hn) (htimesG _ _ hn) c' z hc
+                with h | ⟨_, h⟩
+              · exact Or.inl h
+              · exact Or.inr h)
+            (leaf_range _ c.i _ hT hwfG c.p.fuel pre c0 rk0 L hrk hvisL) rfl
+            (by
+              intro z hz
+              subst hz
+              refine ⟨hfreshN _ (Nat.le_refl _), by omega, fun u c' _ hl => ?_⟩
+              have := hlinksAll u c' _ hl; omega)
+            (by
+              intro z m' hz hm
+              subst hz
+              rw [updN_ne _ _ _ _ (by omega), updN_self] at hm
+              cases hm; rfl)
+            (by
+              intro z m' c' z' hz hm hc
+              subst hz
+              rw [updN_ne _ _ _ _ (by omega), updN_self] at hm
+              cases hm
+              exact absurd hc (KNode.empty_liveAt c.i c' z'))
+            (by
+              intro z h1 h2
+              rw [updN_ne _ _ _ _ h1, updN_ne _ _ _ _ h2])
+        have hordC : ∀ i, 0 < i → i ≤ P.length →
+            ChainOrd c (fun i => ((P[i - 1]?).bind (·.1)).getD 0)
+              (fun i => (wNode c.p base w (nodeAt w.top.rootKey P i)).getD n) i :=
+          fun i h1 h2 hnr hql hsp c' z hz => hOrd _ _ _ _ _ (hreachX (i - 1) (by omega))
+            (hXN (i - 1) (by omega)) hql (hKP i h1 h2).2 (hXN i h2) hnr hsp c' z hz
+        have hrangeC := writerWP_appendKlongs_chainGRange c base w3.path 0 P.length
+          (fun i => nodeAt w.top.rootKey P i) (fun i => ((P[i - 1]?).bind (·.1)).getD 0)
+          (fun i => (wNode c.p base w (nodeAt w.top.rootKey P i)).getD n)
+          (fun i _ h2 => hpX i h2)
+          (fun i h1 h2 => hpK i h1 h2)
+          (fun i h1 h2 => (hKP i h1 h2).2)
+          (fun i h1 h2 hnr hql c' z hz hc => hrangeG _ _ _ _ _ (hreachX (i - 1) (by omega))
+            (hXN (i - 1) (by omega)) hql (hKP i h1 h2).2 (hXN i h2) hnr c' z hz hc)
+          (fun i _ h2 hnr hsp => hlenG _ _ (hreachX i h2) (hXN i h2) hnr hsp)
+          (fun i _ h2 => hwfG _ _ (hXN i h2))
+          (fun i _ h2 => htimesG _ _ (hXN i h2))
+          (Or.inr rfl)
+          (fun i i' _ h2 _ h4 he => hdistP i i' h2 h4 he)
+          P.length (by omega) ws1 [(c0, w.next)] (Or.inl ⟨c0, w.next, rfl⟩)
+          (by intro q hq; simp at hq; rw [hq, g2]; simp)
+          g6
+          (fun i _ h2 => ⟨by
+              rw [g1, lookup_append_single_ne _ _ _ _ (by have := hXlt i (by omega); omega)]
+              exact hlkX i (by omega),
+            by rw [hw1t]; exact htkN _ _ (hXN i (by omega))⟩)
+          (by rw [hws1N, hw1top]; exact treeOK_updN_unreach _ c.i _ _ _ hT (hyRW _ (Nat.le_refl _)))
+          (fun i _ h2 => by
+            rw [hws1N, hw1top]
+            obtain ⟨a, ha⟩ := (hreachX i (by omega)).pathLen
+            exact tReach_updN_of_short _ c.i _ _ _ a _ ha
+              (fun b hb => absurd hb.reach (hyRW _ (Nat.le_refl _))))
+          (by
+            intro z hz
+            rw [g2] at hz
+            refine ⟨?_, ?_, (hbase z (by omega)).1⟩
+            · rw [g1, lookup_append_single_ne _ _ _ _ (by omega)]
+              cases h' : w3.nodes.lookup z with
+              | none => rfl
+              | some _ => have := hsrcw3 z (by rw [h']; rfl); omega
+            · rw [hw1t]; exact hntake z (by omega))
+          (by
+            intro u c' z hl
+            rw [hws1N] at hl
+            rw [g2]
+            obtain ⟨mm, hm, hc⟩ := hl
+            by_cases hu : u = w.next
+            · rw [hu, updN_self] at hm
+              simp only [Option.some.injEq] at hm
+              subst hm
+              exact absurd hc (KNode.empty_liveAt c.i c' z)
+            · rw [updN_ne _ _ _ _ hu] at hm
+              have := hlinksAll u c' z ⟨mm, hm, hc⟩; omega)
+          (fun _ => by show ws1.top.rootKey = nodeAt w.top.rootKey P 0; rw [hw1top, nodeAt_zero])
+          (by
+            rw [hws1N, hw1top]
+            simp only [Nat.zero_add, hXD, hn, Option.getD_some]
+            exact hTV)
+          (by
+            rw [hws1N, hw1top]
+            simp only [Nat.zero_add, hXD, hn, Option.getD_some]
+            exact hRV0)
+        have hleafC := writerWP_appendKlongs_chainLeafTargets c w3.path 0 P.length
+          (fun i => nodeAt w.top.rootKey P i) (fun i => ((P[i - 1]?).bind (·.1)).getD 0)
+          (fun i => (wNode c.p base w (nodeAt w.top.rootKey P i)).getD n)
+          (fun i _ h2 => hpX i h2)
+          (fun i h1 h2 => hpK i h1 h2)
+          (fun i h1 h2 => (hKP i h1 h2).2)
+          (fun i h1 h2 hnr hql c' z hz hc => hrangeG _ _ _ _ _ (hreachX (i - 1) (by omega))
+            (hXN (i - 1) (by omega)) hql (hKP i h1 h2).2 (hXN i h2) hnr c' z hz hc)
+          (fun i _ h2 hnr hsp => hlenG _ _ (hreachX i h2) (hXN i h2) hnr hsp)
+          hordC
+          (fun i _ h2 => htimesG _ _ (hXN i h2))
+          (Or.inr rfl)
+          (fun i i' _ h2 _ h4 he => hdistP i i' h2 h4 he)
+          P.length (by omega) ws1 [(c0, w.next)] (Or.inl ⟨c0, w.next, rfl⟩)
+          (List.pairwise_singleton _ _) g6
+          (fun i _ h2 => ⟨by
+              rw [g1, lookup_append_single_ne _ _ _ _ (by have := hXlt i (by omega); omega)]
+              exact hlkX i (by omega),
+            by rw [g2]; have := hXlt i (by omega); omega⟩)
+          (by
+            intro z hz
+            rw [g2] at hz
+            rw [g1, lookup_append_single_ne _ _ _ _ (by omega)]
+            cases h' : w3.nodes.lookup z with
+            | none => rfl
+            | some _ => have := hsrcw3 z (by rw [h']; rfl); omega)
+        simp only [Nat.zero_add, hXD, hn, Option.getD_some] at hrangeC hleafC
+        exact writerWP_mono (writerWP_and hrangeC hleafC) (fun _ _ h _ _ => ⟨h.1.2.2.2.2, h.2⟩)
+      · intro _ _ _ h1 h2
+        exact absurd ⟨h1, h2⟩ hRO
+    refine writerWP_mono (writerWP_and (writerWP_and hchain hRchain)
+      (writerWP_appendKlongs_cached P.length L [(c0, w.next)] c ws1)) ?_
+    intro _ wf1 ⟨⟨⟨hT1, ⟨hftop, hft, hfpath, hfnext, hfv⟩, hframe1, hreach1, hW1, hR1, hab1, _⟩, hRC⟩, hcached⟩
     rw [hnext3] at hfree0
     have hlkc : wf1.nodes.lookup w.next = some ⟨true, []⟩ := by
       rw [hframe1 w.next (by omega) (fun i _ h2 he => by have := hXlt i h2; omega), g1]
@@ -614,11 +750,76 @@ theorem writerWP_put_newSegFullR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
         · have := hRw z h2; omega
         · omega
       · exact h1
-    refine writerWP_mono (writerWP_and (writerWP_putSegs_new c base (pre ++ c0 :: tail) h hM hfuel tail
-      htail wf1 w.next hlkc htkc (by omega) hfreshc) (writerWP_putSegs_new_tree c base (pre ++ c0 :: tail)
-      h hM hfuel tail htail wf1 w.next hlkc htkc (by omega) hfreshc hT1 hRlt1)) ?_
-    rintro _ wf ⟨⟨k1, k2, _, k4, k5, _, k7, k8⟩, ⟨t1, t2, _, t4⟩⟩
-    refine ⟨t1, by rw [t2, hft, hw1t], ?_, ?_⟩
+    have hRseg : WriterWP (putSegs (pre ++ c0 :: tail) (some h) tail w.next) c wf1 (fun _ wf =>
+        RangeOrder (wNode c.p base w) c.i w.top.rootKey → OrdG c (wNode c.p base w) w.top.rootKey →
+        KlongsBelow (wNode c.p base w) w.next →
+        RangeOrder (wNode c.p base wf) c.i wf.top.rootKey) := by
+      by_cases hRO : RangeOrder (wNode c.p base w) c.i w.top.rootKey ∧
+          OrdG c (wNode c.p base w) w.top.rootKey ∧ KlongsBelow (wNode c.p base w) w.next
+      · obtain ⟨hRw, hOrd, hKB⟩ := hRO
+        obtain ⟨hRwf1, hLT⟩ := hRC hRw hOrd
+        have hxr : w.next ≠ wf1.top.rootKey := by
+          rcases hftop with h' | ⟨_, h'⟩
+          · rw [h', hw1top]; omega
+          · rw [g2] at h'; omega
+        have hxpar : ∀ u un cc, wNode c.p base wf1 u = some un → (cc, w.next) ∈ un.liveAt c.i →
+            un.leaf = true := by
+          intro u un cc hu hcc
+          have htku : wf1.taken.contains u = false := by
+            cases h' : wf1.taken.contains u with
+            | false => rfl
+            | true => unfold wNode at hu; rw [h'] at hu; simp at hu
+          by_cases hin : (wf1.nodes.lookup u).isSome = true ∧
+              (ws1.next ≤ u ∨ ∃ i, 0 ≤ i ∧ i ≤ P.length ∧ u = nodeAt w.top.rootKey P i)
+          · obtain ⟨hsome, hin2⟩ := hin
+            have hlu : wf1.nodes.lookup u = some un := by
+              unfold wNode at hu
+              rw [htku] at hu
+              simp only [Bool.false_eq_true, ↓reduceIte] at hu
+              cases h' : wf1.nodes.lookup u with
+              | none => rw [h'] at hsome; cases hsome
+              | some m => rw [h'] at hu; exact hu
+            have h1 := (hLT w.next (by rw [g2]; omega)
+              (fun i _ h2 cv hk => by
+                have := hKB _ _ (hXN i h2) cv w.next hk; omega)
+              (fun i _ h2 he => by have := hXlt i h2; simp only at he; omega)
+              u un cc hlu hin2 hcc).2
+            rw [h1]
+            simp only [hXD, hn, Option.getD_some]
+            exact hnl
+          · exfalso
+            have hagree : wNode c.p base wf1 u = wNode c.p base ws1 u := by
+              unfold wNode
+              rw [hft]
+              cases h' : wf1.nodes.lookup u with
+              | none =>
+                cases h'' : ws1.nodes.lookup u with
+                | none => rfl
+                | some _ =>
+                  have := hcached u (by rw [h'']; rfl)
+                  rw [h'] at this; cases this
+              | some m =>
+                have hnot : ¬ (ws1.next ≤ u ∨ ∃ i, 0 ≤ i ∧ i ≤ P.length ∧ u = nodeAt w.top.rootKey P i) :=
+                  fun h2 => hin ⟨by rw [h']; rfl, h2⟩
+                rw [← hframe1 u (by omega) (fun i h1 h2 he => hnot (Or.inr ⟨i, h1, h2, he⟩)), h']
+            rw [hagree, hws1N] at hu
+            by_cases hun : u = w.next
+            · subst hun
+              rw [updN_self] at hu
+              cases hu
+              exact KNode.empty_liveAt c.i cc w.next hcc
+            · rw [updN_ne _ _ _ _ hun] at hu
+              have := hlinksAll u cc w.next ⟨un, hu, hcc⟩
+              omega
+        exact writerWP_mono (writerWP_putSegs_new_range c base (pre ++ c0 :: tail) h hM hfuel tail htail
+          wf1 w.next hlkc htkc (by omega) hfreshc hRwf1 hxr hxpar hRlt1) (fun _ _ h' _ _ _ => h')
+      · intro _ _ _ h1 h2 h3
+        exact absurd ⟨h1, h2, h3⟩ hRO
+    refine writerWP_mono (writerWP_and (writerWP_and (writerWP_putSegs_new c base (pre ++ c0 :: tail) h hM
+      hfuel tail htail wf1 w.next hlkc htkc (by omega) hfreshc) (writerWP_putSegs_new_tree c base
+      (pre ++ c0 :: tail) h hM hfuel tail htail wf1 w.next hlkc htkc (by omega) hfreshc hT1 hRlt1)) hRseg) ?_
+    rintro _ wf ⟨⟨⟨k1, k2, _, k4, k5, _, k7, k8⟩, ⟨t1, t2, _, t4⟩⟩, hRS⟩
+    refine ⟨t1, by rw [t2, hft, hw1t], ?_, ?_, hRS⟩
     · intro z hz
       rcases t4 z hz with h1 | h1
       · rcases hreach1 z h1 with h2 | ⟨h2, _⟩
@@ -891,7 +1092,7 @@ theorem writerWP_put_newSegFull (c : Ctx) (base : View BVal) (hvc : ViewCoherent
     htimesG hT hlinksAll hnoval hrangeG hlenG (fun x xn hx hxn hnr hsp q qn K hq hqn hk =>
       Or.inl ((hspaceG x xn hx hxn hnr hsp).2 q qn K hq hqn hk))
     hcur)
-    (fun _ _ hp => hp.2.2.2 (Or.inr ⟨fun rn hrn hnr => Nat.le_of_not_lt (fun hsp =>
+    (fun _ _ hp => hp.2.2.2.1 (Or.inr ⟨fun rn hrn hnr => Nat.le_of_not_lt (fun hsp =>
       (hspaceG _ _ TReach.root hrn hnr hsp).1 rfl), fun x xn hx hxn hnr hsp =>
       (hspaceG x xn hx hxn hnr hsp).2⟩))
 
