@@ -52,6 +52,13 @@ Files
   proof, what is not covered, questions for Frans; the probe that runs
   `TransSeq.take` on the generated cases in
   [08-step4-take-in-lean/](08-step4-take-in-lean/).
+* [09-t4-in-lean.md](09-t4-in-lean.md). 007-09, T4 and a cold start's
+  reads in Lean, for Frans's review: the records at the ends of the
+  startup section bounded by the debt, the debt of D with the exact
+  still-dirty test (lev + 1 sections; 007-01's "about the last two
+  sections" is false, with a run that shows it), a cold start's reads;
+  the trusted definitions, the theorems, what is not covered, questions
+  for Frans.
 
 
 Log
