@@ -39,10 +39,18 @@ structure ViewHtOK (B : NodeId) (c : Ctx) : Prop where
   ids : ViewIdsBelow B c.view
   heights : ViewHeights c
   ptrs : ∀ x nd, c.view x = some nd → ∀ cv y, Klong.key cv y ∈ klongsOf nd.hist → y < B
+  times : ∀ x nd, c.view x = some nd → ∀ t, Klong.time t ∈ klongsOf nd.hist → t ≤ c.i
 
 theorem ht_mem_ids {w : W} {x : NodeId} {g h : Nat} (hm : (x, g, h) ∈ w.gh) :
     x ∈ w.gh.map (·.1) :=
   List.mem_map.mpr ⟨_, hm, rfl⟩
+
+theorem HtCache.congr {c : Ctx} {w v : W} (hc : HtCache c w) (hn : v.nodes = w.nodes)
+    (hg : v.gh = w.gh) (ht : v.taken = w.taken) : HtCache c v := by
+  intro x n g h hn' hg' htk
+  rw [hn] at hn'; rw [hg] at hg'; rw [ht] at htk
+  exact (hc x n g h hn' hg' htk).mono (fun q hq => by rw [hg]; exact hq)
+    (fun y hy => by rw [ht]; exact hy)
 
 theorem ht_free_of_eq {w v : W} (ht : v.taken = w.taken) :
     ∀ y, w.taken.contains y = false → v.taken.contains y = false := fun y h => by rw [ht]; exact h
@@ -79,7 +87,8 @@ theorem HtInv.clear {B : NodeId} {c : Ctx} {w : W} (hi : HtInv B c w) (v : W)
     (hn : v.nodes = w.nodes) (hg : v.gh = w.gh) (hp : v.path = [])
     (ht : v.taken = w.taken) (htop : v.top.rootKey = w.top.rootKey) : HtInv B c v := by
   have h0 : HtInv B c { w with path := [] } :=
-    ⟨hi.cache, by intro d a q cv y h1; simp at h1, by intro d a q h1; simp at h1,
+    ⟨fun x n g h hn hg' htk => (hi.cache x n g h hn hg' htk).mono (fun q hq => hq) (fun y hy => hy),
+      by intro d a q cv y h1; simp at h1, by intro d a q h1; simp at h1,
       by intro d a q h1; simp at h1, hi.rootFree, hi.takenAbove, by intro d a q h1; simp at h1⟩
   exact h0.frame v hn hg hp ht htop
 
@@ -126,7 +135,7 @@ theorem HtInv.load {B : NodeId} {c : Ctx} {w : W} (hb : Book B c w)
           · have hm := ht_live_mem hz
             exact hvo.ptrs x nd hnd cv z ((prefixAt_prefix _ _).subset hm)
         refine ⟨fun cv z hz => ⟨hfree z (hptr cv z (Or.inl hz)), fun h0 => ?_⟩,
-          fun cv z hz => ⟨hfree z (hptr cv z (Or.inr hz)), fun h0 => ?_⟩⟩
+          fun cv z hz => ⟨hfree z (hptr cv z (Or.inr hz)), fun h0 => ?_⟩, hvo.times x nd hnd⟩
         · exact Or.inr ((hvo.heights x nd hnd hd hlv h0).1 cv z hz)
         · exact Or.inr ((hvo.heights x nd hnd hd hlv h0).2 cv z hz)
       · exact absurd (ht_mem_ids hg') hxg

@@ -279,6 +279,8 @@ import SIS.Tree.TakeDeadLast
 import SIS.Tree.TakeBaseStart
 import SIS.Tree.TakeBackMerges
 import SIS.Tree.TakeDeadUpM
+import SIS.Tree.WriterHeightsFull
+import SIS.Tree.WriterHeightsPut
 import SIS.Tree.DelStepsMerge
 import SIS.Tree.DelStepsWalk
 import SIS.Tree.DelStepsRoom
