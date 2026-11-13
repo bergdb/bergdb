@@ -70,7 +70,7 @@ theorem writerWP_put_leafBelow (c : Ctx) (base : View BVal) (hvc : ViewCoherent 
       ∀ k y, deadOver c.p (qn.add c.i (.key k y)) = false)
     (hrange : ∀ q qn L n k1, (q, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
       wNode c.p base w q = some qn → qn.leaf = false → wNode c.p base w L = some n →
-      (k1, L) ∈ qn.live →
+      n.leaf = true → (k1, L) ∈ qn.live →
       ∀ c' z, (c', z) ∈ n.live → k1 ≤ c' ∧ ∀ c'' z', (c'', z') ∈ qn.live → k1 < c'' → c' < c'')
     (huniq : ∀ key' x n, keyWf key' = true →
       (x, cv) ∈ fromVisits (wNode c.p base w) c.i c.p.fuel key' w.top.rootKey →
@@ -148,7 +148,7 @@ theorem writerWP_put_leafBelow (c : Ctx) (base : View BVal) (hvc : ViewCoherent 
         hnext huniq hfresh
     · by_cases hnew : n.firstTime = some c.i
       · by_cases hsp : c.p.M ≤ n.size + 1 ∧ c.p.splitAbove < (n.lastVersion c.i).size
-        · exact writerWP_put_spaceSplitInPlace_key c base hvc pre cv h rk w hfuel hkey hrk ht hids'
+        · exact writerWP_put_spaceSplitInPlace_ord c base hvc pre cv h rk w hfuel hkey hrk ht hids'
             (hbase _ (Nat.le_refl _)).1 hinner
             (fun L' n' hL' hn' hnl' => by
               obtain ⟨he1, he2⟩ := hone L' n' hL' hn' hnl'
@@ -170,7 +170,7 @@ theorem writerWP_put_leafBelow (c : Ctx) (base : View BVal) (hvc : ViewCoherent 
               L' n' hL' hn' hnl')
             hnext huniq hfresh
       · by_cases hsp : c.p.M ≤ n.size + 1 ∧ c.p.splitAbove < (n.lastVersion c.i).size
-        · exact writerWP_put_spaceSplit_key c base hvc pre cv h rk w hfuel hkey hrk ht hids'
+        · exact writerWP_put_spaceSplit_ord c base hvc pre cv h rk w hfuel hkey hrk ht hids'
             (hbase _ (Nat.le_refl _)).1 hinner
             (fun L' n' hL' hn' hnl' => by
               obtain ⟨he1, he2⟩ := hone L' n' hL' hn' hnl'

@@ -102,3 +102,4 @@ import SIS.Tree.GetRootSplit
 import SIS.Tree.GetKeyTree
 import SIS.Tree.GetLeafRoot
 import SIS.Tree.GetLeafBelow
+import SIS.Tree.GetPutInv
