@@ -103,6 +103,7 @@ Open
 | [028-04](04-null-value-transformation.md) | Fix | What a null result of a value transformation does | decision | open |
 | [028-07](07-start-lock-across-sync.md) | Investigate | One start's sync blocks every start of the JVM | none | open |
 | [028-10](10-public-start-params.md) | Investigate | The public Db.start(StartParams) takes unchecked values | decision | evaluated, for Frans |
+| [028-12](12-take-byte-limit.md) | Investigate | Can the take's byte limit stop the startup section's bound? | none | open |
 
 
 Closed
