@@ -1277,6 +1277,36 @@ the mergeUp loop and the delete as a whole.
 Their premises beyond TREE: the ids from w's next one on in neither the
 base nor a live klong (`hbaseF`, `hfreshT`).
 
+The merge with a full parent of every kind (cost, 2026-11-13, evening). A full
+parent at depth D + 1 reads as its last version in every kind of split
+(`writerWP_handleFull_lastV`, `GetMergeLevel.lean`). That covers a time split
+or a space split, in place for a parent that the transaction made or not, below
+an inner node or a segment leaf, each with its cascade. The proof is
+`writerWP_appendKlongs_chainGRV`'s step at its top level, for a last version
+with nothing put. The halves of such a version search as it does
+(`halves_read_nil`, `halves_cover_nil`, `HalvesNil.lean`), and a node of a time
+klong and sorted key klongs is its own last version
+(`KNode.lastVersion_newKlongs_sorted`). A parent split in place stays reached.
+The merge's last loop leaves it as it is, since its key klongs are its last
+version's, and those name neither merged node (`writerWP_mergeCleanup_pSame`,
+`key_mem_newKlongs_liveAt`). So the reading is kept for any parent at depth
+D + 1 (`writerWP_merge_any_get`, `writerWP_mergeTail_any_get`, `GetMergeAny.lean`),
+and for the parent at the space root (d = 1) on the get side and the tree side
+(`writerWP_handleFull_rootV`, `writerWP_merge_root_get`,
+`writerWP_merge_root_tree`, `GetMergeRoot.lean`). Their premises:
+* the parent's last version is a time klong and sorted key klongs (`hsorted`;
+  true of `mergeFullLast` when the second new node's first compare value is
+  not one of the parent's other live ones; not yet proved);
+* splitAbove is at least 2 (`hsa2`);
+* for a space split below an inner node, the last version's live compare values
+  are in the range of the parent's link (`hrangeL`; `RangeOrder` gives this);
+* a space split in place below a segment leaf is left out (`hspaceL`, as
+  `writerWP_appendKlongs_chainGRV` leaves it out).
+
+The reading holds when the state after fits the fuel. Without that, it holds
+when no split makes a new root: the space root does not space split, and the
+parent's parent is inner (for d = 1, the root does not space split).
+
 ## 11. State
 
 Final for today: 2026-11-11, 16:05 (agent "mgl" of coord-1111). Nothing

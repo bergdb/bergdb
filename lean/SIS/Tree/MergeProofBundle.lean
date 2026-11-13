@@ -233,3 +233,5 @@ import SIS.Tree.TakeDeadCollapse
 import SIS.Tree.HalvesNil
 import SIS.Tree.GetMergeLevel
 import SIS.Tree.SegBalance
+import SIS.Tree.GetMergeAny
+import SIS.Tree.GetMergeRoot
