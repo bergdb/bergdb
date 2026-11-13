@@ -122,7 +122,8 @@ The parts, in reading order (027-04; stubs until written):
 * [10-self-indexed-stream.md](10-self-indexed-stream.md). 027-10, part 6: the self-indexed stream.
 * [11-startup.md](11-startup.md). 027-11, part 7: startup.
 * [12-memory.md](12-memory.md). 027-12, part 8: memory, handles and eviction.
-* [13-reclaim.md](13-reclaim.md). 027-13, part 9: reclaim.
+* [13-reclaim.md](13-reclaim.md). 027-13, part 9: reclaim; the pilot, reviewed
+  against the code (2026-11-13), for Frans to read.
 * [14-storage.md](14-storage.md). 027-14, part 10: storage and durability.
 * [15-failures.md](15-failures.md). 027-15, part 11: failures.
 * [16-costs-and-bounds.md](16-costs-and-bounds.md). 027-16, part 12: costs and bounds, the index.

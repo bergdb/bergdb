@@ -1163,6 +1163,7 @@ public class Reclaim implements Db.TransactionListener {
             this.firstAvailableLookupTime = cutRow.tEnd;
             this.firstAvailablePos = cutRow.pCut;
         }
+        db.cutDecided(cutRow.pCut, cutRow.tEnd);       // bergdb 026-10
         
         // bergdb 026-05: a pending cut whose table is durable is made before the newer one
         // replaces it. It was dropped: a cut decided at every transaction (iterations of one
