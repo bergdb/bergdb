@@ -51,7 +51,7 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 | 024, 015 | Statuses after the release; post-release notes (021-27, 020-29) | tidy (high) | committed ee5712c5 |
 | 026-05 | P8: each reclaim step scans at its own time | p8 (xhigh) | landed fe5000ec: back to empty's lag about 1,270 at every n and f |
 | 026-06 | A value transformation's failure refuses the transaction | vt (high) | landed 8bd6e3a7..944b4868 |
-| 026-07 | The write buffer grows with use (ST8) | wb (high) | running |
+| 026-07 | The write buffer grows with use (ST8) | wb (high) | landed: an empty database 0.67 MB of heap, not 11.1 |
 | 026-04 | The back-to-empty lag at 10M keys, understood | frac (high) | done 07:44: the phase of reclaim's iteration at the deletes' end (a step scans at its iteration's start), not f; keep 1/4; P8 cures it |
 | 021-29 | Unit tests that wait with no timeout | waits (high) | landed dc69b7a6 |
 | 021-28 | Unit tests with fixed time limits | limits (high) | landed ffa39b4e |
@@ -92,3 +92,4 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 * 10:00 Frans on 026-07: Q1 as recommended, Q4 ok; Q3 "keep it as a constant, but use 2 seconds"; Q2 "significant for certain applications [...] I don't like just adding the tables. We get a violation of back-to-empty" (in discussion); asked whether the 10 MB maximum of the buffer should be discussed.
 * 10:05 Frans: the buffer's maximum stays 10 MB ("Keep 10 MB."); no study.
 * 10:06 Frans on 026-07's Q2: "Keep it as is, KISS. Complexity and code size are costs too. Easy to implement later if ever needed." (Cache3's tables unchanged). 026-10 registered (idByPos after back to empty).
+* 10:09 026-07 landed (gated on main with P8: before-commit, level1, count-gates).
