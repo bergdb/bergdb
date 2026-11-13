@@ -89,3 +89,6 @@ reset on Monday 16 November, 22:00. At most two agents at a time, Opus
 * 09:38 Frans: Q34-1 option (b) for 2026.6 after P8: 026-09 registered.
 * 09:42 Frans 09:41: 026-05's Q1 to Q4 "Yes to all four." P8 merged with main, gated again before landing.
 * 09:54 026-05 (P8) landed fe5000ec, gated on the merged tree (before-commit, level1, level3).
+* 10:00 Frans on 026-07: Q1 as recommended, Q4 ok; Q3 "keep it as a constant, but use 2 seconds"; Q2 "significant for certain applications [...] I don't like just adding the tables. We get a violation of back-to-empty" (in discussion); asked whether the 10 MB maximum of the buffer should be discussed.
+* 10:05 Frans: the buffer's maximum stays 10 MB ("Keep 10 MB."); no study.
+* 10:06 Frans on 026-07's Q2: "Keep it as is, KISS. Complexity and code size are costs too. Easy to implement later if ever needed." (Cache3's tables unchanged). 026-10 registered (idByPos after back to empty).

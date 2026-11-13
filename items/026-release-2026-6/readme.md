@@ -112,6 +112,9 @@ Files
 * 09-keys-only-scan.md. 026-09, reclaim's scan without the values it
   does not rewrite (024-34, Q34-1, option b; Frans, 2026-11-13, 09:38);
   registered, after 026-05.
+* 10-node-id-cache-after-empty.md. 026-10, `NodeCollection.idByPos`
+  after back to empty (found by 026-07; G4 and G5 then gate the plain
+  heaps); registered.
 
 
 Log
@@ -137,3 +140,5 @@ proposals to the decided work (Frans, 09:23: "Yes, decided work.").
 
 2026-11-13. 026-09 registered: 024-34's Q34-1, option (b), after 026-05
 (Frans, 09:38).
+
+2026-11-13. 026-10 registered (026-07's Q4; Frans, 09:48).
