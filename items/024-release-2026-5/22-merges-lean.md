@@ -1217,12 +1217,18 @@ as before. `writerWP_deleteUpward_up` (`WriterGetUpAll.lean`) takes every stop:
 a segment leaf, an inner node by a bitmap, or by LE-b when its klong to the
 chain is the empty key's (`writerWP_emptyKeyNext_room_frame`,
 `lebNode_live_lookup`; the tree relinked, `treeOK_dropSubtree_tr`), each with
-room. Its limits: no node of the chain made by the transaction (no take-back),
-the merges off, root collapse at another segment a premise (`hcollSeg`). `InnerChildrenExist` (`ChildrenExist.lean`) is the Prop agreed
+room. `writerWP_deleteUpward_upT` (`WriterGetUpTake.lean`) adds the take-back:
+a node of the chain that the transaction made is taken back and its parent
+retargeted, so the stop node may be retargeted too; a retargeted node has the
+same klongs but for pointers (`KNode.shapeOf`: size, bitmap, bits, dead count
+and LE-b's node alike, so the room premises carry over), and its live klongs
+but the chain's are the node's (`KNode.retarget_liveAt_ne`, from `oneLink`).
+Its limits: the merges off, root collapse at another segment a premise
+(`hcollSeg`). `InnerChildrenExist` (`ChildrenExist.lean`) is the Prop agreed
 with prover putinv, who proves it for the writer's states.
 Not yet: the whole put and delete around the cascade; a merge whose parent is
 full or compacted;
-the mergeUp loop and the delete as a whole; the take-back of the upward unlink.
+the mergeUp loop and the delete as a whole.
 Their premises beyond TREE: the ids from w's next one on in neither the
 base nor a live klong (`hbaseF`, `hfreshT`).
 
