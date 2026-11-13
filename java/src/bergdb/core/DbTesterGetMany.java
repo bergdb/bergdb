@@ -1474,6 +1474,67 @@ public class DbTesterGetMany {
         };
     }
     
+    /**
+     * GetMany.valuesBefore (bergdb 026-09, for reclaim's scan): 100 keys put, then 50 of them
+     * and 100 new keys; with valuesBefore the position after the first transaction, a scan
+     * gives the same keys, times and positions as without it, the values stored before the
+     * position, and no value for the others. Also after a restart, when no value is in
+     * memory and the position comes from the pointer's reference.
+     */
+    @Nano
+    public static void testValuesBefore() {
+        CoreTestClock clock = new CoreTestClock();
+        MemoryStream stream = new MemoryStream();
+        Db db = Db.builder().testSetup().clock(clock).mainStream(stream).start();
+        clock.setTime(10);
+        Trans.Builder b = db.trans();
+        for (int i = 0; i < 100; i++) {
+            b.put(ascii(String.format("a%03d", i)), new byte[] {1, (byte) i});
+        }
+        Trans t = b.build();
+        db.execute(t);
+        final long p = t.nextPos;
+        clock.setTime(20);
+        b = db.trans();
+        for (int i = 0; i < 100; i++) {
+            if (i % 2 == 0) b.put(ascii(String.format("a%03d", i)), new byte[] {2, (byte) i});
+            b.put(ascii(String.format("b%03d", i)), new byte[] {3, (byte) i});
+        }
+        db.execute(b.build());
+        
+        for (int pass = 0; pass < 2; pass++) {
+            if (pass == 1) {
+                db.sync(0, SyncLevel.ORDINARY);
+                db.close();
+                db = Db.builder().testSetup().clock(clock).mainStream(stream.copy()).start();
+            }
+            GetMany all = db.newGetMany();
+            db.getMany(all);
+            GetMany some = db.newGetMany();
+            some.valuesBefore = p;
+            db.getMany(some);
+            Assert.assertEquals(200, all.result.size());
+            Assert.assertEquals(200, some.result.size());
+            int with = 0;
+            for (int i = 0; i < 200; i++) {
+                Kvt x = all.result.get(i), y = some.result.get(i);
+                Assert.assertArrayEquals(x.key, y.key);
+                Assert.assertEquals(x.time, y.time);
+                Assert.assertEquals(x.spos, y.spos);
+                Assert.assertTrue(x.value != null);
+                if (x.spos < p) {
+                    Assert.assertArrayEquals(x.value, y.value);
+                    Assert.assertEquals(1, x.value[0]);
+                    with++;
+                } else {
+                    Assert.assertTrue(i + ": no value", y.value == null);
+                }
+            }
+            Assert.assertEquals(50, with);
+        }
+        db.close();
+    }
+    
     /** A key of 1 to 20 of the bytes 'a', 'b' and 'c'. */
     private static String abcKey(Random r) {
         int length = 1 + r.nextInt(20);

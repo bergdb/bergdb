@@ -79,6 +79,16 @@ public class GetMany {
      */
     public boolean endInclusive;
     
+    /**
+     * For reclaim's scan only (bergdb 026-09): Spos.NULL, the default, or a stream position
+     * p. With p, a KV whose value is not stored before p (stored at p or later, or not written
+     * yet: a vpos) is given without its value: Kvt.value null and Kvt.spos the value's
+     * position, and the pointer to the value is not followed, so nothing is loaded for it. The
+     * position is known before the follow: the value's own if the pointer holds it in memory,
+     * else the pointer's reference. A value stored before p is given as without the option.
+     */
+    public long valuesBefore;
+    
     // ---- Output ----
     
     /**
@@ -115,6 +125,7 @@ public class GetMany {
         forward = true;
         endKey = null;
         endInclusive = true;
+        valuesBefore = Spos.NULL;
         gd = new GetData();
         getOpCount = 0;
     }
@@ -423,6 +434,19 @@ public class GetMany {
                 
                 setLinkCompareValue(linkCompareValue);
                 
+                if (valuesBefore != Spos.NULL && linkNode.isSegmentLeaf()
+                        && Klong.getLength(kwi.klong) < Klong.MAX_SIZE) {
+                    // A pointer to a value (as in setup()): its position before the follow.
+                    final long spos = valuePos(linkNode, kwi.pointerIndex);
+                    if (Spos.isVpos(spos) || spos >= valuesBefore) {
+                        result = new Kvt();         // Without its value (bergdb 026-09).
+                        result.key = getKeySegments(Klong.getCompareValue(kwi.klong));
+                        result.time = kwi.klongTime;
+                        result.spos = spos;
+                        break;  // Done!
+                    }
+                }
+                
                 Node next = gd.followPointer(linkNode, kwi.pointerIndex);
                 
                 if (next instanceof ValueNode) {
@@ -447,6 +471,22 @@ public class GetMany {
             }
 
             return result;
+        }
+        
+        /**
+         * The position of the value that pointer i of 'node' names, without a follow
+         * (valuesBefore; bergdb 026-09): the value's own position if the pointer holds it in
+         * memory, else the pointer's reference, which names it (a value is never resolved
+         * by Rule R). The pair is read under the node's monitor, as a follow reads it (C2).
+         */
+        private long valuePos(KeyNode node, int i) {
+            final Pointee pointee;
+            final long ref;
+            synchronized (node) {
+                pointee = node.getPointee(i);
+                ref = node.getPointerPos(i);
+            }
+            return pointee instanceof ValueNode ? ((ValueNode) pointee).getSpos() : ref;
         }
         
         /**
