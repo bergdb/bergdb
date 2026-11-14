@@ -59,7 +59,7 @@ import bergdb.stream.SalsaStream;
  * 026-06; 026-13, U13-6); FileStream and MemoryStream as a stream for DbBuilder; and the
  * exceptions that their Javadoc names. Everything else that is reachable from them is
  * internal, whatever is public, and may change without notice: among others Db.internal()
- * and Db.Internal, Db.ExecuteData, Db.TestHooks, TestNodeSize, Db.StartParams and the
+ * and Db.Internal, Db.ExecuteData, Db.TestHooks, TestNodeSize and the
  * listeners, lookupTime(), checkNodes(), the members that their Javadoc calls internal or
  * for tests, Trans's other fields, GetMany.Chain, and the stream classes beyond making a
  * stream.</p>
@@ -1052,28 +1052,6 @@ public class Db implements AutoCloseable {
      * Starts the database by reading from the stream. Call once per Db object
      * after constructor and before the get/set methods.
      * 
-     * @throws StreamIoException
-     * @throws StreamFormatException
-     *             Among others, if the database has another maximum node size than this
-     *             start, 30 but in BergDB's own tests (bergdb 026-08), or none, as one
-     *             written before 2026-10-27 (bergdb 005-50); the start then writes nothing.
-     * @throws DatabaseNotCreatedException
-     *             If the stream holds a creation that did not complete, and no committed
-     *             transaction (bergdb 005-33). The start writes nothing.
-     * @throws IllegalDbStateException
-     *             If start() has been called already, or stop(): nothing is closed then.
-     * @throws DbFailedException
-     *             If a read of reclaim's settings or table, a step after the database is active,
-     *             fails on the storage (bergdb 005-30).
-     */
-    public StartInfo start() {        
-        return start(StartParams.NULL);
-    }
-    
-    /**
-     * Starts the database by reading from the stream. Call once per Db object
-     * after constructor and before the get/set methods.
-     * 
      * <p>A start that throws closes the storage before the exception leaves (2026-10-24,
      * bergdb 005-32): what it appended is written (recovery's zero fill, as any start writes
      * it; until 2026-11-04, bergdb 005-11, also the copies between the main stream and its
@@ -1083,10 +1061,6 @@ public class Db implements AutoCloseable {
      * finalized the Db, and its threads wrote into a database started after it on the same
      * files.</p>
      * 
-     * @param params  
-     *          Used for testing, normally set to StartParams.NULL as default.
-     * @throws IllegalArgumentException
-     *          If params is null: nothing is closed then (bergdb 020-27, Q2).
      * @throws StreamIoException
      * @throws StreamFormatException
      *          Among others, if the database has another maximum node size than this
@@ -1101,17 +1075,13 @@ public class Db implements AutoCloseable {
      *          If a read of reclaim's settings or table, a step after the database is active,
      *          fails on the storage (bergdb 005-30).
      */
-    public StartInfo start(StartParams params) {
-        if (params == null) {
-            // Before the locks and the state: a null closed the storage (bergdb 020-27, Q2).
-            throw new IllegalArgumentException("params == null not allowed");
-        }
+    public StartInfo start() {
         Throwable failure;
         synchronized (writeLock) {
             synchronized (readSync) {
                 assertStateIsZero();
                 try {
-                    return startInner(params);
+                    return startInner();
                 } catch (Throwable e) {
                     // Under both locks, so that no call sees what the start left.
                     state = DbState.STOPPING;
@@ -1157,7 +1127,7 @@ public class Db implements AutoCloseable {
      * @throws IllegalDbStateException
      * @throws DatabaseNotCreatedException
      */
-    private StartInfo startInner(StartParams params) {
+    private StartInfo startInner() {
         assertStateIsZero();
 
         storageManager.start();
@@ -1189,9 +1159,7 @@ public class Db implements AutoCloseable {
                     + "020-28). The start has written nothing.", e);
         }
         
-        handleStartParams(params);
-        
-        long startupPos = x.startupPos.get();
+        long startupPos = readStartupPosAndDistance();
         ArrayList<StoredTrans> transactions = readTransactions(startupPos);
         
         setLastTransTimeOfDbClock(transactions);
@@ -1245,25 +1213,23 @@ public class Db implements AutoCloseable {
     }
     
     /**
+     * Reads the startup pos and the startup distance from the stream and sets them for the
+     * run: the startup pos from the last committed record, which stores it (bergdb 027-03,
+     * section 8.1), the startup distance from the last valid meta block. Until 2026-11-14,
+     * the public Db.start(StartParams) let a caller give both instead, unchecked (bergdb
+     * 028-10).
+     * 
      * @throws StreamFormatException
-     * @param listener
+     *          If the meta block's format is bad, or a record's startupPos cannot be one
+     *          that the take wrote.
      */
-    private void handleStartParams(StartParams params) {
-        // params.isNull() is normally true, can be overridden for test purposes.
-        
-        if (params.isNull()) {
-            params = new StartParams();
-            MetaBlock meta = nodeStream.getMetaBlock();
-            meta.checkFormat();
-            
-            // The startup pos from the last committed record, which stores it (bergdb 027-03,
-            // section 8.1); the startup distance from the meta block.
-            params.startupPos = getStartupPosFromLastTransaction(meta.getLastTransSpos());
-            params.startupDistance = meta.getStartupDistance();
-        }
-        
-        startupDistance = params.startupDistance;
-        x.startupPos.set(params.startupPos);
+    private long readStartupPosAndDistance() {
+        MetaBlock meta = nodeStream.getMetaBlock();
+        meta.checkFormat();
+        long startupPos = getStartupPosFromLastTransaction(meta.getLastTransSpos());
+        startupDistance = meta.getStartupDistance();
+        x.startupPos.set(startupPos);
+        return startupPos;
     }
 
     /**
@@ -4090,41 +4056,6 @@ public class Db implements AutoCloseable {
         private void updateStats() {
             kvCount += x.trans.kvs.length;
             transactionCount++;
-        }
-    }
-    
-    public static class StartParams {
-        public static final StartParams NULL = new StartParams();
-        public long startupPos;
-        public int startupDistance;
-        
-        public StartParams() {
-            startupPos = Spos.NULL;
-            startupDistance = -1;
-        }
-        
-        public boolean isNull() {
-            return this == NULL;
-        }
-    }
-    
-    /**
-     * For listening to what happens at startup. Useful for testing / debugging.
-     */
-    public static interface StartListener {
-    }
-    
-    public static final PrintStartListener SYSTEM_OUT_START_LISTENER = new PrintStartListener(System.out);
-    
-    public static class PrintStartListener implements StartListener {
-        private PrintStream p;
-        
-        public PrintStartListener() {
-            this(System.out);
-        }
-        
-        public PrintStartListener(PrintStream out) {
-            this.p = out;
         }
     }
     

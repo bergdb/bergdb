@@ -1,7 +1,7 @@
 028-10. Investigate: the public Db.start(StartParams) takes unchecked values
 ============================================================================
 
-Status: evaluated, for Frans. Kind: Investigate. Frans: decision.
+Status: done (2026-11-14). Kind: Investigate. Frans: decision (A).
 Created 2026-11-13 by Frans Lundberg.
 
 The task is to find out whether this is a bug (Frans, 2026-11-13, 13:04:
@@ -109,3 +109,27 @@ Log
 2026-11-13. Evaluated by an agent of coord-1113 (startbugs, branch
 028-startbugs): a bug by R5; the test of today's behaviour; options A to
 C, recommended A; no fix made (an API choice, Frans's).
+
+2026-11-14, 12:10. Frans: "Remove the parameters if possible. It if works
+with the current testing. Then clean up the code." Option A.
+
+2026-11-14. Done by an agent of coord-1114, on branch
+028-10-remove-start-params: `Db.start(StartParams)` and the class
+`Db.StartParams` removed; `Db.start()`, the only start, which
+`DbBuilder.start()` and the Pub API call, does what
+`start(StartParams.NULL)` did. `handleStartParams` became
+`readStartupPosAndDistance()`, its `NULL` branch alone: s by the walk
+from the last valid meta block's lastTrans, sd from the meta block, both
+set for the run. Gone with them: the empty `Db.StartListener`,
+`PrintStartListener` and `SYSTEM_OUT_START_LISTENER` (no use but
+BigDb's comment, the second parameter of an older start), the
+`start(null)` checks in `DbTesterJavadoc.testDbNullArguments`,
+`DbTesterRestart.testStartParamsTakenUnchecked`, BigDb's comment, and
+the Javadoc's mention of `Db.StartParams` among the internal members.
+No test needed a chosen startup pos or distance: no test hook kept.
+027-03, section 14.2's outline, and 027-11 (1.4, 6, 7, 8 and 9) say
+what the code does now. The C clones (012, 022) are separate projects,
+not changed: their comments name `handleStartParams`, and they never
+had `StartParams` (012-03, row 27). Gates in the clone: `before-commit.sh`
+(BEFORE COMMIT OK, 70 s), `level1.sh` (LEVEL 1 OK) and `level2.sh
+quick` (LEVEL 2 OK, with the Lean conformance steps).

@@ -971,7 +971,7 @@ The outline (`Db.startInner`, :888; 012-02, sections 4.3, 4.6 and 8.14):
 1. The checks before any write: an incomplete creation, the meta
    version, the node size (sections 6 and 7).
 2. Recovery (section 7).
-3. The startup position (`Db.handleStartParams`, :979;
+3. The startup position (`Db.readStartupPosAndDistance`;
    `getStartupPosFromLastTransaction`, :1000): from the record that the
    last valid meta block names (128 if none) to the end, every committed
    record parsed (so its format checked), its startupPos checked

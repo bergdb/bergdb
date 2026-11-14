@@ -104,7 +104,6 @@ public class BigDb {
         
         Db db2 = Db.builder().testSetup(ms).build();
         long t = System.nanoTime();
-        //db2.start(StartParams.NULL, new Db.PrintStartListener());
         db2.start();
         
         t = System.nanoTime() - t;

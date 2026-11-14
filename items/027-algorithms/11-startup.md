@@ -123,13 +123,11 @@ just after the record's end gives the new one too
 to its own record's position was taken: a section of R(k) alone, whose
 transaction is not rerun, so every key that no index node of R(k) held
 was gone, and the next commit wrote that s again
-(`testOwnPositionStartupPosRefused`). `Db.start(StartParams)`, public,
-with other params than `StartParams.NULL` (only `NULL` is passed in
-`java/`), takes the caller's s and sd as they are, and skips the walk
-above with its checks, `MetaBlock.checkFormat` and the new lastTrans: an s after the
-stream's starts without the keys before it, and the next commit keeps it
-so, while an sd is for the run only (`testStartParamsTakenUnchecked`); a
-bug by R5, its fix Frans's choice (028-10).
+(`testOwnPositionStartupPosRefused`). A start takes s and sd from the
+stream only (`Db.readStartupPosAndDistance`): `Db.start()` has no
+parameters. Until 028-10 (2026-11-14), the public `Db.start(StartParams)`
+took a caller's s and sd unchecked and skipped the walk above; an s
+after the stream's lost the keys before it for good, a bug by R5.
 
 Then the section is validated (005-75), with or without `-ea`: record
 positions at least 128 and strictly increasing; times from 0 to 2^56 − 1
@@ -416,8 +414,9 @@ T3 and T4 are part 6's; what they give a start:
 ## 6. In Java
 
 `core/Db` (`startInner`, the order of 1.2 to 1.9, and the methods it
-calls; `StartParams`, `StartInfo`); `core/DbStarter` (1.4's validation
-to 1.9); `core/NodeCollection` (`setStartupSection`, `readVersion`,
+calls, `readStartupPosAndDistance` among them; `StartInfo`);
+`core/DbStarter` (1.4's validation to 1.9); `core/NodeCollection`
+(`setStartupSection`, `readVersion`,
 `endReconstruction`, `followStreamPointer`, `resolvePointers`,
 `linkToCanonical`, `checkLinkById`); `NodeStream.TransIterator`,
 `readRecordHeader`; `TransSeq.TransInfo`, `ownBytes`; `KeyNode`
@@ -431,11 +430,11 @@ cycle check (027-03, 14.2).
 
 ## 7. Tests
 
-* **Gated by `before-commit.sh`**: `DbTesterRestart` (43, 6 of them f;
+* **Gated by `before-commit.sh`**: `DbTesterRestart` (42, 6 of them f;
   the refusals of corrupt times, startupPos, got-dirty ids, an older
   topPos, a meta block's lastTrans, another or no node size; a crash
-  inside `setStartupDistance`, a startupPos at its own record, and
-  `StartParams` as taken today, 028-08 to 028-10);
+  inside `setStartupDistance` and a startupPos at its own record, 028-08
+  and 028-09);
   `DbStarter` (7); `RecoverableStream` (37: crashes in a header, a record
   and a meta block, the fill, an incomplete creation, refusals that
   write nothing); `MetaBlock` (4); `NodeCollection`'s `testFollowRuleR`
@@ -458,10 +457,10 @@ has it. **P10**: sd is the start's one setting, in the stream. **P7**: a
 stream that breaks a check is refused with an SFE; damage the checks
 miss may fail a read later (014-01, section 7, point 3). **R1**: a
 refused start writes nothing, but recovery's fill before a refusal
-after it (G18). **R5**: `Db.start(StartParams)` takes a caller's s and
-sd unchecked (1.4; 028-10). **P12**: keys and values are bytes. **P1**
-is about a running database; a start holds both locks, and P5 bounds
-it.
+after it (G18). **R5**: a start takes s and sd from the stream only;
+no parameter gives them (1.4; 028-10). **P12**: keys and values are
+bytes. **P1** is about a running database; a start holds both locks,
+and P5 bounds it.
 
 
 ## 9. Limits and open work
@@ -485,9 +484,9 @@ it.
   (1.4). Evaluated: not a bug (2026-11-13).
 * 028-09: `checkStartupPos` took a startupPos equal to its own record's
   position (1.4). A bug, fixed (2026-11-13): refused.
-* 028-10: the public `Db.start(StartParams)` takes a caller's s and sd
-  unchecked (1.4). Evaluated: a bug by R5; the fix, an API choice, is
-  Frans's (2026-11-13).
+* 028-10: the public `Db.start(StartParams)` took a caller's s and sd
+  unchecked (1.4). Evaluated: a bug by R5 (2026-11-13). Fixed
+  (2026-11-14): the parameters removed (option A).
 * 028-11: 027-03:415, :1116, :1234: the creation as 264 bytes; it is 272
   (`Db.CREATION_LENGTH`, since 024-25). Fixed (2026-11-13).
 * 028-11: `java/stress/level1.sh`:2–3, :29–30: "startup always replays the whole

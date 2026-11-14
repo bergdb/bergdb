@@ -754,22 +754,22 @@ public class DbTesterJavadoc {
     /**
      * Db refuses a null argument with IllegalArgumentException that names it, as every null
      * argument of the API (bergdb 020-27, Q2; Frans's decision for the Pub API, 020-21, 3),
-     * before anything else: start(null) closes nothing (a NullPointerException closed the
-     * storage), and a start after it works; a refused read or transaction leaves the database
-     * active and unchanged; getMany() refuses a null stop condition; after stop() the same.
+     * before anything else: a refused read or transaction leaves the database active and
+     * unchanged; getMany() refuses a null stop condition; after stop() the same. Until
+     * 2026-11-14, start(null) too, before it closed anything: bergdb 028-10 removed start's
+     * parameter.
      */
     @Nano
     public static void testDbNullArguments() {
         final Db db = Db.builder().testSetup().build();
         try {
-            assertNullRefused("start(null)", "params", () -> db.start(null));
             db.start();
             db.execute(db.trans().put("k", "v"));
             final GetData gd = db.newGetData();
             final GetMany noStop = db.newGetMany();
             noStop.stopCondition = null;
             String[] params = {"keySegments", "gd", "g", "g.stopCondition", "t", "b", "out",
-                "syncLevel", "syncLevel", "params"};
+                "syncLevel", "syncLevel"};
             Call[] calls = {
                 () -> db.getOne(LATEST, null, gd),
                 () -> db.getOne(LATEST, Keys.toSegments("k"), null),
@@ -779,8 +779,7 @@ public class DbTesterJavadoc {
                 () -> db.execute((Trans.Builder) null),
                 () -> db.printDag(null),
                 () -> db.sync(null),
-                () -> db.sync(0, null),
-                () -> db.start(null)};
+                () -> db.sync(0, null)};
             long length = db.getStreamLength();
             assertNullRefused(params, calls);
             Assert.assertEquals("nothing written", length, db.getStreamLength());
