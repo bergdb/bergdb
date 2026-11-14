@@ -1550,6 +1550,15 @@ and its status:
     coordinator at 23:50; `InvAssembly.lean`). Not proved yet: the parts
     `NonEmptyOK`, `RootsOK` and `FillOK` (latest's, next), `HeightLiveOK`
     (cost's) and `RangeAtOK` (putinv's `RangeOrder`, on P).
+    - `HeightLiveOK` (TP7's (b)): proved from one named premise,
+      `OpDelChkOK` (cost, 01:10; `treeRun_heightLiveOK_chk`,
+      `invPreserved_of_open_chk`, `HeightsChkRun.lean`). The premise: a
+      delete, from a state that the transaction's earlier operations
+      reach, runs as its copy with a check at every take-back
+      (`putKvDelChk`, `DelChk.lean`; (4) below). Tested on 310 runs within
+      reach: 6828 deletes, 0 failures; 160 of them with a take-back in the
+      upward delete's loop, 2305 with a merge's take-back, 453 with root
+      collapse's (`/Users/f/fl/bench/2026-11-13/cost/fit/DelChk.lean`).
     - `invOK_of_parts`: the walk at t finds no fault when the space root is
       a key node and every key node is sound as it is. The kinds and the
       live heights must hold. The reachable nodes must meet `NonEmptyOK`,
@@ -1660,6 +1669,34 @@ and its status:
       access path; `writerWP_appendKlongs_chainGL` is its corollary with E
       empty (`liveEdgesX_false_iff`), and `writerWP_appendKlongs_chainG`
       stays the corollary of that, so the walk still exists once.
+    - `QLive` of case (3c), new segments below a full leaf, is proved
+      (latest, 01:21; `LivePutNewSegFull.lean`). Before the cascade, the
+      tree with the leaf's klong to the new segment leaf v meets
+      `LiveEdgesX` with E = {v} (`liveEdgesX_newSegLeaf`); the cascade
+      keeps it (`writerWP_appendKlongs_chainGLX`); putSegs then fills v
+      and makes the leaves below it, and `LiveEdges` holds again
+      (`liveEdges_fillNewSegs`). `liveEdges_put_newSegFull` is
+      `writerWP_put_newSegFullR`'s setup; its cascade
+      (`writerWP_appendKlongs_chainGRV`) gives that the nodes reached
+      after it are below the next id. `liveCase_putNewSegFull` is the case.
+    - TP7 with every put case proved is `latestInvOK_of_open_del` /
+      `invPreserved_of_open_del` (`LivePutNewSegFull.lean`, beside
+      `latestInvOK_of_open`). Left as premises:
+      - TP4, `DeadAllOK` and P's tree (`TreeAt`) at every run;
+      - cost's `OpHtDelOK`;
+      - TP10's three posts of (4), the delete with the merges;
+      - `QLive` of (4).
+    - The target with every put case proved (latest, 01:25;
+      `LatestOpen.lean`): `latestGetOK_latestScanOK_of_open_del` gives
+      `LatestGetOK` and `LatestScanOK` (and `getOK_scanOK_of_open_del`
+      gives `GetOK` and `ScanOK`) for the parameters of `MergeParamsOK`.
+      Left as premises:
+      - TP4 (`PointersOK`), `DeadAllOK` and P's tree (`TreeAt`) at every
+        run;
+      - the fuel premise along transactions (`TxSegFitsOK`);
+      - cost's `OpHtDelOK` (from the delete's checks, `opHtDelOK_of_chk`);
+      - the delete with the merges (4): TP10's three posts, its reading
+        (`OpGetCaseOK`) and `QLive`.
       - `QLive` of (4), the delete with the merges.
     - `LiveCounts` was checked on runs within reach with the merges on
       (`12-tree-model/live-counts-check.lean.txt`). The parameters were
@@ -1828,12 +1865,15 @@ and its status:
       `ht_deleteUpwardChk`, `ht_putKvDelChk`; `WriterHeightsChk.lean`,
       `WriterHeightsChkDel.lean`).
     - Checked on runs (`/Users/f/fl/bench/2026-11-13/cost/fit/DelChk.lean`,
-      outside the repository): at every delete of 270 runs within reach,
+      outside the repository): at every delete of 310 runs within reach,
       the writer's delete and its copy with the checks give the same
-      result and state. That is 6828 deletes, with merges that took nodes
-      back and root collapses that took a root back. The loop's take-back
-      did not occur in these runs. `MergeHold.lean` checks the merge's
-      tail alone: 1732 merges, 1465 of them taking nodes back.
+      result and state. That is 6828 deletes, 0 failures. Among them 209
+      deletes climb (the upward delete), 160 of them with a take-back in
+      the loop; 2929 merge, 2305 of them with a merge that took a node
+      back; 453 have a root collapse that took a root back (counts
+      corrected 01:30, after putinv found the first count read the trail
+      from the wrong end). `MergeHold.lean` checks the merge's tail
+      alone: 1732 merges, 1465 of them taking nodes back.
     - The holder family (`HtDelFamily`, `treeRun_heightLiveOK_family`)
       stays as a second route. `OpDelChkOK` is the one to discharge.
     - Left: `OpDelChkOK` itself (TP4's holder facts and the merges'
