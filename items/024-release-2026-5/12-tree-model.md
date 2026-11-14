@@ -84,8 +84,9 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
 `delStepsQdL_of_openR4`), so `hG` left:
 
 - `d4` (`QDead`): the delete with the merges (4) keeps every key node that the writer reads at
-  or below theta dead klongs (latest), now only for the deletes that are not (4a) for the dead
-  bound (`DelMergeDRestCase`): from a state with the live counts, a delete whose leaf has room,
+  or below theta dead klongs (latest), now only for the deletes that change the tree and are
+  not (4a) for the dead bound (`DelMergeDOpenCase`; a noop and a key without a leaf read as
+  before, `writerWP_del_noop_reads`, `writerWP_del_noLeaf_reads`, `LiveDelNoop.lean`): from a state with the live counts, a delete whose leaf has room,
   keeps a live klong (more than `mergeBelow` if an inner node names it) and whose new node
   `deadOver` lets through is proved (`deadCase_delRoomFill`, `LiveDelRoom.lean`). Every put
   keeps it, proved for theta 0 or at least 2: the leaf's klong goes in only when `deadOver`
@@ -117,7 +118,7 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   states of its runs random and random2).
 - `l4`: (4) keeps TP7's live counts (`QLive`; latest), now only for the deletes that split,
   empty their leaf, or leave a leaf that an inner node names with at most `mergeBelow` live
-  klongs (`DelMergeRestCase`): a delete whose leaf has room and keeps a live klong, and more
+  klongs (`DelMergeOpenCase`; a noop and a key without a leaf read as before): a delete whose leaf has room and keeps a live klong, and more
   than `mergeBelow` if an inner node names it, is proved (`liveCase_delRoomFill`,
   `LiveDelRoom.lean`): after its bitmap the live counts hold, and with them the merges' loop
   merges nothing (`writerWP_afterDelete_none`, `LiveNoMerge.lean`). Evidence: `LiveCounts` held
@@ -2001,6 +2002,10 @@ and its status:
     - `hG` is gone (03:35): putinv's `UpGhOK` proof (`DelStepsGh.lean`;
       `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`,
       `delStepsQdL_of_openR4`): 9 named premises.
+    - (03:37) A noop delete and one of a key without a leaf read as
+      before (`writerWP_del_noop_reads`, `writerWP_del_noLeaf_reads`;
+      `LiveDelNoop.lean`), so they keep `QLive` and `QDead`: `l4` and `d4`
+      are `DelMergeOpenCase` and `DelMergeDOpenCase`.
     - Not done, and why (latest, 02:05):
       - `QDead` of (2) and (3c), the cascade. The nodes a cascade makes are
         described by `ChainShape.lean`'s `CascadeNodeShape`, whose case for
