@@ -51,6 +51,12 @@ Files
   one chosen, the Java on a branch, the comparison; over several goes of
   about 24 hours, each unattended after a short start; the brief is
   [brief.md](01-model-first-rewrite/brief.md).
+* [025-02](02-proof-cleanup.md). The proofs' cleanup: one name for each
+  route (the F2 to F4 versions) and one top theorem for the key tree
+  (024-12), the stale Lean comments of 007-09, Q2; no statement Frans
+  trusts changes. Started by Frans (2026-11-14, 13:00); the plan by
+  coord-1114's planning agent, the provers in the night of 14 to 15
+  November under the week's ceiling of 92 %. Status: running.
 
 
 Log
@@ -76,3 +82,6 @@ goes.
 2026-11-10. The rule that an entry's plan has no step that waits for
 Frans, at his word (19:29); 025-01's brief now covers all its steps, to
 the Java and the comparison.
+
+2026-11-14. 025-02, the proofs' cleanup, created and started (Frans, 13:00:
+"Yes, good. Go ahead.").
