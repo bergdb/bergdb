@@ -156,6 +156,10 @@ Files
   format as bytes, the commit's conflict check), the assumption list, what
   stays out; proposed, for Frans to decide (2026-11-13, 12:11).
 
+* 15-timing-10m.md. 026-15, the timing pass at 10M keys: what 2026.6's
+  changes to reclaim (026-05, 026-09) cost or save in time; run from
+  2026-11-14, 15:00, to Sunday morning.
+
 Log
 ===
 

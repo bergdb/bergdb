@@ -75,7 +75,7 @@ Proposed (it also mends the link, as `docs/levels.md` is 027-01's
 > a decrease it never grows, and it shrinks with every commit until it is
 > below twice the new setting (`T3_take_decrease`).
 
-Not applied: principles are edited only when Frans says so (010-01).
+Applied 2026-11-14 (Frans, 11:58: "Decisions 4 and 5, as recommended.").
 
 Log
 ---
@@ -86,3 +86,6 @@ Log
 028-startbugs): 027-03, `level1.sh`'s header, a dated note in 019-45 and
 `linkToCanonical`'s Javadoc corrected; P5's sentence proposed above, for
 Frans; `java/before-commit.sh` printed `BEFORE COMMIT OK`.
+
+2026-11-14. P5's sentence applied in 010-01 as proposed (Frans, 11:58),
+by coord-1114.
