@@ -21,6 +21,45 @@ Cite the design rules as "024-12, D1", the stated properties as
 
 ## 1. In short
 
+**The top theorem (2026-11-14, 01:40).** `invGetScanOK_merges` (`LatestTop.lean`) gives, for the
+parameters of `MergeParamsOK`, TP7 (`InvPreserved`), TP10 (`GetOK`) and TP11 (`ScanOK`), and so
+`LatestGetOK` and `LatestScanOK`, from the named premises below. TP4 and P's tree at every run are
+not premises: the take-back's joint induction (putinv's `runTreeQ_of_mergesF4`) carries them
+with TP7's invariant (`LatestQ`, `latestQ_snoc`, `LatestJoint.lean`). Every put case is proved.
+The premises, each with what it says, who owns it, and its test evidence:
+
+- `hD`, `DeadAllOK` at every run: every key node holds at most theta dead klongs. Open
+  (024-23's TP39 and TP40). Void with theta 0 (`deadAllOK_of_theta_zero`), but not for Java's
+  parameters: theta is 7 M / 30, at least 2, from node size 8 (`Dag.theta`,
+  `Params.thetaFor`); `MergeParamsOK` does not fix theta. Evidence: TP39 in `treetest` after
+  every transaction and on Java's traces (C-T6), for the key nodes reached.
+- `hchk`, `OpDelChkOK`: a delete runs as its copy with the take-backs' checks (cost, the
+  heights). Evidence: the same result and state at 6828 deletes of 270 runs.
+- `hfit`, `TxSegFitsOK`: at every state between operations, every path inside one segment tree
+  is shorter than the fuel (cost, step 4). Evidence: about 14,000 operation boundaries.
+- `t4`, `i4`, `r4`: the delete with the merges (4) keeps the writer's tree, `PutInv` and the
+  walk's ranges (cost's merges). No test of their own.
+- `l4`: (4) keeps TP7's live counts (`QLive`; latest). Evidence: `LiveCounts` held at all 6420
+  states between operations of runs with merges and collapses.
+- `hUC`, `hULb`: the upward delete's stop node, its cascade and its LE-b, for the reading
+  (putinv; `delStepsOKF3_of_open5`). Their proofs will need `UpUnlinkOK`, which held at all
+  2529 upward-loop end states (173 of them cascading at the stop node).
+- `hFits`, `DelFullFitsOK`: the state after a delete's full leaf splits fits the fuel (cost).
+  Evidence: as `hfit`'s.
+- `hMS`, `MergeStepOKF3`: a merge keeps the nodes reached untaken (proved,
+  `mergeStepOKF3_untaken`) and fits the fuel (cost, the heights). No test of its own.
+- `hCo`, `CollapseStepOKF4`: the state after a replaceRoot at a segment root fits the fuel
+  (cost, `HeightInv`), and `CollapseUnlinkOK` (putinv, not proved). Evidence:
+  `CollapseUnlinkOK` held at all 96 replaceRoots at a segment root, 32 with a full leaf.
+- `hDS`, `DelStepsJ2OKF3`: the delete's steps keep the take-back's (B) and (C) (putinv). It
+  reduces (`delStepsJ2OKF3_of_open`) to the stop node's cascade and LE-b for the take-back,
+  `DelFullFitsOK`, and, at every state between operations, SegFits and the made-for ids below
+  the transaction's first id. Evidence: `UpUnlinkOK`'s 2529 states; none yet for the made-for
+  bound.
+- `hRJ`, `ReplaceRootFullJ2OK`: a replaceRoot whose segment leaf is full keeps the take-back's
+  (B) and (C) (putinv, not started). The 32 full-leaf replaceRoots above run its code, but test
+  only `CollapseUnlinkOK`.
+
 Kept current; section 9 has the exact state. Written 12:24.
 
 * **The branch is gated and ready to land:** `024-12-tree-model`, head
@@ -1688,6 +1727,16 @@ and its status:
       - cost's `OpHtDelOK` (from the delete's checks, `opHtDelOK_of_chk`);
       - the delete with the merges (4): TP10's three posts, its reading
         (`OpGetCaseOK`) and `QLive`.
+    - The top theorem (latest, 01:40, the join agreed with putinv):
+      `invGetScanOK_merges` (`LatestTop.lean`) on putinv's
+      `runTreeQ_of_mergesF4` (`TakeRunQF4.lean`), with section 1's flat list
+      of premises. TP4 and P's tree are no longer premises. The induction's
+      Q is `LatestQ` (TP7's invariant, TP4, the kinds, the heights, the
+      sizes and the empty key of every inner node), with its step
+      `latestQ_snoc` from the run inductions' steps taken one transaction
+      at a time (`kindsAllOK_snoc`, `heightAllOK_snoc`, `sizeOK_snoc`,
+      `leftAllOK_snoc`, `invOK_snoc`; `LatestJoint.lean`). The reading of (4)
+      is `opGetCaseOK_delMergeF4` with TP4 from the induction.
       - `QLive` of (4), the delete with the merges.
     - `LiveCounts` was checked on runs within reach with the merges on
       (`12-tree-model/live-counts-check.lean.txt`). The parameters were

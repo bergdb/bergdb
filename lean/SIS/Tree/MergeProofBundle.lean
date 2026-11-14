@@ -179,6 +179,8 @@ import SIS.Tree.LiveChain
 import SIS.Tree.LiveStepsX
 import SIS.Tree.LivePutNewSegFull
 import SIS.Tree.LatestOpen
+import SIS.Tree.LatestJoint
+import SIS.Tree.LatestTop
 import SIS.Tree.LivePutFull
 import SIS.Tree.LiveTP7
 import SIS.Tree.WriterTreeInnerHalves
