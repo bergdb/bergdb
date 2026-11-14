@@ -1447,8 +1447,23 @@ in 024-12's (4) entry (step 4) and section 1's list.
     stop node's cascade and after LE-b's full split): their reached form
     needs the heights' cache after the upward loop, so the holders of the
     nodes it takes back and the stop node's retarget (putinv's proposed
-    `UpHolderOK`, to be checked on runs); LE-b never fires in the DelChk
-    families.
+    `UpHolderOK`, to be checked on runs). LE-b at the stop node looks
+    dead with the merges on: `12-tree-model/leb-probe.lean.txt`, 3382
+    deletes of random runs with the merges on (45 climbing), no stop node
+    off a segment leaf and no LE-b; with the merges off, 792 deletes, 61
+    inner stop nodes, 34 LE-b. The candidate proof: with the fill at the
+    delete's start (latest's `LiveCounts`) a node one delete empties has
+    one live klong, so it is no node an inner node names (`mergeBelow` ≥ 2)
+    and no inner segment root (two live klongs): a segment root and a
+    leaf. The climb passes only such nodes, so the stop node, the parent
+    of one, is a segment leaf; `UpLebFitsOK` and the inner stop node's
+    branch never run, and `OpDelChk2OK`'s stop-node check and `checkOld`'s
+    leaf part hold. Proved (`StopLeafLive.lean`): `stopLeaf_of_liveCounts`
+    (with the merges on and `LiveCounts`, no node below an inner node of
+    the path is emptied: the path's flags `fReach_path`, an emptied node
+    at most one live klong), and `UpLebFitsOK` with the fill at the
+    delete's start, `UpLebFitsOKL`, holds (`upLebFitsOKL_of`), so hFitL
+    goes from the flat list where `LiveCounts` is at hand.
   - `TakeBelowFuelDelOK p` (`HeightsFit.lean`): a delete takes back no
     node of height fuel or more that it found at its start.
     `12-tree-model/heights-op-check.lean.txt`: 3224 operations that took
