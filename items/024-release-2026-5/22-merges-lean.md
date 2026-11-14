@@ -1448,8 +1448,12 @@ in 024-12's (4) entry (step 4) and section 1's list.
     holds, by a live klong now or before the transaction, only nodes not
     taken back, has its times at most the transaction's, and the chain's
     nodes taken back are the transaction's. With it `UpCascFitsOKR` holds
-    (`upCascFitsOKR_of`). To be checked on runs (putinv). `UpLebFitsOK`
-    is gone where the fill is at hand (`upLebFitsOKL_of`, below). LE-b at the stop node looks
+    (`upCascFitsOKR_of`). Checked on runs by putinv (its UpChk2.lean): 2529
+    loop ends, 0 failures (1385 with chain nodes taken back, 954
+    unlinked, 173 cascades), the loop keeping `gh` too (a hypothesis of
+    `UpCascFitsOKR`; putinv can prove it with a loop walk that knows the
+    parent cached). `UpLebFitsOK` is gone where the fill is at hand
+    (`upLebFitsOKL_of`, below). LE-b at the stop node looks
     dead with the merges on: `12-tree-model/leb-probe.lean.txt`, 3382
     deletes of random runs with the merges on (45 climbing), no stop node
     off a segment leaf and no LE-b; with the merges off, 792 deletes, 61
@@ -1483,11 +1487,18 @@ in 024-12's (4) entry (step 4) and section 1's list.
        (`TakeJ2` with `TreeOK`, through `liveHolder_unique`).
      - `checkOld`'s segment leaf and the stop node a segment leaf: from
        the fill at the delete's start (latest's `LiveCounts`,
-       `live_reached`). A node the delete empties has one live klong, so
-       it is a segment root and a leaf (an inner segment root has two, a
-       node an inner node names has `mergeBelow` ≥ 2); the climb passes
-       only such nodes, so their parents are segment leaves. It ties the
-       heights' run induction to TP7's, as latest's run induction does.
+       `live_reached`), by `stopLeaf_of_liveCounts` (proved,
+       `StopLeafLive.lean`). What is left: the lemma asks the key access
+       path linked by live klongs in the operation's starting tree
+       (`(K i, X i) ∈ (Nn (i - 1)).liveAt c.i`, `wNode` of the start at
+       each `X i`), which the heights' walk (`HtInv`) does not carry;
+       putinv's descent walk (`writerWP_del_toLeafMK`) carries it, but for
+       the writer's `putKv`, not the checked copy. So: either that link
+       invariant through the walk of `putKvDelChk2`'s descent, or a
+       `Refines` argument that the checked copy's prefix reaches the
+       writer's state; then a copy without the two checks and its
+       refinement. About 2.5 to 3 hours. It ties the heights' run
+       induction to TP7's (the fill), as latest's run induction does.
      - `checkOld`'s node of the view: a walk of `madeFor` over every
        operation (`setMadeFor` passes `replacedBy x`, or an x the
        transaction did not make).
