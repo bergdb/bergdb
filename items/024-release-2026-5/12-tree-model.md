@@ -1773,6 +1773,25 @@ and its status:
       take-back's delete steps come from their pieces (putinv's
       `runTreeQ_of_mergesF4S` over `TakeS4`, `delStepsJ2OKF3_of_openR`), with
       the fuel at every state from `hfit`.
+    - `QDead` of (3a) and (3b) is proved (latest, 01:52; `DeadCases.lean`):
+      a key klong of a compare value with no live klong adds no dead klong
+      (`KNode.deadCount_add_key_new`), and a new segment leaf holds none.
+      `hRJ` is putinv's `replaceRootFullJ2OK_run` (02:00).
+    - Not done, and why (latest, 02:05):
+      - `QDead` of (2) and (3c), the cascade. The nodes a cascade makes are
+        described by `ChainShape.lean`'s `CascadeNodeShape`, whose case for
+        the new nodes (`ShadowOK`) says which klongs are shadowed but not how
+        many, and whose top node (`CascadeTop`) does not keep the `deadOver`
+        test that let it through. Both are definitions that putinv's
+        take-back uses, so a dead bound needs new twins of them and of
+        `writerWP_appendKlongs_chainShape`, not a change. The counts exist:
+        a half holds at most as many dead klongs as the klongs put into it
+        (`halves_normalized_deadCount_le`), a last version none.
+      - `QLive` of (4). A merge's parent can split and cascade
+        (`mergeParent` to `handleFull`, also on `deadOver`), merges take
+        nodes back, and root collapse runs the leaf's cascade. A proof would
+        twin cost's merge and collapse proofs at the writer's level, as the
+        cascade's walk was twinned for `LiveEdges`.
       - `QLive` of (4), the delete with the merges.
     - `LiveCounts` was checked on runs within reach with the merges on
       (`12-tree-model/live-counts-check.lean.txt`). The parameters were
