@@ -52,7 +52,8 @@ keeps `DelInvJF3`. -/
 def UpLebJ2OKF3 (c : Ctx) (base : View BVal) (KO : KindOracle) (BK B : NodeId) : Prop :=
   ∀ (w w3 : W) (top0 : Top) (pre : List Nat) (cv : Nat) (rk : NodeId)
     (X : Nat → NodeId) (Nn : Nat → KNode) (K : Nat → Nat) (depth stop : Nat) (w2 : W) (S : KNode),
-    PutBase c base B → PutInv c base w → RangeOrder (wNode c.p base w) c.i w.top.rootKey →
+    2 ≤ c.p.splitAbove → ViewIdsBelow BK c.view → ViewKinds KO BK c → ICEFromKinds c base KO BK →
+    X 0 = w.top.rootKey → 0 < c.i → PutBase c base B → PutInv c base w → RangeOrder (wNode c.p base w) c.i w.top.rootKey →
     SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey →
     InnerChildrenExist (wNode c.p base w) c.i w.top.rootKey → ReadsAs c.p base w w3 →
     keyWf (pre ++ [cv]) = true →
@@ -327,7 +328,8 @@ theorem writerWP_del_emptyAnyMJK (c : Ctx) (base : View BVal) (hvc : ViewCoheren
   · intro seg stop w2 S hsD hbetween hLE hJw2 hsl hK0 hsm gs hs
     refine writerWP_mono (hLb w w3 top0 pre cv rk (fun i => nodeAt w.top.rootKey P i)
       (fun i => (wNode c.p base w (nodeAt w.top.rootKey P i)).getD n)
-      (fun i => ((P[i - 1]?).bind (·.1)).getD 0) P.length stop w2 S hB hI hRO hF hICE hr03 hkey hrk
+      (fun i => ((P[i - 1]?).bind (·.1)).getD 0) P.length stop w2 S hsa2 hvB hk hICEk (by simp [nodeAt]) hpos
+      hB hI hRO hF hICE hr03 hkey hrk
       hvisw hpX hpK hlkX hXN hlinkK hne' hall' hnl' hdepth hsD hbetween hLE hJw2 hsl hK0 hsm hJ2 hMF3 hkidsw) ?_
     intro _ w' hD'
     refine writerWP_mono (hMU gs hs false w' hD') ?_

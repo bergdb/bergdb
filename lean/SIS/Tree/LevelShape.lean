@@ -14,13 +14,15 @@ one level up, for `handleFull` of X (D + 1) with the last version `last` and
 nothing put. -/
 
 set_option maxHeartbeats 3200000 in
-/-- After `handleFull` of X (D + 1) with the last version `last` (a time klong
+/-- `writerWP_handleFull_lastShape` with a property `Bnd` of every node it
+writes, which every kind of node the split and the cascade can write has (the
+dead klongs' bound, `writerWP_handleFull_lastDead`). After `handleFull` of X (D + 1) with the last version `last` (a time klong
 and key klongs of distinct compare values), with the cascade above it, every
 node with an id from the next id on or on the chain has a cascade node's shape
 (`ShapePost` from D + 1 with nothing put): on the premises of
 `writerWP_appendKlongs_chainShape` for X s .. X D, and for X (D + 1) those of
 `writerWP_handleFull_lastVF2` that concern the writer's nodes, with `LastOrd`. -/
-theorem writerWP_handleFull_lastShape (c : Ctx)
+theorem writerWP_handleFull_lastShapeG (c : Ctx)
     (path0 : List (Option Nat × NodeId)) (s D : Nat) (X : Nat → NodeId) (K : Nat → Nat)
     (Nn : Nat → KNode) (hsD : s ≤ D)
     (hX : ∀ i, s ≤ i → i ≤ D + 1 → (path0[i]?).map (·.2) = some (X i))
@@ -45,14 +47,29 @@ theorem writerWP_handleFull_lastShape (c : Ctx)
     (hLO : LastOrd c K Nn D last)
     (w : W) (hpath : w.path = path0)
     (hS2 : ∀ i, s ≤ i → i ≤ D + 1 → w.nodes.lookup (X i) = some (Nn i) ∧ X i < w.next)
-    (hfr : ∀ z, w.next ≤ z → w.nodes.lookup z = none) :
+    (hfr : ∀ z, w.next ≤ z → w.nodes.lookup z = none)
+    (Bnd : KNode → Prop)
+    (hBc : ∀ i, s ≤ i → i ≤ D + 1 → Bnd (Nn i))
+    (hBt : ∀ n, deadOver c.p n = false → Bnd n)
+    (hBn : ∀ (n : KNode) (more : List (Nat × NodeId)), n.ks = newKlongs c.i more →
+      (more.map Prod.fst).Nodup → Bnd n)
+    (hBh : ∀ i, s ≤ i → i ≤ D → ∀ ins : List (Nat × NodeId), ins.length ≤ 2 →
+      Bnd (halves (Nn i).leaf c.i ((Nn i).lastVersion c.i) ins).1 ∧
+        Bnd (halves (Nn i).leaf c.i ((Nn i).lastVersion c.i) ins).2.1)
+    (hBr : ∀ (a b : NodeId) (sc : Nat), 0 < sc → Bnd ⟨false, [Klong.time c.i, .key 0 a, .key sc b]⟩)
+    (hBp : ∀ i, s ≤ i → i ≤ D + 1 → Bnd ((Nn i).toPrev (c.i - 1)))
+    (hBe : ∀ i, s ≤ i → i ≤ D → ∀ idx r, Bnd ((Nn i).repoint idx r))
+    (hBlast : ∀ lf, Bnd ⟨lf, last.ks⟩)
+    (hBlh : Bnd (halves (Nn (D + 1)).leaf c.i last []).1 ∧ Bnd (halves (Nn (D + 1)).leaf c.i last []).2.1) :
     WriterWP (handleFullWith (fun q more => appendKlongs D q more) (D + 1) (X (D + 1)) [] last compact)
-      c w (fun _ w' => ShapePost c X K Nn s (D + 1) [] w w') := by
-  have hchainS := writerWP_appendKlongs_chainShape c path0 s D X K Nn
+      c w (fun _ w' => ShapePostG Bnd c X K Nn s (D + 1) [] w w') := by
+  have hchainS := writerWP_appendKlongs_chainShapeG c path0 s D X K Nn
     (fun i h1 h2 => hX i h1 (by omega)) (fun i h1 h2 => hK i h1 (by omega))
     (fun i h1 h2 => hlinkK i h1 (by omega)) hrange hlen hord
     (fun i h1 h2 => htimes i h1 (by omega)) htop
-    (fun i i' h1 h2 h3 h4 => hdist i i' h1 (by omega) h3 (by omega)) (D - s) (by omega)
+    (fun i i' h1 h2 h3 h4 => hdist i i' h1 (by omega) h3 (by omega)) Bnd
+    (fun i h1 h2 => hBc i h1 (by omega)) hBt hBn hBh hBr (fun i h1 h2 => hBp i h1 (by omega)) hBe
+    (D - s) (by omega)
   have hsD' : s + (D - s) = D := by omega
   rw [hsD'] at hchainS
   obtain ⟨pairs, hks, hnd⟩ := hpairs
@@ -83,13 +100,13 @@ theorem writerWP_handleFull_lastShape (c : Ctx)
       w.next ≤ w1.next →
       (∀ z, z < w.next → z ≠ X (D + 1) → w1.nodes.lookup z = w.nodes.lookup z) →
       (∀ z zn, w.next ≤ z → z < w1.next → w1.nodes.lookup z = some zn →
-        ShadowOK c.i zn (ChainShadow c X Nn s (D + 1) [])) →
-      ShapePost c X K Nn s D ins' w1 w2 →
+        ShadowOK c.i zn (ChainShadow c X Nn s (D + 1) []) ∧ Bnd zn) →
+      ShapePostG Bnd c X K Nn s D ins' w1 w2 →
       w3.next = w2.next →
       (∀ z, z ≠ X (D + 1) → w3.nodes.lookup z = w2.nodes.lookup z) →
       (∀ zn, w3.nodes.lookup (X (D + 1)) = some zn →
-        CascadeNodeShape c X K Nn s (D + 1) [] (X (D + 1)) zn) →
-      ShapePost c X K Nn s (D + 1) [] w w3 := by
+        CascadeNodeShape c X K Nn s (D + 1) [] (X (D + 1)) zn ∧ Bnd zn) →
+      ShapePostG Bnd c X K Nn s (D + 1) [] w w3 := by
     intro w1 ins' w2 w3 hnd' hpar h1next h1low h1new ⟨h2next, h2frame, h2fr, h2sh⟩ h3next h3n h3x
     refine ⟨by omega, ?_, ?_, ?_⟩
     · intro z hz hzX
@@ -103,7 +120,8 @@ theorem writerWP_handleFull_lastShape (c : Ctx)
       · subst hzx; exact h3x zn h
       · rw [h3n z hzx] at h
         by_cases hin : w1.next ≤ z ∨ ∃ i, s ≤ i ∧ i ≤ D ∧ z = X i
-        · exact cascadeShape_lift c X K Nn s D [] ins' z zn hnd' hpar hzx hsD (h2sh z zn h hin)
+        · exact ⟨cascadeShape_lift c X K Nn s D [] ins' z zn hnd' hpar hzx hsD (h2sh z zn h hin).1,
+            (h2sh z zn h hin).2⟩
         · have hzw : w.next ≤ z ∧ z < w1.next := by
             rcases hz with hz | ⟨i, h1, h2, h3⟩
             · refine ⟨hz, ?_⟩
@@ -119,13 +137,14 @@ theorem writerWP_handleFull_lastShape (c : Ctx)
             rw [← h2frame z hzw.2 (fun i h1 h2 he => by
               have := (hS2 i h1 (by omega)).2; rw [← he] at this; omega)]
             exact h
-          refine Or.inr (Or.inr (Or.inl ⟨h1new z zn hzw.1 hzw.2 hz1, fun i h1 h2 h3 => ?_⟩))
+          refine ⟨?_, (h1new z zn hzw.1 hzw.2 hz1).2⟩
+          refine Or.inr (Or.inr (Or.inl ⟨(h1new z zn hzw.1 hzw.2 hz1).1, fun i h1 h2 h3 => ?_⟩))
           exfalso
           have := (hS2 i h1 h2).2; rw [← h3] at this; omega
   -- the time split
   have hTIME : (!compact && decide (last.size > c.p.splitAbove)) = false →
       WriterWP (handleFullWith (fun q more => appendKlongs D q more) (D + 1)
-        (X (D + 1)) [] last compact) c w (fun _ w' => ShapePost c X K Nn s (D + 1) [] w w') := by
+        (X (D + 1)) [] last compact) c w (fun _ w' => ShapePostG Bnd c X K Nn s (D + 1) [] w w') := by
     intro hcs
     by_cases hmade : (Nn (D + 1)).firstTime = some c.i
     · refine writerWP_mono (writerWP_handleFullWith_timeInPlace_termL _ D (X (D + 1))
@@ -146,6 +165,7 @@ theorem writerWP_handleFull_lastShape (c : Ctx)
         by_cases hzx : z = X (D + 1)
         · simp only [hzx, ↓reduceIte, Option.some.injEq] at h
           subst h
+          refine ⟨?_, hBlast _⟩
           refine Or.inr (Or.inr (Or.inl ⟨hlsh _ _, fun i h1 h2 h3 => ?_⟩))
           have := hdist _ _ h1 (by omega) (by omega) (Nat.le_refl _) (h3.symm.trans hzx)
           subst this; exact hmade
@@ -154,6 +174,7 @@ theorem writerWP_handleFull_lastShape (c : Ctx)
           · rw [hfr z hz] at h; cases h
           · rw [h3, (hS2 i h1 h2).1] at h
             cases h
+            refine ⟨?_, hBc i h1 (by omega)⟩
             exact Or.inl ⟨i, h1, h2, h3, rfl⟩
     · apply writerWP_handleFullWith_time_up_last' D (X (D + 1)) (X D)
         (Nn (D + 1)) (Nn D) (K (D + 1)) last compact c w hlk hlq hmade hcs hpq hpk
@@ -190,6 +211,7 @@ theorem writerWP_handleFull_lastShape (c : Ctx)
           subst hzn
           rw [h1n, lookup_append_single_self _ _ _ hfree0] at h3
           cases h3
+          refine ⟨?_, hBlast _⟩
           exact hlsh _ _
         · intro z hz
           show (upsert w2.nodes _ _).lookup z = _
@@ -199,11 +221,12 @@ theorem writerWP_handleFull_lastShape (c : Ctx)
           rw [lookup_upsert] at h
           simp only [↓reduceIte, Option.some.injEq] at h
           subst h
+          refine ⟨?_, hBp (D + 1) (by omega) (Nat.le_refl _)⟩
           exact Or.inr (Or.inl ⟨D + 1, by omega, Nat.le_refl _, rfl, rfl, hmade⟩)
   -- the space split
   have hSPACE : c.p.splitAbove < last.size →
       WriterWP (handleFullWith (fun q more => appendKlongs D q more) (D + 1)
-        (X (D + 1)) [] last false) c w (fun _ w' => ShapePost c X K Nn s (D + 1) [] w w') := by
+        (X (D + 1)) [] last false) c w (fun _ w' => ShapePostG Bnd c X K Nn s (D + 1) [] w w') := by
     intro hsp
     have h2l := hlen2 hsp
     obtain ⟨hF0, hS0, hscpos0, ⟨ysc, hscmem0⟩, _⟩ :=
@@ -267,12 +290,14 @@ theorem writerWP_handleFull_lastShape (c : Ctx)
               rw [h1n] at h3
               simp only [hzx, ↓reduceIte, Option.some.injEq] at h3
               subst h3
+              refine ⟨?_, hBlh.2⟩
               exact hmono _ hS
             · rw [h1lk z hzx hzn, hfr z h1] at h3; cases h3
           · intro zn h
             rw [hpost.2.1 _ (by omega) (fun i h1 h2 he => hXne i h1 h2 he.symm), h1n] at h
             simp only [↓reduceIte, Option.some.injEq] at h
             subst h
+            refine ⟨?_, hBlh.1⟩
             refine Or.inr (Or.inr (Or.inl ⟨hmono _ hF, fun i h1 h2 h3 => ?_⟩))
             have := hdist _ _ h1 (by omega) (by omega) (Nat.le_refl _) h3.symm
             subst this; exact hmade
@@ -303,6 +328,7 @@ theorem writerWP_handleFull_lastShape (c : Ctx)
           · subst h1
             simp only [↓reduceIte, Option.some.injEq] at h
             subst h
+            refine ⟨?_, hBlh.1⟩
             refine Or.inr (Or.inr (Or.inl ⟨hmono _ hF, fun i h1 h2 h3 => ?_⟩))
             have := hdist _ _ h1 (by omega) (by omega) (Nat.le_refl _) h3.symm
             subst this; exact hmade
@@ -310,12 +336,14 @@ theorem writerWP_handleFull_lastShape (c : Ctx)
             · subst h2
               simp only [h1, ↓reduceIte, Option.some.injEq] at h
               subst h
+              refine ⟨?_, hBe D hsD (by omega) _ _⟩
               exact Or.inr (Or.inr (Or.inr ⟨D, hsD, by omega, rfl, Or.inr (Or.inr
                 ⟨by omega, K (D + 1), idx, w.next + 2, hidx, rfl, hmade, hqlf⟩)⟩))
             · by_cases h3 : z = w.next
               · subst h3
                 simp only [h1, h2, ↓reduceIte, Option.some.injEq] at h
                 subst h
+                refine ⟨?_, hBlh.2⟩
                 refine Or.inr (Or.inr (Or.inl ⟨hmono _ hS, fun i h1' h2' h3' => ?_⟩))
                 exfalso
                 have := (hS2 i h1' h2').2; rw [← h3'] at this; omega
@@ -323,6 +351,7 @@ theorem writerWP_handleFull_lastShape (c : Ctx)
                 · subst h4
                   simp only [h1, h2, h3, ↓reduceIte, Option.some.injEq] at h
                   subst h
+                  refine ⟨?_, hBr _ _ _ hscpos⟩
                   refine Or.inr (Or.inr (Or.inl ⟨shadowOK_root c.i _ _ _ hscpos _,
                     fun i h1' h2' h3' => ?_⟩))
                   exfalso
@@ -332,6 +361,7 @@ theorem writerWP_handleFull_lastShape (c : Ctx)
                   · rw [hfr z hz] at h; cases h
                   · rw [h3', (hS2 i h1' h2').1] at h
                     cases h
+                    refine ⟨?_, hBc i h1' (by omega)⟩
                     exact Or.inl ⟨i, h1', h2', h3', rfl⟩
     · cases hqlf : (Nn D).leaf with
       | false =>
@@ -377,12 +407,14 @@ theorem writerWP_handleFull_lastShape (c : Ctx)
               rw [h1n] at h3
               simp only [↓reduceIte, Option.some.injEq] at h3
               subst h3
+              refine ⟨?_, hBlh.1⟩
               exact hmono _ hF
             · by_cases hz2 : z = w.next + 2
               · subst hz2
                 rw [h1n] at h3
                 simp only [hz0, ↓reduceIte, Option.some.injEq] at h3
                 subst h3
+                refine ⟨?_, hBlh.2⟩
                 exact hmono _ hS
               · rw [h1lk z hz0 hz2, hfr z h1] at h3; cases h3
           · intro z hz
@@ -393,6 +425,7 @@ theorem writerWP_handleFull_lastShape (c : Ctx)
             rw [lookup_upsert] at h
             simp only [↓reduceIte, Option.some.injEq] at h
             subst h
+            refine ⟨?_, hBp (D + 1) (by omega) (Nat.le_refl _)⟩
             exact Or.inr (Or.inl ⟨D + 1, by omega, Nat.le_refl _, rfl, rfl, hmade⟩)
       | true =>
         apply writerWP_handleFullWith_segSpace_upL D (X (D + 1)) (X D)
@@ -430,18 +463,21 @@ theorem writerWP_handleFull_lastShape (c : Ctx)
               rw [h1n] at h3
               simp only [↓reduceIte, Option.some.injEq] at h3
               subst h3
+              refine ⟨?_, hBlh.1⟩
               exact hmono _ hF
             · by_cases hz2 : z = w.next + 2
               · subst hz2
                 rw [h1n] at h3
                 simp only [hz0, ↓reduceIte, Option.some.injEq] at h3
                 subst h3
+                refine ⟨?_, hBlh.2⟩
                 exact hmono _ hS
               · by_cases hz4 : z = w.next + 2 + 2
                 · subst hz4
                   rw [h1n] at h3
                   simp only [hz0, hz2, ↓reduceIte, Option.some.injEq] at h3
                   subst h3
+                  refine ⟨?_, hBr _ _ _ hscpos⟩
                   exact shadowOK_root c.i _ _ _ hscpos _
                 · rw [h1lk z hz0 hz2 hz4, hfr z h1] at h3; cases h3
           · intro z hz
@@ -452,6 +488,7 @@ theorem writerWP_handleFull_lastShape (c : Ctx)
             rw [lookup_upsert] at h
             simp only [↓reduceIte, Option.some.injEq] at h
             subst h
+            refine ⟨?_, hBp (D + 1) (by omega) (Nat.le_refl _)⟩
             exact Or.inr (Or.inl ⟨D + 1, by omega, Nat.le_refl _, rfl, rfl, hmade⟩)
   -- the dispatch
   by_cases hsp : (!compact && decide (last.size > c.p.splitAbove)) = true
@@ -463,5 +500,116 @@ theorem writerWP_handleFull_lastShape (c : Ctx)
     subst hcf
     exact hSPACE hsp'
   · exact hTIME (by simpa using hsp)
+
+
+set_option maxHeartbeats 3200000 in
+/-- After `handleFull` of X (D + 1) with the last version `last` (a time klong
+and key klongs of distinct compare values), with the cascade above it, every
+node with an id from the next id on or on the chain has a cascade node's shape
+(`ShapePost` from D + 1 with nothing put): on the premises of
+`writerWP_appendKlongs_chainShape` for X s .. X D, and for X (D + 1) those of
+`writerWP_handleFull_lastVF2` that concern the writer's nodes, with `LastOrd`. -/
+theorem writerWP_handleFull_lastShape (c : Ctx)
+    (path0 : List (Option Nat × NodeId)) (s D : Nat) (X : Nat → NodeId) (K : Nat → Nat)
+    (Nn : Nat → KNode) (hsD : s ≤ D)
+    (hX : ∀ i, s ≤ i → i ≤ D + 1 → (path0[i]?).map (·.2) = some (X i))
+    (hK : ∀ i, s < i → i ≤ D + 1 → path0[i]? = some (some (K i), X i))
+    (hlinkK : ∀ i, s < i → i ≤ D + 1 → (K i, X i) ∈ (Nn (i - 1)).liveAt c.i)
+    (hrange : ∀ i, s < i → i ≤ D → ¬ ChainRoom c (Nn i) → (Nn (i - 1)).leaf = false →
+      ∀ c' z, (c', z) ∈ (Nn i).live → 0 < c' →
+      K i ≤ c' ∧ ∀ c'' z', (c'', z') ∈ (Nn (i - 1)).live → K i < c'' → c' < c'')
+    (hlen : ∀ i, s ≤ i → i ≤ D → ¬ ChainRoom c (Nn i) →
+      c.p.splitAbove < ((Nn i).lastVersion c.i).size → 2 ≤ (Nn i).live.length)
+    (hord : ∀ i, s < i → i ≤ D → ChainOrd c K Nn i)
+    (htimes : ∀ i, s ≤ i → i ≤ D + 1 → ∀ t, Klong.time t ∈ (Nn i).ks → t ≤ c.i)
+    (htop : ChainRoom c (Nn s) ∨ s = 0)
+    (hdist : ∀ i i', s ≤ i → i ≤ D + 1 → s ≤ i' → i' ≤ D + 1 → X i = X i' → i = i')
+    (last : KNode) (compact : Bool)
+    (hpairs : ∃ pairs, last.ks = newKlongs c.i pairs ∧ (pairs.map Prod.fst).Nodup)
+    (hlastV : (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).lastVersion c.i = last)
+    (hlen2 : c.p.splitAbove < last.size → 2 ≤ (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).live.length)
+    (hrangeL : c.p.splitAbove < last.size → (Nn D).leaf = false →
+      ∀ c' z, (c', z) ∈ (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).live → 0 < c' →
+      K (D + 1) ≤ c' ∧ ∀ c'' z', (c'', z') ∈ (Nn D).live → K (D + 1) < c'' → c' < c'')
+    (hLO : LastOrd c K Nn D last)
+    (w : W) (hpath : w.path = path0)
+    (hS2 : ∀ i, s ≤ i → i ≤ D + 1 → w.nodes.lookup (X i) = some (Nn i) ∧ X i < w.next)
+    (hfr : ∀ z, w.next ≤ z → w.nodes.lookup z = none) :
+    WriterWP (handleFullWith (fun q more => appendKlongs D q more) (D + 1) (X (D + 1)) [] last compact)
+      c w (fun _ w' => ShapePost c X K Nn s (D + 1) [] w w') := by
+  refine writerWP_mono (writerWP_handleFull_lastShapeG c path0 s D X K Nn hsD hX hK hlinkK hrange hlen
+    hord htimes htop hdist last compact hpairs hlastV hlen2 hrangeL hLO w hpath hS2 hfr (fun _ => True)
+    (fun _ _ _ => trivial) (fun _ _ => trivial) (fun _ _ _ _ => trivial) (fun _ _ _ _ _ => ⟨trivial, trivial⟩)
+    (fun _ _ _ _ => trivial) (fun _ _ _ => trivial) (fun _ _ _ _ _ => trivial) (fun _ => trivial)
+    ⟨trivial, trivial⟩) ?_
+  intro _ _ ⟨a, b, d, f⟩
+  exact ⟨a, b, d, fun z zn h hz => (f z zn h hz).1⟩
+
+/-- The dead klongs' bound of the split of a full node with a last version
+given and its cascade (a merge's full parent, a delete's full leaf; bergdb
+024-12, `QDead` of (4)): with theta 0 or at least 2, every node written holds at
+most theta dead klongs when the chain's nodes do. -/
+theorem writerWP_handleFull_lastDead (c : Ctx)
+    (path0 : List (Option Nat × NodeId)) (s D : Nat) (X : Nat → NodeId) (K : Nat → Nat)
+    (Nn : Nat → KNode) (hsD : s ≤ D)
+    (hX : ∀ i, s ≤ i → i ≤ D + 1 → (path0[i]?).map (·.2) = some (X i))
+    (hK : ∀ i, s < i → i ≤ D + 1 → path0[i]? = some (some (K i), X i))
+    (hlinkK : ∀ i, s < i → i ≤ D + 1 → (K i, X i) ∈ (Nn (i - 1)).liveAt c.i)
+    (hrange : ∀ i, s < i → i ≤ D → ¬ ChainRoom c (Nn i) → (Nn (i - 1)).leaf = false →
+      ∀ c' z, (c', z) ∈ (Nn i).live → 0 < c' →
+      K i ≤ c' ∧ ∀ c'' z', (c'', z') ∈ (Nn (i - 1)).live → K i < c'' → c' < c'')
+    (hlen : ∀ i, s ≤ i → i ≤ D → ¬ ChainRoom c (Nn i) →
+      c.p.splitAbove < ((Nn i).lastVersion c.i).size → 2 ≤ (Nn i).live.length)
+    (hord : ∀ i, s < i → i ≤ D → ChainOrd c K Nn i)
+    (htimes : ∀ i, s ≤ i → i ≤ D + 1 → ∀ t, Klong.time t ∈ (Nn i).ks → t ≤ c.i)
+    (htop : ChainRoom c (Nn s) ∨ s = 0)
+    (hdist : ∀ i i', s ≤ i → i ≤ D + 1 → s ≤ i' → i' ≤ D + 1 → X i = X i' → i = i')
+    (last : KNode) (compact : Bool)
+    (hpairs : ∃ pairs, last.ks = newKlongs c.i pairs ∧ (pairs.map Prod.fst).Nodup)
+    (hlastV : (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).lastVersion c.i = last)
+    (hlen2 : c.p.splitAbove < last.size → 2 ≤ (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).live.length)
+    (hrangeL : c.p.splitAbove < last.size → (Nn D).leaf = false →
+      ∀ c' z, (c', z) ∈ (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).live → 0 < c' →
+      K (D + 1) ≤ c' ∧ ∀ c'' z', (c'', z') ∈ (Nn D).live → K (D + 1) < c'' → c' < c'')
+    (hLO : LastOrd c K Nn D last)
+    (w : W) (hpath : w.path = path0)
+    (hS2 : ∀ i, s ≤ i → i ≤ D + 1 → w.nodes.lookup (X i) = some (Nn i) ∧ X i < w.next)
+    (hfr : ∀ z, w.next ≤ z → w.nodes.lookup z = none)
+    (hth : 2 ≤ c.p.theta ∨ c.p.theta = 0)
+    (hdc : ∀ i, s ≤ i → i ≤ D + 1 → c.p.theta ≠ 0 → (Nn i).deadCount ≤ c.p.theta)
+    (hwf : ∀ i, s ≤ i → i ≤ D + 1 → klongsWf (Nn i).ks = true) :
+    WriterWP (handleFullWith (fun q more => appendKlongs D q more) (D + 1) (X (D + 1)) [] last compact)
+      c w (fun _ w' => ShapePostG (fun n => c.p.theta ≠ 0 → n.deadCount ≤ c.p.theta) c X K Nn s (D + 1) [] w w')  := by
+  obtain ⟨pairs, hks, hnd⟩ := hpairs
+  have hlv : (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).lastVersionGivenDel c.i
+      (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).lastBitmap = last := hlastV
+  have hh := halves_normalized_deadCount_le (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode) c.i
+    (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).lastBitmap []
+  rw [hlv] at hh
+  exact writerWP_handleFull_lastShapeG c path0 s D X K Nn hsD hX hK hlinkK hrange hlen
+    hord htimes htop hdist last compact ⟨pairs, hks, hnd⟩ hlastV hlen2 hrangeL hLO w hpath hS2 hfr
+    (fun n => c.p.theta ≠ 0 → n.deadCount ≤ c.p.theta) hdc
+    (fun n hd h0 => deadOver_false c.p n hd h0)
+    (fun n more h hnd' _ => by
+      have h1 := KNode.newKlongs_deadCount n.leaf c.i more hnd'
+      rw [← h] at h1
+      have h2 : n.deadCount = 0 := h1
+      omega)
+    (fun i h1 h2 ins hl => by
+      have hh' := halves_normalized_deadCount_le (Nn i) c.i (Nn i).lastBitmap ins
+      exact ⟨fun h0 => by
+          have : (halves (Nn i).leaf c.i ((Nn i).lastVersion c.i) ins).1.deadCount ≤ ins.length := hh'.1
+          rcases hth with h | h <;> omega,
+        fun h0 => by
+          have : (halves (Nn i).leaf c.i ((Nn i).lastVersion c.i) ins).2.1.deadCount ≤ ins.length := hh'.2
+          rcases hth with h | h <;> omega⟩)
+    (fun a b sc hsc _ => by rw [KNode.deadCount_newRoot c.i a b sc hsc]; exact Nat.zero_le _)
+    (fun i h1 h2 h0 => Nat.le_trans (KNode.deadCount_toPrev_le (Nn i) _ (hwf i h1 h2)) (hdc i h1 h2 h0))
+    (fun i h1 h2 idx r h0 => by rw [KNode.deadCount_repoint]; exact hdc i h1 (by omega) h0)
+    (fun lf _ => by
+      have h1 := KNode.newKlongs_deadCount lf c.i pairs hnd
+      have h2 : (⟨lf, last.ks⟩ : KNode).deadCount = 0 := by rw [hks]; exact h1
+      omega)
+    ⟨fun _ => by have := hh.1; simp at this; omega, fun _ => by have := hh.2; simp at this; omega⟩
 
 end SIS.Tree
