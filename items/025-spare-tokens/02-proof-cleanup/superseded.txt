@@ -1,0 +1,44 @@
+# 025-02 (2026-11-14): names that items cite and that the prune removes as earlier versions,
+# each with what replaces it at the base (eb1a04a0). Feeds the name map (names.md); the
+# names step maps the successor to its new name. "-" = retired, the reason after it.
+DelFullFitsOK DelFullFitsOKR
+UpCascFitsOK UpCascFitsOKR
+deadAllOK_snoc deadAllOK_snocR
+latestQD_snoc latestQD_snocR
+latestQ_snoc latestQD_snocR
+delStepsJ2OKF3_of_openR5 delStepsJ2OKF3_of_openR11
+delStepsJ2OKF3_of_openR6 delStepsJ2OKF3_of_openR11
+delStepsJ2OKF3_of_openR7 delStepsJ2OKF3_of_openR11
+delStepsJ2OKF3_of_openR8 delStepsJ2OKF3_of_openR11
+delStepsJ2OKF3_of_openR9 delStepsJ2OKF3_of_openR11
+delStepsOKF3_of_open10 delStepsOKF3_of_open16
+delStepsOKF3_of_open11 delStepsOKF3_of_open16
+delStepsOKF3_of_open12 delStepsOKF3_of_open16
+delStepsOKF3_of_open13 delStepsOKF3_of_open16
+delStepsOKF3_of_open14 delStepsOKF3_of_open16
+delStepsQdL_of_openR delStepsQdL_of_openR4
+delStepsQdL_of_openR2 delStepsQdL_of_openR4
+execW_htCache execW_htCacheU
+ht_reached ht_reachedU
+putKvDelChk putKvDelChk2
+writerWP_appendDeleteKlong_full_delF3 writerWP_appendDeleteKlong_full_delF3H
+writerWP_handleFull_lastV writerWP_handleFull_lastVF2
+writerWP_merge_any_get writerWP_merge_any_getF2
+writerWP_merge_root_tree writerWP_merge_root_treeS
+invGetScanOK_merges invGetScanOK_merges_flat
+invPreserved_of_open invGetScanOK_merges_flat
+invPreserved_of_open_chk invGetScanOK_merges_flat
+invPreserved_of_open_chk2 invGetScanOK_merges_flat
+invPreserved_of_open_htDel invGetScanOK_merges_flat
+takeBackOK_of_mergesF4 runTreeQ_of_mergesF4S
+txSegFitsOK_of_takeBelowDelR txSegFitsOK_of_takeBelowDelR2U
+txSegFitsOK_of_takeBelowDelR2 txSegFitsOK_of_takeBelowDelR2U
+opCaseOK_treeInvRange_delMergeR opCaseOK_treeInvRange_delMergeRL
+TakeBelowFuelOK TakeBelowFuelDelOK
+OpDelChkOK OpDelChk2OK
+opDelChk2OK_of_chk OpDelChk2OK
+treeRun_heightLiveOK_chk opHtDelOKUnder_of_chk2
+treeRun_heightLiveOK_chk2 opHtDelOKUnder_of_chk2
+UpLebFitsOK - retired: LE-b never runs with the merges on (lebStop_false)
+UpLebFitsOKL - retired: LE-b never runs with the merges on (lebStop_false)
+upLebFitsOKL_of - retired: LE-b never runs with the merges on (lebStop_false)

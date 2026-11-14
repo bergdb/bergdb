@@ -1,0 +1,95 @@
+# 025-02 step 3, names (2026-11-14): one name for each route, one top theorem.
+# rename.py's format: "old new" for a declaration (every whole identifier, in lean/ and
+# lean/README.md, comments included); "FILE old new" for a file (git mv and its imports).
+# Rule: the mark F2, F3 or F4 goes, and the number of an assembly's version; letters that say
+# what a variant adds stay (J, J2, R, L, U, H, HG, S, T). A new name must be free; on a clash
+# the shortest free form that says what differs (noted on the row).
+
+# The top theorem
+invGetScanOK_merges_flat invGetScanOK_merges
+
+# The reading's route (DelMergeCaseF3.lean, DelStepsF3.lean, DelStepsCascF3.lean, ...)
+DelInvF3 DelInv
+MergeStepOKF3 MergeStepOK
+mergeStepOKF3_untaken mergeStepOK_untaken
+mergeStepOKF3_of_segFits mergeStepOK_of_segFits
+DelStepsOKF3 DelStepsOK
+DelStepsCaseOKF3 DelStepsCaseOK
+delStepsOKF3_of_cases delStepsOK_of_cases
+delStepsOKF3_of_within delStepsOK_of_within
+delStepsOKF3_of_open16 delStepsOK_of_open
+delStepsCaseOKF3_noLeaf delStepsCaseOK_noLeaf
+delStepsCaseOKF3_noop delStepsCaseOK_noop
+delStepsCaseOKF3_room delStepsCaseOK_room
+delStepsCaseOKF3_emptyRoom delStepsCaseOK_emptyRoom
+delStepsCaseOKF3_emptyRoot delStepsCaseOK_emptyRoot
+delStepsCaseOKF3_or delStepsCaseOK_or
+delStepsCaseOKF3_fullH delStepsCaseOK_fullH
+delStepsCaseOKF3_emptyCascLHG delStepsCaseOK_emptyCascLHG
+writerWP_mergeUp_delF3 writerWP_mergeUp_del
+writerWP_appendDeleteKlong_full_delF3H writerWP_appendDeleteKlong_full_delH
+writerWP_upCasc_root_delF3 writerWP_upCasc_root_del
+writerWP_upCasc_below_delF3T writerWP_upCasc_below_delT   # T as in writerWP_upCasc_below_j2T
+UpCascOKF3 UpCascOK
+UpCascOKF3HG UpCascOKHG
+upCascOKF3HG_of upCascOKHG_of
+UpLebOKF3 UpLebOK
+delStepsQdL_of_openR4 delStepsQdL_of_openR
+
+# The collapse and case (4) (CollapseCascade.lean)
+CollapseStepOKF4 CollapseStepOK
+writerWP_collapseRoot_collF4 writerWP_collapseRoot_coll
+writerWP_collapseRoot_delF4 writerWP_collapseRoot_del
+writerWP_afterDelete_delF4 writerWP_afterDelete_del
+opGetCaseOK_delMergeF4 opGetCaseOK_delMerge
+opGetCaseOK'_delMerge4 opGetCaseOK'_delMerge   # 4 is F4's version number (2 and 3 were removed)
+
+# The take-back's route (TakeDelMergeF4.lean, TakeDelStepsF4.lean, TakeRunQF4.lean, ...)
+DelInvJF3 DelInvJ
+writerWP_mergeUp_delJF3 writerWP_mergeUp_delJ
+writerWP_collapseRoot_collJF4 writerWP_collapseRoot_collJ
+writerWP_collapseRoot_delJF4 writerWP_collapseRoot_delJ
+writerWP_afterDelete_delJF4 writerWP_afterDelete_delJ
+DelStepsJ2OKF3 DelStepsJ2OK
+DelStepsCaseJ2OKF3 DelStepsCaseJ2OK
+delStepsJ2OKF3_of_cases delStepsJ2OK_of_cases
+delStepsJ2OKF3_of_openR11 delStepsJ2OK_of_openR
+delStepsCaseJ2OKF3_or delStepsCaseJ2OK_or
+delStepsCaseJ2OKF3_noLeaf delStepsCaseJ2OK_noLeaf
+delStepsCaseJ2OKF3_noop delStepsCaseJ2OK_noop
+delStepsCaseJ2OKF3_emptyRootR delStepsCaseJ2OK_emptyRootR
+delStepsCaseJ2OKF3_roomR delStepsCaseJ2OK_roomR
+delStepsCaseJ2OKF3_emptyRoomR delStepsCaseJ2OK_emptyRoomR
+delStepsCaseJ2OKF3_fullRH delStepsCaseJ2OK_fullRH
+delStepsCaseJ2OKF3_emptyCascRLHG delStepsCaseJ2OK_emptyCascRLHG
+UpCascJ2OKF3HG UpCascJ2OKHG
+upCascJ2OKF3HG_of upCascJ2OKHG_of
+opJ2Case_delMergeF4R opJ2Case_delMergeR
+runTreeQ_of_mergesF4S runTreeQ_of_mergesS
+
+# The merge's reading at a fuel (F2)
+DescentOKF2 DescentOK
+descentOKF2 descentOK
+writerWP_handleFull_lastVF2 writerWP_handleFull_lastV
+writerWP_handleFull_rootVF2 writerWP_handleFull_rootVReach   # clash: writerWP_handleFull_rootV is rootVF at the writer's fuel; this one adds the reach back
+writerWP_mergeTail_any_getF2 writerWP_mergeTail_any_get
+writerWP_merge_any_getF2 writerWP_merge_any_get
+writerWP_merge_get_invF2 writerWP_merge_get_inv
+
+# Files. The rows without FILE carry each file's name in comments and in lean/README.md.
+DelMergeCaseF3 DelMergeCaseKd   # clash: DelMergeCase.lean exists (the steps' parts); this one adds the kinds' books (Kd as in DelStepsKd.lean)
+TakeDelMergeF4 TakeDelMergeKd   # clash: TakeDelMerge.lean exists; as DelMergeCaseKd
+DelStepsF3 DelSteps
+DelStepsCascF3 DelStepsCasc
+TakeDelStepsF4 TakeDelSteps
+TakeRunQF4 TakeRunQ
+LatestTopFlat LatestTop
+RangeMergeF2 RangeMergeHalves   # clash: RangeMerge.lean exists; this one takes the full parent's halves from the walk's ranges
+FILE SIS/Tree/DelMergeCaseF3.lean SIS/Tree/DelMergeCaseKd.lean
+FILE SIS/Tree/TakeDelMergeF4.lean SIS/Tree/TakeDelMergeKd.lean
+FILE SIS/Tree/DelStepsF3.lean SIS/Tree/DelSteps.lean
+FILE SIS/Tree/DelStepsCascF3.lean SIS/Tree/DelStepsCasc.lean
+FILE SIS/Tree/TakeDelStepsF4.lean SIS/Tree/TakeDelSteps.lean
+FILE SIS/Tree/TakeRunQF4.lean SIS/Tree/TakeRunQ.lean
+FILE SIS/Tree/LatestTopFlat.lean SIS/Tree/LatestTop.lean
+FILE SIS/Tree/RangeMergeF2.lean SIS/Tree/RangeMergeHalves.lean

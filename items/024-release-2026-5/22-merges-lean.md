@@ -1394,6 +1394,8 @@ of mine runs or holds a slot.
 
 ### 11.1 State, the night of 2026-11-13 to 14 (agent "cost")
 
+Names since 025-02 (2026-11-14): 025-02's name map.
+
 Branch `024-22-cost` in `/Users/f/fl/bench/2026-11-13/cost/clone`, main
 merged at every checkpoint; the full build passes and every theorem of the
 night uses only propext, Classical.choice and Quot.sound. The details are

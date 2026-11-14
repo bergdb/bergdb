@@ -448,6 +448,16 @@ And `PhysRunOK` from the other assumptions (bergdb 024-09), each printing
     #print axioms SIS.Check.bspec_physRunOK
     #print axioms SIS.Check.bspec_tr_handles
 
+The key tree's top theorem (bergdb 024-12, section 1; SIS/Tree/LatestTop.lean)
+and Java's parameters the same way, the first two printing
+`[propext, Classical.choice, Quot.sound]`, `theta_java` without
+`Classical.choice`:
+
+    import SIS.Tree.LatestTop
+    #print axioms SIS.Tree.invGetScanOK_merges
+    #print axioms SIS.Tree.mergeParamsOK_java
+    #print axioms SIS.Tree.theta_java
+
 The user indexes' theorems (BergDB/Index/Theorems.lean, Liveness.lean,
 Orphans.lean, Release.lean, Finite.lean and Starve.lean, 020-29) the same
 way, each printing

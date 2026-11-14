@@ -21,6 +21,8 @@ Cite the design rules as "024-12, D1", the stated properties as
 
 ## 1. In short
 
+Names since 025-02 (2026-11-14): 025-02's name map.
+
 **What this means for BergDB (2026-11-14, latest).** The key tree's proofs reach their top
 theorem. For Java's own parameters (record format 7's merge thresholds and option 2's theta,
 from node size 8), every run of transactions that the model accepts keeps the tree's invariants

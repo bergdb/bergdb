@@ -1,0 +1,51 @@
+# 025-02 keep list (2026-11-14): declarations of SIS/Tree that no root reaches but that are kept:
+# building blocks named in the open premises' plans (024-12, section 1; 024-22, 11.1; cost's REPORT.md;
+# 006-26, section 8) and in F1 (026-16, section 4.2). One short name a line; prune.py keeps all that
+# they use. A prover may add a name with a reason in its State note; it removes none.
+CommitCountOK
+HtJStart
+InitCountOK
+KNode.lastVersionGivenDel_deadCount
+NodeCountStep
+OneMergeStep
+OpCountOK
+OpDelHtStepOK
+OpHtDelOK
+PotentialStep
+UpUnlinkOK
+checkPathFree
+commitCountOK_of_lift
+execW_twoMerges_le_deletes
+ht_descendLte_height
+initCountOK
+liveHolder_unique
+mergeAmortized_of_opCount_lift
+mergeKlongs_deadCount
+mergeKlongs_live_fill
+nonRootCount
+nrWalk
+opHtStep_of
+putBook_collapseRoot
+treeRun_heightAllOK
+treeRun_heightLiveOK_family
+upUnlinkTreeOK_of
+wCount
+writerWP_appendDeleteKlong_dead
+writerWP_del_emptyAnyMK
+writerWP_handleFull_lastDead
+writerWP_handleFull_rootDead
+writerWP_mergeCleanup_deadWf
+writerWP_mergeParent_casesD
+writerWP_mergeParent_dead
+writerWP_mergeTail_any_treeS
+writerWP_merge_any_treeS
+writerWP_merge_root_get
+writerWP_newKey_dead
+writerWP_putNode_deadOver
+writerWP_retarget_deadWf
+writerWP_takenBack_deadWf
+writerWP_unlink_deadWf
+# F1 (026-16, section 4.2), the heights bound
+segFits_of_seenHeight
+SeenHeightBound
+ht_merge

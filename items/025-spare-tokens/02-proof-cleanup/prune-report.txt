@@ -1,0 +1,2157 @@
+FILE SIS/Tree/AllocationIds.lean 177 -> 137
+FILE SIS/Tree/ApplyBridge.lean 373 -> 373
+FILE SIS/Tree/Bound.lean 365 -> 365
+FILE SIS/Tree/CacheGood.lean 804 -> 791
+FILE SIS/Tree/ChainShape.lean 2198 -> 2189
+FILE SIS/Tree/ChildrenExist.lean 20 -> 20
+FILE SIS/Tree/ChildrenKinds.lean 123 -> 123
+FILE SIS/Tree/CollapseCascade.lean 726 -> 725
+FILE SIS/Tree/CvEncoding.lean 491 -> 479
+FILE SIS/Tree/DataEntries.lean 194 -> 194
+FILE SIS/Tree/DeadCases.lean 395 -> 393
+FILE SIS/Tree/DeadCountBasic.lean 289 -> 288
+FILE SIS/Tree/DeadMerge.lean 299 -> 299
+FILE SIS/Tree/DeadNewSegFull.lean 477 -> 476
+FILE SIS/Tree/DeadProps.lean 69 -> 69
+FILE SIS/Tree/DeadPutFull.lean 349 -> 349
+FILE SIS/Tree/DeadRun.lean 227 -> 197
+FILE SIS/Tree/DeadSteps.lean 99 -> 99
+FILE SIS/Tree/DelChk.lean 214 -> 214
+FILE SIS/Tree/DelChkRefines.lean 117 -> 49
+FILE SIS/Tree/DelMergeBook.lean 69 -> 69
+FILE SIS/Tree/DelMergeCase.lean 99 -> 82
+FILE SIS/Tree/DelMergeCaseF.lean 138 -> 87
+FILE SIS/Tree/DelMergeCaseF3.lean 194 -> 194
+FILE SIS/Tree/DelStepsBook.lean 386 -> 80
+FILE SIS/Tree/DelStepsBookK.lean 317 -> 317
+FILE SIS/Tree/DelStepsBookStop.lean 279 -> 0
+FILE SIS/Tree/DelStepsCascF3.lean 404 -> 346
+FILE SIS/Tree/DelStepsCascRoot.lean 1078 -> 432
+FILE SIS/Tree/DelStepsEmpty.lean 101 -> 101
+FILE SIS/Tree/DelStepsEmptyRoot.lean 216 -> 204
+FILE SIS/Tree/DelStepsF3.lean 538 -> 538
+FILE SIS/Tree/DelStepsFull.lean 111 -> 111
+FILE SIS/Tree/DelStepsFullGet.lean 521 -> 379
+FILE SIS/Tree/DelStepsFullH.lean 276 -> 217
+FILE SIS/Tree/DelStepsFullRoot.lean 372 -> 361
+FILE SIS/Tree/DelStepsGh.lean 1561 -> 1560
+FILE SIS/Tree/DelStepsHolder.lean 928 -> 0
+FILE SIS/Tree/DelStepsHolderLive.lean 409 -> 112
+FILE SIS/Tree/DelStepsKd.lean 307 -> 307
+FILE SIS/Tree/DelStepsKdH.lean 258 -> 249
+FILE SIS/Tree/DelStepsLeb.lean 708 -> 0
+FILE SIS/Tree/DelStepsLebFull.lean 956 -> 39
+FILE SIS/Tree/DelStepsLinks.lean 164 -> 34
+FILE SIS/Tree/DelStepsLive.lean 854 -> 115
+FILE SIS/Tree/DelStepsMerge.lean 70 -> 70
+FILE SIS/Tree/DelStepsRoom.lean 182 -> 182
+FILE SIS/Tree/DelStepsTree.lean 464 -> 311
+FILE SIS/Tree/DelStepsUnlinkTree.lean 1063 -> 934
+FILE SIS/Tree/DelStepsUp.lean 625 -> 0
+FILE SIS/Tree/DelStepsUpK.lean 616 -> 616
+FILE SIS/Tree/DelStepsUpStop.lean 531 -> 530
+FILE SIS/Tree/DelStepsUpWalk.lean 156 -> 51
+FILE SIS/Tree/DelStepsWalk.lean 355 -> 236
+FILE SIS/Tree/DeleteCount.lean 200 -> 30
+FILE SIS/Tree/EntriesSplit.lean 294 -> 294
+FILE SIS/Tree/Exec.lean 1176 -> 1176
+FILE SIS/Tree/ExportHistory.lean 175 -> 56
+FILE SIS/Tree/ExportLedger.lean 170 -> 170
+FILE SIS/Tree/FlatKlongs.lean 125 -> 121
+FILE SIS/Tree/FreshCache.lean 825 -> 705
+FILE SIS/Tree/FuelPaths.lean 102 -> 72
+FILE SIS/Tree/GetAssembly.lean 296 -> 295
+FILE SIS/Tree/GetCascadeChain.lean 884 -> 93
+FILE SIS/Tree/GetCascadeChainG.lean 3386 -> 2967
+FILE SIS/Tree/GetCascadeGen.lean 169 -> 169
+FILE SIS/Tree/GetCascadeIP.lean 466 -> 466
+FILE SIS/Tree/GetCascadePut.lean 2963 -> 180
+FILE SIS/Tree/GetCaseBridge.lean 833 -> 833
+FILE SIS/Tree/GetChain.lean 1967 -> 268
+FILE SIS/Tree/GetCommit.lean 885 -> 880
+FILE SIS/Tree/GetDelCascade.lean 3218 -> 54
+FILE SIS/Tree/GetDelRoot.lean 646 -> 182
+FILE SIS/Tree/GetDelSplit.lean 1234 -> 108
+FILE SIS/Tree/GetDelVirtual.lean 152 -> 0
+FILE SIS/Tree/GetDescentOK.lean 185 -> 185
+FILE SIS/Tree/GetFinal.lean 64 -> 64
+FILE SIS/Tree/GetFrame.lean 1673 -> 1178
+FILE SIS/Tree/GetFuel.lean 170 -> 170
+FILE SIS/Tree/GetInPlace.lean 880 -> 69
+FILE SIS/Tree/GetInPlaceCascade.lean 1323 -> 62
+FILE SIS/Tree/GetInnerSplit.lean 1126 -> 140
+FILE SIS/Tree/GetKeyTree.lean 69 -> 0
+FILE SIS/Tree/GetLatest.lean 292 -> 282
+FILE SIS/Tree/GetLeafBelow.lean 205 -> 52
+FILE SIS/Tree/GetLeafRoot.lean 131 -> 0
+FILE SIS/Tree/GetMergeAny.lean 1941 -> 1671
+FILE SIS/Tree/GetMergeFull.lean 1599 -> 98
+FILE SIS/Tree/GetMergeInv.lean 318 -> 289
+FILE SIS/Tree/GetMergeLevel.lean 2229 -> 2103
+FILE SIS/Tree/GetMergeRoot.lean 2735 -> 1781
+FILE SIS/Tree/GetNewRoot.lean 198 -> 196
+FILE SIS/Tree/GetNewSeg.lean 416 -> 85
+FILE SIS/Tree/GetNewSegFull.lean 1100 -> 1045
+FILE SIS/Tree/GetNewSegs.lean 532 -> 531
+FILE SIS/Tree/GetNewSegsTree.lean 579 -> 579
+FILE SIS/Tree/GetOpAssembly.lean 328 -> 266
+FILE SIS/Tree/GetOpCases.lean 560 -> 560
+FILE SIS/Tree/GetOpInv.lean 85 -> 0
+FILE SIS/Tree/GetPutInv.lean 142 -> 41
+FILE SIS/Tree/GetPutPath.lean 1966 -> 832
+FILE SIS/Tree/GetReachBack.lean 478 -> 478
+FILE SIS/Tree/GetRootSplit.lean 1214 -> 134
+FILE SIS/Tree/GetSegInPlace.lean 824 -> 129
+FILE SIS/Tree/GetSegLeaf.lean 257 -> 0
+FILE SIS/Tree/GetSegRoot.lean 1700 -> 399
+FILE SIS/Tree/GetSpaceSpace.lean 1294 -> 256
+FILE SIS/Tree/GetSpaceSplit.lean 906 -> 369
+FILE SIS/Tree/GetSplit.lean 1365 -> 388
+FILE SIS/Tree/GetTree.lean 88 -> 0
+FILE SIS/Tree/GetUnder.lean 109 -> 72
+FILE SIS/Tree/GetWriter.lean 385 -> 379
+FILE SIS/Tree/HalvesNil.lean 263 -> 263
+FILE SIS/Tree/HeightsChkRun.lean 59 -> 40
+FILE SIS/Tree/HeightsDelRun.lean 53 -> 53
+FILE SIS/Tree/HeightsFit.lean 395 -> 195
+FILE SIS/Tree/HeightsFitsR.lean 193 -> 193
+FILE SIS/Tree/HeightsFuel.lean 553 -> 423
+FILE SIS/Tree/HeightsFuelDescent.lean 78 -> 78
+FILE SIS/Tree/HeightsFuelMerge.lean 221 -> 16
+FILE SIS/Tree/HeightsFuelPut.lean 460 -> 460
+FILE SIS/Tree/HeightsHolder.lean 288 -> 279
+FILE SIS/Tree/HeightsNode.lean 268 -> 251
+FILE SIS/Tree/HeightsOpStep.lean 56 -> 56
+FILE SIS/Tree/HeightsPathFree.lean 527 -> 386
+FILE SIS/Tree/HeightsPathNodup.lean 124 -> 124
+FILE SIS/Tree/HeightsRun.lean 254 -> 241
+FILE SIS/Tree/HeightsStep.lean 207 -> 200
+FILE SIS/Tree/HeightsUnder.lean 278 -> 273
+FILE SIS/Tree/HeightsUpCascR.lean 250 -> 250
+FILE SIS/Tree/HistoricalGet.lean 75 -> 67
+FILE SIS/Tree/HistoricalGetDirect.lean 161 -> 15
+FILE SIS/Tree/HistoricalPrefix.lean 178 -> 178
+FILE SIS/Tree/HistoricalRead.lean 170 -> 170
+FILE SIS/Tree/HistoricalScan.lean 110 -> 101
+FILE SIS/Tree/IntervalSearchProof.lean 190 -> 190
+FILE SIS/Tree/Inv.lean 163 -> 163
+FILE SIS/Tree/InvAssembly.lean 523 -> 472
+FILE SIS/Tree/InvConsequences.lean 325 -> 97
+FILE SIS/Tree/InvInit.lean 98 -> 85
+FILE SIS/Tree/InvLatest.lean 169 -> 165
+FILE SIS/Tree/KeyEncodingWitness.lean 24 -> 24
+FILE SIS/Tree/KeyHistRun.lean 237 -> 237
+FILE SIS/Tree/KeyLevels.lean 102 -> 29
+FILE SIS/Tree/KeyWellFormed.lean 60 -> 52
+FILE SIS/Tree/KindsRun.lean 73 -> 73
+FILE SIS/Tree/KindsStep.lean 252 -> 232
+FILE SIS/Tree/KlongAppend.lean 130 -> 130
+FILE SIS/Tree/KlongBitmap.lean 209 -> 209
+FILE SIS/Tree/KlongDeleteAppend.lean 188 -> 188
+FILE SIS/Tree/KlongHistoryTime.lean 159 -> 0
+FILE SIS/Tree/KlongPreservation.lean 205 -> 205
+FILE SIS/Tree/KlongRoundTrip.lean 134 -> 134
+FILE SIS/Tree/KlongRoundTripBits.lean 176 -> 176
+FILE SIS/Tree/KlongShape.lean 188 -> 173
+FILE SIS/Tree/KlongWellFormed.lean 78 -> 65
+FILE SIS/Tree/LatestJoint.lean 312 -> 227
+FILE SIS/Tree/LatestOpen.lean 63 -> 26
+FILE SIS/Tree/LatestTop.lean 106 -> 0
+FILE SIS/Tree/LatestTopFlat.lean 306 -> 292
+FILE SIS/Tree/LeftHist.lean 525 -> 0
+FILE SIS/Tree/LeftRun.lean 76 -> 0
+FILE SIS/Tree/LeftStep.lean 133 -> 133
+FILE SIS/Tree/LevelShape.lean 616 -> 615
+FILE SIS/Tree/LinkedUnique.lean 59 -> 59
+FILE SIS/Tree/ListCongr.lean 32 -> 32
+FILE SIS/Tree/LiveCases.lean 735 -> 734
+FILE SIS/Tree/LiveChain.lean 157 -> 157
+FILE SIS/Tree/LiveCounts.lean 421 -> 313
+FILE SIS/Tree/LiveDelNoop.lean 147 -> 147
+FILE SIS/Tree/LiveDelRoom.lean 412 -> 412
+FILE SIS/Tree/LiveEdges.lean 67 -> 67
+FILE SIS/Tree/LiveEdgesBase.lean 413 -> 127
+FILE SIS/Tree/LiveJointL.lean 172 -> 163
+FILE SIS/Tree/LiveNoMerge.lean 121 -> 121
+FILE SIS/Tree/LivePutFull.lean 308 -> 308
+FILE SIS/Tree/LivePutNewSegFull.lean 614 -> 583
+FILE SIS/Tree/LiveSteps.lean 777 -> 60
+FILE SIS/Tree/LiveStepsX.lean 847 -> 847
+FILE SIS/Tree/LiveTP7.lean 67 -> 0
+FILE SIS/Tree/MergeFrameDead.lean 685 -> 679
+FILE SIS/Tree/MergeFrozenPrefix.lean 251 -> 137
+FILE SIS/Tree/MergeFullSorted.lean 170 -> 170
+FILE SIS/Tree/MergeGOrd.lean 67 -> 66
+FILE SIS/Tree/MergeHeightBasics.lean 95 -> 18
+FILE SIS/Tree/MergeHeightExec.lean 110 -> 35
+FILE SIS/Tree/MergeHeightOrigins.lean 119 -> 61
+FILE SIS/Tree/MergeHeightSplit.lean 683 -> 8
+FILE SIS/Tree/MergeHeightTags.lean 80 -> 74
+FILE SIS/Tree/MergeKeptNode.lean 297 -> 18
+FILE SIS/Tree/MergeLastOrd.lean 235 -> 172
+FILE SIS/Tree/MergeLiveFill.lean 42 -> 42
+FILE SIS/Tree/MergeLiveKeys.lean 377 -> 262
+FILE SIS/Tree/MergeLiveOrder.lean 146 -> 144
+FILE SIS/Tree/MergeNodeCount.lean 128 -> 123
+FILE SIS/Tree/MergeNodeCountOps.lean 466 -> 412
+FILE SIS/Tree/MergeOpBoundCounterexample.lean 86 -> 86
+FILE SIS/Tree/MergeOpBoundProof.lean 238 -> 238
+FILE SIS/Tree/MergePathCache.lean 158 -> 138
+FILE SIS/Tree/MergePotential.lean 114 -> 17
+FILE SIS/Tree/MergePotentialExample.lean 122 -> 122
+FILE SIS/Tree/MergeProps.lean 449 -> 449
+FILE SIS/Tree/MergeProtectedDelete.lean 229 -> 19
+FILE SIS/Tree/MergeProtectedMerge.lean 144 -> 0
+FILE SIS/Tree/MergeProtectedNode.lean 191 -> 121
+FILE SIS/Tree/MergeRetainedRoot.lean 229 -> 0
+FILE SIS/Tree/MergeRootBoundedExec.lean 117 -> 0
+FILE SIS/Tree/MergeRootHeight.lean 292 -> 45
+FILE SIS/Tree/MergeRootShape.lean 769 -> 769
+FILE SIS/Tree/MergeRootWrites.lean 157 -> 0
+FILE SIS/Tree/MergeSearchOrder.lean 250 -> 0
+FILE SIS/Tree/MergeShapeGuard.lean 62 -> 27
+FILE SIS/Tree/MergeShortCounterexample.lean 88 -> 88
+FILE SIS/Tree/MergeSortedExamples.lean 111 -> 111
+FILE SIS/Tree/MergeSortedTight.lean 130 -> 0
+FILE SIS/Tree/MergeTreeInv.lean 2298 -> 2298
+FILE SIS/Tree/MergeTwoCount.lean 164 -> 164
+FILE SIS/Tree/MergeTwoFrame.lean 740 -> 715
+FILE SIS/Tree/Node.lean 454 -> 454
+FILE SIS/Tree/NodeCountProof.lean 156 -> 0
+FILE SIS/Tree/NodeCountTree.lean 143 -> 0
+FILE SIS/Tree/NodeKinds.lean 173 -> 173
+FILE SIS/Tree/NodeMap.lean 235 -> 222
+FILE SIS/Tree/NormalizedDead.lean 143 -> 73
+FILE SIS/Tree/OverlayBook.lean 43 -> 43
+FILE SIS/Tree/OverlayHeights.lean 227 -> 216
+FILE SIS/Tree/OverlayKinds.lean 110 -> 110
+FILE SIS/Tree/OverlayLeft.lean 41 -> 41
+FILE SIS/Tree/OverlayLift.lean 157 -> 147
+FILE SIS/Tree/OverlayPtrs.lean 40 -> 40
+FILE SIS/Tree/PairReplace.lean 150 -> 150
+FILE SIS/Tree/PhysicalSelection.lean 209 -> 209
+FILE SIS/Tree/PointersRun.lean 386 -> 298
+FILE SIS/Tree/PointersStep.lean 229 -> 229
+FILE SIS/Tree/Props.lean 332 -> 332
+FILE SIS/Tree/PutInvChain.lean 821 -> 0
+FILE SIS/Tree/PutInvCollapse.lean 158 -> 0
+FILE SIS/Tree/PutInvDel.lean 268 -> 128
+FILE SIS/Tree/PutInvDelCascade.lean 446 -> 0
+FILE SIS/Tree/PutInvDelFull.lean 544 -> 127
+FILE SIS/Tree/PutInvDelRoot.lean 548 -> 202
+FILE SIS/Tree/PutInvDelSeg.lean 638 -> 0
+FILE SIS/Tree/PutInvDelSpace.lean 552 -> 0
+FILE SIS/Tree/PutInvDelSpaceCascade.lean 443 -> 0
+FILE SIS/Tree/PutInvInit.lean 274 -> 274
+FILE SIS/Tree/PutInvLeaf.lean 78 -> 0
+FILE SIS/Tree/PutInvNewSeg.lean 303 -> 303
+FILE SIS/Tree/PutInvOK.lean 335 -> 335
+FILE SIS/Tree/PutInvQIP.lean 335 -> 0
+FILE SIS/Tree/PutInvRange.lean 174 -> 174
+FILE SIS/Tree/PutInvRoom.lean 290 -> 290
+FILE SIS/Tree/PutInvRoot.lean 414 -> 27
+FILE SIS/Tree/PutInvRun.lean 94 -> 76
+FILE SIS/Tree/PutInvSeg.lean 690 -> 107
+FILE SIS/Tree/PutInvSpace.lean 455 -> 41
+FILE SIS/Tree/PutInvSpaceSpace.lean 566 -> 0
+FILE SIS/Tree/PutInvSplit.lean 439 -> 62
+FILE SIS/Tree/PutInvTimeSpace.lean 534 -> 0
+FILE SIS/Tree/PutInvUp.lean 504 -> 0
+FILE SIS/Tree/RangeChain.lean 645 -> 49
+FILE SIS/Tree/RangeChainG.lean 1656 -> 1656
+FILE SIS/Tree/RangeChainGW.lean 1599 -> 0
+FILE SIS/Tree/RangeCollapse.lean 427 -> 315
+FILE SIS/Tree/RangeCollapseSeg.lean 406 -> 180
+FILE SIS/Tree/RangeDelChain.lean 1043 -> 0
+FILE SIS/Tree/RangeDelChainG.lean 1558 -> 1558
+FILE SIS/Tree/RangeDelChainGV.lean 1072 -> 1072
+FILE SIS/Tree/RangeDelG.lean 904 -> 0
+FILE SIS/Tree/RangeFullSplit.lean 1073 -> 1073
+FILE SIS/Tree/RangeLeb.lean 308 -> 224
+FILE SIS/Tree/RangeMerge.lean 911 -> 911
+FILE SIS/Tree/RangeMergeF2.lean 408 -> 408
+FILE SIS/Tree/RangeMergeFull.lean 1462 -> 1094
+FILE SIS/Tree/RangeMergeMade.lean 882 -> 162
+FILE SIS/Tree/RangeMergeRoot.lean 1400 -> 1400
+FILE SIS/Tree/RangeMergeW.lean 651 -> 0
+FILE SIS/Tree/RangeNewSeg.lean 129 -> 0
+FILE SIS/Tree/RangeNewSegs.lean 412 -> 412
+FILE SIS/Tree/RangeOps.lean 157 -> 96
+FILE SIS/Tree/RangePath.lean 1229 -> 282
+FILE SIS/Tree/RangePut.lean 330 -> 47
+FILE SIS/Tree/RangePutG.lean 294 -> 0
+FILE SIS/Tree/RangeRun.lean 96 -> 96
+FILE SIS/Tree/RangeSim.lean 929 -> 929
+FILE SIS/Tree/RangeSteps.lean 877 -> 877
+FILE SIS/Tree/RangeUp.lean 163 -> 0
+FILE SIS/Tree/RangeUpAll.lean 323 -> 92
+FILE SIS/Tree/RangeUpTake.lean 135 -> 0
+FILE SIS/Tree/Read.lean 294 -> 294
+FILE SIS/Tree/ReadExtension.lean 174 -> 75
+FILE SIS/Tree/RootRun.lean 131 -> 26
+FILE SIS/Tree/RootWalkDelete.lean 673 -> 54
+FILE SIS/Tree/RootWalkMerge.lean 237 -> 19
+FILE SIS/Tree/RootWalkRules.lean 1279 -> 577
+FILE SIS/Tree/RootWalkRun.lean 622 -> 26
+FILE SIS/Tree/RootWalkSplit.lean 524 -> 88
+FILE SIS/Tree/RunEncoding.lean 194 -> 194
+FILE SIS/Tree/RunPotential.lean 111 -> 60
+FILE SIS/Tree/RunPrefix.lean 89 -> 85
+FILE SIS/Tree/ScanAdequacy.lean 169 -> 0
+FILE SIS/Tree/ScanBoundary.lean 64 -> 41
+FILE SIS/Tree/ScanFuelBound.lean 118 -> 0
+FILE SIS/Tree/ScanHistorySetup.lean 99 -> 99
+FILE SIS/Tree/ScanLatest.lean 506 -> 506
+FILE SIS/Tree/ScanModel.lean 478 -> 459
+FILE SIS/Tree/ScanNext.lean 414 -> 414
+FILE SIS/Tree/ScanRead.lean 149 -> 149
+FILE SIS/Tree/ScanSetup.lean 146 -> 48
+FILE SIS/Tree/ScanSetupProof.lean 818 -> 818
+FILE SIS/Tree/ScanSound.lean 110 -> 0
+FILE SIS/Tree/ScanStep.lean 90 -> 90
+FILE SIS/Tree/SearchEqProof.lean 207 -> 207
+FILE SIS/Tree/SearchFold.lean 134 -> 134
+FILE SIS/Tree/SearchReadProof.lean 122 -> 98
+FILE SIS/Tree/SegBalance.lean 86 -> 76
+FILE SIS/Tree/SegmentGet.lean 155 -> 42
+FILE SIS/Tree/SegmentRange.lean 180 -> 139
+FILE SIS/Tree/SharedSegment.lean 123 -> 0
+FILE SIS/Tree/SizeRules.lean 636 -> 632
+FILE SIS/Tree/SizeStep.lean 70 -> 70
+FILE SIS/Tree/SortedKeys.lean 144 -> 72
+FILE SIS/Tree/SortedSegments.lean 127 -> 0
+FILE SIS/Tree/SpaceSplitDeadBound.lean 149 -> 149
+FILE SIS/Tree/SpaceSplitMap.lean 338 -> 293
+FILE SIS/Tree/Spec.lean 67 -> 67
+FILE SIS/Tree/SplitLiveFill.lean 120 -> 120
+FILE SIS/Tree/SplitMergeDead.lean 71 -> 29
+FILE SIS/Tree/StopLeafLive.lean 134 -> 84
+FILE SIS/Tree/TakeBackDead.lean 242 -> 131
+FILE SIS/Tree/TakeBackMerges.lean 34 -> 0
+FILE SIS/Tree/TakeBackRun.lean 415 -> 164
+FILE SIS/Tree/TakeBackRunExample.lean 150 -> 150
+FILE SIS/Tree/TakeBackRunJ.lean 261 -> 93
+FILE SIS/Tree/TakeBackRunJ2.lean 193 -> 178
+FILE SIS/Tree/TakeBackRunT.lean 250 -> 97
+FILE SIS/Tree/TakeBackRunU.lean 473 -> 84
+FILE SIS/Tree/TakeBaseStart.lean 75 -> 75
+FILE SIS/Tree/TakeCachedKeep.lean 105 -> 105
+FILE SIS/Tree/TakeCascade.lean 124 -> 124
+FILE SIS/Tree/TakeDeadAssembly.lean 417 -> 308
+FILE SIS/Tree/TakeDeadAssembly2.lean 159 -> 104
+FILE SIS/Tree/TakeDeadCascade.lean 356 -> 260
+FILE SIS/Tree/TakeDeadCases.lean 361 -> 359
+FILE SIS/Tree/TakeDeadChain.lean 311 -> 311
+FILE SIS/Tree/TakeDeadCollapse.lean 757 -> 427
+FILE SIS/Tree/TakeDeadDelete.lean 323 -> 277
+FILE SIS/Tree/TakeDeadLast.lean 115 -> 26
+FILE SIS/Tree/TakeDeadMerge.lean 1906 -> 972
+FILE SIS/Tree/TakeDeadNewSeg.lean 477 -> 475
+FILE SIS/Tree/TakeDeadNewSegFull.lean 643 -> 604
+FILE SIS/Tree/TakeDeadPutFull.lean 454 -> 393
+FILE SIS/Tree/TakeDeadUp.lean 636 -> 631
+FILE SIS/Tree/TakeDeadUpM.lean 910 -> 0
+FILE SIS/Tree/TakeDeadUpW.lean 868 -> 36
+FILE SIS/Tree/TakeDelMerge.lean 318 -> 316
+FILE SIS/Tree/TakeDelMergeF4.lean 333 -> 333
+FILE SIS/Tree/TakeDelStepsCascF4.lean 415 -> 0
+FILE SIS/Tree/TakeDelStepsF4.lean 681 -> 346
+FILE SIS/Tree/TakeFullLast.lean 346 -> 346
+FILE SIS/Tree/TakeInvCollapse.lean 378 -> 102
+FILE SIS/Tree/TakeInvMerge.lean 1745 -> 147
+FILE SIS/Tree/TakeInvTree.lean 492 -> 425
+FILE SIS/Tree/TakeInvUp.lean 917 -> 172
+FILE SIS/Tree/TakeLebFull.lean 716 -> 0
+FILE SIS/Tree/TakeMergeAny.lean 461 -> 461
+FILE SIS/Tree/TakeMergeAnyU.lean 336 -> 336
+FILE SIS/Tree/TakeMergeFull.lean 319 -> 319
+FILE SIS/Tree/TakeMergeRoot.lean 1992 -> 1992
+FILE SIS/Tree/TakeMergeRootU.lean 1614 -> 1614
+FILE SIS/Tree/TakeMergeTail.lean 1765 -> 1763
+FILE SIS/Tree/TakeMergeTailU.lean 1306 -> 1305
+FILE SIS/Tree/TakeNextGrows.lean 100 -> 90
+FILE SIS/Tree/TakeReplaceFull.lean 543 -> 539
+FILE SIS/Tree/TakeRunQF4.lean 683 -> 431
+FILE SIS/Tree/TakeUpCasc.lean 978 -> 496
+FILE SIS/Tree/TimeSplitCount.lean 75 -> 0
+FILE SIS/Tree/TimeSplitMap.lean 112 -> 51
+FILE SIS/Tree/Top.lean 83 -> 83
+FILE SIS/Tree/TreeGet.lean 224 -> 210
+FILE SIS/Tree/TreeReadModel.lean 204 -> 204
+FILE SIS/Tree/Val.lean 64 -> 64
+FILE SIS/Tree/WGetAt.lean 22 -> 19
+FILE SIS/Tree/WalkComplete.lean 152 -> 72
+FILE SIS/Tree/WalkEdges.lean 79 -> 79
+FILE SIS/Tree/WalkNil.lean 120 -> 120
+FILE SIS/Tree/WriterBook.lean 725 -> 725
+FILE SIS/Tree/WriterBookMerge.lean 228 -> 228
+FILE SIS/Tree/WriterBookOps.lean 340 -> 340
+FILE SIS/Tree/WriterCache.lean 192 -> 186
+FILE SIS/Tree/WriterCacheUnique.lean 742 -> 664
+FILE SIS/Tree/WriterDeleteCount.lean 63 -> 0
+FILE SIS/Tree/WriterEncoding.lean 736 -> 736
+FILE SIS/Tree/WriterEncodingOps.lean 216 -> 216
+FILE SIS/Tree/WriterFields.lean 583 -> 522
+FILE SIS/Tree/WriterFrame.lean 317 -> 317
+FILE SIS/Tree/WriterGetCollapse.lean 450 -> 314
+FILE SIS/Tree/WriterGetCollapseLoop.lean 771 -> 556
+FILE SIS/Tree/WriterGetCollapseSeg.lean 427 -> 235
+FILE SIS/Tree/WriterGetMerge.lean 993 -> 993
+FILE SIS/Tree/WriterGetMergeIdx.lean 321 -> 321
+FILE SIS/Tree/WriterGetMergeMade.lean 918 -> 221
+FILE SIS/Tree/WriterGetMergeOp.lean 121 -> 87
+FILE SIS/Tree/WriterGetMergeTail.lean 798 -> 219
+FILE SIS/Tree/WriterGetUp.lean 1160 -> 1160
+FILE SIS/Tree/WriterGetUpAll.lean 699 -> 181
+FILE SIS/Tree/WriterGetUpLeb.lean 319 -> 234
+FILE SIS/Tree/WriterGetUpT.lean 292 -> 0
+FILE SIS/Tree/WriterGetUpTake.lean 837 -> 251
+FILE SIS/Tree/WriterGetUpW.lean 537 -> 219
+FILE SIS/Tree/WriterGood.lean 348 -> 348
+FILE SIS/Tree/WriterGoodOps.lean 687 -> 687
+FILE SIS/Tree/WriterGrowth.lean 96 -> 8
+FILE SIS/Tree/WriterHeightsChk.lean 569 -> 563
+FILE SIS/Tree/WriterHeightsChkDel.lean 254 -> 254
+FILE SIS/Tree/WriterHeightsCollapse.lean 189 -> 189
+FILE SIS/Tree/WriterHeightsDel.lean 526 -> 504
+FILE SIS/Tree/WriterHeightsDelNode.lean 233 -> 233
+FILE SIS/Tree/WriterHeightsDelete.lean 319 -> 319
+FILE SIS/Tree/WriterHeightsFull.lean 533 -> 530
+FILE SIS/Tree/WriterHeightsMerge.lean 515 -> 515
+FILE SIS/Tree/WriterHeightsPut.lean 363 -> 363
+FILE SIS/Tree/WriterHeightsRules.lean 304 -> 304
+FILE SIS/Tree/WriterHeightsSplit.lean 274 -> 270
+FILE SIS/Tree/WriterHeightsSteps.lean 296 -> 286
+FILE SIS/Tree/WriterHistory.lean 57 -> 0
+FILE SIS/Tree/WriterKinds.lean 180 -> 180
+FILE SIS/Tree/WriterKindsDelete.lean 668 -> 668
+FILE SIS/Tree/WriterKindsMerge.lean 233 -> 214
+FILE SIS/Tree/WriterKindsRules.lean 1241 -> 1231
+FILE SIS/Tree/WriterKindsRun.lean 613 -> 613
+FILE SIS/Tree/WriterKindsSplit.lean 509 -> 509
+FILE SIS/Tree/WriterKlongDelete.lean 222 -> 222
+FILE SIS/Tree/WriterKlongLEB.lean 96 -> 96
+FILE SIS/Tree/WriterKlongMerge.lean 111 -> 111
+FILE SIS/Tree/WriterKlongMergeParent.lean 116 -> 116
+FILE SIS/Tree/WriterKlongOps.lean 221 -> 221
+FILE SIS/Tree/WriterKlongSplits.lean 85 -> 85
+FILE SIS/Tree/WriterKlongs.lean 293 -> 293
+FILE SIS/Tree/WriterLeft.lean 503 -> 493
+FILE SIS/Tree/WriterLeftMerge.lean 649 -> 637
+FILE SIS/Tree/WriterLeftOps.lean 588 -> 587
+FILE SIS/Tree/WriterLeftRun.lean 415 -> 397
+FILE SIS/Tree/WriterLeftSplit.lean 193 -> 193
+FILE SIS/Tree/WriterMergeUpLoop.lean 220 -> 126
+FILE SIS/Tree/WriterNodeMap.lean 109 -> 0
+FILE SIS/Tree/WriterNonempty.lean 537 -> 511
+FILE SIS/Tree/WriterNonemptyMerge.lean 265 -> 239
+FILE SIS/Tree/WriterNonemptyOps.lean 277 -> 263
+FILE SIS/Tree/WriterNonemptyRun.lean 430 -> 430
+FILE SIS/Tree/WriterPtrs.lean 1016 -> 1013
+FILE SIS/Tree/WriterPtrsMerge.lean 31 -> 31
+FILE SIS/Tree/WriterPtrsOps.lean 337 -> 337
+FILE SIS/Tree/WriterPtrsRun.lean 235 -> 235
+FILE SIS/Tree/WriterSize.lean 470 -> 470
+FILE SIS/Tree/WriterSizeMerge.lean 254 -> 254
+FILE SIS/Tree/WriterSizeOps.lean 318 -> 318
+FILE SIS/Tree/WriterSplitMap.lean 111 -> 0
+FILE SIS/Tree/WriterStateInvariant.lean 582 -> 544
+FILE SIS/Tree/WriterSteps.lean 23 -> 23
+FILE SIS/Tree/WriterTaken.lean 385 -> 371
+FILE SIS/Tree/WriterTakenOps.lean 441 -> 441
+FILE SIS/Tree/WriterTree.lean 685 -> 508
+FILE SIS/Tree/WriterTreeCascade.lean 733 -> 0
+FILE SIS/Tree/WriterTreeCascadeGen.lean 471 -> 114
+FILE SIS/Tree/WriterTreeCascadeGen2.lean 979 -> 423
+FILE SIS/Tree/WriterTreeCascadeInv.lean 120 -> 0
+FILE SIS/Tree/WriterTreeCascadePut.lean 402 -> 0
+FILE SIS/Tree/WriterTreeChainG.lean 1794 -> 1794
+FILE SIS/Tree/WriterTreeChainSteps.lean 586 -> 584
+FILE SIS/Tree/WriterTreeChainTree.lean 634 -> 631
+FILE SIS/Tree/WriterTreeCollapse.lean 334 -> 185
+FILE SIS/Tree/WriterTreeCollapseSeg.lean 151 -> 37
+FILE SIS/Tree/WriterTreeDelChain.lean 1521 -> 369
+FILE SIS/Tree/WriterTreeDelFull.lean 352 -> 0
+FILE SIS/Tree/WriterTreeDelSpace.lean 610 -> 0
+FILE SIS/Tree/WriterTreeDelete.lean 129 -> 66
+FILE SIS/Tree/WriterTreeDepth.lean 270 -> 270
+FILE SIS/Tree/WriterTreeFullSplit.lean 859 -> 859
+FILE SIS/Tree/WriterTreeInPlace.lean 227 -> 0
+FILE SIS/Tree/WriterTreeInnerHalves.lean 606 -> 0
+FILE SIS/Tree/WriterTreeInv.lean 218 -> 0
+FILE SIS/Tree/WriterTreeLeb.lean 376 -> 110
+FILE SIS/Tree/WriterTreeMerge.lean 390 -> 293
+FILE SIS/Tree/WriterTreeMergeFull.lean 1869 -> 899
+FILE SIS/Tree/WriterTreeMergeLive.lean 628 -> 628
+FILE SIS/Tree/WriterTreeMergeMade.lean 510 -> 0
+FILE SIS/Tree/WriterTreeMergeOp.lean 656 -> 150
+FILE SIS/Tree/WriterTreeMergeTwo.lean 264 -> 264
+FILE SIS/Tree/WriterTreeMergeW.lean 141 -> 86
+FILE SIS/Tree/WriterTreeNewSeg.lean 297 -> 297
+FILE SIS/Tree/WriterTreeOps.lean 205 -> 85
+FILE SIS/Tree/WriterTreePut.lean 514 -> 201
+FILE SIS/Tree/WriterTreePut2.lean 466 -> 0
+FILE SIS/Tree/WriterTreePutInv.lean 320 -> 51
+FILE SIS/Tree/WriterTreeRepoint.lean 171 -> 33
+FILE SIS/Tree/WriterTreeRetarget.lean 309 -> 299
+FILE SIS/Tree/WriterTreeRoot.lean 607 -> 81
+FILE SIS/Tree/WriterTreeSegInPlace.lean 329 -> 0
+FILE SIS/Tree/WriterTreeSegLeaf.lean 95 -> 0
+FILE SIS/Tree/WriterTreeSegRoot.lean 284 -> 0
+FILE SIS/Tree/WriterTreeSegSplit.lean 350 -> 0
+FILE SIS/Tree/WriterTreeSpace.lean 772 -> 42
+FILE SIS/Tree/WriterTreeSpaceSpace.lean 727 -> 0
+FILE SIS/Tree/WriterTreeSplit.lean 207 -> 0
+FILE SIS/Tree/WriterTreeVisits.lean 505 -> 318
+FILE SIS/Tree/WriterWP.lean 71 -> 71
+TOTAL SIS/Tree files with declarations: 506; lines 228042 -> 140844; files removed 73
+DECLS 7246 kept 5670 (reached 4567, simp 11, between 376) dead 1576
+GONE SIS/Tree/DelStepsBookStop.lean
+GONE SIS/Tree/DelStepsHolder.lean
+GONE SIS/Tree/DelStepsLeb.lean
+GONE SIS/Tree/DelStepsUp.lean
+GONE SIS/Tree/GetDelVirtual.lean
+GONE SIS/Tree/GetKeyTree.lean
+GONE SIS/Tree/GetLeafRoot.lean
+GONE SIS/Tree/GetOpInv.lean
+GONE SIS/Tree/GetSegLeaf.lean
+GONE SIS/Tree/GetTree.lean
+GONE SIS/Tree/KlongHistoryTime.lean
+GONE SIS/Tree/LatestTop.lean
+GONE SIS/Tree/LeftHist.lean
+GONE SIS/Tree/LeftRun.lean
+GONE SIS/Tree/LiveTP7.lean
+GONE SIS/Tree/MergeProtectedMerge.lean
+GONE SIS/Tree/MergeRetainedRoot.lean
+GONE SIS/Tree/MergeRootBoundedExec.lean
+GONE SIS/Tree/MergeRootWrites.lean
+GONE SIS/Tree/MergeSearchOrder.lean
+GONE SIS/Tree/MergeSortedTight.lean
+GONE SIS/Tree/NodeCountProof.lean
+GONE SIS/Tree/NodeCountTree.lean
+GONE SIS/Tree/PutInvChain.lean
+GONE SIS/Tree/PutInvCollapse.lean
+GONE SIS/Tree/PutInvDelCascade.lean
+GONE SIS/Tree/PutInvDelSeg.lean
+GONE SIS/Tree/PutInvDelSpace.lean
+GONE SIS/Tree/PutInvDelSpaceCascade.lean
+GONE SIS/Tree/PutInvLeaf.lean
+GONE SIS/Tree/PutInvQIP.lean
+GONE SIS/Tree/PutInvSpaceSpace.lean
+GONE SIS/Tree/PutInvTimeSpace.lean
+GONE SIS/Tree/PutInvUp.lean
+GONE SIS/Tree/RangeChainGW.lean
+GONE SIS/Tree/RangeDelChain.lean
+GONE SIS/Tree/RangeDelG.lean
+GONE SIS/Tree/RangeMergeW.lean
+GONE SIS/Tree/RangeNewSeg.lean
+GONE SIS/Tree/RangePutG.lean
+GONE SIS/Tree/RangeUp.lean
+GONE SIS/Tree/RangeUpTake.lean
+GONE SIS/Tree/ScanAdequacy.lean
+GONE SIS/Tree/ScanFuelBound.lean
+GONE SIS/Tree/ScanSound.lean
+GONE SIS/Tree/SharedSegment.lean
+GONE SIS/Tree/SortedSegments.lean
+GONE SIS/Tree/TakeBackMerges.lean
+GONE SIS/Tree/TakeDeadUpM.lean
+GONE SIS/Tree/TakeDelStepsCascF4.lean
+GONE SIS/Tree/TakeLebFull.lean
+GONE SIS/Tree/TimeSplitCount.lean
+GONE SIS/Tree/WriterDeleteCount.lean
+GONE SIS/Tree/WriterGetUpT.lean
+GONE SIS/Tree/WriterHistory.lean
+GONE SIS/Tree/WriterNodeMap.lean
+GONE SIS/Tree/WriterSplitMap.lean
+GONE SIS/Tree/WriterTreeCascade.lean
+GONE SIS/Tree/WriterTreeCascadeInv.lean
+GONE SIS/Tree/WriterTreeCascadePut.lean
+GONE SIS/Tree/WriterTreeDelFull.lean
+GONE SIS/Tree/WriterTreeDelSpace.lean
+GONE SIS/Tree/WriterTreeInPlace.lean
+GONE SIS/Tree/WriterTreeInnerHalves.lean
+GONE SIS/Tree/WriterTreeInv.lean
+GONE SIS/Tree/WriterTreeMergeMade.lean
+GONE SIS/Tree/WriterTreePut2.lean
+GONE SIS/Tree/WriterTreeSegInPlace.lean
+GONE SIS/Tree/WriterTreeSegLeaf.lean
+GONE SIS/Tree/WriterTreeSegRoot.lean
+GONE SIS/Tree/WriterTreeSegSplit.lean
+GONE SIS/Tree/WriterTreeSpaceSpace.lean
+GONE SIS/Tree/WriterTreeSplit.lean
+DEAD SIS.Tree.TakeDeadCascade def SIS.Tree.CascadeShapeJ
+DEAD SIS.Tree.PutInvCollapse def SIS.Tree.CollInvP
+DEAD SIS.Tree.RangeCollapse def SIS.Tree.CollInvR
+DEAD SIS.Tree.RangeUpAll def SIS.Tree.CollInvRO
+DEAD SIS.Tree.DelMergeCase def SIS.Tree.CollRange
+DEAD SIS.Tree.DelMergeCaseF def SIS.Tree.CollapseStepOKF
+DEAD SIS.Tree.WriterDeleteCount def SIS.Tree.CountChangeOne
+DEAD SIS.Tree.LeftHist def SIS.Tree.CreationOK
+DEAD SIS.Tree.TakeBackRun def SIS.Tree.DeadTakenLiveOK
+DEAD SIS.Tree.DelStepsFullGet def SIS.Tree.DelFullFitsOK
+DEAD SIS.Tree.GetMergeInv def SIS.Tree.DelInv
+DEAD SIS.Tree.GetDelCascade def SIS.Tree.DelSpaceSpaceAfter
+DEAD SIS.Tree.GetDelCascade def SIS.Tree.DelSpaceTimeAfter
+DEAD SIS.Tree.DelStepsTree def SIS.Tree.DelStepsQd
+DEAD SIS.Tree.GetDelCascade def SIS.Tree.DelTimeSpaceAfter
+DEAD SIS.Tree.GetDelCascade def SIS.Tree.DelTimeSplit2After
+DEAD SIS.Tree.WriterNodeMap def SIS.Tree.DeleteMapChange
+DEAD SIS.Tree.GetSplit def SIS.Tree.DescentPath
+DEAD SIS.Tree.KlongHistoryTime def SIS.Tree.EntryAccOrdered
+DEAD SIS.Tree.WriterGrowth def SIS.Tree.FieldsGrow
+DEAD SIS.Tree.CacheGood thm SIS.Tree.Good.repointAfter
+DEAD SIS.Tree.MergeHeightSplit def SIS.Tree.HeightSplitBound
+DEAD SIS.Tree.LeftHist def SIS.Tree.HistLeftOK
+DEAD SIS.Tree.MergeLiveKeys thm SIS.Tree.KNode.add_delete_cnt_ge_earlier_prefix
+DEAD SIS.Tree.DeleteCount thm SIS.Tree.KNode.add_delete_count_exact
+DEAD SIS.Tree.DeleteCount thm SIS.Tree.KNode.add_delete_preserves_key_indices
+DEAD SIS.Tree.KlongShape thm SIS.Tree.KNode.add_key_cnt_ge
+DEAD SIS.Tree.WriterTreeCascadeGen thm SIS.Tree.KNode.add_key_liveAt_iff_fold
+DEAD SIS.Tree.MergeLiveKeys thm SIS.Tree.KNode.add_prefix
+DEAD SIS.Tree.DeleteCount thm SIS.Tree.KNode.cnt_of_bitmap_and_keys
+DEAD SIS.Tree.KlongShape thm SIS.Tree.KNode.cnt_with_leaf
+DEAD SIS.Tree.MergeProtectedDelete thm SIS.Tree.KNode.delete_cnt_ge_earlier_prefix
+DEAD SIS.Tree.DeleteCount thm SIS.Tree.KNode.delete_count_bounds
+DEAD SIS.Tree.DeleteCount thm SIS.Tree.KNode.delete_count_exact
+DEAD SIS.Tree.MergeFrozenPrefix thm SIS.Tree.KNode.delete_lastVersion_earlier_prefix
+DEAD SIS.Tree.MergeFrozenPrefix thm SIS.Tree.KNode.delete_lastVersion_sorted_terminal_prefix
+DEAD SIS.Tree.DeleteCount thm SIS.Tree.KNode.delete_liveCvs
+DEAD SIS.Tree.DeleteCount thm SIS.Tree.KNode.delete_liveCvs_mem
+DEAD SIS.Tree.MergeProtectedDelete thm SIS.Tree.KNode.delete_nonempty_of_earlier
+DEAD SIS.Tree.MergeLiveKeys thm SIS.Tree.KNode.delete_preserves_earlier_key
+DEAD SIS.Tree.MergeLiveKeys thm SIS.Tree.KNode.delete_size_ge_protected_prefix
+DEAD SIS.Tree.MergeLiveKeys thm SIS.Tree.KNode.delete_size_ge_sorted_terminal_keys
+DEAD SIS.Tree.MergeFrozenPrefix thm SIS.Tree.KNode.halves_delete_earlier_prefix
+DEAD SIS.Tree.DeleteCount thm SIS.Tree.KNode.lastVersionGivenDel_cnt
+DEAD SIS.Tree.MergeLiveKeys thm SIS.Tree.KNode.lastVersionGivenDel_size_ge_protected
+DEAD SIS.Tree.NormalizedDead thm SIS.Tree.KNode.lastVersion_deadCount
+DEAD SIS.Tree.WriterTreeSpace thm SIS.Tree.KNode.lastVersion_leaf
+DEAD SIS.Tree.NodeMap thm SIS.Tree.KNode.lastVersion_live_lookup
+DEAD SIS.Tree.DeleteCount def SIS.Tree.KNode.liveCvsGivenDel
+DEAD SIS.Tree.DeleteCount thm SIS.Tree.KNode.liveCvsGivenDel._sparseCasesOn_1.else_eq
+DEAD SIS.Tree.DeleteCount thm SIS.Tree.KNode.liveCvsGivenDel_order
+DEAD SIS.Tree.NodeMap thm SIS.Tree.KNode.live_with_leaf
+DEAD SIS.Tree.DeleteCount thm SIS.Tree.KNode.mem_liveCvsGivenDel
+DEAD SIS.Tree.KlongShape thm SIS.Tree.KNode.repoint_cnt
+DEAD SIS.Tree.WriterTreeRepoint thm SIS.Tree.KNode.repoint_liveAt
+DEAD SIS.Tree.WriterTreeLeb thm SIS.Tree.KNode.repoint_liveAt_cv
+DEAD SIS.Tree.HistoricalGetDirect thm SIS.Tree.KNode.searchEq_eq_of_prefix
+DEAD SIS.Tree.SearchReadProof thm SIS.Tree.KNode.searchGt_liveAt_lookup
+DEAD SIS.Tree.SearchReadProof thm SIS.Tree.KNode.searchGte_liveAt_lookup
+DEAD SIS.Tree.SearchReadProof thm SIS.Tree.KNode.searchLt_liveAt_lookup
+DEAD SIS.Tree.ScanFuelBound thm SIS.Tree.KNode.searchLte_cvLo
+DEAD SIS.Tree.MergeSearchOrder thm SIS.Tree.KNode.searchLte_later_key_separator
+DEAD SIS.Tree.MergeSearchOrder thm SIS.Tree.KNode.searchLte_lower_bound
+DEAD SIS.Tree.MergeSearchOrder thm SIS.Tree.KNode.searchLte_monotone
+DEAD SIS.Tree.MergeSearchOrder thm SIS.Tree.KNode.searchLte_origin
+DEAD SIS.Tree.MergeSearchOrder thm SIS.Tree.KNode.searchLte_separator
+DEAD SIS.Tree.MergeSearchOrder thm SIS.Tree.KNode.searchLte_upper_bound
+DEAD SIS.Tree.MergeLiveKeys thm SIS.Tree.KNode.setAt_delete_cnt_ge_earlier_prefix
+DEAD SIS.Tree.DeleteCount thm SIS.Tree.KNode.setAt_delete_count_exact
+DEAD SIS.Tree.NodeCountTree def SIS.Tree.KNode.terminalEntries
+DEAD SIS.Tree.MergeKeptNode def SIS.Tree.KeepsGuard
+DEAD SIS.Tree.MergeHeightSplit def SIS.Tree.KeepsHeightSplitBound
+DEAD SIS.Tree.HeightsFuel def SIS.Tree.KeepsSB
+DEAD SIS.Tree.MergeKeptNode def SIS.Tree.KeyAllocated
+DEAD SIS.Tree.GetUnder def SIS.Tree.KeyTreeOK
+DEAD SIS.Tree.NodeCountTree def SIS.Tree.KeyWalkComplete
+DEAD SIS.Tree.RootWalkRules def SIS.Tree.KrFrame
+DEAD SIS.Tree.RootWalkRules def SIS.Tree.KrKeeps
+DEAD SIS.Tree.RootWalkDelete def SIS.Tree.KrKeepsP
+DEAD SIS.Tree.RootWalkDelete def SIS.Tree.KrPathLast
+DEAD SIS.Tree.RootWalkRun def SIS.Tree.KrSegs
+DEAD SIS.Tree.RootWalkSplit def SIS.Tree.KrUp
+DEAD SIS.Tree.WriterLeft thm SIS.Tree.Live0.given
+DEAD SIS.Tree.TakeBackRun def SIS.Tree.LiveReached
+DEAD SIS.Tree.TakeInvTree def SIS.Tree.LiveReachedN
+DEAD SIS.Tree.DelMergeCaseF def SIS.Tree.MergeStepOKF
+DEAD SIS.Tree.WriterTree def SIS.Tree.OpCountTreeOK
+DEAD SIS.Tree.TakeBackDead def SIS.Tree.OpDeadLiveOK
+DEAD SIS.Tree.GetTree def SIS.Tree.OpGetTreeOK
+DEAD SIS.Tree.GetOpInv def SIS.Tree.OpInvariant
+DEAD SIS.Tree.PutInvRun def SIS.Tree.OpPutInvTOK
+DEAD SIS.Tree.TakeBackRunJ def SIS.Tree.OpTakeJOK
+DEAD SIS.Tree.TakeBackRun def SIS.Tree.OpTakeOK
+DEAD SIS.Tree.TakeBackRunT def SIS.Tree.OpTakeTOK
+DEAD SIS.Tree.WriterTreeInv def SIS.Tree.OpTreeInvOK
+DEAD SIS.Tree.KeyLevels thm SIS.Tree.Params.keyLevel_decode
+DEAD SIS.Tree.KeyLevels thm SIS.Tree.Params.keyLevel_injective
+DEAD SIS.Tree.KeyLevels thm SIS.Tree.Params.keyLevel_inner_child_lt
+DEAD SIS.Tree.KeyLevels thm SIS.Tree.Params.keyLevel_next_segment_lt
+DEAD SIS.Tree.KeyLevels thm SIS.Tree.Params.keyLevel_pos
+DEAD SIS.Tree.MergeRootHeight def SIS.Tree.PathEndsAt
+DEAD SIS.Tree.GetChain thm SIS.Tree.PathFrom.last_two
+DEAD SIS.Tree.GetChain thm SIS.Tree.PathFrom.unique_leaf
+DEAD SIS.Tree.GetNewSegFull thm SIS.Tree.PathLen.of_sublinks
+DEAD SIS.Tree.FuelPaths thm SIS.Tree.PathsFit.reached
+DEAD SIS.Tree.MergePotential def SIS.Tree.PotentialCosts
+DEAD SIS.Tree.DelChkRefines thm SIS.Tree.Refines.bind_same
+DEAD SIS.Tree.DelChkRefines thm SIS.Tree.Refines.drop_check
+DEAD SIS.Tree.GetRootSplit def SIS.Tree.RootSpaceSplitAfter
+DEAD SIS.Tree.GetRootSplit def SIS.Tree.RootSpaceSplitInPlaceAfter
+DEAD SIS.Tree.RunPotential def SIS.Tree.RunPotentialStep
+DEAD SIS.Tree.GetUnder def SIS.Tree.RunReadOK
+DEAD SIS.Tree.ScanSetup def SIS.Tree.ScanCallsAdequate
+DEAD SIS.Tree.ScanSound def SIS.Tree.ScanChain
+DEAD SIS.Tree.ScanSound def SIS.Tree.ScanTree
+DEAD SIS.Tree.SegBalance def SIS.Tree.SegBal
+DEAD SIS.Tree.SegBalance thm SIS.Tree.SegBal.segFits
+DEAD SIS.Tree.GetSegRoot def SIS.Tree.SegSpaceSplitAfter
+DEAD SIS.Tree.GetSegInPlace def SIS.Tree.SegSpaceSplitInPlaceAfter
+DEAD SIS.Tree.PutInvDelSeg def SIS.Tree.SegSpaceSplitInPlaceNilAfter
+DEAD SIS.Tree.PutInvDelSeg def SIS.Tree.SegSpaceSplitNilAfter
+DEAD SIS.Tree.MergeRootHeight def SIS.Tree.SegmentRootPath
+DEAD SIS.Tree.MergeRootHeight def SIS.Tree.SegmentRootStop
+DEAD SIS.Tree.GetSpaceSpace def SIS.Tree.SpaceSpaceAfter
+DEAD SIS.Tree.WriterTreeSpace def SIS.Tree.SpaceSplitAfter
+DEAD SIS.Tree.GetSpaceSpace def SIS.Tree.SpaceSplitAfterIns
+DEAD SIS.Tree.GetSpaceSpace def SIS.Tree.SpaceSplitAfterLast
+DEAD SIS.Tree.GetInPlace def SIS.Tree.SpaceSplitInPlaceAfter
+DEAD SIS.Tree.GetInPlaceCascade def SIS.Tree.SpaceSplitInPlaceQIPAfter
+DEAD SIS.Tree.GetInPlaceCascade def SIS.Tree.SpaceSplitQIPAfter
+DEAD SIS.Tree.GetChain def SIS.Tree.SpaceSplitTimeAfter
+DEAD SIS.Tree.DelMergeCase def SIS.Tree.StepInv
+DEAD SIS.Tree.HeightsFit def SIS.Tree.TakeBelowFuelOK
+DEAD SIS.Tree.TakeBackRun def SIS.Tree.TakeInv
+DEAD SIS.Tree.TakeInvCollapse def SIS.Tree.TakeJ
+DEAD SIS.Tree.GetInnerSplit def SIS.Tree.TimeSpaceAfter
+DEAD SIS.Tree.GetChain def SIS.Tree.TimeSplit2After
+DEAD SIS.Tree.GetSplit def SIS.Tree.TimeSplitAfter
+DEAD SIS.Tree.GetChain def SIS.Tree.TimeSplitAfterIns
+DEAD SIS.Tree.GetInPlaceCascade def SIS.Tree.TimeSplitQIPAfter
+DEAD SIS.Tree.LeftHist def SIS.Tree.TopTimeOK
+DEAD SIS.Tree.WriterTreeCascade thm SIS.Tree.TreeOK.no_two_cycle
+DEAD SIS.Tree.NodeCountTree def SIS.Tree.TreeWalkComplete
+DEAD SIS.Tree.DelStepsCascRoot def SIS.Tree.UpCascBelowOKF3
+DEAD SIS.Tree.DelStepsCascRoot def SIS.Tree.UpCascFitsOK
+DEAD SIS.Tree.TakeDelStepsCascF4 def SIS.Tree.UpCascJ2OKF3
+DEAD SIS.Tree.DelStepsHolder def SIS.Tree.UpCascJ2OKF3H
+DEAD SIS.Tree.DelStepsHolder def SIS.Tree.UpCascOKF3H
+DEAD SIS.Tree.DelStepsHolder def SIS.Tree.UpGhOK
+DEAD SIS.Tree.DelStepsHolder def SIS.Tree.UpHolderRunOK
+DEAD SIS.Tree.DelStepsLebFull def SIS.Tree.UpLebFitsOK
+DEAD SIS.Tree.StopLeafLive def SIS.Tree.UpLebFitsOKL
+DEAD SIS.Tree.DelStepsLeb def SIS.Tree.UpLebFullJ2OK
+DEAD SIS.Tree.DelStepsLeb def SIS.Tree.UpLebFullOKF3
+DEAD SIS.Tree.TakeDelStepsCascF4 def SIS.Tree.UpLebJ2OKF3
+DEAD SIS.Tree.DelStepsCascRoot def SIS.Tree.UpUnlinkLinksOK
+DEAD SIS.Tree.ExportHistory thm SIS.Tree.apply_changesOf_cached
+DEAD SIS.Tree.ExportHistory thm SIS.Tree.apply_changesOf_cached_klongs
+DEAD SIS.Tree.WriterCache thm SIS.Tree.cache_fresh
+DEAD SIS.Tree.KlongHistoryTime thm SIS.Tree.cached_history_past_current
+DEAD SIS.Tree.ScanFuelBound thm SIS.Tree.chainSetup_forward_segs
+DEAD SIS.Tree.ScanSetup thm SIS.Tree.chainSetup_scanChain
+DEAD SIS.Tree.GetCascadePut def SIS.Tree.chainSteps
+DEAD SIS.Tree.GetCascadePut thm SIS.Tree.chainSteps_get
+DEAD SIS.Tree.GetCascadePut thm SIS.Tree.chainSteps_length
+DEAD SIS.Tree.GetCascadePut thm SIS.Tree.chainSteps_mem
+DEAD SIS.Tree.ExportHistory thm SIS.Tree.changesOf_addsFor
+DEAD SIS.Tree.ExportHistory thm SIS.Tree.changesOf_key_addsFor
+DEAD SIS.Tree.AllocationIds thm SIS.Tree.changesOf_new_distinct
+DEAD SIS.Tree.AllocationIds thm SIS.Tree.changesOf_new_lower_bound
+DEAD SIS.Tree.SegmentRange thm SIS.Tree.childBounds_single
+DEAD SIS.Tree.WriterGetUpAll thm SIS.Tree.collGetInv_after_up
+DEAD SIS.Tree.WriterGetCollapse thm SIS.Tree.collGetInv_iff
+DEAD SIS.Tree.WriterGetCollapse thm SIS.Tree.collGetInv_of_readsAs
+DEAD SIS.Tree.WriterGetCollapseLoop thm SIS.Tree.collGetInv_segStep
+DEAD SIS.Tree.WriterGetCollapse thm SIS.Tree.collGetInv_step
+DEAD SIS.Tree.PutInvCollapse thm SIS.Tree.collInvP_of_readsAs
+DEAD SIS.Tree.PutInvCollapse thm SIS.Tree.collInvP_step
+DEAD SIS.Tree.RangeUpAll thm SIS.Tree.collInvRO_of_readsAs
+DEAD SIS.Tree.RangeCollapse thm SIS.Tree.collInvR_of_readsAs
+DEAD SIS.Tree.MergePotential thm SIS.Tree.commentPotential_two_output_witness
+DEAD SIS.Tree.WriterDeleteCount thm SIS.Tree.countChangeOne_of_exact
+DEAD SIS.Tree.PointersRun thm SIS.Tree.deadAllOK_of_theta_zero
+DEAD SIS.Tree.DeadRun thm SIS.Tree.deadAllOK_snoc
+DEAD SIS.Tree.TakeBackDead thm SIS.Tree.deadLive_reached
+DEAD SIS.Tree.TakeBackRunU thm SIS.Tree.deadLive_reachedU
+DEAD SIS.Tree.TakeBackDead thm SIS.Tree.deadTakenLiveOK_of_ops
+DEAD SIS.Tree.TakeBackRunU thm SIS.Tree.deadTakenLiveOK_of_opsU
+DEAD SIS.Tree.GetMergeInv thm SIS.Tree.delInv_iff
+DEAD SIS.Tree.GetMergeInv thm SIS.Tree.delInv_of_readsAs
+DEAD SIS.Tree.GetDelRoot thm SIS.Tree.delRoot_virtual
+DEAD SIS.Tree.TakeDelStepsCascF4 thm SIS.Tree.delStepsCaseJ2OKF3_emptyCasc
+DEAD SIS.Tree.TakeRunQF4 thm SIS.Tree.delStepsCaseJ2OKF3_emptyCascR
+DEAD SIS.Tree.DelStepsLive thm SIS.Tree.delStepsCaseJ2OKF3_emptyCascRLC
+DEAD SIS.Tree.DelStepsHolder thm SIS.Tree.delStepsCaseJ2OKF3_emptyCascRLH
+DEAD SIS.Tree.DelStepsHolderLive thm SIS.Tree.delStepsCaseJ2OKF3_emptyCascRLH2
+DEAD SIS.Tree.TakeDelStepsF4 thm SIS.Tree.delStepsCaseJ2OKF3_emptyRoom
+DEAD SIS.Tree.TakeDelStepsF4 thm SIS.Tree.delStepsCaseJ2OKF3_emptyRoot
+DEAD SIS.Tree.TakeDelStepsF4 thm SIS.Tree.delStepsCaseJ2OKF3_full
+DEAD SIS.Tree.TakeRunQF4 thm SIS.Tree.delStepsCaseJ2OKF3_fullR
+DEAD SIS.Tree.TakeDelStepsF4 thm SIS.Tree.delStepsCaseJ2OKF3_room
+DEAD SIS.Tree.DelStepsCascF3 thm SIS.Tree.delStepsCaseOKF3_emptyCasc
+DEAD SIS.Tree.DelStepsLive thm SIS.Tree.delStepsCaseOKF3_emptyCascLC
+DEAD SIS.Tree.DelStepsHolder thm SIS.Tree.delStepsCaseOKF3_emptyCascLH
+DEAD SIS.Tree.DelStepsHolderLive thm SIS.Tree.delStepsCaseOKF3_emptyCascLH2
+DEAD SIS.Tree.DelStepsFullGet thm SIS.Tree.delStepsCaseOKF3_full2
+DEAD SIS.Tree.DelStepsTree thm SIS.Tree.delStepsCaseQd_emptyCasc
+DEAD SIS.Tree.DelStepsLive thm SIS.Tree.delStepsCaseQd_emptyCascL
+DEAD SIS.Tree.DelStepsHolder thm SIS.Tree.delStepsCaseQd_emptyCascLH
+DEAD SIS.Tree.DelStepsHolderLive thm SIS.Tree.delStepsCaseQd_emptyCascLH2
+DEAD SIS.Tree.DelStepsTree thm SIS.Tree.delStepsCaseQd_or
+DEAD SIS.Tree.TakeDelStepsF4 thm SIS.Tree.delStepsJ2OKF3_of_open
+DEAD SIS.Tree.TakeDelStepsCascF4 thm SIS.Tree.delStepsJ2OKF3_of_open2
+DEAD SIS.Tree.TakeUpCasc thm SIS.Tree.delStepsJ2OKF3_of_open3
+DEAD SIS.Tree.TakeRunQF4 thm SIS.Tree.delStepsJ2OKF3_of_openR
+DEAD SIS.Tree.DelStepsHolderLive thm SIS.Tree.delStepsJ2OKF3_of_openR10
+DEAD SIS.Tree.TakeUpCasc thm SIS.Tree.delStepsJ2OKF3_of_openR2
+DEAD SIS.Tree.DelStepsLeb thm SIS.Tree.delStepsJ2OKF3_of_openR3
+DEAD SIS.Tree.TakeLebFull thm SIS.Tree.delStepsJ2OKF3_of_openR4
+DEAD SIS.Tree.DelStepsLinks thm SIS.Tree.delStepsJ2OKF3_of_openR5
+DEAD SIS.Tree.DelStepsUnlinkTree thm SIS.Tree.delStepsJ2OKF3_of_openR6
+DEAD SIS.Tree.DelStepsFullH thm SIS.Tree.delStepsJ2OKF3_of_openR7
+DEAD SIS.Tree.DelStepsLive thm SIS.Tree.delStepsJ2OKF3_of_openR8
+DEAD SIS.Tree.DelStepsHolder thm SIS.Tree.delStepsJ2OKF3_of_openR9
+DEAD SIS.Tree.DelStepsLinks thm SIS.Tree.delStepsOKF3_of_open10
+DEAD SIS.Tree.DelStepsUnlinkTree thm SIS.Tree.delStepsOKF3_of_open11
+DEAD SIS.Tree.DelStepsFullH thm SIS.Tree.delStepsOKF3_of_open12
+DEAD SIS.Tree.DelStepsLive thm SIS.Tree.delStepsOKF3_of_open13
+DEAD SIS.Tree.DelStepsHolder thm SIS.Tree.delStepsOKF3_of_open14
+DEAD SIS.Tree.DelStepsHolderLive thm SIS.Tree.delStepsOKF3_of_open15
+DEAD SIS.Tree.DelStepsFullGet thm SIS.Tree.delStepsOKF3_of_open2
+DEAD SIS.Tree.DelStepsFullRoot thm SIS.Tree.delStepsOKF3_of_open3
+DEAD SIS.Tree.DelStepsEmptyRoot thm SIS.Tree.delStepsOKF3_of_open4
+DEAD SIS.Tree.DelStepsCascF3 thm SIS.Tree.delStepsOKF3_of_open5
+DEAD SIS.Tree.DelStepsCascRoot thm SIS.Tree.delStepsOKF3_of_open6
+DEAD SIS.Tree.DelStepsCascRoot thm SIS.Tree.delStepsOKF3_of_open7
+DEAD SIS.Tree.DelStepsLeb thm SIS.Tree.delStepsOKF3_of_open8
+DEAD SIS.Tree.DelStepsLebFull thm SIS.Tree.delStepsOKF3_of_open9
+DEAD SIS.Tree.DelStepsLive thm SIS.Tree.delStepsQdL_of_openR
+DEAD SIS.Tree.DelStepsHolder thm SIS.Tree.delStepsQdL_of_openR2
+DEAD SIS.Tree.DelStepsHolderLive thm SIS.Tree.delStepsQdL_of_openR3
+DEAD SIS.Tree.DelStepsTree thm SIS.Tree.delStepsQd_of_cases
+DEAD SIS.Tree.DelStepsTree thm SIS.Tree.delStepsQd_of_openR
+DEAD SIS.Tree.GetDelVirtual thm SIS.Tree.del_virtual
+DEAD SIS.Tree.MergeRootBoundedExec thm SIS.Tree.deletesOf_cons_rootBudget
+DEAD SIS.Tree.PutInvSpace thm SIS.Tree.divider_mem
+DEAD SIS.Tree.PutInvTimeSpace thm SIS.Tree.divider_pos
+DEAD SIS.Tree.SpaceSplitMap thm SIS.Tree.divider_side_of_child_range
+DEAD SIS.Tree.WriterTreeSpace thm SIS.Tree.drop_ge_head
+DEAD SIS.Tree.TakeDeadNewSeg thm SIS.Tree.empty_add
+DEAD SIS.Tree.KlongHistoryTime thm SIS.Tree.encodeKlong_ordered
+DEAD SIS.Tree.CvEncoding thm SIS.Tree.encoded_merge_second_cv
+DEAD SIS.Tree.CvEncoding thm SIS.Tree.encoded_merge_second_pairs
+DEAD SIS.Tree.KlongHistoryTime thm SIS.Tree.entriesOf_time_order
+DEAD SIS.Tree.KlongHistoryTime thm SIS.Tree.entriesOf_times_le
+DEAD SIS.Tree.NodeCountTree thm SIS.Tree.entry_accounting
+DEAD SIS.Tree.GetPutInv thm SIS.Tree.eqVisits_parent
+DEAD SIS.Tree.WriterTreeVisits thm SIS.Tree.eqVisits_tPath
+DEAD SIS.Tree.FreshCache thm SIS.Tree.execW_cached_id_lt_next
+DEAD SIS.Tree.WriterHistory thm SIS.Tree.execW_cached_roundTrip
+DEAD SIS.Tree.WriterHistory thm SIS.Tree.execW_cached_searchEq
+DEAD SIS.Tree.FreshCache thm SIS.Tree.execW_freshCache
+DEAD SIS.Tree.FreshCache thm SIS.Tree.execW_freshCache_of_fresh_base
+DEAD SIS.Tree.MergeKeptNode thm SIS.Tree.execW_guard_height_le
+DEAD SIS.Tree.MergeHeightOrigins thm SIS.Tree.execW_heightMarked
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.execW_heightSplitBound
+DEAD SIS.Tree.WriterHistory thm SIS.Tree.execW_initial_klongsWf
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.execW_maxSeenHeight_le_splits
+DEAD SIS.Tree.MergeHeightOrigins thm SIS.Tree.execW_mergeBound_noOutside
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.execW_mergeFuelSeenHeightBound
+DEAD SIS.Tree.MergeHeightExec thm SIS.Tree.execW_mergeHeightBound
+DEAD SIS.Tree.MergeHeightExec thm SIS.Tree.execW_mergeHeightBound_of_cache
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.execW_mergeOpBound_of_oneSpaceSplit
+DEAD SIS.Tree.MergeHeightOrigins thm SIS.Tree.execW_mergeOpBound_of_outsideHeight
+DEAD SIS.Tree.MergeHeightExec thm SIS.Tree.execW_mergeOpBound_of_transientHeight
+DEAD SIS.Tree.MergeHeightExec thm SIS.Tree.execW_mergeRootHeightBound_of_cache
+DEAD SIS.Tree.MergeHeightExec thm SIS.Tree.execW_mergeRootSeenHeightBound
+DEAD SIS.Tree.MergeHeightExec thm SIS.Tree.execW_mergeSeenHeightBound
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.execW_mergeSpaceSplitBound
+DEAD SIS.Tree.RootWalkRun thm SIS.Tree.execW_rootWalk
+DEAD SIS.Tree.MergeHeightOrigins thm SIS.Tree.execW_seenHeightBound_of_outside
+DEAD SIS.Tree.MergeShapeGuard thm SIS.Tree.execW_shapeGuard_height_le
+DEAD SIS.Tree.AllocationIds thm SIS.Tree.exec_new_fresh_distinct
+DEAD SIS.Tree.WriterGrowth thm SIS.Tree.fieldsGrow_collapseRoot
+DEAD SIS.Tree.WriterGrowth thm SIS.Tree.fieldsGrow_deleteUpward
+DEAD SIS.Tree.WriterGrowth thm SIS.Tree.fieldsGrow_descendHeight
+DEAD SIS.Tree.WriterGrowth thm SIS.Tree.fieldsGrow_descendLte
+DEAD SIS.Tree.WriterGrowth thm SIS.Tree.fieldsGrow_descendToHeight
+DEAD SIS.Tree.WriterGrowth thm SIS.Tree.fieldsGrow_descendToSegmentRoot
+DEAD SIS.Tree.WriterGrowth thm SIS.Tree.fieldsGrow_getNode
+DEAD SIS.Tree.WriterGrowth thm SIS.Tree.fieldsGrow_ghOf
+DEAD SIS.Tree.WriterGrowth thm SIS.Tree.fieldsGrow_merge
+DEAD SIS.Tree.WriterGrowth thm SIS.Tree.fieldsGrow_mergeUp
+DEAD SIS.Tree.WriterGrowth thm SIS.Tree.fieldsGrow_of_invariant
+DEAD SIS.Tree.WriterGrowth thm SIS.Tree.fieldsGrow_ops
+DEAD SIS.Tree.WriterGrowth thm SIS.Tree.fieldsGrow_putKv
+DEAD SIS.Tree.WriterGrowth thm SIS.Tree.fieldsGrow_putSegs
+DEAD SIS.Tree.WriterGrowth thm SIS.Tree.fieldsGrow_setValue
+DEAD SIS.Tree.WriterFields thm SIS.Tree.fields_afterDelete
+DEAD SIS.Tree.WriterFields thm SIS.Tree.fields_appendDeleteKlong
+DEAD SIS.Tree.WriterFields thm SIS.Tree.fields_emptyKeyNext
+DEAD SIS.Tree.WriterFields thm SIS.Tree.fields_segmentCount
+DEAD SIS.Tree.WriterFields thm SIS.Tree.fields_unlinkLoop
+DEAD SIS.Tree.InvConsequences thm SIS.Tree.fillOK_of_invOK
+DEAD SIS.Tree.MergePotential thm SIS.Tree.fillPotential_append_delete
+DEAD SIS.Tree.MergePotential thm SIS.Tree.fillPotential_delete
+DEAD SIS.Tree.MergePotential thm SIS.Tree.fillPotential_full
+DEAD SIS.Tree.MergePotential thm SIS.Tree.fillPotential_merge_one
+DEAD SIS.Tree.MergePotential thm SIS.Tree.fillPotential_merge_two
+DEAD SIS.Tree.MergePotential thm SIS.Tree.fillPotential_normalized_delete
+DEAD SIS.Tree.MergePotential thm SIS.Tree.fillPotential_put
+DEAD SIS.Tree.MergePotential thm SIS.Tree.fillPotential_split
+DEAD SIS.Tree.NodeCountProof thm SIS.Tree.fill_mass_lower
+DEAD SIS.Tree.KlongHistoryTime thm SIS.Tree.finishKlongEntries_ordered
+DEAD SIS.Tree.FlatKlongs thm SIS.Tree.flatKlongs_repoint
+DEAD SIS.Tree.FreshCache thm SIS.Tree.freshCache_afterDelete
+DEAD SIS.Tree.WriterSplitMap thm SIS.Tree.freshCache_lookup_none_ge
+DEAD SIS.Tree.FreshCache thm SIS.Tree.freshCache_segmentCount
+DEAD SIS.Tree.FreshCache thm SIS.Tree.freshCache_sibling
+DEAD SIS.Tree.FreshCache thm SIS.Tree.freshCache_unlinkLoop
+DEAD SIS.Tree.WriterTreeVisits thm SIS.Tree.fromVisits_tPath
+DEAD SIS.Tree.FuelPaths thm SIS.Tree.getEqR_fuel_succ
+DEAD SIS.Tree.WriterTreeVisits thm SIS.Tree.getEqR_leaf
+DEAD SIS.Tree.HistoricalGetDirect thm SIS.Tree.getEq_apply_past_of_segment
+DEAD SIS.Tree.SegmentGet thm SIS.Tree.getEq_lookup_of_walk
+DEAD SIS.Tree.SegmentGet thm SIS.Tree.getEq_lookup_segmentEntries
+DEAD SIS.Tree.ReadExtension thm SIS.Tree.getEq_of_readExtension
+DEAD SIS.Tree.SegmentGet thm SIS.Tree.getEq_segmentEntries
+DEAD SIS.Tree.HistoricalGetDirect thm SIS.Tree.getEq_walk_target
+DEAD SIS.Tree.GetDelRoot thm SIS.Tree.getFromR_delRootSpace
+DEAD SIS.Tree.GetDelRoot thm SIS.Tree.getFromR_delRootTime
+DEAD SIS.Tree.GetDelCascade thm SIS.Tree.getFromR_delSpaceSpace
+DEAD SIS.Tree.GetDelCascade thm SIS.Tree.getFromR_delSpaceTime
+DEAD SIS.Tree.GetDelCascade thm SIS.Tree.getFromR_delTimeSpace
+DEAD SIS.Tree.GetDelCascade thm SIS.Tree.getFromR_delTimeSplit2
+DEAD SIS.Tree.GetDelVirtual thm SIS.Tree.getFromR_delVirtual
+DEAD SIS.Tree.GetNewSeg thm SIS.Tree.getFromR_newSeg
+DEAD SIS.Tree.GetRootSplit thm SIS.Tree.getFromR_rootSpaceSplit
+DEAD SIS.Tree.GetRootSplit thm SIS.Tree.getFromR_rootTimeSplit
+DEAD SIS.Tree.GetSegRoot thm SIS.Tree.getFromR_segSpaceSplit
+DEAD SIS.Tree.GetSegInPlace thm SIS.Tree.getFromR_segSpaceSplitInPlace
+DEAD SIS.Tree.GetSegRoot thm SIS.Tree.getFromR_segTimeSplit
+DEAD SIS.Tree.GetSpaceSpace thm SIS.Tree.getFromR_spaceSpace
+DEAD SIS.Tree.GetSpaceSplit thm SIS.Tree.getFromR_spaceSplit
+DEAD SIS.Tree.GetInPlace thm SIS.Tree.getFromR_spaceSplitInPlace
+DEAD SIS.Tree.GetCascadePut thm SIS.Tree.getFromR_spaceSplitInPlace_del
+DEAD SIS.Tree.GetChain thm SIS.Tree.getFromR_spaceSplitTime
+DEAD SIS.Tree.GetDelSplit thm SIS.Tree.getFromR_spaceSplit_del
+DEAD SIS.Tree.GetInnerSplit thm SIS.Tree.getFromR_timeSpace
+DEAD SIS.Tree.GetSplit thm SIS.Tree.getFromR_timeSplit
+DEAD SIS.Tree.GetChain thm SIS.Tree.getFromR_timeSplit2
+DEAD SIS.Tree.GetDelSplit thm SIS.Tree.getFromR_timeSplit_del
+DEAD SIS.Tree.GetDelVirtual thm SIS.Tree.getFromR_timeSplit_delAny
+DEAD SIS.Tree.GetSplit thm SIS.Tree.getFromR_timeSplit_only
+DEAD SIS.Tree.HistoricalGetDirect thm SIS.Tree.getFrom_apply_past_of_walk
+DEAD SIS.Tree.ReadExtension thm SIS.Tree.getFrom_of_readExtension
+DEAD SIS.Tree.InvInit thm SIS.Tree.getOK_empty_history
+DEAD SIS.Tree.TreeGet thm SIS.Tree.getOK_of_contents
+DEAD SIS.Tree.PointersRun thm SIS.Tree.getOK_of_inv_op
+DEAD SIS.Tree.HistoricalGet thm SIS.Tree.getOK_of_latest_contents
+DEAD SIS.Tree.ReadExtension thm SIS.Tree.getOK_of_latest_invariant
+DEAD SIS.Tree.ReadExtension thm SIS.Tree.getOK_of_latest_invariant_contents
+DEAD SIS.Tree.GetUnder thm SIS.Tree.getOK_of_runRead
+DEAD SIS.Tree.GetKeyTree thm SIS.Tree.getOK_of_treeAt
+DEAD SIS.Tree.GetOpAssembly thm SIS.Tree.getOK_scanOK_of_cases
+DEAD SIS.Tree.LatestOpen thm SIS.Tree.getOK_scanOK_of_open_del
+DEAD SIS.Tree.HistoricalGetDirect thm SIS.Tree.get_apply_past_of_old_invariant
+DEAD SIS.Tree.ReadExtension thm SIS.Tree.get_of_readExtension
+DEAD SIS.Tree.GetLatest thm SIS.Tree.get_succ_of_timesLE
+DEAD SIS.Tree.WriterGrowth def SIS.Tree.growingFields
+DEAD SIS.Tree.MergeKeptNode thm SIS.Tree.guard_fresh
+DEAD SIS.Tree.MergeKeptNode thm SIS.Tree.guard_getNode
+DEAD SIS.Tree.MergeKeptNode thm SIS.Tree.guard_ghOf
+DEAD SIS.Tree.MergeKeptNode thm SIS.Tree.guard_newKey
+DEAD SIS.Tree.MergeKeptNode thm SIS.Tree.guard_newSuperRoot
+DEAD SIS.Tree.MergeKeptNode thm SIS.Tree.guard_note
+DEAD SIS.Tree.MergeKeptNode thm SIS.Tree.guard_putNode
+DEAD SIS.Tree.MergeKeptNode thm SIS.Tree.guard_replaceOrAdd
+DEAD SIS.Tree.MergeKeptNode thm SIS.Tree.guard_replacedBy
+DEAD SIS.Tree.MergeKeptNode thm SIS.Tree.guard_retarget
+DEAD SIS.Tree.MergeKeptNode thm SIS.Tree.guard_setMadeFor
+DEAD SIS.Tree.MergeKeptNode thm SIS.Tree.guard_takenBack
+DEAD SIS.Tree.MergeKeptNode thm SIS.Tree.guard_unlink
+DEAD SIS.Tree.SpaceSplitMap thm SIS.Tree.halves_common_side_of_child_range
+DEAD SIS.Tree.PutInvDelSpace thm SIS.Tree.halves_del_live
+DEAD SIS.Tree.WriterTreeSpaceSpace thm SIS.Tree.halves_inner_cons_live
+DEAD SIS.Tree.WriterTreeInnerHalves thm SIS.Tree.halves_inner_ins_live
+DEAD SIS.Tree.PutInvTimeSpace thm SIS.Tree.halves_inner_live
+DEAD SIS.Tree.PutInvSpaceSpace thm SIS.Tree.halves_inner_live2
+DEAD SIS.Tree.GetInnerSplit thm SIS.Tree.halves_inner_searchLte
+DEAD SIS.Tree.KlongWellFormed thm SIS.Tree.halves_lastVersionGivenDel_wf
+DEAD SIS.Tree.WriterTreeSpace thm SIS.Tree.halves_leaf_live
+DEAD SIS.Tree.GetChain thm SIS.Tree.halves_leaf_live_mem
+DEAD SIS.Tree.SpaceSplitMap thm SIS.Tree.halves_lookup_of_child_range
+DEAD SIS.Tree.GetDelCascade thm SIS.Tree.halves_nil_live_mem
+DEAD SIS.Tree.SplitMergeDead thm SIS.Tree.halves_no_inserts_deadCount
+DEAD SIS.Tree.SplitMergeDead thm SIS.Tree.halves_no_inserts_shape
+DEAD SIS.Tree.SplitMergeDead thm SIS.Tree.halves_normalized_no_inserts_deadCount
+DEAD SIS.Tree.LatestJoint thm SIS.Tree.heightAllOK_snoc
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplitBound_inc
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplitBound_of_same
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_addKeys
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_afterDelete
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_appendDeleteKlong
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_appendKlongs
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_climb
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_collapseRoot
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_deleteUpward
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_descendHeight
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_descendLte
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_descendToHeight
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_descendToSegmentRoot
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_emptyKeyNext
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_findRoot
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_foldlM
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_forIn
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_fresh
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_getNode
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_handleFull
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_handleFullWith
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_klongAt
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_merge
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_mergeParent
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_mergeUp
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_newSuperRoot
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_newValue
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_note
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_ops
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_parentAt
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_pathAdd
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_pathClear
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_pathNode
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_pathSize
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_putKv
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_putNode
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_putSegs
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_replaceOrAdd
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_replacedBy
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_retarget
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_segmentCount
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_setMadeFor
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_setNode
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_setValue
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_sibling
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_takenBack
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_throw
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_unlink
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.heightSplit_unlinkLoop
+DEAD SIS.Tree.KlongHistoryTime thm SIS.Tree.history_ordered_snoc
+DEAD SIS.Tree.KlongHistoryTime thm SIS.Tree.history_past_current
+DEAD SIS.Tree.WriterHeightsSplit thm SIS.Tree.ht_P_of
+DEAD SIS.Tree.WriterHeightsDel thm SIS.Tree.ht_hasTransDel
+DEAD SIS.Tree.WriterHeightsDel thm SIS.Tree.ht_hasTransDel._sparseCasesOn_1.else_eq
+DEAD SIS.Tree.WriterHeightsDel thm SIS.Tree.ht_hasTransDel._sparseCasesOn_2.else_eq
+DEAD SIS.Tree.WriterHeightsDel thm SIS.Tree.ht_htd_facts
+DEAD SIS.Tree.HeightsStep thm SIS.Tree.ht_key_of_knodeOf
+DEAD SIS.Tree.HeightsNode thm SIS.Tree.ht_live_repoint
+DEAD SIS.Tree.HeightsNode thm SIS.Tree.ht_prefixAt_newKlongs
+DEAD SIS.Tree.WriterHeightsFull thm SIS.Tree.ht_ptr_mem'
+DEAD SIS.Tree.WriterHeightsSteps thm SIS.Tree.ht_throw
+DEAD SIS.Tree.WriterHeightsSteps thm SIS.Tree.ht_writerWP
+DEAD SIS.Tree.WriterHistory thm SIS.Tree.initial_upTo_klongsWf
+DEAD SIS.Tree.LatestTop thm SIS.Tree.invGetScanOK_merges
+DEAD SIS.Tree.InvConsequences thm SIS.Tree.invOK_reachable_nodes
+DEAD SIS.Tree.InvConsequences thm SIS.Tree.invOK_reachable_wf_size
+DEAD SIS.Tree.LatestJoint thm SIS.Tree.invOK_snoc
+DEAD SIS.Tree.InvInit thm SIS.Tree.invPreserved_empty_history
+DEAD SIS.Tree.LiveCounts thm SIS.Tree.invPreserved_of_cases
+DEAD SIS.Tree.PointersRun thm SIS.Tree.invPreserved_of_latest_pointers_theta0
+DEAD SIS.Tree.InvAssembly thm SIS.Tree.invPreserved_of_open
+DEAD SIS.Tree.LiveTP7 thm SIS.Tree.invPreserved_of_open_cases
+DEAD SIS.Tree.HeightsChkRun thm SIS.Tree.invPreserved_of_open_chk
+DEAD SIS.Tree.HeightsPathFree thm SIS.Tree.invPreserved_of_open_chk2
+DEAD SIS.Tree.LivePutNewSegFull thm SIS.Tree.invPreserved_of_open_del
+DEAD SIS.Tree.HeightsRun thm SIS.Tree.invPreserved_of_open_htDel
+DEAD SIS.Tree.PointersRun thm SIS.Tree.invPreserved_of_takeBack
+DEAD SIS.Tree.TakeDeadCascade thm SIS.Tree.j2rest_cascade
+DEAD SIS.Tree.DelStepsKdH thm SIS.Tree.kdJ_pathAddH
+DEAD SIS.Tree.WriterKindsRules thm SIS.Tree.kd_free_inner
+DEAD SIS.Tree.WriterKindsMerge thm SIS.Tree.kd_live_kinds'
+DEAD SIS.Tree.WriterKindsMerge thm SIS.Tree.kd_merge_first
+DEAD SIS.Tree.WriterKindsMerge thm SIS.Tree.kd_merge_second
+DEAD SIS.Tree.WriterKindsRules thm SIS.Tree.kd_throw
+DEAD SIS.Tree.HeightsFuel thm SIS.Tree.keepsSB_of_S
+DEAD SIS.Tree.ExportHistory thm SIS.Tree.keyAdditions_at
+DEAD SIS.Tree.WriterTreeRepoint thm SIS.Tree.keyLookupFold_set
+DEAD SIS.Tree.WriterTreeLeb thm SIS.Tree.keyLookupFold_set_cv
+DEAD SIS.Tree.NodeMap thm SIS.Tree.keyLookup_append_time
+DEAD SIS.Tree.MergeLastOrd thm SIS.Tree.keyLookup_isSome_mono
+DEAD SIS.Tree.SortedKeys thm SIS.Tree.keyLt_prefix_between
+DEAD SIS.Tree.SortedKeys thm SIS.Tree.keyLt_segment_mono
+DEAD SIS.Tree.SortedKeys thm SIS.Tree.keyLt_take
+DEAD SIS.Tree.SortedSegments thm SIS.Tree.keyLt_terminal_segment_strict
+DEAD SIS.Tree.InvAssembly thm SIS.Tree.keyNodesOK_of_pointers
+DEAD SIS.Tree.GetKeyTree thm SIS.Tree.keyTreeOK_of_treeAt
+DEAD SIS.Tree.SortedSegments thm SIS.Tree.keyWf_prefix_eq
+DEAD SIS.Tree.SortedSegments thm SIS.Tree.keyWf_segment_length
+DEAD SIS.Tree.KeyWellFormed thm SIS.Tree.keyWf_segment_sentinels
+DEAD SIS.Tree.WriterTreeVisits thm SIS.Tree.keyWf_single_segLen
+DEAD SIS.Tree.SortedSegments thm SIS.Tree.keyWf_terminal_segment_unique
+DEAD SIS.Tree.DeleteCount thm SIS.Tree.key_mem_zipIdx_append_time_delete_iff
+DEAD SIS.Tree.KindsStep thm SIS.Tree.kindsAllOK_live
+DEAD SIS.Tree.KlongHistoryTime thm SIS.Tree.klongEntriesState_ordered
+DEAD SIS.Tree.WriterHeightsChk thm SIS.Tree.klongsWf_checkPathFree
+DEAD SIS.Tree.WriterHeightsChk thm SIS.Tree.klongsWf_checkRoot
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.krFrame_fresh
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.krFrame_note
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.krFrame_takenBack
+DEAD SIS.Tree.RootWalkRun thm SIS.Tree.krInv_start
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.krKs_addFold
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.krKs_lastVersion
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.krKs_newKlongs
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.krKs_retargetMap
+DEAD SIS.Tree.RootWalkDelete thm SIS.Tree.krP_writerWP
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.krPairs_append
+DEAD SIS.Tree.RootWalkSplit thm SIS.Tree.krPairs_cons
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.krPairs_live
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.krPairs_mergeKlongs
+DEAD SIS.Tree.RootWalkSplit thm SIS.Tree.krPairs_nil'
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.krPairs_renameHead
+DEAD SIS.Tree.RootWalkSplit thm SIS.Tree.kr_addKeys
+DEAD SIS.Tree.RootWalkRun thm SIS.Tree.kr_afterDelete
+DEAD SIS.Tree.RootWalkDelete thm SIS.Tree.kr_appendDeleteKlong
+DEAD SIS.Tree.RootWalkSplit thm SIS.Tree.kr_appendKlongs
+DEAD SIS.Tree.RootWalkDelete thm SIS.Tree.kr_canTakeBack
+DEAD SIS.Tree.RootWalkDelete thm SIS.Tree.kr_child_seg
+DEAD SIS.Tree.RootWalkDelete thm SIS.Tree.kr_climb
+DEAD SIS.Tree.RootWalkDelete thm SIS.Tree.kr_collapseRoot
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_counter
+DEAD SIS.Tree.RootWalkRun thm SIS.Tree.kr_deleteUpward
+DEAD SIS.Tree.RootWalkDelete thm SIS.Tree.kr_descendHeight
+DEAD SIS.Tree.RootWalkDelete thm SIS.Tree.kr_descendLte
+DEAD SIS.Tree.RootWalkDelete thm SIS.Tree.kr_descendToHeight
+DEAD SIS.Tree.RootWalkDelete thm SIS.Tree.kr_descendToSegmentRoot
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_emptyKeyFold
+DEAD SIS.Tree.RootWalkDelete thm SIS.Tree.kr_emptyKeyNext
+DEAD SIS.Tree.RootWalkRun thm SIS.Tree.kr_empty_lt
+DEAD SIS.Tree.RootWalkRun thm SIS.Tree.kr_empty_ok
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_findRoot
+DEAD SIS.Tree.RootWalkDelete thm SIS.Tree.kr_foldlM
+DEAD SIS.Tree.RootWalkRun thm SIS.Tree.kr_foldlM4
+DEAD SIS.Tree.RootWalkRun thm SIS.Tree.kr_forIn
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_free_inner
+DEAD SIS.Tree.RootWalkMerge thm SIS.Tree.kr_free_inner'
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_fresh
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_getNode
+DEAD SIS.Tree.RootWalkDelete thm SIS.Tree.kr_getNode_hit
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_ghOf
+DEAD SIS.Tree.RootWalkRun thm SIS.Tree.kr_h0
+DEAD SIS.Tree.RootWalkSplit thm SIS.Tree.kr_h_ne
+DEAD SIS.Tree.RootWalkRun thm SIS.Tree.kr_h_ne2
+DEAD SIS.Tree.RootWalkDelete thm SIS.Tree.kr_handleFull
+DEAD SIS.Tree.RootWalkSplit thm SIS.Tree.kr_handleFullWith
+DEAD SIS.Tree.RootWalkSplit thm SIS.Tree.kr_k1_eq
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_keeps_of_frame
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_klongAt
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_leaf
+DEAD SIS.Tree.RootWalkRun thm SIS.Tree.kr_leaf_child
+DEAD SIS.Tree.RootWalkRun thm SIS.Tree.kr_leaf_val
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_linkIndex_some
+DEAD SIS.Tree.RootWalkMerge thm SIS.Tree.kr_live_kinds
+DEAD SIS.Tree.RootWalkMerge thm SIS.Tree.kr_live_kinds'
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_lookup_of_tag
+DEAD SIS.Tree.RootWalkSplit thm SIS.Tree.kr_made_rep
+DEAD SIS.Tree.RootWalkSplit thm SIS.Tree.kr_made_some
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_mem_of_get
+DEAD SIS.Tree.RootWalkMerge thm SIS.Tree.kr_merge
+DEAD SIS.Tree.RootWalkDelete thm SIS.Tree.kr_mergeParent
+DEAD SIS.Tree.RootWalkRun thm SIS.Tree.kr_mergeUp
+DEAD SIS.Tree.RootWalkMerge thm SIS.Tree.kr_merge_first
+DEAD SIS.Tree.RootWalkMerge thm SIS.Tree.kr_merge_second
+DEAD SIS.Tree.RootWalkMerge thm SIS.Tree.kr_merge_snd'
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_newKey
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_newSuperRoot
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_newValue
+DEAD SIS.Tree.RootWalkRun thm SIS.Tree.kr_newValue_nodes
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_note
+DEAD SIS.Tree.RootWalkRun thm SIS.Tree.kr_ops
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_parentAt
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_pathAdd
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_pathClear
+DEAD SIS.Tree.RootWalkDelete thm SIS.Tree.kr_pathLast_append
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_pathNode
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_pathSize
+DEAD SIS.Tree.RootWalkSplit thm SIS.Tree.kr_path_at
+DEAD SIS.Tree.RootWalkRun thm SIS.Tree.kr_path_in_gh
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_ptr_mem
+DEAD SIS.Tree.RootWalkRun thm SIS.Tree.kr_putKv
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_putNode
+DEAD SIS.Tree.RootWalkSplit thm SIS.Tree.kr_putNode_of
+DEAD SIS.Tree.RootWalkRun thm SIS.Tree.kr_putNode_other
+DEAD SIS.Tree.RootWalkRun thm SIS.Tree.kr_putSegs
+DEAD SIS.Tree.RootWalkSplit thm SIS.Tree.kr_replaceOrAdd
+DEAD SIS.Tree.RootWalkDelete thm SIS.Tree.kr_replaceRoot
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_replacedBy
+DEAD SIS.Tree.RootWalkSplit thm SIS.Tree.kr_repoint_ok
+DEAD SIS.Tree.RootWalkDelete thm SIS.Tree.kr_retarget
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_searchEq_mem
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_searchLte_mem
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_seg_unique
+DEAD SIS.Tree.RootWalkRun thm SIS.Tree.kr_segs_of_keyWf
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_setMadeFor
+DEAD SIS.Tree.RootWalkRun thm SIS.Tree.kr_setNode
+DEAD SIS.Tree.RootWalkRun thm SIS.Tree.kr_setValue
+DEAD SIS.Tree.RootWalkMerge thm SIS.Tree.kr_sib_facts
+DEAD SIS.Tree.RootWalkMerge thm SIS.Tree.kr_sib_leaf
+DEAD SIS.Tree.RootWalkMerge thm SIS.Tree.kr_sibling
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_swap
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_swap_inner
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_tag_eq
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_tag_of_lookup
+DEAD SIS.Tree.RootWalkDelete thm SIS.Tree.kr_takeBack
+DEAD SIS.Tree.RootWalkDelete thm SIS.Tree.kr_takeBackRoot
+DEAD SIS.Tree.RootWalkDelete thm SIS.Tree.kr_takenBack
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_throw
+DEAD SIS.Tree.RootWalkDelete thm SIS.Tree.kr_unlink
+DEAD SIS.Tree.RootWalkRules thm SIS.Tree.kr_writerWP
+DEAD SIS.Tree.GetFrame def SIS.Tree.lastIsDel
+DEAD SIS.Tree.GetFrame thm SIS.Tree.lastIsDel._sparseCasesOn_1.else_eq
+DEAD SIS.Tree.GetFrame thm SIS.Tree.lastIsDel._sparseCasesOn_2.else_eq
+DEAD SIS.Tree.GetFrame thm SIS.Tree.lastIsDel_some
+DEAD SIS.Tree.MergeLastOrd thm SIS.Tree.lastOrd_of_raw
+DEAD SIS.Tree.MergeLastOrd thm SIS.Tree.lastVersionGivenDel_live_cv
+DEAD SIS.Tree.LatestJoint thm SIS.Tree.latestGetOK_latestScanOK_of_joint
+DEAD SIS.Tree.LatestOpen thm SIS.Tree.latestGetOK_latestScanOK_of_open_del
+DEAD SIS.Tree.GetWriter thm SIS.Tree.latestGetOK_of_op_commit
+DEAD SIS.Tree.LiveCounts thm SIS.Tree.latestInvOK_of_cases
+DEAD SIS.Tree.InvLatest thm SIS.Tree.latestInvOK_of_invPreserved
+DEAD SIS.Tree.LiveTP7 thm SIS.Tree.latestInvOK_of_open
+DEAD SIS.Tree.LivePutNewSegFull thm SIS.Tree.latestInvOK_of_open_del
+DEAD SIS.Tree.InvAssembly thm SIS.Tree.latestInvOK_of_parts
+DEAD SIS.Tree.DeadRun thm SIS.Tree.latestQD_snoc
+DEAD SIS.Tree.LatestTopFlat thm SIS.Tree.latestQD_snocU
+DEAD SIS.Tree.LatestJoint thm SIS.Tree.latestQ_snoc
+DEAD SIS.Tree.TakeInvUp thm SIS.Tree.leafKids_none
+DEAD SIS.Tree.PutInvSeg thm SIS.Tree.leafOrderAt_child
+DEAD SIS.Tree.PutInvSplit thm SIS.Tree.leafOrderAt_parent_add
+DEAD SIS.Tree.PutInvSplit thm SIS.Tree.leafOrderAt_parent_new
+DEAD SIS.Tree.TakeDeadAssembly thm SIS.Tree.leafVals_of_kinds
+DEAD SIS.Tree.DelStepsLeb thm SIS.Tree.lebLast_facts
+DEAD SIS.Tree.TakeLebFull thm SIS.Tree.lebLast_pairs
+DEAD SIS.Tree.WriterTreeLeb thm SIS.Tree.lebNode_liveAt
+DEAD SIS.Tree.LeftHist def SIS.Tree.leftHist_Born
+DEAD SIS.Tree.LeftHist thm SIS.Tree.leftHist_apply_cases
+DEAD SIS.Tree.LeftHist thm SIS.Tree.leftHist_born_child
+DEAD SIS.Tree.LeftHist thm SIS.Tree.leftHist_born_nodesAt
+DEAD SIS.Tree.LeftHist thm SIS.Tree.leftHist_born_root
+DEAD SIS.Tree.LeftHist thm SIS.Tree.leftHist_creation_of_times
+DEAD SIS.Tree.LeftHist thm SIS.Tree.leftHist_creation_step
+DEAD SIS.Tree.LeftHist thm SIS.Tree.leftHist_entry_cases
+DEAD SIS.Tree.LeftHist thm SIS.Tree.leftHist_init
+DEAD SIS.Tree.LeftHist thm SIS.Tree.leftHist_key_time
+DEAD SIS.Tree.LeftHist thm SIS.Tree.leftHist_klongsOf_nil
+DEAD SIS.Tree.LeftHist thm SIS.Tree.leftHist_leftmostOK
+DEAD SIS.Tree.LeftHist thm SIS.Tree.leftHist_liveAt_prefix
+DEAD SIS.Tree.LeftHist thm SIS.Tree.leftHist_of_leftAll
+DEAD SIS.Tree.LeftHist thm SIS.Tree.leftHist_old_node
+DEAD SIS.Tree.LeftHist thm SIS.Tree.leftHist_prefix_eq
+DEAD SIS.Tree.LeftHist thm SIS.Tree.leftHist_prefix_ne
+DEAD SIS.Tree.LeftHist thm SIS.Tree.leftHist_prefix_times
+DEAD SIS.Tree.LeftHist thm SIS.Tree.leftHist_rootKey_new
+DEAD SIS.Tree.LeftHist thm SIS.Tree.leftHist_run
+DEAD SIS.Tree.LeftHist thm SIS.Tree.leftHist_sorted
+DEAD SIS.Tree.LeftHist thm SIS.Tree.leftHist_step
+DEAD SIS.Tree.LeftHist thm SIS.Tree.leftHist_topTime_of_times
+DEAD SIS.Tree.LeftHist thm SIS.Tree.leftHist_topTime_step
+DEAD SIS.Tree.WriterLeftRun thm SIS.Tree.left_forIn
+DEAD SIS.Tree.WriterLeftMerge thm SIS.Tree.left_ite_node
+DEAD SIS.Tree.WriterLeft thm SIS.Tree.left_lv_filter
+DEAD SIS.Tree.WriterLeft thm SIS.Tree.left_lv_filter._sparseCasesOn_1.else_eq
+DEAD SIS.Tree.WriterLeftMerge thm SIS.Tree.left_sibling
+DEAD SIS.Tree.LeftHist thm SIS.Tree.leftmostOK_all
+DEAD SIS.Tree.LeftRun thm SIS.Tree.leftmostOK_latest
+DEAD SIS.Tree.InvConsequences thm SIS.Tree.leftmostOK_of_invOK
+DEAD SIS.Tree.WriterTreeCascade thm SIS.Tree.liveAt_of_lookup_update
+DEAD SIS.Tree.WriterTreeCascade thm SIS.Tree.liveAt_of_lookup_update2
+DEAD SIS.Tree.LiveEdgesBase thm SIS.Tree.liveEdges_copy
+DEAD SIS.Tree.LiveEdgesBase thm SIS.Tree.liveEdges_of_agree
+DEAD SIS.Tree.LiveSteps thm SIS.Tree.liveEdges_of_sim
+DEAD SIS.Tree.LiveSteps thm SIS.Tree.liveEdges_rootSpaceInPlaceStep
+DEAD SIS.Tree.LiveSteps thm SIS.Tree.liveEdges_rootSpaceStep
+DEAD SIS.Tree.LiveSteps thm SIS.Tree.liveEdges_rootTimeStep
+DEAD SIS.Tree.LiveSteps thm SIS.Tree.liveEdges_segSpaceInPlaceStep
+DEAD SIS.Tree.LiveSteps thm SIS.Tree.liveEdges_segSpaceStep
+DEAD SIS.Tree.LiveSteps thm SIS.Tree.liveEdges_spaceInPlaceStep
+DEAD SIS.Tree.LiveSteps thm SIS.Tree.liveEdges_spaceSplit_gen
+DEAD SIS.Tree.LiveEdgesBase thm SIS.Tree.liveEdges_splitInner
+DEAD SIS.Tree.LiveSteps thm SIS.Tree.liveEdges_timeSplit_gen
+DEAD SIS.Tree.LiveSteps thm SIS.Tree.liveEdges_updN_sub
+DEAD SIS.Tree.TakeInvTree thm SIS.Tree.liveReachedN_segCollapse
+DEAD SIS.Tree.TakeInvTree thm SIS.Tree.liveReachedN_spaceCollapse
+DEAD SIS.Tree.TakeInvTree thm SIS.Tree.liveReached_iff
+DEAD SIS.Tree.PutInvSpace thm SIS.Tree.live_ne_nil_head
+DEAD SIS.Tree.PutInvSplit thm SIS.Tree.live_of_lookup
+DEAD SIS.Tree.PutInvChain thm SIS.Tree.live_of_lookup'
+DEAD SIS.Tree.PutInvSplit thm SIS.Tree.lookup_foldl_single
+DEAD SIS.Tree.MergePotential thm SIS.Tree.mergeAmortized_of_potential
+DEAD SIS.Tree.RunPotential thm SIS.Tree.mergeAmortized_of_runPotentialStep
+DEAD SIS.Tree.WriterTree thm SIS.Tree.mergeAmortized_of_tree
+DEAD SIS.Tree.MergeProtectedMerge thm SIS.Tree.mergeIdx_splitRoot_right
+DEAD SIS.Tree.InvConsequences thm SIS.Tree.mergeInvPreserved_of_invPreserved
+DEAD SIS.Tree.MergeHeightOrigins thm SIS.Tree.mergeOpBound_of_outsideHeight
+DEAD SIS.Tree.MergeHeightExec thm SIS.Tree.mergeOpBound_of_transientHeight
+DEAD SIS.Tree.MergeRootWrites thm SIS.Tree.mergeParamsOK_size_six
+DEAD SIS.Tree.MergeFrameDead thm SIS.Tree.mergesLe_mono
+DEAD SIS.Tree.WriterGetMergeOp thm SIS.Tree.mrg_liveAt_iff_lookup
+DEAD SIS.Tree.TakeDeadCollapse thm SIS.Tree.named_reached
+DEAD SIS.Tree.WriterTreeMergeW thm SIS.Tree.need_le_four
+DEAD SIS.Tree.WriterTreeInnerHalves thm SIS.Tree.newKlongs_liveAt_fold
+DEAD SIS.Tree.MergeSearchOrder thm SIS.Tree.newRoot_searchLte_later_key
+DEAD SIS.Tree.MergeSearchOrder thm SIS.Tree.newRoot_searchLte_right
+DEAD SIS.Tree.WriterNonempty thm SIS.Tree.nex_base_of_false
+DEAD SIS.Tree.WriterNonemptyOps thm SIS.Tree.nex_forIn
+DEAD SIS.Tree.WriterNonempty thm SIS.Tree.nex_replaceOrAdd
+DEAD SIS.Tree.WriterNonempty thm SIS.Tree.nex_replaceOrAdd_same
+DEAD SIS.Tree.WriterNonemptyMerge thm SIS.Tree.nex_setNode
+DEAD SIS.Tree.ScanAdequacy thm SIS.Tree.nextGo_descent_stable
+DEAD SIS.Tree.ScanFuelBound thm SIS.Tree.nextGo_key_length
+DEAD SIS.Tree.ScanAdequacy thm SIS.Tree.nextGo_parameter_fuel
+DEAD SIS.Tree.ScanAdequacy thm SIS.Tree.nextGo_scanChain
+DEAD SIS.Tree.ScanAdequacy thm SIS.Tree.nextGo_stable
+DEAD SIS.Tree.NodeCountTree thm SIS.Tree.nodeCountBound_of_complete
+DEAD SIS.Tree.WalkComplete thm SIS.Tree.nodeCountBound_of_invariants_and_counts
+DEAD SIS.Tree.NodeCountProof thm SIS.Tree.nodeCountBound_of_mass
+DEAD SIS.Tree.NodeCountProof thm SIS.Tree.nodeCount_at_of_mass
+DEAD SIS.Tree.NodeCountTree thm SIS.Tree.nodeCount_complete_fill
+DEAD SIS.Tree.NodeCountProof def SIS.Tree.nodeLiveMass
+DEAD SIS.Tree.NodeCountTree thm SIS.Tree.nodeLiveMass_identity
+DEAD SIS.Tree.NodeCountProof thm SIS.Tree.nodeLiveMass_lower
+DEAD SIS.Tree.NodeCountProof thm SIS.Tree.node_count_arithmetic
+DEAD SIS.Tree.GetKeyTree thm SIS.Tree.nodesAt_tReach
+DEAD SIS.Tree.NodeCountProof thm SIS.Tree.nodesRootsAt_has_node
+DEAD SIS.Tree.NodeCountProof thm SIS.Tree.nodesRootsAt_map_fst
+DEAD SIS.Tree.NodeCountProof thm SIS.Tree.nodesRoots_has_node
+DEAD SIS.Tree.NodeCountTree thm SIS.Tree.nodesRoots_length_step
+DEAD SIS.Tree.InvConsequences thm SIS.Tree.nodesRoots_of_no_node
+DEAD SIS.Tree.DeleteCount thm SIS.Tree.nodup_filter_ne_length
+DEAD SIS.Tree.GetSegLeaf thm SIS.Tree.notReach_parent_of_tree
+DEAD SIS.Tree.MergeNodeCountOps def SIS.Tree.nrVisits
+DEAD SIS.Tree.MergeNodeCountOps thm SIS.Tree.nrWalk_eq_of_agree
+DEAD SIS.Tree.WriterTreeCollapse thm SIS.Tree.onlyLiveKlong_link
+DEAD SIS.Tree.LiveJointL thm SIS.Tree.opCaseOK_delMergeL_of
+DEAD SIS.Tree.DelStepsTree thm SIS.Tree.opCaseOK_qdW_delMergeR
+DEAD SIS.Tree.DelStepsTree thm SIS.Tree.opCaseOK_treeInvRange_delMergeR
+DEAD SIS.Tree.WriterTree thm SIS.Tree.opCountOK_of_tree
+DEAD SIS.Tree.DelChkRefines thm SIS.Tree.opDelChk2OK_of_chk
+DEAD SIS.Tree.GetUnder thm SIS.Tree.opGetOKUnder_mono
+DEAD SIS.Tree.GetTree thm SIS.Tree.opGetOKUnder_of_tree
+DEAD SIS.Tree.GetTree thm SIS.Tree.opGetOKUnder_of_tree_lift
+DEAD SIS.Tree.GetOpInv thm SIS.Tree.opGetOK_of_invariant
+DEAD SIS.Tree.HeightsUnder thm SIS.Tree.opHtDelOKUnder_of
+DEAD SIS.Tree.HeightsPathFree thm SIS.Tree.opHtDelOK_of_chk2
+DEAD SIS.Tree.GetOpInv thm SIS.Tree.opInvariant_prefix
+DEAD SIS.Tree.TakeDelStepsF4 thm SIS.Tree.opJ2Case_delMergeF4
+DEAD SIS.Tree.PutInvRun thm SIS.Tree.opPutInvOK_of_T
+DEAD SIS.Tree.GetOpAssembly thm SIS.Tree.opTreeInvOK_of_any
+DEAD SIS.Tree.WriterTreeInv thm SIS.Tree.opTreeInvOK_of_opTreeOK
+DEAD SIS.Tree.TakeBackRunU thm SIS.Tree.opTreeOKUnder_of_opTreeOK
+DEAD SIS.Tree.MergeFrozenPrefix thm SIS.Tree.ordered_take_below
+DEAD SIS.Tree.PointersRun thm SIS.Tree.overlayLiftOK_of_invPreserved
+DEAD SIS.Tree.OverlayLift thm SIS.Tree.overlayLiftOK_of_links
+DEAD SIS.Tree.PointersRun thm SIS.Tree.overlayLiftOK_of_pointers
+DEAD SIS.Tree.PointersRun thm SIS.Tree.overlayLiftOK_of_takeBack
+DEAD SIS.Tree.WriterTreeInnerHalves thm SIS.Tree.pairLookupFold_append_single
+DEAD SIS.Tree.WriterTreeSpaceSpace thm SIS.Tree.pairLookupFold_cases
+DEAD SIS.Tree.MergePathCache thm SIS.Tree.pathCached_get
+DEAD SIS.Tree.GetChain thm SIS.Tree.pathEnd_append
+DEAD SIS.Tree.GetCascadePut thm SIS.Tree.pathEnd_chain
+DEAD SIS.Tree.MergeRootHeight thm SIS.Tree.pathEndsAt_pos
+DEAD SIS.Tree.SharedSegment thm SIS.Tree.pointersOK_of_all
+DEAD SIS.Tree.PointersRun thm SIS.Tree.pointersOK_of_takeBack
+DEAD SIS.Tree.MergePotential thm SIS.Tree.potentialCosts_sum
+DEAD SIS.Tree.WriterTreeRepoint thm SIS.Tree.prefix_getElem?_some
+DEAD SIS.Tree.MergeLiveKeys thm SIS.Tree.prefix_mem_zipIdx
+DEAD SIS.Tree.HeightsHolder thm SIS.Tree.prevHolder_none
+DEAD SIS.Tree.WriterPtrs thm SIS.Tree.ptrsId_made
+DEAD SIS.Tree.PutInvUp thm SIS.Tree.putInvT_drop
+DEAD SIS.Tree.PutInvSplit thm SIS.Tree.putInvT_leaf
+DEAD SIS.Tree.PutInvCollapse thm SIS.Tree.putInvT_of_collInvP
+DEAD SIS.Tree.PutInvRoot thm SIS.Tree.putInvT_rootSpaceSplit
+DEAD SIS.Tree.PutInvRoot thm SIS.Tree.putInvT_rootTimeSplit
+DEAD SIS.Tree.PutInvSeg thm SIS.Tree.putInvT_segSpaceSplit
+DEAD SIS.Tree.PutInvSpaceSpace thm SIS.Tree.putInvT_spaceSpace
+DEAD SIS.Tree.PutInvSpace thm SIS.Tree.putInvT_spaceSplit
+DEAD SIS.Tree.PutInvChain thm SIS.Tree.putInvT_spaceSplitTime
+DEAD SIS.Tree.PutInvTimeSpace thm SIS.Tree.putInvT_timeSpace
+DEAD SIS.Tree.PutInvSplit thm SIS.Tree.putInvT_timeSplit
+DEAD SIS.Tree.PutInvChain thm SIS.Tree.putInvT_timeSplit2
+DEAD SIS.Tree.PutInvQIP thm SIS.Tree.putInvT_timeSplitG
+DEAD SIS.Tree.PutInvSeg thm SIS.Tree.putInvT_timeSplitLeaf
+DEAD SIS.Tree.PutInvDel thm SIS.Tree.putInv_del_bitmap_seg
+DEAD SIS.Tree.WriterTreeInv thm SIS.Tree.putInv_del_bitmap_seg_full
+DEAD SIS.Tree.PutInvDelFull thm SIS.Tree.putInv_del_leafBelow
+DEAD SIS.Tree.PutInvDelSpace thm SIS.Tree.putInv_del_leafBelow2
+DEAD SIS.Tree.WriterTreeDelSpace thm SIS.Tree.putInv_del_leafBelow2_full
+DEAD SIS.Tree.WriterTreeInv thm SIS.Tree.putInv_del_leafBelow_full
+DEAD SIS.Tree.PutInvDelRoot thm SIS.Tree.putInv_del_leafRoot
+DEAD SIS.Tree.WriterTreeInv thm SIS.Tree.putInv_del_noop_seg_full
+DEAD SIS.Tree.PutInvDelSeg thm SIS.Tree.putInv_del_segRoot
+DEAD SIS.Tree.PutInvDelSpaceCascade thm SIS.Tree.putInv_del_spaceSpace
+DEAD SIS.Tree.PutInvDelSpaceCascade thm SIS.Tree.putInv_del_spaceTime
+DEAD SIS.Tree.PutInvDelCascade thm SIS.Tree.putInv_del_timeSpace
+DEAD SIS.Tree.PutInvDelCascade thm SIS.Tree.putInv_del_timeSplit2
+DEAD SIS.Tree.PutInvUp thm SIS.Tree.putInv_del_up_segRoot
+DEAD SIS.Tree.PutInvLeaf thm SIS.Tree.putInv_put_leafBelow
+DEAD SIS.Tree.WriterTreeInv thm SIS.Tree.putInv_put_leafBelow_full
+DEAD SIS.Tree.PutInvRoot thm SIS.Tree.putInv_put_leafRoot
+DEAD SIS.Tree.WriterTreeInv thm SIS.Tree.putInv_put_leafRoot_full
+DEAD SIS.Tree.WriterTreeInv thm SIS.Tree.putInv_put_newSeg_full
+DEAD SIS.Tree.PutInvRoot thm SIS.Tree.putInv_put_rootSpaceSplit
+DEAD SIS.Tree.PutInvRoot thm SIS.Tree.putInv_put_rootSpaceSplitInPlace
+DEAD SIS.Tree.PutInvRoot thm SIS.Tree.putInv_put_rootTimeSplit
+DEAD SIS.Tree.PutInvSeg thm SIS.Tree.putInv_put_segLeaf
+DEAD SIS.Tree.WriterTreeInv thm SIS.Tree.putInv_put_segLeaf_full
+DEAD SIS.Tree.PutInvSeg thm SIS.Tree.putInv_put_segSpaceSplit
+DEAD SIS.Tree.PutInvSeg thm SIS.Tree.putInv_put_segSpaceSplitInPlace
+DEAD SIS.Tree.PutInvSeg thm SIS.Tree.putInv_put_segTimeSplit
+DEAD SIS.Tree.PutInvSpaceSpace thm SIS.Tree.putInv_put_spaceSpace
+DEAD SIS.Tree.WriterTreeCascadeInv thm SIS.Tree.putInv_put_spaceSpace_full
+DEAD SIS.Tree.PutInvSpace thm SIS.Tree.putInv_put_spaceSplitInPlace_below
+DEAD SIS.Tree.PutInvQIP thm SIS.Tree.putInv_put_spaceSplitQIP
+DEAD SIS.Tree.PutInvChain thm SIS.Tree.putInv_put_spaceSplitTime
+DEAD SIS.Tree.WriterTreeCascadeInv thm SIS.Tree.putInv_put_spaceSplitTime_full
+DEAD SIS.Tree.PutInvSpace thm SIS.Tree.putInv_put_spaceSplit_below
+DEAD SIS.Tree.PutInvSplit thm SIS.Tree.putInv_put_timeInPlace_below
+DEAD SIS.Tree.PutInvSplit thm SIS.Tree.putInv_put_timeInPlace_root
+DEAD SIS.Tree.PutInvSeg thm SIS.Tree.putInv_put_timeInPlace_segRoot
+DEAD SIS.Tree.PutInvTimeSpace thm SIS.Tree.putInv_put_timeSpace
+DEAD SIS.Tree.WriterTreeCascadeInv thm SIS.Tree.putInv_put_timeSpace_full
+DEAD SIS.Tree.PutInvChain thm SIS.Tree.putInv_put_timeSplit2
+DEAD SIS.Tree.WriterTreeCascadeInv thm SIS.Tree.putInv_put_timeSplit2_full
+DEAD SIS.Tree.PutInvQIP thm SIS.Tree.putInv_put_timeSplitQIP
+DEAD SIS.Tree.PutInvSplit thm SIS.Tree.putInv_put_timeSplit_below
+DEAD SIS.Tree.WriterTreeInv thm SIS.Tree.putInv_reached_inv
+DEAD SIS.Tree.SharedSegment thm SIS.Tree.putSegs_one_cbv
+DEAD SIS.Tree.MergeSortedTight thm SIS.Tree.putSegs_sortedTight_step
+DEAD SIS.Tree.SharedSegment thm SIS.Tree.putSegs_two_cbv
+DEAD SIS.Tree.RangePath thm SIS.Tree.rangeOrder_del_accessPath
+DEAD SIS.Tree.RangeOps thm SIS.Tree.rangeOrder_del_bitmap_seg
+DEAD SIS.Tree.RangeDelChain thm SIS.Tree.rangeOrder_del_chain
+DEAD SIS.Tree.RangeDelG thm SIS.Tree.rangeOrder_del_chainG
+DEAD SIS.Tree.RangeUp thm SIS.Tree.rangeOrder_del_up_segRoot
+DEAD SIS.Tree.RangeUpAll thm SIS.Tree.rangeOrder_deleteUpward_up
+DEAD SIS.Tree.RangeUpTake thm SIS.Tree.rangeOrder_deleteUpward_upT
+DEAD SIS.Tree.RangeCollapseSeg thm SIS.Tree.rangeOrder_deleteUpward_upT_room
+DEAD SIS.Tree.RangeUp thm SIS.Tree.rangeOrder_drop
+DEAD SIS.Tree.RangeNewSeg thm SIS.Tree.rangeOrder_leafAddNew
+DEAD SIS.Tree.RangeLeb thm SIS.Tree.rangeOrder_leb_after
+DEAD SIS.Tree.RangePut thm SIS.Tree.rangeOrder_put_chain
+DEAD SIS.Tree.RangePutG thm SIS.Tree.rangeOrder_put_chainG
+DEAD SIS.Tree.RangeNewSeg thm SIS.Tree.rangeOrder_put_newSeg
+DEAD SIS.Tree.PutInvTimeSpace thm SIS.Tree.rangeq_of_rangeOrder
+DEAD SIS.Tree.GetSegLeaf thm SIS.Tree.reachS_tPathK
+DEAD SIS.Tree.GetSplit thm SIS.Tree.reach_change
+DEAD SIS.Tree.RunPrefix thm SIS.Tree.refGet_snoc_past
+DEAD SIS.Tree.DelChkRefines thm SIS.Tree.refines_deleteUpward
+DEAD SIS.Tree.DelChkRefines thm SIS.Tree.refines_putKvDel
+DEAD SIS.Tree.DelChkRefines thm SIS.Tree.refines_putSegsDel
+DEAD SIS.Tree.DelChkRefines thm SIS.Tree.refines_setValueDel
+DEAD SIS.Tree.GetSplit thm SIS.Tree.renSim_timeSplit
+DEAD SIS.Tree.PutInvSeg thm SIS.Tree.repoint_time_mem
+DEAD SIS.Tree.TakeDeadUp thm SIS.Tree.retFormS_of_from
+DEAD SIS.Tree.WriterTreeRetarget thm SIS.Tree.retargetStep_del
+DEAD SIS.Tree.RootRun thm SIS.Tree.rootAt_node
+DEAD SIS.Tree.NodeCountProof thm SIS.Tree.rootFlag_partition
+DEAD SIS.Tree.MergeRootBoundedExec def SIS.Tree.rootMergeBudget
+DEAD SIS.Tree.PutInvRoot thm SIS.Tree.rootPair_live_mem
+DEAD SIS.Tree.PutInvRoot thm SIS.Tree.rootPair_times
+DEAD SIS.Tree.PointersRun thm SIS.Tree.runLinksOK_of_takeBack
+DEAD SIS.Tree.LatestJoint thm SIS.Tree.runOK_of_runTreeQ
+DEAD SIS.Tree.MergeNodeCount thm SIS.Tree.runPotentialStep_iff
+DEAD SIS.Tree.TakeRunQF4 thm SIS.Tree.runTreeQ_of_cases3
+DEAD SIS.Tree.TakeRunQF4 thm SIS.Tree.runTreeQ_of_cases4
+DEAD SIS.Tree.TakeRunQF4 thm SIS.Tree.runTreeQ_of_cases_merges4
+DEAD SIS.Tree.TakeRunQF4 thm SIS.Tree.runTreeQ_of_mergesF4
+DEAD SIS.Tree.TakeBackRun thm SIS.Tree.runTree_joint
+DEAD SIS.Tree.TakeBackRunJ thm SIS.Tree.runTree_jointJ
+DEAD SIS.Tree.TakeBackRunT thm SIS.Tree.runTree_jointT
+DEAD SIS.Tree.TakeBackRunU thm SIS.Tree.runTree_jointTU
+DEAD SIS.Tree.TakeBackRunU thm SIS.Tree.runTree_jointU
+DEAD SIS.Tree.HeightsFuel thm SIS.Tree.sb_addKeys
+DEAD SIS.Tree.HeightsFuel thm SIS.Tree.sb_appendDeleteKlong
+DEAD SIS.Tree.HeightsFuelMerge thm SIS.Tree.sb_appendKlongsX
+DEAD SIS.Tree.HeightsFuel thm SIS.Tree.sb_fresh
+DEAD SIS.Tree.HeightsFuel thm SIS.Tree.sb_getNode
+DEAD SIS.Tree.HeightsFuel thm SIS.Tree.sb_ghOf
+DEAD SIS.Tree.HeightsFuel thm SIS.Tree.sb_handleFull
+DEAD SIS.Tree.HeightsFuel thm SIS.Tree.sb_handleFullWith
+DEAD SIS.Tree.HeightsFuelMerge thm SIS.Tree.sb_handleFullWithX
+DEAD SIS.Tree.HeightsFuel thm SIS.Tree.sb_klongAt
+DEAD SIS.Tree.HeightsFuelMerge thm SIS.Tree.sb_merge
+DEAD SIS.Tree.HeightsFuelMerge thm SIS.Tree.sb_mergeParent
+DEAD SIS.Tree.HeightsFuel thm SIS.Tree.sb_newKey
+DEAD SIS.Tree.HeightsFuel thm SIS.Tree.sb_newSuperRoot
+DEAD SIS.Tree.HeightsFuel thm SIS.Tree.sb_note
+DEAD SIS.Tree.HeightsFuel thm SIS.Tree.sb_of_frame
+DEAD SIS.Tree.HeightsFuel thm SIS.Tree.sb_pathNode
+DEAD SIS.Tree.HeightsFuel thm SIS.Tree.sb_path_lt
+DEAD SIS.Tree.HeightsFuel thm SIS.Tree.sb_putNode
+DEAD SIS.Tree.HeightsFuel thm SIS.Tree.sb_replaceOrAdd
+DEAD SIS.Tree.HeightsFuel thm SIS.Tree.sb_replacedBy
+DEAD SIS.Tree.HeightsFuelMerge thm SIS.Tree.sb_retarget
+DEAD SIS.Tree.HeightsFuel thm SIS.Tree.sb_setMadeFor
+DEAD SIS.Tree.HeightsFuelMerge thm SIS.Tree.sb_sibling
+DEAD SIS.Tree.HeightsFuelMerge thm SIS.Tree.sb_takenBack
+DEAD SIS.Tree.HeightsFuelMerge thm SIS.Tree.sb_unlink
+DEAD SIS.Tree.ScanBoundary thm SIS.Tree.scanBoundaryParams_ok
+DEAD SIS.Tree.ScanBoundary def SIS.Tree.scanBoundaryReq
+DEAD SIS.Tree.ScanBoundary thm SIS.Tree.scanBoundary_get
+DEAD SIS.Tree.ScanBoundary thm SIS.Tree.scanBoundary_invariants
+DEAD SIS.Tree.ScanBoundary thm SIS.Tree.scanBoundary_reference
+DEAD SIS.Tree.ScanBoundary thm SIS.Tree.scanBoundary_result
+DEAD SIS.Tree.ScanSetup thm SIS.Tree.scanCallsAdequate_of_chain
+DEAD SIS.Tree.ScanSound thm SIS.Tree.scanChain_length
+DEAD SIS.Tree.PointersRun thm SIS.Tree.scanOK_of_inv_op
+DEAD SIS.Tree.GetUnder thm SIS.Tree.scanOK_of_runRead
+DEAD SIS.Tree.GetKeyTree thm SIS.Tree.scanOK_of_treeAt
+DEAD SIS.Tree.ScanModel thm SIS.Tree.scanPop_segs
+DEAD SIS.Tree.ScanSound thm SIS.Tree.scanTree_of_walk
+DEAD SIS.Tree.ScanSound thm SIS.Tree.scanTree_pos
+DEAD SIS.Tree.ScanFuelBound thm SIS.Tree.scan_forward_one_key_length
+DEAD SIS.Tree.ScanSetup thm SIS.Tree.scan_fuel_adequate_of_invPreserved
+DEAD SIS.Tree.MergeHeightBasics thm SIS.Tree.seenHeightBound_of_sublist
+DEAD SIS.Tree.HeightsFuel thm SIS.Tree.seenHeight_appendDeleteKlong
+DEAD SIS.Tree.HeightsFuelMerge thm SIS.Tree.seenHeight_merge
+DEAD SIS.Tree.OverlayHeights thm SIS.Tree.segBal_of_heights
+DEAD SIS.Tree.SegmentGet def SIS.Tree.segmentEntries
+DEAD SIS.Tree.SegmentGet thm SIS.Tree.segmentEntries_range
+DEAD SIS.Tree.NodeCountProof def SIS.Tree.segmentRootCount
+DEAD SIS.Tree.MergeRootHeight thm SIS.Tree.segmentRootPath_append
+DEAD SIS.Tree.MergeRootHeight thm SIS.Tree.segmentRootPath_of_read
+DEAD SIS.Tree.MergeRootHeight thm SIS.Tree.segmentRootStop_of_path
+DEAD SIS.Tree.SegmentRange thm SIS.Tree.segmentSound_of_walk
+DEAD SIS.Tree.ScanSetup thm SIS.Tree.setupGo_scanChain
+DEAD SIS.Tree.SharedSegment thm SIS.Tree.shAfter_inv
+DEAD SIS.Tree.SharedSegment thm SIS.Tree.shAfter_ptrs
+DEAD SIS.Tree.SharedSegment thm SIS.Tree.shBefore_inv
+DEAD SIS.Tree.SharedSegment thm SIS.Tree.shBefore_ptrs
+DEAD SIS.Tree.SharedSegment thm SIS.Tree.shBefore_times
+DEAD SIS.Tree.SharedSegment def SIS.Tree.shChanges
+DEAD SIS.Tree.SharedSegment thm SIS.Tree.shExec
+DEAD SIS.Tree.SharedSegment thm SIS.Tree.shExec_isOk
+DEAD SIS.Tree.SharedSegment thm SIS.Tree.shGet_after
+DEAD SIS.Tree.SharedSegment thm SIS.Tree.shGet_before
+DEAD SIS.Tree.SharedSegment def SIS.Tree.shP
+DEAD SIS.Tree.SharedSegment def SIS.Tree.shStruct
+DEAD SIS.Tree.SharedSegment def SIS.Tree.shTx
+DEAD SIS.Tree.MergeShapeGuard thm SIS.Tree.shapeGuardHeld_of_guardHeld
+DEAD SIS.Tree.SharedSegment thm SIS.Tree.sharedSegment_changes_other_key
+DEAD SIS.Tree.MergeSortedTight def SIS.Tree.sortedTightHistory
+DEAD SIS.Tree.MergeSortedTight def SIS.Tree.sortedTightHistoryChecks
+DEAD SIS.Tree.MergeSortedTight thm SIS.Tree.sortedTightHistoryChecks_eq
+DEAD SIS.Tree.MergeSortedTight thm SIS.Tree.sortedTightHistory_within
+DEAD SIS.Tree.MergeSortedTight def SIS.Tree.sortedTightParams
+DEAD SIS.Tree.MergeSortedTight thm SIS.Tree.sortedTightParams_ok
+DEAD SIS.Tree.MergeSortedTight def SIS.Tree.sortedTightStats
+DEAD SIS.Tree.MergeSortedTight thm SIS.Tree.sortedTightStats_eq
+DEAD SIS.Tree.MergeSortedTight def SIS.Tree.sortedTightTx
+DEAD SIS.Tree.MergeSortedTight thm SIS.Tree.sortedTightTx_fresh
+DEAD SIS.Tree.MergeSortedTight thm SIS.Tree.sortedTightTx_length
+DEAD SIS.Tree.MergeSortedTight thm SIS.Tree.sortedTightTx_sorted
+DEAD SIS.Tree.MergeSortedTight thm SIS.Tree.sortedTightTx_wf
+DEAD SIS.Tree.MergeSortedTight thm SIS.Tree.sortedTightTx_within_limits
+DEAD SIS.Tree.MergeSortedTight thm SIS.Tree.sorted_merge_bound_can_be_tight
+DEAD SIS.Tree.MergeSortedTight thm SIS.Tree.sorted_merge_bound_sharp_witness
+DEAD SIS.Tree.WriterStateInvariant thm SIS.Tree.state_afterDelete
+DEAD SIS.Tree.WriterStateInvariant thm SIS.Tree.state_segmentCount
+DEAD SIS.Tree.WriterStateInvariant thm SIS.Tree.state_unlinkLoop
+DEAD SIS.Tree.NodeCountTree thm SIS.Tree.sum_map_flatMap_nat
+DEAD SIS.Tree.WriterGetUpT thm SIS.Tree.tLink_up_sub
+DEAD SIS.Tree.WriterTreeVisits thm SIS.Tree.tPath_reach
+DEAD SIS.Tree.WriterTreeVisits thm SIS.Tree.tPath_unique
+DEAD SIS.Tree.GetCascadePut thm SIS.Tree.tReach_chain_updN
+DEAD SIS.Tree.LiveEdgesBase thm SIS.Tree.tReach_copy
+DEAD SIS.Tree.WriterGetUpT thm SIS.Tree.tReach_up_sub
+DEAD SIS.Tree.WriterGrowth def SIS.Tree.tacticGrowthFrom_
+DEAD SIS.Tree.MergeHeightSplit def SIS.Tree.tacticHsAppend
+DEAD SIS.Tree.MergeHeightSplit def SIS.Tree.tacticHsCore
+DEAD SIS.Tree.MergeHeightSplit def SIS.Tree.tacticHsCreate
+DEAD SIS.Tree.MergeHeightSplit def SIS.Tree.tacticHsDeleteSimplify
+DEAD SIS.Tree.MergeHeightSplit def SIS.Tree.tacticHsFinish
+DEAD SIS.Tree.MergeHeightSplit def SIS.Tree.tacticHsFold
+DEAD SIS.Tree.MergeHeightSplit def SIS.Tree.tacticHsFoldWith_
+DEAD SIS.Tree.MergeHeightSplit def SIS.Tree.tacticHsForWith_
+DEAD SIS.Tree.MergeHeightSplit def SIS.Tree.tacticHsGH
+DEAD SIS.Tree.MergeHeightSplit def SIS.Tree.tacticHsNeutral
+DEAD SIS.Tree.MergeHeightSplit def SIS.Tree.tacticHsState
+DEAD SIS.Tree.MergeHeightSplit def SIS.Tree.tacticHsUse_
+DEAD SIS.Tree.MergeKeptNode def SIS.Tree.tacticKgNeutral_
+DEAD SIS.Tree.MergeKeptNode def SIS.Tree.tacticKgPut_
+DEAD SIS.Tree.MergeKeptNode def SIS.Tree.tacticKgRetarget_
+DEAD SIS.Tree.MergeKeptNode def SIS.Tree.tacticKgState
+DEAD SIS.Tree.MergeKeptNode def SIS.Tree.tacticKgTake_
+DEAD SIS.Tree.MergeKeptNode def SIS.Tree.tacticKgUnlink_
+DEAD SIS.Tree.MergeKeptNode def SIS.Tree.tacticKgUse_Using_
+DEAD SIS.Tree.RootWalkRun def SIS.Tree.tacticKrADK
+DEAD SIS.Tree.RootWalkSplit def SIS.Tree.tacticKrCnt
+DEAD SIS.Tree.RootWalkSplit def SIS.Tree.tacticKrCore
+DEAD SIS.Tree.RootWalkSplit def SIS.Tree.tacticKrCreate
+DEAD SIS.Tree.RootWalkMerge def SIS.Tree.tacticKrCreateM
+DEAD SIS.Tree.RootWalkSplit def SIS.Tree.tacticKrDone
+DEAD SIS.Tree.RootWalkRun def SIS.Tree.tacticKrDone3
+DEAD SIS.Tree.RootWalkRun def SIS.Tree.tacticKrFold
+DEAD SIS.Tree.RootWalkRun def SIS.Tree.tacticKrFor
+DEAD SIS.Tree.RootWalkRules def SIS.Tree.tacticKrFrameTac
+DEAD SIS.Tree.RootWalkSplit def SIS.Tree.tacticKrGh
+DEAD SIS.Tree.RootWalkMerge def SIS.Tree.tacticKrGhX_
+DEAD SIS.Tree.RootWalkDelete def SIS.Tree.tacticKrHF
+DEAD SIS.Tree.RootWalkDelete def SIS.Tree.tacticKrHFMP___
+DEAD SIS.Tree.RootWalkDelete def SIS.Tree.tacticKrHFx_
+DEAD SIS.Tree.RootWalkSplit def SIS.Tree.tacticKrHeight
+DEAD SIS.Tree.RootWalkSplit def SIS.Tree.tacticKrK1__
+DEAD SIS.Tree.RootWalkDelete def SIS.Tree.tacticKrKsLeb
+DEAD SIS.Tree.RootWalkMerge def SIS.Tree.tacticKrKsMerge
+DEAD SIS.Tree.RootWalkRun def SIS.Tree.tacticKrLEB
+DEAD SIS.Tree.RootWalkMerge def SIS.Tree.tacticKrLive
+DEAD SIS.Tree.RootWalkMerge def SIS.Tree.tacticKrMPm___
+DEAD SIS.Tree.RootWalkSplit def SIS.Tree.tacticKrMade
+DEAD SIS.Tree.RootWalkSplit def SIS.Tree.tacticKrMadeTac
+DEAD SIS.Tree.RootWalkSplit def SIS.Tree.tacticKrNode
+DEAD SIS.Tree.RootWalkRun def SIS.Tree.tacticKrPN
+DEAD SIS.Tree.RootWalkSplit def SIS.Tree.tacticKrParentKl__
+DEAD SIS.Tree.RootWalkSplit def SIS.Tree.tacticKrRead
+DEAD SIS.Tree.RootWalkSplit def SIS.Tree.tacticKrRepl
+DEAD SIS.Tree.RootWalkMerge def SIS.Tree.tacticKrRet
+DEAD SIS.Tree.RootWalkMerge def SIS.Tree.tacticKrSibM____
+DEAD SIS.Tree.RootWalkSplit def SIS.Tree.tacticKrSimp
+DEAD SIS.Tree.RootWalkSplit def SIS.Tree.tacticKrState
+DEAD SIS.Tree.RootWalkSplit def SIS.Tree.tacticKrStore
+DEAD SIS.Tree.RootWalkDelete def SIS.Tree.tacticKrStoreLeb_
+DEAD SIS.Tree.RootWalkDelete def SIS.Tree.tacticKrStoreMP___
+DEAD SIS.Tree.RootWalkSplit def SIS.Tree.tacticKrStoreRep___
+DEAD SIS.Tree.RootWalkSplit def SIS.Tree.tacticKrSuper
+DEAD SIS.Tree.RootWalkRun def SIS.Tree.tacticKrTB
+DEAD SIS.Tree.RootWalkDelete def SIS.Tree.tacticKrTake
+DEAD SIS.Tree.RootWalkSplit def SIS.Tree.tacticKrUpH_____
+DEAD SIS.Tree.RootWalkRun def SIS.Tree.tacticKrUse3_
+DEAD SIS.Tree.RootWalkDelete def SIS.Tree.tacticKrUseP_
+DEAD SIS.Tree.RootWalkSplit def SIS.Tree.tacticKrUse_
+DEAD SIS.Tree.WriterNonemptyMerge def SIS.Tree.tacticNeSetClose
+DEAD SIS.Tree.HeightsFuel def SIS.Tree.tacticSbCore
+DEAD SIS.Tree.HeightsFuel def SIS.Tree.tacticSbCreate
+DEAD SIS.Tree.HeightsFuelMerge def SIS.Tree.tacticSbFrame2
+DEAD SIS.Tree.HeightsFuel def SIS.Tree.tacticSbState
+DEAD SIS.Tree.HeightsFuelMerge def SIS.Tree.tacticSbState2
+DEAD SIS.Tree.HeightsFuelMerge def SIS.Tree.tacticSbUse2_
+DEAD SIS.Tree.HeightsFuel def SIS.Tree.tacticSbUse_
+DEAD SIS.Tree.MergeTwoFrame def SIS.Tree.tacticTstep
+DEAD SIS.Tree.MergeHeightBasics def SIS.Tree.tacticWhBound_Using_
+DEAD SIS.Tree.MergeHeightBasics def SIS.Tree.tacticWhFrame
+DEAD SIS.Tree.MergeHeightBasics def SIS.Tree.tacticWhUse_Using_
+DEAD SIS.Tree.MergeHeightBasics def SIS.Tree.tacticWpTrace
+DEAD SIS.Tree.TakeBackRun thm SIS.Tree.takeBackEnd_of_inv
+DEAD SIS.Tree.PointersRun thm SIS.Tree.takeBackOKUnder_mono
+DEAD SIS.Tree.TakeBackRun thm SIS.Tree.takeBackOKUnder_of_ops
+DEAD SIS.Tree.TakeBackRunJ thm SIS.Tree.takeBackOKUnder_of_opsJ
+DEAD SIS.Tree.TakeBackRunT thm SIS.Tree.takeBackOKUnder_of_opsT
+DEAD SIS.Tree.TakeBackRunU thm SIS.Tree.takeBackOKUnder_of_opsTU
+DEAD SIS.Tree.TakeBackRunU thm SIS.Tree.takeBackOKUnder_of_opsU
+DEAD SIS.Tree.TakeDeadAssembly thm SIS.Tree.takeBackOK_of_cases
+DEAD SIS.Tree.TakeDeadAssembly2 thm SIS.Tree.takeBackOK_of_cases2
+DEAD SIS.Tree.TakeDeadPutFull thm SIS.Tree.takeBackOK_of_cases3
+DEAD SIS.Tree.TakeDeadNewSegFull thm SIS.Tree.takeBackOK_of_cases4
+DEAD SIS.Tree.TakeBackMerges thm SIS.Tree.takeBackOK_of_cases4B
+DEAD SIS.Tree.TakeDeadAssembly thm SIS.Tree.takeBackOK_of_cases_merges
+DEAD SIS.Tree.TakeDeadAssembly2 thm SIS.Tree.takeBackOK_of_cases_merges2
+DEAD SIS.Tree.TakeDeadPutFull thm SIS.Tree.takeBackOK_of_cases_merges3
+DEAD SIS.Tree.TakeDeadNewSegFull thm SIS.Tree.takeBackOK_of_cases_merges4
+DEAD SIS.Tree.TakeBackRun thm SIS.Tree.takeBackOK_of_joint
+DEAD SIS.Tree.TakeBackRunJ thm SIS.Tree.takeBackOK_of_jointJ
+DEAD SIS.Tree.TakeBackRunJ2 thm SIS.Tree.takeBackOK_of_jointJ2
+DEAD SIS.Tree.TakeBackRunT thm SIS.Tree.takeBackOK_of_jointT
+DEAD SIS.Tree.TakeBackRunU thm SIS.Tree.takeBackOK_of_jointTU
+DEAD SIS.Tree.TakeBackRunU thm SIS.Tree.takeBackOK_of_jointU
+DEAD SIS.Tree.TakeDelStepsF4 thm SIS.Tree.takeBackOK_of_mergesF4
+DEAD SIS.Tree.HeightsFit thm SIS.Tree.takeBelowFuelOK_of_del
+DEAD SIS.Tree.HeightsPathFree thm SIS.Tree.takeBelowFuelOK_of_delH
+DEAD SIS.Tree.TakeBackRunJ thm SIS.Tree.takeInvJ_reached
+DEAD SIS.Tree.TakeBackRunT thm SIS.Tree.takeInvT_reached
+DEAD SIS.Tree.TakeBackRunU thm SIS.Tree.takeInvT_reachedU
+DEAD SIS.Tree.TakeInvUp thm SIS.Tree.takeInv_deleteUpward_upT
+DEAD SIS.Tree.TakeInvUp thm SIS.Tree.takeInv_deleteUpward_upT_kinds
+DEAD SIS.Tree.TakeBackRun thm SIS.Tree.takeInv_init
+DEAD SIS.Tree.TakeBackRun thm SIS.Tree.takeInv_reached
+DEAD SIS.Tree.TakeBackRunU thm SIS.Tree.takeInv_reachedU
+DEAD SIS.Tree.TakeDeadLast thm SIS.Tree.takeJ2_after_lastSplit
+DEAD SIS.Tree.DelStepsBookStop thm SIS.Tree.takeJ2_deleteUpward_stepMBK
+DEAD SIS.Tree.TakeDeadUpW thm SIS.Tree.takeJ2_deleteUpward_upT
+DEAD SIS.Tree.TakeDeadUpM thm SIS.Tree.takeJ2_deleteUpward_upTM
+DEAD SIS.Tree.DelStepsBook thm SIS.Tree.takeJ2_deleteUpward_upTMB
+DEAD SIS.Tree.TakeInvCollapse thm SIS.Tree.takeJ_of_readsAs
+DEAD SIS.Tree.WriterTreeRepoint thm SIS.Tree.takeWhile_set
+DEAD SIS.Tree.WriterTaken thm SIS.Tree.taken_forIn
+DEAD SIS.Tree.NodeCountTree def SIS.Tree.terminalEntryCount
+DEAD SIS.Tree.SortedSegments thm SIS.Tree.terminal_prefix_values_before
+DEAD SIS.Tree.SortedSegments thm SIS.Tree.terminal_segment_get
+DEAD SIS.Tree.SortedSegments thm SIS.Tree.terminal_segment_values_pairwise
+DEAD SIS.Tree.SizeRules thm SIS.Tree.timeFirst_lastVersionGivenDel
+DEAD SIS.Tree.WriterTree thm SIS.Tree.treeAt_commit_of_lift
+DEAD SIS.Tree.TakeBackRun thm SIS.Tree.treeAt_of_joint
+DEAD SIS.Tree.TakeBackRunU thm SIS.Tree.treeAt_of_jointU
+DEAD SIS.Tree.WriterTree thm SIS.Tree.treeAt_run
+DEAD SIS.Tree.TakeBackRun thm SIS.Tree.treeAt_step
+DEAD SIS.Tree.ScanModel thm SIS.Tree.treeContents_leaf_head
+DEAD SIS.Tree.RunPotential thm SIS.Tree.treeFillPotential_init
+DEAD SIS.Tree.RunPotential thm SIS.Tree.treeFillPotential_run_costs
+DEAD SIS.Tree.WriterTree thm SIS.Tree.treeOK_attach
+DEAD SIS.Tree.WriterTreeMerge thm SIS.Tree.treeOK_dropSubtree
+DEAD SIS.Tree.WriterTreeInPlace thm SIS.Tree.treeOK_inPlaceSplitAfter
+DEAD SIS.Tree.WriterTreeLeb thm SIS.Tree.treeOK_leb_after
+DEAD SIS.Tree.WriterTreePut2 thm SIS.Tree.treeOK_nodeUpdate
+DEAD SIS.Tree.WriterTreeMerge thm SIS.Tree.treeOK_of_node_relink
+DEAD SIS.Tree.WriterTreeSpace thm SIS.Tree.treeOK_rootSplit
+DEAD SIS.Tree.WriterTreeRoot thm SIS.Tree.treeOK_rootTimeSplit
+DEAD SIS.Tree.WriterTreeSegSplit thm SIS.Tree.treeOK_segSpaceSplit
+DEAD SIS.Tree.WriterTreeSegInPlace thm SIS.Tree.treeOK_segSpaceSplitInPlace
+DEAD SIS.Tree.WriterTreeSpaceSpace thm SIS.Tree.treeOK_spaceSpace
+DEAD SIS.Tree.WriterTreeSpace thm SIS.Tree.treeOK_spaceSplitAfter
+DEAD SIS.Tree.WriterTreeDelSpace thm SIS.Tree.treeOK_spaceSplitInPlace_sub
+DEAD SIS.Tree.WriterTreeCascade thm SIS.Tree.treeOK_spaceSplitTime
+DEAD SIS.Tree.WriterTreeDelSpace thm SIS.Tree.treeOK_spaceSplit_sub
+DEAD SIS.Tree.WriterTreeInnerHalves thm SIS.Tree.treeOK_timeSpace
+DEAD SIS.Tree.WriterTreeCascade thm SIS.Tree.treeOK_timeSplit2
+DEAD SIS.Tree.WriterTreeSplit thm SIS.Tree.treeOK_timeSplitAfter
+DEAD SIS.Tree.WriterTreeDelFull thm SIS.Tree.treeOK_timeSplit_sub
+DEAD SIS.Tree.WriterTree thm SIS.Tree.treeOK_transfer
+DEAD SIS.Tree.WriterGetUpT thm SIS.Tree.treeOK_up_inner
+DEAD SIS.Tree.ReadExtension thm SIS.Tree.treeRun_get_eq_prefix_of_invariant
+DEAD SIS.Tree.TreeGet thm SIS.Tree.treeRun_get_lookup
+DEAD SIS.Tree.HeightsChkRun thm SIS.Tree.treeRun_heightLiveOK_chk
+DEAD SIS.Tree.HeightsPathFree thm SIS.Tree.treeRun_heightLiveOK_chk2
+DEAD SIS.Tree.LeftRun thm SIS.Tree.treeRun_leftAllOK
+DEAD SIS.Tree.RootRun thm SIS.Tree.treeRun_rootKeyOK
+DEAD SIS.Tree.HistoricalScan thm SIS.Tree.treeRun_scan_eq_prefix
+DEAD SIS.Tree.ScanSetup thm SIS.Tree.treeRun_scan_fuel_adequate
+DEAD SIS.Tree.PointersRun thm SIS.Tree.treeRun_sizeOK
+DEAD SIS.Tree.WalkComplete thm SIS.Tree.treeRun_walkComplete
+DEAD SIS.Tree.WalkComplete thm SIS.Tree.treeWalkComplete_of_invOK
+DEAD SIS.Tree.MergeTwoFrame thm SIS.Tree.twoLe_merge
+DEAD SIS.Tree.MergeTwoFrame thm SIS.Tree.twoLe_mono
+DEAD SIS.Tree.GetCommit thm SIS.Tree.txGetOK_of_op_lift
+DEAD SIS.Tree.HeightsFit thm SIS.Tree.txSegFitsOK_of_takeBelow
+DEAD SIS.Tree.HeightsFit thm SIS.Tree.txSegFitsOK_of_takeBelowDelR
+DEAD SIS.Tree.HeightsPathFree thm SIS.Tree.txSegFitsOK_of_takeBelowDelR2
+DEAD SIS.Tree.HeightsPathFree thm SIS.Tree.txSegFitsOK_of_takeBelowDelRH
+DEAD SIS.Tree.HeightsFit thm SIS.Tree.txSegFitsOK_of_takeBelowR
+DEAD SIS.Tree.WriterCacheUnique thm SIS.Tree.uniqueCache_afterDelete
+DEAD SIS.Tree.WriterCacheUnique thm SIS.Tree.uniqueCache_appendDeleteKlong
+DEAD SIS.Tree.WriterCacheUnique thm SIS.Tree.uniqueCache_emptyKeyNext
+DEAD SIS.Tree.WriterCacheUnique thm SIS.Tree.uniqueCache_of_same
+DEAD SIS.Tree.WriterCacheUnique thm SIS.Tree.uniqueCache_segmentCount
+DEAD SIS.Tree.WriterCacheUnique thm SIS.Tree.uniqueCache_sibling
+DEAD SIS.Tree.WriterCacheUnique thm SIS.Tree.uniqueCache_unlinkLoop
+DEAD SIS.Tree.TakeInvTree thm SIS.Tree.unlinked_live_below
+DEAD SIS.Tree.DelStepsCascRoot thm SIS.Tree.upCascBelowOKF3_of
+DEAD SIS.Tree.DelStepsHolder thm SIS.Tree.upCascJ2OKF3H_of
+DEAD SIS.Tree.DelStepsHolderLive thm SIS.Tree.upCascJ2OKF3H_of2
+DEAD SIS.Tree.TakeUpCasc thm SIS.Tree.upCascJ2OKF3_of_parts
+DEAD SIS.Tree.DelStepsLinks thm SIS.Tree.upCascJ2OKF3_of_parts2
+DEAD SIS.Tree.DelStepsUnlinkTree thm SIS.Tree.upCascJ2OKF3_of_parts3
+DEAD SIS.Tree.DelStepsHolder thm SIS.Tree.upCascOKF3H_of
+DEAD SIS.Tree.DelStepsHolderLive thm SIS.Tree.upCascOKF3H_of2
+DEAD SIS.Tree.DelStepsCascRoot thm SIS.Tree.upCascOKF3_of_parts
+DEAD SIS.Tree.DelStepsLinks thm SIS.Tree.upCascOKF3_of_parts2
+DEAD SIS.Tree.DelStepsUnlinkTree thm SIS.Tree.upCascOKF3_of_parts3
+DEAD SIS.Tree.StopLeafLive thm SIS.Tree.upLebFitsOKL_of
+DEAD SIS.Tree.TakeLebFull thm SIS.Tree.upLebFullJ2OK_of_parts
+DEAD SIS.Tree.DelStepsLinks thm SIS.Tree.upLebFullJ2OK_of_parts2
+DEAD SIS.Tree.DelStepsUnlinkTree thm SIS.Tree.upLebFullJ2OK_of_parts3
+DEAD SIS.Tree.DelStepsLebFull thm SIS.Tree.upLebFullOKF3_of_parts
+DEAD SIS.Tree.DelStepsLinks thm SIS.Tree.upLebFullOKF3_of_parts2
+DEAD SIS.Tree.DelStepsUnlinkTree thm SIS.Tree.upLebFullOKF3_of_parts3
+DEAD SIS.Tree.DelStepsLeb thm SIS.Tree.upLebJ2OKF3_of_full
+DEAD SIS.Tree.DelStepsLeb thm SIS.Tree.upLebOKF3_of_full
+DEAD SIS.Tree.MergeRetainedRoot thm SIS.Tree.upsert_lookup_other
+DEAD SIS.Tree.MergeRetainedRoot thm SIS.Tree.upsert_lookup_same
+DEAD SIS.Tree.WriterHistory thm SIS.Tree.viewKlongsWf_initial
+DEAD SIS.Tree.WriterTreeVisits thm SIS.Tree.visits_unique_of_tree
+DEAD SIS.Tree.WGetAt thm SIS.Tree.wGet_eq_wGetAt
+DEAD SIS.Tree.GetFrame thm SIS.Tree.wGet_leaf_change
+DEAD SIS.Tree.WriterTreeMergeOp thm SIS.Tree.wNode_congr
+DEAD SIS.Tree.NodeCountTree def SIS.Tree.walkWeight
+DEAD SIS.Tree.NodeCountTree thm SIS.Tree.walkWeight_step
+DEAD SIS.Tree.InvConsequences thm SIS.Tree.walk_all_nodes
+DEAD SIS.Tree.WalkComplete thm SIS.Tree.walk_complete_of_highKindsOK
+DEAD SIS.Tree.InvConsequences thm SIS.Tree.walk_current_fill
+DEAD SIS.Tree.InvConsequences thm SIS.Tree.walk_current_inner_nonempty
+DEAD SIS.Tree.InvConsequences thm SIS.Tree.walk_current_leftmost
+DEAD SIS.Tree.InvConsequences thm SIS.Tree.walk_current_size
+DEAD SIS.Tree.NodeCountTree thm SIS.Tree.walk_entry_identity
+DEAD SIS.Tree.InvConsequences thm SIS.Tree.walk_fill
+DEAD SIS.Tree.WriterTree thm SIS.Tree.writerTreeOK_between
+DEAD SIS.Tree.WriterTreeInv thm SIS.Tree.writerTreeOK_reached_inv
+DEAD SIS.Tree.MergeRootBoundedExec thm SIS.Tree.writerWP_afterDelete_rootHeightBound
+DEAD SIS.Tree.WriterTreeInv thm SIS.Tree.writerWP_and_imp
+DEAD SIS.Tree.DelStepsFullGet thm SIS.Tree.writerWP_appendDeleteKlong_full_delF3
+DEAD SIS.Tree.GetDelSplit thm SIS.Tree.writerWP_appendDeleteKlong_get
+DEAD SIS.Tree.GetDelCascade thm SIS.Tree.writerWP_appendDeleteKlong_get2
+DEAD SIS.Tree.TakeDeadDelete thm SIS.Tree.writerWP_appendDeleteKlong_j2
+DEAD SIS.Tree.WriterDeleteCount thm SIS.Tree.writerWP_appendDeleteKlong_new_room_count
+DEAD SIS.Tree.MergeProtectedDelete thm SIS.Tree.writerWP_appendDeleteKlong_new_room_earlier
+DEAD SIS.Tree.WriterDeleteCount thm SIS.Tree.writerWP_appendDeleteKlong_new_room_fill
+DEAD SIS.Tree.WriterNodeMap thm SIS.Tree.writerWP_appendDeleteKlong_new_room_map
+DEAD SIS.Tree.MergeProtectedDelete thm SIS.Tree.writerWP_appendDeleteKlong_new_room_sorted_terminal
+DEAD SIS.Tree.PutInvDelFull thm SIS.Tree.writerWP_appendDeleteKlong_putInvT
+DEAD SIS.Tree.PutInvDelSpace thm SIS.Tree.writerWP_appendDeleteKlong_putInvT2
+DEAD SIS.Tree.PutInvDelCascade thm SIS.Tree.writerWP_appendDeleteKlong_putInvTGen
+DEAD SIS.Tree.RangeDelChain thm SIS.Tree.writerWP_appendDeleteKlong_rangeGen
+DEAD SIS.Tree.PutInvDel thm SIS.Tree.writerWP_appendDeleteKlong_room_after
+DEAD SIS.Tree.PutInvUp thm SIS.Tree.writerWP_appendDeleteKlong_room_drop
+DEAD SIS.Tree.MergeRetainedRoot thm SIS.Tree.writerWP_appendDeleteKlong_room_earlier
+DEAD SIS.Tree.WriterGetUpW thm SIS.Tree.writerWP_appendDeleteKlong_room_frame
+DEAD SIS.Tree.WriterTreeDelete thm SIS.Tree.writerWP_appendDeleteKlong_room_tree
+DEAD SIS.Tree.WriterTreePut thm SIS.Tree.writerWP_appendDeleteKlong_room_tree'
+DEAD SIS.Tree.GetDelRoot thm SIS.Tree.writerWP_appendDeleteKlong_rootR
+DEAD SIS.Tree.PutInvDelRoot thm SIS.Tree.writerWP_appendDeleteKlong_root_putInvT
+DEAD SIS.Tree.PutInvDelSeg thm SIS.Tree.writerWP_appendDeleteKlong_seg_putInvT
+DEAD SIS.Tree.GetDelSplit thm SIS.Tree.writerWP_appendDeleteKlong_space
+DEAD SIS.Tree.GetDelCascade thm SIS.Tree.writerWP_appendDeleteKlong_spaceGen
+DEAD SIS.Tree.GetDelCascade thm SIS.Tree.writerWP_appendDeleteKlong_spaceGenD
+DEAD SIS.Tree.PutInvDelSpaceCascade thm SIS.Tree.writerWP_appendDeleteKlong_spaceGenP
+DEAD SIS.Tree.GetDelCascade thm SIS.Tree.writerWP_appendDeleteKlong_timeGen
+DEAD SIS.Tree.GetDelCascade thm SIS.Tree.writerWP_appendDeleteKlong_timeGenD
+DEAD SIS.Tree.GetDelCascade thm SIS.Tree.writerWP_appendDeleteKlong_timeGenQ
+DEAD SIS.Tree.WriterTreeDelFull thm SIS.Tree.writerWP_appendDeleteKlong_tree
+DEAD SIS.Tree.WriterTreeDelSpace thm SIS.Tree.writerWP_appendDeleteKlong_tree2
+DEAD SIS.Tree.WriterTreeCascadeGen2 thm SIS.Tree.writerWP_appendKlongs_chain
+DEAD SIS.Tree.WriterTreeCascadeGen2 thm SIS.Tree.writerWP_appendKlongs_chainC
+DEAD SIS.Tree.GetCascadeChainG thm SIS.Tree.writerWP_appendKlongs_chainGR
+DEAD SIS.Tree.GetCascadeChainG thm SIS.Tree.writerWP_appendKlongs_chainGRQ
+DEAD SIS.Tree.GetCascadeChainG thm SIS.Tree.writerWP_appendKlongs_chainGRQ2
+DEAD SIS.Tree.GetCascadeChainG thm SIS.Tree.writerWP_appendKlongs_chainGRQ2f
+DEAD SIS.Tree.GetCascadeChainG thm SIS.Tree.writerWP_appendKlongs_chainGRQf
+DEAD SIS.Tree.RangeChainGW thm SIS.Tree.writerWP_appendKlongs_chainGRangeW
+DEAD SIS.Tree.GetCascadeChain thm SIS.Tree.writerWP_appendKlongs_chainR
+DEAD SIS.Tree.GetCascadeChain thm SIS.Tree.writerWP_appendKlongs_chainRV
+DEAD SIS.Tree.RangeChain thm SIS.Tree.writerWP_appendKlongs_chainRange
+DEAD SIS.Tree.GetCascadeChainG thm SIS.Tree.writerWP_appendKlongs_chainReach
+DEAD SIS.Tree.GetCascadeChainG thm SIS.Tree.writerWP_appendKlongs_chainReachNew
+DEAD SIS.Tree.MergeRootWrites thm SIS.Tree.writerWP_appendKlongs_inplace_noOutside
+DEAD SIS.Tree.MergeRootWrites thm SIS.Tree.writerWP_appendKlongs_newRoot_noOutside
+DEAD SIS.Tree.WriterTreeSpace thm SIS.Tree.writerWP_appendKlongs_room2
+DEAD SIS.Tree.GetRootSplit thm SIS.Tree.writerWP_appendKlongs_rootSpaceSplit
+DEAD SIS.Tree.GetRootSplit thm SIS.Tree.writerWP_appendKlongs_rootSpaceSplitInPlace
+DEAD SIS.Tree.GetRootSplit thm SIS.Tree.writerWP_appendKlongs_rootTimeSplit
+DEAD SIS.Tree.GetSegRoot thm SIS.Tree.writerWP_appendKlongs_segSpaceSplit
+DEAD SIS.Tree.GetSegInPlace thm SIS.Tree.writerWP_appendKlongs_segSpaceSplitInPlace
+DEAD SIS.Tree.GetSpaceSpace thm SIS.Tree.writerWP_appendKlongs_spaceSpace
+DEAD SIS.Tree.WriterTreeSpaceSpace thm SIS.Tree.writerWP_appendKlongs_spaceSpace_tree
+DEAD SIS.Tree.WriterTreeSpace thm SIS.Tree.writerWP_appendKlongs_spaceSplit
+DEAD SIS.Tree.GetInPlace thm SIS.Tree.writerWP_appendKlongs_spaceSplitInPlace
+DEAD SIS.Tree.GetInPlaceCascade thm SIS.Tree.writerWP_appendKlongs_spaceSplitInPlaceQIP
+DEAD SIS.Tree.WriterTreeInPlace thm SIS.Tree.writerWP_appendKlongs_spaceSplitInPlace_tree
+DEAD SIS.Tree.GetSpaceSpace thm SIS.Tree.writerWP_appendKlongs_spaceSplitIns
+DEAD SIS.Tree.GetInPlaceCascade thm SIS.Tree.writerWP_appendKlongs_spaceSplitQIP
+DEAD SIS.Tree.GetChain thm SIS.Tree.writerWP_appendKlongs_spaceSplitTime
+DEAD SIS.Tree.WriterTreeCascade thm SIS.Tree.writerWP_appendKlongs_spaceSplitTime_tree
+DEAD SIS.Tree.WriterTreeSpace thm SIS.Tree.writerWP_appendKlongs_spaceSplit_tree
+DEAD SIS.Tree.WriterTreeCascadeGen thm SIS.Tree.writerWP_appendKlongs_timeChain
+DEAD SIS.Tree.GetInPlace thm SIS.Tree.writerWP_appendKlongs_timeInPlace
+DEAD SIS.Tree.GetInPlaceCascade thm SIS.Tree.writerWP_appendKlongs_timeInPlaceC
+DEAD SIS.Tree.GetInnerSplit thm SIS.Tree.writerWP_appendKlongs_timeSpace
+DEAD SIS.Tree.WriterTreeInnerHalves thm SIS.Tree.writerWP_appendKlongs_timeSpace_tree
+DEAD SIS.Tree.GetSplit thm SIS.Tree.writerWP_appendKlongs_timeSplit
+DEAD SIS.Tree.GetChain thm SIS.Tree.writerWP_appendKlongs_timeSplit2
+DEAD SIS.Tree.WriterTreeCascade thm SIS.Tree.writerWP_appendKlongs_timeSplit2_tree
+DEAD SIS.Tree.GetChain thm SIS.Tree.writerWP_appendKlongs_timeSplitIns
+DEAD SIS.Tree.GetSegRoot thm SIS.Tree.writerWP_appendKlongs_timeSplitLeafParent
+DEAD SIS.Tree.GetInPlaceCascade thm SIS.Tree.writerWP_appendKlongs_timeSplitQIP
+DEAD SIS.Tree.GetSplit thm SIS.Tree.writerWP_appendKlongs_timeSplit_gen
+DEAD SIS.Tree.WriterTreePutInv thm SIS.Tree.writerWP_appendKlongs_timeSplit_gen_tree
+DEAD SIS.Tree.WriterTreeSpace thm SIS.Tree.writerWP_appendKlongs_timeSplit_tree
+DEAD SIS.Tree.MergeProtectedDelete thm SIS.Tree.writerWP_climb_above_earlier_parent
+DEAD SIS.Tree.MergePathCache thm SIS.Tree.writerWP_climb_above_earlier_parent_cached
+DEAD SIS.Tree.MergeProtectedDelete thm SIS.Tree.writerWP_climb_of_earlier_parent
+DEAD SIS.Tree.PutInvUp thm SIS.Tree.writerWP_climb_stop
+DEAD SIS.Tree.WriterGetCollapseLoop thm SIS.Tree.writerWP_collapseRoot_coll
+DEAD SIS.Tree.WriterGetCollapseLoop thm SIS.Tree.writerWP_collapseRoot_collF
+DEAD SIS.Tree.DelMergeCaseF thm SIS.Tree.writerWP_collapseRoot_delF
+DEAD SIS.Tree.TakeDeadCollapse thm SIS.Tree.writerWP_collapseRoot_j2
+DEAD SIS.Tree.TakeNextGrows thm SIS.Tree.writerWP_collapseRoot_next
+DEAD SIS.Tree.MergeProtectedNode thm SIS.Tree.writerWP_collapseRoot_of_cnt_ge_two
+DEAD SIS.Tree.RangeCollapseSeg thm SIS.Tree.writerWP_collapseRoot_range
+DEAD SIS.Tree.WriterTreeCollapse thm SIS.Tree.writerWP_collapseRoot_space
+DEAD SIS.Tree.PutInvCollapse thm SIS.Tree.writerWP_collapseRoot_spaceP
+DEAD SIS.Tree.RangeCollapse thm SIS.Tree.writerWP_collapseRoot_spaceR
+DEAD SIS.Tree.RangeUpAll thm SIS.Tree.writerWP_collapseRoot_spaceRO
+DEAD SIS.Tree.WriterGetCollapse thm SIS.Tree.writerWP_collapseRoot_space_get
+DEAD SIS.Tree.WriterGetCollapse thm SIS.Tree.writerWP_collapseRoot_space_getF
+DEAD SIS.Tree.WriterGetCollapse thm SIS.Tree.writerWP_collapseRoot_space_reads
+DEAD SIS.Tree.TakeInvCollapse thm SIS.Tree.writerWP_collapseRoot_take
+DEAD SIS.Tree.WriterTreeDelChain thm SIS.Tree.writerWP_delLeaf_chainG
+DEAD SIS.Tree.WriterTreeDelChain thm SIS.Tree.writerWP_delRootSplit_tree
+DEAD SIS.Tree.WriterTreeDelChain thm SIS.Tree.writerWP_delSplit_chainG
+DEAD SIS.Tree.GetPutPath thm SIS.Tree.writerWP_del_accessPath
+DEAD SIS.Tree.GetPutPath thm SIS.Tree.writerWP_del_accessPathR
+DEAD SIS.Tree.GetFrame thm SIS.Tree.writerWP_del_bitmap
+DEAD SIS.Tree.GetFrame thm SIS.Tree.writerWP_del_bitmap_seg
+DEAD SIS.Tree.WriterTreePut thm SIS.Tree.writerWP_del_bitmap_seg_tree
+DEAD SIS.Tree.GetCascadePut thm SIS.Tree.writerWP_del_chain
+DEAD SIS.Tree.GetCascadePut thm SIS.Tree.writerWP_del_chainG
+DEAD SIS.Tree.TakeDelStepsCascF4 thm SIS.Tree.writerWP_del_emptyAnyMJK
+DEAD SIS.Tree.DelStepsLive thm SIS.Tree.writerWP_del_emptyAnyMJKL
+DEAD SIS.Tree.DelStepsHolder thm SIS.Tree.writerWP_del_emptyAnyMJKLH
+DEAD SIS.Tree.DelStepsLive thm SIS.Tree.writerWP_del_emptyAnyMKL
+DEAD SIS.Tree.DelStepsHolder thm SIS.Tree.writerWP_del_emptyAnyMKLH
+DEAD SIS.Tree.GetDelSplit thm SIS.Tree.writerWP_del_leafBelow
+DEAD SIS.Tree.GetDelSplit thm SIS.Tree.writerWP_del_leafBelow2
+DEAD SIS.Tree.GetDelSplit thm SIS.Tree.writerWP_del_leafBelow2_inv
+DEAD SIS.Tree.WriterTreeDelSpace thm SIS.Tree.writerWP_del_leafBelow2_tree
+DEAD SIS.Tree.GetDelSplit thm SIS.Tree.writerWP_del_leafBelow_inv
+DEAD SIS.Tree.WriterTreeDelFull thm SIS.Tree.writerWP_del_leafBelow_tree
+DEAD SIS.Tree.GetDelRoot thm SIS.Tree.writerWP_del_leafRootR
+DEAD SIS.Tree.GetFrame thm SIS.Tree.writerWP_del_noop
+DEAD SIS.Tree.GetDelCascade thm SIS.Tree.writerWP_del_path
+DEAD SIS.Tree.PutInvUp thm SIS.Tree.writerWP_del_segRoot_leaf
+DEAD SIS.Tree.PutInvDelFull thm SIS.Tree.writerWP_del_seg_leaf
+DEAD SIS.Tree.GetDelCascade thm SIS.Tree.writerWP_del_spaceSpace
+DEAD SIS.Tree.GetDelCascade thm SIS.Tree.writerWP_del_spaceTime
+DEAD SIS.Tree.GetDelCascade thm SIS.Tree.writerWP_del_timeSpace
+DEAD SIS.Tree.GetDelCascade thm SIS.Tree.writerWP_del_timeSplit2
+DEAD SIS.Tree.DelStepsUpWalk thm SIS.Tree.writerWP_del_toLeafM
+DEAD SIS.Tree.WriterGetUpT thm SIS.Tree.writerWP_deleteUpward_inner
+DEAD SIS.Tree.WriterGetUpW thm SIS.Tree.writerWP_deleteUpward_inner_get
+DEAD SIS.Tree.MergeProtectedDelete thm SIS.Tree.writerWP_deleteUpward_of_earlier
+DEAD SIS.Tree.MergeRootBoundedExec thm SIS.Tree.writerWP_deleteUpward_rootHeightBound
+DEAD SIS.Tree.WriterGetUpAll thm SIS.Tree.writerWP_deleteUpward_up
+DEAD SIS.Tree.WriterGetUpTake thm SIS.Tree.writerWP_deleteUpward_upT
+DEAD SIS.Tree.WriterGetUpTake thm SIS.Tree.writerWP_deleteUpward_upT_get
+DEAD SIS.Tree.TakeInvUp thm SIS.Tree.writerWP_deleteUpward_upT_getF
+DEAD SIS.Tree.TakeDeadUpW thm SIS.Tree.writerWP_deleteUpward_upT_getJ
+DEAD SIS.Tree.TakeDeadUpM thm SIS.Tree.writerWP_deleteUpward_upT_getJM
+DEAD SIS.Tree.DelStepsUp thm SIS.Tree.writerWP_deleteUpward_upT_getJMB
+DEAD SIS.Tree.WriterGetUpAll thm SIS.Tree.writerWP_deleteUpward_up_get
+DEAD SIS.Tree.MergeRootHeight thm SIS.Tree.writerWP_descendHeight_root
+DEAD SIS.Tree.WriterNodeMap thm SIS.Tree.writerWP_descendLte_cached_leaf
+DEAD SIS.Tree.MergeRootHeight thm SIS.Tree.writerWP_descendLte_leaf
+DEAD SIS.Tree.MergeSearchOrder thm SIS.Tree.writerWP_descendLte_newRoot_later_key
+DEAD SIS.Tree.MergeSearchOrder thm SIS.Tree.writerWP_descendLte_newRoot_right
+DEAD SIS.Tree.GetSplit thm SIS.Tree.writerWP_descendLte_path
+DEAD SIS.Tree.MergeRootHeight thm SIS.Tree.writerWP_descendToHeight_root
+DEAD SIS.Tree.MergeRootHeight thm SIS.Tree.writerWP_descendToSegmentRoot_path
+DEAD SIS.Tree.DelStepsLeb thm SIS.Tree.writerWP_emptyKeyNext_cases
+DEAD SIS.Tree.DelStepsLeb thm SIS.Tree.writerWP_emptyKeyNext_cases._sparseCasesOn_1_14.else_eq
+DEAD SIS.Tree.DelStepsLeb thm SIS.Tree.writerWP_emptyKeyNext_cases._sparseCasesOn_1_15.else_eq
+DEAD SIS.Tree.RangeLeb thm SIS.Tree.writerWP_emptyKeyNext_range
+DEAD SIS.Tree.WriterGetUpLeb thm SIS.Tree.writerWP_emptyKeyNext_room_frame
+DEAD SIS.Tree.WriterTreeLeb thm SIS.Tree.writerWP_emptyKeyNext_tree
+DEAD SIS.Tree.PutInvUp thm SIS.Tree.writerWP_foldlM_frame
+DEAD SIS.Tree.PutInvUp thm SIS.Tree.writerWP_getNode_frame3
+DEAD SIS.Tree.MergeRootWrites thm SIS.Tree.writerWP_getNode_noOutside
+DEAD SIS.Tree.MergeRootHeight thm SIS.Tree.writerWP_ghOf_cache
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.writerWP_ghOf_heightSplit
+DEAD SIS.Tree.MergeRetainedRoot thm SIS.Tree.writerWP_ghOf_known
+DEAD SIS.Tree.MergeRootWrites thm SIS.Tree.writerWP_ghOf_noOutside
+DEAD SIS.Tree.MergeKeptNode thm SIS.Tree.writerWP_handleFullWith_compact_guard
+DEAD SIS.Tree.MergeRootWrites thm SIS.Tree.writerWP_handleFullWith_compact_inplace
+DEAD SIS.Tree.MergeProtectedDelete thm SIS.Tree.writerWP_handleFullWith_compact_new_same
+DEAD SIS.Tree.GetDelCascade thm SIS.Tree.writerWP_handleFullWith_delSpaceSpace
+DEAD SIS.Tree.GetDelCascade thm SIS.Tree.writerWP_handleFullWith_delSpaceTime
+DEAD SIS.Tree.GetDelCascade thm SIS.Tree.writerWP_handleFullWith_delTimeSpace
+DEAD SIS.Tree.GetDelCascade thm SIS.Tree.writerWP_handleFullWith_delTimeSplit2
+DEAD SIS.Tree.MergeRetainedRoot thm SIS.Tree.writerWP_handleFullWith_new_root_earlier_prefix
+DEAD SIS.Tree.MergeRetainedRoot thm SIS.Tree.writerWP_handleFullWith_new_root_first
+DEAD SIS.Tree.MergeProtectedMerge thm SIS.Tree.writerWP_handleFullWith_new_root_guard
+DEAD SIS.Tree.MergeRetainedRoot thm SIS.Tree.writerWP_handleFullWith_new_root_protected
+DEAD SIS.Tree.MergeRetainedRoot thm SIS.Tree.writerWP_handleFullWith_new_segment_root_first
+DEAD SIS.Tree.GetRootSplit thm SIS.Tree.writerWP_handleFullWith_rootSpaceSplit
+DEAD SIS.Tree.GetRootSplit thm SIS.Tree.writerWP_handleFullWith_rootSpaceSplitInPlace
+DEAD SIS.Tree.GetRootSplit thm SIS.Tree.writerWP_handleFullWith_rootTimeSplit
+DEAD SIS.Tree.GetSegRoot thm SIS.Tree.writerWP_handleFullWith_segSpaceSplit
+DEAD SIS.Tree.GetSegInPlace thm SIS.Tree.writerWP_handleFullWith_segSpaceSplitInPlace
+DEAD SIS.Tree.PutInvDelSeg thm SIS.Tree.writerWP_handleFullWith_segSpaceSplitInPlace_nil
+DEAD SIS.Tree.PutInvDelSeg thm SIS.Tree.writerWP_handleFullWith_segSpaceSplit_nil
+DEAD SIS.Tree.GetSpaceSpace thm SIS.Tree.writerWP_handleFullWith_spaceSpace
+DEAD SIS.Tree.WriterTreeSpace thm SIS.Tree.writerWP_handleFullWith_spaceSplit
+DEAD SIS.Tree.GetInPlace thm SIS.Tree.writerWP_handleFullWith_spaceSplitInPlace
+DEAD SIS.Tree.GetInPlaceCascade thm SIS.Tree.writerWP_handleFullWith_spaceSplitInPlaceQIP
+DEAD SIS.Tree.PutInvDelSpace thm SIS.Tree.writerWP_handleFullWith_spaceSplitInPlace_nil
+DEAD SIS.Tree.GetSpaceSpace thm SIS.Tree.writerWP_handleFullWith_spaceSplitIns
+DEAD SIS.Tree.GetSpaceSpace thm SIS.Tree.writerWP_handleFullWith_spaceSplitLast
+DEAD SIS.Tree.GetInPlaceCascade thm SIS.Tree.writerWP_handleFullWith_spaceSplitQIP
+DEAD SIS.Tree.GetChain thm SIS.Tree.writerWP_handleFullWith_spaceSplitTime
+DEAD SIS.Tree.PutInvDelSpace thm SIS.Tree.writerWP_handleFullWith_spaceSplit_nil
+DEAD SIS.Tree.WriterSplitMap thm SIS.Tree.writerWP_handleFullWith_space_new_root_layout
+DEAD SIS.Tree.WriterSplitMap thm SIS.Tree.writerWP_handleFullWith_space_new_root_map
+DEAD SIS.Tree.GetInPlace thm SIS.Tree.writerWP_handleFullWith_timeInPlace
+DEAD SIS.Tree.GetInPlaceCascade thm SIS.Tree.writerWP_handleFullWith_timeInPlaceC
+DEAD SIS.Tree.GetInnerSplit thm SIS.Tree.writerWP_handleFullWith_timeSpace
+DEAD SIS.Tree.GetSplit thm SIS.Tree.writerWP_handleFullWith_timeSplit
+DEAD SIS.Tree.GetChain thm SIS.Tree.writerWP_handleFullWith_timeSplit2
+DEAD SIS.Tree.GetChain thm SIS.Tree.writerWP_handleFullWith_timeSplitIns
+DEAD SIS.Tree.GetSegRoot thm SIS.Tree.writerWP_handleFullWith_timeSplitLeafParent
+DEAD SIS.Tree.PutInvDelSeg thm SIS.Tree.writerWP_handleFullWith_timeSplitLeafParent_nil
+DEAD SIS.Tree.GetInPlaceCascade thm SIS.Tree.writerWP_handleFullWith_timeSplitQIP
+DEAD SIS.Tree.GetSplit thm SIS.Tree.writerWP_handleFullWith_timeSplit_gen
+DEAD SIS.Tree.PutInvDelFull thm SIS.Tree.writerWP_handleFullWith_timeSplit_nil
+DEAD SIS.Tree.GetDelSplit thm SIS.Tree.writerWP_handleFullWith_timeSplit_nilV
+DEAD SIS.Tree.TimeSplitCount thm SIS.Tree.writerWP_handleFullWith_time_new_count
+DEAD SIS.Tree.NormalizedDead thm SIS.Tree.writerWP_handleFullWith_time_new_deadCount
+DEAD SIS.Tree.TimeSplitMap thm SIS.Tree.writerWP_handleFullWith_time_new_map
+DEAD SIS.Tree.NormalizedDead thm SIS.Tree.writerWP_handleFullWith_time_normalized_new_deadCount
+DEAD SIS.Tree.WriterTreeCascadeGen thm SIS.Tree.writerWP_handleFullWith_time_up
+DEAD SIS.Tree.GetCascadePut thm SIS.Tree.writerWP_handleFullWith_time_up_last
+DEAD SIS.Tree.MergeKeptNode thm SIS.Tree.writerWP_handleFull_compact_guard
+DEAD SIS.Tree.MergeRootWrites thm SIS.Tree.writerWP_handleFull_compact_inplace
+DEAD SIS.Tree.GetMergeLevel thm SIS.Tree.writerWP_handleFull_lastV
+DEAD SIS.Tree.GetMergeLevel thm SIS.Tree.writerWP_handleFull_lastVF
+DEAD SIS.Tree.GetMergeFull thm SIS.Tree.writerWP_handleFull_timeV
+DEAD SIS.Tree.WriterTreeMergeFull thm SIS.Tree.writerWP_mergeCleanup_any
+DEAD SIS.Tree.TakeInvMerge thm SIS.Tree.writerWP_mergeCleanup_fate
+DEAD SIS.Tree.TakeInvMerge thm SIS.Tree.writerWP_mergeCleanup_fateM
+DEAD SIS.Tree.TakeInvMerge thm SIS.Tree.writerWP_mergeCleanup_step
+DEAD SIS.Tree.WriterTreeMergeW thm SIS.Tree.writerWP_mergeCleanup_unmade
+DEAD SIS.Tree.WriterTreeMergeOp thm SIS.Tree.writerWP_mergeCleanup_unmade'
+DEAD SIS.Tree.WriterGetMergeOp thm SIS.Tree.writerWP_mergeCleanup_unmadeV
+DEAD SIS.Tree.MergeKeptNode thm SIS.Tree.writerWP_mergeParent_newRoot_guard
+DEAD SIS.Tree.MergeRootWrites thm SIS.Tree.writerWP_mergeParent_newRoot_noOutside
+DEAD SIS.Tree.WriterTreeMergeW thm SIS.Tree.writerWP_mergeParent_room
+DEAD SIS.Tree.GetMergeAny thm SIS.Tree.writerWP_mergeTail_any_get
+DEAD SIS.Tree.GetMergeAny thm SIS.Tree.writerWP_mergeTail_any_getF
+DEAD SIS.Tree.RangeMergeFull thm SIS.Tree.writerWP_mergeTail_any_range
+DEAD SIS.Tree.WriterTreeMergeFull thm SIS.Tree.writerWP_mergeTail_any_tree
+DEAD SIS.Tree.GetMergeFull thm SIS.Tree.writerWP_mergeTail_full_get
+DEAD SIS.Tree.WriterGetMergeTail thm SIS.Tree.writerWP_mergeTail_get
+DEAD SIS.Tree.WriterGetMergeMade thm SIS.Tree.writerWP_mergeTail_made_get
+DEAD SIS.Tree.TakeDeadMerge thm SIS.Tree.writerWP_mergeTail_made_j2
+DEAD SIS.Tree.RangeMergeMade thm SIS.Tree.writerWP_mergeTail_made_range
+DEAD SIS.Tree.TakeInvMerge thm SIS.Tree.writerWP_mergeTail_made_take
+DEAD SIS.Tree.WriterTreeMergeMade thm SIS.Tree.writerWP_mergeTail_made_tree
+DEAD SIS.Tree.RangeMergeW thm SIS.Tree.writerWP_mergeTail_range
+DEAD SIS.Tree.GetMergeRoot thm SIS.Tree.writerWP_mergeTail_root_get
+DEAD SIS.Tree.GetMergeRoot thm SIS.Tree.writerWP_mergeTail_root_tree
+DEAD SIS.Tree.TakeInvMerge thm SIS.Tree.writerWP_mergeTail_take
+DEAD SIS.Tree.WriterTreeMergeOp thm SIS.Tree.writerWP_mergeTail_tree
+DEAD SIS.Tree.WriterMergeUpLoop thm SIS.Tree.writerWP_mergeUp_inv
+DEAD SIS.Tree.MergeProtectedNode thm SIS.Tree.writerWP_mergeUp_of_full_node
+DEAD SIS.Tree.MergeProtectedNode thm SIS.Tree.writerWP_mergeUp_of_protected_prefix
+DEAD SIS.Tree.MergeRootHeight thm SIS.Tree.writerWP_mergeUp_rootHeightBound
+DEAD SIS.Tree.WriterMergeUpLoop thm SIS.Tree.writerWP_mergeUp_tree
+DEAD SIS.Tree.GetMergeAny thm SIS.Tree.writerWP_merge_any_get
+DEAD SIS.Tree.GetMergeAny thm SIS.Tree.writerWP_merge_any_getF
+DEAD SIS.Tree.RangeMergeFull thm SIS.Tree.writerWP_merge_any_range
+DEAD SIS.Tree.WriterTreeMergeFull thm SIS.Tree.writerWP_merge_any_tree
+DEAD SIS.Tree.GetMergeFull thm SIS.Tree.writerWP_merge_full_get
+DEAD SIS.Tree.WriterGetMergeTail thm SIS.Tree.writerWP_merge_get
+DEAD SIS.Tree.WriterGetMergeMade thm SIS.Tree.writerWP_merge_made_get
+DEAD SIS.Tree.TakeDeadMerge thm SIS.Tree.writerWP_merge_made_j2
+DEAD SIS.Tree.RangeMergeMade thm SIS.Tree.writerWP_merge_made_range
+DEAD SIS.Tree.TakeInvMerge thm SIS.Tree.writerWP_merge_made_take
+DEAD SIS.Tree.WriterTreeMergeMade thm SIS.Tree.writerWP_merge_made_tree
+DEAD SIS.Tree.MergeProtectedMerge thm SIS.Tree.writerWP_merge_newRoot_right_first
+DEAD SIS.Tree.MergeProtectedMerge thm SIS.Tree.writerWP_merge_newRoot_right_protected
+DEAD SIS.Tree.RangeMergeW thm SIS.Tree.writerWP_merge_range
+DEAD SIS.Tree.GetMergeRoot thm SIS.Tree.writerWP_merge_root_tree
+DEAD SIS.Tree.TakeInvMerge thm SIS.Tree.writerWP_merge_take
+DEAD SIS.Tree.WriterTreeMergeOp thm SIS.Tree.writerWP_merge_tree
+DEAD SIS.Tree.MergeKeptNode thm SIS.Tree.writerWP_newKey_allocated
+DEAD SIS.Tree.MergeKeptNode thm SIS.Tree.writerWP_newKey_allocated_keep
+DEAD SIS.Tree.FreshCache thm SIS.Tree.writerWP_newKey_freshCache_cached
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.writerWP_newKey_heightSplit
+DEAD SIS.Tree.KeyLevels thm SIS.Tree.writerWP_newKey_level
+DEAD SIS.Tree.WriterTreeCollapse thm SIS.Tree.writerWP_newSuperRoot_frame
+DEAD SIS.Tree.MergeHeightBasics thm SIS.Tree.writerWP_of_bounded
+DEAD SIS.Tree.MergeHeightBasics thm SIS.Tree.writerWP_of_frame_growth
+DEAD SIS.Tree.MergeHeightSplit thm SIS.Tree.writerWP_of_heightSplit
+DEAD SIS.Tree.MergeHeightTags thm SIS.Tree.writerWP_of_heightTagged
+DEAD SIS.Tree.MergeKeptNode thm SIS.Tree.writerWP_of_keepsGuard
+DEAD SIS.Tree.MergeHeightBasics thm SIS.Tree.writerWP_of_result
+DEAD SIS.Tree.HeightsFuel thm SIS.Tree.writerWP_of_sb
+DEAD SIS.Tree.MergeHeightBasics thm SIS.Tree.writerWP_of_stats
+DEAD SIS.Tree.MergeRootBoundedExec thm SIS.Tree.writerWP_ops_rootHeightBound
+DEAD SIS.Tree.TakeNextGrows thm SIS.Tree.writerWP_putKv_next
+DEAD SIS.Tree.MergeRootBoundedExec thm SIS.Tree.writerWP_putKv_rootHeightBound
+DEAD SIS.Tree.MergeProtectedDelete thm SIS.Tree.writerWP_putNode_guard_same
+DEAD SIS.Tree.DelStepsWalk thm SIS.Tree.writerWP_putSegs_prefix_linkedSJ
+DEAD SIS.Tree.GetSplit thm SIS.Tree.writerWP_putSegs_prefix_path
+DEAD SIS.Tree.GetSplit thm SIS.Tree.writerWP_putSegs_prefix_src
+DEAD SIS.Tree.MergeRootBoundedExec thm SIS.Tree.writerWP_putSegs_rootHeightBound
+DEAD SIS.Tree.GetPutPath thm SIS.Tree.writerWP_put_accessPath
+DEAD SIS.Tree.GetCascadePut thm SIS.Tree.writerWP_put_chain
+DEAD SIS.Tree.GetCascadePut thm SIS.Tree.writerWP_put_chainG
+DEAD SIS.Tree.GetLeafBelow thm SIS.Tree.writerWP_put_leafBelow
+DEAD SIS.Tree.GetPutInv thm SIS.Tree.writerWP_put_leafBelow_inv
+DEAD SIS.Tree.WriterTreePutInv thm SIS.Tree.writerWP_put_leafBelow_tree
+DEAD SIS.Tree.GetLeafRoot thm SIS.Tree.writerWP_put_leafRoot
+DEAD SIS.Tree.GetPutInv thm SIS.Tree.writerWP_put_leafRoot_inv
+DEAD SIS.Tree.WriterTreePutInv thm SIS.Tree.writerWP_put_leafRoot_tree
+DEAD SIS.Tree.GetNewSeg thm SIS.Tree.writerWP_put_newSeg
+DEAD SIS.Tree.GetNewSegFull thm SIS.Tree.writerWP_put_newSegFull
+DEAD SIS.Tree.GetSegLeaf thm SIS.Tree.writerWP_put_newSeg_inv
+DEAD SIS.Tree.GetFrame thm SIS.Tree.writerWP_put_room
+DEAD SIS.Tree.WriterTreeOps thm SIS.Tree.writerWP_put_room_tree
+DEAD SIS.Tree.GetRootSplit thm SIS.Tree.writerWP_put_rootSpaceSplit
+DEAD SIS.Tree.GetRootSplit thm SIS.Tree.writerWP_put_rootSpaceSplitInPlace
+DEAD SIS.Tree.WriterTreeRoot thm SIS.Tree.writerWP_put_rootSpaceSplitInPlace_tree
+DEAD SIS.Tree.WriterTreeRoot thm SIS.Tree.writerWP_put_rootSpaceSplit_tree
+DEAD SIS.Tree.GetRootSplit thm SIS.Tree.writerWP_put_rootTimeSplit
+DEAD SIS.Tree.WriterTreeRoot thm SIS.Tree.writerWP_put_rootTimeSplit_tree
+DEAD SIS.Tree.WriterTreeRoot thm SIS.Tree.writerWP_put_root_append
+DEAD SIS.Tree.GetSegLeaf thm SIS.Tree.writerWP_put_segLeaf_inv
+DEAD SIS.Tree.WriterTreeSegLeaf thm SIS.Tree.writerWP_put_segLeaf_tree
+DEAD SIS.Tree.WriterTreeSegRoot thm SIS.Tree.writerWP_put_segRoot_append
+DEAD SIS.Tree.GetSegRoot thm SIS.Tree.writerWP_put_segSpaceSplit
+DEAD SIS.Tree.GetSegInPlace thm SIS.Tree.writerWP_put_segSpaceSplitInPlace
+DEAD SIS.Tree.WriterTreeSegInPlace thm SIS.Tree.writerWP_put_segSpaceSplitInPlace_tree
+DEAD SIS.Tree.WriterTreeSegSplit thm SIS.Tree.writerWP_put_segSpaceSplit_tree
+DEAD SIS.Tree.GetSegRoot thm SIS.Tree.writerWP_put_segTimeSplit
+DEAD SIS.Tree.WriterTreeSegRoot thm SIS.Tree.writerWP_put_segTimeSplit_tree
+DEAD SIS.Tree.WriterTreePut2 thm SIS.Tree.writerWP_put_seg_append
+DEAD SIS.Tree.WriterTreeCascadePut thm SIS.Tree.writerWP_put_seg_append2
+DEAD SIS.Tree.PutInvChain thm SIS.Tree.writerWP_put_seg_append2PI
+DEAD SIS.Tree.GetSpaceSpace thm SIS.Tree.writerWP_put_spaceSpace
+DEAD SIS.Tree.WriterTreeSpaceSpace thm SIS.Tree.writerWP_put_spaceSpace_tree
+DEAD SIS.Tree.GetInPlaceCascade thm SIS.Tree.writerWP_put_spaceSplitInPlaceQIP
+DEAD SIS.Tree.GetInPlace thm SIS.Tree.writerWP_put_spaceSplitInPlace_key
+DEAD SIS.Tree.GetInPlace thm SIS.Tree.writerWP_put_spaceSplitInPlace_ord
+DEAD SIS.Tree.WriterTreePut2 thm SIS.Tree.writerWP_put_spaceSplitInPlace_seg_tree
+DEAD SIS.Tree.GetInPlaceCascade thm SIS.Tree.writerWP_put_spaceSplitQIP
+DEAD SIS.Tree.GetChain thm SIS.Tree.writerWP_put_spaceSplitTime
+DEAD SIS.Tree.WriterTreeCascadePut thm SIS.Tree.writerWP_put_spaceSplitTime_tree
+DEAD SIS.Tree.GetSpaceSplit thm SIS.Tree.writerWP_put_spaceSplit_key
+DEAD SIS.Tree.GetSpaceSplit thm SIS.Tree.writerWP_put_spaceSplit_ord
+DEAD SIS.Tree.WriterTreePut thm SIS.Tree.writerWP_put_spaceSplit_seg_tree
+DEAD SIS.Tree.GetSpaceSplit thm SIS.Tree.writerWP_put_spaceSplit_tree
+DEAD SIS.Tree.GetInPlace thm SIS.Tree.writerWP_put_timeInPlace_seg
+DEAD SIS.Tree.WriterTreePut2 thm SIS.Tree.writerWP_put_timeInPlace_seg_tree
+DEAD SIS.Tree.GetInnerSplit thm SIS.Tree.writerWP_put_timeSpace
+DEAD SIS.Tree.WriterTreeInnerHalves thm SIS.Tree.writerWP_put_timeSpace_tree
+DEAD SIS.Tree.GetChain thm SIS.Tree.writerWP_put_timeSplit2
+DEAD SIS.Tree.WriterTreeCascadePut thm SIS.Tree.writerWP_put_timeSplit2_tree
+DEAD SIS.Tree.GetInPlaceCascade thm SIS.Tree.writerWP_put_timeSplitQIP
+DEAD SIS.Tree.GetSplit thm SIS.Tree.writerWP_put_timeSplit_key
+DEAD SIS.Tree.GetSplit thm SIS.Tree.writerWP_put_timeSplit_seg
+DEAD SIS.Tree.WriterTreePutInv thm SIS.Tree.writerWP_put_timeSplit_seg_gen_tree
+DEAD SIS.Tree.WriterTreePut2 thm SIS.Tree.writerWP_put_timeSplit_seg_tree
+DEAD SIS.Tree.GetTree thm SIS.Tree.writerWP_put_timeSplit_tree
+DEAD SIS.Tree.TimeSplitCount thm SIS.Tree.writerWP_replaceOrAdd_count
+DEAD SIS.Tree.NormalizedDead thm SIS.Tree.writerWP_replaceOrAdd_deadCount
+DEAD SIS.Tree.MergeRootWrites thm SIS.Tree.writerWP_replaceOrAdd_noOutside
+DEAD SIS.Tree.TimeSplitMap thm SIS.Tree.writerWP_replaceOrAdd_normalized_map
+DEAD SIS.Tree.WriterGetCollapseLoop thm SIS.Tree.writerWP_replaceRoot_seg_coll
+DEAD SIS.Tree.WriterGetCollapseLoop thm SIS.Tree.writerWP_replaceRoot_seg_collF
+DEAD SIS.Tree.WriterGetCollapseSeg thm SIS.Tree.writerWP_replaceRoot_seg_get
+DEAD SIS.Tree.WriterGetCollapseSeg thm SIS.Tree.writerWP_replaceRoot_seg_getF
+DEAD SIS.Tree.TakeDeadCollapse thm SIS.Tree.writerWP_replaceRoot_seg_j2
+DEAD SIS.Tree.RangeCollapseSeg thm SIS.Tree.writerWP_replaceRoot_seg_range
+DEAD SIS.Tree.RangeCollapseSeg thm SIS.Tree.writerWP_replaceRoot_seg_rangeG
+DEAD SIS.Tree.TakeInvCollapse thm SIS.Tree.writerWP_replaceRoot_seg_take
+DEAD SIS.Tree.WriterTreeCollapseSeg thm SIS.Tree.writerWP_replaceRoot_seg_tree
+DEAD SIS.Tree.WriterTreeCollapse thm SIS.Tree.writerWP_replaceRoot_space
+DEAD SIS.Tree.WriterGetUpTake thm SIS.Tree.writerWP_retarget_frameW
+DEAD SIS.Tree.MergeShapeGuard thm SIS.Tree.writerWP_retarget_shapeGuard
+DEAD SIS.Tree.WriterGetCollapseLoop thm SIS.Tree.writerWP_rootStep_space_coll
+DEAD SIS.Tree.TakeDeadCollapse thm SIS.Tree.writerWP_rootStep_space_j2
+DEAD SIS.Tree.RangeCollapseSeg thm SIS.Tree.writerWP_rootStep_space_range
+DEAD SIS.Tree.TakeInvCollapse thm SIS.Tree.writerWP_rootStep_space_take
+DEAD SIS.Tree.WriterNodeMap thm SIS.Tree.writerWP_setValue_room_map
+DEAD SIS.Tree.MergeRootBoundedExec thm SIS.Tree.writerWP_setValue_rootHeightBound
+DEAD SIS.Tree.WriterTreeMergeOp thm SIS.Tree.writerWP_sibling_all
+DEAD SIS.Tree.WriterGetCollapseLoop thm SIS.Tree.writerWP_takeBackRoot_seg_coll
+DEAD SIS.Tree.WriterGetCollapseSeg thm SIS.Tree.writerWP_takeBackRoot_seg_get
+DEAD SIS.Tree.WriterGetCollapseSeg thm SIS.Tree.writerWP_takeBackRoot_seg_getF
+DEAD SIS.Tree.TakeDeadCollapse thm SIS.Tree.writerWP_takeBackRoot_seg_j2
+DEAD SIS.Tree.RangeCollapseSeg thm SIS.Tree.writerWP_takeBackRoot_seg_range
+DEAD SIS.Tree.TakeInvCollapse thm SIS.Tree.writerWP_takeBackRoot_seg_take
+DEAD SIS.Tree.WriterTreeCollapseSeg thm SIS.Tree.writerWP_takeBackRoot_seg_tree
+DEAD SIS.Tree.WriterTreeCollapse thm SIS.Tree.writerWP_takeBackRoot_space
+DEAD SIS.Tree.WriterGetUpTake thm SIS.Tree.writerWP_takeBack_frame
+DEAD SIS.Tree.PutInvUp thm SIS.Tree.writerWP_unlink_frame2
+DEAD SIS.Tree.DelStepsCascRoot thm SIS.Tree.writerWP_upCasc_below_delF3
+DEAD SIS.Tree.TakeUpCasc thm SIS.Tree.writerWP_upCasc_below_j2
+DEAD SIS.Tree.DelStepsLebFull thm SIS.Tree.writerWP_upLebFull_below_delF3
+DEAD SIS.Tree.TakeLebFull thm SIS.Tree.writerWP_upLebFull_below_j2
+DEAD SIS.Tree.DelStepsLebFull thm SIS.Tree.writerWP_upLebFull_root_delF3
+DEAD SIS.Tree.TakeLebFull thm SIS.Tree.writerWP_upLebFull_root_j2
