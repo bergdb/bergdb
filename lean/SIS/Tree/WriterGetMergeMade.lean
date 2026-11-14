@@ -45,7 +45,7 @@ theorem KNode.retarget_liveAt_of (n : KNode) (ti : Nat) (src dst : NodeId) (t : 
     exact lastBitmapOf_zipIdx_map ti src dst _ 0 []
   have hl := lookup_of_mem_nodup _ (KNode.liveAt_keys_nodup n t) c z h
   rw [KNode.liveAt_lookup] at hl
-  apply mem_of_lookup_nodup _ c z
+  apply bk_mem_of_lookup _ c z
   rw [KNode.liveAt_lookup]
   simp only
   rw [hpre, hdel]

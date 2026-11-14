@@ -184,7 +184,7 @@ theorem ht_searchEq_live {n : KNode} {t : Time} {cv : Nat} {fd : Found}
     (h : n.searchEq t cv = some fd) : (cv, fd.y) ∈ n.live := by
   have := KNode.searchEq_live n t hw ht cv
   rw [h] at this
-  exact mem_of_lookup_nodup _ cv fd.y this.symm
+  exact bk_mem_of_lookup _ cv fd.y this.symm
 
 set_option maxHeartbeats 1600000 in
 /-- `setNode` of a put from segRoot, the path's last node, or an empty segment
@@ -253,7 +253,7 @@ theorem ht_setNode_put (B : NodeId) (hframe : AppendFrameOK B) (segRoot : NodeId
       htSimp
       refine writerWP_mono (hw_keeps B (ht_note B _) c w3 hvo hb3 hi3) ?_
       rintro _ w4 ⟨hb4, hi4, hle4, hp4⟩
-      have hcg4 : cur ∈ w4.gh.map (·.1) := ht_mem_ids (HtLe.gh' hm (hle3.trans hle4))
+      have hcg4 : cur ∈ w4.gh.map (·.1) := kd_mem_ids (HtLe.gh' hm (hle3.trans hle4))
       refine writerWP_mono (hw_newKey B (g + 1) 0 true [] c w4 hb4 hi4 rfl
         (nodeHt_nil c w4 0 true)) ?_
       rintro child w5 ⟨hb5, hi5, hle5, hp5, hlc, hmc, hcf, hcx⟩
@@ -288,7 +288,7 @@ theorem ht_setNode_put (B : NodeId) (hframe : AppendFrameOK B) (segRoot : NodeId
         have hpath : ∀ e ∈ w5.path, e.2 ≠ child := by
           intro e he
           rw [hpw] at he
-          have := ht_path_in_gh hi1 ⟨a, ha⟩ (ht_mem_ids hm) e he
+          have := ht_path_in_gh hi1 ⟨a, ha⟩ (kd_mem_ids hm) e he
           intro hce
           apply hcx
           rw [← hce]

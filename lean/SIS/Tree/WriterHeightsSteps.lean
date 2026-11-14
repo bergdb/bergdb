@@ -256,7 +256,7 @@ theorem ht_pathAdd (cv : Nat) (y : NodeId) (c : Ctx) (w : W) (hvo : ViewHtOK H B
     rw [hlast] at hl'
     simp only [Option.some.injEq, Prod.mk.injEq] at hl'
     obtain ⟨rfl, rfl⟩ := hl'
-    refine ⟨ht_mem_ids hm0, fun g h hg _ hh => ?_⟩
+    refine ⟨kd_mem_ids hm0, fun g h hg _ hh => ?_⟩
     obtain ⟨rfl, rfl⟩ := kd_tag_eq hb hm0 hg
     exact (hN.1 c0 y hlive).2 hh
   · rintro _ v ⟨⟨hb', hk'⟩, hi', hp, ht⟩

@@ -27,17 +27,6 @@ def SNode (p : Params) (v : View BVal) (t : Time) : Nat → NodeId → Prop
             (n.leaf = false → ∀ k ∈ treeContents p v t f q.2, ∃ c r, k.1 = c :: r ∧ q.1 ≤ c ∧
               ∀ r' ∈ n.liveAt t, q.1 < r'.1 → c < r'.1))
 
-theorem valueOf_some_view (v : View BVal) (y h : Nat) (hv : valueOf v y = some h) :
-    ∃ nd, v y = some nd ∧ nd.isData = true := by
-  unfold valueOf at hv
-  cases hy : v y with
-  | none => simp [hy] at hv
-  | some nd =>
-    simp only [hy] at hv
-    cases hd : nd.isData with
-    | false => simp [hd] at hv
-    | true => exact ⟨nd, rfl, hd⟩
-
 theorem walk_clean_node (p : Params) (v : View BVal) (t f x lo : Nat) (hi : Option Nat)
     (isRoot space : Bool) (hw : walk p v t f x lo hi isRoot space = []) :
     ∃ f' nd, f = f' + 1 ∧ v x = some nd ∧ nd.isData = false := by
@@ -75,7 +64,7 @@ theorem sNode_of_walk (p : Params) (P : Struct BVal) (t f : Nat)
       have hedge := walk_edge_info p P t f x lo hi isRoot space nd hdata hv' hd hw q b hb
       refine ⟨fun hs => ?_, fun hs => ?_⟩
       · obtain ⟨h, hh⟩ := hedge.1 hs
-        obtain ⟨nd', hnd', hdd⟩ := valueOf_some_view _ _ _ hh
+        obtain ⟨nd', hnd', hdd⟩ := valueOf_view _ _ _ hh
         exact ⟨nd', h, hnd', hdd, hh⟩
       · have hcw := hedge.2 hs
         obtain ⟨f', ny, hf', hy, hny⟩ := walk_clean_node p _ t f q.2 _ _ _ _ hcw
@@ -109,14 +98,6 @@ theorem sNode_of_walk (p : Params) (P : Struct BVal) (t f : Nat)
               dsimp only [UpperBound] at hhi
               omega
 
-theorem flatMap_congr' {α β : Type} (l : List α) (f g : α → List β)
-    (h : ∀ a ∈ l, f a = g a) : l.flatMap f = l.flatMap g := by
-  induction l with
-  | nil => rfl
-  | cons a l ih =>
-    simp only [List.flatMap_cons]
-    rw [h a (by simp), ih (fun b hb => h b (by simp [hb]))]
-
 /-- Once a sound subtree fits the fuel, more fuel changes none of its contents. -/
 theorem treeContents_stable (p : Params) (v : View BVal) (t f x : Nat)
     (hs : SNode p v t f x) (g : Nat) (hg : f ≤ g) :
@@ -129,7 +110,7 @@ theorem treeContents_stable (p : Params) (v : View BVal) (t f x : Nat)
     | zero => omega
     | succ g =>
       simp only [treeContents, hn]
-      apply flatMap_congr'
+      apply flatMap_congr_mem
       intro q hq
       obtain ⟨_, hnot⟩ := hc q hq
       cases hleaf : n.leaf with
@@ -269,7 +250,7 @@ theorem treeContents_orient (p : Params) (v : View BVal) (t F x : Nat) (n : KNod
   cases fw with
   | true =>
     simp only [orient, treeContents, hn, ↓reduceIte]
-    apply flatMap_congr'
+    apply flatMap_congr_mem
     intro q _
     cases hl : n.leaf with
     | false => simp [klongC, orient, hl]
@@ -280,7 +261,7 @@ theorem treeContents_orient (p : Params) (v : View BVal) (t F x : Nat) (n : KNod
   | false =>
     simp only [orient, treeContents, hn, Bool.false_eq_true, ↓reduceIte,
       List.reverse_flatMap]
-    apply flatMap_congr'
+    apply flatMap_congr_mem
     intro q _
     simp only [Function.comp, klongC, orient, Bool.false_eq_true, ↓reduceIte]
     cases n.leaf with

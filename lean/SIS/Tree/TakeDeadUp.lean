@@ -240,7 +240,7 @@ theorem writerWP_emptyKeyNext_room_exact (x : NodeId) (depth : Nat) (n : KNode) 
         exact absurd hj.1.symm hj0
     have hjlive : (jcv, jy) ∈ n.liveAt c.i := by
       rw [KNode.liveAt_of_times n c.i hnt]
-      apply mem_of_lookup_nodup
+      apply bk_mem_of_lookup
       rw [KNode.live_lookup]
       exact keyLookup_of_last _ _ _ j0 jy hkj hLL
     have hne : bitsUnion n.lastBitmap (n.bitsOf jcv) ≠ n.lastBitmap := by

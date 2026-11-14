@@ -17,7 +17,7 @@ of the operation case (3), `GetOpCases.lean`): the new segment leaves that
 node reached after is reached before or new (`writerWP_putSegs_new_treeR` for a
 reached x, `writerWP_putSegs_new_tree` for any x). -/
 
-theorem KNode.empty_liveAt' (t : Time) (c : Nat) (z : NodeId) :
+theorem KNode.empty_liveAt (t : Time) (c : Nat) (z : NodeId) :
     (c, z) ∉ (⟨true, []⟩ : KNode).liveAt t := by
   intro hc
   rw [KNode.liveAt_of_times _ t (by simp)] at hc
@@ -42,13 +42,13 @@ theorem tReach_newSegStep (N : NodeId → Option KNode) (t : Time) (r x y : Node
       cases hm
       rcases KNode.add_key_liveAt_mem _ t a y (by rfl) (by simp) c z hc with ⟨_, hzy⟩ | ⟨_, hc'⟩
       · exact Or.inr hzy
-      · exact absurd hc' (KNode.empty_liveAt' t c z)
+      · exact absurd hc' (KNode.empty_liveAt t c z)
     · rw [updN_ne _ _ _ _ hux] at hm
       by_cases huy : u = y
       · subst huy
         rw [updN_self] at hm
         cases hm
-        exact absurd hc (KNode.empty_liveAt' t c z)
+        exact absurd hc (KNode.empty_liveAt t c z)
       · rw [updN_ne _ _ _ _ huy] at hm
         rcases ih with h | h
         · exact Or.inl (TReach.link h ⟨m, hm, hc⟩)
@@ -158,7 +158,7 @@ theorem writerWP_putSegs_new_treeR (c : Ctx) (base : View BVal) (key : List Nat)
           rw [hN1, g5]
           refine treeOK_newSeg (wNode c.p base ws) _ c.i ws.top.rootKey x ws.next (ws.next + 1)
             ⟨true, []⟩ ⟨true, []⟩ a 0 hT hxR hwx (by rfl) (by simp) ?_ ?_
-            (fun c' z hc => absurd hc (KNode.empty_liveAt' c.i c' z)) ?_ hwnext hwnext1 (by omega) ?_
+            (fun c' z hc => absurd hc (KNode.empty_liveAt c.i c' z)) ?_ hwnext hwnext1 (by omega) ?_
           · exact updN_self _ _ _
           · rw [updN_ne _ _ _ _ (Ne.symm hxy)]; exact updN_self _ _ _
           · intro z h1 h2; rw [updN_ne _ _ _ _ h1, updN_ne _ _ _ _ h2]
@@ -277,7 +277,7 @@ theorem tReach_newSegStepN (N : NodeId → Option KNode) (t : Time) (r x y : Nod
       · subst huy
         rw [updN_self] at hm
         cases hm
-        exact absurd hc (KNode.empty_liveAt' t c z)
+        exact absurd hc (KNode.empty_liveAt t c z)
       · rw [updN_ne _ _ _ _ huy] at hm
         rcases ih with h | h
         · exact Or.inl (TReach.link h ⟨m, hm, hc⟩)
@@ -401,7 +401,7 @@ theorem writerWP_put_newSegs_tree (c : Ctx) (base : View BVal) (hvc : ViewCohere
       rw [hN1, htop]
       refine treeOK_newSeg (wNode c.p base w) _ c.i w.top.rootKey L w.next (w.next + 1)
         n ⟨true, []⟩ c0 0 hI.tree hLR hn (hI.wf L n hn) (hI.times L n hn) ?_ ?_
-        (fun c' z hc => absurd hc (KNode.empty_liveAt' c.i c' z)) ?_ hwnext hwnext1 (by omega) ?_
+        (fun c' z hc => absurd hc (KNode.empty_liveAt c.i c' z)) ?_ hwnext hwnext1 (by omega) ?_
       · exact updN_self _ _ _
       · rw [updN_ne _ _ _ _ (Ne.symm hLne)]; exact updN_self _ _ _
       · intro z h1 h2; rw [updN_ne _ _ _ _ h1, updN_ne _ _ _ _ h2]

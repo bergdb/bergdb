@@ -32,9 +32,9 @@ theorem writerWP_mergeParent_casesD (p : NodeId) (pn : KNode) (depth il cL : Nat
     unfold mergeParent
     simp only [writerWP_bind, writerWP_read]
     rw [writerWP_getNode_known p pn c w hlk]
-    apply writerWP_ite_cases
+    apply writerWP_if
     · intro _
-      apply writerWP_ite_cases
+      apply writerWP_if
       · intro _
         simp only [note, writerWP_bind, writerWP_modify, writerWP_pure]
         split
@@ -61,9 +61,9 @@ theorem writerWP_mergeParent_casesD (p : NodeId) (pn : KNode) (depth il cL : Nat
     unfold mergeParent
     simp only [writerWP_bind, writerWP_read]
     rw [writerWP_getNode_known p pn c w hlk]
-    apply writerWP_ite_cases
+    apply writerWP_if
     · intro _
-      apply writerWP_ite_cases
+      apply writerWP_if
       · intro _
         simp only [note, writerWP_bind, writerWP_modify, writerWP_pure]
         split

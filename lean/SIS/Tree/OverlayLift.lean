@@ -20,6 +20,7 @@ import SIS.Tree.GetUnder
 import SIS.Tree.WriterBookMerge
 import SIS.Tree.WriterTakenOps
 import SIS.Tree.KeyLevels
+import SIS.Tree.SizeStep
 
 set_option autoImplicit false
 
@@ -40,12 +41,6 @@ theorem execW_outside_taken (p : Params) (tx : Tx) (i : Time) (v : View BVal)
     | ok top =>
       simp only [ht] at he
       exact boundsOK_outside_taken p _ bs w he
-
-theorem mem_ids_of_lookup (ns : List (NodeId × KNode)) (x : NodeId) (n : KNode)
-    (h : ns.lookup x = some n) : (x, n) ∈ ns := by
-  obtain ⟨pre, post, he, _⟩ := List.lookup_eq_some_iff.mp h
-  rw [he]
-  simp
 
 /-- The lift of the overlay for one transaction, from the books of the
 writer's last state (`Book`, `TakenAbove`) and the structure before it. -/

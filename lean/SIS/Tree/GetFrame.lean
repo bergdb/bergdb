@@ -6,6 +6,7 @@ import SIS.Tree.TimeSplitMap
 import SIS.Tree.KlongWellFormed
 import SIS.Tree.MergeLiveOrder
 import SIS.Tree.WriterSteps
+import SIS.Tree.WriterBook
 
 set_option autoImplicit false
 
@@ -423,13 +424,6 @@ theorem lookup_append_single_ne {β : Type} (l : List (NodeId × β)) (x y : Nod
     rw [lookup_cons_ne _ _ _ _ hy]
     rfl
 
-theorem lookup_append_single_self {β : Type} (l : List (NodeId × β)) (x : NodeId) (b : β)
-    (hn : l.lookup x = none) : (l ++ [(x, b)]).lookup x = some b := by
-  rw [List.lookup_append, hn]
-  show (none : Option β).or (((x, b) :: []).lookup x) = some b
-  rw [lookup_cons_eq _ _ _ _ rfl]
-  rfl
-
 theorem lookup_upsert (ns : List (NodeId × KNode)) (x y : NodeId) (n : KNode) :
     (upsert ns x n).lookup y = if y = x then some n else ns.lookup y := by
   unfold upsert
@@ -519,8 +513,6 @@ theorem writerWP_ghOf_cached (x : NodeId) (n : KNode) (c : Ctx) (w : W)
   split
   · simp only [writerWP_pure]; exact hp _
   · exact writerWP_throw _ _ _ _
-
-theorem KNode.setAt_leaf (n : KNode) (i : Nat) (k : Klong) : (n.setAt i k).leaf = n.leaf := rfl
 
 theorem KNode.setAt_last_times (n : KNode) (old bits : List Nat) (t : Time)
     (hlast : n.ks.getLast? = some (.del old)) (ht : ∀ s, Klong.time s ∈ n.ks → s ≤ t) :

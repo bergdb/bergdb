@@ -99,22 +99,6 @@ theorem hasHt_tag (hb : Book B c w) (hv : ViewHeights H B c) {x : NodeId} {g h h
       exact hv.uniq x _ _ (hv.node x nd' hnd' hd hlv) hx
     · exact absurd (hv.old x h' hx) (by omega)
 
-theorem ht_wNode_cases {p : Params} {base : View BVal} {w : W} {x : NodeId} {n : KNode}
-    (hx : wNode p base w x = some n) :
-    w.taken.contains x = false ∧ (w.nodes.lookup x = some n ∨
-      (w.nodes.lookup x = none ∧ knodeOf p base x = some n)) := by
-  unfold wNode at hx
-  cases ht : w.taken.contains x with
-  | true =>
-    simp only [ht, ↓reduceIte] at hx
-    cases hx
-  | false =>
-    simp only [ht, Bool.false_eq_true, ↓reduceIte] at hx
-    refine ⟨rfl, ?_⟩
-    cases hl : w.nodes.lookup x with
-    | some n' => rw [hl] at hx; cases hx; exact Or.inl rfl
-    | none => rw [hl] at hx; exact Or.inr ⟨rfl, hx⟩
-
 theorem ht_knodeOf_some {p : Params} {v : View BVal} {x : NodeId} {n : KNode}
     (hk : knodeOf p v x = some n) :
     ∃ nd, v x = some nd ∧ nd.isData = false ∧ nd.level ≤ p.keyMax ∧
@@ -139,7 +123,7 @@ when that height is 0. -/
 theorem hasHt_of_wNode (hb : Book B c w) (base : View BVal) (hbase : BaseHeights c H base)
     {x : NodeId} {n : KNode} (hx : wNode c.p base w x = some n) :
     ∃ h, HasHt H w x h ∧ n.leaf = (h == 0) := by
-  obtain ⟨_, hl | ⟨_, hk⟩⟩ := ht_wNode_cases hx
+  obtain ⟨_, hl | ⟨_, hk⟩⟩ := wNode_cases _ _ _ _ _ hx
   · obtain ⟨g, h, hm⟩ := kd_tag_of_lookup hb hl
     exact ⟨h, Or.inl ⟨g, hm⟩, kd_leaf hb hl hm⟩
   · obtain ⟨h, hH, hleaf, _, _⟩ := hbase x n hk
@@ -153,7 +137,7 @@ theorem segDepthEq_of_hasHt (hb : Book B c w) (hc : HtCache c H w)
   induction h with
   | zero =>
     intro x hx n hn
-    obtain ⟨_, hl | ⟨hnone, hk⟩⟩ := ht_wNode_cases hn
+    obtain ⟨_, hl | ⟨hnone, hk⟩⟩ := wNode_cases _ _ _ _ _ hn
     · obtain ⟨g, h1, hm⟩ := kd_tag_of_lookup hb hl
       have e1 := hasHt_tag hb hvh hm hx
       rw [kd_leaf hb hl hm, e1]
@@ -169,7 +153,7 @@ theorem segDepthEq_of_hasHt (hb : Book B c w) (hc : HtCache c H w)
         rfl
   | succ k ih =>
     intro x hx n hn
-    obtain ⟨htk, hl | ⟨hnone, hk⟩⟩ := ht_wNode_cases hn
+    obtain ⟨htk, hl | ⟨hnone, hk⟩⟩ := wNode_cases _ _ _ _ _ hn
     · obtain ⟨g, h1, hm⟩ := kd_tag_of_lookup hb hl
       have hN := hc x n g h1 (bk_mem_of_lookup _ _ _ hl) hm htk
       have e1 := hasHt_tag hb hvh hm hx

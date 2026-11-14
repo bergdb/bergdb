@@ -161,11 +161,11 @@ theorem writerWP_takeBackRoot_seg_rangeG (x : NodeId) (d only : Nat) (n : KNode)
               simp only [Bool.false_eq_true, ↓reduceIte] at hlk
               refine Or.inr ⟨?_, Ne.symm hck⟩
               rw [KNode.liveAt_of_times ln c.i hlnt]
-              exact mem_of_lookup_nodup _ c' z hlk
+              exact bk_mem_of_lookup _ c' z hlk
           rw [h'top]
           refine rangeOrder_segCollapse (wNode c.p base v) (wNode c.p base w') c.i v.top.rootKey leaf x
             child ln (ln.repoint j child) n k hR hT hlf hwL hlnl hk hwx hxl hcl ?_ hL'
-            (by rw [mrg_repoint_leaf]; exact hlnl) ?_ hoth
+            (by rw [bk_repoint_leaf]; exact hlnl) ?_ hoth
           · intro c' z hz
             rw [KNode.liveAt_of_times n c.i hnt] at hz
             exact (hlv c' z).mp hz

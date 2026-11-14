@@ -143,7 +143,7 @@ theorem onlyLiveKlong_live_iff (n : KNode) (i : Nat) (y : NodeId) (h : n.onlyLiv
       rw [hlk0] at hlk
       exact ⟨rfl, (Option.some.inj hlk).symm⟩
     · subst h1; subst h2
-      apply mem_of_lookup_nodup
+      apply bk_mem_of_lookup
       rw [KNode.live_lookup]
       exact hlk0
   · cases h

@@ -668,16 +668,13 @@ theorem ptrs_setMadeFor (Old : NodeId → Prop) (x : NodeId) (old : Option NodeI
     · exact hw.madeFor q hq
   · simp only [writerWP_pure]; exact ⟨hw, MadeKept.refl w⟩
 
-theorem ptrs_lookup_madeFor (l : List (NodeId × NodeId)) (x o : NodeId)
-    (h : l.lookup x = some o) : (x, o) ∈ l := bk_mem_of_lookup l x o h
-
 theorem ptrs_replacedBy (Old : NodeId → Prop) (x : NodeId) (c : Ctx) (w : W)
     (_hv : ViewPtrsOld Old c.view) (hw : PtrsOK Old c w) :
     WriterWP (replacedBy x) c w (fun r v => PtrsOK Old c v ∧ MadeKept w v ∧ ptrsOpt Old v r) := by
   simp only [replacedBy, writerWP_bind, writerWP_get, writerWP_pure]
   refine ⟨hw, MadeKept.refl w, ?_⟩
   intro o ho
-  exact hw.madeFor _ (ptrs_lookup_madeFor _ _ _ ho)
+  exact hw.madeFor _ (lookup_some_mem ho)
 
 theorem ptrs_newSuperRoot (Old : NodeId → Prop) (y : NodeId) (c : Ctx) (w : W)
     (hw : PtrsOK Old c w) (hy : ptrsId Old w y) :

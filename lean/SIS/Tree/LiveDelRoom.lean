@@ -53,7 +53,7 @@ theorem live_shrink (n n' : KNode) (cv : Nat)
     · have hb : (a == cv) = false := by simp [ha]
       rw [hb] at h1
       simp only [Bool.false_eq_true, ↓reduceIte] at h1
-      exact mem_of_lookup_nodup n.live a b h1
+      exact bk_mem_of_lookup n.live a b h1
   · have hK := n.live_keys_nodup
     have hsub : ∀ k ∈ (n.live.map Prod.fst).erase cv, k ∈ n'.live.map Prod.fst := by
       intro k hk
@@ -66,7 +66,7 @@ theorem live_shrink (n n' : KNode) (cv : Nat)
         have hb : (a == cv) = false := by simp [hkc]
         rw [hb]
         simpa using h1
-      exact List.mem_map.mpr ⟨(a, b), mem_of_lookup_nodup _ a b h2, rfl⟩
+      exact List.mem_map.mpr ⟨(a, b), bk_mem_of_lookup _ a b h2, rfl⟩
     have h3 := length_le_of_nodup_sub _ _ (List.Nodup.erase cv hK) hsub
     rw [List.length_erase, List.length_map, List.length_map] at h3
     split at h3 <;> omega

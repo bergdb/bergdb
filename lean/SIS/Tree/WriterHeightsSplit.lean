@@ -83,15 +83,6 @@ theorem ht_halves_time (leaf : Bool) (t : Time) (last : KNode) (ins : List (Nat 
     | exact ⟨⟨_, rfl⟩, ⟨_, List.cons_append⟩⟩
     | exact ⟨⟨_, List.cons_append⟩, ⟨_, rfl⟩⟩
 
-theorem ht_flat_times {i : Time} {ks : List Klong} (hf : FlatAt i ks) :
-    ∀ t, Klong.time t ∈ ks → t ≤ i := by
-  obtain ⟨r, rfl, hr⟩ := hf
-  intro t ht
-  rcases List.mem_cons.mp ht with ht | ht
-  · cases ht; exact Nat.le_refl _
-  · obtain ⟨cv, y, he⟩ := hr _ ht
-    cases he
-
 theorem nodeHt_halves {c : Ctx} {w : W} {h : Nat} (hpos : 0 < c.i) (leaf : Bool) (last : KNode)
     (ins : List (Nat × NodeId)) (hl : kdKs (HtP c H w h) last.ks) (hi : kdPairs (HtP c H w h) ins)
     (hfl : FlatAt c.i last.ks) :
@@ -104,8 +95,8 @@ theorem nodeHt_halves {c : Ctx} {w : W} {h : Nat} (hpos : 0 < c.i) (leaf : Bool)
   have e2 : (halves leaf c.i last ins).2.1 =
       ⟨(halves leaf c.i last ins).2.1.leaf, (halves leaf c.i last ins).2.1.ks⟩ := rfl
   rw [e1, e2]
-  exact ⟨nodeHt_of_ks hpos ht.1 hk.1 (ht_flat_times hf.1),
-    nodeHt_of_ks hpos ht.2 hk.2 (ht_flat_times hf.2)⟩
+  exact ⟨nodeHt_of_ks hpos ht.1 hk.1 (flatAt_times _ _ hf.1),
+    nodeHt_of_ks hpos ht.2 hk.2 (flatAt_times _ _ hf.2)⟩
 
 /-- A new root above x and y, nodes of height h not taken back. -/
 theorem nodeHt_root {c : Ctx} {w : W} {x y : NodeId} {h : Nat} (hpos : 0 < c.i) (sc : Nat)
@@ -237,7 +228,7 @@ theorem nodeHt_repoint {c : Ctx} {w : W} {h : Nat} {n : KNode} (hn : NodeHt c H 
 /-- A time split's node: klongs of the right height at the transaction's time. -/
 theorem nodeHt_flat {c : Ctx} {w : W} {h : Nat} {leaf : Bool} {ks : List Klong} (hpos : 0 < c.i)
     (hf : FlatAt c.i ks) (hk : kdKs (HtP c H w h) ks) : NodeHt c H w h ⟨leaf, ks⟩ := by
-  have htm := ht_flat_times hf
+  have htm := flatAt_times _ _ hf
   obtain ⟨r, hr, _⟩ := hf
   exact nodeHt_of_ks hpos ⟨r, hr⟩ hk htm
 

@@ -89,7 +89,7 @@ theorem writerWP_handleFull_lastShapeG (c : Ctx)
     intro h; have := hdist _ _ hsD (by omega) (by omega) (Nat.le_refl _) h; omega
   have hqt := htimes D hsD (by omega)
   have hKuniq : ∀ y, (K (D + 1), y) ∈ (Nn D).liveAt c.i → y = X (D + 1) :=
-    fun y hy => liveAt_cv_unique _ c.i hqt _ _ _ hy hkl
+    fun y hy => mrg_liveAt_unique _ c.i hqt _ _ _ hy hkl
   have hXne : ∀ i, s ≤ i → i ≤ D → X i ≠ X (D + 1) := by
     intro i h1 h2 he; have := hdist _ _ h1 (by omega) (by omega) (Nat.le_refl _) he; omega
   -- after the parent's step: the cascade's post

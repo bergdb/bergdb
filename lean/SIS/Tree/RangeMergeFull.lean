@@ -251,12 +251,12 @@ theorem writerWP_mergeTail_any_range2 (c : Ctx) (base : View BVal) (x : NodeId) 
   -- the tree's facts
   have hpL : (cL, l) ∈ pn.liveAt c.i := by
     rw [KNode.liveAt_of_times pn c.i hpt]
-    apply mem_of_lookup_nodup
+    apply bk_mem_of_lookup
     rw [KNode.live_lookup]
     exact keyLookup_of_last _ _ _ il l hL hLL
   have hpR : (cR, r) ∈ pn.liveAt c.i := by
     rw [KNode.liveAt_of_times pn c.i hpt]
-    apply mem_of_lookup_nodup
+    apply bk_mem_of_lookup
     rw [KNode.live_lookup]
     exact keyLookup_of_last _ _ _ ir r hR hRL
   have hlink_l : TLink N c.i p cL l := ⟨pn, hpn, hpL⟩
@@ -440,7 +440,7 @@ theorem writerWP_mergeTail_any_range2 (c : Ctx) (base : View BVal) (x : NodeId) 
           right
           refine ⟨?_, h1, h2⟩
           rw [KNode.liveAt_of_times pn c.i hpt]
-          exact mem_of_lookup_nodup _ cc z hlk
+          exact bk_mem_of_lookup _ cc z hlk
     -- the parent after, into two nodes
     have hchar2 : ∀ (m2 : NodeId) (g2 : Nat) cc z,
         (cc, z) ∈ (mergeParentNode pn c.i il cL m1 ir cR (some (m2, g2))).liveAt c.i →
@@ -479,7 +479,7 @@ theorem writerWP_mergeTail_any_range2 (c : Ctx) (base : View BVal) (x : NodeId) 
             right; right
             refine ⟨?_, h1, h2⟩
             rw [KNode.liveAt_of_times pn c.i hpt]
-            exact mem_of_lookup_nodup _ cc z hlk
+            exact bk_mem_of_lookup _ cc z hlk
     -- neither merged node is named live by the parent after
     have hnoOld : ∀ z, (z = l ∨ z = r) → ∀ cc, (cc, z) ∈ pn.liveAt c.i → cc ≠ cL → cc ≠ cR → False := by
       intro z hz cc hm h1 h2
@@ -963,7 +963,7 @@ theorem writerWP_mergeTail_any_range2 (c : Ctx) (base : View BVal) (x : NodeId) 
           · rw [hleafl]; exact hpleaf
           · exact hsomeL (m1 + 2) g2 rfl
           · rw [KNode.liveAt_of_times last c.i htl]
-            apply mem_of_lookup_nodup
+            apply bk_mem_of_lookup
             rw [hsomeLk (m1 + 2) g2 rfl g2]
             simp
           · intro y hyp _ _ hym hym2

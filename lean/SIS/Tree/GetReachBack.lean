@@ -1,5 +1,6 @@
 import SIS.Tree.GetNewRoot
 import SIS.Tree.WriterTreeChainG
+import SIS.Tree.RangeChain
 
 set_option autoImplicit false
 
@@ -174,29 +175,6 @@ def ChainOrd (c : Ctx) (K : Nat → Nat) (Nn : Nat → KNode) (i : Nat) : Prop :
     c.p.splitAbove < ((Nn i).lastVersion c.i).size →
     ∀ c' z, (c', z) ∈ (Nn i).live → if (Nn i).leaf = true then K i ≤ c' else (c' = 0 ∨ K i < c')
 
-/-- A compare value names one node among the live klongs. -/
-theorem liveAt_cv_unique (n : KNode) (t : Time) (ht : ∀ s, Klong.time s ∈ n.ks → s ≤ t)
-    (c : Nat) (z1 z2 : NodeId) (h1 : (c, z1) ∈ n.liveAt t) (h2 : (c, z2) ∈ n.liveAt t) : z1 = z2 := by
-  rw [KNode.liveAt_of_times n t ht] at h1 h2
-  have a := lookup_of_mem_nodup _ (KNode.live_keys_nodup n) _ _ h1
-  have b := lookup_of_mem_nodup _ (KNode.live_keys_nodup n) _ _ h2
-  rw [a] at b
-  simpa using b
-
-/-- A live klong below the divider (prover putinv's `live_below_divider`). -/
-theorem live_below_divider' (n : KNode) (r : Nat × NodeId) (h2 : 2 ≤ n.live.length)
-    (hr : (n.live.drop (n.live.length / 2)).head? = some r) : ∃ a ∈ n.live, a.1 < r.1 := by
-  have hleft := halves_left_lt_divider n.live (n.live.length / 2) n.live_order r hr
-  obtain ⟨a, ha⟩ : ∃ a, a ∈ n.live.take (n.live.length / 2) := by
-    cases h : n.live.take (n.live.length / 2) with
-    | nil =>
-      exfalso
-      have := congrArg List.length h
-      simp only [List.length_take, List.length_nil] at this
-      omega
-    | cons a _ => exact ⟨a, List.mem_cons_self⟩
-  exact ⟨a, List.mem_of_mem_take ha, hleft a ha⟩
-
 /-- With `ChainOrd`, the divider of a space split below an inner parent is above
 the parent's klong to the node. -/
 theorem chainOrd_div (c : Ctx) (K : Nat → Nat) (Nn : Nat → KNode) (i : Nat)
@@ -211,7 +189,7 @@ theorem chainOrd_div (c : Ctx) (K : Nat → Nat) (Nn : Nat → KNode) (i : Nat)
   obtain ⟨hdiv, _, _⟩ := halves_links (Nn i).leaf c.i (Nn i) rfl a more r hr hsc hside
   rw [← hins_eq] at hdiv
   rw [hdiv]
-  obtain ⟨a0, ha0, ha0r⟩ := live_below_divider' (Nn i) r h2 hr
+  obtain ⟨a0, ha0, ha0r⟩ := live_below_divider (Nn i) r h2 hr
   have hr1 := hord hNR hql hsp r.1 r.2 hrm
   have ha1 := hord hNR hql hsp a0.1 a0.2 ha0
   cases hl : (Nn i).leaf with

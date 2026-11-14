@@ -168,7 +168,7 @@ theorem ht_appendDeleteKlong (B : NodeId) (x : NodeId) (depth cv : Nat) (c : Ctx
         wpSplit
         · exact ht_seq_note B _ _ c w1 hvo hb1 hi1 _ (fun v hbv hiv hlev hpv => hfull v true hbv hiv hlev hpv)
         · exact ht_seq_note B _ _ c w1 hvo hb1 hi1 _ (fun v hbv hiv hlev hpv =>
-            hput v _ hbv hiv hlev hpv (bk_setAt_leaf _ _ _) (nodeHt_setAt_del hpos hN old hlast hlt cv))
+            hput v _ hbv hiv hlev hpv (KNode.setAt_leaf _ _ _) (nodeHt_setAt_del hpos hN old hlast hlt cv))
       · wpSplit
         · wpSplit
           · exact ht_seq_note B _ _ c w1 hvo hb1 hi1 _ (fun v hbv hiv hlev hpv => hfull v true hbv hiv hlev hpv)

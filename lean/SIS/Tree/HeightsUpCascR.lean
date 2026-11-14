@@ -243,7 +243,7 @@ theorem upCascFitsOKR_of (c : Ctx) (base : View BVal) (KO : KindOracle) (BK : No
   refine segFits_of_heightsU hbu hiu.cache hvo.heights base hbase c.p.fuel _ ?_
   intro y n hn k' hk'
   rcases hk' with ⟨g', hm'⟩ | hk'
-  · have hyu := (ht_wNode_cases hn).1
+  · have hyu := (wNode_cases _ _ _ _ _ hn).1
     exact hsu.1 y g' k' hm' (by rw [← hleu.2]; exact hyu)
   · have := hHb y k' hk'; omega
 

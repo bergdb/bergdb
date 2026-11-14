@@ -137,18 +137,6 @@ theorem wNode_cases (p : Params) (base : View BVal) (w : W) (x : NodeId) (xn : K
     | some n => rw [hl] at h; exact Or.inl h
     | none => rw [hl] at h; exact Or.inr ⟨rfl, h⟩
 
-theorem knodeOf_some (p : Params) (base : View BVal) (x : NodeId) (n : KNode)
-    (h : knodeOf p base x = some n) : ∃ nd, base x = some nd ∧ nd.isData = false := by
-  unfold knodeOf at h
-  cases hb : base x with
-  | none => rw [hb] at h; cases h
-  | some nd =>
-    rw [hb] at h
-    simp only at h
-    cases hd : nd.isData with
-    | true => rw [hd] at h; simp at h
-    | false => exact ⟨nd, rfl, hd⟩
-
 theorem valueOf_of_notData (base : View BVal) (x : NodeId) (nd : Node BVal)
     (hb : base x = some nd) (hd : nd.isData = false) : valueOf base x = none := by
   unfold valueOf; rw [hb]; simp [hd]
@@ -158,11 +146,6 @@ theorem base_none_of_ge (c : Ctx) (base : View BVal) (B : NodeId) (hB : PutBase 
   cases hb : base z with
   | none => rfl
   | some nd => have := hB.ids z nd hb; omega
-
-theorem mem_of_lookup_some {β : Type} (l : List (NodeId × β)) (x : NodeId) (b : β)
-    (h : l.lookup x = some b) : (x, b) ∈ l := by
-  obtain ⟨pre, post, he, _⟩ := List.lookup_eq_some_iff.mp h
-  rw [he]; simp
 
 theorem putInvG_of_book (c : Ctx) (base : View BVal) (B : NodeId) (top0 : Top) (w : W)
     (hB : PutBase c base B) (hw : PutBook c B top0 w) : PutInvG c base w := by
@@ -176,10 +159,10 @@ theorem putInvG_of_book (c : Ctx) (base : View BVal) (B : NodeId) (top0 : Top) (
     | none => rfl
     | some h =>
       exfalso
-      have hxv : (x, h) ∈ w.vals := mem_of_lookup_some _ _ _ hv
+      have hxv : (x, h) ∈ w.vals := bk_mem_of_lookup _ _ _ hv
       have hmade := hvalsMade _ hxv
       have hxB := hvalsB _ hxv
-      have hxn : (x, n) ∈ w.nodes := mem_of_lookup_some _ _ _ hn
+      have hxn : (x, n) ∈ w.nodes := bk_mem_of_lookup _ _ _ hn
       have hxg : x ∈ w.gh.map (·.1) := by
         have : x ∈ w.nodes.map (·.1) := List.mem_map.mpr ⟨(x, n), hxn, rfl⟩
         rw [hw.book.ids] at this
@@ -220,7 +203,7 @@ theorem putInvG_of_book (c : Ctx) (base : View BVal) (B : NodeId) (top0 : Top) (
   · intro x xn cc z h hz
     have hk := KNode.liveAt_key_mem xn c.i cc z hz
     rcases (wNode_cases _ _ _ _ _ h).2 with hl | ⟨_, hkn⟩
-    · rcases hw.ptrs.klongs (x, xn) (mem_of_lookup_some _ _ _ hl) cc z hk with hz' | hz'
+    · rcases hw.ptrs.klongs (x, xn) (bk_mem_of_lookup _ _ _ hl) cc z hk with hz' | hz'
       · omega
       · obtain ⟨m, hm, he⟩ := List.mem_map.mp hz'
         rw [← he]
@@ -234,7 +217,7 @@ theorem putInvG_of_book (c : Ctx) (base : View BVal) (B : NodeId) (top0 : Top) (
     rcases hc with hl | ⟨_, hk⟩
     · rw [hvalNode x xn hl]
       -- the node is of the view or made by the transaction
-      have hxn : (x, xn) ∈ w.nodes := mem_of_lookup_some _ _ _ hl
+      have hxn : (x, xn) ∈ w.nodes := bk_mem_of_lookup _ _ _ hl
       have hxg : x ∈ w.gh.map (·.1) := by
         have : x ∈ w.nodes.map (·.1) := List.mem_map.mpr ⟨(x, xn), hxn, rfl⟩
         rw [hw.book.ids] at this
@@ -245,13 +228,13 @@ theorem putInvG_of_book (c : Ctx) (base : View BVal) (B : NodeId) (top0 : Top) (
       rcases hw.book.tag x' g hh hq with ⟨nd, hnd, hd, _, _, _⟩ | ⟨hBx, _, _⟩
       · exact valueOf_of_notData base x' nd (hB.coherent x' nd hnd) hd
       · unfold valueOf; rw [base_none_of_ge c base B hB x' hBx]
-    · obtain ⟨nd, hb, hd⟩ := knodeOf_some _ _ _ _ hk
+    · obtain ⟨nd, hb, hd⟩ := knodeOf_view _ _ _ _ hk
       have hxB := hB.ids x nd hb
       have hvx : w.vals.lookup x = none := by
         cases hv : w.vals.lookup x with
         | none => rfl
         | some h' =>
-          have := hvalsB _ (mem_of_lookup_some _ _ _ hv); omega
+          have := hvalsB _ (bk_mem_of_lookup _ _ _ hv); omega
       rw [hvx]
       exact valueOf_of_notData base x nd hb hd
 

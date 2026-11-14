@@ -257,7 +257,7 @@ theorem txSegFitsOK_of_takeBelowDelRHU (p : Params) (hM : 2 ≤ p.M) (R : Struct
   refine segFits_of_heightsU hbk hi.cache hvo.heights _ hbase (p.fuel - 1) _ ?_
   intro x n hn h hh
   rcases hh with ⟨g, hm⟩ | hh
-  · exact hub x g h hm (ht_wNode_cases hn).1
+  · exact hub x g h hm (wNode_cases _ _ _ _ _ hn).1
   · have := hHb x h hh
     have := fuel_gt_H p
     omega

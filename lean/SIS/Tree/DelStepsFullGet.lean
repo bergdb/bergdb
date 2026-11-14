@@ -40,9 +40,9 @@ theorem writerWP_appendDeleteKlong_full_of (x : NodeId) (d cv : Nat) (n : KNode)
   · exact writerWP_throw _ _ _ _
   · have hno : (bitsUnion n.lastBitmap (n.bitsOf cv) == n.lastBitmap) = false := by simpa using hne
     simp only [hno, Bool.not_false, ↓reduceIte]
-    apply writerWP_ite_cases
+    apply writerWP_if
     · intro htd
-      apply writerWP_ite_cases
+      apply writerWP_if
       · intro _; exact hhf true _
       · intro hdead
         exfalso; apply hfull; left
@@ -58,9 +58,9 @@ theorem writerWP_appendDeleteKlong_full_of (x : NodeId) (d cv : Nat) (n : KNode)
           | time t => simp [hgl] at htd
           | key a y => simp [hgl] at htd
     · intro htd
-      apply writerWP_ite_cases
+      apply writerWP_if
       · intro hroom
-        apply writerWP_ite_cases
+        apply writerWP_if
         · intro _; exact hhf true _
         · intro hdead
           exfalso; apply hfull; right

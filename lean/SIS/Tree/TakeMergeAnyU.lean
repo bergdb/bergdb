@@ -123,12 +123,12 @@ theorem writerWP_merge_any_untaken (fuelR : Nat) (hfR : 2 ≤ fuelR) (x : NodeId
         exact (Option.some.inj h2).symm
       have hmemL : (cL, l) ∈ pn0.liveAt c.i := by
         rw [KNode.liveAt_of_times pn0 c.i hpt]
-        apply mem_of_lookup_nodup
+        apply bk_mem_of_lookup
         rw [KNode.live_lookup]
         exact keyLookup_of_last _ _ _ il l hL hLL
       have hmemR : (cR, r) ∈ pn0.liveAt c.i := by
         rw [KNode.liveAt_of_times pn0 c.i hpt]
-        apply mem_of_lookup_nodup
+        apply bk_mem_of_lookup
         rw [KNode.live_lookup]
         exact keyLookup_of_last _ _ _ ir r hR' hRL
       obtain ⟨hlr1, hlr2⟩ := mrg_child_range (wNode c.p base w) c.i w.top.rootKey hR e.2 pn0 hpRS hpn
@@ -203,7 +203,7 @@ theorem writerWP_merge_any_untaken (fuelR : Nat) (hfR : 2 ≤ fuelR) (x : NodeId
       intro i cv y hk hl
       have hm : (cv, y) ∈ pn0.liveAt c.i := by
         rw [KNode.liveAt_of_times pn0 c.i hpt]
-        apply mem_of_lookup_nodup
+        apply bk_mem_of_lookup
         rw [KNode.live_lookup]
         exact keyLookup_of_last _ _ _ i y hk hl
       exact ⟨hm, TReach.link hpR ⟨pn0, hpn, hm⟩⟩

@@ -198,7 +198,7 @@ theorem addKeys_facts (t : Time) (B : NodeId) (vals : List NodeId) (hpos : 0 < t
       rw [hb] at hl
       simp only [Bool.false_eq_true, ↓reduceIte] at hl
       have hz0 : (q.1, z) ∈ n.liveAt t := by
-        rw [KNode.liveAt_of_times n t ht]; exact mem_of_lookup_nodup _ _ _ hl
+        rw [KNode.liveAt_of_times n t ht]; exact bk_mem_of_lookup _ _ _ hl
       exact hold q (List.mem_cons_of_mem _ hq) z hz0
     obtain ⟨hD2, hp2, hf2⟩ := ih _ hw1 ht1 hD1 hnd.2 hold1
     refine ⟨hD2, by rw [hp2]; exact KNode.prefixAt_add n t _ hpos, fun s hs => hf2 s ?_⟩
@@ -229,7 +229,7 @@ theorem deadLiveK_repoint (N : NodeId → Option KNode) (t : Time) (r B : NodeId
     rw [List.getElem?_set_self hjl] at hi
     simp only [Option.some.injEq, Klong.key.injEq] at hi
     rw [← hi.1, ← hi.2]
-    refine ⟨⟨k, KNode.repoint_liveAt_new qn x y k i t hj hqt⟩, fun _ => ?_⟩
+    refine ⟨⟨k, liveAt_repoint_new qn x y k i t hj hqt⟩, fun _ => ?_⟩
     rw [hbm, hrp]
     exact lastLive_set_self qn.ks qn.lastBitmap i k y hLj
   · rw [List.getElem?_set_ne (Ne.symm hij)] at hi
@@ -248,10 +248,10 @@ theorem deadLiveK_repoint (N : NodeId → Option KNode) (t : Time) (r B : NodeId
       · have hci := liveAt_of_lastLive qn t hqt i cv x hi hLi
         exact hck (hT.oneLink q cv q k x hq hq ⟨qn, hqn, hci⟩ ⟨qn, hqn, hk⟩).2
     refine ⟨⟨c0, ?_⟩, fun hl => ?_⟩
-    · refine KNode.repoint_liveAt_keep qn x y k j t hj hqt c0 z hc0 (fun hck => hzx ?_)
+    · refine liveAt_repoint_keep qn x y k j t hj hqt c0 z hc0 (fun hck => hzx ?_)
       rw [hck] at hc0
       exact (KNode.liveAt_fun qn t k x z hk hc0).symm
     · rw [hbm, hrp]
-      exact lastLive_set_other qn.ks qn.lastBitmap i cv j k y (hL0 (by rw [← KNode.repoint_leaf]; exact hl)) hLj hij
+      exact lastLive_set_other qn.ks qn.lastBitmap i cv j k y (hL0 (by rw [← bk_repoint_leaf]; exact hl)) hLj hij
 
 end SIS.Tree

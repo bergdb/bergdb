@@ -32,7 +32,7 @@ theorem liveAt_of_lastLive (n : KNode) (t : Time) (ht : ∀ s, Klong.time s ∈ 
     (i c : Nat) (y : NodeId) (hk : n.ks[i]? = some (Klong.key c y))
     (hl : LastLive n.ks n.lastBitmap i c) : (c, y) ∈ n.liveAt t := by
   rw [KNode.liveAt_of_times n t ht]
-  apply mem_of_lookup_nodup
+  apply bk_mem_of_lookup
   rw [KNode.live_lookup]
   exact keyLookup_of_last _ _ _ i y hk hl
 

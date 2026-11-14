@@ -108,7 +108,7 @@ theorem ht_takeBackChk (B : NodeId) (x parent : NodeId) (cv : Nat) (c : Ctx) (w 
       | zero => rfl
       | succ k => simp at this
     have hof := ht_free_of_view hvo hi1 hview
-    refine writerWP_mono (ht_retarget B parent x old c w1 hvo hb1 hi1 (ht_mem_ids hmp)
+    refine writerWP_mono (ht_retarget B parent x old c w1 hvo hb1 hi1 (kd_mem_ids hmp)
       (fun g h hm _ cv => ?_)) ?_
     · obtain ⟨rfl, rfl⟩ := kd_tag_eq hb1 hmp hm
       exact ⟨hof, fun h0 => absurd hp0 h0⟩

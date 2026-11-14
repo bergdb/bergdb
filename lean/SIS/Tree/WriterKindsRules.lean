@@ -15,6 +15,7 @@ import SIS.Tree.GetSplit
 import SIS.Tree.WalkComplete
 import SIS.Tree.CacheGood
 import SIS.Tree.WriterNonemptyRun
+import SIS.Tree.WriterPtrs
 
 set_option autoImplicit false
 
@@ -214,12 +215,6 @@ theorem kdKs_of_pairs_map {P : Nat → NodeId → Prop} {l : List (Nat × NodeId
   · rw [hc] at he; cases he; exact h q hq
   · rw [hc] at he; cases he; exact hP _ _ _ (h q hq)
 
-theorem kd_ite_key (b : Prop) [Decidable b] (a c : Nat) (y : NodeId) :
-    ∃ c', (if b then Klong.key a y else Klong.key c y) = Klong.key c' y := by
-  by_cases h : b
-  · exact ⟨a, by simp [h]⟩
-  · exact ⟨c, by simp [h]⟩
-
 theorem kd_halves_shape {P : Nat → NodeId → Prop} (b leaf : Bool) (t : Time)
     (f s insK : List Klong) (sc : Nat) (hf : kdKs P f) (hs : kdKs P s) (hi : kdKs P insK) :
     kdKs P (if b = true then ((⟨leaf, .time t :: f⟩ : KNode), (⟨leaf, .time t :: s ++ insK⟩ : KNode), sc)
@@ -262,7 +257,7 @@ theorem kdKs_halves {P : Nat → NodeId → Prop} (leaf : Bool) (t : Time) {last
     | true => left; simp
     | false =>
       right
-      exact ⟨hP rfl, kd_ite_key _ _ _ _⟩
+      exact ⟨hP rfl, ptrs_ite_key _ _ _ _⟩
 
 theorem kd_replaceKlong_go {P : Nat → NodeId → Prop} (t : Time) (c : Nat) {y : NodeId}
     (hy : P c y) (rest pre : List Klong) (cur : Option Time) (ks' : List Klong)

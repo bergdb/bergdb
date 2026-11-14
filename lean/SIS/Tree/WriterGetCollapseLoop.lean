@@ -404,12 +404,12 @@ theorem writerWP_takeBackRoot_seg_collF (fuelR : Nat) (hfR : 2 ≤ fuelR) (x : N
               simp only [Bool.false_eq_true, ↓reduceIte] at hlk
               refine Or.inr ⟨?_, Ne.symm hck⟩
               rw [KNode.liveAt_of_times ln c.i hlnt]
-              exact mem_of_lookup_nodup _ c' z hlk
+              exact bk_mem_of_lookup _ c' z hlk
           have hV : wValue base w' = wValue base v :=
             wValue_eq_of_taken base v w' h'v (fun z => z = x) (fun z hz => by rw [h't]; exact hyt z hz)
               (fun z hz => by rw [hz]; exact ⟨hxt, hI.2.2.2.2 x n hxR hwx⟩)
           refine collGetInv_segStepF fuelR hfR c base w0 v w' leaf x child k 0 ln (ln.repoint j child) n hI hlf hwL
-            hk hwx hcl hL' (by rw [mrg_repoint_leaf]; exact hlnl)
+            hk hwx hcl hL' (by rw [bk_repoint_leaf]; exact hlnl)
             (by rw [KNode.repoint_klongsWf]; exact hlnwf) (KNode.repoint_times ln j child c.i hlnt)
             hlinks hoth h'top h'v (fun z hz => by rw [h't]; exact hyt z hz) ?_
           intro key
@@ -417,7 +417,7 @@ theorem writerWP_takeBackRoot_seg_collF (fuelR : Nat) (hfR : 2 ≤ fuelR) (x : N
           rw [hV, h'top]
           exact getFromR_segCollapse (wNode c.p base v) _ (wValue base v) c.i fuelR v.top.rootKey
             leaf x child k ln (ln.repoint j child) n hT hlf hwL hL' hlnl
-            (by rw [mrg_repoint_leaf]; exact hlnl)
+            (by rw [bk_repoint_leaf]; exact hlnl)
             hlnwf (by rw [KNode.repoint_klongsWf]; exact hlnwf) hlnt
             (KNode.repoint_times ln j child c.i hlnt)
             (KNode.repoint_live_lookup ln x child k j hj) hk hwx hxl hlv hnt ⟨m, hm⟩ hoth hwfS hI.2.2.1

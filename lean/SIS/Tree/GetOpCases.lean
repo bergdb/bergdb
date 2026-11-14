@@ -457,7 +457,7 @@ theorem klongsBelow_of_book (c : Ctx) (base : View BVal) (B : NodeId) (top0 : To
   have hBn : B ≤ w.next := hw.fresh.1
   intro x xn h cv y hk
   rcases (wNode_cases _ _ _ _ _ h).2 with hl | ⟨_, hkn⟩
-  · rcases hw.ptrs.klongs (x, xn) (mem_of_lookup_some _ _ _ hl) cv y hk with hz' | hz'
+  · rcases hw.ptrs.klongs (x, xn) (bk_mem_of_lookup _ _ _ hl) cv y hk with hz' | hz'
     · exact Nat.lt_of_lt_of_le hz' hBn
     · obtain ⟨m, hm, he⟩ := List.mem_map.mp hz'
       rw [← he]; exact (hw.alloc.2.2 m hm).2

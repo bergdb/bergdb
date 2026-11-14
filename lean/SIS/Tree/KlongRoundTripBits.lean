@@ -1,4 +1,5 @@
 import SIS.Tree.SearchEqProof
+import SIS.Proof.Util
 
 namespace SIS.Tree
 
@@ -110,19 +111,6 @@ theorem bitmapEntryCvs_ne_nil (ks : List Klong) (hw : klongsWf ks = true)
   have := hn.length_le_of_subset hsub
   omega
 
-theorem nat_eraseDups_nodup (xs : List Nat) : xs.eraseDups.Nodup := by
-  cases xs with
-  | nil => simp
-  | cons a xs =>
-    rw [List.eraseDups_cons]
-    refine List.nodup_cons.mpr ⟨?_,nat_eraseDups_nodup _⟩
-    simp
-termination_by xs.length
-decreasing_by
-  have := List.length_filter_le (fun b : Nat => !(b == a)) xs
-  simp only [List.length_cons]
-  omega
-
 theorem bitsUnion_pairwise (old more : List Nat) :
     (bitsUnion old more).Pairwise (· < ·) := by
   have hs : (bitsUnion old more).Pairwise (· ≤ ·) := by
@@ -132,7 +120,7 @@ theorem bitsUnion_pairwise (old more : List Nat) :
         (by intro a b; simp only [Bool.or_eq_true,decide_eq_true_eq]; omega)
         ((old ++ more).eraseDups)
   have hn : (bitsUnion old more).Nodup := by
-    exact (List.mergeSort_perm _ _).nodup_iff.mpr (nat_eraseDups_nodup _)
+    exact (List.mergeSort_perm _ _).nodup_iff.mpr (nodup_eraseDups _)
   exact (hs.and hn).imp (by intro a b hab; omega)
 
 /-- Decoding the compare values of a valid bitmap reconstructs its exact

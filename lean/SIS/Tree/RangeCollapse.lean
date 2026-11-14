@@ -181,7 +181,7 @@ theorem onlyLiveKlong_liveAt (n : KNode) (t : Time) (i : Nat) (y : NodeId)
   subst hy0 hc0
   have hmem : (0, y0) ∈ n.liveAt t := by
     rw [KNode.liveAt_of_times n t hnt]
-    apply mem_of_lookup_nodup
+    apply bk_mem_of_lookup
     rw [KNode.live_lookup]
     exact keyLookup_of_last _ _ _ i y0 hk hl
   refine ⟨hmem, ?_⟩

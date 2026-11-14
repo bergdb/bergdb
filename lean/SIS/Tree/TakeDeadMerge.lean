@@ -775,10 +775,6 @@ theorem mpNode_leaf (pn : KNode) (tt : Time) (il cL : Nat) (m1 : NodeId) (ir cR 
     | true => simp only [↓reduceIte]; rw [hrep]; exact this
     | false => simp only [Bool.false_eq_true, ↓reduceIte]; rw [hadd]; exact this
 
-theorem mergeParentNode_leaf (pn : KNode) (tt : Time) (il cL : Nat) (m1 : NodeId) (ir cR : Nat)
-    (m2 : Option (NodeId × Nat)) : (mergeParentNode pn tt il cL m1 ir cR m2).leaf = pn.leaf := by
-  rw [mergeParentNode_eq]; exact mpNode_leaf _ _ _ _ _ _ _ _ _ _ _
-
 /-- The merge's parent after is well formed, its last time t at its last time
 klong. -/
 theorem mergeParentNode_last (pn : KNode) (tt : Time) (il cL : Nat) (m1 : NodeId) (ir cR : Nat)

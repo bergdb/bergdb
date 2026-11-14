@@ -125,7 +125,7 @@ theorem liveAt_repoint_new (n : KNode) (x y : NodeId) (k j : Nat) (t : Time)
     (hj : n.linkIndex x k = some j) (ht : ∀ s, Klong.time s ∈ n.ks → s ≤ t) :
     (k, y) ∈ (n.repoint j y).liveAt t := by
   rw [KNode.liveAt_of_times _ t (KNode.repoint_times n j y t ht)]
-  apply mem_of_lookup_nodup
+  apply bk_mem_of_lookup
   rw [KNode.repoint_live_lookup n x y k j hj k]
   simp
 
@@ -134,14 +134,11 @@ theorem liveAt_repoint_keep (n : KNode) (x y : NodeId) (k j : Nat) (t : Time)
     (hz : (c, z) ∈ n.liveAt t) (hck : c ≠ k) : (c, z) ∈ (n.repoint j y).liveAt t := by
   rw [KNode.liveAt_of_times _ t (KNode.repoint_times n j y t ht)]
   rw [KNode.liveAt_of_times n t ht] at hz
-  apply mem_of_lookup_nodup
+  apply bk_mem_of_lookup
   rw [KNode.repoint_live_lookup n x y k j hj c]
   have hb : (k == c) = false := by simpa using Ne.symm hck
   simp only [hb, Bool.false_eq_true, ↓reduceIte]
   exact lookup_of_mem_nodup _ (KNode.live_keys_nodup n) c z hz
-
-theorem repoint_leaf_eq (n : KNode) (i : Nat) (y : NodeId) : (n.repoint i y).leaf = n.leaf := by
-  unfold KNode.repoint; split <;> rfl
 
 /-- A repointed klong keeps the live klongs' count. -/
 theorem repoint_liveAt_length (n : KNode) (x y : NodeId) (k j : Nat) (t : Time)

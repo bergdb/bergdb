@@ -34,7 +34,7 @@ theorem left_getElem?_append {α : Type} (l l' : List α) (i : Nat) (a : α) (h 
   rw [List.getElem?_append_left hi]
   exact h
 
-theorem left_lastBitmapOf_append_nodel (a b : List Klong) (hd : ∀ bits, Klong.del bits ∉ b) :
+theorem lastBitmapOf_append_nodel (a b : List Klong) (hd : ∀ bits, Klong.del bits ∉ b) :
     lastBitmapOf (a ++ b) = lastBitmapOf a := by
   unfold lastBitmapOf
   rw [List.foldl_append]
@@ -82,7 +82,7 @@ theorem Live0.append_nodel {n : KNode} (h : Live0 n) (leaf : Bool) (b : List Klo
   obtain ⟨i, y, hi, hc⟩ := h
   refine ⟨i, y, left_getElem?_append _ _ _ _ hi, ?_⟩
   show (lastBitmapOf (n.ks ++ b)).contains i = false
-  rw [left_lastBitmapOf_append_nodel _ _ hd]
+  rw [lastBitmapOf_append_nodel _ _ hd]
   exact hc
 
 theorem Live0.add_key {n : KNode} (h : Live0 n) (t : Time) (c : Nat) (y : NodeId) :
@@ -106,25 +106,16 @@ theorem Live0.fold_add {n : KNode} (h : Live0 n) (i : Time) (ins : List (Nat × 
   | nil => exact h
   | cons q ins ih => exact ih (h.add_key i q.1 q.2)
 
-theorem left_fold_add_leaf (i : Time) (ins : List (Nat × NodeId)) (n : KNode) :
-    (ins.foldl (fun n (q : Nat × NodeId) => n.add i (.key q.1 q.2)) n).leaf = n.leaf := by
-  induction ins generalizing n with
-  | nil => rfl
-  | cons q ins ih => exact (ih _).trans (KNode.add_leaf _ _ _)
-
-theorem left_add_ne (n : KNode) (t : Time) (k : Klong) : (n.add t k).ks ≠ [] := by
-  rcases n.add_ks t k with he | he <;> rw [he] <;> simp
-
 theorem LeftNode.add_key {n : KNode} (h : LeftNode n) (t : Time) (c : Nat) (y : NodeId) :
     LeftNode (n.add t (.key c y)) := by
   intro hl
   rw [KNode.add_leaf] at hl
-  exact ⟨left_add_ne _ _ _, (h hl).2.add_key t c y⟩
+  exact ⟨nex_add_ne _ _ _, (h hl).2.add_key t c y⟩
 
 theorem LeftNode.fold_add {n : KNode} (h : LeftNode n) (i : Time) (ins : List (Nat × NodeId)) :
     LeftNode (ins.foldl (fun n (q : Nat × NodeId) => n.add i (.key q.1 q.2)) n) := by
   intro hl
-  rw [left_fold_add_leaf] at hl
+  rw [bk_foldl_add_leaf] at hl
   refine ⟨?_, (h hl).2.fold_add i ins⟩
   intro he
   exact (h hl).1 (nex_fold_nil n i ins he)
@@ -133,7 +124,7 @@ theorem LeftNode.fold_add {n : KNode} (h : LeftNode n) (i : Time) (ins : List (N
 theorem left_add_del (n : KNode) (t : Time) (bits : List Nat) (h : Live0Given n.ks bits) :
     LeftNode (n.add t (.del bits)) := by
   intro _
-  refine ⟨left_add_ne _ _ _, ?_⟩
+  refine ⟨nex_add_ne _ _ _, ?_⟩
   obtain ⟨i, y, hi, hc⟩ := h
   refine ⟨i, y, ?_, by rw [KNode.add_delete_lastBitmap]; exact hc⟩
   rcases n.add_ks t (.del bits) with he | he <;> rw [he] <;> exact left_getElem?_append _ _ _ _ hi

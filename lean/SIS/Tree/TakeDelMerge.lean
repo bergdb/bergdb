@@ -129,8 +129,8 @@ theorem writerWP_takeBackRoot_seg_j2F (x : NodeId) (d only : Nat) (n : KNode) (l
               (fun c' z hz => by
                 rw [KNode.liveAt_of_times n c.i hnt] at hz
                 exact ((hlv c' z).mp hz).2)
-              hL' (KNode.repoint_liveAt_new ln x child k j c.i hj hlnt)
-              (fun c' z hz hck => KNode.repoint_liveAt_keep ln x child k j c.i hj hlnt c' z hz hck)
+              hL' (liveAt_repoint_new ln x child k j c.i hj hlnt)
+              (fun c' z hz hck => liveAt_repoint_keep ln x child k j c.i hj hlnt c' z hz hck)
               hoth hJ.1 (fun xn2 h => by rw [hX] at h; cases h)
           · exact deadLiveN_segTake (wNode c.p base v) (wNode c.p base w') c.i v.top.rootKey B _ leaf x
               child ln k j hT hJ.2.1 hlf hwL hlnl hlnt hj hk hBx hxv hL' hX hoth
