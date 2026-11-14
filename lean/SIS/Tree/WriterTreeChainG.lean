@@ -7,7 +7,7 @@ link by link (`LiveEdges`, bergdb 024-12; each step of the tree has its twin of
 `LiveSteps.lean` beside it); `writerWP_appendKlongs_chainG` is its corollary.
 -/
 import SIS.Tree.WriterTreeChainTree
-import SIS.Tree.LiveChain
+import SIS.Tree.LiveStepsX
 
 set_option autoImplicit false
 
@@ -113,10 +113,11 @@ theorem chain_anc_reach (N : NodeId → Option KNode) (t : Time) (r : NodeId) (X
   omega
 
 set_option maxHeartbeats 3200000 in
-/-- `writerWP_appendKlongs_chainG` with `LiveEdges`: its walk and its post, and
-`LiveEdges` after when the tree with the klongs put into X (s + e) meets it,
-with the merges' thresholds. -/
-theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
+/-- `writerWP_appendKlongs_chainG` with `LiveEdgesX ... E`: its walk and its post,
+and `LiveEdgesX` after when the tree with the klongs put into X (s + e) meets
+it, with the merges' thresholds, for a set E of nodes off the chain (a new
+segment leaf still empty, case (3c)). -/
+theorem writerWP_appendKlongs_chainGLX (c : Ctx) (base : View BVal)
     (path0 : List (Option Nat × NodeId)) (s D : Nat) (X : Nat → NodeId) (K : Nat → Nat)
     (Nn : Nat → KNode)
     (hX : ∀ i, s ≤ i → i ≤ D → (path0[i]?).map (·.2) = some (X i))
@@ -131,7 +132,8 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
     (hwf : ∀ i, s ≤ i → i ≤ D → klongsWf (Nn i).ks = true)
     (htimes : ∀ i, s ≤ i → i ≤ D → ∀ t, Klong.time t ∈ (Nn i).ks → t ≤ c.i)
     (htop : ChainRoom c (Nn s) ∨ s = 0)
-    (hdist : ∀ i i', s ≤ i → i ≤ D → s ≤ i' → i' ≤ D → X i = X i' → i = i') :
+    (hdist : ∀ i i', s ≤ i → i ≤ D → s ≤ i' → i' ≤ D → X i = X i' → i = i')
+    (E : NodeId → Prop) (hEX : ∀ i, s ≤ i → i ≤ D → ¬ E (X i)) :
     ∀ e, s + e ≤ D → ∀ (w : W) (ins : List (Nat × NodeId)),
       InsOK (Nn (s + e)) ins → (∀ q ∈ ins, q.2 < w.next) →
       w.path = path0 →
@@ -142,6 +144,7 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
         knodeOf c.p base z = none) →
       (∀ u c' z, TLink (wNode c.p base w) c.i u c' z → z < w.next) →
       (s = 0 → w.top.rootKey = X 0) →
+      (∀ z, E z → z < w.next) →
       TreeOK (updN (wNode c.p base w) (X (s + e))
         (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + e)))) c.i w.top.rootKey →
       WriterWP (appendKlongs (s + e) (X (s + e)) ins) c w (fun _ w' =>
@@ -153,9 +156,9 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
           TReach (updN (wNode c.p base w) (X (s + e))
             (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + e)))) c.i
             w.top.rootKey z ∨ w.next ≤ z) ∧
-            (MergeParamsOK c.p → LiveEdges c.p (updN (wNode c.p base w) (X (s + e))
-              (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + e)))) c.i w.top.rootKey →
-              LiveEdges c.p (wNode c.p base w') c.i w'.top.rootKey)) := by
+            (MergeParamsOK c.p → LiveEdgesX c.p (updN (wNode c.p base w) (X (s + e))
+              (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + e)))) c.i w.top.rootKey E →
+              LiveEdgesX c.p (wNode c.p base w') c.i w'.top.rootKey E)) := by
   -- the room case at any level
   have hroomCase : ∀ e, s + e ≤ D → ∀ (w : W) (ins : List (Nat × NodeId)),
       w.nodes.lookup (X (s + e)) = some (Nn (s + e)) → w.taken.contains (X (s + e)) = false →
@@ -172,9 +175,9 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
           TReach (updN (wNode c.p base w) (X (s + e))
             (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + e)))) c.i
             w.top.rootKey z ∨ w.next ≤ z) ∧
-            (MergeParamsOK c.p → LiveEdges c.p (updN (wNode c.p base w) (X (s + e))
-              (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + e)))) c.i w.top.rootKey →
-              LiveEdges c.p (wNode c.p base w') c.i w'.top.rootKey)) := by
+            (MergeParamsOK c.p → LiveEdgesX c.p (updN (wNode c.p base w) (X (s + e))
+              (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + e)))) c.i w.top.rootKey E →
+              LiveEdgesX c.p (wNode c.p base w') c.i w'.top.rootKey E)) := by
     intro e _ w ins hlk htk hroom hdead hV
     refine writerWP_mono (writerWP_appendKlongs_addKeys (s + e) (X (s + e)) (Nn (s + e)) ins c w hlk
       hroom hdead) ?_
@@ -194,7 +197,7 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
   intro e
   induction e with
   | zero =>
-    intro hD w ins hins hinsT hS1 hS2 hS3 hS4 hS5 hS6 hR0 hV
+    intro hD w ins hins hinsT hS1 hS2 hS3 hS4 hS5 hS6 hR0 hElt hV
     obtain ⟨hlk, htk⟩ := hS2 s (Nat.le_refl _) (by omega)
     by_cases hroom : (Nn (s + 0)).size + ins.length + 1 ≤ c.p.M ∧
         deadOver c.p (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + 0))) = false
@@ -282,9 +285,9 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
               TReach (updN (wNode c.p base w) (X 0)
                 (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn 0))) c.i
                 w.top.rootKey z ∨ w.next ≤ z) ∧
-                (MergeParamsOK c.p → LiveEdges c.p (updN (wNode c.p base w) (X 0)
-                  (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn 0))) c.i w.top.rootKey →
-                  LiveEdges c.p (wNode c.p base w') c.i w'.top.rootKey)) := by
+                (MergeParamsOK c.p → LiveEdgesX c.p (updN (wNode c.p base w) (X 0)
+                  (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn 0))) c.i w.top.rootKey E →
+                  LiveEdgesX c.p (wNode c.p base w') c.i w'.top.rootKey E)) := by
         intro up compact hcs
         by_cases hmade : (Nn 0).firstTime = some c.i
         · -- the root time split in place
@@ -304,7 +307,7 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
             exact Or.inl (hR' z hz)
           · intro _ hL
             rw [hN', h'top]
-            exact liveEdges_updN_sub c.p (wNode c.p base w) c.i w.top.rootKey (X 0) _ _
+            exact liveEdgesX_updN_sub c.p E (wNode c.p base w) c.i w.top.rootKey (X 0) _ _
               (hlsubOf l hl_times hl_look) (addKeys_leaf c.i ins (Nn 0)).symm
               (timeSplit_liveAt_length c.i ins (Nn 0) l (Nn 0).leaf hxwf hxtimes hl_times hl_look) hL
         · -- the root time split: a new root
@@ -326,7 +329,7 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
               exact (updN_ne _ _ _ _ h1).symm)
             (hVnone w.next (Nat.le_refl _))
             (hVfresh w.next (Nat.le_refl _))
-          have hLs := liveEdges_rootTimeStep c.p (updN (wNode c.p base w) (X 0)
+          have hLs := liveEdgesX_rootTimeStep c.p E (updN (wNode c.p base w) (X 0)
               (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn 0))) (wNode c.p base w') c.i
             (X 0) w.next (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn 0))
             ⟨(Nn 0).leaf, l.ks⟩ hV0 (updN_self _ _ _)
@@ -367,9 +370,9 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
               TReach (updN (wNode c.p base w) (X 0)
                 (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn 0))) c.i
                 w.top.rootKey z ∨ w.next ≤ z) ∧
-                (MergeParamsOK c.p → LiveEdges c.p (updN (wNode c.p base w) (X 0)
-                  (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn 0))) c.i w.top.rootKey →
-                  LiveEdges c.p (wNode c.p base w') c.i w'.top.rootKey)) := by
+                (MergeParamsOK c.p → LiveEdgesX c.p (updN (wNode c.p base w) (X 0)
+                  (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn 0))) c.i w.top.rootKey E →
+                  LiveEdgesX c.p (wNode c.p base w') c.i w'.top.rootKey E)) := by
         intro up hsp
         have h2l := hlen 0 (Nat.le_refl _) (by omega) hNR hsp
         obtain ⟨r, hdiv, hsc, _, hf, hs⟩ := chain_halves_facts c.i (Nn 0) ins hins h2l hxtimes hxwf
@@ -429,7 +432,7 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
               have hzn : w.next ≤ z := by rcases hz with hz | hz <;> omega
               exact ⟨hVnone z hzn, hVfresh z hzn⟩)
             (by omega)
-          have hLs := liveEdges_rootSpaceInPlaceStep c.p (updN (wNode c.p base w) (X 0)
+          have hLs := liveEdgesX_rootSpaceInPlaceStep c.p E (updN (wNode c.p base w) (X 0)
               (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn 0))) (wNode c.p base w') c.i
             (X 0) w.next (w.next + 2) (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn 0))
             out.1 out.2.1 ⟨false, [.time c.i, .key 0 (X 0), .key r.1 w.next]⟩ r.1
@@ -469,7 +472,7 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
             obtain ⟨hH1, hH2⟩ := halves_halfOK c.p hp (Nn 0) c.i ins hsp
             obtain ⟨hl1, hl2⟩ := halves_leaf_flags (Nn 0).leaf c.i ((Nn 0).lastVersion c.i) ins
             rw [hout] at hH1 hH2 hl1 hl2
-            exact hLs (hl1.trans (addKeys_leaf c.i ins (Nn 0)).symm)
+            exact hLs (hEX 0 (Nat.le_refl _) (by omega)) (fun h => by have := hElt _ h; omega) (hl1.trans (addKeys_leaf c.i ins (Nn 0)).symm)
               (hl2.trans (addKeys_leaf c.i ins (Nn 0)).symm) hH1 hH2
               (newRoot_liveAt_two c.i (X 0) w.next r.1 hsc) hL
         · -- the root space split: the halves and a new root
@@ -537,7 +540,7 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
               have hzn : w.next ≤ z := by rcases hz with hz | hz | hz <;> omega
               exact ⟨hVnone z hzn, hVfresh z hzn⟩)
             (by omega) (by omega) (by omega)
-          have hLs := liveEdges_rootSpaceStep c.p (updN (wNode c.p base w) (X 0)
+          have hLs := liveEdgesX_rootSpaceStep c.p E (updN (wNode c.p base w) (X 0)
               (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn 0))) (wNode c.p base w') c.i
             (X 0) w.next (w.next + 2) (w.next + 2 + 2)
             (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn 0))
@@ -580,7 +583,7 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
             obtain ⟨hH1, hH2⟩ := halves_halfOK c.p hp (Nn 0) c.i ins hsp
             obtain ⟨hl1, hl2⟩ := halves_leaf_flags (Nn 0).leaf c.i ((Nn 0).lastVersion c.i) ins
             rw [hout] at hH1 hH2 hl1 hl2
-            exact hLs (hl1.trans (addKeys_leaf c.i ins (Nn 0)).symm)
+            exact hLs (fun h => by have := hElt _ h; omega) (fun h => by have := hElt _ h; omega) (hl1.trans (addKeys_leaf c.i ins (Nn 0)).symm)
               (hl2.trans (addKeys_leaf c.i ins (Nn 0)).symm) hH1 hH2
               (newRoot_liveAt_two c.i w.next (w.next + 2) r.1 hsc) hL
       rw [appendKlongs_step_dead]
@@ -606,7 +609,7 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
         intro _ w' h
         simpa using h
   | succ e ih =>
-    intro hD w ins hins hinsT hS1 hS2 hS3 hS4 hS5 hS6 hR0 hV
+    intro hD w ins hins hinsT hS1 hS2 hS3 hS4 hS5 hS6 hR0 hElt hV
     have hj : s < s + (e + 1) := by omega
     obtain ⟨hlk, htk⟩ := hS2 (s + (e + 1)) (by omega) (Nat.le_refl _)
     obtain ⟨hlq, htq⟩ := hS2 (s + e) (by omega) (by omega)
@@ -701,9 +704,9 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
             (TReach (updN (wNode c.p base w) (X (s + (e + 1)))
               (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) c.i
               w.top.rootKey z ∨ New z) ∧ z ≠ X (s + (e + 1))) →
-          (MergeParamsOK c.p → LiveEdges c.p (updN (wNode c.p base w) (X (s + (e + 1))) (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) c.i w.top.rootKey →
-            LiveEdges c.p (updN N1 (X (s + e)) (ins'.foldl (fun n (cv, y) => n.add c.i (.key cv y))
-              (Nn (s + e)))) c.i w.top.rootKey) →
+          (MergeParamsOK c.p → LiveEdgesX c.p (updN (wNode c.p base w) (X (s + (e + 1))) (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) c.i w.top.rootKey E →
+            LiveEdgesX c.p (updN N1 (X (s + e)) (ins'.foldl (fun n (cv, y) => n.add c.i (.key cv y))
+              (Nn (s + e)))) c.i w.top.rootKey E) →
           WriterWP (appendKlongs (s + e) (X (s + e)) ins') c w1 (fun _ w2 =>
             WriterWP (do let m ← getNode (X (s + (e + 1))); putNode (X (s + (e + 1))) (m.toPrev (c.i - 1)))
               c w2 (fun _ w3 =>
@@ -715,9 +718,9 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
                 TReach (updN (wNode c.p base w) (X (s + (e + 1)))
                   (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) c.i
                   w.top.rootKey z ∨ w.next ≤ z) ∧
-                  (MergeParamsOK c.p → LiveEdges c.p (updN (wNode c.p base w) (X (s + (e + 1)))
-                    (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) c.i w.top.rootKey →
-                    LiveEdges c.p (wNode c.p base w3) c.i w3.top.rootKey))) := by
+                  (MergeParamsOK c.p → LiveEdgesX c.p (updN (wNode c.p base w) (X (s + (e + 1)))
+                    (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) c.i w.top.rootKey E →
+                    LiveEdgesX c.p (wNode c.p base w3) c.i w3.top.rootKey E))) := by
         intro w1 ins' N1 New hins' hinsT' h1path h1t h1top h1next h1vals hNew h1low hN1 hT1 hR1 hS5' hS6' hV1 hRV1 hLV1
         have hpar := ih (by omega) w1 ins' hins' hinsT' (by rw [h1path, hS1])
           (by
@@ -728,6 +731,7 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
           (by rw [hN1, h1top]; exact hT1)
           (by intro i h1 h2; rw [hN1, h1top]; exact hR1 i h1 h2)
           hS5' (by rw [hN1]; exact hS6') (fun h0 => by rw [h1top]; exact hR0 h0)
+          (fun z hz => by have := hElt z hz; omega)
           (by rw [hN1, h1top]; exact hV1)
         refine writerWP_mono hpar ?_
         rintro _ w2 ⟨hT2, ⟨h2top, h2t, h2path, h2next, h2vals⟩, h2frame, h2reach, h2live⟩
@@ -774,7 +778,7 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
         · intro hp hL
           have h2 := h2live hp (by rw [hN1, h1top]; exact hLV1 hp hL)
           rw [hN3]
-          exact liveEdges_of_agree c.p _ _ c.i _
+          exact liveEdgesX_of_agree c.p E _ _ c.i _
             (fun z hz => updN_ne _ _ _ _ (fun he => hxR2 (he ▸ hz))) h2
       have hanc : ∀ m : KNode, ∀ i, s ≤ i → i ≤ s + e →
           TReach (updN (wNode c.p base w) (X (s + (e + 1))) m) c.i w.top.rootKey (X i) :=
@@ -797,9 +801,9 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
               TReach (updN (wNode c.p base w) (X (s + (e + 1)))
                 (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) c.i
                 w.top.rootKey z ∨ w.next ≤ z) ∧
-                (MergeParamsOK c.p → LiveEdges c.p (updN (wNode c.p base w) (X (s + (e + 1)))
-                  (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) c.i w.top.rootKey →
-                  LiveEdges c.p (wNode c.p base w') c.i w'.top.rootKey)) := by
+                (MergeParamsOK c.p → LiveEdgesX c.p (updN (wNode c.p base w) (X (s + (e + 1)))
+                  (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) c.i w.top.rootKey E →
+                  LiveEdgesX c.p (wNode c.p base w') c.i w'.top.rootKey E)) := by
         intro hfirst compact hcs
         apply writerWP_handleFullWith_time_up' (s + e) (X (s + (e + 1))) (X (s + e)) (Nn (s + (e + 1)))
           (Nn (s + e)) (K (s + (e + 1))) ins compact c w hlk hlq hfirst hcs hpq hpk
@@ -839,7 +843,7 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
               have := hXlt (s + (e + 1)) (by omega) (Nat.le_refl _); omega)]
             exact hwnext)
           (hVfresh w.next (Nat.le_refl _))
-        have hL1V := liveEdges_timeSplit_gen c.p (updN (wNode c.p base w) (X (s + (e + 1)))
+        have hL1V := liveEdgesX_timeSplit_gen c.p E (updN (wNode c.p base w) (X (s + (e + 1)))
             (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1)))))
           (updN (wNode c.p base w1) (X (s + e)) ([(K (s + (e + 1)), w.next)].foldl
             (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + e)))) c.i w.top.rootKey (X (s + e))
@@ -904,7 +908,7 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
           (by rw [← hN1]; exact hR1V)
           (fun _ hL => by
             rw [← hN1]
-            exact hL1V (addKeys_leaf c.i ins (Nn (s + (e + 1)))).symm
+            exact hL1V (hEX (s + (e + 1)) (by omega) hD) (fun h => by have := hElt _ h; omega) (addKeys_leaf c.i ins (Nn (s + (e + 1)))).symm
               (timeSplit_liveAt_length c.i ins (Nn (s + (e + 1))) l (Nn (s + (e + 1))).leaf hxwf hxtimes
                 hl_times hl_look)
               (addKeys_leaf c.i _ _) (addKeys_liveAt_length c.i _ _ hqwf hqtimes) hL)
@@ -921,9 +925,9 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
               TReach (updN (wNode c.p base w) (X (s + (e + 1)))
                 (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) c.i
                 w.top.rootKey z ∨ w.next ≤ z) ∧
-                (MergeParamsOK c.p → LiveEdges c.p (updN (wNode c.p base w) (X (s + (e + 1)))
-                  (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) c.i w.top.rootKey →
-                  LiveEdges c.p (wNode c.p base w') c.i w'.top.rootKey)) := by
+                (MergeParamsOK c.p → LiveEdgesX c.p (updN (wNode c.p base w) (X (s + (e + 1)))
+                  (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) c.i w.top.rootKey E →
+                  LiveEdgesX c.p (wNode c.p base w') c.i w'.top.rootKey E)) := by
         intro hfirst hql hsp
         have h2l := hlen (s + (e + 1)) (by omega) hD hNR hsp
         obtain ⟨r, hr⟩ := divider_exists (Nn (s + (e + 1))) (by omega)
@@ -999,7 +1003,7 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
             rcases hz with hz | hz <;> rw [hz]
             · exact hVfresh w.next (Nat.le_refl _)
             · exact hVfresh (w.next + 2) (by omega))
-        have hL1V := liveEdges_spaceSplit_gen c.p (updN (wNode c.p base w) (X (s + (e + 1)))
+        have hL1V := liveEdgesX_spaceSplit_gen c.p E (updN (wNode c.p base w) (X (s + (e + 1)))
             (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1)))))
           (updN (wNode c.p base w1) (X (s + e)) ([(K (s + (e + 1)), w.next), (r.1, w.next + 2)].foldl
             (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + e)))) c.i w.top.rootKey (X (s + e))
@@ -1092,7 +1096,8 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
             obtain ⟨hl1, hl2⟩ := halves_leaf_flags (Nn (s + (e + 1))).leaf c.i
               ((Nn (s + (e + 1))).lastVersion c.i) ins
             rw [hout] at hH1 hH2 hl1 hl2
-            exact hL1V (hl1.trans (addKeys_leaf c.i ins _).symm) (hl2.trans (addKeys_leaf c.i ins _).symm)
+            exact hL1V (fun h => by have := hElt _ h; omega) (fun h => by have := hElt _ h; omega) (hl1.trans (addKeys_leaf c.i ins _).symm)
+              (hl2.trans (addKeys_leaf c.i ins _).symm)
               hH1 hH2 (addKeys_leaf c.i _ _) (addKeys_liveAt_length c.i _ _ hqwf hqtimes) hL)
       -- the time split, made by the transaction or not
       have hTIME : ∀ compact : Bool,
@@ -1108,9 +1113,9 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
               TReach (updN (wNode c.p base w) (X (s + (e + 1)))
                 (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) c.i
                 w.top.rootKey z ∨ w.next ≤ z) ∧
-                (MergeParamsOK c.p → LiveEdges c.p (updN (wNode c.p base w) (X (s + (e + 1)))
-                  (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) c.i w.top.rootKey →
-                  LiveEdges c.p (wNode c.p base w') c.i w'.top.rootKey)) := by
+                (MergeParamsOK c.p → LiveEdgesX c.p (updN (wNode c.p base w) (X (s + (e + 1)))
+                  (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) c.i w.top.rootKey E →
+                  LiveEdgesX c.p (wNode c.p base w') c.i w'.top.rootKey E)) := by
         intro compact hcs
         by_cases hmade : (Nn (s + (e + 1))).firstTime = some c.i
         · -- a time split in place: the node holds what the tree with the klongs put has
@@ -1139,7 +1144,7 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
             exact Or.inl (hR' z hz)
           · intro _ hL
             rw [hN', h'top]
-            exact liveEdges_updN_sub c.p (wNode c.p base w) c.i w.top.rootKey (X (s + (e + 1))) _ _ hlsub
+            exact liveEdgesX_updN_sub c.p E (wNode c.p base w) c.i w.top.rootKey (X (s + (e + 1))) _ _ hlsub
               (addKeys_leaf c.i ins (Nn (s + (e + 1)))).symm
               (timeSplit_liveAt_length c.i ins (Nn (s + (e + 1))) l (Nn (s + (e + 1))).leaf hxwf hxtimes
                 hl_times hl_look) hL
@@ -1157,9 +1162,9 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
               TReach (updN (wNode c.p base w) (X (s + (e + 1)))
                 (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) c.i
                 w.top.rootKey z ∨ w.next ≤ z) ∧
-                (MergeParamsOK c.p → LiveEdges c.p (updN (wNode c.p base w) (X (s + (e + 1)))
-                  (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) c.i w.top.rootKey →
-                  LiveEdges c.p (wNode c.p base w') c.i w'.top.rootKey)) := by
+                (MergeParamsOK c.p → LiveEdgesX c.p (updN (wNode c.p base w) (X (s + (e + 1)))
+                  (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1))))) c.i w.top.rootKey E →
+                  LiveEdgesX c.p (wNode c.p base w') c.i w'.top.rootKey E)) := by
         intro hsp
         by_cases hmade : (Nn (s + (e + 1))).firstTime = some c.i
         · by_cases hqlf : (Nn (s + e)).leaf = true
@@ -1248,7 +1253,7 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
                 obtain ⟨a, b, d⟩ := hS5 z hzn
                 simp only [wNode, b, Bool.false_eq_true, ↓reduceIte, a, d])
               (by omega)
-            have hL2 := liveEdges_segSpaceInPlaceStep c.p
+            have hL2 := liveEdgesX_segSpaceInPlaceStep c.p E
               (updN (wNode c.p base w) (X (s + (e + 1)))
                 (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1)))))
               (wNode c.p base w') c.i w.top.rootKey (X (s + e)) (X (s + (e + 1))) w.next (w.next + 2)
@@ -1297,7 +1302,8 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
               obtain ⟨hl1, hl2⟩ := halves_leaf_flags (Nn (s + (e + 1))).leaf c.i
                 ((Nn (s + (e + 1))).lastVersion c.i) ins
               rw [hout] at hH1 hH2 hl1 hl2
-              exact hL2 (hl1.trans (addKeys_leaf c.i ins _).symm) (hl2.trans (addKeys_leaf c.i ins _).symm)
+              exact hL2 (hEX (s + (e + 1)) (by omega) hD) (fun h => by have := hElt _ h; omega) (fun h => by have := hElt _ h; omega)
+                (hl1.trans (addKeys_leaf c.i ins _).symm) (hl2.trans (addKeys_leaf c.i ins _).symm)
                 hH1 hH2 (newRoot_liveAt_two c.i (X (s + (e + 1))) w.next r.1 hsc)
                 ((repoint_leaf_eq _ _ _).trans hqlf) (repoint_leaf_eq _ _ _)
                 (repoint_liveAt_length (Nn (s + e)) (X (s + (e + 1))) (w.next + 2) (K (s + (e + 1))) j0
@@ -1361,7 +1367,7 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
                 exact (updN_ne _ _ _ _ hz1).symm)
               (by rw [updN_ne _ _ _ _ (fun h => by omega)]; exact hwnext)
               (hVfresh w.next (Nat.le_refl _))
-            have hL2 := liveEdges_spaceInPlaceStep c.p
+            have hL2 := liveEdgesX_spaceInPlaceStep c.p E
               (updN (wNode c.p base w) (X (s + (e + 1)))
                 (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1)))))
               (updN (wNode c.p base w1) (X (s + e)) ([(r.1, w.next)].foldl
@@ -1440,6 +1446,7 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
                   · rw [updN_ne _ _ _ _ hu1] at hm
                     have := hS6 u c' z ⟨m, hm, hc⟩; omega)
               (fun h0 => by rw [h1top]; exact hR0 h0)
+              (fun z hz => by have := hElt z hz; omega)
               (by rw [h1top]; exact hT2)
             refine writerWP_mono hpar ?_
             rintro _ w2 ⟨hT2', ⟨h2top, h2t, h2path, h2next, h2vals⟩, h2frame, h2reach, h2live⟩
@@ -1467,7 +1474,8 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
               obtain ⟨hl1, hl2⟩ := halves_leaf_flags (Nn (s + (e + 1))).leaf c.i
                 ((Nn (s + (e + 1))).lastVersion c.i) ins
               rw [hout] at hH1 hH2 hl1 hl2
-              exact hL2 (hl1.trans (addKeys_leaf c.i ins _).symm) (hl2.trans (addKeys_leaf c.i ins _).symm)
+              exact hL2 (hEX (s + (e + 1)) (by omega) hD) (fun h => by have := hElt _ h; omega)
+                (hl1.trans (addKeys_leaf c.i ins _).symm) (hl2.trans (addKeys_leaf c.i ins _).symm)
                 hH1 hH2 (addKeys_leaf c.i _ _) (addKeys_liveAt_length c.i _ _ hqwf hqtimes) hL
         · by_cases hqlf : (Nn (s + e)).leaf = true
           · -- a space split below a leaf, the node not made: a new inner node above the halves
@@ -1554,7 +1562,7 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
                 obtain ⟨a, b, d⟩ := hS5 z hzn
                 simp only [wNode, b, Bool.false_eq_true, ↓reduceIte, a, d])
               (by omega) (by omega) (by omega)
-            have hL2 := liveEdges_segSpaceStep c.p
+            have hL2 := liveEdgesX_segSpaceStep c.p E
               (updN (wNode c.p base w) (X (s + (e + 1)))
                 (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + (e + 1)))))
               (updN (wNode c.p base w1) (X (s + e)) ([(K (s + (e + 1)), w.next + 2 + 2)].foldl
@@ -1650,7 +1658,8 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
                 obtain ⟨hl1, hl2⟩ := halves_leaf_flags (Nn (s + (e + 1))).leaf c.i
                   ((Nn (s + (e + 1))).lastVersion c.i) ins
                 rw [hout] at hH1 hH2 hl1 hl2
-                exact hL2 (hl1.trans (addKeys_leaf c.i ins _).symm) (hl2.trans (addKeys_leaf c.i ins _).symm)
+                exact hL2 (fun h => by have := hElt _ h; omega) (fun h => by have := hElt _ h; omega) (fun h => by have := hElt _ h; omega)
+                  (hl1.trans (addKeys_leaf c.i ins _).symm) (hl2.trans (addKeys_leaf c.i ins _).symm)
                   hH1 hH2 (newRoot_liveAt_two c.i w.next (w.next + 2) r.1 hsc)
                   ((addKeys_leaf c.i _ _).trans hqlf) (addKeys_leaf c.i _ _)
                   (addKeys_liveAt_length c.i _ _ hqwf hqtimes) hL)
@@ -1673,6 +1682,57 @@ theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
           | false => exact absurd ⟨by omega, h⟩ hroom
         simp only [hsz, hd, ↓reduceIte]
         exact hTIME true (by simp)
+
+/-- `writerWP_appendKlongs_chainG` with `LiveEdges`: its walk and its post, and
+`LiveEdges` after when the tree with the klongs put into X (s + e) meets it,
+with the merges' thresholds. -/
+theorem writerWP_appendKlongs_chainGL (c : Ctx) (base : View BVal)
+    (path0 : List (Option Nat × NodeId)) (s D : Nat) (X : Nat → NodeId) (K : Nat → Nat)
+    (Nn : Nat → KNode)
+    (hX : ∀ i, s ≤ i → i ≤ D → (path0[i]?).map (·.2) = some (X i))
+    (hK : ∀ i, s < i → i ≤ D → path0[i]? = some (some (K i), X i))
+    (hlinkK : ∀ i, s < i → i ≤ D → (K i, X i) ∈ (Nn (i - 1)).liveAt c.i)
+    (hrange : ∀ i, s < i → i ≤ D → ¬ ChainRoom c (Nn i) → (Nn (i - 1)).leaf = false →
+      ∀ c' z, (c', z) ∈ (Nn i).live → 0 < c' →
+      K i ≤ c' ∧ ∀ c'' z', (c'', z') ∈ (Nn (i - 1)).live → K i < c'' → c' < c'')
+    (hlen : ∀ i, s ≤ i → i ≤ D → ¬ ChainRoom c (Nn i) →
+      c.p.splitAbove < ((Nn i).lastVersion c.i).size →
+      2 ≤ (Nn i).live.length)
+    (hwf : ∀ i, s ≤ i → i ≤ D → klongsWf (Nn i).ks = true)
+    (htimes : ∀ i, s ≤ i → i ≤ D → ∀ t, Klong.time t ∈ (Nn i).ks → t ≤ c.i)
+    (htop : ChainRoom c (Nn s) ∨ s = 0)
+    (hdist : ∀ i i', s ≤ i → i ≤ D → s ≤ i' → i' ≤ D → X i = X i' → i = i') :
+    ∀ e, s + e ≤ D → ∀ (w : W) (ins : List (Nat × NodeId)),
+      InsOK (Nn (s + e)) ins → (∀ q ∈ ins, q.2 < w.next) →
+      w.path = path0 →
+      (∀ i, s ≤ i → i ≤ s + e → w.nodes.lookup (X i) = some (Nn i) ∧ w.taken.contains (X i) = false) →
+      TreeOK (wNode c.p base w) c.i w.top.rootKey →
+      (∀ i, s ≤ i → i ≤ s + e → TReach (wNode c.p base w) c.i w.top.rootKey (X i)) →
+      (∀ z, w.next ≤ z → w.nodes.lookup z = none ∧ w.taken.contains z = false ∧
+        knodeOf c.p base z = none) →
+      (∀ u c' z, TLink (wNode c.p base w) c.i u c' z → z < w.next) →
+      (s = 0 → w.top.rootKey = X 0) →
+      TreeOK (updN (wNode c.p base w) (X (s + e))
+        (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + e)))) c.i w.top.rootKey →
+      WriterWP (appendKlongs (s + e) (X (s + e)) ins) c w (fun _ w' =>
+        TreeOK (wNode c.p base w') c.i w'.top.rootKey ∧
+        ((w'.top = w.top ∨ (s = 0 ∧ w.next ≤ w'.top.rootKey)) ∧ w'.taken = w.taken ∧ w'.path = w.path ∧ w.next ≤ w'.next ∧ w'.vals = w.vals) ∧
+        (∀ z, z < w.next → (∀ i, s ≤ i → i ≤ s + e → z ≠ X i) →
+          w'.nodes.lookup z = w.nodes.lookup z) ∧
+        (∀ z, TReach (wNode c.p base w') c.i w'.top.rootKey z →
+          TReach (updN (wNode c.p base w) (X (s + e))
+            (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + e)))) c.i
+            w.top.rootKey z ∨ w.next ≤ z) ∧
+            (MergeParamsOK c.p → LiveEdges c.p (updN (wNode c.p base w) (X (s + e))
+              (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) (Nn (s + e)))) c.i w.top.rootKey →
+              LiveEdges c.p (wNode c.p base w') c.i w'.top.rootKey)) := by
+  intro e hD w ins h1 h2 h3 h4 h5 h6 h7 h8 h9 h10
+  refine writerWP_mono (writerWP_appendKlongs_chainGLX c base path0 s D X K Nn hX hK hlinkK hrange hlen
+    hwf htimes htop hdist (fun _ => False) (fun _ _ _ h => h) e hD w ins h1 h2 h3 h4 h5 h6 h7 h8 h9
+    (fun _ h => h.elim) h10) ?_
+  intro _ _ h
+  refine ⟨h.1, h.2.1, h.2.2.1, h.2.2.2.1, fun hp hL => ?_⟩
+  exact (liveEdgesX_false_iff _ _ _ _).mp (h.2.2.2.2 hp ((liveEdgesX_false_iff _ _ _ _).mpr hL))
 
 /-- A cascade of splits of any kind and depth keeps the writer's tree (bergdb
 024-22, `OpTreeOK`): the access path's nodes X s to X D, each below the one

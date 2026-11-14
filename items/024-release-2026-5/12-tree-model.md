@@ -1652,6 +1652,14 @@ and its status:
         runs with the new segment leaf still empty, so `LiveEdges` of its
         virtual tree does not hold. It needs `LiveEdges` with that one
         pending node excepted.
+    - The walk with exceptions (latest, 01:20): `LiveEdgesX ... E` asks
+      `ChildOK` only of links to nodes outside E, and a node in E may be
+      named by segment leaves only (`LiveStepsX.lean`, with every step of
+      `LiveSteps.lean` for it). The walk is now
+      `writerWP_appendKlongs_chainGLX`, for a set E of old nodes off the
+      access path; `writerWP_appendKlongs_chainGL` is its corollary with E
+      empty (`liveEdgesX_false_iff`), and `writerWP_appendKlongs_chainG`
+      stays the corollary of that, so the walk still exists once.
       - `QLive` of (4), the delete with the merges.
     - `LiveCounts` was checked on runs within reach with the merges on
       (`12-tree-model/live-counts-check.lean.txt`). The parameters were
