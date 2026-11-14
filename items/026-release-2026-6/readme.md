@@ -160,6 +160,12 @@ Files
   changes to reclaim (026-05, 026-09) cost or save in time; run from
   2026-11-14, 15:00, to Sunday morning.
 
+* 16-simpler-for-proofs.md. 026-16, a study: what could change in
+  BergDB's algorithms to make the remaining Lean premises simpler to
+  prove, without a significant loss of function or speed (P11, P13);
+  only the premises still open, not what is proved (Frans, 2026-11-14,
+  12:53).
+
 Log
 ===
 
