@@ -2032,6 +2032,23 @@ and its status:
         root, whose height is below the fuel by part 1. It needs the reach
         of each take-back site from that root through the operation's
         own writes.
+    Step 4, the named premises at the night's end (cost, 02:15), each
+    with its run test outside the repository
+    (`/Users/f/fl/bench/2026-11-13/cost/fit/`):
+    - `OpDelChkOK` (`HeightsChkRun.lean`): a delete runs as its copy with
+      a check at every take-back. It gives TP7's (b), `HeightLiveOK` after
+      every run (`treeRun_heightLiveOK_chk`). `DelChk.lean`: 6828 deletes,
+      0 failures.
+    - `TakeBelowFuelDelOK` (`HeightsFit.lean`): a delete takes back no node
+      of height fuel or more that it found at its start. With
+      `OpDelChkOK` it gives TP10's `TxSegFitsOK`
+      (`txSegFitsOK_of_takeBelowDelR`; `TakeBelowFuelOK` and
+      `txSegFitsOK_of_takeBelowR` are the same for every operation).
+      `HeightsOp.lean`: 3205 operations that took nodes back, 0 failures.
+    - `OpDelHtStepOK` (`HeightsOpStep.lean`): a delete adds at most one to
+      every cached height (`opHtStep_of`, every operation). For the bounds
+      inside an operation, not used yet. `HeightsOp.lean`: 7746 deletes,
+      0 failures.
   - (5) `DelNoLeafCase`, a delete of a key with no leaf: proved,
     `opGetCaseOK_delNoLeaf`. It changes no reading: the writer's walk
     stops at the first segment that is not there and only reads
