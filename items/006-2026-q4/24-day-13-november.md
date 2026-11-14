@@ -136,3 +136,65 @@ For Frans to decide
 * 14:02 Prover t45: `bounded_startup` proved (007): one theorem that bounds a cold start's reads after any run that meets its explicit premises, joining T3 (count form), T4 and the read bound.
 5. 028-12: Java's take byte limit never held the take back past the deadline in 18 runs (debt at most about half the room); proposal A: DbBuilder refuses a startup distance above 10^9, as `setStartupDistance` does (recommended), B take a due transaction that does not fit (needs a record split), C no change with the premise written down. Read: 028-12.
 * 14:25 Frans: "Opus xhigh as now. And use Fable High if really needed. Those two are great at reasonable cost."
+* 16:09 Frans: the provers go on through the night until the week's usage reaches 80 %, and `night.sh` is skipped tonight ("Sure. Go ahead with that."; 15:35: "I really want the proofs done today. Or tonight."). Targets for the night: a general induction over cascade depth (latest on the get side, cost on the tree side), RangeOrder kept by every operation (putinv), LatestInvOK's parts and the take-back statement (tp7), then TP32 (cost).
+* 16:14 Frans: "Would it help to relax 'bounded startup'? It could be done later." Deferred: its open premises for the tree model (TP32/TP33 for B, K, H, Q, Pt, A) wait; tonight's provers work only on TP7, TP10 and TP11. cost goes to the get side of merges, LE-b, root collapses and UP after its cascade work instead of TP32.
+* 16:27 Frans: "We will be limited by tokens, not time. Should we use Opus xhigh instead of Fable high? For all agents." Yes: tp7 (the only prover on Fable) winds down to a checkpoint and a State note, and an Opus xhigh prover goes on from it.
+* 16:50 Frans, on the proofs' cost against their value (bugs, sales value, changes with confidence; costs in time, tokens, his reading of the model): "Thanks for the middle-ground concept to maintain the Lean model and trace checker. And run proofs only when there are spare tokens. The proofing does seem to work well unattended. So it is mostly limited by tokens." So: no release waits for proofs; the Lean model and the trace checker are kept up to date with every change; proofs are pinned to a model version and run on spare tokens. Tonight's run to 80 % stands ("Yeah, keep on working. We will see where we are in the morning.").
+* 16:51 Frans: fewer agents may be more efficient by token. The night ran with three provers from 18:00 ("latest", "cost", "putinv"); "tp7" handed over to "putinv" through its State note (/Users/f/fl/bench/2026-11-13/tp7/STATE.md) and ended at 18:01.
+* 16:13 to 03:45: the provers' checkpoints landed on main through check-main.sh and push-if-ok.sh, main-35 to main-107 (one failed build, main-64: two checkpoints made in parallel, fixed by the next checkpoint before any push; one merge conflict in 024-12's text, resolved by hand).
+* 19:07 Finding, then corrected at 21:36: the whole-path fuel (PathsFit) seemed false within reach, but the counterexample was not a sorted transaction; the proofs use the per-segment fuel (SegFits), which every test kept.
+* 22:15 Finding: case 4's first descent obligation (MergePathCond) could not be proved as stated; the route was rebuilt without it and the old one removed. Superseded routes removed in four commits (fe798437, 5d9e455a, 6f581110, 39aaa873): about 2,400 lines.
+* 01:36 The top theorem, `invGetScanOK_merges` (later `invGetScanOK_merges_flat`, lean/SIS/Tree/LatestTopFlat.lean): for MergeParamsOK, which Java's parameters meet (`mergeParamsOK_java`), TP7, TP10, TP11 and both at the latest time follow from named premises. TP4, P's tree at every run and DeadAllOK are derived, not premises.
+* 01:36 to 03:42: the named premises went from 17 to 10, each with an owner and run evidence; LE-b proved dead with the merges on (`stopLeaf_of_liveCounts`). Section 1 of 024-12 is the list.
+* 03:16 "cost" closed (its State note: 024-22, section 11.1; /Users/f/fl/bench/2026-11-13/cost/REPORT.md). 03:42 "latest" closed. 03:41 "putinv" told to finish its checks and close; no new proof work, to leave the rest of the allowance spare.
+
+
+## 5. Outcome
+
+Written 2026-11-14, 03:55, by coord-1113 (unattended until 07:00).
+
+**The proofs (024-12).** The key tree's top theorem holds:
+`invGetScanOK_merges_flat` (lean/SIS/Tree/LatestTopFlat.lean). For every parameter set of
+`MergeParamsOK` with theta 0 or at least 2, which Java's own parameters meet (record format
+7's thresholds and theta from node size 8: `mergeParamsOK_java`, `theta_java`), every run the
+model accepts keeps the tree's invariants (TP7), and every get and scan, at the latest time and
+earlier, returns what the reference map gives (TP10, TP11). TP4, P's tree at every run and the
+bound on dead klongs are derived inside. It rests on 10 named premises, each owned and each
+tested on runs within reach with no failure; 024-12, section 1, lists them in plain words:
+
+* the delete with the merges, for the deletes that change the tree and are not (4a): the dead
+  bound (`d4`) and TP7's live counts (`l4`);
+* the delete's take-back checks (`hchk`, 7,987 deletes) and its fuel (`htb`, `hMSF`, `hCoF`;
+  11,057 states inside deletes, 3,205 deletes taking nodes back);
+* the upward delete's loop end (`hU`, `hHL`; 2,529 loop ends), root collapse's previous
+  version (`hCoU`; 173 states, 92 with a full leaf), the made-for ids (`hMF`; 56,404 states).
+
+Not covered: the merges off; bounded startup's tree premises (deferred by Frans, 16:14); Java
+against the model, which is checked on Java's traces, not proved. Findings on the way, none a
+Java bug: the whole-path fuel's counterexample was not within reach (corrected); a descent
+obligation was false as stated (route rebuilt); LE-b never runs with the merges on (proved).
+
+**Size.** lean/ grew by 142,295 lines from 16:13 to 03:45 (lean/SIS/Tree: 507 files, 227,923
+lines, from about 90,000); main had 683 commits in that time, from main-35 to main-107, every
+push after a full build and an axiom audit. The cost to change these proofs later is the open
+question of Frans's 16:43 message; the follow-ups in 024-12, section 1, start with collapsing
+the routes' names (F2 to F4) and the two top theorems into one.
+
+**Usage.** The week from 0 % at the 08:09 reset to 72 % at 03:50, below the 80 % ceiling;
+the provers were closed between 03:16 and 03:48, when what was left did not fit the night.
+
+**Not done:** `night.sh` (skipped, Frans 16:09); 007-09's update with the day's T4 and
+bounded-startup results (t43 to t45, the Codex review); 026-09 still on its branch.
+
+**For Frans to decide** (1 to 5 above still open):
+
+6. Where the policy of 16:50 lives ("maintain the Lean model and trace checker; run proofs
+   only when there are spare tokens"): recommended, a rule in 010-04 in his words, and a line
+   in 013-02 for the coordinator. Read: this plan, 16:50.
+7. The proofs from here: recommended, stop new proof work until spare tokens come back. The
+   first spare-token run is the cleanup (one name per route, one top theorem), then the 10
+   premises in the order of 024-12's follow-ups. Read: 024-12, section 1.
+8. The trusted statements: TP7, TP10 and TP11 and the model they speak of (Props.lean,
+   Read.lean, Exec.lean, Spec.lean) are unchanged since TP11's option C (839bd6ce, the
+   morning of 13 November); the 10 premises are new statements that Frans may want to read,
+   in plain words in 024-12, section 1, with their Lean names.

@@ -164,11 +164,14 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   (cost, the heights). Evidence: every state after a step of root collapse fit the fuel, 635 of
   them (`fuel-inside-check.lean.txt`).
 - `hCoU`, `CollapseUnlinkAllOK`: `CollapseUnlinkOK` at every replaceRoot at a segment root
-  (putinv). Evidence: it held at all 96 replaceRoots at a segment root, 32 with a full leaf.
+  (putinv). Evidence: it held at all 173 replaceRoots at a segment root, 92 with a full leaf
+  (`12-tree-model/up-loop-end-check.lean.txt`, 2026-11-14 03:48; earlier 96, 32 of them full,
+  `collapse-unlink-check.lean.txt`).
 - `hMF`: at every state between operations, every made-for id is below the transaction's
-  first id (putinv). Evidence: held at all 44,312 states between operations of runs within
+  first id (putinv). Evidence: held at all 56,404 states between operations of runs within
   reach with the merges on (cost's `DelChk` families and putinv's, M 8 and 10;
-  `up-unlink-check.lean.txt`).
+  `up-loop-end-check.lean.txt`, which supersedes `up-unlink-check.lean.txt`); `hHL` held at
+  all of them too.
 
 Follow-ups, for a later spare-token run (latest, 03:45):
 
@@ -1270,6 +1273,16 @@ Claude provers beside the second prover). Who holds what:
 * T4, the startup section's ends (007): "t4"; done at 12:26. From 12:27 "t43": T4's debt for BergDB's own
   still-dirty test, the cold start's reads without the |D| term, a bound on
   the nodes a change makes unreachable.
+
+The board at the night's end (coord-1113, 2026-11-14, 03:55): every
+prover has closed. "tp7" handed over to "putinv" at 18:01 (its State note:
+/Users/f/fl/bench/2026-11-13/tp7/STATE.md); "cost" closed at 03:16 (State
+note: 024-22, section 11.1), "latest" at 03:42 and "putinv" at 03:48 (its
+State note in commit a24aaa01). TP32 and TP33 were set aside at 16:14 with
+bounded startup's tree premises (Frans). The outcome, the top theorem
+`invGetScanOK_merges_flat` and its 10 named premises, is section 1;
+the checkpoints landed through the night are in 006-24's progress and in
+Git (main-35 to main-107).
 
 Landed checkpoints:
 
