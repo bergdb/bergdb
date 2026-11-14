@@ -161,4 +161,11 @@ theorem opCaseOK_delMergeL_of (p : Params) (R : Struct BVal → Time → Prop)
   fun ts tx hw hr z top hz htop pre op post hs r w hpre hI hRO hC =>
     h ts tx hw hr z top hz htop pre op post hs r w hpre hI hRO hC.1
 
+/-- A case at every operation holds in every narrower case. -/
+theorem opCaseOK_of_any (p : Params) (R : Struct BVal → Time → Prop)
+    (Q : List Tx → Op → W → W → Prop) (C : Ctx → View BVal → W → Op → Prop)
+    (h : OpCaseOK p R Q AnyOp) : OpCaseOK p R Q C :=
+  fun ts tx hw hr z top hz htop pre op post hs r w hpre hI hRO _ =>
+    h ts tx hw hr z top hz htop pre op post hs r w hpre hI hRO trivial
+
 end SIS.Tree
