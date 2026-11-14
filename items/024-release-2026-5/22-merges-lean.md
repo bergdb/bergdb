@@ -1439,8 +1439,19 @@ in 024-12's (4) entry (step 4) and section 1's list.
      decrease along the path: `PathHt` with `PathKinds`).
   2. `TakeBelowFuelDelOK`: a node a delete found and takes back is
      reachable at its start from a segment root it descended, so below
-     the fuel by (C)'s part 1; needs that reach frame through the
-     delete's writes.
+     the fuel by (C)'s part 1. What it needs, a reach frame through the
+     delete's writes: a node found at the operation's start and reachable
+     (by live klongs, within its segment tree) at a later state of the
+     operation was reachable at its start from that segment's root, or is
+     below a node so reachable. The writes that add a reach are the new
+     nodes' klongs (merges, splits: they name found nodes that the node
+     they replace named), the retargets (to `madeFor`, nodes of the view)
+     and root collapse (the child of the root). Then: the delete's first
+     descent passes every segment root on its key's path below the fuel
+     (`ht_descendLte_height`), and a node reachable from a root of height
+     R has height at most R (the heights' walk). A walk of the delete with
+     a reach invariant over `wNode`, in the style of putinv's
+     `TtReachedN` walk; about 1500 to 2500 lines, a night of its own.
   3. `OpDelHtStepOK`: one root split per segment and delete, as the new
      root keeps room in the same operation (the merges' fill).
 * **Test scripts** (`12-tree-model/`, the run command in each header):
