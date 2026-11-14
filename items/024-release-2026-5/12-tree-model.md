@@ -105,15 +105,16 @@ loop need only be a tree (`UpUnlinkTreeOK`), the cascade's ranges come from the 
   - `hFit`, `UpCascFitsOK`: the state after the stop node's cascade fits the fuel (cost);
   - `hFitL`, `UpLebFitsOK`: the state after LE-b's full split at the stop node fits the fuel
     (cost, `DelStepsLebFull.lean`). LE-b never fired in any run family with the merges on: 0
-    of about 6,700 deletes in putinv's and cost's families, and 0 of the 937 stop node steps
-    of `fuel-inside-check.lean.txt`. So no run tests `hFitL`, nor putinv's proved LE-b
-    branches; see the follow-ups.
+    of about 6,700 deletes in putinv's and cost's families. In `fuel-inside-check.lean.txt`
+    the upward delete stopped at a segment leaf all 937 times, never at an inner node, where
+    LE-b runs. So no run tests `hFitL`, nor putinv's proved LE-b branches; see the
+    follow-ups.
   Evidence for `hU`: `UpUnlinkOK` held at all 2529 upward-loop end states (1385 with a
   take-back in the loop, 954 with an unlink to the previous version, 173 cascading at the stop
   node, 818 at the space root), with the reached nodes untaken there too
   (`12-tree-model/up-unlink-check.lean.txt`). For `hFit`: every state after the stop node's
-  step (its bitmap, with the split and cascade) fit the fuel, 937 of them, none an LE-b
-  (`12-tree-model/fuel-inside-check.lean.txt`, below).
+  step (its bitmap, with the split and cascade) fit the fuel, 937 of them, every one at a
+  segment leaf (`12-tree-model/fuel-inside-check.lean.txt`, below).
 - `hFits`, `DelFullFitsOK`: the state after a delete's full leaf splits fits the fuel (cost).
   Evidence: as SegFits' above, and inside deletes: every state after a leaf's bitmap, full
   leaves' splits among them, fit the fuel, 6453 of them (`fuel-inside-check.lean.txt`: runs of
@@ -155,10 +156,17 @@ Follow-ups, for a later spare-token run (latest, 02:20):
   when `deadOver` lets it through, else `handleFull` of `mergeFullLast`
   (`writerWP_mergeParent_dead`, on `writerWP_mergeParent_casesD`; `DeadMerge.lean`).
 - LE-b with the merges on (`hFitL`): no run family makes it fire (0 of about 6,700 deletes,
-  putinv's and cost's families; 0 of 937 stop node steps, `fuel-inside-check.lean.txt`). Either
-  a run family that makes LE-b fire at the upward delete's stop node with the merges on, to test
-  `hFitL` and the proved LE-b branches on runs, or a proof that it cannot fire with the merges
-  on, which would make `hFitL` void for `MergeParamsOK`.
+  putinv's and cost's families), and the upward delete stopped at a segment leaf in all 937
+  stops of `fuel-inside-check.lean.txt`, never at an inner node. Either a run family that
+  makes LE-b fire with the merges on, to test `hFitL` and the proved LE-b branches on runs, or
+  a proof that it cannot, which would make `hFitL` void for `MergeParamsOK`. The likely proof:
+  TP7's live counts (`LiveCounts`, `QLive` at the state before each operation) give every
+  node an inner node names at least `mergeBelow`, so at least 2, live klongs; one delete
+  empties none of them, so the upward delete starts at a segment root, whose parent on the
+  path is a segment leaf; a segment leaf that empties is a segment root too, so the loop climbs
+  through segment leaves only and stops at one. LE-b, at an inner stop node, is then never
+  reached. The delete's route would need `LiveCounts` of the state before it, which the
+  induction has (`LatestQD`).
 - `QLive` of (4) (`l4`): `LiveEdges` with the merged path's nodes excepted until their merge, on
   the same step lemmas as `d4`; a merge's nodes are filled (`mergeKlongs_live_fill`), its
   parent's cascade is the walk with exceptions (`writerWP_appendKlongs_chainGLX`), and root
