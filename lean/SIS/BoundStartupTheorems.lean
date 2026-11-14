@@ -22,17 +22,25 @@ any run that meets the assumptions below, a cold start reads at most
 times, where N = 2 M / m + 2 (the most transactions of a startup section) and
 Dm = (1 + Q + ... + Q^Hp) (Hp + 1) N (H + 1) A (the most nodes of D). A read
 is a version the start parses, a header read, or a follow of the rerun
-(`lazyReads`). F does not grow with the database's size or its age: only with
-the setting M, the node height H, the transactions' sizes and the constants of
-the tree.
+(`lazyReads`). No term of F counts the database's keys or its age: F depends
+only on the setting M, the least cost m of a record, the heights H and Hp, the
+pointer parents Q and the sizes A, K, B, Pt and V0. But for BergDB some of
+these grow: H, the root's live height, grows with the logarithm of the number
+of keys, and Q and Hp, which count pointers that are no longer live too, are
+not known to be bounded as the database ages (bergdb 007-09, section 6, Q4).
+So the theorem does not show that a cold start's reads have a bound that is
+independent of the database's size or its age; it bounds them in these
+quantities.
 
 In plain words, for BergDB: the start parses the startup section, which T3
 keeps below N transactions (with the take's byte limit, 005-31); each record
-of it is a transaction plus the debt D (T4's record), and D holds only nodes
-on the access paths of the last Hp + 1 sections (T4's debt), so at most Dm;
-the rerun of each of the section's transactions follows at most (H + 1) nodes
-per node, entry or touch of its change and per pointer that its removals lose
-(the read bound). No term counts the database's keys.
+of it is a transaction plus the debt D (T4's record); every node of D reaches,
+through pointers live or dead, a node on the access path of a change of the
+last Hp + 1 sections (T4's debt, `DebtByChainsH`), so with at most Q pointer
+parents per node D has at most Dm nodes; the rerun of each of the section's
+transactions follows at most (H + 1) nodes per node, entry or touch of its
+change and per pointer that its removals lose (the read bound). No term counts
+the database's keys directly; H grows with their logarithm.
 
 The assumptions, each one explicit:
 

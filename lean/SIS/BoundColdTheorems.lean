@@ -16,15 +16,18 @@ variable {V T : Type} [DecidableEq V]
 /-- A cold start's reads, bounded (007-03, step 6: "a cold startup reads at
 random only what the rerun touches"): the lazy startup from any stream S gives
 out at most |sectionNodes| + `rerunReach` + 2 handles, one for each object it
-makes, so it reads at most that many versions. The section's index nodes are
-read in order (`sectionNodes`, R(s), ..., R(k)); the rest is the root's
-version and, for each transaction T(j) of the section, the nodes of its
-writer's paths, the nodes it creates (which are not read) and the nodes of
-gd(j): `rerunReach`. Nothing depends on D but through the gd(j), whose union
-is the D that the startup rebuilds (INV-1), which T4 bounds; nothing on the
-size of the database. Rule 4 reads nothing in the model, and 005-58 proved
-that Java's rule 4 by position links what it links (`Rule4Pos_handles`).
-Nothing is assumed of S. -/
+makes. The section's index nodes are read in order (`sectionNodes`, R(s),
+..., R(k)); the rest is the root's version and, for each transaction T(j) of
+the section, the nodes of its writer's paths, the nodes it creates (which are
+not read) and the nodes of gd(j): `rerunReach`. Nothing depends on D but
+through the gd(j), whose union is the D that the startup rebuilds (INV-1),
+which T4 bounds; nothing on the size of the database. Rule 4 reads nothing in
+the model, and 005-58 proved that Java's rule 4 by position links what it
+links (`Rule4Pos_handles`). Nothing is assumed of S. This counts objects, not
+reads: Java reads more (header reads, among them rule 4's for a top node's
+pointers; every version of the section, repeats included; the merges'
+siblings), which `lazyReads` counts (SIS/BoundCold.lean's header; bergdb
+007-09, section 2.1). -/
 theorem coldReads_lazy (sp : Spec V T) (S : Stream V T) :
     (lazyStartup sp S).next ≤ (sectionNodes S (lastSp S)).length + rerunReach sp S + 2 :=
   lazyStartup_next sp S
