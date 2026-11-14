@@ -2069,6 +2069,18 @@ and its status:
       every run (`treeRun_heightLiveOK_chk`). `delchk-check.lean.txt`:
       6828 deletes of 310 runs, and 309 of 8 random multi-segment runs,
       0 failures.
+    - `OpDelChk2OK` (`HeightsPathFree.lean`, cost, 02:45): `OpDelChkOK`
+      with one check fewer, `checkPathFree`, now proved. The upward
+      delete's loop takes back only nodes below the stop node, and the
+      path's nodes are pairwise distinct (`ht_path_ne`, from the kinds'
+      books `KdInv` beside the heights' at the upward delete's start), so
+      the stop node and the nodes above it stay not taken back. The walk
+      through the copy `putKvDelChk2` carries `KdInv` as far as the upward
+      delete. It gives TP7's (b) (`treeRun_heightLiveOK_chk2`,
+      `invPreserved_of_open_chk2`) and, with `TakeBelowFuelDelOK`, TP10's
+      `TxSegFitsOK` (`txSegFitsOK_of_takeBelowDelR2`; it needs TP4's
+      `hP` for the kinds). `delchk-check.lean.txt` runs the copy too: the
+      same 7137 deletes, 0 failures.
     - `TakeBelowFuelDelOK` (`HeightsFit.lean`): a delete takes back no node
       of height fuel or more that it found at its start. With
       `OpDelChkOK` it gives TP10's `TxSegFitsOK`
