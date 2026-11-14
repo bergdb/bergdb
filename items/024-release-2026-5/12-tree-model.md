@@ -170,8 +170,21 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   reach with the merges on (cost's `DelChk` families and putinv's, M 8 and 10;
   `up-unlink-check.lean.txt`).
 
-Follow-ups, for a later spare-token run (latest, 03:05):
+Follow-ups, for a later spare-token run (latest, 03:45):
 
+- `d4` and `l4` are open for three kinds of delete with the merges on (`DelMergeDOpenCase`,
+  `DelMergeOpenCase`; a noop, a key without a leaf and (4a) are proved):
+  - a delete into a full leaf: the split and its cascade, then maybe merges;
+  - the upward delete, which empties its leaf: with the live counts at its start the emptied
+    nodes are segment roots and leaves and the stop node is a segment leaf (cost's
+    `stopLeaf_of_liveCounts`), so after the loop the emptied chain is out of reach, and the
+    segment leaf lost one live klong;
+  - a delete whose leaf has room but, named by an inner node, keeps at most `mergeBelow` live
+    klongs: the merges' loop and root collapse run.
+  For each, the state after the write and before `afterDelete` is the base for both: where the
+  live counts hold there, the loop merges nothing (`writerWP_afterDelete_none`,
+  `LiveNoMerge.lean`), as in (4a) (`liveCase_delRoomFill`, `deadCase_delRoomFill`,
+  `LiveDelRoom.lean`). The plans below are for the general route.
 - `QDead` of (4) (`d4`): a conjunct `WDeadN` (every node the writer reads at or below theta)
   beside `DelInvF3` on the reading's (4) route. The step lemmas that need it:
   - up to `afterDelete`: `writerWP_del_roomM` (the bitmap with room),
@@ -219,11 +232,11 @@ Follow-ups, for a later spare-token run (latest, 03:05):
   5. The same gives `OpDelChk2OK`'s stop-node check and `checkOld`'s leaf part.
   The live counts at the delete's start come from the joint induction along the transaction
   (`jointLive_reached`).
-- `QLive` of (4) (`l4`), now (4) but (4a): `LiveEdges` with the merged path's nodes excepted
-  until their merge, on
-  the same step lemmas as `d4`; a merge's nodes are filled (`mergeKlongs_live_fill`), its
-  parent's cascade is the walk with exceptions (`writerWP_appendKlongs_chainGLX`), and root
-  collapse leaves a root with two live klongs.
+- `QLive` of (4) (`l4`), its open case: `LiveEdges` with the merged path's nodes excepted until
+  their merge, on the same step lemmas as `d4`; a merge's nodes are filled
+  (`mergeKlongs_live_fill`), its parent's cascade is the walk with exceptions
+  (`writerWP_appendKlongs_chainGLX`), and root collapse leaves a root with two live klongs.
+  The live counts at the delete's start are at hand (`jointLive_reached`).
 - One name for each route: the F2, F3 and F4 versions (`DelStepsOKF3`, `MergeStepOKF3`,
   `CollapseStepOKF4`, `opGetCaseOK_delMergeF4`, `takeBackOK_of_mergesF4`,
   `runTreeQ_of_mergesF4S`, `writerWP_appendKlongs_chainGLX` and its corollaries), and one top
