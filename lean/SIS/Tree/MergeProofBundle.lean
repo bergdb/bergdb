@@ -375,3 +375,4 @@ import SIS.Tree.DelStepsKdH
 import SIS.Tree.HeightsFitsR
 import SIS.Tree.DelStepsFullH
 import SIS.Tree.StopLeafLive
+import SIS.Tree.DelStepsTree
