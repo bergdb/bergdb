@@ -186,6 +186,22 @@ def familyO : List (List Tx) :=
   [4, 7, 12, 20].flatMap (fun n => [3, 6].flatMap (fun r => [1, 3].map (fun k => mkOver n r k)))
 def familyO2 : List (List Tx) :=
   [2, 3].flatMap (fun na => [4, 9].flatMap (fun nb => [3, 5].map (fun r => mkOver2 na nb r)))
+/-- Pseudo-random transactions: keys of one or two segments from a pool, a put
+or a delete each, in key order, one operation per key. -/
+def lcg (x : Nat) : Nat := (x * 1103515245 + 12345) % 2147483648
+def poolKey (i : Nat) : List Nat :=
+  if i % 3 == 0 then [64 * (i % 37) + 8] else [64 * (i % 5) + 56, 64 * (i % 23) + 8]
+def rndTx (seed b nops pool : Nat) : Tx :=
+  let idx := (List.range nops).map (fun j => (lcg (seed * 7919 + j)) % pool)
+  let keys := (idx.map poolKey).mergeSort (fun a b => decide (a ≤ b))
+  let keys := keys.eraseDups
+  mkTx b (keys.zipIdx.map (fun (k, j) =>
+    if (lcg (seed * 104729 + j)) % 3 == 0 then .del k else .put k (seed * 1000 + j + 1)))
+def rndRun (seed ntx nops pool : Nat) : List Tx :=
+  (List.range ntx).map (fun i => rndTx (seed * 31 + i) (1000 + 4000 * i) nops pool)
+def familyR : List (List Tx) :=
+  [1, 2, 3, 4, 5, 6].flatMap (fun seed => [(8, 12, 40), (6, 25, 60), (10, 8, 30)].map
+    (fun (ntx, nops, pool) => rndRun seed ntx nops pool))
 def dP8 : Params := ({M := 8, G := 1, H := 2} : Params).withMerges.withTheta
 def dP10 : Params := ({M := 10, G := 2, H := 2} : Params).withMerges.withTheta
 def dP14 : Params := ({M := 14, G := 2, H := 3} : Params).withMerges.withTheta
@@ -211,4 +227,10 @@ def dP30 : Params := ({M := 30, G := 1, H := 2} : Params).withMerges.withTheta
 #eval summW (familyO2.flatMap (fun r => runWDead dP8 r))
 #eval summW (family.flatMap (fun r => runWDead dP8 r))
 #eval summW (family1.flatMap (fun r => runWDead dP14 r))
+#eval summD (familyR.flatMap (fun r => runDead dP8 r))
+#eval summD (familyR.flatMap (fun r => runDead dP10 r))
+#eval summW (familyR.flatMap (fun r => runWDead dP8 r))
+#eval summW (familyR.flatMap (fun r => runWDead dP10 r))
+#eval summ (familyR.flatMap (fun r => runLc dP8 r))
+#eval summ (familyR.flatMap (fun r => runLc dP10 r))
 end SIS.Tree
