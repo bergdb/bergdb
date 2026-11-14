@@ -1,7 +1,7 @@
 /-
 The top theorem with the flattest list of named premises (bergdb 024-12):
 `invGetScanOK_merges_flat`. It is `invGetScanOK_merges` with its premises
-taken apart (13 named premises left, with `hp` and `hth` on the parameters):
+taken apart (10 named premises left, with `hp` and `hth` on the parameters):
 
 * the bound on dead klongs at every run (`hD`) comes from the operations: every
   put keeps it, for theta 0 or at least 2 (`hth`; `deadCase_putLeafRoom`,
@@ -27,6 +27,11 @@ taken apart (13 named premises left, with `hp` and `hth` on the parameters):
   (cost's `txSegFitsOK_of_takeBelowDelR2U`): every node a delete takes back has a
   height below the fuel (`TakeBelowFuelDelOK`; a put takes nothing back).
 
+* TP10's three posts for the delete with the merges (4), `t4`, `i4` and `r4`,
+  are proved at the induction's runs (putinv's
+  `opCaseOK_treeInvRange_delMergeR`), and carried with TP7's live counts along
+  each transaction (`LiveJointL.lean`).
+
 024-12's section 1 lists the premises with their owners and test evidence.
 -/
 import SIS.Tree.LatestTop
@@ -43,6 +48,7 @@ import SIS.Tree.DelStepsLinks
 import SIS.Tree.DelStepsUnlinkTree
 import SIS.Tree.DelStepsFullH
 import SIS.Tree.LiveJointL
+import SIS.Tree.DelStepsTree
 
 set_option autoImplicit false
 
@@ -144,9 +150,6 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     (hchk : OpDelChk2OK p)
     (htb : TakeBelowFuelDelOK p)
     (d4 : OpCaseOK p (RunOK p) (QDead p) DelMergeCase)
-    (t4 : OpCaseOK p (RunOK p) (QTree p) DelMergeCase)
-    (i4 : OpCaseOK p (RunOK p) (QPutInv p) DelMergeCase)
-    (r4 : OpCaseOK p (RunOK p) (QRange p) DelMergeCase)
     (l4 : OpCaseOK p (RunOK p) (QLive p) DelMergeCase)
     (hU : ∀ ts, UpUnlinkTreeOK (ctxOf p ts) (viewOf (treeRun p ts)))
     (hFit : ∀ ts BK, UpCascFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) BK)
@@ -179,9 +182,12 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
   have hht : OpHtDelOKUnder p (RunTreeQ p (LatestQD p)) :=
     opHtDelOKUnder_of_chk2 p (by omega) _ hRP' hRK' hchk
   -- the delete with the merges (4) at the induction's runs
-  have t4' := opCaseOK_anti p _ _ hR _ _ t4
-  have i4' := opCaseOK_anti p _ _ hR _ _ i4
-  have r4' := opCaseOK_anti p _ _ hR _ _ r4
+  have hTIR := opCaseOK_treeInvRange_delMergeR p _
+    (delStepsQd_of_openR p _ (by omega) hsa hRL' hRP' hRK' hRH' hht htb hU hFit hFitL) hMS hCo hsa hcap
+    hRP' hRK' hfitQ
+  have t4' := hTIR.1
+  have i4' := hTIR.2.1
+  have r4' := hTIR.2.2
   have l4' := opCaseOK_anti p _ _ hR _ _ l4
   have d4' := opCaseOK_anti p _ _ hR _ _ d4
   -- TP10's three posts for every operation from a state with TP7's live counts
