@@ -57,6 +57,12 @@ Files
   trusts changes. Started by Frans (2026-11-14, 13:00); the plan by
   coord-1114's planning agent, the provers in the night of 14 to 15
   November under the week's ceiling of 92 %. Status: running.
+* [025-03](03-no-node-outside-bounds.md). F1 of 026-16: the key tree's
+  top theorem for runs in which no key node is made outside the bounds
+  G and H, even for a moment, which removes the premise `htb` and likely
+  makes `hMSF` and `hCoF` corollaries; the trace checker run with a
+  larger H to test the condition on Java's traces. Accepted by Frans
+  (2026-11-14, 13:46); after 025-02's names step. Status: ready.
 
 
 Log
@@ -85,3 +91,5 @@ the Java and the comparison.
 
 2026-11-14. 025-02, the proofs' cleanup, created and started (Frans, 13:00:
 "Yes, good. Go ahead.").
+
+2026-11-14. 025-03, F1 of 026-16, created (Frans accepted F1, 13:46).

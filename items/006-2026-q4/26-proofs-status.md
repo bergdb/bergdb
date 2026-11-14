@@ -7,6 +7,12 @@ that are left, what the model covers and what it does not. Requested by Frans at
 14 November. It describes `main` at `71932de0`, where `lean/` is as the night's last push
 left it (`0c03cb32`, 03:55).
 
+An epub of this report, for reading offline, is
+[26-proofs-status/006-26.epub](26-proofs-status/006-26.epub), made with
+`pandoc 26-proofs-status.md -o 26-proofs-status/006-26.epub --metadata
+title="BergDB proofs, 14 November 2026" --metadata author="Frans
+Lundberg"`.
+
 Three words are used strictly in this report:
 
 - **Proved**: a Lean theorem with no premise left open. Its hypotheses are only
