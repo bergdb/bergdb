@@ -1415,11 +1415,25 @@ in 024-12's (4) entry (step 4) and section 1's list.
     `HeightsOpStep.lean`).
   - Step 4 (C), part 1: a descent that succeeds from a node of height h
     had fuel above h (`ht_descendLte_height`, `HeightsFuelDescent.lean`).
+  - One of `OpDelChkOK`'s checks, `checkPathFree`: the path's nodes are
+    pairwise distinct (`ht_path_ne`, `HeightsPathNodup.lean`), so the
+    upward delete's loop takes back no node at the stop node or above
+    (`ht_deleteUpwardChk2`, `HeightsPathFree.lean`). The premise without
+    it, `OpDelChk2OK`, gives TP7's (b) and TP10's fuel premise:
+    `treeRun_heightLiveOK_chk2`, `invPreserved_of_open_chk2`,
+    `txSegFitsOK_of_takeBelowDelR2`; at the runs a predicate R holds of,
+    for latest's run induction, `opHtDelOKUnder_of_chk2`,
+    `execW_htCacheU`, `txSegFitsOK_of_takeBelowDelR2U`
+    (`HeightsUnder.lean`).
 * **Open, as exact statements** (named premises; each with its test):
   - `OpDelChkOK p` (`HeightsChkRun.lean`): a delete, from a state that
     the transaction's earlier operations reach, runs as its copy with a
     check at every take-back (`putKvDelChk`, `DelChk.lean`).
     `12-tree-model/delchk-check.lean.txt`: 7137 deletes, 0 failures.
+    Its weaker form `OpDelChk2OK p` (`HeightsPathFree.lean`) asks the
+    same of the copy without `checkPathFree` (`putKvDelChk2`); the first
+    implies it (`opDelChk2OK_of_chk`). The same script, the same 7137
+    deletes, 0 failures.
   - `TakeBelowFuelDelOK p` (`HeightsFit.lean`): a delete takes back no
     node of height fuel or more that it found at its start.
     `12-tree-model/heights-op-check.lean.txt`: 3224 operations that took
@@ -1437,9 +1451,10 @@ in 024-12's (4) entry (step 4) and section 1's list.
      from latest's `LiveCounts` within a delete; `checkPathFree` from the
      path's nodes being distinct, proved (`ht_path_nodup`, `ht_path_ne`,
      `HeightsPathNodup.lean`: along the path the segment rises and, in a
-     segment, the height falls, from `PathHt` and `PathKinds`); left for
-     it: the kinds' walk (`KdInv`) beside the heights' at the upward
-     delete's loop in `ht_deleteUpwardChk`, then a copy without the check.
+     segment, the height falls, from `PathHt` and `PathKinds`), and the
+     check is gone in `OpDelChk2OK` (`HeightsPathFree.lean`), which
+     `OpDelChkOK` implies (`opDelChk2OK_of_chk`, `DelChkRefines.lean`:
+     the copies differ by that one check, which reads only).
   2. `TakeBelowFuelDelOK`: a node a delete found and takes back is
      reachable at its start from a segment root it descended, so below
      the fuel by (C)'s part 1. What it needs, a reach frame through the
