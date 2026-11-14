@@ -2286,6 +2286,25 @@ and its status:
       after the upward loop the heights' cache needs the holders of the
       nodes taken back (the facts `OpDelChk2OK`'s checks assume), which
       putinv proposes to name as `UpHolderOK`.
+    - The stop node is a segment leaf with the merges on (cost, 03:08;
+      `StopLeafLive.lean`): with the fill at the delete's start (latest's
+      `LiveCounts`), a node below an inner node of the path has
+      `mergeBelow` ≥ 2 live klongs, so the delete empties none
+      (`stopLeaf_of_liveCounts`). So `UpLebFitsOK` with the fill,
+      `UpLebFitsOKL`, holds vacuously (`upLebFitsOKL_of`); the LE-b probe
+      (`12-tree-model/leb-probe.lean.txt`) agrees.
+    - `UpCascFitsOK` in its reached form, proved from a named premise of
+      the loop's end (cost, 03:15; `HeightsUpCascR.lean`):
+      `UpCascFitsOKR` adds the merges, the fill, `KdHtJ` at the descent's
+      end with the path ending at depth, the loop keeping `gh`, and
+      `UpHolderOK` (every node not taken back at the loop's end holds,
+      now or before the transaction, only nodes not taken back; its times
+      at most the transaction's; the chain's nodes taken back are the
+      transaction's). `upCascFitsOKR_of`: the heights' walk at the loop's
+      end from that at the descent's end (the stop node and the chain's
+      nodes are leaves of height 0; the other nodes unchanged; the path's
+      nodes distinct), then the cascade as for `DelFullFitsOKR`.
+      `UpHolderOK` is to be checked on runs (putinv).
   - (5) `DelNoLeafCase`, a delete of a key with no leaf: proved,
     `opGetCaseOK_delNoLeaf`. It changes no reading: the writer's walk
     stops at the first segment that is not there and only reads
