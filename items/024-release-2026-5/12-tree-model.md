@@ -86,10 +86,10 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
 - `d4` (`QDead`): the delete with the merges (4) keeps every key node that the writer reads at
   or below theta dead klongs (latest), now only for the deletes that change the tree and are
   not (4a) for the dead bound (`DelMergeDOpenCase`; a noop and a key without a leaf read as
-  before, `writerWP_del_noop_reads`, `writerWP_del_noLeaf_reads`, `LiveDelNoop.lean`): from a state with the live counts, a delete whose leaf has room,
-  keeps a live klong (more than `mergeBelow` if an inner node names it) and whose new node
-  `deadOver` lets through is proved (`deadCase_delRoomFill`, `LiveDelRoom.lean`). Every put
-  keeps it, proved for theta 0 or at least 2: the leaf's klong goes in only when `deadOver`
+  before, `writerWP_del_noop_reads`, `writerWP_del_noLeaf_reads`, `LiveDelNoop.lean`): from a
+  state with the live counts, a delete whose leaf has room, keeps a live klong (more than
+  `mergeBelow` if an inner node names it) and whose new node `deadOver` lets through is proved
+  (`deadCase_delRoomFill`, `LiveDelRoom.lean`). Every put keeps it, proved for theta 0 or at least 2: the leaf's klong goes in only when `deadOver`
   lets it through (`deadCase_putLeafRoom`); a
   klong of a compare value with no live klong adds no dead klong (`KNode.deadCount_add_key_new`,
   `deadCase_putNewSeg1Room`, `deadCase_putNewSegsRoom`); and a cascade's nodes hold at most
@@ -118,8 +118,9 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   states of its runs random and random2).
 - `l4`: (4) keeps TP7's live counts (`QLive`; latest), now only for the deletes that split,
   empty their leaf, or leave a leaf that an inner node names with at most `mergeBelow` live
-  klongs (`DelMergeOpenCase`; a noop and a key without a leaf read as before): a delete whose leaf has room and keeps a live klong, and more
-  than `mergeBelow` if an inner node names it, is proved (`liveCase_delRoomFill`,
+  klongs (`DelMergeOpenCase`; a noop and a key without a leaf read as before): a delete whose
+  leaf has room and keeps a live klong, and more than `mergeBelow` if an inner node names it,
+  is proved (`liveCase_delRoomFill`,
   `LiveDelRoom.lean`): after its bitmap the live counts hold, and with them the merges' loop
   merges nothing (`writerWP_afterDelete_none`, `LiveNoMerge.lean`). Evidence: `LiveCounts` held
   at all 6420 states between operations of runs with merges and collapses
