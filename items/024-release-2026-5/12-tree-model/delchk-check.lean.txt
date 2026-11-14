@@ -1,0 +1,181 @@
+/-
+OpDelChkOK, checked on runs (bergdb 024-22, step 4; the heights' walk,
+SIS/Tree/DelChk.lean). Not part of the Lean project; run it from
+lean/:
+
+  lake env lean ../items/024-release-2026-5/12-tree-model/delchk-check.lean.txt
+
+At every delete of a run, from the state the transaction's earlier operations
+reach, it runs the writer's `putKv (.del key)` and `putKvDelChk key` (the copy
+with the checks before the take-backs) and compares their results and states.
+dchk:ok (same result and state), dchk:DIFF (both succeed, differ), dchk:FAIL
+(the copy fails where the writer succeeds), with what the writer's delete did:
+:climb (the upward delete), :merge (merges), :mtb (a merge took a node back),
+:rctb (root collapse took a root back), :uptb (the loop took a node back).
+-/
+import SIS.Tree.MergeProofBundle
+import SIS.Tree.DelChk
+
+set_option autoImplicit false
+set_option maxRecDepth 100000
+
+namespace SIS.Tree
+
+open SIS SIS.Check
+
+def wEqD (a b : W) : Bool :=
+  a.nodes == b.nodes && a.gh == b.gh && a.vals == b.vals && a.taken == b.taken &&
+  a.madeFor == b.madeFor && a.next == b.next && a.path == b.path && a.top == b.top &&
+  a.newTop == b.newTop && a.trail == b.trail && a.merges == b.merges &&
+  a.spaceSplits == b.spaceSplits && a.outside == b.outside &&
+  a.made.length == b.made.length
+
+def tagD (w0 w : W) : String :=
+  let t := w.trail.take (w.trail.length - w0.trail.length)
+  (if t.contains "up.climb" then ":climb" else "") ++
+  (if t.any (fun s => s == "merge.one" || s == "merge.two") then ":merge" else "") ++
+  (if t.contains "merge.takeback" then ":mtb" else "") ++
+  (if t.contains "rc.takeback.segment" || t.contains "rc.takeback.space" then ":rctb" else "") ++
+  (if t.contains "up.takeback" then ":uptb" else "")
+
+/-- The checks at each delete of a transaction's operations. -/
+def opsD (c : Ctx) : List Op → W → List String → List String
+  | [], _, acc => acc
+  | op :: rest, w, acc =>
+    let acc' := match op with
+      | .put _ _ => acc
+      | .del key =>
+        match (putKv (.del key)) c w, (putKvDelChk key) c w with
+        | .ok (r1, v1), .ok (r2, v2) =>
+          acc ++ [(if r1 == r2 && wEqD v1 v2 then "dchk:ok" else "dchk:DIFF") ++ tagD w v1]
+        | .ok (_, v1), .error e => acc ++ ["dchk:FAIL" ++ tagD w v1 ++ " " ++ e]
+        | .error _, _ => acc
+    match (putKv op) c w with
+    | .ok (_, w') => opsD c rest w' acc'
+    | .error e => acc' ++ ["ERR " ++ e]
+
+def withinD (p : Params) (all : List Tx) : Bool :=
+  all.all (fun t => t.sorted && t.wf) &&
+  (List.range all.length).all (fun j =>
+    match all[j]? with
+    | none => false
+    | some tj => (treeRun p (all.take j)).all (fun q => decide (q.1 < tj.base)) &&
+        isOk (exec? p tj (j + 1) (view (treeSpec p) (treeRun p (all.take j)) j)))
+
+def runD (p : Params) (all : List Tx) : List String :=
+  if !withinD p all then ["skip:not-within"] else
+  ["run"] ++ (List.range all.length).foldl (fun acc j =>
+    match all[j]? with
+    | none => acc
+    | some tx =>
+      let ts := all.take j
+      let v := view (treeSpec p) (treeRun p ts) ts.length
+      match lastTop v with
+      | none => acc ++ ["notop"]
+      | some z =>
+        match topOf p (ctxOf p ts).view z with
+        | .error _ => acc ++ ["toperr"]
+        | .ok top => acc ++ opsD (ctxOf p ts) tx.ops (wInit tx top) []) []
+
+def summD (l : List String) : String :=
+  let cnt (s : String) := (l.filter (fun x => (x.splitOn s).length > 1)).length
+  s!"runs {(l.filter (· == "run")).length} (skipped {(l.filter (· == "skip:not-within")).length}) deletes {cnt "dchk:"}: ok {cnt "dchk:ok"} FAIL {cnt "dchk:FAIL"} DIFF {cnt "dchk:DIFF"}; with climb {cnt ":climb"} merge {cnt ":merge"} mtb {cnt ":mtb"} rctb {cnt ":rctb"} uptb {cnt ":uptb"}; fails {(l.filter (fun x => x.startsWith "dchk:FAIL" || x.startsWith "dchk:DIFF")).take 3} other {(l.filter (fun x => x.startsWith "ERR" || x.startsWith "not" || x.startsWith "toperr")).take 3}"
+
+end SIS.Tree
+
+namespace SIS.Tree
+
+#eval summD (runD invAsmP invAsmTs)
+
+def dP1 : Params := {M := 8, G := 1, H := 2, mergeBelow := 2, mergeMax := 3, splitAbove := 4}
+def dP2 : Params := {M := 10, G := 2, H := 2, mergeBelow := 2, mergeMax := 4, splitAbove := 5}
+def dPutsAB (as bs : List Nat) : List Op := (as.flatMap (fun a => bs.map (fun b => .put [a, b] (a * 1000 + b + 1))))
+def dDels (as bs : List Nat) : List Op := (as.flatMap (fun a => bs.map (fun b => .del [a, b])))
+def dA (n : Nat) : List Nat := (List.range n).map (fun i => 64 * i + 56)
+def dBs (n : Nat) : List Nat := (List.range n).map (fun j => 64 * j + 8)
+def dRun (na nb k1 keep : Nat) : List Tx :=
+  let a0 := 64 * (na / 2) + 56
+  [{base := 1000, ops := dPutsAB (dA na) (dBs 2)},
+   {base := 3000, ops := dPutsAB [a0] ((dBs nb).drop 2)},
+   {base := 5000, ops := dDels [a0] ((dBs nb).take k1)},
+   {base := 7000, ops := dDels [a0] (((dBs nb).drop k1).take (nb - k1 - keep))}]
+def dFamily : List (List Tx) :=
+  [1, 3, 7, 9].flatMap (fun na => [12, 16, 24].flatMap (fun nb =>
+    [nb / 2, nb - 9, nb - 5].flatMap (fun k1 => [0, 1, 2].map (fun keep => dRun na nb k1 keep))))
+#eval summD (dFamily.flatMap (fun r => runD dP1 r))
+#eval summD (dFamily.flatMap (fun r => runD dP2 r))
+
+-- whole segment trees deleted: the upward delete
+def dRunAll (na nb : Nat) : List Tx :=
+  [{base := 1000, ops := dPutsAB (dA na) (dBs nb)},
+   {base := 5000, ops := dDels ((dA na).take (na / 2 + 1)) (dBs nb)}]
+def dFamilyAll : List (List Tx) :=
+  [2, 3, 5].flatMap (fun na => [1, 2, 3, 6, 10, 12, 16, 24].map (fun nb => dRunAll na nb))
+-- whole segment trees deleted after a first round of deletes in the same transaction's
+-- earlier operations: the merges make nodes, root collapse makes one the segment root
+def dRunAll2 (na nb : Nat) : List Tx :=
+  [{base := 1000, ops := dPutsAB (dA na) (dBs nb)},
+   {base := 5000, ops := dDels (dA na) (dBs nb)}]
+#eval summD (([2, 3].flatMap (fun na => [8, 12, 16, 24, 32].map (fun nb => dRunAll2 na nb))).flatMap (fun r => runD dP1 r))
+#eval summD (dFamilyAll.flatMap (fun r => runD dP1 r))
+#eval summD (dFamilyAll.flatMap (fun r => runD dP2 r))
+
+-- mixed transactions: puts split nodes that deletes merge
+def dKey (j : Nat) : Key := [64 * j + 8]
+def dMixed (a b a' b' : Nat) : List Op :=
+  (List.range 200).filterMap (fun j =>
+    if j % 2 == 1 && a ≤ j && j < b then some (.put (dKey j) (j + 1))
+    else if j % 2 == 0 && a' ≤ j && j < b' then some (.del (dKey j))
+    else none)
+def dEvens (n : Nat) : List Op := (List.range n).map (fun j => .put (dKey (2 * j)) (j + 1))
+def dOddDels (a b : Nat) : List Op :=
+  (List.range 200).filterMap (fun j => if j % 2 == 1 && a ≤ j && j < b then some (.del (dKey j)) else none)
+def dMixRun (n a b a' b' : Nat) : List Tx :=
+  [{base := 1000, ops := dEvens n},
+   {base := 3000, ops := dMixed a b a' b'},
+   {base := 5000, ops := dOddDels a b}]
+def dMixFamily : List (List Tx) :=
+  [20, 40, 60].flatMap (fun n => [(0, 30), (10, 50), (5, 90)].flatMap (fun (a, b) =>
+    [(0, 2 * n), (a, b), (b - 10, 2 * n), (a + 4, b + 20)].map (fun (a', b') => dMixRun n a b a' b')))
+#eval summD (dMixFamily.flatMap (fun r => runD dP1 r))
+#eval summD (dMixFamily.flatMap (fun r => runD invAsmP r))
+
+-- random transactions: keys of one to three segments, each transaction sorted with one
+-- operation a key, puts and deletes mixed
+def nextRandD (s : Nat) : Nat := (s * 6364136223846793005 + 1442695040888963407) % 2 ^ 64
+def dPrefixes : List (List Nat) := [[], [120], [184], [120, 248], [184, 120]]
+def dRandKeys (seed n nKeys : Nat) : List Key × Nat := Id.run do
+  let mut s := seed
+  let mut ks : List Key := []
+  for _ in [0:n] do
+    s := nextRandD s
+    let pre := dPrefixes.getD ((s / 7) % dPrefixes.length) []
+    let j := (s / 101) % nKeys
+    ks := ks ++ [pre ++ [j * 64 + 8]]
+  return (ks, s)
+def dSortKeys (ks : List Key) : List Key :=
+  (ks.foldl (fun acc k => if acc.contains k then acc else acc ++ [k]) []).mergeSort (fun a b => keyLt a b || a == b)
+def dRandRun (seed nTx maxOps nKeys : Nat) : List Tx := Id.run do
+  let mut s := seed
+  let mut txs : List Tx := []
+  for t in [0:nTx] do
+    s := nextRandD s
+    let (ks, s2) := dRandKeys s (s % maxOps + 1) nKeys
+    s := s2
+    let ops := (dSortKeys ks).map (fun k =>
+      if (k.foldl (· + ·) s) % 3 == 0 then Op.del k else Op.put k (t * 1000 + 1))
+    txs := txs ++ [{base := 1000000 * (t + 1), ops := ops}]
+  return txs
+-- keep the transactions that succeed after the ones kept: a run within reach
+def dKeepOk (p : Params) (txs : List Tx) : List Tx :=
+  txs.foldl (fun run tx =>
+    if isOk (exec? p tx (run.length + 1) (view (treeSpec p) (treeRun p run) run.length)) then run ++ [tx]
+    else run) []
+#eval summD ([1, 2, 3, 4].flatMap (fun seed =>
+  let p : Params := ({M := 8, G := 2, H := 3} : Params).withMerges
+  runD p (dKeepOk p (dRandRun (seed + 200) 12 25 20))))
+#eval summD ([1, 2, 3, 4].flatMap (fun seed =>
+  let p : Params := ({M := 8, G := 2, H := 1} : Params).withMerges
+  runD p (dKeepOk p (dRandRun (seed + 100) 12 25 20))))
+
+end SIS.Tree

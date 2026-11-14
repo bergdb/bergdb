@@ -1,0 +1,172 @@
+/-
+Per-segment fuel check (bergdb 024-22, cost, 2026-11-13): at every operation
+boundary of a transaction, every node reached from the space root has a segment
+depth below p.fuel (latest's `SegFits N t (fuel - 1) r`, as a Bool), and the
+longest whole path from the space root (the old `PathsFit`), for comparison.
+Not part of the Lean project; run it from lean/:
+
+  lake env lean --run ../items/024-release-2026-5/12-tree-model/segfit-check.lean.txt [small | big | random | random2]
+
+-/
+import SIS.Tree.Bound
+import SIS.Tree.Top
+import SIS.Tree.GetWriter
+import SIS.Tree.Props
+
+open SIS SIS.Check SIS.Tree
+
+/-- Segment depth of x: 0 at a segment leaf or no node; an inner node one more
+than its live children's most (`SegDepthLe`). -/
+partial def segDepth (N : NodeId → Option KNode) (t : Time) (x : NodeId) : Nat :=
+  match N x with
+  | none => 0
+  | some n => if n.leaf then 0 else (n.liveAt t).foldl (fun m (_, z) => max m (1 + segDepth N t z)) 0
+
+/-- The least segment depth below x (0 at a leaf). -/
+partial def segDepthMin (N : NodeId → Option KNode) (t : Time) (x : NodeId) : Nat :=
+  match N x with
+  | none => 0
+  | some n => if n.leaf then 0 else
+    match (n.liveAt t).map (fun (_, z) => 1 + segDepthMin N t z) with
+    | [] => 0
+    | d :: ds => ds.foldl min d
+
+/-- Every reached inner node has its segment leaves all at one depth. -/
+partial def balanced (N : NodeId → Option KNode) (t : Time) (x : NodeId) : Bool :=
+  match N x with
+  | none => true
+  | some n =>
+    (n.leaf || segDepth N t x == segDepthMin N t x) &&
+      (n.liveAt t).all (fun (_, z) => balanced N t z)
+
+/-- The most segment depth of the nodes reached from x, and the longest path
+from x (links, values counted). -/
+partial def walk (N : NodeId → Option KNode) (t : Time) (x : NodeId) : Nat × Nat :=
+  match N x with
+  | none => (0, 0)
+  | some n =>
+    (n.liveAt t).foldl (fun (acc : Nat × Nat) (_, z) =>
+      let r := walk N t z
+      (max acc.1 r.1, max acc.2 (1 + r.2))) (segDepth N t x, 0)
+
+structure Res where
+  ok : Bool
+  err : String := ""
+  maxSeg : Nat := 0
+  maxPath : Nat := 0
+  states : Nat := 0
+  unbalanced : Nat := 0
+
+/-- One transaction from P at time i, checked after each operation. -/
+def runTx (p : Params) (P : Struct BVal) (i base : Nat) (ops : List Tree.Op)
+    (checkAt : Nat → Bool := fun _ => true) :
+    Res × Option (Struct BVal) :=
+  let view := viewOf P
+  match lastTop view with
+  | none => ({ ok := false, err := "no top" }, none)
+  | some z =>
+    match topOf p (rootless view) z with
+    | .error e => ({ ok := false, err := e }, none)
+    | .ok top =>
+      let ctx : Ctx := { p := p, i := i, view := rootless view }
+      let step := fun (acc : Res × Option W) (q : Tree.Op × Nat) =>
+        match acc with
+        | (r, none) => (r, none)
+        | (r, some w) =>
+          match ((putKv q.1).run ctx).run w with
+          | .error e => ({ r with ok := false, err := e }, none)
+          | .ok (_, w') =>
+            if checkAt q.2 then
+              let (s, pl) := walk (wNode p (rootless view) w') i w'.top.rootKey
+              let bal := balanced (wNode p (rootless view) w') i w'.top.rootKey
+              let r' : Res := { r with maxSeg := max r.maxSeg s, maxPath := max r.maxPath pl }
+              let r'' : Res := { r' with states := r.states + 1, unbalanced := r.unbalanced + (if bal then 0 else 1) }
+              (r'', some w')
+            else (r, some w')
+      let w0 : W := { next := base, top := top }
+      match ops.zipIdx.foldl step ({ ok := true }, some w0) with
+      | (r, none) => (r, none)
+      | (r, some w) =>
+        match boundsOK p (.ok ([], w)) with
+        | .error e => ({ r with ok := false, err := e }, none)
+        | .ok _ => (r, some (P.apply i (changesOf i w)))
+
+def nextRand (s : Nat) : Nat := (s * 6364136223846793005 + 1442695040888963407) % 2 ^ 64
+
+def line (name : String) (p : Params) (r : Res) : String :=
+  let segOk := decide (r.maxSeg < p.fuel)
+  let pathOk := decide (r.maxPath < p.fuel)
+  s!"{name}: M={p.M} G={p.G} H={p.H} fuel={p.fuel} merges={p.mergeBelow} tx {if r.ok then "ok" else "error: " ++ r.err.take 60} states={r.states} maxSegDepth={r.maxSeg} SegFits(fuel-1)={segOk} maxWholePath={r.maxPath} PathsFit={pathOk} unbalancedStates={r.unbalanced}"
+
+/-- Grow then shrink: tx1 puts the prefix key, tx2 puts n keys then deletes them. -/
+def growShrink (name : String) (p : Params) (pre : List Nat) (n : Nat) : String :=
+  let P0 := initStruct p
+  let k (j : Nat) : Key := pre ++ [j * 64 + 8]
+  match runTx p P0 1 1000 [Tree.Op.put (k 0) 1] with
+  | (r, none) => s!"{name}: tx1 failed {r.err}"
+  | (_, some P1) =>
+    let ops := (List.range n).map (fun j => Tree.Op.put (k (j + 1)) (j + 2)) ++
+      (List.range n).map (fun j => Tree.Op.del (k (j + 1)))
+    let every := if n > 50 then 50 else 1
+    line name p (runTx p P1 2 100000 ops (fun j => j % every == 0 || j == n - 1 || j + 1 == 2 * n)).1
+
+/-- Random transactions over keys of up to three segments. -/
+def randomRuns (name : String) (p : Params) (seed nTx maxOps nKeys : Nat) : String := Id.run do
+  let prefixes : List (List Nat) := [[], [120], [184], [120, 248], [184, 120]]
+  let mut s := seed
+  let mut P := initStruct p
+  let mut worst : Res := { ok := true }
+  let mut oks := 0
+  let mut errs := 0
+  let mut firstErr := ""
+  for t in [0:nTx] do
+    s := nextRand s
+    let nops := s % maxOps + 1
+    let mut ops : List Tree.Op := []
+    for _ in [0:nops] do
+      s := nextRand s
+      let pre := prefixes.getD ((s / 7) % prefixes.length) []
+      let j := (s / 101) % nKeys
+      let key := pre ++ [j * 64 + 8]
+      s := nextRand s
+      ops := ops ++ [if s % 3 == 0 then Tree.Op.del key else Tree.Op.put key (t * 1000 + j)]
+    let (r, P') := runTx p P (t + 1) (1000000 * (t + 1)) ops
+    worst := { worst with maxSeg := max worst.maxSeg r.maxSeg, maxPath := max worst.maxPath r.maxPath }
+    worst := { worst with states := worst.states + r.states, unbalanced := worst.unbalanced + r.unbalanced }
+    match P' with
+    | some P2 => P := P2; oks := oks + 1
+    | none =>
+      errs := errs + 1
+      if firstErr == "" then firstErr := (r.err.take 80).toString
+  return s!"{line name p worst} (transactions ok {oks}, errors {errs}, first: {firstErr}; max over all states, failing ones too)"
+
+def say (s : String) : IO Unit := do
+  IO.println s
+  (← IO.getStdout).flush
+
+def main (args : List String) : IO Unit := do
+  let p8 : Params := { M := 8, G := 1, H := 0 }
+  let p4 : Params := { M := 4, G := 1, H := 0 }
+  let p8g2 : Params := { M := 8, G := 2, H := 0 }
+  match args.getD 0 "small" with
+  | "big" =>
+    say (growShrink "grow-shrink 1000" p8 [120] 1000)
+    say (growShrink "grow-shrink 1000 merges" p8.withMerges [120] 1000)
+    say (growShrink "grow-shrink 1000 three segments" p8g2 [120, 248] 1000)
+    say (growShrink "grow-shrink 1000 three segments merges" p8g2.withMerges [120, 248] 1000)
+  | "random2" =>
+    for seed in [1, 2, 3] do
+      say (randomRuns s!"random H=2 seed {seed}" { M := 4, G := 2, H := 2 } seed 6 30 12)
+      say (randomRuns s!"random H=2 seed {seed} merges" ({ M := 8, G := 2, H := 1 } : Params).withMerges
+        seed 60 60 40)
+  | "random" =>
+    for seed in [1, 2, 3] do
+      say (randomRuns s!"random seed {seed}" { M := 4, G := 2, H := 0 } seed 60 30 12)
+      say (randomRuns s!"random seed {seed} merges" ({ M := 8, G := 2, H := 0 } : Params).withMerges
+        seed 60 60 40)
+  | _ =>
+    for n in [5, 6, 7] do
+      say (growShrink s!"grow-shrink {n}" p4 [120] n)
+    say (growShrink "grow-shrink 6 merges" { p4 with mergeBelow := 2, mergeMax := 2 } [120] 6)
+    say (growShrink "grow-shrink 6 three segments M4" { M := 4, G := 2, H := 0 } [120, 248] 6)
+    say (growShrink "grow-shrink 7 three segments M4" { M := 4, G := 2, H := 0 } [120, 248] 7)
