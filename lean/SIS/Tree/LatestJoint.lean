@@ -158,9 +158,41 @@ theorem leftAllOK_snoc (p : Params) (hp : MergeParamsOK p) (ts : List Tx) (tx : 
 
 set_option maxHeartbeats 800000 in
 /-- `latestInvOK_of_cases`' step: TP7's invariant after one more transaction,
-from `RunOK` before it, TP10's three posts and `QLive` for every operation, and
+from R before it (a run predicate with the run's links, P's tree and TP7's
+invariant), TP10's three posts and `QLive` for every operation at R's runs, and
 after it: the run's links, P's tree, the kinds, the heights, the sizes and the
 bound on dead klongs. -/
+theorem invOK_snocR (p : Params) (R : Struct BVal → Time → Prop)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t) (hRT : ∀ P t, R P t → TreeAt p P t)
+    (hRI : ∀ P t, R P t → InvOK p P t)
+    (hT : OpCaseOK p R (QTree p) AnyOp) (hPI : OpCaseOK p R (QPutInv p) AnyOp)
+    (hO : OpCaseOK p R (QRange p) AnyOp) (hLv : OpCaseOK p R (QLive p) AnyOp)
+    (ts : List Tx) (tx : Tx) (hw : Within p (ts ++ [tx])) (hr : R (treeRun p ts) ts.length)
+    (hL' : RunLinksOK p (treeRun p (ts ++ [tx])) (ts.length + 1))
+    (hT' : TreeAt p (treeRun p (ts ++ [tx])) (ts.length + 1))
+    (hK' : KindsAllOK p (treeRun p (ts ++ [tx])))
+    (hA' : HeightAllOK p (treeRun p (ts ++ [tx])) (ts.length + 1))
+    (hS' : SizeOK p (treeRun p (ts ++ [tx])))
+    (hLA' : LeftAllOK p (treeRun p (ts ++ [tx])))
+    (hD' : DeadAllOK p (treeRun p (ts ++ [tx]))) :
+    InvOK p (treeRun p (ts ++ [tx])) (ts.length + 1) := by
+  obtain ⟨noops, w, hrun⟩ := within_last_ok p ts tx hw
+  obtain ⟨z, top, hz, htop, hops⟩ := runOps_ok p _ _ _ _ noops w hrun
+  have hcl : CommitLiftAt p ts tx := commitLiftAt_of_links p ts tx hw (hRL _ _ hr)
+  have hRO := (joint_reached p R hRL hT hPI hO ts tx hw hr (hRT _ _ hr) (hRI _ _ hr) z top hz
+    htop tx.ops [] (by simp) noops w hops).2
+  have hLC := live_reached p R hRL hT hPI hO hLv ts tx hw hr (hRT _ _ hr) (hRI _ _ hr) z top
+    hz htop tx.ops [] (by simp) noops w hops
+  obtain ⟨hNE, hRT, hF⟩ := liveCounts_commit p ts tx hw hcl noops w hrun hLC
+  have hRA := rangeAtOK_commit p ts tx hw hcl noops w hrun hRO
+  have hLM : LeftmostOK p (treeRun p (ts ++ [tx])) (ts ++ [tx]).length :=
+    leftmostOK_of_leftAll p _ _ (treeRun_timesLE p _) hL'.2.1 hLA'
+  have hlen : (ts ++ [tx]).length = ts.length + 1 := by simp
+  rw [hlen] at hLM
+  exact invOK_of_parts p _ _ (rootKeyOK_of_treeAt p _ _ hT') (keyNodesOK_of_parts p _ hS' hL'.2.1 hL'.1 hD')
+    hK' (heightLiveOK_of_all p _ _ hA' (ht_keyNodesAt_key p _ _)) hNE hLM hRT hF hRA
+
+/-- `invOK_snocR` at `RunOK`. -/
 theorem invOK_snoc (p : Params)
     (hT : OpCaseOK p (RunOK p) (QTree p) AnyOp) (hPI : OpCaseOK p (RunOK p) (QPutInv p) AnyOp)
     (hO : OpCaseOK p (RunOK p) (QRange p) AnyOp) (hLv : OpCaseOK p (RunOK p) (QLive p) AnyOp)
@@ -172,23 +204,9 @@ theorem invOK_snoc (p : Params)
     (hS' : SizeOK p (treeRun p (ts ++ [tx])))
     (hLA' : LeftAllOK p (treeRun p (ts ++ [tx])))
     (hD' : DeadAllOK p (treeRun p (ts ++ [tx]))) :
-    InvOK p (treeRun p (ts ++ [tx])) (ts.length + 1) := by
-  have hRL : ∀ P t, RunOK p P t → RunLinksOK p P t := fun _ _ h => h.1
-  obtain ⟨noops, w, hrun⟩ := within_last_ok p ts tx hw
-  obtain ⟨z, top, hz, htop, hops⟩ := runOps_ok p _ _ _ _ noops w hrun
-  have hcl : CommitLiftAt p ts tx := commitLiftAt_of_links p ts tx hw hr.1
-  have hRO := (joint_reached p (RunOK p) hRL hT hPI hO ts tx hw hr hr.2.1 hr.2.2 z top hz
-    htop tx.ops [] (by simp) noops w hops).2
-  have hLC := live_reached p (RunOK p) hRL hT hPI hO hLv ts tx hw hr hr.2.1 hr.2.2 z top
-    hz htop tx.ops [] (by simp) noops w hops
-  obtain ⟨hNE, hRT, hF⟩ := liveCounts_commit p ts tx hw hcl noops w hrun hLC
-  have hRA := rangeAtOK_commit p ts tx hw hcl noops w hrun hRO
-  have hLM : LeftmostOK p (treeRun p (ts ++ [tx])) (ts ++ [tx]).length :=
-    leftmostOK_of_leftAll p _ _ (treeRun_timesLE p _) hL'.2.1 hLA'
-  have hlen : (ts ++ [tx]).length = ts.length + 1 := by simp
-  rw [hlen] at hLM
-  exact invOK_of_parts p _ _ (rootKeyOK_of_treeAt p _ _ hT') (keyNodesOK_of_parts p _ hS' hL'.2.1 hL'.1 hD')
-    hK' (heightLiveOK_of_all p _ _ hA' (ht_keyNodesAt_key p _ _)) hNE hLM hRT hF hRA
+    InvOK p (treeRun p (ts ++ [tx])) (ts.length + 1) :=
+  invOK_snocR p (RunOK p) (fun _ _ h => h.1) (fun _ _ h => h.2.1) (fun _ _ h => h.2.2) hT hPI hO hLv
+    ts tx hw hr hL' hT' hK' hA' hS' hLA' hD'
 
 /-! ## The run induction's Q -/
 

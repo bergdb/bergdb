@@ -377,5 +377,6 @@ import SIS.Tree.DelStepsFullH
 import SIS.Tree.StopLeafLive
 import SIS.Tree.HeightsUpCascR
 import SIS.Tree.DelStepsTree
+import SIS.Tree.LiveJointL
 import SIS.Tree.DelStepsLive
 import SIS.Tree.DelStepsHolder
