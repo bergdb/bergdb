@@ -17,7 +17,9 @@ taken apart:
 * the upward delete's cascade at its stop node is proved, for the reading
   (putinv's `delStepsOKF3_of_open7`), and for the take-back
   (`delStepsJ2OKF3_of_openR2`): `hUC` and `hUCJ` are `hU`, `hL` and `hFit`, about
-  the state after the upward loop and the fuel after the cascade;
+  the state after the upward loop and the fuel after the cascade; LE-b at the
+  stop node is proved when the node has room (`delStepsOKF3_of_open8`,
+  `delStepsJ2OKF3_of_openR3`), so its premises are about a full stop node;
 * the fuel at every state between operations (`hfit`) comes from the heights
   (cost's `txSegFitsOK_of_takeBelowDelR`): every node a delete takes back has a
   height below the fuel (`TakeBelowFuelDelOK`; a put takes nothing back).
@@ -33,6 +35,7 @@ import SIS.Tree.HeightsFit
 import SIS.Tree.HeightsUnder
 import SIS.Tree.DelStepsCascRoot
 import SIS.Tree.TakeUpCasc
+import SIS.Tree.DelStepsLeb
 
 set_option autoImplicit false
 
@@ -107,12 +110,13 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     (hU : ∀ ts, UpUnlinkOK (ctxOf p ts) (viewOf (treeRun p ts)))
     (hL : ∀ ts, UpUnlinkLinksOK (ctxOf p ts) (viewOf (treeRun p ts)))
     (hFit : ∀ ts BK, UpCascFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) BK)
-    (hULb : ∀ ts BK, UpLebOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) BK)
+    (hLbF : ∀ ts BK,
+      UpLebFullOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) BK)
     (hFits : ∀ ts, DelFullFitsOK (ctxOf p ts) (viewOf (treeRun p ts)))
     (hMS : ∀ ts, MergeStepOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
     (hCo : ∀ ts, CollapseStepOKF4 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hULbJ : ∀ ts BK B,
-      UpLebJ2OKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) BK B)
+    (hLbFJ : ∀ ts BK B,
+      UpLebFullJ2OK (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) BK B)
     (hMF : StateOK p (RunOK p) (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base)) :
     InvPreserved p ∧ GetOK p ∧ ScanOK p ∧ LatestGetOK p ∧ LatestScanOK p := by
   have hp' := hp
@@ -168,9 +172,9 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     (rangeStateOK_of_cases p _ hRL' hRT' hRI' hT' hPI' hO')
     hfitQ
     (fun ts tx hw hr => hMF ts tx hw (hR _ _ hr))
-    (delStepsJ2OKF3_of_openR2 p _ (TakeS4 p) (by omega) hsa hRL' hRP' hRK'
+    (delStepsJ2OKF3_of_openR3 p _ (TakeS4 p) (by omega) hsa hRL' hRP' hRK'
       (fun _ _ _ h => h.1.1.1.1) (fun _ _ _ h => h.1.1.1.2) (fun _ _ _ h => h.1.1.2)
-      (fun _ _ _ h => h.1.2) (fun _ _ _ h => h.2.1) (fun _ _ _ h => h.2.2) hU hL hFit hULbJ hFits)
+      (fun _ _ _ h => h.1.2) (fun _ _ _ h => h.2.1) (fun _ _ _ h => h.2.2) hU hL hFit hLbF hLbFJ hFits)
     hMS hCo (replaceRootFullJ2OK_run p hsa)
   -- TP7, TP10 and TP11 from it
   have hP : ∀ ts, Within p ts → PointersOK (treeRun p ts) := fun ts hw => (hJ ts hw).1.1
@@ -182,7 +186,7 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
   have h := getOK_scanOK_of_cases_merges_open p hp hinv (fun ts hw => (hJ ts hw).1)
     (fun ts hw => (hJ ts hw).2.1) hfit t4 i4 r4
     (opGetCaseOK_delMergeF4 p (RunOK p)
-      (delStepsOKF3_of_open7 p (RunOK p) (by omega) hsa hRL hP hU hL hFit hULb hFits)
+      (delStepsOKF3_of_open8 p (RunOK p) (by omega) hsa hRL hP hU hL hFit hLbF hFits)
       hMS hCo hsa hcap (by omega) hP hfit)
   exact ⟨hinv, h.1, h.2, latestGetOK_of_getOK p h.1, latestScanOK_of_scanOK p h.2⟩
 
