@@ -365,3 +365,4 @@ import SIS.Tree.DelStepsLeb
 import SIS.Tree.HeightsPathFree
 import SIS.Tree.HeightsUnder
 import SIS.Tree.DelChkRefines
+import SIS.Tree.HeightsFitsR

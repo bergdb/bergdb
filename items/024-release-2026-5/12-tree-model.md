@@ -2202,6 +2202,25 @@ and its status:
       every cached height (`opHtStep_of`, every operation). For the bounds
       inside an operation, not used yet. `heights-op-check.lean.txt`: 7746
       deletes, 0 failures.
+    - putinv's `DelFullFitsOK` (the fuel after the bitmap into a full
+      leaf) in its reached form, proved (cost, 03:05;
+      `HeightsFitsR.lean`): `DelFullFitsOKR c base H B`, the same binders
+      with the heights' state at the descent's end (`HtJ`: the books, the
+      walk's `HtInv`, the path not taken back, the klongs' form, every
+      cached height of a node not taken back below the fuel) and the path
+      ending at depth d, is `delFullFitsOKR_of` (`delFullFitsOKR_run` at a
+      run's context). The cascade is the delete's first write that adds
+      heights; `sbS_appendDeleteKlong` bounds the nodes not taken back
+      (HeightsFuel.lean's cascade lemmas generalized in place to a set S
+      of ids, `SBInvS`; the old ones are the case of every id). For
+      putinv's descent walk: `htJ_descendLte`, `htJ_pathAdd` (from a
+      segment leaf by the klong `searchEq` finds), `htJ_start`, and with
+      the kinds' books `kdhtJ_*`; at a reachable operation's start
+      `htStart_reachedU` (the bound by the doomed transaction, with
+      `TakeBelowFuelDelOK`). `UpCascFitsOK` and `UpLebFitsOK` stay named:
+      after the upward loop the heights' cache needs the holders of the
+      nodes taken back (the facts `OpDelChk2OK`'s checks assume), which
+      putinv proposes to name as `UpHolderOK`.
   - (5) `DelNoLeafCase`, a delete of a key with no leaf: proved,
     `opGetCaseOK_delNoLeaf`. It changes no reading: the writer's walk
     stops at the first segment that is not there and only reads
