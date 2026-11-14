@@ -101,6 +101,7 @@ Open
 |---|---|---|---|---|
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins and sequential keys | none | open |
 | [028-07](07-start-lock-across-sync.md) | Investigate | One start's sync blocks every start of the JVM | none | open |
+| [028-13](13-startup-distance-ranges.md) | Decide | The startup distance's two ranges disagree | decision | open |
 | [028-10](10-public-start-params.md) | Investigate | The public Db.start(StartParams) takes unchecked values | decision | evaluated, for Frans |
 
 
