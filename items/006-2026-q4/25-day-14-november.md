@@ -106,7 +106,35 @@ between check-ins.
   HeightsFitsR build, no process) released.
 
 
-## 5. For Frans to decide
+## 5. While Frans is away (13:58 to Sunday 10:00)
+
+Frans, 13:57: "I am leaving in a few minutes. Are you ready for
+unattended work as far as possible. As planned."
+
+* **The proofs' cleanup (025-02)**, by its plan: prune (to 18:00) and
+  notes (to 16:30) from 13:31; names when prune has landed (to 21:00);
+  close and, if the week is below 83 %, dups when names has landed (to
+  22:00). Each prover lands its own gated step on `main`. The
+  coordinator starts each next prover at a check-in and creates
+  `cleanup/STOP` at 87 % of the week (75 % at the start, 12 points) or
+  91 %, whichever comes first.
+* **At 22:00** a script (`/Users/f/fl/bench/2026-11-14/night/
+  timing-waiter.sh`, independent of the session) creates `cleanup/STOP`
+  if it is not there. When the cleanup is over (STOP, or `ALLDONE` from
+  the coordinator) and no Lean process has run for 15 minutes, it
+  starts the timing pass (026-15) with its end at Sunday 09:00: about
+  four rounds from 22:30.
+* **Check-ins** every 20 minutes from 06:00 to 22:59; none from 23:00 to
+  05:59, so that the session stays idle while the pass times. The
+  watchdog keeps the Mac awake until Sunday 10:00.
+* **Not tonight:** 025-03 (F1), proposed for after the timing pass and,
+  for its Lean steps, the week's reset (Monday 22:00); `night.sh` (the
+  timing pass takes the machine to 09:00).
+* **Sunday morning**, by 09:30: the timing pass's tables, the cleanup's
+  counts, the summary in `news.md` and here (section 6).
+
+
+## 6. For Frans to decide
 
 From 006-24 (still open): 6 (where the policy of 13 November, 16:50,
 lives) and 8 (the 10 premises to read; 006-26, section 4.3, has them in

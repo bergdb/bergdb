@@ -10,13 +10,24 @@ The prose (007-03, step 6, after 005-57): "With the reads few (B) or gone (C),
 a cold startup reads at random only what the rerun touches, at most a node per
 level of the tree for each key rerun, and the section bounds that, with T3 and
 the deadline, without T4." 005-58 proved that rule 4 by position (Java since
-005-57) links what rule 4 by node id links (`Rule4Pos_handles`), so rule 4
-reads nothing. What the startup reads is the model's lazy startup
-(`lazyStartup`, SIS/Phys.lean; with handles `handleStartup`): every object it
-makes is a version it reads (the section's index nodes in order, the root, a
-first touch of the rerun's writer through a stream slot, a node of a section's
-gd), or a node that a rerun transaction creates. Every object takes a new
-handle (`Mem.addObj`), so the handles given out bound the reads.
+005-57) links what rule 4 by node id links (`Rule4Pos_handles`). The theorems
+of SIS/BoundColdTheorems.lean bound, with `rerunReach`, the objects that the
+model's lazy startup makes (`lazyStartup`, SIS/Phys.lean; with handles
+`handleStartup`): each object is a version it reads (the section's index nodes
+in order, each once, the root, a first touch of the rerun's writer through a
+stream slot, a node of a section's gd), or a node that a rerun transaction
+creates, and each takes a new handle (`Mem.addObj`), so the handles given out
+bound the objects made.
+
+They do not bound Java's reads (bergdb 007-09, section 2.1, and its second
+review): rule 4 reads a header for a pointer of a top node of D, at most one
+for each (the top-node fallback of `NodeCollection.linkToCanonical`;
+`topHeaderReads`, the Pt term of `bounded_startup`); Java parses every version
+of the section, repeats included (`StoredTrans.Parser.parse`), where the
+model's section nodes have none; a follow of a stream pointer reads a header
+before it finds a cached object; and the merges read siblings outside the
+writer's paths. `lazyReads` (SIS/BoundColdReads.lean) counts these reads, and
+the theorems on it (SIS/BoundColdReadsTheorems.lean) bound them.
 -/
 import SIS.Phys
 

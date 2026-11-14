@@ -52,10 +52,13 @@ theorem coldReads_tree_noD (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : 
         (changeAt sp al ts j).new.length)).sum + 2 :=
   coldReads_tree_noD_of sp al ts hok hla hj htree0 htree n0 h0
 
-/-- The nodes a change makes unreachable (`removedAt`): with `DropStep` (BergDB
-drops no subtree: a split's new nodes take the children of the node it
+/-- The nodes a change makes unreachable (`removedAt`): with `DropStep` (no
+subtree dropped: a split's new nodes take the children of the node it
 replaces), at most as many as the change's entries. No TREE is needed.
-Without `DropStep` no such bound holds (SIS/BoundColdDropExample.lean). -/
+Without `DropStep` no such bound holds (SIS/BoundColdDropExample.lean).
+`DropStep` is false for Java (SIS/BoundColdDrop.lean's header; bergdb 007-09,
+section 2.2); `removedAt_bound_J` (SIS/BoundColdDropJTheorems.lean) is the
+bound with `DropStepJ`. -/
 theorem removedAt_bound (sp : Spec V T) (P : Struct V) (j : Time) (c : Changes V)
     (hd : DropStep sp P j c) : (removedAt sp P c j).length ≤ c.adds.length :=
   removedAt_le_adds sp P j c hd

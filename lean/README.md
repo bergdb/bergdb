@@ -18,7 +18,8 @@ What an implementation must meet is in sis-model.md, section 11; how Java
 is checked against the model, in 027-01's [levels.md](../items/027-algorithms/01-docs-2026-11-12/levels.md).
 
 Since bergdb 024-12 (2026-11-11) the model also has BergDB's key tree, as
-definitions that run and as stated properties, without proofs, in SIS/Tree/:
+definitions that run and as stated properties in SIS/Tree/ (the main ones
+proved since 2026-11-14 from 10 named premises: the paragraph after this one):
 Val.lean (the entry values of the BergDB instance and `blive`, moved from
 Check/Trace.lean with their names), Node.lean (a key node as its klongs; the
 searches; the last version and the halves of a split; klongs and histories),
@@ -49,6 +50,21 @@ option 2 of dead klongs (bergdb 024-23: `Params.theta`, `deadOver` in
 Exec.lean; TP39 and TP40 in SIS/Tree/DeadProps.lean) are parameters of the
 tree, off by default; record format 7's writer is
 `Params.withMerges.withTheta`.
+
+Since 2026-11-14 the tree's main properties are proved from 10 named premises
+(bergdb 024-12, section 1). The top theorem, `invGetScanOK_merges_flat`
+(SIS/Tree/LatestTopFlat.lean), gives TP7 (`InvPreserved`), TP10 (`GetOK`) and
+TP11 (`ScanOK`), and so `LatestGetOK` and `LatestScanOK`, for every parameter
+set of `MergeParamsOK` with theta 0 or at least 2; Java's own parameters,
+record format 7's from node size 8, are among them (`mergeParamsOK_java`,
+`theta_java`). Its premises `d4`, `l4`, `hchk`, `htb`, `hU`, `hHL`, `hMSF`,
+`hCoF`, `hCoU` and `hMF` each speak of one operation or one step of the
+writer, mostly of the delete with the merges; they are open, and held on the
+model's runs within reach (024-12, section 1, the evidence for each). Not
+covered: the merges off; and the theorem does not give the abstract model's
+TREE or the height H that bounded startup asks of the tree: the tree's own
+invariant is proved inside it, but no theorem connects the two (bergdb 006-26,
+section 5.3).
 
 Since bergdb item 007 (2026-10-23) the model also has the first bound, T3:
 with any cost of a record and a startup pos policy that keeps up with a
@@ -93,21 +109,74 @@ dead, a node on the access path of a change of the last lev(x) + 1 sections
 most 1 + Q + ... + Q^H times `T4_debt_tree`'s bound (`T4_debt_java_tree`);
 SIS/BoundT4JavaExample.lean has runs, checked by running, in which D grows with
 the replacements in the run's past while the last sections stay the same, so no
-bound in the changes of the last sections alone holds for that test. A cold
-start's reads are bounded too (SIS/BoundCold.lean,
+bound in the changes of the last sections alone holds for that test. The
+objects that a cold start makes are bounded too (SIS/BoundCold.lean,
 SIS/BoundColdTheorems.lean): the lazy startup gives out at most the
 section's index nodes, the writer paths and new nodes of the section's
 transactions, and |D| + 2 handles (`coldReads_lazy`, `coldReads_handles`,
 `coldReads_run`), and with TREE H + 1 nodes per node a transaction changes,
 touches or makes unreachable (`coldReads_tree`). With BergDB's still-dirty
 test and TREE the |D| term is not needed (`coldReads_run_noD`,
-`coldReads_tree_noD`), and with `DropStep` (SIS/BoundColdDrop.lean: BergDB
+`coldReads_tree_noD`), and with `DropStep` (SIS/BoundColdDrop.lean: a change
 drops no subtree) a change makes at most as many nodes unreachable as it adds
-entries (`removedAt_bound`), so the reads need no `removedAt` term either
+entries (`removedAt_bound`), so the count needs no `removedAt` term either
 (`coldReads_tree_drop`). Counted by the tree's height in place of the root's
 level number (SIS/BoundHeight.lean, SIS/BoundHeightTheorems.lean; in 024-12's
 tree model a level is a code): `coldReads_height` and
 `T4_debt_java_tree_height`.
+
+A second review of these definitions (bergdb 007-09, sections 2 and 5) found
+four of them short of Java. Newer definitions replace them; the earlier ones
+and their theorems stay, true of the model (007-09, section 6, Q2, option B):
+
+* `DropStep` is false for Java: one delete bitmap removes several children,
+  and the upward delete unlinks a parent with its children
+  (SIS/BoundColdDropJExample.lean). Java's removals are `DropStepJ` and
+  `DropRunOKJ` (SIS/BoundColdDropJ.lean): a node that stays reachable loses
+  at most the weight of the entries it gets (BergDB's weights, `bvalW`), and
+  the nodes a change makes unreachable lose at most k pointers to each other;
+  so a change makes at most (its entries' weights + k) nodes unreachable
+  (`removedAt_bound_J`). For 024-12's tree model `DropRunOKJ` holds with
+  BergDB's weights and k the nodes each transaction makes unreachable, given
+  `RunOK`, BergDB's test and TREE (`DropRunOKJ_tree`,
+  `DropRunOKJ_tree_removed`).
+* The cold-start bounds above count objects, not reads. Java parses every
+  version of the section, repeats included; it reads a header for a pointer
+  of a top node of D (rule 4's top-node fallback) and for a stream pointer
+  it follows before it finds a cached object; and the merges read siblings
+  outside the writer's paths. `lazyReads` (SIS/BoundColdReads.lean) counts
+  these reads. A cold start reads at most the section's versions + 2 + the
+  top-node header reads + 2 `rerunReach` + twice the siblings
+  (`coldReadsJ_lazy`); after a run, the run's paths and new nodes and 2|D| in
+  place of `rerunReach` (`coldReadsJ_run`); with TREE, `DropRunOKJ` and the
+  root's live height at most H, (H + 1)(new nodes + entries + touched nodes +
+  entry weights + k) per transaction of the section in place of its paths
+  (`coldReadsJ_height`); with BergDB's test and `LiveAppend`, both without
+  the |D| term (`coldReadsJ_run_noD`, `coldReadsJ_height_noD`).
+* `RecordBound` leaves the part of a record's gd outside D unbounded:
+  `RecordGdBound` (SIS/BoundT4Gd.lean) counts gd whole, and every record of a
+  run meets it (`T4_record_gd`; by height, `T4_record_gd_height`).
+* The take of 007-08 has no byte limit. `takePolicyB`
+  (SIS/BoundTakeBytes.lean) is Java's take with its `maxBytes`, which stops
+  the take at a transaction whose nodes do not fit. With it, the section
+  without its last record costs less than 2M if the whole debt fits
+  (`T3_takeB`), and holds at most 2M/m + 2 transactions, m the least cost of
+  a record, if each transaction's own nodes fit (`T3_takeB_count`). Without a
+  fit it fails in the model (SIS/BoundTakeBytesExample.lean).
+
+`bounded_startup` (SIS/BoundStartupTheorems.lean) joins T3's count, T4 and the
+reads: after any run that meets its premises, a cold start reads
+(`lazyReads`) at most
+
+    F = (N + 1)(V0 + A + Dm) + 2 + N((H + 1)A + Dm)Pt + 2N(H + 1)(A + K) + 2NB
+
+times, with N = 2M/m + 2 and Dm = (1 + Q + ... + Q^Hp)(Hp + 1)N(H + 1)A, the
+most nodes of D; `bounded_startup_tree` is the same for 024-12's tree model
+(SIS/BoundColdDropCountTheorems.lean). No term of F counts the keys or the
+age, but H grows with the logarithm of the number of keys, and Q and Hp
+(pointer parents and heights, counted over dead pointers too) are not known to
+be bounded as the database ages (007-09, section 6, Q4). Most of its premises
+are open for BergDB (007-09, section 5).
 
 Since bergdb item 009 (2026-10-25) the model also has handles: SIS/Handle.lean
 models 009's design of the physical layer (one handle per node, pointers that
@@ -254,6 +323,14 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
     import SIS.BoundColdTheorems
     import SIS.BoundColdDTheorems
     import SIS.BoundHeightTheorems
+    import SIS.BoundT4GdTheorems
+    import SIS.BoundColdDropJTheorems
+    import SIS.BoundColdDropJTreeTheorems
+    import SIS.BoundColdDropCountTheorems
+    import SIS.BoundColdReadsTheorems
+    import SIS.BoundTakeBytesTheorems
+    import SIS.BoundTakeBytesCountTheorems
+    import SIS.BoundStartupTheorems
     #print axioms SIS.T1_recovery
     #print axioms SIS.T1_crash
     #print axioms SIS.T1_nodes
@@ -306,9 +383,26 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
     #print axioms SIS.coldReads_tree_drop
     #print axioms SIS.T4_debt_java_tree_height
     #print axioms SIS.coldReads_height
+    #print axioms SIS.T4_record_gd
+    #print axioms SIS.T4_record_gd_height
+    #print axioms SIS.removedAt_bound_J
+    #print axioms SIS.coldReads_height_dropJ
+    #print axioms SIS.DropRunOKJ_tree
+    #print axioms SIS.DropStepJ_dropped_removed
+    #print axioms SIS.DropRunOKJ_tree_removed
+    #print axioms SIS.coldReadsJ_lazy
+    #print axioms SIS.coldReadsJ_run
+    #print axioms SIS.coldReadsJ_height
+    #print axioms SIS.coldReadsJ_run_noD
+    #print axioms SIS.coldReadsJ_height_noD
+    #print axioms SIS.T3_takeB
+    #print axioms SIS.T3_takeB_count
+    #print axioms SIS.bounded_startup
+    #print axioms SIS.bounded_startup_tree
 
 Each prints `[propext, Classical.choice, Quot.sound]`, or a part of it
-(`LM_cutTo`, `T3_section` and `T3_restarts` need no `Classical.choice`).
+(`LM_cutTo`, `T3_section`, `T3_restarts`, `coldReads_lazy` and
+`coldReads_handles` need no `Classical.choice`).
 SIS/HandleTheorems.lean and SIS/HandleReclaimTheorems.lean state the
 theorems over handles as definitions;
 their proofs are checked the same way, each printing
@@ -592,20 +686,59 @@ its section in sis-model.md.
   Bounds, part 3, a cold start's reads: what the lazy startup's rerun
   reaches, the writer's paths, new nodes and gd of the section's
   transactions (`rerunReach`); the handles the lazy startup gives out, one
-  for each object it makes, so each version it reads, are at most the
-  section's index nodes + `rerunReach` + 2, from any stream
-  (`coldReads_lazy`), also with handles and with Java's rule 4 by position
-  (`coldReads_handles`); after a run, with the run's own paths and D
-  (`coldReads_run`); with TREE, H + 1 nodes for each node a transaction
-  creates, gives an entry, touches or makes unreachable (`removedAt`,
-  `coldReads_tree`).
+  for each object it makes, are at most the section's index nodes +
+  `rerunReach` + 2, from any stream (`coldReads_lazy`), also with handles
+  and with Java's rule 4 by position (`coldReads_handles`); after a run, with
+  the run's own paths and D (`coldReads_run`); with TREE, H + 1 nodes for
+  each node a transaction creates, gives an entry, touches or makes
+  unreachable (`removedAt`, `coldReads_tree`). These count objects, not
+  Java's reads: SIS/BoundColdReads.lean counts reads.
 * SIS/BoundColdDrop.lean, SIS/BoundColdDTheorems.lean (007-03, step 6). A
-  cold start's reads without the |D| term, with BergDB's test and TREE
-  (`coldReads_run_noD`, `coldReads_tree_noD`); an assumption on BergDB's tree,
-  that a change drops no subtree (`DropStep`, `DropRunOK`, with the live
-  children a node loses, `lostLive`), by which a change makes at most as many
-  nodes unreachable as it adds entries (`removedAt_bound`); and the reads
-  without `removedAt` (`coldReads_tree_drop`).
+  cold start's objects without the |D| term, with BergDB's test and TREE
+  (`coldReads_run_noD`, `coldReads_tree_noD`); an assumption that a change
+  drops no subtree (`DropStep`, `DropRunOK`, with the live children a node
+  loses, `lostLive`), by which a change makes at most as many nodes
+  unreachable as it adds entries (`removedAt_bound`); and the count without
+  `removedAt` (`coldReads_tree_drop`). `DropStep` was written as BergDB's but
+  is false for Java (007-09, section 2.2); SIS/BoundColdDropJ.lean replaces
+  it.
+* SIS/BoundColdDropJ.lean, SIS/BoundColdDropJTheorems.lean,
+  SIS/BoundColdDropJTreeTheorems.lean, SIS/BoundColdDropCountTheorems.lean
+  (007-09, section 2.2). Java's removals: the live children of a node that
+  a change makes unreachable (`lostTo`), the weight of a change's entries
+  (`addsWeight`; BergDB's weights `bvalW`), `DropStepJ` and `DropRunOKJ`
+  with weights w and counts k; a change makes at most (its entries' weights
+  + k) nodes unreachable (`removedAt_bound_J`), and a cold start's objects by
+  height with it (`coldReads_height_dropJ`); for 024-12's tree model,
+  `DropStepJ`'s first point with `bvalW` (`blive_lost_le`,
+  `DropStepJ_kept_tree`, `DropRunOKJ_tree`), k at most the nodes a change
+  makes unreachable (`DropStepJ_dropped_removed`, `DropRunOKJ_tree_removed`),
+  and `bounded_startup` for it with that count (`bounded_startup_tree`).
+* SIS/BoundColdReads.lean, SIS/BoundColdReadsTheorems.lean (007-09, section
+  2.2). A cold start's reads counted as reads (`lazyReads`): every version of
+  the section with repeats (`sectionVersions`), 2 for the top node of the
+  last transaction, rule 4's top-node header reads (`topHeaderReads`), and the
+  rerun's follows, header and version, and the merges' siblings (`sib`);
+  the rerun's memory is `lazyStartup`'s (`lazyReads_same_start`); the bounds
+  from any stream, after a run, by height, and without D
+  (`coldReadsJ_lazy`, `coldReadsJ_run`, `coldReadsJ_height`,
+  `coldReadsJ_run_noD`, `coldReadsJ_height_noD`).
+* SIS/BoundT4Gd.lean, SIS/BoundT4GdTheorems.lean (007-09, section 2.2). A
+  record's gd counted whole (`RecordGdBound`); every record of a run meets it
+  (`T4_record_gd`), and by height (`T4_record_gd_height`).
+* SIS/BoundTakeBytes.lean, SIS/BoundTakeBytesTheorems.lean,
+  SIS/BoundTakeBytesCountTheorems.lean (007-09, section 2.2). Java's take
+  with its byte limit (`takeLoopB`, `takePolicyB`); the take takes the oldest
+  transaction while the span is at least 2 sd and its nodes fit
+  (`takeB_progress`); T3 for it if the whole debt fits (`T3_takeB`), and in
+  transactions if each transaction's nodes fit (`T3_takeB_count`).
+* SIS/BoundStartupTheorems.lean (007-09, section 3). `bounded_startup`: T3's
+  count, T4 and a cold start's reads in one bound, from premises.
+* SIS/BoundColdReadsExample.lean, SIS/BoundColdDropJExample.lean,
+  SIS/BoundColdCascadeExample.lean, SIS/BoundTakeBytesExample.lean (007-09,
+  section 3), by running: 24 reads for 13 objects; `DropStep` fails and
+  `DropStepJ` holds on runs of `treeSpec`; k = 10 for one delete at H = 7;
+  a take stopped by the byte limit, a span of 103 against 2M = 6.
 * SIS/BoundHeight.lean, SIS/BoundHeightTheorems.lean (007-09, section 5).
   Bounds counted by height, not by level number: a node's live height at a
   time (`LiveHeightLe`); T4's debt with BergDB's test and TREE
@@ -1274,10 +1407,23 @@ run):
   `T4_debt_tree`, `T4_debt_restarts`; with BergDB's test `T4_debt_java`,
   `T4_debt_java_count`, `T4_debt_java_tree`, `T4_debt_java_restarts`,
   `T4_debt_java_height`, `T4_debt_java_height_count`;
-  2026-11-13); a cold start's reads (`coldReads_lazy`,
+  2026-11-13); a cold start's objects (`coldReads_lazy`,
   `coldReads_handles`, `coldReads_run`, `coldReads_run_noD`,
   `coldReads_tree_noD`, `removedAt_bound`, `coldReads_tree_drop`,
-  `coldReads_height`, `T4_debt_java_tree_height`; 2026-11-13).
+  `coldReads_height`, `T4_debt_java_tree_height`; 2026-11-13; those with
+  `DropStep` are true of the model, not of Java). After the second review
+  (bergdb 007-09; 2026-11-13): a record's gd whole (`T4_record_gd`,
+  `T4_record_gd_height`); Java's removals (`removedAt_bound_J`,
+  `coldReads_height_dropJ`, `DropRunOKJ_tree`, `DropStepJ_dropped_removed`,
+  `DropRunOKJ_tree_removed`); a cold start's reads (`coldReadsJ_lazy`,
+  `coldReadsJ_run`, `coldReadsJ_height`, `coldReadsJ_run_noD`,
+  `coldReadsJ_height_noD`); T3 with the take's byte limit, from a fit
+  premise (`T3_takeB`, `T3_takeB_count`); and bounded startup, from premises
+  (`bounded_startup`, `bounded_startup_tree`).
+* The key tree (bergdb 024-12, section 1; 2026-11-14): TP7, TP10 and TP11,
+  and so `LatestGetOK` and `LatestScanOK`, for `MergeParamsOK` and Java's
+  parameters (`invGetScanOK_merges_flat`, `mergeParamsOK_java`,
+  `theta_java`), from 10 named premises, which are open (Not done).
 
 Checked by running: the `#guard`s of `lake build`, the random runs of
 `sistest`, `phystest` and `reclaimtest` (Build and run), and Java's traces
@@ -1285,14 +1431,22 @@ by `tracecheck` (027-01's [levels.md](../items/027-algorithms/01-docs-2026-11-12
 
 Not done:
 
-* The bounds (bergdb item 007): T4 for BergDB's still-dirty test counted
-  without an assumption on the pointer parents (`T4_debt_java_tree` takes Q;
-  SIS/BoundT4JavaExample.lean shows that the last sections alone do not bound
-  D); `DropStep`, which bounds the nodes a transaction makes unreachable
-  (`removedAt_bound`), is an assumption, not checked on Java's runs. T3 for
-  BergDB's take is proved without its record limit (bergdb 007-08). The stream's meta blocks are
-  not modelled either, but they make no difference to the take: when it
-  runs, the stream's length is where the new record begins (bergdb 005-68).
+* The bounds (bergdb item 007): the premises of `bounded_startup` for BergDB
+  (bergdb 007-09, section 5). Open for 024-12's tree model: `RunOK`, TREE,
+  the fit of each transaction's nodes in a record (`hfit`, which T3 with the
+  take's byte limit needs), the root's live height H, the nodes the
+  transactions make unreachable K, the merges' sibling reads B, a top node's
+  pointers Pt; and the pointer parents Q and the heights Hp along all
+  pointers, which count dead pointers too and are not known to be bounded as
+  the database ages (007-09, section 6, Q4). The size of a change A is a
+  premise on the workload (its like in operations, TP20, is open).
+  SIS/BoundT4JavaExample.lean shows that without Q the last sections alone do
+  not bound D. The stream's meta blocks are not modelled, but they make no
+  difference to the take: when it runs, the stream's length is where the new
+  record begins (bergdb 005-68).
+* The key tree's 10 premises (`d4`, `l4`, `hchk`, `htb`, `hU`, `hHL`,
+  `hMSF`, `hCoF`, `hCoU`, `hMF` of `invGetScanOK_merges_flat`; bergdb 024-12,
+  section 1): open, held on the model's runs within reach.
 * Reclaim's theorems: T-SCHEME (R6), that Java's scheme gives safe cuts:
   checked, not proved (the plan's fallback; 001-07, section 5):
   by running on example 4 (`reclaimtest`, `checkSchemeB`, and since bergdb
