@@ -1912,13 +1912,22 @@ and its status:
       the nodes it found, and after every operation every cached height
       is below fuel - 1: 0 failures. 717 operations split a root, 36 of
       them two roots (in two segments).
-    - (C), not started: at operation boundaries SegFits (fuel - 1), by the
+    - (C), begun: at operation boundaries SegFits (fuel - 1), by the
       doomed transaction. A root of height fuel or more cannot be
-      descended (`writerWP_descendLte_depth`), so no later operation of
-      the transaction reaches its segment tree and takes it back, and
-      `boundsOK` fails at the end (it is above H, so in `outside`). The
-      formal argument needs a frame of every operation for the trees it
-      does not reach.
+      descended, so no later operation of the transaction reaches its
+      segment tree and takes it back, and `boundsOK` fails at the end (it
+      is above H, so in `outside`).
+      - Proved, the first step (`HeightsFuelDescent.lean`): a descent that
+        succeeds from an untaken key node of height h had fuel above h
+        (`ht_descendLte_height`, from `writerWP_descendLte_depth` and the
+        heights' balance; the nodes it visits are untaken,
+        `ht_eqVisits_free`).
+      - Left: every take-back site reaches its node by such a descent or
+        made it in the same operation, and an operation that reaches no
+        node of a segment tree leaves the tree's nodes as they are (a
+        frame of every operation). With (B)'s one per operation, a height
+        of fuel - 1 at a boundary can reach fuel inside the next operation,
+        and then the transaction fails.
   - (5) `DelNoLeafCase`, a delete of a key with no leaf: proved,
     `opGetCaseOK_delNoLeaf`. It changes no reading: the writer's walk
     stops at the first segment that is not there and only reads
