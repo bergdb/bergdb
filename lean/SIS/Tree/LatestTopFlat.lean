@@ -42,6 +42,7 @@ import SIS.Tree.DelStepsLeb
 import SIS.Tree.DelStepsLinks
 import SIS.Tree.DelStepsUnlinkTree
 import SIS.Tree.DelStepsFullH
+import SIS.Tree.LiveJointL
 
 set_option autoImplicit false
 
@@ -183,20 +184,22 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
   have r4' := opCaseOK_anti p _ _ hR _ _ r4
   have l4' := opCaseOK_anti p _ _ hR _ _ l4
   have d4' := opCaseOK_anti p _ _ hR _ _ d4
-  -- TP10's three posts, TP7's live counts and the dead bound for every operation
-  have hT := opCaseOK_of_cases_merges p _ _ hm (treeCase_putLeafRoom p _)
+  -- TP10's three posts for every operation from a state with TP7's live counts
+  have hTL := opCaseOK_of_cases_mergesL p _ _ hm (treeCase_putLeafRoom p _)
     (treeCase_putLeafFull p _ hRL' hsa)
     (opCaseOK_putNewSeg_of_parts p _ _ (treeCase_putNewSeg1Room p _ (by omega))
-      (treeCase_putNewSegsRoom p _ (by omega)) (treeCase_putNewSegFull p _ hRL' (by omega) hsa)) t4'
-  have hPI := opCaseOK_of_cases_merges p _ _ hm (putInvCase_putLeafRoom p _ hRL')
+      (treeCase_putNewSegsRoom p _ (by omega)) (treeCase_putNewSegFull p _ hRL' (by omega) hsa))
+    (opCaseOK_delMergeL_of p _ _ t4')
+  have hPIL := opCaseOK_of_cases_mergesL p _ _ hm (putInvCase_putLeafRoom p _ hRL')
     (putInvCase_putLeafFull p _ hRL' hsa)
     (opCaseOK_putNewSeg_of_parts p _ _ (putInvCase_putNewSeg1Room p _ hRL' (by omega))
       (putInvCase_putNewSegsRoom p _ hRL' (by omega)) (putInvCase_putNewSegFull p _ hRL' (by omega) hsa))
-    i4'
-  have hO := opCaseOK_of_cases_merges p _ _ hm (rangeCase_putLeafRoom p _)
+    (opCaseOK_delMergeL_of p _ _ i4')
+  have hOL := opCaseOK_of_cases_mergesL p _ _ hm (rangeCase_putLeafRoom p _)
     (rangeCase_putLeafFull p _ hRL' hsa)
     (opCaseOK_putNewSeg_of_parts p _ _ (rangeCase_putNewSeg1Room p _ (by omega))
-      (rangeCase_putNewSegsRoom p _ (by omega)) (rangeCase_putNewSegFull p _ hRL' (by omega) hsa)) r4'
+      (rangeCase_putNewSegsRoom p _ (by omega)) (rangeCase_putNewSegFull p _ hRL' (by omega) hsa))
+    (opCaseOK_delMergeL_of p _ _ r4')
   have hLv := opCaseOK_of_cases_merges p _ _ hm (liveCase_putLeafRoom p _)
     (liveCase_putLeafFull p _ hRL' hsa hp)
     (opCaseOK_putNewSeg_of_parts p _ _ (liveCase_putNewSeg1Room p _ (by omega))
@@ -205,6 +208,11 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     (deadCase_putLeafFull p _ hRL' hsa hth)
     (opCaseOK_putNewSeg_of_parts p _ _ (deadCase_putNewSeg1Room p _ (by omega))
       (deadCase_putNewSegsRoom p _ (by omega)) (deadCase_putNewSegFull p _ hRL' (by omega) hsa hth)) d4'
+  -- the live counts at every operation's start, and so the cases at every operation
+  have hLvL := opCaseOK_L_of_any p _ _ hLv
+  have hT := opCaseOK_any_of_L p _ hRL' hRT' hRI' hTL hPIL hOL hLvL _ hTL
+  have hPI := opCaseOK_any_of_L p _ hRL' hRT' hRI' hTL hPIL hOL hLvL _ hPIL
+  have hO := opCaseOK_any_of_L p _ hRL' hRT' hRI' hTL hPIL hOL hLvL _ hOL
   -- the run induction
   have hJ := runTreeQ_of_mergesF4S p (by omega) hsa hcap hm (LatestQD p) (latestQD_init p (by omega))
     (latestQD_snocR p hp hht hT hPI hO hLv hDd)
