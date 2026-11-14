@@ -365,12 +365,6 @@ theorem txGetOK_of_op_commit (p : Params) (ho : OpGetOK p) (hc : CommitGetOK p) 
     TxGetOK p :=
   txGetOK_of_writer p (initGetOK p) ho hc
 
-/-- `LatestGetOK` from the writer's refinement of the map, one operation at a
-time, and the lift of its last state. -/
-theorem latestGetOK_of_op_commit (p : Params) (ho : OpGetOK p) (hc : CommitGetOK p) :
-    LatestGetOK p :=
-  latestGetOK_of_txGet p (txGetOK_of_op_commit p ho hc)
-
 /-- TP10 from TP7 and the two statements about the writer. -/
 theorem getOK_of_op_commit (p : Params) (hinv : InvPreserved p) (ho : OpGetOK p)
     (hc : CommitGetOK p) : GetOK p :=

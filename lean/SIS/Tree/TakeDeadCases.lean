@@ -84,7 +84,6 @@ theorem writerWP_appendDeleteKlong_room_exactD (x : NodeId) (depth cv : Nat) (n 
           KNode.add_times n c.i _ (fun s h => by cases h) hnt,
           fun c' => n.add_delete_live_lookup c.i cv c', Or.inl rfl⟩
 
-
 /-- `writerWP_appendDeleteKlong_j2` with the room of the branch the writer takes
 (`DelRoom`). -/
 theorem writerWP_appendDeleteKlong_j2D (x : NodeId) (depth cv : Nat) (n : KNode) (c : Ctx)
@@ -124,7 +123,6 @@ theorem writerWP_appendDeleteKlong_j2D (x : NodeId) (depth cv : Nat) (n : KNode)
   rcases hreach x hxR with h | h
   · exact h
   · rw [h] at hx; cases hx
-
 
 /-! ## (8) A delete into a leaf that keeps a live klong and has room -/
 

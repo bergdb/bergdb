@@ -192,6 +192,4 @@ theorem getFromR_newRootRead (V A : NodeId → Option KNode) (Val : NodeId → O
           · intro _ _ _ _ _ _ _ _; rfl
         · rfl
 
-
-
 end SIS.Tree

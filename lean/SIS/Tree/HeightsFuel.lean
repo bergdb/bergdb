@@ -32,14 +32,6 @@ def PathBelowSB (b : Nat) (w0 : W) : Prop :=
   ∀ (d : Nat) (a : Option Nat) (q : NodeId), w0.path[d]? = some (a, q) →
     q < w0.next ∧ ∀ g h, (q, g, h) ∈ w0.gh → h < b
 
-def KeepsSB (b : Nat) {α : Type} (f : M α) : Prop :=
-  ∀ c w0 w, c.p.H < b → SBInv c.p b w0 w → WriterWP f c w (fun _ v => SBInv c.p b w0 v)
-
-theorem writerWP_of_sb {α : Type} {b : Nat} {f : M α} (hf : KeepsSB b f) (c : Ctx) (w0 w : W)
-    (post : α → W → Prop) (hH : c.p.H < b) (hw : SBInv c.p b w0 w)
-    (hp : ∀ r v, SBInv c.p b w0 v → post r v) : WriterWP f c w post :=
-  writerWP_mono (hf c w0 w hH hw) hp
-
 /-- `SBInv` with the bound asked only of the ids that S picks (bergdb 024-22,
 for the fuel after a delete's cascade: S the ids not taken back at w0). The
 cascade's lemmas below are proved for every S; `SBInv` is the case S = every
@@ -56,10 +48,6 @@ theorem sbInv_iff_S {p : Params} {b : Nat} {w0 v : W} :
 
 def KeepsSBS (b : Nat) (S : NodeId → Prop) {α : Type} (f : M α) : Prop :=
   ∀ c w0 w, c.p.H < b → SBInvS c.p b S w0 w → WriterWP f c w (fun _ v => SBInvS c.p b S w0 v)
-
-theorem keepsSB_of_S {b : Nat} {α : Type} {f : M α} (h : KeepsSBS b (fun _ => True) f) :
-    KeepsSB b f :=
-  fun c w0 w hH hw => writerWP_mono (h c w0 w hH (sbInv_iff_S.mp hw)) (fun _ _ hv => sbInv_iff_S.mpr hv)
 
 theorem writerWP_of_sbS {α : Type} {b : Nat} {S : NodeId → Prop} {f : M α} (hf : KeepsSBS b S f)
     (c : Ctx) (w0 w : W) (post : α → W → Prop) (hH : c.p.H < b) (hw : SBInvS c.p b S w0 w)
@@ -373,45 +361,6 @@ end GeneralCascade
 
 /-! ## Every id: `SBInv` -/
 
-/-- A step that keeps the cached heights and the path, the next id not lower. -/
-theorem sb_of_frame {α : Type} {b : Nat} {f : M α}
-    (hf : ∀ c w, WriterWP f c w (fun _ v => v.gh = w.gh ∧ v.path = w.path ∧ w.next ≤ v.next)) :
-    KeepsSB b f := keepsSB_of_S (sbS_of_frame hf)
-
-theorem sb_note (b : Nat) (s : String) : KeepsSB b (note s) := keepsSB_of_S (sbS_note b s)
-theorem sb_fresh (b : Nat) : KeepsSB b fresh := keepsSB_of_S (sbS_fresh b)
-theorem sb_putNode (b : Nat) (x : NodeId) (n : KNode) : KeepsSB b (putNode x n) :=
-  keepsSB_of_S (sbS_putNode b x n)
-theorem sb_setMadeFor (b : Nat) (x : NodeId) (o : Option NodeId) : KeepsSB b (setMadeFor x o) :=
-  keepsSB_of_S (sbS_setMadeFor b x o)
-theorem sb_replacedBy (b : Nat) (x : NodeId) : KeepsSB b (replacedBy x) :=
-  keepsSB_of_S (sbS_replacedBy b x)
-theorem sb_pathNode (b : Nat) (d : Nat) : KeepsSB b (pathNode d) := keepsSB_of_S (sbS_pathNode b d)
-theorem sb_klongAt (b : Nat) (d : Nat) : KeepsSB b (klongAt d) := keepsSB_of_S (sbS_klongAt b d)
-theorem sb_newSuperRoot (b : Nat) (y : NodeId) : KeepsSB b (newSuperRoot y) :=
-  keepsSB_of_S (sbS_newSuperRoot b y)
-
-theorem sb_replaceOrAdd (b : Nat) (last : KNode) (ins : List (Nat × NodeId)) :
-    KeepsSB b (replaceOrAdd last ins) := keepsSB_of_S (sbS_replaceOrAdd b last ins)
-
-theorem sb_getNode (b : Nat) (x : NodeId) : KeepsSB b (getNode x) :=
-  keepsSB_of_S (sbS_getNode b x)
-
-theorem sb_ghOf (b : Nat) (x : NodeId) (c : Ctx) (w0 w : W) (hH : c.p.H < b)
-    (hw : SBInv c.p b w0 w) :
-    WriterWP (ghOf x) c w (fun r v => SBInv c.p b w0 v ∧ (x, r.1, r.2) ∈ v.gh) :=
-  writerWP_mono (sbS_ghOf b x c w0 w hH (sbInv_iff_S.mp hw))
-    (fun _ _ h => ⟨sbInv_iff_S.mpr h.1, h.2⟩)
-
-theorem sb_newKey (b : Nat) (g h : Nat) (leaf : Bool) (ks : List Klong) (hh : h ≤ b) :
-    KeepsSB b (newKey g h leaf ks) := keepsSB_of_S (sbS_newKey b g h leaf ks hh)
-
-/-- A node of the path has its heights below b at every later state. -/
-theorem sb_path_lt {p : Params} {b : Nat} {w0 v : W} (hH : p.H < b) (hv : SBInv p b w0 v)
-    (hpb : PathBelowSB b w0) {d : Nat} {a : Option Nat} {q : NodeId}
-    (hq : w0.path[d]? = some (a, q)) {g h : Nat} (hm : (q, g, h) ∈ v.gh) : h < b :=
-  sbS_path_lt hH (sbInv_iff_S.mp hv) hpb hq hm
-
 theorem SBInv.trans {p : Params} {b : Nat} {w0 v u : W} (h1 : SBInv p b w0 v) (h2 : SBInv p b v u) :
     SBInv p b w0 u :=
   sbInv_iff_S.mpr ((sbInv_iff_S.mp h1).trans (sbInv_iff_S.mp h2))
@@ -419,55 +368,6 @@ theorem SBInv.trans {p : Params} {b : Nat} {w0 v u : W} (h1 : SBInv p b w0 v) (h
 theorem SBInv.congr {p : Params} {b : Nat} {w0 v v' : W} (h : SBInv p b w0 v) (hg : v'.gh = v.gh)
     (hp : v'.path = v.path) (hn : v'.next = v.next) : SBInv p b w0 v' :=
   sbInv_iff_S.mpr ((sbInv_iff_S.mp h).congr hg hp hn)
-
-macro "sbState" : tactic => `(tactic| first
-  | assumption
-  | exact SBInv.congr (by assumption) rfl rfl rfl)
-
-macro "sbUse " h:term : tactic => `(tactic| (
-  (with_unfolding_none refine writerWP_of_sb $h _ _ _ _ (by assumption) (by sbState) ?sbPost)
-  intro _ _ _))
-
-macro "sbCreate" : tactic => `(tactic| (
-  (with_unfolding_none guard_target = WriterWP (newKey _ _ _ _) _ _ _)
-  (with_unfolding_none refine writerWP_of_sb (sb_newKey ?sbB _ _ _ _ ?sbH) _ ?sbW0 _ _ ?sbHH ?sbS ?sbPost)
-  case sbS => sbState
-  case sbHH => assumption
-  case sbH => first | omega | (dsimp only at *; omega)
-  intro _ _ _))
-
-macro "sbCore" : tactic => `(tactic| first
-  | exact writerWP_throw _ _ _ _
-  | sbUse (sb_getNode _ _)
-  | sbUse (sb_note _ _)
-  | sbUse (sb_fresh _)
-  | sbUse (sb_putNode _ _ _)
-  | sbUse (sb_setMadeFor _ _ _)
-  | sbUse (sb_replacedBy _ _)
-  | sbUse (sb_pathNode _ _)
-  | sbUse (sb_klongAt _ _)
-  | sbUse (sb_newSuperRoot _ _)
-  | sbUse (sb_replaceOrAdd _ _ _)
-  | sbCreate
-  | sbState)
-
-/-- A full node's split, and its cascade up the path: every height stays at
-most b when the path's nodes are below b. -/
-theorem sb_handleFullWith (b : Nat) (up : NodeId → List (Nat × NodeId) → M Unit)
-    (depth : Nat) (x : NodeId) (ins : List (Nat × NodeId)) (last : KNode) (compact : Bool)
-    (c : Ctx) (w0 w : W) (hH : c.p.H < b) (hw : SBInv c.p b w0 w) (hpb : PathBelowSB b w0)
-    (a : Option Nat) (hpx : w0.path[depth]? = some (a, x))
-    (hup : ∀ e, depth = e + 1 → ∀ q more v, SBInv c.p b w0 v →
-      (∃ a', w0.path[e]? = some (a', q)) →
-      WriterWP (up q more) c v (fun _ v' => SBInv c.p b w0 v')) :
-    WriterWP (handleFullWith up depth x ins last compact) c w (fun _ v => SBInv c.p b w0 v) :=
-  writerWP_mono (sbS_handleFullWith b up depth x ins last compact c w0 w hH (sbInv_iff_S.mp hw)
-    hpb a hpx (fun e he q more v hv hq => writerWP_mono
-      (hup e he q more v (sbInv_iff_S.mpr hv) hq) (fun _ _ h => sbInv_iff_S.mp h)))
-    (fun _ _ h => sbInv_iff_S.mpr h)
-
-theorem sb_addKeys (b : Nat) (x : NodeId) (ins : List (Nat × NodeId)) : KeepsSB b (addKeys x ins) :=
-  keepsSB_of_S (sbS_addKeys b x ins)
 
 /-- `appendKlongs` up the path: every height stays at most b when the path's
 nodes are below b. -/
@@ -477,23 +377,6 @@ theorem sb_appendKlongs (b : Nat) (depth : Nat) :
       WriterWP (appendKlongs depth x ins) c w (fun _ v => SBInv c.p b w0 v) :=
   fun x ins c w0 w hH hw hpb hx => writerWP_mono
     (sbS_appendKlongs b depth x ins c w0 w hH (sbInv_iff_S.mp hw) hpb hx)
-    (fun _ _ h => sbInv_iff_S.mpr h)
-
-/-- `handleFull` at the path's node at depth. -/
-theorem sb_handleFull (b : Nat) (depth : Nat) (x : NodeId) (last : KNode) (compact : Bool)
-    (c : Ctx) (w0 w : W) (hH : c.p.H < b) (hw : SBInv c.p b w0 w) (hpb : PathBelowSB b w0)
-    (a : Option Nat) (hpx : w0.path[depth]? = some (a, x)) :
-    WriterWP (handleFull depth x last compact) c w (fun _ v => SBInv c.p b w0 v) :=
-  writerWP_mono (sbS_handleFull b depth x last compact c w0 w hH (sbInv_iff_S.mp hw) hpb a hpx)
-    (fun _ _ h => sbInv_iff_S.mpr h)
-
-/-- A delete's bitmap at the path's node at depth, a cascade when the node is
-full: every height stays at most b when the path's nodes are below b. -/
-theorem sb_appendDeleteKlong (b : Nat) (x : NodeId) (depth cv : Nat) (c : Ctx) (w0 w : W)
-    (hH : c.p.H < b) (hw : SBInv c.p b w0 w) (hpb : PathBelowSB b w0) (a : Option Nat)
-    (hpx : w0.path[depth]? = some (a, x)) :
-    WriterWP (appendDeleteKlong x depth cv) c w (fun _ v => SBInv c.p b w0 v) :=
-  writerWP_mono (sbS_appendDeleteKlong b x depth cv c w0 w hH (sbInv_iff_S.mp hw) hpb a hpx)
     (fun _ _ h => sbInv_iff_S.mpr h)
 
 /-- The cascade's bound from a state: every cached height at most m, H at most
@@ -523,19 +406,6 @@ theorem segFits_of_seenHeight {B : NodeId} {c : Ctx} {H : NodeId → Nat → Pro
 
 theorem SeenHeightBound.mono {b b' : Nat} {w : W} (h : SeenHeightBound b w) (hb : b ≤ b') :
     SeenHeightBound b' w := fun x g k hm => Nat.le_trans (h x g k hm) hb
-
-/-- (B) for a delete's bitmap (`DelFullFitsOK`'s step in heights): from every
-cached height at most m (and H at most m), with the path's nodes cached, the
-delete's bitmap, a cascade when its node is full, leaves every cached height
-at most m + 1. -/
-theorem seenHeight_appendDeleteKlong {B : NodeId} {c : Ctx} {w : W} {m : Nat} (hb : Book B c w)
-    (hs : SeenHeightBound m w) (hHm : c.p.H ≤ m)
-    (hpg : ∀ (d : Nat) (a : Option Nat) (q : NodeId), w.path[d]? = some (a, q) →
-      q ∈ w.gh.map (·.1))
-    (x : NodeId) (depth cv : Nat) (a : Option Nat) (hpx : w.path[depth]? = some (a, x)) :
-    WriterWP (appendDeleteKlong x depth cv) c w (fun _ v => SeenHeightBound (m + 1) v) :=
-  writerWP_mono (sb_appendDeleteKlong (m + 1) x depth cv c w w (by omega)
-    (SBInv.refl (hs.mono (Nat.le_succ m))) (pathBelowSB_of hb hs hpg) a hpx) (fun _ _ h => h.1)
 
 /-- (B) for a put's klongs (`appendKlongs` at the path's node at depth): the
 same bound. -/

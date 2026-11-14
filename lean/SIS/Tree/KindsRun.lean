@@ -4,7 +4,9 @@ kinds through the writer (`execW_kinds`) and the step of a run
 (`kindsAllOK_step`), by induction over the run's transactions
 (`treeRun_kindsAllOK`), as `treeRun_leftAllOK`.
 -/
-import SIS.Tree.LeftRun
+import SIS.Tree.LeftStep
+import SIS.Tree.WriterLeftRun
+import SIS.Tree.PointersRun
 import SIS.Tree.KindsStep
 import SIS.Tree.WriterKindsRun
 import SIS.Tree.WriterFrame

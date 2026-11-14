@@ -15,16 +15,9 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
-/-- (B) at node-map level. -/
-def LiveReachedN (N : NodeId → Option KNode) (t : Time) (r B : NodeId) : Prop :=
-  ∀ q qn c y, N q = some qn → (c, y) ∈ qn.liveAt t → B ≤ y → TReach N t r q
-
 /-- The klongs of every node before time t name nodes below B. -/
 def OldBelowN (N : NodeId → Option KNode) (t : Time) (B : NodeId) : Prop :=
   ∀ q qn, N q = some qn → ∀ cv y, Klong.key cv y ∈ prefixAt qn.ks (t - 1) → y < B
-
-theorem liveReached_iff (p : Params) (P : Struct BVal) (t : Time) (B : NodeId) (w : W) :
-    LiveReached p P t B w ↔ LiveReachedN (wNode p (viewOf P) w) t w.top.rootKey B := Iff.rfl
 
 /-- One live klong per compare value. -/
 theorem KNode.liveAt_fun (n : KNode) (t : Time) (k : Nat) (x v : NodeId)
@@ -138,27 +131,6 @@ theorem KNode.lastTime_of_mem_max (n : KNode) (t : Time) (hw : klongsWf n.ks = t
   rw [hsplit, List.foldl_append, List.foldl_cons]
   exact lastTimeFold_noTime _ _ hno
 
-/-- A node unlinked (`unlink`: its klongs of time t dropped if its last time is
-t) whose klongs before t name nodes below B, well formed and of no later time,
-has live klongs to nodes below B only. -/
-theorem unlinked_live_below (n : KNode) (t : Time) (B : NodeId) (hpos : 0 < t)
-    (hold : ∀ cv y, Klong.key cv y ∈ prefixAt n.ks (t - 1) → y < B)
-    (hw : klongsWf n.ks = true) (ht : ∀ s, Klong.time s ∈ n.ks → s ≤ t) :
-    ∀ c z, (c, z) ∈ (if n.lastTime == some t then n.toPrev (t - 1) else n).liveAt t → z < B := by
-  intro c z hz
-  split at hz
-  · exact hold c z (KNode.liveAt_key_mem _ t c z hz)
-  · rename_i hlt
-    have hk := KNode.liveAt_key_mem _ t c z hz
-    apply hold c z
-    rw [prefixAt_of_timesLE n.ks (t - 1) (fun s hs => ?_)]
-    · exact hk
-    · have h1 := ht s hs
-      by_cases hst : s = t
-      · subst hst
-        exact absurd (by rw [KNode.lastTime_of_mem_max n s hw hs ht]; simp) hlt
-      · omega
-
 /-! ## Root collapse at node-map level -/
 
 /-- Root collapse at the segment root x below the segment leaf q, x inner with
@@ -203,30 +175,6 @@ theorem reach_segCollapse (N1 N2 : NodeId → Option KNode) (t : Time) (r q x y 
         rw [hvx] at hav
         exact absurd (hT.oneLink a c q k1 x ha hq ⟨an, han, hav⟩ ⟨qn, hqn, hk1⟩).1 haq
 
-/-- (B) after root collapse at a segment root x: x taken back, or with live
-klongs to nodes below B only. -/
-theorem liveReachedN_segCollapse (N1 N2 : NodeId → Option KNode) (t : Time) (r q x y B : NodeId)
-    (qn qn2 xn : KNode) (k1 : Nat) (hT : TreeOK N1 t r)
-    (hq : TReach N1 t r q) (hqn : N1 q = some qn) (hk1 : (k1, x) ∈ qn.liveAt t)
-    (hxn : N1 x = some xn) (honly : ∀ c z, (c, z) ∈ xn.liveAt t → z = y)
-    (hN2q : N2 q = some qn2) (hq2a : (k1, y) ∈ qn2.liveAt t)
-    (hq2b : ∀ c z, (c, z) ∈ qn.liveAt t → c ≠ k1 → (c, z) ∈ qn2.liveAt t)
-    (hN2 : ∀ z, z ≠ q → z ≠ x → N2 z = N1 z) (hL : LiveReachedN N1 t r B)
-    (hx2 : ∀ xn2, N2 x = some xn2 → ∀ c z, (c, z) ∈ xn2.liveAt t → z < B) :
-    LiveReachedN N2 t r B := by
-  have hR := reach_segCollapse N1 N2 t r q x y qn qn2 xn k1 hT hq hqn hk1 hxn honly hN2q hq2a hq2b hN2
-  have hxR : TReach N1 t r x := TReach.link hq ⟨qn, hqn, hk1⟩
-  have hqx : q ≠ x := fun h => hT.no_self_link x k1 hxR ⟨qn, by rw [← h]; exact hqn, hk1⟩
-  intro u un c z hu hl hB
-  by_cases hux : u = x
-  · rw [hux] at hu
-    have := hx2 un hu c z hl
-    omega
-  · by_cases huq : u = q
-    · rw [huq]; exact (hR q hq).1 hqx
-    · rw [hN2 u huq hux] at hu
-      exact (hR u (hL u un c z hu hl hB)).1 hux
-
 /-- Root collapse at the space root r, inner with its live klongs to y only:
 every node reached before but r is reached from y after. -/
 theorem reach_spaceCollapse (N1 N2 : NodeId → Option KNode) (t : Time) (r y : NodeId) (rn : KNode)
@@ -245,21 +193,6 @@ theorem reach_spaceCollapse (N1 N2 : NodeId → Option KNode) (t : Time) (r y : 
       rw [honly c v hav]
       exact TReach.root
     · exact TReach.link (ih har) ⟨an, by rw [hN2 a har]; exact han, hav⟩
-
-/-- (B) after root collapse at the space root r: r taken back, or with live
-klongs to nodes below B only. -/
-theorem liveReachedN_spaceCollapse (N1 N2 : NodeId → Option KNode) (t : Time) (r y B : NodeId)
-    (rn : KNode) (hrn : N1 r = some rn) (honly : ∀ c z, (c, z) ∈ rn.liveAt t → z = y)
-    (hN2 : ∀ z, z ≠ r → N2 z = N1 z) (hL : LiveReachedN N1 t r B)
-    (hr2 : ∀ rn2, N2 r = some rn2 → ∀ c z, (c, z) ∈ rn2.liveAt t → z < B) :
-    LiveReachedN N2 t y B := by
-  intro u un c z hu hl hB
-  by_cases hur : u = r
-  · rw [hur] at hu
-    have := hr2 un hu c z hl
-    omega
-  · rw [hN2 u hur] at hu
-    exact reach_spaceCollapse N1 N2 t r y rn hrn honly hN2 u (hL u un c z hu hl hB) hur
 
 /-! ## First times -/
 

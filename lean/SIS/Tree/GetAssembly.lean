@@ -240,7 +240,6 @@ theorem getOK_scanOK_of_open_runOK (p : Params) (hinv : InvPreserved p)
     (overlayLiftOKUnder_mono p (RunOK p) _ (fun _ _ h => h.1) (overlayLiftOKUnder_links p))
     c1 c2 c3 c4 c5 c6 c7 c8 c9
 
-
 /-! ## The premises are not void
 
 A transaction within reach after the empty run, twelve puts into a segment

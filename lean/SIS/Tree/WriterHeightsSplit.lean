@@ -114,10 +114,6 @@ theorem nodeHt_root {c : Ctx} {w : W} {x y : NodeId} {h : Nat} (hpos : 0 < c.i) 
   nodeHt_of_ks hpos ⟨_, rfl⟩ (kdKs_cons_time _ (kdKs_cons_key hx (kdKs_cons_key hy (kdKs_nil _))))
     (fun t ht => by simp at ht; omega)
 
-theorem ht_P_of {c : Ctx} {w : W} {y : NodeId} {h cv : Nat} (hy : w.taken.contains y = false)
-    (hh : HasHt H w y h) : HtP c H w (h + 1) cv y :=
-  ⟨hy, fun _ => by simpa using hh⟩
-
 /-- The version before the transaction keeps its heights. -/
 theorem nodeHt_toPrev {c : Ctx} {w : W} {h : Nat} {n : KNode} (hn : NodeHt c H w h n) :
     NodeHt c H w h (n.toPrev (c.i - 1)) := by

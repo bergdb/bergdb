@@ -27,10 +27,6 @@ theorem refGet_take_eq (ts : List Tx) (k t : Nat) (ht : t ≤ k) (key : Key) :
     refGet (ts.take k) t key = refGet ts t key := by
   simp only [refGet, List.take_take, Nat.min_eq_left ht]
 
-theorem refGet_snoc_past (ts : List Tx) (tx : Tx) (t : Nat) (ht : t ≤ ts.length) (key : Key) :
-    refGet (ts ++ [tx]) t key = refGet ts t key := by
-  simp only [refGet, List.take_append_of_le_length ht]
-
 def StructTimesLE (P : Struct BVal) (t : Time) : Prop :=
   ∀ q ∈ P, ∀ e ∈ q.2.hist, e.time ≤ t
 

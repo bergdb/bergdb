@@ -61,15 +61,6 @@ theorem treeRun_scan_eq_prefix_of_invariant (p : Params) (ts : List Tx) (t : Tim
   scan_of_readExtension p _ _ t (treeRun_readExtension_prefix p ts t ht)
     (treeRun_highKindsOK p (ts.take t)) (treeRun_dataEntriesOK p (ts.take t)) hinv req limit
 
-theorem treeRun_scan_eq_prefix (p : Params) (hinv : InvPreserved p)
-    (ts : List Tx) (hw : Within p ts) (t : Time) (ht : t ≤ ts.length)
-    (req : ScanReq) (limit : Nat) :
-    scan p (viewOf (treeRun p ts)) t req limit =
-      scan p (viewOf (treeRun p (ts.take t))) t req limit := by
-  have hlen : (ts.take t).length = t := by simp only [List.length_take, Nat.min_eq_left ht]
-  have hi := (hinv (ts.take t) (within_take p ts hw t) t (by rw [hlen]; exact Nat.le_refl _)).1
-  exact treeRun_scan_eq_prefix_of_invariant p ts t ht hi req limit
-
 /-- Latest-time scan correctness, with the full API range, direction and
 limit semantics. This is a remaining reader/writer refinement obligation,
 not an assumption about any historical snapshot. -/

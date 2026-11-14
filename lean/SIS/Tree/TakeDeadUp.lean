@@ -31,11 +31,6 @@ def RetFrom (t : Time) (B : NodeId) (n : KNode) (src : NodeId) (S : KNode) : Pro
   n.lastTime = some t ∧ ∃ dst, dst < B ∧
     S = { n with ks := retargetKlongs n.ks (n.lastTimeIndex.getD 0) src dst }
 
-theorem retFormS_of_from (t : Time) (B : NodeId) (n : KNode) (src : NodeId) (S : KNode)
-    (h : RetFrom t B n src S) : RetFormS t B n S := by
-  obtain ⟨hlt, dst, hd, he⟩ := h
-  exact Or.inr ⟨hlt, src, dst, hd, he⟩
-
 theorem firstTime_fold_shape (l : List Klong) :
     (l.map klongShape).findSome? (fun k => match k with
       | .time x => some x

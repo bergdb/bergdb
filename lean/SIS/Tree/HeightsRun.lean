@@ -237,17 +237,4 @@ theorem treeRun_heightLiveOK (p : Params) (hM : 2 ≤ p.M)
   heightLiveOK_of_all p _ _ (treeRun_heightAllOK p hM hP hdel ts hw)
     (ht_keyNodesAt_key p _ _)
 
-/-- latest's `invPreserved_of_open` with the live heights from the walk: the
-delete side of the walk (`OpHtDelOK`) in place of `HeightLiveOK`. -/
-theorem invPreserved_of_open_htDel (p : Params) (hp : MergeParamsOK p)
-    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
-    (hD : ∀ ts, Within p ts → DeadAllOK p (treeRun p ts))
-    (hdel : OpHtDelOK p)
-    (hNE : ∀ ts, Within p ts → NonEmptyOK p (treeRun p ts) ts.length)
-    (hRT : ∀ ts, Within p ts → RootsOK p (treeRun p ts) ts.length)
-    (hF : ∀ ts, Within p ts → FillOK p (treeRun p ts) ts.length)
-    (hO : ∀ ts, Within p ts → RangeAtOK p (treeRun p ts) ts.length) : InvPreserved p :=
-  invPreserved_of_open p hp hP hD
-    (treeRun_heightLiveOK p (by have := mergeParamsOK_M p hp; omega) hP hdel) hNE hRT hF hO
-
 end SIS.Tree

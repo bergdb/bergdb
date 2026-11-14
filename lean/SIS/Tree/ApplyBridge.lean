@@ -18,7 +18,8 @@ import SIS.Tree.WriterCacheUnique
 import SIS.Tree.ExportHistory
 import SIS.Tree.ExportLedger
 import SIS.Tree.EntriesSplit
-import SIS.Tree.WriterHistory
+import SIS.Tree.WriterKlongOps
+import SIS.Tree.InvInit
 import SIS.Tree.RunPrefix
 
 set_option autoImplicit false

@@ -106,22 +106,6 @@ theorem ht_seq_note (B : NodeId) {α : Type} (s : String) (f : M α) (c : Ctx) (
   rintro _ v ⟨hb2, hi2, hle2, hp2⟩
   exact hf v hb2 hi2 hle2 hp2
 
-theorem ht_hasTransDel {n : KNode} {t : Time}
-    (h : ((match n.ks.getLast? with
-      | some (.del _) => true
-      | _ => false) && n.lastTime == some t) = true) :
-    ∃ old, n.ks.getLast? = some (.del old) ∧ n.lastTime = some t := by
-  simp only [Bool.and_eq_true, beq_iff_eq] at h
-  obtain ⟨h1, h2⟩ := h
-  cases hg : n.ks.getLast? with
-  | none => rw [hg] at h1; simp at h1
-  | some k =>
-    rw [hg] at h1
-    cases k with
-    | del b => exact ⟨b, rfl, h2⟩
-    | time u => simp at h1
-    | key a y => simp at h1
-
 /-- `appendDeleteKlong` at x, the path's node at depth: a bitmap, in place or
 new, or the node replaced by its last version without cv. -/
 theorem ht_appendDeleteKlong (B : NodeId) (x : NodeId) (depth cv : Nat) (c : Ctx) (w : W)
@@ -351,12 +335,6 @@ theorem ht_descendToHeight (B : NodeId) (key : Key) (g h : Nat) (c : Ctx) (w : W
     exact ⟨hb2, hi2, hle1.trans hle2, hpf2, rfl⟩
 
 /-! ## The merge's parent -/
-
-theorem ht_htd_facts {n : KNode} {t : Time}
-    (htd : ((match n.ks.getLast? with
-      | some (.del _) => true
-      | _ => false) && n.lastTime == some t) = true) :
-    ∃ old, n.ks.getLast? = some (.del old) ∧ n.lastTime = some t := ht_hasTransDel htd
 
 theorem ht_flatAt_replaceKlong' {i : Time} {ks out : List Klong} {t cv : Nat} {y : NodeId}
     (hr : replaceKlong ks t cv y = .ok (some out)) (h : FlatAt i ks) : FlatAt i out :=

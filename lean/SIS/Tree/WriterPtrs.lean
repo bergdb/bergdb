@@ -504,9 +504,6 @@ theorem ptrsPairs_cons {P : NodeId → Prop} (c : Nat) {y : NodeId} {r : List (N
   · subst hq; exact hy
   · exact h q hq
 
-theorem ptrsId_made {Old : NodeId → Prop} {w : W} (m : NewNode) (hm : m ∈ w.made) :
-    ptrsId Old w m.id := Or.inr (List.mem_map.mpr ⟨m, hm, rfl⟩)
-
 /-- The writer's steps keep `PtrsOK`, and the nodes made stay made. -/
 def KeepsPtrs (Old : NodeId → Prop) {α : Type} (f : M α) : Prop :=
   ∀ c w, ViewPtrsOld Old c.view → PtrsOK Old c w →

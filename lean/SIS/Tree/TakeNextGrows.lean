@@ -86,14 +86,4 @@ theorem writerWP_merge_next (x : NodeId) (d : Nat) (c : Ctx) (w : W) :
     WriterWP (merge x d) c w (fun _ w' => w.next ≤ w'.next) :=
   @state_merge (nextFromInvariant w) x d c w (Nat.le_refl _)
 
-/-- The root collapse never shrinks the next id. -/
-theorem writerWP_collapseRoot_next (key : Key) (seg fuel : Nat) (c : Ctx) (w : W) :
-    WriterWP (collapseRoot key seg fuel) c w (fun _ w' => w.next ≤ w'.next) :=
-  @state_collapseRoot (nextFromInvariant w) key seg fuel c w (Nat.le_refl _)
-
-/-- A put or a delete never shrinks the next id. -/
-theorem writerWP_putKv_next (op : Op) (c : Ctx) (w : W) :
-    WriterWP (putKv op) c w (fun _ w' => w.next ≤ w'.next) :=
-  @state_putKv (nextFromInvariant w) op c w (Nat.le_refl _)
-
 end SIS.Tree

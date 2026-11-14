@@ -5,7 +5,8 @@ segment before gets a klong to a new segment leaf, which gets the klong of the
 value (`treeOK_newSeg`, `writerWP_put_newSeg_tree`, and under `PutInv`
 `writerWP_put_newSeg_inv_tree`).
 -/
-import SIS.Tree.WriterTreeSegLeaf
+import SIS.Tree.WriterTreePutInv
+import SIS.Tree.GetSegInPlace
 
 set_option autoImplicit false
 

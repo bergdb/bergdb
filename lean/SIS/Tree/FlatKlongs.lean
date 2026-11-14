@@ -59,10 +59,6 @@ theorem flatKlongs_of_shape (ks old : List Klong)
       subst u
       exact ⟨t, out, by simp [newKlongs, hout]⟩
 
-theorem flatKlongs_repoint (n : KNode) (i : Nat) (y : NodeId)
-    (h : FlatKlongs n.ks) : FlatKlongs (n.repoint i y).ks :=
-  flatKlongs_of_shape _ _ (n.repoint_shape i y) h
-
 theorem flatKlongs_replaceKlong (ks out : List Klong) (t cv : Nat) (y : NodeId)
     (h : FlatKlongs ks) (hr : replaceKlong ks t cv y = .ok (some out)) :
     FlatKlongs out := flatKlongs_of_shape _ _ (replaceKlong_shape _ _ _ _ _ hr) h

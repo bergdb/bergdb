@@ -274,30 +274,6 @@ macro "fiDeleteSimplify" : tactic => `(tactic|
   simp only [unlink, retarget, canTakeBack, takeBack, takeBackRoot, replaceRoot,
     appendDeleteKlong, emptyKeyNext])
 
-theorem fields_appendDeleteKlong (x : NodeId) (depth cv : Nat) : KeepsFields (appendDeleteKlong x depth cv) := by
-  intro c w hw
-  unfold appendDeleteKlong
-  repeat' first
-    | fiSimplify
-    | fiDeleteSimplify
-    | fiCore
-    | fiAppend
-    | wpSplit
-    | split
-    | contradiction
-
-theorem fields_emptyKeyNext (x : NodeId) (depth : Nat) : KeepsFields (emptyKeyNext x depth) := by
-  intro c w hw
-  unfold emptyKeyNext
-  repeat' first
-    | fiSimplify
-    | fiDeleteSimplify
-    | fiCore
-    | fiAppend
-    | wpSplit
-    | split
-    | contradiction
-
 theorem fields_collapseRoot (key : Key) (segment fuel : Nat) :
     KeepsFields (collapseRoot key segment fuel) := by
   induction fuel with
@@ -421,18 +397,6 @@ theorem fields_mergeUp (key : Key) (g fuel h : Nat) (merged : Bool) :
       | split
       | contradiction
 
-theorem fields_afterDelete (key : Key) (g h : Nat) : KeepsFields (afterDelete key g h) := by
-  intro c w hw
-  unfold afterDelete
-  repeat' first
-    | fiSimplify
-    | fiCore
-    | fiUse (fields_mergeUp _ _ _ _ _)
-    | fiUse (fields_collapseRoot _ _ _)
-    | wpSplit
-    | split
-    | contradiction
-
 theorem fields_climb (depth : Nat) : KeepsFields (climb depth) := by
   induction depth with
   | zero =>
@@ -470,31 +434,6 @@ macro "fiForWith " extra:tactic : tactic => `(tactic| (
       | contradiction
   case tagState => assumption
   intro _ _ _))
-
-theorem fields_segmentCount (path : List (Option Nat × NodeId)) (stop : Nat) :
-    KeepsFields ((path.take stop).foldlM (fun s e => do
-      let n ← getNode e.2
-      pure (if n.leaf then s + 1 else s)) 0) := by
-  intro c w hw
-  fiFold
-  assumption
-
-theorem fields_unlinkLoop (depth tt : Nat) (js : List Nat) :
-    KeepsFields (forIn js () (fun j _ => do
-      let x ← pathNode (depth - j)
-      let xn ← getNode x
-      if xn.firstTime == some tt then
-        let q ← pathNode (depth - j - 1)
-        let k ← klongAt (depth - j)
-        takeBack x q k
-        pure (ForInStep.yield ())
-      else
-        note "up.unlink"
-        unlink x
-        pure (ForInStep.yield ()))) := by
-  intro c w hw
-  fiForWith fiAppend
-  assumption
 
 theorem fields_deleteUpward (leaf : NodeId) (depth cv : Nat) (key : Key) :
     KeepsFields (deleteUpward leaf depth cv key) := by

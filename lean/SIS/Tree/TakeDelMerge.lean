@@ -232,8 +232,6 @@ theorem writerWP_replaceRoot_seg_j2F (x : NodeId) (d only : Nat) (n : KNode) (le
     · exact deadLiveN_segReplace (wNode c.p base v) _ c.i B _ leaf x child ln n k hpos hJ.2.1 hJ.2.2.1
         hwL hlnwf hlnt hk hxB hwx hnwf hnt hL' hX hoth
 
-
-
 /-- The collapse steps at the space root keep `TakeJ2`. -/
 theorem writerWP_rootStep_space_j2F (x : NodeId) (only : Nat) (n : KNode) (c : Ctx)
     (base : View BVal) (w0 v : W) (f : Nat) (hI : CollGetInvF c base w0 v f) (B : NodeId) (hpos : 0 < c.i)

@@ -161,8 +161,4 @@ theorem invPreserved_of_latest (p : Params)
     have h := hL (ts.take t) (within_take p ts hw t)
     rwa [hlen] at h
 
-/-- And TP7 gives the latest-time form back. -/
-theorem latestInvOK_of_invPreserved (p : Params) (h : InvPreserved p) : LatestInvOK p :=
-  fun ts hw => (h ts hw ts.length (Nat.le_refl _)).1
-
 end SIS.Tree

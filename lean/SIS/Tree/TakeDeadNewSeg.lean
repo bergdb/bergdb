@@ -22,8 +22,6 @@ def J2NE (N : NodeId → Option KNode) (t : Time) (r B : NodeId) (vals : List No
     (∀ q qn, N q = some qn → B ≤ q → q ≠ x → qn.firstTime = some t) ∧ ValsNoNodeN N vals ∧
     N x = some ⟨true, []⟩ ∧ TReach N t r x ∧ B ≤ x
 
-theorem empty_add (t : Time) (k : Klong) : (⟨true, []⟩ : KNode).add t k = ⟨true, [.time t, k]⟩ := rfl
-
 theorem single_facts (t : Time) (a : Nat) (y : NodeId) (hpos : 0 < t) (B : NodeId)
     (vals : List NodeId) :
     DeadLiveK ⟨true, [.time t, .key a y]⟩ t B vals ∧

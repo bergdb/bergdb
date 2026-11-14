@@ -1,4 +1,8 @@
-import SIS.Tree.RangeDelChain
+import SIS.Tree.RangeOps
+import SIS.Tree.RangeCollapse
+import SIS.Tree.GetDelCascade
+import SIS.Tree.PutInvDelFull
+import SIS.Tree.GetInnerSplit
 import SIS.Tree.WriterTreeLeb
 
 set_option autoImplicit false
@@ -219,89 +223,5 @@ theorem lebNode_leaf (n : KNode) (tt : Time) (htd lip : Bool) (e jcv : Nat) (jy 
     (lebNode n tt htd lip e jcv jy).leaf = n.leaf := by
   unfold lebNode
   cases htd <;> cases lip <;> simp [KNode.repoint_leaf, KNode.add_leaf, KNode.setAt_leaf]
-
-/-- `treeOK_leb_after` for the walk's ranges. -/
-theorem rangeOrder_leb_after (p : Params) (base : View BVal) (t : Time) (w : W) (x : NodeId)
-    (n n2 : KNode) (jcv : Nat) (jy : NodeId) (hR : RangeOrder (wNode p base w) t w.top.rootKey)
-    (hlk : w.nodes.lookup x = some n) (hxt : w.taken.contains x = false) (hxl : n.leaf = false)
-    (hn2l : n2.leaf = false) (hj : (jcv, jy) ∈ n.liveAt t) (hj0 : jcv ≠ 0)
-    (hmin : ∀ c z, (c, z) ∈ n.liveAt t → c ≠ 0 → jcv ≤ c)
-    (hn2 : ∀ cc z, (cc, z) ∈ n2.liveAt t → (cc = 0 ∧ z = jy) ∨ ((cc, z) ∈ n.liveAt t ∧ cc ≠ jcv)) :
-    RangeOrder (wNode p base { w with nodes := upsert w.nodes x n2 }) t w.top.rootKey := by
-  have hwx : wNode p base w x = some n := by simp only [wNode, hxt, Bool.false_eq_true, ↓reduceIte, hlk]
-  apply rangeOrder_leb (wNode p base w) _ t w.top.rootKey x n n2 jcv jy hR hwx hxl
-    (by simp only [wNode, hxt, Bool.false_eq_true, ↓reduceIte, lookup_upsert]) hn2l
-    (fun z hz => by simp only [wNode, lookup_upsert, hz, ↓reduceIte]) hj hj0 hmin hn2
-
-set_option linter.unusedSimpArgs false in
-/-- `writerWP_emptyKeyNext_tree` (prover cost's) for the walk's ranges: LE-b at
-the inner node x with room for its klongs, no compaction. -/
-theorem writerWP_emptyKeyNext_range (x : NodeId) (depth : Nat) (n : KNode) (c : Ctx) (base : View BVal)
-    (w : W) (hR : RangeOrder (wNode c.p base w) c.i w.top.rootKey)
-    (hlk : w.nodes.lookup x = some n) (hxt : w.taken.contains x = false) (hxl : n.leaf = false)
-    (hwf : klongsWf n.ks = true) (hnt : ∀ s, Klong.time s ∈ n.ks → s ≤ c.i)
-    (hroom : n.size + 3 ≤ c.p.M)
-    (hdead : ∀ b1 b2 e jcv jy, deadOver c.p (lebNode n c.i b1 b2 e jcv jy) = false) :
-    WriterWP (emptyKeyNext x depth) c w (fun _ w' =>
-      RangeOrder (wNode c.p base w') c.i w'.top.rootKey) := by
-  unfold emptyKeyNext
-  simp only [writerWP_bind, writerWP_read]
-  rw [writerWP_getNode_known x n c w hlk]
-  split
-  · rename_i e0 j0 jcv jy hE hJ
-    have hJ' : n.ks.zipIdx.foldl (lebStep (bitsUnion n.lastBitmap (n.bitsOf 0))) none =
-        some (j0, jcv, jy) := hJ
-    obtain ⟨hkj, hjd, hjl⟩ := lebOK_fold _ n.ks j0 jcv jy hJ'
-    have hb0 : j0 ∉ n.bitsOf 0 := fun h => hjd ((mem_bitsUnion_iff _ _ _).mpr (Or.inr h))
-    have hj0 : jcv ≠ 0 := by
-      intro h; subst h
-      exact hb0 ((n.mem_bitsOf_iff 0 j0).mpr ⟨jy, List.mem_zipIdx_iff_getElem?.mpr hkj⟩)
-    have hLL : LastLive n.ks n.lastBitmap j0 jcv := by
-      refine ⟨⟨jy, hkj⟩, fun h => hjd ((mem_bitsUnion_iff _ _ _).mpr (Or.inl h)), ?_⟩
-      intro j y' hij hj
-      rcases (mem_bitsUnion_iff _ _ _).mp (hjl j y' hij hj) with h | h
-      · exact h
-      · obtain ⟨y'', hy''⟩ := (n.mem_bitsOf_iff 0 j).mp h
-        rw [List.mem_zipIdx_iff_getElem?.mp hy''] at hj
-        simp only [Option.some.injEq, Klong.key.injEq] at hj
-        exact absurd hj.1.symm hj0
-    have hjlive : (jcv, jy) ∈ n.liveAt c.i := by
-      rw [KNode.liveAt_of_times n c.i hnt]
-      apply mem_of_lookup_nodup
-      rw [KNode.live_lookup]
-      exact keyLookup_of_last _ _ _ j0 jy hkj hLL
-    have hne : bitsUnion n.lastBitmap (n.bitsOf jcv) ≠ n.lastBitmap := by
-      intro he
-      have : j0 ∈ bitsUnion n.lastBitmap (n.bitsOf jcv) := (mem_bitsUnion_iff _ _ _).mpr
-        (Or.inr ((n.mem_bitsOf_iff jcv j0).mpr ⟨jy, List.mem_zipIdx_iff_getElem?.mpr hkj⟩))
-      rw [he] at this
-      exact hLL.2.1 this
-    have he0 : ∃ y0, n.ks[e0]? = some (.key 0 y0) := by
-      have hm : e0 ∈ n.bitsOf 0 := List.mem_of_getLast? hE
-      obtain ⟨y0, hy0⟩ := (n.mem_bitsOf_iff 0 e0).mp hm
-      exact ⟨y0, List.mem_zipIdx_iff_getElem?.mp hy0⟩
-    refine writerWP_if _ _ _ _ _ _ (fun _ => ?_) (fun _ => ?_)
-    · simp only [writerWP_bind]; exact writerWP_throw _ _ _ _
-    apply writerWP_ite_true _ (Nat.le_trans (Nat.add_le_add_left (need_le_three _ _ _) _) hroom)
-    apply writerWP_ite_false _ (fun hd => absurd (hd.symm.trans (hdead _ _ e0 jcv jy)) (by decide))
-    simp only [note, putNode, writerWP_bind, writerWP_modify]
-    have hmin : ∀ c' z, (c', z) ∈ n.liveAt c.i → c' ≠ 0 → jcv ≤ c' := by
-      intro c' z hz hc
-      rw [KNode.liveAt_of_times n c.i hnt] at hz
-      exact leb_min_live n j0 jcv jy hJ' c' z hz hc
-    apply rangeOrder_leb_after c.p base c.i w x n _ jcv jy hR hlk hxt hxl (by
-      show (lebNode n c.i _ _ e0 jcv jy).leaf = false
-      rw [lebNode_leaf]; exact hxl)
-      hjlive hj0 hmin
-    refine lebNode_liveAt n c.i _ _ e0 jcv jy hwf hnt (fun h => ?_) he0 hne
-    cases hg : n.ks.getLast? with
-    | none => rw [hg] at h; simp at h
-    | some k =>
-      cases k with
-      | del old => exact ⟨old, rfl⟩
-      | time t => rw [hg] at h; simp at h
-      | key a y => rw [hg] at h; simp at h
-  · exact writerWP_throw _ _ _ _
-  · exact writerWP_throw _ _ _ _
 
 end SIS.Tree

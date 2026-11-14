@@ -54,12 +54,6 @@ theorem invOK_init (p : Params) (hM : 1 ≤ p.M) (t : Time) : InvOK p (initStruc
 
 theorem within_nil (p : Params) : Within p [] := by simp [Within]
 
-theorem invPreserved_empty_history (p : Params) (hM : 1 ≤ p.M) :
-    ∀ t ≤ ([] : List Tx).length,
-      InvOK p (treeRun p []) t ∧ PointersOK (treeRun p []) := by
-  intro t ht
-  exact ⟨invOK_init p hM t,pointersOK_init p⟩
-
 theorem getEq_init (p : Params) (t : Time) (c : Nat) :
     getEq p (viewOf (initStruct p)) t c p.fuel 1 = none := by
   have hf : p.fuel = (p.G+1)*(p.H+2)+1+1 := by unfold Params.fuel; omega
@@ -76,13 +70,6 @@ theorem get_init (p : Params) (t : Time) (key : Key) :
     cases rest with
     | nil => simp [getFrom,getEq_init]
     | cons d rest => simp [getFrom,getEq_init]
-
-theorem getOK_empty_history (p : Params) :
-    ∀ t ≤ ([] : List Tx).length, ∀ key, keyWf key = true →
-      get p (viewOf (treeRun p [])) t key = refGet [] t key := by
-  intro t _ key _
-  simpa only [treeRun,List.zipIdx_nil,List.foldl_nil,refGet,List.take_nil,List.flatMap_nil]
-    using get_init p t key
 
 /-- TP7 needs a size premise even before the first transaction: the
 primordial key node contains its time klong. -/

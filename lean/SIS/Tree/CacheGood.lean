@@ -438,19 +438,6 @@ theorem Good.setLastDel (B : NodeId) (c : Ctx) (x : NodeId) (n : KNode) (bits : 
     simp at hlast
   exact Good.set B c x n m _ _ hpos hm (by unfold KNode.size; omega) (by intro u hu; cases hu) h
 
-/-- A klong after the transaction's time klong, pointed in place. -/
-theorem Good.repointAfter (B : NodeId) (c : Ctx) (x : NodeId) (n : KNode) (e : Nat) (y : NodeId)
-    (hpos : 0 < c.i) (h : Good B c x n)
-    (hflag : (n.lastTime == some c.i && (match n.lastTimeIndex with
-      | some ti => decide (ti < e)
-      | none => false)) = true) :
-    Good B c x (n.repoint e y) := by
-  simp only [Bool.and_eq_true, beq_iff_eq] at hflag
-  obtain ⟨hlt, hidx⟩ := hflag
-  obtain ⟨m, hmi, hm⟩ := n.lastTime_anchor c.i hlt
-  rw [hmi] at hidx
-  exact Good.repoint_gt B c x n m e y hpos hm (by simpa using hidx) h
-
 theorem KNode.linkIndex_some (n : KNode) (y : NodeId) (cv j : Nat)
     (h : n.linkIndex y cv = some j) : ∃ c', n.ks[j]? = some (.key c' y) := by
   unfold KNode.linkIndex at h

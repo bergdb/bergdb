@@ -544,7 +544,6 @@ theorem writerWP_handleFullWith_segSpaceInPlace_term (d' : Nat) (x q : NodeId) (
                           rw [lookup_cons_ne _ _ _ _ h1, lookup_cons_ne _ _ _ _ h2]; rfl
             · exact writerWP_throw _ _ _ _
 
-
 /-- The writer's time split in place of the space root x, made by the
 transaction: x holds its last version with ins. -/
 theorem writerWP_handleFullWith_timeInPlace_term0 (up : NodeId → List (Nat × NodeId) → M Unit)
@@ -580,6 +579,5 @@ theorem writerWP_handleFullWith_timeInPlace_term0 (up : NodeId → List (Nat × 
     split <;>
     · simp only [putNode, writerWP_bind, writerWP_modify, writerWP_pure]
       refine ⟨l, hl_leaf, hl_wf, hl_times, hl_look, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;> first | rfl | trivial
-
 
 end SIS.Tree

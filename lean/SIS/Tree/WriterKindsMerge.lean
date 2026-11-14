@@ -64,20 +64,6 @@ theorem kd_live_kinds {K : KindOracle} {B : NodeId} {vr v : W} {o : NodeId} {on 
   have hk' := (hph q hq).kdMono hk
   refine ⟨fun h0 => hk'.1 (fun h1 => h0 (hiff.mp h1)), fun h0 => hk'.2 (hiff.mpr h0)⟩
 
-theorem kd_merge_first {P : Nat → NodeId → Prop} {inner : Bool} {cap cR : Nat}
-    {a b f : List (Nat × NodeId)} {s : Option (List (Nat × NodeId) × Nat)}
-    (he : mergeKlongs inner cap cR a b = (f, s)) (hP : inner = true → kdFree P)
-    (ha : kdPairs P a) (hb : kdPairs P b) : kdPairs P f := by
-  have h := (kdPairs_mergeKlongs inner cap cR hP ha hb).1
-  rw [he] at h; exact h
-
-theorem kd_merge_second {P : Nat → NodeId → Prop} {inner : Bool} {cap cR : Nat}
-    {a b f ks2 : List (Nat × NodeId)} {s : Option (List (Nat × NodeId) × Nat)} {g2 : Nat}
-    (he : mergeKlongs inner cap cR a b = (f, s)) (hs : s = some (ks2, g2))
-    (hP : inner = true → kdFree P) (ha : kdPairs P a) (hb : kdPairs P b) : kdPairs P ks2 := by
-  have h := (kdPairs_mergeKlongs inner cap cR hP ha hb).2
-  rw [he] at h; exact h _ hs
-
 theorem kd_sib_leaf {sn xn : KNode} {hx : Nat} (hsl : sn.leaf = !!xn.leaf)
     (hxl : xn.leaf = (hx == 0)) : sn.leaf = (hx == 0) := by
   rw [hsl, Bool.not_not, hxl]
@@ -121,11 +107,6 @@ theorem kd_merge_snd' {P : Nat → NodeId → Prop} {inner : Bool} {cap cR : Nat
     (hs : (mergeKlongs inner cap cR a b).2 = some (ks2, g2)) (hP : inner = true → kdFree P)
     (ha : kdPairs P a) (hb : kdPairs P b) : kdPairs P ks2 :=
   (kdPairs_mergeKlongs inner cap cR hP ha hb).2 _ hs
-
-theorem kd_live_kinds' {K : KindOracle} {B : NodeId} {vr v : W} {o : NodeId} {on : KNode}
-    {g ho h : Nat} (hl : vr.nodes.lookup o = some on) (hi : KdInv K B vr) (hm : (o, g, ho) ∈ vr.gh)
-    (hon : on.leaf = (ho == 0)) (hxn : on.leaf = (h == 0)) (hk : KdLe vr v) :
-    kdPairs (KindKlong K v g h) on.live := kd_live_kinds hl hi hm hon hxn hk
 
 macro "kdLive" : tactic => `(tactic| exact kd_live_kinds (by assumption) (by assumption) (by kdTag) (by assumption) (by assumption) (by kdChain))
 

@@ -56,19 +56,6 @@ theorem halves_newKlongs_wf (leaf : Bool) (t : Time) (pairs ins : List (Nat × N
   rw [hfirst,hsecond]
   exact ⟨klongsWf_newKlongs t first,klongsWf_newKlongs t _⟩
 
-theorem halves_lastVersionGivenDel_wf (n : KNode) (t : Time) (del : List Nat)
-    (ins : List (Nat × NodeId)) :
-    klongsWf (halves n.leaf t (n.lastVersionGivenDel t del) ins).1.ks = true ∧
-      klongsWf (halves n.leaf t (n.lastVersionGivenDel t del) ins).2.1.ks = true := by
-  obtain ⟨pairs,he,_⟩ := n.lastVersionGivenDel_order t del
-  have hleaf : (n.lastVersionGivenDel t del).leaf = n.leaf := rfl
-  have hn : n.lastVersionGivenDel t del = ⟨n.leaf,newKlongs t pairs⟩ := by
-    generalize n.lastVersionGivenDel t del = out at he hleaf ⊢
-    cases out
-    simp_all [newKlongs]
-  rw [hn]
-  exact halves_newKlongs_wf n.leaf t pairs ins
-
 theorem replaceKlong_wf (ks : List Klong) (t c : Nat) (y : NodeId) (out : List Klong)
     (hw : klongsWf ks = true) (hr : replaceKlong ks t c y = .ok (some out)) :
     klongsWf out = true := by

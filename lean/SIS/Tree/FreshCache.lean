@@ -1,4 +1,4 @@
-import SIS.Tree.MergeRetainedRoot
+import SIS.Tree.MergeProtectedNode
 
 namespace SIS.Tree
 
@@ -139,37 +139,6 @@ theorem writerWP_takenBack_freshCache (base x : NodeId) (c : Ctx) (w : W)
   rcases hy with rfl | hy
   · exact hx
   · exact hw.2.2.2 y hy
-
-/-- Allocation gives an exact cached node and tag at an id that was neither
-cached nor taken back before the allocation. -/
-theorem writerWP_newKey_freshCache_cached (base g h : Nat) (leaf : Bool) (ks : List Klong)
-    (c : Ctx) (w : W) (hw : FreshCache base w) :
-    WriterWP (newKey g h leaf ks) c w (fun x v =>
-      x = w.next ∧ v.next = w.next+2 ∧
-      v.nodes.lookup x = some ⟨leaf,ks⟩ ∧ v.gh.lookup x = some (g,h) ∧
-      x ∉ v.taken ∧ FreshCache base v) := by
-  have hn : w.nodes.lookup w.next = none := by
-    apply List.lookup_eq_none_iff.mpr
-    intro q hq
-    have hl := hw.2.1 q hq
-    have he : w.next ≠ q.1 := by omega
-    simpa only [bne_iff_ne] using he
-  have hc : WriterWP (newKey g h leaf ks) c w (fun x v =>
-      x = w.next ∧ v.next = w.next+2 ∧
-      v.nodes.lookup x = some ⟨leaf,ks⟩ ∧ v.gh.lookup x = some (g,h) ∧ x ∉ v.taken) := by
-    unfold newKey fresh
-    wpSimplify
-    split <;> wpSimplify
-    all_goals
-      refine ⟨True.intro,True.intro,?_,?_,?_⟩
-      · simp [List.lookup_append,hn]
-      · simp
-      · intro ht
-        have hl := hw.2.2.2 w.next ht
-        omega
-  intro x v he
-  obtain ⟨hx,hnext,hnode,hgh,htaken⟩ := hc x v he
-  exact ⟨hx,hnext,hnode,hgh,htaken,(writerWP_newKey_freshCache base g h leaf ks c w hw x v he).1⟩
 
 macro "frState" : tactic => `(tactic| first
   | assumption
@@ -352,7 +321,6 @@ theorem freshCache_handleFullWith {base : NodeId} (up : NodeId → List (Nat × 
     | split
     | contradiction
 
-
 theorem freshCache_throw {base : NodeId} {α : Type} (e : String) : KeepsFreshCache base (throw e : M α) := by
   intro c w hview hw
   exact writerWP_throw _ _ _ _
@@ -531,16 +499,6 @@ theorem freshCache_retarget {base : NodeId} (q src dst : NodeId) : KeepsFreshCac
     | split
     | contradiction
 
-theorem freshCache_sibling {base : NodeId} (q : NodeId) (pn : KNode) (i : Nat) (inner : Bool) : KeepsFreshCache base (sibling q pn i inner) := by
-  intro c w hview hw
-  unfold sibling
-  repeat' first
-    | wpSimplify
-    | frCore base
-    | wpSplit
-    | split
-    | contradiction
-
 theorem writerWP_sibling_freshCache (base : NodeId) (q : NodeId) (pn : KNode)
     (i : Nat) (inner : Bool) (c : Ctx) (w : W)
     (hview : ViewIdsBelow base c.view) (hw : FreshCache base w) :
@@ -597,18 +555,6 @@ theorem freshCache_mergeUp {base : NodeId} (key : Key) (g fuel h : Nat) (merged 
       | split
       | contradiction
 
-theorem freshCache_afterDelete {base : NodeId} (key : Key) (g h : Nat) : KeepsFreshCache base (afterDelete key g h) := by
-  intro c w hview hw
-  unfold afterDelete
-  repeat' first
-    | wpSimplify
-    | frCore base
-    | frUse base using (freshCache_mergeUp _ _ _ _ _)
-    | frUse base using (freshCache_collapseRoot _ _ _)
-    | wpSplit
-    | split
-    | contradiction
-
 theorem freshCache_climb {base : NodeId} (depth : Nat) : KeepsFreshCache base (climb depth) := by
   induction depth with
   | zero =>
@@ -647,31 +593,6 @@ macro "frForWith " bound:term " using " extra:tactic : tactic => `(tactic| (
   case frView => assumption
   case frState => frState
   intro _ _ _ _))
-
-theorem freshCache_segmentCount {base : NodeId} (path : List (Option Nat × NodeId)) (stop : Nat) :
-    KeepsFreshCache base ((path.take stop).foldlM (fun s e => do
-      let n ← getNode e.2
-      pure (if n.leaf then s + 1 else s)) 0) := by
-  intro c w hview hw
-  frFold base
-  frFinish
-
-theorem freshCache_unlinkLoop {base : NodeId} (depth tt : Nat) (js : List Nat) :
-    KeepsFreshCache base (forIn js () (fun j _ => do
-      let x ← pathNode (depth - j)
-      let xn ← getNode x
-      if xn.firstTime == some tt then
-        let q ← pathNode (depth - j - 1)
-        let k ← klongAt (depth - j)
-        takeBack x q k
-        pure (ForInStep.yield ())
-      else
-        note "up.unlink"
-        unlink x
-        pure (ForInStep.yield ()))) := by
-  intro c w hview hw
-  frForWith base using (frAppend base)
-  frFinish
 
 theorem freshCache_deleteUpward {base : NodeId} (leaf : NodeId) (depth cv : Nat) (key : Key) :
     KeepsFreshCache base (deleteUpward leaf depth cv key) := by
@@ -767,27 +688,6 @@ theorem viewIdsBelow_rootless (base : NodeId) (v : View BVal) (hv : ViewIdsBelow
   · cases hx
   · exact hv x n hx
 
-/-- A fresh input view makes every node cached during a successful writer
-run smaller than its next fresh id. No order or height premise is needed. -/
-theorem execW_freshCache (p : Params) (tx : Tx) (i : Time) (v : View BVal)
-    (bs : List Bool) (w : W) (hv : ViewIdsBelow tx.base v)
-    (he : execW p tx i v = .ok (bs,w)) : FreshCache tx.base w := by
-  unfold execW runOps runOpsFrom at he
-  cases hz : lastTop v with
-  | none => simp [hz] at he
-  | some z =>
-    simp only [hz] at he
-    cases ht : topOf p (rootless v) z with
-    | error e => simp [ht] at he
-    | ok top =>
-      simp only [ht] at he
-      have hr := boundsOK_ok p _ bs w he
-      have hw : FreshCache tx.base {next := tx.base,top := top} := by
-        exact ⟨Nat.le_refl _,by simp,by simp,by simp⟩
-      exact (freshCache_ops (base := tx.base) tx.ops
-        {p := p,i := i,view := rootless v} {next := tx.base,top := top}
-        (viewIdsBelow_rootless tx.base v hv) hw bs w hr).1
-
 theorem viewIdsBelow_view (p : Params) (P : Struct BVal) (t : Time) (base : NodeId)
     (hfresh : ∀ q ∈ P, q.1 < base) : ViewIdsBelow base (view (treeSpec p) P t) := by
   intro x n hx
@@ -800,25 +700,5 @@ theorem viewIdsBelow_view (p : Params) (P : Struct BVal) (t : Time) (base : Node
       have hm : (x,old) ∈ P := by rw [he]; simp
       exact hfresh _ hm
   · cases hx
-
-/-- The fresh-base premise in the sorted transaction statement supplies
-the cache-freshness invariant for the whole writer execution. -/
-theorem execW_freshCache_of_fresh_base (p : Params) (ts : List Tx) (tx : Tx)
-    (bs : List Bool) (w : W)
-    (hfresh : ∀ q ∈ treeRun p ts, q.1 < tx.base)
-    (he : execW p tx (ts.length+1)
-      (view (treeSpec p) (treeRun p ts) ts.length) = .ok (bs,w)) :
-    FreshCache tx.base w := by
-  exact execW_freshCache p tx _ _ bs w
-    (viewIdsBelow_view p (treeRun p ts) ts.length tx.base hfresh) he
-
-theorem execW_cached_id_lt_next (p : Params) (ts : List Tx) (tx : Tx)
-    (bs : List Bool) (w : W)
-    (hfresh : ∀ q ∈ treeRun p ts, q.1 < tx.base)
-    (he : execW p tx (ts.length+1)
-      (view (treeSpec p) (treeRun p ts) ts.length) = .ok (bs,w))
-    (x : NodeId) (n : KNode) (hn : w.nodes.lookup x = some n) : x < w.next := by
-  exact freshCache_lookup_lt tx.base w
-    (execW_freshCache_of_fresh_base p ts tx bs w hfresh he) x n hn
 
 end SIS.Tree

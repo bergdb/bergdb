@@ -158,69 +158,6 @@ theorem treeOK_of_links (L L' : NodeId → Option KNode) (t : Time) (r : NodeId)
     subst hxx
     exact ⟨rfl, hone x c c' y hx hl hl'⟩
 
-/-- A link from a node of the tree to a node z that the tree does not reach and
-that has no link (a new segment leaf) keeps the tree; the lookup changes only
-at the linking node. -/
-theorem treeOK_attach (L L' : NodeId → Option KNode) (t : Time) (r x z : NodeId) (cz : Nat)
-    (ht : TreeOK L t r) (hx : TReach L t r x) (hz : ¬ TReach L t r z)
-    (hzl : ∀ c y, ¬ TLink L t z c y)
-    (hother : ∀ y, y ≠ x → L' y = L y)
-    (hlinks : ∀ c y, TLink L' t x c y → TLink L t x c y ∨ (c = cz ∧ y = z))
-    (hroot : ∃ n, L' r = some n) : TreeOK L' t r := by
-  have hzx : z ≠ x := fun he => hz (he ▸ hx)
-  have hlink' : ∀ y c y', TLink L' t y c y' → TLink L t y c y' ∨ (y = x ∧ c = cz ∧ y' = z) := by
-    intro y c y' hl
-    by_cases hy : y = x
-    · subst hy
-      rcases hlinks c y' hl with h | h
-      · exact Or.inl h
-      · exact Or.inr ⟨rfl, h⟩
-    · obtain ⟨n, hn, hc⟩ := hl
-      rw [hother y hy] at hn
-      exact Or.inl ⟨n, hn, hc⟩
-  -- What L' reaches: what L reaches, and z.
-  have hb : ∀ y, TReach L' t r y → TReach L t r y ∨ y = z := by
-    intro y hy
-    induction hy with
-    | root => exact Or.inl TReach.root
-    | @link y0 c y' _ hl ih =>
-      rcases ih with ih | ih
-      · rcases hlink' y0 c y' hl with h | ⟨_, _, h⟩
-        · exact Or.inl (TReach.link ih h)
-        · exact Or.inr h
-      · rw [ih] at hl
-        rcases hlink' z c y' hl with h | ⟨h, _, _⟩
-        · exact absurd h (hzl c y')
-        · exact absurd h hzx
-  refine ⟨hroot, ?_, ?_⟩
-  · intro y c hy hl
-    rcases hb y hy with hy | hy
-    · rcases hlink' y c r hl with h | ⟨_, _, h⟩
-      · exact ht.rootFree y c hy h
-      · exact hz (h ▸ TReach.root)
-    · rw [hy] at hl
-      rcases hlink' z c r hl with h | ⟨h, _, _⟩
-      · exact hzl c r h
-      · exact hzx h
-  · intro y c y' c' v hy hy' hl hl'
-    -- links from z do not exist
-    have hnz : ∀ w0 c0, TReach L' t r w0 → TLink L' t w0 c0 v → TReach L t r w0 := by
-      intro w0 c0 hw0 hl0
-      rcases hb w0 hw0 with h | h
-      · exact h
-      · rw [h] at hl0
-        rcases hlink' z c0 v hl0 with h | ⟨h, _, _⟩
-        · exact absurd h (hzl c0 v)
-        · exact absurd h hzx
-    have hyL := hnz y c hy hl
-    have hyL' := hnz y' c' hy' hl'
-    rcases hlink' y c v hl with h1 | ⟨h1x, h1c, h1v⟩ <;>
-      rcases hlink' y' c' v hl' with h2 | ⟨h2x, h2c, h2v⟩
-    · exact ht.oneLink y c y' c' v hyL hyL' h1 h2
-    · exact absurd (h2v ▸ TReach.link hyL h1) hz
-    · exact absurd (h1v ▸ TReach.link hyL' h2) hz
-    · exact ⟨h1x.trans h2x.symm, h1c.trans h2c.symm⟩
-
 /-- A regrouping below a node x of the tree: the old nodes (reached, each
 named by x or by another old node) are replaced by new ones (not reached),
 whose links go to new nodes or to nodes that old ones named, but not old; x's
@@ -361,43 +298,6 @@ theorem treeOK_regroup (L L' : NodeId → Option KNode) (t : Time) (r x : NodeId
         exact absurd ho2 h1o
       · exact ht.oneLink y1 c1 y2 c2 v h1L h2L h1 h2
 
-/-- The general form: every link of the new lookup, from a node it reaches,
-names a new node (one the old tree does not reach) or is the transfer `tr` of a
-link of the old tree to the same node (a klong moved to a new node, or kept);
-each new node is named once; the new root is the old one, or a new node that
-nothing names. Then the new lookup has a tree. Every rule of the writer is one:
-`tr` says where each klong of the old tree went. -/
-theorem treeOK_transfer (L L' : NodeId → Option KNode) (t : Time) (r r' : NodeId)
-    (New : NodeId → Prop) (tr : NodeId → Nat → NodeId × Nat)
-    (ht : TreeOK L t r) (hNew : ∀ z, New z → ¬ TReach L t r z)
-    (hr' : r' = r ∨ (New r' ∧ ∀ y c, TReach L' t r' y → ¬ TLink L' t y c r'))
-    (hlinks : ∀ y c v, TReach L' t r' y → TLink L' t y c v →
-      New v ∨ ∃ y0 c0, TReach L t r y0 ∧ TLink L t y0 c0 v ∧ tr y0 c0 = (y, c))
-    (hnewOnce : ∀ y c y' c' z, TReach L' t r' y → TReach L' t r' y' → New z →
-      TLink L' t y c z → TLink L' t y' c' z → y = y' ∧ c = c')
-    (hroot : ∃ n, L' r' = some n) : TreeOK L' t r' := by
-  refine ⟨hroot, ?_, ?_⟩
-  · intro y c hy hl
-    rcases hr' with h | ⟨_, h⟩
-    · rcases hlinks y c r' hy hl with hn | ⟨y0, c0, hy0, hl0, _⟩
-      · rw [h] at hn
-        exact hNew r hn TReach.root
-      · rw [h] at hl0
-        exact ht.rootFree y0 c0 hy0 hl0
-    · exact h y c hy hl
-  · intro y1 c1 y2 c2 v hy1 hy2 hl1 hl2
-    by_cases hvn : New v
-    · exact hnewOnce y1 c1 y2 c2 v hy1 hy2 hvn hl1 hl2
-    · rcases hlinks y1 c1 v hy1 hl1 with h | ⟨y01, c01, hy01, hl01, htr1⟩
-      · exact absurd h hvn
-      rcases hlinks y2 c2 v hy2 hl2 with h | ⟨y02, c02, hy02, hl02, htr2⟩
-      · exact absurd h hvn
-      obtain ⟨he, hc⟩ := ht.oneLink y01 c01 y02 c02 v hy01 hy02 hl01 hl02
-      subst he; subst hc
-      rw [htr1] at htr2
-      simp only [Prod.mk.injEq] at htr2
-      exact htr2
-
 /-- `treeOK_transfer` with nodes left behind: the links of the new lookup from
 the nodes of the old tree that are not left behind, and from new nodes, name new
 nodes or are transfers of old links to nodes not left behind. So the nodes left
@@ -506,19 +406,6 @@ theorem writerTreeOK_init (p : Params) (ts : List Tx) (tx : Tx) (z : NodeId) (to
   rw [prefixAt_of_timesLE n.ks (ts.length + 1) (fun y hy => Nat.le_succ_of_le (hk y hy)),
     prefixAt_of_timesLE n.ks ts.length hk]
 
-/-- With the lift of the writer's key nodes, P after the transaction has the
-tree of the writer's last state. -/
-theorem treeAt_commit_of_lift (p : Params) (hl : CommitLiftOK p) (ts : List Tx) (tx : Tx)
-    (hw : Within p (ts ++ [tx])) (noops : List Bool) (w : W)
-    (hrun : runOps p tx.base tx.ops (ts.length + 1)
-      (view (treeSpec p) (treeRun p ts) ts.length) = .ok (noops, w))
-    (hT : WriterTreeOK p (treeRun p ts) (ts.length + 1) w) :
-    TreeAt p (treeRun p (ts ++ [tx])) (ts.length + 1) := by
-  obtain ⟨hK, htaken, htopt⟩ := hl ts tx hw noops w hrun
-  have hR := rootAt_commit_of_lift p ts tx hw noops w hrun hK htaken htopt
-  refine ⟨w.top.rootKey, hR, ?_⟩
-  exact treeOK_congr_look _ _ _ _ (funext hK).symm hT
-
 /-! ## By operation -/
 
 /-- Each operation of a transaction within reach, from a state that its
@@ -615,70 +502,6 @@ theorem treeAt_init (p : Params) : TreeAt p (initStruct p) 0 := by
   · intro x c x' c' y hx _ hl _
     exact absurd hl (hno x c y hx)
 
-/-- Every run within reach has P's tree at its last time, if every operation
-keeps the writer's tree and the lift holds. -/
-theorem treeAt_run (p : Params) (ho : OpTreeOK p) (hl : CommitLiftOK p) :
-    ∀ ts, Within p ts → TreeAt p (treeRun p ts) ts.length := by
-  have hf : ∀ revts : List Tx, Within p revts.reverse →
-      TreeAt p (treeRun p revts.reverse) revts.reverse.length := by
-    intro revts
-    induction revts with
-    | nil =>
-      intro _
-      simpa [treeRun] using treeAt_init p
-    | cons tx revts ih =>
-      intro hw
-      simp only [List.reverse_cons] at hw ⊢
-      have hT := ih (within_snoc_prefix p revts.reverse tx hw)
-      obtain ⟨noops, w, hrun⟩ := within_last_ok p revts.reverse tx hw
-      obtain ⟨z, top, hz, htop, hops⟩ := runOps_ok p _ _ _ _ noops w hrun
-      have hW := writerTreeOK_reached p ho revts.reverse tx hw z top hz htop hT tx.ops []
-        (by simp) noops w hops
-      have h := treeAt_commit_of_lift p hl revts.reverse tx hw noops w hrun hW
-      simpa only [List.length_append, List.length_singleton] using h
-  intro ts hw
-  simpa using hf ts.reverse (by simpa using hw)
-
-/-- The writer's tree at every state between the operations of a transaction
-that ends a run within reach, if every operation keeps it and the lift holds:
-the premise that `OpCountOK` and `OpGetOK` can take. -/
-theorem writerTreeOK_between (p : Params) (ho : OpTreeOK p) (hl : CommitLiftOK p)
-    (ts : List Tx) (tx : Tx) (hw : Within p (ts ++ [tx])) (z : NodeId) (top : Top)
-    (hz : lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z)
-    (htop : topOf p (ctxOf p ts).view z = .ok top) (pre post : List Tree.Op)
-    (hsplit : tx.ops = pre ++ post) (r : List Bool) (w : W)
-    (hpre : (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w)) :
-    WriterTreeOK p (treeRun p ts) (ts.length + 1) w :=
-  writerTreeOK_reached p ho ts tx hw z top hz htop
-    (treeAt_run p ho hl ts (within_snoc_prefix p ts tx hw)) pre post hsplit r w hpre
-
 /-! ## TP33 with the tree -/
-
-/-- `OpCountOK` with the writer's tree as a premise: each operation from a state
-that has the writer's tree changes the count by at most twice its space splits
-less its merges into one node. Not proved. -/
-def OpCountTreeOK (p : Params) : Prop :=
-  ∀ ts tx, Within p (ts ++ [tx]) → ∀ z top,
-    lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z →
-    topOf p (ctxOf p ts).view z = .ok top →
-    ∀ pre op post, tx.ops = pre ++ op :: post →
-    ∀ r w, (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
-    WriterTreeOK p (treeRun p ts) (ts.length + 1) w →
-    WriterWP (putKv op) (ctxOf p ts) w (fun _ w' =>
-      wCount p (treeRun p ts) w' (ts.length + 1) + oneMerges w' + 2 * w.spaceSplits ≤
-        wCount p (treeRun p ts) w (ts.length + 1) + oneMerges w + 2 * w'.spaceSplits)
-
-theorem opCountOK_of_tree (p : Params) (hc : OpCountTreeOK p) (ho : OpTreeOK p)
-    (hl : CommitLiftOK p) : OpCountOK p := by
-  intro ts tx hw z top hz htop pre op post hsplit r w hpre
-  exact hc ts tx hw z top hz htop pre op post hsplit r w hpre
-    (writerTreeOK_between p ho hl ts tx hw z top hz htop pre (op :: post) hsplit r w hpre)
-
-/-- TP33 from the count's step on the writer's tree, the writer's tree kept by
-each operation, and the lift of the writer's key nodes. -/
-theorem mergeAmortized_of_tree (p : Params)
-    (h : MergeParamsOK p → OpCountTreeOK p ∧ OpTreeOK p ∧ CommitLiftOK p) : MergeAmortized p :=
-  mergeAmortized_of_opCount_lift p (fun hp =>
-    ⟨opCountOK_of_tree p (h hp).1 (h hp).2.1 (h hp).2.2, (h hp).2.2⟩)
 
 end SIS.Tree

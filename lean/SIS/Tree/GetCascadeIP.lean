@@ -1,5 +1,5 @@
 import SIS.Tree.GetCascadeGen
-import SIS.Tree.GetSegLeaf
+import SIS.Tree.GetSegInPlace
 import SIS.Tree.WriterTreeDepth
 
 set_option autoImplicit false

@@ -16,23 +16,6 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
-/-- What a merge inside the delete keeps that the books, cost's tree lemma
-(`writerWP_merge_tree_inv2`) and the reading do not give: its reached nodes not
-taken back (the take-back's `ReachedFree`), the walk's ranges and inner children
-there. With the books and the tree they give `PutInv` and `PutInvG` after the
-merge (`putInv_of_parts`). -/
-def StepInv (c : Ctx) (base : View BVal) (v : W) : Prop :=
-  (∀ y, ReachS (wNode c.p base v) c.i v.top.rootKey y → v.taken.contains y = false) ∧
-  RangeOrder (wNode c.p base v) c.i v.top.rootKey ∧
-  InnerChildrenExist (wNode c.p base v) c.i v.top.rootKey
-
-/-- Obligation (the collapse's ranges): the collapse's steps keep the walk's
-ranges and inner children, and a segment leaf has room for a replaced root's
-klong (`writerWP_collapseRoot_coll`'s premises). PutInv after the collapse
-follows from the books and the collapse's tree facts. -/
-def CollRange (c : Ctx) (base : View BVal) (v : W) : Prop :=
-  RangeOrder (wNode c.p base v) c.i v.top.rootKey ∧ InnerChildrenExist (wNode c.p base v) c.i v.top.rootKey
-
 /-- `PutInv` and `PutInvG` after a step, from the books after it and the step's
 tree facts. -/
 theorem putInv_after_step (c : Ctx) (base : View BVal) (v : W) (B : NodeId) (top0 : Top)

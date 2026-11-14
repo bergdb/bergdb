@@ -143,14 +143,4 @@ theorem overlayLiftOKUnder_links (p : Params) :
   exact overlayLift_of_book p (treeRun p ts) (ts.length + 1) tx noops w (by omega) hfresh htimes
     (treeRun_root_level p ts) hH hl he hbook htaken
 
-/-- `OverlayLiftOK` from TP4 and a history for every key node, after every
-run within reach. -/
-theorem overlayLiftOK_of_links (p : Params)
-    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
-    (hN : ∀ ts, Within p ts → KeyNonempty p (treeRun p ts)) : OverlayLiftOK p := by
-  apply overlayLiftOK_of_under p _ ?_ (overlayLiftOKUnder_links p)
-  intro ts hw
-  exact ⟨hP ts hw, treeRun_keyHistOK p ts hw
-    (fun k _ => hP _ (within_take p ts hw k)) (fun k _ => hN _ (within_take p ts hw k)), hN ts hw⟩
-
 end SIS.Tree

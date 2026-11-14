@@ -99,10 +99,6 @@ theorem KNode.lastVersionGivenDel_add_le (n : KNode) (t : Time) (del : List Nat)
   have := n.lastVersionGivenDel_size t del hf
   omega
 
-theorem timeFirst_lastVersionGivenDel (n : KNode) (t : Time) (del : List Nat) :
-    TimeFirst (n.lastVersionGivenDel t del).ks :=
-  Or.inr ⟨t, _, rfl⟩
-
 /-- The live klongs of a node with a time klong first: fewer than its klongs. -/
 theorem KNode.live_length_le (n : KNode) (m : Nat) (hf : TimeFirst n.ks) (hs : n.size ≤ m)
     (h1 : 1 ≤ m) : n.live.length + 1 ≤ m := by

@@ -289,49 +289,4 @@ theorem halves_lookup (leaf : Bool) (t : Time) (pairs ins : List (Nat × NodeId)
       rw [pairLookupFold_miss ins c _ (by
         intro q hq he; have hh := hin q hq; omega)]
 
-/-- A separator cannot cut through one of the parent's existing child
-intervals. This derives the split route from the child's checked range. -/
-theorem divider_side_of_child_range (pairs : List (Nat × NodeId)) (hi : Option Nat)
-    (hs : CvSorted pairs) (q : Nat × NodeId) (b : Option Nat)
-    (hq : (q,b) ∈ childBounds pairs hi) (r : Nat × NodeId) (hr : r ∈ pairs)
-    (cv : Nat) (hlo : q.1 ≤ cv) (hhi : UpperBound b cv) :
-    decide (r.1 ≤ cv) = decide (r.1 ≤ q.1) := by
-  by_cases hc : r.1 ≤ cv
-  · have hh := childBounds_dominates pairs hi hs q b hq cv hhi r hr hc
-    simp [hc, hh]
-  · have hh : ¬ r.1 ≤ q.1 := by omega
-    simp [hc, hh]
-
-theorem halves_common_side_of_child_range (pairs ins : List (Nat × NodeId))
-    (hi : Option Nat) (hs : CvSorted pairs) (q : Nat × NodeId) (b : Option Nat)
-    (hq : (q,b) ∈ childBounds pairs hi) (r : Nat × NodeId)
-    (hr : (pairs.drop (pairs.length / 2)).head? = some r)
-    (hins : ∀ a ∈ ins, q.1 ≤ a.1 ∧ UpperBound b a.1) :
-    ∀ a ∈ ins, decide (r.1 ≤ a.1) =
-      (match ins.head? with | some first => decide (r.1 ≤ first.1) | none => false) := by
-  have hrmem : r ∈ pairs := List.mem_of_mem_drop (List.mem_of_head? hr)
-  intro a ha
-  have hside := divider_side_of_child_range pairs hi hs q b hq r hrmem a.1 (hins a ha).1 (hins a ha).2
-  cases hh : ins.head? with
-  | none =>
-    have he : ins = [] := List.head?_eq_none_iff.mp hh
-    simp [he] at ha
-  | some first =>
-    have hf := hins first (List.mem_of_head? hh)
-    exact hside.trans (divider_side_of_child_range pairs hi hs q b hq r hrmem first.1 hf.1 hf.2).symm
-
-/-- When inserts replace children within one checked old interval, the
-pure split map theorem needs no separate common-side assumption. -/
-theorem halves_lookup_of_child_range (leaf : Bool) (t : Time)
-    (pairs ins : List (Nat × NodeId)) (hi : Option Nat) (hs : CvSorted pairs)
-    (q : Nat × NodeId) (b : Option Nat) (hq : (q,b) ∈ childBounds pairs hi)
-    (r : Nat × NodeId) (hr : (pairs.drop (pairs.length / 2)).head? = some r)
-    (hsc : 0 < r.1) (hins : ∀ a ∈ ins, q.1 ≤ a.1 ∧ UpperBound b a.1) (cv : Nat) :
-    let out := halves leaf t ⟨leaf, newKlongs t pairs⟩ ins
-    (if cv < out.2.2 then out.1.live.lookup cv
-      else out.2.1.live.lookup (splitLocalCv leaf out.2.2 cv)) =
-      ins.foldl (pairLookupStep cv) (pairs.lookup cv) :=
-  halves_lookup leaf t pairs ins hs r hr hsc
-    (halves_common_side_of_child_range pairs ins hi hs q b hq r hr hins) cv
-
 end SIS.Tree

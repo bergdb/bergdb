@@ -1759,6 +1759,4 @@ theorem writerWP_mergeTail_any_j2 (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx) (b
             rw [← hyn]
             exact unlinked_no_time rn c.i hpos (hwfN _ rn hrn) hrt
 
-
-
 end SIS.Tree

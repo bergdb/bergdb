@@ -261,18 +261,6 @@ theorem putInvG_of_readsAs (c : Ctx) (base : View BVal) (w v : W) (hI : PutInvG 
   · rw [hN, hnext]; exact hI.links
   · rw [hN, hV]; exact hI.keyNoValue
 
-/-- The delete's inner invariant, at a state v inside the delete of `key` from
-the state w0 between operations: `PutInv`, its global parts, the walk's ranges,
-inner children there, the fuel premise, and the reading of w0 with the key
-deleted. -/
-def DelInv (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (v : W) : Prop :=
-  PutInv c base v ∧ PutInvG c base v ∧ RangeOrder (wNode c.p base v) c.i v.top.rootKey ∧
-  InnerChildrenExist (wNode c.p base v) c.i v.top.rootKey ∧
-  SegFits (wNode c.p base v) c.i (c.p.fuel - 1) v.top.rootKey ∧
-  (∀ key', keyWf key' = true →
-    wGet c.p c.i base v key' = if key == key' then none else wGet c.p c.i base w0 key') ∧
-  ∃ B top0, PutBase c base B ∧ PutBook c B top0 v
-
 /-- `DelInv` with the reading and the fuel premise at a fuel f (states inside
 an operation are read at f = p.fuel + 1; 024-12's (4), option (a)). -/
 def DelInvF (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (f : Nat) (v : W) : Prop :=
@@ -282,9 +270,6 @@ def DelInvF (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (f : Nat) (v : W) 
   (∀ key', keyWf key' = true →
     wGetAt c.p c.i base v f key' = if key == key' then none else wGetAt c.p c.i base w0 f key') ∧
   ∃ B top0, PutBase c base B ∧ PutBook c B top0 v
-
-theorem delInv_iff (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (v : W) :
-    DelInv c base w0 key v ↔ DelInvF c base w0 key c.p.fuel v := Iff.rfl
 
 theorem delInvF_of_readsAs (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (f : Nat) (w v : W)
     (h : DelInvF c base w0 key f w) (hr : ReadsAs c.p base w v)
@@ -298,20 +283,6 @@ theorem delInvF_of_readsAs (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (f 
   · intro key' hk
     rw [← h6 key' hk]
     unfold wGetAt
-    rw [hr.1, hr.2.1, hV]
-
-theorem delInv_of_readsAs (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (w v : W)
-    (h : DelInv c base w0 key w) (hr : ReadsAs c.p base w v)
-    (hb : ∃ B top0, PutBase c base B ∧ PutBook c B top0 v) : DelInv c base w0 key v := by
-  obtain ⟨h1, h2, h3, h4, h5, h6, _⟩ := h
-  have hV : wValue base v = wValue base w := wValue_congr' base v w hr.2.2.1 hr.2.2.2.1
-  refine ⟨putInv_of_readsAs c base w v h1 hr, putInvG_of_readsAs c base w v h2 hr, ?_, ?_, ?_, ?_, hb⟩
-  · rw [hr.1, hr.2.1]; exact h3
-  · rw [hr.1, hr.2.1]; exact h4
-  · rw [hr.1, hr.2.1]; exact h5
-  · intro key' hk
-    rw [← h6 key' hk]
-    unfold wGet
     rw [hr.1, hr.2.1, hV]
 
 end SIS.Tree

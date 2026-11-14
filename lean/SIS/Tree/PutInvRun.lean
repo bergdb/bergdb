@@ -14,24 +14,6 @@ at the leaves (`opPutInvOK_of_T`). With cost's `OpTreeOK`, `PutInv` holds at
 every state that a prefix of a transaction's operations reaches
 (`putInv_reached`): the invariant that `OpGetOK`'s rules take. -/
 
-/-- Each operation keeps the parts of `PutInv` about the tree. -/
-def OpPutInvTOK (p : Params) (R : Struct BVal → Time → Prop) : Prop :=
-  ∀ ts tx, Within p (ts ++ [tx]) → R (treeRun p ts) ts.length → ∀ z top,
-    lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z →
-    topOf p (ctxOf p ts).view z = .ok top →
-    ∀ pre op post, tx.ops = pre ++ op :: post →
-    ∀ r w, (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
-    PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w →
-    WriterWP (putKv op) (ctxOf p ts) w (fun _ w' => PutInvT (ctxOf p ts) (viewOf (treeRun p ts)) w')
-
-theorem opPutInvOK_of_T (p : Params) (R : Struct BVal → Time → Prop)
-    (hR : ∀ P t, R P t → RunLinksOK p P t) (h : OpPutInvTOK p R) : OpPutInvOK p R := by
-  intro ts tx hw hr z top hz htop pre op post hsplit r w hpre hI
-  exact writerWP_putInv_of_T (ctxOf p ts) (viewOf (treeRun p ts)) tx.base top op w
-    (putBase_of_run p ts tx hw (hR _ _ hr))
-    (putBook_reached p ts tx hw (hR _ _ hr) z top htop pre r w hpre)
-    (h ts tx hw hr z top hz htop pre op post hsplit r w hpre hI)
-
 /-- `PutInv` at every state that a prefix of a transaction's operations
 reaches: from its first state (`putInv_init`), `OpPutInvOK` and cost's
 `OpTreeOK`. -/

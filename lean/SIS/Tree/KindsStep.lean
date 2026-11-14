@@ -228,24 +228,4 @@ theorem kindsAllOK_init (p : Params) : KindsAllOK p (initStruct p) := by
 
 /-! ## 4. What the walk reads -/
 
-/-- For a live klong of a key node of P that names a node of P, the walk's
-kind tests but the height's: an inner node's child is a key node of its
-segment; a segment leaf's child is a key node of the next segment for a
-long segment, a value otherwise. -/
-theorem kindsAllOK_live (p : Params) (P : Struct BVal) (t : Time) (hK : KindsAllOK p P)
-    (x : NodeId) (nd : Node BVal) (hx : P.get? x = some nd) (hd : nd.isData = false)
-    (hl : nd.level ≤ p.keyMax) (c : Nat) (y : NodeId) (hc : (c, y) ∈ (nodeK p nd).liveAt t)
-    (ny : Node BVal) (hy : P.get? y = some ny) :
-    (p.heightOf nd.level ≠ 0 → ny.isData = false ∧ p.segOf ny.level = p.segOf nd.level) ∧
-    (p.heightOf nd.level = 0 →
-      (segLen c = 7 → ny.isData = false ∧ p.segOf ny.level = p.segOf nd.level + 1) ∧
-      (segLen c ≠ 7 → ny.isData = true)) := by
-  have hk : Klong.key c y ∈ klongsOf nd.hist := KNode.liveAt_key_mem _ t c y hc
-  have hr := hK x nd hx hd hl c y hk ny hy
-  refine ⟨fun h0 => ?_, fun h0 => ⟨fun h7 => ?_, fun h7 => (hr.2 h0).2 h7⟩⟩
-  · obtain ⟨a, _, b⟩ := hr.1 h0
-    exact ⟨a, b⟩
-  · obtain ⟨a, _, b⟩ := (hr.2 h0).1 h7
-    exact ⟨a, b⟩
-
 end SIS.Tree

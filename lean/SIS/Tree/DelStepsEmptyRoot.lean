@@ -200,16 +200,4 @@ theorem delStepsCaseOKF3_emptyRoot (p : Params) (R : Struct BVal → Time → Pr
 
 /-! ## The two obligations with the stop node's cascade named -/
 
-/-- `DelStepsOKF3` with every case proved but the upward delete whose stop node
-has no room (`DelEmptyCascM`), and the fuel premise after a full leaf's split
-(`DelFullFitsOK`, cost's step 4). -/
-theorem delStepsOKF3_of_open4 (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
-    (hsa2 : 2 ≤ p.splitAbove)
-    (hRL : ∀ P t, R P t → RunLinksOK p P t)
-    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
-    (c7 : DelStepsCaseOKF3 p R DelEmptyCascM)
-    (hFits : ∀ ts, DelFullFitsOK (ctxOf p ts) (viewOf (treeRun p ts))) : DelStepsOKF3 p R :=
-  delStepsOKF3_of_open3 p R hM hsa2 hRL hP
-    (delStepsCaseOKF3_or p R _ _ _ delEmptyOther_split (delStepsCaseOKF3_emptyRoot p R hM hsa2 hRL hP) c7) hFits
-
 end SIS.Tree

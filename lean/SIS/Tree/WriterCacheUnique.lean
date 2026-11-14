@@ -17,12 +17,6 @@ def KeepsUniqueCache (base : NodeId) {α : Type} (f : M α) : Prop :=
   ∀ c w, ViewIdsBelow base c.view → UniqueCache base w →
     WriterWP f c w (fun _ v => UniqueCache base v ∧ w.next ≤ v.next)
 
-theorem uniqueCache_of_same (base : NodeId) (w v : W) (hw : UniqueCache base w)
-    (hn : v.nodes = w.nodes) (hg : v.gh = w.gh) (ht : v.taken = w.taken)
-    (hnext : w.next ≤ v.next) : UniqueCache base v :=
-  ⟨freshCache_of_same base w v hw.1 hn hg ht hnext, by
-    simpa only [CacheUnique, hn] using hw.2⟩
-
 theorem unique_ids_append (ns : List (NodeId × KNode)) (x : NodeId) (n : KNode)
     (hu : (ns.map Prod.fst).Nodup) (hx : ns.lookup x = none) :
     ((ns ++ [(x,n)]).map Prod.fst).Nodup := by
@@ -308,7 +302,6 @@ theorem uniqueCache_handleFullWith {base : NodeId} (up : NodeId → List (Nat ×
     | split
     | contradiction
 
-
 theorem uniqueCache_throw {base : NodeId} {α : Type} (e : String) : KeepsUniqueCache base (throw e : M α) := by
   intro c w hview hw
   exact writerWP_throw _ _ _ _
@@ -382,30 +375,6 @@ theorem uniqueCache_descendToSegmentRoot {base : NodeId} (key : Key) (segment : 
 macro "ucDeleteSimplify" : tactic => `(tactic|
   simp only [unlink, retarget, canTakeBack, takeBack, takeBackRoot, replaceRoot,
     appendDeleteKlong, emptyKeyNext])
-
-theorem uniqueCache_appendDeleteKlong {base : NodeId} (x : NodeId) (depth cv : Nat) : KeepsUniqueCache base (appendDeleteKlong x depth cv) := by
-  intro c w hview hw
-  unfold appendDeleteKlong
-  repeat' first
-    | wpSimplify
-    | ucDeleteSimplify
-    | ucCore base
-    | ucAppend base
-    | wpSplit
-    | split
-    | contradiction
-
-theorem uniqueCache_emptyKeyNext {base : NodeId} (x : NodeId) (depth : Nat) : KeepsUniqueCache base (emptyKeyNext x depth) := by
-  intro c w hview hw
-  unfold emptyKeyNext
-  repeat' first
-    | wpSimplify
-    | ucDeleteSimplify
-    | ucCore base
-    | ucAppend base
-    | wpSplit
-    | split
-    | contradiction
 
 theorem uniqueCache_collapseRoot {base : NodeId} (key : Key) (segment fuel : Nat) :
     KeepsUniqueCache base (collapseRoot key segment fuel) := by
@@ -487,16 +456,6 @@ theorem uniqueCache_retarget {base : NodeId} (q src dst : NodeId) : KeepsUniqueC
     | split
     | contradiction
 
-theorem uniqueCache_sibling {base : NodeId} (q : NodeId) (pn : KNode) (i : Nat) (inner : Bool) : KeepsUniqueCache base (sibling q pn i inner) := by
-  intro c w hview hw
-  unfold sibling
-  repeat' first
-    | wpSimplify
-    | ucCore base
-    | wpSplit
-    | split
-    | contradiction
-
 theorem writerWP_sibling_uniqueCache (base : NodeId) (q : NodeId) (pn : KNode)
     (i : Nat) (inner : Bool) (c : Ctx) (w : W)
     (hview : ViewIdsBelow base c.view) (hw : UniqueCache base w) :
@@ -553,18 +512,6 @@ theorem uniqueCache_mergeUp {base : NodeId} (key : Key) (g fuel h : Nat) (merged
       | split
       | contradiction
 
-theorem uniqueCache_afterDelete {base : NodeId} (key : Key) (g h : Nat) : KeepsUniqueCache base (afterDelete key g h) := by
-  intro c w hview hw
-  unfold afterDelete
-  repeat' first
-    | wpSimplify
-    | ucCore base
-    | ucUse base using (uniqueCache_mergeUp _ _ _ _ _)
-    | ucUse base using (uniqueCache_collapseRoot _ _ _)
-    | wpSplit
-    | split
-    | contradiction
-
 theorem uniqueCache_climb {base : NodeId} (depth : Nat) : KeepsUniqueCache base (climb depth) := by
   induction depth with
   | zero =>
@@ -603,31 +550,6 @@ macro "ucForWith " bound:term " using " extra:tactic : tactic => `(tactic| (
   case ucView => assumption
   case ucState => ucState
   intro _ _ _ _))
-
-theorem uniqueCache_segmentCount {base : NodeId} (path : List (Option Nat × NodeId)) (stop : Nat) :
-    KeepsUniqueCache base ((path.take stop).foldlM (fun s e => do
-      let n ← getNode e.2
-      pure (if n.leaf then s + 1 else s)) 0) := by
-  intro c w hview hw
-  ucFold base
-  ucFinish
-
-theorem uniqueCache_unlinkLoop {base : NodeId} (depth tt : Nat) (js : List Nat) :
-    KeepsUniqueCache base (forIn js () (fun j _ => do
-      let x ← pathNode (depth - j)
-      let xn ← getNode x
-      if xn.firstTime == some tt then
-        let q ← pathNode (depth - j - 1)
-        let k ← klongAt (depth - j)
-        takeBack x q k
-        pure (ForInStep.yield ())
-      else
-        note "up.unlink"
-        unlink x
-        pure (ForInStep.yield ()))) := by
-  intro c w hview hw
-  ucForWith base using (ucAppend base)
-  ucFinish
 
 theorem uniqueCache_deleteUpward {base : NodeId} (leaf : NodeId) (depth cv : Nat) (key : Key) :
     KeepsUniqueCache base (deleteUpward leaf depth cv key) := by

@@ -113,23 +113,11 @@ theorem KNode.add_key_lastBitmap (n : KNode) (t : Time) (c : Nat) (y : NodeId) :
   · split <;> simp only [KNode.lastBitmap,lastBitmapOf,List.foldl_append,List.foldl_cons,List.foldl_nil]
   · simp only [KNode.lastBitmap,lastBitmapOf,List.foldl_append,List.foldl_cons,List.foldl_nil]
 
-theorem KNode.add_key_cnt_ge (n : KNode) (t : Time) (c : Nat) (y : NodeId) :
-    n.cnt ≤ (n.add t (.key c y)).cnt := by
-  have hh := (n.add t (.key c y)).cnt_ge_protected_keys (n.live.map Prod.fst) n.live_keys_nodup (by
-    intro a ha
-    obtain ⟨z,i,hi,hdel⟩ := (n.live_has_key a).mp ha
-    refine ⟨z,i,prefix_mem_zipIdx (n.add_prefix t _) a z i hi,?_⟩
-    rwa [n.add_key_lastBitmap])
-  simpa only [List.length_map,KNode.cnt] using hh
-
 theorem KNode.add_leaf (n : KNode) (t : Time) (k : Klong) : (n.add t k).leaf = n.leaf := by
   unfold KNode.add
   split
   · split <;> rfl
   · rfl
-
-theorem KNode.cnt_with_leaf (n : KNode) (leaf : Bool) :
-    ({n with leaf := leaf} : KNode).cnt = n.cnt := rfl
 
 theorem KNode.repoint_shape (n : KNode) (i : Nat) (y : NodeId) :
     (n.repoint i y).ks.map klongShape = n.ks.map klongShape := by
@@ -147,9 +135,6 @@ theorem KNode.repoint_shape (n : KNode) (i : Nat) (y : NodeId) :
         simp only [List.getElem_map,hget,klongShape]
       simp only [KNode.setAt,List.map_set,klongShape]
       rw [← he,List.set_getElem_self]
-
-theorem KNode.repoint_cnt (n : KNode) (i : Nat) (y : NodeId) : (n.repoint i y).cnt = n.cnt :=
-  KNode.cnt_eq_of_shape _ _ (n.repoint_shape i y)
 
 theorem KNode.repoint_klongsWf (n : KNode) (i : Nat) (y : NodeId) :
     klongsWf (n.repoint i y).ks = klongsWf n.ks :=

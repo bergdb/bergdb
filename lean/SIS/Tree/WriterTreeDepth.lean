@@ -5,7 +5,12 @@ a child is one deeper than its parent, so no node is reached from a node below
 it, and the path to a parent never passes through its child: a change of the
 child does not change what reaches the parent (`tReach_updN_parent`).
 -/
-import SIS.Tree.WriterTreeInv
+import SIS.Tree.PutInvRun
+import SIS.Tree.PutInvDelFull
+import SIS.Tree.WriterTreeCollapseSeg
+import SIS.Tree.GetChain
+import SIS.Tree.GetInnerSplit
+import SIS.Tree.GetSpaceSpace
 
 set_option autoImplicit false
 

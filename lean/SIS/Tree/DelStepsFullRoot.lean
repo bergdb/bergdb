@@ -357,15 +357,4 @@ theorem delFullRootStepOK_ctx (p : Params) (ts : List Tx) :
 
 /-! ## The full leaf's cases with the root's split -/
 
-/-- `DelStepsOKF3` with every case proved but the upward delete without room
-(`DelEmptyOtherM`), the full leaf from the fuel premise after its split
-(`DelFullFitsOK`, cost's step 4) alone. -/
-theorem delStepsOKF3_of_open3 (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
-    (hsa2 : 2 ≤ p.splitAbove)
-    (hRL : ∀ P t, R P t → RunLinksOK p P t)
-    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
-    (c7 : DelStepsCaseOKF3 p R DelEmptyOtherM)
-    (hFits : ∀ ts, DelFullFitsOK (ctxOf p ts) (viewOf (treeRun p ts))) : DelStepsOKF3 p R :=
-  delStepsOKF3_of_open2 p R hM hsa2 hRL hP c7 hFits (fun ts => delFullRootStepOK_ctx p ts)
-
 end SIS.Tree

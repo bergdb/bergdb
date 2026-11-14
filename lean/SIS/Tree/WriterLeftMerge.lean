@@ -44,12 +44,6 @@ theorem left_delWrite (n : KNode) (t : Time) (bits : List Nat) (hasTransDel : Bo
   | true => exact left_setAt_del' n t bits (by rw [← hT, hd]) hG
   | false => exact left_add_del' n t bits hG
 
-theorem left_ite_node (b : Bool) (a d : KNode) (ha : b = true → LeftNode a)
-    (hd : b = false → LeftNode d) : LeftNode (if b then a else d) := by
-  cases b
-  · exact hd rfl
-  · exact ha rfl
-
 /-- The bitmap of a delete of compare value cv: an inner node's cv is not the
 empty key's. -/
 theorem left_given_del (n : KNode) (cv : Nat) (hcv : n.leaf = false → cv ≠ 0) (hL : LeftNode n) :
@@ -495,12 +489,6 @@ theorem left_mergeParent (B : NodeId) (q : NodeId) (depth il cL : Nat) (m1 : Nod
     | wpSplit
     | split
     | contradiction
-
-theorem left_sibling (B : NodeId) (q : NodeId) (pn : KNode) (i : Nat) (inner : Bool) :
-    KeepsLeft0 B (sibling q pn i inner) := by
-  intro c w hv hp hl hw hb hn
-  unfold sibling
-  repeat' first | wpSimplify | lfCore | wpSplit | split | contradiction
 
 /-! ## The merge -/
 

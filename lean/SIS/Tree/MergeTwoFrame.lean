@@ -42,12 +42,6 @@ theorem twoLe_bind {α β : Type} {a b : Nat} {x : M α} {f : α → M β}
     have h2 := hf p.1 c p.2 w' r (by simpa [ReaderT.run, StateT.run] using h)
     omega
 
-theorem twoLe_mono {α : Type} {k k' : Nat} {f : M α} (hk : k ≤ k') (h : TwoLe k f) :
-    TwoLe k' f := by
-  intro c w w' r hr
-  have := h c w w' r hr
-  omega
-
 theorem twoLe_bind0 {α β : Type} {k : Nat} {x : M α} {f : α → M β}
     (hx : TwoLe 0 x) (hf : ∀ v, TwoLe k (f v)) : TwoLe k (x >>= f) := by
   have := twoLe_bind hx hf
@@ -80,17 +74,6 @@ theorem twoLe_modify (k : Nat) (f : W → W) (hf : ∀ w, twoNotes (f w) = twoNo
     monadLift, MonadLift.monadLift, pure, Except.pure] at h
   rw [← h, hf]
   omega
-
-/-- One step of the frame proofs: a bind, a leaf action, a branch. -/
-macro "tstep" : tactic => `(tactic| first
-  | apply twoLe_bind0
-  | exact twoLe_pure _ _
-  | exact twoLe_throw _ _
-  | exact twoLe_read _
-  | exact twoLe_get _
-  | (apply twoLe_modify; intro _; rfl)
-  | intro _
-  | split)
 
 theorem twoNotes_note (s : String) (w : W) :
     twoNotes { w with trail := s :: w.trail } =
@@ -272,7 +255,6 @@ theorem twoLe_replaceOrAdd (last : KNode) (ins : List (Nat × NodeId)) :
   apply twoLe_foldlM
   intro last ins
   split <;> repeat tframeStep2
-
 
 macro "twFrame" : tactic => `(tactic| first
   | (with_unfolding_none exact writerWP_throw _ _ _ _)
@@ -658,13 +640,6 @@ theorem writerWP_merge_two (x : NodeId) (d : Nat) (c : Ctx) (w : W) :
     | split
     | contradiction
     | ((try simp only [Nat.add_zero, twoNotes] at *); omega)
-
-theorem twoLe_merge (x : NodeId) (d : Nat) : TwoLe 1 (merge x d) := by
-  apply twoLe_of_wp
-  intro c w
-  refine writerWP_mono (writerWP_merge_two x d c w) ?_
-  intro r v h
-  split at h <;> omega
 
 theorem twoLe_climb (depth : Nat) : TwoLe 0 (climb depth) := by
   induction depth with

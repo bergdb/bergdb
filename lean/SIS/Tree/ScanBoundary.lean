@@ -26,29 +26,6 @@ def scanBoundaryTx : Tx := { base := 3, ops := [.put scanBoundaryKey 1] }
 
 def scanBoundaryHistory : List Tx := [scanBoundaryTx]
 
-def scanBoundaryReq : ScanReq := { forward := false }
-
-theorem scanBoundaryParams_ok : MergeParamsOK scanBoundaryParams := by
-  exact mergeParamsOK_withMerges ({ M := 8, G := 0, H := 0 } : Params) (by decide)
-
-theorem scanBoundary_result :
-    (scan scanBoundaryParams (viewOf (treeRun scanBoundaryParams scanBoundaryHistory))
-      1 scanBoundaryReq 1).map (fun kv => (kv.key, kv.h)) = [] := by
-  cbv
-
-theorem scanBoundary_reference :
-    refScan scanBoundaryHistory 1 scanBoundaryReq 1 = [(scanBoundaryKey, 1)] := by
-  cbv
-
-theorem scanBoundary_invariants :
-    InvOK scanBoundaryParams (treeRun scanBoundaryParams scanBoundaryHistory) 1 := by
-  cbv
-
-theorem scanBoundary_get :
-    get scanBoundaryParams (viewOf (treeRun scanBoundaryParams scanBoundaryHistory))
-      1 scanBoundaryKey = some 1 := by
-  cbv
-
 /-- This unrestricted writer input is excluded by the corrected key predicate. -/
 theorem scanBoundaryKey_not_wf : keyWf scanBoundaryKey = false := by
   decide +kernel

@@ -216,7 +216,6 @@ theorem j2_change_one (N N' : NodeId → Option KNode) (t : Time) (r r' B : Node
 
 /-! ## The bitmap at the writer's level -/
 
-
 set_option linter.unusedSimpArgs false in
 /-- `writerWP_appendDeleteKlong_room_frame` with x's node after exactly a bitmap
 of cv (`BitmapOf`). -/
@@ -273,50 +272,5 @@ theorem writerWP_appendDeleteKlong_room_exact (x : NodeId) (depth cv : Nat) (n :
         exact ⟨trivial, trivial, trivial, trivial, trivial, trivial, _, rfl, KNode.add_leaf _ _ _, KNode.add_delete_wf n c.i cv hw hne,
           KNode.add_times n c.i _ (fun s h => by cases h) hnt,
           fun c' => n.add_delete_live_lookup c.i cv c', Or.inl rfl⟩
-
-/-- A bitmap with room deleting cv in a reached node x keeps the take-back's (B)
-and (C) together (`TakeJ2`), when cv's live pointer is no node and below B or a
-value. -/
-theorem writerWP_appendDeleteKlong_j2 (x : NodeId) (depth cv : Nat) (n : KNode) (c : Ctx)
-    (base : View BVal) (B : NodeId) (w : W)
-    (hlk : w.nodes.lookup x = some n) (htk : w.taken.contains x = false)
-    (hnt : ∀ s, Klong.time s ∈ n.ks → s ≤ c.i) (hw : klongsWf n.ks = true)
-    (hne : bitsUnion n.lastBitmap (n.bitsOf cv) ≠ n.lastBitmap)
-    (hroom : n.size + 1 < c.p.M)
-    (hdead1 : deadOver c.p (n.setAt (n.size - 1)
-      (.del (bitsUnion n.lastBitmap (n.bitsOf cv)))) = false)
-    (hdead2 : deadOver c.p (n.add c.i (.del (bitsUnion n.lastBitmap (n.bitsOf cv)))) = false)
-    (hpos : 0 < c.i) (hJ : TakeJ2 c base B w)
-    (hxR : TReach (wNode c.p base w) c.i w.top.rootKey x)
-    (hcvN : ∀ y, (cv, y) ∈ n.liveAt c.i → wNode c.p base w y = none)
-    (hcvv : ∀ y, (cv, y) ∈ n.liveAt c.i → y < B ∨ y ∈ w.vals.map (·.1)) :
-    WriterWP (appendDeleteKlong x depth cv) c w (fun _ w' => TakeJ2 c base B w') := by
-  refine writerWP_mono (writerWP_appendDeleteKlong_room_exact x depth cv n c w hlk hnt hw hne hroom
-    hdead1 hdead2) ?_
-  rintro _ w' ⟨ht, htop, hv, _, _, _, n', hnodes, _, _, ht', hlk', hbm⟩
-  have hx : wNode c.p base w x = some n := by
-    simp only [wNode, htk, Bool.false_eq_true, ↓reduceIte, hlk]
-  have hN' : wNode c.p base w' = updN (wNode c.p base w) x n' := by
-    funext z
-    by_cases hz : z = x
-    · rw [hz, updN_self]
-      simp only [wNode, ht, htk, Bool.false_eq_true, ↓reduceIte, hnodes, lookup_upsert]
-    · simp only [updN, hz, ↓reduceIte, wNode, ht, hnodes, lookup_upsert]
-  have hlive := liveAt_iff_of_delete_lookup n n' c.i cv hnt ht' hlk'
-  have hreach := reach_updN_keep (wNode c.p base w) c.i w.top.rootKey x n n' hx (by
-    intro cc u hm
-    by_cases hc : cc = cv
-    · rw [hc] at hm; exact Or.inr (hcvN u hm)
-    · exact Or.inl ⟨cc, (hlive cc u).mpr ⟨hm, hc⟩⟩)
-  unfold TakeJ2
-  rw [htop, hv, hN']
-  refine j2_change_one (wNode c.p base w) _ c.i w.top.rootKey w.top.rootKey B _ x n n' hJ hx
-    (updN_self _ _ _) (fun z hz => by simp [updN, hz]) (bitmapOf_prefix n n' c.i cv hbm hpos)
-    (bitmapOf_firstTime n n' c.i cv hbm)
-    (deadLiveK_bitmap n n' c.i cv B _ hbm hnt (deadLiveK_of_N _ _ _ _ hJ.2.1 x n hx) hcvv hlive)
-    hreach (fun _ => ?_)
-  rcases hreach x hxR with h | h
-  · exact h
-  · rw [h] at hx; cases hx
 
 end SIS.Tree

@@ -84,12 +84,6 @@ theorem KNode.lastVersionGivenDel_live_lookup (n : KNode) (t : Time) (del : List
   have hp := n.lastVersionGivenDel_pairs_lookup t del c
   simpa [he, newKlongs, List.filterMap_map, Function.comp_def] using hp
 
-theorem KNode.lastVersion_live_lookup (n : KNode) (t : Time) (c : Nat) :
-    (n.lastVersion t).live.lookup c = n.live.lookup c := by
-  calc
-    _ = keyLookup n.ks n.lastBitmap c := n.lastVersionGivenDel_live_lookup t n.lastBitmap c
-    _ = n.live.lookup c := (n.live_lookup c).symm
-
 theorem keyLookupStep_delete_other (n : KNode) (cv c : Nat) (hc : c ≠ cv)
     (q : Klong × Nat) (hq : q ∈ n.ks.zipIdx) (acc : Option NodeId) :
     keyLookupStep (bitsUnion n.lastBitmap (n.bitsOf cv)) c acc q =
@@ -137,10 +131,6 @@ theorem KNode.delete_live_lookup (n : KNode) (t : Time) (cv c : Nat) :
     (n.lastVersionGivenDel t (bitsUnion n.lastBitmap (n.bitsOf cv))).live.lookup c =
       if c == cv then none else n.live.lookup c := by
   rw [n.lastVersionGivenDel_live_lookup, keyLookup_delete_union]
-
-theorem keyLookup_append_time (ks : List Klong) (del : List Nat) (c t : Nat) :
-    keyLookup (ks ++ [.time t]) del c = keyLookup ks del c := by
-  simp [keyLookup, List.zipIdx_append, keyLookupStep]
 
 theorem keyLookup_append_delete (ks : List Klong) (del bits : List Nat) (c : Nat) :
     keyLookup (ks ++ [.del bits]) del c = keyLookup ks del c := by
@@ -220,9 +210,6 @@ theorem KNode.add_key_live_lookup_of_wf (n : KNode) (t : Time) (cv c : Nat) (y :
     (hw : klongsWf n.ks = true) :
     (n.add t (.key cv y)).live.lookup c = if cv == c then some y else n.live.lookup c :=
   n.add_key_live_lookup t cv c y (n.wf_bitmap_bounds hw)
-
-theorem KNode.live_with_leaf (n : KNode) (leaf : Bool) :
-    ({n with leaf := leaf} : KNode).live = n.live := rfl
 
 theorem KNode.delete_lookup_noop (n : KNode) (cv : Nat)
     (hu : bitsUnion n.lastBitmap (n.bitsOf cv) = n.lastBitmap) (c : Nat) :

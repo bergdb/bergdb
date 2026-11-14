@@ -5,7 +5,7 @@ The merge keeps the take-back's facts (bergdb 024-12, TP7, case (4)): latest's
 -/
 import SIS.Tree.TakeMergeTail
 import SIS.Tree.TakeDelMerge
-import SIS.Tree.TakeBackMerges
+import SIS.Tree.TakeBaseStart
 
 set_option autoImplicit false
 

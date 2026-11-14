@@ -10,7 +10,9 @@ with E = {v}); putSegs then fills v and makes the leaves below it, and
 gives that the nodes reached after it are below the next id.
 -/
 import SIS.Tree.GetNewSegFull
-import SIS.Tree.LiveTP7
+import SIS.Tree.LivePutFull
+import SIS.Tree.GetOpCases
+import SIS.Tree.HeightsRun
 import SIS.Tree.WriterTreeChainG
 
 set_option autoImplicit false
@@ -578,36 +580,5 @@ theorem liveCase_putNewSegFull (p : Params) (R : Struct BVal → Time → Prop)
       ¬ m.size + 1 < (ctxOf p ts).p.M) ⟨hat.2.2.2.2.2, hroom⟩)) ?_
   intro _ w' hL _ hC
   exact liveCounts_of_edges p _ _ _ (hL hp (edges_of_liveCounts p _ _ _ hC))
-
-/-- `LatestInvOK` under valid parameters with every put case proved: left are
-TP4, the bound on dead klongs, P's tree, cost's `OpHtDelOK`, and TP10's posts
-and `QLive` of the delete with the merges (4). -/
-theorem latestInvOK_of_open_del (p : Params) (hp : MergeParamsOK p)
-    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
-    (hD : ∀ ts, Within p ts → DeadAllOK p (treeRun p ts))
-    (hdel : OpHtDelOK p)
-    (htree : ∀ ts, Within p ts → TreeAt p (treeRun p ts) ts.length)
-    (t4 : OpCaseOK p (RunOK p) (QTree p) DelMergeCase)
-    (i4 : OpCaseOK p (RunOK p) (QPutInv p) DelMergeCase)
-    (r4 : OpCaseOK p (RunOK p) (QRange p) DelMergeCase)
-    (l4 : OpCaseOK p (RunOK p) (QLive p) DelMergeCase) : LatestInvOK p := by
-  have hp' := hp
-  unfold MergeParamsOK at hp'
-  exact latestInvOK_of_open p hp hP hD hdel htree t4 i4 r4
-    (liveCase_putNewSegFull p _ (fun _ _ h => h.1) (by omega) (by omega) hp) l4
-
-/-- TP7 under valid parameters with every put case proved, as
-`latestInvOK_of_open_del`. -/
-theorem invPreserved_of_open_del (p : Params) (hp : MergeParamsOK p)
-    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
-    (hD : ∀ ts, Within p ts → DeadAllOK p (treeRun p ts))
-    (hdel : OpHtDelOK p)
-    (htree : ∀ ts, Within p ts → TreeAt p (treeRun p ts) ts.length)
-    (t4 : OpCaseOK p (RunOK p) (QTree p) DelMergeCase)
-    (i4 : OpCaseOK p (RunOK p) (QPutInv p) DelMergeCase)
-    (r4 : OpCaseOK p (RunOK p) (QRange p) DelMergeCase)
-    (l4 : OpCaseOK p (RunOK p) (QLive p) DelMergeCase) : InvPreserved p :=
-  invPreserved_of_latest_pointers p hp
-    (latestInvOK_of_open_del p hp hP hD hdel htree t4 i4 r4 l4) hP hD
 
 end SIS.Tree

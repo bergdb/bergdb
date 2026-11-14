@@ -210,17 +210,6 @@ theorem segFits_of_heights (hb : Book B c w) (hc : HtCache c H w)
     have he := segDepthEq_of_hasHt hb hc hvh base hbase h x hh
     exact SegDepthLe.mono _ _ h x (he.le h x) bound (hr x hx h hh)
 
-/-- Balance: every segment tree reached from r is balanced, of depth its root's
-height, when every reached node has a height at most `bound`. -/
-theorem segBal_of_heights (hb : Book B c w) (hc : HtCache c H w)
-    (hvh : ViewHeights H B c) (base : View BVal) (hbase : BaseHeights c H base)
-    (bound : Nat) (r : NodeId)
-    (hr : ∀ x, ReachS (wNode c.p base w) c.i r x → ∃ h, h ≤ bound ∧ HasHt H w x h) :
-    SegBal (wNode c.p base w) c.i bound r := by
-  intro x hx
-  obtain ⟨h, hh, hx'⟩ := hr x hx
-  exact ⟨h, hh, segDepthEq_of_hasHt hb hc hvh base hbase h x hx'⟩
-
 end Facts
 
 end SIS.Tree

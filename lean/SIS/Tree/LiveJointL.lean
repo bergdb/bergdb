@@ -152,15 +152,6 @@ theorem opCaseOK_of_cases_mergesL (p : Params) (R : Struct BVal → Time → Pro
   exact writerWP_mono (hall ts tx hw hr z top hz htop pre op post hs r w hpre hI hRO trivial)
     (fun _ _ hq => hq hL)
 
-/-- A case of the delete with the merges holds from a state with the live
-counts. -/
-theorem opCaseOK_delMergeL_of (p : Params) (R : Struct BVal → Time → Prop)
-    (Q : List Tx → Op → W → W → Prop) (h : OpCaseOK p R Q DelMergeCase) :
-    OpCaseOK p R Q (fun c base w op =>
-      DelMergeCase c base w op ∧ LiveCounts c.p (wNode c.p base w) c.i w.top.rootKey) :=
-  fun ts tx hw hr z top hz htop pre op post hs r w hpre hI hRO hC =>
-    h ts tx hw hr z top hz htop pre op post hs r w hpre hI hRO hC.1
-
 /-- A case at every operation holds in every narrower case. -/
 theorem opCaseOK_of_any (p : Params) (R : Struct BVal → Time → Prop)
     (Q : List Tx → Op → W → W → Prop) (C : Ctx → View BVal → W → Op → Prop)

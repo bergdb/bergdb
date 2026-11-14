@@ -319,7 +319,6 @@ theorem liveCase_putNewSeg1Room (p : Params) (R : Struct BVal → Time → Prop)
     have := hI.links u un c w.next (fReach_reachS hu) hun hc
     omega
 
-
 /-! ## (3b) New segments below a leaf with room -/
 
 /-- `rangeOrder_leafAddNewSet` for `LiveCounts`: a leaf L gets a key klong to a

@@ -15,15 +15,6 @@ up through a cascade of splits (`writerWP_appendKlongs_chainGRV`), then the new
 segment leaves are made below it (`writerWP_putSegs_new`). A reader reaches the
 new segment leaf only through the key's prefix; its tree changes nothing else. -/
 
-/-- Paths in N are paths in N' when N's links from the nodes it reaches are N''s. -/
-theorem PathLen.of_sublinks (N N' : NodeId → Option KNode) (t : Time) (r : NodeId)
-    (h : ∀ u c z, TReach N t r u → TLink N t u c z → TLink N' t u c z) :
-    ∀ z k, PathLen N t r z k → PathLen N' t r z k := by
-  intro z k hz
-  induction hz with
-  | root => exact PathLen.root
-  | link hp hl ih => exact PathLen.link ih (h _ _ _ hp.reach hl)
-
 /-- An empty segment leaf has no live klong. -/
 theorem KNode.empty_liveAt (t : Time) (c : Nat) (z : NodeId) :
     (c, z) ∉ (⟨true, []⟩ : KNode).liveAt t := by
@@ -1049,51 +1040,5 @@ theorem writerWP_put_newSegFullR (c : Ctx) (base : View BVal) (hvc : ViewCoheren
   split <;>
   · simp only [writerWP_bind, writerWP_modify, writerWP_pure]
     exact hrest _ rfl rfl rfl rfl rfl rfl
-
-/-- `writerWP_put_newSegFullR` when no node that space splits is the space root
-(`hspaceG`): the reading needs no premise on the fuel. -/
-theorem writerWP_put_newSegFull (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
-    (pre : List Nat) (c0 h : Nat) (tail : List Nat) (htail : tail ≠ []) (rk0 : NodeId) (w : W)
-    (hM : 2 ≤ c.p.M)
-    (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk0)
-    (ht : ∀ q ∈ fromVisits (wNode c.p base w) c.i c.p.fuel (pre ++ c0 :: tail) w.top.rootKey,
-      w.taken.contains q.1 = false)
-    (hids : (∀ z, (w.nodes.lookup z).isSome = true → z < w.next) ∧
-      (∀ z, (c.view z).isSome = true → z < w.next) ∧ (∀ z, w.taken.contains z = true → z < w.next) ∧
-      (∀ q ∈ w.vals, q.1 < w.next) ∧ w.top.rootKey < w.next)
-    (hbase : ∀ z, w.next ≤ z → knodeOf c.p base z = none ∧ valueOf base z = none)
-    (hwfG : ∀ x xn, wNode c.p base w x = some xn → klongsWf xn.ks = true)
-    (htimesG : ∀ x xn, wNode c.p base w x = some xn → ∀ s, Klong.time s ∈ xn.ks → s ≤ c.i)
-    (hT : TreeOK (wNode c.p base w) c.i w.top.rootKey)
-    (hlinksAll : ∀ u c' z, TLink (wNode c.p base w) c.i u c' z → z < w.next)
-    (hnoval : ∀ x xn, wNode c.p base w x = some xn → wValue base w x = none)
-    (hrangeG : ∀ q qn x xn K, TReach (wNode c.p base w) c.i w.top.rootKey q →
-      wNode c.p base w q = some qn → qn.leaf = false → (K, x) ∈ qn.liveAt c.i →
-      wNode c.p base w x = some xn → ¬ ChainRoom c xn → ∀ c' z, (c', z) ∈ xn.live → 0 < c' →
-      K ≤ c' ∧ ∀ c'' z', (c'', z') ∈ qn.live → K < c'' → c' < c'')
-    (hlenG : ∀ x xn, TReach (wNode c.p base w) c.i w.top.rootKey x → wNode c.p base w x = some xn →
-      ¬ ChainRoom c xn → c.p.splitAbove < (xn.lastVersion c.i).size → 2 ≤ xn.live.length)
-    (hspaceG : ∀ x xn, TReach (wNode c.p base w) c.i w.top.rootKey x → wNode c.p base w x = some xn →
-      ¬ ChainRoom c xn → c.p.splitAbove < (xn.lastVersion c.i).size →
-      x ≠ w.top.rootKey ∧ ∀ q qn K, TReach (wNode c.p base w) c.i w.top.rootKey q →
-        wNode c.p base w q = some qn → (K, x) ∈ qn.liveAt c.i → qn.leaf = false)
-    (hcur : ∀ L n, (L, c0) ∈ eqVisits (wNode c.p base w) c.i c0 c.p.fuel rk0 →
-      wNode c.p base w L = some n → n.leaf = true →
-      n.searchEq c.i c0 = none ∧ ¬ n.size + 1 < c.p.M ∧
-      (∀ key', keyWf key' = true →
-        (L, c0) ∈ fromVisits (wNode c.p base w) c.i c.p.fuel key' w.top.rootKey →
-        ∃ rest', key' = pre ++ c0 :: rest') ∧
-      ∀ c', (L, c') ∉ fromVisits (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey) :
-    WriterWP (putKv (.put (pre ++ c0 :: tail) h)) c w (fun _ w' => ∀ key', keyWf key' = true →
-      wGet c.p c.i base w' key' =
-        if Op.key (.put (pre ++ c0 :: tail) h) == key' then Op.value (.put (pre ++ c0 :: tail) h)
-        else wGet c.p c.i base w key') :=
-  writerWP_mono (writerWP_put_newSegFullR c base hvc pre c0 h tail htail rk0 w hM hrk ht hids hbase hwfG
-    htimesG hT hlinksAll hnoval hrangeG hlenG (fun x xn hx hxn hnr hsp q qn K hq hqn hk =>
-      Or.inl ((hspaceG x xn hx hxn hnr hsp).2 q qn K hq hqn hk))
-    hcur)
-    (fun _ _ hp => hp.2.2.2.1 (Or.inr ⟨fun rn hrn hnr => Nat.le_of_not_lt (fun hsp =>
-      (hspaceG _ _ TReach.root hrn hnr hsp).1 rfl), fun x xn hx hxn hnr hsp =>
-      (hspaceG x xn hx hxn hnr hsp).2⟩))
 
 end SIS.Tree

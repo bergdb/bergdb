@@ -281,9 +281,6 @@ theorem ht_hq_zero {B : NodeId} {c : Ctx} {vr : W} {q : NodeId} {pn : KNode} {gq
   | zero => rfl
   | succ k => simp at this
 
-theorem ht_ptr_mem' {n : KNode} {i : Nat} {y : NodeId} (h : n.ptr? i = some y) :
-    ∃ cv, n.ks[i]? = some (.key cv y) := kd_ptr_mem h
-
 /-- What `appendKlongs` one level up does for `handleFullWith`: for the parent
 q, the path's node at depth d, and klongs of the right height for it, it keeps
 the state and the path. -/

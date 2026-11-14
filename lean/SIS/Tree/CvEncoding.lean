@@ -452,18 +452,6 @@ theorem encoded_merge_first (inner : Bool) (cap cR : Nat) (left right : List (Na
     PairsEncoded (mergeKlongs inner cap cR left right).1 :=
   (mergeKlongs_encoded inner cap cR left right hL hR hcR).1
 
-theorem encoded_merge_second_pairs {inner : Bool} {cap cR : Nat} {left right : List (Nat × NodeId)}
-    {second : List (Nat × NodeId) × Nat}
-    (hs : (mergeKlongs inner cap cR left right).2 = some second)
-    (hL : PairsEncoded left) (hR : PairsEncoded right) (hcR : CompareValueOK cR) :
-    PairsEncoded second.1 := (encoded_merge_second hs hL hR hcR).1
-
-theorem encoded_merge_second_cv {inner : Bool} {cap cR : Nat} {left right : List (Nat × NodeId)}
-    {second : List (Nat × NodeId) × Nat}
-    (hs : (mergeKlongs inner cap cR left right).2 = some second)
-    (hL : PairsEncoded left) (hR : PairsEncoded right) (hcR : CompareValueOK cR) :
-    CompareValueOK second.2 := (encoded_merge_second hs hL hR hcR).2
-
 theorem encoded_merge_second_list {inner : Bool} {cap cR : Nat} {left right ks : List (Nat × NodeId)}
     {cv : Nat} (hs : (mergeKlongs inner cap cR left right).2 = some (ks, cv))
     (hL : PairsEncoded left) (hR : PairsEncoded right) (hcR : CompareValueOK cR) :

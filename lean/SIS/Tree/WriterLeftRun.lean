@@ -146,24 +146,6 @@ theorem left_climb (B : NodeId) (depth : Nat) : KeepsLeft0 B (climb depth) := by
       | split
       | contradiction
 
-theorem left_forIn (B : NodeId) {α β : Type} (xs : List α) (init : β)
-    (f : α → β → M (ForInStep β)) (hf : ∀ a b, KeepsLeft0 B (f a b)) :
-    KeepsLeft0 B (forIn xs init f) := by
-  induction xs generalizing init with
-  | nil =>
-    intro c w hv hp hl hw hb hn
-    simpa only [List.forIn_nil, writerWP_pure] using ⟨hw, hb, Kept.refl w, hn⟩
-  | cons a xs ih =>
-    intro c w hv hp hl hw hb hn
-    rw [List.forIn_cons, writerWP_bind]
-    refine writerWP_mono (hf a init c w hv hp hl hw hb hn) ?_
-    rintro step v ⟨h1, h2, h3, h4⟩
-    cases step with
-    | done b => simpa only [writerWP_pure] using ⟨h1, h2, h3, h4⟩
-    | yield b =>
-      exact writerWP_mono (ih b c v hv hp hl h1 h2 h4)
-        (fun r u h => ⟨h.1, h.2.1, h3.trans h.2.2.1, h.2.2.2⟩)
-
 /-- A loop, its body at a fixed context. -/
 theorem left_forInC (B : NodeId) {α β : Type} (xs : List α) (init : β)
     (f : α → β → M (ForInStep β)) (c : Ctx) (_hv : ViewGood B c) (_hp : MergeParamsOK c.p)

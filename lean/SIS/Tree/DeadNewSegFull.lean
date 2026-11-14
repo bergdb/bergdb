@@ -451,7 +451,6 @@ theorem dead_put_newSegFull (c : Ctx) (base : View BVal) (hvc : ViewCoherent c b
   · simp only [writerWP_bind, writerWP_modify, writerWP_pure]
     exact hrest _ rfl rfl rfl rfl rfl rfl
 
-
 /-- (3c), `QDead`, for 2 ≤ M, 2 ≤ splitAbove, theta 0 or at least 2 and runs with
 their links. -/
 theorem deadCase_putNewSegFull (p : Params) (R : Struct BVal → Time → Prop)

@@ -113,7 +113,6 @@ theorem state_forIn {α β : Type} (xs : List α) (init : β)
     | done b => simpa only [writerWP_pure] using hv
     | yield b => exact ih b c v hv
 
-
 macro "siSimplify" : tactic => `(tactic| siPrimitives)
 
 macro "siCore" : tactic => `(tactic| first
@@ -420,18 +419,6 @@ theorem state_mergeUp (key : Key) (g fuel h : Nat) (merged : Bool) :
       | split
       | contradiction
 
-theorem state_afterDelete (key : Key) (g h : Nat) : KeepsState (afterDelete key g h) := by
-  intro c w hw
-  unfold afterDelete
-  repeat' first
-    | siSimplify
-    | siCore
-    | siUse (state_mergeUp _ _ _ _ _)
-    | siUse (state_collapseRoot _ _ _)
-    | wpSplit
-    | split
-    | contradiction
-
 theorem state_climb (depth : Nat) : KeepsState (climb depth) := by
   induction depth with
   | zero =>
@@ -469,31 +456,6 @@ macro "siForWith " extra:tactic : tactic => `(tactic| (
       | contradiction
   case tagState => siHeld
   intro _ _ _))
-
-theorem state_segmentCount (path : List (Option Nat × NodeId)) (stop : Nat) :
-    KeepsState ((path.take stop).foldlM (fun s e => do
-      let n ← getNode e.2
-      pure (if n.leaf then s + 1 else s)) 0) := by
-  intro c w hw
-  siFold
-  assumption
-
-theorem state_unlinkLoop (depth tt : Nat) (js : List Nat) :
-    KeepsState (forIn js () (fun j _ => do
-      let x ← pathNode (depth - j)
-      let xn ← getNode x
-      if xn.firstTime == some tt then
-        let q ← pathNode (depth - j - 1)
-        let k ← klongAt (depth - j)
-        takeBack x q k
-        pure (ForInStep.yield ())
-      else
-        note "up.unlink"
-        unlink x
-        pure (ForInStep.yield ()))) := by
-  intro c w hw
-  siForWith siAppend
-  assumption
 
 theorem state_deleteUpward (leaf : NodeId) (depth cv : Nat) (key : Key) :
     KeepsState (deleteUpward leaf depth cv key) := by

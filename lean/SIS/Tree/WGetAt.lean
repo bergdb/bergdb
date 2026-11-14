@@ -15,7 +15,4 @@ open SIS SIS.Check
 def wGetAt (p : Params) (i : Time) (base : View BVal) (w : W) (f : Nat) (key : Key) : Option Nat :=
   getFromR (wNode p base w) (wValue base w) i f key w.top.rootKey
 
-theorem wGet_eq_wGetAt (p : Params) (i : Time) (base : View BVal) (w : W) (key : Key) :
-    wGet p i base w key = wGetAt p i base w p.fuel key := rfl
-
 end SIS.Tree

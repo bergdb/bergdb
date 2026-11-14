@@ -13,9 +13,6 @@ def childBounds (pairs : List (Nat × NodeId)) (hi : Option Nat) :
     List ((Nat × NodeId) × Option Nat) :=
   pairs.zip ((pairs.drop 1).map (fun q => some q.1) ++ [hi])
 
-theorem childBounds_single (q : Nat × NodeId) (hi : Option Nat) :
-    childBounds [q] hi = [(q,hi)] := rfl
-
 theorem childBounds_cons_cons (q r : Nat × NodeId) (rest : List (Nat × NodeId))
     (hi : Option Nat) :
     childBounds (q::r::rest) hi = (q,some r.1)::childBounds (r::rest) hi := rfl
@@ -137,43 +134,5 @@ def SegmentSound (p : Params) (v : View BVal) (t : Time) :
   | f+1, x, lo, hi => ∃ n, knodeOf p v x = some n ∧ klongsWf n.ks = true ∧
       NodeRange n t lo hi ∧ (n.leaf = false → ∀ q ∈ childBounds (n.liveAt t) hi,
         SegmentSound p v t f q.1.2 (if q.1.1 == 0 then lo else q.1.1) q.2)
-
-theorem segmentSound_of_walk (p : Params) (P : Struct BVal) (t f : Nat)
-    (hP : HighKindsOK p P) (x lo : Nat) (hi : Option Nat) (isRoot space : Bool)
-    (hw : walk p (viewOf P) t f x lo hi isRoot space = []) :
-    SegmentSound p (viewOf P) t f x lo hi := by
-  induction f generalizing x lo hi isRoot space with
-  | zero => simp only [walk,List.cons_ne_nil] at hw
-  | succ f ih =>
-    cases hv : P.get? x with
-    | none => simp only [walk,viewOf,hv,List.cons_ne_nil] at hw
-    | some nd =>
-      cases hd : nd.isData with
-      | true => simp only [walk,viewOf,hv,hd,↓reduceIte,List.cons_ne_nil] at hw
-      | false =>
-        have hl := highKindsOK_walk_level p P t f x lo hi isRoot space nd hP hv hd hw
-        let n : KNode := ⟨p.heightOf nd.level == 0,klongsOf nd.hist⟩
-        have hn : knodeOf p (viewOf P) x = some n := by
-          simp [knodeOf,viewOf,hv,hd,Nat.not_lt_of_ge hl,n]
-        refine ⟨n,hn,walk_current_wf p _ t f x lo hi isRoot space nd hv hd hw,
-          walk_current_range p _ t f x lo hi isRoot space nd hv hd hw,?_⟩
-        intro hleaf ⟨⟨c,y⟩,hi'⟩ hzip
-        have hcy := childBounds_fst _ _ _ _ hzip
-        have hp := walk_current_pointer p (viewOf P) t f x lo hi isRoot space nd hv hd hw
-          c y (n.liveAt_key_mem t c y hcy)
-        cases hvy : P.get? y with
-        | none => simp [viewOf,hvy] at hp
-        | some ny =>
-          have hchild := List.flatMap_eq_nil_iff.mp
-            (walk_child_faults_nil p (viewOf P) t f x lo hi isRoot space nd hv hd hw)
-            ((c,y),hi') hzip
-          change walkChildFaults p (viewOf P) t f x n (p.segOf nd.level)
-            (p.heightOf nd.level) lo space ((c,y),hi') = [] at hchild
-          simp only [walkChildFaults,hleaf,Bool.false_eq_true,↓reduceIte,viewOf,hvy] at hchild
-          split at hchild
-          · cases hchild
-          · split at hchild
-            · cases hchild
-            · exact ih y (if c == 0 then lo else c) hi' false space hchild
 
 end SIS.Tree

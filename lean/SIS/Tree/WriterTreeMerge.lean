@@ -217,55 +217,6 @@ theorem treeOK_mergeOneAfter (N N' : NodeId → Option KNode) (t : Time) (r p l 
       rw [hother r hrp hrl hrr' hrm1]
       exact ⟨rm, hrm⟩
 
-/-- One node changed, each of its new links an old link of it to the same node
-(perhaps under another compare value), each node named once by it: the tree is
-kept. LE-b (the empty key takes the next klong's pointer, whose compare value is
-deleted) is one. -/
-theorem treeOK_of_node_relink (L L' : NodeId → Option KNode) (t : Time) (r x : NodeId)
-    (n n' : KNode) (ht : TreeOK L t r) (hx : L x = some n) (hx' : L' x = some n')
-    (hother : ∀ y, y ≠ x → L' y = L y)
-    (hsub : ∀ c z, (c, z) ∈ n'.liveAt t → ∃ c0, (c0, z) ∈ n.liveAt t)
-    (hone : ∀ c c' z, (c, z) ∈ n'.liveAt t → (c', z) ∈ n'.liveAt t → c = c') : TreeOK L' t r := by
-  have hlinks : ∀ y c z, TLink L' t y c z → ∃ c0, TLink L t y c0 z := by
-    intro y c z hl
-    obtain ⟨m, hm, hc⟩ := hl
-    by_cases hy : y = x
-    · subst hy
-      rw [hx'] at hm
-      simp only [Option.some.injEq] at hm
-      subst hm
-      obtain ⟨c0, h0⟩ := hsub c z hc
-      exact ⟨c0, n, hx, h0⟩
-    · rw [hother y hy] at hm
-      exact ⟨c, m, hm, hc⟩
-  have hb : ∀ v, TReach L' t r v → TReach L t r v := by
-    intro v hv
-    induction hv with
-    | root => exact TReach.root
-    | link _ hl ih =>
-      obtain ⟨c0, h0⟩ := hlinks _ _ _ hl
-      exact TReach.link ih h0
-  apply treeOK_of_links L L' t r ht
-  · by_cases hr : r = x
-    · rw [hr, hx']; exact ⟨_, rfl⟩
-    · rw [hother r hr]; exact ht.rootKey
-  · intro y c z _ hl
-    exact hlinks y c z hl
-  · intro y c c' z hy hl hl'
-    obtain ⟨m, hm, hc⟩ := hl
-    obtain ⟨m', hm', hc'⟩ := hl'
-    rw [hm] at hm'
-    simp only [Option.some.injEq] at hm'
-    subst hm'
-    by_cases hyx : y = x
-    · subst hyx
-      rw [hx'] at hm
-      simp only [Option.some.injEq] at hm
-      subst hm
-      exact hone c c' z hc hc'
-    · rw [hother y hyx] at hm
-      exact (ht.oneLink y c y c' z (hb y hy) (hb y hy) ⟨m, hm, hc⟩ ⟨m, hm, hc'⟩).2
-
 /-! ## Root collapse -/
 
 /-- The space root replaced by its one child (root collapse at the space root):
@@ -337,53 +288,5 @@ theorem treeOK_collapseSegment (L L' : NodeId → Option KNode) (t : Time) (r0 l
       rw [hother r0 hr hrrt]; exact ht.rootKey
 
 /-! ## The upward unlink -/
-
-/-- A node s drops its link to y0 (the upward unlink: the delete emptied the
-chain below s), and the nodes left behind, y0 and nodes that only nodes left
-behind name, may change in any way: the tree is kept. -/
-theorem treeOK_dropSubtree (L L' : NodeId → Option KNode) (t : Time) (r s y0 : NodeId)
-    (cs : Nat) (sn sn' : KNode) (Gone : NodeId → Prop) (ht : TreeOK L t r)
-    (hs : TReach L t r s) (hsn : L s = some sn) (hcs : (cs, y0) ∈ sn.liveAt t)
-    (hsn' : L' s = some sn')
-    (hslinks : ∀ c z, (c, z) ∈ sn'.liveAt t → (c, z) ∈ sn.liveAt t ∧ c ≠ cs)
-    (hsG : ¬ Gone s) (hGr : ¬ Gone r)
-    (hG : ∀ g, Gone g → g = y0 ∨ ∀ u c, TReach L t r u → TLink L t u c g → Gone u)
-    (hother : ∀ x, x ≠ s → ¬ Gone x → L' x = L x) : TreeOK L' t r := by
-  have hsy : TLink L t s cs y0 := ⟨sn, hsn, hcs⟩
-  have hnotG : ∀ u c z, TReach L t r u → ¬ Gone u → TLink L t u c z → u ≠ s ∨ c ≠ cs →
-      ¬ Gone z := by
-    intro u c z hu hug hl hne hz
-    rcases hG z hz with h | h
-    · rw [h] at hl
-      obtain ⟨h1, h2⟩ := ht.oneLink u c s cs y0 hu hs hl hsy
-      rcases hne with hne | hne
-      · exact hne h1
-      · exact hne h2
-    · exact hug (h u c hu hl)
-  apply treeOK_transfer_gone L L' t r r (fun _ => False) Gone (fun u c => (u, c)) ht
-    (fun _ h => h.elim)
-  · exact Or.inl ⟨rfl, hGr⟩
-  · intro u c z hu hug hl
-    have huR : TReach L t r u := by
-      rcases hu with h | h
-      · exact h
-      · exact h.elim
-    obtain ⟨m, hm, hcm⟩ := hl
-    by_cases hus : u = s
-    · rw [hus, hsn'] at hm
-      simp only [Option.some.injEq] at hm
-      subst hm
-      obtain ⟨hmem, hc⟩ := hslinks c z hcm
-      have hl0 : TLink L t s c z := ⟨sn, hsn, hmem⟩
-      exact Or.inr ⟨hnotG s c z hs hsG hl0 (Or.inr hc), s, c, hs, hl0, by rw [hus]⟩
-    · rw [hother u hus hug] at hm
-      have hl0 : TLink L t u c z := ⟨m, hm, hcm⟩
-      exact Or.inr ⟨hnotG u c z huR hug hl0 (Or.inl hus), u, c, huR, hl0, rfl⟩
-  · intro _ _ _ _ z _ _ _ _ hz
-    exact hz.elim
-  · intro _ h; exact h.elim
-  · by_cases hr : r = s
-    · rw [hr, hsn']; exact ⟨_, rfl⟩
-    · rw [hother r hr hGr]; exact ht.rootKey
 
 end SIS.Tree

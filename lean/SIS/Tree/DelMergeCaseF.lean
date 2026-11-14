@@ -51,57 +51,6 @@ so that a merge's root split, which a later collapse undoes, keeps the reading.
 `DelMergeCaseF3.lean`); the operation's end reads at p.fuel again by
 `getFromR_fuel_mono`. -/
 
-/-- Obligation (the collapse's ranges at a fuel f): the collapse's steps keep the
-walk's ranges and inner children, and a segment leaf has room for a replaced
-root's klong (`writerWP_collapseRoot_collF`'s premises). -/
-def CollapseStepOKF (c : Ctx) (base : View BVal) (f : Nat) : Prop :=
-  (∀ w0 v x n leaf ln k, CollGetInvF c base w0 v f → CollRange c base v → SegDesc c base x v →
-      v.nodes.lookup x = some n → n.leaf = false → n.firstTime ≠ some c.i →
-      TReach (wNode c.p base v) c.i v.top.rootKey leaf → v.nodes.lookup leaf = some ln →
-      ln.leaf = true → (k, x) ∈ ln.liveAt c.i →
-      ln.size + 1 + 1 ≤ c.p.M ∧ ∀ y, deadOver c.p (ln.add c.i (.key k y)) = false) ∧
-  (∀ w0 v x n only, CollGetInvF c base w0 v f → CollRange c base v → SegDesc c base x v →
-      v.nodes.lookup x = some n → n.leaf = false → n.firstTime = some c.i →
-      n.onlyLiveKlong = some only → n.cv? only = some 0 →
-      WriterWP (takeBackRoot x (v.path.length - 1) only) c v (fun _ v' => CollRange c base v')) ∧
-  (∀ w0 v x n only, CollGetInvF c base w0 v f → CollRange c base v → SegDesc c base x v →
-      v.nodes.lookup x = some n → n.leaf = false → n.firstTime ≠ some c.i →
-      n.onlyLiveKlong = some only → n.cv? only = some 0 →
-      WriterWP (replaceRoot x (v.path.length - 1) only) c v (fun _ v' => CollRange c base v'))
-
-/-- The collapse keeps `DelInvF`. -/
-theorem writerWP_collapseRoot_delF (key : Key) (seg : Nat) (c : Ctx) (base : View BVal)
-    (hvc : ViewCoherent c base) (f : Nat) (hf2 : 2 ≤ f) (hC : CollapseStepOKF c base f) (w0 : W)
-    (k0 : Key) (v : W) (hI : DelInvF c base w0 k0 f v) :
-    WriterWP (collapseRoot key seg c.p.fuel) c v (fun _ v' => DelInvF c base w0 k0 f v') := by
-  obtain ⟨hP, hG, hR, hICE, hF, hread, B, top0, hB, hbook⟩ := hI
-  have hCI : CollGetInvF c base v v f := by
-    refine ⟨⟨hP.tree, fun y hy => hP.untaken y (tReach_reachS _ _ _ _ hy),
-      fun y yn _ h => hP.times y yn h, fun y yn cc z hy hyn hl hc => hICE y yn cc z hy hyn hl hc⟩,
-      fun _ => rfl, hF, fun y yn _ h => hP.wf y yn h, fun y yn _ h => hP.keyNoValue y yn h⟩
-  refine writerWP_mono (writerWP_and (writerWP_collapseRoot_collF f hf2 key seg c base hvc v
-    (CollRange c base)
-    (fun v v' hJ hr => ⟨by rw [hr.1, hr.2.1]; exact hJ.1, by rw [hr.1, hr.2.1]; exact hJ.2⟩)
-    (hC.1 v) (hC.2.1 v) (hC.2.2 v) c.p.fuel v hCI ⟨hR, hICE⟩)
-    (putBook_collapseRoot key seg c.p.fuel c base B top0 hB v hbook)) ?_
-  rintro _ v' ⟨⟨⟨⟨hT', hu', _, _⟩, hread', hF', _, _⟩, hR', hICE'⟩, hbook'⟩
-  obtain ⟨hP', hG'⟩ := putInv_after_step c base v' B top0 hB hbook' hT'
-    (fun y hy => hu' y (reachS_tReach _ _ _ _ hy)) hR'
-  refine ⟨hP', hG', hR', hICE', hF', fun key' hk => ?_, B, top0, hB, hbook'⟩
-  rw [hread' key']
-  exact hread key' hk
-
-/-- Obligation (StepFits for a merge at a fuel f, the take-back's reached nodes, the
-ranges): a merge of the loop, from a state inside a delete, keeps `StepInv`, and
-the state after it fits f. -/
-def MergeStepOKF (c : Ctx) (base : View BVal) (f : Nat) : Prop :=
-  ∀ (w0 : W) (key : Key) (x q : NodeId) (d : Nat) (v : W) (qn xn : KNode),
-    DelInvF c base w0 key f v → 0 < d → (v.path[d]?).map (·.2) = some x →
-    (v.path[d - 1]?).map (·.2) = some q → v.nodes.lookup q = some qn → qn.leaf = false →
-    v.nodes.lookup x = some xn → xn.cnt < c.p.mergeBelow →
-    WriterWP (merge x d) c v (fun _ v' => StepInv c base v' ∧
-      SegFits (wNode c.p base v') c.i (f - 1) v'.top.rootKey)
-
 /-- The reading at a fuel f above the writer's is the writer's reading for a state
 that fits the writer's fuel (`getFromR_fuel_mono`). -/
 theorem wGetAt_eq_wGet (c : Ctx) (base : View BVal) (w : W) (f : Nat) (hf : c.p.fuel ≤ f)

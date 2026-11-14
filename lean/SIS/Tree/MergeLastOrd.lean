@@ -137,62 +137,6 @@ theorem lastOrd_of_inner (c : Ctx) (K : Nat → Nat) (Nn : Nat → KNode) (D : N
   simp only [hpl, Bool.false_eq_true, ↓reduceIte]
   exact h c' z hz
 
-/-- A compare value that a key lookup finds with more deleted klongs it finds
-with fewer. -/
-theorem keyLookup_isSome_mono (ks : List Klong) (del del' : List Nat)
-    (hsub : ∀ i, del'.contains i = true → del.contains i = true) (c : Nat) :
-    (keyLookup ks del c).isSome = true → (keyLookup ks del' c).isSome = true := by
-  unfold keyLookup
-  suffices h : ∀ (xs : List (Klong × Nat)) (v v' : Option NodeId), (v.isSome = true → v'.isSome = true) →
-      (xs.foldl (keyLookupStep del c) v).isSome = true →
-      (xs.foldl (keyLookupStep del' c) v').isSome = true from
-    h _ none none id
-  intro xs
-  induction xs with
-  | nil => intro v v' hv h; exact hv h
-  | cons q rest ih =>
-    intro v v' hv h
-    simp only [List.foldl_cons] at h ⊢
-    refine ih _ _ ?_ h
-    obtain ⟨k, i⟩ := q
-    cases k with
-    | key a y =>
-      simp only [keyLookupStep]
-      cases hd : del.contains i
-      · have hd' : del'.contains i = false := by
-          cases h' : del'.contains i with
-          | false => rfl
-          | true => rw [hsub i h'] at hd; cases hd
-        simp only [hd', Bool.false_eq_true, ↓reduceIte]
-        split
-        · intro _; rfl
-        · exact hv
-      · simp only [↓reduceIte]
-        intro hv1
-        cases del'.contains i
-        · simp only [Bool.false_eq_true, ↓reduceIte]
-          split
-          · rfl
-          · exact hv hv1
-        · simp only [↓reduceIte]; exact hv hv1
-    | time s => exact hv
-    | del bs => exact hv
-
-/-- The compare values of a last version with more klongs deleted than the
-node's bitmap are the node's live compare values. -/
-theorem lastVersionGivenDel_live_cv (n : KNode) (t : Time) (del : List Nat)
-    (hsub : ∀ i, n.lastBitmap.contains i = true → del.contains i = true) :
-    ∀ c z, (c, z) ∈ (n.lastVersionGivenDel t del).live → ∃ z', (c, z') ∈ n.live := by
-  intro c z hz
-  have h1 : (n.lastVersionGivenDel t del).live.lookup c = some z :=
-    lookup_of_mem_nodup _ (KNode.live_keys_nodup _) c z hz
-  rw [KNode.lastVersionGivenDel_live_lookup] at h1
-  have h2 := keyLookup_isSome_mono n.ks del n.lastBitmap hsub c (by rw [h1]; rfl)
-  rw [← KNode.live_lookup] at h2
-  cases h3 : n.live.lookup c with
-  | none => rw [h3] at h2; cases h2
-  | some z' => exact ⟨z', mem_of_lookup_nodup _ c z' h3⟩
-
 /-- A last version of a node p below an inner node q whose compare values are
 p's live ones is ordered as `LastOrd` asks, from the walk's ranges: at or above
 q's klong K to p for a segment leaf, 0 or above it for an inner node. -/
@@ -223,12 +167,5 @@ theorem lastOrd_raw_of_live (c : Ctx) (N : NodeId → Option KNode) (root : Node
     rcases Nat.eq_zero_or_pos K with hK0 | hK0
     · omega
     · exact ha hpl hK0
-
-/-- `LastOrd` from its conclusion for the node at depth D + 1. -/
-theorem lastOrd_of_raw (c : Ctx) (K : Nat → Nat) (Nn : Nat → KNode) (D : Nat) (last : KNode)
-    (h : ∀ c' z, (c', z) ∈ (⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).live →
-      if (Nn (D + 1)).leaf = true then K (D + 1) ≤ c' else (c' = 0 ∨ K (D + 1) < c')) :
-    LastOrd c K Nn D last :=
-  fun _ _ => h
 
 end SIS.Tree

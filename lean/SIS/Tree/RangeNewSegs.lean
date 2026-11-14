@@ -1,5 +1,5 @@
 import SIS.Tree.GetNewSegs
-import SIS.Tree.RangeNewSeg
+import SIS.Tree.RangeOps
 
 set_option autoImplicit false
 

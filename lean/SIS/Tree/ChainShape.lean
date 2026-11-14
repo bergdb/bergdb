@@ -48,7 +48,6 @@ theorem keyKs_getElem? (l : List (Nat × NodeId)) (a : Nat) (cv : Nat) (y : Node
     simp only [Option.map_some, Option.some.injEq, Klong.key.injEq] at h
     rw [← h.1, ← h.2]
 
-
 /-- Two lists of pairs, each without repeated compare values: a klong shadowed
 is one of the first list whose compare value the second has. -/
 theorem shadowOK_append (t : Time) (leaf : Bool) (A B : List (Nat × NodeId))
@@ -324,7 +323,6 @@ theorem writerWP_handleFullWith_time_upN (d' : Nat) (x q : NodeId) (n qn : KNode
         · simp only [writerWP_bind, writerWP_modify, writerWP_pure, hpk]
           exact hup l hl_leaf hl_wf hl_times hl_look hl_nd _ rfl rfl rfl rfl rfl rfl
 
-
 /-- The writer's time split in place of x, made by the transaction, below a
 parent q that the writer has: x holds its last version with ins. -/
 theorem writerWP_handleFullWith_timeInPlace_termN (up : NodeId → List (Nat × NodeId) → M Unit)
@@ -373,7 +371,6 @@ theorem writerWP_handleFullWith_timeInPlace_termN (up : NodeId → List (Nat × 
       split <;>
       · simp only [putNode, writerWP_bind, writerWP_modify, writerWP_pure]
         refine ⟨l, hl_leaf, hl_wf, hl_times, hl_look, hl_nd, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;> first | rfl | trivial
-
 
 set_option linter.unusedSimpArgs false in
 /-- The writer's time split of the space root x, which existed before the
@@ -431,7 +428,6 @@ theorem writerWP_handleFullWith_rootTime_termN (up : NodeId → List (Nat × Nod
                 show (none : Option KNode).or ([(w.next, { leaf := n.leaf, ks := l.ks })].lookup z) = none
                 rw [lookup_cons_ne _ _ _ _ hzy]; rfl
 
-
 /-- The writer's time split in place of the space root x, made by the
 transaction: x holds its last version with ins. -/
 theorem writerWP_handleFullWith_timeInPlace_term0N (up : NodeId → List (Nat × NodeId) → M Unit)
@@ -468,8 +464,6 @@ theorem writerWP_handleFullWith_timeInPlace_term0N (up : NodeId → List (Nat ×
     split <;>
     · simp only [putNode, writerWP_bind, writerWP_modify, writerWP_pure]
       refine ⟨l, hl_leaf, hl_wf, hl_times, hl_look, hl_nd, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;> first | rfl | trivial
-
-
 
 /-! ## The shapes of a cascade's nodes -/
 
@@ -665,7 +659,6 @@ theorem repoint_key_mem (n : KNode) (j : Nat) (r : NodeId) (cv : Nat) (y : NodeI
     · exact Or.inl ⟨cv, h'⟩
     · simp only [Klong.key.injEq] at h'; exact Or.inr h'.2
   · exact Or.inl ⟨cv, h⟩
-
 
 theorem addKeys_key_mem (t : Time) (ins : List (Nat × NodeId)) :
     ∀ (n : KNode) (cv : Nat) (y : NodeId),
@@ -1524,8 +1517,6 @@ theorem writerWP_appendKlongs_chainShapeG (c : Ctx)
           | false => exact absurd ⟨by omega, h⟩ hroom
         simp only [hsz, hd, ↓reduceIte]
         exact hTIME true (by simp)
-
-
 
 set_option maxHeartbeats 3200000 in
 /-- The shapes of the nodes that a cascade of splits makes or changes (bergdb

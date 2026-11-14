@@ -48,12 +48,4 @@ theorem keyWf_segment_encoding (key : Key) (hw : keyWf key = true) :
       · exact ⟨hbound, halign⟩
       · exact ih htail e he
 
-/-- Every encoded segment lies strictly between the scan's sentinels. -/
-theorem keyWf_segment_sentinels (key : Key) (hw : keyWf key = true)
-    (c : Nat) (hc : c ∈ key) : cvLo < (c : Int) ∧ (c : Int) < cvHi := by
-  have hb := (keyWf_segment_encoding key hw c hc).1
-  change c < 4611686018427387904 at hb
-  change -1 < (c : Int) ∧ (c : Int) < 9223372036854775807
-  omega
-
 end SIS.Tree

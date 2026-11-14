@@ -109,7 +109,6 @@ theorem writerWP_appendKlongs_takeU (c : Ctx) (base : View BVal)
     unfold wNode
     rw [ht', hf z hz (fun i hi1 hi2 he => hnc ⟨i, hi1, hi2, he⟩)]
 
-
 /-- `writerWP_appendKlongs_j2` with `TakeJ2`'s node facts before and the nodes of the
 transaction's time reached in the tree with the klongs put (`hTU`). -/
 theorem writerWP_appendKlongs_j2U (c : Ctx) (base : View BVal)
@@ -208,8 +207,6 @@ theorem writerWP_appendKlongs_j2U (c : Ctx) (base : View BVal)
           rw [hl] at this; cases this
     exact cascadeShapeJ2_of c (wNode c.p base w) B _ X K Nn s (s + e) ins w.next hS hM hN
       (fun i a b => htimes i a (by omega)) hBn hnd hins z zn hz (hshape z zn hlk hz)
-
-
 
 set_option maxHeartbeats 3200000 in
 /-- `ReplaceRootFullJ2OK` holds: a replaceRoot at a segment root x whose segment
@@ -529,7 +526,6 @@ theorem replaceRootFullJ2OK_holds (c : Ctx) (base : View BVal) (f : Nat) (hf2 : 
     refine writerWP_mono (writerWP_and hj hnx) ?_
     rintro _ w2 ⟨hJ2, hn2⟩
     exact ⟨hJ2, Nat.le_trans hBn (by rw [← h1next']; exact hn2)⟩
-
 
 /-- `ReplaceRootFullJ2OK` at every run, for the take-back's top theorems' `hRJ`. -/
 theorem replaceRootFullJ2OK_run (p : Params) (hsa2 : 2 ≤ p.splitAbove) :

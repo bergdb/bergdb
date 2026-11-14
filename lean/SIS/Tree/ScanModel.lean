@@ -151,22 +151,6 @@ theorem keyLt_cons_same (c : Nat) (a b : Key) : keyLt (c :: a) (c :: b) = keyLt 
 theorem keyLt_cons_lt (c d : Nat) (a b : Key) (h : c < d) : keyLt (c :: a) (d :: b) = true := by
   simp [keyLt, h]
 
-/-- The keys a leaf's klong gives start with its compare value. -/
-theorem treeContents_leaf_head (p : Params) (v : View BVal) (t f x : Nat) (n : KNode)
-    (hn : knodeOf p v x = some n) (hleaf : n.leaf = true) :
-    ∀ k ∈ treeContents p v t (f+1) x, ∃ q ∈ n.liveAt t, ∃ r, k.1 = q.1 :: r := by
-  intro k hk
-  simp only [treeContents, hn, hleaf, ↓reduceIte] at hk
-  obtain ⟨q, hq, hk⟩ := List.mem_flatMap.mp hk
-  refine ⟨q, hq, ?_⟩
-  split at hk
-  · obtain ⟨kv, _, he⟩ := List.mem_map.mp hk
-    exact ⟨kv.1, by rw [← he]⟩
-  · split at hk
-    · simp at hk
-    · simp only [List.mem_singleton] at hk
-      exact ⟨[], by rw [hk]⟩
-
 /-- The keys of a sound subtree are strictly increasing. -/
 theorem treeContents_sorted (p : Params) (v : View BVal) (t f x : Nat)
     (hs : SNode p v t f x) :
@@ -335,9 +319,6 @@ def chainRem (p : Params) (v : View BVal) (t : Time) (F : Nat) (fw : Bool) :
      | some n => ((afterL n t fw inc lc).flatMap (klongC p v t F fw n)).map
         (fun kv => (segs ++ kv.1, kv.2)))
     ++ chainRem p v t F fw rest (popSegs p v segs rest) false
-
-theorem scanPop_segs (p : Params) (v : View BVal) (ch : Chain) (rest : List (NodeId × Int)) :
-    (scanPop p v ch rest).segs = popSegs p v ch.segs rest := rfl
 
 /-! ## The searches as the head of the remainder -/
 

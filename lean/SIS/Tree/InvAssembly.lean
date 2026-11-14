@@ -409,57 +409,6 @@ theorem invOK_of_parts (p : Params) (P : Struct BVal) (t : Time)
 
 /-! ## At every run -/
 
-/-- Every key node of P after a run within reach is sound as it is, from TP4
-and the bound on dead klongs (as `invPreserved_of_parts` has it). -/
-theorem keyNodesOK_of_pointers (p : Params) (hp : MergeParamsOK p)
-    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
-    (hD : ∀ ts, Within p ts → DeadAllOK p (treeRun p ts)) (ts : List Tx) (hw : Within p ts) :
-    KeyNodesOK p (treeRun p ts) := by
-  have hM := mergeParamsOK_M p hp
-  intro x nd hx hd hl
-  have hHk := treeRun_keyHistOK p ts hw
-    (fun k _ => hP _ (within_take p ts hw k))
-    (fun k _ => (runLinksOK_of_pointers p (by omega) hP _ (within_take p ts hw k)).2.2)
-  obtain ⟨hwf, hrt⟩ := hHk x nd hx hd hl
-  have hk := keyNodeAt_of p _ x nd hx hd hl
-  refine ⟨treeRun_sizeOK_of_pointers p hp hP ts hw x _ hk, hwf, hrt, ?_, hD ts hw x _ hk⟩
-  intro c y hm
-  obtain ⟨e, he, hv⟩ := klongsOf_key_mem nd.hist c y hm
-  exact hP ts hw _ (mem_of_get? hx) e he y (by rw [hv]; simp [bptrs])
-
-/-- `LatestInvOK` under valid parameters from TP4, the bound on dead klongs,
-and at every run's last time: the live heights (`HeightLiveOK`, cost's),
-`NonEmptyOK`, `RootsOK`, `FillOK` and the order (`RangeAtOK`, putinv's
-`RangeOrder` on P). The space root, the kinds and `LeftmostOK` come from TP4
-(`treeRun_rootKeyOK`, `treeRun_kindsAllOK`, `leftmostOK_latest`). -/
-theorem latestInvOK_of_parts (p : Params) (hp : MergeParamsOK p)
-    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
-    (hD : ∀ ts, Within p ts → DeadAllOK p (treeRun p ts))
-    (hH : ∀ ts, Within p ts → HeightLiveOK p (treeRun p ts) ts.length)
-    (hNE : ∀ ts, Within p ts → NonEmptyOK p (treeRun p ts) ts.length)
-    (hRT : ∀ ts, Within p ts → RootsOK p (treeRun p ts) ts.length)
-    (hF : ∀ ts, Within p ts → FillOK p (treeRun p ts) ts.length)
-    (hO : ∀ ts, Within p ts → RangeAtOK p (treeRun p ts) ts.length) : LatestInvOK p := by
-  intro ts hw
-  have hM := mergeParamsOK_M p hp
-  exact invOK_of_parts p _ _ (treeRun_rootKeyOK p (by omega) hP ts hw _ (Nat.le_refl _))
-    (keyNodesOK_of_pointers p hp hP hD ts hw)
-    (treeRun_kindsAllOK p (by omega) hP ts hw) (hH ts hw) (hNE ts hw)
-    (leftmostOK_latest p hp hP ts hw) (hRT ts hw) (hF ts hw) (hO ts hw)
-
-/-- TP7 under valid parameters from its open parts: TP4, the bound on dead
-klongs (void for theta 0), and at every run's last time `HeightLiveOK`,
-`NonEmptyOK`, `RootsOK`, `FillOK` and `RangeAtOK`. -/
-theorem invPreserved_of_open (p : Params) (hp : MergeParamsOK p)
-    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
-    (hD : ∀ ts, Within p ts → DeadAllOK p (treeRun p ts))
-    (hH : ∀ ts, Within p ts → HeightLiveOK p (treeRun p ts) ts.length)
-    (hNE : ∀ ts, Within p ts → NonEmptyOK p (treeRun p ts) ts.length)
-    (hRT : ∀ ts, Within p ts → RootsOK p (treeRun p ts) ts.length)
-    (hF : ∀ ts, Within p ts → FillOK p (treeRun p ts) ts.length)
-    (hO : ∀ ts, Within p ts → RangeAtOK p (treeRun p ts) ts.length) : InvPreserved p :=
-  invPreserved_of_latest_pointers p hp (latestInvOK_of_parts p hp hP hD hH hNE hRT hF hO) hP hD
-
 /-! ## The parts are not void
 
 A run within reach with the merges on (node size 8 with record format 7's

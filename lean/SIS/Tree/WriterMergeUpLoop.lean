@@ -11,68 +11,6 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
-/-- `mergeUp` keeps any invariant Inv that its steps keep: the descent to the
-height (`descendToHeight`), the reads of the parent's and the node's nodes, and
-the merge of the node x at depth d of the path, d > 0, below an inner parent
-q, x holding fewer live klongs than `mergeBelow`. -/
-theorem writerWP_mergeUp_inv (key : Key) (g : Nat) (c : Ctx) (Inv : W → Prop)
-    (hdesc : ∀ h v, Inv v → WriterWP (descendToHeight key g h) c v (fun _ v' => Inv v'))
-    (hget : ∀ y v, Inv v → WriterWP (getNode y) c v (fun n v' =>
-      Inv v' ∧ v'.path = v.path ∧ v'.nodes.lookup y = some n ∧
-        ∀ z zn, v.nodes.lookup z = some zn → v'.nodes.lookup z = some zn))
-    (hmerge : ∀ x q d v qn xn, Inv v → 0 < d → (v.path[d]?).map (·.2) = some x →
-      (v.path[d - 1]?).map (·.2) = some q → v.nodes.lookup q = some qn → qn.leaf = false →
-      v.nodes.lookup x = some xn → xn.cnt < c.p.mergeBelow →
-      WriterWP (merge x d) c v (fun _ v' => Inv v')) :
-    ∀ fuel h merged v, Inv v → WriterWP (mergeUp key g fuel h merged) c v (fun _ v' => Inv v') := by
-  intro fuel
-  induction fuel with
-  | zero => intro h merged v _; exact writerWP_throw _ _ _ _
-  | succ f ih =>
-    intro h merged v hI
-    unfold mergeUp
-    simp only [writerWP_bind, writerWP_read]
-    refine writerWP_mono (hdesc h v hI) ?_
-    intro d v1 hI1
-    split
-    · simp only [writerWP_pure]; exact hI1
-    · rename_i hd0
-      have hd : 0 < d := by
-        cases d with
-        | zero => simp at hd0
-        | succ _ => omega
-      unfold pathNode
-      simp only [writerWP_bind, writerWP_get]
-      cases hex : v1.path[d]? with
-      | none => exact writerWP_throw _ _ _ _
-      | some ex =>
-        simp only [writerWP_pure]
-        cases heq : v1.path[d - 1]? with
-        | none => exact writerWP_throw _ _ _ _
-        | some eq =>
-          simp only [writerWP_pure]
-          refine writerWP_mono (hget eq.2 v1 hI1) ?_
-          rintro qn v2 ⟨hI2, hp2, hl2, _⟩
-          split
-          · simp only [writerWP_pure]; exact hI2
-          · rename_i hql
-            have hql' : qn.leaf = false := by simpa using hql
-            rw [writerWP_bind]
-            refine writerWP_mono (hget ex.2 v2 hI2) ?_
-            rintro xn v3 ⟨hI3, hp3, hl3, hkeep3⟩
-            split
-            · simp only [writerWP_pure]; exact hI3
-            · rename_i hcnt
-              have hcnt' : xn.cnt < c.p.mergeBelow := by simpa using hcnt
-              rw [writerWP_bind]
-              refine writerWP_mono (hmerge ex.2 eq.2 d v3 qn xn hI3 hd
-                (by rw [hp3, hp2, hex]; rfl) (by rw [hp3, hp2, heq]; rfl) (hkeep3 _ _ hl2) hql' hl3
-                hcnt') ?_
-              intro r v4 hI4
-              split
-              · simp only [writerWP_pure]; exact hI4
-              · exact ih (h + 1) true v4 hI4
-
 /-- `afterDelete` keeps any invariant that `mergeUp` and `collapseRoot` keep. -/
 theorem writerWP_afterDelete_inv (key : Key) (g h : Nat) (c : Ctx) (Inv : W → Prop)
     (hmu : ∀ v, Inv v → WriterWP (mergeUp key g c.p.fuel h false) c v (fun _ v' => Inv v'))
@@ -183,37 +121,5 @@ theorem writerWP_descendToHeight_readsU (key : Key) (g h : Nat) (c : Ctx) (base 
     unfold pathSize
     simp only [writerWP_bind, writerWP_get, writerWP_pure]
     exact ReadsAs.trans _ _ _ _ _ hr1 hr2
-
-/-- The merges' loop keeps the writer's tree and any invariant J of the
-caller's that the reads keep, given that each merge of the loop keeps them
-(`writerWP_merge_any_tree` gives the tree; J carries its premises). -/
-theorem writerWP_mergeUp_tree (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
-    (hvc : ViewCoherent c base) (J : W → Prop)
-    (hJra : ∀ v v', J v → ReadsAs c.p base v v' → J v')
-    (hmerge : ∀ x q d v qn xn, TreeOK (wNode c.p base v) c.i v.top.rootKey → J v → 0 < d →
-      (v.path[d]?).map (·.2) = some x → (v.path[d - 1]?).map (·.2) = some q →
-      v.nodes.lookup q = some qn → qn.leaf = false → v.nodes.lookup x = some xn →
-      xn.cnt < c.p.mergeBelow →
-      WriterWP (merge x d) c v (fun _ v' => TreeOK (wNode c.p base v') c.i v'.top.rootKey ∧ J v')) :
-    ∀ fuel h merged v, TreeOK (wNode c.p base v) c.i v.top.rootKey → J v →
-      WriterWP (mergeUp key g fuel h merged) c v
-        (fun _ v' => TreeOK (wNode c.p base v') c.i v'.top.rootKey ∧ J v') := by
-  intro fuel h merged v hT hJ
-  have hra : ∀ v v', (TreeOK (wNode c.p base v) c.i v.top.rootKey ∧ J v) → ReadsAs c.p base v v' →
-      TreeOK (wNode c.p base v') c.i v'.top.rootKey ∧ J v' := by
-    rintro v v' ⟨hT, hJ⟩ hr
-    exact ⟨by rw [hr.1, hr.2.1]; exact hT, hJra v v' hJ hr⟩
-  refine writerWP_mergeUp_inv key g c (fun v => TreeOK (wNode c.p base v) c.i v.top.rootKey ∧ J v)
-    ?_ ?_ ?_ fuel h merged v ⟨hT, hJ⟩
-  · intro h v hI
-    exact writerWP_mono (writerWP_descendToHeight_readsU key g h c base hvc v)
-      (fun _ v' hr => hra v v' hI hr)
-  · intro y v hI
-    refine writerWP_mono (writerWP_and (writerWP_getNode_all y c v base hvc)
-      (writerWP_getNode_cache y c v)) ?_
-    rintro n v' ⟨⟨hr, hl, _, hpre, _⟩, _, _, hp⟩
-    exact ⟨hra v v' hI hr, hp, hl, fun z zn hz => lookup_of_prefix _ _ hpre z zn hz⟩
-  · rintro x q d v qn xn ⟨hT, hJ⟩ hd hx hq hqn hql hxn hcnt
-    exact hmerge x q d v qn xn hT hJ hd hx hq hqn hql hxn hcnt
 
 end SIS.Tree

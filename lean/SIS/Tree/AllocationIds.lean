@@ -133,44 +133,4 @@ theorem execW_allocatedIds (p : Params) (tx : Tx) (i : Time) (v : View BVal)
           change AllocatedIds tx.base _
           simp [AllocatedIds]) bs w hr
 
-theorem changesOf_new_distinct (base : NodeId) (i : Time) (w : W)
-    (hw : AllocatedIds base w) : ((changesOf i w).new.map (·.id)).Nodup := by
-  have hf : ((w.made.filter (fun n => !w.taken.contains n.id)).map (·.id)).Nodup :=
-    hw.2.1.sublist (List.filter_sublist.map (fun n : NewNode => n.id))
-  exact ((List.mergeSort_perm (w.made.filter (fun n => !w.taken.contains n.id))
-    (fun a b => decide (a.id ≤ b.id))).map (fun n => n.id)).nodup_iff.mpr hf
-
-theorem changesOf_new_lower_bound (base : NodeId) (i : Time) (w : W)
-    (hw : AllocatedIds base w) : ∀ n ∈ (changesOf i w).new, base ≤ n.id := by
-  intro n hn
-  have hm : n ∈ w.made := by
-    change n ∈ (w.made.filter (fun n => !w.taken.contains n.id)).mergeSort _ at hn
-    have hf := (List.mergeSort_perm _ _).mem_iff.mp hn
-    exact (List.mem_filter.mp hf).1
-  exact (hw.2.2 n hm).1
-
-/-- Freshness and distinctness of the actual exported new nodes. Old ids
-need only lie below the base; sorting and key well-formedness are irrelevant. -/
-theorem exec_new_fresh_distinct (p : Params) (tx : Tx) (i : Time)
-    (v : View BVal) (P : Struct BVal) (hbase : ∀ q ∈ P, q.1 < tx.base) :
-    ((exec p tx i v).new.map (·.id)).Nodup ∧
-      ∀ n ∈ (exec p tx i v).new, P.get? n.id = none := by
-  unfold exec exec?
-  cases he : runOps p tx.base tx.ops i v with
-  | error e => simp [Except.map]
-  | ok result =>
-    rcases result with ⟨bs,w⟩
-    have hw := execW_allocatedIds p tx i v bs w he
-    simp only [Except.map]
-    refine ⟨changesOf_new_distinct tx.base i w hw,?_⟩
-    intro n hn
-    have hge := changesOf_new_lower_bound tx.base i w hw n hn
-    cases hx : P.get? n.id with
-    | none => rfl
-    | some nd =>
-      change P.lookup n.id = some nd at hx
-      obtain ⟨pre,post,hP,_⟩ := List.lookup_eq_some_iff.mp hx
-      have hlt := hbase (n.id,nd) (by rw [hP]; simp)
-      omega
-
 end SIS.Tree

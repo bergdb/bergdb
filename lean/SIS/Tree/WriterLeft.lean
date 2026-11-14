@@ -77,8 +77,6 @@ theorem left_leaf (n : KNode) (h : n.leaf = true) : LeftNode n := by
 
 /-! ## `Live0` kept -/
 
-theorem Live0.given {n : KNode} (h : Live0 n) : Live0Given n.ks n.lastBitmap := h
-
 theorem Live0.append_nodel {n : KNode} (h : Live0 n) (leaf : Bool) (b : List Klong)
     (hd : ∀ bits, Klong.del bits ∉ b) : Live0 ⟨leaf, n.ks ++ b⟩ := by
   obtain ⟨i, y, hi, hc⟩ := h
@@ -251,14 +249,6 @@ theorem LeftNode.repoint {n : KNode} (h : LeftNode n) (e : Nat) (y : NodeId) :
   h.of_shape _ (bk_repoint_leaf n e y) (left_repoint_shape n e y)
 
 /-! ## Last versions -/
-
-theorem left_lv_filter (t : Time) (pairs : List (Nat × NodeId)) :
-    (Klong.time t :: pairs.map (fun q => Klong.key q.1 q.2)).filterMap (fun k => match k with
-      | .key a _ => some a | _ => none) = pairs.map Prod.fst := by
-  simp only [List.filterMap_cons, List.filterMap_map]
-  induction pairs with
-  | nil => rfl
-  | cons q pairs ih => simp [ih]
 
 /-- The last version given a bitmap that does not delete a klong of the empty
 key starts with the empty key. -/

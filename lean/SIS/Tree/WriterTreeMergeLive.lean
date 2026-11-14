@@ -6,7 +6,7 @@ so that klong is the live one (`keyLookup_of_last`), and pointing it in place
 changes the live lookup at that compare value only
 (`KNode.repoint_last_live_lookup`).
 -/
-import SIS.Tree.WriterTreePut2
+import SIS.Tree.WriterTreeRoot
 import SIS.Tree.PhysicalSelection
 
 set_option autoImplicit false

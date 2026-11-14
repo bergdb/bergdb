@@ -600,43 +600,4 @@ theorem opJ2Case_putNewSegFull (p : Params) (R : Struct BVal → Time → Prop)
 
 /-! ## The assembly with case (3) -/
 
-/-- TP7's take-back statement with cases (2) and (3): open are (4), (7), (9). -/
-theorem takeBackOK_of_cases4 (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.splitAbove)
-    (Q : Struct BVal → Time → Prop) (hQ0 : Q (initStruct p) 0)
-    (hQs : ∀ ts tx, Within p (ts ++ [tx]) → RunTreeQ p Q (treeRun p ts) ts.length →
-      RunLinksOK p (treeRun p (ts ++ [tx])) (ts.length + 1) →
-      TreeAt p (treeRun p (ts ++ [tx])) (ts.length + 1) →
-      Q (treeRun p (ts ++ [tx])) (ts.length + 1))
-    (hQP : ∀ P t, Q P t → PointersOK P) (hQK : ∀ P t, Q P t → KindsAllOK p P)
-    (ho : OpTreeOKUnder p (RunTreeQ p Q))
-    (hPI : StateOK p (RunTreeQ p Q) (fun ts _ w => PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w))
-    (hRO : StateOK p (RunTreeQ p Q) (fun ts _ w =>
-      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey))
-    (hB : BaseStartOK p (RunTreeQ p Q))
-    (c4 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS3 p) DelMergeCase)
-    (c7 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS3 p) DelEmptyCase)
-    (c9 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS3 p) DelFullCase) :
-    TakeBackOKUnder p (RunLinksOK p) :=
-  takeBackOK_of_cases3 p hM hsa Q hQ0 hQs hQP hQK ho hPI hRO hB
-    (opJ2Case_putNewSegFull p _ _ (fun _ _ h => h.1) hM hsa (fun _ _ _ h => h.1.1.1)
-      (fun _ _ _ h => h.1.2) (fun _ _ _ h => h.2)) c4 c7 c9
-
-/-- With the merges on: open is (4) alone. -/
-theorem takeBackOK_of_cases_merges4 (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.splitAbove)
-    (hm : p.merges = true) (Q : Struct BVal → Time → Prop) (hQ0 : Q (initStruct p) 0)
-    (hQs : ∀ ts tx, Within p (ts ++ [tx]) → RunTreeQ p Q (treeRun p ts) ts.length →
-      RunLinksOK p (treeRun p (ts ++ [tx])) (ts.length + 1) →
-      TreeAt p (treeRun p (ts ++ [tx])) (ts.length + 1) →
-      Q (treeRun p (ts ++ [tx])) (ts.length + 1))
-    (hQP : ∀ P t, Q P t → PointersOK P) (hQK : ∀ P t, Q P t → KindsAllOK p P)
-    (ho : OpTreeOKUnder p (RunTreeQ p Q))
-    (hPI : StateOK p (RunTreeQ p Q) (fun ts _ w => PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w))
-    (hRO : StateOK p (RunTreeQ p Q) (fun ts _ w =>
-      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey))
-    (hB : BaseStartOK p (RunTreeQ p Q))
-    (c4 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS3 p) DelMergeCase) :
-    TakeBackOKUnder p (RunLinksOK p) :=
-  takeBackOK_of_cases4 p hM hsa Q hQ0 hQs hQP hQK ho hPI hRO hB c4
-    (opJ2CaseOK_void p _ _ _ hm delEmptyCase_merges) (opJ2CaseOK_void p _ _ _ hm delFullCase_merges)
-
 end SIS.Tree

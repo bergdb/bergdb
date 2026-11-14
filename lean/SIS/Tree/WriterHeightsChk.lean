@@ -342,9 +342,6 @@ theorem ht_mergeChk (B : NodeId) (x : NodeId) (d : Nat) (c : Ctx) (w : W)
 theorem klongsWf_checkFree (o : NodeId) : KeepsKlongsWf (checkFree o) := by
   unfold checkFree; kwNeutral
 
-theorem klongsWf_checkRoot (x : NodeId) (d : Nat) : KeepsKlongsWf (checkRoot x d) := by
-  unfold checkRoot; kwNeutral
-
 theorem klongsWf_checkOld (pn : KNode) (old : NodeId) : KeepsKlongsWf (checkOld pn old) := by
   unfold checkOld; kwNeutral
 
@@ -388,9 +385,6 @@ theorem klongsWf_mergeChk (x : NodeId) (d : Nat) : KeepsKlongsWf (mergeChk x d) 
     | wpSplit
     | split
     | contradiction
-
-theorem klongsWf_checkPathFree (n : Nat) : KeepsKlongsWf (checkPathFree n) := by
-  unfold checkPathFree; kwNeutral
 
 theorem klongsWf_takeBackChk (x parent : NodeId) (cv : Nat) :
     KeepsKlongsWf (takeBackChk x parent cv) := by

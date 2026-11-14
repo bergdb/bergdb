@@ -63,12 +63,4 @@ theorem getOK_of_latest (p : Params) (hinv : InvPreserved p) (hlatest : LatestGe
   rw [hlen, refGet_take_eq ts t t (Nat.le_refl _) key] at he
   exact he
 
-theorem getOK_of_latest_contents (p : Params) (hinv : InvPreserved p)
-    (hcontents : ∀ ts, Within p ts → ∀ key, keyWf key = true →
-      (rootContents p (treeRun p ts) ts.length).lookup key = refGet ts ts.length key) : GetOK p := by
-  apply getOK_of_latest p hinv
-  intro ts hw key hkey
-  rw [treeRun_get_lookup p ts ts.length (hinv ts hw ts.length (Nat.le_refl _)).1 key hkey]
-  exact hcontents ts hw key hkey
-
 end SIS.Tree

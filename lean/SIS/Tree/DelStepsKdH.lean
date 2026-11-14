@@ -245,13 +245,4 @@ theorem writerWP_del_toLeafMKH (c : Ctx) (base : View BVal) (hvc : ViewCoherent 
   · simp only [Bool.not_true, Bool.false_eq_true, ↓reduceIte, writerWP_pure]
     exact hv
 
-/-- `kdJ_pathAdd` in the path step's shape of `writerWP_del_toLeafMKH`. -/
-theorem kdJ_pathAddH (c : Ctx) (base : View BVal) (B : NodeId) (top0 : Top) (hB : PutBase c base B)
-    (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view)
-    (s : Nat) (fd : Found) (L : NodeId) (n : KNode) (v : W) (hJ : KdJ c B top0 KO BK v)
-    (hL : KdPathLast v L) (hlk : v.nodes.lookup L = some n) (_hnl : n.leaf = true)
-    (hfd : n.searchEq c.i s = some fd) :
-    KdJ c B top0 KO BK { v with path := v.path ++ [(some fd.c, fd.y)] } :=
-  kdJ_pathAdd c base B top0 hB KO BK hv fd.c fd.y L n v hJ hL hlk (kd_searchEq_mem n c.i s fd hfd)
-
 end SIS.Tree

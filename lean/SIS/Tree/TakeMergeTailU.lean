@@ -1301,5 +1301,4 @@ theorem writerWP_mergeTail_any_untaken (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ct
       · rw [h]; exact hm1T
       · simp only [Option.some.injEq] at h; rw [h]; exact hm2T
 
-
 end SIS.Tree

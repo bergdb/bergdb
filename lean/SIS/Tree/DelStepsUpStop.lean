@@ -5,7 +5,7 @@ through the climb and the take-back loop, with the stop node's step (its
 bitmap, or LE-b, and the continuation) an obligation at the loop's end state,
 whatever room the stop node has.
 -/
-import SIS.Tree.DelStepsUp
+import SIS.Tree.TakeDeadUpW
 import SIS.Tree.TakeDeadCases
 
 set_option autoImplicit false
@@ -358,7 +358,6 @@ theorem writerWP_deleteUpward_stepJ (c : Ctx) (base : View BVal) (X : Nat → No
     intro _ w5 h5
     simp only [writerWP_pure]
     exact h5
-
 
 set_option maxHeartbeats 1600000 in
 /-- The stop node's bitmap at the loop's end state, with the room of the branch

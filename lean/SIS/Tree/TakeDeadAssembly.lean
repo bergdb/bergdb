@@ -168,58 +168,6 @@ theorem opJ2Case_delRoom (p : Params) (R : Struct BVal → Time → Prop)
 
 /-! ## `LeafVals` from the walk of the kinds -/
 
-/-- A leaf's klong of a last segment's compare value names a value: by the
-overlay's kinds for a cached leaf, by the view's for one of the base. -/
-theorem leafVals_of_kinds (K : KindOracle) (B : NodeId) (c : Ctx) (base : View BVal) (w : W)
-    (hkc : KindCache K w) (hvk : ViewKinds K B c)
-    (hvals : ∀ q ∈ w.vals, B ≤ q.1 ∧ q.1 < w.next ∧ q.1 ∉ w.gh.map (·.1)) (hb : Book B c w)
-    (hbaseNew : ∀ z, B ≤ z → knodeOf c.p base z = none)
-    (hbaseVal : ∀ z, K.val z → knodeOf c.p base z = none)
-    (hbaseView : ∀ x n, knodeOf c.p base x = some n → ∃ nd, c.view x = some nd ∧ nd.isData = false ∧
-      nd.level ≤ c.p.keyMax ∧ n = ⟨c.p.heightOf nd.level == 0, klongsOf nd.hist⟩) :
-    LeafVals c base B w := by
-  intro pre cv L n hkey hK y hy
-  obtain ⟨_, _, _, hn, hnl⟩ := hK
-  have hcv : segLen cv ≠ 7 := segLen_last_of_keyWf pre cv hkey
-  have hk : Klong.key cv y ∈ n.ks := KNode.liveAt_key_mem n c.i cv y hy
-  have hval : IsValId K w y := by
-    have hLt : w.taken.contains L = false := by
-      cases h : w.taken.contains L with
-      | false => rfl
-      | true =>
-        have : wNode c.p base w L = none := by simp only [wNode, h, ↓reduceIte]
-        rw [this] at hn; cases hn
-    cases hl : w.nodes.lookup L with
-    | some m =>
-      have hm : wNode c.p base w L = some m := by
-        simp only [wNode, hLt, Bool.false_eq_true, ↓reduceIte, hl]
-      rw [hn] at hm
-      cases hm
-      have hmem := mem_ids_of_lookup w.nodes L n hl
-      have hxg : L ∈ w.gh.map (·.1) := by
-        rw [← List.mem_reverse, ← hb.ids]
-        exact List.mem_map.mpr ⟨(L, n), hmem, rfl⟩
-      obtain ⟨⟨L', g, h⟩, hq, hL'⟩ := List.mem_map.mp hxg
-      simp only at hL'
-      subst hL'
-      have hh : h = 0 := by
-        have := hb.leaf L' n g h hmem hq
-        rw [hnl] at this
-        simpa using this.symm
-      subst hh
-      exact ((hkc L' n g 0 hmem hq cv y hk).2 rfl).2 hcv
-    | none =>
-      have hkn : knodeOf c.p base L = some n := by
-        simp only [wNode, hLt, Bool.false_eq_true, ↓reduceIte, hl] at hn
-        exact hn
-      obtain ⟨nd, hnd, hd, hlv, rfl⟩ := hbaseView L n hkn
-      have hh : c.p.heightOf nd.level = 0 := by simpa using hnl
-      exact Or.inr ((hvk.klongs L nd hnd hd hlv cv y hk).2 hh |>.2 hcv)
-  refine ⟨wNode_val_none K B c base w hvk hvals hb hbaseNew hbaseVal y hval, ?_⟩
-  rcases hval with ⟨hh, hm⟩ | hv
-  · exact Or.inr (List.mem_map.mpr ⟨_, hm, rfl⟩)
-  · exact Or.inl (hvk.oldVal y hv)
-
 /-! ## `LeafVals` with the base's leaves by a premise -/
 
 /-- A leaf's klong of a last segment's compare value names a value: by the
@@ -346,44 +294,6 @@ def TakeS (p : Params) (ts : List Tx) (tx : Tx) (w : W) : Prop :=
   PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w ∧
     LeafVals (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w
 
-/-- TP7's take-back statement (`TakeBackOKUnder p (RunLinksOK p)`) from: the
-run induction's Q with P's pointers and kinds; the writer's tree under the run
-premise (latest's `opTreeOKUnder_of_any`); `PutInv` at every state between
-operations (latest's `joint_reached`); P's key nodes starting before the next
-transaction; and the take-back's five open operation cases (2), (3), (4), (7),
-(9). The cases (1), (5), (6), (8) are proved. -/
-theorem takeBackOK_of_cases (p : Params) (hM : 2 ≤ p.M) (Q : Struct BVal → Time → Prop)
-    (hQ0 : Q (initStruct p) 0)
-    (hQs : ∀ ts tx, Within p (ts ++ [tx]) → RunTreeQ p Q (treeRun p ts) ts.length →
-      RunLinksOK p (treeRun p (ts ++ [tx])) (ts.length + 1) →
-      TreeAt p (treeRun p (ts ++ [tx])) (ts.length + 1) →
-      Q (treeRun p (ts ++ [tx])) (ts.length + 1))
-    (hQP : ∀ P t, Q P t → PointersOK P) (hQK : ∀ P t, Q P t → KindsAllOK p P)
-    (ho : OpTreeOKUnder p (RunTreeQ p Q))
-    (hPI : StateOK p (RunTreeQ p Q) (fun ts _ w => PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w))
-    (hB : BaseStartOK p (RunTreeQ p Q))
-    (c2 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS p) PutLeafFullCase)
-    (c3 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS p) PutNewSegCase)
-    (c4 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS p) DelMergeCase)
-    (c7 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS p) DelEmptyCase)
-    (c9 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS p) DelFullCase) :
-    TakeBackOKUnder p (RunLinksOK p) := by
-  have hSI : ∀ ts tx w, TakeS p ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w :=
-    fun _ _ _ h => h.1
-  have hSV : ∀ ts tx w, TakeS p ts tx w → LeafVals (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w :=
-    fun _ _ _ h => h.2
-  have hS : StateOK p (RunTreeQ p Q) (TakeS p) := by
-    intro ts tx hw hr z top hz htop pre post hsplit r w h
-    exact ⟨hPI ts tx hw hr z top hz htop pre post hsplit r w h,
-      leafVals_reached p hM ts tx hw top pre post hsplit r w h (hQP _ _ hr.2.2) (hQK _ _ hr.2.2)⟩
-  have hSRF : ∀ ts tx w, TakeS p ts tx w → ReachedFree p (treeRun p ts) (ts.length + 1) w :=
-    fun ts _ w h y hy => h.1.untaken y (tReach_reachS _ _ _ _ hy)
-  have hO : OpJ2OK p (RunTreeQ p Q) (TakeS p) :=
-    opJ2OK_of_cases p _ _ (opJ2Case_putLeafRoom p _ _ hSI hSV) c2 c3 c4
-      (opJ2Case_delNoLeaf p _ _ hSI) (opJ2Case_delNoop p _ _ hSI) c7 (opJ2Case_delRoom p _ _ hSI hSV) c9
-  exact takeBackOK_of_jointJ2 p hM Q hQ0 hQs ho (TakeS p) hO hS hSRF hB
-    (takenNotValOK_of p hM _ (fun _ _ h => hQP _ _ h.2.2) (fun _ _ h => hQK _ _ h.2.2))
-
 /-! ## With the merges on: the cases (5) to (9) void -/
 
 theorem opJ2CaseOK_void (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop)
@@ -393,24 +303,5 @@ theorem opJ2CaseOK_void (p : Params) (R : Struct BVal → Time → Prop) (S : Li
   have h : p.merges = false := hP _ _ _ _ hPc
   rw [hm] at h
   cases h
-
-/-- TP7's take-back statement with the merges on: `takeBackOK_of_cases` with the
-cases (5) to (9) void, so only (2), (3) and (4) open. -/
-theorem takeBackOK_of_cases_merges (p : Params) (hM : 2 ≤ p.M) (hm : p.merges = true)
-    (Q : Struct BVal → Time → Prop) (hQ0 : Q (initStruct p) 0)
-    (hQs : ∀ ts tx, Within p (ts ++ [tx]) → RunTreeQ p Q (treeRun p ts) ts.length →
-      RunLinksOK p (treeRun p (ts ++ [tx])) (ts.length + 1) →
-      TreeAt p (treeRun p (ts ++ [tx])) (ts.length + 1) →
-      Q (treeRun p (ts ++ [tx])) (ts.length + 1))
-    (hQP : ∀ P t, Q P t → PointersOK P) (hQK : ∀ P t, Q P t → KindsAllOK p P)
-    (ho : OpTreeOKUnder p (RunTreeQ p Q))
-    (hPI : StateOK p (RunTreeQ p Q) (fun ts _ w => PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w))
-    (hB : BaseStartOK p (RunTreeQ p Q))
-    (c2 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS p) PutLeafFullCase)
-    (c3 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS p) PutNewSegCase)
-    (c4 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS p) DelMergeCase) :
-    TakeBackOKUnder p (RunLinksOK p) :=
-  takeBackOK_of_cases p hM Q hQ0 hQs hQP hQK ho hPI hB c2 c3 c4
-    (opJ2CaseOK_void p _ _ _ hm delEmptyCase_merges) (opJ2CaseOK_void p _ _ _ hm delFullCase_merges)
 
 end SIS.Tree

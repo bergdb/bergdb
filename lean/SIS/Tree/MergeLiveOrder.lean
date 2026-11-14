@@ -82,7 +82,6 @@ theorem KNode.lastVersionGivenDel_order (n : KNode) (t : Time) (del : List Nat) 
   intro a b hab
   omega
 
-
 theorem KNode.lastVersion_keys (n : KNode) (t : Time) :
     (n.lastVersion t).ks = .time t :: n.live.map (fun q => .key q.1 q.2) := by
   simp [KNode.live,KNode.lastVersion,KNode.lastVersionGivenDel,List.filterMap_map,Function.comp_def]
@@ -104,7 +103,6 @@ theorem KNode.live_keys_nodup (n : KNode) : (n.live.map Prod.fst).Nodup := by
   apply List.Pairwise.imp _ n.live_order
   intro a b hab
   omega
-
 
 /-- The split's first node keeps the whole original first half, before any
 klongs that the upward write inserts. -/

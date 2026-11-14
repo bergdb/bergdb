@@ -33,11 +33,6 @@ def OpHtDelOKUnder (p : Params) (R : Struct BVal → Time → Prop) : Prop :=
     WriterWP (putKv (.del key)) (ctxOf p ts) w
       (fun _ v => HtInv (htOracleOf p (treeRun p ts)) tx.base (ctxOf p ts) v)
 
-/-- `OpHtDelOK` at every run gives it at the runs R holds of. -/
-theorem opHtDelOKUnder_of (p : Params) (R : Struct BVal → Time → Prop) (h : OpHtDelOK p) :
-    OpHtDelOKUnder p R :=
-  fun ts tx hw _ => h ts tx hw
-
 /-- The delete side of the walk at the runs R holds of, from the delete's checks
 but the path's, R giving TP4 and the kinds. -/
 theorem opHtDelOKUnder_of_chk2 (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Time → Prop)

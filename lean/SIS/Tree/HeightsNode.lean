@@ -234,24 +234,7 @@ theorem ht_swapL_set {S : NodeId → Prop} :
     simp only [List.getElem?_cons_succ] at h
     exact ⟨Or.inl rfl, ht_swapL_set ks j a y y' h hs⟩
 
-/-- A klong pointed elsewhere: a live klong before, or the new pointer. -/
-theorem ht_live_repoint {n : KNode} {j : Nat} {y : NodeId} {c : Nat} {z : NodeId}
-    (h : (c, z) ∈ (n.repoint j y).live) : (c, z) ∈ n.live ∨ z = y := by
-  unfold KNode.repoint at h
-  split at h
-  · rename_i a y0 hj
-    exact ht_live_swap (n := n) (n' := n.setAt j (.key a y)) (S := fun z => z = y)
-      (ht_swapL_set n.ks j a y0 y hj rfl) h
-  · exact Or.inl h
-
 /-! ## The klongs before the transaction -/
-
-theorem ht_prefixAt_newKlongs (t i : Time) (hi : t < i) (l : List (Nat × NodeId)) :
-    prefixAt (newKlongs i l) t = [] := by
-  unfold newKlongs prefixAt
-  simp only [List.takeWhile_cons]
-  have : decide (i ≤ t) = false := by simp; omega
-  simp [this]
 
 theorem ht_prefixAt_time_cons (t i : Time) (hi : t < i) (r : List Klong) :
     prefixAt (.time i :: r) t = [] := by

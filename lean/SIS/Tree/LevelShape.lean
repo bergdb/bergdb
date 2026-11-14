@@ -501,7 +501,6 @@ theorem writerWP_handleFull_lastShapeG (c : Ctx)
     exact hSPACE hsp'
   · exact hTIME (by simpa using hsp)
 
-
 set_option maxHeartbeats 3200000 in
 /-- After `handleFull` of X (D + 1) with the last version `last` (a time klong
 and key klongs of distinct compare values), with the cascade above it, every

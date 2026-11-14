@@ -264,7 +264,6 @@ theorem treeOK_rootTimeStep (N1 N2 : NodeId → Option KNode) (t : Time) (x y : 
   · exact hNewGone
   · exact ⟨yn, hN2y⟩
 
-
 theorem mrg_R0_liveAt (t : Time) (x : NodeId) :
     ∀ c z, (c, z) ∈ (⟨false, newKlongs t [(0, x)]⟩ : KNode).liveAt t ↔ c = 0 ∧ z = x := by
   intro c z
@@ -373,7 +372,6 @@ theorem treeOK_segSpaceStep (N1 N2 : NodeId → Option KNode) (t : Time) (r q x 
     · exact Or.inr (Or.inr (Or.inr h'))
   · exact Or.inr (Or.inl h)
   · exact Or.inr (Or.inr (Or.inl h))
-
 
 /-- A space split in place of x below a segment leaf q: x keeps its klongs
 below sc, the new node S those at or above it, a new segment root R has (0, x)
@@ -580,7 +578,6 @@ theorem treeOK_rootSpaceInPlaceStep (N1 N2 : NodeId → Option KNode) (t : Time)
     · exact Or.inr (Or.inr h')
     · exact Or.inl h'
   · exact Or.inr (Or.inl h)
-
 
 /-- The halves of a node's last version with klongs put (InsOK), as links of
 the node with the klongs put, cut at the divider, a live compare value of the

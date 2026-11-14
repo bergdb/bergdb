@@ -38,12 +38,6 @@ theorem mergesLe_bind {α β : Type} {a b : Nat} {x : M α} {f : α → M β}
     have h2 := hf p.1 c p.2 w' r (by simpa [ReaderT.run, StateT.run] using h)
     omega
 
-theorem mergesLe_mono {α : Type} {k k' : Nat} {f : M α} (hk : k ≤ k') (h : MergesLe k f) :
-    MergesLe k' f := by
-  intro c w w' r hr
-  have := h c w w' r hr
-  omega
-
 theorem mergesLe_bind0 {α β : Type} {k : Nat} {x : M α} {f : α → M β}
     (hx : MergesLe 0 x) (hf : ∀ v, MergesLe k (f v)) : MergesLe k (x >>= f) := by
   have := mergesLe_bind hx hf

@@ -206,18 +206,4 @@ theorem get_lookup_rootContents (p : Params) (P : Struct BVal) (t : Time)
       have hn := List.lookup_eq_none_iff.mp he (key,value) hm
       simp at hn
 
-/-- In an actual run, InvOK suffices for the reader's refinement to the
-enumerated map. Its remaining refinement to refGet concerns the writer. -/
-theorem treeRun_get_lookup (p : Params) (ts : List Tx) (t : Time)
-    (hi : InvOK p (treeRun p ts) t) (key : Key) (hkey : keyWf key = true) :
-    get p (viewOf (treeRun p ts)) t key = (rootContents p (treeRun p ts) t).lookup key :=
-  get_lookup_rootContents p _ t (treeRun_highKindsOK p ts) hi key hkey
-
-theorem getOK_of_contents (p : Params) (hinv : InvPreserved p)
-    (hcontents : ∀ ts, Within p ts → ∀ t ≤ ts.length, ∀ key, keyWf key = true →
-      (rootContents p (treeRun p ts) t).lookup key = refGet ts t key) : GetOK p := by
-  intro ts hts t ht key hkey
-  rw [treeRun_get_lookup p ts t (hinv ts hts t ht).1 key hkey]
-  exact hcontents ts hts t ht key hkey
-
 end SIS.Tree

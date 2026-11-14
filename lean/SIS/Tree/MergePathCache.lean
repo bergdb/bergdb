@@ -83,26 +83,6 @@ theorem writerWP_descendToSegmentRoot_ready (key : Key) (g : Nat) (c : Ctx) (w :
       simpa only [writerWP_bind,writerWP_pure,pathAdd] using
         writerWP_pathAdd_ready (some fd.c) fd.y c z hz
 
-theorem pathCached_get (w : W) (hw : PathCached w) (k : Nat) (hk : k < w.path.length) :
-    ∃ e n, w.path[k]? = some e ∧ w.nodes.lookup e.2 = some n := by
-  obtain ⟨n,hn⟩ := hw w.path[k] (List.getElem_mem hk)
-  exact ⟨w.path[k],n,List.getElem?_eq_getElem hk,hn⟩
-
-/-- The climb's cache premise is supplied by a cached access path. -/
-theorem writerWP_climb_above_earlier_parent_cached (barrier depth : Nat) (x q : NodeId)
-    (parentCv : Option Nat) (cv a : Nat) (nx pn : KNode)
-    (y : NodeId) (i : Nat) (c : Ctx) (w : W)
-    (hpath : w.path[barrier+1]? = some (some cv,x))
-    (hparent : w.path[barrier]? = some (parentCv,q))
-    (hx : w.nodes.lookup x = some nx) (hq : w.nodes.lookup q = some pn)
-    (hm : (.key a y,i) ∈ pn.ks.zipIdx) (hi : i ∉ pn.lastBitmap) (hlt : a < cv)
-    (hw : PathCached w) (hdepth : barrier < depth) (hsize : depth < w.path.length) :
-    WriterWP (climb depth) c w (fun r v => barrier ≤ r ∧ v = w) := by
-  apply writerWP_climb_above_earlier_parent barrier x q parentCv cv a nx pn y i c w
-    hpath hparent hx hq hm hi hlt depth hdepth
-  intro k hk
-  exact pathCached_get w hw k (by omega)
-
 theorem writerWP_ghOf_path_cached (x : NodeId) (c : Ctx) (w : W)
     (hw : PathReady x w) :
     WriterWP (ghOf x) c w (fun _ v => PathCached v) := by

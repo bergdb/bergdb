@@ -16,12 +16,6 @@ theorem heightOf_le (p : Params) (level : Nat) : p.heightOf level ≤ p.H := by
   unfold Params.heightOf
   omega
 
-theorem writerWP_of_heightTagged {α : Type} {f : M α}
-    (hf : KeepsHeightTagged f) (c : Ctx) (w : W) (post : α → W → Prop)
-    (hw : HeightTagged c.p w)
-    (hp : ∀ r v, HeightTagged c.p v → post r v) : WriterWP f c w post := by
-  exact writerWP_mono (hf c w hw) hp
-
 theorem heightTagged_getNode (x : NodeId) : KeepsHeightTagged (getNode x) := by
   intro c w hw
   unfold getNode

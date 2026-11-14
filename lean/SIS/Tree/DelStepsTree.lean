@@ -68,15 +68,6 @@ def DelStepsCaseQd (p : Params) (R : Struct BVal → Time → Prop)
           (kindOracleOf p (treeRun p ts)) tx.base v')) →
     WriterWP (putKv op) (ctxOf p ts) w (fun _ w' => QdW p ts w')
 
-theorem delStepsCaseQd_or (p : Params) (R : Struct BVal → Time → Prop)
-    (P P1 P2 : Ctx → View BVal → W → Op → Prop)
-    (hs : ∀ c base w op, P c base w op → P1 c base w op ∨ P2 c base w op)
-    (h1 : DelStepsCaseQd p R P1) (h2 : DelStepsCaseQd p R P2) : DelStepsCaseQd p R P := by
-  intro ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop hPc hA hMU hCR
-  rcases hs _ _ _ _ hPc with h | h
-  · exact h1 ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop h hA hMU hCR
-  · exact h2 ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop h hA hMU hCR
-
 /-- No leaf: the state reads as before. -/
 theorem delStepsCaseQd_noLeaf (p : Params) (R : Struct BVal → Time → Prop) :
     DelStepsCaseQd p R DelNoLeafM := by
@@ -169,8 +160,6 @@ theorem delStepsCaseQd_room (p : Params) (R : Struct BVal → Time → Prop) (hM
     · intro g h v hv'
       exact writerWP_mono (hA g h v hv') (fun _ v' hv'' => ⟨hv''.1.1, hv''.1.2.2.1⟩)
 
-
-
 theorem delStepsCaseQd_emptyRoom (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
     (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P) :
@@ -190,50 +179,6 @@ theorem delStepsCaseQd_emptyRoom (p : Params) (R : Struct BVal → Time → Prop
     _ tx.base hv hk hb0 hi0 hI hRO hF hICE hkey hrk (keyLeaf_all2 hK hrk _ ⟨hne0, hall0, hup0⟩) hm
     (by simp [ctxOf]) hA hMU hCR (QdW p ts) (fun v hv' => qdW_fresh p ts v hv')
     (fun v hv' => ⟨hv'.1.1, hv'.1.2.2.1⟩)
-
-
-
-theorem delStepsCaseQd_emptyCasc (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
-    (hsa2 : 2 ≤ p.splitAbove)
-    (hRL : ∀ P t, R P t → RunLinksOK p P t)
-    (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P)
-    (hC : ∀ ts BK, UpCascOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) BK)
-    (hLb : ∀ ts BK, UpLebOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) BK) :
-    DelStepsCaseQd p R DelEmptyCascM := by
-  intro ts tx hw hr z top _ htop ops op post hops r w hpre hI hRO hF key hop hPc hA hMU hCR
-  obtain ⟨pre, cv, L0, n0, hop', hm, hK, hne0, hall0, P0, hP0, hX0, hl0, _⟩ := hPc
-  subst hop'
-  cases hop
-  have hkey : keyWf (pre ++ [cv]) = true := within_op_keyWf p ts tx hw ops _ post hops
-  obtain ⟨rk, hrk, _⟩ := keyLeaf_rk hK
-  have hB := putBase_of_run p ts tx hw (hRL _ _ hr)
-  have hbook := putBook_reached p ts tx hw (hRL _ _ hr) z top htop ops r w hpre
-  have hICE := innerChildren_reachedR p hM ts tx (hRP _ _ hr) (hRK _ _ hr) hw top ops (.del (pre ++ [cv]) :: post) hops r w hpre
-    (fun x hx => hI.untaken x (tReach_reachS _ _ _ _ hx))
-  obtain ⟨hv, hk, hb0, hi0⟩ := kd_contextR p hM ts tx (hRP _ _ hr) (hRK _ _ hr) hw top ops (.del (pre ++ [cv]) :: post) hops r w hpre
-  have hwts : Within p ts := by
-    have := within_take p (ts ++ [tx]) hw ts.length
-    simpa using this
-  have hKall := hRK _ _ hr
-  have hICEk : ICEFromKinds (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) tx.base :=
-    fun v hb hi hun => innerChildren_of_kinds p (treeRun p ts) tx.base (ctxOf p ts) v rfl hKall
-      (hRP _ _ hr) hb hi.cache hun
-  have hLr : L0 ≠ w.top.rootKey := by
-    intro he
-    obtain ⟨j, hj⟩ : ∃ j, P0.length = j + 1 := ⟨P0.length - 1, by omega⟩
-    have hPL := LinkedFrom.pathLen _ _ _ P0 hP0
-    have h1 := hPL P0.length (Nat.le_refl _)
-    rw [hX0, he] at h1
-    have h0 : PathLen (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey w.top.rootKey 0 :=
-      PathLen.root
-    have := PathLen.depth_unique hI.tree _ _ _ h1 h0
-    omega
-  refine writerWP_del_emptyAnyMK (ctxOf p ts) _ (viewCoherent_ctxOf p ts) pre cv rk w tx.base top hB hbook
-    _ tx.base hv hk hb0 hi0 hI hRO hF hICE hkey hrk (keyLeaf_all2 hK hrk _ ⟨hne0, hall0, hLr⟩)
-    (hC ts tx.base) (hLb ts tx.base) (by simpa [ctxOf] using hsa2) hICEk hm (by simp [ctxOf]) hA hMU hCR
-    (QdW p ts) (fun v hv' => qdW_fresh p ts v hv') (fun v hv' => ⟨hv'.1.1, hv'.1.2.2.1⟩)
-
-
 
 set_option maxHeartbeats 1600000 in
 /-- The reading of a delete that empties the leaf at the space root, the merges
@@ -314,7 +259,6 @@ theorem delStepsCaseQd_emptyRoot (p : Params) (R : Struct BVal → Time → Prop
       obtain ⟨hPv, _⟩ := putInv_after_step (ctxOf p ts) _ v tx.base top hB hbv hTv hun hRv
       exact ⟨hPv, hRv⟩
 
-
 theorem delStepsCaseQd_fullH (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
     (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
@@ -362,102 +306,5 @@ theorem delStepsCaseQd_fullH (p : Params) (R : Struct BVal → Time → Prop) (h
         hr03 hJ3.1 hJ3.2 hp3' hlinkP hXD hlkX) ?_
     intro g h v hv'
     exact writerWP_mono (hA g h v hv') (fun _ v' hv'' => ⟨hv''.1.1, hv''.1.2.2.1⟩)
-
-
-/-- The delete's steps with the post `QdW`, the merges on. -/
-def DelStepsQd (p : Params) (R : Struct BVal → Time → Prop) : Prop :=
-  DelStepsCaseQd p R (fun c _ _ op => ∃ key, op = .del key ∧ c.p.merges = true)
-
-theorem delStepsQd_of_cases (p : Params) (R : Struct BVal → Time → Prop)
-    (c5 : DelStepsCaseQd p R DelNoLeafM) (c6 : DelStepsCaseQd p R DelNoopM)
-    (c7 : DelStepsCaseQd p R DelEmptyM) (c8 : DelStepsCaseQd p R DelRoomM)
-    (c9 : DelStepsCaseQd p R DelFullM) : DelStepsQd p R := by
-  intro ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop hm hA hMU hCR
-  obtain ⟨key', hop', hm'⟩ := hm
-  rw [hop] at hop'
-  cases hop'
-  rcases delMerge_cover (ctxOf p ts) (viewOf (treeRun p ts)) w key hm' with h | h | h | h | h
-  · exact c5 ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop (hop ▸ h) hA hMU hCR
-  · exact c6 ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop (hop ▸ h) hA hMU hCR
-  · exact c7 ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop (hop ▸ h) hA hMU hCR
-  · exact c8 ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop (hop ▸ h) hA hMU hCR
-  · exact c9 ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop (hop ▸ h) hA hMU hCR
-
-/-- `DelStepsQd` under the reading's premises of `delStepsOKF3_of_open12`, R's pointers and kinds in place of the runs'. -/
-theorem delStepsQd_of_openR (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
-    (hsa2 : 2 ≤ p.splitAbove)
-    (hRL : ∀ P t, R P t → RunLinksOK p P t)
-    (hRP : ∀ P t, R P t → PointersOK P)
-    (hRK : ∀ P t, R P t → KindsAllOK p P) (hRH : ∀ P t, R P t → HeightAllOK p P t)
-    (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelOK p)
-    (hU : ∀ ts, UpUnlinkTreeOK (ctxOf p ts) (viewOf (treeRun p ts)))
-    (hFit : ∀ ts BK, UpCascFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) BK)
-    (hFitL : ∀ ts BK, UpLebFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) BK) :
-    DelStepsQd p R :=
-  delStepsQd_of_cases p R (delStepsCaseQd_noLeaf p R) (delStepsCaseQd_noop p R hRL)
-    (delStepsCaseQd_or p R _ _ _ delEmptyM_split (delStepsCaseQd_emptyRoom p R hM hRL hRP hRK)
-      (delStepsCaseQd_or p R _ _ _ delEmptyOther_split (delStepsCaseQd_emptyRoot p R hM hsa2 hRL hRP hRK)
-        (delStepsCaseQd_emptyCasc p R hM hsa2 hRL hRP hRK
-          (fun ts BK => upCascOKF3_of_parts3 _ _ _ _ (hU ts) (hFit ts BK))
-          (fun ts BK => upLebOKF3_of_full _ _ _ _ (upLebFullOKF3_of_parts3 _ _ _ _ (hU ts) (hFitL ts BK))))))
-    (delStepsCaseQd_room p R hM hRL hRP hRK)
-    (delStepsCaseQd_fullH p R hM hsa2 hRL hRP hRK hRH hht hdel (fun ts => delFullRootStepOK_ctx p ts))
-
-/-- The delete with the merges on (case (4)) keeps `QdW`: `DelStepsQd` with the
-merges' loop (`writerWP_mergeUp_delF3`) and root collapse
-(`writerWP_collapseRoot_delF4`, `writerWP_afterDelete_delF4`), the fuel at the
-operation's start from `TxSegFitsOK`. -/
-theorem opCaseOK_qdW_delMergeR (p : Params) (R : Struct BVal → Time → Prop) (hS : DelStepsQd p R)
-    (hM : ∀ ts, MergeStepOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hC : ∀ ts, CollapseStepOKF4 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hsa2 : 2 ≤ p.splitAbove) (hcap : 1 ≤ p.mergeMax)
-    (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P) (hfit : TxSegFitsOK p R) :
-    OpCaseOK p R (fun ts _ _ w' => QdW p ts w') DelMergeCase := by
-  have hf2 : 2 ≤ p.fuel + 1 := by unfold Params.fuel; omega
-  intro ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hP
-  obtain ⟨key, hop, hmerges⟩ := hP
-  have hF0 := hfit ts tx hw hr z top hz htop pre (op :: post) hops r w hpre
-  have hwts : Within p ts := by
-    have := within_take p (ts ++ [tx]) hw ts.length
-    simpa using this
-  have hfresh : ∀ q ∈ treeRun p ts, q.1 < tx.base := by
-    have := (hw.2 ts.length (by simp)).1
-    simpa using this
-  have hK := hRK _ _ hr
-  have hv : ViewIdsBelow tx.base (ctxOf p ts).view :=
-    viewIdsBelow_rootless _ _ (viewIdsBelow_view p (treeRun p ts) ts.length tx.base hfresh)
-  have hk : ViewKinds (kindOracleOf p (treeRun p ts)) tx.base (ctxOf p ts) :=
-    viewKinds_of p (treeRun p ts) ts.length tx.base hfresh (treeRun_timesLE p ts) (hRP _ _ hr) hK
-  have hICEk : ICEFromKinds (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) tx.base :=
-    fun v hb hi hun => innerChildren_of_kinds p (treeRun p ts) tx.base (ctxOf p ts) v rfl hK
-      (hRP _ _ hr) hb hi.cache hun
-  exact hS ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF0 key hop ⟨key, hop, hmerges⟩
-    (fun g h v hv' => writerWP_afterDelete_delF4 key g h (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
-      (p.fuel + 1) hf2 (hM ts) (hC ts) _ _ hv hk hICEk hsa2 hcap w key v hv')
-    (fun g h merged v hv' => writerWP_mergeUp_delF3 key g (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
-      (p.fuel + 1) hf2 (hM ts) _ _ hv hk hICEk hsa2 hcap w key p.fuel h merged v hv')
-    (fun seg v hv' => writerWP_collapseRoot_delF4 key seg (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
-      (p.fuel + 1) hf2 (hC ts) w key _ _ hv hk hICEk hsa2 v hv')
-
-/-- `t4`, `i4` and `r4`: the delete with the merges on keeps the writer's tree
-(`QTree`), `PutInv` (`QPutInv`) and the walk's ranges (`QRange`). -/
-theorem opCaseOK_treeInvRange_delMergeR (p : Params) (R : Struct BVal → Time → Prop) (hS : DelStepsQd p R)
-    (hM : ∀ ts, MergeStepOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hC : ∀ ts, CollapseStepOKF4 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hsa2 : 2 ≤ p.splitAbove) (hcap : 1 ≤ p.mergeMax)
-    (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P) (hfit : TxSegFitsOK p R) :
-    OpCaseOK p R (QTree p) DelMergeCase ∧ OpCaseOK p R (QPutInv p) DelMergeCase ∧
-      OpCaseOK p R (QRange p) DelMergeCase := by
-  have h := opCaseOK_qdW_delMergeR p R hS hM hC hsa2 hcap hRP hRK hfit
-  refine ⟨?_, ?_, ?_⟩
-  · intro ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hP
-    exact writerWP_mono (h ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hP)
-      (fun _ w' hq => hq.1.tree)
-  · intro ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hP
-    exact writerWP_mono (h ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hP)
-      (fun _ w' hq _ => hq.1)
-  · intro ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hP
-    exact writerWP_mono (h ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hP)
-      (fun _ w' hq _ => hq.2)
 
 end SIS.Tree

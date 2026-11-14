@@ -17,7 +17,6 @@ def MergeGOrd (ln rn : KNode) (cR : Nat) (m2 : Option (NodeId × Nat)) (t : Time
   ∀ y g, m2 = some (y, g) → 0 < g ∧ (g = cR ∨ (∃ z, (g, z) ∈ rn.liveAt t) ∨
     ((∃ z, (g, z) ∈ ln.liveAt t) ∧ ∃ c0 z0, (c0, z0) ∈ ln.liveAt t ∧ c0 < g))
 
-
 /-- `MergeGOrd` for the merge's two nodes: g heads the second half of the
 sorted merged klongs (`mrg_splitMerged_two`), so the first merged klong is below
 it. -/

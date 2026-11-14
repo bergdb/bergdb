@@ -174,19 +174,4 @@ theorem runTree_jointJ2 (p : Params) (hM : 2 ≤ p.M) (Q : Struct BVal → Time 
   have h := hk ts.length (Nat.le_refl _)
   rwa [List.take_length] at h
 
-/-- TP7's take-back statement from the premises of `runTree_jointTU`. -/
-theorem takeBackOK_of_jointJ2 (p : Params) (hM : 2 ≤ p.M) (Q : Struct BVal → Time → Prop)
-    (hQ0 : Q (initStruct p) 0)
-    (hQs : ∀ ts tx, Within p (ts ++ [tx]) → RunTreeQ p Q (treeRun p ts) ts.length →
-      RunLinksOK p (treeRun p (ts ++ [tx])) (ts.length + 1) →
-      TreeAt p (treeRun p (ts ++ [tx])) (ts.length + 1) →
-      Q (treeRun p (ts ++ [tx])) (ts.length + 1))
-    (ho : OpTreeOKUnder p (RunTreeQ p Q)) (S : List Tx → Tx → W → Prop) (hO : OpJ2OK p (RunTreeQ p Q) S)
-    (hS : StateOK p (RunTreeQ p Q) S)
-    (hSRF : ∀ ts tx w, S ts tx w → ReachedFree p (treeRun p ts) (ts.length + 1) w) (hB : BaseStartOK p (RunTreeQ p Q)) (hTV : TakenNotValOK p (RunTreeQ p Q)) :
-    TakeBackOKUnder p (RunLinksOK p) := by
-  intro ts tx hw _
-  have hj := runTree_jointJ2 p hM Q hQ0 hQs ho S hO hS hSRF hB hTV ts (within_snoc_prefix p ts tx hw)
-  exact takeBackOKUnder_of_opsJ2 p _ (fun _ _ h => h.1) (fun _ _ h => h.2.1) ho S hO hS hSRF hB hTV ts tx hw hj
-
 end SIS.Tree

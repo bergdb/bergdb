@@ -119,9 +119,4 @@ theorem mergeAmortized_of_oneMergeStep (p : Params)
     (hstep : MergeParamsOK p → OneMergeStep p) : MergeAmortized p :=
   mergeAmortized_of_nodeCountStep p (fun hp => nodeCountStep_of_oneMergeStep p (hstep hp))
 
-/-- The fill potential's step (`RunPotentialStep`, 024-11's units) is the
-same form. -/
-theorem runPotentialStep_iff (p : Params) :
-    RunPotentialStep p ↔ PotentialStep p (treeFillPotential p) := Iff.rfl
-
 end SIS.Tree

@@ -1,5 +1,5 @@
 import SIS.Tree.GetNewSeg
-import SIS.Tree.GetSegLeaf
+import SIS.Tree.GetSegInPlace
 
 set_option autoImplicit false
 
@@ -526,6 +526,5 @@ theorem writerWP_put_newSegs_inv (c : Ctx) (base : View BVal) (hvc : ViewCoheren
     have hlen := congrArg List.length htake
     simp only [List.length_take] at hlen
     omega
-
 
 end SIS.Tree

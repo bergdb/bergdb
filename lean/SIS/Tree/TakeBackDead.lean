@@ -87,86 +87,6 @@ theorem deadLive_init (p : Params) (ts : List Tx) (tx : Tx) (hw : Within p (ts +
       simp only at this
       omega
 
-/-- Every operation of a transaction within reach, from a state that its
-earlier operations reach, with the writer's tree, (A) and (B), the walk's
-ranges and `DeadLive`, keeps `DeadLive`. Not proved. -/
-def OpDeadLiveOK (p : Params) (R : Struct BVal → Time → Prop) : Prop :=
-  ∀ ts tx, Within p (ts ++ [tx]) → R (treeRun p ts) ts.length → ∀ z top,
-    lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z →
-    topOf p (ctxOf p ts).view z = .ok top →
-    ∀ pre op post, tx.ops = pre ++ op :: post →
-    ∀ r w, (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
-    WriterTreeOK p (treeRun p ts) (ts.length + 1) w →
-    TakeInvT p (treeRun p ts) (ts.length + 1) w →
-    RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey →
-    DeadLive p (treeRun p ts) (ts.length + 1) tx.base w →
-    WriterWP (putKv op) (ctxOf p ts) w (fun _ w' => DeadLive p (treeRun p ts) (ts.length + 1) tx.base w')
-
-/-- `DeadLive` at every state that a prefix of a transaction's operations
-reaches, from `OpDeadLiveOK`, given the walk's ranges at every such state. -/
-theorem deadLive_reached (p : Params) (R : Struct BVal → Time → Prop)
-    (hRL : ∀ P t, R P t → RunLinksOK p P t) (hOT : OpTakeTOK p R) (hO : OpDeadLiveOK p R)
-    (ho : OpTreeOK p) (ts : List Tx) (tx : Tx) (hw : Within p (ts ++ [tx]))
-    (hr : R (treeRun p ts) ts.length)
-    (hT : TreeAt p (treeRun p ts) ts.length) (z : NodeId) (top : Top)
-    (hz : lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z)
-    (htop : topOf p (ctxOf p ts).view z = .ok top)
-    (hRange : ∀ pre post, tx.ops = pre ++ post → ∀ r w,
-      (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
-      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey) :
-    ∀ pre post, tx.ops = pre ++ post → ∀ r w,
-      (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
-      DeadLive p (treeRun p ts) (ts.length + 1) tx.base w := by
-  intro pre
-  suffices hk : ∀ k, ∀ pre : List Op, pre.length = k → ∀ post, tx.ops = pre ++ post → ∀ r w,
-      (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
-      DeadLive p (treeRun p ts) (ts.length + 1) tx.base w
-    from hk pre.length pre rfl
-  intro k
-  induction k with
-  | zero =>
-    intro pre hl _ _ r w h
-    have hnil : pre = [] := List.eq_nil_of_length_eq_zero hl
-    subst hnil
-    simp only [List.mapM_nil, pure, ReaderT.pure, StateT.pure, Except.pure, Except.ok.injEq,
-      Prod.mk.injEq] at h
-    rw [← h.2]
-    exact deadLive_init p ts tx hw (hRL _ _ hr) top
-  | succ k ih =>
-    intro pre hl post hsplit r w h
-    rcases List.eq_nil_or_concat pre with hnil | ⟨pre', op, hpre⟩
-    · subst hnil; simp at hl
-    · rw [List.concat_eq_append] at hpre
-      subst hpre
-      have hl' : pre'.length = k := by simp at hl; omega
-      have h0 := h
-      rw [List.mapM_append] at h
-      simp only [List.mapM_cons, List.mapM_nil, bind, ReaderT.bind, StateT.bind, Except.bind] at h
-      cases h1 : (pre'.mapM putKv) (ctxOf p ts) (wInit tx top) with
-      | error e => rw [h1] at h; cases h
-      | ok rw1 =>
-        rcases rw1 with ⟨r1, w1⟩
-        rw [h1] at h
-        simp only at h
-        cases h2 : putKv op (ctxOf p ts) w1 with
-        | error e => rw [h2] at h; cases h
-        | ok aw =>
-          rcases aw with ⟨a, w2⟩
-          rw [h2] at h
-          simp only [pure, ReaderT.pure, StateT.pure, Except.pure, Except.ok.injEq,
-            Prod.mk.injEq] at h
-          have hsplit' : tx.ops = pre' ++ op :: post := by rw [hsplit]; simp
-          have hI1 := ih pre' hl' (op :: post) hsplit' r1 w1 h1
-          have hT1 := writerTreeOK_reached p ho ts tx hw z top hz htop hT pre' (op :: post)
-            hsplit' r1 w1 h1
-          have hT2 := writerTreeOK_reached p ho ts tx hw z top hz htop hT (pre' ++ [op]) post
-            (by rw [hsplit]) r w h0
-          rw [← h.2] at hT2 ⊢
-          have hTI := takeInvT_reached p R hOT ho ts tx hw hr hT z top hz htop pre' (op :: post) hsplit'
-            r1 w1 h1
-          exact hO ts tx hw hr z top hz htop pre' op post hsplit' r1 w1 h1 hT1 hTI
-            (hRange pre' (op :: post) hsplit' r1 w1 h1) hI1 a w2 h2
-
 /-- At every transaction's end no node taken back is a value of the
 transaction (taken nodes are key nodes of the books, values are not: the walk
 of the kinds' `KdInv.vals`). Not proved here. -/
@@ -174,37 +94,6 @@ def TakenNotValOK (p : Params) (R : Struct BVal → Time → Prop) : Prop :=
   ∀ ts tx, Within p (ts ++ [tx]) → R (treeRun p ts) ts.length → ∀ noops w,
     runOps p tx.base tx.ops (ts.length + 1) (view (treeSpec p) (treeRun p ts) ts.length) =
       .ok (noops, w) → ∀ x ∈ w.taken, x ∉ w.vals.map (·.1)
-
-/-- (C) at every transaction's end from `OpDeadLiveOK`, given the walk's ranges
-at every state between operations. -/
-theorem deadTakenLiveOK_of_ops (p : Params) (R : Struct BVal → Time → Prop)
-    (hRL : ∀ P t, R P t → RunLinksOK p P t) (hRT : ∀ P t, R P t → TreeAt p P t)
-    (ho : OpTreeOK p) (hOT : OpTakeTOK p R) (hO : OpDeadLiveOK p R)
-    (hRange : ∀ ts tx, Within p (ts ++ [tx]) → R (treeRun p ts) ts.length → ∀ z top,
-      lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z →
-      topOf p (ctxOf p ts).view z = .ok top →
-      ∀ pre post, tx.ops = pre ++ post → ∀ r w,
-      (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
-      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey)
-    (hTV : TakenNotValOK p R) :
-    DeadTakenLiveOK p R := by
-  intro ts tx hw hr noops w hrun
-  obtain ⟨z, top, hz, htop, hops⟩ := runOps_ok p _ _ _ _ noops w hrun
-  have hD := deadLive_reached p R hRL hOT hO ho ts tx hw hr (hRT _ _ hr) z top hz htop
-    (hRange ts tx hw hr z top hz htop) tx.ops [] (by simp) noops w hops
-  have hl := commitLiftAt_of_links p ts tx hw (hRL _ _ hr) noops w hrun
-  have hfresh : ∀ q ∈ treeRun p ts, q.1 < tx.base := by
-    have h := (hw.2 ts.length (by simp)).1
-    have hj : (ts ++ [tx])[ts.length]'(by simp) = tx := by simp
-    have ht : (ts ++ [tx]).take ts.length = ts := by simp
-    rw [hj, ht] at h
-    exact h
-  have he : execW p tx (ts.length + 1) (view (treeSpec p) (treeRun p ts) (ts.length + 1 - 1)) =
-      .ok (noops, w) := hrun
-  have hU : (w.nodes.map (·.1)).Nodup := execW_cacheUnique p tx (ts.length + 1) _ noops w
-    (viewIdsBelow_view p (treeRun p ts) ts.length tx.base hfresh) hrun
-  exact deadTakenLive_of_deadLive p (treeRun p ts) (ts.length + 1) tx.base w hD hU hl.2.1
-    (hTV ts tx hw hr noops w hrun)
 
 /-- At a transaction's end no node taken back is a value: taken nodes are key
 nodes of the books (`Book.taken`), values are not (the walk of the kinds'

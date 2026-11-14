@@ -50,16 +50,6 @@ theorem retargetStep_time (ti : Nat) (src dst : NodeId) (q : Klong × Nat) (u : 
   | time t => simp [retargetStep]
   | del b => simp [retargetStep]
 
-theorem retargetStep_del (ti : Nat) (src dst : NodeId) (q : Klong × Nat) (b : List Nat) :
-    retargetStep ti src dst q = .del b ↔ q.1 = .del b := by
-  rcases q with ⟨k, i⟩
-  cases k with
-  | key cv y =>
-    simp only [retargetStep]
-    split <;> simp
-  | time t => simp [retargetStep]
-  | del b' => simp [retargetStep]
-
 theorem lastBitmapOf_zipIdx_map (ti : Nat) (src dst : NodeId) :
     ∀ (l : List Klong) (s : Nat) (d : List Nat),
       ((l.zipIdx s).map (retargetStep ti src dst)).foldl (fun d k => match k with

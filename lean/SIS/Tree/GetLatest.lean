@@ -168,16 +168,6 @@ theorem topAt_succ_of_timesLE (P : Struct BVal) (t : Time) (hP : StructTimesLE P
       List.filter_eq_self.mpr (fun e he => by have := hall e he; simp; omega)
     simp only [h1, h2]
 
-/-- A structure whose entries all have times at most t reads at t + 1 as at t. -/
-theorem get_succ_of_timesLE (p : Params) (P : Struct BVal) (t : Time)
-    (hP : StructTimesLE P t) (key : Key) :
-    get p (viewOf P) (t + 1) key = get p (viewOf P) t key := by
-  unfold get rootAt
-  rw [topAt_succ_of_timesLE P t hP]
-  cases (topAt (viewOf P) t).bind (rootKeyOf (viewOf P)) with
-  | none => rfl
-  | some r => exact getFrom_succ_of_timesLE p P t hP key r
-
 /-! ## The reference's step -/
 
 /-- The value an operation gives its key: a put's, none after a delete. -/

@@ -1,5 +1,5 @@
 import SIS.Tree.NodeKinds
-import SIS.Tree.NodeCountTree
+import SIS.Tree.InvConsequences
 import SIS.Tree.IntervalSearchProof
 
 namespace SIS.Tree
@@ -67,85 +67,5 @@ theorem walk_current_pointer (p : Params) (v : View BVal) (t f : Nat)
       left; left; left; left; left; left; left; right
       exact List.mem_filterMap.mpr ⟨.key c y,hk,by simp [hy]⟩
     simp [hw] at hm
-
-/-- A fault-free walk is complete once high nodes are distinguished from
-key nodes by their histories. -/
-theorem walk_complete_of_highKindsOK (p : Params) (P : Struct BVal) (t f : Nat)
-    (hP : HighKindsOK p P) (x lo : Nat) (hi : Option Nat) (isRoot space : Bool)
-    (hw : walk p (viewOf P) t f x lo hi isRoot space = []) :
-    KeyWalkComplete p (viewOf P) t f x := by
-  induction f generalizing x lo hi isRoot space with
-  | zero => simp only [walk,List.cons_ne_nil] at hw
-  | succ f ih =>
-    cases hv : P.get? x with
-    | none => simp only [walk,viewOf,hv,List.cons_ne_nil] at hw
-    | some nd =>
-      cases hd : nd.isData with
-      | true => simp only [walk,viewOf,hv,hd,↓reduceIte,List.cons_ne_nil] at hw
-      | false =>
-        have hl := highKindsOK_walk_level p P t f x lo hi isRoot space nd hP hv hd hw
-        let n : KNode := ⟨p.heightOf nd.level == 0,klongsOf nd.hist⟩
-        have hn : knodeOf p (viewOf P) x = some n := by
-          simp [knodeOf,viewOf,hv,hd,Nat.not_lt_of_ge hl,n]
-        refine ⟨n,hn,?_⟩
-        intro ⟨c,y⟩ hcy hterminal
-        have hp := walk_current_pointer p (viewOf P) t f x lo hi isRoot space nd hv hd hw
-          c y (n.liveAt_key_mem t c y hcy)
-        cases hvy : P.get? y with
-        | none => simp [viewOf,hvy] at hp
-        | some ny =>
-          have hlen : (n.liveAt t).length ≤
-              (((n.liveAt t).drop 1).map (fun q => some q.1) ++ [hi]).length := by
-            simp only [List.length_append,List.length_map,List.length_drop,List.length_singleton]
-            omega
-          obtain ⟨hi',hzip⟩ := mem_zip_left_witness _ _ hlen (c,y) hcy
-          have hchild := List.flatMap_eq_nil_iff.mp
-            (walk_child_faults_nil p (viewOf P) t f x lo hi isRoot space nd hv hd hw)
-            ((c,y),hi') hzip
-          change walkChildFaults p (viewOf P) t f x n (p.segOf nd.level)
-            (p.heightOf nd.level) lo space ((c,y),hi') = [] at hchild
-          cases hleaf : n.leaf with
-          | true =>
-            have hc : segLen c = 7 := by simpa [hleaf] using hterminal
-            simp only [walkChildFaults,hleaf,hc,beq_self_eq_true,↓reduceIte,viewOf,hvy] at hchild
-            split at hchild
-            · cases hchild
-            · split at hchild
-              · cases hchild
-              · exact ih y 0 none true false hchild
-          | false =>
-            simp only [walkChildFaults,hleaf,Bool.false_eq_true,↓reduceIte,viewOf,hvy] at hchild
-            split at hchild
-            · cases hchild
-            · split at hchild
-              · cases hchild
-              · exact ih y (if c == 0 then lo else c) hi' false space hchild
-
-theorem treeWalkComplete_of_invOK (p : Params) (P : Struct BVal) (t : Time)
-    (hP : HighKindsOK p P) (hi : InvOK p P t) : TreeWalkComplete p P t := by
-  unfold InvOK faultsAt at hi
-  cases hr : rootAt (viewOf P) t with
-  | none => simp [hr] at hi
-  | some r =>
-    simp only [hr] at hi
-    exact ⟨r,hr,walk_complete_of_highKindsOK p P t p.fuel hP r 0 none true true hi⟩
-
-/-- For actual runs, the complete-walk premise follows from InvOK. No
-additional assumption on sorting, thresholds or successful transactions is
-needed beyond the supplied invariant at this time. -/
-theorem treeRun_walkComplete (p : Params) (ts : List Tx) (t : Time)
-    (hi : InvOK p (treeRun p ts) t) : TreeWalkComplete p (treeRun p ts) t :=
-  treeWalkComplete_of_invOK p _ t (treeRun_highKindsOK p ts) hi
-
-theorem nodeCountBound_of_invariants_and_counts (p : Params) (hinv : InvPreserved p)
-    (hterminal : ∀ ts, Within p ts → ∀ t ≤ ts.length,
-      terminalEntryCount p (treeRun p ts) t ≤ (refKvs ts t).length)
-    (hroots : ∀ ts, Within p ts → ∀ t ≤ ts.length,
-      segmentRootCount p (treeRun p ts) t ≤ segTrees (refKvs ts t)) : NodeCountBound p := by
-  apply nodeCountBound_of_complete p hinv
-  · intro ts hts t ht
-    exact treeRun_walkComplete p ts t (hinv ts hts t ht).1
-  · exact hroots
-  · exact hterminal
 
 end SIS.Tree

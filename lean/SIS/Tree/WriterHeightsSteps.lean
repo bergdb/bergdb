@@ -33,16 +33,6 @@ theorem ht_keeps_of_frame {α : Type} {f : M α} (hbk : KeepsBook B f) (hf : HtF
   rintro _ v ⟨⟨hb', hk'⟩, hn, hg, hp, ht, htop⟩
   exact ⟨hb', hi.frame v hn hg hp ht htop, hk', hp, ht⟩
 
-theorem ht_writerWP {α : Type} {f : M α} (hf : HtKeeps B H f) (c : Ctx) (w : W)
-    (post : α → W → Prop) (hvo : ViewHtOK H B c) (hb : Book B c w) (hi : HtInv H B c w)
-    (hp : ∀ r v, Book B c v → HtInv H B c v → Kept w v → v.path = w.path → v.taken = w.taken →
-      post r v) : WriterWP f c w post :=
-  writerWP_mono (hf c w hvo hb hi) (fun r v h => hp r v h.1 h.2.1 h.2.2.1 h.2.2.2.1 h.2.2.2.2)
-
-theorem ht_throw {α : Type} (e : String) : HtKeeps B H (throw e : M α) := by
-  intro c w _ _ _
-  exact writerWP_throw _ _ _ _
-
 macro "htFrameTac" : tactic => `(tactic| (
   intro c w
   repeat' first

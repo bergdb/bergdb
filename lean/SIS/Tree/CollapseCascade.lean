@@ -422,7 +422,6 @@ theorem state_replaceRoot (x : NodeId) (depth only : Nat) : KeepsState (replaceR
 
 end
 
-
 theorem putBook_takeBackRoot (x : NodeId) (depth only : Nat) (c : Ctx) (base : View BVal) (B : NodeId)
     (top0 : Top) (hB : PutBase c base B) (w : W) (hw : PutBook c B top0 w) (hx : B ≤ x) :
     WriterWP (takeBackRoot x depth only) c w (fun _ w' => PutBook c B top0 w') :=

@@ -27,16 +27,6 @@ theorem SegDepthEq.le {N : NodeId → Option KNode} {t : Time} :
     intro x h n hn _ c y hy
     exact ih y ((h n hn).2 c y hy)
 
-/-- Every segment tree reached from r is balanced, of depth at most `bound`. -/
-def SegBal (N : NodeId → Option KNode) (t : Time) (bound : Nat) (r : NodeId) : Prop :=
-  ∀ x, ReachS N t r x → ∃ d, d ≤ bound ∧ SegDepthEq N t d x
-
-theorem SegBal.segFits {N : NodeId → Option KNode} {t : Time} {bound : Nat} {r : NodeId}
-    (h : SegBal N t bound r) : SegFits N t bound r := by
-  intro x hx
-  obtain ⟨d, hd, he⟩ := h x hx
-  exact SegDepthLe.mono N t d x (he.le d x) bound hd
-
 /-- A descent of the writer that reaches a segment leaf from a node of depth d
 had fuel above d: with no more fuel, it throws. -/
 theorem writerWP_descendLte_depth (cv : Nat) (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base) :

@@ -94,28 +94,4 @@ theorem KNode.searchLte_liveAt_lookup (n : KNode) (t : Time) (target : Int)
   simp only [Bool.and_eq_true] at ha
   simpa [bestOr] using ha.2
 
-theorem KNode.searchLt_liveAt_lookup (n : KNode) (t : Time) (target : Int)
-    (f : Found) (hf : n.searchLt t target = some f) :
-    (n.liveAt t).lookup f.c = some f.y := by
-  apply n.searchBy_liveAt_lookup t _ _ f hf
-  intro c best ha
-  simp only [Bool.and_eq_true] at ha
-  simpa [bestOr] using ha.2
-
-theorem KNode.searchGt_liveAt_lookup (n : KNode) (t : Time) (target : Int)
-    (f : Found) (hf : n.searchGt t target = some f) :
-    (n.liveAt t).lookup f.c = some f.y := by
-  apply n.searchBy_liveAt_lookup t _ _ f hf
-  intro c best ha
-  simp only [Bool.and_eq_true] at ha
-  simpa [bestOr] using ha.2
-
-theorem KNode.searchGte_liveAt_lookup (n : KNode) (t : Time) (target : Int)
-    (f : Found) (hf : n.searchGte t target = some f) :
-    (n.liveAt t).lookup f.c = some f.y := by
-  apply n.searchBy_liveAt_lookup t _ _ f hf
-  intro c best ha
-  simp only [Bool.and_eq_true] at ha
-  simpa [bestOr] using ha.2
-
 end SIS.Tree

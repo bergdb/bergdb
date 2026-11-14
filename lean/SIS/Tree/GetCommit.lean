@@ -614,11 +614,6 @@ theorem commitGetOK_of_lift (p : Params) (hl : CommitLiftOK p) : CommitGetOK p :
   rw [getFrom_eq_getFromR, hV, show knodeOf p (viewOf (P.apply i (changesOf i w))) =
     wNode p (viewOf P) w from funext hK, hi]
 
-/-- TP10's step for one transaction from the writer's refinement of the map
-and the lift of its key nodes. -/
-theorem txGetOK_of_op_lift (p : Params) (ho : OpGetOK p) (hl : CommitLiftOK p) : TxGetOK p :=
-  txGetOK_of_op_commit p ho (commitGetOK_of_lift p hl)
-
 /-- TP10 from TP7, the writer's refinement of the map and the lift of its key
 nodes. -/
 theorem getOK_of_op_lift (p : Params) (hinv : InvPreserved p) (ho : OpGetOK p)

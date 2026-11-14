@@ -658,7 +658,6 @@ theorem writerWP_appendDeleteKlong_room_gh (x : NodeId) (depth cv : Nat) (n : KN
           simp only [hno, hroom', hroom0, hdead2, hgl, Bool.not_false, Bool.false_and, Bool.false_eq_true,
             ↓reduceIte, note, putNode, writerWP_bind, writerWP_modify, writerWP_pure]
 
-
 /-- Obligation (`UpCascOKF3H` with the loop keeping the heights' cache). -/
 def UpCascOKF3HG (c : Ctx) (base : View BVal) (KO : KindOracle) (BK : NodeId) (H : NodeId → Nat → Prop) : Prop :=
   ∀ (w w3 : W) (B MB : NodeId) (top0 : Top) (pre : List Nat) (cv : Nat) (rk : NodeId)

@@ -29,13 +29,6 @@ def htOracleOf (p : Params) (P : Struct BVal) : NodeId → Nat → Prop :=
   fun y h => ∃ ny, P.get? y = some ny ∧ ny.isData = false ∧ ny.level ≤ p.keyMax ∧
     p.heightOf ny.level = h
 
-/-- A node of P reached from the root at time t is a key node of P. -/
-theorem ht_key_of_knodeOf {p : Params} {P : Struct BVal} {x : NodeId} {n : KNode}
-    (h : knodeOf p (viewOf P) x = some n) :
-    ∃ nd, P.get? x = some nd ∧ nd.isData = false ∧ nd.level ≤ p.keyMax ∧ n = nodeK p nd := by
-  obtain ⟨nd, hnd, hd, hlv, rfl⟩ := ht_knodeOf_some h
-  exact ⟨nd, hnd, hd, hlv, rfl⟩
-
 /-- The live klongs of a node do not depend on its leaf flag. -/
 theorem ht_liveAt_leaf (l1 l2 : Bool) (ks : List Klong) (t : Time) :
     (⟨l1, ks⟩ : KNode).liveAt t = (⟨l2, ks⟩ : KNode).liveAt t := rfl

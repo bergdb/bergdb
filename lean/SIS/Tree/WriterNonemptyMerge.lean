@@ -235,30 +235,4 @@ theorem nex_setValue (B : NodeId) (segRoot : NodeId) (cv : Nat) (key : Key) (val
     | split
     | contradiction
 
-/-- Closes `setNode`'s postcondition: the pending nodes are the caller's and
-the new segment leaf returned. -/
-macro "neSetClose" : tactic => `(tactic| (
-  refine ⟨by assumption, _, by assumption, ?_⟩
-  intro y hy
-  (try simp only [List.mem_cons, Option.some.injEq] at hy ⊢)
-  grind))
-
-/-- `setNode`: the new segment leaf, if one is made, is the one node that may
-be pending besides the caller's; the next step of the put fills it. -/
-theorem nex_setNode (B : NodeId) (segRoot : NodeId) (cv : Nat) (create : Bool)
-    (E : List NodeId) (c : Ctx) (w : W) (hv : ViewGood B c) (hw : CacheGood B c w)
-    (hn : NEx E w) :
-    WriterWP (setNode segRoot cv create) c w (fun r v => CacheGood B c v ∧
-      ∃ E', NEx E' v ∧ ∀ y ∈ E', y ∈ E ∨ r = some y) := by
-  have hpos := hv.pos
-  unfold setNode
-  repeat' first
-    | wpSimplify
-    | neCore
-    | neAppend
-    | wpSplit
-    | split
-    | contradiction
-    | neSetClose
-
 end SIS.Tree

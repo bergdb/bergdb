@@ -1,4 +1,5 @@
-import SIS.Tree.ScanSound
+import SIS.Tree.WalkEdges
+import SIS.Tree.RunEncoding
 
 set_option autoImplicit false
 

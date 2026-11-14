@@ -123,20 +123,6 @@ theorem taken_foldlM (B : NodeId) {α β : Type} (xs : List α) (f : β → α �
     rw [List.foldlM_cons, writerWP_bind]
     exact writerWP_mono (hf init a c w hw) (fun b v hv => ih b c v hv)
 
-theorem taken_forIn (B : NodeId) {α β : Type} (xs : List α) (init : β)
-    (f : α → β → M (ForInStep β)) (hf : ∀ a b, KeepsTaken B (f a b)) :
-    KeepsTaken B (forIn xs init f) := by
-  induction xs generalizing init with
-  | nil => intro c w hw; simpa only [List.forIn_nil, writerWP_pure] using hw
-  | cons a xs ih =>
-    intro c w hw
-    rw [List.forIn_cons, writerWP_bind]
-    refine writerWP_mono (hf a init c w hw) ?_
-    intro step v hv
-    cases step with
-    | done b => simpa only [writerWP_pure] using hv
-    | yield b => exact ih b c v hv
-
 macro "tkFoldWith " extra:tactic : tactic => `(tactic| (
   (with_unfolding_none refine' writerWP_of_taken (taken_foldlM _ _ _ _ ?tkBody) _ _ _ ?tkState ?tkPost)
   case tkBody =>

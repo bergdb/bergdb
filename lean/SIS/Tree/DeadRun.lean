@@ -129,15 +129,6 @@ theorem deadAllOK_snocR (p : Params) (R : Struct BVal → Time → Prop)
     (dead_reached p R hRL hT hPI hO hDd ts tx hw hr (hRT _ _ hr) (hRI _ _ hr) hD z top hz htop
       tx.ops [] (by simp) noops w hops)
 
-/-- `deadAllOK_snocR` at `RunOK`. -/
-theorem deadAllOK_snoc (p : Params)
-    (hT : OpCaseOK p (RunOK p) (QTree p) AnyOp) (hPI : OpCaseOK p (RunOK p) (QPutInv p) AnyOp)
-    (hO : OpCaseOK p (RunOK p) (QRange p) AnyOp) (hDd : OpCaseOK p (RunOK p) (QDead p) AnyOp)
-    (ts : List Tx) (tx : Tx) (hw : Within p (ts ++ [tx])) (hr : RunOK p (treeRun p ts) ts.length)
-    (hD : DeadAllOK p (treeRun p ts)) : DeadAllOK p (treeRun p (ts ++ [tx])) :=
-  deadAllOK_snocR p (RunOK p) (fun _ _ h => h.1) (fun _ _ h => h.2.1) (fun _ _ h => h.2.2) hT hPI hO
-    hDd ts tx hw hr hD
-
 /-! ## The operation cases -/
 
 /-- (1), `QDead`: the leaf's klong is put only when `deadOver` lets it through. -/
@@ -197,27 +188,6 @@ def LatestQD (p : Params) (P : Struct BVal) (t : Time) : Prop :=
 
 theorem latestQD_init (p : Params) (hM : 2 ≤ p.M) : LatestQD p (initStruct p) 0 :=
   ⟨latestQ_init p hM, deadAllOK_init p⟩
-
-/-- The step of `LatestQD`, with `QDead` for every operation in place of
-`DeadAllOK` at every run. -/
-theorem latestQD_snoc (p : Params) (hp : MergeParamsOK p) (hdel : OpHtDelOK p)
-    (hT : OpCaseOK p (RunOK p) (QTree p) AnyOp) (hPI : OpCaseOK p (RunOK p) (QPutInv p) AnyOp)
-    (hO : OpCaseOK p (RunOK p) (QRange p) AnyOp) (hLv : OpCaseOK p (RunOK p) (QLive p) AnyOp)
-    (hDd : OpCaseOK p (RunOK p) (QDead p) AnyOp) :
-    ∀ ts tx, Within p (ts ++ [tx]) → RunTreeQ p (LatestQD p) (treeRun p ts) ts.length →
-      RunLinksOK p (treeRun p (ts ++ [tx])) (ts.length + 1) →
-      TreeAt p (treeRun p (ts ++ [tx])) (ts.length + 1) →
-      LatestQD p (treeRun p (ts ++ [tx])) (ts.length + 1) := by
-  intro ts tx hw hr hL' hT'
-  have hM := mergeParamsOK_M p hp
-  obtain ⟨hL, hTA, ⟨hI, _, hK, hA, hS, hLA⟩, hD⟩ := hr
-  have hD' := deadAllOK_snoc p hT hPI hO hDd ts tx hw ⟨hL, hTA, hI⟩ hD
-  have hK' := kindsAllOK_snoc p (by omega) ts tx hw hL hK
-  have hA' := heightAllOK_snoc p (by omega) hdel ts tx hw hL hK hA
-  have hS' := sizeOK_snoc p hp ts tx hw hL hS
-  have hLA' := leftAllOK_snoc p hp ts tx hw hL hLA
-  exact ⟨⟨invOK_snoc p hT hPI hO hLv ts tx hw ⟨hL, hTA, hI⟩ hL' hT' hK' hA' hS' hLA' hD',
-    hL'.1, hK', hA', hS', hLA'⟩, hD'⟩
 
 theorem runOK_of_runTreeQD (p : Params) (P : Struct BVal) (t : Time)
     (h : RunTreeQ p (LatestQD p) P t) : RunOK p P t :=

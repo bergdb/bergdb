@@ -585,12 +585,6 @@ theorem kd_free_of_leaf {K : KindOracle} {w : W} {g h : Nat} {leaf : Bool} (hl :
   rw [hl] at hf
   cases hf
 
-theorem kd_free_inner {K : KindOracle} {w : W} {g h : Nat} {leaf : Bool} (hl : leaf = (h == 0)) :
-    !leaf = true → kdFree (KindKlong K w g h) := by
-  intro hf
-  apply kd_free_of_leaf hl
-  simpa using hf
-
 /-! ## Facts of the state -/
 
 section Facts
@@ -888,10 +882,6 @@ theorem kd_writerWP {α : Type} {f : M α} (hf : KdKeeps K B f) (c : Ctx) (w : W
     (hp : ∀ r v, Book B c v → KdInv K B v → KdLe w v → v.path = w.path →
       v.madeFor = w.madeFor → post r v) : WriterWP f c w post :=
   writerWP_mono (hf c w hv hk hb hi) (fun r v h => hp r v h.1 h.2.1 h.2.2.1 h.2.2.2.1 h.2.2.2.2)
-
-theorem kd_throw {α : Type} (e : String) : KdKeeps K B (throw e : M α) := by
-  intro c w _ _ _ _
-  exact writerWP_throw _ _ _ _
 
 macro "kdFrameTac" : tactic => `(tactic| (
   intro c w

@@ -326,7 +326,6 @@ macro "lfState" : tactic => `(tactic| first
   | assumption
   | exact LeftCacheE.of (by assumption) (by lfMem))
 
-
 macro "lfUse " h:term : tactic => `(tactic| (
   (with_unfolding_none refine' writerWP_of_left $h ?lfE _ _ _ ?gdView ?lfP ?lfView ?gdState ?bkState ?lfState ?gdPost)
   case gdView => assumption

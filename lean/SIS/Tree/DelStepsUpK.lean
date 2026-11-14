@@ -4,7 +4,7 @@ The upward delete with its invariant's steps knowing the path
 place on the path, and for LE-b the node inner): for the kinds' books
 (bergdb 024-12, latest's F3 route).
 -/
-import SIS.Tree.DelStepsUp
+import SIS.Tree.TakeDeadUpW
 
 set_option autoImplicit false
 

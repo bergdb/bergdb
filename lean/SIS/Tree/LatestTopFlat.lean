@@ -33,7 +33,11 @@ parameters. What is proved in their place:
 
 024-12's section 1 lists the premises with their owners and test evidence.
 -/
-import SIS.Tree.LatestTop
+import SIS.Tree.LatestJoint
+import SIS.Tree.TakeRunQF4
+import SIS.Tree.HeightsChkRun
+import SIS.Tree.CollapseCascade
+import SIS.Tree.DelStepsCascF3
 import SIS.Tree.DeadRun
 import SIS.Tree.DeadCases
 import SIS.Tree.DeadNewSegFull
@@ -42,14 +46,14 @@ import SIS.Tree.HeightsFit
 import SIS.Tree.HeightsUnder
 import SIS.Tree.DelStepsCascRoot
 import SIS.Tree.TakeUpCasc
-import SIS.Tree.DelStepsLeb
+import SIS.Tree.TakeDeadUp
 import SIS.Tree.DelStepsLinks
 import SIS.Tree.DelStepsUnlinkTree
 import SIS.Tree.DelStepsFullH
 import SIS.Tree.LiveJointL
 import SIS.Tree.DelStepsTree
 import SIS.Tree.DelStepsLive
-import SIS.Tree.DelStepsHolder
+import SIS.Tree.HeightsUpCascR
 import SIS.Tree.LiveDelRoom
 import SIS.Tree.DelStepsHolderLive
 import SIS.Tree.DelStepsGh
@@ -158,20 +162,6 @@ theorem latestQD_snocR (p : Params) (hp : MergeParamsOK p)
   have hLA' := leftAllOK_snoc p hp ts tx hw hL hLA
   exact ⟨⟨invOK_snocR p _ hRL hRT hRI hT hPI hO hLv ts tx hw hr0 hL' hT' hK' hA' hS' hLA' hD',
     hL'.1, hK', hA', hS', hLA'⟩, hD'⟩
-
-/-- `latestQD_snocR` with the operations' cases at `RunOK`. -/
-theorem latestQD_snocU (p : Params) (hp : MergeParamsOK p)
-    (hdel : OpHtDelOKUnder p (RunTreeQ p (LatestQD p)))
-    (hT : OpCaseOK p (RunOK p) (QTree p) AnyOp) (hPI : OpCaseOK p (RunOK p) (QPutInv p) AnyOp)
-    (hO : OpCaseOK p (RunOK p) (QRange p) AnyOp) (hLv : OpCaseOK p (RunOK p) (QLive p) AnyOp)
-    (hDd : OpCaseOK p (RunOK p) (QDead p) AnyOp) :
-    ∀ ts tx, Within p (ts ++ [tx]) → RunTreeQ p (LatestQD p) (treeRun p ts) ts.length →
-      RunLinksOK p (treeRun p (ts ++ [tx])) (ts.length + 1) →
-      TreeAt p (treeRun p (ts ++ [tx])) (ts.length + 1) →
-      LatestQD p (treeRun p (ts ++ [tx])) (ts.length + 1) :=
-  latestQD_snocR p hp hdel (opCaseOK_anti p _ _ (runOK_of_runTreeQD p) _ _ hT)
-    (opCaseOK_anti p _ _ (runOK_of_runTreeQD p) _ _ hPI) (opCaseOK_anti p _ _ (runOK_of_runTreeQD p) _ _ hO)
-    (opCaseOK_anti p _ _ (runOK_of_runTreeQD p) _ _ hLv) (opCaseOK_anti p _ _ (runOK_of_runTreeQD p) _ _ hDd)
 
 set_option maxHeartbeats 800000 in
 /-- TP7, TP10 and TP11, and the latest time's get and scan, for the parameters

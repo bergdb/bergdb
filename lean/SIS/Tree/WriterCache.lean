@@ -49,12 +49,6 @@ theorem writerWP_getNode_extends (x : NodeId) (c : Ctx) (w : W) :
 theorem cache_getNode (x : NodeId) : KeepsCache (getNode x) :=
   fun c w => writerWP_mono (writerWP_getNode_extends x c w) (fun _ _ h => h.1)
 
-theorem cache_fresh : KeepsCache fresh := by
-  intro c w
-  unfold fresh
-  wpSimplify
-  exact cacheExtends_refl w
-
 theorem cache_note (s : String) : KeepsCache (note s) := by
   intro c w
   simp only [note, writerWP_modify]

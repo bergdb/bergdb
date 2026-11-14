@@ -83,20 +83,6 @@ theorem nex_foldlM (B : NodeId) {α β : Type} (xs : List α) (f : β → α →
     rw [List.foldlM_cons, writerWP_bind]
     exact writerWP_mono (hf init a E c w hv hw hn) (fun b v hh => ih b E c v hv hh.1 hh.2)
 
-theorem nex_forIn (B : NodeId) {α β : Type} (xs : List α) (init : β)
-    (f : α → β → M (ForInStep β)) (hf : ∀ a b, KeepsNE B (f a b)) :
-    KeepsNE B (forIn xs init f) := by
-  induction xs generalizing init with
-  | nil => intro E c w hv hw hn; simpa only [List.forIn_nil, writerWP_pure] using ⟨hw, hn⟩
-  | cons a xs ih =>
-    intro E c w hv hw hn
-    rw [List.forIn_cons, writerWP_bind]
-    refine writerWP_mono (hf a init E c w hv hw hn) ?_
-    intro step v hh
-    cases step with
-    | done b => simpa only [writerWP_pure] using hh
-    | yield b => exact ih b E c v hv hh.1 hh.2
-
 theorem nex_descendToSegmentRoot (B : NodeId) (key : Key) (segment : Nat) :
     KeepsNE B (descendToSegmentRoot key segment) := by
   intro E c w hv hw hn

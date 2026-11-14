@@ -49,15 +49,6 @@ theorem liveHolder_unique (N : NodeId → Option KNode) (t : Time) (r B : NodeId
   obtain ⟨h1, h2⟩ := hT.oneLink q cv p cp o hr hp ⟨qn, hq, hl⟩ hpo
   exact ⟨h1, h2⟩
 
-/-- No klong before the transaction names a node of the transaction. -/
-theorem prevHolder_none (N : NodeId → Option KNode) (t : Time) (B : NodeId)
-    (hO : OldBelowN N t B) (o : NodeId) (hB : B ≤ o) :
-    ∀ q qn, N q = some qn → ∀ cv, (cv, o) ∉ (qn.toPrev (t - 1)).live := by
-  intro q qn hq cv hl
-  have hk := ht_live_mem hl
-  have := hO q qn hq cv o hk
-  omega
-
 /-- `takenBack o` keeps the walk when no kept node holds o, o is not the space
 root, and o is a node of the transaction. -/
 theorem ht_takenBack (B : NodeId) (o : NodeId) (c : Ctx) (vr w : W) (n : KNode)

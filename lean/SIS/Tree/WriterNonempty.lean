@@ -86,11 +86,6 @@ theorem nex_base (B : NodeId) (c : Ctx) (x : NodeId) (n : KNode) (h : Good B c x
     | key cv y => simp [prefixAt] at hp
     | del b => simp [prefixAt] at hp
 
-theorem nex_base_of_false (B : NodeId) (c : Ctx) (x : NodeId) (n : KNode) (h : Good B c x n)
-    (hpos : 0 < c.i) (hne : n.ks ≠ []) (hf : (n.firstTime == some c.i) = false) :
-    baseKlongs c.view x ≠ [] :=
-  nex_base B c x n h hpos hne (by rw [hf]; simp)
-
 theorem nex_base_or (B : NodeId) (c : Ctx) (E : List NodeId) (x : NodeId) (n : KNode)
     (h : Good B c x n) (hpos : 0 < c.i) (hr : n.ks = [] → x ∈ E)
     (hf : ¬ (n.firstTime == some c.i) = true) : baseKlongs c.view x ≠ [] ∨ x ∈ E := by
@@ -472,27 +467,6 @@ theorem nex_addKeys (B : NodeId) (x : NodeId) (ins : List (Nat × NodeId)) :
     | wpSimplify
     | neCore
     | split
-
-/-- The loop of a time split changes no state. -/
-theorem nex_replaceOrAdd_same (last : KNode) (ins : List (Nat × NodeId)) (c : Ctx) (w : W) :
-    WriterWP (replaceOrAdd last ins) c w (fun _ v => v = w) := by
-  unfold replaceOrAdd
-  simp only [writerWP_bind, writerWP_read]
-  induction ins generalizing last with
-  | nil => simp only [List.foldlM_nil, writerWP_pure]
-  | cons q ins ih =>
-    rw [List.foldlM_cons, writerWP_bind]
-    split
-    · exact writerWP_throw _ _ _ _
-    · simp only [writerWP_pure]; exact ih _
-    · simp only [writerWP_pure]; exact ih _
-
-theorem nex_replaceOrAdd (B : NodeId) (last : KNode) (ins : List (Nat × NodeId)) :
-    KeepsNE B (replaceOrAdd last ins) := by
-  intro E c w hv hw hn
-  refine writerWP_mono (nex_replaceOrAdd_same last ins c w) ?_
-  rintro r v rfl
-  exact ⟨hw, hn⟩
 
 /-- What is left pending is pending before. -/
 macro "neMem" : tactic => `(tactic| (

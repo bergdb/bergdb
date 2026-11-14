@@ -225,7 +225,6 @@ theorem KNode.deadCount_toPrev_le (n : KNode) (t : Time) (hw : klongsWf n.ks = t
   rw [e1]
   exact Nat.le_trans h (Nat.le_of_eq (by rw [← e2]))
 
-
 /-! ## Pointers do not count -/
 
 theorem KNode.deadCount_map_shape (leaf : Bool) (ks : List Klong) :

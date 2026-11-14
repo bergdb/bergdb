@@ -203,7 +203,6 @@ theorem writerWP_putSegs_new_dead (c : Ctx) (base : View BVal) (key : List Nat) 
       · simp only [writerWP_bind, writerWP_modify, writerWP_pure]
         exact hstep _ rfl rfl rfl rfl rfl
 
-
 set_option maxHeartbeats 800000 in
 /-- `liveCounts_put_newSegs` for the dead klongs: a put of a key pre ++ c0 ::
 tail whose leaf for c0 has no klong of c0 and has room keeps every node the
@@ -368,7 +367,6 @@ theorem dead_put_newSegs (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base
   split <;>
   · simp only [writerWP_bind, writerWP_modify, writerWP_pure]
     exact hrest _ rfl rfl rfl rfl rfl
-
 
 /-- (3b), `QDead`. -/
 theorem deadCase_putNewSegsRoom (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M) :

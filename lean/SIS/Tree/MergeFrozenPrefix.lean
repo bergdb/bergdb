@@ -1,4 +1,7 @@
-import SIS.Tree.MergeSearchOrder
+import SIS.Tree.MergeLiveOrder
+import SIS.Tree.SortedKeys
+import SIS.Tree.KeyWellFormed
+import SIS.Tree.MergeHeightOrigins
 import SIS.Tree.MergeLiveKeys
 
 namespace SIS.Tree
@@ -17,92 +20,6 @@ private theorem prefix_time_map (t : Time) (xs ys : List (Nat × NodeId))
   obtain ⟨rest,hr⟩ := hp
   refine ⟨rest.map (fun q => .key q.1 q.2),?_⟩
   simp only [List.cons_append,← List.map_append,hr]
-
-/-- In a strictly ordered live list, enough keys below a cut force the
-whole initial prefix of that length below the cut. -/
-theorem ordered_take_below (pairs : List (Nat × NodeId)) (m cut : Nat)
-    (hs : pairs.Pairwise (fun a b => a.1 < b.1))
-    (hcount : m ≤ (pairs.filter (fun q => decide (q.1 < cut))).length) :
-    ∀ q ∈ pairs.take m, q.1 < cut := by
-  induction m generalizing pairs with
-  | zero => simp
-  | succ m ih =>
-    cases pairs with
-    | nil => simp at hcount
-    | cons a pairs =>
-      obtain ⟨hhead,htail⟩ := List.pairwise_cons.mp hs
-      by_cases ha : a.1 < cut
-      · have hc : m ≤ (pairs.filter (fun q => decide (q.1 < cut))).length := by
-          simp only [List.filter_cons,ha,decide_true,↓reduceIte,List.length_cons] at hcount
-          omega
-        intro q hq
-        simp only [List.take_succ_cons,List.mem_cons] at hq
-        rcases hq with rfl | hq
-        · exact ha
-        · exact ih pairs htail hc q hq
-      · have hf : pairs.filter (fun q => decide (q.1 < cut)) = [] := by
-          apply List.filter_eq_nil_iff.mpr
-          intro q hq
-          have hqa := hhead q hq
-          simp only [decide_eq_true_eq]
-          omega
-        simp only [List.filter_cons,ha,decide_false,Bool.false_eq_true,↓reduceIte,hf,
-          List.length_nil] at hcount
-        omega
-
-/-- Normalizing a delete preserves an initial list of earlier live keys.
-The result need not keep their old pointers, which may have been shadowed. -/
-theorem KNode.delete_lastVersion_earlier_prefix (n : KNode) (t : Time)
-    (cut cv : Nat) (keys : List Nat) (hn : keys.Nodup)
-    (hcut : ∀ c ∈ keys, c < cut) (hcv : cut ≤ cv)
-    (hk : ∀ c ∈ keys, ∃ y i, (.key c y,i) ∈ n.ks.zipIdx ∧ i ∉ n.lastBitmap) :
-    ∃ pairs : List (Nat × NodeId),
-      (n.lastVersionGivenDel t (bitsUnion n.lastBitmap (n.bitsOf cv))).ks = newKlongs t pairs ∧
-      pairs.Pairwise (fun a b => a.1 < b.1) ∧
-      (pairs.take keys.length).length = keys.length ∧
-      ∀ q ∈ pairs.take keys.length, q.1 < cut := by
-  let del := bitsUnion n.lastBitmap (n.bitsOf cv)
-  obtain ⟨pairs,hpairs,hs⟩ := n.lastVersionGivenDel_order t del
-  have hsub : ∀ c ∈ keys, c ∈ pairs.map Prod.fst := by
-    intro c hc
-    obtain ⟨y,i,hm,hi⟩ := hk c hc
-    have hd := n.delete_preserves_earlier_key c cv y i hm hi (by have := hcut c hc; omega)
-    have hh := (n.lastVersionGivenDel_has_key t del c).mpr ⟨y,i,hm,hd⟩
-    rw [hpairs] at hh
-    simpa only [List.filterMap_cons,List.filterMap_map,Function.comp_def,
-      List.filterMap_eq_map'] using hh
-  have hsubLow : ∀ c ∈ keys,
-      c ∈ (pairs.filter (fun q => decide (q.1 < cut))).map Prod.fst := by
-    intro c hc
-    obtain ⟨q,hq,hqc⟩ := List.mem_map.mp (hsub c hc)
-    refine List.mem_map.mpr ⟨q,List.mem_filter.mpr ⟨hq,?_⟩,hqc⟩
-    simpa only [decide_eq_true_eq,hqc] using hcut c hc
-  have hlen := hn.length_le_of_subset hsub
-  have hcount := hn.length_le_of_subset hsubLow
-  simp only [List.length_map] at hlen hcount
-  exact ⟨pairs,hpairs,hs,by simp only [List.length_take,Nat.min_eq_left hlen],
-    ordered_take_below pairs keys.length cut hs hcount⟩
-
-theorem KNode.delete_lastVersion_sorted_terminal_prefix (n : KNode) (t : Time) (g : Nat)
-    (keys : List Key) (key : Key) (cv : Nat)
-    (hs : sortedKeys (keys ++ [key]) = true)
-    (hw : ∀ a ∈ keys, keyWf a = true) (hkey : keyWf key = true)
-    (hlen : ∀ a ∈ keys, a.length = g+1)
-    (hp : ∀ a ∈ keys, a.take g = key.take g) (hcv : key[g]? = some cv)
-    (hk : ∀ a ∈ keys, ∃ y i, (.key a[g]! y,i) ∈ n.ks.zipIdx ∧ i ∉ n.lastBitmap) :
-    ∃ pairs : List (Nat × NodeId),
-      (n.lastVersionGivenDel t (bitsUnion n.lastBitmap (n.bitsOf cv))).ks = newKlongs t pairs ∧
-      pairs.Pairwise (fun a b => a.1 < b.1) ∧
-      (pairs.take keys.length).length = keys.length ∧
-      ∀ q ∈ pairs.take keys.length, q.1 < cv := by
-  obtain ⟨hnd,hbefore⟩ := terminal_prefix_values_before keys key g cv hs hw hkey hlen hp hcv
-  have he := n.delete_lastVersion_earlier_prefix t cv cv
-    (keys.map (fun a => a[g]!)) hnd hbefore (Nat.le_refl _) (by
-      intro c hc
-      obtain ⟨a,ha,he⟩ := List.mem_map.mp hc
-      subst c
-      exact hk a ha)
-  simpa only [List.length_map] using he
 
 /-- A space split retains m original klongs below its divider in the first
 node. These klongs do not come from the upward write that triggered it. -/
@@ -218,33 +135,5 @@ theorem mergeKlongs_first_protected_fill (p : Params) (hp : MergeParamsOK p)
   have hlen : (left.take p.mergeBelow).length = p.mergeBelow := by
     simp only [List.length_take,Nat.min_eq_left hleft]
   simpa only [hlen] using hc
-
-/-- A space split of a delete's normalized version retains m live keys
-below the earlier cut whenever m such keys survived before the delete. -/
-theorem KNode.halves_delete_earlier_prefix (n : KNode) (t : Time) (p : Params)
-    (hp : MergeParamsOK p) (cut cv : Nat) (keys : List Nat)
-    (hlen : keys.length = p.mergeBelow) (hn : keys.Nodup)
-    (hcut : ∀ c ∈ keys, c < cut) (hcv : cut ≤ cv)
-    (hk : ∀ c ∈ keys, ∃ y i, (.key c y,i) ∈ n.ks.zipIdx ∧ i ∉ n.lastBitmap)
-    (ins : List (Nat × NodeId))
-    (hfull : p.splitAbove < (n.lastVersionGivenDel t (bitsUnion n.lastBitmap (n.bitsOf cv))).size) :
-    ∃ kept : List (Nat × NodeId),
-      kept.length = p.mergeBelow ∧ kept.Pairwise (fun a b => a.1 < b.1) ∧
-      (∀ q ∈ kept, q.1 < cut) ∧
-      (newKlongs t kept).IsPrefix
-        (halves n.leaf t (n.lastVersionGivenDel t (bitsUnion n.lastBitmap (n.bitsOf cv))) ins).1.ks ∧
-      p.mergeBelow ≤
-        (halves n.leaf t (n.lastVersionGivenDel t (bitsUnion n.lastBitmap (n.bitsOf cv))) ins).1.cnt := by
-  obtain ⟨pairs,hpairs,hs,htake,hbefore⟩ :=
-    n.delete_lastVersion_earlier_prefix t cut cv keys hn hcut hcv hk
-  have hnode : n.lastVersionGivenDel t (bitsUnion n.lastBitmap (n.bitsOf cv)) =
-      ⟨n.leaf,newKlongs t pairs⟩ := by
-    change (⟨n.leaf,(n.lastVersionGivenDel t (bitsUnion n.lastBitmap (n.bitsOf cv))).ks⟩ : KNode) = _
-    rw [hpairs]
-  rw [hnode] at hfull ⊢
-  obtain ⟨_,_,hprefix⟩ := halves_first_protected_prefix p hp n.leaf t pairs ins hs hfull
-  rw [hlen] at htake hbefore
-  exact ⟨pairs.take p.mergeBelow,htake,hs.sublist (List.take_sublist _ _),hbefore,
-    hprefix,halves_first_protected_fill p hp n.leaf t pairs ins hs hfull⟩
 
 end SIS.Tree
