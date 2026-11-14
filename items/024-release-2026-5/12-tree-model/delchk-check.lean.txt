@@ -185,5 +185,37 @@ def dKeepOk (p : Params) (txs : List Tx) : List Tx :=
 #eval summD ([1, 2, 3, 4].flatMap (fun seed =>
   let p : Params := ({M := 8, G := 2, H := 1} : Params).withMerges
   runD p (dKeepOk p (dRandRun (seed + 100) 12 25 20))))
+-- many prefixes, few suffixes: segments of one key, whose deletes climb
+def cPrefixes : List (List Nat) := (List.range 12).map (fun i => [64 * i + 56]) ++
+  (List.range 4).map (fun i => [64 * i + 56, 64 * i + 120])
+def cRandKeys (seed n : Nat) : List Key × Nat := Id.run do
+  let mut s := seed
+  let mut ks : List Key := []
+  for _ in [0:n] do
+    s := nextRandD s
+    let pre := cPrefixes.getD ((s / 7) % cPrefixes.length) []
+    let j := (s / 101) % 3
+    ks := ks ++ [pre ++ [j * 64 + 8]]
+  return (ks, s)
+def cRandRun (seed nTx maxOps : Nat) : List Tx := Id.run do
+  let mut s := seed
+  let mut txs : List Tx := []
+  for t in [0:nTx] do
+    s := nextRandD s
+    let (ks, s2) := cRandKeys s (s % maxOps + 1)
+    s := s2
+    let ops := (dSortKeys ks).map (fun k =>
+      if ((k.foldl (· + ·) 0) / 64 + s / 5) % 5 < 2 then Op.del k else Op.put k (t * 1000 + 1))
+    txs := txs ++ [{base := 1000000 * (t + 1), ops := ops}]
+  return txs
+#eval summD ((List.range 8).flatMap (fun seed =>
+  let p : Params := ({M := 8, G := 2, H := 3} : Params).withMerges
+  runD p (dKeepOk p (cRandRun (seed + 300) 14 12))))
+#eval summD ((List.range 8).flatMap (fun seed =>
+  let p : Params := ({M := 8, G := 2, H := 1} : Params).withMerges
+  runD p (dKeepOk p (cRandRun (seed + 400) 14 12))))
+#eval summD ((List.range 8).flatMap (fun seed =>
+  let p : Params := ({M := 8, G := 3, H := 2} : Params).withMerges
+  runD p (dKeepOk p (cRandRun (seed + 500) 14 12))))
 
 end SIS.Tree

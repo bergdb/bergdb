@@ -1429,10 +1429,12 @@ in 024-12's (4) entry (step 4) and section 1's list.
   - `OpDelChkOK p` (`HeightsChkRun.lean`): a delete, from a state that
     the transaction's earlier operations reach, runs as its copy with a
     check at every take-back (`putKvDelChk`, `DelChk.lean`).
-    `12-tree-model/delchk-check.lean.txt`: 7137 deletes, 0 failures.
+    `12-tree-model/delchk-check.lean.txt`: 7987 deletes, 0 failures
+    (7137 of fixed and random runs; 850 of random runs whose keys make
+    one-key segments, so that 77 deletes climb).
     Its weaker form `OpDelChk2OK p` (`HeightsPathFree.lean`) asks the
     same of the copy without `checkPathFree` (`putKvDelChk2`); the first
-    implies it (`opDelChk2OK_of_chk`). The same script, the same 7137
+    implies it (`opDelChk2OK_of_chk`). The same script, the same 7987
     deletes, 0 failures.
   - `TakeBelowFuelDelOK p` (`HeightsFit.lean`): a delete takes back no
     node of height fuel or more that it found at its start.
