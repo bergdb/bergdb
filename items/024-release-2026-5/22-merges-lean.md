@@ -1101,6 +1101,21 @@ not clear (dense trees give more), and if a successful sorted transaction
 can reach H + 2 there, TP32 may still hold, by the deletes that merge
 less, but then it needs a potential, not a bound on the heights.
 
+TP32's heights, the night of 2026-11-13 to 14 (cost; 024-12's (4) entry,
+step 4 (A) to (C)): the writer's heights are now a proved walk, which TP32's
+open premise (`mergeOpBound_of_transientHeight`, a bound on the heights the
+writer reaches) can use.
+- Every key node's height is exact in the writer's overlay at every state
+  of a transaction (`HtInv`), and so after every run (`HeightAllOK`), given
+  `OpDelChkOK` (`treeRun_heightLiveOK_chk`).
+- A split's cascade, a delete's bitmap and a merge each add at most one to
+  the largest cached height (`seenHeight_appendDeleteKlong`,
+  `seenHeight_appendKlongs`, `seenHeight_merge`; `HeightsFuel.lean`,
+  `HeightsFuelMerge.lean`). The bound for a whole operation is not proved.
+- Runs (`/Users/f/fl/bench/2026-11-13/cost/fit/HeightsOp.lean`): in 18201
+  operations of 316 runs within reach, the nodes an operation made were at
+  most one above the nodes it found, in every segment.
+
 The writer's tree (asked by the coordinator at 12:55, ahead of TP32):
 `WriterTreeOK` (`WriterTree.lean`), the writer's nodes over P@(i - 1), read
 at time i from its super root, are a tree: every live klong is a link (in
