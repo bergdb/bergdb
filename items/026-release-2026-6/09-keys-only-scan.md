@@ -1,7 +1,7 @@
 # 026-09. Reclaim's scan without the values it does not rewrite
 
-Created 2026-11-13 by Frans Lundberg. Status: made on a branch,
-measured and gated; to land (Q1).
+Created 2026-11-13 by Frans Lundberg. Status: done (2026-11-14): Q1 to
+Q4 decided yes, landed on `main` as `c7c7a02b`. Its timing: 026-15.
 
 For release 2026.6: option (b) of 024-34's Q34-1. A reclaim step's scan
 does not follow a value pointer whose stream position is at the cut
@@ -439,6 +439,11 @@ that must not change the records, and for the C clone (022). Q3.
 Each is decided here by its recommendation, so that the work goes on;
 Frans may overturn it.
 
+**Decided, Q1 to Q4** (Frans, 2026-11-14, 11:35, after the gain, the
+cost and the Lean model were explained: "Yes, land it. Plan a 10M timing
+run for later today"): land, G5's limit the twin's plus 70, the new
+digests, `GetMany.valuesBefore` public. The time at 10M: 026-15.
+
 * **Q1. Land 026-09?** The numbers (sections 6.1 to 6.4): the steps'
   loads fall by 44 to 60 % and the steps by 14 to 20 %, at 1M and 10M
   keys. At 1M the stream kept and the stream written are the same
@@ -502,3 +507,8 @@ the full set on `8e0de02b`, before-commit on `9f2915fb`. Q1 to Q4
 /Users/f/fl/bench/2026-11-13/kscan/runs/; the worktrees kscan/before
 and kscan/after (branches `026-09-before`, `026-09-after`) are for
 measuring only, not to land.
+
+2026-11-14. Q1 to Q4 decided yes (Frans, 11:35). Merged with `main`
+twice (`542927c5`: before-commit, level 3 full with 35 traces and C-CUT
+0 of 794, count gates OK; `c7c7a02b`: before-commit OK) and landed as a
+fast-forward by coord-1114.
