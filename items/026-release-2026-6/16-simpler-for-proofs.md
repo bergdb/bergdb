@@ -1,6 +1,6 @@
 # 026-16. Simpler algorithms for the remaining proofs: a study
 
-Created 2026-11-14 by Frans Lundberg. Status: done (a study for Frans).
+Created 2026-11-14 by Frans Lundberg. Status: done; F1 accepted (Frans, 13:46), its work is 025-03.
 
 What could change in BergDB's algorithms to make the Lean premises that
 are still open simpler to prove, without significantly degrading the
@@ -21,6 +21,11 @@ study could look at the whole model. The reasoning is that we want to
 reach a fully proven model first. When we have that, we can extend it a
 step at a time. And simplify it a step at a time." Changes to the stream
 format may be proposed (marked as such; 026-12).
+
+**Decided.** Frans, 2026-11-14, 13:46, after G, H, the height limit and
+the moment of 024-22's MF1 were explained to him: "OK, good; I accept
+the recommendation F1." (section 4.2). The work is 025-03; the rest of
+the recommendation (section 8) is not decided.
 
 Lean and Java names are those of commit `7ced25db`. A cleanup that
 renames proof routes may land after it. Nothing was built or run for
