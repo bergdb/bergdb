@@ -77,7 +77,10 @@ induction's runs, every run within reach (`delStepsOKF3_of_within`):
   merges on and Java's theta at node sizes 8, 10, 14 and 30, with overwrites and pseudo-random
   mixes of puts and deletes in one and two segments): `WDeadOK` held at all 11,927 states
   between operations, and `DeadAllOK` at all 1512 run ends (18,243 key nodes, 2694 at theta,
-  none above). Also TP39 in `treetest` and on Java's traces (C-T6), for the key nodes reached.
+  none above). Inside deletes too, after every leaf bitmap, merge, step of root collapse and
+  stop node step: at 4069 states with Java's theta, no node the writer has written above theta,
+  at 2702 of them one at theta (`fuel-inside-check.lean.txt`). Also TP39 in `treetest` and on
+  Java's traces (C-T6), for the key nodes reached.
 - `hchk`, `OpDelChk2OK`: a delete runs as its copy with the take-backs' checks, but the path's
   (`checkPathFree`, proved) (cost, the heights). Evidence: the same result and state at 7987
   deletes, 6828 of 310 runs, 309 of 8 random runs in several segments and 850 of random runs

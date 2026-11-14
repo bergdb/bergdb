@@ -25,6 +25,11 @@ root collapse and 937 after the stop node's step. Every one of these 937 stop
 nodes was a segment leaf: the upward delete never stopped at an inner node
 (`inner`, its bitmap, and `leb`, LE-b, counted apart: 0 and 0). None failed,
 and every one fits p.fuel - 1, the bound between operations, too.
+
+It also checks the dead klongs' bound (`WDeadN`, the conjunct that `QDead` of
+(4) needs inside the delete's steps) at every node of the overlay that the
+writer reads, where theta is not 0: at the 4069 states with Java's theta, no
+node above theta, and at 2702 of them a node at theta.
 -/
 import SIS.Tree.MergeProofBundle
 
@@ -99,8 +104,14 @@ def fitNote (c : Ctx) (base : View BVal) (w : W) (site : String) : String :=
   let N := wNode c.p base w
   let R := reachB N c.i 100000 [w.top.rootKey] []
   let d := R.foldl (fun m x => max m (segDepthF N c.i x)) 0
+  -- the dead klongs' bound (`WDeadN`) at every node of the overlay the writer reads
+  let dm := w.nodes.foldl (fun m (x, _) => match N x with
+    | some n => max m n.deadCount
+    | none => m) 0
   "fit:" ++ site ++ ":" ++ (if d ≤ c.p.fuel then "ok" else "FAIL") ++
-    (if d + 1 ≤ c.p.fuel then ":strict" else ":loose")
+    (if d + 1 ≤ c.p.fuel then ":strict" else ":loose") ++
+    (if c.p.theta == 0 then "" else if dm ≤ c.p.theta then
+      (if dm == c.p.theta then ":dead-ok:at" else ":dead-ok") else ":DEAD-OVER")
 
 /-- The check at the upward loop's end state w2: the writer's tree there is a
 tree and every link of a reached node or of a chain node names an id below the
@@ -293,7 +304,7 @@ def runFit (p : Params) (all : List Tx) : List String :=
 
 def summF (l : List String) : String :=
   let cnt (s : String) := (l.filter (fun x => (x.splitOn s).length > 1)).length
-  s!"checks {cnt "fit:"}: leaf {cnt "fit:leaf"} merge {cnt "fit:merge"} collapse {cnt "fit:collapse"} stop {cnt "fit:stop"} leb {cnt "fit:leb"} inner {cnt "fit:inner"}; FAIL {cnt "FAIL"} loose {cnt ":loose"} (leaf {cnt "fit:leaf:ok:loose"} merge {cnt "fit:merge:ok:loose"} collapse {cnt "fit:collapse:ok:loose"} stop {cnt "fit:stop:ok:loose"}); fails {(l.filter (fun x => (x.splitOn "FAIL").length > 1)).take 3} other {(l.filter (fun s => s.startsWith "ERR" || s.startsWith "NOT" || s.startsWith "not" || s.startsWith "toperr")).take 3}"
+  s!"checks {cnt "fit:"}: leaf {cnt "fit:leaf"} merge {cnt "fit:merge"} collapse {cnt "fit:collapse"} stop {cnt "fit:stop"} leb {cnt "fit:leb"} inner {cnt "fit:inner"}; dead checked {cnt ":dead-ok"} (one at theta {cnt ":dead-ok:at"}) over {cnt "DEAD-OVER"}; FAIL {cnt "FAIL"} loose {cnt ":loose"} (leaf {cnt "fit:leaf:ok:loose"} merge {cnt "fit:merge:ok:loose"} collapse {cnt "fit:collapse:ok:loose"} stop {cnt "fit:stop:ok:loose"}); fails {(l.filter (fun x => (x.splitOn "FAIL").length > 1)).take 3} other {(l.filter (fun s => s.startsWith "ERR" || s.startsWith "NOT" || s.startsWith "not" || s.startsWith "toperr")).take 3}"
 
 end SIS.Tree
 
