@@ -47,7 +47,8 @@ state between operations comes from the heights (cost's `txSegFitsOK_of_takeBelo
 `invGetScanOK_merges` (`LatestTop.lean`) is the earlier form, with `DeadAllOK` at every run, the
 take-back's delete steps (`DelStepsJ2OKF3`), the full-leaf replaceRoot and the fuel as premises.
 The premises, each with what it says, who owns it, and its test evidence; they were 17 until
-02:20, when the stop node's cascade split into three smaller ones, its root case proved:
+02:20, when the stop node's cascade (one premise) was proved from three smaller ones about the
+state after the upward loop and the fuel after the cascade:
 
 - `d2`, `d3c`, `d4` (`QDead`): an operation keeps every key node that the writer reads at or
   below theta dead klongs: a put into a full leaf (2), a put that makes new segments below a
@@ -83,17 +84,19 @@ The premises, each with what it says, who owns it, and its test evidence; they w
   states between operations of runs with merges and collapses
   (`12-tree-model/live-counts-check.lean.txt`), and at 8843 more with Java's theta on
   (`dead-all-check.lean.txt`).
-- The upward delete's stop node, for the reading (putinv; `delStepsOKF3_of_open6`). Its cascade
-  at the space root is proved (`writerWP_upCasc_root_delF3`); left are:
-  - `hBel`, `UpCascBelowOKF3`: the cascade at a stop node below the space root (putinv);
-  - `hL`, `UpUnlinkLinksOK`: at the loop's end, links below the next id and klongs well formed
-    (putinv);
+- The upward delete's stop node, for the reading (putinv; `delStepsOKF3_of_open7`). Its cascade
+  is proved, at the space root and below it (`writerWP_upCasc_root_delF3`,
+  `upCascBelowOKF3_of`), from the state after the upward loop; left are:
+  - `hU`, `UpUnlinkOK`: after the upward loop, the writer's tree is a tree with its walk's
+    ranges (putinv, the take-back);
+  - `hL`, `UpUnlinkLinksOK`: after the upward loop, links below the next id and klongs well
+    formed (putinv);
   - `hFit`, `UpCascFitsOK`: the state after the stop node's cascade fits the fuel (cost);
   - `hULb`, `UpLebOKF3`: the stop node's LE-b (putinv).
-  Evidence: putinv's check UpUnlinkOK held at all 2529 upward-loop end states (1385 with a
+  Evidence for `hU` and `hL`: they held at all 2529 upward-loop end states (1385 with a
   take-back in the loop, 954 with an unlink to the previous version, 173 cascading at the stop
-  node, 818 at the space root): the writer's tree, its links below the next id, its ranges, its
-  reached nodes untaken and well formed (`12-tree-model/up-unlink-check.lean.txt`).
+  node, 818 at the space root), with the reached nodes untaken there too
+  (`12-tree-model/up-unlink-check.lean.txt`).
 - `hFits`, `DelFullFitsOK`: the state after a delete's full leaf splits fits the fuel (cost).
   Evidence: as SegFits' above.
 - `hMS`, `MergeStepOKF3`: a merge keeps the nodes reached untaken (proved,
@@ -102,7 +105,7 @@ The premises, each with what it says, who owns it, and its test evidence; they w
   (cost, the heights), and `CollapseUnlinkOK` (putinv, not proved). Evidence:
   `CollapseUnlinkOK` held at all 96 replaceRoots at a segment root, 32 with a full leaf.
 - `hUCJ`, `hULbJ`: the upward delete's stop node, its cascade and its LE-b, for the take-back
-  (putinv; `delStepsJ2OKF3_of_openR`). Evidence: as the reading's (UpUnlinkOK).
+  (putinv; `delStepsJ2OKF3_of_openR`). Evidence: as `hU`'s.
 - `hMF`: at every state between operations, every made-for id is below the transaction's
   first id (putinv). Evidence: held at all 44,312 states between operations of runs within
   reach with the merges on (cost's `DelChk` families and putinv's, M 8 and 10;
@@ -132,9 +135,9 @@ Follow-ups, for a later spare-token run (latest, 02:20):
     below the fuel (`ht_descendLte_height`).
   - `t4`, `i4`, `r4` (cost): the writer's tree, `PutInv` and the ranges through the merge loop
     and root collapse, on the reading's (4) route.
-  - `hBel`, `hL`, `hULb`, `hUCJ`, `hULbJ` (putinv): the stop node's cascade below the space
-    root and LE-b, for the reading and the take-back (the root's cascade is proved for the
-    reading, `writerWP_upCasc_root_delF3`).
+  - `hU`, `hL`, `hULb`, `hUCJ`, `hULbJ` (putinv): the state after the upward loop, and the stop
+    node's cascade and LE-b for the take-back and its LE-b for the reading (the cascade is
+    proved for the reading).
   - `hFits`, `hFit`, and the fuel parts of `hMS` and `hCo` (cost): step 4 (B), the heights
     inside an operation.
   - `CollapseUnlinkOK` in `hCo`, and `hMF` (putinv): from the overlay's books
