@@ -13,8 +13,8 @@ a height below the fuel. The argument, the doomed transaction:
   `TakeBelowFuelOK` excludes.
 
 `TakeBelowFuelOK`'s reason is (C)'s part 1 (`ht_descendLte_height`): every node
-taken back is on a descent that succeeds, or a sibling of a node on it, and
-such a descent passes heights below the fuel only.
+an operation finds and takes back is in a segment tree the operation descended
+through, and such a descent passes heights below the fuel only.
 -/
 import SIS.Tree.HeightsChkRun
 import SIS.Tree.HeightsFuelDescent
@@ -27,8 +27,10 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
-/-- Every node an operation takes back, from a state that the transaction's
-earlier operations reach, has a height below the fuel (named premise). -/
+/-- Every node an operation takes back that it found (cached, not taken back,
+at its start), from a state that the transaction's earlier operations reach,
+has a height below the fuel (named premise). A root that the operation itself
+made and took back (024-22, MF1) is not asked. -/
 def TakeBelowFuelOK (p : Params) : Prop :=
   ∀ ts tx, Within p (ts ++ [tx]) → ∀ z top,
     lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z →
@@ -36,7 +38,7 @@ def TakeBelowFuelOK (p : Params) : Prop :=
     ∀ pre op post, tx.ops = pre ++ op :: post →
     ∀ r w, (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
     ∀ a v, putKv op (ctxOf p ts) w = .ok (a, v) →
-    ∀ x g h, (x, g, h) ∈ v.gh → w.taken.contains x = false → v.taken.contains x = true →
+    ∀ x g h, (x, g, h) ∈ w.gh → w.taken.contains x = false → v.taken.contains x = true →
       h < p.fuel
 
 /-! ## Fields that only grow -/
@@ -250,10 +252,7 @@ theorem txSegFitsOK_of_takeBelowR (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal
     have hmu : (x, g, h) ∈ u.gh := by
       letI := ghHasFields (x, g, h)
       exact fields_ops rest (ctxOf p ts) w hm r3 u hrest
-    have hmv : (x, g, h) ∈ v.gh := by
-      letI := ghHasFields (x, g, h)
-      exact fields_putKv op (ctxOf p ts) u hmu a v ho'
-    have := htb ts tx hw z top hz htop pre' op post' hs' r' u hp' a v ho' x g h hmv hu hv
+    have := htb ts tx hw z top hz htop pre' op post' hs' r' u hp' a v ho' x g h hmu hu hv
     omega
   -- SegFits from the heights
   have htimes : StructTimesLE (treeRun p ts) ts.length := treeRun_timesLE p ts
