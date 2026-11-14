@@ -31,6 +31,8 @@ def OpHtDelOK (p : Params) : Prop :=
     topOf p (ctxOf p ts).view z = .ok top →
     ∀ pre key post, tx.ops = pre ++ Op.del key :: post →
     ∀ r w, (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
+    ViewHtOK (htOracleOf p (treeRun p ts)) tx.base (ctxOf p ts) →
+    ViewKlongsWf p (ctxOf p ts).view → Book tx.base (ctxOf p ts) w → WriterKlongsWf w →
     HtInv (htOracleOf p (treeRun p ts)) tx.base (ctxOf p ts) w →
     WriterWP (putKv (.del key)) (ctxOf p ts) w
       (fun _ v => HtInv (htOracleOf p (treeRun p ts)) tx.base (ctxOf p ts) v)
@@ -150,7 +152,8 @@ theorem ht_reached (p : Params) (hM : 2 ≤ p.M) (hdel : OpHtDelOK p) (ts : List
             exact (ht_putKv_put tx.base (appendFrameOK tx.base) key hv0 (ctxOf p ts) w1 hvo
               (by simp [ctxOf]) hbk.book hI1 hM hB.wf hbk.klongs a w2 h2).2.1
           | del key =>
-            exact hdel ts tx hw z top hz htop pre' key post hsplit' r1 w1 h1 hI1 a w2 h2
+            exact hdel ts tx hw z top hz htop pre' key post hsplit' r1 w1 h1 hvo hB.wf hbk.book
+              hbk.klongs hI1 a w2 h2
 
 /-- A successful transaction of the writer: the overlay's nodes not taken back
 have their live children one height below them (`HtCache`). -/

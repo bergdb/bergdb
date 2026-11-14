@@ -1748,16 +1748,38 @@ and its status:
       `replaceRoot`), that gives `HolderAt` at a made root. putinv's
       TakeJ2 with CollGetInv (TreeOK) is that J, through
       `liveHolder_unique`.
-    - Left: the merge's take-back and the upward delete's loop. Between
-      the parent's change and the take-back, putinv's TakeJ2 and TreeOK
-      do not hold (putinv, 23:45). These two carry the holder fact
-      themselves, from the function's start, through the parent's change
-      and its cascade: the walk's "children not taken back" is
-      generalized to "not taken back and not among the nodes the
-      operation takes back". Then `mergeUp`, `afterDelete`, the upward
-      delete (tp7's mis-heighted retarget at the stop node, killed by the
-      stop node's delete) and the delete operation. Then the run
-      induction (as tp7's open (a) for the kinds), (B) and (C).
+    - The run (cost, 01:00). TP7's (b) after every run is
+      `treeRun_heightLiveOK_family` (`HeightsDelRun.lean`), the form
+      latest's assembly takes (`invPreserved_of_open_htDel` puts it in
+      `invPreserved_of_open`). Proved: the put; the operations of a
+      transaction (`ht_reached`) and its end (`execW_htCache`); the run
+      induction (`treeRun_heightAllOK`); the delete's descent
+      (`ht_putKv_del`, `ht_putSegs_del`, `ht_setNode_del`,
+      `ht_setValue_del`); the delete that leaves its leaf a live klong
+      (`ht_deleteUpward`), with the merges (`ht_merge`, `ht_mergeUp`) and
+      root collapse after them (`ht_afterDelete`).
+    - Named premises (Option 1), in `HtDelFamily` for an invariant J of
+      the take-back's (putinv's TakeJ2 with TreeOK) that holds at every
+      state before a delete (`HtJStart`):
+      - J is kept by the steps between the take-backs: `getNode`, the
+        descents, `appendDeleteKlong`, `merge`, `takeBackRoot`,
+        `replaceRoot`, `pathClear`, `findRoot`, `setNode`.
+      - The merge's holder, `MergeTailHoldOK`: from a state that meets J,
+        the merge's tail runs as its copy with a check before each
+        take-back (`mergeTailChk`, `checkFree`: no kept node holds the
+        node, now or before the transaction; it is not the space root and
+        no node of the view). The check gives `NoLiveHolder` where the
+        merge takes a node back.
+      - The root's holder (`rootHold`, for `ht_collapseRoot`).
+      - The upward delete that empties its leaf (`upEmpty`): the climb,
+        the take-back loop and the stop node. Its loop retargets a parent
+        to the node the taken node replaced, of another height when that
+        node was a root made by a space split; the parent is taken back
+        or unlinked next, or is the stop node, whose delete kills the
+        klong (tp7's mis-heighted retarget). The walk then needs an
+        exemption for that one klong until the stop node's delete.
+    - Left: `upEmpty` with that exemption, and the J family from putinv's
+      walk. Then (B) and (C).
   - (5) `DelNoLeafCase`, a delete of a key with no leaf: proved,
     `opGetCaseOK_delNoLeaf`. It changes no reading: the writer's walk
     stops at the first segment that is not there and only reads

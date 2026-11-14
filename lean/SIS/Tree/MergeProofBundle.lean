@@ -322,3 +322,6 @@ import SIS.Tree.DelStepsEmptyRoot
 import SIS.Tree.TakeDelMergeF4
 import SIS.Tree.DelStepsBookK
 import SIS.Tree.TakeDelStepsF4
+import SIS.Tree.WriterHeightsMerge
+import SIS.Tree.WriterHeightsDelete
+import SIS.Tree.HeightsDelRun
