@@ -30,6 +30,7 @@ import SIS.Tree.DeadCases
 import SIS.Tree.DeadNewSegFull
 import SIS.Tree.TakeReplaceFull
 import SIS.Tree.HeightsFit
+import SIS.Tree.HeightsUnder
 import SIS.Tree.DelStepsCascRoot
 import SIS.Tree.TakeUpCasc
 
@@ -39,13 +40,64 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
+/-- `heightAllOK_snoc` with the delete side of the heights only at the runs that
+R speaks of (cost's `OpHtDelOKUnder`, `execW_htCacheU`). -/
+theorem heightAllOK_snocU (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Time → Prop)
+    (hdel : OpHtDelOKUnder p R) (ts : List Tx) (tx : Tx)
+    (hw : Within p (ts ++ [tx])) (hr : R (treeRun p ts) ts.length)
+    (hL : RunLinksOK p (treeRun p ts) ts.length)
+    (hK : KindsAllOK p (treeRun p ts)) (hA : HeightAllOK p (treeRun p ts) ts.length) :
+    HeightAllOK p (treeRun p (ts ++ [tx])) (ts.length + 1) := by
+  obtain ⟨hP', hH, hN⟩ := hL
+  obtain ⟨bs, w, he0⟩ := execW_success_of_within_snoc p ts tx hw
+  have hfresh : ∀ q ∈ treeRun p ts, q.1 < tx.base := by
+    have := (hw.2 ts.length (by simp)).1
+    simpa using this
+  have htimes : StructTimesLE (treeRun p ts) (ts.length + 1 - 1) := treeRun_timesLE p ts
+  have hl := viewLinksOK_of p _ _ tx.base hfresh htimes hP' hN
+  have hrun : runOps p tx.base tx.ops (ts.length + 1)
+      (view (treeSpec p) (treeRun p ts) ts.length) = .ok (bs, w) := he0
+  have he : execW p tx (ts.length + 1)
+      (view (treeSpec p) (treeRun p ts) (ts.length + 1 - 1)) = .ok (bs, w) := hrun
+  have hbook := execW_book p tx (ts.length + 1) _ bs w
+    (viewIdsBelow_view p (treeRun p ts) (ts.length + 1 - 1) tx.base hfresh) he
+  have hHt := execW_htCacheU p hM R hdel ts tx hw hr ⟨hP', hH, hN⟩ hK hA bs w he0
+  have hA' : HeightAllOK p (treeRun p ts) (ts.length + 1 - 1) := by simpa using hA
+  have hstep := heightAllOK_step p _ (ts.length + 1) tx bs w (by omega) hfresh
+    htimes (treeRun_root_level p _) hH hl hP' he hbook hA' hHt
+  rw [treeRun_snoc_changes p ts tx bs w hrun]
+  exact hstep
+
+/-- `latestQD_snoc` with the delete side of the heights only at the runs of the
+induction. -/
+theorem latestQD_snocU (p : Params) (hp : MergeParamsOK p)
+    (hdel : OpHtDelOKUnder p (RunTreeQ p (LatestQD p)))
+    (hT : OpCaseOK p (RunOK p) (QTree p) AnyOp) (hPI : OpCaseOK p (RunOK p) (QPutInv p) AnyOp)
+    (hO : OpCaseOK p (RunOK p) (QRange p) AnyOp) (hLv : OpCaseOK p (RunOK p) (QLive p) AnyOp)
+    (hDd : OpCaseOK p (RunOK p) (QDead p) AnyOp) :
+    ∀ ts tx, Within p (ts ++ [tx]) → RunTreeQ p (LatestQD p) (treeRun p ts) ts.length →
+      RunLinksOK p (treeRun p (ts ++ [tx])) (ts.length + 1) →
+      TreeAt p (treeRun p (ts ++ [tx])) (ts.length + 1) →
+      LatestQD p (treeRun p (ts ++ [tx])) (ts.length + 1) := by
+  intro ts tx hw hr hL' hT'
+  have hM := mergeParamsOK_M p hp
+  have hr0 := hr
+  obtain ⟨hL, hTA, ⟨hI, _, hK, hA, hS, hLA⟩, hD⟩ := hr
+  have hD' := deadAllOK_snoc p hT hPI hO hDd ts tx hw ⟨hL, hTA, hI⟩ hD
+  have hK' := kindsAllOK_snoc p (by omega) ts tx hw hL hK
+  have hA' := heightAllOK_snocU p (by omega) _ hdel ts tx hw hr0 hL hK hA
+  have hS' := sizeOK_snoc p hp ts tx hw hL hS
+  have hLA' := leftAllOK_snoc p hp ts tx hw hL hLA
+  exact ⟨⟨invOK_snoc p hT hPI hO hLv ts tx hw ⟨hL, hTA, hI⟩ hL' hT' hK' hA' hS' hLA' hD',
+    hL'.1, hK', hA', hS', hLA'⟩, hD'⟩
+
 set_option maxHeartbeats 800000 in
 /-- TP7, TP10 and TP11, and the latest time's get and scan, for the parameters
 of `MergeParamsOK`, from the flat list of named premises (section 1 of
 024-12). -/
 theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     (hth : 2 ≤ p.theta ∨ p.theta = 0)
-    (hchk : OpDelChkOK p)
+    (hchk : OpDelChk2OK p)
     (htb : TakeBelowFuelDelOK p)
     (d4 : OpCaseOK p (RunOK p) (QDead p) DelMergeCase)
     (t4 : OpCaseOK p (RunOK p) (QTree p) DelMergeCase)
@@ -102,14 +154,14 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
   have hRK' : ∀ P t, RunTreeQ p (LatestQD p) P t → KindsAllOK p P := fun _ _ h => h.2.2.1.2.2.1
   have hRH' : ∀ P t, RunTreeQ p (LatestQD p) P t → HeightAllOK p P t :=
     fun _ _ h => h.2.2.1.2.2.2.1
-  -- the fuel at every state between operations (cost's `txSegFitsOK_of_takeBelowDelR`)
+  -- the fuel at every state between operations (cost's `txSegFitsOK_of_takeBelowDelR2U`)
   have hfitQ : TxSegFitsOK p (RunTreeQ p (LatestQD p)) :=
-    txSegFitsOK_of_takeBelowDelR p (by omega) _ hRL' hRK' hRH' hchk htb
+    txSegFitsOK_of_takeBelowDelR2U p (by omega) _ hRP' hRL' hRK' hRH' hchk htb
   have hT' := opCaseOK_anti p _ _ hR _ _ hT
   have hPI' := opCaseOK_anti p _ _ hR _ _ hPI
   have hO' := opCaseOK_anti p _ _ hR _ _ hO
   have hJ := runTreeQ_of_mergesF4S p (by omega) hsa hcap hm (LatestQD p) (latestQD_init p (by omega))
-    (latestQD_snoc p hp (opHtDelOK_of_chk p hchk) hT hPI hO hLv hDd)
+    (latestQD_snocU p hp (opHtDelOKUnder_of_chk2 p (by omega) _ hRP' hRK' hchk) hT hPI hO hLv hDd)
     (fun _ _ h => h.1.2.1) (fun _ _ h => h.1.2.2.1)
     (opTreeOKUnder_of_cases p _ hRL' hRT' hRI' hT' hPI' hO')
     (putInvStateOK_of_cases p _ hRL' hRT' hRI' hT' hPI' hO')

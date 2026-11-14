@@ -65,10 +65,11 @@ for the reading was proved from three smaller premises; 16 at 02:28, when the de
   mixes of puts and deletes in one and two segments): `WDeadOK` held at all 11,927 states
   between operations, and `DeadAllOK` at all 1512 run ends (18,243 key nodes, 2694 at theta,
   none above). Also TP39 in `treetest` and on Java's traces (C-T6), for the key nodes reached.
-- `hchk`, `OpDelChkOK`: a delete runs as its copy with the take-backs' checks (cost, the
-  heights). Evidence: the same result and state at 6828 deletes of 310 runs, 160 with a
-  take-back in the upward delete's loop, 2305 with a merge's, 453 with root collapse's, and
-  309 deletes of 8 random runs in several segments (`12-tree-model/delchk-check.lean.txt`).
+- `hchk`, `OpDelChk2OK`: a delete runs as its copy with the take-backs' checks, but the path's
+  (`checkPathFree`, proved) (cost, the heights). Evidence: the same result and state at 7137
+  deletes, 6828 of 310 runs and 309 of 8 random runs in several segments, 160 with a take-back
+  in the upward delete's loop, 2305 with a merge's, 453 with root collapse's
+  (`12-tree-model/delchk-check.lean.txt`).
 - `htb`, `TakeBelowFuelDelOK`: every node that a delete takes back, of those it found at its
   start, has a cached height below the fuel (cost; a put takes nothing back, proved). With the
   heights it gives that every state between operations fits the fuel
@@ -1851,6 +1852,10 @@ and its status:
       `deadCase_putLeafFull` (`DeadPutFull.lean`) and `deadCase_putNewSegFull`
       (`DeadNewSegFull.lean`). The flat theorem takes `hth` in place of `d2`
       and `d3c`, and putinv's `delStepsJ2OKF3_of_openR2` in place of `hUCJ`.
+    - `hchk` is cost's `OpDelChk2OK` (latest, 02:31): one check fewer than
+      `OpDelChkOK`, through cost's `HeightsUnder.lean` (`opHtDelOKUnder_of_chk2`,
+      `txSegFitsOK_of_takeBelowDelR2U`), with the run's facts from `LatestQD`
+      inside the induction (`heightAllOK_snocU`, `latestQD_snocU`).
       (02:08), with the run's links, kinds and heights from `LatestQD`
       inside the induction, and every run within reach after it.
     - Not done, and why (latest, 02:05):
