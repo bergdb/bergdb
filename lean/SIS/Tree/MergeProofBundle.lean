@@ -176,6 +176,8 @@ import SIS.Tree.LiveEdges
 import SIS.Tree.LiveSteps
 import SIS.Tree.LiveEdgesBase
 import SIS.Tree.LiveChain
+import SIS.Tree.LivePutFull
+import SIS.Tree.LiveTP7
 import SIS.Tree.WriterTreeInnerHalves
 import SIS.Tree.WriterTreeSpaceSpace
 import SIS.Tree.WriterTreeDelFull
