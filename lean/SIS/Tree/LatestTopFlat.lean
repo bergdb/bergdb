@@ -1,7 +1,8 @@
 /-
 The top theorem with the flattest list of named premises (bergdb 024-12):
 `invGetScanOK_merges_flat`. It is `invGetScanOK_merges` with its premises
-taken apart (9 named premises left, with `hp` and `hth` on the parameters):
+taken apart (10 named premises left, with `hp` and `hth` on the parameters;
+`hMS` and `hCo` split by owner, `hMSF`, `hCoF` and `hCoU`):
 
 * the bound on dead klongs at every run (`hD`) comes from the operations: every
   put keeps it, for theta 0 or at least 2 (`hth`; `deadCase_putLeafRoom`,
@@ -64,12 +65,39 @@ import SIS.Tree.LiveDelRoom
 import SIS.Tree.DelStepsHolderLive
 import SIS.Tree.DelStepsGh
 import SIS.Tree.LiveDelNoop
+import SIS.Tree.TakeMergeRootU
 
 set_option autoImplicit false
 
 namespace SIS.Tree
 
 open SIS SIS.Check
+
+/-- `MergeStepOKF3`'s fuel part (cost's, the heights): the state after a merge
+of the loop fits the fuel; its untaken part is proved
+(`mergeStepOKF3_of_segFits`). -/
+def MergeFitsOK (c : Ctx) (base : View BVal) (f : Nat) : Prop :=
+  ∀ (w0 : W) (key : Key) (x q : NodeId) (d : Nat) (v : W) (qn xn : KNode)
+    (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode),
+    DelInvF c base w0 key f v → PathOK c v d X K Nn → 0 < d → (v.path[d]?).map (·.2) = some x →
+    (v.path[d - 1]?).map (·.2) = some q → v.nodes.lookup q = some qn → qn.leaf = false →
+    v.nodes.lookup x = some xn → xn.cnt < c.p.mergeBelow →
+    WriterWP (merge x d) c v (fun _ v' => SegFits (wNode c.p base v') c.i (f - 1) v'.top.rootKey)
+
+/-- `CollapseStepOKF4`'s fuel part (cost's, the heights): the state after a
+replaceRoot at a segment root fits the fuel. -/
+def CollapseFitsOK (c : Ctx) (base : View BVal) (f : Nat) : Prop :=
+  ∀ w0 v x n only, CollGetInvF c base w0 v f → RangeOrder (wNode c.p base v) c.i v.top.rootKey →
+    SegDesc c base x v → v.nodes.lookup x = some n → n.leaf = false → n.firstTime ≠ some c.i →
+    n.onlyLiveKlong = some only → n.cv? only = some 0 →
+    WriterWP (replaceRoot x (v.path.length - 1) only) c v
+      (fun _ v' => SegFits (wNode c.p base v') c.i (f - 1) v'.top.rootKey)
+
+/-- `CollapseStepOKF4`'s unlink part (putinv's): `CollapseUnlinkOK` at every
+replaceRoot at a segment root. -/
+def CollapseUnlinkAllOK (c : Ctx) (base : View BVal) (f : Nat) : Prop :=
+  ∀ w0 v x n, CollGetInvF c base w0 v f → SegDesc c base x v → v.nodes.lookup x = some n →
+    n.leaf = false → n.firstTime ≠ some c.i → CollapseUnlinkOK c base v x n
 
 /-- `DelStepsOKF3` at the runs of R from it at the runs of R', where every run
 within reach is one of R'. -/
@@ -168,8 +196,9 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     (l4 : OpCaseOK p (RunOK p) (QLive p) DelMergeOpenCase)
     (hU : ∀ ts, UpUnlinkTreeOK (ctxOf p ts) (viewOf (treeRun p ts)))
     (hHL : ∀ ts, UpHolderLiveRunOK (ctxOf p ts) (viewOf (treeRun p ts)))
-    (hMS : ∀ ts, MergeStepOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hCo : ∀ ts, CollapseStepOKF4 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hMSF : ∀ ts, MergeFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hCoF : ∀ ts, CollapseFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hCoU : ∀ ts, CollapseUnlinkAllOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
     (hMF : StateOK p (RunOK p) (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base)) :
     InvPreserved p ∧ GetOK p ∧ ScanOK p ∧ LatestGetOK p ∧ LatestScanOK p := by
   have hp' := hp
@@ -180,6 +209,11 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
   have hsa : 2 ≤ p.splitAbove := by omega
   have hcap : 1 ≤ p.mergeMax := by omega
   have hRL : ∀ P t, RunOK p P t → RunLinksOK p P t := fun _ _ h => h.1
+  -- a merge's and a collapse's steps: the untaken part proved, the fuel and unlink parts named
+  have hMS : ∀ ts, MergeStepOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1) :=
+    fun ts => mergeStepOKF3_of_segFits (ctxOf p ts) _ _ (Nat.succ_pos _) hcap hsa (hMSF ts)
+  have hCo : ∀ ts, CollapseStepOKF4 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1) :=
+    fun ts => ⟨hCoF ts, hCoU ts⟩
   -- the induction's runs: TP4, P's tree and LatestQD
   have hR : ∀ P t, RunTreeQ p (LatestQD p) P t → RunOK p P t := runOK_of_runTreeQD p
   have hRL' : ∀ P t, RunTreeQ p (LatestQD p) P t → RunLinksOK p P t := fun _ _ h => h.1
