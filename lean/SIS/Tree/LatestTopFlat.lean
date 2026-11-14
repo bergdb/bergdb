@@ -1,46 +1,35 @@
 /-
 The top theorem with the flattest list of named premises (bergdb 024-12):
 `invGetScanOK_merges_flat`. It is `invGetScanOK_merges` with its premises
-taken apart (10 named premises left, with `hp` and `hth` on the parameters;
-`hMS` and `hCo` split by owner, `hMSF`, `hCoF` and `hCoU`):
+taken apart; 10 named premises are left, with `hp` and `hth` on the
+parameters. What is proved in their place:
 
-* the bound on dead klongs at every run (`hD`) comes from the operations: every
-  put keeps it, for theta 0 or at least 2 (`hth`; `deadCase_putLeafRoom`,
-  `DeadCases.lean`, `DeadPutFull.lean`, `DeadNewSegFull.lean`, with the cascade's
-  dead counts `writerWP_appendKlongs_chainDead`), and `QDead` of (4) is a premise
-  (`DeadRun.lean`; the run induction carries `DeadAllOK` in `LatestQD`);
-* the take-back's delete steps (`hDS`) come from their open pieces (putinv's
-  `delStepsJ2OKF3_of_openR11` over `TakeS4`, `runTreeQ_of_mergesF4S`): the
-  upward delete's stop node for the take-back, the made-for ids at every state
-  between operations (`hMF`), and the fuel there;
-* the take-back through a replaceRoot whose segment leaf is full (`hRJ`) is
-  proved (putinv's `replaceRootFullJ2OK_run`);
-* the upward delete's stop node is proved, its cascade and its LE-b with room
-  or full, for the reading (putinv's `delStepsOKF3_of_open16`, at the runs of
-  the induction, every run within reach) and for the take-back
-  (`delStepsJ2OKF3_of_openR11`), from `hU` (the state after the upward loop is
-  a tree) and `hHL` (at the loop's end no node not taken back holds a node taken
-  back; with the books it gives cost's `UpHolderOK`, `upHolderOK_of_live`),
-  which with the loop keeping the heights' cache (putinv's `DelStepsGh.lean`)
-  give the fuel after the stop node's cascade (cost's `upCascFitsOKR_of`); the
-  links
-  and klongs after the upward loop follow from the writer's books, and the
-  cascade's ranges from the tree; the fuel after a full leaf's split comes from
-  the heights (cost's `delFullFitsOKR_run`, through putinv's walk with the
-  heights' invariant);
-* the fuel at every state between operations (`hfit`) comes from the heights
-  (cost's `txSegFitsOK_of_takeBelowDelR2U`): every node a delete takes back has a
-  height below the fuel (`TakeBelowFuelDelOK`; a put takes nothing back).
-
-* TP10's three posts for the delete with the merges (4), `t4`, `i4` and `r4`,
-  are proved at the induction's runs (putinv's
-  `opCaseOK_treeInvRange_delMergeR`), and carried with TP7's live counts along
-  each transaction (`LiveJointL.lean`);
-* LE-b at the upward delete's stop node never runs with the merges on, given
-  TP7's live counts at the delete's start (cost's `stopLeaf_of_liveCounts`,
-  putinv's `lebStop_false`; `delStepsOKF3_of_open13`,
-  `delStepsJ2OKF3_of_openR8`, `delStepsQdL_of_openR`), which the joint
-  induction along each transaction gives (`liveStateOK_of_L`).
+* the operations' cases are taken at the induction's runs and carried along
+  each transaction with TP7's live counts at every operation's start
+  (`latestQD_snocR`, `LiveJointL.lean`), and moved to `RunOK`'s runs after the
+  induction (`opCaseOK_of_within`, `delStepsOKF3_of_within`);
+* the bound on dead klongs at every run: every put keeps it, for theta 0 or at
+  least 2 (`hth`; `DeadCases.lean`, `DeadPutFull.lean`, `DeadNewSegFull.lean`);
+  so do a noop delete, a delete of a key without a leaf (`LiveDelNoop.lean`)
+  and (4a) (`deadCase_delRoomFill`); `d4` is the rest (`DelMergeDOpenCase`);
+* TP7's live counts: likewise, `l4` is the rest (`DelMergeOpenCase`;
+  `liveCase_delRoomFill`, `LiveDelRoom.lean`);
+* TP10's three posts for the delete with the merges, `t4`, `i4`, `r4`
+  (putinv's `opCaseOK_treeInvRange_delMergeRL`);
+* the take-back's delete steps (putinv's `delStepsJ2OKF3_of_openR11` over
+  `TakeS4`, `runTreeQ_of_mergesF4S`), with the made-for ids (`hMF`), and the
+  take-back through a full leaf's replaceRoot (`replaceRootFullJ2OK_run`);
+* the upward delete's stop node, its cascade and LE-b, for the reading
+  (`delStepsOKF3_of_open16`) and the take-back, from `hU` (the state after the
+  upward loop is a tree) and `hHL` (no node not taken back holds one taken
+  back), with the loop keeping the heights' cache (`DelStepsGh.lean`) and the
+  fuel from the heights (cost's `upCascFitsOKR_of`, `delFullFitsOKR_run`); LE-b
+  never runs with the merges on (cost's `stopLeaf_of_liveCounts`, putinv's
+  `lebStop_false`);
+* the fuel at every state between operations, from the heights (cost's
+  `txSegFitsOK_of_takeBelowDelR2U`, from `htb` and `hchk`);
+* a merge's nodes reached untaken (`mergeStepOKF3_of_segFits`), its fuel being
+  `hMSF`; a collapse's step is `hCoF` and `hCoU`.
 
 024-12's section 1 lists the premises with their owners and test evidence.
 -/
