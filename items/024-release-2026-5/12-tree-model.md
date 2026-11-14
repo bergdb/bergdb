@@ -2143,7 +2143,12 @@ and its status:
       `invPreserved_of_open_chk2`) and, with `TakeBelowFuelDelOK`, TP10's
       `TxSegFitsOK` (`txSegFitsOK_of_takeBelowDelR2`; it needs TP4's
       `hP` for the kinds). `delchk-check.lean.txt` runs the copy too: the
-      same 7137 deletes, 0 failures.
+      same 7137 deletes, 0 failures. For latest's run induction, which
+      proves TP4 and the kinds at the run it is at, the same at the runs
+      a predicate R holds of (`HeightsUnder.lean`): `OpHtDelOKUnder p R`,
+      `opHtDelOKUnder_of_chk2` (R gives `PointersOK` and `KindsAllOK`),
+      `ht_reachedU`, `execW_htCacheU`, `txSegFitsOK_of_takeBelowDelRHU`,
+      `txSegFitsOK_of_takeBelowDelR2U`.
     - `TakeBelowFuelDelOK` (`HeightsFit.lean`): a delete takes back no node
       of height fuel or more that it found at its start. With
       `OpDelChkOK` it gives TP10's `TxSegFitsOK`
