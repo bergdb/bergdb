@@ -1421,7 +1421,10 @@ in 024-12's (4) entry (step 4) and section 1's list.
     (`ht_deleteUpwardChk2`, `HeightsPathFree.lean`). The premise without
     it, `OpDelChk2OK`, gives TP7's (b) and TP10's fuel premise:
     `treeRun_heightLiveOK_chk2`, `invPreserved_of_open_chk2`,
-    `txSegFitsOK_of_takeBelowDelR2`.
+    `txSegFitsOK_of_takeBelowDelR2`; at the runs a predicate R holds of,
+    for latest's run induction, `opHtDelOKUnder_of_chk2`,
+    `execW_htCacheU`, `txSegFitsOK_of_takeBelowDelR2U`
+    (`HeightsUnder.lean`).
 * **Open, as exact statements** (named premises; each with its test):
   - `OpDelChkOK p` (`HeightsChkRun.lean`): a delete, from a state that
     the transaction's earlier operations reach, runs as its copy with a
