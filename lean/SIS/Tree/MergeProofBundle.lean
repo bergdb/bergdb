@@ -373,3 +373,4 @@ import SIS.Tree.DeadMerge
 import SIS.Tree.DelStepsUnlinkTree
 import SIS.Tree.HeightsFitsR
 import SIS.Tree.StopLeafLive
+import SIS.Tree.HeightsUpCascR

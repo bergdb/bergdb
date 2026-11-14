@@ -1443,11 +1443,13 @@ in 024-12's (4) entry (step 4) and section 1's list.
     same of the copy without `checkPathFree` (`putKvDelChk2`); the first
     implies it (`opDelChk2OK_of_chk`). The same script, the same 7987
     deletes, 0 failures.
-  - `UpCascFitsOK` and `UpLebFitsOK` (putinv's, the fuel after the
-    stop node's cascade and after LE-b's full split): their reached form
-    needs the heights' cache after the upward loop, so the holders of the
-    nodes it takes back and the stop node's retarget (putinv's proposed
-    `UpHolderOK`, to be checked on runs). LE-b at the stop node looks
+  - `UpHolderOK` (`HeightsUpCascR.lean`), in place of putinv's
+    `UpCascFitsOK`: at the upward loop's end every node not taken back
+    holds, by a live klong now or before the transaction, only nodes not
+    taken back, has its times at most the transaction's, and the chain's
+    nodes taken back are the transaction's. With it `UpCascFitsOKR` holds
+    (`upCascFitsOKR_of`). To be checked on runs (putinv). `UpLebFitsOK`
+    is gone where the fill is at hand (`upLebFitsOKL_of`, below). LE-b at the stop node looks
     dead with the merges on: `12-tree-model/leb-probe.lean.txt`, 3382
     deletes of random runs with the merges on (45 climbing), no stop node
     off a segment leaf and no LE-b; with the merges off, 792 deletes, 61
