@@ -19,16 +19,18 @@ the cleanup is `eb1a04a0`.
 - **keep.txt**: the plan's 46 names kept although no root reaches them (025-02, section 2).
   **prune-keep.txt**: the KEEP that step 1 applied: those 46 and 373 macros.
   **prune-report.txt**: the report of the applied prune (FILE, TOTAL, DECLS and DEAD lines:
-  1,576 declarations removed, 73 files).
+  1,576 DEAD lines, of which 8 auxiliary constants with no source text, and 73 files).
 - **superseded.txt**: the cited names that the prune removed as earlier versions, each
   with its successor or the reason it was retired.
 - **rename.py**: whole-identifier renames over lean/ and lean/README.md, and file renames
   with their imports, by a table; it refuses a clash. **renames.txt**: step 3's table
   (61 declarations, 8 files), with the reason for each choice that is not a plain strip.
-- **names.py**: writes names.md from the prune's report, superseded.txt and the tables.
+- **names.py**: writes names.md from the prune's report, superseded.txt and the tables. This
+  copy, step 5's, reads several tables in order and maps a name renamed twice to its last
+  name; the tools' copy took one.
 - **Guard.lean**: no axiom of ours and no `sorryAx`; the axioms of the theorems in
-  **audit.txt** (006-26's 23 and the top theorem; the top theorem by its name at the base,
-  which gate.sh replaces by its TOP); the trusted closure's fingerprint; the top theorem's
+  **audit.txt** (006-26's 23 theorems, among them the top theorem and Java's parameters;
+  the top theorem by its name at the base, which gate.sh replaces by its TOP); the trusted closure's fingerprint; the top theorem's
   statement and its premises' names.
 - **Dups.lean**: groups of theorems with the same statement (step 4).
 - **gate.sh**: the gate that every cleanup commit passed before it landed (025-02,
