@@ -1740,7 +1740,7 @@ and its status:
       `replaceRoot`), that gives `HolderAt` at a made root. putinv's
       TakeJ2 with CollGetInv (TreeOK) is that J, through
       `liveHolder_unique`.
-    - The run (cost, 01:00). TP7's (b) after every run is
+    - The run (cost, 00:45). TP7's (b) after every run is
       `treeRun_heightLiveOK_family` (`HeightsDelRun.lean`), the form
       latest's assembly takes (`invPreserved_of_open_htDel` puts it in
       `invPreserved_of_open`). Proved: the put; the operations of a
@@ -1770,7 +1770,7 @@ and its status:
         or unlinked next, or is the stop node, whose delete kills the
         klong (tp7's mis-heighted retarget). The walk then needs an
         exemption for that one klong until the stop node's delete.
-    - One premise instead of the family (cost, 02:10):
+    - One premise instead of the family (cost, 01:10):
       `treeRun_heightLiveOK_chk` and `invPreserved_of_open_chk`
       (`HeightsChkRun.lean`) take TP7's (b) from `OpDelChkOK` alone: a
       delete, from a state that the transaction's earlier operations
