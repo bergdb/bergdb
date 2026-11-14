@@ -1447,8 +1447,8 @@ in 024-12's (4) entry (step 4) and section 1's list.
     stop node's cascade and after LE-b's full split): their reached form
     needs the heights' cache after the upward loop, so the holders of the
     nodes it takes back and the stop node's retarget (putinv's proposed
-    `UpHolderOK`, to be checked on runs); LE-b never fires in the DelChk
-    families.
+    `UpHolderOK`, to be checked on runs). By putinv's count, LE-b never
+    fires in the DelChk families, so `UpLebFitsOK` has no run evidence.
   - `TakeBelowFuelDelOK p` (`HeightsFit.lean`): a delete takes back no
     node of height fuel or more that it found at its start.
     `12-tree-model/heights-op-check.lean.txt`: 3224 operations that took
