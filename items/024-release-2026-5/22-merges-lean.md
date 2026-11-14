@@ -1447,16 +1447,27 @@ in 024-12's (4) entry (step 4) and section 1's list.
     second route to TP7's (b), superseded by `OpDelChkOK`.
   - TP32 and TP33 as before (section 11; TP32's heights paragraph above).
 * **Next:**
-  1. `OpDelChkOK`'s checks: the holders (`checkFree`, `checkRoot`) from
-     putinv's TP4 walk (`TakeJ2` with `TreeOK`, through
-     `liveHolder_unique`); the segment leaves (`checkOld`, the stop node)
-     from latest's `LiveCounts` within a delete; `checkPathFree` from the
-     path's nodes being distinct, proved (`ht_path_nodup`, `ht_path_ne`,
-     `HeightsPathNodup.lean`: along the path the segment rises and, in a
-     segment, the height falls, from `PathHt` and `PathKinds`), and the
-     check is gone in `OpDelChk2OK` (`HeightsPathFree.lean`), which
-     `OpDelChkOK` implies (`opDelChk2OK_of_chk`, `DelChkRefines.lean`:
-     the copies differ by that one check, which reads only).
+  1. The checks left in `OpDelChk2OK` (`checkPathFree` is proved,
+     `HeightsPathNodup.lean`, `HeightsPathFree.lean`):
+     - The holders (`checkFree`, `checkRoot`): from putinv's TP4 walk
+       (`TakeJ2` with `TreeOK`, through `liveHolder_unique`).
+     - `checkOld`'s segment leaf and the stop node a segment leaf: from
+       the fill at the delete's start (latest's `LiveCounts`,
+       `live_reached`). A node the delete empties has one live klong, so
+       it is a segment root and a leaf (an inner segment root has two, a
+       node an inner node names has `mergeBelow` ≥ 2); the climb passes
+       only such nodes, so their parents are segment leaves. It ties the
+       heights' run induction to TP7's, as latest's run induction does.
+     - `checkOld`'s node of the view: a walk of `madeFor` over every
+       operation (`setMadeFor` passes `replacedBy x`, or an x the
+       transaction did not make).
+     - Or the stop node's check goes if the copy keeps the writer's branch
+       for an inner stop node (LE-b, `emptyKeyNext`, then the merges and
+       root collapse): it needs a heights' lemma for `emptyKeyNext`, whose
+       next child the fold picks among all of the node's klongs.
+
+     Each proved check gives a weaker premise through `Refines`
+     (`DelChkRefines.lean`), as `opDelChk2OK_of_chk` does.
   2. `TakeBelowFuelDelOK`: a node a delete found and takes back is
      reachable at its start from a segment root it descended, so below
      the fuel by (C)'s part 1. What it needs, a reach frame through the
@@ -1473,7 +1484,8 @@ in 024-12's (4) entry (step 4) and section 1's list.
      a reach invariant over `wNode`, in the style of putinv's
      `TtReachedN` walk; about 1500 to 2500 lines, a night of its own.
   3. `OpDelHtStepOK`: one root split per segment and delete, as the new
-     root keeps room in the same operation (the merges' fill).
+     root keeps room in the same operation (the merges' fill). Nothing
+     uses it yet.
 * **Test scripts** (`12-tree-model/`, the run command in each header):
   `delchk-check.lean.txt`, `heights-op-check.lean.txt`,
   `merge-hold-check.lean.txt`, `segfit-check.lean.txt`.
