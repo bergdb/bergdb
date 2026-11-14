@@ -1432,6 +1432,24 @@ in 024-12's (4) entry (step 4) and section 1's list.
     kinds), from `htStart_reachedU` at the operation's start. The
     cascade's lemmas are generalized in place to a set of ids (`SBInvS`,
     `sbS_*`; `SBInv` the case of every id).
+  - The upward delete's stop node is a segment leaf with the merges on
+    (`StopLeafLive.lean`): with the fill at the delete's start (latest's
+    `LiveCounts`) a node one delete empties has one live klong, so it is
+    no node an inner node names (`mergeBelow` ≥ 2) and no inner segment
+    root (two live klongs): `stopLeaf_of_liveCounts` (the path's flags
+    `fReach_path`; an emptied node has at most one live klong). So
+    putinv's `UpLebFitsOK` with the fill, `UpLebFitsOKL`, holds
+    vacuously (`upLebFitsOKL_of`): hFitL goes from the flat list where
+    `LiveCounts` is at hand (latest's `live_reached`). Probe:
+    `12-tree-model/leb-probe.lean.txt`, with the merges on 3382 deletes
+    (45 climbing), no stop node off a segment leaf and no LE-b; with the
+    merges off 792 deletes, 61 inner stop nodes, 34 LE-b.
+  - putinv's `UpCascFitsOK` in its reached form, `UpCascFitsOKR`, from
+    `UpHolderOK` (`upCascFitsOKR_of`, `HeightsUpCascR.lean`): the heights'
+    walk at the loop's end from the descent's end (the stop node and the
+    chain's nodes are leaves of height 0 by the fill; the other nodes
+    unchanged; the path's nodes distinct), then the cascade as for
+    `DelFullFitsOKR`.
 * **Open, as exact statements** (named premises; each with its test):
   - `OpDelChkOK p` (`HeightsChkRun.lean`): a delete, from a state that
     the transaction's earlier operations reach, runs as its copy with a
@@ -1447,29 +1465,11 @@ in 024-12's (4) entry (step 4) and section 1's list.
     `UpCascFitsOK`: at the upward loop's end every node not taken back
     holds, by a live klong now or before the transaction, only nodes not
     taken back, has its times at most the transaction's, and the chain's
-    nodes taken back are the transaction's. With it `UpCascFitsOKR` holds
-    (`upCascFitsOKR_of`). Checked on runs by putinv (its UpChk2.lean): 2529
-    loop ends, 0 failures (1385 with chain nodes taken back, 954
-    unlinked, 173 cascades), the loop keeping `gh` too (a hypothesis of
-    `UpCascFitsOKR`; putinv can prove it with a loop walk that knows the
-    parent cached). `UpLebFitsOK` is gone where the fill is at hand
-    (`upLebFitsOKL_of`, below). LE-b at the stop node looks
-    dead with the merges on: `12-tree-model/leb-probe.lean.txt`, 3382
-    deletes of random runs with the merges on (45 climbing), no stop node
-    off a segment leaf and no LE-b; with the merges off, 792 deletes, 61
-    inner stop nodes, 34 LE-b. The candidate proof: with the fill at the
-    delete's start (latest's `LiveCounts`) a node one delete empties has
-    one live klong, so it is no node an inner node names (`mergeBelow` ≥ 2)
-    and no inner segment root (two live klongs): a segment root and a
-    leaf. The climb passes only such nodes, so the stop node, the parent
-    of one, is a segment leaf; `UpLebFitsOK` and the inner stop node's
-    branch never run, and `OpDelChk2OK`'s stop-node check and `checkOld`'s
-    leaf part hold. Proved (`StopLeafLive.lean`): `stopLeaf_of_liveCounts`
-    (with the merges on and `LiveCounts`, no node below an inner node of
-    the path is emptied: the path's flags `fReach_path`, an emptied node
-    at most one live klong), and `UpLebFitsOK` with the fill at the
-    delete's start, `UpLebFitsOKL`, holds (`upLebFitsOKL_of`), so hFitL
-    goes from the flat list where `LiveCounts` is at hand.
+    nodes taken back are the transaction's. Checked on runs by putinv
+    (its UpChk2.lean): 2529 loop ends, 0 failures (1385 with chain nodes
+    taken back, 954 unlinked, 173 cascades), the loop keeping `gh` too (a
+    hypothesis of `UpCascFitsOKR`; putinv can prove it with a loop walk
+    that knows the parent cached).
   - `TakeBelowFuelDelOK p` (`HeightsFit.lean`): a delete takes back no
     node of height fuel or more that it found at its start.
     `12-tree-model/heights-op-check.lean.txt`: 3224 operations that took
