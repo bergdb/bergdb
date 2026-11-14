@@ -21,6 +21,19 @@ Cite the design rules as "024-12, D1", the stated properties as
 
 ## 1. In short
 
+**What this means for BergDB (2026-11-14, latest).** The key tree's proofs reach their top
+theorem. For Java's own parameters (record format 7's merge thresholds and option 2's theta,
+from node size 8), every run of transactions that the model accepts keeps the tree's invariants
+(TP7), and every get and every scan, at the latest time and at every earlier time, returns what
+the reference map gives (TP10, TP11). This is a Lean proof from 17 named premises, listed below.
+Each speaks of one operation or one step of the writer, mostly of the delete with the merges, of
+the fuel and heights inside a transaction, and of the bound on dead klongs. Each held on runs of
+the model within reach, with no failure; the fuel inside an operation (in `hFits`, `hMS`, `hCo`)
+is checked only at the operations' boundaries. Not covered: parameters with the merges off (the
+theorem is for `MergeParamsOK`); bounded startup's tree premises (item 007), which this theorem
+does not discharge; and that Java does what the model does, which is checked on Java's traces
+(section 5), not proved.
+
 **The top theorem (2026-11-14, 02:10).** `invGetScanOK_merges_flat` (`LatestTopFlat.lean`)
 gives TP7 (`InvPreserved`), TP10 (`GetOK`) and TP11 (`ScanOK`), and so `LatestGetOK` and
 `LatestScanOK`, for every parameter set of `MergeParamsOK`, from the named premises below.
@@ -30,7 +43,7 @@ induction (putinv's `runTreeQ_of_mergesF4S`) carries them with TP7's invariant a
 dead klongs (`LatestQD`; `latestQ_snoc`, `latestQD_snoc`; `LatestJoint.lean`, `DeadRun.lean`).
 Every put case is proved but the dead bound's (2) and (3c). The take-back through a replaceRoot
 whose segment leaf is full is proved (putinv's `replaceRootFullJ2OK_run`), and the fuel at every
-state between operations comes from the heights (cost's `txSegFitsOK_of_takeBelowR`).
+state between operations comes from the heights (cost's `txSegFitsOK_of_takeBelowDelR`).
 `invGetScanOK_merges` (`LatestTop.lean`) is the earlier form, with `DeadAllOK` at every run, the
 take-back's delete steps (`DelStepsJ2OKF3`), the full-leaf replaceRoot and the fuel as premises.
 The premises, each with what it says, who owns it, and its test evidence:
@@ -52,18 +65,20 @@ The premises, each with what it says, who owns it, and its test evidence:
 - `hchk`, `OpDelChkOK`: a delete runs as its copy with the take-backs' checks (cost, the
   heights). Evidence: the same result and state at 6828 deletes of 310 runs, 160 with a
   take-back in the upward delete's loop, 2305 with a merge's, 453 with root collapse's.
-- `htb`, `TakeBelowFuelOK`: every node that an operation takes back, of those it found at its
-  start, has a cached height below the fuel (cost). With the heights it gives that every state between operations fits the fuel
-  (`txSegFitsOK_of_takeBelowR`). Evidence: 316 runs within reach, 18,201 operations, 3205 of
-  them taking nodes back, no failure; SegFits held at about 14,000 operation boundaries.
+- `htb`, `TakeBelowFuelDelOK`: every node that a delete takes back, of those it found at its
+  start, has a cached height below the fuel (cost; a put takes nothing back, proved). With the
+  heights it gives that every state between operations fits the fuel
+  (`txSegFitsOK_of_takeBelowDelR`). Evidence: 316 runs within reach, 18,201 operations, 3205
+  deletes taking nodes back, no failure; SegFits held at about 14,000 operation boundaries.
 - `t4`, `i4`, `r4`: the delete with the merges (4) keeps the writer's tree, `PutInv` and the
   walk's ranges (cost's merges). Evidence: after all 4131 deletes of runs within reach with the
   merges on (theta 0 and Java's), the writer's tree was a tree, its reached nodes untaken, well
   formed and naming ids below the next id, and the walk's ranges held (and after 7445 puts;
   `12-tree-model/delete-posts-check.lean.txt`, with putinv's tree and range walks).
 - `l4`: (4) keeps TP7's live counts (`QLive`; latest). Evidence: `LiveCounts` held at all 6420
-  states between operations of runs with merges and collapses, and at 8843 more with Java's
-  theta on (`dead-all-check.lean.txt`).
+  states between operations of runs with merges and collapses
+  (`12-tree-model/live-counts-check.lean.txt`), and at 8843 more with Java's theta on
+  (`dead-all-check.lean.txt`).
 - `hUC`, `hULb`: the upward delete's stop node, its cascade and its LE-b, for the reading
   (putinv; `delStepsOKF3_of_open5`). Their proofs will need `UpUnlinkOK`, which held at all
   2529 upward-loop end states (1385 with a take-back in the loop, 954 with an unlink to the
@@ -74,13 +89,44 @@ The premises, each with what it says, who owns it, and its test evidence:
 - `hMS`, `MergeStepOKF3`: a merge keeps the nodes reached untaken (proved,
   `mergeStepOKF3_untaken`) and fits the fuel (cost, the heights). No test of its own.
 - `hCo`, `CollapseStepOKF4`: the state after a replaceRoot at a segment root fits the fuel
-  (cost, `HeightInv`), and `CollapseUnlinkOK` (putinv, not proved). Evidence:
+  (cost, the heights), and `CollapseUnlinkOK` (putinv, not proved). Evidence:
   `CollapseUnlinkOK` held at all 96 replaceRoots at a segment root, 32 with a full leaf.
 - `hUCJ`, `hULbJ`: the upward delete's stop node, its cascade and its LE-b, for the take-back
   (putinv; `delStepsJ2OKF3_of_openR`). Evidence: as `hUC`'s (`UpUnlinkOK`).
 - `hMF`: at every state between operations, every made-for id is below the transaction's
   first id (putinv). Evidence: held at all 44,312 states between operations of runs within
   reach with the merges on (cost's `DelChk` families and putinv's, M 8 and 10).
+
+Follow-ups, for a later spare-token run (latest, 02:20):
+
+- `QDead` of (2) and (3c): an in-place conjunct of `writerWP_appendKlongs_chainShape` with each
+  node's dead count, agreed with putinv, whose take-back uses `CascadeNodeShape`. The counts are
+  there: a half holds at most as many dead klongs as the klongs put into it
+  (`halves_normalized_deadCount_le`), a last version none (`KNode.lastVersion_deadCount`), a
+  node's version before the transaction no more than the node (`KNode.deadCount_toPrev_le`),
+  and the cascade's top takes klongs only when `deadOver` lets them. It needs 2 ≤ theta (or
+  theta 0), which Java's theta meets from node size 8 (`thetaFor_pos`).
+- `QDead` of (4): the bitmap and `mergeParent` write only when `deadOver` lets them, a merge's
+  new nodes hold none (`mergeKlongs_deadCount`), and the collapse's cascade is the one above.
+- `QLive` of (4): `LiveEdges` through the merge loop and root collapse, with the merged path's
+  nodes excepted until their merge, as the cascade's walk was done (`LiveEdgesX`,
+  `writerWP_appendKlongs_chainGLX`); the merge's fill is cost's `mergeKlongs_live_fill`.
+- One name for each route: the F2, F3 and F4 versions (`DelStepsOKF3`, `MergeStepOKF3`,
+  `CollapseStepOKF4`, `opGetCaseOK_delMergeF4`, `takeBackOK_of_mergesF4`,
+  `runTreeQ_of_mergesF4S`, `writerWP_appendKlongs_chainGLX` and its corollaries), and one top
+  theorem in place of `invGetScanOK_merges` and `invGetScanOK_merges_flat`.
+- The named premises' plans:
+  - `hchk` (cost): TP4's holder facts and the merges' fill, from the heights' walk.
+  - `htb` (cost): every take-back site lies on a successful descent, which passes only heights
+    below the fuel (`ht_descendLte_height`).
+  - `t4`, `i4`, `r4` (cost): the writer's tree, `PutInv` and the ranges through the merge loop
+    and root collapse, on the reading's (4) route.
+  - `hUC`, `hULb`, `hUCJ`, `hULbJ` (putinv): the stop node's cascade and LE-b; the cascade at
+    the space root is proved (`delStepsOKF3_of_open6`), below it open.
+  - `hFits`, and the fuel parts of `hMS` and `hCo` (cost): step 4 (B), the heights inside an
+    operation.
+  - `CollapseUnlinkOK` in `hCo`, and `hMF` (putinv): from the overlay's books
+    (`KeepsGoodTaken`), with the call sites of `setMadeFor`.
 
 The rest of this section is of 2026-11-11. Kept current then; section 9 has the exact state.
 Written 12:24.
@@ -1781,7 +1827,9 @@ and its status:
       a key klong of a compare value with no live klong adds no dead klong
       (`KNode.deadCount_add_key_new`), and a new segment leaf holds none.
       `hRJ` is putinv's `replaceRootFullJ2OK_run` (02:00).
-      `hfit` is cost's `txSegFitsOK_of_takeBelowR` from `TakeBelowFuelOK`
+      `hfit` is cost's `txSegFitsOK_of_takeBelowR` from `TakeBelowFuelOK`,
+      then `txSegFitsOK_of_takeBelowDelR` from its delete part
+      `TakeBelowFuelDelOK` (02:15),
       (02:08), with the run's links, kinds and heights from `LatestQD`
       inside the induction, and every run within reach after it.
     - Not done, and why (latest, 02:05):

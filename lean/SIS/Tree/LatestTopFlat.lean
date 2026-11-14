@@ -14,8 +14,8 @@ taken apart:
 * the take-back through a replaceRoot whose segment leaf is full (`hRJ`) is
   proved (putinv's `replaceRootFullJ2OK_run`);
 * the fuel at every state between operations (`hfit`) comes from the heights
-  (cost's `txSegFitsOK_of_takeBelowR`): every node an operation takes back has a
-  height below the fuel (`TakeBelowFuelOK`).
+  (cost's `txSegFitsOK_of_takeBelowDelR`): every node a delete takes back has a
+  height below the fuel (`TakeBelowFuelDelOK`; a put takes nothing back).
 
 024-12's section 1 lists the premises with their owners and test evidence.
 -/
@@ -37,7 +37,7 @@ of `MergeParamsOK`, from the flat list of named premises (section 1 of
 024-12). -/
 theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     (hchk : OpDelChkOK p)
-    (htb : TakeBelowFuelOK p)
+    (htb : TakeBelowFuelDelOK p)
     (d2 : OpCaseOK p (RunOK p) (QDead p) PutLeafFullCase)
     (d3c : OpCaseOK p (RunOK p) (QDead p) PutNewSegFullCase)
     (d4 : OpCaseOK p (RunOK p) (QDead p) DelMergeCase)
@@ -94,9 +94,9 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
   have hRK' : ∀ P t, RunTreeQ p (LatestQD p) P t → KindsAllOK p P := fun _ _ h => h.2.2.1.2.2.1
   have hRH' : ∀ P t, RunTreeQ p (LatestQD p) P t → HeightAllOK p P t :=
     fun _ _ h => h.2.2.1.2.2.2.1
-  -- the fuel at every state between operations (cost's `txSegFitsOK_of_takeBelowR`)
+  -- the fuel at every state between operations (cost's `txSegFitsOK_of_takeBelowDelR`)
   have hfitQ : TxSegFitsOK p (RunTreeQ p (LatestQD p)) :=
-    txSegFitsOK_of_takeBelowR p (by omega) _ hRL' hRK' hRH' hchk htb
+    txSegFitsOK_of_takeBelowDelR p (by omega) _ hRL' hRK' hRH' hchk htb
   have hT' := opCaseOK_anti p _ _ hR _ _ hT
   have hPI' := opCaseOK_anti p _ _ hR _ _ hPI
   have hO' := opCaseOK_anti p _ _ hR _ _ hO
