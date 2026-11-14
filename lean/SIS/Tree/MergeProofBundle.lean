@@ -183,6 +183,10 @@ import SIS.Tree.LatestJoint
 import SIS.Tree.LatestTop
 import SIS.Tree.DeadRun
 import SIS.Tree.DeadCases
+import SIS.Tree.DeadCountBasic
+import SIS.Tree.DeadPutFull
+import SIS.Tree.DeadNewSegFull
+import SIS.Tree.DeadSteps
 import SIS.Tree.LatestTopFlat
 import SIS.Tree.LivePutFull
 import SIS.Tree.LiveTP7
@@ -355,7 +359,9 @@ import SIS.Tree.HeightsFuelDescent
 import SIS.Tree.HeightsFuelPut
 import SIS.Tree.HeightsFit
 import SIS.Tree.HeightsOpStep
+import SIS.Tree.TakeUpCasc
 import SIS.Tree.HeightsPathNodup
+import SIS.Tree.DelStepsLeb
 import SIS.Tree.HeightsPathFree
 import SIS.Tree.HeightsUnder
 import SIS.Tree.DelChkRefines

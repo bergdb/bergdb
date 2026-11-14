@@ -22,7 +22,8 @@ no node). -/
 def UpCascJ2OKF3 (c : Ctx) (base : View BVal) (KO : KindOracle) (BK B : NodeId) : Prop :=
   ∀ (w w3 : W) (top0 : Top) (pre : List Nat) (cv : Nat) (rk : NodeId)
     (X : Nat → NodeId) (Nn : Nat → KNode) (K : Nat → Nat) (depth stop : Nat) (w2 v : W) (S : KNode),
-    PutBase c base B → PutInv c base w → RangeOrder (wNode c.p base w) c.i w.top.rootKey →
+    2 ≤ c.p.splitAbove → ViewIdsBelow BK c.view → ViewKinds KO BK c → ICEFromKinds c base KO BK →
+    X 0 = w.top.rootKey → 0 < c.i → PutBase c base B → PutInv c base w → RangeOrder (wNode c.p base w) c.i w.top.rootKey →
     SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey →
     InnerChildrenExist (wNode c.p base w) c.i w.top.rootKey → ReadsAs c.p base w w3 →
     keyWf (pre ++ [cv]) = true →
@@ -51,7 +52,8 @@ keeps `DelInvJF3`. -/
 def UpLebJ2OKF3 (c : Ctx) (base : View BVal) (KO : KindOracle) (BK B : NodeId) : Prop :=
   ∀ (w w3 : W) (top0 : Top) (pre : List Nat) (cv : Nat) (rk : NodeId)
     (X : Nat → NodeId) (Nn : Nat → KNode) (K : Nat → Nat) (depth stop : Nat) (w2 : W) (S : KNode),
-    PutBase c base B → PutInv c base w → RangeOrder (wNode c.p base w) c.i w.top.rootKey →
+    2 ≤ c.p.splitAbove → ViewIdsBelow BK c.view → ViewKinds KO BK c → ICEFromKinds c base KO BK →
+    X 0 = w.top.rootKey → 0 < c.i → PutBase c base B → PutInv c base w → RangeOrder (wNode c.p base w) c.i w.top.rootKey →
     SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey →
     InnerChildrenExist (wNode c.p base w) c.i w.top.rootKey → ReadsAs c.p base w w3 →
     keyWf (pre ++ [cv]) = true →
@@ -93,6 +95,7 @@ theorem writerWP_del_emptyAnyMJK (c : Ctx) (base : View BVal) (hvc : ViewCoheren
       bitsUnion n.lastBitmap (n.bitsOf cv) ≠ n.lastBitmap ∧
       n.allKeysIn (bitsUnion n.lastBitmap (n.bitsOf cv)) = true ∧ L ≠ w.top.rootKey)
     (hC : UpCascJ2OKF3 c base KO BK B) (hLb : UpLebJ2OKF3 c base KO BK B)
+    (hsa2 : 2 ≤ c.p.splitAbove) (hICEk : ICEFromKinds c base KO BK)
     (hm : c.p.merges = true) (hpos : 0 < c.i)
     (hJ2 : TakeJ2 c base B w) (hMF : ∀ x o, w.madeFor.lookup x = some o → o < B)
     (hLV : ∀ L n, (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
@@ -306,14 +309,16 @@ theorem writerWP_del_emptyAnyMJK (c : Ctx) (base : View BVal) (hvc : ViewCoheren
   · intro stop w2 S hsD hbetween hLE hJw2 hsl hDR gs hs
     exact writerWP_mono (hC w w3 top0 pre cv rk (fun i => nodeAt w.top.rootKey P i)
       (fun i => (wNode c.p base w (nodeAt w.top.rootKey P i)).getD n)
-      (fun i => ((P[i - 1]?).bind (·.1)).getD 0) P.length stop w2 _ S hB hI hRO hF hICE hr03 hkey hrk
+      (fun i => ((P[i - 1]?).bind (·.1)).getD 0) P.length stop w2 _ S hsa2 hvB hk hICEk
+      (by simp [nodeAt]) hpos hB hI hRO hF hICE hr03 hkey hrk
       hvisw hpX hpK hlkX hXN hlinkK hne' hall' hnl' hdepth hsD hbetween hLE (Or.inr ⟨_, rfl⟩)
       (kdJP_note c base B top0 hB KO BK hvB hk _ "up.stop-at-segment-leaf" w2 hJw2) (Or.inl hsl) hDR hJ2 hMF3 hkidsw)
       (fun _ w' hD' => writerWP_mono (hA gs hs w' hD') (fun _ w2 hD2 => hD2.2.1))
   · intro seg stop w2 S hsD hbetween hLE hJw2 hsl hK0 hDR gs hs
     refine writerWP_mono (hC w w3 top0 pre cv rk (fun i => nodeAt w.top.rootKey P i)
       (fun i => (wNode c.p base w (nodeAt w.top.rootKey P i)).getD n)
-      (fun i => ((P[i - 1]?).bind (·.1)).getD 0) P.length stop w2 _ S hB hI hRO hF hICE hr03 hkey hrk
+      (fun i => ((P[i - 1]?).bind (·.1)).getD 0) P.length stop w2 _ S hsa2 hvB hk hICEk
+      (by simp [nodeAt]) hpos hB hI hRO hF hICE hr03 hkey hrk
       hvisw hpX hpK hlkX hXN hlinkK hne' hall' hnl' hdepth hsD hbetween hLE (Or.inl rfl) hJw2
       (Or.inr hK0) hDR hJ2 hMF3 hkidsw) ?_
     intro _ w' hD'
@@ -323,7 +328,8 @@ theorem writerWP_del_emptyAnyMJK (c : Ctx) (base : View BVal) (hvc : ViewCoheren
   · intro seg stop w2 S hsD hbetween hLE hJw2 hsl hK0 hsm gs hs
     refine writerWP_mono (hLb w w3 top0 pre cv rk (fun i => nodeAt w.top.rootKey P i)
       (fun i => (wNode c.p base w (nodeAt w.top.rootKey P i)).getD n)
-      (fun i => ((P[i - 1]?).bind (·.1)).getD 0) P.length stop w2 S hB hI hRO hF hICE hr03 hkey hrk
+      (fun i => ((P[i - 1]?).bind (·.1)).getD 0) P.length stop w2 S hsa2 hvB hk hICEk (by simp [nodeAt]) hpos
+      hB hI hRO hF hICE hr03 hkey hrk
       hvisw hpX hpK hlkX hXN hlinkK hne' hall' hnl' hdepth hsD hbetween hLE hJw2 hsl hK0 hsm hJ2 hMF3 hkidsw) ?_
     intro _ w' hD'
     refine writerWP_mono (hMU gs hs false w' hD') ?_
@@ -334,7 +340,7 @@ theorem writerWP_del_emptyAnyMJK (c : Ctx) (base : View BVal) (hvc : ViewCoheren
 stop node without room (`DelEmptyCascM`), on the F3 route, from `UpCascJ2OKF3`
 and `UpLebJ2OKF3`. -/
 theorem delStepsCaseJ2OKF3_emptyCasc (p : Params) (R : Struct BVal → Time → Prop)
-    (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M)
+    (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M) (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
     (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
     (hSI : ∀ ts tx w, S ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w)
@@ -360,6 +366,13 @@ theorem delStepsCaseJ2OKF3_emptyCasc (p : Params) (R : Struct BVal → Time → 
     (fun x hx => hI.untaken x (tReach_reachS _ _ _ _ hx))
   have hLV := leafVals_all (hSV ts tx w hS) hkey hrk
   obtain ⟨hv, hk, hb0, hi0⟩ := kd_context p hM hP ts tx hw top ops (.del (pre ++ [cv]) :: post) hops r w hpre
+  have hwts : Within p ts := by
+    have := within_take p (ts ++ [tx]) hw ts.length
+    simpa using this
+  have hKall := treeRun_kindsAllOK p hM hP ts hwts
+  have hICEk : ICEFromKinds (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) tx.base :=
+    fun v hb hi hun => innerChildren_of_kinds p (treeRun p ts) tx.base (ctxOf p ts) v rfl hKall
+      (hP ts hwts) hb hi.cache hun
   have hLr : L0 ≠ w.top.rootKey := by
     intro he
     obtain ⟨j, hj⟩ : ∃ j, P0.length = j + 1 := ⟨P0.length - 1, by omega⟩
@@ -373,7 +386,7 @@ theorem delStepsCaseJ2OKF3_emptyCasc (p : Params) (R : Struct BVal → Time → 
   exact writerWP_del_emptyAnyMJK (ctxOf p ts) _ (viewCoherent_ctxOf p ts) pre cv rk w tx.base top hB hbook
     _ tx.base hv hk hb0 hi0
     hI (hSR ts tx w hS) (hSF ts tx w hS) hICE hkey hrk (keyLeaf_all2 hK hrk _ ⟨hne0, hall0, hLr⟩)
-    (hC ts tx.base tx.base) (hLb ts tx.base tx.base) hm
+    (hC ts tx.base tx.base) (hLb ts tx.base tx.base) (by simpa [ctxOf] using hsa2) hICEk hm
     (by simp [ctxOf]) hJ (hSM ts tx w hS) (fun L n hL hn hnl y hy => (hLV L n hL hn hnl y hy).1) hA hMU hCR
 
 /-- `DelStepsJ2OKF3` with every case proved but the stop node's cascade and LE-b
@@ -396,6 +409,6 @@ theorem delStepsJ2OKF3_of_open2 (p : Params) (R : Struct BVal → Time → Prop)
     (hFits : ∀ ts, DelFullFitsOK (ctxOf p ts) (viewOf (treeRun p ts))) :
     DelStepsJ2OKF3 p R S :=
   delStepsJ2OKF3_of_open p R S hM hsa2 hRL hP hSI hSV hSB hSR hSF hSM
-    (delStepsCaseJ2OKF3_emptyCasc p R S hM hRL hP hSI hSV hSR hSF hSM hC hLb) hFits
+    (delStepsCaseJ2OKF3_emptyCasc p R S hM hsa2 hRL hP hSI hSV hSR hSF hSM hC hLb) hFits
 
 end SIS.Tree

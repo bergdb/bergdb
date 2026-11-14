@@ -478,7 +478,7 @@ theorem delStepsCaseJ2OKF3_emptyRoomR (p : Params) (R : Struct BVal → Time →
 stop node without room (`DelEmptyCascM`), on the F3 route, from `UpCascJ2OKF3`
 and `UpLebJ2OKF3`. -/
 theorem delStepsCaseJ2OKF3_emptyCascR (p : Params) (R : Struct BVal → Time → Prop)
-    (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M)
+    (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M) (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
     (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P)
     (hSI : ∀ ts tx w, S ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w)
@@ -504,6 +504,9 @@ theorem delStepsCaseJ2OKF3_emptyCascR (p : Params) (R : Struct BVal → Time →
     (fun x hx => hI.untaken x (tReach_reachS _ _ _ _ hx))
   have hLV := leafVals_all (hSV ts tx w hS) hkey hrk
   obtain ⟨hv, hk, hb0, hi0⟩ := kd_contextR p hM ts tx (hRP _ _ hr) (hRK _ _ hr) hw top ops (.del (pre ++ [cv]) :: post) hops r w hpre
+  have hICEk : ICEFromKinds (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) tx.base :=
+    fun v hb hi hun => innerChildren_of_kinds p (treeRun p ts) tx.base (ctxOf p ts) v rfl (hRK _ _ hr)
+      (hRP _ _ hr) hb hi.cache hun
   have hLr : L0 ≠ w.top.rootKey := by
     intro he
     obtain ⟨j, hj⟩ : ∃ j, P0.length = j + 1 := ⟨P0.length - 1, by omega⟩
@@ -517,7 +520,7 @@ theorem delStepsCaseJ2OKF3_emptyCascR (p : Params) (R : Struct BVal → Time →
   exact writerWP_del_emptyAnyMJK (ctxOf p ts) _ (viewCoherent_ctxOf p ts) pre cv rk w tx.base top hB hbook
     _ tx.base hv hk hb0 hi0
     hI (hSR ts tx w hS) (hSF ts tx w hS) hICE hkey hrk (keyLeaf_all2 hK hrk _ ⟨hne0, hall0, hLr⟩)
-    (hC ts tx.base tx.base) (hLb ts tx.base tx.base) hm
+    (hC ts tx.base tx.base) (hLb ts tx.base tx.base) (by simpa [ctxOf] using hsa2) hICEk hm
     (by simp [ctxOf]) hJ (hSM ts tx w hS) (fun L n hL hn hnl y hy => (hLV L n hL hn hnl y hy).1) hA hMU hCR
 
 /-- `delStepsJ2OKF3_of_open2` with the run's pointers and kinds from the run
@@ -543,7 +546,7 @@ theorem delStepsJ2OKF3_of_openR (p : Params) (R : Struct BVal → Time → Prop)
       (delStepsCaseJ2OKF3_emptyRoomR p R S hM hRL hRP hRK hSI hSV hSR hSF hSM)
       (delStepsCaseJ2OKF3_or p R S _ _ _ delEmptyOther_split
         (delStepsCaseJ2OKF3_emptyRootR p R S hM hsa2 hRL hRP hRK hSI hSV hSB hSR)
-        (delStepsCaseJ2OKF3_emptyCascR p R S hM hRL hRP hRK hSI hSV hSR hSF hSM hC hLb)))
+        (delStepsCaseJ2OKF3_emptyCascR p R S hM hsa2 hRL hRP hRK hSI hSV hSR hSF hSM hC hLb)))
     (delStepsCaseJ2OKF3_roomR p R S hM hRL hRP hRK hSI hSV hSB hSR hSF)
     (delStepsCaseJ2OKF3_fullR p R S hM hsa2 hRL hRP hRK hSI hSV hSB hSR hSF hFits)
 
