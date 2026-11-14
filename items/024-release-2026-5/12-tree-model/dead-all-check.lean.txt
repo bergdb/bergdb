@@ -12,7 +12,9 @@ key node of P (reached or not) holds at most theta dead klongs (`DeadAllOK`,
 later klong of the same compare value). Each run end notes dead:ok or
 dead:FAIL; the summary also gives the key nodes checked, the largest dead
 count seen and the key nodes at theta. The same runs also check `LiveCounts`
-at every state between operations with theta on (lc:ok or lc:FAIL).
+at every state between operations with theta on (lc:ok or lc:FAIL), and the
+per-operation form `WDeadOK` (`DeadRun.lean`): every key node the writer's state
+reads holds at most theta dead klongs (wdead:ok or wdead:FAIL).
 -/
 import SIS.Tree.MergeProofBundle
 
@@ -123,6 +125,38 @@ def summD (l : List (String × Nat × Nat × Nat)) : String :=
   let cnt (s : String) := (l.filter (·.1 == s)).length
   s!"run ends {l.length} ok {cnt "dead:ok"} FAIL {cnt "dead:FAIL"} not-within {cnt "NOT-WITHIN"} key nodes {(l.map (·.2.1)).sum} max dead {(l.map (·.2.2.1)).foldl max 0} at theta {(l.map (·.2.2.2)).sum}"
 
+/-- `WDeadOK` of a writer's state as a Bool: every key node it reads, from the
+overlay or from P, holds at most theta dead klongs. -/
+def wDeadB (p : Params) (P : Struct BVal) (w : W) : Bool :=
+  p.theta == 0 ||
+  ((w.nodes.map (·.1)) ++ (P.map (·.1))).all (fun x =>
+    match wNode p (viewOf P) w x with
+    | some n => decide (n.deadCount ≤ p.theta)
+    | none => true)
+
+/-- One note per state between operations: wdead:ok or wdead:FAIL. -/
+def runWDead (p : Params) (all : List Tx) : List String :=
+  (List.range all.length).foldl (fun acc j =>
+    match all[j]? with
+    | none => acc
+    | some tx =>
+      let ts := all.take j
+      let v := view (treeSpec p) (treeRun p ts) ts.length
+      match lastTop v with
+      | none => acc ++ ["notop"]
+      | some z =>
+        match topOf p (ctxOf p ts).view z with
+        | .error _ => acc ++ ["toperr"]
+        | .ok top =>
+          acc ++ (List.range (tx.ops.length + 1)).map (fun k =>
+            match ((tx.ops.take k).mapM putKv) (ctxOf p ts) (wInit tx top) with
+            | .ok (_, w) => if wDeadB p (treeRun p ts) w then "wdead:ok" else "wdead:FAIL"
+            | .error e => "ERR " ++ e)) []
+
+def summW (l : List String) : String :=
+  let cnt (s : String) := (l.filter (· == s)).length
+  s!"states {l.length} ok {cnt "wdead:ok"} FAIL {cnt "wdead:FAIL"} other {(l.filter (fun s => !(s == "wdead:ok" || s == "wdead:FAIL"))).take 3}"
+
 /-- Overwrites: n keys in one segment, overwritten r times over several
 transactions, some deleted and put back; each transaction's operations in key
 order, one per key. -/
@@ -171,4 +205,10 @@ def dP30 : Params := ({M := 30, G := 1, H := 2} : Params).withMerges.withTheta
 #eval summ (familyO2.flatMap (fun r => runLc dP8 r))
 #eval summ (family.flatMap (fun r => runLc dP8 r))
 #eval summ (family1.flatMap (fun r => runLc dP14 r))
+#eval summW (familyO.flatMap (fun r => runWDead dP8 r))
+#eval summW (familyO.flatMap (fun r => runWDead dP14 r))
+#eval summW (familyO.flatMap (fun r => runWDead dP30 r))
+#eval summW (familyO2.flatMap (fun r => runWDead dP8 r))
+#eval summW (family.flatMap (fun r => runWDead dP8 r))
+#eval summW (family1.flatMap (fun r => runWDead dP14 r))
 end SIS.Tree

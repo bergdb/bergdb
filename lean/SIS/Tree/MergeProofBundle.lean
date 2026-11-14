@@ -181,6 +181,9 @@ import SIS.Tree.LivePutNewSegFull
 import SIS.Tree.LatestOpen
 import SIS.Tree.LatestJoint
 import SIS.Tree.LatestTop
+import SIS.Tree.DeadRun
+import SIS.Tree.DeadCases
+import SIS.Tree.LatestTopFlat
 import SIS.Tree.LivePutFull
 import SIS.Tree.LiveTP7
 import SIS.Tree.WriterTreeInnerHalves
@@ -348,3 +351,5 @@ import SIS.Tree.TakeReplaceFull
 import SIS.Tree.HeightsFuel
 import SIS.Tree.HeightsFuelMerge
 import SIS.Tree.DelStepsCascRoot
+import SIS.Tree.HeightsFuelDescent
+import SIS.Tree.HeightsFuelPut
