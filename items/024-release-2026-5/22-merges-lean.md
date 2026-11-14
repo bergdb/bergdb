@@ -1432,6 +1432,24 @@ in 024-12's (4) entry (step 4) and section 1's list.
     kinds), from `htStart_reachedU` at the operation's start. The
     cascade's lemmas are generalized in place to a set of ids (`SBInvS`,
     `sbS_*`; `SBInv` the case of every id).
+  - The upward delete's stop node is a segment leaf with the merges on
+    (`StopLeafLive.lean`): with the fill at the delete's start (latest's
+    `LiveCounts`) a node one delete empties has one live klong, so it is
+    no node an inner node names (`mergeBelow` ≥ 2) and no inner segment
+    root (two live klongs): `stopLeaf_of_liveCounts` (the path's flags
+    `fReach_path`; an emptied node has at most one live klong). So
+    putinv's `UpLebFitsOK` with the fill, `UpLebFitsOKL`, holds
+    vacuously (`upLebFitsOKL_of`): hFitL goes from the flat list where
+    `LiveCounts` is at hand (latest's `live_reached`). Probe:
+    `12-tree-model/leb-probe.lean.txt`, with the merges on 3382 deletes
+    (45 climbing), no stop node off a segment leaf and no LE-b; with the
+    merges off 792 deletes, 61 inner stop nodes, 34 LE-b.
+  - putinv's `UpCascFitsOK` in its reached form, `UpCascFitsOKR`, from
+    `UpHolderOK` (`upCascFitsOKR_of`, `HeightsUpCascR.lean`): the heights'
+    walk at the loop's end from the descent's end (the stop node and the
+    chain's nodes are leaves of height 0 by the fill; the other nodes
+    unchanged; the path's nodes distinct), then the cascade as for
+    `DelFullFitsOKR`.
 * **Open, as exact statements** (named premises; each with its test):
   - `OpDelChkOK p` (`HeightsChkRun.lean`): a delete, from a state that
     the transaction's earlier operations reach, runs as its copy with a
@@ -1443,27 +1461,15 @@ in 024-12's (4) entry (step 4) and section 1's list.
     same of the copy without `checkPathFree` (`putKvDelChk2`); the first
     implies it (`opDelChk2OK_of_chk`). The same script, the same 7987
     deletes, 0 failures.
-  - `UpCascFitsOK` and `UpLebFitsOK` (putinv's, the fuel after the
-    stop node's cascade and after LE-b's full split): their reached form
-    needs the heights' cache after the upward loop, so the holders of the
-    nodes it takes back and the stop node's retarget (putinv's proposed
-    `UpHolderOK`, to be checked on runs). LE-b at the stop node looks
-    dead with the merges on: `12-tree-model/leb-probe.lean.txt`, 3382
-    deletes of random runs with the merges on (45 climbing), no stop node
-    off a segment leaf and no LE-b; with the merges off, 792 deletes, 61
-    inner stop nodes, 34 LE-b. The candidate proof: with the fill at the
-    delete's start (latest's `LiveCounts`) a node one delete empties has
-    one live klong, so it is no node an inner node names (`mergeBelow` ≥ 2)
-    and no inner segment root (two live klongs): a segment root and a
-    leaf. The climb passes only such nodes, so the stop node, the parent
-    of one, is a segment leaf; `UpLebFitsOK` and the inner stop node's
-    branch never run, and `OpDelChk2OK`'s stop-node check and `checkOld`'s
-    leaf part hold. Proved (`StopLeafLive.lean`): `stopLeaf_of_liveCounts`
-    (with the merges on and `LiveCounts`, no node below an inner node of
-    the path is emptied: the path's flags `fReach_path`, an emptied node
-    at most one live klong), and `UpLebFitsOK` with the fill at the
-    delete's start, `UpLebFitsOKL`, holds (`upLebFitsOKL_of`), so hFitL
-    goes from the flat list where `LiveCounts` is at hand.
+  - `UpHolderOK` (`HeightsUpCascR.lean`), in place of putinv's
+    `UpCascFitsOK`: at the upward loop's end every node not taken back
+    holds, by a live klong now or before the transaction, only nodes not
+    taken back, has its times at most the transaction's, and the chain's
+    nodes taken back are the transaction's. Checked on runs by putinv
+    (its UpChk2.lean): 2529 loop ends, 0 failures (1385 with chain nodes
+    taken back, 954 unlinked, 173 cascades), the loop keeping `gh` too (a
+    hypothesis of `UpCascFitsOKR`; putinv can prove it with a loop walk
+    that knows the parent cached).
   - `TakeBelowFuelDelOK p` (`HeightsFit.lean`): a delete takes back no
     node of height fuel or more that it found at its start.
     `12-tree-model/heights-op-check.lean.txt`: 3224 operations that took
@@ -1481,11 +1487,18 @@ in 024-12's (4) entry (step 4) and section 1's list.
        (`TakeJ2` with `TreeOK`, through `liveHolder_unique`).
      - `checkOld`'s segment leaf and the stop node a segment leaf: from
        the fill at the delete's start (latest's `LiveCounts`,
-       `live_reached`). A node the delete empties has one live klong, so
-       it is a segment root and a leaf (an inner segment root has two, a
-       node an inner node names has `mergeBelow` ≥ 2); the climb passes
-       only such nodes, so their parents are segment leaves. It ties the
-       heights' run induction to TP7's, as latest's run induction does.
+       `live_reached`), by `stopLeaf_of_liveCounts` (proved,
+       `StopLeafLive.lean`). What is left: the lemma asks the key access
+       path linked by live klongs in the operation's starting tree
+       (`(K i, X i) ∈ (Nn (i - 1)).liveAt c.i`, `wNode` of the start at
+       each `X i`), which the heights' walk (`HtInv`) does not carry;
+       putinv's descent walk (`writerWP_del_toLeafMK`) carries it, but for
+       the writer's `putKv`, not the checked copy. So: either that link
+       invariant through the walk of `putKvDelChk2`'s descent, or a
+       `Refines` argument that the checked copy's prefix reaches the
+       writer's state; then a copy without the two checks and its
+       refinement. About 2.5 to 3 hours. It ties the heights' run
+       induction to TP7's (the fill), as latest's run induction does.
      - `checkOld`'s node of the view: a walk of `madeFor` over every
        operation (`setMadeFor` passes `replacedBy x`, or an x the
        transaction did not make).
@@ -1516,4 +1529,5 @@ in 024-12's (4) entry (step 4) and section 1's list.
      uses it yet.
 * **Test scripts** (`12-tree-model/`, the run command in each header):
   `delchk-check.lean.txt`, `heights-op-check.lean.txt`,
-  `merge-hold-check.lean.txt`, `segfit-check.lean.txt`.
+  `merge-hold-check.lean.txt`, `segfit-check.lean.txt`,
+  `leb-probe.lean.txt`.
