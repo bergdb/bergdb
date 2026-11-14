@@ -324,3 +324,7 @@ import SIS.Tree.TakeDelStepsF4
 import SIS.Tree.WriterHeightsMerge
 import SIS.Tree.WriterHeightsDelete
 import SIS.Tree.HeightsDelRun
+import SIS.Tree.DelChk
+import SIS.Tree.WriterHeightsChk
+import SIS.Tree.WriterHeightsChkDel
+import SIS.Tree.HeightsChkRun
