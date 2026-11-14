@@ -547,4 +547,133 @@ theorem delStepsJ2OKF3_of_openR (p : Params) (R : Struct BVal → Time → Prop)
     (delStepsCaseJ2OKF3_roomR p R S hM hRL hRP hRK hSI hSV hSB hSR hSF)
     (delStepsCaseJ2OKF3_fullR p R S hM hsa2 hRL hRP hRK hSI hSV hSB hSR hSF hFits)
 
+
+/-! ## The take-back's state between operations with the fuel and the replaced ids -/
+
+/-- `TakeS3` with the state fitting the fuel (`SegFits`) and the ids that
+`madeFor` names below the transaction's first id: the state between a
+transaction's operations that `DelStepsJ2OKF3`'s S inputs `hSF` and `hSM` ask
+for. -/
+def TakeS4 (p : Params) (ts : List Tx) (tx : Tx) (w : W) : Prop :=
+  TakeS3 p ts tx w ∧
+    SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey ∧
+    ∀ x o, w.madeFor.lookup x = some o → o < tx.base
+
+/-- `runTreeQ_of_cases3` with `TakeS4`, its two extra parts from `StateOK` inputs. -/
+theorem runTreeQ_of_cases3S (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.splitAbove)
+    (Q : Struct BVal → Time → Prop) (hQ0 : Q (initStruct p) 0)
+    (hQs : ∀ ts tx, Within p (ts ++ [tx]) → RunTreeQ p Q (treeRun p ts) ts.length →
+      RunLinksOK p (treeRun p (ts ++ [tx])) (ts.length + 1) →
+      TreeAt p (treeRun p (ts ++ [tx])) (ts.length + 1) →
+      Q (treeRun p (ts ++ [tx])) (ts.length + 1))
+    (hQP : ∀ P t, Q P t → PointersOK P) (hQK : ∀ P t, Q P t → KindsAllOK p P)
+    (ho : OpTreeOKUnder p (RunTreeQ p Q))
+    (hPI : StateOK p (RunTreeQ p Q) (fun ts _ w => PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w))
+    (hRO : StateOK p (RunTreeQ p Q) (fun ts _ w =>
+      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey))
+    (hB : BaseStartOK p (RunTreeQ p Q))
+    (hFS : StateOK p (RunTreeQ p Q) (fun ts _ w =>
+      SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey))
+    (hMF : StateOK p (RunTreeQ p Q) (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base))
+    (c3 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS4 p) PutNewSegFullCase)
+    (c4 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS4 p) DelMergeCase)
+    (c7 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS4 p) DelEmptyCase)
+    (c9 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS4 p) DelFullCase) :
+    ∀ ts, Within p ts → RunTreeQ p Q (treeRun p ts) ts.length := by
+  have hSI : ∀ ts tx w, TakeS4 p ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w :=
+    fun _ _ _ h => h.1.1.1.1
+  have hSV : ∀ ts tx w, TakeS4 p ts tx w → LeafVals (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w :=
+    fun _ _ _ h => h.1.1.1.2
+  have hSB : ∀ ts tx w, TakeS4 p ts tx w → tx.base ≤ w.next := fun _ _ _ h => h.1.1.2
+  have hSR : ∀ ts tx w, TakeS4 p ts tx w →
+      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey := fun _ _ _ h => h.1.2
+  have hS : StateOK p (RunTreeQ p Q) (TakeS4 p) := by
+    intro ts tx hw hr z top hz htop pre post hsplit r w h
+    exact ⟨⟨⟨⟨hPI ts tx hw hr z top hz htop pre post hsplit r w h,
+      leafVals_reached p hM ts tx hw top pre post hsplit r w h (hQP _ _ hr.2.2) (hQK _ _ hr.2.2)⟩,
+      base_le_next_reached p hM ts tx hw top pre post hsplit r w h (hQP _ _ hr.2.2) (hQK _ _ hr.2.2)⟩,
+      hRO ts tx hw hr z top hz htop pre post hsplit r w h⟩,
+      hFS ts tx hw hr z top hz htop pre post hsplit r w h, hMF ts tx hw hr z top hz htop pre post hsplit r w h⟩
+  have hSRF : ∀ ts tx w, TakeS4 p ts tx w → ReachedFree p (treeRun p ts) (ts.length + 1) w :=
+    fun ts _ w h y hy => h.1.1.1.1.untaken y (tReach_reachS _ _ _ _ hy)
+  have hO : OpJ2OK p (RunTreeQ p Q) (TakeS4 p) :=
+    opJ2OK_of_cases p _ _ (opJ2Case_putLeafRoom p _ _ hSI hSV)
+      (opJ2Case_putLeafFull p _ _ (fun _ _ h => h.1) hsa hSI hSV hSB hSR)
+      (opJ2Case_putNewSeg p _ _ hM hSI hSB c3) c4
+      (opJ2Case_delNoLeaf p _ _ hSI) (opJ2Case_delNoop p _ _ hSI) c7 (opJ2Case_delRoom p _ _ hSI hSV) c9
+  exact runTree_jointJ2 p hM Q hQ0 hQs ho (TakeS4 p) hO hS hSRF hB
+    (takenNotValOK_of p hM _ (fun _ _ h => hQP _ _ h.2.2) (fun _ _ h => hQK _ _ h.2.2))
+
+/-- `runTreeQ_of_cases4` with `TakeS4`. -/
+theorem runTreeQ_of_cases4S (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.splitAbove)
+    (Q : Struct BVal → Time → Prop) (hQ0 : Q (initStruct p) 0)
+    (hQs : ∀ ts tx, Within p (ts ++ [tx]) → RunTreeQ p Q (treeRun p ts) ts.length →
+      RunLinksOK p (treeRun p (ts ++ [tx])) (ts.length + 1) →
+      TreeAt p (treeRun p (ts ++ [tx])) (ts.length + 1) →
+      Q (treeRun p (ts ++ [tx])) (ts.length + 1))
+    (hQP : ∀ P t, Q P t → PointersOK P) (hQK : ∀ P t, Q P t → KindsAllOK p P)
+    (ho : OpTreeOKUnder p (RunTreeQ p Q))
+    (hPI : StateOK p (RunTreeQ p Q) (fun ts _ w => PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w))
+    (hRO : StateOK p (RunTreeQ p Q) (fun ts _ w =>
+      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey))
+    (hB : BaseStartOK p (RunTreeQ p Q))
+    (hFS : StateOK p (RunTreeQ p Q) (fun ts _ w =>
+      SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey))
+    (hMF : StateOK p (RunTreeQ p Q) (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base))
+    (c4 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS4 p) DelMergeCase)
+    (c7 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS4 p) DelEmptyCase)
+    (c9 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS4 p) DelFullCase) :
+    ∀ ts, Within p ts → RunTreeQ p Q (treeRun p ts) ts.length :=
+  runTreeQ_of_cases3S p hM hsa Q hQ0 hQs hQP hQK ho hPI hRO hB hFS hMF
+    (opJ2Case_putNewSegFull p _ _ (fun _ _ h => h.1) hM hsa (fun _ _ _ h => h.1.1.1.1)
+      (fun _ _ _ h => h.1.1.2) (fun _ _ _ h => h.1.2)) c4 c7 c9
+
+/-- `runTreeQ_of_cases_merges4` with `TakeS4`. -/
+theorem runTreeQ_of_cases_merges4S (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.splitAbove)
+    (hm : p.merges = true) (Q : Struct BVal → Time → Prop) (hQ0 : Q (initStruct p) 0)
+    (hQs : ∀ ts tx, Within p (ts ++ [tx]) → RunTreeQ p Q (treeRun p ts) ts.length →
+      RunLinksOK p (treeRun p (ts ++ [tx])) (ts.length + 1) →
+      TreeAt p (treeRun p (ts ++ [tx])) (ts.length + 1) →
+      Q (treeRun p (ts ++ [tx])) (ts.length + 1))
+    (hQP : ∀ P t, Q P t → PointersOK P) (hQK : ∀ P t, Q P t → KindsAllOK p P)
+    (ho : OpTreeOKUnder p (RunTreeQ p Q))
+    (hPI : StateOK p (RunTreeQ p Q) (fun ts _ w => PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w))
+    (hRO : StateOK p (RunTreeQ p Q) (fun ts _ w =>
+      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey))
+    (hB : BaseStartOK p (RunTreeQ p Q))
+    (hFS : StateOK p (RunTreeQ p Q) (fun ts _ w =>
+      SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey))
+    (hMF : StateOK p (RunTreeQ p Q) (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base))
+    (c4 : OpJ2CaseOK p (RunTreeQ p Q) (TakeS4 p) DelMergeCase) :
+    ∀ ts, Within p ts → RunTreeQ p Q (treeRun p ts) ts.length :=
+  runTreeQ_of_cases4S p hM hsa Q hQ0 hQs hQP hQK ho hPI hRO hB hFS hMF c4
+    (opJ2CaseOK_void p _ _ _ hm delEmptyCase_merges) (opJ2CaseOK_void p _ _ _ hm delFullCase_merges)
+
+/-- `runTreeQ_of_mergesF4` with `TakeS4` for `DelStepsJ2OKF3`'s S: the state
+fits the fuel and the replaced ids are below the transaction's first id at
+every state between operations (`hFS`, `hMF`). -/
+theorem runTreeQ_of_mergesF4S (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.splitAbove)
+    (hcap : 1 ≤ p.mergeMax) (hm : p.merges = true)
+    (Q : Struct BVal → Time → Prop) (hQ0 : Q (initStruct p) 0)
+    (hQs : ∀ ts tx, Within p (ts ++ [tx]) → RunTreeQ p Q (treeRun p ts) ts.length →
+      RunLinksOK p (treeRun p (ts ++ [tx])) (ts.length + 1) →
+      TreeAt p (treeRun p (ts ++ [tx])) (ts.length + 1) →
+      Q (treeRun p (ts ++ [tx])) (ts.length + 1))
+    (hQP : ∀ P t, Q P t → PointersOK P) (hQK : ∀ P t, Q P t → KindsAllOK p P)
+    (ho : OpTreeOKUnder p (RunTreeQ p Q))
+    (hPI : StateOK p (RunTreeQ p Q) (fun ts _ w => PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w))
+    (hRO : StateOK p (RunTreeQ p Q) (fun ts _ w =>
+      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey))
+    (hFS : StateOK p (RunTreeQ p Q) (fun ts _ w =>
+      SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey))
+    (hMF : StateOK p (RunTreeQ p Q) (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base))
+    (hDS : DelStepsJ2OKF3 p (RunTreeQ p Q) (TakeS4 p))
+    (hMS : ∀ ts, MergeStepOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hCo : ∀ ts, CollapseStepOKF4 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hRJ : ∀ ts B, ReplaceRootFullJ2OK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1) B) :
+    ∀ ts, Within p ts → RunTreeQ p Q (treeRun p ts) ts.length :=
+  runTreeQ_of_cases_merges4S p hM hsa hm Q hQ0 hQs hQP hQK ho hPI hRO (baseStartOK_runTreeQ p Q) hFS hMF
+    (opJ2Case_delMergeF4R p _ _ hDS hMS hCo hRJ hsa hcap (fun _ _ h => hQP _ _ h.2.2) (fun _ _ h => hQK _ _ h.2.2))
+
+
 end SIS.Tree
