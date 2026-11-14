@@ -1995,26 +1995,54 @@ and its status:
         height, its parent's split cascades up the path (`sb_merge`,
         `seenHeight_merge`). `sb_appendKlongsX` is the cascade from a
         node below b that is not on the path (a new segment leaf).
-      - Not proved: the whole operation. A put has at most one cascade,
-        so it adds one; the walk over its descents is not written. A
-        delete runs several merges, each re-descending, and a later
-        merge's path can hold a root that an earlier cascade of the same
-        operation made: the lemmas then give one more per merge. One per
-        segment and operation needs that the new root does not fill again
-        in the same operation (the merges' fill, latest's `LiveCounts`).
+      - A whole put adds at most one (`seenHeight_putKv_put`,
+        `HeightsFuelPut.lean`): its descents only load (heights at most
+        H), and it makes at most one cascade. A new segment leaf's klong
+        cascades in the leaf above, and the new segment leaves below it
+        then have room (`shb_putSegs_empty`).
+      - Not proved: a whole delete. It runs several merges, each
+        re-descending, and a later merge's path can hold a root that an
+        earlier cascade of the same operation made: the lemmas then give
+        one more per merge. One per segment and operation needs that the
+        new root does not fill again in the same operation (the merges'
+        fill, latest's `LiveCounts`).
     - Checked on runs (`/Users/f/fl/bench/2026-11-13/cost/fit/HeightsOp.lean`,
       outside the repository): 316 runs within reach, 18201 operations.
       In every segment the nodes an operation made are at most one above
       the nodes it found, and after every operation every cached height
       is below fuel - 1: 0 failures. 717 operations split a root, 36 of
       them two roots (in two segments).
-    - (C), not started: at operation boundaries SegFits (fuel - 1), by the
+    - TP10's fuel premise between operations (`TxSegFitsOK`, latest's
+      `hfit`) from the heights (cost, 02:05; `HeightsFit.lean`):
+      `txSegFitsOK_of_takeBelowR` gives `TxSegFitsOK p R` from
+      `OpDelChkOK`, the run facts in R (`RunLinksOK`, `KindsAllOK`,
+      `HeightAllOK`) and one named premise, `TakeBelowFuelOK`: every node
+      an operation takes back has a height below the fuel. The argument is
+      the doomed transaction: a node of height fuel or more is above H, so
+      in `outside` (`HeightMarkedPred`), and `boundsOK` at the end asks it
+      taken back by a later operation (`taken_by_op`), which the premise
+      excludes. (B) is not needed for it; (B) serves the bounds inside an
+      operation (`DelFullFitsOK`, `MergeStepOKF3`, `CollapseStepOKF4`).
+      `TakeBelowFuelOK` checked on runs (`HeightsOp.lean`): 3205 operations
+      that took nodes back, in 18201, 0 failures. Its reason is (C)'s part
+      1 below: every node taken back is on a successful descent, or a
+      sibling of one.
+    - (C), begun: at operation boundaries SegFits (fuel - 1), by the
       doomed transaction. A root of height fuel or more cannot be
-      descended (`writerWP_descendLte_depth`), so no later operation of
-      the transaction reaches its segment tree and takes it back, and
-      `boundsOK` fails at the end (it is above H, so in `outside`). The
-      formal argument needs a frame of every operation for the trees it
-      does not reach.
+      descended, so no later operation of the transaction reaches its
+      segment tree and takes it back, and `boundsOK` fails at the end (it
+      is above H, so in `outside`).
+      - Proved, the first step (`HeightsFuelDescent.lean`): a descent that
+        succeeds from an untaken key node of height h had fuel above h
+        (`ht_descendLte_height`, from `writerWP_descendLte_depth` and the
+        heights' balance; the nodes it visits are untaken,
+        `ht_eqVisits_free`).
+      - Left: every take-back site reaches its node by such a descent or
+        made it in the same operation, and an operation that reaches no
+        node of a segment tree leaves the tree's nodes as they are (a
+        frame of every operation). With (B)'s one per operation, a height
+        of fuel - 1 at a boundary can reach fuel inside the next operation,
+        and then the transaction fails.
   - (5) `DelNoLeafCase`, a delete of a key with no leaf: proved,
     `opGetCaseOK_delNoLeaf`. It changes no reading: the writer's walk
     stops at the first segment that is not there and only reads
