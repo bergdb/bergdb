@@ -1112,7 +1112,7 @@ writer reaches) can use.
   the largest cached height (`seenHeight_appendDeleteKlong`,
   `seenHeight_appendKlongs`, `seenHeight_merge`; `HeightsFuel.lean`,
   `HeightsFuelMerge.lean`). The bound for a whole operation is not proved.
-- Runs (`/Users/f/fl/bench/2026-11-13/cost/fit/HeightsOp.lean`): in 18201
+- Runs (`12-tree-model/heights-op-check.lean.txt`): in 18201
   operations of 316 runs within reach, the nodes an operation made were at
   most one above the nodes it found, in every segment.
 

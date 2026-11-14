@@ -1,0 +1,132 @@
+/-
+Step 4 (B) and (C), checked on runs (bergdb 024-22). Not part of the Lean
+project; run it from lean/:
+
+  lake env lean ../items/024-release-2026-5/12-tree-model/heights-op-check.lean.txt
+
+At every operation of a run within reach: in each segment, the largest height
+of the nodes the operation made, against the largest of the nodes it found
+(`gh` after it: ids from the operation's first next id on, and below), and the
+number of root splits it made (the notes split.space3, split.space2 and their
+in-place forms). (B): the nodes an operation makes are at most one above the
+nodes it found, in every segment.
+(C): at every operation boundary the largest height is below fuel - 1.
+`TakeBelowFuelOK`: every node an operation takes back that it found cached at
+its start has a height below fuel (TB). `OpDelHtStepOK`: after a delete every cached height is at most one above
+the largest before it, or H (D).
+-/
+import SIS.Tree.MergeProofBundle
+
+set_option autoImplicit false
+set_option maxRecDepth 100000
+
+namespace SIS.Tree
+
+open SIS SIS.Check
+
+def maxHtSeg (w : W) (g : Nat) (keep : NodeId → Bool) : Nat :=
+  (w.gh.filter (fun e => e.2.1 == g && keep e.1)).foldl (fun m e => max m e.2.2) 0
+
+def maxHt (w : W) : Nat := w.gh.foldl (fun m e => max m e.2.2) 0
+
+def isRootSplit (s : String) : Bool :=
+  s == "split.space3" || s == "split.space2" || s == "split.space3.inplace" ||
+  s == "split.space2.inplace"
+
+/-- For each operation: grow:k (the largest growth of a segment's height), rs:n (its root
+splits), and B:ok or B:FAIL, C:ok or C:FAIL (the state after it). -/
+def opsH (p : Params) (c : Ctx) : List Op → W → List String → List String
+  | [], _, acc => acc
+  | op :: rest, w, acc =>
+    match (putKv op) c w with
+    | .ok (_, w') =>
+      let gs := List.range (p.G + 2)
+      let grow := gs.foldl (fun m g =>
+        max m (maxHtSeg w' g (fun x => decide (w.next ≤ x)) - maxHtSeg w' g (fun x => decide (x < w.next)))) 0
+      let rs := (w'.trail.take (w'.trail.length - w.trail.length)).countP isRootSplit
+      let b := if grow ≤ 1 then "B:ok" else "B:FAIL"
+      let cc := if maxHt w' + 1 < p.fuel then "C:ok" else "C:FAIL"
+      let newTaken := w'.taken.filter (fun x => !w.taken.contains x)
+      let tb := newTaken.all (fun x => w.gh.all (fun e => e.1 != x || decide (e.2.2 < p.fuel)))
+      let tbs := (if tb then "TB:ok" else "TB:FAIL") ++ (if newTaken.isEmpty then "" else s!" tb:{newTaken.length}")
+      let isDel := match op with | .del _ => true | .put _ _ => false
+      let dstep := if !isDel then "" else
+        if maxHt w' ≤ max p.H (maxHt w) + 1 then " D:ok" else " D:FAIL"
+      opsH p c rest w' (acc ++ [s!"{b} {cc} {tbs} grow:{grow} rs:{rs}{dstep}"])
+    | .error e => acc ++ ["ERR " ++ e]
+
+def withinH2 (p : Params) (all : List Tx) : Bool :=
+  all.all (fun t => t.sorted && t.wf) &&
+  (List.range all.length).all (fun j =>
+    match all[j]? with
+    | none => false
+    | some tj => (treeRun p (all.take j)).all (fun q => decide (q.1 < tj.base)) &&
+        isOk (exec? p tj (j + 1) (view (treeSpec p) (treeRun p (all.take j)) j)))
+
+def runH2 (p : Params) (all : List Tx) : List String :=
+  if !withinH2 p all then ["skip"] else
+  ["run"] ++ (List.range all.length).foldl (fun acc j =>
+    match all[j]? with
+    | none => acc
+    | some tx =>
+      let ts := all.take j
+      let v := view (treeSpec p) (treeRun p ts) ts.length
+      match lastTop v with
+      | none => acc ++ ["notop"]
+      | some z =>
+        match topOf p (ctxOf p ts).view z with
+        | .error _ => acc ++ ["toperr"]
+        | .ok top => acc ++ opsH p (ctxOf p ts) tx.ops (wInit tx top) []) []
+
+def summH2 (l : List String) : String :=
+  let has (s : String) := (l.filter (fun x => (x.splitOn s).length > 1)).length
+  s!"runs {(l.filter (· == "run")).length} (skipped {(l.filter (· == "skip")).length}) ops {has "B:"}: B:FAIL {has "B:FAIL"} C:FAIL {has "C:FAIL"} TB:FAIL {has "TB:FAIL"} ops taking back {has " tb:"}; deletes {has " D:"} D:FAIL {has "D:FAIL"}; grow:1 {has "grow:1"} rs:1 {has "rs:1"} rs:2 {has "rs:2"} rs:3 {has "rs:3"}; fails {(l.filter (fun x => (x.splitOn "FAIL").length > 1)).take 3} other {(l.filter (fun x => x.startsWith "ERR" || x.startsWith "not" || x.startsWith "toperr")).take 3}"
+
+end SIS.Tree
+
+namespace SIS.Tree
+
+def hP1 : Params := {M := 8, G := 1, H := 2, mergeBelow := 2, mergeMax := 3, splitAbove := 4}
+def hP2 : Params := {M := 10, G := 2, H := 2, mergeBelow := 2, mergeMax := 4, splitAbove := 5}
+def hPutsAB (as bs : List Nat) : List Op := (as.flatMap (fun a => bs.map (fun b => .put [a, b] (a * 1000 + b + 1))))
+def hDels (as bs : List Nat) : List Op := (as.flatMap (fun a => bs.map (fun b => .del [a, b])))
+def hA (n : Nat) : List Nat := (List.range n).map (fun i => 64 * i + 56)
+def hBs (n : Nat) : List Nat := (List.range n).map (fun j => 64 * j + 8)
+def hRun (na nb k1 keep : Nat) : List Tx :=
+  let a0 := 64 * (na / 2) + 56
+  [{base := 1000, ops := hPutsAB (hA na) (hBs 2)},
+   {base := 3000, ops := hPutsAB [a0] ((hBs nb).drop 2)},
+   {base := 5000, ops := hDels [a0] ((hBs nb).take k1)},
+   {base := 7000, ops := hDels [a0] (((hBs nb).drop k1).take (nb - k1 - keep))}]
+def hFamily : List (List Tx) :=
+  [1, 3, 7, 9].flatMap (fun na => [12, 16, 24, 40].flatMap (fun nb =>
+    [nb / 2, nb - 9, nb - 5].flatMap (fun k1 => [0, 1, 2].map (fun keep => hRun na nb k1 keep))))
+#eval summH2 (hFamily.flatMap (fun r => runH2 hP1 r))
+#eval summH2 (hFamily.flatMap (fun r => runH2 hP2 r))
+def hKey (j : Nat) : Key := [64 * j + 8]
+def hMixed (a b a' b' : Nat) : List Op :=
+  (List.range 300).filterMap (fun j =>
+    if j % 2 == 1 && a ≤ j && j < b then some (.put (hKey j) (j + 1))
+    else if j % 2 == 0 && a' ≤ j && j < b' then some (.del (hKey j))
+    else none)
+def hEvens (n : Nat) : List Op := (List.range n).map (fun j => .put (hKey (2 * j)) (j + 1))
+def hOddDels (a b : Nat) : List Op :=
+  (List.range 300).filterMap (fun j => if j % 2 == 1 && a ≤ j && j < b then some (.del (hKey j)) else none)
+def hMixRun (n a b a' b' : Nat) : List Tx :=
+  [{base := 1000, ops := hEvens n},
+   {base := 3000, ops := hMixed a b a' b'},
+   {base := 5000, ops := hOddDels a b}]
+def hMixFamily : List (List Tx) :=
+  [20, 60, 100].flatMap (fun n => [(0, 30), (10, 90), (0, 200)].flatMap (fun (a, b) =>
+    [(0, 2 * n), (a, b), (b - 10, 2 * n), (a + 4, b + 20)].map (fun (a', b') => hMixRun n a b a' b')))
+#eval summH2 (hMixFamily.flatMap (fun r => runH2 hP1 r))
+#eval summH2 (hMixFamily.flatMap (fun r => runH2 invAsmP r))
+-- one big transaction that grows a tree by puts then shrinks it by deletes of old keys
+def hGrowShrink (n k : Nat) : List Tx :=
+  [{base := 1000, ops := (List.range n).map (fun j => .put (hKey (3 * j + 2)) (j + 1))},
+   {base := 100000, ops := (List.range (3 * n + k)).filterMap (fun j =>
+      if j % 3 == 2 then some (.del (hKey j)) else if j % 3 == 0 && j < 3 * k then some (.put (hKey j) j) else none)}]
+#eval summH2 ([20, 60, 100].flatMap (fun n => [10, 40, 80].flatMap (fun k => runH2 hP1 (hGrowShrink n k))))
+#eval summH2 ([20, 60, 100].flatMap (fun n => [10, 40, 80].flatMap (fun k => runH2 invAsmP (hGrowShrink n k))))
+
+end SIS.Tree
