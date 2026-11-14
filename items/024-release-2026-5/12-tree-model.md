@@ -2006,6 +2006,11 @@ and its status:
         H), and it makes at most one cascade. A new segment leaf's klong
         cascades in the leaf above, and the new segment leaves below it
         then have room (`shb_putSegs_empty`).
+      - At the operation level (`opHtStep_of`, `HeightsOpStep.lean`):
+        every operation of a transaction within reach adds at most one to
+        every cached height, the put proved and the delete a named premise,
+        `OpDelHtStepOK`, checked on runs (`HeightsOp.lean`: 7746 deletes,
+        0 failures).
       - Not proved: a whole delete. It runs several merges, each
         re-descending, and a later merge's path can hold a root that an
         earlier cascade of the same operation made: the lemmas then give
@@ -2023,7 +2028,9 @@ and its status:
       `txSegFitsOK_of_takeBelowR` gives `TxSegFitsOK p R` from
       `OpDelChkOK`, the run facts in R (`RunLinksOK`, `KindsAllOK`,
       `HeightAllOK`) and one named premise, `TakeBelowFuelOK`: every node
-      an operation takes back has a height below the fuel. The argument is
+      an operation takes back that it found (cached and not taken back at
+      its start) has a height below the fuel; a root the operation itself
+      made and took back (MF1) is not asked. The argument is
       the doomed transaction: a node of height fuel or more is above H, so
       in `outside` (`HeightMarkedPred`), and `boundsOK` at the end asks it
       taken back by a later operation (`taken_by_op`), which the premise
