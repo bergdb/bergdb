@@ -2,9 +2,7 @@
 Case (4)'s delete steps, a leaf that keeps a live klong and has room for the
 bitmap, the merges on (bergdb 024-12, TP7 and TP10): `DelInvF` at
 `afterDelete`'s start (`delInvF_after_bitmap`) from the state between
-operations, and the reading's obligation of the case (`delStepsCaseOKF_room`)
-on the walk `writerWP_del_roomM`; the take-back's facts after the bitmap
-(`takeJ2_after_bitmap`).
+operations; the take-back's facts after the bitmap (`takeJ2_after_bitmap`).
 -/
 import SIS.Tree.DelStepsWalk
 
@@ -178,49 +176,6 @@ theorem takeJ2_after_bitmap (c : Ctx) (base : View BVal) (B : NodeId) (w3 v : W)
 
 /-! ## The case's two obligations -/
 
-/-- The reading of a delete whose leaf keeps a live klong and has room, the
-merges on, for runs with their links and TP4 at every run. -/
-theorem delStepsCaseOKF_room (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
-    (hRL : ∀ P t, R P t → RunLinksOK p P t)
-    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts)) :
-    DelStepsCaseOKF p R DelRoomM := by
-  intro ts tx hw hr z top _ htop ops op post hops r w hpre hI hRO hF key hop hPc hA _ _
-  obtain ⟨pre, cv, L0, n0, hop', _, hK, hne0, hkeep0, hroom0⟩ := hPc
-  subst hop'
-  cases hop
-  have hkey : keyWf (pre ++ [cv]) = true := within_op_keyWf p ts tx hw ops _ post hops
-  obtain ⟨rk, hrk, hn0⟩ := keyLeaf_rk hK
-  have hB := putBase_of_run p ts tx hw (hRL _ _ hr)
-  have hbook := putBook_reached p ts tx hw (hRL _ _ hr) z top htop ops r w hpre
-  have hICE := innerChildren_reached p hM hP ts tx hw top ops (.del (pre ++ [cv]) :: post) hops r w hpre
-    (fun x hx => hI.untaken x (tReach_reachS _ _ _ _ hx))
-  refine writerWP_del_roomM (ctxOf p ts) _ (viewCoherent_ctxOf p ts) pre cv rk w tx.base top hB hbook hrk
-    (hI.pathUntaken _) (keyLeaf_all hK hrk
-      (fun m => klongsWf m.ks = true ∧ (∀ s, Klong.time s ∈ m.ks → s ≤ (ctxOf p ts).i) ∧
-        bitsUnion m.lastBitmap (m.bitsOf cv) ≠ m.lastBitmap ∧
-        m.allKeysIn (bitsUnion m.lastBitmap (m.bitsOf cv)) = false ∧ DelRoom (ctxOf p ts) cv m)
-      ⟨hI.wf L0 n0 hn0, hI.times L0 n0 hn0, hne0, hkeep0, hroom0⟩) _ ?_ ?_
-  · intro v hv
-    unfold fresh
-    wpSimplify
-    exact hv
-  · intro L n w3 v g h hL hn hnl hr03 _ hLt h1 h2 h3 _ _ _ h7 hbv
-    have hD := delInvF_after_bitmap (ctxOf p ts) _ tx.base top hB w w3 v pre cv rk L n hI hRO hICE hF
-      hkey hrk hL hn hnl hr03 hLt h1 h2 h3 h7 hbv
-    refine writerWP_mono (hA g h v hD) ?_
-    intro _ v' hv' hFv' key' hk'
-    have := runGet_of_delInvF p ts w v' (pre ++ [cv]) hv' hI hF hFv' key' hk'
-    simpa [Op.key, Op.value] using this
-
 /-! ## The two obligations with the open cases named -/
-
-/-- `DelStepsOKF` with the no-leaf, noop and room cases proved: open are the
-upward delete (`DelEmptyM`) and the full leaf (`DelFullM`). -/
-theorem delStepsOKF_of_open (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
-    (hRL : ∀ P t, R P t → RunLinksOK p P t)
-    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
-    (c7 : DelStepsCaseOKF p R DelEmptyM) (c9 : DelStepsCaseOKF p R DelFullM) : DelStepsOKF p R :=
-  delStepsOKF_of_cases p R (delStepsCaseOKF_noLeaf p R) (delStepsCaseOKF_noop p R) c7
-    (delStepsCaseOKF_room p R hM hRL hP) c9
 
 end SIS.Tree

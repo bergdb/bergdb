@@ -1632,10 +1632,44 @@ and its status:
       The halves must be `HalfOK` (a live klong, two, and m), and a new
       inner root needs two live klongs. Common to all is
       `liveEdges_of_sim`.
-    - Left for (2) and (3c): the walk of the cascade, with these steps in
-      place of cost's in `writerWP_appendKlongs_chainG`, with the halves'
-      counts from `halves_lastVersionGivenDel_live_fill`. Then the
-      access-path wrapper, as `writerWP_put_accessPathR`.
+    - The cascade's walk keeps `LiveEdges` (latest, 01:02, with cost's and
+      the coordinator's agreement): `writerWP_appendKlongs_chainGL` in
+      `WriterTreeChainG.lean`. It is cost's walk with one more post
+      conjunct: with the merges' thresholds, `LiveEdges` of the tree with
+      the klongs put gives `LiveEdges` after. Each of cost's steps of the
+      tree has its twin of `LiveSteps.lean` beside it. The counts come from
+      `LiveChain.lean`: the halves are `HalfOK`
+      (`halves_lastVersionGivenDel_live_fill`), and a time split's last
+      version has the live klongs of the node with the klongs put.
+      `writerWP_appendKlongs_chainG` is now its corollary, with its
+      statement unchanged, so the walk exists once. To sit below it,
+      `LiveEdges`' basic part moved to `LiveEdgesBase.lean`.
+    - `QLive` of case (2), a put into a full leaf, is proved (latest,
+      01:04; `LivePutFull.lean`). `liveEdges_put_accessPath` is
+      `writerWP_put_accessPathR`'s walk down the path, with the cascade by
+      `writerWP_appendKlongs_chainGL` and the leaf's klong by
+      `liveEdges_updN_grow`. `liveCase_putLeafFull` is the case.
+    - TP7 with every case proved so far is `latestInvOK_of_open` /
+      `invPreserved_of_open_cases` (`LiveTP7.lean`). The cases (1) to (3)
+      of TP10's three posts and of `QLive` are filled in, but `QLive`
+      (3c), and so are cost's live heights (`treeRun_heightLiveOK`). Left
+      as premises:
+      - TP4, `DeadAllOK` and P's tree (`TreeAt`) at every run;
+      - cost's `OpHtDelOK`;
+      - TP10's three posts of (4);
+      - `QLive` of (3c): new segments below a full leaf. The cascade there
+        runs with the new segment leaf still empty, so `LiveEdges` of its
+        virtual tree does not hold. It needs `LiveEdges` with that one
+        pending node excepted.
+    - The walk with exceptions (latest, 01:20): `LiveEdgesX ... E` asks
+      `ChildOK` only of links to nodes outside E, and a node in E may be
+      named by segment leaves only (`LiveStepsX.lean`, with every step of
+      `LiveSteps.lean` for it). The walk is now
+      `writerWP_appendKlongs_chainGLX`, for a set E of old nodes off the
+      access path; `writerWP_appendKlongs_chainGL` is its corollary with E
+      empty (`liveEdgesX_false_iff`), and `writerWP_appendKlongs_chainG`
+      stays the corollary of that, so the walk still exists once.
+      - `QLive` of (4), the delete with the merges.
     - `LiveCounts` was checked on runs within reach with the merges on
       (`12-tree-model/live-counts-check.lean.txt`). The parameters were
       record format 7's thresholds at node sizes 8, 10 and 14 (m = 2, 2
