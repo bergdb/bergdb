@@ -1,8 +1,8 @@
 /-
 `QLive` of a delete with the merges on that neither splits nor merges (bergdb
-024-12, case (4a) of `l4`): the leaf has room for the bitmap and keeps more
-than `mergeBelow` live klongs, so after the bitmap TP7's live counts hold as
-before (`liveCounts_updN_leaf`), and with them the merges' loop merges nothing
+024-12, case (4a) of `l4`): the leaf has room for the bitmap and keeps a live
+klong, and more than `mergeBelow` if an inner node names it, so after the
+bitmap TP7's live counts hold as before (`liveCounts_updN_leaf`), and with them the merges' loop merges nothing
 (`writerWP_afterDelete_none`). `l4` narrows to the deletes that split, empty
 their leaf or merge (`opCaseOK_or`).
 -/
@@ -98,11 +98,13 @@ theorem fReach_updN_leaf (N : NodeId → Option KNode) (t : Time) (r L : NodeId)
       exact FReach.seg x b s m c y ih hm hml hcy
 
 /-- TP7's live counts after a leaf lost live klongs but keeps one, and
-`mergeBelow` with the merges on. -/
+`mergeBelow` with the merges on where an inner node names it. -/
 theorem liveCounts_updN_leaf (p : Params) (N : NodeId → Option KNode) (t : Time) (r L : NodeId)
     (n n' : KNode) (hLC : LiveCounts p N t r) (hL : N L = some n) (hnl : n.leaf = true)
     (hn'l : n'.leaf = true) (hsub : ∀ q ∈ n'.liveAt t, q ∈ n.liveAt t)
-    (hpos : n'.liveAt t ≠ []) (hfill : p.merges = true → p.mergeBelow ≤ (n'.liveAt t).length) :
+    (hpos : n'.liveAt t ≠ [])
+    (hfill : ∀ b s, FReach N t r L b s → p.merges = true → b = false →
+      p.mergeBelow ≤ (n'.liveAt t).length) :
     LiveCounts p (updN N L n') t r := by
   intro x b s m hfr hm
   have hfr0 := fReach_updN_leaf N t r L n n' hL hnl hn'l hsub x b s hfr
@@ -110,22 +112,27 @@ theorem liveCounts_updN_leaf (p : Params) (N : NodeId → Option KNode) (t : Tim
   · subst hx
     rw [updN_self] at hm
     cases hm
-    exact ⟨fun h => absurd h hpos, (fun h => by rw [hn'l] at h; cases h), fun hm _ => hfill hm⟩
+    exact ⟨fun h => absurd h hpos, (fun h => by rw [hn'l] at h; cases h),
+      fun hm hb => hfill b s hfr0 hm hb⟩
   · rw [updN_ne _ _ _ _ hx] at hm
     exact hLC x b s m hfr0 hm
 
-/-- (4a) A delete, the merges on, whose leaf has room for the bitmap and keeps
-more than `mergeBelow` live klongs: no split and no merge. -/
+/-- (4a) A delete, the merges on, whose leaf has room for the bitmap and keeps a
+live klong, and more than `mergeBelow` if an inner node names it (a segment
+root's leaf need not): no split and no merge. -/
 def DelRoomFillCase (c : Ctx) (base : View BVal) (w : W) (op : Op) : Prop :=
   ∃ pre cv L n, op = .del (pre ++ [cv]) ∧ c.p.merges = true ∧ KeyLeaf c base w pre cv L n ∧
     bitsUnion n.lastBitmap (n.bitsOf cv) ≠ n.lastBitmap ∧
     n.allKeysIn (bitsUnion n.lastBitmap (n.bitsOf cv)) = false ∧ DelRoom c cv n ∧
-    c.p.mergeBelow + 1 ≤ n.live.length
+    2 ≤ n.live.length ∧
+    ∀ b s, FReach (wNode c.p base w) c.i w.top.rootKey L b s → b = false →
+      c.p.mergeBelow + 1 ≤ n.live.length
 
-/-- `QLive` of (4a): after the bitmap the leaf keeps at least `mergeBelow` live
-klongs, so the live counts hold, and the merges' loop merges nothing. -/
+/-- `QLive` of (4a): after the bitmap the leaf keeps a live klong, and at least
+`mergeBelow` where an inner node names it, so the live counts hold, and the
+merges' loop merges nothing. -/
 theorem liveCase_delRoomFill (p : Params) (R : Struct BVal → Time → Prop)
-    (hRL : ∀ P t, R P t → RunLinksOK p P t) (hmb : 1 ≤ p.mergeBelow) :
+    (hRL : ∀ P t, R P t → RunLinksOK p P t) :
     OpCaseOK p R (QLive p) DelRoomFillCase := by
   intro ts tx hw hr z top _ htop ops op post hops r w hpre hI _ hPc
   obtain ⟨pre, cv, L0, n0, hop', _, hK, hne0, hkeep0, hroom0, hfill0⟩ := hPc
@@ -138,16 +145,18 @@ theorem liveCase_delRoomFill (p : Params) (R : Struct BVal → Time → Prop)
   obtain ⟨rk, hrk, hn0⟩ := keyLeaf_rk hK
   have hB := putBase_of_run p ts tx hw (hRL _ _ hr)
   have hbook := putBook_reached p ts tx hw (hRL _ _ hr) z top htop ops r w hpre
-  have hleaf := keyLeaf_all hK hrk
-      (fun m => klongsWf m.ks = true ∧ (∀ s, Klong.time s ∈ m.ks → s ≤ (ctxOf p ts).i) ∧
+  have hleaf := keyLeaf_all2 hK hrk
+      (fun L m => klongsWf m.ks = true ∧ (∀ s, Klong.time s ∈ m.ks → s ≤ (ctxOf p ts).i) ∧
         bitsUnion m.lastBitmap (m.bitsOf cv) ≠ m.lastBitmap ∧
         m.allKeysIn (bitsUnion m.lastBitmap (m.bitsOf cv)) = false ∧ DelRoom (ctxOf p ts) cv m ∧
-        p.mergeBelow + 1 ≤ m.live.length)
+        2 ≤ m.live.length ∧
+        ∀ b s, FReach (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey L b s →
+          b = false → p.mergeBelow + 1 ≤ m.live.length)
       ⟨hI.wf L0 n0 hn0, hI.times L0 n0 hn0, hne0, hkeep0, hroom0, hfill0⟩
   refine writerWP_mono (writerWP_del_roomM (ctxOf p ts) _ (viewCoherent_ctxOf p ts) pre cv rk w tx.base
     top hB hbook hrk (hI.pathUntaken _)
     (fun L n hL hn hnl =>
-      let ⟨a, b, c', d, e, _⟩ := hleaf L n hL hn hnl
+      let ⟨a, b, c', d, e, _, _⟩ := hleaf L n hL hn hnl
       ⟨a, b, c', d, e⟩)
     (fun v => LiveCounts p (wNode p (viewOf (treeRun p ts)) v) (ts.length + 1) v.top.rootKey)
     ?_ ?_) (fun _ _ h _ _ => h)
@@ -157,7 +166,7 @@ theorem liveCase_delRoomFill (p : Params) (R : Struct BVal → Time → Prop)
     exact hv
   · intro L n w3 v g h hL hn hnl hr03 _ hLt hvt hvtop _ _ _ _ hex _
     obtain ⟨n', hnodes, hleafeq, hwf', htimes', hlive', _⟩ := hex
-    obtain ⟨_, htn, _, _, _, hfill⟩ := hleaf L n hL hn hnl
+    obtain ⟨_, htn, _, _, _, h2, hfill⟩ := hleaf L n hL hn hnl
     have h3t : w3.taken.contains L = false := by rw [hr03.2.2.1]; exact hLt
     have hN : wNode p (viewOf (treeRun p ts)) v = updN (wNode p (viewOf (treeRun p ts)) w) L n' := by
       have e3 : wNode p (viewOf (treeRun p ts)) w3 = wNode p (viewOf (treeRun p ts)) w := hr03.1
@@ -177,7 +186,7 @@ theorem liveCase_delRoomFill (p : Params) (R : Struct BVal → Time → Prop)
     have hLC1 : LiveCounts p (updN (wNode p (viewOf (treeRun p ts)) w) L n') (ts.length + 1)
         w.top.rootKey :=
       liveCounts_updN_leaf p _ _ _ L n n' hLC0 hn hnl (by rw [hleafeq]; exact hnl) hsub hpos
-        (fun _ => by rw [e2]; omega)
+        (fun b s hfr _ hb => by rw [e2]; have := hfill b s hfr hb; omega)
     -- the links after are links before
     have hsubT : ∀ x c y, TLink (updN (wNode p (viewOf (treeRun p ts)) w) L n') (ts.length + 1) x c y →
         TLink (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) x c y := by
@@ -245,12 +254,12 @@ def DelMergeRestCase (c : Ctx) (base : View BVal) (w : W) (op : Op) : Prop :=
 /-- `l4` narrowed: `QLive` of the delete with the merges from `QLive` of the
 deletes that are not (4a). -/
 theorem liveCase_delMerge_of_rest (p : Params) (R : Struct BVal → Time → Prop)
-    (hRL : ∀ P t, R P t → RunLinksOK p P t) (hmb : 1 ≤ p.mergeBelow)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t)
     (hrest : OpCaseOK p R (QLive p) DelMergeRestCase) :
     OpCaseOK p R (QLive p) DelMergeCase :=
   opCaseOK_or p R (QLive p) DelMergeCase DelRoomFillCase _
     (fun c base w op h => (Classical.em (DelRoomFillCase c base w op)).elim Or.inl
       (fun hn => Or.inr ⟨h, hn⟩))
-    (liveCase_delRoomFill p R hRL hmb) hrest
+    (liveCase_delRoomFill p R hRL) hrest
 
 end SIS.Tree

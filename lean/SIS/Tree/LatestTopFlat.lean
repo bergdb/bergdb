@@ -197,7 +197,7 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     (delStepsQdL_of_openR3 p _ (by omega) hsa hRL' hRP' hRK' hRH' hht htb hU hHL hG) hMS hCo hsa hcap
     hRP' hRK' hfitQ
   have l4' := opCaseOK_anti p _ _ hR _ _
-    (liveCase_delMerge_of_rest p (RunOK p) hRL (by omega) l4)
+    (liveCase_delMerge_of_rest p (RunOK p) hRL l4)
   have d4' := opCaseOK_anti p _ _ hR _ _ d4
   -- TP10's three posts for every operation from a state with TP7's live counts
   have hTL := opCaseOK_of_cases_mergesL p _ _ hm (treeCase_putLeafRoom p _)
