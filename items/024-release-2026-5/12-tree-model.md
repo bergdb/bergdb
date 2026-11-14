@@ -68,10 +68,10 @@ only (02:40):
   between operations, and `DeadAllOK` at all 1512 run ends (18,243 key nodes, 2694 at theta,
   none above). Also TP39 in `treetest` and on Java's traces (C-T6), for the key nodes reached.
 - `hchk`, `OpDelChk2OK`: a delete runs as its copy with the take-backs' checks, but the path's
-  (`checkPathFree`, proved) (cost, the heights). Evidence: the same result and state at 7137
-  deletes, 6828 of 310 runs and 309 of 8 random runs in several segments, 160 with a take-back
-  in the upward delete's loop, 2305 with a merge's, 453 with root collapse's
-  (`12-tree-model/delchk-check.lean.txt`).
+  (`checkPathFree`, proved) (cost, the heights). Evidence: the same result and state at 7987
+  deletes, 6828 of 310 runs, 309 of 8 random runs in several segments and 850 of random runs
+  whose deletes climb (77 climbing); 160 with a take-back in the upward delete's loop, 2305
+  with a merge's, 453 with root collapse's (`12-tree-model/delchk-check.lean.txt`).
 - `htb`, `TakeBelowFuelDelOK`: every node that a delete takes back, of those it found at its
   start, has a cached height below the fuel (cost; a put takes nothing back, proved). With the
   heights it gives that every state between operations fits the fuel
