@@ -1391,3 +1391,58 @@ of mine runs or holds a slot.
   takes its own slot with `slot.sh`).
 
 2026-11-13. Status set after the release (coord-1113).
+
+### 11.1 State, the night of 2026-11-13 to 14 (agent "cost")
+
+Branch `024-22-cost` in `/Users/f/fl/bench/2026-11-13/cost/clone`, main
+merged at every checkpoint; the full build passes and every theorem of the
+night uses only propext, Classical.choice and Quot.sound. The details are
+in 024-12's (4) entry (step 4) and section 1's list.
+
+* **Proved:**
+  - TP7's (b), the live heights after every run, from one named premise:
+    `treeRun_heightLiveOK_chk`, `invPreserved_of_open_chk`
+    (`HeightsChkRun.lean`). The heights' walk: every key node's height
+    exact in the writer's overlay at every state of a transaction
+    (`HtInv`, `WriterHeights*.lean`, `HeightsRun.lean`).
+  - TP10's fuel premise between operations (`TxSegFitsOK`, latest's
+    `hfit`) from the heights: `txSegFitsOK_of_takeBelowDelR`
+    (`HeightsFit.lean`), by the doomed transaction.
+  - Step 4 (B): a split's cascade, a delete's bitmap and a merge each add
+    at most one to the cached heights; a whole put too
+    (`HeightsFuel.lean`, `HeightsFuelMerge.lean`, `HeightsFuelPut.lean`);
+    every operation, given the delete's (`opHtStep_of`,
+    `HeightsOpStep.lean`).
+  - Step 4 (C), part 1: a descent that succeeds from a node of height h
+    had fuel above h (`ht_descendLte_height`, `HeightsFuelDescent.lean`).
+* **Open, as exact statements** (named premises; each with its test):
+  - `OpDelChkOK p` (`HeightsChkRun.lean`): a delete, from a state that
+    the transaction's earlier operations reach, runs as its copy with a
+    check at every take-back (`putKvDelChk`, `DelChk.lean`).
+    `12-tree-model/delchk-check.lean.txt`: 7137 deletes, 0 failures.
+  - `TakeBelowFuelDelOK p` (`HeightsFit.lean`): a delete takes back no
+    node of height fuel or more that it found at its start.
+    `12-tree-model/heights-op-check.lean.txt`: 3224 operations that took
+    nodes back, 0 failures.
+  - `OpDelHtStepOK p` (`HeightsOpStep.lean`): a delete adds at most one
+    to every cached height. `heights-op-check.lean.txt`: 8416 deletes, 0
+    failures.
+  - The holder family `HtDelFamily` (`WriterHeightsDelete.lean`) is a
+    second route to TP7's (b), superseded by `OpDelChkOK`.
+  - TP32 and TP33 as before (section 11; TP32's heights paragraph above).
+* **Next:**
+  1. `OpDelChkOK`'s checks: the holders (`checkFree`, `checkRoot`) from
+     putinv's TP4 walk (`TakeJ2` with `TreeOK`, through
+     `liveHolder_unique`); the segment leaves (`checkOld`, the stop node)
+     from latest's `LiveCounts` within a delete; `checkPathFree` from the
+     path's nodes being distinct (their segment and height strictly
+     decrease along the path: `PathHt` with `PathKinds`).
+  2. `TakeBelowFuelDelOK`: a node a delete found and takes back is
+     reachable at its start from a segment root it descended, so below
+     the fuel by (C)'s part 1; needs that reach frame through the
+     delete's writes.
+  3. `OpDelHtStepOK`: one root split per segment and delete, as the new
+     root keeps room in the same operation (the merges' fill).
+* **Test scripts** (`12-tree-model/`, the run command in each header):
+  `delchk-check.lean.txt`, `heights-op-check.lean.txt`,
+  `merge-hold-check.lean.txt`, `segfit-check.lean.txt`.
