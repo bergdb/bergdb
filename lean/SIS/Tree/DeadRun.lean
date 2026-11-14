@@ -112,20 +112,31 @@ theorem deadAllOK_commit (p : Params) (ts : List Tx) (tx : Tx)
   rw [keyNodeAt_eq_knodeOf, hK] at hx
   exact hW h0 x n hx
 
-/-- One transaction's step of `DeadAllOK`: from `RunOK` and `DeadAllOK` before
-it, TP10's three posts and `QDead` for every operation. -/
+/-- One transaction's step of `DeadAllOK`: from R (a run predicate with the
+run's links, P's tree and TP7's invariant) and `DeadAllOK` before it, TP10's
+three posts and `QDead` for every operation at R's runs. -/
+theorem deadAllOK_snocR (p : Params) (R : Struct BVal → Time → Prop)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t) (hRT : ∀ P t, R P t → TreeAt p P t)
+    (hRI : ∀ P t, R P t → InvOK p P t)
+    (hT : OpCaseOK p R (QTree p) AnyOp) (hPI : OpCaseOK p R (QPutInv p) AnyOp)
+    (hO : OpCaseOK p R (QRange p) AnyOp) (hDd : OpCaseOK p R (QDead p) AnyOp)
+    (ts : List Tx) (tx : Tx) (hw : Within p (ts ++ [tx])) (hr : R (treeRun p ts) ts.length)
+    (hD : DeadAllOK p (treeRun p ts)) : DeadAllOK p (treeRun p (ts ++ [tx])) := by
+  obtain ⟨noops, w, hrun⟩ := within_last_ok p ts tx hw
+  obtain ⟨z, top, hz, htop, hops⟩ := runOps_ok p _ _ _ _ noops w hrun
+  have hcl : CommitLiftAt p ts tx := commitLiftAt_of_links p ts tx hw (hRL _ _ hr)
+  exact deadAllOK_commit p ts tx hcl noops w hrun
+    (dead_reached p R hRL hT hPI hO hDd ts tx hw hr (hRT _ _ hr) (hRI _ _ hr) hD z top hz htop
+      tx.ops [] (by simp) noops w hops)
+
+/-- `deadAllOK_snocR` at `RunOK`. -/
 theorem deadAllOK_snoc (p : Params)
     (hT : OpCaseOK p (RunOK p) (QTree p) AnyOp) (hPI : OpCaseOK p (RunOK p) (QPutInv p) AnyOp)
     (hO : OpCaseOK p (RunOK p) (QRange p) AnyOp) (hDd : OpCaseOK p (RunOK p) (QDead p) AnyOp)
     (ts : List Tx) (tx : Tx) (hw : Within p (ts ++ [tx])) (hr : RunOK p (treeRun p ts) ts.length)
-    (hD : DeadAllOK p (treeRun p ts)) : DeadAllOK p (treeRun p (ts ++ [tx])) := by
-  have hRL : ∀ P t, RunOK p P t → RunLinksOK p P t := fun _ _ h => h.1
-  obtain ⟨noops, w, hrun⟩ := within_last_ok p ts tx hw
-  obtain ⟨z, top, hz, htop, hops⟩ := runOps_ok p _ _ _ _ noops w hrun
-  have hcl : CommitLiftAt p ts tx := commitLiftAt_of_links p ts tx hw hr.1
-  exact deadAllOK_commit p ts tx hcl noops w hrun
-    (dead_reached p (RunOK p) hRL hT hPI hO hDd ts tx hw hr hr.2.1 hr.2.2 hD z top hz htop tx.ops []
-      (by simp) noops w hops)
+    (hD : DeadAllOK p (treeRun p ts)) : DeadAllOK p (treeRun p (ts ++ [tx])) :=
+  deadAllOK_snocR p (RunOK p) (fun _ _ h => h.1) (fun _ _ h => h.2.1) (fun _ _ h => h.2.2) hT hPI hO
+    hDd ts tx hw hr hD
 
 /-! ## The operation cases -/
 

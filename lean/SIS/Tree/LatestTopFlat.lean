@@ -84,8 +84,43 @@ theorem heightAllOK_snocU (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Tim
   rw [treeRun_snoc_changes p ts tx bs w hrun]
   exact hstep
 
-/-- `latestQD_snoc` with the delete side of the heights only at the runs of the
-induction. -/
+/-- `OpCaseOK` at the runs of R from it at the runs of R', where every run
+within reach is one of R'. -/
+theorem opCaseOK_of_within (p : Params) (R R' : Struct BVal → Time → Prop)
+    (h : ∀ ts tx, Within p (ts ++ [tx]) → R (treeRun p ts) ts.length → R' (treeRun p ts) ts.length)
+    (Q : List Tx → Op → W → W → Prop) (C : Ctx → View BVal → W → Op → Prop)
+    (hC : OpCaseOK p R' Q C) : OpCaseOK p R Q C :=
+  fun ts tx hw hr => hC ts tx hw (h ts tx hw hr)
+
+/-- `latestQD_snoc` with the delete side of the heights, and the operations'
+cases, only at the runs of the induction. -/
+theorem latestQD_snocR (p : Params) (hp : MergeParamsOK p)
+    (hdel : OpHtDelOKUnder p (RunTreeQ p (LatestQD p)))
+    (hT : OpCaseOK p (RunTreeQ p (LatestQD p)) (QTree p) AnyOp)
+    (hPI : OpCaseOK p (RunTreeQ p (LatestQD p)) (QPutInv p) AnyOp)
+    (hO : OpCaseOK p (RunTreeQ p (LatestQD p)) (QRange p) AnyOp)
+    (hLv : OpCaseOK p (RunTreeQ p (LatestQD p)) (QLive p) AnyOp)
+    (hDd : OpCaseOK p (RunTreeQ p (LatestQD p)) (QDead p) AnyOp) :
+    ∀ ts tx, Within p (ts ++ [tx]) → RunTreeQ p (LatestQD p) (treeRun p ts) ts.length →
+      RunLinksOK p (treeRun p (ts ++ [tx])) (ts.length + 1) →
+      TreeAt p (treeRun p (ts ++ [tx])) (ts.length + 1) →
+      LatestQD p (treeRun p (ts ++ [tx])) (ts.length + 1) := by
+  intro ts tx hw hr hL' hT'
+  have hM := mergeParamsOK_M p hp
+  have hr0 := hr
+  have hRL : ∀ P t, RunTreeQ p (LatestQD p) P t → RunLinksOK p P t := fun _ _ h => h.1
+  have hRT : ∀ P t, RunTreeQ p (LatestQD p) P t → TreeAt p P t := fun _ _ h => h.2.1
+  have hRI : ∀ P t, RunTreeQ p (LatestQD p) P t → InvOK p P t := fun _ _ h => h.2.2.1.1
+  obtain ⟨hL, _, ⟨_, _, hK, hA, hS, hLA⟩, hD⟩ := hr
+  have hD' := deadAllOK_snocR p _ hRL hRT hRI hT hPI hO hDd ts tx hw hr0 hD
+  have hK' := kindsAllOK_snoc p (by omega) ts tx hw hL hK
+  have hA' := heightAllOK_snocU p (by omega) _ hdel ts tx hw hr0 hL hK hA
+  have hS' := sizeOK_snoc p hp ts tx hw hL hS
+  have hLA' := leftAllOK_snoc p hp ts tx hw hL hLA
+  exact ⟨⟨invOK_snocR p _ hRL hRT hRI hT hPI hO hLv ts tx hw hr0 hL' hT' hK' hA' hS' hLA' hD',
+    hL'.1, hK', hA', hS', hLA'⟩, hD'⟩
+
+/-- `latestQD_snocR` with the operations' cases at `RunOK`. -/
 theorem latestQD_snocU (p : Params) (hp : MergeParamsOK p)
     (hdel : OpHtDelOKUnder p (RunTreeQ p (LatestQD p)))
     (hT : OpCaseOK p (RunOK p) (QTree p) AnyOp) (hPI : OpCaseOK p (RunOK p) (QPutInv p) AnyOp)
@@ -94,18 +129,10 @@ theorem latestQD_snocU (p : Params) (hp : MergeParamsOK p)
     ∀ ts tx, Within p (ts ++ [tx]) → RunTreeQ p (LatestQD p) (treeRun p ts) ts.length →
       RunLinksOK p (treeRun p (ts ++ [tx])) (ts.length + 1) →
       TreeAt p (treeRun p (ts ++ [tx])) (ts.length + 1) →
-      LatestQD p (treeRun p (ts ++ [tx])) (ts.length + 1) := by
-  intro ts tx hw hr hL' hT'
-  have hM := mergeParamsOK_M p hp
-  have hr0 := hr
-  obtain ⟨hL, hTA, ⟨hI, _, hK, hA, hS, hLA⟩, hD⟩ := hr
-  have hD' := deadAllOK_snoc p hT hPI hO hDd ts tx hw ⟨hL, hTA, hI⟩ hD
-  have hK' := kindsAllOK_snoc p (by omega) ts tx hw hL hK
-  have hA' := heightAllOK_snocU p (by omega) _ hdel ts tx hw hr0 hL hK hA
-  have hS' := sizeOK_snoc p hp ts tx hw hL hS
-  have hLA' := leftAllOK_snoc p hp ts tx hw hL hLA
-  exact ⟨⟨invOK_snoc p hT hPI hO hLv ts tx hw ⟨hL, hTA, hI⟩ hL' hT' hK' hA' hS' hLA' hD',
-    hL'.1, hK', hA', hS', hLA'⟩, hD'⟩
+      LatestQD p (treeRun p (ts ++ [tx])) (ts.length + 1) :=
+  latestQD_snocR p hp hdel (opCaseOK_anti p _ _ (runOK_of_runTreeQD p) _ _ hT)
+    (opCaseOK_anti p _ _ (runOK_of_runTreeQD p) _ _ hPI) (opCaseOK_anti p _ _ (runOK_of_runTreeQD p) _ _ hO)
+    (opCaseOK_anti p _ _ (runOK_of_runTreeQD p) _ _ hLv) (opCaseOK_anti p _ _ (runOK_of_runTreeQD p) _ _ hDd)
 
 set_option maxHeartbeats 800000 in
 /-- TP7, TP10 and TP11, and the latest time's get and scan, for the parameters
@@ -136,29 +163,7 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
   have hsa : 2 ≤ p.splitAbove := by omega
   have hcap : 1 ≤ p.mergeMax := by omega
   have hRL : ∀ P t, RunOK p P t → RunLinksOK p P t := fun _ _ h => h.1
-  -- TP10's three posts, TP7's live counts and the dead bound for every operation
-  have hT := opCaseOK_of_cases_merges p (RunOK p) _ hm (treeCase_putLeafRoom p _)
-    (treeCase_putLeafFull p _ hRL hsa)
-    (opCaseOK_putNewSeg_of_parts p _ _ (treeCase_putNewSeg1Room p _ (by omega))
-      (treeCase_putNewSegsRoom p _ (by omega)) (treeCase_putNewSegFull p _ hRL (by omega) hsa)) t4
-  have hPI := opCaseOK_of_cases_merges p (RunOK p) _ hm (putInvCase_putLeafRoom p _ hRL)
-    (putInvCase_putLeafFull p _ hRL hsa)
-    (opCaseOK_putNewSeg_of_parts p _ _ (putInvCase_putNewSeg1Room p _ hRL (by omega))
-      (putInvCase_putNewSegsRoom p _ hRL (by omega)) (putInvCase_putNewSegFull p _ hRL (by omega) hsa))
-    i4
-  have hO := opCaseOK_of_cases_merges p (RunOK p) _ hm (rangeCase_putLeafRoom p _)
-    (rangeCase_putLeafFull p _ hRL hsa)
-    (opCaseOK_putNewSeg_of_parts p _ _ (rangeCase_putNewSeg1Room p _ (by omega))
-      (rangeCase_putNewSegsRoom p _ (by omega)) (rangeCase_putNewSegFull p _ hRL (by omega) hsa)) r4
-  have hLv := opCaseOK_of_cases_merges p (RunOK p) _ hm (liveCase_putLeafRoom p _)
-    (liveCase_putLeafFull p _ hRL hsa hp)
-    (opCaseOK_putNewSeg_of_parts p _ _ (liveCase_putNewSeg1Room p _ (by omega))
-      (liveCase_putNewSegsRoom p _ (by omega)) (liveCase_putNewSegFull p _ hRL (by omega) hsa hp)) l4
-  have hDd := opCaseOK_of_cases_merges p (RunOK p) _ hm (deadCase_putLeafRoom p _)
-    (deadCase_putLeafFull p _ hRL hsa hth)
-    (opCaseOK_putNewSeg_of_parts p _ _ (deadCase_putNewSeg1Room p _ (by omega))
-      (deadCase_putNewSegsRoom p _ (by omega)) (deadCase_putNewSegFull p _ hRL (by omega) hsa hth)) d4
-  -- the run induction: TP4, P's tree and LatestQD at every run
+  -- the induction's runs: TP4, P's tree and LatestQD
   have hR : ∀ P t, RunTreeQ p (LatestQD p) P t → RunOK p P t := runOK_of_runTreeQD p
   have hRL' : ∀ P t, RunTreeQ p (LatestQD p) P t → RunLinksOK p P t := fun _ _ h => h.1
   have hRT' : ∀ P t, RunTreeQ p (LatestQD p) P t → TreeAt p P t := fun _ _ h => h.2.1
@@ -172,21 +177,50 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     txSegFitsOK_of_takeBelowDelR2U p (by omega) _ hRP' hRL' hRK' hRH' hchk htb
   have hht : OpHtDelOKUnder p (RunTreeQ p (LatestQD p)) :=
     opHtDelOKUnder_of_chk2 p (by omega) _ hRP' hRK' hchk
-  have hT' := opCaseOK_anti p _ _ hR _ _ hT
-  have hPI' := opCaseOK_anti p _ _ hR _ _ hPI
-  have hO' := opCaseOK_anti p _ _ hR _ _ hO
+  -- the delete with the merges (4) at the induction's runs
+  have t4' := opCaseOK_anti p _ _ hR _ _ t4
+  have i4' := opCaseOK_anti p _ _ hR _ _ i4
+  have r4' := opCaseOK_anti p _ _ hR _ _ r4
+  have l4' := opCaseOK_anti p _ _ hR _ _ l4
+  have d4' := opCaseOK_anti p _ _ hR _ _ d4
+  -- TP10's three posts, TP7's live counts and the dead bound for every operation
+  have hT := opCaseOK_of_cases_merges p _ _ hm (treeCase_putLeafRoom p _)
+    (treeCase_putLeafFull p _ hRL' hsa)
+    (opCaseOK_putNewSeg_of_parts p _ _ (treeCase_putNewSeg1Room p _ (by omega))
+      (treeCase_putNewSegsRoom p _ (by omega)) (treeCase_putNewSegFull p _ hRL' (by omega) hsa)) t4'
+  have hPI := opCaseOK_of_cases_merges p _ _ hm (putInvCase_putLeafRoom p _ hRL')
+    (putInvCase_putLeafFull p _ hRL' hsa)
+    (opCaseOK_putNewSeg_of_parts p _ _ (putInvCase_putNewSeg1Room p _ hRL' (by omega))
+      (putInvCase_putNewSegsRoom p _ hRL' (by omega)) (putInvCase_putNewSegFull p _ hRL' (by omega) hsa))
+    i4'
+  have hO := opCaseOK_of_cases_merges p _ _ hm (rangeCase_putLeafRoom p _)
+    (rangeCase_putLeafFull p _ hRL' hsa)
+    (opCaseOK_putNewSeg_of_parts p _ _ (rangeCase_putNewSeg1Room p _ (by omega))
+      (rangeCase_putNewSegsRoom p _ (by omega)) (rangeCase_putNewSegFull p _ hRL' (by omega) hsa)) r4'
+  have hLv := opCaseOK_of_cases_merges p _ _ hm (liveCase_putLeafRoom p _)
+    (liveCase_putLeafFull p _ hRL' hsa hp)
+    (opCaseOK_putNewSeg_of_parts p _ _ (liveCase_putNewSeg1Room p _ (by omega))
+      (liveCase_putNewSegsRoom p _ (by omega)) (liveCase_putNewSegFull p _ hRL' (by omega) hsa hp)) l4'
+  have hDd := opCaseOK_of_cases_merges p _ _ hm (deadCase_putLeafRoom p _)
+    (deadCase_putLeafFull p _ hRL' hsa hth)
+    (opCaseOK_putNewSeg_of_parts p _ _ (deadCase_putNewSeg1Room p _ (by omega))
+      (deadCase_putNewSegsRoom p _ (by omega)) (deadCase_putNewSegFull p _ hRL' (by omega) hsa hth)) d4'
+  -- the run induction
   have hJ := runTreeQ_of_mergesF4S p (by omega) hsa hcap hm (LatestQD p) (latestQD_init p (by omega))
-    (latestQD_snocU p hp hht hT hPI hO hLv hDd)
+    (latestQD_snocR p hp hht hT hPI hO hLv hDd)
     (fun _ _ h => h.1.2.1) (fun _ _ h => h.1.2.2.1)
-    (opTreeOKUnder_of_cases p _ hRL' hRT' hRI' hT' hPI' hO')
-    (putInvStateOK_of_cases p _ hRL' hRT' hRI' hT' hPI' hO')
-    (rangeStateOK_of_cases p _ hRL' hRT' hRI' hT' hPI' hO')
+    (opTreeOKUnder_of_cases p _ hRL' hRT' hRI' hT hPI hO)
+    (putInvStateOK_of_cases p _ hRL' hRT' hRI' hT hPI hO)
+    (rangeStateOK_of_cases p _ hRL' hRT' hRI' hT hPI hO)
     hfitQ
     (fun ts tx hw hr => hMF ts tx hw (hR _ _ hr))
     (delStepsJ2OKF3_of_openR7 p _ (TakeS4 p) (by omega) hsa hRL' hRP' hRK'
       (fun _ _ _ h => h.1.1.1.1) (fun _ _ _ h => h.1.1.1.2) (fun _ _ _ h => h.1.1.2)
       (fun _ _ _ h => h.1.2) (fun _ _ _ h => h.2.1) (fun _ _ _ h => h.2.2) hRH' hht htb hU hFit hFitL)
     hMS hCo (replaceRootFullJ2OK_run p hsa)
+  have hW : ∀ ts tx, Within p (ts ++ [tx]) → RunOK p (treeRun p ts) ts.length →
+      RunTreeQ p (LatestQD p) (treeRun p ts) ts.length :=
+    fun ts tx hw _ => hJ ts (within_snoc_prefix p ts tx hw)
   -- TP7, TP10 and TP11 from it
   have hP : ∀ ts, Within p ts → PointersOK (treeRun p ts) := fun ts hw => (hJ ts hw).1.1
   have hfit : TxSegFitsOK p (RunOK p) :=
@@ -195,9 +229,10 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     invPreserved_of_latest_pointers p hp (fun ts hw => (hJ ts hw).2.2.1.1) hP
       (fun ts hw => (hJ ts hw).2.2.2)
   have h := getOK_scanOK_of_cases_merges_open p hp hinv (fun ts hw => (hJ ts hw).1)
-    (fun ts hw => (hJ ts hw).2.1) hfit t4 i4 r4
+    (fun ts hw => (hJ ts hw).2.1) hfit (opCaseOK_of_within p _ _ hW _ _ t4')
+    (opCaseOK_of_within p _ _ hW _ _ i4') (opCaseOK_of_within p _ _ hW _ _ r4')
     (opGetCaseOK_delMergeF4 p (RunOK p)
-      (delStepsOKF3_of_within p (RunOK p) _ (fun ts tx hw _ => hJ ts (within_snoc_prefix p ts tx hw))
+      (delStepsOKF3_of_within p (RunOK p) _ hW
         (delStepsOKF3_of_open12 p _ (by omega) hsa hRL' hP hRK' hRH' hht htb hU hFit hFitL))
       hMS hCo hsa hcap (by omega) hP hfit)
   exact ⟨hinv, h.1, h.2, latestGetOK_of_getOK p h.1, latestScanOK_of_scanOK p h.2⟩
