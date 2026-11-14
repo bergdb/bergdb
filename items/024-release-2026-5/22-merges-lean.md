@@ -1431,8 +1431,9 @@ in 024-12's (4) entry (step 4) and section 1's list.
     check at every take-back (`putKvDelChk`, `DelChk.lean`).
     `12-tree-model/delchk-check.lean.txt`: 7137 deletes, 0 failures.
     Its weaker form `OpDelChk2OK p` (`HeightsPathFree.lean`) asks the
-    same of the copy without `checkPathFree` (`putKvDelChk2`); the same
-    script, the same 7137 deletes, 0 failures.
+    same of the copy without `checkPathFree` (`putKvDelChk2`); the first
+    implies it (`opDelChk2OK_of_chk`). The same script, the same 7137
+    deletes, 0 failures.
   - `TakeBelowFuelDelOK p` (`HeightsFit.lean`): a delete takes back no
     node of height fuel or more that it found at its start.
     `12-tree-model/heights-op-check.lean.txt`: 3224 operations that took
@@ -1451,9 +1452,9 @@ in 024-12's (4) entry (step 4) and section 1's list.
      path's nodes being distinct, proved (`ht_path_nodup`, `ht_path_ne`,
      `HeightsPathNodup.lean`: along the path the segment rises and, in a
      segment, the height falls, from `PathHt` and `PathKinds`), and the
-     check is gone in `OpDelChk2OK` (`HeightsPathFree.lean`). Not proved:
-     that `OpDelChkOK` implies `OpDelChk2OK` (the copies differ by that
-     one check, which reads only); the script checks both.
+     check is gone in `OpDelChk2OK` (`HeightsPathFree.lean`), which
+     `OpDelChkOK` implies (`opDelChk2OK_of_chk`, `DelChkRefines.lean`:
+     the copies differ by that one check, which reads only).
   2. `TakeBelowFuelDelOK`: a node a delete found and takes back is
      reachable at its start from a segment root it descended, so below
      the fuel by (C)'s part 1. What it needs, a reach frame through the
