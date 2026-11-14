@@ -21,21 +21,28 @@ Cite the design rules as "024-12, D1", the stated properties as
 
 ## 1. In short
 
-**The top theorem (2026-11-14, 01:40).** `invGetScanOK_merges` (`LatestTop.lean`) gives, for the
-parameters of `MergeParamsOK`, TP7 (`InvPreserved`), TP10 (`GetOK`) and TP11 (`ScanOK`), and so
-`LatestGetOK` and `LatestScanOK`, from the named premises below. TP4 and P's tree at every run are
-not premises: the take-back's joint induction (putinv's `runTreeQ_of_mergesF4`) carries them
-with TP7's invariant (`LatestQ`, `latestQ_snoc`, `LatestJoint.lean`). Every put case is proved.
-The premises, each with what it says, who owns it, and its test evidence:
+**The top theorem (2026-11-14, 01:50).** `invGetScanOK_merges_flat` (`LatestTopFlat.lean`)
+gives, for the parameters of `MergeParamsOK`, TP7 (`InvPreserved`), TP10 (`GetOK`) and TP11
+(`ScanOK`), and so `LatestGetOK` and `LatestScanOK`, from the named premises below. TP4 and P's
+tree at every run are not premises: the take-back's joint induction (putinv's
+`runTreeQ_of_mergesF4S`) carries them with TP7's invariant and the bound on dead klongs
+(`LatestQD`; `latestQ_snoc`, `latestQD_snoc`; `LatestJoint.lean`, `DeadRun.lean`). Every put
+case is proved but the dead bound's (2) and (3c). `invGetScanOK_merges` (`LatestTop.lean`) is
+the same with two premises whole: `DeadAllOK` at every run and the take-back's delete steps
+(`DelStepsJ2OKF3`). The premises, each with what it says, who owns it, and its test evidence:
 
-- `hD`, `DeadAllOK` at every run: every key node of P, reached or not, holds at most theta
-  dead klongs (latest; 024-23's TP39 and TP40 are its reached form). Void with theta 0
-  (`deadAllOK_of_theta_zero`), but not for Java's parameters: theta is 7 M / 30, at least 2,
-  from node size 8 (`Dag.theta`, `Params.thetaFor`); `MergeParamsOK` does not fix theta.
-  Evidence: it held at all 1188 run ends of runs within reach with the merges on and Java's
-  theta (node sizes 8, 10, 14 and 30, theta 2, 2, 3 and 7): 11,671 key nodes, 1400 of them at
-  theta, none above (`12-tree-model/dead-all-check.lean.txt`, 2026-11-14, 01:38). Also TP39
-  in `treetest` and on Java's traces (C-T6), for the key nodes reached.
+- `d2`, `d3c`, `d4` (`QDead`): an operation keeps every key node that the writer reads at or
+  below theta dead klongs: a put into a full leaf (2), a put that makes new segments below a
+  full leaf (3c), the delete with the merges (4) (latest). Cases (1), (3a) and (3b) are
+  proved: the leaf's klong goes in only when `deadOver` lets it through
+  (`deadCase_putLeafRoom`), and a klong of a compare value with no live klong adds no dead
+  klong (`KNode.deadCount_add_key_new`; `deadCase_putNewSeg1Room`, `deadCase_putNewSegsRoom`,
+  `DeadCases.lean`). `DeadAllOK` at every run follows (`deadAllOK_snoc`). Theta is 7 M / 30, at least 2, from node size 8 (`Dag.theta`,
+  `Params.thetaFor`); `MergeParamsOK` does not fix it, and with theta 0 all three are void.
+  Evidence (`12-tree-model/dead-all-check.lean.txt`, runs within reach with the merges on and
+  Java's theta at node sizes 8, 10, 14 and 30): `WDeadOK` held at all 7765 states between
+  operations, and `DeadAllOK` at all 1188 run ends (11,671 key nodes, 1400 at theta, none
+  above). Also TP39 in `treetest` and on Java's traces (C-T6), for the key nodes reached.
 - `hchk`, `OpDelChkOK`: a delete runs as its copy with the take-backs' checks (cost, the
   heights). Evidence: the same result and state at 6828 deletes of 310 runs, 160 with a
   take-back in the upward delete's loop, 2305 with a merge's, 453 with root collapse's.
@@ -48,7 +55,9 @@ The premises, each with what it says, who owns it, and its test evidence:
   theta on (`dead-all-check.lean.txt`).
 - `hUC`, `hULb`: the upward delete's stop node, its cascade and its LE-b, for the reading
   (putinv; `delStepsOKF3_of_open5`). Their proofs will need `UpUnlinkOK`, which held at all
-  2529 upward-loop end states (173 of them cascading at the stop node).
+  2529 upward-loop end states (1385 with a take-back in the loop, 954 with an unlink to the
+  previous version, 173 cascading at the stop node), with the writer's tree, its links, its
+  ranges and its reached nodes untaken and well formed there.
 - `hFits`, `DelFullFitsOK`: the state after a delete's full leaf splits fits the fuel (cost).
   Evidence: as `hfit`'s.
 - `hMS`, `MergeStepOKF3`: a merge keeps the nodes reached untaken (proved,
@@ -56,16 +65,17 @@ The premises, each with what it says, who owns it, and its test evidence:
 - `hCo`, `CollapseStepOKF4`: the state after a replaceRoot at a segment root fits the fuel
   (cost, `HeightInv`), and `CollapseUnlinkOK` (putinv, not proved). Evidence:
   `CollapseUnlinkOK` held at all 96 replaceRoots at a segment root, 32 with a full leaf.
-- `hDS`, `DelStepsJ2OKF3`: the delete's steps keep the take-back's (B) and (C) (putinv). It
-  reduces (`delStepsJ2OKF3_of_open`) to the stop node's cascade and LE-b for the take-back,
-  `DelFullFitsOK`, and, at every state between operations, SegFits and the made-for ids below
-  the transaction's first id. Evidence: `UpUnlinkOK`'s 2529 states; none yet for the made-for
-  bound.
+- `hUCJ`, `hULbJ`: the upward delete's stop node, its cascade and its LE-b, for the take-back
+  (putinv; `delStepsJ2OKF3_of_openR`). Evidence: as `hUC`'s (`UpUnlinkOK`).
+- `hMF`: at every state between operations, every made-for id is below the transaction's
+  first id (putinv). Evidence: held at all 44,312 states between operations of runs within
+  reach with the merges on (cost's `DelChk` families and putinv's, M 8 and 10).
 - `hRJ`, `ReplaceRootFullJ2OK`: a replaceRoot whose segment leaf is full keeps the take-back's
   (B) and (C) (putinv, not started). The 32 full-leaf replaceRoots above run its code, but test
   only `CollapseUnlinkOK`.
 
-Kept current; section 9 has the exact state. Written 12:24.
+The rest of this section is of 2026-11-11. Kept current then; section 9 has the exact state.
+Written 12:24.
 
 * **The branch is gated and ready to land:** `024-12-tree-model`, head
   `d90586d0`, main with 024-07, 024-10, 024-13 and 024-09 merged in
@@ -1751,6 +1761,14 @@ and its status:
       at a time (`kindsAllOK_snoc`, `heightAllOK_snoc`, `sizeOK_snoc`,
       `leftAllOK_snoc`, `invOK_snoc`; `LatestJoint.lean`). The reading of (4)
       is `opGetCaseOK_delMergeF4` with TP4 from the induction.
+    - The flat list (latest, 01:50): `invGetScanOK_merges_flat`
+      (`LatestTopFlat.lean`). `DeadAllOK` at every run comes from the
+      operations (`DeadRun.lean`: `WDeadOK`, `QDead`, `dead_reached`,
+      `deadAllOK_commit`, `deadAllOK_snoc`; case (1) proved,
+      `deadCase_putLeafRoom`), carried in the induction's `LatestQD`. The
+      take-back's delete steps come from their pieces (putinv's
+      `runTreeQ_of_mergesF4S` over `TakeS4`, `delStepsJ2OKF3_of_openR`), with
+      the fuel at every state from `hfit`.
       - `QLive` of (4), the delete with the merges.
     - `LiveCounts` was checked on runs within reach with the merges on
       (`12-tree-model/live-counts-check.lean.txt`). The parameters were
