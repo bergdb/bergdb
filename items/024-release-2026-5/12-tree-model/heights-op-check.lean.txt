@@ -129,4 +129,38 @@ def hGrowShrink (n k : Nat) : List Tx :=
 #eval summH2 ([20, 60, 100].flatMap (fun n => [10, 40, 80].flatMap (fun k => runH2 hP1 (hGrowShrink n k))))
 #eval summH2 ([20, 60, 100].flatMap (fun n => [10, 40, 80].flatMap (fun k => runH2 invAsmP (hGrowShrink n k))))
 
+-- random transactions: keys of one to three segments, each transaction sorted with one
+-- operation a key, puts and deletes mixed; only the transactions that succeed are kept
+def hNextRand (s : Nat) : Nat := (s * 6364136223846793005 + 1442695040888963407) % 2 ^ 64
+def hPrefixes : List (List Nat) := [[], [120], [184], [120, 248], [184, 120]]
+def hRandTx (seed n nKeys t : Nat) : Tx × Nat := Id.run do
+  let mut s := seed
+  let mut ks : List Key := []
+  for _ in [0:n] do
+    s := hNextRand s
+    let pre := hPrefixes.getD ((s / 7) % hPrefixes.length) []
+    let j := (s / 101) % nKeys
+    let k := pre ++ [j * 64 + 8]
+    if !ks.contains k then ks := ks ++ [k]
+  let sorted := ks.mergeSort (fun a b => keyLt a b || a == b)
+  s := hNextRand s
+  let ops := sorted.map (fun k => if (k.foldl (· + ·) s) % 3 == 0 then Op.del k else Op.put k (t * 1000 + 1))
+  return ({base := 1000000 * (t + 1), ops := ops}, s)
+def hRandRun (p : Params) (seed nTx maxOps nKeys : Nat) : List Tx := Id.run do
+  let mut s := seed
+  let mut run : List Tx := []
+  for t in [0:nTx] do
+    s := hNextRand s
+    let (tx, s2) := hRandTx s (s % maxOps + 1) nKeys t
+    s := s2
+    if isOk (exec? p tx (run.length + 1) (view (treeSpec p) (treeRun p run) run.length)) then
+      run := run ++ [tx]
+  return run
+#eval summH2 ([1, 2, 3, 4, 5, 6].flatMap (fun seed =>
+  let p : Params := ({M := 8, G := 2, H := 3} : Params).withMerges
+  runH2 p (hRandRun p (seed + 300) 16 30 25)))
+#eval summH2 ([1, 2, 3, 4, 5, 6].flatMap (fun seed =>
+  let p : Params := ({M := 6, G := 2, H := 2, splitAbove := 3} : Params).withMerges
+  runH2 p (hRandRun p (seed + 400) 16 30 25)))
+
 end SIS.Tree
