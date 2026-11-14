@@ -1899,13 +1899,17 @@ and its status:
         height, its parent's split cascades up the path (`sb_merge`,
         `seenHeight_merge`). `sb_appendKlongsX` is the cascade from a
         node below b that is not on the path (a new segment leaf).
-      - Not proved: the whole operation. A put has at most one cascade,
-        so it adds one; the walk over its descents is not written. A
-        delete runs several merges, each re-descending, and a later
-        merge's path can hold a root that an earlier cascade of the same
-        operation made: the lemmas then give one more per merge. One per
-        segment and operation needs that the new root does not fill again
-        in the same operation (the merges' fill, latest's `LiveCounts`).
+      - A whole put adds at most one (`seenHeight_putKv_put`,
+        `HeightsFuelPut.lean`): its descents only load (heights at most
+        H), and it makes at most one cascade. A new segment leaf's klong
+        cascades in the leaf above, and the new segment leaves below it
+        then have room (`shb_putSegs_empty`).
+      - Not proved: a whole delete. It runs several merges, each
+        re-descending, and a later merge's path can hold a root that an
+        earlier cascade of the same operation made: the lemmas then give
+        one more per merge. One per segment and operation needs that the
+        new root does not fill again in the same operation (the merges'
+        fill, latest's `LiveCounts`).
     - Checked on runs (`/Users/f/fl/bench/2026-11-13/cost/fit/HeightsOp.lean`,
       outside the repository): 316 runs within reach, 18201 operations.
       In every segment the nodes an operation made are at most one above
