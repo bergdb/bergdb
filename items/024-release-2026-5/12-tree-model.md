@@ -155,10 +155,11 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   (`12-tree-model/fuel-inside-check.lean.txt`, below).
 - `hMSF`, `MergeFitsOK`: the state after a merge of the loop fits the fuel (cost, the heights;
   `MergeStepOKF3`'s other part, the nodes reached untaken, is proved,
-  `mergeStepOKF3_of_segFits`). Evidence: every state after a merge fit the fuel, 3032 of them (`fuel-inside-check.lean.txt`: runs of putinv's delete
-  families within reach, the merges on, node sizes 8 and 10 with theta 0, and Java's theta at 8
-  and 14; 11,057 states inside deletes in all, 6453 of them after a leaf's bitmap, every one
-  within `p.fuel - 1`, the bound between operations, too).
+  `mergeStepOKF3_of_segFits`). Evidence: every state after a merge fit the fuel, 3032 of them
+  (`fuel-inside-check.lean.txt`: runs of putinv's delete families within reach, the merges on,
+  node sizes 8 and 10 with theta 0, and Java's theta at 8 and 14; 11,057 states inside deletes
+  in all, 6453 of them after a leaf's bitmap, every one within `p.fuel - 1`, the bound between
+  operations, too).
 - `hCoF`, `CollapseFitsOK`: the state after a replaceRoot at a segment root fits the fuel
   (cost, the heights). Evidence: every state after a step of root collapse fit the fuel, 635 of
   them (`fuel-inside-check.lean.txt`).
