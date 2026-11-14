@@ -176,6 +176,7 @@ import SIS.Tree.LiveEdges
 import SIS.Tree.LiveSteps
 import SIS.Tree.LiveEdgesBase
 import SIS.Tree.LiveChain
+import SIS.Tree.LiveStepsX
 import SIS.Tree.LivePutFull
 import SIS.Tree.LiveTP7
 import SIS.Tree.WriterTreeInnerHalves
@@ -334,3 +335,7 @@ import SIS.Tree.DelStepsUpStop
 import SIS.Tree.DelStepsCascF3
 import SIS.Tree.DelStepsBookStop
 import SIS.Tree.TakeRunQF4
+import SIS.Tree.DelChk
+import SIS.Tree.WriterHeightsChk
+import SIS.Tree.WriterHeightsChkDel
+import SIS.Tree.HeightsChkRun
