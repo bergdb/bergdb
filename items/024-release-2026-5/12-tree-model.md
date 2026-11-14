@@ -52,8 +52,8 @@ premises, each with what it says, who owns it, and its test evidence:
 - `hchk`, `OpDelChkOK`: a delete runs as its copy with the take-backs' checks (cost, the
   heights). Evidence: the same result and state at 6828 deletes of 310 runs, 160 with a
   take-back in the upward delete's loop, 2305 with a merge's, 453 with root collapse's.
-- `htb`, `TakeBelowFuelOK`: every node that an operation takes back has a cached height below
-  the fuel (cost). With the heights it gives that every state between operations fits the fuel
+- `htb`, `TakeBelowFuelOK`: every node that an operation takes back, of those it found at its
+  start, has a cached height below the fuel (cost). With the heights it gives that every state between operations fits the fuel
   (`txSegFitsOK_of_takeBelowR`). Evidence: 316 runs within reach, 18,201 operations, 3205 of
   them taking nodes back, no failure; SegFits held at about 14,000 operation boundaries.
 - `t4`, `i4`, `r4`: the delete with the merges (4) keeps the writer's tree, `PutInv` and the
