@@ -1791,7 +1791,7 @@ and its status:
       `replaceRoot`), that gives `HolderAt` at a made root. putinv's
       TakeJ2 with CollGetInv (TreeOK) is that J, through
       `liveHolder_unique`.
-    - The run (cost, 01:00). TP7's (b) after every run is
+    - The run (cost, 00:45). TP7's (b) after every run is
       `treeRun_heightLiveOK_family` (`HeightsDelRun.lean`), the form
       latest's assembly takes (`invPreserved_of_open_htDel` puts it in
       `invPreserved_of_open`). Proved: the put; the operations of a
@@ -1821,8 +1821,40 @@ and its status:
         or unlinked next, or is the stop node, whose delete kills the
         klong (tp7's mis-heighted retarget). The walk then needs an
         exemption for that one klong until the stop node's delete.
-    - Left: `upEmpty` with that exemption, and the J family from putinv's
-      walk. Then (B) and (C).
+    - One premise instead of the family (cost, 01:10):
+      `treeRun_heightLiveOK_chk` and `invPreserved_of_open_chk`
+      (`HeightsChkRun.lean`) take TP7's (b) from `OpDelChkOK` alone: a
+      delete, from a state that the transaction's earlier operations
+      reach, runs as its copy with a check at every take-back
+      (`putKvDelChk`, `DelChk.lean`). The checks:
+      - `checkFree` before each take-back of the merge and of the upward
+        delete's loop: no kept node holds the node, now or before the
+        transaction; it is not the space root and no node of the view.
+      - `checkOld` before the loop's retarget: the parent is a segment
+        leaf, and the node it is pointed to is a node of the view. A parent
+        of height 0 has no height to keep, so tp7's mis-heighted retarget
+        cannot occur; with the merges on, the upward delete climbs only
+        through segment-root leaves (every other leaf keeps two live
+        klongs), so a parent in the loop is a segment leaf.
+      - `checkRoot` before root collapse takes a root back: its one holder
+        (`HolderAt`).
+      - After the loop: the path's nodes above it are not taken back
+        (`checkPathFree`), and the stop node is a segment leaf.
+    - With the checks the walk needs no other premise (`ht_mergeChk`,
+      `ht_collapseRootChk`, `ht_climb`, `ht_takeBackChk`,
+      `ht_deleteUpwardChk`, `ht_putKvDelChk`; `WriterHeightsChk.lean`,
+      `WriterHeightsChkDel.lean`).
+    - Checked on runs (`/Users/f/fl/bench/2026-11-13/cost/fit/DelChk.lean`,
+      outside the repository): at every delete of 270 runs within reach,
+      the writer's delete and its copy with the checks give the same
+      result and state. That is 6828 deletes, with merges that took nodes
+      back and root collapses that took a root back. The loop's take-back
+      did not occur in these runs. `MergeHold.lean` checks the merge's
+      tail alone: 1732 merges, 1465 of them taking nodes back.
+    - The holder family (`HtDelFamily`, `treeRun_heightLiveOK_family`)
+      stays as a second route. `OpDelChkOK` is the one to discharge.
+    - Left: `OpDelChkOK` itself (TP4's holder facts and the merges'
+      fill), then (B) and (C).
   - (5) `DelNoLeafCase`, a delete of a key with no leaf: proved,
     `opGetCaseOK_delNoLeaf`. It changes no reading: the writer's walk
     stops at the first segment that is not there and only reads
