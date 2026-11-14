@@ -7,7 +7,8 @@ the cleanup is `eb1a04a0`.
 
 - **names.md**: the name map, old name to new name for every declaration of lean/SIS/Tree
   that an item cites and that the cleanup renamed or removed (025-02, section 10).
-  Written by names.py.
+  Written by names.py, last by step 5: `python3 names.py REPO prune-report.txt
+  superseded.txt renames.txt dups-renames.txt`, REPO the repo after step 4.
 - **Reach.lean**: every declaration of SIS/Tree, its lines, whether a root reaches it
   through proof terms and definitions, and what it uses (`lake env lean` on a built tree).
   **roots.txt**: its roots besides every module outside SIS/Tree (the top theorem by its
@@ -25,6 +26,9 @@ the cleanup is `eb1a04a0`.
 - **rename.py**: whole-identifier renames over lean/ and lean/README.md, and file renames
   with their imports, by a table; it refuses a clash. **renames.txt**: step 3's table
   (61 declarations, 8 files), with the reason for each choice that is not a plain strip.
+  **dups-renames.txt**: step 4's table (33 rows: a removed copy, then the theorem with the
+  same statement that its uses now name; 5 rows marked "kept renamed"); no item cites a
+  name in it, so names.md gained no row from it.
 - **names.py**: writes names.md from the prune's report, superseded.txt and the tables. This
   copy, step 5's, reads several tables in order and maps a name renamed twice to its last
   name; the tools' copy took one.

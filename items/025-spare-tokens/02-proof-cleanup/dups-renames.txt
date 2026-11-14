@@ -1,0 +1,38 @@
+# 025-02 step 4 (dups), 2026-11-14: theorems with the same statement under two names.
+# Each row: a removed copy, then the kept theorem (rename.py --join). The copies'
+# declarations were removed by hand first (dups/work/remove.txt). Where the kept theorem is
+# renamed to the removed copy's name (marked "kept renamed"), the row is the kept one's old
+# name, then the name it now has: the copy's name stays, now on the kept proof.
+KNode.repoint_liveAt_keep      liveAt_repoint_keep        # TakeInvCollapse -> LiveChain
+KNode.repoint_liveAt_new       liveAt_repoint_new         # TakeInvCollapse -> LiveChain
+ptrs_lookup_madeFor            lookup_some_mem            # WriterPtrs -> SearchFold
+left_fold_add_leaf             bk_foldl_add_leaf          # WriterLeft -> WriterBook
+prefixAt_of_timesLE            prefixAt_eq_self           # MergeNodeCountOps -> CacheGood
+nodeHt_addKey                  nodeHt_add                 # WriterHeightsDelNode -> WriterHeightsPut
+ht_wNode_cases                 wNode_cases                # OverlayHeights -> PutInvOK
+mergeParentNode_leaf           mrg_mergeParentNode_leaf   # TakeDeadMerge -> WriterGetMergeOp
+ht_flat_times                  flatAt_times               # WriterHeightsSplit -> PutInvSpace
+tReach_of_agree_fwd            tReach_to_agree            # WriterTreeMergeFull -> WriterTree
+writerWP_ite_cases             writerWP_if                # WriterTreeMergeFull -> WriterWP
+knodeOf_some                   knodeOf_view               # PutInvOK -> ScanRead
+sized_flat'                    sized_flat                 # WriterSize (same file)
+liveAt_cv_unique               mrg_liveAt_unique          # GetReachBack -> WriterGetMerge
+valueOf_some_view              valueOf_view               # ScanModel -> ScanRead
+KNode.empty_liveAt'            KNode.empty_liveAt         # kept renamed: GetNewSegFull's copy removed, GetNewSegsTree's kept
+left_add_ne                    nex_add_ne                 # WriterLeft -> WriterNonempty
+mrg_repoint_leaf               bk_repoint_leaf            # WriterGetMergeOp -> WriterBook
+KNode.repoint_leaf             bk_repoint_leaf            # RangeLeb -> WriterBook
+repoint_leaf_eq                bk_repoint_leaf            # LiveChain -> WriterBook
+flatMap_congr'                 flatMap_congr_mem          # ScanModel -> SIS.Proof.Util (SIS.flatMap_congr_mem)
+nat_eraseDups_nodup            nodup_eraseDups            # KlongRoundTripBits -> SIS.Proof.Util (SIS.nodup_eraseDups), new import
+mem_of_lookup_some             bk_mem_of_lookup           # PutInvOK -> WriterBook
+mem_of_lookup_nodup            bk_mem_of_lookup           # WriterTreeVisits -> WriterBook, new import
+sizeStep_lookup_mem            mem_ids_of_lookup          # kept renamed: OverlayLift's copy removed, SizeStep's kept, new import
+left_lastBitmapOf_append_nodel lastBitmapOf_append_nodel  # kept renamed: TakeDeadCollapse's copy removed, WriterLeft's kept, new import
+KNode.retarget_liveAt_keep     KNode.retarget_liveAt_of   # RangeMergeMade -> WriterGetMergeMade, new import
+bk_lookup_append_new           lookup_append_single_self  # kept renamed: GetFrame's copy removed, WriterBook's kept, new import
+bk_setAt_leaf                  KNode.setAt_leaf           # kept renamed: GetFrame's copy removed, WriterBook's kept (same import)
+live_below_divider'            live_below_divider         # GetReachBack -> RangeChain, new import
+kd_ite_key                     ptrs_ite_key               # WriterKindsRules -> WriterPtrs, new import
+kr_ite_key                     ptrs_ite_key               # RootWalkRules -> WriterPtrs, new import
+ht_mem_ids                     kd_mem_ids                 # WriterHeightsRules -> WriterKindsRules
