@@ -134,32 +134,4 @@ theorem runGet_of_delInvF (p : Params) (ts : List Tx) (w0 v : W) (key : Key)
     if key == key' then none else wGet (ctxOf p ts).p (ctxOf p ts).i (viewOf (treeRun p ts)) w0 key'
   rw [← h1, h2, h0]
 
-/-- Obligation (the delete's other steps): with the merges' steps keeping `DelInvF` at
-f = p.fuel + 1, and the state before the operation fitting the fuel: the delete's
-steps put the state inside the operation into `DelInvF`, and its end reads at
-p.fuel (`runGet`) by `getFromR_fuel_mono`. -/
-def DelStepsOKF (p : Params) (R : Struct BVal → Time → Prop) : Prop :=
-  ∀ ts tx, Within p (ts ++ [tx]) → R (treeRun p ts) ts.length → ∀ z top,
-    lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z →
-    topOf p (ctxOf p ts).view z = .ok top →
-    ∀ pre op post, tx.ops = pre ++ op :: post →
-    ∀ r w, (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
-    PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w →
-    RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey →
-    SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey →
-    ∀ key, op = .del key → p.merges = true →
-    (∀ g h v, DelInvF (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) v →
-      WriterWP (afterDelete key g h) (ctxOf p ts) v
-        (fun _ v' => DelInvF (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) v')) →
-    (∀ g h merged v, DelInvF (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) v →
-      WriterWP (mergeUp key g p.fuel h merged) (ctxOf p ts) v
-        (fun _ v' => DelInvF (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) v')) →
-    (∀ seg v, DelInvF (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) v →
-      WriterWP (collapseRoot key seg p.fuel) (ctxOf p ts) v
-        (fun _ v' => DelInvF (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) v')) →
-    WriterWP (putKv op) (ctxOf p ts) w (fun _ w' =>
-      SegFits (wNode p (viewOf (treeRun p ts)) w') (ts.length + 1) (p.fuel - 1) w'.top.rootKey →
-      ∀ key', keyWf key' = true →
-        runGet p ts w' key' = if op.key == key' then op.value else runGet p ts w key')
-
 end SIS.Tree
