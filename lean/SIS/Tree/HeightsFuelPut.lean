@@ -17,14 +17,28 @@ open SIS SIS.Check
 def KeepsSHB (m : Nat) {α : Type} (f : M α) : Prop :=
   ∀ c w, c.p.H ≤ m → SeenHeightBound m w → WriterWP f c w (fun _ v => SeenHeightBound m v)
 
-theorem shb_of_gh {α : Type} {m : Nat} {f : M α}
-    (hf : ∀ c w, WriterWP f c w (fun _ v => v.gh = w.gh)) : KeepsSHB m f := by
+/-- `SeenHeightBound` asked only of the ids S picks (for the fuel after a
+delete's cascade: S the ids not taken back). The descent's lemmas below are
+proved for every S; `KeepsSHB` is the case of every id (`keepsSHB_of_S`). -/
+def SeenHeightBoundS (m : Nat) (S : NodeId → Prop) (w : W) : Prop :=
+  ∀ x g h, (x, g, h) ∈ w.gh → S x → h ≤ m
+
+def KeepsSHBS (m : Nat) (S : NodeId → Prop) {α : Type} (f : M α) : Prop :=
+  ∀ c w, c.p.H ≤ m → SeenHeightBoundS m S w → WriterWP f c w (fun _ v => SeenHeightBoundS m S v)
+
+theorem keepsSHB_of_S {m : Nat} {α : Type} {f : M α} (h : KeepsSHBS m (fun _ => True) f) :
+    KeepsSHB m f :=
+  fun c w hH hw => writerWP_mono (h c w hH (fun x g k hm _ => hw x g k hm))
+    (fun _ _ hv x g k hm => hv x g k hm trivial)
+
+theorem shbS_of_gh {α : Type} {m : Nat} {S : NodeId → Prop} {f : M α}
+    (hf : ∀ c w, WriterWP f c w (fun _ v => v.gh = w.gh)) : KeepsSHBS m S f := by
   intro c w _ hw
   refine writerWP_mono (hf c w) ?_
-  intro _ v hg x g h hm
-  exact hw x g h (by rw [← hg]; exact hm)
+  intro _ v hg x g h hm hs
+  exact hw x g h (by rw [← hg]; exact hm) hs
 
-theorem shb_getNode (m : Nat) (x : NodeId) : KeepsSHB m (getNode x) := by
+theorem shbS_getNode (m : Nat) (S : NodeId → Prop) (x : NodeId) : KeepsSHBS m S (getNode x) := by
   intro c w hH hw
   unfold getNode
   simp only [writerWP_bind, writerWP_get]
@@ -35,12 +49,19 @@ theorem shb_getNode (m : Nat) (x : NodeId) : KeepsSHB m (getNode x) := by
     · split
       · exact writerWP_throw _ _ _ _
       · simp only [writerWP_bind, writerWP_set, writerWP_pure]
-        intro a g d hd
+        intro a g d hd hs
         simp only [List.mem_cons, Prod.mk.injEq] at hd
         rcases hd with ⟨rfl, rfl, rfl⟩ | hd
         · exact Nat.le_trans (heightOf_le c.p _) hH
-        · exact hw a g d hd
+        · exact hw a g d hd hs
     · exact writerWP_throw _ _ _ _
+
+theorem shb_of_gh {α : Type} {m : Nat} {f : M α}
+    (hf : ∀ c w, WriterWP f c w (fun _ v => v.gh = w.gh)) : KeepsSHB m f :=
+  keepsSHB_of_S (shbS_of_gh hf)
+
+theorem shb_getNode (m : Nat) (x : NodeId) : KeepsSHB m (getNode x) :=
+  keepsSHB_of_S (shbS_getNode m _ x)
 
 theorem shb_newKey (m g h : Nat) (leaf : Bool) (ks : List Klong) (hh : h ≤ m) :
     KeepsSHB m (newKey g h leaf ks) := by
@@ -69,8 +90,11 @@ theorem shb_note (m : Nat) (s : String) : KeepsSHB m (note s) := shb_of_gh (by s
 theorem shb_newValue (m : Nat) (h : Nat) : KeepsSHB m (newValue h) := shb_of_gh (by shbGhTac)
 theorem shb_putNode (m : Nat) (x : NodeId) (n : KNode) : KeepsSHB m (putNode x n) :=
   shb_of_gh (by shbGhTac)
+theorem shbS_pathAdd (m : Nat) (S : NodeId → Prop) (a : Option Nat) (x : NodeId) :
+    KeepsSHBS m S (pathAdd a x) :=
+  shbS_of_gh (by shbGhTac)
 theorem shb_pathAdd (m : Nat) (a : Option Nat) (x : NodeId) : KeepsSHB m (pathAdd a x) :=
-  shb_of_gh (by shbGhTac)
+  keepsSHB_of_S (shbS_pathAdd m _ a x)
 
 theorem shb_ghOf (m : Nat) (x : NodeId) (c : Ctx) (w : W) (hH : c.p.H ≤ m)
     (hw : SeenHeightBound m w) :
@@ -86,7 +110,8 @@ theorem shb_ghOf (m : Nat) (x : NodeId) (c : Ctx) (w : W) (hH : c.p.H ≤ m)
     exact ⟨hv, hv x gh.1 gh.2 (gh_lookup_mem hh)⟩
   · exact writerWP_throw _ _ _ _
 
-theorem shb_descendLte (m cv : Nat) : ∀ (fuel : Nat) (x : NodeId), KeepsSHB m (descendLte cv fuel x) := by
+theorem shbS_descendLte (m cv : Nat) (S : NodeId → Prop) :
+    ∀ (fuel : Nat) (x : NodeId), KeepsSHBS m S (descendLte cv fuel x) := by
   intro fuel
   induction fuel with
   | zero => intro x c w _ _; exact writerWP_throw _ _ _ _
@@ -94,16 +119,19 @@ theorem shb_descendLte (m cv : Nat) : ∀ (fuel : Nat) (x : NodeId), KeepsSHB m 
     intro x c w hH hw
     unfold descendLte
     simp only [writerWP_bind, writerWP_read]
-    refine writerWP_mono (shb_getNode m x c w hH hw) ?_
+    refine writerWP_mono (shbS_getNode m S x c w hH hw) ?_
     intro n v hv
     split
     · rw [writerWP_pure]; exact hv
     · split
       · exact writerWP_throw _ _ _ _
       · simp only [writerWP_bind]
-        refine writerWP_mono (shb_pathAdd m _ _ c v hH hv) ?_
+        refine writerWP_mono (shbS_pathAdd m S _ _ c v hH hv) ?_
         intro _ u hu
         exact ih _ c u hH hu
+
+theorem shb_descendLte (m cv : Nat) : ∀ (fuel : Nat) (x : NodeId), KeepsSHB m (descendLte cv fuel x) :=
+  fun fuel x => keepsSHB_of_S (shbS_descendLte m cv _ fuel x)
 
 section Put
 

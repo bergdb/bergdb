@@ -1425,6 +1425,13 @@ in 024-12's (4) entry (step 4) and section 1's list.
     for latest's run induction, `opHtDelOKUnder_of_chk2`,
     `execW_htCacheU`, `txSegFitsOK_of_takeBelowDelR2U`
     (`HeightsUnder.lean`).
+  - putinv's `DelFullFitsOK` in its reached form, `DelFullFitsOKR`
+    (`delFullFitsOKR_of`, `HeightsFitsR.lean`): given the heights' state
+    `HtJ` at the descent's end, which putinv's descent walk carries with
+    `htJ_descendLte`, `htJ_pathAdd`, `htJ_start` (`kdhtJ_*` with the
+    kinds), from `htStart_reachedU` at the operation's start. The
+    cascade's lemmas are generalized in place to a set of ids (`SBInvS`,
+    `sbS_*`; `SBInv` the case of every id).
 * **Open, as exact statements** (named premises; each with its test):
   - `OpDelChkOK p` (`HeightsChkRun.lean`): a delete, from a state that
     the transaction's earlier operations reach, runs as its copy with a
@@ -1436,6 +1443,12 @@ in 024-12's (4) entry (step 4) and section 1's list.
     same of the copy without `checkPathFree` (`putKvDelChk2`); the first
     implies it (`opDelChk2OK_of_chk`). The same script, the same 7987
     deletes, 0 failures.
+  - `UpCascFitsOK` and `UpLebFitsOK` (putinv's, the fuel after the
+    stop node's cascade and after LE-b's full split): their reached form
+    needs the heights' cache after the upward loop, so the holders of the
+    nodes it takes back and the stop node's retarget (putinv's proposed
+    `UpHolderOK`, to be checked on runs); LE-b never fires in the DelChk
+    families.
   - `TakeBelowFuelDelOK p` (`HeightsFit.lean`): a delete takes back no
     node of height fuel or more that it found at its start.
     `12-tree-model/heights-op-check.lean.txt`: 3224 operations that took
