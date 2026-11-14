@@ -358,3 +358,4 @@ import SIS.Tree.HeightsOpStep
 import SIS.Tree.HeightsPathNodup
 import SIS.Tree.HeightsPathFree
 import SIS.Tree.HeightsUnder
+import SIS.Tree.DelChkRefines

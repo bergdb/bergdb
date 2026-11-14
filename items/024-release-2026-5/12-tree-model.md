@@ -2137,7 +2137,9 @@ and its status:
       delete's loop takes back only nodes below the stop node, and the
       path's nodes are pairwise distinct (`ht_path_ne`, from the kinds'
       books `KdInv` beside the heights' at the upward delete's start), so
-      the stop node and the nodes above it stay not taken back. The walk
+      the stop node and the nodes above it stay not taken back.
+      `OpDelChkOK` implies it (`opDelChk2OK_of_chk`,
+      `DelChkRefines.lean`). The walk
       through the copy `putKvDelChk2` carries `KdInv` as far as the upward
       delete. It gives TP7's (b) (`treeRun_heightLiveOK_chk2`,
       `invPreserved_of_open_chk2`) and, with `TakeBelowFuelDelOK`, TP10's
