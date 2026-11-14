@@ -29,12 +29,12 @@ the reference map gives (TP10, TP11). This is a Lean proof from 13 named premise
 and two conditions on the parameters that Java's meet. Each speaks of one operation or one step
 of the writer, mostly of the delete with the merges, of the fuel and heights inside a
 transaction, and of the bound on dead klongs. Each held on runs of the model within reach, with
-no failure; the fuel inside an operation (in `hFit`, `hFitL`, `hMS`, `hCo`) at 11,057 states
-inside deletes. But LE-b at the upward delete's stop node never fired in any run with
-the merges on, so `hFitL`'s evidence covers no LE-b step. Not covered: parameters with the merges off (the theorem is for
-`MergeParamsOK`); bounded startup's tree premises (item 007), which this theorem does not
-discharge; and that Java does what the model does, which is checked on Java's traces (section
-5), not proved.
+no failure; the fuel inside an operation (in `hFit`, `hFitL`, `hMS`, `hCo`) was checked at
+11,057 states inside deletes. But LE-b at the upward delete's stop node never fired in any run
+with the merges on, so no run tests `hFitL`. Not covered: parameters with the merges off (the
+theorem is for `MergeParamsOK`); bounded startup's tree premises (item 007), which this theorem
+does not discharge; and that Java does what the model does, which is checked on Java's traces
+(section 5), not proved.
 
 **The top theorem (2026-11-14, 03:05).** `invGetScanOK_merges_flat` (`LatestTopFlat.lean`) gives
 TP7 (`InvPreserved`), TP10 (`GetOK`) and TP11 (`ScanOK`), and so `LatestGetOK` and
@@ -109,10 +109,11 @@ induction's runs, every run within reach (`delStepsOKF3_of_within`):
   - `hFit`, `UpCascFitsOK`: the state after the stop node's cascade fits the fuel (cost);
   - `hFitL`, `UpLebFitsOK`: the state after LE-b's full split at the stop node fits the fuel
     (cost, `DelStepsLebFull.lean`). LE-b never fired in any run family with the merges on: 0
-    of about 6,700 deletes in putinv's and cost's families. In `fuel-inside-check.lean.txt`
-    the upward delete stopped at a segment leaf all 937 times, never at an inner node, where
-    LE-b runs. So no run tests `hFitL`, nor putinv's proved LE-b branches; see the
-    follow-ups.
+    of about 6,700 deletes in putinv's and cost's families, and none of 3382 in cost's probe
+    made so that deletes climb (which sees LE-b with the merges off). In
+    `fuel-inside-check.lean.txt` the upward delete stopped at a segment leaf all 937 times,
+    never at an inner node, where LE-b runs. So no run tests `hFitL`, nor putinv's proved LE-b
+    branches; it looks void with the merges on (follow-ups).
   Evidence for `hU`: `UpUnlinkOK` held at all 2529 upward-loop end states (1385 with a
   take-back in the loop, 954 with an unlink to the previous version, 173 cascading at the stop
   node, 818 at the space root), with the reached nodes untaken there too
@@ -134,7 +135,7 @@ induction's runs, every run within reach (`delStepsOKF3_of_within`):
   reach with the merges on (cost's `DelChk` families and putinv's, M 8 and 10;
   `up-unlink-check.lean.txt`).
 
-Follow-ups, for a later spare-token run (latest, 02:20):
+Follow-ups, for a later spare-token run (latest, 03:05):
 
 - `QDead` of (4) (`d4`): a conjunct `WDeadN` (every node the writer reads at or below theta)
   beside `DelInvF3` on the reading's (4) route. The step lemmas that need it:
@@ -149,28 +150,39 @@ Follow-ups, for a later spare-token run (latest, 02:20):
   `KNode.lastVersionGivenDel_deadCount`), or goes to `handleFull`, whose cascade is bounded
   (`writerWP_appendKlongs_chainDead`); a take-back, a retarget and a repoint keep the count
   (`KNode.deadCount_repoint`). The step lemmas' posts say nothing about the nodes' klongs, so
-  each needs the conjunct inside its proof. Proved pieces (latest, 02:45): a full parent's or
-  the space root's split with its cascade (`writerWP_handleFull_lastDead`,
-  `writerWP_handleFull_rootDead`), a node put or made (`writerWP_putNode_deadOver`,
-  `writerWP_newKey_dead`), and the bitmap given `handleFull`'s
-  (`writerWP_appendDeleteKlong_dead`; `DeadSteps.lean`), and the merge's parent, in place only
-  when `deadOver` lets it through, else `handleFull` of `mergeFullLast`
-  (`writerWP_mergeParent_dead`, on `writerWP_mergeParent_casesD`), and the merge's last loop
-  (`writerWP_mergeCleanup_deadWf`; `DeadMerge.lean`). Left for `merge` itself: its new nodes'
-  klongs in strict compare order (`mergeKlongs_deadCount`'s premises, from the reading's
-  ranges), then the step lemmas' conjunct.
-- LE-b with the merges on (`hFitL`): no run family makes it fire (0 of about 6,700 deletes,
-  putinv's and cost's families), and the upward delete stopped at a segment leaf in all 937
-  stops of `fuel-inside-check.lean.txt`, never at an inner node. Either a run family that
-  makes LE-b fire with the merges on, to test `hFitL` and the proved LE-b branches on runs, or
-  a proof that it cannot, which would make `hFitL` void for `MergeParamsOK`. The likely proof:
-  TP7's live counts (`LiveCounts`, `QLive` at the state before each operation) give every
-  node an inner node names at least `mergeBelow`, so at least 2, live klongs; one delete
-  empties none of them, so the upward delete starts at a segment root, whose parent on the
-  path is a segment leaf; a segment leaf that empties is a segment root too, so the loop climbs
-  through segment leaves only and stops at one. LE-b, at an inner stop node, is then never
-  reached. The delete's route would need `LiveCounts` of the state before it, which the
-  induction has (`LatestQD`).
+  each needs the conjunct inside its proof. Proved pieces (latest, 02:45 to 03:05):
+  - a full parent's or the space root's split with its cascade (`writerWP_handleFull_lastDead`,
+    `writerWP_handleFull_rootDead`);
+  - a node put or made (`writerWP_putNode_deadOver`, `writerWP_newKey_dead`), and the bitmap
+    given `handleFull`'s (`writerWP_appendDeleteKlong_dead`; `DeadSteps.lean`);
+  - the merge's parent, in place only when `deadOver` lets it through, else `handleFull` of
+    `mergeFullLast` (`writerWP_mergeParent_dead`, on `writerWP_mergeParent_casesD`);
+  - the merge's last loop, with the klongs well formed (`writerWP_mergeCleanup_deadWf`, on
+    `writerWP_retarget_deadWf`, `writerWP_takenBack_deadWf`, `writerWP_unlink_deadWf`;
+    `DeadMerge.lean`).
+  Left for `merge` itself: its new nodes' klongs in strict compare order
+  (`mergeKlongs_deadCount`'s premises, from the reading's ranges); then the step lemmas'
+  conjunct.
+- LE-b with the merges on (`hFitL`): it looks dead. No run family makes it fire (0 of about
+  6,700 deletes, putinv's and cost's families); the upward delete stopped at a segment leaf in
+  all 937 stops of `fuel-inside-check.lean.txt`; and cost's probe (`leb-probe.lean.txt`, on
+  024-22-cost, 96d1f5e9) found, with the merges on, four parameter sets and families made so
+  that deletes climb, no stop node off a segment leaf in 3382 deletes (45 climbing), while
+  with the merges off ({M := 8, G := 2, H := 3}) it saw 61 inner stop nodes and 34 LE-b in 792
+  deletes. The likely proof (cost and latest), which makes `hFitL` void for `MergeParamsOK`:
+  1. TP7's live counts hold at the delete's start (`LiveCounts` at the state the transaction's
+     earlier operations reach, `live_reached`).
+  2. The upward delete starts from a leaf that the delete empties, so one with one live klong;
+     the climb passes from X (t + 1) to X t only when X t would be emptied, so X t too has one.
+  3. A node with one live klong is not named by an inner node (those have at least
+     `mergeBelow`, at least 2) nor an inner segment root (2), so it is a segment root and a
+     leaf.
+  4. The stop node, the path's parent of such a node, is a segment leaf (`PathKinds`), so the
+     writer always takes the stop at a segment leaf: the inner stop node's bitmap and LE-b
+     never run.
+  5. The same gives `OpDelChk2OK`'s stop-node check and `checkOld`'s leaf part.
+  It needs `LiveCounts` at the delete's start with its `FReach` flags matched to the key access
+  path, and a lemma linking `allKeysIn (lastBitmap ∪ bitsOf k)` to the live count.
 - `QLive` of (4) (`l4`): `LiveEdges` with the merged path's nodes excepted until their merge, on
   the same step lemmas as `d4`; a merge's nodes are filled (`mergeKlongs_live_fill`), its
   parent's cascade is the walk with exceptions (`writerWP_appendKlongs_chainGLX`), and root
