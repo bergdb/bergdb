@@ -1,7 +1,7 @@
 # 025-02. The proofs' cleanup: one name per route, one top theorem
 
-Created 2026-11-14 by Frans Lundberg. Status: running (the plan being
-written).
+Created 2026-11-14 by Frans Lundberg. Status: done: the five steps landed
+on 2026-11-14 (section 13).
 
 The cleanup of the key tree's Lean proofs after the night of 13 to 14
 November (024-12, section 1, the follow-ups; 006-24, section 5,
@@ -399,7 +399,137 @@ Step 5 copies them into items/025-spare-tokens/02-proof-cleanup/.
 
 # 13. Result
 
-(Step 5 writes the counts after, the build's time, the gates and what was kept.)
+Written 2026-11-14 by step 5 ("close"), from the State notes of the steps in
+/Users/f/fl/bench/2026-11-14/cleanup/{prune,notes,names,dups,close}/STATE.md.
+
+## 13.1 The counts
+
+Lines and files of .lean files, by lines.sh; before at `eb1a04a0`, after at the close's commit
+(`295b0dbd`, lean/ as landed):
+
+- lean/SIS/Tree: 507 files, 227,923 lines before; 434 files, 140,819 lines after the prune
+  (gate-2); 140,807 after the names; 140,528 after the dups; 429 files, 140,264 lines after
+  the close: 87,659 lines (38 %) and 78 files fewer.
+- lean/SIS/Proof: 108 files, 50,364 lines, unchanged.
+- SIS's own files: 51 files, 9,222 lines before; 9,262 after (the notes step's comments).
+- lean/BergDB (11 files, 5,220 lines), lean/Check (8 files, 2,413 lines), the programs at the
+  top (9 files, 1,542 lines): unchanged.
+- All of lean/: 694 files, 296,684 lines before; 616 files, 209,065 lines after: 87,619
+  lines (30 %) fewer.
+- lean/README.md: 1,306 lines before; 1,460 after the notes step; 1,470 after the close.
+- Declarations of SIS/Tree: 7,246 before; the prune removed 1,568 with source text (and 8
+  auxiliary constants), 73 files whole; the dups step 33 copies (29 of 57 groups of
+  theorems with the same statement, 288 lines of declarations); the close 5 files that the
+  prune had left without declarations.
+- Names: 61 declarations and 8 files renamed (step 3), none of them a premise or a definition
+  of the trusted statements.
+
+## 13.2 The build
+
+- One clean build of `295b0dbd` (a copy of the clone with lean/.lake/build removed, one heavy
+  slot, no other slot held; load 2.8 at its start): 11 minutes 7 seconds, 659 jobs, 2,930 s
+  of user CPU and 129 s of system (459 %). Before: 10 minutes 30 seconds, 737 jobs, 3,520 s
+  of CPU (580 %), from the main tree's older cache (section 3).
+- The CPU time fell by about 13 %, the wall time did not: the build waits on its longest
+  chain of imports, 52 modules whose build times add up to 659 of its 667 seconds, among
+  them WriterKindsMerge (187 s), FreshCache (76 s), WriterKindsDelete (61 s), WriterFields
+  (46 s), WriterNonemptyMerge and MergeFrameDead (40 s each): walks of the writer that the
+  top theorem uses, so the prune kept them. The plan's estimate of about 7 minutes scaled
+  the CPU time.
+
+## 13.3 The target
+
+- lean/SIS/Tree at most 140,000 lines: not met, 140,264 (the plan expected about 137,500;
+  the prune kept 373 macros, about 3,300 lines, that the estimate counted as cut).
+- lean/ at most 210,000 lines: met, 209,065.
+- The build at most 8 minutes on a quiet F53: not met, 11 minutes 7 seconds (13.2). A
+  shorter build needs a shorter chain of modules (13.2), not fewer lines.
+- The premises: still 10, with their names and statements (each gate's check).
+
+## 13.4 The gates
+
+Every commit that landed passed gate.sh (section 7); each gate's directory has its summary.txt:
+
+- notes: /Users/f/fl/bench/2026-11-14/cleanup/notes/gate-1, on `627046ab`; landed `5458ac36`
+  (a merge of main that brought only items), 14:30.
+- prune: /Users/f/fl/bench/2026-11-14/cleanup/prune/gate-1 on `45603ec5`, and gate-2 on
+  `b8fae26c` (main merged in: the notes step's comments); landed `b8fae26c`, 14:43.
+- names: /Users/f/fl/bench/2026-11-14/cleanup/names/gate-1, on `73852c9b`; landed 14:58.
+- dups: /Users/f/fl/bench/2026-11-14/cleanup/dups/gate-1, on `a04dbd78`; landed 15:17.
+- close: /Users/f/fl/bench/2026-11-14/cleanup/close/gate-1, on `295b0dbd` (its build reused
+  the clean build's cache of the same commit); then level 2 in the clone: LEVEL 2 OK
+  in 12 minutes 54 seconds, its Lean steps among them (step 8, treeconf.sh on its small,
+  drain and reclaim sets; step 7, A2A3Check2 and the trace checker on 120 traces,
+  TRACECHECK OK, and TAKECHECK OK); log /Users/f/fl/bench/2026-11-14/cleanup/close/level2.txt,
+  the steps' logs in the clone's java/build/level2/.
+
+Each passed: the full build and treetest; no forbidden word; the 23 audited theorems on Lean's
+standard axioms, no axiom or `sorryAx` of ours; the trusted closure's 10,710 constants as the
+base's, no line differing; the top theorem's statement and premises' names as the base's
+`invGetScanOK_merges_flat`; the trace checker's 41 tests; every SIS/Tree module imported.
+
+## 13.5 What was kept, and why
+
+- keep.txt's 46 names (section 2): the building blocks of the open premises' plans and F1's.
+- 373 macros, about 3,300 lines (step 1): Lean makes a declaration for each `macro` and
+  `syntax`, and no proof term names it, so Reach.lean found none reached; kept when its
+  keyword is a token in the text that stays (prune/macros.py). This is why SIS/Tree ended
+  above the plan's estimate of 137,550 lines.
+- 11 `@[simp]` lemmas and 376 names between declarations (attribute lines, macros, `#guard`),
+  by prune.py's rules.
+- Names with a version digit outside 5.3's list (step 3, by the brief's rule): the S2 lemmas
+  (`writerWP_merge_any_treeS2` and the like), `TakeS2` to `TakeS4`, `runTreeQ_of_cases3S`;
+  a possible follow-up. Not version marks, so not renamed: `FlatKlongs`, `FlatAt` and their
+  lemmas (a flat list of klongs), Exec.lean's `MF3`, BergDB/Index's F1 to F5, binders such as
+  `hF3`, `OpDelChk2OK` and every definition in the trusted closure.
+- 28 groups of theorems with the same statement (step 4): 23 wholly outside SIS/Tree (in
+  the trusted fingerprint; most are the audited restatements in SIS's Theorems files beside
+  the SIS/Proof lemma they restate), `SIS.Tree.filterMap_congr_mem` and `SIS.mem_of_lookup`'s
+  group (the SIS twin cannot go, and using it would import 12 or 35 more modules), the
+  examples' own `putSegs_*_step` (the example files stand alone, 006-26, section 6.3), and
+  four pairs of the delete's two walks (`kd_`/`kr_`: joining would put the two walks in
+  series in the build, for 2 to 7 lines each; section 3).
+
+## 13.6 Decided by rule (section 11, rule 6), for Frans to overturn
+
+- Prune: keep a macro when its keyword is a token in the text that stays (373 names, above
+  the 60 that 14.1 asks to explain); prune's copy of prune.py also cuts a cut declaration's
+  doc comment (a left docstring was a parse error). No name removed by hand.
+- Notes: 007-09, Q2, option B (comments fixed, `DropStep` and its theorems kept; option C not
+  done); two docstrings beyond the brief's five that said the same false thing
+  (`coldReads_lazy`, `removedAt_bound`); in Props.lean, besides `Small.lean`, one sentence on
+  TP7, TP10 and TP11; lean/README.md's axioms block got the newer theorems, checked by running.
+- Names: the clashes: `writerWP_handleFull_rootVF2` → `writerWP_handleFull_rootVReach`
+  (`writerWP_handleFull_rootV` exists); DelMergeCaseF3.lean → DelMergeCaseKd.lean and
+  TakeDelMergeF4.lean → TakeDelMergeKd.lean (the kinds' books; DelMergeCase.lean and
+  TakeDelMerge.lean exist); RangeMergeF2.lean → RangeMergeHalves.lean (not in 5.3's list, but
+  F2-marked); `opGetCaseOK'_delMerge4` → `opGetCaseOK'_delMerge` (its 4 is F4's version
+  number); comments that named a removed declaration whose name is reused were rewritten
+  first; names.py changed in place to mark all 17 reused names.
+- Dups: where the kept theorem had a file prefix (`bk_`, `left_`, `sizeStep_`) or a prime and
+  the removed copy had the plain name that more modules used, the kept theorem took the plain
+  name (5 cases); 9 new imports, each checked for no cycle and chosen to add few modules.
+- Close:
+  - every comment in lean/ that named a removed declaration fixed, not only those of names.md
+    (items cite only some): about 250 places in 120 files, each now saying in words what the
+    removed declaration stated, or naming the one that replaced it; a file whose main theorem
+    went says what is left in it. Checked: no comment names a removed declaration that is not
+    live again (stale.py), and the changed files differ from before in comments only
+    (comments stripped, the tokens equal).
+  - the 5 files that the prune left without declarations (HeightsFuelMerge, MergeHeightSplit,
+    RootWalkMerge, RootWalkRun, WriterGrowth) removed, each import of them replaced by their
+    own imports: prune.py's rule for a file left without declarations, which these escaped.
+  - 93 empty section headers (`/-! ## ... -/` before another header or `end`) removed.
+  - lean/README.md: no stale name or path was left (stale.py); added the axioms check of the
+    top theorem and Java's parameters, run on the built tree.
+  - the item's tools are those that ran: prune's copy of prune.py, with macros.py and
+    roots.txt beside the listed ones, and stale.py; names.py's copy reads several tables.
+
+## 13.7 Left
+
+- The version digits outside 5.3's list (13.5) and the delete's two near-copy walks (section 3):
+  follow-ups for spare tokens.
+- level3.sh's Lean step (the same `lake build` and tracecheck) runs in the next night.sh.
 
 
 # 14. The briefs

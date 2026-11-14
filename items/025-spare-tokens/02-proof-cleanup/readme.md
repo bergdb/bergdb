@@ -34,8 +34,8 @@ the cleanup is `eb1a04a0`.
   name; the tools' copy took one.
 - **Guard.lean**: no axiom of ours and no `sorryAx`; the axioms of the theorems in
   **audit.txt** (006-26's 23 theorems, among them the top theorem and Java's parameters;
-  the top theorem by its name at the base, which gate.sh replaces by its TOP); the trusted closure's fingerprint; the top theorem's
-  statement and its premises' names.
+  the top theorem by its name at the base, which gate.sh replaces by its TOP); the trusted
+  closure's fingerprint; the top theorem's statement and its premises' names.
 - **Dups.lean**: groups of theorems with the same statement (step 4).
 - **gate.sh**: the gate that every cleanup commit passed before it landed (025-02,
   section 7). **land.sh**: the landing, a fast-forward of main and a push.
