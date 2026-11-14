@@ -13,6 +13,8 @@ taken apart:
   between operations, and the fuel there;
 * the take-back through a replaceRoot whose segment leaf is full (`hRJ`) is
   proved (putinv's `replaceRootFullJ2OK_run`);
+* the upward delete's cascade at the space root is proved, for the reading
+  (putinv's `delStepsOKF3_of_open6`): `hUC` is `hBel`, `hL` and `hFit`;
 * the fuel at every state between operations (`hfit`) comes from the heights
   (cost's `txSegFitsOK_of_takeBelowDelR`): every node a delete takes back has a
   height below the fuel (`TakeBelowFuelDelOK`; a put takes nothing back).
@@ -24,6 +26,7 @@ import SIS.Tree.DeadRun
 import SIS.Tree.DeadCases
 import SIS.Tree.TakeReplaceFull
 import SIS.Tree.HeightsFit
+import SIS.Tree.DelStepsCascRoot
 
 set_option autoImplicit false
 
@@ -45,7 +48,10 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     (i4 : OpCaseOK p (RunOK p) (QPutInv p) DelMergeCase)
     (r4 : OpCaseOK p (RunOK p) (QRange p) DelMergeCase)
     (l4 : OpCaseOK p (RunOK p) (QLive p) DelMergeCase)
-    (hUC : ∀ ts BK, UpCascOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) BK)
+    (hBel : ∀ ts BK,
+      UpCascBelowOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) BK)
+    (hL : ∀ ts, UpUnlinkLinksOK (ctxOf p ts) (viewOf (treeRun p ts)))
+    (hFit : ∀ ts BK, UpCascFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) BK)
     (hULb : ∀ ts BK, UpLebOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) BK)
     (hFits : ∀ ts, DelFullFitsOK (ctxOf p ts) (viewOf (treeRun p ts)))
     (hMS : ∀ ts, MergeStepOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
@@ -122,7 +128,7 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
   have h := getOK_scanOK_of_cases_merges_open p hp hinv (fun ts hw => (hJ ts hw).1)
     (fun ts hw => (hJ ts hw).2.1) hfit t4 i4 r4
     (opGetCaseOK_delMergeF4 p (RunOK p)
-      (delStepsOKF3_of_open5 p (RunOK p) (by omega) hsa hRL hP hUC hULb hFits)
+      (delStepsOKF3_of_open6 p (RunOK p) (by omega) hsa hRL hP hL hFit hBel hULb hFits)
       hMS hCo hsa hcap (by omega) hP hfit)
   exact ⟨hinv, h.1, h.2, latestGetOK_of_getOK p h.1, latestScanOK_of_scanOK p h.2⟩
 

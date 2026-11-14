@@ -25,14 +25,14 @@ Cite the design rules as "024-12, D1", the stated properties as
 theorem. For Java's own parameters (record format 7's merge thresholds and option 2's theta,
 from node size 8), every run of transactions that the model accepts keeps the tree's invariants
 (TP7), and every get and every scan, at the latest time and at every earlier time, returns what
-the reference map gives (TP10, TP11). This is a Lean proof from 17 named premises, listed below.
+the reference map gives (TP10, TP11). This is a Lean proof from 19 named premises, listed below.
 Each speaks of one operation or one step of the writer, mostly of the delete with the merges, of
 the fuel and heights inside a transaction, and of the bound on dead klongs. Each held on runs of
-the model within reach, with no failure; the fuel inside an operation (in `hFits`, `hMS`, `hCo`)
-is checked only at the operations' boundaries. Not covered: parameters with the merges off (the
-theorem is for `MergeParamsOK`); bounded startup's tree premises (item 007), which this theorem
-does not discharge; and that Java does what the model does, which is checked on Java's traces
-(section 5), not proved.
+the model within reach, with no failure; the fuel inside an operation (in `hFits`, `hFit`,
+`hMS`, `hCo`) is checked only at the operations' boundaries. Not covered: parameters with the
+merges off (the theorem is for `MergeParamsOK`); bounded startup's tree premises (item 007),
+which this theorem does not discharge; and that Java does what the model does, which is checked
+on Java's traces (section 5), not proved.
 
 **The top theorem (2026-11-14, 02:10).** `invGetScanOK_merges_flat` (`LatestTopFlat.lean`)
 gives TP7 (`InvPreserved`), TP10 (`GetOK`) and TP11 (`ScanOK`), and so `LatestGetOK` and
@@ -46,7 +46,8 @@ whose segment leaf is full is proved (putinv's `replaceRootFullJ2OK_run`), and t
 state between operations comes from the heights (cost's `txSegFitsOK_of_takeBelowDelR`).
 `invGetScanOK_merges` (`LatestTop.lean`) is the earlier form, with `DeadAllOK` at every run, the
 take-back's delete steps (`DelStepsJ2OKF3`), the full-leaf replaceRoot and the fuel as premises.
-The premises, each with what it says, who owns it, and its test evidence:
+The premises, each with what it says, who owns it, and its test evidence; they were 17 until
+02:20, when the stop node's cascade split into three smaller ones, its root case proved:
 
 - `d2`, `d3c`, `d4` (`QDead`): an operation keeps every key node that the writer reads at or
   below theta dead klongs: a put into a full leaf (2), a put that makes new segments below a
@@ -64,12 +65,15 @@ The premises, each with what it says, who owns it, and its test evidence:
   above). Also TP39 in `treetest` and on Java's traces (C-T6), for the key nodes reached.
 - `hchk`, `OpDelChkOK`: a delete runs as its copy with the take-backs' checks (cost, the
   heights). Evidence: the same result and state at 6828 deletes of 310 runs, 160 with a
-  take-back in the upward delete's loop, 2305 with a merge's, 453 with root collapse's.
+  take-back in the upward delete's loop, 2305 with a merge's, 453 with root collapse's, and
+  309 deletes of 8 random runs in several segments (`12-tree-model/delchk-check.lean.txt`).
 - `htb`, `TakeBelowFuelDelOK`: every node that a delete takes back, of those it found at its
   start, has a cached height below the fuel (cost; a put takes nothing back, proved). With the
   heights it gives that every state between operations fits the fuel
   (`txSegFitsOK_of_takeBelowDelR`). Evidence: 316 runs within reach, 18,201 operations, 3205
-  deletes taking nodes back, no failure; SegFits held at about 14,000 operation boundaries.
+  deletes taking nodes back, no failure (`12-tree-model/heights-op-check.lean.txt`); SegFits
+  held at about 14,000 operation boundaries (`12-tree-model/segfit-check.lean.txt`, the
+  states of its runs random and random2).
 - `t4`, `i4`, `r4`: the delete with the merges (4) keeps the writer's tree, `PutInv` and the
   walk's ranges (cost's merges). Evidence: after all 4131 deletes of runs within reach with the
   merges on (theta 0 and Java's), the writer's tree was a tree, its reached nodes untaken, well
@@ -79,11 +83,17 @@ The premises, each with what it says, who owns it, and its test evidence:
   states between operations of runs with merges and collapses
   (`12-tree-model/live-counts-check.lean.txt`), and at 8843 more with Java's theta on
   (`dead-all-check.lean.txt`).
-- `hUC`, `hULb`: the upward delete's stop node, its cascade and its LE-b, for the reading
-  (putinv; `delStepsOKF3_of_open5`). Their proofs will need `UpUnlinkOK`, which held at all
-  2529 upward-loop end states (1385 with a take-back in the loop, 954 with an unlink to the
-  previous version, 173 cascading at the stop node), with the writer's tree, its links, its
-  ranges and its reached nodes untaken and well formed there.
+- The upward delete's stop node, for the reading (putinv; `delStepsOKF3_of_open6`). Its cascade
+  at the space root is proved (`writerWP_upCasc_root_delF3`); left are:
+  - `hBel`, `UpCascBelowOKF3`: the cascade at a stop node below the space root (putinv);
+  - `hL`, `UpUnlinkLinksOK`: at the loop's end, links below the next id and klongs well formed
+    (putinv);
+  - `hFit`, `UpCascFitsOK`: the state after the stop node's cascade fits the fuel (cost);
+  - `hULb`, `UpLebOKF3`: the stop node's LE-b (putinv).
+  Evidence: putinv's check UpUnlinkOK held at all 2529 upward-loop end states (1385 with a
+  take-back in the loop, 954 with an unlink to the previous version, 173 cascading at the stop
+  node, 818 at the space root): the writer's tree, its links below the next id, its ranges, its
+  reached nodes untaken and well formed (`12-tree-model/up-unlink-check.lean.txt`).
 - `hFits`, `DelFullFitsOK`: the state after a delete's full leaf splits fits the fuel (cost).
   Evidence: as SegFits' above.
 - `hMS`, `MergeStepOKF3`: a merge keeps the nodes reached untaken (proved,
@@ -92,10 +102,11 @@ The premises, each with what it says, who owns it, and its test evidence:
   (cost, the heights), and `CollapseUnlinkOK` (putinv, not proved). Evidence:
   `CollapseUnlinkOK` held at all 96 replaceRoots at a segment root, 32 with a full leaf.
 - `hUCJ`, `hULbJ`: the upward delete's stop node, its cascade and its LE-b, for the take-back
-  (putinv; `delStepsJ2OKF3_of_openR`). Evidence: as `hUC`'s (`UpUnlinkOK`).
+  (putinv; `delStepsJ2OKF3_of_openR`). Evidence: as the reading's (UpUnlinkOK).
 - `hMF`: at every state between operations, every made-for id is below the transaction's
   first id (putinv). Evidence: held at all 44,312 states between operations of runs within
-  reach with the merges on (cost's `DelChk` families and putinv's, M 8 and 10).
+  reach with the merges on (cost's `DelChk` families and putinv's, M 8 and 10;
+  `up-unlink-check.lean.txt`).
 
 Follow-ups, for a later spare-token run (latest, 02:20):
 
@@ -121,10 +132,11 @@ Follow-ups, for a later spare-token run (latest, 02:20):
     below the fuel (`ht_descendLte_height`).
   - `t4`, `i4`, `r4` (cost): the writer's tree, `PutInv` and the ranges through the merge loop
     and root collapse, on the reading's (4) route.
-  - `hUC`, `hULb`, `hUCJ`, `hULbJ` (putinv): the stop node's cascade and LE-b; the cascade at
-    the space root is proved (`delStepsOKF3_of_open6`), below it open.
-  - `hFits`, and the fuel parts of `hMS` and `hCo` (cost): step 4 (B), the heights inside an
-    operation.
+  - `hBel`, `hL`, `hULb`, `hUCJ`, `hULbJ` (putinv): the stop node's cascade below the space
+    root and LE-b, for the reading and the take-back (the root's cascade is proved for the
+    reading, `writerWP_upCasc_root_delF3`).
+  - `hFits`, `hFit`, and the fuel parts of `hMS` and `hCo` (cost): step 4 (B), the heights
+    inside an operation.
   - `CollapseUnlinkOK` in `hCo`, and `hMF` (putinv): from the overlay's books
     (`KeepsGoodTaken`), with the call sites of `setMadeFor`.
 
