@@ -1435,8 +1435,11 @@ in 024-12's (4) entry (step 4) and section 1's list.
      putinv's TP4 walk (`TakeJ2` with `TreeOK`, through
      `liveHolder_unique`); the segment leaves (`checkOld`, the stop node)
      from latest's `LiveCounts` within a delete; `checkPathFree` from the
-     path's nodes being distinct (their segment and height strictly
-     decrease along the path: `PathHt` with `PathKinds`).
+     path's nodes being distinct, proved (`ht_path_nodup`, `ht_path_ne`,
+     `HeightsPathNodup.lean`: along the path the segment rises and, in a
+     segment, the height falls, from `PathHt` and `PathKinds`); left for
+     it: the kinds' walk (`KdInv`) beside the heights' at the upward
+     delete's loop in `ht_deleteUpwardChk`, then a copy without the check.
   2. `TakeBelowFuelDelOK`: a node a delete found and takes back is
      reachable at its start from a segment root it descended, so below
      the fuel by (C)'s part 1. What it needs, a reach frame through the
