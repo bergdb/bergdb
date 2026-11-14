@@ -12,9 +12,12 @@ dchk:ok (same result and state), dchk:DIFF (both succeed, differ), dchk:FAIL
 (the copy fails where the writer succeeds), with what the writer's delete did:
 :climb (the upward delete), :merge (merges), :mtb (a merge took a node back),
 :rctb (root collapse took a root back), :uptb (the loop took a node back).
+It also runs `putKvDelChk2` (HeightsPathFree.lean, the copy without
+`checkPathFree`) against the writer: d2:ok, d2:DIFF, d2:FAIL as for dchk.
 -/
 import SIS.Tree.MergeProofBundle
 import SIS.Tree.DelChk
+import SIS.Tree.HeightsPathFree
 
 set_option autoImplicit false
 set_option maxRecDepth 100000
@@ -45,11 +48,16 @@ def opsD (c : Ctx) : List Op → W → List String → List String
     let acc' := match op with
       | .put _ _ => acc
       | .del key =>
-        match (putKv (.del key)) c w, (putKvDelChk key) c w with
-        | .ok (r1, v1), .ok (r2, v2) =>
-          acc ++ [(if r1 == r2 && wEqD v1 v2 then "dchk:ok" else "dchk:DIFF") ++ tagD w v1]
-        | .ok (_, v1), .error e => acc ++ ["dchk:FAIL" ++ tagD w v1 ++ " " ++ e]
-        | .error _, _ => acc
+        let a1 := match (putKv (.del key)) c w, (putKvDelChk key) c w with
+          | .ok (r1, v1), .ok (r2, v2) =>
+            [(if r1 == r2 && wEqD v1 v2 then "dchk:ok" else "dchk:DIFF") ++ tagD w v1]
+          | .ok (_, v1), .error e => ["dchk:FAIL" ++ tagD w v1 ++ " " ++ e]
+          | .error _, _ => []
+        let a2 := match (putKv (.del key)) c w, (putKvDelChk2 key) c w with
+          | .ok (r1, v1), .ok (r2, v2) => [if r1 == r2 && wEqD v1 v2 then "d2:ok" else "d2:DIFF"]
+          | .ok _, .error e => ["d2:FAIL " ++ e]
+          | .error _, _ => []
+        acc ++ a1 ++ a2
     match (putKv op) c w with
     | .ok (_, w') => opsD c rest w' acc'
     | .error e => acc' ++ ["ERR " ++ e]
@@ -79,7 +87,7 @@ def runD (p : Params) (all : List Tx) : List String :=
 
 def summD (l : List String) : String :=
   let cnt (s : String) := (l.filter (fun x => (x.splitOn s).length > 1)).length
-  s!"runs {(l.filter (· == "run")).length} (skipped {(l.filter (· == "skip:not-within")).length}) deletes {cnt "dchk:"}: ok {cnt "dchk:ok"} FAIL {cnt "dchk:FAIL"} DIFF {cnt "dchk:DIFF"}; with climb {cnt ":climb"} merge {cnt ":merge"} mtb {cnt ":mtb"} rctb {cnt ":rctb"} uptb {cnt ":uptb"}; fails {(l.filter (fun x => x.startsWith "dchk:FAIL" || x.startsWith "dchk:DIFF")).take 3} other {(l.filter (fun x => x.startsWith "ERR" || x.startsWith "not" || x.startsWith "toperr")).take 3}"
+  s!"runs {(l.filter (· == "run")).length} (skipped {(l.filter (· == "skip:not-within")).length}) deletes {cnt "dchk:"}: ok {cnt "dchk:ok"} FAIL {cnt "dchk:FAIL"} DIFF {cnt "dchk:DIFF"}; with climb {cnt ":climb"} merge {cnt ":merge"} mtb {cnt ":mtb"} rctb {cnt ":rctb"} uptb {cnt ":uptb"}; without checkPathFree (putKvDelChk2): ok {cnt "d2:ok"} FAIL {cnt "d2:FAIL"} DIFF {cnt "d2:DIFF"}; fails {(l.filter (fun x => x.startsWith "dchk:FAIL" || x.startsWith "dchk:DIFF")).take 3} other {(l.filter (fun x => x.startsWith "ERR" || x.startsWith "not" || x.startsWith "toperr")).take 3}"
 
 end SIS.Tree
 
