@@ -28,11 +28,14 @@ not premises: the take-back's joint induction (putinv's `runTreeQ_of_mergesF4`) 
 with TP7's invariant (`LatestQ`, `latestQ_snoc`, `LatestJoint.lean`). Every put case is proved.
 The premises, each with what it says, who owns it, and its test evidence:
 
-- `hD`, `DeadAllOK` at every run: every key node holds at most theta dead klongs. Open
-  (024-23's TP39 and TP40). Void with theta 0 (`deadAllOK_of_theta_zero`), but not for Java's
-  parameters: theta is 7 M / 30, at least 2, from node size 8 (`Dag.theta`,
-  `Params.thetaFor`); `MergeParamsOK` does not fix theta. Evidence: TP39 in `treetest` after
-  every transaction and on Java's traces (C-T6), for the key nodes reached.
+- `hD`, `DeadAllOK` at every run: every key node of P, reached or not, holds at most theta
+  dead klongs (latest; 024-23's TP39 and TP40 are its reached form). Void with theta 0
+  (`deadAllOK_of_theta_zero`), but not for Java's parameters: theta is 7 M / 30, at least 2,
+  from node size 8 (`Dag.theta`, `Params.thetaFor`); `MergeParamsOK` does not fix theta.
+  Evidence: it held at all 1188 run ends of runs within reach with the merges on and Java's
+  theta (node sizes 8, 10, 14 and 30, theta 2, 2, 3 and 7): 11,671 key nodes, 1400 of them at
+  theta, none above (`12-tree-model/dead-all-check.lean.txt`, 2026-11-14, 01:38). Also TP39
+  in `treetest` and on Java's traces (C-T6), for the key nodes reached.
 - `hchk`, `OpDelChkOK`: a delete runs as its copy with the take-backs' checks (cost, the
   heights). Evidence: the same result and state at 6828 deletes of 310 runs, 160 with a
   take-back in the upward delete's loop, 2305 with a merge's, 453 with root collapse's.
@@ -41,7 +44,8 @@ The premises, each with what it says, who owns it, and its test evidence:
 - `t4`, `i4`, `r4`: the delete with the merges (4) keeps the writer's tree, `PutInv` and the
   walk's ranges (cost's merges). No test of their own.
 - `l4`: (4) keeps TP7's live counts (`QLive`; latest). Evidence: `LiveCounts` held at all 6420
-  states between operations of runs with merges and collapses.
+  states between operations of runs with merges and collapses, and at 4681 more with Java's
+  theta on (`dead-all-check.lean.txt`).
 - `hUC`, `hULb`: the upward delete's stop node, its cascade and its LE-b, for the reading
   (putinv; `delStepsOKF3_of_open5`). Their proofs will need `UpUnlinkOK`, which held at all
   2529 upward-loop end states (173 of them cascading at the stop node).
