@@ -10,13 +10,16 @@ taken apart:
 * the take-back's delete steps (`hDS`) come from their open pieces (putinv's
   `delStepsJ2OKF3_of_openR` over `TakeS4`, `runTreeQ_of_mergesF4S`): the
   upward delete's stop node for the take-back, the made-for ids at every state
-  between operations, and the fuel there, which is `hfit`.
+  between operations, and the fuel there, which is `hfit`;
+* the take-back through a replaceRoot whose segment leaf is full (`hRJ`) is
+  proved (putinv's `replaceRootFullJ2OK_run`).
 
 024-12's section 1 lists the premises with their owners and test evidence.
 -/
 import SIS.Tree.LatestTop
 import SIS.Tree.DeadRun
 import SIS.Tree.DeadCases
+import SIS.Tree.TakeReplaceFull
 
 set_option autoImplicit false
 
@@ -47,8 +50,7 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
       UpCascJ2OKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) BK B)
     (hULbJ : ∀ ts BK B,
       UpLebJ2OKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) BK B)
-    (hMF : StateOK p (RunOK p) (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base))
-    (hRJ : ∀ ts B, ReplaceRootFullJ2OK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1) B) :
+    (hMF : StateOK p (RunOK p) (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base)) :
     InvPreserved p ∧ GetOK p ∧ ScanOK p ∧ LatestGetOK p ∧ LatestScanOK p := by
   have hp' := hp
   unfold MergeParamsOK at hp'
@@ -100,7 +102,7 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     (delStepsJ2OKF3_of_openR p _ (TakeS4 p) (by omega) hsa hRL' hRP' hRK'
       (fun _ _ _ h => h.1.1.1.1) (fun _ _ _ h => h.1.1.1.2) (fun _ _ _ h => h.1.1.2)
       (fun _ _ _ h => h.1.2) (fun _ _ _ h => h.2.1) (fun _ _ _ h => h.2.2) hUCJ hULbJ hFits)
-    hMS hCo hRJ
+    hMS hCo (replaceRootFullJ2OK_run p hsa)
   -- TP7, TP10 and TP11 from it
   have hP : ∀ ts, Within p ts → PointersOK (treeRun p ts) := fun ts hw => (hJ ts hw).1.1
   have hinv : InvPreserved p :=

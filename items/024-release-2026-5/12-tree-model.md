@@ -21,7 +21,7 @@ Cite the design rules as "024-12, D1", the stated properties as
 
 ## 1. In short
 
-**The top theorem (2026-11-14, 01:50).** `invGetScanOK_merges_flat` (`LatestTopFlat.lean`)
+**The top theorem (2026-11-14, 02:00).** `invGetScanOK_merges_flat` (`LatestTopFlat.lean`)
 gives, for the parameters of `MergeParamsOK`, TP7 (`InvPreserved`), TP10 (`GetOK`) and TP11
 (`ScanOK`), and so `LatestGetOK` and `LatestScanOK`, from the named premises below. TP4 and P's
 tree at every run are not premises: the take-back's joint induction (putinv's
@@ -29,7 +29,9 @@ tree at every run are not premises: the take-back's joint induction (putinv's
 (`LatestQD`; `latestQ_snoc`, `latestQD_snoc`; `LatestJoint.lean`, `DeadRun.lean`). Every put
 case is proved but the dead bound's (2) and (3c). `invGetScanOK_merges` (`LatestTop.lean`) is
 the same with two premises whole: `DeadAllOK` at every run and the take-back's delete steps
-(`DelStepsJ2OKF3`). The premises, each with what it says, who owns it, and its test evidence:
+(`DelStepsJ2OKF3`). The take-back through a replaceRoot whose segment leaf is full is proved
+(putinv's `replaceRootFullJ2OK_run`). The premises, each with what it says, who owns it, and
+its test evidence:
 
 - `d2`, `d3c`, `d4` (`QDead`): an operation keeps every key node that the writer reads at or
   below theta dead klongs: a put into a full leaf (2), a put that makes new segments below a
@@ -37,8 +39,9 @@ the same with two premises whole: `DeadAllOK` at every run and the take-back's d
   proved: the leaf's klong goes in only when `deadOver` lets it through
   (`deadCase_putLeafRoom`), and a klong of a compare value with no live klong adds no dead
   klong (`KNode.deadCount_add_key_new`; `deadCase_putNewSeg1Room`, `deadCase_putNewSegsRoom`,
-  `DeadCases.lean`). `DeadAllOK` at every run follows (`deadAllOK_snoc`). Theta is 7 M / 30, at least 2, from node size 8 (`Dag.theta`,
-  `Params.thetaFor`); `MergeParamsOK` does not fix it, and with theta 0 all three are void.
+  `DeadCases.lean`). `DeadAllOK` at every run follows (`deadAllOK_snoc`). Theta is 7 M / 30,
+  at least 2, from node size 8 (`Dag.theta`, `Params.thetaFor`); `MergeParamsOK` does not
+  fix it, and with theta 0 all three are void.
   Evidence (`12-tree-model/dead-all-check.lean.txt`, runs within reach with the merges on and
   Java's theta at node sizes 8, 10, 14 and 30): `WDeadOK` held at all 7765 states between
   operations, and `DeadAllOK` at all 1188 run ends (11,671 key nodes, 1400 at theta, none
@@ -49,7 +52,10 @@ the same with two premises whole: `DeadAllOK` at every run and the take-back's d
 - `hfit`, `TxSegFitsOK`: at every state between operations, every path inside one segment tree
   is shorter than the fuel (cost, step 4). Evidence: about 14,000 operation boundaries.
 - `t4`, `i4`, `r4`: the delete with the merges (4) keeps the writer's tree, `PutInv` and the
-  walk's ranges (cost's merges). No test of their own.
+  walk's ranges (cost's merges). Evidence: after all 4131 deletes of runs within reach with the
+  merges on (theta 0 and Java's), the writer's tree was a tree, its reached nodes untaken, well
+  formed and naming ids below the next id, and the walk's ranges held (and after 7445 puts;
+  `12-tree-model/delete-posts-check.lean.txt`, with putinv's tree and range walks).
 - `l4`: (4) keeps TP7's live counts (`QLive`; latest). Evidence: `LiveCounts` held at all 6420
   states between operations of runs with merges and collapses, and at 4681 more with Java's
   theta on (`dead-all-check.lean.txt`).
@@ -70,9 +76,6 @@ the same with two premises whole: `DeadAllOK` at every run and the take-back's d
 - `hMF`: at every state between operations, every made-for id is below the transaction's
   first id (putinv). Evidence: held at all 44,312 states between operations of runs within
   reach with the merges on (cost's `DelChk` families and putinv's, M 8 and 10).
-- `hRJ`, `ReplaceRootFullJ2OK`: a replaceRoot whose segment leaf is full keeps the take-back's
-  (B) and (C) (putinv, not started). The 32 full-leaf replaceRoots above run its code, but test
-  only `CollapseUnlinkOK`.
 
 The rest of this section is of 2026-11-11. Kept current then; section 9 has the exact state.
 Written 12:24.
