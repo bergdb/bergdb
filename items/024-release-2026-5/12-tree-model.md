@@ -120,8 +120,8 @@ Follow-ups, for a later spare-token run (latest, 02:20):
 - `QDead` of (4) (`d4`): a conjunct `WDeadN` (every node the writer reads at or below theta)
   beside `DelInvF3` on the reading's (4) route. The step lemmas that need it:
   - up to `afterDelete`: `writerWP_del_roomM` (the bitmap with room),
-    `writerWP_appendDeleteKlong_full_delF3` (the bitmap into a full leaf), `writerWP_del_emptyRoomMK`
-    and `writerWP_del_emptyAnyMK` (the upward delete and its stop node);
+    `writerWP_appendDeleteKlong_full_delF3` (the bitmap into a full leaf),
+    `writerWP_del_emptyRoomMK` and `writerWP_del_emptyAnyMK` (the upward delete, its stop node);
   - the merge loop: `writerWP_mergeUp_delF3`, on the merge lemmas `writerWP_merge_any_getF2` and
     `writerWP_merge_root_getF`;
   - root collapse: `writerWP_collapseRoot_delF4`, through `writerWP_afterDelete_delF4`.
