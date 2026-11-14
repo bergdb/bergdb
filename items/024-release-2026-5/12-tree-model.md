@@ -25,18 +25,18 @@ Cite the design rules as "024-12, D1", the stated properties as
 theorem. For Java's own parameters (record format 7's merge thresholds and option 2's theta,
 from node size 8), every run of transactions that the model accepts keeps the tree's invariants
 (TP7), and every get and every scan, at the latest time and at every earlier time, returns what
-the reference map gives (TP10, TP11). This is a Lean proof from 10 named premises, listed below,
+the reference map gives (TP10, TP11). This is a Lean proof from 9 named premises, listed below,
 and two conditions on the parameters that Java's meet. Each speaks of one operation or one step
 of the writer, mostly of the delete with the merges, of the fuel and heights inside a
 transaction, and of the bound on dead klongs. Each held on runs of the model within reach, with
-no failure; the fuel inside an operation (in `hFit`, `hFitL`, `hMS`, `hCo`) was checked at
-11,057 states inside deletes. But LE-b at the upward delete's stop node never fired in any run
-with the merges on, so no run tests `hFitL`. Not covered: parameters with the merges off (the
+no failure; the fuel inside an operation (in `hFit`, `hMS`, `hCo`) was checked at 11,057
+states inside deletes. LE-b at the upward delete's stop node is proved never to run with the
+merges on, as no run with them on ever showed. Not covered: parameters with the merges off (the
 theorem is for `MergeParamsOK`); bounded startup's tree premises (item 007), which this theorem
 does not discharge; and that Java does what the model does, which is checked on Java's traces
 (section 5), not proved.
 
-**The top theorem (2026-11-14, 03:17).** `invGetScanOK_merges_flat` (`LatestTopFlat.lean`) gives
+**The top theorem (2026-11-14, 03:20).** `invGetScanOK_merges_flat` (`LatestTopFlat.lean`) gives
 TP7 (`InvPreserved`), TP10 (`GetOK`) and TP11 (`ScanOK`), and so `LatestGetOK` and
 `LatestScanOK`, for every parameter set of `MergeParamsOK` with theta 0 or at least 2 (`hth`),
 from the named premises below. Java's own parameters are among them: record format 7's
@@ -68,7 +68,10 @@ and `r4`, TP10's three posts for the delete with the merges, are proved (putinv'
 `opCaseOK_treeInvRange_delMergeR`, `DelStepsTree.lean`), at the induction's runs, where the
 operations' cases now live (`invOK_snocR`, `deadAllOK_snocR`, `latestQD_snocR`), carried along
 each transaction with TP7's live counts at every operation's start (`jointLive_reached`,
-`LiveJointL.lean`), which LE-b's proof below needs:
+`LiveJointL.lean`), which LE-b's proof needs. 9 at 03:20: LE-b never runs with the merges on,
+given the live counts at the delete's start (cost's `stopLeaf_of_liveCounts`, putinv's
+`lebStop_false` and opens `delStepsOKF3_of_open13`, `delStepsJ2OKF3_of_openR8`,
+`delStepsQdL_of_openR`; `DelStepsLive.lean`), so `hFitL` left:
 
 - `d4` (`QDead`): the delete with the merges (4) keeps every key node that the writer reads at
   or below theta dead klongs (latest). Every put keeps it, proved for theta 0 or at least 2:
@@ -102,7 +105,7 @@ each transaction with TP7's live counts at every operation's start (`jointLive_r
   states between operations of runs with merges and collapses
   (`12-tree-model/live-counts-check.lean.txt`), and at 8843 more with Java's theta on
   (`dead-all-check.lean.txt`).
-- The upward delete's stop node (putinv; `delStepsOKF3_of_open12`, `delStepsJ2OKF3_of_openR7`).
+- The upward delete's stop node (putinv; `delStepsOKF3_of_open13`, `delStepsJ2OKF3_of_openR8`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next
   id and the klongs there follow from the writer's books (`linksWf_of_book`,
@@ -110,14 +113,12 @@ each transaction with TP7's live counts at every operation's start (`jointLive_r
   - `hU`, `UpUnlinkTreeOK`: after the upward loop, the writer's tree is a tree (putinv, the
     take-back; `UpUnlinkOK`, which adds the walk's ranges, gives it, `upUnlinkTreeOK_of`);
   - `hFit`, `UpCascFitsOK`: the state after the stop node's cascade fits the fuel (cost);
-  - `hFitL`, `UpLebFitsOK`: the state after LE-b's full split at the stop node fits the fuel
-    (cost, `DelStepsLebFull.lean`). LE-b is proved dead with the merges on, given TP7's live
-    counts at the delete's start (cost's `stopLeaf_of_liveCounts`, `upLebFitsOKL_of`;
-    `StopLeafLive.lean`): `hFitL` leaves when putinv's opens take the live counts in their
-    case predicate (in progress), which `LiveJointL.lean` supplies. On runs: LE-b never fired
-    with the merges on (0 of about 6,700 deletes in putinv's and cost's families, none of 3382
-    in cost's probe, which sees it with the merges off; every one of the 937 stops in
-    `fuel-inside-check.lean.txt` at a segment leaf).
+  LE-b at the stop node is proved never to run with the merges on, given TP7's live counts at
+  the delete's start (cost's `stopLeaf_of_liveCounts`, putinv's `lebStop_false`), so its fuel
+  premise `hFitL` left (03:20). On runs too: LE-b never fired with the merges on (0 of about
+  6,700 deletes in putinv's and cost's families, none of 3382 in cost's probe, which sees it
+  with the merges off; every one of the 937 stops in `fuel-inside-check.lean.txt` at a segment
+  leaf).
   Evidence for `hU`: `UpUnlinkOK` held at all 2529 upward-loop end states (1385 with a
   take-back in the loop, 954 with an unlink to the previous version, 173 cascading at the stop
   node, 818 at the space root), with the reached nodes untaken there too
@@ -167,9 +168,9 @@ Follow-ups, for a later spare-token run (latest, 03:05):
   Left for `merge` itself: its new nodes' klongs in strict compare order
   (`mergeKlongs_deadCount`'s premises, from the reading's ranges); then the step lemmas'
   conjunct.
-- LE-b with the merges on (`hFitL`): proved dead given the live counts at the delete's start
-  (cost's `stopLeaf_of_liveCounts`, `StopLeafLive.lean`, 03:10); left is the swap, putinv's
-  opens with the live counts in their case predicate. No run family makes it fire (0 of about
+- LE-b with the merges on: proved dead given the live counts at the delete's start (cost's
+  `stopLeaf_of_liveCounts`, `StopLeafLive.lean`, 03:10; in the top theorem since 03:20 through
+  putinv's `DelStepsLive.lean`, `hFitL` gone). No run family makes it fire (0 of about
   6,700 deletes, putinv's and cost's families); the upward delete stopped at a segment leaf in
   all 937 stops of `fuel-inside-check.lean.txt`; and cost's probe (`leb-probe.lean.txt`)
   found, with the merges on, four parameter sets and families made so that deletes climb, no
@@ -202,7 +203,7 @@ Follow-ups, for a later spare-token run (latest, 03:05):
     below the fuel (`ht_descendLte_height`).
   - `hU` (putinv): the state after the upward loop is a tree (the stop node itself is proved
     for the reading and the take-back).
-  - `hFit`, `hFitL`, and the fuel parts of `hMS` and `hCo` (cost): step 4 (B), the
+  - `hFit`, and the fuel parts of `hMS` and `hCo` (cost): step 4 (B), the
     heights inside an operation.
   - `CollapseUnlinkOK` in `hCo`, and `hMF` (putinv): from the overlay's books
     (`KeepsGoodTaken`), with the call sites of `setMadeFor`.
@@ -1956,6 +1957,10 @@ and its status:
       the old names their corollaries), carried to `RunOK`'s by
       `opCaseOK_of_within`, with TP7's live counts at every operation's start
       (`LiveJointL.lean`) for LE-b's proof (cost's `stopLeaf_of_liveCounts`).
+    - `hFitL` is gone (03:20): putinv's opens with the live counts at the
+      delete's start (`delStepsOKF3_of_open13`, `delStepsJ2OKF3_of_openR8`,
+      `delStepsQdL_of_openR`, `opCaseOK_treeInvRange_delMergeRL`), fed by
+      `liveStateOK_of_L` and `opCaseOK_of_cases_mergesL`: 9 named premises.
     - Not done, and why (latest, 02:05):
       - `QDead` of (2) and (3c), the cascade. The nodes a cascade makes are
         described by `ChainShape.lean`'s `CascadeNodeShape`, whose case for
