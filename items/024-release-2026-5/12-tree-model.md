@@ -21,18 +21,19 @@ Cite the design rules as "024-12, D1", the stated properties as
 
 ## 1. In short
 
-**The top theorem (2026-11-14, 02:00).** `invGetScanOK_merges_flat` (`LatestTopFlat.lean`)
+**The top theorem (2026-11-14, 02:10).** `invGetScanOK_merges_flat` (`LatestTopFlat.lean`)
 gives, for the parameters of `MergeParamsOK`, TP7 (`InvPreserved`), TP10 (`GetOK`) and TP11
 (`ScanOK`), and so `LatestGetOK` and `LatestScanOK`, from the named premises below. TP4 and P's
 tree at every run are not premises: the take-back's joint induction (putinv's
 `runTreeQ_of_mergesF4S`) carries them with TP7's invariant and the bound on dead klongs
 (`LatestQD`; `latestQ_snoc`, `latestQD_snoc`; `LatestJoint.lean`, `DeadRun.lean`). Every put
 case is proved but the dead bound's (2) and (3c). `invGetScanOK_merges` (`LatestTop.lean`) is
-the same with two premises whole: `DeadAllOK` at every run and the take-back's delete steps
-(`DelStepsJ2OKF3`). The take-back through a replaceRoot whose segment leaf is full is proved
-(putinv's `replaceRootFullJ2OK_run`). Java's parameters (record format 7's thresholds and
-theta, from node size 8) meet `MergeParamsOK` (`mergeParamsOK_java`). The premises, each with what it says, who owns it, and
-its test evidence:
+the earlier form, with `DeadAllOK` at every run, the take-back's delete steps
+(`DelStepsJ2OKF3`), the full-leaf replaceRoot and the fuel as premises. The take-back through a replaceRoot whose segment leaf is full is proved
+(putinv's `replaceRootFullJ2OK_run`), and the fuel at every state between operations comes from
+the heights (cost's `txSegFitsOK_of_takeBelowR`). Java's parameters (record format 7's
+thresholds and theta, from node size 8) meet `MergeParamsOK` (`mergeParamsOK_java`). The
+premises, each with what it says, who owns it, and its test evidence:
 
 - `d2`, `d3c`, `d4` (`QDead`): an operation keeps every key node that the writer reads at or
   below theta dead klongs: a put into a full leaf (2), a put that makes new segments below a
@@ -51,8 +52,10 @@ its test evidence:
 - `hchk`, `OpDelChkOK`: a delete runs as its copy with the take-backs' checks (cost, the
   heights). Evidence: the same result and state at 6828 deletes of 310 runs, 160 with a
   take-back in the upward delete's loop, 2305 with a merge's, 453 with root collapse's.
-- `hfit`, `TxSegFitsOK`: at every state between operations, every path inside one segment tree
-  is shorter than the fuel (cost, step 4). Evidence: about 14,000 operation boundaries.
+- `htb`, `TakeBelowFuelOK`: every node that an operation takes back has a cached height below
+  the fuel (cost). With the heights it gives that every state between operations fits the fuel
+  (`txSegFitsOK_of_takeBelowR`). Evidence: 316 runs within reach, 18,201 operations, 3205 of
+  them taking nodes back, no failure; SegFits held at about 14,000 operation boundaries.
 - `t4`, `i4`, `r4`: the delete with the merges (4) keeps the writer's tree, `PutInv` and the
   walk's ranges (cost's merges). Evidence: after all 4131 deletes of runs within reach with the
   merges on (theta 0 and Java's), the writer's tree was a tree, its reached nodes untaken, well
@@ -67,7 +70,7 @@ its test evidence:
   previous version, 173 cascading at the stop node), with the writer's tree, its links, its
   ranges and its reached nodes untaken and well formed there.
 - `hFits`, `DelFullFitsOK`: the state after a delete's full leaf splits fits the fuel (cost).
-  Evidence: as `hfit`'s.
+  Evidence: as SegFits' above.
 - `hMS`, `MergeStepOKF3`: a merge keeps the nodes reached untaken (proved,
   `mergeStepOKF3_untaken`) and fits the fuel (cost, the heights). No test of its own.
 - `hCo`, `CollapseStepOKF4`: the state after a replaceRoot at a segment root fits the fuel
@@ -1778,6 +1781,9 @@ and its status:
       a key klong of a compare value with no live klong adds no dead klong
       (`KNode.deadCount_add_key_new`), and a new segment leaf holds none.
       `hRJ` is putinv's `replaceRootFullJ2OK_run` (02:00).
+      `hfit` is cost's `txSegFitsOK_of_takeBelowR` from `TakeBelowFuelOK`
+      (02:08), with the run's links, kinds and heights from `LatestQD`
+      inside the induction, and every run within reach after it.
     - Not done, and why (latest, 02:05):
       - `QDead` of (2) and (3c), the cascade. The nodes a cascade makes are
         described by `ChainShape.lean`'s `CascadeNodeShape`, whose case for

@@ -10,9 +10,12 @@ taken apart:
 * the take-back's delete steps (`hDS`) come from their open pieces (putinv's
   `delStepsJ2OKF3_of_openR` over `TakeS4`, `runTreeQ_of_mergesF4S`): the
   upward delete's stop node for the take-back, the made-for ids at every state
-  between operations, and the fuel there, which is `hfit`;
+  between operations, and the fuel there;
 * the take-back through a replaceRoot whose segment leaf is full (`hRJ`) is
-  proved (putinv's `replaceRootFullJ2OK_run`).
+  proved (putinv's `replaceRootFullJ2OK_run`);
+* the fuel at every state between operations (`hfit`) comes from the heights
+  (cost's `txSegFitsOK_of_takeBelowR`): every node an operation takes back has a
+  height below the fuel (`TakeBelowFuelOK`).
 
 024-12's section 1 lists the premises with their owners and test evidence.
 -/
@@ -20,6 +23,7 @@ import SIS.Tree.LatestTop
 import SIS.Tree.DeadRun
 import SIS.Tree.DeadCases
 import SIS.Tree.TakeReplaceFull
+import SIS.Tree.HeightsFit
 
 set_option autoImplicit false
 
@@ -33,7 +37,7 @@ of `MergeParamsOK`, from the flat list of named premises (section 1 of
 024-12). -/
 theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     (hchk : OpDelChkOK p)
-    (hfit : TxSegFitsOK p (RunOK p))
+    (htb : TakeBelowFuelOK p)
     (d2 : OpCaseOK p (RunOK p) (QDead p) PutLeafFullCase)
     (d3c : OpCaseOK p (RunOK p) (QDead p) PutNewSegFullCase)
     (d4 : OpCaseOK p (RunOK p) (QDead p) DelMergeCase)
@@ -88,6 +92,11 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
   have hRI' : ∀ P t, RunTreeQ p (LatestQD p) P t → InvOK p P t := fun _ _ h => h.2.2.1.1
   have hRP' : ∀ P t, RunTreeQ p (LatestQD p) P t → PointersOK P := fun _ _ h => h.1.1
   have hRK' : ∀ P t, RunTreeQ p (LatestQD p) P t → KindsAllOK p P := fun _ _ h => h.2.2.1.2.2.1
+  have hRH' : ∀ P t, RunTreeQ p (LatestQD p) P t → HeightAllOK p P t :=
+    fun _ _ h => h.2.2.1.2.2.2.1
+  -- the fuel at every state between operations (cost's `txSegFitsOK_of_takeBelowR`)
+  have hfitQ : TxSegFitsOK p (RunTreeQ p (LatestQD p)) :=
+    txSegFitsOK_of_takeBelowR p (by omega) _ hRL' hRK' hRH' hchk htb
   have hT' := opCaseOK_anti p _ _ hR _ _ hT
   have hPI' := opCaseOK_anti p _ _ hR _ _ hPI
   have hO' := opCaseOK_anti p _ _ hR _ _ hO
@@ -97,7 +106,7 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     (opTreeOKUnder_of_cases p _ hRL' hRT' hRI' hT' hPI' hO')
     (putInvStateOK_of_cases p _ hRL' hRT' hRI' hT' hPI' hO')
     (rangeStateOK_of_cases p _ hRL' hRT' hRI' hT' hPI' hO')
-    (fun ts tx hw hr => hfit ts tx hw (hR _ _ hr))
+    hfitQ
     (fun ts tx hw hr => hMF ts tx hw (hR _ _ hr))
     (delStepsJ2OKF3_of_openR p _ (TakeS4 p) (by omega) hsa hRL' hRP' hRK'
       (fun _ _ _ h => h.1.1.1.1) (fun _ _ _ h => h.1.1.1.2) (fun _ _ _ h => h.1.1.2)
@@ -105,6 +114,8 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     hMS hCo (replaceRootFullJ2OK_run p hsa)
   -- TP7, TP10 and TP11 from it
   have hP : ∀ ts, Within p ts → PointersOK (treeRun p ts) := fun ts hw => (hJ ts hw).1.1
+  have hfit : TxSegFitsOK p (RunOK p) :=
+    fun ts tx hw _ => hfitQ ts tx hw (hJ ts (within_snoc_prefix p ts tx hw))
   have hinv : InvPreserved p :=
     invPreserved_of_latest_pointers p hp (fun ts hw => (hJ ts hw).2.2.1.1) hP
       (fun ts hw => (hJ ts hw).2.2.2)
