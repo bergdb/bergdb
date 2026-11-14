@@ -109,8 +109,9 @@ that split, empty their leaf or may merge (`DelMergeRestCase`; (4a) proved, belo
   held at about 14,000 operation boundaries (`12-tree-model/segfit-check.lean.txt`, the
   states of its runs random and random2).
 - `l4`: (4) keeps TP7's live counts (`QLive`; latest), now only for the deletes that split,
-  empty their leaf or leave it with at most `mergeBelow` live klongs (`DelMergeRestCase`): a
-  delete whose leaf has room and keeps more is proved (`liveCase_delRoomFill`,
+  empty their leaf, or leave a leaf that an inner node names with at most `mergeBelow` live
+  klongs (`DelMergeRestCase`): a delete whose leaf has room and keeps a live klong, and more
+  than `mergeBelow` if an inner node names it, is proved (`liveCase_delRoomFill`,
   `LiveDelRoom.lean`): after its bitmap the live counts hold, and with them the merges' loop
   merges nothing (`writerWP_afterDelete_none`, `LiveNoMerge.lean`). Evidence: `LiveCounts` held
   at all 6420 states between operations of runs with merges and collapses
@@ -1987,7 +1988,8 @@ and its status:
       `delStepsOKF3_of_open15`, `delStepsJ2OKF3_of_openR10`,
       `delStepsQdL_of_openR3`). `QLive` of (4a) is proved
       (`liveCase_delRoomFill`, `LiveDelRoom.lean`): a delete whose leaf has
-      room and keeps more than `mergeBelow` live klongs; `l4` is now
+      room and keeps a live klong, and more than `mergeBelow` if an inner
+      node names it (a segment root's leaf need not); `l4` is now
       `DelMergeRestCase` (`liveCase_delMerge_of_rest`).
     - Not done, and why (latest, 02:05):
       - `QDead` of (2) and (3c), the cascade. The nodes a cascade makes are
