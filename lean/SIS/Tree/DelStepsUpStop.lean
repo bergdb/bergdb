@@ -21,7 +21,7 @@ node or that retargeted from the chain's top; each chain node's fate. -/
 def UpLoopEnd (c : Ctx) (B : NodeId) (X : Nat → NodeId) (Nn : Nat → KNode)
     (depth stop : Nat) (w w2 : W) (S : KNode) : Prop :=
   (∀ y, (∀ k, stop < k → k ≤ depth → y ≠ X k) → w2.taken.contains y = w.taken.contains y) ∧
-  w2.top = w.top ∧ w2.vals = w.vals ∧ w2.path = w.path ∧ w2.madeFor = w.madeFor ∧
+  w2.top = w.top ∧ w2.vals = w.vals ∧ w2.path = w.path ∧ w2.madeFor = w.madeFor ∧ w2.next = w.next ∧
   (∀ y, y ≠ X stop → (∀ k, stop < k → k ≤ depth → y ≠ X k) → w2.nodes.lookup y = w.nodes.lookup y) ∧
   w2.nodes.lookup (X stop) = some S ∧
   (S = Nn stop ∨ ∃ ti dst, S = { Nn stop with ks := retargetKlongs (Nn stop).ks ti (X (stop + 1)) dst }) ∧
@@ -107,6 +107,7 @@ theorem writerWP_deleteUpward_stepJ (c : Ctx) (base : View BVal) (X : Nat → No
   have h0top : w0.top = w.top := by rw [← hw0]
   have h0v : w0.vals = w.vals := by rw [← hw0]
   have h0m : w0.madeFor = w.madeFor := by rw [← hw0]
+  have h0nx : w0.next = w.next := by rw [← hw0]
   rw [writerWP_bind, writerWP_get, writerWP_bind]
   refine writerWP_mono (writerWP_foldlM_getNode c (fun s n => if n.leaf = true then s + 1 else s)
     (List.take stop w0.path) 0 w0 ?_) ?_
@@ -129,7 +130,7 @@ theorem writerWP_deleteUpward_stepJ (c : Ctx) (base : View BVal) (X : Nat → No
     v.top = w0.top ∧ v.vals = w0.vals ∧ v.path = w0.path ∧
     (∀ y, (∀ k, stop < k → k ≤ depth → y ≠ X k) → v.taken.contains y = w0.taken.contains y) ∧
     (∀ y, y ≠ X stop → (∀ k, stop < k → k ≤ depth → y ≠ X k) → v.nodes.lookup y = w0.nodes.lookup y) ∧
-    v.madeFor = w0.madeFor ∧
+    v.madeFor = w0.madeFor ∧ v.next = w0.next ∧
     ∃ a0, rem = List.range' a0 (depth - stop - a0) ∧ a0 ≤ depth - stop ∧
       (∀ j, j < a0 → ChainFate c.i v (X (depth - j))) ∧
       (∀ j, j < a0 → ChainFateW c.i B v (Nn (depth - j)) (X (depth - j))) ∧
@@ -143,13 +144,13 @@ theorem writerWP_deleteUpward_stepJ (c : Ctx) (base : View BVal) (X : Nat → No
           RetFrom c.i B (Nn (depth - a0)) (X (depth - a0 + 1)) S)
   rw [writerWP_bind]
   refine writerWP_mono (writerWP_forIn_inv c I _ ?_ (List.range (depth - stop)) w0
-    ⟨hJw0, rfl, rfl, rfl, fun _ _ => rfl, fun _ _ _ => rfl, rfl, 0, by rw [List.range_eq_range']; rfl,
+    ⟨hJw0, rfl, rfl, rfl, fun _ _ => rfl, fun _ _ _ => rfl, rfl, rfl, 0, by rw [List.range_eq_range']; rfl,
       Nat.zero_le _, fun j hj => absurd hj (Nat.not_lt_zero _), fun j hj => absurd hj (Nat.not_lt_zero _),
       fun j _ hj => by rw [h0t]; exact htk _ (by omega),
       fun j _ hj => by rw [h0n]; exact hlk _ (by omega),
       Nn (depth - 0), by rw [h0n]; exact hlk _ (by omega), Or.inl rfl, Or.inl rfl,
       fun h => absurd h (Nat.lt_irrefl 0)⟩) ?_
-  · intro a rest v ⟨hJv, hvtop, hvv, hvp, hvt, hvn, hvm, a0, hrem, ha0, hfv, hfvJ, hnt, hexact, S, hSl, hS,
+  · intro a rest v ⟨hJv, hvtop, hvv, hvp, hvt, hvn, hvm, hvnx, a0, hrem, ha0, hfv, hfvJ, hnt, hexact, S, hSl, hS,
       hSR, hSF⟩
     have hlen : 0 < depth - stop - a0 := by
       rcases h : depth - stop - a0 with _ | m
@@ -181,7 +182,7 @@ theorem writerWP_deleteUpward_stepJ (c : Ctx) (base : View BVal) (X : Nat → No
         (by rw [hvp, h0p]; exact hk _ (by omega) (by omega)) _ ?_
       refine writerWP_mono (writerWP_and (writerWP_takeBack_exact _ _ _ _ c v hpar)
         (hJtake _ _ _ v hJv ⟨_, hSl⟩)) ?_
-      rintro _ v2 ⟨⟨h2t, h2top, h2v, h2p, h2m, _, h2n, hlt2, old, hold, h2l⟩, hJv2⟩
+      rintro _ v2 ⟨⟨h2t, h2top, h2v, h2p, h2m, h2nx, h2n, hlt2, old, hold, h2l⟩, hJv2⟩
       have hn' : { Nn (depth - (a + 1)) with ks := (retargetKlongs (Nn (depth - (a + 1))).ks
             ((Nn (depth - (a + 1))).lastTimeIndex.getD 0) (X (depth - a)) old) } = Nn (depth - (a + 1)) ∨
           ∃ ti dst, { Nn (depth - (a + 1)) with ks := (retargetKlongs (Nn (depth - (a + 1))).ks
@@ -193,7 +194,7 @@ theorem writerWP_deleteUpward_stepJ (c : Ctx) (base : View BVal) (X : Nat → No
         rw [← retFormS_firstTime c.i B _ S hSR]; simpa using hmadeS
       simp only [writerWP_pure]
       refine ⟨by first | rfl | trivial, hJv2, h2top.trans hvtop, h2v.trans hvv, h2p.trans hvp, fun y hy => ?_,
-        fun y hys hy => ?_, h2m.trans hvm, a + 1, hrest, by omega, fun j hj => ?_, fun j hj => ?_,
+        fun y hys hy => ?_, h2m.trans hvm, h2nx.trans hvnx, a + 1, hrest, by omega, fun j hj => ?_, fun j hj => ?_,
         fun j h1 h2 => ?_, fun j h1 h2 => ?_, _, h2l, ?_,
         Or.inr ⟨hlt2, X (depth - a), old, holdB, rfl⟩,
         fun _ _ => ⟨hlt2, old, holdB, by rw [show depth - (a + 1) + 1 = depth - a by omega]⟩⟩
@@ -242,12 +243,12 @@ theorem writerWP_deleteUpward_stepJ (c : Ctx) (base : View BVal) (X : Nat → No
       refine (writerWP_note_iff _ c v _).mpr ?_
       refine writerWP_mono (writerWP_and (writerWP_and (writerWP_unlink_frameP _ _ c _ hSl)
         (writerWP_unlink_fate _ _ c _ hSl)) (hJunlink _ _ (hJnote _ v hJv))) ?_
-      rintro _ v2 ⟨⟨⟨h2t, h2top, _, h2v, h2p, h2m, h2l⟩, ⟨_, _, _, h2x, _⟩⟩, hJv2⟩
+      rintro _ v2 ⟨⟨⟨h2t, h2top, h2nx, h2v, h2p, h2m, h2l⟩, ⟨_, _, _, h2x, _⟩⟩, hJv2⟩
       have hmadeN : (Nn (depth - a)).firstTime ≠ some c.i := by
         rw [← retFormS_firstTime c.i B _ S hSR]; simpa using hmadeS
       simp only [writerWP_pure]
       refine ⟨by first | rfl | trivial, hJv2, h2top.trans hvtop, h2v.trans hvv, h2p.trans hvp,
-        fun y hy => by rw [h2t]; exact hvt y hy, fun y hys hy => ?_, h2m.trans hvm, a + 1, hrest, by omega,
+        fun y hy => by rw [h2t]; exact hvt y hy, fun y hys hy => ?_, h2m.trans hvm, h2nx.trans hvnx, a + 1, hrest, by omega,
         fun j hj => ?_, fun j hj => ?_, fun j h1 h2 => by rw [h2t]; exact hnt j (by omega) h2,
         fun j h1 h2 => ?_, Nn (depth - (a + 1)), ?_, Or.inl rfl, Or.inl rfl,
         fun _ h => absurd (by rw [show depth - (a + 1) + 1 = depth - a by omega] at h; exact h) hmadeN⟩
@@ -285,7 +286,7 @@ theorem writerWP_deleteUpward_stepJ (c : Ctx) (base : View BVal) (X : Nat → No
         exact hexact j (by omega) h2
       · rw [h2l _ (fun he => by have := hdist _ _ (by omega) (by omega) he; omega)]
         exact hpar
-  rintro _ w2 ⟨hJw2, h2top, h2v, h2p, h2t, h2n, h2m, a0, hrem, ha0, hfv2, hfvJ2, hnt2, _, S, hSl, hS, hSR, hSF⟩
+  rintro _ w2 ⟨hJw2, h2top, h2v, h2p, h2t, h2n, h2m, h2nx, a0, hrem, ha0, hfv2, hfvJ2, hnt2, _, S, hSl, hS, hSR, hSF⟩
   have ha0' : a0 = depth - stop := by
     rcases h : depth - stop - a0 with _ | m
     · omega
@@ -312,7 +313,7 @@ theorem writerWP_deleteUpward_stepJ (c : Ctx) (base : View BVal) (X : Nat → No
   refine writerWP_ghOf_cached _ _ c w2 hSl _ (fun gh => ?_)
   have hLE : UpLoopEnd c B X Nn depth stop w w2 S :=
     ⟨fun y hy => by rw [h2t y hy, h0t], by rw [h2top, h0top], by rw [h2v, h0v], by rw [h2p, h0p],
-      by rw [h2m, h0m], fun y hys hnc => by rw [h2n y hys hnc, h0n], hSl, hS, hSR, hSF', hfate2, hfateJ2⟩
+      by rw [h2m, h0m], by rw [h2nx, h0nx], fun y hys hnc => by rw [h2n y hys hnc, h0n], hSl, hS, hSR, hSF', hfate2, hfateJ2⟩
   have hSleaf : S.leaf = (Nn stop).leaf := by rcases hS with rfl | ⟨ti, dst, rfl⟩ <;> rfl
   cases hsl : (Nn stop).leaf with
   | true =>
@@ -409,7 +410,7 @@ theorem writerWP_upStop_bitmapD (c : Ctx) (base : View BVal) (X : Nat → NodeId
         ((Nn (stop + 1)).firstTime = some c.i → RetFrom c.i B (Nn stop) (X (stop + 1)) S') ∧
         BitmapOf S' n' c.i (K (stop + 1))) → post w3) :
     WriterWP (appendDeleteKlong (X stop) stop (K (stop + 1))) c v (fun _ w3 => post w3) := by
-  obtain ⟨h2t, h2top, h2v, _, _, h2n, hSl, hS, hSR, hSF', hfate2, hfateJ2⟩ := hLE
+  obtain ⟨h2t, h2top, h2v, _, _, _, h2n, hSl, hS, hSR, hSF', hfate2, hfateJ2⟩ := hLE
   have hXs : ∀ k, stop < k → k ≤ depth → X stop ≠ X k :=
     fun k h1 h2 he => by have := hdist _ _ (by omega) h2 he; omega
   have hst_t : ∀ s', Klong.time s' ∈ (Nn stop).ks → s' ≤ c.i := htimes stop (by omega)
