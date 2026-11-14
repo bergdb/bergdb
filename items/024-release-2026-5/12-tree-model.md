@@ -1677,6 +1677,17 @@ and its status:
       - cost's `OpHtDelOK`;
       - TP10's three posts of (4), the delete with the merges;
       - `QLive` of (4).
+    - The target with every put case proved (latest, 01:25;
+      `LatestOpen.lean`): `latestGetOK_latestScanOK_of_open_del` gives
+      `LatestGetOK` and `LatestScanOK` (and `getOK_scanOK_of_open_del`
+      gives `GetOK` and `ScanOK`) for the parameters of `MergeParamsOK`.
+      Left as premises:
+      - TP4 (`PointersOK`), `DeadAllOK` and P's tree (`TreeAt`) at every
+        run;
+      - the fuel premise along transactions (`TxSegFitsOK`);
+      - cost's `OpHtDelOK` (from the delete's checks, `opHtDelOK_of_chk`);
+      - the delete with the merges (4): TP10's three posts, its reading
+        (`OpGetCaseOK`) and `QLive`.
       - `QLive` of (4), the delete with the merges.
     - `LiveCounts` was checked on runs within reach with the merges on
       (`12-tree-model/live-counts-check.lean.txt`). The parameters were
