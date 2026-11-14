@@ -1669,6 +1669,34 @@ and its status:
       access path; `writerWP_appendKlongs_chainGL` is its corollary with E
       empty (`liveEdgesX_false_iff`), and `writerWP_appendKlongs_chainG`
       stays the corollary of that, so the walk still exists once.
+    - `QLive` of case (3c), new segments below a full leaf, is proved
+      (latest, 01:21; `LivePutNewSegFull.lean`). Before the cascade, the
+      tree with the leaf's klong to the new segment leaf v meets
+      `LiveEdgesX` with E = {v} (`liveEdgesX_newSegLeaf`); the cascade
+      keeps it (`writerWP_appendKlongs_chainGLX`); putSegs then fills v
+      and makes the leaves below it, and `LiveEdges` holds again
+      (`liveEdges_fillNewSegs`). `liveEdges_put_newSegFull` is
+      `writerWP_put_newSegFullR`'s setup; its cascade
+      (`writerWP_appendKlongs_chainGRV`) gives that the nodes reached
+      after it are below the next id. `liveCase_putNewSegFull` is the case.
+    - TP7 with every put case proved is `latestInvOK_of_open_del` /
+      `invPreserved_of_open_del` (`LivePutNewSegFull.lean`, beside
+      `latestInvOK_of_open`). Left as premises:
+      - TP4, `DeadAllOK` and P's tree (`TreeAt`) at every run;
+      - cost's `OpHtDelOK`;
+      - TP10's three posts of (4), the delete with the merges;
+      - `QLive` of (4).
+    - The target with every put case proved (latest, 01:25;
+      `LatestOpen.lean`): `latestGetOK_latestScanOK_of_open_del` gives
+      `LatestGetOK` and `LatestScanOK` (and `getOK_scanOK_of_open_del`
+      gives `GetOK` and `ScanOK`) for the parameters of `MergeParamsOK`.
+      Left as premises:
+      - TP4 (`PointersOK`), `DeadAllOK` and P's tree (`TreeAt`) at every
+        run;
+      - the fuel premise along transactions (`TxSegFitsOK`);
+      - cost's `OpHtDelOK` (from the delete's checks, `opHtDelOK_of_chk`);
+      - the delete with the merges (4): TP10's three posts, its reading
+        (`OpGetCaseOK`) and `QLive`.
       - `QLive` of (4), the delete with the merges.
     - `LiveCounts` was checked on runs within reach with the merges on
       (`12-tree-model/live-counts-check.lean.txt`). The parameters were
