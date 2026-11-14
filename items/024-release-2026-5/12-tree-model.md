@@ -1906,6 +1906,12 @@ and its status:
         operation made: the lemmas then give one more per merge. One per
         segment and operation needs that the new root does not fill again
         in the same operation (the merges' fill, latest's `LiveCounts`).
+    - Checked on runs (`/Users/f/fl/bench/2026-11-13/cost/fit/HeightsOp.lean`,
+      outside the repository): 316 runs within reach, 18201 operations.
+      In every segment the nodes an operation made are at most one above
+      the nodes it found, and after every operation every cached height
+      is below fuel - 1: 0 failures. 717 operations split a root, 36 of
+      them two roots (in two segments).
     - (C), not started: at operation boundaries SegFits (fuel - 1), by the
       doomed transaction. A root of height fuel or more cannot be
       descended (`writerWP_descendLte_depth`), so no later operation of
