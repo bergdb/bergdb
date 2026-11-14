@@ -140,7 +140,7 @@ theorem writerWP_putSegs_prefix_linkedSJKH (c : Ctx) (base : View BVal) (hvc : V
       · cases hrk
 
 theorem writerWP_del_toLeafMKH (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
-    (pre : List Nat) (cv : Nat) (rk : NodeId) (w : W) (J : W → Prop) (_hJ0 : J w)
+    (pre : List Nat) (cv : Nat) (rk : NodeId) (w : W) (J : W → Prop)
     (hJd : ∀ (s f : Nat) (x : NodeId) (v : W), J v → KdPathLast v x →
       WriterWP (descendLte s f x) c v (fun _ v' => J v'))
     (hJp : ∀ (s : Nat) (fd : Found) (L : NodeId) (n : KNode) (v : W), J v → KdPathLast v L →
