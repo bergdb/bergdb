@@ -796,11 +796,15 @@ public class Reclaim implements Db.TransactionListener {
      * most (the KVs live at tStart) / writeSize steps, as with the scan at tStart, whatever
      * the user puts ahead of the scan (review B of 023-07, section 2.6; 023-08, fault 13:
      * with every KV counted, keys put ahead of the scan kept an iteration from ending). The
-     * step's reserve (maxNodes) bounds the KVs it walks.</li>
+     * step's reserve (maxNodes) bounds the KVs it walks. A KV counted adds its key's bytes
+     * plus 100, and its value's length only if the value is stored before pCut: the scan does
+     * not load the others (bergdb 026-09).</li>
      * <li>Only a KV whose value is stored before pCut enters the scan's result, the KVs to
      * rewrite; the scan walks past the others (StopCondition.CONTINUE). So the result holds
      * about writeSize bytes also when the step walks many KVs put since pStart, and a KV at
-     * pCut or later is not read again (bergdb 024-34).</li>
+     * pCut or later is not read again (bergdb 024-34). The scan does not load the value of
+     * such a KV (GetMany.valuesBefore = pCut; bergdb 026-09): the position, known before the
+     * follow, tells.</li>
      * </ul>
      * 
      * <p>A value that a step rewrites, its copy, is the value of its key at one unit before
@@ -848,9 +852,11 @@ public class Reclaim implements Db.TransactionListener {
         g.inclusive = false;
         g.lookupTime = Long.MAX_VALUE;      // The step's own time (bergdb 026-05).
         g.endKey = it.endKey;               // Inclusive; see the guard below for NO_KEY.
+        g.valuesBefore = it.pCut;           // The values to rewrite only (bergdb 026-09).
         g.stopCondition = new GetMany.StopCondition() {
             private long size = 0;
-                // An approximation of the stream space of the KVs stored before pStart.
+                // The KVs stored before pStart, counted toward writeSize: their stream space
+                // if stored before pCut, else the key's bytes plus 100 (bergdb 026-09).
             private long valueNodeBytes = 0;    // Of the KVs to rewrite (015-50).
             private int toRewrite = 0;
             
@@ -868,7 +874,9 @@ public class Reclaim implements Db.TransactionListener {
                 lastKeyOfStep[0] = kvt.key;
                 kvs[0]++;
                 if (stored && kvt.spos < it.pStart) {
-                    size += kvt.key.length * 8 + kvt.value.length + 100;
+                    // A value at pCut or later is not loaded (g.valuesBefore): its length
+                    // is not known, and not counted (bergdb 026-09).
+                    size += kvt.key.length * 8 + (rewrite ? kvt.value.length : 0) + 100;
                 }
                 final long vl = maintenance.valueLoads();
                 if (vl > atCut[0]) {
@@ -3011,6 +3019,50 @@ public class Reclaim implements Db.TransactionListener {
             }
             Assert.assertTrue("steps " + steps[0] + ", " + steps[1], steps[1] > steps[0]);
             Assert.assertTrue("nodes " + maxNodes[0] + ", " + maxNodes[1], maxNodes[1] < maxNodes[0]);
+        }
+
+        /**
+         * bergdb 026-09 (024-34, Q34-1, option b): a step's scan loads only the values it
+         * rewrites, those stored before pCut. With every object evicted after every
+         * transaction, single puts of 1 to 30 bytes on 200 random keys until two cuts: the
+         * scans walk KVs stored at pCut or later (put since the iteration began, or in the
+         * iteration before) and load none of their values, and they load at most the values
+         * they rewrite. Before 026-09 they loaded such values for their length (the test
+         * failed: the first iteration loaded 69 values and rewrote 15).
+         */
+        @Nano
+        public static void testScanLoadsOnlyValuesToRewrite() {
+            CoreTestClock clock = new CoreTestClock();
+            long time = Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            Db db = Db.builder().testSetup(new CutStream()).clock(clock).maxNodeSize8()
+                    .startupDistance(2000).evictionSchedule(Eviction.Schedule.EVERY, 1).start();
+            db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
+            try {
+                Stats stats = db.internal().reclaim().enableStats();
+                java.util.Random r = new java.util.Random(26);
+                for (int i = 0; i < 5000 && stats.cuts.size() < 2; i++) {
+                    time += Clock.UNITS_PER_SEC / 20;
+                    clock.setTime(time);
+                    byte[] v = new byte[1 + r.nextInt(30)];
+                    r.nextBytes(v);
+                    db.execute(db.trans().put("/k/" + r.nextInt(200), v).build());
+                }
+                Assert.assertTrue("two cuts", stats.cuts.size() >= 2);
+                long walked = 0, atCut = 0, loads = 0;
+                for (Stats.Iteration st : stats.iterations) {
+                    walked += st.kvs - st.values;
+                    atCut += st.scanValueLoadsAtCut;
+                    loads += st.valueLoads;
+                    Assert.assertTrue(st.valueLoads + " values loaded, " + st.values
+                            + " rewritten", st.valueLoads <= st.values);
+                }
+                Assert.assertTrue("walked " + walked + ", loaded " + loads,
+                        walked > 0 && loads > 0);
+                Assert.assertEquals(0L, atCut);
+            } finally {
+                db.stop();
+            }
         }
 
         /**

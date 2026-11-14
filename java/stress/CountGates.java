@@ -64,7 +64,8 @@ import bergdb.stream.FileStream;
  *      true within the first 3/4 of the drive (converged, then quiet); as the twin is tiny,
  *      the key nodes, resident objects and handles at most the larger of twice the twin's
  *      and the twin's plus 10 (023-03's a_n), the dead KEY klongs the larger of twice the
- *      twin's and the twin's plus 30 (023-03's C4: B); the heap at most 2 times the twin's, as
+ *      twin's and the twin's plus 70 (theta = 7 in each of a_n key nodes; bergdb 026-09; it
+ *      was 30, 023-03's C4: B); the heap at most 2 times the twin's, as
  *      G4; the cache's table slots (ST6) at most the larger of twice the twin's and the
  *      tables' floor since 024-33, 2^MAP_BITS maps of Table.MIN_CAPACITY slots.
  *
@@ -671,9 +672,14 @@ public class CountGates {
         // G5's twin is tiny (4 key nodes, 5 objects): the counts are held to the larger of
         // twice the twin's and the twin's plus a_n = 10 (023-03, section 2.6, the strict
         // allowance of nodes); the dead klongs, of which the twin has none, to the twin's
-        // plus B = 30, a leaf's klongs (023-03's C4).
+        // plus 70: each key node holds at most theta = 7 dead klongs after every write (node
+        // size 30; bergdb 024-23, TP39), the history of BergDB's own keys that maintain()
+        // overwrites, and a_n = 10 nodes (bergdb 026-09, Q2). It was B = 30, a leaf's klongs
+        // (023-03's C4, before theta), which one leaf could reach but not the emptied
+        // database's six: 13 to 28 dead klongs on main at 100,000 to 1.5M keys, 32 with
+        // 026-09 at 1M (each node at most 7), a phase of when the last writes came.
         gateSmall("M4 reachable key nodes", e.reach, t.reach, 10);
-        gateSmall("M5 dead KEY klongs", e.dead, t.dead, 30);
+        gateSmall("M5 dead KEY klongs", e.dead, t.dead, 70);
         gateSmall("M11 resident index objects", e.objects, t.objects, 10);
         gateSmall("M11 live handles", e.handles, t.handles, 10);
         // ST6: since 024-33 a map's table shrinks to at least Table.MIN_CAPACITY, and a map
