@@ -503,4 +503,98 @@ theorem deadCase_putNewSegsRoom (p : Params) (R : Struct BVal → Time → Prop)
       ⟨hI.wf L n hat.2.2.2.1, hI.times L n hat.2.2.2.1, hat.2.2.2.2.2, hroom, hkeys, hnotpre⟩)
     a w' hrun hW
 
+/-! ## For the cascade (not used yet): a prefix holds no more dead klongs -/
+
+/-- A later bitmap holds every bit of an earlier one (`klongsWf`). -/
+theorem lastBitmapOf_take_mono (ks : List Klong) (hw : klongsWf ks = true) (m : Nat) :
+    ∀ j, m ≤ j → ∀ b ∈ lastBitmapOf (ks.take m), b ∈ lastBitmapOf (ks.take j) := by
+  intro j hj
+  induction j with
+  | zero => intro b hb; have : m = 0 := by omega
+            subst this; exact hb
+  | succ j ih =>
+    intro b hb
+    rcases Nat.eq_or_lt_of_le hj with h | h
+    · subst h; exact hb
+    · have hb' := ih (by omega) b hb
+      rcases Nat.lt_or_ge j ks.length with hl | hl
+      · obtain ⟨k, hk⟩ : ∃ k, ks[j]? = some k := ⟨ks[j], List.getElem?_eq_getElem hl⟩
+        have hs := klongsWfState_ok ks hw (j+1)
+        rw [klongsWfState_succ ks j k hk] at hs
+        rw [← klongsWfState_bitmap] at hb' ⊢
+        rw [klongsWfState_succ ks j k hk]
+        cases k with
+        | time x => simpa [klongsWfStep] using hb'
+        | key c y => simpa [klongsWfStep] using hb'
+        | del bits =>
+          simp only [klongsWfStep, Bool.and_eq_true] at hs
+          have hall := hs.1.1.1.1.2
+          have := List.all_eq_true.mp hall b hb'
+          simp only [klongsWfStep]
+          exact List.mem_of_elem_eq_true this
+      · have h1 : ks.take (j+1) = ks.take j := by
+          rw [List.take_of_length_le (by omega), List.take_of_length_le (by omega)]
+        rw [h1]; exact hb'
+
+theorem length_filter_mono {α : Type} (l : List α) (p q : α → Bool)
+    (h : ∀ x ∈ l, p x = true → q x = true) : (l.filter p).length ≤ (l.filter q).length := by
+  induction l with
+  | nil => simp
+  | cons a l ih =>
+    have ih' := ih (fun x hx => h x (List.mem_cons_of_mem _ hx))
+    simp only [List.filter_cons]
+    cases hp : p a <;> cases hq : q a <;> simp only [Bool.false_eq_true, ↓reduceIte, List.length_cons]
+    · omega
+    · omega
+    · have := h a List.mem_cons_self hp; rw [hq] at this; cases this
+    · omega
+
+/-- A prefix of a node's klongs holds no more dead klongs than the node. -/
+theorem KNode.deadCount_take_le (leaf : Bool) (ks : List Klong) (hw : klongsWf ks = true) (m : Nat) :
+    (⟨leaf, ks.take m⟩ : KNode).deadCount ≤ (⟨leaf, ks⟩ : KNode).deadCount := by
+  rw [KNode.deadCount_eq, KNode.deadCount_eq]
+  simp only [KNode.lastBitmap]
+  have hsub : (ks.take m).zipIdx.Sublist ks.zipIdx := by
+    have he : ks.zipIdx = (ks.take m).zipIdx ++ (ks.drop m).zipIdx (0 + (ks.take m).length) := by
+      have := List.zipIdx_append (xs := ks.take m) (ys := ks.drop m) (k := 0)
+      rw [List.take_append_drop] at this
+      exact this
+    rw [he]
+    exact List.sublist_append_left _ _
+  refine Nat.le_trans (length_filter_mono _ _ (deadP ks (lastBitmapOf ks)) ?_)
+    (hsub.filter _).length_le
+  intro x hx hpx
+  obtain ⟨k, i⟩ := x
+  cases k with
+  | time _ => cases hpx
+  | del _ => cases hpx
+  | key c y =>
+    simp only [deadP, Bool.or_eq_true] at hpx ⊢
+    rcases hpx with h1 | h1
+    · left
+      have hb := List.mem_of_elem_eq_true h1
+      have hlen : m ≤ ks.length ∨ ks.length ≤ m := Nat.le_total _ _
+      have hmono := lastBitmapOf_take_mono ks hw m (max m ks.length) (Nat.le_max_left _ _) i hb
+      have htk : ks.take (max m ks.length) = ks := List.take_of_length_le (Nat.le_max_right _ _)
+      rw [htk] at hmono
+      exact List.elem_eq_true_of_mem hmono
+    · right
+      obtain ⟨k', hk', hk2⟩ := List.any_eq_true.mp h1
+      refine List.any_eq_true.mpr ⟨k', ?_, hk2⟩
+      rw [List.drop_take] at hk'
+      exact List.mem_of_mem_take hk'
+
+/-- `toPrev` holds no more dead klongs than the node. -/
+theorem KNode.deadCount_toPrev_le (n : KNode) (t : Time) (hw : klongsWf n.ks = true) :
+    (n.toPrev t).deadCount ≤ n.deadCount := by
+  have hp : (prefixAt n.ks t).IsPrefix n.ks := List.takeWhile_prefix _
+  obtain ⟨hpe⟩ : ∃ _ : prefixAt n.ks t = n.ks.take (prefixAt n.ks t).length, True :=
+    ⟨List.prefix_iff_eq_take.mp hp, trivial⟩
+  have h := KNode.deadCount_take_le n.leaf n.ks hw (prefixAt n.ks t).length
+  have e1 : n.toPrev t = ⟨n.leaf, n.ks.take (prefixAt n.ks t).length⟩ := by
+    unfold KNode.toPrev; rw [← hpe]
+  have e2 : n = ⟨n.leaf, n.ks⟩ := rfl
+  rw [e1]
+  exact Nat.le_trans h (Nat.le_of_eq (by rw [← e2]))
+
 end SIS.Tree
