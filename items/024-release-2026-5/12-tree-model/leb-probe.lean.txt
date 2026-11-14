@@ -1,0 +1,170 @@
+/-
+LE-b at the upward delete's stop node, probed on runs (bergdb 024-22; putinv's
+`UpLebFitsOK`, 024-12's follow-ups). Not part of the Lean project; run it from
+lean/:
+
+  lake env lean ../items/024-release-2026-5/12-tree-model/leb-probe.lean.txt
+
+Random runs within reach (each transaction kept only if it succeeds after the
+ones kept), keys of one segment or of several, deletes in bursts after a
+third of the transactions. At each delete it notes from the writer's trail:
+:climb (the upward delete), :innerstop (a climb whose stop node is no segment
+leaf: the inner node's bitmap or LE-b), :leb (LE-b's notes), :merge. The first
+five parameter sets have the merges on, the sixth has them off (release
+2026.4's tree), where the fill does not hold and LE-b fires; the last three
+make one-key segments, so that deletes climb: two with the merges on, one off.
+-/
+import SIS.Tree.MergeProofBundle
+import SIS.Tree.DelChk
+import SIS.Tree.HeightsPathFree
+
+set_option autoImplicit false
+set_option maxRecDepth 100000
+
+namespace SIS.Tree
+
+open SIS SIS.Check
+
+def wEqD (a b : W) : Bool :=
+  a.nodes == b.nodes && a.gh == b.gh && a.vals == b.vals && a.taken == b.taken &&
+  a.madeFor == b.madeFor && a.next == b.next && a.path == b.path && a.top == b.top &&
+  a.newTop == b.newTop && a.trail == b.trail && a.merges == b.merges &&
+  a.spaceSplits == b.spaceSplits && a.outside == b.outside &&
+  a.made.length == b.made.length
+
+def tagD (w0 w : W) : String :=
+  let t := w.trail.take (w.trail.length - w0.trail.length)
+  (if t.contains "up.climb" then ":climb" else "") ++
+  (if t.any (fun s => s == "merge.one" || s == "merge.two") then ":merge" else "") ++
+  (if t.contains "merge.takeback" then ":mtb" else "") ++
+  (if t.contains "rc.takeback.segment" || t.contains "rc.takeback.space" then ":rctb" else "") ++
+  (if t.contains "up.takeback" then ":uptb" else "")
+
+
+/-- The upward delete's ends at each delete: an inner stop node, LE-b. -/
+def opsL (c : Ctx) : List Op → W → List String → List String
+  | [], _, acc => acc
+  | op :: rest, w, acc =>
+    match (putKv op) c w with
+    | .ok (_, w') =>
+      let t := w'.trail.take (w'.trail.length - w.trail.length)
+      let tag := match op with
+        | .put _ _ => []
+        | .del _ =>
+          ["del" ++ (if t.contains "up.climb" then ":climb" else "") ++
+            (if t.contains "up.climb" && !t.contains "up.stop-at-segment-leaf" then ":innerstop" else "") ++
+            (if t.any (fun s => s.startsWith "leb.") then ":leb" else "") ++
+            (if t.any (fun s => s == "merge.one" || s == "merge.two") then ":merge" else "")]
+      opsL c rest w' (acc ++ tag)
+    | .error e => acc ++ ["ERR " ++ e]
+
+def runL (p : Params) (all : List Tx) : List String :=
+  ["run"] ++ (List.range all.length).foldl (fun acc j =>
+    match all[j]? with
+    | none => acc
+    | some tx =>
+      let ts := all.take j
+      let v := view (treeSpec p) (treeRun p ts) ts.length
+      match lastTop v with
+      | none => acc ++ ["notop"]
+      | some z =>
+        match topOf p (ctxOf p ts).view z with
+        | .error _ => acc ++ ["toperr"]
+        | .ok top => acc ++ opsL (ctxOf p ts) tx.ops (wInit tx top) []) []
+
+def summL (l : List String) : String :=
+  let cnt (s : String) := (l.filter (fun x => (x.splitOn s).length > 1)).length
+  s!"runs {cnt "run"} deletes {cnt "del"} climb {cnt ":climb"} innerstop {cnt ":innerstop"} leb {cnt ":leb"} merge {cnt ":merge"} err {(l.filter (fun x => x.startsWith "ERR")).take 2}"
+
+end SIS.Tree
+
+namespace SIS.Tree
+
+def nextRandD (s : Nat) : Nat := (s * 6364136223846793005 + 1442695040888963407) % 2 ^ 64
+def dPrefixes : List (List Nat) := [[], [120], [184], [120, 248], [184, 120]]
+def dRandKeys (seed n nKeys : Nat) : List Key × Nat := Id.run do
+  let mut s := seed
+  let mut ks : List Key := []
+  for _ in [0:n] do
+    s := nextRandD s
+    let pre := dPrefixes.getD ((s / 7) % dPrefixes.length) []
+    let j := (s / 101) % nKeys
+    ks := ks ++ [pre ++ [j * 64 + 8]]
+  return (ks, s)
+def dSortKeys (ks : List Key) : List Key :=
+  (ks.foldl (fun acc k => if acc.contains k then acc else acc ++ [k]) []).mergeSort (fun a b => keyLt a b || a == b)
+def dRandRun (seed nTx maxOps nKeys : Nat) : List Tx := Id.run do
+  let mut s := seed
+  let mut txs : List Tx := []
+  for t in [0:nTx] do
+    s := nextRandD s
+    let (ks, s2) := dRandKeys s (s % maxOps + 1) nKeys
+    s := s2
+    let ops := (dSortKeys ks).map (fun k =>
+      if (k.foldl (· + ·) s) % 3 == 0 then Op.del k else Op.put k (t * 1000 + 1))
+    txs := txs ++ [{base := 1000000 * (t + 1), ops := ops}]
+  return txs
+-- keep the transactions that succeed after the ones kept: a run within reach
+def dKeepOk (p : Params) (txs : List Tx) : List Tx :=
+  txs.foldl (fun run tx =>
+    if isOk (exec? p tx (run.length + 1) (view (treeSpec p) (treeRun p run) run.length)) then run ++ [tx]
+    else run) []
+
+
+-- one segment, many keys, deletes in bursts: deep trees whose leaves empty
+def lRandKeys (seed n nKeys : Nat) (pres : List (List Nat)) : List Key × Nat := Id.run do
+  let mut s := seed
+  let mut ks : List Key := []
+  for _ in [0:n] do
+    s := nextRandD s
+    let pre := pres.getD ((s / 7) % pres.length) []
+    let j := (s / 101) % nKeys
+    ks := ks ++ [pre ++ [j * 64 + 8]]
+  return (ks, s)
+def lRandRun (seed nTx maxOps nKeys delPct : Nat) (pres : List (List Nat)) : List Tx := Id.run do
+  let mut s := seed
+  let mut txs : List Tx := []
+  for t in [0:nTx] do
+    s := nextRandD s
+    let (ks, s2) := lRandKeys s (s % maxOps + 1) nKeys pres
+    s := s2
+    let dp := if t < nTx / 3 then 10 else delPct
+    let ops := (dSortKeys ks).map (fun k =>
+      if ((k.foldl (· + ·) 0) / 64 + s / 7) % 100 < dp then Op.del k else Op.put k (t * 1000 + 1))
+    txs := txs ++ [{base := 1000000 * (t + 1), ops := ops}]
+  return txs
+def lPres1 : List (List Nat) := [[]]
+def lPres2 : List (List Nat) := [[], [120], [184], [120, 248]]
+-- many prefixes, three suffixes each: one-key segments, whose deletes climb
+def lPres3 : List (List Nat) := (List.range 12).map (fun i => [64 * i + 56]) ++
+  (List.range 4).map (fun i => [64 * i + 56, 64 * i + 120])
+#eval summL ((List.range 6).flatMap (fun seed =>
+  let p : Params := ({M := 8, G := 2, H := 3} : Params).withMerges
+  runL p (dKeepOk p (lRandRun (seed + 900) 16 30 40 60 lPres1))))
+#eval summL ((List.range 6).flatMap (fun seed =>
+  let p : Params := ({M := 8, G := 2, H := 3} : Params).withMerges
+  runL p (dKeepOk p (lRandRun (seed + 900) 16 30 40 60 lPres2))))
+#eval summL ((List.range 6).flatMap (fun seed =>
+  let p : Params := ({M := 10, G := 2, H := 3} : Params).withMerges
+  runL p (dKeepOk p (lRandRun (seed + 900) 16 30 60 50 lPres1))))
+#eval summL ((List.range 6).flatMap (fun seed =>
+  let p : Params := ({M := 12, G := 2, H := 3} : Params).withMerges
+  runL p (dKeepOk p (lRandRun (seed + 900) 16 30 60 50 lPres2))))
+#eval summL ((List.range 6).flatMap (fun seed =>
+  let p : Params := {M := 8, G := 1, H := 2, mergeBelow := 2, mergeMax := 3, splitAbove := 4}
+  runL p (dKeepOk p (lRandRun (seed + 900) 16 30 40 60 lPres1))))
+#eval summL ((List.range 6).flatMap (fun seed =>
+  let p : Params := {M := 8, G := 2, H := 3}
+  runL p (dKeepOk p (lRandRun (seed + 900) 16 30 40 60 lPres1))))
+
+#eval summL ((List.range 8).flatMap (fun seed =>
+  let p : Params := ({M := 8, G := 2, H := 3} : Params).withMerges
+  runL p (dKeepOk p (lRandRun (seed + 950) 16 14 3 40 lPres3))))
+#eval summL ((List.range 8).flatMap (fun seed =>
+  let p : Params := ({M := 8, G := 3, H := 2} : Params).withMerges
+  runL p (dKeepOk p (lRandRun (seed + 970) 16 14 3 40 lPres3))))
+#eval summL ((List.range 8).flatMap (fun seed =>
+  let p : Params := {M := 8, G := 2, H := 3}
+  runL p (dKeepOk p (lRandRun (seed + 950) 16 14 3 40 lPres3))))
+
+end SIS.Tree

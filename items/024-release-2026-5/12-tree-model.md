@@ -21,7 +21,242 @@ Cite the design rules as "024-12, D1", the stated properties as
 
 ## 1. In short
 
-Kept current; section 9 has the exact state. Written 12:24.
+**What this means for BergDB (2026-11-14, latest).** The key tree's proofs reach their top
+theorem. For Java's own parameters (record format 7's merge thresholds and option 2's theta,
+from node size 8), every run of transactions that the model accepts keeps the tree's invariants
+(TP7), and every get and every scan, at the latest time and at every earlier time, returns what
+the reference map gives (TP10, TP11). This is a Lean proof from 10 named premises, listed below,
+and two conditions on the parameters that Java's meet. Each speaks of one operation or one step
+of the writer, mostly of the delete with the merges, of the fuel and heights inside a
+transaction, and of the bound on dead klongs. Each held on runs of the model within reach, with
+no failure; the fuel inside an operation (in `hMSF`, `hCoF`, and after the stop node's cascade)
+was checked at 11,057 states inside deletes. LE-b at the upward delete's stop node is proved
+never to run with the merges on, as no run with them on ever showed. Not covered: parameters
+with the merges off (the theorem is for `MergeParamsOK`); bounded startup's tree premises (item
+007), which this theorem does not discharge; and that Java does what the model does, which is
+checked on Java's traces (section 5), not proved.
+
+**The top theorem (2026-11-14, 03:40).** `invGetScanOK_merges_flat` (`LatestTopFlat.lean`) gives
+TP7 (`InvPreserved`), TP10 (`GetOK`) and TP11 (`ScanOK`), and so `LatestGetOK` and
+`LatestScanOK`, for every parameter set of `MergeParamsOK` with theta 0 or at least 2 (`hth`),
+from the named premises below. Java's own parameters are among them: record format 7's
+thresholds and theta, from node size 8 (`mergeParamsOK_java`, `theta_java`). TP4 and P's tree at
+every run are not premises: the take-back's joint induction (putinv's `runTreeQ_of_mergesF4S`)
+carries them with TP7's invariant and the bound on dead klongs (`LatestQD`; `latestQ_snoc`,
+`latestQD_snoc`; `LatestJoint.lean`, `DeadRun.lean`). Every put case is proved, the dead bound's
+included. The take-back through a replaceRoot whose segment leaf is full is proved (putinv's
+`replaceRootFullJ2OK_run`), and the fuel at every state between operations comes from the
+heights (cost's `txSegFitsOK_of_takeBelowDelR2U`). `invGetScanOK_merges` (`LatestTop.lean`) is
+the earlier form, with `DeadAllOK` at every run, the take-back's delete steps
+(`DelStepsJ2OKF3`), the full-leaf replaceRoot and the fuel as premises. The premises, each with
+what it says, who owns it, and its test evidence. They were 17 at 02:00; 19 at 02:20, when the
+stop node's cascade for the reading was proved from three smaller premises; 16 at 02:28, when
+the dead bound of puts (2) and (3c) and the stop node's cascade for the take-back were proved;
+since then `hchk` has one check fewer (02:31) and LE-b's premises are about a full stop node
+only (02:40). 14 at 02:52: putinv proved the upward delete's stop node when it is full, at every
+stop and for the reading and the take-back, and the links and klongs after the upward loop
+from the writer's books (`delStepsOKF3_of_open10`, `delStepsJ2OKF3_of_openR5`;
+`DelStepsLinks.lean`, `TakeLebFull.lean`), so `hL`, `hLbF` and `hLbFJ` left; `hFitL`, the fuel
+after LE-b's full split (cost's), came in. At 02:55 `hU` asks less: the state after the upward
+loop need only be a tree (`UpUnlinkTreeOK`), the cascade's ranges come from the tree (putinv's
+`delStepsOKF3_of_open11`, `delStepsJ2OKF3_of_openR6`; `DelStepsUnlinkTree.lean`). 13 at 03:05:
+the fuel after a delete's full leaf splits comes from the heights (cost's `delFullFitsOKR_run`,
+through putinv's walk with the heights' invariant: `delStepsOKF3_of_open12`,
+`delStepsJ2OKF3_of_openR7`, `DelStepsFullH.lean`), so `hFits` left; the reading now runs at the
+induction's runs, every run within reach (`delStepsOKF3_of_within`). 10 at 03:17: `t4`, `i4`
+and `r4`, TP10's three posts for the delete with the merges, are proved (putinv's
+`opCaseOK_treeInvRange_delMergeR`, `DelStepsTree.lean`), at the induction's runs, where the
+operations' cases now live (`invOK_snocR`, `deadAllOK_snocR`, `latestQD_snocR`), carried along
+each transaction with TP7's live counts at every operation's start (`jointLive_reached`,
+`LiveJointL.lean`), which LE-b's proof needs. 9 at 03:20: LE-b never runs with the merges on,
+given the live counts at the delete's start (cost's `stopLeaf_of_liveCounts`, putinv's
+`lebStop_false` and opens `delStepsOKF3_of_open13`, `delStepsJ2OKF3_of_openR8`,
+`delStepsQdL_of_openR`; `DelStepsLive.lean`), so `hFitL` left. 10 at 03:25: the fuel after the
+stop node's cascade (`hFit`) comes from the heights (cost's `upCascFitsOKR_of`), given two facts
+of the upward loop's end, `UpHolderOK` (`hHo`) and the loop keeping the heights' cache (`hG`),
+both held at all 2529 loop ends (putinv's `delStepsOKF3_of_open14`, `delStepsJ2OKF3_of_openR9`,
+`delStepsQdL_of_openR2`; `DelStepsHolder.lean`); putinv is proving `hG`. Since 03:30 `hHo` is
+only `UpHolderOK`'s first part (`hHL`; its times and the chain's nodes taken back are proved,
+putinv's `upHolderOK_of_live`, `DelStepsHolderLive.lean`), and `l4` is narrowed to the deletes
+that split, empty their leaf or may merge (`DelMergeRestCase`; (4a) proved, below), `d4`
+likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' cache, proved
+(putinv's `DelStepsGh.lean`; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`,
+`delStepsQdL_of_openR4`), so `hG` left. 10 at 03:40, by owner: `hMS` is its fuel part `hMSF`
+(cost; the untaken part proved, `mergeStepOKF3_of_segFits`), and `hCo` is `hCoF` (cost) and
+`hCoU` (putinv):
+
+- `d4` (`QDead`): the delete with the merges (4) keeps every key node that the writer reads at
+  or below theta dead klongs (latest), now only for the deletes that change the tree and are not
+  (4a) for the dead bound (`DelMergeDOpenCase`; a noop and a key without a leaf read as before,
+  `writerWP_del_noop_reads`, `writerWP_del_noLeaf_reads`, `LiveDelNoop.lean`): from a state with
+  the live counts, a delete whose leaf has room, keeps a live klong (more than `mergeBelow` if
+  an inner node names it) and whose new node `deadOver` lets through is proved
+  (`deadCase_delRoomFill`, `LiveDelRoom.lean`). Every put keeps it, proved for theta 0 or at
+  least 2: the leaf's klong goes in only when `deadOver` lets it through
+  (`deadCase_putLeafRoom`); a klong of a compare value with no live klong adds no dead klong
+  (`KNode.deadCount_add_key_new`, `deadCase_putNewSeg1Room`, `deadCase_putNewSegsRoom`); and a
+  cascade's nodes hold at most theta (`writerWP_appendKlongs_chainDead`: a half at most 2, a
+  copy of a last version and a new root none, a node left behind no more than before;
+  `deadCase_putLeafFull`, `deadCase_putNewSegFull`). `DeadAllOK` at every run follows
+  (`deadAllOK_snoc`). With theta 0 it is void. Evidence
+  (`12-tree-model/dead-all-check.lean.txt`, runs within reach with the merges on and Java's
+  theta at node sizes 8, 10, 14 and 30, with overwrites and pseudo-random mixes of puts and
+  deletes in one and two segments): `WDeadOK` held at all 11,927 states between operations, and
+  `DeadAllOK` at all 1512 run ends (18,243 key nodes, 2694 at theta, none above). Inside deletes
+  too, after every leaf bitmap, merge, step of root collapse and stop node step: at 4069 states
+  with Java's theta, no node the writer has written above theta, at 2702 of them one at theta
+  (`fuel-inside-check.lean.txt`). Also TP39 in `treetest` and on Java's traces (C-T6), for the
+  key nodes reached.
+- `hchk`, `OpDelChk2OK`: a delete runs as its copy with the take-backs' checks, but the path's
+  (`checkPathFree`, proved) (cost, the heights). Evidence: the same result and state at 7987
+  deletes, 6828 of 310 runs, 309 of 8 random runs in several segments and 850 of random runs
+  whose deletes climb (77 climbing); 160 with a take-back in the upward delete's loop, 2305
+  with a merge's, 453 with root collapse's (`12-tree-model/delchk-check.lean.txt`).
+- `htb`, `TakeBelowFuelDelOK`: every node that a delete takes back, of those it found at its
+  start, has a cached height below the fuel (cost; a put takes nothing back, proved). With the
+  heights it gives that every state between operations fits the fuel
+  (`txSegFitsOK_of_takeBelowDelR2U`). Evidence: 316 runs within reach, 18,201 operations, 3205
+  deletes taking nodes back, no failure (`12-tree-model/heights-op-check.lean.txt`); SegFits
+  held at about 14,000 operation boundaries (`12-tree-model/segfit-check.lean.txt`, the
+  states of its runs random and random2).
+- `l4`: (4) keeps TP7's live counts (`QLive`; latest), now only for the deletes that split,
+  empty their leaf, or leave a leaf that an inner node names with at most `mergeBelow` live
+  klongs (`DelMergeOpenCase`; a noop and a key without a leaf read as before): a delete whose
+  leaf has room and keeps a live klong, and more than `mergeBelow` if an inner node names it,
+  is proved (`liveCase_delRoomFill`,
+  `LiveDelRoom.lean`): after its bitmap the live counts hold, and with them the merges' loop
+  merges nothing (`writerWP_afterDelete_none`, `LiveNoMerge.lean`). Evidence: `LiveCounts` held
+  at all 6420 states between operations of runs with merges and collapses
+  (`12-tree-model/live-counts-check.lean.txt`), and at 8843 more with Java's theta on
+  (`dead-all-check.lean.txt`).
+- The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
+  Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
+  the reading and the take-back, from the state after the upward loop; the links below the next
+  id and the klongs there follow from the writer's books (`linksWf_of_book`,
+  `putInvG_of_book`), and the cascade's ranges from the tree. Left are:
+  - `hU`, `UpUnlinkTreeOK`: after the upward loop, the writer's tree is a tree (putinv, the
+    take-back; `UpUnlinkOK`, which adds the walk's ranges, gives it, `upUnlinkTreeOK_of`);
+  - `hHL`, `UpHolderLiveRunOK`: at the upward loop's end, no node not taken back holds, now
+    or before the transaction, a node taken back (putinv; the rest of cost's `UpHolderOK` is
+    proved, `upHolderOK_of_live`); with the loop keeping the heights' cache (proved,
+    `DelStepsGh.lean`) it gives the fuel after the stop node's cascade (`upCascFitsOKR_of`);
+  LE-b at the stop node is proved never to run with the merges on, given TP7's live counts at
+  the delete's start (cost's `stopLeaf_of_liveCounts`, putinv's `lebStop_false`), so its fuel
+  premise `hFitL` left (03:20). On runs too: LE-b never fired with the merges on (0 of about
+  6,700 deletes in putinv's and cost's families, none of 3382 in cost's probe, which sees it
+  with the merges off; every one of the 937 stops in `fuel-inside-check.lean.txt` at a segment
+  leaf).
+  Evidence for `hU`: `UpUnlinkOK` held at all 2529 upward-loop end states (1385 with a
+  take-back in the loop, 954 with an unlink to the previous version, 173 cascading at the stop
+  node, 818 at the space root), with the reached nodes untaken there too
+  (`12-tree-model/up-unlink-check.lean.txt`). `UpHolderOK` and the cache kept held at all 2529
+  loop ends too (putinv). And every state after the stop node's step (its bitmap, with the
+  split and cascade) fit the fuel, 937 of them, every one at a segment leaf
+  (`12-tree-model/fuel-inside-check.lean.txt`, below).
+- `hMSF`, `MergeFitsOK`: the state after a merge of the loop fits the fuel (cost, the heights;
+  `MergeStepOKF3`'s other part, the nodes reached untaken, is proved,
+  `mergeStepOKF3_of_segFits`). Evidence: every state after a merge fit the fuel, 3032 of them
+  (`fuel-inside-check.lean.txt`: runs of putinv's delete families within reach, the merges on,
+  node sizes 8 and 10 with theta 0, and Java's theta at 8 and 14; 11,057 states inside deletes
+  in all, 6453 of them after a leaf's bitmap, every one within `p.fuel - 1`, the bound between
+  operations, too).
+- `hCoF`, `CollapseFitsOK`: the state after a replaceRoot at a segment root fits the fuel
+  (cost, the heights). Evidence: every state after a step of root collapse fit the fuel, 635 of
+  them (`fuel-inside-check.lean.txt`).
+- `hCoU`, `CollapseUnlinkAllOK`: `CollapseUnlinkOK` at every replaceRoot at a segment root
+  (putinv). Evidence: it held at all 173 replaceRoots at a segment root, 92 with a full leaf
+  (`12-tree-model/up-loop-end-check.lean.txt`, 2026-11-14 03:48; earlier 96, 32 of them full,
+  `collapse-unlink-check.lean.txt`).
+- `hMF`: at every state between operations, every made-for id is below the transaction's
+  first id (putinv). Evidence: held at all 56,404 states between operations of runs within
+  reach with the merges on (cost's `DelChk` families and putinv's, M 8 and 10;
+  `up-loop-end-check.lean.txt`, which supersedes `up-unlink-check.lean.txt`); `hHL` held at
+  all of them too.
+
+Follow-ups, for a later spare-token run (latest, 03:45):
+
+- `d4` and `l4` are open for three kinds of delete with the merges on (`DelMergeDOpenCase`,
+  `DelMergeOpenCase`; a noop, a key without a leaf and (4a) are proved):
+  - a delete into a full leaf: the split and its cascade, then maybe merges;
+  - the upward delete, which empties its leaf: with the live counts at its start the emptied
+    nodes are segment roots and leaves and the stop node is a segment leaf (cost's
+    `stopLeaf_of_liveCounts`), so after the loop the emptied chain is out of reach, and the
+    segment leaf lost one live klong;
+  - a delete whose leaf has room but, named by an inner node, keeps at most `mergeBelow` live
+    klongs: the merges' loop and root collapse run.
+  For each, the state after the write and before `afterDelete` is the base for both: where the
+  live counts hold there, the loop merges nothing (`writerWP_afterDelete_none`,
+  `LiveNoMerge.lean`), as in (4a) (`liveCase_delRoomFill`, `deadCase_delRoomFill`,
+  `LiveDelRoom.lean`). The plans below are for the general route.
+- `QDead` of (4) (`d4`): a conjunct `WDeadN` (every node the writer reads at or below theta)
+  beside `DelInvF3` on the reading's (4) route. The step lemmas that need it:
+  - up to `afterDelete`: `writerWP_del_roomM` (the bitmap with room),
+    `writerWP_appendDeleteKlong_full_delF3` (the bitmap into a full leaf),
+    `writerWP_del_emptyRoomMK` and `writerWP_del_emptyAnyMK` (the upward delete, its stop node);
+  - the merge loop: `writerWP_mergeUp_delF3`, on the merge lemmas `writerWP_merge_any_getF2` and
+    `writerWP_merge_root_getF`;
+  - root collapse: `writerWP_collapseRoot_delF4`, through `writerWP_afterDelete_delF4`.
+  Every write there is guarded by `deadOver` (the bitmap in `appendDeleteKlong`, `mergeParent`,
+  `emptyKeyNext`), or makes nodes that hold no dead klong (`mergeKlongs_deadCount`,
+  `KNode.lastVersionGivenDel_deadCount`), or goes to `handleFull`, whose cascade is bounded
+  (`writerWP_appendKlongs_chainDead`); a take-back, a retarget and a repoint keep the count
+  (`KNode.deadCount_repoint`). The step lemmas' posts say nothing about the nodes' klongs, so
+  each needs the conjunct inside its proof. Proved pieces (latest, 02:45 to 03:05):
+  - a full parent's or the space root's split with its cascade (`writerWP_handleFull_lastDead`,
+    `writerWP_handleFull_rootDead`);
+  - a node put or made (`writerWP_putNode_deadOver`, `writerWP_newKey_dead`), and the bitmap
+    given `handleFull`'s (`writerWP_appendDeleteKlong_dead`; `DeadSteps.lean`);
+  - the merge's parent, in place only when `deadOver` lets it through, else `handleFull` of
+    `mergeFullLast` (`writerWP_mergeParent_dead`, on `writerWP_mergeParent_casesD`);
+  - the merge's last loop, with the klongs well formed (`writerWP_mergeCleanup_deadWf`, on
+    `writerWP_retarget_deadWf`, `writerWP_takenBack_deadWf`, `writerWP_unlink_deadWf`;
+    `DeadMerge.lean`).
+  Left for `merge` itself: its new nodes' klongs in strict compare order
+  (`mergeKlongs_deadCount`'s premises, from the reading's ranges); then the step lemmas'
+  conjunct.
+- LE-b with the merges on: proved dead given the live counts at the delete's start (cost's
+  `stopLeaf_of_liveCounts`, `StopLeafLive.lean`, 03:10; in the top theorem since 03:20 through
+  putinv's `DelStepsLive.lean`, `hFitL` gone). No run family makes it fire (0 of about
+  6,700 deletes, putinv's and cost's families); the upward delete stopped at a segment leaf in
+  all 937 stops of `fuel-inside-check.lean.txt`; and cost's probe (`leb-probe.lean.txt`)
+  found, with the merges on, four parameter sets and families made so that deletes climb, no
+  stop node off a segment leaf in 3382 deletes (45 climbing), while with the merges off
+  ({M := 8, G := 2, H := 3}) it saw 61 inner stop nodes and 34 LE-b in 792 deletes. The proof:
+  1. TP7's live counts hold at the delete's start (`LiveCounts` at the state the transaction's
+     earlier operations reach, `live_reached`).
+  2. The upward delete starts from a leaf that the delete empties, so one with one live klong;
+     the climb passes from X (t + 1) to X t only when X t would be emptied, so X t too has one.
+  3. A node with one live klong is not named by an inner node (those have at least
+     `mergeBelow`, at least 2) nor an inner segment root (2), so it is a segment root and a
+     leaf.
+  4. The stop node, the path's parent of such a node, is a segment leaf (`PathKinds`), so the
+     writer always takes the stop at a segment leaf: the inner stop node's bitmap and LE-b
+     never run.
+  5. The same gives `OpDelChk2OK`'s stop-node check and `checkOld`'s leaf part.
+  The live counts at the delete's start come from the joint induction along the transaction
+  (`jointLive_reached`).
+- `QLive` of (4) (`l4`), its open case: `LiveEdges` with the merged path's nodes excepted until
+  their merge, on the same step lemmas as `d4`; a merge's nodes are filled
+  (`mergeKlongs_live_fill`), its parent's cascade is the walk with exceptions
+  (`writerWP_appendKlongs_chainGLX`), and root collapse leaves a root with two live klongs.
+  The live counts at the delete's start are at hand (`jointLive_reached`).
+- One name for each route: the F2, F3 and F4 versions (`DelStepsOKF3`, `MergeStepOKF3`,
+  `CollapseStepOKF4`, `opGetCaseOK_delMergeF4`, `takeBackOK_of_mergesF4`,
+  `runTreeQ_of_mergesF4S`, `writerWP_appendKlongs_chainGLX` and its corollaries), and one top
+  theorem in place of `invGetScanOK_merges` and `invGetScanOK_merges_flat`.
+- The named premises' plans:
+  - `hchk` (cost): TP4's holder facts and the merges' fill, from the heights' walk.
+  - `htb` (cost): every take-back site lies on a successful descent, which passes only heights
+    below the fuel (`ht_descendLte_height`).
+  - `hU`, `hHL` (putinv): the state after the upward loop is a tree, holds only nodes
+    not taken back, and keeps the heights' cache (the stop node itself is proved for the
+    reading and the take-back).
+  - `hMSF` and `hCoF` (cost): step 4 (B), the heights inside an operation.
+  - `hCoU` and `hMF` (putinv): from the overlay's books
+    (`KeepsGoodTaken`), with the call sites of `setMadeFor`.
+
+The rest of this section is of 2026-11-11. Kept current then; section 9 has the exact state.
+Written 12:24.
 
 * **The branch is gated and ready to land:** `024-12-tree-model`, head
   `d90586d0`, main with 024-07, 024-10, 024-13 and 024-09 merged in
@@ -1039,6 +1274,16 @@ Claude provers beside the second prover). Who holds what:
   still-dirty test, the cold start's reads without the |D| term, a bound on
   the nodes a change makes unreachable.
 
+The board at the night's end (coord-1113, 2026-11-14, 03:55): every
+prover has closed. "tp7" handed over to "putinv" at 18:01 (its State note:
+/Users/f/fl/bench/2026-11-13/tp7/STATE.md); "cost" closed at 03:16 (State
+note: 024-22, section 11.1), "latest" at 03:42 and "putinv" at 03:48 (its
+State note in commit a24aaa01). TP32 and TP33 were set aside at 16:14 with
+bounded startup's tree premises (Frans). The outcome, the top theorem
+`invGetScanOK_merges_flat` and its 10 named premises, is section 1;
+the checkpoints landed through the night are in 006-24's progress and in
+Git (main-35 to main-107).
+
 Landed checkpoints:
 
 * 11:37, "tp7", `46ba22cb` (checkpoint 37984b68): TP7 reduced to its
@@ -1103,7 +1348,7 @@ Landed checkpoints:
   12:27 to 12:35 together, 334 jobs.
 
 **TP10 and TP11 at the latest time, reduced, 2026-11-13** (prover
-"latest", 10:37 to 13:10, branch `024-12-latest`). **TP10 and TP11
+"latest", 10:37 to 16:30, branch `024-12-latest`). **TP10 and TP11
 follow from TP7, the run's key nodes sound and TREE for them, and the
 two statements about the writer under premises on the run's structure**
 (`getOK_of_runRead`, `scanOK_of_runRead`, `GetUnder.lean`): `OpGetOKUnder
@@ -1164,15 +1409,101 @@ kept only as steps. Proved on the way, on the standard axioms:
   (`writerWP_del_noop_seg`), a delete by a bitmap that leaves the leaf a
   live klong, merges off (`writerWP_del_bitmap_seg`); a put into a full
   leaf that existed before the transaction, below an inner parent with
-  room, without a space split: the time split (`writerWP_put_timeSplit_seg`,
-  `GetSplit.lean`; its further premises are TREE and fresh ids on the
-  nodes reachable through the writer's state, as cost's `WriterTreeOK`
-  is to give). The tools: the
+  room: the time split, also of a leaf full by its dead klongs only
+  (`writerWP_put_timeSplit_key`, `GetSplit.lean`; its further premises
+  are TREE for key nodes and fresh ids on the nodes reachable through
+  the writer's state), and the space split (`writerWP_put_spaceSplit_key`,
+  `GetSpaceSplit.lean`; one more premise, the search tree's order: the
+  leaf's compare values lie between its parent's klong to it and the
+  parent's next klong); a put into a full leaf that the transaction
+  made: the time split in place (`writerWP_put_timeInPlace_seg`) and the
+  space split in place below an inner parent with room
+  (`writerWP_put_spaceSplitInPlace_key`, `GetInPlace.lean`); a put of a
+  key of one segment into the space root, a full leaf: the space split
+  and the time split of the root, a new super root naming the new root
+  (`writerWP_put_rootSpaceSplit`, `writerWP_put_rootTimeSplit`), and the
+  space split in place of a root the transaction made
+  (`writerWP_put_rootSpaceSplitInPlace`, `GetRootSplit.lean`); a put
+  into a segment's root, a full leaf that existed before the
+  transaction, below the segment leaf of the key's segment before: the
+  time split and the space split into a new segment root
+  (`writerWP_put_segTimeSplit`, `writerWP_put_segSpaceSplit`,
+  `GetSegRoot.lean`; one more premise, that segment leaf not reached
+  from the split leaf, which the writer's tree gives,
+  `notReach_parent_of_tree`; the reading through a link moved to a new
+  tree, `getFromR_graft`), and for a leaf the transaction made the space
+  split in place, the segment leaf's klong repointed in place
+  (`writerWP_put_segSpaceSplitInPlace`, `GetSegInPlace.lean`,
+  `KNode.repoint_live_lookup`); a put of a key whose last segment has no
+  tree yet, a new segment leaf below a leaf with room
+  (`writerWP_put_newSeg`, `GetNewSeg.lean`). Together (`writerWP_put_leafRoot`,
+  `GetLeafRoot.lean`; `writerWP_put_leafBelow`, `GetLeafBelow.lean`):
+  every put of a key of one segment into a space whose root is a leaf,
+  and every put of a key whose prefix is there into a leaf below inner
+  nodes with room for two klongs, changes the reading by itself alone;
+  under one invariant of the writer's state, `PutInv` (the writer's
+  tree, well formed klongs of no later time, fresh ids, no reachable
+  node taken back, the search tree's order at leaves: `GetPutInv.lean`,
+  `writerWP_put_leafRoot_inv`, `writerWP_put_leafBelow_inv`; and in
+  `GetSegLeaf.lean` every put into a segment's root, a leaf below the
+  segment leaf of the segment before with room,
+  `writerWP_put_segLeaf_inv`, and the new segment,
+  `writerWP_put_newSeg_inv`). The first splits whose parent is full,
+  the parent an inner node that existed before the transaction, time
+  split, below a grandparent with room: after a time split of the leaf
+  (`writerWP_put_timeSplit2`) and after a space split of the leaf
+  (`writerWP_put_spaceSplitTime`, `GetChain.lean`; the reading: the
+  leaf's split as before, then the parent renamed at the grandparent,
+  `renSim_timeSplitGen`; the whole access path of a descent, `PathFrom`);
+  the space splits of an inner node, the parent full by its size with
+  more than h klongs in its last version, below a grandparent with room
+  for two klongs: after a time split of the leaf
+  (`writerWP_put_timeSpace`, `GetInnerSplit.lean`) and after a space
+  split of the leaf (`writerWP_put_spaceSpace`, `GetSpaceSpace.lean`);
+  two more premises, the search tree's order at the parent and neither
+  the parent nor the leaf reaching the grandparent; the reading: an
+  inner node's halves find what it found with the klongs put, by
+  compare value, `halves_inner_searchLte_ins`, `getEqR_split_inner`.
+  So a put into a leaf that existed before the transaction, below a
+  parent that did too and a grandparent with room for what it gets, has
+  a rule for each split the leaf and the parent can need. A delete,
+  merges off, into a leaf below an inner parent with room for two
+  klongs: with room for the bitmap, the time split (also in place, and
+  of a leaf full by its dead klongs only), and the space split of a
+  leaf that existed before the transaction (`writerWP_del_leafBelow2`,
+  under `PutInv` `writerWP_del_leafBelow2_inv`, `GetDelSplit.lean`; the
+  reading: `getFromR_timeSplit_del`, `getFromR_spaceSplit_del`; the
+  writer's side with putinv's lemmas of `PutInvDelFull.lean`), and a
+  delete whose leaf's split fills its parent, time split or space split
+  below a grandparent with room, as for a put (`writerWP_del_timeSplit2`,
+  `writerWP_del_timeSpace`, `writerWP_del_spaceTime`,
+  `writerWP_del_spaceSpace`, `GetDelCascade.lean`). A parent the
+  transaction made, full: a leaf's time split or space split and the
+  parent's time split in place (`writerWP_put_timeSplitQIP`,
+  `writerWP_put_spaceSplitQIP`, `GetInPlaceCascade.lean`; the reading
+  through a node replaced by one with the same live klongs,
+  `getFromR_congr_node`).
+  With the
+  writer's tree (cost's `WriterTreeOK`): `OpGetTreeOK` and
+  `opGetOKUnder_of_tree` (`GetTree.lean`), and the split rules with
+  `TreeOK` for TREE (`*_tree`, through cost's `htree_of_treeOK`). The
+  writer's side of the space split is cost's (`SpaceSplitAfter`). The
+  tools: the
   frame of a reading (`getFromR_frame`, `getFromR_leaf_change`: what a
   key's reading visits, each node with the compare value it searches
-  there), a node moved to a new id (`getFromR_ren`, for the splits),
-  the time split's last version with the put
+  there), a node moved to a new id (`getFromR_ren`, for the time
+  split), a parent whose klong to a leaf now names two halves by
+  compare value (`getEqR_split`, `getFromR_split`,
+  `KNode.splitParent_searchLte`, for the space splits), the time split's
+  last version with the put
   (`writerWP_replaceOrAdd_last`).
+* **The chain from the writer's invariant.** `getOK_of_putInv`,
+  `scanOK_of_putInv` (`GetFinal.lean`): TP10 and TP11 from TP7, a run
+  premise R after every run within reach that gives the run's links,
+  P's tree and TP7's invariant, cost's `OpTreeOK`, putinv's
+  `OpPutInvOK`, tp7's lift under R, and `OpGetPutInvOK`: every
+  operation from a state that meets `PutInv` changes the reading by
+  itself alone. The rules above are its cases.
 * **TP7's invariant is not enough for `OpGetOK`**, proved:
   `sharedSegment_changes_other_key` (`SharedSegment.lean`): a structure
   without faults at 1 (`InvOK`, `PointersOK`) in which two long segments
@@ -1187,17 +1518,1161 @@ kept only as steps. Proved on the way, on the standard axioms:
   `writerWP_put_room` it is the premise that no other key searches the
   key's compare value at its leaf.
 
-Open: `OpGetOKUnder p (RunReadOK p)`, the writer's refinement of the
-map, every rule but the four above (the space splits, the time splits in
-place and of roots, the upward delete, LE-b, the merges, root collapse),
-with its invariant inside a transaction (TREE inside it is cost's
-`WriterTreeOK`, the coordinator, 2026-11-13); checked, not proved, on about 900 pseudo-random
+Open: `OpGetPutInvOK`, so `OpGetOKUnder p (RunReadOK p)`, the
+writer's refinement of the map, every rule but those above (the splits
+whose grandparent is full too, or whose parent is full and the space
+root or a segment root, or made by the transaction and space split in
+place, or a leaf the transaction made below a full parent; a delete's
+space split in place; a put that makes more than one new segment or a
+new segment below a full leaf; a delete with merges on, the upward
+delete, LE-b, the merges, root collapse), with its invariant inside a
+transaction: TREE inside it is cost's `WriterTreeOK`
+(the coordinator, 2026-11-13), and it must also give the search tree's
+order, klongs well formed and fresh ids; checked, not proved, on about 900 pseudo-random
 transactions of the model (node sizes 4 to 10, H 0 to 8, merges and
 theta), operation by operation, no difference. `KeyTreeOK` after every
-run within reach (TREE; TP16 states it for the model). The lift,
+run within reach (TREE; TP16 states it for the model) follows from P's
+tree, cost's `TreeAt` (`keyTreeOK_of_treeAt`, `getOK_of_treeAt`,
+`GetKeyTree.lean`). The lift,
 `OverlayLiftOKUnder`, which TP7's `LatestInvOK` needs too, is tp7's (the
 coordinator, 2026-11-13); its premises are to meet `RunReadOK` through
 `overlayLiftOKUnder_mono` when tp7's `ApplyBridge.lean` lands.
+
+The assembly of TP10 and TP11 (prover "latest", 2026-11-13, 20:50;
+the cases at 20:55):
+`getOK_scanOK_of_open` (`GetAssembly.lean`) proves `GetOK` and `ScanOK`
+(Props.lean, unchanged) from the named premises below.
+`getOK_scanOK_of_open_runOK` is the same theorem with the run premise R
+fixed to `RunOK`: the run's links, P's tree and TP7's invariant.
+`opGetPutInvOK_of_cases` builds `OpGetPutInvOK` from the nine
+operation cases, using `opCase_cover`: every operation from every state
+is in one of the cases. The `#guard asmCheck asmP asmTx` shows the
+premises are not void: a transaction within reach (twelve puts in a
+second segment, node size 8, G 1, H 2) meets `Within`'s conditions, and
+every state between its operations meets the fuel premise. Each premise
+and its status:
+
+- `InvPreserved p` (TP7): open here; it is the TP7 provers' target.
+- Every run within reach has its links (`RunLinksOK`): open here.
+  `runLinksOK_of_takeBack` gives it from the take-back discipline
+  (`TakeBackOKUnder p (RunLinksOK p)`) and 2 ≤ M.
+- Every run within reach has its tree (`TreeAt`): open here.
+  `treeAt_run` gives it from `OpTreeOK` and `CommitLiftOK`.
+- TP7's invariant at the run (`InvOK`): proved inside the theorem, from
+  `InvPreserved`.
+- tp7's lift (`OverlayLiftOKUnder`): proved for `RunOK`
+  (`overlayLiftOKUnder_links`).
+- The writer's tree at every operation (`OpTreeOK p`): open here; it is
+  cost's target.
+- `PutInv` kept by every operation (`OpPutInvOK p R`): open here; it is
+  putinv's target. `opPutInvOK_of_T` reduces it to `OpPutInvTOK`.
+- The walk's ranges kept by every operation (`OpRangeOK p R`): open here;
+  it is putinv's target.
+- The fuel premise along a transaction (`TxSegFitsOK p R`): open. Every
+  state between operations of a transaction within reach has every path
+  inside one segment tree shorter than the fuel. Cost's finding: true for
+  transactions that end OK, not after every single rule. It holds in the
+  `#guard` example.
+- The nine operation cases (`OpGetCaseOK p R` of each case): from a state
+  between operations that meets `PutInv` and `RangeOrder` (`RangeOrder`
+  at every such state follows from `OpRangeOK`, `rangeOrder_reached`),
+  the operation changes the reading by itself alone when the state after
+  it meets the fuel premise. Six are proved (`GetCaseBridge.lean`). The
+  rules' premises come from `PutInv` (klongs well formed, no node on the
+  key's path taken back, the next id free, the key's uniqueness at its
+  leaf), from `RangeOrder` (the order below a parent and `OrdG`:
+  `rangeG_of_rangeOrder`, `ordG_of_rangeOrder`), from the global parts
+  of `PutInv`, which hold at every state of a run with its links (every
+  link below the next id: `putInvG_reached`), and from 2 ≤ splitAbove
+  (two live klongs in a node that space splits: `lenG_of_splitAbove`).
+  - (1) `PutLeafRoomCase`, a put into its leaf with room: proved,
+    `opGetCaseOK_putLeafRoom` (on `writerWP_put_room_seg`).
+  - (2) `PutLeafFullCase`, a put into a full leaf: proved for
+    2 ≤ splitAbove and runs with their links, `opGetCaseOK_putLeafFull`
+    (on `writerWP_put_accessPathR`, every split along the access path,
+    the space root's and a segment root's space split included).
+  - (3) `PutNewSegCase`, a put of a key with no leaf: proved for 2 ≤ M,
+    2 ≤ splitAbove and runs with their links, `opGetCaseOK_putNewSeg`.
+    New segments below a leaf with room (`writerWP_put_newSegs_inv`) or
+    a full one (`writerWP_put_newSegFullR`); where the key's walk ends
+    at a missing node or at a descent that finds no leaf, the writer
+    fails (`writerWP_putSegs_put_fail`).
+  - (4) `DelMergeCase`, a delete with the merges on: reduced to named step
+    obligations, cost's (`opGetCaseOK_delMerge`, `DelMergeCase.lean`). The
+    merges' loop, `afterDelete` and the root collapse keep the delete's inner
+    invariant `DelInv`. That invariant is PutInv, its global parts, the walk's
+    ranges, inner children there, the fuel, and the reading of the delete. They
+    keep it by cost's merge and collapse lemmas: `writerWP_mergeUp_del`,
+    `writerWP_afterDelete_del` and `writerWP_collapseRoot_del`. The merge is
+    `writerWP_merge_get_inv`, which derives the merge rules' premises from
+    PutInv, PutInvG, RangeOrder and the path (`PathOK`). It covers every kind of
+    full parent and the space root as parent. `DelInv` carries the books
+    (`PutBook`). PutInv and PutInvG after a merge and after the collapse
+    follow from them: `putBook_merge`, `putBook_collapseRoot` and
+    `putBook_getNode` (`DelMergeBook.lean`) give the books after, and
+    `putInv_after_step` builds the rest. The obligations, all open:
+    - `MergeStepOK`: a merge of the loop keeps its reached nodes not taken
+      back (the take-back's `ReachedFree`), the walk's ranges and inner
+      children (`StepInv`), and the state after it fits the fuel (StepFits for
+      a merge). The tree after the merge is proved from the invariants
+      (`writerWP_merge_tree_inv`, `MergeTreeInv.lean`). It uses the tree
+      lemmas with their halves premise derived from the sorted last version
+      (`hhalves_of_sorted`, `writerWP_merge_any_treeS`,
+      `writerWP_merge_root_treeS`).
+    - `DescentOK`: the loop's descent keeps `DelInv` and gives the path facts
+      down to the node it stops at. It also gives the merge's two named
+      conditions (`MergePathCond`): no space split in place below a segment
+      leaf on the path, and the full parent's last version in the range of its
+      link.
+    - `CollapseStepOK`: the collapse's steps keep the walk's ranges and inner
+      children (`CollRange`), and a segment leaf has room for a replaced
+      root's klong. The collapse's tree comes from cost's collapse lemma.
+    - `DelStepsOK`: the delete's other steps, with the merges' steps given. It
+      holds the walk, the leaf's bitmap or split with its cascade (PutInv and
+      the fuel across `appendDeleteKlong` inside the delete), and the upward
+      delete. It is `writerWP_del_accessPathR`, `writerWP_del_bitmap_segR` and
+      `writerWP_deleteUpward_upT` with the merges on.
+
+    The premises 2 ≤ splitAbove and 1 ≤ mergeMax are also needed.
+    `#guard dmCheck dmP dmTs dmTx` shows the hypotheses are not void: a run of
+    twelve puts and then ten deletes with the merges on is within reach, every
+    state between the deletes fits the fuel, and the writer merges in the
+    deletes. StepFits (the inner states fit) is in `MergeStepOK` and
+    `DelStepsOK`; step 4 (`SegBal`, cost) is to discharge it.
+
+    Finding (cost, 21:35): StepFits at fuel - 1 is not a per-rule fact. A
+    delete can space split a full segment root by a merge (one level more)
+    and then remove a level by its root collapse, which does not descend. So
+    from a segment of depth fuel - 1, a state inside the operation can have
+    depth fuel. There, the reading with `p.fuel` cannot reach the deepest
+    leaves, though the operation's end reads right. Whether runs within reach
+    get there is a counting question: a transaction's keys are distinct, so
+    a segment grows only by the transaction's own new keys. That is open.
+
+    Decision (coordinator, 21:45): option (a). The reading lemmas that case 4
+    needs are stated for any fuel f, with the `p.fuel` versions kept as
+    corollaries. Inner readings use f = fuel + 1, and `getEqR_fuel_mono`
+    brings the operation's end back to `p.fuel`. Step 4 then proves two
+    things:
+    - every rule keeps SegFits at depth fuel at inner states (`SegBal`);
+    - operation boundaries have SegFits at fuel - 1, by the doomed
+      transaction: a boundary state with depth fuel has nodes outside H, so
+      it throws at a later descent or fails `boundsOK`.
+
+    Case 4's `SegFits` conjuncts change accordingly.
+
+    Done (cost, 22:00): the reading lemmas case 4 needs are generalized in
+    place to a fuel f (2 ≤ f), with the p.fuel versions kept as one-line
+    corollaries under their old names. They are:
+    - the collapse's (`CollGetInvF`, `writerWP_collapseRoot_collF`, the space
+      root's and a segment's steps);
+    - the merge's (`writerWP_handleFull_lastVF` on latest's
+      `writerWP_appendKlongs_chainGRVf`, `writerWP_handleFull_rootVF`,
+      `writerWP_merge_any_getF`, `writerWP_merge_root_getF`,
+      `writerWP_merge_get_invF`).
+
+    `wGetAt` is the reading at f. Case 4 at f = p.fuel + 1 is
+    `opGetCaseOK_delMergeF` (`DelMergeCaseF.lean`): `OpGetCaseOK p R
+    DelMergeCase` from `TxSegFitsOK p R` and the obligations at p.fuel + 1
+    (`DelStepsOKF`, `MergeStepOKF`, `DescentOKF`, `CollapseStepOKF`). It goes
+    through `OpGetCaseOK'`, which adds the fuel premise of the state before
+    the operation, and the bridge `opGetCaseOK_of'`. `runGet_of_delInvF`
+    turns the reading at p.fuel + 1 into `runGet` at the operation's end. The
+    fuel obligations are now SegFits at depth p.fuel inside the operation:
+    `MergeStepOKF`'s and the collapse's, at f - 1 = p.fuel.
+
+    Superseded (latest and cost, 22:20): this route, through `DescentOKF`,
+    does not count as progress. `DescentOKF` asks `MergePathCond`, which runs
+    within reach violate:
+    - its clauses (1) and (2) fail for a segment root that an earlier put of
+      the same transaction made;
+    - its clause (3) quantifies over every merge value.
+    The F2 route replaces it:
+    - the descent without `MergePathCond`, proved (`descentOKF2`,
+      `GetDescentOK.lean`);
+    - the merge lemmas take the in-place split of a segment root that the
+      transaction made, and derive the full parent's range from
+      `RangeOrder` for the merge's actual values (latest, in progress).
+      The full parent's level is done: `writerWP_handleFull_lastVF2`
+      (`GetMergeLevel.lean`) takes the in-place space split below a segment
+      leaf, asks the cascade's order only for a node the transaction did
+      not make, and adds the reach back that putinv asked for (under
+      `ChainOrd` and `LastOrd`, the last version's order below an inner
+      parent). `writerWP_handleFull_lastVF` is its corollary, unchanged.
+      The merge lemmas are done (latest, 22:50):
+      `writerWP_mergeTail_any_getF2`, `writerWP_merge_any_getF2`,
+      `writerWP_merge_get_invF2`, `writerWP_mergeTail_any_treeS2`,
+      `writerWP_merge_any_treeS2` and `writerWP_merge_tree_inv2`. They
+      need neither `hNoSSIP`, `hNoSSIPp` nor `hrangeL`. The full parent's
+      range comes from `RangeOrder` for the merge's actual values
+      (`mergeLast_range`, with `MergeGOK` for the second node's compare
+      value). The old statements are their corollaries, unchanged;
+    - then `opGetCaseOK_delMergeF2` (`DelMergeCaseF2.lean`), proved:
+      `OpGetCaseOK p R DelMergeCase` from `DelStepsOKF`, `MergeStepOKF`,
+      `CollapseStepOKF` and `TxSegFitsOK`. There is no descent obligation
+      and no `MergePathCond`.
+    - For putinv's take-back through a merge's full parent (latest, 22:55):
+      `writerWP_handleFull_lastShape` (`LevelShape.lean`) gives the shapes
+      of the nodes that the full parent's split and its cascade make or
+      change (`ShapePost` from D + 1 with nothing put). `mergeLast_ord`
+      (`MergeLastOrd.lean`) gives the merge's last version's `LastOrd`
+      from `RangeOrder` (with `MergeGOrd`, `mergeGOrd_two`).
+    - `MergeStepOKF`'s `RangeOrder` part (latest, 23:16):
+      `writerWP_merge_range_inv` (`RangeMergeRoot.lean`) keeps the walk's
+      ranges across a merge from the state's invariants and the path
+      (`PathOK`). It uses `writerWP_merge_any_range2` below the space root,
+      with the full parent's halves from `RangeOrder` (`mergeLast_halves`).
+      At the space root it uses `writerWP_merge_root_range`, with the root's
+      split by `writerWP_rootSplit_rangeL` (putinv's
+      `writerWP_delRootSplit_range` for any last version, now its
+      corollary). `MergeStepOKF` does not take `PathOK`, so the range part
+      reaches the loop through the F3 obligations.
+    - The F3 route (latest, 23:20; `DelMergeCaseF3.lean`):
+      `opGetCaseOK_delMergeF3` gives `OpGetCaseOK p R DelMergeCase` from
+      `DelStepsOKF3`, `MergeStepOKF3`, `CollapseStepOKF3`, `TxSegFitsOK`,
+      `2 ≤ p.M` and the pointers of every run within reach (TP4,
+      `PointersOK`). TP4 is no new open premise: it comes from the
+      take-back's joint induction at the run level, as in
+      `innerChildren_reached`. The loop invariant is `DelInvF3` = `DelInvF`
+      ∧ `Book` ∧ `KdInv` (the kinds' books, joined by `writerWP_and` with
+      `kd_descendToHeight`, `kd_getNode`, `kd_merge` and `kd_collapseRoot`).
+      After a merge, its ranges are `writerWP_merge_range_inv` and its
+      inner children come from the kinds (`innerChildren_of_kinds`). The
+      collapse's inner children are its own `CollInv`'s.
+      - Open: `MergeStepOKF3` (`PathOK` given) asks only for the reached
+        nodes untaken (putinv's take-back, `ReachedFree`) and SegFits
+        (cost's step 4).
+      - Open: `CollapseStepOKF3` asks for the room (part 1) and the walk's
+        ranges after `takeBackRoot` and `replaceRoot` (parts 2 and 3).
+      - Open: `DelStepsOKF3` is putinv's `DelStepsOKF` on `DelInvF3`.
+      - `CollapseStepOKF3` follows from its room part alone
+        (`collapseStepOKF3_of_room`, latest, 23:23).
+      - The room part is not true in general: a segment leaf can be full.
+        Item 3 (latest, in progress) replaces it by a replaceRoot step with
+        the leaf's cascade. That step takes SegFits after the cascade as a
+        premise (cost's HeightInv route). It also takes a named premise,
+        owned by the take-back: `CollapseUnlinkOK`. When the segment root x
+        has a klong of the transaction (`n.lastTime = some c.i`), the tree
+        with x's previous version, `updN (wNode c.p base v) x (n.toPrev
+        (c.i - 1))`, is a tree from the space root, and that version names
+        ids below the next id. `unlink x` leaves that tree before the
+        leaf's cascade starts.
+      - `CollapseUnlinkOK` was checked on runs within reach with the merges
+        on (`12-tree-model/collapse-unlink-check.lean.txt`). The runs had
+        two and three segments, first-segment leaves of 1 to 13 values, and
+        2 to 4 transactions of puts and deletes; M was 8 or 10. It held at
+        all 96 replaceRoots at a segment root, 32 of them with a full
+        segment leaf. In every one, x had a klong of the transaction.
+      - Item 3 is done (latest, 23:48; `CollapseCascade.lean`):
+        - `writerWP_replaceRoot_seg_cascadeF` is the replaceRoot step with
+          the leaf's cascade.
+        - `writerWP_collapseRoot_collF4` is the collapse loop without
+          `hroom`, carrying the books and the kinds. Its times and values
+          come from `PutInvG`, its children from the kinds.
+        - `opGetCaseOK_delMergeF4` is case (4) with `CollapseStepOKF4`, which
+          has no room part and two parts instead: SegFits after a
+          replaceRoot at a segment root (cost's HeightInv route) and
+          `CollapseUnlinkOK` (the take-back's).
+        - The open obligations of case (4) are now `DelStepsOKF3` (putinv),
+          `MergeStepOKF3`'s untaken and SegFits parts, `CollapseStepOKF4`
+          and TP4 (from the take-back's run-level induction).
+      - For putinv's `MergeRootJ2OKF` (a merge whose parent is the space
+        root), the root's split now has what `writerWP_handleFull_lastVF2`
+        and `writerWP_handleFull_lastShape` give one level down (latest,
+        23:59; `MergeRootShape.lean`):
+        - `writerWP_handleFull_rootVF2` is `writerWP_handleFull_rootVF` with
+          the reach back (`writerWP_handleFull_rootReach`). The nodes the
+          tree with the root's last version reaches, but the root, are
+          reached after. The root is reached after, or holds its klongs
+          before the transaction. Every node cached from the next id on is
+          reached after. No order premise is needed: the root has no
+          parent.
+        - `writerWP_handleFull_rootShape` gives `ShapePost` from 0 with
+          nothing put for the one-node chain X 0 = L, Nn 0 = n, and keeps
+          the path. Its premise is that the last version is a time klong
+          and key klongs of distinct compare values.
+    TP7's `LatestInvOK` assembled from its parts (latest, 00:10, from the
+    coordinator at 23:50; `InvAssembly.lean`). Not proved yet: the parts
+    `NonEmptyOK`, `RootsOK` and `FillOK` (latest's, next), `HeightLiveOK`
+    (cost's) and `RangeAtOK` (putinv's `RangeOrder`, on P).
+    - `HeightLiveOK` (TP7's (b)): proved from one named premise,
+      `OpDelChkOK` (cost, 01:10; `treeRun_heightLiveOK_chk`,
+      `invPreserved_of_open_chk`, `HeightsChkRun.lean`). The premise: a
+      delete, from a state that the transaction's earlier operations
+      reach, runs as its copy with a check at every take-back
+      (`putKvDelChk`, `DelChk.lean`; (4) below). Tested on 310 runs within
+      reach: 6828 deletes, 0 failures; 160 of them with a take-back in the
+      upward delete's loop, 2305 with a merge's take-back, 453 with root
+      collapse's (`12-tree-model/delchk-check.lean.txt`).
+    - `invOK_of_parts`: the walk at t finds no fault when the space root is
+      a key node and every key node is sound as it is. The kinds and the
+      live heights must hold. The reachable nodes must meet `NonEmptyOK`,
+      `LeftmostOK`, `RootsOK` (new: an inner segment root has two live
+      klongs) and `FillOK`. And `RangeAtOK` (new) must hold: `RangeOrder`
+      on P's key nodes from the space root.
+    - The walk's fuel needs no premise. The walk reaches the nodes of
+      `WalkVisit`, and along its edges the level falls by one at least
+      (`level_inner`, `level_seg`, `walkVisit_key`). The space root's level
+      is at most `keyMax`, which is below the fuel (`keyMax_lt_fuel`).
+    - A node the walk reaches is in `nodesRootsAt` with its flag
+      (`walkVisit_mem`) and in `RangeOrder`'s reach with its bounds
+      (`walkVisit_reachR`). So the statements over `keyNodesAt` and
+      `nodesRootsAt` reach every node the walk checks.
+    - `latestInvOK_of_parts` and `invPreserved_of_open` are the run level,
+      under `MergeParamsOK`. From TP4 come `KeyNodesOK`
+      (`keyNodesOK_of_pointers`), the space root (`treeRun_rootKeyOK`), the
+      kinds (`treeRun_kindsAllOK`) and `LeftmostOK` (`leftmostOK_latest`).
+      Left as premises: TP4, `DeadAllOK`, `HeightLiveOK`, `NonEmptyOK`,
+      `RootsOK`, `FillOK` and `RangeAtOK`.
+    - Not void (`#guard invAsmCheck`): a run within reach with merges on
+      (node size 8, m = 2, h = c = 4). It has thirty puts, then twenty-two
+      deletes that merge 14 key nodes down to 3. At its last time the walk
+      finds no fault, and the Bool forms of `NonEmptyOK`, `RootsOK`,
+      `FillOK` and `RootKeyOK` hold.
+    `NonEmptyOK`, `RootsOK`, `FillOK` and `RangeAtOK` reduced to the
+    operation cases (latest, 00:19; `LiveCounts.lean`, `LiveCases.lean`):
+    - `LiveCounts` is the three conditions as an invariant of the writer's
+      tree, over the nodes reached through live klongs with the walk's
+      flags (`FReach`).
+    - At a transaction's first state it follows from TP7's invariant at the
+      time before (`liveCounts_init`, by `walk_of_fReach`).
+    - The operations keep it as the obligation `QLive` of the cases
+      (`OpCaseOK`, as TP10's three posts). `live_reached` gives it at every
+      state between the operations.
+    - At the last state, the commit's lift turns it into the three parts of
+      the next run (`liveCounts_commit`). It turns `joint_reached`'s
+      `RangeOrder` into `RangeAtOK` (`rangeAtOK_commit`).
+    - `latestInvOK_of_cases` and `invPreserved_of_cases` give TP7 under
+      `MergeParamsOK`, by induction on the runs. The premises are TP4,
+      `DeadAllOK`, `HeightLiveOK`, `TreeAt`, TP10's posts of the cases (1)
+      to (4), and `QLive` of the cases (1) to (4).
+    - `QLive` of case (1), a put into a leaf with room, is proved
+      (`liveCase_putLeafRoom`).
+    - `QLive` of (3a) and (3b), new segments below a leaf with room, is
+      proved (latest, 00:26; `liveCase_putNewSeg1Room`,
+      `liveCase_putNewSegsRoom`). The new segment leaves have a live klong
+      each (`writerWP_putSegs_new_live`) and are segment roots
+      (`liveCounts_leafAddNewSet`).
+    - Open: `QLive` of (2), (3c) (the cascade of a full leaf) and (4).
+    - Toward (2) (latest, 00:35; `LiveEdges.lean`): `LiveEdges` is
+      `LiveCounts` link by link (`liveCounts_of_edges`,
+      `edges_of_liveCounts`). Each step of the writer then checks only the
+      links it changes. Two steps are proved: `liveEdges_updN_grow` (a
+      node keeps its kind and live pointees and loses no live klong: a put
+      in room, a time split in place, the top of a cascade) and
+      `liveEdges_copy` (a time split to a new node: a fresh copy of x, and
+      x's parent pointing its klong to it). The counts of a space split's
+      halves are `halves_lastVersionGivenDel_live_fill`
+      (`SplitLiveFill.lean`).
+    - Every split step of the cascade keeps `LiveEdges` (latest, 00:44;
+      `LiveSteps.lean`). Each step lemma takes the hypotheses of cost's
+      matching step of the writer's tree and uses its reach, then adds the
+      counts:
+      - `liveEdges_timeSplit_gen` and `liveEdges_rootTimeStep`: the kinds
+        kept, no live klong lost.
+      - `liveEdges_spaceSplit_gen` and `liveEdges_spaceInPlaceStep`.
+      - `liveEdges_segSpaceStep` and `liveEdges_segSpaceInPlaceStep`.
+      - `liveEdges_rootSpaceStep` and `liveEdges_rootSpaceInPlaceStep`.
+      - `liveEdges_updN_sub`, a time split in place.
+      The halves must be `HalfOK` (a live klong, two, and m), and a new
+      inner root needs two live klongs. Common to all is
+      `liveEdges_of_sim`.
+    - The cascade's walk keeps `LiveEdges` (latest, 01:02, with cost's and
+      the coordinator's agreement): `writerWP_appendKlongs_chainGL` in
+      `WriterTreeChainG.lean`. It is cost's walk with one more post
+      conjunct: with the merges' thresholds, `LiveEdges` of the tree with
+      the klongs put gives `LiveEdges` after. Each of cost's steps of the
+      tree has its twin of `LiveSteps.lean` beside it. The counts come from
+      `LiveChain.lean`: the halves are `HalfOK`
+      (`halves_lastVersionGivenDel_live_fill`), and a time split's last
+      version has the live klongs of the node with the klongs put.
+      `writerWP_appendKlongs_chainG` is now its corollary, with its
+      statement unchanged, so the walk exists once. To sit below it,
+      `LiveEdges`' basic part moved to `LiveEdgesBase.lean`.
+    - `QLive` of case (2), a put into a full leaf, is proved (latest,
+      01:04; `LivePutFull.lean`). `liveEdges_put_accessPath` is
+      `writerWP_put_accessPathR`'s walk down the path, with the cascade by
+      `writerWP_appendKlongs_chainGL` and the leaf's klong by
+      `liveEdges_updN_grow`. `liveCase_putLeafFull` is the case.
+    - TP7 with every case proved so far is `latestInvOK_of_open` /
+      `invPreserved_of_open_cases` (`LiveTP7.lean`). The cases (1) to (3)
+      of TP10's three posts and of `QLive` are filled in, but `QLive`
+      (3c), and so are cost's live heights (`treeRun_heightLiveOK`). Left
+      as premises:
+      - TP4, `DeadAllOK` and P's tree (`TreeAt`) at every run;
+      - cost's `OpHtDelOK`;
+      - TP10's three posts of (4);
+      - `QLive` of (3c): new segments below a full leaf. The cascade there
+        runs with the new segment leaf still empty, so `LiveEdges` of its
+        virtual tree does not hold. It needs `LiveEdges` with that one
+        pending node excepted.
+    - The walk with exceptions (latest, 01:20): `LiveEdgesX ... E` asks
+      `ChildOK` only of links to nodes outside E, and a node in E may be
+      named by segment leaves only (`LiveStepsX.lean`, with every step of
+      `LiveSteps.lean` for it). The walk is now
+      `writerWP_appendKlongs_chainGLX`, for a set E of old nodes off the
+      access path; `writerWP_appendKlongs_chainGL` is its corollary with E
+      empty (`liveEdgesX_false_iff`), and `writerWP_appendKlongs_chainG`
+      stays the corollary of that, so the walk still exists once.
+    - `QLive` of case (3c), new segments below a full leaf, is proved
+      (latest, 01:21; `LivePutNewSegFull.lean`). Before the cascade, the
+      tree with the leaf's klong to the new segment leaf v meets
+      `LiveEdgesX` with E = {v} (`liveEdgesX_newSegLeaf`); the cascade
+      keeps it (`writerWP_appendKlongs_chainGLX`); putSegs then fills v
+      and makes the leaves below it, and `LiveEdges` holds again
+      (`liveEdges_fillNewSegs`). `liveEdges_put_newSegFull` is
+      `writerWP_put_newSegFullR`'s setup; its cascade
+      (`writerWP_appendKlongs_chainGRV`) gives that the nodes reached
+      after it are below the next id. `liveCase_putNewSegFull` is the case.
+    - TP7 with every put case proved is `latestInvOK_of_open_del` /
+      `invPreserved_of_open_del` (`LivePutNewSegFull.lean`, beside
+      `latestInvOK_of_open`). Left as premises:
+      - TP4, `DeadAllOK` and P's tree (`TreeAt`) at every run;
+      - cost's `OpHtDelOK`;
+      - TP10's three posts of (4), the delete with the merges;
+      - `QLive` of (4).
+    - The target with every put case proved (latest, 01:25;
+      `LatestOpen.lean`): `latestGetOK_latestScanOK_of_open_del` gives
+      `LatestGetOK` and `LatestScanOK` (and `getOK_scanOK_of_open_del`
+      gives `GetOK` and `ScanOK`) for the parameters of `MergeParamsOK`.
+      Left as premises:
+      - TP4 (`PointersOK`), `DeadAllOK` and P's tree (`TreeAt`) at every
+        run;
+      - the fuel premise along transactions (`TxSegFitsOK`);
+      - cost's `OpHtDelOK` (from the delete's checks, `opHtDelOK_of_chk`);
+      - the delete with the merges (4): TP10's three posts, its reading
+        (`OpGetCaseOK`) and `QLive`.
+    - The top theorem (latest, 01:40, the join agreed with putinv):
+      `invGetScanOK_merges` (`LatestTop.lean`) on putinv's
+      `runTreeQ_of_mergesF4` (`TakeRunQF4.lean`), with section 1's flat list
+      of premises. TP4 and P's tree are no longer premises. The induction's
+      Q is `LatestQ` (TP7's invariant, TP4, the kinds, the heights, the
+      sizes and the empty key of every inner node), with its step
+      `latestQ_snoc` from the run inductions' steps taken one transaction
+      at a time (`kindsAllOK_snoc`, `heightAllOK_snoc`, `sizeOK_snoc`,
+      `leftAllOK_snoc`, `invOK_snoc`; `LatestJoint.lean`). The reading of (4)
+      is `opGetCaseOK_delMergeF4` with TP4 from the induction.
+    - The flat list (latest, 01:50): `invGetScanOK_merges_flat`
+      (`LatestTopFlat.lean`). `DeadAllOK` at every run comes from the
+      operations (`DeadRun.lean`: `WDeadOK`, `QDead`, `dead_reached`,
+      `deadAllOK_commit`, `deadAllOK_snoc`; case (1) proved,
+      `deadCase_putLeafRoom`), carried in the induction's `LatestQD`. The
+      take-back's delete steps come from their pieces (putinv's
+      `runTreeQ_of_mergesF4S` over `TakeS4`, `delStepsJ2OKF3_of_openR`), with
+      the fuel at every state from `hfit`.
+    - `QDead` of (3a) and (3b) is proved (latest, 01:52; `DeadCases.lean`):
+      a key klong of a compare value with no live klong adds no dead klong
+      (`KNode.deadCount_add_key_new`), and a new segment leaf holds none.
+      `hRJ` is putinv's `replaceRootFullJ2OK_run` (02:00).
+      `hfit` is cost's `txSegFitsOK_of_takeBelowR` from `TakeBelowFuelOK`
+      (02:08), then `txSegFitsOK_of_takeBelowDelR` from its delete part
+      `TakeBelowFuelDelOK` (02:15), with the run's links, kinds and heights
+      from `LatestQD` inside the induction, and every run within reach
+      after it.
+    - `QDead` of (2) and (3c) is proved (latest, 02:28), for theta 0 or at
+      least 2, which Java's theta meets (`theta_java`). The cascade's shapes
+      carry a property of every node they make or change
+      (`writerWP_appendKlongs_chainShapeG`, `ShapePostG`, agreed with putinv;
+      `writerWP_appendKlongs_chainShape` is its corollary, statement
+      unchanged); with the dead bound it is `writerWP_appendKlongs_chainDead`.
+      The counts are in `DeadCountBasic.lean`. The cases are
+      `deadCase_putLeafFull` (`DeadPutFull.lean`) and `deadCase_putNewSegFull`
+      (`DeadNewSegFull.lean`). The flat theorem takes `hth` in place of `d2`
+      and `d3c`, and putinv's `delStepsJ2OKF3_of_openR2` in place of `hUCJ`.
+    - `hchk` is cost's `OpDelChk2OK` (latest, 02:31): one check fewer than
+      `OpDelChkOK`, through cost's `HeightsUnder.lean` (`opHtDelOKUnder_of_chk2`,
+      `txSegFitsOK_of_takeBelowDelR2U`), with the run's facts from `LatestQD`
+      inside the induction (`heightAllOK_snocU`, `latestQD_snocU`).
+    - LE-b at a stop node with room is putinv's (`delStepsOKF3_of_open8`,
+      `delStepsJ2OKF3_of_openR3`, 02:40): `hULb` and `hULbJ` are now `hLbF`
+      and `hLbFJ`, LE-b at a full stop node. Pieces for `QDead` of (4): the
+      split of a merge's full parent and of the space root with a property
+      of every node written (`writerWP_handleFull_lastShapeG`,
+      `writerWP_handleFull_rootShapeG`, the old names their corollaries), and
+      their dead instances (`writerWP_handleFull_lastDead`,
+      `writerWP_handleFull_rootDead`).
+    - The upward delete's stop node is putinv's at every stop, with room or
+      full, for the reading and the take-back (`delStepsOKF3_of_open10`,
+      `delStepsJ2OKF3_of_openR5`, 02:52): `hL`, `hLbF` and `hLbFJ` left the
+      flat theorem, cost's `hFitL` (`UpLebFitsOK`) came in; 14 named
+      premises. The merge's parent keeps the dead bound given `handleFull`'s
+      (`writerWP_mergeParent_dead`, `DeadMerge.lean`), a piece for `d4`.
+      `hU` is putinv's weaker `UpUnlinkTreeOK` (`delStepsOKF3_of_open11`,
+      `delStepsJ2OKF3_of_openR6`, 02:55). The fuel inside deletes is
+      checked at 11,057 states (`fuel-inside-check.lean.txt`, 02:55).
+    - `hFits` is proved from the heights (cost's `delFullFitsOKR_run`,
+      putinv's `delStepsOKF3_of_open12`, `delStepsJ2OKF3_of_openR7`, 03:05):
+      13 named premises. The reading's delete steps are taken at the
+      induction's runs and carried to `RunOK`'s by `delStepsOKF3_of_within`.
+      Pieces for `d4`: the merge's last loop keeps the dead bound with
+      well-formed klongs (`writerWP_mergeCleanup_deadWf`, on
+      `writerWP_retarget_deadWf`, `writerWP_takenBack_deadWf`,
+      `writerWP_unlink_deadWf`; `DeadMerge.lean`).
+    - `t4`, `i4` and `r4` are putinv's (`opCaseOK_treeInvRange_delMergeR`,
+      03:17): 10 named premises. The operations' cases are taken at the
+      induction's runs (`invOK_snocR`, `deadAllOK_snocR`, `latestQD_snocR`,
+      the old names their corollaries), carried to `RunOK`'s by
+      `opCaseOK_of_within`, with TP7's live counts at every operation's start
+      (`LiveJointL.lean`) for LE-b's proof (cost's `stopLeaf_of_liveCounts`).
+    - `hFitL` is gone (03:20): putinv's opens with the live counts at the
+      delete's start (`delStepsOKF3_of_open13`, `delStepsJ2OKF3_of_openR8`,
+      `delStepsQdL_of_openR`, `opCaseOK_treeInvRange_delMergeRL`), fed by
+      `liveStateOK_of_L` and `opCaseOK_of_cases_mergesL`: 9 named premises.
+    - `hFit` becomes `hHo` and `hG` (03:25; putinv's `delStepsOKF3_of_open14`,
+      `delStepsJ2OKF3_of_openR9`, `delStepsQdL_of_openR2` on cost's
+      `upCascFitsOKR_of`): 10 named premises until `hG` is proved. With the
+      live counts the merges' loop merges nothing (`writerWP_mergeUp_none`,
+      `writerWP_afterDelete_none`; `LiveNoMerge.lean`), a piece for `l4`.
+    - (03:30) `hHo` is `hHL`, `UpHolderOK`'s first part (putinv's
+      `delStepsOKF3_of_open15`, `delStepsJ2OKF3_of_openR10`,
+      `delStepsQdL_of_openR3`). `QLive` of (4a) is proved
+      (`liveCase_delRoomFill`, `LiveDelRoom.lean`): a delete whose leaf has
+      room and keeps a live klong, and more than `mergeBelow` if an inner
+      node names it (a segment root's leaf need not); `l4` is now
+      `DelMergeRestCase` (`liveCase_delMerge_of_rest`). Likewise `QDead` of
+      (4a) (`deadCase_delRoomFill`): `d4` is now `DelMergeDRestCase`.
+    - `hG` is gone (03:35): putinv's `UpGhOK` proof (`DelStepsGh.lean`;
+      `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`,
+      `delStepsQdL_of_openR4`): 9 named premises.
+    - (03:37) A noop delete and one of a key without a leaf read as
+      before (`writerWP_del_noop_reads`, `writerWP_del_noLeaf_reads`;
+      `LiveDelNoop.lean`), so they keep `QLive` and `QDead`: `l4` and `d4`
+      are `DelMergeOpenCase` and `DelMergeDOpenCase`.
+    - (03:40) `hMS` and `hCo` split by owner: `hMSF` (`MergeFitsOK`, cost;
+      the untaken part proved, putinv's `mergeStepOKF3_of_segFits`), `hCoF`
+      (`CollapseFitsOK`, cost) and `hCoU` (`CollapseUnlinkAllOK`, putinv):
+      10 named premises.
+    - Not done, and why (latest, 02:05):
+      - `QDead` of (2) and (3c), the cascade. The nodes a cascade makes are
+        described by `ChainShape.lean`'s `CascadeNodeShape`, whose case for
+        the new nodes (`ShadowOK`) says which klongs are shadowed but not how
+        many, and whose top node (`CascadeTop`) does not keep the `deadOver`
+        test that let it through. Both are definitions that putinv's
+        take-back uses, so a dead bound needs new twins of them and of
+        `writerWP_appendKlongs_chainShape`, not a change. The counts exist:
+        a half holds at most as many dead klongs as the klongs put into it
+        (`halves_normalized_deadCount_le`), a last version none.
+      - `QLive` of (4). A merge's parent can split and cascade
+        (`mergeParent` to `handleFull`, also on `deadOver`), merges take
+        nodes back, and root collapse runs the leaf's cascade. A proof would
+        twin cost's merge and collapse proofs at the writer's level, as the
+        cascade's walk was twinned for `LiveEdges`.
+      - `QLive` of (4), the delete with the merges.
+    - `LiveCounts` was checked on runs within reach with the merges on
+      (`12-tree-model/live-counts-check.lean.txt`). The parameters were
+      record format 7's thresholds at node sizes 8, 10 and 14 (m = 2, 2
+      and 3). The runs had puts in one and two segments, then deletes that
+      merge and collapse. It held at all 6420 states between operations,
+      none failing.
+    Removed (latest, 23:08, as agreed with cost and the coordinator, after
+    putinv's take-back moved to F2 at 65b84e5b): `DescentOKF`,
+    `MergePathCond`, `opGetCaseOK_delMergeF`, `writerWP_mergeUp_delF`,
+    `writerWP_afterDelete_delF` and `opGetCaseOK'_delMerge`; the route at
+    p.fuel in `DelMergeCase.lean` (`DescentOK`, `MergeStepOK`,
+    `CollapseStepOK`, `DelStepsOK`, `writerWP_mergeUp_del`,
+    `writerWP_afterDelete_del`, `writerWP_collapseRoot_del`,
+    `opGetCaseOK_delMerge`); and the corollaries only they used
+    (`writerWP_merge_get_invF`, `writerWP_merge_get_inv`,
+    `writerWP_merge_tree_inv`). Case (4) is `opGetCaseOK_delMergeF2`.
+    Removed too (latest, 00:48, the coordinator through putinv, after the
+    take-back moved to F4): the reading's F2 route (`DelMergeCaseF2.lean`:
+    `opGetCaseOK_delMergeF2`, `opGetCaseOK'_delMerge2`,
+    `writerWP_mergeUp_delF2`, `writerWP_afterDelete_delF2`) and F3's
+    collapse with a room premise (`CollapseStepOKF3`,
+    `collapseStepOKF3_of_room`, `writerWP_collapseRoot_delF3`,
+    `writerWP_afterDelete_delF3`, `opGetCaseOK'_delMerge3`,
+    `opGetCaseOK_delMergeF3`). Case (4) is `opGetCaseOK_delMergeF4` alone.
+
+    Step 4, plan (cost, 22:15). The Bool evidence is cost's `SegFit.lean`
+    (`12-tree-model/segfit-check.lean.txt`, `random` and `random2`). It ran random transactions (M 4 and 8, G 2,
+    H 0 to 2, with and without merges) and grow-then-shrink transactions of
+    1000 keys. In the random runs, every segment tree at every operation
+    boundary was balanced: 0 unbalanced states of about 14,000. SegFits
+    (fuel - 1) held at every boundary checked. The route goes by heights,
+    not depths. The writer knows each key node's height: `gh`, and for a
+    node of P its level (`heightOf`). The invariant, `HeightInv`, is local:
+    every key node is a segment leaf exactly when its height is 0, and an
+    inner node's live children have its height minus one. A rule keeps it
+    when every node it writes has children of the right height.
+    `HeightInv` gives `SegDepthEq (height x) x` for every node, so a
+    segment tree's depth is its root's height and the tree is balanced
+    (`SegBal`). Three pieces are left:
+    - (A) Every rule keeps `HeightInv`, and P has it at every run. After
+      the commit, the transaction's nodes are in the bounds, so
+      heightOf (keyLevel g h) = h.
+    - (B) Inside an operation, the reached nodes' heights are at most
+      fuel. Only a root split adds a height, at most one per segment and
+      operation.
+    - (C) At operation boundaries, SegFits (fuel - 1), by the doomed
+      transaction:
+      - A reached node of height fuel or more was made in the transaction
+        above H (`HeightMarkedPred`). `boundsOK` then fails unless a later
+        operation takes the node back.
+      - An operation takes back only nodes on its path, a sibling of one,
+        or a root that its own split made. A descent that passes a node of
+        height fuel or more throws (`writerWP_descendLte_depth`). So every
+        node taken back has a height below fuel, or was made in the same
+        operation.
+
+    Size estimate:
+    - (A) 2000 to 3000 lines: about 40 writer rules, most of it in the
+      splits' and the merges' node writes, and the commit lift about 500.
+    - (B) 500 to 1000 lines.
+    - (C) 1000 to 2000 lines: the path's heights and every take-back site.
+
+    That is 4000 to 6000 lines in all, more than one night. (A) comes
+    first.
+
+    Step 4 (A), state (cost, 23:10). It is also TP7's open (b), at the
+    coordinator's direction, so that one proof serves both.
+    - The invariant (`OverlayHeights.lean`): `HasHt H w y h`, y's height
+      from the writer's books (`gh`) or from an oracle H of P's key nodes,
+      as the kinds' walk has K. `NodeHt c H w h n`: n's live klongs, now
+      and before the transaction (`toPrev`), name nodes not taken back,
+      for an inner node nodes one height below; n has no time after the
+      transaction's. `HtCache`: every overlay node not taken back meets
+      it.
+    - The bridge to step 4: `segDepthEq_of_hasHt`, a key node of height
+      h has its segment tree balanced and of depth h (`SegDepthEq`);
+      `segFits_of_heights` and `segBal_of_heights`: SegFits and SegBal
+      from the heights of the nodes reached.
+    - The walk (`WriterHeightsRules/Steps/Split/Full/Put.lean`), on the
+      books: `HtInv` (HtCache, the path's heights, the path's nodes and
+      the space root not taken back, taken ids at or above the
+      transaction's first id). Every primitive step keeps it, so do a
+      full node's replacement with its cascade (`ht_handleFullWith`,
+      `ht_appendKlongs`) and a put (`ht_putKv_put`, with tp7's
+      `AppendFrameOK` as the kinds' walk takes it).
+    - The run (`HeightsStep.lean`): `HeightAllOK`, every inner key node
+      of P has its live children that are nodes of P one height below
+      it (stronger than TP7's `HeightLiveOK`, `heightLiveOK_of_all`).
+      `heightAllOK_step`: a transaction keeps it when the walk ends with
+      `HtCache` (tp7's `apply_keyNode`). `heightAllOK_init`. The walk's
+      premises at a transaction's start (`viewHeights_of`) and the
+      reading's (`baseHeights_of`) come from `HeightAllOK`,
+      `PointersOK` and `KindsAllOK`.
+    - The delete side (cost, 00:05). The path's nodes are not taken back
+      only up to an index (`PathFreeTo w n`, carried by the steps that
+      use it), since a take-back leaves a taken node on the path. Done:
+      the steps that take nothing back (`ht_handleFull`,
+      `ht_appendDeleteKlong`, `ht_unlink`, `ht_retarget`,
+      `ht_mergeParent`, the descents, `ht_replaceRoot`), a node taken
+      back given that no kept node holds it (`ht_takenBack`,
+      `NoLiveHolder`), `ht_takeBackRoot` given the root's one holder
+      (`HolderAt`), and the collapse's loop (`ht_collapseRoot`).
+      `liveHolder_unique` (`HeightsHolder.lean`) gives the holder fact
+      from the take-back's state: a node of the transaction is named
+      only by klongs of the transaction's time (`OldBelowN`), a node
+      holding one is reached (`TtReachedN`), and one reached klong
+      names it (`TreeOK.oneLink`).
+    - Named hypotheses (Option 1, coordinator 23:40): `ht_collapseRoot`
+      takes an invariant J of the take-back's, kept by its steps
+      (`descendToSegmentRoot`, `getNode`, `takeBackRoot`,
+      `replaceRoot`), that gives `HolderAt` at a made root. putinv's
+      TakeJ2 with CollGetInv (TreeOK) is that J, through
+      `liveHolder_unique`.
+    - The run (cost, 00:45). TP7's (b) after every run is
+      `treeRun_heightLiveOK_family` (`HeightsDelRun.lean`), the form
+      latest's assembly takes (`invPreserved_of_open_htDel` puts it in
+      `invPreserved_of_open`). Proved: the put; the operations of a
+      transaction (`ht_reached`) and its end (`execW_htCache`); the run
+      induction (`treeRun_heightAllOK`); the delete's descent
+      (`ht_putKv_del`, `ht_putSegs_del`, `ht_setNode_del`,
+      `ht_setValue_del`); the delete that leaves its leaf a live klong
+      (`ht_deleteUpward`), with the merges (`ht_merge`, `ht_mergeUp`) and
+      root collapse after them (`ht_afterDelete`).
+    - Named premises (Option 1), in `HtDelFamily` for an invariant J of
+      the take-back's (putinv's TakeJ2 with TreeOK) that holds at every
+      state before a delete (`HtJStart`):
+      - J is kept by the steps between the take-backs: `getNode`, the
+        descents, `appendDeleteKlong`, `merge`, `takeBackRoot`,
+        `replaceRoot`, `pathClear`, `findRoot`, `setNode`.
+      - The merge's holder, `MergeTailHoldOK`: from a state that meets J,
+        the merge's tail runs as its copy with a check before each
+        take-back (`mergeTailChk`, `checkFree`: no kept node holds the
+        node, now or before the transaction; it is not the space root and
+        no node of the view). The check gives `NoLiveHolder` where the
+        merge takes a node back.
+      - The root's holder (`rootHold`, for `ht_collapseRoot`).
+      - The upward delete that empties its leaf (`upEmpty`): the climb,
+        the take-back loop and the stop node. Its loop retargets a parent
+        to the node the taken node replaced, of another height when that
+        node was a root made by a space split; the parent is taken back
+        or unlinked next, or is the stop node, whose delete kills the
+        klong (tp7's mis-heighted retarget). The walk then needs an
+        exemption for that one klong until the stop node's delete.
+    - One premise instead of the family (cost, 01:10):
+      `treeRun_heightLiveOK_chk` and `invPreserved_of_open_chk`
+      (`HeightsChkRun.lean`) take TP7's (b) from `OpDelChkOK` alone: a
+      delete, from a state that the transaction's earlier operations
+      reach, runs as its copy with a check at every take-back
+      (`putKvDelChk`, `DelChk.lean`). The checks:
+      - `checkFree` before each take-back of the merge and of the upward
+        delete's loop: no kept node holds the node, now or before the
+        transaction; it is not the space root and no node of the view.
+      - `checkOld` before the loop's retarget: the parent is a segment
+        leaf, and the node it is pointed to is a node of the view. A parent
+        of height 0 has no height to keep, so tp7's mis-heighted retarget
+        cannot occur; with the merges on, the upward delete climbs only
+        through segment-root leaves (every other leaf keeps two live
+        klongs), so a parent in the loop is a segment leaf.
+      - `checkRoot` before root collapse takes a root back: its one holder
+        (`HolderAt`).
+      - After the loop: the path's nodes above it are not taken back
+        (`checkPathFree`), and the stop node is a segment leaf.
+    - With the checks the walk needs no other premise (`ht_mergeChk`,
+      `ht_collapseRootChk`, `ht_climb`, `ht_takeBackChk`,
+      `ht_deleteUpwardChk`, `ht_putKvDelChk`; `WriterHeightsChk.lean`,
+      `WriterHeightsChkDel.lean`).
+    - Checked on runs (`12-tree-model/delchk-check.lean.txt`): at every delete of 310 runs within reach,
+      the writer's delete and its copy with the checks give the same
+      result and state. That is 6828 deletes, 0 failures. Among them 209
+      deletes climb (the upward delete), 160 of them with a take-back in
+      the loop; 2929 merge, 2305 of them with a merge that took a node
+      back; 453 have a root collapse that took a root back (counts
+      corrected 01:30, after putinv found the first count read the trail
+      from the wrong end). `12-tree-model/merge-hold-check.lean.txt` checks the merge's tail
+      alone: 1732 merges, 1465 of them taking nodes back.
+    - The holder family (`HtDelFamily`, `treeRun_heightLiveOK_family`)
+      stays as a second route. `OpDelChkOK` is the one to discharge.
+    - Left: `OpDelChkOK` itself (TP4's holder facts and the merges'
+      fill), then (B) and (C).
+
+    Step 4 (B) and (C), state (cost, 01:50). The fuel premises
+    (`TxSegFitsOK`, `DelFullFitsOK`, `MergeStepOKF3`'s and
+    `CollapseStepOKF4`'s SegFits) follow from the cached heights with
+    (A)'s heights: `segFits_of_seenHeight` gives SegFits b at a state
+    where the walk holds (`HtInv`) and every cached height is at most b
+    (`SeenHeightBound b`; the view's heights are at most H). What is left
+    is bounding the heights.
+    - (B), proved in part (`HeightsFuel.lean`, `HeightsFuelMerge.lean`):
+      - A split's cascade up the key access path keeps every cached
+        height at most b when the path's nodes are below b
+        (`sb_handleFullWith`, `sb_appendKlongs`, `sb_handleFull`): a
+        split's new nodes have the split node's height, a new root one
+        more, and the cascade climbs only through the path.
+      - So a delete's bitmap and a put's klongs at the path's node take
+        the bound from m to m + 1 (`seenHeight_appendDeleteKlong`,
+        `seenHeight_appendKlongs`): `DelFullFitsOK`'s step, in heights.
+      - A merge does the same: its new nodes have the merged node's
+        height, its parent's split cascades up the path (`sb_merge`,
+        `seenHeight_merge`). `sb_appendKlongsX` is the cascade from a
+        node below b that is not on the path (a new segment leaf).
+      - A whole put adds at most one (`seenHeight_putKv_put`,
+        `HeightsFuelPut.lean`): its descents only load (heights at most
+        H), and it makes at most one cascade. A new segment leaf's klong
+        cascades in the leaf above, and the new segment leaves below it
+        then have room (`shb_putSegs_empty`).
+      - At the operation level (`opHtStep_of`, `HeightsOpStep.lean`):
+        every operation of a transaction within reach adds at most one to
+        every cached height, the put proved and the delete a named premise,
+        `OpDelHtStepOK`, checked on runs (`heights-op-check.lean.txt`: 7746 deletes,
+        0 failures).
+      - Not proved: a whole delete. It runs several merges, each
+        re-descending, and a later merge's path can hold a root that an
+        earlier cascade of the same operation made: the lemmas then give
+        one more per merge. One per segment and operation needs that the
+        new root does not fill again in the same operation (the merges'
+        fill, latest's `LiveCounts`).
+    - Checked on runs (`12-tree-model/heights-op-check.lean.txt`): 316 runs within reach, 18201 operations.
+      In every segment the nodes an operation made are at most one above
+      the nodes it found, and after every operation every cached height
+      is below fuel - 1: 0 failures. 717 operations split a root, 36 of
+      them two roots (in two segments).
+    - TP10's fuel premise between operations (`TxSegFitsOK`, latest's
+      `hfit`) from the heights (cost, 02:05; `HeightsFit.lean`):
+      `txSegFitsOK_of_takeBelowR` gives `TxSegFitsOK p R` from
+      `OpDelChkOK`, the run facts in R (`RunLinksOK`, `KindsAllOK`,
+      `HeightAllOK`) and one named premise, `TakeBelowFuelOK`: every node
+      an operation takes back that it found (cached and not taken back at
+      its start) has a height below the fuel; a root the operation itself
+      made and took back (MF1) is not asked. A put takes nothing back
+      (`takeBelowFuelOK_of_del`), so the premise is needed for the deletes
+      only: `txSegFitsOK_of_takeBelowDelR` takes `TakeBelowFuelDelOK`.
+      The argument is
+      the doomed transaction: a node of height fuel or more is above H, so
+      in `outside` (`HeightMarkedPred`), and `boundsOK` at the end asks it
+      taken back by a later operation (`taken_by_op`), which the premise
+      excludes. (B) is not needed for it; (B) serves the bounds inside an
+      operation (`DelFullFitsOK`, `MergeStepOKF3`, `CollapseStepOKF4`).
+      `TakeBelowFuelOK` checked on runs (`heights-op-check.lean.txt`): 3205 operations
+      that took nodes back, in 18201, 0 failures. Its reason is (C)'s part
+      1 below.
+    - (C), begun: at operation boundaries SegFits (fuel - 1), by the
+      doomed transaction. A root of height fuel or more cannot be
+      descended, so no later operation of the transaction reaches its
+      segment tree and takes it back, and `boundsOK` fails at the end (it
+      is above H, so in `outside`).
+      - Proved, the first step (`HeightsFuelDescent.lean`): a descent that
+        succeeds from an untaken key node of height h had fuel above h
+        (`ht_descendLte_height`, from `writerWP_descendLte_depth` and the
+        heights' balance; the nodes it visits are untaken,
+        `ht_eqVisits_free`).
+      - The rest of the argument is proved for `TxSegFitsOK`
+        (`txSegFitsOK_of_takeBelowR`, above), from the named premise
+        `TakeBelowFuelOK`.
+      - Left: proving `TakeBelowFuelOK`. A node an operation found and
+        takes back is in a segment tree the operation descended through
+        from its root at its start (the merge's l and r below the path's
+        node, the loop's path nodes, the collapsed root), so below that
+        root, whose height is below the fuel by part 1. It needs the reach
+        of each take-back site from that root through the operation's
+        own writes.
+    Step 4, the named premises at the night's end (cost, 02:15), each
+    with its run test (`12-tree-model/delchk-check.lean.txt`,
+    `heights-op-check.lean.txt`, `merge-hold-check.lean.txt`,
+    `segfit-check.lean.txt`; the run command in each header):
+    - `OpDelChkOK` (`HeightsChkRun.lean`): a delete runs as its copy with
+      a check at every take-back. It gives TP7's (b), `HeightLiveOK` after
+      every run (`treeRun_heightLiveOK_chk`). `delchk-check.lean.txt`:
+      6828 deletes of 310 runs, and 309 of 8 random multi-segment runs,
+      0 failures.
+    - `OpDelChk2OK` (`HeightsPathFree.lean`, cost, 02:45): `OpDelChkOK`
+      with one check fewer, `checkPathFree`, now proved. The upward
+      delete's loop takes back only nodes below the stop node, and the
+      path's nodes are pairwise distinct (`ht_path_ne`, from the kinds'
+      books `KdInv` beside the heights' at the upward delete's start), so
+      the stop node and the nodes above it stay not taken back.
+      `OpDelChkOK` implies it (`opDelChk2OK_of_chk`,
+      `DelChkRefines.lean`). The walk
+      through the copy `putKvDelChk2` carries `KdInv` as far as the upward
+      delete. It gives TP7's (b) (`treeRun_heightLiveOK_chk2`,
+      `invPreserved_of_open_chk2`) and, with `TakeBelowFuelDelOK`, TP10's
+      `TxSegFitsOK` (`txSegFitsOK_of_takeBelowDelR2`; it needs TP4's
+      `hP` for the kinds). `delchk-check.lean.txt` runs the copy too, and
+      random runs whose keys make one-key segments, so that deletes climb:
+      7987 deletes in all, 77 of the new ones climbing, 0 failures of
+      either copy. For latest's run induction, which
+      proves TP4 and the kinds at the run it is at, the same at the runs
+      a predicate R holds of (`HeightsUnder.lean`): `OpHtDelOKUnder p R`,
+      `opHtDelOKUnder_of_chk2` (R gives `PointersOK` and `KindsAllOK`),
+      `ht_reachedU`, `execW_htCacheU`, `txSegFitsOK_of_takeBelowDelRHU`,
+      `txSegFitsOK_of_takeBelowDelR2U`.
+    - `TakeBelowFuelDelOK` (`HeightsFit.lean`): a delete takes back no node
+      of height fuel or more that it found at its start. With
+      `OpDelChkOK` it gives TP10's `TxSegFitsOK`
+      (`txSegFitsOK_of_takeBelowDelR`; `TakeBelowFuelOK` and
+      `txSegFitsOK_of_takeBelowR` are the same for every operation).
+      `heights-op-check.lean.txt`: 3205 operations that took nodes back,
+      0 failures.
+    - `OpDelHtStepOK` (`HeightsOpStep.lean`): a delete adds at most one to
+      every cached height (`opHtStep_of`, every operation). For the bounds
+      inside an operation, not used yet. `heights-op-check.lean.txt`: 7746
+      deletes, 0 failures.
+    - putinv's `DelFullFitsOK` (the fuel after the bitmap into a full
+      leaf) in its reached form, proved (cost, 03:05;
+      `HeightsFitsR.lean`): `DelFullFitsOKR c base H B`, the same binders
+      with the heights' state at the descent's end (`HtJ`: the books, the
+      walk's `HtInv`, the path not taken back, the klongs' form, every
+      cached height of a node not taken back below the fuel) and the path
+      ending at depth d, is `delFullFitsOKR_of` (`delFullFitsOKR_run` at a
+      run's context). The cascade is the delete's first write that adds
+      heights; `sbS_appendDeleteKlong` bounds the nodes not taken back
+      (HeightsFuel.lean's cascade lemmas generalized in place to a set S
+      of ids, `SBInvS`; the old ones are the case of every id). For
+      putinv's descent walk: `htJ_descendLte`, `htJ_pathAdd` (from a
+      segment leaf by the klong `searchEq` finds), `htJ_start`, and with
+      the kinds' books `kdhtJ_*`; at a reachable operation's start
+      `htStart_reachedU` (the bound by the doomed transaction, with
+      `TakeBelowFuelDelOK`). `UpCascFitsOK` and `UpLebFitsOK` stay named:
+      after the upward loop the heights' cache needs the holders of the
+      nodes taken back (the facts `OpDelChk2OK`'s checks assume), which
+      putinv proposes to name as `UpHolderOK`.
+    - The stop node is a segment leaf with the merges on (cost, 03:08;
+      `StopLeafLive.lean`): with the fill at the delete's start (latest's
+      `LiveCounts`), a node below an inner node of the path has
+      `mergeBelow` ≥ 2 live klongs, so the delete empties none
+      (`stopLeaf_of_liveCounts`). So `UpLebFitsOK` with the fill,
+      `UpLebFitsOKL`, holds vacuously (`upLebFitsOKL_of`); the LE-b probe
+      (`12-tree-model/leb-probe.lean.txt`) agrees.
+    - `UpCascFitsOK` in its reached form, proved from a named premise of
+      the loop's end (cost, 03:15; `HeightsUpCascR.lean`):
+      `UpCascFitsOKR` adds the merges, the fill, `KdHtJ` at the descent's
+      end with the path ending at depth, the loop keeping `gh`, and
+      `UpHolderOK` (every node not taken back at the loop's end holds,
+      now or before the transaction, only nodes not taken back; its times
+      at most the transaction's; the chain's nodes taken back are the
+      transaction's). `upCascFitsOKR_of`: the heights' walk at the loop's
+      end from that at the descent's end (the stop node and the chain's
+      nodes are leaves of height 0; the other nodes unchanged; the path's
+      nodes distinct), then the cascade as for `DelFullFitsOKR`.
+      `UpHolderOK` is to be checked on runs (putinv).
+  - (5) `DelNoLeafCase`, a delete of a key with no leaf: proved,
+    `opGetCaseOK_delNoLeaf`. It changes no reading: the writer's walk
+    stops at the first segment that is not there and only reads
+    (`writerWP_putSegs_del_noLeaf`), and the key reads as no value
+    (`getFromR_noLeaf`).
+  - (6) `DelNoopCase`, a delete that changes no bitmap: proved,
+    `opGetCaseOK_delNoop` (on `writerWP_del_noop_seg`).
+  - (7) `DelEmptyCase`, a delete that empties its leaf (the upward
+    delete): open, cost's. Cost's `writerWP_deleteUpward_up_get` and
+    `writerWP_deleteUpward_upT_get` are part of it. Void with the merges
+    on (`opGetCaseOK_delEmpty_merges`).
+  - (8) `DelRoomCase`, a delete into its leaf with room: proved,
+    `opGetCaseOK_delRoom`, on `writerWP_del_bitmap_segR`: the rule
+    `writerWP_del_bitmap_seg` with the room that the writer checks for
+    the branch it takes (`DelRoom`); the old rule asked for the room of
+    both branches.
+  - (9) `DelFullCase`, a delete into a full leaf: open. The rules
+    `writerWP_del_accessPathR` (the leaf below an inner node, split in
+    time or space, in place too; below a segment leaf, in time; with
+    every split above) and `writerWP_del_leafRootR` (the leaf is the
+    space root) are proved; missing are the leaf's space split below a
+    segment leaf and the bridge. Void with the merges on
+    (`opGetCaseOK_delFull_merges`), so it is open only for parameters
+    with the merges off; it waits (coordinator).
+
+With the six cases: `getOK_scanOK_of_open_cases` gives `GetOK` and
+`ScanOK` for 2 ≤ M and 2 ≤ splitAbove from the premises above, of the
+cases only (4), (7) and (9). `getOK_scanOK_of_open_merges` does it for
+the parameters of `MergeParamsOK` (those of
+`invPreserved_of_latest_pointers`): there the merges are on, (7) and (9)
+are void, and of the cases only (4) is left.
+
+The three premises about each operation, over the same cases (prover
+"latest", 2026-11-13, 21:05; `GetOpAssembly.lean`, `GetOpCases.lean`):
+the writer's tree (`OpTreeOK`), `PutInv` (`OpPutInvOK`) and the walk's
+ranges (`OpRangeOK`). Each is stated per case as `OpCaseOK p R Q P`, with
+the posts `QTree`, `QPutInv` and `QRange`: from a state between
+operations that meets `PutInv`, `RangeOrder` and the case P, the state
+after the operation meets Q. The rules need `PutInv` and `RangeOrder` at
+the state before, so the three are carried together along a transaction
+(`joint_reached`). From them come the three premises in the forms the
+assembly takes (`opTreeOK_of_any`, `opPutInvOK_of_any`,
+`opRangeOK_of_any`, and cost's `OpTreeInvOK`, `opTreeInvOK_of_any`).
+`OpTreeOK` has no premise on the run: it comes out for runs that all meet
+R, so `runTree_joint`, which takes `OpTreeOK` to give the runs their
+tree, needs a form with R at the run to use it. `getOK_scanOK_of_cases`
+gives TP10 and TP11 from the cases (for 2 ≤ M and 2 ≤ splitAbove), and
+`getOK_scanOK_of_cases_merges` for `MergeParamsOK`, where the cases (5)
+to (9) are void for all four posts (`opCaseOK_void`). Case (3) comes from
+four parts (`opCaseOK_putNewSeg_of_parts`): where the put makes no new
+segment the writer fails, which proves every post; (3a) one new segment
+below a leaf with room; (3b) more new segments below a leaf with room;
+(3c) new segments below a full leaf. Status under `MergeParamsOK`
+(`getOK_scanOK_of_cases_merges_open` takes the open ones):
+
+- (1) a put into its leaf with room: all three proved
+  (`treeCase_putLeafRoom` on cost's `writerWP_put_room_seg_tree`;
+  `putInvCase_putLeafRoom` on putinv's `putInv_put_room_below`,
+  `putInv_put_room_root` and `putInv_put_room_segRoot`, by the place of
+  the leaf; `rangeCase_putLeafRoom` on `rangeOrder_put_room`).
+- (2) a put into a full leaf: all three proved (21:10). The ranges by
+  `rangeCase_putLeafFull` on putinv's `rangeOrder_put_accessPath`; the tree
+  by `treeCase_putLeafFull` on `writerWP_put_accessPathR`, whose post now
+  also gives the writer's tree, the taken ids kept and the nodes reached
+  after reached before or new (from `writerWP_appendKlongs_chainGRV`,
+  `tReach_updN_addKey`); `PutInv` by `putInvCase_putLeafFull`: its global
+  parts from the books, no reached node taken back from the reach bound,
+  and its order from the ranges after (`putInv_after_op`,
+  `leafOrder_of_rangeOrder`).
+- (3a) all three proved (`treeCase_putNewSeg1Room`,
+  `putInvCase_putNewSeg1Room`, `rangeCase_putNewSeg1Room`, on
+  `writerWP_put_newSeg_inv_tree`, `putInv_put_newSeg`,
+  `rangeOrder_put_newSegs`).
+- (3b) all three proved (21:40): the ranges by `rangeCase_putNewSegsRoom`;
+  the tree by `treeCase_putNewSegsRoom` on `writerWP_put_newSegs_tree`, from
+  a tree lemma for the chain of new segment leaves that `putSegs` makes
+  below an empty segment leaf (`writerWP_putSegs_new_tree`,
+  `GetNewSegsTree.lean`); `PutInv` by `putInvCase_putNewSegsRoom`
+  (`putInv_after_op`).
+- (3c) all three proved (tree 21:40, ranges and `PutInv` 22:10):
+  - `writerWP_put_newSegFullR`'s post gives the writer's tree, the taken
+    ids kept and the reach bound (`treeCase_putNewSegFull`).
+  - It also gives the ranges after the op, given `RangeOrder`, `OrdG` and
+    every klong below the next id (`KlongsBelow`, from the books,
+    `klongsBelow_of_book`). The cascade keeps the ranges by putinv's
+    `writerWP_appendKlongs_chainGRange`.
+  - The new segment leaves below the new empty leaf keep them
+    (`writerWP_putSegs_new_range`, `rangeOrder_newChain`), because the
+    leaf's parents are leaves: a cascade's nodes link a fresh node only by
+    the klongs put into its bottom node, with that node's leaf flag
+    (`writerWP_appendKlongs_chainLeafTargets`, `ChainShape.lean`).
+  - `rangeCase_putNewSegFull`, `putInvCase_putNewSegFull`.
+
+Cases (1) to (3) are proved for all four posts (the writer's tree,
+`PutInv`, the ranges, the reading). Under `MergeParamsOK`,
+`getOK_scanOK_of_cases_merges_open` therefore leaves only case (4).
+- (4) all three open (cost's merges).
+
+The shapes of the nodes a cascade makes or changes (prover "latest",
+2026-11-13, 21:30; for prover putinv's take-back (C); `ChainShape.lean`):
+`writerWP_appendKlongs_chainShape`. It takes the premises of
+`writerWP_appendKlongs_chainGRV` that concern the writer's nodes, with
+`ChainOrd` at every level and the klongs put ordered by compare value.
+After `appendKlongs (s + e)`, every node with an id from the next id on,
+or on the chain, is one of these (`CascadeNodeShape`):
+
+- a chain node that the cascade did not reach, unchanged;
+- a chain node left behind with its klongs before the transaction;
+- a node of time c.i (a time klong, then key klongs; `ShadowOK`). A chain
+  node of this kind is one the transaction made. A key klong shadowed by
+  a later klong of its compare value names either a split child that was
+  copied, or a live klong of the bottom node for a compare value put
+  there (`ChainShadow`). Halves of a space split shadow like this
+  (`halves_shadow`). A time split's last version, a new root and a new
+  segment root shadow nothing (`writerWP_replaceOrAdd_lastN`,
+  `shadowOK_root`).
+- the node where the cascade ends (`CascadeTop`), one of three kinds:
+  - the bottom node with the klongs put;
+  - a node with the klongs of the split below added, in compare order,
+    shadowing only the old klong to a split child that was copied;
+  - a segment leaf whose klong to a child split in place is repointed.
+
+The splits of any depth (prover "latest", 2026-11-13, 16:30): **proved
+for time and space splits of nodes that existed before the transaction,
+below a top node with room** (`writerWP_appendKlongs_chainR`,
+`GetCascadeChain.lean`, on cost's `writerWP_appendKlongs_chain`, whose
+induction it follows; the steps `getFromR_timeLevel`,
+`getFromR_spaceLevel`, `getFromR_updN_unreach`, `GetCascadeGen.lean`):
+after `appendKlongs j (X j) ins` the writer's state reads as the state
+with ins put in X j. On it, at 16:50, **proved: the put and the
+delete into a leaf below such a chain**, the leaf split by its size,
+time or space, or its delete's bitmap (`writerWP_put_chain`,
+`writerWP_del_chain`, `GetCascadePut.lean`; the leaf's time and space
+splits in place for a leaf the transaction made). At 18:15, **proved:
+the reading after a cascade of any kind** on cost's
+`writerWP_appendKlongs_chainG` (`writerWP_appendKlongs_chainGRV`,
+`GetCascadeChainG.lean`, for every value lookup without values at the
+new ids and the chain's nodes): in-place time and space splits of nodes
+the transaction made, time splits below segment leaves, the space
+root's time split with a new root, a top without room; and the put and
+delete rules on it (`writerWP_put_chainG`, `writerWP_del_chainG`), and
+a put that makes more than one new segment below a leaf with room
+(`writerWP_put_newSegs`, `GetNewSegs.lean`). At 18:20, **proved: the
+put and delete rules with the cascade along the whole access path from
+the space root, across segments** (`writerWP_put_accessPath`,
+`writerWP_del_accessPath`, `GetPutPath.lean`, on the writer's path
+`writerWP_putSegs_prefix_linked`; their premises are on the nodes
+reached: the order below an inner parent, two live klongs in a node
+that space splits, no space split that makes a new root), **and a put
+that makes new segments below a full leaf** (`writerWP_put_newSegFull`,
+`GetNewSegFull.lean`: the cascade for the klong to the new segment
+leaf, then the new segment leaves; a tree that differs only below one
+segment root reads alike for the keys not through it,
+`getFromR_override_off`). At 18:45, **proved: the space root's space
+split, in place or not**, in the cascade (`writerWP_appendKlongs_chainGRV`)
+and in the put rules: the reading from the new root is the reading from
+the old one (`getFromR_newRootRead`, `GetNewRoot.lean`). At 19:15,
+**proved: the delete along the whole access path with the space root's
+space split** (`writerWP_del_accessPathR`, on
+`writerWP_appendKlongs_chainGRQ`), **its leaf's time split below a
+segment leaf** (`getFromR_timeSplit_delAny`, `GetDelVirtual.lean`: the
+leaf with its last version in place, then the split as a step of the
+tree), **and the delete in a space whose root is a leaf**, by its bitmap
+or the root's time or space split under a new root, in place too
+(`writerWP_del_leafRootR`, `GetDelRoot.lean`). The rules whose cascade
+may reach the space root are stated as R versions
+(`writerWP_put_accessPathR`, `writerWP_put_newSegFullR`,
+`writerWP_del_accessPathR`): their reading holds when the writer's state
+after the operation meets the fuel premise below, or when the space root
+does not space split (`RootStays`); the earlier statements, whose
+premises exclude the space root's space split, are their corollaries.
+At 20:10, **proved: the cascade keeps what the tree reached**
+(`writerWP_appendKlongs_chainReach`, a lemma of its own and the last
+conjunct of `writerWP_appendKlongs_chainGRV` and `_chainGRQ`, agreed
+with putinv): every node that the tree with the klongs put into X (s +
+e) reaches, but the chain's nodes, is reached after the cascade, when
+every node that space splits below an inner parent has its compare
+values in its range (`ChainOrd`: a leaf's from the parent's klong on, an
+inner node's but its first above it; `RangeOrder` gives it, and without
+it a split whose divider is the parent's klong drops a first half that
+no read reaches). With it, **proved: a segment root's space split below
+a segment leaf, for a node the transaction did not make**, in the
+cascade and in the put and delete rules along the access path
+(`getFromR_segSpaceLevel`, `GetReachBack.lean`: the new segment root is
+reached after the cascade, so `SegFits` of the state after bounds its
+segment tree; `hspaceG`'s second case, with the tree in order, `OrdG`).
+The reading needs no fuel premise when no new root is made along the
+chain (`ChainNoNewRoot`, `NoNewRootG`). At 20:25, **proved: the same
+split for a segment root the transaction made**, the segment leaf's
+klong repointed in place to the new segment root
+(`getFromR_segSpaceInPlaceLevel`), and **for putinv's take-back: the
+cascade's chain nodes and new nodes after it**
+(`writerWP_appendKlongs_chainReachNew`: every chain node is reached or
+holds its version before the transaction, `toPrev`; every node the
+cascade made is reached). Still open: the delete's leaf when it space
+splits below a segment leaf.
+
+The reader's fuel (prover "latest", 2026-11-13, 18:15; 19:15): TP10's
+`get` (`Read.lean`, `getFrom`) and `getFromR` give every segment's
+descent `Params.fuel` = (G + 1)(H + 2) + 2 steps, from the parameters,
+not from the state. Once every descent fits, more fuel reads the same
+(`getFromR_fuel_mono`, `GetFuel.lean`), so the fuel restricts nothing
+where `SegFits N t d r` holds with d < fuel: every segment tree reached
+from r has depth at most d (`SegDepthLe`, which counts only the links
+out of inner nodes; a segment leaf ends the segment). A space split
+that makes a new root grows one segment's tree by a level, and its
+reading needs that level within the fuel: those cases take, as a
+premise, `SegFits` of the writer's state after the operation with d =
+fuel - 1, that is, every path inside one segment tree is shorter than
+the fuel (one Prop for all provers, agreed with cost at 19:10). Open
+premise: it holds for the states of a transaction that ends OK, not for
+every state a rule can make. Cost's finding (`cost/fit/Fit.lean`): a
+put whose descent goes through a segment tree of depth fuel - 1 can
+split its root and reach depth fuel; that transaction then fails at its
+end (`boundsOK`). The first form, `PathsFit` (every path from the space
+root, through all segments, shorter than the fuel), fails in a
+transaction that the writer runs to its end without error: with M = 8,
+G = 1, H = 0, 1000 puts below one key and then 1000 deletes grow a
+segment tree to height 5 mid-transaction. That transaction is not within
+reach, though: it puts and deletes the same keys, and `Within` requires
+sorted transactions of distinct keys (correction, cost, 2026-11-13,
+22:30). Within reach, `PathsFit` is not refuted. `SegFits` relates to the
+deferred height bound of bounded startup, `LiveHeightLe P t H root`,
+which bounds the nodes on every live path from the root by H and so
+every segment tree's depth; the writer's tree inside a transaction can
+exceed it by the new roots it makes (a node made above the level bounds
+is recorded in `outside`, MF3, and refused at the transaction's end if
+still there).
+
+**The whole path is not capped (prover "cost", 2026-11-13, 19:15).**
+Within a transaction a segment tree may grow above H, because the bounds
+G and H are checked only at the transaction's end (`boundsOK`), and the
+writer's own guard, the fuel of a descent, counts one segment tree at a
+time. So `PathsFit` (every path from the space root, through all
+segments, shorter than `p.fuel`) is no invariant of the writer's states.
+The case: M = 8, G = 1, H = 0, fuel 6; a transaction puts 1000 keys
+[120, 64j + 8] below one existing key and deletes them again, and the
+writer ends it without error (the 161 nodes made above the bounds are all
+taken back). It is not within reach: `Within` requires a transaction's
+keys sorted and distinct, so no transaction puts and deletes one key
+(correction, 22:30; within reach the case is open, and a segment there
+grows only as far as the transaction's own new keys take it);
+after its 1000th put the segment tree below 120 has depth 5, so a path
+from the space root has 6 links, 7 to a value. The reads are right: the
+reader's fuel is per segment too. The coordinator's decision (19:20):
+the premise is per segment, latest's `SegFits N t (p.fuel - 1) r`
+(`GetFuel.lean`): every path inside one segment tree is shorter than
+the fuel. Checked as a Bool at every operation of grow-and-shrink
+transactions (M = 4 and 8, merges off and on, two and three segments)
+and of random runs: it held at every state of every transaction that
+ended without error; the one state without it (M = 4, a 7th put making
+depth 6 = fuel) belongs to a transaction whose next descent there throws
+(`12-tree-model/segfit-check.lean.txt`; `Fit.lean`, the whole-path
+form, was not copied). It is not kept by every
+single rule (that put does not throw), only along a transaction that
+succeeds; a rule can keep the bound one level higher, `SegFits N t
+p.fuel r`, as a descent through a tree that deep throws (not yet
+proved).
+
+The design: one induction over the writer's `appendKlongs (d + 1) x ins` instead of a rule per
+depth. Its statement: after it, the writer's state reads as the
+state before with x replaced by x with ins put (the node of the room
+case), every key alike; the nodes it made have ids from the next one
+on; the nodes it split are reached no more; nothing else changes. The
+room case is direct (`writerWP_appendKlongs_room`, `_room2`). A split at
+x, whose parent q gets the klongs to x's new nodes, composes the step at
+x with the hypothesis at q: the time split by renaming
+(`renSim_timeSplitGen`, `getFromR_ren`), the space split by compare
+value (`getEqR_split` for a leaf, `getEqR_split_inner` with
+`halves_inner_searchLte_ins` for an inner node, `getFromR_split`), the
+time split in place by `getFromR_congr_node`. The leaf's put or delete
+is the step at the leaf (`getFromR_leaf_change_seg`). The rules above
+are its cases of depth one and two; what the induction adds is the set
+of nodes reached after a cascade (the `hreach1` of the depth-two rules,
+over every level), and TREE and the order at every node of the path,
+which the writer's invariant must give (putinv's `RangeOrder`).
 
 (T) for 27: `tracecheck`'s CUT-live checks it at every cut of a trace
 (024-07), and C-T6 checks what it follows from, `NonEmptyOK` and

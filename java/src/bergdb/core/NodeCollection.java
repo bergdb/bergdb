@@ -781,7 +781,13 @@ public class NodeCollection implements PointerFollower {
      * resolves reads the header at its position, as every pointer did before 005-57.</p>
      *
      * <p>With 'check' (DbStarter, when assertions are on), each pointer is also resolved by
-     * node id, reading the header, and a different result throws an AssertionError.</p>
+     * node id, reading the header, and a different result throws an AssertionError, or a
+     * StreamFormatException where none by position and one by node id is a damaged prevPos
+     * (checkLinkById).</p>
+     *
+     * @throws StreamFormatException  If a pointer names a node of another type than its own
+     *      (checkPointeeType; with or without 'check'), or, with 'check', for a damaged
+     *      prevPos (checkLinkById).
      */
     public void linkToCanonical(Node node, Map<Long, Long> ids, Map<Long, Handle> byPos,
             boolean check) {

@@ -1,0 +1,236 @@
+/-
+DeadAllOK, checked on runs (bergdb 024-12, the top theorem's premise `hD`).
+Not part of the Lean project; run it from lean/:
+
+  lake env lean ../items/024-release-2026-5/12-tree-model/dead-all-check.lean.txt
+
+With the merges on and option 2's theta as Java's (record format 7's
+thresholds, `Params.withMerges`, and theta 7 M / 30, at least 2,
+`Params.withTheta`), after every transaction of every run within reach, every
+key node of P (reached or not) holds at most theta dead klongs (`DeadAllOK`,
+`KNode.deadCount`: klongs deleted by the node's last bitmap or shadowed by a
+later klong of the same compare value). Each run end notes dead:ok or
+dead:FAIL; the summary also gives the key nodes checked, the largest dead
+count seen and the key nodes at theta. The same runs also check `LiveCounts`
+at every state between operations with theta on (lc:ok or lc:FAIL), and the
+per-operation form `WDeadOK` (`DeadRun.lean`): every key node the writer's state
+reads holds at most theta dead klongs (wdead:ok or wdead:FAIL).
+-/
+import SIS.Tree.MergeProofBundle
+
+set_option autoImplicit false
+set_option maxRecDepth 100000
+
+namespace SIS.Tree
+
+open SIS SIS.Check
+
+/-- The nodes reached with the walk's flags (`FReach`), breadth first. -/
+def lcNodes (N : NodeId → Option KNode) (t : Time) :
+    Nat → List (NodeId × Bool × Bool) → List (NodeId × Bool × Bool) → List (NodeId × Bool × Bool)
+  | 0, _, acc => acc
+  | _ + 1, [], acc => acc
+  | f + 1, q :: todo, acc =>
+    if acc.contains q then lcNodes N t f todo acc
+    else
+      match N q.1 with
+      | none => lcNodes N t f todo (q :: acc)
+      | some n => lcNodes N t f (todo ++ (n.liveAt t).map (fun e =>
+          if n.leaf then (e.2, true, false) else (e.2, false, q.2.2))) (q :: acc)
+
+def lcB (p : Params) (N : NodeId → Option KNode) (t : Time) (r : NodeId) : Bool :=
+  (lcNodes N t 100000 [(r, true, true)] []).all (fun q =>
+    match N q.1 with
+    | none => true
+    | some n =>
+      let len := (n.liveAt t).length
+      (!(n.liveAt t).isEmpty || (q.2.1 && q.2.2 && n.leaf)) &&
+      (n.leaf || !q.2.1 || decide (2 ≤ len)) &&
+      (!p.merges || q.2.1 || decide (p.mergeBelow ≤ len)))
+
+def withinB (p : Params) (all : List Tx) : Bool :=
+  all.all (fun t => t.sorted && t.wf) &&
+  (List.range all.length).all (fun j =>
+    match all[j]? with
+    | none => false
+    | some tj => (treeRun p (all.take j)).all (fun q => decide (q.1 < tj.base)) &&
+        isOk (exec? p tj (j + 1) (view (treeSpec p) (treeRun p (all.take j)) j)))
+
+/-- One note per state between operations: lc:ok or lc:FAIL, and the number of
+nodes reached. -/
+def runLc (p : Params) (all : List Tx) : List String :=
+  (if withinB p all then [] else ["NOT-WITHIN"]) ++
+  (List.range all.length).foldl (fun acc j =>
+    match all[j]? with
+    | none => acc
+    | some tx =>
+      let ts := all.take j
+      let v := view (treeSpec p) (treeRun p ts) ts.length
+      match lastTop v with
+      | none => acc ++ ["notop"]
+      | some z =>
+        match topOf p (ctxOf p ts).view z with
+        | .error _ => acc ++ ["toperr"]
+        | .ok top =>
+          acc ++ (List.range (tx.ops.length + 1)).map (fun k =>
+            match ((tx.ops.take k).mapM putKv) (ctxOf p ts) (wInit tx top) with
+            | .ok (_, w) =>
+              if lcB p (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey
+              then "lc:ok" else "lc:FAIL"
+            | .error e => "ERR " ++ e)) []
+
+def summ (l : List String) : String :=
+  let cnt (s : String) := (l.filter (· == s)).length
+  s!"states {l.length} ok {cnt "lc:ok"} FAIL {cnt "lc:FAIL"} other {(l.filter (fun s => s.startsWith "ERR" || s.startsWith "NOT" || s.startsWith "not" || s.startsWith "toperr")).take 3}"
+
+def putsAB (as bs : List Nat) : List Op := (as.flatMap (fun a => bs.map (fun b => .put [a, b] (a * 1000 + b + 1))))
+def dels (as bs : List Nat) : List Op := (as.flatMap (fun a => bs.map (fun b => .del [a, b])))
+def A (n : Nat) : List Nat := (List.range n).map (fun i => 64 * i + 56)
+def Bs (n : Nat) : List Nat := (List.range n).map (fun j => 64 * j + 8)
+def mkRun (na nb k1 keep : Nat) : List Tx :=
+  let a0 := 64 * (na / 2) + 56
+  [{base := 1000, ops := putsAB (A na) (Bs 2)},
+   {base := 3000, ops := putsAB [a0] ((Bs nb).drop 2)},
+   {base := 5000, ops := dels [a0] ((Bs nb).take k1)},
+   {base := 7000, ops := dels [a0] (((Bs nb).drop k1).take (nb - k1 - keep))}]
+def mkRun1 (n k : Nat) : List Tx :=
+  [{base := 1000, ops := (List.range n).map (fun j => .put [64*j+8] (j+1))},
+   {base := 3000, ops := (List.range k).map (fun j => .del [64*(2*j)+8])},
+   {base := 5000, ops := (List.range n).map (fun j => .del [64*j+8])}]
+def family : List (List Tx) :=
+  [1, 3, 7].flatMap (fun na => [12, 20, 30].flatMap (fun nb =>
+    [nb / 2, nb - 8, nb - 6].flatMap (fun k1 => [1, 2].map (fun keep => mkRun na nb k1 keep))))
+def family1 : List (List Tx) :=
+  [10, 25, 40].flatMap (fun n => [3, 8, 15].map (fun k => mkRun1 n k))
+
+/-- `DeadAllOK` of P as a Bool, with the key nodes checked, the largest dead
+count and the key nodes at theta. -/
+def deadB (p : Params) (P : Struct BVal) : Bool × Nat × Nat × Nat :=
+  P.foldl (fun (acc : Bool × Nat × Nat × Nat) q =>
+    match keyNodeAt p P q.1 with
+    | none => acc
+    | some n =>
+      let d := n.deadCount
+      (acc.1 && (p.theta == 0 || decide (d ≤ p.theta)), acc.2.1 + 1, max acc.2.2.1 d,
+        acc.2.2.2 + (if d == p.theta then 1 else 0))) (true, 0, 0, 0)
+
+/-- One note per run end (after each transaction): dead:ok or dead:FAIL. -/
+def runDead (p : Params) (all : List Tx) : List (String × Nat × Nat × Nat) :=
+  (if withinB p all then [] else [("NOT-WITHIN", 0, 0, 0)]) ++
+  (List.range (all.length + 1)).map (fun j =>
+    let r := deadB p (treeRun p (all.take j))
+    (if r.1 then "dead:ok" else "dead:FAIL", r.2.1, r.2.2.1, r.2.2.2))
+
+def summD (l : List (String × Nat × Nat × Nat)) : String :=
+  let cnt (s : String) := (l.filter (·.1 == s)).length
+  s!"run ends {l.length} ok {cnt "dead:ok"} FAIL {cnt "dead:FAIL"} not-within {cnt "NOT-WITHIN"} key nodes {(l.map (·.2.1)).sum} max dead {(l.map (·.2.2.1)).foldl max 0} at theta {(l.map (·.2.2.2)).sum}"
+
+/-- `WDeadOK` of a writer's state as a Bool: every key node it reads, from the
+overlay or from P, holds at most theta dead klongs. -/
+def wDeadB (p : Params) (P : Struct BVal) (w : W) : Bool :=
+  p.theta == 0 ||
+  ((w.nodes.map (·.1)) ++ (P.map (·.1))).all (fun x =>
+    match wNode p (viewOf P) w x with
+    | some n => decide (n.deadCount ≤ p.theta)
+    | none => true)
+
+/-- One note per state between operations: wdead:ok or wdead:FAIL. -/
+def runWDead (p : Params) (all : List Tx) : List String :=
+  (List.range all.length).foldl (fun acc j =>
+    match all[j]? with
+    | none => acc
+    | some tx =>
+      let ts := all.take j
+      let v := view (treeSpec p) (treeRun p ts) ts.length
+      match lastTop v with
+      | none => acc ++ ["notop"]
+      | some z =>
+        match topOf p (ctxOf p ts).view z with
+        | .error _ => acc ++ ["toperr"]
+        | .ok top =>
+          acc ++ (List.range (tx.ops.length + 1)).map (fun k =>
+            match ((tx.ops.take k).mapM putKv) (ctxOf p ts) (wInit tx top) with
+            | .ok (_, w) => if wDeadB p (treeRun p ts) w then "wdead:ok" else "wdead:FAIL"
+            | .error e => "ERR " ++ e)) []
+
+def summW (l : List String) : String :=
+  let cnt (s : String) := (l.filter (· == s)).length
+  s!"states {l.length} ok {cnt "wdead:ok"} FAIL {cnt "wdead:FAIL"} other {(l.filter (fun s => !(s == "wdead:ok" || s == "wdead:FAIL"))).take 3}"
+
+/-- Overwrites: n keys in one segment, overwritten r times over several
+transactions, some deleted and put back; each transaction's operations in key
+order, one per key. -/
+def mkTx (b : Nat) (ops : List Op) : Tx := {base := b, ops := ops}
+def keysN (n : Nat) : List (List Nat) := (List.range n).map (fun j => [64 * j + 8])
+def roundOps (ks : List (List Nat)) (f : Nat → Option Bool) (v : Nat) : List Op :=
+  (ks.zipIdx.filterMap (fun (key, j) => match f j with
+    | some true => some (.put key v)
+    | some false => some (.del key)
+    | none => none))
+def mkOver (n r k : Nat) : List Tx :=
+  let ks := keysN n
+  [mkTx 1000 (roundOps ks (fun _ => some true) 1)] ++
+  (List.range r).map (fun i => mkTx (3000 + 2000 * i) (roundOps ks (fun j =>
+    if n - k ≤ j ∧ i % 2 = 0 then some false
+    else if j < n - i % 3 then some true else none) (i + 2))) ++
+  [mkTx (3000 + 2000 * r) (roundOps ks (fun j => if j < k then some false else none) 0)]
+/-- Overwrites in two segments. -/
+def mkOver2 (na nb r : Nat) : List Tx :=
+  let ks := (A na).flatMap (fun a => (Bs nb).map (fun b => [a, b]))
+  let m := ks.length
+  [mkTx 1000 (roundOps ks (fun _ => some true) 1)] ++
+  (List.range r).map (fun i => mkTx (5000 + 4000 * i) (roundOps ks (fun j =>
+    if m / 3 ≤ j ∧ j < m / 3 + i + 1 then some false
+    else if i ≤ j ∧ j < i + m / 2 then some true else none) (i + 2)))
+def familyO : List (List Tx) :=
+  [4, 7, 12, 20].flatMap (fun n => [3, 6].flatMap (fun r => [1, 3].map (fun k => mkOver n r k)))
+def familyO2 : List (List Tx) :=
+  [2, 3].flatMap (fun na => [4, 9].flatMap (fun nb => [3, 5].map (fun r => mkOver2 na nb r)))
+/-- Pseudo-random transactions: keys of one or two segments from a pool, a put
+or a delete each, in key order, one operation per key. -/
+def lcg (x : Nat) : Nat := (x * 1103515245 + 12345) % 2147483648
+def poolKey (i : Nat) : List Nat :=
+  if i % 3 == 0 then [64 * (i % 37) + 8] else [64 * (i % 5) + 56, 64 * (i % 23) + 8]
+def rndTx (seed b nops pool : Nat) : Tx :=
+  let idx := (List.range nops).map (fun j => (lcg (seed * 7919 + j)) % pool)
+  let keys := (idx.map poolKey).mergeSort (fun a b => decide (a ≤ b))
+  let keys := keys.eraseDups
+  mkTx b (keys.zipIdx.map (fun (k, j) =>
+    if (lcg (seed * 104729 + j)) % 3 == 0 then .del k else .put k (seed * 1000 + j + 1)))
+def rndRun (seed ntx nops pool : Nat) : List Tx :=
+  (List.range ntx).map (fun i => rndTx (seed * 31 + i) (1000 + 4000 * i) nops pool)
+def familyR : List (List Tx) :=
+  [1, 2, 3, 4, 5, 6].flatMap (fun seed => [(8, 12, 40), (6, 25, 60), (10, 8, 30)].map
+    (fun (ntx, nops, pool) => rndRun seed ntx nops pool))
+def dP8 : Params := ({M := 8, G := 1, H := 2} : Params).withMerges.withTheta
+def dP10 : Params := ({M := 10, G := 2, H := 2} : Params).withMerges.withTheta
+def dP14 : Params := ({M := 14, G := 2, H := 3} : Params).withMerges.withTheta
+def dP30 : Params := ({M := 30, G := 1, H := 2} : Params).withMerges.withTheta
+#eval (dP8.theta, dP10.theta, dP14.theta, dP30.theta, dP8, dP30)
+#eval summD (familyO.flatMap (fun r => runDead dP8 r))
+#eval summD (familyO.flatMap (fun r => runDead dP10 r))
+#eval summD (familyO.flatMap (fun r => runDead dP14 r))
+#eval summD (familyO.flatMap (fun r => runDead dP30 r))
+#eval summD (familyO2.flatMap (fun r => runDead dP8 r))
+#eval summD (familyO2.flatMap (fun r => runDead dP10 r))
+#eval summD (family1.flatMap (fun r => runDead dP8 r))
+#eval summD (family.flatMap (fun r => runDead dP8 r))
+#eval summD (family.flatMap (fun r => runDead dP10 r))
+#eval summD (family1.flatMap (fun r => runDead dP14 r))
+#eval summ (familyO.flatMap (fun r => runLc dP8 r))
+#eval summ (familyO2.flatMap (fun r => runLc dP8 r))
+#eval summ (family.flatMap (fun r => runLc dP8 r))
+#eval summ (family1.flatMap (fun r => runLc dP14 r))
+#eval summW (familyO.flatMap (fun r => runWDead dP8 r))
+#eval summW (familyO.flatMap (fun r => runWDead dP14 r))
+#eval summW (familyO.flatMap (fun r => runWDead dP30 r))
+#eval summW (familyO2.flatMap (fun r => runWDead dP8 r))
+#eval summW (family.flatMap (fun r => runWDead dP8 r))
+#eval summW (family1.flatMap (fun r => runWDead dP14 r))
+#eval summD (familyR.flatMap (fun r => runDead dP8 r))
+#eval summD (familyR.flatMap (fun r => runDead dP10 r))
+#eval summW (familyR.flatMap (fun r => runWDead dP8 r))
+#eval summW (familyR.flatMap (fun r => runWDead dP10 r))
+#eval summ (familyR.flatMap (fun r => runLc dP8 r))
+#eval summ (familyR.flatMap (fun r => runLc dP10 r))
+end SIS.Tree

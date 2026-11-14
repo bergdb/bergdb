@@ -101,9 +101,9 @@ other damage is refused as far as the checks see it.
             format byte is 7 (else a VersioningStreamException)
         the first R must be committed; skip R if not committed
         parse R whole
-        refuse unless 0 <= R.startupPos <= R's position, a multiple
-            of 8, and 0 or at least 128     (015-75; equal to R's own
-            position is taken, which the take never writes; 028-09)
+        refuse unless 0 <= R.startupPos < R's position, a multiple
+            of 8, and 0 or at least 128     (015-75; R's own position,
+            which the take never writes, since 028-09)
         s := R.startupPos;  last := R's position
     the meta block in memory: lastTrans := last;  sd := its sd, with
         no range check (027-03, G9)
@@ -116,10 +116,20 @@ block written after it: `setStartupDistance` (clamped to 400,000 bytes
 to 10^9) sets it in the meta block in memory and writes a record of at
 least MD bytes, with a meta block inside. A crash after that block and
 before the record's end aborts the record, and the start takes the new
-sd all the same (028-08). `Db.start(StartParams)`, public, with other
-params than `StartParams.NULL` (only `NULL` is passed in `java/`), takes
-the caller's s and sd as they are, and skips the walk above with its
-checks, `MetaBlock.checkFormat` and the new lastTrans (028-10).
+sd all the same; a crash inside the block, the old one. Not a bug
+(028-08): the setting is not data, both values are valid, and a crash
+just after the record's end gives the new one too
+(`testCrashInsideSetStartupDistance`). Until 028-09, a startupPos equal
+to its own record's position was taken: a section of R(k) alone, whose
+transaction is not rerun, so every key that no index node of R(k) held
+was gone, and the next commit wrote that s again
+(`testOwnPositionStartupPosRefused`). `Db.start(StartParams)`, public,
+with other params than `StartParams.NULL` (only `NULL` is passed in
+`java/`), takes the caller's s and sd as they are, and skips the walk
+above with its checks, `MetaBlock.checkFormat` and the new lastTrans: an s after the
+stream's starts without the keys before it, and the next commit keeps it
+so, while an sd is for the run only (`testStartParamsTakenUnchecked`); a
+bug by R5, its fix Frans's choice (028-10).
 
 Then the section is validated (005-75), with or without `-ea`: record
 positions at least 128 and strictly increasing; times from 0 to 2^56 − 1
@@ -249,9 +259,9 @@ S / sd, S the section's length, with a dither, so a record takes the
 oldest transaction now and then also while S is below sd: the startup
 pos moves and index nodes are written, rarely while the stream is small,
 and a start replays nearly the whole stream, not all of it. Argued from
-the code. `levels.md`, section 4 (a snapshot), and `level1.sh`'s header
-still say "the startup pos never moves" and "startup always replays the
-whole stream" (section 9, the list).
+the code. `levels.md`, section 4 (a snapshot), still says "the startup
+pos never moves"; `level1.sh`'s header said "startup always replays the
+whole stream" until 028-11.
 
 
 ## 2. State
@@ -421,9 +431,11 @@ cycle check (027-03, 14.2).
 
 ## 7. Tests
 
-* **Gated by `before-commit.sh`**: `DbTesterRestart` (40, 6 of them f;
+* **Gated by `before-commit.sh`**: `DbTesterRestart` (43, 6 of them f;
   the refusals of corrupt times, startupPos, got-dirty ids, an older
-  topPos, a meta block's lastTrans, another or no node size);
+  topPos, a meta block's lastTrans, another or no node size; a crash
+  inside `setStartupDistance`, a startupPos at its own record, and
+  `StartParams` as taken today, 028-08 to 028-10);
   `DbStarter` (7); `RecoverableStream` (37: crashes in a header, a record
   and a meta block, the fill, an incomplete creation, refusals that
   write nothing); `MetaBlock` (4); `NodeCollection`'s `testFollowRuleR`
@@ -470,19 +482,24 @@ it.
 
 * 028-08: a crash inside `setStartupDistance`'s record, after the meta
   block in it, starts with the new sd though the call never returned
-  (1.4). Registered, to evaluate.
-* 028-09: `checkStartupPos` takes a startupPos equal to its own record's
-  position (1.4). Registered, to evaluate.
+  (1.4). Evaluated: not a bug (2026-11-13).
+* 028-09: `checkStartupPos` took a startupPos equal to its own record's
+  position (1.4). A bug, fixed (2026-11-13): refused.
 * 028-10: the public `Db.start(StartParams)` takes a caller's s and sd
-  unchecked (1.4). Registered, to evaluate.
+  unchecked (1.4). Evaluated: a bug by R5; the fix, an API choice, is
+  Frans's (2026-11-13).
 * 028-11: 027-03:415, :1116, :1234: the creation as 264 bytes; it is 272
-  (`Db.CREATION_LENGTH`, since 024-25). Doc.
+  (`Db.CREATION_LENGTH`, since 024-25). Fixed (2026-11-13).
 * 028-11: `java/stress/level1.sh`:2–3, :29–30: "startup always replays the whole
-  stream"; since 005-49 the startup pos moves also below sd (1.11). Doc.
+  stream"; since 005-49 the startup pos moves also below sd (1.11). Fixed
+  (2026-11-13).
 * 028-11: 010-01, 01-principles.md:357, P5: T3 "not yet" for BergDB's own take;
-  `T3_take` proves it since 007-08. Doc (Frans edits 010-01).
+  `T3_take` proves it since 007-08. Frans edits 010-01: the sentence is
+  proposed in 028-11.
 * 028-11: 019-45:56: "the maps are garbage when the start returns"; Rule R's
-  copy of newById stays (section 2). Doc; an item is history, a note.
+  copy of newById stays (section 2). A dated note in 019-45 (2026-11-13).
+* 028-11: `NodeCollection.linkToCanonical`'s Javadoc named only an
+  `AssertionError` (comment 10). Fixed (2026-11-13).
 
 
 ## 10. Evidence
@@ -525,3 +542,8 @@ a start uses (part 6 owns them).
 
 2026-11-13. The comments, items 1 to 9, fixed in Java (7a37a682); item 10
 is 028-11.
+
+2026-11-13. 028-08 to 028-11 by an agent of coord-1113: 1.4 says what
+the three tests show (028-08 not a bug; 028-09 fixed, a startupPos at its
+own record refused; 028-10 a bug by R5, for Frans), section 7 their
+tests, section 9 the outcomes, 1.11 `level1.sh`'s corrected header.

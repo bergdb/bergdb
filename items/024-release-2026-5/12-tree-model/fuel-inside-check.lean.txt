@@ -1,0 +1,371 @@
+/-
+The fuel inside an operation, checked on runs (bergdb 024-12, evidence for the
+top theorem's premises hFits, hFit, hMS and hCo, the delete with the merges).
+Not part of the Lean project; run it from lean/:
+
+  lake env lean ../items/024-release-2026-5/12-tree-model/fuel-inside-check.lean.txt
+
+It copies the writer's delete path (putinv's copy in up-unlink-check.lean.txt)
+and notes, inside the delete, whether the writer's state fits the fuel
+(`SegFits N t p.fuel r`: every node reached from the space root has a segment
+depth of at most p.fuel; ":strict" if also at most p.fuel - 1, the bound
+between operations): after the leaf's bitmap (fit:leaf, the full leaf's split
+of `DelFullFitsOK` among them), after each merge (fit:merge, `MergeStepOKF3`'s
+fuel part), after each step of root collapse (fit:collapse, `CollapseStepOKF4`'s
+fuel part), and after the upward delete's stop node's step (fit:stop at a
+segment leaf, fit:inner and fit:leb at an inner node,
+`UpCascFitsOK`, and `UpLebFitsOK` when the stop node's LE-b splits it). Runs
+outside reach are left out (putinv's families of new segments emptied in one
+transaction, and of pseudo-random deletes, are; they are not run here).
+
+Result (2026-11-14): 11,057 states inside operations, of runs within reach with
+the merges on (putinv's parameters uP1 and uP2, and Java's theta at node sizes 8
+and 14): 6453 after a leaf's bitmap, 3032 after a merge, 635 after a step of
+root collapse and 937 after the stop node's step. Every one of these 937 stop
+nodes was a segment leaf: the upward delete never stopped at an inner node
+(`inner`, its bitmap, and `leb`, LE-b, counted apart: 0 and 0). None failed,
+and every one fits p.fuel - 1, the bound between operations, too.
+
+It also checks the dead klongs' bound (`WDeadN`, the conjunct that `QDead` of
+(4) needs inside the delete's steps) at every node of the overlay that the
+writer reads, where theta is not 0: at the 4069 states with Java's theta, no
+node above theta, and at 2702 of them a node at theta.
+-/
+import SIS.Tree.MergeProofBundle
+
+set_option autoImplicit false
+set_option maxRecDepth 100000
+
+namespace SIS.Tree
+
+open SIS SIS.Check
+
+def linksB (N : NodeId → Option KNode) (t : Time) (u : NodeId) : List (Nat × NodeId) :=
+  match N u with
+  | some n => n.liveAt t
+  | none => []
+
+def reachB (N : NodeId → Option KNode) (t : Time) : Nat → List NodeId → List NodeId → List NodeId
+  | 0, _, acc => acc
+  | _ + 1, [], acc => acc
+  | f + 1, u :: todo, acc =>
+    if acc.contains u then reachB N t f todo acc
+    else reachB N t f (todo ++ (linksB N t u).map (·.2)) (u :: acc)
+
+def treeOKB (N : NodeId → Option KNode) (t : Time) (r : NodeId) : Bool :=
+  let R := reachB N t 100000 [r] []
+  (N r).isSome &&
+  R.all (fun u => (linksB N t u).all (fun q => q.2 != r)) &&
+  R.all (fun y => y == r ||
+    ((R.map (fun u => ((linksB N t u).filter (fun q => q.2 == y)).length)).foldl (· + ·) 0) == 1)
+
+/-- The check at a replaceRoot at a segment root x: the tree with x's previous
+version (what `unlink x` leaves) is a tree, its links below the next id. -/
+def chkNote (c : Ctx) (base : View BVal) (w : W) (x : NodeId) (n : KNode) (only depth : Nat) : String :=
+  let N := wNode c.p base w
+  let leaf := ((w.path[depth - 1]?).map (·.2)).getD 0
+  let k := ((w.path[depth]?).bind (·.1)).getD 0
+  let child := (n.ptr? only).getD 0
+  let full := match N leaf with
+    | some ln => decide (ln.size + 1 + 1 > c.p.M) || deadOver c.p (ln.add c.i (.key k child))
+    | none => false
+  let unl := n.lastTime == some c.i
+  let m := if unl then n.toPrev (c.i - 1) else n
+  let N' := updN N x m
+  let ok := treeOKB N' c.i w.top.rootKey && (m.liveAt c.i).all (fun q => decide (q.2 < w.next))
+  "chk:" ++ (if ok then "ok" else "FAIL") ++ (if full then ":full" else ":room") ++
+    (if unl then ":unl" else ":same")
+
+def nodeRangeB (n : KNode) (t lo : Nat) (hi : Option Nat) : Bool :=
+  (n.liveAt t).all (fun q => (if n.leaf then decide (lo ≤ q.1) else (q.1 == 0 || decide (lo < q.1))) &&
+    (match hi with | none => true | some h => decide (q.1 < h)))
+
+def rangeWalkB (N : NodeId → Option KNode) (t : Time) : Nat → List (NodeId × Nat × Option Nat) → Bool
+  | 0, _ => false
+  | _ + 1, [] => true
+  | f + 1, (x, lo, hi) :: todo =>
+    match N x with
+    | none => rangeWalkB N t f todo
+    | some n =>
+      let kids : List (NodeId × Nat × Option Nat) :=
+        if n.leaf then (n.liveAt t).map (fun q => (q.2, 0, none))
+        else (childBounds (n.liveAt t) hi).map (fun e => (e.1.2, if e.1.1 == 0 then lo else e.1.1, e.2))
+      nodeRangeB n t lo hi && rangeWalkB N t f (todo ++ kids)
+
+/-- Segment depth of x: 0 at a segment leaf or no node; an inner node one more
+than its live children's most (cost's segfit-check). -/
+partial def segDepthF (N : NodeId → Option KNode) (t : Time) (x : NodeId) : Nat :=
+  match N x with
+  | none => 0
+  | some n => if n.leaf then 0 else (n.liveAt t).foldl (fun m (_, z) => max m (1 + segDepthF N t z)) 0
+
+/-- The fuel check at a state inside an operation. -/
+def fitNote (c : Ctx) (base : View BVal) (w : W) (site : String) : String :=
+  let N := wNode c.p base w
+  let R := reachB N c.i 100000 [w.top.rootKey] []
+  let d := R.foldl (fun m x => max m (segDepthF N c.i x)) 0
+  -- the dead klongs' bound (`WDeadN`) at every node of the overlay the writer reads
+  let dm := w.nodes.foldl (fun m (x, _) => match N x with
+    | some n => max m n.deadCount
+    | none => m) 0
+  "fit:" ++ site ++ ":" ++ (if d ≤ c.p.fuel then "ok" else "FAIL") ++
+    (if d + 1 ≤ c.p.fuel then ":strict" else ":loose") ++
+    (if c.p.theta == 0 then "" else if dm ≤ c.p.theta then
+      (if dm == c.p.theta then ":dead-ok:at" else ":dead-ok") else ":DEAD-OVER")
+
+/-- The check at the upward loop's end state w2: the writer's tree there is a
+tree and every link of a reached node or of a chain node names an id below the
+next id (UpUnlinkOK). -/
+def upChkNote (c : Ctx) (base : View BVal) (w : W) (chain : List NodeId) (unlTT tbs : Bool)
+    (stop : Nat) : String :=
+  let N := wNode c.p base w
+  let R := reachB N c.i 100000 [w.top.rootKey] []
+  let ok := treeOKB N c.i w.top.rootKey &&
+    (R ++ chain).all (fun u => (linksB N c.i u).all (fun q => decide (q.2 < w.next)))
+  let ro := rangeWalkB N c.i 100000 [(w.top.rootKey, 0, none)]
+  let ut := R.all (fun u => !w.taken.contains u)
+  let wf := R.all (fun u => match N u with
+    | some n => klongsWf n.ks && n.ks.all (fun k => match k with | .time s => decide (s ≤ c.i) | _ => true)
+    | none => true)
+  "uchk:" ++ (if ok then "ok" else "FAIL") ++ (if ro then ":ro" else ":RO-FAIL") ++
+    (if ut then ":ut" else ":UT-FAIL") ++ (if wf then ":wf" else ":WF-FAIL") ++ (if unlTT then ":unl" else ":same") ++
+    (if tbs then ":tb" else ":notb") ++ (if stop == 0 then ":root" else ":below")
+
+def collapseRootC (base : View BVal) (key : Key) (segment : Nat) : Nat → M Unit
+  | 0 => throw "bounds: root collapse went below the height bound"
+  | fuel + 1 => do
+    let c ← read
+    let root ← descendToSegmentRoot key segment
+    let n ← getNode root
+    if n.leaf then return
+    let made := n.firstTime == some c.i
+    if made && (← replacedBy root).isNone then return
+    match n.onlyLiveKlong with
+    | none => return
+    | some only =>
+      if n.cv? only != some 0 then
+        throw s!"Bug: root collapse at {c.i}: the one live klong of root {root} is not the empty key"
+      let depth := (← pathSize) - 1
+      if made then takeBackRoot root depth only else
+        replaceRoot root depth only
+      note (fitNote c base (← getThe W) "collapse")
+      collapseRootC base key segment fuel
+
+
+def mergeUpC (base : View BVal) (key : Key) (g : Nat) : Nat → Nat → Bool → M Bool
+  | 0, _, _ => throw "bounds: the merges went above the height bound"
+  | f + 1, h, merged => do
+    let c ← read
+    let d ← descendToHeight key g h
+    if d == 0 then return merged
+    let x ← pathNode d
+    let q ← pathNode (d - 1)
+    if (← getNode q).leaf then return merged
+    if (← getNode x).cnt ≥ c.p.mergeBelow then return merged
+    let r ← merge x d
+    note (fitNote c base (← getThe W) "merge")
+    if r == 2 then return true
+    mergeUpC base key g f (h + 1) true
+
+def afterDeleteC (base : View BVal) (key : Key) (g h : Nat) : M Unit := do
+  let c ← read
+  if c.p.merges then
+    if ← mergeUpC base key g c.p.fuel h false then
+      collapseRootC base key g c.p.fuel
+
+
+def deleteUpwardC (base : View BVal) (leaf : NodeId) (depth : Nat) (cv : Nat) (key : Key) : M Bool := do
+  let c ← read
+  let tt := c.i
+  let n ← getNode leaf
+  let leafDel := n.lastBitmap
+  let leafUnion := bitsUnion leafDel (n.bitsOf cv)
+  if leafUnion == leafDel then return true
+  if !n.allKeysIn leafUnion then
+    let (g, h) ← ghOf leaf
+    let _ ← appendDeleteKlong leaf depth cv
+    note (fitNote c base (← getThe W) "leaf")
+    afterDeleteC base key g h
+    return false
+  -- The leaf is empty after the delete: UP.
+  let stop ← climb depth
+  if stop == depth then
+    note "up.root-kept-empty"
+    let _ ← appendDeleteKlong leaf depth cv
+    return false
+  note "up.climb"
+  -- The segment of the stop node's tree, from the path before it changes.
+  let path := (← getThe W).path
+  let segment ← (path.take stop).foldlM (fun s (e : Option Nat × NodeId) => do
+    pure (if (← getNode e.2).leaf then s + 1 else s)) 0
+  -- the chain's fates before the loop
+  let wpre ← getThe W
+  let chain := (List.range (depth - stop)).map (fun j => ((wpre.path[depth - j]?).map (·.2)).getD 0)
+  let unlTT := chain.any (fun x => match wNode c.p base wpre x with
+    | some xn => xn.firstTime != some tt && xn.lastTime == some tt
+    | none => false)
+  let tbs := chain.any (fun x => match wNode c.p base wpre x with
+    | some xn => xn.firstTime == some tt
+    | none => false)
+  -- The nodes below the stop node, lowest first: taken back, or unlinked.
+  for j in List.range (depth - stop) do
+    let k := depth - j
+    let x ← pathNode k
+    let xn ← getNode x
+    if xn.firstTime == some tt then takeBack x (← pathNode (k - 1)) (← klongAt k)
+    else
+      note "up.unlink"
+      unlink x
+  let w2 ← getThe W
+  note (upChkNote c base w2 chain unlTT tbs stop)
+  let s ← pathNode stop
+  let cs ← klongAt (stop + 1)
+  let sn ← getNode s
+  let (gs, hs) ← ghOf s
+  if sn.leaf then
+    note "up.stop-at-segment-leaf"
+    let _ ← appendDeleteKlong s stop cs
+    note (fitNote c base (← getThe W) "stop")
+    afterDeleteC base key gs hs
+    return false
+  if sn.smallestLive != some 0 then
+    throw s!"Bug: the upward unlink at {tt}: inner node {s} has no live klong of the empty key"
+  if cs != 0 then
+    let _ ← appendDeleteKlong s stop cs
+  else
+    emptyKeyNext s stop
+  note (fitNote c base (← getThe W) (if cs != 0 then "inner" else "leb"))
+  if c.p.merges then
+    let _ ← mergeUpC base key gs c.p.fuel hs false
+  collapseRootC base key segment (c.p.fuel)
+  return false
+
+
+def setValueC (base : View BVal) (segRoot : NodeId) (cv : Nat) (key : Key) (value : Option Nat) : M Bool := do
+  let c ← read
+  let leaf ← descendLte cv c.p.fuel segRoot
+  match value with
+  | none =>
+    let noop ← deleteUpwardC base leaf ((← pathSize) - 1) cv key
+    if !noop then
+      let _ ← fresh
+    pure noop
+  | some h =>
+    let v ← newValue h
+    let n ← getNode leaf
+    let n' := n.add c.i (.key cv v)
+    if n.size + 1 < c.p.M && !deadOver c.p n' then putNode leaf n'
+    else appendKlongs ((← pathSize) - 1) leaf [(cv, v)]
+    pure false
+
+
+def putSegsC (base : View BVal) (key : Key) (value : Option Nat) : List Nat → NodeId → M Bool
+  | [], _ => throw "corrupt: a key without segments"
+  | [cv], segRoot => setValueC base segRoot cv key value
+  | cv :: rest, segRoot => do
+    match ← setNode segRoot cv value.isSome with
+    | none => pure true
+    | some next => putSegsC base key value rest next
+
+
+def putKvC (base : View BVal) (op : Op) : M Bool := do
+  pathClear
+  let root ← findRoot
+  match op with
+  | .put key h => putSegsC base key (some h) key root
+  | .del key => putSegsC base key none key root
+
+
+def withinB (p : Params) (all : List Tx) : Bool :=
+  all.all (fun t => t.sorted && t.wf) &&
+  (List.range all.length).all (fun j =>
+    match all[j]? with
+    | none => false
+    | some tj => (treeRun p (all.take j)).all (fun q => decide (q.1 < tj.base)) &&
+        isOk (exec? p tj (j + 1) (view (treeSpec p) (treeRun p (all.take j)) j)))
+
+def runFit (p : Params) (all : List Tx) : List String :=
+  if !withinB p all then ["NOT-WITHIN"] else
+  (List.range all.length).foldl (fun acc j =>
+    match all[j]? with
+    | none => acc
+    | some tx =>
+      let ts := all.take j
+      let v := view (treeSpec p) (treeRun p ts) ts.length
+      match lastTop v with
+      | none => acc ++ ["notop"]
+      | some z =>
+        match topOf p (ctxOf p ts).view z with
+        | .error _ => acc ++ ["toperr"]
+        | .ok top =>
+          match (tx.ops.mapM (putKvC (viewOf (treeRun p ts)))) (ctxOf p ts) (wInit tx top) with
+          | .ok (_, w) => acc ++ (w.trail.filter (fun s => s.startsWith "fit:"))
+          | .error e => acc ++ ["ERR " ++ e]) []
+
+def summF (l : List String) : String :=
+  let cnt (s : String) := (l.filter (fun x => (x.splitOn s).length > 1)).length
+  s!"checks {cnt "fit:"}: leaf {cnt "fit:leaf"} merge {cnt "fit:merge"} collapse {cnt "fit:collapse"} stop {cnt "fit:stop"} leb {cnt "fit:leb"} inner {cnt "fit:inner"}; dead checked {cnt ":dead-ok"} (one at theta {cnt ":dead-ok:at"}) over {cnt "DEAD-OVER"}; FAIL {cnt "FAIL"} loose {cnt ":loose"} (leaf {cnt "fit:leaf:ok:loose"} merge {cnt "fit:merge:ok:loose"} collapse {cnt "fit:collapse:ok:loose"} stop {cnt "fit:stop:ok:loose"}); fails {(l.filter (fun x => (x.splitOn "FAIL").length > 1)).take 3} other {(l.filter (fun s => s.startsWith "ERR" || s.startsWith "NOT" || s.startsWith "not" || s.startsWith "toperr")).take 3}"
+
+end SIS.Tree
+
+
+namespace SIS.Tree
+def uP1 : Params := {M := 8, G := 1, H := 2, mergeBelow := 2, mergeMax := 3, splitAbove := 4}
+def uP2 : Params := {M := 10, G := 2, H := 2, mergeBelow := 2, mergeMax := 4, splitAbove := 5}
+def uPutsAB (as bs : List Nat) : List Op := (as.flatMap (fun a => bs.map (fun b => .put [a, b] (a * 1000 + b + 1))))
+def uDels (as bs : List Nat) : List Op := (as.flatMap (fun a => bs.map (fun b => .del [a, b])))
+def uA (n : Nat) : List Nat := (List.range n).map (fun i => 64 * i + 56)
+def uBs (n : Nat) : List Nat := (List.range n).map (fun j => 64 * j + 8)
+-- cost's families (DelChk.lean)
+def uRun (na nb k1 keep : Nat) : List Tx :=
+  let a0 := 64 * (na / 2) + 56
+  [{base := 1000, ops := uPutsAB (uA na) (uBs 2)},
+   {base := 3000, ops := uPutsAB [a0] ((uBs nb).drop 2)},
+   {base := 5000, ops := uDels [a0] ((uBs nb).take k1)},
+   {base := 7000, ops := uDels [a0] (((uBs nb).drop k1).take (nb - k1 - keep))}]
+def uFamily : List (List Tx) :=
+  [1, 3, 7, 9].flatMap (fun na => [12, 16, 24].flatMap (fun nb =>
+    [nb / 2, nb - 9, nb - 5].flatMap (fun k1 => [0, 1, 2].map (fun keep => uRun na nb k1 keep))))
+def uRunAll (na nb : Nat) : List Tx :=
+  [{base := 1000, ops := uPutsAB (uA na) (uBs nb)},
+   {base := 5000, ops := uDels ((uA na).take (na / 2 + 1)) (uBs nb)}]
+def uFamilyAll : List (List Tx) :=
+  [2, 3, 5].flatMap (fun na => [1, 2, 3, 6, 10, 12, 16, 24].map (fun nb => uRunAll na nb))
+def uRunAll2 (na nb : Nat) : List Tx :=
+  [{base := 1000, ops := uPutsAB (uA na) (uBs nb)},
+   {base := 5000, ops := uDels (uA na) (uBs nb)}]
+-- new: puts then whole-segment deletes in one transaction (the chain's nodes have
+-- klongs of the transaction), and many segments deleted under one leaf (dead klongs)
+def uRunPD (na nb nx nd : Nat) : List Tx :=
+  [{base := 1000, ops := uPutsAB (uA na) (uBs nb)},
+   {base := 5000, ops := uPutsAB ((uA na).take nd) ((uBs (nb + nx)).drop nb) ++
+     uDels ((uA na).take nd) (uBs (nb + nx))}]
+def uFamilyPD : List (List Tx) :=
+  [3, 6, 10, 14].flatMap (fun na => [1, 2, 4, 8].flatMap (fun nb => [1, 3, 6].flatMap (fun nx =>
+    [1, na / 2, na].map (fun nd => uRunPD na nb nx nd))))
+-- three transactions: many first-segment values, then their subtrees deleted in turns
+def uRunMany (na nb : Nat) : List Tx :=
+  [{base := 1000, ops := uPutsAB (uA na) (uBs nb)},
+   {base := 5000, ops := uDels ((uA na).filter (fun a => a % 128 == 56)) (uBs nb)},
+   {base := 9000, ops := uDels ((uA na).filter (fun a => a % 128 != 56)) (uBs nb)}]
+def uFamilyMany : List (List Tx) :=
+  [8, 12, 16, 20].flatMap (fun na => [1, 2, 3, 5].map (fun nb => uRunMany na nb))
+-- new segments made and emptied in one transaction (the loop takes back)
+def uRunNew (na nb k : Nat) : List Tx :=
+  [{base := 1000, ops := uPutsAB (uA na) (uBs nb)},
+   {base := 5000, ops := uPutsAB ((uA (na + k)).drop na) (uBs nb) ++ uDels ((uA (na + k)).drop na) (uBs nb)}]
+def uFamilyNew : List (List Tx) :=
+  [2, 5, 9].flatMap (fun na => [1, 2, 4].flatMap (fun nb => [1, 2, 3].map (fun k => uRunNew na nb k)))
+#eval summF (uFamily.flatMap (fun r => runFit uP1 r))
+#eval summF (uFamilyAll.flatMap (fun r => runFit uP1 r))
+#eval summF (uFamilyAll.flatMap (fun r => runFit uP2 r))
+#eval summF (([2, 3].flatMap (fun na => [8, 12, 16, 24, 32].map (fun nb => uRunAll2 na nb))).flatMap (fun r => runFit uP1 r))
+#eval summF (uFamilyMany.flatMap (fun r => runFit uP1 r))
+#eval summF (uFamilyMany.flatMap (fun r => runFit uP2 r))
+
+def fP8 : Params := ({M := 8, G := 1, H := 2} : Params).withMerges.withTheta
+def fP14 : Params := ({M := 14, G := 2, H := 3} : Params).withMerges.withTheta
+#eval summF (uFamily.flatMap (fun r => runFit fP8 r))
+#eval summF (uFamilyAll.flatMap (fun r => runFit fP8 r))
+#eval summF (uFamilyMany.flatMap (fun r => runFit fP14 r))
+end SIS.Tree
