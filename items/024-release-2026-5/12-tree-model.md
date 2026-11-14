@@ -25,7 +25,7 @@ Cite the design rules as "024-12, D1", the stated properties as
 theorem. For Java's own parameters (record format 7's merge thresholds and option 2's theta,
 from node size 8), every run of transactions that the model accepts keeps the tree's invariants
 (TP7), and every get and every scan, at the latest time and at every earlier time, returns what
-the reference map gives (TP10, TP11). This is a Lean proof from 10 named premises, listed below,
+the reference map gives (TP10, TP11). This is a Lean proof from 9 named premises, listed below,
 and two conditions on the parameters that Java's meet. Each speaks of one operation or one step
 of the writer, mostly of the delete with the merges, of the fuel and heights inside a
 transaction, and of the bound on dead klongs. Each held on runs of the model within reach, with
@@ -36,7 +36,7 @@ with the merges off (the theorem is for `MergeParamsOK`); bounded startup's tree
 007), which this theorem does not discharge; and that Java does what the model does, which is
 checked on Java's traces (section 5), not proved.
 
-**The top theorem (2026-11-14, 03:30).** `invGetScanOK_merges_flat` (`LatestTopFlat.lean`) gives
+**The top theorem (2026-11-14, 03:35).** `invGetScanOK_merges_flat` (`LatestTopFlat.lean`) gives
 TP7 (`InvPreserved`), TP10 (`GetOK`) and TP11 (`ScanOK`), and so `LatestGetOK` and
 `LatestScanOK`, for every parameter set of `MergeParamsOK` with theta 0 or at least 2 (`hth`),
 from the named premises below. Java's own parameters are among them: record format 7's
@@ -78,7 +78,10 @@ both held at all 2529 loop ends (putinv's `delStepsOKF3_of_open14`, `delStepsJ2O
 `delStepsQdL_of_openR2`; `DelStepsHolder.lean`); putinv is proving `hG`. Since 03:30 `hHo` is
 only `UpHolderOK`'s first part (`hHL`; its times and the chain's nodes taken back are proved,
 putinv's `upHolderOK_of_live`, `DelStepsHolderLive.lean`), and `l4` is narrowed to the deletes
-that split, empty their leaf or may merge (`DelMergeRestCase`; (4a) proved, below):
+that split, empty their leaf or may merge (`DelMergeRestCase`; (4a) proved, below), `d4`
+likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' cache, proved
+(putinv's `DelStepsGh.lean`; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`,
+`delStepsQdL_of_openR4`), so `hG` left:
 
 - `d4` (`QDead`): the delete with the merges (4) keeps every key node that the writer reads at
   or below theta dead klongs (latest), now only for the deletes that are not (4a) for the dead
@@ -121,7 +124,7 @@ that split, empty their leaf or may merge (`DelMergeRestCase`; (4a) proved, belo
   at all 6420 states between operations of runs with merges and collapses
   (`12-tree-model/live-counts-check.lean.txt`), and at 8843 more with Java's theta on
   (`dead-all-check.lean.txt`).
-- The upward delete's stop node (putinv; `delStepsOKF3_of_open15`, `delStepsJ2OKF3_of_openR10`).
+- The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next
   id and the klongs there follow from the writer's books (`linksWf_of_book`,
@@ -130,9 +133,8 @@ that split, empty their leaf or may merge (`DelMergeRestCase`; (4a) proved, belo
     take-back; `UpUnlinkOK`, which adds the walk's ranges, gives it, `upUnlinkTreeOK_of`);
   - `hHL`, `UpHolderLiveRunOK`: at the upward loop's end, no node not taken back holds, now
     or before the transaction, a node taken back (putinv; the rest of cost's `UpHolderOK` is
-    proved, `upHolderOK_of_live`); with `hG` it gives the fuel after the stop node's cascade
-    (`upCascFitsOKR_of`);
-  - `hG`, `UpGhOK`: the upward loop keeps the heights' cache (putinv, being proved);
+    proved, `upHolderOK_of_live`); with the loop keeping the heights' cache (proved,
+    `DelStepsGh.lean`) it gives the fuel after the stop node's cascade (`upCascFitsOKR_of`);
   LE-b at the stop node is proved never to run with the merges on, given TP7's live counts at
   the delete's start (cost's `stopLeaf_of_liveCounts`, putinv's `lebStop_false`), so its fuel
   premise `hFitL` left (03:20). On runs too: LE-b never fired with the merges on (0 of about
@@ -223,7 +225,7 @@ Follow-ups, for a later spare-token run (latest, 03:05):
   - `hchk` (cost): TP4's holder facts and the merges' fill, from the heights' walk.
   - `htb` (cost): every take-back site lies on a successful descent, which passes only heights
     below the fuel (`ht_descendLte_height`).
-  - `hU`, `hHL`, `hG` (putinv): the state after the upward loop is a tree, holds only nodes
+  - `hU`, `hHL` (putinv): the state after the upward loop is a tree, holds only nodes
     not taken back, and keeps the heights' cache (the stop node itself is proved for the
     reading and the take-back).
   - The fuel parts of `hMS` and `hCo` (cost): step 4 (B), the heights inside an operation.
@@ -1996,6 +1998,9 @@ and its status:
       node names it (a segment root's leaf need not); `l4` is now
       `DelMergeRestCase` (`liveCase_delMerge_of_rest`). Likewise `QDead` of
       (4a) (`deadCase_delRoomFill`): `d4` is now `DelMergeDRestCase`.
+    - `hG` is gone (03:35): putinv's `UpGhOK` proof (`DelStepsGh.lean`;
+      `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`,
+      `delStepsQdL_of_openR4`): 9 named premises.
     - Not done, and why (latest, 02:05):
       - `QDead` of (2) and (3c), the cascade. The nodes a cascade makes are
         described by `ChainShape.lean`'s `CascadeNodeShape`, whose case for
