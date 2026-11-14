@@ -360,5 +360,7 @@ import SIS.Tree.HeightsFit
 import SIS.Tree.HeightsOpStep
 import SIS.Tree.TakeUpCasc
 import SIS.Tree.HeightsPathNodup
+import SIS.Tree.DelStepsLeb
 import SIS.Tree.HeightsPathFree
 import SIS.Tree.HeightsUnder
+import SIS.Tree.DelChkRefines
