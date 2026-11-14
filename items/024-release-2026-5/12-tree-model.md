@@ -117,12 +117,24 @@ for the reading was proved from three smaller premises; 16 at 02:28, when the de
 
 Follow-ups, for a later spare-token run (latest, 02:20):
 
-- `QDead` of (4): the bitmap and `mergeParent` write only when `deadOver` lets them, a merge's
-  new nodes hold none (`mergeKlongs_deadCount`), and a cascade's nodes are bounded already
-  (`writerWP_appendKlongs_chainDead`).
-- `QLive` of (4): `LiveEdges` through the merge loop and root collapse, with the merged path's
-  nodes excepted until their merge, as the cascade's walk was done (`LiveEdgesX`,
-  `writerWP_appendKlongs_chainGLX`); the merge's fill is cost's `mergeKlongs_live_fill`.
+- `QDead` of (4) (`d4`): a conjunct `WDeadN` (every node the writer reads at or below theta)
+  beside `DelInvF3` on the reading's (4) route. The step lemmas that need it:
+  - up to `afterDelete`: `writerWP_del_roomM` (the bitmap with room),
+    `writerWP_appendDeleteKlong_full_delF3` (the bitmap into a full leaf), `writerWP_del_emptyRoomMK`
+    and `writerWP_del_emptyAnyMK` (the upward delete and its stop node);
+  - the merge loop: `writerWP_mergeUp_delF3`, on the merge lemmas `writerWP_merge_any_getF2` and
+    `writerWP_merge_root_getF`;
+  - root collapse: `writerWP_collapseRoot_delF4`, through `writerWP_afterDelete_delF4`.
+  Every write there is guarded by `deadOver` (the bitmap in `appendDeleteKlong`, `mergeParent`,
+  `emptyKeyNext`), or makes nodes that hold no dead klong (`mergeKlongs_deadCount`,
+  `KNode.lastVersionGivenDel_deadCount`), or goes to `handleFull`, whose cascade is bounded
+  (`writerWP_appendKlongs_chainDead`); a take-back, a retarget and a repoint keep the count
+  (`KNode.deadCount_repoint`). The step lemmas' posts say nothing about the nodes' klongs, so
+  each needs the conjunct inside its proof.
+- `QLive` of (4) (`l4`): `LiveEdges` with the merged path's nodes excepted until their merge, on
+  the same step lemmas as `d4`; a merge's nodes are filled (`mergeKlongs_live_fill`), its
+  parent's cascade is the walk with exceptions (`writerWP_appendKlongs_chainGLX`), and root
+  collapse leaves a root with two live klongs.
 - One name for each route: the F2, F3 and F4 versions (`DelStepsOKF3`, `MergeStepOKF3`,
   `CollapseStepOKF4`, `opGetCaseOK_delMergeF4`, `takeBackOK_of_mergesF4`,
   `runTreeQ_of_mergesF4S`, `writerWP_appendKlongs_chainGLX` and its corollaries), and one top
