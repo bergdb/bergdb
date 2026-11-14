@@ -7,12 +7,11 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
-/-! `PutInv` kept by the space splits of a put below an inner parent with room
-(bergdb 024-12, TP10): of a leaf that existed before the transaction (two new
-halves, `putInv_put_spaceSplit_below`) and in place (the leaf keeps the first
-half, `putInv_put_spaceSplitInPlace_below`). The halves' compare values lie on
-either side of the divider sc, the second half's first compare value, a live
-compare value of the leaf (`halves_leaf_live`); the parent's klong k1 names the
+/-! Facts of the halves for `PutInv` kept by the space splits of a put below an
+inner parent with room (bergdb 024-12, TP10): of a leaf that existed before the
+transaction (two new halves) and in place (the leaf keeps the first half). The
+halves' compare values lie on either side of the divider sc, the second half's
+first compare value, a live compare value of the leaf; the parent's klong k1 names the
 first half and a klong sc the second. -/
 
 /-! ## The rules -/

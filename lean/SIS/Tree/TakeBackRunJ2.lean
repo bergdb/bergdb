@@ -96,7 +96,7 @@ theorem j2_reached (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx
             (hS pre' (op :: post) hsplit' r1 w1 h1) hI1 a w2 h2 hT2
 
 /-- The take-back discipline under R from the writer's tree under R,
-`OpTakeJOK` with S at every state, P's key nodes starting before the
+`OpJ2OK` with S at every state, P's key nodes starting before the
 transaction, and no node taken back a value. -/
 theorem takeBackOKUnder_of_opsJ2 (p : Params) (R : Struct BVal → Time → Prop)
     (hRL : ∀ P t, R P t → RunLinksOK p P t) (hRT : ∀ P t, R P t → TreeAt p P t)
@@ -131,7 +131,9 @@ theorem takeBackOKUnder_of_opsJ2 (p : Params) (R : Struct BVal → Time → Prop
     (hTV ts tx hw hr noops w hrun)
   exact takeBackEnd_of_invT p (treeRun p ts) tx.base _ w hvg hG ⟨hI.1, hI.2.1⟩ hDT hl.2.1 hU
 
-/-- The induction over the runs with `OpTakeTOK` (`runTree_jointU`). -/
+/-- The take-back's joint induction over the runs, every operation keeping
+`J2N` (`OpJ2OK`): TP4 with the histories, P's tree and Q at every run within
+reach. -/
 theorem runTree_jointJ2 (p : Params) (hM : 2 ≤ p.M) (Q : Struct BVal → Time → Prop)
     (hQ0 : Q (initStruct p) 0)
     (hQs : ∀ ts tx, Within p (ts ++ [tx]) → RunTreeQ p Q (treeRun p ts) ts.length →

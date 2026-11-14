@@ -6,7 +6,7 @@ step of the writer's tree (`treeOK_timeSplit_gen`, `treeOK_spaceSplit_gen`,
 counts need: the kinds kept, no live klong lost, and a space split's halves
 with the counts of `HalfOK` (`halves_lastVersionGivenDel_live_fill`).
 
-`liveEdges_of_sim` is the common step: every link of the tree after keeps
+Their common step: every link of the tree after keeps
 `ChildOK` directly, or stands for a link of the tree before whose ends have
 the same kinds, the node named having no fewer live klongs after.
 -/
@@ -26,10 +26,6 @@ theorem rootOK_grow (t : Time) (rn rn' : KNode) (h : RootOK t rn) (hl : rn'.leaf
   · have h0 : (rn'.liveAt t).length = 0 := by rw [hE]; rfl
     rw [hl]; exact h1 (List.eq_nil_of_length_eq_zero (by omega))
   · rw [hl] at hl'; have := h2 hl'; omega
-
-/-! ## A time split to a new node below q -/
-
-/-! ## A space split to two new nodes below an inner q -/
 
 /-! ## A time split in place -/
 
@@ -53,7 +49,5 @@ theorem childOK_segRoot (p : Params) (t : Time) (un rn : KNode) (hul : un.leaf =
 theorem rootOK_two (t : Time) (rn : KNode) (hrn2 : 2 ≤ (rn.liveAt t).length) : RootOK t rn := by
   refine ⟨fun hE => ?_, fun _ => hrn2⟩
   rw [hE] at hrn2; simp at hrn2
-
-/-! ## The space root's splits -/
 
 end SIS.Tree

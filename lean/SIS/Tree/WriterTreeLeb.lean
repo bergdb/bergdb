@@ -1,8 +1,8 @@
 /-
 LE-b at the writer (bergdb 024-22, `OpTreeOK`; `emptyKeyNext`): the empty key
 of an inner node takes the pointer of the next live klong, whose compare value
-is deleted. With room and no compaction it keeps the writer's tree
-(`writerWP_emptyKeyNext_tree`): the next child is still named once, the empty
+is deleted. With room and no compaction it keeps the writer's tree: the next
+child is still named once, the empty
 key's old child is left behind.
 -/
 import SIS.Tree.WriterTreeCollapse

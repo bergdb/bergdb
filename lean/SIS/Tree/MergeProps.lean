@@ -142,8 +142,8 @@ traces (C-T7):
 * The fresh base: its first id above every id of P (Java: a record's position
   is above every earlier one; bergdb 024-12, D8).
 Without them it is false (`MergeOpBoundAny`, 2026-11-12). Stated, not proved;
-it follows from a premise on the heights the writer reaches
-(`mergeOpBound_of_transientHeight`, `mergeOpBound_of_outsideHeight`). -/
+it follows from a premise on the heights the writer reaches (proved
+2026-11-12; those proofs, used by no other theorem, went in bergdb 025-02). -/
 def MergeOpBound (p : Params) : Prop :=
   ∀ ts, Within p ts → ∀ tx : Tx, tx.sorted = true → tx.wf = true →
     (∀ q ∈ treeRun p ts, q.1 < tx.base) → ∀ noops w,

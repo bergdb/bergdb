@@ -1,11 +1,8 @@
 /-
-The take-back's (B), (C) and node facts after a split of a full node with a
-last version given by the caller and its cascade (bergdb 024-12, TP7): a
+A fact for the take-back's (B), (C) and node facts after a split of a full node
+with a last version given by the caller and its cascade (bergdb 024-12, TP7): a
 delete's full leaf (`lastVersionGivenDel`) or a merge's full parent
-(`mergeFullLast`). `takeJ2_after_lastSplit` is the state-level step: from the
-nodes' shapes after it (latest's `CascadeNodeShape` one level up, with no klongs
-put) and the reach-back of the tree V with the node's last version (the form of
-chainGRVf's last conjuncts), `TakeJ2` before gives `TakeJ2` after.
+(`mergeFullLast`).
 -/
 import SIS.Tree.TakeDeadChain
 

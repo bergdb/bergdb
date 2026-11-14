@@ -266,7 +266,8 @@ theorem shadowOK_newKlongs (t : Time) (leaf : Bool) (more : List (Nat × NodeId)
   have := shadowOK_append t leaf more [] h List.nodup_nil P (fun _ _ _ hc => by simp at hc)
   simpa [keyKs, newKlongs] using this
 
-/-- `writerWP_handleFullWith_time_up` for a parent of either kind. -/
+/-- The writer's time split of a node that existed before the transaction, with
+klongs ins and its last version, below a parent of either kind. -/
 theorem writerWP_handleFullWith_time_upN (d' : Nat) (x q : NodeId) (n qn : KNode) (k1 : Nat)
     (ins : List (Nat × NodeId)) (compact : Bool) (c : Ctx) (w : W)
     (hlk : w.nodes.lookup x = some n) (hlq : w.nodes.lookup q = some qn)

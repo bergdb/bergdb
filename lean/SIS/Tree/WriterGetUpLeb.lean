@@ -1,6 +1,6 @@
 /-
 LE-b in the upward delete (bergdb 024-22): the stop node's empty key names the
-next child (`writerWP_emptyKeyNext_room_frame`, `lebNode_live_lookup`), and the
+next child (`lebNode_live_lookup`), and the
 tree with the chain dropped and the stop node relinked (`treeOK_dropSubtree_tr`).
 -/
 import SIS.Tree.WriterGetUpW
@@ -12,8 +12,10 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
-/-- `treeOK_dropSubtree` with the stop node's links relinked: each live klong of
-s after names what a live klong of s before named, by a compare value f maps. -/
+/-- A node s drops its link to y0 (the upward unlink: the delete emptied the
+chain below s), the nodes left behind may change in any way, and s's links are
+relinked: each live klong of s after names what a live klong of s before
+named, by a compare value f maps. The tree is kept. -/
 theorem treeOK_dropSubtree_tr (L L' : NodeId → Option KNode) (t : Time) (r s y0 : NodeId)
     (cs : Nat) (sn sn' : KNode) (Gone : NodeId → Prop) (f : Nat → Nat) (ht : TreeOK L t r)
     (hs : TReach L t r s) (hsn : L s = some sn) (hcs : (cs, y0) ∈ sn.liveAt t)

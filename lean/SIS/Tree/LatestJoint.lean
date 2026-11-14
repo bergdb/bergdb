@@ -2,14 +2,14 @@
 The run induction's Q for the top theorem (bergdb 024-12, latest's target):
 `LatestQ`, what TP7 and the writer's facts need of a run besides TP4 and P's
 tree (`RunTreeQ`): TP7's invariant at its last time, TP4, the kinds, the
-heights and the sizes. Its first state and its step (`latestQ_init`,
-`latestQ_snoc`) are the ones of the run inductions on main
-(`treeRun_kindsAllOK`, `treeRun_heightAllOK`, `treeRun_sizeOK_of_pointers`,
-`latestInvOK_of_cases`) one transaction at a time, from what the run before has,
-so that the take-back's joint induction (putinv's `runTree_jointJ2`) can carry
-them. With that induction at every run, `LatestGetOK` and `LatestScanOK`
-follow (`latestGetOK_latestScanOK_of_joint`): TP4 and P's tree are no longer
-premises.
+heights and the sizes. Its first state and its step (`latestQ_init`; the step
+with the bound on dead klongs, `latestQD_snocR`) are the ones of the run
+inductions (`treeRun_kindsAllOK`, `treeRun_heightAllOK`,
+`treeRun_sizeOK_of_pointers`, and TP7's) one transaction at a time, from what the
+run before has, so that the take-back's joint induction (putinv's
+`runTree_jointJ2`) can carry them. With that induction at every run, `LatestGetOK`
+and `LatestScanOK` follow (the top theorem, LatestTop.lean): TP4 and P's tree are
+no longer premises.
 -/
 import SIS.Tree.LatestOpen
 import SIS.Tree.KindsRun
@@ -45,8 +45,8 @@ theorem rootKeyOK_of_treeAt (p : Params) (P : Struct BVal) (t : Time) (h : TreeA
       · simp [hd, hl] at hn
       · exact ⟨r, nd, hr, hb, hd, by omega⟩
 
-/-- `keyNodesOK_of_pointers` at one run: from P's sizes, its histories, TP4
-and the bound on dead klongs there. -/
+/-- Every key node of P is sound as it is, at one run: from P's sizes, its
+histories, TP4 and the bound on dead klongs there. -/
 theorem keyNodesOK_of_parts (p : Params) (P : Struct BVal) (hS : SizeOK p P) (hH : KeyHistOK p P)
     (hP : PointersOK P) (hD : DeadAllOK p P) : KeyNodesOK p P := by
   intro x nd hx hd hl
@@ -108,7 +108,7 @@ theorem sizeOK_snoc (p : Params) (hp : MergeParamsOK p) (ts : List Tx) (tx : Tx)
   exact sizeOK_step p _ (ts.length + 1) tx bs w hp (by omega) hfresh htimes
     (treeRun_root_level p _) hH hl hS hrun
 
-/-- `treeRun_leftAllOK`'s step. -/
+/-- Every inner key node has the empty key live: the step of a run. -/
 theorem leftAllOK_snoc (p : Params) (hp : MergeParamsOK p) (ts : List Tx) (tx : Tx)
     (hw : Within p (ts ++ [tx])) (hL : RunLinksOK p (treeRun p ts) ts.length)
     (hLA : LeftAllOK p (treeRun p ts)) : LeftAllOK p (treeRun p (ts ++ [tx])) := by
@@ -134,7 +134,7 @@ theorem leftAllOK_snoc (p : Params) (hp : MergeParamsOK p) (ts : List Tx) (tx : 
     (treeRun_root_level p _) hH hl he hbook htaken hLA hLW
 
 set_option maxHeartbeats 800000 in
-/-- `latestInvOK_of_cases`' step: TP7's invariant after one more transaction,
+/-- TP7's invariant after one more transaction,
 from R before it (a run predicate with the run's links, P's tree and TP7's
 invariant), TP10's three posts and `QLive` for every operation at R's runs, and
 after it: the run's links, P's tree, the kinds, the heights, the sizes and the
@@ -222,7 +222,5 @@ theorem rangeStateOK_of_cases (p : Params) (R : Struct BVal → Time → Prop)
   fun ts tx hw hr z top hz htop pre post hsplit r w hpre =>
     (joint_reached p R hRL hT hP hO ts tx hw hr (hRT _ _ hr) (hRI _ _ hr) z top hz htop pre post
       hsplit r w hpre).2
-
-/-! ## The target from the run induction -/
 
 end SIS.Tree

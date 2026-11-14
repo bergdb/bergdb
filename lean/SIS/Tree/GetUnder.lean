@@ -12,11 +12,10 @@ transaction (bergdb 024-12, TP10). As first stated they quantify over every
 run within reach and ask nothing of its structure, so a proof would have to
 show first that no such structure is malformed. These forms take the
 structure's soundness as a premise R, any premise; TP10 and TP11 follow when R
-holds after every run within reach. `RunReadOK` is the premise that the
-writer's refinement of the map needs as far as known: TP7's invariant at the
-latest time, its pointers, its key nodes sound as they are (`KeyNodesOK`), and
-TREE for key nodes (`KeyTreeOK`), which TP7's invariant lacks
-(`sharedSegment_changes_other_key`). -/
+holds after every run within reach. The writer's refinement of the map needs,
+as far as known, TP7's invariant at the latest time, its pointers, its key nodes
+sound as they are (`KeyNodesOK`), and TREE for key nodes, which TP7's invariant
+lacks. -/
 
 /-- `OpGetOK` for transactions after a run whose structure meets R. -/
 def OpGetOKUnder (p : Params) (R : Struct BVal → Time → Prop) : Prop :=

@@ -2,7 +2,7 @@
 The kinds of the nodes after every run (bergdb 024-12, TP7): the walk of the
 kinds through the writer (`execW_kinds`) and the step of a run
 (`kindsAllOK_step`), by induction over the run's transactions
-(`treeRun_kindsAllOK`), as `treeRun_leftAllOK`.
+(`treeRun_kindsAllOK`).
 -/
 import SIS.Tree.LeftStep
 import SIS.Tree.WriterLeftRun

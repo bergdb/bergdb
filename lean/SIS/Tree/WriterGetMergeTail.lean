@@ -1,10 +1,9 @@
 /-
 The writer's merge keeps every reading (bergdb 024-12, TP10's `OpGetOK`;
 024-22): the merge's last part, `mergeTail`, from the siblings to the parent
-with room, keeps `wGet` of every key (`writerWP_mergeTail_get`), the
-siblings' compare values in their ranges; the whole merge of two nodes the
-transaction did not make, the ranges from putinv's `RangeOrder`
-(`writerWP_merge_get`).
+with room, keeps `wGet` of every key, the siblings' compare values in their
+ranges; and so the whole merge of two nodes the transaction did not make, the
+ranges from putinv's `RangeOrder`.
 -/
 import SIS.Tree.WriterGetMergeOp
 import SIS.Tree.WriterGetMerge

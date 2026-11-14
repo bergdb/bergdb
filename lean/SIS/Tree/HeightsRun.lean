@@ -3,9 +3,7 @@ The heights of P's key nodes after every run (bergdb 024-22, step 4; 024-12,
 TP7's open (b)): the walk of the heights through a transaction's operations
 (`ht_reached`, `execW_htCache`) and the step of a run (`heightAllOK_step`), by
 induction over the run's transactions (`treeRun_heightAllOK`), as
-`treeRun_kindsAllOK`. TP7's `HeightLiveOK` follows (`treeRun_heightLiveOK`), and with it latest's
-assembly of TP7 takes `OpHtDelOK` in place of the live heights
-(`invPreserved_of_open_htDel`).
+`treeRun_kindsAllOK`. TP7's `HeightLiveOK` follows (`treeRun_heightLiveOK`).
 
 The delete is a named premise, `OpHtDelOK`: a delete, from a state that the
 transaction's earlier operations reach, keeps the walk's state. The put is

@@ -9,10 +9,9 @@ heights' at the upward delete's start).
 `putKvDelChk2` is `putKvDelChk` (DelChk.lean) without that check; the walk of
 the heights through it (`ht_putKvDelChk2`) carries the kinds' books as far as
 the upward delete. `OpDelChk2OK`, a delete runs as `putKvDelChk2`, is the named
-premise with one check fewer than `OpDelChkOK`: `treeRun_heightLiveOK_chk2`,
-`invPreserved_of_open_chk2`, and TP10's fuel premise with `TakeBelowFuelDelOK`
-(`txSegFitsOK_of_takeBelowDelR2`, through `OpHtDelOK` versions of
-HeightsFit.lean's theorems).
+premise with one check fewer than `OpDelChkOK` (the top theorem's `hchk`);
+with `TakeBelowFuelDelOK` (`htb`) it gives TP10's fuel premise
+(`txSegFitsOK_of_takeBelowDelR2U`, HeightsUnder.lean).
 -/
 import SIS.Tree.HeightsChkRun
 import SIS.Tree.HeightsPathNodup
@@ -379,7 +378,5 @@ def OpDelChk2OK (p : Params) : Prop :=
     ∀ r w, (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
     ∀ r' v, putKv (.del key) (ctxOf p ts) w = .ok (r', v) →
       putKvDelChk2 key (ctxOf p ts) w = .ok (r', v)
-
-/-! ## TP10's fuel premise -/
 
 end SIS.Tree

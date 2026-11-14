@@ -246,10 +246,4 @@ theorem halves_inner_searchLte_ins (qn Q : KNode) (t : Time) (ins : List (Nat ×
               simpa using this)]
         rfl
 
-/-! ## The writer: a space split of a node with any klongs to put -/
-
-/-! ## The writer: a space split of a leaf whose inner parent is full and space split -/
-
-/-! ## The rule: a space split of a leaf and a space split of its full parent -/
-
 end SIS.Tree

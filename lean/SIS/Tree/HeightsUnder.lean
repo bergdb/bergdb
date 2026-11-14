@@ -4,12 +4,12 @@ The delete side of the heights' walk at the runs a predicate R holds of
 kinds at the run it is at): `OpHtDelOKUnder p R` is `OpHtDelOK p` asked only
 at the runs `R (treeRun p ts) ts.length`. From the delete's checks but the
 path's at such runs, with R giving TP4 and the kinds
-(`opHtDelOKUnder_of_chk2`, by putinv's `kd_contextR`); from `OpHtDelOK`
-(`opHtDelOKUnder_of`). Its uses, as HeightsRun.lean's and HeightsFit.lean's
-with R: `ht_reachedU`, `execW_htCacheU`, `takeBelowFuelOK_of_delHU`,
-`txSegFitsOK_of_takeBelowDelRHU`, and `txSegFitsOK_of_takeBelowDelR2U` from
-`OpDelChk2OK`. At an operation's start the heights' context with every node not
-taken back below the fuel (`htStart_reachedU`, the doomed transaction).
+(`opHtDelOKUnder_of_chk2`, by putinv's `kd_contextR`). Its uses, as
+HeightsRun.lean's and HeightsFit.lean's with R: `ht_reachedU`, `execW_htCacheU`,
+`takeBelowFuelOK_of_delHU`, `txSegFitsOK_of_takeBelowDelRHU`, and
+`txSegFitsOK_of_takeBelowDelR2U` from `OpDelChk2OK`. At an operation's start the
+heights' context with every node not taken back below the fuel
+(`htStart_reachedU`, the doomed transaction).
 -/
 import SIS.Tree.HeightsPathFree
 import SIS.Tree.TakeRunQ
@@ -127,8 +127,10 @@ theorem execW_htCacheU (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Time �
       exact (ht_reachedU p hM R hdel ts tx hw hr hR hvo z top hz ht tx.ops [] (by simp) bs w
         hrun).cache
 
-/-- `takeBelowFuelOK_of_del` from the delete side of the heights' walk at the
-runs R holds of (`OpHtDelOKUnder`) in place of `OpDelChkOK`: a put takes nothing back (`ht_putKv_put`'s `HtLe`). -/
+/-- Every node an operation takes back has a height below the fuel, from the
+deletes' (`TakeBelowFuelDelOK`), at the runs R holds of, with the delete side of
+the heights' walk there (`OpHtDelOKUnder`) in place of `OpDelChkOK`: a put takes
+nothing back (`ht_putKv_put`'s `HtLe`). -/
 theorem takeBelowFuelOK_of_delHU (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Time → Prop)
     (hRL : ∀ P t, R P t → RunLinksOK p P t) (hRK : ∀ P t, R P t → KindsAllOK p P)
     (hRH : ∀ P t, R P t → HeightAllOK p P t) (hht : OpHtDelOKUnder p R)
@@ -241,8 +243,10 @@ theorem htStart_reachedU (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Time
   · have := hub x g h hm hx; omega
 
 set_option maxHeartbeats 1600000 in
-/-- `txSegFitsOK_of_takeBelowDelR` from the delete side of the heights' walk at
-the runs R holds of (`OpHtDelOKUnder`) in place of `OpDelChkOK`. -/
+/-- TP10's fuel premise between operations from the heights, given the deletes'
+take-backs below the fuel (`TakeBelowFuelDelOK`), with the delete side of the
+heights' walk at the runs R holds of (`OpHtDelOKUnder`) in place of
+`OpDelChkOK`. -/
 theorem txSegFitsOK_of_takeBelowDelRHU (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Time → Prop)
     (hRL : ∀ P t, R P t → RunLinksOK p P t) (hRK : ∀ P t, R P t → KindsAllOK p P)
     (hRH : ∀ P t, R P t → HeightAllOK p P t) (hht : OpHtDelOKUnder p R)

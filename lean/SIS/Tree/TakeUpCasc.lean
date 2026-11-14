@@ -1,9 +1,8 @@
 /-
 The take-back's facts through a full node's cascade with the nodes of the
 transaction's time reached in the tree with the node's last version (bergdb
-024-12, `UpCascJ2OKF3`): `writerWP_handleFull_root_j2` and
-`writerWP_handleFull_last_j2` with `TakeJ2`'s node facts before and `hTU`
-instead of `TakeJ2` and the node's kept children.
+024-12, the take-back's side of the stop node's cascade), with `TakeJ2`'s node
+facts before and `hTU` instead of `TakeJ2` and the node's kept children.
 -/
 import SIS.Tree.DelStepsCascRoot
 import SIS.Tree.DelStepsBookK
@@ -264,7 +263,7 @@ theorem writerWP_handleFull_last_j2U (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx)
 
 set_option maxHeartbeats 6400000 in
 /-- The take-back's facts through the stop node's bitmap into a full space root
-(`UpCascJ2OKF3` at stop 0): from the state after the upward loop as a tree
+(the take-back's cascade at stop 0): from the state after the upward loop as a tree
 (`UpUnlinkOK`), its links and klongs, `TakeJ2` keeps with B at most the next id:
 the node facts after the loop (`j2rest_up` with the stop node as it is), the
 nodes of the transaction's time reached in the tree with the root's last version

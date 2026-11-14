@@ -140,8 +140,4 @@ theorem ttReachedN_merge (N N' : NodeId → Option KNode) (t : Time) (r p l rr :
         · exact h
         · exact absurd h hulr
 
-/-! ## The writer's merge under a parent with room -/
-
-/-! ## The merge of nodes the transaction made or not -/
-
 end SIS.Tree

@@ -1745,9 +1745,8 @@ link (`hrange`); a node that space splits has two live klongs (`hlen`). From a
 state whose tree with the klongs put into X (s + e) is a tree, the writer's
 tree after `appendKlongs (s + e)` is a tree; the top is kept unless the space
 root split; nodes below the next id but the path's are kept; and every node
-reached was reached in that tree or is new. Generalizes
-`writerWP_appendKlongs_chain` (`chainC`), which takes inner parents and nodes
-that existed before the transaction. -/
+reached was reached in that tree or is new. Generalizes the cascade with
+inner parents and nodes that existed before the transaction (`chainC`). -/
 theorem writerWP_appendKlongs_chainG (c : Ctx) (base : View BVal)
     (path0 : List (Option Nat × NodeId)) (s D : Nat) (X : Nat → NodeId) (K : Nat → Nat)
     (Nn : Nat → KNode)

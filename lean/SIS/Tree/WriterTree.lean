@@ -9,10 +9,9 @@ value too is named once (the reads' TREE, `GetSplit.lean`'s `htree`).
 
 The same of P between transactions is `TreeAt`. Proved here: the writer's first
 state has the tree of P (`writerTreeOK_init`), P after the transaction has the
-tree of the writer's last state, given the lift of the writer's key nodes
-(`treeAt_commit_of_lift`), and so every run within reach has it if every
-operation keeps it (`OpTreeOK`, open: each rule of the writer) and the lift
-holds (`treeAt_run`). Every state between operations then has it
+tree of the writer's last state, given the lift of the writer's key nodes,
+and so every run within reach has it if every operation keeps it (`OpTreeOK`)
+and the lift holds (TakeBackRun.lean). Every state between operations then has it
 (`writerTreeOK_reached`), which `OpCountOK` and `OpGetOK` can take as a premise.
 -/
 import SIS.Tree.MergeNodeCountOps
@@ -298,7 +297,7 @@ theorem treeOK_regroup (L L' : NodeId → Option KNode) (t : Time) (r x : NodeId
         exact absurd ho2 h1o
       · exact ht.oneLink y1 c1 y2 c2 v h1L h2L h1 h2
 
-/-- `treeOK_transfer` with nodes left behind: the links of the new lookup from
+/-- A tree is kept, with nodes left behind, when the links of the new lookup from
 the nodes of the old tree that are not left behind, and from new nodes, name new
 nodes or are transfers of old links to nodes not left behind. So the nodes left
 behind (a node replaced by a split, or merged) are reached no more, whatever
@@ -501,7 +500,5 @@ theorem treeAt_init (p : Params) : TreeAt p (initStruct p) 0 := by
     exact hno x c 1 hx hl
   · intro x c x' c' y hx _ hl _
     exact absurd hl (hno x c y hx)
-
-/-! ## TP33 with the tree -/
 
 end SIS.Tree

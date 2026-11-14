@@ -1,6 +1,6 @@
 /-
 The merge's reading with a full parent of any kind at depth D + 1 (bergdb
-024-22): `writerWP_mergeTail_full_get` on the general level
+024-22): the merge's tail with a full parent, on the general level
 (`writerWP_handleFull_lastV`), the parent split in time or in space, in place or
 not, below an inner node or a segment leaf. A parent split in place stays
 reached; the merge's last loop leaves it as it is, since its last version names
@@ -284,15 +284,14 @@ theorem mergeLast_range (c : Ctx) (N : NodeId → Option KNode) (root : NodeId)
 set_option maxHeartbeats 3200000 in
 /-- The merge's tail keeps the reading of every key, the parent p at depth D + 1
 with room or full, a full parent split in any of its kinds
-(`writerWP_handleFull_lastV`): `writerWP_mergeTail_full_get` without its
-premises that the parent existed before the transaction, sits below an inner node
-and is not split in space. The parent's last version is a time klong and sorted
-key klongs (`mergeFullLast_sorted`); for a space split its live compare values are in the
-range of its link for the merge's values (`hrangeL`, with `MergeGOK`), and for a
-parent the transaction did not make below a segment leaf the cascade's levels
-are ordered (`hspaceL`). The reading holds when the state after fits the fuel, or no split
-makes a new root (the space root does not space split, and the parent's parent
-is inner). -/
+(`writerWP_handleFull_lastV`), whether or not the parent existed before the
+transaction, sits below an inner node or is split in space. The parent's last
+version is a time klong and sorted key klongs (`mergeFullLast_sorted`); for a
+space split its live compare values are in the range of its link for the merge's
+values (`hrangeL`, with `MergeGOK`), and for a parent the transaction did not make
+below a segment leaf the cascade's levels are ordered (`hspaceL`). The reading
+holds when the state after fits the fuel, or no split makes a new root (the space
+root does not space split, and the parent's parent is inner). -/
 theorem writerWP_mergeTail_any_get (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx) (base : View BVal) (x : NodeId) (d : Nat) (p : NodeId)
     (pn xn : KNode) (leftSome : Bool) (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId)
     (rn : KNode) (ir : Nat) (cL cR : Nat) (N : NodeId → Option KNode) (root : NodeId) (nx : Nat)
@@ -1342,12 +1341,12 @@ theorem writerWP_mergeTail_any_get (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx) (
 
 /-- The writer's merge keeps the reading of every key with the parent at depth
 D + 1 full or with room, a full parent split in any of its kinds
-(`writerWP_mergeTail_any_get`): `writerWP_merge_full_get` without its premises
-that the parent existed before the transaction, sits below an inner node and is
-not split in space. The full parent's range comes from the walk's ranges
-(`mergeLast_range`); for a parent the transaction did not make below a segment
-leaf the cascade's levels are ordered (`hspaceL`). The reading holds when the
-state after fits the fuel, or no split makes a new root. -/
+(`writerWP_mergeTail_any_get`), whether or not the parent existed before the
+transaction, sits below an inner node or is split in space. The full parent's
+range comes from the walk's ranges (`mergeLast_range`); for a parent the
+transaction did not make below a segment leaf the cascade's levels are ordered
+(`hspaceL`). The reading holds when the state after fits the fuel, or no split
+makes a new root. -/
 theorem writerWP_merge_any_get (fuelR : Nat) (hfR : 2 ≤ fuelR) (x : NodeId) (d : Nat) (c : Ctx) (base : View BVal)
     (hvc : ViewCoherent c base) (w : W)
     (hT : TreeOK (wNode c.p base w) c.i w.top.rootKey)

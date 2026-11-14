@@ -166,8 +166,6 @@ theorem opJ2Case_delRoom (p : Params) (R : Struct BVal → Time → Prop)
   intro _ w' h _
   exact h
 
-/-! ## `LeafVals` from the walk of the kinds -/
-
 /-! ## `LeafVals` with the base's leaves by a premise -/
 
 /-- A leaf's klong of a last segment's compare value names a value: by the

@@ -1,9 +1,8 @@
 /-
 Root collapse at a segment root (bergdb 024-22, `OpTreeOK`; `replaceRoot` and
 `takeBackRoot` below the segment leaf of the segment above): the leaf's klong
-k names the root's only child instead of the root, which is left behind or
-taken back (`writerWP_replaceRoot_seg_tree`, with room in the leaf;
-`writerWP_takeBackRoot_seg_tree`).
+k names the root's only child instead of the root, which is left behind (with
+room in the leaf) or taken back.
 -/
 import SIS.Tree.WriterTreeLeb
 

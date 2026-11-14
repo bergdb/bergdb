@@ -7,9 +7,8 @@ after the transaction is a node of P as it was, or an overlay node not taken
 back whose segment and height are those of its entry in the writer's list;
 a node that `KindCache` names is, after the transaction, a key node of the
 segment named or a value. The view of a structure with `KindsAllOK` meets
-`ViewKinds` (`viewKinds_of`); the first structure has it
-(`kindsAllOK_init`); and the walk's kind tests but the height's follow for
-live klongs (`kindsAllOK_live`).
+`ViewKinds` (`viewKinds_of`), and the first structure has it
+(`kindsAllOK_init`).
 -/
 import SIS.Tree.OverlayKinds
 import SIS.Tree.OverlayLift
@@ -225,7 +224,5 @@ theorem kindsAllOK_init (p : Params) : KindsAllOK p (initStruct p) := by
     obtain ⟨_, rfl⟩ := h
     simp only [Params.topLevel] at hlv
     omega
-
-/-! ## 4. What the walk reads -/
 
 end SIS.Tree

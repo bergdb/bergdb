@@ -16,7 +16,7 @@ open SIS SIS.Check
 /-! A put into a leaf below a cascade of any depth (bergdb 024-12, TP10): the
 descent's last m + 1 nodes XX 0 (with room) to XX m (the leaf), each below the
 one before by klong KK j; the writer's `appendKlongs` along them
-(`writerWP_appendKlongs_chainR`) and the leaf's put (`getFromR_leaf_change_seg`). -/
+and the leaf's put (`getFromR_leaf_change_seg`). -/
 
 /-! ## The writer's splits of a delete's leaf with the parent's step left open -/
 

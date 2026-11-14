@@ -1,6 +1,6 @@
 /-
 A key klong's pointer changed in place (`KNode.repoint`): every live klong at
-any time is the node's, or names the new pointer (`KNode.repoint_liveAt`). For
+any time is the node's, or names the new pointer. For
 the rules that point a klong of the transaction in place (bergdb 024-22: LE-b,
 the merge's parent, the take-back, a segment root's split, root collapse).
 -/

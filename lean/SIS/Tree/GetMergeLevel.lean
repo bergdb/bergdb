@@ -3,8 +3,7 @@ The merge's full parent at any depth (bergdb 024-22): `handleFull` of a last
 version given, at depth D + 1 of the key access path below the cascade's nodes
 X s .. X D, in all its kinds: a time split or a space split, in place for a node
 that the transaction made or not, below an inner node or a segment leaf
-(`writerWP_handleFull_lastV`; `writerWP_handleFull_lastVF` leaves out the space
-split in place below a segment leaf by its `hspaceL`). The writer's tree after it is a tree and
+(`writerWP_handleFull_lastV`). The writer's tree after it is a tree and
 reads as the tree with the node's content replaced by the last version
 (`writerWP_appendKlongs_chainGRV`'s step at its top level, for a last version
 with nothing put).

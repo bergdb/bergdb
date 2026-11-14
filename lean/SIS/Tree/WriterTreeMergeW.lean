@@ -1,7 +1,7 @@
 /-
 The writer's code of the merge (bergdb 024-22, `OpTreeOK`): `mergeParent` with
 room for its klongs and no compaction writes `mergeParentNode` at the parent
-and changes nothing else (`writerWP_mergeParent_room`).
+and changes nothing else.
 -/
 import SIS.Tree.WriterTreeMergeLive
 

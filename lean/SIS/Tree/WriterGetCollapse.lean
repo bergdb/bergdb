@@ -2,8 +2,8 @@
 Root collapse at the space root keeps every reading (bergdb 024-12, TP10's
 `OpGetOK`; 024-22): an inner root whose only live klong is the empty key's
 gives way to its child, which reads every key as the root did, given fuel for
-the tree below it (`getFromR_collapse`); the writer's loop of collapses keeps
-the reading (`writerWP_collapseRoot_space_get`).
+the tree below it (`getFromR_collapse`); with it the writer's loop of collapses
+keeps the reading (WriterGetCollapseLoop.lean).
 -/
 import SIS.Tree.WriterGetMergeMade
 import SIS.Tree.WriterTreeCollapse

@@ -73,8 +73,9 @@ theorem writerWP_descendLte_steps (cv : Nat) (c : Ctx) (base : View BVal)
           | nil => rfl
           | cons s ss => simp [List.getLast?_cons]
 
-/-- `renSim_timeSplit` with the new node holding a node of the same live
-klongs. -/
+/-- The time split's move as a renaming (in the reader before it, the leaf L
+renamed to the new node y, the parent's klong that names L naming y), with the
+new node holding a node of the same live klongs. -/
 theorem renSim_timeSplitGen (N M2 : NodeId → Option KNode) (t : Time) (r L q y : NodeId)
     (qn m m2 : KNode) (k1 : Nat)
     (hqL : q ≠ L) (hyL : y ≠ L) (hyq : y ≠ q)
@@ -225,12 +226,6 @@ theorem PathFrom.mem_eqVisits (N : NodeId → Option KNode) (t : Time) (cv : Nat
       · subst he; exact Or.inr h1
       · exact Or.inr (h2 e he)
 
-/-! ## The rule: time splits of a leaf and of its full parent -/
-
-/-! ## The writer: a time split with any klongs to put -/
-
-/-! ## The writer: a space split of a leaf whose inner parent is full and time split -/
-
 /-! ## The reading after a leaf's space split and its parent's time split -/
 
 theorem pairLookupFold_some_mem (c : Nat) :
@@ -261,7 +256,5 @@ theorem newKlongs_live_mem (leaf : Bool) (t : Time) (l : List (Nat × NodeId)) (
   rcases pairLookupFold_some_mem c l none z hl with h1 | h1
   · exact h1
   · cases h1
-
-/-! ## The rule: a space split of a leaf and a time split of its full parent -/
 
 end SIS.Tree

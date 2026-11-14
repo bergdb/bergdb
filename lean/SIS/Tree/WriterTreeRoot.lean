@@ -1,8 +1,7 @@
 /-
 The writer's tree kept by a put that splits the space root (bergdb 024-22,
 `OpTreeOK`), on prover latest's writer states of GetRootSplit.lean: the space
-split under a new root (`writerWP_put_rootSpaceSplit_tree`, from
-`treeOK_rootSplit`).
+split under a new root.
 -/
 import SIS.Tree.WriterTreePut
 import SIS.Tree.GetRootSplit

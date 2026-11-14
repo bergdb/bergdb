@@ -9,8 +9,7 @@ open SIS SIS.Check
 /-! The space split of an inner node (bergdb 024-12, TP10; the cascades): the
 halves of an inner node's last version with a klong put find, for compare values
 below the second half's first one, what the first half finds, and from it on,
-what the second finds, the second half's first klong renamed to the empty key
-(`halves_inner_searchLte`). -/
+what the second finds, the second half's first klong renamed to the empty key. -/
 
 /-- `getEqR_split` for an inner node L split into the inner halves F and S: the
 descents of N2 are those of Nm on the nodes that Nm reaches but L, F and S, and
@@ -129,11 +128,5 @@ theorem getEqR_split_inner (Nm N2 : NodeId → Option KNode) (t : Time) (r0 L q 
             simp only
             rw [he]
             exact hchild fd h1
-
-/-! ## The writer: a time split of a leaf whose inner parent is full and space split -/
-
-/-! ## The reading after a leaf's time split and its parent's space split -/
-
-/-! ## The rule: a time split of a leaf and a space split of its full parent -/
 
 end SIS.Tree

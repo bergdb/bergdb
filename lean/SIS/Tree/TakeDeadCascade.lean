@@ -2,13 +2,13 @@
 The take-back's (C) and the node facts through a cascade of splits (bergdb
 024-12, TP4; `J2N`, TakeDeadCollapse.lean), at node-map level, against the node
 shapes agreed with latest for `writerWP_appendKlongs_chainGRV`: every node the
-cascade changed or made (`CascadeShapeJ`) is a chain node left behind
+cascade changed or made is a chain node left behind
 (`toPrev`), a last version or a split's half (`ShadowShaped`: a time klong of t,
 then key klongs, a klong with a later one of its compare value naming a node
 below B or a value), or the top with its klongs put in (key klongs added whose
 compare values' old live pointers are below B or values, or the in-place
-repoint of a segment leaf's klong to a segment root the transaction made):
-`j2rest_cascade`.
+repoint of a segment leaf's klong to a segment root the transaction made).
+Here: the facts of these shapes.
 -/
 import SIS.Tree.TakeDeadUp
 import SIS.Tree.TakeCascade
@@ -253,7 +253,5 @@ theorem deadLiveK_repoint (N : NodeId → Option KNode) (t : Time) (r B : NodeId
       exact (KNode.liveAt_fun qn t k x z hk hc0).symm
     · rw [hbm, hrp]
       exact lastLive_set_other qn.ks qn.lastBitmap i cv j k y (hL0 (by rw [← KNode.repoint_leaf]; exact hl)) hLj hij
-
-/-! ## (C) and the node facts after a cascade, at node-map level -/
 
 end SIS.Tree

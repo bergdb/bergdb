@@ -8,8 +8,8 @@ namespace SIS.Tree
 open SIS SIS.Check
 
 /-! Cascades of time and space splits of any depth keep the walk's ranges
-(bergdb 024-12, TP10; `RangeOrder`): prover cost's `writerWP_appendKlongs_chain`
-with the ranges carried along. -/
+(bergdb 024-12, TP10; `RangeOrder`): prover cost's cascade with the ranges
+carried along. -/
 
 /-- A fold of pair lookups from a found value finds one. -/
 theorem pairLookupFold_isSome (c : Nat) :

@@ -9,8 +9,7 @@ open SIS SIS.Check
 
 /-! A put keeps the walk's ranges (bergdb 024-12, TP10; `RangeOrder`): the
 leaf with the put's klong (`rangeOrder_leafPut`: the key's compare value lies
-in the leaf's range, `leaf_range`), then the cascade above it
-(`writerWP_appendKlongs_chainRange`). -/
+in the leaf's range, `leaf_range`), then the cascade above it. -/
 
 /-- The walk's ranges after a key klong (cv, v) is put in the leaf L of the
 key's last segment cv, v no node. -/

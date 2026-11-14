@@ -8,7 +8,7 @@ namespace SIS.Tree
 open SIS SIS.Check
 
 /-! `PutInv` kept by the put of a key whose last segment is new (bergdb 024-12,
-TP10; the rule of prover latest's `writerWP_put_newSeg_inv`): the leaf L of the
+TP10; the rule of prover latest's put into a new segment leaf): the leaf L of the
 segment before gets a klong (c0, y) to a new segment leaf y, the next id, which
 holds the klong (cl, v) of the new value. The order bound of L's parents is the
 descent's, or none when L is the root of its segment tree

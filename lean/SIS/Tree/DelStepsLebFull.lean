@@ -1,6 +1,6 @@
 /-
 LE-b's full branch at the upward delete's stop node, the merges on (bergdb
-024-12, `UpLebFullOKF3`): the stop node's last version with the empty key in
+024-12, case (4)'s delete steps): the stop node's last version with the empty key in
 the next klong's place splits. The tree with that last version is the walk's
 tree with the empty key's child gone and the next child under the empty key
 (`treeOK_up_tr`, `rangeOrder_up_leb`) and reads as the delete's

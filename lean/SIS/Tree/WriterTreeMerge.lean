@@ -287,6 +287,4 @@ theorem treeOK_collapseSegment (L L' : NodeId → Option KNode) (t : Time) (r0 l
     · have hrrt : r0 ≠ rt := fun h => ht.rootFree lf k hlf (by rw [h]; exact hlk)
       rw [hother r0 hr hrrt]; exact ht.rootKey
 
-/-! ## The upward unlink -/
-
 end SIS.Tree

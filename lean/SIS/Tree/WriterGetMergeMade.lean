@@ -3,8 +3,7 @@ The writer's merge keeps every reading also for nodes the transaction made
 (bergdb 024-12, TP10's `OpGetOK`; 024-22): the parent's klongs of the
 transaction that name a merged node made by it are retargeted to the new node,
 which none live of them does after the merge, so the parent's live klongs are
-kept; the merged nodes are taken back, and had no value
-(`writerWP_mergeTail_made_get`, `writerWP_merge_made_get`).
+kept; the merged nodes are taken back, and had no value.
 -/
 import SIS.Tree.WriterGetMergeTail
 import SIS.Tree.WriterTreeRetarget

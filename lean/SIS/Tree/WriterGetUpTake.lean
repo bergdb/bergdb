@@ -144,8 +144,9 @@ theorem KNode.retarget_liveAt_ne (n : KNode) (ti : Nat) (src dst : NodeId) (t : 
     rw [hz] at h
     exact hc (hu c' h)
 
-/-- `collGetInv_after_up` with nodes of the chain taken back: the taken nodes
-agree but at the chain. -/
+/-- The state after the upward delete's stop node, before root collapse, has
+what root collapse keeps (`CollGetInv`), with nodes of the chain taken back:
+the taken nodes agree but at the chain. -/
 theorem collGetInv_after_upT (c : Ctx) (base : View BVal) (X : Nat → NodeId) (Nn : Nat → KNode)
     (K : Nat → Nat) (depth : Nat) (w : W)
     (hlk : ∀ i, i ≤ depth → w.nodes.lookup (X i) = some (Nn i))

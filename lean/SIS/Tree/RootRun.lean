@@ -1,11 +1,9 @@
 /-
-The space root is a key node at every time of every run (bergdb 024-12, TP7,
-the root clause of the kinds): through the writer by the walk of the root
-(`execW_rootWalk`), into the structure by the lift of the writer's space root
-(`rootAt_commit_of_lift`), at the earlier times by `rootAt_apply_some_past`
-(`treeRun_rootKeyOK`).
+`RootKeyOK`: the space root is a key node at every time of a run (bergdb
+024-12, TP7, the root clause of the kinds). Its proof for every run, used by
+no other theorem, went in bergdb 025-02.
 -/
-import SIS.Tree.RootWalkRun
+import SIS.Tree.RootWalkDelete
 import SIS.Tree.KindsRun
 import SIS.Tree.MergeNodeCountOps
 import SIS.Tree.HistoricalRead

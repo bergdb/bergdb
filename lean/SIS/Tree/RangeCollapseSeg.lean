@@ -76,8 +76,7 @@ theorem writerWP_rootStep_space_rangeG (x : NodeId) (only : Nat) (n : KNode) (c 
       · intro z hz; exact h3n z (by rw [hx]; exact hz)
 
 /-- `takeBackRoot` at a segment root x that the transaction made, below the
-segment leaf `leaf` of the path, keeps the walk's ranges (cost's
-`writerWP_takeBackRoot_seg_coll`).
+segment leaf `leaf` of the path, keeps the walk's ranges.
 For any state with `CollInv` and well-formed klongs (`CollGetInv`, `CollGetInvF`). -/
 theorem writerWP_takeBackRoot_seg_rangeG (x : NodeId) (d only : Nat) (n : KNode) (leaf : NodeId)
     (ln : KNode) (k : Nat) (c : Ctx) (base : View BVal) (v : W) (A B E : Prop)

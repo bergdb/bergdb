@@ -75,8 +75,8 @@ theorem upHolderOK_of_live (c : Ctx) (base : View BVal) (KO : KindOracle) (BK B 
       exact hB.good.nonempty (X k) nd hnd hd hl hb
     · exact hge
 
-/-- `unlink` of a cached node keeps the heights' cache (a step towards
-`UpGhOK`). -/
+/-- `unlink` of a cached node keeps the heights' cache (a step towards the
+upward loop keeping it, DelStepsGh.lean). -/
 theorem writerWP_unlink_gh (x : NodeId) (c : Ctx) (v : W) (hx : ∃ xn, v.nodes.lookup x = some xn) :
     WriterWP (unlink x) c v (fun _ v' => v'.gh = v.gh) := by
   obtain ⟨xn, hxn⟩ := hx
@@ -88,7 +88,7 @@ theorem writerWP_unlink_gh (x : NodeId) (c : Ctx) (v : W) (hx : ∃ xn, v.nodes.
   · simp only [writerWP_pure]
 
 /-- `takeBack` with the parent cached keeps the heights' cache (a step towards
-`UpGhOK`). -/
+the upward loop keeping it, DelStepsGh.lean). -/
 theorem writerWP_takeBack_gh (x p : NodeId) (k : Nat) (c : Ctx) (v : W)
     (hp : ∃ pn, v.nodes.lookup p = some pn) :
     WriterWP (takeBack x p k) c v (fun _ v' => v'.gh = v.gh) := by

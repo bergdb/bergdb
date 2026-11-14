@@ -1,8 +1,8 @@
 /-
 The writer's tree kept by its rules (bergdb 024-22, `OpTreeOK`). Here the first
-rule: a put of a key of one segment into a segment leaf with room
-(`writerWP_put_room_tree`), the case of `GetFrame.lean`'s `writerWP_put_room`:
-the leaf's klong of the key names the new value, which nothing named before.
+rule: a put of a key of one segment into a segment leaf with room (the case of
+GetFrame.lean's put into a leaf with room): the leaf's klong of the key names the
+new value, which nothing named before.
 -/
 import SIS.Tree.WriterTreeVisits
 
@@ -78,7 +78,5 @@ theorem not_reach_fresh (L : NodeId → Option KNode) (t : Time) (r y : NodeId)
   cases h with
   | root => obtain ⟨m, hm⟩ := ht.rootKey; rw [hm] at hy; cases hy
   | link hu hl => exact hf _ _ hu hl
-
-/-! ## A put into a segment leaf with room -/
 
 end SIS.Tree

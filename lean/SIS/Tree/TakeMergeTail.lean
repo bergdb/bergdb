@@ -14,15 +14,14 @@ open SIS SIS.Check
 set_option maxHeartbeats 3200000 in
 /-- The merge's tail keeps the reading of every key, the parent p at depth D + 1
 with room or full, a full parent split in any of its kinds
-(`writerWP_handleFull_lastV`): `writerWP_mergeTail_full_get` without its
-premises that the parent existed before the transaction, sits below an inner node
-and is not split in space. The parent's last version is a time klong and sorted
-key klongs (`mergeFullLast_sorted`); for a space split its live compare values are in the
-range of its link for the merge's values (`hrangeL`, with `MergeGOK`), and for a
-parent the transaction did not make below a segment leaf the cascade's levels
-are ordered (`hspaceL`). The reading holds when the state after fits the fuel, or no split
-makes a new root (the space root does not space split, and the parent's parent
-is inner). -/
+(`writerWP_handleFull_lastV`), whether or not the parent existed before the
+transaction, sits below an inner node or is split in space. The parent's last
+version is a time klong and sorted key klongs (`mergeFullLast_sorted`); for a
+space split its live compare values are in the range of its link for the merge's
+values (`hrangeL`, with `MergeGOK`), and for a parent the transaction did not make
+below a segment leaf the cascade's levels are ordered (`hspaceL`). The reading
+holds when the state after fits the fuel, or no split makes a new root (the space
+root does not space split, and the parent's parent is inner). -/
 theorem writerWP_mergeTail_any_j2 (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx) (base : View BVal) (x : NodeId) (d : Nat) (p : NodeId)
     (pn xn : KNode) (leftSome : Bool) (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId)
     (rn : KNode) (ir : Nat) (cL cR : Nat) (N : NodeId → Option KNode) (root : NodeId) (nx : Nat)

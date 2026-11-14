@@ -1,8 +1,8 @@
 /-
 The fuel after the stop node's cascade from the heights (bergdb 024-22;
-putinv's `UpCascFitsOK`, DelStepsCascRoot.lean): the reached form
-`UpCascFitsOKR`, proved (`upCascFitsOKR_of`) from a named premise of the upward
-loop's end, `UpHolderOK`, to be checked on runs.
+once a premise of putinv's, DelStepsCascRoot.lean): `UpCascFitsOKR`, proved
+(`upCascFitsOKR_of`) from a named premise of the upward loop's end, `UpHolderOK`,
+to be checked on runs.
 
 `UpHolderOK` at the loop's end w2: every node not taken back holds, by a live
 klong now or before the transaction, only nodes not taken back; its time
@@ -39,7 +39,8 @@ def UpHolderOK (c : Ctx) (B : NodeId) (X : Nat → NodeId) (depth stop : Nat) (w
     ∀ s, Klong.time s ∈ n.ks → s ≤ c.i) ∧
   (∀ k, stop < k → k ≤ depth → w2.taken.contains (X k) = true → B ≤ X k)
 
-/-- putinv's `UpCascFitsOK` with the merges on, the fill at the delete's start,
+/-- After the stop node's bitmap into a full node the state fits the writer's
+fuel, with the merges on, the fill at the delete's start,
 the kinds' books and the heights' state at the descent's end (the path ending
 at depth), the cached heights the same at the loop's end, and `UpHolderOK`. -/
 def UpCascFitsOKR (c : Ctx) (base : View BVal) (KO : KindOracle) (BK : NodeId)

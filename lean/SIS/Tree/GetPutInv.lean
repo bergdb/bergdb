@@ -13,8 +13,8 @@ next one and the next ones fresh in P, the links of the reachable nodes to ids
 below the next one, no reachable node taken back, no key node a value, and the
 search tree's order below every reachable inner node (`PutInv`). With it, a put
 that splits nothing above the key's leaf changes the reading by itself alone:
-into a space whose root is a leaf (`writerWP_put_leafRoot_inv`), or into a
-leaf below inner nodes with room for two klongs (`writerWP_put_leafBelow_inv`). -/
+into a space whose root is a leaf, or into a leaf below inner nodes with room
+for two klongs. -/
 
 /-- The search tree's order at an inner node q: the compare values of q's leaf
 child L lie between q's klong k1 to L and q's next klong. -/

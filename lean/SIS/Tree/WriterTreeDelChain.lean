@@ -3,9 +3,7 @@ The cascade below a delete's leaf keeps the writer's tree (bergdb 024-22,
 `OpTreeOK`): the leaf's time or space split of a last version given (the
 delete's, `lastVersionGivenDel`), in place for a leaf the transaction made,
 below an inner node or a segment leaf, then the cascade of any kind above it
-(`writerWP_appendKlongs_chainG`): `writerWP_delSplit_chainG`, and for the
-delete's last version `writerWP_delLeaf_chainG`; a delete's leaf that is the
-space root: `writerWP_delRootSplit_tree`.
+(`writerWP_appendKlongs_chainG`); also a delete's leaf that is the space root.
 -/
 import SIS.Tree.WriterTreeChainG
 import SIS.Tree.GetCascadePut
@@ -19,8 +17,8 @@ open SIS SIS.Check
 
 /-! ## The writer's splits of a last version given -/
 
-/-- Prover latest's `writerWP_handleFullWith_time_up_last` for a parent of either
-kind. -/
+/-- The writer's time split for a delete (nothing to insert, the last version
+`last` given), below a parent of either kind. -/
 theorem writerWP_handleFullWith_time_up_last' (d' : Nat) (x q : NodeId) (n qn : KNode) (k1 : Nat)
     (last : KNode) (compact : Bool) (c : Ctx) (w : W)
     (hlk : w.nodes.lookup x = some n) (hlq : w.nodes.lookup q = some qn)

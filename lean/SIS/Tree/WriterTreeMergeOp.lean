@@ -1,7 +1,7 @@
 /-
 The writer's merge keeps the writer's tree (bergdb 024-22, `OpTreeOK`;
 024-11, M1 to M5): `merge x d` with a parent that has room and no compaction,
-of two nodes that the transaction did not make (`writerWP_merge_tree`).
+of two nodes that the transaction did not make.
 -/
 import SIS.Tree.WriterTreeMergeW
 

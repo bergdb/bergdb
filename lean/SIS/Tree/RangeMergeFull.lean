@@ -179,9 +179,8 @@ theorem writerWP_mergeFull_branchRange (c : Ctx) (base : View BVal)
 
 set_option maxHeartbeats 3200000 in
 /-- The merge's tail keeps the walk's ranges, the parent with room or full
-(cost's `writerWP_mergeTail_any_tree` with `RangeOrder`): with room as
-`writerWP_mergeTail_made_range`; a full parent split with its last version
-(`writerWP_mergeFull_branchRange`, the tree with it put in in order by
+(with `RangeOrder`): with room as in RangeMergeMade.lean; a full parent split with
+its last version (`writerWP_mergeFull_branchRange`, the tree with it put in in order by
 `rangeOrder_mergeOne`/`rangeOrder_mergeTwo`), then the merged nodes left behind
 (`rangeOrder_after_cleanup`). The full parent's halves are asked for the merge's
 values only (`MergeGOrd`). -/

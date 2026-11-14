@@ -6,8 +6,8 @@ The upward delete's stop node is a segment leaf when the merges are on
 `mergeBelow` ≥ 2 live klongs, so it is not one that the delete empties
 (`stopLeaf_of_liveCounts`). The climb passes only nodes the delete empties,
 so the stop node, the parent of one, is no inner node: neither the inner
-node's bitmap nor LE-b runs at it. So putinv's `UpLebFitsOK` holds at every
-state where the fill holds, vacuously (`upLebFitsOKL_of`).
+node's bitmap nor LE-b runs at it. So the fuel after LE-b's full branch, once a
+premise of putinv's, holds vacuously at every state where the fill holds.
 
 The path's flags: along the key access path from the space root through live
 klongs, every node is reached with the walk's flags (`fReach_path`); the

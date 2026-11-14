@@ -1,10 +1,9 @@
 /-
 The upward delete keeps the walk's ranges (bergdb 024-12, TP10; `RangeOrder`):
-prover cost's `writerWP_deleteUpward_up_get` with the ranges as its
-postcondition. At tree level the stop node loses its klong to the emptied chain
-(`rangeOrder_up_bitmap`) or, the empty key's, moves its next klong to the empty
-key (`rangeOrder_up_leb`); root collapse at the space root keeps `CollInv` and
-the ranges (`writerWP_collapseRoot_spaceRO`).
+prover cost's upward walk with the ranges as its postcondition. At tree level the
+stop node loses its klong to the emptied chain (`rangeOrder_up_bitmap`) or, the
+empty key's, moves its next klong to the empty key (`rangeOrder_up_leb`); root
+collapse at the space root keeps `CollInv` and the ranges.
 -/
 import SIS.Tree.WriterGetUpAll
 import SIS.Tree.RangeLeb

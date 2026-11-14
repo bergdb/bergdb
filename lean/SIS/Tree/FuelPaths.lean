@@ -2,7 +2,7 @@
 The fuel of a reading and the depth of the writer's tree (bergdb 024-12, TP10's
 `OpGetOK`; 024-22): `PathsFit N t r fuel`, every path from r (by the live
 klongs, through all segments) is shorter than `fuel`, so a search with one more
-fuel finds the same (`getEqR_fuel_succ`). Superseded (2026-11-13, coordinator's
+fuel finds the same. Superseded (2026-11-13, coordinator's
 decision): the bounds G and H are checked at a transaction's end, so within it a
 segment tree may grow above H and the whole path is not capped; the reader's fuel
 is per segment, and the premise is latest's `SegFits N t (p.fuel - 1) r`

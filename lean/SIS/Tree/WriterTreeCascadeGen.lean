@@ -1,9 +1,9 @@
 /-
 Cascades of time splits of any depth keep the writer's tree (bergdb 024-22,
 `OpTreeOK`). The writer's time split of a node below an inner parent, with
-what the parent's `appendKlongs` does left open (`writerWP_handleFullWith_time_up`);
-the tree before the klong to the new node is put in the parent, as the tree with
-the node's klongs put (`treeOK_up_time`).
+what the parent's `appendKlongs` does left open; the tree before the klong to the
+new node is put in the parent, as the tree with the node's klongs put
+(`treeOK_up_time`).
 -/
 import SIS.Tree.WriterTreeDepth
 

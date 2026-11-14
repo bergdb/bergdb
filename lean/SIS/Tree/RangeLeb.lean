@@ -15,8 +15,7 @@ open SIS SIS.Check
 key of an inner node x takes the child of x's next live klong (jcv, jy), and
 jcv is deleted. jcv is the least live compare value of x above 0 (`lebMin_fold`),
 so jy's range after, from x's own low bound to the compare value after jcv, holds
-its range before, from jcv (`rangeOrder_leb`). With room and no compaction at
-the writer: `writerWP_emptyKeyNext_range`. -/
+its range before, from jcv (`rangeOrder_leb`). -/
 
 /-! ## The next klong is the least -/
 

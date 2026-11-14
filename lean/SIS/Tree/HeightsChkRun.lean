@@ -5,10 +5,8 @@ transaction's earlier operations reach, runs as its copy with the checks
 (`putKvDelChk`, SIS/Tree/DelChk.lean). The checks are those of the take-backs'
 holders, the parent of the upward delete's take-back a segment leaf, and its
 stop node a segment leaf with the path above it not taken back. With the
-premise the walk of the heights needs no other: `opHtDelOK_of_chk`,
-`treeRun_heightLiveOK_chk`, and latest's assembly of TP7
-(`invPreserved_of_open_chk`). The premise is checked on runs by
-/Users/f/fl/bench/2026-11-13/cost/fit/DelChk.lean.
+premise the walk of the heights needs no other (`opHtDelOK_of_chk`). The premise
+is checked on runs by /Users/f/fl/bench/2026-11-13/cost/fit/DelChk.lean.
 -/
 import SIS.Tree.HeightsRun
 import SIS.Tree.WriterHeightsChkDel

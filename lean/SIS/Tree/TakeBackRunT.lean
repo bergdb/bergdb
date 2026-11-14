@@ -5,8 +5,9 @@ of the transaction's time is reached from the space root. With the overlay's
 klongs before the transaction those of the view (`CacheGood`, `execW_good`),
 whose pointers are below the transaction's first id (`ViewGood`), it gives the
 take-back at the end (`takeBackEnd_of_invT`): a live klong to a node of the
-transaction is a klong of the transaction's time. The per-operation premise is
-`OpTakeTOK`; the rest is as in TakeBackRun.lean.
+transaction is a klong of the transaction's time. The rest is as in
+TakeBackRun.lean; the induction that uses it is `runTree_jointJ2`
+(TakeBackRunJ2.lean).
 -/
 import SIS.Tree.TakeInvTree
 import SIS.Tree.WriterGoodOps

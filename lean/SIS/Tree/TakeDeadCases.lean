@@ -84,8 +84,9 @@ theorem writerWP_appendDeleteKlong_room_exactD (x : NodeId) (depth cv : Nat) (n 
           KNode.add_times n c.i _ (fun s h => by cases h) hnt,
           fun c' => n.add_delete_live_lookup c.i cv c', Or.inl rfl⟩
 
-/-- `writerWP_appendDeleteKlong_j2` with the room of the branch the writer takes
-(`DelRoom`). -/
+/-- A bitmap deleting cv in a reached node x keeps the take-back's (B) and (C)
+together (`TakeJ2`), when cv's live pointer is no node and below B or a value,
+with the room of the branch the writer takes (`DelRoom`). -/
 theorem writerWP_appendDeleteKlong_j2D (x : NodeId) (depth cv : Nat) (n : KNode) (c : Ctx)
     (base : View BVal) (B : NodeId) (w : W)
     (hlk : w.nodes.lookup x = some n) (htk : w.taken.contains x = false)

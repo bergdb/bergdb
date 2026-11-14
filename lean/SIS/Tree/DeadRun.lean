@@ -6,7 +6,7 @@ state when P meets `DeadAllOK` (`wDeadOK_init`); an operation that keeps it
 (`QDead`) keeps it along the transaction (`dead_reached`); at the last state
 it is `DeadAllOK` of the structure after the transaction, by the commit's lift
 (`deadAllOK_commit`). So `DeadAllOK` holds at every run from `QDead` of each
-operation (`deadAllOK_snoc`, one transaction's step). Case (1), a put into
+operation (`deadAllOK_snocR`, one transaction's step). Case (1), a put into
 its leaf with room, keeps it: the writer puts the klong only when `deadOver`
 lets it through (`deadCase_putLeafRoom`).
 -/

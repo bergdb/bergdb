@@ -1,7 +1,7 @@
 /-
 The upward delete in full at the writer's level (bergdb 024-22): the stop node's
-bitmap or LE-b, or a stop at a segment leaf; the tree and the reading together
-(`writerWP_deleteUpward_up`).
+bitmap or LE-b, or a stop at a segment leaf; the tree and the reading
+together.
 -/
 import SIS.Tree.WriterGetUpLeb
 
@@ -11,10 +11,10 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
-/-- `treeOK_up_inner` with the stop node relinked by f (LE-b): the tree after the upward delete at tree level, the stop node X s's klong
-K (s + 1) to the chain X (s + 1) .. X D deleted (N' agrees with N but at X s and
-the chain): a tree from the same root, which reaches only what N reached but the
-chain. -/
+/-- With the stop node relinked by f (LE-b): the tree after the upward delete at
+tree level, the stop node X s's klong K (s + 1) to the chain X (s + 1) .. X D
+deleted (N' agrees with N but at X s and the chain): a tree from the same root,
+which reaches only what N reached but the chain. -/
 theorem treeOK_up_tr (N N' : NodeId → Option KNode) (t : Time) (r : NodeId) (X : Nat → NodeId)
     (Nn : Nat → KNode) (K : Nat → Nat) (s D : Nat) (hsD : s < D)
     (hT : TreeOK N t r) (hXs : TReach N t r (X s))
@@ -58,8 +58,9 @@ theorem treeOK_up_tr (N N' : NodeId → Option KNode) (t : Time) (r : NodeId) (X
   · intro x hxs hxG
     exact hagree x hxs (fun i h1 h2 he => hxG ⟨i, h1, h2, he⟩)
 
-/-- `tReach_up_sub` with the stop node relinked: after the upward delete at tree level, what N' reaches N reached, and it is
-no node of the chain; a link of a node N' reaches is one of N. -/
+/-- With the stop node relinked: after the upward delete at tree level, what N'
+reaches N reached, and it is no node of the chain; a link of a node N' reaches is
+one of N. -/
 theorem tReach_up_sub_tr (N N' : NodeId → Option KNode) (t : Time) (r : NodeId) (X : Nat → NodeId)
     (Nn : Nat → KNode) (K : Nat → Nat) (s D : Nat) (hsD : s < D)
     (hT : TreeOK N t r) (hXs : TReach N t r (X s))

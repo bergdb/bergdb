@@ -154,9 +154,8 @@ root split; nodes below the next id but the path's are kept; and every node
 reached was reached in that tree or is new. The reading, for every value
 lookup without values at the new ids and the chain's nodes, is that tree's, when
 every path inside one segment tree of the state after is shorter than the fuel
-(`SegFits`) or the space root does not space split. Generalizes
-`writerWP_appendKlongs_chain` (`chainC`), which takes inner parents and nodes
-that existed before the transaction. -/
+(`SegFits`) or the space root does not space split. Generalizes the cascade
+with inner parents and nodes that existed before the transaction (`chainC`). -/
 theorem writerWP_appendKlongs_chainGRVf (c : Ctx) (base : View BVal)
     (path0 : List (Option Nat × NodeId)) (s D : Nat) (X : Nat → NodeId) (K : Nat → Nat)
     (Nn : Nat → KNode) (f : Nat) (hf2 : 2 ≤ f)

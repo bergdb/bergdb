@@ -4,24 +4,16 @@ structure's invariants that are no walk of the tree, after the walks of this
 directory through the writer. One statement about the writer remains, the
 take-back discipline (`TakeBackOKUnder`): at a transaction's end no overlay
 node that is kept has a klong that names a node taken back, and the space
-root is not taken back (fault 12 of 023-08 broke this). From it, for every
-run within reach (`runLinksOK_of_takeBack`):
+root is not taken back (fault 12 of 023-08 broke this). The run's links
+(`RunLinksOK`), for every run within reach:
 
 * TP4 (`PointersOK`): `pointersOK_step` with `execW_ptrsOK`, `execW_book`;
 * a history for every key node (`KeyNonempty`): `execW_nonempty`;
-* klongs well formed and giving the history (`KeyHistOK`): `keyHistOK_step`;
-
-and with them the lift of the writer's overlay (`overlayLiftOK_of_takeBack`),
-TP5 under valid parameters (`treeRun_sizeOK`), and TP7 from its latest time,
-the take-back discipline and the bound on dead klongs
-(`invPreserved_of_takeBack`).
+* klongs well formed and giving the history (`KeyHistOK`): `keyHistOK_step`.
 
 The last two of the three, and TP5, need of the writer only what is proved;
 TP4 after the earlier transactions is enough (`runLinksOK_of_pointers`,
-`treeRun_sizeOK_of_pointers`). So TP7, which has TP4 in it, gives the lift
-of the writer's overlay (`overlayLiftOK_of_invPreserved`), and TP10 and TP11
-follow from TP7 and the writer's refinement of the map alone
-(`getOK_of_inv_op`, `scanOK_of_inv_op`). TP7 itself, under valid parameters,
+`treeRun_sizeOK_of_pointers`). TP7 itself, under valid parameters,
 is its latest time, TP4 and the bound on dead klongs
 (`invPreserved_of_latest_pointers`), the last one void without option 2.
 -/
@@ -291,7 +283,5 @@ theorem invPreserved_of_latest_pointers (p : Params) (hp : MergeParamsOK p) (hL 
   exact invPreserved_of_parts p hL hP
     (fun ts hw => treeRun_sizeOK_of_pointers p hp hP ts hw)
     (fun ts hw => (runLinksOK_of_pointers p (by omega) hP ts hw).2.2) hD
-
-/-! ## From the take-back discipline -/
 
 end SIS.Tree

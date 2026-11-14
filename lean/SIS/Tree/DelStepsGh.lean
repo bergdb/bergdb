@@ -1,9 +1,10 @@
 /-
 The upward delete's walks with the heights' cache kept through the loop
-(bergdb 024-12, `UpGhOK` proved): `writerWP_deleteUpward_stepJG` and
-`takeJ2_deleteUpward_stepMBKG` are `writerWP_deleteUpward_stepJ` and
-`takeJ2_deleteUpward_stepMBK` whose steps know the nodes they read cached and,
-for the stop node's bitmap with room, the room.
+(bergdb 024-12; that the loop keeps the heights' cache was a premise, now
+proved): `writerWP_deleteUpward_stepJG` and `takeJ2_deleteUpward_stepMBKG` are
+the upward delete's walks, of the reading (`writerWP_deleteUpward_stepJ`) and of
+the take-back, whose steps know the nodes they read cached and, for the stop
+node's bitmap with room, the room.
 -/
 import SIS.Tree.DelStepsHolderLive
 
@@ -658,7 +659,9 @@ theorem writerWP_appendDeleteKlong_room_gh (x : NodeId) (depth cv : Nat) (n : KN
           simp only [hno, hroom', hroom0, hdead2, hgl, Bool.not_false, Bool.false_and, Bool.false_eq_true,
             ↓reduceIte, note, putNode, writerWP_bind, writerWP_modify, writerWP_pure]
 
-/-- Obligation (`UpCascOKF3H` with the loop keeping the heights' cache). -/
+/-- Obligation (the stop node's bitmap into a full node keeps `DelInv`, the
+merges on, with the fill at the delete's start, the heights' invariant at the
+descent's end and the loop keeping the heights' cache). -/
 def UpCascOKHG (c : Ctx) (base : View BVal) (KO : KindOracle) (BK : NodeId) (H : NodeId → Nat → Prop) : Prop :=
   ∀ (w w3 : W) (B MB : NodeId) (top0 : Top) (pre : List Nat) (cv : Nat) (rk : NodeId)
     (X : Nat → NodeId) (Nn : Nat → KNode) (K : Nat → Nat) (depth stop : Nat) (w2 v : W) (S : KNode),
@@ -687,7 +690,10 @@ def UpCascOKHG (c : Ctx) (base : View BVal) (KO : KindOracle) (BK : NodeId) (H :
     WriterWP (appendDeleteKlong (X stop) stop (K (stop + 1))) c v
       (fun _ w' => DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK w')
 
-/-- Obligation (`UpCascJ2OKF3H` with the loop keeping the heights' cache). -/
+/-- Obligation (the take-back's side of `UpCascOKHG`: the stop node's bitmap
+into a full node keeps the take-back's invariant, with the fill at the delete's
+start, the heights' invariant at the descent's end and the loop keeping the
+heights' cache). -/
 def UpCascJ2OKHG (c : Ctx) (base : View BVal) (KO : KindOracle) (BK B : NodeId) (H : NodeId → Nat → Prop) :
     Prop :=
   ∀ (w w3 : W) (top0 : Top) (pre : List Nat) (cv : Nat) (rk : NodeId)
@@ -1047,8 +1053,8 @@ theorem writerWP_del_emptyAnyMKLHG (c : Ctx) (base : View BVal) (hvc : ViewCoher
 
 set_option maxHeartbeats 3200000 in
 /-- `writerWP_del_emptyRoomMJK` whatever room the stop node has: the walk cut at
-the stop node's step (`takeJ2_deleteUpward_stepMBK`), the cascade and LE-b from
-`UpCascJ2OKF3` and `UpLebJ2OKF3`. -/
+the stop node's step and the cascade from `UpCascJ2OKHG`, with the loop keeping
+the heights' cache and the live counts at the delete's start (`hLC`). -/
 theorem writerWP_del_emptyAnyMJKLHG (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (pre : List Nat) (cv : Nat) (rk : NodeId) (w : W) (B : NodeId) (top0 : Top)
     (hB : PutBase c base B) (hbook : PutBook c B top0 w)

@@ -211,7 +211,8 @@ theorem reachS_trans (N : NodeId → Option KNode) (t : Time) (r a : NodeId) (ha
 
 /-! ## The writer: the walk down a key's prefix to any suffix -/
 
-/-- `writerWP_putSegs_prefix_src` to any nonempty suffix of segments. -/
+/-- The walk down a key's prefix, with what it caches, to any nonempty suffix of
+segments. -/
 theorem writerWP_putSegs_walk_src (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (key : Key) (value : Option Nat) (sfx : List Nat) (hsfx : sfx ≠ []) (post : Bool → W → Prop) :
     ∀ (pre : List Nat) (r rk : NodeId) (w : W),
@@ -388,11 +389,5 @@ theorem segRootR_snoc (N : NodeId → Option KNode) (t : Time) (fuel : Nat) (k :
       split
       · exact ih y
       · rfl
-
-/-! ## The rule: a time split of a segment root below a segment leaf -/
-
-/-! ## The writer: a space split of a segment root below a segment leaf -/
-
-/-! ## The rule: a space split of a segment root below a segment leaf -/
 
 end SIS.Tree

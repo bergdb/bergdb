@@ -425,8 +425,7 @@ theorem writerWP_takeBackRoot_seg_collF (fuelR : Nat) (hfR : 2 ≤ fuelR) (x : N
         exact hfin _ rfl rfl rfl rfl
     · exact writerWP_throw _ _ _ _
 
-/-- The collapse steps at the space root keep `CollGetInv` (the steps of
-`writerWP_collapseRoot_space_get`). -/
+/-- The collapse steps at the space root keep `CollGetInv`. -/
 theorem writerWP_rootStep_space_collF (fuelR : Nat) (hfR : 2 ≤ fuelR) (x : NodeId) (only : Nat) (n : KNode) (c : Ctx)
     (base : View BVal) (w0 v : W) (hI : CollGetInvF c base w0 v fuelR) (hx : x = v.top.rootKey)
     (hlkx : v.nodes.lookup x = some n) (honly : n.onlyLiveKlong = some only)

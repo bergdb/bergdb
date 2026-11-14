@@ -1,11 +1,9 @@
 /-
 The writer's tree kept by every put at leaf level without an inner split
 (bergdb 024-22, `OpTreeOK`), under prover latest's writer invariant `PutInv`
-(GetPutInv.lean): a put into a space whose root is a leaf
-(`writerWP_put_leafRoot_tree`), and a put into a leaf below inner nodes with
-room for two klongs (`writerWP_put_leafBelow_tree`), each case by the rule
-that the leaf's state chooses, as in `writerWP_put_leafRoot` and
-`writerWP_put_leafBelow`.
+(GetPutInv.lean): a put into a space whose root is a leaf, and a put into a
+leaf below inner nodes with room for two klongs, each case by the rule that the
+leaf's state chooses. Here: the facts of `PutInv` that these rules take.
 -/
 import SIS.Tree.WriterTreeMergeOp
 import SIS.Tree.GetPutInv

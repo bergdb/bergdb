@@ -6,7 +6,7 @@ nodes below B (`OldBelowN`), their first time is before it (`OldStartN`), the
 nodes of the transaction start at it (`MadeStartN`), no node is of a later time
 (`TimesN`), and no value of the transaction is a node (`ValsNoNodeN`). With
 these, a node with a klong to a node of the transaction is reached and names it
-live (`named_reached`), so only the segment leaf above names a root taken back.
+live, so only the segment leaf above names a root taken back.
 -/
 import SIS.Tree.TakeBackDead
 import SIS.Tree.TakeInvCollapse

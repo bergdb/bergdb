@@ -1,6 +1,7 @@
 /-
 The links and klongs of the state after the upward loop from its books (bergdb
-024-12): `UpUnlinkLinksOK`'s facts hold at every state with the books
+024-12): every node names ids below the next id and has well-formed klongs;
+these facts hold at every state with the books
 (`PutBook`, `putInvG_of_book`), so the stop node's cascade and LE-b need only
 `UpUnlinkOK` and the fuel.
 -/

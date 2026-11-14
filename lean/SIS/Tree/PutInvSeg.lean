@@ -10,7 +10,7 @@ open SIS SIS.Check
 
 /-! `PutInv` kept by a put into a segment root that is a leaf below the segment
 leaf q of the key's segment before (bergdb 024-12, TP10; the rules of prover
-latest's `writerWP_put_segLeaf_inv`): with room, the time split in place, the
+latest's put into a segment leaf): with room, the time split in place, the
 time split (q's klong names the new node), the space split into a new segment
 root and the space split in place (q's klong names the new root). No inner node
 links the segment root, so the order at its leaf needs no bound; q, a leaf

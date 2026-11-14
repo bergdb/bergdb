@@ -6,10 +6,9 @@ if it is inner (`RootOK`). The node a link names has a live klong; two if a
 segment leaf names it and it is inner; m if an inner node names it and the
 merges are on (`ChildOK`). A step of the writer then checks only the links it
 changes: a node that keeps its kind and live pointees and loses no live klong
-(`liveEdges_updN_grow`), a fresh copy (`liveEdges_copy`), a change off the tree
-(`liveEdges_of_agree`), and the halves of a space split (`HalfOK`). The
-equivalence with `LiveCounts` is in `LiveEdges.lean`; this part sits below the
-writer's cascade walk (`WriterTreeChainG.lean`).
+(`liveEdges_updN_grow`), a fresh copy, a change off the tree, and the halves of a
+space split (`HalfOK`). The equivalence with `LiveCounts` is in `LiveEdges.lean`;
+this part sits below the writer's cascade walk (`WriterTreeChainG.lean`).
 -/
 import SIS.Tree.WriterTreeChainTree
 
@@ -105,8 +104,6 @@ theorem liveEdges_updN_grow (p : Params) (N : NodeId → Option KNode) (t : Time
         exact childOK_grow p t un un n n' (h.2 u un c y n hu' hun hc hx) rfl hl hlen
       · rw [updN_ne _ _ _ _ hyx] at hyn
         exact h.2 u un c y yn hu' hun hc hyn
-
-/-! ## A node replaced by a fresh copy -/
 
 /-! ## Agreement, and the space splits -/
 

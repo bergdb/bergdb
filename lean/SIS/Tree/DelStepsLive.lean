@@ -2,8 +2,8 @@
 The upward delete with the fill at the delete's start (bergdb 024-12,
 `LiveCounts`): with the merges on, the stop node of an upward delete is a
 segment leaf (cost's `stopLeaf_of_liveCounts`), so LE-b never comes
-(`lebStop_false`); `writerWP_del_emptyAnyMKL` and `writerWP_del_emptyAnyMJKL`
-are the walks of `DelEmptyCascM` without LE-b's obligations.
+(`lebStop_false`), and the walks of `DelEmptyCascM` need no LE-b's
+obligations.
 -/
 import SIS.Tree.DelStepsTree
 import SIS.Tree.StopLeafLive
@@ -54,8 +54,8 @@ def DelStepsQdL (p : Params) (R : Struct BVal → Time → Prop) : Prop :=
   DelStepsCaseQd p R (fun c base w op => (∃ key, op = .del key ∧ c.p.merges = true) ∧
     LiveCounts c.p (wNode c.p base w) c.i w.top.rootKey)
 
-/-- The delete with the merges on (case (4)) keeps `QdW`: `DelStepsQd` with the
-merges' loop (`writerWP_mergeUp_del`) and root collapse
+/-- The delete with the merges on (case (4)) keeps `QdW`: its steps with the post `QdW`,
+with the merges' loop (`writerWP_mergeUp_del`) and root collapse
 (`writerWP_collapseRoot_del`, `writerWP_afterDelete_del`), the fuel at the
 operation's start from `TxSegFitsOK`. -/
 theorem opCaseOK_qdW_delMergeRL (p : Params) (R : Struct BVal → Time → Prop) (hS : DelStepsQdL p R)

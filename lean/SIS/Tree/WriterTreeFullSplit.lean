@@ -1,7 +1,7 @@
 /-
 A full node's split with a last version given by the caller, and its cascade
-(bergdb 024-22): `writerWP_delSplit_chainG` for any last version whose tree is a
-tree, for the merge's full parent (`mergeParent`'s `full`).
+(bergdb 024-22), for any last version whose tree is a tree, for the merge's full
+parent (`mergeParent`'s `full`).
 -/
 import SIS.Tree.WriterTreeDelChain
 
@@ -11,9 +11,9 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
-/-- `writerWP_delSplit_chainG` for any last version `last` (a delete's, or a
-merge's parent with its new pointers): given that the tree with X (D + 1)'s node
-replaced by `last` is a tree (`hVt`) and `last` names nodes below the next id
+/-- A full node's split with any last version `last` (a delete's, or a merge's
+parent with its new pointers), and its cascade: given that the tree with X (D +
+1)'s node replaced by `last` is a tree (`hVt`) and `last` names nodes below the next id
 (`hvx`), the split and its cascade keep the tree, every node reached after
 reached in that tree or new. The node X (D + 1) splits in time or in space (by
 `last`'s size and `compact`), in place if the transaction made it, below an

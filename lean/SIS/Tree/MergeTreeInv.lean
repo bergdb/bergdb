@@ -1,7 +1,8 @@
 /-
 The writer's merge keeps the writer's tree, from the invariants of the state
-before it (bergdb 024-22, case 4's `MergeStepOKF`): `writerWP_merge_any_tree`
-and `writerWP_merge_root_tree` with their halves premises derived from the full
+before it (bergdb 024-22, case 4's merge step), below the space root and at it
+(`writerWP_merge_any_treeS`, `writerWP_merge_root_treeS`), with the halves
+premises derived from the full
 parent's sorted last version (`mergeFullLast_sorted`) and the range of its link.
 -/
 import SIS.Tree.GetMergeInv
@@ -48,7 +49,8 @@ theorem hhalves_of_sorted (c : Ctx) (pn last : KNode) (pairs : List (Nat × Node
   refine ⟨r.1, hsc, hdiv, hfh, hsh, fun hql => hrangeL hsp hql r.1 r.2 hrm hsc⟩
 
 set_option maxHeartbeats 1600000 in
-/-- `writerWP_mergeTail_any_tree` with its halves premise derived: the full
+/-- The merge's tail keeps the writer's tree, the parent with room or full,
+with its halves premise derived: the full
 parent's last version is sorted (`mergeFullLast_sorted`, from the merged nodes'
 ranges, as in `writerWP_mergeTail_any_get`) and its live compare values are in
 the range of its link for the merge's values (`hrangeL`, with `MergeGOK`). -/
@@ -816,10 +818,10 @@ theorem writerWP_mergeTail_any_treeS (c : Ctx) (base : View BVal) (x : NodeId) (
       (fun _ w' => TreeOK (wNode c.p base w') c.i w'.top.rootKey) :=
   writerWP_mergeTail_any_treeS2 c base x d p pn xn leftSome l ln il r rn ir cL cR N root nx w3 hT hp hpn hL hLL hR hRL hc hxlr hln hrn hpwf hpt hch hN3 h3top h3next h3p h3src hfree hfreshT hvc hlinksAll hbaseF s D X K Nn hsD hd hX hK hlinkK hrange hlen hwf htimes htop hdist hXp hNp hS2 hS4 hR0 hXx hpleaf hclt hcap hadj hll hrl hlrange hllow hrrange hrup hsa2 (fun m1 m2 last h _ => hrangeL m1 m2 last h)
 
-/-- `writerWP_merge_any_tree` with its halves premise derived
-(`writerWP_mergeTail_any_treeS`), its premises as `writerWP_merge_any_get`'s
-(the cascade's `hspace` not needed), the full parent's range from the walk's
-ranges (`mergeLast_range`). -/
+/-- The writer's merge keeps the writer's tree, the parent with room or full,
+with its halves premise derived (`writerWP_mergeTail_any_treeS`), its premises as
+`writerWP_merge_any_get`'s (the cascade's `hspace` not needed), the full parent's
+range from the walk's ranges (`mergeLast_range`). -/
 theorem writerWP_merge_any_treeS2 (x : NodeId) (d : Nat) (c : Ctx) (base : View BVal)
     (hvc : ViewCoherent c base) (w : W)
     (hT : TreeOK (wNode c.p base w) c.i w.top.rootKey)
@@ -1170,8 +1172,9 @@ theorem writerWP_merge_any_treeS (x : NodeId) (d : Nat) (c : Ctx) (base : View B
   exact writerWP_merge_any_treeS2 x d c base hvc w hT hpar hRt hids hbaseF hfreshT hR hcap htimesN hwfN hnoval hlinksAll hfreshV s D X K Nn hsD hd hX hK hlinkK hrange hlen hwf htimes htop hdist hS2 hS4 hR0 hXx hsa2
 
 set_option maxHeartbeats 1600000 in
-/-- `writerWP_mergeTail_root_tree` with the sortedness of the root's last version
-derived (`mergeFullLast_sorted`). -/
+/-- The merge's tail keeps the writer's tree with the parent at the space root
+(d = 1; a full root splits with `writerWP_handleFull_rootV`), with the
+sortedness of the root's last version derived (`mergeFullLast_sorted`). -/
 theorem writerWP_mergeTail_root_treeS (c : Ctx) (base : View BVal) (x : NodeId) (d : Nat) (p : NodeId)
     (pn xn : KNode) (leftSome : Bool) (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId)
     (rn : KNode) (ir : Nat) (cL cR : Nat) (N : NodeId → Option KNode) (root : NodeId) (nx : Nat)
@@ -1949,8 +1952,9 @@ theorem writerWP_mergeTail_root_treeS (c : Ctx) (base : View BVal) (x : NodeId) 
         rw [h10tc y hyl hyr, h10l' y hyp hyl hyr, h8l, lookup_append_single_ne _ _ _ _ hym2,
           h6old y (hyx y hyl hyr) hym]
 
-/-- `writerWP_merge_root_tree` without its sortedness premise
-(`writerWP_mergeTail_root_treeS`), its premises as `writerWP_merge_root_get`'s. -/
+/-- The writer's merge keeps the writer's tree with the parent at the space root
+(d = 1), without a sortedness premise (`writerWP_mergeTail_root_treeS`), its
+premises as `writerWP_merge_root_get`'s. -/
 theorem writerWP_merge_root_treeS (x : NodeId) (d : Nat) (c : Ctx) (base : View BVal)
     (hvc : ViewCoherent c base) (w : W)
     (hT : TreeOK (wNode c.p base w) c.i w.top.rootKey)

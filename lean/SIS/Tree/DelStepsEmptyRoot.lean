@@ -197,6 +197,4 @@ theorem delStepsCaseOK_emptyRoot (p : Params) (R : Struct BVal → Time → Prop
       rw [hr]
       simp [Op.key, Op.value]
 
-/-! ## The two obligations with the stop node's cascade named -/
-
 end SIS.Tree

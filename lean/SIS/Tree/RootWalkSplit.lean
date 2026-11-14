@@ -80,8 +80,4 @@ macro_rules
           (kr_cache_at (by assumption) (by assumption) (by krTag) (by krChain)))
     | (split <;> krKsTac))
 
-/-! ## A full node's replacement -/
-
-/-! ## `appendKlongs` -/
-
 end SIS.Tree

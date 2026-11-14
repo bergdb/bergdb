@@ -2,8 +2,8 @@
 The reading after the merge with a full parent (bergdb 024-22): a node's split
 with a last version given as a virtual node and the cascade above it reads as
 the tree with the node's content replaced by that version (latest's level
-lemmas, `getFromR_timeLevel`, `getFromR_spaceLevel`, with
-`writerWP_appendKlongs_chainGRQ`, composed as in `writerWP_del_accessPathR`).
+lemmas, `getFromR_timeLevel`, `getFromR_spaceLevel`, with the cascade above
+it).
 -/
 import SIS.Tree.WriterTreeMergeFull
 import SIS.Tree.GetCascadeChainG

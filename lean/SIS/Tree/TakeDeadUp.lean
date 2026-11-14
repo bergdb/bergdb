@@ -198,9 +198,9 @@ theorem writerWP_takeBack_exact (x p : NodeId) (cv : Nat) (pn : KNode) (c : Ctx)
 
 /-! ## LE-b exactly -/
 
-/-- `writerWP_emptyKeyNext_room_frame` with x's node after exactly LE-b's
-(`lebNode`), its bitmap set in place only after a bitmap of the transaction, its
-empty key pointed in place only after the last time klong of t. -/
+/-- LE-b at x with room changes only x's node, and x's node after it is
+exactly LE-b's (`lebNode`), its bitmap set in place only after a bitmap of the
+transaction, its empty key pointed in place only after the last time klong of t. -/
 theorem writerWP_emptyKeyNext_room_exact (x : NodeId) (depth : Nat) (n : KNode) (c : Ctx) (w : W)
     (hlk : w.nodes.lookup x = some n)
     (hwf : klongsWf n.ks = true) (hnt : ∀ s, Klong.time s ∈ n.ks → s ≤ c.i)

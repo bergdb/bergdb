@@ -382,6 +382,4 @@ theorem fromVisits_reach (N : NodeId → Option KNode) (t : Time) (fuel : Nat) (
           rw [hg] at h
           exact ih y x c (getEqR_reach N t r0 cv hwf fuel r y hr hg) h
 
-/-! ## A put into a full leaf below an inner parent with room: a time split -/
-
 end SIS.Tree

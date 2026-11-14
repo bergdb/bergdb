@@ -1,7 +1,7 @@
 /-
 The fuel after a delete's bitmap into a full leaf from the heights (bergdb
-024-22, step 4; putinv's `DelFullFitsOK`, DelStepsFullGet.lean): the reached
-form `DelFullFitsOKR`, proved (`delFullFitsOKR_of`).
+024-22, step 4; once a premise of putinv's, DelStepsFullGet.lean):
+`DelFullFitsOKR`, proved (`delFullFitsOKR_of`).
 
 The heights' state at the descent's end (`HtJ`: the books, the walk's state,
 the path not taken back, the klongs' form, and every cached height of a node
@@ -122,8 +122,9 @@ end Walk
 
 /-! ## The fuel after the bitmap into a full leaf -/
 
-/-- putinv's `DelFullFitsOK` with the heights' state at the descent's end
-(`HtJ`), the path ending at depth d. -/
+/-- After a delete's bitmap into a full leaf at the end of the key access path,
+the state fits the writer's fuel (one level more than before at most), with the
+heights' state at the descent's end (`HtJ`), the path ending at depth d. -/
 def DelFullFitsOKR (c : Ctx) (base : View BVal) (H : NodeId → Nat → Prop) (B : NodeId) : Prop :=
   ∀ (w : W), PutInv c base w → SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey →
     ∀ (d : Nat) (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode), PathOK c w d X K Nn →

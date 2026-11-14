@@ -123,6 +123,4 @@ theorem KNode.repoint_live_lookup (n : KNode) (x y : NodeId) (c0 j : Nat)
     unfold keyLookupStep
     simp [hb]
 
-/-! ## The writer -/
-
 end SIS.Tree

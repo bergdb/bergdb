@@ -105,6 +105,4 @@ theorem writerWP_deleteUpward_full (c : Ctx) (L : NodeId) (n : KNode) (d cv : Na
   try simp only [writerWP_pure]
   exact hv'
 
-/-! ## The two obligations with the full leaf reduced -/
-
 end SIS.Tree

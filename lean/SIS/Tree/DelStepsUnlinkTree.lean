@@ -542,8 +542,8 @@ theorem writerWP_upCasc_below_delT (c : Ctx) (base : View BVal)
 
 set_option maxHeartbeats 6400000 in
 /-- The take-back's facts through the stop node's bitmap into a full node below
-the space root (`UpCascJ2OKF3` at stop D + 1): as `writerWP_upCasc_root_j2`, the
-cascade above by `writerWP_handleFull_last_j2U`. -/
+the space root (the take-back's cascade at stop D + 1): as
+`writerWP_upCasc_root_j2`, the cascade above by `writerWP_handleFull_last_j2U`. -/
 theorem writerWP_upCasc_below_j2T (c : Ctx) (base : View BVal)
     (hsa2 : 2 ≤ c.p.splitAbove) (B : NodeId) (hpos : 0 < c.i)
     (w w3 : W) (X : Nat → NodeId) (Nn : Nat → KNode) (K : Nat → Nat) (depth D : Nat) (w2 v : W) (S : KNode)

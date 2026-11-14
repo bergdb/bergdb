@@ -11,8 +11,7 @@ taken back.
 `overlayLiftOKUnder_links` is the lift for every transaction after a run
 whose structure has pointers to nodes of P (TP4), a history for every key
 node, and klongs of every key node that are well formed and give its
-history (`OverlayLiftOKUnder`, SIS/Tree/GetUnder.lean). With the three for
-every run within reach it is `OverlayLiftOK` (`overlayLiftOK_of_links`).
+history (`OverlayLiftOKUnder`, SIS/Tree/GetUnder.lean).
 -/
 import SIS.Tree.OverlayBook
 import SIS.Tree.KeyHistRun

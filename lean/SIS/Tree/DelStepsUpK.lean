@@ -1,7 +1,8 @@
 /-
 The upward delete with its invariant's steps knowing the path
-(`writerWP_deleteUpward_upT_getJMB` with `hJadk` and `hJekn` given the node's
-place on the path, and for LE-b the node inner): for the kinds' books
+(`writerWP_deleteUpward_upT_getJMBK`: an invariant J of the writer's state
+carried to the continuations, with `hJadk` and `hJekn` given the node's place on
+the path, and for LE-b the node inner): for the kinds' books
 (bergdb 024-12, latest's route).
 -/
 import SIS.Tree.TakeDeadUpW

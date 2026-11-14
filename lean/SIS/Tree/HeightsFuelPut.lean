@@ -4,7 +4,7 @@ the heights. A put descends (loads, at most H), and makes at most one cascade:
 the leaf's klongs, or a new segment leaf's klong in the leaf above, after which
 the new segment leaves below have room (`seenHeight_putKv_put`).
 -/
-import SIS.Tree.HeightsFuelMerge
+import SIS.Tree.HeightsFuel
 import SIS.Tree.WriterHeightsPut
 
 set_option autoImplicit false

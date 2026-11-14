@@ -1,14 +1,13 @@
 /-
 The merge under a parent with room keeps the take-back's (B) and (C) together
-(bergdb 024-12, TP4; `J2N`, TakeDeadCollapse.lean): `writerWP_merge_made_j2`.
-The parent's klongs after are its own or name the new nodes
-(`key_mem_mergeParentNode`), with its klongs before t and first time kept
-(`mergeParentNode_facts`); a merged node the transaction made is retargeted away
-from the parent's klongs of the transaction (`writerWP_mergeCleanup_K`, `RetOK`),
-and the parent's klongs before its last time klong are klongs before t, which
-name old nodes (`key_before_last_time`); the new nodes hold live klongs of
-distinct compare values only (`newKlongs_lastLive`). At node-map level:
-`deadLive_mergeParent` and `j2rest_merge`.
+(bergdb 024-12, TP4; `J2N`, TakeDeadCollapse.lean). The parent's klongs after are
+its own or name the new nodes (`key_mem_mergeParentNode`), with its klongs before
+t and first time kept (`mergeParentNode_facts`); a merged node the transaction
+made is retargeted away from the parent's klongs of the transaction
+(`writerWP_mergeCleanup_K`, `RetOK`), and the parent's klongs before its last time
+klong are klongs before t, which name old nodes (`key_before_last_time`); the new
+nodes hold live klongs of distinct compare values only (`newKlongs_lastLive`). At
+node-map level: `deadLive_mergeParent` and `j2rest_merge`.
 -/
 import SIS.Tree.TakeDeadCollapse
 import SIS.Tree.TakeInvMerge
@@ -965,7 +964,5 @@ theorem wNode_none_of (p : Params) (base : View BVal) (w : W) (x : NodeId)
 theorem wNode_some_of (p : Params) (base : View BVal) (w : W) (x : NodeId) (n : KNode)
     (ht : w.taken.contains x = false) (hl : w.nodes.lookup x = some n) : wNode p base w x = some n := by
   simp only [wNode, ht, Bool.false_eq_true, ↓reduceIte, hl]
-
-/-! ## The writer's merge under a parent with room keeps (B) and (C) -/
 
 end SIS.Tree

@@ -9,9 +9,8 @@ open SIS SIS.Check
 
 /-! The delete into a full leaf (bergdb 024-12, TP10): the bitmap does not fit,
 or the leaf would hold too many dead klongs, and the leaf is time split into
-its last version without the key. The reading after it
-(`getFromR_timeSplit_del`): the key reads as no value, every other key as
-before. -/
+its last version without the key. The reading after it: the key reads as no value,
+every other key as before. -/
 
 /-! ## The writer's time splits with nothing to insert, the values kept -/
 
@@ -99,9 +98,5 @@ theorem writerWP_handleFullWith_timeInPlace_nilV (up : NodeId → List (Nat × N
         obtain ⟨t, ht⟩ := hpre2
         rw [← ht, List.lookup_append, hlk]; rfl
       exact hrest _ ⟨hr2.1, hr2.2.1, hr2.2.2.1, hr2.2.2.2.1, hr2.2.2.2.2⟩ hlk2
-
-/-! ## The rule: a delete into a leaf below an inner parent with room -/
-
-/-! ## The delete's space split of a full leaf -/
 
 end SIS.Tree

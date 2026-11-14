@@ -9,8 +9,8 @@ open SIS SIS.Check
 /-! `OpPutInvOK` from the parts about the tree alone, and `PutInv` at every
 state of a transaction (bergdb 024-12, TP10). The global parts of `PutInv`
 hold after every operation (`putInvG_of_book`), so `OpPutInvOK` reduces to
-`OpPutInvTOK`: each operation keeps no reachable node taken back and the order
-at the leaves (`opPutInvOK_of_T`). With cost's `OpTreeOK`, `PutInv` holds at
+its parts about the tree: each operation keeps no reachable node taken back
+and the order at the leaves. With cost's `OpTreeOK`, `PutInv` holds at
 every state that a prefix of a transaction's operations reaches
 (`putInv_reached`): the invariant that `OpGetOK`'s rules take. -/
 

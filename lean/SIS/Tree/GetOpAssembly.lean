@@ -25,9 +25,9 @@ between operations (`joint_reached`), so they give the three premises in the
 forms that `getOK_scanOK_of_open` takes; `OpTreeOK`, which has no premise on
 the run, for runs that all meet R (`opTreeOK_of_any`).
 
-`getOK_scanOK_of_cases` gives TP10 and TP11 from the cases;
-`getOK_scanOK_of_cases_merges` for the parameters of `MergeParamsOK`, where
-the merges are on and the cases (5) to (9) are void. -/
+`getOK_scanOK_of_cases_merges` gives TP10 and TP11 from the cases, for the
+parameters of `MergeParamsOK`, where the merges are on and the cases (5) to
+(9) are void. -/
 
 /-! ## A post per case -/
 
@@ -232,7 +232,9 @@ theorem opTreeOK_of_any (p : Params) (R : Struct BVal → Time → Prop)
 
 /-! ## TP10 and TP11 from the cases -/
 
-/-- `getOK_scanOK_of_cases` for the parameters of `MergeParamsOK`: the merges
+/-- TP10 and TP11 from TP7, the run's links and P's tree at every run within
+reach, the fuel premise along transactions, and the cases, for the parameters
+of `MergeParamsOK`: the merges
 are on, the cases (5) to (9) are void, and of the cases are left the writer's
 tree, `PutInv` and the walk's ranges of (1) to (4), and the reading of (4). -/
 theorem getOK_scanOK_of_cases_merges (p : Params) (hp : MergeParamsOK p) (hinv : InvPreserved p)

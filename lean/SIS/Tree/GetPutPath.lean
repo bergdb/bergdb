@@ -68,7 +68,7 @@ theorem lookup_of_isPrefix {β : Type} (l1 l2 : List (NodeId × β)) (h : l1.IsP
   rw [List.lookup_append, hz]
   rfl
 
-/-- `writerWP_putSegs_prefix_src` with the writer's path: the walk down the prefix
+/-- The walk down a key's prefix, with what it caches and the writer's path: it
 adds steps linked from r, ending at rk, whose nodes but the last are in the
 writer's nodes. -/
 theorem writerWP_putSegs_prefix_linked (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)

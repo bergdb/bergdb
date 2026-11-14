@@ -103,10 +103,6 @@ theorem delStepsCaseJ2OK_noop (p : Params) (R : Struct BVal → Time → Prop)
     w hrk (hI.pathUntaken _) (keyLeaf_all hK hrk (fun m => bitsUnion m.lastBitmap (m.bitsOf cv) = m.lastBitmap)
       hnoop) hJ
 
-/-! ## The two obligations with the stop node's cascade named -/
-
-/-! ## The leaf's bitmap: with room, and full -/
-
 /-! ## The upward delete with room -/
 
 set_option maxHeartbeats 1600000 in

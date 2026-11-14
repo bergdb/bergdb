@@ -77,8 +77,6 @@ theorem KNode.add_liveAt_keep (n : KNode) (k : Nat) (y : NodeId) (t : Time)
   rw [hb]
   simpa using lookup_of_mem_nodup _ (KNode.live_keys_nodup _) c z hz
 
-/-! ## The steps at a segment root -/
-
 /-! ## The steps at the space root, and the loop -/
 
 theorem writerWP_replaceRoot_spaceT (x : NodeId) (only : Nat) (n : KNode) (child : NodeId) (c : Ctx)

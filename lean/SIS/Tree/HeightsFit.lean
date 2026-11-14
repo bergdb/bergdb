@@ -1,8 +1,9 @@
 /-
 The fuel premise between operations from the heights (bergdb 024-22, step 4
-(C); 024-12's TP10 premise `TxSegFitsOK`): `txSegFitsOK_of_takeBelowR`. Its one
-new named premise is `TakeBelowFuelOK`: every node an operation takes back has
-a height below the fuel. The argument, the doomed transaction:
+(C); 024-12's TP10 premise `TxSegFitsOK`; `txSegFitsOK_of_takeBelowDelR2U`,
+HeightsUnder.lean). Its one named premise for this is `TakeBelowFuelDelOK`
+(`htb`): every node a delete takes back has a height below the fuel. The
+argument, the doomed transaction:
 
 * at a state between operations the heights' walk holds (`ht_reached`, given
   `OpDelChkOK`), so SegFits (fuel - 1) follows when every node not taken back
@@ -10,9 +11,9 @@ a height below the fuel. The argument, the doomed transaction:
 * a node of height fuel or more is above H, so it is in `outside`
   (`HeightMarkedPred`), and stays there to the transaction's end;
 * `boundsOK` at the end asks it taken back, by some later operation, which
-  `TakeBelowFuelOK` excludes.
+  `TakeBelowFuelDelOK` excludes (a put takes nothing back).
 
-`TakeBelowFuelOK`'s reason is (C)'s part 1 (`ht_descendLte_height`): every node
+`TakeBelowFuelDelOK`'s reason is (C)'s part 1 (`ht_descendLte_height`): every node
 an operation finds and takes back is in a segment tree the operation descended
 through, and such a descent passes heights below the fuel only.
 -/
@@ -180,7 +181,9 @@ theorem fuel_gt_H (p : Params) : p.H + 2 < p.fuel := by
   have : p.H + 2 ≤ (p.G + 1) * (p.H + 2) := Nat.le_mul_of_pos_left _ (Nat.succ_pos _)
   omega
 
-/-- `TakeBelowFuelOK` for the deletes: a put takes nothing back. -/
+/-- Every node a delete takes back that it found (cached, not taken back, at its
+start), from a state that the transaction's earlier operations reach, has a
+height below the fuel (named premise; a put takes nothing back). -/
 def TakeBelowFuelDelOK (p : Params) : Prop :=
   ∀ ts tx, Within p (ts ++ [tx]) → ∀ z top,
     lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z →

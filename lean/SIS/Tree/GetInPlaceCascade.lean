@@ -7,8 +7,7 @@ namespace SIS.Tree
 open SIS SIS.Check
 
 /-! The cascades into a parent the transaction made (bergdb 024-12, TP10): its
-time split in place, with the writer's cache kept
-(`writerWP_appendKlongs_timeInPlaceC`), and a node replaced by one with the
+time split in place, with the writer's cache kept, and a node replaced by one with the
 same live klongs (`getFromR_congr_node`). -/
 
 /-- Two readers that differ only at q, whose nodes there have the same kind and
@@ -45,17 +44,5 @@ theorem getFromR_congr_node (N1 N2 : NodeId → Option KNode) (V : NodeId → Op
   intro key r
   have := getFromR_ren N1 N2 V V t fuel _ q q hS (fun a => by simp [hid]) key r trivial
   simpa [hid] using this
-
-/-! ## The writer: a leaf's time split whose parent, made by the transaction, is full -/
-
-/-! ## The rule: a leaf's time split whose parent, made by the transaction, is full -/
-
-/-! ## The writer: a leaf's space split whose parent, made by the transaction, is full -/
-
-/-! ## The rule: a leaf's space split whose parent, made by the transaction, is full -/
-
-/-! ## The writer: a leaf's space split in place whose parent, made by the transaction, is full -/
-
-/-! ## The rule: a leaf's space split in place whose parent, made by the transaction, is full -/
 
 end SIS.Tree

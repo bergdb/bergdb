@@ -1,9 +1,9 @@
 /-
 The upward delete with the merges on, cut at the stop node's step (bergdb
-024-12, case (4), `DelEmptyCascM`): `writerWP_deleteUpward_upT_getJMB`'s walk
-through the climb and the take-back loop, with the stop node's step (its
-bitmap, or LE-b, and the continuation) an obligation at the loop's end state,
-whatever room the stop node has.
+024-12, case (4), `DelEmptyCascM`): the upward delete's walk with an invariant
+J carried to the continuations, through the climb and the take-back loop, with the
+stop node's step (its bitmap, or LE-b, and the continuation) an obligation at the
+loop's end state, whatever room the stop node has.
 -/
 import SIS.Tree.TakeDeadUpW
 import SIS.Tree.TakeDeadCases
@@ -362,7 +362,7 @@ theorem writerWP_deleteUpward_stepJ (c : Ctx) (base : View BVal) (X : Nat → No
 set_option maxHeartbeats 1600000 in
 /-- The stop node's bitmap at the loop's end state, with the room of the branch
 the writer takes (`DelRoom`, exact): the facts the upward delete's continuations
-get (`writerWP_deleteUpward_upT_getJMB`'s), for a segment leaf or an inner node
+get with their invariant J, for a segment leaf or an inner node
 whose klong to the chain is not the empty key's. -/
 theorem writerWP_upStop_bitmapD (c : Ctx) (base : View BVal) (X : Nat → NodeId)
     (Nn : Nat → KNode) (K : Nat → Nat) (depth cv : Nat) (pre : List Nat) (rk : NodeId)

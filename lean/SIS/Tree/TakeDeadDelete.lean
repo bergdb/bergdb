@@ -217,8 +217,8 @@ theorem j2_change_one (N N' : NodeId → Option KNode) (t : Time) (r r' B : Node
 /-! ## The bitmap at the writer's level -/
 
 set_option linter.unusedSimpArgs false in
-/-- `writerWP_appendDeleteKlong_room_frame` with x's node after exactly a bitmap
-of cv (`BitmapOf`). -/
+/-- `appendDeleteKlong` of cv in node x with room, cv live, changes only x's
+node, and x's node after it is exactly a bitmap of cv (`BitmapOf`). -/
 theorem writerWP_appendDeleteKlong_room_exact (x : NodeId) (depth cv : Nat) (n : KNode) (c : Ctx)
     (w : W) (hlk : w.nodes.lookup x = some n) (hnt : ∀ s, Klong.time s ∈ n.ks → s ≤ c.i)
     (hw : klongsWf n.ks = true)

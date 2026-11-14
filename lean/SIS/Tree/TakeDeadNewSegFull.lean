@@ -598,6 +598,4 @@ theorem opJ2Case_putNewSegFull (p : Params) (R : Struct BVal → Time → Prop)
   intro _ w' h' _
   exact h'
 
-/-! ## The assembly with case (3) -/
-
 end SIS.Tree

@@ -313,6 +313,4 @@ theorem rangeOrder_segCollapse (N1 N2 : NodeId → Option KNode) (t : Time) (r q
     · have hm0 : N1 z = some m := by rw [← hN2 z hzq hzx]; exact hm
       exact nodeRange_wider m t lo0 lo hi0 hi (hR z lo0 hi0 m hz0 hm0) hlo hhi
 
-/-! ## Root collapse at the space root at the writer -/
-
 end SIS.Tree

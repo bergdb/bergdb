@@ -1,29 +1,26 @@
 /-
 The tree model (bergdb 024-12, TP4 and TP7): the take-back discipline
 (`TakeBackOKUnder`, PointersRun.lean) and P's tree (`TreeAt`, WriterTree.lean)
-at every run within reach, as one induction over the runs. The circle
-TP4 → the lift of the writer's overlay → P's tree → TP4 closes as an
-induction (`runTree_joint`): each transaction's take-back needs P's tree before
-it, and P's tree after it needs the lift, which needs TP4 before it.
+at every run within reach, as one induction over the runs (`runTree_jointJ2`,
+TakeBackRunJ2.lean). The circle TP4 → the lift of the writer's overlay → P's
+tree → TP4 closes as an induction: each transaction's take-back needs P's tree
+before it, and P's tree after it needs the lift, which needs TP4 before it.
 
-The take-back at a transaction's end (`takeBackEnd_of_inv`) follows from three
-facts of its last state, besides the books (the nodes taken back are made by
-the transaction; one overlay entry per node):
+The take-back at a transaction's end follows from three facts of its last
+state, besides the books (the nodes taken back are made by the transaction;
+one overlay entry per node):
 
 * (A) a node reached from the space root is not taken back (`ReachedFree`);
-* (B) a kept node with a live klong to a node of the transaction is reached
-  (`LiveReached`);
+* (B) a kept node with a live klong to a node of the transaction is reached;
 * (C) a klong of a kept node to a node taken back comes with a live klong of
   the same node to it (`DeadTakenLive`).
 
-(A) and (B) are tree-level and kept by every operation (`OpTakeOK`, with the
-writer's tree before and after: prover cost's `OpTreeOK`); (C) holds at a
-transaction's end (`DeadTakenLiveOK`). The induction carries a further
-statement Q about the runs, with its own first state and step, for what the
-proofs of these premises need of P (for example TP7's invariant).
-
-Premises here: `OpTreeOK`, `OpTakeOK`, `DeadTakenLiveOK`, Q's first state and
-step. None is void: TakeBackRunExample.lean computes (A) and (B) and the
+(A) and (B) are tree-level and kept by every operation, with the writer's tree
+before and after (prover cost's `OpTreeOK`); (C) holds at a transaction's end.
+The induction carries a further statement Q about the runs (`RunTreeQ`), with
+its own first state and step, for what the proofs need of P (for example TP7's
+invariant). Here: the lift of one transaction (`CommitLiftAt`), (A), (C) and
+`RunTreeQ`. TakeBackRunExample.lean computes (A) and (B) and the
 writer's tree at every state between operations, and (C) and the take-back at
 the last, on two runs whose transactions take nodes back by the upward delete,
 by a merge and by root collapse, at the space root and at a segment's.
@@ -148,10 +145,6 @@ a live klong of the same node to it. -/
 def DeadTakenLive (t : Time) (w : W) : Prop :=
   ∀ q ∈ w.nodes, w.taken.contains q.1 = false → ∀ cv y, Klong.key cv y ∈ q.2.ks →
     w.taken.contains y = true → ∃ c, (c, y) ∈ q.2.liveAt t
-
-/-! ## The premises about the writer -/
-
-/-! ## (A) and (B) at every state of a transaction -/
 
 /-! ## The induction over the runs -/
 

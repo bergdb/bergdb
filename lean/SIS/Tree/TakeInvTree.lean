@@ -1,6 +1,6 @@
 /-
 The take-back's (B) at node-map level (bergdb 024-12, TP4; TakeBackRun.lean):
-`LiveReachedN`, a node with a live klong to a node at or above B is reached;
+a node with a live klong to a node at or above B is reached;
 `OldBelowN`, the klongs of a node before the transaction's time name nodes
 below B. Root collapse keeps both: every node reached before but the root that
 gives way is reached after (`reach_segCollapse`, `reach_spaceCollapse`), and
@@ -284,7 +284,7 @@ theorem mem_prefixAt_of_lt (ks : List Klong) (t : Time) (j : Nat) (k : Klong)
 
 /-- (B) in the form every rule keeps: a node with a klong of time t (one the
 transaction changed) is reached from the space root. With the klongs of the
-nodes before the transaction below B (`Good`), it gives `LiveReachedN`. -/
+nodes before the transaction below B (`Good`), it gives (B) at node-map level. -/
 def TtReachedN (N : NodeId → Option KNode) (t : Time) (r : NodeId) : Prop :=
   ∀ q qn, N q = some qn → Klong.time t ∈ qn.ks → TReach N t r q
 

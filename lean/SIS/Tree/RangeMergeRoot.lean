@@ -7,7 +7,7 @@ namespace SIS.Tree
 open SIS SIS.Check
 
 /-! The merge under the space root keeps the walk's ranges (bergdb 024-12, case
-(4), `MergeStepOKF`'s `RangeOrder` part at d = 1): putinv's merge range lemmas
+(4), the merge step's `RangeOrder` part at d = 1): putinv's merge range lemmas
 with the root's split (`writerWP_rootSplit_rangeL`) in place of the full
 parent's cascade, as prover cost's `writerWP_mergeTail_root_getF` does for the
 reading. -/

@@ -9,12 +9,11 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
-/-! `PutInv` kept by the time splits of a put (bergdb 024-12, TP10): in place
-(a leaf the transaction made becomes its last version with the put's klong:
-`putInv_put_timeInPlace_below`, `putInv_put_timeInPlace_root`), and of a leaf
-that existed before the transaction below an inner parent with room (a new
-node holds the last version, the parent's klong names it:
-`putInv_put_timeSplit_below`). -/
+/-! Facts of `PutInv` for the time splits of a put (bergdb 024-12, TP10): in
+place (a leaf the transaction made becomes its last version with the put's
+klong), and of a leaf that existed before the transaction below an inner
+parent with room (a new node holds the last version, the parent's klong names
+it). -/
 
 theorem PutInv.lt_next {c : Ctx} {base : View BVal} {w : W} (hI : PutInv c base w)
     (x : NodeId) (xn : KNode) (h : wNode c.p base w x = some xn) : x < w.next := by
@@ -52,9 +51,5 @@ theorem PutInv.reach_lt {c : Ctx} {base : View BVal} {w : W} (hI : PutInv c base
   induction hx with
   | root => exact hI.ids.2.2.2.2
   | step x n cc z hx hn hc _ => exact hI.links x n cc z hx hn hc
-
-/-! ## The time split in place -/
-
-/-! ## The time split below an inner parent -/
 
 end SIS.Tree

@@ -174,8 +174,4 @@ theorem takeJ2_after_bitmap (c : Ctx) (base : View BVal) (B : NodeId) (w3 v : W)
   · exact h
   · rw [h] at hx; cases hx
 
-/-! ## The case's two obligations -/
-
-/-! ## The two obligations with the open cases named -/
-
 end SIS.Tree

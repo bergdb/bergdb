@@ -124,10 +124,4 @@ theorem KNode.rootPair_searchLte (t : Time) (F S : NodeId) (sc c : Nat) :
     · intro q hq _
       rcases hcv q hq with h | h <;> omega
 
-/-! ## The writer's space split of the space root -/
-
-/-! ## The time split of the space root -/
-
-/-! ## The space split in place of the space root -/
-
 end SIS.Tree

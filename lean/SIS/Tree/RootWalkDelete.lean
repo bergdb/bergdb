@@ -16,12 +16,6 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
-/-! ## The descents -/
-
-/-! ## The steps of the delete -/
-
-/-! ## Root collapse -/
-
 /-! ## The merges -/
 
 /-- An inner node's klong names a node of its segment. -/

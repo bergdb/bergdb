@@ -1,6 +1,6 @@
 /-
 The books (`PutBook`) across the upward delete's changing steps (bergdb 024-12,
-case (4)'s delete steps): the J of `writerWP_deleteUpward_upT_getJMB`.
+case (4)'s delete steps): the J of `writerWP_deleteUpward_upT_getJMBK`.
 -/
 import SIS.Tree.TakeDeadUpW
 import SIS.Tree.DelStepsWalk

@@ -8,11 +8,12 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
-/-! `PutInv` kept by every delete of a key of one segment in a space whose root
-is a leaf (bergdb 024-12, TP10), the merges off: no value, a bitmap with room,
-the root kept empty (the upward delete's first case), the root full by its
-size or its dead klongs split in time or in space, in place for a root the
-transaction made (`putInv_del_leafRoot`). -/
+/-! Steps towards `PutInv` kept by every delete of a key of one segment in a
+space whose root is a leaf (bergdb 024-12, TP10), the merges off: no value, a
+bitmap with room, the root kept empty (the upward delete's first case), the root
+full by its size or its dead klongs split in time or in space, in place for a root the
+transaction made: the root's splits with nothing put (the theorem for every
+such delete, used by no other, went in bergdb 025-02). -/
 
 /-! ## The space root's splits with nothing to insert (a delete) -/
 

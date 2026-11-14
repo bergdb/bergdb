@@ -6,8 +6,8 @@ in a segment leaf is the last live one of its compare value. A node taken back
 is at or above B and no value (`TakenAbove`, `TakenNotValOK`), so `DeadLive`
 gives (C) (`deadTakenLive_of_deadLive`).
 
-Per operation (`OpDeadLiveOK`), with the writer's tree, (A) and (B), and the
-walk's ranges before it: why it holds, rule by rule. A klong to a node of the
+Per operation, with the writer's tree, (A) and (B), and the walk's ranges
+before it, `DeadLive` is kept: why it holds, rule by rule. A klong to a node of the
 transaction dies only where the writer kills it after retargeting it from a
 node taken back (the upward delete's stop node), moves it (LE-b), or deletes a
 merged node's klong that the merge then retargets to the first new node; a

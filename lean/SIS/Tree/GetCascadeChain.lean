@@ -8,8 +8,8 @@ namespace SIS.Tree
 open SIS SIS.Check
 
 /-! Splits of any depth (bergdb 024-12, TP10): the reading after
-`appendKlongs` along a chain of the access path, as cost's
-`writerWP_appendKlongs_chain` states the tree after it: the writer's state
+`appendKlongs` along a chain of the access path, a cascade of time and space
+splits of any depth: the writer's state
 reads as the state with the klongs put in the chain's node (the virtual map). -/
 
 /-- The halves of a leaf's last version with klongs put on one side of its

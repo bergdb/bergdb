@@ -355,6 +355,4 @@ theorem delFullRootStepOK_ctx (p : Params) (ts : List Tx) :
   rw [h1]
   exact hread3 key' hk'
 
-/-! ## The full leaf's cases with the root's split -/
-
 end SIS.Tree

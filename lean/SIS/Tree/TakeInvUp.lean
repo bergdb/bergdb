@@ -1,9 +1,8 @@
 /-
 The upward delete with the take-back keeps the take-back's (B) (bergdb 024-12,
-TP4; `TtReachedN`, TakeInvTree.lean). Prover cost's
-`writerWP_deleteUpward_upT_get`, here with what becomes of the chain below the
-stop node (`writerWP_deleteUpward_upT_getF`): each of its nodes is taken back or
-keeps no klong of the transaction's time (`ChainFate`).
+TP4; `TtReachedN`, TakeInvTree.lean). Prover cost's upward delete with the
+take-back, here with what becomes of the chain below the stop node: each of its
+nodes is taken back or keeps no klong of the transaction's time (`ChainFate`).
 -/
 import SIS.Tree.TakeInvCollapse
 import SIS.Tree.WriterGetUpTake
@@ -113,8 +112,6 @@ theorem ttReachedN_up (N1 N2 : NodeId → Option KNode) (t : Time) (r : NodeId) 
       · exact h
       · exact absurd h huc
       · rw [hu] at h; cases h
-
-/-! ## The upward delete with the take-back -/
 
 /-! ## The emptied leaf's live klongs name values, by the kinds -/
 

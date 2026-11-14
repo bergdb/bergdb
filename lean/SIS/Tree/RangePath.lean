@@ -15,13 +15,13 @@ open SIS SIS.Check
 
 /-! The put and the delete along the whole access path from the space root keep
 the walk's ranges (bergdb 024-12, TP10; `RangeOrder`): prover latest's
-`writerWP_put_accessPath` and `writerWP_del_accessPath` with the ranges, on
+rules of the put and the delete along it, with the ranges, on
 `writerWP_appendKlongs_chainGRange` from 0, which also takes a space split of
 the space root (no `hspaceG`). -/
 
 set_option maxHeartbeats 1600000 in
 /-- A put of a key into a full leaf, with the cascade along the whole access
-path from the space root (`writerWP_put_accessPath`'s premises but `hkey`,
+path from the space root (the premises of prover latest's rule but `hkey`,
 `hnoval`, `hspaceG` and `huniq`), keeps the walk's ranges. -/
 theorem rangeOrder_put_accessPath (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (pre : List Nat) (cv h : Nat) (rk : NodeId) (w : W)

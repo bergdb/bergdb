@@ -1,6 +1,6 @@
 /-
 The writer's tree kept by the put of a key whose last segment is new (bergdb
-024-22, `OpTreeOK`; prover latest's `writerWP_put_newSeg`): the leaf of the
+024-22, `OpTreeOK`; prover latest's rule of the put): the leaf of the
 segment before gets a klong to a new segment leaf, which gets the klong of the
 value (`treeOK_newSeg`, `writerWP_put_newSeg_tree`, and under `PutInv`
 `writerWP_put_newSeg_inv_tree`).
@@ -113,7 +113,7 @@ theorem treeOK_newSeg (N N' : NodeId → Option KNode) (t : Time) (r L y v : Nod
         intro he; obtain ⟨_, hk⟩ := hT.rootKey; rw [he, hy] at hk; cases hk
       rw [hother r hrL hry]; exact hT.rootKey
 
-/-- `writerWP_put_newSeg` keeps the writer's tree: a key whose prefix is there
+/-- The put into a new segment leaf keeps the writer's tree: a key whose prefix is there
 and whose leaf for c0 has no klong of c0 and room gets a new segment leaf. -/
 theorem writerWP_put_newSeg_tree (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (pre : List Nat) (c0 cl h : Nat) (rk0 : NodeId) (w : W) (hM : 2 ≤ c.p.M)

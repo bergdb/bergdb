@@ -69,7 +69,7 @@ theorem writerTreeOK_reachedU (p : Params) (R : Struct BVal → Time → Prop) (
     (writerTreeOK_init p ts tx z top hz htop hT) r w hpre
 
 /-- P's tree after one transaction, from P's tree before it, `OpTreeOK` and the
-lift of that transaction (`treeAt_commit_of_lift` at one step). -/
+lift of that transaction. -/
 theorem treeAt_stepU (p : Params) (R : Struct BVal → Time → Prop) (ho : OpTreeOKUnder p R)
     (ts : List Tx) (tx : Tx) (hw : Within p (ts ++ [tx])) (hr : R (treeRun p ts) ts.length) (hT : TreeAt p (treeRun p ts) ts.length)
     (hl : CommitLiftAt p ts tx) : TreeAt p (treeRun p (ts ++ [tx])) (ts.length + 1) := by

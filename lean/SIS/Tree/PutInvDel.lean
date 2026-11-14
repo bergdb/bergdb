@@ -8,12 +8,12 @@ namespace SIS.Tree
 open SIS SIS.Check
 
 /-! `PutInv` kept by the delete rules that change at most one node by shrinking
-its live klongs (bergdb 024-12, TP10; prover latest's `writerWP_del_noop_seg`,
-`writerWP_del_bitmap_seg`): a delete of a key without a value changes nothing
+its live klongs (bergdb 024-12, TP10; prover latest's `writerWP_del_noop_seg`
+and the bitmap's rule): a delete of a key without a value changes nothing
 the state reads (`putInv_del_noop_seg`); a delete by a bitmap in a segment leaf
-that keeps a live klong, the merges off, takes live klongs of one node only
-(`putInv_del_bitmap_seg`). The parts about the tree after any change that only
-takes live klongs of one node: `putInvT_shrink`. -/
+that keeps a live klong, the merges off, takes live klongs of one node only. The
+parts about the tree after any change that only takes live klongs of one node:
+`putInvT_shrink`. -/
 
 /-- A state that reads as w meets the parts about the tree that w meets. -/
 theorem putInvT_of_readsAs (c : Ctx) (base : View BVal) (w w' : W) (hI : PutInv c base w)

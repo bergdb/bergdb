@@ -1,7 +1,7 @@
 /-
 The premises of the take-back's induction (TakeBackRun.lean) hold on runs
-within reach (bergdb 024-12, TP4): Bool forms of (A) `ReachedFree`, (B)
-`LiveReached` at every state between operations, (C) `DeadTakenLive` and the
+within reach (bergdb 024-12, TP4): Bool forms of (A) `ReachedFree`, (B) at
+every state between operations, (C) `DeadTakenLive` and the
 take-back (`TakeBackEnd`) at the last state, computed on transactions that
 take nodes back (the trail names the rules that ran).
 -/
@@ -23,7 +23,7 @@ def tbReach (N : NodeId → Option KNode) (t : Time) (r : NodeId) : Nat → List
       | none => [])).eraseDups.filter (fun y => !s.contains y))
 
 /-- (A) and (B) as a Bool, over the overlay's nodes and P's: (B) as
-`LiveReached` and as `TtReachedN` (TakeBackRunT.lean). -/
+TakeBackRun.lean states it and as `TtReachedN` (TakeBackRunT.lean). -/
 def tbInvB (p : Params) (P : Struct BVal) (t : Time) (B : NodeId) (w : W) : Bool :=
   let N := wNode p (viewOf P) w
   let rs := tbReach N t w.top.rootKey 40

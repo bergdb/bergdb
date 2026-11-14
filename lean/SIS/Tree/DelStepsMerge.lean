@@ -61,8 +61,4 @@ theorem delMerge_cover (c : Ctx) (base : View BVal) (w : W) (key : Key) (hm : c.
         · exact Or.inr (Or.inr (Or.inr (Or.inr ⟨pre, cv, L, n, rfl, hm, hl, hb, ha, hr⟩)))
   · exact Or.inl ⟨key, rfl, hm, hk⟩
 
-/-! ## The obligations by case -/
-
-/-! ## The read-only cases -/
-
 end SIS.Tree

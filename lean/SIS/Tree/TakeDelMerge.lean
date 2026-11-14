@@ -2,7 +2,7 @@
 Case (4) of the take-back, a delete with the merges on (bergdb 024-12, TP7;
 `DelMergeCase`): the merge's step for the take-back (`MergeStepJ2OKF`, from the
 delete's inner invariant with the take-back's facts, `DelInvJF`), with the
-merge below a parent with room (`writerWP_merge_made_j2`), and the take-back's
+merge below a parent with room, and the take-back's
 collapse steps for `CollGetInvF` (`writerWP_takeBackRoot_seg_j2F`,
 `writerWP_replaceRoot_seg_j2F`, `writerWP_rootStep_space_j2F`). The case runs on
 latest's route (TakeDelMergeKd.lean, TakeDelSteps.lean).
@@ -307,9 +307,5 @@ theorem writerWP_rootStep_space_j2F (x : NodeId) (only : Nat) (n : KNode) (c : C
       exact ⟨unlinked_no_time n c.i hpos hnwf hnt,
         unlinked_old_ptrs n c.i B hpos (fun cv y h => hJ.2.2.1 x n hwx cv y h) hnwf hnt,
         hupre, hxB, hufirst⟩
-
-/-! ## A merge below a parent with room -/
-
-/-! ## The case -/
 
 end SIS.Tree

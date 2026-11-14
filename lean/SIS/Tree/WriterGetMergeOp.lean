@@ -1,7 +1,7 @@
 /-
 The writer's merge keeps every reading (bergdb 024-12, TP10's `OpGetOK`;
 024-22): the merge's last part, `mergeTail`, from the siblings to the parent
-with room, keeps `wGet` of every key (`writerWP_mergeTail_get`), the
+with room, keeps `wGet` of every key, the
 siblings' compare values in their ranges (putinv's `RangeOrder`).
 -/
 import SIS.Tree.WriterGetMergeIdx

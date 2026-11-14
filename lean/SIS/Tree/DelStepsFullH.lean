@@ -2,7 +2,7 @@
 The delete into a full leaf with the fuel after its split proved (bergdb 024-12,
 cost's `DelFullFitsOKR`): the delete's walk to its leaf carries the heights'
 invariant (`KdHtJ`, `writerWP_del_toLeafMKH`) from the operation's start
-(`htStart_reachedU`), so `DelFullFitsOK` is no longer a premise.
+(`htStart_reachedU`), so the fuel after the split is no longer a premise.
 -/
 import SIS.Tree.DelStepsUnlinkTree
 import SIS.Tree.DelStepsKdH
@@ -18,7 +18,7 @@ set_option maxHeartbeats 1600000 in
 /-- The delete's invariant with the kinds' books (`DelInv`) after the bitmap
 into a full leaf at the walk's end, from the state w between operations: the
 reading's facts (`writerWP_appendDeleteKlong_full_inv_any`), the fuel premise
-after (`DelFullFitsOK`), the books, and the inner children from the kinds. -/
+after the split, the books, and the inner children from the kinds. -/
 theorem writerWP_appendDeleteKlong_full_delH (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (KO : KindOracle) (BK : NodeId)
     (hRoot : DelFullRootStepOK c base) (H : NodeId → Nat → Prop)
@@ -81,7 +81,7 @@ theorem writerWP_appendDeleteKlong_full_delH (c : Ctx) (base : View BVal) (hvc :
   rw [hw3w]
 
 /-- The reading of a delete into a full leaf, the merges on:
-from the fuel premise after the split (`DelFullFitsOK`, cost's step 4) and the
+from the fuel premise after the split (cost's step 4) and the
 leaf at the space root (`DelFullRootStepOK`), for runs with their links and
 TP4 at every run, 2 ≤ splitAbove. -/
 theorem delStepsCaseOK_fullH (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
@@ -140,7 +140,7 @@ theorem delStepsCaseOK_fullH (p : Params) (R : Struct BVal → Time → Prop) (h
 
 set_option maxHeartbeats 1600000 in
 /-- The take-back of a delete into a full leaf, the merges on, from the fuel
-premise after the split (`DelFullFitsOK`). -/
+premise after the split. -/
 theorem delStepsCaseJ2OK_fullRH (p : Params) (R : Struct BVal → Time → Prop)
     (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M) (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)

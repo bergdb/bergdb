@@ -9,9 +9,9 @@ namespace SIS.Tree
 open SIS SIS.Check
 
 /-! The merge keeps the walk's ranges with the full parent's halves from the
-walk's ranges (bergdb 024-12, case (4), `MergeStepOKF`'s `RangeOrder` part):
-prover putinv's `writerWP_merge_any_range` without its premises `hhalves` and
-`hhalvesR`, which it asks for every merge value. -/
+walk's ranges (bergdb 024-12, case (4), the merge step's `RangeOrder` part):
+without the premises `hhalves` and `hhalvesR` for every merge value that
+prover putinv's first form asked. -/
 
 /-- The halves of the merge's full parent's last version, for the merge's values
 (`MergeGOrd`), from the walk's ranges: the premises `hhalves` and `hhalvesR` of
@@ -101,8 +101,8 @@ theorem mergeLast_halves (c : Ctx) (N : NodeId → Option KNode) (root : NodeId)
     by rw [KNode.liveAt_of_times _ c.i ht]; exact hq0, hq0lt'⟩
 
 /-- The writer's merge keeps the walk's ranges, the parent with room or full
-(cost's `writerWP_merge_any_tree` with `RangeOrder`): `writerWP_merge_any_range` with
-the full parent's halves from the walk's ranges (`mergeLast_halves`). -/
+(with `RangeOrder`), with the full parent's halves from the walk's ranges
+(`mergeLast_halves`). -/
 theorem writerWP_merge_any_range2 (x : NodeId) (d : Nat) (c : Ctx) (base : View BVal)
     (hvc : ViewCoherent c base) (w : W)
     (hT : TreeOK (wNode c.p base w) c.i w.top.rootKey)

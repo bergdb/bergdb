@@ -117,8 +117,6 @@ def CommitCountOK (p : Params) : Prop :=
     nonRootCount p (treeRun p (ts ++ [tx])) (ts.length + 1) =
       wCount p (treeRun p ts) w (ts.length + 1)
 
-/-! ## The walk's dependence on the nodes it reaches -/
-
 /-! ## The first state -/
 
 /-- The walk at two times is the same when every node looked up has the same

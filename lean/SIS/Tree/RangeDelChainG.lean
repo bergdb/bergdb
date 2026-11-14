@@ -8,11 +8,13 @@ namespace SIS.Tree
 open SIS SIS.Check
 
 /-! A delete's leaf split below a cascade keeps the walk's ranges (bergdb
-024-12, TP10; `RangeOrder`): prover cost's `writerWP_delSplit_chainG`,
-`writerWP_delLeaf_chainG` and `writerWP_delRootSplit_tree` with the ranges. -/
+024-12, TP10; `RangeOrder`): prover cost's splits of a delete's leaf, below a
+cascade and at the space root, with the ranges. -/
 
 set_option maxHeartbeats 1600000 in
-/-- `writerWP_delSplit_chainG` (prover cost's) with the walk's ranges: from a
+/-- A full leaf below the cascade's nodes splits a last version given (a
+delete's), with the cascade above it (prover cost's), with the walk's ranges:
+from a
 state whose tree is in order (`RangeOrder`), the delete's leaf split and the
 cascade above it keep the writer's tree and its ranges. `hhalvesR`: the divider
 is a live compare value of the leaf's last version, and one is below it. The
@@ -1125,7 +1127,8 @@ theorem delLast_halvesR (n : KNode) (t : Time) (cv sa : Nat) (hleaf : n.leaf = t
   exact ⟨⟨r.2, (mrg_newKlongs_liveAt_iff true t pairs hpn r.1 r.2).mpr hrp⟩, y.1, y.2,
     (mrg_newKlongs_liveAt_iff true t pairs hpn y.1 y.2).mpr hyp, hyr⟩
 
-/-- `writerWP_delLeaf_chainG` (prover cost's) with the walk's ranges. -/
+/-- The split of a delete's leaf, its last version without the compare value
+cv, below a cascade (prover cost's), with the walk's ranges. -/
 theorem writerWP_delLeaf_chainGRange (c : Ctx) (base : View BVal)
     (path0 : List (Option Nat × NodeId)) (s D : Nat) (X : Nat → NodeId) (K : Nat → Nat)
     (Nn : Nat → KNode) (cv : Nat) (compact : Bool) (hsD : s ≤ D)
@@ -1503,7 +1506,8 @@ theorem writerWP_rootSplit_rangeL (c : Ctx) (base : View BVal) (hvc : ViewCohere
       · exact Or.inl (hRV0 z h)
       · exact Or.inr (by omega)
 
-/-- `writerWP_delRootSplit_tree` (prover cost's) with the walk's ranges: the
+/-- A delete's full leaf that is the space root splits its last version (prover
+cost's), with the walk's ranges: the
 space root leaf's split keeps them (`writerWP_rootSplit_rangeL` with a delete's
 last version). -/
 theorem writerWP_delRootSplit_range (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)

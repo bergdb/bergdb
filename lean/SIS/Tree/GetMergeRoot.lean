@@ -4,8 +4,9 @@ last version given at depth 0, in all its kinds: a time split (in place for a
 root that the transaction made, else a new root) or a space split (in place or
 not) under a new root. The writer's tree after it is a tree and reads as the
 tree with the root's content replaced by the last version, the space split when
-the new root's segment tree fits the fuel (`writerWP_delRootSplit_tree` and the
-root cases of `writerWP_appendKlongs_chainGRV`, for any last version).
+the new root's segment tree fits the fuel (as a delete's full leaf at the space
+root, and the root cases of `writerWP_appendKlongs_chainGRV`, for any last
+version).
 -/
 import SIS.Tree.GetMergeLevel
 import SIS.Tree.GetDelRoot
@@ -1464,8 +1465,8 @@ theorem writerWP_mergeTail_root_getF (f : Nat) (hf2 : 2 ≤ f) (c : Ctx) (base :
         have hzn : m1 ≤ z := by rcases hz with hz | hz | hz <;> omega
         exact ⟨(hfree z hzn).1, hfreshT z hzn⟩
 
-/-- `writerWP_merge_any_get` with the parent at the space root (d = 1,
-`writerWP_mergeTail_root_get`): the reading holds when the state after fits the
+/-- `writerWP_merge_any_get` with the parent at the space root (d = 1): the
+reading holds when the state after fits the
 fuel or the root does not space split. -/
 theorem writerWP_merge_root_getF (f : Nat) (hf2 : 2 ≤ f) (x : NodeId) (d : Nat) (c : Ctx) (base : View BVal)
     (hvc : ViewCoherent c base) (w : W)

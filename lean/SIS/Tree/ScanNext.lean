@@ -9,8 +9,8 @@ open SIS SIS.Check
 /-! The scan's next step gives the head of the chain's remainder (bergdb
 024-12, TP11). -/
 
-/-- A chain whose every link names a sound key node, with the depth bound of
-`ScanChain`. -/
+/-- A chain whose every link names a sound key node, each frame with enough
+remaining depth after accounting for its ancestors. -/
 def SChain (p : Params) (v : View BVal) (t : Time) (bound : Nat) :
     List (NodeId × Int) → Prop
   | [] => True
@@ -280,7 +280,8 @@ theorem nextGo_descent_ok (p : Params) (v : View BVal) (t F bound : Nat) (req : 
       exact ih fd.y _ ((y, (fd.c : Int)) :: rest) hcs hcne' rfl rfl
         ⟨d+1, hs, by omega, hrest⟩ (by simp only [List.length_cons]; omega) f (by omega)
 
-/-- The scan's next step on a sound chain, with the fuel of `nextGo_stable`,
+/-- The scan's next step on a sound chain, with fuel for its climb (at most the
+chain's length) and its descent (at most `bound` key nodes),
 gives the head of the chain's remainder (none at its end or past the end key),
 and a chain whose remainder is the rest. -/
 theorem nextGo_ok (p : Params) (v : View BVal) (t F bound : Nat) (req : ScanReq)

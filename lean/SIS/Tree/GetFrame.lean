@@ -498,8 +498,6 @@ theorem getEqR_change_leaf (N1 N2 : NodeId → Option KNode) (t : Time) (cv : Na
               simp only [eqVisits, hn, hml, Bool.false_eq_true, ↓reduceIte, hf, List.mem_cons]
               exact Or.inr hq
 
-/-! ## The reading after a change of one leaf -/
-
 /-! ## A delete of a key that has no value -/
 
 theorem KNode.searchEq_noop (n : KNode) (t : Time) (cv : Nat) (hw : klongsWf n.ks = true)
@@ -680,7 +678,9 @@ theorem segRootR_frame (N1 N2 : NodeId → Option KNode) (t : Time) (fuel : Nat)
         exact hq
       · rfl
 
-/-- `wGet_leaf_change` for a key of any number of segments: the change is in
+/-- After a change of a leaf at a key's compare value alone, the key reads what
+the leaf's new search gives and every other key what it read, for a key of any
+number of segments: the change is in
 the leaf L of its last segment's tree, whose root rk its prefix leads to. -/
 theorem wGet_leaf_change_seg (p : Params) (base : View BVal) (i : Time) (w w' : W)
     (L : NodeId) (pre : List Nat) (cv : Nat) (rk : NodeId) (n n2 : KNode) (hfuel : 1 ≤ p.fuel)
@@ -838,8 +838,9 @@ theorem keyWf_last_notin (pre : List Nat) (cv : Nat) (h : keyWf (pre ++ [cv]) = 
   intro hcv
   exact hlast pre h (hpre pre h cv hcv)
 
-/-- `writerWP_put_room` for a key of any number of segments, every segment of
-its prefix there. -/
+/-- A put into a segment leaf with room (no split, no compaction) changes what
+the writer's state reads by the put alone, for a key of any number of segments,
+every segment of its prefix there. -/
 theorem writerWP_put_room_seg (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (pre : List Nat) (cv h : Nat) (rk : NodeId) (w : W) (hfuel : 1 ≤ c.p.fuel)
     (hkey : keyWf (pre ++ [cv]) = true)
@@ -939,8 +940,9 @@ theorem writerWP_put_room_seg (c : Ctx) (base : View BVal) (hvc : ViewCoherent c
     simp only [Op.key, hk', Bool.false_eq_true, ↓reduceIte]
     exact hother key' hkey' (fun h' => hk h'.symm)
 
-/-- `writerWP_del_noop` for a key of any number of segments, every segment of
-its prefix there. -/
+/-- A delete of a key that has no value changes nothing that the writer's state
+reads, and the key reads none, for a key of any number of segments, every
+segment of its prefix there. -/
 theorem writerWP_del_noop_seg (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (pre : List Nat) (cv : Nat) (rk : NodeId) (w : W)
     (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)

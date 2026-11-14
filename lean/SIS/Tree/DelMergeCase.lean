@@ -1,7 +1,7 @@
 /-
 Case 4 of 024-12's assembly, a delete with the merges on (bergdb 024-22): the
 parts of the merge's and the collapse's steps that the books, the tree lemmas
-and the reading do not give (`StepInv`, `CollRange`), `PutInv` after a step
+and the reading do not give (`StepInv`, the collapse's ranges), `PutInv` after a step
 from them, and the path facts carried over. The reduction is at a reading fuel
 above the writer's (`DelMergeCaseF.lean`, `DelMergeCaseKd.lean`,
 `CollapseCascade.lean`).
@@ -43,8 +43,9 @@ A run within reach (`Within`'s conditions as a Bool) of two transactions, twelve
 puts and then ten deletes of them, node size 8, G 1, H 2, the merges on
 (mergeBelow 2, mergeMax 3, splitAbove 4): every state between the deletes'
 operations fits the fuel, and the writer merges in the deletes. So the
-hypotheses of `OpGetCaseOK p R DelMergeCase` and of `MergeStepOKF` (a merge of
-the loop inside a delete) are met by a run. -/
+hypotheses of `OpGetCaseOK p R DelMergeCase` and of a merge's step at a fuel f
+(a merge of the loop inside a delete keeps `StepInv`, and the state after it
+fits f) are met by a run. -/
 
 /-- `Within p ts` as a Bool, and the run's last transaction tx = ts's last: every
 state between its operations fits the fuel, its deletes run with the merges on,

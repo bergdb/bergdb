@@ -1,10 +1,10 @@
 /-
 What the writer's tree gives the reads (bergdb 024-12, TP10, `OpGetOK`): in a
 tree a node is reached through the same number of links of segment leaves on
-every path (`tPath_unique`); so a node that the search of a key of one segment visits in
-the space root's tree is visited by no other key (`visits_unique_of_tree`): the
-premise `huniq` of `writerWP_put_room` (`GetFrame.lean`), which TP7's invariant
-lacks (`sharedSegment_changes_other_key`). And the tree is `GetSplit.lean`'s
+every path; so a node that the search of a key of one segment visits in the
+space root's tree is visited by no other key: the premise `huniq` of the put
+into a leaf with room (`GetFrame.lean`), which TP7's invariant lacks. And the
+tree is `GetSplit.lean`'s
 TREE premise (`htree_of_treeOK`).
 -/
 import SIS.Tree.WriterTree
@@ -285,7 +285,7 @@ theorem keyShape_mid (pre : List Nat) (cv d : Nat) (rest : List Nat)
 
 /-- In the writer's tree, a node of the tree of a key's last segment that the
 search of its compare value visits is visited with that compare value by no
-other key: `writerWP_put_timeSplit_seg`'s `huniq`, from the tree and
+other key: the time split's `huniq`, from the tree and
 well-formed klongs. -/
 theorem visits_unique_seg_of_tree (L : NodeId → Option KNode) (t : Time) (r : NodeId)
     (fuel : Nat) (ht : TreeOK L t r) (hwf : ∀ x n, L x = some n → klongsWf n.ks = true)

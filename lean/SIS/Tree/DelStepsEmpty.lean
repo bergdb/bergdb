@@ -95,6 +95,4 @@ theorem keyLeaf_all2 {c : Ctx} {base : View BVal} {w : W} {pre : List Nat} {cv :
   cases hn'
   exact hP
 
-/-! ## The two obligations with the open cases named -/
-
 end SIS.Tree

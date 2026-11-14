@@ -1,9 +1,9 @@
 /-
 TP7's take-back induction itself with the merges on (bergdb 024-12, for
-latest's top theorem): `takeBackOK_of_mergesF4`'s premises without
-TP4 at every run (`hPtr`), concluding `RunTreeQ p Q` at every run within reach
-(`runTree_jointJ2`'s conclusion) instead of `TakeBackOKUnder`. Case (4) takes
-the run's pointers and kinds from the run premise (`opJ2Case_delMergeR`).
+latest's top theorem): from the premises of the take-back statement with the
+merges on, without TP4 at every run (`hPtr`), concluding `RunTreeQ p Q` at every
+run within reach (`runTree_jointJ2`'s conclusion) instead of `TakeBackOKUnder`.
+Case (4) takes the run's pointers and kinds from the run premise (`opJ2Case_delMergeR`).
 -/
 import SIS.Tree.DelStepsBookK
 import SIS.Tree.DelStepsUpStop
@@ -16,7 +16,8 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
-/-- `opJ2Case_delMergeF4` with the run's pointers and kinds from the run premise R
+/-- (4) A delete with the merges on keeps `J2At`, with the run's pointers and
+kinds from the run premise R
 (`hRP`, `hRK`) instead of TP4 at every run. -/
 theorem opJ2Case_delMergeR (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop)
     (hS : DelStepsJ2OK p R S)
@@ -195,8 +196,6 @@ theorem delStepsCaseJ2OK_emptyRootR (p : Params) (R : Struct BVal → Time → P
       simp only [show nodeAt w.top.rootKey [] 0 = L from hXD] at hJ2
       exact writerWP_mono hJ2 (fun _ v hv' => hv'.1)
 
-/-! ## The two obligations with the stop node's cascade named -/
-
 /-! ## The leaf's bitmap: with room, and full -/
 
 set_option maxHeartbeats 1600000 in
@@ -310,7 +309,8 @@ def TakeS4 (p : Params) (ts : List Tx) (tx : Tx) (w : W) : Prop :=
     SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey ∧
     ∀ x o, w.madeFor.lookup x = some o → o < tx.base
 
-/-- `runTreeQ_of_cases3` with `TakeS4`, its two extra parts from `StateOK` inputs. -/
+/-- The take-back's induction from the operations' cases (`runTree_jointJ2`'s
+conclusion) with `TakeS4`, its two extra parts from `StateOK` inputs. -/
 theorem runTreeQ_of_cases3S (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.splitAbove)
     (Q : Struct BVal → Time → Prop) (hQ0 : Q (initStruct p) 0)
     (hQs : ∀ ts tx, Within p (ts ++ [tx]) → RunTreeQ p Q (treeRun p ts) ts.length →
@@ -355,7 +355,7 @@ theorem runTreeQ_of_cases3S (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.splitAb
   exact runTree_jointJ2 p hM Q hQ0 hQs ho (TakeS4 p) hO hS hSRF hB
     (takenNotValOK_of p hM _ (fun _ _ h => hQP _ _ h.2.2) (fun _ _ h => hQK _ _ h.2.2))
 
-/-- `runTreeQ_of_cases4` with `TakeS4`. -/
+/-- The take-back's induction from the operations' cases, with `TakeS4`. -/
 theorem runTreeQ_of_cases4S (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.splitAbove)
     (Q : Struct BVal → Time → Prop) (hQ0 : Q (initStruct p) 0)
     (hQs : ∀ ts tx, Within p (ts ++ [tx]) → RunTreeQ p Q (treeRun p ts) ts.length →
@@ -379,7 +379,8 @@ theorem runTreeQ_of_cases4S (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.splitAb
     (opJ2Case_putNewSegFull p _ _ (fun _ _ h => h.1) hM hsa (fun _ _ _ h => h.1.1.1.1)
       (fun _ _ _ h => h.1.1.2) (fun _ _ _ h => h.1.2)) c4 c7 c9
 
-/-- `runTreeQ_of_cases_merges4` with `TakeS4`. -/
+/-- The take-back's induction from the operations' cases with the merges on,
+with `TakeS4`. -/
 theorem runTreeQ_of_cases_merges4S (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.splitAbove)
     (hm : p.merges = true) (Q : Struct BVal → Time → Prop) (hQ0 : Q (initStruct p) 0)
     (hQs : ∀ ts tx, Within p (ts ++ [tx]) → RunTreeQ p Q (treeRun p ts) ts.length →
@@ -400,7 +401,8 @@ theorem runTreeQ_of_cases_merges4S (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.
   runTreeQ_of_cases4S p hM hsa Q hQ0 hQs hQP hQK ho hPI hRO hB hFS hMF c4
     (opJ2CaseOK_void p _ _ _ hm delEmptyCase_merges) (opJ2CaseOK_void p _ _ _ hm delFullCase_merges)
 
-/-- `runTreeQ_of_mergesF4` with `TakeS4` for `DelStepsJ2OK`'s S: the state
+/-- TP7's take-back induction with the merges on, without TP4 at every run,
+with `TakeS4` for `DelStepsJ2OK`'s S: the state
 fits the fuel and the replaced ids are below the transaction's first id at
 every state between operations (`hFS`, `hMF`). -/
 theorem runTreeQ_of_mergesS (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.splitAbove)

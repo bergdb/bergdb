@@ -9,7 +9,7 @@ open SIS SIS.Check
 /-! Every put of a key whose prefix is there, into a leaf below inner nodes with
 room for two klongs (bergdb 024-12, TP10; `OpGetOK`'s rules together): with
 room, or by a time split or a space split, in place for a leaf the transaction
-made, the reading changes by the put alone (`writerWP_put_leafBelow`). -/
+made, the reading changes by the put alone. -/
 
 /-- A descent's visits hold one leaf at most. -/
 theorem eqVisits_leaf_unique (N : NodeId → Option KNode) (t : Time) (cv : Nat) :

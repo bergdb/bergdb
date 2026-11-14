@@ -98,9 +98,10 @@ theorem keyLeaf_rk {c : Ctx} {base : View BVal} {w : W} {pre : List Nat} {cv : N
 
 /-! ## A delete's bitmap with room, the room as the writer checks it -/
 
-/-- `writerWP_del_bitmap_seg` with the room of `DelRoom`: the writer checks the
-room of the branch it takes, the bitmap put in place of the leaf's last one or
-added. -/
+/-- The delete's bitmap into a leaf with room, for a key of any number of
+segments, every segment of its prefix there, with the room of `DelRoom`: the
+writer checks the room of the branch it takes, the bitmap put in place of the
+leaf's last one or added. -/
 theorem writerWP_del_bitmap_segR (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (pre : List Nat) (cv : Nat) (rk : NodeId) (w : W) (hfuel : 1 ≤ c.p.fuel)
     (hmerges : c.p.merges = false) (hkey : keyWf (pre ++ [cv]) = true)

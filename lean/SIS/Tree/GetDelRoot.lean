@@ -11,10 +11,9 @@ open SIS SIS.Check
 /-! The delete of a key of one segment in a space whose root is a leaf (bergdb
 024-12, TP10), the merges off: the bitmap in the root with room, or the root
 full and split, in time with a new root, or in space with a new root over its
-halves, in place for a root the transaction made. The reading after it
-(`writerWP_del_leafRootR`): the key reads as no value, every other key as
-before, when every path inside one segment tree of the writer's state after it
-is shorter than the fuel (`SegFits`). -/
+halves, in place for a root the transaction made. The reading after it: the key
+reads as no value, every other key as before, when every path inside one segment
+tree of the writer's state after it is shorter than the fuel (`SegFits`). -/
 
 /-! ## The writer's splits of the space root for a delete, the values kept -/
 
@@ -173,9 +172,5 @@ theorem writerWP_handleFullWith_rootSpaceSplitInPlace_nilV
                     show (((none : Option KNode).or ([(w.next, { leaf := n.leaf, ks := [] })].lookup x)).or
                       ([(w.next + 2, _)].lookup x)) = none
                     rw [lookup_cons_ne _ _ _ _ h1, lookup_cons_ne _ _ _ _ h2]; rfl
-
-/-! ## The delete's bitmap in the space root -/
-
-/-! ## The delete in a space whose root is a leaf -/
 
 end SIS.Tree

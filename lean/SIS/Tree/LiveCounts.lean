@@ -19,8 +19,8 @@ At the transaction's end, the commit's lift turns it into `NonEmptyOK`,
 In the same way `joint_reached`'s `RangeOrder` becomes `RangeAtOK`
 (`rangeAtOK_commit`).
 
-`latestInvOK_of_cases` assembles TP7 by induction on the runs. Its
-premises are:
+TP7 is assembled by induction on the runs (LatestJoint.lean, LatestTop.lean),
+from:
 
 * TP4 and the bound on dead klongs;
 * cost's live heights and P's tree;
@@ -306,7 +306,5 @@ theorem rangeAtOK_commit (p : Params) (ts : List Tx) (tx : Tx) (hw : Within p (t
   cases hr
   rw [hN]
   exact hR
-
-/-! ## TP7 from the operation cases -/
 
 end SIS.Tree

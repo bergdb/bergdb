@@ -2,7 +2,7 @@
 The writer's tree kept by a delete's bitmap (bergdb 024-22, `OpTreeOK`): the
 bitmap that deletes a compare value in a node with room, new or the
 transaction's own in place, drops that compare value's klong and keeps every
-other (`writerWP_appendDeleteKlong_room_tree`); a node whose live klongs only
+other; a node whose live klongs only
 shrink keeps the tree (`treeOK_of_node_shrink`).
 -/
 import SIS.Tree.WriterTreeSpace

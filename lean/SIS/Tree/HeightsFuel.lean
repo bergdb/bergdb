@@ -4,10 +4,9 @@ cascade adds at most one to the heights. The writer caches every key node's
 height (`gh`); `SeenHeightBound b w` bounds them all by b. A cascade
 (`handleFullWith`, `appendKlongs`, `handleFull`) up the key access path, whose
 nodes are all below b, keeps every height at most b: a split's new nodes have
-the split node's height, a new root one more (`sb_handleFullWith`,
-`sb_appendKlongs`, `sb_handleFull`).
+the split node's height, a new root one more (`sb_appendKlongs`).
 -/
-import SIS.Tree.MergeHeightSplit
+import SIS.Tree.MergeHeightOrigins
 import SIS.Tree.WriterKindsRules
 import SIS.Tree.OverlayHeights
 

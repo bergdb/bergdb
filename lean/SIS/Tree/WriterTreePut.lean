@@ -3,8 +3,8 @@ The writer's tree kept by whole operations (bergdb 024-22, `OpTreeOK`), in the
 cases that `OpGetOK`'s rules cover (GetFrame.lean, GetSplit.lean,
 GetSpaceSplit.lean, GetInPlace.lean): a put into a segment leaf with room
 (`writerWP_put_room_seg_tree`), a delete that changes nothing
-(`writerWP_del_noop_seg_tree`), a delete's bitmap with the merges off
-(`writerWP_del_bitmap_seg_tree`). The descent is the get rules'; the change is
+(`writerWP_del_noop_seg_tree`), a delete's bitmap with the merges off. The
+descent is the get rules'; the change is
 a state rule of the writer's tree (`treeOK_addKey`).
 -/
 import SIS.Tree.WriterTreeMerge

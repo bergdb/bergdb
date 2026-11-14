@@ -9,9 +9,9 @@ namespace SIS.Tree
 open SIS SIS.Check
 
 /-! The writer's merge keeps the walk's ranges also when the transaction made
-the merged nodes (bergdb 024-12, TP10; `RangeOrder`), on prover cost's
-`writerWP_mergeTail_made_tree` and `writerWP_merge_made_tree`: the merge's last
-loop keeps the parent's live klongs (`writerWP_mergeCleanup_keep`). -/
+the merged nodes (bergdb 024-12, TP10; `RangeOrder`), as prover cost's
+merge keeps the writer's tree: the merge's last loop keeps the parent's live
+klongs (`writerWP_mergeCleanup_keep`). -/
 
 /-- A node retargeted keeps a live klong that does not name src. -/
 theorem KNode.retarget_liveAt_keep (n : KNode) (ti : Nat) (src dst : NodeId) (t : Time) (c : Nat)

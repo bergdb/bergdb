@@ -99,8 +99,9 @@ theorem delStepsOK_of_within (p : Params) (R R' : Struct BVal → Time → Prop)
     (hS : DelStepsOK p R') : DelStepsOK p R :=
   fun ts tx hw hr => hS ts tx hw (h ts tx hw hr)
 
-/-- `heightAllOK_snoc` with the delete side of the heights only at the runs that
-R speaks of (cost's `OpHtDelOKUnder`, `execW_htCacheU`). -/
+/-- The step of the heights after every run (as in `treeRun_heightAllOK`), with
+the delete side of the heights only at the runs that R speaks of (cost's
+`OpHtDelOKUnder`, `execW_htCacheU`). -/
 theorem heightAllOK_snocU (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Time → Prop)
     (hdel : OpHtDelOKUnder p R) (ts : List Tx) (tx : Tx)
     (hw : Within p (ts ++ [tx])) (hr : R (treeRun p ts) ts.length)
@@ -135,8 +136,9 @@ theorem opCaseOK_of_within (p : Params) (R R' : Struct BVal → Time → Prop)
     (hC : OpCaseOK p R' Q C) : OpCaseOK p R Q C :=
   fun ts tx hw hr => hC ts tx hw (h ts tx hw hr)
 
-/-- `latestQD_snoc` with the delete side of the heights, and the operations'
-cases, only at the runs of the induction. -/
+/-- The step of `LatestQD`, with `QDead` for every operation in place of
+`DeadAllOK` at every run, and with the delete side of the heights and the
+operations' cases only at the runs of the induction. -/
 theorem latestQD_snocR (p : Params) (hp : MergeParamsOK p)
     (hdel : OpHtDelOKUnder p (RunTreeQ p (LatestQD p)))
     (hT : OpCaseOK p (RunTreeQ p (LatestQD p)) (QTree p) AnyOp)

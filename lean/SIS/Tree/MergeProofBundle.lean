@@ -4,7 +4,6 @@ import SIS.Tree.MergeHeightExec
 import SIS.Tree.MergeHeightOrigins
 import SIS.Tree.SortedKeys
 import SIS.Tree.MergeSortedExamples
-import SIS.Tree.MergeHeightSplit
 import SIS.Tree.MergeLiveOrder
 import SIS.Tree.MergeKeptNode
 import SIS.Tree.MergePathCache
@@ -310,7 +309,6 @@ import SIS.Tree.WriterHeightsChk
 import SIS.Tree.WriterHeightsChkDel
 import SIS.Tree.TakeReplaceFull
 import SIS.Tree.HeightsFuel
-import SIS.Tree.HeightsFuelMerge
 import SIS.Tree.DelStepsCascRoot
 import SIS.Tree.HeightsFuelDescent
 import SIS.Tree.HeightsFuelPut

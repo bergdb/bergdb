@@ -18,7 +18,8 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
-/-- `writerWP_handleFullWith_time_up` for a parent of either kind. -/
+/-- The writer's time split of a node that existed before the transaction, with
+klongs ins and its last version, below a parent of either kind. -/
 theorem writerWP_handleFullWith_time_up' (d' : Nat) (x q : NodeId) (n qn : KNode) (k1 : Nat)
     (ins : List (Nat × NodeId)) (compact : Bool) (c : Ctx) (w : W)
     (hlk : w.nodes.lookup x = some n) (hlq : w.nodes.lookup q = some qn)

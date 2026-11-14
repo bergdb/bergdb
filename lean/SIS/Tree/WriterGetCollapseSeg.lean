@@ -229,6 +229,4 @@ theorem getFromR_segCollapse (N N' : NodeId → Option KNode) (V : NodeId → Op
         exact tReach_reachS N t r u (ha.append hb.toFrom).reach) hun)
       (hfit x (tReach_reachS N t r x hxR)) rest
 
-/-! ## The writer's collapse steps at a segment root -/
-
 end SIS.Tree

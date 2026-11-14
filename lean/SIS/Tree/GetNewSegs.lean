@@ -13,7 +13,7 @@ a klong to a new segment leaf, each new segment leaf a klong to the next one, an
 the last the put's klong (`setNode`'s creation, segment by segment). Every key
 reads what it read but the put's key. -/
 
-/-- `getFromR_newSeg` for a new segment leaf ch below which a key's tail reads:
+/-- The reading after a new segment leaf ch below which a key's tail reads:
 after the leaf cur of the key's segment before got a klong at c0 to ch, from
 which only tail reads h, every key reads what it read but pre ++ c0 :: tail,
 which reads h. The new nodes and values have ids from b on. -/
@@ -322,7 +322,8 @@ theorem writerWP_putSegs_new (c : Ctx) (base : View BVal) (key : List Nat) (h : 
 /-- A put of a key pre ++ c0 :: tail whose prefix pre is there and whose leaf
 for c0 in the tree of pre has no klong of c0 and has room, with tail of one
 segment or more: the new segment leaves, the last with the put's klong, change
-the reading by the put alone. The premises are those of `writerWP_put_newSeg`. -/
+the reading by the put alone. The premises are those of the other rules, the leaf
+not on the prefix's walk, and the keys through its c0 of the form pre ++ c0 :: _. -/
 theorem writerWP_put_newSegs (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (pre : List Nat) (c0 h : Nat) (tail : List Nat) (htail : tail ≠ []) (rk0 : NodeId) (w : W)
     (hM : 2 ≤ c.p.M)

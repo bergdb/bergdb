@@ -1,7 +1,7 @@
 /-
 Root collapse at the writer (bergdb 024-22, `OpTreeOK`; `collapseRoot`): the
 klong that `onlyLiveKlong` finds is the last live key klong of the node
-(`onlyLiveKlong_last`), so it names a live child (`onlyLiveKlong_link`).
+(`onlyLiveKlong_last`), so it names a live child.
 -/
 import SIS.Tree.WriterTreeRetarget
 
