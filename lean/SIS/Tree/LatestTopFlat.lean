@@ -161,7 +161,7 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     (hth : 2 ≤ p.theta ∨ p.theta = 0)
     (hchk : OpDelChk2OK p)
     (htb : TakeBelowFuelDelOK p)
-    (d4 : OpCaseOK p (RunOK p) (QDead p) DelMergeCase)
+    (d4 : OpCaseOK p (RunOK p) (QDead p) DelMergeDRestCase)
     (l4 : OpCaseOK p (RunOK p) (QLive p) DelMergeRestCase)
     (hU : ∀ ts, UpUnlinkTreeOK (ctxOf p ts) (viewOf (treeRun p ts)))
     (hHL : ∀ ts, UpHolderLiveRunOK (ctxOf p ts) (viewOf (treeRun p ts)))
@@ -198,7 +198,7 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     hRP' hRK' hfitQ
   have l4' := opCaseOK_anti p _ _ hR _ _
     (liveCase_delMerge_of_rest p (RunOK p) hRL l4)
-  have d4' := opCaseOK_anti p _ _ hR _ _ d4
+  have d4' := opCaseOK_anti p _ _ hR _ _ (deadCase_delMergeL_of_rest p (RunOK p) hRL d4)
   -- TP10's three posts for every operation from a state with TP7's live counts
   have hTL := opCaseOK_of_cases_mergesL p _ _ hm (treeCase_putLeafRoom p _)
     (treeCase_putLeafFull p _ hRL' hsa)
@@ -219,7 +219,7 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     (liveCase_putLeafFull p _ hRL' hsa hp)
     (opCaseOK_putNewSeg_of_parts p _ _ (liveCase_putNewSeg1Room p _ (by omega))
       (liveCase_putNewSegsRoom p _ (by omega)) (liveCase_putNewSegFull p _ hRL' (by omega) hsa hp)) l4'
-  have hDd := opCaseOK_of_cases_merges p _ _ hm (deadCase_putLeafRoom p _)
+  have hDdL := opCaseOK_of_cases_mergesL p _ _ hm (deadCase_putLeafRoom p _)
     (deadCase_putLeafFull p _ hRL' hsa hth)
     (opCaseOK_putNewSeg_of_parts p _ _ (deadCase_putNewSeg1Room p _ (by omega))
       (deadCase_putNewSegsRoom p _ (by omega)) (deadCase_putNewSegFull p _ hRL' (by omega) hsa hth)) d4'
@@ -229,6 +229,7 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
   have hPI := opCaseOK_any_of_L p _ hRL' hRT' hRI' hTL hPIL hOL hLvL _ hPIL
   have hO := opCaseOK_any_of_L p _ hRL' hRT' hRI' hTL hPIL hOL hLvL _ hOL
   have hLC := liveStateOK_of_L p _ hRL' hRT' hRI' hTL hPIL hOL hLvL
+  have hDd := opCaseOK_any_of_L p _ hRL' hRT' hRI' hTL hPIL hOL hLvL _ hDdL
   -- the run induction
   have hJ := runTreeQ_of_mergesF4S p (by omega) hsa hcap hm (LatestQD p) (latestQD_init p (by omega))
     (latestQD_snocR p hp hht hT hPI hO hLv hDd)

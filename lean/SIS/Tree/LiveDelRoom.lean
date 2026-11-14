@@ -11,6 +11,7 @@ import SIS.Tree.DelStepsWalk
 import SIS.Tree.DelStepsTree
 import SIS.Tree.GetCaseBridge
 import SIS.Tree.WriterTreeVisits
+import SIS.Tree.DeadRun
 
 set_option autoImplicit false
 
@@ -236,6 +237,135 @@ theorem liveCase_delRoomFill (p : Params) (R : Struct BVal → Time → Prop)
       rw [e4, hrv.2.1, hN, hvtop']
       exact hLC1
 
+/-- (4a) for the dead bound: as `DelRoomFillCase`, from a state with TP7's live
+counts, and the leaf's new node, its bitmap added or the transaction's own set,
+at or below theta (`deadOver`). -/
+def DelRoomFillDCase (c : Ctx) (base : View BVal) (w : W) (op : Op) : Prop :=
+  DelRoomFillCase c base w op ∧ LiveCounts c.p (wNode c.p base w) c.i w.top.rootKey ∧
+    ∀ pre cv L n, op = .del (pre ++ [cv]) → KeyLeaf c base w pre cv L n →
+      deadOver c.p (n.add c.i (.del (bitsUnion n.lastBitmap (n.bitsOf cv)))) = false ∧
+      deadOver c.p (n.setAt (n.size - 1) (.del (bitsUnion n.lastBitmap (n.bitsOf cv)))) = false
+
+/-- `QDead` of (4a): the leaf's new node is at or below theta, and with the
+live counts the merges' loop merges nothing. -/
+theorem deadCase_delRoomFill (p : Params) (R : Struct BVal → Time → Prop)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t) :
+    OpCaseOK p R (QDead p) DelRoomFillDCase := by
+  intro ts tx hw hr z top _ htop ops op post hops r w hpre hI _ hPc
+  obtain ⟨⟨pre, cv, L0, n0, hop', _, hK, hne0, hkeep0, hroom0, hfill0⟩, hLC0, hdo⟩ := hPc
+  subst hop'
+  by_cases hD0' : ¬ WDeadOK p (treeRun p ts) w
+  · intro _ _ _ h
+    exact absurd h hD0'
+  have hD0 : WDeadOK p (treeRun p ts) w := Classical.byContradiction hD0'
+  obtain ⟨rk, hrk, hn0⟩ := keyLeaf_rk hK
+  have hB := putBase_of_run p ts tx hw (hRL _ _ hr)
+  have hbook := putBook_reached p ts tx hw (hRL _ _ hr) z top htop ops r w hpre
+  have hleaf := keyLeaf_all2 hK hrk
+      (fun L m => klongsWf m.ks = true ∧ (∀ s, Klong.time s ∈ m.ks → s ≤ (ctxOf p ts).i) ∧
+        bitsUnion m.lastBitmap (m.bitsOf cv) ≠ m.lastBitmap ∧
+        m.allKeysIn (bitsUnion m.lastBitmap (m.bitsOf cv)) = false ∧ DelRoom (ctxOf p ts) cv m ∧
+        2 ≤ m.live.length ∧
+        ∀ b s, FReach (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey L b s →
+          b = false → p.mergeBelow + 1 ≤ m.live.length)
+      ⟨hI.wf L0 n0 hn0, hI.times L0 n0 hn0, hne0, hkeep0, hroom0, hfill0⟩
+  refine writerWP_mono (writerWP_del_roomM (ctxOf p ts) _ (viewCoherent_ctxOf p ts) pre cv rk w tx.base
+    top hB hbook hrk (hI.pathUntaken _)
+    (fun L n hL hn hnl =>
+      let ⟨a, b, c', d, e, _, _⟩ := hleaf L n hL hn hnl
+      ⟨a, b, c', d, e⟩)
+    (fun v => WDeadOK p (treeRun p ts) v)
+    ?_ ?_) (fun _ _ h _ => h)
+  · intro v hv
+    unfold fresh
+    simp only [writerWP_bind, writerWP_get, writerWP_set, writerWP_pure]
+    exact hv
+  · intro L n w3 v g h hL hn hnl hr03 _ hLt hvt hvtop _ _ _ _ hex _
+    obtain ⟨n', hnodes, hleafeq, hwf', htimes', hlive', hbm⟩ := hex
+    obtain ⟨_, htn, _, _, _, h2, hfill⟩ := hleaf L n hL hn hnl
+    have h3t : w3.taken.contains L = false := by rw [hr03.2.2.1]; exact hLt
+    have hN : wNode p (viewOf (treeRun p ts)) v = updN (wNode p (viewOf (treeRun p ts)) w) L n' := by
+      have e3 : wNode p (viewOf (treeRun p ts)) w3 = wNode p (viewOf (treeRun p ts)) w := hr03.1
+      rw [wNode_upsert_updN p _ w3 v L n' hnodes hvt h3t, e3]
+    have hvtop' : v.top = w.top := hvtop.trans hr03.2.1
+    obtain ⟨hsubl, hlen⟩ := live_shrink n n' cv hlive'
+    have e1 : n.liveAt (ts.length + 1) = n.live := KNode.liveAt_of_times n _ htn
+    have e2 : n'.liveAt (ts.length + 1) = n'.live := KNode.liveAt_of_times n' _ htimes'
+    have hsub : ∀ q ∈ n'.liveAt (ts.length + 1), q ∈ n.liveAt (ts.length + 1) := by
+      rw [e1, e2]; exact hsubl
+    have hpos : n'.liveAt (ts.length + 1) ≠ [] := by
+      rw [e2]
+      intro h0
+      rw [h0] at hlen
+      simp at hlen
+      omega
+    have hLC1 : LiveCounts p (updN (wNode p (viewOf (treeRun p ts)) w) L n') (ts.length + 1)
+        w.top.rootKey :=
+      liveCounts_updN_leaf p _ _ _ L n n' hLC0 hn hnl (by rw [hleafeq]; exact hnl) hsub hpos
+        (fun b s hfr _ hb => by rw [e2]; have := hfill b s hfr hb; omega)
+    -- the links after are links before
+    have hsubT : ∀ x c y, TLink (updN (wNode p (viewOf (treeRun p ts)) w) L n') (ts.length + 1) x c y →
+        TLink (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) x c y := by
+      rintro x c y ⟨m, hm, hc⟩
+      by_cases hx : x = L
+      · subst hx
+        rw [updN_self] at hm
+        cases hm
+        exact ⟨n, hn, hsub _ hc⟩
+      · rw [updN_ne _ _ _ _ hx] at hm
+        exact ⟨m, hm, hc⟩
+    refine writerWP_mono (writerWP_afterDelete_none (pre ++ [cv]) g h (ctxOf p ts) _
+      (viewCoherent_ctxOf p ts) v ?_ ?_ ?_ ?_) ?_
+    · intro y hy
+      change TReach (wNode p (viewOf (treeRun p ts)) v) (ts.length + 1) v.top.rootKey y at hy
+      rw [hN, hvtop'] at hy
+      have hy0 := tReach_of_sublinks _ _ _ _ hsubT y hy
+      change v.taken.contains y = false
+      rw [hvt, hr03.2.2.1]
+      exact hI.untaken y (tReach_reachS _ _ _ _ hy0)
+    · intro y yn _ hyn
+      change wNode p (viewOf (treeRun p ts)) v y = some yn at hyn
+      rw [hN] at hyn
+      by_cases hyL : y = L
+      · subst hyL
+        rw [updN_self] at hyn
+        cases hyn
+        exact hwf'
+      · rw [updN_ne _ _ _ _ hyL] at hyn
+        exact hI.wf y yn hyn
+    · intro y yn hyn
+      change wNode p (viewOf (treeRun p ts)) v y = some yn at hyn
+      rw [hN] at hyn
+      by_cases hyL : y = L
+      · subst hyL
+        rw [updN_self] at hyn
+        cases hyn
+        exact htimes'
+      · rw [updN_ne _ _ _ _ hyL] at hyn
+        exact hI.times y yn hyn
+    · change LiveCounts p (wNode p (viewOf (treeRun p ts)) v) (ts.length + 1) v.top.rootKey
+      rw [hN, hvtop']
+      exact hLC1
+    · intro _ v' hrv
+      -- the leaf's new node is at or below theta: `deadOver` let it through
+      have hdo' := hdo pre cv L n rfl ⟨rk, hrk, hL, hn, hnl⟩
+      have hdn' : p.theta ≠ 0 → n'.deadCount ≤ p.theta := by
+        intro h0
+        rcases hbm with e | ⟨_, _, _, _, e⟩
+        · rw [e]; exact deadOver_false p _ hdo'.1 h0
+        · rw [e]; exact deadOver_false p _ hdo'.2 h0
+      intro h0 x m hx
+      have e4 : wNode p (viewOf (treeRun p ts)) v' = wNode p (viewOf (treeRun p ts)) v := hrv.1
+      change wNode p (viewOf (treeRun p ts)) v' x = some m at hx
+      rw [e4, hN] at hx
+      by_cases hxL : x = L
+      · subst hxL
+        rw [updN_self] at hx
+        cases hx
+        exact hdn' h0
+      · rw [updN_ne _ _ _ _ hxL] at hx
+        exact hD0 h0 x m hx
+
 /-- A case from two narrower cases that cover it. -/
 theorem opCaseOK_or (p : Params) (R : Struct BVal → Time → Prop) (Q : List Tx → Op → W → W → Prop)
     (C C1 C2 : Ctx → View BVal → W → Op → Prop)
@@ -261,5 +391,21 @@ theorem liveCase_delMerge_of_rest (p : Params) (R : Struct BVal → Time → Pro
     (fun c base w op h => (Classical.em (DelRoomFillCase c base w op)).elim Or.inl
       (fun hn => Or.inr ⟨h, hn⟩))
     (liveCase_delRoomFill p R hRL) hrest
+
+/-- (4) from a state with the live counts but (4a) for the dead bound. -/
+def DelMergeDRestCase (c : Ctx) (base : View BVal) (w : W) (op : Op) : Prop :=
+  DelMergeCase c base w op ∧ ¬ DelRoomFillDCase c base w op
+
+/-- `d4` narrowed: `QDead` of the delete with the merges from a state with the
+live counts, from `QDead` of the deletes that are not (4a). -/
+theorem deadCase_delMergeL_of_rest (p : Params) (R : Struct BVal → Time → Prop)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t)
+    (hrest : OpCaseOK p R (QDead p) DelMergeDRestCase) :
+    OpCaseOK p R (QDead p) (fun c base w op =>
+      DelMergeCase c base w op ∧ LiveCounts c.p (wNode c.p base w) c.i w.top.rootKey) :=
+  opCaseOK_or p R (QDead p) _ DelRoomFillDCase DelMergeDRestCase
+    (fun c base w op h => (Classical.em (DelRoomFillDCase c base w op)).elim Or.inl
+      (fun hn => Or.inr ⟨h.1, hn⟩))
+    (deadCase_delRoomFill p R hRL) hrest
 
 end SIS.Tree
