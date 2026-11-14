@@ -1850,6 +1850,41 @@ and its status:
       stays as a second route. `OpDelChkOK` is the one to discharge.
     - Left: `OpDelChkOK` itself (TP4's holder facts and the merges'
       fill), then (B) and (C).
+
+    Step 4 (B) and (C), state (cost, 01:50). The fuel premises
+    (`TxSegFitsOK`, `DelFullFitsOK`, `MergeStepOKF3`'s and
+    `CollapseStepOKF4`'s SegFits) follow from the cached heights with
+    (A)'s heights: `segFits_of_seenHeight` gives SegFits b at a state
+    where the walk holds (`HtInv`) and every cached height is at most b
+    (`SeenHeightBound b`; the view's heights are at most H). What is left
+    is bounding the heights.
+    - (B), proved in part (`HeightsFuel.lean`, `HeightsFuelMerge.lean`):
+      - A split's cascade up the key access path keeps every cached
+        height at most b when the path's nodes are below b
+        (`sb_handleFullWith`, `sb_appendKlongs`, `sb_handleFull`): a
+        split's new nodes have the split node's height, a new root one
+        more, and the cascade climbs only through the path.
+      - So a delete's bitmap and a put's klongs at the path's node take
+        the bound from m to m + 1 (`seenHeight_appendDeleteKlong`,
+        `seenHeight_appendKlongs`): `DelFullFitsOK`'s step, in heights.
+      - A merge does the same: its new nodes have the merged node's
+        height, its parent's split cascades up the path (`sb_merge`,
+        `seenHeight_merge`). `sb_appendKlongsX` is the cascade from a
+        node below b that is not on the path (a new segment leaf).
+      - Not proved: the whole operation. A put has at most one cascade,
+        so it adds one; the walk over its descents is not written. A
+        delete runs several merges, each re-descending, and a later
+        merge's path can hold a root that an earlier cascade of the same
+        operation made: the lemmas then give one more per merge. One per
+        segment and operation needs that the new root does not fill again
+        in the same operation (the merges' fill, latest's `LiveCounts`).
+    - (C), not started: at operation boundaries SegFits (fuel - 1), by the
+      doomed transaction. A root of height fuel or more cannot be
+      descended (`writerWP_descendLte_depth`), so no later operation of
+      the transaction reaches its segment tree and takes it back, and
+      `boundsOK` fails at the end (it is above H, so in `outside`). The
+      formal argument needs a frame of every operation for the trees it
+      does not reach.
   - (5) `DelNoLeafCase`, a delete of a key with no leaf: proved,
     `opGetCaseOK_delNoLeaf`. It changes no reading: the writer's walk
     stops at the first segment that is not there and only reads

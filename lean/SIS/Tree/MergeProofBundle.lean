@@ -336,3 +336,4 @@ import SIS.Tree.WriterHeightsChk
 import SIS.Tree.WriterHeightsChkDel
 import SIS.Tree.HeightsChkRun
 import SIS.Tree.HeightsFuel
+import SIS.Tree.HeightsFuelMerge
