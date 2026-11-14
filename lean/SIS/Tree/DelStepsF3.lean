@@ -214,56 +214,6 @@ theorem delStepsCaseOKF3_room (p : Params) (R : Struct BVal → Time → Prop) (
       have := runGet_of_delInvF p ts w v' (pre ++ [cv]) hv''.1 hI hF hFv' key' hk'
       simpa [Op.key, Op.value] using this
 
-/-- The reading of a delete into a full leaf, the merges on, on the F3 route,
-from the obligation `DelFullStepOKF` (the delete's invariant after the leaf's
-bitmap), the kinds' books by `kd_appendDeleteKlong`. -/
-theorem delStepsCaseOKF3_full (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
-    (hRL : ∀ P t, R P t → RunLinksOK p P t)
-    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
-    (hStep : ∀ ts, DelFullStepOKF (ctxOf p ts) (viewOf (treeRun p ts))) :
-    DelStepsCaseOKF3 p R DelFullM := by
-  intro ts tx hw hr z top _ htop ops op post hops r w hpre hI hRO hF key hop hPc hA _ _
-  obtain ⟨pre, cv, L0, n0, hop', _, hK, hne0, hkeep0, hfull0⟩ := hPc
-  subst hop'
-  cases hop
-  have hkey : keyWf (pre ++ [cv]) = true := within_op_keyWf p ts tx hw ops _ post hops
-  obtain ⟨rk, hrk, _⟩ := keyLeaf_rk hK
-  have hB := putBase_of_run p ts tx hw (hRL _ _ hr)
-  have hbook := putBook_reached p ts tx hw (hRL _ _ hr) z top htop ops r w hpre
-  have hICE := innerChildren_reached p hM hP ts tx hw top ops (.del (pre ++ [cv]) :: post) hops r w hpre
-    (fun x hx => hI.untaken x (tReach_reachS _ _ _ _ hx))
-  obtain ⟨hv, hk, hb0, hi0⟩ := kd_context p hM hP ts tx hw top ops (.del (pre ++ [cv]) :: post) hops r w hpre
-  have hJ0 : KdJ (ctxOf p ts) tx.base top (kindOracleOf p (treeRun p ts)) tx.base w := ⟨hbook, hb0, hi0⟩
-  refine writerWP_del_toLeafMK (ctxOf p ts) _ (viewCoherent_ctxOf p ts) pre cv rk w _ hJ0
-    (fun s f x v hJ hx => kdJ_descendLte _ _ tx.base top hB _ tx.base hv hk s f x v hJ hx)
-    (fun s x L n v hJ hL hlk hkm => kdJ_pathAdd _ _ tx.base top hB _ tx.base hv s x L n v hJ hL hlk hkm)
-    (kdJ_start _ _ tx.base top hB _ tx.base hv w hJ0) hrk (hI.pathUntaken _) hI.wf _ ?_ ?_
-  · intro v hv'
-    unfold fresh
-    wpSimplify
-    exact hv'
-  · intro L n P w3 hL hn hnl hr03 hJ3 hlk3 hp3' hlinkP hXD hlkX
-    obtain ⟨hne, hkeep, hfull⟩ := keyLeaf_all2 hK hrk
-      (fun _ m => bitsUnion m.lastBitmap (m.bitsOf cv) ≠ m.lastBitmap ∧
-        m.allKeysIn (bitsUnion m.lastBitmap (m.bitsOf cv)) = false ∧ ¬ DelRoom (ctxOf p ts) cv m)
-      ⟨hne0, hkeep0, hfull0⟩ L n hL hn hnl
-    obtain ⟨a, hpx⟩ := path_last_of_toLeaf w w3 P L hp3' hXD
-    refine writerWP_deleteUpward_full (ctxOf p ts) L n P.length cv (pre ++ [cv]) w3 hlk3 hne hkeep
-      (fun v => DelInvF3 (ctxOf p ts) (viewOf (treeRun p ts)) w (pre ++ [cv]) (p.fuel + 1)
-        (kindOracleOf p (treeRun p ts)) tx.base v) _ ?_ ?_
-    · refine writerWP_mono (writerWP_and
-        (hStep ts w pre cv rk tx.base top hB hI hRO hICE hF hkey hrk L n P w3 hL hn hnl
-          hne hkeep hfull hr03 hJ3.1 hlk3 hp3' hlinkP hXD hlkX)
-        (kd_appendDeleteKlong _ tx.base L P.length cv _ w3 hv hk hJ3.2.1 hJ3.2.2 a hpx)) ?_
-      rintro _ v ⟨hD, hkv⟩
-      exact ⟨hD, hkv.1, hkv.2.1⟩
-    · intro g h v hv'
-      refine writerWP_mono (hA g h v hv') ?_
-      intro _ v' hv'' hFv' key' hk'
-      have := runGet_of_delInvF p ts w v' (pre ++ [cv]) hv''.1 hI hF hFv' key' hk'
-      simpa [Op.key, Op.value] using this
-
-
 /-! ## The invariant of the upward delete: the books, the kinds' books, the path -/
 
 /-- `KdJ` with the key access path as it was where the upward delete starts. -/
@@ -583,17 +533,5 @@ theorem delStepsCaseOKF3_or (p : Params) (R : Struct BVal → Time → Prop)
   rcases hs _ _ _ _ hPc with h | h
   · exact h1 ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop h hA hMU hCR
   · exact h2 ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop h hA hMU hCR
-
-/-- `DelStepsOKF3` (latest's F3 route) with every case proved but the upward
-delete without room (`DelEmptyOtherM`: the leaf is the space root, or the stop
-node cascades), the full leaf's bitmap reduced to `DelFullStepOKF`. -/
-theorem delStepsOKF3_of_open (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
-    (hRL : ∀ P t, R P t → RunLinksOK p P t)
-    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
-    (c7 : DelStepsCaseOKF3 p R DelEmptyOtherM)
-    (hStep : ∀ ts, DelFullStepOKF (ctxOf p ts) (viewOf (treeRun p ts))) : DelStepsOKF3 p R :=
-  delStepsOKF3_of_cases p R (delStepsCaseOKF3_noLeaf p R) (delStepsCaseOKF3_noop p R)
-    (delStepsCaseOKF3_or p R _ _ _ delEmptyM_split (delStepsCaseOKF3_emptyRoom p R hM hRL hP) c7)
-    (delStepsCaseOKF3_room p R hM hRL hP) (delStepsCaseOKF3_full p R hM hRL hP hStep)
 
 end SIS.Tree

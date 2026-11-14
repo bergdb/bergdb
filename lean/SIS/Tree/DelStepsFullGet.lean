@@ -1,6 +1,6 @@
 /-
 The delete's invariant after the bitmap into a full leaf below the space root
-(bergdb 024-12, TP10, case (4)'s `DelFullStepOKF`): the tree and the walk's
+(bergdb 024-12, TP10, case (4)'s full leaf): the tree and the walk's
 ranges (`writerWP_delLeaf_chainGRange`), the reading (`writerWP_handleFull_lastVF2`
 and the leaf's change, `wGet_leaf_change_seg`), the books; the fuel premise
 after the split is a named input (cost's step 4).
