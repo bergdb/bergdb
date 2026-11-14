@@ -30,7 +30,8 @@ tree at every run are not premises: the take-back's joint induction (putinv's
 case is proved but the dead bound's (2) and (3c). `invGetScanOK_merges` (`LatestTop.lean`) is
 the same with two premises whole: `DeadAllOK` at every run and the take-back's delete steps
 (`DelStepsJ2OKF3`). The take-back through a replaceRoot whose segment leaf is full is proved
-(putinv's `replaceRootFullJ2OK_run`). The premises, each with what it says, who owns it, and
+(putinv's `replaceRootFullJ2OK_run`). Java's parameters (record format 7's thresholds and
+theta, from node size 8) meet `MergeParamsOK` (`mergeParamsOK_java`). The premises, each with what it says, who owns it, and
 its test evidence:
 
 - `d2`, `d3c`, `d4` (`QDead`): an operation keeps every key node that the writer reads at or

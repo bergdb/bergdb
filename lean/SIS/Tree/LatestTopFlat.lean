@@ -115,4 +115,9 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
       hMS hCo hsa hcap (by omega) hP hfit)
   exact ⟨hinv, h.1, h.2, latestGetOK_of_getOK p h.1, latestScanOK_of_scanOK p h.2⟩
 
+/-- Java's parameters (record format 7's thresholds and option 2's theta, from
+node size 8) are parameters of the top theorem. -/
+theorem mergeParamsOK_java (q : Params) (h : 8 ≤ q.M) : MergeParamsOK q.withMerges.withTheta :=
+  mergeParamsOK_withMerges q h
+
 end SIS.Tree
