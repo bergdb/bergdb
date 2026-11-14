@@ -1458,7 +1458,12 @@ in 024-12's (4) entry (step 4) and section 1's list.
     leaf. The climb passes only such nodes, so the stop node, the parent
     of one, is a segment leaf; `UpLebFitsOK` and the inner stop node's
     branch never run, and `OpDelChk2OK`'s stop-node check and `checkOld`'s
-    leaf part hold.
+    leaf part hold. Proved (`StopLeafLive.lean`): `stopLeaf_of_liveCounts`
+    (with the merges on and `LiveCounts`, no node below an inner node of
+    the path is emptied: the path's flags `fReach_path`, an emptied node
+    at most one live klong), and `UpLebFitsOK` with the fill at the
+    delete's start, `UpLebFitsOKL`, holds (`upLebFitsOKL_of`), so hFitL
+    goes from the flat list where `LiveCounts` is at hand.
   - `TakeBelowFuelDelOK p` (`HeightsFit.lean`): a delete takes back no
     node of height fuel or more that it found at its start.
     `12-tree-model/heights-op-check.lean.txt`: 3224 operations that took
