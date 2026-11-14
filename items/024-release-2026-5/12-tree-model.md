@@ -34,7 +34,8 @@ The premises, each with what it says, who owns it, and its test evidence:
   `Params.thetaFor`); `MergeParamsOK` does not fix theta. Evidence: TP39 in `treetest` after
   every transaction and on Java's traces (C-T6), for the key nodes reached.
 - `hchk`, `OpDelChkOK`: a delete runs as its copy with the take-backs' checks (cost, the
-  heights). Evidence: the same result and state at 6828 deletes of 270 runs.
+  heights). Evidence: the same result and state at 6828 deletes of 310 runs, 160 with a
+  take-back in the upward delete's loop, 2305 with a merge's, 453 with root collapse's.
 - `hfit`, `TxSegFitsOK`: at every state between operations, every path inside one segment tree
   is shorter than the fuel (cost, step 4). Evidence: about 14,000 operation boundaries.
 - `t4`, `i4`, `r4`: the delete with the merges (4) keeps the writer's tree, `PutInv` and the
