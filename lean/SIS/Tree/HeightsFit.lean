@@ -267,6 +267,117 @@ theorem txSegFitsOK_of_takeBelowR (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal
     have := fuel_gt_H p
     omega
 
+/-- `TakeBelowFuelOK` for the deletes: a put takes nothing back. -/
+def TakeBelowFuelDelOK (p : Params) : Prop :=
+  ∀ ts tx, Within p (ts ++ [tx]) → ∀ z top,
+    lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z →
+    topOf p (ctxOf p ts).view z = .ok top →
+    ∀ pre key post, tx.ops = pre ++ Op.del key :: post →
+    ∀ r w, (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
+    ∀ a v, putKv (.del key) (ctxOf p ts) w = .ok (a, v) →
+    ∀ x g h, (x, g, h) ∈ w.gh → w.taken.contains x = false → v.taken.contains x = true →
+      h < p.fuel
+
+/-- `TakeBelowFuelOK` from its deletes, at the runs that R speaks of: a put
+takes nothing back (`ht_putKv_put`'s `HtLe`). -/
+theorem takeBelowFuelOK_of_del (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Time → Prop)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t) (hRK : ∀ P t, R P t → KindsAllOK p P)
+    (hRH : ∀ P t, R P t → HeightAllOK p P t) (hchk : OpDelChkOK p)
+    (hdel : TakeBelowFuelDelOK p) :
+    ∀ ts tx, Within p (ts ++ [tx]) → R (treeRun p ts) ts.length → ∀ z top,
+      lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z →
+      topOf p (ctxOf p ts).view z = .ok top →
+      ∀ pre op post, tx.ops = pre ++ op :: post →
+      ∀ r w, (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
+      ∀ a v, putKv op (ctxOf p ts) w = .ok (a, v) →
+      ∀ x g h, (x, g, h) ∈ w.gh → w.taken.contains x = false → v.taken.contains x = true →
+        h < p.fuel := by
+  intro ts tx hw hr z top hz htop pre op post hsplit r w hpre a v he x g h hm hx hv
+  cases op with
+  | del key => exact hdel ts tx hw z top hz htop pre key post hsplit r w hpre a v he x g h hm hx hv
+  | put key hv0 =>
+    exfalso
+    have hR := hRL _ _ hr
+    have hvo := viewHtOK_of_run p ts tx hw hR (hRK _ _ hr) (hRH _ _ hr)
+    have hi := ht_reached p hM (opHtDelOK_of_chk p hchk) ts tx hw hR hvo z top hz htop pre
+      (Op.put key hv0 :: post) hsplit r w hpre
+    have hbk := putBook_reached p ts tx hw hR z top htop pre r w hpre
+    have hB := putBase_of_run p ts tx hw hR
+    have := (ht_putKv_put tx.base (appendFrameOK tx.base) key hv0 (ctxOf p ts) w hvo
+      (by simp [ctxOf]) hbk.book hi hM hB.wf hbk.klongs a v he).2.2.2
+    rw [this, hx] at hv
+    cases hv
+
+set_option maxHeartbeats 1600000 in
+/-- `txSegFitsOK_of_takeBelowR` with the named premise for the deletes only. -/
+theorem txSegFitsOK_of_takeBelowDelR (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Time → Prop)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t) (hRK : ∀ P t, R P t → KindsAllOK p P)
+    (hRH : ∀ P t, R P t → HeightAllOK p P t) (hchk : OpDelChkOK p)
+    (hdel : TakeBelowFuelDelOK p) : TxSegFitsOK p R := by
+  intro ts tx hw hr z top hz htop pre post hsplit r w hpre
+  have htb := takeBelowFuelOK_of_del p hM R hRL hRK hRH hchk hdel ts tx hw hr z top hz htop
+  have hR := hRL _ _ hr
+  have hK := hRK _ _ hr
+  have hA := hRH _ _ hr
+  have hvo := viewHtOK_of_run p ts tx hw hR hK hA
+  have hi := ht_reached p hM (opHtDelOK_of_chk p hchk) ts tx hw hR hvo z top hz htop pre post
+    hsplit r w hpre
+  have hbk := putBook_reached p ts tx hw hR z top htop pre r w hpre
+  have hub : ∀ x g h, (x, g, h) ∈ w.gh → w.taken.contains x = false → h < p.fuel := by
+    intro x g h hm hx
+    rcases Nat.lt_or_ge h p.fuel with hlt | hge
+    · exact hlt
+    exfalso
+    have hHh : p.H < h := by have := fuel_gt_H p; omega
+    have hmk : HeightMarkedPred p w.gh w.outside := by
+      letI := heightMarkedFields
+      exact fields_ops pre (ctxOf p ts) (wInit tx top)
+        (by change HeightMarkedPred p [] []; simp [HeightMarkedPred]) r w hpre
+    have hout := hmk x g h hm hHh
+    obtain ⟨bs, wE, he⟩ := execW_success_of_within_snoc p ts tx hw
+    unfold execW runOps runOpsFrom at he
+    rw [hz] at he
+    simp only at he
+    have htop' : topOf p (rootless (view (treeSpec p) (treeRun p ts) ts.length)) z = .ok top := htop
+    rw [htop'] at he
+    simp only at he
+    have hrun := boundsOK_ok p _ bs wE he
+    have hbnd : ∀ q ∈ wE.outside, wE.taken.contains q.1 = true := by
+      unfold boundsOK at he
+      rw [hrun] at he
+      simp only at he
+      split at he
+      · cases he
+      · rename_i hf
+        intro q hq
+        have := List.find?_eq_none.mp hf q hq
+        simpa using this
+    have hrun' : ((pre ++ post).mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (bs, wE) := by
+      rw [← hsplit]; exact hrun
+    obtain ⟨r2, hpost⟩ := mapM_split_run (ctxOf p ts) (wInit tx top) pre post r w bs wE hpre hrun'
+    have houtE : (x, g, h) ∈ wE.outside := by
+      letI := outsideHasFields (x, g, h)
+      exact fields_ops post (ctxOf p ts) w hout r2 wE hpost
+    have htE := hbnd _ houtE
+    obtain ⟨pre', op, post', r', u, a, v, hs', hp', ho', hu, hv, rest, r3, hrest⟩ :=
+      taken_by_op (ctxOf p ts) (wInit tx top) tx.ops x post pre hsplit r w r2 wE hpre hpost hx htE
+    have hmu : (x, g, h) ∈ u.gh := by
+      letI := ghHasFields (x, g, h)
+      exact fields_ops rest (ctxOf p ts) w hm r3 u hrest
+    have := htb pre' op post' hs' r' u hp' a v ho' x g h hmu hu hv
+    omega
+  have htimes : StructTimesLE (treeRun p ts) ts.length := treeRun_timesLE p ts
+  have hbase := baseHeights_of p (treeRun p ts) ts.length (ctxOf p ts) rfl
+    (by simp [ctxOf]) htimes hR.1 hK hA
+  refine segFits_of_heightsU hbk.book hi.cache hvo.heights _ hbase (p.fuel - 1) _ ?_
+  intro x n hn h hh
+  rcases hh with ⟨g, hm⟩ | ⟨ny, _, _, _, hny⟩
+  · have := hub x g h hm (ht_wNode_cases hn).1
+    omega
+  · have := heightOf_le p ny.level
+    have := fuel_gt_H p
+    omega
+
 /-- The same with the run facts at every run within reach. -/
 theorem txSegFitsOK_of_takeBelow (p : Params) (hM : 2 ≤ p.M)
     (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts)) (hchk : OpDelChkOK p)

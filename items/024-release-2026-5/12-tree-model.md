@@ -2000,7 +2000,10 @@ and its status:
       `HeightAllOK`) and one named premise, `TakeBelowFuelOK`: every node
       an operation takes back that it found (cached and not taken back at
       its start) has a height below the fuel; a root the operation itself
-      made and took back (MF1) is not asked. The argument is
+      made and took back (MF1) is not asked. A put takes nothing back
+      (`takeBelowFuelOK_of_del`), so the premise is needed for the deletes
+      only: `txSegFitsOK_of_takeBelowDelR` takes `TakeBelowFuelDelOK`.
+      The argument is
       the doomed transaction: a node of height fuel or more is above H, so
       in `outside` (`HeightMarkedPred`), and `boundsOK` at the end asks it
       taken back by a later operation (`taken_by_op`), which the premise
