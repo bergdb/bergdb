@@ -1620,7 +1620,7 @@ and its status:
       (`putKvDelChk`, `DelChk.lean`; (4) below). Tested on 310 runs within
       reach: 6828 deletes, 0 failures; 160 of them with a take-back in the
       upward delete's loop, 2305 with a merge's take-back, 453 with root
-      collapse's (`/Users/f/fl/bench/2026-11-13/cost/fit/DelChk.lean`).
+      collapse's (`12-tree-model/delchk-check.lean.txt`).
     - `invOK_of_parts`: the walk at t finds no fault when the space root is
       a key node and every key node is sound as it is. The kinds and the
       live heights must hold. The reachable nodes must meet `NonEmptyOK`,
@@ -1825,8 +1825,8 @@ and its status:
     `writerWP_afterDelete_delF3`, `opGetCaseOK'_delMerge3`,
     `opGetCaseOK_delMergeF3`). Case (4) is `opGetCaseOK_delMergeF4` alone.
 
-    Step 4, plan (cost, 22:15). The Bool evidence is cost's `SegFit.lean`,
-    run outside the repository. It ran random transactions (M 4 and 8, G 2,
+    Step 4, plan (cost, 22:15). The Bool evidence is cost's `SegFit.lean`
+    (`12-tree-model/segfit-check.lean.txt`, `random` and `random2`). It ran random transactions (M 4 and 8, G 2,
     H 0 to 2, with and without merges) and grow-then-shrink transactions of
     1000 keys. In the random runs, every segment tree at every operation
     boundary was balanced: 0 unbalanced states of about 14,000. SegFits
@@ -1966,15 +1966,14 @@ and its status:
       `ht_collapseRootChk`, `ht_climb`, `ht_takeBackChk`,
       `ht_deleteUpwardChk`, `ht_putKvDelChk`; `WriterHeightsChk.lean`,
       `WriterHeightsChkDel.lean`).
-    - Checked on runs (`/Users/f/fl/bench/2026-11-13/cost/fit/DelChk.lean`,
-      outside the repository): at every delete of 310 runs within reach,
+    - Checked on runs (`12-tree-model/delchk-check.lean.txt`): at every delete of 310 runs within reach,
       the writer's delete and its copy with the checks give the same
       result and state. That is 6828 deletes, 0 failures. Among them 209
       deletes climb (the upward delete), 160 of them with a take-back in
       the loop; 2929 merge, 2305 of them with a merge that took a node
       back; 453 have a root collapse that took a root back (counts
       corrected 01:30, after putinv found the first count read the trail
-      from the wrong end). `MergeHold.lean` checks the merge's tail
+      from the wrong end). `12-tree-model/merge-hold-check.lean.txt` checks the merge's tail
       alone: 1732 merges, 1465 of them taking nodes back.
     - The holder family (`HtDelFamily`, `treeRun_heightLiveOK_family`)
       stays as a second route. `OpDelChkOK` is the one to discharge.
@@ -2009,7 +2008,7 @@ and its status:
       - At the operation level (`opHtStep_of`, `HeightsOpStep.lean`):
         every operation of a transaction within reach adds at most one to
         every cached height, the put proved and the delete a named premise,
-        `OpDelHtStepOK`, checked on runs (`HeightsOp.lean`: 7746 deletes,
+        `OpDelHtStepOK`, checked on runs (`heights-op-check.lean.txt`: 7746 deletes,
         0 failures).
       - Not proved: a whole delete. It runs several merges, each
         re-descending, and a later merge's path can hold a root that an
@@ -2017,8 +2016,7 @@ and its status:
         one more per merge. One per segment and operation needs that the
         new root does not fill again in the same operation (the merges'
         fill, latest's `LiveCounts`).
-    - Checked on runs (`/Users/f/fl/bench/2026-11-13/cost/fit/HeightsOp.lean`,
-      outside the repository): 316 runs within reach, 18201 operations.
+    - Checked on runs (`12-tree-model/heights-op-check.lean.txt`): 316 runs within reach, 18201 operations.
       In every segment the nodes an operation made are at most one above
       the nodes it found, and after every operation every cached height
       is below fuel - 1: 0 failures. 717 operations split a root, 36 of
@@ -2030,16 +2028,18 @@ and its status:
       `HeightAllOK`) and one named premise, `TakeBelowFuelOK`: every node
       an operation takes back that it found (cached and not taken back at
       its start) has a height below the fuel; a root the operation itself
-      made and took back (MF1) is not asked. The argument is
+      made and took back (MF1) is not asked. A put takes nothing back
+      (`takeBelowFuelOK_of_del`), so the premise is needed for the deletes
+      only: `txSegFitsOK_of_takeBelowDelR` takes `TakeBelowFuelDelOK`.
+      The argument is
       the doomed transaction: a node of height fuel or more is above H, so
       in `outside` (`HeightMarkedPred`), and `boundsOK` at the end asks it
       taken back by a later operation (`taken_by_op`), which the premise
       excludes. (B) is not needed for it; (B) serves the bounds inside an
       operation (`DelFullFitsOK`, `MergeStepOKF3`, `CollapseStepOKF4`).
-      `TakeBelowFuelOK` checked on runs (`HeightsOp.lean`): 3205 operations
+      `TakeBelowFuelOK` checked on runs (`heights-op-check.lean.txt`): 3205 operations
       that took nodes back, in 18201, 0 failures. Its reason is (C)'s part
-      1 below: every node taken back is on a successful descent, or a
-      sibling of one.
+      1 below.
     - (C), begun: at operation boundaries SegFits (fuel - 1), by the
       doomed transaction. A root of height fuel or more cannot be
       descended, so no later operation of the transaction reaches its
@@ -2050,12 +2050,36 @@ and its status:
         (`ht_descendLte_height`, from `writerWP_descendLte_depth` and the
         heights' balance; the nodes it visits are untaken,
         `ht_eqVisits_free`).
-      - Left: every take-back site reaches its node by such a descent or
-        made it in the same operation, and an operation that reaches no
-        node of a segment tree leaves the tree's nodes as they are (a
-        frame of every operation). With (B)'s one per operation, a height
-        of fuel - 1 at a boundary can reach fuel inside the next operation,
-        and then the transaction fails.
+      - The rest of the argument is proved for `TxSegFitsOK`
+        (`txSegFitsOK_of_takeBelowR`, above), from the named premise
+        `TakeBelowFuelOK`.
+      - Left: proving `TakeBelowFuelOK`. A node an operation found and
+        takes back is in a segment tree the operation descended through
+        from its root at its start (the merge's l and r below the path's
+        node, the loop's path nodes, the collapsed root), so below that
+        root, whose height is below the fuel by part 1. It needs the reach
+        of each take-back site from that root through the operation's
+        own writes.
+    Step 4, the named premises at the night's end (cost, 02:15), each
+    with its run test (`12-tree-model/delchk-check.lean.txt`,
+    `heights-op-check.lean.txt`, `merge-hold-check.lean.txt`,
+    `segfit-check.lean.txt`; the run command in each header):
+    - `OpDelChkOK` (`HeightsChkRun.lean`): a delete runs as its copy with
+      a check at every take-back. It gives TP7's (b), `HeightLiveOK` after
+      every run (`treeRun_heightLiveOK_chk`). `delchk-check.lean.txt`:
+      6828 deletes of 310 runs, and 309 of 8 random multi-segment runs,
+      0 failures.
+    - `TakeBelowFuelDelOK` (`HeightsFit.lean`): a delete takes back no node
+      of height fuel or more that it found at its start. With
+      `OpDelChkOK` it gives TP10's `TxSegFitsOK`
+      (`txSegFitsOK_of_takeBelowDelR`; `TakeBelowFuelOK` and
+      `txSegFitsOK_of_takeBelowR` are the same for every operation).
+      `heights-op-check.lean.txt`: 3205 operations that took nodes back,
+      0 failures.
+    - `OpDelHtStepOK` (`HeightsOpStep.lean`): a delete adds at most one to
+      every cached height (`opHtStep_of`, every operation). For the bounds
+      inside an operation, not used yet. `heights-op-check.lean.txt`: 7746
+      deletes, 0 failures.
   - (5) `DelNoLeafCase`, a delete of a key with no leaf: proved,
     `opGetCaseOK_delNoLeaf`. It changes no reading: the writer's walk
     stops at the first segment that is not there and only reads
@@ -2308,7 +2332,8 @@ transactions (M = 4 and 8, merges off and on, two and three segments)
 and of random runs: it held at every state of every transaction that
 ended without error; the one state without it (M = 4, a 7th put making
 depth 6 = fuel) belongs to a transaction whose next descent there throws
-(`/Users/f/fl/bench/2026-11-13/cost/fit/`). It is not kept by every
+(`12-tree-model/segfit-check.lean.txt`; `Fit.lean`, the whole-path
+form, was not copied). It is not kept by every
 single rule (that put does not throw), only along a transaction that
 succeeds; a rule can keep the bound one level higher, `SegFits N t
 p.fuel r`, as a descent through a tree that deep throws (not yet

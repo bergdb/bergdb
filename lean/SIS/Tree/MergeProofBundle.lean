@@ -355,3 +355,4 @@ import SIS.Tree.HeightsFuelDescent
 import SIS.Tree.HeightsFuelPut
 import SIS.Tree.HeightsFit
 import SIS.Tree.HeightsOpStep
+import SIS.Tree.HeightsPathNodup

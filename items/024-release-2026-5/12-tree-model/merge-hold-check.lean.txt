@@ -1,0 +1,265 @@
+/-
+MergeTailHoldOK, checked on runs (bergdb 024-22, step 4; the heights' walk,
+WriterHeightsMerge.lean). Not part of the Lean project; run it from
+lean/:
+
+  lake env lean ../items/024-release-2026-5/12-tree-model/merge-hold-check.lean.txt
+
+It copies the writer's delete path (putKv, putSegs, setValue, deleteUpward,
+afterDelete, mergeUp, merge) and, at every merge, runs merge's tail
+(`mergeTail`) and its copy with the check before each take-back
+(`mergeTailChk`) from the same state, then goes on with the tail's state.
+Each merge notes mchk:ok (both succeed with the same result), mchk:DIFF (both
+succeed, different results) or mchk:FAIL (the check fails where the tail
+succeeds), with :tbN, N the nodes merged that the transaction made (each taken
+back by the tail).
+-/
+import SIS.Tree.MergeProofBundle
+
+set_option autoImplicit false
+set_option maxRecDepth 100000
+
+namespace SIS.Tree
+
+open SIS SIS.Check
+
+def nMadeH (ln rn : KNode) (t : Time) : Nat :=
+  (if ln.firstTime == some t then 1 else 0) + (if rn.firstTime == some t then 1 else 0)
+
+/-- merge's tail and its checked copy from the same state. -/
+def tailCmp (c : Ctx) (x : NodeId) (d : Nat) (p : NodeId) (pn xn : KNode) (leftSome : Bool)
+    (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId) (rn : KNode) (ir : Nat) : M Nat := do
+  let w ← getThe W
+  let tag := s!":tb{nMadeH ln rn c.i}"
+  match (mergeTailChk c x d p pn xn leftSome l ln il r rn ir) c w,
+      (mergeTail c x d p pn xn leftSome l ln il r rn ir) c w with
+  | .ok (k1, _), .ok (k2, v2) =>
+    set v2
+    note ((if k1 == k2 then "mchk:ok" else "mchk:DIFF") ++ tag)
+    pure k2
+  | .error e, .ok (k2, v2) =>
+    set v2
+    note ("mchk:FAIL" ++ tag ++ " " ++ e)
+    pure k2
+  | _, .error e => throw e
+
+/-- `merge` with its tail compared. -/
+def mergeH (x : NodeId) (d : Nat) : M Nat := do
+  let c ← read
+  let tt := c.i
+  let p ← pathNode (d - 1)
+  let pn ← getNode p
+  let xn ← getNode x
+  let inner := !xn.leaf
+  let cx ← klongAt d
+  let (ix?, ia, ib) := mergeIdx pn cx
+  let ix ← match ix? with
+    | some ix => pure ix
+    | none => throw s!"Bug: merge at {tt}: key node {x} has no live klong {cx} in {p}"
+  if pn.ptr? ix != some x then
+    throw s!"Bug: merge at {tt}: key node {x} is not the live child of its klong in {p}"
+  let left ← match ib with
+    | some (ib, _) => do
+      let (ls, lsn) ← sibling p pn ib inner
+      if ia.isNone || lsn.cnt + xn.cnt ≤ c.p.mergeMax then pure (some (ib, ls, lsn))
+      else pure none
+    | none => pure none
+  let (l, ln, il, r, rn, ir) ← match left with
+    | some (ib, ls, lsn) => pure (ls, lsn, ib, x, xn, ix)
+    | none =>
+      match ia with
+      | some (ia, _) => do
+        let (rs, rsn) ← sibling p pn ia inner
+        pure (x, xn, ix, rs, rsn, ia)
+      | none => throw s!"Bug: merge at {tt}: key node {x} has no sibling in {p}"
+  tailCmp c x d p pn xn left.isSome l ln il r rn ir
+
+def mergeUpH (key : Key) (g : Nat) : Nat → Nat → Bool → M Bool
+  | 0, _, _ => throw "bounds: the merges went above the height bound"
+  | f + 1, h, merged => do
+    let c ← read
+    let d ← descendToHeight key g h
+    if d == 0 then return merged
+    let x ← pathNode d
+    let q ← pathNode (d - 1)
+    if (← getNode q).leaf then return merged
+    if (← getNode x).cnt ≥ c.p.mergeBelow then return merged
+    let r ← mergeH x d
+    if r == 2 then return true
+    mergeUpH key g f (h + 1) true
+
+def afterDeleteH (key : Key) (g h : Nat) : M Unit := do
+  let c ← read
+  if c.p.merges then
+    if ← mergeUpH key g c.p.fuel h false then
+      collapseRoot key g c.p.fuel
+
+def deleteUpwardH (leaf : NodeId) (depth : Nat) (cv : Nat) (key : Key) : M Bool := do
+  let c ← read
+  let tt := c.i
+  let n ← getNode leaf
+  let leafDel := n.lastBitmap
+  let leafUnion := bitsUnion leafDel (n.bitsOf cv)
+  if leafUnion == leafDel then return true
+  if !n.allKeysIn leafUnion then
+    let (g, h) ← ghOf leaf
+    let _ ← appendDeleteKlong leaf depth cv
+    afterDeleteH key g h
+    return false
+  let stop ← climb depth
+  if stop == depth then
+    note "up.root-kept-empty"
+    let _ ← appendDeleteKlong leaf depth cv
+    return false
+  note "up.climb"
+  let path := (← getThe W).path
+  let segment ← (path.take stop).foldlM (fun s (e : Option Nat × NodeId) => do
+    pure (if (← getNode e.2).leaf then s + 1 else s)) 0
+  for j in List.range (depth - stop) do
+    let k := depth - j
+    let x ← pathNode k
+    let xn ← getNode x
+    if xn.firstTime == some tt then takeBack x (← pathNode (k - 1)) (← klongAt k)
+    else
+      note "up.unlink"
+      unlink x
+  let s ← pathNode stop
+  let cs ← klongAt (stop + 1)
+  let sn ← getNode s
+  let (gs, hs) ← ghOf s
+  if sn.leaf then
+    note "up.stop-at-segment-leaf"
+    let _ ← appendDeleteKlong s stop cs
+    afterDeleteH key gs hs
+    return false
+  if sn.smallestLive != some 0 then
+    throw s!"Bug: the upward unlink at {tt}: inner node {s} has no live klong of the empty key"
+  if cs != 0 then
+    let _ ← appendDeleteKlong s stop cs
+  else
+    emptyKeyNext s stop
+  if c.p.merges then
+    let _ ← mergeUpH key gs c.p.fuel hs false
+  collapseRoot key segment (c.p.fuel)
+  return false
+
+def setValueH (segRoot : NodeId) (cv : Nat) (key : Key) (value : Option Nat) : M Bool := do
+  let c ← read
+  let leaf ← descendLte cv c.p.fuel segRoot
+  match value with
+  | none =>
+    let noop ← deleteUpwardH leaf ((← pathSize) - 1) cv key
+    if !noop then
+      let _ ← fresh
+    pure noop
+  | some h =>
+    let v ← newValue h
+    let n ← getNode leaf
+    let n' := n.add c.i (.key cv v)
+    if n.size + 1 < c.p.M && !deadOver c.p n' then putNode leaf n'
+    else appendKlongs ((← pathSize) - 1) leaf [(cv, v)]
+    pure false
+
+def putSegsH (key : Key) (value : Option Nat) : List Nat → NodeId → M Bool
+  | [], _ => throw "corrupt: a key without segments"
+  | [cv], segRoot => setValueH segRoot cv key value
+  | cv :: rest, segRoot => do
+    match ← setNode segRoot cv value.isSome with
+    | none => pure true
+    | some next => putSegsH key value rest next
+
+def putKvH (op : Op) : M Bool := do
+  pathClear
+  let root ← findRoot
+  match op with
+  | .put key h => putSegsH key (some h) key root
+  | .del key => putSegsH key none key root
+
+def withinH (p : Params) (all : List Tx) : Bool :=
+  all.all (fun t => t.sorted && t.wf) &&
+  (List.range all.length).all (fun j =>
+    match all[j]? with
+    | none => false
+    | some tj => (treeRun p (all.take j)).all (fun q => decide (q.1 < tj.base)) &&
+        isOk (exec? p tj (j + 1) (view (treeSpec p) (treeRun p (all.take j)) j)))
+
+/-- The notes of the checks along a run, and whether the copy's states are the
+writer's (its final state's nodes equal the writer's). -/
+def runH (p : Params) (all : List Tx) : List String :=
+  if !withinH p all then ["skip:not-within"] else
+  ["run"] ++ (List.range all.length).foldl (fun acc j =>
+    match all[j]? with
+    | none => acc
+    | some tx =>
+      let ts := all.take j
+      let v := view (treeSpec p) (treeRun p ts) ts.length
+      match lastTop v with
+      | none => acc ++ ["notop"]
+      | some z =>
+        match topOf p (ctxOf p ts).view z with
+        | .error _ => acc ++ ["toperr"]
+        | .ok top =>
+          match (tx.ops.mapM putKvH) (ctxOf p ts) (wInit tx top),
+              (tx.ops.mapM putKv) (ctxOf p ts) (wInit tx top) with
+          | .ok (_, w), .ok (_, w') =>
+            acc ++ (w.trail.filter (fun s => s.startsWith "mchk")) ++
+              (if w.trail.length == w'.trail.length + (w.trail.filter (fun s => s.startsWith "mchk")).length
+                then [] else ["TRAIL-DIFF"])
+          | .error e, _ => acc ++ ["ERR " ++ e]
+          | _, .error e => acc ++ ["ERRW " ++ e]) []
+
+def summH (l : List String) : String :=
+  let cnt (s : String) := (l.filter (· == s)).length
+  s!"runs {cnt "run"} (skipped, not within reach: {cnt "skip:not-within"}) merges {(l.filter (fun s => s.startsWith "mchk")).length}: ok:tb0 {cnt "mchk:ok:tb0"} ok:tb1 {cnt "mchk:ok:tb1"} ok:tb2 {cnt "mchk:ok:tb2"} FAIL {(l.filter (fun s => s.startsWith "mchk:FAIL")).length} DIFF {(l.filter (fun s => s.startsWith "mchk:DIFF")).length} other {(l.filter (fun s => !s.startsWith "mchk" && s != "run" && s != "skip:not-within")).take 3}"
+
+end SIS.Tree
+
+namespace SIS.Tree
+
+-- latest's assembly run: 30 puts, 22 deletes
+#eval summH (runH invAsmP invAsmTs)
+
+-- latest's families (puts and deletes in separate transactions)
+def hP1 : Params := {M := 8, G := 1, H := 2, mergeBelow := 2, mergeMax := 3, splitAbove := 4}
+def hP2 : Params := {M := 10, G := 2, H := 2, mergeBelow := 2, mergeMax := 4, splitAbove := 5}
+def hPutsAB (as bs : List Nat) : List Op := (as.flatMap (fun a => bs.map (fun b => .put [a, b] (a * 1000 + b + 1))))
+def hDels (as bs : List Nat) : List Op := (as.flatMap (fun a => bs.map (fun b => .del [a, b])))
+def hA (n : Nat) : List Nat := (List.range n).map (fun i => 64 * i + 56)
+def hBs (n : Nat) : List Nat := (List.range n).map (fun j => 64 * j + 8)
+def hRun (na nb k1 keep : Nat) : List Tx :=
+  let a0 := 64 * (na / 2) + 56
+  [{base := 1000, ops := hPutsAB (hA na) (hBs 2)},
+   {base := 3000, ops := hPutsAB [a0] ((hBs nb).drop 2)},
+   {base := 5000, ops := hDels [a0] ((hBs nb).take k1)},
+   {base := 7000, ops := hDels [a0] (((hBs nb).drop k1).take (nb - k1 - keep))}]
+def hFamily : List (List Tx) :=
+  [5, 7, 9].flatMap (fun na => [16, 24].flatMap (fun nb =>
+    [nb - 9, nb - 5].flatMap (fun k1 => [1, 2].map (fun keep => hRun na nb k1 keep))))
+#eval summH (hFamily.flatMap (fun r => runH hP1 r))
+#eval summH (hFamily.flatMap (fun r => runH hP2 r))
+
+-- mixed transactions: the nodes a transaction's puts split are merged by its
+-- deletes, so the merges take nodes back
+def hKey (j : Nat) : Key := [64 * j + 8]
+/-- Puts at the odd slots of [a, b) and deletes at the even slots of [a', b'),
+in key order. -/
+def hMixed (a b a' b' : Nat) : List Op :=
+  (List.range 200).filterMap (fun j =>
+    if j % 2 == 1 && a ≤ j && j < b then some (.put (hKey j) (j + 1))
+    else if j % 2 == 0 && a' ≤ j && j < b' then some (.del (hKey j))
+    else none)
+def hEvens (n : Nat) : List Op := (List.range n).map (fun j => .put (hKey (2 * j)) (j + 1))
+def hOddDels (a b : Nat) : List Op :=
+  (List.range 200).filterMap (fun j => if j % 2 == 1 && a ≤ j && j < b then some (.del (hKey j)) else none)
+def hMixRun (n a b a' b' : Nat) : List Tx :=
+  [{base := 1000, ops := hEvens n},
+   {base := 3000, ops := hMixed a b a' b'},
+   {base := 5000, ops := hOddDels a b}]
+def hMixFamily : List (List Tx) :=
+  [20, 40, 60].flatMap (fun n => [(0, 30), (10, 50), (5, 90)].flatMap (fun (a, b) =>
+    [(0, 2 * n), (a, b), (b - 10, 2 * n), (a + 4, b + 20)].map (fun (a', b') => hMixRun n a b a' b')))
+#eval summH (hMixFamily.flatMap (fun r => runH hP1 r))
+#eval summH (hMixFamily.flatMap (fun r => runH hP2 r))
+#eval summH (hMixFamily.flatMap (fun r => runH invAsmP r))
+
+end SIS.Tree

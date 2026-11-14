@@ -1112,7 +1112,7 @@ writer reaches) can use.
   the largest cached height (`seenHeight_appendDeleteKlong`,
   `seenHeight_appendKlongs`, `seenHeight_merge`; `HeightsFuel.lean`,
   `HeightsFuelMerge.lean`). The bound for a whole operation is not proved.
-- Runs (`/Users/f/fl/bench/2026-11-13/cost/fit/HeightsOp.lean`): in 18201
+- Runs (`12-tree-model/heights-op-check.lean.txt`): in 18201
   operations of 316 runs within reach, the nodes an operation made were at
   most one above the nodes it found, in every segment.
 
@@ -1391,3 +1391,72 @@ of mine runs or holds a slot.
   takes its own slot with `slot.sh`).
 
 2026-11-13. Status set after the release (coord-1113).
+
+### 11.1 State, the night of 2026-11-13 to 14 (agent "cost")
+
+Branch `024-22-cost` in `/Users/f/fl/bench/2026-11-13/cost/clone`, main
+merged at every checkpoint; the full build passes and every theorem of the
+night uses only propext, Classical.choice and Quot.sound. The details are
+in 024-12's (4) entry (step 4) and section 1's list.
+
+* **Proved:**
+  - TP7's (b), the live heights after every run, from one named premise:
+    `treeRun_heightLiveOK_chk`, `invPreserved_of_open_chk`
+    (`HeightsChkRun.lean`). The heights' walk: every key node's height
+    exact in the writer's overlay at every state of a transaction
+    (`HtInv`, `WriterHeights*.lean`, `HeightsRun.lean`).
+  - TP10's fuel premise between operations (`TxSegFitsOK`, latest's
+    `hfit`) from the heights: `txSegFitsOK_of_takeBelowDelR`
+    (`HeightsFit.lean`), by the doomed transaction.
+  - Step 4 (B): a split's cascade, a delete's bitmap and a merge each add
+    at most one to the cached heights; a whole put too
+    (`HeightsFuel.lean`, `HeightsFuelMerge.lean`, `HeightsFuelPut.lean`);
+    every operation, given the delete's (`opHtStep_of`,
+    `HeightsOpStep.lean`).
+  - Step 4 (C), part 1: a descent that succeeds from a node of height h
+    had fuel above h (`ht_descendLte_height`, `HeightsFuelDescent.lean`).
+* **Open, as exact statements** (named premises; each with its test):
+  - `OpDelChkOK p` (`HeightsChkRun.lean`): a delete, from a state that
+    the transaction's earlier operations reach, runs as its copy with a
+    check at every take-back (`putKvDelChk`, `DelChk.lean`).
+    `12-tree-model/delchk-check.lean.txt`: 7137 deletes, 0 failures.
+  - `TakeBelowFuelDelOK p` (`HeightsFit.lean`): a delete takes back no
+    node of height fuel or more that it found at its start.
+    `12-tree-model/heights-op-check.lean.txt`: 3224 operations that took
+    nodes back, 0 failures.
+  - `OpDelHtStepOK p` (`HeightsOpStep.lean`): a delete adds at most one
+    to every cached height. `heights-op-check.lean.txt`: 8416 deletes, 0
+    failures.
+  - The holder family `HtDelFamily` (`WriterHeightsDelete.lean`) is a
+    second route to TP7's (b), superseded by `OpDelChkOK`.
+  - TP32 and TP33 as before (section 11; TP32's heights paragraph above).
+* **Next:**
+  1. `OpDelChkOK`'s checks: the holders (`checkFree`, `checkRoot`) from
+     putinv's TP4 walk (`TakeJ2` with `TreeOK`, through
+     `liveHolder_unique`); the segment leaves (`checkOld`, the stop node)
+     from latest's `LiveCounts` within a delete; `checkPathFree` from the
+     path's nodes being distinct, proved (`ht_path_nodup`, `ht_path_ne`,
+     `HeightsPathNodup.lean`: along the path the segment rises and, in a
+     segment, the height falls, from `PathHt` and `PathKinds`); left for
+     it: the kinds' walk (`KdInv`) beside the heights' at the upward
+     delete's loop in `ht_deleteUpwardChk`, then a copy without the check.
+  2. `TakeBelowFuelDelOK`: a node a delete found and takes back is
+     reachable at its start from a segment root it descended, so below
+     the fuel by (C)'s part 1. What it needs, a reach frame through the
+     delete's writes: a node found at the operation's start and reachable
+     (by live klongs, within its segment tree) at a later state of the
+     operation was reachable at its start from that segment's root, or is
+     below a node so reachable. The writes that add a reach are the new
+     nodes' klongs (merges, splits: they name found nodes that the node
+     they replace named), the retargets (to `madeFor`, nodes of the view)
+     and root collapse (the child of the root). Then: the delete's first
+     descent passes every segment root on its key's path below the fuel
+     (`ht_descendLte_height`), and a node reachable from a root of height
+     R has height at most R (the heights' walk). A walk of the delete with
+     a reach invariant over `wNode`, in the style of putinv's
+     `TtReachedN` walk; about 1500 to 2500 lines, a night of its own.
+  3. `OpDelHtStepOK`: one root split per segment and delete, as the new
+     root keeps room in the same operation (the merges' fill).
+* **Test scripts** (`12-tree-model/`, the run command in each header):
+  `delchk-check.lean.txt`, `heights-op-check.lean.txt`,
+  `merge-hold-check.lean.txt`, `segfit-check.lean.txt`.
