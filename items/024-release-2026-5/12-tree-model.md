@@ -1550,6 +1550,14 @@ and its status:
     coordinator at 23:50; `InvAssembly.lean`). Not proved yet: the parts
     `NonEmptyOK`, `RootsOK` and `FillOK` (latest's, next), `HeightLiveOK`
     (cost's) and `RangeAtOK` (putinv's `RangeOrder`, on P).
+    - `HeightLiveOK` (TP7's (b)): proved from one named premise,
+      `OpDelChkOK` (cost, 01:10; `treeRun_heightLiveOK_chk`,
+      `invPreserved_of_open_chk`, `HeightsChkRun.lean`). The premise: a
+      delete, from a state that the transaction's earlier operations
+      reach, runs as its copy with a check at every take-back
+      (`putKvDelChk`, `DelChk.lean`; (4) below). Tested on 270 runs within
+      reach: 6828 deletes, 0 failures
+      (`/Users/f/fl/bench/2026-11-13/cost/fit/DelChk.lean`).
     - `invOK_of_parts`: the walk at t finds no fault when the space root is
       a key node and every key node is sound as it is. The kinds and the
       live heights must hold. The reachable nodes must meet `NonEmptyOK`,
