@@ -1623,10 +1623,18 @@ and its status:
       The halves must be `HalfOK` (a live klong, two, and m), and a new
       inner root needs two live klongs. Common to all is
       `liveEdges_of_sim`.
-    - Left for (2) and (3c): the walk of the cascade, with these steps in
-      place of cost's in `writerWP_appendKlongs_chainG`, with the halves'
-      counts from `halves_lastVersionGivenDel_live_fill`. Then the
-      access-path wrapper, as `writerWP_put_accessPathR`.
+    - The cascade's walk keeps `LiveEdges` (latest, 01:02, with cost's and
+      the coordinator's agreement): `writerWP_appendKlongs_chainGL` in
+      `WriterTreeChainG.lean`. It is cost's walk with one more post
+      conjunct: with the merges' thresholds, `LiveEdges` of the tree with
+      the klongs put gives `LiveEdges` after. Each of cost's steps of the
+      tree has its twin of `LiveSteps.lean` beside it. The counts come from
+      `LiveChain.lean`: the halves are `HalfOK`
+      (`halves_lastVersionGivenDel_live_fill`), and a time split's last
+      version has the live klongs of the node with the klongs put.
+      `writerWP_appendKlongs_chainG` is now its corollary, with its
+      statement unchanged, so the walk exists once. To sit below it,
+      `LiveEdges`' basic part moved to `LiveEdgesBase.lean`.
     - `LiveCounts` was checked on runs within reach with the merges on
       (`12-tree-model/live-counts-check.lean.txt`). The parameters were
       record format 7's thresholds at node sizes 8, 10 and 14 (m = 2, 2
