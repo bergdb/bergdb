@@ -139,7 +139,9 @@ theorem writerWP_mergeUp_delJF3 (key : Key) (g : Nat) (c : Ctx) (base : View BVa
               · exact ih (h + 1) true v4 ⟨⟨hI4, hbk4, hik4⟩, hJ4, Nat.le_trans hBn3 hn4⟩
 
 /-- Obligation (the take-back at a replaceRoot whose segment leaf is full): the
-leaf's cascade after `unlink x` keeps `TakeJ2` and B at most the next id. -/
+leaf's cascade after `unlink x` keeps `TakeJ2` and B at most the next id, given
+the state's global facts (`PutInvG`) and the tree after the unlink
+(`CollapseUnlinkOK`). -/
 def ReplaceRootFullJ2OK (c : Ctx) (base : View BVal) (f : Nat) (B : NodeId) : Prop :=
   ∀ (w0 v : W) (x : NodeId) (n : KNode) (only : Nat) (leaf : NodeId) (ln : KNode) (k : Nat)
     (ps0 : List (Option Nat × NodeId)), CollGetInvF c base w0 v f →
@@ -150,6 +152,7 @@ def ReplaceRootFullJ2OK (c : Ctx) (base : View BVal) (f : Nat) (B : NodeId) : Pr
     (k, x) ∈ ln.liveAt c.i → (v.path[ps0.length]?).map (·.2) = some leaf →
     v.path[ps0.length + 1]? = some (some k, x) → v.nodes.lookup x = some n →
     n.onlyLiveKlong = some only → n.cv? only = some 0 → n.leaf = false → n.firstTime ≠ some c.i →
+    PutInvG c base v → CollapseUnlinkOK c base v x n →
     ¬ (ln.size + 1 + 1 ≤ c.p.M ∧ ∀ y, deadOver c.p (ln.add c.i (.key k y)) = false) →
     WriterWP (replaceRoot x (ps0.length + 1) only) c v (fun _ v' => TakeJ2 c base B v' ∧ B ≤ v'.next)
 
@@ -274,7 +277,7 @@ theorem writerWP_collapseRoot_collJF4 (fuelR : Nat) (hfR : 2 ≤ fuelR) (key : K
         · exact writerWP_replaceRoot_seg_j2F x ps0.length only n L ln k c base w0 v fuelR hI BJ hpos hJ hLr hLlk
             hLl hk' hlk honly hcv hxl hm hpd hpk hroom.1 hroom.2
         · exact writerWP_mono (hRJ w0 v x n only L ln k ps0 hI hR hJ hBn hvp hlf hPC hLr hLlk hLl hk' hpd hpk
-            hlk honly hcv hxl hm hroom) (fun _ v' h' => h'.1)
+            hlk honly hcv hxl hm hG hU hroom) (fun _ v' h' => h'.1)
       rw [hlen] at hfit hbook hkd hnx ⊢
       have hcas := writerWP_replaceRoot_seg_cascadeF fuelR hfR x only n L ln k ps0 c base w0 v hI hR hG hsa2
         hvp hlf hPC hLr hLlk hLl hk' hpd hpk hlk honly hcv hxl hU
