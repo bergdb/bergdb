@@ -2184,8 +2184,10 @@ and its status:
       delete. It gives TP7's (b) (`treeRun_heightLiveOK_chk2`,
       `invPreserved_of_open_chk2`) and, with `TakeBelowFuelDelOK`, TP10's
       `TxSegFitsOK` (`txSegFitsOK_of_takeBelowDelR2`; it needs TP4's
-      `hP` for the kinds). `delchk-check.lean.txt` runs the copy too: the
-      same 7137 deletes, 0 failures. For latest's run induction, which
+      `hP` for the kinds). `delchk-check.lean.txt` runs the copy too, and
+      random runs whose keys make one-key segments, so that deletes climb:
+      7987 deletes in all, 77 of the new ones climbing, 0 failures of
+      either copy. For latest's run induction, which
       proves TP4 and the kinds at the run it is at, the same at the runs
       a predicate R holds of (`HeightsUnder.lean`): `OpHtDelOKUnder p R`,
       `opHtDelOKUnder_of_chk2` (R gives `PointersOK` and `KindsAllOK`),
