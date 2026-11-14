@@ -1643,6 +1643,14 @@ and its status:
     `opGetCaseOK_delMerge`); and the corollaries only they used
     (`writerWP_merge_get_invF`, `writerWP_merge_get_inv`,
     `writerWP_merge_tree_inv`). Case (4) is `opGetCaseOK_delMergeF2`.
+    Removed too (latest, 00:48, the coordinator through putinv, after the
+    take-back moved to F4): the reading's F2 route (`DelMergeCaseF2.lean`:
+    `opGetCaseOK_delMergeF2`, `opGetCaseOK'_delMerge2`,
+    `writerWP_mergeUp_delF2`, `writerWP_afterDelete_delF2`) and F3's
+    collapse with a room premise (`CollapseStepOKF3`,
+    `collapseStepOKF3_of_room`, `writerWP_collapseRoot_delF3`,
+    `writerWP_afterDelete_delF3`, `opGetCaseOK'_delMerge3`,
+    `opGetCaseOK_delMergeF3`). Case (4) is `opGetCaseOK_delMergeF4` alone.
 
     Step 4, plan (cost, 22:15). The Bool evidence is cost's `SegFit.lean`,
     run outside the repository. It ran random transactions (M 4 and 8, G 2,

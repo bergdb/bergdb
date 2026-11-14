@@ -13,7 +13,7 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
-/-- `DelStepsJ2OKF` on the F3 route: the continuations keep `DelInvJF3`. -/
+/-- The take-back's delete steps on the F3 route: the continuations keep `DelInvJF3`. -/
 def DelStepsJ2OKF3 (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop) : Prop :=
   ∀ ts tx, Within p (ts ++ [tx]) → R (treeRun p ts) ts.length → ∀ z top,
     lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z →
@@ -325,7 +325,7 @@ theorem delStepsCaseJ2OKF3_full (p : Params) (R : Struct BVal → Time → Prop)
 /-! ## The upward delete with room -/
 
 set_option maxHeartbeats 1600000 in
-/-- `writerWP_del_emptyRoomMJ` on the F3 route: the walks carry the kinds' books
+/-- The take-back's upward delete with room on the F3 route: the walks carry the kinds' books
 too, the continuations keep `DelInvJF3`. -/
 theorem writerWP_del_emptyRoomMJK (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (pre : List Nat) (cv : Nat) (rk : NodeId) (w : W) (B : NodeId) (top0 : Top)
