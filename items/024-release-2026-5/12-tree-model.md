@@ -84,26 +84,27 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
 `delStepsQdL_of_openR4`), so `hG` left:
 
 - `d4` (`QDead`): the delete with the merges (4) keeps every key node that the writer reads at
-  or below theta dead klongs (latest), now only for the deletes that change the tree and are
-  not (4a) for the dead bound (`DelMergeDOpenCase`; a noop and a key without a leaf read as
-  before, `writerWP_del_noop_reads`, `writerWP_del_noLeaf_reads`, `LiveDelNoop.lean`): from a
-  state with the live counts, a delete whose leaf has room, keeps a live klong (more than
-  `mergeBelow` if an inner node names it) and whose new node `deadOver` lets through is proved
-  (`deadCase_delRoomFill`, `LiveDelRoom.lean`). Every put keeps it, proved for theta 0 or at least 2: the leaf's klong goes in only when `deadOver`
-  lets it through (`deadCase_putLeafRoom`); a
-  klong of a compare value with no live klong adds no dead klong (`KNode.deadCount_add_key_new`,
-  `deadCase_putNewSeg1Room`, `deadCase_putNewSegsRoom`); and a cascade's nodes hold at most
-  theta (`writerWP_appendKlongs_chainDead`: a half at most 2, a copy of a last version and a new
-  root none, a node left behind no more than before; `deadCase_putLeafFull`,
-  `deadCase_putNewSegFull`). `DeadAllOK` at every run follows (`deadAllOK_snoc`). With theta 0
-  it is void. Evidence (`12-tree-model/dead-all-check.lean.txt`, runs within reach with the
-  merges on and Java's theta at node sizes 8, 10, 14 and 30, with overwrites and pseudo-random
-  mixes of puts and deletes in one and two segments): `WDeadOK` held at all 11,927 states
-  between operations, and `DeadAllOK` at all 1512 run ends (18,243 key nodes, 2694 at theta,
-  none above). Inside deletes too, after every leaf bitmap, merge, step of root collapse and
-  stop node step: at 4069 states with Java's theta, no node the writer has written above theta,
-  at 2702 of them one at theta (`fuel-inside-check.lean.txt`). Also TP39 in `treetest` and on
-  Java's traces (C-T6), for the key nodes reached.
+  or below theta dead klongs (latest), now only for the deletes that change the tree and are not
+  (4a) for the dead bound (`DelMergeDOpenCase`; a noop and a key without a leaf read as before,
+  `writerWP_del_noop_reads`, `writerWP_del_noLeaf_reads`, `LiveDelNoop.lean`): from a state with
+  the live counts, a delete whose leaf has room, keeps a live klong (more than `mergeBelow` if
+  an inner node names it) and whose new node `deadOver` lets through is proved
+  (`deadCase_delRoomFill`, `LiveDelRoom.lean`). Every put keeps it, proved for theta 0 or at
+  least 2: the leaf's klong goes in only when `deadOver` lets it through
+  (`deadCase_putLeafRoom`); a klong of a compare value with no live klong adds no dead klong
+  (`KNode.deadCount_add_key_new`, `deadCase_putNewSeg1Room`, `deadCase_putNewSegsRoom`); and a
+  cascade's nodes hold at most theta (`writerWP_appendKlongs_chainDead`: a half at most 2, a
+  copy of a last version and a new root none, a node left behind no more than before;
+  `deadCase_putLeafFull`, `deadCase_putNewSegFull`). `DeadAllOK` at every run follows
+  (`deadAllOK_snoc`). With theta 0 it is void. Evidence
+  (`12-tree-model/dead-all-check.lean.txt`, runs within reach with the merges on and Java's
+  theta at node sizes 8, 10, 14 and 30, with overwrites and pseudo-random mixes of puts and
+  deletes in one and two segments): `WDeadOK` held at all 11,927 states between operations, and
+  `DeadAllOK` at all 1512 run ends (18,243 key nodes, 2694 at theta, none above). Inside deletes
+  too, after every leaf bitmap, merge, step of root collapse and stop node step: at 4069 states
+  with Java's theta, no node the writer has written above theta, at 2702 of them one at theta
+  (`fuel-inside-check.lean.txt`). Also TP39 in `treetest` and on Java's traces (C-T6), for the
+  key nodes reached.
 - `hchk`, `OpDelChk2OK`: a delete runs as its copy with the take-backs' checks, but the path's
   (`checkPathFree`, proved) (cost, the heights). Evidence: the same result and state at 7987
   deletes, 6828 of 310 runs, 309 of 8 random runs in several segments and 850 of random runs
