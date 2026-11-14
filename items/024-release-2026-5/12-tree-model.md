@@ -22,18 +22,18 @@ Cite the design rules as "024-12, D1", the stated properties as
 ## 1. In short
 
 **The top theorem (2026-11-14, 02:10).** `invGetScanOK_merges_flat` (`LatestTopFlat.lean`)
-gives, for the parameters of `MergeParamsOK`, TP7 (`InvPreserved`), TP10 (`GetOK`) and TP11
-(`ScanOK`), and so `LatestGetOK` and `LatestScanOK`, from the named premises below. TP4 and P's
-tree at every run are not premises: the take-back's joint induction (putinv's
-`runTreeQ_of_mergesF4S`) carries them with TP7's invariant and the bound on dead klongs
-(`LatestQD`; `latestQ_snoc`, `latestQD_snoc`; `LatestJoint.lean`, `DeadRun.lean`). Every put
-case is proved but the dead bound's (2) and (3c). `invGetScanOK_merges` (`LatestTop.lean`) is
-the earlier form, with `DeadAllOK` at every run, the take-back's delete steps
-(`DelStepsJ2OKF3`), the full-leaf replaceRoot and the fuel as premises. The take-back through a replaceRoot whose segment leaf is full is proved
-(putinv's `replaceRootFullJ2OK_run`), and the fuel at every state between operations comes from
-the heights (cost's `txSegFitsOK_of_takeBelowR`). Java's parameters (record format 7's
-thresholds and theta, from node size 8) meet `MergeParamsOK` (`mergeParamsOK_java`). The
-premises, each with what it says, who owns it, and its test evidence:
+gives TP7 (`InvPreserved`), TP10 (`GetOK`) and TP11 (`ScanOK`), and so `LatestGetOK` and
+`LatestScanOK`, for every parameter set of `MergeParamsOK`, from the named premises below.
+Java's own parameters are among them: record format 7's thresholds and theta, from node size 8
+(`mergeParamsOK_java`). TP4 and P's tree at every run are not premises: the take-back's joint
+induction (putinv's `runTreeQ_of_mergesF4S`) carries them with TP7's invariant and the bound on
+dead klongs (`LatestQD`; `latestQ_snoc`, `latestQD_snoc`; `LatestJoint.lean`, `DeadRun.lean`).
+Every put case is proved but the dead bound's (2) and (3c). The take-back through a replaceRoot
+whose segment leaf is full is proved (putinv's `replaceRootFullJ2OK_run`), and the fuel at every
+state between operations comes from the heights (cost's `txSegFitsOK_of_takeBelowR`).
+`invGetScanOK_merges` (`LatestTop.lean`) is the earlier form, with `DeadAllOK` at every run, the
+take-back's delete steps (`DelStepsJ2OKF3`), the full-leaf replaceRoot and the fuel as premises.
+The premises, each with what it says, who owns it, and its test evidence:
 
 - `d2`, `d3c`, `d4` (`QDead`): an operation keeps every key node that the writer reads at or
   below theta dead klongs: a put into a full leaf (2), a put that makes new segments below a
