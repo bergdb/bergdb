@@ -1976,6 +1976,11 @@ and its status:
         H), and it makes at most one cascade. A new segment leaf's klong
         cascades in the leaf above, and the new segment leaves below it
         then have room (`shb_putSegs_empty`).
+      - At the operation level (`opHtStep_of`, `HeightsOpStep.lean`):
+        every operation of a transaction within reach adds at most one to
+        every cached height, the put proved and the delete a named premise,
+        `OpDelHtStepOK`, checked on runs (`HeightsOp.lean`: 7746 deletes,
+        0 failures).
       - Not proved: a whole delete. It runs several merges, each
         re-descending, and a later merge's path can hold a root that an
         earlier cascade of the same operation made: the lemmas then give
