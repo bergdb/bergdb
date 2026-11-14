@@ -354,8 +354,11 @@ Where BergDB stands, in item [007](../007-bounds/readme.md):
   decrease, which shrinks with every commit. Its pace held the section at
   1.00 to 1.14 sd in 005-49's, 007-06's and 007-07's runs. Before, 005-38
   measured the take past 2 × sd at 50 and 200 MB (007-04). Proved in Lean
-  for a policy that keeps up (T3), not yet for BergDB's own take: 007-03,
-  step 4; [docs/levels.md](../../docs/levels.md), section 5, says so.
+  for a policy that keeps up (T3), and for BergDB's own take since
+  2026-10-28 (`T3_take`, also with restarts; 007-08, 007-03's step 4):
+  with a constant setting the section stays below 2 × sd; after a decrease
+  it never grows, and it shrinks with every commit until it is below twice
+  the new setting (`T3_take_decrease`).
 * A cold startup's random reads take minutes on s1 (007-04; 007-03, step
   6).
 
