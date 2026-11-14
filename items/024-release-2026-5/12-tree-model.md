@@ -31,10 +31,10 @@ of the writer, mostly of the delete with the merges, of the fuel and heights ins
 transaction, and of the bound on dead klongs. Each held on runs of the model within reach, with
 no failure; the fuel inside an operation (in `hMS`, `hCo`, and after the stop node's cascade)
 was checked at 11,057 states inside deletes. LE-b at the upward delete's stop node is proved
-never to run with the merges on, as no run with them on ever showed. Not covered: parameters with the merges off (the
-theorem is for `MergeParamsOK`); bounded startup's tree premises (item 007), which this theorem
-does not discharge; and that Java does what the model does, which is checked on Java's traces
-(section 5), not proved.
+never to run with the merges on, as no run with them on ever showed. Not covered: parameters
+with the merges off (the theorem is for `MergeParamsOK`); bounded startup's tree premises (item
+007), which this theorem does not discharge; and that Java does what the model does, which is
+checked on Java's traces (section 5), not proved.
 
 **The top theorem (2026-11-14, 03:25).** `invGetScanOK_merges_flat` (`LatestTopFlat.lean`) gives
 TP7 (`InvPreserved`), TP10 (`GetOK`) and TP11 (`ScanOK`), and so `LatestGetOK` and
