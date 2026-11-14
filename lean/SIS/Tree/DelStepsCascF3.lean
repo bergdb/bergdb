@@ -24,7 +24,8 @@ tree after the loop as a tree (`UpUnlinkOK`, the take-back's). -/
 def UpCascOKF3 (c : Ctx) (base : View BVal) (KO : KindOracle) (BK : NodeId) : Prop :=
   ∀ (w w3 : W) (B MB : NodeId) (top0 : Top) (pre : List Nat) (cv : Nat) (rk : NodeId)
     (X : Nat → NodeId) (Nn : Nat → KNode) (K : Nat → Nat) (depth stop : Nat) (w2 v : W) (S : KNode),
-    PutBase c base B → PutInv c base w → RangeOrder (wNode c.p base w) c.i w.top.rootKey →
+    2 ≤ c.p.splitAbove → ViewIdsBelow BK c.view → ViewKinds KO BK c → ICEFromKinds c base KO BK →
+    X 0 = w.top.rootKey → PutBase c base B → PutInv c base w → RangeOrder (wNode c.p base w) c.i w.top.rootKey →
     SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey →
     InnerChildrenExist (wNode c.p base w) c.i w.top.rootKey → ReadsAs c.p base w w3 →
     keyWf (pre ++ [cv]) = true →
@@ -94,6 +95,7 @@ theorem writerWP_del_emptyAnyMK (c : Ctx) (base : View BVal) (hvc : ViewCoherent
       bitsUnion n.lastBitmap (n.bitsOf cv) ≠ n.lastBitmap ∧
       n.allKeysIn (bitsUnion n.lastBitmap (n.bitsOf cv)) = true ∧ L ≠ w.top.rootKey)
     (hC : UpCascOKF3 c base KO BK) (hLb : UpLebOKF3 c base KO BK)
+    (hsa2 : 2 ≤ c.p.splitAbove) (hICEk : ICEFromKinds c base KO BK)
     (hm : c.p.merges = true) (hpos : 0 < c.i)
     (hA : ∀ g h v, DelInvF3 c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v →
       WriterWP (afterDelete (pre ++ [cv]) g h) c v (fun _ v' => DelInvF3 c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v'))
@@ -287,7 +289,8 @@ theorem writerWP_del_emptyAnyMK (c : Ctx) (base : View BVal) (hvc : ViewCoherent
         exact writerWP_mono (hA gs hs w' ⟨hDv hJ'.1.1, hJ'.1.2.1, hJ'.1.2.2⟩) (fun _ w2 hD2 => hpost w2 hD2)
     · exact writerWP_mono (hC w w3 B (madeForBound w3) top0 pre cv rk (fun i => nodeAt w.top.rootKey P i)
         (fun i => (wNode c.p base w (nodeAt w.top.rootKey P i)).getD n)
-        (fun i => ((P[i - 1]?).bind (·.1)).getD 0) P.length stop w2 _ S hB hI hRO hF hICE hr03 hkey hrk
+        (fun i => ((P[i - 1]?).bind (·.1)).getD 0) P.length stop w2 _ S hsa2 hvB hk hICEk (by simp [nodeAt])
+        hB hI hRO hF hICE hr03 hkey hrk
         hvisw hpX hpK hlkX hXNw hlinkK hne' hall' hnl' hdepth hsD hbetween hLE (Or.inr ⟨_, rfl⟩) hJv
         (Or.inl hsl) hDR)
         (fun _ w' hD' => writerWP_mono (hA gs hs w' hD') (fun _ w2 hD2 => hpost w2 hD2))
@@ -318,7 +321,8 @@ theorem writerWP_del_emptyAnyMK (c : Ctx) (base : View BVal) (hvc : ViewCoherent
         exact writerWP_mono (hCR seg w1 hD1) (fun _ w2 hD2 => hpost w2 hD2)
     · refine writerWP_mono (hC w w3 B (madeForBound w3) top0 pre cv rk (fun i => nodeAt w.top.rootKey P i)
         (fun i => (wNode c.p base w (nodeAt w.top.rootKey P i)).getD n)
-        (fun i => ((P[i - 1]?).bind (·.1)).getD 0) P.length stop w2 _ S hB hI hRO hF hICE hr03 hkey hrk
+        (fun i => ((P[i - 1]?).bind (·.1)).getD 0) P.length stop w2 _ S hsa2 hvB hk hICEk (by simp [nodeAt])
+        hB hI hRO hF hICE hr03 hkey hrk
         hvisw hpX hpK hlkX hXNw hlinkK hne' hall' hnl' hdepth hsD hbetween hLE (Or.inl rfl) hJ2
         (Or.inr hK0) hDR) ?_
       intro _ w' hD'
@@ -340,6 +344,7 @@ theorem writerWP_del_emptyAnyMK (c : Ctx) (base : View BVal) (hvc : ViewCoherent
 node without room (`DelEmptyCascM`), on the F3 route, from `UpCascOKF3` and
 `UpLebOKF3`. -/
 theorem delStepsCaseOKF3_emptyCasc (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+    (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
     (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
     (hC : ∀ ts BK, UpCascOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) BK)
@@ -356,6 +361,13 @@ theorem delStepsCaseOKF3_emptyCasc (p : Params) (R : Struct BVal → Time → Pr
   have hICE := innerChildren_reached p hM hP ts tx hw top ops (.del (pre ++ [cv]) :: post) hops r w hpre
     (fun x hx => hI.untaken x (tReach_reachS _ _ _ _ hx))
   obtain ⟨hv, hk, hb0, hi0⟩ := kd_context p hM hP ts tx hw top ops (.del (pre ++ [cv]) :: post) hops r w hpre
+  have hwts : Within p ts := by
+    have := within_take p (ts ++ [tx]) hw ts.length
+    simpa using this
+  have hKall := treeRun_kindsAllOK p hM hP ts hwts
+  have hICEk : ICEFromKinds (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) tx.base :=
+    fun v hb hi hun => innerChildren_of_kinds p (treeRun p ts) tx.base (ctxOf p ts) v rfl hKall
+      (hP ts hwts) hb hi.cache hun
   have hLr : L0 ≠ w.top.rootKey := by
     intro he
     obtain ⟨j, hj⟩ : ∃ j, P0.length = j + 1 := ⟨P0.length - 1, by omega⟩
@@ -368,7 +380,7 @@ theorem delStepsCaseOKF3_emptyCasc (p : Params) (R : Struct BVal → Time → Pr
     omega
   refine writerWP_del_emptyAnyMK (ctxOf p ts) _ (viewCoherent_ctxOf p ts) pre cv rk w tx.base top hB hbook
     _ tx.base hv hk hb0 hi0 hI hRO hF hICE hkey hrk (keyLeaf_all2 hK hrk _ ⟨hne0, hall0, hLr⟩)
-    (hC ts tx.base) (hLb ts tx.base) hm (by simp [ctxOf]) hA hMU hCR
+    (hC ts tx.base) (hLb ts tx.base) (by simpa [ctxOf] using hsa2) hICEk hm (by simp [ctxOf]) hA hMU hCR
     _ (fun v hv' => by unfold fresh; wpSimplify; exact hv') ?_
   intro v hv' hFv key' hk'
   have := runGet_of_delInvF p ts w v (pre ++ [cv]) hv'.1 hI hF hFv key' hk'
@@ -384,6 +396,6 @@ theorem delStepsOKF3_of_open5 (p : Params) (R : Struct BVal → Time → Prop) (
     (hC : ∀ ts BK, UpCascOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) BK)
     (hLb : ∀ ts BK, UpLebOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) BK)
     (hFits : ∀ ts, DelFullFitsOK (ctxOf p ts) (viewOf (treeRun p ts))) : DelStepsOKF3 p R :=
-  delStepsOKF3_of_open4 p R hM hsa2 hRL hP (delStepsCaseOKF3_emptyCasc p R hM hRL hP hC hLb) hFits
+  delStepsOKF3_of_open4 p R hM hsa2 hRL hP (delStepsCaseOKF3_emptyCasc p R hM hsa2 hRL hP hC hLb) hFits
 
 end SIS.Tree
