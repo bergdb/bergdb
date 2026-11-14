@@ -1529,4 +1529,5 @@ in 024-12's (4) entry (step 4) and section 1's list.
      uses it yet.
 * **Test scripts** (`12-tree-model/`, the run command in each header):
   `delchk-check.lean.txt`, `heights-op-check.lean.txt`,
-  `merge-hold-check.lean.txt`, `segfit-check.lean.txt`.
+  `merge-hold-check.lean.txt`, `segfit-check.lean.txt`,
+  `leb-probe.lean.txt`.
