@@ -63,6 +63,7 @@ import SIS.Tree.DelStepsHolder
 import SIS.Tree.LiveDelRoom
 import SIS.Tree.DelStepsHolderLive
 import SIS.Tree.DelStepsGh
+import SIS.Tree.LiveDelNoop
 
 set_option autoImplicit false
 
@@ -163,8 +164,8 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     (hth : 2 ≤ p.theta ∨ p.theta = 0)
     (hchk : OpDelChk2OK p)
     (htb : TakeBelowFuelDelOK p)
-    (d4 : OpCaseOK p (RunOK p) (QDead p) DelMergeDRestCase)
-    (l4 : OpCaseOK p (RunOK p) (QLive p) DelMergeRestCase)
+    (d4 : OpCaseOK p (RunOK p) (QDead p) DelMergeDOpenCase)
+    (l4 : OpCaseOK p (RunOK p) (QLive p) DelMergeOpenCase)
     (hU : ∀ ts, UpUnlinkTreeOK (ctxOf p ts) (viewOf (treeRun p ts)))
     (hHL : ∀ ts, UpHolderLiveRunOK (ctxOf p ts) (viewOf (treeRun p ts)))
     (hMS : ∀ ts, MergeStepOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
@@ -198,8 +199,10 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     (delStepsQdL_of_openR4 p _ (by omega) hsa hRL' hRP' hRK' hRH' hht htb hU hHL) hMS hCo hsa hcap
     hRP' hRK' hfitQ
   have l4' := opCaseOK_anti p _ _ hR _ _
-    (liveCase_delMerge_of_rest p (RunOK p) hRL l4)
-  have d4' := opCaseOK_anti p _ _ hR _ _ (deadCase_delMergeL_of_rest p (RunOK p) hRL d4)
+    (liveCase_delMerge_of_rest p (RunOK p) hRL
+      (opCaseOK_of_open p (RunOK p) (QLive p) (keptByReads_live p) DelMergeRestCase l4))
+  have d4' := opCaseOK_anti p _ _ hR _ _ (deadCase_delMergeL_of_rest p (RunOK p) hRL
+    (opCaseOK_of_open p (RunOK p) (QDead p) (keptByReads_dead p) DelMergeDRestCase d4))
   -- TP10's three posts for every operation from a state with TP7's live counts
   have hTL := opCaseOK_of_cases_mergesL p _ _ hm (treeCase_putLeafRoom p _)
     (treeCase_putLeafFull p _ hRL' hsa)
