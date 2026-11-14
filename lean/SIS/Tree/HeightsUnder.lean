@@ -8,7 +8,8 @@ path's at such runs, with R giving TP4 and the kinds
 (`opHtDelOKUnder_of`). Its uses, as HeightsRun.lean's and HeightsFit.lean's
 with R: `ht_reachedU`, `execW_htCacheU`, `takeBelowFuelOK_of_delHU`,
 `txSegFitsOK_of_takeBelowDelRHU`, and `txSegFitsOK_of_takeBelowDelR2U` from
-`OpDelChk2OK`.
+`OpDelChk2OK`. At an operation's start the heights' context with every node not
+taken back below the fuel (`htStart_reachedU`, the doomed transaction).
 -/
 import SIS.Tree.HeightsPathFree
 import SIS.Tree.TakeRunQF4
@@ -161,14 +162,29 @@ theorem takeBelowFuelOK_of_delHU (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal 
     rw [this, hx] at hv
     cases hv
 
+/-- Every cached height of a node not taken back is at most b. -/
+def UntakenBound (b : Nat) (v : W) : Prop :=
+  ∀ x g h, (x, g, h) ∈ v.gh → v.taken.contains x = false → h ≤ b
+
 set_option maxHeartbeats 1600000 in
-/-- `txSegFitsOK_of_takeBelowDelR` from the delete side of the heights' walk at
-the runs R holds of (`OpHtDelOKUnder`) in place of `OpDelChkOK`. -/
-theorem txSegFitsOK_of_takeBelowDelRHU (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Time → Prop)
+/-- At a state that a transaction's earlier operations reach, at the runs R
+holds of: the heights' context and the facts `htJ_start` asks, the bound below
+the fuel by the doomed transaction (as in `txSegFitsOK_of_takeBelowDelRHU`). -/
+theorem htStart_reachedU (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Time → Prop)
     (hRL : ∀ P t, R P t → RunLinksOK p P t) (hRK : ∀ P t, R P t → KindsAllOK p P)
     (hRH : ∀ P t, R P t → HeightAllOK p P t) (hht : OpHtDelOKUnder p R)
-    (hdel : TakeBelowFuelDelOK p) : TxSegFitsOK p R := by
-  intro ts tx hw hr z top hz htop pre post hsplit r w hpre
+    (hdel : TakeBelowFuelDelOK p) (ts : List Tx) (tx : Tx) (hw : Within p (ts ++ [tx]))
+    (hr : R (treeRun p ts) ts.length) (z : NodeId) (top : Top)
+    (hz : lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z)
+    (htop : topOf p (ctxOf p ts).view z = .ok top) (pre post : List Op)
+    (hsplit : tx.ops = pre ++ post) (r : List Bool) (w : W)
+    (hpre : (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w)) :
+    ViewHtOK (htOracleOf p (treeRun p ts)) tx.base (ctxOf p ts) ∧
+      ViewKlongsWf p (ctxOf p ts).view ∧
+      BaseHeights (ctxOf p ts) (htOracleOf p (treeRun p ts)) (viewOf (treeRun p ts)) ∧
+      (∀ y h, htOracleOf p (treeRun p ts) y h → h ≤ p.H) ∧
+      Book tx.base (ctxOf p ts) w ∧ HtInv (htOracleOf p (treeRun p ts)) tx.base (ctxOf p ts) w ∧
+      WriterKlongsWf w ∧ UntakenBound (p.fuel - 1) w := by
   have htb := takeBelowFuelOK_of_delHU p hM R hRL hRK hRH hht hdel ts tx hw hr z top hz htop
   have hR := hRL _ _ hr
   have hK := hRK _ _ hr
@@ -177,6 +193,7 @@ theorem txSegFitsOK_of_takeBelowDelRHU (p : Params) (hM : 2 ≤ p.M) (R : Struct
   have hi := ht_reachedU p hM R hht ts tx hw hr hR hvo z top hz htop pre post
     hsplit r w hpre
   have hbk := putBook_reached p ts tx hw hR z top htop pre r w hpre
+  have hB := putBase_of_run p ts tx hw hR
   have hub : ∀ x g h, (x, g, h) ∈ w.gh → w.taken.contains x = false → h < p.fuel := by
     intro x g h hm hx
     rcases Nat.lt_or_ge h p.fuel with hlt | hge
@@ -223,12 +240,26 @@ theorem txSegFitsOK_of_takeBelowDelRHU (p : Params) (hM : 2 ≤ p.M) (R : Struct
   have htimes : StructTimesLE (treeRun p ts) ts.length := treeRun_timesLE p ts
   have hbase := baseHeights_of p (treeRun p ts) ts.length (ctxOf p ts) rfl
     (by simp [ctxOf]) htimes hR.1 hK hA
-  refine segFits_of_heightsU hbk.book hi.cache hvo.heights _ hbase (p.fuel - 1) _ ?_
+  refine ⟨hvo, hB.wf, hbase, ?_, hbk.book, hi, hbk.klongs, fun x g h hm hx => ?_⟩
+  · rintro y h ⟨ny, _, _, _, hny⟩
+    exact hny ▸ heightOf_le p ny.level
+  · have := hub x g h hm hx; omega
+
+set_option maxHeartbeats 1600000 in
+/-- `txSegFitsOK_of_takeBelowDelR` from the delete side of the heights' walk at
+the runs R holds of (`OpHtDelOKUnder`) in place of `OpDelChkOK`. -/
+theorem txSegFitsOK_of_takeBelowDelRHU (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Time → Prop)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t) (hRK : ∀ P t, R P t → KindsAllOK p P)
+    (hRH : ∀ P t, R P t → HeightAllOK p P t) (hht : OpHtDelOKUnder p R)
+    (hdel : TakeBelowFuelDelOK p) : TxSegFitsOK p R := by
+  intro ts tx hw hr z top hz htop pre post hsplit r w hpre
+  obtain ⟨hvo, -, hbase, hHb, hbk, hi, -, hub⟩ := htStart_reachedU p hM R hRL hRK hRH hht hdel
+    ts tx hw hr z top hz htop pre post hsplit r w hpre
+  refine segFits_of_heightsU hbk hi.cache hvo.heights _ hbase (p.fuel - 1) _ ?_
   intro x n hn h hh
-  rcases hh with ⟨g, hm⟩ | ⟨ny, _, _, _, hny⟩
-  · have := hub x g h hm (ht_wNode_cases hn).1
-    omega
-  · have := heightOf_le p ny.level
+  rcases hh with ⟨g, hm⟩ | hh
+  · exact hub x g h hm (ht_wNode_cases hn).1
+  · have := hHb x h hh
     have := fuel_gt_H p
     omega
 
