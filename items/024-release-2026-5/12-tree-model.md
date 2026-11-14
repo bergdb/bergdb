@@ -2008,8 +2008,7 @@ and its status:
       operation (`DelFullFitsOK`, `MergeStepOKF3`, `CollapseStepOKF4`).
       `TakeBelowFuelOK` checked on runs (`HeightsOp.lean`): 3205 operations
       that took nodes back, in 18201, 0 failures. Its reason is (C)'s part
-      1 below: every node taken back is on a successful descent, or a
-      sibling of one.
+      1 below.
     - (C), begun: at operation boundaries SegFits (fuel - 1), by the
       doomed transaction. A root of height fuel or more cannot be
       descended, so no later operation of the transaction reaches its
@@ -2020,12 +2019,16 @@ and its status:
         (`ht_descendLte_height`, from `writerWP_descendLte_depth` and the
         heights' balance; the nodes it visits are untaken,
         `ht_eqVisits_free`).
-      - Left: every take-back site reaches its node by such a descent or
-        made it in the same operation, and an operation that reaches no
-        node of a segment tree leaves the tree's nodes as they are (a
-        frame of every operation). With (B)'s one per operation, a height
-        of fuel - 1 at a boundary can reach fuel inside the next operation,
-        and then the transaction fails.
+      - The rest of the argument is proved for `TxSegFitsOK`
+        (`txSegFitsOK_of_takeBelowR`, above), from the named premise
+        `TakeBelowFuelOK`.
+      - Left: proving `TakeBelowFuelOK`. A node an operation found and
+        takes back is in a segment tree the operation descended through
+        from its root at its start (the merge's l and r below the path's
+        node, the loop's path nodes, the collapsed root), so below that
+        root, whose height is below the fuel by part 1. It needs the reach
+        of each take-back site from that root through the operation's
+        own writes.
   - (5) `DelNoLeafCase`, a delete of a key with no leaf: proved,
     `opGetCaseOK_delNoLeaf`. It changes no reading: the writer's walk
     stops at the first segment that is not there and only reads
