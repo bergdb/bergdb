@@ -3,10 +3,10 @@ The top theorem with the flattest list of named premises (bergdb 024-12):
 `invGetScanOK_merges_flat`. It is `invGetScanOK_merges` with two premises
 taken apart:
 
-* the bound on dead klongs at every run (`hD`) comes from the operations: case
-  (1) keeps it (`deadCase_putLeafRoom`), and `QDead` of (2), (3) and (4) are
-  premises (`DeadRun.lean`; the run induction carries `DeadAllOK` in
-  `LatestQD`);
+* the bound on dead klongs at every run (`hD`) comes from the operations: cases
+  (1), (3a) and (3b) keep it (`deadCase_putLeafRoom`, `DeadCases.lean`), and
+  `QDead` of (2), (3c) and (4) are premises (`DeadRun.lean`; the run induction
+  carries `DeadAllOK` in `LatestQD`);
 * the take-back's delete steps (`hDS`) come from their open pieces (putinv's
   `delStepsJ2OKF3_of_openR` over `TakeS4`, `runTreeQ_of_mergesF4S`): the
   upward delete's stop node for the take-back, the made-for ids at every state
@@ -16,6 +16,7 @@ taken apart:
 -/
 import SIS.Tree.LatestTop
 import SIS.Tree.DeadRun
+import SIS.Tree.DeadCases
 
 set_option autoImplicit false
 
@@ -31,7 +32,7 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     (hchk : OpDelChkOK p)
     (hfit : TxSegFitsOK p (RunOK p))
     (d2 : OpCaseOK p (RunOK p) (QDead p) PutLeafFullCase)
-    (d3 : OpCaseOK p (RunOK p) (QDead p) PutNewSegCase)
+    (d3c : OpCaseOK p (RunOK p) (QDead p) PutNewSegFullCase)
     (d4 : OpCaseOK p (RunOK p) (QDead p) DelMergeCase)
     (t4 : OpCaseOK p (RunOK p) (QTree p) DelMergeCase)
     (i4 : OpCaseOK p (RunOK p) (QPutInv p) DelMergeCase)
@@ -75,7 +76,9 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     (liveCase_putLeafFull p _ hRL hsa hp)
     (opCaseOK_putNewSeg_of_parts p _ _ (liveCase_putNewSeg1Room p _ (by omega))
       (liveCase_putNewSegsRoom p _ (by omega)) (liveCase_putNewSegFull p _ hRL (by omega) hsa hp)) l4
-  have hDd := opCaseOK_of_cases_merges p (RunOK p) _ hm (deadCase_putLeafRoom p _) d2 d3 d4
+  have hDd := opCaseOK_of_cases_merges p (RunOK p) _ hm (deadCase_putLeafRoom p _) d2
+    (opCaseOK_putNewSeg_of_parts p _ _ (deadCase_putNewSeg1Room p _ (by omega))
+      (deadCase_putNewSegsRoom p _ (by omega)) d3c) d4
   -- the run induction: TP4, P's tree and LatestQD at every run
   have hR : ∀ P t, RunTreeQ p (LatestQD p) P t → RunOK p P t := runOK_of_runTreeQD p
   have hRL' : ∀ P t, RunTreeQ p (LatestQD p) P t → RunLinksOK p P t := fun _ _ h => h.1

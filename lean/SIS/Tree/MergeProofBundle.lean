@@ -182,6 +182,7 @@ import SIS.Tree.LatestOpen
 import SIS.Tree.LatestJoint
 import SIS.Tree.LatestTop
 import SIS.Tree.DeadRun
+import SIS.Tree.DeadCases
 import SIS.Tree.LatestTopFlat
 import SIS.Tree.LivePutFull
 import SIS.Tree.LiveTP7
