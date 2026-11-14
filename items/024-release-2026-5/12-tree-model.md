@@ -35,7 +35,7 @@ the operations' boundaries. Not covered: parameters with the merges off (the the
 discharge; and that Java does what the model does, which is checked on Java's traces (section
 5), not proved.
 
-**The top theorem (2026-11-14, 02:10).** `invGetScanOK_merges_flat` (`LatestTopFlat.lean`) gives
+**The top theorem (2026-11-14, 02:45).** `invGetScanOK_merges_flat` (`LatestTopFlat.lean`) gives
 TP7 (`InvPreserved`), TP10 (`GetOK`) and TP11 (`ScanOK`), and so `LatestGetOK` and
 `LatestScanOK`, for every parameter set of `MergeParamsOK` with theta 0 or at least 2 (`hth`),
 from the named premises below. Java's own parameters are among them: record format 7's
@@ -45,12 +45,14 @@ carries them with TP7's invariant and the bound on dead klongs (`LatestQD`; `lat
 `latestQD_snoc`; `LatestJoint.lean`, `DeadRun.lean`). Every put case is proved, the dead bound's
 included. The take-back through a replaceRoot whose segment leaf is full is proved (putinv's
 `replaceRootFullJ2OK_run`), and the fuel at every state between operations comes from the
-heights (cost's `txSegFitsOK_of_takeBelowDelR`). `invGetScanOK_merges` (`LatestTop.lean`) is the
-earlier form, with `DeadAllOK` at every run, the take-back's delete steps (`DelStepsJ2OKF3`),
-the full-leaf replaceRoot and the fuel as premises. The premises, each with what it says, who
-owns it, and its test evidence. They were 17 at 02:00; 19 at 02:20, when the stop node's cascade
-for the reading was proved from three smaller premises; 16 at 02:28, when the dead bound of puts
-(2) and (3c) and the stop node's cascade for the take-back were proved:
+heights (cost's `txSegFitsOK_of_takeBelowDelR2U`). `invGetScanOK_merges` (`LatestTop.lean`) is
+the earlier form, with `DeadAllOK` at every run, the take-back's delete steps
+(`DelStepsJ2OKF3`), the full-leaf replaceRoot and the fuel as premises. The premises, each with
+what it says, who owns it, and its test evidence. They were 17 at 02:00; 19 at 02:20, when the
+stop node's cascade for the reading was proved from three smaller premises; 16 at 02:28, when
+the dead bound of puts (2) and (3c) and the stop node's cascade for the take-back were proved;
+since then `hchk` has one check fewer (02:31) and LE-b's premises are about a full stop node
+only (02:40):
 
 - `d4` (`QDead`): the delete with the merges (4) keeps every key node that the writer reads at
   or below theta dead klongs (latest). Every put keeps it, proved for theta 0 or at least 2:
@@ -73,7 +75,7 @@ for the reading was proved from three smaller premises; 16 at 02:28, when the de
 - `htb`, `TakeBelowFuelDelOK`: every node that a delete takes back, of those it found at its
   start, has a cached height below the fuel (cost; a put takes nothing back, proved). With the
   heights it gives that every state between operations fits the fuel
-  (`txSegFitsOK_of_takeBelowDelR`). Evidence: 316 runs within reach, 18,201 operations, 3205
+  (`txSegFitsOK_of_takeBelowDelR2U`). Evidence: 316 runs within reach, 18,201 operations, 3205
   deletes taking nodes back, no failure (`12-tree-model/heights-op-check.lean.txt`); SegFits
   held at about 14,000 operation boundaries (`12-tree-model/segfit-check.lean.txt`, the
   states of its runs random and random2).
