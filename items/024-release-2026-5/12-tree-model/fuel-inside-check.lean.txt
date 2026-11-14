@@ -20,8 +20,9 @@ transaction, and of pseudo-random deletes, are; they are not run here).
 Result (2026-11-14): 11,057 states inside operations, of runs within reach with
 the merges on (putinv's parameters uP1 and uP2, and Java's theta at node sizes 8
 and 14): 6453 after a leaf's bitmap, 3032 after a merge, 635 after a step of
-root collapse and 937 after the stop node's step. None failed, and every one
-fits p.fuel - 1, the bound between operations, too.
+root collapse and 937 after the stop node's step (`leb`, LE-b at the stop node,
+counted apart: 0; LE-b never fired). None failed, and every one fits
+p.fuel - 1, the bound between operations, too.
 -/
 import SIS.Tree.MergeProofBundle
 
@@ -220,7 +221,7 @@ def deleteUpwardC (base : View BVal) (leaf : NodeId) (depth : Nat) (cv : Nat) (k
     let _ ← appendDeleteKlong s stop cs
   else
     emptyKeyNext s stop
-  note (fitNote c base (← getThe W) "stop")
+  note (fitNote c base (← getThe W) (if cs != 0 then "stop" else "leb"))
   if c.p.merges then
     let _ ← mergeUpC base key gs c.p.fuel hs false
   collapseRootC base key segment (c.p.fuel)
@@ -290,7 +291,7 @@ def runFit (p : Params) (all : List Tx) : List String :=
 
 def summF (l : List String) : String :=
   let cnt (s : String) := (l.filter (fun x => (x.splitOn s).length > 1)).length
-  s!"checks {cnt "fit:"}: leaf {cnt "fit:leaf"} merge {cnt "fit:merge"} collapse {cnt "fit:collapse"} stop {cnt "fit:stop"}; FAIL {cnt "FAIL"} loose {cnt ":loose"} (leaf {cnt "fit:leaf:ok:loose"} merge {cnt "fit:merge:ok:loose"} collapse {cnt "fit:collapse:ok:loose"} stop {cnt "fit:stop:ok:loose"}); fails {(l.filter (fun x => (x.splitOn "FAIL").length > 1)).take 3} other {(l.filter (fun s => s.startsWith "ERR" || s.startsWith "NOT" || s.startsWith "not" || s.startsWith "toperr")).take 3}"
+  s!"checks {cnt "fit:"}: leaf {cnt "fit:leaf"} merge {cnt "fit:merge"} collapse {cnt "fit:collapse"} stop {cnt "fit:stop"} leb {cnt "fit:leb"}; FAIL {cnt "FAIL"} loose {cnt ":loose"} (leaf {cnt "fit:leaf:ok:loose"} merge {cnt "fit:merge:ok:loose"} collapse {cnt "fit:collapse:ok:loose"} stop {cnt "fit:stop:ok:loose"}); fails {(l.filter (fun x => (x.splitOn "FAIL").length > 1)).take 3} other {(l.filter (fun s => s.startsWith "ERR" || s.startsWith "NOT" || s.startsWith "not" || s.startsWith "toperr")).take 3}"
 
 end SIS.Tree
 

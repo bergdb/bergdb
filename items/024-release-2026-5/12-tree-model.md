@@ -30,7 +30,8 @@ and two conditions on the parameters that Java's meet. Each speaks of one operat
 of the writer, mostly of the delete with the merges, of the fuel and heights inside a
 transaction, and of the bound on dead klongs. Each held on runs of the model within reach, with
 no failure; the fuel inside an operation (in `hFit`, `hFitL`, `hFits`, `hMS`, `hCo`) at 11,057
-states inside deletes. Not covered: parameters with the merges off (the theorem is for
+states inside deletes. But LE-b at the upward delete's stop node never fired in any run with
+the merges on, so `hFitL`'s evidence covers no LE-b step. Not covered: parameters with the merges off (the theorem is for
 `MergeParamsOK`); bounded startup's tree premises (item 007), which this theorem does not
 discharge; and that Java does what the model does, which is checked on Java's traces (section
 5), not proved.
@@ -103,12 +104,15 @@ loop need only be a tree (`UpUnlinkTreeOK`), the cascade's ranges come from the 
     take-back; `UpUnlinkOK`, which adds the walk's ranges, gives it, `upUnlinkTreeOK_of`);
   - `hFit`, `UpCascFitsOK`: the state after the stop node's cascade fits the fuel (cost);
   - `hFitL`, `UpLebFitsOK`: the state after LE-b's full split at the stop node fits the fuel
-    (cost, `DelStepsLebFull.lean`).
+    (cost, `DelStepsLebFull.lean`). LE-b never fired in any run family with the merges on: 0
+    of about 6,700 deletes in putinv's and cost's families, and 0 of the 937 stop node steps
+    of `fuel-inside-check.lean.txt`. So no run tests `hFitL`, nor putinv's proved LE-b
+    branches; see the follow-ups.
   Evidence for `hU`: `UpUnlinkOK` held at all 2529 upward-loop end states (1385 with a
   take-back in the loop, 954 with an unlink to the previous version, 173 cascading at the stop
   node, 818 at the space root), with the reached nodes untaken there too
-  (`12-tree-model/up-unlink-check.lean.txt`). For `hFit` and `hFitL`: every state after the
-  stop node's step (its bitmap or LE-b, with the split and cascade) fit the fuel, 937 of them
+  (`12-tree-model/up-unlink-check.lean.txt`). For `hFit`: every state after the stop node's
+  step (its bitmap, with the split and cascade) fit the fuel, 937 of them, none an LE-b
   (`12-tree-model/fuel-inside-check.lean.txt`, below).
 - `hFits`, `DelFullFitsOK`: the state after a delete's full leaf splits fits the fuel (cost).
   Evidence: as SegFits' above, and inside deletes: every state after a leaf's bitmap, full
@@ -150,6 +154,11 @@ Follow-ups, for a later spare-token run (latest, 02:20):
   (`writerWP_appendDeleteKlong_dead`; `DeadSteps.lean`), and the merge's parent, in place only
   when `deadOver` lets it through, else `handleFull` of `mergeFullLast`
   (`writerWP_mergeParent_dead`, on `writerWP_mergeParent_casesD`; `DeadMerge.lean`).
+- LE-b with the merges on (`hFitL`): no run family makes it fire (0 of about 6,700 deletes,
+  putinv's and cost's families; 0 of 937 stop node steps, `fuel-inside-check.lean.txt`). Either
+  a run family that makes LE-b fire at the upward delete's stop node with the merges on, to test
+  `hFitL` and the proved LE-b branches on runs, or a proof that it cannot fire with the merges
+  on, which would make `hFitL` void for `MergeParamsOK`.
 - `QLive` of (4) (`l4`): `LiveEdges` with the merged path's nodes excepted until their merge, on
   the same step lemmas as `d4`; a merge's nodes are filled (`mergeKlongs_live_fill`), its
   parent's cascade is the walk with exceptions (`writerWP_appendKlongs_chainGLX`), and root
