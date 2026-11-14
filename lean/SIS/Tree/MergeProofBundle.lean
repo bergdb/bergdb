@@ -179,6 +179,8 @@ import SIS.Tree.LiveChain
 import SIS.Tree.LiveStepsX
 import SIS.Tree.LivePutNewSegFull
 import SIS.Tree.LatestOpen
+import SIS.Tree.LatestJoint
+import SIS.Tree.LatestTop
 import SIS.Tree.LivePutFull
 import SIS.Tree.LiveTP7
 import SIS.Tree.WriterTreeInnerHalves
@@ -343,3 +345,5 @@ import SIS.Tree.WriterHeightsChkDel
 import SIS.Tree.HeightsChkRun
 import SIS.Tree.TakeDelStepsCascF4
 import SIS.Tree.TakeReplaceFull
+import SIS.Tree.HeightsFuel
+import SIS.Tree.HeightsFuelMerge
