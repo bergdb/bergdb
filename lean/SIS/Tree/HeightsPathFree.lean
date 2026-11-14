@@ -433,7 +433,7 @@ theorem takeBelowFuelOK_of_delH (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal �
     exfalso
     have hR := hRL _ _ hr
     have hvo := viewHtOK_of_run p ts tx hw hR (hRK _ _ hr) (hRH _ _ hr)
-    have hi := ht_reached p hM (hht) ts tx hw hR hvo z top hz htop pre
+    have hi := ht_reached p hM hht ts tx hw hR hvo z top hz htop pre
       (Op.put key hv0 :: post) hsplit r w hpre
     have hbk := putBook_reached p ts tx hw hR z top htop pre r w hpre
     have hB := putBase_of_run p ts tx hw hR
@@ -455,7 +455,7 @@ theorem txSegFitsOK_of_takeBelowDelRH (p : Params) (hM : 2 ≤ p.M) (R : Struct 
   have hK := hRK _ _ hr
   have hA := hRH _ _ hr
   have hvo := viewHtOK_of_run p ts tx hw hR hK hA
-  have hi := ht_reached p hM (hht) ts tx hw hR hvo z top hz htop pre post
+  have hi := ht_reached p hM hht ts tx hw hR hvo z top hz htop pre post
     hsplit r w hpre
   have hbk := putBook_reached p ts tx hw hR z top htop pre r w hpre
   have hub : ∀ x g h, (x, g, h) ∈ w.gh → w.taken.contains x = false → h < p.fuel := by
