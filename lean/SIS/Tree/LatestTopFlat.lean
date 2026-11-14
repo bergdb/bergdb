@@ -1,44 +1,35 @@
 /-
 The top theorem with the flattest list of named premises (bergdb 024-12):
 `invGetScanOK_merges_flat`. It is `invGetScanOK_merges` with its premises
-taken apart (10 named premises left, with `hp` and `hth` on the parameters):
+taken apart; 10 named premises are left, with `hp` and `hth` on the
+parameters. What is proved in their place:
 
-* the bound on dead klongs at every run (`hD`) comes from the operations: every
-  put keeps it, for theta 0 or at least 2 (`hth`; `deadCase_putLeafRoom`,
-  `DeadCases.lean`, `DeadPutFull.lean`, `DeadNewSegFull.lean`, with the cascade's
-  dead counts `writerWP_appendKlongs_chainDead`), and `QDead` of (4) is a premise
-  (`DeadRun.lean`; the run induction carries `DeadAllOK` in `LatestQD`);
-* the take-back's delete steps (`hDS`) come from their open pieces (putinv's
-  `delStepsJ2OKF3_of_openR10` over `TakeS4`, `runTreeQ_of_mergesF4S`): the
-  upward delete's stop node for the take-back, the made-for ids at every state
-  between operations (`hMF`), and the fuel there;
-* the take-back through a replaceRoot whose segment leaf is full (`hRJ`) is
-  proved (putinv's `replaceRootFullJ2OK_run`);
-* the upward delete's stop node is proved, its cascade and its LE-b with room
-  or full, for the reading (putinv's `delStepsOKF3_of_open15`, at the runs of
-  the induction, every run within reach) and for the take-back
-  (`delStepsJ2OKF3_of_openR10`), from `hU` (the state after the upward loop is
-  a tree), `hHL` (at the loop's end no node not taken back holds a node taken
-  back; with the books it gives cost's `UpHolderOK`, `upHolderOK_of_live`) and
-  `hG` (the loop keeps the heights' cache), which give the fuel after the stop
-  node's cascade (cost's `upCascFitsOKR_of`); the links
-  and klongs after the upward loop follow from the writer's books, and the
-  cascade's ranges from the tree; the fuel after a full leaf's split comes from
-  the heights (cost's `delFullFitsOKR_run`, through putinv's walk with the
-  heights' invariant);
-* the fuel at every state between operations (`hfit`) comes from the heights
-  (cost's `txSegFitsOK_of_takeBelowDelR2U`): every node a delete takes back has a
-  height below the fuel (`TakeBelowFuelDelOK`; a put takes nothing back).
-
-* TP10's three posts for the delete with the merges (4), `t4`, `i4` and `r4`,
-  are proved at the induction's runs (putinv's
-  `opCaseOK_treeInvRange_delMergeR`), and carried with TP7's live counts along
-  each transaction (`LiveJointL.lean`);
-* LE-b at the upward delete's stop node never runs with the merges on, given
-  TP7's live counts at the delete's start (cost's `stopLeaf_of_liveCounts`,
-  putinv's `lebStop_false`; `delStepsOKF3_of_open13`,
-  `delStepsJ2OKF3_of_openR8`, `delStepsQdL_of_openR`), which the joint
-  induction along each transaction gives (`liveStateOK_of_L`).
+* the operations' cases are taken at the induction's runs and carried along
+  each transaction with TP7's live counts at every operation's start
+  (`latestQD_snocR`, `LiveJointL.lean`), and moved to `RunOK`'s runs after the
+  induction (`opCaseOK_of_within`, `delStepsOKF3_of_within`);
+* the bound on dead klongs at every run: every put keeps it, for theta 0 or at
+  least 2 (`hth`; `DeadCases.lean`, `DeadPutFull.lean`, `DeadNewSegFull.lean`);
+  so do a noop delete, a delete of a key without a leaf (`LiveDelNoop.lean`)
+  and (4a) (`deadCase_delRoomFill`); `d4` is the rest (`DelMergeDOpenCase`);
+* TP7's live counts: likewise, `l4` is the rest (`DelMergeOpenCase`;
+  `liveCase_delRoomFill`, `LiveDelRoom.lean`);
+* TP10's three posts for the delete with the merges, `t4`, `i4`, `r4`
+  (putinv's `opCaseOK_treeInvRange_delMergeRL`);
+* the take-back's delete steps (putinv's `delStepsJ2OKF3_of_openR11` over
+  `TakeS4`, `runTreeQ_of_mergesF4S`), with the made-for ids (`hMF`), and the
+  take-back through a full leaf's replaceRoot (`replaceRootFullJ2OK_run`);
+* the upward delete's stop node, its cascade and LE-b, for the reading
+  (`delStepsOKF3_of_open16`) and the take-back, from `hU` (the state after the
+  upward loop is a tree) and `hHL` (no node not taken back holds one taken
+  back), with the loop keeping the heights' cache (`DelStepsGh.lean`) and the
+  fuel from the heights (cost's `upCascFitsOKR_of`, `delFullFitsOKR_run`); LE-b
+  never runs with the merges on (cost's `stopLeaf_of_liveCounts`, putinv's
+  `lebStop_false`);
+* the fuel at every state between operations, from the heights (cost's
+  `txSegFitsOK_of_takeBelowDelR2U`, from `htb` and `hchk`);
+* a merge's nodes reached untaken (`mergeStepOKF3_of_segFits`), its fuel being
+  `hMSF`; a collapse's step is `hCoF` and `hCoU`.
 
 024-12's section 1 lists the premises with their owners and test evidence.
 -/
@@ -61,12 +52,41 @@ import SIS.Tree.DelStepsLive
 import SIS.Tree.DelStepsHolder
 import SIS.Tree.LiveDelRoom
 import SIS.Tree.DelStepsHolderLive
+import SIS.Tree.DelStepsGh
+import SIS.Tree.LiveDelNoop
+import SIS.Tree.TakeMergeRootU
 
 set_option autoImplicit false
 
 namespace SIS.Tree
 
 open SIS SIS.Check
+
+/-- `MergeStepOKF3`'s fuel part (cost's, the heights): the state after a merge
+of the loop fits the fuel; its untaken part is proved
+(`mergeStepOKF3_of_segFits`). -/
+def MergeFitsOK (c : Ctx) (base : View BVal) (f : Nat) : Prop :=
+  ∀ (w0 : W) (key : Key) (x q : NodeId) (d : Nat) (v : W) (qn xn : KNode)
+    (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode),
+    DelInvF c base w0 key f v → PathOK c v d X K Nn → 0 < d → (v.path[d]?).map (·.2) = some x →
+    (v.path[d - 1]?).map (·.2) = some q → v.nodes.lookup q = some qn → qn.leaf = false →
+    v.nodes.lookup x = some xn → xn.cnt < c.p.mergeBelow →
+    WriterWP (merge x d) c v (fun _ v' => SegFits (wNode c.p base v') c.i (f - 1) v'.top.rootKey)
+
+/-- `CollapseStepOKF4`'s fuel part (cost's, the heights): the state after a
+replaceRoot at a segment root fits the fuel. -/
+def CollapseFitsOK (c : Ctx) (base : View BVal) (f : Nat) : Prop :=
+  ∀ w0 v x n only, CollGetInvF c base w0 v f → RangeOrder (wNode c.p base v) c.i v.top.rootKey →
+    SegDesc c base x v → v.nodes.lookup x = some n → n.leaf = false → n.firstTime ≠ some c.i →
+    n.onlyLiveKlong = some only → n.cv? only = some 0 →
+    WriterWP (replaceRoot x (v.path.length - 1) only) c v
+      (fun _ v' => SegFits (wNode c.p base v') c.i (f - 1) v'.top.rootKey)
+
+/-- `CollapseStepOKF4`'s unlink part (putinv's): `CollapseUnlinkOK` at every
+replaceRoot at a segment root. -/
+def CollapseUnlinkAllOK (c : Ctx) (base : View BVal) (f : Nat) : Prop :=
+  ∀ w0 v x n, CollGetInvF c base w0 v f → SegDesc c base x v → v.nodes.lookup x = some n →
+    n.leaf = false → n.firstTime ≠ some c.i → CollapseUnlinkOK c base v x n
 
 /-- `DelStepsOKF3` at the runs of R from it at the runs of R', where every run
 within reach is one of R'. -/
@@ -161,13 +181,13 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     (hth : 2 ≤ p.theta ∨ p.theta = 0)
     (hchk : OpDelChk2OK p)
     (htb : TakeBelowFuelDelOK p)
-    (d4 : OpCaseOK p (RunOK p) (QDead p) DelMergeCase)
-    (l4 : OpCaseOK p (RunOK p) (QLive p) DelMergeRestCase)
+    (d4 : OpCaseOK p (RunOK p) (QDead p) DelMergeDOpenCase)
+    (l4 : OpCaseOK p (RunOK p) (QLive p) DelMergeOpenCase)
     (hU : ∀ ts, UpUnlinkTreeOK (ctxOf p ts) (viewOf (treeRun p ts)))
     (hHL : ∀ ts, UpHolderLiveRunOK (ctxOf p ts) (viewOf (treeRun p ts)))
-    (hG : ∀ ts, UpGhOK (ctxOf p ts) (viewOf (treeRun p ts)))
-    (hMS : ∀ ts, MergeStepOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hCo : ∀ ts, CollapseStepOKF4 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hMSF : ∀ ts, MergeFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hCoF : ∀ ts, CollapseFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hCoU : ∀ ts, CollapseUnlinkAllOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
     (hMF : StateOK p (RunOK p) (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base)) :
     InvPreserved p ∧ GetOK p ∧ ScanOK p ∧ LatestGetOK p ∧ LatestScanOK p := by
   have hp' := hp
@@ -178,6 +198,11 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
   have hsa : 2 ≤ p.splitAbove := by omega
   have hcap : 1 ≤ p.mergeMax := by omega
   have hRL : ∀ P t, RunOK p P t → RunLinksOK p P t := fun _ _ h => h.1
+  -- a merge's and a collapse's steps: the untaken part proved, the fuel and unlink parts named
+  have hMS : ∀ ts, MergeStepOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1) :=
+    fun ts => mergeStepOKF3_of_segFits (ctxOf p ts) _ _ (Nat.succ_pos _) hcap hsa (hMSF ts)
+  have hCo : ∀ ts, CollapseStepOKF4 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1) :=
+    fun ts => ⟨hCoF ts, hCoU ts⟩
   -- the induction's runs: TP4, P's tree and LatestQD
   have hR : ∀ P t, RunTreeQ p (LatestQD p) P t → RunOK p P t := runOK_of_runTreeQD p
   have hRL' : ∀ P t, RunTreeQ p (LatestQD p) P t → RunLinksOK p P t := fun _ _ h => h.1
@@ -194,11 +219,13 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     opHtDelOKUnder_of_chk2 p (by omega) _ hRP' hRK' hchk
   -- the delete with the merges (4) at the induction's runs
   have hTIR := opCaseOK_treeInvRange_delMergeRL p _
-    (delStepsQdL_of_openR3 p _ (by omega) hsa hRL' hRP' hRK' hRH' hht htb hU hHL hG) hMS hCo hsa hcap
+    (delStepsQdL_of_openR4 p _ (by omega) hsa hRL' hRP' hRK' hRH' hht htb hU hHL) hMS hCo hsa hcap
     hRP' hRK' hfitQ
   have l4' := opCaseOK_anti p _ _ hR _ _
-    (liveCase_delMerge_of_rest p (RunOK p) hRL (by omega) l4)
-  have d4' := opCaseOK_anti p _ _ hR _ _ d4
+    (liveCase_delMerge_of_rest p (RunOK p) hRL
+      (opCaseOK_of_open p (RunOK p) (QLive p) (keptByReads_live p) DelMergeRestCase l4))
+  have d4' := opCaseOK_anti p _ _ hR _ _ (deadCase_delMergeL_of_rest p (RunOK p) hRL
+    (opCaseOK_of_open p (RunOK p) (QDead p) (keptByReads_dead p) DelMergeDRestCase d4))
   -- TP10's three posts for every operation from a state with TP7's live counts
   have hTL := opCaseOK_of_cases_mergesL p _ _ hm (treeCase_putLeafRoom p _)
     (treeCase_putLeafFull p _ hRL' hsa)
@@ -219,7 +246,7 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     (liveCase_putLeafFull p _ hRL' hsa hp)
     (opCaseOK_putNewSeg_of_parts p _ _ (liveCase_putNewSeg1Room p _ (by omega))
       (liveCase_putNewSegsRoom p _ (by omega)) (liveCase_putNewSegFull p _ hRL' (by omega) hsa hp)) l4'
-  have hDd := opCaseOK_of_cases_merges p _ _ hm (deadCase_putLeafRoom p _)
+  have hDdL := opCaseOK_of_cases_mergesL p _ _ hm (deadCase_putLeafRoom p _)
     (deadCase_putLeafFull p _ hRL' hsa hth)
     (opCaseOK_putNewSeg_of_parts p _ _ (deadCase_putNewSeg1Room p _ (by omega))
       (deadCase_putNewSegsRoom p _ (by omega)) (deadCase_putNewSegFull p _ hRL' (by omega) hsa hth)) d4'
@@ -229,6 +256,7 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
   have hPI := opCaseOK_any_of_L p _ hRL' hRT' hRI' hTL hPIL hOL hLvL _ hPIL
   have hO := opCaseOK_any_of_L p _ hRL' hRT' hRI' hTL hPIL hOL hLvL _ hOL
   have hLC := liveStateOK_of_L p _ hRL' hRT' hRI' hTL hPIL hOL hLvL
+  have hDd := opCaseOK_any_of_L p _ hRL' hRT' hRI' hTL hPIL hOL hLvL _ hDdL
   -- the run induction
   have hJ := runTreeQ_of_mergesF4S p (by omega) hsa hcap hm (LatestQD p) (latestQD_init p (by omega))
     (latestQD_snocR p hp hht hT hPI hO hLv hDd)
@@ -238,9 +266,9 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     (rangeStateOK_of_cases p _ hRL' hRT' hRI' hT hPI hO)
     hfitQ
     (fun ts tx hw hr => hMF ts tx hw (hR _ _ hr))
-    (delStepsJ2OKF3_of_openR10 p _ (TakeS4 p) (by omega) hsa hRL' hRP' hRK'
+    (delStepsJ2OKF3_of_openR11 p _ (TakeS4 p) (by omega) hsa hRL' hRP' hRK'
       (fun _ _ _ h => h.1.1.1.1) (fun _ _ _ h => h.1.1.1.2) (fun _ _ _ h => h.1.1.2)
-      (fun _ _ _ h => h.1.2) (fun _ _ _ h => h.2.1) (fun _ _ _ h => h.2.2) hRH' hht htb hU hHL hG hLC)
+      (fun _ _ _ h => h.1.2) (fun _ _ _ h => h.2.1) (fun _ _ _ h => h.2.2) hRH' hht htb hU hHL hLC)
     hMS hCo (replaceRootFullJ2OK_run p hsa)
   have hW : ∀ ts tx, Within p (ts ++ [tx]) → RunOK p (treeRun p ts) ts.length →
       RunTreeQ p (LatestQD p) (treeRun p ts) ts.length :=
@@ -259,7 +287,7 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     (opCaseOK_of_within p _ _ hW _ _ (opCaseOK_of_any p _ _ _ hO))
     (opGetCaseOK_delMergeF4 p (RunOK p)
       (delStepsOKF3_of_within p (RunOK p) _ hW
-        (delStepsOKF3_of_open15 p _ (by omega) hsa hRL' hP hRK' hRH' hht htb hU hHL hG hLC))
+        (delStepsOKF3_of_open16 p _ (by omega) hsa hRL' hP hRK' hRH' hht htb hU hHL hLC))
       hMS hCo hsa hcap (by omega) hP hfit)
   exact ⟨hinv, h.1, h.2, latestGetOK_of_getOK p h.1, latestScanOK_of_scanOK p h.2⟩
 
