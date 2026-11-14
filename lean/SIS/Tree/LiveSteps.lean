@@ -10,7 +10,7 @@ with the counts of `HalfOK` (`halves_lastVersionGivenDel_live_fill`).
 `ChildOK` directly, or stands for a link of the tree before whose ends have
 the same kinds, the node named having no fewer live klongs after.
 -/
-import SIS.Tree.LiveEdges
+import SIS.Tree.LiveEdgesBase
 import SIS.Tree.WriterTreeChainTree
 
 set_option autoImplicit false
