@@ -233,10 +233,6 @@ theorem sized_flat (p : Params) (i : Time) (l : KNode) (leaf : Bool) (hf : FlatA
   obtain ⟨r, hr, _⟩ := hf
   exact ⟨hs, Or.inr ⟨i, r, hr⟩⟩
 
-theorem sized_flat' (p : Params) (i : Time) (l : KNode) (leaf : Bool) (hf : FlatAt i l.ks)
-    (hs : l.size ≤ p.M) : SizedNode p ⟨leaf, l.ks⟩ :=
-  sized_flat p i l leaf hf hs
-
 theorem sized_newKlongs (p : Params) (leaf : Bool) (t : Time) (l : List (Nat × NodeId))
     (h : (newKlongs t l).length ≤ p.M) : SizedNode p ⟨leaf, newKlongs t l⟩ :=
   ⟨h, Or.inr ⟨t, _, rfl⟩⟩
@@ -318,7 +314,7 @@ macro_rules
     | (refine sized_halves1 _ _ _ _ _ ?_; szArith)
     | (refine sized_halves2 _ _ _ _ _ ?_; szArith)
     | (refine sized_flat _ _ _ _ (by assumption) ?_; szArith)
-    | (refine sized_flat' _ _ _ _ (by assumption) ?_; szArith)
+    | (refine sized_flat _ _ _ _ (by assumption) ?_; szArith)
     | (apply SizedNode.repoint; szKs)
     | (apply SizedNode.toPrev; szKs))
 

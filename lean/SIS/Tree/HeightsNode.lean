@@ -140,7 +140,7 @@ theorem ht_lastBitmapOf_swap {S : NodeId → Prop} :
 theorem ht_live_iff (n : KNode) (c : Nat) (z : NodeId) :
     (c, z) ∈ n.live ↔ keyLookup n.ks n.lastBitmap c = some z := by
   rw [← KNode.live_lookup]
-  exact ⟨lookup_of_mem_nodup _ (KNode.live_keys_nodup n) c z, mem_of_lookup_nodup _ c z⟩
+  exact ⟨lookup_of_mem_nodup _ (KNode.live_keys_nodup n) c z, bk_mem_of_lookup _ c z⟩
 
 /-- A live klong is a key klong of the node. -/
 theorem ht_live_mem {n : KNode} {c : Nat} {z : NodeId} (h : (c, z) ∈ n.live) :

@@ -95,12 +95,12 @@ theorem writerWP_mergeTail_any_j2 (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx) (b
   -- the tree's facts
   have hpL : (cL, l) ∈ pn.liveAt c.i := by
     rw [KNode.liveAt_of_times pn c.i hpt]
-    apply mem_of_lookup_nodup
+    apply bk_mem_of_lookup
     rw [KNode.live_lookup]
     exact keyLookup_of_last _ _ _ il l hL hLL
   have hpR : (cR, r) ∈ pn.liveAt c.i := by
     rw [KNode.liveAt_of_times pn c.i hpt]
-    apply mem_of_lookup_nodup
+    apply bk_mem_of_lookup
     rw [KNode.live_lookup]
     exact keyLookup_of_last _ _ _ ir r hR hRL
   have hlink_l : TLink N c.i p cL l := ⟨pn, hpn, hpL⟩
@@ -274,7 +274,7 @@ theorem writerWP_mergeTail_any_j2 (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx) (b
           right
           refine ⟨?_, h1, h2⟩
           rw [KNode.liveAt_of_times pn c.i hpt]
-          exact mem_of_lookup_nodup _ cc z hlk
+          exact bk_mem_of_lookup _ cc z hlk
     -- the parent after, into two nodes
     have hchar2 : ∀ (m2 : NodeId) (g2 : Nat) cc z,
         (cc, z) ∈ (mergeParentNode pn c.i il cL m1 ir cR (some (m2, g2))).liveAt c.i →
@@ -313,7 +313,7 @@ theorem writerWP_mergeTail_any_j2 (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx) (b
             right; right
             refine ⟨?_, h1, h2⟩
             rw [KNode.liveAt_of_times pn c.i hpt]
-            exact mem_of_lookup_nodup _ cc z hlk
+            exact bk_mem_of_lookup _ cc z hlk
     -- neither merged node is named live by the parent after
     -- the full parent's facts, from any state S with the nodes below m1 as before
     have hlnx' : l < m1 := hlnx
@@ -740,7 +740,7 @@ theorem writerWP_mergeTail_any_j2 (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx) (b
           rw [hN87 q hql hqr] at hq
           suffices hR7q : TReach (wNode c.p base w7) c.i w7.top.rootKey q by
             rw [h8top]
-            exact tReach_of_agree_fwd (wNode c.p base w7) (wNode c.p base w8) c.i w7.top.rootKey
+            exact tReach_to_agree (wNode c.p base w7) (wNode c.p base w8) c.i w7.top.rootKey
               (fun x hx => hN87 x (fun h => hl7 (h ▸ hx)) (fun h => hr7 (h ▸ hx))) q hR7q
           by_cases hqc : ∃ i, s ≤ i ∧ i ≤ D + 1 ∧ q = X i
           · obtain ⟨i, a, b, rfl⟩ := hqc
@@ -901,7 +901,7 @@ theorem writerWP_mergeTail_any_j2 (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx) (b
           · exact Or.inr ⟨h, fun hy => ⟨ti7, hti7, hS' (by rw [hLM, hRM] at hy; exact hy)⟩⟩)
       have hrest := j2rest_merge N (wNode c.p base w8) c.i B (w3.vals.map (·.1)) p l r [m1] pn ln rn
         pn8 (ln.firstTime == some c.i) (rn.firstTime == some c.i) hpos hD hO hS hM hV hpn hN8p
-        (by rw [hR8.1, mergeParentNode_leaf]; exact hpleaf)
+        (by rw [hR8.1, mrg_mergeParentNode_leaf]; exact hpleaf)
         (by rw [prefixAt_agree _ pn8.ks c.i ti7 hpos hk7 hag8]; exact hfacts7.1)
         (fun s hs => by rw [KNode.firstTime_agree _ pn8 ti7 c.i hk7 hag8]; exact hfacts7.2.1 s hs)
         hp8D
@@ -1200,7 +1200,7 @@ theorem writerWP_mergeTail_any_j2 (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx) (b
           | some z =>
             exfalso
             have hm : (g2, z) ∈ pn.liveAt c.i := by
-              rw [KNode.liveAt_of_times pn c.i hpt]; exact mem_of_lookup_nodup _ _ _ hlk
+              rw [KNode.liveAt_of_times pn c.i hpt]; exact bk_mem_of_lookup _ _ _ hlk
             rcases hadj g2 z hm with h | h
             · omega
             · have := hgU g2 z hm (by omega); omega
@@ -1483,7 +1483,7 @@ theorem writerWP_mergeTail_any_j2 (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx) (b
           rw [hN1211 q hql hqr] at hq
           suffices hR11q : TReach (wNode c.p base w11) c.i w11.top.rootKey q by
             rw [h12top]
-            exact tReach_of_agree_fwd (wNode c.p base w11) (wNode c.p base w12) c.i w11.top.rootKey
+            exact tReach_to_agree (wNode c.p base w11) (wNode c.p base w12) c.i w11.top.rootKey
               (fun x hx => hN1211 x (fun h => hl11 (h ▸ hx)) (fun h => hr11 (h ▸ hx))) q hR11q
           by_cases hqc : ∃ i, s ≤ i ∧ i ≤ D + 1 ∧ q = X i
           · obtain ⟨i, a, b, rfl⟩ := hqc
@@ -1683,7 +1683,7 @@ theorem writerWP_mergeTail_any_j2 (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx) (b
           · exact Or.inr ⟨h, fun hy => ⟨ti9, hti9, hS' (by rw [hLM, hRM] at hy; exact hy)⟩⟩)
       have hrest := j2rest_merge N (wNode c.p base w10) c.i B (w3.vals.map (·.1)) p l r [m1, m1 + 2] pn
         ln rn pn10 (ln.firstTime == some c.i) (rn.firstTime == some c.i) hpos hD hO hS hM hV hpn hN10p
-        (by rw [hR10.1, mergeParentNode_leaf]; exact hpleaf)
+        (by rw [hR10.1, mrg_mergeParentNode_leaf]; exact hpleaf)
         (by rw [prefixAt_agree _ pn10.ks c.i ti9 hpos hk9 hag10]; exact hfacts9.1)
         (fun s hs => by rw [KNode.firstTime_agree _ pn10 ti9 c.i hk9 hag10]; exact hfacts9.2.1 s hs)
         hp10D

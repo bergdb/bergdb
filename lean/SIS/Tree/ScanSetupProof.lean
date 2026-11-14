@@ -57,7 +57,7 @@ theorem flatMap_split_fw {β : Type} (L : List (Nat × NodeId))
       simp only [List.flatMap_cons, List.filter_cons, Nat.lt_irrefl, decide_false,
         Bool.false_eq_true, ↓reduceIte, e]
       congr 1
-      exact flatMap_congr' L h g (fun q hq => hhi q (by simp [hq]) (hsa q hq))
+      exact flatMap_congr_mem (l := L) (f := h) (g := g) (fun q hq => hhi q (by simp [hq]) (hsa q hq))
     · have hlt := hsa fd hfd'
       have ha : h a = [] := hlo a (by simp) hlt
       have hna : decide (fd.1 < a.1) = false := by simp; omega
@@ -114,7 +114,7 @@ theorem treeContents_orient_F (p : Params) (v : View BVal) (t d F x : Nat) (n : 
   obtain ⟨n', hn', _, _, hc⟩ := hs'
   rw [hn] at hn'
   cases Option.some.inj hn'
-  apply flatMap_congr'
+  apply flatMap_congr_mem
   intro q hq
   have hq' : q ∈ n.liveAt t := by
     cases fw <;> simp [orient] at hq <;> exact hq
@@ -626,7 +626,7 @@ theorem setupGo_match (p : Params) (v : View BVal) (t F : Nat) (fw incl : Bool) 
         simp only [Bool.true_or, ↓reduceIte] at hall ⊢
         rw [show afterL n t true false cvLo = orient true (n.liveAt t) from
           afterL_sentinel n t true (sNode_bound p v t (d+1) x hs n hn)]
-        apply flatMap_congr'
+        apply flatMap_congr_mem
         intro q hq
         have := klongC_hi p v t d F x n hs hn hdF true incl s0 sr q hq (by
           have := hall q (by simpa [orient] using hq); simpa using this)
@@ -655,7 +655,7 @@ theorem setupGo_match (p : Params) (v : View BVal) (t F : Nat) (fw incl : Bool) 
             Bool.and_false] at hall ⊢
           rw [show afterL n t false false cvHi = orient false (n.liveAt t) from
             afterL_sentinel n t false (sNode_bound p v t (d+1) x hs n hn)]
-          apply flatMap_congr'
+          apply flatMap_congr_mem
           intro q hq
           have hq' : q ∈ n.liveAt t := by simpa [orient] using hq
           have := klongC_lo p v t d F x n hs hn hdF false incl s0 sr q hq'

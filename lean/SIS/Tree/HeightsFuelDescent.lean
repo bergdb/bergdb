@@ -46,7 +46,7 @@ theorem ht_eqVisits_free (base : View BVal) (w : W) (hb : Book B c w) (hi : HtIn
           · rename_i fd hfd
             have hm := KNode.searchLte_mem n c.i cv fd hfd
             have hyf : w.taken.contains fd.y = false := by
-              obtain ⟨_, hl | ⟨_, hk⟩⟩ := ht_wNode_cases hn
+              obtain ⟨_, hl | ⟨_, hk⟩⟩ := wNode_cases _ _ _ _ _ hn
               · obtain ⟨g, h, hgh⟩ := kd_tag_of_lookup hb hl
                 have hN := hi.cache x n g h (bk_mem_of_lookup _ _ _ hl) hgh hx
                 rw [KNode.liveAt_of_times n c.i hN.3] at hm

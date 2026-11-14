@@ -99,12 +99,12 @@ theorem writerWP_mergeTail_any_untaken (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ct
   -- the tree's facts
   have hpL : (cL, l) ∈ pn.liveAt c.i := by
     rw [KNode.liveAt_of_times pn c.i hpt]
-    apply mem_of_lookup_nodup
+    apply bk_mem_of_lookup
     rw [KNode.live_lookup]
     exact keyLookup_of_last _ _ _ il l hL hLL
   have hpR : (cR, r) ∈ pn.liveAt c.i := by
     rw [KNode.liveAt_of_times pn c.i hpt]
-    apply mem_of_lookup_nodup
+    apply bk_mem_of_lookup
     rw [KNode.live_lookup]
     exact keyLookup_of_last _ _ _ ir r hR hRL
   have hlink_l : TLink N c.i p cL l := ⟨pn, hpn, hpL⟩
@@ -278,7 +278,7 @@ theorem writerWP_mergeTail_any_untaken (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ct
           right
           refine ⟨?_, h1, h2⟩
           rw [KNode.liveAt_of_times pn c.i hpt]
-          exact mem_of_lookup_nodup _ cc z hlk
+          exact bk_mem_of_lookup _ cc z hlk
     -- the parent after, into two nodes
     have hchar2 : ∀ (m2 : NodeId) (g2 : Nat) cc z,
         (cc, z) ∈ (mergeParentNode pn c.i il cL m1 ir cR (some (m2, g2))).liveAt c.i →
@@ -317,7 +317,7 @@ theorem writerWP_mergeTail_any_untaken (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ct
             right; right
             refine ⟨?_, h1, h2⟩
             rw [KNode.liveAt_of_times pn c.i hpt]
-            exact mem_of_lookup_nodup _ cc z hlk
+            exact bk_mem_of_lookup _ cc z hlk
     -- neither merged node is named live by the parent after
     -- the full parent's facts, from any state S with the nodes below m1 as before
     have hlnx' : l < m1 := hlnx
@@ -988,7 +988,7 @@ theorem writerWP_mergeTail_any_untaken (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ct
           | some z =>
             exfalso
             have hm : (g2, z) ∈ pn.liveAt c.i := by
-              rw [KNode.liveAt_of_times pn c.i hpt]; exact mem_of_lookup_nodup _ _ _ hlk
+              rw [KNode.liveAt_of_times pn c.i hpt]; exact bk_mem_of_lookup _ _ _ hlk
             rcases hadj g2 z hm with h | h
             · omega
             · have := hgU g2 z hm (by omega); omega

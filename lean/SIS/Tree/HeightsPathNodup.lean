@@ -24,7 +24,7 @@ variable {B : NodeId} {c : Ctx} {H : NodeId → Nat → Prop} {K : KindOracle} {
 theorem kd_not_val_of_gh (hb : Book B c w) (hk : ViewKinds K B c) (hi : KdInv K B w)
     {y : NodeId} {g h : Nat} (hm : (y, g, h) ∈ w.gh) (hv : IsValId K w y) : False := by
   rcases hv with ⟨hh, hvm⟩ | hv
-  · exact (hi.vals (y, hh) hvm).2.2 (ht_mem_ids hm)
+  · exact (hi.vals (y, hh) hvm).2.2 (kd_mem_ids hm)
   · rcases hb.tag y g h hm with ⟨nd, hnd, hd, hlv, _, _⟩ | ⟨hB, _, _⟩
     · exact hk.notBoth y _ (hk.node y nd hnd hd hlv) hv
     · have := hk.oldVal y hv; omega

@@ -41,7 +41,7 @@ theorem halves_facts_nil (t : Time) (n : KNode) (h2 : 2 ≤ n.live.length)
   have hmem : ∀ c z, n.live.lookup c = some z → (c, z) ∈ n.liveAt t := by
     intro c z h
     rw [KNode.liveAt_of_times n t hnt]
-    exact mem_of_lookup_nodup _ c z h
+    exact bk_mem_of_lookup _ c z h
   refine ⟨r, hdiv, hsc, hrm, fun c z h => ?_, fun c z h => ?_⟩
   · obtain ⟨h1, h2⟩ := hfh c z h
     exact ⟨h1, hmem c z h2⟩
@@ -73,7 +73,7 @@ theorem lastOrd_div (c : Ctx) (K : Nat → Nat) (Nn : Nat → KNode) (D : Nat) (
       ((⟨(Nn (D + 1)).leaf, last.ks⟩ : KNode).lastVersion c.i) []).2.2 = r.1 := hdiv
   rw [hlastV] at hdiv'
   rw [hdiv']
-  obtain ⟨a0, ha0, ha0r⟩ := live_below_divider' _ r h2 hr
+  obtain ⟨a0, ha0, ha0r⟩ := live_below_divider _ r h2 hr
   have hr1 := hord hsp hql r.1 r.2 hrm
   have ha1 := hord hsp hql a0.1 a0.2 ha0
   cases hl : (Nn (D + 1)).leaf with
@@ -1975,7 +1975,7 @@ theorem writerWP_handleFull_lastV (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx) (b
             rw [KNode.liveAt_of_times _ c.i hqtimes] at hc
             exact lookup_of_mem_nodup _ (KNode.live_keys_nodup _) _ _ hc
           · have hcK : c' ≠ K (D + 1) := fun he => by
-              subst he; exact hzx' (liveAt_cv_unique _ c.i hqtimes _ _ _ hc hkl)
+              subst he; exact hzx' (mrg_liveAt_unique _ c.i hqtimes _ _ _ hc hkl)
             rw [KNode.liveAt_of_times _ c.i (KNode.repoint_times _ _ _ c.i hqtimes),
               mem_iff_lookup _ (KNode.live_keys_nodup _),
               KNode.repoint_live_lookup _ _ _ _ _ hj0 c']

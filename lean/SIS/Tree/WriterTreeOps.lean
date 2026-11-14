@@ -28,7 +28,7 @@ theorem KNode.add_key_liveAt_other (n : KNode) (t : Time) (cv : Nat) (v : NodeId
   simp only [hb, Bool.false_eq_true, ↓reduceIte] at hlk
   have hl' : (({ leaf := n.leaf, ks := n.ks } : KNode).live).lookup c = some y := by
     rw [← hlk]; exact hl
-  exact mem_of_lookup_nodup _ c y hl'
+  exact bk_mem_of_lookup _ c y hl'
 
 /-- A key klong added at time t: the live klongs at t are the new one and the
 others of the node. -/

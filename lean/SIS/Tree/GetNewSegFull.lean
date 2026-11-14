@@ -15,15 +15,6 @@ up through a cascade of splits (`writerWP_appendKlongs_chainGRV`), then the new
 segment leaves are made below it (`writerWP_putSegs_new`). A reader reaches the
 new segment leaf only through the key's prefix; its tree changes nothing else. -/
 
-/-- An empty segment leaf has no live klong. -/
-theorem KNode.empty_liveAt (t : Time) (c : Nat) (z : NodeId) :
-    (c, z) ∉ (⟨true, []⟩ : KNode).liveAt t := by
-  intro hc
-  rw [KNode.liveAt_of_times _ t (by simp)] at hc
-  have := lookup_some_of_mem (KNode.live_keys_nodup _) hc
-  rw [KNode.live_lookup] at this
-  cases this
-
 /-- A node map A' that differs from A only at the segment root ch, which A
 reaches by the prefix P0, and at ids from b on: the keys that do not run through
 ch read alike. -/

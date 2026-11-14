@@ -230,13 +230,6 @@ theorem mergeFullLast_lookup (pn : KNode) (tt : Time) (cL : Nat) (m1 : NodeId) (
             · subst h2; simp [h1, Ne.symm h1]
             · simp [h1, h2, Ne.symm h1, Ne.symm h2]
 
-theorem writerWP_ite_cases {α : Type} (b : Prop) [Decidable b] (x y : M α) (c : Ctx) (w : W)
-    (post : α → W → Prop) (hx : b → WriterWP x c w post) (hy : ¬ b → WriterWP y c w post) :
-    WriterWP (if b then x else y) c w post := by
-  by_cases h : b
-  · simp only [h, ↓reduceIte]; exact hx h
-  · simp only [h, ↓reduceIte]; exact hy h
-
 /-- `mergeFullLast` is a last version: a time klong of tt, then key klongs. -/
 theorem mergeFullLast_ks (pn : KNode) (tt : Time) (cL : Nat) (m1 : NodeId) (cR : Nat)
     (m2 : Option (NodeId × Nat)) (last : KNode) (h : mergeFullLast pn tt cL m1 cR m2 = some last) :
@@ -306,9 +299,9 @@ theorem writerWP_mergeParent_cases (p : NodeId) (pn : KNode) (depth il cL : Nat)
     unfold mergeParent
     simp only [writerWP_bind, writerWP_read]
     rw [writerWP_getNode_known p pn c w hlk]
-    apply writerWP_ite_cases
+    apply writerWP_if
     · intro _
-      apply writerWP_ite_cases
+      apply writerWP_if
       · intro _
         simp only [note, writerWP_bind, writerWP_modify, writerWP_pure]
         split
@@ -335,9 +328,9 @@ theorem writerWP_mergeParent_cases (p : NodeId) (pn : KNode) (depth il cL : Nat)
     unfold mergeParent
     simp only [writerWP_bind, writerWP_read]
     rw [writerWP_getNode_known p pn c w hlk]
-    apply writerWP_ite_cases
+    apply writerWP_if
     · intro _
-      apply writerWP_ite_cases
+      apply writerWP_if
       · intro _
         simp only [note, writerWP_bind, writerWP_modify, writerWP_pure]
         split
@@ -748,16 +741,6 @@ theorem writerWP_mergeFull_branch (c : Ctx) (base : View BVal)
       exact (hVlr r h).2 rfl
     · have := hlr.2; simp only at h; omega
 
-/-- A tree is reached alike in a node map that agrees on its reached nodes. -/
-theorem tReach_of_agree_fwd (L L' : NodeId → Option KNode) (t : Time) (r : NodeId)
-    (h : ∀ x, TReach L t r x → L' x = L x) : ∀ y, TReach L t r y → TReach L' t r y := by
-  intro y hy
-  induction hy with
-  | root => exact TReach.root
-  | @link x c y hx hl ih =>
-    obtain ⟨n, hn, hc⟩ := hl
-    exact TReach.link ih ⟨n, by rw [h x hx]; exact hn, hc⟩
-
 /-- The merge's state before its parent's change: the nodes below the next id
 nx as before, new nodes from nx on naming nodes below nx, the path and the taken
 nodes as before. Then the cascade's state facts hold of it. -/
@@ -799,7 +782,7 @@ theorem mergeState_facts (c : Ctx) (base : View BVal) (N : NodeId → Option KNo
   refine ⟨fun i h1 h2 => ⟨by rw [hSlook i h1 h2]; exact (hS2 i h1 h2).1, by rw [hSt]; exact (hS2 i h1 h2).2⟩,
     ?_, ?_, ?_, ?_, fun h => by rw [hroot]; exact hR0 h⟩
   · rw [hroot]; exact treeOK_of_agree N _ c.i root hT hagree
-  · intro i h1 h2; rw [hroot]; exact tReach_of_agree_fwd N _ c.i root hagree _ (hS4 i h1 h2)
+  · intro i h1 h2; rw [hroot]; exact tReach_to_agree N _ c.i root hagree _ (hS4 i h1 h2)
   · intro z hz
     refine ⟨hShigh z hz, by rw [hSt]; exact (hfree z (by omega)).2, hbaseF z (by omega)⟩
   · intro u c' z hl
@@ -850,7 +833,7 @@ theorem mergeFullLast_liveAt (pn : KNode) (t : Time) (cL : Nat) (m1 : NodeId) (c
   have hpn : ∀ cc z, pn.live.lookup cc = some z → (cc, z) ∈ pn.liveAt t := by
     intro cc z hz
     rw [KNode.liveAt_of_times pn t hpt]
-    exact mem_of_lookup_nodup _ cc z hz
+    exact bk_mem_of_lookup _ cc z hz
   have hl : ∀ cc z, (cc, z) ∈ last.liveAt t → last.live.lookup cc = some z := by
     intro cc z hm
     rw [KNode.liveAt_of_times last t htl] at hm

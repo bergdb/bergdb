@@ -153,7 +153,7 @@ theorem ht_pathGh_all {B : NodeId} {c : Ctx} {w : W} (hb : Book B c w) (hi : HtI
     simp only [Option.some.injEq, Prod.mk.injEq] at hq
     obtain ⟨-, rfl⟩ := hq
     obtain ⟨g, h, hm⟩ := kd_tag_of_lookup hb hx
-    exact ht_mem_ids hm
+    exact kd_mem_ids hm
 
 set_option maxHeartbeats 1600000 in
 /-- A put's last segment: every cached height from m to m + 1. -/
@@ -350,7 +350,7 @@ theorem shb_setNode_put (B : NodeId) (hframe : AppendFrameOK B) (segRoot : NodeI
     obtain ⟨n5, hl5, hlf5⟩ := hle15.1.lookup hl0
     have hcg4 : cur ∈ w4.gh.map (·.1) := by
       obtain ⟨g', h', hm'⟩ := kd_tag_of_lookup hb1 hl0
-      exact ht_mem_ids (HtLe.gh' hm' (hle3.trans hle4))
+      exact kd_mem_ids (HtLe.gh' hm' (hle3.trans hle4))
     have hcur : cur ≠ child := fun h => hcx (h ▸ hcg4)
     split
     · htSimp

@@ -31,11 +31,11 @@ theorem mergeFullLast_iff (pn : KNode) (t : Time) (cL : Nat) (m1 : NodeId) (cR :
   have hl : ∀ cc z, (cc, z) ∈ last.liveAt t ↔ last.live.lookup cc = some z := by
     intro cc z
     rw [KNode.liveAt_of_times last t htl]
-    exact ⟨lookup_of_mem_nodup _ (KNode.live_keys_nodup last) cc z, mem_of_lookup_nodup _ cc z⟩
+    exact ⟨lookup_of_mem_nodup _ (KNode.live_keys_nodup last) cc z, bk_mem_of_lookup _ cc z⟩
   have hp : ∀ cc z, (cc, z) ∈ pn.liveAt t ↔ pn.live.lookup cc = some z := by
     intro cc z
     rw [KNode.liveAt_of_times pn t hpt]
-    exact ⟨lookup_of_mem_nodup _ (KNode.live_keys_nodup pn) cc z, mem_of_lookup_nodup _ cc z⟩
+    exact ⟨lookup_of_mem_nodup _ (KNode.live_keys_nodup pn) cc z, bk_mem_of_lookup _ cc z⟩
   refine ⟨fun h0 cc z => ?_, fun y g hy cc z => ?_⟩
   · rw [hl, hnone h0 cc, hp]
     by_cases h1 : cc = cL

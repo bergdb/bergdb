@@ -48,7 +48,7 @@ theorem KNode.add_key_liveAt_self (n : KNode) (t : Time) (cv : Nat) (v : NodeId)
     (cv, v) ∈ (n.add t (.key cv v)).liveAt t := by
   have hat := KNode.add_times n t (.key cv v) (fun s h => by cases h) ht
   rw [KNode.liveAt_of_times _ t hat]
-  apply mem_of_lookup_nodup
+  apply bk_mem_of_lookup
   rw [KNode.add_key_live_lookup_of_wf n t cv cv v hw]
   simp
 
@@ -68,7 +68,7 @@ theorem KNode.repoint_link_facts (qn : KNode) (t : Time) (x R : NodeId) (k1 j : 
   have hrt := KNode.repoint_times qn j R t hqt
   refine ⟨?_, ?_⟩
   · rw [KNode.liveAt_of_times _ t hrt]
-    apply mem_of_lookup_nodup
+    apply bk_mem_of_lookup
     rw [KNode.repoint_live_lookup qn x R k1 j hj k1]
     simp
   · intro c z hc
@@ -82,7 +82,7 @@ theorem KNode.repoint_link_facts (qn : KNode) (t : Time) (x R : NodeId) (k1 j : 
       simp only [Bool.false_eq_true, ↓reduceIte] at hlk
       refine Or.inr ⟨Ne.symm hck, ?_⟩
       rw [KNode.liveAt_of_times qn t hqt]
-      exact mem_of_lookup_nodup _ c z hlk
+      exact bk_mem_of_lookup _ c z hlk
 
 /-- The access path's nodes above a node stay reached when the node changes. -/
 theorem chain_anc_reach (N : NodeId → Option KNode) (t : Time) (r : NodeId) (X : Nat → NodeId)
@@ -1305,7 +1305,7 @@ theorem writerWP_appendKlongs_chainGLX (c : Ctx) (base : View BVal)
               exact hL2 (hEX (s + (e + 1)) (by omega) hD) (fun h => by have := hElt _ h; omega) (fun h => by have := hElt _ h; omega)
                 (hl1.trans (addKeys_leaf c.i ins _).symm) (hl2.trans (addKeys_leaf c.i ins _).symm)
                 hH1 hH2 (newRoot_liveAt_two c.i (X (s + (e + 1))) w.next r.1 hsc)
-                ((repoint_leaf_eq _ _ _).trans hqlf) (repoint_leaf_eq _ _ _)
+                ((bk_repoint_leaf _ _ _).trans hqlf) (bk_repoint_leaf _ _ _)
                 (repoint_liveAt_length (Nn (s + e)) (X (s + (e + 1))) (w.next + 2) (K (s + (e + 1))) j0
                   c.i hj0 hqtimes) hL
           · -- a space split in place below an inner node: the second half linked from the parent

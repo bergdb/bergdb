@@ -173,7 +173,7 @@ theorem delFullFitsOKR_of (c : Ctx) (base : View BVal) (H : NodeId → Nat → P
   refine segFits_of_heightsU hbv hiv.cache hvo.heights base hbase c.p.fuel _ ?_
   intro y n hn k hk
   rcases hk with ⟨g', hm'⟩ | hk
-  · have hyv := (ht_wNode_cases hn).1
+  · have hyv := (wNode_cases _ _ _ _ _ hn).1
     exact hsv.1 y g' k hm' (by rw [← hlev.2]; exact hyv)
   · have := hHb y k hk; omega
 

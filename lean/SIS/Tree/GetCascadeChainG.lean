@@ -2215,7 +2215,7 @@ theorem writerWP_appendKlongs_chainGRVf (c : Ctx) (base : View BVal)
                     rw [KNode.liveAt_of_times _ c.i hqtimes] at hc
                     exact lookup_of_mem_nodup _ (KNode.live_keys_nodup _) _ _ hc
                   · have hcK : c' ≠ K (s + (e + 1)) := fun he => by
-                      subst he; exact hzx' (liveAt_cv_unique _ c.i hqtimes _ _ _ hc hkl)
+                      subst he; exact hzx' (mrg_liveAt_unique _ c.i hqtimes _ _ _ hc hkl)
                     rw [KNode.liveAt_of_times _ c.i (KNode.repoint_times _ _ _ c.i hqtimes),
                       mem_iff_lookup _ (KNode.live_keys_nodup _),
                       KNode.repoint_live_lookup _ _ _ _ _ hj0 c']

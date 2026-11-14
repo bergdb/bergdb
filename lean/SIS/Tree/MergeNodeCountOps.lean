@@ -149,22 +149,6 @@ theorem KNode.liveAt_eq_of_prefixAt (n : KNode) (t t' : Time)
   simp only [KNode.liveAt, KNode.delAt, h, KNode.lastVersionGivenDel, List.filterMap_cons]
   rfl
 
-/-- A list of klongs whose time klongs are all at most t is its own prefix at t. -/
-theorem prefixAt_of_timesLE (ks : List Klong) (t : Time)
-    (h : ∀ x, Klong.time x ∈ ks → x ≤ t) : prefixAt ks t = ks := by
-  unfold prefixAt
-  induction ks with
-  | nil => rfl
-  | cons k ks ih =>
-    have ht : ∀ x, Klong.time x ∈ ks → x ≤ t := fun x hx => h x (List.mem_cons_of_mem k hx)
-    cases k with
-    | time x =>
-      have hx : x ≤ t := h x List.mem_cons_self
-      simp only [List.takeWhile_cons, hx, decide_true, ↓reduceIte]
-      rw [ih ht]
-    | key c y => simp only [List.takeWhile_cons, ↓reduceIte]; rw [ih ht]
-    | del b => simp only [List.takeWhile_cons, ↓reduceIte]; rw [ih ht]
-
 /-- The time klongs of a key node of P are at most the times of P's entries. -/
 theorem knodeOf_timesLE (p : Params) (P : Struct BVal) (t : Time) (hP : StructTimesLE P t)
     (x : NodeId) (n : KNode) (hx : knodeOf p (viewOf P) x = some n) :
@@ -201,8 +185,8 @@ theorem initCountOK (p : Params) : InitCountOK p := by
   intro x n hx
   have hk := knodeOf_timesLE p (treeRun p ts) ts.length hP x n hx
   apply KNode.liveAt_eq_of_prefixAt
-  rw [prefixAt_of_timesLE n.ks (ts.length + 1) (fun y hy => Nat.le_succ_of_le (hk y hy)),
-    prefixAt_of_timesLE n.ks ts.length hk]
+  rw [prefixAt_eq_self n.ks (ts.length + 1) (fun y hy => Nat.le_succ_of_le (hk y hy)),
+    prefixAt_eq_self n.ks ts.length hk]
 
 /-! ## The operations -/
 

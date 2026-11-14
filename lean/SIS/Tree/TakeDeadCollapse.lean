@@ -10,6 +10,7 @@ live (`named_reached`), so only the segment leaf above names a root taken back.
 -/
 import SIS.Tree.TakeBackDead
 import SIS.Tree.TakeInvCollapse
+import SIS.Tree.WriterLeft
 
 set_option autoImplicit false
 
@@ -102,7 +103,7 @@ theorem deadLiveN_segTake (N1 N2 : NodeId → Option KNode) (t : Time) (r B : No
       rw [List.getElem?_set_self hjl] at hi
       simp only [Option.some.injEq, Klong.key.injEq] at hi
       rw [← hi.1, ← hi.2]
-      refine ⟨⟨k, KNode.repoint_liveAt_new qn x y k i t hj hqt⟩, fun _ => ?_⟩
+      refine ⟨⟨k, liveAt_repoint_new qn x y k i t hj hqt⟩, fun _ => ?_⟩
       rw [hbm, hrp]
       exact lastLive_set_self qn.ks qn.lastBitmap i k y hLj
     · rw [List.getElem?_set_ne (Ne.symm hij)] at hi
@@ -120,12 +121,12 @@ theorem deadLiveN_segTake (N1 N2 : NodeId → Option KNode) (t : Time) (r B : No
           · exact hid (hjlater i x (by omega) (by rw [hi, hck]))
         · have hci : (cv, x) ∈ qn.liveAt t := by
             rw [KNode.liveAt_of_times qn t hqt]
-            apply mem_of_lookup_nodup
+            apply bk_mem_of_lookup
             rw [KNode.live_lookup]
             exact keyLookup_of_last _ _ _ i x hi hLi
           exact hck (hT.oneLink q cv q k x hq hq ⟨qn, hqn, hci⟩ ⟨qn, hqn, hk⟩).2
       refine ⟨⟨c0, ?_⟩, fun _ => ?_⟩
-      · refine KNode.repoint_liveAt_keep qn x y k j t hj hqt c0 z hc0 (fun hck => hzx ?_)
+      · refine liveAt_repoint_keep qn x y k j t hj hqt c0 z hc0 (fun hck => hzx ?_)
         rw [hck] at hc0
         exact (KNode.liveAt_fun qn t k x z hk hc0).symm
       · rw [hbm, hrp]
@@ -146,29 +147,13 @@ theorem unlinked_old_ptrs (n : KNode) (t : Time) (B : NodeId) (hpos : 0 < t)
   · exact hold cv y hk
   · rename_i hlt
     apply hold cv y
-    rw [prefixAt_of_timesLE n.ks (t - 1) (fun s hs => ?_)]
+    rw [prefixAt_eq_self n.ks (t - 1) (fun s hs => ?_)]
     · exact hk
     · have h1 := ht s hs
       by_cases hst : s = t
       · subst hst
         exact absurd (by rw [KNode.lastTime_of_mem_max n s hw hs ht]; simp) hlt
       · omega
-
-theorem lastBitmapOf_append_nodel (ks more : List Klong) (h : ∀ b, Klong.del b ∉ more) :
-    lastBitmapOf (ks ++ more) = lastBitmapOf ks := by
-  unfold lastBitmapOf
-  rw [List.foldl_append]
-  generalize ks.foldl (fun d k => match k with
-    | .del b => b
-    | _ => d) [] = acc
-  induction more generalizing acc with
-  | nil => rfl
-  | cons k more ih =>
-    simp only [List.foldl_cons]
-    cases k with
-    | del b => exact absurd List.mem_cons_self (h b)
-    | time t => exact ih (fun b hb => h b (List.mem_cons_of_mem _ hb)) acc
-    | key c y => exact ih (fun b hb => h b (List.mem_cons_of_mem _ hb)) acc
 
 /-- The klongs of a node with a key klong added. -/
 theorem KNode.add_key_ks (n : KNode) (t : Time) (k : Nat) (y : NodeId) :
@@ -231,7 +216,7 @@ theorem deadLiveN_segReplace (N1 N2 : NodeId → Option KNode) (t : Time) (B : N
         rw [h] at hi hLi
         have hci : (k, z) ∈ qn.liveAt t := by
           rw [KNode.liveAt_of_times qn t hqt]
-          apply mem_of_lookup_nodup
+          apply bk_mem_of_lookup
           rw [KNode.live_lookup]
           exact keyLookup_of_last _ _ _ i z hi hLi
         have := KNode.liveAt_fun qn t k x z hk hci

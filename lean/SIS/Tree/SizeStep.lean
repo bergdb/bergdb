@@ -26,7 +26,7 @@ theorem sizeStep_view (p : Params) (P : Struct BVal) (t : Time) (htimes : Struct
   simpa [nodeK, KNode.size] using this
 
 /-- A node of the overlay found by `lookup` is a member of it. -/
-theorem sizeStep_lookup_mem (l : List (NodeId × KNode)) (x : NodeId) (n : KNode)
+theorem mem_ids_of_lookup (l : List (NodeId × KNode)) (x : NodeId) (n : KNode)
     (h : l.lookup x = some n) : (x, n) ∈ l := by
   obtain ⟨pre, post, he, _⟩ := List.lookup_eq_some_iff.mp h
   rw [he]
@@ -61,7 +61,7 @@ theorem sizeOK_step (p : Params) (P : Struct BVal) (i : Time) (tx : Tx) (bs : Li
         rcases apply_keyNode p P i tx bs w hpos hfresh htimes hroot hH hl he x nd' hx hd hlv with
           ⟨n0, hlook, _, _, hks, _⟩ | ⟨hp0, _⟩
         · rw [hks]
-          exact (hw _ (sizeStep_lookup_mem _ x n0 hlook)).1
+          exact (hw _ (mem_ids_of_lookup _ x n0 hlook)).1
         · have := hS x _ (keyNodeAt_of p P x nd' hp0 hd hlv)
           simpa [nodeK, KNode.size] using this
       · simp [hd, hlv] at hn

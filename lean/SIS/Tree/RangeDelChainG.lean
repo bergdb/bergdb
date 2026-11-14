@@ -659,7 +659,7 @@ theorem writerWP_delSplit_chainGRange (c : Ctx) (base : View BVal)
           (K (D + 1)) r hVR hV hqR
           (by rw [updN_ne _ _ _ _ hqx]; exact hwq) hqlf hkl (updN_self _ _ _)
           (by rw [hw']; simp only [hqx, ↓reduceIte])
-          (by rw [KNode.repoint_leaf]; exact hqlf) hq2 (Or.inl rfl)
+          (by rw [bk_repoint_leaf]; exact hqlf) hq2 (Or.inl rfl)
           (by rw [updN_ne _ _ _ _ (fun h => by omega)]; exact hwnext)
           (hVfresh w.next (Nat.le_refl _))
           (by rw [updN_ne _ _ _ _ (fun h => by omega)]; exact hwnext2)

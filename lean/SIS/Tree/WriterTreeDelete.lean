@@ -29,7 +29,7 @@ theorem liveAt_sub_of_lookup (n n' : KNode) (t : Time) (cv : Nat)
   · have hb : (c == cv) = false := by simpa using hc
     rw [hb] at h1
     simp only [Bool.false_eq_true, ↓reduceIte] at h1
-    exact ⟨hc, mem_of_lookup_nodup _ c z h1⟩
+    exact ⟨hc, bk_mem_of_lookup _ c z h1⟩
 
 /-- One node changed, its links only fewer: the tree is kept. -/
 theorem treeOK_of_node_shrink (L L' : NodeId → Option KNode) (t : Time) (r x : NodeId)

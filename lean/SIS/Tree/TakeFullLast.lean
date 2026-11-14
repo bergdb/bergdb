@@ -311,9 +311,9 @@ theorem writerWP_appendDeleteKlong_full_j2 (c : Ctx) (base : View BVal) (B : Nod
       intro _ v hv
       simp only [writerWP_pure]; exact hv
     have hU' : bitsUnion n.lastBitmap (n.bitsOf cv) = U := hU
-    apply writerWP_ite_cases
+    apply writerWP_if
     · intro htd
-      apply writerWP_ite_cases
+      apply writerWP_if
       · intro _; exact hhf true _
       · intro hdead
         exfalso; apply hfull; left
@@ -329,9 +329,9 @@ theorem writerWP_appendDeleteKlong_full_j2 (c : Ctx) (base : View BVal) (B : Nod
           | time t => simp [hgl] at htd
           | key a y => simp [hgl] at htd
     · intro htd
-      apply writerWP_ite_cases
+      apply writerWP_if
       · intro hroom
-        apply writerWP_ite_cases
+        apply writerWP_if
         · intro _; exact hhf true _
         · intro hdead
           exfalso; apply hfull; right

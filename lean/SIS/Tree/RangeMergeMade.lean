@@ -1,6 +1,7 @@
 import SIS.Tree.WriterGetMergeTail
 import SIS.Tree.RangeMerge
 import SIS.Tree.WriterTreeRetarget
+import SIS.Tree.WriterGetMergeMade
 
 set_option autoImplicit false
 
@@ -12,49 +13,6 @@ open SIS SIS.Check
 the merged nodes (bergdb 024-12, TP10; `RangeOrder`), on prover cost's
 `writerWP_mergeTail_made_tree` and `writerWP_merge_made_tree`: the merge's last
 loop keeps the parent's live klongs (`writerWP_mergeCleanup_keep`). -/
-
-/-- A node retargeted keeps a live klong that does not name src. -/
-theorem KNode.retarget_liveAt_keep (n : KNode) (ti : Nat) (src dst : NodeId) (t : Time) (c : Nat)
-    (z : NodeId) (h : (c, z) ∈ n.liveAt t) (hz : z ≠ src) :
-    (c, z) ∈ ({ n with ks := retargetKlongs n.ks ti src dst } : KNode).liveAt t := by
-  have hl := lookup_of_mem_nodup _ (KNode.liveAt_keys_nodup n t) c z h
-  rw [KNode.liveAt_lookup] at hl
-  have hp : ∀ q, (fun k => match k with
-      | Klong.time x => decide (x ≤ t)
-      | _ => true) (retargetStep ti src dst q) = (fun k => match k with
-      | Klong.time x => decide (x ≤ t)
-      | _ => true) q.1 := by
-    intro q
-    rcases q with ⟨k, i⟩
-    cases k with
-    | key cv y =>
-      by_cases hc : (decide (ti < i) && y == src) = true
-      · simp only [retargetStep, hc, ↓reduceIte]
-      · simp only [retargetStep, hc, Bool.false_eq_true, ↓reduceIte]
-    | time u => rfl
-    | del b => rfl
-  have hpre : prefixAt (retargetKlongs n.ks ti src dst) t =
-      ((prefixAt n.ks t).zipIdx).map (retargetStep ti src dst) := by
-    rw [retargetKlongs_eq]
-    unfold prefixAt
-    exact takeWhile_zipIdx_map _ _ hp n.ks 0
-  have hdel : ({ n with ks := retargetKlongs n.ks ti src dst } : KNode).delAt t = n.delAt t := by
-    unfold KNode.delAt
-    simp only
-    rw [hpre]
-    unfold lastBitmapOf
-    exact lastBitmapOf_zipIdx_map ti src dst _ 0 []
-  apply mem_of_lookup_nodup _ c z
-  rw [KNode.liveAt_lookup]
-  simp only
-  rw [hpre, hdel]
-  unfold keyLookup at hl ⊢
-  rw [zipIdx_map_zipIdx]
-  rcases keyLookupFold_retarget (n.delAt t) c ti src dst _ none none (Or.inl rfl) with h1 | ⟨h1, _⟩
-  · rw [h1]; exact hl
-  · rw [hl] at h1
-    simp only [Option.some.injEq] at h1
-    exact absurd h1 hz
 
 /-- `writerWP_mergeCleanup_frame` (prover cost's) with the parent's leaf flag and
 live klongs kept: no live klong of the parent names a node of the loop, so the
@@ -144,7 +102,7 @@ theorem writerWP_mergeCleanup_keep (p m1 : NodeId) (t : Time) (c : Ctx) :
           rcases h1n with he | ⟨ti, he⟩
           · rw [he]; exact hm
           · rw [he]
-            exact KNode.retarget_liveAt_keep n ti q.1 m1 t c' z hm
+            exact KNode.retarget_liveAt_of n ti q.1 m1 t c' z hm
               (fun hzq => hno q List.mem_cons_self c' (hzq ▸ hm))
     · have hq2' : q.2 = false := by simpa using hq2
       simp only [writerWP_bind, hq2', Bool.false_eq_true, ↓reduceIte]

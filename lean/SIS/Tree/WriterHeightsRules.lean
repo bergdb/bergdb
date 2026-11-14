@@ -54,10 +54,6 @@ theorem PathFreeTo.congr {w v : W} {n : Nat} (h : PathFreeTo w n) (hp : v.path =
   rw [hp] at hq; rw [ht]
   exact h d a q hd hq
 
-theorem ht_mem_ids {w : W} {x : NodeId} {g h : Nat} (hm : (x, g, h) ∈ w.gh) :
-    x ∈ w.gh.map (·.1) :=
-  List.mem_map.mpr ⟨_, hm, rfl⟩
-
 theorem HtCache.congr {c : Ctx} {H : NodeId → Nat → Prop} {w v : W} (hc : HtCache c H w) (hn : v.nodes = w.nodes)
     (hg : v.gh = w.gh) (ht : v.taken = w.taken) : HtCache c H v := by
   intro x n g h hn' hg' htk
@@ -148,7 +144,7 @@ theorem HtInv.load {B : NodeId} {c : Ctx} {H : NodeId → Nat → Prop} {w : W} 
           fun cv z hz => ⟨hfree z (hptr cv z (Or.inr hz)), fun h0 => ?_⟩, hvo.times x nd hnd⟩
         · exact Or.inr (hvo.heights.live x nd hnd hd hlv h0 cv z hz)
         · exact Or.inr (hvo.heights.prev x nd hnd hd hlv h0 cv z hz)
-      · exact absurd (ht_mem_ids hg') hxg
+      · exact absurd (kd_mem_ids hg') hxg
   · intro d a q cv y h1 h2 g h hg' htk hh
     rw [hp] at h1 h2; rw [hg] at hg'; rw [ht] at htk
     simp only [List.mem_cons] at hg'
@@ -192,7 +188,7 @@ theorem HtInv.create {B : NodeId} {c : Ctx} {H : NodeId → Nat → Prop} {w : W
       rcases hg' with hg' | hg'
       · cases hg'
         exact hks.mono hgm hf
-      · exact absurd (ht_mem_ids hg') hxg
+      · exact absurd (kd_mem_ids hg') hxg
   · intro d a q cv y h1 h2 g' h' hg' htk hh
     rw [hp] at h1 h2; rw [hg] at hg'; rw [ht] at htk
     simp only [List.mem_cons] at hg'

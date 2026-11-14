@@ -71,7 +71,7 @@ theorem putBook_takeBack (x p : NodeId) (k : Nat) (c : Ctx) (base : View BVal) (
   have g4 := @state_takeBackX (allocatedIdsInvariant B) x p k c w hw.alloc
   have g5 := @state_takeBackX (commitInvariant top0) x p k c w hw.commit
   have g6 := writerWP_takeBack_freshCacheX B x p k c w hB.good.ids hw.fresh
-    (hw.fresh.2.1 (x, xn) (sizeStep_lookup_mem _ x xn hl))
+    (hw.fresh.2.1 (x, xn) (mem_ids_of_lookup _ x xn hl))
   have g7 := ptrs_takeBack (fun y => y < B) x p k c w (putBase_ptrs c base B hB) hw.ptrs
   intro r w' h
   exact ⟨g1 r w' h, g2 r w' h, (g3 r w' h).1, g4 r w' h, g5 r w' h, (g6 r w' h).1, (g7 r w' h).1⟩

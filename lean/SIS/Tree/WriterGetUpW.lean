@@ -154,7 +154,7 @@ theorem liveAt_iff_of_delete_lookup (n n' : KNode) (t : Time) (cv : Nat)
   · rintro ⟨h, hc⟩
     rw [KNode.liveAt_of_times n' t hn']
     rw [KNode.liveAt_of_times n t hn] at h
-    apply mem_of_lookup_nodup
+    apply bk_mem_of_lookup
     rw [hl c]
     have hb : (c == cv) = false := by simpa using hc
     rw [hb]

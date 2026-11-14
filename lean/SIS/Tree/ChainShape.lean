@@ -1087,7 +1087,7 @@ theorem writerWP_appendKlongs_chainShapeG (c : Ctx)
       have hxt := htimes (s + (e + 1)) (by omega) hD
       have hqt := htimes (s + e) (by omega) (by omega)
       have hKuniq : ∀ y, (K (s + (e + 1)), y) ∈ (Nn (s + e)).liveAt c.i → y = X (s + (e + 1)) :=
-        fun y hy => liveAt_cv_unique _ c.i hqt _ _ _ hy hkl
+        fun y hy => mrg_liveAt_unique _ c.i hqt _ _ _ hy hkl
       have hXne : ∀ i, s ≤ i → i ≤ s + e → X i ≠ X (s + (e + 1)) := by
         intro i h1 h2 he; have := hdist _ _ h1 (by omega) (by omega) hD he; omega
       -- after the parent's step: the cascade's post

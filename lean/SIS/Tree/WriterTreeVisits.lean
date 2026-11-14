@@ -9,17 +9,13 @@ TREE premise (`htree_of_treeOK`).
 -/
 import SIS.Tree.WriterTree
 import SIS.Tree.GetSplit
+import SIS.Tree.WriterBook
 
 set_option autoImplicit false
 
 namespace SIS.Tree
 
 open SIS SIS.Check
-
-theorem mem_of_lookup_nodup {β : Type} (l : List (Nat × β)) (a : Nat) (b : β)
-    (h : l.lookup a = some b) : (a, b) ∈ l := by
-  obtain ⟨l1, l2, hl, _⟩ := List.lookup_eq_some_iff.mp h
-  rw [hl]; simp
 
 theorem lookup_of_mem_nodup {β : Type} (l : List (Nat × β)) (hn : (l.map Prod.fst).Nodup)
     (a : Nat) (b : β) (h : (a, b) ∈ l) : l.lookup a = some b := by
@@ -162,7 +158,7 @@ theorem eqVisits_tPathK (L : NodeId → Option KNode) (t : Time) (r : NodeId) (c
             rw [hs] at hm
             simp only at hm
             have hlive : (fd.c, fd.y) ∈ n.liveAt t :=
-              mem_of_lookup_nodup _ fd.c fd.y (n.searchLte_liveAt_lookup t cv fd hs)
+              bk_mem_of_lookup _ fd.c fd.y (n.searchLte_liveAt_lookup t cv fd hs)
             exact ih fd.y ks (TPathK.inner hy hn hl ⟨n, hn, hlive⟩) x c hm
 
 theorem getEqR_tPathK (L : NodeId → Option KNode) (t : Time) (r : NodeId) (cv : Nat)
@@ -185,7 +181,7 @@ theorem getEqR_tPathK (L : NodeId → Option KNode) (t : Time) (r : NodeId) (cv 
         simp only [↓reduceIte] at h
         have hs := searchEqSpec n t cv (hwf y n hn)
         rw [h] at hs
-        exact TPathK.seg hy hn hl ⟨n, hn, mem_of_lookup_nodup _ cv z hs.symm⟩
+        exact TPathK.seg hy hn hl ⟨n, hn, bk_mem_of_lookup _ cv z hs.symm⟩
       | false =>
         rw [hl] at h
         simp only [Bool.false_eq_true, ↓reduceIte] at h
@@ -195,7 +191,7 @@ theorem getEqR_tPathK (L : NodeId → Option KNode) (t : Time) (r : NodeId) (cv 
           rw [hs] at h
           simp only at h
           have hlive : (fd.c, fd.y) ∈ n.liveAt t :=
-            mem_of_lookup_nodup _ fd.c fd.y (n.searchLte_liveAt_lookup t cv fd hs)
+            bk_mem_of_lookup _ fd.c fd.y (n.searchLte_liveAt_lookup t cv fd hs)
           exact ih fd.y ks z (TPathK.inner hy hn hl ⟨n, hn, hlive⟩) h
 
 theorem segRootR_tPathK (L : NodeId → Option KNode) (t : Time) (r : NodeId) (fuel : Nat)

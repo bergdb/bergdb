@@ -48,7 +48,7 @@ theorem bk_lookup_append_left {β : Type} (ns ms : List (NodeId × β)) (x : Nod
   rw [List.lookup_append, h]
   rfl
 
-theorem bk_lookup_append_new {β : Type} (ns : List (NodeId × β)) (x : NodeId) (n : β)
+theorem lookup_append_single_self {β : Type} (ns : List (NodeId × β)) (x : NodeId) (n : β)
     (h : ns.lookup x = none) : (ns ++ [(x, n)]).lookup x = some n := by
   rw [List.lookup_append, h]
   simp
@@ -199,7 +199,7 @@ theorem book_getNode (B x : NodeId) (c : Ctx) (w : W) (hv : ViewIdsBelow B c.vie
           intro h; apply hxn; rw [hb.ids]; exact List.mem_reverse.mpr h
         simp only [writerWP_bind, writerWP_set, writerWP_pure]
         refine ⟨?_, Kept.grow _ [(x, c.p.segOf nd.level, c.p.heightOf nd.level)] rfl rfl,
-          bk_lookup_append_new _ x _ hn⟩
+          lookup_append_single_self _ x _ hn⟩
         refine ⟨hb.next, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
         · simp [hb.ids]
         · intro q hq
@@ -333,11 +333,11 @@ theorem book_newKey (B : NodeId) (g h : Nat) (leaf : Bool) (ks : List Klong) (c 
   split
   · simp only [writerWP_bind, writerWP_modify, writerWP_pure]
     refine ⟨hfin _ (fun e he => List.mem_cons_of_mem _ he) (fun _ => List.mem_cons_self),
-      Kept.grow _ [(w.next, g, h)] rfl rfl, bk_lookup_append_new _ _ _ hnone⟩
+      Kept.grow _ [(w.next, g, h)] rfl rfl, lookup_append_single_self _ _ _ hnone⟩
   · rename_i hno
     simp only [writerWP_bind, writerWP_pure, writerWP_modify]
     refine ⟨hfin _ (fun e he => he) ?_, Kept.grow _ [(w.next, g, h)] rfl rfl,
-      bk_lookup_append_new _ _ _ hnone⟩
+      lookup_append_single_self _ _ _ hnone⟩
     intro hh
     exfalso; apply hno
     simp only [Bool.or_eq_true, decide_eq_true_eq]
@@ -524,7 +524,7 @@ theorem book_ghOf_leaf (B x : NodeId) (c : Ctx) (vr w : W) (n : KNode)
 
 /-! ## Leaf flags of the nodes the writer stores -/
 
-theorem bk_setAt_leaf (n : KNode) (i : Nat) (k : Klong) : (n.setAt i k).leaf = n.leaf := rfl
+theorem KNode.setAt_leaf (n : KNode) (i : Nat) (k : Klong) : (n.setAt i k).leaf = n.leaf := rfl
 
 theorem bk_toPrev_leaf (n : KNode) (t : Time) : (n.toPrev t).leaf = n.leaf := rfl
 
@@ -595,7 +595,7 @@ macro "bkNode" : tactic => `(tactic| (
   rintro _ _ ⟨_, _, _⟩))
 
 macro "bkLeaf" : tactic => `(tactic| (
-  (try simp only [KNode.add_leaf, bk_setAt_leaf, bk_toPrev_leaf, bk_repoint_leaf,
+  (try simp only [KNode.add_leaf, KNode.setAt_leaf, bk_toPrev_leaf, bk_repoint_leaf,
     bk_halves_fst_leaf, bk_halves_snd_leaf, bk_foldl_add_leaf, apply_ite KNode.leaf, ite_self,
     Bool.not_not])
   all_goals first

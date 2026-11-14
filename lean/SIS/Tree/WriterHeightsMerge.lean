@@ -248,7 +248,7 @@ theorem ht_P_new {c : Ctx} {w : W} {m : NodeId} {g hp cv : Nat} (hf : w.taken.co
 
 theorem ht_ne_of_not_mem {w : W} {m o : NodeId} (hm : m ∉ w.gh.map (·.1)) {g h : Nat}
     (ho : (o, g, h) ∈ w.gh) : m ≠ o := by
-  rintro rfl; exact hm (ht_mem_ids ho)
+  rintro rfl; exact hm (kd_mem_ids ho)
 
 /-- The merge's parent change and its last loop: m1 and m2 of the height below
 p's. -/
@@ -285,7 +285,7 @@ theorem ht_mergeFinish (B : NodeId) (c : Ctx) (d : Nat) (p : NodeId) (il cL : Na
     intro g h hm cv
     obtain ⟨rfl, rfl⟩ := kd_tag_eq hb1 hpt2 hm
     exact ht_P_new (ht_free_le hm1f hle1) (HtLe.gh' hm1 hle1)
-  refine writerWP_mono (ht_mergeLoopChk B p m1 l r bl br c v1 hvo hb1 hi1 (ht_mem_ids hpt2) hm1'
+  refine writerWP_mono (ht_mergeLoopChk B p m1 l r bl br c v1 hvo hb1 hi1 (kd_mem_ids hpt2) hm1'
     hm1l ln1 rn1 hln1 hrn1) ?_
   rintro _ u ⟨hbu, hiu, hku, hpu⟩
   exact ⟨hbu, hiu, (hle.1.trans hle1.1).trans hku, by rw [hpu, hp1, hpv]⟩
@@ -316,7 +316,7 @@ theorem ht_mergeTailChk (B : NodeId) (c : Ctx) (x : NodeId) (d : Nat) (p : NodeI
   have hxh : HtP c H w hp 0 x := by rcases hxlr with rfl | rfl <;> assumption
   obtain ⟨gx, hxt, -⟩ := hNode x xn hxn hxh
   have hxleaf : xn.leaf = (hp - 1 == 0) := kd_leaf hb hxn hxt
-  have hpg : p ∈ w.gh.map (·.1) := ht_mem_ids hpt
+  have hpg : p ∈ w.gh.map (·.1) := kd_mem_ids hpt
   have hxH : HasHt H w x (hp - 1) := hxh.2 hp0
   clear hNode
   unfold mergeTailChk
@@ -386,7 +386,7 @@ theorem ht_live_of_last {pn : KNode} {i cv : Nat} {y : NodeId}
     simp only [KNode.ptr?, hy0, Option.some.injEq] at hy
     rw [hy0, hy]
   refine ⟨hk, ?_⟩
-  apply mem_of_lookup_nodup
+  apply bk_mem_of_lookup
   rw [KNode.live_lookup]
   exact keyLookup_of_last _ _ _ i y hk hl
 

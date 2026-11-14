@@ -102,7 +102,7 @@ theorem ht_repoint_drops {n : KNode} {x y : NodeId} {k j : Nat} (hj : n.linkInde
   split at hl
   · cases hl; exact hxy rfl
   · rename_i hne
-    have := hone cv (mem_of_lookup_nodup _ cv x hl)
+    have := hone cv (bk_mem_of_lookup _ cv x hl)
     subst this
     simp at hne
 

@@ -372,7 +372,7 @@ theorem KNode.addKeys_liveAt_of_fold (t : Time) (ins : List (Nat × NodeId)) (n 
     (h : ins.foldl (pairLookupStep c) (n.live.lookup c) = some z) :
     (c, z) ∈ (ins.foldl (fun n (cv, y) => n.add t (.key cv y)) n).liveAt t := by
   rw [KNode.liveAt_of_times _ t (KNode.addKeys_times t ins n ht)]
-  apply mem_of_lookup_nodup
+  apply bk_mem_of_lookup
   rw [KNode.addKeys_live_lookup t ins n hw c, h]
 
 theorem KNode.addKeys_liveAt_fold (t : Time) (ins : List (Nat × NodeId)) (n : KNode)

@@ -512,7 +512,7 @@ theorem mrg_newKlongs_liveAt_iff (b : Bool) (t : Time) (l : List (Nat × NodeId)
   · exact liveAt_newKlongs_mem b t t l c z
   · intro h
     rw [KNode.liveAt_of_times _ t (newKlongs_times t l)]
-    apply mem_of_lookup_nodup
+    apply bk_mem_of_lookup
     rw [KNode.newKlongs_live_lookup_fold, pairLookupFold_eq_lookup l c hnd]
     exact lookup_of_mem_nodup _ hnd c z h
 

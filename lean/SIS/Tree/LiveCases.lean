@@ -36,7 +36,7 @@ theorem KNode.add_key_liveAt_keep (n : KNode) (t : Time) (cv : Nat) (v : NodeId)
   have ht' := KNode.add_times n t (.key cv v) (fun s h => by cases h) ht
   rw [KNode.liveAt_of_times _ t ht']
   rw [KNode.liveAt_of_times _ t ht] at h
-  apply mem_of_lookup_nodup
+  apply bk_mem_of_lookup
   rw [KNode.add_key_live_lookup_of_wf n t cv c v hw]
   have hb : (cv == c) = false := by simpa using (Ne.symm hc)
   simp only [hb, Bool.false_eq_true, ↓reduceIte]

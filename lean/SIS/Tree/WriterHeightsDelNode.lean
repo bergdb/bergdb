@@ -55,7 +55,7 @@ theorem nodeHt_setAt_del {c : Ctx} {w : W} {h : Nat} {n : KNode} (hpos : 0 < c.i
     rw [KNode.setAt_delete_live_lookup n cv c' old hlast] at hl
     split at hl
     · cases hl
-    · exact hn.1 c' y (mem_of_lookup_nodup _ c' y hl)
+    · exact hn.1 c' y (bk_mem_of_lookup _ c' y hl)
   · obtain ⟨i, hi⟩ := ht_lastTime_index ht
     have hsz : 0 < n.ks.length := by
       cases hks : n.ks with
@@ -93,7 +93,7 @@ theorem nodeHt_add_del {c : Ctx} {w : W} {h : Nat} {n : KNode} (hpos : 0 < c.i)
     rw [KNode.add_delete_live_lookup n c.i cv c'] at hl
     split at hl
     · cases hl
-    · exact hn.1 c' y (mem_of_lookup_nodup _ c' y hl)
+    · exact hn.1 c' y (bk_mem_of_lookup _ c' y hl)
   · have he : (n.add c.i (.del (bitsUnion n.lastBitmap (n.bitsOf cv)))).toPrev (c.i - 1) =
         n.toPrev (c.i - 1) := by
       unfold KNode.toPrev; rw [KNode.add_prefixAt_past n c.i (c.i - 1) (by omega), KNode.add_leaf]
@@ -129,7 +129,7 @@ theorem htKs_lastVersion_del {c : Ctx} {w : W} {h : Nat} {n : KNode} (hn : NodeH
   rw [KNode.delete_live_lookup n t cv c'] at hl
   split at hl
   · cases hl
-  · exact hn.1 c' y (mem_of_lookup_nodup _ c' y hl)
+  · exact hn.1 c' y (bk_mem_of_lookup _ c' y hl)
 
 /-- A retarget of the transaction's klongs that name src to dst, a node of the
 right height. -/
@@ -181,12 +181,6 @@ theorem nodeHt_retarget {c : Ctx} {w : W} {h : Nat} {n : KNode} (hn : NodeHt c H
       simp only at he
       split at he <;> cases he
 
-/-- A node of the right height with a key klong added at the transaction's time. -/
-theorem nodeHt_addKey {c : Ctx} {w : W} {h : Nat} {n : KNode} (hpos : 0 < c.i)
-    (hn : NodeHt c H w h n) {cv : Nat} {y : NodeId} (hy : HtP c H w h cv y) :
-    NodeHt c H w h (n.add c.i (.key cv y)) :=
-  nodeHt_addFold hpos hn [(cv, y)] (kdPairs_cons hy kdPairs_nil')
-
 /-- The merge's parent node, with its three choices free. -/
 theorem nodeHt_mpNode {c : Ctx} {w : W} {h : Nat} {pn : KNode} (hpos : 0 < c.i)
     (hN : NodeHt c H w h pn) (il cL : Nat) (m1 : NodeId) (ir cR : Nat)
@@ -217,7 +211,7 @@ theorem nodeHt_mpNode {c : Ctx} {w : W} {h : Nat} {pn : KNode} (hpos : 0 < c.i)
     simp only
     cases lip with
     | true => exact nodeHt_repoint (hn1 dR) il m1 hm1
-    | false => exact nodeHt_addKey hpos (hn1 dR) (hm1 cL)
+    | false => exact nodeHt_add hpos (hn1 dR) (hm1 cL)
   unfold mpNode
   cases m2 with
   | none => exact hn2 true
@@ -227,6 +221,6 @@ theorem nodeHt_mpNode {c : Ctx} {w : W} {h : Nat} {pn : KNode} (hpos : 0 < c.i)
     have hy := hm2 y g rfl
     cases rip with
     | true => exact nodeHt_repoint (hn2 _) ir y hy
-    | false => exact nodeHt_addKey hpos (hn2 _) (hy _)
+    | false => exact nodeHt_add hpos (hn2 _) (hy _)
 
 end SIS.Tree

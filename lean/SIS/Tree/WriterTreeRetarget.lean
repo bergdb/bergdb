@@ -161,14 +161,14 @@ theorem KNode.retarget_liveAt (n : KNode) (ti : Nat) (src dst : NodeId) (t : Tim
   rcases keyLookupFold_retarget (n.delAt t) c ti src dst _ none none (Or.inl rfl) with h1 | ⟨h1, h2⟩
   · rw [hl] at h1
     left
-    apply mem_of_lookup_nodup _ c z
+    apply bk_mem_of_lookup _ c z
     rw [KNode.liveAt_lookup]
     exact h1.symm
   · rw [hl] at h2
     simp only [Option.some.injEq] at h2
     right
     refine ⟨h2, ?_⟩
-    apply mem_of_lookup_nodup _ c src
+    apply bk_mem_of_lookup _ c src
     rw [KNode.liveAt_lookup]
     exact h1
 

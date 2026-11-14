@@ -59,9 +59,6 @@ theorem mrg_splitMerged_two (inner : Bool) (cap : Nat) (hcap : 1 ≤ cap) (e E1 
       · simp [h3]
       · exact h2.symm
 
-theorem mrg_repoint_leaf (n : KNode) (i : Nat) (y : NodeId) : (n.repoint i y).leaf = n.leaf := by
-  unfold KNode.repoint; split <;> rfl
-
 theorem mrg_mergeParentNode_leaf (pn : KNode) (tt : Time) (il cL : Nat) (m1 : NodeId) (ir cR : Nat)
     (m2 : Option (NodeId × Nat)) : (mergeParentNode pn tt il cL m1 ir cR m2).leaf = pn.leaf := by
   have h1 : ∀ (b : Bool) (k : Klong) (n : KNode),
@@ -69,7 +66,7 @@ theorem mrg_mergeParentNode_leaf (pn : KNode) (tt : Time) (il cL : Nat) (m1 : No
     intro b k n; cases b <;> simp [KNode.add_leaf, KNode.setAt_leaf]
   have h2 : ∀ (b : Bool) (n : KNode) (i : Nat) (y : NodeId) (k : Klong),
       (if b = true then n.repoint i y else n.add tt k).leaf = n.leaf := by
-    intro b n i y k; cases b <;> simp [KNode.add_leaf, mrg_repoint_leaf]
+    intro b n i y k; cases b <;> simp [KNode.add_leaf, bk_repoint_leaf]
   rw [mergeParentNode_eq]
   unfold mpNode
   cases m2 with

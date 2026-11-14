@@ -216,12 +216,9 @@ theorem rangeOrder_leb (N N' : NodeId → Option KNode) (t : Time) (r x : NodeId
 
 /-! ## LE-b at the writer -/
 
-theorem KNode.repoint_leaf (n : KNode) (i : Nat) (y : NodeId) : (n.repoint i y).leaf = n.leaf := by
-  unfold KNode.repoint; split <;> rfl
-
 theorem lebNode_leaf (n : KNode) (tt : Time) (htd lip : Bool) (e jcv : Nat) (jy : NodeId) :
     (lebNode n tt htd lip e jcv jy).leaf = n.leaf := by
   unfold lebNode
-  cases htd <;> cases lip <;> simp [KNode.repoint_leaf, KNode.add_leaf, KNode.setAt_leaf]
+  cases htd <;> cases lip <;> simp [bk_repoint_leaf, KNode.add_leaf, KNode.setAt_leaf]
 
 end SIS.Tree

@@ -39,30 +39,11 @@ theorem writerWP_unlink_fate (x : NodeId) (n : KNode) (c : Ctx) (w : W)
 
 /-! ## Live klongs of a repointed or extended leaf -/
 
-theorem KNode.repoint_liveAt_new (n : KNode) (x y : NodeId) (k j : Nat) (t : Time)
-    (hj : n.linkIndex x k = some j) (ht : ∀ s, Klong.time s ∈ n.ks → s ≤ t) :
-    (k, y) ∈ (n.repoint j y).liveAt t := by
-  rw [KNode.liveAt_of_times _ t (KNode.repoint_times n j y t ht)]
-  apply mem_of_lookup_nodup
-  rw [KNode.repoint_live_lookup n x y k j hj k]
-  simp
-
-theorem KNode.repoint_liveAt_keep (n : KNode) (x y : NodeId) (k j : Nat) (t : Time)
-    (hj : n.linkIndex x k = some j) (ht : ∀ s, Klong.time s ∈ n.ks → s ≤ t) (c : Nat) (z : NodeId)
-    (hz : (c, z) ∈ n.liveAt t) (hck : c ≠ k) : (c, z) ∈ (n.repoint j y).liveAt t := by
-  rw [KNode.liveAt_of_times _ t (KNode.repoint_times n j y t ht)]
-  rw [KNode.liveAt_of_times n t ht] at hz
-  apply mem_of_lookup_nodup
-  rw [KNode.repoint_live_lookup n x y k j hj c]
-  have hb : (k == c) = false := by simpa using Ne.symm hck
-  rw [hb]
-  simpa using lookup_of_mem_nodup _ (KNode.live_keys_nodup _) c z hz
-
 theorem KNode.add_liveAt_new (n : KNode) (k : Nat) (y : NodeId) (t : Time)
     (hw : klongsWf n.ks = true) (ht : ∀ s, Klong.time s ∈ n.ks → s ≤ t) :
     (k, y) ∈ (n.add t (.key k y)).liveAt t := by
   rw [KNode.liveAt_of_times _ t (KNode.add_times n t (.key k y) (fun s h => by cases h) ht)]
-  apply mem_of_lookup_nodup
+  apply bk_mem_of_lookup
   rw [KNode.add_key_live_lookup_of_wf n t k k y hw]
   simp
 
@@ -71,7 +52,7 @@ theorem KNode.add_liveAt_keep (n : KNode) (k : Nat) (y : NodeId) (t : Time)
     (hz : (c, z) ∈ n.liveAt t) (hck : c ≠ k) : (c, z) ∈ (n.add t (.key k y)).liveAt t := by
   rw [KNode.liveAt_of_times _ t (KNode.add_times n t (.key k y) (fun s h => by cases h) ht)]
   rw [KNode.liveAt_of_times n t ht] at hz
-  apply mem_of_lookup_nodup
+  apply bk_mem_of_lookup
   rw [KNode.add_key_live_lookup_of_wf n t k c y hw]
   have hb : (k == c) = false := by simpa using Ne.symm hck
   rw [hb]

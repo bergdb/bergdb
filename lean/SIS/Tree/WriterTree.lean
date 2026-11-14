@@ -403,8 +403,8 @@ theorem writerTreeOK_init (p : Params) (ts : List Tx) (tx : Tx) (z : NodeId) (to
   intro x n hx
   have hk := knodeOf_timesLE p (treeRun p ts) ts.length hP x n hx
   apply KNode.liveAt_eq_of_prefixAt
-  rw [prefixAt_of_timesLE n.ks (ts.length + 1) (fun y hy => Nat.le_succ_of_le (hk y hy)),
-    prefixAt_of_timesLE n.ks ts.length hk]
+  rw [prefixAt_eq_self n.ks (ts.length + 1) (fun y hy => Nat.le_succ_of_le (hk y hy)),
+    prefixAt_eq_self n.ks ts.length hk]
 
 /-! ## By operation -/
 
