@@ -1,8 +1,8 @@
 028-12. Investigate: can the take's byte limit stop the startup section's bound?
 ================================================================================
 
-Status: evaluated, for Frans. Kind: Investigate. Frans: decision (section 6;
-the answer needs none).
+Status: done (2026-11-14). Kind: Investigate. Frans: decision (A; the
+answer needs none).
 Created 2026-11-13 by Frans Lundberg.
 
 What: `TransSeq.take` stops at the first transaction whose taken nodes
@@ -333,3 +333,24 @@ Log
 10M keys at the real limit, 1M keys scaled); the coordinator's two
 questions from `T3_takeB_count` (checkpoint 418ab85d) answered in sections
 2 and 5; proposal A for Frans.
+
+2026-11-14, 11:58. Frans: "Decisions 4 and 5, as recommended." For this
+entry: option A, DbBuilder refuses a startup distance above 10^9.
+
+2026-11-14. Done by an agent of coord-1114, on branch 028-12-builder-sd:
+`DbBuilder.startupDistance()` refuses a value above 10^9
+(`DbBuilder.MAX_STARTUP_DISTANCE`, the largest that
+`Db.setStartupDistance()` sets) with IllegalArgumentException ("Too
+large, ..."), where it already refused one below 10, so the builder keeps
+the value it had; its Javadoc says the limit and why, and
+`Db.setStartupDistance()`'s Javadoc no longer says that the builder allows
+more. A database made before with a larger setting starts with it, as the
+stream keeps it. The Pub API needs no change: `DatabaseBuilder` and
+`Database.setStartupDistanceInMb()` clamp to 5 to 1000 MB, at most 10^9.
+The unit test `DbTesterJavadoc.testBuilderStartupDistanceLimit`: 10^9
+taken (a database started with it), 10^9 + 1, 2^31 - 1, 9, 0, -1 and
+-2^31 refused, 10 taken, and a refused value leaves the one before. No
+test, demo or stress script in java/ used more than 10^9; this entry's
+own run r10m-sdmax (`queue-10m.sh`, `-Dtb.sd=2147483647`) is now refused,
+and so is the run at 50M keys with sd 2^31 - 1 that State lists as not
+done. `java/before-commit.sh` printed `BEFORE COMMIT OK`.

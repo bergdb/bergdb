@@ -410,6 +410,43 @@ public class DbTesterJavadoc {
         }
     }
 
+    /**
+     * DbBuilder.startupDistance(): 10 to 10^9 taken, as Db.setStartupDistance() sets at most
+     * 10^9; a value above 10^9 (10^9 + 1, Integer.MAX_VALUE) or below 10 is refused with
+     * IllegalArgumentException, and the builder keeps the value it had (bergdb 028-12).
+     */
+    @Nano
+    public static void testBuilderStartupDistanceLimit() {
+        final int max = 1000 * 1000000;
+        Assert.assertEquals(max, DbBuilder.MAX_STARTUP_DISTANCE);
+        int[] bad = {max + 1, Integer.MAX_VALUE, 9, 0, -1, Integer.MIN_VALUE};
+        for (final int sd : bad) {
+            assertThrows("startupDistance(" + sd + ")", IllegalArgumentException.class,
+                    () -> Db.builder().startupDistance(sd));
+        }
+        Db.builder().startupDistance(10);
+        
+        Db db = Db.builder().testSetup().startupDistance(max).start();
+        try {
+            Assert.assertEquals("10^9 taken", max, db.getStartupDistance());
+            db.execute(db.trans().put("k", "v").build());
+            Assert.assertEquals("v", new String(get(db, "k")));
+        } finally {
+            db.close();
+        }
+        
+        final DbBuilder b = Db.builder().testSetup().startupDistance(2000);
+        assertThrows("10^9 + 1 after 2000", IllegalArgumentException.class,
+                () -> b.startupDistance(max + 1));
+        db = b.start();
+        try {
+            Assert.assertEquals("the value before the refused one", 2000,
+                    db.getStartupDistance());
+        } finally {
+            db.close();
+        }
+    }
+
     /** Every KV of the latest state, with the stop condition 'c', or every one if null. */
     private static List<Kvt> scan(Db db, GetMany.StopCondition c) {
         GetMany g = db.newGetMany();

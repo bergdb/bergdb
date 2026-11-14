@@ -646,9 +646,10 @@ public class Db implements AutoCloseable {
      * (twice RecoverableStream.META_BLOCK_DISTANCE to 10^9), and the clamped value is set; a
      * call whose clamped value is the setting in force writes nothing (bergdb 005-53). So on
      * a database whose setting is outside that range, which DbBuilder.startupDistance allows
-     * (10 bytes and up), any call writes and sets a value inside it (bergdb 015-76). A
-     * negative value is refused with IllegalArgumentException and changes nothing. On a
-     * database that is not active the call throws as a transaction does
+     * below it (10 bytes and up; it refuses more than 10^9 since bergdb 028-12) and an
+     * older database's stream may hold above it, any call writes and sets a value inside it
+     * (bergdb 015-76). A negative value is refused with IllegalArgumentException and
+     * changes nothing. On a database that is not active the call throws as a transaction does
      * (IllegalDbStateException, DbStoppingException, DbFailedException), and a call that
      * is refused leaves the setting as it was. With a finite retain duration the setting
      * also paces reclaim: an iteration begins at a commit only after more than twice it of

@@ -183,14 +183,25 @@ public class DbBuilder {
         return this;
     }
 
+    /** The largest startup distance, 10^9 bytes, as Db.setStartupDistance's (bergdb 028-12). */
+    static final int MAX_STARTUP_DISTANCE = 1000 * 1000000;
+
     /**
      * The startup distance in bytes for a new database, 50 MB by default; a database keeps
-     * the one in its stream (Db.setStartupDistance()). A value below 10 is refused with
-     * IllegalArgumentException.
+     * the one in its stream (Db.setStartupDistance()). A value below 10 or above 10^9
+     * (MAX_STARTUP_DISTANCE, the largest that Db.setStartupDistance() sets) is refused with
+     * IllegalArgumentException, and the builder keeps the value it had. Above 10^9, the
+     * debt of index nodes that the take writes could pass the room of a record and stop the
+     * take past its deadline (bergdb 028-12). A database made before with a larger setting
+     * starts with it, as the stream keeps it.
      */
     public DbBuilder startupDistance(int startupDistance) {
         if (startupDistance < 10) {
             throw new IllegalArgumentException("Too small, " + startupDistance);
+        }
+        if (startupDistance > MAX_STARTUP_DISTANCE) {
+            throw new IllegalArgumentException("Too large, " + startupDistance
+                    + ", the largest is " + MAX_STARTUP_DISTANCE);
         }
 
         this.startupDistance = startupDistance;
