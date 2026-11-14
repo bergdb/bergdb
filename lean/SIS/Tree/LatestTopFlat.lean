@@ -15,10 +15,11 @@ taken apart:
 * the take-back through a replaceRoot whose segment leaf is full (`hRJ`) is
   proved (putinv's `replaceRootFullJ2OK_run`);
 * the upward delete's stop node is proved, its cascade and its LE-b with room
-  or full, for the reading (putinv's `delStepsOKF3_of_open10`) and for the
-  take-back (`delStepsJ2OKF3_of_openR5`), from `hU` (the state after the upward
-  loop) and the fuel after the splits (`hFit`, `hFitL`, `hFits`); the links and
-  klongs after the upward loop follow from the writer's books;
+  or full, for the reading (putinv's `delStepsOKF3_of_open11`) and for the
+  take-back (`delStepsJ2OKF3_of_openR6`), from `hU` (the state after the upward
+  loop is a tree) and the fuel after the splits (`hFit`, `hFitL`, `hFits`); the
+  links and klongs after the upward loop follow from the writer's books, and
+  the cascade's ranges from the tree;
 * the fuel at every state between operations (`hfit`) comes from the heights
   (cost's `txSegFitsOK_of_takeBelowDelR`): every node a delete takes back has a
   height below the fuel (`TakeBelowFuelDelOK`; a put takes nothing back).
@@ -36,6 +37,7 @@ import SIS.Tree.DelStepsCascRoot
 import SIS.Tree.TakeUpCasc
 import SIS.Tree.DelStepsLeb
 import SIS.Tree.DelStepsLinks
+import SIS.Tree.DelStepsUnlinkTree
 
 set_option autoImplicit false
 
@@ -107,7 +109,7 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     (i4 : OpCaseOK p (RunOK p) (QPutInv p) DelMergeCase)
     (r4 : OpCaseOK p (RunOK p) (QRange p) DelMergeCase)
     (l4 : OpCaseOK p (RunOK p) (QLive p) DelMergeCase)
-    (hU : ∀ ts, UpUnlinkOK (ctxOf p ts) (viewOf (treeRun p ts)))
+    (hU : ∀ ts, UpUnlinkTreeOK (ctxOf p ts) (viewOf (treeRun p ts)))
     (hFit : ∀ ts BK, UpCascFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) BK)
     (hFitL : ∀ ts BK,
       UpLebFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) BK)
@@ -169,7 +171,7 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
     (rangeStateOK_of_cases p _ hRL' hRT' hRI' hT' hPI' hO')
     hfitQ
     (fun ts tx hw hr => hMF ts tx hw (hR _ _ hr))
-    (delStepsJ2OKF3_of_openR5 p _ (TakeS4 p) (by omega) hsa hRL' hRP' hRK'
+    (delStepsJ2OKF3_of_openR6 p _ (TakeS4 p) (by omega) hsa hRL' hRP' hRK'
       (fun _ _ _ h => h.1.1.1.1) (fun _ _ _ h => h.1.1.1.2) (fun _ _ _ h => h.1.1.2)
       (fun _ _ _ h => h.1.2) (fun _ _ _ h => h.2.1) (fun _ _ _ h => h.2.2) hU hFit hFitL hFits)
     hMS hCo (replaceRootFullJ2OK_run p hsa)
@@ -183,7 +185,7 @@ theorem invGetScanOK_merges_flat (p : Params) (hp : MergeParamsOK p)
   have h := getOK_scanOK_of_cases_merges_open p hp hinv (fun ts hw => (hJ ts hw).1)
     (fun ts hw => (hJ ts hw).2.1) hfit t4 i4 r4
     (opGetCaseOK_delMergeF4 p (RunOK p)
-      (delStepsOKF3_of_open10 p (RunOK p) (by omega) hsa hRL hP hU hFit hFitL hFits)
+      (delStepsOKF3_of_open11 p (RunOK p) (by omega) hsa hRL hP hU hFit hFitL hFits)
       hMS hCo hsa hcap (by omega) hP hfit)
   exact ⟨hinv, h.1, h.2, latestGetOK_of_getOK p h.1, latestScanOK_of_scanOK p h.2⟩
 
