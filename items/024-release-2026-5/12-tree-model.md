@@ -1970,6 +1970,21 @@ and its status:
       the nodes it found, and after every operation every cached height
       is below fuel - 1: 0 failures. 717 operations split a root, 36 of
       them two roots (in two segments).
+    - TP10's fuel premise between operations (`TxSegFitsOK`, latest's
+      `hfit`) from the heights (cost, 02:05; `HeightsFit.lean`):
+      `txSegFitsOK_of_takeBelowR` gives `TxSegFitsOK p R` from
+      `OpDelChkOK`, the run facts in R (`RunLinksOK`, `KindsAllOK`,
+      `HeightAllOK`) and one named premise, `TakeBelowFuelOK`: every node
+      an operation takes back has a height below the fuel. The argument is
+      the doomed transaction: a node of height fuel or more is above H, so
+      in `outside` (`HeightMarkedPred`), and `boundsOK` at the end asks it
+      taken back by a later operation (`taken_by_op`), which the premise
+      excludes. (B) is not needed for it; (B) serves the bounds inside an
+      operation (`DelFullFitsOK`, `MergeStepOKF3`, `CollapseStepOKF4`).
+      `TakeBelowFuelOK` checked on runs (`HeightsOp.lean`): 3205 operations
+      that took nodes back, in 18201, 0 failures. Its reason is (C)'s part
+      1 below: every node taken back is on a successful descent, or a
+      sibling of one.
     - (C), begun: at operation boundaries SegFits (fuel - 1), by the
       doomed transaction. A root of height fuel or more cannot be
       descended, so no later operation of the transaction reaches its
