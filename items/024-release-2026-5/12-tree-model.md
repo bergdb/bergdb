@@ -44,8 +44,9 @@ its test evidence:
   at least 2, from node size 8 (`Dag.theta`, `Params.thetaFor`); `MergeParamsOK` does not
   fix it, and with theta 0 all three are void.
   Evidence (`12-tree-model/dead-all-check.lean.txt`, runs within reach with the merges on and
-  Java's theta at node sizes 8, 10, 14 and 30): `WDeadOK` held at all 7765 states between
-  operations, and `DeadAllOK` at all 1188 run ends (11,671 key nodes, 1400 at theta, none
+  Java's theta at node sizes 8, 10, 14 and 30, with overwrites and pseudo-random mixes of
+  puts and deletes in one and two segments): `WDeadOK` held at all 11,927 states between
+  operations, and `DeadAllOK` at all 1512 run ends (18,243 key nodes, 2694 at theta, none
   above). Also TP39 in `treetest` and on Java's traces (C-T6), for the key nodes reached.
 - `hchk`, `OpDelChkOK`: a delete runs as its copy with the take-backs' checks (cost, the
   heights). Evidence: the same result and state at 6828 deletes of 310 runs, 160 with a
@@ -58,7 +59,7 @@ its test evidence:
   formed and naming ids below the next id, and the walk's ranges held (and after 7445 puts;
   `12-tree-model/delete-posts-check.lean.txt`, with putinv's tree and range walks).
 - `l4`: (4) keeps TP7's live counts (`QLive`; latest). Evidence: `LiveCounts` held at all 6420
-  states between operations of runs with merges and collapses, and at 4681 more with Java's
+  states between operations of runs with merges and collapses, and at 8843 more with Java's
   theta on (`dead-all-check.lean.txt`).
 - `hUC`, `hULb`: the upward delete's stop node, its cascade and its LE-b, for the reading
   (putinv; `delStepsOKF3_of_open5`). Their proofs will need `UpUnlinkOK`, which held at all
