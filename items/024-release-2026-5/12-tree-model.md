@@ -81,7 +81,10 @@ putinv's `upHolderOK_of_live`, `DelStepsHolderLive.lean`), and `l4` is narrowed 
 that split, empty their leaf or may merge (`DelMergeRestCase`; (4a) proved, below):
 
 - `d4` (`QDead`): the delete with the merges (4) keeps every key node that the writer reads at
-  or below theta dead klongs (latest). Every put keeps it, proved for theta 0 or at least 2:
+  or below theta dead klongs (latest), now only for the deletes that are not (4a) for the dead
+  bound (`DelMergeDRestCase`): from a state with the live counts, a delete whose leaf has room,
+  keeps a live klong (more than `mergeBelow` if an inner node names it) and whose new node
+  `deadOver` lets through is proved (`deadCase_delRoomFill`, `LiveDelRoom.lean`). Every put keeps it, proved for theta 0 or at least 2:
   the leaf's klong goes in only when `deadOver` lets it through (`deadCase_putLeafRoom`); a
   klong of a compare value with no live klong adds no dead klong (`KNode.deadCount_add_key_new`,
   `deadCase_putNewSeg1Room`, `deadCase_putNewSegsRoom`); and a cascade's nodes hold at most
@@ -1990,7 +1993,8 @@ and its status:
       (`liveCase_delRoomFill`, `LiveDelRoom.lean`): a delete whose leaf has
       room and keeps a live klong, and more than `mergeBelow` if an inner
       node names it (a segment root's leaf need not); `l4` is now
-      `DelMergeRestCase` (`liveCase_delMerge_of_rest`).
+      `DelMergeRestCase` (`liveCase_delMerge_of_rest`). Likewise `QDead` of
+      (4a) (`deadCase_delRoomFill`): `d4` is now `DelMergeDRestCase`.
     - Not done, and why (latest, 02:05):
       - `QDead` of (2) and (3c), the cascade. The nodes a cascade makes are
         described by `ChainShape.lean`'s `CascadeNodeShape`, whose case for
