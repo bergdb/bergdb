@@ -20,8 +20,8 @@ public interface ValueTransformation {
      * 
      * <p>A transformation that throws a RuntimeException refuses the transaction with a
      * DbException whose cause is the exception; nothing of the transaction is written, and the
-     * database goes on (bergdb 010-04, R5). Its result is checked as a value given directly:
-     * a value of more than Db.MAX_VALUE_BYTES (8 MiB, L4), or keys and values of the
+     * database goes on (bergdb 010-04, R5). A non-null result is checked as a value given
+     * directly: a value of more than Db.MAX_VALUE_BYTES (8 MiB, L4), or keys and values of the
      * transaction of more than Db.MAX_TRANS_BYTES (32 MiB, L5), counted with the results,
      * refuse the transaction in the same way (Db, "Limits"). A refused transaction is left as
      * it was before the call: each KV with a value transformation has its value as given
@@ -30,11 +30,18 @@ public interface ValueTransformation {
      * the transformation ran after the go point, and an exception or a result over L4 failed
      * the database.</p>
      * 
+     * <p>A null result deletes the key, as a delete of the key in the same transaction
+     * would (Trans.Builder.delete()); it is not refused, though a null value given directly
+     * to Trans.Builder.put() is. The transaction commits, the key has no value at the
+     * transaction's time, and Db.getTrans() lists the delete. If the key has no previous
+     * value ('previous' is null), the delete stores nothing, as such a delete does: the
+     * transaction commits, and Db.getTrans() does not list the key (bergdb 028-04).</p>
+     * 
      * @param transTime The time of the transaction. Also functions as a unique transaction
      * ID.
      * @param inputValue The pre-execute() value of the KV.
      * @param previous The previous value for the key, or 'null' if no such value exists previously.
-     * @return The value to set.
+     * @return The value to set, or null to delete the key.
      */
     public byte[] transform(long transTime, byte[] inputValue, byte[] previous);
 }

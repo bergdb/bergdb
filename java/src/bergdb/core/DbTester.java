@@ -1711,6 +1711,68 @@ public class DbTester {
         db.stop();
     }
     
+    /** A value transformation that gives null, and records the previous value it got. */
+    private static final class ToNull implements ValueTransformation {
+        int calls = 0;
+        byte[] previous;
+        public byte[] transform(long transTime, byte[] inputValue, byte[] previous) {
+            calls++;
+            this.previous = previous;
+            return null;
+        }
+    }
+    
+    /**
+     * A value transformation whose result is null deletes the key, as a delete in the same
+     * transaction would (ValueTransformation; bergdb 028-04; B2's probe in 026-13, U13-2):
+     * the transaction commits, the key has no value at its time and its old value one unit
+     * before, getTrans() lists the delete, and a restart keeps it. For a key without a
+     * previous value the null result stores nothing: the transaction commits, and getTrans()
+     * does not list the key.
+     */
+    @Nano
+    public static void testValueTransformationNullDeletes() {
+        final MemoryStream stream = new MemoryStream();
+        final ToNull a = new ToNull(), n = new ToNull();
+        Trans t;
+        Db db = Db.builder().testSetup(stream).start();
+        try {
+            db.execute(db.trans().put("/a", "old").put("/b", "b").build());
+            t = db.trans()
+                    .put(Keys.toSegments("/a"), null, StringUtil.toBytes("new"), a)
+                    .put(Keys.toSegments("/n"), null, StringUtil.toBytes("new"), n)
+                    .build();
+            db.execute(t);
+            assertEquals("calls of /a", 1, a.calls);
+            assertEquals("calls of /n", 1, n.calls);
+            assertArrayEquals(StringUtil.toBytes("old"), a.previous);
+            assertTrue("no previous value of /n", n.previous == null);
+            
+            assertTrue("/a deleted", DbUtil.get(db, t.tt, "/a") == null);
+            assertArrayEquals(StringUtil.toBytes("old"), DbUtil.get(db, t.tt - 1, "/a"));
+            assertTrue("/n has no value", DbUtil.get(db, t.tt, "/n") == null);
+            assertArrayEquals(StringUtil.toBytes("b"), DbUtil.get(db, t.tt, "/b"));
+            List<String> listed = new ArrayList<String>();
+            for (StoredValueNode node : db.getTrans(t.tpos).getValueNodes()) {
+                assertTrue("a delete", node.getNode().getType() == Node.TYPE_DELETE);
+                listed.add(Keys.toString(node.getKey()));
+            }
+            assertEquals("listed", Collections.singletonList("/a"), listed);
+        } finally {
+            db.close();
+        }
+        
+        db = Db.builder().testSetup(stream.copy()).start();
+        try {
+            assertTrue("/a deleted after a restart", DbUtil.get(db, Long.MAX_VALUE, "/a") == null);
+            assertArrayEquals(StringUtil.toBytes("old"), DbUtil.get(db, t.tt - 1, "/a"));
+            assertTrue("/n after a restart", DbUtil.get(db, Long.MAX_VALUE, "/n") == null);
+            assertArrayEquals(StringUtil.toBytes("b"), DbUtil.get(db, Long.MAX_VALUE, "/b"));
+        } finally {
+            db.close();
+        }
+    }
+    
     @Nano
     public static void testStop1() {
         Db db = Db.builder().testSetup().start();
