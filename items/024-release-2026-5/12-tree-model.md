@@ -1600,6 +1600,33 @@ and its status:
       each (`writerWP_putSegs_new_live`) and are segment roots
       (`liveCounts_leafAddNewSet`).
     - Open: `QLive` of (2), (3c) (the cascade of a full leaf) and (4).
+    - Toward (2) (latest, 00:35; `LiveEdges.lean`): `LiveEdges` is
+      `LiveCounts` link by link (`liveCounts_of_edges`,
+      `edges_of_liveCounts`). Each step of the writer then checks only the
+      links it changes. Two steps are proved: `liveEdges_updN_grow` (a
+      node keeps its kind and live pointees and loses no live klong: a put
+      in room, a time split in place, the top of a cascade) and
+      `liveEdges_copy` (a time split to a new node: a fresh copy of x, and
+      x's parent pointing its klong to it). The counts of a space split's
+      halves are `halves_lastVersionGivenDel_live_fill`
+      (`SplitLiveFill.lean`).
+    - Every split step of the cascade keeps `LiveEdges` (latest, 00:44;
+      `LiveSteps.lean`). Each step lemma takes the hypotheses of cost's
+      matching step of the writer's tree and uses its reach, then adds the
+      counts:
+      - `liveEdges_timeSplit_gen` and `liveEdges_rootTimeStep`: the kinds
+        kept, no live klong lost.
+      - `liveEdges_spaceSplit_gen` and `liveEdges_spaceInPlaceStep`.
+      - `liveEdges_segSpaceStep` and `liveEdges_segSpaceInPlaceStep`.
+      - `liveEdges_rootSpaceStep` and `liveEdges_rootSpaceInPlaceStep`.
+      - `liveEdges_updN_sub`, a time split in place.
+      The halves must be `HalfOK` (a live klong, two, and m), and a new
+      inner root needs two live klongs. Common to all is
+      `liveEdges_of_sim`.
+    - Left for (2) and (3c): the walk of the cascade, with these steps in
+      place of cost's in `writerWP_appendKlongs_chainG`, with the halves'
+      counts from `halves_lastVersionGivenDel_live_fill`. Then the
+      access-path wrapper, as `writerWP_put_accessPathR`.
     - `LiveCounts` was checked on runs within reach with the merges on
       (`12-tree-model/live-counts-check.lean.txt`). The parameters were
       record format 7's thresholds at node sizes 8, 10 and 14 (m = 2, 2
@@ -1616,6 +1643,14 @@ and its status:
     `opGetCaseOK_delMerge`); and the corollaries only they used
     (`writerWP_merge_get_invF`, `writerWP_merge_get_inv`,
     `writerWP_merge_tree_inv`). Case (4) is `opGetCaseOK_delMergeF2`.
+    Removed too (latest, 00:48, the coordinator through putinv, after the
+    take-back moved to F4): the reading's F2 route (`DelMergeCaseF2.lean`:
+    `opGetCaseOK_delMergeF2`, `opGetCaseOK'_delMerge2`,
+    `writerWP_mergeUp_delF2`, `writerWP_afterDelete_delF2`) and F3's
+    collapse with a room premise (`CollapseStepOKF3`,
+    `collapseStepOKF3_of_room`, `writerWP_collapseRoot_delF3`,
+    `writerWP_afterDelete_delF3`, `opGetCaseOK'_delMerge3`,
+    `opGetCaseOK_delMergeF3`). Case (4) is `opGetCaseOK_delMergeF4` alone.
 
     Step 4, plan (cost, 22:15). The Bool evidence is cost's `SegFit.lean`,
     run outside the repository. It ran random transactions (M 4 and 8, G 2,
@@ -1705,16 +1740,38 @@ and its status:
       `replaceRoot`), that gives `HolderAt` at a made root. putinv's
       TakeJ2 with CollGetInv (TreeOK) is that J, through
       `liveHolder_unique`.
-    - Left: the merge's take-back and the upward delete's loop. Between
-      the parent's change and the take-back, putinv's TakeJ2 and TreeOK
-      do not hold (putinv, 23:45). These two carry the holder fact
-      themselves, from the function's start, through the parent's change
-      and its cascade: the walk's "children not taken back" is
-      generalized to "not taken back and not among the nodes the
-      operation takes back". Then `mergeUp`, `afterDelete`, the upward
-      delete (tp7's mis-heighted retarget at the stop node, killed by the
-      stop node's delete) and the delete operation. Then the run
-      induction (as tp7's open (a) for the kinds), (B) and (C).
+    - The run (cost, 01:00). TP7's (b) after every run is
+      `treeRun_heightLiveOK_family` (`HeightsDelRun.lean`), the form
+      latest's assembly takes (`invPreserved_of_open_htDel` puts it in
+      `invPreserved_of_open`). Proved: the put; the operations of a
+      transaction (`ht_reached`) and its end (`execW_htCache`); the run
+      induction (`treeRun_heightAllOK`); the delete's descent
+      (`ht_putKv_del`, `ht_putSegs_del`, `ht_setNode_del`,
+      `ht_setValue_del`); the delete that leaves its leaf a live klong
+      (`ht_deleteUpward`), with the merges (`ht_merge`, `ht_mergeUp`) and
+      root collapse after them (`ht_afterDelete`).
+    - Named premises (Option 1), in `HtDelFamily` for an invariant J of
+      the take-back's (putinv's TakeJ2 with TreeOK) that holds at every
+      state before a delete (`HtJStart`):
+      - J is kept by the steps between the take-backs: `getNode`, the
+        descents, `appendDeleteKlong`, `merge`, `takeBackRoot`,
+        `replaceRoot`, `pathClear`, `findRoot`, `setNode`.
+      - The merge's holder, `MergeTailHoldOK`: from a state that meets J,
+        the merge's tail runs as its copy with a check before each
+        take-back (`mergeTailChk`, `checkFree`: no kept node holds the
+        node, now or before the transaction; it is not the space root and
+        no node of the view). The check gives `NoLiveHolder` where the
+        merge takes a node back.
+      - The root's holder (`rootHold`, for `ht_collapseRoot`).
+      - The upward delete that empties its leaf (`upEmpty`): the climb,
+        the take-back loop and the stop node. Its loop retargets a parent
+        to the node the taken node replaced, of another height when that
+        node was a root made by a space split; the parent is taken back
+        or unlinked next, or is the stop node, whose delete kills the
+        klong (tp7's mis-heighted retarget). The walk then needs an
+        exemption for that one klong until the stop node's delete.
+    - Left: `upEmpty` with that exemption, and the J family from putinv's
+      walk. Then (B) and (C).
   - (5) `DelNoLeafCase`, a delete of a key with no leaf: proved,
     `opGetCaseOK_delNoLeaf`. It changes no reading: the writer's walk
     stops at the first segment that is not there and only reads
