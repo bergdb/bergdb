@@ -84,8 +84,9 @@ that split, empty their leaf or may merge (`DelMergeRestCase`; (4a) proved, belo
   or below theta dead klongs (latest), now only for the deletes that are not (4a) for the dead
   bound (`DelMergeDRestCase`): from a state with the live counts, a delete whose leaf has room,
   keeps a live klong (more than `mergeBelow` if an inner node names it) and whose new node
-  `deadOver` lets through is proved (`deadCase_delRoomFill`, `LiveDelRoom.lean`). Every put keeps it, proved for theta 0 or at least 2:
-  the leaf's klong goes in only when `deadOver` lets it through (`deadCase_putLeafRoom`); a
+  `deadOver` lets through is proved (`deadCase_delRoomFill`, `LiveDelRoom.lean`). Every put
+  keeps it, proved for theta 0 or at least 2: the leaf's klong goes in only when `deadOver`
+  lets it through (`deadCase_putLeafRoom`); a
   klong of a compare value with no live klong adds no dead klong (`KNode.deadCount_add_key_new`,
   `deadCase_putNewSeg1Room`, `deadCase_putNewSegsRoom`); and a cascade's nodes hold at most
   theta (`writerWP_appendKlongs_chainDead`: a half at most 2, a copy of a last version and a new
