@@ -186,6 +186,7 @@ import SIS.Tree.DeadCases
 import SIS.Tree.DeadCountBasic
 import SIS.Tree.DeadPutFull
 import SIS.Tree.DeadNewSegFull
+import SIS.Tree.DeadSteps
 import SIS.Tree.LatestTopFlat
 import SIS.Tree.LivePutFull
 import SIS.Tree.LiveTP7

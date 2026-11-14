@@ -131,7 +131,12 @@ Follow-ups, for a later spare-token run (latest, 02:20):
   `KNode.lastVersionGivenDel_deadCount`), or goes to `handleFull`, whose cascade is bounded
   (`writerWP_appendKlongs_chainDead`); a take-back, a retarget and a repoint keep the count
   (`KNode.deadCount_repoint`). The step lemmas' posts say nothing about the nodes' klongs, so
-  each needs the conjunct inside its proof.
+  each needs the conjunct inside its proof. Proved pieces (latest, 02:45): a full parent's or
+  the space root's split with its cascade (`writerWP_handleFull_lastDead`,
+  `writerWP_handleFull_rootDead`), a node put or made (`writerWP_putNode_deadOver`,
+  `writerWP_newKey_dead`), and the bitmap given `handleFull`'s
+  (`writerWP_appendDeleteKlong_dead`; `DeadSteps.lean`). `mergeParent`'s is left: its code is
+  heavy for a direct proof, as `ht_mergeParent`'s tactics show.
 - `QLive` of (4) (`l4`): `LiveEdges` with the merged path's nodes excepted until their merge, on
   the same step lemmas as `d4`; a merge's nodes are filled (`mergeKlongs_live_fill`), its
   parent's cascade is the walk with exceptions (`writerWP_appendKlongs_chainGLX`), and root
