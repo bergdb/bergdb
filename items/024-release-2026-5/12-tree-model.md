@@ -86,16 +86,17 @@ for the reading was proved from three smaller premises; 16 at 02:28, when the de
   states between operations of runs with merges and collapses
   (`12-tree-model/live-counts-check.lean.txt`), and at 8843 more with Java's theta on
   (`dead-all-check.lean.txt`).
-- The upward delete's stop node (putinv; `delStepsOKF3_of_open7`). Its cascade is proved, at
+- The upward delete's stop node (putinv; `delStepsOKF3_of_open8`). Its cascade is proved, at
   the space root and below it, for the reading and the take-back (`writerWP_upCasc_root_delF3`,
-  `upCascBelowOKF3_of`, `upCascJ2OKF3_of_parts`), from the state after the upward loop; left
-  are:
+  `upCascBelowOKF3_of`, `upCascJ2OKF3_of_parts`), from the state after the upward loop, and so
+  is LE-b at a stop node with room; left are:
   - `hU`, `UpUnlinkOK`: after the upward loop, the writer's tree is a tree with its walk's
     ranges (putinv, the take-back);
   - `hL`, `UpUnlinkLinksOK`: after the upward loop, links below the next id and klongs well
     formed (putinv);
   - `hFit`, `UpCascFitsOK`: the state after the stop node's cascade fits the fuel (cost);
-  - `hULb`, `UpLebOKF3`: the stop node's LE-b (putinv).
+  - `hLbF`, `UpLebFullOKF3`: the stop node's LE-b when the stop node is full (putinv; LE-b with
+    room is proved, `delStepsOKF3_of_open8`).
   Evidence for `hU` and `hL`: they held at all 2529 upward-loop end states (1385 with a
   take-back in the loop, 954 with an unlink to the previous version, 173 cascading at the stop
   node, 818 at the space root), with the reached nodes untaken there too
@@ -107,9 +108,9 @@ for the reading was proved from three smaller premises; 16 at 02:28, when the de
 - `hCo`, `CollapseStepOKF4`: the state after a replaceRoot at a segment root fits the fuel
   (cost, the heights), and `CollapseUnlinkOK` (putinv, not proved). Evidence:
   `CollapseUnlinkOK` held at all 96 replaceRoots at a segment root, 32 with a full leaf.
-- `hULbJ`: the stop node's LE-b, for the take-back (putinv; `delStepsJ2OKF3_of_openR2`, which
-  proves the stop node's cascade for the take-back from `hU`, `hL` and `hFit`). Evidence: as
-  `hU`'s.
+- `hLbFJ`, `UpLebFullJ2OK`: the stop node's LE-b when the stop node is full, for the take-back
+  (putinv; `delStepsJ2OKF3_of_openR3`, which proves the stop node's cascade and LE-b with room
+  for the take-back, from `hU`, `hL`, `hFit` and `hLbF`). Evidence: as `hU`'s.
 - `hMF`: at every state between operations, every made-for id is below the transaction's
   first id (putinv). Evidence: held at all 44,312 states between operations of runs within
   reach with the merges on (cost's `DelChk` families and putinv's, M 8 and 10;
@@ -145,8 +146,9 @@ Follow-ups, for a later spare-token run (latest, 02:20):
     below the fuel (`ht_descendLte_height`).
   - `t4`, `i4`, `r4` (cost): the writer's tree, `PutInv` and the ranges through the merge loop
     and root collapse, on the reading's (4) route.
-  - `hU`, `hL`, `hULb`, `hULbJ` (putinv): the state after the upward loop, and the stop node's
-    LE-b for the reading and the take-back (its cascade is proved for both).
+  - `hU`, `hL`, `hLbF`, `hLbFJ` (putinv): the state after the upward loop, and the stop node's
+    LE-b when it is full, for the reading and the take-back (its cascade, and LE-b with room,
+    are proved for both).
   - `hFits`, `hFit`, and the fuel parts of `hMS` and `hCo` (cost): step 4 (B), the heights
     inside an operation.
   - `CollapseUnlinkOK` in `hCo`, and `hMF` (putinv): from the overlay's books
@@ -1868,6 +1870,14 @@ and its status:
       `OpDelChkOK`, through cost's `HeightsUnder.lean` (`opHtDelOKUnder_of_chk2`,
       `txSegFitsOK_of_takeBelowDelR2U`), with the run's facts from `LatestQD`
       inside the induction (`heightAllOK_snocU`, `latestQD_snocU`).
+    - LE-b at a stop node with room is putinv's (`delStepsOKF3_of_open8`,
+      `delStepsJ2OKF3_of_openR3`, 02:40): `hULb` and `hULbJ` are now `hLbF`
+      and `hLbFJ`, LE-b at a full stop node. Pieces for `QDead` of (4): the
+      split of a merge's full parent and of the space root with a property
+      of every node written (`writerWP_handleFull_lastShapeG`,
+      `writerWP_handleFull_rootShapeG`, the old names their corollaries), and
+      their dead instances (`writerWP_handleFull_lastDead`,
+      `writerWP_handleFull_rootDead`).
       (02:08), with the run's links, kinds and heights from `LatestQD`
       inside the induction, and every run within reach after it.
     - Not done, and why (latest, 02:05):
