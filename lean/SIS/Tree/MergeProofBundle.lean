@@ -319,3 +319,6 @@ import SIS.Tree.DelStepsEmptyRoot
 import SIS.Tree.TakeDelMergeF4
 import SIS.Tree.DelStepsBookK
 import SIS.Tree.TakeDelStepsF4
+import SIS.Tree.TakeMergeTailU
+import SIS.Tree.TakeMergeAnyU
+import SIS.Tree.TakeMergeRootU
