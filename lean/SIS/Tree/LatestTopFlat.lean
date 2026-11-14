@@ -1,7 +1,7 @@
 /-
 The top theorem with the flattest list of named premises (bergdb 024-12):
-`invGetScanOK_merges_flat`. It is `invGetScanOK_merges` with two premises
-taken apart:
+`invGetScanOK_merges_flat`. It is `invGetScanOK_merges` with its premises
+taken apart (13 named premises left, with `hp` and `hth` on the parameters):
 
 * the bound on dead klongs at every run (`hD`) comes from the operations: every
   put keeps it, for theta 0 or at least 2 (`hth`; `deadCase_putLeafRoom`,
@@ -9,9 +9,9 @@ taken apart:
   dead counts `writerWP_appendKlongs_chainDead`), and `QDead` of (4) is a premise
   (`DeadRun.lean`; the run induction carries `DeadAllOK` in `LatestQD`);
 * the take-back's delete steps (`hDS`) come from their open pieces (putinv's
-  `delStepsJ2OKF3_of_openR` over `TakeS4`, `runTreeQ_of_mergesF4S`): the
+  `delStepsJ2OKF3_of_openR7` over `TakeS4`, `runTreeQ_of_mergesF4S`): the
   upward delete's stop node for the take-back, the made-for ids at every state
-  between operations, and the fuel there;
+  between operations (`hMF`), and the fuel there;
 * the take-back through a replaceRoot whose segment leaf is full (`hRJ`) is
   proved (putinv's `replaceRootFullJ2OK_run`);
 * the upward delete's stop node is proved, its cascade and its LE-b with room
@@ -24,7 +24,7 @@ taken apart:
   the heights (cost's `delFullFitsOKR_run`, through putinv's walk with the
   heights' invariant);
 * the fuel at every state between operations (`hfit`) comes from the heights
-  (cost's `txSegFitsOK_of_takeBelowDelR`): every node a delete takes back has a
+  (cost's `txSegFitsOK_of_takeBelowDelR2U`): every node a delete takes back has a
   height below the fuel (`TakeBelowFuelDelOK`; a put takes nothing back).
 
 024-12's section 1 lists the premises with their owners and test evidence.
