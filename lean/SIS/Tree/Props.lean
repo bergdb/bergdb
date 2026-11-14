@@ -8,7 +8,7 @@ theorem. The item
 lists them as TP1 to TP27 (TP23 and TP26 are in Bound.lean, TP24 in Top.lean)
 with what each means and how hard its proof looks. Proofs of several have come
 since, in other files; among them TP7, TP10 and TP11, from 10 named premises
-(`invGetScanOK_merges_flat`; bergdb 024-12, section 1).
+(`invGetScanOK_merges`; bergdb 024-12, section 1).
 
 The tree checker computes the invariants (`faultsAt`) on Java's structure
 after every transaction, and the reads against a reference; TreeTest.lean

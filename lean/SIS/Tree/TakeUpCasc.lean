@@ -8,10 +8,10 @@ instead of `TakeJ2` and the node's kept children.
 import SIS.Tree.DelStepsCascRoot
 import SIS.Tree.DelStepsBookK
 import SIS.Tree.DelStepsUpStop
-import SIS.Tree.DelStepsCascF3
-import SIS.Tree.TakeDelStepsF4
+import SIS.Tree.DelStepsCasc
+import SIS.Tree.TakeDelSteps
 import SIS.Tree.TakeFullLast
-import SIS.Tree.TakeRunQF4
+import SIS.Tree.TakeRunQ
 
 set_option autoImplicit false
 
@@ -54,7 +54,7 @@ theorem writerWP_handleFull_root_j2U (c : Ctx) (base : View BVal) (hvc : ViewCoh
     · rw [(hS5 L h).1] at hlk; cases hlk
   have hwL : wNode c.p base w L = some n := by
     simp only [wNode, htk, Bool.false_eq_true, ↓reduceIte, hlk]
-  have hlevel := writerWP_handleFull_rootVF2 2 (Nat.le_refl _) c base hvc rootUp L n last compact hlwf hlt
+  have hlevel := writerWP_handleFull_rootVReach 2 (Nat.le_refl _) c base hvc rootUp L n last compact hlwf hlt
     hlastV hlen2 w hlk htk hrk hS5 hS6 hW hV hvx
   have hshape := writerWP_handleFull_rootShape c rootUp L n last compact (fun _ => L) (fun _ => 0)
     (fun _ => n) rfl rfl hpairs hlastV hlen2 w hlk hLn (fun z hz => (hS5 z hz).1)
@@ -189,7 +189,7 @@ theorem writerWP_handleFull_last_j2U (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx)
     intro i h1 h2
     obtain ⟨hl, ht⟩ := hS2 i h1 h2
     simp only [wNode, ht, Bool.false_eq_true, ↓reduceIte, hl]
-  have hlevel := writerWP_handleFull_lastVF2 fuelR hfR c base w.path 0 D X K Nn (Nat.zero_le _) hX hK hlinkK
+  have hlevel := writerWP_handleFull_lastV fuelR hfR c base w.path 0 D X K Nn (Nat.zero_le _) hX hK hlinkK
     hrange hlen hwf htimes (Or.inr rfl) hdist hspace last compact hlwf hlt hlastV hlen2 hrangeL hspaceL
     w rfl hS2 hS3 hS4 hS5 hS6 (fun _ _ => hR0) hW hV hvx
   have hshapeL := writerWP_handleFull_lastShape c w.path 0 D X K Nn (Nat.zero_le _) hX hK hlinkK hrange

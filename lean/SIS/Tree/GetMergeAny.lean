@@ -232,7 +232,7 @@ theorem rangeG2_of_rangeOrder (N : NodeId → Option KNode) (t : Time) (root : N
       omega
 
 /-- The merge's full parent's last version in the range of its link (the
-premise `hrangeL` of `writerWP_mergeTail_any_getF2`), from the walk's ranges:
+premise `hrangeL` of `writerWP_mergeTail_any_get`), from the walk's ranges:
 its live compare values are the parent's, the left node's cL and the second
 node's g, which is the right node's cR or a merged node's live compare value
 (`MergeGOK`). -/
@@ -284,7 +284,7 @@ theorem mergeLast_range (c : Ctx) (N : NodeId → Option KNode) (root : NodeId)
 set_option maxHeartbeats 3200000 in
 /-- The merge's tail keeps the reading of every key, the parent p at depth D + 1
 with room or full, a full parent split in any of its kinds
-(`writerWP_handleFull_lastVF2`): `writerWP_mergeTail_full_get` without its
+(`writerWP_handleFull_lastV`): `writerWP_mergeTail_full_get` without its
 premises that the parent existed before the transaction, sits below an inner node
 and is not split in space. The parent's last version is a time klong and sorted
 key klongs (`mergeFullLast_sorted`); for a space split its live compare values are in the
@@ -293,7 +293,7 @@ parent the transaction did not make below a segment leaf the cascade's levels
 are ordered (`hspaceL`). The reading holds when the state after fits the fuel, or no split
 makes a new root (the space root does not space split, and the parent's parent
 is inner). -/
-theorem writerWP_mergeTail_any_getF2 (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx) (base : View BVal) (x : NodeId) (d : Nat) (p : NodeId)
+theorem writerWP_mergeTail_any_get (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx) (base : View BVal) (x : NodeId) (d : Nat) (p : NodeId)
     (pn xn : KNode) (leftSome : Bool) (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId)
     (rn : KNode) (ir : Nat) (cL cR : Nat) (N : NodeId → Option KNode) (root : NodeId) (nx : Nat)
     (w3 : W) (hT : TreeOK N c.i root) (hp : TReach N c.i root p) (hpn : N p = some pn)
@@ -753,7 +753,7 @@ theorem writerWP_mergeTail_any_getF2 (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx)
           intro h
           have h' : c.p.splitAbove < last.size := by cases compact <;> simp at h <;> omega
           rw [hNp]; exact hspaceL m1 none last hlast h'
-        have hlevel := writerWP_handleFull_lastVF2 fuelR hfR c base w3.path s D X K Nn hsD hX hK hlinkK hrange hlen
+        have hlevel := writerWP_handleFull_lastV fuelR hfR c base w3.path s D X K Nn hsD hX hK hlinkK hrange hlen
           hwf htimes htop hdist hspace last compact hlwf htl hlastV hlen2 hrangeL' hspaceL'
           ({ w6 with trail := s7 :: w6.trail } : W)
           (by show w6.path = w3.path; rw [h6p, h5p, h4p])
@@ -1166,7 +1166,7 @@ theorem writerWP_mergeTail_any_getF2 (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx)
           intro h
           have h' : c.p.splitAbove < last.size := by cases compact <;> simp at h <;> omega
           rw [hNp]; exact hspaceL m1 (some (m1 + 2, g2)) last hlast h'
-        have hlevel := writerWP_handleFull_lastVF2 fuelR hfR c base w3.path s D X K Nn hsD hX hK hlinkK hrange hlen
+        have hlevel := writerWP_handleFull_lastV fuelR hfR c base w3.path s D X K Nn hsD hX hK hlinkK hrange hlen
           hwf htimes htop hdist hspace last compact hlwf htl hlastV hlen2 hrangeL' hspaceL'
           ({ w8 with trail := s9 :: w8.trail } : W)
           (by show w8.path = w3.path; rw [h8p, h7p, h6p, h5p, h4p])
@@ -1342,13 +1342,13 @@ theorem writerWP_mergeTail_any_getF2 (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx)
 
 /-- The writer's merge keeps the reading of every key with the parent at depth
 D + 1 full or with room, a full parent split in any of its kinds
-(`writerWP_mergeTail_any_getF2`): `writerWP_merge_full_get` without its premises
+(`writerWP_mergeTail_any_get`): `writerWP_merge_full_get` without its premises
 that the parent existed before the transaction, sits below an inner node and is
 not split in space. The full parent's range comes from the walk's ranges
 (`mergeLast_range`); for a parent the transaction did not make below a segment
 leaf the cascade's levels are ordered (`hspaceL`). The reading holds when the
 state after fits the fuel, or no split makes a new root. -/
-theorem writerWP_merge_any_getF2 (fuelR : Nat) (hfR : 2 ≤ fuelR) (x : NodeId) (d : Nat) (c : Ctx) (base : View BVal)
+theorem writerWP_merge_any_get (fuelR : Nat) (hfR : 2 ≤ fuelR) (x : NodeId) (d : Nat) (c : Ctx) (base : View BVal)
     (hvc : ViewCoherent c base) (w : W)
     (hT : TreeOK (wNode c.p base w) c.i w.top.rootKey)
     (hpar : ∀ p, (w.path[d - 1]?).map (·.2) = some p →
@@ -1468,7 +1468,7 @@ theorem writerWP_merge_any_getF2 (fuelR : Nat) (hfR : 2 ≤ fuelR) (x : NodeId) 
         hpleaf cL l ln hmemL hln
       obtain ⟨hrr1, hrr2⟩ := mrg_child_range (wNode c.p base w) c.i w.top.rootKey hR e.2 pn0 hpRS hpn
         hpleaf cR r rn hmemR hrn
-      refine writerWP_mono (writerWP_mergeTail_any_getF2 fuelR hfR c base x d e.2 pn0 xn leftSome l ln il r rn ir cL cR
+      refine writerWP_mono (writerWP_mergeTail_any_get fuelR hfR c base x d e.2 pn0 xn leftSome l ln il r rn ir cL cR
         (wNode c.p base w) w.top.rootKey w.next w3 hT hpR hpn hL hLL hR' hRL (by omega) hxlr
         hln hrn hpwf hpt hch hr3.1 (by rw [hr3.2.1]) hr3.2.2.2.2
         (lookup_of_prefix _ _ hpre3 _ _ hlk1) hsrc3

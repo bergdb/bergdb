@@ -1,14 +1,14 @@
 /-
 The stop node's bitmap into a full node at the space root (bergdb 024-12, case
-(4), `UpCascOKF3` at stop 0): after the upward loop, the space root's last
-version without its klong to the chain splits (`writerWP_handleFull_rootVF2`,
+(4), `UpCascOK` at stop 0): after the upward loop, the space root's last
+version without its klong to the chain splits (`writerWP_handleFull_rootVReach`,
 `writerWP_rootSplit_rangeL`). The tree with that last version is the walk's
 tree without the chain (`treeOK_up_tr`, `rangeOrder_up_bitmap`) and reads as
 the delete's (`getFromR_up_inner`, `getFromR_up_leaf`). No tree of the state
 after the loop is needed at the root: only its links below the next id and its
 klongs well formed.
 -/
-import SIS.Tree.DelStepsCascF3
+import SIS.Tree.DelStepsCasc
 
 set_option autoImplicit false
 
@@ -43,11 +43,11 @@ theorem halves_facts_nilR (t : Time) (n : KNode) (h2 : 2 ≤ n.live.length)
   exact ⟨a.1, a.2, by rw [KNode.liveAt_of_times n t hnt]; exact List.mem_of_mem_take ha, hleft a ha⟩
 
 set_option maxHeartbeats 6400000 in
-/-- `UpCascOKF3` at the space root (stop 0), the bitmap kinds: from the state
+/-- `UpCascOK` at the space root (stop 0), the bitmap kinds: from the state
 after the upward loop with its links below the next id and its klongs well
 formed (`hlinks2`, `hwf2`), and the state after the root's split fitting the
-fuel (`hFits`), the stop node's bitmap puts the state into `DelInvF3`. -/
-theorem writerWP_upCasc_root_delF3 (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+fuel (`hFits`), the stop node's bitmap puts the state into `DelInv`. -/
+theorem writerWP_upCasc_root_del (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (hsa2 : 2 ≤ c.p.splitAbove)
     (KO : KindOracle) (BK : NodeId) (hvB : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
     (hICEk : ICEFromKinds c base KO BK)
@@ -77,7 +77,7 @@ theorem writerWP_upCasc_root_delF3 (c : Ctx) (base : View BVal) (hvc : ViewCoher
     (hFits : WriterWP (appendDeleteKlong (X 0) 0 (K 1)) c v
       (fun _ w' => SegFits (wNode c.p base w') c.i c.p.fuel w'.top.rootKey)) :
     WriterWP (appendDeleteKlong (X 0) 0 (K 1)) c v
-      (fun _ w' => DelInvF3 c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK w') := by
+      (fun _ w' => DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK w') := by
   have hfuel : 1 ≤ c.p.fuel := by unfold Params.fuel; omega
   have hT := hI.tree
   -- the path at w and at w3
@@ -174,7 +174,7 @@ theorem writerWP_upCasc_root_delF3 (c : Ctx) (base : View BVal) (hvc : ViewCoher
   -- the bitmap into the full root
   have hmain : WriterWP (appendDeleteKlong (X 0) 0 (K 1)) c v (fun _ w' =>
       SegFits (wNode c.p base w') c.i c.p.fuel w'.top.rootKey → PutBook c B top0 w' → Book BK c w' →
-      KdInv KO BK w' → DelInvF3 c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK w') := by
+      KdInv KO BK w' → DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK w') := by
     refine writerWP_appendDeleteKlong_full_of (X 0) 0 (K 1) S c v hlkv hneS' hfull _ ?_
     intro compact s
     generalize hlast : S.lastVersionGivenDel c.i (bitsUnion S.lastBitmap (S.bitsOf (K 1))) = last
@@ -264,7 +264,7 @@ theorem writerWP_upCasc_root_delF3 (c : Ctx) (base : View BVal) (hvc : ViewCoher
       have h := halves_facts_nilR c.i ⟨S.leaf, last.ks⟩ (hlen2 hsp) hlt r
       rw [hlastV] at h
       exact h hr
-    have hlevel := writerWP_handleFull_rootVF2 (c.p.fuel + 1) (by omega) c base hvc rootUp (X 0) S last
+    have hlevel := writerWP_handleFull_rootVReach (c.p.fuel + 1) (by omega) c base hvc rootUp (X 0) S last
       compact hlwf hlt hlastV hlen2 ({ v with trail := s :: v.trail } : W) hlk' htk' hrk' hS5 hS6 hW hV hvx
     have hrange := writerWP_rootSplit_rangeL c base hvc rootUp (X 0) S last compact hH hHR
       ({ v with trail := s :: v.trail } : W) hlk' htk' hrk' hS5 hS6 hV hVR hvx

@@ -3,7 +3,7 @@ The merge's full parent at any depth (bergdb 024-22): `handleFull` of a last
 version given, at depth D + 1 of the key access path below the cascade's nodes
 X s .. X D, in all its kinds: a time split or a space split, in place for a node
 that the transaction made or not, below an inner node or a segment leaf
-(`writerWP_handleFull_lastVF2`; `writerWP_handleFull_lastVF` leaves out the space
+(`writerWP_handleFull_lastV`; `writerWP_handleFull_lastVF` leaves out the space
 split in place below a segment leaf by its `hspaceL`). The writer's tree after it is a tree and
 reads as the tree with the node's content replaced by the last version
 (`writerWP_appendKlongs_chainGRV`'s step at its top level, for a last version
@@ -101,7 +101,7 @@ are ordered for a node the transaction did not make (`hspaceL`). With the
 cascade's levels and `last` ordered (`ChainOrd`, `LastOrd`), the nodes reached
 before, but the path's, are reached after, the path's nodes are reached after or
 left as their previous versions, and the new nodes are reached. -/
-theorem writerWP_handleFull_lastVF2 (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx) (base : View BVal)
+theorem writerWP_handleFull_lastV (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx) (base : View BVal)
     (path0 : List (Option Nat × NodeId)) (s D : Nat) (X : Nat → NodeId) (K : Nat → Nat)
     (Nn : Nat → KNode) (hsD : s ≤ D)
     (hX : ∀ i, s ≤ i → i ≤ D + 1 → (path0[i]?).map (·.2) = some (X i))

@@ -21,7 +21,7 @@ and key klongs of distinct compare values), with the cascade above it, every
 node with an id from the next id on or on the chain has a cascade node's shape
 (`ShapePost` from D + 1 with nothing put): on the premises of
 `writerWP_appendKlongs_chainShape` for X s .. X D, and for X (D + 1) those of
-`writerWP_handleFull_lastVF2` that concern the writer's nodes, with `LastOrd`. -/
+`writerWP_handleFull_lastV` that concern the writer's nodes, with `LastOrd`. -/
 theorem writerWP_handleFull_lastShapeG (c : Ctx)
     (path0 : List (Option Nat × NodeId)) (s D : Nat) (X : Nat → NodeId) (K : Nat → Nat)
     (Nn : Nat → KNode) (hsD : s ≤ D)
@@ -507,7 +507,7 @@ and key klongs of distinct compare values), with the cascade above it, every
 node with an id from the next id on or on the chain has a cascade node's shape
 (`ShapePost` from D + 1 with nothing put): on the premises of
 `writerWP_appendKlongs_chainShape` for X s .. X D, and for X (D + 1) those of
-`writerWP_handleFull_lastVF2` that concern the writer's nodes, with `LastOrd`. -/
+`writerWP_handleFull_lastV` that concern the writer's nodes, with `LastOrd`. -/
 theorem writerWP_handleFull_lastShape (c : Ctx)
     (path0 : List (Option Nat × NodeId)) (s D : Nat) (X : Nat → NodeId) (K : Nat → Nat)
     (Nn : Nat → KNode) (hsD : s ≤ D)

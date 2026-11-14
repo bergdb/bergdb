@@ -19,7 +19,7 @@ open SIS SIS.Check
 /-- Obligation (the take-back at the space root): a delete's bitmap into the
 full leaf that is the space root keeps `TakeJ2` and B at most the next id; it
 needs the root's split with the reach-back and the shapes
-(`writerWP_handleFull_rootVF2`, latest). -/
+(`writerWP_handleFull_rootVReach`, latest). -/
 def DelFullRootJ2OK (c : Ctx) (base : View BVal) (B : NodeId) : Prop :=
   ∀ (w : W), PutInv c base w → PutInvG c base w → RangeOrder (wNode c.p base w) c.i w.top.rootKey →
     TakeJ2 c base B w → B ≤ w.next →

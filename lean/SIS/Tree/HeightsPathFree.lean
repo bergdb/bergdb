@@ -16,7 +16,7 @@ HeightsFit.lean's theorems).
 -/
 import SIS.Tree.HeightsChkRun
 import SIS.Tree.HeightsPathNodup
-import SIS.Tree.DelStepsF3
+import SIS.Tree.DelSteps
 import SIS.Tree.HeightsFit
 
 set_option autoImplicit false

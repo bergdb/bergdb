@@ -6,7 +6,7 @@ the transaction's time reached in the tree with the klongs put, instead of
 `TakeJ2` and kept children before it), with the tree after the unlink from
 `CollapseUnlinkOK`.
 -/
-import SIS.Tree.TakeDelMergeF4
+import SIS.Tree.TakeDelMergeKd
 import SIS.Tree.TakeDeadChain
 
 set_option autoImplicit false

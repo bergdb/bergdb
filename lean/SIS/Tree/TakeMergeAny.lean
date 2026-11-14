@@ -1,6 +1,6 @@
 /-
 The merge keeps the take-back's facts (bergdb 024-12, TP7, case (4)): latest's
-`writerWP_merge_any_getF2` walk with `TakeJ2` as its post, the tail by
+`writerWP_merge_any_get` walk with `TakeJ2` as its post, the tail by
 `writerWP_mergeTail_any_j2`.
 -/
 import SIS.Tree.TakeMergeTail
@@ -15,7 +15,7 @@ open SIS SIS.Check
 
 set_option maxHeartbeats 3200000 in
 /-- The writer's merge keeps `TakeJ2` with the parent at depth D + 1 full or with
-room: `writerWP_merge_any_getF2`'s premises, with `J2N` before, B at most the
+room: `writerWP_merge_any_get`'s premises, with `J2N` before, B at most the
 next id and above the values, the cascade's levels ordered (`hord`) and the
 path's nodes at their depths (`hXdepth`). -/
 theorem writerWP_merge_any_j2 (fuelR : Nat) (hfR : 2 ≤ fuelR) (x : NodeId) (d : Nat) (c : Ctx) (base : View BVal)
@@ -338,7 +338,7 @@ theorem writerWP_merge_any_j2 (fuelR : Nat) (hfR : 2 ≤ fuelR) (x : NodeId) (d 
 
 /-- Obligation: a merge with the parent at the space root (d = 1) keeps `TakeJ2`
 (`MergeStepJ2OKF` at d = 1; it needs the root's split with the reach-back and the
-shapes, `writerWP_handleFull_rootVF2`, latest). -/
+shapes, `writerWP_handleFull_rootVReach`, latest). -/
 def MergeRootJ2OKF (c : Ctx) (base : View BVal) (f : Nat) (B : NodeId) : Prop :=
   ∀ (w0 : W) (key : Key) (x q : NodeId) (d : Nat) (v : W) (qn xn : KNode) (X : Nat → NodeId)
     (K : Nat → Nat) (Nn : Nat → KNode), d = 1 →
@@ -350,7 +350,7 @@ def MergeRootJ2OKF (c : Ctx) (base : View BVal) (f : Nat) (B : NodeId) : Prop :=
 
 /-- A merge keeps `TakeJ2` at every depth: at depth 2 or more by
 `writerWP_merge_any_j2` with its premises from the delete's invariant and the
-path (as `writerWP_merge_get_invF2` has them), at depth 1 by the obligation. -/
+path (as `writerWP_merge_get_inv` has them), at depth 1 by the obligation. -/
 theorem mergeStepJ2OKF_of_root (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base) (f : Nat)
     (B : NodeId) (hpos : 0 < c.i) (hcap : 1 ≤ c.p.mergeMax) (hsa2 : 2 ≤ c.p.splitAbove)
     (hRoot : MergeRootJ2OKF c base f B) : MergeStepJ2OKF c base f B := by

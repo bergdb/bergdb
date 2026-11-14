@@ -1,11 +1,8 @@
 /-
 The writer's merge from the invariants of the state before it (bergdb 024-22,
 case 4 of 024-12's assembly): the premises of `writerWP_merge_any_get` and
-`writerWP_merge_root_get` from `PutInv`, its global parts `PutInvG`, the walk's
+`writerWP_merge_root_getF` from `PutInv`, its global parts `PutInvG`, the walk's
 ranges `RangeOrder` and the key access path down to the merged node (`PathOK`).
-What they do not give is named: no space split in place below a segment leaf on
-the path (`hNoSSIP`, `hNoSSIPp`), and the range of the full parent's last
-version in its link (`hrangeL`).
 -/
 import SIS.Tree.GetMergeRoot
 import SIS.Tree.GetCaseBridge
@@ -80,8 +77,8 @@ reading of every key when the state after fits the fuel, from the state's
 invariants: `PutInv`, its global parts `PutInvG`, the walk's ranges and the path
 down to x (`PathOK`), the parent X (d - 1) inner. The cascade's order comes from
 the walk's ranges (`chainOrd_of_ordG`), and so does the full parent's range
-(`writerWP_merge_any_getF2`). -/
-theorem writerWP_merge_get_invF2 (fuelR : Nat) (hfR : 2 ≤ fuelR) (x : NodeId) (d : Nat) (c : Ctx) (base : View BVal)
+(`writerWP_merge_any_get`). -/
+theorem writerWP_merge_get_inv (fuelR : Nat) (hfR : 2 ≤ fuelR) (x : NodeId) (d : Nat) (c : Ctx) (base : View BVal)
     (hvc : ViewCoherent c base) (w : W) (hI : PutInv c base w) (hG : PutInvG c base w)
     (hRO : RangeOrder (wNode c.p base w) c.i w.top.rootKey)
     (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode) (hP : PathOK c w d X K Nn)
@@ -145,7 +142,7 @@ theorem writerWP_merge_get_invF2 (fuelR : Nat) (hfR : 2 ≤ fuelR) (x : NodeId) 
     intro _ w' h hf key
     exact h (Or.inl hf) key
   · have hd2 : 2 ≤ d := by omega
-    refine writerWP_mono (writerWP_merge_any_getF2 fuelR hfR x d c base hvc w hT hpar hRt hids hbaseF hfreshT hRO
+    refine writerWP_mono (writerWP_merge_any_get fuelR hfR x d c base hvc w hT hpar hRt hids hbaseF hfreshT hRO
       hcap hI.times hI.wf hI.keyNoValue hlinksAll hfreshV 0 (d - 2) X K Nn (Nat.zero_le _)
       (by omega)
       (fun i _ hi => hX i (by omega))
@@ -261,8 +258,9 @@ theorem putInvG_of_readsAs (c : Ctx) (base : View BVal) (w v : W) (hI : PutInvG 
   · rw [hN, hnext]; exact hI.links
   · rw [hN, hV]; exact hI.keyNoValue
 
-/-- `DelInv` with the reading and the fuel premise at a fuel f (states inside
-an operation are read at f = p.fuel + 1; 024-12's (4), option (a)). -/
+/-- The delete's inner invariant with the reading and the fuel premise at a
+fuel f (states inside an operation are read at f = p.fuel + 1; 024-12's (4),
+option (a)). -/
 def DelInvF (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (f : Nat) (v : W) : Prop :=
   PutInv c base v ∧ PutInvG c base v ∧ RangeOrder (wNode c.p base v) c.i v.top.rootKey ∧
   InnerChildrenExist (wNode c.p base v) c.i v.top.rootKey ∧

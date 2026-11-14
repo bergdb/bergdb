@@ -1,6 +1,6 @@
 /-
 The merge's tail keeps the nodes reached untaken (bergdb 024-12, TP7,
-`MergeStepOKF3`'s first part): `writerWP_mergeTail_any_j2`'s walk with the
+`MergeStepOK`'s first part): `writerWP_mergeTail_any_j2`'s walk with the
 nodes reached after the merge, untaken, as its post.
 -/
 import SIS.Tree.TakeMergeFull
@@ -496,7 +496,7 @@ theorem writerWP_mergeTail_any_untaken (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ct
           intro h
           have h' : c.p.splitAbove < last.size := by cases compact <;> simp at h <;> omega
           rw [hNp]; exact hspaceL m1 none last hlast h'
-        have hlevel := writerWP_handleFull_lastVF2 fuelR hfR c base w3.path s D X K Nn hsD hX hK hlinkK hrange hlen
+        have hlevel := writerWP_handleFull_lastV fuelR hfR c base w3.path s D X K Nn hsD hX hK hlinkK hrange hlen
           hwf htimes htop hdist hspace last compact hlwf htl hlastV hlen2 hrangeL' hspaceL'
           ({ w6 with trail := s7 :: w6.trail } : W)
           (by show w6.path = w3.path; rw [h6p, h5p, h4p])
@@ -1014,7 +1014,7 @@ theorem writerWP_mergeTail_any_untaken (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ct
           intro h
           have h' : c.p.splitAbove < last.size := by cases compact <;> simp at h <;> omega
           rw [hNp]; exact hspaceL m1 (some (m1 + 2, g2)) last hlast h'
-        have hlevel := writerWP_handleFull_lastVF2 fuelR hfR c base w3.path s D X K Nn hsD hX hK hlinkK hrange hlen
+        have hlevel := writerWP_handleFull_lastV fuelR hfR c base w3.path s D X K Nn hsD hX hK hlinkK hrange hlen
           hwf htimes htop hdist hspace last compact hlwf htl hlastV hlen2 hrangeL' hspaceL'
           ({ w8 with trail := s9 :: w8.trail } : W)
           (by show w8.path = w3.path; rw [h8p, h7p, h6p, h5p, h4p])

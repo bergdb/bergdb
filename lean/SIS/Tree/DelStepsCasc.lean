@@ -3,7 +3,7 @@ The reading of a delete whose leaf empties below the space root, the merges on,
 whatever room its stop node has (bergdb 024-12, case (4), `DelEmptyCascM`): the
 stop node's bitmap with the room of the branch the writer takes is proved
 (`writerWP_upStop_bitmapD`); its bitmap into a full node (`handleFull`, the
-cascade) and its LE-b are named obligations, `UpCascOKF3` and `UpLebOKF3`.
+cascade) and its LE-b are named obligations, `UpCascOK` and `UpLebOK`.
 -/
 import SIS.Tree.DelStepsUpStop
 import SIS.Tree.DelStepsEmptyRoot
@@ -18,10 +18,10 @@ open SIS SIS.Check
 upward loop's end state w2 (`UpLoopEnd`, the walk from w3, the state at the
 key's leaf, which reads as the delete's start state w), the stop node X stop's
 bitmap for its klong to the chain without the room of the branch the writer
-takes (`¬ DelRoom`) puts the state into `DelInvF3`. MB bounds the ids the
+takes (`¬ DelRoom`) puts the state into `DelInv`. MB bounds the ids the
 transaction's nodes replaced (`madeFor`). The proof is to take the writer's
 tree after the loop as a tree (`UpUnlinkOK`, the take-back's). -/
-def UpCascOKF3 (c : Ctx) (base : View BVal) (KO : KindOracle) (BK : NodeId) : Prop :=
+def UpCascOK (c : Ctx) (base : View BVal) (KO : KindOracle) (BK : NodeId) : Prop :=
   ∀ (w w3 : W) (B MB : NodeId) (top0 : Top) (pre : List Nat) (cv : Nat) (rk : NodeId)
     (X : Nat → NodeId) (Nn : Nat → KNode) (K : Nat → Nat) (depth stop : Nat) (w2 v : W) (S : KNode),
     2 ≤ c.p.splitAbove → ViewIdsBelow BK c.view → ViewKinds KO BK c → ICEFromKinds c base KO BK →
@@ -45,12 +45,12 @@ def UpCascOKF3 (c : Ctx) (base : View BVal) (KO : KindOracle) (BK : NodeId) : Pr
     (v = w2 ∨ ∃ s, v = { w2 with trail := s :: w2.trail }) → KdJP c B top0 KO BK w3.path v →
     ((Nn stop).leaf = true ∨ K (stop + 1) ≠ 0) → ¬ DelRoom c (K (stop + 1)) S →
     WriterWP (appendDeleteKlong (X stop) stop (K (stop + 1))) c v
-      (fun _ w' => DelInvF3 c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK w')
+      (fun _ w' => DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK w')
 
-/-- Obligation (the stop node's LE-b, any room): `UpCascOKF3`'s premises for an
+/-- Obligation (the stop node's LE-b, any room): `UpCascOK`'s premises for an
 inner stop node whose klong to the chain is the empty key's; its LE-b
-(`emptyKeyNext`) puts the state into `DelInvF3`. -/
-def UpLebOKF3 (c : Ctx) (base : View BVal) (KO : KindOracle) (BK : NodeId) : Prop :=
+(`emptyKeyNext`) puts the state into `DelInv`. -/
+def UpLebOK (c : Ctx) (base : View BVal) (KO : KindOracle) (BK : NodeId) : Prop :=
   ∀ (w w3 : W) (B MB : NodeId) (top0 : Top) (pre : List Nat) (cv : Nat) (rk : NodeId)
     (X : Nat → NodeId) (Nn : Nat → KNode) (K : Nat → Nat) (depth stop : Nat) (w2 : W) (S : KNode),
     2 ≤ c.p.splitAbove → ViewIdsBelow BK c.view → ViewKinds KO BK c → ICEFromKinds c base KO BK →
@@ -73,14 +73,14 @@ def UpLebOKF3 (c : Ctx) (base : View BVal) (KO : KindOracle) (BK : NodeId) : Pro
     UpLoopEnd c MB X Nn depth stop w3 w2 S → KdJP c B top0 KO BK w3.path w2 →
     (Nn stop).leaf = false → K (stop + 1) = 0 → S.smallestLive = some 0 →
     WriterWP (emptyKeyNext (X stop) stop) c w2
-      (fun _ w' => DelInvF3 c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK w')
+      (fun _ w' => DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK w')
 
 set_option maxHeartbeats 3200000 in
 /-- The delete whose leaf, not the space root, empties, the merges on, whatever
 room the stop node has: `writerWP_del_emptyRoomMK` on the walk cut at the stop
 node's step (`writerWP_deleteUpward_stepJ`), the bitmap with the room of the
-branch the writer takes proved, the cascade and LE-b from `UpCascOKF3` and
-`UpLebOKF3`. -/
+branch the writer takes proved, the cascade and LE-b from `UpCascOK` and
+`UpLebOK`. -/
 theorem writerWP_del_emptyAnyMK (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (pre : List Nat) (cv : Nat) (rk : NodeId) (w : W) (B : NodeId) (top0 : Top)
     (hB : PutBase c base B) (hbook : PutBook c B top0 w)
@@ -95,19 +95,19 @@ theorem writerWP_del_emptyAnyMK (c : Ctx) (base : View BVal) (hvc : ViewCoherent
       wNode c.p base w L = some n → n.leaf = true →
       bitsUnion n.lastBitmap (n.bitsOf cv) ≠ n.lastBitmap ∧
       n.allKeysIn (bitsUnion n.lastBitmap (n.bitsOf cv)) = true ∧ L ≠ w.top.rootKey)
-    (hC : UpCascOKF3 c base KO BK) (hLb : UpLebOKF3 c base KO BK)
+    (hC : UpCascOK c base KO BK) (hLb : UpLebOK c base KO BK)
     (hsa2 : 2 ≤ c.p.splitAbove) (hICEk : ICEFromKinds c base KO BK)
     (hm : c.p.merges = true) (hpos : 0 < c.i)
-    (hA : ∀ g h v, DelInvF3 c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v →
-      WriterWP (afterDelete (pre ++ [cv]) g h) c v (fun _ v' => DelInvF3 c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v'))
-    (hMU : ∀ g h merged v, DelInvF3 c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v →
+    (hA : ∀ g h v, DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v →
+      WriterWP (afterDelete (pre ++ [cv]) g h) c v (fun _ v' => DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v'))
+    (hMU : ∀ g h merged v, DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v →
       WriterWP (mergeUp (pre ++ [cv]) g c.p.fuel h merged) c v
-        (fun _ v' => DelInvF3 c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v'))
-    (hCR : ∀ seg v, DelInvF3 c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v →
+        (fun _ v' => DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v'))
+    (hCR : ∀ seg v, DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v →
       WriterWP (collapseRoot (pre ++ [cv]) seg c.p.fuel) c v
-        (fun _ v' => DelInvF3 c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v'))
+        (fun _ v' => DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v'))
     (Post : W → Prop) (hfresh : ∀ v, Post v → WriterWP fresh c v (fun _ v' => Post v'))
-    (hpost : ∀ v, DelInvF3 c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v → Post v) :
+    (hpost : ∀ v, DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v → Post v) :
     WriterWP (putKv (.del (pre ++ [cv]))) c w (fun _ w' => Post w') := by
   have hfuel : 1 ≤ c.p.fuel := by unfold Params.fuel; omega
   have hJ0 : KdJ c B top0 KO BK w := ⟨hbook, hb0, hi0⟩

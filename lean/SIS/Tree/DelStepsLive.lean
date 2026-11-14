@@ -55,12 +55,12 @@ def DelStepsQdL (p : Params) (R : Struct BVal → Time → Prop) : Prop :=
     LiveCounts c.p (wNode c.p base w) c.i w.top.rootKey)
 
 /-- The delete with the merges on (case (4)) keeps `QdW`: `DelStepsQd` with the
-merges' loop (`writerWP_mergeUp_delF3`) and root collapse
-(`writerWP_collapseRoot_delF4`, `writerWP_afterDelete_delF4`), the fuel at the
+merges' loop (`writerWP_mergeUp_del`) and root collapse
+(`writerWP_collapseRoot_del`, `writerWP_afterDelete_del`), the fuel at the
 operation's start from `TxSegFitsOK`. -/
 theorem opCaseOK_qdW_delMergeRL (p : Params) (R : Struct BVal → Time → Prop) (hS : DelStepsQdL p R)
-    (hM : ∀ ts, MergeStepOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hC : ∀ ts, CollapseStepOKF4 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hM : ∀ ts, MergeStepOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hC : ∀ ts, CollapseStepOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
     (hsa2 : 2 ≤ p.splitAbove) (hcap : 1 ≤ p.mergeMax)
     (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P) (hfit : TxSegFitsOK p R) :
     OpCaseOK p R (fun ts _ _ w' => QdW p ts w') DelMergeCaseL := by
@@ -83,18 +83,18 @@ theorem opCaseOK_qdW_delMergeRL (p : Params) (R : Struct BVal → Time → Prop)
     fun v hb hi hun => innerChildren_of_kinds p (treeRun p ts) tx.base (ctxOf p ts) v rfl hK
       (hRP _ _ hr) hb hi.cache hun
   exact hS ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF0 key hop ⟨⟨key, hop, hmerges⟩, hLCw⟩
-    (fun g h v hv' => writerWP_afterDelete_delF4 key g h (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
+    (fun g h v hv' => writerWP_afterDelete_del key g h (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
       (p.fuel + 1) hf2 (hM ts) (hC ts) _ _ hv hk hICEk hsa2 hcap w key v hv')
-    (fun g h merged v hv' => writerWP_mergeUp_delF3 key g (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
+    (fun g h merged v hv' => writerWP_mergeUp_del key g (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
       (p.fuel + 1) hf2 (hM ts) _ _ hv hk hICEk hsa2 hcap w key p.fuel h merged v hv')
-    (fun seg v hv' => writerWP_collapseRoot_delF4 key seg (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
+    (fun seg v hv' => writerWP_collapseRoot_del key seg (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
       (p.fuel + 1) hf2 (hC ts) w key _ _ hv hk hICEk hsa2 v hv')
 
 /-- `t4`, `i4` and `r4` with the fill at the operation's start (`DelMergeCaseL`): the delete with the merges on keeps the writer's tree
 (`QTree`), `PutInv` (`QPutInv`) and the walk's ranges (`QRange`). -/
 theorem opCaseOK_treeInvRange_delMergeRL (p : Params) (R : Struct BVal → Time → Prop) (hS : DelStepsQdL p R)
-    (hM : ∀ ts, MergeStepOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hC : ∀ ts, CollapseStepOKF4 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hM : ∀ ts, MergeStepOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hC : ∀ ts, CollapseStepOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
     (hsa2 : 2 ≤ p.splitAbove) (hcap : 1 ≤ p.mergeMax)
     (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P) (hfit : TxSegFitsOK p R) :
     OpCaseOK p R (QTree p) DelMergeCaseL ∧ OpCaseOK p R (QPutInv p) DelMergeCaseL ∧

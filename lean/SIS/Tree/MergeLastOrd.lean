@@ -9,7 +9,7 @@ open SIS SIS.Check
 
 /-! The order of the merge's full parent's last version below an inner parent
 (bergdb 024-12, case (4); `LastOrd` for the reach back of
-`writerWP_handleFull_lastVF2`): from the walk's ranges (`RangeOrder`), the last
+`writerWP_handleFull_lastV`): from the walk's ranges (`RangeOrder`), the last
 version's live compare values are 0 or above the parent's klong to it. -/
 
 theorem MergeGOrd.toGOK {ln rn : KNode} {cR : Nat} {m2 : Option (NodeId × Nat)} {t : Time}

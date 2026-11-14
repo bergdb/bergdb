@@ -3,8 +3,7 @@ Case (4)'s delete steps with the merges on (bergdb 024-12, TP7 and TP10): the
 delete splits as the merges-off cases (5) to (9) do: no leaf, a noop, a leaf
 that empties (the upward delete), a leaf that keeps a live klong with room for
 the bitmap, or full (`DelNoLeafM` to `DelFullM`, `delMerge_cover`). The reading's
-cases are on the F3 route (DelStepsF3.lean), the take-back's on F3/F4
-(TakeDelStepsF4.lean).
+cases are in DelSteps.lean, the take-back's in TakeDelSteps.lean.
 -/
 import SIS.Tree.TakeDelMerge
 import SIS.Tree.GetCaseBridge

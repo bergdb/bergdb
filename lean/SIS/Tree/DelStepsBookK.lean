@@ -1,7 +1,7 @@
 /-
 The take-back's upward delete with its invariant's steps knowing the path
 (`takeJ2_deleteUpward_upTMB` on `writerWP_deleteUpward_upT_getJMBK`), for the
-kinds' books (bergdb 024-12, F3 route).
+kinds' books (bergdb 024-12).
 -/
 import SIS.Tree.DelStepsBook
 import SIS.Tree.DelStepsUpK

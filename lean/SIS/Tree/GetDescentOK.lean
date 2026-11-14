@@ -14,7 +14,7 @@ from the space root, every node of it cached (`PathOK`). -/
 
 /-- The merges' descent keeps `DelInvF` and gives the path down to the node it
 stops at. -/
-def DescentOKF2 (c : Ctx) (base : View BVal) (f : Nat) : Prop :=
+def DescentOK (c : Ctx) (base : View BVal) (f : Nat) : Prop :=
   ∀ (w0 : W) (k0 key : Key) (g h : Nat) (v : W), DelInvF c base w0 k0 f v →
     WriterWP (descendToHeight key g h) c v (fun d v' => DelInvF c base w0 k0 f v' ∧
       ∃ X K Nn, PathOK c v' d X K Nn)
@@ -164,7 +164,7 @@ theorem pathOK_of_linked (c : Ctx) (base : View BVal) (w0 v : W) (ps : List (Opt
 
 /-- The merges' descent keeps `DelInvF` and gives the path down to the node it
 stops at. -/
-theorem descentOKF2 (c : Ctx) (base : View BVal) (f : Nat) : DescentOKF2 c base f := by
+theorem descentOK (c : Ctx) (base : View BVal) (f : Nat) : DescentOK c base f := by
   intro w0 k0 key g h v hD
   obtain ⟨hI, _, _, _, _, _, B, top0, hB, hbk⟩ := id hD
   have hvc := hB.coherent

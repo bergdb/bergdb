@@ -1,7 +1,7 @@
 /-
 Root collapse at any segment keeps the walk's ranges (bergdb 024-12, TP10;
-`RangeOrder`): prover cost's loop `writerWP_collapseRoot_coll`
-(WriterGetCollapseLoop.lean) with `RangeOrder` as its invariant J. The steps:
+`RangeOrder`): the root collapse's loop `writerWP_collapseRoot_inv`
+(WriterGetCollapseLoop.lean) with `RangeOrder` in its invariant. The steps:
 at the space root the root gives way to its child (`rangeOrder_collapseRoot`),
 at a segment root the segment leaf's klong names the root's child
 (`rangeOrder_segCollapse`), in place (`takeBackRoot`) or by a new klong with

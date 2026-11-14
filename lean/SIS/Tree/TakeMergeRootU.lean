@@ -1,9 +1,9 @@
 /-
 The merge keeps the nodes reached untaken (bergdb 024-12, TP7,
-`MergeStepOKF3`'s first part): the parent at the space root (d = 1), by
+`MergeStepOK`'s first part): the parent at the space root (d = 1), by
 `writerWP_merge_root_j2`'s walk with the nodes reached after the merge, untaken,
 as its post; with `writerWP_merge_any_untaken` below it, at every depth
-(`mergeStepOKF3_untaken`).
+(`mergeStepOK_untaken`).
 -/
 import SIS.Tree.TakeMergeAnyU
 import SIS.Tree.TakeMergeRoot
@@ -467,7 +467,7 @@ theorem writerWP_mergeTail_root_untaken (c : Ctx) (base : View BVal) (x : NodeId
           rw [← hXp]
           exact tReach_updN_self _ c.i _ _ _ h6T (h6S4 (D + 1) (by omega) (Nat.le_refl _))
         have h6nx : w6.next = m1 + 2 := by rw [h6next, h5next, hw4m1]
-        have hlevel := writerWP_handleFull_rootVF2 2 (Nat.le_refl _) c base hvc rootUp
+        have hlevel := writerWP_handleFull_rootVReach 2 (Nat.le_refl _) c base hvc rootUp
           p pn last compact hlwf htl hlastV hlen2
           ({ w6 with trail := s7 :: w6.trail } : W) hlk6p htk6p
           (by show w6.top.rootKey = p; rw [h6top', hroot]) h6S5 h6S6 hW6 hVt hvx
@@ -947,7 +947,7 @@ theorem writerWP_mergeTail_root_untaken (c : Ctx) (base : View BVal) (x : NodeId
           rw [← hXp]
           exact tReach_updN_self _ c.i _ _ _ h8T (h8S4 (D + 1) (by omega) (Nat.le_refl _))
         have h8nx' : w8.next = m1 + 4 := h8nx
-        have hlevel := writerWP_handleFull_rootVF2 2 (Nat.le_refl _) c base hvc rootUp
+        have hlevel := writerWP_handleFull_rootVReach 2 (Nat.le_refl _) c base hvc rootUp
           p pn last compact hlwf htl hlastV hlen2
           ({ w8 with trail := s9 :: w8.trail } : W) hlk8p htk8p
           (by show w8.top.rootKey = p; rw [h8top', hroot]) h8S5 h8S6 hW8 hVt hvx
@@ -1474,11 +1474,11 @@ theorem writerWP_merge_root_untaken (x : NodeId) (d : Nat) (c : Ctx) (base : Vie
   · exact writerWP_throw _ _ _ _
 
 set_option maxHeartbeats 1600000 in
-/-- `MergeStepOKF3`'s first part: a merge keeps the nodes reached untaken, at
+/-- `MergeStepOK`'s first part: a merge keeps the nodes reached untaken, at
 depth 1 by `writerWP_merge_root_untaken`, deeper by `writerWP_merge_any_untaken`,
 with their premises from the delete's invariant and the path (as
 `mergeRootJ2OKF_holds` and `mergeStepJ2OKF_of_root` have them). -/
-theorem mergeStepOKF3_untaken (c : Ctx) (base : View BVal) (f : Nat) (hpos : 0 < c.i)
+theorem mergeStepOK_untaken (c : Ctx) (base : View BVal) (f : Nat) (hpos : 0 < c.i)
     (hcap : 1 ≤ c.p.mergeMax) (hsa2 : 2 ≤ c.p.splitAbove) :
     ∀ (w0 : W) (key : Key) (x q : NodeId) (d : Nat) (v : W) (qn xn : KNode)
       (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode),
@@ -1594,10 +1594,10 @@ theorem mergeStepOKF3_untaken (c : Ctx) (base : View BVal) (f : Nat) (hpos : 0 <
     (fun i h1 h2 => chainOrd_of_ordG c base v d X K Nn hP hO i h1 (by omega))
     (fun i _ h2 => pathOK_depth c base v d X K Nn hP i (by omega))
 
-/-- `MergeStepOKF3` from its second part, the room after a merge (`SegFits` at
+/-- `MergeStepOK` from its second part, the room after a merge (`SegFits` at
 f - 1, `hSF`): its first part, the nodes reached untaken, is
-`mergeStepOKF3_untaken`. -/
-theorem mergeStepOKF3_of_segFits (c : Ctx) (base : View BVal) (f : Nat) (hpos : 0 < c.i)
+`mergeStepOK_untaken`. -/
+theorem mergeStepOK_of_segFits (c : Ctx) (base : View BVal) (f : Nat) (hpos : 0 < c.i)
     (hcap : 1 ≤ c.p.mergeMax) (hsa2 : 2 ≤ c.p.splitAbove)
     (hSF : ∀ (w0 : W) (key : Key) (x q : NodeId) (d : Nat) (v : W) (qn xn : KNode)
       (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode),
@@ -1605,9 +1605,9 @@ theorem mergeStepOKF3_of_segFits (c : Ctx) (base : View BVal) (f : Nat) (hpos : 
       (v.path[d - 1]?).map (·.2) = some q → v.nodes.lookup q = some qn → qn.leaf = false →
       v.nodes.lookup x = some xn → xn.cnt < c.p.mergeBelow →
       WriterWP (merge x d) c v (fun _ v' => SegFits (wNode c.p base v') c.i (f - 1) v'.top.rootKey)) :
-    MergeStepOKF3 c base f := by
+    MergeStepOK c base f := by
   intro w0 key x q d v qn xn X K Nn h1 h2 h3 h4 h5 h6 h7 h8 h9
-  exact writerWP_and (mergeStepOKF3_untaken c base f hpos hcap hsa2 w0 key x q d v qn xn X K Nn
+  exact writerWP_and (mergeStepOK_untaken c base f hpos hcap hsa2 w0 key x q d v qn xn X K Nn
     h1 h2 h3 h4 h5 h6 h7 h8 h9) (hSF w0 key x q d v qn xn X K Nn h1 h2 h3 h4 h5 h6 h7 h8 h9)
 
 end SIS.Tree

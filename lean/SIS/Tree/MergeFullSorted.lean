@@ -2,7 +2,7 @@
 The merge's full last version is sorted (bergdb 024-22): `mergeFullLast` is a
 time klong and key klongs sorted by compare value, when the second new node's
 first compare value g, if it is not the right child's, is no other live compare
-value of the parent. This gives `hsorted` of `writerWP_merge_any_get`.
+value of the parent. `writerWP_mergeTail_any_get` uses it for the full parent.
 -/
 import SIS.Tree.WriterTreeMergeFull
 

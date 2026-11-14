@@ -15,11 +15,11 @@ namespace SIS.Tree
 open SIS SIS.Check
 
 set_option maxHeartbeats 1600000 in
-/-- The delete's invariant with the kinds' books (`DelInvF3`) after the bitmap
+/-- The delete's invariant with the kinds' books (`DelInv`) after the bitmap
 into a full leaf at the walk's end, from the state w between operations: the
 reading's facts (`writerWP_appendDeleteKlong_full_inv_any`), the fuel premise
 after (`DelFullFitsOK`), the books, and the inner children from the kinds. -/
-theorem writerWP_appendDeleteKlong_full_delF3H (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+theorem writerWP_appendDeleteKlong_full_delH (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (KO : KindOracle) (BK : NodeId)
     (hRoot : DelFullRootStepOK c base) (H : NodeId → Nat → Prop)
     (hFits : DelFullFitsOKR c base H BK) (hsa2 : 2 ≤ c.p.splitAbove)
@@ -40,7 +40,7 @@ theorem writerWP_appendDeleteKlong_full_delF3H (c : Ctx) (base : View BVal) (hvc
     (hlkX : ∀ i, i ≤ P.length → w3.nodes.lookup (nodeAt w.top.rootKey P i) =
       some ((wNode c.p base w (nodeAt w.top.rootKey P i)).getD n)) :
     WriterWP (appendDeleteKlong L P.length cv) c w3
-      (fun _ v => DelInvF3 c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v) := by
+      (fun _ v => DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v) := by
   have hPOK := pathOK_of_toLeaf c base w w3 P n hI hr03 hp3' hlinkP hlkX
   have hNn : (wNode c.p base w (nodeAt w.top.rootKey P P.length)).getD ⟨true, []⟩ = n := by
     rw [hXD, hn]; rfl
@@ -80,18 +80,18 @@ theorem writerWP_appendDeleteKlong_full_delF3H (c : Ctx) (base : View BVal) (hvc
     rw [hr03.1, hr03.2.1, ReadsAs.value _ _ _ _ hr03]
   rw [hw3w]
 
-/-- The reading of a delete into a full leaf, the merges on, on the F3 route:
+/-- The reading of a delete into a full leaf, the merges on:
 from the fuel premise after the split (`DelFullFitsOK`, cost's step 4) and the
 leaf at the space root (`DelFullRootStepOK`), for runs with their links and
 TP4 at every run, 2 ≤ splitAbove. -/
-theorem delStepsCaseOKF3_fullH (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+theorem delStepsCaseOK_fullH (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
     (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
     (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
     (hRK : ∀ P t, R P t → KindsAllOK p P) (hRH : ∀ P t, R P t → HeightAllOK p P t)
     (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelOK p)
     (hRoot : ∀ ts, DelFullRootStepOK (ctxOf p ts) (viewOf (treeRun p ts))) :
-    DelStepsCaseOKF3 p R DelFullM := by
+    DelStepsCaseOK p R DelFullM := by
   intro ts tx hw hr z top hz htop ops op post hops r w hpre hI hRO hF key hop hPc hA _ _
   obtain ⟨pre, cv, L0, n0, hop', _, hK, hne0, hkeep0, hfull0⟩ := hPc
   subst hop'
@@ -126,9 +126,9 @@ theorem delStepsCaseOKF3_fullH (p : Params) (R : Struct BVal → Time → Prop) 
         m.allKeysIn (bitsUnion m.lastBitmap (m.bitsOf cv)) = false ∧ ¬ DelRoom (ctxOf p ts) cv m)
       ⟨hne0, hkeep0, hfull0⟩ L n hL hn hnl
     refine writerWP_deleteUpward_full (ctxOf p ts) L n P.length cv (pre ++ [cv]) w3 hlk3 hne hkeep
-      (fun v => DelInvF3 (ctxOf p ts) (viewOf (treeRun p ts)) w (pre ++ [cv]) (p.fuel + 1)
+      (fun v => DelInv (ctxOf p ts) (viewOf (treeRun p ts)) w (pre ++ [cv]) (p.fuel + 1)
         (kindOracleOf p (treeRun p ts)) tx.base v) _
-      (writerWP_appendDeleteKlong_full_delF3H (ctxOf p ts) _ (viewCoherent_ctxOf p ts) _ tx.base (hRoot ts) _
+      (writerWP_appendDeleteKlong_full_delH (ctxOf p ts) _ (viewCoherent_ctxOf p ts) _ tx.base (hRoot ts) _
         (delFullFitsOKR_run p ts tx hw (hRL _ _ hr) (hRK _ _ hr) (hRH _ _ hr))
         hsa2 hv hk hICEk w pre cv rk tx.base top hB hI hRO hF hkey hrk L n P w3 hL hn hnl hne hfull
         hr03 hJ3.1 hJ3.2 hp3' hlinkP hXD hlkX) ?_
@@ -139,9 +139,9 @@ theorem delStepsCaseOKF3_fullH (p : Params) (R : Struct BVal → Time → Prop) 
     simpa [Op.key, Op.value] using this
 
 set_option maxHeartbeats 1600000 in
-/-- The take-back of a delete into a full leaf, the merges on, on the F3 route,
-from the fuel premise after the split (`DelFullFitsOK`). -/
-theorem delStepsCaseJ2OKF3_fullRH (p : Params) (R : Struct BVal → Time → Prop)
+/-- The take-back of a delete into a full leaf, the merges on, from the fuel
+premise after the split (`DelFullFitsOK`). -/
+theorem delStepsCaseJ2OK_fullRH (p : Params) (R : Struct BVal → Time → Prop)
     (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M) (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
     (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P)
@@ -153,7 +153,7 @@ theorem delStepsCaseJ2OKF3_fullRH (p : Params) (R : Struct BVal → Time → Pro
     (hSF : ∀ ts tx w, S ts tx w →
       SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey)
     (hRH : ∀ P t, R P t → HeightAllOK p P t) (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelOK p) :
-    DelStepsCaseJ2OKF3 p R S DelFullM := by
+    DelStepsCaseJ2OK p R S DelFullM := by
   intro ts tx hw hr z top hz htop ops op post hops r w hpre hS hJ key hop hPc hA _ _
   obtain ⟨pre, cv, L0, n0, hop', _, hK, hne0, hkeep0, hfull0⟩ := hPc
   subst hop'
@@ -203,9 +203,9 @@ theorem delStepsCaseJ2OKF3_fullRH (p : Params) (R : Struct BVal → Time → Pro
       hnl hne hfull (fun y hy => by rw [hr03.1]; exact (hLV L n hL hn hnl y hy).1)
     simp only [hXD] at hJ2
     refine writerWP_deleteUpward_full (ctxOf p ts) L n P.length cv (pre ++ [cv]) w3 hlk3 hne hkeep
-      (fun v => DelInvJF3 (ctxOf p ts) (viewOf (treeRun p ts)) w (pre ++ [cv]) (p.fuel + 1)
+      (fun v => DelInvJ (ctxOf p ts) (viewOf (treeRun p ts)) w (pre ++ [cv]) (p.fuel + 1)
         (kindOracleOf p (treeRun p ts)) tx.base tx.base v) _
-      (writerWP_mono (writerWP_and (writerWP_appendDeleteKlong_full_delF3H (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
+      (writerWP_mono (writerWP_and (writerWP_appendDeleteKlong_full_delH (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
         _ tx.base (delFullRootStepOK_ctx p ts) _ (delFullFitsOKR_run p ts tx hw (hRL _ _ hr) (hRK _ _ hr) (hRH _ _ hr))
         hsa2 hv hk hICEk w pre cv rk tx.base top hB hI hRO hF
         hkey hrk L n P w3 hL hn hnl hne hfull hr03 hJ3.1 hJ3.2 hp3' hlinkP hXD hlkX) hJ2)

@@ -5,7 +5,7 @@ The merge's full parent at the space root with the take-back's facts (bergdb
 the root, are reached after; the root is reached after or left as its previous
 version; the new nodes are reached), and the shapes of the nodes the root's
 split makes or changes (`ShapePost` for the one-node chain of the root), as
-`writerWP_handleFull_lastVF2` and `writerWP_handleFull_lastShape` give them one
+`writerWP_handleFull_lastV` and `writerWP_handleFull_lastShape` give them one
 level down.
 -/
 import SIS.Tree.GetMergeRoot
@@ -429,7 +429,7 @@ theorem writerWP_handleFull_rootReach (c : Ctx) (base : View BVal) (hvc : ViewCo
 (9r) L is reached after, or holds its klongs before the transaction; (10r) every
 node cached from the next id on is reached after; and the root after is the root
 before or a new node. -/
-theorem writerWP_handleFull_rootVF2 (f : Nat) (hf2 : 2 ≤ f) (c : Ctx) (base : View BVal)
+theorem writerWP_handleFull_rootVReach (f : Nat) (hf2 : 2 ≤ f) (c : Ctx) (base : View BVal)
     (hvc : ViewCoherent c base)
     (up : NodeId → List (Nat × NodeId) → M Unit) (L : NodeId) (n last : KNode) (compact : Bool)
     (hlwf : klongsWf last.ks = true) (hlt : ∀ s, Klong.time s ∈ last.ks → s ≤ c.i)

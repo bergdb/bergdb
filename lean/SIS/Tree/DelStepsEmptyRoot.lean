@@ -99,13 +99,12 @@ theorem path_nil_of_root (c : Ctx) (base : View BVal) (w : W) (hT : TreeOK (wNod
 
 set_option maxHeartbeats 1600000 in
 /-- The reading of a delete that empties the leaf at the space root, the merges
-on, on the F3 route: the root's bitmap, or its split when full; no merges'
-loop. -/
-theorem delStepsCaseOKF3_emptyRoot (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+on: the root's bitmap, or its split when full; no merges' loop. -/
+theorem delStepsCaseOK_emptyRoot (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
     (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
     (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts)) :
-    DelStepsCaseOKF3 p R DelEmptyRootM := by
+    DelStepsCaseOK p R DelEmptyRootM := by
   intro ts tx hw hr z top _ htop ops op post hops r w hpre hI hRO hF key hop hPc _ _ _
   obtain ⟨pre, cv, L0, n0, hop', _, hK, hne0, hall0, hroot0⟩ := hPc
   subst hop'

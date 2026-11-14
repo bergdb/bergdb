@@ -2210,7 +2210,7 @@ theorem writerWP_merge_root_treeS (x : NodeId) (d : Nat) (c : Ctx) (base : View 
   · exact writerWP_throw _ _ _ _
 
 /-- The writer's merge keeps the writer's tree, from the invariants of the state
-before it (`writerWP_merge_get_invF2`'s). -/
+before it (`writerWP_merge_get_inv`'s). -/
 theorem writerWP_merge_tree_inv2 (x : NodeId) (d : Nat) (c : Ctx) (base : View BVal)
     (hvc : ViewCoherent c base) (w : W) (hI : PutInv c base w) (hG : PutInvG c base w)
     (hRO : RangeOrder (wNode c.p base w) c.i w.top.rootKey)

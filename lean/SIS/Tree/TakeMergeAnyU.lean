@@ -1,6 +1,6 @@
 /-
 The merge keeps the nodes reached untaken (bergdb 024-12, TP7,
-`MergeStepOKF3`'s first part), the parent at depth D + 1 ≥ 1:
+`MergeStepOK`'s first part), the parent at depth D + 1 ≥ 1:
 `writerWP_merge_any_j2`'s walk with the tail by
 `writerWP_mergeTail_any_untaken`.
 -/

@@ -1,14 +1,14 @@
 /-
-TP7's take-back induction itself with the merges on, on the F4 route (bergdb
-024-12, for latest's top theorem): `takeBackOK_of_mergesF4`'s premises without
+TP7's take-back induction itself with the merges on (bergdb 024-12, for
+latest's top theorem): `takeBackOK_of_mergesF4`'s premises without
 TP4 at every run (`hPtr`), concluding `RunTreeQ p Q` at every run within reach
 (`runTree_jointJ2`'s conclusion) instead of `TakeBackOKUnder`. Case (4) takes
-the run's pointers and kinds from the run premise (`opJ2Case_delMergeF4R`).
+the run's pointers and kinds from the run premise (`opJ2Case_delMergeR`).
 -/
 import SIS.Tree.DelStepsBookK
 import SIS.Tree.DelStepsUpStop
-import SIS.Tree.DelStepsCascF3
-import SIS.Tree.TakeDelStepsF4
+import SIS.Tree.DelStepsCasc
+import SIS.Tree.TakeDelSteps
 
 set_option autoImplicit false
 
@@ -18,10 +18,10 @@ open SIS SIS.Check
 
 /-- `opJ2Case_delMergeF4` with the run's pointers and kinds from the run premise R
 (`hRP`, `hRK`) instead of TP4 at every run. -/
-theorem opJ2Case_delMergeF4R (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop)
-    (hS : DelStepsJ2OKF3 p R S)
-    (hM : ∀ ts, MergeStepOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hC : ∀ ts, CollapseStepOKF4 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+theorem opJ2Case_delMergeR (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop)
+    (hS : DelStepsJ2OK p R S)
+    (hM : ∀ ts, MergeStepOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hC : ∀ ts, CollapseStepOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
     (hRJ : ∀ ts B, ReplaceRootFullJ2OK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1) B)
     (hsa2 : 2 ≤ p.splitAbove) (hcap : 1 ≤ p.mergeMax)
     (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P) :
@@ -45,11 +45,11 @@ theorem opJ2Case_delMergeF4R (p : Params) (R : Struct BVal → Time → Prop) (S
     fun v hb hi hun => innerChildren_of_kinds p (treeRun p ts) tx.base (ctxOf p ts) v rfl hK
       (hRP _ _ hr) hb hi.cache hun
   refine writerWP_mono (hS ts tx hw hr z top hz htop pre op post hops r w hpre hSw hJ key hop hmerges
-    (fun g h v hv' => writerWP_afterDelete_delJF4 key g h (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
+    (fun g h v hv' => writerWP_afterDelete_delJ key g h (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
       (p.fuel + 1) hf2 (hM ts) (hC ts) _ _ hv hk hICEk hsa2 hcap tx.base hpos (hRJ ts tx.base) w key v hv')
-    (fun g h merged v hv' => writerWP_mergeUp_delJF3 key g (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
+    (fun g h merged v hv' => writerWP_mergeUp_delJ key g (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
       (p.fuel + 1) hf2 (hM ts) _ _ hv hk hICEk hsa2 hcap tx.base hpos w key p.fuel h merged v hv')
-    (fun seg v hv' => writerWP_collapseRoot_delJF4 key seg (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
+    (fun seg v hv' => writerWP_collapseRoot_delJ key seg (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
       (p.fuel + 1) hf2 (hC ts) w key _ _ hv hk hICEk hsa2 tx.base hpos (hRJ ts tx.base) v hv')) ?_
   intro _ w' h' _
   exact h'
@@ -123,7 +123,7 @@ set_option maxHeartbeats 1600000 in
 /-- The take-back of a delete that empties the leaf at the space root, the merges
 on: the root's bitmap (`takeJ2_after_bitmap`), or its split when full
 (`delFullRootJ2OK_ctx`). -/
-theorem delStepsCaseJ2OKF3_emptyRootR (p : Params) (R : Struct BVal → Time → Prop)
+theorem delStepsCaseJ2OK_emptyRootR (p : Params) (R : Struct BVal → Time → Prop)
     (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M) (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
     (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P)
@@ -132,7 +132,7 @@ theorem delStepsCaseJ2OKF3_emptyRootR (p : Params) (R : Struct BVal → Time →
     (hSB : ∀ ts tx w, S ts tx w → tx.base ≤ w.next)
     (hSR : ∀ ts tx w, S ts tx w →
       RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey) :
-    DelStepsCaseJ2OKF3 p R S DelEmptyRootM := by
+    DelStepsCaseJ2OK p R S DelEmptyRootM := by
   intro ts tx hw hr z top _ htop ops op post hops r w hpre hS hJ key hop hPc _ _ _
   obtain ⟨pre, cv, L0, n0, hop', _, hK, hne0, hall0, hroot0⟩ := hPc
   subst hop'
@@ -200,9 +200,8 @@ theorem delStepsCaseJ2OKF3_emptyRootR (p : Params) (R : Struct BVal → Time →
 /-! ## The leaf's bitmap: with room, and full -/
 
 set_option maxHeartbeats 1600000 in
-/-- The take-back of a delete whose leaf keeps a live klong and has room, on the
-F3 route. -/
-theorem delStepsCaseJ2OKF3_roomR (p : Params) (R : Struct BVal → Time → Prop)
+/-- The take-back of a delete whose leaf keeps a live klong and has room. -/
+theorem delStepsCaseJ2OK_roomR (p : Params) (R : Struct BVal → Time → Prop)
     (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
     (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P)
@@ -213,7 +212,7 @@ theorem delStepsCaseJ2OKF3_roomR (p : Params) (R : Struct BVal → Time → Prop
       RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey)
     (hSF : ∀ ts tx w, S ts tx w →
       SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey) :
-    DelStepsCaseJ2OKF3 p R S DelRoomM := by
+    DelStepsCaseJ2OK p R S DelRoomM := by
   intro ts tx hw hr z top _ htop ops op post hops r w hpre hS hJ key hop hPc hA _ _
   obtain ⟨pre, cv, L0, n0, hop', _, hK, hne0, hkeep0, hroom0⟩ := hPc
   subst hop'
@@ -249,7 +248,7 @@ theorem delStepsCaseJ2OKF3_roomR (p : Params) (R : Struct BVal → Time → Prop
     obtain ⟨a, hpx⟩ := path_last_of_toLeaf w w3 P L hp3' hXD
     have hJ23 : TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w3 := takeJ2_of_readsAs _ _ _ w w3 hJ hr03
     refine writerWP_deleteUpward_full (ctxOf p ts) L n P.length cv (pre ++ [cv]) w3 hlk3 hne hkeep
-      (fun v => DelInvJF3 (ctxOf p ts) (viewOf (treeRun p ts)) w (pre ++ [cv]) (p.fuel + 1)
+      (fun v => DelInvJ (ctxOf p ts) (viewOf (treeRun p ts)) w (pre ++ [cv]) (p.fuel + 1)
         (kindOracleOf p (treeRun p ts)) tx.base tx.base v) _ ?_ ?_
     · refine writerWP_mono (writerWP_and (writerWP_and
         (writerWP_appendDeleteKlong_room_exactD L _ cv n _ _ hlk3 htimes hwf hne hroomD)
@@ -269,9 +268,8 @@ theorem delStepsCaseJ2OKF3_roomR (p : Params) (R : Struct BVal → Time → Prop
 
 /-! ## The upward delete with room -/
 
-/-- The take-back of a delete whose leaf empties, the upward delete with room,
-on the F3 route. -/
-theorem delStepsCaseJ2OKF3_emptyRoomR (p : Params) (R : Struct BVal → Time → Prop)
+/-- The take-back of a delete whose leaf empties, the upward delete with room. -/
+theorem delStepsCaseJ2OK_emptyRoomR (p : Params) (R : Struct BVal → Time → Prop)
     (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
     (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P)
@@ -282,7 +280,7 @@ theorem delStepsCaseJ2OKF3_emptyRoomR (p : Params) (R : Struct BVal → Time →
     (hSF : ∀ ts tx w, S ts tx w →
       SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey)
     (hSM : ∀ ts tx w, S ts tx w → ∀ x o, w.madeFor.lookup x = some o → o < tx.base) :
-    DelStepsCaseJ2OKF3 p R S DelEmptyRoomM := by
+    DelStepsCaseJ2OK p R S DelEmptyRoomM := by
   intro ts tx hw hr z top _ htop ops op post hops r w hpre hS hJ key hop hPc hA hMU hCR
   obtain ⟨pre, cv, L0, n0, hop', hm, hK, hne0, hall0, hup0⟩ := hPc
   subst hop'
@@ -301,13 +299,11 @@ theorem delStepsCaseJ2OKF3_emptyRoomR (p : Params) (R : Struct BVal → Time →
     hI (hSR ts tx w hS) (hSF ts tx w hS) hICE hkey hrk (keyLeaf_all2 hK hrk _ ⟨hne0, hall0, hup0⟩) hm
     (by simp [ctxOf]) hJ (hSM ts tx w hS) (fun L n hL hn hnl y hy => (hLV L n hL hn hnl y hy).1) hA hMU hCR
 
-/-! ## The case on the F3/F4 route -/
-
 /-! ## The take-back's state between operations with the fuel and the replaced ids -/
 
 /-- `TakeS3` with the state fitting the fuel (`SegFits`) and the ids that
 `madeFor` names below the transaction's first id: the state between a
-transaction's operations that `DelStepsJ2OKF3`'s S inputs `hSF` and `hSM` ask
+transaction's operations that `DelStepsJ2OK`'s S inputs `hSF` and `hSM` ask
 for. -/
 def TakeS4 (p : Params) (ts : List Tx) (tx : Tx) (w : W) : Prop :=
   TakeS3 p ts tx w ∧
@@ -404,10 +400,10 @@ theorem runTreeQ_of_cases_merges4S (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.
   runTreeQ_of_cases4S p hM hsa Q hQ0 hQs hQP hQK ho hPI hRO hB hFS hMF c4
     (opJ2CaseOK_void p _ _ _ hm delEmptyCase_merges) (opJ2CaseOK_void p _ _ _ hm delFullCase_merges)
 
-/-- `runTreeQ_of_mergesF4` with `TakeS4` for `DelStepsJ2OKF3`'s S: the state
+/-- `runTreeQ_of_mergesF4` with `TakeS4` for `DelStepsJ2OK`'s S: the state
 fits the fuel and the replaced ids are below the transaction's first id at
 every state between operations (`hFS`, `hMF`). -/
-theorem runTreeQ_of_mergesF4S (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.splitAbove)
+theorem runTreeQ_of_mergesS (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.splitAbove)
     (hcap : 1 ≤ p.mergeMax) (hm : p.merges = true)
     (Q : Struct BVal → Time → Prop) (hQ0 : Q (initStruct p) 0)
     (hQs : ∀ ts tx, Within p (ts ++ [tx]) → RunTreeQ p Q (treeRun p ts) ts.length →
@@ -422,12 +418,12 @@ theorem runTreeQ_of_mergesF4S (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.split
     (hFS : StateOK p (RunTreeQ p Q) (fun ts _ w =>
       SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey))
     (hMF : StateOK p (RunTreeQ p Q) (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base))
-    (hDS : DelStepsJ2OKF3 p (RunTreeQ p Q) (TakeS4 p))
-    (hMS : ∀ ts, MergeStepOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hCo : ∀ ts, CollapseStepOKF4 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hDS : DelStepsJ2OK p (RunTreeQ p Q) (TakeS4 p))
+    (hMS : ∀ ts, MergeStepOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hCo : ∀ ts, CollapseStepOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
     (hRJ : ∀ ts B, ReplaceRootFullJ2OK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1) B) :
     ∀ ts, Within p ts → RunTreeQ p Q (treeRun p ts) ts.length :=
   runTreeQ_of_cases_merges4S p hM hsa hm Q hQ0 hQs hQP hQK ho hPI hRO (baseStartOK_runTreeQ p Q) hFS hMF
-    (opJ2Case_delMergeF4R p _ _ hDS hMS hCo hRJ hsa hcap (fun _ _ h => hQP _ _ h.2.2) (fun _ _ h => hQK _ _ h.2.2))
+    (opJ2Case_delMergeR p _ _ hDS hMS hCo hRJ hsa hcap (fun _ _ h => hQP _ _ h.2.2) (fun _ _ h => hQK _ _ h.2.2))
 
 end SIS.Tree

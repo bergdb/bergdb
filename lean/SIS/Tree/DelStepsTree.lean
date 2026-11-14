@@ -1,7 +1,7 @@
 /-
 The delete with the merges on keeps the writer's tree, `PutInv` and the walk's
 ranges (bergdb 024-12, `t4`, `i4`, `r4`): the reading's (4) route carries
-`DelInvF3` through the delete, the merges' loop and root collapse, and it
+`DelInv` through the delete, the merges' loop and root collapse, and it
 holds `PutInv` and `RangeOrder`. The delete's steps with the post
 `QdW` (`PutInv` and `RangeOrder`) are the generic-Post walk lemmas
 (`writerWP_del_toLeafMK`, `writerWP_del_emptyRoomMK`, `writerWP_del_emptyAnyMK`,
@@ -51,20 +51,20 @@ def DelStepsCaseQd (p : Params) (R : Struct BVal → Time → Prop)
     RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey →
     SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey →
     ∀ key, op = .del key → P (ctxOf p ts) (viewOf (treeRun p ts)) w op →
-    (∀ g h v, DelInvF3 (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1)
+    (∀ g h v, DelInv (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1)
         (kindOracleOf p (treeRun p ts)) tx.base v →
       WriterWP (afterDelete key g h) (ctxOf p ts) v
-        (fun _ v' => DelInvF3 (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1)
+        (fun _ v' => DelInv (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1)
           (kindOracleOf p (treeRun p ts)) tx.base v')) →
-    (∀ g h merged v, DelInvF3 (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1)
+    (∀ g h merged v, DelInv (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1)
         (kindOracleOf p (treeRun p ts)) tx.base v →
       WriterWP (mergeUp key g p.fuel h merged) (ctxOf p ts) v
-        (fun _ v' => DelInvF3 (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1)
+        (fun _ v' => DelInv (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1)
           (kindOracleOf p (treeRun p ts)) tx.base v')) →
-    (∀ seg v, DelInvF3 (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1)
+    (∀ seg v, DelInv (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1)
         (kindOracleOf p (treeRun p ts)) tx.base v →
       WriterWP (collapseRoot key seg p.fuel) (ctxOf p ts) v
-        (fun _ v' => DelInvF3 (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1)
+        (fun _ v' => DelInv (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1)
           (kindOracleOf p (treeRun p ts)) tx.base v')) →
     WriterWP (putKv op) (ctxOf p ts) w (fun _ w' => QdW p ts w')
 
@@ -148,7 +148,7 @@ theorem delStepsCaseQd_room (p : Params) (R : Struct BVal → Time → Prop) (hM
       hI.pathUntaken _ (L, cv) (fromVisits_append _ _ _ pre cv _ rk hrk _ hL)
     obtain ⟨a, hpx⟩ := path_last_of_toLeaf w w3 P L hp3' hXD
     refine writerWP_deleteUpward_full (ctxOf p ts) L n P.length cv (pre ++ [cv]) w3 hlk3 hne hkeep
-      (fun v => DelInvF3 (ctxOf p ts) (viewOf (treeRun p ts)) w (pre ++ [cv]) (p.fuel + 1)
+      (fun v => DelInv (ctxOf p ts) (viewOf (treeRun p ts)) w (pre ++ [cv]) (p.fuel + 1)
         (kindOracleOf p (treeRun p ts)) tx.base v) _ ?_ ?_
     · refine writerWP_mono (writerWP_and (writerWP_and
         (writerWP_appendDeleteKlong_room_exactD L _ cv n _ _ hlk3 htimes hwf hne hroomD)
@@ -182,8 +182,7 @@ theorem delStepsCaseQd_emptyRoom (p : Params) (R : Struct BVal → Time → Prop
 
 set_option maxHeartbeats 1600000 in
 /-- The reading of a delete that empties the leaf at the space root, the merges
-on, on the F3 route: the root's bitmap, or its split when full; no merges'
-loop. -/
+on: the root's bitmap, or its split when full; no merges' loop. -/
 theorem delStepsCaseQd_emptyRoot (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
     (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
@@ -298,9 +297,9 @@ theorem delStepsCaseQd_fullH (p : Params) (R : Struct BVal → Time → Prop) (h
         m.allKeysIn (bitsUnion m.lastBitmap (m.bitsOf cv)) = false ∧ ¬ DelRoom (ctxOf p ts) cv m)
       ⟨hne0, hkeep0, hfull0⟩ L n hL hn hnl
     refine writerWP_deleteUpward_full (ctxOf p ts) L n P.length cv (pre ++ [cv]) w3 hlk3 hne hkeep
-      (fun v => DelInvF3 (ctxOf p ts) (viewOf (treeRun p ts)) w (pre ++ [cv]) (p.fuel + 1)
+      (fun v => DelInv (ctxOf p ts) (viewOf (treeRun p ts)) w (pre ++ [cv]) (p.fuel + 1)
         (kindOracleOf p (treeRun p ts)) tx.base v) _
-      (writerWP_appendDeleteKlong_full_delF3H (ctxOf p ts) _ (viewCoherent_ctxOf p ts) _ tx.base (hRoot ts) _
+      (writerWP_appendDeleteKlong_full_delH (ctxOf p ts) _ (viewCoherent_ctxOf p ts) _ tx.base (hRoot ts) _
         (delFullFitsOKR_run p ts tx hw (hRL _ _ hr) (hRK _ _ hr) (hRH _ _ hr))
         hsa2 hv hk hICEk w pre cv rk tx.base top hB hI hRO hF hkey hrk L n P w3 hL hn hnl hne hfull
         hr03 hJ3.1 hJ3.2 hp3' hlinkP hXD hlkX) ?_

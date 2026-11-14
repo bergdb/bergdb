@@ -3,7 +3,7 @@ Case (4)'s delete steps, a leaf that empties (the upward delete), the merges
 on (bergdb 024-12, TP7 and TP10): when the leaf is not the space root and the
 stop node has room for its bitmap or LE-b (`DelEmptyRoomM`), `DelInvF` where
 `afterDelete` and the merges' loop start (`delInvF_of_collGetInv`); the walk
-with the kinds' books is `writerWP_del_emptyRoomMK` (DelStepsF3.lean).
+with the kinds' books is `writerWP_del_emptyRoomMK` (DelSteps.lean).
 -/
 import SIS.Tree.DelStepsUpWalk
 

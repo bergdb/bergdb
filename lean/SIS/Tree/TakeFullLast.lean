@@ -1,7 +1,7 @@
 /-
 A full node replaced by a last version that keeps what it reached, with the
 cascade above, keeps the take-back's facts (bergdb 024-12, TP7, case (4)'s full
-leaf): `writerWP_handleFull_lastVF2`'s reach-back and
+leaf): `writerWP_handleFull_lastV`'s reach-back and
 `writerWP_handleFull_lastShape`'s shapes, for the node at depth D + 1 below the
 space root's chain from depth 0.
 -/
@@ -17,7 +17,7 @@ open SIS SIS.Check
 set_option maxHeartbeats 3200000 in
 /-- `handleFull` of the node X (D + 1) with a last version `last` that keeps the
 node's live children (or they are no nodes, `hkeep`) keeps `TakeJ2`, and B stays
-at most the next id: on the premises of `writerWP_handleFull_lastVF2` with the
+at most the next id: on the premises of `writerWP_handleFull_lastV` with the
 chain from the space root (s = 0), with the cascade's levels and `last` ordered
 (`hord`, `hLO`) and `last` a time klong with key klongs of distinct compare
 values (`hpairs`). -/
@@ -78,7 +78,7 @@ theorem writerWP_handleFull_last_j2 (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx) 
     intro i h1 h2
     obtain ⟨hl, ht⟩ := hS2 i h1 h2
     simp only [wNode, ht, Bool.false_eq_true, ↓reduceIte, hl]
-  have hlevel := writerWP_handleFull_lastVF2 fuelR hfR c base w.path 0 D X K Nn (Nat.zero_le _) hX hK hlinkK
+  have hlevel := writerWP_handleFull_lastV fuelR hfR c base w.path 0 D X K Nn (Nat.zero_le _) hX hK hlinkK
     hrange hlen hwf htimes (Or.inr rfl) hdist hspace last compact hlwf hlt hlastV hlen2 hrangeL hspaceL
     w rfl hS2 hS3 hS4 hS5 hS6 (fun _ _ => hR0) hW hV hvx
   have hshapeL := writerWP_handleFull_lastShape c w.path 0 D X K Nn (Nat.zero_le _) hX hK hlinkK hrange

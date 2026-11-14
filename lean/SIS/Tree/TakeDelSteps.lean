@@ -1,9 +1,9 @@
 /-
-The take-back's delete steps on latest's F3/F4 route (bergdb 024-12, TP7):
-`DelStepsJ2OKF3` (the continuations keep `DelInvJF3`) by the delete's cases, the
+The take-back's delete steps on latest's route (bergdb 024-12, TP7):
+`DelStepsJ2OK` (the continuations keep `DelInvJ`) by the delete's cases, the
 walks carrying the books and the kinds' books.
 -/
-import SIS.Tree.TakeDelMergeF4
+import SIS.Tree.TakeDelMergeKd
 import SIS.Tree.DelStepsBookK
 import SIS.Tree.DelStepsEmptyRoot
 
@@ -13,8 +13,8 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
-/-- The take-back's delete steps on the F3 route: the continuations keep `DelInvJF3`. -/
-def DelStepsJ2OKF3 (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop) : Prop :=
+/-- The take-back's delete steps: the continuations keep `DelInvJ`. -/
+def DelStepsJ2OK (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop) : Prop :=
   ∀ ts tx, Within p (ts ++ [tx]) → R (treeRun p ts) ts.length → ∀ z top,
     lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z →
     topOf p (ctxOf p ts).view z = .ok top →
@@ -22,16 +22,16 @@ def DelStepsJ2OKF3 (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx
     ∀ r w, (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
     S ts tx w → TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w →
     ∀ key, op = .del key → p.merges = true →
-    (∀ g h v, DelInvJF3 (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) (kindOracleOf p (treeRun p ts)) tx.base tx.base v →
-      WriterWP (afterDelete key g h) (ctxOf p ts) v (fun _ v' => DelInvJF3 (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) (kindOracleOf p (treeRun p ts)) tx.base tx.base v')) →
-    (∀ g h merged v, DelInvJF3 (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) (kindOracleOf p (treeRun p ts)) tx.base tx.base v →
-      WriterWP (mergeUp key g p.fuel h merged) (ctxOf p ts) v (fun _ v' => DelInvJF3 (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) (kindOracleOf p (treeRun p ts)) tx.base tx.base v')) →
-    (∀ seg v, DelInvJF3 (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) (kindOracleOf p (treeRun p ts)) tx.base tx.base v →
-      WriterWP (collapseRoot key seg p.fuel) (ctxOf p ts) v (fun _ v' => DelInvJF3 (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) (kindOracleOf p (treeRun p ts)) tx.base tx.base v')) →
+    (∀ g h v, DelInvJ (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) (kindOracleOf p (treeRun p ts)) tx.base tx.base v →
+      WriterWP (afterDelete key g h) (ctxOf p ts) v (fun _ v' => DelInvJ (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) (kindOracleOf p (treeRun p ts)) tx.base tx.base v')) →
+    (∀ g h merged v, DelInvJ (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) (kindOracleOf p (treeRun p ts)) tx.base tx.base v →
+      WriterWP (mergeUp key g p.fuel h merged) (ctxOf p ts) v (fun _ v' => DelInvJ (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) (kindOracleOf p (treeRun p ts)) tx.base tx.base v')) →
+    (∀ seg v, DelInvJ (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) (kindOracleOf p (treeRun p ts)) tx.base tx.base v →
+      WriterWP (collapseRoot key seg p.fuel) (ctxOf p ts) v (fun _ v' => DelInvJ (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) (kindOracleOf p (treeRun p ts)) tx.base tx.base v')) →
     WriterWP (putKv op) (ctxOf p ts) w (fun _ w' => TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w')
 
-/-- `DelStepsJ2OKF3` for the deletes of one case P. -/
-def DelStepsCaseJ2OKF3 (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop)
+/-- `DelStepsJ2OK` for the deletes of one case P. -/
+def DelStepsCaseJ2OK (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop)
     (P : Ctx → View BVal → W → Op → Prop) : Prop :=
   ∀ ts tx, Within p (ts ++ [tx]) → R (treeRun p ts) ts.length → ∀ z top,
     lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z →
@@ -40,18 +40,18 @@ def DelStepsCaseJ2OKF3 (p : Params) (R : Struct BVal → Time → Prop) (S : Lis
     ∀ r w, (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
     S ts tx w → TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w →
     ∀ key, op = .del key → P (ctxOf p ts) (viewOf (treeRun p ts)) w op →
-    (∀ g h v, DelInvJF3 (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) (kindOracleOf p (treeRun p ts)) tx.base tx.base v →
-      WriterWP (afterDelete key g h) (ctxOf p ts) v (fun _ v' => DelInvJF3 (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) (kindOracleOf p (treeRun p ts)) tx.base tx.base v')) →
-    (∀ g h merged v, DelInvJF3 (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) (kindOracleOf p (treeRun p ts)) tx.base tx.base v →
-      WriterWP (mergeUp key g p.fuel h merged) (ctxOf p ts) v (fun _ v' => DelInvJF3 (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) (kindOracleOf p (treeRun p ts)) tx.base tx.base v')) →
-    (∀ seg v, DelInvJF3 (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) (kindOracleOf p (treeRun p ts)) tx.base tx.base v →
-      WriterWP (collapseRoot key seg p.fuel) (ctxOf p ts) v (fun _ v' => DelInvJF3 (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) (kindOracleOf p (treeRun p ts)) tx.base tx.base v')) →
+    (∀ g h v, DelInvJ (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) (kindOracleOf p (treeRun p ts)) tx.base tx.base v →
+      WriterWP (afterDelete key g h) (ctxOf p ts) v (fun _ v' => DelInvJ (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) (kindOracleOf p (treeRun p ts)) tx.base tx.base v')) →
+    (∀ g h merged v, DelInvJ (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) (kindOracleOf p (treeRun p ts)) tx.base tx.base v →
+      WriterWP (mergeUp key g p.fuel h merged) (ctxOf p ts) v (fun _ v' => DelInvJ (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) (kindOracleOf p (treeRun p ts)) tx.base tx.base v')) →
+    (∀ seg v, DelInvJ (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) (kindOracleOf p (treeRun p ts)) tx.base tx.base v →
+      WriterWP (collapseRoot key seg p.fuel) (ctxOf p ts) v (fun _ v' => DelInvJ (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) (kindOracleOf p (treeRun p ts)) tx.base tx.base v')) →
     WriterWP (putKv op) (ctxOf p ts) w (fun _ w' => TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w')
 
-theorem delStepsJ2OKF3_of_cases (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop)
-    (c5 : DelStepsCaseJ2OKF3 p R S DelNoLeafM) (c6 : DelStepsCaseJ2OKF3 p R S DelNoopM)
-    (c7 : DelStepsCaseJ2OKF3 p R S DelEmptyM) (c8 : DelStepsCaseJ2OKF3 p R S DelRoomM)
-    (c9 : DelStepsCaseJ2OKF3 p R S DelFullM) : DelStepsJ2OKF3 p R S := by
+theorem delStepsJ2OK_of_cases (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop)
+    (c5 : DelStepsCaseJ2OK p R S DelNoLeafM) (c6 : DelStepsCaseJ2OK p R S DelNoopM)
+    (c7 : DelStepsCaseJ2OK p R S DelEmptyM) (c8 : DelStepsCaseJ2OK p R S DelRoomM)
+    (c9 : DelStepsCaseJ2OK p R S DelFullM) : DelStepsJ2OK p R S := by
   intro ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop hm hA hMU hCR
   rcases delMerge_cover (ctxOf p ts) (viewOf (treeRun p ts)) w key hm with h | h | h | h | h
   · exact c5 ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop (hop ▸ h) hA hMU hCR
@@ -60,10 +60,10 @@ theorem delStepsJ2OKF3_of_cases (p : Params) (R : Struct BVal → Time → Prop)
   · exact c8 ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop (hop ▸ h) hA hMU hCR
   · exact c9 ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop (hop ▸ h) hA hMU hCR
 
-theorem delStepsCaseJ2OKF3_or (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop)
+theorem delStepsCaseJ2OK_or (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop)
     (P P1 P2 : Ctx → View BVal → W → Op → Prop)
     (hs : ∀ c base w op, P c base w op → P1 c base w op ∨ P2 c base w op)
-    (h1 : DelStepsCaseJ2OKF3 p R S P1) (h2 : DelStepsCaseJ2OKF3 p R S P2) : DelStepsCaseJ2OKF3 p R S P := by
+    (h1 : DelStepsCaseJ2OK p R S P1) (h2 : DelStepsCaseJ2OK p R S P2) : DelStepsCaseJ2OK p R S P := by
   intro ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop hPc hA hMU hCR
   rcases hs _ _ _ _ hPc with h | h
   · exact h1 ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop h hA hMU hCR
@@ -72,10 +72,10 @@ theorem delStepsCaseJ2OKF3_or (p : Params) (R : Struct BVal → Time → Prop) (
 /-! ## The cases without a continuation -/
 
 /-- No leaf: the take-back. -/
-theorem delStepsCaseJ2OKF3_noLeaf (p : Params) (R : Struct BVal → Time → Prop)
+theorem delStepsCaseJ2OK_noLeaf (p : Params) (R : Struct BVal → Time → Prop)
     (S : List Tx → Tx → W → Prop)
     (hSI : ∀ ts tx w, S ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w) :
-    DelStepsCaseJ2OKF3 p R S DelNoLeafM := by
+    DelStepsCaseJ2OK p R S DelNoLeafM := by
   intro ts tx hw _ _ _ _ _ ops op post hops _ w _ hS hJ _ _ hP _ _ _
   obtain ⟨key, hop, _, hno⟩ := hP
   subst hop
@@ -90,10 +90,10 @@ theorem delStepsCaseJ2OKF3_noLeaf (p : Params) (R : Struct BVal → Time → Pro
     hne (hI.pathUntaken key) hno' hJ
 
 /-- A noop: the take-back. -/
-theorem delStepsCaseJ2OKF3_noop (p : Params) (R : Struct BVal → Time → Prop)
+theorem delStepsCaseJ2OK_noop (p : Params) (R : Struct BVal → Time → Prop)
     (S : List Tx → Tx → W → Prop)
     (hSI : ∀ ts tx w, S ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w) :
-    DelStepsCaseJ2OKF3 p R S DelNoopM := by
+    DelStepsCaseJ2OK p R S DelNoopM := by
   intro ts tx _ _ _ _ _ _ _ op _ _ _ w _ hS hJ _ _ hP _ _ _
   obtain ⟨pre, cv, L, n, hop, _, hK, hnoop⟩ := hP
   subst hop
@@ -110,8 +110,8 @@ theorem delStepsCaseJ2OKF3_noop (p : Params) (R : Struct BVal → Time → Prop)
 /-! ## The upward delete with room -/
 
 set_option maxHeartbeats 1600000 in
-/-- The take-back's upward delete with room on the F3 route: the walks carry the kinds' books
-too, the continuations keep `DelInvJF3`. -/
+/-- The take-back's upward delete with room: the walks carry the kinds' books
+too, the continuations keep `DelInvJ`. -/
 theorem writerWP_del_emptyRoomMJK (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (pre : List Nat) (cv : Nat) (rk : NodeId) (w : W) (B : NodeId) (top0 : Top)
     (hB : PutBase c base B) (hbook : PutBook c B top0 w)
@@ -131,14 +131,14 @@ theorem writerWP_del_emptyRoomMJK (c : Ctx) (base : View BVal) (hvc : ViewCohere
     (hLV : ∀ L n, (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
       wNode c.p base w L = some n → n.leaf = true → ∀ y, (cv, y) ∈ n.liveAt c.i →
       wNode c.p base w y = none)
-    (hA : ∀ g h v, DelInvJF3 c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v →
-      WriterWP (afterDelete (pre ++ [cv]) g h) c v (fun _ v' => DelInvJF3 c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v'))
-    (hMU : ∀ g h merged v, DelInvJF3 c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v →
+    (hA : ∀ g h v, DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v →
+      WriterWP (afterDelete (pre ++ [cv]) g h) c v (fun _ v' => DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v'))
+    (hMU : ∀ g h merged v, DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v →
       WriterWP (mergeUp (pre ++ [cv]) g c.p.fuel h merged) c v
-        (fun _ v' => DelInvJF3 c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v'))
-    (hCR : ∀ seg v, DelInvJF3 c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v →
+        (fun _ v' => DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v'))
+    (hCR : ∀ seg v, DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v →
       WriterWP (collapseRoot (pre ++ [cv]) seg c.p.fuel) c v
-        (fun _ v' => DelInvJF3 c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v')) :
+        (fun _ v' => DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v')) :
     WriterWP (putKv (.del (pre ++ [cv]))) c w (fun _ w' => TakeJ2 c base B w') := by
   have hfuel : 1 ≤ c.p.fuel := by unfold Params.fuel; omega
   refine writerWP_del_toLeafMK c base hvc pre cv rk w (fun v => KdJ c B top0 KO BK v ∧ v.madeFor = w.madeFor)
@@ -339,7 +339,5 @@ theorem writerWP_del_emptyRoomMJK (c : Ctx) (base : View BVal) (hvc : ViewCohere
     refine writerWP_mono (hMU gs hs false w' ⟨⟨hDv, hb'.1.2.1, hb'.1.2.2⟩, hJv, hb'.1.1.fresh.1⟩) ?_
     intro _ w1 hD1
     exact writerWP_mono (hCR seg w1 hD1) (fun _ w2 hD2 => hD2.2.1)
-
-/-! ## The case on the F3/F4 route -/
 
 end SIS.Tree

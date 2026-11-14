@@ -1,11 +1,11 @@
 /-
 Case (4)'s delete steps with the kinds' books (bergdb 024-12, TP7 and TP10,
-latest's F3 route): the delete's walk to its leaf with an invariant J whose steps
+latest's route): the delete's walk to its leaf with an invariant J whose steps
 know where the path ends (`KdPathLast`), as the kinds' lemmas ask
 (`kd_descendLte`, `kd_pathAdd`).
 -/
 import SIS.Tree.DelStepsFull
-import SIS.Tree.DelMergeCaseF3
+import SIS.Tree.DelMergeCaseKd
 
 set_option autoImplicit false
 

@@ -1,8 +1,9 @@
 /-
 Root collapse keeps the take-back's (B) (bergdb 024-12, TP4; TakeBackRun.lean)
 in the form every rule keeps, `TtReachedN`: a node with a klong of the
-transaction's time is reached. Prover cost's loop `writerWP_collapseRoot_coll`
-with J = `TakeJ`; the root that gives way is taken back (`takeBackRoot`) or
+transaction's time is reached. The root collapse's loop `writerWP_collapseRoot_inv`
+with the take-back's facts in its invariant; the root that gives way is taken
+back (`takeBackRoot`) or
 keeps no klong of the transaction's time (`unlink`, `unlinked_no_time`).
 -/
 import SIS.Tree.TakeInvTree

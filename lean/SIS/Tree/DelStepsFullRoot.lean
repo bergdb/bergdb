@@ -1,6 +1,6 @@
 /-
 A delete into a full leaf that is the space root (bergdb 024-12, TP7 and TP10,
-case (4)): the root's split with latest's `writerWP_handleFull_rootVF2` and
+case (4)): the root's split with latest's `writerWP_handleFull_rootVReach` and
 `writerWP_handleFull_rootShape`. The take-back's facts (`DelFullRootJ2OK`) and
 the reading's (`DelFullRootStepOK`, the ranges by `writerWP_delRootSplit_range`).
 -/
@@ -23,7 +23,7 @@ theorem keepsState_rootUp [inv : WriterStateInvariant] (q : NodeId) (more : List
 set_option maxHeartbeats 3200000 in
 /-- `handleFull` of the space root L with a last version that keeps the root's
 children (or they are no nodes, `hkeep`) keeps `TakeJ2`, and B stays at most
-the next id: on `writerWP_handleFull_rootVF2`'s premises, `last` a time klong
+the next id: on `writerWP_handleFull_rootVReach`'s premises, `last` a time klong
 with key klongs of distinct compare values. -/
 theorem writerWP_handleFull_root_j2 (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (B : NodeId) (hpos : 0 < c.i) (L : NodeId) (n last : KNode) (compact : Bool)
@@ -53,7 +53,7 @@ theorem writerWP_handleFull_root_j2 (c : Ctx) (base : View BVal) (hvc : ViewCohe
     · rw [(hS5 L h).1] at hlk; cases hlk
   have hwL : wNode c.p base w L = some n := by
     simp only [wNode, htk, Bool.false_eq_true, ↓reduceIte, hlk]
-  have hlevel := writerWP_handleFull_rootVF2 2 (Nat.le_refl _) c base hvc rootUp L n last compact hlwf hlt
+  have hlevel := writerWP_handleFull_rootVReach 2 (Nat.le_refl _) c base hvc rootUp L n last compact hlwf hlt
     hlastV hlen2 w hlk htk hrk hS5 hS6 hW hV hvx
   have hshape := writerWP_handleFull_rootShape c rootUp L n last compact (fun _ => L) (fun _ => 0)
     (fun _ => n) rfl rfl hpairs hlastV hlen2 w hlk hLn (fun z hz => (hS5 z hz).1)
@@ -207,7 +207,7 @@ theorem delFullRootJ2OK_ctx (p : Params) (hsa2 : 2 ≤ p.splitAbove) (ts : List 
 set_option maxHeartbeats 3200000 in
 /-- `DelFullRootStepOK`: the reading's facts after a delete into a full leaf that
 is the space root, from the root's split (`writerWP_delRootSplit_range` for the
-tree, the reached nodes and the ranges; `writerWP_handleFull_rootVF2` for the
+tree, the reached nodes and the ranges; `writerWP_handleFull_rootVReach` for the
 reading), for the transaction after every run. -/
 theorem delFullRootStepOK_ctx (p : Params) (ts : List Tx) :
     DelFullRootStepOK (ctxOf p ts) (viewOf (treeRun p ts)) := by
@@ -247,7 +247,7 @@ theorem delFullRootStepOK_ctx (p : Params) (ts : List Tx) :
   obtain ⟨hleq, hlwf, hlt, hlastV, hlen2, _, hiff, hdl⟩ := delLast_split_facts c n cv hsa2 hnt last hlast
   have hsub : ∀ c' z, (c', z) ∈ last.liveAt c.i → (c', z) ∈ n.liveAt c.i :=
     fun c' z h => ((hiff c' z).mp h).1
-  have hlevel := writerWP_handleFull_rootVF2 (c.p.fuel + 1) (by omega) c base hvc rootUp L n last compact
+  have hlevel := writerWP_handleFull_rootVReach (c.p.fuel + 1) (by omega) c base hvc rootUp L n last compact
     hlwf hlt hlastV hlen2 ({ w with trail := s :: w.trail } : W) hlk htk hrk0 hS5
     (fun u c' z ⟨un, hun, hl⟩ => hG.links u un c' z hun hl) hI.wf
     (by

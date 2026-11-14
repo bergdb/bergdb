@@ -1,6 +1,6 @@
 /-
 The merge's tail with the take-back's facts (bergdb 024-12, TP7, case (4)):
-`writerWP_mergeTail_any_getF2`'s walk (latest) with `TakeJ2` as its post.
+`writerWP_mergeTail_any_get`'s walk (latest) with `TakeJ2` as its post.
 -/
 import SIS.Tree.TakeMergeFull
 import SIS.Tree.GetMergeAny
@@ -14,7 +14,7 @@ open SIS SIS.Check
 set_option maxHeartbeats 3200000 in
 /-- The merge's tail keeps the reading of every key, the parent p at depth D + 1
 with room or full, a full parent split in any of its kinds
-(`writerWP_handleFull_lastVF2`): `writerWP_mergeTail_full_get` without its
+(`writerWP_handleFull_lastV`): `writerWP_mergeTail_full_get` without its
 premises that the parent existed before the transaction, sits below an inner node
 and is not split in space. The parent's last version is a time klong and sorted
 key klongs (`mergeFullLast_sorted`); for a space split its live compare values are in the
@@ -492,7 +492,7 @@ theorem writerWP_mergeTail_any_j2 (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx) (b
           intro h
           have h' : c.p.splitAbove < last.size := by cases compact <;> simp at h <;> omega
           rw [hNp]; exact hspaceL m1 none last hlast h'
-        have hlevel := writerWP_handleFull_lastVF2 fuelR hfR c base w3.path s D X K Nn hsD hX hK hlinkK hrange hlen
+        have hlevel := writerWP_handleFull_lastV fuelR hfR c base w3.path s D X K Nn hsD hX hK hlinkK hrange hlen
           hwf htimes htop hdist hspace last compact hlwf htl hlastV hlen2 hrangeL' hspaceL'
           ({ w6 with trail := s7 :: w6.trail } : W)
           (by show w6.path = w3.path; rw [h6p, h5p, h4p])
@@ -1226,7 +1226,7 @@ theorem writerWP_mergeTail_any_j2 (fuelR : Nat) (hfR : 2 ≤ fuelR) (c : Ctx) (b
           intro h
           have h' : c.p.splitAbove < last.size := by cases compact <;> simp at h <;> omega
           rw [hNp]; exact hspaceL m1 (some (m1 + 2, g2)) last hlast h'
-        have hlevel := writerWP_handleFull_lastVF2 fuelR hfR c base w3.path s D X K Nn hsD hX hK hlinkK hrange hlen
+        have hlevel := writerWP_handleFull_lastV fuelR hfR c base w3.path s D X K Nn hsD hX hK hlinkK hrange hlen
           hwf htimes htop hdist hspace last compact hlwf htl hlastV hlen2 hrangeL' hspaceL'
           ({ w8 with trail := s9 :: w8.trail } : W)
           (by show w8.path = w3.path; rw [h8p, h7p, h6p, h5p, h4p])

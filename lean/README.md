@@ -52,8 +52,8 @@ tree, off by default; record format 7's writer is
 `Params.withMerges.withTheta`.
 
 Since 2026-11-14 the tree's main properties are proved from 10 named premises
-(bergdb 024-12, section 1). The top theorem, `invGetScanOK_merges_flat`
-(SIS/Tree/LatestTopFlat.lean), gives TP7 (`InvPreserved`), TP10 (`GetOK`) and
+(bergdb 024-12, section 1). The top theorem, `invGetScanOK_merges`
+(SIS/Tree/LatestTop.lean), gives TP7 (`InvPreserved`), TP10 (`GetOK`) and
 TP11 (`ScanOK`), and so `LatestGetOK` and `LatestScanOK`, for every parameter
 set of `MergeParamsOK` with theta 0 or at least 2; Java's own parameters,
 record format 7's from node size 8, are among them (`mergeParamsOK_java`,
@@ -1422,7 +1422,7 @@ run):
   (`bounded_startup`, `bounded_startup_tree`).
 * The key tree (bergdb 024-12, section 1; 2026-11-14): TP7, TP10 and TP11,
   and so `LatestGetOK` and `LatestScanOK`, for `MergeParamsOK` and Java's
-  parameters (`invGetScanOK_merges_flat`, `mergeParamsOK_java`,
+  parameters (`invGetScanOK_merges`, `mergeParamsOK_java`,
   `theta_java`), from 10 named premises, which are open (Not done).
 
 Checked by running: the `#guard`s of `lake build`, the random runs of
@@ -1445,7 +1445,7 @@ Not done:
   difference to the take: when it runs, the stream's length is where the new
   record begins (bergdb 005-68).
 * The key tree's 10 premises (`d4`, `l4`, `hchk`, `htb`, `hU`, `hHL`,
-  `hMSF`, `hCoF`, `hCoU`, `hMF` of `invGetScanOK_merges_flat`; bergdb 024-12,
+  `hMSF`, `hCoF`, `hCoU`, `hMF` of `invGetScanOK_merges`; bergdb 024-12,
   section 1): open, held on the model's runs within reach.
 * Reclaim's theorems: T-SCHEME (R6), that Java's scheme gives safe cuts:
   checked, not proved (the plan's fallback; 001-07, section 5):

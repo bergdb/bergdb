@@ -5,7 +5,7 @@ delete's inner invariant with the take-back's facts, `DelInvJF`), with the
 merge below a parent with room (`writerWP_merge_made_j2`), and the take-back's
 collapse steps for `CollGetInvF` (`writerWP_takeBackRoot_seg_j2F`,
 `writerWP_replaceRoot_seg_j2F`, `writerWP_rootStep_space_j2F`). The case runs on
-latest's F3/F4 route (TakeDelMergeF4.lean, TakeDelStepsF4.lean).
+latest's route (TakeDelMergeKd.lean, TakeDelSteps.lean).
 -/
 import SIS.Tree.DelMergeCaseF
 import SIS.Tree.GetDescentOK

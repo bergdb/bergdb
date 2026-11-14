@@ -1,7 +1,7 @@
 /-
-The take-back's case (4) on latest's F3/F4 route (bergdb 024-12, TP7): the
+The take-back's case (4) on latest's route (bergdb 024-12, TP7): the
 delete's loop invariant with the kinds' books and the take-back's facts
-(`DelInvJF3`), through the merges' loop (`writerWP_mergeUp_delJF3`, every
+(`DelInvJ`), through the merges' loop (`writerWP_mergeUp_delJ`, every
 merge's `TakeJ2` proved) and the collapse.
 -/
 import SIS.Tree.TakeMergeRoot
@@ -13,21 +13,21 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
-/-- The delete's loop invariant on the F3 route with the take-back's facts. -/
-def DelInvJF3 (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (f : Nat) (KO : KindOracle) (BK : NodeId)
+/-- The delete's loop invariant (`DelInv`) with the take-back's facts. -/
+def DelInvJ (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (f : Nat) (KO : KindOracle) (BK : NodeId)
     (B : NodeId) (v : W) : Prop :=
-  DelInvF3 c base w0 key f KO BK v ∧ TakeJ2 c base B v ∧ B ≤ v.next
+  DelInv c base w0 key f KO BK v ∧ TakeJ2 c base B v ∧ B ≤ v.next
 
 set_option maxHeartbeats 1600000 in
-/-- The merges' loop keeps `DelInvJF3`: latest's `writerWP_mergeUp_delF3` with
+/-- The merges' loop keeps `DelInvJ`: latest's `writerWP_mergeUp_del` with
 each merge's `TakeJ2` (`mergeStepJ2OKF_of_root`, `mergeRootJ2OKF_holds`). -/
-theorem writerWP_mergeUp_delJF3 (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
-    (hvc : ViewCoherent c base) (fuelR : Nat) (hfR : 2 ≤ fuelR) (hM : MergeStepOKF3 c base fuelR)
+theorem writerWP_mergeUp_delJ (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (fuelR : Nat) (hfR : 2 ≤ fuelR) (hM : MergeStepOK c base fuelR)
     (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
     (hICEk : ICEFromKinds c base KO BK)
     (hsa2 : 2 ≤ c.p.splitAbove) (hcap : 1 ≤ c.p.mergeMax) (B : NodeId) (hpos : 0 < c.i) (w0 : W) (k0 : Key) :
-    ∀ fuel h merged v, DelInvJF3 c base w0 k0 fuelR KO BK B v →
-      WriterWP (mergeUp key g fuel h merged) c v (fun _ v' => DelInvJF3 c base w0 k0 fuelR KO BK B v') := by
+    ∀ fuel h merged v, DelInvJ c base w0 k0 fuelR KO BK B v →
+      WriterWP (mergeUp key g fuel h merged) c v (fun _ v' => DelInvJ c base w0 k0 fuelR KO BK B v') := by
   have hMJ := mergeStepJ2OKF_of_root c base hvc fuelR B hpos hcap hsa2
     (mergeRootJ2OKF_holds c base fuelR B hpos hcap hsa2)
   intro fuel
@@ -37,7 +37,7 @@ theorem writerWP_mergeUp_delJF3 (key : Key) (g : Nat) (c : Ctx) (base : View BVa
     intro h merged v ⟨⟨hI, hbk, hik⟩, hJ0, hB0⟩
     unfold mergeUp
     simp only [writerWP_bind, writerWP_read]
-    refine writerWP_mono (writerWP_and (writerWP_and (descentOKF2 c base fuelR w0 k0 key g h v hI)
+    refine writerWP_mono (writerWP_and (writerWP_and (descentOK c base fuelR w0 k0 key g h v hI)
       (kd_descendToHeight KO BK key g h c v hv hk hbk hik))
       (writerWP_descendToHeight_readsU key g h c base hvc v)) ?_
     intro d v1 ⟨⟨⟨hI1, hPF⟩, hbk1, hik1, _⟩, hr1⟩
@@ -107,7 +107,7 @@ theorem writerWP_mergeUp_delJF3 (key : Key) (g : Nat) (c : Ctx) (base : View BVa
                 have h1 := (hS23 (d - 1) (by omega)).1
                 rw [hqX, hkeep3 _ _ hl2] at h1
                 exact (Option.some.inj h1).symm
-              have hmg := writerWP_merge_get_invF2 fuelR hfR ex.2 d c base hvc v3 hI3.1 hI3.2.1 hI3.2.2.1
+              have hmg := writerWP_merge_get_inv fuelR hfR ex.2 d c base hvc v3 hI3.1 hI3.2.1 hI3.2.2.1
                 X K Nn hP3 hd hxX (by rw [hqn]; exact hql') hsa2 hcap
               have hms := hM w0 k0 ex.2 eq.2 d v3 qn xn X K Nn hI3 hP3 hd (by rw [hp3, hp2, hex]; rfl)
                 (by rw [hp3, hp2, heq]; rfl) (hkeep3 _ _ hl2) hql' hl3 hcnt'
@@ -157,12 +157,12 @@ def ReplaceRootFullJ2OK (c : Ctx) (base : View BVal) (f : Nat) (B : NodeId) : Pr
     WriterWP (replaceRoot x (ps0.length + 1) only) c v (fun _ v' => TakeJ2 c base B v' ∧ B ≤ v'.next)
 
 set_option maxHeartbeats 1600000 in
-/-- The root collapse keeps latest's `writerWP_collapseRoot_collF4` invariant and
+/-- The root collapse keeps latest's `writerWP_collapseRoot_coll` invariant and
 `TakeJ2` with B at most the next id: the take-back's steps of the collapse
 (`writerWP_takeBackRoot_seg_j2F`, `writerWP_replaceRoot_seg_j2F`,
 `writerWP_rootStep_space_j2F`), a replaceRoot into a full segment leaf by
 `ReplaceRootFullJ2OK`. -/
-theorem writerWP_collapseRoot_collJF4 (fuelR : Nat) (hfR : 2 ≤ fuelR) (key : Key) (seg : Nat) (c : Ctx)
+theorem writerWP_collapseRoot_collJ (fuelR : Nat) (hfR : 2 ≤ fuelR) (key : Key) (seg : Nat) (c : Ctx)
     (base : View BVal) (hvc : ViewCoherent c base) (w0 : W) (B : NodeId) (top0 : Top)
     (hB : PutBase c base B) (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view)
     (hk : ViewKinds KO BK c) (hICEk : ICEFromKinds c base KO BK) (hsa2 : 2 ≤ c.p.splitAbove)
@@ -290,21 +290,21 @@ theorem writerWP_collapseRoot_collJF4 (fuelR : Nat) (hfR : 2 ≤ fuelR) (key : K
         hread' hf', hf', fun y yn _ hy => hW' y yn hy, fun y yn _ hy => hG'.keyNoValue y yn hy⟩,
         hR', hb', hbk', hik', hJ', Nat.le_trans hBn hn'⟩
 
-/-- The collapse keeps `DelInvJF3`, given `CollapseStepOKF4` and
+/-- The collapse keeps `DelInvJ`, given `CollapseStepOK` and
 `ReplaceRootFullJ2OK`. -/
-theorem writerWP_collapseRoot_delJF4 (key : Key) (seg : Nat) (c : Ctx) (base : View BVal)
-    (hvc : ViewCoherent c base) (f : Nat) (hf2 : 2 ≤ f) (hC : CollapseStepOKF4 c base f) (w0 : W)
+theorem writerWP_collapseRoot_delJ (key : Key) (seg : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (f : Nat) (hf2 : 2 ≤ f) (hC : CollapseStepOK c base f) (w0 : W)
     (k0 : Key) (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
     (hICEk : ICEFromKinds c base KO BK) (hsa2 : 2 ≤ c.p.splitAbove)
     (BJ : NodeId) (hpos : 0 < c.i) (hRJ : ReplaceRootFullJ2OK c base f BJ)
-    (v : W) (hI : DelInvJF3 c base w0 k0 f KO BK BJ v) :
-    WriterWP (collapseRoot key seg c.p.fuel) c v (fun _ v' => DelInvJF3 c base w0 k0 f KO BK BJ v') := by
+    (v : W) (hI : DelInvJ c base w0 k0 f KO BK BJ v) :
+    WriterWP (collapseRoot key seg c.p.fuel) c v (fun _ v' => DelInvJ c base w0 k0 f KO BK BJ v') := by
   obtain ⟨⟨⟨hP, hG, hR, hICE, hF, hread, B, top0, hB, hbook⟩, hbk, hik⟩, hJ, hBn⟩ := hI
   have hCI : CollGetInvF c base v v f := by
     refine ⟨⟨hP.tree, fun y hy => hP.untaken y (tReach_reachS _ _ _ _ hy),
       fun y yn _ h => hP.times y yn h, fun y yn cc z hy hyn hl hc => hICE y yn cc z hy hyn hl hc⟩,
       fun _ => rfl, hF, fun y yn _ h => hP.wf y yn h, fun y yn _ h => hP.keyNoValue y yn h⟩
-  refine writerWP_mono (writerWP_collapseRoot_collJF4 f hf2 key seg c base hvc v B top0 hB KO BK hv hk
+  refine writerWP_mono (writerWP_collapseRoot_collJ f hf2 key seg c base hvc v B top0 hB KO BK hv hk
     hICEk hsa2 (hC.1 v) (hC.2 v) BJ hpos hRJ c.p.fuel v hCI hR hbook hbk hik hJ hBn) ?_
   rintro _ v' ⟨⟨⟨hT', hu', _, hICE'⟩, hread', hF', _, _⟩, hR', hbook', hbk', hik', hJ', hBn'⟩
   obtain ⟨hP', hG'⟩ := putInv_after_step c base v' B top0 hB hbook' hT'
@@ -313,20 +313,20 @@ theorem writerWP_collapseRoot_delJF4 (key : Key) (seg : Nat) (c : Ctx) (base : V
   rw [hread' key']
   exact hread key' hk'
 
-/-- `afterDelete` keeps `DelInvJF3`, given `MergeStepOKF3`, `CollapseStepOKF4`
+/-- `afterDelete` keeps `DelInvJ`, given `MergeStepOK`, `CollapseStepOK`
 and `ReplaceRootFullJ2OK`. -/
-theorem writerWP_afterDelete_delJF4 (key : Key) (g h : Nat) (c : Ctx) (base : View BVal)
-    (hvc : ViewCoherent c base) (fuelR : Nat) (hfR : 2 ≤ fuelR) (hM : MergeStepOKF3 c base fuelR)
-    (hC : CollapseStepOKF4 c base fuelR)
+theorem writerWP_afterDelete_delJ (key : Key) (g h : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (fuelR : Nat) (hfR : 2 ≤ fuelR) (hM : MergeStepOK c base fuelR)
+    (hC : CollapseStepOK c base fuelR)
     (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
     (hICEk : ICEFromKinds c base KO BK) (hsa2 : 2 ≤ c.p.splitAbove)
     (hcap : 1 ≤ c.p.mergeMax) (BJ : NodeId) (hpos : 0 < c.i) (hRJ : ReplaceRootFullJ2OK c base fuelR BJ)
-    (w0 : W) (k0 : Key) (v : W) (hI : DelInvJF3 c base w0 k0 fuelR KO BK BJ v) :
-    WriterWP (afterDelete key g h) c v (fun _ v' => DelInvJF3 c base w0 k0 fuelR KO BK BJ v') :=
-  writerWP_afterDelete_inv key g h c (DelInvJF3 c base w0 k0 fuelR KO BK BJ)
-    (fun v hI => writerWP_mergeUp_delJF3 key g c base hvc fuelR hfR hM KO BK hv hk hICEk hsa2 hcap BJ hpos
+    (w0 : W) (k0 : Key) (v : W) (hI : DelInvJ c base w0 k0 fuelR KO BK BJ v) :
+    WriterWP (afterDelete key g h) c v (fun _ v' => DelInvJ c base w0 k0 fuelR KO BK BJ v') :=
+  writerWP_afterDelete_inv key g h c (DelInvJ c base w0 k0 fuelR KO BK BJ)
+    (fun v hI => writerWP_mergeUp_delJ key g c base hvc fuelR hfR hM KO BK hv hk hICEk hsa2 hcap BJ hpos
       w0 k0 c.p.fuel h false v hI)
-    (fun v hI => writerWP_collapseRoot_delJF4 key g c base hvc fuelR hfR hC w0 k0 KO BK hv hk hICEk hsa2
+    (fun v hI => writerWP_collapseRoot_delJ key g c base hvc fuelR hfR hC w0 k0 KO BK hv hk hICEk hsa2
       BJ hpos hRJ v hI) v hI
 
 end SIS.Tree

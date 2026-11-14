@@ -2,7 +2,7 @@
 The merge's tail with the take-back's facts, the parent at the space root
 (bergdb 024-12, TP7, case (4), d = 1): latest's `writerWP_mergeTail_root_getF`
 walk with `TakeJ2` as its post; a full root splits by
-`writerWP_handleFull_rootVF2` with the shapes of `writerWP_handleFull_rootShape`.
+`writerWP_handleFull_rootVReach` with the shapes of `writerWP_handleFull_rootShape`.
 -/
 import SIS.Tree.TakeMergeAny
 import SIS.Tree.DelStepsFullRoot
@@ -469,7 +469,7 @@ theorem writerWP_mergeTail_root_j2 (c : Ctx) (base : View BVal) (x : NodeId) (d 
           rw [← hXp]
           exact tReach_updN_self _ c.i _ _ _ h6T (h6S4 (D + 1) (by omega) (Nat.le_refl _))
         have h6nx : w6.next = m1 + 2 := by rw [h6next, h5next, hw4m1]
-        have hlevel := writerWP_handleFull_rootVF2 2 (Nat.le_refl _) c base hvc rootUp
+        have hlevel := writerWP_handleFull_rootVReach 2 (Nat.le_refl _) c base hvc rootUp
           p pn last compact hlwf htl hlastV hlen2
           ({ w6 with trail := s7 :: w6.trail } : W) hlk6p htk6p
           (by show w6.top.rootKey = p; rw [h6top', hroot]) h6S5 h6S6 hW6 hVt hvx
@@ -1156,7 +1156,7 @@ theorem writerWP_mergeTail_root_j2 (c : Ctx) (base : View BVal) (x : NodeId) (d 
           rw [← hXp]
           exact tReach_updN_self _ c.i _ _ _ h8T (h8S4 (D + 1) (by omega) (Nat.le_refl _))
         have h8nx' : w8.next = m1 + 4 := h8nx
-        have hlevel := writerWP_handleFull_rootVF2 2 (Nat.le_refl _) c base hvc rootUp
+        have hlevel := writerWP_handleFull_rootVReach 2 (Nat.le_refl _) c base hvc rootUp
           p pn last compact hlwf htl hlastV hlen2
           ({ w8 with trail := s9 :: w8.trail } : W) hlk8p htk8p
           (by show w8.top.rootKey = p; rw [h8top', hroot]) h8S5 h8S6 hW8 hVt hvx

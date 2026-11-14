@@ -1,11 +1,11 @@
 /-
 The delete's invariant after the bitmap into a full leaf below the space root
 (bergdb 024-12, TP10, case (4)'s full leaf): the tree and the walk's
-ranges (`writerWP_delLeaf_chainGRange`), the reading (`writerWP_handleFull_lastVF2`
+ranges (`writerWP_delLeaf_chainGRange`), the reading (`writerWP_handleFull_lastV`
 and the leaf's change, `wGet_leaf_change_seg`), the books; the fuel premise
 after the split is a named input (cost's step 4).
 -/
-import SIS.Tree.DelStepsF3
+import SIS.Tree.DelSteps
 import SIS.Tree.RangeDelChainG
 
 set_option autoImplicit false
@@ -261,7 +261,7 @@ theorem writerWP_appendDeleteKlong_full_inv (c : Ctx) (base : View BVal) (hvc : 
     ({ w with trail := s :: w.trail } : W) rfl (fun i _ hi => hS2 i hi) hT (fun i _ hi => hreach i hi)
     hS5 (fun u c' z ⟨un, hun, hl⟩ => hG.links u un c' z hun hl) (fun _ => h0.symm) hRO
   rw [hlast] at hrangeG
-  have hlevel := writerWP_handleFull_lastVF2 (c.p.fuel + 1) (by omega) c base w.path 0 D X K Nn (Nat.zero_le _)
+  have hlevel := writerWP_handleFull_lastV (c.p.fuel + 1) (by omega) c base w.path 0 D X K Nn (Nat.zero_le _)
     (fun i _ hi => hX i hi) (fun i h1 hi => hK i h1 hi) (fun i h1 hi => hlink i h1 hi) hrange hlen
     (fun i _ hi => hI.wf _ _ (hw i hi)) (fun i _ hi => hI.times _ _ (hw i hi)) (Or.inr rfl)
     (fun i i' _ hi _ hi' he => hdist i i' hi hi' he) hspace last compact hlwf hlt
@@ -318,7 +318,7 @@ theorem writerWP_appendDeleteKlong_full_inv (c : Ctx) (base : View BVal) (hvc : 
 
 /-- Obligation (the reading's side at the space root): `writerWP_appendDeleteKlong_full_inv`
 for the leaf that is the space root (d = 0, the root's split,
-`writerWP_handleFull_rootVF2`). -/
+`writerWP_handleFull_rootVReach`). -/
 def DelFullRootStepOK (c : Ctx) (base : View BVal) : Prop :=
   ∀ (w : W), PutInv c base w → PutInvG c base w → RangeOrder (wNode c.p base w) c.i w.top.rootKey →
     SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey → 2 ≤ c.p.splitAbove →

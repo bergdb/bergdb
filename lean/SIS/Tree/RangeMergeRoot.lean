@@ -1,4 +1,4 @@
-import SIS.Tree.RangeMergeF2
+import SIS.Tree.RangeMergeHalves
 
 set_option autoImplicit false
 
@@ -1328,7 +1328,7 @@ theorem writerWP_merge_root_range (x : NodeId) (d : Nat) (c : Ctx) (base : View 
   · exact writerWP_throw _ _ _ _
 
 /-- The writer's merge keeps the walk's ranges, from the invariants of the state
-before it (`writerWP_merge_get_invF2`'s): `writerWP_merge_root_range` for a
+before it (`writerWP_merge_get_inv`'s): `writerWP_merge_root_range` for a
 parent at the space root, `writerWP_merge_any_range2` below it. -/
 theorem writerWP_merge_range_inv (x : NodeId) (d : Nat) (c : Ctx) (base : View BVal)
     (hvc : ViewCoherent c base) (w : W) (hI : PutInv c base w) (hG : PutInvG c base w)

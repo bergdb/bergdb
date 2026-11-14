@@ -1,4 +1,4 @@
-import SIS.Tree.DelMergeCaseF3
+import SIS.Tree.DelMergeCaseKd
 
 set_option autoImplicit false
 
@@ -519,7 +519,7 @@ kinds' walk, with no room premise: a replaceRoot at a segment root takes the
 leaf's cascade (`writerWP_replaceRoot_seg_cascadeF`), given that the state after
 it fits the fuel (`hfits`, cost's HeightInv route) and `CollapseUnlinkOK`
 (`hunl`, the take-back's). -/
-theorem writerWP_collapseRoot_collF4 (fuelR : Nat) (hfR : 2 ≤ fuelR) (key : Key) (seg : Nat) (c : Ctx)
+theorem writerWP_collapseRoot_coll (fuelR : Nat) (hfR : 2 ≤ fuelR) (key : Key) (seg : Nat) (c : Ctx)
     (base : View BVal) (hvc : ViewCoherent c base) (w0 : W) (B : NodeId) (top0 : Top)
     (hB : PutBase c base B) (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view)
     (hk : ViewKinds KO BK c) (hICEk : ICEFromKinds c base KO BK) (hsa2 : 2 ≤ c.p.splitAbove)
@@ -632,8 +632,8 @@ theorem writerWP_collapseRoot_collF4 (fuelR : Nat) (hfR : 2 ≤ fuelR) (key : Ke
 /-- Obligation (the collapse at a fuel f, with no room premise): a replaceRoot at
 a segment root leaves a state that fits f (cost's HeightInv route), and the
 take-back's `CollapseUnlinkOK` holds there. The collapse's ranges are proved
-(`writerWP_collapseRoot_collF4`). -/
-def CollapseStepOKF4 (c : Ctx) (base : View BVal) (f : Nat) : Prop :=
+(`writerWP_collapseRoot_coll`). -/
+def CollapseStepOK (c : Ctx) (base : View BVal) (f : Nat) : Prop :=
   (∀ w0 v x n only, CollGetInvF c base w0 v f → RangeOrder (wNode c.p base v) c.i v.top.rootKey →
       SegDesc c base x v → v.nodes.lookup x = some n → n.leaf = false → n.firstTime ≠ some c.i →
       n.onlyLiveKlong = some only → n.cv? only = some 0 →
@@ -642,19 +642,19 @@ def CollapseStepOKF4 (c : Ctx) (base : View BVal) (f : Nat) : Prop :=
   (∀ w0 v x n, CollGetInvF c base w0 v f → SegDesc c base x v → v.nodes.lookup x = some n →
       n.leaf = false → n.firstTime ≠ some c.i → CollapseUnlinkOK c base v x n)
 
-/-- The collapse keeps `DelInvF3`, given `CollapseStepOKF4`. -/
-theorem writerWP_collapseRoot_delF4 (key : Key) (seg : Nat) (c : Ctx) (base : View BVal)
-    (hvc : ViewCoherent c base) (f : Nat) (hf2 : 2 ≤ f) (hC : CollapseStepOKF4 c base f) (w0 : W)
+/-- The collapse keeps `DelInv`, given `CollapseStepOK`. -/
+theorem writerWP_collapseRoot_del (key : Key) (seg : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (f : Nat) (hf2 : 2 ≤ f) (hC : CollapseStepOK c base f) (w0 : W)
     (k0 : Key) (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
     (hICEk : ICEFromKinds c base KO BK) (hsa2 : 2 ≤ c.p.splitAbove)
-    (v : W) (hI : DelInvF3 c base w0 k0 f KO BK v) :
-    WriterWP (collapseRoot key seg c.p.fuel) c v (fun _ v' => DelInvF3 c base w0 k0 f KO BK v') := by
+    (v : W) (hI : DelInv c base w0 k0 f KO BK v) :
+    WriterWP (collapseRoot key seg c.p.fuel) c v (fun _ v' => DelInv c base w0 k0 f KO BK v') := by
   obtain ⟨⟨hP, hG, hR, hICE, hF, hread, B, top0, hB, hbook⟩, hbk, hik⟩ := hI
   have hCI : CollGetInvF c base v v f := by
     refine ⟨⟨hP.tree, fun y hy => hP.untaken y (tReach_reachS _ _ _ _ hy),
       fun y yn _ h => hP.times y yn h, fun y yn cc z hy hyn hl hc => hICE y yn cc z hy hyn hl hc⟩,
       fun _ => rfl, hF, fun y yn _ h => hP.wf y yn h, fun y yn _ h => hP.keyNoValue y yn h⟩
-  refine writerWP_mono (writerWP_collapseRoot_collF4 f hf2 key seg c base hvc v B top0 hB KO BK hv hk
+  refine writerWP_mono (writerWP_collapseRoot_coll f hf2 key seg c base hvc v B top0 hB KO BK hv hk
     hICEk hsa2 (hC.1 v) (hC.2 v) c.p.fuel v hCI hR hbook hbk hik) ?_
   rintro _ v' ⟨⟨⟨hT', hu', _, hICE'⟩, hread', hF', _, _⟩, hR', hbook', hbk', hik'⟩
   obtain ⟨hP', hG'⟩ := putInv_after_step c base v' B top0 hB hbook' hT'
@@ -663,26 +663,26 @@ theorem writerWP_collapseRoot_delF4 (key : Key) (seg : Nat) (c : Ctx) (base : Vi
   rw [hread' key']
   exact hread key' hk'
 
-/-- `afterDelete` keeps `DelInvF3`, given the merge's obligation and `CollapseStepOKF4`. -/
-theorem writerWP_afterDelete_delF4 (key : Key) (g h : Nat) (c : Ctx) (base : View BVal)
-    (hvc : ViewCoherent c base) (fuelR : Nat) (hfR : 2 ≤ fuelR) (hM : MergeStepOKF3 c base fuelR)
-    (hC : CollapseStepOKF4 c base fuelR)
+/-- `afterDelete` keeps `DelInv`, given the merge's obligation and `CollapseStepOK`. -/
+theorem writerWP_afterDelete_del (key : Key) (g h : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (fuelR : Nat) (hfR : 2 ≤ fuelR) (hM : MergeStepOK c base fuelR)
+    (hC : CollapseStepOK c base fuelR)
     (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
     (hICEk : ICEFromKinds c base KO BK) (hsa2 : 2 ≤ c.p.splitAbove)
-    (hcap : 1 ≤ c.p.mergeMax) (w0 : W) (k0 : Key) (v : W) (hI : DelInvF3 c base w0 k0 fuelR KO BK v) :
-    WriterWP (afterDelete key g h) c v (fun _ v' => DelInvF3 c base w0 k0 fuelR KO BK v') :=
-  writerWP_afterDelete_inv key g h c (DelInvF3 c base w0 k0 fuelR KO BK)
-    (fun v hI => writerWP_mergeUp_delF3 key g c base hvc fuelR hfR hM KO BK hv hk hICEk hsa2 hcap w0 k0
+    (hcap : 1 ≤ c.p.mergeMax) (w0 : W) (k0 : Key) (v : W) (hI : DelInv c base w0 k0 fuelR KO BK v) :
+    WriterWP (afterDelete key g h) c v (fun _ v' => DelInv c base w0 k0 fuelR KO BK v') :=
+  writerWP_afterDelete_inv key g h c (DelInv c base w0 k0 fuelR KO BK)
+    (fun v hI => writerWP_mergeUp_del key g c base hvc fuelR hfR hM KO BK hv hk hICEk hsa2 hcap w0 k0
       c.p.fuel h false v hI)
-    (fun v hI => writerWP_collapseRoot_delF4 key g c base hvc fuelR hfR hC w0 k0 KO BK hv hk hICEk hsa2
+    (fun v hI => writerWP_collapseRoot_del key g c base hvc fuelR hfR hC w0 k0 KO BK hv hk hICEk hsa2
       v hI) v hI
 
 /-- Case 4 at the reading fuel p.fuel + 1 inside the delete, with no room premise
-of the collapse: `OpGetCaseOK'` from `DelStepsOKF3`, `MergeStepOKF3`,
-`CollapseStepOKF4` and the pointers of every run within reach (TP4). -/
-theorem opGetCaseOK'_delMerge4 (p : Params) (R : Struct BVal → Time → Prop) (hS : DelStepsOKF3 p R)
-    (hM : ∀ ts, MergeStepOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hC : ∀ ts, CollapseStepOKF4 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+of the collapse: `OpGetCaseOK'` from `DelStepsOK`, `MergeStepOK`,
+`CollapseStepOK` and the pointers of every run within reach (TP4). -/
+theorem opGetCaseOK'_delMerge (p : Params) (R : Struct BVal → Time → Prop) (hS : DelStepsOK p R)
+    (hM : ∀ ts, MergeStepOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hC : ∀ ts, CollapseStepOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
     (hsa2 : 2 ≤ p.splitAbove) (hcap : 1 ≤ p.mergeMax) (hMM : 2 ≤ p.M)
     (hPtr : ∀ ts, Within p ts → PointersOK (treeRun p ts)) :
     OpGetCaseOK' p R DelMergeCase := by
@@ -704,21 +704,21 @@ theorem opGetCaseOK'_delMerge4 (p : Params) (R : Struct BVal → Time → Prop) 
     fun v hb hi hun => innerChildren_of_kinds p (treeRun p ts) tx.base (ctxOf p ts) v rfl hK
       (hPtr ts hwts) hb hi.cache hun
   exact hS ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF0 key hop hmerges
-    (fun g h v hv' => writerWP_afterDelete_delF4 key g h (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
+    (fun g h v hv' => writerWP_afterDelete_del key g h (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
       (p.fuel + 1) hf2 (hM ts) (hC ts) _ _ hv hk hICEk hsa2 hcap w key v hv')
-    (fun g h merged v hv' => writerWP_mergeUp_delF3 key g (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
+    (fun g h merged v hv' => writerWP_mergeUp_del key g (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
       (p.fuel + 1) hf2 (hM ts) _ _ hv hk hICEk hsa2 hcap w key p.fuel h merged v hv')
-    (fun seg v hv' => writerWP_collapseRoot_delF4 key seg (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
+    (fun seg v hv' => writerWP_collapseRoot_del key seg (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
       (p.fuel + 1) hf2 (hC ts) w key _ _ hv hk hICEk hsa2 v hv')
 
 /-- Case 4 (`OpGetCaseOK`) with no room premise of the collapse: from
-`DelStepsOKF3`, `MergeStepOKF3`, `CollapseStepOKF4`, `TxSegFitsOK` and TP4. -/
-theorem opGetCaseOK_delMergeF4 (p : Params) (R : Struct BVal → Time → Prop) (hS : DelStepsOKF3 p R)
-    (hM : ∀ ts, MergeStepOKF3 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hC : ∀ ts, CollapseStepOKF4 (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+`DelStepsOK`, `MergeStepOK`, `CollapseStepOK`, `TxSegFitsOK` and TP4. -/
+theorem opGetCaseOK_delMerge (p : Params) (R : Struct BVal → Time → Prop) (hS : DelStepsOK p R)
+    (hM : ∀ ts, MergeStepOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hC : ∀ ts, CollapseStepOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
     (hsa2 : 2 ≤ p.splitAbove) (hcap : 1 ≤ p.mergeMax) (hMM : 2 ≤ p.M)
     (hPtr : ∀ ts, Within p ts → PointersOK (treeRun p ts)) (hfit : TxSegFitsOK p R) :
     OpGetCaseOK p R DelMergeCase :=
-  opGetCaseOK_of' p R DelMergeCase (opGetCaseOK'_delMerge4 p R hS hM hC hsa2 hcap hMM hPtr) hfit
+  opGetCaseOK_of' p R DelMergeCase (opGetCaseOK'_delMerge p R hS hM hC hsa2 hcap hMM hPtr) hfit
 
 end SIS.Tree
