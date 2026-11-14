@@ -58,7 +58,10 @@ Files
   still-dirty test (lev + 1 sections; 007-01's "about the last two
   sections" is false, with a run that shows it), a cold start's reads;
   the trusted definitions, the theorems, what is not covered, questions
-  for Frans.
+  for Frans. Updated 2026-11-14 to the Lean of 13 November:
+  `bounded_startup` (a cold start's reads at most F, no term for the
+  number of keys), reduced to premises for BergDB's tree (deferred);
+  the Codex review's findings, fixed and open; Q4 on Q and Hp.
 
 
 Log
