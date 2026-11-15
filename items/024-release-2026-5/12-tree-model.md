@@ -338,13 +338,14 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   deletes taking nodes back, no failure (`12-tree-model/heights-op-check.lean.txt`); SegFits
   held at about 14,000 operation boundaries (`12-tree-model/segfit-check.lean.txt`, the
   states of its runs random and random2). Its plan is 025-05, part 2 (steps 7 to 9). State
-  2026-11-15, 14:10 (prover htb): step 7 is reduced to three delete cases and `hchk`:
-  `jointHtJ_reachedT` (`StratumSteps.lean`), the joint induction with no `htb`, from one
-  stratum family for the tree and the take-back (`DelStepsCaseTJ`, no fit and no heights'
-  bound at the delete's start; inside the stratum the leaf's change needs only the tree's
-  facts, `DelInvT`, not the reading, `delInvA_self`) and `hchk`. Four of the family's seven
-  cases are proved (no leaf, noop, room, full leaf); left are the three that empty the leaf
-  and `hchk` without `htb`. 025-05, section 8, lists what is left, lemma by lemma.
+  2026-11-15, 14:25 (prover htb): step 7 is reduced to `hchk` without `htb`:
+  `jointHtJ_reachedS` (`StratumCasc.lean`), the joint induction with no `htb`, from the put
+  cases, the live counts and `hchk`. Its delete cases are one stratum family for the tree and
+  the take-back (`DelStepsCaseTJ`, no fit and no heights' bound at the delete's start),
+  proved in all seven cases (`delStepsTJA_holds`); inside the stratum the leaf's change needs
+  only the tree's facts (`DelInvT`), not the reading (`delInvA_self`), and the stop node's
+  cascade no heights. Left of step 7: `hchk` without `htb`; then step 8 (the take-back sites)
+  and step 9. 025-05, section 8, lists what is left, lemma by lemma.
 - `l4`: (4) keeps TP7's live counts (`QLive`; latest), now only for the deletes that split,
   empty their leaf, or leave a leaf that an inner node names with at most `mergeBelow` live
   klongs (`DelMergeOpenCase`; a noop and a key without a leaf read as before): a delete whose

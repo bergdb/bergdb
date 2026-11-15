@@ -144,10 +144,21 @@ theorem KNode.retarget_liveAt_ne (n : KNode) (ti : Nat) (src dst : NodeId) (t : 
     rw [hz] at h
     exact hc (hu c' h)
 
-/-- The state after the upward delete's stop node, before root collapse, has
-what root collapse keeps (`CollGetInv`), with nodes of the chain taken back:
-the taken nodes agree but at the chain. -/
-theorem collGetInv_after_upT (c : Ctx) (base : View BVal) (X : Nat → NodeId) (Nn : Nat → KNode)
+/-- `CollGetInv` of a state read as itself, its fit at a depth d (bergdb 025-05,
+step 7: in the first stratum the depth is the next id's, P1). -/
+def CollGetInvD (c : Ctx) (base : View BVal) (w : W) (d : Nat) : Prop :=
+  CollInv c base w ∧ SegFits (wNode c.p base w) c.i d w.top.rootKey ∧
+  (∀ y yn, TReach (wNode c.p base w) c.i w.top.rootKey y → wNode c.p base w y = some yn →
+    klongsWf yn.ks = true) ∧
+  (∀ y yn, TReach (wNode c.p base w) c.i w.top.rootKey y → wNode c.p base w y = some yn →
+    wValue base w y = none)
+
+theorem collGetInv_of_D (c : Ctx) (base : View BVal) (w : W) (h : CollGetInvD c base w (c.p.fuel - 1)) :
+    CollGetInv c base w w :=
+  ⟨h.1, fun _ => rfl, h.2.1, h.2.2.1, h.2.2.2⟩
+
+/-- `collGetInv_after_upT` with the fit at any depth d. -/
+theorem collGetInvD_after_upT (c : Ctx) (base : View BVal) (X : Nat → NodeId) (Nn : Nat → KNode)
     (K : Nat → Nat) (depth : Nat) (w : W)
     (hlk : ∀ i, i ≤ depth → w.nodes.lookup (X i) = some (Nn i))
     (htk : ∀ i, i ≤ depth → w.taken.contains (X i) = false)
@@ -159,7 +170,7 @@ theorem collGetInv_after_upT (c : Ctx) (base : View BVal) (X : Nat → NodeId) (
     (hTimesR : ∀ y yn, TReach (wNode c.p base w) c.i w.top.rootKey y → wNode c.p base w y = some yn →
       ∀ s, Klong.time s ∈ yn.ks → s ≤ c.i)
     (hICE : InnerChildrenExist (wNode c.p base w) c.i w.top.rootKey)
-    (hfit : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey)
+    (d : Nat) (hfit : SegFits (wNode c.p base w) c.i d w.top.rootKey)
     (hnovalAll : ∀ y yn, wNode c.p base w y = some yn → wValue base w y = none)
     (hreach : ∀ i, i ≤ depth → TReach (wNode c.p base w) c.i w.top.rootKey (X i))
     (hlinkK : ∀ i, 0 < i → i ≤ depth → (K i, X i) ∈ (Nn (i - 1)).liveAt c.i)
@@ -172,7 +183,7 @@ theorem collGetInv_after_upT (c : Ctx) (base : View BVal) (X : Nat → NodeId) (
     (hsw' : klongsWf sn'.ks = true) (hst' : ∀ s, Klong.time s ∈ sn'.ks → s ≤ c.i)
     (hlive' : ∀ c' z, (c', z) ∈ sn'.liveAt c.i →
       ∃ c0, (c0, z) ∈ (Nn stop).liveAt c.i ∧ c0 ≠ K (stop + 1) ∧ f c0 = c') :
-    CollGetInv c base w' w' := by
+    CollGetInvD c base w' d := by
   have hN : ∀ i, i ≤ depth → wNode c.p base w (X i) = some (Nn i) := fun i hi => by
     simp only [wNode, htk i hi, Bool.false_eq_true, ↓reduceIte, hlk i hi]
   -- the tree after, at tree level
@@ -208,8 +219,8 @@ theorem collGetInv_after_upT (c : Ctx) (base : View BVal) (X : Nat → NodeId) (
     by_cases hys : y = X stop
     · left; rw [hys, hsnw] at hyn; exact ⟨hys, (Option.some.inj hyn).symm⟩
     · right; rw [← hagree y hys (hsub y hy).2]; exact hyn
-  show CollGetInv c base w' w'
-  refine ⟨⟨hT', fun y hy => by rw [ht y (hsub y hy).2]; exact hRt y (hsub y hy).1, ?_, ?_⟩, fun _ => rfl, ?_, ?_, ?_⟩
+  show CollGetInvD c base w' d
+  refine ⟨⟨hT', fun y hy => by rw [ht y (hsub y hy).2]; exact hRt y (hsub y hy).1, ?_, ?_⟩, ?_, ?_, ?_⟩
   · intro y yn hy hyn
     rcases hnode y yn hy hyn with ⟨_, rfl⟩ | h
     · exact hst'
@@ -247,5 +258,38 @@ theorem collGetInv_after_upT (c : Ctx) (base : View BVal) (X : Nat → NodeId) (
     rcases hnode y yn hy hyn with ⟨hys, _⟩ | h
     · rw [hys]; exact hnovalAll _ _ (hN stop (by omega))
     · exact hnovalAll y yn h
+
+
+/-- The state after the upward delete's stop node, before root collapse, has
+what root collapse keeps (`CollGetInv`), with nodes of the chain taken back:
+the taken nodes agree but at the chain. -/
+theorem collGetInv_after_upT (c : Ctx) (base : View BVal) (X : Nat → NodeId) (Nn : Nat → KNode)
+    (K : Nat → Nat) (depth : Nat) (w : W)
+    (hlk : ∀ i, i ≤ depth → w.nodes.lookup (X i) = some (Nn i))
+    (htk : ∀ i, i ≤ depth → w.taken.contains (X i) = false)
+    (hdist : ∀ i i', i ≤ depth → i' ≤ depth → X i = X i' → i = i')
+    (hT : TreeOK (wNode c.p base w) c.i w.top.rootKey)
+    (hwf : ∀ x xn, TReach (wNode c.p base w) c.i w.top.rootKey x → wNode c.p base w x = some xn →
+      klongsWf xn.ks = true)
+    (hRt : ∀ y, TReach (wNode c.p base w) c.i w.top.rootKey y → w.taken.contains y = false)
+    (hTimesR : ∀ y yn, TReach (wNode c.p base w) c.i w.top.rootKey y → wNode c.p base w y = some yn →
+      ∀ s, Klong.time s ∈ yn.ks → s ≤ c.i)
+    (hICE : InnerChildrenExist (wNode c.p base w) c.i w.top.rootKey)
+    (hfit : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey)
+    (hnovalAll : ∀ y yn, wNode c.p base w y = some yn → wValue base w y = none)
+    (hreach : ∀ i, i ≤ depth → TReach (wNode c.p base w) c.i w.top.rootKey (X i))
+    (hlinkK : ∀ i, 0 < i → i ≤ depth → (K i, X i) ∈ (Nn (i - 1)).liveAt c.i)
+    (stop : Nat) (w' : W) (sn' : KNode) (f : Nat → Nat) (hsD : stop < depth)
+    (ht : ∀ y, (∀ k, stop < k → k ≤ depth → y ≠ X k) → w'.taken.contains y = w.taken.contains y)
+    (htop : w'.top = w.top) (hv : w'.vals = w.vals)
+    (hnodes : ∀ y, y ≠ X stop → (∀ k, stop < k → k ≤ depth → y ≠ X k) →
+      w'.nodes.lookup y = w.nodes.lookup y)
+    (hsn' : w'.nodes.lookup (X stop) = some sn') (hsl' : sn'.leaf = (Nn stop).leaf)
+    (hsw' : klongsWf sn'.ks = true) (hst' : ∀ s, Klong.time s ∈ sn'.ks → s ≤ c.i)
+    (hlive' : ∀ c' z, (c', z) ∈ sn'.liveAt c.i →
+      ∃ c0, (c0, z) ∈ (Nn stop).liveAt c.i ∧ c0 ≠ K (stop + 1) ∧ f c0 = c') :
+    CollGetInv c base w' w' :=
+  collGetInv_of_D c base w' (collGetInvD_after_upT c base X Nn K depth w hlk htk hdist hT hwf hRt hTimesR hICE
+    (c.p.fuel - 1) hfit hnovalAll hreach hlinkK stop w' sn' f hsD ht htop hv hnodes hsn' hsl' hsw' hst' hlive')
 
 end SIS.Tree

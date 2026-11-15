@@ -12,7 +12,9 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
-theorem takeJ2_deleteUpward_upTMBK (c : Ctx) (base : View BVal)
+/-- `takeJ2_deleteUpward_upTMBK` with the fit at the start at any depth d, the
+continuations given `CollGetInvD` at d (bergdb 025-05, step 7). -/
+theorem takeJ2_deleteUpward_upTMBKD (c : Ctx) (base : View BVal)
     (X : Nat → NodeId) (Nn : Nat → KNode) (K : Nat → Nat) (depth cv : Nat) (pre : List Nat)
     (rk B : NodeId) (w : W) (hdepth : 0 < depth) (hfuel : 1 ≤ c.p.fuel) (hpos : 0 < c.i)
     (hp : ∀ i, i ≤ depth → (w.path[i]?).map (·.2) = some (X i))
@@ -32,7 +34,7 @@ theorem takeJ2_deleteUpward_upTMBK (c : Ctx) (base : View BVal)
     (hTimesR : ∀ y yn, TReach (wNode c.p base w) c.i w.top.rootKey y → wNode c.p base w y = some yn →
       ∀ s, Klong.time s ∈ yn.ks → s ≤ c.i)
     (hICE : InnerChildrenExist (wNode c.p base w) c.i w.top.rootKey)
-    (hfit : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey)
+    (d : Nat) (hfit : SegFits (wNode c.p base w) c.i d w.top.rootKey)
     (hnovalAll : ∀ y yn, wNode c.p base w y = some yn → wValue base w y = none)
     (hreach : ∀ i, i ≤ depth → TReach (wNode c.p base w) c.i w.top.rootKey (X i))
     (hlinkK : ∀ i, 0 < i → i ≤ depth → (K i, X i) ∈ (Nn (i - 1)).liveAt c.i)
@@ -79,7 +81,7 @@ theorem takeJ2_deleteUpward_upTMBK (c : Ctx) (base : View BVal)
       (∃ S, RetFormS c.i B (Nn stop) S ∧
         ((Nn (stop + 1)).firstTime = some c.i → RetFrom c.i B (Nn stop) (X (stop + 1)) S) ∧
         BitmapOf S sn' c.i (K (stop + 1))) →
-      TakeJ2 c base B w' → CollGetInv c base w' w' → J w' →
+      TakeJ2 c base B w' → CollGetInvD c base w' d → J w' →
       ∀ gs hs : Nat, WriterWP (mergeUp (pre ++ [cv]) gs c.p.fuel hs false) c w' (fun _ w1 =>
         WriterWP (collapseRoot (pre ++ [cv]) seg c.p.fuel) c w1 (fun _ w'' => Q w'')))
     (hleafM : ∀ (stop : Nat) (w' : W) (sn' : KNode), stop < depth →
@@ -98,7 +100,7 @@ theorem takeJ2_deleteUpward_upTMBK (c : Ctx) (base : View BVal)
       (∃ S, RetFormS c.i B (Nn stop) S ∧
         ((Nn (stop + 1)).firstTime = some c.i → RetFrom c.i B (Nn stop) (X (stop + 1)) S) ∧
         BitmapOf S sn' c.i (K (stop + 1))) →
-      TakeJ2 c base B w' → CollGetInv c base w' w' → J w' →
+      TakeJ2 c base B w' → CollGetInvD c base w' d → J w' →
       ∀ gs hs : Nat, WriterWP (afterDelete (pre ++ [cv]) gs hs) c w' (fun _ w'' => Q w''))
     (hcollLebM : ∀ (seg stop : Nat) (w' : W) (sn' : KNode) (jcv : Nat) (jy : NodeId), stop < depth →
       (∀ i, stop < i → i < depth →
@@ -121,14 +123,14 @@ theorem takeJ2_deleteUpward_upTMBK (c : Ctx) (base : View BVal)
         ∃ htd lip e0, sn' = lebNode S c.i htd lip e0 jcv jy ∧
           (htd = true → (∃ old, S.ks.getLast? = some (.del old)) ∧ S.lastTime = some c.i) ∧
           (lip = true → S.lastTime = some c.i ∧ ∃ ti, S.lastTimeIndex = some ti ∧ ti < e0)) →
-      TakeJ2 c base B w' → CollGetInv c base w' w' → J w' →
+      TakeJ2 c base B w' → CollGetInvD c base w' d → J w' →
       ∀ gs hs : Nat, WriterWP (mergeUp (pre ++ [cv]) gs c.p.fuel hs false) c w' (fun _ w1 =>
         WriterWP (collapseRoot (pre ++ [cv]) seg c.p.fuel) c w1 (fun _ w'' => Q w''))) :
     WriterWP (deleteUpward (X depth) depth cv (pre ++ [cv])) c w (fun _ w' => Q w') := by
   obtain ⟨hTt, hD, hO, hS, hM, hV⟩ := hJ2
   have hN : ∀ i, i ≤ depth → wNode c.p base w (X i) = some (Nn i) := fun i hi => by
     simp only [wNode, htk i hi, Bool.false_eq_true, ↓reduceIte, hlk i hi]
-  have hpost := collGetInv_after_upT c base X Nn K depth w hlk htk hdist hT hwf hRt hTimesR hICE hfit
+  have hpost := collGetInvD_after_upT c base X Nn K depth w hlk htk hdist hT hwf hRt hTimesR hICE d hfit
     hnovalAll hreach hlinkK
   -- the facts after the stop node's change, before root collapse
   have hafter : ∀ (stop : Nat) (w' : W) (sn' : KNode), stop < depth →
@@ -312,5 +314,130 @@ theorem takeJ2_deleteUpward_upTMBK (c : Ctx) (base : View BVal)
       · exact ⟨c', (hlive' c' z).mpr (Or.inr ⟨hm, hc, hcj⟩)⟩
     exact hcollLebM seg stop w' sn' jcv jy hsD hbetween ht htop hv hnodes hsn' hsl' hsw' hst' hNl hK0 hj hj0
       hmin hlive' hread hfate hfJ hst0 hJ hI hJw'
+
+
+theorem takeJ2_deleteUpward_upTMBK (c : Ctx) (base : View BVal)
+    (X : Nat → NodeId) (Nn : Nat → KNode) (K : Nat → Nat) (depth cv : Nat) (pre : List Nat)
+    (rk B : NodeId) (w : W) (hdepth : 0 < depth) (hfuel : 1 ≤ c.p.fuel) (hpos : 0 < c.i)
+    (hp : ∀ i, i ≤ depth → (w.path[i]?).map (·.2) = some (X i))
+    (hk : ∀ i, 0 < i → i ≤ depth → w.path[i]? = some (some (K i), X i))
+    (hlk : ∀ i, i ≤ depth → w.nodes.lookup (X i) = some (Nn i))
+    (htk : ∀ i, i ≤ depth → w.taken.contains (X i) = false)
+    (htimes : ∀ i, i ≤ depth → ∀ s, Klong.time s ∈ (Nn i).ks → s ≤ c.i)
+    (hdist : ∀ i i', i ≤ depth → i' ≤ depth → X i = X i' → i = i')
+    (hne : bitsUnion (Nn depth).lastBitmap ((Nn depth).bitsOf cv) ≠ (Nn depth).lastBitmap)
+    (hall : (Nn depth).allKeysIn (bitsUnion (Nn depth).lastBitmap ((Nn depth).bitsOf cv)) = true)
+    (hleaf : (Nn depth).leaf = true)
+    (hT : TreeOK (wNode c.p base w) c.i w.top.rootKey)
+    (hR : RangeOrder (wNode c.p base w) c.i w.top.rootKey)
+    (hwf : ∀ x xn, TReach (wNode c.p base w) c.i w.top.rootKey x → wNode c.p base w x = some xn →
+      klongsWf xn.ks = true)
+    (hRt : ∀ y, TReach (wNode c.p base w) c.i w.top.rootKey y → w.taken.contains y = false)
+    (hTimesR : ∀ y yn, TReach (wNode c.p base w) c.i w.top.rootKey y → wNode c.p base w y = some yn →
+      ∀ s, Klong.time s ∈ yn.ks → s ≤ c.i)
+    (hICE : InnerChildrenExist (wNode c.p base w) c.i w.top.rootKey)
+    (hfit : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey)
+    (hnovalAll : ∀ y yn, wNode c.p base w y = some yn → wValue base w y = none)
+    (hreach : ∀ i, i ≤ depth → TReach (wNode c.p base w) c.i w.top.rootKey (X i))
+    (hlinkK : ∀ i, 0 < i → i ≤ depth → (K i, X i) ∈ (Nn (i - 1)).liveAt c.i)
+    (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk) (hcv : cv ∉ pre)
+    (hvisL : (X depth, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk)
+    (huniq : ∀ key' x m, keyWf key' = true →
+      (x, cv) ∈ fromVisits (wNode c.p base w) c.i c.p.fuel key' w.top.rootKey →
+      (x, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk → wNode c.p base w x = some m →
+      m.leaf = true → key' = pre ++ [cv])
+    (hstopOK : ∀ s, s < depth → (∀ i, s < i → i < depth →
+        (Nn i).allKeysIn (bitsUnion (Nn i).lastBitmap ((Nn i).bitsOf (K (i + 1)))) = true) →
+      (((Nn s).leaf = true ∨ K (s + 1) ≠ 0) → (Nn s).size + 1 < c.p.M ∧
+        deadOver c.p ((Nn s).setAt ((Nn s).size - 1)
+          (.del (bitsUnion (Nn s).lastBitmap ((Nn s).bitsOf (K (s + 1)))))) = false ∧
+        deadOver c.p ((Nn s).add c.i (.del (bitsUnion (Nn s).lastBitmap ((Nn s).bitsOf (K (s + 1)))))) =
+          false) ∧
+      ((Nn s).leaf = false → K (s + 1) = 0 → (Nn s).size + 3 ≤ c.p.M ∧
+        ∀ b1 b2 e jcv jy, deadOver c.p (lebNode (Nn s) c.i b1 b2 e jcv jy) = false))
+    (hmerges : c.p.merges = true)
+    (hkids : ∀ c' z, (c', z) ∈ (Nn depth).liveAt c.i → wNode c.p base w z = none)
+    (hJ2 : TakeJ2 c base B w) (hMF : ∀ x o, w.madeFor.lookup x = some o → o < B)
+    (Q : W → Prop) (J : W → Prop) (hJ0 : J w)
+    (hJnote : ∀ (s : String) (v : W), J v → J { v with trail := s :: v.trail })
+    (hJtake : ∀ (x p : NodeId) (k : Nat) (v : W), J v → (∃ xn, v.nodes.lookup x = some xn) →
+      WriterWP (takeBack x p k) c v (fun _ v' => J v'))
+    (hJunlink : ∀ (x : NodeId) (v : W), J v → WriterWP (unlink x) c v (fun _ v' => J v'))
+    (hJadk : ∀ (x : NodeId) (d k : Nat) (v : W), J v → (w.path[d]?).map (·.2) = some x →
+      WriterWP (appendDeleteKlong x d k) c v (fun _ v' => J v'))
+    (hJekn : ∀ (x : NodeId) (d : Nat) (v : W) (xn : KNode), J v → (w.path[d]?).map (·.2) = some x →
+      v.nodes.lookup x = some xn → xn.leaf = false → WriterWP (emptyKeyNext x d) c v (fun _ v' => J v'))
+    (hcollM : ∀ (seg stop : Nat) (w' : W) (sn' : KNode), stop < depth →
+      (∀ i, stop < i → i < depth →
+        (Nn i).allKeysIn (bitsUnion (Nn i).lastBitmap ((Nn i).bitsOf (K (i + 1)))) = true) →
+      (∀ y, (∀ k, stop < k → k ≤ depth → y ≠ X k) → w'.taken.contains y = w.taken.contains y) →
+      w'.top = w.top → w'.vals = w.vals →
+      (∀ y, y ≠ X stop → (∀ k, stop < k → k ≤ depth → y ≠ X k) → w'.nodes.lookup y = w.nodes.lookup y) →
+      w'.nodes.lookup (X stop) = some sn' → sn'.leaf = (Nn stop).leaf → klongsWf sn'.ks = true →
+      (∀ s, Klong.time s ∈ sn'.ks → s ≤ c.i) →
+      (∀ c' z, (c', z) ∈ sn'.liveAt c.i ↔ (c', z) ∈ (Nn stop).liveAt c.i ∧ c' ≠ K (stop + 1)) →
+      (∀ key', keyWf key' = true →
+        wGet c.p c.i base w' key' = if pre ++ [cv] == key' then none else wGet c.p c.i base w key') →
+      (∀ k, stop < k → k ≤ depth → ChainFate c.i w' (X k)) →
+      (∀ k, stop < k → k ≤ depth → ChainFateW c.i B w' (Nn k) (X k)) →
+      (∃ S, RetFormS c.i B (Nn stop) S ∧
+        ((Nn (stop + 1)).firstTime = some c.i → RetFrom c.i B (Nn stop) (X (stop + 1)) S) ∧
+        BitmapOf S sn' c.i (K (stop + 1))) →
+      TakeJ2 c base B w' → CollGetInv c base w' w' → J w' →
+      ∀ gs hs : Nat, WriterWP (mergeUp (pre ++ [cv]) gs c.p.fuel hs false) c w' (fun _ w1 =>
+        WriterWP (collapseRoot (pre ++ [cv]) seg c.p.fuel) c w1 (fun _ w'' => Q w'')))
+    (hleafM : ∀ (stop : Nat) (w' : W) (sn' : KNode), stop < depth →
+      (∀ i, stop < i → i < depth →
+        (Nn i).allKeysIn (bitsUnion (Nn i).lastBitmap ((Nn i).bitsOf (K (i + 1)))) = true) →
+      (∀ y, (∀ k, stop < k → k ≤ depth → y ≠ X k) → w'.taken.contains y = w.taken.contains y) →
+      w'.top = w.top → w'.vals = w.vals →
+      (∀ y, y ≠ X stop → (∀ k, stop < k → k ≤ depth → y ≠ X k) → w'.nodes.lookup y = w.nodes.lookup y) →
+      w'.nodes.lookup (X stop) = some sn' → sn'.leaf = (Nn stop).leaf → klongsWf sn'.ks = true →
+      (∀ s, Klong.time s ∈ sn'.ks → s ≤ c.i) →
+      (∀ c' z, (c', z) ∈ sn'.liveAt c.i ↔ (c', z) ∈ (Nn stop).liveAt c.i ∧ c' ≠ K (stop + 1)) →
+      (∀ key', keyWf key' = true →
+        wGet c.p c.i base w' key' = if pre ++ [cv] == key' then none else wGet c.p c.i base w key') →
+      (∀ k, stop < k → k ≤ depth → ChainFate c.i w' (X k)) →
+      (∀ k, stop < k → k ≤ depth → ChainFateW c.i B w' (Nn k) (X k)) →
+      (∃ S, RetFormS c.i B (Nn stop) S ∧
+        ((Nn (stop + 1)).firstTime = some c.i → RetFrom c.i B (Nn stop) (X (stop + 1)) S) ∧
+        BitmapOf S sn' c.i (K (stop + 1))) →
+      TakeJ2 c base B w' → CollGetInv c base w' w' → J w' →
+      ∀ gs hs : Nat, WriterWP (afterDelete (pre ++ [cv]) gs hs) c w' (fun _ w'' => Q w''))
+    (hcollLebM : ∀ (seg stop : Nat) (w' : W) (sn' : KNode) (jcv : Nat) (jy : NodeId), stop < depth →
+      (∀ i, stop < i → i < depth →
+        (Nn i).allKeysIn (bitsUnion (Nn i).lastBitmap ((Nn i).bitsOf (K (i + 1)))) = true) →
+      (∀ y, (∀ k, stop < k → k ≤ depth → y ≠ X k) → w'.taken.contains y = w.taken.contains y) →
+      w'.top = w.top → w'.vals = w.vals →
+      (∀ y, y ≠ X stop → (∀ k, stop < k → k ≤ depth → y ≠ X k) → w'.nodes.lookup y = w.nodes.lookup y) →
+      w'.nodes.lookup (X stop) = some sn' → sn'.leaf = (Nn stop).leaf → klongsWf sn'.ks = true →
+      (∀ s, Klong.time s ∈ sn'.ks → s ≤ c.i) → (Nn stop).leaf = false → K (stop + 1) = 0 →
+      (jcv, jy) ∈ (Nn stop).liveAt c.i → 0 < jcv →
+      (∀ c' z, (c', z) ∈ (Nn stop).liveAt c.i → c' ≠ 0 → jcv ≤ c') →
+      (∀ c' z, (c', z) ∈ sn'.liveAt c.i ↔
+        (c' = 0 ∧ z = jy) ∨ ((c', z) ∈ (Nn stop).liveAt c.i ∧ c' ≠ 0 ∧ c' ≠ jcv)) →
+      (∀ key', keyWf key' = true →
+        wGet c.p c.i base w' key' = if pre ++ [cv] == key' then none else wGet c.p c.i base w key') →
+      (∀ k, stop < k → k ≤ depth → ChainFate c.i w' (X k)) →
+      (∀ k, stop < k → k ≤ depth → ChainFateW c.i B w' (Nn k) (X k)) →
+      (∃ S, RetFormS c.i B (Nn stop) S ∧
+        ((Nn (stop + 1)).firstTime = some c.i → RetFrom c.i B (Nn stop) (X (stop + 1)) S) ∧
+        ∃ htd lip e0, sn' = lebNode S c.i htd lip e0 jcv jy ∧
+          (htd = true → (∃ old, S.ks.getLast? = some (.del old)) ∧ S.lastTime = some c.i) ∧
+          (lip = true → S.lastTime = some c.i ∧ ∃ ti, S.lastTimeIndex = some ti ∧ ti < e0)) →
+      TakeJ2 c base B w' → CollGetInv c base w' w' → J w' →
+      ∀ gs hs : Nat, WriterWP (mergeUp (pre ++ [cv]) gs c.p.fuel hs false) c w' (fun _ w1 =>
+        WriterWP (collapseRoot (pre ++ [cv]) seg c.p.fuel) c w1 (fun _ w'' => Q w''))) :
+    WriterWP (deleteUpward (X depth) depth cv (pre ++ [cv])) c w (fun _ w' => Q w') :=
+  takeJ2_deleteUpward_upTMBKD c base X Nn K depth cv pre rk B w hdepth hfuel hpos hp hk hlk htk htimes hdist hne hall
+    hleaf hT hR hwf hRt hTimesR hICE (c.p.fuel - 1) hfit hnovalAll hreach hlinkK hrk hcv hvisL huniq hstopOK hmerges
+    hkids hJ2 hMF Q J hJ0 hJnote hJtake hJunlink hJadk hJekn
+    (fun seg stop w' sn' a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 hJ' hI hJw =>
+      hcollM seg stop w' sn' a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 hJ' (collGetInv_of_D c base w' hI) hJw)
+    (fun stop w' sn' a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 hJ' hI hJw =>
+      hleafM stop w' sn' a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 hJ' (collGetInv_of_D c base w' hI) hJw)
+    (fun seg stop w' sn' jcv jy a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19 a20 hJ' hI hJw =>
+      hcollLebM seg stop w' sn' jcv jy a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19 a20 hJ'
+        (collGetInv_of_D c base w' hI) hJw)
 
 end SIS.Tree
