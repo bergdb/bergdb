@@ -13,7 +13,11 @@ take-back's node facts and the cache's books (`rwp_putKvDelChk5`), and
 `OpDelChk5OKR` gives `OpDelChk2ORJ` (`opDelChk2ORJ_of_chk5`). Left in `hchk`: the
 merge's `checkFree` and root collapse's `checkRoot`. The top theorem with it is
 `invGetScanOK_merges_joint5`, on the joint route, which has `TakeJ2` at every
-delete's start (`jointHtJ_reachedJ`).
+delete's start (`jointHtJ_reachedJ`). `checkRoot` passes at every state with
+`PutInv`, `TakeJ2` and the path to the node it takes back (`checkRoot_ok_of_J2`);
+not yet used: the states of root collapse inside a delete have `TakeJ2` by
+putinv's `DelInvJ`, but `DelInvJ` at the delete's calls of `afterDelete` is not
+stated.
 -/
 import SIS.Tree.HeightsFillTop
 
@@ -1250,5 +1254,103 @@ theorem invGetScanOK_merges_joint5 (p : Params) (hp : MergeParamsOK p)
         (delStepsOKJ_of_open p _ (by omega) hsa hRL' hP hRK' hRH' hht htb hU hLC hJ2S hMFS))
       hMS hCo hsa hcap (by omega) hP hfit)
   exact ⟨hinv, h.1, h.2, latestGetOK_of_getOK p h.1, latestScanOK_of_scanOK p h.2⟩
+
+/-! ## Root collapse's check, at a state with the take-back's node facts -/
+
+set_option maxHeartbeats 1600000 in
+/-- Root collapse's check before it takes back X depth, a node that the
+transaction made, at the end of a path from the space root, at a state with
+`PutInv` and the take-back's node facts: its one live holder is the path's node
+above it, by the klong that the path names (`liveHolder_unique`; none at depth 0,
+the root has no holder); the klongs before the transaction name ids below the
+first id; at a depth above 0 it is not the space root; and it is no node of the
+view. -/
+theorem checkRoot_ok_of_J2 (c : Ctx) (base : View BVal) (v : W) (B : NodeId)
+    (hvg : ViewGood B c) (hI : PutInv c base v) (hJ2 : TakeJ2 c base B v) (hcg : CacheGood B c v)
+    (hnd : (v.nodes.map Prod.fst).Nodup)
+    (X : Nat → NodeId) (Nn : Nat → KNode) (K : Nat → Nat) (depth : Nat)
+    (hX0 : X 0 = v.top.rootKey)
+    (hXN : ∀ i, i ≤ depth → wNode c.p base v (X i) = some (Nn i))
+    (hlinkK : ∀ i, 0 < i → i ≤ depth → (K i, X i) ∈ (Nn (i - 1)).liveAt c.i)
+    (hpX : ∀ i, i ≤ depth → (v.path[i]?).map (·.2) = some (X i))
+    (hpK : ∀ i, 0 < i → i ≤ depth → v.path[i]? = some (some (K i), X i))
+    (xn : KNode) (hxn : v.nodes.lookup (X depth) = some xn) (hft : xn.firstTime = some c.i) :
+    checkRoot (X depth) depth c v = .ok ((), v) := by
+  have hpos := hvg.pos
+  have hBx : B ≤ X depth := Blank.ge B c (X depth) hvg
+    (blank_of_firstTime B c (X depth) xn hpos (cacheGood_lookup B c v hcg (X depth) xn hxn) (by simp [hft]))
+  obtain ⟨hTt, _, hOB, _, _, _⟩ := hJ2
+  have hTi : TimesN (wNode c.p base v) c.i := fun q qn hq s hs => hI.times q qn hq s hs
+  have hdist := chain_dist c base v hI X Nn K depth hX0 hXN hlinkK
+  have hPL : ∀ i, i ≤ depth → PathLen (wNode c.p base v) c.i v.top.rootKey (X i) i := by
+    intro i
+    induction i with
+    | zero => intro _; rw [hX0]; exact PathLen.root
+    | succ i ih =>
+      intro hi
+      exact PathLen.link (ih (by omega)) ⟨Nn i, hXN i (by omega), by simpa using hlinkK (i + 1) (by omega) hi⟩
+  have hA : holderAtB c v (X depth) depth = true := by
+    unfold holderAtB
+    rw [List.all_eq_true]
+    rintro ⟨q, n⟩ hq
+    simp only [Bool.or_eq_true, Bool.and_eq_true, Bool.not_eq_true', List.all_eq_true, List.any_eq_false,
+      beq_iff_eq]
+    by_cases htq : v.taken.contains q = true
+    · exact Or.inl htq
+    right
+    have hlq := lookup_of_mem_nodup _ hnd q n hq
+    have hgq : Good B c q n := hcg.2 (q, n) hq
+    have hw : wNode c.p base v q = some n := by
+      unfold wNode; rw [show v.taken.contains q = false by simpa using htq]; simp [hlq]
+    refine ⟨?_, ?_⟩
+    · rintro ⟨cv, z⟩ he
+      by_cases hz : z = X depth
+      · subst hz
+        have hlive : (cv, X depth) ∈ n.liveAt c.i := by
+          rw [KNode.liveAt_of_times n c.i (hI.times q n hw)]; exact he
+        rcases Nat.eq_zero_or_pos depth with h0 | h0
+        · exfalso
+          have hk : Klong.key cv (X depth) ∈ n.ks := KNode.liveAt_key_mem n c.i cv (X depth) hlive
+          have htm := time_of_new _ c.i B hpos hOB hTi q n hw cv (X depth) hk hBx
+          have hr := hTt q n hw htm
+          have hroot : X depth = v.top.rootKey := by rw [h0]; exact hX0
+          rw [hroot] at hlive
+          exact hI.tree.rootFree q cv hr ⟨n, hw, hlive⟩
+        · have hreach := (hPL (depth - 1) (by omega)).reach
+          have hl : TLink (wNode c.p base v) c.i (X (depth - 1)) (K depth) (X depth) :=
+            ⟨Nn (depth - 1), hXN (depth - 1) (by omega), hlinkK depth h0 (Nat.le_refl _)⟩
+          obtain ⟨hqx, hcv⟩ := liveHolder_unique _ c.i v.top.rootKey B hpos hTt hOB hTi hI.tree (X depth) hBx
+            (X (depth - 1)) (K depth) hreach hl q n hw cv hlive
+          subst hqx; subst hcv
+          have h1 := hpX (depth - 1) (by omega)
+          have h2 := hpK depth h0 (Nat.le_refl _)
+          simp [h1, h2, show depth ≠ 0 by omega]
+      · simp [hz]
+    · rintro ⟨cv, z⟩ he hz
+      simp only at hz
+      subst hz
+      obtain ⟨c0, hk⟩ := live_key_mem _ cv (X depth) he
+      have := ptr_lt_of_prefix B c hvg q n hgq c0 (X depth) hk
+      omega
+  have hR : (depth == 0 || v.top.rootKey != X depth) = true := by
+    rcases Nat.eq_zero_or_pos depth with h0 | h0
+    · simp [h0]
+    · have : v.top.rootKey ≠ X depth := by
+        intro he
+        rw [← hX0] at he
+        have := hdist 0 depth (by omega) (Nat.le_refl _) he
+        omega
+      simp [this]
+  have hV : (c.view (X depth)).isNone = true := by
+    cases hvx : c.view (X depth) with
+    | none => rfl
+    | some nd => have := hvg.ids _ nd hvx; omega
+  unfold checkRoot
+  rw [m_bind_ok]
+  refine ⟨c, v, rfl, ?_⟩
+  rw [m_bind_ok]
+  refine ⟨v, v, rfl, ?_⟩
+  simp only [hA, hR, hV, Bool.and_self, ↓reduceIte]
+  rfl
 
 end SIS.Tree

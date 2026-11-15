@@ -160,7 +160,9 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   `writerWP_collapseRoot_collJ`). At such a state the holder argument of `holderFree_loop`
   applies: the one live holder of a node of the transaction is its tree parent, the path's
   node above it (`liveHolder_unique`), and the klongs before the transaction name ids below
-  the first id. For `checkRoot` that should be all; the merge's `checkFree` also needs that
+  the first id. For `checkRoot` that is all: it passes at every state with `PutInv`, `TakeJ2`
+  and the path to the node it takes back (`checkRoot_ok_of_J2`, `HeightsFillLoop.lean`, not
+  yet used); the merge's `checkFree` also needs that
   no live klong to the merged node is left after `mergeParent` and the retarget, also when
   the parent is full and splits (not yet shown). What is missing is `DelInvJ` at the copy's calls of `afterDelete`: the
   delete's step lemmas (`writerWP_del_emptyAnyMKLHGJ` and the others) prove it there inside
