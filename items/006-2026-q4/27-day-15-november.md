@@ -224,6 +224,14 @@ provers' branches and reports are in
   statement changed: each loop got one proof under a condition, each
   family a form over an invariant, the old ones their instances; about
   2,750 lines added and 630 removed in 22 files.
+* 13:40 prover htb started (Opus xhigh): 025-05's part 2, `htb` out.
+  13:59 LANDED 15b94486 (the joint induction without `htb`, reduced to
+  stratum families); 14:12 LANDED 83ccec1d (one family; 4 of its 7
+  cases proved). Top theorem unchanged.
+* 14:04 W5: `night.sh` on 584c73af FAILED one step, the night tests:
+  CorruptStreamTester found a damaged node (its checksum made right)
+  whose start or reads did not end in 60 s; it repeats alone. The other
+  15 steps OK. Registered as 028-14 (Investigate); news.md entry.
 
 
 ## 8. Outcome
