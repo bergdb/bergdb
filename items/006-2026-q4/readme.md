@@ -40,6 +40,7 @@ The list
 | [006-24](24-day-13-november.md) | 2026-11-13 | Day work of 13 November (a Friday), with the coordinator coord-1113: the plan, the progress and the outcome |
 | [006-25](25-day-14-november.md) | 2026-11-14 | Day work of 14 November (a Saturday) to Sunday morning, with the coordinator coord-1114: the plan, the progress and the outcome |
 | [006-26](26-proofs-status.md) | 2026-11-14 | The proofs as of 14 November 2026: what is proved, the premises left, what the Lean model covers and not; a standalone report for Frans |
+| [006-27](27-day-15-november.md) | 2026-11-15 | Day work of 15 November (a Sunday, unattended) to Monday morning, with the coordinator coord-1115: the plan, the progress and the outcome |
 
 
 Files
