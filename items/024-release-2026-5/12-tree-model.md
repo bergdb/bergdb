@@ -32,6 +32,9 @@ name map. Since 2026-11-15, 09:50 (025-04, route (b)): `invGetScanOK_merges_noU`
 hMSF, hCoF); `invGetScanOK_merges` is its corollary. Since 2026-11-15, 13:40 (025-05, route P;
 on fit's branch until it lands): `invGetScanOK_merges_noFit` (DeadTop.lean), premises hp, hth,
 htb, l4; `invGetScanOK_merges_free_noD4` is its corollary.
+Since 2026-11-15, 14:35 (025-05, part 2, on htb's branch until it lands):
+`invGetScanOK_merges_tbL` (DeadTop.lean), premises hp, hth, l4 and `htbL` (`htb` at one delete
+whose start has the first stratum's facts); `invGetScanOK_merges_noFit` is its corollary.
 
 **What this means for BergDB (2026-11-14, latest).** The key tree's proofs reach their top
 theorem. For Java's own parameters (record format 7's merge thresholds and option 2's theta,

@@ -1016,3 +1016,44 @@ the reduced form. What step 8 has to show, and what exists for it:
   start path. This frame argument (section 4.4's "start-path form", tested
   442 of 442) is the hard part; the fallback is the loop's last merge.
 - Size: section 6.2's step 8 estimate stands (1,200 to 2,500 lines).
+
+2026-11-15, 14:45 to 15:00. Step 8, the analysis for the successor (prover
+htb; nothing proved for it yet). Let F be the nodes of w.gh not taken back
+at the delete's start w; the claim is that every x in F the delete takes
+back has its cached height h(x) below p.fuel.
+
+- **The start path.** The delete's first descents (`putSegsDelChk2`,
+  `setNode` and `descendLte cv c.p.fuel` from each segment root) succeed,
+  so each segment root on the key's path has its height below p.fuel
+  (`ht_descendLte_height`), and every node on the path below it a smaller
+  height (`HtInv.path`, `PathHt`). The upward loop's chain is on that path
+  (the path is not rebuilt before it), so the chain's site holds with the
+  heights at the loop (the heights' walk `ht_deleteUpwardChk2` has `HtInv`
+  there).
+- **The merges.** `merge x d` takes back x (on the path rebuilt by
+  `descendToHeight`) and its sibling, both under the inner parent q on the
+  path; neither is a segment root (`mergeUp` stops at the root: q a segment
+  leaf). So h(x) = h(sibling) = h(q) - 1 < h(R_g), R_g the root of segment g
+  at that moment. R_g is in F only if it is the start's root of segment g
+  (a merge does not change the root, a split of the delete makes only new
+  ids, root collapse runs after the merges), so h(R_g) < p.fuel; otherwise
+  R_g is the delete's split's new root over the start's, h(R_g) at most
+  p.fuel. Either way h(x) < p.fuel.
+- **Root collapse.** `takeBackRoot R` for R the current root of segment g
+  made by the transaction: if R is in F, R is the start's root (h < p.fuel)
+  or the only child of a root collapsed before it in the same loop, one
+  height lower, down from the start's root or the delete's new root (at
+  most p.fuel); so h(R) < p.fuel.
+- **What is to formalize.** A walk beside `ht_putKvDelChk2` with the
+  invariant: every node of F taken back has h < p.fuel, and for each
+  segment g of the key the current root of g is the start's, or new with
+  height at most p.fuel and above the start's, or a node one height below a
+  root collapsed in this delete. The first part needs the heights at the
+  sites (`HtInv`, kept by the heights' walk step by step); the second is
+  the frame argument of section 4.4 over the leaf's change, the cascade,
+  the merges and root collapse. Not a fit at p.fuel: no strict bound on a
+  new root is needed, only that nodes of F are below it.
+- **No shortcut found:** a checked copy that checks h < p.fuel at each
+  take-back is false for the delete's own new root (height up to p.fuel);
+  the merges' counter bounds h(x) only by the changed node's height plus
+  p.fuel; `descendHeight` bounds the root's height only by h plus p.fuel.
