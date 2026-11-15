@@ -155,7 +155,18 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   live klong now or before the transaction; it is not the space root and not of the view) and
   `checkRoot` (root collapse's: the root's one holder is the path's node above it). The
   narrowed premise asks them only where the fill, `PutInv`, the ranges, the heights and
-  `TakeJ2` hold at the delete's start.
+  `TakeJ2` hold at the delete's start. The way to the two that are left: both are checked at
+  states inside the delete, where `TakeJ2` is in putinv's `DelInvJ` (`writerWP_mergeUp_delJ`,
+  `writerWP_collapseRoot_collJ`). At such a state the holder argument of `holderFree_loop`
+  applies: the one live holder of a node of the transaction is its tree parent, the path's
+  node above it (`liveHolder_unique`), and the klongs before the transaction name ids below
+  the first id. For `checkRoot` that should be all; the merge's `checkFree` also needs that
+  no live klong to the merged node is left after `mergeParent` and the retarget, also when
+  the parent is full and splits (not yet shown). What is missing is `DelInvJ` at the copy's calls of `afterDelete`: the
+  delete's step lemmas (`writerWP_del_emptyAnyMKLHGJ` and the others) prove it there inside
+  their proofs, as the input of their `afterDelete` obligation, but do not state it, so a
+  refinement of `afterDelete` (the RWP rules of `HeightsFillStop.lean`) has nothing to start
+  from. Stating it is the next step.
 - `hHL` gone (cost2, 2026-11-15, `HeightsFillHolder.lean`, `HeightsFillTop.lean`): the joint
   induction also carries the writer's tree and the take-back's node facts (`J2At`, putinv's
   `OpJ2OK` step with S the take-back's state facts, the heights and the fill:
