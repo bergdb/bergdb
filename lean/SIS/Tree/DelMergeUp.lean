@@ -164,6 +164,66 @@ theorem rwp_mergeUp_of_J (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
     refine rwp_ite (fun _ => rwp_refl _ _ _) (fun _ => ?_)
     exact ih (h + 1) true v4 ⟨⟨hI4, hbk4, hik4⟩, hJ4, Nat.le_trans hBn3 hn4⟩ hc4
 
+/-! ## The heights through a merge of the loop -/
+
+/-- A program that runs as one that keeps P keeps P. -/
+theorem writerWP_of_rwp {α : Type} {f g : M α} {c : Ctx} {w : W} {P : α → W → Prop}
+    (h : RWP f g c w) (hg : WriterWP g c w P) : WriterWP f c w P :=
+  fun a w' hf => hg a w' (h (a, w') hf)
+
+/-- A merge of the merges' loop runs as its checked copy: from `DelInvJF` and the
+books of the first id B, with the path down to the merged node, the merge's end
+is `MergeEnd` (`mergeStepOK_untaken`, `mergeStepJ2OKF_of_root`, `putBook_merge`),
+so `rwpq_merge` applies. -/
+theorem rwp_merge_of_J (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base) (f : Nat)
+    (hcap : 1 ≤ c.p.mergeMax) (hsa2 : 2 ≤ c.p.splitAbove) (B : NodeId) (top0 : Top)
+    (hB : PutBase c base B) (w0 : W) (key : Key) (x q : NodeId) (d : Nat) (v : W) (qn xn : KNode)
+    (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode)
+    (hIJ : DelInvJF c base w0 key f B v) (hb : PutBook c B top0 v) (hd : 0 < d)
+    (hx : (v.path[d]?).map (·.2) = some x) (hq : (v.path[d - 1]?).map (·.2) = some q)
+    (hqn : v.nodes.lookup q = some qn) (hql : qn.leaf = false) (hxn : v.nodes.lookup x = some xn)
+    (hcnt : xn.cnt < c.p.mergeBelow) (hP : PathOK c v d X K Nn) (hXd : X d = x) :
+    RWP (merge x d) (mergeChk x d) c v := by
+  have hpos : 0 < c.i := hB.good.pos
+  have hMJ := mergeStepJ2OKF_of_root c base hvc f B hpos hcap hsa2
+    (mergeRootJ2OKF_holds c base f B hpos hcap hsa2)
+  have hEnd : WriterWP (merge x d) c v (fun _ v4 => MergeEnd c base B v4) := by
+    refine writerWP_mono (writerWP_and (writerWP_and
+      (mergeStepOK_untaken c base f hpos hcap hsa2 w0 key x q d v qn xn X K Nn hIJ.1 hP hd hx hq hqn hql hxn
+        hcnt)
+      (hMJ w0 key x q d v qn xn X K Nn hIJ hd hx hq hqn hql hxn hcnt hP hXd))
+      (putBook_merge x d c base B top0 hB v hb)) ?_
+    rintro _ v4 ⟨⟨hu4, hJ4⟩, hc4⟩
+    exact ⟨hJ4.1, hJ4.2.2.1, (putInvG_of_book c base B top0 v4 hB hc4).times,
+      fun y hy => hu4 y (tReach_reachS _ _ _ _ hy)⟩
+  exact rwp_of_rwpq (rwpq_merge c base hvc B hB.good hB.wf hB.good.ids v hIJ.1.1 hIJ.2.1 hb.good
+    (uniqueCache_of_putBook c B top0 v hb) hb.klongs x d hd X K Nn hP hXd) hEnd
+
+/-- The heights through a merge of the merges' loop with no holder premise:
+the merge runs as its checked copy (`rwp_merge_of_J`), whose heights' walk is
+`ht_mergeChk`. -/
+theorem ht_merge_of_J {H : NodeId → Nat → Prop} (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (f : Nat) (hcap : 1 ≤ c.p.mergeMax) (hsa2 : 2 ≤ c.p.splitAbove) (B : NodeId) (top0 : Top)
+    (hB : PutBase c base B) (BH : NodeId) (hvo : ViewHtOK H BH c)
+    (w0 : W) (key : Key) (x q : NodeId) (d : Nat) (v : W) (qn xn : KNode)
+    (hbh : Book BH c v) (hi : HtInv H BH c v)
+    (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode)
+    (hIJ : DelInvJF c base w0 key f B v) (hb : PutBook c B top0 v) (hd : 0 < d)
+    (hx : (v.path[d]?).map (·.2) = some x) (hq : (v.path[d - 1]?).map (·.2) = some q)
+    (hqn : v.nodes.lookup q = some qn) (hql : qn.leaf = false) (hxn : v.nodes.lookup x = some xn)
+    (hcnt : xn.cnt < c.p.mergeBelow) (hP : PathOK c v d X K Nn) (hXd : X d = x)
+    (ax : Option Nat) (hpx : v.path[d]? = some (ax, x)) (hpf : PathFreeTo v (d + 1)) :
+    WriterWP (merge x d) c v (fun _ v' => Book BH c v' ∧ HtInv H BH c v' ∧ Kept v v' ∧ v'.path = v.path) := by
+  refine writerWP_of_rwp (rwp_merge_of_J c base hvc f hcap hsa2 B top0 hB w0 key x q d v qn xn X K Nn hIJ hb
+    hd hx hq hqn hql hxn hcnt hP hXd) ?_
+  refine ht_mergeChk BH x d c v hvo hB.good.pos hbh hi (by omega) ax hpx hpf ?_
+  intro a q' hq'
+  have : q' = q := by
+    rw [hq'] at hq
+    exact Option.some.inj hq
+  subst this
+  exact ⟨qn, hqn, hql⟩
+
 /-! ## The delete with the merges' loop at each call of `afterDelete` -/
 
 /-- `afterDelete` runs as its copy that checks the merges' loop only, at a

@@ -238,8 +238,24 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
     (`rwp_mergeUp_of_J`, the walk of `writerWP_mergeUp_delJ`) then gives `OpDelChk8OKR` outright
     (`opDelChk8OKR_holds`: the walks of `opDelChk6OKR_of_chk7` and `opDelChk7OKR_of_chk8` with
     `afterDelete` as the call that runs). `invGetScanOK_merges_free` is the top theorem:
-    premises `hp`, `hth`, `htb`, `d4`, `l4`, `hMSF`, `hCoF`. Left of decision 2: `hMSF` and
-    `hCoF` in their true forms (open).
+    premises `hp`, `hth`, `htb`, `d4`, `l4`, `hMSF`, `hCoF`.
+  - `hMSF` and `hCoF` (delj, 2026-11-15): open. Done toward them: the heights' walk goes through
+    every merge of the merges' loop with no holder premise (`ht_merge_of_J`, `DelMergeUp.lean`:
+    from `DelInvJF` and the books the merge runs as `mergeChk`, `rwp_merge_of_J`, and
+    `ht_mergeChk` applies), which is the merge's holder that 025-03, section 3.3, names as what
+    the walk lacked. Left for `hMSF`: (1) the bound through a merge, an `SBInvS` walk through
+    `merge` as `sbS_appendDeleteKlong` is for the bitmap (the merged node at x's height; the
+    parent's `handleFull` with nothing inserted can still split, and at the path's top
+    `handleFullWith` adds a root one height up); (2) the bound across the loop's merges, since
+    `HtJ`'s `UntakenBound (p.fuel - 1)` is not kept by a merge that adds a root; (3) the
+    reading's walks that use `MergeStepOK` (`opCaseOKJ_treeInvRange_delMergeRLC`,
+    `opJ2Case_delMergeRC`) carry no heights to the merges, so a reached form of `hMSF` needs
+    them carried there, or the reading proved over the checked copy (025-03, section 3.3, route
+    1). For `hCoF` the same, and its heights' walk at the reached states cannot use
+    `rwp_collapseRoot_chkJ`, which takes `CollapseFitsOK` itself: it needs one replaceRoot at a
+    time. The universal forms: `DelInvF` does not exclude a tree p.fuel deep whose merge adds a
+    root, which would not fit; a concrete one needs a chain about p.fuel deep, so no
+    counterexample was built.
 - `hHL` gone (cost2, 2026-11-15, `HeightsFillHolder.lean`, `HeightsFillTop.lean`): the joint
   induction also carries the writer's tree and the take-back's node facts (`J2At`, putinv's
   `OpJ2OK` step with S the take-back's state facts, the heights and the fill:
