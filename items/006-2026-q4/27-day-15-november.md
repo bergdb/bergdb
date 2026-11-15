@@ -215,6 +215,15 @@ provers' branches and reports are in
   consumers already proved in scratch. `htb` after it (part 2, 2,500 to
   5,000 lines). Run checks: 4,573 take-backs, 0 failures.
 * 12:43 prover fit started (Opus xhigh): 025-05's part 1.
+* 13:02 to 13:37 fit LANDED 025-05's part 1, steps 1 to 6 (89273873,
+  edb53562, 7afd3be7, b799d6f8, d21270d2, 86464c1c): `hMSF` and `hCoF`
+  GONE. `invGetScanOK_merges_noFit` (DeadTop.lean): hp, hth, htb, l4;
+  its statement is `invGetScanOK_merges_free_noD4`'s without exactly
+  `hMSF` and `hCoF`; audited, on the standard axioms, the closure
+  unchanged with it; `invGetScanOK_merges_free_noD4` its corollary. No
+  statement changed: each loop got one proof under a condition, each
+  family a form over an invariant, the old ones their instances; about
+  2,750 lines added and 630 removed in 22 files.
 
 
 ## 8. Outcome
