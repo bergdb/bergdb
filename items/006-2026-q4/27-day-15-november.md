@@ -38,7 +38,7 @@ ahead without an answer:
    028-12 landed since): run this afternoon on `main`, beside the
    provers.
 
-Answers: none yet; the defaults hold.
+Frans, 09:10: "Defaults are good. Work unattended, good luck!"
 
 
 ## 2. The ground rules
@@ -82,7 +82,7 @@ trusted file or an existing statement on `main`; KISS (Frans,
 
 ## 5. The timeline
 
-* 09:03 W1 landed; 09:10 W2 started.
+* 09:03 W1 landed; 09:04 W2 started.
 * About 11:00 W3; then W4.
 * The afternoon: W5.
 * 15:00 delj's stop; its successor.
@@ -112,7 +112,7 @@ provers' branches and reports are in
   hchk5, htb, d4, l4, hU, hMSF, hCoF) and
   `invGetScanOK_merges_noOutside` (hp, hth, hchk, d4, l4, hU, hHL,
   hMSF, hCoF, hCoU); 361 lines of variants removed.
-* 09:10 W2: prover delj started (Opus xhigh, stop 15:00).
+* 09:04 W2: prover delj started (Opus xhigh, stop 15:00).
 
 
 ## 8. Outcome
