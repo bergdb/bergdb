@@ -106,6 +106,28 @@ between check-ins.
   HeightsFitsR build, no process) released.
 
 
+* 13:31 to 15:45 025-02, the proofs' cleanup, its five steps landed:
+  notes 5458ac36 (14:30), prune b8fae26c (14:43), names 73852c9b
+  (14:58), dups a04dbd78 (15:17), close 2413e669 (15:45). lean/SIS/Tree
+  227,923 to 140,264 lines, lean/ 296,684 to 209,065; one top theorem
+  `invGetScanOK_merges`; every step gated; level 2 OK.
+* 13:46 Frans accepted F1 (026-16); 025-03 created (95b71a6b).
+* 15:58 to 03:11 026-15, the timing pass: 105 runs, 9 rounds, every run
+  ok and quiet; stopped by STOP at 03:08 (b9acd055, section 9).
+* 03:07 Frans: "Can you continue to work on the proofs now?"
+* 03:43 025-03 step 1 (f1check, 7a5b6b98): NoOutside holds on every
+  traced run with H + 1 (205 traces; 2 transactions need it).
+* 03:50 025-03 step 2 (f1thm, ad4e9cf5): `invGetScanOK_merges_noOutside`
+  without `htb`; step 3 (`hMSF`, `hCoF` from NoOutside) does not follow.
+* 04:00 to 06:03 provers putinv2, cost2 and (from 05:08) coll:
+  * 1d149b59 `hCoU`, `hU` and `hHL` are false as stated (PremisesFalse):
+    the top theorem holds vacuously; 006-26 corrected (858951e5);
+  * bc7d81ea `hMF` proved; 82d68225 the true forms of `hHL` and of
+    `hCoU`'s ids half; 74ff5be5 `hHL` gone on the joint route;
+  * 2fee65cc to 3a95f624 `hchk` narrowed, four of its checks proved;
+  * a4c328a0 to 25b03569 `hCoU` gone by root collapse's commutation
+    (`invGetScanOK_merges_joint6`).
+
 ## 5. While Frans is away (13:58 to Sunday 10:00)
 
 Frans, 13:57: "I am leaving in a few minutes. Are you ready for
@@ -134,10 +156,50 @@ unattended work as far as possible. As planned."
   counts, the summary in `news.md` and here (section 6).
 
 
-## 6. For Frans to decide
+## 6. Outcome
 
-From 006-24 (still open): 6 (where the policy of 13 November, 16:50,
-lives) and 8 (the 10 premises to read; 006-26, section 4.3, has them in
-plain words). Decision 7 (the proofs from here) is answered by 12:16
-and 13:00: the cleanup first. 006-24, sections 4 and 5, has each with
-its recommendation.
+Written 2026-11-15, 06:20, by coord-1114.
+
+* **Done on 14 November:** 026-09, 028-04, 028-10, 028-11 and 028-12
+  landed; 007-09 brought up to date; 028-13 registered; the reports
+  006-26 (the proofs) and 026-16 (simpler algorithms; F1 accepted).
+* **The proofs' cleanup (025-02):** done, lean/ 296,684 to 209,065 lines.
+* **The timing pass (026-15):** 026-09 saves 4.7 to 8.6 % of the phase in
+  (a) to (c) and 5.8 % in (d); 2026.6 so far against 2026.5 saves 8.6,
+  16.0, 8.7 and 5.8 %. Every pair a gain except B/R in (d), within the
+  noise.
+* **The proofs in the night:** three premises found false as stated
+  (`hCoU`, `hU`, `hHL`), so every top theorem holds vacuously. Removed
+  with no statement change: `hMF`, `hHL`, `hCoU`; `htb` gone for NoOutside
+  runs (F1); `hchk` narrowed to two holder checks. The current theorem
+  `invGetScanOK_merges_joint6` has hp, hth, hchk5, htb, d4, l4, hU, hMSF,
+  hCoF. Left: `hU`'s true form (an invariant on the nodes a transaction
+  leaves out, size unknown), `hMSF` and `hCoF` (likely false as stated;
+  need the merge's holder fact), `hchk5` (DelInvJ to be stated at
+  afterDelete's calls), `d4` and `l4`.
+* **Usage:** the week 72 % at the start, 81 % at 06:20 (ceiling 92 %).
+* **Not done:** `night.sh`; the Kindle mail (the Gmail connector cannot
+  send); the older top theorems still carry `hCoU` and `hHL` (about 150
+  lines to bring them up); one top theorem per route again (several
+  variants landed in the night).
+
+
+## 7. For Frans to decide
+
+1. **`hU`, false as stated.** Its true form needs an invariant on the
+   nodes a transaction leaves out; no one has found it. Recommended: a
+   planning agent (xhigh) for that invariant before more provers; read
+   024-22, section 11.1.
+2. **`hMSF` and `hCoF`.** Recommended: first state DelInvJ at
+   afterDelete's calls (cost2's plan in 024-12, section 1), which the
+   rest of `hchk` needs too, then their true forms.
+3. **One top theorem again.** Recommended: a short close step that keeps
+   `invGetScanOK_merges_joint6` (and the NoOutside one) and removes the
+   superseded variants, as 025-02 did.
+4. From 006-24, still open: 6 (where the policy of 13 November, 16:50,
+   lives) and 8 (the premises to read: 006-26, section 4.3, with its
+   correction).
+5. Decisions taken by rule in the night, to overturn if wanted: notes'
+   two extra docstrings and 007-09 Q2 option B (025-02, section 13.6);
+   dups' five renames; close's removal of 5 empty files and 93 empty
+   headers.
