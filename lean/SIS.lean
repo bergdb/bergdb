@@ -81,6 +81,7 @@ import SIS.Tree.MadeForView
 import SIS.Tree.HeightsFillOld
 import SIS.Tree.HeightsFillHolder
 import SIS.Tree.HeightsFillTop
+import SIS.Tree.HeightsFillLoop
 import SIS.Tree.PremisesFalse
 import SIS.Tree.PremisesTrue
 import SIS.Tree.MadeForOld

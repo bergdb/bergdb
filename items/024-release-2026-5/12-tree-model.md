@@ -140,12 +140,22 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   transaction is, by its `Good` origin, a key node of the view), and the delete's steps up to
   the upward loop keep the made-for ids, so the copy without it (`putKvDelChk4`) runs as
   `putKvDelChk2` from every state with `PutInv` and the fill (`rwp_putKvDelChk4`). The premise
-  is now `OpDelChk4OKL` (`opDelChk2OKR_of_chk4`). Left in `hchk`: the holders
-  before each take-back, `checkFree` (the merge's and the upward loop's: no kept node holds the
-  node, by a live klong now or before the transaction; it is not the space root and not of the
-  view) and `checkRoot` (root collapse's: the root's one holder is the path's node above it).
-  The narrowed premise asks them only where the fill, `PutInv`, the ranges and the heights
-  hold at the delete's start.
+  is now `OpDelChk4OKL` (`opDelChk2OKR_of_chk4`). And the upward loop's `checkFree` (cost2,
+  `HeightsFillLoop.lean`): no kept node holds a node the loop takes back. With the take-back's
+  node facts at the delete's start (`TakeJ2`, at hand on the joint route), a holder of a node of
+  the transaction is reached and is its tree parent (putinv2's `liveHolder_unique`); the loop's
+  invariant `HoldInv` says that the nodes off the chain below the take-back are as at the
+  loop's start, the chain's nodes already passed name old nodes only, and the node taken back
+  is the start's, perhaps retargeted, so after its parent is pointed to the old node nothing
+  kept holds it (`holderFree_loop`, `step_takeBack`, `step_unlink`). The copy without it
+  (`putKvDelChk5`) runs as `putKvDelChk2` from every state with `PutInv`, the fill, the
+  made-for ids, `TakeJ2` and the cache's books (`rwp_putKvDelChk5`). The premise is now
+  `OpDelChk5OKL` (`opDelChk2ORJ_of_chk5`), which also has `TakeJ2` at the delete's start. Left
+  in `hchk`: the merge's `checkFree` (no kept node holds the node the merge takes back, by a
+  live klong now or before the transaction; it is not the space root and not of the view) and
+  `checkRoot` (root collapse's: the root's one holder is the path's node above it). The
+  narrowed premise asks them only where the fill, `PutInv`, the ranges, the heights and
+  `TakeJ2` hold at the delete's start.
 - `hHL` gone (cost2, 2026-11-15, `HeightsFillHolder.lean`, `HeightsFillTop.lean`): the joint
   induction also carries the writer's tree and the take-back's node facts (`J2At`, putinv's
   `OpJ2OK` step with S the take-back's state facts, the heights and the fill:
@@ -155,9 +165,10 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   with the made-for bound the first id, `writerWP_del_emptyAnyMKLHGJ`), and the delete's steps
   without it (`delStepsJ2OKJ_of_openR`, `delStepsOKJ_of_open`, the joint route's
   `delStepsQdLJ_of_openR`, `delStepsJ2OKS_of_openR`). The operations' cases at every state come
-  from the induction. The top theorem on this route is `invGetScanOK_merges_joint`: premises
-  `hp`, `hth`, `hchk4` (`OpDelChk4OKL`), `htb`, `d4`, `l4`, `hU`, `hMSF`, `hCoF`, `hCoU`; no
-  `hHL`, no `hMF`. It replaces `invGetScanOK_merges_chk4L`.
+  from the induction (`jointHtJ_reachedJ`, `hchk` given `TakeJ2` too). The top theorem on this
+  route is `invGetScanOK_merges_joint5` (`HeightsFillLoop.lean`): premises `hp`, `hth`,
+  `hchk5` (`OpDelChk5OKL`), `htb`, `d4`, `l4`, `hU`, `hMSF`, `hCoF`, `hCoU`; no `hHL`, no
+  `hMF`. It replaces `invGetScanOK_merges_joint`, which replaced `invGetScanOK_merges_chk4L`.
 - `htb`, `TakeBelowFuelDelOK`: every node that a delete takes back, of those it found at its
   start, has a cached height below the fuel (cost; a put takes nothing back, proved). With the
   heights it gives that every state between operations fits the fuel
