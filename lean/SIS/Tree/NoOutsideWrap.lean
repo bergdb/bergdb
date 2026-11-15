@@ -109,4 +109,15 @@ elab "n_wrap " xs:ident* : command => do
   let done ← liftTermElabM (wrapFor names)
   logInfo m!"n_wrap: {done.size} wrappers"
 
+/-- The wrappers of the named lemmas themselves (`n_wrap` wraps the lemmas that
+the named declarations use). -/
+elab "n_wrap_these " xs:ident* : command => do
+  let names ← xs.mapM (fun x => liftCoreM (realizeGlobalConstNoOverloadWithInfo x))
+  let done ← liftTermElabM do
+    let mut d : Array Name := #[]
+    for n in names do
+      if ← wrapOne n then d := d.push n
+    return d
+  logInfo m!"n_wrap_these: {done.size} wrappers"
+
 end SIS.Tree.NWrap

@@ -2,8 +2,8 @@
 The take-back's and the reading's delete cases with the merges on, with
 `CollapseFitsOK` alone in place of `CollapseStepOK` and `ReplaceRootFullJ2OKC` in
 place of `ReplaceRootFullJ2OK` (bergdb 024-22, section 11.1): the same proofs as
-`opJ2Case_delMergeR`, `runTreeQ_of_mergesS`, `opCaseOKJ_qdW_delMergeRL` and
-`opCaseOKJ_treeInvRange_delMergeRL`, through the collapse's steps without
+`opJ2Case_delMergeR` and `runTreeQ_of_mergesS`, and as the joint route's reading
+cases had with `CollapseStepOK` (025-02's name map), through the collapse's steps without
 `CollapseUnlinkOK` (CollapseCommuteStep.lean, CollapseCommuteJ2.lean).
 -/
 import SIS.Tree.HeightsFillHolder

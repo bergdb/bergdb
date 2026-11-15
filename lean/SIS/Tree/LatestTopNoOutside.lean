@@ -1,11 +1,12 @@
 /-
-The top theorem for the runs with no key node outside the level bounds
-(bergdb 025-03, F1 of 026-16, section 4.2): `invGetScanOK_merges_noOutside`,
-TP7, TP10 and TP11 for every run within reach with `NoOutside`, from the top
-theorem's premises but `htb` (`TakeBelowFuelDelOK`). In such a run every height
-the writer knows is at most H, so below the fuel (`heights_le_H_of_noOutside`),
-which is what `htb` gave; the proof is the top theorem's (LatestTop.lean) over
-the run machinery for these runs (NoOutsideRun*.lean).
+The proof for the runs with no key node outside the level bounds (bergdb 025-03,
+F1 of 026-16, section 4.2): `N.invGetScanOK_merges`, TP7, TP10 and TP11 for the
+runs of `N.Within` (within reach and with `NoOutside`), from the premises of the
+top theorem as it stood on 2026-11-14 (025-02) but `htb` (`TakeBelowFuelDelOK`).
+In such a run every height the writer knows is at most H, so below the fuel
+(`heights_le_H_of_noOutside`), which is what `htb` gave; the proof is that top
+theorem's, over the run machinery for these runs (NoOutsideRun*.lean). The route's
+top theorem, `invGetScanOK_merges_noOutside`, is in LatestTopMadeFor.lean.
 -/
 import SIS.Tree.NoOutsideRun3
 
@@ -18,8 +19,8 @@ open SIS SIS.Check
 namespace N
 
 set_option maxHeartbeats 800000 in
-/-- `SIS.Tree.invGetScanOK_merges` for the runs of `N.Within`, without its
-premise `htb`; its other premises as there. -/
+/-- The top theorem as it stood on 2026-11-14 (025-02), for the runs of
+`N.Within`, without its premise `htb`; its other premises as there. -/
 theorem invGetScanOK_merges (p : Params) (hp : MergeParamsOK p)
     (hth : 2 ≤ p.theta ∨ p.theta = 0)
     (hchk : OpDelChk2OK p)
@@ -137,36 +138,5 @@ theorem invGetScanOK_merges (p : Params) (hp : MergeParamsOK p)
   exact ⟨hinv, h.1, h.2, latestGetOK_of_getOK p h.1, latestScanOK_of_scanOK p h.2⟩
 
 end N
-
-set_option maxHeartbeats 800000 in
-/-- TP7, TP10 and TP11 (024-12, section 1) for the runs in which no key node is
-made outside the level bounds G and H (`NoOutside`), for the parameters of
-`MergeParamsOK`: after every such run within reach the invariants hold at every
-time, and every get and scan at every time returns what the reference map
-returns. The premises are the top theorem's (`invGetScanOK_merges`) but `htb`.
-For a run of Java's, H is chosen to cover the highest moment of every
-transaction (bergdb 025-03). -/
-theorem invGetScanOK_merges_noOutside (p : Params) (hp : MergeParamsOK p)
-    (hth : 2 ≤ p.theta ∨ p.theta = 0)
-    (hchk : OpDelChk2OK p)
-    (d4 : OpCaseOK p (RunOK p) (QDead p) DelMergeDOpenCase)
-    (l4 : OpCaseOK p (RunOK p) (QLive p) DelMergeOpenCase)
-    (hU : ∀ ts, UpUnlinkTreeOK (ctxOf p ts) (viewOf (treeRun p ts)))
-    (hHL : ∀ ts, UpHolderLiveRunOK (ctxOf p ts) (viewOf (treeRun p ts)))
-    (hMSF : ∀ ts, MergeFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hCoF : ∀ ts, CollapseFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hCoU : ∀ ts, CollapseUnlinkAllOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hMF : StateOK p (RunOK p) (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base)) :
-    ∀ ts, Within p ts → NoOutside p ts →
-      (∀ t ≤ ts.length, InvOK p (treeRun p ts) t ∧ PointersOK (treeRun p ts)) ∧
-      (∀ t ≤ ts.length, ∀ key, keyWf key = true →
-        get p (viewOf (treeRun p ts)) t key = refGet ts t key) ∧
-      (∀ t ≤ ts.length, ∀ (req : ScanReq) (limit : Nat), req.wf = true →
-        (scan p (viewOf (treeRun p ts)) t req limit).map (fun kv => (kv.key, kv.h)) =
-          refScan ts t req limit) := by
-  intro ts hw hno
-  obtain ⟨hinv, hget, hscan, -, -⟩ :=
-    N.invGetScanOK_merges p hp hth hchk d4 l4 hU hHL hMSF hCoF hCoU hMF
-  exact ⟨hinv ts ⟨hw, hno⟩, hget ts ⟨hw, hno⟩, hscan ts ⟨hw, hno⟩⟩
 
 end SIS.Tree

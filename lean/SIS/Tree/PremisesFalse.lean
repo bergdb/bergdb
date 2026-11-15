@@ -6,7 +6,8 @@ Each speaks of every writer state that meets a local invariant (`CollGetInvF` an
 books: nothing ties a cached node's previous version, the next id or the nodes taken back
 to the run. The runs checked the premises only at the states that runs reach. Each
 counterexample is a small state at the first run (ts = []), for every parameter set, so
-`invGetScanOK_merges` and `invGetScanOK_merges_noOutside` hold vacuously as they stand.
+`invGetScanOK_merges` (by `hU`) and `invGetScanOK_merges_noOutside` (by all three) hold
+vacuously as they stand.
 -/
 import SIS.Tree.LatestTop
 

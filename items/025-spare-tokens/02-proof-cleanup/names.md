@@ -265,3 +265,42 @@ and not a building block that the open premises' plans name (keep.txt).
 - `writerWP_replaceRoot_seg_get` [024-22]
 - `writerWP_takeBackRoot_seg_coll` [024-22]
 - `writerWP_takeBackRoot_seg_get` [024-22]
+
+# 4. The second close (2026-11-15)
+
+One top theorem per route again (Frans, 2026-11-15, 08:33; 006-25, section 7, decision 3),
+after the night of 14 to 15 November had added variants. Written by hand. A name marked
+"reused" now names a later statement; the earlier one is removed.
+
+Renamed:
+
+- `invGetScanOK_merges_joint6` → `invGetScanOK_merges`, the joint route's top theorem
+  (CollapseCommuteTop.lean; premises hp, hth, hchk5, htb, d4, l4, hU, hMSF, hCoF; reused:
+  the name of the top theorem of 2026-11-14, removed) [006-25, 006-26, 024-12, 024-22]
+- `invGetScanOK_merges_noOutside'` → `invGetScanOK_merges_noOutside`, the NoOutside
+  route's top theorem (LatestTopMadeFor.lean; premises hp, hth, hchk, d4, l4, hU, hHL, hMSF,
+  hCoF, hCoU; reused: the name of the form with `hMF`, removed) [024-12, 024-22]
+
+Removed as an earlier version:
+
+- `invGetScanOK_merges` of 2026-11-14 (LatestTop.lean; 10 premises hchk, htb, d4, l4, hU,
+  hHL, hMSF, hCoF, hCoU, hMF): removed; superseded by `invGetScanOK_merges`; the name is now
+  the renamed `invGetScanOK_merges_joint6`'s. Its proof stays as the NoOutside route's
+  `N.invGetScanOK_merges` (LatestTopNoOutside.lean). [006-24, 006-25, 006-26, 024-12,
+  024-22, 025-02, 025-03]
+- `invGetScanOK_merges_noOutside` with `hMF` (LatestTopNoOutside.lean): removed; superseded
+  by `invGetScanOK_merges_noOutside`; the name is now the renamed
+  `invGetScanOK_merges_noOutside'`'s [024-12, 024-22, 025-03, 006-25]
+- `invGetScanOK_merges'` (LatestTopMadeFor.lean): removed; superseded by
+  `invGetScanOK_merges` [024-12, 024-22]
+- `invGetScanOK_merges_chkL` (HeightsFill.lean): removed; superseded by
+  `invGetScanOK_merges` [024-12, 024-22]
+- `invGetScanOK_merges_joint5` (HeightsFillLoop.lean): removed; superseded by
+  `invGetScanOK_merges` [024-12, 024-22]
+- `opCaseOKJ_qdW_delMergeRL`, `opCaseOKJ_treeInvRange_delMergeRL` (HeightsFillHolder.lean),
+  used by `invGetScanOK_merges_joint5` only: removed; superseded by
+  `opCaseOKJ_qdW_delMergeRLC` and `opCaseOKJ_treeInvRange_delMergeRLC`
+  (CollapseCommuteRun.lean)
+- `invGetScanOK_merges_chk3L`, `invGetScanOK_merges_chk4L`, `invGetScanOK_merges_joint`:
+  replaced in the night by the next one (commits 075b2e97, 74ff5be5, 3a95f624); superseded
+  by `invGetScanOK_merges` [024-12]

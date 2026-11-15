@@ -51,40 +51,52 @@ Exec.lean; TP39 and TP40 in SIS/Tree/DeadProps.lean) are parameters of the
 tree, off by default; record format 7's writer is
 `Params.withMerges.withTheta`.
 
-Since 2026-11-14 the tree's main properties are proved from 10 named premises
-(bergdb 024-12, section 1). The top theorem, `invGetScanOK_merges`
-(SIS/Tree/LatestTop.lean), gives TP7 (`InvPreserved`), TP10 (`GetOK`) and
-TP11 (`ScanOK`), and so `LatestGetOK` and `LatestScanOK`, for every parameter
-set of `MergeParamsOK` with theta 0 or at least 2; Java's own parameters,
-record format 7's from node size 8, are among them (`mergeParamsOK_java`,
-`theta_java`). Its premises `d4`, `l4`, `hchk`, `htb`, `hU`, `hHL`, `hMSF`,
-`hCoF`, `hCoU` and `hMF` each speak of one operation or one step of the
-writer, mostly of the delete with the merges; they held on the model's runs
-within reach (024-12, section 1, the evidence for each). Since 2026-11-15 `hMF`
-is proved (`stateOK_madeFor`, SIS/Tree/MadeForOld.lean; the theorems without it
-in SIS/Tree/LatestTopMadeFor.lean), and three are false as stated, for every
-parameter set: `hU`, `hHL` and `hCoU` speak of every writer state that meets a
-local invariant, which carries none of the writer's books
-(SIS/Tree/PremisesFalse.lean). So the theorem holds vacuously as it stands;
-their true forms and the change proposed are in bergdb 024-22, section 11.1
-(SIS/Tree/PremisesTrue.lean). `hCoU` is not needed: root collapse's two steps
-commute (`replaceRoot_linkFirst`, SIS/Tree/CollapseCommute.lean), and the joint
-route's top theorem `invGetScanOK_merges_joint6` (SIS/Tree/CollapseCommuteTop.lean)
-has neither `hCoU` nor `hHL` nor `hMF`. Not
-covered: the merges off; and the theorem does not give the abstract model's
-TREE or the height H that bounded startup asks of the tree: the tree's own
-invariant is proved inside it, but no theorem connects the two (bergdb 006-26,
-section 5.3).
+Since 2026-11-14 the tree's main properties are proved from named premises
+(bergdb 024-12, section 1), with one top theorem per route (025-02; since
+2026-11-15 the routes' later theorems took the names, 025-02's name map).
 
-Since 2026-11-15 the same is proved without `htb` for the runs in which no
-transaction makes a key node outside the level bounds G and H (bergdb
-025-03): `invGetScanOK_merges_noOutside` (SIS/Tree/LatestTopNoOutside.lean)
-gives TP7, TP10 and TP11 for every run within reach with `NoOutside`
-(SIS/Tree/NoOutsideBase.lean), from the other 9 premises. For a run of
-Java's, H is chosen to cover the highest moment of every transaction; on the
-conformance traces the trace's own H + 1 does (025-03, section 3.1). The run
-machinery is restated for such runs in namespace `SIS.Tree.N`
-(SIS/Tree/NoOutside*.lean).
+The top theorem, `invGetScanOK_merges` (SIS/Tree/CollapseCommuteTop.lean),
+gives TP7 (`InvPreserved`), TP10 (`GetOK`) and TP11 (`ScanOK`), and so
+`LatestGetOK` and `LatestScanOK`, for every parameter set of `MergeParamsOK`
+with theta 0 or at least 2 (`hp`, `hth`); Java's own parameters, record format
+7's from node size 8, are among them (`mergeParamsOK_java`, `theta_java`,
+SIS/Tree/LatestTop.lean). Its premises are `hchk5`, `htb`, `d4`, `l4`, `hU`,
+`hMSF` and `hCoF`. Each speaks of one operation or one step of the writer,
+mostly of the delete with the merges; they held on the model's runs within
+reach (024-12, section 1, the evidence for each). It is on the joint route: one
+induction along each transaction carries the writer's tree, `PutInv`, the
+ranges, the fill, the heights' walk and the take-back's node facts
+(`jointHtJ_reachedJ`). The top theorem of 2026-11-14 had 10 premises; of them:
+* `hMF` is proved (`stateOK_madeFor`, SIS/Tree/MadeForOld.lean);
+* `hHL` is not needed: the take-back's node facts give it where it was used
+  (`upHolderLive_of_J2`, SIS/Tree/PremisesTrue.lean);
+* `hCoU` is not needed: root collapse's two steps commute
+  (`replaceRoot_linkFirst`, SIS/Tree/CollapseCommute.lean);
+* `hchk` is narrowed to `hchk5` (`OpDelChk5OKL`), the merge's and root
+  collapse's holder checks at the deletes whose start has the fill, `PutInv`,
+  the ranges, the heights and the take-back's node facts (the other checks
+  proved, SIS/Tree/HeightsFill*.lean).
+
+`hU` is false as stated, for every parameter set, and so were `hHL` and `hCoU`:
+they speak of every writer state that meets a local invariant, which carries
+none of the writer's books (SIS/Tree/PremisesFalse.lean). So the top theorem
+holds vacuously as it stands; `hU`'s true form is open (024-22, section 11.1;
+025-04; SIS/Tree/PremisesTrue.lean has the true forms found). Not covered: the
+merges off; and the theorem does not give the abstract model's TREE or the
+height H that bounded startup asks of the tree: the tree's own invariant is
+proved inside it, but no theorem connects the two (bergdb 006-26, section 5.3).
+
+The NoOutside route's top theorem, `invGetScanOK_merges_noOutside`
+(SIS/Tree/LatestTopMadeFor.lean), gives TP7, TP10 and TP11 for every run
+within reach in which no transaction makes a key node outside the level bounds
+G and H (`NoOutside`, SIS/Tree/NoOutsideBase.lean; bergdb 025-03), without
+`htb` and `hMF`: its premises are `hchk`, `d4`, `l4`, `hU`, `hHL`, `hMSF`,
+`hCoF` and `hCoU`, with `hp` and `hth`. Its proof is the top theorem of
+2026-11-14's (`N.invGetScanOK_merges`, SIS/Tree/LatestTopNoOutside.lean), with
+the run machinery restated for such runs in namespace `SIS.Tree.N`
+(SIS/Tree/NoOutside*.lean); it is not on the joint route. For a run of Java's,
+H is chosen to cover the highest moment of every transaction; on the
+conformance traces the trace's own H + 1 does (025-03, section 3.1).
 
 Since bergdb item 007 (2026-10-23) the model also has the first bound, T3:
 with any cost of a record and a startup pos policy that keeps up with a
@@ -469,13 +481,13 @@ And `PhysRunOK` from the other assumptions (bergdb 024-09), each printing
     #print axioms SIS.Check.bspec_tr_handles
 
 The key tree's top theorems (bergdb 024-12, section 1, and 025-03;
-SIS/Tree/LatestTop.lean, LatestTopNoOutside.lean) and Java's parameters the
-same way, the first three printing
+SIS/Tree/CollapseCommuteTop.lean, LatestTopMadeFor.lean) and Java's parameters
+the same way, the first three printing
 `[propext, Classical.choice, Quot.sound]`, `theta_java` without
 `Classical.choice`:
 
-    import SIS.Tree.LatestTop
-    import SIS.Tree.LatestTopNoOutside
+    import SIS.Tree.CollapseCommuteTop
+    import SIS.Tree.LatestTopMadeFor
     #print axioms SIS.Tree.invGetScanOK_merges
     #print axioms SIS.Tree.invGetScanOK_merges_noOutside
     #print axioms SIS.Tree.mergeParamsOK_java
@@ -1456,9 +1468,10 @@ run):
 * The key tree (bergdb 024-12, section 1; 2026-11-14): TP7, TP10 and TP11,
   and so `LatestGetOK` and `LatestScanOK`, for `MergeParamsOK` and Java's
   parameters (`invGetScanOK_merges`, `mergeParamsOK_java`,
-  `theta_java`), from 10 named premises, which are open (Not done); and for
-  the runs with no key node outside G and H (`NoOutside`) from 9 of them,
-  without `htb` (`invGetScanOK_merges_noOutside`, bergdb 025-03; 2026-11-15).
+  `theta_java`), from 7 named premises, which are open (Not done); and for
+  the runs with no key node outside G and H (`NoOutside`) from 8 named
+  premises, without `htb` and `hMF` (`invGetScanOK_merges_noOutside`, bergdb
+  025-03; 2026-11-15).
 
 Checked by running: the `#guard`s of `lake build`, the random runs of
 `sistest`, `phystest` and `reclaimtest` (Build and run), and Java's traces
@@ -1479,11 +1492,11 @@ Not done:
   not bound D. The stream's meta blocks are not modelled, but they make no
   difference to the take: when it runs, the stream's length is where the new
   record begins (bergdb 005-68).
-* The key tree's 10 premises (`d4`, `l4`, `hchk`, `htb`, `hU`, `hHL`,
-  `hMSF`, `hCoF`, `hCoU`, `hMF` of `invGetScanOK_merges`; bergdb 024-12,
-  section 1): held on the model's runs within reach; `hMF` proved
-  (2026-11-15); `hU`, `hHL` and `hCoU` false as stated, their statements for
-  Frans to decide (024-22, section 11.1); the others open.
+* The key tree's premises (`hchk5`, `htb`, `d4`, `l4`, `hU`, `hMSF`, `hCoF`
+  of `invGetScanOK_merges`; `hchk`, `d4`, `l4`, `hU`, `hHL`, `hMSF`, `hCoF`,
+  `hCoU` of `invGetScanOK_merges_noOutside`; bergdb 024-12, section 1): held on
+  the model's runs within reach; `hU`, `hHL` and `hCoU` false as stated
+  (024-22, section 11.1; `hU`'s true form is 025-04's plan); the others open.
 * Reclaim's theorems: T-SCHEME (R6), that Java's scheme gives safe cuts:
   checked, not proved (the plan's fallback; 001-07, section 5):
   by running on example 4 (`reclaimtest`, `checkSchemeB`, and since bergdb

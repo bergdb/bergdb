@@ -1,12 +1,12 @@
 /-
-The top theorems without `hMF` (bergdb 024-12, section 1): the made-for ids
-name old nodes at every state between operations (`stateOK_madeFor`, from the
-walk of SIS/Tree/MadeForOld.lean), so `invGetScanOK_merges'` (the form with
-`hchk` narrowed, `invGetScanOK_merges_chkL`) and `invGetScanOK_merges_noOutside'`
-take the other premises only.
+The NoOutside route's top theorem (bergdb 025-03; 024-12, section 1):
+`invGetScanOK_merges_noOutside`, TP7, TP10 and TP11 for every run within reach
+with `NoOutside`, without `htb` and without `hMF`: the made-for ids name old nodes
+at every state between operations (`stateOK_madeFor`, from the walk of
+SIS/Tree/MadeForOld.lean), so `N.invGetScanOK_merges` (LatestTopNoOutside.lean)
+takes the other premises only.
 -/
 import SIS.Tree.MadeForOld
-import SIS.Tree.HeightsFill
 import SIS.Tree.LatestTopNoOutside
 
 set_option autoImplicit false
@@ -37,24 +37,15 @@ theorem stateOK_madeFor (p : Params) (hM : 4 ≤ p.M) (R : Struct BVal → Time 
 theorem four_le_M (p : Params) (hp : MergeParamsOK p) : 4 ≤ p.M := by
   unfold MergeParamsOK at hp; omega
 
-/-- `invGetScanOK_merges_chkL` without `hMF`. -/
-theorem invGetScanOK_merges' (p : Params) (hp : MergeParamsOK p)
-    (hth : 2 ≤ p.theta ∨ p.theta = 0)
-    (hchkL : OpDelChk2OKL p)
-    (htb : TakeBelowFuelDelOK p)
-    (d4 : OpCaseOK p (RunOK p) (QDead p) DelMergeDOpenCase)
-    (l4 : OpCaseOK p (RunOK p) (QLive p) DelMergeOpenCase)
-    (hU : ∀ ts, UpUnlinkTreeOK (ctxOf p ts) (viewOf (treeRun p ts)))
-    (hHL : ∀ ts, UpHolderLiveRunOK (ctxOf p ts) (viewOf (treeRun p ts)))
-    (hMSF : ∀ ts, MergeFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hCoF : ∀ ts, CollapseFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hCoU : ∀ ts, CollapseUnlinkAllOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1)) :
-    InvPreserved p ∧ GetOK p ∧ ScanOK p ∧ LatestGetOK p ∧ LatestScanOK p :=
-  invGetScanOK_merges_chkL p hp hth hchkL htb d4 l4 hU hHL hMSF hCoF hCoU
-    (stateOK_madeFor p (four_le_M p hp) (RunOK p) (fun _ _ h => h.1))
-
-/-- `invGetScanOK_merges_noOutside` without `hMF`. -/
-theorem invGetScanOK_merges_noOutside' (p : Params) (hp : MergeParamsOK p)
+/-- TP7, TP10 and TP11 (024-12, section 1) for the runs in which no key node is
+made outside the level bounds G and H (`NoOutside`), for the parameters of
+`MergeParamsOK`: after every such run within reach the invariants hold at every
+time, and every get and scan at every time returns what the reference map
+returns. The NoOutside route's top theorem: neither `htb` nor `hMF` is a premise
+(`stateOK_madeFor`); its premises are those of the top theorem as it stood on
+2026-11-14 but those two. For a run of Java's, H is chosen to cover the highest
+moment of every transaction (bergdb 025-03). -/
+theorem invGetScanOK_merges_noOutside (p : Params) (hp : MergeParamsOK p)
     (hth : 2 ≤ p.theta ∨ p.theta = 0)
     (hchk : OpDelChk2OK p)
     (d4 : OpCaseOK p (RunOK p) (QDead p) DelMergeDOpenCase)
@@ -70,8 +61,11 @@ theorem invGetScanOK_merges_noOutside' (p : Params) (hp : MergeParamsOK p)
         get p (viewOf (treeRun p ts)) t key = refGet ts t key) ∧
       (∀ t ≤ ts.length, ∀ (req : ScanReq) (limit : Nat), req.wf = true →
         (scan p (viewOf (treeRun p ts)) t req limit).map (fun kv => (kv.key, kv.h)) =
-          refScan ts t req limit) :=
-  invGetScanOK_merges_noOutside p hp hth hchk d4 l4 hU hHL hMSF hCoF hCoU
-    (stateOK_madeFor p (four_le_M p hp) (RunOK p) (fun _ _ h => h.1))
+          refScan ts t req limit) := by
+  intro ts hw hno
+  obtain ⟨hinv, hget, hscan, -, -⟩ :=
+    N.invGetScanOK_merges p hp hth hchk d4 l4 hU hHL hMSF hCoF hCoU
+      (stateOK_madeFor p (four_le_M p hp) (RunOK p) (fun _ _ h => h.1))
+  exact ⟨hinv ts ⟨hw, hno⟩, hget ts ⟨hw, hno⟩, hscan ts ⟨hw, hno⟩⟩
 
 end SIS.Tree

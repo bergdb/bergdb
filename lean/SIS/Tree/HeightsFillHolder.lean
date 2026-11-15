@@ -749,57 +749,6 @@ theorem delStepsQdLJ_of_openR (p : Params) (R : Struct BVal → Time → Prop) (
   · exact delStepsCaseQdJ_fullH p R hM hsa2 hRL hRP hRK hRH (fun ts => delFullRootStepOK_ctx p ts)
       ts tx hw hr z top hz htop pre op post hops r w hpre hH hI hRO hF key hop (hop ▸ h) hA hMU hCR
 
-theorem opCaseOKJ_qdW_delMergeRL (p : Params) (R : Struct BVal → Time → Prop) (hS : DelStepsQdLJ p R)
-    (hM : ∀ ts, MergeStepOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hC : ∀ ts, CollapseStepOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hsa2 : 2 ≤ p.splitAbove) (hcap : 1 ≤ p.mergeMax)
-    (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P) :
-    OpCaseOKJ p R (fun ts _ _ w' => QdW p ts w') DelMergeCaseL := by
-  have hf2 : 2 ≤ p.fuel + 1 := by unfold Params.fuel; omega
-  intro ts tx hw hr z top hz htop pre op post hops r w hpre hH hI hRO hP
-  obtain ⟨⟨key, hop, hmerges⟩, hLCw⟩ := hP
-  have hF0 := segFits_of_htStart p ts tx w hH.1
-  have hwts : Within p ts := by
-    have := within_take p (ts ++ [tx]) hw ts.length
-    simpa using this
-  have hfresh : ∀ q ∈ treeRun p ts, q.1 < tx.base := by
-    have := (hw.2 ts.length (by simp)).1
-    simpa using this
-  have hK := hRK _ _ hr
-  have hv : ViewIdsBelow tx.base (ctxOf p ts).view :=
-    viewIdsBelow_rootless _ _ (viewIdsBelow_view p (treeRun p ts) ts.length tx.base hfresh)
-  have hk : ViewKinds (kindOracleOf p (treeRun p ts)) tx.base (ctxOf p ts) :=
-    viewKinds_of p (treeRun p ts) ts.length tx.base hfresh (treeRun_timesLE p ts) (hRP _ _ hr) hK
-  have hICEk : ICEFromKinds (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) tx.base :=
-    fun v hb hi hun => innerChildren_of_kinds p (treeRun p ts) tx.base (ctxOf p ts) v rfl hK
-      (hRP _ _ hr) hb hi.cache hun
-  exact hS ts tx hw hr z top hz htop pre op post hops r w hpre hH hI hRO hF0 key hop ⟨⟨key, hop, hmerges⟩, hLCw⟩
-    (fun g h v hv' => writerWP_afterDelete_del key g h (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
-      (p.fuel + 1) hf2 (hM ts) (hC ts) _ _ hv hk hICEk hsa2 hcap w key v hv')
-    (fun g h merged v hv' => writerWP_mergeUp_del key g (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
-      (p.fuel + 1) hf2 (hM ts) _ _ hv hk hICEk hsa2 hcap w key p.fuel h merged v hv')
-    (fun seg v hv' => writerWP_collapseRoot_del key seg (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
-      (p.fuel + 1) hf2 (hC ts) w key _ _ hv hk hICEk hsa2 v hv')
-
-theorem opCaseOKJ_treeInvRange_delMergeRL (p : Params) (R : Struct BVal → Time → Prop) (hS : DelStepsQdLJ p R)
-    (hM : ∀ ts, MergeStepOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hC : ∀ ts, CollapseStepOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hsa2 : 2 ≤ p.splitAbove) (hcap : 1 ≤ p.mergeMax)
-    (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P) :
-    OpCaseOKJ p R (QTree p) DelMergeCaseL ∧ OpCaseOKJ p R (QPutInv p) DelMergeCaseL ∧
-      OpCaseOKJ p R (QRange p) DelMergeCaseL := by
-  have h := opCaseOKJ_qdW_delMergeRL p R hS hM hC hsa2 hcap hRP hRK
-  refine ⟨?_, ?_, ?_⟩
-  · intro ts tx hw hr z top hz htop pre op post hops r w hpre hH hI hRO hP
-    exact writerWP_mono (h ts tx hw hr z top hz htop pre op post hops r w hpre hH hI hRO hP)
-      (fun _ w' hq => hq.1.tree)
-  · intro ts tx hw hr z top hz htop pre op post hops r w hpre hH hI hRO hP
-    exact writerWP_mono (h ts tx hw hr z top hz htop pre op post hops r w hpre hH hI hRO hP)
-      (fun _ w' hq _ => hq.1)
-  · intro ts tx hw hr z top hz htop pre op post hops r w hpre hH hI hRO hP
-    exact writerWP_mono (h ts tx hw hr z top hz htop pre op post hops r w hpre hH hI hRO hP)
-      (fun _ w' hq _ => hq.2)
-
 /-! ## The take-back's steps, the heights and the fill at the start from S -/
 
 /-- `delStepsCaseJ2OK_emptyCascRLHGJ` with the heights and the fill from S. -/

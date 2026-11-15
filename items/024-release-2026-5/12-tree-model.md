@@ -23,6 +23,12 @@ Cite the design rules as "024-12, D1", the stated properties as
 
 Names since 025-02 (2026-11-14): 025-02's name map.
 
+Current since 2026-11-15 (025-02, second close): `invGetScanOK_merges`
+(CollapseCommuteTop.lean; hp, hth, hchk5, htb, d4, l4, hU, hMSF, hCoF; formerly
+`invGetScanOK_merges_joint6`) and, for runs with `NoOutside`, `invGetScanOK_merges_noOutside`
+(LatestTopMadeFor.lean; formerly `invGetScanOK_merges_noOutside'`); older names in 025-02's
+name map.
+
 **What this means for BergDB (2026-11-14, latest).** The key tree's proofs reach their top
 theorem. For Java's own parameters (record format 7's merge thresholds and option 2's theta,
 from node size 8), every run of transactions that the model accepts keeps the tree's invariants

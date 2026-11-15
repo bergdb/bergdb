@@ -4,7 +4,7 @@ along the transaction carries `PutInv`, the ranges, the fill, the heights, the
 writer's tree and the take-back's node facts (`jointHtJ_reachedJ`), so `TakeJ2` is
 at hand at every delete's start, and putinv2's `upHolderLive_of_J2` replaces `hHL`
 in the stop node's cascade (HeightsFillHolder.lean). The top theorem on this route
-is HeightsFillLoop.lean's `invGetScanOK_merges_joint5`.
+is `invGetScanOK_merges` (CollapseCommuteTop.lean).
 -/
 import SIS.Tree.HeightsFillHolder
 

@@ -1,9 +1,21 @@
 /-
-The joint route's top theorem without `hCoU` (bergdb 024-22, section 11.1; 026-16,
-section 5.3): `invGetScanOK_merges_joint6` is `invGetScanOK_merges_joint5`
-(HeightsFillLoop.lean) with one premise fewer, `CollapseUnlinkAllOK`, which is
-false as stated (`collapseUnlinkAllOK_false`), and no premise added. It replaces
-joint5 as the route's current theorem.
+The top theorem (bergdb 024-12, section 1; 024-22, section 11.1): `invGetScanOK_merges`,
+TP7, TP10 and TP11 and the latest time's get and scan for the parameters of
+`MergeParamsOK`, on the joint route: one induction along each transaction carries
+the writer's tree, `PutInv`, the ranges, the fill, the heights' walk and the
+take-back's node facts (`jointHtJ_reachedJ`). Its premises are `hp` and `hth` on
+the parameters, and `hchk5`, `htb`, `d4`, `l4`, `hU`, `hMSF` and `hCoF`. In place
+of the premises of the top theorem of 2026-11-14 (025-02):
+* `hMF` is proved (`stateOK_madeFor`);
+* `hHL` is not needed: the take-back's node facts give the stop node's cascade
+  (`upHolderLive_of_J2`);
+* `hCoU` is not needed: root collapse's two steps commute (`replaceRoot_linkFirst`),
+  so a segment root's collapse needs only `hCoF`;
+* `hchk` is narrowed to the merge's and the root collapse's holder checks at the
+  deletes whose start has the fill, `PutInv`, the ranges, the heights and the
+  take-back's node facts (`OpDelChk5OKL`).
+LatestTop.lean has the lemmas of the induction's steps; the route for the runs with
+`NoOutside` is `invGetScanOK_merges_noOutside` (LatestTopMadeFor.lean).
 -/
 import SIS.Tree.HeightsFillLoop
 import SIS.Tree.CollapseCommuteRun
@@ -15,13 +27,13 @@ namespace SIS.Tree
 open SIS SIS.Check
 
 set_option maxHeartbeats 3200000 in
-/-- `invGetScanOK_merges_joint5` without `hCoU` (`CollapseUnlinkAllOK`, false as
-stated, `collapseUnlinkAllOK_false`): root collapse's two steps commute
-(`replaceRoot_linkFirst`), so a segment root's collapse needs only `hCoF`; the
-reading's route by `opGetCaseOK_delMergeC` and `opCaseOKJ_treeInvRange_delMergeRLC`,
-the take-back's by `opJ2Case_delMergeRC`, `runTreeQ_of_mergesSC` and
-`replaceRootFullJ2OKC_run`. The route's current theorem in place of joint5 (024-22, section 11.1). -/
-theorem invGetScanOK_merges_joint6 (p : Params) (hp : MergeParamsOK p)
+/-- TP7, TP10 and TP11, and the latest time's get and scan, for the parameters
+of `MergeParamsOK`, from the premises `hchk5`, `htb`, `d4`, `l4`, `hU`, `hMSF` and
+`hCoF` (024-12, section 1): the joint route (`jointHtJ_reachedJ`); the reading's
+route by `opGetCaseOK_delMergeC` and `opCaseOKJ_treeInvRange_delMergeRLC`, the
+take-back's by `opJ2Case_delMergeRC`, `runTreeQ_of_mergesSC` and
+`replaceRootFullJ2OKC_run`. -/
+theorem invGetScanOK_merges (p : Params) (hp : MergeParamsOK p)
     (hth : 2 ≤ p.theta ∨ p.theta = 0)
     (hchk5 : OpDelChk5OKL p)
     (htb : TakeBelowFuelDelOK p)
@@ -139,7 +151,7 @@ theorem invGetScanOK_merges_joint6 (p : Params) (hp : MergeParamsOK p)
     fun ts tx hw hr z top hz htop pre post hs r w hpre =>
       (joint ts tx hw hr z top hz htop pre post hs r w hpre).2.2.2.2.2
   have hMFS := stateOK_madeFor p hM4 (RunTreeQ p (LatestQD p)) hRL'
-  -- from here as in `invGetScanOK_merges`, the delete's steps without `hHL`
+  -- the delete's steps without `hHL`
   have d4' := opCaseOK_anti p _ _ hR _ _ (deadCase_delMergeL_of_rest p (RunOK p) hRL
     (opCaseOK_of_open p (RunOK p) (QDead p) (keptByReads_dead p) DelMergeDRestCase d4))
   have hTL := opCaseOK_L_of_any p _ _ hT

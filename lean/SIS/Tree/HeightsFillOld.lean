@@ -7,8 +7,8 @@ copy with neither the stop-node checks nor `checkOld3`, runs as `putKvDelChk2`
 from every state with `PutInv`, the fill and that fact (`rwp_putKvDelChk4`), and
 `OpDelChk4OKL` gives `OpDelChk2OKL` (`opDelChk2OKR_of_chk4`). Left in `hchk`: the
 holders before each take-back (`checkFree`, `checkRoot`); the upward loop's
-`checkFree` is proved in HeightsFillLoop.lean, whose top theorem
-`invGetScanOK_merges_joint5` takes `OpDelChk5OKL`.
+`checkFree` is proved in HeightsFillLoop.lean; the top theorem
+`invGetScanOK_merges` (CollapseCommuteTop.lean) takes `OpDelChk5OKL`.
 -/
 import SIS.Tree.HeightsFillStop
 import SIS.Tree.MadeForView
