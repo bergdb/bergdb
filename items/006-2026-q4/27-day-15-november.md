@@ -188,6 +188,17 @@ provers' branches and reports are in
   change for Frans (024-12, section 1). No prover in its place: with
   four points left to 91 %, delj goes on alone.
 * 11:17 W5: `night.sh` started on `main` 584c73af.
+* 11:20 to 11:37 delj LANDED 2c4009a9, 4108d6b6, bc2cdd65, 1364f7e3:
+  run checks of `hMSF`'s and `hCoF`'s true forms (139 of 3,032 merges
+  made the tree deeper, so "a merge keeps the depth" is false; no
+  operation of 17,390 made it deeper twice; the heights stayed within
+  H); `mergeFits_of_htJ` and `collapseFits_of_htJ`, the true forms for
+  one merge and one replaceRoot given the heights' books at the step's
+  start. Left: the heights' bound across a delete's steps, the books
+  carried to each step, and the reading's walks that use MergeStepOK
+  (024-12, section 1).
+* 11:37 delj stopped early for the usage; resumed at 11:39 on the same
+  task until the STOP file (91 %).
 
 
 ## 8. Outcome
