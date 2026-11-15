@@ -1682,8 +1682,23 @@ every theorem on propext, Classical.choice and Quot.sound only).
   `writerWP_collapseRoot_collC` (no `hunl`), `writerWP_collapseRoot_delC`,
   `writerWP_afterDelete_delC`, `opGetCaseOK_delMergeC`, with `CollapseFitsOK`
   alone in place of `CollapseStepOK`.
-* Left for a top theorem without `hCoU`: the take-back route.
-  `ReplaceRootFullJ2OK` (the full leaf's replaceRoot keeps `TakeJ2`) has
-  `CollapseUnlinkOK` among its hypotheses and its proof uses it for the tree after
-  the unlink; it needs the same commutation (next), then the take-back's
-  collapse lemmas and the top theorem's four uses of `hCo`.
+* The take-back route (`CollapseCommuteJ2.lean`): `ReplaceRootFullJ2OKC` is
+  `ReplaceRootFullJ2OK` without its `CollapseUnlinkOK` hypothesis, proved at every
+  run (`replaceRootFullJ2OKC_run`). When the root has no klong of the
+  transaction the unlink changes nothing, `CollapseUnlinkOK` holds trivially and
+  `replaceRootFullJ2OK_holds` applies; else (`replaceRootJ2_unlinked`) the leaf's
+  cascade runs from the state before the unlink, and the take-back's facts after
+  it follow: the nodes of the transaction's time are reached
+  (`ttReachedN_cascadeU` over the room case's tree, x being out of reach and its
+  previous version holding no klong of the transaction), and the node facts from
+  that run (`j2rest_cascade2`) with x's previous version (`j2facts_step`,
+  `unlinked_j2`). Above it `writerWP_collapseRoot_collJC`, `_delJC`,
+  `writerWP_afterDelete_delJC`, and in `CollapseCommuteRun.lean` the delete's
+  cases `opJ2Case_delMergeRC`, `runTreeQ_of_mergesSC`, `opCaseOKJ_qdW_delMergeRLC`,
+  `opCaseOKJ_treeInvRange_delMergeRLC`, each with `CollapseFitsOK` in place of
+  `CollapseStepOK`.
+* The top theorem without `hCoU`: `invGetScanOK_merges_joint5C`
+  (`CollapseCommuteTop.lean`, on branch `proofs-coll` only, not on main, for
+  Frans): `invGetScanOK_merges_joint5` with the premise `hCoU` removed and nothing
+  added; the proof is joint5's with the four uses of `CollapseStepOK` replaced by
+  the lemmas above. It still has `hU`, false as stated.
