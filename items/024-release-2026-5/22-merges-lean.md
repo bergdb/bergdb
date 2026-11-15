@@ -1654,3 +1654,24 @@ segment root, 20 of them with a full segment leaf, and 78 at the space root.
 lemma that the leaf's `appendKlongs` neither reads nor writes x (not attempted).
 The earlier count, "173 replaceRoots at a segment root, 92 with a full leaf",
 counted the space root's too; its full flag read the path at depth 0 − 1.
+
+**2026-11-15, prover "coll": the commutation proved** (`CollapseCommute.lean`;
+every theorem on propext, Classical.choice and Quot.sound only).
+* The frame lemma, as a relational walk: `XWP x m f c u post` says that every
+  successful run of f from u with x's node set to m (`setX`) is a run from u with
+  x's node set to m after it, and that the run from u meets post. The walk keeps
+  `RJ`: x is in the overlay with its node, below the next id, and the key access
+  path is fixed. `xwp_appendKlongs`: `appendKlongs d y ins` from u, with y and
+  every node of the path above depth d other than x, has that relation and keeps
+  `RJ` (so x's node is the same after it). The walk goes through every branch of
+  `handleFullWith` (`xwp_handleFullWith_zero`, `_succ`, `_none`; one tactic loop,
+  `xwpStep`); `xwp_handleFull_succ` is the delete's full node.
+* The commutation: `replaceRoot_linkFirst`. At a segment root x at depth d + 1 of
+  the key access path, cached, below the next id and no node of the path above it,
+  every successful run of `replaceRoot` is a run of `replaceRootLF`, the same steps
+  with the leaf's klong (and its cascade) first and the unlink after, with the same
+  state.
+* Next (being done): the segment collapse's step from the state before the
+  unlink, where x is out of reach after the cascade (`segCollapse_pathLen` on the
+  room case's tree), so `writerWP_replaceRoot_seg_cascadeF` without
+  `CollapseUnlinkOK`.
