@@ -531,30 +531,4 @@ theorem opDelChk6OKR_of_chk7 (p : Params) (R : Struct BVal → Time → Prop) (h
     rintro _ v ⟨⟨hv', hj⟩, hbv⟩
     exact ⟨⟨hv', hj.1, hj.2⟩, hbv⟩
 
-/-! ## The top theorem with `DelHoleJ` asked only at the upward delete's call -/
-
-/-- `invGetScanOK_merges_noU` with `hchk7` (`OpDelChk7OKL`) in place of `hchk5`:
-root collapse's check proved, and `DelHoleJ` carried to the leaf's call of
-`afterDelete` (`opDelChk6OKR_of_chk7`, `opDelChk5OKR_of_chk6`). -/
-theorem invGetScanOK_merges_chk7 (p : Params) (hp : MergeParamsOK p)
-    (hth : 2 ≤ p.theta ∨ p.theta = 0)
-    (hchk7 : OpDelChk7OKL p)
-    (htb : TakeBelowFuelDelOK p)
-    (d4 : OpCaseOK p (RunOK p) (QDead p) DelMergeDOpenCase)
-    (l4 : OpCaseOK p (RunOK p) (QLive p) DelMergeOpenCase)
-    (hMSF : ∀ ts, MergeFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hCoF : ∀ ts, CollapseFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1)) :
-    InvPreserved p ∧ GetOK p ∧ ScanOK p ∧ LatestGetOK p ∧ LatestScanOK p := by
-  have hp' := hp
-  unfold MergeParamsOK at hp'
-  have hsa : 2 ≤ p.splitAbove := by omega
-  have hcap : 1 ≤ p.mergeMax := by omega
-  exact invGetScanOK_merges_noU p hp hth
-    (opDelChk5OKR_of_chk6 p _ (by omega) hsa hcap (fun _ _ h => h.1) (fun _ _ h => h.1.1)
-      (fun _ _ h => h.2.2.1.2.2.1)
-      (fun ts => mergeStepOK_of_segFits (ctxOf p ts) _ _ (Nat.succ_pos _) hcap hsa (hMSF ts)) hCoF
-      (opDelChk6OKR_of_chk7 p _ (by omega) hsa (fun _ _ h => h.1) (fun _ _ h => h.1.1)
-        (fun _ _ h => h.2.2.1.2.2.1) (fun _ _ h => h.2.2.1.2.2.2.1) htb hchk7))
-    htb d4 l4 hMSF hCoF
-
 end SIS.Tree

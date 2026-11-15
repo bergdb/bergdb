@@ -205,15 +205,31 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
     delete's call, after its stop node's bitmap, and the merges' loop at both calls
     (`deleteUpwardP2 adK adC`, the two calls apart). `opDelChk6OKR_of_chk7` gives
     `OpDelChk6OKR` from it (with `htb` and the heights at the runs, for the fuel at the
-    delete's start), and `invGetScanOK_merges_chk7` is the top theorem: premises `hp`, `hth`,
-    `hchk7`, `htb`, `d4`, `l4`, `hMSF`, `hCoF`.
-  - Left in `hchk7`: `DelHoleJ` at the upward delete's call of `afterDelete` (the step lemmas
-    prove it inside their proofs, now without `hU`, hu's `_noU` lemmas, but do not state it;
-    carrying it is the climb and loop of `writerWP_deleteUpward_stepJG` and the stop node's
-    bitmap of `takeJ2_deleteUpward_stepMBKG` restated as a walk of the two copies, as
-    `DelHoleLeaf.lean` does for the leaf; no new argument), and the merge's `checkFree`. The
-    `DelHoleJ` check is a proposition, not a computation, so `hchk7` has no run test; its
-    other part is `hchk5`'s merge check, tested as before.
+    delete's start); `invGetScanOK_merges_chk7` was the top theorem with it (landed ada8757c;
+    replaced by `_chk8`, below).
+  - `DelHoleJ` carried to the upward delete's call too (delj, 2026-11-15,
+    `DelHoleClimb.lean`), so `hchk` asks only the merge's `checkFree`. The upward delete
+    that empties a leaf below the space root runs, in both copies, the same climb, loop over
+    the chain and stop node's reads (`rwp_deleteUpwardP2_climb`, the walk of
+    `writerWP_deleteUpward_stepJG` for two copies); at a segment leaf as the stop node the
+    bitmap's state has `TakeJ2` and the collapse's reading (`rwp_deleteUpwardP2_climbMB`, as
+    `takeJ2_deleteUpward_stepMBKG`), so `DelInvJ` and the books, with room by the bitmap's
+    facts and full by hu's `UpCascJ2OKHG` without `hU` (`rwp_climb_of_J`, as
+    `writerWP_del_emptyAnyMJKLHG`); the other leaves do not reach that call
+    (`rwp_deleteUpwardP2_noClimb`, `rwp_deleteUpwardP2_root`). The premise is now
+    `OpDelChk8OKL`: the writer's delete runs as `putKvDelChk8`, whose only check is, at each
+    call of `afterDelete`, that the merges' loop from there runs as its copy with the merge's
+    `checkFree`. `opDelChk7OKR_of_chk8` gives `OpDelChk7OKR` from it, and
+    `invGetScanOK_merges_chk8` is the top theorem: premises `hp`, `hth`, `hchk8`, `htb`, `d4`,
+    `l4`, `hMSF`, `hCoF`.
+  - Left in `hchk8`: the merge's `checkFree` only, at the calls of `afterDelete` (`hchk5`'s
+    merge check, tested on runs as `hchk` was: 2305 merge take-backs). Its way: at a call the
+    state has `DelHoleJ`, and the merges' loop keeps `DelInvJ` (`writerWP_mergeUp_delJ`), so
+    each merge starts with `TakeJ2`; the merged node's one live holder is its parent
+    (`liveHolder_unique`), which the merge rewrites or splits and then retargets; what is
+    missing is the merge's walk for the two copies (`merge` and `mergeChk` as
+    `mergeP mergeTail` and `mergeP mergeTailChk`, both `rfl`) with the parent's klongs after
+    `mergeParent`, also when it is full.
 - `hHL` gone (cost2, 2026-11-15, `HeightsFillHolder.lean`, `HeightsFillTop.lean`): the joint
   induction also carries the writer's tree and the take-back's node facts (`J2At`, putinv's
   `OpJ2OK` step with S the take-back's state facts, the heights and the fill:
