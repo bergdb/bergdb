@@ -10,6 +10,7 @@ collapse with no fit premise (P3), and case 4 of the reading
 `DelInvA` takes the fit p.fuel - 1 only at the operation's end, where it holds.
 -/
 import SIS.Tree.CollapseCommuteRun
+import SIS.Tree.DeadDelCases
 
 set_option autoImplicit false
 
@@ -503,5 +504,85 @@ theorem opCaseOKJ_treeInvRange_delMergeA (p : Params) (R : Struct BVal → Time 
     OpCaseOKJ p R (QTree p) DelMergeCaseL ∧ OpCaseOKJ p R (QPutInv p) DelMergeCaseL ∧
       OpCaseOKJ p R (QRange p) DelMergeCaseL :=
   opCaseOKJ_treeInvRange_of_qdW p R (opCaseOKJ_qdW_delMergeA p R hS hsa2 hcap hRP hRK)
+
+/-! ## The dead klongs' family (step 4) -/
+
+/-- The merges' loop keeps `DelInvA` and the dead klongs' bound, with no fit premise. -/
+theorem writerWP_mergeUp_delDWA (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (hpos : 0 < c.i)
+    (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
+    (hICEk : ICEFromKinds c base KO BK)
+    (hsa2 : 2 ≤ c.p.splitAbove) (hcap : 1 ≤ c.p.mergeMax) (hth : 2 ≤ c.p.theta ∨ c.p.theta = 0)
+    (w0 : W) (k0 : Key) :
+    ∀ fuel h merged v, DelInvA c base w0 k0 KO BK v → DW c base v →
+      WriterWP (mergeUp key g fuel h merged) c v
+        (fun _ v' => DelInvA c base w0 k0 KO BK v' ∧ DW c base v') := by
+  intro fuel h merged v hA hdw r v' he
+  have hall : ∀ F, c.p.fuel + 1 ≤ F → v'.next < F → DelInv c base w0 k0 F KO BK v' ∧ DW c base v' := by
+    intro F hF hn
+    have hp2 : 2 ≤ F := by unfold Params.fuel at hF; omega
+    have hQ : DelInvDWW c base w0 k0 F (fun u => u.next < F) KO BK v :=
+      ⟨(delInvW_of_delInv c base w0 k0 _ (fun u => u.next < F) KO BK v
+        (hA (max (c.p.fuel + 1) (v.next + 1)) (Nat.le_max_left _ _)
+          (Nat.lt_of_lt_of_le (Nat.lt_succ_self _) (Nat.le_max_right _ _)))).1,
+        fun hlt => ⟨hA F hF hlt, hdw⟩⟩
+    exact (writerWP_mergeUp_delDWW key g c base hvc F hp2 (fun u => u.next < F)
+      (fun _ _ hle hlt => Nat.lt_of_le_of_lt hle hlt) (mergeStepOKW_next c base F hpos hcap hsa2)
+      KO BK hv hk hICEk hsa2 hcap hth w0 k0 fuel h merged v hQ r v' he).2 hn
+  exact ⟨fun F hF hn => (hall F hF hn).1, (hall (max (c.p.fuel + 1) (v'.next + 1)) (Nat.le_max_left _ _)
+    (Nat.lt_of_lt_of_le (Nat.lt_succ_self _) (Nat.le_max_right _ _))).2⟩
+
+/-- `afterDelete` keeps the dead klongs' bound from `DelInvA`, with no fit premise. -/
+theorem dw_afterDeleteA (key : Key) (g h : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (hpos : 0 < c.i) (KO : KindOracle) (BK : NodeId)
+    (hv : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c) (hICEk : ICEFromKinds c base KO BK)
+    (hsa2 : 2 ≤ c.p.splitAbove) (hcap : 1 ≤ c.p.mergeMax) (hth : 2 ≤ c.p.theta ∨ c.p.theta = 0)
+    (w0 : W) (k0 : Key) (v : W) (hA : DelInvA c base w0 k0 KO BK v) (hdw : DW c base v) :
+    WriterWP (afterDelete key g h) c v (fun _ v' => DW c base v') :=
+  dw_afterDelete_of key g h c base hvc hth _ (fun v hA hdw => writerWP_mono
+    (writerWP_mergeUp_delDWA key g c base hvc hpos KO BK hv hk hICEk hsa2 hcap hth w0 k0 c.p.fuel h false
+      v hA hdw) (fun _ _ h => h.2)) v hA hdw
+
+/-- `d4`'s claim for every delete with the merges on (`opCaseOK_dead_delMerge`), from
+the dead klongs' family at `DelInvA`, with no `MergeStepOK`. -/
+theorem opCaseOK_dead_delMergeA (p : Params) (R : Struct BVal → Time → Prop)
+    (hS : DelStepsCaseDOKG p R DelMergeCase (fun ts tx w key v => DelInvA (ctxOf p ts)
+      (viewOf (treeRun p ts)) w key (kindOracleOf p (treeRun p ts)) tx.base v))
+    (hsa2 : 2 ≤ p.splitAbove) (hcap : 1 ≤ p.mergeMax)
+    (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P)
+    (hfit : TxSegFitsOK p R) (hth : 2 ≤ p.theta ∨ p.theta = 0) :
+    OpCaseOK p R (QDead p) DelMergeCase := by
+  intro ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hP
+  obtain ⟨key, hop, _⟩ := hP
+  have hfresh : ∀ q ∈ treeRun p ts, q.1 < tx.base := by
+    have := (hw.2 ts.length (by simp)).1
+    simpa using this
+  have hK := hRK _ _ hr
+  have hv : ViewIdsBelow tx.base (ctxOf p ts).view :=
+    viewIdsBelow_rootless _ _ (viewIdsBelow_view p (treeRun p ts) ts.length tx.base hfresh)
+  have hk : ViewKinds (kindOracleOf p (treeRun p ts)) tx.base (ctxOf p ts) :=
+    viewKinds_of p (treeRun p ts) ts.length tx.base hfresh (treeRun_timesLE p ts) (hRP _ _ hr) hK
+  have hICEk : ICEFromKinds (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) tx.base :=
+    fun v hb hi hun => innerChildren_of_kinds p (treeRun p ts) tx.base (ctxOf p ts) v rfl hK
+      (hRP _ _ hr) hb hi.cache hun
+  have hF := hfit ts tx hw hr z top hz htop pre (op :: post) hops r w hpre
+  have hth' : 2 ≤ (ctxOf p ts).p.theta ∨ (ctxOf p ts).p.theta = 0 := hth
+  have hpos : 0 < (ctxOf p ts).i := by simp [ctxOf]
+  by_cases hD0' : ¬ WDeadOK p (treeRun p ts) w
+  · intro _ _ _ h
+    exact absurd h hD0'
+  have hD0 : WDeadOK p (treeRun p ts) w := Classical.byContradiction hD0'
+  have hdw : DW (ctxOf p ts) (viewOf (treeRun p ts)) w := ⟨hD0, hI.wf⟩
+  refine writerWP_mono (hS ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop ⟨key, hop, ?_⟩
+    (fun v hv' => delInvA_of_delInv (ctxOf p ts) _ w key _ _ v hI hF hv')
+    (fun g h v hv' hdv => dw_afterDeleteA key g h (ctxOf p ts) _ (viewCoherent_ctxOf p ts) hpos
+      _ _ hv hk hICEk hsa2 hcap hth' w key v hv' hdv)
+    (fun g h merged v hv' hdv => writerWP_mergeUp_delDWA key g (ctxOf p ts) _ (viewCoherent_ctxOf p ts) hpos
+      _ _ hv hk hICEk hsa2 hcap hth' w key p.fuel h merged v hv' hdv)
+    (fun seg v hdv => dw_collapseRoot _ key seg p.fuel (ctxOf p ts) v (viewCoherent_ctxOf p ts) hth' hdv)
+    hth hdw) ?_
+  · assumption
+  · intro _ w' hdw' _
+    exact hdw'.1
 
 end SIS.Tree

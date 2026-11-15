@@ -725,4 +725,14 @@ use, and `delStepsCaseQd_fullH`, now a corollary, no longer uses
 `delFullFitsOKR_run`; one line in NoOutsideBase.lean wraps it by name
 (`n_wrap_these`), no statement changed.
 
-Next: step 4 (`DelStepsCaseDOK` over I), then step 5 and step 6.
+Gated: 7afd3be7, gate-3 PASS.
+
+2026-11-15, 13:15 to 13:20. Part 1, step 4 (fit): the dead klongs'
+family. `writerWP_mergeUp_delDWW` (DeadMergeLoop.lean, `DelInvDWW`: `DelInv`
+and `DW` while C holds), `dw_afterDelete_of` (afterDelete from any loop
+that keeps `DW`); `DelStepsCaseDOKG` (DeadDelCases.lean; only `hin`: the end
+is `DW`, which speaks of no fuel), its cases, the two walks and
+`delStepsCaseDOK_mergeG`; FuelNext.lean: `writerWP_mergeUp_delDWA`,
+`dw_afterDeleteA`, `opCaseOK_dead_delMergeA`, with no `MergeStepOK`.
+
+Next: step 5 (`hchk`'s discharge), then step 6.

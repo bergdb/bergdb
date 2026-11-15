@@ -13,23 +13,39 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
+/-- `DelInv` and the dead klongs' bound at f while a condition C holds, with the fresh
+ids' books always (bergdb 025-05, route P; `DelInvW` with `DW`). -/
+def DelInvDWW (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (f : Nat) (C : W → Prop)
+    (KO : KindOracle) (BK : NodeId) (v : W) : Prop :=
+  (∃ Bf, ViewIdsBelow Bf c.view ∧ FreshCache Bf v) ∧ (C v → DelInv c base w0 key f KO BK v ∧ DW c base v)
+
+theorem delInvDWW_of (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (f : Nat) (C : W → Prop)
+    (KO : KindOracle) (BK : NodeId) (v : W) (h : DelInv c base w0 key f KO BK v) (hdw : DW c base v) :
+    DelInvDWW c base w0 key f C KO BK v :=
+  ⟨(delInvW_of_delInv c base w0 key f C KO BK v h).1, fun _ => ⟨h, hdw⟩⟩
+
 set_option maxHeartbeats 3200000 in
-/-- `writerWP_mergeUp_del` with the dead klongs' bound (`DW`) kept beside `DelInv`:
-each merge by `dw_merge`, its ranges from `DelInvF` and the path. -/
-theorem writerWP_mergeUp_delDW (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
-    (hvc : ViewCoherent c base) (fuelR : Nat) (hfR : 2 ≤ fuelR) (hM : MergeStepOK c base fuelR)
+/-- `writerWP_mergeUp_delW` with the dead klongs' bound: the merges' loop keeps
+`DelInvDWW` (bergdb 025-05, route P). -/
+theorem writerWP_mergeUp_delDWW (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (fuelR : Nat) (hfR : 2 ≤ fuelR) (C : W → Prop)
+    (hC : ∀ v v', v.next ≤ v'.next → C v' → C v) (hM : MergeStepOKW c base fuelR C)
     (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
     (hICEk : ICEFromKinds c base KO BK)
     (hsa2 : 2 ≤ c.p.splitAbove) (hcap : 1 ≤ c.p.mergeMax) (hth : 2 ≤ c.p.theta ∨ c.p.theta = 0)
     (w0 : W) (k0 : Key) :
-    ∀ fuel h merged v, DelInv c base w0 k0 fuelR KO BK v → DW c base v →
-      WriterWP (mergeUp key g fuel h merged) c v
-        (fun _ v' => DelInv c base w0 k0 fuelR KO BK v' ∧ DW c base v') := by
+    ∀ fuel h merged v, DelInvDWW c base w0 k0 fuelR C KO BK v →
+      WriterWP (mergeUp key g fuel h merged) c v (fun _ v' => DelInvDWW c base w0 k0 fuelR C KO BK v') := by
   intro fuel
   induction fuel with
-  | zero => intro h merged v _ _; exact writerWP_throw _ _ _ _
+  | zero => intro h merged v _; exact writerWP_throw _ _ _ _
   | succ f ih =>
-    intro h merged v ⟨hI, hbk, hik⟩ hdw
+    intro h merged v ⟨⟨Bf, hBfv, hfc⟩, hD⟩
+    by_cases hno : ¬ C v
+    · refine writerWP_mono (freshCache_mergeUp key g (f + 1) h merged c v hBfv hfc) ?_
+      rintro _ v' ⟨hf', hle⟩
+      exact ⟨⟨Bf, hBfv, hf'⟩, fun hC' => absurd (hC v v' hle hC') hno⟩
+    obtain ⟨⟨hI, hbk, hik⟩, hdw⟩ := hD (Classical.byContradiction hno)
     unfold mergeUp
     simp only [writerWP_bind, writerWP_read]
     refine writerWP_mono (writerWP_and (writerWP_and (descentOK c base fuelR w0 k0 key g h v hI)
@@ -38,7 +54,7 @@ theorem writerWP_mergeUp_delDW (key : Key) (g : Nat) (c : Ctx) (base : View BVal
     intro d v1 ⟨⟨⟨hI1, hPF⟩, hbk1, hik1, _⟩, hrd1⟩
     have hdw1 := dw_of_wNode hrd1.1 hdw
     split
-    · simp only [writerWP_pure]; exact ⟨⟨hI1, hbk1, hik1⟩, hdw1⟩
+    · simp only [writerWP_pure]; exact delInvDWW_of c base w0 k0 fuelR C KO BK _ ⟨hI1, hbk1, hik1⟩ hdw1
     · rename_i hd0
       have hd : 0 < d := by
         cases d with
@@ -67,7 +83,7 @@ theorem writerWP_mergeUp_delDW (key : Key) (g : Nat) (c : Ctx) (base : View BVal
             fun z zn h => lookup_of_prefix _ _ hpre2 _ _ h
           have hP2 := pathOK_transport c v1 v2 d X K Nn hP1 hp2 hkeep2 hr2.2.2.1 hr2.2.1
           split
-          · simp only [writerWP_pure]; exact ⟨⟨hI2, hbk2, hik2⟩, hdw2⟩
+          · simp only [writerWP_pure]; exact delInvDWW_of c base w0 k0 fuelR C KO BK _ ⟨hI2, hbk2, hik2⟩ hdw2
           · rename_i hql
             have hql' : qn.leaf = false := by simpa using hql
             rw [writerWP_bind]
@@ -82,7 +98,7 @@ theorem writerWP_mergeUp_delDW (key : Key) (g : Nat) (c : Ctx) (base : View BVal
               fun z zn h => lookup_of_prefix _ _ hpre3 _ _ h
             have hP3 := pathOK_transport c v2 v3 d X K Nn hP2 hp3 hkeep3 hr3.2.2.1 hr3.2.1
             split
-            · simp only [writerWP_pure]; exact ⟨⟨hI3, hbk3, hik3⟩, hdw3⟩
+            · simp only [writerWP_pure]; exact delInvDWW_of c base w0 k0 fuelR C KO BK _ ⟨hI3, hbk3, hik3⟩ hdw3
             · rename_i hcnt
               have hcnt' : xn.cnt < c.p.mergeBelow := by simpa using hcnt
               rw [writerWP_bind]
@@ -136,12 +152,49 @@ theorem writerWP_mergeUp_delDW (key : Key) (g : Nat) (c : Ctx) (base : View BVal
               rintro r v4 ⟨⟨⟨⟨⟨⟨hread4, hu4, hF4⟩, hb4⟩, hT4⟩, hR4⟩, hbk4, hik4, _, _⟩, hdw4⟩
               obtain ⟨hP4, hG4⟩ := putInv_after_step c base v4 B1 t1 hB1 hb4 hT4 hu4 hR4
               have hICE4 := hICEk v4 hbk4 hik4 (fun y hy => hu4 y (tReach_reachS _ _ _ _ hy))
-              have hI4 : DelInvF c base w0 k0 fuelR v4 :=
-                ⟨hP4, hG4, hR4, hICE4, hF4, fun key' hk' => by
-                  rw [hread4 hF4 key']; exact hI3.2.2.2.2.2.1 key' hk', B1, t1, hB1, hb4⟩
+              have hQ4 : DelInvDWW c base w0 k0 fuelR C KO BK v4 := by
+                refine ⟨⟨B1, hB1.good.ids, hb4.fresh⟩, fun hC4 => ?_⟩
+                have hF4' := hF4 hC4 hP4
+                exact ⟨⟨⟨hP4, hG4, hR4, hICE4, hF4', fun key' hk' => by
+                  rw [hread4 hF4' key']; exact hI3.2.2.2.2.2.1 key' hk', B1, t1, hB1, hb4⟩, hbk4, hik4⟩, hdw4⟩
               split
-              · simp only [writerWP_pure]; exact ⟨⟨hI4, hbk4, hik4⟩, hdw4⟩
-              · exact ih (h + 1) true v4 ⟨hI4, hbk4, hik4⟩ hdw4
+              · simp only [writerWP_pure]; exact hQ4
+              · exact ih (h + 1) true v4 hQ4
+
+/-- `writerWP_mergeUp_del` with the dead klongs' bound (`DW`) kept beside `DelInv`:
+each merge by `dw_merge`, its ranges from `DelInvF` and the path. -/
+theorem writerWP_mergeUp_delDW (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (fuelR : Nat) (hfR : 2 ≤ fuelR) (hM : MergeStepOK c base fuelR)
+    (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
+    (hICEk : ICEFromKinds c base KO BK)
+    (hsa2 : 2 ≤ c.p.splitAbove) (hcap : 1 ≤ c.p.mergeMax) (hth : 2 ≤ c.p.theta ∨ c.p.theta = 0)
+    (w0 : W) (k0 : Key) :
+    ∀ fuel h merged v, DelInv c base w0 k0 fuelR KO BK v → DW c base v →
+      WriterWP (mergeUp key g fuel h merged) c v
+        (fun _ v' => DelInv c base w0 k0 fuelR KO BK v' ∧ DW c base v') :=
+  fun fuel h merged v hI hdw => writerWP_mono
+    (writerWP_mergeUp_delDWW key g c base hvc fuelR hfR (fun _ => True) (fun _ _ _ _ => trivial)
+      (mergeStepOKW_of c base fuelR _ hM) KO BK hv hk hICEk hsa2 hcap hth w0 k0 fuel h merged v
+      (delInvDWW_of c base w0 k0 fuelR _ KO BK v hI hdw))
+    (fun _ _ hv' => hv'.2 trivial)
+/-- `afterDelete` keeps `DW` from a state with an invariant I and `DW`, given the
+merges' loop keeping `DW` from there (bergdb 025-05: the old loop, or route P's). -/
+theorem dw_afterDelete_of (key : Key) (g h : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (hth : 2 ≤ c.p.theta ∨ c.p.theta = 0) (I : W → Prop)
+    (hMU : ∀ v, I v → DW c base v →
+      WriterWP (mergeUp key g c.p.fuel h false) c v (fun _ v' => DW c base v'))
+    (v : W) (hI : I v) (hdw : DW c base v) :
+    WriterWP (afterDelete key g h) c v (fun _ v' => DW c base v') := by
+  unfold afterDelete
+  simp only [writerWP_bind, writerWP_read]
+  split
+  · rw [writerWP_bind]
+    refine writerWP_mono (hMU v hI hdw) ?_
+    intro merged v1 hdw1
+    split
+    · exact dw_collapseRoot base key g c.p.fuel c v1 hvc hth hdw1
+    · simp only [writerWP_pure]; exact hdw1
+  · simp only [writerWP_pure]; exact hdw
 
 /-- `afterDelete` keeps `DW` from a state with `DelInv` and `DW`: the merges' loop
 (`writerWP_mergeUp_delDW`), then root collapse (`dw_collapseRoot`). -/
@@ -151,17 +204,8 @@ theorem dw_afterDelete (key : Key) (g h : Nat) (c : Ctx) (base : View BVal)
     (hICEk : ICEFromKinds c base KO BK)
     (hsa2 : 2 ≤ c.p.splitAbove) (hcap : 1 ≤ c.p.mergeMax) (hth : 2 ≤ c.p.theta ∨ c.p.theta = 0)
     (w0 : W) (k0 : Key) (v : W) (hI : DelInv c base w0 k0 fuelR KO BK v) (hdw : DW c base v) :
-    WriterWP (afterDelete key g h) c v (fun _ v' => DW c base v') := by
-  unfold afterDelete
-  simp only [writerWP_bind, writerWP_read]
-  split
-  · rw [writerWP_bind]
-    refine writerWP_mono (writerWP_mergeUp_delDW key g c base hvc fuelR hfR hM KO BK hv hk hICEk hsa2 hcap
-      hth w0 k0 c.p.fuel h false v hI hdw) ?_
-    intro merged v1 ⟨_, hdw1⟩
-    split
-    · exact dw_collapseRoot base key g c.p.fuel c v1 hvc hth hdw1
-    · simp only [writerWP_pure]; exact hdw1
-  · simp only [writerWP_pure]; exact hdw
-
+    WriterWP (afterDelete key g h) c v (fun _ v' => DW c base v') :=
+  dw_afterDelete_of key g h c base hvc hth _ (fun v hI hdw => writerWP_mono
+    (writerWP_mergeUp_delDW key g c base hvc fuelR hfR hM KO BK hv hk hICEk hsa2 hcap hth w0 k0
+      c.p.fuel h false v hI hdw) (fun _ _ h => h.2)) v hI hdw
 end SIS.Tree
