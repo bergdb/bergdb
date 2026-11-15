@@ -1,0 +1,120 @@
+/-
+bergdb 025-05, route P: the statements of its new lemmas, type-checked with
+their proofs `sorry` (scratch, not for the repo). Run from lean/ of a built
+clone: lake env lean /Users/f/fl/bench/2026-11-15/day/hplan/run/RouteP.lean
+-/
+import SIS.Tree.CollapseCommuteStep
+import SIS.Tree.DelMergeCaseF
+
+set_option autoImplicit false
+
+namespace SIS.Tree
+
+open SIS SIS.Check
+
+/-- P1, the pigeonhole bound: in a tree whose nodes all have ids below n, every
+segment tree reached is at most n deep (a chain of inner nodes has distinct
+ids, by `PathLen.depth_unique`). -/
+theorem segFits_of_idsBelow (N : NodeId → Option KNode) (t : Time) (r : NodeId) (n : Nat)
+    (hT : TreeOK N t r) (hid : ∀ x m, N x = some m → x < n) : SegFits N t n r := by
+  sorry
+
+/-- P1 for the writer: every state with `PutInv` fits its next id. -/
+theorem segFits_next_of_putInv (c : Ctx) (base : View BVal) (v : W) (hI : PutInv c base v) :
+    SegFits (wNode c.p base v) c.i v.next v.top.rootKey := by
+  sorry
+
+/-- The delete's invariant at every fuel above the fuel and the next id. -/
+def DelInvA (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (KO : KindOracle) (BK : NodeId)
+    (v : W) : Prop :=
+  ∀ F, c.p.fuel + 1 ≤ F → v.next < F → DelInv c base w0 key F KO BK v
+
+/-- P3, up: at p.fuel + 1 it gives every larger fuel (the reading by
+`wGetAt_eq_wGet`-like fuel monotony, w0 fitting p.fuel - 1). -/
+theorem delInvA_of_delInv (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (KO : KindOracle)
+    (BK : NodeId) (v : W) (hI0 : PutInv c base w0)
+    (hF0 : SegFits (wNode c.p base w0) c.i (c.p.fuel - 1) w0.top.rootKey)
+    (h : DelInv c base w0 key (c.p.fuel + 1) KO BK v) : DelInvA c base w0 key KO BK v := by
+  sorry
+
+/-- P3, down: at the operation's end, with the fit between operations. -/
+theorem delInv_of_delInvA (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (KO : KindOracle)
+    (BK : NodeId) (v : W) (hI0 : PutInv c base w0)
+    (hF0 : SegFits (wNode c.p base w0) c.i (c.p.fuel - 1) w0.top.rootKey)
+    (h : DelInvA c base w0 key KO BK v)
+    (hF : SegFits (wNode c.p base v) c.i (c.p.fuel - 1) v.top.rootKey) :
+    DelInv c base w0 key (c.p.fuel + 1) KO BK v := by
+  sorry
+
+/-- P2: the merges' loop keeps `DelInvA`, with no fit premise. -/
+theorem writerWP_mergeUp_delA (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view)
+    (hk : ViewKinds KO BK c) (hICEk : ICEFromKinds c base KO BK)
+    (hsa2 : 2 ≤ c.p.splitAbove) (hcap : 1 ≤ c.p.mergeMax) (w0 : W) (k0 : Key) :
+    ∀ fuel h merged v, DelInvA c base w0 k0 KO BK v →
+      WriterWP (mergeUp key g fuel h merged) c v (fun _ v' => DelInvA c base w0 k0 KO BK v') := by
+  sorry
+
+/-- P2: root collapse keeps `DelInvA`, with no fit premise. -/
+theorem writerWP_collapseRoot_delA (key : Key) (seg : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view)
+    (hk : ViewKinds KO BK c) (hICEk : ICEFromKinds c base KO BK)
+    (hsa2 : 2 ≤ c.p.splitAbove) (w0 : W) (k0 : Key) :
+    ∀ fuel v, DelInvA c base w0 k0 KO BK v →
+      WriterWP (collapseRoot key seg fuel) c v (fun _ v' => DelInvA c base w0 k0 KO BK v') := by
+  sorry
+
+/-- P4: `DelStepsOK` with its obligations over an invariant I of the
+consumer's choice: I holds where `DelInv` at p.fuel + 1 holds (at the calls),
+and gives it back at the operation's end, where the state fits between
+operations. `DelStepsOK` is the case I := `DelInv` at p.fuel + 1. -/
+def DelStepsOKG (p : Params) (R : Struct BVal → Time → Prop)
+    (I : List Tx → Tx → W → Key → W → Prop) : Prop :=
+  ∀ ts tx, Within p (ts ++ [tx]) → R (treeRun p ts) ts.length → ∀ z top,
+    lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z →
+    topOf p (ctxOf p ts).view z = .ok top →
+    ∀ pre op post, tx.ops = pre ++ op :: post →
+    ∀ r w, (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
+    PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w →
+    RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey →
+    SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey →
+    ∀ key, op = .del key → p.merges = true →
+    (∀ v, DelInv (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1)
+        (kindOracleOf p (treeRun p ts)) tx.base v → I ts tx w key v) →
+    (∀ v, I ts tx w key v →
+      SegFits (wNode p (viewOf (treeRun p ts)) v) (ts.length + 1) (p.fuel - 1) v.top.rootKey →
+      DelInv (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1)
+        (kindOracleOf p (treeRun p ts)) tx.base v) →
+    (∀ g h v, I ts tx w key v →
+      WriterWP (afterDelete key g h) (ctxOf p ts) v (fun _ v' => I ts tx w key v')) →
+    (∀ g h merged v, I ts tx w key v →
+      WriterWP (mergeUp key g p.fuel h merged) (ctxOf p ts) v (fun _ v' => I ts tx w key v')) →
+    (∀ seg v, I ts tx w key v →
+      WriterWP (collapseRoot key seg p.fuel) (ctxOf p ts) v (fun _ v' => I ts tx w key v')) →
+    WriterWP (putKv op) (ctxOf p ts) w (fun _ w' =>
+      SegFits (wNode p (viewOf (treeRun p ts)) w') (ts.length + 1) (p.fuel - 1) w'.top.rootKey →
+      ∀ key', keyWf key' = true →
+        runGet p ts w' key' = if op.key == key' then op.value else runGet p ts w key')
+
+/-- The old family is the instance at `DelInv` (no proof kept twice). -/
+theorem delStepsOK_of_G (p : Params) (R : Struct BVal → Time → Prop)
+    (h : DelStepsOKG p R (fun ts tx w key v => DelInv (ctxOf p ts) (viewOf (treeRun p ts)) w key
+      (p.fuel + 1) (kindOracleOf p (treeRun p ts)) tx.base v)) :
+    DelStepsOK p R := by
+  intro ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop hm hA hMU hCR
+  exact h ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop hm
+    (fun _ hv => hv) (fun _ hv _ => hv) hA hMU hCR
+
+/-- The family at `DelInvA`, which P2 discharges with no premise. -/
+abbrev DelStepsOKA (p : Params) (R : Struct BVal → Time → Prop) : Prop :=
+  DelStepsOKG p R (fun ts tx w key v => DelInvA (ctxOf p ts) (viewOf (treeRun p ts)) w key
+    (kindOracleOf p (treeRun p ts)) tx.base v)
+
+/-- P5: case 4 of the reading with no `MergeStepOK` and no `CollapseFitsOK`. -/
+theorem opGetCaseOK'_delMergeA (p : Params) (R : Struct BVal → Time → Prop) (hS : DelStepsOKA p R)
+    (hsa2 : 2 ≤ p.splitAbove) (hcap : 1 ≤ p.mergeMax) (hMM : 2 ≤ p.M)
+    (hPtr : ∀ ts, Within p ts → PointersOK (treeRun p ts)) :
+    OpGetCaseOK' p R DelMergeCase := by
+  sorry
+
+end SIS.Tree
