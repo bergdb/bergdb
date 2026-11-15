@@ -1671,7 +1671,19 @@ every theorem on propext, Classical.choice and Quot.sound only).
   every successful run of `replaceRoot` is a run of `replaceRootLF`, the same steps
   with the leaf's klong (and its cascade) first and the unlink after, with the same
   state.
-* Next (being done): the segment collapse's step from the state before the
-  unlink, where x is out of reach after the cascade (`segCollapse_pathLen` on the
-  room case's tree), so `writerWP_replaceRoot_seg_cascadeF` without
-  `CollapseUnlinkOK`.
+* The consumer's step on the reading route, without `CollapseUnlinkOK`
+  (`CollapseCommuteStep.lean`): `writerWP_replaceRoot_seg_cascadeC` is
+  `writerWP_replaceRoot_seg_cascadeF` without its `hU`. The leaf's cascade runs
+  from the state before the unlink, where the tree is the writer's (`xwp_appendKlongs`
+  moves every run of it onto that state); after it the root x is out of reach (the
+  cascade reaches only what the room case's tree reaches, or new nodes, and x is
+  not reached there, `segCollapse_pathLen`), so x's previous version changes
+  nothing that is read (`collapsePost_setX`). Above it, beside the old lemmas:
+  `writerWP_collapseRoot_collC` (no `hunl`), `writerWP_collapseRoot_delC`,
+  `writerWP_afterDelete_delC`, `opGetCaseOK_delMergeC`, with `CollapseFitsOK`
+  alone in place of `CollapseStepOK`.
+* Left for a top theorem without `hCoU`: the take-back route.
+  `ReplaceRootFullJ2OK` (the full leaf's replaceRoot keeps `TakeJ2`) has
+  `CollapseUnlinkOK` among its hypotheses and its proof uses it for the tree after
+  the unlink; it needs the same commutation (next), then the take-back's
+  collapse lemmas and the top theorem's four uses of `hCo`.
