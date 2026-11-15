@@ -1,6 +1,7 @@
 # 006-25 Day work, 14 November 2026
 
-Created 2026-11-14 by Frans Lundberg. Status: open. The plan for the
+Created 2026-11-14 by Frans Lundberg. Status: done (closed by coord-1114
+on 2026-11-15, 08:55; the rest handed to coord-1115). The plan for the
 coordinator's day of 2026-11-14 (coord-1114), a Saturday, and the time
 until Frans is back on Sunday 15 November, 10:00 at the earliest: the
 progress and the outcome. The way of working is 013-02's (the
@@ -127,6 +128,13 @@ between check-ins.
   * 2fee65cc to 3a95f624 `hchk` narrowed, four of its checks proved;
   * a4c328a0 to 25b03569 `hCoU` gone by root collapse's commutation
     (`invGetScanOK_merges_joint6`).
+* 08:27 Frans back. 08:33 his answers to section 7; agents hu-plan
+  (025-04, Fable at high) and tops (one top theorem per route).
+* 08:46 tops done on its branch (d6cedb46), not landed: the permission
+  system refused its edit of the gate's copy (the statement check's base
+  and 41 new closure lines of `hchk5`); for Frans (a, b or c).
+* 08:54 coord-1115 started; coord-1114 closing. Handed over: hu-plan's
+  result, tops, decision 2's prover (DelInvJ), decision 8's answer.
 
 ## 5. While Frans is away (13:58 to Sunday 10:00)
 
@@ -191,6 +199,14 @@ through the decisions. The planning for hU, run it with Fable 5.2 High."
 So: 1, a planning agent on Fable at high (025-04); 2, DelInvJ first,
 then `hMSF`'s and `hCoF`'s true forms; 3, a close step to one top
 theorem; 5, the night's decisions by rule stand; 4, walked through.
+
+Decision 4, 006-24's 6 (where "the policy of 13 November, 16:50"
+lives), Frans, 08:47: "No, that is not policy. Just a thing we
+discussed. I have made no decision on it. We still try to prove
+everything now. Once that work is done, I may decide on a general
+policy on this." So there is no such policy: proofs are not limited to
+spare tokens, and 006-24's "So: no release waits for proofs [...]" was
+the coordinator's reading, not Frans's decision.
 
 1. **`hU`, false as stated.** Its true form needs an invariant on the
    nodes a transaction leaves out; no one has found it. Recommended: a
