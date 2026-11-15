@@ -95,3 +95,4 @@ import SIS.Tree.DelHole
 import SIS.Tree.DelHoleRoot
 import SIS.Proof.TreeRoot
 import SIS.Proof.TreeInit
+import SIS.Tree.DeadDelete

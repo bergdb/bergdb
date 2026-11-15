@@ -332,6 +332,56 @@ Follow-ups, for a later spare-token run (latest, 03:45):
   Left for `merge` itself: its new nodes' klongs in strict compare order
   (`mergeKlongs_deadCount`'s premises, from the reading's ranges); then the step lemmas'
   conjunct.
+  **2026-11-15, prover hu (plan 006-27): the route, what is proved, what is left.**
+  - The bound is local at every write but one. `DW` (DeadLocal.lean): every node that the
+    writer reads holds at most theta dead klongs and well-formed klongs; `KeepsDW f`: f keeps
+    it, for theta 0 or at least 2, with no fact of the tree.
+    - A node with its bitmap, the merge's parent in place and a cascade's node with its
+      klongs go in only when `deadOver` lets them through.
+    - A half of a split of a last version holds at most the klongs it is given more, at most
+      two from a cascade (`halves_deadCount_le_inserts`); a new root and a time split's
+      copy hold none.
+    - A repoint, a retarget and a node's version before the transaction hold no more than the
+      node that the writer read (`KNode.deadCount_repoint`, `_retarget`, `_toPrev_le`).
+    - The one exception: a merge's new nodes hold none only when the two siblings' live
+      klongs are in order about the parent's klong (`mergeKlongs_deadCount`'s premises), and
+      the merge's parent's full last version is sorted only when the second new node's
+      compare value is not live in the parent (`mergeFullLast_sorted`'s `hg`). Both come
+      from the ranges at the merge's state (`RangeOrder`, in `DelInvF`).
+  - Proved, with no fact of the tree:
+    - DeadSplit.lean: `dw_handleFullWith`, `dw_appendKlongs`, `dw_handleFull` (every split
+      and cascade);
+    - DeadDelete.lean: `dw_appendDeleteKlong`, `dw_unlink`, `dw_retarget`, `dw_takeBack`,
+      `dw_replaceRoot`, `dw_takeBackRoot`, `dw_collapseRoot`, `dw_mergeCleanup`, and
+      `dw_mergeParent` given `hcR` and `hg`.
+  - Left, in order:
+    1. The upward delete's other steps, locally: the climb, the loop (`dw_takeBack`,
+       `dw_unlink`), LE-b's `emptyKeyNext` (guarded by `deadOver`; its full last version is
+       sorted with the empty key first). About 200 lines.
+    2. `merge` keeps `DW` from `DelInvF` and `PathOK` (the `MergeStepOK` context): the reads,
+       then the order facts from the ranges as `writerWP_merge_any_get` derives them
+       (`mrg_child_range`, `mrg_two_g`: `hlrange`, `hrrange`, `hrup`, `hg`), then
+       `mergeKlongs_deadCount`, `dw_mergeParent`, `dw_mergeCleanup`. About 300 to 500 lines.
+    3. The merges' loop with `DelInv` and `DW` (`writerWP_mergeUp_del` with `DW` added), then
+       `afterDelete`: from `DelInv` and `DW`, `DW` after (with `dw_collapseRoot`). About
+       200 lines.
+    4. The case lemmas with `QDead` for the three open kinds of delete. The obstruction: the
+       reading route hands `afterDelete` only `DelInv`, not the dead bound.
+       - The full leaf is easy: `writerWP_deleteUpward_full` is generic in the invariant
+         that the bitmap establishes, so it takes `DelInv ∧ DW` (`writerWP_and` of
+         `writerWP_appendDeleteKlong_full_delH` and `dw_appendDeleteKlong`).
+       - The leaf with room that may merge: `writerWP_del_roomM` gives the state before
+         `afterDelete` in full (its `hcont`), so `DW` there follows from `DW` at the start.
+       - The upward delete: `writerWP_del_emptyAnyMKLHGJ` and its room twin instantiate the
+         generic loop lemma (`writerWP_deleteUpward_stepJG`, generic in J) with the books
+         only; copies with `DW` in J are needed (about 300 lines each), or (b) below.
+       - Then `d4` from the cases as `delStepsOKJ_of_open` assembles the reading, and the
+         corollary of `invGetScanOK_merges_noU` without `d4`.
+       - (b), for Frans: the obligations of `DelStepsCaseOK` and the route lemmas' `hA`
+         could carry an extra invariant that the steps before `afterDelete` keep; then
+         `d4` and `l4` (whose open part has the same shape) reuse the reading route's
+         lemmas. A statement change, so not taken by rule.
+    Size left: 1,200 to 2,000 lines by the copies.
 - LE-b with the merges on: proved dead given the live counts at the delete's start (cost's
   `stopLeaf_of_liveCounts`, `StopLeafLive.lean`, 03:10; in the top theorem since 03:20 through
   putinv's `DelStepsLive.lean`, `hFitL` gone). No run family makes it fire (0 of about
@@ -358,6 +408,21 @@ Follow-ups, for a later spare-token run (latest, 03:45):
   (`mergeKlongs_live_fill`), its parent's cascade is the walk with exceptions
   (`writerWP_appendKlongs_chainGLX`), and root collapse leaves a root with two live klongs.
   The live counts at the delete's start are at hand (`jointLive_reached`).
+  **2026-11-15, prover hu: not started; the plan's shape.** Unlike `d4`'s bound, the live
+  counts are not local: they tie a node to its parent's kind and to the merges' fill. So
+  every step needs the reading route's facts at its state, and the obstruction of `d4`'s
+  step 4 applies to every case, not only to the upward delete: the route lemmas hand
+  `afterDelete` (and the stop node's step) `DelInv` only. Two ways, as for `d4`:
+  - (a) copies of the route's lemmas for the three open kinds of delete, and of the merges'
+    loop, root collapse and the stop node's obligations, each carrying the live counts with
+    their exceptions (`LiveEdges` with the merged path's nodes excepted); the pieces at hand:
+    `mergeKlongs_live_fill`, `writerWP_appendKlongs_chainGLX`, `writerWP_afterDelete_none`
+    when the counts hold after the write. 3,000 lines or more.
+  - (b) the obligations with an extra invariant (a statement change, for Frans), shared
+    with `d4`: then the live counts ride on the reading route's lemmas, and each step adds
+    only its own clause.
+  By size, `l4` should wait for the decision on (b), and `d4`'s steps 1 to 3 (local, or on
+  `DelInvF`) come first in either way.
 - One name for each route: the F2, F3 and F4 versions (`DelStepsOKF3`, `MergeStepOKF3`,
   `CollapseStepOKF4`, `opGetCaseOK_delMergeF4`, `takeBackOK_of_mergesF4`,
   `runTreeQ_of_mergesF4S`, `writerWP_appendKlongs_chainGLX` and its corollaries), and one top
