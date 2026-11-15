@@ -152,6 +152,10 @@ provers' branches and reports are in
 * 10:04 hu on `d4`: 2,000 to 3,000 lines, more than today; it gates a
   dead-bound framework for every writer function but the merge, then
   the merge, and writes the plan for the rest; `l4` a plan only.
+* 10:20 delj LANDED fbce47ac: DelInvJ carried to both of afterDelete's
+  calls (DelHoleClimb.lean); `invGetScanOK_merges_chk8` replaces `_chk7`;
+  `hchk8` has one check left, the merge's `checkFree`. W2's first task
+  (DelInvJ) done.
 
 
 ## 8. Outcome
