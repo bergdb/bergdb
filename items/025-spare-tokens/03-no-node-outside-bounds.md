@@ -159,3 +159,9 @@ probe that finds the operation that makes the node (probe/).
 - the new definitions are in TreeCheck.lean, the checker's command line,
   not in Check/, so that 025-02's gate passes as it is, with no change
   of its fingerprint to judge.
+
+**The gate.** 025-02's gate.sh passed at `036bedd0` (the trusted
+closure's fingerprint and the top theorem's statement as the base's, the
+axiom audit, the trace checker's tests), and level2.sh quick passed in
+the clone. The checks of section 3.1 ran again with that commit's
+checker: the same outputs, on all 535 traces.
