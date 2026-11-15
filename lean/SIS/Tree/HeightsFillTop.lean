@@ -33,21 +33,52 @@ def OpDelChk2ORJ (p : Params) (R : Struct BVal → Time → Prop) : Prop :=
     ∀ r' v, putKv (.del key) (ctxOf p ts) w = .ok (r', v) →
       putKvDelChk2 key (ctxOf p ts) w = .ok (r', v)
 
+/-- `OpCaseOKJ` with the facts at the operation's start a predicate St (bergdb
+025-05, part 2): `StartJ`, with the heights' bound, or the first stratum's,
+without it. -/
+def OpCaseOKJS (p : Params) (R : Struct BVal → Time → Prop) (St : List Tx → Tx → W → Prop)
+    (Q : List Tx → Op → W → W → Prop) (P : Ctx → View BVal → W → Op → Prop) : Prop :=
+  ∀ ts tx, Within p (ts ++ [tx]) → R (treeRun p ts) ts.length → ∀ z top,
+    lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z →
+    topOf p (ctxOf p ts).view z = .ok top →
+    ∀ pre op post, tx.ops = pre ++ op :: post →
+    ∀ r w, (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
+    St ts tx w →
+    PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w →
+    RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey →
+    P (ctxOf p ts) (viewOf (treeRun p ts)) w op →
+    WriterWP (putKv op) (ctxOf p ts) w (fun _ w' => Q ts op w w')
+
+/-- S holds at every state that a transaction's earlier operations reach, given
+what the joint induction knows there: `PutInv`, the ranges, the fill, the
+heights' walk and the take-back's node facts. -/
+def JointStartOK (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop) : Prop :=
+  ∀ ts tx, Within p (ts ++ [tx]) → R (treeRun p ts) ts.length → ∀ z top,
+    lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z →
+    topOf p (ctxOf p ts).view z = .ok top →
+    ∀ pre post, tx.ops = pre ++ post →
+    ∀ r w, (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
+    PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w →
+    RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey →
+    LiveCounts p (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey →
+    HtInv (htOracleOf p (treeRun p ts)) tx.base (ctxOf p ts) w →
+    J2At p (treeRun p ts) (ts.length + 1) tx.base w → S ts tx w
+
 set_option maxHeartbeats 1600000 in
-/-- `jointHt_reached` with the writer's tree and the take-back's node facts
-(`J2At`) too: the take-back's step (`OpJ2OK`, putinv's) with S the take-back's
-state facts, the heights' and the fill, and the delete with the merges given
-the take-back's node facts at its start (`hchk` given them too). -/
-theorem jointHtJ_reachedJ (p : Params) (R : Struct BVal → Time → Prop) (hm : p.merges = true)
-    (hM : 2 ≤ p.M) (hM4 : 4 ≤ p.M) (hRB : BaseStartOK p R)
+/-- `jointHtJ_reachedJ` with the facts that the take-back's step and the delete's
+cases ask at an operation's start two predicates S and St, each from what the
+induction knows there (`JointStartOK`; bergdb 025-05, part 2: with the heights'
+bound, as `jointHtJ_reachedJ`, or without it, the first stratum). -/
+theorem jointHtJ_reachedJS (p : Params) (R : Struct BVal → Time → Prop) (hm : p.merges = true)
+    (hM : 2 ≤ p.M) (hRB : BaseStartOK p R)
     (hRL : ∀ P t, R P t → RunLinksOK p P t) (hRT : ∀ P t, R P t → TreeAt p P t)
     (hRI : ∀ P t, R P t → InvOK p P t) (hRP : ∀ P t, R P t → PointersOK P)
     (hRK : ∀ P t, R P t → KindsAllOK p P) (hRH : ∀ P t, R P t → HeightAllOK p P t)
-    (hdel : TakeBelowFuelDelOK p)
+    (S St : List Tx → Tx → W → Prop) (hS : JointStartOK p R S) (hSt : JointStartOK p R St)
     (hTp : OpCaseOK p R (QPut (QTree p)) AnyOp) (hPp : OpCaseOK p R (QPut (QPutInv p)) AnyOp)
     (hOp : OpCaseOK p R (QPut (QRange p)) AnyOp)
-    (hTd : OpCaseOKJ p R (QTree p) DelMergeCaseL) (hPd : OpCaseOKJ p R (QPutInv p) DelMergeCaseL)
-    (hOd : OpCaseOKJ p R (QRange p) DelMergeCaseL) (hJ2O : OpJ2OK p R (SJ p))
+    (hTd : OpCaseOKJS p R St (QTree p) DelMergeCaseL) (hPd : OpCaseOKJS p R St (QPutInv p) DelMergeCaseL)
+    (hOd : OpCaseOKJS p R St (QRange p) DelMergeCaseL) (hJ2O : OpJ2OK p R S)
     (hLv : OpCaseOK p R (QLive p) AnyOp) (hchk : OpDelChk2ORJ p R)
     (ts : List Tx) (tx : Tx) (hw : Within p (ts ++ [tx])) (hr : R (treeRun p ts) ts.length)
     (z : NodeId) (top : Top)
@@ -111,13 +142,10 @@ theorem jointHtJ_reachedJ (p : Params) (R : Struct BVal → Time → Prop) (hm :
           obtain ⟨hI1, hR1, hL1, hH1, hW1, hJ1⟩ := ih pre' hl' (op :: post) hsplit' r1 w1 h1
           have hbk := putBook_reached p ts tx hw hR z top htop pre' r1 w1 h1
           have hB := putBase_of_run p ts tx hw hR
-          have hHS := htStart_of_ht p R hRL hRK hRH hdel ts tx hw hr z top hz htop pre'
-            (op :: post) hsplit' r1 w1 h1 hH1
-          have hMF1 := stateOK_madeFor p hM4 R hRL ts tx hw hr z top hz htop pre' (op :: post) hsplit' r1 w1 h1
-          have hSJ : SJ p ts tx w1 :=
-            ⟨⟨⟨⟨⟨hI1, leafVals_reached p hM ts tx hw top pre' (op :: post) hsplit' r1 w1 h1 (hRP _ _ hr)
-              (hRK _ _ hr)⟩, base_le_next_reached p hM ts tx hw top pre' (op :: post) hsplit' r1 w1 h1
-              (hRP _ _ hr) (hRK _ _ hr)⟩, hR1⟩, segFits_of_htStart p ts tx w1 hHS, hMF1⟩, hHS, hL1⟩
+          have hSJ : S ts tx w1 :=
+            hS ts tx hw hr z top hz htop pre' (op :: post) hsplit' r1 w1 h1 hI1 hR1 hL1 hH1 hJ1
+          have hStw : St ts tx w1 :=
+            hSt ts tx hw hr z top hz htop pre' (op :: post) hsplit' r1 w1 h1 hI1 hR1 hL1 hH1 hJ1
           have hJ2 := hJ2O ts tx hw hr z top hz htop pre' op post hsplit' r1 w1 h1 hW1 hSJ hJ1
           rw [← h.2]
           cases op with
@@ -135,14 +163,13 @@ theorem jointHtJ_reachedJ (p : Params) (R : Struct BVal → Time → Prop) (hm :
               (by simp [ctxOf]) hbk.book hH1 hM hB.wf hbk.klongs a w2 h2).2.1
             exact ⟨hI2, hR2, hL2, hH2, hT2, hJ2 a w2 h2 hT2⟩
           | del key =>
-            have hSt : StartJ p ts tx w1 := ⟨hHS, hJ1, hMF1⟩
             have hC : DelMergeCaseL (ctxOf p ts) (viewOf (treeRun p ts)) w1 (Op.del key) :=
               ⟨⟨key, rfl, hm⟩, hL1⟩
             have hT2 : WriterTreeOK p (treeRun p ts) (ts.length + 1) w2 :=
-              hTd ts tx hw hr z top hz htop pre' _ post hsplit' r1 w1 h1 hSt hI1 hR1 hC a w2 h2
-            have hI2 := hPd ts tx hw hr z top hz htop pre' _ post hsplit' r1 w1 h1 hSt hI1 hR1 hC a w2
+              hTd ts tx hw hr z top hz htop pre' _ post hsplit' r1 w1 h1 hStw hI1 hR1 hC a w2 h2
+            have hI2 := hPd ts tx hw hr z top hz htop pre' _ post hsplit' r1 w1 h1 hStw hI1 hR1 hC a w2
               h2 hT2
-            have hR2 := hOd ts tx hw hr z top hz htop pre' _ post hsplit' r1 w1 h1 hSt hI1 hR1 hC a w2
+            have hR2 := hOd ts tx hw hr z top hz htop pre' _ post hsplit' r1 w1 h1 hStw hI1 hR1 hC a w2
               h2 hT2
             have hL2 := hLv ts tx hw hr z top hz htop pre' _ post hsplit' r1 w1 h1 hI1 hR1 trivial a w2
               h2 hT2 hL1
@@ -151,9 +178,48 @@ theorem jointHtJ_reachedJ (p : Params) (R : Struct BVal → Time → Prop) (hm :
             obtain ⟨-, hk, -, hki⟩ := kd_contextR p hM ts tx (hRP _ _ hr) (hRK _ _ hr) hw top pre'
               (Op.del key :: post) hsplit' r1 w1 h1
             have hH2 := (ht_putKvDelChk2 tx.base key (ctxOf p ts) w1 hvo (by simp [ctxOf])
-              hHS.2.1 hbk.book hH1 hbk.klongs hk hki (by simpa [ctxOf] using hM) a w2 hc2).2.1
+              hB.wf hbk.book hH1 hbk.klongs hk hki (by simpa [ctxOf] using hM) a w2 hc2).2.1
             exact ⟨hI2, hR2, hL2, hH2, hT2, hJ2 a w2 h2 hT2⟩
 
+
+
+/-- `jointHt_reached` with the writer's tree and the take-back's node facts
+(`J2At`) too: the take-back's step (`OpJ2OK`, putinv's) with S the take-back's
+state facts, the heights' and the fill, and the delete with the merges given
+the take-back's node facts at its start (`hchk` given them too). -/
+theorem jointHtJ_reachedJ (p : Params) (R : Struct BVal → Time → Prop) (hm : p.merges = true)
+    (hM : 2 ≤ p.M) (hM4 : 4 ≤ p.M) (hRB : BaseStartOK p R)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t) (hRT : ∀ P t, R P t → TreeAt p P t)
+    (hRI : ∀ P t, R P t → InvOK p P t) (hRP : ∀ P t, R P t → PointersOK P)
+    (hRK : ∀ P t, R P t → KindsAllOK p P) (hRH : ∀ P t, R P t → HeightAllOK p P t)
+    (hdel : TakeBelowFuelDelOK p)
+    (hTp : OpCaseOK p R (QPut (QTree p)) AnyOp) (hPp : OpCaseOK p R (QPut (QPutInv p)) AnyOp)
+    (hOp : OpCaseOK p R (QPut (QRange p)) AnyOp)
+    (hTd : OpCaseOKJ p R (QTree p) DelMergeCaseL) (hPd : OpCaseOKJ p R (QPutInv p) DelMergeCaseL)
+    (hOd : OpCaseOKJ p R (QRange p) DelMergeCaseL) (hJ2O : OpJ2OK p R (SJ p))
+    (hLv : OpCaseOK p R (QLive p) AnyOp) (hchk : OpDelChk2ORJ p R)
+    (ts : List Tx) (tx : Tx) (hw : Within p (ts ++ [tx])) (hr : R (treeRun p ts) ts.length)
+    (z : NodeId) (top : Top)
+    (hz : lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z)
+    (htop : topOf p (ctxOf p ts).view z = .ok top) :
+    ∀ pre post, tx.ops = pre ++ post → ∀ r w,
+      (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
+      PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w ∧
+      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey ∧
+      LiveCounts p (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey ∧
+      HtInv (htOracleOf p (treeRun p ts)) tx.base (ctxOf p ts) w ∧
+      WriterTreeOK p (treeRun p ts) (ts.length + 1) w ∧ J2At p (treeRun p ts) (ts.length + 1) tx.base w :=
+  jointHtJ_reachedJS p R hm hM hRB hRL hRT hRI hRP hRK hRH (SJ p) (StartJ p)
+    (fun ts tx hw hr z top hz htop pre post hs r w hpre hI hRo hL hH _ =>
+      have hHS := htStart_of_ht p R hRL hRK hRH hdel ts tx hw hr z top hz htop pre post hs r w hpre hH
+      ⟨⟨⟨⟨⟨hI, leafVals_reached p hM ts tx hw top pre post hs r w hpre (hRP _ _ hr) (hRK _ _ hr)⟩,
+        base_le_next_reached p hM ts tx hw top pre post hs r w hpre (hRP _ _ hr) (hRK _ _ hr)⟩, hRo⟩,
+        segFits_of_htStart p ts tx w hHS,
+        stateOK_madeFor p hM4 R hRL ts tx hw hr z top hz htop pre post hs r w hpre⟩, hHS, hL⟩)
+    (fun ts tx hw hr z top hz htop pre post hs r w hpre _ _ _ hH hJ =>
+      ⟨htStart_of_ht p R hRL hRK hRH hdel ts tx hw hr z top hz htop pre post hs r w hpre hH, hJ,
+        stateOK_madeFor p hM4 R hRL ts tx hw hr z top hz htop pre post hs r w hpre⟩)
+    hTp hPp hOp hTd hPd hOd hJ2O hLv hchk ts tx hw hr z top hz htop
 
 /-- `jointHtJ_reachedJ` with `hchk` at the deletes whose start has `PutInv`, the
 ranges, the fill and the heights. -/

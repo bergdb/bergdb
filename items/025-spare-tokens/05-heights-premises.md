@@ -3,8 +3,10 @@
 Created 2026-11-15 by Frans Lundberg. Status: part 1 done (the plan
 written 2026-11-15, 12:39, by coord-1115's planning agent; part 1, steps 1
 to 6, gated on the prover fit's branch 2026-11-15: the top theorem
-`invGetScanOK_merges_noFit`, premises hp, hth, htb, l4); part 2 (`htb`) not
-started. Section 8 has the state.
+`invGetScanOK_merges_noFit`, premises hp, hth, htb, l4); part 2 (`htb`)
+started 2026-11-15 by the prover htb: step 7's statement proved as a
+reduction to three stratum families (`jointHtJ_reached0`), the families
+open. Section 8 has the state.
 
 The key tree's best top theorem on `main` since 2026-11-15, 11:17, is
 `invGetScanOK_merges_free_noD4` (DeadTop.lean): TP7, TP10 and TP11 for
@@ -775,3 +777,79 @@ Gated: 96e9c079, gate-6 PASS (the gate's audit list does not name
 Next, by rule (section 7): part 2, `htb` (steps 7 to 9), or `l4` (024-12,
 section 1); `MergeFitsOK` and `CollapseFitsOK` as stated stay open and
 unused by the newest top theorem.
+
+2026-11-15, 13:40 to 14:20. Part 2, step 7: its statement, and the
+stratum's invariant (prover htb). New file SIS/Tree/Stratum.lean; one
+generalization in HeightsFillTop.lean. No statement changed.
+
+- **The reading is not needed in the stratum.** The stratum's members
+  conclude `QdW`, `TakeJ2` and the checked copies, which speak of no fuel.
+  So the leaf's change need give only the tree's facts (`DelInvT`: `DelInv`
+  with no fit and no reading). Route P's invariant then holds at the state
+  after the leaf's change taken as its own reference, with the key `[]`
+  (not well formed, so no read asks it): its fit at every fuel above the
+  next id is P1, its reading clause the state reading as itself
+  (`delInvA_self`). The loops keep `DelInvA` for every reference, so the
+  invariant with the reference left open (`DelInvAE`, `DelInvJAE`, and
+  `DelHoleJE` for the checked copies) is kept with no fit
+  (`writerWP_afterDelete_delAE`, `writerWP_mergeUp_delJAE`,
+  `rwp_afterDelete_of_JAE` and their sisters) and gives `QdW` and
+  `TakeJ2` at the end. This replaces section 6.2's "the families' delete
+  cases at `DelInvA`": `DelInvA` with the delete's start as reference would
+  need the reading after the leaf's change at a fuel above the next id,
+  that is the split's and the upward delete's reading lemmas at a fuel
+  other than p.fuel (`wGet_leaf_change_seg`, `DelFullRootStepOK`,
+  `collGetInv_after_upT` read at p.fuel), which the tree's facts do not.
+- **The joint induction over its start's facts:** `jointHtJ_reachedJS`
+  (HeightsFillTop.lean) takes the facts that the take-back's step and the
+  delete's cases ask at an operation's start as two predicates S and St,
+  each from what the induction knows there (`JointStartOK`), the delete's
+  cases at St (`OpCaseOKJS`). `jointHtJ_reachedJ` is its corollary (S :=
+  `SJ`, St := `StartJ`, both from `htb` as before).
+- **Step 7's statement:** `jointHtJ_reached0` (Stratum.lean), the joint
+  induction with no `htb`: `PutInv`, the ranges, the fill, the heights'
+  walk, the writer's tree and the take-back's node facts at every state of
+  a transaction, from the put cases, the live counts (from `l4`) and three
+  stratum families: (i) the tree, `PutInv` and the ranges after a delete
+  with the merges, given `StartJ0` (`StartJ` without the heights' bound;
+  `OpCaseOKJS p R (StartJ0 p) _ DelMergeCaseL`); (ii) the take-back's
+  step given `SJ0` (`SJ` without the fit and the bound; `OpJ2OK p R (SJ0
+  p)`); (iii) `hchk` (`OpDelChk2ORJ`, as stated: it has neither, but its
+  discharge today goes through `htb`). The old forms follow from them
+  (`opCaseOKJ_of_0`, `opJ2OK_of_0`).
+
+**Left of step 7:** (i), (ii), (iii). Each is the existing family's proof
+with the leaf's change giving `DelInvT` (`DelInvJT`) in place of `DelInv`
+at p.fuel + 1, then `delInvAE_of_T` (`delInvJAE_of_T`) and the loops at
+`DelInvAE`. The step lemmas that take the start's fit, each only for the
+fit and the reading after the change, and so each needing a tree-facts
+form (the old one then its corollary, the fit and the reading added):
+
+- the bitmap with room: `delInvF_after_bitmap` (DelStepsRoom.lean; its
+  tree part needs no fit, about 40 lines);
+- the bitmap into a full leaf: `writerWP_appendDeleteKlong_full_delH`
+  (DelStepsFullH.lean) over `writerWP_appendDeleteKlong_full_inv_any`,
+  `writerWP_appendDeleteKlong_full_inv` and the root's step
+  `DelFullRootStepOK` (DelStepsFullGet.lean), and the fit after the split
+  `DelFullFitsOKR` (not needed in the stratum);
+- the upward delete with room: `writerWP_del_emptyRoomMKG` (DelSteps.lean)
+  over `collGetInv_after_upT` (WriterGetUpTake.lean, `CollGetInv` carries
+  the fit) and `delInvF_of_collGetInv`;
+- the leaf at the space root emptied: `delStepsCaseQd_emptyRootG` and its
+  sisters;
+- the stop node's cascade: `writerWP_del_emptyAnyMKLHGJG`
+  (HeightsFillHolder.lean), `UpCascOKHGJ` with `UpCascFitsOKR`; its descent
+  invariant `KdHtJ` carries the bound (`HtJ.bound`), so the stratum's
+  walk takes `KdJ` with the heights' walk without it.
+
+(i) and (ii) can be one family: `DelInvJAE` gives `QdW` too
+(`delInvAE_of_JAE`, `qdW_of_delInvAE`). For (iii) the chain is
+`opDelChk5OKR_of_chk6G` (no fit already), then `OpDelChk6OKR` and
+`OpDelChk7OKR` with `DelHoleJE` in place of `DelHoleJ` (new definitions),
+and `opDelChk8OKR_of_mergeChk` with the merges' loop checked from
+`DelInvJAE` (`rwp_mergeUp_of_JAE`). Stop rule: no member asked for the
+fit at an operation's start other than through these step lemmas.
+
+Next: the tree-facts forms, the room case first (it serves all three
+families), then the full leaf, the upward delete, the root, the cascade;
+then step 8 against `jointHtJ_reached0`'s conclusions.
