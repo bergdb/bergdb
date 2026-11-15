@@ -549,14 +549,14 @@ theorem deadCase_delMergeL_of_rest (p : Params) (R : Struct BVal → Time → Pr
       (fun hn => Or.inr ⟨h.1, hn⟩))
     (deadCase_delRoomFill p R hRL) hrest
 
-/-- As `SIS.Tree.delStepsCaseOK_emptyCascLHG`, for the runs of `N.Within`. -/
-theorem delStepsCaseOK_emptyCascLHG (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+/-- Without `hU` (025-04, route (b)); as
+`SIS.Tree.delStepsCaseOK_emptyCascLHG`, for the runs of `N.Within`. -/
+theorem delStepsCaseOK_emptyCascLHG_noU (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
     (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
     (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
     (hRK : ∀ P t, R P t → KindsAllOK p P) (hRH : ∀ P t, R P t → HeightAllOK p P t)
     (hht : OpHtDelOKUnder p R)
-    (hU : ∀ ts, UpUnlinkTreeOK (ctxOf p ts) (viewOf (treeRun p ts)))
     (hHL : ∀ ts, UpHolderLiveRunOK (ctxOf p ts) (viewOf (treeRun p ts)))
     (hLC : StateOK p R (fun ts _ w => LiveCountsW p ts w)) :
     DelStepsCaseOK p R DelEmptyCascM := by
@@ -593,7 +593,7 @@ theorem delStepsCaseOK_emptyCascLHG (p : Params) (R : Struct BVal → Time → P
     omega
   refine writerWP_del_emptyAnyMKLHG (ctxOf p ts) _ (viewCoherent_ctxOf p ts) pre cv rk w tx.base top hB hbook
     _ tx.base hv hk hb0 hi0 hI hRO hF hICE hkey hrk (keyLeaf_all2 hK hrk _ ⟨hne0, hall0, hLr⟩)
-    _ (upCascOKHG_of _ _ _ _ _ (hU ts) (hHL ts)
+    _ (upCascOKHG_of_noU _ _ _ _ _ (hHL ts)
       (upCascFitsOKR_of _ _ _ _ _ hvo hbase hHb (by simp [ctxOf]))) hLCw hvo hkw hhi hwfw hub
     (by simpa [ctxOf] using hsa2) hICEk hm (by simp [ctxOf]) hA hMU hCR
     _ (fun v hv' => by unfold fresh; wpSimplify; exact hv') ?_
@@ -601,8 +601,23 @@ theorem delStepsCaseOK_emptyCascLHG (p : Params) (R : Struct BVal → Time → P
   have := runGet_of_delInvF p ts w v (pre ++ [cv]) hv'.1 hI hF hFv key' hk'
   simpa [Op.key, Op.value] using this
 
-/-- As `SIS.Tree.delStepsCaseJ2OK_emptyCascRLHG`, for the runs of `N.Within`. -/
-theorem delStepsCaseJ2OK_emptyCascRLHG (p : Params) (R : Struct BVal → Time → Prop)
+set_option linter.unusedVariables false in
+/-- As `SIS.Tree.delStepsCaseOK_emptyCascLHG`, for the runs of `N.Within`. -/
+theorem delStepsCaseOK_emptyCascLHG (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+    (hsa2 : 2 ≤ p.splitAbove)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t)
+    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
+    (hRK : ∀ P t, R P t → KindsAllOK p P) (hRH : ∀ P t, R P t → HeightAllOK p P t)
+    (hht : OpHtDelOKUnder p R)
+    (hU : ∀ ts, UpUnlinkTreeOK (ctxOf p ts) (viewOf (treeRun p ts)))
+    (hHL : ∀ ts, UpHolderLiveRunOK (ctxOf p ts) (viewOf (treeRun p ts)))
+    (hLC : StateOK p R (fun ts _ w => LiveCountsW p ts w)) :
+    DelStepsCaseOK p R DelEmptyCascM :=
+  delStepsCaseOK_emptyCascLHG_noU p R hM hsa2 hRL hP hRK hRH hht hHL hLC
+
+/-- Without `hU` (025-04, route (b)); as
+`SIS.Tree.delStepsCaseJ2OK_emptyCascRLHG`, for the runs of `N.Within`. -/
+theorem delStepsCaseJ2OK_emptyCascRLHG_noU (p : Params) (R : Struct BVal → Time → Prop)
     (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M) (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
     (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P)
@@ -615,7 +630,6 @@ theorem delStepsCaseJ2OK_emptyCascRLHG (p : Params) (R : Struct BVal → Time �
     (hSM : ∀ ts tx w, S ts tx w → ∀ x o, w.madeFor.lookup x = some o → o < tx.base)
     (hRH : ∀ P t, R P t → HeightAllOK p P t)
     (hht : OpHtDelOKUnder p R)
-    (hU : ∀ ts, UpUnlinkTreeOK (ctxOf p ts) (viewOf (treeRun p ts)))
     (hHL : ∀ ts, UpHolderLiveRunOK (ctxOf p ts) (viewOf (treeRun p ts)))
     (hLC : StateOK p R (fun ts _ w => LiveCountsW p ts w)) :
     DelStepsCaseJ2OK p R S DelEmptyCascM := by
@@ -651,19 +665,40 @@ theorem delStepsCaseJ2OK_emptyCascRLHG (p : Params) (R : Struct BVal → Time �
   exact writerWP_del_emptyAnyMJKLHG (ctxOf p ts) _ (viewCoherent_ctxOf p ts) pre cv rk w tx.base top hB hbook
     _ tx.base hv hk hb0 hi0
     hI (hSR ts tx w hS) (hSF ts tx w hS) hICE hkey hrk (keyLeaf_all2 hK hrk _ ⟨hne0, hall0, hLr⟩)
-    _ (upCascJ2OKHG_of _ _ _ _ _ _ (hU ts) (hHL ts)
+    _ (upCascJ2OKHG_of_noU _ _ _ _ _ _ (hHL ts)
       (upCascFitsOKR_of _ _ _ _ _ hvo hbase hHb (by simp [ctxOf]))) hLCw hvo hkw hhi hwfw hub
     (by simpa [ctxOf] using hsa2) hICEk hm
     (by simp [ctxOf]) hJ (hSM ts tx w hS) (fun L n hL hn hnl y hy => (hLV L n hL hn hnl y hy).1) hA hMU hCR
 
-/-- As `SIS.Tree.delStepsCaseQd_emptyCascLHG`, for the runs of `N.Within`. -/
-theorem delStepsCaseQd_emptyCascLHG (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+set_option linter.unusedVariables false in
+/-- As `SIS.Tree.delStepsCaseJ2OK_emptyCascRLHG`, for the runs of `N.Within`. -/
+theorem delStepsCaseJ2OK_emptyCascRLHG (p : Params) (R : Struct BVal → Time → Prop)
+    (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M) (hsa2 : 2 ≤ p.splitAbove)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t)
+    (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P)
+    (hSI : ∀ ts tx w, S ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w)
+    (hSV : ∀ ts tx w, S ts tx w → LeafVals (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w)
+    (hSR : ∀ ts tx w, S ts tx w →
+      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey)
+    (hSF : ∀ ts tx w, S ts tx w →
+      SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey)
+    (hSM : ∀ ts tx w, S ts tx w → ∀ x o, w.madeFor.lookup x = some o → o < tx.base)
+    (hRH : ∀ P t, R P t → HeightAllOK p P t)
+    (hht : OpHtDelOKUnder p R)
+    (hU : ∀ ts, UpUnlinkTreeOK (ctxOf p ts) (viewOf (treeRun p ts)))
+    (hHL : ∀ ts, UpHolderLiveRunOK (ctxOf p ts) (viewOf (treeRun p ts)))
+    (hLC : StateOK p R (fun ts _ w => LiveCountsW p ts w)) :
+    DelStepsCaseJ2OK p R S DelEmptyCascM :=
+  delStepsCaseJ2OK_emptyCascRLHG_noU p R S hM hsa2 hRL hRP hRK hSI hSV hSR hSF hSM hRH hht hHL hLC
+
+/-- Without `hU` (025-04, route (b)); as
+`SIS.Tree.delStepsCaseQd_emptyCascLHG`, for the runs of `N.Within`. -/
+theorem delStepsCaseQd_emptyCascLHG_noU (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
     (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
     (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P)
     (hRH : ∀ P t, R P t → HeightAllOK p P t)
     (hht : OpHtDelOKUnder p R)
-    (hU : ∀ ts, UpUnlinkTreeOK (ctxOf p ts) (viewOf (treeRun p ts)))
     (hHL : ∀ ts, UpHolderLiveRunOK (ctxOf p ts) (viewOf (treeRun p ts)))
     : DelStepsCaseQd p R DelEmptyCascML := by
   intro ts tx hw hr z top hz htop ops op post hops r w hpre hI hRO hF key hop hPcL hA hMU hCR
@@ -699,11 +734,43 @@ theorem delStepsCaseQd_emptyCascLHG (p : Params) (R : Struct BVal → Time → P
     omega
   refine writerWP_del_emptyAnyMKLHG (ctxOf p ts) _ (viewCoherent_ctxOf p ts) pre cv rk w tx.base top hB hbook
     _ tx.base hv hk hb0 hi0 hI hRO hF hICE hkey hrk (keyLeaf_all2 hK hrk _ ⟨hne0, hall0, hLr⟩)
-    _ (upCascOKHG_of _ _ _ _ _ (hU ts) (hHL ts)
+    _ (upCascOKHG_of_noU _ _ _ _ _ (hHL ts)
       (upCascFitsOKR_of _ _ _ _ _ hvo hbase hHb (by simp [ctxOf]))) hLCw hvo hkw hhi hwfw hub
     (by simpa [ctxOf] using hsa2) hICEk hm (by simp [ctxOf]) hA hMU hCR
     (QdW p ts) (fun v hv' => qdW_fresh p ts v hv') (fun v hv' => ⟨hv'.1.1, hv'.1.2.2.1⟩)
 
+set_option linter.unusedVariables false in
+/-- As `SIS.Tree.delStepsCaseQd_emptyCascLHG`, for the runs of `N.Within`. -/
+theorem delStepsCaseQd_emptyCascLHG (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+    (hsa2 : 2 ≤ p.splitAbove)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t)
+    (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P)
+    (hRH : ∀ P t, R P t → HeightAllOK p P t)
+    (hht : OpHtDelOKUnder p R)
+    (hU : ∀ ts, UpUnlinkTreeOK (ctxOf p ts) (viewOf (treeRun p ts)))
+    (hHL : ∀ ts, UpHolderLiveRunOK (ctxOf p ts) (viewOf (treeRun p ts)))
+    : DelStepsCaseQd p R DelEmptyCascML :=
+  delStepsCaseQd_emptyCascLHG_noU p R hM hsa2 hRL hRP hRK hRH hht hHL
+
+/-- Without `hU` (025-04, route (b)); as
+`SIS.Tree.delStepsOK_of_open`, for the runs of `N.Within`. -/
+theorem delStepsOK_of_open_noU (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+    (hsa2 : 2 ≤ p.splitAbove)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t)
+    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
+    (hRK : ∀ P t, R P t → KindsAllOK p P) (hRH : ∀ P t, R P t → HeightAllOK p P t)
+    (hht : OpHtDelOKUnder p R)
+    (hHL : ∀ ts, UpHolderLiveRunOK (ctxOf p ts) (viewOf (treeRun p ts)))
+    (hLC : StateOK p R (fun ts _ w => LiveCountsW p ts w)) :
+    DelStepsOK p R :=
+  delStepsOK_of_cases p R (delStepsCaseOK_noLeaf p R) (delStepsCaseOK_noop p R)
+    (delStepsCaseOK_or p R _ _ _ delEmptyM_split (delStepsCaseOK_emptyRoom p R hM hRL hP)
+      (delStepsCaseOK_or p R _ _ _ delEmptyOther_split (delStepsCaseOK_emptyRoot p R hM hsa2 hRL hP)
+        (delStepsCaseOK_emptyCascLHG_noU p R hM hsa2 hRL hP hRK hRH hht hHL hLC)))
+    (delStepsCaseOK_room p R hM hRL hP)
+    (delStepsCaseOK_fullH p R hM hsa2 hRL hP hRK hRH hht (fun ts => delFullRootStepOK_ctx p ts))
+
+set_option linter.unusedVariables false in
 /-- As `SIS.Tree.delStepsOK_of_open`, for the runs of `N.Within`. -/
 theorem delStepsOK_of_open (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
     (hsa2 : 2 ≤ p.splitAbove)
@@ -715,13 +782,37 @@ theorem delStepsOK_of_open (p : Params) (R : Struct BVal → Time → Prop) (hM 
     (hHL : ∀ ts, UpHolderLiveRunOK (ctxOf p ts) (viewOf (treeRun p ts)))
     (hLC : StateOK p R (fun ts _ w => LiveCountsW p ts w)) :
     DelStepsOK p R :=
-  delStepsOK_of_cases p R (delStepsCaseOK_noLeaf p R) (delStepsCaseOK_noop p R)
-    (delStepsCaseOK_or p R _ _ _ delEmptyM_split (delStepsCaseOK_emptyRoom p R hM hRL hP)
-      (delStepsCaseOK_or p R _ _ _ delEmptyOther_split (delStepsCaseOK_emptyRoot p R hM hsa2 hRL hP)
-        (delStepsCaseOK_emptyCascLHG p R hM hsa2 hRL hP hRK hRH hht hU hHL hLC)))
-    (delStepsCaseOK_room p R hM hRL hP)
-    (delStepsCaseOK_fullH p R hM hsa2 hRL hP hRK hRH hht (fun ts => delFullRootStepOK_ctx p ts))
+  delStepsOK_of_open_noU p R hM hsa2 hRL hP hRK hRH hht hHL hLC
 
+/-- Without `hU` (025-04, route (b)); as
+`SIS.Tree.delStepsJ2OK_of_openR`, for the runs of `N.Within`. -/
+theorem delStepsJ2OK_of_openR_noU (p : Params) (R : Struct BVal → Time → Prop)
+    (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M) (hsa2 : 2 ≤ p.splitAbove)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t)
+    (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P)
+    (hSI : ∀ ts tx w, S ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w)
+    (hSV : ∀ ts tx w, S ts tx w → LeafVals (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w)
+    (hSB : ∀ ts tx w, S ts tx w → tx.base ≤ w.next)
+    (hSR : ∀ ts tx w, S ts tx w →
+      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey)
+    (hSF : ∀ ts tx w, S ts tx w →
+      SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey)
+    (hSM : ∀ ts tx w, S ts tx w → ∀ x o, w.madeFor.lookup x = some o → o < tx.base)
+    (hRH : ∀ P t, R P t → HeightAllOK p P t) (hht : OpHtDelOKUnder p R)
+    (hHL : ∀ ts, UpHolderLiveRunOK (ctxOf p ts) (viewOf (treeRun p ts)))
+    (hLC : StateOK p R (fun ts _ w => LiveCountsW p ts w)) :
+    DelStepsJ2OK p R S :=
+  delStepsJ2OK_of_cases p R S (delStepsCaseJ2OK_noLeaf p R S hSI) (delStepsCaseJ2OK_noop p R S hSI)
+    (delStepsCaseJ2OK_or p R S _ _ _ delEmptyM_split
+      (delStepsCaseJ2OK_emptyRoomR p R S hM hRL hRP hRK hSI hSV hSR hSF hSM)
+      (delStepsCaseJ2OK_or p R S _ _ _ delEmptyOther_split
+        (delStepsCaseJ2OK_emptyRootR p R S hM hsa2 hRL hRP hRK hSI hSV hSB hSR)
+        (delStepsCaseJ2OK_emptyCascRLHG_noU p R S hM hsa2 hRL hRP hRK hSI hSV hSR hSF hSM hRH hht hHL
+          hLC)))
+    (delStepsCaseJ2OK_roomR p R S hM hRL hRP hRK hSI hSV hSB hSR hSF)
+    (delStepsCaseJ2OK_fullRH p R S hM hsa2 hRL hRP hRK hSI hSV hSB hSR hSF hRH hht)
+
+set_option linter.unusedVariables false in
 /-- As `SIS.Tree.delStepsJ2OK_of_openR`, for the runs of `N.Within`. -/
 theorem delStepsJ2OK_of_openR (p : Params) (R : Struct BVal → Time → Prop)
     (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M) (hsa2 : 2 ≤ p.splitAbove)
@@ -740,24 +831,16 @@ theorem delStepsJ2OK_of_openR (p : Params) (R : Struct BVal → Time → Prop)
     (hHL : ∀ ts, UpHolderLiveRunOK (ctxOf p ts) (viewOf (treeRun p ts)))
     (hLC : StateOK p R (fun ts _ w => LiveCountsW p ts w)) :
     DelStepsJ2OK p R S :=
-  delStepsJ2OK_of_cases p R S (delStepsCaseJ2OK_noLeaf p R S hSI) (delStepsCaseJ2OK_noop p R S hSI)
-    (delStepsCaseJ2OK_or p R S _ _ _ delEmptyM_split
-      (delStepsCaseJ2OK_emptyRoomR p R S hM hRL hRP hRK hSI hSV hSR hSF hSM)
-      (delStepsCaseJ2OK_or p R S _ _ _ delEmptyOther_split
-        (delStepsCaseJ2OK_emptyRootR p R S hM hsa2 hRL hRP hRK hSI hSV hSB hSR)
-        (delStepsCaseJ2OK_emptyCascRLHG p R S hM hsa2 hRL hRP hRK hSI hSV hSR hSF hSM hRH hht hU hHL
-          hLC)))
-    (delStepsCaseJ2OK_roomR p R S hM hRL hRP hRK hSI hSV hSB hSR hSF)
-    (delStepsCaseJ2OK_fullRH p R S hM hsa2 hRL hRP hRK hSI hSV hSB hSR hSF hRH hht)
+  delStepsJ2OK_of_openR_noU p R S hM hsa2 hRL hRP hRK hSI hSV hSB hSR hSF hSM hRH hht hHL hLC
 
-/-- As `SIS.Tree.delStepsQdL_of_openR`, for the runs of `N.Within`. -/
-theorem delStepsQdL_of_openR (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+/-- Without `hU` (025-04, route (b)); as
+`SIS.Tree.delStepsQdL_of_openR`, for the runs of `N.Within`. -/
+theorem delStepsQdL_of_openR_noU (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
     (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
     (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P)
     (hRH : ∀ P t, R P t → HeightAllOK p P t)
     (hht : OpHtDelOKUnder p R)
-    (hU : ∀ ts, UpUnlinkTreeOK (ctxOf p ts) (viewOf (treeRun p ts)))
     (hHL : ∀ ts, UpHolderLiveRunOK (ctxOf p ts) (viewOf (treeRun p ts))):
     DelStepsQdL p R := by
   intro ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop hmL hA hMU hCR
@@ -775,12 +858,25 @@ theorem delStepsQdL_of_openR (p : Params) (R : Struct BVal → Time → Prop) (h
     · rcases delEmptyOther_split _ _ _ _ h1 with h2 | h2
       · exact delStepsCaseQd_emptyRoot p R hM hsa2 hRL hRP hRK ts tx hw hr z top hz htop pre op post hops r w
           hpre hI hRO hF key hop (hop ▸ h2) hA hMU hCR
-      · exact delStepsCaseQd_emptyCascLHG p R hM hsa2 hRL hRP hRK hRH hht hU hHL
+      · exact delStepsCaseQd_emptyCascLHG_noU p R hM hsa2 hRL hRP hRK hRH hht hHL
           ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop (hop ▸ ⟨h2, hLCw⟩) hA hMU hCR
   · exact delStepsCaseQd_room p R hM hRL hRP hRK ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF
       key hop (hop ▸ h) hA hMU hCR
   · exact delStepsCaseQd_fullH p R hM hsa2 hRL hRP hRK hRH hht (fun ts => delFullRootStepOK_ctx p ts)
       ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop (hop ▸ h) hA hMU hCR
+
+set_option linter.unusedVariables false in
+/-- As `SIS.Tree.delStepsQdL_of_openR`, for the runs of `N.Within`. -/
+theorem delStepsQdL_of_openR (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+    (hsa2 : 2 ≤ p.splitAbove)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t)
+    (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P)
+    (hRH : ∀ P t, R P t → HeightAllOK p P t)
+    (hht : OpHtDelOKUnder p R)
+    (hU : ∀ ts, UpUnlinkTreeOK (ctxOf p ts) (viewOf (treeRun p ts)))
+    (hHL : ∀ ts, UpHolderLiveRunOK (ctxOf p ts) (viewOf (treeRun p ts))):
+    DelStepsQdL p R :=
+  delStepsQdL_of_openR_noU p R hM hsa2 hRL hRP hRK hRH hht hHL
 
 /-- As `SIS.Tree.opCaseOK_of_open`, for the runs of `N.Within`. -/
 theorem opCaseOK_of_open (p : Params) (R : Struct BVal → Time → Prop)

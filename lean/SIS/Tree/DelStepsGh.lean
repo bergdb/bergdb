@@ -7,6 +7,7 @@ the take-back, whose steps know the nodes they read cached and, for the stop
 node's bitmap with room, the room.
 -/
 import SIS.Tree.DelStepsHolderLive
+import SIS.Tree.StopSwapBelow
 
 set_option autoImplicit false
 
@@ -725,9 +726,10 @@ def UpCascJ2OKHG (c : Ctx) (base : View BVal) (KO : KindOracle) (BK B : NodeId) 
     WriterWP (appendDeleteKlong (X stop) stop (K (stop + 1))) c v
       (fun _ w' => DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B w')
 
-/-- `UpCascOKHG` from `UpUnlinkTreeOK`, `UpHolderLiveRunOK` and cost's `UpCascFitsOKR`. -/
-theorem upCascOKHG_of (c : Ctx) (base : View BVal) (KO : KindOracle) (BK : NodeId) (H : NodeId → Nat → Prop)
-    (hU : UpUnlinkTreeOK c base) (hHL : UpHolderLiveRunOK c base)
+/-- `UpCascOKHG` from `UpHolderLiveRunOK` and cost's `UpCascFitsOKR`, without `hU`
+(025-04, route (b): the stop node's split from the state with its bitmap). -/
+theorem upCascOKHG_of_noU (c : Ctx) (base : View BVal) (KO : KindOracle) (BK : NodeId) (H : NodeId → Nat → Prop)
+    (hHL : UpHolderLiveRunOK c base)
     (hFitR : UpCascFitsOKR c base KO BK H) : UpCascOKHG c base KO BK H := by
   intro w w3 B MB top0 pre cv rk X Nn K depth stop w2 v S hm hLC hJ3H hlen hgh hsa2 hvB hk hICEk hX0 hB hI hRO hF hICE hr03 hkey
     hrk hvis hpX hpK hlkX hXN hlinkK hne hall hleaf hdepth hsD hbetween hLE hv hJ hkind hfull
@@ -743,19 +745,26 @@ theorem upCascOKHG_of (c : Ctx) (base : View BVal) (KO : KindOracle) (BK : NodeI
       X Nn K depth w2 v S hB hI hRO hF hr03 hkey hrk hvis hpX hlkX hXN hlinkK hall hleaf hdepth hbetween
       hX0 hLE hv hJ hkind hfull hlinks2 hwf2 hFits
   · obtain ⟨D, rfl⟩ : ∃ D, stop = D + 1 := ⟨stop - 1, by omega⟩
-    have hT2 := hU w w3 MB X Nn K depth (D + 1) w2 S hI hr03 hlkX hlinkK hsD hLE
-    exact writerWP_upCasc_below_delT c base hsa2 KO BK hvB hk hICEk w w3 B MB top0 pre cv rk X Nn K depth D
+    have hcu : CacheUnique v := cacheUnique_of_book hJ.1.1.book
+    exact writerWP_upCasc_below_delS c base hsa2 KO BK hvB hk hICEk w w3 B MB top0 pre cv rk X Nn K depth D
       w2 v S hB hI hRO hF hr03 hkey hrk hvis hpX hpK hlkX hXN hlinkK hall hleaf hsD hbetween hX0 hLE hv hJ
-      hfull hT2 hlinks2 hwf2 hFits
+      hfull hcu hlinks2 hwf2 hFits
 
-/-- `UpCascJ2OKHG` likewise. -/
-theorem upCascJ2OKHG_of (c : Ctx) (base : View BVal) (KO : KindOracle) (BK B : NodeId) (H : NodeId → Nat → Prop)
+set_option linter.unusedVariables false in
+/-- `UpCascOKHG` from `UpUnlinkTreeOK`, `UpHolderLiveRunOK` and cost's `UpCascFitsOKR`. -/
+theorem upCascOKHG_of (c : Ctx) (base : View BVal) (KO : KindOracle) (BK : NodeId) (H : NodeId → Nat → Prop)
     (hU : UpUnlinkTreeOK c base) (hHL : UpHolderLiveRunOK c base)
+    (hFitR : UpCascFitsOKR c base KO BK H) : UpCascOKHG c base KO BK H :=
+  upCascOKHG_of_noU c base KO BK H hHL hFitR
+
+/-- `UpCascJ2OKHG` likewise, without `hU`. -/
+theorem upCascJ2OKHG_of_noU (c : Ctx) (base : View BVal) (KO : KindOracle) (BK B : NodeId) (H : NodeId → Nat → Prop)
+    (hHL : UpHolderLiveRunOK c base)
     (hFitR : UpCascFitsOKR c base KO BK H) : UpCascJ2OKHG c base KO BK B H := by
   intro w w3 top0 pre cv rk X Nn K depth stop w2 v S hm hLC hJ3H hlen hgh hsa2 hvB hk hICEk hX0 hpos hB hI hRO hF hICE hr03
     hkey hrk hvis hpX hpK hlkX hXN hlinkK hne hall hleaf hdepth hsD hbetween hLE hv hJ hkind hfull hJw
     _hMF hkidsw
-  have hRead := upCascOKHG_of c base KO BK H hU hHL hFitR
+  have hRead := upCascOKHG_of_noU c base KO BK H hHL hFitR
     w w3 B B top0 pre cv rk X Nn K depth stop w2 v S hm hLC hJ3H hlen hgh hsa2 hvB hk hICEk hX0 hB hI hRO hF hICE hr03 hkey
     hrk hvis hpX hpK hlkX hXN hlinkK hne hall hleaf hdepth hsD hbetween hLE hv hJ hkind hfull
   have hBn : B ≤ w.next := by
@@ -764,18 +773,25 @@ theorem upCascJ2OKHG_of (c : Ctx) (base : View BVal) (KO : KindOracle) (BK B : N
       rcases hv with rfl | ⟨s, rfl⟩ <;> rfl
     rw [h2, hLE.2.2.2.2.2.1, hr03.2.2.2.2] at h1
     exact h1
-  have hT2 := hU w w3 B X Nn K depth stop w2 S hI hr03 hlkX hlinkK hsD hLE
+  have hcu : CacheUnique v := cacheUnique_of_book hJ.1.1.book
   obtain ⟨hlinks2, hwf2⟩ := linksWf_of_book c base B top0 v w2 hB hJ.1.1 hv
   have hJ2 : WriterWP (appendDeleteKlong (X stop) stop (K (stop + 1))) c v
       (fun _ w' => TakeJ2 c base B w' ∧ B ≤ w'.next) := by
     rcases Nat.eq_zero_or_pos stop with hs | hs
     · subst hs
-      exact writerWP_upCasc_root_j2 c base hB.coherent hsa2 B hpos w w3 X Nn K depth w2 v S hI hr03 hJw
-        hBn hkidsw hlkX hXN hlinkK hdepth hbetween hX0 hLE hv hfull hT2 hlinks2 hwf2
+      exact writerWP_upCasc_root_j2S c base hB.coherent hsa2 B hpos w w3 X Nn K depth w2 v S hI hr03 hJw
+        hBn hkidsw hlkX hXN hlinkK hdepth hbetween hX0 hLE hv hfull hcu hlinks2 hwf2
     · obtain ⟨D, rfl⟩ : ∃ D, stop = D + 1 := ⟨stop - 1, by omega⟩
-      exact writerWP_upCasc_below_j2T c base hsa2 B hpos w w3 X Nn K depth D w2 v S hI hRO hr03 hJw hBn
-        hkidsw hpX hpK hlkX hXN hlinkK hsD hbetween hX0 hLE hv hJ.2 hfull hT2 hlinks2 hwf2
+      exact writerWP_upCasc_below_j2S c base hsa2 B hpos w w3 X Nn K depth D w2 v S hI hRO hr03 hJw hBn
+        hkidsw hpX hpK hlkX hXN hlinkK hsD hbetween hX0 hLE hv hJ.2 hfull hcu hlinks2 hwf2
   exact writerWP_mono (writerWP_and hRead hJ2) (fun _ w' h => ⟨h.1, h.2.1, h.2.2⟩)
+
+set_option linter.unusedVariables false in
+/-- `UpCascJ2OKHG` likewise. -/
+theorem upCascJ2OKHG_of (c : Ctx) (base : View BVal) (KO : KindOracle) (BK B : NodeId) (H : NodeId → Nat → Prop)
+    (hU : UpUnlinkTreeOK c base) (hHL : UpHolderLiveRunOK c base)
+    (hFitR : UpCascFitsOKR c base KO BK H) : UpCascJ2OKHG c base KO BK B H :=
+  upCascJ2OKHG_of_noU c base KO BK B H hHL hFitR
 
 set_option maxHeartbeats 3200000 in
 /-- The delete whose leaf, not the space root, empties, the merges on, whatever

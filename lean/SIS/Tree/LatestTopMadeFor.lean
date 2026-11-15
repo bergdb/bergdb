@@ -68,4 +68,29 @@ theorem invGetScanOK_merges_noOutside (p : Params) (hp : MergeParamsOK p)
       (stateOK_madeFor p (four_le_M p hp) (RunOK p) (fun _ _ h => h.1))
   exact ⟨hinv ts ⟨hw, hno⟩, hget ts ⟨hw, hno⟩, hscan ts ⟨hw, hno⟩⟩
 
+/-- `invGetScanOK_merges_noOutside` without `hU` (025-04, route (b)): the stop
+node's split runs the same from the state with its bitmap (`handleFull_swap`).
+Premises `hp`, `hth`, `hchk`, `d4`, `l4`, `hHL`, `hMSF`, `hCoF` and `hCoU`. -/
+theorem invGetScanOK_merges_noOutside_noU (p : Params) (hp : MergeParamsOK p)
+    (hth : 2 ≤ p.theta ∨ p.theta = 0)
+    (hchk : OpDelChk2OK p)
+    (d4 : OpCaseOK p (RunOK p) (QDead p) DelMergeDOpenCase)
+    (l4 : OpCaseOK p (RunOK p) (QLive p) DelMergeOpenCase)
+    (hHL : ∀ ts, UpHolderLiveRunOK (ctxOf p ts) (viewOf (treeRun p ts)))
+    (hMSF : ∀ ts, MergeFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hCoF : ∀ ts, CollapseFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hCoU : ∀ ts, CollapseUnlinkAllOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1)) :
+    ∀ ts, Within p ts → NoOutside p ts →
+      (∀ t ≤ ts.length, InvOK p (treeRun p ts) t ∧ PointersOK (treeRun p ts)) ∧
+      (∀ t ≤ ts.length, ∀ key, keyWf key = true →
+        get p (viewOf (treeRun p ts)) t key = refGet ts t key) ∧
+      (∀ t ≤ ts.length, ∀ (req : ScanReq) (limit : Nat), req.wf = true →
+        (scan p (viewOf (treeRun p ts)) t req limit).map (fun kv => (kv.key, kv.h)) =
+          refScan ts t req limit) := by
+  intro ts hw hno
+  obtain ⟨hinv, hget, hscan, -, -⟩ :=
+    N.invGetScanOK_merges_noU p hp hth hchk d4 l4 hHL hMSF hCoF hCoU
+      (stateOK_madeFor p (four_le_M p hp) (RunOK p) (fun _ _ h => h.1))
+  exact ⟨hinv ts ⟨hw, hno⟩, hget ts ⟨hw, hno⟩, hscan ts ⟨hw, hno⟩⟩
+
 end SIS.Tree

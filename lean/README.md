@@ -102,7 +102,8 @@ G and H (`NoOutside`, SIS/Tree/NoOutsideBase.lean; bergdb 025-03), without
 `hCoF` and `hCoU`, with `hp` and `hth`. Its proof is the top theorem of
 2026-11-14's (`N.invGetScanOK_merges`, SIS/Tree/LatestTopNoOutside.lean), with
 the run machinery restated for such runs in namespace `SIS.Tree.N`
-(SIS/Tree/NoOutside*.lean); it is not on the joint route. For a run of Java's,
+(SIS/Tree/NoOutside*.lean); it is not on the joint route. The same without `hU`:
+`invGetScanOK_merges_noOutside_noU` (the same file; bergdb 025-04). For a run of Java's,
 H is chosen to cover the highest moment of every transaction; on the
 conformance traces the trace's own H + 1 does (025-03, section 3.1).
 

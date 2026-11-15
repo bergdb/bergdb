@@ -1727,6 +1727,10 @@ their corollaries). The top theorem without `hU`: `invGetScanOK_merges_noU`
 premise changed. With `hU` gone, no premise of that theorem is known to be
 false; `hMSF` and `hCoF` are believed false in their universal form (cost2).
 The tree at the loop's end is still only tested (025-04, section 8).
-`UpUnlinkTreeOK` and its counterexample stay, with the NoOutside route's
-theorem, which still has `hU`, `hHL` and `hCoU` (025-04, section 7, step 6).
+The NoOutside route likewise (09:55, 025-04's step 6):
+`invGetScanOK_merges_noOutside_noU` (`LatestTopMadeFor.lean`), premises `hp`,
+`hth`, `hchk`, `d4`, `l4`, `hHL`, `hMSF`, `hCoF`, `hCoU`; it still holds
+vacuously, as `hHL` and `hCoU` are false as stated. `UpUnlinkTreeOK` and its
+counterexample stay in the code, as premises of the older theorems, which are
+unchanged.
 

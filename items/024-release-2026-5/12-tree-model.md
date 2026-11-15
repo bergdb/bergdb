@@ -239,7 +239,7 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
     **not needed on the joint route since 2026-11-15** (025-04, route (b)): the stop node's
     split runs the same from the state with its bitmap, whose tree is the tree at the delete's
     start without the chain (`handleFull_swap`; `invGetScanOK_merges_noU`; 024-22,
-    section 11.1); still a premise of the NoOutside route's theorem;
+    section 11.1); the NoOutside route's without it: `invGetScanOK_merges_noOutside_noU`;
   - `hHL`, `UpHolderLiveRunOK`: at the upward loop's end, no node not taken back holds, now
     or before the transaction, a node taken back (putinv; the rest of cost's `UpHolderOK` is
     proved, `upHolderOK_of_live`); with the loop keeping the heights' cache (proved,

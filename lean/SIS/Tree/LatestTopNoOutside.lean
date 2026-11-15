@@ -20,13 +20,13 @@ namespace N
 
 set_option maxHeartbeats 800000 in
 /-- The top theorem as it stood on 2026-11-14 (025-02), for the runs of
-`N.Within`, without its premise `htb`; its other premises as there. -/
-theorem invGetScanOK_merges (p : Params) (hp : MergeParamsOK p)
+`N.Within`, without its premises `htb` and `hU` (025-04, route (b)); its other
+premises as there. -/
+theorem invGetScanOK_merges_noU (p : Params) (hp : MergeParamsOK p)
     (hth : 2 ≤ p.theta ∨ p.theta = 0)
     (hchk : OpDelChk2OK p)
     (d4 : SIS.Tree.OpCaseOK p (RunOK p) (QDead p) DelMergeDOpenCase)
     (l4 : SIS.Tree.OpCaseOK p (RunOK p) (QLive p) DelMergeOpenCase)
-    (hU : ∀ ts, UpUnlinkTreeOK (ctxOf p ts) (viewOf (treeRun p ts)))
     (hHL : ∀ ts, UpHolderLiveRunOK (ctxOf p ts) (viewOf (treeRun p ts)))
     (hMSF : ∀ ts, MergeFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
     (hCoF : ∀ ts, CollapseFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
@@ -62,7 +62,7 @@ theorem invGetScanOK_merges (p : Params) (hp : MergeParamsOK p)
     opHtDelOKUnder_of_chk2 p (by omega) _ hRP' hRK' hchk
   -- the delete with the merges (4) at the induction's runs
   have hTIR := opCaseOK_treeInvRange_delMergeRL p _
-    (delStepsQdL_of_openR p _ (by omega) hsa hRL' hRP' hRK' hRH' hht hU hHL) hMS hCo hsa hcap
+    (delStepsQdL_of_openR_noU p _ (by omega) hsa hRL' hRP' hRK' hRH' hht hHL) hMS hCo hsa hcap
     hRP' hRK' hfitQ
   -- the premises over every run, for the runs of `N.Within`
   have l4N : OpCaseOK p (RunOK p) (QLive p) DelMergeOpenCase := OpCaseOK.ofOld l4
@@ -112,9 +112,9 @@ theorem invGetScanOK_merges (p : Params) (hp : MergeParamsOK p)
     (rangeStateOK_of_cases p _ hRL' hRT' hRI' hT hPI hO)
     hfitQ
     (fun ts tx hw hr => hMF ts tx hw.w (hR _ _ hr))
-    (delStepsJ2OK_of_openR p _ (TakeS4 p) (by omega) hsa hRL' hRP' hRK'
+    (delStepsJ2OK_of_openR_noU p _ (TakeS4 p) (by omega) hsa hRL' hRP' hRK'
       (fun _ _ _ h => h.1.1.1.1) (fun _ _ _ h => h.1.1.1.2) (fun _ _ _ h => h.1.1.2)
-      (fun _ _ _ h => h.1.2) (fun _ _ _ h => h.2.1) (fun _ _ _ h => h.2.2) hRH' hht hU hHL hLC)
+      (fun _ _ _ h => h.1.2) (fun _ _ _ h => h.2.1) (fun _ _ _ h => h.2.2) hRH' hht hHL hLC)
     hMS hCo (replaceRootFullJ2OK_run p hsa)
   have hW : ∀ ts tx, Within p (ts ++ [tx]) → RunOK p (treeRun p ts) ts.length →
       RunTreeQ p (LatestQD p) (treeRun p ts) ts.length :=
@@ -133,9 +133,26 @@ theorem invGetScanOK_merges (p : Params) (hp : MergeParamsOK p)
     (opCaseOK_of_within p _ _ hW _ _ (opCaseOK_of_any p _ _ _ hO))
     (opGetCaseOK_delMerge p (RunOK p)
       (delStepsOK_of_within p (RunOK p) _ hW
-        (delStepsOK_of_open p _ (by omega) hsa hRL' hP hRK' hRH' hht hU hHL hLC))
+        (delStepsOK_of_open_noU p _ (by omega) hsa hRL' hP hRK' hRH' hht hHL hLC))
       hMS hCo hsa hcap (by omega) hP hfit)
   exact ⟨hinv, h.1, h.2, latestGetOK_of_getOK p h.1, latestScanOK_of_scanOK p h.2⟩
+
+set_option linter.unusedVariables false in
+/-- The top theorem as it stood on 2026-11-14 (025-02), for the runs of
+`N.Within`, without its premise `htb`; its other premises as there. -/
+theorem invGetScanOK_merges (p : Params) (hp : MergeParamsOK p)
+    (hth : 2 ≤ p.theta ∨ p.theta = 0)
+    (hchk : OpDelChk2OK p)
+    (d4 : SIS.Tree.OpCaseOK p (RunOK p) (QDead p) DelMergeDOpenCase)
+    (l4 : SIS.Tree.OpCaseOK p (RunOK p) (QLive p) DelMergeOpenCase)
+    (hU : ∀ ts, UpUnlinkTreeOK (ctxOf p ts) (viewOf (treeRun p ts)))
+    (hHL : ∀ ts, UpHolderLiveRunOK (ctxOf p ts) (viewOf (treeRun p ts)))
+    (hMSF : ∀ ts, MergeFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hCoF : ∀ ts, CollapseFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hCoU : ∀ ts, CollapseUnlinkAllOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hMF : SIS.Tree.StateOK p (RunOK p) (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base)) :
+    InvPreserved p ∧ GetOK p ∧ ScanOK p ∧ LatestGetOK p ∧ LatestScanOK p :=
+  invGetScanOK_merges_noU p hp hth hchk d4 l4 hHL hMSF hCoF hCoU hMF
 
 end N
 

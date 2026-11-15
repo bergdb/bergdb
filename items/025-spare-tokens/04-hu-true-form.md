@@ -1,8 +1,8 @@
 # 025-04. The true form of hU: the plan
 
-Created 2026-11-15 by Frans Lundberg. Status: steps 1 to 5 done
-2026-11-15, 09:50 (route (b)): the joint route's top theorem without `hU`,
-`invGetScanOK_merges_noU`; section 9. Step 6 open.
+Created 2026-11-15 by Frans Lundberg. Status: steps 1 to 6 done
+2026-11-15, 09:55 (route (b)): both routes' top theorems without `hU`,
+`invGetScanOK_merges_noU` and `invGetScanOK_merges_noOutside_noU`; section 9.
 
 `hU` (`UpUnlinkTreeOK`), a premise of the key tree's top theorem, is false
 as stated (`upUnlinkTreeOK_false`, SIS/Tree/PremisesFalse.lean): it speaks
@@ -520,6 +520,22 @@ hypothesis of the split's lemmas holds at the state with S'.
   the books' `CacheUnique` in place of the tree. The old three are still
   used by DelStepsGh.lean (the NoOutside route, step 6); when that route
   leaves them too, they can go (the close step).
-- **Left**: step 6 (`hU` out of `invGetScanOK_merges_noOutside`); the
-  premises `hchk5`, `htb`, `d4`, `l4`, `hMSF`, `hCoF` (section 8).
+- **Gated** 53a7f745 (gate-1, GATE PASS), reported to the coordinator.
+- **Step 6** (09:55): the NoOutside route without `hU`. DelStepsGh.lean:
+  `upCascOKHG_of_noU`, `upCascJ2OKHG_of_noU` (with `hHL`, which that route
+  still has); NoOutsideRun3.lean: the six lemmas that passed `hU` on, with
+  `_noU`; LatestTopNoOutside.lean: `N.invGetScanOK_merges_noU`; the old
+  ones are corollaries of their twins, as in step 5. The new top theorem
+  beside the old, which is unchanged: `invGetScanOK_merges_noOutside_noU`
+  (LatestTopMadeFor.lean), premises `hp`, `hth`, `hchk`, `d4`, `l4`, `hHL`,
+  `hMSF`, `hCoF`, `hCoU`. It still holds vacuously: `hHL` and `hCoU` are
+  false as stated. With step 6 nothing uses `writerWP_upCasc_root_j2`,
+  `writerWP_upCasc_below_delT` and `writerWP_upCasc_below_j2T` any more
+  (about 1,100 lines); the close step can remove them, and with them
+  `UpUnlinkTreeOK`'s other users.
+- **Left**: the premises `hchk5` (now delj's `hchk6`), `htb`, `d4`, `l4`,
+  `hMSF`, `hCoF` (section 8). delj's `invGetScanOK_merges_chk6`
+  (DelHoleRoot.lean) still has `hU`: applying `invGetScanOK_merges_noU` in
+  place of `invGetScanOK_merges` there removes it (the coordinator's merge of
+  the corollaries).
 
