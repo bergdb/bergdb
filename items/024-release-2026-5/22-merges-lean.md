@@ -1533,3 +1533,27 @@ in 024-12's (4) entry (step 4) and section 1's list.
   `delchk-check.lean.txt`, `heights-op-check.lean.txt`,
   `merge-hold-check.lean.txt`, `segfit-check.lean.txt`,
   `leb-probe.lean.txt`.
+
+**2026-11-15, prover "putinv2": three premises are false as stated.** `hCoU`
+(`CollapseUnlinkAllOK`), `hU` (`UpUnlinkTreeOK`) and `hHL`
+(`UpHolderLiveRunOK`) are false for every parameter set, at the first run
+(`collapseUnlinkAllOK_false`, `upUnlinkTreeOK_false`,
+`upHolderLiveRunOK_false`; `PremisesFalse.lean`). So the top theorems
+`invGetScanOK_merges` and `invGetScanOK_merges_noOutside` hold vacuously as
+they stand: no parameter set meets all their premises.
+
+* **Why.** Each premise speaks of every writer state that meets a local
+  invariant, not of the states that runs reach: `hCoU` of every state with
+  `CollGetInvF` and `SegDesc`, `hU` and `hHL` of every state with `PutInv`
+  and `UpLoopEnd`. Those invariants say nothing of the writer's books: of a
+  cached node's version before the transaction, of the next id, of the nodes
+  taken back. The tests ran the premises at the states that runs reach, so
+  they could not see this.
+* **The counterexamples.** Small states at time 1, over the first run's P:
+  - `hCoU`: the next id 0, and a cached space root whose version before the
+    transaction names its leaf 11. Every hypothesis holds; 11 is not below
+    the next id.
+  - `hU`: a space root over a leaf whose klong of the transaction deletes its
+    klong of before, which names the space root. At the loop's end the leaf
+    is unlinked back to that version, so the tree has a cycle.
+  - `hHL`: a cached node that nothing reaches names a node taken back.
