@@ -156,6 +156,19 @@ provers' branches and reports are in
   calls (DelHoleClimb.lean); `invGetScanOK_merges_chk8` replaces `_chk7`;
   `hchk8` has one check left, the merge's `checkFree`. W2's first task
   (DelInvJ) done.
+* 10:57 hu LANDED 3008ae57: `d4`'s pieces, additions only: the dead
+  bound (every node the writer reads at most theta dead klongs, well
+  formed) kept by every write of the delete but the merge itself
+  (DeadLocal.lean, DeadSplit.lean, DeadDelete.lean). Left for `d4`: the
+  merge, the merges' loop, the case lemmas; the plan for the rest and
+  for `l4` in 024-12, section 1. DeadSplit.lean takes about 7 minutes to
+  elaborate (for a close step).
+* 11:11 delj LANDED 079c89e5: the merge's `checkFree` proved at every
+  merge of the merges' loop from a call of afterDelete
+  (DelMergeUp.lean); `hchk` GONE. `invGetScanOK_merges_free`: hp, hth,
+  htb, d4, l4, hMSF, hCoF; its statement is `invGetScanOK_merges_noU`'s
+  without exactly `hchk5`; audited, on the standard axioms, the closure
+  unchanged with it. delj goes on with `hMSF` and `hCoF`.
 
 
 ## 8. Outcome
