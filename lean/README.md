@@ -67,7 +67,10 @@ parameter set: `hU`, `hHL` and `hCoU` speak of every writer state that meets a
 local invariant, which carries none of the writer's books
 (SIS/Tree/PremisesFalse.lean). So the theorem holds vacuously as it stands;
 their true forms and the change proposed are in bergdb 024-22, section 11.1
-(SIS/Tree/PremisesTrue.lean). Not
+(SIS/Tree/PremisesTrue.lean). `hCoU` is not needed: root collapse's two steps
+commute (`replaceRoot_linkFirst`, SIS/Tree/CollapseCommute.lean), and the joint
+route's top theorem `invGetScanOK_merges_joint6` (SIS/Tree/CollapseCommuteTop.lean)
+has neither `hCoU` nor `hHL` nor `hMF`. Not
 covered: the merges off; and the theorem does not give the abstract model's
 TREE or the height H that bounded startup asks of the tree: the tree's own
 invariant is proved inside it, but no theorem connects the two (bergdb 006-26,

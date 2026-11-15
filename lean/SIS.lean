@@ -90,5 +90,6 @@ import SIS.Tree.CollapseCommute
 import SIS.Tree.CollapseCommuteStep
 import SIS.Tree.CollapseCommuteJ2
 import SIS.Tree.CollapseCommuteRun
+import SIS.Tree.CollapseCommuteTop
 import SIS.Proof.TreeRoot
 import SIS.Proof.TreeInit

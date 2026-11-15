@@ -1697,8 +1697,10 @@ every theorem on propext, Classical.choice and Quot.sound only).
   cases `opJ2Case_delMergeRC`, `runTreeQ_of_mergesSC`, `opCaseOKJ_qdW_delMergeRLC`,
   `opCaseOKJ_treeInvRange_delMergeRLC`, each with `CollapseFitsOK` in place of
   `CollapseStepOK`.
-* The top theorem without `hCoU`: `invGetScanOK_merges_joint5C`
-  (`CollapseCommuteTop.lean`, on branch `proofs-coll` only, not on main, for
-  Frans): `invGetScanOK_merges_joint5` with the premise `hCoU` removed and nothing
-  added; the proof is joint5's with the four uses of `CollapseStepOK` replaced by
-  the lemmas above. It still has `hU`, false as stated.
+* The top theorem without `hCoU`: `invGetScanOK_merges_joint6`
+  (`CollapseCommuteTop.lean`), the joint route's current theorem in place of
+  `invGetScanOK_merges_joint5`: joint5 with the premise `hCoU` removed and nothing
+  added (a pure addition, no statement or premise definition changed). Premises:
+  `hp`, `hth`, `hchk5`, `htb`, `d4`, `l4`, `hU`, `hMSF`, `hCoF`. The proof is
+  joint5's with the four uses of `CollapseStepOK` replaced by the lemmas above. It
+  still has `hU`, false as stated, so it holds vacuously until `hU` is restated.
