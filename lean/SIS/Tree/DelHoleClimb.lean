@@ -875,35 +875,4 @@ theorem opDelChk7OKR_of_chk8 (p : Params) (R : Struct BVal → Time → Prop) (h
     (fun g h v hJv hbv => rwp_afterDeleteJ_true _ _ g h _ v ⟨hJv, hbv⟩)
     L n P w3 hL hn hnl hr03 hJ3 hp3' hlinkP hXD hlkX hne hall hLr
 
-/-! ## The top theorem with the merge's `checkFree` only -/
-
-/-- `invGetScanOK_merges_noU` with `hchk8` (`OpDelChk8OKL`) in place of `hchk5`:
-of `hchk`'s checks only the merge's `checkFree` is left (`opDelChk7OKR_of_chk8`,
-`opDelChk6OKR_of_chk7`, `opDelChk5OKR_of_chk6`). -/
-theorem invGetScanOK_merges_chk8 (p : Params) (hp : MergeParamsOK p)
-    (hth : 2 ≤ p.theta ∨ p.theta = 0)
-    (hchk8 : OpDelChk8OKL p)
-    (htb : TakeBelowFuelDelOK p)
-    (d4 : OpCaseOK p (RunOK p) (QDead p) DelMergeDOpenCase)
-    (l4 : OpCaseOK p (RunOK p) (QLive p) DelMergeOpenCase)
-    (hMSF : ∀ ts, MergeFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hCoF : ∀ ts, CollapseFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1)) :
-    InvPreserved p ∧ GetOK p ∧ ScanOK p ∧ LatestGetOK p ∧ LatestScanOK p := by
-  have hp' := hp
-  unfold MergeParamsOK at hp'
-  have hM4 := four_le_M p hp
-  have hm : p.merges = true := by
-    unfold Params.merges; simp only [decide_eq_true_eq]; omega
-  have hsa : 2 ≤ p.splitAbove := by omega
-  have hcap : 1 ≤ p.mergeMax := by omega
-  exact invGetScanOK_merges_noU p hp hth
-    (opDelChk5OKR_of_chk6 p _ (by omega) hsa hcap (fun _ _ h => h.1) (fun _ _ h => h.1.1)
-      (fun _ _ h => h.2.2.1.2.2.1)
-      (fun ts => mergeStepOK_of_segFits (ctxOf p ts) _ _ (Nat.succ_pos _) hcap hsa (hMSF ts)) hCoF
-      (opDelChk6OKR_of_chk7 p _ (by omega) hsa (fun _ _ h => h.1) (fun _ _ h => h.1.1)
-        (fun _ _ h => h.2.2.1.2.2.1) (fun _ _ h => h.2.2.1.2.2.2.1) htb
-        (opDelChk7OKR_of_chk8 p _ hM4 hsa hm (fun _ _ h => h.1) (fun _ _ h => h.1.1)
-          (fun _ _ h => h.2.2.1.2.2.1) (fun _ _ h => h.2.2.1.2.2.2.1) htb hchk8)))
-    htb d4 l4 hMSF hCoF
-
 end SIS.Tree
