@@ -1,6 +1,7 @@
 # 006-27 Day work, 15 November 2026
 
-Created 2026-11-15 by Frans Lundberg. Status: open. The plan for the
+Created 2026-11-15 by Frans Lundberg. Status: done (the outcome
+written 14:45; unattended until Monday 07:00 with nothing running). The plan for the
 coordinator's day of 2026-11-15 (coord-1115), a Sunday, unattended from
 09:00 until Monday 16 November, 07:00: the progress and the outcome. The
 way of working is 013-02's (the coordinator) and 013-01's (the
@@ -240,8 +241,75 @@ provers' branches and reports are in
   the induction's runs whose start has the first stratum's facts;
   `invGetScanOK_merges_noFit` its corollary. Left: step 8, `htbL` from
   the take-back sites.
+* 14:40 htb ended (its notes landed, 4fb21f03): step 8 needs a frame
+  argument over a delete's segment roots, too large for the usage left.
+  No new prover: the week at 90 %, under a point to the 91 % stop.
 
 
 ## 8. Outcome
 
-Not yet.
+Written 2026-11-15, 14:45; the provers stopped at a week of 90 %, by
+the usage; nothing runs until Frans is back.
+
+**The key tree's top theorem.** In the morning,
+`invGetScanOK_merges` (the joint route) had 9 premises, and held
+vacuously: `hU` is false as stated. The best theorem on `main` now is
+`invGetScanOK_merges_tbL` (DeadTop.lean): TP7, TP10 and TP11 for Java's
+parameters from 4 premises, `hp`, `hth`, `l4` and `htbL`. `hp` and `hth`
+are the parameters' conditions (`mergeParamsOK_java`, `theta_java`). No
+premise left is known to be false: `l4` (a delete keeps the live
+counts) and `htbL` (a node a delete takes back, found at its start, is
+below the fuel) are tested on runs with no failure. Each step was
+audited: standard axioms, the trusted closure unchanged, and the new
+theorem's statement the old one's without exactly the premises removed
+(`htbL` in place of `htb` adds its two definitions).
+
+| Premise | Gone by | Prover | Landed |
+|---|---|---|---|
+| `hU` | the split from a state with the bitmap set (025-04) | hu | 3f696db6 |
+| `hchk` | DelInvJ carried to afterDelete's calls | delj | 079c89e5 |
+| `d4` | the dead bound carried write by write | hu | d4cc7ca8 |
+| `hMSF`, `hCoF` | route P, a fuel above every node id (025-05) | fit | 86464c1c |
+| `htb` to `htbL` | the joint induction with no `htb` (025-05, step 7) | htb | 17498510 |
+
+All by consumer changes and additions: no existing statement changed
+(tops at 09:03, Frans's (a), renamed the top theorems). `hU` also left
+the NoOutside route (5bb18a72); that route still holds vacuously
+through `hHL` and `hCoU`. lean/ grew from 222,700 to 236,184 lines.
+Plans: 025-04 (done), 025-05 (part 1 done, part 2 at step 8).
+
+**Not done.** `l4`: not started; its plan in 024-12, section 1 (3,000
+lines or more by copies). `htbL`: 025-05's step 8, a frame argument
+over a delete's segment roots (025-05, section 8). The superseded
+corollaries (`invGetScanOK_merges_noU`, `_free`, `_free_noD4`,
+`_noFit`, ...) and about 1,100 unused lines stay for a close step.
+
+**night.sh** on 584c73af: 15 of 16 steps OK; the night tests failed
+on a damaged node whose start or reads did not end (028-14).
+
+**Usage.** The week from 82 % (08:54) to 90 % (14:40); five provers
+and two planning agents, Opus at xhigh.
+
+**For Frans to decide:**
+
+1. **`l4`'s route.** hu's option (b): `DelStepsCaseOK`'s obligations
+   carry an extra invariant (a statement change of definitions; also
+   removes `d4`'s `_D` copies), or copies (3,000 lines or more).
+   Recommended: a planning agent after the week's reset, which weighs
+   (b) against route P's generic families (they may give what (b)
+   needs with no statement change). 024-12, section 1.
+2. **`htbL`, step 8.** Go on after the reset (today's provers were
+   much faster than the plans' estimates), or keep `htb` as a tested
+   premise. Recommended: go on. 025-05, sections 6.2 and 8.
+3. **A close step to one top theorem per route** (decision 3 of
+   006-25): `invGetScanOK_merges_tbL` as the top theorem, the
+   superseded corollaries and unused lines removed; the gate's base
+   moves, as for tops (Frans's (a) this morning). Recommended: after
+   1 and 2, or now if the top theorem's name should carry today's
+   result.
+4. **What Frans reads** (006-24's decision 8, still open).
+   Recommended: a short update of 006-26 for today's theorem and its
+   two premises, after the reset.
+5. **028-14**, the damaged node whose start does not end: an
+   Investigate entry, low priority (best effort, 2026-11-12).
+   Recommended: one agent on it after the reset.
