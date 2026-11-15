@@ -169,6 +169,17 @@ provers' branches and reports are in
   htb, d4, l4, hMSF, hCoF; its statement is `invGetScanOK_merges_noU`'s
   without exactly `hchk5`; audited, on the standard axioms, the closure
   unchanged with it. delj goes on with `hMSF` and `hCoF`.
+* 11:13 delj LANDED c2bfeded (as 99e90e96): `ht_merge_of_J`, the
+  heights' walk through every merge of the merges' loop with no holder
+  premise; additions, toward `hMSF` and `hCoF`.
+* 11:17 hu LANDED e097d266 (as d4cc7ca8): `d4` GONE.
+  `invGetScanOK_merges_free_noD4`: hp, hth, htb, l4, hMSF, hCoF; its
+  statement is `invGetScanOK_merges_free`'s without exactly `d4`;
+  audited, on the standard axioms, the closure unchanged with it. By a
+  consumer change: the dead bound is carried write by write, through
+  the merge (from DelInvF's ranges) and the merges' loop, by copies of
+  the route lemmas; `d4` as stated (for RunOK runs) is not proved, as
+  its proof needs the induction's facts. hu goes on with `l4`.
 
 
 ## 8. Outcome
