@@ -232,6 +232,14 @@ provers' branches and reports are in
   CorruptStreamTester found a damaged node (its checksum made right)
   whose start or reads did not end in 60 s; it repeats alone. The other
   15 steps OK. Registered as 028-14 (Investigate); news.md entry.
+* 14:28 to 14:38 htb LANDED fa767afb, 5ab4313c, 17498510: 025-05's
+  step 7 done (the joint induction with no `htb`, no fit and no
+  heights' bound; `hchk` with no `htb`), and step 9's reduction:
+  `invGetScanOK_merges_tbL` (hp, hth, l4, htbL), where `htbL`
+  (`TakeBelowFuelDelSL`, two new definitions) is `htb` at one delete of
+  the induction's runs whose start has the first stratum's facts;
+  `invGetScanOK_merges_noFit` its corollary. Left: step 8, `htbL` from
+  the take-back sites.
 
 
 ## 8. Outcome
