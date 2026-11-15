@@ -66,6 +66,16 @@ TREE or the height H that bounded startup asks of the tree: the tree's own
 invariant is proved inside it, but no theorem connects the two (bergdb 006-26,
 section 5.3).
 
+Since 2026-11-15 the same is proved without `htb` for the runs in which no
+transaction makes a key node outside the level bounds G and H (bergdb
+025-03): `invGetScanOK_merges_noOutside` (SIS/Tree/LatestTopNoOutside.lean)
+gives TP7, TP10 and TP11 for every run within reach with `NoOutside`
+(SIS/Tree/NoOutsideBase.lean), from the other 9 premises. For a run of
+Java's, H is chosen to cover the highest moment of every transaction; on the
+conformance traces the trace's own H + 1 does (025-03, section 3.1). The run
+machinery is restated for such runs in namespace `SIS.Tree.N`
+(SIS/Tree/NoOutside*.lean).
+
 Since bergdb item 007 (2026-10-23) the model also has the first bound, T3:
 with any cost of a record and a startup pos policy that keeps up with a
 startup distance, the startup section is bounded (SIS/Bound.lean,
@@ -448,13 +458,16 @@ And `PhysRunOK` from the other assumptions (bergdb 024-09), each printing
     #print axioms SIS.Check.bspec_physRunOK
     #print axioms SIS.Check.bspec_tr_handles
 
-The key tree's top theorem (bergdb 024-12, section 1; SIS/Tree/LatestTop.lean)
-and Java's parameters the same way, the first two printing
+The key tree's top theorems (bergdb 024-12, section 1, and 025-03;
+SIS/Tree/LatestTop.lean, LatestTopNoOutside.lean) and Java's parameters the
+same way, the first three printing
 `[propext, Classical.choice, Quot.sound]`, `theta_java` without
 `Classical.choice`:
 
     import SIS.Tree.LatestTop
+    import SIS.Tree.LatestTopNoOutside
     #print axioms SIS.Tree.invGetScanOK_merges
+    #print axioms SIS.Tree.invGetScanOK_merges_noOutside
     #print axioms SIS.Tree.mergeParamsOK_java
     #print axioms SIS.Tree.theta_java
 
@@ -1433,7 +1446,9 @@ run):
 * The key tree (bergdb 024-12, section 1; 2026-11-14): TP7, TP10 and TP11,
   and so `LatestGetOK` and `LatestScanOK`, for `MergeParamsOK` and Java's
   parameters (`invGetScanOK_merges`, `mergeParamsOK_java`,
-  `theta_java`), from 10 named premises, which are open (Not done).
+  `theta_java`), from 10 named premises, which are open (Not done); and for
+  the runs with no key node outside G and H (`NoOutside`) from 9 of them,
+  without `htb` (`invGetScanOK_merges_noOutside`, bergdb 025-03; 2026-11-15).
 
 Checked by running: the `#guard`s of `lake build`, the random runs of
 `sistest`, `phystest` and `reclaimtest` (Build and run), and Java's traces

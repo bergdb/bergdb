@@ -96,8 +96,6 @@ structure Within (p : Params) (ts : List Tx) : Prop where
   w : SIS.Tree.Within p ts
   no : NoOutside p ts
 
-instance (p : Params) (ts : List Tx) : CoeOut (Within p ts) (SIS.Tree.Within p ts) := ⟨Within.w⟩
-
 theorem within_take (p : Params) (ts : List Tx) (hw : Within p ts) (k : Nat) :
     Within p (ts.take k) :=
   ⟨SIS.Tree.within_take p ts hw.w k, noOutside_take p ts hw.no k⟩

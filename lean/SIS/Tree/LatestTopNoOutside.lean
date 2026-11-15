@@ -110,7 +110,7 @@ theorem invGetScanOK_merges (p : Params) (hp : MergeParamsOK p)
     (putInvStateOK_of_cases p _ hRL' hRT' hRI' hT hPI hO)
     (rangeStateOK_of_cases p _ hRL' hRT' hRI' hT hPI hO)
     hfitQ
-    (fun ts tx hw hr => hMF ts tx hw (hR _ _ hr))
+    (fun ts tx hw hr => hMF ts tx hw.w (hR _ _ hr))
     (delStepsJ2OK_of_openR p _ (TakeS4 p) (by omega) hsa hRL' hRP' hRK'
       (fun _ _ _ h => h.1.1.1.1) (fun _ _ _ h => h.1.1.1.2) (fun _ _ _ h => h.1.1.2)
       (fun _ _ _ h => h.1.2) (fun _ _ _ h => h.2.1) (fun _ _ _ h => h.2.2) hRH' hht hU hHL hLC)

@@ -1,7 +1,7 @@
 # 025-03. The top theorem with no node outside the bounds (F1)
 
-Created 2026-11-14 by Frans Lundberg. Status: ready (accepted; to start
-after 025-02's names step has landed).
+Created 2026-11-14 by Frans Lundberg. Status: steps 1 and 2 done
+(2026-11-15); step 3 does not follow from NoOutside (section 3.3).
 
 F1 of 026-16, section 4.2. Frans, 2026-11-14, 13:46: "OK, good; I accept
 the recommendation F1."
@@ -165,3 +165,130 @@ closure's fingerprint and the top theorem's statement as the base's, the
 axiom audit, the trace checker's tests), and level2.sh quick passed in
 the clone. The checks of section 3.1 ran again with that commit's
 checker: the same outputs, on all 535 traces.
+
+
+### 3.2 Step 2: the theorem without `htb` (2026-11-15)
+
+**Proved**, on the standard axioms: `invGetScanOK_merges_noOutside`
+(lean/SIS/Tree/LatestTopNoOutside.lean). For the parameters of
+`MergeParamsOK`, theta 0 or at least 2, and the top theorem's premises but
+`htb`: after every run within reach in which no transaction makes a key node
+outside G and H, the invariants hold at every time, and every get and scan at
+every time returns what the reference map returns. The new definition
+(lean/SIS/Tree/NoOutsideBase.lean), the only new one that the statement uses:
+
+    def NoOutside (p : Params) (ts : List Tx) : Prop :=
+      ∀ j (h : j < ts.length) noops w,
+        execW p ts[j] (j + 1) (view (treeSpec p) (treeRun p (ts.take j)) j) = .ok (noops, w) →
+        w.outside = []
+
+In words: the writer's state at the end of each transaction has no node noted
+in `outside`. `newKey` notes there every key node it makes outside G and H,
+and nothing removes a note, also when the node is taken back; so every key
+node the run makes, also for a moment in an operation, is within G and H. The
+theorem's conclusion:
+
+    ∀ ts, Within p ts → NoOutside p ts →
+      (∀ t ≤ ts.length, InvOK p (treeRun p ts) t ∧ PointersOK (treeRun p ts)) ∧
+      (∀ t ≤ ts.length, ∀ key, keyWf key = true →
+        get p (viewOf (treeRun p ts)) t key = refGet ts t key) ∧
+      (∀ t ≤ ts.length, ∀ (req : ScanReq) (limit : Nat), req.wf = true →
+        (scan p (viewOf (treeRun p ts)) t req limit).map (fun kv => (kv.key, kv.h)) =
+          refScan ts t req limit)
+
+Its premises are `invGetScanOK_merges`'s, word for word, but `htb`: `hp`,
+`hth`, `hchk`, `d4`, `l4`, `hU`, `hHL`, `hMSF`, `hCoF`, `hCoU`, `hMF`.
+
+**What it says for Java.** By section 3.1, every traced run of Java's meets
+NoOutside with the trace's own H + 1, so the theorem speaks of these runs in
+the model at H + 1. That this model makes the same tree as at the trace's H
+is SameTree, tested on the traces (3.1), not proved (step 4).
+
+**Why the conclusion is per run.** `InvPreserved p`, `GetOK p` and the like
+speak of every run within reach of p. A NoOutside for every run of p would,
+by a reading of the rules, make the theorem empty: MF1's moment is not bound
+to a trace's H, and a run that grows the tree to height H can meet it there
+(a delete whose merges split the parents up to a new root, which the same
+delete takes back); not proved. So the theorem speaks of each run with
+NoOutside, and its conclusion is the bodies of `InvPreserved`,
+`GetOK` and `ScanOK` for that run. The latest time's get and scan are the case
+t = ts.length and are left out.
+
+**How it is proved.**
+
+- `htb` had one use, in `htStart_reachedU`: by the doomed transaction, every
+  height the writer knows at an operation's start is below the fuel. In a
+  run with NoOutside this is direct: no state of a transaction has a node
+  outside (a note stays to the end), and every height above H is noted there
+  (`HeightMarkedPred`), so every height is at most H
+  (`heights_le_H_of_noOutside`).
+- The run machinery's definitions (`OpCaseOK`, `StateOK`, `TxSegFitsOK`,
+  `DelStepsOK` and 32 more) speak of every transaction within reach. Their
+  run predicate R sees the state before a transaction, not the transaction,
+  so none of their parameters can say NoOutside. They are restated, in
+  namespace `SIS.Tree.N`, where `Within` is `N.Within`: within reach and
+  NoOutside. Their text is as in their own files; each has `ofOld`: the
+  definition for every run gives it for the runs of `N.Within`.
+- The 119 lemmas with a hypothesis over runs are restated in N with their
+  proofs as in their own files (NoOutsideRun1.lean to NoOutsideRun3.lean),
+  but `htStart_reachedU`, whose bound is from NoOutside, and the 11 that
+  passed `htb` on, which no longer take it. The top theorem's proof is as in
+  LatestTop.lean.
+- Every other lemma they use is used as it is, through a wrapper in N made by
+  `n_wrap` (NoOutsideWrap.lean): it takes `N.Within` where the lemma takes
+  `Within`, and gives a conclusion that is a restated definition in N's form.
+  88 wrappers, each a theorem whose proof applies the lemma.
+
+**The cost.** 6 new files, 4,000 lines; most of it the restated machinery, a
+copy of about 3,000 lines of lemmas over runs. The original files do not
+change, nor does anything proved.
+
+**The gate.** A copy of 025-02's gate (f1/thm/gate.sh): it also audits the
+new theorem, and it allows the trusted closure to differ from the base's by
+the line of `NoOutside` only. It differed by that line. Passed at `ad4e9cf5`
+(the step's commit with main merged), landed.
+
+**Decided by rule**, for Frans to overturn:
+
+- NoOutside by the state at each transaction's end, not at every state: the
+  same, since no note leaves `outside`, and plainer; by `execW`, a trusted
+  definition (MergeProps.lean).
+- The conclusion per run, as above; the latest time's get and scan left out.
+- The premises as the top theorem's, over every run, not only the runs with
+  NoOutside: the same text, as asked, though stronger than needed.
+- The machinery restated beside the original, not generalized in place:
+  nothing proved changes and the original theorem's proof stays as it was;
+  the price is the copy. A run machinery that speaks of a set of runs could
+  serve both theorems and remove most of the copy (an estimate, not tried).
+
+
+### 3.3 Step 3: `hMSF` and `hCoF` (2026-11-15)
+
+**They do not follow from NoOutside.** No theorem with fewer premises. Why:
+
+- `hMSF` and `hCoF` speak of every state that meets the reading's invariants
+  of the merges' loop and of root collapse (`DelInvF`, `CollGetInvF`): after
+  a merge, or a replaceRoot, the state fits the fuel. At the states that a run
+  with NoOutside reaches, the bound on the heights is direct, as in 3.2, also
+  inside an operation.
+- From the bound to the fuel (`segFits_of_seenHeight`) the heights' cache
+  (`HtCache`) is needed at the state after the merge: every node not taken
+  back has its live children one height below it and not taken back. The
+  reading's loop invariants carry no heights. The delete's heights' walk that
+  `DelFullFitsOKR` and `UpCascFitsOKR` use goes to the end of the upward loop
+  (with `hU` and `hHL`), not into the merges.
+- The walk through a merge exists (`ht_merge`), with a named premise, the
+  merge's holder (`MergeTailHoldOK`: where the merge takes a node back, no
+  kept node holds it). For the whole delete the walk is proved for its checked
+  copy (`putKvDelChk2`, whose merges check the holder), and `hchk` carries it
+  to `putKv` for the whole operation only, not to the states inside it.
+- So the two reduce at best to the heights carried through the merges' loop
+  and the collapse, with the merge's holder: a fact of the kind of `hHL` and
+  `hchk`, not given by NoOutside. 026-16 (section 4.2) expected corollaries
+  because the walk exists for the delete; it does, for the checked copy.
+
+**Two routes**, not tried: the reading of the delete proved over the checked
+copy, where the holder is checked, so that the walk is there at every state;
+or a weaker cache without "not taken back", which is enough for the fuel (a
+path of the writer's tree goes through nodes not taken back only) and which a
+merge might keep without the holder, with the walk redone for it.
