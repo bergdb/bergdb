@@ -199,6 +199,14 @@ provers' branches and reports are in
   (024-12, section 1).
 * 11:37 delj stopped early for the usage; resumed at 11:39 on the same
   task until the STOP file (91 %).
+* 11:45 delj ended (its plan note landed, 5522c8df): the bound across a
+  delete's steps has no local invariant (a root a step adds may be split
+  by a later step of the same delete), and carrying the heights to the
+  calls that use MergeStepOK is a restructure of the reading (about 100
+  lemmas in 42 files, or a checked copy); it recommended a planning
+  agent, as for `hU`.
+* 11:48 025-05 created (2ce7428a): the plan for `htb`, `hMSF` and
+  `hCoF`; planning agent hplan started (Opus xhigh, stop 14:00).
 
 
 ## 8. Outcome
