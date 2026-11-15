@@ -27,7 +27,9 @@ Current since 2026-11-15 (025-02, second close): `invGetScanOK_merges`
 (CollapseCommuteTop.lean; hp, hth, hchk5, htb, d4, l4, hU, hMSF, hCoF; formerly
 `invGetScanOK_merges_joint6`) and, for runs with `NoOutside`, `invGetScanOK_merges_noOutside`
 (LatestTopMadeFor.lean; formerly `invGetScanOK_merges_noOutside'`); older names in 025-02's
-name map.
+name map. Since 2026-11-15, 09:50 (025-04, route (b)): `invGetScanOK_merges_noU`
+(CollapseCommuteTop.lean), the joint route's theorem without `hU` (hp, hth, hchk5, htb, d4, l4,
+hMSF, hCoF); `invGetScanOK_merges` is its corollary.
 
 **What this means for BergDB (2026-11-14, latest).** The key tree's proofs reach their top
 theorem. For Java's own parameters (record format 7's merge thresholds and option 2's theta,
@@ -234,6 +236,10 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   `putInvG_of_book`), and the cascade's ranges from the tree. Left are:
   - `hU`, `UpUnlinkTreeOK`: after the upward loop, the writer's tree is a tree (putinv, the
     take-back; `UpUnlinkOK`, which adds the walk's ranges, gives it, `upUnlinkTreeOK_of`);
+    **not needed on the joint route since 2026-11-15** (025-04, route (b)): the stop node's
+    split runs the same from the state with its bitmap, whose tree is the tree at the delete's
+    start without the chain (`handleFull_swap`; `invGetScanOK_merges_noU`; 024-22,
+    section 11.1); still a premise of the NoOutside route's theorem;
   - `hHL`, `UpHolderLiveRunOK`: at the upward loop's end, no node not taken back holds, now
     or before the transaction, a node taken back (putinv; the rest of cost's `UpHolderOK` is
     proved, `upHolderOK_of_live`); with the loop keeping the heights' cache (proved,

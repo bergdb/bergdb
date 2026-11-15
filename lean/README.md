@@ -77,11 +77,19 @@ ranges, the fill, the heights' walk and the take-back's node facts
   the ranges, the heights and the take-back's node facts (the other checks
   proved, SIS/Tree/HeightsFill*.lean).
 
+`invGetScanOK_merges_noU` (the same file) is the top theorem without `hU`:
+premises `hp`, `hth`, `hchk5`, `htb`, `d4`, `l4`, `hMSF`, `hCoF`; the stop node's
+split runs the same from the state with its bitmap, a tree with no premise
+(`handleFull_swap`, SIS/Tree/StopSwap.lean; bergdb 025-04, route (b)), and
+`invGetScanOK_merges` is its corollary.
+
 `hU` is false as stated, for every parameter set, and so were `hHL` and `hCoU`:
 they speak of every writer state that meets a local invariant, which carries
-none of the writer's books (SIS/Tree/PremisesFalse.lean). So the top theorem
-holds vacuously as it stands; `hU`'s true form is open (024-22, section 11.1;
-025-04; SIS/Tree/PremisesTrue.lean has the true forms found). Not covered: the
+none of the writer's books (SIS/Tree/PremisesFalse.lean). So
+`invGetScanOK_merges` holds vacuously as it stands; `invGetScanOK_merges_noU`
+has no premise proved false, though `hMSF` and `hCoF` are believed false in
+their universal form (024-22, section 11.1; 025-04;
+SIS/Tree/PremisesTrue.lean has the true forms found). Not covered: the
 merges off; and the theorem does not give the abstract model's TREE or the
 height H that bounded startup asks of the tree: the tree's own invariant is
 proved inside it, but no theorem connects the two (bergdb 006-26, section 5.3).

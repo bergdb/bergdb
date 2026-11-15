@@ -1704,3 +1704,29 @@ every theorem on propext, Classical.choice and Quot.sound only).
   `hp`, `hth`, `hchk5`, `htb`, `d4`, `l4`, `hU`, `hMSF`, `hCoF`. The proof is
   joint5's with the four uses of `CollapseStepOK` replaced by the lemmas above. It
   still has `hU`, false as stated, so it holds vacuously until `hU` is restated.
+
+**2026-11-15, prover "hu": `hU` out of the joint route's top theorem**
+(025-04, route (b), steps 1 to 5; its section 9 has the details). `hU` was
+used where the upward delete's stop node is full for its bitmap and is
+split: the split's lemmas asked for a tree at the split's start, the state
+after the loop. The split reads of the stop node only its first time, its
+leaf flag and its version before the transaction; every klong it copies
+comes from the last version it is given. So it runs the same, to the same
+end state, from the state whose stop node has its bitmap as if it had room
+(`handleFull_swap`, `StopSwap.lean`), and that state's tree is the tree at
+the delete's start without the chain (`treeOK_up_tr`), with no premise. The
+three lemmas that used the tree (`writerWP_upCasc_root_j2`,
+`writerWP_upCasc_below_delT`, `writerWP_upCasc_below_j2T`) have twins that
+apply the split there and take the books' one-entry-per-id (`CacheUnique`)
+instead (`..._j2S`, `..._delS`, `StopSwapRoot.lean`, `StopSwapBelow.lean`);
+the stop node's obligations and the eight delete-step lemmas above them are
+proved without `hU` (`_noU`, `HeightsFillHolder.lean`; the old lemmas are
+their corollaries). The top theorem without `hU`: `invGetScanOK_merges_noU`
+(`CollapseCommuteTop.lean`), premises `hp`, `hth`, `hchk5`, `htb`, `d4`, `l4`,
+`hMSF`, `hCoF`; `invGetScanOK_merges` is now its corollary. No statement or
+premise changed. With `hU` gone, no premise of that theorem is known to be
+false; `hMSF` and `hCoF` are believed false in their universal form (cost2).
+The tree at the loop's end is still only tested (025-04, section 8).
+`UpUnlinkTreeOK` and its counterexample stay, with the NoOutside route's
+theorem, which still has `hU`, `hHL` and `hCoU` (025-04, section 7, step 6).
+
