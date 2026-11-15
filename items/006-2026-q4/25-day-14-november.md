@@ -1,6 +1,7 @@
 # 006-25 Day work, 14 November 2026
 
-Created 2026-11-14 by Frans Lundberg. Status: open. The plan for the
+Created 2026-11-14 by Frans Lundberg. Status: done (closed by coord-1114
+on 2026-11-15, 08:55; the rest handed to coord-1115). The plan for the
 coordinator's day of 2026-11-14 (coord-1114), a Saturday, and the time
 until Frans is back on Sunday 15 November, 10:00 at the earliest: the
 progress and the outcome. The way of working is 013-02's (the
@@ -127,6 +128,13 @@ between check-ins.
   * 2fee65cc to 3a95f624 `hchk` narrowed, four of its checks proved;
   * a4c328a0 to 25b03569 `hCoU` gone by root collapse's commutation
     (`invGetScanOK_merges_joint6`).
+* 08:27 Frans back. 08:33 his answers to section 7; agents hu-plan
+  (025-04, Fable at high) and tops (one top theorem per route).
+* 08:46 tops done on its branch (d6cedb46), not landed: the permission
+  system refused its edit of the gate's copy (the statement check's base
+  and 41 new closure lines of `hchk5`); for Frans (a, b or c).
+* 08:54 coord-1115 started; coord-1114 closing. Handed over: hu-plan's
+  result, tops, decision 2's prover (DelInvJ), decision 8's answer.
 
 ## 5. While Frans is away (13:58 to Sunday 10:00)
 
