@@ -30,19 +30,6 @@ open SIS SIS.Check
 
 /-! ## The tree's facts of the delete's invariant -/
 
-/-- `DelInv` with no fit and no reading: the writer's tree with its books and kinds. -/
-def DelInvT (c : Ctx) (base : View BVal) (KO : KindOracle) (BK : NodeId) (v : W) : Prop :=
-  PutInv c base v ∧ PutInvG c base v ∧ RangeOrder (wNode c.p base v) c.i v.top.rootKey ∧
-  InnerChildrenExist (wNode c.p base v) c.i v.top.rootKey ∧
-  (∃ B top0, PutBase c base B ∧ PutBook c B top0 v) ∧ Book BK c v ∧ KdInv KO BK v
-
-/-- `DelInv` at any fuel gives its tree's facts. -/
-theorem delInvT_of_delInv (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (f : Nat)
-    (KO : KindOracle) (BK : NodeId) (v : W) (h : DelInv c base w0 key f KO BK v) :
-    DelInvT c base KO BK v := by
-  obtain ⟨⟨hP, hG, hR, hICE, _, _, hbk⟩, hb, hk⟩ := h
-  exact ⟨hP, hG, hR, hICE, hbk, hb, hk⟩
-
 /-- No read asks the key `[]`. -/
 theorem nil_beq_of_keyWf (key' : Key) (hk : keyWf key' = true) : (([] : Key) == key') = false := by
   cases key' with
@@ -118,15 +105,6 @@ theorem writerWP_afterDelete_delAE (key : Key) (g h : Nat) (c : Ctx) (base : Vie
     v hu) (fun _ v' h' => ⟨u, h'⟩)
 
 /-! ## The take-back's facts -/
-
-/-- `DelInvJ` with no fit and no reading. -/
-def DelInvJT (c : Ctx) (base : View BVal) (KO : KindOracle) (BK B : NodeId) (v : W) : Prop :=
-  DelInvT c base KO BK v ∧ TakeJ2 c base B v ∧ B ≤ v.next
-
-theorem delInvJT_of_delInvJ (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (f : Nat)
-    (KO : KindOracle) (BK B : NodeId) (v : W) (h : DelInvJ c base w0 key f KO BK B v) :
-    DelInvJT c base KO BK B v :=
-  ⟨delInvT_of_delInv c base w0 key f KO BK v h.1, h.2.1, h.2.2⟩
 
 theorem delInvJA_self (c : Ctx) (base : View BVal) (KO : KindOracle) (BK B : NodeId) (v : W)
     (h : DelInvJT c base KO BK B v) : DelInvJA c base v [] KO BK B v :=

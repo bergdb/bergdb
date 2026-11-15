@@ -18,6 +18,15 @@ def DelInvJ (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (f : Nat) (KO : Ki
     (B : NodeId) (v : W) : Prop :=
   DelInv c base w0 key f KO BK v ∧ TakeJ2 c base B v ∧ B ≤ v.next
 
+/-- `DelInvJ` with no fit and no reading. -/
+def DelInvJT (c : Ctx) (base : View BVal) (KO : KindOracle) (BK B : NodeId) (v : W) : Prop :=
+  DelInvT c base KO BK v ∧ TakeJ2 c base B v ∧ B ≤ v.next
+
+theorem delInvJT_of_delInvJ (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (f : Nat)
+    (KO : KindOracle) (BK B : NodeId) (v : W) (h : DelInvJ c base w0 key f KO BK B v) :
+    DelInvJT c base KO BK B v :=
+  ⟨delInvT_of_delInv c base w0 key f KO BK v h.1, h.2.1, h.2.2⟩
+
 /-- `DelInvJ` at f while a condition C holds, with the fresh ids' books always
 (bergdb 025-05, route P; `DelInvW` with the take-back's facts). -/
 def DelInvJW (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (f : Nat) (C : W → Prop)

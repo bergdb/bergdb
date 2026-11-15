@@ -27,6 +27,19 @@ def DelInv (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (f : Nat) (KO : Kin
     (BK : NodeId) (v : W) : Prop :=
   DelInvF c base w0 key f v ∧ Book BK c v ∧ KdInv KO BK v
 
+/-- `DelInv` with no fit and no reading: the writer's tree with its books and kinds. -/
+def DelInvT (c : Ctx) (base : View BVal) (KO : KindOracle) (BK : NodeId) (v : W) : Prop :=
+  PutInv c base v ∧ PutInvG c base v ∧ RangeOrder (wNode c.p base v) c.i v.top.rootKey ∧
+  InnerChildrenExist (wNode c.p base v) c.i v.top.rootKey ∧
+  (∃ B top0, PutBase c base B ∧ PutBook c B top0 v) ∧ Book BK c v ∧ KdInv KO BK v
+
+/-- `DelInv` at any fuel gives its tree's facts. -/
+theorem delInvT_of_delInv (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (f : Nat)
+    (KO : KindOracle) (BK : NodeId) (v : W) (h : DelInv c base w0 key f KO BK v) :
+    DelInvT c base KO BK v := by
+  obtain ⟨⟨hP, hG, hR, hICE, _, _, hbk⟩, hb, hk⟩ := h
+  exact ⟨hP, hG, hR, hICE, hbk, hb, hk⟩
+
 /-- Obligation (StepFits for a merge at a fuel f, the take-back's reached nodes):
 a merge of the loop, from a state inside a delete with the key access path down
 to it (`PathOK`), keeps its reached nodes untaken, and the state after it fits f.

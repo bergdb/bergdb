@@ -17,17 +17,12 @@ theorem segFits_mono (N : NodeId → Option KNode) (t : Time) (d d' : Nat) (r : 
     (h : SegFits N t d r) (hd : d ≤ d') : SegFits N t d' r :=
   fun x hx => SegDepthLe.mono N t d x (h x hx) d' hd
 
-/-- `DelInvF` at the state v after a delete's bitmap in the key's leaf L with
-room, from the state w between operations (PutInv, the walk's ranges, inner
-children, the fuel premise) and the books at v. -/
-theorem delInvF_after_bitmap (c : Ctx) (base : View BVal) (B : NodeId) (top0 : Top)
-    (hB : PutBase c base B) (w w3 v : W) (pre : List Nat) (cv : Nat) (rk L : NodeId) (n : KNode)
+/-- The tree's facts of `delInvF_after_bitmap` (`PutInv`, `PutInvG`, the ranges, the
+inner children), with no fit at the delete's start (bergdb 025-05, step 7). -/
+theorem delInvFT_after_bitmap (c : Ctx) (base : View BVal) (B : NodeId) (top0 : Top)
+    (hB : PutBase c base B) (w w3 v : W) (cv : Nat) (L : NodeId) (n : KNode)
     (hI : PutInv c base w) (hR : RangeOrder (wNode c.p base w) c.i w.top.rootKey)
     (hICE : InnerChildrenExist (wNode c.p base w) c.i w.top.rootKey)
-    (hF : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey)
-    (hkey : keyWf (pre ++ [cv]) = true)
-    (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
-    (hvisL : (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk)
     (hn : wNode c.p base w L = some n) (hnl : n.leaf = true)
     (hr03 : ReadsAs c.p base w w3) (hLt : w.taken.contains L = false)
     (h1 : v.taken = w3.taken) (h2 : v.top = w3.top) (h3 : v.vals = w3.vals)
@@ -36,11 +31,10 @@ theorem delInvF_after_bitmap (c : Ctx) (base : View BVal) (B : NodeId) (top0 : T
         (∀ c', n'.live.lookup c' = if c' == cv then none else n.live.lookup c') ∧
         BitmapOf n n' c.i cv)
     (hbv : PutBook c B top0 v) :
-    DelInvF c base w (pre ++ [cv]) (c.p.fuel + 1) v := by
+    PutInv c base v ∧ PutInvG c base v ∧ RangeOrder (wNode c.p base v) c.i v.top.rootKey ∧
+      InnerChildrenExist (wNode c.p base v) c.i v.top.rootKey := by
   obtain ⟨n', hnodes, hl', hwf', ht', hlk', _⟩ := h7
-  have hfuel : 1 ≤ c.p.fuel := by unfold Params.fuel; omega
   have hnt := hI.times L n hn
-  have hnwf := hI.wf L n hn
   have hLt3 : w3.taken.contains L = false := by rw [hr03.2.2.1]; exact hLt
   have hN : ∀ y, wNode c.p base v y = if y = L then some n' else wNode c.p base w y := by
     intro y
@@ -85,14 +79,7 @@ theorem delInvF_after_bitmap (c : Ctx) (base : View BVal) (B : NodeId) (top0 : T
       exact ReachS.step y n cc z hy hn (hsub cc z hz)
     · rw [hvo y hyx] at hyn
       exact ReachS.step y yn cc z hy hyn hz
-  -- the fuel premise
-  have hF1 : SegFits (wNode c.p base v) c.i (c.p.fuel - 1) v.top.rootKey :=
-    segFits_transfer _ _ c.i _ _ _ hF hRS (fun u un' _ hun' hl => by
-      by_cases hu : u = L
-      · subst hu; rw [hvL] at hun'; cases hun'; rw [hl', hnl] at hl; cases hl
-      · rw [hvo u hu] at hun'
-        exact ⟨un', hun', hl, fun c' y hy => ⟨c', hy⟩⟩)
-  refine ⟨hPI, hG, ?_, ?_, ?_, ?_, B, top0, hB, hbv⟩
+  refine ⟨hPI, hG, ?_, ?_⟩
   · rw [htop]
     exact rangeOrder_shrink _ _ c.i _ L n n' hR hn hN hl' hsub
   · intro y yn cc z hy hyn hyl hz
@@ -105,6 +92,70 @@ theorem delInvF_after_bitmap (c : Ctx) (base : View BVal) (B : NodeId) (top0 : T
       by_cases hzx : z = L
       · exact ⟨n', by rw [hzx]; exact hvL⟩
       · exact ⟨m, by rw [hvo z hzx]; exact hm⟩
+
+/-- `DelInvF` at the state v after a delete's bitmap in the key's leaf L with
+room, from the state w between operations (PutInv, the walk's ranges, inner
+children, the fuel premise) and the books at v. -/
+theorem delInvF_after_bitmap (c : Ctx) (base : View BVal) (B : NodeId) (top0 : Top)
+    (hB : PutBase c base B) (w w3 v : W) (pre : List Nat) (cv : Nat) (rk L : NodeId) (n : KNode)
+    (hI : PutInv c base w) (hR : RangeOrder (wNode c.p base w) c.i w.top.rootKey)
+    (hICE : InnerChildrenExist (wNode c.p base w) c.i w.top.rootKey)
+    (hF : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey)
+    (hkey : keyWf (pre ++ [cv]) = true)
+    (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
+    (hvisL : (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk)
+    (hn : wNode c.p base w L = some n) (hnl : n.leaf = true)
+    (hr03 : ReadsAs c.p base w w3) (hLt : w.taken.contains L = false)
+    (h1 : v.taken = w3.taken) (h2 : v.top = w3.top) (h3 : v.vals = w3.vals)
+    (h7 : ∃ n', v.nodes = upsert w3.nodes L n' ∧ n'.leaf = n.leaf ∧ klongsWf n'.ks = true ∧
+        (∀ s, Klong.time s ∈ n'.ks → s ≤ c.i) ∧
+        (∀ c', n'.live.lookup c' = if c' == cv then none else n.live.lookup c') ∧
+        BitmapOf n n' c.i cv)
+    (hbv : PutBook c B top0 v) :
+    DelInvF c base w (pre ++ [cv]) (c.p.fuel + 1) v := by
+  obtain ⟨n', hnodes, hl', hwf', ht', hlk', hbm⟩ := h7
+  have hfuel : 1 ≤ c.p.fuel := by unfold Params.fuel; omega
+  have hnt := hI.times L n hn
+  have hnwf := hI.wf L n hn
+  have hLt3 : w3.taken.contains L = false := by rw [hr03.2.2.1]; exact hLt
+  have hN : ∀ y, wNode c.p base v y = if y = L then some n' else wNode c.p base w y := by
+    intro y
+    rw [← hr03.1]
+    by_cases hy : y = L
+    · subst hy
+      simp only [wNode, h1, hLt3, Bool.false_eq_true, ↓reduceIte, hnodes, lookup_upsert]
+    · simp only [wNode, h1, hnodes, lookup_upsert, hy, ↓reduceIte]
+  have hvL : wNode c.p base v L = some n' := by rw [hN L]; simp
+  have hvo : ∀ y, y ≠ L → wNode c.p base v y = wNode c.p base w y := by
+    intro y hy; rw [hN y]; simp [hy]
+  have htop : v.top = w.top := by rw [h2, hr03.2.1]
+  have htk : v.taken = w.taken := by rw [h1, hr03.2.2.1]
+  have hvals : v.vals = w.vals := by rw [h3, hr03.2.2.2.1]
+  have hlive := liveAt_iff_of_delete_lookup n n' c.i cv hnt ht' hlk'
+  have hsub : ∀ c' z, (c', z) ∈ n'.liveAt c.i → (c', z) ∈ n.liveAt c.i :=
+    fun c' z h => ((hlive c' z).mp h).1
+  obtain ⟨hPI, hG, hRv, hICEv⟩ := delInvFT_after_bitmap c base B top0 hB w w3 v cv L n hI hR hICE hn hnl
+    hr03 hLt h1 h2 h3 ⟨n', hnodes, hl', hwf', ht', hlk', hbm⟩ hbv
+  -- reach only shrinks
+  have hRS : ∀ u, ReachS (wNode c.p base v) c.i v.top.rootKey u →
+      ReachS (wNode c.p base w) c.i w.top.rootKey u := by
+    rw [htop]
+    apply reachS_closed _ _ _ (fun y => ReachS (wNode c.p base w) c.i w.top.rootKey y) ReachS.root
+    intro y yn cc z hy hyn hz
+    by_cases hyx : y = L
+    · subst hyx
+      rw [hvL] at hyn; cases hyn
+      exact ReachS.step y n cc z hy hn (hsub cc z hz)
+    · rw [hvo y hyx] at hyn
+      exact ReachS.step y yn cc z hy hyn hz
+  -- the fuel premise
+  have hF1 : SegFits (wNode c.p base v) c.i (c.p.fuel - 1) v.top.rootKey :=
+    segFits_transfer _ _ c.i _ _ _ hF hRS (fun u un' _ hun' hl => by
+      by_cases hu : u = L
+      · subst hu; rw [hvL] at hun'; cases hun'; rw [hl', hnl] at hl; cases hl
+      · rw [hvo u hu] at hun'
+        exact ⟨un', hun', hl, fun c' y hy => ⟨c', hy⟩⟩)
+  refine ⟨hPI, hG, hRv, hICEv, ?_, ?_, B, top0, hB, hbv⟩
   · simp only [Nat.add_sub_cancel]
     exact segFits_mono _ _ _ _ _ hF1 (by omega)
   · intro key' hk'

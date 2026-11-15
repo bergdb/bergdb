@@ -205,13 +205,11 @@ theorem delFullRootJ2OK_ctx (p : Params) (hsa2 : 2 ≤ p.splitAbove) (ts : List 
       · exact Or.inl ⟨cc, (hiff cc u).mpr ⟨hm, hc⟩⟩)
 
 set_option maxHeartbeats 3200000 in
-/-- `DelFullRootStepOK`: the reading's facts after a delete into a full leaf that
-is the space root, from the root's split (`writerWP_delRootSplit_range` for the
-tree, the reached nodes and the ranges; `writerWP_handleFull_rootVReach` for the
-reading), for the transaction after every run. -/
-theorem delFullRootStepOK_ctx (p : Params) (ts : List Tx) :
-    DelFullRootStepOK (ctxOf p ts) (viewOf (treeRun p ts)) := by
-  intro w hI hG hRO hF hsa2 X K Nn hP pre cv rk hkey hrk hvisL huniq hnl hne hfull
+/-- `DelFullRootStepOKT`: `delFullRootStepOK_ctx` with no fit at the start, the
+reading where the start fits (bergdb 025-05, step 7). -/
+theorem delFullRootStepOKT_ctx (p : Params) (ts : List Tx) :
+    DelFullRootStepOKT (ctxOf p ts) (viewOf (treeRun p ts)) := by
+  intro w hI hG hRO hsa2 X K Nn hP pre cv rk hkey hrk hvisL huniq hnl hne hfull
   have hvc := viewCoherent_ctxOf p ts
   obtain ⟨_, _, hS2, _, h0⟩ := hP
   generalize hc : ctxOf p ts = c at *
@@ -294,16 +292,16 @@ theorem delFullRootStepOK_ctx (p : Params) (ts : List Tx) :
       exact ReachS.step _ _ cc z hy hwL (hsub cc z hz)
     · rw [hvo y hyx] at hyn
       exact ReachS.step y yn cc z hy hyn hz
-  have hF3 : SegFits (wNode c.p base w3) c.i (c.p.fuel - 1) w3.top.rootKey :=
-    segFits_transfer _ _ c.i _ _ _ hF hRS (fun u un' _ hun' hl => by
+  have hF3 : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey → SegFits (wNode c.p base w3) c.i (c.p.fuel - 1) w3.top.rootKey :=
+    fun hF => segFits_transfer _ _ c.i _ _ _ hF hRS (fun u un' _ hun' hl => by
       by_cases hu : u = L
       · subst hu; rw [hvL] at hun'; cases hun'; rw [hl', hnl] at hl; cases hl
       · rw [hvo u hu] at hun'
         exact ⟨un', hun', hl, fun c' y hy => ⟨c', hy⟩⟩)
-  have hread3 : ∀ key', keyWf key' = true →
+  have hread3 : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey → ∀ key', keyWf key' = true →
       wGetAt c.p c.i base w3 (c.p.fuel + 1) key' =
         if pre ++ [cv] == key' then none else wGetAt c.p c.i base w (c.p.fuel + 1) key' := by
-    intro key' hk'
+    intro hF key' hk'
     have hwf3 : ∀ x xn, ReachS (wNode c.p base w3) c.i w3.top.rootKey x → wNode c.p base w3 x = some xn →
         klongsWf xn.ks = true := by
       intro x xn _ h
@@ -312,7 +310,7 @@ theorem delFullRootStepOK_ctx (p : Params) (ts : List Tx) :
       · rw [hvo x hx] at h; exact hI.wf x xn h
     have hwfw : ∀ x xn, ReachS (wNode c.p base w) c.i w.top.rootKey x → wNode c.p base w x = some xn →
         klongsWf xn.ks = true := fun x xn _ h => hI.wf x xn h
-    rw [wGetAt_eq_wGet c base w3 _ (by omega) hwf3 hF3, wGetAt_eq_wGet c base w _ (by omega) hwfw hF]
+    rw [wGetAt_eq_wGet c base w3 _ (by omega) hwf3 (hF3 hF), wGetAt_eq_wGet c base w _ (by omega) hwfw hF]
     obtain ⟨hown, hother⟩ := wGet_leaf_change_seg c.p base c.i w w3 L pre cv rk n last
       hfuel h3top (fun x hx => (hvo x hx).symm) hwL hvL hnl (by rw [hl']; exact hnl)
       (fun c' hc' => by
@@ -332,7 +330,7 @@ theorem delFullRootStepOK_ctx (p : Params) (ts : List Tx) :
   refine writerWP_mono (writerWP_and (writerWP_and hrange hlevel) hnext) ?_
   rintro _ v ⟨⟨⟨hTv, hreachv, hRv⟩, ⟨_, htv, hvv, _, _, hRead, _⟩⟩, hnv⟩
   refine ⟨hTv, htv, hvv, hnv, hreachv, hRv, ?_⟩
-  intro hFv key' hk'
+  intro hF hFv key' hk'
   have hVal : ∀ z, (w.next ≤ z ∨ z = L) → wValue base v z = none := by
     intro z hz
     rw [wValue_congr' base v w htv hvv]
@@ -353,6 +351,14 @@ theorem delFullRootStepOK_ctx (p : Params) (ts : List Tx) :
     rw [hR, hN3u, h3top, hV3, ← wValue_congr' base v w htv hvv, hleq]
     rfl
   rw [h1]
-  exact hread3 key' hk'
+  exact hread3 hF key' hk'
 
-end SIS.Tree
+
+
+/-- `DelFullRootStepOK`: the reading's facts after a delete into a full leaf that
+is the space root, from the root's split (`writerWP_delRootSplit_range` for the
+tree, the reached nodes and the ranges; `writerWP_handleFull_rootVReach` for the
+reading), for the transaction after every run. -/
+theorem delFullRootStepOK_ctx (p : Params) (ts : List Tx) :
+    DelFullRootStepOK (ctxOf p ts) (viewOf (treeRun p ts)) :=
+  delFullRootStepOK_of_T _ _ (delFullRootStepOKT_ctx p ts)end SIS.Tree

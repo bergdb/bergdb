@@ -15,6 +15,59 @@ namespace SIS.Tree
 open SIS SIS.Check
 
 set_option maxHeartbeats 1600000 in
+/-- The tree's facts of `writerWP_appendDeleteKlong_full_delH` (`DelInvT`), with no fit
+at the delete's start and no heights (bergdb 025-05, step 7). The old lemma keeps
+its proof: it takes the root's step with the fit (`DelFullRootStepOK`) for every
+context, this one the root's step without it (`DelFullRootStepOKT`). -/
+theorem writerWP_appendDeleteKlong_full_delT (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (KO : KindOracle) (BK : NodeId) (hRoot : DelFullRootStepOKT c base) (hsa2 : 2 ≤ c.p.splitAbove)
+    (hv : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
+    (hICEk : ICEFromKinds c base KO BK)
+    (w : W) (pre : List Nat) (cv : Nat) (rk B : NodeId) (top0 : Top)
+    (hB : PutBase c base B) (hI : PutInv c base w) (hRO : RangeOrder (wNode c.p base w) c.i w.top.rootKey)
+    (hkey : keyWf (pre ++ [cv]) = true)
+    (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
+    (L : NodeId) (n : KNode) (P : List (Option Nat × NodeId)) (w3 : W)
+    (hL : (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk) (hn : wNode c.p base w L = some n)
+    (hnl : n.leaf = true) (hne : bitsUnion n.lastBitmap (n.bitsOf cv) ≠ n.lastBitmap)
+    (hfull : ¬ DelRoom c cv n)
+    (hr03 : ReadsAs c.p base w w3) (hJ3 : KdJ c B top0 KO BK w3)
+    (hp3' : w3.path = (none, w.top.rootKey) :: P)
+    (hlinkP : LinkedFrom (wNode c.p base w) c.i w.top.rootKey P)
+    (hXD : nodeAt w.top.rootKey P P.length = L)
+    (hlkX : ∀ i, i ≤ P.length → w3.nodes.lookup (nodeAt w.top.rootKey P i) =
+      some ((wNode c.p base w (nodeAt w.top.rootKey P i)).getD n)) :
+    WriterWP (appendDeleteKlong L P.length cv) c w3 (fun _ v => DelInvT c base KO BK v) := by
+  have hPOK := pathOK_of_toLeaf c base w w3 P n hI hr03 hp3' hlinkP hlkX
+  have hNn : (wNode c.p base w (nodeAt w.top.rootKey P P.length)).getD ⟨true, []⟩ = n := by
+    rw [hXD, hn]; rfl
+  have hI3 := putInv_of_readsAs c base w w3 hI hr03
+  have hG3 := putInvG_of_book c base B top0 w3 hB hJ3.1
+  have hRO3 : RangeOrder (wNode c.p base w3) c.i w3.top.rootKey := by rw [hr03.1, hr03.2.1]; exact hRO
+  obtain ⟨a, hpx⟩ := path_last_of_toLeaf w w3 P L hp3' hXD
+  have hinv := writerWP_appendDeleteKlong_full_inv_anyT c base hvc hRoot w3 hI3 hG3 hRO3 hsa2 P.length _ _ _
+    hPOK pre cv rk hkey (by rw [hr03.1, hr03.2.1]; exact hrk)
+    (by show (nodeAt w.top.rootKey P P.length, cv) ∈ _; rw [hXD, hr03.1]; exact hL)
+    (by rw [hr03.1, hr03.2.1]; exact hI.keyUniq pre cv rk hkey hrk)
+    (by rw [hNn]; exact hnl) (by rw [hNn]; exact hne) (by rw [hNn]; exact hfull)
+  simp only [hXD] at hinv
+  refine writerWP_mono (writerWP_and (writerWP_and hinv
+    (putBook_appendDeleteKlong L _ cv c base B top0 hB w3 hJ3.1))
+    (kd_appendDeleteKlong KO BK L P.length cv c w3 hv hk hJ3.2.1 hJ3.2.2 a hpx)) ?_
+  rintro _ v ⟨⟨⟨hTv, htv, _, _, hreachv, hRv, _⟩, hbv⟩, hbk, hik, _⟩
+  have hun : ∀ y, TReach (wNode c.p base v) c.i v.top.rootKey y → v.taken.contains y = false := by
+    intro y hy
+    rw [htv]
+    rcases hreachv y hy with h | h
+    · exact hI3.untaken y (tReach_reachS _ _ _ _ h)
+    · cases h' : w3.taken.contains y with
+      | false => rfl
+      | true => have := hI3.ids.2.2.1 y h'; omega
+  obtain ⟨hPv, hGv⟩ := putInv_after_step c base v B top0 hB hbv hTv
+    (fun y hy => hun y (reachS_tReach _ _ _ _ hy)) hRv
+  exact ⟨hPv, hGv, hRv, hICEk v hbk hik hun, ⟨B, top0, hB, hbv⟩, hbk, hik⟩
+
+set_option maxHeartbeats 1600000 in
 /-- The delete's invariant with the kinds' books (`DelInv`) after the bitmap
 into a full leaf at the walk's end, from the state w between operations: the
 reading's facts (`writerWP_appendDeleteKlong_full_inv_any`), the fuel premise

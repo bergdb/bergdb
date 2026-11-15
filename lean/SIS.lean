@@ -104,3 +104,4 @@ import SIS.Tree.DeadDelete
 import SIS.Tree.DeadTop
 import SIS.Tree.FuelNext
 import SIS.Tree.Stratum
+import SIS.Tree.StratumSteps

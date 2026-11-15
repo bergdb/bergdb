@@ -72,14 +72,12 @@ theorem writerWP_appendDeleteKlong_full_of (x : NodeId) (d cv : Nat) (n : KNode)
       · intro _; exact hhf false _
 
 set_option maxHeartbeats 3200000 in
-/-- A delete's bitmap into the full leaf X (D + 1) at the end of the key access
-path (D + 1 ≥ 1): the writer's tree after it is a tree whose reached nodes were
-reached or are new, with the walk's ranges, the taken ids and the values kept,
-and when it fits the fuel it reads as before with the key deleted. -/
-theorem writerWP_appendDeleteKlong_full_inv (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+/-- `writerWP_appendDeleteKlong_full_inv` with no fit at the start: the tree's facts
+with none, the reading where the start fits p.fuel - 1 (bergdb 025-05, step 7). -/
+theorem writerWP_appendDeleteKlong_full_invT (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (w : W) (hI : PutInv c base w) (hG : PutInvG c base w)
     (hRO : RangeOrder (wNode c.p base w) c.i w.top.rootKey)
-    (hF : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey) (hsa2 : 2 ≤ c.p.splitAbove)
+    (hsa2 : 2 ≤ c.p.splitAbove)
     (D : Nat) (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode) (hP : PathOK c w (D + 1) X K Nn)
     (pre : List Nat) (cv : Nat) (rk : NodeId) (hkey : keyWf (pre ++ [cv]) = true)
     (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
@@ -97,7 +95,8 @@ theorem writerWP_appendDeleteKlong_full_inv (c : Ctx) (base : View BVal) (hvc : 
       (∀ z, TReach (wNode c.p base v) c.i v.top.rootKey z → TReach (wNode c.p base w) c.i w.top.rootKey z ∨
         w.next ≤ z) ∧
       RangeOrder (wNode c.p base v) c.i v.top.rootKey ∧
-      (SegFits (wNode c.p base v) c.i c.p.fuel v.top.rootKey → ∀ key', keyWf key' = true →
+      (SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey →
+        SegFits (wNode c.p base v) c.i c.p.fuel v.top.rootKey → ∀ key', keyWf key' = true →
         wGetAt c.p c.i base v (c.p.fuel + 1) key' =
           if pre ++ [cv] == key' then none else wGetAt c.p c.i base w (c.p.fuel + 1) key')) := by
   have hP' := hP
@@ -172,17 +171,17 @@ theorem writerWP_appendDeleteKlong_full_inv (c : Ctx) (base : View BVal) (hvc : 
       exact ReachS.step _ _ cc z hy (hw (D + 1) (Nat.le_refl _)) (hsub cc z hz)
     · rw [hvo y hyx] at hyn
       exact ReachS.step y yn cc z hy hyn hz
-  have hF3 : SegFits (wNode c.p base w3) c.i (c.p.fuel - 1) w3.top.rootKey :=
-    segFits_transfer _ _ c.i _ _ _ hF hRS (fun u un' _ hun' hl => by
+  have hF3 : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey → SegFits (wNode c.p base w3) c.i (c.p.fuel - 1) w3.top.rootKey :=
+    fun hF => segFits_transfer _ _ c.i _ _ _ hF hRS (fun u un' _ hun' hl => by
       by_cases hu : u = X (D + 1)
       · subst hu; rw [hvL] at hun'; cases hun'; rw [hl', hnl] at hl; cases hl
       · rw [hvo u hu] at hun'
         exact ⟨un', hun', hl, fun c' y hy => ⟨c', hy⟩⟩)
   -- the reading of the virtual state
-  have hread3 : ∀ key', keyWf key' = true →
+  have hread3 : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey → ∀ key', keyWf key' = true →
       wGetAt c.p c.i base w3 (c.p.fuel + 1) key' =
         if pre ++ [cv] == key' then none else wGetAt c.p c.i base w (c.p.fuel + 1) key' := by
-    intro key' hk'
+    intro hF key' hk'
     have hwf3 : ∀ x xn, ReachS (wNode c.p base w3) c.i w3.top.rootKey x → wNode c.p base w3 x = some xn →
         klongsWf xn.ks = true := by
       intro x xn _ h
@@ -191,7 +190,7 @@ theorem writerWP_appendDeleteKlong_full_inv (c : Ctx) (base : View BVal) (hvc : 
       · rw [hvo x hx] at h; exact hI.wf x xn h
     have hwfw : ∀ x xn, ReachS (wNode c.p base w) c.i w.top.rootKey x → wNode c.p base w x = some xn →
         klongsWf xn.ks = true := fun x xn _ h => hI.wf x xn h
-    rw [wGetAt_eq_wGet c base w3 _ (by omega) hwf3 hF3, wGetAt_eq_wGet c base w _ (by omega) hwfw hF]
+    rw [wGetAt_eq_wGet c base w3 _ (by omega) hwf3 (hF3 hF), wGetAt_eq_wGet c base w _ (by omega) hwfw hF]
     obtain ⟨hown, hother⟩ := wGet_leaf_change_seg c.p base c.i w w3 (X (D + 1)) pre cv rk (Nn (D + 1)) last
       hfuel h3top (fun x hx => (hvo x hx).symm) (hw (D + 1) (Nat.le_refl _)) hvL hnl (by rw [hl']; exact hnl)
       (fun c' hc' => by
@@ -291,7 +290,7 @@ theorem writerWP_appendDeleteKlong_full_inv (c : Ctx) (base : View BVal) (hvc : 
   refine writerWP_mono (writerWP_and hrangeG hlevel) ?_
   rintro _ v ⟨⟨hTv, ⟨_, htv, _, hnv, hvv⟩, _, hreachv, hRv⟩, ⟨_, _, _, _, _, hRead, _⟩⟩
   refine ⟨hTv, htv, hvv, hnv, hreachv, hRv, ?_⟩
-  intro hFv key' hk'
+  intro hF hFv key' hk'
   have hVal : ∀ z, (w.next ≤ z ∨ ∃ i, 0 ≤ i ∧ i ≤ D + 1 ∧ z = X i) → wValue base v z = none := by
     intro z hz
     rw [wValue_congr' base v w htv hvv]
@@ -312,7 +311,39 @@ theorem writerWP_appendDeleteKlong_full_inv (c : Ctx) (base : View BVal) (hvc : 
     rw [hR, hN3u, h3top, hV3, ← wValue_congr' base v w htv hvv, hleq]
     rfl
   rw [h1]
-  exact hread3 key' hk'
+  exact hread3 hF key' hk'
+
+/-- A delete's bitmap into the full leaf X (D + 1) at the end of the key access
+path (D + 1 ≥ 1): the writer's tree after it is a tree whose reached nodes were
+reached or are new, with the walk's ranges, the taken ids and the values kept,
+and when it fits the fuel it reads as before with the key deleted. -/
+theorem writerWP_appendDeleteKlong_full_inv (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (w : W) (hI : PutInv c base w) (hG : PutInvG c base w)
+    (hRO : RangeOrder (wNode c.p base w) c.i w.top.rootKey)
+    (hF : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey) (hsa2 : 2 ≤ c.p.splitAbove)
+    (D : Nat) (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode) (hP : PathOK c w (D + 1) X K Nn)
+    (pre : List Nat) (cv : Nat) (rk : NodeId) (hkey : keyWf (pre ++ [cv]) = true)
+    (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
+    (hvisL : (X (D + 1), cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk)
+    (huniq : ∀ key' x m, keyWf key' = true →
+      (x, cv) ∈ fromVisits (wNode c.p base w) c.i c.p.fuel key' w.top.rootKey →
+      (x, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      wNode c.p base w x = some m → m.leaf = true → key' = pre ++ [cv])
+    (hnl : (Nn (D + 1)).leaf = true)
+    (hne : bitsUnion (Nn (D + 1)).lastBitmap ((Nn (D + 1)).bitsOf cv) ≠ (Nn (D + 1)).lastBitmap)
+    (hfull : ¬ DelRoom c cv (Nn (D + 1))) :
+    WriterWP (appendDeleteKlong (X (D + 1)) (D + 1) cv) c w (fun _ v =>
+      TreeOK (wNode c.p base v) c.i v.top.rootKey ∧ v.taken = w.taken ∧ v.vals = w.vals ∧
+      w.next ≤ v.next ∧
+      (∀ z, TReach (wNode c.p base v) c.i v.top.rootKey z → TReach (wNode c.p base w) c.i w.top.rootKey z ∨
+        w.next ≤ z) ∧
+      RangeOrder (wNode c.p base v) c.i v.top.rootKey ∧
+      (SegFits (wNode c.p base v) c.i c.p.fuel v.top.rootKey → ∀ key', keyWf key' = true →
+        wGetAt c.p c.i base v (c.p.fuel + 1) key' =
+          if pre ++ [cv] == key' then none else wGetAt c.p c.i base w (c.p.fuel + 1) key')) :=
+  writerWP_mono (writerWP_appendDeleteKlong_full_invT c base hvc w hI hG hRO hsa2 D X K Nn hP pre cv rk hkey
+    hrk hvisL huniq hnl hne hfull) (fun _ _ h => ⟨h.1, h.2.1, h.2.2.1, h.2.2.2.1, h.2.2.2.2.1,
+      h.2.2.2.2.2.1, h.2.2.2.2.2.2 hF⟩)
 
 /-! ## The named inputs and the step with the kinds' books -/
 
@@ -341,6 +372,39 @@ def DelFullRootStepOK (c : Ctx) (base : View BVal) : Prop :=
         (SegFits (wNode c.p base v) c.i c.p.fuel v.top.rootKey → ∀ key', keyWf key' = true →
           wGetAt c.p c.i base v (c.p.fuel + 1) key' =
             if pre ++ [cv] == key' then none else wGetAt c.p c.i base w (c.p.fuel + 1) key'))
+
+/-- `DelFullRootStepOK` with no fit at the start: the tree's facts with none, the
+reading where the start fits p.fuel - 1 (bergdb 025-05, step 7). -/
+def DelFullRootStepOKT (c : Ctx) (base : View BVal) : Prop :=
+  ∀ (w : W), PutInv c base w → PutInvG c base w → RangeOrder (wNode c.p base w) c.i w.top.rootKey →
+    2 ≤ c.p.splitAbove →
+    ∀ (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode), PathOK c w 0 X K Nn →
+    ∀ (pre : List Nat) (cv : Nat) (rk : NodeId), keyWf (pre ++ [cv]) = true →
+      segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk →
+      (X 0, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      (∀ key' x m, keyWf key' = true →
+        (x, cv) ∈ fromVisits (wNode c.p base w) c.i c.p.fuel key' w.top.rootKey →
+        (x, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+        wNode c.p base w x = some m → m.leaf = true → key' = pre ++ [cv]) →
+      (Nn 0).leaf = true → bitsUnion (Nn 0).lastBitmap ((Nn 0).bitsOf cv) ≠ (Nn 0).lastBitmap →
+      ¬ DelRoom c cv (Nn 0) →
+      WriterWP (appendDeleteKlong (X 0) 0 cv) c w (fun _ v =>
+        TreeOK (wNode c.p base v) c.i v.top.rootKey ∧ v.taken = w.taken ∧ v.vals = w.vals ∧
+        w.next ≤ v.next ∧
+        (∀ z, TReach (wNode c.p base v) c.i v.top.rootKey z →
+          TReach (wNode c.p base w) c.i w.top.rootKey z ∨ w.next ≤ z) ∧
+        RangeOrder (wNode c.p base v) c.i v.top.rootKey ∧
+        (SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey →
+          SegFits (wNode c.p base v) c.i c.p.fuel v.top.rootKey → ∀ key', keyWf key' = true →
+          wGetAt c.p c.i base v (c.p.fuel + 1) key' =
+            if pre ++ [cv] == key' then none else wGetAt c.p c.i base w (c.p.fuel + 1) key'))
+
+/-- The old obligation from the one with no fit. -/
+theorem delFullRootStepOK_of_T (c : Ctx) (base : View BVal) (h : DelFullRootStepOKT c base) :
+    DelFullRootStepOK c base :=
+  fun w hI hG hRO hF hsa2 X K Nn hP pre cv rk hkey hrk hvisL huniq hnl hne hfull =>
+    writerWP_mono (h w hI hG hRO hsa2 X K Nn hP pre cv rk hkey hrk hvisL huniq hnl hne hfull)
+      (fun _ _ h => ⟨h.1, h.2.1, h.2.2.1, h.2.2.2.1, h.2.2.2.2.1, h.2.2.2.2.2.1, h.2.2.2.2.2.2 hF⟩)
 
 /-- `writerWP_appendDeleteKlong_full_inv` at every depth, the space root by the
 obligation. -/
@@ -373,6 +437,40 @@ theorem writerWP_appendDeleteKlong_full_inv_any (c : Ctx) (base : View BVal) (hv
   | zero => exact hRoot w hI hG hRO hF hsa2 X K Nn hP pre cv rk hkey hrk hvisL huniq hnl hne hfull
   | succ D =>
     exact writerWP_appendDeleteKlong_full_inv c base hvc w hI hG hRO hF hsa2 D X K Nn hP pre cv rk hkey hrk
+      hvisL huniq hnl hne hfull
+
+/-- `writerWP_appendDeleteKlong_full_inv_any` with no fit at the start (bergdb 025-05,
+step 7). -/
+theorem writerWP_appendDeleteKlong_full_inv_anyT (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (hRoot : DelFullRootStepOKT c base)
+    (w : W) (hI : PutInv c base w) (hG : PutInvG c base w)
+    (hRO : RangeOrder (wNode c.p base w) c.i w.top.rootKey)
+    (hsa2 : 2 ≤ c.p.splitAbove)
+    (d : Nat) (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode) (hP : PathOK c w d X K Nn)
+    (pre : List Nat) (cv : Nat) (rk : NodeId) (hkey : keyWf (pre ++ [cv]) = true)
+    (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
+    (hvisL : (X d, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk)
+    (huniq : ∀ key' x m, keyWf key' = true →
+      (x, cv) ∈ fromVisits (wNode c.p base w) c.i c.p.fuel key' w.top.rootKey →
+      (x, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      wNode c.p base w x = some m → m.leaf = true → key' = pre ++ [cv])
+    (hnl : (Nn d).leaf = true)
+    (hne : bitsUnion (Nn d).lastBitmap ((Nn d).bitsOf cv) ≠ (Nn d).lastBitmap)
+    (hfull : ¬ DelRoom c cv (Nn d)) :
+    WriterWP (appendDeleteKlong (X d) d cv) c w (fun _ v =>
+      TreeOK (wNode c.p base v) c.i v.top.rootKey ∧ v.taken = w.taken ∧ v.vals = w.vals ∧
+      w.next ≤ v.next ∧
+      (∀ z, TReach (wNode c.p base v) c.i v.top.rootKey z → TReach (wNode c.p base w) c.i w.top.rootKey z ∨
+        w.next ≤ z) ∧
+      RangeOrder (wNode c.p base v) c.i v.top.rootKey ∧
+      (SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey →
+        SegFits (wNode c.p base v) c.i c.p.fuel v.top.rootKey → ∀ key', keyWf key' = true →
+        wGetAt c.p c.i base v (c.p.fuel + 1) key' =
+          if pre ++ [cv] == key' then none else wGetAt c.p c.i base w (c.p.fuel + 1) key')) := by
+  cases d with
+  | zero => exact hRoot w hI hG hRO hsa2 X K Nn hP pre cv rk hkey hrk hvisL huniq hnl hne hfull
+  | succ D =>
+    exact writerWP_appendDeleteKlong_full_invT c base hvc w hI hG hRO hsa2 D X K Nn hP pre cv rk hkey hrk
       hvisL huniq hnl hne hfull
 
 end SIS.Tree

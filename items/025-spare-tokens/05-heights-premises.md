@@ -4,9 +4,9 @@ Created 2026-11-15 by Frans Lundberg. Status: part 1 done (the plan
 written 2026-11-15, 12:39, by coord-1115's planning agent; part 1, steps 1
 to 6, gated on the prover fit's branch 2026-11-15: the top theorem
 `invGetScanOK_merges_noFit`, premises hp, hth, htb, l4); part 2 (`htb`)
-started 2026-11-15 by the prover htb: step 7's statement proved as a
-reduction to three stratum families (`jointHtJ_reached0`), the families
-open. Section 8 has the state.
+started 2026-11-15 by the prover htb: step 7 reduced to three delete
+cases and `hchk` without `htb` (`jointHtJ_reachedT`). Section 8 has the
+state.
 
 The key tree's best top theorem on `main` since 2026-11-15, 11:17, is
 `invGetScanOK_merges_free_noD4` (DeadTop.lean): TP7, TP10 and TP11 for
@@ -853,3 +853,41 @@ fit at an operation's start other than through these step lemmas.
 Next: the tree-facts forms, the room case first (it serves all three
 families), then the full leaf, the upward delete, the root, the cascade;
 then step 8 against `jointHtJ_reached0`'s conclusions.
+
+2026-11-15, 14:00 to 14:10. Part 2, step 7: one stratum family for the
+tree and the take-back, four of its seven cases (prover htb). New file
+SIS/Tree/StratumSteps.lean; `DelInvT` and `DelInvJT` moved to the files of
+`DelInv` and `DelInvJ` (DelMergeCaseKd.lean, TakeDelMergeKd.lean). No
+statement changed.
+
+- **One family for (i) and (ii):** `DelStepsCaseTJ` (StratumSteps.lean),
+  a delete case from `SJ0` and `TakeJ2` with the obligations entered from
+  `DelInvJT`, concluding `QdW` and `TakeJ2`. `DelInvJT` carries both, so
+  the two families that the joint induction uses today (`DelStepsQdLJG`,
+  `DelStepsJ2OKG`) are one here. At `DelInvJAE` (`DelStepsTJA`) it gives
+  member (i), `opCaseOKJ0_treeInvRange_delMergeT`, and member (ii),
+  `opJ2OK0_of_T`; with them `jointHtJ_reachedT`: the joint induction with
+  no `htb`, from the family and `hchk`.
+- **Proved cases:** no leaf, a noop, a leaf with room, a full leaf
+  (`delStepsCaseTJ_noLeaf`, `_noop`, `_room`, `_full`). The tree-facts
+  forms of the leaf's change: `delInvFT_after_bitmap` (DelStepsRoom.lean;
+  `delInvF_after_bitmap` now takes its tree's facts from it);
+  `writerWP_appendDeleteKlong_full_invT`, `_full_inv_anyT` and the root's
+  step `DelFullRootStepOKT` with `delFullRootStepOKT_ctx`
+  (DelStepsFullGet.lean, DelStepsFullRoot.lean; the reading under the
+  start's fit as a premise, the old lemmas and `delFullRootStepOK_ctx`
+  their corollaries); `writerWP_appendDeleteKlong_full_delT`
+  (DelStepsFullH.lean, `DelInvT` with no fit and no heights; the old
+  `writerWP_appendDeleteKlong_full_delH` keeps its proof, since it takes
+  the root's step with the fit for every context). The full leaf's walk
+  needs no heights in the stratum (the kinds' walk `writerWP_del_toLeafMK`).
+
+**Left of step 7:** the three cases that empty the leaf (`DelEmptyM`):
+the upward delete with room above (`DelEmptyRoomM`, as
+`delStepsCaseJ2OK_emptyRoomRG` over `writerWP_del_emptyRoomMJKG`, whose
+`hD` needs a tree-facts form of `collGetInv_after_upT` and
+`delInvF_of_collGetInv`), the space root emptied (`DelEmptyRootM`, as
+`delStepsCaseJ2OK_emptyRootRG`), the stop node's cascade (`DelEmptyCascM`
+with the live counts from `SJ0`, as `delStepsCaseJ2OK_emptyCascS_noUG`;
+`UpCascOKHGJ` and the walk carry the heights' bound in `KdHtJ`); and
+`hchk` without `htb` (as in the 13:40 entry).
