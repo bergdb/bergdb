@@ -198,7 +198,21 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   first id (putinv). Evidence: held at all 56,404 states between operations of runs within
   reach with the merges on (cost's `DelChk` families and putinv's, M 8 and 10;
   `up-loop-end-check.lean.txt`, which supersedes `up-unlink-check.lean.txt`); `hHL` held at
-  all of them too.
+  all of them too. **Proved 2026-11-15** (putinv2, `MadeForOld.lean`, `LatestTopMadeFor.lean`):
+  `stateOK_madeFor`, for node size at least 4 (every `MergeParamsOK` has at least 6), at the
+  runs of any R with TP4's links. A walk over the writer keeps `CacheGood` and every recorded
+  old id below the first id (`MFB`, `KeepsGMF`). `setMadeFor` gets `replacedBy x`, an old id
+  already recorded, or `some x` for a node whose first time klong is not the transaction's; a
+  `Good` node with a klong whose id is at or above B has its first klong at the transaction's
+  time (`lt_of_good`). The one made node with no klong is a new segment leaf before its first
+  klong; no split or merge reaches it: `appendKlongs` takes at most two klongs into a node of
+  size at least 4, and a node with no klong takes them without passing theta
+  (`deadOver_fold_nil`); the delete's callers of `handleFull` split a node with a klong (a
+  bitmap that changes something, LE-b's empty key, the merge's parent); a merge's two nodes
+  have live klongs. The top theorems without `hMF`: `invGetScanOK_merges'` (on cost2's
+  `invGetScanOK_merges_chkL`) and `invGetScanOK_merges_noOutside'`.
+- `hCoU`, `hU` and `hHL` are false as stated (2026-11-15, putinv2, `PremisesFalse.lean`):
+  024-22, section 11.1, has why, the true forms and the change proposed.
 
 Follow-ups, for a later spare-token run (latest, 03:45):
 

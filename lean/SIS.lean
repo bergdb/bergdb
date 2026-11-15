@@ -78,5 +78,7 @@ import SIS.Tree.LatestTopNoOutside
 import SIS.Tree.HeightsFill
 import SIS.Tree.HeightsFillStop
 import SIS.Tree.PremisesFalse
+import SIS.Tree.MadeForOld
+import SIS.Tree.LatestTopMadeFor
 import SIS.Proof.TreeRoot
 import SIS.Proof.TreeInit
