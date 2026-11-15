@@ -140,13 +140,24 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   transaction is, by its `Good` origin, a key node of the view), and the delete's steps up to
   the upward loop keep the made-for ids, so the copy without it (`putKvDelChk4`) runs as
   `putKvDelChk2` from every state with `PutInv` and the fill (`rwp_putKvDelChk4`). The premise
-  is now `OpDelChk4OKL` (`opDelChk2OKR_of_chk4`); the top theorem with it, and without `hMF`
-  (putinv2's `stateOK_madeFor`), is `invGetScanOK_merges_chk4L`. Left in `hchk`: the holders
+  is now `OpDelChk4OKL` (`opDelChk2OKR_of_chk4`). Left in `hchk`: the holders
   before each take-back, `checkFree` (the merge's and the upward loop's: no kept node holds the
   node, by a live klong now or before the transaction; it is not the space root and not of the
   view) and `checkRoot` (root collapse's: the root's one holder is the path's node above it).
   The narrowed premise asks them only where the fill, `PutInv`, the ranges and the heights
   hold at the delete's start.
+- `hHL` gone (cost2, 2026-11-15, `HeightsFillHolder.lean`, `HeightsFillTop.lean`): the joint
+  induction also carries the writer's tree and the take-back's node facts (`J2At`, putinv's
+  `OpJ2OK` step with S the take-back's state facts, the heights and the fill:
+  `jointHtJ_reached`), so `TakeJ2` is at hand at every delete's start, and putinv2's
+  `upHolderLive_of_J2` gives the holders at the upward loop's end in place of `hHL`: the stop
+  node's obligations without it (`upCascOKHGJ_of`, `upCascJ2OKHGJ_of`; the reading's cascade
+  with the made-for bound the first id, `writerWP_del_emptyAnyMKLHGJ`), and the delete's steps
+  without it (`delStepsJ2OKJ_of_openR`, `delStepsOKJ_of_open`, the joint route's
+  `delStepsQdLJ_of_openR`, `delStepsJ2OKS_of_openR`). The operations' cases at every state come
+  from the induction. The top theorem on this route is `invGetScanOK_merges_joint`: premises
+  `hp`, `hth`, `hchk4` (`OpDelChk4OKL`), `htb`, `d4`, `l4`, `hU`, `hMSF`, `hCoF`, `hCoU`; no
+  `hHL`, no `hMF`. It replaces `invGetScanOK_merges_chk4L`.
 - `htb`, `TakeBelowFuelDelOK`: every node that a delete takes back, of those it found at its
   start, has a cached height below the fuel (cost; a put takes nothing back, proved). With the
   heights it gives that every state between operations fits the fuel
