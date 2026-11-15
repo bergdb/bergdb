@@ -83,5 +83,6 @@ import SIS.Tree.PremisesFalse
 import SIS.Tree.PremisesTrue
 import SIS.Tree.MadeForOld
 import SIS.Tree.LatestTopMadeFor
+import SIS.Tree.CollapseCommute
 import SIS.Proof.TreeRoot
 import SIS.Proof.TreeInit
