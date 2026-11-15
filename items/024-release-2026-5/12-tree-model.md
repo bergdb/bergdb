@@ -308,10 +308,11 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
     needed only at the operation's end, where the families' conclusions take it. Part 1 done
     (fit, 2026-11-15; steps 1 to 6 gated on fit's branch): the top theorem
     `invGetScanOK_merges_noFit` (DeadTop.lean), premises `hp`, `hth`, `htb`, `l4`, with
-    `invGetScanOK_merges_free_noD4` its corollary. Its parts: the reading's case 4, `opGetCaseOK_delMergeA`, the
-    take-back's, `opJ2Case_delMergeA` and `runTreeQ_of_mergesSA`, the joint induction's tree,
-    `opCaseOKJ_treeInvRange_delMergeA`, and the dead klongs' bound, `opCaseOK_dead_delMergeA`,
-    with no `MergeStepOK` and no `CollapseFitsOK`, from the families over an invariant
+    `invGetScanOK_merges_free_noD4` its corollary. Its parts: the reading's case 4,
+    `opGetCaseOK_delMergeA`, the take-back's, `opJ2Case_delMergeA` and `runTreeQ_of_mergesSA`,
+    the joint induction's tree, `opCaseOKJ_treeInvRange_delMergeA`, and the dead klongs'
+    bound, `opCaseOK_dead_delMergeA`, with no `MergeStepOK` and no `CollapseFitsOK`, from the
+    families over an invariant
     (`DelStepsOKG`, `DelStepsJ2OKG`, `DelStepsQdLJG`, `DelStepsCaseDOKG`; the old families their
     instances), and `hchk`'s discharge, `opDelChk5OKR_of_chk6A` and `opDelChk8OKR_holdsA` (the
     relational loops for the runs that end below a fuel, `RWPC`). `MergeFitsOK` and

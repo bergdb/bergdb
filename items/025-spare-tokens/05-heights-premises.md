@@ -769,6 +769,9 @@ lean/README.md says so. Part 1 in all: about 2,000 lines added and 600
 removed in 20 files, in about two hours; no statement changed; one line
 added in NoOutsideBase.lean (step 3).
 
+Gated: 96e9c079, gate-6 PASS (the gate's audit list does not name
+`invGetScanOK_merges_noFit`; `#print axioms` gives the standard three).
+
 Next, by rule (section 7): part 2, `htb` (steps 7 to 9), or `l4` (024-12,
 section 1); `MergeFitsOK` and `CollapseFitsOK` as stated stay open and
 unused by the newest top theorem.
