@@ -420,28 +420,4 @@ theorem opDelChk5OKR_of_chk6 (p : Params) (R : Struct BVal → Time → Prop) (h
     _ tx.base hv hk hICEk (by simpa [ctxOf] using hsa2) (by simpa [ctxOf] using hcap) (by simp [ctxOf])
     (replaceRootFullJ2OKC_run p hsa2 ts tx.base) top hB w key v'' hJ'' hb'' hmu
 
-/-! ## The top theorem without root collapse's check -/
-
-/-- `invGetScanOK_merges_noU` (the joint route without `hU`) with `hchk6`
-(`OpDelChk6OKL`) in place of `hchk5`: root collapse's check is proved
-(`opDelChk5OKR_of_chk6`). -/
-theorem invGetScanOK_merges_chk6 (p : Params) (hp : MergeParamsOK p)
-    (hth : 2 ≤ p.theta ∨ p.theta = 0)
-    (hchk6 : OpDelChk6OKL p)
-    (htb : TakeBelowFuelDelOK p)
-    (d4 : OpCaseOK p (RunOK p) (QDead p) DelMergeDOpenCase)
-    (l4 : OpCaseOK p (RunOK p) (QLive p) DelMergeOpenCase)
-    (hMSF : ∀ ts, MergeFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hCoF : ∀ ts, CollapseFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1)) :
-    InvPreserved p ∧ GetOK p ∧ ScanOK p ∧ LatestGetOK p ∧ LatestScanOK p := by
-  have hp' := hp
-  unfold MergeParamsOK at hp'
-  have hsa : 2 ≤ p.splitAbove := by omega
-  have hcap : 1 ≤ p.mergeMax := by omega
-  exact invGetScanOK_merges_noU p hp hth
-    (opDelChk5OKR_of_chk6 p _ (by omega) hsa hcap (fun _ _ h => h.1) (fun _ _ h => h.1.1)
-      (fun _ _ h => h.2.2.1.2.2.1)
-      (fun ts => mergeStepOK_of_segFits (ctxOf p ts) _ _ (Nat.succ_pos _) hcap hsa (hMSF ts)) hCoF hchk6)
-    htb d4 l4 hMSF hCoF
-
 end SIS.Tree
