@@ -134,11 +134,19 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   runs as the writer's, the take-back checks only that its node is of the view, `checkOld3`)
   runs as `putKvDelChk2` from every state with `PutInv` and the fill (`rwp_putKvDelChk3`, a
   refinement at the state through the delete's descent and the upward loop). The premise is
-  now `OpDelChk3OKL` (`opDelChk2OKR_of_chk3`), and the top theorem with it, and without `hMF`
-  (putinv2's `stateOK_madeFor`), is `invGetScanOK_merges_chk3L`. Left in `hchk`: the holders before each take-back (`checkFree`
-  of the merge and of the upward loop, `checkRoot` of root collapse) and the view's node
-  (`checkOld3`). The narrowed premise asks them only where the fill, `PutInv`, the ranges and
-  the heights hold at the delete's start.
+  now `OpDelChk3OKL` (`opDelChk2OKR_of_chk3`). And `checkOld3` (cost2, `HeightsFillOld.lean`,
+  `MadeForView.lean`): every made-for id is a node of the view at every state between
+  operations (`stateOK_madeForView`, putinv2's made-for walk with the view: a node not of the
+  transaction is, by its `Good` origin, a key node of the view), and the delete's steps up to
+  the upward loop keep the made-for ids, so the copy without it (`putKvDelChk4`) runs as
+  `putKvDelChk2` from every state with `PutInv` and the fill (`rwp_putKvDelChk4`). The premise
+  is now `OpDelChk4OKL` (`opDelChk2OKR_of_chk4`); the top theorem with it, and without `hMF`
+  (putinv2's `stateOK_madeFor`), is `invGetScanOK_merges_chk4L`. Left in `hchk`: the holders
+  before each take-back, `checkFree` (the merge's and the upward loop's: no kept node holds the
+  node, by a live klong now or before the transaction; it is not the space root and not of the
+  view) and `checkRoot` (root collapse's: the root's one holder is the path's node above it).
+  The narrowed premise asks them only where the fill, `PutInv`, the ranges and the heights
+  hold at the delete's start.
 - `htb`, `TakeBelowFuelDelOK`: every node that a delete takes back, of those it found at its
   start, has a cached height below the fuel (cost; a put takes nothing back, proved). With the
   heights it gives that every state between operations fits the fuel
