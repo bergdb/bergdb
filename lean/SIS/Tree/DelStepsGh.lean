@@ -1071,7 +1071,7 @@ set_option maxHeartbeats 3200000 in
 /-- `writerWP_del_emptyRoomMJK` whatever room the stop node has: the walk cut at
 the stop node's step and the cascade from `UpCascJ2OKHG`, with the loop keeping
 the heights' cache and the live counts at the delete's start (`hLC`). -/
-theorem writerWP_del_emptyAnyMJKLHG (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+theorem writerWP_del_emptyAnyMJKLHGG (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (pre : List Nat) (cv : Nat) (rk : NodeId) (w : W) (B : NodeId) (top0 : Top)
     (hB : PutBase c base B) (hbook : PutBook c B top0 w)
     (KO : KindOracle) (BK : NodeId) (hvB : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
@@ -1095,14 +1095,13 @@ theorem writerWP_del_emptyAnyMJKLHG (c : Ctx) (base : View BVal) (hvc : ViewCohe
     (hLV : ∀ L n, (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
       wNode c.p base w L = some n → n.leaf = true → ∀ y, (cv, y) ∈ n.liveAt c.i →
       wNode c.p base w y = none)
+    (Imid : W → Prop)
     (hA : ∀ g h v, DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v →
-      WriterWP (afterDelete (pre ++ [cv]) g h) c v (fun _ v' => DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v'))
+      WriterWP (afterDelete (pre ++ [cv]) g h) c v (fun _ v' => TakeJ2 c base B v'))
     (hMU : ∀ g h merged v, DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v →
-      WriterWP (mergeUp (pre ++ [cv]) g c.p.fuel h merged) c v
-        (fun _ v' => DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v'))
-    (hCR : ∀ seg v, DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v →
-      WriterWP (collapseRoot (pre ++ [cv]) seg c.p.fuel) c v
-        (fun _ v' => DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v')) :
+      WriterWP (mergeUp (pre ++ [cv]) g c.p.fuel h merged) c v (fun _ v' => Imid v'))
+    (hCR : ∀ seg v, Imid v →
+      WriterWP (collapseRoot (pre ++ [cv]) seg c.p.fuel) c v (fun _ v' => TakeJ2 c base B v')) :
     WriterWP (putKv (.del (pre ++ [cv]))) c w (fun _ w' => TakeJ2 c base B w') := by
   have hfuel : 1 ≤ c.p.fuel := by unfold Params.fuel; omega
   refine writerWP_del_toLeafMKH c base hvc pre cv rk w
@@ -1300,7 +1299,7 @@ theorem writerWP_del_emptyAnyMJKLHG (c : Ctx) (base : View BVal) (hvc : ViewCohe
       (fun c' z h => ⟨c', ((hlive' c' z).mp h).1, ((hlive' c' z).mp h).2, rfl⟩) hRO' hb'.1.1 hread
     refine writerWP_mono (hMU gs hs false w' ⟨⟨hDv, hb'.1.2.1, hb'.1.2.2⟩, hJv, hb'.1.1.fresh.1⟩) ?_
     intro _ w1 hD1
-    exact writerWP_mono (hCR seg w1 hD1) (fun _ w2 hD2 => hD2.2.1)
+    exact hCR seg w1 hD1
   · intro stop w' sn' hsD hbetween ht htop hv hnodes hsn' hsl' hsw' hst' hlive' hread _ _ _ hJv _ hb'G gs hs
     have hb' := hb'G.1
     obtain ⟨hagree, hsnw⟩ := hfr stop w' sn' hsD ht hnodes hsn'
@@ -1312,7 +1311,7 @@ theorem writerWP_del_emptyAnyMJKLHG (c : Ctx) (base : View BVal) (hvc : ViewCohe
         hagree sn' hsnw hsl' (fun c' z h => (hlive' c' z).mp h)
     have hDv := hD stop w' sn' id hsD ht htop hv hnodes hsn' hsl' hsw' hst'
       (fun c' z h => ⟨c', ((hlive' c' z).mp h).1, ((hlive' c' z).mp h).2, rfl⟩) hRO' hb'.1.1 hread
-    exact writerWP_mono (hA gs hs w' ⟨⟨hDv, hb'.1.2.1, hb'.1.2.2⟩, hJv, hb'.1.1.fresh.1⟩) (fun _ w2 hD2 => hD2.2.1)
+    exact hA gs hs w' ⟨⟨hDv, hb'.1.2.1, hb'.1.2.2⟩, hJv, hb'.1.1.fresh.1⟩
   · intro stop w2 S hsD hbetween hLE hJw2G hsl hDR gs hs
     obtain ⟨hJw2, hgh2⟩ := hJw2G
     exact writerWP_mono (hC w w3 top0 pre cv rk (fun i => nodeAt w.top.rootKey P i)
@@ -1321,7 +1320,7 @@ theorem writerWP_del_emptyAnyMJKLHG (c : Ctx) (base : View BVal) (hvc : ViewCohe
       (by simp [nodeAt]) hpos hB hI hRO hF hICE hr03 hkey hrk
       hvisw hpX hpK hlkX hXN hlinkK hne' hall' hnl' hdepth hsD hbetween hLE (Or.inr ⟨_, rfl⟩)
       (kdJP_note c base B top0 hB KO BK hvB hk _ "up.stop-at-segment-leaf" w2 hJw2) (Or.inl hsl) hDR hJ2 hMF3 hkidsw)
-      (fun _ w' hD' => writerWP_mono (hA gs hs w' hD') (fun _ w2 hD2 => hD2.2.1))
+      (fun _ w' hD' => hA gs hs w' hD')
   · intro seg stop w2 S hsD hbetween hLE hJw2G hsl hK0 hDR gs hs
     obtain ⟨hJw2, hgh2⟩ := hJw2G
     refine writerWP_mono (hC w w3 top0 pre cv rk (fun i => nodeAt w.top.rootKey P i)
@@ -1333,13 +1332,52 @@ theorem writerWP_del_emptyAnyMJKLHG (c : Ctx) (base : View BVal) (hvc : ViewCohe
     intro _ w' hD'
     refine writerWP_mono (hMU gs hs false w' hD') ?_
     intro _ w1 hD1
-    exact writerWP_mono (hCR seg w1 hD1) (fun _ w2 hD2 => hD2.2.1)
+    exact hCR seg w1 hD1
   · intro seg stop w2 S hsD hbetween hLE hJw2 hsl hK0 hsm gs hs
     exact (lebStop_false c base w hLC hm hI (fun i => nodeAt w.top.rootKey P i)
       (fun i => (wNode c.p base w (nodeAt w.top.rootKey P i)).getD n)
       (fun i => ((P[i - 1]?).bind (·.1)).getD 0) P.length stop cv (by simp [nodeAt]) hXN hlinkK hall'
       hsD hbetween hsl).elim
 
+
+/-- The walk with the obligations kept in `DelInvJ`: `writerWP_del_emptyAnyMJKLHGG`. -/
+theorem writerWP_del_emptyAnyMJKLHG (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (pre : List Nat) (cv : Nat) (rk : NodeId) (w : W) (B : NodeId) (top0 : Top)
+    (hB : PutBase c base B) (hbook : PutBook c B top0 w)
+    (KO : KindOracle) (BK : NodeId) (hvB : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
+    (hb0 : Book BK c w) (hi0 : KdInv KO BK w)
+    (hI : PutInv c base w) (hRO : RangeOrder (wNode c.p base w) c.i w.top.rootKey)
+    (hF : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey)
+    (hICE : InnerChildrenExist (wNode c.p base w) c.i w.top.rootKey)
+    (hkey : keyWf (pre ++ [cv]) = true)
+    (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
+    (hleafC : ∀ L n, (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      wNode c.p base w L = some n → n.leaf = true →
+      bitsUnion n.lastBitmap (n.bitsOf cv) ≠ n.lastBitmap ∧
+      n.allKeysIn (bitsUnion n.lastBitmap (n.bitsOf cv)) = true ∧ L ≠ w.top.rootKey)
+    (H : NodeId → Nat → Prop) (hC : UpCascJ2OKHG c base KO BK B H)
+    (hLC : LiveCounts c.p (wNode c.p base w) c.i w.top.rootKey)
+    (hvo : ViewHtOK H BK c) (hkw : ViewKlongsWf c.p c.view) (hhi : HtInv H BK c w) (hwfw : WriterKlongsWf w)
+    (hub : UntakenBound (c.p.fuel - 1) w)
+    (hsa2 : 2 ≤ c.p.splitAbove) (hICEk : ICEFromKinds c base KO BK)
+    (hm : c.p.merges = true) (hpos : 0 < c.i)
+    (hJ2 : TakeJ2 c base B w) (hMF : ∀ x o, w.madeFor.lookup x = some o → o < B)
+    (hLV : ∀ L n, (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      wNode c.p base w L = some n → n.leaf = true → ∀ y, (cv, y) ∈ n.liveAt c.i →
+      wNode c.p base w y = none)
+    (hA : ∀ g h v, DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v →
+      WriterWP (afterDelete (pre ++ [cv]) g h) c v (fun _ v' => DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v'))
+    (hMU : ∀ g h merged v, DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v →
+      WriterWP (mergeUp (pre ++ [cv]) g c.p.fuel h merged) c v
+        (fun _ v' => DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v'))
+    (hCR : ∀ seg v, DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v →
+      WriterWP (collapseRoot (pre ++ [cv]) seg c.p.fuel) c v
+        (fun _ v' => DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v')) :
+    WriterWP (putKv (.del (pre ++ [cv]))) c w (fun _ w' => TakeJ2 c base B w') :=
+  writerWP_del_emptyAnyMJKLHGG c base hvc pre cv rk w B top0 hB hbook KO BK hvB hk hb0 hi0 hI hRO hF
+    hICE hkey hrk hleafC H hC hLC hvo hkw hhi hwfw hub hsa2 hICEk hm hpos hJ2 hMF hLV _ (fun g h v
+    hv => writerWP_mono (hA g h v hv) (fun _ _ hv' => hv'.2.1)) hMU (fun seg v hv => writerWP_mono
+    (hCR seg v hv) (fun _ _ hv' => hv'.2.1))
 theorem delStepsCaseOK_emptyCascLHG (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
     (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)

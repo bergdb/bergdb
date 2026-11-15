@@ -18,23 +18,40 @@ def DelInvJ (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (f : Nat) (KO : Ki
     (B : NodeId) (v : W) : Prop :=
   DelInv c base w0 key f KO BK v ∧ TakeJ2 c base B v ∧ B ≤ v.next
 
+/-- `DelInvJ` at f while a condition C holds, with the fresh ids' books always
+(bergdb 025-05, route P; `DelInvW` with the take-back's facts). -/
+def DelInvJW (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (f : Nat) (C : W → Prop)
+    (KO : KindOracle) (BK : NodeId) (B : NodeId) (v : W) : Prop :=
+  (∃ Bf, ViewIdsBelow Bf c.view ∧ FreshCache Bf v) ∧ (C v → DelInvJ c base w0 key f KO BK B v)
+
+theorem delInvJW_of_delInvJ (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (f : Nat) (C : W → Prop)
+    (KO : KindOracle) (BK : NodeId) (B : NodeId) (v : W) (h : DelInvJ c base w0 key f KO BK B v) :
+    DelInvJW c base w0 key f C KO BK B v :=
+  ⟨(delInvW_of_delInv c base w0 key f C KO BK v h.1).1, fun _ => h⟩
+
 set_option maxHeartbeats 1600000 in
-/-- The merges' loop keeps `DelInvJ`: latest's `writerWP_mergeUp_del` with
-each merge's `TakeJ2` (`mergeStepJ2OKF_of_root`, `mergeRootJ2OKF_holds`). -/
-theorem writerWP_mergeUp_delJ (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
-    (hvc : ViewCoherent c base) (fuelR : Nat) (hfR : 2 ≤ fuelR) (hM : MergeStepOK c base fuelR)
+/-- `writerWP_mergeUp_delW` with the take-back's facts: the merges' loop keeps
+`DelInvJW` (bergdb 025-05, route P). -/
+theorem writerWP_mergeUp_delJW (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (fuelR : Nat) (hfR : 2 ≤ fuelR) (C : W → Prop)
+    (hC : ∀ v v', v.next ≤ v'.next → C v' → C v) (hM : MergeStepOKW c base fuelR C)
     (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
     (hICEk : ICEFromKinds c base KO BK)
     (hsa2 : 2 ≤ c.p.splitAbove) (hcap : 1 ≤ c.p.mergeMax) (B : NodeId) (hpos : 0 < c.i) (w0 : W) (k0 : Key) :
-    ∀ fuel h merged v, DelInvJ c base w0 k0 fuelR KO BK B v →
-      WriterWP (mergeUp key g fuel h merged) c v (fun _ v' => DelInvJ c base w0 k0 fuelR KO BK B v') := by
+    ∀ fuel h merged v, DelInvJW c base w0 k0 fuelR C KO BK B v →
+      WriterWP (mergeUp key g fuel h merged) c v (fun _ v' => DelInvJW c base w0 k0 fuelR C KO BK B v') := by
   have hMJ := mergeStepJ2OKF_of_root c base hvc fuelR B hpos hcap hsa2
     (mergeRootJ2OKF_holds c base fuelR B hpos hcap hsa2)
   intro fuel
   induction fuel with
   | zero => intro h merged v _; exact writerWP_throw _ _ _ _
   | succ f ih =>
-    intro h merged v ⟨⟨hI, hbk, hik⟩, hJ0, hB0⟩
+    intro h merged v ⟨⟨Bf, hBfv, hfc⟩, hD⟩
+    by_cases hno : ¬ C v
+    · refine writerWP_mono (freshCache_mergeUp key g (f + 1) h merged c v hBfv hfc) ?_
+      rintro _ v' ⟨hf', hle⟩
+      exact ⟨⟨Bf, hBfv, hf'⟩, fun hC' => absurd (hC v v' hle hC') hno⟩
+    obtain ⟨⟨hI, hbk, hik⟩, hJ0, hB0⟩ := hD (Classical.byContradiction hno)
     unfold mergeUp
     simp only [writerWP_bind, writerWP_read]
     refine writerWP_mono (writerWP_and (writerWP_and (descentOK c base fuelR w0 k0 key g h v hI)
@@ -44,7 +61,8 @@ theorem writerWP_mergeUp_delJ (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
     have hJ1 : TakeJ2 c base B v1 := takeJ2_of_readsAs c base B v v1 hJ0 hr1
     have hBn1 : B ≤ v1.next := by rw [hr1.2.2.2.2]; exact hB0
     split
-    · simp only [writerWP_pure]; exact ⟨⟨hI1, hbk1, hik1⟩, hJ1, hBn1⟩
+    · simp only [writerWP_pure]
+      exact delInvJW_of_delInvJ c base w0 k0 fuelR C KO BK B _ ⟨⟨hI1, hbk1, hik1⟩, hJ1, hBn1⟩
     · rename_i hd0
       have hd : 0 < d := by
         cases d with
@@ -74,7 +92,8 @@ theorem writerWP_mergeUp_delJ (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
             fun z zn h => lookup_of_prefix _ _ hpre2 _ _ h
           have hP2 := pathOK_transport c v1 v2 d X K Nn hP1 hp2 hkeep2 hr2.2.2.1 hr2.2.1
           split
-          · simp only [writerWP_pure]; exact ⟨⟨hI2, hbk2, hik2⟩, hJ2, hBn2⟩
+          · simp only [writerWP_pure]
+            exact delInvJW_of_delInvJ c base w0 k0 fuelR C KO BK B _ ⟨⟨hI2, hbk2, hik2⟩, hJ2, hBn2⟩
           · rename_i hql
             have hql' : qn.leaf = false := by simpa using hql
             rw [writerWP_bind]
@@ -90,7 +109,8 @@ theorem writerWP_mergeUp_delJ (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
               fun z zn h => lookup_of_prefix _ _ hpre3 _ _ h
             have hP3 := pathOK_transport c v2 v3 d X K Nn hP2 hp3 hkeep3 hr3.2.2.1 hr3.2.1
             split
-            · simp only [writerWP_pure]; exact ⟨⟨hI3, hbk3, hik3⟩, hJ3, hBn3⟩
+            · simp only [writerWP_pure]
+              exact delInvJW_of_delInvJ c base w0 k0 fuelR C KO BK B _ ⟨⟨hI3, hbk3, hik3⟩, hJ3, hBn3⟩
             · rename_i hcnt
               have hcnt' : xn.cnt < c.p.mergeBelow := by simpa using hcnt
               rw [writerWP_bind]
@@ -131,13 +151,30 @@ theorem writerWP_mergeUp_delJ (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
               rintro r v4 ⟨⟨⟨⟨⟨⟨⟨hread4, hu4, hF4⟩, hb4⟩, hT4⟩, hR4⟩, hbk4, hik4, _, _⟩, hJ4⟩, hn4⟩
               obtain ⟨hP4, hG4⟩ := putInv_after_step c base v4 B1 t1 hB1 hb4 hT4 hu4 hR4
               have hICE4 := hICEk v4 hbk4 hik4 (fun y hy => hu4 y (tReach_reachS _ _ _ _ hy))
-              have hI4 : DelInvF c base w0 k0 fuelR v4 :=
-                ⟨hP4, hG4, hR4, hICE4, hF4, fun key' hk' => by
-                  rw [hread4 hF4 key']; exact hI3.2.2.2.2.2.1 key' hk', B1, t1, hB1, hb4⟩
+              have hQ4 : DelInvJW c base w0 k0 fuelR C KO BK B v4 := by
+                refine ⟨⟨B1, hB1.good.ids, hb4.fresh⟩, fun hC4 => ?_⟩
+                have hF4' := hF4 hC4 hP4
+                exact ⟨⟨⟨hP4, hG4, hR4, hICE4, hF4', fun key' hk' => by
+                  rw [hread4 hF4' key']; exact hI3.2.2.2.2.2.1 key' hk', B1, t1, hB1, hb4⟩, hbk4, hik4⟩,
+                  hJ4, Nat.le_trans hBn3 hn4⟩
               split
-              · simp only [writerWP_pure]; exact ⟨⟨hI4, hbk4, hik4⟩, hJ4, Nat.le_trans hBn3 hn4⟩
-              · exact ih (h + 1) true v4 ⟨⟨hI4, hbk4, hik4⟩, hJ4, Nat.le_trans hBn3 hn4⟩
+              · simp only [writerWP_pure]; exact hQ4
+              · exact ih (h + 1) true v4 hQ4
 
+/-- The merges' loop keeps `DelInvJ`: latest's `writerWP_mergeUp_del` with
+each merge's `TakeJ2` (`mergeStepJ2OKF_of_root`, `mergeRootJ2OKF_holds`). -/
+theorem writerWP_mergeUp_delJ (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (fuelR : Nat) (hfR : 2 ≤ fuelR) (hM : MergeStepOK c base fuelR)
+    (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
+    (hICEk : ICEFromKinds c base KO BK)
+    (hsa2 : 2 ≤ c.p.splitAbove) (hcap : 1 ≤ c.p.mergeMax) (B : NodeId) (hpos : 0 < c.i) (w0 : W) (k0 : Key) :
+    ∀ fuel h merged v, DelInvJ c base w0 k0 fuelR KO BK B v →
+      WriterWP (mergeUp key g fuel h merged) c v (fun _ v' => DelInvJ c base w0 k0 fuelR KO BK B v') :=
+  fun fuel h merged v hI => writerWP_mono
+    (writerWP_mergeUp_delJW key g c base hvc fuelR hfR (fun _ => True) (fun _ _ _ _ => trivial)
+      (mergeStepOKW_of c base fuelR _ hM) KO BK hv hk hICEk hsa2 hcap B hpos w0 k0 fuel h merged v
+      (delInvJW_of_delInvJ c base w0 k0 fuelR _ KO BK B v hI))
+    (fun _ _ hv' => hv'.2 trivial)
 /-- Obligation (the take-back at a replaceRoot whose segment leaf is full): the
 leaf's cascade after `unlink x` keeps `TakeJ2` and B at most the next id, given
 the state's global facts (`PutInvG`) and the tree after the unlink

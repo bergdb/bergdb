@@ -124,7 +124,7 @@ set_option maxHeartbeats 1600000 in
 /-- The take-back of a delete that empties the leaf at the space root, the merges
 on: the root's bitmap (`takeJ2_after_bitmap`), or its split when full
 (`delFullRootJ2OK_ctx`). -/
-theorem delStepsCaseJ2OK_emptyRootR (p : Params) (R : Struct BVal → Time → Prop)
+theorem delStepsCaseJ2OK_emptyRootRG (p : Params) (R : Struct BVal → Time → Prop)
     (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M) (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
     (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P)
@@ -132,9 +132,9 @@ theorem delStepsCaseJ2OK_emptyRootR (p : Params) (R : Struct BVal → Time → P
     (hSV : ∀ ts tx w, S ts tx w → LeafVals (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w)
     (hSB : ∀ ts tx w, S ts tx w → tx.base ≤ w.next)
     (hSR : ∀ ts tx w, S ts tx w →
-      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey) :
-    DelStepsCaseJ2OK p R S DelEmptyRootM := by
-  intro ts tx hw hr z top _ htop ops op post hops r w hpre hS hJ key hop hPc _ _ _
+      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey)
+    (I : List Tx → Tx → W → Key → W → Prop) : DelStepsCaseJ2OKG p R S DelEmptyRootM I := by
+  intro ts tx hw hr z top _ htop ops op post hops r w hpre hS hJ key hop hPc hin hout _ _ _
   obtain ⟨pre, cv, L0, n0, hop', _, hK, hne0, hall0, hroot0⟩ := hPc
   subst hop'
   cases hop
@@ -196,11 +196,24 @@ theorem delStepsCaseJ2OK_emptyRootR (p : Params) (R : Struct BVal → Time → P
       simp only [show nodeAt w.top.rootKey [] 0 = L from hXD] at hJ2
       exact writerWP_mono hJ2 (fun _ v hv' => hv'.1)
 
+/-- The old case: its G form at `DelInvJI`. -/
+theorem delStepsCaseJ2OK_emptyRootR (p : Params) (R : Struct BVal → Time → Prop)
+    (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M) (hsa2 : 2 ≤ p.splitAbove)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t)
+    (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P)
+    (hSI : ∀ ts tx w, S ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w)
+    (hSV : ∀ ts tx w, S ts tx w → LeafVals (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w)
+    (hSB : ∀ ts tx w, S ts tx w → tx.base ≤ w.next)
+    (hSR : ∀ ts tx w, S ts tx w →
+      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey) :
+    DelStepsCaseJ2OK p R S DelEmptyRootM :=
+  delStepsCaseJ2OK_of_G p R S _ (delStepsCaseJ2OK_emptyRootRG p R S hM hsa2 hRL hRP hRK hSI hSV hSB
+    hSR _)
 /-! ## The leaf's bitmap: with room, and full -/
 
 set_option maxHeartbeats 1600000 in
 /-- The take-back of a delete whose leaf keeps a live klong and has room. -/
-theorem delStepsCaseJ2OK_roomR (p : Params) (R : Struct BVal → Time → Prop)
+theorem delStepsCaseJ2OK_roomRG (p : Params) (R : Struct BVal → Time → Prop)
     (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
     (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P)
@@ -210,9 +223,9 @@ theorem delStepsCaseJ2OK_roomR (p : Params) (R : Struct BVal → Time → Prop)
     (hSR : ∀ ts tx w, S ts tx w →
       RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey)
     (hSF : ∀ ts tx w, S ts tx w →
-      SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey) :
-    DelStepsCaseJ2OK p R S DelRoomM := by
-  intro ts tx hw hr z top _ htop ops op post hops r w hpre hS hJ key hop hPc hA _ _
+      SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey)
+    (I : List Tx → Tx → W → Key → W → Prop) : DelStepsCaseJ2OKG p R S DelRoomM I := by
+  intro ts tx hw hr z top _ htop ops op post hops r w hpre hS hJ key hop hPc hin hout hA _ _
   obtain ⟨pre, cv, L0, n0, hop', _, hK, hne0, hkeep0, hroom0⟩ := hPc
   subst hop'
   cases hop
@@ -263,12 +276,26 @@ theorem delStepsCaseJ2OK_roomR (p : Params) (R : Struct BVal → Time → Prop)
           (fun y hy => by rw [hr03.2.2.2.1]; exact (hLV L n hL hn hnl y hy).2) h1 h2 h3 h7
       · rw [h5, hr03.2.2.2.2]; exact hSB ts tx w hS
     · intro g h v hv'
-      exact writerWP_mono (hA g h v hv') (fun _ v' hv'' => hv''.2.1)
+      exact writerWP_mono (hA g h v (hin v hv')) (fun _ v' hv'' => hout v' hv'')
 
+/-- The old case: its G form at `DelInvJI`. -/
+theorem delStepsCaseJ2OK_roomR (p : Params) (R : Struct BVal → Time → Prop)
+    (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t)
+    (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P)
+    (hSI : ∀ ts tx w, S ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w)
+    (hSV : ∀ ts tx w, S ts tx w → LeafVals (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w)
+    (hSB : ∀ ts tx w, S ts tx w → tx.base ≤ w.next)
+    (hSR : ∀ ts tx w, S ts tx w →
+      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey)
+    (hSF : ∀ ts tx w, S ts tx w →
+      SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey) :
+    DelStepsCaseJ2OK p R S DelRoomM :=
+  delStepsCaseJ2OK_of_G p R S _ (delStepsCaseJ2OK_roomRG p R S hM hRL hRP hRK hSI hSV hSB hSR hSF _)
 /-! ## The upward delete with room -/
 
 /-- The take-back of a delete whose leaf empties, the upward delete with room. -/
-theorem delStepsCaseJ2OK_emptyRoomR (p : Params) (R : Struct BVal → Time → Prop)
+theorem delStepsCaseJ2OK_emptyRoomRG (p : Params) (R : Struct BVal → Time → Prop)
     (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
     (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P)
@@ -278,9 +305,9 @@ theorem delStepsCaseJ2OK_emptyRoomR (p : Params) (R : Struct BVal → Time → P
       RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey)
     (hSF : ∀ ts tx w, S ts tx w →
       SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey)
-    (hSM : ∀ ts tx w, S ts tx w → ∀ x o, w.madeFor.lookup x = some o → o < tx.base) :
-    DelStepsCaseJ2OK p R S DelEmptyRoomM := by
-  intro ts tx hw hr z top _ htop ops op post hops r w hpre hS hJ key hop hPc hA hMU hCR
+    (hSM : ∀ ts tx w, S ts tx w → ∀ x o, w.madeFor.lookup x = some o → o < tx.base)
+    (I : List Tx → Tx → W → Key → W → Prop) : DelStepsCaseJ2OKG p R S DelEmptyRoomM I := by
+  intro ts tx hw hr z top _ htop ops op post hops r w hpre hS hJ key hop hPc hin hout hA hMU hCR
   obtain ⟨pre, cv, L0, n0, hop', hm, hK, hne0, hall0, hup0⟩ := hPc
   subst hop'
   cases hop
@@ -293,11 +320,29 @@ theorem delStepsCaseJ2OK_emptyRoomR (p : Params) (R : Struct BVal → Time → P
     (fun x hx => hI.untaken x (tReach_reachS _ _ _ _ hx))
   have hLV := leafVals_all (hSV ts tx w hS) hkey hrk
   obtain ⟨hv, hk, hb0, hi0⟩ := kd_contextR p hM ts tx (hRP _ _ hr) (hRK _ _ hr) hw top ops (.del (pre ++ [cv]) :: post) hops r w hpre
-  exact writerWP_del_emptyRoomMJK (ctxOf p ts) _ (viewCoherent_ctxOf p ts) pre cv rk w tx.base top hB hbook
+  exact writerWP_del_emptyRoomMJKG (ctxOf p ts) _ (viewCoherent_ctxOf p ts) pre cv rk w tx.base top hB hbook
     _ tx.base hv hk hb0 hi0
     hI (hSR ts tx w hS) (hSF ts tx w hS) hICE hkey hrk (keyLeaf_all2 hK hrk _ ⟨hne0, hall0, hup0⟩) hm
-    (by simp [ctxOf]) hJ (hSM ts tx w hS) (fun L n hL hn hnl y hy => (hLV L n hL hn hnl y hy).1) hA hMU hCR
+    (by simp [ctxOf]) hJ (hSM ts tx w hS) (fun L n hL hn hnl y hy => (hLV L n hL hn hnl y hy).1) _
+    (fun g h v hv => writerWP_mono (hA g h v (hin v hv)) (fun _ v' hv' => hout v' hv')) (fun g h m v
+      hv => hMU g h m v (hin v hv)) (fun seg v hv => writerWP_mono (hCR seg v hv) (fun _ v' hv' =>
+      hout v' hv'))
 
+/-- The old case: its G form at `DelInvJI`. -/
+theorem delStepsCaseJ2OK_emptyRoomR (p : Params) (R : Struct BVal → Time → Prop)
+    (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t)
+    (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P)
+    (hSI : ∀ ts tx w, S ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w)
+    (hSV : ∀ ts tx w, S ts tx w → LeafVals (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w)
+    (hSR : ∀ ts tx w, S ts tx w →
+      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey)
+    (hSF : ∀ ts tx w, S ts tx w →
+      SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey)
+    (hSM : ∀ ts tx w, S ts tx w → ∀ x o, w.madeFor.lookup x = some o → o < tx.base) :
+    DelStepsCaseJ2OK p R S DelEmptyRoomM :=
+  delStepsCaseJ2OK_of_G p R S _ (delStepsCaseJ2OK_emptyRoomRG p R S hM hRL hRP hRK hSI hSV hSR hSF
+    hSM _)
 /-! ## The take-back's state between operations with the fuel and the replaced ids -/
 
 /-- `TakeS3` with the state fitting the fuel (`SegFits`) and the ids that

@@ -687,6 +687,26 @@ one is its corollary under its old statement.
   `freshCache_replaceRoot'` and `segFits_mono'` are the existing
   `freshCache_takeBackRoot`, `freshCache_replaceRoot` and `segFits_mono`.
 
-Next: steps 2 to 5 in order (2: `DelStepsJ2OK` over I with
-`DelInvJ` above the next id; its loops as `writerWP_mergeUp_delW`), then
-step 6.
+Gated: f719fb4f (with main, 89273873), gate-1 PASS.
+
+2026-11-15, 13:00 to 13:10. Part 1, step 2 (fit): the take-back's
+family, as step 1, about 600 lines added and 150 removed.
+
+- The loops with the take-back's facts: `writerWP_mergeUp_delJW`
+  (TakeDelMergeKd.lean, `DelInvJW`) and `writerWP_collapseRoot_collJW`
+  (CollapseCommuteJ2.lean, `CollInvJW`); `writerWP_mergeUp_delJ` and
+  `writerWP_collapseRoot_collJC` are C true.
+- P4: `DelStepsJ2OKG`, `DelStepsCaseJ2OKG`, `DelInvJI` (TakeDelSteps.lean;
+  I gives `TakeJ2`, which speaks of no fuel, so no fit is asked at the
+  end); the cases and walks over I beside the old ones (TakeDelSteps.lean,
+  TakeRunQ.lean, DelStepsGh.lean, DelStepsFullH.lean,
+  HeightsFillHolder.lean), `delStepsJ2OKJ_of_openR_noUG` and
+  `delStepsJ2OKS_of_openR_noUG`.
+- FuelNext.lean: `DelInvJA`, `writerWP_afterDelete_delJA` and its parts
+  (root collapse's `ReplaceRootFullJ2OKC` at each fuel by
+  `replaceRootFullJ2OKC_holds`), and the consumers `opJ2Case_delMergeA`
+  and `runTreeQ_of_mergesSA`, with no `MergeStepOK` and no
+  `CollapseFitsOK`. The stop rule did not apply: no step lemma asked for
+  the fit other than at its end.
+
+Next: steps 3 to 5 in order (3: `DelStepsQdLJ` over I), then step 6.

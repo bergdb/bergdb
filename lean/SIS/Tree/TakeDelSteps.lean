@@ -48,35 +48,121 @@ def DelStepsCaseJ2OK (p : Params) (R : Struct BVal → Time → Prop) (S : List 
       WriterWP (collapseRoot key seg p.fuel) (ctxOf p ts) v (fun _ v' => DelInvJ (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1) (kindOracleOf p (treeRun p ts)) tx.base tx.base v')) →
     WriterWP (putKv op) (ctxOf p ts) w (fun _ w' => TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w')
 
+
+/-- The invariant of the old take-back family: `DelInvJ` at p.fuel + 1 over the
+run's kinds and the transaction's base (bergdb 025-05, P4). -/
+abbrev DelInvJI (p : Params) : List Tx → Tx → W → Key → W → Prop :=
+  fun ts tx w key v => DelInvJ (ctxOf p ts) (viewOf (treeRun p ts)) w key (p.fuel + 1)
+    (kindOracleOf p (treeRun p ts)) tx.base tx.base v
+
+/-- `DelStepsJ2OK` with the obligations over an invariant I (bergdb 025-05, P4): I
+holds where `DelInvJ` at p.fuel + 1 holds, and gives `TakeJ2`. `DelStepsJ2OK` is its
+instance at `DelInvJI` (`delStepsJ2OK_of_G`). -/
+def DelStepsJ2OKG (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop)
+    (I : List Tx → Tx → W → Key → W → Prop) : Prop :=
+  ∀ ts tx, Within p (ts ++ [tx]) → R (treeRun p ts) ts.length → ∀ z top,
+    lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z →
+    topOf p (ctxOf p ts).view z = .ok top →
+    ∀ pre op post, tx.ops = pre ++ op :: post →
+    ∀ r w, (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
+    S ts tx w → TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w →
+    ∀ key, op = .del key → p.merges = true →
+    (∀ v, DelInvJI p ts tx w key v → I ts tx w key v) →
+    (∀ v, I ts tx w key v → TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base v) →
+    (∀ g h v, I ts tx w key v →
+      WriterWP (afterDelete key g h) (ctxOf p ts) v (fun _ v' => I ts tx w key v')) →
+    (∀ g h merged v, I ts tx w key v →
+      WriterWP (mergeUp key g p.fuel h merged) (ctxOf p ts) v (fun _ v' => I ts tx w key v')) →
+    (∀ seg v, I ts tx w key v →
+      WriterWP (collapseRoot key seg p.fuel) (ctxOf p ts) v (fun _ v' => I ts tx w key v')) →
+    WriterWP (putKv op) (ctxOf p ts) w (fun _ w' => TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w')
+
+/-- `DelStepsJ2OKG` for the deletes of one case P. -/
+def DelStepsCaseJ2OKG (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop)
+    (P : Ctx → View BVal → W → Op → Prop) (I : List Tx → Tx → W → Key → W → Prop) : Prop :=
+  ∀ ts tx, Within p (ts ++ [tx]) → R (treeRun p ts) ts.length → ∀ z top,
+    lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z →
+    topOf p (ctxOf p ts).view z = .ok top →
+    ∀ pre op post, tx.ops = pre ++ op :: post →
+    ∀ r w, (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
+    S ts tx w → TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w →
+    ∀ key, op = .del key → P (ctxOf p ts) (viewOf (treeRun p ts)) w op →
+    (∀ v, DelInvJI p ts tx w key v → I ts tx w key v) →
+    (∀ v, I ts tx w key v → TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base v) →
+    (∀ g h v, I ts tx w key v →
+      WriterWP (afterDelete key g h) (ctxOf p ts) v (fun _ v' => I ts tx w key v')) →
+    (∀ g h merged v, I ts tx w key v →
+      WriterWP (mergeUp key g p.fuel h merged) (ctxOf p ts) v (fun _ v' => I ts tx w key v')) →
+    (∀ seg v, I ts tx w key v →
+      WriterWP (collapseRoot key seg p.fuel) (ctxOf p ts) v (fun _ v' => I ts tx w key v')) →
+    WriterWP (putKv op) (ctxOf p ts) w (fun _ w' => TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w')
+
+/-- The old family is the instance at `DelInvJI`. -/
+theorem delStepsJ2OK_of_G (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop)
+    (h : DelStepsJ2OKG p R S (DelInvJI p)) : DelStepsJ2OK p R S :=
+  fun ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop hm hA hMU hCR =>
+    h ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop hm
+      (fun _ hv => hv) (fun _ hv => hv.2.1) hA hMU hCR
+
+/-- The old case is the instance at `DelInvJI`. -/
+theorem delStepsCaseJ2OK_of_G (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop)
+    (P : Ctx → View BVal → W → Op → Prop) (h : DelStepsCaseJ2OKG p R S P (DelInvJI p)) :
+    DelStepsCaseJ2OK p R S P :=
+  fun ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop hP hA hMU hCR =>
+    h ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop hP
+      (fun _ hv => hv) (fun _ hv => hv.2.1) hA hMU hCR
+
+/-- And back: the old case gives the family at `DelInvJI`. -/
+theorem delStepsCaseJ2OK_to_G (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop)
+    (P : Ctx → View BVal → W → Op → Prop) (h : DelStepsCaseJ2OK p R S P) :
+    DelStepsCaseJ2OKG p R S P (DelInvJI p) :=
+  fun ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop hP _ _ hA hMU hCR =>
+    h ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop hP hA hMU hCR
+theorem delStepsJ2OK_of_casesG (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop)
+    (I : List Tx → Tx → W → Key → W → Prop)
+    (c5 : DelStepsCaseJ2OKG p R S DelNoLeafM I) (c6 : DelStepsCaseJ2OKG p R S DelNoopM I)
+    (c7 : DelStepsCaseJ2OKG p R S DelEmptyM I) (c8 : DelStepsCaseJ2OKG p R S DelRoomM I)
+    (c9 : DelStepsCaseJ2OKG p R S DelFullM I) : DelStepsJ2OKG p R S I := by
+  intro ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop hm hin hout hA hMU hCR
+  rcases delMerge_cover (ctxOf p ts) (viewOf (treeRun p ts)) w key hm with h | h | h | h | h
+  · exact c5 ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop (hop ▸ h) hin hout hA hMU hCR
+  · exact c6 ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop (hop ▸ h) hin hout hA hMU hCR
+  · exact c7 ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop (hop ▸ h) hin hout hA hMU hCR
+  · exact c8 ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop (hop ▸ h) hin hout hA hMU hCR
+  · exact c9 ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop (hop ▸ h) hin hout hA hMU hCR
+
+
 theorem delStepsJ2OK_of_cases (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop)
     (c5 : DelStepsCaseJ2OK p R S DelNoLeafM) (c6 : DelStepsCaseJ2OK p R S DelNoopM)
     (c7 : DelStepsCaseJ2OK p R S DelEmptyM) (c8 : DelStepsCaseJ2OK p R S DelRoomM)
-    (c9 : DelStepsCaseJ2OK p R S DelFullM) : DelStepsJ2OK p R S := by
-  intro ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop hm hA hMU hCR
-  rcases delMerge_cover (ctxOf p ts) (viewOf (treeRun p ts)) w key hm with h | h | h | h | h
-  · exact c5 ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop (hop ▸ h) hA hMU hCR
-  · exact c6 ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop (hop ▸ h) hA hMU hCR
-  · exact c7 ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop (hop ▸ h) hA hMU hCR
-  · exact c8 ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop (hop ▸ h) hA hMU hCR
-  · exact c9 ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop (hop ▸ h) hA hMU hCR
+    (c9 : DelStepsCaseJ2OK p R S DelFullM) : DelStepsJ2OK p R S :=
+  delStepsJ2OK_of_G p R S (delStepsJ2OK_of_casesG p R S _ (delStepsCaseJ2OK_to_G p R S _ c5)
+    (delStepsCaseJ2OK_to_G p R S _ c6) (delStepsCaseJ2OK_to_G p R S _ c7)
+    (delStepsCaseJ2OK_to_G p R S _ c8) (delStepsCaseJ2OK_to_G p R S _ c9))
+theorem delStepsCaseJ2OK_orG (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop)
+    (P P1 P2 : Ctx → View BVal → W → Op → Prop) (I : List Tx → Tx → W → Key → W → Prop)
+    (hs : ∀ c base w op, P c base w op → P1 c base w op ∨ P2 c base w op)
+    (h1 : DelStepsCaseJ2OKG p R S P1 I) (h2 : DelStepsCaseJ2OKG p R S P2 I) : DelStepsCaseJ2OKG p R S P I := by
+  intro ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop hPc hin hout hA hMU hCR
+  rcases hs _ _ _ _ hPc with h | h
+  · exact h1 ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop h hin hout hA hMU hCR
+  · exact h2 ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop h hin hout hA hMU hCR
+
 
 theorem delStepsCaseJ2OK_or (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop)
     (P P1 P2 : Ctx → View BVal → W → Op → Prop)
     (hs : ∀ c base w op, P c base w op → P1 c base w op ∨ P2 c base w op)
-    (h1 : DelStepsCaseJ2OK p R S P1) (h2 : DelStepsCaseJ2OK p R S P2) : DelStepsCaseJ2OK p R S P := by
-  intro ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop hPc hA hMU hCR
-  rcases hs _ _ _ _ hPc with h | h
-  · exact h1 ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop h hA hMU hCR
-  · exact h2 ts tx hw hr z top hz htop pre op post hops r w hpre hS hJ key hop h hA hMU hCR
-
+    (h1 : DelStepsCaseJ2OK p R S P1) (h2 : DelStepsCaseJ2OK p R S P2) : DelStepsCaseJ2OK p R S P :=
+  delStepsCaseJ2OK_of_G p R S P (delStepsCaseJ2OK_orG p R S P P1 P2 _ hs
+    (delStepsCaseJ2OK_to_G p R S P1 h1) (delStepsCaseJ2OK_to_G p R S P2 h2))
 /-! ## The cases without a continuation -/
 
 /-- No leaf: the take-back. -/
-theorem delStepsCaseJ2OK_noLeaf (p : Params) (R : Struct BVal → Time → Prop)
+theorem delStepsCaseJ2OK_noLeafG (p : Params) (R : Struct BVal → Time → Prop)
     (S : List Tx → Tx → W → Prop)
-    (hSI : ∀ ts tx w, S ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w) :
-    DelStepsCaseJ2OK p R S DelNoLeafM := by
-  intro ts tx hw _ _ _ _ _ ops op post hops _ w _ hS hJ _ _ hP _ _ _
+    (hSI : ∀ ts tx w, S ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w)
+    (I : List Tx → Tx → W → Key → W → Prop) : DelStepsCaseJ2OKG p R S DelNoLeafM I := by
+  intro ts tx hw _ _ _ _ _ ops op post hops _ w _ hS hJ _ _ hP _ _ _ _ _
   obtain ⟨key, hop, _, hno⟩ := hP
   subst hop
   have hI := hSI ts tx w hS
@@ -89,12 +175,18 @@ theorem delStepsCaseJ2OK_noLeaf (p : Params) (R : Struct BVal → Time → Prop)
   exact writerWP_del_noLeaf_j2 (ctxOf p ts) _ (viewCoherent_ctxOf p ts) key tx.base w
     hne (hI.pathUntaken key) hno' hJ
 
-/-- A noop: the take-back. -/
-theorem delStepsCaseJ2OK_noop (p : Params) (R : Struct BVal → Time → Prop)
+
+theorem delStepsCaseJ2OK_noLeaf (p : Params) (R : Struct BVal → Time → Prop)
     (S : List Tx → Tx → W → Prop)
     (hSI : ∀ ts tx w, S ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w) :
-    DelStepsCaseJ2OK p R S DelNoopM := by
-  intro ts tx _ _ _ _ _ _ _ op _ _ _ w _ hS hJ _ _ hP _ _ _
+    DelStepsCaseJ2OK p R S DelNoLeafM :=
+  delStepsCaseJ2OK_of_G p R S _ (delStepsCaseJ2OK_noLeafG p R S hSI _)
+/-- A noop: the take-back. -/
+theorem delStepsCaseJ2OK_noopG (p : Params) (R : Struct BVal → Time → Prop)
+    (S : List Tx → Tx → W → Prop)
+    (hSI : ∀ ts tx w, S ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w)
+    (I : List Tx → Tx → W → Key → W → Prop) : DelStepsCaseJ2OKG p R S DelNoopM I := by
+  intro ts tx _ _ _ _ _ _ _ op _ _ _ w _ hS hJ _ _ hP _ _ _ _ _
   obtain ⟨pre, cv, L, n, hop, _, hK, hnoop⟩ := hP
   subst hop
   have hI := hSI ts tx w hS
@@ -103,12 +195,18 @@ theorem delStepsCaseJ2OK_noop (p : Params) (R : Struct BVal → Time → Prop)
     w hrk (hI.pathUntaken _) (keyLeaf_all hK hrk (fun m => bitsUnion m.lastBitmap (m.bitsOf cv) = m.lastBitmap)
       hnoop) hJ
 
+
+theorem delStepsCaseJ2OK_noop (p : Params) (R : Struct BVal → Time → Prop)
+    (S : List Tx → Tx → W → Prop)
+    (hSI : ∀ ts tx w, S ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w) :
+    DelStepsCaseJ2OK p R S DelNoopM :=
+  delStepsCaseJ2OK_of_G p R S _ (delStepsCaseJ2OK_noopG p R S hSI _)
 /-! ## The upward delete with room -/
 
 set_option maxHeartbeats 1600000 in
 /-- The take-back's upward delete with room: the walks carry the kinds' books
 too, the continuations keep `DelInvJ`. -/
-theorem writerWP_del_emptyRoomMJK (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+theorem writerWP_del_emptyRoomMJKG (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (pre : List Nat) (cv : Nat) (rk : NodeId) (w : W) (B : NodeId) (top0 : Top)
     (hB : PutBase c base B) (hbook : PutBook c B top0 w)
     (KO : KindOracle) (BK : NodeId) (hvB : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
@@ -127,14 +225,13 @@ theorem writerWP_del_emptyRoomMJK (c : Ctx) (base : View BVal) (hvc : ViewCohere
     (hLV : ∀ L n, (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
       wNode c.p base w L = some n → n.leaf = true → ∀ y, (cv, y) ∈ n.liveAt c.i →
       wNode c.p base w y = none)
+    (Imid : W → Prop)
     (hA : ∀ g h v, DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v →
-      WriterWP (afterDelete (pre ++ [cv]) g h) c v (fun _ v' => DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v'))
+      WriterWP (afterDelete (pre ++ [cv]) g h) c v (fun _ v' => TakeJ2 c base B v'))
     (hMU : ∀ g h merged v, DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v →
-      WriterWP (mergeUp (pre ++ [cv]) g c.p.fuel h merged) c v
-        (fun _ v' => DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v'))
-    (hCR : ∀ seg v, DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v →
-      WriterWP (collapseRoot (pre ++ [cv]) seg c.p.fuel) c v
-        (fun _ v' => DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v')) :
+      WriterWP (mergeUp (pre ++ [cv]) g c.p.fuel h merged) c v (fun _ v' => Imid v'))
+    (hCR : ∀ seg v, Imid v →
+      WriterWP (collapseRoot (pre ++ [cv]) seg c.p.fuel) c v (fun _ v' => TakeJ2 c base B v')) :
     WriterWP (putKv (.del (pre ++ [cv]))) c w (fun _ w' => TakeJ2 c base B w') := by
   have hfuel : 1 ≤ c.p.fuel := by unfold Params.fuel; omega
   refine writerWP_del_toLeafMK c base hvc pre cv rk w (fun v => KdJ c B top0 KO BK v ∧ v.madeFor = w.madeFor)
@@ -304,7 +401,7 @@ theorem writerWP_del_emptyRoomMJK (c : Ctx) (base : View BVal) (hvc : ViewCohere
       (fun c' z h => ⟨c', ((hlive' c' z).mp h).1, ((hlive' c' z).mp h).2, rfl⟩) hRO' hb'.1.1 hread
     refine writerWP_mono (hMU gs hs false w' ⟨⟨hDv, hb'.1.2.1, hb'.1.2.2⟩, hJv, hb'.1.1.fresh.1⟩) ?_
     intro _ w1 hD1
-    exact writerWP_mono (hCR seg w1 hD1) (fun _ w2 hD2 => hD2.2.1)
+    exact hCR seg w1 hD1
   · intro stop w' sn' hsD hbetween ht htop hv hnodes hsn' hsl' hsw' hst' hlive' hread _ _ _ hJv _ hb' gs hs
     obtain ⟨hagree, hsnw⟩ := hfr stop w' sn' hsD ht hnodes hsn'
     have hRO' : RangeOrder (wNode c.p base w') c.i w'.top.rootKey := by
@@ -315,7 +412,7 @@ theorem writerWP_del_emptyRoomMJK (c : Ctx) (base : View BVal) (hvc : ViewCohere
         hagree sn' hsnw hsl' (fun c' z h => (hlive' c' z).mp h)
     have hDv := hD stop w' sn' id hsD ht htop hv hnodes hsn' hsl' hsw' hst'
       (fun c' z h => ⟨c', ((hlive' c' z).mp h).1, ((hlive' c' z).mp h).2, rfl⟩) hRO' hb'.1.1 hread
-    exact writerWP_mono (hA gs hs w' ⟨⟨hDv, hb'.1.2.1, hb'.1.2.2⟩, hJv, hb'.1.1.fresh.1⟩) (fun _ w2 hD2 => hD2.2.1)
+    exact hA gs hs w' ⟨⟨hDv, hb'.1.2.1, hb'.1.2.2⟩, hJv, hb'.1.1.fresh.1⟩
   · intro seg stop w' sn' jcv jy hsD hbetween ht htop hv hnodes hsn' hsl' hsw' hst' hsl hK0 hj hj0 hmin
       hlive' hread _ _ _ hJv _ hb' gs hs
     obtain ⟨hagree, hsnw⟩ := hfr stop w' sn' hsD ht hnodes hsn'
@@ -334,6 +431,39 @@ theorem writerWP_del_emptyRoomMJK (c : Ctx) (base : View BVal) (hvc : ViewCohere
         · exact ⟨c', h1, by omega, by simp [h3]⟩) hRO' hb'.1.1 hread
     refine writerWP_mono (hMU gs hs false w' ⟨⟨hDv, hb'.1.2.1, hb'.1.2.2⟩, hJv, hb'.1.1.fresh.1⟩) ?_
     intro _ w1 hD1
-    exact writerWP_mono (hCR seg w1 hD1) (fun _ w2 hD2 => hD2.2.1)
+    exact hCR seg w1 hD1
 
+
+/-- The walk with the obligations kept in `DelInvJ`: `writerWP_del_emptyRoomMJKG`. -/
+theorem writerWP_del_emptyRoomMJK (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (pre : List Nat) (cv : Nat) (rk : NodeId) (w : W) (B : NodeId) (top0 : Top)
+    (hB : PutBase c base B) (hbook : PutBook c B top0 w)
+    (KO : KindOracle) (BK : NodeId) (hvB : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
+    (hb0 : Book BK c w) (hi0 : KdInv KO BK w)
+    (hI : PutInv c base w) (hRO : RangeOrder (wNode c.p base w) c.i w.top.rootKey)
+    (hF : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey)
+    (hICE : InnerChildrenExist (wNode c.p base w) c.i w.top.rootKey)
+    (hkey : keyWf (pre ++ [cv]) = true)
+    (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
+    (hleafC : ∀ L n, (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      wNode c.p base w L = some n → n.leaf = true →
+      bitsUnion n.lastBitmap (n.bitsOf cv) ≠ n.lastBitmap ∧
+      n.allKeysIn (bitsUnion n.lastBitmap (n.bitsOf cv)) = true ∧ UpRoom c base w L n)
+    (hm : c.p.merges = true) (hpos : 0 < c.i)
+    (hJ2 : TakeJ2 c base B w) (hMF : ∀ x o, w.madeFor.lookup x = some o → o < B)
+    (hLV : ∀ L n, (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      wNode c.p base w L = some n → n.leaf = true → ∀ y, (cv, y) ∈ n.liveAt c.i →
+      wNode c.p base w y = none)
+    (hA : ∀ g h v, DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v →
+      WriterWP (afterDelete (pre ++ [cv]) g h) c v (fun _ v' => DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v'))
+    (hMU : ∀ g h merged v, DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v →
+      WriterWP (mergeUp (pre ++ [cv]) g c.p.fuel h merged) c v
+        (fun _ v' => DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v'))
+    (hCR : ∀ seg v, DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v →
+      WriterWP (collapseRoot (pre ++ [cv]) seg c.p.fuel) c v
+        (fun _ v' => DelInvJ c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK B v')) :
+    WriterWP (putKv (.del (pre ++ [cv]))) c w (fun _ w' => TakeJ2 c base B w') :=
+  writerWP_del_emptyRoomMJKG c base hvc pre cv rk w B top0 hB hbook KO BK hvB hk hb0 hi0 hI hRO hF
+    hICE hkey hrk hleafC hm hpos hJ2 hMF hLV _ (fun g h v hv => writerWP_mono (hA g h v hv) (fun _
+    _ hv' => hv'.2.1)) hMU (fun seg v hv => writerWP_mono (hCR seg v hv) (fun _ _ hv' => hv'.2.1))
 end SIS.Tree

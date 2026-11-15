@@ -9,7 +9,7 @@ collapse with no fit premise (P3), and case 4 of the reading
 `CollapseFitsOK` (`hCoF`): the family over an invariant (`DelStepsOKG`, P4) at
 `DelInvA` takes the fit p.fuel - 1 only at the operation's end, where it holds.
 -/
-import SIS.Tree.CollapseCommuteStep
+import SIS.Tree.CollapseCommuteRun
 
 set_option autoImplicit false
 
@@ -203,6 +203,18 @@ theorem writerWP_mergeUp_delA (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
     (fun _ _ hle hlt => Nat.lt_of_le_of_lt hle hlt) (mergeStepOKW_next c base F hpos hcap hsa2)
     KO BK hv hk hICEk hsa2 hcap w0 k0 fuel h merged v hQ r v' he).2 hn
 
+/-- Root collapse's fit obligation where the next id is below F, for every state: P1. -/
+theorem collFitsW_next (c : Ctx) (base : View BVal) (w0 : W) (F : Nat) :
+    ∀ u x n only, u.next < F → CollGetInvF c base w0 u F →
+      RangeOrder (wNode c.p base u) c.i u.top.rootKey → SegDesc c base x u →
+      u.nodes.lookup x = some n → n.leaf = false → n.firstTime ≠ some c.i →
+      n.onlyLiveKlong = some only → n.cv? only = some 0 →
+      WriterWP (replaceRoot x (u.path.length - 1) only) c u
+        (fun _ u' => u'.next < F → TreeOK (wNode c.p base u') c.i u'.top.rootKey → PutInvG c base u' →
+          SegFits (wNode c.p base u') c.i (F - 1) u'.top.rootKey) := by
+  intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ u' _ hlt hT hG
+  exact segFits_mono _ _ _ _ _ (segFits_next_of_putInvG c base u' hG hT) (by omega)
+
 /-- P3: root collapse keeps `DelInvA`, with no `CollapseFitsOK`. -/
 theorem writerWP_collapseRoot_delA (key : Key) (seg : Nat) (c : Ctx) (base : View BVal)
     (hvc : ViewCoherent c base) (w0 : W) (k0 : Key) (KO : KindOracle) (BK : NodeId)
@@ -222,18 +234,9 @@ theorem writerWP_collapseRoot_delA (key : Key) (seg : Nat) (c : Ctx) (base : Vie
       fun y yn _ h => hP.times y yn h, fun y yn cc z hy hyn hl hc => hICE y yn cc z hy hyn hl hc⟩,
       fun _ => rfl, hFv, fun y yn _ h => hP.wf y yn h, fun y yn _ h => hP.keyNoValue y yn h⟩,
       hR, hbook, hbk, hik⟩⟩
-  have hfits : ∀ u x n only, u.next < F → CollGetInvF c base v u F →
-      RangeOrder (wNode c.p base u) c.i u.top.rootKey → SegDesc c base x u →
-      u.nodes.lookup x = some n → n.leaf = false → n.firstTime ≠ some c.i →
-      n.onlyLiveKlong = some only → n.cv? only = some 0 →
-      WriterWP (replaceRoot x (u.path.length - 1) only) c u
-        (fun _ u' => u'.next < F → TreeOK (wNode c.p base u') c.i u'.top.rootKey → PutInvG c base u' →
-          SegFits (wNode c.p base u') c.i (F - 1) u'.top.rootKey) := by
-    intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ u' _ hlt hT hG
-    exact segFits_mono _ _ _ _ _ (segFits_next_of_putInvG c base u' hG hT) (by omega)
   obtain ⟨⟨⟨hT', hu', _, hICE'⟩, hread', hF', _, _⟩, hR', hbook', hbk', hik'⟩ :=
     (writerWP_collapseRoot_collW F hp2 key seg c base hvc v B top0 hB KO BK hv hk hICEk hsa2
-      (fun u => u.next < F) (fun _ _ hle hlt => Nat.lt_of_le_of_lt hle hlt) hfits
+      (fun u => u.next < F) (fun _ _ hle hlt => Nat.lt_of_le_of_lt hle hlt) (collFitsW_next c base v F)
       c.p.fuel v hCI r v' he).2 hn
   obtain ⟨hP', hG'⟩ := putInv_after_step c base v' B top0 hB hbook' hT'
     (fun y hy => hu' y (reachS_tReach _ _ _ _ hy)) hR'
@@ -300,5 +303,151 @@ theorem opGetCaseOK_delMergeA (p : Params) (R : Struct BVal → Time → Prop) (
     (hPtr : ∀ ts, Within p ts → PointersOK (treeRun p ts)) (hfit : TxSegFitsOK p R) :
     OpGetCaseOK p R DelMergeCase :=
   opGetCaseOK_of' p R DelMergeCase (opGetCaseOK'_delMergeA p R hS hsa2 hcap hMM hPtr) hfit
+
+/-! ## The take-back's family (step 2): `DelInvJ` above the next id -/
+
+/-- `DelInvJ` at every fuel above p.fuel and the next id (bergdb 025-05, step 2). -/
+def DelInvJA (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (KO : KindOracle) (BK B : NodeId)
+    (v : W) : Prop :=
+  ∀ F, c.p.fuel + 1 ≤ F → v.next < F → DelInvJ c base w0 key F KO BK B v
+
+theorem delInvJA_of_delInvJ (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (KO : KindOracle)
+    (BK B : NodeId) (v : W) (hI0 : PutInv c base w0)
+    (hF0 : SegFits (wNode c.p base w0) c.i (c.p.fuel - 1) w0.top.rootKey)
+    (h : DelInvJ c base w0 key (c.p.fuel + 1) KO BK B v) : DelInvJA c base w0 key KO BK B v :=
+  fun F hF hn => ⟨delInvA_of_delInv c base w0 key KO BK v hI0 hF0 h.1 F hF hn, h.2.1, h.2.2⟩
+
+/-- `DelInvJA` gives the take-back's facts, which speak of no fuel. -/
+theorem takeJ2_of_delInvJA (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (KO : KindOracle)
+    (BK B : NodeId) (v : W) (h : DelInvJA c base w0 key KO BK B v) : TakeJ2 c base B v :=
+  (h (max (c.p.fuel + 1) (v.next + 1)) (Nat.le_max_left _ _)
+    (Nat.lt_of_lt_of_le (Nat.lt_succ_self _) (Nat.le_max_right _ _))).2.1
+
+/-- The merges' loop keeps `DelInvJA`, with no fit premise. -/
+theorem writerWP_mergeUp_delJA (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (hpos : 0 < c.i)
+    (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
+    (hICEk : ICEFromKinds c base KO BK)
+    (hsa2 : 2 ≤ c.p.splitAbove) (hcap : 1 ≤ c.p.mergeMax) (B : NodeId) (w0 : W) (k0 : Key) :
+    ∀ fuel h merged v, DelInvJA c base w0 k0 KO BK B v →
+      WriterWP (mergeUp key g fuel h merged) c v (fun _ v' => DelInvJA c base w0 k0 KO BK B v') := by
+  intro fuel h merged v hA r v' he F hF hn
+  have hp2 : 2 ≤ F := by unfold Params.fuel at hF; omega
+  have hQ : DelInvJW c base w0 k0 F (fun u => u.next < F) KO BK B v :=
+    ⟨(delInvW_of_delInv c base w0 k0 _ (fun u => u.next < F) KO BK v
+      (hA (max (c.p.fuel + 1) (v.next + 1)) (Nat.le_max_left _ _)
+        (Nat.lt_of_lt_of_le (Nat.lt_succ_self _) (Nat.le_max_right _ _))).1).1,
+      fun hlt => hA F hF hlt⟩
+  exact (writerWP_mergeUp_delJW key g c base hvc F hp2 (fun u => u.next < F)
+    (fun _ _ hle hlt => Nat.lt_of_le_of_lt hle hlt) (mergeStepOKW_next c base F hpos hcap hsa2)
+    KO BK hv hk hICEk hsa2 hcap B hpos w0 k0 fuel h merged v hQ r v' he).2 hn
+
+/-- Root collapse keeps `DelInvJA`, with no `CollapseFitsOK`. -/
+theorem writerWP_collapseRoot_delJA (key : Key) (seg : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (w0 : W) (k0 : Key) (KO : KindOracle) (BK : NodeId)
+    (hv : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c) (hICEk : ICEFromKinds c base KO BK)
+    (hsa2 : 2 ≤ c.p.splitAbove) (BJ : NodeId) (hpos : 0 < c.i) (v : W)
+    (hA : DelInvJA c base w0 k0 KO BK BJ v) :
+    WriterWP (collapseRoot key seg c.p.fuel) c v (fun _ v' => DelInvJA c base w0 k0 KO BK BJ v') := by
+  intro r v' he F hF hn
+  have hp2 : 2 ≤ F := by unfold Params.fuel at hF; omega
+  obtain ⟨⟨⟨_, _, _, _, _, _, B, top0, hB, hbook⟩, _, _⟩, _, _⟩ :=
+    hA (max (c.p.fuel + 1) (v.next + 1)) (Nat.le_max_left _ _)
+      (Nat.lt_of_lt_of_le (Nat.lt_succ_self _) (Nat.le_max_right _ _))
+  have hle : v.next ≤ v'.next :=
+    (freshCache_collapseRoot key seg c.p.fuel c v hB.good.ids hbook.fresh r v' he).2
+  obtain ⟨⟨⟨hP, _, hR, hICE, hFv, hread, _⟩, hbk, hik⟩, hJ, hBn⟩ := hA F hF (Nat.lt_of_le_of_lt hle hn)
+  have hCI : CollInvJW c base v F (fun u => u.next < F) B top0 KO BK BJ v := by
+    refine ⟨hbook.fresh, fun _ => ⟨⟨⟨hP.tree, fun y hy => hP.untaken y (tReach_reachS _ _ _ _ hy),
+      fun y yn _ h => hP.times y yn h, fun y yn cc z hy hyn hl hc => hICE y yn cc z hy hyn hl hc⟩,
+      fun _ => rfl, hFv, fun y yn _ h => hP.wf y yn h, fun y yn _ h => hP.keyNoValue y yn h⟩,
+      hR, hbook, hbk, hik, hJ, hBn⟩⟩
+  obtain ⟨⟨⟨hT', hu', _, hICE'⟩, hread', hF', _, _⟩, hR', hbook', hbk', hik', hJ', hBn'⟩ :=
+    (writerWP_collapseRoot_collJW F hp2 key seg c base hvc v B top0 hB KO BK hv hk hICEk hsa2
+      (fun u => u.next < F) (fun _ _ hle hlt => Nat.lt_of_le_of_lt hle hlt) (collFitsW_next c base v F)
+      BJ hpos (replaceRootFullJ2OKC_holds c base F hp2 BJ hpos hsa2) c.p.fuel v hCI r v' he).2 hn
+  obtain ⟨hP', hG'⟩ := putInv_after_step c base v' B top0 hB hbook' hT'
+    (fun y hy => hu' y (reachS_tReach _ _ _ _ hy)) hR'
+  refine ⟨⟨⟨hP', hG', hR', hICE', hF', fun key' hk' => ?_, B, top0, hB, hbook'⟩, hbk', hik'⟩, hJ', hBn'⟩
+  rw [hread' key']
+  exact hread key' hk'
+
+/-- `afterDelete` keeps `DelInvJA`, with no `MergeStepOK` and no `CollapseFitsOK`. -/
+theorem writerWP_afterDelete_delJA (key : Key) (g h : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (hpos : 0 < c.i) (KO : KindOracle) (BK : NodeId)
+    (hv : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c) (hICEk : ICEFromKinds c base KO BK)
+    (hsa2 : 2 ≤ c.p.splitAbove) (hcap : 1 ≤ c.p.mergeMax) (BJ : NodeId) (w0 : W) (k0 : Key) (v : W)
+    (hA : DelInvJA c base w0 k0 KO BK BJ v) :
+    WriterWP (afterDelete key g h) c v (fun _ v' => DelInvJA c base w0 k0 KO BK BJ v') :=
+  writerWP_afterDelete_inv key g h c (DelInvJA c base w0 k0 KO BK BJ)
+    (fun v hA => writerWP_mergeUp_delJA key g c base hvc hpos KO BK hv hk hICEk hsa2 hcap BJ w0 k0
+      c.p.fuel h false v hA)
+    (fun v hA => writerWP_collapseRoot_delJA key g c base hvc w0 k0 KO BK hv hk hICEk hsa2 BJ hpos v hA)
+    v hA
+
+/-- The take-back's family at `DelInvJA`. -/
+abbrev DelStepsJ2OKA (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop) : Prop :=
+  DelStepsJ2OKG p R S (fun ts tx w key v => DelInvJA (ctxOf p ts) (viewOf (treeRun p ts)) w key
+    (kindOracleOf p (treeRun p ts)) tx.base tx.base v)
+
+/-- (4) A delete with the merges on keeps `J2At` (`opJ2Case_delMergeRC`), from the
+take-back's family at `DelInvJA`, with no `MergeStepOK` and no `CollapseFitsOK`;
+S gives `PutInv` and the fit p.fuel - 1 at the delete's start. -/
+theorem opJ2Case_delMergeA (p : Params) (R : Struct BVal → Time → Prop) (S : List Tx → Tx → W → Prop)
+    (hS : DelStepsJ2OKA p R S)
+    (hSI : ∀ ts tx w, S ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w)
+    (hSF : ∀ ts tx w, S ts tx w →
+      SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey)
+    (hsa2 : 2 ≤ p.splitAbove) (hcap : 1 ≤ p.mergeMax)
+    (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P) :
+    OpJ2CaseOK p R S DelMergeCase := by
+  intro ts tx hw hr z top hz htop pre op post hops r w hpre _ hSw hJ hPc
+  obtain ⟨key, hop, hmerges⟩ := hPc
+  have hpos : 0 < (ctxOf p ts).i := by simp [ctxOf]
+  have hfresh : ∀ q ∈ treeRun p ts, q.1 < tx.base := by
+    have := (hw.2 ts.length (by simp)).1
+    simpa using this
+  have hK := hRK _ _ hr
+  have hv : ViewIdsBelow tx.base (ctxOf p ts).view :=
+    viewIdsBelow_rootless _ _ (viewIdsBelow_view p (treeRun p ts) ts.length tx.base hfresh)
+  have hk : ViewKinds (kindOracleOf p (treeRun p ts)) tx.base (ctxOf p ts) :=
+    viewKinds_of p (treeRun p ts) ts.length tx.base hfresh (treeRun_timesLE p ts) (hRP _ _ hr) hK
+  have hICEk : ICEFromKinds (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) tx.base :=
+    fun v hb hi hun => innerChildren_of_kinds p (treeRun p ts) tx.base (ctxOf p ts) v rfl hK
+      (hRP _ _ hr) hb hi.cache hun
+  refine writerWP_mono (hS ts tx hw hr z top hz htop pre op post hops r w hpre hSw hJ key hop hmerges
+    (fun v hv' => delInvJA_of_delInvJ (ctxOf p ts) _ w key _ _ _ v (hSI ts tx w hSw) (hSF ts tx w hSw) hv')
+    (fun v hv' => takeJ2_of_delInvJA (ctxOf p ts) _ w key _ _ _ v hv')
+    (fun g h v hv' => writerWP_afterDelete_delJA key g h (ctxOf p ts) _ (viewCoherent_ctxOf p ts) hpos
+      _ _ hv hk hICEk hsa2 hcap tx.base w key v hv')
+    (fun g h merged v hv' => writerWP_mergeUp_delJA key g (ctxOf p ts) _ (viewCoherent_ctxOf p ts) hpos
+      _ _ hv hk hICEk hsa2 hcap tx.base w key p.fuel h merged v hv')
+    (fun seg v hv' => writerWP_collapseRoot_delJA key seg (ctxOf p ts) _ (viewCoherent_ctxOf p ts) w key
+      _ _ hv hk hICEk hsa2 tx.base hpos v hv')) ?_
+  intro _ w' h' _
+  exact h'
+
+/-- TP7's take-back induction with the merges on (`runTreeQ_of_mergesSC`), from the
+take-back's family at `DelInvJA`, with no `MergeStepOK` and no `CollapseFitsOK`. -/
+theorem runTreeQ_of_mergesSA (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.splitAbove)
+    (hcap : 1 ≤ p.mergeMax) (hm : p.merges = true)
+    (Q : Struct BVal → Time → Prop) (hQ0 : Q (initStruct p) 0)
+    (hQs : ∀ ts tx, Within p (ts ++ [tx]) → RunTreeQ p Q (treeRun p ts) ts.length →
+      RunLinksOK p (treeRun p (ts ++ [tx])) (ts.length + 1) →
+      TreeAt p (treeRun p (ts ++ [tx])) (ts.length + 1) →
+      Q (treeRun p (ts ++ [tx])) (ts.length + 1))
+    (hQP : ∀ P t, Q P t → PointersOK P) (hQK : ∀ P t, Q P t → KindsAllOK p P)
+    (ho : OpTreeOKUnder p (RunTreeQ p Q))
+    (hPI : StateOK p (RunTreeQ p Q) (fun ts _ w => PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w))
+    (hRO : StateOK p (RunTreeQ p Q) (fun ts _ w =>
+      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey))
+    (hFS : StateOK p (RunTreeQ p Q) (fun ts _ w =>
+      SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey))
+    (hMF : StateOK p (RunTreeQ p Q) (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base))
+    (hDS : DelStepsJ2OKA p (RunTreeQ p Q) (TakeS4 p)) :
+    ∀ ts, Within p ts → RunTreeQ p Q (treeRun p ts) ts.length :=
+  runTreeQ_of_cases_merges4S p hM hsa hm Q hQ0 hQs hQP hQK ho hPI hRO (baseStartOK_runTreeQ p Q) hFS hMF
+    (opJ2Case_delMergeA p _ _ hDS (fun _ _ _ h => h.1.1.1.1) (fun _ _ _ h => h.2.1) hsa hcap
+      (fun _ _ h => hQP _ _ h.2.2) (fun _ _ h => hQK _ _ h.2.2))
 
 end SIS.Tree
