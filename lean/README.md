@@ -89,13 +89,20 @@ runs (SIS/Tree/DeadLocal.lean to DeadDelCases.lean; 024-12, section 1).
 With `hchk5` discharged as in `invGetScanOK_merges_free`:
 `invGetScanOK_merges_free_noD4` (the same file), premises `hp`, `hth`, `htb`,
 `l4`, `hMSF`, `hCoF`.
+`invGetScanOK_merges_noFit` (the same file; bergdb 025-05, route P) is the same
+without `hMSF` and `hCoF`: premises `hp`, `hth`, `htb`, `l4`, and
+`invGetScanOK_merges_free_noD4` is its corollary. Every writer state with
+`PutInv` fits its next id (SIS/Tree/FuelNext.lean), so inside a delete each
+family of the delete's cases reads at every fuel above p.fuel and the next id,
+which the merges' loop and root collapse keep with no fit premise; the fit is
+asked only at the operation's end, where it holds between operations.
 
 `hU` is false as stated, for every parameter set, and so were `hHL` and `hCoU`:
 they speak of every writer state that meets a local invariant, which carries
 none of the writer's books (SIS/Tree/PremisesFalse.lean). So
 `invGetScanOK_merges` holds vacuously as it stands; `invGetScanOK_merges_noU`
-has no premise proved false, though `hMSF` and `hCoF` are believed false in
-their universal form (024-22, section 11.1; 025-04;
+has no premise proved false, though `hMSF` and `hCoF` (not premises of
+`invGetScanOK_merges_noFit`) are believed false in their universal form (024-22, section 11.1; 025-04;
 SIS/Tree/PremisesTrue.lean has the true forms found). Not covered: the
 merges off; and the theorem does not give the abstract model's TREE or the
 height H that bounded startup asks of the tree: the tree's own invariant is

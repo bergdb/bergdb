@@ -29,7 +29,9 @@ Current since 2026-11-15 (025-02, second close): `invGetScanOK_merges`
 (LatestTopMadeFor.lean; formerly `invGetScanOK_merges_noOutside'`); older names in 025-02's
 name map. Since 2026-11-15, 09:50 (025-04, route (b)): `invGetScanOK_merges_noU`
 (CollapseCommuteTop.lean), the joint route's theorem without `hU` (hp, hth, hchk5, htb, d4, l4,
-hMSF, hCoF); `invGetScanOK_merges` is its corollary.
+hMSF, hCoF); `invGetScanOK_merges` is its corollary. Since 2026-11-15, 13:40 (025-05, route P;
+on fit's branch until it lands): `invGetScanOK_merges_noFit` (DeadTop.lean), premises hp, hth,
+htb, l4; `invGetScanOK_merges_free_noD4` is its corollary.
 
 **What this means for BergDB (2026-11-14, latest).** The key tree's proofs reach their top
 theorem. For Java's own parameters (record format 7's merge thresholds and option 2's theta,
@@ -303,15 +305,18 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
     (the pigeonhole bound, `segFits_next_of_putInv`, FuelNext.lean), so inside a delete the
     reading at every fuel above p.fuel and the next id (`DelInvA`) is kept by the merges' loop
     and root collapse with no fit premise (`writerWP_afterDelete_delA`); the fit p.fuel - 1 is
-    needed only at the operation's end, where the families' conclusions take it. Steps 1 to
-    5 of six done (gated on fit's branch): the reading's case 4, `opGetCaseOK_delMergeA`, the
+    needed only at the operation's end, where the families' conclusions take it. Part 1 done
+    (fit, 2026-11-15; steps 1 to 6 gated on fit's branch): the top theorem
+    `invGetScanOK_merges_noFit` (DeadTop.lean), premises `hp`, `hth`, `htb`, `l4`, with
+    `invGetScanOK_merges_free_noD4` its corollary. Its parts: the reading's case 4, `opGetCaseOK_delMergeA`, the
     take-back's, `opJ2Case_delMergeA` and `runTreeQ_of_mergesSA`, the joint induction's tree,
     `opCaseOKJ_treeInvRange_delMergeA`, and the dead klongs' bound, `opCaseOK_dead_delMergeA`,
     with no `MergeStepOK` and no `CollapseFitsOK`, from the families over an invariant
     (`DelStepsOKG`, `DelStepsJ2OKG`, `DelStepsQdLJG`, `DelStepsCaseDOKG`; the old families their
     instances), and `hchk`'s discharge, `opDelChk5OKR_of_chk6A` and `opDelChk8OKR_holdsA` (the
-    relational loops for the runs that end below a fuel, `RWPC`). Left: the top theorem with
-    premises `hp`, `hth`, `htb`, `l4` (025-05, section 6.1 and its Log).
+    relational loops for the runs that end below a fuel, `RWPC`). `MergeFitsOK` and
+    `CollapseFitsOK` as stated stay open (believed false, not refuted), no longer needed by the
+    newest top theorem. Left of its premises: `htb` (025-05, part 2) and `l4` (below).
 - `hHL` gone (cost2, 2026-11-15, `HeightsFillHolder.lean`, `HeightsFillTop.lean`): the joint
   induction also carries the writer's tree and the take-back's node facts (`J2At`, putinv's
   `OpJ2OK` step with S the take-back's state facts, the heights and the fill:

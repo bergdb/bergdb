@@ -1,8 +1,10 @@
 # 025-05. The heights' premises htb, hMSF and hCoF: the plan
 
-Created 2026-11-15 by Frans Lundberg. Status: in progress (the plan
-written 2026-11-15, 12:39, by coord-1115's planning agent; part 1, step 1
-gated on the prover fit's branch 2026-11-15; section 8 has the state).
+Created 2026-11-15 by Frans Lundberg. Status: part 1 done (the plan
+written 2026-11-15, 12:39, by coord-1115's planning agent; part 1, steps 1
+to 6, gated on the prover fit's branch 2026-11-15: the top theorem
+`invGetScanOK_merges_noFit`, premises hp, hth, htb, l4); part 2 (`htb`) not
+started. Section 8 has the state.
 
 The key tree's best top theorem on `main` since 2026-11-15, 11:17, is
 `invGetScanOK_merges_free_noD4` (DeadTop.lean): TP7, TP10 and TP11 for
@@ -755,4 +757,18 @@ unchecked run's end), `opDelChk8OKR_holdsA` and `opDelChk5OKR_of_chk6A`,
 with no `MergeStepOK` and no `CollapseFitsOK` (the fit at the delete's start
 from the heights and `htb`, `htStart_of_ht`, as the chain has it).
 
-Next: step 6, the top theorem.
+Gated: d21270d2, gate-5 PASS.
+
+2026-11-15, 13:30 to 13:40. Part 1, step 6 (fit): the top theorem
+`invGetScanOK_merges_noFit` (DeadTop.lean): TP7, TP10 and TP11 for Java's
+parameters from `hp`, `hth`, `htb`, `l4`, with no `hMSF` and no `hCoF`:
+`invGetScanOK_merges_noU_noD4`'s proof with `hchk5` discharged by
+`opDelChk5OKR_of_chk6A` and each of the six consumers in its route P form.
+`invGetScanOK_merges_free_noD4` is its corollary under its old statement;
+lean/README.md says so. Part 1 in all: about 2,000 lines added and 600
+removed in 20 files, in about two hours; no statement changed; one line
+added in NoOutsideBase.lean (step 3).
+
+Next, by rule (section 7): part 2, `htb` (steps 7 to 9), or `l4` (024-12,
+section 1); `MergeFitsOK` and `CollapseFitsOK` as stated stay open and
+unused by the newest top theorem.
