@@ -196,6 +196,52 @@ def applyRec (p : Params) (P : PMap) (r : TRec) : PMap :=
     | some n => P.insert x { n with hist := n.hist ++ [⟨tm, v⟩] }
     | none => P) P
 
+/-! ## The model with a larger H (bergdb 025-03) -/
+
+/-- Level l of a trace's node at the bounds p, as the level of the same node at the bounds
+q, whose G is p's and whose H is at least p's: a key node keeps its segment and its height
+(`Params.segOf`, `Params.heightOf`), a top node its ordinal, the root stays above them, a
+value stays at 0. The levels shift with H; the segment and the height do not. -/
+def shiftLevel (p q : Params) (l : Nat) : Nat :=
+  if l == 0 then 0
+  else if l ≤ p.keyMax then q.keyLevel (p.segOf l) (p.heightOf l)
+  else l - p.keyMax + q.keyMax
+
+/-- A trace with the levels of its NEW lines at the bounds q (`shiftLevel`); its versions
+take their levels from these lines (`levelMap`). A check that compares levels at q then
+compares a key node's segment and height, a top node's ordinal. -/
+def shiftTrace (p q : Params) (tr : Trace) : Trace :=
+  { tr with recs := tr.recs.map (fun r =>
+      { r with new := r.new.map (fun (x, l, d) => (x, shiftLevel p q l, d)) }) }
+
+/-- Transaction i run by the writer at the trace's own bounds p on P, Java's structure
+before it, and at the bounds q on Q, the same structure at q's levels: the key nodes that
+each run makes outside its G and H (`W.outside`, taken back or not), and where the two
+runs differ, the levels apart: the noops, the nodes read and made with their klongs,
+segments and heights, the values, the nodes taken back, the top node. -/
+structure HPlusTx where
+  outside : List (NodeId × Nat × Nat) := []
+  outsideQ : List (NodeId × Nat × Nat) := []
+  diffs : List String := []
+
+def hplusTx (p q : Params) (P Q : PMap) (i : Time) (x : TTx) : HPlusTx :=
+  match x.base with
+  | none => {}
+  | some base =>
+    let ops := x.ops.toList.map (·.1)
+    match runOps p base ops i (fun y => P[y]?), runOps q base ops i (fun y => Q[y]?) with
+    | .ok (f0, w0), .ok (f1, w1) =>
+      let kinds := fun (w : W) => w.made.map (fun n => (n.id, n.isData))
+      let same := [("noops", f0 == f1), ("nodes", w0.nodes == w1.nodes),
+        ("segments and heights", w0.gh == w1.gh), ("nodes made", kinds w0 == kinds w1),
+        ("values", w0.vals == w1.vals), ("nodes taken back", w0.taken == w1.taken),
+        ("top nodes", w0.top == w1.top && w0.newTop == w1.newTop)]
+      { outside := w0.outside, outsideQ := w1.outside,
+        diffs := (same.filter (!·.2)).map (fun (s, _) =>
+          s!"T({i}): the {s} differ at H = {p.H} and at H = {q.H}") }
+    | .error e, _ => { diffs := [s!"T({i}): at H = {p.H}, the model's error: {e}"] }
+    | _, .error e => { diffs := [s!"T({i}): at H = {q.H}, the model's error: {e}"] }
+
 /-- The entries without the markers, as the exporter writes them. -/
 def noMarkers (adds : List (NodeId × BVal)) : List (NodeId × BVal) :=
   adds.filter (fun a => a.2 != marker)

@@ -3,7 +3,7 @@ The tree checker: checks a trace of format 3 (java/stress/TraceExport.java with
 tree=1) against the tree model, SIS/Tree/*.lean (bergdb 024-12, section 2.7;
 bergdb 027-02, section 4).
 
-Usage: lake exe treecheck TRACE [--norun]
+Usage: lake exe treecheck TRACE [--norun] [--hplus | --hplus=K]
 
 Checks, per transaction i of the trace, from Java's structure before it:
   C-T1  the change: the model's `Tree.exec` of the transaction's operations gives
@@ -36,6 +36,17 @@ Checks, per transaction i of the trace, from Java's structure before it:
 
 Prints one line a check, the first failures, counts of what the trace reached
 (splits, take-backs, noops), and TREE OK or TREE FAILED.
+
+With --hplus (k = 1) or --hplus=K (bergdb 025-03): every check runs the model at
+H + k, on the trace with its levels at H + k (`shiftTrace`): a node keeps its
+segment and height, so the checks that compare levels compare those. Two more:
+  NoOutside  no transaction's writer at H + k makes a key node outside G and H + k
+             (`W.outside` empty, even for a node taken back)
+  SameTree   the writer at the trace's own H and at H + k, on Java's structure
+             before each transaction, read and make the same nodes with the same
+             klongs, segments and heights, and take back the same ones
+and the line `hplus:`, the transactions whose writer at the trace's own H makes a
+key node outside G and H, and the least k that covers them.
 -/
 import Check.TreeRun
 
@@ -46,17 +57,46 @@ def report (name : String) (fails : Array String) (n : Nat) : IO Unit := do
   for f in fails.toList.take 8 do
     IO.println s!"  {f}"
 
+/-- The option --hplus (k = 1) or --hplus=K: some k; none without it. -/
+def hplusOf (opts : List String) : Option Nat :=
+  opts.foldl (fun k o =>
+    if o == "--hplus" then some 1
+    else if o.startsWith "--hplus=" then (o.drop 8).toNat? else k) none
+
+/-- Key nodes outside the bounds (`W.outside`), in the order made. -/
+def showOutside (o : List (NodeId × Nat × Nat)) : String :=
+  ", ".intercalate (o.reverse.map (fun (y, g, h) => s!"node {y} at segment {g}, height {h}"))
+
 def main (args : List String) : IO UInt32 := do
   match args with
   | file :: opts =>
+    let hk := hplusOf opts
+    if opts.any (·.startsWith "--hplus") && hk.isNone then
+      IO.println "Usage: treecheck TRACE [--norun] [--hplus | --hplus=K]"
+      return 2
     let text ← IO.FS.readFile file
-    let tr := parseTrace text
+    let tr0 := parseTrace text
     let tt := parseTree text
     match tt.tree with
     | none =>
       IO.println "TREE FAILED: no TREE line (a trace of format 3 is made with tree=1)"
       return 1
-    | some (p, k0) =>
+    | some (p0, k0) =>
+      -- With --hplus: the model at H + k, on the trace's levels at H + k.
+      let p := match hk with
+        | some k => { p0 with H := p0.H + k }
+        | none => p0
+      let tr := match hk with
+        | some _ => shiftTrace p0 p tr0
+        | none => tr0
+      let mut P0 : PMap := {}
+      let mut outTxs := 0
+      let mut outNodes := 0
+      let mut outSeg := 0
+      let mut outHigh := 0
+      let mut outList : Array String := #[]
+      let mut noOutside : Array String := #[]
+      let mut sameTree : Array String := #[]
       let mut P : PMap := {}
       let mut change : Array String := #[]
       let mut klongs : Array String := #[]
@@ -82,8 +122,9 @@ def main (args : List String) : IO UInt32 := do
       let mut trail : Std.HashMap String Nat := {}
       if tr.recs.size != tt.txs.size then
         errors := errors.push s!"{tr.recs.size} transactions, {tt.txs.size} with tree lines"
-      for (r, x) in tr.recs.toList.zip tt.txs.toList do
+      for (r, r0, x) in tr.recs.toList.zip (tr0.recs.toList.zip tt.txs.toList) do
         let after := applyRec p P r
+        let after0 := if hk.isSome then applyRec p0 P0 r0 else P0
         if r.idx == 0 then
           -- R(0): the primordial structure, and its key node's klongs.
           for (y, jn) in x.kns do
@@ -120,7 +161,19 @@ def main (args : List String) : IO UInt32 := do
           taken := taken + res.takenBack
           for s in res.trail do
             trail := trail.insert s (trail.getD s 0 + 1)
+          if hk.isSome then
+            let h := hplusTx p0 p P0 P r.idx x
+            if !h.outside.isEmpty then
+              outTxs := outTxs + 1
+              outNodes := outNodes + h.outside.length
+              outList := outList.push s!"T({r.idx}): {showOutside h.outside}"
+              for (_, g, ht) in h.outside do
+                if p0.G < g then outSeg := outSeg + 1 else outHigh := max outHigh ht
+            if !h.outsideQ.isEmpty then
+              noOutside := noOutside.push s!"T({r.idx}): outside G = {p.G}, H = {p.H}: {showOutside h.outsideQ}"
+            sameTree := sameTree ++ h.diffs.toArray
         P := after
+        P0 := after0
       for b in tt.bad.toList.take 8 do
         IO.println s!"bad line: {b}"
       IO.println s!"tree: M={p.M} G={p.G} H={p.H}{if p.merges then s!" m={p.mergeBelow} c={p.mergeMax} h={p.splitAbove}" else ""}{if p.theta != 0 then s!" theta={p.theta}" else ""}; {n} transactions, {opsN} operations ({noopN} noops), {made} key nodes made, {taken} taken back, {kn} KN lines, {gets} GET lines, {scans} SCAN lines, {touches} touches"
@@ -142,7 +195,17 @@ def main (args : List String) : IO UInt32 := do
         report "C-T9 run" runFails n
       report "C-T7 form" form n
       report "C-T7 model errors" errors n
-      let bad := change.size + klongs.size + noops.size + reads.size + touch.size + inv.size + bound.size + runFails.size + form.size + errors.size + tt.bad.size
+      if let some k := hk then
+        let least := if 0 < outSeg then "none (a node outside G)"
+          else toString (outHigh - p0.H)
+        let what := if outTxs == 0 then s!"no transaction makes a key node outside G = {p0.G}, H = {p0.H}"
+          else s!"{outTxs} transactions make {outNodes} key nodes outside G = {p0.G}, H = {p0.H} (taken back or not), {outSeg} of them outside G, the highest at height {outHigh}"
+        IO.println s!"hplus: the model at H = {p.H}, the trace's H = {p0.H} and k = {k}; at H = {p0.H}, {what}; the least k: {least}"
+        for s in outList.toList.take 8 do
+          IO.println s!"  {s}"
+        report "NoOutside" noOutside n
+        report "SameTree" sameTree n
+      let bad := change.size + klongs.size + noops.size + reads.size + touch.size + inv.size + bound.size + runFails.size + form.size + errors.size + tt.bad.size + noOutside.size + sameTree.size
       if bad == 0 then
         IO.println "TREE OK"
         return 0
