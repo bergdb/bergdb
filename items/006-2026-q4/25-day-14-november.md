@@ -192,6 +192,14 @@ So: 1, a planning agent on Fable at high (025-04); 2, DelInvJ first,
 then `hMSF`'s and `hCoF`'s true forms; 3, a close step to one top
 theorem; 5, the night's decisions by rule stand; 4, walked through.
 
+Decision 4, 006-24's 6 (where "the policy of 13 November, 16:50"
+lives), Frans, 08:47: "No, that is not policy. Just a thing we
+discussed. I have made no decision on it. We still try to prove
+everything now. Once that work is done, I may decide on a general
+policy on this." So there is no such policy: proofs are not limited to
+spare tokens, and 006-24's "So: no release waits for proofs [...]" was
+the coordinator's reading, not Frans's decision.
+
 1. **`hU`, false as stated.** Its true form needs an invariant on the
    nodes a transaction leaves out; no one has found it. Recommended: a
    planning agent (xhigh) for that invariant before more provers; read
