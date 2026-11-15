@@ -4,8 +4,9 @@ Created 2026-11-15 by Frans Lundberg. Status: part 1 done (the plan
 written 2026-11-15, 12:39, by coord-1115's planning agent; part 1, steps 1
 to 6, gated on the prover fit's branch 2026-11-15: the top theorem
 `invGetScanOK_merges_noFit`, premises hp, hth, htb, l4); part 2 (`htb`)
-started 2026-11-15 by the prover htb: step 7 reduced to `hchk` without
-`htb` (`jointHtJ_reachedS`). Section 8 has the state.
+started 2026-11-15 by the prover htb: step 7 done (`jointHtJ_reached1`,
+the joint induction with no `htb`); steps 8 and 9 open. Section 8 has the
+state.
 
 The key tree's best top theorem on `main` since 2026-11-15, 11:17, is
 `invGetScanOK_merges_free_noD4` (DeadTop.lean): TP7, TP10 and TP11 for
@@ -925,3 +926,32 @@ definitions), their leaf's and climb's proofs with the tree-facts forms
 (the climb as `rwp_climb_of_J` over `rwp_deleteUpwardP2_climbMBD` and
 `UpCascJ2OKT`), and `OpDelChk8OKR` by the same route with the merges'
 loop checked from `DelInvJAE` (`rwp_mergeUp_of_JAE`).
+
+2026-11-15, 14:25 to 14:30. Part 2, step 7 done (prover htb). New file
+SIS/Tree/StratumChk.lean. No statement changed.
+
+- **`hchk` with no `htb`:** `opDelChk5OKR_T` (the delete runs as its
+  checked copy at every delete of the runs of R) and `opDelChk2ORJ_T`, by
+  the chain of `opDelChk5OKR_of_chk6A` with `DelHoleJE` at the calls of
+  `afterDelete` (new definitions `OpDelChk6TOKR`, `OpDelChk7TOKR`):
+  `opDelChk8OKR_holdsT`, `opDelChk7TOKR_of_chk8` (the climb,
+  `rwp_climb_of_JT` over `rwp_deleteUpwardP2_climbMBD` and `UpCascJ2OKT`),
+  `opDelChk6TOKR_of_chk7T` (the leaf's call), `opDelChk5OKR_of_chk6T`.
+  The walks take the kinds' books only.
+- **Step 7 done:** `jointHtJ_reached1` (StratumChk.lean), the first
+  stratum whole: at every state that a transaction's operations reach,
+  `PutInv`, the ranges, the fill, the heights' walk (`HtInv`), the
+  writer's tree and the take-back's node facts, from the put cases and the
+  live counts, with no `htb`, no fit and no heights' bound. The stop rule
+  did not apply: no member needed the fit at an operation's start; each
+  took it only through the leaf's change's fit and reading, which the
+  tree's facts replace.
+
+**Next: step 8**, `htb`'s case at the runs from the stratum's facts: a
+walk over the delete's checked copy (the heights' walk `ht_putKvDelChk2`
+runs over it, and `opDelChk5OKR_T` gives it with no `htb`) carrying "every
+node found at the start and taken back has a height below p.fuel", with
+the three sites of section 4.4. Then step 9: inside the transactions'
+induction, `htb`'s case at the runs from step 8, the bound and
+`TxSegFitsOK` as in `htStart_of_ht` and `txSegFitsOK_of_takeBelowDelRHU`,
+then the top theorem with premises `hp`, `hth`, `l4`.
