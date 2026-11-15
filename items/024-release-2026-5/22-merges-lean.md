@@ -1641,3 +1641,16 @@ one premise fewer: `invGetScanOK_merges'` (on `invGetScanOK_merges_chkL`) and
   `jointHt_reached` carries the heights. It is the change of 2. above. It was
   not prepared: it rebuilds the reading's route of the delete and is a
   statement change for Frans.
+
+**2026-11-15, putinv2: root collapse's two steps commute on runs** (026-16,
+section 5.3; `12-tree-model/collapse-commute-check.lean.txt`, the families of
+`up-loop-end-check.lean.txt`, 7 minutes). At every replaceRoot of a node not made
+by the transaction, `replaceRoot` gives the same state as the same two steps the
+other way round, the leaf's klong (with its cascade) first, then the unlink:
+the same node at every id, the same nodes taken back, next id, values, path,
+super root, made nodes and made-for ids. It held at all 173 replaceRoots: 95 at a
+segment root, 20 of them with a full segment leaf, and 78 at the space root.
+0 failures. So proposal 1 above is sound on runs. Its proof needs the frame
+lemma that the leaf's `appendKlongs` neither reads nor writes x (not attempted).
+The earlier count, "173 replaceRoots at a segment root, 92 with a full leaf",
+counted the space root's too; its full flag read the path at depth 0 − 1.

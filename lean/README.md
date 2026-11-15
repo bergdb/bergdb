@@ -59,8 +59,15 @@ set of `MergeParamsOK` with theta 0 or at least 2; Java's own parameters,
 record format 7's from node size 8, are among them (`mergeParamsOK_java`,
 `theta_java`). Its premises `d4`, `l4`, `hchk`, `htb`, `hU`, `hHL`, `hMSF`,
 `hCoF`, `hCoU` and `hMF` each speak of one operation or one step of the
-writer, mostly of the delete with the merges; they are open, and held on the
-model's runs within reach (024-12, section 1, the evidence for each). Not
+writer, mostly of the delete with the merges; they held on the model's runs
+within reach (024-12, section 1, the evidence for each). Since 2026-11-15 `hMF`
+is proved (`stateOK_madeFor`, SIS/Tree/MadeForOld.lean; the theorems without it
+in SIS/Tree/LatestTopMadeFor.lean), and three are false as stated, for every
+parameter set: `hU`, `hHL` and `hCoU` speak of every writer state that meets a
+local invariant, which carries none of the writer's books
+(SIS/Tree/PremisesFalse.lean). So the theorem holds vacuously as it stands;
+their true forms and the change proposed are in bergdb 024-22, section 11.1
+(SIS/Tree/PremisesTrue.lean). Not
 covered: the merges off; and the theorem does not give the abstract model's
 TREE or the height H that bounded startup asks of the tree: the tree's own
 invariant is proved inside it, but no theorem connects the two (bergdb 006-26,
@@ -1471,7 +1478,9 @@ Not done:
   record begins (bergdb 005-68).
 * The key tree's 10 premises (`d4`, `l4`, `hchk`, `htb`, `hU`, `hHL`,
   `hMSF`, `hCoF`, `hCoU`, `hMF` of `invGetScanOK_merges`; bergdb 024-12,
-  section 1): open, held on the model's runs within reach.
+  section 1): held on the model's runs within reach; `hMF` proved
+  (2026-11-15); `hU`, `hHL` and `hCoU` false as stated, their statements for
+  Frans to decide (024-22, section 11.1); the others open.
 * Reclaim's theorems: T-SCHEME (R6), that Java's scheme gives safe cuts:
   checked, not proved (the plan's fallback; 001-07, section 5):
   by running on example 4 (`reclaimtest`, `checkSchemeB`, and since bergdb
