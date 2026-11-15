@@ -464,7 +464,7 @@ theorem writerWP_del_emptyAnyMKLHGJ (c : Ctx) (base : View BVal) (hvc : ViewCohe
 /-! ## The delete's steps without `hHL` -/
 
 /-- (025-04, route (b): without `hU`.) `delStepsCaseJ2OK_emptyCascRLHG` without `hHL`. -/
-theorem delStepsCaseJ2OK_emptyCascRLHGJ_noUG (p : Params) (R : Struct BVal → Time → Prop)
+theorem delStepsCaseJ2OK_emptyCascRLHGJ_noUGR (p : Params) (R : Struct BVal → Time → Prop)
     (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M) (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
     (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P)
@@ -476,7 +476,7 @@ theorem delStepsCaseJ2OK_emptyCascRLHGJ_noUG (p : Params) (R : Struct BVal → T
       SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey)
     (hSM : ∀ ts tx w, S ts tx w → ∀ x o, w.madeFor.lookup x = some o → o < tx.base)
     (hRH : ∀ P t, R P t → HeightAllOK p P t)
-    (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelOK p)
+    (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelR p R)
     (hLC : StateOK p R (fun ts _ w => LiveCountsW p ts w))
     (I : List Tx → Tx → W → Key → W → Prop) : DelStepsCaseJ2OKG p R S DelEmptyCascM I := by
   intro ts tx hw hr z top hz htop ops op post hops r w hpre hS hJ key hop hPc hin hout hA hMU hCR
@@ -484,7 +484,7 @@ theorem delStepsCaseJ2OK_emptyCascRLHGJ_noUG (p : Params) (R : Struct BVal → T
   obtain ⟨pre, cv, L0, n0, hop', hm, hK, hne0, hall0, P0, hP0, hX0, hl0, _⟩ := hPc
   subst hop'
   cases hop
-  obtain ⟨hvo, hkw, hbase, hHb, _, hhi, hwfw, hub⟩ := htStart_reachedU p hM R hRL hRK hRH hht hdel ts tx hw hr z top
+  obtain ⟨hvo, hkw, hbase, hHb, _, hhi, hwfw, hub⟩ := htStart_reachedUR p hM R hRL hRK hRH hht hdel ts tx hw hr z top
     hz htop ops (.del (pre ++ [cv]) :: post) hops r w hpre
   have hI := hSI ts tx w hS
   have hkey : keyWf (pre ++ [cv]) = true := within_op_keyWf p ts tx hw ops _ post hops
@@ -518,6 +518,24 @@ theorem delStepsCaseJ2OK_emptyCascRLHGJ_noUG (p : Params) (R : Struct BVal → T
     (fun g h v hv => writerWP_mono (hA g h v (hin v hv)) (fun _ v' hv' => hout v' hv')) (fun g h m v
       hv => hMU g h m v (hin v hv)) (fun seg v hv => writerWP_mono (hCR seg v hv) (fun _ v' hv' =>
       hout v' hv'))
+
+/-- (025-04, route (b): without `hU`.) `delStepsCaseJ2OK_emptyCascRLHG` without `hHL`. -/
+theorem delStepsCaseJ2OK_emptyCascRLHGJ_noUG (p : Params) (R : Struct BVal → Time → Prop)
+    (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M) (hsa2 : 2 ≤ p.splitAbove)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t)
+    (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P)
+    (hSI : ∀ ts tx w, S ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w)
+    (hSV : ∀ ts tx w, S ts tx w → LeafVals (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w)
+    (hSR : ∀ ts tx w, S ts tx w →
+      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey)
+    (hSF : ∀ ts tx w, S ts tx w →
+      SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey)
+    (hSM : ∀ ts tx w, S ts tx w → ∀ x o, w.madeFor.lookup x = some o → o < tx.base)
+    (hRH : ∀ P t, R P t → HeightAllOK p P t)
+    (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelOK p)
+    (hLC : StateOK p R (fun ts _ w => LiveCountsW p ts w))
+    (I : List Tx → Tx → W → Key → W → Prop) : DelStepsCaseJ2OKG p R S DelEmptyCascM I :=
+  delStepsCaseJ2OK_emptyCascRLHGJ_noUGR p R S hM hsa2 hRL hRP hRK hSI hSV hSR hSF hSM hRH hht (takeBelowFuelDelR_of p R hdel) hLC I
 
 /-- The old case: its G form at `DelInvJI`. -/
 theorem delStepsCaseJ2OK_emptyCascRLHGJ_noU (p : Params) (R : Struct BVal → Time → Prop)
@@ -558,6 +576,33 @@ theorem delStepsCaseJ2OK_emptyCascRLHGJ (p : Params) (R : Struct BVal → Time �
   delStepsCaseJ2OK_emptyCascRLHGJ_noU p R S hM hsa2 hRL hRP hRK hSI hSV hSR hSF hSM hRH hht hdel hLC
 
 /-- (025-04, route (b): without `hU`.) `delStepsJ2OK_of_openR` without `hHL`. -/
+theorem delStepsJ2OKJ_of_openR_noUGR (p : Params) (R : Struct BVal → Time → Prop)
+    (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M) (hsa2 : 2 ≤ p.splitAbove)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t)
+    (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P)
+    (hSI : ∀ ts tx w, S ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w)
+    (hSV : ∀ ts tx w, S ts tx w → LeafVals (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w)
+    (hSB : ∀ ts tx w, S ts tx w → tx.base ≤ w.next)
+    (hSR : ∀ ts tx w, S ts tx w →
+      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey)
+    (hSF : ∀ ts tx w, S ts tx w →
+      SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey)
+    (hSM : ∀ ts tx w, S ts tx w → ∀ x o, w.madeFor.lookup x = some o → o < tx.base)
+    (hRH : ∀ P t, R P t → HeightAllOK p P t) (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelR p R)
+    (hLC : StateOK p R (fun ts _ w => LiveCountsW p ts w))
+    (I : List Tx → Tx → W → Key → W → Prop) :
+    DelStepsJ2OKG p R S I :=
+  delStepsJ2OK_of_casesG p R S I (delStepsCaseJ2OK_noLeafG p R S hSI I) (delStepsCaseJ2OK_noopG p R S hSI I)
+    (delStepsCaseJ2OK_orG p R S _ _ _ I delEmptyM_split
+      (delStepsCaseJ2OK_emptyRoomRG p R S hM hRL hRP hRK hSI hSV hSR hSF hSM I)
+      (delStepsCaseJ2OK_orG p R S _ _ _ I delEmptyOther_split
+        (delStepsCaseJ2OK_emptyRootRG p R S hM hsa2 hRL hRP hRK hSI hSV hSB hSR I)
+        (delStepsCaseJ2OK_emptyCascRLHGJ_noUGR p R S hM hsa2 hRL hRP hRK hSI hSV hSR hSF hSM hRH hht hdel
+          hLC I)))
+    (delStepsCaseJ2OK_roomRG p R S hM hRL hRP hRK hSI hSV hSB hSR hSF I)
+    (delStepsCaseJ2OK_fullRHGR p R S hM hsa2 hRL hRP hRK hSI hSV hSB hSR hSF hRH hht hdel I)
+
+/-- (025-04, route (b): without `hU`.) `delStepsJ2OK_of_openR` without `hHL`. -/
 theorem delStepsJ2OKJ_of_openR_noUG (p : Params) (R : Struct BVal → Time → Prop)
     (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M) (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
@@ -574,15 +619,7 @@ theorem delStepsJ2OKJ_of_openR_noUG (p : Params) (R : Struct BVal → Time → P
     (hLC : StateOK p R (fun ts _ w => LiveCountsW p ts w))
     (I : List Tx → Tx → W → Key → W → Prop) :
     DelStepsJ2OKG p R S I :=
-  delStepsJ2OK_of_casesG p R S I (delStepsCaseJ2OK_noLeafG p R S hSI I) (delStepsCaseJ2OK_noopG p R S hSI I)
-    (delStepsCaseJ2OK_orG p R S _ _ _ I delEmptyM_split
-      (delStepsCaseJ2OK_emptyRoomRG p R S hM hRL hRP hRK hSI hSV hSR hSF hSM I)
-      (delStepsCaseJ2OK_orG p R S _ _ _ I delEmptyOther_split
-        (delStepsCaseJ2OK_emptyRootRG p R S hM hsa2 hRL hRP hRK hSI hSV hSB hSR I)
-        (delStepsCaseJ2OK_emptyCascRLHGJ_noUG p R S hM hsa2 hRL hRP hRK hSI hSV hSR hSF hSM hRH hht hdel
-          hLC I)))
-    (delStepsCaseJ2OK_roomRG p R S hM hRL hRP hRK hSI hSV hSB hSR hSF I)
-    (delStepsCaseJ2OK_fullRHG p R S hM hsa2 hRL hRP hRK hSI hSV hSB hSR hSF hRH hht hdel I)
+  delStepsJ2OKJ_of_openR_noUGR p R S hM hsa2 hRL hRP hRK hSI hSV hSB hSR hSF hSM hRH hht (takeBelowFuelDelR_of p R hdel) hLC I
 
 theorem delStepsJ2OKJ_of_openR_noU (p : Params) (R : Struct BVal → Time → Prop)
     (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M) (hsa2 : 2 ≤ p.splitAbove)
@@ -623,12 +660,12 @@ theorem delStepsJ2OKJ_of_openR (p : Params) (R : Struct BVal → Time → Prop)
 
 /-- (025-04, route (b): without `hU`.) `delStepsCaseOK_emptyCascLHG` without `hHL`, given `TakeJ2` and the made-for ids
 below the first id at every state. -/
-theorem delStepsCaseOK_emptyCascLHGJ_noUG (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+theorem delStepsCaseOK_emptyCascLHGJ_noUGR (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
     (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
     (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
     (hRK : ∀ P t, R P t → KindsAllOK p P) (hRH : ∀ P t, R P t → HeightAllOK p P t)
-    (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelOK p)
+    (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelR p R)
     (hLC : StateOK p R (fun ts _ w => LiveCountsW p ts w))
     (hJ2S : StateOK p R (fun ts tx w => TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w))
     (hMFS : StateOK p R (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base))
@@ -640,7 +677,7 @@ theorem delStepsCaseOK_emptyCascLHGJ_noUG (p : Params) (R : Struct BVal → Time
   obtain ⟨pre, cv, L0, n0, hop', hm, hK, hne0, hall0, P0, hP0, hX0, hl0, _⟩ := hPc
   subst hop'
   cases hop
-  obtain ⟨hvo, hkw, hbase, hHb, _, hhi, hwfw, hub⟩ := htStart_reachedU p hM R hRL hRK hRH hht hdel ts tx hw hr z top
+  obtain ⟨hvo, hkw, hbase, hHb, _, hhi, hwfw, hub⟩ := htStart_reachedUR p hM R hRL hRK hRH hht hdel ts tx hw hr z top
     hz htop ops (.del (pre ++ [cv]) :: post) hops r w hpre
   have hkey : keyWf (pre ++ [cv]) = true := within_op_keyWf p ts tx hw ops _ post hops
   obtain ⟨rk, hrk, _⟩ := keyLeaf_rk hK
@@ -682,6 +719,20 @@ theorem delStepsCaseOK_emptyCascLHGJ_noUG (p : Params) (R : Struct BVal → Time
     (fun v hv' => by unfold fresh; wpSimplify; exact hv')
 
 
+/-- (025-04, route (b): without `hU`.) `delStepsCaseOK_emptyCascLHG` without `hHL`, given `TakeJ2` and the made-for ids
+below the first id at every state. -/
+theorem delStepsCaseOK_emptyCascLHGJ_noUG (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+    (hsa2 : 2 ≤ p.splitAbove)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t)
+    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
+    (hRK : ∀ P t, R P t → KindsAllOK p P) (hRH : ∀ P t, R P t → HeightAllOK p P t)
+    (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelOK p)
+    (hLC : StateOK p R (fun ts _ w => LiveCountsW p ts w))
+    (hJ2S : StateOK p R (fun ts tx w => TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w))
+    (hMFS : StateOK p R (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base))
+    (I : List Tx → Tx → W → Key → W → Prop) : DelStepsCaseOKG p R DelEmptyCascM I :=
+  delStepsCaseOK_emptyCascLHGJ_noUGR p R hM hsa2 hRL hP hRK hRH hht (takeBelowFuelDelR_of p R hdel) hLC hJ2S hMFS I
+
 /-- The old case: `delStepsCaseOK_emptyCascLHGJ_noUG` at `DelInvI`. -/
 theorem delStepsCaseOK_emptyCascLHGJ_noU (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
     (hsa2 : 2 ≤ p.splitAbove)
@@ -712,6 +763,25 @@ theorem delStepsCaseOK_emptyCascLHGJ (p : Params) (R : Struct BVal → Time → 
   delStepsCaseOK_emptyCascLHGJ_noU p R hM hsa2 hRL hP hRK hRH hht hdel hLC hJ2S hMFS
 
 /-- `delStepsOKJ_of_open_noU` over any invariant I (bergdb 025-05, P4). -/
+theorem delStepsOKJ_of_open_noUGR (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+    (hsa2 : 2 ≤ p.splitAbove)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t)
+    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
+    (hRK : ∀ P t, R P t → KindsAllOK p P) (hRH : ∀ P t, R P t → HeightAllOK p P t)
+    (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelR p R)
+    (hLC : StateOK p R (fun ts _ w => LiveCountsW p ts w))
+    (hJ2S : StateOK p R (fun ts tx w => TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w))
+    (hMFS : StateOK p R (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base))
+    (I : List Tx → Tx → W → Key → W → Prop) :
+    DelStepsOKG p R I :=
+  delStepsOK_of_casesG p R I (delStepsCaseOK_noLeafG p R I) (delStepsCaseOK_noopG p R I)
+    (delStepsCaseOK_orG p R _ _ _ I delEmptyM_split (delStepsCaseOK_emptyRoomG p R hM hRL hP I)
+      (delStepsCaseOK_orG p R _ _ _ I delEmptyOther_split (delStepsCaseOK_emptyRootG p R hM hsa2 hRL hP I)
+        (delStepsCaseOK_emptyCascLHGJ_noUGR p R hM hsa2 hRL hP hRK hRH hht hdel hLC hJ2S hMFS I)))
+    (delStepsCaseOK_roomG p R hM hRL hP I)
+    (delStepsCaseOK_fullHGR p R hM hsa2 hRL hP hRK hRH hht hdel (fun ts => delFullRootStepOK_ctx p ts) I)
+
+/-- `delStepsOKJ_of_open_noU` over any invariant I (bergdb 025-05, P4). -/
 theorem delStepsOKJ_of_open_noUG (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
     (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
@@ -723,12 +793,7 @@ theorem delStepsOKJ_of_open_noUG (p : Params) (R : Struct BVal → Time → Prop
     (hMFS : StateOK p R (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base))
     (I : List Tx → Tx → W → Key → W → Prop) :
     DelStepsOKG p R I :=
-  delStepsOK_of_casesG p R I (delStepsCaseOK_noLeafG p R I) (delStepsCaseOK_noopG p R I)
-    (delStepsCaseOK_orG p R _ _ _ I delEmptyM_split (delStepsCaseOK_emptyRoomG p R hM hRL hP I)
-      (delStepsCaseOK_orG p R _ _ _ I delEmptyOther_split (delStepsCaseOK_emptyRootG p R hM hsa2 hRL hP I)
-        (delStepsCaseOK_emptyCascLHGJ_noUG p R hM hsa2 hRL hP hRK hRH hht hdel hLC hJ2S hMFS I)))
-    (delStepsCaseOK_roomG p R hM hRL hP I)
-    (delStepsCaseOK_fullHG p R hM hsa2 hRL hP hRK hRH hht hdel (fun ts => delFullRootStepOK_ctx p ts) I)
+  delStepsOKJ_of_open_noUGR p R hM hsa2 hRL hP hRK hRH hht (takeBelowFuelDelR_of p R hdel) hLC hJ2S hMFS I
 
 /-- (025-04, route (b): without `hU`.) `delStepsOK_of_open` without `hHL`. -/
 theorem delStepsOKJ_of_open_noU (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)

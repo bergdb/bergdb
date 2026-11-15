@@ -771,12 +771,12 @@ theorem delStepsCaseDOK_emptyRoot (p : Params) (R : Struct BVal → Time → Pro
     DelStepsCaseDOK p R DelEmptyRootM :=
   delStepsCaseDOK_of_G p R _ (delStepsCaseDOK_emptyRootG p R hM hRL hRP hRK _)
 /-- The upward delete whose stop node has no room. -/
-theorem delStepsCaseDOK_emptyCascG (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+theorem delStepsCaseDOK_emptyCascGR (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
     (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
     (hRP : ∀ P t, R P t → PointersOK P)
     (hRK : ∀ P t, R P t → KindsAllOK p P) (hRH : ∀ P t, R P t → HeightAllOK p P t)
-    (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelOK p)
+    (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelR p R)
     (hLC : StateOK p R (fun ts _ w => LiveCountsW p ts w))
     (hJ2S : StateOK p R (fun ts tx w => TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w))
     (hMFS : StateOK p R (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base))
@@ -788,7 +788,7 @@ theorem delStepsCaseDOK_emptyCascG (p : Params) (R : Struct BVal → Time → Pr
   obtain ⟨pre, cv, L0, n0, hop', hm, hK, hne0, hall0, P0, hP0, hX0, hl0, _⟩ := hPc
   subst hop'
   cases hop
-  obtain ⟨hvo, hkw, hbase, hHb, _, hhi, hwfw, hub⟩ := htStart_reachedU p hM R hRL hRK hRH hht hdel ts tx hw hr z top
+  obtain ⟨hvo, hkw, hbase, hHb, _, hhi, hwfw, hub⟩ := htStart_reachedUR p hM R hRL hRK hRH hht hdel ts tx hw hr z top
     hz htop ops (.del (pre ++ [cv]) :: post) hops r w hpre
   have hkey : keyWf (pre ++ [cv]) = true := within_op_keyWf p ts tx hw ops _ post hops
   obtain ⟨rk, hrk, _⟩ := keyLeaf_rk hK
@@ -823,6 +823,19 @@ theorem delStepsCaseDOK_emptyCascG (p : Params) (R : Struct BVal → Time → Pr
       ts) (viewOf (treeRun p ts)) v) (fun g h m v hv hdv => hMU g h m v (hin v hv) hdv) (fun seg v
       hv => hCR seg v hv.2)
     _ (fun v hv' => by unfold fresh; wpSimplify; exact dw_same rfl rfl hv') (fun _ h => h)
+
+/-- The upward delete whose stop node has no room. -/
+theorem delStepsCaseDOK_emptyCascG (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+    (hsa2 : 2 ≤ p.splitAbove)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t)
+    (hRP : ∀ P t, R P t → PointersOK P)
+    (hRK : ∀ P t, R P t → KindsAllOK p P) (hRH : ∀ P t, R P t → HeightAllOK p P t)
+    (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelOK p)
+    (hLC : StateOK p R (fun ts _ w => LiveCountsW p ts w))
+    (hJ2S : StateOK p R (fun ts tx w => TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w))
+    (hMFS : StateOK p R (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base))
+    (I : List Tx → Tx → W → Key → W → Prop) : DelStepsCaseDOKG p R DelEmptyCascM I :=
+  delStepsCaseDOK_emptyCascGR p R hM hsa2 hRL hRP hRK hRH hht (takeBelowFuelDelR_of p R hdel) hLC hJ2S hMFS I
 
 theorem delStepsCaseDOK_emptyCasc (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
     (hsa2 : 2 ≤ p.splitAbove)
@@ -892,12 +905,12 @@ theorem delStepsCaseDOK_room (p : Params) (R : Struct BVal → Time → Prop) (h
   delStepsCaseDOK_of_G p R _ (delStepsCaseDOK_roomG p R hM hRL hRP hRK _)
 set_option maxHeartbeats 1600000 in
 /-- A full leaf: its split, then `afterDelete`. -/
-theorem delStepsCaseDOK_fullG (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+theorem delStepsCaseDOK_fullGR (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
     (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
     (hRP : ∀ P t, R P t → PointersOK P)
     (hRK : ∀ P t, R P t → KindsAllOK p P) (hRH : ∀ P t, R P t → HeightAllOK p P t)
-    (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelOK p)
+    (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelR p R)
     (hRoot : ∀ ts, DelFullRootStepOK (ctxOf p ts) (viewOf (treeRun p ts)))
     (I : List Tx → Tx → W → Key → W → Prop) : DelStepsCaseDOKG p R DelFullM I := by
   intro ts tx hw hr z top hz htop ops op post hops r w hpre hI hRO hF key hop hPc hin hA _ _ hth hdw
@@ -916,7 +929,7 @@ theorem delStepsCaseDOK_fullG (p : Params) (R : Struct BVal → Time → Prop) (
     fun v hb hi hun => innerChildren_of_kinds p (treeRun p ts) tx.base (ctxOf p ts) v rfl (hRK _ _ hr)
       (hRP _ _ hr) hb hi.cache hun
   have hJ0 : KdJ (ctxOf p ts) tx.base top (kindOracleOf p (treeRun p ts)) tx.base w := ⟨hbook, hb0, hi0⟩
-  obtain ⟨hvo, hkw, _, _, _, hhi, hwfw, hub⟩ := htStart_reachedU p hM R hRL hRK hRH hht hdel ts tx hw hr z top
+  obtain ⟨hvo, hkw, _, _, _, hhi, hwfw, hub⟩ := htStart_reachedUR p hM R hRL hRK hRH hht hdel ts tx hw hr z top
     hz htop ops (.del (pre ++ [cv]) :: post) hops r w hpre
   refine writerWP_del_toLeafMKH (ctxOf p ts) _ (viewCoherent_ctxOf p ts) pre cv rk w
     (KdHtJ (ctxOf p ts) tx.base top (kindOracleOf p (treeRun p ts)) tx.base (htOracleOf p (treeRun p ts)))
@@ -944,6 +957,17 @@ theorem delStepsCaseDOK_fullG (p : Params) (R : Struct BVal → Time → Prop) (
     intro g h v hv'
     exact hA g h v (hin v hv'.1) hv'.2
 
+/-- A full leaf: its split, then `afterDelete`. -/
+theorem delStepsCaseDOK_fullG (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+    (hsa2 : 2 ≤ p.splitAbove)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t)
+    (hRP : ∀ P t, R P t → PointersOK P)
+    (hRK : ∀ P t, R P t → KindsAllOK p P) (hRH : ∀ P t, R P t → HeightAllOK p P t)
+    (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelOK p)
+    (hRoot : ∀ ts, DelFullRootStepOK (ctxOf p ts) (viewOf (treeRun p ts)))
+    (I : List Tx → Tx → W → Key → W → Prop) : DelStepsCaseDOKG p R DelFullM I :=
+  delStepsCaseDOK_fullGR p R hM hsa2 hRL hRP hRK hRH hht (takeBelowFuelDelR_of p R hdel) hRoot I
+
 theorem delStepsCaseDOK_full (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
     (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
@@ -954,6 +978,33 @@ theorem delStepsCaseDOK_full (p : Params) (R : Struct BVal → Time → Prop) (h
     DelStepsCaseDOK p R DelFullM :=
   delStepsCaseDOK_of_G p R _ (delStepsCaseDOK_fullG p R hM hsa2 hRL hRP hRK hRH hht hdel hRoot _)
 /-- Every delete with the merges on, for `DW`: its five cases. -/
+theorem delStepsCaseDOK_mergeGR (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+    (hsa2 : 2 ≤ p.splitAbove)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t)
+    (hRP : ∀ P t, R P t → PointersOK P)
+    (hRK : ∀ P t, R P t → KindsAllOK p P) (hRH : ∀ P t, R P t → HeightAllOK p P t)
+    (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelR p R)
+    (hLC : StateOK p R (fun ts _ w => LiveCountsW p ts w))
+    (hJ2S : StateOK p R (fun ts tx w => TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w))
+    (hMFS : StateOK p R (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base))
+    (I : List Tx → Tx → W → Key → W → Prop) : DelStepsCaseDOKG p R DelMergeCase I := by
+  intro ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop hPc hin hA hMU hCR hth hdw
+  obtain ⟨_, _, hm⟩ := hPc
+  have c7 := delStepsCaseDOK_orG p R _ _ _ I delEmptyM_split (delStepsCaseDOK_emptyRoomG p R hM hRL hRP hRK I)
+    (delStepsCaseDOK_orG p R _ _ _ I delEmptyOther_split (delStepsCaseDOK_emptyRootG p R hM hRL hRP hRK I)
+      (delStepsCaseDOK_emptyCascGR p R hM hsa2 hRL hRP hRK hRH hht hdel hLC hJ2S hMFS I))
+  rcases delMerge_cover (ctxOf p ts) (viewOf (treeRun p ts)) w key hm with h | h | h | h | h
+  · exact delStepsCaseDOK_noLeafG p R I ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop
+      (hop ▸ h) hin hA hMU hCR hth hdw
+  · exact delStepsCaseDOK_noopG p R I ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop
+      (hop ▸ h) hin hA hMU hCR hth hdw
+  · exact c7 ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop (hop ▸ h) hin hA hMU hCR hth hdw
+  · exact delStepsCaseDOK_roomG p R hM hRL hRP hRK I ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF
+      key hop (hop ▸ h) hin hA hMU hCR hth hdw
+  · exact delStepsCaseDOK_fullGR p R hM hsa2 hRL hRP hRK hRH hht hdel (fun ts => delFullRootStepOK_ctx p ts)
+      I ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop (hop ▸ h) hin hA hMU hCR hth hdw
+
+/-- Every delete with the merges on, for `DW`: its five cases. -/
 theorem delStepsCaseDOK_mergeG (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
     (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
@@ -963,22 +1014,8 @@ theorem delStepsCaseDOK_mergeG (p : Params) (R : Struct BVal → Time → Prop) 
     (hLC : StateOK p R (fun ts _ w => LiveCountsW p ts w))
     (hJ2S : StateOK p R (fun ts tx w => TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w))
     (hMFS : StateOK p R (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base))
-    (I : List Tx → Tx → W → Key → W → Prop) : DelStepsCaseDOKG p R DelMergeCase I := by
-  intro ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop hPc hin hA hMU hCR hth hdw
-  obtain ⟨_, _, hm⟩ := hPc
-  have c7 := delStepsCaseDOK_orG p R _ _ _ I delEmptyM_split (delStepsCaseDOK_emptyRoomG p R hM hRL hRP hRK I)
-    (delStepsCaseDOK_orG p R _ _ _ I delEmptyOther_split (delStepsCaseDOK_emptyRootG p R hM hRL hRP hRK I)
-      (delStepsCaseDOK_emptyCascG p R hM hsa2 hRL hRP hRK hRH hht hdel hLC hJ2S hMFS I))
-  rcases delMerge_cover (ctxOf p ts) (viewOf (treeRun p ts)) w key hm with h | h | h | h | h
-  · exact delStepsCaseDOK_noLeafG p R I ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop
-      (hop ▸ h) hin hA hMU hCR hth hdw
-  · exact delStepsCaseDOK_noopG p R I ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop
-      (hop ▸ h) hin hA hMU hCR hth hdw
-  · exact c7 ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop (hop ▸ h) hin hA hMU hCR hth hdw
-  · exact delStepsCaseDOK_roomG p R hM hRL hRP hRK I ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF
-      key hop (hop ▸ h) hin hA hMU hCR hth hdw
-  · exact delStepsCaseDOK_fullG p R hM hsa2 hRL hRP hRK hRH hht hdel (fun ts => delFullRootStepOK_ctx p ts)
-      I ts tx hw hr z top hz htop pre op post hops r w hpre hI hRO hF key hop (hop ▸ h) hin hA hMU hCR hth hdw
+    (I : List Tx → Tx → W → Key → W → Prop) : DelStepsCaseDOKG p R DelMergeCase I :=
+  delStepsCaseDOK_mergeGR p R hM hsa2 hRL hRP hRK hRH hht (takeBelowFuelDelR_of p R hdel) hLC hJ2S hMFS I
 
 theorem delStepsCaseDOK_merge (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
     (hsa2 : 2 ≤ p.splitAbove)
