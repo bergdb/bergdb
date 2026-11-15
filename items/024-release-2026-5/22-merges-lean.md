@@ -1557,3 +1557,50 @@ they stand: no parameter set meets all their premises.
     klong of before, which names the space root. At the loop's end the leaf
     is unlinked back to that version, so the tree has a cycle.
   - `hHL`: a cached node that nothing reaches names a node taken back.
+* **The true forms.** The premises are meant for the states that runs
+  reach. What each needs there, beyond the hypotheses it has:
+  - `hCoU`, its second half (the previous version names ids below the next
+    id): the books. A cached node of before the transaction is `Good`, so its
+    version before is its node in P, whose klongs name ids below the
+    transaction's first id (`ViewGood.ptrs`), which is at most the next id
+    (`Book.next`). `PutBase` and `PutBook` are in scope where the premise is
+    used (`writerWP_collapseRoot_coll`, its take-back twin).
+  - `hCoU`, its first half (the tree with the root's previous version is a
+    tree), and `hU`: the books do not give them. A reached node of before the
+    transaction with klongs of the transaction goes back to its version in
+    P, and that version names nodes of P that the transaction may have
+    linked elsewhere since. That they were not needs an invariant on the
+    nodes that the transaction left out; none exists. For `hCoU` there is a
+    way around it (026-16, section 5.3): the leaf's new klong first, then
+    the unlink, which then changes a node out of reach. That is a change of
+    the consumer, not of the premise: `CollapseUnlinkOK` goes, and the
+    collapse's cascade is proved from the state before `unlink x`, with a
+    frame lemma that the leaf's `appendKlongs` neither reads nor writes x (x
+    is below the leaf on the path, the path's nodes distinct, `ht_path_ne`).
+  - `hHL`: the books do not give it either. A node that the transaction made
+    and that nothing reaches may, by the books, name a node taken back. The
+    take-back's node facts (`TakeJ2`: `TtReachedN`, a node with a klong of
+    the transaction is reached; `MadeStartN`; `OldBelowN`) at the delete's
+    start, with the holders' uniqueness (`liveHolder_unique`), should give
+    it: a chain node taken back is held only by its parent on the chain,
+    which is taken back or unlinked to its version in P, or by the stop
+    node, which is retargeted. `TakeJ2` is in scope in the take-back's
+    route (`upCascJ2OKHG_of`), not in the reading's (`upCascOKHG_of`).
+* **The change proposed, for Frans.** Decided by rule here: no change that
+  only adds the books, since `hU` and `hHL` stay false with them (the
+  reasons above), so it was not prepared. The change worth deciding:
+  1. `hCoU`: the commutation in the consumer, so that `CollapseUnlinkAllOK`
+     leaves the theorem. Size: the frame lemma for `appendKlongs` (a walk of
+     the cascade, as the existing ones; about 300 to 600 lines), the two
+     cascade lemmas again from the state before the unlink (about 200), and
+     `CollapseStepOK` without its second part (its users pass it on; about
+     20 lemma statements, mechanical).
+  2. `hHL`: add `TakeJ2 c base B w`, `TakenAbove B w` and `PutBook` at the
+     delete's start to `UpHolderLiveRunOK`, and carry `TakeJ2` into the
+     reading's route, whose runs are the joint induction's (`TakeS4` holds
+     at every state between operations there). Size: the proof of the true
+     form (about 300 lines) and the reading route's lemmas from the
+     delete's start to `upCascOKHG_of` with one hypothesis more (about 10
+     statements).
+  3. `hU`: open; it needs the invariant on the nodes left out, of no known
+     size. The same invariant would give `hCoU` without the commutation.
