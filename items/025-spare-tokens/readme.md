@@ -65,7 +65,12 @@ Files
   (2026-11-14, 13:46); after 025-02's names step. Status: ready.
 * [025-04](04-hu-true-form.md). The true form of the premise `hU`, false
   as stated: the invariant on the nodes a transaction leaves out, the
-  plan (Frans, 2026-11-15, 08:33). Status: open.
+  plan (Frans, 2026-11-15, 08:33). Status: done (hU out of both routes,
+  2026-11-15).
+* [025-05](05-heights-premises.md). The heights' premises `htb`, `hMSF`
+  and `hCoF` (the tree fits the fuel inside an operation): the plan, by
+  rule of the unattended day of 2026-11-15 (006-27, Frans: "the proofs as
+  far as possible"). Status: open.
 
 
 Log
@@ -98,3 +103,5 @@ the Java and the comparison.
 2026-11-14. 025-03, F1 of 026-16, created (Frans accepted F1, 13:46).
 
 2026-11-15. 025-04, the plan for hU's true form, created (Frans, 08:33).
+
+2026-11-15. 025-05, the plan for the heights' premises, created (006-27).
