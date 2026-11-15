@@ -180,6 +180,14 @@ provers' branches and reports are in
   the merge (from DelInvF's ranges) and the merges' loop, by copies of
   the route lemmas; `d4` as stated (for RunOK runs) is not proved, as
   its proof needs the induction's facts. hu goes on with `l4`.
+* 11:17 hu ended (landed 584c73af: `l4`'s State note in 024-12,
+  section 1). `l4` not started: it builds the joint induction, so its
+  proof gets none of the induction's facts; a near-copy of
+  `jointHtJ_reachedJ` first (about 300 lines), a non-local invariant;
+  3,000 lines or more by copies, much less by option (b), a statement
+  change for Frans (024-12, section 1). No prover in its place: with
+  four points left to 91 %, delj goes on alone.
+* 11:17 W5: `night.sh` started on `main` 584c73af.
 
 
 ## 8. Outcome
