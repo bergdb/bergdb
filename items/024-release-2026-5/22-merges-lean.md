@@ -1611,3 +1611,33 @@ id is below the transaction's first id, for node size at least 4. 024-12,
 section 1, the `hMF` entry, has the proof's outline. The top theorems with
 one premise fewer: `invGetScanOK_merges'` (on `invGetScanOK_merges_chkL`) and
 `invGetScanOK_merges_noOutside'`.
+
+**2026-11-15, putinv2: the true forms proved, as additions** (`PremisesTrue.lean`).
+* `hCoU`: with the books its second half is proved
+  (`collapseUnlink_ids_of_book`), so `CollapseUnlinkOK` needs only its tree
+  half (`collapseUnlinkOK_of_tree`). The tree half stays open.
+* `hHL`: `upHolderLive_of_J2` proves its conclusion. The hypotheses are those of
+  `UpHolderLiveRunOK` with these added: the take-back's node facts at the
+  delete's start (`TakeJ2`), `TakenAbove`, the books at the loop's start and end
+  (`PutBook`), that no value is taken back, the chain's nodes in the writer's
+  tree at the start, and the chain's nodes distinct. In the take-back's route
+  (`upCascJ2OKHG_of`) `TakeJ2`, the books and the chain in the tree are in
+  scope, and the values from the books and the kinds (`Book.taken`,
+  `KdInv.vals`). Not carried there: `TakenAbove`, which the writer's walk gives
+  at every state (`KeepsGoodTaken`), and the chain's distinctness, which
+  `ht_path_ne` proves for the path. The proof:
+  - a node with a klong naming a node of the transaction has a klong of the
+    transaction (`time_of_new`), so it is reached (`TtReachedN`), and so is
+    the node it names, which therefore is not taken back;
+  - so a node taken back and held is a chain node of the transaction, and its
+    one holder is its parent on the chain (`liveHolder_unique`);
+  - that parent is taken back, or unlinked to its node in P (whose klongs name
+    nodes of P only), or is the stop node, whose klongs of the transaction to
+    it are retargeted. The klongs before the last time klong are of before the
+    transaction (`mem_prefixAt_before_time`).
+* To use it the reading's route must carry `TakeJ2` at the delete's start too
+  (`upCascOKHG_of` uses `hHL` for the fuel of the stop node's cascade). That is
+  one induction along the transaction with the take-back's facts, as cost2's
+  `jointHt_reached` carries the heights. It is the change of 2. above. It was
+  not prepared: it rebuilds the reading's route of the delete and is a
+  statement change for Frans.
