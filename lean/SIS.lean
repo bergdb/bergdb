@@ -99,3 +99,4 @@ import SIS.Tree.DelMergeFree
 import SIS.Tree.DelMergeUp
 import SIS.Proof.TreeRoot
 import SIS.Proof.TreeInit
+import SIS.Tree.DeadDelete
