@@ -97,6 +97,7 @@ import SIS.Tree.DelHoleLeaf
 import SIS.Tree.DelHoleClimb
 import SIS.Tree.DelMergeFree
 import SIS.Tree.DelMergeUp
+import SIS.Tree.DelMergeFit
 import SIS.Proof.TreeRoot
 import SIS.Proof.TreeInit
 import SIS.Tree.DeadDelete
