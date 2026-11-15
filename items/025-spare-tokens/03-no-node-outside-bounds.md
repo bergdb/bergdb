@@ -56,7 +56,7 @@ trusted closure's fingerprint, the statements unchanged).
 
 **The option.** `lake exe treecheck TRACE --hplus` runs every check of
 the tree checker with the model at H + 1, `--hplus=K` at H + K
-(lean/TreeCheck.lean, lean/Check/Tree.lean). Before the checks, the
+(lean/TreeCheck.lean only). Before the checks, the
 trace's levels are moved to H + k (`shiftTrace`): a key node keeps its
 segment and height, a top node its ordinal. So the checks that compare
 levels (C-T1's nodes made, C-T9's versions) compare segment and height.
@@ -74,7 +74,11 @@ H makes a key node outside G and H (its `W.outside` at the end; nothing
 removes a node from it, so one taken back is counted), and gives the
 least k that covers them. Without the option the checker is as before:
 on the 205 traces below its output is that of the checker of `295b0dbd`,
-byte for byte. The model's definitions do not change.
+byte for byte. The model's definitions do not change, nor does the
+checker's library (Check/): the new definitions are in TreeCheck.lean,
+which no statement imports, so the gate's fingerprint of the trusted
+closure stays as it was. (In Check/Tree.lean they changed it: a new
+definition took a matcher name from `checkTx`.)
 
 **The traces.** The tree checker's traces of the level scripts
 (treeconf.sh), with the seeds of the full scripts:
@@ -151,4 +155,7 @@ probe that finds the operation that makes the node (probe/).
 - SameTree was not asked for: a few lines, and it tests on Java's
   traces the claim that 026-16, section 4.2, makes by reading;
 - with the option, a node outside G and H + k fails the trace
-  (NoOutside), so TREE OK answers "no node ever outside".
+  (NoOutside), so TREE OK answers "no node ever outside";
+- the new definitions are in TreeCheck.lean, the checker's command line,
+  not in Check/, so that 025-02's gate passes as it is, with no change
+  of its fingerprint to judge.
