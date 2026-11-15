@@ -86,6 +86,9 @@ split runs the same from the state with its bitmap, a tree with no premise
 `d4` too: premises `hp`, `hth`, `hchk5`, `htb`, `l4`, `hMSF`, `hCoF`; the dead
 klongs' bound of a delete with the merges is proved at the joint induction's
 runs (SIS/Tree/DeadLocal.lean to DeadDelCases.lean; 024-12, section 1).
+With `hchk5` discharged as in `invGetScanOK_merges_free`:
+`invGetScanOK_merges_free_noD4` (the same file), premises `hp`, `hth`, `htb`,
+`l4`, `hMSF`, `hCoF`.
 
 `hU` is false as stated, for every parameter set, and so were `hHL` and `hCoU`:
 they speak of every writer state that meets a local invariant, which carries

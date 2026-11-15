@@ -377,7 +377,9 @@ Follow-ups, for a later spare-token run (latest, 03:45):
   conjunct.
   **2026-11-15, prover hu (plan 006-27): proved on the joint route; `d4` is not needed there.**
   The top theorem without `hU` and `d4`: `invGetScanOK_merges_noU_noD4` (DeadTop.lean), premises
-  `hp`, `hth`, `hchk5`, `htb`, `l4`, `hMSF`, `hCoF`. How:
+  `hp`, `hth`, `hchk5`, `htb`, `l4`, `hMSF`, `hCoF`; with delj's discharge of `hchk5` (as in
+  `invGetScanOK_merges_free`): `invGetScanOK_merges_free_noD4`, premises `hp`, `hth`, `htb`,
+  `l4`, `hMSF`, `hCoF`. How:
   - The bound is local at every write but one. `DW` (DeadLocal.lean): every node that the
     writer reads holds at most theta dead klongs and well-formed klongs; `KeepsDW f`: f keeps
     it, for theta 0 or at least 2, with no fact of the tree.

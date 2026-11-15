@@ -6,6 +6,7 @@ to DeadDelCases.lean) in place of its premise `d4`.
 -/
 import SIS.Tree.DeadDelCases
 import SIS.Tree.CollapseCommuteTop
+import SIS.Tree.DelMergeUp
 
 set_option autoImplicit false
 
@@ -182,5 +183,36 @@ theorem invGetScanOK_merges_noU_noD4 (p : Params) (hp : MergeParamsOK p)
         (delStepsOKJ_of_open_noU p _ (by omega) hsa hRL' hP hRK' hRH' hht htb hLC hJ2S hMFS))
       hMS hCo hsa hcap (by omega) hP hfit)
   exact ⟨hinv, h.1, h.2, latestGetOK_of_getOK p h.1, latestScanOK_of_scanOK p h.2⟩
+
+/-- The joint route's top theorem without `hU`, `hchk5` and `d4`:
+`invGetScanOK_merges_noU_noD4` with `hchk5` discharged as in
+`invGetScanOK_merges_free` (`opDelChk8OKR_holds` and the three steps down to
+`OpDelChk5OKL`). Premises `hp`, `hth`, `htb`, `l4`, `hMSF`, `hCoF`. -/
+theorem invGetScanOK_merges_free_noD4 (p : Params) (hp : MergeParamsOK p)
+    (hth : 2 ≤ p.theta ∨ p.theta = 0)
+    (htb : TakeBelowFuelDelOK p)
+    (l4 : OpCaseOK p (RunOK p) (QLive p) DelMergeOpenCase)
+    (hMSF : ∀ ts, MergeFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hCoF : ∀ ts, CollapseFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1)) :
+    InvPreserved p ∧ GetOK p ∧ ScanOK p ∧ LatestGetOK p ∧ LatestScanOK p := by
+  have hp' := hp
+  unfold MergeParamsOK at hp'
+  have hM4 := four_le_M p hp
+  have hm : p.merges = true := by
+    unfold Params.merges; simp only [decide_eq_true_eq]; omega
+  have hsa : 2 ≤ p.splitAbove := by omega
+  have hcap : 1 ≤ p.mergeMax := by omega
+  have hMS : ∀ ts, MergeStepOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1) :=
+    fun ts => mergeStepOK_of_segFits (ctxOf p ts) _ _ (Nat.succ_pos _) hcap hsa (hMSF ts)
+  exact invGetScanOK_merges_noU_noD4 p hp hth
+    (opDelChk5OKR_of_chk6 p _ (by omega) hsa hcap (fun _ _ h => h.1) (fun _ _ h => h.1.1)
+      (fun _ _ h => h.2.2.1.2.2.1) hMS hCoF
+      (opDelChk6OKR_of_chk7 p _ (by omega) hsa (fun _ _ h => h.1) (fun _ _ h => h.1.1)
+        (fun _ _ h => h.2.2.1.2.2.1) (fun _ _ h => h.2.2.1.2.2.2.1) htb
+        (opDelChk7OKR_of_chk8 p _ hM4 hsa hm (fun _ _ h => h.1) (fun _ _ h => h.1.1)
+          (fun _ _ h => h.2.2.1.2.2.1) (fun _ _ h => h.2.2.1.2.2.2.1) htb
+          (opDelChk8OKR_holds p _ hM4 hsa hcap hm (fun _ _ h => h.1) (fun _ _ h => h.1.1)
+            (fun _ _ h => h.2.2.1.2.2.1) (fun _ _ h => h.2.2.1.2.2.2.1) htb hMS))))
+    htb l4 hMSF hCoF
 
 end SIS.Tree
