@@ -192,9 +192,11 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
     each take-back, from the path that `descendToSegmentRoot` leaves,
     `checkRoot_ok_of_segDesc`). So `OpDelChk6OKR` gives `OpDelChk5OKR`
     (`opDelChk5OKR_of_chk6`, with `MergeStepOK` from `hMSF` and `CollapseFitsOK`), and
-    `invGetScanOK_merges_chk6` is the top theorem with `hchk6` in place of `hchk5`.
+    `invGetScanOK_merges_chk6` is the top theorem without `hU` (`invGetScanOK_merges_noU`,
+    hu's) with `hchk6` in place of `hchk5`: premises `hp`, `hth`, `hchk6`, `htb`, `d4`, `l4`,
+    `hMSF`, `hCoF`.
   - Left in `hchk6`: `DelHoleJ` at `afterDelete`'s calls (the existing step lemmas prove it
-    inside their proofs, on the take-back's route with `hU` for the stop node's cascade, but
+    inside their proofs, on the take-back's route, now without `hU` (hu's `_noU` lemmas), but
     their statements do not give it, as cost2 found; carrying it needs their composition
     restated in a form that keeps the states, not a new argument), and the merge's
     `checkFree`. The `DelHoleJ` check is a proposition, not a computation, so `hchk6` has no
