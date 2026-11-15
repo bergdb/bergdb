@@ -264,17 +264,18 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
     runs no operation made the tree deeper twice (17,390 operations, 159 with one step that did:
     14 at the leaf's bitmap, 6 at the stop node's, 139 at a merge; the heights stayed within H),
     so what closes it is that a delete adds at most one level, or an H-based bound with the
-    doomed transactions apart (as `htb`); (2) `HtJ` carried to the merges, through the merges'
-    loop (`ht_merge_of_J` keeps `Book` and `HtInv`) from the calls of `afterDelete`, down to
-    which the walk of `opDelChk7OKR_of_chk8` carries `KdHtJ` to the leaf and through the upward
-    loop; (3) the reading's walks that use `MergeStepOK` (`opCaseOKJ_treeInvRange_delMergeRLC`,
-    `opJ2Case_delMergeRC`) carry no heights to the merges: carry them there, or prove the
-    reading over the checked copy (025-03, section 3.3, route 1). For `hCoF` the same:
-    `collapseFits_of_htJ` is its true form for one replaceRoot (from `HtJ` at its start, at the
-    path's last node with a segment leaf above it, its end fits p.fuel; `ht_replaceRoot` needs
-    no holder, and `sbS_replaceRoot` gives the bound); left are `HtJ` at each replaceRoot,
-    through the collapse's loop one replaceRoot at a time (not by `rwp_collapseRoot_chkJ`, which
-    takes `CollapseFitsOK` itself), and the reading's walks.
+    doomed transactions apart (as `htb`); on the NoOutside route the heights are within H at
+    every moment (025-03, section 3.2), so there (1) is direct; (2) `HtJ` carried to the merges,
+    through the merges' loop (`ht_merge_of_J` keeps `Book` and `HtInv`) from the calls of
+    `afterDelete`, down to which the walk of `opDelChk7OKR_of_chk8` carries `KdHtJ` to the leaf
+    and through the upward loop; (3) the reading's walks that use `MergeStepOK`
+    (`opCaseOKJ_treeInvRange_delMergeRLC`, `opJ2Case_delMergeRC`) carry no heights to the
+    merges: carry them there, or prove the reading over the checked copy (025-03, section 3.3,
+    route 1). For `hCoF` the same: `collapseFits_of_htJ` is its true form for one replaceRoot
+    (from `HtJ` at its start, at the path's last node with a segment leaf above it, its end fits
+    p.fuel; `ht_replaceRoot` needs no holder, and `sbS_replaceRoot` gives the bound); left are
+    `HtJ` at each replaceRoot, through the collapse's loop one replaceRoot at a time (not by
+    `rwp_collapseRoot_chkJ`, which takes `CollapseFitsOK` itself), and the reading's walks.
 - `hHL` gone (cost2, 2026-11-15, `HeightsFillHolder.lean`, `HeightsFillTop.lean`): the joint
   induction also carries the writer's tree and the take-back's node facts (`J2At`, putinv's
   `OpJ2OK` step with S the take-back's state facts, the heights and the fill:
