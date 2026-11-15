@@ -1,7 +1,7 @@
 # 026-15. The timing pass at 10M keys
 
-Created 2026-11-14 by Frans Lundberg. Status: open (planned; to run when
-the coordinator starts it).
+Created 2026-11-14 by Frans Lundberg. Status: done (run 2026-11-14 15:58 to
+2026-11-15 03:11; results in section 9).
 
 The time that 2026.6's changes to reclaim cost or save at 10M keys, where
 026-09 and 026-05 were measured in counts only: 026-04, section 2, item
@@ -305,6 +305,40 @@ shorter one, the timing alone. From 15:00 to 09:30 (the first plan):
 timing until about 06:45 (6 or 7 rounds), then night.sh.
 
 
+## 9. Results
+
+Run on F53 from 2026-11-14, 15:58, to 2026-11-15, 03:11, started by
+coord-1114's waiter after 025-02's provers had ended; stopped by STOP
+after 105 runs (9 rounds; Frans, 03:07, asked for the proofs to go on).
+Every run ok, every run quiet (`quiet=1`). analyze.py's tables are
+[15-timing-10m/analysis.txt](15-timing-10m/analysis.txt), the runs
+[15-timing-10m/results.txt](15-timing-10m/results.txt).
+
+The phase's wall time, ratio of the medians, with section 6's verdict
+(9 rounds paired; d 8):
+
+* **(a) uniform overwrites:** B/R 0.959 (gain), C/B 0.953 (gain), C/R
+  0.914 (gain, 8.6 % less time). The window (after the first reclaim
+  iteration): C/B 0.934, C/R 0.905.
+* **(b) a queue:** B/R 0.919, C/B 0.914, C/R 0.840 (all gains; 16 % less
+  time). Window: C/B 0.859, C/R 0.797.
+* **(c) cold, 1 % hot:** B/R 0.969, C/B 0.942, C/R 0.913 (gains). Window:
+  B/R 0.979 (within the noise), C/B 0.889, C/R 0.871.
+* **(d) back to empty:** B/R 0.999 (within the noise), C/B 0.942, C/R
+  0.942 (gains). Section 6 expected C to be slower here (30 % more
+  values rewritten); it is 5.8 % faster.
+
+What it means: 026-09 (the keys-only scan) saves time in every workload
+at 10M keys, 4.7 to 8.6 % of the phase and 6.6 to 14.1 % of the window
+in (a) to (c), with half the loads (C's loads 21.7M against B's 43.5M in
+(a)). The rest of 2026.6 (B against R) saves 3 to 8 % in (a) to (c) and
+nothing in (d). The latencies' tails (p99, p99.9, the largest) are about
+the same for the three builds; C has the fewest transactions over 20 ms
+in (a) to (c) (44, 31, 38 against R's 57, 42, 46). Measured with the
+stream mostly in the OS file cache (section 7): with a database larger
+than the memory C's saving would likely be larger.
+
+
 State
 =====
 
@@ -324,3 +358,7 @@ argument. Before the start, for the coordinator: release heavy2.lock if
 stale; choose SLOTS (section 7); give the end; THEN_NIGHT=1 if night.sh
 is to follow. Not done: the pass itself. Nothing here is committed;
 nothing of `timing/` is to land.
+
+2026-11-15, 06:10 (coord-1114): run and done; section 9. The pass's
+files stay in /Users/f/fl/bench/2026-11-14/timing/; the tables and the
+run lines are copied to 15-timing-10m/.

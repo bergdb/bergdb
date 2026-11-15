@@ -1,0 +1,92 @@
+/Users/f/fl/bench/2026-11-14/timing/results.txt: 105 runs, 105 ok, 0 failed, 0 ok but not quiet
+
+## Workload a, uniform overwrites
+
+| Build | n | Phase s | Range | Spread | Puts/s | Window | Fill s | p50 | p99 | p99.9 | Max | >20ms |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| R | 9 | 411.4 | 409.7-414.5 | 1.2 % | 25,255 | 25,641 | 73.8 | 341 | 1,995 | 2,725 | 76,784 | 57 |
+| B | 9 | 394.4 | 390.0-398.6 | 2.2 % | 26,345 | 26,379 | 74.0 | 280 | 2,003 | 2,798 | 75,601 | 53 |
+| C | 9 | 375.9 | 373.1-377.7 | 1.2 % | 27,637 | 28,247 | 73.8 | 182 | 2,035 | 2,787 | 75,934 | 44 |
+
+| Build | Window s | W p99 | W p99.9 | W max | GC ms | GC max | Cuts | Steps | Loads |
+|---|---|---|---|---|---|---|---|---|---|
+| R | 246.7 | 1,930 | 2,666 | 76,784 | 3,924 | 105.9 | 2 | 645,181 | 47,381,574 |
+| B | 239.1 | 1,953 | 2,723 | 75,316 | 4,040 | 106.3 | 3 | 568,053 | 43,477,435 |
+| C | 223.3 | 2,008 | 2,760 | 71,304 | 3,755 | 107.2 | 3 | 491,210 | 21,687,115 |
+
+| Pair | Time | Ratio | Change | Pairs | Paired med | Paired range | Noise | Verdict |
+|---|---|---|---|---|---|---|---|---|
+| B/R | phase  | 0.959 | -4.1 % | 9 | 0.959 | 0.948-0.970 | 3.0 % | gain |
+| C/B | phase  | 0.953 | -4.7 % | 9 | 0.954 | 0.946-0.960 | 3.0 % | gain |
+| C/R | phase  | 0.914 | -8.6 % | 9 | 0.915 | 0.907-0.919 | 3.0 % | gain |
+| B/R | window | 0.969 | -3.1 % | 9 | 0.968 | 0.954-0.984 | 3.0 % | gain |
+| C/B | window | 0.934 | -6.6 % | 9 | 0.936 | 0.927-0.941 | 3.0 % | gain |
+| C/R | window | 0.905 | -9.5 % | 9 | 0.905 | 0.898-0.912 | 3.0 % | gain |
+
+## Workload b, a queue
+
+| Build | n | Phase s | Range | Spread | Puts/s | Window | Fill s | p50 | p99 | p99.9 | Max | >20ms |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| R | 9 | 268.1 | 267.0-269.8 | 1.0 % | 84,710  | 79,599 | 18.8 | 44 | 339 | 2,318 | 103,499 | 42 |
+| B | 9 | 246.4 | 244.8-258.3 | 5.5 % | 92,174  | 85,822 | 18.9 | 43 | 332 | 2,318 | 109,816 | 38 |
+| C | 9 | 225.1 | 224.1-227.4 | 1.4 % | 100,865 | 99,925 | 18.9 | 42 | 331 | 2,318 | 106,068 | 31 |
+
+| Build | Window s | W p99 | W p99.9 | W max | GC ms | GC max | Cuts | Steps | Loads |
+|---|---|---|---|---|---|---|---|---|---|
+| R | 159.7 | 336 | 2,312 | 103,499 | 4,582 | 125.3 | 3 | 679,332 | 46,824,423 |
+| B | 148.1 | 328 | 2,314 | 109,816 | 4,572 | 132.7 | 3 | 582,109 | 39,729,831 |
+| C | 127.2 | 328 | 2,314 | 106,068 | 4,610 | 129.7 | 3 | 477,651 | 19,814,545 |
+
+| Pair | Time | Ratio | Change | Pairs | Paired med | Paired range | Noise | Verdict |
+|---|---|---|---|---|---|---|---|---|
+| B/R | phase  | 0.919 | -8.1 %  | 9 | 0.919 | 0.914-0.958 | 5.5 % | gain |
+| C/B | phase  | 0.914 | -8.6 %  | 9 | 0.913 | 0.872-0.925 | 5.5 % | gain |
+| C/R | phase  | 0.840 | -16.0 % | 9 | 0.839 | 0.831-0.850 | 3.0 % | gain |
+| B/R | window | 0.927 | -7.3 %  | 9 | 0.928 | 0.922-0.985 | 7.1 % | gain |
+| C/B | window | 0.859 | -14.1 % | 9 | 0.857 | 0.808-0.865 | 7.1 % | gain |
+| C/R | window | 0.797 | -20.3 % | 9 | 0.797 | 0.788-0.801 | 3.0 % | gain |
+
+## Workload c, cold, 1 % hot
+
+| Build | n | Phase s | Range | Spread | Puts/s | Window | Fill s | p50 | p99 | p99.9 | Max | >20ms |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| R | 9 | 334.9 | 333.3-339.4 | 1.8 % | 128,186 | 124,456 | 73.8 | 32 | 370 | 2,307 | 110,028 | 46 |
+| B | 9 | 324.5 | 323.9-326.9 | 0.9 % | 132,286 | 127,307 | 73.7 | 32 | 345 | 2,279 | 129,235 | 44 |
+| C | 9 | 305.6 | 303.5-306.6 | 1.0 % | 140,476 | 143,144 | 73.7 | 32 | 346 | 2,286 | 126,022 | 38 |
+
+| Build | Window s | W p99 | W p99.9 | W max | GC ms | GC max | Cuts | Steps | Loads |
+|---|---|---|---|---|---|---|---|---|---|
+| R | 184.5 | 342 | 2,298 | 53,337  | 3,846 | 110.3 | 2 | 681,932 | 45,080,106 |
+| B | 180.7 | 318 | 2,269 | 129,235 | 5,631 | 130.7 | 3 | 682,339 | 45,125,331 |
+| C | 160.7 | 319 | 2,279 | 126,022 | 5,476 | 125.5 | 3 | 572,022 | 25,147,501 |
+
+| Pair | Time | Ratio | Change | Pairs | Paired med | Paired range | Noise | Verdict |
+|---|---|---|---|---|---|---|---|---|
+| B/R | phase  | 0.969 | -3.1 %  | 9 | 0.970 | 0.954-0.978 | 3.0 % | gain         |
+| C/B | phase  | 0.942 | -5.8 %  | 9 | 0.940 | 0.932-0.945 | 3.0 % | gain         |
+| C/R | phase  | 0.913 | -8.7 %  | 9 | 0.911 | 0.900-0.917 | 3.0 % | gain         |
+| B/R | window | 0.979 | -2.1 %  | 9 | 0.978 | 0.955-0.985 | 3.0 % | within noise |
+| C/B | window | 0.889 | -11.1 % | 9 | 0.887 | 0.884-0.897 | 3.0 % | gain         |
+| C/R | window | 0.871 | -12.9 % | 9 | 0.869 | 0.857-0.878 | 3.0 % | gain         |
+
+## Workload d, back to empty
+
+| Build | n | Total s | Range | Spread | Fill s | Delete s | Drive s | Del p99 | Del max | Drv p99 | Drv max |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| R | 8 | 80.7 | 78.8-81.1 | 2.8 % | 38.4 | 41.7 | 0.54 | 666 | 27,944 | 114 | 1,788 |
+| B | 8 | 80.6 | 79.5-81.3 | 2.2 % | 37.3 | 43.1 | 0.23 | 645 | 26,928 | 122 | 8,346 |
+| C | 8 | 76.0 | 75.7-76.3 | 0.8 % | 36.3 | 39.5 | 0.22 | 662 | 27,233 | 124 | 7,199 |
+
+| Pair | Time | Ratio | Change | Pairs | Paired med | Paired range | Noise | Verdict |
+|---|---|---|---|---|---|---|---|---|
+| B/R | phase | 0.999 | -0.1 % | 8 | 1.001 | 0.984-1.017 | 3.0 % | within noise |
+| C/B | phase | 0.942 | -5.8 % | 8 | 0.942 | 0.936-0.957 | 3.0 % | gain         |
+| C/R | phase | 0.942 | -5.8 % | 8 | 0.942 | 0.938-0.963 | 3.0 % | gain         |
+
+Time: the phase after the fill (a to c: the same user transactions on every build;
+d: fill, deletes and drive); window: from the end of the first reclaim iteration
+to the end. Ratio below 1: faster. Latencies in microseconds,
+medians over the runs; >20ms: transactions over 20 ms (P1). Verdict: a gain or a
+loss when every round's pair is on the same side of 1 (3 pairs or more) and the
+ratio of the medians is beyond the noise (the larger of 3 % and either build's
+spread, (max - min) / median); * : runs that did not pass the quiet check.
