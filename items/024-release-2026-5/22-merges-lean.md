@@ -1604,3 +1604,10 @@ they stand: no parameter set meets all their premises.
      statements).
   3. `hU`: open; it needs the invariant on the nodes left out, of no known
      size. The same invariant would give `hCoU` without the commutation.
+
+**2026-11-15, putinv2: `hMF` proved.** `stateOK_madeFor` (`MadeForOld.lean`,
+`LatestTopMadeFor.lean`): at every state between operations, every made-for
+id is below the transaction's first id, for node size at least 4. 024-12,
+section 1, the `hMF` entry, has the proof's outline. The top theorems with
+one premise fewer: `invGetScanOK_merges'` (on `invGetScanOK_merges_chkL`) and
+`invGetScanOK_merges_noOutside'`.
