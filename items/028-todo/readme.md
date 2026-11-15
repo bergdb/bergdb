@@ -102,6 +102,7 @@ Open
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins and sequential keys | none | open |
 | [028-07](07-start-lock-across-sync.md) | Investigate | One start's sync blocks every start of the JVM | none | open |
 | [028-13](13-startup-distance-ranges.md) | Decide | The startup distance's two ranges disagree | decision | open |
+| [028-14](14-corrupt-node-no-end.md) | Investigate | A damaged node with its checksum right: a start that does not end | none | open |
 
 
 Closed
@@ -128,3 +129,6 @@ Log
 
 2026-11-13. 028-08, 028-09 and 028-11 done, 028-10 evaluated, for Frans
 (a decision), by an agent of coord-1113.
+
+2026-11-15. 028-14 registered: night.sh's one failure (CorruptStreamTester),
+by coord-1115.
