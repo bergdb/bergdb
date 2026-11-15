@@ -4,9 +4,8 @@ Created 2026-11-15 by Frans Lundberg. Status: part 1 done (the plan
 written 2026-11-15, 12:39, by coord-1115's planning agent; part 1, steps 1
 to 6, gated on the prover fit's branch 2026-11-15: the top theorem
 `invGetScanOK_merges_noFit`, premises hp, hth, htb, l4); part 2 (`htb`)
-started 2026-11-15 by the prover htb: step 7 reduced to three delete
-cases and `hchk` without `htb` (`jointHtJ_reachedT`). Section 8 has the
-state.
+started 2026-11-15 by the prover htb: step 7 reduced to `hchk` without
+`htb` (`jointHtJ_reachedS`). Section 8 has the state.
 
 The key tree's best top theorem on `main` since 2026-11-15, 11:17, is
 `invGetScanOK_merges_free_noD4` (DeadTop.lean): TP7, TP10 and TP11 for
@@ -891,3 +890,38 @@ the upward delete with room above (`DelEmptyRoomM`, as
 with the live counts from `SJ0`, as `delStepsCaseJ2OK_emptyCascS_noUG`;
 `UpCascOKHGJ` and the walk carry the heights' bound in `KdHtJ`); and
 `hchk` without `htb` (as in the 13:40 entry).
+
+2026-11-15, 14:10 to 14:25. Part 2, step 7: the stratum family whole
+(prover htb). New file SIS/Tree/StratumCasc.lean; additions in
+WriterGetUpTake.lean, DelStepsBookK.lean, DelStepsGh.lean,
+DelHoleClimb.lean, DelStepsCascRoot.lean, StopSwapBelow.lean. No statement
+changed.
+
+- **The three cases that empty the leaf**, proved: the space root
+  (`delStepsCaseTJ_emptyRoot`, the root's bitmap or split by the tree-facts
+  forms), room above the leaf (`delStepsCaseTJ_emptyRoom` over the walk
+  `writerWP_del_emptyRoomMJKT`), the stop node's cascade
+  (`delStepsCaseTJ_emptyCasc` over `writerWP_del_emptyAnyMJKT` and the
+  obligation `UpCascJ2OKT`, proved: `upCascJ2OKT_holds`). So the family
+  holds (`delStepsTJA_holds`), and the first stratum needs only `hchk`:
+  `jointHtJ_reachedS` (StratumCasc.lean), the joint induction with no
+  `htb`, from the put cases, the live counts and `hchk`.
+- **The upward walks with the fit at any depth:** the fit at the start of
+  the upward delete fed only `CollGetInv`'s fit, so `collGetInvD_after_upT`
+  (`CollGetInvD`, the fit at a depth d), `takeJ2_deleteUpward_upTMBKD`,
+  `takeJ2_deleteUpward_stepMBKGD` and `rwp_deleteUpwardP2_climbMBD` take it
+  at any d; the stratum takes d the next id (P1). The old lemmas are their
+  instances at p.fuel - 1 (`collGetInv_of_D`).
+- **The stop node's split without the fits:** `writerWP_upCasc_root_delT`
+  and `writerWP_upCasc_below_delST` give the tree's facts with no fit at the
+  start and none after, `DelInv` where both hold; the old lemmas are their
+  corollaries with the fit after (`hFits`). The heights served the cascade
+  only for that fit (`UpCascFitsOKR`), so the stratum's cascade walk is the
+  kinds' walk, with no heights.
+
+**Left of step 7:** `hchk` without `htb`. The chain is that of the 13:40
+entry: `OpDelChk6OKR` and `OpDelChk7OKR` with `DelHoleJE` (new
+definitions), their leaf's and climb's proofs with the tree-facts forms
+(the climb as `rwp_climb_of_J` over `rwp_deleteUpwardP2_climbMBD` and
+`UpCascJ2OKT`), and `OpDelChk8OKR` by the same route with the merges'
+loop checked from `DelInvJAE` (`rwp_mergeUp_of_JAE`).

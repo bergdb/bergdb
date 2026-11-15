@@ -309,10 +309,9 @@ theorem rwp_deleteUpwardP2_climb (aK aC1 aC2 : Key → Nat → Nat → M Unit) (
     exact rwp_refl _ _ _
 
 set_option maxHeartbeats 1600000 in
-/-- `takeJ2_deleteUpward_stepMBKG` for the two copies: at a segment leaf as the
-stop node with room, the bitmap's state has `TakeJ2` and the collapse's reading
-(`hleafM`); full, `hcascLeaf`. -/
-theorem rwp_deleteUpwardP2_climbMB (aK aC1 aC2 : Key → Nat → Nat → M Unit) (c : Ctx) (base : View BVal)
+/-- `rwp_deleteUpwardP2_climbMB` with the fit at the start at any depth d, the stop
+node's continuation given `CollGetInvD` at d (bergdb 025-05, step 7). -/
+theorem rwp_deleteUpwardP2_climbMBD (aK aC1 aC2 : Key → Nat → Nat → M Unit) (c : Ctx) (base : View BVal)
     (X : Nat → NodeId) (Nn : Nat → KNode) (K : Nat → Nat) (depth cv : Nat) (pre : List Nat)
     (rk B : NodeId) (w : W) (hdepth : 0 < depth) (hfuel : 1 ≤ c.p.fuel) (hpos : 0 < c.i)
     (hp : ∀ i, i ≤ depth → (w.path[i]?).map (·.2) = some (X i))
@@ -332,7 +331,7 @@ theorem rwp_deleteUpwardP2_climbMB (aK aC1 aC2 : Key → Nat → Nat → M Unit)
     (hTimesR : ∀ y yn, TReach (wNode c.p base w) c.i w.top.rootKey y → wNode c.p base w y = some yn →
       ∀ s, Klong.time s ∈ yn.ks → s ≤ c.i)
     (hICE : InnerChildrenExist (wNode c.p base w) c.i w.top.rootKey)
-    (hfit : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey)
+    (d : Nat) (hfit : SegFits (wNode c.p base w) c.i d w.top.rootKey)
     (hnovalAll : ∀ y yn, wNode c.p base w y = some yn → wValue base w y = none)
     (hreach : ∀ i, i ≤ depth → TReach (wNode c.p base w) c.i w.top.rootKey (X i))
     (hlinkK : ∀ i, 0 < i → i ≤ depth → (K i, X i) ∈ (Nn (i - 1)).liveAt c.i)
@@ -368,7 +367,7 @@ theorem rwp_deleteUpwardP2_climbMB (aK aC1 aC2 : Key → Nat → Nat → M Unit)
       (∃ S, RetFormS c.i B (Nn stop) S ∧
         ((Nn (stop + 1)).firstTime = some c.i → RetFrom c.i B (Nn stop) (X (stop + 1)) S) ∧
         BitmapOf S sn' c.i (K (stop + 1))) →
-      TakeJ2 c base B w' → CollGetInv c base w' w' → J w' →
+      TakeJ2 c base B w' → CollGetInvD c base w' d → J w' →
       ∀ gs hs : Nat, RWP (aC1 (pre ++ [cv]) gs hs) (aC2 (pre ++ [cv]) gs hs) c w')
     (hcascLeaf : ∀ (stop : Nat) (w2 : W) (S : KNode), stop < depth →
       (∀ i, stop < i → i < depth →
@@ -384,7 +383,7 @@ theorem rwp_deleteUpwardP2_climbMB (aK aC1 aC2 : Key → Nat → Nat → M Unit)
   obtain ⟨hTt, hD, hO, hS, hM, hV⟩ := hJ2
   have hN : ∀ i, i ≤ depth → wNode c.p base w (X i) = some (Nn i) := fun i hi => by
     simp only [wNode, htk i hi, Bool.false_eq_true, ↓reduceIte, hlk i hi]
-  have hpost := collGetInv_after_upT c base X Nn K depth w hlk htk hdist hT hwf hRt hTimesR hICE hfit
+  have hpost := collGetInvD_after_upT c base X Nn K depth w hlk htk hdist hT hwf hRt hTimesR hICE d hfit
     hnovalAll hreach hlinkK
   -- the facts after the stop node's change, before root collapse
   have hafter : ∀ (stop : Nat) (w' : W) (sn' : KNode), stop < depth →
@@ -512,6 +511,81 @@ theorem rwp_deleteUpwardP2_climbMB (aK aC1 aC2 : Key → Nat → Nat → M Unit)
           hJ hI hJw' gs hs
     · exact hcascLeaf stop w2 S hsD hbetween hLE hJw2 hsl hDR gs hs
 
+
+/-- `takeJ2_deleteUpward_stepMBKG` for the two copies: at a segment leaf as the
+stop node with room, the bitmap's state has `TakeJ2` and the collapse's reading
+(`hleafM`); full, `hcascLeaf`. -/
+theorem rwp_deleteUpwardP2_climbMB (aK aC1 aC2 : Key → Nat → Nat → M Unit) (c : Ctx) (base : View BVal)
+    (X : Nat → NodeId) (Nn : Nat → KNode) (K : Nat → Nat) (depth cv : Nat) (pre : List Nat)
+    (rk B : NodeId) (w : W) (hdepth : 0 < depth) (hfuel : 1 ≤ c.p.fuel) (hpos : 0 < c.i)
+    (hp : ∀ i, i ≤ depth → (w.path[i]?).map (·.2) = some (X i))
+    (hk : ∀ i, 0 < i → i ≤ depth → w.path[i]? = some (some (K i), X i))
+    (hlk : ∀ i, i ≤ depth → w.nodes.lookup (X i) = some (Nn i))
+    (htk : ∀ i, i ≤ depth → w.taken.contains (X i) = false)
+    (htimes : ∀ i, i ≤ depth → ∀ s, Klong.time s ∈ (Nn i).ks → s ≤ c.i)
+    (hdist : ∀ i i', i ≤ depth → i' ≤ depth → X i = X i' → i = i')
+    (hne : bitsUnion (Nn depth).lastBitmap ((Nn depth).bitsOf cv) ≠ (Nn depth).lastBitmap)
+    (hall : (Nn depth).allKeysIn (bitsUnion (Nn depth).lastBitmap ((Nn depth).bitsOf cv)) = true)
+    (hleaf : (Nn depth).leaf = true)
+    (hT : TreeOK (wNode c.p base w) c.i w.top.rootKey)
+    (hR : RangeOrder (wNode c.p base w) c.i w.top.rootKey)
+    (hwf : ∀ x xn, TReach (wNode c.p base w) c.i w.top.rootKey x → wNode c.p base w x = some xn →
+      klongsWf xn.ks = true)
+    (hRt : ∀ y, TReach (wNode c.p base w) c.i w.top.rootKey y → w.taken.contains y = false)
+    (hTimesR : ∀ y yn, TReach (wNode c.p base w) c.i w.top.rootKey y → wNode c.p base w y = some yn →
+      ∀ s, Klong.time s ∈ yn.ks → s ≤ c.i)
+    (hICE : InnerChildrenExist (wNode c.p base w) c.i w.top.rootKey)
+    (hfit : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey)
+    (hnovalAll : ∀ y yn, wNode c.p base w y = some yn → wValue base w y = none)
+    (hreach : ∀ i, i ≤ depth → TReach (wNode c.p base w) c.i w.top.rootKey (X i))
+    (hlinkK : ∀ i, 0 < i → i ≤ depth → (K i, X i) ∈ (Nn (i - 1)).liveAt c.i)
+    (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk) (hcv : cv ∉ pre)
+    (hvisL : (X depth, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk)
+    (huniq : ∀ key' x m, keyWf key' = true →
+      (x, cv) ∈ fromVisits (wNode c.p base w) c.i c.p.fuel key' w.top.rootKey →
+      (x, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk → wNode c.p base w x = some m →
+      m.leaf = true → key' = pre ++ [cv])
+    (hkids : ∀ c' z, (c', z) ∈ (Nn depth).liveAt c.i → wNode c.p base w z = none)
+    (hJ2 : TakeJ2 c base B w) (hMF : ∀ x o, w.madeFor.lookup x = some o → o < B)
+    (J : W → Prop) (hJ0 : J w)
+    (hJnote : ∀ (s : String) (v : W), J v → J { v with trail := s :: v.trail })
+    (hJtake : ∀ (x p : NodeId) (k : Nat) (v : W), J v → (∃ xn, v.nodes.lookup x = some xn) →
+      (∃ pn, v.nodes.lookup p = some pn) → WriterWP (takeBack x p k) c v (fun _ v' => J v'))
+    (hJunlink : ∀ (x : NodeId) (v : W), J v → (∃ xn, v.nodes.lookup x = some xn) →
+      WriterWP (unlink x) c v (fun _ v' => J v'))
+    (hJadk : ∀ (x : NodeId) (d k : Nat) (v : W) (n : KNode), J v → (w.path[d]?).map (·.2) = some x →
+      v.nodes.lookup x = some n → DelRoom c k n → WriterWP (appendDeleteKlong x d k) c v (fun _ v' => J v'))
+    (hleafM : ∀ (stop : Nat) (w' : W) (sn' : KNode), stop < depth →
+      (∀ i, stop < i → i < depth →
+        (Nn i).allKeysIn (bitsUnion (Nn i).lastBitmap ((Nn i).bitsOf (K (i + 1)))) = true) →
+      (∀ y, (∀ k, stop < k → k ≤ depth → y ≠ X k) → w'.taken.contains y = w.taken.contains y) →
+      w'.top = w.top → w'.vals = w.vals →
+      (∀ y, y ≠ X stop → (∀ k, stop < k → k ≤ depth → y ≠ X k) → w'.nodes.lookup y = w.nodes.lookup y) →
+      w'.nodes.lookup (X stop) = some sn' → sn'.leaf = (Nn stop).leaf → klongsWf sn'.ks = true →
+      (∀ s, Klong.time s ∈ sn'.ks → s ≤ c.i) →
+      (∀ c' z, (c', z) ∈ sn'.liveAt c.i ↔ (c', z) ∈ (Nn stop).liveAt c.i ∧ c' ≠ K (stop + 1)) →
+      (∀ key', keyWf key' = true →
+        wGet c.p c.i base w' key' = if pre ++ [cv] == key' then none else wGet c.p c.i base w key') →
+      (∀ k, stop < k → k ≤ depth → ChainFate c.i w' (X k)) →
+      (∀ k, stop < k → k ≤ depth → ChainFateW c.i B w' (Nn k) (X k)) →
+      (∃ S, RetFormS c.i B (Nn stop) S ∧
+        ((Nn (stop + 1)).firstTime = some c.i → RetFrom c.i B (Nn stop) (X (stop + 1)) S) ∧
+        BitmapOf S sn' c.i (K (stop + 1))) →
+      TakeJ2 c base B w' → CollGetInv c base w' w' → J w' →
+      ∀ gs hs : Nat, RWP (aC1 (pre ++ [cv]) gs hs) (aC2 (pre ++ [cv]) gs hs) c w')
+    (hcascLeaf : ∀ (stop : Nat) (w2 : W) (S : KNode), stop < depth →
+      (∀ i, stop < i → i < depth →
+        (Nn i).allKeysIn (bitsUnion (Nn i).lastBitmap ((Nn i).bitsOf (K (i + 1)))) = true) →
+      UpLoopEnd c B X Nn depth stop w w2 S → J w2 → (Nn stop).leaf = true →
+      ¬ DelRoom c (K (stop + 1)) S → ∀ gs hs : Nat,
+      WriterWP (appendDeleteKlong (X stop) stop (K (stop + 1))) c
+        { w2 with trail := "up.stop-at-segment-leaf" :: w2.trail }
+        (fun _ w3 => RWP (aC1 (pre ++ [cv]) gs hs) (aC2 (pre ++ [cv]) gs hs) c w3))
+    :
+    RWP (deleteUpwardP2 aK aC1 (X depth) depth cv (pre ++ [cv]))
+      (deleteUpwardP2 aK aC2 (X depth) depth cv (pre ++ [cv])) c w :=
+  rwp_deleteUpwardP2_climbMBD aK aC1 aC2 c base X Nn K depth cv pre rk B w hdepth hfuel hpos hp hk hlk htk htimes hdist hne hall hleaf hT hR hwf hRt hTimesR hICE (c.p.fuel - 1) hfit hnovalAll hreach hlinkK hrk hcv hvisL huniq hkids hJ2 hMF J hJ0 hJnote hJtake hJunlink hJadk (fun stop w' sn' a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 hJ' hI hJw =>
+      hleafM stop w' sn' a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 hJ' (collGetInv_of_D c base w' hI) hJw) hcascLeaf
 
 set_option maxHeartbeats 3200000 in
 /-- `writerWP_del_emptyAnyMJKLHG` for the two copies, from the leaf the descent

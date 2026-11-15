@@ -24,11 +24,9 @@ theorem cacheUnique_of_book {B : NodeId} {c : Ctx} {w : W} (h : Book B c w) : Ca
   exact h.nodup.imp (fun h1 h2 => h1 h2.symm)
 
 set_option maxHeartbeats 6400000 in
-/-- `writerWP_upCasc_below_delT` without the tree at the loop's end (`hT2`; 025-04,
-route (b), step 3): the split's lemmas are applied at the state whose stop node has
-its bitmap (S'), a tree by `treeOK_up_tr`, and moved to the writer's state by
-`writerWP_handleFull_swap`; the overlay holds one entry per id. -/
-theorem writerWP_upCasc_below_delS (c : Ctx) (base : View BVal)
+/-- `writerWP_upCasc_below_delS` with no fit at the start and no fit after: the tree's facts
+(`DelInvT`), `DelInv` where both fits hold (bergdb 025-05, step 7). -/
+theorem writerWP_upCasc_below_delST (c : Ctx) (base : View BVal)
     (hsa2 : 2 ≤ c.p.splitAbove)
     (KO : KindOracle) (BK : NodeId) (hvB : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
     (hICEk : ICEFromKinds c base KO BK)
@@ -36,7 +34,6 @@ theorem writerWP_upCasc_below_delS (c : Ctx) (base : View BVal)
     (X : Nat → NodeId) (Nn : Nat → KNode) (K : Nat → Nat) (depth D : Nat) (w2 v : W) (S : KNode)
     (hB : PutBase c base B) (hI : PutInv c base w)
     (hRO : RangeOrder (wNode c.p base w) c.i w.top.rootKey)
-    (hF : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey)
     (hr03 : ReadsAs c.p base w w3) (hkey : keyWf (pre ++ [cv]) = true)
     (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
     (hvis : (X depth, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk)
@@ -56,11 +53,11 @@ theorem writerWP_upCasc_below_delS (c : Ctx) (base : View BVal)
     (hfull : ¬ DelRoom c (K (D + 1 + 1)) S)
     (hcu : CacheUnique v)
     (hlinks2 : ∀ u c' z, TLink (wNode c.p base w2) c.i u c' z → z < w2.next)
-    (hwf2 : ∀ z zn, wNode c.p base w2 z = some zn → klongsWf zn.ks = true)
-    (hFits : WriterWP (appendDeleteKlong (X (D + 1)) (D + 1) (K (D + 1 + 1))) c v
-      (fun _ w' => SegFits (wNode c.p base w') c.i c.p.fuel w'.top.rootKey)) :
+    (hwf2 : ∀ z zn, wNode c.p base w2 z = some zn → klongsWf zn.ks = true) :
     WriterWP (appendDeleteKlong (X (D + 1)) (D + 1) (K (D + 1 + 1))) c v
-      (fun _ w' => DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK w') := by
+      (fun _ w' => DelInvT c base KO BK w' ∧ (SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey →
+        SegFits (wNode c.p base w') c.i c.p.fuel w'.top.rootKey →
+        DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK w')) := by
   have hfuel : 1 ≤ c.p.fuel := by unfold Params.fuel; omega
   have hT := hI.tree
   have hdepth : 0 < depth := by omega
@@ -190,8 +187,10 @@ theorem writerWP_upCasc_below_delS (c : Ctx) (base : View BVal)
     rw [hNn'i i h2, hNn'i (i - 1) (by omega)]
     exact h
   have hfullM : WriterWP (appendDeleteKlong (X (D + 1)) (D + 1) (K (D + 1 + 1))) c v (fun _ w' =>
-      SegFits (wNode c.p base w') c.i c.p.fuel w'.top.rootKey → PutBook c B top0 w' → Book BK c w' →
-      KdInv KO BK w' → DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK w') := by
+      PutBook c B top0 w' → Book BK c w' →
+      KdInv KO BK w' → DelInvT c base KO BK w' ∧ (SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey →
+        SegFits (wNode c.p base w') c.i c.p.fuel w'.top.rootKey →
+        DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK w')) := by
     refine writerWP_appendDeleteKlong_full_of (X (D + 1)) (D + 1) (K (D + 1 + 1)) S c v hlkv hneS' hfull _ ?_
     intro compact s
     generalize hlast : S.lastVersionGivenDel c.i (bitsUnion S.lastBitmap (S.bitsOf (K (D + 1 + 1)))) = last
@@ -474,7 +473,7 @@ theorem writerWP_upCasc_below_delS (c : Ctx) (base : View BVal)
       (fun _ => by rw [hu_top, hroot', hr03.2.1, hX0]) (by rw [hNn'S]; exact hVu) (by rw [hNn'S]; exact hRVu)
       (by rw [hNn'S]; exact hVRu) (by rw [hNn'S]; exact hvxu)
     refine writerWP_mono (writerWP_and hlevel hrangeG) ?_
-    rintro _ w' ⟨⟨_, ⟨_, ht', _, _, hvals'⟩, _, hreach', _, hRead, _⟩, ⟨hTw, _, _, _, hRw⟩⟩ hFw hbw hbkw hikw
+    rintro _ w' ⟨⟨_, ⟨_, ht', _, _, hvals'⟩, _, hreach', _, hRead, _⟩, ⟨hTw, _, _, _, hRw⟩⟩ hbw hbkw hikw
     rw [hNn'S, hwu, updN_updN_same, hS'leaf, hu_top, hu_next] at hreach' hRead
     rw [hu_taken] at ht'
     rw [hu_vals] at hvals'
@@ -496,8 +495,9 @@ theorem writerWP_upCasc_below_delS (c : Ctx) (base : View BVal)
       · exact (hS5 y h.1).2.1
     obtain ⟨hPw, hGw⟩ := putInv_after_step c base w' B top0 hB hbw hTw
       (fun y hy => hun y (reachS_tReach _ _ _ _ hy)) hRw
-    refine ⟨⟨hPw, hGw, hRw, hICEk w' hbkw hikw hun, by simpa using hFw, fun key' hk' => ?_, B, top0, hB, hbw⟩,
-      hbkw, hikw⟩
+    refine ⟨⟨hPw, hGw, hRw, hICEk w' hbkw hikw hun, ⟨B, top0, hB, hbw⟩, hbkw, hikw⟩, fun hF hFw =>
+      ⟨⟨hPw, hGw, hRw, hICEk w' hbkw hikw hun, by simpa using hFw, fun key' hk' => ?_, B, top0, hB, hbw⟩,
+      hbkw, hikw⟩⟩
     -- the reading, through the tree with the stop node's last version
     have hVal3 : wValue base ({ v with trail := s :: v.trail } : W) = wValue base w3 :=
       wValue_eq_of_taken base w3 _ (by show v.vals = w3.vals; rw [hvv, h2v])
@@ -638,12 +638,52 @@ theorem writerWP_upCasc_below_delS (c : Ctx) (base : View BVal)
       rw [hp] at h
       simp only [Option.map_some, Option.some.injEq] at h
       simp [← h]
-  refine writerWP_mono (writerWP_and (writerWP_and (writerWP_and hfullM hFits)
+  refine writerWP_mono (writerWP_and (writerWP_and hfullM
     (putBook_appendDeleteKlong (X (D + 1)) (D + 1) (K (D + 1 + 1)) c base B top0 hB v hJ.1.1))
     (kd_appendDeleteKlong KO BK (X (D + 1)) (D + 1) (K (D + 1 + 1)) c v hvB hk hJ.1.2.1 hJ.1.2.2 _ hpx)) ?_
-  rintro _ w' ⟨⟨⟨hM, hFw⟩, hbw⟩, hbkw, hikw, _, _⟩
-  exact hM hFw hbw hbkw hikw
+  rintro _ w' ⟨⟨hM, hbw⟩, hbkw, hikw, _, _⟩
+  exact hM hbw hbkw hikw
 
+
+/-- `writerWP_upCasc_below_delT` without the tree at the loop's end (`hT2`; 025-04,
+route (b), step 3): the split's lemmas are applied at the state whose stop node has
+its bitmap (S'), a tree by `treeOK_up_tr`, and moved to the writer's state by
+`writerWP_handleFull_swap`; the overlay holds one entry per id. -/
+theorem writerWP_upCasc_below_delS (c : Ctx) (base : View BVal)
+    (hsa2 : 2 ≤ c.p.splitAbove)
+    (KO : KindOracle) (BK : NodeId) (hvB : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
+    (hICEk : ICEFromKinds c base KO BK)
+    (w w3 : W) (B MB : NodeId) (top0 : Top) (pre : List Nat) (cv : Nat) (rk : NodeId)
+    (X : Nat → NodeId) (Nn : Nat → KNode) (K : Nat → Nat) (depth D : Nat) (w2 v : W) (S : KNode)
+    (hB : PutBase c base B) (hI : PutInv c base w)
+    (hRO : RangeOrder (wNode c.p base w) c.i w.top.rootKey)
+    (hF : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey)
+    (hr03 : ReadsAs c.p base w w3) (hkey : keyWf (pre ++ [cv]) = true)
+    (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
+    (hvis : (X depth, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk)
+    (hpX : ∀ i, i ≤ depth → (w3.path[i]?).map (·.2) = some (X i))
+    (hpK : ∀ i, 0 < i → i ≤ depth → w3.path[i]? = some (some (K i), X i))
+    (hlkX : ∀ i, i ≤ depth → w3.nodes.lookup (X i) = some (Nn i))
+    (hXN : ∀ i, i ≤ depth → wNode c.p base w (X i) = some (Nn i))
+    (hlinkK : ∀ i, 0 < i → i ≤ depth → (K i, X i) ∈ (Nn (i - 1)).liveAt c.i)
+    (hall : (Nn depth).allKeysIn (bitsUnion (Nn depth).lastBitmap ((Nn depth).bitsOf cv)) = true)
+    (hleaf : (Nn depth).leaf = true) (hsD : D + 1 < depth)
+    (hbetween : ∀ i, D + 1 < i → i < depth →
+      (Nn i).allKeysIn (bitsUnion (Nn i).lastBitmap ((Nn i).bitsOf (K (i + 1)))) = true)
+    (hX0 : X 0 = w.top.rootKey)
+    (hLE : UpLoopEnd c MB X Nn depth (D + 1) w3 w2 S)
+    (hv : v = w2 ∨ ∃ s, v = { w2 with trail := s :: w2.trail })
+    (hJ : KdJP c B top0 KO BK w3.path v)
+    (hfull : ¬ DelRoom c (K (D + 1 + 1)) S)
+    (hcu : CacheUnique v)
+    (hlinks2 : ∀ u c' z, TLink (wNode c.p base w2) c.i u c' z → z < w2.next)
+    (hwf2 : ∀ z zn, wNode c.p base w2 z = some zn → klongsWf zn.ks = true)
+    (hFits : WriterWP (appendDeleteKlong (X (D + 1)) (D + 1) (K (D + 1 + 1))) c v
+      (fun _ w' => SegFits (wNode c.p base w') c.i c.p.fuel w'.top.rootKey)) :
+    WriterWP (appendDeleteKlong (X (D + 1)) (D + 1) (K (D + 1 + 1))) c v
+      (fun _ w' => DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK w') :=
+  writerWP_mono (writerWP_and (writerWP_upCasc_below_delST c base hsa2 KO BK hvB hk hICEk w w3 B MB top0 pre cv rk X Nn K depth D w2 v S hB hI hRO hr03 hkey hrk hvis hpX hpK hlkX hXN hlinkK hall hleaf hsD hbetween hX0 hLE hv hJ hfull hcu hlinks2 hwf2) hFits)
+    (fun _ _ h => h.1.2 hF h.2)
 
 set_option maxHeartbeats 6400000 in
 /-- `writerWP_upCasc_below_j2T` without the tree at the loop's end (`hT2`; 025-04,
