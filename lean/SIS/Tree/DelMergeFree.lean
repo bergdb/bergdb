@@ -773,4 +773,248 @@ theorem rwpq_mergeTail (c : Ctx) (base : View BVal) (B : NodeId) (hvg : ViewGood
       (fun h => hrr (by first | simpa using hrm | simp at h))
       (fun h => hlr' (by first | simpa using hrm | simp at h))
 
+/-- `merge` with its tail as a parameter: `merge` and `mergeChk` are instances. -/
+def mergeP (tl : Ctx → NodeId → Nat → NodeId → KNode → KNode → Bool → NodeId → KNode → Nat → NodeId → KNode →
+    Nat → M Nat) (x : NodeId) (d : Nat) : M Nat := do
+  let c ← read
+  let tt := c.i
+  let p ← pathNode (d - 1)
+  let pn ← getNode p
+  let xn ← getNode x
+  let inner := !xn.leaf
+  let cx ← klongAt d
+  let (ix?, ia, ib) := mergeIdx pn cx
+  let ix ← match ix? with
+    | some ix => pure ix
+    | none => throw s!"Bug: merge at {tt}: key node {x} has no live klong {cx} in {p}"
+  if pn.ptr? ix != some x then
+    throw s!"Bug: merge at {tt}: key node {x} is not the live child of its klong in {p}"
+  let left ← match ib with
+    | some (ib, _) => do
+      let (ls, lsn) ← sibling p pn ib inner
+      if ia.isNone || lsn.cnt + xn.cnt ≤ c.p.mergeMax then pure (some (ib, ls, lsn))
+      else pure none
+    | none => pure none
+  let (l, ln, il, r, rn, ir) ← match left with
+    | some (ib, ls, lsn) => pure (ls, lsn, ib, x, xn, ix)
+    | none =>
+      match ia with
+      | some (ia, _) => do
+        let (rs, rsn) ← sibling p pn ia inner
+        pure (x, xn, ix, rs, rsn, ia)
+      | none => throw s!"Bug: merge at {tt}: key node {x} has no sibling in {p}"
+  tl c x d p pn xn left.isSome l ln il r rn ir
+
+theorem mergeChk_eqP (x : NodeId) (d : Nat) : mergeChk x d = mergeP mergeTailChk x d := rfl
+theorem merge_eqP (x : NodeId) (d : Nat) : merge x d = mergeP mergeTail x d := rfl
+
+/-! ## The merge's tail from what the merge reads -/
+
+/-- The merge's tail for the two copies, at the state w3 after the merge's reads
+from its start v: the parent p at depth d - 1 of the path, its live klongs to the
+two nodes merged, these as v has them. The tail's facts come from the tree and
+the take-back's node facts at v (`liveHolder_unique`). -/
+theorem rwpq_tailAt (c : Ctx) (base : View BVal) (B : NodeId) (hvg : ViewGood B c)
+    (hkv : ViewKlongsWf c.p c.view) (hv : ViewIdsBelow B c.view) (v : W)
+    (hI : PutInv c base v) (hJ : TakeJ2 c base B v)
+    (x : NodeId) (d : Nat) (hd : 0 < d) (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode)
+    (hP : PathOK c v d X K Nn)
+    (ls : Bool) (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId) (rn : KNode) (ir : Nat) (cL cR : Nat)
+    (hLL : (Nn (d - 1)).ks[il]? = some (.key cL l)) (hRR : (Nn (d - 1)).ks[ir]? = some (.key cR r))
+    (hmL : (cL, l) ∈ (Nn (d - 1)).live) (hmR : (cR, r) ∈ (Nn (d - 1)).live) (hc : cL ≠ cR)
+    (hwl : wNode c.p base v l = some ln) (hwr : wNode c.p base v r = some rn)
+    (hxlr : (x = l ∧ Nn d = ln) ∨ (x = r ∧ Nn d = rn))
+    (w3 : W) (hr3 : ReadsAs c.p base v w3) (hpre3 : v.nodes <+: w3.nodes) (hp3 : w3.path = v.path)
+    (hl3 : w3.nodes.lookup l = some ln) (hr3l : w3.nodes.lookup r = some rn)
+    (hcg3 : CacheGood B c w3) (hu3 : UniqueCache B w3) (hwk3 : WriterKlongsWf w3) :
+    RWPQ (mergeTail c x d (X (d - 1)) (Nn (d - 1)) (Nn d) ls l ln il r rn ir)
+      (mergeTailChk c x d (X (d - 1)) (Nn (d - 1)) (Nn d) ls l ln il r rn ir) c w3
+      (fun xf => MergeEnd c base B xf.2) := by
+  have hpos := hvg.pos
+  obtain ⟨hpX, hpK, hlk, hlink, hX0⟩ := hP
+  have hPL := pathOK_depth c base v d X K Nn ⟨hpX, hpK, hlk, hlink, hX0⟩
+  have hT := hI.tree
+  have hTi : TimesN (wNode c.p base v) c.i := fun q qn hq s hs => hI.times q qn hq s hs
+  obtain ⟨hTt, _, hOB, _, _, _⟩ := hJ
+  have hwp : wNode c.p base v (X (d - 1)) = some (Nn (d - 1)) := by
+    obtain ⟨a, b⟩ := hlk (d - 1) (by omega)
+    simp only [wNode, b, Bool.false_eq_true, ↓reduceIte, a]
+  have hpt := hI.times _ _ hwp
+  have hlA : (cL, l) ∈ (Nn (d - 1)).liveAt c.i := by rw [KNode.liveAt_of_times _ c.i hpt]; exact hmL
+  have hrA : (cR, r) ∈ (Nn (d - 1)).liveAt c.i := by rw [KNode.liveAt_of_times _ c.i hpt]; exact hmR
+  have hpR : TReach (wNode c.p base v) c.i v.top.rootKey (X (d - 1)) := (hPL (d - 1) (by omega)).reach
+  have hTL : TLink (wNode c.p base v) c.i (X (d - 1)) cL l := ⟨_, hwp, hlA⟩
+  have hTR : TLink (wNode c.p base v) c.i (X (d - 1)) cR r := ⟨_, hwp, hrA⟩
+  have hlR : TReach (wNode c.p base v) c.i v.top.rootKey l := TReach.link hpR hTL
+  have hrR : TReach (wNode c.p base v) c.i v.top.rootKey r := TReach.link hpR hTR
+  have hlr : l ≠ r := by
+    intro he; subst he
+    exact hc (hT.oneLink _ _ _ _ _ hpR hpR hTL hTR).2
+  have hlp : l ≠ X (d - 1) := by
+    intro he; rw [he] at hTL; exact hT.no_self_link _ _ hpR hTL
+  have hrp : r ≠ X (d - 1) := by
+    intro he; rw [he] at hTR; exact hT.no_self_link _ _ hpR hTR
+  have hlPL : PathLen (wNode c.p base v) c.i v.top.rootKey l (d - 1 + 1) := PathLen.link (hPL (d - 1) (by omega)) hTL
+  have hrPL : PathLen (wNode c.p base v) c.i v.top.rootKey r (d - 1 + 1) := PathLen.link (hPL (d - 1) (by omega)) hTR
+  have hab : ∀ i e, i + 1 ≤ d - 1 → v.path[i]? = some e → e.2 ≠ l ∧ e.2 ≠ r := by
+    intro i e hi he
+    have h1 := hpX i (by omega)
+    rw [he] at h1
+    simp only [Option.map_some, Option.some.injEq] at h1
+    rw [h1]
+    refine ⟨fun h => ?_, fun h => ?_⟩
+    · have := PathLen.depth_unique hT _ _ _ (hPL i (by omega)) (by rw [h]; exact hlPL); omega
+    · have := PathLen.depth_unique hT _ _ _ (hPL i (by omega)) (by rw [h]; exact hrPL); omega
+  have hgl : Good B c l ln := cacheGood_lookup B c w3 hcg3 l ln hl3
+  have hgr : Good B c r rn := cacheGood_lookup B c w3 hcg3 r rn hr3l
+  have hlB : ln.firstTime = some c.i → B ≤ l := fun h =>
+    Blank.ge B c l hvg (blank_of_firstTime B c l ln hpos hgl (by simp [h]))
+  have hrB : rn.firstTime = some c.i → B ≤ r := fun h =>
+    Blank.ge B c r hvg (blank_of_firstTime B c r rn hpos hgr (by simp [h]))
+  have hold : ∀ o co, TLink (wNode c.p base v) c.i (X (d - 1)) co o → B ≤ o →
+      ∀ q qn, wNode c.p base v q = some qn → q ≠ X (d - 1) → ∀ cv, (cv, o) ∉ qn.live := by
+    intro o co hTo hBo q qn hq hqp cv hm
+    have hmA : (cv, o) ∈ qn.liveAt c.i := by rw [KNode.liveAt_of_times _ c.i (hI.times q qn hq)]; exact hm
+    exact hqp (liveHolder_unique _ c.i v.top.rootKey B hpos hTt hOB hTi hT o hBo (X (d - 1)) co hpR hTo
+      q qn hq cv hmA).1
+  have hI3 : TInvP B c w3 w3.path l r ln rn (X (d - 1)) (Nn (d - 1)) w3 := by
+    have hp3l : w3.nodes.lookup (X (d - 1)) = some (Nn (d - 1)) :=
+      lookup_of_prefix _ _ hpre3 _ _ (hlk (d - 1) (by omega)).1
+    refine ⟨⟨⟨hl3, hu3.1.2.1 _ (bk_mem_of_lookup _ _ _ hl3), rfl⟩,
+      ⟨hr3l, hu3.1.2.1 _ (bk_mem_of_lookup _ _ _ hr3l), rfl⟩, hcg3, hu3, hwk3, fun _ h => h⟩,
+      ⟨hp3l, hu3.1.2.1 _ (bk_mem_of_lookup _ _ _ hp3l), rfl⟩⟩
+  refine rwpq_mergeTail c base B hvg hkv hv x d (X (d - 1)) (Nn (d - 1)) (Nn d) ls l ln il r rn ir w3 w3.path hI3
+    (by rcases hxlr with ⟨h1, h2⟩ | ⟨h1, h2⟩
+        · exact Or.inl ⟨h1, h2⟩
+        · exact Or.inr ⟨h1, h2⟩) hlr hlp hrp
+    (fun i e hi he => hab i e hi (by rw [← hp3]; exact he)) ?_ hlB hrB
+    (fun h => hold l cL hTL (hlB h) l ln hwl hlp) (fun h => hold l cL hTL (hlB h) r rn hwr hrp)
+    (fun h => hold r cR hTR (hrB h) r rn hwr hrp) (fun h => hold r cR hTR (hrB h) l ln hwl hlp)
+  intro cR' hcv
+  have : cR' = cR := by unfold KNode.cv? at hcv; rw [hRR] at hcv; simp at hcv; exact hcv.symm
+  subst this
+  exact List.mem_map.mpr ⟨(cR', r), hmR, rfl⟩
+
+theorem writerWP_sibling_all (p : NodeId) (pn : KNode) (i : Nat) (inner : Bool) (c : Ctx) (w : W)
+    (base : View BVal) (hvc : ViewCoherent c base) (B : NodeId) (hvg : ViewGood B c) (hcg : CacheGood B c w)
+    (hv : ViewIdsBelow B c.view) (hu : UniqueCache B w) (hkv : ViewKlongsWf c.p c.view)
+    (hwk : WriterKlongsWf w) :
+    WriterWP (sibling p pn i inner) c w (fun sn v => pn.ptr? i = some sn.1 ∧
+      ReadsAs c.p base w v ∧ v.nodes.lookup sn.1 = some sn.2 ∧
+      (w.taken.contains sn.1 = false → wNode c.p base w sn.1 = some sn.2) ∧ w.nodes <+: v.nodes ∧
+      CacheGood B c v ∧ UniqueCache B v ∧ WriterKlongsWf v ∧ v.path = w.path) := by
+  refine writerWP_mono (writerWP_and (writerWP_and (writerWP_and (writerWP_and
+    (writerWP_sibling_leaf p pn i inner c w base hvc) (good_sibling_res B p pn i inner c w hvg hcg))
+    (writerWP_sibling_uniqueCache B p pn i inner c w hv hu)) (klongsWf_sibling p pn i inner c w hkv hwk))
+    (writerWP_sibling_path p pn i inner c w)) ?_
+  rintro sn v ⟨⟨⟨⟨⟨h1, h2, h3, h4, h5, _, _⟩, h6, _⟩, h7, _⟩, h8, _⟩, h9⟩
+  exact ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9⟩
+
+set_option maxHeartbeats 3200000 in
+/-- The merge for the two copies, from its start v, with the merge's end as the
+postcondition: the merge's reads, then its tail (`rwpq_tailAt`). -/
+theorem rwpq_merge (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base) (B : NodeId) (hvg : ViewGood B c)
+    (hkv : ViewKlongsWf c.p c.view) (hv : ViewIdsBelow B c.view) (v : W)
+    (hI : PutInv c base v) (hJ : TakeJ2 c base B v)
+    (hcg : CacheGood B c v) (hu : UniqueCache B v) (hwk : WriterKlongsWf v)
+    (x : NodeId) (d : Nat) (hd : 0 < d) (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode)
+    (hP : PathOK c v d X K Nn) (hXd : X d = x) :
+    RWPQ (merge x d) (mergeChk x d) c v (fun xf => MergeEnd c base B xf.2) := by
+  have hP' := hP
+  obtain ⟨hpX, hpK, hlk, hlink, hX0⟩ := hP'
+  have hPL := pathOK_depth c base v d X K Nn hP
+  have hwx : wNode c.p base v x = some (Nn d) := by
+    obtain ⟨a, b⟩ := hlk d (Nat.le_refl _)
+    rw [← hXd]; simp only [wNode, b, Bool.false_eq_true, ↓reduceIte, a]
+  have hpR : TReach (wNode c.p base v) c.i v.top.rootKey (X (d - 1)) := (hPL (d - 1) (by omega)).reach
+  have hwp : wNode c.p base v (X (d - 1)) = some (Nn (d - 1)) := by
+    obtain ⟨a, b⟩ := hlk (d - 1) (by omega)
+    simp only [wNode, b, Bool.false_eq_true, ↓reduceIte, a]
+  have hpt := hI.times _ _ hwp
+  have hchild : ∀ z cz, (cz, z) ∈ (Nn (d - 1)).live → v.taken.contains z = false := by
+    intro z cz hz
+    have hzA : (cz, z) ∈ (Nn (d - 1)).liveAt c.i := by rw [KNode.liveAt_of_times _ c.i hpt]; exact hz
+    exact hI.untaken z (tReach_reachS _ _ _ _ (TReach.link hpR ⟨_, hwp, hzA⟩))
+  show RWPQ (mergeP mergeTail x d) (mergeP mergeTailChk x d) c v _
+  unfold mergeP
+  refine rwpq_bind (fun a v' => a = c ∧ v' = v) ((writerWP_read c v _).mpr ⟨rfl, rfl⟩) ?_
+  rintro c0 v' ⟨hc0, hv'⟩
+  subst c0; subst v'
+  refine rwpq_bind (fun a v' => a = X (d - 1) ∧ v' = v)
+    (writerWP_pathNode_known (d - 1) (X (d - 1)) c v (hpX (d - 1) (by omega)) _ ⟨rfl, rfl⟩) ?_
+  rintro p v' ⟨hp', hv'⟩
+  subst p; subst v'
+  refine rwpq_bind (fun a v' => a = Nn (d - 1) ∧ v' = v)
+    ((writerWP_getNode_known _ _ c v (hlk (d - 1) (by omega)).1 _).mpr ⟨rfl, rfl⟩) ?_
+  rintro pn v' ⟨hpn', hv'⟩
+  subst pn; subst v'
+  refine rwpq_bind (fun a v' => a = Nn d ∧ v' = v)
+    ((writerWP_getNode_known _ _ c v (by rw [← hXd]; exact (hlk d (Nat.le_refl _)).1) _).mpr ⟨rfl, rfl⟩) ?_
+  rintro xn v' ⟨hxn', hv'⟩
+  subst xn; subst v'
+  refine rwpq_bind (fun a v' => a = K d ∧ v' = v)
+    (writerWP_klongAt_known d (K d) x c v (by rw [← hXd]; exact hpK d hd (Nat.le_refl _)) _ ⟨rfl, rfl⟩) ?_
+  rintro cx v' ⟨hcx', hv'⟩
+  subst cx; subst v'
+  dsimp only
+  have hML := mergeIdx_last (Nn (d - 1)) (K d)
+  rcases hmi : mergeIdx (Nn (d - 1)) (K d) with ⟨ixo, ia, ib⟩
+  rw [hmi] at hML
+  obtain ⟨hMx, hMa, hMb⟩ := hML
+  cases ixo with
+  | none => exact rwpq_throw_bind _ _ _ _ _ _
+  | some ix =>
+    simp only [pure_bind]
+    refine rwpq_ite (fun _ => rwpq_throw_bind _ _ _ _ _ _) (fun hptr => ?_)
+    have hpx : (Nn (d - 1)).ptr? ix = some x := by simpa using hptr
+    obtain ⟨hkx, hmx⟩ := ht_live_of_last (hMx ix rfl) hpx
+    have hlkx : v.nodes.lookup x = some (Nn d) := by rw [← hXd]; exact (hlk d (Nat.le_refl _)).1
+    cases ib with
+    | some ibp =>
+      rcases ibp with ⟨ib, cvb⟩
+      obtain ⟨hLb, hcb⟩ := hMb ib cvb rfl
+      refine rwpq_bind _ (writerWP_sibling_all _ _ ib (!(Nn d).leaf) c v base hvc B hvg hcg hv hu hkv hwk) ?_
+      rintro ⟨ls, lsn⟩ v6 ⟨hpls, hr6, hl6, hw6, hpre6, hcg6, hu6, hwk6, hp6⟩
+      simp only at hpls hl6 hw6
+      obtain ⟨hkls, hmls⟩ := ht_live_of_last hLb hpls
+      have hwls : wNode c.p base v ls = some lsn := hw6 (hchild ls cvb hmls)
+      refine rwpq_ite (fun _ => ?_) (fun _ => ?_)
+      · simp only [pure_bind]
+        exact rwpq_tailAt c base B hvg hkv hv v hI hJ x d hd X K Nn hP true ls lsn ib x (Nn d) ix cvb (K d)
+          hkls hkx hmls hmx (by omega) hwls hwx (Or.inr ⟨rfl, rfl⟩) v6 hr6 hpre6 hp6 hl6
+          (lookup_of_prefix _ _ hpre6 _ _ hlkx) hcg6 hu6 hwk6
+      · try simp only [pure_bind]
+        cases ia with
+        | none => exact rwpq_throw_bind _ _ _ _ _ _
+        | some iap =>
+          rcases iap with ⟨ia, cva⟩
+          obtain ⟨hLa, hca⟩ := hMa ia cva rfl
+          refine rwpq_bind _ (writerWP_sibling_all _ _ ia (!(Nn d).leaf) c v6 base hvc B hvg hcg6 hv hu6 hkv hwk6) ?_
+          rintro ⟨rs, rsn⟩ v7 ⟨hprs, hr7, hl7, hw7, hpre7, hcg7, hu7, hwk7, hp7⟩
+          simp only at hprs hl7 hw7
+          obtain ⟨hkrs, hmrs⟩ := ht_live_of_last hLa hprs
+          have hwrs6 : wNode c.p base v6 rs = some rsn := hw7 (by rw [hr6.2.2.1]; exact hchild rs cva hmrs)
+          have hwrs : wNode c.p base v rs = some rsn := by rw [← hr6.1]; exact hwrs6
+          simp only [pure_bind]
+          exact rwpq_tailAt c base B hvg hkv hv v hI hJ x d hd X K Nn hP false x (Nn d) ix rs rsn ia (K d) cva
+            hkx hkrs hmx hmrs (by omega) hwx hwrs (Or.inl ⟨rfl, rfl⟩) v7 (ReadsAs.trans _ _ _ _ _ hr6 hr7)
+            (hpre6.trans hpre7) (by rw [hp7, hp6]) (lookup_of_prefix _ _ (hpre6.trans hpre7) _ _ hlkx) hl7
+            hcg7 hu7 hwk7
+    | none =>
+      simp only [pure_bind]
+      cases ia with
+      | none => exact rwpq_throw_bind _ _ _ _ _ _
+      | some iap =>
+        rcases iap with ⟨ia, cva⟩
+        obtain ⟨hLa, hca⟩ := hMa ia cva rfl
+        refine rwpq_bind _ (writerWP_sibling_all _ _ ia (!(Nn d).leaf) c v base hvc B hvg hcg hv hu hkv hwk) ?_
+        rintro ⟨rs, rsn⟩ v7 ⟨hprs, hr7, hl7, hw7, hpre7, hcg7, hu7, hwk7, hp7⟩
+        simp only at hprs hl7 hw7
+        obtain ⟨hkrs, hmrs⟩ := ht_live_of_last hLa hprs
+        have hwrs : wNode c.p base v rs = some rsn := hw7 (hchild rs cva hmrs)
+        simp only [pure_bind]
+        exact rwpq_tailAt c base B hvg hkv hv v hI hJ x d hd X K Nn hP false x (Nn d) ix rs rsn ia (K d) cva
+          hkx hkrs hmx hmrs (by omega) hwx hwrs (Or.inl ⟨rfl, rfl⟩) v7 hr7 hpre7 hp7
+          (lookup_of_prefix _ _ hpre7 _ _ hlkx) hl7 hcg7 hu7 hwk7
+
 end SIS.Tree
