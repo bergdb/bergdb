@@ -6,7 +6,8 @@ start (`HtJ`), its end fits the fuel (`mergeFits_of_htJ`), as
 with no holder premise (`ht_merge_of_J`); the bound through it is an `SBInvS`
 walk (`sbS_merge`: the merged nodes get x's height, the parent's cascade at
 most one above the path), with the nodes not taken back at the end not taken
-back at the start (`writerWP_merge_untaken_before`).
+back at the start (`writerWP_merge_untaken_before`). The same for a step of
+root collapse, toward hCoF's true form (`collapseFits_of_htJ`, `sbS_replaceRoot`).
 -/
 import SIS.Tree.DelMergeUp
 
@@ -194,5 +195,90 @@ theorem mergeFits_of_htJ {H : NodeId → Nat → Prop} (c : Ctx) (base : View BV
   · have := hHb y k hk; omega
 
 end SBMerge
+
+/-! ## A step of root collapse -/
+
+section SBCollapse
+
+variable {S : NodeId → Prop}
+
+set_option maxHeartbeats 1600000 in
+/-- A replaceRoot at the path's node at depth keeps the heights of the ids S
+picks at most b when the path's nodes are below b (the cascade of the holder's
+new klong, `sbS_appendKlongs`). -/
+theorem sbS_replaceRoot (b : Nat) (x : NodeId) (depth only : Nat) (c : Ctx) (w0 w : W) (hH : c.p.H < b)
+    (hw : SBInvS c.p b S w0 w) (hpb : PathBelowSB b w0) :
+    WriterWP (replaceRoot x depth only) c w (fun _ v => SBInvS c.p b S w0 v) := by
+  unfold replaceRoot
+  simp only [writerWP_bind, writerWP_read]
+  refine writerWP_mono (sbS_getNode b x c w0 w hH hw) ?_
+  intro n w1 hw1
+  split
+  · exact writerWP_throw _ _ _ _
+  · split
+    · repeat' first
+        | wpSimplify
+        | sbsCore
+        | sbsUse (sbS_unlink _ _)
+    · rename_i d
+      simp only [writerWP_bind]
+      refine writerWP_mono (sbS_note b _ c w0 w1 hH hw1) ?_
+      intro _ w2 hw2
+      refine writerWP_mono (writerWP_and (sbS_pathNode b d c w0 w2 hH hw2) (kd_pathNode d c w2)) ?_
+      rintro leaf w3 ⟨hw3, -, al, hpl⟩
+      have hpl0 : w0.path[d]? = some (al, leaf) := by rw [← hw2.2.2.1]; exact hpl
+      refine writerWP_mono (sbS_klongAt b (d + 1) c w0 w3 hH hw3) ?_
+      intro k w4 hw4
+      refine writerWP_mono (sbS_unlink b x c w0 w4 hH hw4) ?_
+      intro _ w5 hw5
+      exact sbS_appendKlongs b d leaf _ c w0 w5 hH hw5 hpb ⟨al, hpl0⟩
+
+end SBCollapse
+
+set_option maxHeartbeats 1600000 in
+/-- `hCoF`'s true form for one step of root collapse: from the heights' books
+with their bound at a replaceRoot's start (`HtJ`), at the path's last node x, a
+segment root below a segment leaf, its end fits p.fuel (`ht_replaceRoot`,
+`sbS_replaceRoot`; replaceRoot takes nothing back). -/
+theorem collapseFits_of_htJ {H : NodeId → Nat → Prop} (c : Ctx) (base : View BVal) (B : NodeId)
+    (hvo : ViewHtOK H B c) (hbase : BaseHeights c H base) (hHb : ∀ y h, H y h → h ≤ c.p.H)
+    (hpos : 0 < c.i) (v : W) (x : NodeId) (n : KNode) (only : Nat) (hJ : HtJ c H B v)
+    (hn : v.nodes.lookup x = some n) (hnl : n.leaf = false) (honly : n.onlyLiveKlong = some only)
+    (hcv0 : n.cv? only = some 0) (a : Option Nat) (hpx : v.path[v.path.length - 1]? = some (a, x))
+    (hseg : ∀ a' q, v.path.length - 1 ≠ 0 → v.path[v.path.length - 1 - 1]? = some (a', q) →
+      ∃ g', (q, g', 0) ∈ v.gh) :
+    WriterWP (replaceRoot x (v.path.length - 1) only) c v
+      (fun _ v' => SegFits (wNode c.p base v') c.i c.p.fuel v'.top.rootKey) := by
+  have hfuel : c.p.H + 2 < c.p.fuel := fuel_gt_H c.p
+  have hlen0 : 0 < v.path.length := by
+    have := (List.getElem?_eq_some_iff.mp hpx).1; omega
+  have hpg := ht_pathGh_all hJ.book hJ.inv (x := x) ⟨a, hpx⟩ hn
+  have hpb : PathBelowSB c.p.fuel v := by
+    intro d' a' q' hq'
+    obtain ⟨⟨q'', g', h'⟩, hm', he⟩ := List.mem_map.mp (hpg d' a' q' hq')
+    simp only at he
+    subst he
+    refine ⟨hJ.book.bound _ hm', fun g2 h2 hm2 => ?_⟩
+    have hqf := hJ.free d' a' q'' (List.getElem?_eq_some_iff.mp hq').1 hq'
+    have := hJ.bound q'' g2 h2 hm2 hqf
+    omega
+  have hS0 : SBInvS c.p c.p.fuel (fun y => v.taken.contains y = false) v v :=
+    ⟨fun y g' h' hm' hy => Nat.le_trans (hJ.bound y g' h' hm' hy) (Nat.sub_le _ _), Nat.le_refl _,
+      rfl, fun _ _ _ hm' _ => Or.inl hm'⟩
+  obtain ⟨⟨x', gx, hx⟩, hmx, hex⟩ := List.mem_map.mp (hpg _ a x hpx)
+  simp only at hex
+  subst hex
+  have hpf : PathFreeTo v (v.path.length - 1 + 1) := by rw [Nat.sub_add_cancel hlen0]; exact hJ.free
+  refine writerWP_mono (writerWP_and (writerWP_and
+    (ht_replaceRoot B x' (v.path.length - 1) only c v hvo hpos hJ.book hJ.inv gx hx hmx n hn hnl honly hcv0
+      a hpx hpf hseg)
+    (sbS_replaceRoot c.p.fuel x' (v.path.length - 1) only c v v (by omega) hS0 hpb))
+    (takenP_replaceRoot (fun l => l = v.taken) x' (v.path.length - 1) only c v rfl)) ?_
+  rintro _ v' ⟨⟨⟨hbv, hiv, -⟩, hsv⟩, htv⟩
+  refine segFits_of_heightsU hbv hiv.cache hvo.heights base hbase c.p.fuel _ ?_
+  intro y m hm k hk
+  rcases hk with ⟨g', hm'⟩ | hk
+  · exact hsv.1 y g' k hm' (by rw [← htv]; exact (wNode_cases _ _ _ _ _ hm).1)
+  · have := hHb y k hk; omega
 
 end SIS.Tree
