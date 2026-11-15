@@ -18,7 +18,8 @@ restated with the heights' facts at their start given (`HtStartAt`, in place of
 So `hchk` is needed only at the deletes whose start has the fill, `PutInv`, the
 ranges and the heights, at the induction's runs (`OpDelChk2OKL`):
 `opDelChk2OK_of_chk2L` gives `OpDelChk2OK` from it and the other premises of the
-top theorem, and `invGetScanOK_merges_chkL` is the top theorem with it.
+top theorem. HeightsFillStop.lean proves its two checks of the fill and has the
+top theorem's corollary.
 -/
 import SIS.Tree.LatestTop
 import SIS.Tree.TakenPut
@@ -671,24 +672,5 @@ theorem opDelChk2OK_of_chk2L (p : Params) (hp : MergeParamsOK p)
     hTp hPp hOp hTIRH.1 hTIRH.2.1 hTIRH.2.2 hLv hchkL ts tx hw hr z top hz htop pre
     (Op.del key :: post) hsplit r w hpre
   exact hchkL ts tx hw hr z top hz htop pre key post hsplit r w hpre hI hRo hL hH r' v he
-
-/-- The top theorem with `hchk` narrowed to the deletes whose start has the
-fill, `PutInv`, the ranges and the heights (`OpDelChk2OKL`). -/
-theorem invGetScanOK_merges_chkL (p : Params) (hp : MergeParamsOK p)
-    (hth : 2 ≤ p.theta ∨ p.theta = 0)
-    (hchkL : OpDelChk2OKL p)
-    (htb : TakeBelowFuelDelOK p)
-    (d4 : OpCaseOK p (RunOK p) (QDead p) DelMergeDOpenCase)
-    (l4 : OpCaseOK p (RunOK p) (QLive p) DelMergeOpenCase)
-    (hU : ∀ ts, UpUnlinkTreeOK (ctxOf p ts) (viewOf (treeRun p ts)))
-    (hHL : ∀ ts, UpHolderLiveRunOK (ctxOf p ts) (viewOf (treeRun p ts)))
-    (hMSF : ∀ ts, MergeFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hCoF : ∀ ts, CollapseFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hCoU : ∀ ts, CollapseUnlinkAllOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hMF : StateOK p (RunOK p) (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base)) :
-    InvPreserved p ∧ GetOK p ∧ ScanOK p ∧ LatestGetOK p ∧ LatestScanOK p :=
-  invGetScanOK_merges p hp hth
-    (opDelChk2OK_of_chk2L p hp hth hchkL htb d4 l4 hU hHL hMSF hCoF hCoU hMF)
-    htb d4 l4 hU hHL hMSF hCoF hCoU hMF
 
 end SIS.Tree
