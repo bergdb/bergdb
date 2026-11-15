@@ -106,3 +106,4 @@ import SIS.Tree.FuelNext
 import SIS.Tree.Stratum
 import SIS.Tree.StratumSteps
 import SIS.Tree.StratumCasc
+import SIS.Tree.StratumChk
