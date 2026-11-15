@@ -133,6 +133,13 @@ provers' branches and reports are in
   `invGetScanOK_merges`'s without exactly the `hU` premise. The old top
   theorem is now a corollary of it. hu goes on with step 6 (the
   NoOutside route).
+* 09:59 hu LANDED 5bb18a72 (gate PASS on main's tree): step 6,
+  `invGetScanOK_merges_noOutside_noU` (hp, hth, hchk, d4, l4, hHL,
+  hMSF, hCoF, hCoU), audited as above, its statement
+  `invGetScanOK_merges_noOutside`'s without exactly `hU`; still vacuous
+  there through `hHL` and `hCoU`. 025-04 done: about 2,300 lines, of
+  which about 1,100 are now unused (for a close step). hu goes on with
+  `d4`, then `l4`.
 
 
 ## 8. Outcome
