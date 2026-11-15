@@ -117,8 +117,8 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   Narrowed 2026-11-15 (cost2, `HeightsFill.lean`): `hchk` is needed only at the deletes of the
   induction's runs whose start has `PutInv`, the walk's ranges, TP7's fill and the heights' walk
   (`OpDelChk2OKL`); `opDelChk2OK_of_chk2L` gives `OpDelChk2OK` from it and the other nine
-  premises (the top theorem with it, `invGetScanOK_merges_chkL`, is replaced by
-  `invGetScanOK_merges_chk3L`, below). Why it was needed: the
+  premises, and `invGetScanOK_merges_chkL` is the top theorem with it (putinv2's
+  `invGetScanOK_merges'` adds `hMF` proved). Why it was needed: the
   stop-node check and `checkOld`'s segment leaf follow from the fill at the delete's start
   (`stopLeaf_of_liveCounts`), but in the top theorem's proof the fill at an operation's start
   came from the cases before it, whose fuel came from the heights, whose walk used `hchk` at
@@ -134,8 +134,8 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   runs as the writer's, the take-back checks only that its node is of the view, `checkOld3`)
   runs as `putKvDelChk2` from every state with `PutInv` and the fill (`rwp_putKvDelChk3`, a
   refinement at the state through the delete's descent and the upward loop). The premise is
-  now `OpDelChk3OKL` (`opDelChk2OKR_of_chk3`), and the top theorem with it is
-  `invGetScanOK_merges_chk3L`. Left in `hchk`: the holders before each take-back (`checkFree`
+  now `OpDelChk3OKL` (`opDelChk2OKR_of_chk3`), and the top theorem with it, and without `hMF`
+  (putinv2's `stateOK_madeFor`), is `invGetScanOK_merges_chk3L`. Left in `hchk`: the holders before each take-back (`checkFree`
   of the merge and of the upward loop, `checkRoot` of root collapse) and the view's node
   (`checkOld3`). The narrowed premise asks them only where the fill, `PutInv`, the ranges and
   the heights hold at the delete's start.

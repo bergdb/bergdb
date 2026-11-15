@@ -8,11 +8,12 @@ to is a node of the view (`checkOld3`). From a state with `PutInv` and the fill 
 two copies run alike (`rwp_putKvDelChk3`, a refinement at the state, `RWP`, through
 the delete's descent and the upward delete's loop), so the narrowed premise
 `OpDelChk2OKL` follows from the same with `putKvDelChk3` (`OpDelChk3OKL`,
-`opDelChk2OKR_of_chk3`), and the top theorem holds with it
+`opDelChk2OKR_of_chk3`), and the top theorem holds with it, and without `hMF`
 (`invGetScanOK_merges_chk3L`). Left in `hchk`: the holders before each take-back
 (`checkFree`, `checkRoot`) and the view's node (`checkOld3`).
 -/
 import SIS.Tree.HeightsFill
+import SIS.Tree.LatestTopMadeFor
 import SIS.Tree.DelChkRefines
 import SIS.Tree.WriterGetUpW
 
@@ -735,7 +736,7 @@ theorem opDelChk2OKR_of_chk3 (p : Params) (R : Struct BVal → Time → Prop) (h
 
 /-- The top theorem with `hchk` narrowed to the deletes whose start has the fill,
 `PutInv`, the ranges and the heights, and without its two checks of the fill
-(`OpDelChk3OKL`). -/
+(`OpDelChk3OKL`); without `hMF` (putinv2's `stateOK_madeFor`). -/
 theorem invGetScanOK_merges_chk3L (p : Params) (hp : MergeParamsOK p)
     (hth : 2 ≤ p.theta ∨ p.theta = 0)
     (hchk3 : OpDelChk3OKL p)
@@ -746,9 +747,9 @@ theorem invGetScanOK_merges_chk3L (p : Params) (hp : MergeParamsOK p)
     (hHL : ∀ ts, UpHolderLiveRunOK (ctxOf p ts) (viewOf (treeRun p ts)))
     (hMSF : ∀ ts, MergeFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
     (hCoF : ∀ ts, CollapseFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hCoU : ∀ ts, CollapseUnlinkAllOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hMF : StateOK p (RunOK p) (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base)) :
+    (hCoU : ∀ ts, CollapseUnlinkAllOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1)) :
     InvPreserved p ∧ GetOK p ∧ ScanOK p ∧ LatestGetOK p ∧ LatestScanOK p := by
+  have hMF := stateOK_madeFor p (four_le_M p hp) (RunOK p) (fun _ _ h => h.1)
   have hp' := hp
   unfold MergeParamsOK at hp'
   have hm : p.merges = true := by
