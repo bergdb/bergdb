@@ -13,6 +13,21 @@ An epub of this report, for reading offline, is
 title="BergDB proofs, 14 November 2026" --metadata author="Frans
 Lundberg"`.
 
+**Correction, 2026-11-15, 06:15 (coord-1114).** Three of the top
+theorem's 10 premises are false as stated, for every parameter set:
+`hCoU`, `hU` and `hHL` (proved in Lean, SIS/Tree/PremisesFalse.lean,
+1d149b59). Each speaks of every writer state that meets a local
+invariant, and those invariants carry none of the writer's books, so
+an unreachable state refutes it; the run tests saw only reached states.
+So `invGetScanOK_merges` holds vacuously and is not "reduced" as
+sections 1 and 4 say. The night of 14 to 15 November (024-12, section
+1; 024-22, section 11.1; 025-03) removed `hMF`, `hHL` and `hCoU` with no
+statement change, and narrowed `hchk`; the current theorem,
+`invGetScanOK_merges_joint6`, has the premises hp, hth, hchk5, htb, d4,
+l4, hU, hMSF and hCoF, and is still vacuous while `hU` is false as
+stated (`hMSF` and `hCoF` are likely false as stated too). The rest of
+this report is as written on 14 November.
+
 Three words are used strictly in this report:
 
 - **Proved**: a Lean theorem with no premise left open. Its hypotheses are only
