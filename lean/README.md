@@ -96,6 +96,14 @@ without `hMSF` and `hCoF`: premises `hp`, `hth`, `htb`, `l4`, and
 family of the delete's cases reads at every fuel above p.fuel and the next id,
 which the merges' loop and root collapse keep with no fit premise; the fit is
 asked only at the operation's end, where it holds between operations.
+`invGetScanOK_merges_tbL` (the same file; bergdb 025-05, part 2) has `htb`
+reduced to its case at one delete whose start has the first stratum's facts
+(`TakeBelowFuelDelSL`): premises `hp`, `hth`, `l4`, `htbL`, and
+`invGetScanOK_merges_noFit` is its corollary. The first stratum
+(SIS/Tree/Stratum.lean to StratumChk.lean, `jointHtJ_reached1`) gives the joint
+induction's facts at every state, and `hchk`, with no `htb`, no fit and no
+heights' bound: inside a delete only the tree's facts are needed, and route P's
+invariant holds at the state after the leaf's change taken as its own reference.
 
 `hU` is false as stated, for every parameter set, and so were `hHL` and `hCoU`:
 they speak of every writer state that meets a local invariant, which carries

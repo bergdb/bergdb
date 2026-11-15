@@ -8,6 +8,7 @@ import SIS.Tree.DeadDelCases
 import SIS.Tree.CollapseCommuteTop
 import SIS.Tree.DelMergeUp
 import SIS.Tree.FuelNext
+import SIS.Tree.StratumChk
 
 set_option autoImplicit false
 
@@ -15,19 +16,45 @@ namespace SIS.Tree
 
 open SIS SIS.Check
 
+/-- `htb` at the deletes of the runs of R whose start has the first stratum's facts
+(bergdb 025-05, step 8's claim): every node the delete finds at its start and takes
+back has a cached height below the fuel. -/
+def TakeBelowFuelDelS (p : Params) (R : Struct BVal → Time → Prop) : Prop :=
+  ∀ ts tx, Within p (ts ++ [tx]) → R (treeRun p ts) ts.length → ∀ z top,
+    lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z →
+    topOf p (ctxOf p ts).view z = .ok top →
+    ∀ pre key post, tx.ops = pre ++ Op.del key :: post →
+    ∀ r w, (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
+    PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w →
+    RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey →
+    LiveCounts p (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey →
+    HtInv (htOracleOf p (treeRun p ts)) tx.base (ctxOf p ts) w →
+    WriterTreeOK p (treeRun p ts) (ts.length + 1) w →
+    J2At p (treeRun p ts) (ts.length + 1) tx.base w →
+    ∀ a v, putKv (.del key) (ctxOf p ts) w = .ok (a, v) →
+    ∀ x g h, (x, g, h) ∈ w.gh → w.taken.contains x = false → v.taken.contains x = true →
+      h < p.fuel
+
+/-- `TakeBelowFuelDelS` at the induction's runs. -/
+def TakeBelowFuelDelSL (p : Params) : Prop := TakeBelowFuelDelS p (RunTreeQ p (LatestQD p))
+
+/-- `htb` gives its case at the induction's runs. -/
+theorem takeBelowFuelDelSL_of (p : Params) (h : TakeBelowFuelDelOK p) : TakeBelowFuelDelSL p :=
+  fun ts tx hw _ z top hz htop pre key post hs r w hpre _ _ _ _ _ _ a v he x g h' hm hx hv =>
+    h ts tx hw z top hz htop pre key post hs r w hpre a v he x g h' hm hx hv
+
 set_option maxHeartbeats 3200000 in
-/-- The joint route's top theorem without `hMSF` and `hCoF` (bergdb 025-05, route P):
-TP7, TP10 and TP11 for Java's parameters from `hp`, `hth`, `htb` and `l4`. Every
-writer state with `PutInv` fits its next id (FuelNext.lean, P1), so inside a delete
-each family reads at every fuel above p.fuel and the next id (`DelInvA`), which the
-merges' loop and root collapse keep with no fit premise; the fit p.fuel - 1 is asked
-only at the operation's end, where it holds between operations. As
-`invGetScanOK_merges_noU_noD4` with `hchk5` discharged as in
-`invGetScanOK_merges_free_noD4`, each consumer of `MergeStepOK` and `CollapseFitsOK`
-replaced by its route P form. -/
-theorem invGetScanOK_merges_noFit (p : Params) (hp : MergeParamsOK p)
+/-- The joint route's top theorem with `htb` reduced to its case at one delete (bergdb
+025-05, step 9): TP7, TP10 and TP11 for Java's parameters from `hp`, `hth`, `l4` and
+`htbL`, `htb` at the deletes of the induction's runs whose start has the first
+stratum's facts (`TakeBelowFuelDelSL`). The first stratum (`jointHtJ_reached1`) gives
+`PutInv`, the ranges, the fill, the heights' walk, the writer's tree and the take-back's
+node facts at every state with no `htb`, and `hchk` with no `htb` (`opDelChk5OKR_T`);
+with them `htbL` gives `htb` at the run (`TakeBelowFuelDelR`), from which the bound
+between operations and the fit follow as before (`htStart_reachedUR`). -/
+theorem invGetScanOK_merges_tbL (p : Params) (hp : MergeParamsOK p)
     (hth : 2 ≤ p.theta ∨ p.theta = 0)
-    (htb : TakeBelowFuelDelOK p)
+    (htbL : TakeBelowFuelDelSL p)
     (l4 : OpCaseOK p (RunOK p) (QLive p) DelMergeOpenCase) :
     InvPreserved p ∧ GetOK p ∧ ScanOK p ∧ LatestGetOK p ∧ LatestScanOK p := by
   have hp' := hp
@@ -47,11 +74,7 @@ theorem invGetScanOK_merges_noFit (p : Params) (hp : MergeParamsOK p)
   have hRK' : ∀ P t, RunTreeQ p (LatestQD p) P t → KindsAllOK p P := fun _ _ h => h.2.2.1.2.2.1
   have hRH' : ∀ P t, RunTreeQ p (LatestQD p) P t → HeightAllOK p P t :=
     fun _ _ h => h.2.2.1.2.2.2.1
-  have hchk5 : OpDelChk5OKL p :=
-    opDelChk5OKR_of_chk6A p (RunTreeQ p (LatestQD p)) hsa hcap hRL' hRP' hRK' hRH' htb
-      (opDelChk6OKR_of_chk7 p _ (by omega) hsa hRL' hRP' hRK' hRH' htb
-        (opDelChk7OKR_of_chk8 p _ hM4 hsa hm hRL' hRP' hRK' hRH' htb
-          (opDelChk8OKR_holdsA p _ hM4 hsa hcap hm hRL' hRP' hRK' hRH' htb)))
+  have hchk5 : OpDelChk5OKL p := opDelChk5OKR_T p _ hM4 hsa hcap hm hRL' hRP' hRK'
   have l4' := opCaseOK_anti p _ _ hR _ _
     (liveCase_delMerge_of_rest p (RunOK p) hRL
       (opCaseOK_of_open p (RunOK p) (QLive p) (keptByReads_live p) DelMergeRestCase l4))
@@ -72,34 +95,9 @@ theorem invGetScanOK_merges_noFit (p : Params) (hp : MergeParamsOK p)
     (rangeCase_putLeafFull p _ hRL' hsa)
     (opCaseOK_putNewSeg_of_parts p _ _ (rangeCase_putNewSeg1Room p _ (by omega))
       (rangeCase_putNewSegsRoom p _ (by omega)) (rangeCase_putNewSegFull p _ hRL' (by omega) hsa))
-  have hTIRJ := opCaseOKJ_treeInvRange_delMergeA p _
-    (delStepsQdLJ_of_openR_noUG p _ (by omega) hsa hRL' hRP' hRK' hRH' _) hsa hcap hRP' hRK'
-  have hSI : ∀ ts tx w, SJ p ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w :=
-    fun _ _ _ h => h.1.1.1.1.1
-  have hSV : ∀ ts tx w, SJ p ts tx w → LeafVals (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w :=
-    fun _ _ _ h => h.1.1.1.1.2
-  have hSB : ∀ ts tx w, SJ p ts tx w → tx.base ≤ w.next := fun _ _ _ h => h.1.1.1.2
-  have hSR : ∀ ts tx w, SJ p ts tx w →
-      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey := fun _ _ _ h => h.1.1.2
-  have hSF : ∀ ts tx w, SJ p ts tx w →
-      SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey :=
-    fun _ _ _ h => h.1.2.1
-  have hSM : ∀ ts tx w, SJ p ts tx w → ∀ x o, w.madeFor.lookup x = some o → o < tx.base :=
-    fun _ _ _ h => h.1.2.2
-  have hDSJ : DelStepsJ2OKA p (RunTreeQ p (LatestQD p)) (SJ p) :=
-    delStepsJ2OKS_of_openR_noUG p _ (SJ p) (by omega) hsa hRL' hRP' hRK' hSI hSV hSB hSR hSF hSM hRH'
-      (fun _ _ _ h => h.2.1) (fun _ _ _ h => h.2.2) _
-  have hJ2O : OpJ2OK p (RunTreeQ p (LatestQD p)) (SJ p) :=
-    opJ2OK_of_cases p _ _ (opJ2Case_putLeafRoom p _ _ hSI hSV)
-      (opJ2Case_putLeafFull p _ _ hRL' hsa hSI hSV hSB hSR)
-      (opJ2Case_putNewSeg p _ _ (by omega) hSI hSB (opJ2Case_putNewSegFull p _ _ hRL' (by omega) hsa hSI hSB hSR))
-      (opJ2Case_delMergeA p _ _ hDSJ hSI hSF hsa hcap hRP' hRK')
-      (opJ2Case_delNoLeaf p _ _ hSI) (opJ2Case_delNoop p _ _ hSI)
-      (opJ2CaseOK_void p _ _ _ hm delEmptyCase_merges) (opJ2Case_delRoom p _ _ hSI hSV)
-      (opJ2CaseOK_void p _ _ _ hm delFullCase_merges)
   have hchkR := opDelChk2ORJ_of_chk5 p _ hm hM4 hRL' hchk5
-  have joint := jointHtJ_reachedJ p _ hm (by omega) hM4 (baseStartOK_runTreeQ p (LatestQD p)) hRL' hRT' hRI'
-    hRP' hRK' hRH' htb hTp hPp hOp hTIRJ.1 hTIRJ.2.1 hTIRJ.2.2 hJ2O hLv hchkR
+  have joint := jointHtJ_reached1 p _ hm (by omega) hM4 hsa hcap (baseStartOK_runTreeQ p (LatestQD p)) hRL' hRT'
+    hRI' hRP' hRK' hRH' hTp hPp hOp hLv
   -- from the joint induction: the heights' delete side, the fuel, the cases at every operation
   have hht : OpHtDelOKUnder p (RunTreeQ p (LatestQD p)) := by
     intro ts tx hw hr z top hz htop pre key post hsplit r w hpre hvo hkw hb hwf hi r' v he
@@ -109,8 +107,12 @@ theorem invGetScanOK_merges_noFit (p : Params) (hp : MergeParamsOK p)
       (Op.del key :: post) hsplit r w hpre
     exact (ht_putKvDelChk2 tx.base key (ctxOf p ts) w hvo (by simp [ctxOf]) hkw hb hi hwf hk hki
       (by simpa [ctxOf] using (show 2 ≤ p.M by omega)) r' v hc).2.1
+  have htbR : TakeBelowFuelDelR p (RunTreeQ p (LatestQD p)) := by
+    intro ts tx hw hr z top hz htop pre key post hs r w hpre a v he x g h hm' hx hv
+    obtain ⟨hI, hRo, hL, hH, hT, hJ⟩ := joint ts tx hw hr z top hz htop pre (Op.del key :: post) hs r w hpre
+    exact htbL ts tx hw hr z top hz htop pre key post hs r w hpre hI hRo hL hH hT hJ a v he x g h hm' hx hv
   have hfitQ : TxSegFitsOK p (RunTreeQ p (LatestQD p)) :=
-    txSegFitsOK_of_takeBelowDelRHU p (by omega) _ hRL' hRK' hRH' hht htb
+    txSegFitsOK_of_takeBelowDelRHUR p (by omega) _ hRL' hRK' hRH' hht htbR
   have hnext : ∀ ts tx, Within p (ts ++ [tx]) → RunTreeQ p (LatestQD p) (treeRun p ts) ts.length →
       ∀ z top, lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z →
       topOf p (ctxOf p ts).view z = .ok top →
@@ -144,7 +146,7 @@ theorem invGetScanOK_merges_noFit (p : Params) (hp : MergeParamsOK p)
   have d4' : OpCaseOK p (RunTreeQ p (LatestQD p)) (QDead p) (fun c base w op =>
       DelMergeCase c base w op ∧ LiveCounts c.p (wNode c.p base w) c.i w.top.rootKey) :=
     fun ts tx hw hr z top hz htop pre op post hops r w hpre hI hRo hP =>
-      opCaseOK_dead_delMergeA p _ (delStepsCaseDOK_mergeG p _ (by omega) hsa hRL' hRP' hRK' hRH' hht htb
+      opCaseOK_dead_delMergeA p _ (delStepsCaseDOK_mergeGR p _ (by omega) hsa hRL' hRP' hRK' hRH' hht htbR
         hLC hJ2S hMFS _) hsa hcap hRP' hRK' hfitQ hth ts tx hw hr z top hz htop pre op post hops
         r w hpre hI hRo hP.1
   have hTL := opCaseOK_L_of_any p _ _ hT
@@ -163,9 +165,9 @@ theorem invGetScanOK_merges_noFit (p : Params) (hp : MergeParamsOK p)
     (putInvStateOK_of_cases p _ hRL' hRT' hRI' hT hPI hO)
     (rangeStateOK_of_cases p _ hRL' hRT' hRI' hT hPI hO)
     hfitQ hMFS
-    (delStepsJ2OKJ_of_openR_noUG p _ (TakeS4 p) (by omega) hsa hRL' hRP' hRK'
+    (delStepsJ2OKJ_of_openR_noUGR p _ (TakeS4 p) (by omega) hsa hRL' hRP' hRK'
       (fun _ _ _ h => h.1.1.1.1) (fun _ _ _ h => h.1.1.1.2) (fun _ _ _ h => h.1.1.2)
-      (fun _ _ _ h => h.1.2) (fun _ _ _ h => h.2.1) (fun _ _ _ h => h.2.2) hRH' hht htb hLC _)
+      (fun _ _ _ h => h.1.2) (fun _ _ _ h => h.2.1) (fun _ _ _ h => h.2.2) hRH' hht htbR hLC _)
   have hW : ∀ ts tx, Within p (ts ++ [tx]) → RunOK p (treeRun p ts) ts.length →
       RunTreeQ p (LatestQD p) (treeRun p ts) ts.length :=
     fun ts tx hw _ => hJ ts (within_snoc_prefix p ts tx hw)
@@ -173,7 +175,7 @@ theorem invGetScanOK_merges_noFit (p : Params) (hp : MergeParamsOK p)
   have hfit : TxSegFitsOK p (RunOK p) :=
     fun ts tx hw _ => hfitQ ts tx hw (hJ ts (within_snoc_prefix p ts tx hw))
   have hSA : DelStepsOKA p (RunOK p) := fun ts tx hw hr =>
-    delStepsOKJ_of_open_noUG p _ (by omega) hsa hRL' hP hRK' hRH' hht htb hLC hJ2S hMFS
+    delStepsOKJ_of_open_noUGR p _ (by omega) hsa hRL' hP hRK' hRH' hht htbR hLC hJ2S hMFS
       (fun ts tx w key v => DelInvA (ctxOf p ts) (viewOf (treeRun p ts)) w key
         (kindOracleOf p (treeRun p ts)) tx.base v) ts tx hw (hW ts tx hw hr)
   have hinv : InvPreserved p :=
@@ -186,6 +188,23 @@ theorem invGetScanOK_merges_noFit (p : Params) (hp : MergeParamsOK p)
     (opCaseOK_of_within p _ _ hW _ _ (opCaseOK_of_any p _ _ _ hO))
     (opGetCaseOK_delMergeA p (RunOK p) hSA hsa hcap (by omega) hP hfit)
   exact ⟨hinv, h.1, h.2, latestGetOK_of_getOK p h.1, latestScanOK_of_scanOK p h.2⟩
+
+
+/-- The joint route's top theorem without `hMSF` and `hCoF` (bergdb 025-05, route P):
+TP7, TP10 and TP11 for Java's parameters from `hp`, `hth`, `htb` and `l4`. Every
+writer state with `PutInv` fits its next id (FuelNext.lean, P1), so inside a delete
+each family reads at every fuel above p.fuel and the next id (`DelInvA`), which the
+merges' loop and root collapse keep with no fit premise; the fit p.fuel - 1 is asked
+only at the operation's end, where it holds between operations. As
+`invGetScanOK_merges_noU_noD4` with `hchk5` discharged as in
+`invGetScanOK_merges_free_noD4`, each consumer of `MergeStepOK` and `CollapseFitsOK`
+replaced by its route P form. -/
+theorem invGetScanOK_merges_noFit (p : Params) (hp : MergeParamsOK p)
+    (hth : 2 ≤ p.theta ∨ p.theta = 0)
+    (htb : TakeBelowFuelDelOK p)
+    (l4 : OpCaseOK p (RunOK p) (QLive p) DelMergeOpenCase) :
+    InvPreserved p ∧ GetOK p ∧ ScanOK p ∧ LatestGetOK p ∧ LatestScanOK p :=
+  invGetScanOK_merges_tbL p hp hth (takeBelowFuelDelSL_of p htb) l4
 
 set_option maxHeartbeats 3200000 in
 /-- `invGetScanOK_merges_noU` without `d4` (bergdb 024-12, section 1, `d4`'s plan

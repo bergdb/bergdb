@@ -131,10 +131,10 @@ theorem execW_htCacheU (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Time �
 deletes' (`TakeBelowFuelDelOK`), at the runs R holds of, with the delete side of
 the heights' walk there (`OpHtDelOKUnder`) in place of `OpDelChkOK`: a put takes
 nothing back (`ht_putKv_put`'s `HtLe`). -/
-theorem takeBelowFuelOK_of_delHU (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Time → Prop)
+theorem takeBelowFuelOK_of_delHUR (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Time → Prop)
     (hRL : ∀ P t, R P t → RunLinksOK p P t) (hRK : ∀ P t, R P t → KindsAllOK p P)
     (hRH : ∀ P t, R P t → HeightAllOK p P t) (hht : OpHtDelOKUnder p R)
-    (hdel : TakeBelowFuelDelOK p) :
+    (hdel : TakeBelowFuelDelR p R) :
     ∀ ts tx, Within p (ts ++ [tx]) → R (treeRun p ts) ts.length → ∀ z top,
       lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z →
       topOf p (ctxOf p ts).view z = .ok top →
@@ -145,7 +145,7 @@ theorem takeBelowFuelOK_of_delHU (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal 
         h < p.fuel := by
   intro ts tx hw hr z top hz htop pre op post hsplit r w hpre a v he x g h hm hx hv
   cases op with
-  | del key => exact hdel ts tx hw z top hz htop pre key post hsplit r w hpre a v he x g h hm hx hv
+  | del key => exact hdel ts tx hw hr z top hz htop pre key post hsplit r w hpre a v he x g h hm hx hv
   | put key hv0 =>
     exfalso
     have hR := hRL _ _ hr
@@ -159,6 +159,24 @@ theorem takeBelowFuelOK_of_delHU (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal 
     rw [this, hx] at hv
     cases hv
 
+/-- Every node an operation takes back has a height below the fuel, from the
+deletes' (`TakeBelowFuelDelOK`), at the runs R holds of, with the delete side of
+the heights' walk there (`OpHtDelOKUnder`) in place of `OpDelChkOK`: a put takes
+nothing back (`ht_putKv_put`'s `HtLe`). -/
+theorem takeBelowFuelOK_of_delHU (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Time → Prop)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t) (hRK : ∀ P t, R P t → KindsAllOK p P)
+    (hRH : ∀ P t, R P t → HeightAllOK p P t) (hht : OpHtDelOKUnder p R)
+    (hdel : TakeBelowFuelDelOK p) :
+    ∀ ts tx, Within p (ts ++ [tx]) → R (treeRun p ts) ts.length → ∀ z top,
+      lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z →
+      topOf p (ctxOf p ts).view z = .ok top →
+      ∀ pre op post, tx.ops = pre ++ op :: post →
+      ∀ r w, (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
+      ∀ a v, putKv op (ctxOf p ts) w = .ok (a, v) →
+      ∀ x g h, (x, g, h) ∈ w.gh → w.taken.contains x = false → v.taken.contains x = true →
+        h < p.fuel :=
+  takeBelowFuelOK_of_delHUR p hM R hRL hRK hRH hht (takeBelowFuelDelR_of p R hdel)
+
 /-- Every cached height of a node not taken back is at most b. -/
 def UntakenBound (b : Nat) (v : W) : Prop :=
   ∀ x g h, (x, g, h) ∈ v.gh → v.taken.contains x = false → h ≤ b
@@ -167,10 +185,10 @@ set_option maxHeartbeats 1600000 in
 /-- At a state that a transaction's earlier operations reach, at the runs R
 holds of: the heights' context and the facts `htJ_start` asks, the bound below
 the fuel by the doomed transaction (as in `txSegFitsOK_of_takeBelowDelRHU`). -/
-theorem htStart_reachedU (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Time → Prop)
+theorem htStart_reachedUR (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Time → Prop)
     (hRL : ∀ P t, R P t → RunLinksOK p P t) (hRK : ∀ P t, R P t → KindsAllOK p P)
     (hRH : ∀ P t, R P t → HeightAllOK p P t) (hht : OpHtDelOKUnder p R)
-    (hdel : TakeBelowFuelDelOK p) (ts : List Tx) (tx : Tx) (hw : Within p (ts ++ [tx]))
+    (hdel : TakeBelowFuelDelR p R) (ts : List Tx) (tx : Tx) (hw : Within p (ts ++ [tx]))
     (hr : R (treeRun p ts) ts.length) (z : NodeId) (top : Top)
     (hz : lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z)
     (htop : topOf p (ctxOf p ts).view z = .ok top) (pre post : List Op)
@@ -182,7 +200,7 @@ theorem htStart_reachedU (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Time
       (∀ y h, htOracleOf p (treeRun p ts) y h → h ≤ p.H) ∧
       Book tx.base (ctxOf p ts) w ∧ HtInv (htOracleOf p (treeRun p ts)) tx.base (ctxOf p ts) w ∧
       WriterKlongsWf w ∧ UntakenBound (p.fuel - 1) w := by
-  have htb := takeBelowFuelOK_of_delHU p hM R hRL hRK hRH hht hdel ts tx hw hr z top hz htop
+  have htb := takeBelowFuelOK_of_delHUR p hM R hRL hRK hRH hht hdel ts tx hw hr z top hz htop
   have hR := hRL _ _ hr
   have hK := hRK _ _ hr
   have hA := hRH _ _ hr
@@ -242,17 +260,37 @@ theorem htStart_reachedU (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Time
     exact hny ▸ heightOf_le p ny.level
   · have := hub x g h hm hx; omega
 
+/-- At a state that a transaction's earlier operations reach, at the runs R
+holds of: the heights' context and the facts `htJ_start` asks, the bound below
+the fuel by the doomed transaction (as in `txSegFitsOK_of_takeBelowDelRHU`). -/
+theorem htStart_reachedU (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Time → Prop)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t) (hRK : ∀ P t, R P t → KindsAllOK p P)
+    (hRH : ∀ P t, R P t → HeightAllOK p P t) (hht : OpHtDelOKUnder p R)
+    (hdel : TakeBelowFuelDelOK p) (ts : List Tx) (tx : Tx) (hw : Within p (ts ++ [tx]))
+    (hr : R (treeRun p ts) ts.length) (z : NodeId) (top : Top)
+    (hz : lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z)
+    (htop : topOf p (ctxOf p ts).view z = .ok top) (pre post : List Op)
+    (hsplit : tx.ops = pre ++ post) (r : List Bool) (w : W)
+    (hpre : (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w)) :
+    ViewHtOK (htOracleOf p (treeRun p ts)) tx.base (ctxOf p ts) ∧
+      ViewKlongsWf p (ctxOf p ts).view ∧
+      BaseHeights (ctxOf p ts) (htOracleOf p (treeRun p ts)) (viewOf (treeRun p ts)) ∧
+      (∀ y h, htOracleOf p (treeRun p ts) y h → h ≤ p.H) ∧
+      Book tx.base (ctxOf p ts) w ∧ HtInv (htOracleOf p (treeRun p ts)) tx.base (ctxOf p ts) w ∧
+      WriterKlongsWf w ∧ UntakenBound (p.fuel - 1) w :=
+  htStart_reachedUR p hM R hRL hRK hRH hht (takeBelowFuelDelR_of p R hdel) ts tx hw hr z top hz htop pre post hsplit r w hpre
+
 set_option maxHeartbeats 1600000 in
 /-- TP10's fuel premise between operations from the heights, given the deletes'
 take-backs below the fuel (`TakeBelowFuelDelOK`), with the delete side of the
 heights' walk at the runs R holds of (`OpHtDelOKUnder`) in place of
 `OpDelChkOK`. -/
-theorem txSegFitsOK_of_takeBelowDelRHU (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Time → Prop)
+theorem txSegFitsOK_of_takeBelowDelRHUR (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Time → Prop)
     (hRL : ∀ P t, R P t → RunLinksOK p P t) (hRK : ∀ P t, R P t → KindsAllOK p P)
     (hRH : ∀ P t, R P t → HeightAllOK p P t) (hht : OpHtDelOKUnder p R)
-    (hdel : TakeBelowFuelDelOK p) : TxSegFitsOK p R := by
+    (hdel : TakeBelowFuelDelR p R) : TxSegFitsOK p R := by
   intro ts tx hw hr z top hz htop pre post hsplit r w hpre
-  obtain ⟨hvo, -, hbase, hHb, hbk, hi, -, hub⟩ := htStart_reachedU p hM R hRL hRK hRH hht hdel
+  obtain ⟨hvo, -, hbase, hHb, hbk, hi, -, hub⟩ := htStart_reachedUR p hM R hRL hRK hRH hht hdel
     ts tx hw hr z top hz htop pre post hsplit r w hpre
   refine segFits_of_heightsU hbk hi.cache hvo.heights _ hbase (p.fuel - 1) _ ?_
   intro x n hn h hh
@@ -261,6 +299,16 @@ theorem txSegFitsOK_of_takeBelowDelRHU (p : Params) (hM : 2 ≤ p.M) (R : Struct
   · have := hHb x h hh
     have := fuel_gt_H p
     omega
+
+/-- TP10's fuel premise between operations from the heights, given the deletes'
+take-backs below the fuel (`TakeBelowFuelDelOK`), with the delete side of the
+heights' walk at the runs R holds of (`OpHtDelOKUnder`) in place of
+`OpDelChkOK`. -/
+theorem txSegFitsOK_of_takeBelowDelRHU (p : Params) (hM : 2 ≤ p.M) (R : Struct BVal → Time → Prop)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t) (hRK : ∀ P t, R P t → KindsAllOK p P)
+    (hRH : ∀ P t, R P t → HeightAllOK p P t) (hht : OpHtDelOKUnder p R)
+    (hdel : TakeBelowFuelDelOK p) : TxSegFitsOK p R :=
+  txSegFitsOK_of_takeBelowDelRHUR p hM R hRL hRK hRH hht (takeBelowFuelDelR_of p R hdel)
 
 /-- TP10's fuel premise between operations (`TxSegFitsOK`, latest's `hfit`),
 from the delete's checks but the path's and the deletes' take-backs below the

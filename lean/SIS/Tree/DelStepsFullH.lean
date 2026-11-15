@@ -137,12 +137,12 @@ theorem writerWP_appendDeleteKlong_full_delH (c : Ctx) (base : View BVal) (hvc :
 from the fuel premise after the split (cost's step 4) and the
 leaf at the space root (`DelFullRootStepOK`), for runs with their links and
 TP4 at every run, 2 ≤ splitAbove. -/
-theorem delStepsCaseOK_fullHG (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+theorem delStepsCaseOK_fullHGR (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
     (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
     (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
     (hRK : ∀ P t, R P t → KindsAllOK p P) (hRH : ∀ P t, R P t → HeightAllOK p P t)
-    (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelOK p)
+    (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelR p R)
     (hRoot : ∀ ts, DelFullRootStepOK (ctxOf p ts) (viewOf (treeRun p ts)))
     (I : List Tx → Tx → W → Key → W → Prop) : DelStepsCaseOKG p R DelFullM I := by
   intro ts tx hw hr z top hz htop ops op post hops r w hpre hI hRO hF key hop hPc hin hout hA _ _
@@ -162,7 +162,7 @@ theorem delStepsCaseOK_fullHG (p : Params) (R : Struct BVal → Time → Prop) (
     fun v hb hi hun => innerChildren_of_kinds p (treeRun p ts) tx.base (ctxOf p ts) v rfl hKall
       (hP ts hwts) hb hi.cache hun
   have hJ0 : KdJ (ctxOf p ts) tx.base top (kindOracleOf p (treeRun p ts)) tx.base w := ⟨hbook, hb0, hi0⟩
-  obtain ⟨hvo, hkw, _, _, _, hhi, hwfw, hub⟩ := htStart_reachedU p hM R hRL hRK hRH hht hdel ts tx hw hr z top
+  obtain ⟨hvo, hkw, _, _, _, hhi, hwfw, hub⟩ := htStart_reachedUR p hM R hRL hRK hRH hht hdel ts tx hw hr z top
     hz htop ops (.del (pre ++ [cv]) :: post) hops r w hpre
   refine writerWP_del_toLeafMKH (ctxOf p ts) _ (viewCoherent_ctxOf p ts) pre cv rk w
     (KdHtJ (ctxOf p ts) tx.base top (kindOracleOf p (treeRun p ts)) tx.base (htOracleOf p (treeRun p ts)))
@@ -192,6 +192,20 @@ theorem delStepsCaseOK_fullHG (p : Params) (R : Struct BVal → Time → Prop) (
     simpa [Op.key, Op.value] using this
 
 
+/-- The reading of a delete into a full leaf, the merges on:
+from the fuel premise after the split (cost's step 4) and the
+leaf at the space root (`DelFullRootStepOK`), for runs with their links and
+TP4 at every run, 2 ≤ splitAbove. -/
+theorem delStepsCaseOK_fullHG (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+    (hsa2 : 2 ≤ p.splitAbove)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t)
+    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
+    (hRK : ∀ P t, R P t → KindsAllOK p P) (hRH : ∀ P t, R P t → HeightAllOK p P t)
+    (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelOK p)
+    (hRoot : ∀ ts, DelFullRootStepOK (ctxOf p ts) (viewOf (treeRun p ts)))
+    (I : List Tx → Tx → W → Key → W → Prop) : DelStepsCaseOKG p R DelFullM I :=
+  delStepsCaseOK_fullHGR p R hM hsa2 hRL hP hRK hRH hht (takeBelowFuelDelR_of p R hdel) hRoot I
+
 /-- The old case: `delStepsCaseOK_fullHG` at `DelInvI`. -/
 theorem delStepsCaseOK_fullH (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
     (hsa2 : 2 ≤ p.splitAbove)
@@ -206,7 +220,7 @@ theorem delStepsCaseOK_fullH (p : Params) (R : Struct BVal → Time → Prop) (h
 set_option maxHeartbeats 1600000 in
 /-- The take-back of a delete into a full leaf, the merges on, from the fuel
 premise after the split. -/
-theorem delStepsCaseJ2OK_fullRHG (p : Params) (R : Struct BVal → Time → Prop)
+theorem delStepsCaseJ2OK_fullRHGR (p : Params) (R : Struct BVal → Time → Prop)
     (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M) (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
     (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P)
@@ -217,7 +231,7 @@ theorem delStepsCaseJ2OK_fullRHG (p : Params) (R : Struct BVal → Time → Prop
       RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey)
     (hSF : ∀ ts tx w, S ts tx w →
       SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey)
-    (hRH : ∀ P t, R P t → HeightAllOK p P t) (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelOK p)
+    (hRH : ∀ P t, R P t → HeightAllOK p P t) (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelR p R)
     (I : List Tx → Tx → W → Key → W → Prop) : DelStepsCaseJ2OKG p R S DelFullM I := by
   intro ts tx hw hr z top hz htop ops op post hops r w hpre hS hJ key hop hPc hin hout hA _ _
   obtain ⟨pre, cv, L0, n0, hop', _, hK, hne0, hkeep0, hfull0⟩ := hPc
@@ -242,7 +256,7 @@ theorem delStepsCaseJ2OK_fullRHG (p : Params) (R : Struct BVal → Time → Prop
     fun v hb hi hun => innerChildren_of_kinds p (treeRun p ts) tx.base (ctxOf p ts) v rfl hKall
       (hRP _ _ hr) hb hi.cache hun
   have hJ0 : KdJ (ctxOf p ts) tx.base top (kindOracleOf p (treeRun p ts)) tx.base w := ⟨hbook, hb0, hi0⟩
-  obtain ⟨hvo, hkw, _, _, _, hhi, hwfw, hub⟩ := htStart_reachedU p hM R hRL hRK hRH hht hdel ts tx hw hr z top
+  obtain ⟨hvo, hkw, _, _, _, hhi, hwfw, hub⟩ := htStart_reachedUR p hM R hRL hRK hRH hht hdel ts tx hw hr z top
     hz htop ops (.del (pre ++ [cv]) :: post) hops r w hpre
   refine writerWP_del_toLeafMKH (ctxOf p ts) _ (viewCoherent_ctxOf p ts) pre cv rk w
     (KdHtJ (ctxOf p ts) tx.base top (kindOracleOf p (treeRun p ts)) tx.base (htOracleOf p (treeRun p ts)))
@@ -277,6 +291,23 @@ theorem delStepsCaseJ2OK_fullRHG (p : Params) (R : Struct BVal → Time → Prop
         (fun _ v hv' => ⟨hv'.1, hv'.2.1, hv'.2.2⟩)) ?_
     intro g h v hv'
     exact writerWP_mono (hA g h v (hin v hv')) (fun _ v' hv'' => hout v' hv'')
+
+/-- The take-back of a delete into a full leaf, the merges on, from the fuel
+premise after the split. -/
+theorem delStepsCaseJ2OK_fullRHG (p : Params) (R : Struct BVal → Time → Prop)
+    (S : List Tx → Tx → W → Prop) (hM : 2 ≤ p.M) (hsa2 : 2 ≤ p.splitAbove)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t)
+    (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P)
+    (hSI : ∀ ts tx w, S ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w)
+    (hSV : ∀ ts tx w, S ts tx w → LeafVals (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w)
+    (hSB : ∀ ts tx w, S ts tx w → tx.base ≤ w.next)
+    (hSR : ∀ ts tx w, S ts tx w →
+      RangeOrder (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) w.top.rootKey)
+    (hSF : ∀ ts tx w, S ts tx w →
+      SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey)
+    (hRH : ∀ P t, R P t → HeightAllOK p P t) (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelOK p)
+    (I : List Tx → Tx → W → Key → W → Prop) : DelStepsCaseJ2OKG p R S DelFullM I :=
+  delStepsCaseJ2OK_fullRHGR p R S hM hsa2 hRL hRP hRK hSI hSV hSB hSR hSF hRH hht (takeBelowFuelDelR_of p R hdel) I
 
 /-- The old case: its G form at `DelInvJI`. -/
 theorem delStepsCaseJ2OK_fullRH (p : Params) (R : Struct BVal → Time → Prop)

@@ -194,4 +194,21 @@ def TakeBelowFuelDelOK (p : Params) : Prop :=
     ∀ x g h, (x, g, h) ∈ w.gh → w.taken.contains x = false → v.taken.contains x = true →
       h < p.fuel
 
+/-- `TakeBelowFuelDelOK` at the deletes of the runs of R only (bergdb 025-05, step 9:
+the consumers use `htb` only at the run they are at). -/
+def TakeBelowFuelDelR (p : Params) (R : Struct BVal → Time → Prop) : Prop :=
+  ∀ ts tx, Within p (ts ++ [tx]) → R (treeRun p ts) ts.length → ∀ z top,
+    lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z →
+    topOf p (ctxOf p ts).view z = .ok top →
+    ∀ pre key post, tx.ops = pre ++ Op.del key :: post →
+    ∀ r w, (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
+    ∀ a v, putKv (.del key) (ctxOf p ts) w = .ok (a, v) →
+    ∀ x g h, (x, g, h) ∈ w.gh → w.taken.contains x = false → v.taken.contains x = true →
+      h < p.fuel
+
+theorem takeBelowFuelDelR_of (p : Params) (R : Struct BVal → Time → Prop) (h : TakeBelowFuelDelOK p) :
+    TakeBelowFuelDelR p R :=
+  fun ts tx hw _ z top hz htop pre key post hs r w hpre a v he x g h' hm hx hv =>
+    h ts tx hw z top hz htop pre key post hs r w hpre a v he x g h' hm hx hv
+
 end SIS.Tree

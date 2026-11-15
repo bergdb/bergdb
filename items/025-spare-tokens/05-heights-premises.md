@@ -5,8 +5,9 @@ written 2026-11-15, 12:39, by coord-1115's planning agent; part 1, steps 1
 to 6, gated on the prover fit's branch 2026-11-15: the top theorem
 `invGetScanOK_merges_noFit`, premises hp, hth, htb, l4); part 2 (`htb`)
 started 2026-11-15 by the prover htb: step 7 done (`jointHtJ_reached1`,
-the joint induction with no `htb`); steps 8 and 9 open. Section 8 has the
-state.
+the joint induction with no `htb`), step 9 done as a reduction
+(`invGetScanOK_merges_tbL`: `htb` reduced to its case at one delete whose
+start has the stratum's facts); step 8 open. Section 8 has the state.
 
 The key tree's best top theorem on `main` since 2026-11-15, 11:17, is
 `invGetScanOK_merges_free_noD4` (DeadTop.lean): TP7, TP10 and TP11 for
@@ -955,3 +956,63 @@ the three sites of section 4.4. Then step 9: inside the transactions'
 induction, `htb`'s case at the runs from step 8, the bound and
 `TxSegFitsOK` as in `htStart_of_ht` and `txSegFitsOK_of_takeBelowDelRHU`,
 then the top theorem with premises `hp`, `hth`, `l4`.
+
+2026-11-15, 14:30 to 14:45. Part 2, step 9 as a reduction (prover htb):
+the top theorem with `htb` reduced to its case at one delete. No
+statement changed.
+
+- **`invGetScanOK_merges_tbL`** (DeadTop.lean): TP7, TP10 and TP11 for
+  Java's parameters from `hp`, `hth`, `l4` and `htbL : TakeBelowFuelDelSL
+  p`, `htb` at the deletes of the induction's runs whose start has the
+  first stratum's facts (`PutInv`, the ranges, the fill, `HtInv`, the
+  writer's tree, the take-back's node facts; `TakeBelowFuelDelS`).
+  `invGetScanOK_merges_noFit` is its corollary (`takeBelowFuelDelSL_of`).
+  Its proof: the first stratum (`jointHtJ_reached1`) and `hchk`
+  (`opDelChk5OKR_T`) with no `htb`; `htbL` with the stratum gives `htb` at
+  the run (`TakeBelowFuelDelR`), and the bound between operations, the fit
+  and the families' delete cases follow as before.
+- **`htb` at the run only:** `TakeBelowFuelDelR p R` (HeightsFit.lean),
+  `htb` at the deletes of the runs of R; the lemmas that took `htb` used it
+  only at the run they were at, so each has an R form with the proof, the
+  old one its corollary (`takeBelowFuelDelR_of`): `htStart_reachedUR`,
+  `takeBelowFuelOK_of_delHUR`, `txSegFitsOK_of_takeBelowDelRHUR`
+  (HeightsUnder.lean), `delStepsCaseOK_fullHGR`, `delStepsCaseJ2OK_fullRHGR`
+  (DelStepsFullH.lean), `delStepsCaseJ2OK_emptyCascRLHGJ_noUGR`,
+  `delStepsCaseOK_emptyCascLHGJ_noUGR`, `delStepsJ2OKJ_of_openR_noUGR`,
+  `delStepsOKJ_of_open_noUGR` (HeightsFillHolder.lean),
+  `delStepsCaseDOK_emptyCascGR`, `delStepsCaseDOK_fullGR`,
+  `delStepsCaseDOK_mergeGR` (DeadDelCases.lean).
+
+**Left of part 2: step 8**, `TakeBelowFuelDelS p R` for the runs of the
+induction (an R-generic theorem, as `opDelChk5OKR_T`); then
+`invGetScanOK_merges_noTb` (premises `hp`, `hth`, `l4`) is
+`invGetScanOK_merges_tbL` with it, and `invGetScanOK_merges_tbL` stays as
+the reduced form. What step 8 has to show, and what exists for it:
+
+- The claim is about one delete's run from a start with the stratum's
+  facts: a node x in w.gh, not taken back at w, taken back by the delete,
+  has its cached height h below p.fuel. The delete runs as its checked
+  copy (`opDelChk5OKR_T`, so `putKvDelChk2` by `opDelChk2ORJ_T`), over
+  which the heights' walk runs (`ht_putKvDelChk2`, HeightsPathFree.lean
+  and on): step 8 is that walk with one more fact, "every node of w.gh
+  untaken at w and taken back now has h < p.fuel", and the facts that
+  keep it.
+- The writer takes back in three places (Exec.lean): the upward loop's
+  `takeBack` (a chain node on the key access path), the merge's
+  `takenBack` of the two nodes merged (`merge`: x at the loop's height h
+  on the path, `descendHeight` from the segment root, and its sibling
+  under the same parent), and root collapse's `takeBackRoot` (the segment
+  root on the path, `descendToSegmentRoot`).
+- The bound on the key access path: a successful `descendLte cv f x` from
+  x of height h gives h < f (`ht_descendLte_height`, HeightsFuelDescent.lean);
+  the delete's descents use `c.p.fuel` from each segment root, and
+  `PathHt` (`HtInv.path`) gives the heights down the path one less each.
+  So every node on the start path has its height below p.fuel; the chain
+  site is then direct. The merge's sibling has x's height (`HtCache`,
+  `NodeHt` of the parent).
+- The merges' and root collapse's sites need the segment root of segment g
+  at those moments: a node found at the start is the start's (a split of
+  the delete makes only new nodes), so its height is below p.fuel by the
+  start path. This frame argument (section 4.4's "start-path form", tested
+  442 of 442) is the hard part; the fallback is the loop's last merge.
+- Size: section 6.2's step 8 estimate stands (1,200 to 2,500 lines).
