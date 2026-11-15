@@ -6,7 +6,8 @@ steps up to the upward loop keep the made-for ids. So `putKvDelChk4`, the checke
 copy with neither the stop-node checks nor `checkOld3`, runs as `putKvDelChk2`
 from every state with `PutInv`, the fill and that fact (`rwp_putKvDelChk4`), and
 `OpDelChk4OKL` gives `OpDelChk2OKL` (`opDelChk2OKR_of_chk4`). Left in `hchk`: the
-holders before each take-back (`checkFree`, `checkRoot`).
+holders before each take-back (`checkFree`, `checkRoot`). The top theorem with it
+is HeightsFillTop.lean's `invGetScanOK_merges_joint`.
 -/
 import SIS.Tree.HeightsFillStop
 import SIS.Tree.MadeForView
@@ -602,31 +603,5 @@ theorem opDelChk2OKR_of_chk4 (p : Params) (R : Struct BVal → Time → Prop) (h
     exact rwp_putKvDelChk4 (ctxOf p ts) (viewOf (treeRun p ts)) (viewCoherent_ctxOf p ts) w hI hL hm
       (fun x o ho => (hmf x o ho).2) key _
       (h ts tx hw hr z top hz htop pre key post hs r w hpre hI hRO hL hH r' v he)
-
-/-- The top theorem with `hchk` narrowed to the deletes whose start has the fill,
-`PutInv`, the ranges and the heights, and with only its holders' checks
-(`OpDelChk4OKL`); without `hMF` (putinv2's `stateOK_madeFor`). -/
-theorem invGetScanOK_merges_chk4L (p : Params) (hp : MergeParamsOK p)
-    (hth : 2 ≤ p.theta ∨ p.theta = 0)
-    (hchk4 : OpDelChk4OKL p)
-    (htb : TakeBelowFuelDelOK p)
-    (d4 : OpCaseOK p (RunOK p) (QDead p) DelMergeDOpenCase)
-    (l4 : OpCaseOK p (RunOK p) (QLive p) DelMergeOpenCase)
-    (hU : ∀ ts, UpUnlinkTreeOK (ctxOf p ts) (viewOf (treeRun p ts)))
-    (hHL : ∀ ts, UpHolderLiveRunOK (ctxOf p ts) (viewOf (treeRun p ts)))
-    (hMSF : ∀ ts, MergeFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hCoF : ∀ ts, CollapseFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hCoU : ∀ ts, CollapseUnlinkAllOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1)) :
-    InvPreserved p ∧ GetOK p ∧ ScanOK p ∧ LatestGetOK p ∧ LatestScanOK p := by
-  have hMF := stateOK_madeFor p (four_le_M p hp) (RunOK p) (fun _ _ h => h.1)
-  have hp' := hp
-  unfold MergeParamsOK at hp'
-  have hm : p.merges = true := by
-    unfold Params.merges; simp only [decide_eq_true_eq]; omega
-  exact invGetScanOK_merges p hp hth
-    (opDelChk2OK_of_chk2L p hp hth
-      (opDelChk2OKR_of_chk4 p _ hm (four_le_M p hp) (fun _ _ h => h.1) hchk4) htb d4 l4 hU hHL hMSF hCoF
-      hCoU hMF)
-    htb d4 l4 hU hHL hMSF hCoF hCoU hMF
 
 end SIS.Tree
