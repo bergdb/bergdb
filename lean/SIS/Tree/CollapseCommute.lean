@@ -4,7 +4,7 @@ Root collapse's two steps commute (bergdb 026-16, section 5.3; 024-22, section
 segment root x below it, so it runs the same from a state whose node x is
 changed. Here, the relational walk: `RelOK x m f c u` says that every successful
 run of f from u with x's node set to m is a run from u, with x's node set to m
-after it. `RWP` carries a postcondition of the run from u with it, so that the
+after it. `XWP` carries a postcondition of the run from u with it, so that the
 walk knows the ids it reads and writes (`RJ`: x is cached, below the next id,
 and the key access path is fixed).
 -/
@@ -25,7 +25,7 @@ def RelOK {α : Type} (x : NodeId) (m : KNode) (f : M α) (c : Ctx) (u : W) : Pr
   ∀ r w2, f c (setX x m u) = .ok (r, w2) → ∃ u2, f c u = .ok (r, u2) ∧ w2 = setX x m u2
 
 /-- `RelOK` with a postcondition of the run from u. -/
-def RWP {α : Type} (x : NodeId) (m : KNode) (f : M α) (c : Ctx) (u : W)
+def XWP {α : Type} (x : NodeId) (m : KNode) (f : M α) (c : Ctx) (u : W)
     (post : α → W → Prop) : Prop :=
   RelOK x m f c u ∧ WriterWP f c u post
 
@@ -36,8 +36,8 @@ def RJ (x : NodeId) (nx : KNode) (path0 : List (Option Nat × NodeId)) (u : W) :
 
 /-- The transfer: a postcondition of every run from the state with x's node set
 to m, from the runs from u. -/
-theorem writerWP_setX_of_rwp {α : Type} {x : NodeId} {m : KNode} {f : M α} {c : Ctx} {u : W}
-    {post : α → W → Prop} (h : RWP x m f c u (fun r u2 => post r (setX x m u2))) :
+theorem writerWP_setX_of_xwp {α : Type} {x : NodeId} {m : KNode} {f : M α} {c : Ctx} {u : W}
+    {post : α → W → Prop} (h : XWP x m f c u (fun r u2 => post r (setX x m u2))) :
     WriterWP f c (setX x m u) post := by
   intro r w2 h2
   obtain ⟨u2, h3, rfl⟩ := h.1 r w2 h2
@@ -204,12 +204,12 @@ theorem lookup_upsert_x (ns : List (NodeId × KNode)) (x y : NodeId) (n : KNode)
 section
 variable {x : NodeId} {m nx : KNode}
 
-theorem rwp_mono {α : Type} {f : M α} {c : Ctx} {u : W} {post post' : α → W → Prop}
-    (h : RWP x m f c u post) (hp : ∀ r v, post r v → post' r v) : RWP x m f c u post' :=
+theorem xwp_mono {α : Type} {f : M α} {c : Ctx} {u : W} {post post' : α → W → Prop}
+    (h : XWP x m f c u post) (hp : ∀ r v, post r v → post' r v) : XWP x m f c u post' :=
   ⟨h.1, writerWP_mono h.2 hp⟩
 
-theorem rwp_bind {α β : Type} {f : M α} {g : α → M β} {c : Ctx} {u : W} {post : β → W → Prop}
-    (h : RWP x m f c u (fun a u' => RWP x m (g a) c u' post)) : RWP x m (f >>= g) c u post := by
+theorem xwp_bind {α β : Type} {f : M α} {g : α → M β} {c : Ctx} {u : W} {post : β → W → Prop}
+    (h : XWP x m f c u (fun a u' => XWP x m (g a) c u' post)) : XWP x m (f >>= g) c u post := by
   obtain ⟨hr, hw⟩ := h
   refine ⟨?_, (writerWP_bind f g c u post).mpr (writerWP_mono hw fun _ _ h => h.2)⟩
   intro r w2 h2
@@ -224,116 +224,116 @@ theorem rwp_bind {α β : Type} {f : M α} {g : α → M β} {c : Ctx} {u : W} {
     exact ⟨u2, by rw [hu']; exact hu2, rfl⟩
 
 /-- A step whose runs are known on both sides. -/
-theorem rwp_of_run {α : Type} {f : M α} {c : Ctx} {u : W} {post : α → W → Prop} (a : α) (u' : W)
+theorem xwp_of_run {α : Type} {f : M α} {c : Ctx} {u : W} {post : α → W → Prop} (a : α) (u' : W)
     (h1 : f c u = .ok (a, u')) (h2 : f c (setX x m u) = .ok (a, setX x m u')) (hp : post a u') :
-    RWP x m f c u post := by
+    XWP x m f c u post := by
   refine ⟨fun r w2 h => ?_, fun r w2 h => ?_⟩
   · rw [h2] at h; cases h; exact ⟨u', h1, rfl⟩
   · rw [h1] at h; cases h; exact hp
 
 /-- A step that fails on both sides. -/
-theorem rwp_of_err {α : Type} {f : M α} {c : Ctx} {u : W} {post : α → W → Prop} (e : String)
-    (h1 : f c u = .error e) (h2 : f c (setX x m u) = .error e) : RWP x m f c u post := by
+theorem xwp_of_err {α : Type} {f : M α} {c : Ctx} {u : W} {post : α → W → Prop} (e : String)
+    (h1 : f c u = .error e) (h2 : f c (setX x m u) = .error e) : XWP x m f c u post := by
   refine ⟨fun r w2 h => ?_, fun r w2 h => ?_⟩
   · rw [h2] at h; cases h
   · rw [h1] at h; cases h
 
 /-- A step that fails on both sides. -/
-theorem rwp_of_noOk {α : Type} {f : M α} {c : Ctx} {u : W} {post : α → W → Prop}
+theorem xwp_of_noOk {α : Type} {f : M α} {c : Ctx} {u : W} {post : α → W → Prop}
     (h1 : ∀ r u', f c u = .ok (r, u') → False) (h2 : ∀ r w2, f c (setX x m u) = .ok (r, w2) → False) :
-    RWP x m f c u post :=
+    XWP x m f c u post :=
   ⟨fun r w2 h => (h2 r w2 h).elim, fun r w2 h => (h1 r w2 h).elim⟩
 
-theorem rwp_ite {α : Type} (b : Prop) [Decidable b] {f g : M α} {c : Ctx} {u : W}
-    {post : α → W → Prop} (h1 : b → RWP x m f c u post) (h2 : ¬ b → RWP x m g c u post) :
-    RWP x m (if b then f else g) c u post := by
+theorem xwp_ite {α : Type} (b : Prop) [Decidable b] {f g : M α} {c : Ctx} {u : W}
+    {post : α → W → Prop} (h1 : b → XWP x m f c u post) (h2 : ¬ b → XWP x m g c u post) :
+    XWP x m (if b then f else g) c u post := by
   by_cases hb : b
   · simpa [hb] using h1 hb
   · simpa [hb] using h2 hb
 
-theorem rwp_pure {α : Type} (a : α) {c : Ctx} {u : W} {post : α → W → Prop} (h : post a u) :
-    RWP x m (pure a) c u post :=
-  rwp_of_run a u rfl rfl h
+theorem xwp_pure {α : Type} (a : α) {c : Ctx} {u : W} {post : α → W → Prop} (h : post a u) :
+    XWP x m (pure a) c u post :=
+  xwp_of_run a u rfl rfl h
 
-theorem rwp_throw {α : Type} (e : String) {c : Ctx} {u : W} {post : α → W → Prop} :
-    RWP x m (throw e : M α) c u post :=
-  rwp_of_err e rfl rfl
+theorem xwp_throw {α : Type} (e : String) {c : Ctx} {u : W} {post : α → W → Prop} :
+    XWP x m (throw e : M α) c u post :=
+  xwp_of_err e rfl rfl
 
-theorem rwp_read {c : Ctx} {u : W} {post : Ctx → W → Prop} (h : post c u) : RWP x m read c u post :=
-  rwp_of_run c u rfl rfl h
+theorem xwp_read {c : Ctx} {u : W} {post : Ctx → W → Prop} (h : post c u) : XWP x m read c u post :=
+  xwp_of_run c u rfl rfl h
 
 variable (path0 : List (Option Nat × NodeId))
 
-theorem rwp_note (s : String) {c : Ctx} {u : W} {post : Unit → W → Prop} (hJ : RJ x nx path0 u)
-    (h : ∀ u', RJ x nx path0 u' → post () u') : RWP x m (note s) c u post :=
-  rwp_of_run () _ rfl rfl (h _ hJ)
+theorem xwp_note (s : String) {c : Ctx} {u : W} {post : Unit → W → Prop} (hJ : RJ x nx path0 u)
+    (h : ∀ u', RJ x nx path0 u' → post () u') : XWP x m (note s) c u post :=
+  xwp_of_run () _ rfl rfl (h _ hJ)
 
 /-- A step that changes no node, the key access path, nor the next id. -/
-theorem rwp_modify (f : W → W) {c : Ctx} {u : W} {post : Unit → W → Prop}
+theorem xwp_modify (f : W → W) {c : Ctx} {u : W} {post : Unit → W → Prop}
     (hf : f (setX x m u) = setX x m (f u)) (hfJ : RJ x nx path0 (f u))
-    (h : ∀ u', RJ x nx path0 u' → post () u') : RWP x m (modify f) c u post :=
-  rwp_of_run () _ rfl (by rw [run_modify, hf]) (h _ hfJ)
+    (h : ∀ u', RJ x nx path0 u' → post () u') : XWP x m (modify f) c u post :=
+  xwp_of_run () _ rfl (by rw [run_modify, hf]) (h _ hfJ)
 
-theorem rwp_setMadeFor (y : NodeId) (o : Option NodeId) {c : Ctx} {u : W} {post : Unit → W → Prop}
-    (hJ : RJ x nx path0 u) (h : ∀ u', RJ x nx path0 u' → post () u') : RWP x m (setMadeFor y o) c u post := by
+theorem xwp_setMadeFor (y : NodeId) (o : Option NodeId) {c : Ctx} {u : W} {post : Unit → W → Prop}
+    (hJ : RJ x nx path0 u) (h : ∀ u', RJ x nx path0 u' → post () u') : XWP x m (setMadeFor y o) c u post := by
   cases o with
-  | none => exact rwp_pure () (h _ hJ)
-  | some o => exact rwp_of_run () _ rfl rfl (h _ hJ)
+  | none => exact xwp_pure () (h _ hJ)
+  | some o => exact xwp_of_run () _ rfl rfl (h _ hJ)
 
-theorem rwp_replacedBy (y : NodeId) {c : Ctx} {u : W} {post : Option NodeId → W → Prop}
-    (hJ : RJ x nx path0 u) (h : ∀ r u', RJ x nx path0 u' → post r u') : RWP x m (replacedBy y) c u post :=
-  rwp_of_run _ _ rfl rfl (h _ _ hJ)
+theorem xwp_replacedBy (y : NodeId) {c : Ctx} {u : W} {post : Option NodeId → W → Prop}
+    (hJ : RJ x nx path0 u) (h : ∀ r u', RJ x nx path0 u' → post r u') : XWP x m (replacedBy y) c u post :=
+  xwp_of_run _ _ rfl rfl (h _ _ hJ)
 
-theorem rwp_fresh {c : Ctx} {u : W} {post : NodeId → W → Prop}
-    (hJ : RJ x nx path0 u) (h : ∀ r u', RJ x nx path0 u' → r ≠ x → post r u') : RWP x m fresh c u post :=
-  rwp_of_run _ _ rfl rfl (h _ _ ⟨hJ.1, by have := hJ.2.1; show x < u.next + 2; omega, hJ.2.2⟩
+theorem xwp_fresh {c : Ctx} {u : W} {post : NodeId → W → Prop}
+    (hJ : RJ x nx path0 u) (h : ∀ r u', RJ x nx path0 u' → r ≠ x → post r u') : XWP x m fresh c u post :=
+  xwp_of_run _ _ rfl rfl (h _ _ ⟨hJ.1, by have := hJ.2.1; show x < u.next + 2; omega, hJ.2.2⟩
     (by have := hJ.2.1; omega))
 
-theorem rwp_klongAt (d : Nat) {c : Ctx} {u : W} {post : Nat → W → Prop}
-    (hJ : RJ x nx path0 u) (h : ∀ k u', RJ x nx path0 u' → post k u') : RWP x m (klongAt d) c u post := by
+theorem xwp_klongAt (d : Nat) {c : Ctx} {u : W} {post : Nat → W → Prop}
+    (hJ : RJ x nx path0 u) (h : ∀ k u', RJ x nx path0 u' → post k u') : XWP x m (klongAt d) c u post := by
   unfold klongAt
   cases hp : u.path[d]? with
   | none =>
-    refine rwp_of_noOk ?_ ?_ <;> intro _ _ hh <;> revert hh <;> (rw [run_get_bind]; simp only [setX, hp]; intro hh; cases hh)
+    refine xwp_of_noOk ?_ ?_ <;> intro _ _ hh <;> revert hh <;> (rw [run_get_bind]; simp only [setX, hp]; intro hh; cases hh)
   | some e =>
     rcases e with ⟨o, y⟩
     cases o with
-    | none => refine rwp_of_noOk ?_ ?_ <;> intro _ _ hh <;> revert hh <;> (rw [run_get_bind]; simp only [setX, hp]; intro hh; cases hh)
+    | none => refine xwp_of_noOk ?_ ?_ <;> intro _ _ hh <;> revert hh <;> (rw [run_get_bind]; simp only [setX, hp]; intro hh; cases hh)
     | some k =>
-      refine rwp_of_run k u ?_ ?_ (h _ _ hJ) <;> (rw [run_get_bind]; simp only [setX, hp]; rfl)
+      refine xwp_of_run k u ?_ ?_ (h _ _ hJ) <;> (rw [run_get_bind]; simp only [setX, hp]; rfl)
 
-theorem rwp_pathNode (d : Nat) {c : Ctx} {u : W} {post : NodeId → W → Prop}
-    (hJ : RJ x nx path0 u) (h : ∀ e, path0[d]? = some e → post e.2 u) : RWP x m (pathNode d) c u post := by
+theorem xwp_pathNode (d : Nat) {c : Ctx} {u : W} {post : NodeId → W → Prop}
+    (hJ : RJ x nx path0 u) (h : ∀ e, path0[d]? = some e → post e.2 u) : XWP x m (pathNode d) c u post := by
   unfold pathNode
   cases hp : u.path[d]? with
   | none =>
-    refine rwp_of_noOk ?_ ?_ <;> intro _ _ hh <;> revert hh <;> (rw [run_get_bind]; simp only [setX, hp]; intro hh; cases hh)
+    refine xwp_of_noOk ?_ ?_ <;> intro _ _ hh <;> revert hh <;> (rw [run_get_bind]; simp only [setX, hp]; intro hh; cases hh)
   | some e =>
-    refine rwp_of_run e.2 u ?_ ?_ (h e (by rw [← hJ.2.2]; exact hp)) <;>
+    refine xwp_of_run e.2 u ?_ ?_ (h e (by rw [← hJ.2.2]; exact hp)) <;>
       (rw [run_get_bind]; simp only [setX, hp]; rfl)
 
-theorem rwp_parentAt_zero {c : Ctx} {u : W} {post : Option NodeId → W → Prop}
-    (hJ : RJ x nx path0 u) (h : ∀ u', RJ x nx path0 u' → post none u') : RWP x m (parentAt 0) c u post :=
-  rwp_pure none (h _ hJ)
+theorem xwp_parentAt_zero {c : Ctx} {u : W} {post : Option NodeId → W → Prop}
+    (hJ : RJ x nx path0 u) (h : ∀ u', RJ x nx path0 u' → post none u') : XWP x m (parentAt 0) c u post :=
+  xwp_pure none (h _ hJ)
 
-theorem rwp_parentAt_succ (e : Nat) {c : Ctx} {u : W} {post : Option NodeId → W → Prop}
+theorem xwp_parentAt_succ (e : Nat) {c : Ctx} {u : W} {post : Option NodeId → W → Prop}
     (hJ : RJ x nx path0 u) (h : ∀ q, (∃ a, path0[e]? = some (a, q)) → post (some q) u) :
-    RWP x m (parentAt (e + 1)) c u post := by
+    XWP x m (parentAt (e + 1)) c u post := by
   unfold parentAt
-  refine rwp_bind (rwp_pathNode path0 e hJ ?_)
+  refine xwp_bind (xwp_pathNode path0 e hJ ?_)
   intro ee hee
-  exact rwp_pure _ (h ee.2 ⟨ee.1, hee⟩)
+  exact xwp_pure _ (h ee.2 ⟨ee.1, hee⟩)
 
-theorem rwp_getNode (y : NodeId) {c : Ctx} {u : W} {post : KNode → W → Prop}
+theorem xwp_getNode (y : NodeId) {c : Ctx} {u : W} {post : KNode → W → Prop}
     (hJ : RJ x nx path0 u) (hy : y ≠ x) (h : ∀ n u', RJ x nx path0 u' → post n u') :
-    RWP x m (getNode y) c u post := by
+    XWP x m (getNode y) c u post := by
   obtain ⟨hnx, hxn, hpath⟩ := hJ
   have hany := any_of_lookup u.nodes x nx hnx
   cases hl : u.nodes.lookup y with
   | some n =>
     have hl' : (setX x m u).nodes.lookup y = some n := by
       simp only [setX, lookup_upsert, hy, ↓reduceIte, hl]
-    exact rwp_of_run n u (run_getNode_some y n c u hl) (run_getNode_some y n c _ hl')
+    exact xwp_of_run n u (run_getNode_some y n c u hl) (run_getNode_some y n c _ hl')
       (h n u ⟨hnx, hxn, hpath⟩)
   | none =>
     have hl' : (setX x m u).nodes.lookup y = none := by
@@ -346,28 +346,28 @@ theorem rwp_getNode (y : NodeId) {c : Ctx} {u : W} {post : KNode → W → Prop}
       refine h _ _ ⟨?_, hxn, hpath⟩
       simp only [List.lookup_append, hnx, Option.some_or]
 
-theorem rwp_ghOf (y : NodeId) {c : Ctx} {u : W} {post : Nat × Nat → W → Prop}
+theorem xwp_ghOf (y : NodeId) {c : Ctx} {u : W} {post : Nat × Nat → W → Prop}
     (hJ : RJ x nx path0 u) (hy : y ≠ x) (h : ∀ r u', RJ x nx path0 u' → post r u') :
-    RWP x m (ghOf y) c u post := by
+    XWP x m (ghOf y) c u post := by
   unfold ghOf
-  refine rwp_bind (rwp_getNode path0 y hJ hy ?_)
+  refine xwp_bind (xwp_getNode path0 y hJ hy ?_)
   intro _ u' hJ'
   cases hg : u'.gh.lookup y with
-  | none => refine rwp_of_noOk ?_ ?_ <;> intro _ _ hh <;> revert hh <;> (rw [run_get_bind]; simp only [setX, hg]; intro hh; cases hh)
-  | some v => refine rwp_of_run v u' ?_ ?_ (h _ _ hJ') <;> (rw [run_get_bind]; simp only [setX, hg]; rfl)
+  | none => refine xwp_of_noOk ?_ ?_ <;> intro _ _ hh <;> revert hh <;> (rw [run_get_bind]; simp only [setX, hg]; intro hh; cases hh)
+  | some v => refine xwp_of_run v u' ?_ ?_ (h _ _ hJ') <;> (rw [run_get_bind]; simp only [setX, hg]; rfl)
 
-theorem rwp_putNode (y : NodeId) (n : KNode) {c : Ctx} {u : W} {post : Unit → W → Prop}
+theorem xwp_putNode (y : NodeId) (n : KNode) {c : Ctx} {u : W} {post : Unit → W → Prop}
     (hJ : RJ x nx path0 u) (hy : y ≠ x) (h : ∀ u', RJ x nx path0 u' → post () u') :
-    RWP x m (putNode y n) c u post := by
+    XWP x m (putNode y n) c u post := by
   obtain ⟨hnx, hxn, hpath⟩ := hJ
   have hany := any_of_lookup u.nodes x nx hnx
-  refine rwp_of_run () _ rfl ?_ (h _ ⟨lookup_upsert_x u.nodes x y n hy nx hnx, hxn, hpath⟩)
+  refine xwp_of_run () _ rfl ?_ (h _ ⟨lookup_upsert_x u.nodes x y n hy nx hnx, hxn, hpath⟩)
   rw [run_putNode]
   simp only [setX, upsert_comm u.nodes x y m n hy hany]
 
-theorem rwp_newKey (g h : Nat) (leaf : Bool) (ks : List Klong) {c : Ctx} {u : W}
+theorem xwp_newKey (g h : Nat) (leaf : Bool) (ks : List Klong) {c : Ctx} {u : W}
     {post : NodeId → W → Prop} (hJ : RJ x nx path0 u) (hk : ∀ r u', RJ x nx path0 u' → r ≠ x → post r u') :
-    RWP x m (newKey g h leaf ks) c u post := by
+    XWP x m (newKey g h leaf ks) c u post := by
   obtain ⟨hnx, hxn, hpath⟩ := hJ
   have hany := any_of_lookup u.nodes x nx hnx
   have hne : u.next ≠ x := by omega
@@ -380,7 +380,7 @@ theorem rwp_newKey (g h : Nat) (leaf : Bool) (ks : List Klong) {c : Ctx} {u : W}
     simp only [List.lookup_append, hnx, Option.some_or]
   unfold newKey
   by_cases hb : (c.p.G < g || c.p.H < h) = true
-  · refine rwp_of_run u.next _ ?_ ?_ (hk _ _ (hJ' ((u.next, g, h) :: u.outside)) hne)
+  · refine xwp_of_run u.next _ ?_ ?_ (hk _ _ (hJ' ((u.next, g, h) :: u.outside)) hne)
     · rw [run_read_bind]; dsimp only; rw [run_bind_ok _ _ c u u.next _ (run_fresh c u)]
       simp only [hb, ↓reduceIte]
       rfl
@@ -388,7 +388,7 @@ theorem rwp_newKey (g h : Nat) (leaf : Bool) (ks : List Klong) {c : Ctx} {u : W}
       simp only [hb, ↓reduceIte]
       show Except.ok _ = Except.ok _
       simp only [setX, upsert_append_ne u.nodes x u.next m _ hne hany]
-  · refine rwp_of_run u.next _ ?_ ?_ (hk _ _ (hJ' u.outside) hne)
+  · refine xwp_of_run u.next _ ?_ ?_ (hk _ _ (hJ' u.outside) hne)
     · rw [run_read_bind]; dsimp only; rw [run_bind_ok _ _ c u u.next _ (run_fresh c u)]
       simp only [hb, Bool.false_eq_true, ↓reduceIte]
       rfl
@@ -397,102 +397,102 @@ theorem rwp_newKey (g h : Nat) (leaf : Bool) (ks : List Klong) {c : Ctx} {u : W}
       show Except.ok _ = Except.ok _
       simp only [setX, upsert_append_ne u.nodes x u.next m _ hne hany]
 
-theorem rwp_newSuperRoot (y : NodeId) {c : Ctx} {u : W} {post : Unit → W → Prop}
+theorem xwp_newSuperRoot (y : NodeId) {c : Ctx} {u : W} {post : Unit → W → Prop}
     (hJ : RJ x nx path0 u) (h : ∀ u', RJ x nx path0 u' → post () u') :
-    RWP x m (newSuperRoot y) c u post := by
+    XWP x m (newSuperRoot y) c u post := by
   obtain ⟨hnx, hxn, hpath⟩ := hJ
   unfold newSuperRoot
   by_cases ht : (c.i == u.top.time) = true
-  · refine rwp_of_run () ?w ?h1 ?h2 ?h3
+  · refine xwp_of_run () ?w ?h1 ?h2 ?h3
     case h1 => rw [run_read_bind, run_get_bind]; simp only [ht, ↓reduceIte]; rfl
     case h2 => rw [run_read_bind, run_get_bind]; simp only [setX, ht, ↓reduceIte]; rfl
     case h3 => exact h _ ⟨hnx, hxn, hpath⟩
-  · refine rwp_of_run () ?v ?k1 ?k2 ?k3
+  · refine xwp_of_run () ?v ?k1 ?k2 ?k3
     case k1 => rw [run_read_bind, run_get_bind]; simp only [ht, Bool.false_eq_true, ↓reduceIte]; rfl
     case k2 => rw [run_read_bind, run_get_bind]; simp only [setX, ht, Bool.false_eq_true, ↓reduceIte]; rfl
     case k3 => exact h _ ⟨hnx, by show x < u.next + 2; omega, hpath⟩
 
-theorem rwp_parentAt_succ' (e : Nat) (a : Option Nat) (q : NodeId) {c : Ctx} {u : W}
+theorem xwp_parentAt_succ' (e : Nat) (a : Option Nat) (q : NodeId) {c : Ctx} {u : W}
     {post : Option NodeId → W → Prop} (hJ : RJ x nx path0 u) (hpe : path0[e]? = some (a, q))
-    (h : post (some q) u) : RWP x m (parentAt (e + 1)) c u post :=
-  rwp_parentAt_succ path0 e hJ (fun q' ⟨a', ha'⟩ => by
+    (h : post (some q) u) : XWP x m (parentAt (e + 1)) c u post :=
+  xwp_parentAt_succ path0 e hJ (fun q' ⟨a', ha'⟩ => by
     rw [hpe] at ha'; cases ha'; exact h)
 
-theorem rwp_parentAt_none (e : Nat) {c : Ctx} {u : W} {post : Option NodeId → W → Prop}
-    (hJ : RJ x nx path0 u) (hpe : path0[e]? = none) : RWP x m (parentAt (e + 1)) c u post :=
-  rwp_parentAt_succ path0 e hJ (fun q' ⟨a', ha'⟩ => by rw [hpe] at ha'; cases ha')
+theorem xwp_parentAt_none (e : Nat) {c : Ctx} {u : W} {post : Option NodeId → W → Prop}
+    (hJ : RJ x nx path0 u) (hpe : path0[e]? = none) : XWP x m (parentAt (e + 1)) c u post :=
+  xwp_parentAt_succ path0 e hJ (fun q' ⟨a', ha'⟩ => by rw [hpe] at ha'; cases ha')
 
-theorem rwp_ghOf' (y : NodeId) {c : Ctx} {u : W} {post : Nat × Nat → W → Prop}
+theorem xwp_ghOf' (y : NodeId) {c : Ctx} {u : W} {post : Nat × Nat → W → Prop}
     (hJ : RJ x nx path0 u) (hy : y ≠ x) (h : ∀ g hh u', RJ x nx path0 u' → post (g, hh) u') :
-    RWP x m (ghOf y) c u post :=
-  rwp_ghOf path0 y hJ hy (fun r u' hJ' => h r.1 r.2 u' hJ')
+    XWP x m (ghOf y) c u post :=
+  xwp_ghOf path0 y hJ hy (fun r u' hJ' => h r.1 r.2 u' hJ')
 
-theorem rwp_foldlM {α β : Type} (xs : List α) (f : β → α → M β) {c : Ctx}
-    (hf : ∀ b a u, RJ x nx path0 u → RWP x m (f b a) c u (fun _ v => RJ x nx path0 v)) :
-    ∀ (init : β) (u : W), RJ x nx path0 u → RWP x m (xs.foldlM f init) c u (fun _ v => RJ x nx path0 v) := by
+theorem xwp_foldlM {α β : Type} (xs : List α) (f : β → α → M β) {c : Ctx}
+    (hf : ∀ b a u, RJ x nx path0 u → XWP x m (f b a) c u (fun _ v => RJ x nx path0 v)) :
+    ∀ (init : β) (u : W), RJ x nx path0 u → XWP x m (xs.foldlM f init) c u (fun _ v => RJ x nx path0 v) := by
   induction xs with
-  | nil => intro init u hJ; exact rwp_pure init hJ
+  | nil => intro init u hJ; exact xwp_pure init hJ
   | cons a as ih =>
     intro init u hJ
     rw [List.foldlM_cons]
-    exact rwp_bind (rwp_mono (hf init a u hJ) (fun b v hv => ih b v hv))
+    exact xwp_bind (xwp_mono (hf init a u hJ) (fun b v hv => ih b v hv))
 
-theorem rwp_replaceOrAdd (last : KNode) (ins : List (Nat × NodeId)) {c : Ctx} {u : W}
+theorem xwp_replaceOrAdd (last : KNode) (ins : List (Nat × NodeId)) {c : Ctx} {u : W}
     {post : KNode → W → Prop} (hJ : RJ x nx path0 u) (h : ∀ l u', RJ x nx path0 u' → post l u') :
-    RWP x m (replaceOrAdd last ins) c u post := by
+    XWP x m (replaceOrAdd last ins) c u post := by
   unfold replaceOrAdd
-  refine rwp_bind (rwp_read ?_)
-  refine rwp_mono (rwp_foldlM path0 ins _ ?_ last u hJ) h
+  refine xwp_bind (xwp_read ?_)
+  refine xwp_mono (xwp_foldlM path0 ins _ ?_ last u hJ) h
   intro b a u' hJ'
   rcases a with ⟨cv, y⟩
   dsimp only
   split
-  · exact rwp_throw _
-  · exact rwp_pure _ hJ'
-  · exact rwp_pure _ hJ'
+  · exact xwp_throw _
+  · exact xwp_pure _ hJ'
+  · exact xwp_pure _ hJ'
 
-theorem rwp_addKeys (y : NodeId) (ins : List (Nat × NodeId)) {c : Ctx} {u : W}
+theorem xwp_addKeys (y : NodeId) (ins : List (Nat × NodeId)) {c : Ctx} {u : W}
     {post : Unit → W → Prop} (hJ : RJ x nx path0 u) (hy : y ≠ x) (h : ∀ u', RJ x nx path0 u' → post () u') :
-    RWP x m (addKeys y ins) c u post := by
+    XWP x m (addKeys y ins) c u post := by
   unfold addKeys
-  refine rwp_bind (rwp_read ?_)
-  refine rwp_bind (rwp_getNode path0 y hJ hy ?_)
+  refine xwp_bind (xwp_read ?_)
+  refine xwp_bind (xwp_getNode path0 y hJ hy ?_)
   intro n u' hJ'
-  exact rwp_putNode path0 y _ hJ' hy h
+  exact xwp_putNode path0 y _ hJ' hy h
 
-theorem rwp_spaceSplits {c : Ctx} {u : W} {post : Unit → W → Prop} (hJ : RJ x nx path0 u)
+theorem xwp_spaceSplits {c : Ctx} {u : W} {post : Unit → W → Prop} (hJ : RJ x nx path0 u)
     (h : ∀ u', RJ x nx path0 u' → post () u') :
-    RWP x m (modify (fun w => { w with spaceSplits := w.spaceSplits + 1 })) c u post :=
-  rwp_modify path0 _ rfl hJ h
+    XWP x m (modify (fun w => { w with spaceSplits := w.spaceSplits + 1 })) c u post :=
+  xwp_modify path0 _ rfl hJ h
 
 end
 
 /-- One step of the relational walk. -/
-macro "rwpStep" : tactic => `(tactic| first
-  | (refine rwp_bind (rwp_ite _ ?_ ?_) <;> intro _)
-  | (refine rwp_ite _ ?_ ?_ <;> intro _)
-  | exact rwp_throw _
-  | (with_reducible refine rwp_bind (rwp_read ?_))
-  | (with_reducible refine rwp_bind (rwp_getNode _ _ (by assumption) (by assumption) ?_); intro _ _ _)
-  | (with_reducible refine rwp_getNode _ _ (by assumption) (by assumption) ?_; intro _ _ _)
-  | (with_reducible refine rwp_bind (rwp_ghOf' _ _ (by assumption) (by assumption) ?_); intro _ _ _ _)
-  | (with_reducible refine rwp_bind (rwp_note _ _ (by assumption) ?_); intro _ _)
-  | (with_reducible refine rwp_note _ _ (by assumption) ?_; intro _ _)
-  | (with_reducible refine rwp_bind (rwp_spaceSplits _ (by assumption) ?_); intro _ _)
-  | (with_reducible refine rwp_bind (rwp_newKey _ _ _ _ _ (by assumption) ?_); intro _ _ _ _)
-  | (with_reducible refine rwp_bind (rwp_setMadeFor _ _ _ (by assumption) ?_); intro _ _)
-  | (with_reducible refine rwp_bind (rwp_replacedBy _ _ (by assumption) ?_); intro _ _ _)
-  | (with_reducible refine rwp_bind (rwp_putNode _ _ _ (by assumption) (by assumption) ?_); intro _ _)
-  | (with_reducible refine rwp_putNode _ _ _ (by assumption) (by assumption) ?_; intro _ _)
-  | (with_reducible refine rwp_bind (rwp_newSuperRoot _ _ (by assumption) ?_); intro _ _)
-  | (with_reducible refine rwp_newSuperRoot _ _ (by assumption) ?_; intro _ _)
-  | (with_reducible refine rwp_bind (rwp_klongAt _ _ (by assumption) ?_); intro _ _ _)
-  | (with_reducible refine rwp_bind (rwp_replaceOrAdd _ _ _ (by assumption) ?_); intro _ _ _)
-  | (with_reducible refine rwp_bind (rwp_parentAt_zero _ (by assumption) ?_); intro _ _)
-  | (with_reducible refine rwp_bind (rwp_parentAt_succ' _ _ _ _ (by assumption) (by assumption) ?_))
-  | (with_reducible exact rwp_bind (rwp_parentAt_none _ _ (by assumption) (by assumption)))
-  | (with_reducible refine rwp_bind (rwp_pure _ ?_))
-  | (with_reducible refine rwp_pure _ ?_)
+macro "xwpStep" : tactic => `(tactic| first
+  | (refine xwp_bind (xwp_ite _ ?_ ?_) <;> intro _)
+  | (refine xwp_ite _ ?_ ?_ <;> intro _)
+  | exact xwp_throw _
+  | (with_reducible refine xwp_bind (xwp_read ?_))
+  | (with_reducible refine xwp_bind (xwp_getNode _ _ (by assumption) (by assumption) ?_); intro _ _ _)
+  | (with_reducible refine xwp_getNode _ _ (by assumption) (by assumption) ?_; intro _ _ _)
+  | (with_reducible refine xwp_bind (xwp_ghOf' _ _ (by assumption) (by assumption) ?_); intro _ _ _ _)
+  | (with_reducible refine xwp_bind (xwp_note _ _ (by assumption) ?_); intro _ _)
+  | (with_reducible refine xwp_note _ _ (by assumption) ?_; intro _ _)
+  | (with_reducible refine xwp_bind (xwp_spaceSplits _ (by assumption) ?_); intro _ _)
+  | (with_reducible refine xwp_bind (xwp_newKey _ _ _ _ _ (by assumption) ?_); intro _ _ _ _)
+  | (with_reducible refine xwp_bind (xwp_setMadeFor _ _ _ (by assumption) ?_); intro _ _)
+  | (with_reducible refine xwp_bind (xwp_replacedBy _ _ (by assumption) ?_); intro _ _ _)
+  | (with_reducible refine xwp_bind (xwp_putNode _ _ _ (by assumption) (by assumption) ?_); intro _ _)
+  | (with_reducible refine xwp_putNode _ _ _ (by assumption) (by assumption) ?_; intro _ _)
+  | (with_reducible refine xwp_bind (xwp_newSuperRoot _ _ (by assumption) ?_); intro _ _)
+  | (with_reducible refine xwp_newSuperRoot _ _ (by assumption) ?_; intro _ _)
+  | (with_reducible refine xwp_bind (xwp_klongAt _ _ (by assumption) ?_); intro _ _ _)
+  | (with_reducible refine xwp_bind (xwp_replaceOrAdd _ _ _ (by assumption) ?_); intro _ _ _)
+  | (with_reducible refine xwp_bind (xwp_parentAt_zero _ (by assumption) ?_); intro _ _)
+  | (with_reducible refine xwp_bind (xwp_parentAt_succ' _ _ _ _ (by assumption) (by assumption) ?_))
+  | (with_reducible exact xwp_bind (xwp_parentAt_none _ _ (by assumption) (by assumption)))
+  | (with_reducible refine xwp_bind (xwp_pure _ ?_))
+  | (with_reducible refine xwp_pure _ ?_)
   | assumption)
 
 section
@@ -500,108 +500,108 @@ variable {x : NodeId} {m nx : KNode} (path0 : List (Option Nat × NodeId))
 
 set_option maxHeartbeats 4000000 in
 /-- The relational walk of a full node at depth 0: the space root's split. -/
-theorem rwp_handleFullWith_zero (up : NodeId → List (Nat × NodeId) → M Unit) (y : NodeId)
+theorem xwp_handleFullWith_zero (up : NodeId → List (Nat × NodeId) → M Unit) (y : NodeId)
     (ins : List (Nat × NodeId)) (last : KNode) (compact : Bool) {c : Ctx} {u : W}
     (hJ : RJ x nx path0 u) (hy : y ≠ x) :
-    RWP x m (handleFullWith up 0 y ins last compact) c u (fun _ v => RJ x nx path0 v) := by
+    XWP x m (handleFullWith up 0 y ins last compact) c u (fun _ v => RJ x nx path0 v) := by
   unfold handleFullWith
   simp only []
   repeat' (first
-    | rwpStep
+    | xwpStep
     | (simp only [Bool.false_eq_true, ↓reduceIte])
     | split)
 
 set_option maxHeartbeats 4000000 in
 /-- The relational walk of a full node at depth e + 1, whose parent q on the key
 access path is not x, given the walk of `up` at q. -/
-theorem rwp_handleFullWith_succ (up : NodeId → List (Nat × NodeId) → M Unit) (e : Nat)
+theorem xwp_handleFullWith_succ (up : NodeId → List (Nat × NodeId) → M Unit) (e : Nat)
     (a : Option Nat) (q : NodeId) (y : NodeId) (ins : List (Nat × NodeId)) (last : KNode)
     (compact : Bool) {c : Ctx} {u : W} (hJ : RJ x nx path0 u) (hy : y ≠ x)
     (hpe : path0[e]? = some (a, q)) (hq : q ≠ x)
-    (hup : ∀ more u', RJ x nx path0 u' → RWP x m (up q more) c u' (fun _ v => RJ x nx path0 v)) :
-    RWP x m (handleFullWith up (e + 1) y ins last compact) c u (fun _ v => RJ x nx path0 v) := by
+    (hup : ∀ more u', RJ x nx path0 u' → XWP x m (up q more) c u' (fun _ v => RJ x nx path0 v)) :
+    XWP x m (handleFullWith up (e + 1) y ins last compact) c u (fun _ v => RJ x nx path0 v) := by
   unfold handleFullWith
   simp only []
   repeat' (first
-    | rwpStep
-    | (refine rwp_bind (rwp_mono (hup _ _ (by assumption)) ?_); intro _ _ _)
+    | xwpStep
+    | (refine xwp_bind (xwp_mono (hup _ _ (by assumption)) ?_); intro _ _ _)
     | (simp only [Bool.false_eq_true, ↓reduceIte])
     | split)
 
 /-- The relational walk of a full node at depth e + 1 with no entry e on the key
 access path: it fails. -/
-theorem rwp_handleFullWith_none (up : NodeId → List (Nat × NodeId) → M Unit) (e : Nat)
+theorem xwp_handleFullWith_none (up : NodeId → List (Nat × NodeId) → M Unit) (e : Nat)
     (y : NodeId) (ins : List (Nat × NodeId)) (last : KNode)
     (compact : Bool) {c : Ctx} {u : W} (hJ : RJ x nx path0 u) (hy : y ≠ x)
     (hpe : path0[e]? = none) :
-    RWP x m (handleFullWith up (e + 1) y ins last compact) c u (fun _ v => RJ x nx path0 v) := by
+    XWP x m (handleFullWith up (e + 1) y ins last compact) c u (fun _ v => RJ x nx path0 v) := by
   unfold handleFullWith
   simp only []
   repeat' (first
-    | rwpStep
+    | xwpStep
     | (simp only [Bool.false_eq_true, ↓reduceIte])
     | split)
 
 /-- The relational walk of the cascade: `appendKlongs` at depth d from node y,
 neither of which nor any node of the key access path above is x. -/
-theorem rwp_appendKlongs : ∀ (depth : Nat) (y : NodeId) (ins : List (Nat × NodeId)) (c : Ctx) (u : W),
+theorem xwp_appendKlongs : ∀ (depth : Nat) (y : NodeId) (ins : List (Nat × NodeId)) (c : Ctx) (u : W),
     RJ x nx path0 u → y ≠ x → (∀ i e, i < depth → path0[i]? = some e → e.2 ≠ x) →
-    RWP x m (appendKlongs depth y ins) c u (fun _ v => RJ x nx path0 v) := by
+    XWP x m (appendKlongs depth y ins) c u (fun _ v => RJ x nx path0 v) := by
   intro depth
   induction depth with
   | zero =>
     intro y ins c u hJ hy _
     rw [appendKlongs_step_dead]
-    refine rwp_bind (rwp_read ?_)
-    refine rwp_bind (rwp_getNode path0 y hJ hy ?_)
+    refine xwp_bind (xwp_read ?_)
+    refine xwp_bind (xwp_getNode path0 y hJ hy ?_)
     intro n u' hJ'
     simp only []
-    refine rwp_ite _ (fun _ => rwp_handleFullWith_zero path0 _ y ins _ false hJ' hy) (fun _ => ?_)
-    refine rwp_ite _ (fun _ => rwp_handleFullWith_zero path0 _ y ins _ true hJ' hy) (fun _ => ?_)
-    exact rwp_addKeys path0 y ins hJ' hy (fun _ h => h)
+    refine xwp_ite _ (fun _ => xwp_handleFullWith_zero path0 _ y ins _ false hJ' hy) (fun _ => ?_)
+    refine xwp_ite _ (fun _ => xwp_handleFullWith_zero path0 _ y ins _ true hJ' hy) (fun _ => ?_)
+    exact xwp_addKeys path0 y ins hJ' hy (fun _ h => h)
   | succ d ih =>
     intro y ins c u hJ hy hp
     rw [appendKlongs_step_dead]
-    refine rwp_bind (rwp_read ?_)
-    refine rwp_bind (rwp_getNode path0 y hJ hy ?_)
+    refine xwp_bind (xwp_read ?_)
+    refine xwp_bind (xwp_getNode path0 y hJ hy ?_)
     intro n u' hJ'
     simp only []
     cases hpe : path0[d]? with
     | none =>
-      refine rwp_ite _ (fun _ => rwp_handleFullWith_none path0 _ d y ins _ false hJ' hy hpe) (fun _ => ?_)
-      refine rwp_ite _ (fun _ => rwp_handleFullWith_none path0 _ d y ins _ true hJ' hy hpe) (fun _ => ?_)
-      exact rwp_addKeys path0 y ins hJ' hy (fun _ h => h)
+      refine xwp_ite _ (fun _ => xwp_handleFullWith_none path0 _ d y ins _ false hJ' hy hpe) (fun _ => ?_)
+      refine xwp_ite _ (fun _ => xwp_handleFullWith_none path0 _ d y ins _ true hJ' hy hpe) (fun _ => ?_)
+      exact xwp_addKeys path0 y ins hJ' hy (fun _ h => h)
     | some e =>
       rcases e with ⟨a, q⟩
       have hq : q ≠ x := hp d (a, q) (Nat.lt_succ_self d) hpe
       have hup : ∀ more u'', RJ x nx path0 u'' →
-          RWP x m (appendKlongs d q more) c u'' (fun _ v => RJ x nx path0 v) :=
+          XWP x m (appendKlongs d q more) c u'' (fun _ v => RJ x nx path0 v) :=
         fun more u'' hJ'' => ih q more c u'' hJ'' hq (fun i e hi he => hp i e (by omega) he)
-      refine rwp_ite _ (fun _ => rwp_handleFullWith_succ path0 _ d a q y ins _ false hJ' hy hpe hq hup)
+      refine xwp_ite _ (fun _ => xwp_handleFullWith_succ path0 _ d a q y ins _ false hJ' hy hpe hq hup)
         (fun _ => ?_)
-      refine rwp_ite _ (fun _ => rwp_handleFullWith_succ path0 _ d a q y ins _ true hJ' hy hpe hq hup)
+      refine xwp_ite _ (fun _ => xwp_handleFullWith_succ path0 _ d a q y ins _ true hJ' hy hpe hq hup)
         (fun _ => ?_)
-      exact rwp_addKeys path0 y ins hJ' hy (fun _ h => h)
+      exact xwp_addKeys path0 y ins hJ' hy (fun _ h => h)
 
 
 /-- `handleFull` (a delete's full node) in the walk, at depth 0. -/
-theorem rwp_handleFull_zero (y : NodeId) (last : KNode) (compact : Bool) {c : Ctx} {u : W}
+theorem xwp_handleFull_zero (y : NodeId) (last : KNode) (compact : Bool) {c : Ctx} {u : W}
     (hJ : RJ x nx path0 u) (hy : y ≠ x) :
-    RWP x m (handleFull 0 y last compact) c u (fun _ v => RJ x nx path0 v) :=
-  rwp_handleFullWith_zero path0 _ y [] last compact hJ hy
+    XWP x m (handleFull 0 y last compact) c u (fun _ v => RJ x nx path0 v) :=
+  xwp_handleFullWith_zero path0 _ y [] last compact hJ hy
 
 /-- `handleFull` in the walk at depth d + 1: its cascade goes up the key access
 path, none of whose nodes is x. -/
-theorem rwp_handleFull_succ (d : Nat) (y : NodeId) (last : KNode) (compact : Bool) {c : Ctx} {u : W}
+theorem xwp_handleFull_succ (d : Nat) (y : NodeId) (last : KNode) (compact : Bool) {c : Ctx} {u : W}
     (hJ : RJ x nx path0 u) (hy : y ≠ x) (hp : ∀ i e, i ≤ d → path0[i]? = some e → e.2 ≠ x) :
-    RWP x m (handleFull (d + 1) y last compact) c u (fun _ v => RJ x nx path0 v) := by
+    XWP x m (handleFull (d + 1) y last compact) c u (fun _ v => RJ x nx path0 v) := by
   unfold handleFull
   cases hpe : path0[d]? with
-  | none => exact rwp_handleFullWith_none path0 _ d y [] last compact hJ hy hpe
+  | none => exact xwp_handleFullWith_none path0 _ d y [] last compact hJ hy hpe
   | some e =>
     rcases e with ⟨a, q⟩
-    exact rwp_handleFullWith_succ path0 _ d a q y [] last compact hJ hy hpe (hp d (a, q) (Nat.le_refl _) hpe)
-      (fun more u' hJ' => rwp_appendKlongs path0 d q more c u' hJ' (hp d (a, q) (Nat.le_refl _) hpe)
+    exact xwp_handleFullWith_succ path0 _ d a q y [] last compact hJ hy hpe (hp d (a, q) (Nat.le_refl _) hpe)
+      (fun more u' hJ' => xwp_appendKlongs path0 d q more c u' hJ' (hp d (a, q) (Nat.le_refl _) hpe)
         (fun i e hi he => hp i e (by omega) he))
 
 end
@@ -696,7 +696,7 @@ theorem replaceRoot_linkFirst (x : NodeId) (d only : Nat) (c : Ctx) (v : W) (n :
     rw [run_bind_ok _ _ c _ k _ h3]
     have hlx : e.2 ≠ x := hpath d e (Nat.le_refl _) hd
     have hJ : RJ x n v.path { v with trail := "rc.replace.segment" :: v.trail } := ⟨hx, hxn, rfl⟩
-    have hW := rwp_appendKlongs (m := n.toPrev (c.i - 1)) v.path d e.2 [(k, child)] c _ hJ hlx
+    have hW := xwp_appendKlongs (m := n.toPrev (c.i - 1)) v.path d e.2 [(k, child)] c _ hJ hlx
       (fun i e hi he => hpath i e (by omega) he)
     obtain ⟨a, w1, h5, h6⟩ := (run_bind_ok_iff _ _ c _ _).mp h4
     rw [run_unlink x n c { v with trail := "rc.replace.segment" :: v.trail } hx] at h5
