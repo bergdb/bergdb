@@ -11,6 +11,7 @@ collapse with no fit premise (P3), and case 4 of the reading
 -/
 import SIS.Tree.CollapseCommuteRun
 import SIS.Tree.DeadDelCases
+import SIS.Tree.DelMergeUp
 
 set_option autoImplicit false
 
@@ -584,5 +585,109 @@ theorem opCaseOK_dead_delMergeA (p : Params) (R : Struct BVal → Time → Prop)
   · assumption
   · intro _ w' hdw' _
     exact hdw'.1
+
+/-! ## `hchk`'s discharge (step 5): the checked copies above the next id -/
+
+/-- A fuel above p.fuel and a state's next id. -/
+theorem exists_fuel_above (c : Ctx) (v : W) : ∃ F, c.p.fuel + 1 ≤ F ∧ v.next < F :=
+  ⟨max (c.p.fuel + 1) (v.next + 1), Nat.le_max_left _ _,
+    Nat.lt_of_lt_of_le (Nat.lt_succ_self _) (Nat.le_max_right _ _)⟩
+
+/-- The merges' loop runs as its checked copy from `DelInvJA` and the books, with no
+fit premise: `rwp_mergeUp_of_JW` at a fuel above the run's end. -/
+theorem rwp_mergeUp_of_JA (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (KO : KindOracle) (B : NodeId) (hv : ViewIdsBelow B c.view)
+    (hk : ViewKinds KO B c) (hICEk : ICEFromKinds c base KO B) (hsa2 : 2 ≤ c.p.splitAbove)
+    (hcap : 1 ≤ c.p.mergeMax) (hpos : 0 < c.i) (hvg : ViewGood B c) (hkv : ViewKlongsWf c.p c.view)
+    (top0 : Top) (hB : PutBase c base B) (w0 : W) (k0 : Key) :
+    ∀ fuel h merged v, DelInvJA c base w0 k0 KO B B v → PutBook c B top0 v →
+      RWP (mergeUp key g fuel h merged) (mergeUpChk key g fuel h merged) c v := by
+  intro fuel h merged v hA hb x hx
+  obtain ⟨F, hF, hn⟩ := exists_fuel_above c x.2
+  have hp2 : 2 ≤ F := by unfold Params.fuel at hF; omega
+  exact rwp_mergeUp_of_JW key g c base hvc F hp2 (fun u => u.next < F)
+    (fun _ _ hle hlt => Nat.lt_of_le_of_lt hle hlt) (mergeStepOKW_next c base F hpos hcap hsa2)
+    KO B hv hk hICEk hsa2 hcap hpos hvg hkv top0 hB w0 k0 fuel h merged v (fun hlt => hA F hF hlt) hb x hx hn
+
+set_option maxHeartbeats 1600000 in
+/-- `afterDelete` runs as `afterDeleteChk` from `DelInvJA` and the books where the
+merges' loop runs as its checked copy (`rwp_afterDelete_of_J` with no `MergeStepOK`
+and no `CollapseFitsOK`): root collapse's check at a fuel above the run's end. -/
+theorem rwp_afterDelete_of_JA (key : Key) (g h : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (hpos : 0 < c.i) (KO : KindOracle) (B : NodeId)
+    (hv : ViewIdsBelow B c.view) (hk : ViewKinds KO B c) (hICEk : ICEFromKinds c base KO B)
+    (hsa2 : 2 ≤ c.p.splitAbove) (hcap : 1 ≤ c.p.mergeMax) (top0 : Top) (hB : PutBase c base B)
+    (w0 : W) (k0 : Key) (v : W) (hA : DelInvJA c base w0 k0 KO B B v) (hb : PutBook c B top0 v)
+    (hmu : RWP (mergeUp key g c.p.fuel h false) (mergeUpChk key g c.p.fuel h false) c v) :
+    RWP (afterDelete key g h) (afterDeleteChk key g h) c v := by
+  unfold afterDelete afterDeleteChk
+  refine rwp_read ?_
+  refine rwp_ite (fun _ => ?_) (fun _ => rwp_refl _ _ _)
+  refine rwp_bind2 (fun _ v1 => DelInvJA c base w0 k0 KO B B v1 ∧ PutBook c B top0 v1) hmu
+    (writerWP_and (writerWP_mergeUp_delJA key g c base hvc hpos KO B hv hk hICEk hsa2 hcap B w0 k0
+      c.p.fuel h false v hA) (putBook_mergeUp key g c.p.fuel h false c base B top0 hB v hb)) ?_
+  rintro r v1 ⟨hA1, hb1⟩
+  refine rwp_ite (fun _ => ?_) (fun _ => rwp_refl _ _ _)
+  intro x hx
+  obtain ⟨F, hF, hn⟩ := exists_fuel_above c x.2
+  have hp2 : 2 ≤ F := by unfold Params.fuel at hF; omega
+  have hle : v1.next ≤ x.2.next :=
+    (freshCache_collapseRoot key g c.p.fuel c v1 hB.good.ids hb1.fresh x.1 x.2 hx).2
+  obtain ⟨⟨⟨hP, _, hR, hICE, hFv, _, _⟩, hbk, hik⟩, hJ, hBn⟩ := hA1 F hF (Nat.lt_of_le_of_lt hle hn)
+  have hCI : CollInvJW c base v1 F (fun u => u.next < F) B top0 KO B B v1 :=
+    ⟨hb1.fresh, fun _ => ⟨⟨⟨hP.tree, fun y hy => hP.untaken y (tReach_reachS _ _ _ _ hy),
+      fun y yn _ h => hP.times y yn h, fun y yn cc z hy hyn hl hc => hICE y yn cc z hy hyn hl hc⟩,
+      fun _ => rfl, hFv, fun y yn _ h => hP.wf y yn h, fun y yn _ h => hP.keyNoValue y yn h⟩,
+      hR, hb1, hbk, hik, hJ, hBn⟩⟩
+  exact rwp_collapseRoot_chkJW F hp2 key g c base hvc v1 B top0 hB KO hv hk hICEk hsa2 (fun u => u.next < F)
+    (fun _ _ hle hlt => Nat.lt_of_le_of_lt hle hlt) (collFitsW_next c base v1 F) hpos
+    (replaceRootFullJ2OKC_holds c base F hp2 B hpos hsa2) c.p.fuel v1 hCI x hx hn
+
+/-- The view's ids, kinds and inner children of a transaction within reach. -/
+theorem viewFacts_of_run (p : Params) (R : Struct BVal → Time → Prop)
+    (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P)
+    (ts : List Tx) (tx : Tx) (hw : Within p (ts ++ [tx])) (hr : R (treeRun p ts) ts.length) :
+    ViewIdsBelow tx.base (ctxOf p ts).view ∧ ViewKinds (kindOracleOf p (treeRun p ts)) tx.base (ctxOf p ts) ∧
+      ICEFromKinds (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) tx.base := by
+  have hfresh : ∀ q ∈ treeRun p ts, q.1 < tx.base := by
+    have := (hw.2 ts.length (by simp)).1
+    simpa using this
+  exact ⟨viewIdsBelow_rootless _ _ (viewIdsBelow_view p (treeRun p ts) ts.length tx.base hfresh),
+    viewKinds_of p (treeRun p ts) ts.length tx.base hfresh (treeRun_timesLE p ts) (hRP _ _ hr) (hRK _ _ hr),
+    fun v hb hi hun => innerChildren_of_kinds p (treeRun p ts) tx.base (ctxOf p ts) v rfl (hRK _ _ hr)
+      (hRP _ _ hr) hb hi.cache hun⟩
+
+/-- `OpDelChk8OKR` with no `MergeStepOK` (`opDelChk8OKR_holds`): the merges' loop runs
+as its checked copy from `DelInvJA` (`rwp_mergeUp_of_JA`). -/
+theorem opDelChk8OKR_holdsA (p : Params) (R : Struct BVal → Time → Prop) (hM4 : 4 ≤ p.M)
+    (hsa2 : 2 ≤ p.splitAbove) (hcap : 1 ≤ p.mergeMax) (hm : p.merges = true)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t) (hRP : ∀ P t, R P t → PointersOK P)
+    (hRK : ∀ P t, R P t → KindsAllOK p P) (hRH : ∀ P t, R P t → HeightAllOK p P t)
+    (htb : TakeBelowFuelDelOK p) : OpDelChk8OKR p R := by
+  refine opDelChk8OKR_of_mergeChk p R hM4 hsa2 hm hRL hRP hRK hRH htb ?_
+  intro ts tx hw hr top w hI hF k g h v' hJv hbv
+  have hB := putBase_of_run p ts tx hw (hRL _ _ hr)
+  obtain ⟨hv, hk, hICEk⟩ := viewFacts_of_run p R hRP hRK ts tx hw hr
+  exact rwp_mergeUp_of_JA k g (ctxOf p ts) _ (viewCoherent_ctxOf p ts) _ tx.base hv hk hICEk
+    (by simpa [ctxOf] using hsa2) (by simpa [ctxOf] using hcap) (by simp [ctxOf]) hB.good hB.wf top hB w k
+    _ h false v' (delInvJA_of_delInvJ (ctxOf p ts) _ w k _ _ _ v' hI hF hJv) hbv
+
+/-- `OpDelChk5OKR` from `OpDelChk6OKR` with no `MergeStepOK` and no `CollapseFitsOK`
+(`opDelChk5OKR_of_chk6`): the fit at the delete's start from the heights and `htb`
+(`htStart_of_ht`), then `rwp_afterDelete_of_JA`. -/
+theorem opDelChk5OKR_of_chk6A (p : Params) (R : Struct BVal → Time → Prop)
+    (hsa2 : 2 ≤ p.splitAbove) (hcap : 1 ≤ p.mergeMax)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t) (hRP : ∀ P t, R P t → PointersOK P)
+    (hRK : ∀ P t, R P t → KindsAllOK p P) (hRH : ∀ P t, R P t → HeightAllOK p P t)
+    (htb : TakeBelowFuelDelOK p) (h6 : OpDelChk6OKR p R) : OpDelChk5OKR p R := by
+  refine opDelChk5OKR_of_chk6G p R ?_ h6
+  intro ts tx hw hr z top hz htop pre key post hs r w hpre hI hH key' g h v'' ⟨hJ'', hb''⟩ hmu
+  have hF := segFits_of_htStart p ts tx w
+    (htStart_of_ht p R hRL hRK hRH htb ts tx hw hr z top hz htop pre (Op.del key :: post) hs r w hpre hH)
+  have hB := putBase_of_run p ts tx hw (hRL _ _ hr)
+  obtain ⟨hv, hk, hICEk⟩ := viewFacts_of_run p R hRP hRK ts tx hw hr
+  exact rwp_afterDelete_of_JA key' g h (ctxOf p ts) _ (viewCoherent_ctxOf p ts) (by simp [ctxOf]) _ tx.base hv hk
+    hICEk (by simpa [ctxOf] using hsa2) (by simpa [ctxOf] using hcap) top hB w key v''
+    (delInvJA_of_delInvJ (ctxOf p ts) _ w key _ _ _ v'' hI hF hJ'') hb'' hmu
 
 end SIS.Tree

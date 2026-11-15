@@ -81,6 +81,110 @@ theorem rwp_check_right {β : Type} {f : M β} {chk : M Unit} {k : Unit → M β
   intro x hx
   exact (m_bind_ok chk k c v x).mpr ⟨(), v, hc, h x hx⟩
 
+/-- Every successful run of f from w whose end state is in C is one of g (bergdb
+025-05: the checked copies for the runs that end below a fuel). -/
+def RWPC {α : Type} (f g : M α) (c : Ctx) (w : W) (C : W → Prop) : Prop :=
+  ∀ x, f c w = .ok x → C x.2 → g c w = .ok x
+
+theorem rwp_of_rwpc {α : Type} {f g : M α} {c : Ctx} {w : W} {C : W → Prop}
+    (h : RWPC f g c w C) (hC : ∀ v, C v) : RWP f g c w :=
+  fun x hx => h x hx (hC x.2)
+
+theorem rwpc_refl {α : Type} (f : M α) (c : Ctx) (w : W) (C : W → Prop) : RWPC f f c w C :=
+  fun _ h _ => h
+
+theorem rwpc_bind {α β : Type} {m : M α} {k1 k2 : α → M β} {c : Ctx} {w : W} {C : W → Prop}
+    (P : α → W → Prop) (hm : WriterWP m c w P) (hk : ∀ a w', P a w' → RWPC (k1 a) (k2 a) c w' C) :
+    RWPC (m >>= k1) (m >>= k2) c w C := by
+  intro x h hC
+  obtain ⟨a, w', h1, h2⟩ := (m_bind_ok m k1 c w x).mp h
+  exact (m_bind_ok m k2 c w x).mpr ⟨a, w', h1, hk a w' (hm a w' h1) x h2 hC⟩
+
+theorem rwpc_bind2 {α β : Type} {m1 m2 : M α} {k1 k2 : α → M β} {c : Ctx} {w : W} {C : W → Prop}
+    (P : α → W → Prop) (h12 : RWP m1 m2 c w) (hm : WriterWP m1 c w P)
+    (hk : ∀ a w', P a w' → RWPC (k1 a) (k2 a) c w' C) : RWPC (m1 >>= k1) (m2 >>= k2) c w C := by
+  intro x h hC
+  obtain ⟨a, w', h1, h2⟩ := (m_bind_ok m1 k1 c w x).mp h
+  exact (m_bind_ok m2 k2 c w x).mpr ⟨a, w', h12 _ h1, hk a w' (hm a w' h1) x h2 hC⟩
+
+theorem rwpc_read {β : Type} {k1 k2 : Ctx → M β} {c : Ctx} {w : W} {C : W → Prop}
+    (h : RWPC (k1 c) (k2 c) c w C) : RWPC (read >>= k1) (read >>= k2) c w C :=
+  rwpc_bind (fun a v => a = c ∧ v = w) ((writerWP_read c w _).mpr ⟨rfl, rfl⟩)
+    (fun a v ⟨ha, hv⟩ => by subst ha; subst hv; exact h)
+
+theorem rwpc_ite {β : Type} {b : Prop} [Decidable b] {f1 f2 g1 g2 : M β} {c : Ctx} {w : W}
+    {C : W → Prop} (h1 : b → RWPC f1 g1 c w C) (h2 : ¬ b → RWPC f2 g2 c w C) :
+    RWPC (if b then f1 else f2) (if b then g1 else g2) c w C := by
+  by_cases hb : b
+  · simp only [hb, ↓reduceIte]; exact h1 hb
+  · simp only [hb, ↓reduceIte]; exact h2 hb
+
+theorem rwpc_throw_bind {α β : Type} (e : String) (k : α → M β) (g : M β) (c : Ctx) (w : W)
+    (C : W → Prop) : RWPC ((throw e : M α) >>= k) g c w C :=
+  fun x hx _ => rwp_throw_bind e k g c w x hx
+
+theorem rwpc_check_right {β : Type} {f : M β} {chk : M Unit} {k : Unit → M β} {c : Ctx} {v : W}
+    {C : W → Prop} (hc : ∀ x, f c v = .ok x → C x.2 → chk c v = .ok ((), v)) (h : RWPC f (k ()) c v C) :
+    RWPC f (chk >>= k) c v C := by
+  intro x hx hC
+  exact (m_bind_ok chk k c v x).mpr ⟨(), v, hc x hx hC, h x hx hC⟩
+
+/-- `rwp_collapseRoot_chk` for the runs that end in a state of C (bergdb 025-05): the
+check is asked only at states of C, which C holds at when it holds at the end of the
+rest of the run (`hgrow`). -/
+theorem rwp_collapseRoot_chkQ (key : Key) (seg : Nat) (c : Ctx) (Inv : W → Prop)
+    (Pd : NodeId → W → Prop) (C : W → Prop) (hS : CollSteps key seg c Inv Pd)
+    (hgrow : ∀ x v d only f, Inv v →
+      WriterWP (takeBackRoot x d only >>= fun _ => collapseRoot key seg f) c v (fun _ v' => C v' → C v))
+    (hchk : ∀ x v n, Inv v → C v → Pd x v → v.nodes.lookup x = some n → n.firstTime = some c.i →
+      checkRoot x (v.path.length - 1) c v = .ok ((), v)) :
+    ∀ fuel v, Inv v → RWPC (collapseRoot key seg fuel) (collapseRootChk key seg fuel) c v C := by
+  intro fuel
+  induction fuel with
+  | zero => intro v _; unfold collapseRoot collapseRootChk; exact rwpc_refl _ _ _ _
+  | succ f ih =>
+    intro v hI
+    unfold collapseRoot collapseRootChk
+    refine rwpc_read ?_
+    refine rwpc_bind (fun x v' => Inv v' ∧ Pd x v') (hS.desc v hI) ?_
+    rintro x v1 ⟨hI1, hP1⟩
+    refine rwpc_bind _ (hS.get x v1 hI1 hP1) ?_
+    rintro n v2 ⟨hI2, hP2, hl2, _⟩
+    by_cases hleaf : n.leaf = true
+    · simp only [hleaf, ↓reduceIte]; exact rwpc_refl _ _ _ _
+    · have hleaf' : n.leaf = false := by simpa using hleaf
+      simp only [hleaf', Bool.false_eq_true, ↓reduceIte]
+      refine rwpc_bind (fun r v' => r = v2.madeFor.lookup x ∧ v' = v2)
+        (by unfold replacedBy; simp only [writerWP_bind, writerWP_get, writerWP_pure, and_self]) ?_
+      rintro rb v3 ⟨hrb, hv3⟩
+      subst v3; subst rb
+      refine rwpc_ite (fun _ => rwpc_refl _ _ _ _) (fun hmr => ?_)
+      cases honly : n.onlyLiveKlong with
+      | none => exact rwpc_refl _ _ _ _
+      | some only =>
+        refine rwpc_ite (fun _ => rwpc_throw_bind _ _ _ _ _ _) (fun hcv => ?_)
+        have hcv' : n.cv? only = some 0 := by simpa using hcv
+        refine rwpc_bind (fun s v' => s = v2.path.length ∧ v' = v2)
+          (by unfold pathSize; simp only [writerWP_bind, writerWP_get, writerWP_pure, and_self]) ?_
+        rintro s v4 ⟨hs, hv4⟩
+        subst v4; subst s
+        by_cases hmade : (n.firstTime == some c.i) = true
+        · have hm : n.firstTime = some c.i := by simpa using hmade
+          have hrb : (v2.madeFor.lookup x).isSome = true := by
+            simp only [hmade, Bool.true_and, Option.isNone_iff_eq_none] at hmr
+            cases h : v2.madeFor.lookup x with
+            | none => exact absurd h hmr
+            | some _ => rfl
+          simp only [hmade, ↓reduceIte]
+          refine rwpc_check_right (fun y hy hCy => hchk x v2 n hI2
+            (hgrow x v2 _ only f hI2 y.1 y.2 hy hCy) hP2 hl2 hm) ?_
+          exact rwpc_bind (fun _ v' => Inv v') (hS.stepT x v2 n only hI2 hP2 hl2 hleaf' hm hrb honly hcv')
+            (fun _ v3 h3 => ih v3 h3)
+        · have hm : n.firstTime ≠ some c.i := by simpa using hmade
+          simp only [hmade, Bool.false_eq_true, ↓reduceIte]
+          exact rwpc_bind (fun _ v' => Inv v') (hS.stepR x v2 n only hI2 hP2 hl2 hleaf' hm honly hcv')
+            (fun _ v3 h3 => ih v3 h3)
+
 /-- Root collapse with the check runs as without it from every state of an
 invariant that the loop's steps keep, where the check passes before each
 take-back. -/
@@ -99,52 +203,10 @@ theorem rwp_collapseRoot_chk (key : Key) (seg : Nat) (c : Ctx) (Inv : W → Prop
       WriterWP (replaceRoot x (v.path.length - 1) only) c v (fun _ v' => Inv v'))
     (hchk : ∀ x v n, Inv v → Pd x v → v.nodes.lookup x = some n → n.firstTime = some c.i →
       checkRoot x (v.path.length - 1) c v = .ok ((), v)) :
-    ∀ fuel v, Inv v → RWP (collapseRoot key seg fuel) (collapseRootChk key seg fuel) c v := by
-  intro fuel
-  induction fuel with
-  | zero => intro v _; unfold collapseRoot collapseRootChk; exact rwp_refl _ _ _
-  | succ f ih =>
-    intro v hI
-    unfold collapseRoot collapseRootChk
-    refine rwp_read ?_
-    refine rwp_bind (fun x v' => Inv v' ∧ Pd x v') (hdesc v hI) ?_
-    rintro x v1 ⟨hI1, hP1⟩
-    refine rwp_bind _ (hget x v1 hI1 hP1) ?_
-    rintro n v2 ⟨hI2, hP2, hl2, _⟩
-    by_cases hleaf : n.leaf = true
-    · simp only [hleaf, ↓reduceIte]; exact rwp_refl _ _ _
-    · have hleaf' : n.leaf = false := by simpa using hleaf
-      simp only [hleaf', Bool.false_eq_true, ↓reduceIte]
-      refine rwp_bind (fun r v' => r = v2.madeFor.lookup x ∧ v' = v2)
-        (by unfold replacedBy; simp only [writerWP_bind, writerWP_get, writerWP_pure, and_self]) ?_
-      rintro rb v3 ⟨hrb, hv3⟩
-      subst v3; subst rb
-      refine rwp_ite (fun _ => rwp_refl _ _ _) (fun hmr => ?_)
-      cases honly : n.onlyLiveKlong with
-      | none => exact rwp_refl _ _ _
-      | some only =>
-        refine rwp_ite (fun _ => rwp_throw_bind _ _ _ _ _) (fun hcv => ?_)
-        have hcv' : n.cv? only = some 0 := by simpa using hcv
-        refine rwp_bind (fun s v' => s = v2.path.length ∧ v' = v2)
-          (by unfold pathSize; simp only [writerWP_bind, writerWP_get, writerWP_pure, and_self]) ?_
-        rintro s v4 ⟨hs, hv4⟩
-        subst v4; subst s
-        by_cases hmade : (n.firstTime == some c.i) = true
-        · have hm : n.firstTime = some c.i := by simpa using hmade
-          have hrb : (v2.madeFor.lookup x).isSome = true := by
-            simp only [hmade, Bool.true_and, Option.isNone_iff_eq_none] at hmr
-            cases h : v2.madeFor.lookup x with
-            | none => exact absurd h hmr
-            | some _ => rfl
-          simp only [hmade, ↓reduceIte]
-          refine rwp_check_right (hchk x v2 n hI2 hP2 hl2 hm) ?_
-          exact rwp_bind (fun _ v' => Inv v') (hstepT x v2 n only hI2 hP2 hl2 hleaf' hm hrb honly hcv')
-            (fun _ v3 h3 => ih v3 h3)
-        · have hm : n.firstTime ≠ some c.i := by simpa using hmade
-          simp only [hmade, Bool.false_eq_true, ↓reduceIte]
-          exact rwp_bind (fun _ v' => Inv v') (hstepR x v2 n only hI2 hP2 hl2 hleaf' hm honly hcv')
-            (fun _ v3 h3 => ih v3 h3)
-
+    ∀ fuel v, Inv v → RWP (collapseRoot key seg fuel) (collapseRootChk key seg fuel) c v :=
+  fun fuel v hI => rwp_of_rwpc (rwp_collapseRoot_chkQ key seg c Inv Pd (fun _ => True)
+    ⟨hdesc, hget, hstepT, hstepR⟩ (fun _ _ _ _ _ _ _ _ _ _ => trivial)
+    (fun x v n hI _ hP hl hm => hchk x v n hI hP hl hm) fuel v hI) (fun _ => trivial)
 set_option maxHeartbeats 1600000 in
 /-- `checkRoot` passes before root collapse takes back x, a node that the
 transaction made, at the end of the path that `descendToSegmentRoot` left, at a
@@ -203,7 +265,36 @@ theorem checkRoot_ok_of_segDesc (c : Ctx) (base : View BVal) (w0 : W) (f : Nat) 
     (fun i => ((ps[i - 1]?).bind (·.1)).getD 0) ps.length (by simp [nodeAt]) hXN
     (fun i h1 h2 => (hKP i h1 h2).2) hpX hpK n (by rw [hXD]; exact hlk) hft
 
-set_option maxHeartbeats 1600000 in
+/-- `rwp_collapseRoot_chkJ` for a condition C as `writerWP_collapseRoot_collJW` (bergdb
+025-05, route P): the steps by `collSteps_JW`, the check by `checkRoot_ok_of_segDesc`. -/
+theorem rwp_collapseRoot_chkJW (fuelR : Nat) (hfR : 2 ≤ fuelR) (key : Key) (seg : Nat) (c : Ctx)
+    (base : View BVal) (hvc : ViewCoherent c base) (w0 : W) (B : NodeId) (top0 : Top)
+    (hB : PutBase c base B) (KO : KindOracle) (hv : ViewIdsBelow B c.view)
+    (hk : ViewKinds KO B c) (hICEk : ICEFromKinds c base KO B) (hsa2 : 2 ≤ c.p.splitAbove)
+    (C : W → Prop) (hC : ∀ v v', v.next ≤ v'.next → C v' → C v)
+    (hfits : ∀ v x n only, C v → CollGetInvF c base w0 v fuelR →
+      RangeOrder (wNode c.p base v) c.i v.top.rootKey → SegDesc c base x v →
+      v.nodes.lookup x = some n → n.leaf = false → n.firstTime ≠ some c.i →
+      n.onlyLiveKlong = some only → n.cv? only = some 0 →
+      WriterWP (replaceRoot x (v.path.length - 1) only) c v
+        (fun _ v' => C v' → TreeOK (wNode c.p base v') c.i v'.top.rootKey → PutInvG c base v' →
+          SegFits (wNode c.p base v') c.i (fuelR - 1) v'.top.rootKey))
+    (hpos : 0 < c.i) (hRJ : ReplaceRootFullJ2OKC c base fuelR B) :
+    ∀ fuel v, CollInvJW c base w0 fuelR C B top0 KO B B v →
+      RWPC (collapseRoot key seg fuel) (collapseRootChk key seg fuel) c v C :=
+  rwp_collapseRoot_chkQ key seg c _ _ C
+    (collSteps_JW fuelR hfR key seg c base hvc w0 B top0 hB KO B hv hk hICEk hsa2 C hC hfits B hpos hRJ)
+    (fun x v d only f hI => by
+      rw [writerWP_bind]
+      refine writerWP_mono (freshCache_takeBackRoot x d only c v hB.good.ids hI.1) ?_
+      rintro _ v1 ⟨hf1, hle1⟩
+      refine writerWP_mono (freshCache_collapseRoot key seg f c v1 hB.good.ids hf1) ?_
+      rintro _ v2 ⟨_, hle2⟩ hC2
+      exact hC v v2 (Nat.le_trans hle1 hle2) hC2)
+    (fun x v n hI hCv hP hlk hft => by
+      obtain ⟨hI', hR, hb, hbk, _, hJ, _⟩ := hI.2 hCv
+      exact checkRoot_ok_of_segDesc c base w0 fuelR B top0 hB v hI' hR hb hbk hJ x n (hP hCv) hlk hft)
+
 /-- Root collapse with the check runs as without it from every state of
 `writerWP_collapseRoot_collJC`'s invariant with one first id B for the books, the
 kinds' books and the take-back's facts: that lemma's steps, and
@@ -223,114 +314,11 @@ theorem rwp_collapseRoot_chkJ (fuelR : Nat) (hfR : 2 ≤ fuelR) (key : Key) (seg
       PutBook c B top0 v → Book B c v → KdInv KO B v → TakeJ2 c base B v → B ≤ v.next →
       RWP (collapseRoot key seg fuel) (collapseRootChk key seg fuel) c v := by
   intro fuel v hI hR hb hbk hik hJ hBn
-  refine rwp_collapseRoot_chk key seg c (fun v => CollGetInvF c base w0 v fuelR ∧
-      RangeOrder (wNode c.p base v) c.i v.top.rootKey ∧ PutBook c B top0 v ∧ Book B c v ∧
-      KdInv KO B v ∧ TakeJ2 c base B v ∧ B ≤ v.next) (SegDesc c base) ?_ ?_ ?_ ?_ ?_ fuel v
-      ⟨hI, hR, hb, hbk, hik, hJ, hBn⟩
-  · rintro v ⟨hI, hR, hb, hbk, hik, hJ, hBn⟩
-    refine writerWP_mono (writerWP_and (writerWP_and
-      (writerWP_descendToSegmentRoot_linked key seg c base hvc v hI.1.2.1 hI.2.2.2.1)
-      (putBook_descendToSegmentRoot key seg c base B top0 hB v hb))
-      (kd_descendToSegmentRoot KO B key seg c v hv hk hbk hik)) ?_
-    rintro x v' ⟨⟨⟨hr, _, hx, ps, hvp, hlf, hend, hcache, hlast⟩, hb'⟩, hbk', hik', _, _⟩
-    refine ⟨⟨collGetInv_of_readsAsF fuelR hfR c base w0 v v' hr hI, by rw [hr.1, hr.2.1]; exact hR,
-      hb', hbk', hik', takeJ2_of_readsAs c base B v v' hJ hr, by rw [hr.2.2.2.2]; exact hBn⟩, ?_⟩
-    unfold SegDesc
-    rw [hr.1, hr.2.1]
-    exact ⟨hx, ps, hvp, hlf, hend, hcache, hlast⟩
-  · rintro x v ⟨hI, hR, hb, hbk, hik, hJ, hBn⟩ hP
-    refine writerWP_mono (writerWP_and (writerWP_and (writerWP_and (writerWP_getNode_all x c v base hvc)
-      (writerWP_getNode_cache x c v)) (putBook_getNode x c base B top0 hB v hb))
-      (kd_getNode KO B x c v hv hk hbk hik)) ?_
-    rintro n v' ⟨⟨⟨⟨hr, hl, _, hpre, _⟩, _, _, hp⟩, hb'⟩, hbk', hik', _⟩
-    exact ⟨⟨collGetInv_of_readsAsF fuelR hfR c base w0 v v' hr hI, by rw [hr.1, hr.2.1]; exact hR,
-      hb', hbk', hik', takeJ2_of_readsAs c base B v v' hJ hr, by rw [hr.2.2.2.2]; exact hBn⟩,
-      segDesc_of_readsAs c base x v v' hP hr hpre hp, hl, hp⟩
-  · rintro x v n only ⟨hI, hR, hb, hbk, hik, hJ, hBn⟩ hP hlk hxl hm _ honly hcv
-    obtain ⟨g, h, hgh⟩ := kd_tag_of_lookup hbk hlk
-    have hh : h ≠ 0 := by
-      intro h0; subst h0
-      have := kd_leaf hbk hlk hgh
-      simp at this; rw [this] at hxl; cases hxl
-    obtain ⟨a, hpa⟩ := segDesc_pathLast c base x v hP
-    have hBx : B ≤ x := Blank.ge B c x hB.good
-      (blank_of_firstTime B c x n hB.good.pos (cacheGood_lookup B c v hb.good x n hlk) (by simp [hm]))
-    have hcr : WriterWP (takeBackRoot x (v.path.length - 1) only) c v
-        (fun _ v' => (CollGetInvF c base w0 v' fuelR ∧ RangeOrder (wNode c.p base v') c.i v'.top.rootKey) ∧
-          TakeJ2 c base B v') := by
-      obtain ⟨_, ps, hvp, hlf, hend, hcache, hlast⟩ := hP
-      rcases hlast with hps | ⟨ps0, k, L, ln, hps, hL, hLn, hLl⟩
-      · subst hps
-        have hx : x = v.top.rootKey := by rw [← hend]; rfl
-        rw [hvp]
-        exact writerWP_and (writerWP_and
-          (writerWP_rootStep_space_collF fuelR hfR x only n c base w0 v hI hx hlk honly hcv hxl).1
-          (writerWP_rootStep_space_rangeG x only n c base v _ _ _ hI hR hx hlk honly hcv hxl).1)
-          (writerWP_rootStep_space_j2F x only n c base w0 v fuelR hI B hpos hJ hx hlk honly).1
-      · subst hps
-        obtain ⟨hLr, hLlk, hk', hlen, hpd, hpk⟩ := segDesc_seg c base x v ps0 k L ln hvp hlf hcache hL hLn
-        rw [hlen]
-        exact writerWP_and (writerWP_and
-          (writerWP_takeBackRoot_seg_collF fuelR hfR x ps0.length only n L ln k c base w0 v hI hLr hLlk
-            hLl hk' hlk honly hcv hxl hpd hpk)
-          (writerWP_takeBackRoot_seg_rangeG x ps0.length only n L ln k c base v _ _ _ hI hR hLr hLlk
-            hLl hk' hlk honly hcv hxl hpd hpk))
-          (writerWP_takeBackRoot_seg_j2F x ps0.length only n L ln k c base w0 v fuelR hI B hpos hJ hLr hLlk
-            hLl hk' hlk honly hcv hxl hm hpd hpk)
-    have hnx := @state_takeBackRoot (nextFromInvariant v) x (v.path.length - 1) only c v (Nat.le_refl _)
-    refine writerWP_mono (writerWP_and (writerWP_and (writerWP_and hcr
-      (putBook_takeBackRoot x _ only c base B top0 hB v hb hBx))
-      (kd_takeBackRoot KO B x _ only c v hv hk hbk hik a hpa g h hgh hh)) hnx) ?_
-    rintro _ v' ⟨⟨⟨⟨⟨hI', hR'⟩, hJ'⟩, hb'⟩, hbk', hik', _, _⟩, hn'⟩
-    exact ⟨hI', hR', hb', hbk', hik', hJ', Nat.le_trans hBn hn'⟩
-  · rintro x v n only ⟨hI, hR, hb, hbk, hik, hJ, hBn⟩ hP hlk hxl hm honly hcv
-    obtain ⟨g, h, hgh⟩ := kd_tag_of_lookup hbk hlk
-    have hh : h ≠ 0 := by
-      intro h0; subst h0
-      have := kd_leaf hbk hlk hgh
-      simp at this; rw [this] at hxl; cases hxl
-    obtain ⟨a, hpa⟩ := segDesc_pathLast c base x v hP
-    have hG := putInvG_of_book c base B top0 v hB hb
-    have hPC := pathCached_of_segDesc c base x v n hP hlk
-    have hfit := hfits v x n only hI hR hP hlk hxl hm honly hcv
-    have hbook := putBook_replaceRoot x (v.path.length - 1) only c base B top0 hB v hb
-    have hkd := kd_replaceRoot KO B x _ only c v hv hk hbk hik a hpa g h hgh hh
-    have hnx := @state_replaceRoot (nextFromInvariant v) x (v.path.length - 1) only c v (Nat.le_refl _)
-    have hP0 := hP
-    obtain ⟨_, ps, hvp, hlf, hend, hcache, hlast⟩ := hP
-    rcases hlast with hps | ⟨ps0, k, L, ln, hps, hL, hLn, hLl⟩
-    · subst hps
-      have hx : x = v.top.rootKey := by rw [← hend]; rfl
-      have hrg := (writerWP_rootStep_space_rangeG x only n c base v _ _ _ hI hR hx hlk honly hcv hxl).2
-      have hcl := (writerWP_rootStep_space_collF fuelR hfR x only n c base w0 v hI hx hlk honly hcv hxl).2
-      have hj := (writerWP_rootStep_space_j2F x only n c base w0 v fuelR hI B hpos hJ hx hlk honly).2 hm
-      rw [hvp] at hbook hkd hnx ⊢
-      refine writerWP_mono (writerWP_and (writerWP_and (writerWP_and (writerWP_and (writerWP_and hcl hrg) hbook)
-        hkd) hj) hnx) ?_
-      rintro _ v' ⟨⟨⟨⟨⟨hI', hR'⟩, hb'⟩, hbk', hik', _, _⟩, hJ'⟩, hn'⟩
-      exact ⟨hI', hR', hb', hbk', hik', hJ', Nat.le_trans hBn hn'⟩
-    · subst hps
-      obtain ⟨hLr, hLlk, hk', hlen, hpd, hpk⟩ := segDesc_seg c base x v ps0 k L ln hvp hlf hcache hL hLn
-      have hj : WriterWP (replaceRoot x (ps0.length + 1) only) c v (fun _ v' => TakeJ2 c base B v') := by
-        by_cases hroom : ln.size + 1 + 1 ≤ c.p.M ∧ ∀ y, deadOver c.p (ln.add c.i (.key k y)) = false
-        · exact writerWP_replaceRoot_seg_j2F x ps0.length only n L ln k c base w0 v fuelR hI B hpos hJ hLr hLlk
-            hLl hk' hlk honly hcv hxl hm hpd hpk hroom.1 hroom.2
-        · exact writerWP_mono (hRJ w0 v x n only L ln k ps0 hI hR hJ hBn hvp hlf hPC hLr hLlk hLl hk' hpd hpk
-            hlk honly hcv hxl hm hG hroom) (fun _ v' h' => h'.1)
-      rw [hlen] at hfit hbook hkd hnx ⊢
-      have hcas := writerWP_replaceRoot_seg_cascadeC fuelR hfR x only n L ln k ps0 c base w0 v hI hR hG hsa2
-        hvp hlf hPC hLr hLlk hLl hk' hpd hpk hlk honly hcv hxl
-      refine writerWP_mono (writerWP_and (writerWP_and (writerWP_and (writerWP_and (writerWP_and hcas hfit) hbook)
-        hkd) hj) hnx) ?_
-      rintro _ v' ⟨⟨⟨⟨⟨⟨hT', hU', hW', _, _, hread', hR'⟩, hf'⟩, hb'⟩, hbk', hik', _, _⟩, hJ'⟩, hn'⟩
-      have hG' := putInvG_of_book c base B top0 v' hB hb'
-      refine ⟨⟨⟨hT', hU', fun y yn _ hy => hG'.times y yn hy,
-        fun y yn cc z hy hyn hl hc => hICEk v' hbk' hik' hU' y yn cc z hy hyn hl hc⟩,
-        hread' hf', hf', fun y yn _ hy => hW' y yn hy, fun y yn _ hy => hG'.keyNoValue y yn hy⟩,
-        hR', hb', hbk', hik', hJ', Nat.le_trans hBn hn'⟩
-  · rintro x v n ⟨hI, hR, hb, hbk, hik, hJ, _⟩ hP hlk hft
-    exact checkRoot_ok_of_segDesc c base w0 fuelR B top0 hB v hI hR hb hbk hJ x n hP hlk hft
-
+  exact rwp_of_rwpc (rwp_collapseRoot_chkJW fuelR hfR key seg c base hvc w0 B top0 hB KO hv hk hICEk hsa2
+    (fun _ => True) (fun _ _ _ _ => trivial)
+    (fun v x n only _ hI hR hP hlk hxl hm honly hcv => writerWP_mono
+      (hfits v x n only hI hR hP hlk hxl hm honly hcv) (fun _ _ hf _ _ _ => hf))
+    hpos hRJ fuel v ⟨hb.fresh, fun _ => ⟨hI, hR, hb, hbk, hik, hJ, hBn⟩⟩) (fun _ => trivial)
 /-- The merges' loop keeps the books. -/
 theorem putBook_mergeUp (key : Key) (g fuel h : Nat) (merged : Bool) (c : Ctx) (base : View BVal)
     (B : NodeId) (top0 : Top) (hB : PutBase c base B) (w : W) (hw : PutBook c B top0 w) :
@@ -392,6 +380,30 @@ theorem rwp_afterDeleteJ (J : W → Prop) (key : Key) (g h : Nat) (c : Ctx)
   · exact ((writerWP_throw _ c v (fun _ _ => False)) _ _ h4).elim
 
 set_option maxHeartbeats 1600000 in
+/-- `OpDelChk5OKR` from `OpDelChk6OKR`, given that `afterDelete` runs as its checked
+copy at the calls with `DelHoleJ` where the merges' loop does (`hAD`; bergdb 025-05). -/
+theorem opDelChk5OKR_of_chk6G (p : Params) (R : Struct BVal → Time → Prop)
+    (hAD : ∀ ts tx, Within p (ts ++ [tx]) → R (treeRun p ts) ts.length → ∀ z top,
+      lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z →
+      topOf p (ctxOf p ts).view z = .ok top →
+      ∀ pre key post, tx.ops = pre ++ Op.del key :: post →
+      ∀ r w, (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
+      PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w →
+      HtInv (htOracleOf p (treeRun p ts)) tx.base (ctxOf p ts) w →
+      ∀ (key' : Key) (g h : Nat) (v : W), DelHoleJ p ts tx top w key v →
+      RWP (mergeUp key' g (ctxOf p ts).p.fuel h false) (mergeUpChk key' g (ctxOf p ts).p.fuel h false)
+        (ctxOf p ts) v →
+      RWP (afterDelete key' g h) (afterDeleteChk key' g h) (ctxOf p ts) v)
+    (h6 : OpDelChk6OKR p R) : OpDelChk5OKR p R := by
+  intro ts tx hw hr z top hz htop pre key post hs r w hpre hI hRO hL hH hJ r' v he
+  have h6' := h6 ts tx hw hr z top hz htop pre key post hs r w hpre hI hRO hL hH hJ r' v he
+  rw [putKvDelChk5_eq]
+  refine rwp_putKvDP (afterDeleteJ (DelHoleJ p ts tx top w key)) afterDeleteChk (ctxOf p ts) ?_ key w _ h6'
+  intro key' g h v'
+  refine rwp_afterDeleteJ _ key' g h (ctxOf p ts) ?_ v'
+  intro v'' hJ'' hmu
+  exact hAD ts tx hw hr z top hz htop pre key post hs r w hpre hI hH key' g h v'' hJ'' hmu
+
 /-- `OpDelChk5OKR` from `OpDelChk6OKR`, given the merges' fuel (`MergeStepOK`,
 from `hMSF`) and the collapse's (`CollapseFitsOK`, `hCoF`): root collapse's
 check is proved. -/
@@ -402,8 +414,8 @@ theorem opDelChk5OKR_of_chk6 (p : Params) (R : Struct BVal → Time → Prop) (h
     (hMS : ∀ ts, MergeStepOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
     (hCo : ∀ ts, CollapseFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
     (h6 : OpDelChk6OKR p R) : OpDelChk5OKR p R := by
-  intro ts tx hw hr z top hz htop pre key post hs r w hpre hI hRO hL hH hJ r' v he
-  have h6' := h6 ts tx hw hr z top hz htop pre key post hs r w hpre hI hRO hL hH hJ r' v he
+  refine opDelChk5OKR_of_chk6G p R ?_ h6
+  intro ts tx hw hr z top hz htop pre key post hs r w hpre _ _ key' g h v'' ⟨hJ'', hb''⟩ hmu
   have hB := putBase_of_run p ts tx hw (hRL _ _ hr)
   obtain ⟨hv, hk, _, _⟩ := kd_contextR p hM ts tx (hRP _ _ hr) (hRK _ _ hr) hw top pre (Op.del key :: post)
     hs r w hpre
@@ -411,13 +423,7 @@ theorem opDelChk5OKR_of_chk6 (p : Params) (R : Struct BVal → Time → Prop) (h
     fun v hb hi hun => innerChildren_of_kinds p (treeRun p ts) tx.base (ctxOf p ts) v rfl (hRK _ _ hr)
       (hRP _ _ hr) hb hi.cache hun
   have hfR : 2 ≤ p.fuel + 1 := by unfold Params.fuel; omega
-  rw [putKvDelChk5_eq]
-  refine rwp_putKvDP (afterDeleteJ (DelHoleJ p ts tx top w key)) afterDeleteChk (ctxOf p ts) ?_ key w _ h6'
-  intro key' g h v'
-  refine rwp_afterDeleteJ _ key' g h (ctxOf p ts) ?_ v'
-  rintro v'' ⟨hJ'', hb''⟩ hmu
   exact rwp_afterDelete_of_J key' g h (ctxOf p ts) _ (viewCoherent_ctxOf p ts) (p.fuel + 1) hfR (hMS ts) (hCo ts)
     _ tx.base hv hk hICEk (by simpa [ctxOf] using hsa2) (by simpa [ctxOf] using hcap) (by simp [ctxOf])
     (replaceRootFullJ2OKC_run p hsa2 ts tx.base) top hB w key v'' hJ'' hb'' hmu
-
 end SIS.Tree

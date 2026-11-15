@@ -735,4 +735,24 @@ is `DW`, which speaks of no fuel), its cases, the two walks and
 `delStepsCaseDOK_mergeG`; FuelNext.lean: `writerWP_mergeUp_delDWA`,
 `dw_afterDeleteA`, `opCaseOK_dead_delMergeA`, with no `MergeStepOK`.
 
-Next: step 5 (`hchk`'s discharge), then step 6.
+Gated: b799d6f8, gate-4 PASS.
+
+2026-11-15, 13:20 to 13:30. Part 1, step 5 (fit): `hchk`'s discharge.
+The relational loops run for the runs that end in a state of C (`RWPC`,
+DelHoleRoot.lean, with its combinators): `rwp_collapseRoot_chkQ` (the
+check asked only at states of C, which hold where the run's end does) and
+`rwp_mergeUp_of_JW` (DelMergeUp.lean); the old `rwp_collapseRoot_chk` and
+`rwp_mergeUp_of_J` are C true. Root collapse's four steps are one lemma,
+`collSteps_JW` (`CollSteps`, CollapseCommuteJ2.lean), for the writer's
+loop (`writerWP_collapseRoot_collJW`) and the checked one
+(`rwp_collapseRoot_chkJW`; the old `rwp_collapseRoot_chkJ`, which repeated
+the steps, is its corollary). `opDelChk8OKR_of_mergeChk` and
+`opDelChk5OKR_of_chk6G` take the merges' loop's and `afterDelete`'s checked
+runs as hypotheses; the old ones are their instances with `MergeStepOK`
+and `CollapseFitsOK`. FuelNext.lean: `rwp_mergeUp_of_JA`,
+`rwp_afterDelete_of_JA` (at a fuel above the run's end, F chosen from the
+unchecked run's end), `opDelChk8OKR_holdsA` and `opDelChk5OKR_of_chk6A`,
+with no `MergeStepOK` and no `CollapseFitsOK` (the fit at the delete's start
+from the heights and `htb`, `htStart_of_ht`, as the chain has it).
+
+Next: step 6, the top theorem.

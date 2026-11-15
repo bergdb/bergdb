@@ -499,10 +499,27 @@ def CollInvJW (c : Ctx) (base : View BVal) (w0 : W) (fuelR : Nat) (C : W → Pro
     RangeOrder (wNode c.p base v) c.i v.top.rootKey ∧ PutBook c B top0 v ∧ Book BK c v ∧
     KdInv KO BK v ∧ TakeJ2 c base BJ v ∧ BJ ≤ v.next)
 
+/-- Root collapse's four steps keep an invariant Inv, with a fact Pd of the
+segment root: the obligations of `writerWP_collapseRoot_inv` (bergdb 025-05). -/
+structure CollSteps (key : Key) (seg : Nat) (c : Ctx) (Inv : W → Prop) (Pd : NodeId → W → Prop) :
+    Prop where
+  desc : ∀ v, Inv v → WriterWP (descendToSegmentRoot key seg) c v (fun x v' => Inv v' ∧ Pd x v')
+  get : ∀ x v, Inv v → Pd x v → WriterWP (getNode x) c v (fun n v' =>
+    Inv v' ∧ Pd x v' ∧ v'.nodes.lookup x = some n ∧ v'.path = v.path)
+  stepT : ∀ x v n only, Inv v → Pd x v → v.nodes.lookup x = some n → n.leaf = false →
+    n.firstTime = some c.i → (v.madeFor.lookup x).isSome = true →
+    n.onlyLiveKlong = some only → n.cv? only = some 0 →
+    WriterWP (takeBackRoot x (v.path.length - 1) only) c v (fun _ v' => Inv v')
+  stepR : ∀ x v n only, Inv v → Pd x v → v.nodes.lookup x = some n → n.leaf = false →
+    n.firstTime ≠ some c.i →
+    n.onlyLiveKlong = some only → n.cv? only = some 0 →
+    WriterWP (replaceRoot x (v.path.length - 1) only) c v (fun _ v' => Inv v')
+
 set_option maxHeartbeats 1600000 in
-/-- `writerWP_collapseRoot_collJC` for a condition C as `writerWP_collapseRoot_collW`
-(bergdb 025-05, route P). -/
-theorem writerWP_collapseRoot_collJW (fuelR : Nat) (hfR : 2 ≤ fuelR) (key : Key) (seg : Nat) (c : Ctx)
+/-- The four steps of root collapse keep `CollInvJW` (bergdb 025-05, route P): the
+obligations of `writerWP_collapseRoot_inv`, for the writer's loop and the checked
+one (`rwp_collapseRoot_chkJW`). -/
+theorem collSteps_JW (fuelR : Nat) (hfR : 2 ≤ fuelR) (key : Key) (seg : Nat) (c : Ctx)
     (base : View BVal) (hvc : ViewCoherent c base) (w0 : W) (B : NodeId) (top0 : Top)
     (hB : PutBase c base B) (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view)
     (hk : ViewKinds KO BK c) (hICEk : ICEFromKinds c base KO BK) (hsa2 : 2 ≤ c.p.splitAbove)
@@ -516,12 +533,9 @@ theorem writerWP_collapseRoot_collJW (fuelR : Nat) (hfR : 2 ≤ fuelR) (key : Ke
           SegFits (wNode c.p base v') c.i (fuelR - 1) v'.top.rootKey))
     (BJ : NodeId) (hpos : 0 < c.i)
     (hRJ : ReplaceRootFullJ2OKC c base fuelR BJ) :
-    ∀ fuel v, CollInvJW c base w0 fuelR C B top0 KO BK BJ v →
-      WriterWP (collapseRoot key seg fuel) c v (fun _ v' => CollInvJW c base w0 fuelR C B top0 KO BK BJ v') := by
-  intro fuel v hCI
+    CollSteps key seg c (CollInvJW c base w0 fuelR C B top0 KO BK BJ) (fun x v => C v → SegDesc c base x v) := by
   have hBv : ViewIdsBelow B c.view := hB.good.ids
-  refine writerWP_collapseRoot_inv key seg c (CollInvJW c base w0 fuelR C B top0 KO BK BJ)
-    (fun x v => C v → SegDesc c base x v) ?_ ?_ ?_ ?_ fuel v hCI
+  refine ⟨?_, ?_, ?_, ?_⟩
   · rintro v ⟨hfc, hD⟩
     by_cases hno : ¬ C v
     · refine writerWP_mono (freshCache_descendToSegmentRoot key seg c v hBv hfc) ?_
@@ -655,6 +669,27 @@ theorem writerWP_collapseRoot_collJW (fuelR : Nat) (hfR : 2 ≤ fuelR) (key : Ke
         hread' hf'', hf'', fun y yn _ hy => hW' y yn hy, fun y yn _ hy => hG'.keyNoValue y yn hy⟩,
         hR', hb', hbk', hik', hJ', Nat.le_trans hBn hn'⟩
 
+/-- `writerWP_collapseRoot_collJC` for a condition C as `writerWP_collapseRoot_collW`
+(bergdb 025-05, route P). -/
+theorem writerWP_collapseRoot_collJW (fuelR : Nat) (hfR : 2 ≤ fuelR) (key : Key) (seg : Nat) (c : Ctx)
+    (base : View BVal) (hvc : ViewCoherent c base) (w0 : W) (B : NodeId) (top0 : Top)
+    (hB : PutBase c base B) (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view)
+    (hk : ViewKinds KO BK c) (hICEk : ICEFromKinds c base KO BK) (hsa2 : 2 ≤ c.p.splitAbove)
+    (C : W → Prop) (hC : ∀ v v', v.next ≤ v'.next → C v' → C v)
+    (hfits : ∀ v x n only, C v → CollGetInvF c base w0 v fuelR →
+      RangeOrder (wNode c.p base v) c.i v.top.rootKey → SegDesc c base x v →
+      v.nodes.lookup x = some n → n.leaf = false → n.firstTime ≠ some c.i →
+      n.onlyLiveKlong = some only → n.cv? only = some 0 →
+      WriterWP (replaceRoot x (v.path.length - 1) only) c v
+        (fun _ v' => C v' → TreeOK (wNode c.p base v') c.i v'.top.rootKey → PutInvG c base v' →
+          SegFits (wNode c.p base v') c.i (fuelR - 1) v'.top.rootKey))
+    (BJ : NodeId) (hpos : 0 < c.i)
+    (hRJ : ReplaceRootFullJ2OKC c base fuelR BJ) :
+    ∀ fuel v, CollInvJW c base w0 fuelR C B top0 KO BK BJ v →
+      WriterWP (collapseRoot key seg fuel) c v (fun _ v' => CollInvJW c base w0 fuelR C B top0 KO BK BJ v') := by
+  intro fuel v hCI
+  have h := collSteps_JW fuelR hfR key seg c base hvc w0 B top0 hB KO BK hv hk hICEk hsa2 C hC hfits BJ hpos hRJ
+  exact writerWP_collapseRoot_inv key seg c _ _ h.desc h.get h.stepT h.stepR fuel v hCI
 /-- `writerWP_collapseRoot_collJ` without `CollapseUnlinkOK` (`hunl`): the
 reading's step by `writerWP_replaceRoot_seg_cascadeC`, the take-back's through a
 full leaf by `ReplaceRootFullJ2OKC`. -/

@@ -304,12 +304,13 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
     reading at every fuel above p.fuel and the next id (`DelInvA`) is kept by the merges' loop
     and root collapse with no fit premise (`writerWP_afterDelete_delA`); the fit p.fuel - 1 is
     needed only at the operation's end, where the families' conclusions take it. Steps 1 to
-    4 of six done (gated on fit's branch): the reading's case 4, `opGetCaseOK_delMergeA`, the
+    5 of six done (gated on fit's branch): the reading's case 4, `opGetCaseOK_delMergeA`, the
     take-back's, `opJ2Case_delMergeA` and `runTreeQ_of_mergesSA`, the joint induction's tree,
     `opCaseOKJ_treeInvRange_delMergeA`, and the dead klongs' bound, `opCaseOK_dead_delMergeA`,
     with no `MergeStepOK` and no `CollapseFitsOK`, from the families over an invariant
     (`DelStepsOKG`, `DelStepsJ2OKG`, `DelStepsQdLJG`, `DelStepsCaseDOKG`; the old families their
-    instances). Left: `hchk`'s discharge (its relational loops), then the top theorem with
+    instances), and `hchk`'s discharge, `opDelChk5OKR_of_chk6A` and `opDelChk8OKR_holdsA` (the
+    relational loops for the runs that end below a fuel, `RWPC`). Left: the top theorem with
     premises `hp`, `hth`, `htb`, `l4` (025-05, section 6.1 and its Log).
 - `hHL` gone (cost2, 2026-11-15, `HeightsFillHolder.lean`, `HeightsFillTop.lean`): the joint
   induction also carries the writer's tree and the take-back's node facts (`J2At`, putinv's

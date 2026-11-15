@@ -47,46 +47,69 @@ theorem rwp_pathNode {β : Type} {k1 k2 : NodeId → M β} (d : Nat) (c : Ctx) (
     subst r; subst v'
     exact h e hex
 
+/-- `rwp_pathNode` for the runs that end in a state of C. -/
+theorem rwpc_pathNode {β : Type} {k1 k2 : NodeId → M β} (d : Nat) (c : Ctx) (v : W) {C : W → Prop}
+    (h : ∀ e, v.path[d]? = some e → RWPC (k1 e.2) (k2 e.2) c v C) :
+    RWPC (pathNode d >>= k1) (pathNode d >>= k2) c v C := by
+  cases hex : v.path[d]? with
+  | none =>
+    refine rwpc_bind (fun _ _ => False) ?_ (fun _ _ hf => hf.elim)
+    unfold pathNode
+    simp only [writerWP_bind, writerWP_get]
+    rw [hex]
+    exact writerWP_throw _ _ _ _
+  | some e =>
+    refine rwpc_bind (fun r v' => r = e.2 ∧ v' = v)
+      (writerWP_pathNode_known d e.2 c v (by rw [hex]; rfl) _ ⟨rfl, rfl⟩) ?_
+    rintro r v' ⟨hr', hv'⟩
+    subst r; subst v'
+    exact h e hex
+
 set_option maxHeartbeats 3200000 in
-/-- The merges' loop runs as its checked copy from `DelInvJ` and the books of
-the first id B (`writerWP_mergeUp_delJ` for the two copies, `rwpq_merge` at
-each merge). -/
-theorem rwp_mergeUp_of_J (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
-    (hvc : ViewCoherent c base) (fuelR : Nat) (hfR : 2 ≤ fuelR) (hM : MergeStepOK c base fuelR)
+/-- `rwp_mergeUp_of_J` for the runs that end in a state of C (bergdb 025-05, route P):
+`DelInvJ` asked only where C holds, the fit at a merge's end by `MergeStepOKW`. -/
+theorem rwp_mergeUp_of_JW (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (fuelR : Nat) (hfR : 2 ≤ fuelR) (C : W → Prop)
+    (hC : ∀ v v', v.next ≤ v'.next → C v' → C v) (hM : MergeStepOKW c base fuelR C)
     (KO : KindOracle) (B : NodeId) (hv : ViewIdsBelow B c.view) (hk : ViewKinds KO B c)
     (hICEk : ICEFromKinds c base KO B) (hsa2 : 2 ≤ c.p.splitAbove) (hcap : 1 ≤ c.p.mergeMax)
     (hpos : 0 < c.i) (hvg : ViewGood B c) (hkv : ViewKlongsWf c.p c.view) (top0 : Top)
     (hB : PutBase c base B) (w0 : W) (k0 : Key) :
-    ∀ fuel h merged v, DelInvJ c base w0 k0 fuelR KO B B v → PutBook c B top0 v →
-      RWP (mergeUp key g fuel h merged) (mergeUpChk key g fuel h merged) c v := by
+    ∀ fuel h merged v, (C v → DelInvJ c base w0 k0 fuelR KO B B v) → PutBook c B top0 v →
+      RWPC (mergeUp key g fuel h merged) (mergeUpChk key g fuel h merged) c v C := by
   have hMJ := mergeStepJ2OKF_of_root c base hvc fuelR B hpos hcap hsa2
     (mergeRootJ2OKF_holds c base fuelR B hpos hcap hsa2)
   intro fuel
   induction fuel with
   | zero =>
     intro h merged v _ _
-    exact fun x hx => ((writerWP_throw _ c v (fun _ _ => False)) x.1 x.2 hx).elim
+    exact fun x hx _ => ((writerWP_throw _ c v (fun _ _ => False)) x.1 x.2 hx).elim
   | succ f ih =>
-    intro h merged v ⟨⟨hI, hbk, hik⟩, hJ0, hB0⟩ hb0
+    intro h merged v hD hb0
+    by_cases hno : ¬ C v
+    · intro x hx hCx
+      exact absurd (hC v x.2 (freshCache_mergeUp key g (f + 1) h merged c v hB.good.ids hb0.fresh
+        x.1 x.2 hx).2 hCx) hno
+    obtain ⟨⟨hI, hbk, hik⟩, hJ0, hB0⟩ := hD (Classical.byContradiction hno)
     unfold mergeUp mergeUpChk
-    refine rwp_read ?_
-    refine rwp_bind _ (writerWP_and (writerWP_and (writerWP_and (descentOK c base fuelR w0 k0 key g h v hI)
+    refine rwpc_read ?_
+    refine rwpc_bind _ (writerWP_and (writerWP_and (writerWP_and (descentOK c base fuelR w0 k0 key g h v hI)
       (kd_descendToHeight KO B key g h c v hv hk hbk hik))
       (writerWP_descendToHeight_readsU key g h c base hvc v))
       (putBook_descendToHeight key g h c base B top0 hB v hb0)) ?_
     rintro d v1 ⟨⟨⟨⟨hI1, hPF⟩, hbk1, hik1, _⟩, hr1⟩, hc1⟩
     have hJ1 : TakeJ2 c base B v1 := takeJ2_of_readsAs c base B v v1 hJ0 hr1
     have hBn1 : B ≤ v1.next := by rw [hr1.2.2.2.2]; exact hB0
-    refine rwp_ite (fun _ => rwp_refl _ _ _) (fun hd0 => ?_)
+    refine rwpc_ite (fun _ => rwpc_refl _ _ _ _) (fun hd0 => ?_)
     have hd : 0 < d := by
       cases d with
       | zero => simp at hd0
       | succ _ => omega
     obtain ⟨X, K, Nn, hP1⟩ := hPF
-    refine rwp_pathNode d c v1 (fun ex hex => ?_)
-    refine rwp_pathNode (d - 1) c v1 (fun eq heq => ?_)
+    refine rwpc_pathNode d c v1 (fun ex hex => ?_)
+    refine rwpc_pathNode (d - 1) c v1 (fun eq heq => ?_)
     obtain ⟨B1, t1, hB1, hb1⟩ := hI1.2.2.2.2.2.2
-    refine rwp_bind _ (writerWP_and (writerWP_and (writerWP_and (writerWP_and
+    refine rwpc_bind _ (writerWP_and (writerWP_and (writerWP_and (writerWP_and
       (writerWP_getNode_all eq.2 c v1 base hvc) (writerWP_getNode_cache eq.2 c v1))
       (putBook_getNode eq.2 c base B1 t1 hB1 v1 hb1))
       (kd_getNode KO B eq.2 c v1 hv hk hbk1 hik1))
@@ -98,9 +121,9 @@ theorem rwp_mergeUp_of_J (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
     have hkeep2 : ∀ z zn, v1.nodes.lookup z = some zn → v2.nodes.lookup z = some zn :=
       fun z zn h => lookup_of_prefix _ _ hpre2 _ _ h
     have hP2 := pathOK_transport c v1 v2 d X K Nn hP1 hp2 hkeep2 hr2.2.2.1 hr2.2.1
-    refine rwp_ite (fun _ => rwp_refl _ _ _) (fun hql => ?_)
+    refine rwpc_ite (fun _ => rwpc_refl _ _ _ _) (fun hql => ?_)
     have hql' : qn.leaf = false := by simpa using hql
-    refine rwp_bind _ (writerWP_and (writerWP_and (writerWP_and (writerWP_and
+    refine rwpc_bind _ (writerWP_and (writerWP_and (writerWP_and (writerWP_and
       (writerWP_getNode_all ex.2 c v2 base hvc) (writerWP_getNode_cache ex.2 c v2))
       (putBook_getNode ex.2 c base B1 t1 hB1 v2 hb2))
       (kd_getNode KO B ex.2 c v2 hv hk hbk2 hik2))
@@ -112,7 +135,7 @@ theorem rwp_mergeUp_of_J (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
     have hkeep3 : ∀ z zn, v2.nodes.lookup z = some zn → v3.nodes.lookup z = some zn :=
       fun z zn h => lookup_of_prefix _ _ hpre3 _ _ h
     have hP3 := pathOK_transport c v2 v3 d X K Nn hP2 hp3 hkeep3 hr3.2.2.1 hr3.2.1
-    refine rwp_ite (fun _ => rwp_refl _ _ _) (fun hcnt => ?_)
+    refine rwpc_ite (fun _ => rwpc_refl _ _ _ _) (fun hcnt => ?_)
     have hcnt' : xn.cnt < c.p.mergeBelow := by simpa using hcnt
     obtain ⟨hX3, _, hS23, _, _⟩ := id hP3
     have hxX : X d = ex.2 := by
@@ -153,17 +176,32 @@ theorem rwp_mergeUp_of_J (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
       rintro r v4 ⟨⟨⟨⟨⟨⟨⟨⟨_, hu4, _⟩, _⟩, _⟩, _⟩, _⟩, hJ4⟩, _⟩, hc4⟩
       exact ⟨hJ4.1, hJ4.2.2.1, (putInvG_of_book c base B top0 v4 hB hc4).times,
         fun y hy => hu4 y (tReach_reachS _ _ _ _ hy)⟩
-    refine rwp_bind2 _ (rwp_of_rwpq (rwpq_merge c base hvc B hvg hkv hv v3 hI3.1 hJ3 hc3.good
+    refine rwpc_bind2 _ (rwp_of_rwpq (rwpq_merge c base hvc B hvg hkv hv v3 hI3.1 hJ3 hc3.good
       (uniqueCache_of_putBook c B top0 v3 hc3) hc3.klongs ex.2 d hd X K Nn hP3 hxX) hEnd) hall ?_
     rintro r v4 ⟨⟨⟨⟨⟨⟨⟨⟨hread4, hu4, hF4⟩, hb4⟩, hT4⟩, hR4⟩, hbk4, hik4, _, _⟩, hJ4⟩, hn4⟩, hc4⟩
     obtain ⟨hP4, hG4⟩ := putInv_after_step c base v4 B1 t1 hB1 hb4 hT4 hu4 hR4
     have hICE4 := hICEk v4 hbk4 hik4 (fun y hy => hu4 y (tReach_reachS _ _ _ _ hy))
-    have hI4 : DelInvF c base w0 k0 fuelR v4 :=
-      ⟨hP4, hG4, hR4, hICE4, hF4, fun key' hk' => by
-        rw [hread4 hF4 key']; exact hI3.2.2.2.2.2.1 key' hk', B1, t1, hB1, hb4⟩
-    refine rwp_ite (fun _ => rwp_refl _ _ _) (fun _ => ?_)
-    exact ih (h + 1) true v4 ⟨⟨hI4, hbk4, hik4⟩, hJ4, Nat.le_trans hBn3 hn4⟩ hc4
+    refine rwpc_ite (fun _ => rwpc_refl _ _ _ _) (fun _ => ?_)
+    refine ih (h + 1) true v4 (fun hC4 => ?_) hc4
+    have hF4' := hF4 hC4 hP4
+    exact ⟨⟨⟨hP4, hG4, hR4, hICE4, hF4', fun key' hk' => by
+      rw [hread4 hF4' key']; exact hI3.2.2.2.2.2.1 key' hk', B1, t1, hB1, hb4⟩, hbk4, hik4⟩,
+      hJ4, Nat.le_trans hBn3 hn4⟩
 
+/-- The merges' loop runs as its checked copy from `DelInvJ` and the books of
+the first id B (`writerWP_mergeUp_delJ` for the two copies, `rwpq_merge` at
+each merge). -/
+theorem rwp_mergeUp_of_J (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (fuelR : Nat) (hfR : 2 ≤ fuelR) (hM : MergeStepOK c base fuelR)
+    (KO : KindOracle) (B : NodeId) (hv : ViewIdsBelow B c.view) (hk : ViewKinds KO B c)
+    (hICEk : ICEFromKinds c base KO B) (hsa2 : 2 ≤ c.p.splitAbove) (hcap : 1 ≤ c.p.mergeMax)
+    (hpos : 0 < c.i) (hvg : ViewGood B c) (hkv : ViewKlongsWf c.p c.view) (top0 : Top)
+    (hB : PutBase c base B) (w0 : W) (k0 : Key) :
+    ∀ fuel h merged v, DelInvJ c base w0 k0 fuelR KO B B v → PutBook c B top0 v →
+      RWP (mergeUp key g fuel h merged) (mergeUpChk key g fuel h merged) c v :=
+  fun fuel h merged v hJ hb => rwp_of_rwpc (rwp_mergeUp_of_JW key g c base hvc fuelR hfR (fun _ => True)
+    (fun _ _ _ _ => trivial) (mergeStepOKW_of c base fuelR _ hM) KO B hv hk hICEk hsa2 hcap hpos hvg hkv
+    top0 hB w0 k0 fuel h merged v (fun _ => hJ) hb) (fun _ => trivial)
 /-! ## The heights through a merge of the loop -/
 
 /-- A program that runs as one that keeps P keeps P. -/
@@ -263,16 +301,24 @@ theorem putKv_del_eqP (key : Key) : putKv (.del key) = putKvDP afterDelete key :
   simp only [putSegs_none_eqP]
 
 set_option maxHeartbeats 3200000 in
-/-- `OpDelChk8OKR` holds: at the deletes of the runs of R, at each call of
+/-- `OpDelChk8OKR` given that the merges' loop runs as its checked copy from the states
+with `DelInvJ` and the books (`hMC`; bergdb 025-05): at each call of
 `afterDelete`, the state has `DelHoleJ` (the leaf's call as in
 `opDelChk6OKR_of_chk7`, the upward delete's call as in `opDelChk7OKR_of_chk8`),
-where the merges' loop runs as its checked copy (`rwp_mergeUp_of_J`). -/
-theorem opDelChk8OKR_holds (p : Params) (R : Struct BVal → Time → Prop) (hM4 : 4 ≤ p.M)
-    (hsa2 : 2 ≤ p.splitAbove) (hcap : 1 ≤ p.mergeMax) (hm : p.merges = true)
+where the merges' loop runs as its checked copy. -/
+theorem opDelChk8OKR_of_mergeChk (p : Params) (R : Struct BVal → Time → Prop) (hM4 : 4 ≤ p.M)
+    (hsa2 : 2 ≤ p.splitAbove) (hm : p.merges = true)
     (hRL : ∀ P t, R P t → RunLinksOK p P t) (hRP : ∀ P t, R P t → PointersOK P)
     (hRK : ∀ P t, R P t → KindsAllOK p P) (hRH : ∀ P t, R P t → HeightAllOK p P t)
     (htb : TakeBelowFuelDelOK p)
-    (hMS : ∀ ts, MergeStepOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1)) : OpDelChk8OKR p R := by
+    (hMC : ∀ ts tx, Within p (ts ++ [tx]) → R (treeRun p ts) ts.length → ∀ (top : Top) (w : W),
+      PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w →
+      SegFits (wNode p (viewOf (treeRun p ts)) w) (ts.length + 1) (p.fuel - 1) w.top.rootKey →
+      ∀ (k : Key) (g h : Nat) (v' : W),
+      DelInvJ (ctxOf p ts) (viewOf (treeRun p ts)) w k (p.fuel + 1) (kindOracleOf p (treeRun p ts))
+        tx.base tx.base v' → PutBook (ctxOf p ts) tx.base top v' →
+      RWP (mergeUp k g (ctxOf p ts).p.fuel h false) (mergeUpChk k g (ctxOf p ts).p.fuel h false)
+        (ctxOf p ts) v') : OpDelChk8OKR p R := by
   intro ts tx hw hr z top hz htop pre key post hs r w hpre hI hRO hLC hH hJ r' v he
   have hM : 2 ≤ p.M := by omega
   have hB := putBase_of_run p ts tx hw (hRL _ _ hr)
@@ -296,15 +342,11 @@ theorem opDelChk8OKR_holds (p : Params) (R : Struct BVal → Time → Prop) (hM4
       (hRP _ _ hr) hb hi.cache hun
   have hC := upCascJ2OKHGJ_of_noU (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) tx.base
     tx.base (htOracleOf p (treeRun p ts)) rfl (upCascFitsOKR_of _ _ _ _ _ hvo hbase hHb (by simp [ctxOf]))
-  have hfR : 2 ≤ p.fuel + 1 := by unfold Params.fuel; omega
   have hmu : ∀ (k : Key) (g h : Nat) (v' : W),
       DelInvJ (ctxOf p ts) (viewOf (treeRun p ts)) w k (p.fuel + 1) (kindOracleOf p (treeRun p ts))
         tx.base tx.base v' → PutBook (ctxOf p ts) tx.base top v' →
       RWP (afterDelete k g h) (afterDeleteJ (fun _ => True) k g h) (ctxOf p ts) v' :=
-    fun k g h v' hJv hbv => rwp_afterDelete_T k g h _ v' (rwp_mergeUp_of_J k g (ctxOf p ts) _
-      (viewCoherent_ctxOf p ts) (p.fuel + 1) hfR (hMS ts) _ tx.base hv hk hICEk
-      (by simpa [ctxOf] using hsa2) (by simpa [ctxOf] using hcap) hpos hB.good hB.wf top hB w k _ h false v'
-      hJv hbv)
+    fun k g h v' hJv hbv => rwp_afterDelete_T k g h _ v' (hMC ts tx hw hr top w hI hF k g h v' hJv hbv)
   rw [putKv_del_eqP, putKvDP_eqG, deleteUpwardP_eq2] at he
   unfold putKvDelChk8
   rw [putKvDP_eqG, deleteUpwardP_eq2]
@@ -379,6 +421,34 @@ theorem opDelChk8OKR_holds (p : Params) (R : Struct BVal → Time → Prop) (hM4
       (fun g h v hJv hbv => hmu _ g h v hJv hbv)
       L n P w3 hL hn hnl hr03 hJ3 hp3' hlinkP hXD hlkX hne hall hLr
 
+/-- `OpDelChk8OKR` holds: at the deletes of the runs of R, at each call of
+`afterDelete`, the state has `DelHoleJ` (the leaf's call as in
+`opDelChk6OKR_of_chk7`, the upward delete's call as in `opDelChk7OKR_of_chk8`),
+where the merges' loop runs as its checked copy (`rwp_mergeUp_of_J`). -/
+theorem opDelChk8OKR_holds (p : Params) (R : Struct BVal → Time → Prop) (hM4 : 4 ≤ p.M)
+    (hsa2 : 2 ≤ p.splitAbove) (hcap : 1 ≤ p.mergeMax) (hm : p.merges = true)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t) (hRP : ∀ P t, R P t → PointersOK P)
+    (hRK : ∀ P t, R P t → KindsAllOK p P) (hRH : ∀ P t, R P t → HeightAllOK p P t)
+    (htb : TakeBelowFuelDelOK p)
+    (hMS : ∀ ts, MergeStepOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1)) : OpDelChk8OKR p R := by
+  refine opDelChk8OKR_of_mergeChk p R hM4 hsa2 hm hRL hRP hRK hRH htb ?_
+  intro ts tx hw hr top w _ _ k g h v' hJv hbv
+  have hM : 2 ≤ p.M := by omega
+  have hfR : 2 ≤ p.fuel + 1 := by unfold Params.fuel; omega
+  have hB := putBase_of_run p ts tx hw (hRL _ _ hr)
+  have hfresh : ∀ q ∈ treeRun p ts, q.1 < tx.base := by
+    have := (hw.2 ts.length (by simp)).1
+    simpa using this
+  have hv : ViewIdsBelow tx.base (ctxOf p ts).view :=
+    viewIdsBelow_rootless _ _ (viewIdsBelow_view p (treeRun p ts) ts.length tx.base hfresh)
+  have hk : ViewKinds (kindOracleOf p (treeRun p ts)) tx.base (ctxOf p ts) :=
+    viewKinds_of p (treeRun p ts) ts.length tx.base hfresh (treeRun_timesLE p ts) (hRP _ _ hr) (hRK _ _ hr)
+  have hICEk : ICEFromKinds (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) tx.base :=
+    fun v hb hi hun => innerChildren_of_kinds p (treeRun p ts) tx.base (ctxOf p ts) v rfl (hRK _ _ hr)
+      (hRP _ _ hr) hb hi.cache hun
+  exact rwp_mergeUp_of_J k g (ctxOf p ts) _ (viewCoherent_ctxOf p ts) (p.fuel + 1) hfR (hMS ts) _ tx.base hv hk
+    hICEk (by simpa [ctxOf] using hsa2) (by simpa [ctxOf] using hcap) (by simp [ctxOf]) hB.good hB.wf top hB w k
+    _ h false v' hJv hbv
 /-! ## The top theorem without `hchk` -/
 
 /-- `invGetScanOK_merges_noU` without `hchk5`: every check of the checked
