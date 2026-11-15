@@ -125,6 +125,14 @@ provers' branches and reports are in
   hU, hMSF, hCoF), where `hchk6` is `hchk5` without `checkRoot`, with
   DelInvJ and the books at afterDelete's calls stated as a check. Left
   in `hchk6`: carrying DelInvJ, and the merge's `checkFree`.
+* 09:56 hu LANDED 3f696db6 (53a7f745 merged with 62e55741; the merged
+  tree's gate PASS): 025-04's steps 1 to 5, `hU` out of the joint route.
+  `invGetScanOK_merges_noU` has the premises hp, hth, hchk5, htb, d4,
+  l4, hMSF, hCoF; checked beyond the gate: audited, on the standard
+  axioms, the trusted closure unchanged with it, and its statement is
+  `invGetScanOK_merges`'s without exactly the `hU` premise. The old top
+  theorem is now a corollary of it. hu goes on with step 6 (the
+  NoOutside route).
 
 
 ## 8. Outcome
