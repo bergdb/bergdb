@@ -709,4 +709,20 @@ family, as step 1, about 600 lines added and 150 removed.
   `CollapseFitsOK`. The stop rule did not apply: no step lemma asked for
   the fit other than at its end.
 
-Next: steps 3 to 5 in order (3: `DelStepsQdLJ` over I), then step 6.
+Gated: edb53562, gate-2 PASS.
+
+2026-11-15, 13:10 to 13:20. Part 1, step 3 (fit): the joint induction's
+tree family, as step 1. `DelStepsCaseQdG` (DelStepsTree.lean; I gives
+`QdW`, `PutInv` and the ranges, which speak of no fuel) and
+`DelStepsCaseQdJG`, `DelStepsQdLJG` (HeightsFillHolder.lean), their cases
+over I and `delStepsQdLJ_of_openR_noUG`; `opCaseOKJ_treeInvRange_of_qdW`
+(CollapseCommuteRun.lean) has the old consumer's split, which is now its
+corollary; FuelNext.lean: `opCaseOKJ_qdW_delMergeA` and
+`opCaseOKJ_treeInvRange_delMergeA`, with no `MergeStepOK` and no
+`CollapseFitsOK`. One surprise: NoOutsideRun3.lean stopped building,
+since 025-03's `n_wrap` wraps the lemmas that the named lemmas' proofs
+use, and `delStepsCaseQd_fullH`, now a corollary, no longer uses
+`delFullFitsOKR_run`; one line in NoOutsideBase.lean wraps it by name
+(`n_wrap_these`), no statement changed.
+
+Next: step 4 (`DelStepsCaseDOK` over I), then step 5 and step 6.

@@ -450,4 +450,58 @@ theorem runTreeQ_of_mergesSA (p : Params) (hM : 2 ≤ p.M) (hsa : 2 ≤ p.splitA
     (opJ2Case_delMergeA p _ _ hDS (fun _ _ _ h => h.1.1.1.1) (fun _ _ _ h => h.2.1) hsa hcap
       (fun _ _ h => hQP _ _ h.2.2) (fun _ _ h => hQK _ _ h.2.2))
 
+/-! ## The joint induction's tree family (step 3) -/
+
+/-- `DelInvA` gives `QdW` (`PutInv`, the ranges), which speaks of no fuel. -/
+theorem qdW_of_delInvA (p : Params) (ts : List Tx) (w0 : W) (key : Key) (KO : KindOracle) (BK : NodeId)
+    (v : W) (h : DelInvA (ctxOf p ts) (viewOf (treeRun p ts)) w0 key KO BK v) : QdW p ts v := by
+  have hv := h (max ((ctxOf p ts).p.fuel + 1) (v.next + 1)) (Nat.le_max_left _ _)
+    (Nat.lt_of_lt_of_le (Nat.lt_succ_self _) (Nat.le_max_right _ _))
+  exact ⟨hv.1.1, hv.1.2.2.1⟩
+
+/-- The joint induction's tree family at `DelInvA`. -/
+abbrev DelStepsQdLJA (p : Params) (R : Struct BVal → Time → Prop) : Prop :=
+  DelStepsQdLJG p R (fun ts tx w key v => DelInvA (ctxOf p ts) (viewOf (treeRun p ts)) w key
+    (kindOracleOf p (treeRun p ts)) tx.base v)
+
+/-- `QdW` after a delete with the merges (`opCaseOKJ_qdW_delMergeRLC`), from the tree
+family at `DelInvA`, with no `MergeStepOK` and no `CollapseFitsOK`. -/
+theorem opCaseOKJ_qdW_delMergeA (p : Params) (R : Struct BVal → Time → Prop) (hS : DelStepsQdLJA p R)
+    (hsa2 : 2 ≤ p.splitAbove) (hcap : 1 ≤ p.mergeMax)
+    (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P) :
+    OpCaseOKJ p R (fun ts _ _ w' => QdW p ts w') DelMergeCaseL := by
+  intro ts tx hw hr z top hz htop pre op post hops r w hpre hH hI hRO hP
+  obtain ⟨⟨key, hop, hmerges⟩, hLCw⟩ := hP
+  have hF0 := segFits_of_htStart p ts tx w hH.1
+  have hfresh : ∀ q ∈ treeRun p ts, q.1 < tx.base := by
+    have := (hw.2 ts.length (by simp)).1
+    simpa using this
+  have hK := hRK _ _ hr
+  have hv : ViewIdsBelow tx.base (ctxOf p ts).view :=
+    viewIdsBelow_rootless _ _ (viewIdsBelow_view p (treeRun p ts) ts.length tx.base hfresh)
+  have hk : ViewKinds (kindOracleOf p (treeRun p ts)) tx.base (ctxOf p ts) :=
+    viewKinds_of p (treeRun p ts) ts.length tx.base hfresh (treeRun_timesLE p ts) (hRP _ _ hr) hK
+  have hICEk : ICEFromKinds (ctxOf p ts) (viewOf (treeRun p ts)) (kindOracleOf p (treeRun p ts)) tx.base :=
+    fun v hb hi hun => innerChildren_of_kinds p (treeRun p ts) tx.base (ctxOf p ts) v rfl hK
+      (hRP _ _ hr) hb hi.cache hun
+  have hpos : 0 < (ctxOf p ts).i := by simp [ctxOf]
+  exact hS ts tx hw hr z top hz htop pre op post hops r w hpre hH hI hRO hF0 key hop ⟨⟨key, hop, hmerges⟩, hLCw⟩
+    (fun v hv' => delInvA_of_delInv (ctxOf p ts) _ w key _ _ v hI hF0 hv')
+    (fun v hv' => qdW_of_delInvA p ts w key _ _ v hv')
+    (fun g h v hv' => writerWP_afterDelete_delA key g h (ctxOf p ts) _ (viewCoherent_ctxOf p ts) hpos
+      _ _ hv hk hICEk hsa2 hcap w key v hv')
+    (fun g h merged v hv' => writerWP_mergeUp_delA key g (ctxOf p ts) _ (viewCoherent_ctxOf p ts) hpos
+      _ _ hv hk hICEk hsa2 hcap w key p.fuel h merged v hv')
+    (fun seg v hv' => writerWP_collapseRoot_delA key seg (ctxOf p ts) _ (viewCoherent_ctxOf p ts) w key
+      _ _ hv hk hICEk hsa2 v hv')
+
+/-- The tree, `PutInv` and the ranges after a delete with the merges
+(`opCaseOKJ_treeInvRange_delMergeRLC`), with no `MergeStepOK` and no `CollapseFitsOK`. -/
+theorem opCaseOKJ_treeInvRange_delMergeA (p : Params) (R : Struct BVal → Time → Prop)
+    (hS : DelStepsQdLJA p R) (hsa2 : 2 ≤ p.splitAbove) (hcap : 1 ≤ p.mergeMax)
+    (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P) :
+    OpCaseOKJ p R (QTree p) DelMergeCaseL ∧ OpCaseOKJ p R (QPutInv p) DelMergeCaseL ∧
+      OpCaseOKJ p R (QRange p) DelMergeCaseL :=
+  opCaseOKJ_treeInvRange_of_qdW p R (opCaseOKJ_qdW_delMergeA p R hS hsa2 hcap hRP hRK)
+
 end SIS.Tree

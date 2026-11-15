@@ -642,5 +642,8 @@ n_wrap_these SIS.Tree.liveCase_putLeafRoom SIS.Tree.liveCase_putLeafFull SIS.Tre
   SIS.Tree.liveCase_putNewSegsRoom SIS.Tree.liveCase_putNewSegFull SIS.Tree.deadCase_putLeafRoom
   SIS.Tree.deadCase_putLeafFull SIS.Tree.deadCase_putNewSeg1Room SIS.Tree.deadCase_putNewSegsRoom
   SIS.Tree.deadCase_putNewSegFull
+-- a lemma that `n_wrap` found in the old delete cases before they became corollaries of their
+-- forms over an invariant (bergdb 025-05); NoOutsideRun3.lean uses it in N
+n_wrap_these SIS.Tree.delFullFitsOKR_run
 
 end SIS.Tree

@@ -114,14 +114,12 @@ theorem opCaseOKJ_qdW_delMergeRLC (p : Params) (R : Struct BVal → Time → Pro
     (fun seg v hv' => writerWP_collapseRoot_delC key seg (ctxOf p ts) _ (viewCoherent_ctxOf p ts)
       (p.fuel + 1) hf2 (hC ts) w key _ _ hv hk hICEk hsa2 v hv')
 
-theorem opCaseOKJ_treeInvRange_delMergeRLC (p : Params) (R : Struct BVal → Time → Prop) (hS : DelStepsQdLJ p R)
-    (hM : ∀ ts, MergeStepOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hC : ∀ ts, CollapseFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
-    (hsa2 : 2 ≤ p.splitAbove) (hcap : 1 ≤ p.mergeMax)
-    (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P) :
+/-- The tree, `PutInv` and the ranges after a delete with the merges, from `QdW`
+after it (bergdb 025-05: the consumers of the tree family take this). -/
+theorem opCaseOKJ_treeInvRange_of_qdW (p : Params) (R : Struct BVal → Time → Prop)
+    (h : OpCaseOKJ p R (fun ts _ _ w' => QdW p ts w') DelMergeCaseL) :
     OpCaseOKJ p R (QTree p) DelMergeCaseL ∧ OpCaseOKJ p R (QPutInv p) DelMergeCaseL ∧
       OpCaseOKJ p R (QRange p) DelMergeCaseL := by
-  have h := opCaseOKJ_qdW_delMergeRLC p R hS hM hC hsa2 hcap hRP hRK
   refine ⟨?_, ?_, ?_⟩
   · intro ts tx hw hr z top hz htop pre op post hops r w hpre hH hI hRO hP
     exact writerWP_mono (h ts tx hw hr z top hz htop pre op post hops r w hpre hH hI hRO hP)
@@ -133,6 +131,14 @@ theorem opCaseOKJ_treeInvRange_delMergeRLC (p : Params) (R : Struct BVal → Tim
     exact writerWP_mono (h ts tx hw hr z top hz htop pre op post hops r w hpre hH hI hRO hP)
       (fun _ w' hq _ => hq.2)
 
+theorem opCaseOKJ_treeInvRange_delMergeRLC (p : Params) (R : Struct BVal → Time → Prop) (hS : DelStepsQdLJ p R)
+    (hM : ∀ ts, MergeStepOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hC : ∀ ts, CollapseFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hsa2 : 2 ≤ p.splitAbove) (hcap : 1 ≤ p.mergeMax)
+    (hRP : ∀ P t, R P t → PointersOK P) (hRK : ∀ P t, R P t → KindsAllOK p P) :
+    OpCaseOKJ p R (QTree p) DelMergeCaseL ∧ OpCaseOKJ p R (QPutInv p) DelMergeCaseL ∧
+      OpCaseOKJ p R (QRange p) DelMergeCaseL :=
+  opCaseOKJ_treeInvRange_of_qdW p R (opCaseOKJ_qdW_delMergeRLC p R hS hM hC hsa2 hcap hRP hRK)
 /-! ## The take-back's steps, the heights and the fill at the start from S -/
 
 end SIS.Tree
