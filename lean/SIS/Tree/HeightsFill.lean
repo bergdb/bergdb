@@ -19,6 +19,7 @@ So `hchk` is needed only at the deletes whose start has the fill, `PutInv`, the
 ranges and the heights, at the induction's runs (`OpDelChk2OKL`):
 `opDelChk2OK_of_chk2L` gives `OpDelChk2OK` from it and the other premises of the
 top theorem, and `invGetScanOK_merges_chkL` is the top theorem with it.
+HeightsFillStop.lean proves its two checks of the fill.
 -/
 import SIS.Tree.LatestTop
 import SIS.Tree.TakenPut

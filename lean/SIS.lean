@@ -76,6 +76,7 @@ import SIS.Tree.MergeOpBoundProof
 import SIS.Tree.MergeProofBundle
 import SIS.Tree.LatestTopNoOutside
 import SIS.Tree.HeightsFill
+import SIS.Tree.HeightsFillStop
 import SIS.Tree.PremisesFalse
 import SIS.Tree.PremisesTrue
 import SIS.Tree.MadeForOld
