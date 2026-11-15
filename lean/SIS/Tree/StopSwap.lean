@@ -214,14 +214,20 @@ set_option maxHeartbeats 4000000 in
 theorem swp_handleFullWith_zero (up : NodeId → List (Nat × NodeId) → M Unit)
     (ins : List (Nat × NodeId)) (last : KNode) (compact : Bool) {c : Ctx} {u : W}
     (hJ : RJ x nx path0 u) (hft : m.firstTime = nx.firstTime) (hleaf : m.leaf = nx.leaf)
-    (hprev : m.toPrev (c.i - 1) = nx.toPrev (c.i - 1)) :
+    (hprev : nx.firstTime ≠ some c.i → m.toPrev (c.i - 1) = nx.toPrev (c.i - 1)) :
     SWP x m (handleFullWith up 0 x ins last compact) c u := by
   unfold handleFullWith
   simp only []
   refine swp_bind_xwp (xwp_read ?_)
   refine swp_getNode_bind _ hJ.1 (by rw [hft, hleaf]) ?_
-  cases hnt : (nx.firstTime == some c.i) <;>
-    simp only [hnt, Bool.not_true, Bool.not_false, Bool.false_eq_true, ↓reduceIte] <;>
+  cases hnt : (nx.firstTime == some c.i)
+  · have hp : m.toPrev (c.i - 1) = nx.toPrev (c.i - 1) := hprev (by simpa using hnt)
+    simp only [hnt, Bool.not_false, Bool.false_eq_true, ↓reduceIte]
+    repeat' (first
+      | swpStep
+      | (simp only [Bool.false_eq_true, ↓reduceIte])
+      | split)
+  · simp only [hnt, Bool.not_true, Bool.false_eq_true, ↓reduceIte]
     repeat' (first
       | swpStep
       | (simp only [Bool.false_eq_true, ↓reduceIte])
@@ -236,14 +242,21 @@ theorem swp_handleFullWith_succ (up : NodeId → List (Nat × NodeId) → M Unit
     {c : Ctx} {u : W} (hJ : RJ x nx path0 u) (hpe : path0[e]? = some (a, q)) (hq : q ≠ x)
     (hup : ∀ more u', RJ x nx path0 u' → XWP x m (up q more) c u' (fun _ v => RJ x nx path0 v))
     (hft : m.firstTime = nx.firstTime) (hleaf : m.leaf = nx.leaf)
-    (hprev : m.toPrev (c.i - 1) = nx.toPrev (c.i - 1)) :
+    (hprev : nx.firstTime ≠ some c.i → m.toPrev (c.i - 1) = nx.toPrev (c.i - 1)) :
     SWP x m (handleFullWith up (e + 1) x ins last compact) c u := by
   unfold handleFullWith
   simp only []
   refine swp_bind_xwp (xwp_read ?_)
   refine swp_getNode_bind _ hJ.1 (by rw [hft, hleaf]) ?_
-  cases hnt : (nx.firstTime == some c.i) <;>
-    simp only [hnt, Bool.not_true, Bool.not_false, Bool.false_eq_true, ↓reduceIte] <;>
+  cases hnt : (nx.firstTime == some c.i)
+  · have hp : m.toPrev (c.i - 1) = nx.toPrev (c.i - 1) := hprev (by simpa using hnt)
+    simp only [hnt, Bool.not_false, Bool.false_eq_true, ↓reduceIte]
+    repeat' (first
+      | swpStep
+      | (refine swp_bind_xwp (xwp_mono (hup _ _ (by assumption)) ?_); intro _ _ _)
+      | (simp only [Bool.false_eq_true, ↓reduceIte])
+      | split)
+  · simp only [hnt, Bool.not_true, Bool.false_eq_true, ↓reduceIte]
     repeat' (first
       | swpStep
       | (refine swp_bind_xwp (xwp_mono (hup _ _ (by assumption)) ?_); intro _ _ _)
@@ -269,12 +282,13 @@ end
 /-- The split of x reads of x's node only its first time, its leaf flag and its
 version before the transaction: every successful run of `handleFull` on x from
 the state with x's node set to m is a run from u, where x's node is n, with the
-same result and the same state, if m and n agree in those three. -/
+same result and the same state, if m and n agree in those three (the last needed only for a node of before the
+transaction). -/
 theorem handleFull_swap (x : NodeId) (n m : KNode) (depth : Nat) (last : KNode) (compact : Bool)
     (c : Ctx) (u : W) (hx : u.nodes.lookup x = some n) (hxn : x < u.next)
     (hpath : ∀ i e, i < depth → u.path[i]? = some e → e.2 ≠ x)
     (hft : m.firstTime = n.firstTime) (hleaf : m.leaf = n.leaf)
-    (hprev : m.toPrev (c.i - 1) = n.toPrev (c.i - 1)) :
+    (hprev : n.firstTime ≠ some c.i → m.toPrev (c.i - 1) = n.toPrev (c.i - 1)) :
     ∀ r w2, handleFull depth x last compact c (setX x m u) = .ok (r, w2) →
       handleFull depth x last compact c u = .ok (r, w2) := by
   have hJ : RJ x n u.path u := ⟨hx, hxn, rfl⟩
@@ -297,7 +311,7 @@ theorem handleFullWith_root_swap (up : NodeId → List (Nat × NodeId) → M Uni
     (n m : KNode) (last : KNode) (compact : Bool)
     (c : Ctx) (u : W) (hx : u.nodes.lookup x = some n) (hxn : x < u.next)
     (hft : m.firstTime = n.firstTime) (hleaf : m.leaf = n.leaf)
-    (hprev : m.toPrev (c.i - 1) = n.toPrev (c.i - 1)) :
+    (hprev : n.firstTime ≠ some c.i → m.toPrev (c.i - 1) = n.toPrev (c.i - 1)) :
     ∀ r w2, handleFullWith up 0 x [] last compact c (setX x m u) = .ok (r, w2) →
       handleFullWith up 0 x [] last compact c u = .ok (r, w2) :=
   swp_handleFullWith_zero u.path up [] last compact ⟨hx, hxn, rfl⟩ hft hleaf hprev
@@ -308,7 +322,7 @@ theorem writerWP_handleFull_swap (x : NodeId) (n m : KNode) (depth : Nat) (last 
     (compact : Bool) (c : Ctx) (u : W) (post : Unit → W → Prop) (hx : u.nodes.lookup x = some n)
     (hxn : x < u.next) (hpath : ∀ i e, i < depth → u.path[i]? = some e → e.2 ≠ x)
     (hft : m.firstTime = n.firstTime) (hleaf : m.leaf = n.leaf)
-    (hprev : m.toPrev (c.i - 1) = n.toPrev (c.i - 1))
+    (hprev : n.firstTime ≠ some c.i → m.toPrev (c.i - 1) = n.toPrev (c.i - 1))
     (h : WriterWP (handleFull depth x last compact) c u post) :
     WriterWP (handleFull depth x last compact) c (setX x m u) post := by
   intro r w2 h2
@@ -318,7 +332,7 @@ theorem writerWP_handleFullWith_root_swap (up : NodeId → List (Nat × NodeId) 
     (x : NodeId) (n m : KNode) (last : KNode)
     (compact : Bool) (c : Ctx) (u : W) (post : Unit → W → Prop) (hx : u.nodes.lookup x = some n)
     (hxn : x < u.next) (hft : m.firstTime = n.firstTime) (hleaf : m.leaf = n.leaf)
-    (hprev : m.toPrev (c.i - 1) = n.toPrev (c.i - 1))
+    (hprev : n.firstTime ≠ some c.i → m.toPrev (c.i - 1) = n.toPrev (c.i - 1))
     (h : WriterWP (handleFullWith up 0 x [] last compact) c u post) :
     WriterWP (handleFullWith up 0 x [] last compact) c (setX x m u) post := by
   intro r w2 h2

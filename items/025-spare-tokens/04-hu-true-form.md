@@ -1,7 +1,8 @@
 # 025-04. The true form of hU: the plan
 
-Created 2026-11-15 by Frans Lundberg. Status: ready (the plan written
-2026-11-15, 09:19; route (b), additions only).
+Created 2026-11-15 by Frans Lundberg. Status: steps 1 to 5 done
+2026-11-15, 09:50 (route (b)): the joint route's top theorem without `hU`,
+`invGetScanOK_merges_noU`; section 9. Step 6 open.
 
 `hU` (`UpUnlinkTreeOK`), a premise of the key tree's top theorem, is false
 as stated (`upUnlinkTreeOK_false`, SIS/Tree/PremisesFalse.lean): it speaks
@@ -466,3 +467,59 @@ start: every step is an addition.
 2026-11-15. The plan written (sections 1 to 8) by the planning agent of
 coord-1114; the run checks of section 5 made; step 1's statements
 type-checked. No Lean file of the repo changed. No step started.
+
+2026-11-15, 09:20 to 09:50, prover "hu" of coord-1115 (plan 006-27).
+Steps 1 to 5 of section 6 proved, on branch proofs-hu. No statement
+changed; no premise changed. The stop rule of step 2 did not apply: every
+hypothesis of the split's lemmas holds at the state with S'.
+
+- **Step 1, the swap** (StopSwap.lean, 341 lines). `SWP x m f c u`: every
+  successful run of f from u with x's node set to m is a run from u, with
+  the same result and the same state. The walk is root collapse's (`XWP`)
+  until x is written, then the states are equal (`swp_putNode_bind`,
+  `upsert_upsert`); x's node is read at the start for its first time and
+  leaf flag (`swp_getNode_bind`, the rest of the split rewritten to the
+  other node) and at the end for its version before the transaction
+  (`swp_final`). `handleFull_swap` and `writerWP_handleFull_swap` (any
+  depth, the cascade above by `xwp_appendKlongs`),
+  `writerWP_handleFullWith_root_swap` (the space root, any `up`), and
+  `setX_self` (with `CacheUnique`). Differences from SwapStmt.lean: the
+  version before the transaction is asked only for a node of before the
+  transaction (`n.firstTime ≠ some c.i →`), since the split's last step runs
+  only then (at time 0 the stop node's first time is the transaction's,
+  as its times are at most 0).
+- **S'**, the stop node with its bitmap, is `S.add c.i (.del ...)`, the
+  first form of `BitmapOf`, whichever branch the writer takes; its facts
+  come from the room case's lemmas (`KNode.add_delete_wf`,
+  `add_delete_live_lookup`, `bitmapOf_prefix`, `bitmapOf_firstTime`,
+  `bitmapOf_lastLive`). Its first time equals S's because S has a time
+  klong first (`KNode.firstTime_some_of_live`, new: a node with a live
+  klong and well-formed klongs). The overlay has one entry per id from the
+  books (`cacheUnique_of_book`), so the state with S' and S again is the
+  writer's.
+- **Step 2** (StopSwapRoot.lean): `writerWP_upCasc_root_j2S`, the
+  take-back at the space root, with `CacheUnique v` in place of `hT2`.
+- **Steps 3 and 4** (StopSwapBelow.lean): `writerWP_upCasc_below_delS`
+  and `writerWP_upCasc_below_j2S`, the same below the space root; the
+  split's postcondition, stated of the state with S', is moved back to the
+  writer's state's names (`updN_updN_same`: the tree with the last version
+  is the same from both states).
+- **The consumers** (HeightsFillHolder.lean): `upCascOKHGJ_of_noU`,
+  `upCascJ2OKHGJ_of_noU` (`CacheUnique` from `KdJP`'s books) and the eight
+  lemmas of section 2.3 with `_noU`; each old lemma is now a one-line
+  corollary of its `_noU` twin under its old statement, so no proof is kept
+  twice there.
+- **Step 5** (CollapseCommuteTop.lean): `invGetScanOK_merges_noU`, the top
+  theorem's proof with the four lemmas without `hU`; premises `hp`, `hth`,
+  `hchk5`, `htb`, `d4`, `l4`, `hMSF`, `hCoF`. `invGetScanOK_merges` is its
+  corollary under its old statement (`hU` unused).
+- **Size**: about 2,050 lines added, more than section 6's estimate. Steps
+  2 to 4 are adapted copies of `writerWP_upCasc_root_j2`,
+  `writerWP_upCasc_below_delT` and `writerWP_upCasc_below_j2T` (about
+  1,100 lines): the old ones cannot be corollaries of the new, which take
+  the books' `CacheUnique` in place of the tree. The old three are still
+  used by DelStepsGh.lean (the NoOutside route, step 6); when that route
+  leaves them too, they can go (the close step).
+- **Left**: step 6 (`hU` out of `invGetScanOK_merges_noOutside`); the
+  premises `hchk5`, `htb`, `d4`, `l4`, `hMSF`, `hCoF` (section 8).
+

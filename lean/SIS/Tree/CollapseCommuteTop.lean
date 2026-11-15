@@ -14,6 +14,9 @@ of the premises of the top theorem of 2026-11-14 (025-02):
 * `hchk` is narrowed to the merge's and the root collapse's holder checks at the
   deletes whose start has the fill, `PutInv`, the ranges, the heights and the
   take-back's node facts (`OpDelChk5OKL`).
+`invGetScanOK_merges_noU` is the same without `hU` (025-04, route (b)): the stop
+node's split runs the same from the state with its bitmap, a tree with no premise
+(`handleFull_swap`, StopSwap.lean); `invGetScanOK_merges` is its corollary.
 LatestTop.lean has the lemmas of the induction's steps; the route for the runs with
 `NoOutside` is `invGetScanOK_merges_noOutside` (LatestTopMadeFor.lean).
 -/
@@ -28,18 +31,18 @@ open SIS SIS.Check
 
 set_option maxHeartbeats 3200000 in
 /-- TP7, TP10 and TP11, and the latest time's get and scan, for the parameters
-of `MergeParamsOK`, from the premises `hchk5`, `htb`, `d4`, `l4`, `hU`, `hMSF` and
-`hCoF` (024-12, section 1): the joint route (`jointHtJ_reachedJ`); the reading's
+of `MergeParamsOK`, from the premises `hchk5`, `htb`, `d4`, `l4`, `hMSF` and `hCoF`
+(024-12, section 1; no `hU`: the stop node's split from the state with its bitmap,
+`handleFull_swap`, 025-04): the joint route (`jointHtJ_reachedJ`); the reading's
 route by `opGetCaseOK_delMergeC` and `opCaseOKJ_treeInvRange_delMergeRLC`, the
 take-back's by `opJ2Case_delMergeRC`, `runTreeQ_of_mergesSC` and
 `replaceRootFullJ2OKC_run`. -/
-theorem invGetScanOK_merges (p : Params) (hp : MergeParamsOK p)
+theorem invGetScanOK_merges_noU (p : Params) (hp : MergeParamsOK p)
     (hth : 2 ≤ p.theta ∨ p.theta = 0)
     (hchk5 : OpDelChk5OKL p)
     (htb : TakeBelowFuelDelOK p)
     (d4 : OpCaseOK p (RunOK p) (QDead p) DelMergeDOpenCase)
     (l4 : OpCaseOK p (RunOK p) (QLive p) DelMergeOpenCase)
-    (hU : ∀ ts, UpUnlinkTreeOK (ctxOf p ts) (viewOf (treeRun p ts)))
     (hMSF : ∀ ts, MergeFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
     (hCoF : ∀ ts, CollapseFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1)) :
     InvPreserved p ∧ GetOK p ∧ ScanOK p ∧ LatestGetOK p ∧ LatestScanOK p := by
@@ -84,7 +87,7 @@ theorem invGetScanOK_merges (p : Params) (hp : MergeParamsOK p)
     (opCaseOK_putNewSeg_of_parts p _ _ (rangeCase_putNewSeg1Room p _ (by omega))
       (rangeCase_putNewSegsRoom p _ (by omega)) (rangeCase_putNewSegFull p _ hRL' (by omega) hsa))
   have hTIRJ := opCaseOKJ_treeInvRange_delMergeRLC p _
-    (delStepsQdLJ_of_openR p _ (by omega) hsa hRL' hRP' hRK' hRH' hU) hMS hCo hsa hcap hRP' hRK'
+    (delStepsQdLJ_of_openR_noU p _ (by omega) hsa hRL' hRP' hRK' hRH') hMS hCo hsa hcap hRP' hRK'
   have hSI : ∀ ts tx w, SJ p ts tx w → PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w :=
     fun _ _ _ h => h.1.1.1.1.1
   have hSV : ∀ ts tx w, SJ p ts tx w → LeafVals (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w :=
@@ -98,8 +101,8 @@ theorem invGetScanOK_merges (p : Params) (hp : MergeParamsOK p)
   have hSM : ∀ ts tx w, SJ p ts tx w → ∀ x o, w.madeFor.lookup x = some o → o < tx.base :=
     fun _ _ _ h => h.1.2.2
   have hDSJ : DelStepsJ2OK p (RunTreeQ p (LatestQD p)) (SJ p) :=
-    delStepsJ2OKS_of_openR p _ (SJ p) (by omega) hsa hRL' hRP' hRK' hSI hSV hSB hSR hSF hSM hRH'
-      (fun _ _ _ h => h.2.1) (fun _ _ _ h => h.2.2) hU
+    delStepsJ2OKS_of_openR_noU p _ (SJ p) (by omega) hsa hRL' hRP' hRK' hSI hSV hSB hSR hSF hSM hRH'
+      (fun _ _ _ h => h.2.1) (fun _ _ _ h => h.2.2)
   have hJ2O : OpJ2OK p (RunTreeQ p (LatestQD p)) (SJ p) :=
     opJ2OK_of_cases p _ _ (opJ2Case_putLeafRoom p _ _ hSI hSV)
       (opJ2Case_putLeafFull p _ _ hRL' hsa hSI hSV hSB hSR)
@@ -170,9 +173,9 @@ theorem invGetScanOK_merges (p : Params) (hp : MergeParamsOK p)
     (putInvStateOK_of_cases p _ hRL' hRT' hRI' hT hPI hO)
     (rangeStateOK_of_cases p _ hRL' hRT' hRI' hT hPI hO)
     hfitQ hMFS
-    (delStepsJ2OKJ_of_openR p _ (TakeS4 p) (by omega) hsa hRL' hRP' hRK'
+    (delStepsJ2OKJ_of_openR_noU p _ (TakeS4 p) (by omega) hsa hRL' hRP' hRK'
       (fun _ _ _ h => h.1.1.1.1) (fun _ _ _ h => h.1.1.1.2) (fun _ _ _ h => h.1.1.2)
-      (fun _ _ _ h => h.1.2) (fun _ _ _ h => h.2.1) (fun _ _ _ h => h.2.2) hRH' hht htb hU hLC)
+      (fun _ _ _ h => h.1.2) (fun _ _ _ h => h.2.1) (fun _ _ _ h => h.2.2) hRH' hht htb hLC)
     hMS hCo (replaceRootFullJ2OKC_run p hsa)
   have hW : ∀ ts tx, Within p (ts ++ [tx]) → RunOK p (treeRun p ts) ts.length →
       RunTreeQ p (LatestQD p) (treeRun p ts) ts.length :=
@@ -190,8 +193,24 @@ theorem invGetScanOK_merges (p : Params) (hp : MergeParamsOK p)
     (opCaseOK_of_within p _ _ hW _ _ (opCaseOK_of_any p _ _ _ hO))
     (opGetCaseOK_delMergeC p (RunOK p)
       (delStepsOK_of_within p (RunOK p) _ hW
-        (delStepsOKJ_of_open p _ (by omega) hsa hRL' hP hRK' hRH' hht htb hU hLC hJ2S hMFS))
+        (delStepsOKJ_of_open_noU p _ (by omega) hsa hRL' hP hRK' hRH' hht htb hLC hJ2S hMFS))
       hMS hCo hsa hcap (by omega) hP hfit)
   exact ⟨hinv, h.1, h.2, latestGetOK_of_getOK p h.1, latestScanOK_of_scanOK p h.2⟩
+
+set_option linter.unusedVariables false in
+/-- TP7, TP10 and TP11, and the latest time's get and scan, for the parameters
+of `MergeParamsOK`, from the premises `hchk5`, `htb`, `d4`, `l4`, `hU`, `hMSF` and
+`hCoF` (024-12, section 1): `invGetScanOK_merges_noU`, which does not need `hU`. -/
+theorem invGetScanOK_merges (p : Params) (hp : MergeParamsOK p)
+    (hth : 2 ≤ p.theta ∨ p.theta = 0)
+    (hchk5 : OpDelChk5OKL p)
+    (htb : TakeBelowFuelDelOK p)
+    (d4 : OpCaseOK p (RunOK p) (QDead p) DelMergeDOpenCase)
+    (l4 : OpCaseOK p (RunOK p) (QLive p) DelMergeOpenCase)
+    (hU : ∀ ts, UpUnlinkTreeOK (ctxOf p ts) (viewOf (treeRun p ts)))
+    (hMSF : ∀ ts, MergeFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1))
+    (hCoF : ∀ ts, CollapseFitsOK (ctxOf p ts) (viewOf (treeRun p ts)) (p.fuel + 1)) :
+    InvPreserved p ∧ GetOK p ∧ ScanOK p ∧ LatestGetOK p ∧ LatestScanOK p :=
+  invGetScanOK_merges_noU p hp hth hchk5 htb d4 l4 hMSF hCoF
 
 end SIS.Tree
