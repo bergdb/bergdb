@@ -95,5 +95,6 @@ import SIS.Tree.DelHole
 import SIS.Tree.DelHoleRoot
 import SIS.Tree.DelHoleLeaf
 import SIS.Tree.DelHoleClimb
+import SIS.Tree.DelMergeFree
 import SIS.Proof.TreeRoot
 import SIS.Proof.TreeInit
