@@ -220,16 +220,26 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
     `OpDelChk8OKL`: the writer's delete runs as `putKvDelChk8`, whose only check is, at each
     call of `afterDelete`, that the merges' loop from there runs as its copy with the merge's
     `checkFree`. `opDelChk7OKR_of_chk8` gives `OpDelChk7OKR` from it, and
-    `invGetScanOK_merges_chk8` is the top theorem: premises `hp`, `hth`, `hchk8`, `htb`, `d4`,
-    `l4`, `hMSF`, `hCoF`.
-  - Left in `hchk8`: the merge's `checkFree` only, at the calls of `afterDelete` (`hchk5`'s
-    merge check, tested on runs as `hchk` was: 2305 merge take-backs). Its way: at a call the
-    state has `DelHoleJ`, and the merges' loop keeps `DelInvJ` (`writerWP_mergeUp_delJ`), so
-    each merge starts with `TakeJ2`; the merged node's one live holder is its parent
-    (`liveHolder_unique`), which the merge rewrites or splits and then retargets; what is
-    missing is the merge's walk for the two copies (`merge` and `mergeChk` as
-    `mergeP mergeTail` and `mergeP mergeTailChk`, both `rfl`) with the parent's klongs after
-    `mergeParent`, also when it is full.
+    `invGetScanOK_merges_chk8` was the top theorem with it (landed fbce47ac; replaced by
+    `_free`, below).
+  - `hchk` gone (delj, 2026-11-15, `DelMergeFree.lean`, `DelMergeUp.lean`): the merge's
+    `checkFree` holds at every merge of the merges' loop from a call of `afterDelete` (`hchk5`'s
+    merge check, tested on runs as `hchk` was: 2305 merge take-backs). The argument looks ahead
+    to the merge's end (`MergeEnd`: the reached nodes untaken, `TtReachedN`, `OldBelowN`,
+    `TimesN`): a node kept to the end that held the taken-back node live would be reached there
+    and would reach it (`noHolder_end`); the nodes that the rest of the merge changes, its
+    parent and the other node merged, are seen at the check itself (`holderFree_of_end`,
+    `retarget_noHold`). The merge runs as its checked copy given its end (`rwpq_merge`: the
+    reads, then the tail from `PutInv`, `TakeJ2` and the path at the merge's start,
+    `rwpq_tailAt`, with `liveHolder_unique` for the parent; the last loop `rwpq_mergeLoop`, the
+    tail `rwpq_mergeTail`). The end comes from the merge's own results: `TakeJ2`
+    (`mergeStepJ2OKF_of_root`), the reached nodes untaken (`MergeStepOK`) and the times by the
+    books (`putBook_merge`, `putInvG_of_book`). The merges' loop for the two copies
+    (`rwp_mergeUp_of_J`, the walk of `writerWP_mergeUp_delJ`) then gives `OpDelChk8OKR` outright
+    (`opDelChk8OKR_holds`: the walks of `opDelChk6OKR_of_chk7` and `opDelChk7OKR_of_chk8` with
+    `afterDelete` as the call that runs). `invGetScanOK_merges_free` is the top theorem:
+    premises `hp`, `hth`, `htb`, `d4`, `l4`, `hMSF`, `hCoF`. Left of decision 2: `hMSF` and
+    `hCoF` in their true forms (open).
 - `hHL` gone (cost2, 2026-11-15, `HeightsFillHolder.lean`, `HeightsFillTop.lean`): the joint
   induction also carries the writer's tree and the take-back's node facts (`J2At`, putinv's
   `OpJ2OK` step with S the take-back's state facts, the heights and the fill:
