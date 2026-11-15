@@ -88,5 +88,7 @@ import SIS.Tree.MadeForOld
 import SIS.Tree.LatestTopMadeFor
 import SIS.Tree.CollapseCommute
 import SIS.Tree.CollapseCommuteStep
+import SIS.Tree.CollapseCommuteJ2
+import SIS.Tree.CollapseCommuteRun
 import SIS.Proof.TreeRoot
 import SIS.Proof.TreeInit
