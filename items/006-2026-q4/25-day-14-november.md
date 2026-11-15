@@ -186,6 +186,12 @@ Written 2026-11-15, 06:20, by coord-1114.
 
 ## 7. For Frans to decide
 
+Frans, 2026-11-15, 08:33: "1, 2, 3, 5, as you recommend. 4, walk me
+through the decisions. The planning for hU, run it with Fable 5.2 High."
+So: 1, a planning agent on Fable at high (025-04); 2, DelInvJ first,
+then `hMSF`'s and `hCoF`'s true forms; 3, a close step to one top
+theorem; 5, the night's decisions by rule stand; 4, walked through.
+
 1. **`hU`, false as stated.** Its true form needs an invariant on the
    nodes a transaction leaves out; no one has found it. Recommended: a
    planning agent (xhigh) for that invariant before more provers; read

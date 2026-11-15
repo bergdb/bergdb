@@ -63,6 +63,9 @@ Files
   makes `hMSF` and `hCoF` corollaries; the trace checker run with a
   larger H to test the condition on Java's traces. Accepted by Frans
   (2026-11-14, 13:46); after 025-02's names step. Status: ready.
+* [025-04](04-hu-true-form.md). The true form of the premise `hU`, false
+  as stated: the invariant on the nodes a transaction leaves out, the
+  plan (Frans, 2026-11-15, 08:33). Status: open.
 
 
 Log
@@ -93,3 +96,5 @@ the Java and the comparison.
 "Yes, good. Go ahead.").
 
 2026-11-14. 025-03, F1 of 026-16, created (Frans accepted F1, 13:46).
+
+2026-11-15. 025-04, the plan for hU's true form, created (Frans, 08:33).
