@@ -276,6 +276,28 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
     p.fuel; `ht_replaceRoot` needs no holder, and `sbS_replaceRoot` gives the bound); left are
     `HtJ` at each replaceRoot, through the collapse's loop one replaceRoot at a time (not by
     `rwp_collapseRoot_chkJ`, which takes `CollapseFitsOK` itself), and the reading's walks.
+  - Plan for what is left of `hMSF` and `hCoF` (delj, 2026-11-15, 11:45). (1) The bound across a
+    delete's steps has no local invariant: a root that a step of the delete adds is at most
+    p.fuel high, but nothing local stops a later step of the same delete from splitting it (it
+    starts with three klongs; the cascades from below and a merge with it as the parent add
+    klongs). Two ways: a count of the klongs that a root made in the delete gets in the same
+    delete, against M, over the whole delete's walk; or the doom argument inside the operation,
+    as `htStart_reachedU` has it between operations: a node not taken back above p.fuel - 1
+    inside a delete of a committed transaction is outside, so it is taken back by the
+    transaction's end, by a later operation (then `htb` bounds it) or by the same delete, which
+    needs `htb` for the nodes the delete itself makes (a premise of `htb`'s kind). Neither was
+    started. (2) and (3) are one job: `MergeStepOK` and `CollapseFitsOK` are used only by the
+    obligations that the reading's walks (`DelStepsJ2OK`, `DelStepsQdLJ`, by the case lemmas
+    over `putKv`) take for `afterDelete`, `mergeUp` and `collapseRoot` at every `DelInvJ` state,
+    which has no heights, and by the `hchk` chain (`rwp_afterDelete_of_J`, `rwp_mergeUp_of_J`),
+    which uses them for the fit between steps. With the heights at the calls the obligations
+    follow from `mergeFits_of_htJ` and `collapseFits_of_htJ` and (1), by the loop of
+    `rwp_mergeUp_of_J` with the heights added (`ht_merge_of_J`). That needs the case lemmas, and
+    the lemmas over the delete's code that they use (about 100 statements in 42 files), for a
+    delete that gives the calls the heights: a copy for `putKvDP ad` with the obligations for
+    ad, and then a checked copy whose calls check the heights, shown at the runs by the walk of
+    `opDelChk7OKR_of_chk8`, which carries `KdHtJ` to the leaf and through the upward loop. That
+    is a restructure of the reading, not a step of today; it was not started.
 - `hHL` gone (cost2, 2026-11-15, `HeightsFillHolder.lean`, `HeightsFillTop.lean`): the joint
   induction also carries the writer's tree and the take-back's node facts (`J2At`, putinv's
   `OpJ2OK` step with S the take-back's state facts, the heights and the fill:
