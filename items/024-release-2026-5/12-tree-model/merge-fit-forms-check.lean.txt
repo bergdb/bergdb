@@ -5,22 +5,27 @@ Not part of the Lean project; run it from lean/:
   lake env lean ../items/024-release-2026-5/12-tree-model/merge-fit-forms-check.lean.txt
 
 A copy of fuel-inside-check.lean.txt (its runs, parameters and fit notes) that
-also notes, at each merge of the merges' loop and each step of root collapse
-(replaceRoot, or takeBackRoot for a root the transaction made), from the state
+also notes, at each merge of the merges' loop, each step of root collapse
+(replaceRoot, or takeBackRoot for a root the transaction made) and each delete
+bitmap (the leaf's, and the stop node's at a segment leaf), from the state
 before the step and the one after it: whether the tree got deeper (the most
 segment depth of a reached node), whether the heights of the ids not taken
 back stayed within p.fuel - 1 at the start and at the end (the bound that
 `HtJ` asks, `UntakenBound (p.fuel - 1)`), whether they stayed within H, and
-whether their most went up.
+whether their most went up; and, per operation, how many of its steps made
+the tree deeper.
 
-Result (2026-11-15, 40 s): 3032 merges, 78 replaceRoots and 557 take-backs of a
-root, over the same runs as fuel-inside-check.lean.txt. 139 merges made the
-tree deeper (4.6 %), and each of them raised the most height of the ids not
-taken back; no other merge raised it, and no step of root collapse made the
-tree deeper. At every step's start and end the heights of the ids not taken
-back were within H (so within p.fuel - 1), and every state fit p.fuel - 1.
+Result (2026-11-15, about 1 min): 3032 merges, 78 replaceRoots and 557
+take-backs of a root, over the same runs as fuel-inside-check.lean.txt. 139
+merges made the tree deeper (4.6 %), and each of them raised the most height of
+the ids not taken back; no other merge raised it, and no step of root collapse
+made the tree deeper. At every step's start and end the heights of the ids not
+taken back were within H (so within p.fuel - 1), and every state fit
+p.fuel - 1. Of 17,390 operations none had two steps that made the tree deeper;
+159 had one (14 at the leaf's bitmap, 6 at the stop node's, 139 at a merge).
 So a merge does add a level (a form without the heights, "a merge keeps the
-depth", is false on runs too), and the heights' bound held at every merge.
+depth", is false on runs too), the heights' bound held at every step, and a
+delete added at most one level.
 -/
 import SIS.Tree.MergeProofBundle
 
@@ -201,7 +206,9 @@ def deleteUpwardC (base : View BVal) (leaf : NodeId) (depth : Nat) (cv : Nat) (k
   if leafUnion == leafDel then return true
   if !n.allKeysIn leafUnion then
     let (g, h) ← ghOf leaf
+    let wb ← getThe W
     let _ ← appendDeleteKlong leaf depth cv
+    note (formNote c base wb (← getThe W) "leaf")
     note (fitNote c base (← getThe W) "leaf")
     afterDeleteC base key g h
     return false
@@ -242,7 +249,9 @@ def deleteUpwardC (base : View BVal) (leaf : NodeId) (depth : Nat) (cv : Nat) (k
   let (gs, hs) ← ghOf s
   if sn.leaf then
     note "up.stop-at-segment-leaf"
+    let wb ← getThe W
     let _ ← appendDeleteKlong s stop cs
+    note (formNote c base wb (← getThe W) "stop")
     note (fitNote c base (← getThe W) "stop")
     afterDeleteC base key gs hs
     return false
@@ -287,6 +296,7 @@ def putSegsC (base : View BVal) (key : Key) (value : Option Nat) : List Nat → 
 
 
 def putKvC (base : View BVal) (op : Op) : M Bool := do
+  note "form:op"
   pathClear
   let root ← findRoot
   match op with
@@ -321,6 +331,17 @@ def runFit (p : Params) (all : List Tx) : List String :=
           | .error e => acc ++ ["ERR " ++ e]) []
 
 
+
+def perOp (l : List String) : List Nat :=
+  let r := l.foldl (fun (acc : List Nat × Nat) x =>
+    if x == "form:op" then (acc.2 :: acc.1, 0)
+    else if (x.splitOn "DEEPER").length > 1 then (acc.1, acc.2 + 1) else acc) ([], 0)
+  r.1
+
+def summOp (l : List String) : String :=
+  let ks := perOp l
+  let cnt (s : String) := (l.filter (fun x => (x.splitOn s).length > 1)).length
+  s!"ops {ks.length}: with 0 deeper {(ks.filter (· == 0)).length}, 1 {(ks.filter (· == 1)).length}, 2 or more {(ks.filter (· ≥ 2)).length}; deeper steps: leaf {cnt "form:leaf:DEEPER"} stop {cnt "form:stop:DEEPER"} merge {cnt "form:merge:DEEPER"}"
 def summForm (l : List String) : String :=
   let cnt (s : String) := (l.filter (fun x => (x.splitOn s).length > 1)).length
   s!"form merge {cnt "form:merge"} (deeper {cnt "form:merge:DEEPER"}, heights up {cnt "form:merge:nodeep:ubS:ubE:hH:HUP"}+{cnt "form:merge:DEEPER:ubS:ubE:hH:HUP"}) collapse {cnt "form:collapse"} (deeper {cnt "form:collapse:DEEPER"}) takeback {cnt "form:takeback"} (deeper {cnt "form:takeback:DEEPER"}); UBS-FAIL {cnt "UBS-FAIL"} UBE-FAIL {cnt "UBE-FAIL"}; height H {cnt ":hH:"} H+1 {cnt ":hH1"} above {cnt ":HGT"}; HUP {cnt ":HUP"}; DLOOSE {cnt "DLOOSE"}; fit FAIL {cnt "FAIL"} ERR {(l.filter (fun s => s.startsWith "ERR")).length}"
@@ -378,16 +399,16 @@ def uRunNew (na nb k : Nat) : List Tx :=
    {base := 5000, ops := uPutsAB ((uA (na + k)).drop na) (uBs nb) ++ uDels ((uA (na + k)).drop na) (uBs nb)}]
 def uFamilyNew : List (List Tx) :=
   [2, 5, 9].flatMap (fun na => [1, 2, 4].flatMap (fun nb => [1, 2, 3].map (fun k => uRunNew na nb k)))
-#eval summForm (uFamily.flatMap (fun r => runFit uP1 r))
-#eval summForm (uFamilyAll.flatMap (fun r => runFit uP1 r))
-#eval summForm (uFamilyAll.flatMap (fun r => runFit uP2 r))
-#eval summForm (([2, 3].flatMap (fun na => [8, 12, 16, 24, 32].map (fun nb => uRunAll2 na nb))).flatMap (fun r => runFit uP1 r))
-#eval summForm (uFamilyMany.flatMap (fun r => runFit uP1 r))
-#eval summForm (uFamilyMany.flatMap (fun r => runFit uP2 r))
+#eval let l := (uFamily.flatMap (fun r => runFit uP1 r)); (summForm l, summOp l)
+#eval let l := (uFamilyAll.flatMap (fun r => runFit uP1 r)); (summForm l, summOp l)
+#eval let l := (uFamilyAll.flatMap (fun r => runFit uP2 r)); (summForm l, summOp l)
+#eval let l := (([2, 3].flatMap (fun na => [8, 12, 16, 24, 32].map (fun nb => uRunAll2 na nb))).flatMap (fun r => runFit uP1 r)); (summForm l, summOp l)
+#eval let l := (uFamilyMany.flatMap (fun r => runFit uP1 r)); (summForm l, summOp l)
+#eval let l := (uFamilyMany.flatMap (fun r => runFit uP2 r)); (summForm l, summOp l)
 
 def fP8 : Params := ({M := 8, G := 1, H := 2} : Params).withMerges.withTheta
 def fP14 : Params := ({M := 14, G := 2, H := 3} : Params).withMerges.withTheta
-#eval summForm (uFamily.flatMap (fun r => runFit fP8 r))
-#eval summForm (uFamilyAll.flatMap (fun r => runFit fP8 r))
-#eval summForm (uFamilyMany.flatMap (fun r => runFit fP14 r))
+#eval let l := (uFamily.flatMap (fun r => runFit fP8 r)); (summForm l, summOp l)
+#eval let l := (uFamilyAll.flatMap (fun r => runFit fP8 r)); (summForm l, summOp l)
+#eval let l := (uFamilyMany.flatMap (fun r => runFit fP14 r)); (summForm l, summOp l)
 end SIS.Tree
