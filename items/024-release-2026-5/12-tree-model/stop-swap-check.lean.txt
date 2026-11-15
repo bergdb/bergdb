@@ -1,0 +1,558 @@
+/-
+The upward delete's loop end, checked on runs for 025-04 (the true form of hU):
+routes (a) and (b) of its section 4. Not part of the Lean project; run it from
+the lean/ of a built clone (about 15 minutes):
+
+  lake env lean stop-swap-check.lean > out.txt; python3 agg.py out.txt
+
+It is up-loop-end-check.lean.txt (bergdb 024-22) with notes added:
+- frame (route (b)): at a loop end whose stop node is full for its bitmap, the
+  writer's appendDeleteKlong from the loop's end and handleFull with the same last
+  version from the state with the stop node's bitmap applied (S') give the same
+  state (same); S' has the stop node's first time, leaf flag and version before
+  the transaction (hyp) and the last version's live klongs (live); the state with
+  S' is a tree (tree) that reaches only what the state before the loop reached,
+  without the chain (sub); S' has well-formed klongs, links below the next id,
+  and every klong to a node of the transaction that is no value live (s);
+- pref, pfs (route (a), PREFIX): every node or value below the transaction's
+  first id that the writer's tree reaches has the key prefix it has in P; at
+  the state before the loop (pref) and at every state between operations (pfs);
+- mfp, mfs (MF-PREFIX): a reached node made for the node o has o's prefix in P;
+- sub: what the loop brings back below the stop node's klong is below the first
+  id, holds P's node, and was out of reach before the loop unless the chain
+  reached it;
+- uchk: the checks of 14 November (the tree at the loop's end and the others).
+The first 16 evals: the families of 14 November, theta 0. The last 10: a part
+of them with Java's theta (pfs and mfs skipped there).
+-/
+import SIS.Tree.MergeProofBundle
+
+set_option autoImplicit false
+set_option maxRecDepth 100000
+
+namespace SIS.Tree
+
+open SIS SIS.Check
+
+def linksB (N : NodeId → Option KNode) (t : Time) (u : NodeId) : List (Nat × NodeId) :=
+  match N u with
+  | some n => n.liveAt t
+  | none => []
+
+def reachB (N : NodeId → Option KNode) (t : Time) : Nat → List NodeId → List NodeId → List NodeId
+  | 0, _, acc => acc
+  | _ + 1, [], acc => acc
+  | f + 1, u :: todo, acc =>
+    if acc.contains u then reachB N t f todo acc
+    else reachB N t f (todo ++ (linksB N t u).map (·.2)) (u :: acc)
+
+def treeOKB (N : NodeId → Option KNode) (t : Time) (r : NodeId) : Bool :=
+  let R := reachB N t 100000 [r] []
+  (N r).isSome &&
+  R.all (fun u => (linksB N t u).all (fun q => q.2 != r)) &&
+  R.all (fun y => y == r ||
+    ((R.map (fun u => ((linksB N t u).filter (fun q => q.2 == y)).length)).foldl (· + ·) 0) == 1)
+
+/-- The check at a replaceRoot at a segment root x: the tree with x's previous
+version (what `unlink x` leaves) is a tree, its links below the next id. -/
+def chkNote (c : Ctx) (base : View BVal) (w : W) (x : NodeId) (n : KNode) (only depth : Nat) : String :=
+  let N := wNode c.p base w
+  let leaf := ((w.path[depth - 1]?).map (·.2)).getD 0
+  let k := ((w.path[depth]?).bind (·.1)).getD 0
+  let child := (n.ptr? only).getD 0
+  let full := match N leaf with
+    | some ln => decide (ln.size + 1 + 1 > c.p.M) || deadOver c.p (ln.add c.i (.key k child))
+    | none => false
+  let unl := n.lastTime == some c.i
+  let m := if unl then n.toPrev (c.i - 1) else n
+  let N' := updN N x m
+  let ok := treeOKB N' c.i w.top.rootKey && (m.liveAt c.i).all (fun q => decide (q.2 < w.next))
+  "chk:" ++ (if ok then "ok" else "FAIL") ++ (if full then ":full" else ":room") ++
+    (if unl then ":unl" else ":same")
+
+def nodeRangeB (n : KNode) (t lo : Nat) (hi : Option Nat) : Bool :=
+  (n.liveAt t).all (fun q => (if n.leaf then decide (lo ≤ q.1) else (q.1 == 0 || decide (lo < q.1))) &&
+    (match hi with | none => true | some h => decide (q.1 < h)))
+
+def rangeWalkB (N : NodeId → Option KNode) (t : Time) : Nat → List (NodeId × Nat × Option Nat) → Bool
+  | 0, _ => false
+  | _ + 1, [] => true
+  | f + 1, (x, lo, hi) :: todo =>
+    match N x with
+    | none => rangeWalkB N t f todo
+    | some n =>
+      let kids : List (NodeId × Nat × Option Nat) :=
+        if n.leaf then (n.liveAt t).map (fun q => (q.2, 0, none))
+        else (childBounds (n.liveAt t) hi).map (fun e => (e.1.2, if e.1.1 == 0 then lo else e.1.1, e.2))
+      nodeRangeB n t lo hi && rangeWalkB N t f (todo ++ kids)
+
+/-- The check at the upward loop's end state w2: the writer's tree there is a
+tree and every link of a reached node or of a chain node names an id below the
+next id (UpUnlinkOK). -/
+def upChkNote (c : Ctx) (base : View BVal) (w : W) (chain : List NodeId) (unlTT tbs : Bool)
+    (stop : Nat) : String :=
+  let N := wNode c.p base w
+  let R := reachB N c.i 100000 [w.top.rootKey] []
+  let ok := treeOKB N c.i w.top.rootKey &&
+    (R ++ chain).all (fun u => (linksB N c.i u).all (fun q => decide (q.2 < w.next)))
+  let ro := rangeWalkB N c.i 100000 [(w.top.rootKey, 0, none)]
+  let ut := R.all (fun u => !w.taken.contains u)
+  let wf := R.all (fun u => match N u with
+    | some n => klongsWf n.ks && n.ks.all (fun k => match k with | .time s => decide (s ≤ c.i) | _ => true)
+    | none => true)
+  "uchk:" ++ (if ok then "ok" else "FAIL") ++ (if ro then ":ro" else ":RO-FAIL") ++
+    (if ut then ":ut" else ":UT-FAIL") ++ (if wf then ":wf" else ":WF-FAIL") ++ (if unlTT then ":unl" else ":same") ++
+    (if tbs then ":tb" else ":notb") ++ (if stop == 0 then ":root" else ":below")
+
+/-- cost's UpHolderOK at the upward loop's end w2 (B the transaction's first
+id), and the gh frame (w2.gh = the state's gh before the loop). -/
+def holdChkNote (c : Ctx) (w2 wpre : W) (chain : List NodeId) (B : NodeId) : String :=
+  let gh := w2.gh == wpre.gh
+  let p1 := w2.nodes.all (fun q => match w2.nodes.lookup q.1 with
+    | some n => w2.taken.contains q.1 ||
+        (n.live ++ (n.toPrev (c.i - 1)).live).all (fun e => !w2.taken.contains e.2)
+    | none => true)
+  let p2 := chain.all (fun x => !w2.taken.contains x || decide (B ≤ x))
+  "hchk:" ++ (if gh && p1 && p2 then "ok" else "FAIL") ++ (if gh then "" else ":GH-FAIL") ++
+    (if p1 then "" else ":P1-FAIL") ++ (if p2 then "" else ":P2-FAIL")
+
+/-- UpHolderOK's first part at a state between operations: no node not taken
+back names, by a live klong now or before the transaction, a taken-back node. -/
+def holdBoundB (c : Ctx) (w : W) : Bool :=
+  w.nodes.all (fun q => match w.nodes.lookup q.1 with
+    | some n => w.taken.contains q.1 ||
+        (n.live ++ (n.toPrev (c.i - 1)).live).all (fun e => !w.taken.contains e.2)
+    | none => true)
+
+/-! ## 025-04: the checks for hU's routes -/
+
+def sameW (a b : W) : Bool :=
+  ((a.nodes ++ b.nodes).map (·.1)).all (fun i => a.nodes.lookup i == b.nodes.lookup i) &&
+  ((a.gh ++ b.gh).map (·.1)).all (fun i => a.gh.lookup i == b.gh.lookup i) &&
+  a.taken == b.taken && a.next == b.next && a.vals == b.vals && a.path == b.path &&
+  a.top == b.top && a.newTop == b.newTop && a.madeFor == b.madeFor &&
+  (a.made.map (fun m => (m.id, m.level, m.isData))) == (b.made.map (fun m => (m.id, m.level, m.isData)))
+
+/-- Route (b): at the upward loop's end w2, when the stop node s is full for its
+bitmap, the writer's `appendDeleteKlong` from w2 gives the same state as
+`handleFull` with the same last version from w2 with s holding its node with the
+bitmap applied (which no longer names the chain). Also: that state's tree is a
+tree, and reaches only what the state before the loop reached, without the chain. -/
+def frameNote (c : Ctx) (base : View BVal) (w2 wpre : W) (chain : List NodeId) (B s : NodeId)
+    (stop cs : Nat) : String :=
+  let tt := c.i
+  match w2.nodes.lookup s with
+  | none => "frame:nolookup"
+  | some n =>
+    let arrayDel := n.lastBitmap
+    let hasTransDel := (match n.ks.getLast? with
+      | some (.del _) => true
+      | _ => false) && n.lastTime == some tt
+    let union := bitsUnion arrayDel (n.bitsOf cs)
+    if union == arrayDel then "frame:noop" else
+    let n' := if hasTransDel then n.setAt (n.size - 1) (.del union) else n.add tt (.del union)
+    let room := if hasTransDel then true else decide (n.size + 1 < c.p.M)
+    let dead := deadOver c.p n'
+    if room && !dead then "frame:room" else
+    let compact := room
+    let last := n.lastVersionGivenDel tt union
+    let wS : W := { w2 with nodes := upsert w2.nodes s n' }
+    let hyp := n'.firstTime == n.firstTime && n'.leaf == n.leaf && n'.toPrev (tt - 1) == n.toPrev (tt - 1)
+    let lv1 := n'.liveAt tt
+    let lv2 := (⟨n.leaf, last.ks⟩ : KNode).liveAt tt
+    let liveEq := lv1.all (fun q => lv2.contains q) && lv2.all (fun q => lv1.contains q)
+    let N := wNode c.p base wS
+    let tree := treeOKB N tt wS.top.rootKey
+    let R := reachB N tt 100000 [wS.top.rootKey] []
+    let Rpre := reachB (wNode c.p base wpre) tt 100000 [wpre.top.rootKey] []
+    let sub := R.all (fun u => Rpre.contains u && !chain.contains u)
+    -- S' meets what the split's lemmas ask of the stop node: klongs well formed, links below
+    -- the next id, and every klong to a node of the transaction that is no value is live
+    let vals := w2.vals.map (·.1)
+    let sOk := klongsWf n'.ks && (n'.liveAt tt).all (fun q => decide (q.2 < w2.next)) &&
+      n'.ks.all (fun k => match k with
+        | .key _ y => decide (y < B) || vals.contains y || (n'.liveAt tt).any (fun q => q.2 == y)
+        | .time t => decide (t ≤ tt)
+        | _ => true)
+    let run := match (appendDeleteKlong s stop cs) c w2, (handleFull stop s last compact) c wS with
+      | .ok (_, a), .ok (_, b) => if sameW a b then "same" else "DIFF-FAIL"
+      | .error _, .error _ => "both-err"
+      | _, _ => "ERR-FAIL"
+    "frame:" ++ run ++ (if hyp then ":hyp" else ":HYP-FAIL") ++ (if liveEq then ":live" else ":LIVE-FAIL") ++
+      (if tree then ":tree" else ":TREE-FAIL") ++ (if sub then ":sub" else ":SUB-FAIL") ++
+      (if sOk then ":s" else ":S-FAIL") ++
+      (if compact then ":compact" else ":full") ++ (if stop == 0 then ":root" else ":below")
+
+/-- The key prefix (the compare values of the segment leaves' klongs on the way) of
+every node and value reached from the todo list. -/
+def prefWalk (N : NodeId → Option KNode) (t : Time) :
+    Nat → List (NodeId × List Nat) → List (NodeId × List Nat) → List (NodeId × List Nat)
+  | 0, _, acc => acc
+  | _ + 1, [], acc => acc
+  | f + 1, (u, pre) :: todo, acc =>
+    let kids := match N u with
+      | some n => (n.liveAt t).map (fun q => (q.2, if n.leaf then pre ++ [q.1] else pre))
+      | none => []
+    prefWalk N t f (kids ++ todo) ((u, pre) :: acc)
+
+/-- Route (a)'s candidate invariant, PREFIX: every node or value below the
+transaction's first id B that the writer's tree reaches is reached in P (from P's
+space root rp) with the same key prefix. -/
+def prefB (c : Ctx) (base : View BVal) (w : W) (B rp : NodeId) : Bool :=
+  let Pw := prefWalk (wNode c.p base w) c.i 100000 [(w.top.rootKey, [])] []
+  let PP := prefWalk (knodeOf c.p base) c.i 100000 [(rp, [])] []
+  Pw.all (fun e => decide (B ≤ e.1) || PP.lookup e.1 == some e.2)
+
+/-- Route (a)'s companion, MF-PREFIX: a node the writer's tree reaches that was
+made for (in place of) the node o is reached with the key prefix that o has in P. -/
+def mfPrefB (c : Ctx) (base : View BVal) (w : W) (rp : NodeId) : Bool :=
+  let Pw := prefWalk (wNode c.p base w) c.i 100000 [(w.top.rootKey, [])] []
+  let PP := prefWalk (knodeOf c.p base) c.i 100000 [(rp, [])] []
+  Pw.all (fun e => match w.madeFor.lookup e.1 with
+    | some o => PP.lookup o == some e.2
+    | none => true)
+
+/-- What comes back at the loop's end: everything reached in w2 from the node Y
+that the stop node's klong cs names is below B, holds P's node, and was out of
+reach before the loop unless the chain reached it there (a chain node, or the
+emptied leaf's value). -/
+def subNote (c : Ctx) (base : View BVal) (wpre w2 : W) (chain : List NodeId) (B s : NodeId) (cs : Nat) : String :=
+  let tt := c.i
+  let N2 := wNode c.p base w2
+  match (N2 s).bind (fun n => (n.liveAt tt).lookup cs) with
+  | none => "sub:noY"
+  | some y =>
+    let R2 := reachB N2 tt 100000 [y] []
+    let Rpre := reachB (wNode c.p base wpre) tt 100000 [wpre.top.rootKey] []
+    let below := reachB (wNode c.p base wpre) tt 100000 [chain.getLast?.getD 0] []
+    let out := R2.all (fun u => below.contains u || !Rpre.contains u)
+    let old := R2.all (fun u => decide (u < B))
+    let asP := R2.all (fun u => N2 u == knodeOf c.p base u)
+    "sub:" ++ (if out && old && asP then "ok" else "FAIL") ++ (if out then "" else ":OUT-FAIL") ++
+      (if old then "" else ":OLD-FAIL") ++ (if asP then "" else ":ASP-FAIL") ++
+      (if R2.length ≤ 1 then ":n1" else if R2.length ≤ 3 then ":n2-3" else if R2.length ≤ 10 then ":n4-10" else ":n11+")
+
+def collapseRootC (base : View BVal) (key : Key) (segment : Nat) : Nat → M Unit
+  | 0 => throw "bounds: root collapse went below the height bound"
+  | fuel + 1 => do
+    let c ← read
+    let root ← descendToSegmentRoot key segment
+    let n ← getNode root
+    if n.leaf then return
+    let made := n.firstTime == some c.i
+    if made && (← replacedBy root).isNone then return
+    match n.onlyLiveKlong with
+    | none => return
+    | some only =>
+      if n.cv? only != some 0 then
+        throw s!"Bug: root collapse at {c.i}: the one live klong of root {root} is not the empty key"
+      let depth := (← pathSize) - 1
+      if made then takeBackRoot root depth only else do
+        note (chkNote c base (← getThe W) root n only depth)
+        replaceRoot root depth only
+      collapseRootC base key segment fuel
+
+
+def afterDeleteC (base : View BVal) (key : Key) (g h : Nat) : M Unit := do
+  let c ← read
+  if c.p.merges then
+    if ← mergeUp key g c.p.fuel h false then
+      collapseRootC base key g c.p.fuel
+
+
+def deleteUpwardC (base : View BVal) (B rp : NodeId) (leaf : NodeId) (depth : Nat) (cv : Nat) (key : Key) : M Bool := do
+  let c ← read
+  let tt := c.i
+  let n ← getNode leaf
+  let leafDel := n.lastBitmap
+  let leafUnion := bitsUnion leafDel (n.bitsOf cv)
+  if leafUnion == leafDel then return true
+  if !n.allKeysIn leafUnion then
+    let (g, h) ← ghOf leaf
+    let _ ← appendDeleteKlong leaf depth cv
+    afterDeleteC base key g h
+    return false
+  -- The leaf is empty after the delete: UP.
+  let stop ← climb depth
+  if stop == depth then
+    note "up.root-kept-empty"
+    let _ ← appendDeleteKlong leaf depth cv
+    return false
+  note "up.climb"
+  -- The segment of the stop node's tree, from the path before it changes.
+  let path := (← getThe W).path
+  let segment ← (path.take stop).foldlM (fun s (e : Option Nat × NodeId) => do
+    pure (if (← getNode e.2).leaf then s + 1 else s)) 0
+  -- the chain's fates before the loop
+  let wpre ← getThe W
+  let chain := (List.range (depth - stop)).map (fun j => ((wpre.path[depth - j]?).map (·.2)).getD 0)
+  let unlTT := chain.any (fun x => match wNode c.p base wpre x with
+    | some xn => xn.firstTime != some tt && xn.lastTime == some tt
+    | none => false)
+  let tbs := chain.any (fun x => match wNode c.p base wpre x with
+    | some xn => xn.firstTime == some tt
+    | none => false)
+  -- The nodes below the stop node, lowest first: taken back, or unlinked.
+  for j in List.range (depth - stop) do
+    let k := depth - j
+    let x ← pathNode k
+    let xn ← getNode x
+    if xn.firstTime == some tt then takeBack x (← pathNode (k - 1)) (← klongAt k)
+    else
+      note "up.unlink"
+      unlink x
+  let w2 ← getThe W
+  note (upChkNote c base w2 chain unlTT tbs stop)
+  note (holdChkNote c w2 wpre chain B)
+  let s ← pathNode stop
+  let cs ← klongAt (stop + 1)
+  let sn ← getNode s
+  let (gs, hs) ← ghOf s
+  note (if prefB c base wpre B rp then "pref:ok" else "pref:FAIL")
+  note (if mfPrefB c base wpre rp then "mfp:ok" else "mfp:FAIL")
+  note (subNote c base wpre w2 chain B s cs)
+  if sn.leaf then
+    note "up.stop-at-segment-leaf"
+    note (frameNote c base (← getThe W) wpre chain B s stop cs)
+    let _ ← appendDeleteKlong s stop cs
+    afterDeleteC base key gs hs
+    return false
+  if sn.smallestLive != some 0 then
+    throw s!"Bug: the upward unlink at {tt}: inner node {s} has no live klong of the empty key"
+  if cs != 0 then
+    note (frameNote c base (← getThe W) wpre chain B s stop cs)
+    let _ ← appendDeleteKlong s stop cs
+  else
+    emptyKeyNext s stop
+  if c.p.merges then
+    let _ ← mergeUp key gs c.p.fuel hs false
+  collapseRootC base key segment (c.p.fuel)
+  return false
+
+
+def setValueC (base : View BVal) (B rp : NodeId) (segRoot : NodeId) (cv : Nat) (key : Key) (value : Option Nat) : M Bool := do
+  let c ← read
+  let leaf ← descendLte cv c.p.fuel segRoot
+  match value with
+  | none =>
+    let noop ← deleteUpwardC base B rp leaf ((← pathSize) - 1) cv key
+    if !noop then
+      let _ ← fresh
+    pure noop
+  | some h =>
+    let v ← newValue h
+    let n ← getNode leaf
+    let n' := n.add c.i (.key cv v)
+    if n.size + 1 < c.p.M && !deadOver c.p n' then putNode leaf n'
+    else appendKlongs ((← pathSize) - 1) leaf [(cv, v)]
+    pure false
+
+
+def putSegsC (base : View BVal) (B rp : NodeId) (key : Key) (value : Option Nat) : List Nat → NodeId → M Bool
+  | [], _ => throw "corrupt: a key without segments"
+  | [cv], segRoot => setValueC base B rp segRoot cv key value
+  | cv :: rest, segRoot => do
+    match ← setNode segRoot cv value.isSome with
+    | none => pure true
+    | some next => putSegsC base B rp key value rest next
+
+
+def putKvC (base : View BVal) (B rp : NodeId) (op : Op) : M Bool := do
+  pathClear
+  let root ← findRoot
+  match op with
+  | .put key h => putSegsC base B rp key (some h) key root
+  | .del key => putSegsC base B rp key none key root
+
+
+def withinB (p : Params) (all : List Tx) : Bool :=
+  all.all (fun t => t.sorted && t.wf) &&
+  (List.range all.length).all (fun j =>
+    match all[j]? with
+    | none => false
+    | some tj => (treeRun p (all.take j)).all (fun q => decide (q.1 < tj.base)) &&
+        isOk (exec? p tj (j + 1) (view (treeSpec p) (treeRun p (all.take j)) j)))
+
+def runChk (pfAll : Bool) (p : Params) (all : List Tx) : List String :=
+  (if withinB p all then [] else ["NOT-WITHIN"]) ++
+  (List.range all.length).foldl (fun acc j =>
+    match all[j]? with
+    | none => acc
+    | some tx =>
+      let ts := all.take j
+      let v := view (treeSpec p) (treeRun p ts) ts.length
+      match lastTop v with
+      | none => acc ++ ["notop"]
+      | some z =>
+        match topOf p (ctxOf p ts).view z with
+        | .error _ => acc ++ ["toperr"]
+        | .ok top =>
+          let mfs : List String := (tx.ops.foldl (fun (acc : Option W × List String) op =>
+            match acc.1 with
+            | none => acc
+            | some wk =>
+              match (putKv op) (ctxOf p ts) wk with
+              | .ok (_, wk') => (some wk', (if !pfAll then "pfs:skip" else
+                  if prefB (ctxOf p ts) (viewOf (treeRun p ts)) wk' tx.base top.rootKey then "pfs:ok" else "pfs:FAIL") ::
+                  (if !pfAll then "mfs:skip" else
+                  if mfPrefB (ctxOf p ts) (viewOf (treeRun p ts)) wk' top.rootKey then "mfs:ok" else "mfs:FAIL") :: acc.2)
+              | .error _ => (none, acc.2)) (some (wInit tx top), [])).2
+          match (tx.ops.mapM (putKvC (viewOf (treeRun p ts)) tx.base top.rootKey)) (ctxOf p ts) (wInit tx top) with
+          | .ok (_, w) =>
+            -- each check with the stop step's note after it (the trail is newest first)
+            let tr := w.trail.reverse
+            acc ++ mfs ++ (List.range tr.length).filterMap (fun i =>
+              match tr[i]? with
+              | some s =>
+                if s.startsWith "hchk" then some s else
+                if s.startsWith "frame:" || s.startsWith "pref:" || s.startsWith "sub:" || s.startsWith "mfp:" then some s else
+                if s.startsWith "chk:" then some s else
+                if s.startsWith "uchk" then
+                  let nxt := ((tr.drop (i + 1)).find? (fun t => t.startsWith "bitmap." || t.startsWith "leb.")).getD "none"
+                  let casc := nxt == "bitmap.full" || nxt == "bitmap.dead" || nxt == "bitmap.inplace.dead" ||
+                    nxt == "leb.full" || nxt == "leb.dead"
+                  some (s ++ (if casc then ":casc" else ":room") ++ ":" ++ nxt)
+                else none
+              | none => none)
+          | .error e => acc ++ ["ERR " ++ e]) []
+
+def summU (l : List String) : String :=
+  let keys := (l.filter (fun x => x.startsWith "frame:" || x.startsWith "pref:" || x.startsWith "sub:" || x.startsWith "mfp:" ||
+    x.startsWith "mfs:" || x.startsWith "pfs:" || x.startsWith "uchk:")).foldl (fun (acc : List (String × Nat)) x =>
+    match acc.lookup x with
+    | some n => acc.map (fun q => if q.1 == x then (x, n + 1) else q)
+    | none => acc ++ [(x, 1)]) []
+  let cnt (s : String) := (l.filter (fun x => (x.splitOn s).length > 1)).length
+  s!"FAIL {cnt "FAIL"} other {(l.filter (fun s => s.startsWith "ERR" || s.startsWith "NOT" || s.startsWith "not" || s.startsWith "toperr")).take 3} :: {keys}"
+
+end SIS.Tree
+
+
+namespace SIS.Tree
+def uP1 : Params := {M := 8, G := 1, H := 2, mergeBelow := 2, mergeMax := 3, splitAbove := 4}
+def uP2 : Params := {M := 10, G := 2, H := 2, mergeBelow := 2, mergeMax := 4, splitAbove := 5}
+def uPutsAB (as bs : List Nat) : List Op := (as.flatMap (fun a => bs.map (fun b => .put [a, b] (a * 1000 + b + 1))))
+def uDels (as bs : List Nat) : List Op := (as.flatMap (fun a => bs.map (fun b => .del [a, b])))
+def uA (n : Nat) : List Nat := (List.range n).map (fun i => 64 * i + 56)
+def uBs (n : Nat) : List Nat := (List.range n).map (fun j => 64 * j + 8)
+-- cost's families (DelChk.lean)
+def uRun (na nb k1 keep : Nat) : List Tx :=
+  let a0 := 64 * (na / 2) + 56
+  [{base := 1000, ops := uPutsAB (uA na) (uBs 2)},
+   {base := 3000, ops := uPutsAB [a0] ((uBs nb).drop 2)},
+   {base := 5000, ops := uDels [a0] ((uBs nb).take k1)},
+   {base := 7000, ops := uDels [a0] (((uBs nb).drop k1).take (nb - k1 - keep))}]
+def uFamily : List (List Tx) :=
+  [1, 3, 7, 9].flatMap (fun na => [12, 16, 24].flatMap (fun nb =>
+    [nb / 2, nb - 9, nb - 5].flatMap (fun k1 => [0, 1, 2].map (fun keep => uRun na nb k1 keep))))
+def uRunAll (na nb : Nat) : List Tx :=
+  [{base := 1000, ops := uPutsAB (uA na) (uBs nb)},
+   {base := 5000, ops := uDels ((uA na).take (na / 2 + 1)) (uBs nb)}]
+def uFamilyAll : List (List Tx) :=
+  [2, 3, 5].flatMap (fun na => [1, 2, 3, 6, 10, 12, 16, 24].map (fun nb => uRunAll na nb))
+def uRunAll2 (na nb : Nat) : List Tx :=
+  [{base := 1000, ops := uPutsAB (uA na) (uBs nb)},
+   {base := 5000, ops := uDels (uA na) (uBs nb)}]
+-- new: puts then whole-segment deletes in one transaction (the chain's nodes have
+-- klongs of the transaction), and many segments deleted under one leaf (dead klongs)
+def uRunPD (na nb nx nd : Nat) : List Tx :=
+  [{base := 1000, ops := uPutsAB (uA na) (uBs nb)},
+   {base := 5000, ops := uPutsAB ((uA na).take nd) ((uBs (nb + nx)).drop nb) ++
+     uDels ((uA na).take nd) (uBs (nb + nx))}]
+def uFamilyPD : List (List Tx) :=
+  [3, 6, 10, 14].flatMap (fun na => [1, 2, 4, 8].flatMap (fun nb => [1, 3, 6].flatMap (fun nx =>
+    [1, na / 2, na].map (fun nd => uRunPD na nb nx nd))))
+-- three transactions: many first-segment values, then their subtrees deleted in turns
+def uRunMany (na nb : Nat) : List Tx :=
+  [{base := 1000, ops := uPutsAB (uA na) (uBs nb)},
+   {base := 5000, ops := uDels ((uA na).filter (fun a => a % 128 == 56)) (uBs nb)},
+   {base := 9000, ops := uDels ((uA na).filter (fun a => a % 128 != 56)) (uBs nb)}]
+def uFamilyMany : List (List Tx) :=
+  [8, 12, 16, 20].flatMap (fun na => [1, 2, 3, 5].map (fun nb => uRunMany na nb))
+-- new segments made and emptied in one transaction (the loop takes back)
+def uRunNew (na nb k : Nat) : List Tx :=
+  [{base := 1000, ops := uPutsAB (uA na) (uBs nb)},
+   {base := 5000, ops := uPutsAB ((uA (na + k)).drop na) (uBs nb) ++ uDels ((uA (na + k)).drop na) (uBs nb)}]
+def uFamilyNew : List (List Tx) :=
+  [2, 5, 9].flatMap (fun na => [1, 2, 4].flatMap (fun nb => [1, 2, 3].map (fun k => uRunNew na nb k)))
+-- cost's mixed and random families (DelChk.lean): puts that split nodes the deletes then empty
+def uKey (j : Nat) : Key := [64 * j + 8]
+def uMixed (a b a' b' : Nat) : List Op :=
+  (List.range 200).filterMap (fun j =>
+    if j % 2 == 1 && a ≤ j && j < b then some (.put (uKey j) (j + 1))
+    else if j % 2 == 0 && a' ≤ j && j < b' then some (.del (uKey j))
+    else none)
+def uEvens (n : Nat) : List Op := (List.range n).map (fun j => .put (uKey (2 * j)) (j + 1))
+def uOddDels (a b : Nat) : List Op :=
+  (List.range 200).filterMap (fun j => if j % 2 == 1 && a ≤ j && j < b then some (.del (uKey j)) else none)
+def uMixRun (n a b a' b' : Nat) : List Tx :=
+  [{base := 1000, ops := uEvens n}, {base := 3000, ops := uMixed a b a' b'}, {base := 5000, ops := uOddDels a b}]
+def uMixFamily : List (List Tx) :=
+  [20, 40, 60].flatMap (fun n => [(0, 30), (10, 50), (5, 90)].flatMap (fun (a, b) =>
+    [(0, 2 * n), (a, b), (b - 10, 2 * n), (a + 4, b + 20)].map (fun (a', b') => uMixRun n a b a' b')))
+def nextRandU (s : Nat) : Nat := (s * 6364136223846793005 + 1442695040888963407) % 2 ^ 64
+def uPrefixes : List (List Nat) := [[], [120], [184], [120, 248], [184, 120]]
+def uRandKeys (seed n nKeys : Nat) : List Key × Nat := Id.run do
+  let mut s := seed
+  let mut ks : List Key := []
+  for _ in [0:n] do
+    s := nextRandU s
+    let pre := uPrefixes.getD ((s / 7) % uPrefixes.length) []
+    let j := (s / 101) % nKeys
+    ks := ks ++ [pre ++ [j * 64 + 8]]
+  return (ks, s)
+def uSortKeys (ks : List Key) : List Key :=
+  (ks.foldl (fun acc k => if acc.contains k then acc else acc ++ [k]) []).mergeSort (fun a b => keyLt a b || a == b)
+def uRandRun (seed nTx maxOps nKeys : Nat) : List Tx := Id.run do
+  let mut s := seed
+  let mut txs : List Tx := []
+  for t in [0:nTx] do
+    s := nextRandU s
+    let (ks, s2) := uRandKeys s (s % maxOps + 1) nKeys
+    s := s2
+    let ops := (uSortKeys ks).map (fun k =>
+      if (k.foldl (· + ·) s) % 3 == 0 then Op.del k else Op.put k (t * 1000 + 1))
+    txs := txs ++ [{base := 1000000 * (t + 1), ops := ops}]
+  return txs
+def uKeepOk (p : Params) (txs : List Tx) : List Tx :=
+  txs.foldl (fun run tx =>
+    if isOk (exec? p tx (run.length + 1) (view (treeSpec p) (treeRun p run) run.length)) then run ++ [tx]
+    else run) []
+#eval summU (uMixFamily.flatMap (fun r => runChk true uP1 r))
+#eval summU (uMixFamily.flatMap (fun r => runChk true invAsmP r))
+#eval summU ((List.range 8).flatMap (fun seed =>
+  let p : Params := ({M := 8, G := 2, H := 3} : Params).withMerges
+  runChk true p (uKeepOk p (uRandRun (seed + 200) 12 25 20))))
+#eval summU ((List.range 8).flatMap (fun seed =>
+  let p : Params := ({M := 8, G := 2, H := 1} : Params).withMerges
+  runChk true p (uKeepOk p (uRandRun (seed + 100) 12 25 20))))
+#eval summU ((List.range 6).flatMap (fun seed =>
+  let p : Params := ({M := 10, G := 2, H := 2} : Params).withMerges
+  runChk true p (uKeepOk p (uRandRun (seed + 300) 16 30 30))))
+#eval summU (uFamilyNew.flatMap (fun r => runChk true uP1 r))
+#eval summU (uFamilyNew.flatMap (fun r => runChk true uP2 r))
+#eval summU (uFamily.flatMap (fun r => runChk true uP1 r))
+#eval summU (uFamilyAll.flatMap (fun r => runChk true uP1 r))
+#eval summU (uFamilyAll.flatMap (fun r => runChk true uP2 r))
+#eval summU (([2, 3].flatMap (fun na => [8, 12, 16, 24, 32].map (fun nb => uRunAll2 na nb))).flatMap (fun r => runChk true uP1 r))
+#eval summU (uFamilyPD.flatMap (fun r => runChk true uP1 r))
+#eval summU (uFamilyPD.flatMap (fun r => runChk true uP2 r))
+#eval summU (uFamilyMany.flatMap (fun r => runChk true uP1 r))
+#eval summU (uFamilyMany.flatMap (fun r => runChk true uP2 r))
+#eval summU (uFamilyPD.flatMap (fun r => runChk true invAsmP r))
+def tP8 : Params := ({M := 8, G := 1, H := 2} : Params).withMerges.withTheta
+def tP10 : Params := ({M := 10, G := 2, H := 2} : Params).withMerges.withTheta
+#eval (tP8.theta, tP10.theta)
+#eval summU (uFamilyPD.flatMap (fun r => runChk false tP8 r))
+#eval summU (uFamilyPD.flatMap (fun r => runChk false tP10 r))
+#eval summU (uFamilyMany.flatMap (fun r => runChk false tP8 r))
+#eval summU (uFamilyMany.flatMap (fun r => runChk false tP10 r))
+#eval summU (uFamilyAll.flatMap (fun r => runChk false tP8 r))
+#eval summU (uFamilyAll.flatMap (fun r => runChk false tP10 r))
+#eval summU (uFamily.flatMap (fun r => runChk false tP8 r))
+#eval summU (uMixFamily.flatMap (fun r => runChk false tP8 r))
+#eval summU ((List.range 8).flatMap (fun seed =>
+  runChk false tP8 (uKeepOk tP8 (uRandRun (seed + 200) 12 25 20))))
+#eval summU ((List.range 6).flatMap (fun seed =>
+  runChk false tP10 (uKeepOk tP10 (uRandRun (seed + 300) 16 30 30))))
+end SIS.Tree
