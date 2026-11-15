@@ -207,6 +207,14 @@ provers' branches and reports are in
   agent, as for `hU`.
 * 11:48 025-05 created (2ce7428a): the plan for `htb`, `hMSF` and
   `hCoF`; planning agent hplan started (Opus xhigh, stop 14:00).
+* 12:39 025-05 ready (815d9e2c): route P, a fuel above every node id.
+  Every writer state with PutInv fits its next id, so at a fuel above
+  both p.fuel and the next id the reading is always right, and the
+  loops keep it with no fit premise: `hMSF` and `hCoF` leave by a
+  consumer change, 6 steps, 1,750 to 3,500 lines; the first of the six
+  consumers already proved in scratch. `htb` after it (part 2, 2,500 to
+  5,000 lines). Run checks: 4,573 take-backs, 0 failures.
+* 12:43 prover fit started (Opus xhigh): 025-05's part 1.
 
 
 ## 8. Outcome
