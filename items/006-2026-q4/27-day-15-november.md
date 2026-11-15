@@ -140,6 +140,18 @@ provers' branches and reports are in
   there through `hHL` and `hCoU`. 025-04 done: about 2,300 lines, of
   which about 1,100 are now unused (for a close step). hu goes on with
   `d4`, then `l4`.
+* 10:04 delj LANDED e1e9b836: `invGetScanOK_merges_chk6` now on the
+  route without `hU`: hp, hth, hchk6, htb, d4, l4, hMSF, hCoF. With it
+  audited, the closure grows only by `hchk6`'s 31 new definitions.
+* 10:11 delj LANDED ada8757c: DelHoleJ (DelInvJ and the books) carried
+  to the leaf's call of afterDelete; `invGetScanOK_merges_chk7` replaces
+  `_chk6` (hp, hth, hchk7, htb, d4, l4, hMSF, hCoF; against
+  `invGetScanOK_merges_noU` only `hchk5` became `hchk7`). Next for delj:
+  the upward delete's climb and loop, which leaves only the merge's
+  `checkFree` in `hchk`.
+* 10:04 hu on `d4`: 2,000 to 3,000 lines, more than today; it gates a
+  dead-bound framework for every writer function but the merge, then
+  the merge, and writes the plan for the rest; `l4` a plan only.
 
 
 ## 8. Outcome
