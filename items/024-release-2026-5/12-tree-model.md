@@ -458,21 +458,28 @@ Follow-ups, for a later spare-token run (latest, 03:45):
   (`mergeKlongs_live_fill`), its parent's cascade is the walk with exceptions
   (`writerWP_appendKlongs_chainGLX`), and root collapse leaves a root with two live klongs.
   The live counts at the delete's start are at hand (`jointLive_reached`).
-  **2026-11-15, prover hu: not started; the plan's shape.** Unlike `d4`'s bound, the live
-  counts are not local: they tie a node to its parent's kind and to the merges' fill. So
-  every step needs the reading route's facts at its state, and the obstruction of `d4`'s
-  step 4 applies to every case, not only to the upward delete: the route lemmas hand
-  `afterDelete` (and the stop node's step) `DelInv` only. Two ways, as for `d4`:
-  - (a) copies of the route's lemmas for the three open kinds of delete, and of the merges'
-    loop, root collapse and the stop node's obligations, each carrying the live counts with
-    their exceptions (`LiveEdges` with the merged path's nodes excepted); the pieces at hand:
-    `mergeKlongs_live_fill`, `writerWP_appendKlongs_chainGLX`, `writerWP_afterDelete_none`
-    when the counts hold after the write. 3,000 lines or more.
-  - (b) the obligations with an extra invariant (a statement change, for Frans), shared
-    with `d4`: then the live counts ride on the reading route's lemmas, and each step adds
-    only its own clause.
-  By size, `l4` should wait for the decision on (b), and `d4`'s steps 1 to 3 (local, or on
-  `DelInvF`) come first in either way.
+  **2026-11-15, prover hu: the State note for a successor (not started).**
+  - Where `l4` is used: inside the joint induction, not after it. `l4'` builds the
+    induction's live case `hLv : OpCaseOK p R (QLive p) AnyOp` (`jointHtJ_reachedJ`), so its
+    proof may use only what holds at an operation's start of a run with R: the run facts and
+    the live counts (`QLive`'s hypothesis). `d4` could use the induction's outputs (the
+    heights, `TakeJ2`, the fuel) because it is used after `joint`; `l4` cannot, unless the
+    joint lemma takes the live case in the `OpCaseOKJ` form (the heights' and the take-back's
+    facts at the start given, as its delete cases `hTd`, `hPd`, `hOd` do): a copy of
+    `jointHtJ_reachedJ` with `hLv` split into puts (as now) and deletes (`OpCaseOKJ`). First
+    step of the route, about 300 lines of a near-copy.
+  - The invariant: unlike `d4`'s `DW`, not local. A write changes a node's live count and
+    the kind of the nodes it names, so the carried fact is `LiveEdges` with exceptions (the
+    merged path's nodes below `mergeBelow` until the loop reaches them, as the plan above says),
+    and every step lemma must say which nodes it changed. The pattern of `d4`'s step 4 serves
+    for the carrying: the route lemmas with `DW`'s slot (`..._D` in DeadDelCases.lean) are the
+    places where the live-count fact goes beside `DelInv` (a second copy, or one copy
+    generic in the carried invariant, which would also serve `d4` again).
+  - The merges' loop: the loop's exit leaves no node below `mergeBelow` but the root, with
+    `mergeKlongs_live_fill` for the new nodes and `writerWP_appendKlongs_chainGLX` for the
+    parent's cascade; root collapse leaves a root with two live klongs.
+  - Size: 3,000 lines or more by copies; much less by (b) (the obligations of
+    `DelStepsCaseOK` with an extra invariant, a statement change for Frans).
 - One name for each route: the F2, F3 and F4 versions (`DelStepsOKF3`, `MergeStepOKF3`,
   `CollapseStepOKF4`, `opGetCaseOK_delMergeF4`, `takeBackOK_of_mergesF4`,
   `runTreeQ_of_mergesF4S`, `writerWP_appendKlongs_chainGLX` and its corollaries), and one top
