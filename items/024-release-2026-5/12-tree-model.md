@@ -298,6 +298,18 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
     ad, and then a checked copy whose calls check the heights, shown at the runs by the walk of
     `opDelChk7OKR_of_chk8`, which carries `KdHtJ` to the leaf and through the upward loop. That
     is a restructure of the reading, not a step of today; it was not started.
+  - Route P (025-05, section 4.1; fit, 2026-11-15): `hMSF` and `hCoF` leave by a change of
+    their consumers, not by a proof of them. Every writer state with `PutInv` fits its next id
+    (the pigeonhole bound, `segFits_next_of_putInv`, FuelNext.lean), so inside a delete the
+    reading at every fuel above p.fuel and the next id (`DelInvA`) is kept by the merges' loop
+    and root collapse with no fit premise (`writerWP_afterDelete_delA`); the fit p.fuel - 1 is
+    needed only at the operation's end, where the families' conclusions take it. Step 1 of
+    six done (gated on fit's branch): the reading's case 4, `opGetCaseOK_delMergeA`, with no
+    `MergeStepOK` and no `CollapseFitsOK`, from the reading's family over an invariant
+    (`DelStepsOKG`; the old `DelStepsOK` its instance). Left: the same for the take-back's
+    family (`DelStepsJ2OK`), the joint induction's tree family (`DelStepsQdLJ`), the dead
+    klongs' family (`DelStepsCaseDOK`) and `hchk`'s discharge, then the top theorem with
+    premises `hp`, `hth`, `htb`, `l4` (025-05, section 6.1 and its Log).
 - `hHL` gone (cost2, 2026-11-15, `HeightsFillHolder.lean`, `HeightsFillTop.lean`): the joint
   induction also carries the writer's tree and the take-back's node facts (`J2At`, putinv's
   `OpJ2OK` step with S the take-back's state facts, the heights and the fill:

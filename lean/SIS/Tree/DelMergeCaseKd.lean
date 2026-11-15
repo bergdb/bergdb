@@ -49,29 +49,69 @@ def ICEFromKinds (c : Ctx) (base : View BVal) (KO : KindOracle) (BK : NodeId) : 
     (∀ y, TReach (wNode c.p base v) c.i v.top.rootKey y → v.taken.contains y = false) →
     InnerChildrenExist (wNode c.p base v) c.i v.top.rootKey
 
+/-- `MergeStepOK` with the fit at the merge's end asked only where a condition C
+on the state there holds and the state has `PutInv` (bergdb 025-05, route P). With
+C true it is `MergeStepOK` (`mergeStepOKW_of`); with C "the next id below f" it
+holds for every state, by the pigeonhole bound (`mergeStepOKW_next`, FuelNext.lean). -/
+def MergeStepOKW (c : Ctx) (base : View BVal) (f : Nat) (C : W → Prop) : Prop :=
+  ∀ (w0 : W) (key : Key) (x q : NodeId) (d : Nat) (v : W) (qn xn : KNode)
+    (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode),
+    DelInvF c base w0 key f v → PathOK c v d X K Nn → 0 < d → (v.path[d]?).map (·.2) = some x →
+    (v.path[d - 1]?).map (·.2) = some q → v.nodes.lookup q = some qn → qn.leaf = false →
+    v.nodes.lookup x = some xn → xn.cnt < c.p.mergeBelow →
+    WriterWP (merge x d) c v (fun _ v' =>
+      (∀ y, ReachS (wNode c.p base v') c.i v'.top.rootKey y → v'.taken.contains y = false) ∧
+      (C v' → PutInv c base v' → SegFits (wNode c.p base v') c.i (f - 1) v'.top.rootKey))
+
+theorem mergeStepOKW_of (c : Ctx) (base : View BVal) (f : Nat) (C : W → Prop)
+    (h : MergeStepOK c base f) : MergeStepOKW c base f C :=
+  fun w0 key x q d v qn xn X K Nn h1 h2 h3 h4 h5 h6 h7 h8 h9 =>
+    writerWP_mono (h w0 key x q d v qn xn X K Nn h1 h2 h3 h4 h5 h6 h7 h8 h9)
+      (fun _ _ hv => ⟨hv.1, fun _ _ => hv.2⟩)
+
+/-- The delete's invariant at f while a condition C holds (bergdb 025-05, route P):
+the fresh ids' books always, and `DelInv` at f where C holds. -/
+def DelInvW (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (f : Nat) (C : W → Prop)
+    (KO : KindOracle) (BK : NodeId) (v : W) : Prop :=
+  (∃ B, ViewIdsBelow B c.view ∧ FreshCache B v) ∧ (C v → DelInv c base w0 key f KO BK v)
+
+theorem delInvW_of_delInv (c : Ctx) (base : View BVal) (w0 : W) (key : Key) (f : Nat) (C : W → Prop)
+    (KO : KindOracle) (BK : NodeId) (v : W) (h : DelInv c base w0 key f KO BK v) :
+    DelInvW c base w0 key f C KO BK v := by
+  obtain ⟨B, _, hB, hb⟩ := h.1.2.2.2.2.2.2
+  exact ⟨⟨B, hB.good.ids, hb.fresh⟩, fun _ => h⟩
+
 set_option maxHeartbeats 1600000 in
-/-- The merges' loop keeps `DelInv`, given the merge's obligation at f: the
-descent, the merge's reading and tree, its ranges proved, its inner children
-from the kinds. -/
-theorem writerWP_mergeUp_del (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
-    (hvc : ViewCoherent c base) (fuelR : Nat) (hfR : 2 ≤ fuelR) (hM : MergeStepOK c base fuelR)
+/-- The merges' loop keeps `DelInvW` for a condition C that holds at a state if
+it holds at a later one with a larger next id (bergdb 025-05, route P): the
+descent, the merge's reading and tree, its ranges proved, its inner children from
+the kinds, the fit at the merge's end from `MergeStepOKW`. Where C fails, the
+fresh ids' books alone (`freshCache_mergeUp`). -/
+theorem writerWP_mergeUp_delW (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (fuelR : Nat) (hfR : 2 ≤ fuelR) (C : W → Prop)
+    (hC : ∀ v v', v.next ≤ v'.next → C v' → C v) (hM : MergeStepOKW c base fuelR C)
     (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
     (hICEk : ICEFromKinds c base KO BK)
     (hsa2 : 2 ≤ c.p.splitAbove) (hcap : 1 ≤ c.p.mergeMax) (w0 : W) (k0 : Key) :
-    ∀ fuel h merged v, DelInv c base w0 k0 fuelR KO BK v →
-      WriterWP (mergeUp key g fuel h merged) c v (fun _ v' => DelInv c base w0 k0 fuelR KO BK v') := by
+    ∀ fuel h merged v, DelInvW c base w0 k0 fuelR C KO BK v →
+      WriterWP (mergeUp key g fuel h merged) c v (fun _ v' => DelInvW c base w0 k0 fuelR C KO BK v') := by
   intro fuel
   induction fuel with
   | zero => intro h merged v _; exact writerWP_throw _ _ _ _
   | succ f ih =>
-    intro h merged v ⟨hI, hbk, hik⟩
+    intro h merged v ⟨⟨B0, hB0v, hfc⟩, hD⟩
+    by_cases hno : ¬ C v
+    · refine writerWP_mono (freshCache_mergeUp key g (f + 1) h merged c v hB0v hfc) ?_
+      rintro _ v' ⟨hf', hle⟩
+      exact ⟨⟨B0, hB0v, hf'⟩, fun hC' => absurd (hC v v' hle hC') hno⟩
+    obtain ⟨hI, hbk, hik⟩ := hD (Classical.byContradiction hno)
     unfold mergeUp
     simp only [writerWP_bind, writerWP_read]
     refine writerWP_mono (writerWP_and (descentOK c base fuelR w0 k0 key g h v hI)
       (kd_descendToHeight KO BK key g h c v hv hk hbk hik)) ?_
     intro d v1 ⟨⟨hI1, hPF⟩, hbk1, hik1, _⟩
     split
-    · simp only [writerWP_pure]; exact ⟨hI1, hbk1, hik1⟩
+    · simp only [writerWP_pure]; exact delInvW_of_delInv c base w0 k0 fuelR C KO BK _ ⟨hI1, hbk1, hik1⟩
     · rename_i hd0
       have hd : 0 < d := by
         cases d with
@@ -99,7 +139,7 @@ theorem writerWP_mergeUp_del (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
             fun z zn h => lookup_of_prefix _ _ hpre2 _ _ h
           have hP2 := pathOK_transport c v1 v2 d X K Nn hP1 hp2 hkeep2 hr2.2.2.1 hr2.2.1
           split
-          · simp only [writerWP_pure]; exact ⟨hI2, hbk2, hik2⟩
+          · simp only [writerWP_pure]; exact delInvW_of_delInv c base w0 k0 fuelR C KO BK _ ⟨hI2, hbk2, hik2⟩
           · rename_i hql
             have hql' : qn.leaf = false := by simpa using hql
             rw [writerWP_bind]
@@ -113,7 +153,7 @@ theorem writerWP_mergeUp_del (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
               fun z zn h => lookup_of_prefix _ _ hpre3 _ _ h
             have hP3 := pathOK_transport c v2 v3 d X K Nn hP2 hp3 hkeep3 hr3.2.2.1 hr3.2.1
             split
-            · simp only [writerWP_pure]; exact ⟨hI3, hbk3, hik3⟩
+            · simp only [writerWP_pure]; exact delInvW_of_delInv c base w0 k0 fuelR C KO BK _ ⟨hI3, hbk3, hik3⟩
             · rename_i hcnt
               have hcnt' : xn.cnt < c.p.mergeBelow := by simpa using hcnt
               rw [writerWP_bind]
@@ -150,12 +190,30 @@ theorem writerWP_mergeUp_del (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
               rintro r v4 ⟨⟨⟨⟨⟨hread4, hu4, hF4⟩, hb4⟩, hT4⟩, hR4⟩, hbk4, hik4, _, _⟩
               obtain ⟨hP4, hG4⟩ := putInv_after_step c base v4 B1 t1 hB1 hb4 hT4 hu4 hR4
               have hICE4 := hICEk v4 hbk4 hik4 (fun y hy => hu4 y (tReach_reachS _ _ _ _ hy))
-              have hI4 : DelInvF c base w0 k0 fuelR v4 :=
-                ⟨hP4, hG4, hR4, hICE4, hF4, fun key' hk' => by
-                  rw [hread4 hF4 key']; exact hI3.2.2.2.2.2.1 key' hk', B1, t1, hB1, hb4⟩
+              have hQ4 : DelInvW c base w0 k0 fuelR C KO BK v4 := by
+                refine ⟨⟨B1, hB1.good.ids, hb4.fresh⟩, fun hC4 => ?_⟩
+                have hF4' := hF4 hC4 hP4
+                exact ⟨⟨hP4, hG4, hR4, hICE4, hF4', fun key' hk' => by
+                  rw [hread4 hF4' key']; exact hI3.2.2.2.2.2.1 key' hk', B1, t1, hB1, hb4⟩, hbk4, hik4⟩
               split
-              · simp only [writerWP_pure]; exact ⟨hI4, hbk4, hik4⟩
-              · exact ih (h + 1) true v4 ⟨hI4, hbk4, hik4⟩
+              · simp only [writerWP_pure]; exact hQ4
+              · exact ih (h + 1) true v4 hQ4
+
+/-- The merges' loop keeps `DelInv`, given the merge's obligation at f: the
+descent, the merge's reading and tree, its ranges proved, its inner children
+from the kinds. -/
+theorem writerWP_mergeUp_del (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (fuelR : Nat) (hfR : 2 ≤ fuelR) (hM : MergeStepOK c base fuelR)
+    (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
+    (hICEk : ICEFromKinds c base KO BK)
+    (hsa2 : 2 ≤ c.p.splitAbove) (hcap : 1 ≤ c.p.mergeMax) (w0 : W) (k0 : Key) :
+    ∀ fuel h merged v, DelInv c base w0 k0 fuelR KO BK v →
+      WriterWP (mergeUp key g fuel h merged) c v (fun _ v' => DelInv c base w0 k0 fuelR KO BK v') :=
+  fun fuel h merged v hI => writerWP_mono
+    (writerWP_mergeUp_delW key g c base hvc fuelR hfR (fun _ => True) (fun _ _ _ _ => trivial)
+      (mergeStepOKW_of c base fuelR _ hM) KO BK hv hk hICEk hsa2 hcap w0 k0 fuel h merged v
+      (delInvW_of_delInv c base w0 k0 fuelR _ KO BK v hI))
+    (fun _ _ hv' => hv'.2 trivial)
 
 /-- Obligation (the delete's other steps, with the kinds' books): `DelStepsOKF`
 with the merges' loop, `afterDelete` and the collapse keeping `DelInv` over the

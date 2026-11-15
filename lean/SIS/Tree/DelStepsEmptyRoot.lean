@@ -100,12 +100,12 @@ theorem path_nil_of_root (c : Ctx) (base : View BVal) (w : W) (hT : TreeOK (wNod
 set_option maxHeartbeats 1600000 in
 /-- The reading of a delete that empties the leaf at the space root, the merges
 on: the root's bitmap, or its split when full; no merges' loop. -/
-theorem delStepsCaseOK_emptyRoot (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+theorem delStepsCaseOK_emptyRootG (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
     (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
-    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts)) :
-    DelStepsCaseOK p R DelEmptyRootM := by
-  intro ts tx hw hr z top _ htop ops op post hops r w hpre hI hRO hF key hop hPc _ _ _
+    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
+    (I : List Tx → Tx → W → Key → W → Prop) : DelStepsCaseOKG p R DelEmptyRootM I := by
+  intro ts tx hw hr z top _ htop ops op post hops r w hpre hI hRO hF key hop hPc _ _ _ _ _
   obtain ⟨pre, cv, L0, n0, hop', _, hK, hne0, hall0, hroot0⟩ := hPc
   subst hop'
   cases hop
@@ -197,4 +197,11 @@ theorem delStepsCaseOK_emptyRoot (p : Params) (R : Struct BVal → Time → Prop
       rw [hr]
       simp [Op.key, Op.value]
 
+
+theorem delStepsCaseOK_emptyRoot (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+    (hsa2 : 2 ≤ p.splitAbove)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t)
+    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts)) :
+    DelStepsCaseOK p R DelEmptyRootM :=
+  delStepsCaseOK_of_G p R _ (delStepsCaseOK_emptyRootG p R hM hsa2 hRL hP _)
 end SIS.Tree

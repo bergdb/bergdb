@@ -400,48 +400,78 @@ theorem writerWP_replaceRoot_seg_cascadeC (fuelR : Nat) (hfR : 2 ≤ fuelR) (x :
     · simp only [writerWP_pure]
       exact writerWP_mono hcas (fun _ w2 h => h.1)
 
+/-- Root collapse's invariant at fuelR while a condition C holds (bergdb 025-05,
+route P): the fresh ids' books always, and the collapse's reading invariant, the
+ranges and the books where C holds. -/
+def CollInvW (c : Ctx) (base : View BVal) (w0 : W) (fuelR : Nat) (C : W → Prop) (B : NodeId)
+    (top0 : Top) (KO : KindOracle) (BK : NodeId) (v : W) : Prop :=
+  FreshCache B v ∧ (C v → CollGetInvF c base w0 v fuelR ∧
+    RangeOrder (wNode c.p base v) c.i v.top.rootKey ∧ PutBook c B top0 v ∧ Book BK c v ∧ KdInv KO BK v)
+
 set_option maxHeartbeats 1600000 in
-/-- `writerWP_collapseRoot_coll` without `CollapseUnlinkOK` (`hunl`): a
-replaceRoot at a segment root takes the leaf's cascade from the state before the
-unlink (`writerWP_replaceRoot_seg_cascadeC`). -/
-theorem writerWP_collapseRoot_collC (fuelR : Nat) (hfR : 2 ≤ fuelR) (key : Key) (seg : Nat) (c : Ctx)
+/-- `writerWP_collapseRoot_collC` for a condition C that holds at a state if it
+holds at a later one with a larger next id (bergdb 025-05, route P): the fit after
+a replaceRoot at a segment root is asked only where C holds there, given the tree
+and the books. Where C fails, the fresh ids' books alone. -/
+theorem writerWP_collapseRoot_collW (fuelR : Nat) (hfR : 2 ≤ fuelR) (key : Key) (seg : Nat) (c : Ctx)
     (base : View BVal) (hvc : ViewCoherent c base) (w0 : W) (B : NodeId) (top0 : Top)
     (hB : PutBase c base B) (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view)
     (hk : ViewKinds KO BK c) (hICEk : ICEFromKinds c base KO BK) (hsa2 : 2 ≤ c.p.splitAbove)
-    (hfits : ∀ v x n only, CollGetInvF c base w0 v fuelR →
+    (C : W → Prop) (hC : ∀ v v', v.next ≤ v'.next → C v' → C v)
+    (hfits : ∀ v x n only, C v → CollGetInvF c base w0 v fuelR →
       RangeOrder (wNode c.p base v) c.i v.top.rootKey → SegDesc c base x v →
       v.nodes.lookup x = some n → n.leaf = false → n.firstTime ≠ some c.i →
       n.onlyLiveKlong = some only → n.cv? only = some 0 →
       WriterWP (replaceRoot x (v.path.length - 1) only) c v
-        (fun _ v' => SegFits (wNode c.p base v') c.i (fuelR - 1) v'.top.rootKey)) :
-    ∀ fuel v, CollGetInvF c base w0 v fuelR → RangeOrder (wNode c.p base v) c.i v.top.rootKey →
-      PutBook c B top0 v → Book BK c v → KdInv KO BK v →
-      WriterWP (collapseRoot key seg fuel) c v (fun _ v' => CollGetInvF c base w0 v' fuelR ∧
-        RangeOrder (wNode c.p base v') c.i v'.top.rootKey ∧ PutBook c B top0 v' ∧ Book BK c v' ∧
-        KdInv KO BK v') := by
-  intro fuel v hI hR hb hbk hik
-  refine writerWP_collapseRoot_inv key seg c (fun v => CollGetInvF c base w0 v fuelR ∧
-      RangeOrder (wNode c.p base v) c.i v.top.rootKey ∧ PutBook c B top0 v ∧ Book BK c v ∧
-      KdInv KO BK v) (SegDesc c base) ?_ ?_ ?_ ?_ fuel v ⟨hI, hR, hb, hbk, hik⟩
-  · rintro v ⟨hI, hR, hb, hbk, hik⟩
+        (fun _ v' => C v' → TreeOK (wNode c.p base v') c.i v'.top.rootKey → PutInvG c base v' →
+          SegFits (wNode c.p base v') c.i (fuelR - 1) v'.top.rootKey)) :
+    ∀ fuel v, CollInvW c base w0 fuelR C B top0 KO BK v →
+      WriterWP (collapseRoot key seg fuel) c v (fun _ v' => CollInvW c base w0 fuelR C B top0 KO BK v') := by
+  intro fuel v hCI
+  have hBv : ViewIdsBelow B c.view := hB.good.ids
+  refine writerWP_collapseRoot_inv key seg c (CollInvW c base w0 fuelR C B top0 KO BK)
+    (fun x v => C v → SegDesc c base x v) ?_ ?_ ?_ ?_ fuel v hCI
+  · rintro v ⟨hfc, hD⟩
+    by_cases hno : ¬ C v
+    · refine writerWP_mono (freshCache_descendToSegmentRoot key seg c v hBv hfc) ?_
+      rintro _ v' ⟨hf', hle⟩
+      exact ⟨⟨hf', fun hC' => absurd (hC v v' hle hC') hno⟩, fun hC' => absurd (hC v v' hle hC') hno⟩
+    obtain ⟨hI, hR, hb, hbk, hik⟩ := hD (Classical.byContradiction hno)
     refine writerWP_mono (writerWP_and (writerWP_and
       (writerWP_descendToSegmentRoot_linked key seg c base hvc v hI.1.2.1 hI.2.2.2.1)
       (putBook_descendToSegmentRoot key seg c base B top0 hB v hb))
       (kd_descendToSegmentRoot KO BK key seg c v hv hk hbk hik)) ?_
     rintro x v' ⟨⟨⟨hr, _, hx, ps, hvp, hlf, hend, hcache, hlast⟩, hb'⟩, hbk', hik', _, _⟩
-    refine ⟨⟨collGetInv_of_readsAsF fuelR hfR c base w0 v v' hr hI, by rw [hr.1, hr.2.1]; exact hR,
-      hb', hbk', hik'⟩, ?_⟩
+    refine ⟨⟨hb'.fresh, fun _ => ⟨collGetInv_of_readsAsF fuelR hfR c base w0 v v' hr hI,
+      by rw [hr.1, hr.2.1]; exact hR, hb', hbk', hik'⟩⟩, fun _ => ?_⟩
     unfold SegDesc
     rw [hr.1, hr.2.1]
     exact ⟨hx, ps, hvp, hlf, hend, hcache, hlast⟩
-  · rintro x v ⟨hI, hR, hb, hbk, hik⟩ hP
+  · rintro x v ⟨hfc, hD⟩ hP0
+    by_cases hno : ¬ C v
+    · refine writerWP_mono (writerWP_and (writerWP_and (writerWP_getNode_freshCache B x c v hBv hfc)
+        (writerWP_getNode_all x c v base hvc)) (writerWP_getNode_cache x c v)) ?_
+      rintro n v' ⟨⟨⟨hf', hle, _⟩, _, hl, _, _, _⟩, _, _, hp⟩
+      exact ⟨⟨hf', fun hC' => absurd (hC v v' hle hC') hno⟩,
+        fun hC' => absurd (hC v v' hle hC') hno, hl, hp⟩
+    have hCv : C v := Classical.byContradiction hno
+    obtain ⟨hI, hR, hb, hbk, hik⟩ := hD hCv
+    have hP := hP0 hCv
     refine writerWP_mono (writerWP_and (writerWP_and (writerWP_and (writerWP_getNode_all x c v base hvc)
       (writerWP_getNode_cache x c v)) (putBook_getNode x c base B top0 hB v hb))
       (kd_getNode KO BK x c v hv hk hbk hik)) ?_
     rintro n v' ⟨⟨⟨⟨hr, hl, _, hpre, _⟩, _, _, hp⟩, hb'⟩, hbk', hik', _⟩
-    exact ⟨⟨collGetInv_of_readsAsF fuelR hfR c base w0 v v' hr hI, by rw [hr.1, hr.2.1]; exact hR,
-      hb', hbk', hik'⟩, segDesc_of_readsAs c base x v v' hP hr hpre hp, hl, hp⟩
-  · rintro x v n only ⟨hI, hR, hb, hbk, hik⟩ hP hlk hxl hm _ honly hcv
+    exact ⟨⟨hb'.fresh, fun _ => ⟨collGetInv_of_readsAsF fuelR hfR c base w0 v v' hr hI,
+      by rw [hr.1, hr.2.1]; exact hR, hb', hbk', hik'⟩⟩,
+      fun _ => segDesc_of_readsAs c base x v v' hP hr hpre hp, hl, hp⟩
+  · rintro x v n only ⟨hfc, hD⟩ hP0 hlk hxl hm _ honly hcv
+    by_cases hno : ¬ C v
+    · refine writerWP_mono (freshCache_takeBackRoot x _ only c v hBv hfc) ?_
+      rintro _ v' ⟨hf', hle⟩
+      exact ⟨hf', fun hC' => absurd (hC v v' hle hC') hno⟩
+    have hCv : C v := Classical.byContradiction hno
+    obtain ⟨hI, hR, hb, hbk, hik⟩ := hD hCv
+    have hP := hP0 hCv
     obtain ⟨g, h, hgh⟩ := kd_tag_of_lookup hbk hlk
     have hh : h ≠ 0 := by
       intro h0; subst h0
@@ -472,8 +502,15 @@ theorem writerWP_collapseRoot_collC (fuelR : Nat) (hfR : 2 ≤ fuelR) (key : Key
       (putBook_takeBackRoot x _ only c base B top0 hB v hb hBx))
       (kd_takeBackRoot KO BK x _ only c v hv hk hbk hik a hpa g h hgh hh)) ?_
     rintro _ v' ⟨⟨⟨hI', hR'⟩, hb'⟩, hbk', hik', _, _⟩
-    exact ⟨hI', hR', hb', hbk', hik'⟩
-  · rintro x v n only ⟨hI, hR, hb, hbk, hik⟩ hP hlk hxl hm honly hcv
+    exact ⟨hb'.fresh, fun _ => ⟨hI', hR', hb', hbk', hik'⟩⟩
+  · rintro x v n only ⟨hfc, hD⟩ hP0 hlk hxl hm honly hcv
+    by_cases hno : ¬ C v
+    · refine writerWP_mono (freshCache_replaceRoot x _ only c v hBv hfc) ?_
+      rintro _ v' ⟨hf', hle⟩
+      exact ⟨hf', fun hC' => absurd (hC v v' hle hC') hno⟩
+    have hCv : C v := Classical.byContradiction hno
+    obtain ⟨hI, hR, hb, hbk, hik⟩ := hD hCv
+    have hP := hP0 hCv
     obtain ⟨g, h, hgh⟩ := kd_tag_of_lookup hbk hlk
     have hh : h ≠ 0 := by
       intro h0; subst h0
@@ -482,7 +519,7 @@ theorem writerWP_collapseRoot_collC (fuelR : Nat) (hfR : 2 ≤ fuelR) (key : Key
     obtain ⟨a, hpa⟩ := segDesc_pathLast c base x v hP
     have hG := putInvG_of_book c base B top0 v hB hb
     have hPC := pathCached_of_segDesc c base x v n hP hlk
-    have hfit := hfits v x n only hI hR hP hlk hxl hm honly hcv
+    have hfit := hfits v x n only hCv hI hR hP hlk hxl hm honly hcv
     have hbook := putBook_replaceRoot x (v.path.length - 1) only c base B top0 hB v hb
     have hkd := kd_replaceRoot KO BK x _ only c v hv hk hbk hik a hpa g h hgh hh
     obtain ⟨_, ps, hvp, hlf, hend, hcache, hlast⟩ := hP
@@ -494,7 +531,7 @@ theorem writerWP_collapseRoot_collC (fuelR : Nat) (hfR : 2 ≤ fuelR) (key : Key
       rw [hvp] at hbook hkd ⊢
       refine writerWP_mono (writerWP_and (writerWP_and (writerWP_and hcl hrg) hbook) hkd) ?_
       rintro _ v' ⟨⟨⟨hI', hR'⟩, hb'⟩, hbk', hik', _, _⟩
-      exact ⟨hI', hR', hb', hbk', hik'⟩
+      exact ⟨hb'.fresh, fun _ => ⟨hI', hR', hb', hbk', hik'⟩⟩
     · subst hps
       obtain ⟨hLr, hLlk, hk', hlen, hpd, hpk⟩ := segDesc_seg c base x v ps0 k L ln hvp hlf hcache hL hLn
       rw [hlen] at hfit hbook hkd ⊢
@@ -503,11 +540,38 @@ theorem writerWP_collapseRoot_collC (fuelR : Nat) (hfR : 2 ≤ fuelR) (key : Key
       refine writerWP_mono (writerWP_and (writerWP_and (writerWP_and hcas hfit) hbook) hkd) ?_
       rintro _ v' ⟨⟨⟨⟨hT', hU', hW', _, _, hread', hR'⟩, hf'⟩, hb'⟩, hbk', hik', _, _⟩
       have hG' := putInvG_of_book c base B top0 v' hB hb'
+      refine ⟨hb'.fresh, fun hC' => ?_⟩
+      have hf'' := hf' hC' hT' hG'
       refine ⟨⟨⟨hT', hU', fun y yn _ hy => hG'.times y yn hy,
         fun y yn cc z hy hyn hl hc => hICEk v' hbk' hik' hU' y yn cc z hy hyn hl hc⟩,
-        hread' hf', hf', fun y yn _ hy => hW' y yn hy, fun y yn _ hy => hG'.keyNoValue y yn hy⟩,
+        hread' hf'', hf'', fun y yn _ hy => hW' y yn hy, fun y yn _ hy => hG'.keyNoValue y yn hy⟩,
         hR', hb', hbk', hik'⟩
 
+/-- `writerWP_collapseRoot_coll` without `CollapseUnlinkOK` (`hunl`): a
+replaceRoot at a segment root takes the leaf's cascade from the state before the
+unlink (`writerWP_replaceRoot_seg_cascadeC`). -/
+theorem writerWP_collapseRoot_collC (fuelR : Nat) (hfR : 2 ≤ fuelR) (key : Key) (seg : Nat) (c : Ctx)
+    (base : View BVal) (hvc : ViewCoherent c base) (w0 : W) (B : NodeId) (top0 : Top)
+    (hB : PutBase c base B) (KO : KindOracle) (BK : NodeId) (hv : ViewIdsBelow BK c.view)
+    (hk : ViewKinds KO BK c) (hICEk : ICEFromKinds c base KO BK) (hsa2 : 2 ≤ c.p.splitAbove)
+    (hfits : ∀ v x n only, CollGetInvF c base w0 v fuelR →
+      RangeOrder (wNode c.p base v) c.i v.top.rootKey → SegDesc c base x v →
+      v.nodes.lookup x = some n → n.leaf = false → n.firstTime ≠ some c.i →
+      n.onlyLiveKlong = some only → n.cv? only = some 0 →
+      WriterWP (replaceRoot x (v.path.length - 1) only) c v
+        (fun _ v' => SegFits (wNode c.p base v') c.i (fuelR - 1) v'.top.rootKey)) :
+    ∀ fuel v, CollGetInvF c base w0 v fuelR → RangeOrder (wNode c.p base v) c.i v.top.rootKey →
+      PutBook c B top0 v → Book BK c v → KdInv KO BK v →
+      WriterWP (collapseRoot key seg fuel) c v (fun _ v' => CollGetInvF c base w0 v' fuelR ∧
+        RangeOrder (wNode c.p base v') c.i v'.top.rootKey ∧ PutBook c B top0 v' ∧ Book BK c v' ∧
+        KdInv KO BK v') := by
+  intro fuel v hI hR hb hbk hik
+  refine writerWP_mono (writerWP_collapseRoot_collW fuelR hfR key seg c base hvc w0 B top0 hB KO BK hv hk
+    hICEk hsa2 (fun _ => True) (fun _ _ _ _ => trivial)
+    (fun v x n only _ hI hR hP hlk hxl hm honly hcv => writerWP_mono
+      (hfits v x n only hI hR hP hlk hxl hm honly hcv) (fun _ _ hf _ _ _ => hf))
+    fuel v ⟨hb.fresh, fun _ => ⟨hI, hR, hb, hbk, hik⟩⟩) ?_
+  exact fun _ _ h => h.2 trivial
 
 /-! ## Case 4 with `CollapseFitsOK` alone -/
 

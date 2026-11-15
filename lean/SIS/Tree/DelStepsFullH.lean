@@ -84,15 +84,15 @@ theorem writerWP_appendDeleteKlong_full_delH (c : Ctx) (base : View BVal) (hvc :
 from the fuel premise after the split (cost's step 4) and the
 leaf at the space root (`DelFullRootStepOK`), for runs with their links and
 TP4 at every run, 2 ≤ splitAbove. -/
-theorem delStepsCaseOK_fullH (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+theorem delStepsCaseOK_fullHG (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
     (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
     (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
     (hRK : ∀ P t, R P t → KindsAllOK p P) (hRH : ∀ P t, R P t → HeightAllOK p P t)
     (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelOK p)
-    (hRoot : ∀ ts, DelFullRootStepOK (ctxOf p ts) (viewOf (treeRun p ts))) :
-    DelStepsCaseOK p R DelFullM := by
-  intro ts tx hw hr z top hz htop ops op post hops r w hpre hI hRO hF key hop hPc hA _ _
+    (hRoot : ∀ ts, DelFullRootStepOK (ctxOf p ts) (viewOf (treeRun p ts)))
+    (I : List Tx → Tx → W → Key → W → Prop) : DelStepsCaseOKG p R DelFullM I := by
+  intro ts tx hw hr z top hz htop ops op post hops r w hpre hI hRO hF key hop hPc hin hout hA _ _
   obtain ⟨pre, cv, L0, n0, hop', _, hK, hne0, hkeep0, hfull0⟩ := hPc
   subst hop'
   cases hop
@@ -133,11 +133,22 @@ theorem delStepsCaseOK_fullH (p : Params) (R : Struct BVal → Time → Prop) (h
         hsa2 hv hk hICEk w pre cv rk tx.base top hB hI hRO hF hkey hrk L n P w3 hL hn hnl hne hfull
         hr03 hJ3.1 hJ3.2 hp3' hlinkP hXD hlkX) ?_
     intro g h v hv'
-    refine writerWP_mono (hA g h v hv') ?_
+    refine writerWP_mono (hA g h v (hin v hv')) ?_
     intro _ v' hv'' hFv' key' hk'
-    have := runGet_of_delInvF p ts w v' (pre ++ [cv]) hv''.1 hI hF hFv' key' hk'
+    have := runGet_of_delInvF p ts w v' (pre ++ [cv]) (hout v' hv'' hFv').1 hI hF hFv' key' hk'
     simpa [Op.key, Op.value] using this
 
+
+/-- The old case: `delStepsCaseOK_fullHG` at `DelInvI`. -/
+theorem delStepsCaseOK_fullH (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+    (hsa2 : 2 ≤ p.splitAbove)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t)
+    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
+    (hRK : ∀ P t, R P t → KindsAllOK p P) (hRH : ∀ P t, R P t → HeightAllOK p P t)
+    (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelOK p)
+    (hRoot : ∀ ts, DelFullRootStepOK (ctxOf p ts) (viewOf (treeRun p ts))) :
+    DelStepsCaseOK p R DelFullM :=
+  delStepsCaseOK_of_G p R _ (delStepsCaseOK_fullHG p R hM hsa2 hRL hP hRK hRH hht hdel hRoot _)
 set_option maxHeartbeats 1600000 in
 /-- The take-back of a delete into a full leaf, the merges on, from the fuel
 premise after the split. -/

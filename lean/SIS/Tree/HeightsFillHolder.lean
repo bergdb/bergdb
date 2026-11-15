@@ -150,7 +150,7 @@ room the stop node has: `writerWP_del_emptyRoomMK` on the walk cut at the stop
 node's step (`writerWP_deleteUpward_stepJ`), the bitmap with the room of the
 branch the writer takes proved, the cascade and LE-b from `UpCascOK` and
 `UpLebOK`. -/
-theorem writerWP_del_emptyAnyMKLHGJ (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+theorem writerWP_del_emptyAnyMKLHGJG (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (pre : List Nat) (cv : Nat) (rk : NodeId) (w : W) (B : NodeId) (top0 : Top)
     (hB : PutBase c base B) (hbook : PutBook c B top0 w)
     (KO : KindOracle) (BK : NodeId) (hvB : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
@@ -171,16 +171,13 @@ theorem writerWP_del_emptyAnyMKLHGJ (c : Ctx) (base : View BVal) (hvc : ViewCohe
     (hsa2 : 2 ≤ c.p.splitAbove) (hICEk : ICEFromKinds c base KO BK)
     (hm : c.p.merges = true) (hpos : 0 < c.i)
     (hTJ2 : TakeJ2 c base B w) (hTA : TakenAbove B w) (hMF : ∀ x o, w.madeFor.lookup x = some o → o < B)
+    (Post : W → Prop) (Imid : W → Prop)
     (hA : ∀ g h v, DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v →
-      WriterWP (afterDelete (pre ++ [cv]) g h) c v (fun _ v' => DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v'))
+      WriterWP (afterDelete (pre ++ [cv]) g h) c v (fun _ v' => Post v'))
     (hMU : ∀ g h merged v, DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v →
-      WriterWP (mergeUp (pre ++ [cv]) g c.p.fuel h merged) c v
-        (fun _ v' => DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v'))
-    (hCR : ∀ seg v, DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v →
-      WriterWP (collapseRoot (pre ++ [cv]) seg c.p.fuel) c v
-        (fun _ v' => DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v'))
-    (Post : W → Prop) (hfresh : ∀ v, Post v → WriterWP fresh c v (fun _ v' => Post v'))
-    (hpost : ∀ v, DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v → Post v) :
+      WriterWP (mergeUp (pre ++ [cv]) g c.p.fuel h merged) c v (fun _ v' => Imid v'))
+    (hCR : ∀ seg v, Imid v → WriterWP (collapseRoot (pre ++ [cv]) seg c.p.fuel) c v (fun _ v' => Post v'))
+    (hfresh : ∀ v, Post v → WriterWP fresh c v (fun _ v' => Post v')) :
     WriterWP (putKv (.del (pre ++ [cv]))) c w (fun _ w' => Post w') := by
   have hfuel : 1 ≤ c.p.fuel := by unfold Params.fuel; omega
   have hJ0 : KdJ c B top0 KO BK w := ⟨hbook, hb0, hi0⟩
@@ -374,14 +371,14 @@ theorem writerWP_del_emptyAnyMKLHGJ (c : Ctx) (base : View BVal) (hvc : ViewCohe
         exact hD stop w' sn' id hsD ht htop hv hnodes hsn' hsl' hsw' hst'
           (fun c' z h => ⟨c', ((hlive' c' z).mp h).1, ((hlive' c' z).mp h).2, rfl⟩) hRO' hbk' hread
       · rintro _ w' ⟨hDv, hJ'⟩
-        exact writerWP_mono (hA gs hs w' ⟨hDv hJ'.1.1, hJ'.1.2.1, hJ'.1.2.2⟩) (fun _ w2 hD2 => hpost w2 hD2)
+        exact hA gs hs w' ⟨hDv hJ'.1.1, hJ'.1.2.1, hJ'.1.2.2⟩
     · exact writerWP_mono (hC w w3 B top0 pre cv rk (fun i => nodeAt w.top.rootKey P i)
         (fun i => (wNode c.p base w (nodeAt w.top.rootKey P i)).getD n)
         (fun i => ((P[i - 1]?).bind (·.1)).getD 0) P.length stop w2 _ S hm hLC hb3H hlen3 hgh2 hsa2 hvB hk hICEk (by simp [nodeAt])
         hB hI hRO hF hICE hr03 hkey hrk
         hvisw hpX hpK hlkX hXNw hlinkK hne' hall' hnl' hdepth hsD hbetween hLE (Or.inr ⟨_, rfl⟩) hJv
         (Or.inl hsl) hDR hTJ2 hTA)
-        (fun _ w' hD' => writerWP_mono (hA gs hs w' hD') (fun _ w2 hD2 => hpost w2 hD2))
+        (fun _ w' hD' => hA gs hs w' hD')
   · -- an inner stop node, its klong to the chain not the empty key's
     intro seg stop w2 S hsD hbetween hLE hJ2G hsl hK0 gs hs
     obtain ⟨hJ2, hgh2⟩ := hJ2G
@@ -407,7 +404,7 @@ theorem writerWP_del_emptyAnyMKLHGJ (c : Ctx) (base : View BVal) (hvc : ViewCohe
       · rintro _ w' ⟨hDv, hJ'⟩
         refine writerWP_mono (hMU gs hs false w' ⟨hDv hJ'.1.1, hJ'.1.2.1, hJ'.1.2.2⟩) ?_
         intro _ w1 hD1
-        exact writerWP_mono (hCR seg w1 hD1) (fun _ w2 hD2 => hpost w2 hD2)
+        exact hCR seg w1 hD1
     · refine writerWP_mono (hC w w3 B top0 pre cv rk (fun i => nodeAt w.top.rootKey P i)
         (fun i => (wNode c.p base w (nodeAt w.top.rootKey P i)).getD n)
         (fun i => ((P[i - 1]?).bind (·.1)).getD 0) P.length stop w2 _ S hm hLC hb3H hlen3 hgh2 hsa2 hvB hk hICEk (by simp [nodeAt])
@@ -417,7 +414,7 @@ theorem writerWP_del_emptyAnyMKLHGJ (c : Ctx) (base : View BVal) (hvc : ViewCohe
       intro _ w' hD'
       refine writerWP_mono (hMU gs hs false w' hD') ?_
       intro _ w1 hD1
-      exact writerWP_mono (hCR seg w1 hD1) (fun _ w2 hD2 => hpost w2 hD2)
+      exact hCR seg w1 hD1
   · -- LE-b at an inner stop node: none, with the fill at the delete's start
     intro seg stop w2 S hsD hbetween hLE hJ2 hsl hK0 hsm gs hs
     exact (lebStop_false c base w hLC hm hI (fun i => nodeAt w.top.rootKey P i)
@@ -425,6 +422,44 @@ theorem writerWP_del_emptyAnyMKLHGJ (c : Ctx) (base : View BVal) (hvc : ViewCohe
       (fun i => ((P[i - 1]?).bind (·.1)).getD 0) P.length stop cv (by simp [nodeAt]) hXNw hlinkK hall'
       hsD hbetween hsl).elim
 
+
+/-- The walk with the obligations kept in `DelInv`: `writerWP_del_emptyAnyMKLHGJG`. -/
+theorem writerWP_del_emptyAnyMKLHGJ (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (pre : List Nat) (cv : Nat) (rk : NodeId) (w : W) (B : NodeId) (top0 : Top)
+    (hB : PutBase c base B) (hbook : PutBook c B top0 w)
+    (KO : KindOracle) (BK : NodeId) (hvB : ViewIdsBelow BK c.view) (hk : ViewKinds KO BK c)
+    (hb0 : Book BK c w) (hi0 : KdInv KO BK w)
+    (hI : PutInv c base w) (hRO : RangeOrder (wNode c.p base w) c.i w.top.rootKey)
+    (hF : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey)
+    (hICE : InnerChildrenExist (wNode c.p base w) c.i w.top.rootKey)
+    (hkey : keyWf (pre ++ [cv]) = true)
+    (hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk)
+    (hleafC : ∀ L n, (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk →
+      wNode c.p base w L = some n → n.leaf = true →
+      bitsUnion n.lastBitmap (n.bitsOf cv) ≠ n.lastBitmap ∧
+      n.allKeysIn (bitsUnion n.lastBitmap (n.bitsOf cv)) = true ∧ L ≠ w.top.rootKey)
+    (H : NodeId → Nat → Prop) (hC : UpCascOKHGJ c base KO BK H)
+    (hLC : LiveCounts c.p (wNode c.p base w) c.i w.top.rootKey)
+    (hvo : ViewHtOK H BK c) (hkw : ViewKlongsWf c.p c.view) (hhi : HtInv H BK c w) (hwfw : WriterKlongsWf w)
+    (hub : UntakenBound (c.p.fuel - 1) w)
+    (hsa2 : 2 ≤ c.p.splitAbove) (hICEk : ICEFromKinds c base KO BK)
+    (hm : c.p.merges = true) (hpos : 0 < c.i)
+    (hTJ2 : TakeJ2 c base B w) (hTA : TakenAbove B w) (hMF : ∀ x o, w.madeFor.lookup x = some o → o < B)
+    (hA : ∀ g h v, DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v →
+      WriterWP (afterDelete (pre ++ [cv]) g h) c v (fun _ v' => DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v'))
+    (hMU : ∀ g h merged v, DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v →
+      WriterWP (mergeUp (pre ++ [cv]) g c.p.fuel h merged) c v
+        (fun _ v' => DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v'))
+    (hCR : ∀ seg v, DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v →
+      WriterWP (collapseRoot (pre ++ [cv]) seg c.p.fuel) c v
+        (fun _ v' => DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v'))
+    (Post : W → Prop) (hfresh : ∀ v, Post v → WriterWP fresh c v (fun _ v' => Post v'))
+    (hpost : ∀ v, DelInv c base w (pre ++ [cv]) (c.p.fuel + 1) KO BK v → Post v) :
+    WriterWP (putKv (.del (pre ++ [cv]))) c w (fun _ w' => Post w') :=
+  writerWP_del_emptyAnyMKLHGJG c base hvc pre cv rk w B top0 hB hbook KO BK hvB hk hb0 hi0 hI hRO hF hICE hkey
+    hrk hleafC H hC hLC hvo hkw hhi hwfw hub hsa2 hICEk hm hpos hTJ2 hTA hMF Post _
+    (fun g h v hv => writerWP_mono (hA g h v hv) (fun _ v' => hpost v')) hMU
+    (fun seg v hv => writerWP_mono (hCR seg v hv) (fun _ v' => hpost v')) hfresh
 
 /-! ## The delete's steps without `hHL` -/
 
@@ -549,7 +584,7 @@ theorem delStepsJ2OKJ_of_openR (p : Params) (R : Struct BVal → Time → Prop)
 
 /-- (025-04, route (b): without `hU`.) `delStepsCaseOK_emptyCascLHG` without `hHL`, given `TakeJ2` and the made-for ids
 below the first id at every state. -/
-theorem delStepsCaseOK_emptyCascLHGJ_noU (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+theorem delStepsCaseOK_emptyCascLHGJ_noUG (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
     (hsa2 : 2 ≤ p.splitAbove)
     (hRL : ∀ P t, R P t → RunLinksOK p P t)
     (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
@@ -557,9 +592,9 @@ theorem delStepsCaseOK_emptyCascLHGJ_noU (p : Params) (R : Struct BVal → Time 
     (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelOK p)
     (hLC : StateOK p R (fun ts _ w => LiveCountsW p ts w))
     (hJ2S : StateOK p R (fun ts tx w => TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w))
-    (hMFS : StateOK p R (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base)) :
-    DelStepsCaseOK p R DelEmptyCascM := by
-  intro ts tx hw hr z top hz htop ops op post hops r w hpre hI hRO hF key hop hPc hA hMU hCR
+    (hMFS : StateOK p R (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base))
+    (I : List Tx → Tx → W → Key → W → Prop) : DelStepsCaseOKG p R DelEmptyCascM I := by
+  intro ts tx hw hr z top hz htop ops op post hops r w hpre hI hRO hF key hop hPc hin hout hA hMU hCR
   have hLCw := hLC ts tx hw hr z top hz htop ops (op :: post) hops r w hpre
   have hJ2w := hJ2S ts tx hw hr z top hz htop ops (op :: post) hops r w hpre
   have hMFw := hMFS ts tx hw hr z top hz htop ops (op :: post) hops r w hpre
@@ -592,17 +627,35 @@ theorem delStepsCaseOK_emptyCascLHGJ_noU (p : Params) (R : Struct BVal → Time 
       PathLen.root
     have := PathLen.depth_unique hI.tree _ _ _ h1 h0
     omega
-  refine writerWP_del_emptyAnyMKLHGJ (ctxOf p ts) _ (viewCoherent_ctxOf p ts) pre cv rk w tx.base top hB hbook
+  refine writerWP_del_emptyAnyMKLHGJG (ctxOf p ts) _ (viewCoherent_ctxOf p ts) pre cv rk w tx.base top hB hbook
     _ tx.base hv hk hb0 hi0 hI hRO hF hICE hkey hrk (keyLeaf_all2 hK hrk _ ⟨hne0, hall0, hLr⟩)
     _ (upCascOKHGJ_of_noU _ _ _ _ _
       (upCascFitsOKR_of _ _ _ _ _ hvo hbase hHb (by simp [ctxOf]))) hLCw hvo hkw hhi hwfw hub
     (by simpa [ctxOf] using hsa2) hICEk hm (by simp [ctxOf]) hJ2w
-    (fun y hy => hhi.takenAbove y (by simpa using hy)) hMFw hA hMU hCR
-    _ (fun v hv' => by unfold fresh; wpSimplify; exact hv') ?_
-  intro v hv' hFv key' hk'
-  have := runGet_of_delInvF p ts w v (pre ++ [cv]) hv'.1 hI hF hFv key' hk'
-  simpa [Op.key, Op.value] using this
+    (fun y hy => hhi.takenAbove y (by simpa using hy)) hMFw _ (I ts tx w (pre ++ [cv]))
+    (fun g h v hv => writerWP_mono (hA g h v (hin v hv)) (fun _ v' hv' hFv key' hk' => by
+      have := runGet_of_delInvF p ts w v' (pre ++ [cv]) (hout v' hv' hFv).1 hI hF hFv key' hk'
+      simpa [Op.key, Op.value] using this))
+    (fun g h m v hv => hMU g h m v (hin v hv))
+    (fun seg v hv => writerWP_mono (hCR seg v hv) (fun _ v' hv' hFv key' hk' => by
+      have := runGet_of_delInvF p ts w v' (pre ++ [cv]) (hout v' hv' hFv).1 hI hF hFv key' hk'
+      simpa [Op.key, Op.value] using this))
+    (fun v hv' => by unfold fresh; wpSimplify; exact hv')
 
+
+/-- The old case: `delStepsCaseOK_emptyCascLHGJ_noUG` at `DelInvI`. -/
+theorem delStepsCaseOK_emptyCascLHGJ_noU (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+    (hsa2 : 2 ≤ p.splitAbove)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t)
+    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
+    (hRK : ∀ P t, R P t → KindsAllOK p P) (hRH : ∀ P t, R P t → HeightAllOK p P t)
+    (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelOK p)
+    (hLC : StateOK p R (fun ts _ w => LiveCountsW p ts w))
+    (hJ2S : StateOK p R (fun ts tx w => TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w))
+    (hMFS : StateOK p R (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base)) :
+    DelStepsCaseOK p R DelEmptyCascM :=
+  delStepsCaseOK_of_G p R _ (delStepsCaseOK_emptyCascLHGJ_noUG p R hM hsa2 hRL hP hRK hRH hht hdel hLC hJ2S
+    hMFS _)
 set_option linter.unusedVariables false in
 /-- `delStepsCaseOK_emptyCascLHG` without `hHL`, given `TakeJ2` and the made-for ids
 below the first id at every state. -/
@@ -619,6 +672,25 @@ theorem delStepsCaseOK_emptyCascLHGJ (p : Params) (R : Struct BVal → Time → 
     DelStepsCaseOK p R DelEmptyCascM :=
   delStepsCaseOK_emptyCascLHGJ_noU p R hM hsa2 hRL hP hRK hRH hht hdel hLC hJ2S hMFS
 
+/-- `delStepsOKJ_of_open_noU` over any invariant I (bergdb 025-05, P4). -/
+theorem delStepsOKJ_of_open_noUG (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
+    (hsa2 : 2 ≤ p.splitAbove)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t)
+    (hP : ∀ ts, Within p ts → PointersOK (treeRun p ts))
+    (hRK : ∀ P t, R P t → KindsAllOK p P) (hRH : ∀ P t, R P t → HeightAllOK p P t)
+    (hht : OpHtDelOKUnder p R) (hdel : TakeBelowFuelDelOK p)
+    (hLC : StateOK p R (fun ts _ w => LiveCountsW p ts w))
+    (hJ2S : StateOK p R (fun ts tx w => TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w))
+    (hMFS : StateOK p R (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base))
+    (I : List Tx → Tx → W → Key → W → Prop) :
+    DelStepsOKG p R I :=
+  delStepsOK_of_casesG p R I (delStepsCaseOK_noLeafG p R I) (delStepsCaseOK_noopG p R I)
+    (delStepsCaseOK_orG p R _ _ _ I delEmptyM_split (delStepsCaseOK_emptyRoomG p R hM hRL hP I)
+      (delStepsCaseOK_orG p R _ _ _ I delEmptyOther_split (delStepsCaseOK_emptyRootG p R hM hsa2 hRL hP I)
+        (delStepsCaseOK_emptyCascLHGJ_noUG p R hM hsa2 hRL hP hRK hRH hht hdel hLC hJ2S hMFS I)))
+    (delStepsCaseOK_roomG p R hM hRL hP I)
+    (delStepsCaseOK_fullHG p R hM hsa2 hRL hP hRK hRH hht hdel (fun ts => delFullRootStepOK_ctx p ts) I)
+
 /-- (025-04, route (b): without `hU`.) `delStepsOK_of_open` without `hHL`. -/
 theorem delStepsOKJ_of_open_noU (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)
     (hsa2 : 2 ≤ p.splitAbove)
@@ -630,13 +702,7 @@ theorem delStepsOKJ_of_open_noU (p : Params) (R : Struct BVal → Time → Prop)
     (hJ2S : StateOK p R (fun ts tx w => TakeJ2 (ctxOf p ts) (viewOf (treeRun p ts)) tx.base w))
     (hMFS : StateOK p R (fun _ tx w => ∀ x o, w.madeFor.lookup x = some o → o < tx.base)) :
     DelStepsOK p R :=
-  delStepsOK_of_cases p R (delStepsCaseOK_noLeaf p R) (delStepsCaseOK_noop p R)
-    (delStepsCaseOK_or p R _ _ _ delEmptyM_split (delStepsCaseOK_emptyRoom p R hM hRL hP)
-      (delStepsCaseOK_or p R _ _ _ delEmptyOther_split (delStepsCaseOK_emptyRoot p R hM hsa2 hRL hP)
-        (delStepsCaseOK_emptyCascLHGJ_noU p R hM hsa2 hRL hP hRK hRH hht hdel hLC hJ2S hMFS)))
-    (delStepsCaseOK_room p R hM hRL hP)
-    (delStepsCaseOK_fullH p R hM hsa2 hRL hP hRK hRH hht hdel (fun ts => delFullRootStepOK_ctx p ts))
-
+  delStepsOK_of_G p R (delStepsOKJ_of_open_noUG p R hM hsa2 hRL hP hRK hRH hht hdel hLC hJ2S hMFS _)
 set_option linter.unusedVariables false in
 /-- `delStepsOK_of_open` without `hHL`. -/
 theorem delStepsOKJ_of_open (p : Params) (R : Struct BVal → Time → Prop) (hM : 2 ≤ p.M)

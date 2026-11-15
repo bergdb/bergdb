@@ -1,8 +1,8 @@
 # 025-05. The heights' premises htb, hMSF and hCoF: the plan
 
-Created 2026-11-15 by Frans Lundberg. Status: ready (the plan written
-2026-11-15, 12:39, by coord-1115's planning agent; route P proved in
-scratch for its first consumer; no step started in the repo).
+Created 2026-11-15 by Frans Lundberg. Status: in progress (the plan
+written 2026-11-15, 12:39, by coord-1115's planning agent; part 1, step 1
+gated on the prover fit's branch 2026-11-15; section 8 has the state).
 
 The key tree's best top theorem on `main` since 2026-11-15, 11:17, is
 `invGetScanOK_merges_free_noD4` (DeadTop.lean): TP7, TP10 and TP11 for
@@ -652,3 +652,41 @@ route P type-checked (RouteP.lean; `delStepsOK_of_G` proved, the others
 its parts also in FuelNext.lean, 551 lines, and P4Trial.lean, 446).
 No Lean file of the repo changed. No step of section 6 started in the
 repo.
+
+2026-11-15, 12:45 to 13:15. Part 1, step 1 (prover fit, plan 006-27):
+the reading's consumer in lean/, about 800 lines added and 130 removed.
+No statement changed; each generalized lemma has the proof and the old
+one is its corollary under its old statement.
+
+- New file SIS/Tree/FuelNext.lean: P1 (`segFits_of_idsBelow`,
+  `segFits_next_of_putInv`, `segFits_next_of_putInvG`), P2 (`DelInvA`,
+  `delInvA_of_delInv`, `delInv_of_delInvA`), P3 (`mergeStepOKW_next`,
+  `writerWP_mergeUp_delA`, `writerWP_collapseRoot_delA`,
+  `writerWP_afterDelete_delA`) and P5 (`DelStepsOKA`,
+  `opGetCaseOK_delMergeA`: case 4 of the reading from the family at
+  `DelInvA`, `TxSegFitsOK` and TP4, with no `MergeStepOK` and no
+  `CollapseFitsOK`).
+- The loops, one proof each (the plan's "a form both sources meet", not
+  the trial's copies): a condition C on the state that holds at a state if
+  it holds at a later one with a larger next id; the invariant is the
+  fresh ids' books, and the old invariant where C holds (`DelInvW`,
+  `CollInvW`); the fit at a merge's end, or after a replaceRoot, is asked
+  only where C holds there (`MergeStepOKW`). `writerWP_mergeUp_delW`
+  (DelMergeCaseKd.lean) and `writerWP_collapseRoot_collW`
+  (CollapseCommuteStep.lean); `writerWP_mergeUp_del` and
+  `writerWP_collapseRoot_collC` are C true, route P is C "the next id
+  below F".
+- P4: `DelStepsCaseOKG`, `DelStepsOKG` and `DelInvI` (the old
+  invariant) in DelSteps.lean, with `delStepsCaseOK_of_G`,
+  `delStepsCaseOK_to_G`, `delStepsOK_of_G`; the seven cases and the two
+  walks over I beside the old ones (DelSteps.lean, DelStepsEmptyRoot.lean,
+  DelStepsFullH.lean, HeightsFillHolder.lean; the walks' obligations end
+  in their Post and an `Imid`, so they have no `hpost`);
+  `delStepsOKJ_of_open_noUG`.
+- The trial's primed copies `freshCache_takeBackRoot'`,
+  `freshCache_replaceRoot'` and `segFits_mono'` are the existing
+  `freshCache_takeBackRoot`, `freshCache_replaceRoot` and `segFits_mono`.
+
+Next: steps 2 to 5 in order (2: `DelStepsJ2OK` over I with
+`DelInvJ` above the next id; its loops as `writerWP_mergeUp_delW`), then
+step 6.
