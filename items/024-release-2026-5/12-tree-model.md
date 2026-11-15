@@ -177,6 +177,28 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   their proofs, as the input of their `afterDelete` obligation, but do not state it, so a
   refinement of `afterDelete` (the RWP rules of `HeightsFillStop.lean`) has nothing to start
   from. Stating it is the next step.
+  Root collapse's `checkRoot` proved (delj, 2026-11-15, `DelHole.lean`, `DelHoleRoot.lean`):
+  - `deleteUpwardP ad` and `putKvDP ad` are the writer's delete with `ad` in place of its two
+    calls of `afterDelete`; `putKvDelChk5` is `putKvDP afterDeleteChk` (`putKvDelChk5_eq`),
+    and two instances run alike from every state when their `ad`s do (`rwp_putKvDP`).
+  - `DelInvJ` at `afterDelete`'s calls is now stated, as a check of the premise's copy:
+    `OpDelChk6OKL` says the writer's delete runs as `putKvDelChk6`, which at each call of
+    `afterDelete` checks `DelHoleJ` (`DelInvJ` and the books of the transaction's first id)
+    and that the merges' loop from there runs as its copy with the merge's `checkFree`
+    (`afterDeleteJ`), then runs the writer's `afterDelete`, root collapse without a check.
+  - From such a state `afterDelete` runs as `afterDeleteChk`: the merges' loop keeps
+    `DelInvJ` and the books (`writerWP_mergeUp_delJ`, `putBook_mergeUp`), and root collapse
+    with the check runs as without it (`rwp_collapseRoot_chkJ`; `checkRoot_ok_of_J2` before
+    each take-back, from the path that `descendToSegmentRoot` leaves,
+    `checkRoot_ok_of_segDesc`). So `OpDelChk6OKR` gives `OpDelChk5OKR`
+    (`opDelChk5OKR_of_chk6`, with `MergeStepOK` from `hMSF` and `CollapseFitsOK`), and
+    `invGetScanOK_merges_chk6` is the top theorem with `hchk6` in place of `hchk5`.
+  - Left in `hchk6`: `DelHoleJ` at `afterDelete`'s calls (the existing step lemmas prove it
+    inside their proofs, on the take-back's route with `hU` for the stop node's cascade, but
+    their statements do not give it, as cost2 found; carrying it needs their composition
+    restated in a form that keeps the states, not a new argument), and the merge's
+    `checkFree`. The `DelHoleJ` check is a proposition, not a computation, so `hchk6` has no
+    run test; its other part is `hchk5`'s merge check, tested as before.
 - `hHL` gone (cost2, 2026-11-15, `HeightsFillHolder.lean`, `HeightsFillTop.lean`): the joint
   induction also carries the writer's tree and the take-back's node facts (`J2At`, putinv's
   `OpJ2OK` step with S the take-back's state facts, the heights and the fill:

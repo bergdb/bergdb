@@ -113,6 +113,18 @@ provers' branches and reports are in
   `invGetScanOK_merges_noOutside` (hp, hth, hchk, d4, l4, hU, hHL,
   hMSF, hCoF, hCoU); 361 lines of variants removed.
 * 09:04 W2: prover delj started (Opus xhigh, stop 15:00).
+* 09:19 W3 done: 025-04's plan (coord-1114's agent), route (b): the
+  split from a state with the chain's bitmap set, no statement change;
+  5 steps, 700 to 1,200 lines; committed 6ca79849. coord-1114 closed
+  09:20.
+* 09:22 W4: prover hu started (Opus xhigh, stop 16:00), 025-04's
+  steps 1 to 5.
+* 09:50 delj LANDED 62e55741 (gate-1 PASS): root collapse's
+  `checkRoot` proved (`opDelChk5OKR_of_chk6`, from `hMSF`'s MergeStepOK
+  and `hCoF`); `invGetScanOK_merges_chk6` (hp, hth, hchk6, htb, d4, l4,
+  hU, hMSF, hCoF), where `hchk6` is `hchk5` without `checkRoot`, with
+  DelInvJ and the books at afterDelete's calls stated as a check. Left
+  in `hchk6`: carrying DelInvJ, and the merge's `checkFree`.
 
 
 ## 8. Outcome
