@@ -114,6 +114,21 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   deletes, 6828 of 310 runs, 309 of 8 random runs in several segments and 850 of random runs
   whose deletes climb (77 climbing); 160 with a take-back in the upward delete's loop, 2305
   with a merge's, 453 with root collapse's (`12-tree-model/delchk-check.lean.txt`).
+  Narrowed 2026-11-15 (cost2, `HeightsFill.lean`): `hchk` is needed only at the deletes of the
+  induction's runs whose start has `PutInv`, the walk's ranges, TP7's fill and the heights' walk
+  (`OpDelChk2OKL`); `opDelChk2OK_of_chk2L` gives `OpDelChk2OK` from it and the other nine
+  premises, and `invGetScanOK_merges_chkL` is the top theorem with it. Why it was needed: the
+  stop-node check and `checkOld`'s segment leaf follow from the fill at the delete's start
+  (`stopLeaf_of_liveCounts`), but in the top theorem's proof the fill at an operation's start
+  came from the cases before it, whose fuel came from the heights, whose walk used `hchk` at
+  every delete, later ones too (the fuel looked forward to the puts' heights, by the doomed
+  transaction). Now one induction along the transaction carries `PutInv`, the ranges, the
+  fill and the heights together (`jointHt_reached`): a put takes nothing back with no premise
+  (`putKv_put_taken`, `TakenPut.lean`), so the fuel at a state needs the heights at that state
+  only (`htStart_of_ht`), and the cases of the delete with the merges take the heights' facts
+  at their start (`HtStartAt`, `opCaseOKH_treeInvRange_delMergeRL`). The checks are still all
+  open; what changed is that their proofs may now use the fill and the heights at the
+  delete's start.
 - `htb`, `TakeBelowFuelDelOK`: every node that a delete takes back, of those it found at its
   start, has a cached height below the fuel (cost; a put takes nothing back, proved). With the
   heights it gives that every state between operations fits the fuel
