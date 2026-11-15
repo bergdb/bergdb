@@ -93,6 +93,8 @@ import SIS.Tree.CollapseCommuteRun
 import SIS.Tree.CollapseCommuteTop
 import SIS.Tree.DelHole
 import SIS.Tree.DelHoleRoot
+import SIS.Tree.DelHoleLeaf
+import SIS.Tree.DelHoleClimb
 import SIS.Proof.TreeRoot
 import SIS.Proof.TreeInit
 import SIS.Tree.DeadDelete
