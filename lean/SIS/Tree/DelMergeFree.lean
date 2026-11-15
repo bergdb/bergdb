@@ -483,4 +483,294 @@ theorem rwpq_mergeLoop (c : Ctx) (base : View BVal) (B : NodeId) (hvg : ViewGood
               rw [hsE]
               exact contains_cons1 hqr htq
 
+/-! ## The merge's tail up to its last loop -/
+
+/-- What the merge's tail keeps up to its last loop: the two nodes merged as at
+its start, the cache's books, the nodes cached at its start s cached. -/
+structure TInv (B : NodeId) (c : Ctx) (s : W) (path0 : List (Option Nat × NodeId)) (l r : NodeId)
+    (ln rn : KNode) (v : W) : Prop where
+  rjl : RJ l ln path0 v
+  rjr : RJ r rn path0 v
+  good : CacheGood B c v
+  uniq : UniqueCache B v
+  wf : WriterKlongsWf v
+  cached : CachedFrom s c v
+
+section TInvSteps
+
+variable {B : NodeId} {c : Ctx} {s : W} {path0 : List (Option Nat × NodeId)} {l r : NodeId} {ln rn : KNode}
+
+theorem tinv_of_eq {v v' : W} (h : TInv B c s path0 l r ln rn v) (hn : v'.nodes = v.nodes)
+    (hx : v'.next = v.next) (hp : v'.path = v.path) (hg : v'.gh = v.gh) (ht : v'.taken = v.taken) :
+    TInv B c s path0 l r ln rn v' := by
+  obtain ⟨⟨a1, a2, a3⟩, ⟨b1, b2, b3⟩, hgd, ⟨⟨f1, f2, f3, f4⟩, fu⟩, hwf, hcf⟩ := h
+  refine ⟨⟨by rw [hn]; exact a1, by rw [hx]; exact a2, by rw [hp]; exact a3⟩,
+    ⟨by rw [hn]; exact b1, by rw [hx]; exact b2, by rw [hp]; exact b3⟩,
+    ⟨by rw [hx]; exact hgd.1, by rw [hn]; exact hgd.2⟩,
+    ⟨⟨by rw [hx]; exact f1, by rw [hn, hx]; exact f2, by rw [hg, hx]; exact f3, by rw [ht, hx]; exact f4⟩,
+      by unfold CacheUnique; rw [hn]; exact fu⟩,
+    by unfold WriterKlongsWf; rw [hn]; exact hwf, fun y hy => by rw [hn]; exact hcf y hy⟩
+
+theorem tinv_modify (f : W → W) (v : W) (h : TInv B c s path0 l r ln rn v) (hn : (f v).nodes = v.nodes)
+    (hx : (f v).next = v.next) (hp : (f v).path = v.path) (hg : (f v).gh = v.gh) (ht : (f v).taken = v.taken) :
+    WriterWP (modify f) c v (fun _ v' => TInv B c s path0 l r ln rn v') :=
+  (writerWP_modify f c v _).mpr (tinv_of_eq h hn hx hp hg ht)
+
+theorem tinv_note (str : String) (v : W) (h : TInv B c s path0 l r ln rn v) :
+    WriterWP (note str) c v (fun _ v' => TInv B c s path0 l r ln rn v') :=
+  tinv_modify _ v h rfl rfl rfl rfl rfl
+
+theorem tinv_replacedBy (y : NodeId) (v : W) (h : TInv B c s path0 l r ln rn v) :
+    WriterWP (replacedBy y) c v (fun _ v' => TInv B c s path0 l r ln rn v') := by
+  unfold replacedBy; simp only [writerWP_bind, writerWP_get, writerWP_pure]; exact h
+
+theorem tinv_setMadeFor (y : NodeId) (o : Option NodeId) (v : W) (h : TInv B c s path0 l r ln rn v) :
+    WriterWP (setMadeFor y o) c v (fun _ v' => TInv B c s path0 l r ln rn v') := by
+  unfold setMadeFor
+  cases o with
+  | none => simp only [writerWP_pure]; exact h
+  | some o => exact tinv_modify _ v h rfl rfl rfl rfl rfl
+
+theorem tinv_ghOf (x : NodeId) (n : KNode) (v : W) (hx : v.nodes.lookup x = some n)
+    (h : TInv B c s path0 l r ln rn v) :
+    WriterWP (ghOf x) c v (fun _ v' => TInv B c s path0 l r ln rn v') :=
+  writerWP_ghOf_cached x n c v hx _ (fun _ => h)
+
+theorem tinv_newKey (hvg : ViewGood B c) (g h : Nat) (leaf : Bool) (ks : List Klong) (hks : ks = [] ∨ FlatAt c.i ks)
+    (hkw : klongsWf ks = true) (hkv : ViewKlongsWf c.p c.view) (v : W) (hI : TInv B c s path0 l r ln rn v) :
+    WriterWP (newKey g h leaf ks) c v (fun y v' => TInv B c s path0 l r ln rn v' ∧ y ≠ l ∧ y ≠ r) := by
+  have h1 := (xwp_newKey (m := ln) (c := c) (post := fun y u' => RJ l ln path0 u' ∧ y ≠ l) path0 g h leaf ks hI.rjl
+    (fun y u' hJ hy => ⟨hJ, hy⟩)).2
+  have h2 := (xwp_newKey (m := rn) (c := c) (post := fun y u' => RJ r rn path0 u' ∧ y ≠ r) path0 g h leaf ks hI.rjr
+    (fun y u' hJ hy => ⟨hJ, hy⟩)).2
+  have h3 := good_newKey B g h leaf ks c v (fun _ v' => CacheGood B c v') hvg hI.good hks (fun _ _ h => h.1)
+  have h4 := writerWP_newKey_uniqueCache B g h leaf ks c v hI.uniq
+  have h5 := klongsWf_newKey g h leaf ks hkw c v hkv hI.wf
+  have h6 := @state_newKey (cachedFromInvariant s) g h leaf ks c v hI.cached
+  refine writerWP_mono (writerWP_and (writerWP_and (writerWP_and (writerWP_and (writerWP_and h1 h2) h3) h4) h5) h6) ?_
+  rintro y v' ⟨⟨⟨⟨⟨⟨a1, a2⟩, b1, b2⟩, h3'⟩, h4', _, _⟩, h5'⟩, h6'⟩
+  exact ⟨⟨a1, b1, h3', h4', h5', h6'⟩, a2, b2⟩
+
+theorem tinv_mergeParent (hvg : ViewGood B c) (hkv : ViewKlongsWf c.p c.view) (hv : ViewIdsBelow B c.view)
+    (p : NodeId) (pn : KNode) (depth il cL : Nat) (m1 : NodeId) (ir cR : Nat) (m2 : Option (NodeId × Nat))
+    (v : W) (hI : TInv B c s path0 l r ln rn v) (hp : v.nodes.lookup p = some pn)
+    (hR : cR ∈ pn.live.map Prod.fst) (hpl : p ≠ l) (hpr : p ≠ r) (hpath : v.path = path0)
+    (hab : ∀ i e, i + 1 ≤ depth → path0[i]? = some e → e.2 ≠ l ∧ e.2 ≠ r) :
+    WriterWP (mergeParent p depth il cL m1 ir cR m2) c v (fun _ v' => TInv B c s path0 l r ln rn v') := by
+  have hRJ : WriterWP (mergeParent p depth il cL m1 ir cR m2) c v
+      (fun _ v' => RJ l ln path0 v' ∧ RJ r rn path0 v') := by
+    refine writerWP_mergeParent_cases p pn depth il cL m1 ir cR m2 c v _ hp ?_ ?_
+    · intro str
+      obtain ⟨⟨a1, a2, a3⟩, ⟨b1, b2, b3⟩⟩ := (⟨hI.rjl, hI.rjr⟩ : RJ l ln path0 v ∧ RJ r rn path0 v)
+      exact ⟨⟨lookup_upsert_x _ l p _ hpl ln a1, a2, a3⟩, ⟨lookup_upsert_x _ r p _ hpr rn b1, b2, b3⟩⟩
+    · intro last compact str _
+      have hl' : RJ l ln path0 ({ v with trail := str :: v.trail } : W) := hI.rjl
+      have hr' : RJ r rn path0 ({ v with trail := str :: v.trail } : W) := hI.rjr
+      cases depth with
+      | zero =>
+        exact writerWP_and (xwp_handleFull_zero (m := ln) path0 p last compact hl' hpl).2
+          (xwp_handleFull_zero (m := rn) path0 p last compact hr' hpr).2
+      | succ D =>
+        exact writerWP_and
+          (xwp_handleFull_succ (m := ln) path0 D p last compact hl' hpl
+            (fun i e hi he => (hab i e (by omega) he).1)).2
+          (xwp_handleFull_succ (m := rn) path0 D p last compact hr' hpr
+            (fun i e hi he => (hab i e (by omega) he).2)).2
+  have h3 := good_mergeParent B p depth il cL m1 ir cR m2 c v hvg hI.good
+  have h4 := uniqueCache_mergeParent (base := B) p depth il cL m1 ir cR m2 c v hv hI.uniq
+  have h5 := writerWP_mergeParent_wf p pn depth il cL m1 ir cR m2 c v hkv hI.wf hp hR
+  have h6 := @state_mergeParent (cachedFromInvariant s) p depth il cL m1 ir cR m2 c v hI.cached
+  refine writerWP_mono (writerWP_and (writerWP_and (writerWP_and (writerWP_and hRJ h3) h4) h5) h6) ?_
+  rintro _ v' ⟨⟨⟨⟨⟨a, b⟩, h3'⟩, h4', _⟩, h5'⟩, h6'⟩
+  exact ⟨a, b, h3', h4', h5', h6'⟩
+
+end TInvSteps
+
+section TInvPSteps
+
+variable {B : NodeId} {c : Ctx} {s : W} {path0 : List (Option Nat × NodeId)} {l r : NodeId} {ln rn : KNode}
+  {p : NodeId} {pn : KNode}
+
+/-- `TInv` with the parent's node as at the start, up to `mergeParent`. -/
+def TInvP (B : NodeId) (c : Ctx) (s : W) (path0 : List (Option Nat × NodeId)) (l r : NodeId) (ln rn : KNode)
+    (p : NodeId) (pn : KNode) (v : W) : Prop :=
+  TInv B c s path0 l r ln rn v ∧ RJ p pn path0 v
+
+theorem tinvP_note (str : String) (v : W) (h : TInvP B c s path0 l r ln rn p pn v) :
+    WriterWP (note str) c v (fun _ v' => TInvP B c s path0 l r ln rn p pn v') :=
+  (writerWP_modify _ c v _).mpr ⟨tinv_of_eq h.1 rfl rfl rfl rfl rfl, h.2⟩
+
+theorem tinvP_merges (v : W) (h : TInvP B c s path0 l r ln rn p pn v) :
+    WriterWP (modify (fun w => { w with merges := w.merges + 1 })) c v
+      (fun _ v' => TInvP B c s path0 l r ln rn p pn v') :=
+  (writerWP_modify _ c v _).mpr ⟨tinv_of_eq h.1 rfl rfl rfl rfl rfl, h.2⟩
+
+theorem tinvP_replacedBy (y : NodeId) (v : W) (h : TInvP B c s path0 l r ln rn p pn v) :
+    WriterWP (replacedBy y) c v (fun _ v' => TInvP B c s path0 l r ln rn p pn v') := by
+  unfold replacedBy; simp only [writerWP_bind, writerWP_get, writerWP_pure]; exact h
+
+theorem tinvP_setMadeFor (y : NodeId) (o : Option NodeId) (v : W) (h : TInvP B c s path0 l r ln rn p pn v) :
+    WriterWP (setMadeFor y o) c v (fun _ v' => TInvP B c s path0 l r ln rn p pn v') := by
+  unfold setMadeFor
+  cases o with
+  | none => simp only [writerWP_pure]; exact h
+  | some o => exact (writerWP_modify _ c v _).mpr ⟨tinv_of_eq h.1 rfl rfl rfl rfl rfl, h.2⟩
+
+theorem tinvP_ghOf (x : NodeId) (n : KNode) (v : W) (hx : v.nodes.lookup x = some n)
+    (h : TInvP B c s path0 l r ln rn p pn v) :
+    WriterWP (ghOf x) c v (fun _ v' => TInvP B c s path0 l r ln rn p pn v') :=
+  writerWP_ghOf_cached x n c v hx _ (fun _ => h)
+
+theorem tinvP_newKey (hvg : ViewGood B c) (g h : Nat) (leaf : Bool) (ks : List Klong)
+    (hks : ks = [] ∨ FlatAt c.i ks) (hkw : klongsWf ks = true) (hkv : ViewKlongsWf c.p c.view) (v : W)
+    (hI : TInvP B c s path0 l r ln rn p pn v) :
+    WriterWP (newKey g h leaf ks) c v (fun y v' => TInvP B c s path0 l r ln rn p pn v' ∧ y ≠ l ∧ y ≠ r) := by
+  have h1 := tinv_newKey hvg g h leaf ks hks hkw hkv v hI.1
+  have h2 := (xwp_newKey (m := pn) (c := c) (post := fun _ u' => RJ p pn path0 u') path0 g h leaf ks hI.2
+    (fun _ u' hJ _ => hJ)).2
+  refine writerWP_mono (writerWP_and h1 h2) ?_
+  rintro y v' ⟨⟨a, b, e⟩, d⟩
+  exact ⟨⟨a, d⟩, b, e⟩
+
+end TInvPSteps
+
+theorem rwpq_throw_bind {α β : Type} (e : String) (k : α → M β) (g : M β) (c : Ctx) (w : W)
+    (Q : β × W → Prop) : RWPQ ((throw e : M α) >>= k) g c w Q :=
+  fun x hx _ => rwp_throw_bind e k g c w x hx
+
+theorem rwpq_ite {β : Type} {b : Prop} [Decidable b] {f1 f2 g1 g2 : M β} {c : Ctx} {w : W}
+    {Q : β × W → Prop} (h1 : b → RWPQ f1 g1 c w Q) (h2 : ¬ b → RWPQ f2 g2 c w Q) :
+    RWPQ (if b then f1 else f2) (if b then g1 else g2) c w Q := by
+  by_cases hb : b
+  · simp only [hb, ↓reduceIte]; exact h1 hb
+  · simp only [hb, ↓reduceIte]; exact h2 hb
+
+set_option maxHeartbeats 3200000 in
+theorem rwpq_tailLeaf (c : Ctx) (base : View BVal) (B : NodeId) (hvg : ViewGood B c)
+    (hkv : ViewKlongsWf c.p c.view) (hv : ViewIdsBelow B c.view)
+    (p : NodeId) (pn : KNode) (depth il cL : Nat) (m1 : NodeId) (ir cR : Nat) (m2 : Option (NodeId × Nat))
+    (l r : NodeId) (ln rn : KNode) (lM rM : Bool) (k : Nat) (s v : W) (path0 : List (Option Nat × NodeId))
+    (hI : TInvP B c s path0 l r ln rn p pn v) (hps : (s.nodes.lookup p).isSome = true)
+    (hR : cR ∈ pn.live.map Prod.fst) (hlr : l ≠ r) (hlp : l ≠ p) (hrp : r ≠ p) (hm1l : m1 ≠ l) (hm1r : m1 ≠ r)
+    (hab : ∀ i e, i + 1 ≤ depth → path0[i]? = some e → e.2 ≠ l ∧ e.2 ≠ r)
+    (hlB : lM = true → B ≤ l) (hrB : rM = true → B ≤ r)
+    (hll : lM = true → ∀ cv, (cv, l) ∉ ln.live) (hrl : lM = true → ∀ cv, (cv, l) ∉ rn.live)
+    (hrr : rM = true → ∀ cv, (cv, r) ∉ rn.live) (hlr' : rM = true → ∀ cv, (cv, r) ∉ ln.live) :
+    RWPQ (do
+        mergeParent p depth il cL m1 ir cR m2
+        forIn [(l, lM), (r, rM)] PUnit.unit (fun q _ => if q.2 = true then (do
+          retarget p q.1 m1
+          takenBack q.1
+          note "merge.takeback"
+          pure (ForInStep.yield PUnit.unit)) else (do
+          unlink q.1
+          pure (ForInStep.yield PUnit.unit)))
+        (pure k : M Nat))
+      (do
+        mergeParent p depth il cL m1 ir cR m2
+        forIn [(l, lM), (r, rM)] PUnit.unit (fun q _ => if q.2 = true then (do
+          retarget p q.1 m1
+          checkFree q.1
+          takenBack q.1
+          note "merge.takeback"
+          pure (ForInStep.yield PUnit.unit)) else (do
+          unlink q.1
+          pure (ForInStep.yield PUnit.unit)))
+        (pure k : M Nat)) c v (fun xf => MergeEnd c base B xf.2) := by
+  refine rwpq_bind (fun _ v' => TInv B c s path0 l r ln rn v')
+    (tinv_mergeParent hvg hkv hv p pn depth il cL m1 ir cR m2 v hI.1 hI.2.1 hR (Ne.symm hlp) (Ne.symm hrp)
+      hI.2.2.2 hab) ?_
+  rintro _ s0 h0
+  obtain ⟨pn0, hp0⟩ : ∃ pn0, s0.nodes.lookup p = some pn0 := by
+    have := h0.cached p hps
+    cases h : s0.nodes.lookup p with
+    | none => rw [h] at this; cases this
+    | some n => exact ⟨n, rfl⟩
+  have hwfp : klongsWf pn0.ks = true := h0.wf (p, pn0) (bk_mem_of_lookup _ _ _ hp0)
+  exact rwpq_mergeLoop c base B hvg p m1 l r lM rM ln rn pn0 k s0 hp0 h0.rjl.1 h0.rjr.1 hlr hlp hrp hm1l hm1r
+    h0.good h0.uniq.2 hwfp hlB hrB hll hrl hrr hlr'
+
+theorem rwpq_throw {α : Type} (e : String) (g : M α) (c : Ctx) (w : W) (Q : α × W → Prop) :
+    RWPQ (throw e : M α) g c w Q :=
+  fun x hx _ => ((writerWP_throw e c w (fun _ _ => False)) x.1 x.2 hx).elim
+
+set_option maxHeartbeats 3200000 in
+theorem rwpq_mergeTail (c : Ctx) (base : View BVal) (B : NodeId) (hvg : ViewGood B c)
+    (hkv : ViewKlongsWf c.p c.view) (hv : ViewIdsBelow B c.view)
+    (x : NodeId) (d : Nat) (p : NodeId) (pn xn : KNode) (ls : Bool) (l : NodeId) (ln : KNode) (il : Nat)
+    (r : NodeId) (rn : KNode) (ir : Nat) (s : W) (path0 : List (Option Nat × NodeId))
+    (hI : TInvP B c s path0 l r ln rn p pn s)
+    (hxlr : (x = l ∧ xn = ln) ∨ (x = r ∧ xn = rn))
+    (hlr : l ≠ r) (hlp : l ≠ p) (hrp : r ≠ p)
+    (hab : ∀ i e, i + 1 ≤ d - 1 → path0[i]? = some e → e.2 ≠ l ∧ e.2 ≠ r)
+    (hR : ∀ cR, pn.cv? ir = some cR → cR ∈ pn.live.map Prod.fst)
+    (hlB : ln.firstTime = some c.i → B ≤ l) (hrB : rn.firstTime = some c.i → B ≤ r)
+    (hll : ln.firstTime = some c.i → ∀ cv, (cv, l) ∉ ln.live)
+    (hrl : ln.firstTime = some c.i → ∀ cv, (cv, l) ∉ rn.live)
+    (hrr : rn.firstTime = some c.i → ∀ cv, (cv, r) ∉ rn.live)
+    (hlr' : rn.firstTime = some c.i → ∀ cv, (cv, r) ∉ ln.live) :
+    RWPQ (mergeTail c x d p pn xn ls l ln il r rn ir) (mergeTailChk c x d p pn xn ls l ln il r rn ir) c s
+      (fun xf => MergeEnd c base B xf.2) := by
+  have hxk : ∀ v, TInvP B c s path0 l r ln rn p pn v → v.nodes.lookup x = some xn := by
+    intro v hv
+    rcases hxlr with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
+    · exact hv.1.rjl.1
+    · exact hv.1.rjr.1
+  unfold mergeTail mergeTailChk
+  refine rwpq_bind _ (tinvP_note _ _ hI) (fun _ v1 hv1 => ?_)
+  cases hil : pn.cv? il with
+  | none => simp only []; first | exact rwpq_throw _ _ _ _ _ | exact rwpq_throw_bind _ _ _ _ _ _
+  | some cL =>
+  cases hir : pn.cv? ir with
+  | none => simp only [pure_bind]; first | exact rwpq_throw _ _ _ _ _ | exact rwpq_throw_bind _ _ _ _ _ _
+  | some cR =>
+  simp only [pure_bind]
+  refine rwpq_ite (fun _ => rwpq_throw_bind _ _ _ _ _ _) (fun _ => ?_)
+  refine rwpq_ite (fun _ => rwpq_throw_bind _ _ _ _ _ _) (fun _ => ?_)
+  refine rwpq_bind _ (tinvP_merges _ hv1) (fun _ v2 hv2 => ?_)
+  refine rwpq_bind _ (tinvP_note _ _ hv2) (fun _ v3 hv3 => ?_)
+  refine rwpq_bind _ (tinvP_note _ _ hv3) (fun _ v4 hv4 => ?_)
+  refine rwpq_bind _ (tinvP_ghOf x xn v4 (hxk v4 hv4) hv4) (fun gh v5 hv5 => ?_)
+  have hps : (s.nodes.lookup p).isSome = true := by rw [hI.2.1]; rfl
+  have hR' := hR cR hir
+  cases hsec : (mergeKlongs (!xn.leaf) c.p.mergeMax cR ln.live rn.live).2 with
+  | none =>
+    by_cases hlm : (ln.firstTime == some c.i) = true <;> by_cases hrm : (rn.firstTime == some c.i) = true <;>
+      simp only [hlm, hrm, ↓reduceIte, Bool.false_eq_true]
+    all_goals
+      repeat' (first
+        | (refine rwpq_bind _ (tinvP_note _ _ ‹_›) (fun _ _ _ => ?_))
+        | (refine rwpq_bind _ (tinvP_replacedBy _ _ ‹_›) (fun _ _ _ => ?_))
+        | (refine rwpq_bind _ (tinvP_setMadeFor _ _ _ ‹_›) (fun _ _ _ => ?_))
+        | (refine rwpq_bind _ (tinvP_newKey ‹ViewGood _ _› _ _ _ _ (Or.inr (flatAt_newKlongs _ _))
+            (klongsWf_newKlongs _ _) ‹ViewKlongsWf _ _› _ ‹_›) (fun _ _ h => ?_); obtain ⟨_, _, _⟩ := h))
+    all_goals
+      exact rwpq_tailLeaf c base B hvg hkv hv p pn _ il cL _ ir cR _ l r ln rn _ _ _ s _ path0 ‹_› hps hR'
+        hlr hlp hrp (by assumption) (by assumption) hab
+        (fun h => hlB (by first | simpa using hlm | simp at h))
+        (fun h => hrB (by first | simpa using hrm | simp at h))
+        (fun h => hll (by first | simpa using hlm | simp at h))
+        (fun h => hrl (by first | simpa using hlm | simp at h))
+        (fun h => hrr (by first | simpa using hrm | simp at h))
+        (fun h => hlr' (by first | simpa using hrm | simp at h))
+  | some ks2g2 =>
+  by_cases hlm : (ln.firstTime == some c.i) = true <;> by_cases hrm : (rn.firstTime == some c.i) = true <;>
+    simp only [hlm, hrm, ↓reduceIte, Bool.false_eq_true]
+  all_goals
+    repeat' (first
+      | (refine rwpq_bind _ (tinvP_note _ _ ‹_›) (fun _ _ _ => ?_))
+      | (refine rwpq_bind _ (tinvP_replacedBy _ _ ‹_›) (fun _ _ _ => ?_))
+      | (refine rwpq_bind _ (tinvP_setMadeFor _ _ _ ‹_›) (fun _ _ _ => ?_))
+      | (refine rwpq_bind _ (tinvP_newKey ‹ViewGood _ _› _ _ _ _ (Or.inr (flatAt_newKlongs _ _))
+          (klongsWf_newKlongs _ _) ‹ViewKlongsWf _ _› _ ‹_›) (fun _ _ h => ?_); obtain ⟨_, _, _⟩ := h))
+  all_goals
+    exact rwpq_tailLeaf c base B hvg hkv hv p pn _ il cL _ ir cR _ l r ln rn _ _ _ s _ path0 ‹_› hps hR'
+      hlr hlp hrp (by assumption) (by assumption) hab
+      (fun h => hlB (by first | simpa using hlm | simp at h))
+      (fun h => hrB (by first | simpa using hrm | simp at h))
+      (fun h => hll (by first | simpa using hlm | simp at h))
+      (fun h => hrl (by first | simpa using hlm | simp at h))
+      (fun h => hrr (by first | simpa using hrm | simp at h))
+      (fun h => hlr' (by first | simpa using hrm | simp at h))
+
 end SIS.Tree
