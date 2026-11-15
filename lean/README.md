@@ -82,6 +82,10 @@ premises `hp`, `hth`, `hchk5`, `htb`, `d4`, `l4`, `hMSF`, `hCoF`; the stop node'
 split runs the same from the state with its bitmap, a tree with no premise
 (`handleFull_swap`, SIS/Tree/StopSwap.lean; bergdb 025-04, route (b)), and
 `invGetScanOK_merges` is its corollary.
+`invGetScanOK_merges_noU_noD4` (SIS/Tree/DeadTop.lean) is the same without
+`d4` too: premises `hp`, `hth`, `hchk5`, `htb`, `l4`, `hMSF`, `hCoF`; the dead
+klongs' bound of a delete with the merges is proved at the joint induction's
+runs (SIS/Tree/DeadLocal.lean to DeadDelCases.lean; 024-12, section 1).
 
 `hU` is false as stated, for every parameter set, and so were `hHL` and `hCoU`:
 they speak of every writer state that meets a local invariant, which carries

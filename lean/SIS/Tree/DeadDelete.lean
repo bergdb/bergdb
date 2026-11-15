@@ -10,6 +10,7 @@ import SIS.Tree.DeadMerge
 import SIS.Tree.WriterMergeUpLoop
 import SIS.Tree.MergeFullSorted
 import SIS.Tree.TakeDeadMerge
+import SIS.Tree.WriterKlongLEB
 
 set_option autoImplicit false
 
@@ -238,5 +239,51 @@ theorem dw_mergeCleanup (base : View BVal) (p m1 : NodeId) (c : Ctx) (hvc : View
       refine (writerWP_pure _ c _ _).mpr ?_
       dsimp only
       exact ih _ h1
+
+/-! ## LE-b: the empty key moved to the next child -/
+
+theorem normKs_rename_head (t : Time) (t' : Klong) (c1 : Nat) (y1 : NodeId) (r : List Klong)
+    (ks : List Klong) (hks : ks = t' :: .key c1 y1 :: r) (h : NormKs t ks) :
+    NormKs t (t' :: .key 0 y1 :: r) := by
+  obtain ⟨pairs, hp, hs⟩ := h
+  cases pairs with
+  | nil => rw [hks] at hp; simp [newKlongs] at hp
+  | cons q rest =>
+    rw [hks] at hp
+    simp only [newKlongs, List.map_cons, List.cons.injEq] at hp
+    obtain ⟨h1, h2, h3⟩ := hp
+    refine ⟨(0, y1) :: rest, ?_, ?_⟩
+    · simp only [newKlongs, List.map_cons, h1, h3]
+    · have hq : q = (c1, y1) := by cases q; simp_all
+      subst hq
+      rw [CvSorted, List.pairwise_cons] at hs ⊢
+      exact ⟨fun b hb => by have := hs.1 b hb; simp at this ⊢; omega, hs.2⟩
+
+set_option maxHeartbeats 4000000 in
+/-- LE-b keeps `DW`: the node with the next child's klong deleted and the empty
+key named in its place only when `deadOver` lets it through, else the split of
+its last version with the empty key first. -/
+theorem dw_emptyKeyNext (base : View BVal) (x : NodeId) (depth : Nat) :
+    KeepsDW base (emptyKeyNext x depth) := by
+  intro c w hvc hth hw
+  unfold emptyKeyNext
+  simp only [writerWP_bind, writerWP_read]
+  refine writerWP_mono (dw_getNode base x c w hvc hw) ?_
+  rintro n v ⟨hv, hn, _, _⟩
+  repeat' (first
+    | exact writerWP_throw _ _ _ _
+    | (simp only [writerWP_bind, writerWP_pure, note, writerWP_modify]; done)
+    | ((with_unfolding_none guard_target = WriterWP (handleFull _ _ _ _) _ _ _)
+       refine dw_handleFull base _ _ _ _ c ?_ _ hvc hth (dw_same rfl rfl hv)
+       exact normKs_rename_head c.i _ _ _ _ _ (by assumption) (normKs_lastVersionGivenDel _ _ _))
+    | ((with_unfolding_none guard_target = WriterWP (putNode _ _) _ _ _)
+       refine writerWP_mono (dw_putNode base x _ c _ (dw_same rfl rfl hv) ?_) (fun _ _ h => h.1)
+       refine hn.imp (fun h => ⟨fun h0 => deadOver_false c.p _ (by simp_all) h0, ?_⟩) id
+       apply KNode.leb_write_wf
+       · exact h.2
+       · apply KNode.nextPhysical_delete_changes; assumption)
+    | simp only [writerWP_bind, writerWP_pure, note, writerWP_modify]
+    | wpSplit
+    | split)
 
 end SIS.Tree

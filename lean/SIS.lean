@@ -98,3 +98,4 @@ import SIS.Tree.DelHoleClimb
 import SIS.Proof.TreeRoot
 import SIS.Proof.TreeInit
 import SIS.Tree.DeadDelete
+import SIS.Tree.DeadTop
