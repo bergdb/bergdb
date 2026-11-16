@@ -121,6 +121,16 @@ same proof. The Core itself scans: reclaim's steps (027-13, 1.4), and
 reclaim's safety argument uses the scan's correctness. The user would
 pay a descent for each kv.
 
+**Added 10:11, after Frans's questions** (section 7). Frans proposes
+maintenance transactions: root collapse, the upward delete and the like
+as transactions of their own. Taken whole (MT, section 7.5: every merge,
+unlink and collapse a transaction of its own, right after the user's),
+the idea removes the take-back as NW does, keeps today's rules and most
+of their lemmas, and makes `l4` a statement about one step. It costs
+the user bytes for deletes and a new kind of record. If it is decided,
+it takes NW's place, and the work on `l4` and `htbL` should stop first
+(section 7.7).
+
 
 # 2. How I measured
 
@@ -743,8 +753,371 @@ a part of it is the model's own.
 tree's top theorem is two premises from proved, and every change to the
 writer voids proofs that speak of it rule by rule.
 
+**Since section 7:** Frans's maintenance transactions (MT) are a
+candidate that this ranking does not have. Where MT is decided, it
+stands in NW's place, and item 1 above changes (section 7.7).
 
-# 7. Questions for Frans
+
+# 7. Frans's questions of 16 November: maintenance transactions
+
+Added 2026-11-16, 10:11, after Frans read sections 1 to 6. His four
+questions, shortened; the coordinator has them in full:
+
+- **Q1.** On `l4` (section 4): "Could we simplify this? Let's use the
+  root collapse as an example. Can we break this out of the ordinary
+  transaction. Some flag is set and the ordinary transaction is run
+  normally. After that, the root collapse operation is run in a
+  separate maintenance transaction. [...] By having a few transaction
+  types, each type of transaction may be easier to prove than having
+  one big transaction that should do everything."
+- **Q2.** "Could the upward delete be a separate maintenance
+  transaction similar to the example of the root collapse?"
+- **Q3.** "About change NW. [...] What changes to what a record holds
+  would be needed?"
+- **Q4.** If separate maintenance transactions are decided, "what
+  should be done first? That change, or change NW first, or something
+  else."
+
+Everything in this section is by reading the model, the items and the
+Javadoc. Nothing was run. Where a statement is my reading or my
+estimate, it says so.
+
+## 7.1 The answers in short
+
+- **Q1: yes, it can be done, and the principles allow it; root
+  collapse alone gains little.** It is the easy tail of the delete. The
+  hard core of `l4` is the merges' loop. Taken alone, a waiting collapse
+  adds an exception to the fill (a root's only child has no sibling to
+  merge with) and removes only root collapse's own take-back.
+- **Q2: yes, and the same holds: alone it gains little, and it is safe
+  only together with the merges.** An emptied node that waits breaks
+  "a live key below every index node", which reclaim's argument uses,
+  until its transaction has run.
+- **The idea taken whole is strong.** I call it **MT**: a user
+  transaction only writes klongs and splits; every merge, every unlink
+  of an emptied node and every root collapse is a transaction of its
+  own, run right after it. Then nothing is ever taken back, by my
+  reading. MT removes what NW removes, keeps today's rules and most of
+  their step lemmas, and makes `l4` a statement about one step and
+  `htbL` empty. Its price is the user's: more bytes for deletes, more
+  records, and a new kind of record. It is a better first candidate
+  than NW on the measure "left", and I had not seen it.
+- **Q3: no field of a record changes for NW.** The layout stays. What a
+  start's rerun means changes, as it did from format 5 to 6 and from 6
+  to 7: the key nodes hold other klongs, the ids are others. It is a new
+  format number.
+- **Q4: MT in place of NW, not before it; and a spike before either.**
+  The two solve the same problem. If MT is decided, stop the work on
+  `l4` and `htbL` first, since MT changes what they say. This changes
+  recommendation 1 of section 6.
+
+## 7.2 What today's maintenance does
+
+- **The slot exists.** After each user transaction's record, under the
+  write lock and within the commit, Java runs the take's share,
+  reclaim's begin, step, safe positions and cut, and eviction (027-13,
+  section 1.2; 026-03, section 1). A failure there fails the database;
+  after a stop, the work goes on at the next start.
+- **Reclaim's steps are transactions of their own**, each with its own
+  time (027-13, sections 1.1 and 1.4). But they are ordinary
+  transactions: puts of keys and values, and a touch. `maintain()`
+  writes only records of kinds that exist (024-32).
+- **So the pattern is Java's already; the kind of record is not.** A
+  merge or a collapse changes no key, so it is not a put or a delete. A
+  maintenance transaction for the tree is a new kind of record (7.5).
+
+## 7.3 Q1: root collapse as a transaction of its own
+
+**What it does today.** After a merge has joined a root's last two
+children, the root is an inner node with one live klong. `collapseRoot`
+then lets the child take its place, in the same delete: `replaceRoot`
+for a root from before the transaction, `takeBackRoot` for one that a
+split of the same transaction made.
+
+**If it waits for its own transaction, the tree between has a root
+with one child.** What relies on that not happening:
+
+- **A get and a scan: nothing.** One node more on the path. They need
+  the key order and the ranges, not the fill.
+- **The fill** (TP29): "an inner segment root has two live klongs" gets
+  an exception. More important: the root's only child has no sibling.
+  If a later operation of the same transaction brings that child under
+  the fill, the merge has nothing to merge with. In the model that is a
+  `Bug` today ("no sibling", `merge` in `Exec.lean`); Java's merge skips
+  it. So the only child must be excepted from the fill, as a root is.
+- **The upward delete's proof.** That it stops at a segment leaf, and
+  that LE-b never runs, is derived from "a node with one live klong is a
+  root and a leaf" (`stopLeaf_of_liveCounts`). An inner root with one
+  live klong, waiting, is a second case. So the upward delete must
+  either know it or wait too (Q2).
+- **The level limits:** nothing; a collapse only lowers a tree.
+- **Bounded startup:** the root stays in the tree a transaction
+  longer; H is not higher than before the delete.
+
+**What it gains.** `takeBackRoot` never runs, since the root collapsed
+is always from before the transaction, and `replaceRoot`'s previous
+version is never needed. Those were the premise `hCoU` and a part of
+`hchk` (006-26, section 4.3), both gone already by proof work.
+Root collapse is 7,372 lines by rule, 4.4 %. For `l4` the collapse is
+the part whose pieces exist: "root collapse leaves a root with two live
+klongs" (024-12, section 1).
+
+**So: alone, no.** It trades a rule that is proved for a new exception,
+and leaves the merges' loop, the hard part, where it is.
+
+## 7.4 Q2: the upward delete as a transaction of its own
+
+**What it does today.** With the merges on, a delete empties only a
+node that is the root and the leaf of its segment tree. The upward
+delete then removes that tree's klong from the segment leaf above, and
+goes on upward while that empties the next one-node tree. The emptied
+leaf is not written at all (027-03, section 8.2).
+
+**If it waits, an empty node stays in the tree for a transaction.**
+
+- **A get and a scan:** right; the scan walks past an empty leaf.
+- **"A live key below every index node"** (TP27, 027-13's LIVEBELOW) is
+  false at the times between. Reclaim's proof of a safe cut (T-COVER)
+  takes it as a premise at an iteration's end, and T-SCHEME's written
+  argument uses it. If the maintenance transaction always runs before
+  reclaim's step, the premise holds where reclaim looks. For the
+  lookups at the times between, the argument must be gone through
+  again, as 024-09 did for release 2026.4's delete. Not done here.
+- **What it gains:** the upward loop's take-back and its previous
+  versions go: the premises `hU` and `hHL` were about that loop. The
+  step itself is then small: a delete bitmap in the segment leaf above,
+  with the split's cascade if that leaf is full, which is the proved
+  stop-node case.
+- **What it costs:** the emptied leaf gets its bitmap and is written
+  once; today it is not written.
+
+**So: yes, as one of the family.** Alone it does not pay: a user
+transaction with merges in it still has every state that makes `l4`
+hard.
+
+## 7.5 MT: every structure step as a transaction of its own
+
+**The rule.**
+
+- **A user transaction** applies its puts and deletes as today, but for
+  three things: no merge, no upward delete, no root collapse. A delete
+  is a bitmap in its leaf, with the split and its cascade if the leaf is
+  full. A leaf may be left under the fill, or empty.
+- **A fix step** is a transaction of its own, with its own time and
+  record. It takes one key that the user transaction deleted, walks
+  that key's path, and does one thing at the lowest node that needs it:
+  merges a node under the fill with a sibling (`merge`, once); or
+  removes an empty one-node segment tree from the leaf above; or lets a
+  root's only child take the root's place.
+- **The driver.** Right after a user transaction, in the commit's
+  maintenance slot and before reclaim's step: for each deleted key in
+  key order, fix steps until the key's path needs none. Then the tree
+  is as today's algorithm leaves it, by intent.
+- **The flag is the user transaction's own deletes.** Every node that
+  can need a fix is on the path of a deleted key: a put's split leaves
+  filled halves (TP37), and a merge's nodes are filled (TP36). Today's
+  loop rests on the same fact: `mergeUp` and `collapseRoot` work from
+  the delete's key. So a fix record holds the key and the position of
+  the user transaction it serves, and nothing else is kept.
+
+**Restarts and P2.** P2 asks that the stream is a function of the
+accepted transactions, also with a restart between any two. So the
+fix steps cannot run "some time later": they run at a fixed place, as
+reclaim's steps do. After a crash between a user transaction and its
+last fix step, the start must go on with the fixing: it reads the last
+record; if it is a user transaction or a fix step, it takes the deleted
+keys from the user transaction's record and goes on. A fix step on a
+path that needs none does nothing, so repeating is safe. This is my
+sketch. T2 (a run with restarts writes the same records) must be
+proved for it.
+
+**What the tree looks like between a user transaction and its last fix
+step.** Nodes under the fill, empty leaves, a root with one child, all
+on the paths of the deleted keys. Every get and scan at those times is
+right. The write lock is held, so no other writer sees it. A reader at
+exactly those times sees a correct map on a tree that is not yet tidy.
+
+**What it needs that today's rules do not have.**
+
+- **A merge of an empty node, and of an only child.** Several deletes
+  of one transaction can empty a leaf under an inner node before any fix
+  runs. The model's `merge` has both as a `Bug` today. The merge of an
+  empty node with its neighbour looks like the general rule (the
+  neighbour's klongs in a new node, under the left one's klong), and it
+  keeps "the empty key first" with no LE-b; an only child waits for the
+  collapse above it. By reading `mergeList` and `mergeKlongs`; not
+  tried.
+- **A new kind of record**: a fix step has no value node and no delete
+  node. One new node kind that holds the key and the user transaction's
+  position, or a like form. So the layout changes, not only the
+  meaning. 024-32 avoided exactly this for `maintain()`.
+- **That the fixing ends**: a bound on the fix steps of a key. It is
+  TP32's question in a simpler form: each step is one merge or one
+  unlink, and the walk goes up.
+- **Reclaim's argument** read again for the times between (7.4).
+- **The level bounds.** Today a root that a delete's split makes and
+  its merges remove is never written (024-22, MF1). With MT it is in the
+  tree for some transactions. So the tree's height can be one more than
+  today's for a moment, and H must cover it.
+
+**What goes in Lean.**
+
+- **The take-back, whole.** A delete takes back at three places: the
+  upward loop, a merge, root collapse (025-05, section 4.4). In a user
+  transaction none of them runs. In a fix step every node it merges,
+  unlinks or collapses is from before the transaction, so nothing is
+  taken back and no previous version is restored. With it go `taken`,
+  the made-for ids, `retarget`, `toPrev`, the checked copies of the
+  delete, `outside` and the doomed transaction: the concern of 29,494
+  lines (17.6 %), as for NW. By reading `Exec.lean`; not checked in
+  Lean.
+- **`htbL` has nothing to speak of**: no node is taken back.
+- **`l4` becomes small.** A user transaction never merges, so it keeps
+  the fill but on the paths of its deleted keys: by the put's cases,
+  which are proved, and for a delete by the bitmap and the full leaf's
+  split with the leaf itself excepted (the cascade's walk with
+  exceptions exists, `writerWP_appendKlongs_chainGLX`). A fix
+  step keeps it but on its key's path, by TP36 and TP37, which are
+  proved. The driver stops when the path needs no fix, and that is the
+  fill. The fact that was "not local" inside one operation is now the
+  stated invariant between two transactions. My estimate: well under
+  the 3,000 lines of today's route. Not tried.
+- **LE-b and the inner stop node** go, as in OT: an emptied leaf under
+  an inner node is merged, not unlinked.
+- **The bridges and the costs.** A2 and A3 (TP14) have no take-back to
+  argue about. K and B are counts of one step: a fix step reads at most
+  two siblings and leaves out at most the nodes of one merge and its
+  parent's cascade.
+
+**What stays in Lean.** The rules themselves: `merge`, `mergeParent`,
+`replaceRoot`, the bitmap, the splits. Their step lemmas are stated for
+any books of the writer; a fix step starts with empty books, so they
+should apply, and the branches for the transaction's own nodes can be
+cut later. That is my reading of the lemmas' form in 024-12, section 1;
+I did not check a statement against it. The put cases, the key node,
+the readers, the scan and the abstract model stay as they are.
+
+**The two measures.**
+
+- **Left:** the top induction is restated for two kinds of transaction,
+  with the paths' exceptions between; the delete's cases are split into
+  the bitmap's and the fix step's. The checker and the traces follow
+  Java. I cannot size it without a try. Against it: `l4` (3,000 lines or
+  more) and `htbL`'s step 8 are not needed in their present form, and
+  the bridges and K and B get easier. NW voids nearly every proof of the
+  writer; MT keeps most step lemmas. So MT is far ahead of NW here.
+- **Scratch:** about NW's gain, less the fixing's bound and the
+  exceptions between transactions.
+
+**The cost to the user.** This is where MT pays, and NW does not.
+
+- **Bytes for deletes.** A node that today is made and taken back is in
+  the tree for some transactions, so it is written: 0.10 to 1.26 nodes a
+  merge in the model's runs (024-22, section 2.9). An emptied leaf is
+  written once. Each fix step is a record: 48 bytes empty (027-03,
+  section 8.1), its fix node, and what a transaction's record always
+  carries. Not sized; my guess is some tens of percent more bytes for a
+  workload of deletes, nothing for puts and gets.
+- **History holds the states between.** They are kept until reclaim
+  cuts them.
+- **Time.** The same work in the same commit, plus the records. A
+  delete's commit does not get shorter.
+- **What is seen:** more transactions in the stream. `getTrans` at a
+  fix step's position would give an internal transaction with no kv;
+  reclaim's are internal too, with internal keys. I did not read what
+  the Pub layer shows of them.
+
+**The principles.**
+
+- P1: each fix step is small, and the total is today's work. Fine.
+- P2: fine if the driver runs at a fixed place and a start goes on with
+  it (above).
+- P3: the work answers the user's delete and ends in the same call;
+  nothing waits in an idle database.
+- P4: about the path's length in fix steps for each deleted key, by
+  intent; the bound is the one to prove.
+- P12, P14: the Core API and the Pub API stay.
+- P13: one more kind of transaction, and three rules fewer inside a
+  delete.
+
+**The stream format: changed**, more than by NW: a new record kind, and
+other trees at the times between. It belongs to the stable format's
+decisions (026-12, SF10).
+
+**The risk.** Lower than NW's in the writer, which keeps its rules.
+Higher around it: the start's rule for an unfinished fixing, reclaim's
+argument, the new record kind in two implementations. A fault there is
+a tree left under the fill, or a restart that writes other bytes. The
+tree's invariants with their exceptions can be checked on every traced
+transaction, as today.
+
+**A variant not recommended:** all fix steps of a user transaction in
+one maintenance transaction. A merge's parent that is full is split,
+and the next step can merge the split's node: a node made and left out
+in one transaction again. One step a transaction is what removes the
+take-back.
+
+## 7.6 Q3: what NW changes in a record
+
+**No field.** A record is its header (size, format, time, startup pos,
+top pos), its nodes (top nodes, key nodes, value and delete nodes) and
+its got-dirty pairs (027-03, section 8.1). For NW:
+
+- **The same:** the layout; the header's fields; the value and delete
+  nodes, which are the transaction's operations, in key order; the key
+  node's and the klong's bytes.
+- **Other contents:** the key nodes written hold other klongs, because
+  the tree is another. Today a merge's parent gets a klong for a node
+  that is then taken back and pointed again; with NW it gets the net
+  klongs. The ids differ: nodes are made level by level, not operation
+  by operation, and no id is used up by a node taken back. So the
+  got-dirty pairs and the pointers name other ids.
+- **The meaning:** a start reruns a record's operations with the
+  writer's rules (027-03, section 8.4), so the rerun must be NW's. That
+  is the format change: a new format number, as 6 was for the upward
+  unlink and 7 for the merges, both with format 5's layout (027-03,
+  section 8.2). A start refuses the older number, or keeps both rule
+  sets (026-12, SF3).
+
+This is by reading 027-03; NW has no design yet, so "no field" is what
+I expect, not a result. MT, in contrast, adds a record kind (7.5).
+
+## 7.7 Q4: what first
+
+**MT and NW are two answers to one problem**: a node made and left out
+in one transaction. Take one. If maintenance transactions are decided,
+NW is not needed for the proofs. It stays possible later as a saving of
+bytes, as a third format.
+
+**The order I recommend, if MT is decided.**
+
+1. **Stop the proof work on `l4` and `htbL` first.** `l4` is not
+   started and is 3,000 lines or more by today's route; `htbL`'s step 8
+   is open. Both speak of a delete that merges and takes back, which MT
+   removes. This replaces recommendation 1 of section 6. If Frans wants
+   today's top theorem proved as a milestone before any change, that is
+   the other order: it costs those two premises twice.
+2. **A spike in the model, about a day.** MT as a parameter of today's
+   `Exec.lean`: the delete without `afterDelete` and `deleteUpward`, the
+   fix step, the driver. Run on the model's own workloads with `walk`.
+   It answers: do the invariants hold at every boundary; how many fix
+   steps a delete takes; how many nodes are written that today are taken
+   back; the height between; whether `merge` takes an empty node as
+   expected. It is cheaper than NW's spike, since it reuses the rules.
+3. **Frans decides** MT, NW or neither, with SF10. If both spikes are
+   wanted for the choice, MT's first.
+4. **The design note**: the fix record, the start's rule, the order of
+   the fixes, reclaim's argument, `maintain()`.
+5. **The model and its statements, then the proofs**, restated for two
+   kinds of transaction. Then Java, the trace format, the conformance
+   sets, 027-03 and the C clone.
+6. **OT is inside MT.** RT is independent of both; its measurement (S1)
+   can run at any time.
+
+**If MT is not decided**, section 6 stands as written.
+
+
+# 8. Questions for Frans
 
 Each with my default, which the study follows.
 
@@ -765,9 +1138,19 @@ Each with my default, which the study follows.
 6. **The trusted readers' fuel** (TP11, option C, 13 November): may a
    later model end its descents by height instead? Default: not in
    today's model; in the next one.
+7. **MT or NW** (section 7)? Default: neither is decided; MT's spike
+   first, about a day, then NW's only if MT's counts are bad; Frans
+   decides with SF10.
+8. **Do the provers go on with `l4` and `htbL` meanwhile?** Default:
+   they wait for MT's spike, about a day; if MT is not taken, they go on
+   as 006-27's decisions 1 and 2 say.
+9. **May the user pay bytes on deletes for MT** (written nodes that are
+   taken back today, a record for each fix step)? Default: yes within
+   "no significant loss", to be judged on the spike's counts and then on
+   a run at 10M keys.
 
 
-# 8. What I could not verify
+# 9. What I could not verify
 
 - **Every share is a count by names.** No build, so no dependency walk:
   which lines a top theorem really uses, and which a change would void,
@@ -794,6 +1177,17 @@ Each with my default, which the study follows.
   and `gh`, not tried.
 - **Java's sizes** are 006-08's of 26 October, before the merges; the
   methods' sizes in `Dag` are rough.
+- **MT (section 7).** That nothing is taken back with one fix step a
+  transaction; that every node needing a fix is on a deleted key's
+  path; that today's step lemmas apply to a fix step; that `merge`
+  takes an empty node by its general rule: all by reading, none tried.
+  The start's rule for an unfinished fixing and T2 for it are a sketch.
+  Reclaim's argument at the times between is not gone through. The
+  bytes MT adds to deletes are a guess; what a record carries besides
+  its 48 bytes I did not size. What the Pub layer shows of internal
+  transactions I did not read.
+- **NW's record (section 7.6).** "No field changes" is what I expect
+  from 027-03; NW has no design.
 - **The earlier measurements** I found are 006-08 (code lines), 010-01,
   P12 (the Core API), 020-01 and 024-01 (inventories), 006-16 (MEM and
   stream bytes). If Frans means another measurement of complexity or
@@ -815,3 +1209,12 @@ by mention (`28-simpler-algorithms/count.py`, `mentions.py`, with
 `counts.txt` and `mentions.txt`), the abstract model by subject, the
 tree's lines per day from Git. Nothing built, nothing run but the two
 scripts. Status set to done.
+
+2026-11-16, 10:11. Section 7 added for Frans's four questions (through
+the coordinator): maintenance transactions (Q1, Q2, and the idea taken
+whole as MT), what NW changes in a record (Q3), what first (Q4); the
+summary, section 6, the questions (7 to 9) and "What I could not
+verify" point to it; the two last sections renumbered 8 and 9. Read
+for it: 026-03; 024-32 in parts; 027-03, section 8; 010-01 (P1 to P4);
+`merge`, `mergeUp` and `afterDelete` in `Exec.lean`. Nothing built or
+run.
