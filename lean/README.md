@@ -99,7 +99,11 @@ asked only at the operation's end, where it holds between operations.
 `invGetScanOK_merges_tbL` (the same file; bergdb 025-05, part 2) has `htb`
 reduced to its case at one delete whose start has the first stratum's facts
 (`TakeBelowFuelDelSL`): premises `hp`, `hth`, `l4`, `htbL`, and
-`invGetScanOK_merges_noFit` is its corollary. The first stratum
+`invGetScanOK_merges_noFit` is its corollary. `htbL` is proved
+(`takeBelowFuelDelSL_holds`, SIS/Tree/HtbTop.lean; bergdb 025-05, step 8: a
+delete takes back no node found at its start with a height at or above the
+fuel), so `invGetScanOK_merges_noTb` (SIS/Tree/HtbNoTb.lean) has the premises
+`hp`, `hth` and `l4` only. The first stratum
 (SIS/Tree/Stratum.lean to StratumChk.lean, `jointHtJ_reached1`) gives the joint
 induction's facts at every state, and `hchk`, with no `htb`, no fit and no
 heights' bound: inside a delete only the tree's facts are needed, and route P's

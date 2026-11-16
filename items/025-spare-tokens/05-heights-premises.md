@@ -1098,3 +1098,11 @@ nodes the claim speaks of; neither that form nor the fallback was needed.
 
 **Next: step 9**, `invGetScanOK_merges_noTb` (premises `hp`, `hth`, `l4`):
 `invGetScanOK_merges_tbL` with `takeBelowFuelDelSL_holds`.
+
+Gated: 4ee959c9, gate-1 PASS.
+
+2026-11-17, 00:46. Step 9 done (prover htbl): `invGetScanOK_merges_noTb`
+(HtbNoTb.lean), TP7, TP10 and TP11 for Java's parameters with the premises
+`hp`, `hth` and `l4` only: `invGetScanOK_merges_tbL` with
+`takeBelowFuelDelSL_holds`. Part 2 is done; of the joint route's premises
+`l4` is left (section 6.2). lean/README.md says so.
