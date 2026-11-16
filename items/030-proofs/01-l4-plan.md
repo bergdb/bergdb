@@ -822,6 +822,7 @@ descent at (g, h) found x with its parent p and p's parent q inner, on a state
 that reads alike above q (q's height too) where q's klong of the key's segment
 names y, of height h + 1, the descent at (g, h + 1) ends at y (`dhP_redirect`,
 `dhP_height`). With `writerWP_handleFull_timeRoom_live` it is the merge's full
-parent's time split below a grandparent with room, and step 5's full leaf's
-below a parent with room (there at height 0: q the leaf's parent, the descent
-to the leaf's copy).
+parent's time split below a grandparent with room. Step 5's full leaf below a
+parent with room needs the same kind of fact one level down (the descent at the
+leaf's own height to the leaf's copy); `dhP_redirect`'s argument carries over,
+its statement (an earlier descent ending two below q) does not.
