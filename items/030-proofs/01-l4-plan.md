@@ -762,7 +762,7 @@ so `writerWP_appendKlongs_chainGL` applies as it stands, with the chain's facts
 as `writerWP_replaceRoot_seg_cascadeF` (CollapseCascade.lean) derives them; the
 merge's needs the cascade with the hole below the chain (R4) and R1 through it.
 
-2026-11-16, 23:50, to 2026-11-17, 00:03. Step 6, first part, prover l4b. The
+2026-11-16, 23:50, to 2026-11-17, 00:00. Step 6, first part, prover l4b. The
 leaf at the space root emptied with room: after its bitmap the root is an empty
 leaf that reaches nothing (`liveDel_emptyRootRoom`, LiveUpLeaf.lean, proved,
 no obligation). R2's live part: `liveEdgesH_up`, the emptied chain's frame
@@ -826,3 +826,27 @@ parent's time split below a grandparent with room. Step 5's full leaf below a
 parent with room needs the same kind of fact one level down (the descent at the
 leaf's own height to the leaf's copy); `dhP_redirect`'s argument carries over,
 its statement (an earlier descent ending two below q) does not.
+
+2026-11-17, 00:02 to 00:18. Step 6, second part, prover l4b. The upward delete
+with room above its leaf (`DelEmptyRoomM`), the live counts at the start:
+`writerWP_del_upRoomLive` and its case `liveDel_upRoom` (LiveUpRoom.lean): the
+stop node is a segment leaf (`lebStop_false`; the other two continuations are
+void), and the delete calls `afterDelete key g 0`, (g, 0) the stop node's
+cached pair, from a state with `DelInvJT`, `PutBook`, `HtInv` and
+`LiveHoleW key g 0`: the live frame `liveEdgesH_up` when the stop node keeps a
+live klong, or the space root left an empty leaf; R1 at the stop node
+`holeAtW_stop` (LiveUpHole.lean): the key's descent at the walk's end is linked
+in the tree (`dsrFold_linked`, `lteP_linked`), so it is the walk's path
+(`linkedFrom_unique`); the stop node ends one segment's search
+(`dsrFold_leaf_mid`); after the stop node's bitmap the key's descent is cut
+there, so a successful descent at the stop node's segment finds it
+(`holeAtW_cut`). `liveDel_upRoom_live` composes it with l4a's
+`writerWP_afterDelete_live`: premises `MergeLiveOK`, `CollapseLiveOK` and
+`UpHtWalk`, the heights through the upward delete's steps (an invariant from the
+walk's end that note, take-back, unlink, bitmap and LE-b keep and that gives
+`HtInv`): R2's heights, open (over `putKv` the take-back keeps `HtInv` only with
+the checked copy's check that no other node names the node taken back). The
+climb's fact at the stop node needed the upward walks again: LiveUpWalk.lean's
+`...S` lemmas give it, and its `...G` lemmas are now their instances (about 900
+lines fewer than two copies). Left in step 6: `UpHtWalk` (R2's heights), the
+full root and the full stop node (the cascade).

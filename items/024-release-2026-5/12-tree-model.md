@@ -391,7 +391,7 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   live counts given `MergeLiveOK` and `CollapseLiveOK` (`liveDel_room_live`). R1 at the leaf
   (`holeAtW_leaf`, `LiveHoleLeaf.lean`): the merges' descent at the leaf's pair finds the
   leaf, by the segments along the descent (`SegRd`, from the books and the kinds' walk) and
-  the key's reading on the walk's cached path; the space root's segment is not needed. 00:03
+  the key's reading on the walk's cached path; the space root's segment is not needed. 00:00
   (l4b): step 6, first part: the leaf at the space root emptied, with room, keeps the live
   counts (`liveDel_emptyRootRoom`, `LiveUpLeaf.lean`); the emptied chain's live frame
   (`liveEdgesH_up`: after the chain leaves the tree, the live counts hold but at the stop
@@ -400,7 +400,13 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   counts at the start the stop node is a segment leaf (`lebStop_false`). Open in step 6: the
   heights at the stop node's call (R2's heights: over `putKv` the take-back's heights need the
   checked copy's checks, `ht_takeBackChk`), R1 at the stop node, the full root and the full
-  stop node. 23:35 (prover l4a, step 3's first part): the merges' loop with
+  stop node. 00:18 (l4b): step 6, second part: the upward delete with room
+  (`liveDel_upRoom`, `LiveUpRoom.lean`) calls `afterDelete key g 0` at the stop node (a
+  segment leaf) with `DelInvJT`, `PutBook`, `HtInv` and `LiveHoleW`, given the heights through
+  the upward steps (`UpHtWalk`, the open R2 heights); with l4a's loop it keeps the live counts
+  (`liveDel_upRoom_live`, premises `MergeLiveOK`, `CollapseLiveOK`, `UpHtWalk`). R1 at the stop
+  node is proved (`holeAtW_stop`, `LiveUpHole.lean`: the descent's path is the walk's,
+  `linkedFrom_unique`; the stop node ends one segment's search; the key's descent is cut there). 23:35 (prover l4a, step 3's first part): the merges' loop with
   the hole (`LiveLoop.lean`): `writerWP_afterDelete_live`, from `DelInvJAE`, the books,
   `HtInv` and `LiveHoleW key g 0` at a call of `afterDelete`, ends with `LiveEdges`, given
   two obligations: `MergeLiveOK` (a merge of a round keeps the hole one height up, or into
