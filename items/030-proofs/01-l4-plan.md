@@ -850,3 +850,25 @@ climb's fact at the stop node needed the upward walks again: LiveUpWalk.lean's
 `...S` lemmas give it, and its `...G` lemmas are now their instances (about 900
 lines fewer than two copies). Left in step 6: `UpHtWalk` (R2's heights), the
 full root and the full stop node (the cascade).
+
+2026-11-17, 00:16 to 00:25. Prover l4a, the last pieces, and where the rest
+stands. LiveSplitRoom2.lean: `writerWP_handleFull_timeRoom_liveGh`, the time
+split's lemma with the copy's entry in `gh` (x's: the copy's segment and height
+are the node's), for R1's height of the copy. Not done: composing these into
+`MergeLiveFullOK`. What it takes (my estimate 1,000 to 1,500 lines): (1) the
+merge's tail with both of `mergeParent`'s branches (`writerWP_mergeParent_cases`;
+today's room tail, `writerWP_mergeTail_liveRoom`, selects the room branch by
+`MergeRoom`, which `¬ MergeRoom` does not exclude), its full branch through
+`writerWP_handleFull_timeRoom_liveGh` from the merged tree with the parent's
+last version (its tree as `treeOK_mergeOneAfter`, `treeOK_mergeTwoAfter`; its
+live form as `liveEdgesH_mergeOne`, `liveEdges_mergeTwo`, with
+`mergeFullLast_liveAt`, `mergeFullLast_lookup`), then the cleanup with the
+parent, l and r out of reach (a reach lemma beside `liveEdgesH_redirect`); (2)
+the round: R1 by `descendToHeight_redirect`, the copy's height from the heights'
+cache at q after the merge (`ht_merge_of_J`'s `HtInv`, `HtCache`'s `NodeHt` for
+q's live klong to the copy: height h + 1, the ids above B unknown to H), q's
+search by the spec (`KNode.searchLte_spec`: q's klongs as before but k1 naming the
+copy); (3) the rest as an obligation: the parent's space split (no hole, but the
+divider's range as `writerWP_fullSplit_chainG`'s `hhalves`), the parent made by
+the transaction (in place), a parent that is the space root or a segment root,
+and a grandparent without room (the cascade, R4's general case).
