@@ -796,3 +796,22 @@ out of reach after, changes none (`liveEdges_updN_unreach`).
 and 4: `MergeLiveFullOK` (the merge's parent full or compacting: `handleFull` of
 its last version with the hole and its cascade; R4, and R1 through the cascade)
 and R3 (narrowed, `R3At`).
+
+2026-11-17, 00:04 to 00:10. Step 3's rest, R4 (prover l4a). The size of
+`chainGLX`'s generalization: its walk (`writerWP_appendKlongs_chainGLX`, 1,570
+lines) and LiveStepsX.lean's steps (850) take the exceptions' condition in
+`edgeX_grow` and the steps' lemmas; a parameter for it means a copy of about
+2,400 lines with the old ones as instances, and a live copy of the full node's
+split (`writerWP_fullSplit_chainG`, 860 lines) on top: past the rule's 600 and
+800. So, by section 7's rule, the narrower lemma: a full node's split whose
+parent has room, no cascade (LiveSplitRoom.lean). `liveEdgesH_redirect`: the
+hole x, named by q's klong k1, replaced by a fresh copy that q's klong names
+instead: the hole is the copy after. `writerWP_handleFull_timeRoom_live`: a
+full node that the transaction did not make, split in time with a last version
+given (the merge's parent's, or a delete's leaf's), below a parent with room:
+from the hole at x in the tree with x's node replaced by the last version, the
+hole is at the copy (the new id) after; nothing else changes but the parent and
+x. Shared with step 5's full leaf. Left for the merge's full parent: the space
+split (no hole after), R1 through the parent's changed klong (the next round's
+descent finds the copy), the merge's tail with `mergeParent`'s `full`, and the
+cascade beyond a full grandparent.
