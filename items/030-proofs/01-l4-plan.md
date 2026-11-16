@@ -815,3 +815,14 @@ x. Shared with step 5's full leaf. Left for the merge's full parent: the space
 split (no hole after), R1 through the parent's changed klong (the next round's
 descent finds the copy), the merge's tail with `mergeParent`'s `full`, and the
 cascade beyond a full grandparent.
+
+2026-11-17, 00:10 to 00:15. R1 for the time split below a parent with room
+(prover l4a, LiveRedirectDescent.lean): `descendToHeight_redirect`: after the
+descent at (g, h) found x with its parent p and p's parent q inner, on a state
+that reads alike above q (q's height too) where q's klong of the key's segment
+names y, of height h + 1, the descent at (g, h + 1) ends at y (`dhP_redirect`,
+`dhP_height`). With `writerWP_handleFull_timeRoom_live` it is the merge's full
+parent's time split below a grandparent with room. Step 5's full leaf below a
+parent with room needs the same kind of fact one level down (the descent at the
+leaf's own height to the leaf's copy); `dhP_redirect`'s argument carries over,
+its statement (an earlier descent ending two below q) does not.
