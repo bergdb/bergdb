@@ -9,10 +9,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Locale;
@@ -577,27 +578,33 @@ public class Util {
     }
 
     
-    private static SimpleDateFormat compactDateFormat = new SimpleDateFormat("yyMMdd");
-    private static SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+    /**
+     * Immutable and thread-safe. The static SimpleDateFormats before 2026-11-16 (bergdb
+     * 028-07) were neither (bergdb 019-08): threads that formatted at once shared one
+     * calendar, so near midnight a thread could get a date of another's time. A start that
+     * creates a database calls today() for created.txt, and starts of different databases
+     * run at the same time since 028-07.
+     */
+    private static final DateTimeFormatter DATE_FORMAT = 
+            DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.US);
     
     /**
-     * Returns the current date formatted as "YYYY-MM-DD".
-     * The timezone of the default locale is used.
+     * Returns the current date formatted as "YYYY-MM-DD", in the default time zone.
+     * May be called from any thread.
      */
     public static String today() {
-        long now = System.currentTimeMillis();
-        return dateFormat.format(new Date(now));
+        return LocalDate.now().format(DATE_FORMAT);
     }
 
-    private static SimpleDateFormat dateAndTimeFormat = new SimpleDateFormat("yyMMdd HH:mm");
+    private static final DateTimeFormatter DATE_AND_TIME_FORMAT = 
+            DateTimeFormatter.ofPattern("yyMMdd HH:mm", Locale.US);
     
     /**
-     * Returns current date and time formatted as yyMMdd HH:mm.
-     * The timezone of the default locale is used.
+     * Returns current date and time formatted as yyMMdd HH:mm, in the default time zone.
+     * May be called from any thread.
      */
     public static String dateAndTime() {
-        long now = System.currentTimeMillis();
-        return dateAndTimeFormat.format(new Date(now));
+        return LocalDateTime.now().format(DATE_AND_TIME_FORMAT);
     }
     
     /**

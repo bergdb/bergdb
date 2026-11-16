@@ -73,11 +73,22 @@ public class DatabaseImp implements Database {
      * be restarted." or "A read failed on the storage (the cause). [...] must be
      * restarted.", whose Javadoc is about a running database.
      * 
+     * <p>Starts of different databases run at the same time (2026-11-16, bergdb 028-07).
+     * Until 028-07 this method was static synchronized, from the 2017 source, so it held the
+     * lock of the class through db.start(): a start whose creation's sync waited
+     * (Db.syncCreation, after an OutOfMemoryError or on a slow disk) held up every start in
+     * the JVM (bergdb 026-13, U13-3). The lock guarded nothing that needs it: one database
+     * per directory is FileStream's lock, taken in DatabaseBuilderImp.start() before this
+     * method and outside the class lock; a second start of one Db is refused by Db.start()
+     * under the Db's own locks; the rest is the new database's own state. The one static
+     * state that the starts shared unguarded, the SimpleDateFormat of Util.today() for
+     * created.txt, is a thread-safe DateTimeFormatter since 028-07.</p>
+     * 
      * @throws StreamIoException
      * @throws StreamFormatException
      * @throws IllegalDbStateException  If db has been started already.
      */
-    static synchronized DatabaseImp createAndStart(final Db db) {
+    static DatabaseImp createAndStart(final Db db) {
         @SuppressWarnings("unused")
         StartInfo startInfo;
         DatabaseImp database;
