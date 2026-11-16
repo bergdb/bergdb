@@ -41,6 +41,8 @@ The list
 | [006-25](25-day-14-november.md) | 2026-11-14 | Day work of 14 November (a Saturday) to Sunday morning, with the coordinator coord-1114: the plan, the progress and the outcome |
 | [006-26](26-proofs-status.md) | 2026-11-14 | The proofs as of 14 November 2026: what is proved, the premises left, what the Lean model covers and not; a standalone report for Frans |
 | [006-27](27-day-15-november.md) | 2026-11-15 | Day work of 15 November (a Sunday, unattended) to Monday morning, with the coordinator coord-1115: the plan, the progress and the outcome |
+| [006-28](28-simpler-algorithms.md) | 2026-11-16 | Simpler algorithms for simpler proofs: where the complexity is, measured by the Lean model; the top three changes to the Java code that make the proving easier |
+| [006-29](29-day-16-november.md) | 2026-11-16 | Day work of 16 November (a Monday), with the coordinator coord-1116: the plan, the progress and the outcome |
 
 
 Files
