@@ -722,3 +722,26 @@ follows the key's reading, whose nodes are on the walk's path
 (`fromVisits_reach_leaf`, `nodeAt_of_reach`: the tree's one parent) and so
 cached, and at height 0 it stops at the leaf. No stop rule fired. Left of step
 5: the full leaf (its split and cascade with the hole, step 3's cascade).
+
+2026-11-16, 23:46 to 23:58. Step 4, first part, prover l4a (LiveCollapse.lean).
+`writerWP_collapseRoot_live`: from `DelInvJAE`, `PutBook`, the exit form after a
+merge and `R3At` at its start, every run of `collapseRoot key g` ends with
+`LiveEdges`, given `CollapseStepLiveOK` (a step at a hole root with one live
+klong ends with the live counts). The loop is the stratum's (`collSteps_JW`)
+with the live counts beside it. Its exits are proved: a leaf root; a root with
+no only live klong, which, being the hole's, has two
+(`two_le_live_of_onlyNone`, by `onlyLiveKlong`'s fold); then a segment leaf
+names it or it is the space root (`liveEdges_of_segRoot`). After a step the
+live counts hold and the next round returns. R3 (stop rule of section 7, step
+4): the branch for a root the transaction made with no made-for entry needs a
+fact over the transaction's earlier operations (a fresh segment holds only
+this transaction's puts, and a key has one operation), well over 400 lines; so,
+by the rule, a narrowed premise for that branch alone: `R3At key g c v`, at
+collapse's start, the segment root that its first round finds, if made with no
+made-for entry and inner, has no only live klong (step 0's C4: never ran). At a
+later round the live counts hold, so the branch is harmless there.
+`writerWP_afterDelete_liveR`: `afterDelete` with premises `MergeLiveOK`,
+`CollapseStepLiveOK` and R3 after the merges' loop (`hR3`, a fact of the call's
+state). The node-map lemmas of the steps are proved
+(`liveEdges_collapseSpace`: the space root replaced by its child;
+`liveEdges_collapseSeg`: a segment leaf's klong names the child instead).
