@@ -398,7 +398,14 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   its count, `live_len_mergeTwo`); left of it is `MergeLiveFullOK`, the merges whose parent is
   full or compacts (its split and cascade with the hole below the chain).
   `writerWP_afterDelete_liveF`: `afterDelete` from the call's facts to `LiveEdges`, premises
-  `MergeLiveFullOK` and `CollapseLiveOK`.
+  `MergeLiveFullOK` and `CollapseLiveOK`. 23:58 (step 4's first part, `LiveCollapse.lean`):
+  root collapse from the exit form (`writerWP_collapseRoot_live`): its exits are proved (a leaf
+  root, or one with no only live klong, two at least, `two_le_live_of_onlyNone`); its step is
+  the obligation `CollapseStepLiveOK`, with the node-map lemmas for both kinds of step proved
+  (`liveEdges_collapseSpace`, `liveEdges_collapseSeg`); R3 (a root the transaction made with
+  no made-for entry) is the narrowed premise `R3At` at collapse's start, after the merges'
+  loop. `writerWP_afterDelete_liveR`: `afterDelete` with premises `MergeLiveOK`,
+  `CollapseStepLiveOK` and R3 after the merges' loop.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next
