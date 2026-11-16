@@ -418,7 +418,12 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   `CollapseSegFullLiveOK` (`replaceRoot`'s cascade at a full segment leaf; no hole there, so
   `chainGL` as it stands). `writerWP_afterDelete_liveRF`: `afterDelete` from the call's facts
   to `LiveEdges`, premises `MergeLiveFullOK`, `CollapseSegFullLiveOK`, `MergeParamsOK` and R3
-  after the merges' loop.
+  after the merges' loop. 00:03 (step 4 done but R3, `LiveCollapseFull.lean`): `CollapseSegFullLiveOK`
+  holds (`collapseSegFullLiveOK_holds`: `replaceRoot`'s cascade at a full segment leaf keeps
+  the live counts, `writerWP_replaceRoot_seg_cascadeL`, the tree's cascadeC with `chainGL`).
+  `writerWP_afterDelete_liveFR`: `afterDelete` from the call's facts to `LiveEdges`, premises
+  `MergeLiveFullOK` (the merges with a full or compacting parent), `MergeParamsOK` and R3 after
+  the merges' loop.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next

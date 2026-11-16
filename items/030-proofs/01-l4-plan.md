@@ -761,3 +761,17 @@ full cases. The collapse's has no hole (the leaf's klong names a filled child),
 so `writerWP_appendKlongs_chainGL` applies as it stands, with the chain's facts
 as `writerWP_replaceRoot_seg_cascadeF` (CollapseCascade.lean) derives them; the
 merge's needs the cascade with the hole below the chain (R4) and R1 through it.
+
+2026-11-17, 00:00 to 00:03. Step 4 done but R3, prover l4a
+(LiveCollapseFull.lean, about 450 lines, about 330 of them a near-copy of the
+tree's `writerWP_replaceRoot_seg_cascadeC`). `collapseSegFullLiveOK_holds`: at a
+segment root below a full segment leaf, `replaceRoot`'s cascade keeps the live
+counts: the room case's tree has them (`liveEdges_collapseSeg`), the cascade's
+walk keeps them (`writerWP_appendKlongs_chainGL`, no hole), and the unlink of x,
+out of reach after, changes none (`liveEdges_updN_unreach`).
+`writerWP_afterDelete_liveFR`: `afterDelete` from the call's facts (`DelInvJAE`,
+`PutBook`, `HtInv`, `LiveHoleW key g 0`) to `LiveEdges`, premises
+`MergeLiveFullOK`, `MergeParamsOK` and R3 after the merges' loop. Left of steps 3
+and 4: `MergeLiveFullOK` (the merge's parent full or compacting: `handleFull` of
+its last version with the hole and its cascade; R4, and R1 through the cascade)
+and R3 (narrowed, `R3At`).
