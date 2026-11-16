@@ -103,6 +103,7 @@ Open
 | [028-13](13-startup-distance-ranges.md) | Decide | The startup distance's two ranges disagree | decision | open |
 | [028-14](14-corrupt-node-no-end.md) | Investigate | A damaged node with its checksum right: a start that does not end | none | open |
 | [028-15](15-startup-distance-in-a-kv.md) | Change | The startup distance out of the meta block, into an internal KV | A or B | open |
+| [028-16](16-second-start-closes-db.md) | Fix | A refused second start of one Db closes the database the first started | none | open |
 
 
 Closed
@@ -139,3 +140,6 @@ by coord-1115.
 
 2026-11-16. 028-07 done: starts no longer hold the lock of `DatabaseImp`'s
 class, by an agent of coord-1116.
+
+2026-11-16. 028-07 done (c925c11e). 028-16 registered from it, by
+coord-1116.
