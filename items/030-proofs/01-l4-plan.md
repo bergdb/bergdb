@@ -782,3 +782,17 @@ upward case over the checked copy (`putKvDelChk2`, its results equal by
 `OpDelChk2ORJ`, proved), or an invariant over `putKv` that the checks verify.
 Left in step 6: R1 at the stop node, the heights at its call, the full root and
 the full stop node (with the cascade).
+
+2026-11-17, 00:00 to 00:03. Step 4 done but R3, prover l4a
+(LiveCollapseFull.lean, about 450 lines, about 330 of them a near-copy of the
+tree's `writerWP_replaceRoot_seg_cascadeC`). `collapseSegFullLiveOK_holds`: at a
+segment root below a full segment leaf, `replaceRoot`'s cascade keeps the live
+counts: the room case's tree has them (`liveEdges_collapseSeg`), the cascade's
+walk keeps them (`writerWP_appendKlongs_chainGL`, no hole), and the unlink of x,
+out of reach after, changes none (`liveEdges_updN_unreach`).
+`writerWP_afterDelete_liveFR`: `afterDelete` from the call's facts (`DelInvJAE`,
+`PutBook`, `HtInv`, `LiveHoleW key g 0`) to `LiveEdges`, premises
+`MergeLiveFullOK`, `MergeParamsOK` and R3 after the merges' loop. Left of steps 3
+and 4: `MergeLiveFullOK` (the merge's parent full or compacting: `handleFull` of
+its last version with the hole and its cascade; R4, and R1 through the cascade)
+and R3 (narrowed, `R3At`).
