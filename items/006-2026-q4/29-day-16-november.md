@@ -130,7 +130,10 @@ at xhigh, each in its own clone made at 14:40 (W6,
 * The clock: no new step after 04:30; provers stop at 05:30; all ends at
   06:00 (026-19, section 6.3).
 * Usage: 026-19's provers stop at 9 % of the new week (10 % with the
-  write-up; 026-19, question 2, default). The coordinator sets every STOP
+  write-up; 026-19, question 2, default). Changed at 22:57 by the
+  coordinator: the week's figure is shared with the main line's
+  provers (4 % at 22:56, about half of it 026-19's), so 026-19's STOP is
+  set at 16 % of the whole week, about 9 % of its own. The coordinator sets every STOP
   file if the whole week reaches 25 % before 06:00 (the coordinator's
   rule: about 10 % for 026-19, the rest for the main line, a margin for
   Tuesday).
