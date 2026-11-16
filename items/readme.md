@@ -206,3 +206,7 @@ Index
   mostly by an AI agent, often unattended; not tied to a release (a
   release item decides which it takes). Every new todo entry since
   2026-11-13.
+* **030-proofs** (open). The home of BergDB's proof work: one map of
+  every direction (today's model, simpler algorithms, the bridges,
+  bounded startup, the rest), its state, its next step and the decision
+  it waits for, and the rules all proof work follows.
