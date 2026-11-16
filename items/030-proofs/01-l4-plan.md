@@ -903,6 +903,21 @@ l4a's loop, `liveDel_fullTimeRoom_live`. Left of step 5: the space split (no
 hole after, its halves filled), the parent full (the cascade, R4), the leaf at
 the space root, and the made leaf's space split.
 
+2026-11-17, 00:27 to 00:40. Step 3's rest, first part, prover l4c
+(`LiveMergeTail.lean`; LiveMergeRoom.lean's room lemmas generalized, the old ones
+their instances, about 300 lines added in all). `MergeLiveFullOK` asked every merge
+whose parent may lack room for some merge (`¬ MergeRoom`); but `mergeParent` takes
+its branch with room whenever the merge it makes fits (`MergeParentRoom`: its `need`
+and no compaction, for the merge's own arguments). So the room proof now takes that
+exact condition: `writerWP_mergeTail_liveRoomB` (the tail),
+`writerWP_mergeTail_liveRoomR` (the tail from a state that reads as the merge's
+start), `writerWP_merge_liveG` (the merge's reads up to its tail, the tail a
+hypothesis), `liveHoleW_merge_G` (the round, given the tail where the parent goes
+`full`). What is left is `MergeTailFullOK`: at a round with `MergeLiveOK`'s facts,
+the merge's tail with the two nodes chosen and their facts, where `¬
+MergeParentRoom`. `mergeLiveOK_of_tailFull` and `writerWP_afterDelete_liveTF`
+(premises `MergeTailFullOK`, `MergeParamsOK`, R3). No stop rule fired.
+
 2026-11-17, 00:44 to 00:55. Step 5, the full leaf's space split, prover l4b:
 the leaf not made by the transaction, full with no bitmap of the transaction last
 ("bitmap.full"), its last version without the key above h, below an inner parent

@@ -467,6 +467,13 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   with the parent left behind, the copy's cached height. State for a successor: 030-01's log of
   2026-11-17, 00:04 to 00:15; what is left of `l4`'s afterDelete is `MergeLiveFullOK` and R3
   (`R3At`, narrowed); steps 5 and 6 (prover l4b) have their own.
+  00:40 (prover l4c, `LiveMergeTail.lean`): `MergeLiveFullOK` reduced to `MergeTailFullOK`,
+  the merge's tail where `mergeParent` goes `full` for the merge it makes (`¬ MergeParentRoom`),
+  stated at the tail with the round's facts and the two nodes chosen: the merges whose parent
+  takes the branch with room are proved whatever `MergeRoom` says (`mergeLiveOK_of_tailFull`;
+  the room lemmas of `LiveMergeRoom.lean` now take the branch's exact condition,
+  `writerWP_mergeTail_liveRoomB`, `liveHoleW_merge_G`; the old ones are their instances).
+  `writerWP_afterDelete_liveTF`: premises `MergeTailFullOK`, `MergeParamsOK` and R3.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next

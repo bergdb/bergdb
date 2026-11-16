@@ -102,6 +102,8 @@ import SIS.Proof.TreeRoot
 import SIS.Proof.TreeInit
 import SIS.Tree.DeadDelete
 import SIS.Tree.DeadTop
+import SIS.Tree.HtbTop
+import SIS.Tree.HtbNoTb
 import SIS.Tree.FuelNext
 import SIS.Tree.Stratum
 import SIS.Tree.StratumSteps
@@ -118,6 +120,7 @@ import SIS.Tree.LiveCollapseFull
 import SIS.Tree.LiveSplitRoom
 import SIS.Tree.LiveRedirectDescent
 import SIS.Tree.LiveSplitRoom2
+import SIS.Tree.LiveMergeTail
 import SIS.Tree.LiveHoleLeaf
 import SIS.Tree.LiveDelLeaf
 import SIS.Tree.LiveUpWalk
