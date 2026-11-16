@@ -115,3 +115,5 @@ import SIS.Tree.LiveMergeRoom
 import SIS.Tree.LiveCollapse
 import SIS.Tree.LiveHoleLeaf
 import SIS.Tree.LiveDelLeaf
+import SIS.Tree.LiveUpWalk
+import SIS.Tree.LiveUpLeaf
