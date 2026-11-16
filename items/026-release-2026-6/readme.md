@@ -50,6 +50,11 @@ Work moved here from 2026.5:
   record means; 2026.5 has P5's way (Frans, 2026-11-11, 14:34). Decided
   work means it is settled in 2026.6, with measurements, not that the
   merge changes.
+* **The startup distance out of the meta block, into an internal KV**
+  (028-15; 026-12, SF7 (a); 024-01, OT4; Frans, 2026-11-16, 10:32:
+  "There is still a stream format change that I want to get in place in
+  the next release. The startup distance!"): the meta block's bytes 40
+  to 43 reserved, and `/#i/-dummy`'s 200 kB at each change gone.
 * **The versioning and compatibility rule and the corpus of saved
   databases** (027-03, section 21, V-A to V-D, and 21.3; Frans,
   2026-11-13, 09:23: "Yes, decided work."): a stable format needs its
@@ -66,8 +71,9 @@ there, or implied by this release's theme.
 * **The stable format's open questions of the first theme** (024's Log,
   2026-11-10, the reading of 19:52, accepted for "a stable stream
   format"): the startup distance in a KV (024-01, OT4, "with a format
-  change") and a place reserved for objects' storage and encryption
-  (024-01, PA5, "study only", and PA9, "not in 2026.5").
+  change"; decided 2026-11-16, 028-15, above) and a place reserved
+  for objects' storage and encryption (024-01, PA5, "study only", and
+  PA9, "not in 2026.5").
 * **Commits give a mass delete's space back by the clock, as
   `maintain()` does** (026-13, U13-4 and Q1, option B; Frans, 2026-11-13,
   13:07): a commit begins a reclaim iteration also on `maintain()`'s rule
@@ -189,3 +195,6 @@ proposals to the decided work (Frans, 09:23: "Yes, decided work.").
 
 2026-11-16. Preliminary theme: simpler algorithms (Frans, 10:26), from
 006-28.
+
+2026-11-16. 028-15, the startup distance in an internal KV, taken by
+2026.6 (Frans, 10:32).

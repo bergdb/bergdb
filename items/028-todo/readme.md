@@ -103,6 +103,7 @@ Open
 | [028-07](07-start-lock-across-sync.md) | Investigate | One start's sync blocks every start of the JVM | none | open |
 | [028-13](13-startup-distance-ranges.md) | Decide | The startup distance's two ranges disagree | decision | open |
 | [028-14](14-corrupt-node-no-end.md) | Investigate | A damaged node with its checksum right: a start that does not end | none | open |
+| [028-15](15-startup-distance-in-a-kv.md) | Change | The startup distance out of the meta block, into an internal KV | A or B | open |
 
 
 Closed
@@ -132,3 +133,6 @@ Log
 
 2026-11-15. 028-14 registered: night.sh's one failure (CorruptStreamTester),
 by coord-1115.
+
+2026-11-16. 028-15 registered: the startup distance in an internal KV
+(Frans, 10:32: wanted in the next release), by coord-1116.
