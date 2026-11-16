@@ -35,6 +35,10 @@ htb, l4; `invGetScanOK_merges_free_noD4` is its corollary.
 Since 2026-11-15, 14:35 (025-05, part 2, on htb's branch until it lands):
 `invGetScanOK_merges_tbL` (DeadTop.lean), premises hp, hth, l4 and `htbL` (`htb` at one delete
 whose start has the first stratum's facts); `invGetScanOK_merges_noFit` is its corollary.
+Since 2026-11-16, 22:30 (030-01, step 1, on l4's branch until it lands):
+`invGetScanOK_merges_l4L` (LiveTop.lean), premises hp, hth, `htbL` and `l4L` (`l4`'s open case
+at one delete of the induction's runs whose start has the first stratum's facts);
+`invGetScanOK_merges_tbL` is its corollary.
 
 **What this means for BergDB (2026-11-14, latest).** The key tree's proofs reach their top
 theorem. For Java's own parameters (record format 7's merge thresholds and option 2's theta,
@@ -360,6 +364,14 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   at all 6420 states between operations of runs with merges and collapses
   (`12-tree-model/live-counts-check.lean.txt`), and at 8843 more with Java's theta on
   (`dead-all-check.lean.txt`).
+  Its plan is 030-01 (route B, as additions). State 2026-11-16, 22:30 (prover l4): step 1 is
+  done as a reduction: `invGetScanOK_merges_l4L` (`LiveTop.lean`), premises `hp`, `hth`,
+  `htbL` and `l4L` (`LiveDelSL`: `l4`'s open case at one delete of the induction's runs whose
+  start has `PutInv`, the ranges, `LiveCounts`, `HtInv`, the writer's tree and `J2At`);
+  `liveDelSL_of` gives `l4L` from `l4`, so `invGetScanOK_merges_tbL` is its corollary
+  (`invGetScanOK_merges_tbL_of_l4L`). The induction takes the deletes' live case with these
+  facts (`jointHtJ_reachedJSL` and its wrappers `jointHtJ_reached0L` to `_1L`, near-copies).
+  Left: `l4L` itself, 030-01's steps 0 and 2 to 7.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next

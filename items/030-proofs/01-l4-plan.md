@@ -1,6 +1,6 @@
 # 030-01. The plan for l4
 
-Created 2026-11-16 by Frans Lundberg. Status: open (the plan; no proof started).
+Created 2026-11-16 by Frans Lundberg. Status: open (step 1 done on l4's branch, 2026-11-16).
 
 The plan for the premise `l4` of the key tree's top theorem
 `invGetScanOK_merges_tbL` (lean/SIS/Tree/DeadTop.lean): `l4 : OpCaseOK p
@@ -613,3 +613,12 @@ scratch (`/Users/f/fl/bench/2026-11-16/night/l4plan/L4Forms.lean`, 442
 lines; `invGetScanOK_merges_l4L` and `invGetScanOK_merges_tbL` as its
 corollary on the standard three axioms; checked 22:19). No Lean file of
 the repo changed. No step of section 5 started.
+
+2026-11-16, 22:27 to 22:30. Step 1, prover l4 (coord-1116): the scratch
+file landed as `lean/SIS/Tree/LiveTop.lean` (453 lines), imported from
+`SIS.lean`; `invGetScanOK_merges_tbL'` renamed
+`invGetScanOK_merges_tbL_of_l4L`; doc comments added, nothing else
+changed. `invGetScanOK_merges_l4L` and `invGetScanOK_merges_tbL_of_l4L`
+on the standard three axioms (`#print axioms`); the statement is
+`invGetScanOK_merges_tbL`'s with `LiveDelSL p` for `l4`. State notes:
+024-12, section 1; lean/README.md.
