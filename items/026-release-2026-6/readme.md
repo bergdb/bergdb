@@ -167,6 +167,13 @@ Files
   only the premises still open, not what is proved (Frans, 2026-11-14,
   12:53).
 
+* 17-mt-trial.md. 026-17, MT's trial: maintenance transactions (006-28,
+  section 7.5) in the Lean model only, beside today's writer, run and
+  counted before any design, proof or Java (Frans, 2026-11-16, 10:29 and
+  10:47); its result goes to the choice between MT, NW and neither, with
+  SF10. The plan by an agent first.
+
+
 Log
 ===
 
@@ -198,3 +205,5 @@ proposals to the decided work (Frans, 09:23: "Yes, decided work.").
 
 2026-11-16. 028-15, the startup distance in an internal KV, taken by
 2026.6 (Frans, 10:32).
+
+2026-11-16. 026-17 registered: MT's trial, the plan first (Frans, 10:47).
