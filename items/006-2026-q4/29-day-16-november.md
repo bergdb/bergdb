@@ -83,6 +83,7 @@ Frans's words:
 * 22:03 the night started: the week reset to 0 %; six agents: PT-A and PT-B (026-19), htbl (`htbL`), l4plan (030-01), d3plan (030-02), all Opus at xhigh; t16 (028-16), Opus at high.
 * 22:10 028-16 landed (4197d95e): a refused second start of one Db closes nothing; BEFORE COMMIT OK, LEVEL 1 OK.
 * 22:26 030-01, `l4`'s plan, written and committed (6f0add3a): route B, additions only, no statement change; prover l4 started on its steps 1, 0 and 2.
+* 22:31 `l4`'s step 1 landed (d10be66a): `invGetScanOK_merges_l4L` from hp, hth, htbL and l4L. 030-02, the bridges' plan, written and committed (54d2d7be): TP14 and TP19 false as stated at the top node ordinal bound, by reading; no D3 prover tonight (not agreed; Frans's question 1 first).
 
 
 ## 5. The night of 16 to 17 November
