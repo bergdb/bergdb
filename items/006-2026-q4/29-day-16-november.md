@@ -81,6 +81,7 @@ Frans's words:
 * 19:58 night.sh: NIGHT OK (166 minutes) on 5b8f337b, all steps.
 * 20:18 to 20:43 the preparation for the public release (three agents; details outside this repository).
 * 22:03 the night started: the week reset to 0 %; six agents: PT-A and PT-B (026-19), htbl (`htbL`), l4plan (030-01), d3plan (030-02), all Opus at xhigh; t16 (028-16), Opus at high.
+* 22:10 028-16 landed (4197d95e): a refused second start of one Db closes nothing; BEFORE COMMIT OK, LEVEL 1 OK.
 
 
 ## 5. The night of 16 to 17 November
