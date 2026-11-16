@@ -1488,6 +1488,36 @@ public class CorruptStreamTester {
     }
 
     /**
+     * A top node's skip pointer 0 (its bytes 48 to 55) xor 256, its checksum made right:
+     * testFull's copy of 2026-11-15 (its seed 20772, the night run of main 584c73af; bergdb
+     * 028-14), the top node at offset 96 of the record at 43440, xor 1 at its byte 49. The
+     * pointer then named the top node itself, and a get at a time before the node's looped
+     * in TopDs.findSuperRootAtTime() without end: testFull's copy did not end in 60 s. Now
+     * the walk takes only top nodes of a smaller ordinal (TopDs.skipTo()), and the get fails
+     * the database.
+     */
+    @Nano
+    public static void testFoundTopCycle() {
+        Original o = write(LONG, 20772L * 31 + LONG.name.hashCode());
+        Record rec = o.recordAt(43440);
+        int[] node = null;
+        for (int[] n : rec.nodes) {
+            if (n[0] == 96) node = n;
+        }
+        Assert.assertEquals(bergdb.dag.Node.TYPE_TOP_NODE, rec.bytes[node[0] + 4]);
+        byte[] nb = Arrays.copyOfRange(rec.bytes, node[0], node[0] + node[1]);
+        Assert.assertEquals(1L, (Bytes.bytesToLongLE(nb, 16) >>> 16) & 1);   // skip pointer 0 set
+        nb[49] ^= 1;
+        Assert.assertEquals(rec.tpos + node[0], Bytes.bytesToLongLE(nb, 48));
+        Copy c = nodeCopy(o, rec, node, nb, "xor 1 at its byte 49");
+        Results results = new Results();
+        checkAll(o, Arrays.asList(c), 1, 60, results);
+        assertNoFailure(results);
+        Assert.assertTrue(results.counts.toString(),
+                results.counts.keySet().iterator().next().startsWith("node: read failed"));
+    }
+
+    /**
      * A key node's prevPos changed, its checksum made right, in the first record of the
      * startup section: testFull's copies of seeds 20769 and 20770 (2026-11-10, run for the
      * release of 2026.4), each change of the prevPos of one key node. The version that the

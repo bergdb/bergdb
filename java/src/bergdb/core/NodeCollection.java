@@ -181,9 +181,9 @@ public class NodeCollection implements PointerFollower {
     }
 
     /**
-     * A cycle that a descent or a scan met (OpData.descentTo(), GetMany's chain), damage of
-     * the stream as checkPointeeType() finds it: a StreamFormatException. The writer's and
-     * maintenance's followers give the same.
+     * A cycle that a descent or a scan met (OpData.descentTo(), GetMany's chain,
+     * TopDs.skipTo()), damage of the stream as checkPointeeType() finds it: a
+     * StreamFormatException. The writer's and maintenance's followers give the same.
      */
     public RuntimeException cycle(String message) {
         return new StreamFormatException(message);
