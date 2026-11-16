@@ -376,8 +376,15 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   22:56: step 2's first part: the hole's form `LiveEdgesH` and `HoleAt` (`LiveHole.lean`), a
   merge into one node moves the hole to the parent (`liveEdgesH_mergeOne`, on node maps), and
   R1's core: the merges' descent one height up, on a state that reads alike above the hole,
-  stops at the hole's parent (`descendToHeight_up`, `LiveHoleDescent.lean`). Left for step 2:
-  the heights' facts that give its gradedness premise, and the merge at the writer's level.
+  stops at the hole's parent (`descendToHeight_up`, `LiveHoleDescent.lean`). 23:10: step 2 is
+  done: `liveHoleW_merge_pilot` (`LiveHolePilot.lean`): at a round of the merges' loop at
+  (g, h), a merge into one node, the parent with room, no compaction and no child made by
+  the transaction, takes `LiveHoleW key g h` to `LiveHoleW key g (h + 1)`; the heights' walk
+  at the round's descent (`HtInv`) gives R1 (`gradedL_of_ht`). R1 did not stall: the facts
+  are `DelInvJT`'s tree, the books and `HtInv` at the descent. `HoleAtW` (the node every
+  successful descent finds) replaces `HoleAt` (which asked for a run). Left: 030-01's steps 3
+  to 7 (every merge and the loop, root collapse, the leaf's change, the upward delete, the
+  family and `l4L`).
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next

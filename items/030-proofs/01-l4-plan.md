@@ -1,6 +1,6 @@
 # 030-01. The plan for l4
 
-Created 2026-11-16 by Frans Lundberg. Status: open (step 1 done on l4's branch, 2026-11-16).
+Created 2026-11-16 by Frans Lundberg. Status: open (steps 0, 1 and 2 done, 2026-11-16).
 
 The plan for the premise `l4` of the key tree's top theorem
 `invGetScanOK_merges_tbL` (lean/SIS/Tree/DeadTop.lean): `l4 : OpCaseOK p
@@ -644,3 +644,26 @@ reads alike on the path above the found node (its contents above its
 parent, its heights down to its parent), the descent stops at the parent,
 given that the heights go down by one at each inner node of the path
 (`GradedL`). No stop rule fired.
+
+2026-11-16, 22:57 to 23:10. Step 2 done, prover l4 (LiveHolePilot.lean,
+about 800 lines): `liveHoleW_merge_pilot`, the pilot of section 5, at a
+round of `mergeUp`: from the round's descent (v to v1), its reads (v3) and
+`merge x d` into one node, p with room (`pn.size + 3 ≤ M`), no compaction
+(`deadOver` false for the parent's new version) and no child made by the
+transaction, `LiveHoleW key g h` at v gives `LiveHoleW key g (h + 1)` after.
+Its parts: the merge at the writer's level on the steps of the tree's and
+`d4`'s merge proofs (`writerWP_mergeTail_livePilot`,
+`writerWP_merge_livePilot`), `gradedL_of_ht` (the heights from `HtInv`,
+`Book` and `ViewHeights` at v1), `descendToHeight_up`. Where the heights
+come from (section 5, step 2's choice): over `putKv`, the stratum's form;
+the facts at the round are `HtInv` at the descent's end
+(`ht_descendToHeight`), `Book` and `PathFreeTo`, so no checked copy was
+needed. R1 did not stall. One definition added beside step 2a's:
+`HoleAtW`, the node that every successful run of the descent finds (all
+nodes if none succeeds), since a merge's post can give the next round's
+hole only as a precondition of its descent; `HoleAt` asked for a run and is
+unused (the close step can drop it). For steps 3 and 4 (A) and 5 and 6 (B):
+the pilot's hypotheses are the facts at a round that the stratum's loop
+(`writerWP_mergeUp_delJAE`) carries (`DelInvJT`'s tree and ranges, the
+books) plus `HtInv` and `PathCached` at the descent's end, which
+`ht_descendToHeight` and `writerWP_descendToHeight_path_cached` give.
