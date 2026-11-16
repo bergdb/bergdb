@@ -902,3 +902,20 @@ is a segment root (`KNode.add_key_searchEq`). `liveDel_fullTimeRoom` and, with
 l4a's loop, `liveDel_fullTimeRoom_live`. Left of step 5: the space split (no
 hole after, its halves filled), the parent full (the cascade, R4), the leaf at
 the space root, and the made leaf's space split.
+
+2026-11-17, 00:44 to 00:55. Step 5, the full leaf's space split, prover l4b:
+the leaf not made by the transaction, full with no bitmap of the transaction last
+("bitmap.full"), its last version without the key above h, below an inner parent
+with room for the halves' klongs (`DelFullSpaceRoomM`, LiveDelSpace.lean). Both
+halves hold m live klongs and more (`halves_del_halfOK`, from
+`halves_lastVersionGivenDel_live_fill`), so the split keeps the live counts with
+no hole (`writerWP_handleFull_spaceRoom_live`, by `liveEdgesX_spaceSplit_gen`
+from the start's counts: the halves hold the leaf's live klongs, the parent
+gains one), and `afterDelete` starts from them (no R1 needed):
+`liveDel_fullSpaceRoom` and, with l4a's loop, `liveDel_fullSpaceRoom_live`.
+Not chosen: the cascade through `writerWP_appendKlongs_chainGL` above a full
+parent, which needs a live copy of `writerWP_fullSplit_chainG`'s premises (its
+860 lines; R4's rule). Left of step 5: the parent full (the cascade), the parent
+a segment leaf or the leaf at the space root (a new root above the halves), the
+made leaf's space split in place, and a compacting split ("bitmap.dead") of a
+last version above h.
