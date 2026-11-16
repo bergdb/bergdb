@@ -384,7 +384,14 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   are `DelInvJT`'s tree, the books and `HtInv` at the descent. `HoleAtW` (the node every
   successful descent finds) replaces `HoleAt` (which asked for a run). Left: 030-01's steps 3
   to 7 (every merge and the loop, root collapse, the leaf's change, the upward delete, the
-  family and `l4L`). 23:35 (prover l4a, step 3's first part): the merges' loop with
+  family and `l4L`). 23:47 (prover l4b): step 5's
+  first part, the leaf with room: `liveDel_room` (`LiveDelLeaf.lean`): the delete calls
+  `afterDelete` at the leaf's cached pair (g, 0) from a state with `DelInvJT`, the books,
+  `HtInv` and `LiveHoleW key g 0`; with l4a's loop (`writerWP_afterDelete_live`) it keeps the
+  live counts given `MergeLiveOK` and `CollapseLiveOK` (`liveDel_room_live`). R1 at the leaf
+  (`holeAtW_leaf`, `LiveHoleLeaf.lean`): the merges' descent at the leaf's pair finds the
+  leaf, by the segments along the descent (`SegRd`, from the books and the kinds' walk) and
+  the key's reading on the walk's cached path; the space root's segment is not needed. 23:35 (prover l4a, step 3's first part): the merges' loop with
   the hole (`LiveLoop.lean`): `writerWP_afterDelete_live`, from `DelInvJAE`, the books,
   `HtInv` and `LiveHoleW key g 0` at a call of `afterDelete`, ends with `LiveEdges`, given
   two obligations: `MergeLiveOK` (a merge of a round keeps the hole one height up, or into

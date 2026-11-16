@@ -684,3 +684,24 @@ the found node is the segment's root (`descend_exit_shape`, by `dhP_inner`), a
 filled node meets `ChildOK`, and before any merge the hole is a leaf
 (`found_leaf_of_h0`, the books). Choice (by rule, KISS): the hole at the call is
 at height 0, the leaf's, so no separate leaf premise.
+
+2026-11-16, 23:15 to 23:47. Step 5, first part, prover l4b (coord-1116): the
+leaf with room. `liveDel_room` (LiveDelLeaf.lean): a delete whose leaf keeps a
+live klong and has room calls `afterDelete key g 0`, (g, 0) the leaf's cached
+pair, from a state with `DelInvJT`, `PutBook`, `HtInv` and `LiveHoleW key g 0`;
+its afterDelete is a hypothesis in that form, which is l4a's
+`writerWP_afterDelete_live`'s, and `liveDel_room_live` composes the two: the
+delete ends with `LiveEdges` given `MergeLiveOK` and `CollapseLiveOK`. The
+heights reach the call through the walk (`HtJ0`: `HtJ` without the heights'
+bound, which the stratum has not). R1 at the leaf (`holeAtW_leaf`,
+LiveHoleLeaf.lean, about 560 lines) needed one fact the plan did not name: the
+leaf's cached segment. The descent counts segments (`SegRd`: the books and the
+kinds' walk give each node read a segment, its inner children the same, a
+leaf's long segments the next; `dsrFold_seg`), so the leaf's segment is the
+space root's plus the prefix's length; a successful descent has a segment below
+the key's length, so it is the prefix's length (the space root's segment, 0 in
+every run but no invariant of the model, is not needed). The descent then
+follows the key's reading, whose nodes are on the walk's path
+(`fromVisits_reach_leaf`, `nodeAt_of_reach`: the tree's one parent) and so
+cached, and at height 0 it stops at the leaf. No stop rule fired. Left of step
+5: the full leaf (its split and cascade with the hole, step 3's cascade).
