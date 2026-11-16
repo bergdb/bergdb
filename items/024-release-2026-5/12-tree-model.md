@@ -414,7 +414,12 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   the delete calls `afterDelete` with the hole at the leaf (`liveDel_fullMade`,
   `LiveDelFull.lean`; with l4a's loop `liveDel_fullMade_live`, premises `MergeLiveOK`,
   `CollapseLiveOK`); the room case's argument made a lemma for any change of the leaf alone
-  (`liveHoleW_leafChange`). 23:35 (prover l4a, step 3's first part): the merges' loop with
+  (`liveHoleW_leafChange`). 00:40 (l4b): the full leaf not made by the transaction, split in time
+  below a parent with room (`DelFullTimeRoomM`): with l4a's `writerWP_handleFull_timeRoom_liveGh`
+  the copy is the hole, and the merges' descent finds it (`holeAtW_copy`,
+  `LiveDelFullCopy.lean`): `liveDel_fullTimeRoom`, `liveDel_fullTimeRoom_live` (premises
+  `MergeLiveOK`, `CollapseLiveOK`). Left of step 5: the space split (no hole), the parent
+  full (the cascade), the leaf at the space root, the made leaf's space split. 23:35 (prover l4a, step 3's first part): the merges' loop with
   the hole (`LiveLoop.lean`): `writerWP_afterDelete_live`, from `DelInvJAE`, the books,
   `HtInv` and `LiveHoleW key g 0` at a call of `afterDelete`, ends with `LiveEdges`, given
   two obligations: `MergeLiveOK` (a merge of a round keeps the hole one height up, or into
