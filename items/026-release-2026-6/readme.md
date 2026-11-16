@@ -188,7 +188,9 @@ Files
 * 19-proof-trial.md. 026-19, the proof trial of 026-18 (Frans,
   2026-11-16, 13:48): one fix step keeps the in-between invariant, and
   gets and scans are right at visible times, proved on MT's rules of
-  026-17; the plan by an agent first; perhaps from 22:00 that day.
+  026-17; the plan written 14:13 (about 14 prover-hours, one night,
+  about 10 % of a week), with draft statements in 19-proof-trial/; it
+  starts on Frans's go, perhaps from 22:05 that day.
 
 
 Log

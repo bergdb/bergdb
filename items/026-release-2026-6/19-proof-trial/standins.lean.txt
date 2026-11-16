@@ -1,0 +1,32 @@
+/- Stand-ins, for the plan's scratch check only: the trial's clone of 026-17 has no
+.olean of these modules. Signatures copied by reading from main's lean/SIS/Tree
+(LiveCounts.lean, PutInvRange.lean, GetPutInv.lean, PutInvOK.lean, GetMergeInv.lean,
+PointersRun.lean, OverlayKinds.lean, HeightsStep.lean, OverlayLeft.lean, KeyHistRun.lean,
+InvAssembly.lean, TakeBackRun.lean, DeadRun.lean). FReach and LiveCounts are copies. -/
+namespace SIS.Tree
+open SIS SIS.Check
+inductive FReach (N : NodeId → Option KNode) (t : Time) (r : NodeId) : NodeId → Bool → Bool → Prop
+  | root : FReach N t r r true true
+  | inner (x : NodeId) (b s : Bool) (n : KNode) (c : Nat) (y : NodeId) :
+      FReach N t r x b s → N x = some n → n.leaf = false → (c, y) ∈ n.liveAt t →
+      FReach N t r y false s
+  | seg (x : NodeId) (b s : Bool) (n : KNode) (c : Nat) (y : NodeId) :
+      FReach N t r x b s → N x = some n → n.leaf = true → (c, y) ∈ n.liveAt t →
+      FReach N t r y true false
+def LiveCounts (p : Params) (N : NodeId → Option KNode) (t : Time) (r : NodeId) : Prop :=
+  ∀ x b s n, FReach N t r x b s → N x = some n →
+    (n.liveAt t = [] → b = true ∧ s = true ∧ n.leaf = true) ∧
+    (n.leaf = false → b = true → 2 ≤ (n.liveAt t).length) ∧
+    (p.merges = true → b = false → p.mergeBelow ≤ (n.liveAt t).length)
+def RangeOrder (_N : NodeId → Option KNode) (_t : Time) (_r : NodeId) : Prop := True
+def PutInv (_c : Ctx) (_base : View BVal) (_w : W) : Prop := True
+def PutInvG (_c : Ctx) (_base : View BVal) (_w : W) : Prop := True
+def RunLinksOK (_p : Params) (_P : Struct BVal) (_t : Time) : Prop := True
+def KindsAllOK (_p : Params) (_P : Struct BVal) : Prop := True
+def HeightAllOK (_p : Params) (_P : Struct BVal) (_t : Time) : Prop := True
+def LeftAllOK (_p : Params) (_P : Struct BVal) : Prop := True
+def DeadAllOK (_p : Params) (_P : Struct BVal) : Prop := True
+def RangeAtOK (_p : Params) (_P : Struct BVal) (_t : Time) : Prop := True
+def RunTreeQ (_p : Params) (Q : Struct BVal → Time → Prop) (P : Struct BVal) (t : Time) : Prop := Q P t
+def LatestQD (_p : Params) (_P : Struct BVal) (_t : Time) : Prop := True
+end SIS.Tree

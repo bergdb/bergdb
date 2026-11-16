@@ -1,0 +1,83 @@
+/-
+The proof trial of 026-18 (bergdb 026-19, section 3.1): the runs of MT's rules
+(SIS/Tree/Mt.lean, bergdb 026-17) as a relation, and what a reader must return.
+The trial's statements are about these definitions; they are its trusted part.
+
+A main transaction is one user subtransaction (`SubStep.user`) and then the
+driver's fix steps (`SubStep.fix`), for each deleted key in key order until the
+key's path needs none (`SubStep.done`); `Mt.fixAll` is this order. A state
+with no pending key is at a visible time: only there does a reader read
+(bergdb 026-18).
+
+Draft of 2026-11-16 by the plan; type-checked from the trial's clone of 026-17
+(`lake env lean`), nothing proved. Step P0b makes it lean/SIS/Tree/MtRun.lean.
+-/
+import SIS.Tree.Mt
+import SIS.Tree.ScanLatest
+
+set_option autoImplicit false
+
+namespace SIS.Tree.Mt
+
+open SIS SIS.Check SIS.Tree
+
+/-- A state of an MT run: the structure, its last time (every subtransaction
+has a time of its own), the keys of the open main transaction still to fix, in
+the driver's order (none at a visible time), and every user operation so far,
+in order (the reference). -/
+structure St where
+  P : Struct BVal
+  t : Time
+  pend : List Key
+  ops : List Op
+
+/-- The first state: the primordial structure. -/
+def St.init (p : Params) : St := ⟨initStruct p, 0, [], []⟩
+
+/-- The structure after a subtransaction at time i whose writer ended in w. -/
+def commit (P : Struct BVal) (i : Time) (w : W) : Struct BVal := P.apply i (changesOf i w)
+
+/-- The fix that a fix step for `key` chooses (R2): `fixStep`'s first two lines. -/
+def fixOf (p : Params) (base : NodeId) (key : Key) (i : Time) (view : View BVal) :
+    Except String (Fix × W) :=
+  runWith p base i view (do path key; target)
+
+/-- One step of an MT run, with no error (as `Within` for today's runs):
+* `user`: at a visible time, a user subtransaction (R1) with one operation a
+  key, well-formed keys and a fresh first id; its deleted keys become pending;
+* `fix`: a fix step (R2 to R4) for the first pending key, at a time of its own;
+* `done`: the first pending key's path needs no fix; the key leaves the pending
+  keys, no time is used (R5). -/
+inductive SubStep (p : Params) : St → St → Prop
+  | user (s : St) (tx : Tx) (noops : List Bool) (w : W) :
+      s.pend = [] → tx.sorted = true → tx.wf = true → (∀ q ∈ s.P, q.1 < tx.base) →
+      runUser p tx.base tx.ops (s.t + 1) (view (treeSpec p) s.P s.t) = .ok (noops, w) →
+      SubStep p s ⟨commit s.P (s.t + 1) w, s.t + 1, deletedKeys tx.ops noops, s.ops ++ tx.ops⟩
+  | fix (s : St) (k : Key) (rest : List Key) (base : NodeId) (w : W) :
+      s.pend = k :: rest → (∀ q ∈ s.P, q.1 < base) →
+      runFix p base k (s.t + 1) (view (treeSpec p) s.P s.t) = .ok (true, w) →
+      SubStep p s ⟨commit s.P (s.t + 1) w, s.t + 1, k :: rest, s.ops⟩
+  | done (s : St) (k : Key) (rest : List Key) (base : NodeId) (w : W) :
+      s.pend = k :: rest → (∀ q ∈ s.P, q.1 < base) →
+      runFix p base k (s.t + 1) (view (treeSpec p) s.P s.t) = .ok (false, w) →
+      SubStep p s ⟨s.P, s.t, rest, s.ops⟩
+
+/-- The states that MT runs reach. -/
+inductive Reached (p : Params) : St → Prop
+  | init : Reached p (St.init p)
+  | step (s s' : St) : Reached p s → SubStep p s s' → Reached p s'
+
+/-- The reference of a state, as a run of today's reference (`refGet`,
+`refScan`, Props.lean): one transaction with every user operation so far. -/
+def St.ref (s : St) : List Tx := [{ base := 0, ops := s.ops }]
+
+/-- Every get at the state's time gives the reference's value. -/
+def ReadsOK (p : Params) (s : St) : Prop :=
+  ∀ key, keyWf key = true → get p (viewOf s.P) s.t key = refGet s.ref 1 key
+
+/-- Every scan at the state's time gives the reference's KVs. -/
+def ScansOK (p : Params) (s : St) : Prop :=
+  ∀ (req : ScanReq) (limit : Nat), req.wf = true →
+    (scan p (viewOf s.P) s.t req limit).map (fun kv => (kv.key, kv.h)) = refScan s.ref 1 req limit
+
+end SIS.Tree.Mt

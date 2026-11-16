@@ -47,6 +47,9 @@ Frans's words:
   the coordinator, then agents A (Opus at xhigh for T1 and T4) and B
   (Opus at high) by 026-17's plan; STOP at a week of 99 %, resumed at
   22:01. The trial's state: `/Users/f/fl/bench/026-17/state.md`.
+* **W5, the plan for 026-18's proof trial, 026-19** (agent ptplan,
+  Fable at high; Frans, 13:48): writes 026-19; the trial perhaps from
+  22:05 on Frans's go.
 * **028-15** registered (the startup distance in an internal KV; Frans,
   10:32), taken by 2026.6.
 
@@ -73,6 +76,9 @@ Frans's words:
 * 13:12 026-18 written down: main transactions and subtransactions, Frans's idea (12:54); a short proof trial proposed, maybe tonight after 22:00.
 
 * 13:36 MT's trial done (T8): MT passes every check in the model, with one rule added (A1) for Frans; result in 026-17, evidence in 17-mt-trial/, branch 026-17-mt-trial kept.
+
+* 13:40 026-17 committed (c03296e3), news.md entry.
+* 14:13 026-19's plan written: statements I and I_sub, the fix step's and the readers' theorems, about 14 prover-hours, one night from 22:05 on Frans's go.
 
 
 ## 5. Outcome
