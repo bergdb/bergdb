@@ -878,3 +878,14 @@ copy); (3) the rest as an obligation: the parent's space split (no hole, but the
 divider's range as `writerWP_fullSplit_chainG`'s `hhalves`), the parent made by
 the transaction (in place), a parent that is the space root or a segment root,
 and a grandparent without room (the cascade, R4's general case).
+
+2026-11-17, 00:23 to 00:27. Step 5, second part, prover l4b: the full leaf
+that the transaction made, its last version without the key within a split's
+bound (`DelFullTimeM` and the leaf made): it splits in time in place
+(`writerWP_appendDeleteKlong_fullMade`), the leaf's node its last version, so
+the room case's argument applies (`liveHoleW_leafChange`, the room case's hole
+made a lemma for any change of the leaf alone that keeps its kind and its other
+live klongs): `liveDel_fullMade`, and with l4a's loop `liveDel_fullMade_live`.
+Left of step 5: the full leaf not made by the transaction (its time split's copy
+is the hole: l4a's `writerWP_handleFull_timeRoom_live` below a parent with room,
+and R1 at the copy), the space splits (no hole), and the cascades.

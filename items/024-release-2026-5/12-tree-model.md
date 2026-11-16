@@ -409,7 +409,12 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   `linkedFrom_unique`; the stop node ends one segment's search; the key's descent is cut there). 00:22
   (l4b): the space root emptied, full too: its last version without the key has no key
   klong, so it splits in time into an empty leaf (`liveDel_emptyRoot`, `DelEmptyRootM` proved
-  with no premise). 23:35 (prover l4a, step 3's first part): the merges' loop with
+  with no premise). 00:27 (l4b): step 5, the full leaf that the transaction made,
+  its last version without the key within a split's bound: it splits in time in place, and
+  the delete calls `afterDelete` with the hole at the leaf (`liveDel_fullMade`,
+  `LiveDelFull.lean`; with l4a's loop `liveDel_fullMade_live`, premises `MergeLiveOK`,
+  `CollapseLiveOK`); the room case's argument made a lemma for any change of the leaf alone
+  (`liveHoleW_leafChange`). 23:35 (prover l4a, step 3's first part): the merges' loop with
   the hole (`LiveLoop.lean`): `writerWP_afterDelete_live`, from `DelInvJAE`, the books,
   `HtInv` and `LiveHoleW key g 0` at a call of `afterDelete`, ends with `LiveEdges`, given
   two obligations: `MergeLiveOK` (a merge of a round keeps the hole one height up, or into
