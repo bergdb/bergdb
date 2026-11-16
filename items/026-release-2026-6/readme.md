@@ -173,6 +173,13 @@ Files
   10:47); its result goes to the choice between MT, NW and neither, with
   SF10. The plan by an agent first.
 
+* 18-main-and-subtransactions.md. 026-18, an idea of Frans's (2026-11-16,
+  12:54): a main transaction is an atomic sequence of subtransactions,
+  one user subtransaction and zero or more maintenance subtransactions;
+  readers see only the states between main transactions. Written down
+  to pick up later, with the coordinator's view, the open questions and
+  a proposed short proof trial; nothing decided.
+
 
 Log
 ===
@@ -207,3 +214,6 @@ proposals to the decided work (Frans, 09:23: "Yes, decided work.").
 2026.6 (Frans, 10:32).
 
 2026-11-16. 026-17 registered: MT's trial, the plan first (Frans, 10:47).
+
+2026-11-16. 026-18 written down: main transactions and subtransactions,
+Frans's idea (12:54, 13:11).

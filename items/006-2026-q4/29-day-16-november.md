@@ -69,6 +69,9 @@ Frans's words:
 * 11:14 028-07 landed (c925c11e); 028-16 registered (d8da4a35).
 * 11:18 MT's trial: T0 done; agents A (T1) and B (T2) started.
 
+* 12:34 MT's trial: T4 (12:05), T7 (12:12), T5 and T6 (12:34) done; all runs pass; the scan finding A1 walked through with Frans (12:32).
+* 13:12 026-18 written down: main transactions and subtransactions, Frans's idea (12:54); a short proof trial proposed, maybe tonight after 22:00.
+
 
 ## 5. Outcome
 

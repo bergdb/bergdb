@@ -31,6 +31,10 @@ until 22:00 is 99 % (Frans, 10:57); `usage-watch.sh` in
 `/Users/f/fl/bench/026-17/` touches `STOP` there, and the coordinator
 resumes the trial at 22:01.
 
+The scan finding at untidy boundaries (rule added A1, step T4) led to
+Frans's idea 026-18 (12:54): readers see only the states between main
+transactions, so no reader changes.
+
 **What the trial answers** (the coordinator's outline of 10:29, which the
 plan makes exact):
 
