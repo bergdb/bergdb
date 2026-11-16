@@ -153,7 +153,11 @@ One line a day by the coordinator: what moved, where.
 Files
 =====
 
-None yet. 030-01, `l4`'s plan, comes on 2026-11-16's night.
+* [030-01](01-l4-plan.md). The plan for `l4`, the live counts' premise
+  of D1's top theorem: route B (hu's option (b) done route P's way, as
+  additions), no statement change; 8 steps, 3,000 to 5,500 lines; step 1
+  (`l4` reduced to its case at the induction's runs) proved in scratch.
+  Written 2026-11-16, 22:04 to 22:30. Status: open.
 
 
 Log
