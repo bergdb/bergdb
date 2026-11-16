@@ -176,7 +176,7 @@ public class TopDs {
                 break;
             }
             
-            n = (TopNode) op.followPointer(n, pt.index);
+            n = skipTo(n, pt.index, op);
         }
         
         
@@ -193,10 +193,29 @@ public class TopDs {
             return null;  // No old-enough node exists
         }
         
-        TopNode n2 = (TopNode) op.followPointer(n, pt.index);
+        TopNode n2 = skipTo(n, pt.index, op);
         assert n2 != null : "n2 is unexpectedly null, n: " + n;
         
         return n2;
+    }
+    
+    /**
+     * The top node that skip pointer 'index' of 'n' names. A skip pointer names an older top
+     * node, of a smaller ordinal, so the walk of findSuperRootAtTime() ends; on a damaged
+     * stream it may not (2026-11-15, bergdb 028-14: CorruptStreamTester's copy whose skip
+     * pointer, changed with its checksum made right, named its own top node, and a get
+     * looped in the walk without end). A pointer to a top node whose ordinal is not smaller
+     * throws pointerFollower's cycle(): in a Db a StreamFormatException, which fails the
+     * database (Db.readFailed()). One comparison a step; a valid database never fails it.
+     */
+    private static TopNode skipTo(TopNode n, int index, OpData op) {
+        TopNode next = (TopNode) op.followPointer(n, index);
+        if (next.topNodeId >= n.topNodeId) {
+            throw op.pointerFollower.cycle("Skip pointer " + (index - 1) + " of top node "
+                    + n.topNodeId + " names top node " + next.topNodeId
+                    + ", not an older one: the pointers may make a cycle.");
+        }
+        return next;
     }
     
     /**
