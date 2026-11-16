@@ -889,3 +889,16 @@ live klongs): `liveDel_fullMade`, and with l4a's loop `liveDel_fullMade_live`.
 Left of step 5: the full leaf not made by the transaction (its time split's copy
 is the hole: l4a's `writerWP_handleFull_timeRoom_live` below a parent with room,
 and R1 at the copy), the space splits (no hole), and the cascades.
+
+2026-11-17, 00:28 to 00:40. Step 5, the full leaf not made by the transaction,
+prover l4b: split in time below a parent with room, below the space root
+(`DelFullTimeRoomM`): l4a's `writerWP_handleFull_timeRoom_liveGh` gives the live
+counts but at the copy, and R1 at the copy (`holeAtW_copy`,
+LiveDelFullCopy.lean): the key's descent after the split is the walk's but at
+the parent, whose search now names the copy: in the last segment's tree
+(`lteP_redirect`; the run's step at the parent went to the leaf, since the leaf
+has one parent, `nodeAt_of_reach`), or the parent's segment search when the leaf
+is a segment root (`KNode.add_key_searchEq`). `liveDel_fullTimeRoom` and, with
+l4a's loop, `liveDel_fullTimeRoom_live`. Left of step 5: the space split (no
+hole after, its halves filled), the parent full (the cascade, R4), the leaf at
+the space root, and the made leaf's space split.
