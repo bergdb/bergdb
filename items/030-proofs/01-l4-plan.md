@@ -622,3 +622,25 @@ changed. `invGetScanOK_merges_l4L` and `invGetScanOK_merges_tbL_of_l4L`
 on the standard three axioms (`#print axioms`); the statement is
 `invGetScanOK_merges_tbL`'s with `LiveDelSL p` for `l4`. State notes:
 024-12, section 1; lean/README.md.
+
+2026-11-16, 22:31 to 22:38. Step 0, prover l4: `live-inside-check.lean.txt`
+(in the night's directory, /Users/f/fl/bench/2026-11-16/night/l4/, for the
+coordinator to copy here): C1 to C6 with 0 failures in 15 families, 2 min
+26 s; its header has the counts. C4's branch (a made root with no made-for
+entry) never ran, also in the two new families with new segments split in
+the transaction beside deletes under old prefixes. The hole's form of
+section 2.3 holds as stated: one hole, the node the descent finds at
+(g, h), with a live klong; after a merge into one node at (g, h + 1); at the
+loop's exit none or segment g's root with one live klong.
+
+2026-11-16, 22:39 to 22:56. Step 2, first part, prover l4. The hole's form
+as additions: `LiveEdgesH` (a hole asks only a live klong; the space root as
+a hole only `RootOK`'s first half), `HoleAt` and `LiveHole` (the node that
+the merges' descent finds), `liveEdgesH_mergeOne` (LiveHole.lean, on node
+maps, the parent the hole after). R1's core (LiveHoleDescent.lean): the
+descents as functions of what the writer reads (`rdN`, `rdG`; `lteP`,
+`dsrP`, `dhP`), and `descendToHeight_up`: one height up, on a state that
+reads alike on the path above the found node (its contents above its
+parent, its heights down to its parent), the descent stops at the parent,
+given that the heights go down by one at each inner node of the path
+(`GradedL`). No stop rule fired.
