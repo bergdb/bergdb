@@ -86,22 +86,29 @@ public class DatabaseImp implements Database {
      * 
      * @throws StreamIoException
      * @throws StreamFormatException
-     * @throws IllegalDbStateException  If db has been started already.
+     * @throws IllegalDbStateException  If db has been started already, or stopped: nothing
+     *          is closed then (bergdb 028-16).
      */
     static DatabaseImp createAndStart(final Db db) {
         @SuppressWarnings("unused")
         StartInfo startInfo;
         DatabaseImp database;
+        boolean started = false;
         
-        // When anything throws, the Db is closed (2026-10-24, bergdb 005-32): a database
-        // whose index manager failed to initialize ran on until the garbage collector stopped
-        // it. A start that throws has closed its storage already (Db.start()).
+        // When anything throws after this call's db.start() returned, the Db is closed
+        // (2026-10-24, bergdb 005-32): a database whose index manager failed to initialize
+        // ran on until the garbage collector stopped it. When db.start() throws, this call
+        // closes nothing (2026-11-16, bergdb 028-16): a start that throws has closed its
+        // storage already, and a start that Db.start() refuses, as a second call on one Db,
+        // closed nothing, as its Javadoc says; until 028-16 the catch closed the database
+        // that the first call started. So the DatabaseImp is made after db.start(), and
+        // nothing before db.start() can throw.
         try {
-            database = new DatabaseImp(db);
-        
             long t0 = System.nanoTime();
             startInfo = db.start();
+            started = true;
             double startTime = (System.nanoTime() - t0) * 1e-9;
+            database = new DatabaseImp(db);
             
             final Consumer<Db> hook = testHookAfterStart;
             if (hook != null) {
@@ -115,11 +122,13 @@ public class DatabaseImp implements Database {
             if (e instanceof DbFailedException && e.getCause() instanceof StreamException) {
                 thrown = e.getCause();      // The storage's exception (bergdb 020-24-08, U8-2).
             }
-            try {
-                db.close();
-            } catch (RuntimeException | Error e2) {
-                if (e2 != thrown) {
-                    thrown.addSuppressed(e2);
+            if (started) {
+                try {
+                    db.close();
+                } catch (RuntimeException | Error e2) {
+                    if (e2 != thrown) {
+                        thrown.addSuppressed(e2);
+                    }
                 }
             }
             if (thrown != e) {

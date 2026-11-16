@@ -4607,6 +4607,69 @@ public class PubTester {
     }
     
     /**
+     * bergdb 028-16: a second createAndStart() on one Db is refused with
+     * IllegalDbStateException and closes nothing, as Db.start()'s Javadoc says; the database
+     * that the first call started runs on. Case 0 makes the second call after the first
+     * returned; case 1 from a test hook inside the first, after its db.start() and before
+     * its index manager starts (the window that 028-07 opened). Until 028-16 the refused
+     * call's catch closed the Db: the first call's database was stopped, and in case 1 its
+     * own start failed.
+     */
+    @Nano
+    private static void testSecondStartOfOneDbClosesNothing() {
+        for (int c = 0; c < 2; c++) {
+            final MemoryStream m = new MemoryStream();
+            final Db db = Db.builder().testSetup(m).build();
+            final AtomicReference<Throwable> refused = new AtomicReference<Throwable>();
+            if (c == 1) {
+                DatabaseImp.testHookAfterStart = new Consumer<Db>() {
+                    public void accept(Db started) {
+                        DatabaseImp.testHookAfterStart = null;      // The first call only.
+                        refused.set(secondStart(started));
+                    }
+                };
+            }
+            Database d = null;
+            try {
+                d = DatabaseImp.createAndStart(db);
+                if (c == 0) {
+                    refused.set(secondStart(db));
+                }
+                Assert.assertTrue("case " + c + ", refused: " + refused.get(), 
+                        refused.get() instanceof IllegalDbStateException);
+                Assert.assertEquals("case " + c + ", suppressed", 0, 
+                        refused.get().getSuppressed().length);
+                
+                d.connection().put("/a", "a" + c);
+                d.sync();
+                Assert.assertEquals("a" + c, d.connection().get("/a", String.class));
+            } finally {
+                DatabaseImp.testHookAfterStart = null;
+                if (d != null) {
+                    d.close();
+                } else {
+                    db.close();
+                }
+            }
+            DbTesterFailure.assertClosed(m);
+            
+            Database d2 = DatabaseImp.createAndStart(Db.builder().testSetup(m.copy()).build());
+            Assert.assertEquals("case " + c, "a" + c, d2.connection().get("/a", String.class));
+            d2.close();
+        }
+    }
+    
+    /** testSecondStartOfOneDbClosesNothing's second call: what it throws, or an error. */
+    private static Throwable secondStart(Db db) {
+        try {
+            DatabaseImp.createAndStart(db);
+            return new AssertionError("a second start of one Db returned");
+        } catch (RuntimeException e) {
+            return e;
+        }
+    }
+    
+    /**
      * bergdb 005-32: a start that throws before the Db is built, here for a crypto key of an
      * unknown algorithm, closes the file that dir() opened.
      */
