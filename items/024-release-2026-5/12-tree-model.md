@@ -441,7 +441,16 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   the live counts, `writerWP_replaceRoot_seg_cascadeL`, the tree's cascadeC with `chainGL`).
   `writerWP_afterDelete_liveFR`: `afterDelete` from the call's facts to `LiveEdges`, premises
   `MergeLiveFullOK` (the merges with a full or compacting parent), `MergeParamsOK` and R3 after
-  the merges' loop.
+  the merges' loop. 00:17 (step 3's rest): R4's stop rule fired (a hole parameter for
+  `chainGLX` is a copy of about 2,400 lines, with a live copy of the full node's split on top),
+  so the narrower lemma, the parent's split below a grandparent with room:
+  `writerWP_handleFull_timeRoom_live` (`LiveSplitRoom.lean`; the hole moves to the time split's
+  copy) and its R1, `descendToHeight_redirect` (`LiveRedirectDescent.lean`; the next round's
+  descent ends at the copy). Not yet composed into `MergeLiveFullOK`: the merge's tail with
+  `mergeParent`'s `full` (both branches, one or two nodes, time or space split), the cleanup
+  with the parent left behind, the copy's cached height. State for a successor: 030-01's log of
+  2026-11-17, 00:04 to 00:15; what is left of `l4`'s afterDelete is `MergeLiveFullOK` and R3
+  (`R3At`, narrowed); steps 5 and 6 (prover l4b) have their own.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next
