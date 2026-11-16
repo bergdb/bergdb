@@ -850,3 +850,9 @@ climb's fact at the stop node needed the upward walks again: LiveUpWalk.lean's
 `...S` lemmas give it, and its `...G` lemmas are now their instances (about 900
 lines fewer than two copies). Left in step 6: `UpHtWalk` (R2's heights), the
 full root and the full stop node (the cascade).
+
+2026-11-17, 00:20 to 00:22. Step 6, the space root emptied and full (prover
+l4b): its last version without the key is one time klong
+(`lastVersionGivenDel_ks_allIn`), so the root splits in time (in place if the
+transaction made it) into an empty leaf, and the live counts hold
+(`liveDel_emptyRoot`: the case `DelEmptyRootM` with room or full, no premise).
