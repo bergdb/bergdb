@@ -1,0 +1,17 @@
+  A random-100 seed 1: 68 groups, 68 boundaries, 0 failures so far, 3 s
+  A random-100 seed 2: 157 groups, 158 boundaries, 0 failures so far, 8 s
+A random-100 [MtTest.Mode.mt]: 2 runs, 157 groups, 158 boundaries (1 untidy), 0 beyond the level bounds, 0 failures; 8 s, 56.27 ms a boundary
+  failures by check: none
+  K4 at tidy boundaries: 0 with a fault; K7 second pass: 0 fix steps
+  reached MT: bitmap.full 3, bitmap.inplace.dead 1, bitmap.new 45, dead.compact 2, fix.merge.two 1, merge.leaf 1, merge.left 1, merge.parent.delete 1, merge.two 1, segment.new 2, split.space1 1, split.space3 2, split.time1 11, split.time2 3, top.new 5
+  reached today: bitmap.full 3, bitmap.inplace.dead 1, bitmap.new 45, dead.compact 2, merge.leaf 1, merge.left 1, merge.parent.delete 1, merge.two 1, segment.new 2, split.space1 1, split.space3 2, split.time1 11, split.time2 3, top.new 5
+  5.4 the tree against today's: equal 112/41/4, different 0/0/0 (groups of no, one, several deletes); in the different: MT - today key nodes 0, live klongs 0, height differs in 0
+  5.5 cost MT/today: made 26/26 (1.00), changed 210/208 (1.01), klongs 478/476 (1.00), tops 5/5, B-new 27404/27284 (1.00), B-all 89388/88612 (1.01); the index alone: B-new 18620/18500 (1.01), B-all 80604/79828 (1.01)
+  5.5 a deleted key (49): extra made mean 0.00, most 0; extra B-new mean 2.44, most 120; extra B-all mean 15.83; today's merges 1, take-backs 0
+  5.6 fix steps a key (steps: keys): 0: 48, 1: 1; mean 0.02; a group: most 1
+  5.6 by the height of the key's segment tree: 0: 10 keys, mean 0.00, most 0, 1: 39 keys, mean 0.02, most 1
+  5.6 by the path's nodes: 1: 4 keys, mean 0.00, most 0, 2: 40 keys, mean 0.02, most 1, 3: 5 keys, mean 0.00, most 0
+  5.6 height: MT's greatest above before and today's in 0 groups (by how much: ); H needed: MT 1, today 1
+  5.6 untidy: 1 boundaries; most key nodes with a fill fault at one: 1; boundaries with an index node without a live key below: 0
+  5.6 top nodes made: by fix steps 0, by MT's user transactions 5, by today's 5
+MTTEST OK

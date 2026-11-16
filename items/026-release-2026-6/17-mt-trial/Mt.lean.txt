@@ -1,0 +1,637 @@
+/-
+MT's trial (bergdb 026-17, section 3): maintenance transactions in the model,
+beside today's writer (SIS/Tree/Exec.lean), which stays as it is.
+
+A user transaction (R1, `runUser`) is today's, but its delete is a bitmap in
+the key's segment leaf and no more: no merge, no upward delete, no root
+collapse. Each of those is a fix step (R2 to R4, `runFix`), a transaction of
+its own, one fix a step at the lowest node of a deleted key's path that needs
+one and can get it. The driver (R5, `fixAll`) runs the fix steps right after
+the user transaction, for each deleted key in key order, until the key's path
+needs none. Defined for the merges on (`Params.merges`); the trial runs
+nothing else. Nothing is taken back: a fix step never meets a node of its own
+transaction where today's rules would take one back (the errors that start with
+`MT:`).
+
+Where this file leaves 026-17, section 3, and why:
+
+- D1. It imports SIS.Tree.Inv, not SIS.Tree.Exec: the small cases at the end
+  need the primordial structure (`initStruct`), the reader (`get`) and the
+  walk (`faultsAt`, `nodesAt`). The definitions of MT use Exec.lean's only.
+- D2. `MT: an empty inner node` is checked at every node of the path, not only
+  at a segment root: an empty inner node below a root would else be passed
+  over as an only child, or meet `merge`'s `Bug:`. Q6 asks that no inner node
+  is ever empty; this says where.
+- D3. `runUser` checks the level bounds after each operation (`boundsNow`), not
+  inside `newKey`, which is Exec's and unchanged; no node is taken back, so the
+  outcome is the same: a `bounds:` error. `runFix` checks them after its step.
+- D4. `setValue` and `putSegs` lose the parameter `key`, which only
+  `deleteUpward` read.
+- D5. Added for the test program, beside the three entry points: `deletedKeys`
+  (R5's keys), `Step` and `fixAll`'s list of every `runFix` call, the false
+  ones too (K6); `fixAll`'s `cut` (`mttest mutant`: the last `cut` fix steps
+  are not made); `pathAt` (K5: the nodes of a key's path at a boundary, also
+  at an earlier one). `runWith` is `runOpsFrom`'s frame, shared by `runUser`
+  and `runFix`.
+- D6. `runFix` refuses parameters without the merges (`Params.merges`), with a
+  `Bug:` (section 3.1: MT is defined for the merges on).
+- D7. Notes besides section 5.3's: `fix.merge.empty` is noted when one of the
+  two merged nodes is empty or both, `fix.merge.bothempty` when both;
+  `user.emptied` when a user transaction's delete empties its leaf.
+- D8. R5's fuel is the group's, not a key's (T3, finding 1: the first deleted
+  key of a mass delete makes nearly all of its group's fix steps, so 3.4's
+  `(p.M + 2) * p.fuel` a key gave a false S3 at node size 8 with 600 keys
+  deleted in one transaction). The group may make `groupFuel`, `(p.M + 2) *
+  p.fuel` fix steps for each of its deleted keys, in any split among them;
+  the call after the last of them must return false, or `MT: the fixing does
+  not end`. The fuel counts only fix steps that changed something. It is a
+  guard against a loop, not a bound that is proved: 3.4's argument (M merges
+  a level, `p.fuel` levels) holds for no key alone.
+- Rule added A1 (T4, the first of at most two; 026-17, 2.3): `scanWith`, the
+  model's scan with a fuel that does not rest on TP27, for the reads at untidy
+  boundaries; see its section. Guard 11 shows the case.
+- D9. Two checks that cannot fail by R2's walk give `Bug:`: an unlink whose
+  bitmap is a noop, and a collapse of a root without one live klong (where
+  `collapseRoot` returns).
+-/
+import SIS.Tree.Inv
+
+namespace SIS.Tree.Mt
+
+open SIS SIS.Check SIS.Tree
+
+/-! ## R1: the user transaction -/
+
+/-- R1: the delete of compare value cv, the key's last segment, in the segment
+leaf at `depth` of the key access path: a bitmap and no more. `deleteUpward`'s
+first lines: a noop if the key has no live klong; else `appendDeleteKlong`,
+unchanged, with a full leaf's split and its cascade. The leaf may be left under
+the fill, or empty; a full leaf whose last version is empty becomes a node with
+a lone time klong (`handleFullWith`). Returns true for a noop. -/
+def deleteLeaf (leaf : NodeId) (depth : Nat) (cv : Nat) : M Bool := do
+  let n ← getNode leaf
+  let leafDel := n.lastBitmap
+  let leafUnion := bitsUnion leafDel (n.bitsOf cv)
+  if leafUnion == leafDel then return true
+  if n.allKeysIn leafUnion then note "user.emptied"
+  let _ ← appendDeleteKlong leaf depth cv
+  return false
+
+/-- `setValue` with R1's delete. -/
+def setValue (segRoot : NodeId) (cv : Nat) (value : Option Nat) : M Bool := do
+  let c ← read
+  let leaf ← descendLte cv c.p.fuel segRoot
+  match value with
+  | none =>
+    let noop ← deleteLeaf leaf ((← pathSize) - 1) cv
+    if !noop then
+      let _ ← fresh
+    pure noop
+  | some h =>
+    let v ← newValue h
+    let n ← getNode leaf
+    let n' := n.add c.i (.key cv v)
+    if n.size + 1 < c.p.M && !deadOver c.p n' then putNode leaf n'
+    else appendKlongs ((← pathSize) - 1) leaf [(cv, v)]
+    pure false
+
+/-- `putSegs` with R1's delete. -/
+def putSegs (value : Option Nat) : List Nat → NodeId → M Bool
+  | [], _ => throw "corrupt: a key without segments"
+  | [cv], segRoot => setValue segRoot cv value
+  | cv :: rest, segRoot => do
+    match ← setNode segRoot cv value.isSome with
+    | none => pure true
+    | some next => putSegs value rest next
+
+/-- `putKv` with R1's delete. -/
+def putKv (op : Op) : M Bool := do
+  pathClear
+  let root ← findRoot
+  match op with
+  | .put key h => putSegs (some h) key root
+  | .del key => putSegs none key root
+
+/-- The level bounds, at once (in place of `boundsOK`): nothing is taken back,
+so a key node made outside G and H is the `bounds:` error. -/
+def boundsNow : M Unit := do
+  let c ← read
+  match (← getThe W).outside.head? with
+  | some (_, g, h) =>
+    throw s!"bounds: the tree leaves the level bounds: segment {g}, height {h}; G = {c.p.G}, H = {c.p.H}"
+  | none => pure ()
+
+/-- A run of the writer's steps at time i from P@(i-1) (`view`, with the root):
+from its super root and the view without the root, as `runOpsFrom`. -/
+def runWith {α : Type} (p : Params) (base : NodeId) (i : Time) (view : View BVal) (m : M α) :
+    Except String (α × W) :=
+  match lastTop view with
+  | none => .error "corrupt: the root has no top node"
+  | some z =>
+    match topOf p (rootless view) z with
+    | .error e => .error e
+    | .ok top => (m.run { p := p, i := i, view := rootless view }).run { next := base, top := top }
+
+/-- R1: the user transaction at time i from P@(i-1) (`view`, with the root), as
+`runOps`: the final state, and for each operation whether it was a noop. Its
+changes are `changesOf i w`. -/
+def runUser (p : Params) (base : NodeId) (ops : List Op) (i : Time) (view : View BVal) :
+    Except String (List Bool × W) :=
+  runWith p base i view (ops.mapM (fun op => do
+    let noop ← putKv op
+    boundsNow
+    pure noop))
+
+/-! ## R2 to R4: the fix step -/
+
+/-- The loop of `path` over the key's segments, from a segment root. -/
+def pathGo : List Nat → NodeId → M Unit
+  | [], _ => pure ()
+  | cv :: rest, x => do
+    let c ← read
+    let leaf ← descendLte cv c.p.fuel x
+    if rest.isEmpty then return
+    match (← getNode leaf).searchEq c.i cv with
+    | none => pure ()
+    | some fd =>
+      pathAdd (some fd.c) fd.y
+      pathGo rest fd.y
+
+/-- The key access path of `key` as far as the key goes: from the space root, in
+each segment's tree down to the segment leaf (`descendLte`), then to the next
+segment's root if the leaf has a live klong of the segment (`searchEq`); it
+ends at the last segment's leaf, or at the leaf where the segment is not found.
+`descendToSegmentRoot` without the error for a segment that is not there. -/
+def path (key : Key) : M Unit := do
+  pathClear
+  let root ← findRoot
+  pathGo key root
+
+/-- What a fix step does, at a depth of the key access path. -/
+inductive Fix where
+  | none
+  | merge (x : NodeId) (d : Nat)
+  | unlink (d : Nat)
+  | collapse (x : NodeId) (d : Nat)
+  deriving Repr
+
+/-- R2's walk: from depth `d - 1` of the key access path up, the first node that
+needs a fix and can get it. For the node x at depth d, with q the node at depth
+d - 1:
+- x is a segment root (d = 0, or q is a segment leaf): an empty leaf, not the
+  space root, is unlinked; an inner node with one live klong collapses; else up
+  (an empty space root that is a leaf stays);
+- x is not a root and has fewer than m live klongs: if q has another live
+  klong, x is merged; else x is an only child, passed over (R4);
+- else up. Above depth 0: no fix.
+An inner node with no live klong is the error `MT: an empty inner node`. -/
+def targetGo : Nat → M Fix
+  | 0 => pure .none
+  | d + 1 => do
+    let c ← read
+    let x ← pathNode d
+    let xn ← getNode x
+    if !xn.leaf && xn.cnt == 0 then
+      throw s!"MT: an empty inner node: key node {x} at depth {d} at {c.i}"
+    let q? ← match d with
+      | 0 => pure none
+      | e + 1 => do pure (some (← getNode (← pathNode e)))
+    let isRoot := match q? with
+      | none => true
+      | some qn => qn.leaf
+    if isRoot then
+      if xn.leaf then
+        if xn.cnt == 0 && d != 0 then return .unlink d
+        targetGo d
+      else if xn.cnt == 1 then return .collapse x d
+      else targetGo d
+    else if xn.cnt < c.p.mergeBelow then
+      match q? with
+      | some qn =>
+        if 2 ≤ qn.cnt then return .merge x d
+        note "fix.pass.onlychild"
+        targetGo d
+      | none => targetGo d
+    else targetGo d
+
+/-- R2: the target of the key's fix step, on the key access path that `path`
+built. -/
+def target : M Fix := do targetGo (← pathSize)
+
+/-- R3, the merge: `merge` (Exec.lean) with three changes. An empty leaf is
+merged by the general rule: the new node gets the other node's klongs, under
+the left one's klong (for inner nodes the error stays). A node of the step's
+own transaction is the error `MT: a fix step merges a node of its own
+transaction` (S1), in place of the take-back. The two nodes merged are not
+unlinked: they have no klong of the step's time. Returns 1 for one new node, 2
+for two. -/
+def merge (x : NodeId) (d : Nat) : M Nat := do
+  let c ← read
+  let tt := c.i
+  let p ← pathNode (d - 1)
+  let pn ← getNode p
+  let xn ← getNode x
+  let inner := !xn.leaf
+  let cx ← klongAt d
+  let (ix?, ia, ib) := mergeIdx pn cx
+  let ix ← match ix? with
+    | some ix => pure ix
+    | none => throw s!"Bug: merge at {tt}: key node {x} has no live klong {cx} in {p}"
+  if pn.ptr? ix != some x then
+    throw s!"Bug: merge at {tt}: key node {x} is not the live child of its klong in {p}"
+  let left ← match ib with
+    | some (ib, _) => do
+      let (ls, lsn) ← sibling p pn ib inner
+      if ia.isNone || lsn.cnt + xn.cnt ≤ c.p.mergeMax then pure (some (ib, ls, lsn))
+      else pure none
+    | none => pure none
+  -- (l, ln, il, r, rn, ir): the left node, its klong's index in p; the right one.
+  let (l, ln, il, r, rn, ir) ← match left with
+    | some (ib, ls, lsn) => pure (ls, lsn, ib, x, xn, ix)
+    | none =>
+      match ia with
+      | some (ia, _) => do
+        let (rs, rsn) ← sibling p pn ia inner
+        pure (x, xn, ix, rs, rsn, ia)
+      | none => throw s!"Bug: merge at {tt}: key node {x} has no sibling in {p}"
+  note (if left.isSome then "merge.left" else "merge.right")
+  let cL ← match pn.cv? il with
+    | some v => pure v
+    | none => throw s!"Bug: merge at {tt}: no klong {il} in {p}"
+  let cR ← match pn.cv? ir with
+    | some v => pure v
+    | none => throw s!"Bug: merge at {tt}: no klong {ir} in {p}"
+  let lvL := ln.live
+  let lvR := rn.live
+  if inner && (lvL.isEmpty || lvR.isEmpty) then
+    throw s!"Bug: merge at {tt}: key node {l} or {r} has no live klong"
+  if inner && ((lvL.head?.map (·.1)) != some 0 || (lvR.head?.map (·.1)) != some 0) then
+    throw s!"Bug: merge at {tt}: inner node {l} or {r} has no live klong of the empty key first"
+  if ln.firstTime == some tt || rn.firstTime == some tt then
+    throw s!"MT: a fix step merges a node of its own transaction: key node {l} or {r} at {tt}"
+  let (first, second) := mergeKlongs inner c.p.mergeMax cR lvL lvR
+  modify (fun w => { w with merges := w.merges + 1 })
+  note (if second.isSome then "merge.two" else "merge.one")
+  note (if inner then "merge.inner" else "merge.leaf")
+  note (if second.isSome then "fix.merge.two" else "fix.merge.one")
+  if inner then note "fix.merge.inner"
+  if lvL.isEmpty || lvR.isEmpty then note "fix.merge.empty"
+  if lvL.isEmpty && lvR.isEmpty then note "fix.merge.bothempty"
+  let (g, h) ← ghOf x
+  let m1 ← newKey g h (!inner) (newKlongs tt first)
+  let m2 ← match second with
+    | some (ks2, g2) => do
+      let y ← newKey g h (!inner) (newKlongs tt ks2)
+      pure (some (y, g2))
+    | none => pure none
+  mergeParent p (d - 1) il cL m1 ir cR m2
+  pure (if second.isSome then 2 else 1)
+
+/-- The upward delete, one level: the empty segment root at depth d, a leaf, is
+unlinked from the segment leaf q above it by a bitmap (`appendDeleteKlong`,
+unchanged, with the split's cascade if q is full). If that empties q, the next
+step sees it. -/
+def unlinkTree (d : Nat) : M Unit := do
+  let c ← read
+  note "fix.unlink"
+  let q ← pathNode (d - 1)
+  let k ← klongAt d
+  if ← appendDeleteKlong q (d - 1) k then
+    throw s!"Bug: fix step at {c.i}: the klong {k} of key node {q} is not live"
+
+/-- Root collapse, once: `collapseRoot`'s body without its loop and without
+`takeBackRoot`. The root x at depth d, an inner node, has one live klong, which
+must be the empty key's; its child takes its place (`replaceRoot`, unchanged). A
+root of the step's own transaction is the error `MT: a fix step collapses a
+root of its own transaction` (S1). -/
+def collapse (x : NodeId) (d : Nat) : M Unit := do
+  let c ← read
+  let n ← getNode x
+  if n.firstTime == some c.i then
+    throw s!"MT: a fix step collapses a root of its own transaction: key node {x} at {c.i}"
+  match n.onlyLiveKlong with
+  | none => throw s!"Bug: root collapse at {c.i}: root {x} has not one live klong"
+  | some only =>
+    if n.cv? only != some 0 then
+      throw s!"Bug: root collapse at {c.i}: the one live klong of root {x} is not the empty key"
+    note (if d == 0 then "fix.collapse.space" else "fix.collapse.segment")
+    replaceRoot x d only
+
+/-- R2: one fix step for `key`: the key access path, its target, and the fix.
+False, and nothing changed, if the path needs none. -/
+def fixStep (key : Key) : M Bool := do
+  path key
+  match ← target with
+  | .none => pure false
+  | .merge x d =>
+    let _ ← merge x d
+    pure true
+  | .unlink d =>
+    unlinkTree d
+    pure true
+  | .collapse x d =>
+    collapse x d
+    pure true
+
+/-- R2: one fix step for `key` at time i from P@(i-1) (`view`, with the root):
+false, and nothing changed, if the key's path needs no fix; true and the step's
+state if it made one. Its changes are `changesOf i w`. -/
+def runFix (p : Params) (base : NodeId) (key : Key) (i : Time) (view : View BVal) :
+    Except String (Bool × W) :=
+  if !p.merges then .error "Bug: MT is defined for the merges on (Params.merges)" else
+  runWith p base i view (do
+    let r ← fixStep key
+    boundsNow
+    pure r)
+
+/-- The nodes of the key access path of `key` (`path`) at the boundary t, from
+the space root down (K5). `view` is P with the root, at t or later: the path
+starts at the super root of time t (`topAt`) and its searches read at t. -/
+def pathAt (p : Params) (key : Key) (t : Time) (view : View BVal) : Except String (List NodeId) :=
+  match topAt view t with
+  | none => .error s!"corrupt: no top node at {t}"
+  | some z =>
+    match topOf p (rootless view) z with
+    | .error e => .error e
+    | .ok top =>
+      (((path key).run { p := p, i := t, view := rootless view }).run { next := 0, top := top }).map
+        (fun r => r.2.path.map (·.2))
+
+/-! ## R5: the driver -/
+
+/-- The keys that the driver fixes: the deletes of `ops` that deleted (`noops`
+from `runUser`, one an operation), in key order. -/
+def deletedKeys (ops : List Op) (noops : List Bool) : List Key :=
+  let ks := (ops.zip noops).filterMap (fun (op, noop) => match op with
+    | .del k => if noop then none else some k
+    | .put _ _ => none)
+  ks.mergeSort (fun a b => !keyLt b a)
+
+/-- One call of `runFix` by the driver: the key, the time it ran at, its base,
+whether it made a fix step (then applied at `time`), and its state. -/
+structure Step where
+  key : Key
+  time : Time
+  base : NodeId
+  fixed : Bool
+  w : W
+
+/-- R5's fuel for a group with these deleted keys: `(p.M + 2) * p.fuel` fix
+steps for each (D8). A guard against a loop, not a proved bound. -/
+def groupFuel (p : Params) (keys : List Key) : Nat := keys.length * ((p.M + 2) * p.fuel)
+
+/-- The driver for one key: `runFix` at the next time until it returns false;
+each fix step is applied at its time, and its first id is the one after the
+last id used. `fuel`: the fix steps the group may still make, of `total`;
+`budget`, if set, those the whole driver may still make (`cut`). Returns the
+state, the last time used, the next id, the fuel and the budget left, and the
+calls so far. -/
+def fixKey {S : Type} (p : Params) (view : S → View BVal) (apply : S → Time → W → Except String S)
+    (key : Key) (total : Nat) : Nat → S → Time → NodeId → Option Nat → List Step →
+    Except String (S × Time × NodeId × Nat × Option Nat × List Step)
+  | fuel, s, t, next, budget, acc =>
+    if budget == some 0 then .ok (s, t, next, fuel, budget, acc) else
+    match runFix p next key (t + 1) (view s) with
+    | .error e => .error e
+    | .ok (false, w) => .ok (s, t, next, fuel, budget, acc ++ [⟨key, t + 1, next, false, w⟩])
+    | .ok (true, w) =>
+      match fuel with
+      | 0 => .error s!"MT: the fixing does not end: key {key} at {t + 1}, after the group's {total} fix steps"
+      | f + 1 =>
+        match apply s (t + 1) w with
+        | .error e => .error e
+        | .ok s' =>
+          fixKey p view apply key total f s' (t + 1) w.next (budget.map (· - 1))
+            (acc ++ [⟨key, t + 1, next, true, w⟩])
+
+/-- The driver over the keys, in their order, with the group's fuel left. -/
+def fixGo {S : Type} (p : Params) (view : S → View BVal) (apply : S → Time → W → Except String S)
+    (total : Nat) : List Key → Nat → S → Time → NodeId → Option Nat → List Step →
+    Except String (S × Time × NodeId × List Step)
+  | [], _, s, t, next, _, acc => .ok (s, t, next, acc)
+  | key :: rest, fuel, s, t, next, budget, acc =>
+    match fixKey p view apply key total fuel s t next budget acc with
+    | .error e => .error e
+    | .ok (s, t, next, fuel, budget, acc) => fixGo p view apply total rest fuel s t next budget acc
+
+/-- R5: the driver, generic in the state S (`view` gives P with the root,
+`apply` applies a fix step's state at its time, `changesOf`). From the state s
+after the user transaction at time i, with `next` the first id not used: for
+each key in order (`deletedKeys`), `runFix` at the next time, from the state so
+far; false: no transaction, no time used, the next key; true: the step is
+applied as a transaction of its own, the time goes up by one, and the same key
+is tried again. At most `groupFuel p keys` fix steps for the group, in any
+split among its keys (D8), else `MT: the fixing does not end`. Returns the state, the last time used, the next id, and
+every call of `runFix` in order. `cut`: the number of fix steps left out at the
+end (`mttest mutant`); 0 for MT. -/
+def fixAll {S : Type} (p : Params) (view : S → View BVal) (apply : S → Time → W → Except String S)
+    (keys : List Key) (s : S) (i : Time) (next : NodeId) (cut : Nat := 0) :
+    Except String (S × Time × NodeId × List Step) :=
+  let total := groupFuel p keys
+  if cut == 0 then fixGo p view apply total keys total s i next none [] else
+  match fixGo p view apply total keys total s i next none [] with
+  | .error e => .error e
+  | .ok (_, _, _, steps) =>
+    fixGo p view apply total keys total s i next (some (steps.countP (·.fixed) - cut)) []
+
+/-! ## Added rule A1: the scan over empty subtrees (026-17, T4)
+
+The first rule added by the trial (026-17, section 2.3), asked for by family E's
+runs (a backward scan from [40648] at an untidy boundary of a mass delete gave
+no KV). At an untidy boundary a scan crosses leaves and segment trees that the
+user transaction emptied. `scan` (Read.lean, Java's `Dag.getMany`) gives each
+`next` the fuel `2 * p.fuel + 2`, which rests on a live key below every index
+node (TP27, `nextGo`'s comment); after a run of about `p.fuel` empty leaves it
+ends early. Its rules are right: with more fuel the same steps give every KV.
+Java's `GetMany.Chain.next` has no such bound (a `while (true)` loop), so it
+needs no change; what changes is the cost of a `next` at an untidy time: two
+steps for each empty key node it crosses. `scanWith` is `scan` with the fuel
+of a `next` given; `scanFuel p n` suffices for a tree of at most n key nodes:
+between two KVs the chain enters each node at most once and leaves it at most
+once, beside the climb of its first path. -/
+
+/-- `scan` with the fuel `f` for each `next` (A1). -/
+def scanWith (p : Params) (view : View BVal) (t : Time) (req : ScanReq) (limit f : Nat) :
+    List Kvt :=
+  match rootAt view t with
+  | none => []
+  | some r => go limit (chainSetup p view t req r) []
+where
+  /-- `scanGo` with the fuel `f` for each `next`. -/
+  go : Nat → Chain → List Kvt → List Kvt
+    | 0, _, acc => acc
+    | g + 1, ch, acc =>
+      if acc.length ≥ limit then acc else
+        match nextGo p view t req f ch with
+        | (none, _) => acc
+        | (some kv, ch') => go g ch' (acc ++ [kv])
+
+/-- A fuel for each `next` of `scanWith` in a tree of at most n key nodes. -/
+def scanFuel (p : Params) (n : Nat) : Nat := 2 * p.fuel + 2 + 2 * n
+
+/-! ## Small cases (026-17, section 3.5)
+
+Groups on trees of a few keys at node size 8, from the primordial structure.
+Each group is checked at every boundary: every key's `get` is the reference's
+(K1), the key nodes that the transaction made are reachable at its time,
+nothing is taken back, and a top node it made is the super root (K3); and at
+its tidy boundary, the walk finds no fault (K4). The guards fix which fix
+steps run, in their order. -/
+
+namespace Small
+
+/-- Node size 8 with record format 7's thresholds: m = 2, c = h = 4, theta = 2. -/
+def p8 : Params := ({ M := 8, G := 2, H := 8 } : Params).withMerges.withTheta
+
+def viewP (P : Struct BVal) : View BVal := fun x => P.get? x
+
+/-- Key j of one segment; key j of two segments, below the 7-byte segment 120. -/
+def k (j : Nat) : Key := [j * 64 + 8]
+def k2 (j : Nat) : Key := [120, j * 64 + 8]
+
+def puts (js : List Nat) : List Op := js.map (fun j => .put (k j) j)
+def dels (js : List Nat) : List Op := js.map (fun j => .del (k j))
+def puts2 (js : List Nat) : List Op := js.map (fun j => .put (k2 j) j)
+def dels2 (js : List Nat) : List Op := js.map (fun j => .del (k2 j))
+
+/-- The keys that the cases read. -/
+def keys : List Key := (List.range 40).map k ++ (List.range 8).map k2
+
+/-- The reference map after a transaction's operations. -/
+def refApply (ref : List (Key × Nat)) (ops : List Op) : List (Key × Nat) :=
+  ops.foldl (fun r op => match op with
+    | .put key h => (key, h) :: r.filter (·.1 != key)
+    | .del key => r.filter (·.1 != key)) ref
+
+/-- K1 and K3 at the boundary of time i: P, after the transaction with the
+writer's state w. -/
+def boundaryOK (ref : List (Key × Nat)) (P : Struct BVal) (i : Time) (w : W) : Bool :=
+  let v := viewP P
+  let made := (changesOf i w).new.filter (fun n => !n.isData && decide (n.level ≤ p8.keyMax))
+  let reach := match rootAt v i with
+    | some r => nodesAt p8 v i p8.fuel r
+    | none => []
+  keys.all (fun key => get p8 v i key == ref.lookup key) &&
+    made.all (fun n => reach.contains n.id) && w.taken.isEmpty &&
+    (!w.newTop || topAt v i == some w.top.id)
+
+def applyChecked (ref : List (Key × Nat)) (P : Struct BVal) (i : Time) (w : W) :
+    Except String (Struct BVal) :=
+  let P' := P.apply i (changesOf i w)
+  if boundaryOK ref P' i w then .ok P' else .error s!"small case: K1 or K3 fails at {i}"
+
+/-- A state: P, its last time, the next id, the reference; of the last group,
+the user transaction's trail, the fix notes of each fix step, its whole trail,
+the calls of `runFix`. -/
+structure St where
+  P : Struct BVal
+  t : Time
+  next : NodeId
+  ref : List (Key × Nat) := []
+  user : List String := []
+  fixes : List (List String) := []
+  trails : List (List String) := []
+  calls : Nat := 0
+
+/-- A group: the user transaction (normalized), then the driver; K4 at its end. -/
+def St.group (s : St) (ops : List Op) : Except String St := do
+  let ops := normalize ops
+  let i := s.t + 1
+  let ref := refApply s.ref ops
+  let (noops, w) ← runUser p8 s.next ops i (viewP s.P)
+  let P ← applyChecked ref s.P i w
+  let (P, t, next, steps) ← fixAll p8 viewP (applyChecked ref) (deletedKeys ops noops) P i w.next
+  if !(faultsAt p8 (viewP P) t).isEmpty then throw s!"small case: a fault at {t}"
+  pure { P, t, next, ref, user := w.trail.reverse, calls := steps.length,
+         fixes := (steps.filter (·.fixed)).map (fun st =>
+           st.w.trail.reverse.filter (fun n => n.startsWith "fix.")),
+         trails := (steps.filter (·.fixed)).map (fun st => st.w.trail.reverse) }
+
+/-- The groups in order, from the primordial structure; none on an error. -/
+def run (txs : List (List Op)) : Option St :=
+  match txs.foldlM St.group { P := initStruct p8, t := 0, next := 10 } with
+  | .ok s => some s
+  | .error _ => none
+
+/-- The fix notes of the last group. -/
+def fixes (txs : List (List Op)) : Option (List (List String)) := (run txs).map (·.fixes)
+
+-- 1. A leaf left under the fill (one live klong of three) is merged by one step.
+#guard fixes [puts (List.range 12), dels [2, 3]] == some [["fix.merge.one"]]
+
+-- 2. A one-node segment tree emptied: the next step unlinks it. The segment
+-- leaf above, the space root, is full: the unlink's bitmap splits it, and the
+-- fix step makes a new space root (T3, finding 7).
+#guard ((run [puts [0, 1, 2, 3] ++ puts2 [0, 1], dels2 [0, 1]]).map (fun s =>
+    (s.fixes, s.trails.flatten.contains "bitmap.full", s.trails.flatten.contains "split.space3"))) ==
+  some ([["fix.unlink"]], true, true)
+
+-- 3. An empty leaf merged with its sibling; then the space root, with one child,
+-- collapses. The key's path (`pathAt`, read at the end): at time 2, after the
+-- user transaction, the root and the empty leaf; at 4, the root alone.
+#guard ((run [puts (List.range 6), dels [0, 1]]).map (fun s =>
+    (s.fixes, (pathAt p8 (k 0) 2 (viewP s.P)).toOption.map (·.length),
+     (pathAt p8 (k 0) 4 (viewP s.P)).toOption.map (·.length)))) ==
+  some ([["fix.merge.one", "fix.merge.empty"], ["fix.collapse.space"]], some 2, some 1)
+
+-- 4. The merged node holds one live klong: an only child, passed over; the root
+-- above collapses.
+#guard fixes [puts (List.range 6), dels [0, 1, 2, 3, 4]] ==
+  some [["fix.merge.one", "fix.merge.empty"], ["fix.pass.onlychild", "fix.collapse.space"]]
+
+-- 5. The same in a segment tree: its root collapses into the segment leaf above,
+-- which is full and is split by the collapse's klong (T3, finding 7).
+#guard ((run [puts [0, 1, 2] ++ puts2 (List.range 8), dels [0], puts [0],
+      dels2 [0, 1, 2, 3, 4, 5, 6]]).map (fun s =>
+    (s.fixes, s.trails.getLast?.map (fun tr => tr.contains "rc.replace.segment" && tr.contains "split.space3")))) ==
+  some ([["fix.merge.one", "fix.merge.empty"], ["fix.pass.onlychild", "fix.collapse.segment"]], some true)
+
+-- 6. Two empty leaves side by side: their merge makes an empty node, which the
+-- next step merges again.
+#guard fixes [puts (List.range 12), dels [0, 1, 2, 3, 4, 5]] ==
+  some [["fix.merge.one", "fix.merge.empty", "fix.merge.bothempty"],
+        ["fix.merge.one", "fix.merge.empty"]]
+
+-- 7. A path that needs no fix: one call of `runFix`, which returns false.
+#guard ((run [puts (List.range 6), dels [2]]).map (fun s => (s.fixes, s.calls))) == some ([], 1)
+
+-- 8. A full leaf emptied by the user transaction: a node with a lone time klong
+-- (compacted by its dead klongs), merged as an empty leaf; the root collapses.
+#guard ((run [puts (List.range 6), puts [3], dels [2, 3, 4, 5]]).map (fun s =>
+    (s.user.contains "lone-time-klong", s.fixes))) ==
+  some (true, [["fix.merge.one", "fix.merge.empty"], ["fix.collapse.space"]])
+
+-- 9. Height 2: half of 40 keys deleted in one transaction; inner nodes are merged
+-- after their only children are passed over, and the space root collapses.
+#guard ((fixes [puts (List.range 40), dels (List.range 20)]).map (fun f =>
+    (f.length, f.flatten.count "fix.merge.inner", f.flatten.count "fix.pass.onlychild",
+     f.getLast?))) == some (11, 3, 4, some ["fix.collapse.space"])
+
+-- 10. All 40 keys deleted in one transaction: the tree ends as an empty space
+-- root, a leaf.
+#guard ((run [puts (List.range 40), dels (List.range 40)]).map (fun s =>
+    match rootAt (viewP s.P) s.t with
+    | some r => (knodeOf p8 (viewP s.P) r).map (fun n => (n.leaf, n.cnt))
+    | none => none)) == some (some (true, 0))
+
+-- 11. Added rule A1: 21 keys put, then 19 deleted in one user transaction; at its
+-- boundary (untidy) a run of empty leaves is longer than `scan`'s fuel allows
+-- (node size 8 with H = 3: `p.fuel` 7). `scan` gives the first key only;
+-- `scanWith` with `scanFuel` gives both keys, as Java's scan would.
+def pA1 : Params := ({ M := 8, G := 0, H := 3 } : Params).withMerges.withTheta
+
+def emptiedA1 : Except String (Struct BVal) := do
+  let P0 := initStruct pA1
+  let (_, w1) ← runUser pA1 10 (puts (List.range 21)) 1 (viewP P0)
+  let P1 := P0.apply 1 (changesOf 1 w1)
+  let (_, w2) ← runUser pA1 w1.next (dels ((List.range 19).map (· + 1))) 2 (viewP P1)
+  pure (P1.apply 2 (changesOf 2 w2))
+
+#guard match emptiedA1 with
+  | .ok P => (scan pA1 (viewP P) 2 {} 30).map (·.key) == [k 0] &&
+      (scanWith pA1 (viewP P) 2 {} 30 (scanFuel pA1 P.length)).map (·.key) == [k 0, k 20]
+  | .error _ => false
+
+end Small
+
+end SIS.Tree.Mt

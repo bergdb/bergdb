@@ -171,7 +171,12 @@ Files
   section 7.5) in the Lean model only, beside today's writer, run and
   counted before any design, proof or Java (Frans, 2026-11-16, 10:29 and
   10:47); its result goes to the choice between MT, NW and neither, with
-  SF10. The plan by an agent first.
+  SF10. Done 2026-11-16, 13:36: MT passes every check of the plan in the
+  model (no node made and left out; the fixing ends in today's
+  invariants; at node size 30, 0.08 fix steps a deleted key, bytes 1.01
+  to 1.03 times today's for mixed work, 1.17 for mass deletes), with one
+  rule added (A1, a scan budget in the model) for Frans to rule on; the
+  evidence in 17-mt-trial/, the branch `026-17-mt-trial` kept.
 
 * 18-main-and-subtransactions.md. 026-18, an idea of Frans's (2026-11-16,
   12:54): a main transaction is an atomic sequence of subtransactions,
@@ -217,3 +222,5 @@ proposals to the decided work (Frans, 09:23: "Yes, decided work.").
 
 2026-11-16. 026-18 written down: main transactions and subtransactions,
 Frans's idea (12:54, 13:11).
+
+2026-11-16. 026-17 done: MT's trial, the result for Frans.

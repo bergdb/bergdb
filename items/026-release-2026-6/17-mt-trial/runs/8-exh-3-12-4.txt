@@ -1,0 +1,26 @@
+  exhaustive M=8 depth=3 keys=12 prefix=4 all: 13608 groups, 21722 boundaries, 0 failures so far, 94 s
+exhaustive M=8 depth=3 keys=12 prefix=4 [MtTest.Mode.mt]: 12996 runs, 13608 groups, 21722 boundaries (8114 untidy), 0 beyond the level bounds, 0 failures; 94 s, 4.37 ms a boundary
+  failures by check: none
+  K4 at tidy boundaries: 0 with a fault; K7 second pass: 0 fix steps
+  bounds by side: 
+  reached MT's user transactions: bitmap.dead 193, bitmap.full 2479, bitmap.new 3844, dead.compact 386, lone-time-klong 45, segment.new 48, split.space1 3, split.space3 1178, split.time1 6333, split.time2 50, top.new 1228, user.emptied 549
+  reached MT's fix steps: bitmap.full 75, bitmap.new 474, dead.compact 3300, fix.collapse.space 1799, fix.merge.inner 1799, fix.merge.one 5754, fix.merge.two 12, fix.unlink 549, merge.inner 1799, merge.leaf 3967, merge.left 2902, merge.one 5754, merge.parent.dead 3300, merge.parent.delete 1154, merge.parent.full 1312, merge.right 2864, merge.two 12, rc.replace.space 1799, split.space3 190, split.time1 2507, split.time2 2025, top.new 4014
+  fix steps merging an empty node into two: 0; untidy boundaries read after a user transaction that emptied a leaf, in a group with an unlink: 549
+  reached today: bitmap.dead 148, bitmap.full 2519, bitmap.new 3849, dead.compact 2407, merge.inner 1799, merge.leaf 3967, merge.left 2919, merge.made.left 1667, merge.made.right 1746, merge.one 5754, merge.parent.dead 2066, merge.parent.delete 3170, merge.parent.full 530, merge.right 2847, merge.takeback 3413, merge.two 12, rc.replace.space 924, rc.takeback.space 875, segment.new 48, split.space1 3, split.space3 1368, split.time1 7799, split.time2 1001, top.inplace 875, top.new 3293, up.climb 549, up.stop-at-segment-leaf 549, up.unlink 549
+  5.4 the tree against today's: equal 7092/6499/0, different 0/17/0 (groups of no, one, several deletes); in the different: MT - today key nodes 0, live klongs 0, height differs in 0
+    exhaustive M=8 depth=3 keys=12 prefix=4 all group 2598 at 27 [del[184, 136]]: today 8 key nodes, height 2, 18 live klongs; MT 8 key nodes, height 2, 18 live klongs
+    exhaustive M=8 depth=3 keys=12 prefix=4 all group 3152 at 27 [del[184, 136]]: today 8 key nodes, height 2, 17 live klongs; MT 8 key nodes, height 2, 17 live klongs
+    exhaustive M=8 depth=3 keys=12 prefix=4 all group 3730 at 27 [del[184, 136]]: today 8 key nodes, height 2, 18 live klongs; MT 8 key nodes, height 2, 18 live klongs
+  5.5 cost MT/today: made 20851/14448 (1.44), changed 37331/24763 (1.51), klongs 63875/49810 (1.28), tops 5242/3293, B-new 4728008/3219664 (1.47), B-all 6878504/4604704 (1.49); the index alone: B-new 4368680/2860336 (1.53), B-all 6519176/4245376 (1.54)
+  5.5 a deleted key (6516): extra made mean 0.98, most 6; extra B-new mean 231.48, most 1000; extra B-all mean 348.95; today's merges 5766, take-backs 3413
+  5.6 fix steps a group with deletes (steps: groups): 0: 2428, 1: 1938, 2: 351, 3: 1722, 4: 77; most 4; nearest the driver's fuel: 4 of 320
+  5.6 a deleted key as its group's mean: mean 1.24, most 4.00
+  5.6 groups of one delete (6516, mean 1.24) (steps: keys): 0: 2428, 1: 1938, 2: 351, 3: 1722, 4: 77
+  5.6 groups of one delete, by the height of the key's segment tree: 0: 2172 keys, mean 0.52, most 4, 1: 1561 keys, mean 1.02, most 3, 2: 2783 keys, mean 1.93, most 3
+  5.6 groups of one delete, by the path's nodes: 2: 1561 keys, mean 1.02, most 3, 3: 3603 keys, mean 1.60, most 3, 4: 1352 keys, mean 0.54, most 4
+  5.6 height: MT's greatest above before and today's in 210 groups (by how much: 1: 210); H needed: MT 2, today 2
+  5.6 untidy: 8114 boundaries; most key nodes with a fill fault at one: 1; boundaries with an index node without a live key below: 549, most such key nodes at one: 1
+  A1: K1's scans at untidy boundaries where scan and scanWith differ: 0, at 0 boundaries
+  5.6 top nodes made: by fix steps 4014, by MT's user transactions 1228, by today's 3293
+MTTEST OK
+exit 0, 95 s: mttest exhaustive 8 3 12 4

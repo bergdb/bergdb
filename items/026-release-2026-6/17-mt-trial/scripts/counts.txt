@@ -1,0 +1,78 @@
+C1, added: lean/SIS/Tree/Mt.lean
+  the file: 637 lines, 372 of code
+  R1's wrappers (deleteLeaf, setValue, putSegs, putKv, boundsNow, runWith, runUser): 82 lines, 57 of code
+  the path and the target (pathGo, path, Fix, targetGo, target): 74 lines, 50 of code
+  the merge (merge): 69 lines, 60 of code
+  the other fixes and the step (unlinkTree, collapse, fixStep, runFix): 57 lines, 39 of code
+  the driver (deletedKeys, Step, groupFuel, fixKey, fixGo, fixAll): 91 lines, 46 of code
+  for the program (pathAt): 15 lines, 9 of code
+  rule added A1 (scanWith, scanFuel): 30 lines, 15 of code
+  the small cases (namespace Small, 11 guards): 155 lines, 93 of code
+  the rest (header with D1 to D9, section comments, imports, namespace): 64 lines
+  MT's writer (R1 to R5): 373 lines, 252 of code; of them copied with changes from Exec.lean (setValue, putSegs, putKv, runWith as runOpsFrom, merge): 115, 97 of code; new: 258, 155 of code
+
+C2, freed: today's definitions that exec? uses and MT's entry points (runUser, runFix, fixAll, with changesOf) do not
+  freed: no counterpart in MT: 16 definitions, 329 lines, 244 of code
+    Exec.lean afterDelete: 9 lines, 5 of code
+    Exec.lean boundsOK: 11 lines, 8 of code
+    Exec.lean canTakeBack: 5 lines, 3 of code
+    Exec.lean climb: 21 lines, 17 of code
+    Exec.lean collapseRoot: 37 lines, 17 of code
+    Exec.lean deleteUpward: 57 lines, 48 of code
+    Exec.lean descendHeight: 17 lines, 14 of code
+    Exec.lean descendToHeight: 15 lines, 8 of code
+    Exec.lean descendToSegmentRoot: 16 lines, 12 of code
+    Exec.lean emptyKeyNext: 54 lines, 46 of code
+    Exec.lean mergeUp: 19 lines, 13 of code
+    Exec.lean retarget: 12 lines, 9 of code
+    Exec.lean takeBack: 15 lines, 11 of code
+    Exec.lean takeBackRoot: 26 lines, 22 of code
+    Exec.lean takenBack: 4 lines, 2 of code
+    Node.lean KNode.smallestLive: 11 lines, 9 of code
+  replaced by a copy in Mt.lean (deleteUpward's first lines are Mt.deleteLeaf; it is listed as freed above): 7 definitions, 141 lines, 110 of code
+    Exec.lean exec?: 6 lines, 3 of code
+    Exec.lean merge: 78 lines, 66 of code
+    Exec.lean putKv: 11 lines, 6 of code
+    Exec.lean putSegs: 9 lines, 7 of code
+    Exec.lean runOps: 6 lines, 3 of code
+    Exec.lean runOpsFrom: 11 lines, 9 of code
+    Exec.lean setValue: 20 lines, 16 of code
+  the interface of exec? (a transaction, its changes): stays: 1 definitions, 13 lines, 5 of code
+    Exec.lean Tx: 13 lines, 5 of code
+  check (a grep of Mt.lean's code, comments out): freed definitions it names: none
+  in Exec.lean: freed 318 lines (235 of code), with the copied originals 459 (345 of code)
+  new in MT (Mt.lean's writer): Fix, Step, boundsNow, collapse, deleteLeaf, fixAll, fixGo, fixKey, fixStep, groupFuel, merge, path, pathGo, putKv, putSegs, runFix, runUser, runWith, setValue, target, targetGo, unlinkTree
+
+Kept by MT, by the calls (the walk's CALL lines among MT's definitions); what each does in MT, by reading (T3, findings 3 and 4):
+  KNode.toPrev: called by handleFullWith, unlink; kept and live: in a user transaction a node that an earlier operation changed and a later one splits loses its klongs of tt (the take-back of a change, of entries, not of a node); a no-op in a fix step
+  unlink: called by replaceRoot; kept, dead: replaceRoot calls it, and a root that a fix step collapses has no klong of the step's time
+  replacedBy: called by handleFullWith; kept, dead: read only to write W.madeFor again
+  setMadeFor: called by handleFullWith; kept, dead: writes W.madeFor, which no decision of MT reads
+The fields of W, by text, in the definitions MT uses (Exec.lean, Mt.lean without the small cases):
+  W.taken: written by none; read by changesOf
+  W.madeFor: written by setMadeFor; read by replacedBy, setMadeFor
+  W.outside: written by newKey; read by newKey, boundsNow
+  W.merges: written by merge; read by merge
+  W.spaceSplits: written by handleFullWith; read by handleFullWith
+  W.trail: written by note; read by note
+  so: W.taken kept (changesOf), dead (never written: always empty); W.madeFor kept (the splits), dead (read only by replacedBy, to write it again); W.outside kept and live (newKey writes it, boundsNow decides by it, D3); merges, spaceSplits, trail: counts for the checks, no rule reads them, as today
+
+C3, net: Exec.lean 1175 lines (829 of code); less the freed and the copied originals 459 (345); plus MT's writer 373 (252): 1089 lines (736 of code), -86 (-93 of code)
+  Node.lean besides: freed 11 lines (smallestLive)
+
+C4, the proofs that name what is freed (006-28's method, by text; lean/SIS/Tree without Mt.lean: 474 files, 167243 lines, 6462 pieces)
+  freed (C2, no counterpart): afterDelete, boundsOK, canTakeBack, climb, collapseRoot, deleteUpward, descendHeight, descendToHeight, descendToSegmentRoot, emptyKeyNext, mergeUp, retarget, smallestLive, takeBack, takeBackRoot, takenBack
+    files 175; by name 459 declarations, 14131 lines; by text 833 declarations, 33277 lines, 19.9 %; by text without comments 742 declarations, 31058 lines, 18.6 %
+  kept by the split's code, dead in MT: replacedBy, setMadeFor, madeFor, W.taken, unlink
+    files 270; by name 114 declarations, 1594 lines; by text 946 declarations, 76601 lines, 45.8 %; by text without comments 903 declarations, 75730 lines, 45.3 %
+  both
+    files 295; by name 573 declarations, 15725 lines; by text 1525 declarations, 88904 lines, 53.2 %; by text without comments 1411 declarations, 86479 lines, 51.7 %
+  the copied originals, for context: merge, setValue, putSegs, putKv, runOps, exec?
+    files 234; by name 153 declarations, 4523 lines; by text 857 declarations, 48428 lines, 29.0 %; by text without comments 592 declarations, 28484 lines, 17.0 %
+
+C5, the invariant between: MtTest.lean's k5Allowed, 5 lines of code (lines 436 to 440); with the pending keys' paths that it is given (Mt.pathAt, 15 lines)
+    def k5Allowed (onPath : Std.HashSet NodeId) (f : String) : Bool :=
+      ["NonEmptyOK", "RootsOK", "FillOK"].contains (faultName f) &&
+        match faultNode f with
+        | some x => onPath.contains x
+        | none => false

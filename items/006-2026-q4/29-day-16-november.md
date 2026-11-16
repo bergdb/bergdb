@@ -72,6 +72,8 @@ Frans's words:
 * 12:34 MT's trial: T4 (12:05), T7 (12:12), T5 and T6 (12:34) done; all runs pass; the scan finding A1 walked through with Frans (12:32).
 * 13:12 026-18 written down: main transactions and subtransactions, Frans's idea (12:54); a short proof trial proposed, maybe tonight after 22:00.
 
+* 13:36 MT's trial done (T8): MT passes every check in the model, with one rule added (A1) for Frans; result in 026-17, evidence in 17-mt-trial/, branch 026-17-mt-trial kept.
+
 
 ## 5. Outcome
 

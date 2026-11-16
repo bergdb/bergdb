@@ -1,0 +1,34 @@
+  A random-100 seed 1: 232 groups, 235 boundaries, 0 failures so far, 17 s
+  A random-100 seed 2: 492 groups, 498 boundaries, 0 failures so far, 40 s
+  A random-100 seed 3: 769 groups, 782 boundaries, 0 failures so far, 64 s
+  A random-100 seed 4: 1044 groups, 1063 boundaries, 0 failures so far, 89 s
+  A random-100 seed 5: 1326 groups, 1350 boundaries, 0 failures so far, 115 s
+  A random-100 seed 6: 1612 groups, 1648 boundaries, 0 failures so far, 143 s
+  A random-100 seed 7: 1898 groups, 1939 boundaries, 0 failures so far, 170 s
+  A random-100 seed 8: 2186 groups, 2237 boundaries, 0 failures so far, 198 s
+  A random-100 seed 9: 2474 groups, 2542 boundaries, 0 failures so far, 226 s
+  A random-100 seed 10: 2766 groups, 2845 boundaries, 0 failures so far, 256 s
+A random-100 [MtTest.Mode.mt]: 10 runs, 2766 groups, 2845 boundaries (79 untidy), 0 beyond the level bounds, 0 failures; 256 s, 90.31 ms a boundary
+  failures by check: none
+  K4 at tidy boundaries: 0 with a fault; K7 second pass: 0 fix steps
+  bounds by side: 
+  reached MT's user transactions: bitmap.dead 64, bitmap.full 175, bitmap.inplace 195, bitmap.inplace.dead 12, bitmap.new 2105, dead.compact 200, segment.new 10, split.space1 63, split.space3 11, split.time1 627, split.time2 67, top.new 78
+  reached MT's fix steps: dead.compact 22, fix.collapse.space 1, fix.merge.one 52, fix.merge.two 26, merge.leaf 78, merge.left 32, merge.one 52, merge.parent.dead 22, merge.parent.delete 56, merge.right 46, merge.two 26, rc.replace.space 1, split.time2 22, top.new 23
+  fix steps merging an empty node into two: 0; untidy boundaries read after a user transaction that emptied a leaf, in a group with an unlink: 0
+  reached today: bitmap.dead 63, bitmap.full 175, bitmap.inplace 191, bitmap.inplace.dead 11, bitmap.new 2111, dead.compact 221, merge.leaf 90, merge.left 41, merge.made.left 13, merge.made.right 10, merge.one 58, merge.parent.dead 25, merge.parent.delete 65, merge.right 49, merge.takeback 23, merge.two 32, rc.replace.space 1, segment.new 10, split.space1 63, split.space3 11, split.time1 624, split.time2 91, top.new 103
+  5.4 the tree against today's: equal 1149/993/601, different 0/6/17 (groups of no, one, several deletes); in the different: MT - today key nodes 6, live klongs 6, height differs in 0
+    A random-100 seed 1 group 186 at 187 [del[4808] put[4872]]: today 5 key nodes, height 1, 52 live klongs; MT 6 key nodes, height 1, 53 live klongs
+    A random-100 seed 3 group 682 at 192 [put[120, 968] del[4488] del[5256] put[6024]]: today 5 key nodes, height 1, 56 live klongs; MT 6 key nodes, height 1, 57 live klongs
+    A random-100 seed 4 group 924 at 158 [put[120, 968] put[1480] del[2696] put[3016]]: today 6 key nodes, height 1, 62 live klongs; MT 6 key nodes, height 1, 62 live klongs
+  5.5 cost MT/today: made 989/983 (1.01), changed 6497/6358 (1.02), klongs 18525/18434 (1.00), tops 101/103, B-new 847476/839180 (1.01), B-all 2836020/2787436 (1.02); the index alone: B-new 573708/565412 (1.01), B-all 2562252/2513668 (1.02)
+  5.5 a deleted key (2551): extra made mean 0.00, most 1; extra B-new mean 3.25, most 296; extra B-all mean 19.04; today's merges 90, take-backs 23
+  5.6 fix steps a group with deletes (steps: groups): 0: 1539, 1: 77, 2: 1; most 2; nearest the driver's fuel: 2 of 832
+  5.6 a deleted key as its group's mean: mean 0.03, most 2.00
+  5.6 groups of one delete (999, mean 0.02) (steps: keys): 0: 975, 1: 23, 2: 1
+  5.6 groups of one delete, by the height of the key's segment tree: 0: 257 keys, mean 0.00, most 0, 1: 742 keys, mean 0.03, most 2
+  5.6 groups of one delete, by the path's nodes: 1: 23 keys, mean 0.00, most 0, 2: 751 keys, mean 0.03, most 2, 3: 225 keys, mean 0.00, most 0
+  5.6 height: MT's greatest above before and today's in 0 groups (by how much: ); H needed: MT 1, today 1
+  5.6 untidy: 79 boundaries; most key nodes with a fill fault at one: 2; boundaries with an index node without a live key below: 0
+  5.6 top nodes made: by fix steps 23, by MT's user transactions 78, by today's 103
+MTTEST OK
+exit 0

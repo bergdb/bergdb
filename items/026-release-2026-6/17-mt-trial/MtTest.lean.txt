@@ -1,0 +1,1261 @@
+/-
+MT's trial (bergdb 026-17, section 5): the test program. It runs MT (the
+maintenance transactions of SIS/Tree/Mt.lean: a user transaction that only
+deletes by bitmap, then fix steps, each a transaction of its own) and today's
+writer (SIS/Tree/Exec.lean) on the same user transactions, checks MT's tree at
+every transaction boundary, compares the two writers' trees and counts.
+
+Made from TreeTest.lean, which it cannot import (two `main`s): the key sets,
+the generator (`nextRand`, the random runs), `testReqs`, `choicesAt`, the
+prefixes, `ptrSpec` and the form of `checkSt` are copied from there. What
+differs (026-17, 5.1): P is a hash map, given to the writers and readers as a
+view; a run goes a group at a time (a user transaction with its fix steps);
+the reference is the program's own map, which only user transactions change.
+
+Usage: mttest [selftest | mutant | selfmutant] FAMILY ARGS...
+  selftest: today's writer in MT's place, no fix steps, every boundary tidy
+    (026-17, 5.3); mutant: MT's driver stops one fix step early (`cut` 1),
+    and the run passes if K4 finds faults; selfmutant: as selftest, with
+    both writers' merges off (m = 1) and the checks' on: K4 must find faults.
+  Families at node size 30 (026-17, 6.1): A, B, C, D, E, F, G, H, each with
+    optional numbers that override its size: A [seeds steps], B [seeds steps],
+    C [seeds steps], D [seeds M keys] (T6: D 3 8 200), E, F [seeds], G [seeds], H [seeds keys];
+    measure KEYS [GROUPS]: KEYS keys put 50 a transaction, then GROUPS groups
+    of 20 random deletes (for the time of a boundary).
+  The forms of treetest (node size M, G = 2, H = 8; 6 at M >= 30; merges and
+    theta always): random M seeds steps keys [maxOps delPct];
+    subsets M keys prefix depth [puts]; exhaustive M depth keys prefix [pairs].
+
+The checks (026-17, 5.2), each failure counted under its name:
+  K1 the map at every boundary; K1ref the program's map against `refKvs` (up to
+  200 keys); K2 earlier times at a run's end; K3 nothing left out, for every
+  transaction; K4 a tidy boundary (`faultsAt`, pointers, the noop delete, the
+  counts of key nodes and klongs, BU1, `balanced`); K5 an untidy boundary (the
+  fill's three faults, at nodes on a pending key's path, are allowed: C5's
+  exception is `k5Allowed`); K6 a fix step that is not needed changes nothing;
+  K7 one pass of the driver is enough (a count, "second pass"); A6 and Skip
+  (TP24) at every boundary up to 200 keys, every 50th above. `bounds:` errors
+  are counted apart; any other error of either writer is a failure.
+Each run ends with `MTTEST OK` or `MTTEST FAILED`.
+-/
+import SIS.Tree.Mt
+import SIS.Tree.Bound
+import SIS.Tree.Top
+import Check.Steps
+import Std.Data.HashMap
+import Std.Data.HashSet
+import Std.Data.TreeMap
+
+open SIS SIS.Check SIS.Tree
+
+namespace MtTest
+
+/-! ## P as a hash map, the reference as a sorted map -/
+
+abbrev Nodes := Std.HashMap NodeId (Node BVal)
+
+def keyCmp (a b : Key) : Ordering := if keyLt a b then .lt else if a == b then .eq else .gt
+
+/-- The reference: each key with a value, its value; changed by user
+transactions only. -/
+abbrev Ref := Std.TreeMap Key Nat keyCmp
+
+def toNodes (P : Struct BVal) : Nodes := P.foldl (fun m q => m.insert q.1 q.2) {}
+
+/-- P, with every node's whole history: what the writers get. -/
+def viewN (P : Nodes) : View BVal := fun x => P[x]?
+
+/-- P@t as far as the checks need it: every node with its entries up to t. -/
+def viewAt (P : Nodes) (t : Time) : View BVal := fun x =>
+  P[x]?.map (fun nd => { nd with hist := nd.hist.upTo t })
+
+/-- `Struct.apply` on the hash map; a new node that exists, or an entry for a
+node that does not, is an error. -/
+def applyC (P : Nodes) (i : Time) (c : Changes BVal) : Except String Nodes := do
+  let mut P := P
+  for n in c.new do
+    if P.contains n.id then throw s!"IdsFresh: node {n.id}, made at {i}, exists"
+    P := P.insert n.id { level := n.level, isData := n.isData, hist := [] }
+  for (x, v) in c.adds do
+    match P[x]? with
+    | some nd => P := P.insert x { nd with hist := nd.hist ++ [⟨i, v⟩] }
+    | none => throw s!"PointersOK: an entry at {i} for node {x}, no node of P"
+  for (_, v) in c.adds do
+    for y in bptrs v do
+      if !P.contains y then throw s!"PointersOK: an entry at {i} names {y}, no node of P"
+  return P
+
+/-- P with the changes c at time i, as a view, without changing P: today's tree
+A beside MT's. -/
+def overlay (P : Nodes) (i : Time) (c : Changes BVal) : View BVal :=
+  let small : Nodes := c.new.foldl (fun m n =>
+    m.insert n.id { level := n.level, isData := n.isData, hist := [] }) {}
+  let small := c.adds.foldl (fun m (x, v) =>
+    match m[x]? with
+    | some nd => m.insert x { nd with hist := nd.hist ++ [⟨i, v⟩] }
+    | none =>
+      match P[x]? with
+      | some nd => m.insert x { nd with hist := nd.hist ++ [⟨i, v⟩] }
+      | none => m) small
+  fun x => match small[x]? with
+    | some n => some n
+    | none => P[x]?
+
+/-! ## Copied from TreeTest.lean -/
+
+/-- A pseudo-random number generator (a linear congruential one). -/
+def nextRand (s : Nat) : Nat := (s * 6364136223846793005 + 1442695040888963407) % 2 ^ 64
+
+def testKeys (n : Nat) : List Key :=
+  ([[0], [64 + 8], [2 * 64 + 8], [3 * 64 + 8], [64 + 56, 8], [64 + 56, 64 + 8], [4 * 64 + 8],
+    [2 * 64 + 56, 2 * 64 + 8], [5 * 64 + 8], [64 + 56, 2 * 64 + 16], [6 * 64 + 8], [7 * 64 + 8],
+    [2 * 64 + 56, 0], [8 * 64 + 8], [9 * 64 + 8], [10 * 64 + 8]] : List Key).take n
+
+/-- The empty key, and keys of one segment, every fourth of two segments below
+one long first segment (TreeTest's `manyKeys`, for any n). -/
+def manyKeys (n : Nat) : List Key :=
+  ([0] :: (List.range (n - 1)).map (fun j =>
+    if j % 4 == 3 then [64 + 56, (j / 4) * 64 + 8] else [(j + 2) * 64 + 8])).take n
+
+def segKeys (n : Nat) : List Key :=
+  ([0] :: (List.range (n - 1)).map (fun j => [(j % 3 + 1) * 64 + 56, (j / 3) * 64 + 8])).take n
+
+def oneSegKeys (n : Nat) : List Key :=
+  ([0] :: (List.range (n - 1)).map (fun j => [64 + 56, j * 64 + 8])).take n
+
+def keysFor (n : Nat) : List Key :=
+  if n ≤ 16 then testKeys n else if n ≤ 100 then manyKeys n
+  else if n ≤ 200 then segKeys (n - 100) else oneSegKeys (n - 200)
+
+def testReqs (keys : List Key) : List ScanReq :=
+  let starts : List (Option Key) := none :: keys.map some
+  (starts.flatMap (fun s => [true, false].flatMap (fun inc => [true, false].map (fun fw =>
+    ({ start := s, inclusive := inc, forward := fw } : ScanReq))))) ++
+  (keys.flatMap (fun e => [true, false].flatMap (fun einc =>
+    [({ endKey := some e, endInclusive := einc } : ScanReq),
+     ({ start := keys.head?, inclusive := einc, endKey := some e, endInclusive := einc } : ScanReq)])))
+
+def ptrSpec (p : Params) : Spec BVal Nat where
+  ptrs := bptrs
+  live := blive
+  exec := fun _ i v => SIS.Tree.exec p { base := 0, ops := [] } i v
+  init := initStruct p
+  virt := true
+  topLevel := p.topLevel 0
+  rootVal := .top
+
+def showOps (ops : List Tree.Op) : String :=
+  let s := "[" ++ " ".intercalate (ops.map (fun op => match op with
+    | .put k _ => s!"put{k}"
+    | .del k => s!"del{k}")) ++ "]"
+  if s.length > 400 then (s.take 400).toString ++ s!"... ({ops.length} operations)" else s
+
+def choicesAt (keys : List Key) (pairs : Bool) (i : Nat) : List (List Tree.Op) :=
+  let sorted := (keys.mergeSort (fun a b => !keyLt b a)).zipIdx
+  let one (q : Key × Nat) : List Tree.Op := [Tree.Op.put q.1 (1000 * i + q.2), Tree.Op.del q.1]
+  let singles := sorted.flatMap (fun q => (one q).map (fun op => [op]))
+  if !pairs then singles else
+    singles ++ sorted.flatMap (fun a => (sorted.filter (fun b => a.2 < b.2)).flatMap (fun b =>
+      (one a).flatMap (fun x => (one b).map (fun y => [x, y]))))
+
+/-! ## A run's configuration, state and counts -/
+
+inductive Mode where
+  | mt
+  | selftest
+  | mutant
+  | selfmutant
+  deriving BEq, Repr
+
+structure Cfg where
+  p : Params
+  mode : Mode
+  name : String
+  /-- The run's key set, in key order. -/
+  keys : Array Key
+  keyIdx : Std.HashMap Key Nat
+  reqs : Array ScanReq
+  /-- Up to 200 keys: K1 in full at every boundary, the reference against
+  `refKvs`, A6 and Skip at every boundary. -/
+  small : Bool
+
+/-- Today's writer in MT's place: `selftest`, and `selfmutant`, where both
+writers run without merges (m = 1) while the checks keep m: K4 must find the
+fill's faults. -/
+def Cfg.today (cfg : Cfg) : Bool := cfg.mode == .selftest || cfg.mode == .selfmutant
+
+/-- The writers' parameters. -/
+def Cfg.pw (cfg : Cfg) : Params :=
+  if cfg.mode == .selfmutant then { cfg.p with mergeBelow := 1 } else cfg.p
+
+def mkCfg (p : Params) (mode : Mode) (name : String) (keys : List Key) : Cfg :=
+  let sorted := (keys.eraseDups.mergeSort (fun a b => !keyLt b a)).toArray
+  { p := p, mode := mode, name := name, keys := sorted,
+    keyIdx := sorted.zipIdx.foldl (fun m (k, j) => m.insert k j) {},
+    reqs := (testReqs sorted.toList).toArray, small := sorted.size ≤ 200 }
+
+/-- The state of a run: P, the time, the next id, the reference, the
+transactions (up to 200 keys, a fix step as a transaction without operations,
+for `refKvs`), the reference at every 10th time (K2), the boundaries so far,
+and the generator's state for the drawn checks. -/
+structure RS where
+  P : Nodes
+  t : Time := 0
+  next : NodeId := 1000
+  ref : Ref := ∅
+  ts : Array Tx := #[]
+  snaps : Array (Time × Ref) := #[]
+  /-- The untidy times, for K2's scans (A1). -/
+  untidyT : Std.HashSet Time := {}
+  b : Nat := 0
+  rng : Nat := 1
+
+def initRS (cfg : Cfg) (seed : Nat) : RS :=
+  { P := toNodes (initStruct cfg.p), rng := seed * 7919 + 1, snaps := #[(0, ∅)] }
+
+/-- What a transaction costs (026-17, 5.5). -/
+structure Cost where
+  made : Nat := 0
+  changed : Nat := 0
+  klongs : Nat := 0
+  tops : Nat := 0
+  bNew : Nat := 0
+  bAll : Nat := 0
+  /-- The value nodes' bytes, in both sums; the index alone is without them. -/
+  vals : Nat := 0
+  deriving Repr
+
+def Cost.add (a b : Cost) : Cost :=
+  { made := a.made + b.made, changed := a.changed + b.changed, klongs := a.klongs + b.klongs,
+    tops := a.tops + b.tops, bNew := a.bNew + b.bNew, bAll := a.bAll + b.bAll,
+    vals := a.vals + b.vals }
+
+def bump (m : Std.HashMap String Nat) (k : String) (n : Nat := 1) : Std.HashMap String Nat :=
+  m.insert k (m.getD k 0 + n)
+
+def bumpN (m : Std.HashMap Nat Nat) (k : Nat) (n : Nat := 1) : Std.HashMap Nat Nat :=
+  m.insert k (m.getD k 0 + n)
+
+/-- Keys, steps and the most steps, by a class (a height, a path length). -/
+def bump3 (m : Std.HashMap Nat (Nat × Nat × Nat)) (k s : Nat) : Std.HashMap Nat (Nat × Nat × Nat) :=
+  let (a, b, c) := m.getD k (0, 0, 0)
+  m.insert k (a + 1, b + s, max c s)
+
+structure Stats where
+  runs : Nat := 0
+  groups : Nat := 0
+  bnd : Nat := 0
+  untidy : Nat := 0
+  bounds : Nat := 0
+  /-- The level bounds, by the side that gave them (T3, finding 5). -/
+  boundsBy : Std.HashMap String Nat := {}
+  fails : Array String := #[]
+  failBy : Std.HashMap String Nat := {}
+  /-- What MT's user transactions reached; what its fix steps reached
+  (today's notes inside a fix step apart, T3, finding 7). -/
+  reachMt : Std.HashMap String Nat := {}
+  reachFix : Std.HashMap String Nat := {}
+  /-- Fix steps that merge an empty node into two (T3, finding 6). -/
+  emptyTwo : Nat := 0
+  /-- Untidy boundaries right after a user transaction that emptied a leaf, in
+  a group with an unlink: the readers over an empty segment tree (T3, finding 8). -/
+  emptiedRead : Nat := 0
+  /-- Fix steps a group: groups by their sum (T3, finding 2). -/
+  groupHist : Std.HashMap Nat Nat := {}
+  /-- The most of a group's fix steps a deleted key (its sum over its deletes),
+  times 100. -/
+  maxGroupMean : Nat := 0
+  /-- The group nearest its driver's fuel: steps, fuel (T3, finding 1). -/
+  fuelNear : Nat × Nat := (0, 1)
+  /-- Groups of one delete: for the counts a key. -/
+  oneDelKeys : Nat := 0
+  oneDelSteps : Nat := 0
+  reachToday : Std.HashMap String Nat := {}
+  /-- 5.4: groups equal and different, by their deletes: none, one, several. -/
+  eq : Array Nat := #[0, 0, 0]
+  ne : Array Nat := #[0, 0, 0]
+  diffEx : Array String := #[]
+  diffNodes : Int := 0
+  diffKlongs : Int := 0
+  diffHeight : Nat := 0
+  /-- 5.5. -/
+  costMt : Cost := {}
+  costToday : Cost := {}
+  delKeys : Nat := 0
+  extraMade : Int := 0
+  extraNew : Int := 0
+  extraAll : Int := 0
+  maxExtraMade : Int := 0
+  maxExtraNew : Int := 0
+  todayMerges : Nat := 0
+  todayTakebacks : Nat := 0
+  /-- 5.6. -/
+  fixHist : Std.HashMap Nat Nat := {}
+  fixByH : Std.HashMap Nat (Nat × Nat × Nat) := {}
+  fixByPath : Std.HashMap Nat (Nat × Nat × Nat) := {}
+  fixSteps : Nat := 0
+  groupFixMax : Nat := 0
+  secondPass : Nat := 0
+  hAbove : Std.HashMap Nat Nat := {}
+  maxHMt : Nat := 0
+  maxHToday : Nat := 0
+  maxFill : Nat := 0
+  emptyBelow : Nat := 0
+  /-- The most key nodes without a live key below at one boundary: what a
+  whole scan crosses at most (A1's cost). -/
+  maxEmpty : Nat := 0
+  /-- K1's scans at untidy boundaries where the model's `scan` and A1's
+  `scanWith` differ, and the boundaries with one. -/
+  scanDiff : Nat := 0
+  scanDiffBnd : Nat := 0
+  topsFix : Nat := 0
+  topsMtUser : Nat := 0
+  topsToday : Nat := 0
+  /-- Tidy boundaries where K4 found a fault (`mutant` needs some). -/
+  k4 : Nat := 0
+
+def Stats.fail (st : Stats) (check msg : String) : Stats :=
+  { st with failBy := bump st.failBy check,
+            fails := if st.fails.size < 20 then st.fails.push s!"{check}: {msg}" else st.fails }
+
+def Stats.fails' (st : Stats) (fs : List (String × String)) : Stats :=
+  fs.foldl (fun st (c, m) => st.fail c m) st
+
+/-- An error of a writer: the level bounds are counted apart; MT's own errors
+(`MT:`) are Q1's or Q4's failures; any other is a failure. -/
+def Stats.err (st : Stats) (who what e : String) : Stats :=
+  if e.startsWith "bounds:" then
+    { st with bounds := st.bounds + 1, boundsBy := bump st.boundsBy who,
+              fails := if st.fails.size < 20 then st.fails.push s!"bounds({who}): {what}: {e}" else st.fails }
+  else if e.startsWith "MT:" then st.fail "MT" s!"{what}: {e}"
+  else st.fail s!"error({who})" s!"{what}: {e}"
+
+def reach (m : Std.HashMap String Nat) (trail : List String) : Std.HashMap String Nat :=
+  trail.foldl (fun m s => bump m s) m
+
+/-! ## Reading a tree at a time -/
+
+def keyNodes (p : Params) (v : View BVal) (t : Time) : List NodeId :=
+  match rootAt v t with
+  | some r => nodesAt p v t p.fuel r
+  | none => []
+
+/-- The greatest height of a key node reached (026-17, 5.6). -/
+def heightOf (p : Params) (v : View BVal) (t : Time) : Nat :=
+  (keyNodes p v t).foldl (fun h x => match v x with
+    | some nd => max h (p.heightOf nd.level)
+    | none => h) 0
+
+/-- The key access path at time t: the space root, then what `Dag.followPath`
+follows (`pathFrom`): the nodes that `Mt.path` builds, by the readers (for the
+counts of 5.6; K5 uses `Mt.pathAt`). -/
+def pathOf (p : Params) (v : View BVal) (t : Time) (key : Key) : List NodeId :=
+  match rootAt v t with
+  | some r => r :: pathFrom p v t key p.fuel r
+  | none => []
+
+/-- The height of the key's last segment tree on its path, and the path's
+length. -/
+def pathHeight (p : Params) (v : View BVal) (t : Time) (key : Key) : Nat × Nat :=
+  let path := pathOf p v t key
+  let lv := path.filterMap (fun x => (v x).map (·.level))
+  match lv.getLast? with
+  | none => (0, 0)
+  | some l =>
+    let g := p.segOf l
+    ((lv.filter (fun l' => p.segOf l' == g)).foldl (fun h l' => max h (p.heightOf l')) 0, path.length)
+
+/-- The shape of a tree (026-17, 5.4): each key node as leaf (1) or inner (2),
+its live klongs, each with its compare value and the shape below; a value as
+3 and its hash. No ids, no times, no dead klongs. -/
+def shapeOf (p : Params) (v : View BVal) (t : Time) : Nat → NodeId → List Nat
+  | 0, _ => [9]
+  | f + 1, x =>
+    match knodeOf p v x with
+    | none => [3, (valueOf v x).getD 0]
+    | some n =>
+      let live := n.liveAt t
+      (if n.leaf then 1 else 2) :: live.length :: live.flatMap (fun (c, y) =>
+        c :: (if n.leaf && segLen c != 7 then [3, (valueOf v y).getD 0] else shapeOf p v t f y))
+
+def shapeAt (p : Params) (v : View BVal) (t : Time) : List Nat :=
+  match rootAt v t with
+  | some r => shapeOf p v t p.fuel r
+  | none => []
+
+/-- Key nodes, live klongs: for a difference of shape. -/
+def sizeAt (p : Params) (v : View BVal) (t : Time) : Nat × Nat :=
+  let ns := keyNodes p v t
+  (ns.length, ns.foldl (fun s x => match knodeOf p v x with
+    | some n => s + (n.liveAt t).length
+    | none => s) 0)
+
+/-- Whether a live key is below x, and the key nodes below x (x too) with
+none (026-17, 5.6: reclaim's premise). -/
+def emptyIdx (p : Params) (v : View BVal) (t : Time) : Nat → NodeId → Bool × Nat
+  | 0, _ => (false, 0)
+  | f + 1, x =>
+    match knodeOf p v x with
+    | none => (true, 0)
+    | some n =>
+      let rs := (n.liveAt t).map (fun (c, y) =>
+        if n.leaf && segLen c != 7 then (true, 0) else emptyIdx p v t f y)
+      let any := rs.any (·.1)
+      (any, rs.foldl (fun s q => s + q.2) 0 + (if any then 0 else 1))
+
+/-- The least and the most depth of the segment leaves below x in its segment
+tree, and whether every segment tree reached is balanced (`balanced` of
+024-12's segfit-check: at each inner node, its leaves all at one depth). -/
+def balance (p : Params) (v : View BVal) (t : Time) : Nat → NodeId → Nat × Nat × Bool
+  | 0, _ => (0, 0, true)
+  | f + 1, x =>
+    match knodeOf p v x with
+    | none => (0, 0, true)
+    | some n =>
+      let live := n.liveAt t
+      if n.leaf then
+        (0, 0, live.all (fun (c, y) => segLen c != 7 || (balance p v t f y).2.2))
+      else
+        match live.map (fun (_, y) => balance p v t f y) with
+        | [] => (0, 0, true)
+        | r :: rest =>
+          let lo := rest.foldl (fun a q => min a q.1) r.1
+          let hi := rest.foldl (fun a q => max a q.2.1) r.2.1
+          (lo + 1, hi + 1, lo == hi && (r :: rest).all (·.2.2))
+
+/-- The fault's name, the text before its colon. -/
+def faultName (f : String) : String := String.ofList (f.toList.takeWhile (· != ':'))
+
+/-- The fault's node: the first number after the colon. -/
+def faultNode (f : String) : Option Nat :=
+  let cs := (f.toList.dropWhile (· != ':')).dropWhile (fun c => !c.isDigit)
+  (String.ofList (cs.takeWhile Char.isDigit)).toNat?
+
+/-- K5, the invariant between (C5): at an untidy boundary a fault is allowed if
+it is one of the fill's three and its node is on a pending key's path. -/
+def k5Allowed (onPath : Std.HashSet NodeId) (f : String) : Bool :=
+  ["NonEmptyOK", "RootsOK", "FillOK"].contains (faultName f) &&
+    match faultNode f with
+    | some x => onPath.contains x
+    | none => false
+
+/-- The reference's scan: the KVs in the range, in key order forward, reversed
+backward, the first `limit`. -/
+def refScanR (kvs : List (Key × Nat)) (req : ScanReq) (limit : Nat) : List (Key × Nat) :=
+  let r := kvs.filter (fun q => inRange req q.1)
+  (if req.forward then r else r.reverse).take limit
+
+def scanKV (p : Params) (v : View BVal) (t : Time) (req : ScanReq) (limit : Nat) : List (Key × Nat) :=
+  (scan p v t req limit).map (fun kv => (kv.key, kv.h))
+
+/-- n numbers below m drawn from the generator's state s, and the new state. -/
+def draw (s n m : Nat) : List Nat × Nat :=
+  if m == 0 then ([], s) else
+    (List.range n).foldl (fun (acc : List Nat × Nat) _ =>
+      let s' := nextRand acc.2
+      ((s' / 65536) % m :: acc.1, s')) ([], s)
+
+/-! ## The user transaction's writer, by the mode -/
+
+def userRun (cfg : Cfg) (base : NodeId) (ops : List Tree.Op) (i : Time) (v : View BVal) :
+    Except String (List Bool × W) :=
+  if cfg.today then runOps cfg.pw base ops i v else Mt.runUser cfg.p base ops i v
+
+/-! ## The checks at a boundary (026-17, 5.2) -/
+
+/-- A boundary: its time, the state of its transaction, the fix step's key
+(none for the user transaction), the pending keys, and whether it is tidy. -/
+structure Bnd where
+  t : Time
+  w : W
+  fix : Option Key
+  pending : List Key
+  tidy : Bool
+
+structure BRes where
+  fails : List (String × String) := []
+  fill : Nat := 0
+  emptyBelow : Bool := false
+  /-- Key nodes with no live key below, the space root aside. -/
+  empties : Nat := 0
+  /-- K1's scans at an untidy boundary where `scan` and `scanWith` differ. -/
+  scanDiff : Nat := 0
+  height : Nat := 0
+  k4 : Bool := false
+
+/-- The scan of a boundary: at a tidy one, the model's `scan`; at an untidy one,
+rule added A1's `Mt.scanWith` with `Mt.scanFuel` for at most n key nodes (the
+size of P), and whether `scan` gives otherwise there (a cost count: TP27 does
+not hold at untidy times). -/
+def scanAt (p : Params) (v : View BVal) (t : Time) (untidy : Bool) (n : Nat) (req : ScanReq)
+    (limit : Nat) : List (Key × Nat) × Bool :=
+  let m := scanKV p v t req limit
+  if !untidy then (m, false) else
+    let w := (Mt.scanWith p v t req limit (Mt.scanFuel p n)).map (fun kv => (kv.key, kv.h))
+    (w, w != m)
+
+/-- K1: the gets and scans at time t against the reference's KVs; and the
+untidy scans where `scan` and `scanWith` differ. -/
+def k1 (cfg : Cfg) (v : View BVal) (t : Time) (ref : Ref) (kvs : List (Key × Nat))
+    (gkeys : List Key) (b rng : Nat) (what : String) (untidy : Bool) (nP : Nat) :
+    List (String × String) × Nat :=
+  let p := cfg.p
+  let getF (k : Key) : Option (String × String) :=
+    let m := get p v t k
+    let r := ref[k]?
+    if m == r then none else some ("K1", s!"{what}: get {k} at {t}: the model {m}, the reference {r}")
+  let scanF (req : ScanReq) (limit : Nat) : Option (String × String) :=
+    let m := (scanAt p v t untidy nP req limit).1
+    let r := refScanR kvs req limit
+    if m == r then none
+    else
+      let j := ((m.zip r).takeWhile (fun q => q.1 == q.2)).length
+      some ("K1", s!"{what}: scan at {t} {repr req} limit {limit}: the model {m.length} KVs, the reference {r.length}; first difference at {j}: the model {(m.drop j).take 3}, the reference {(r.drop j).take 3}")
+  let diffF (req : ScanReq) (limit : Nat) : Bool := (scanAt p v t untidy nP req limit).2
+  if cfg.small then
+    (cfg.keys.toList.filterMap getF ++
+      cfg.reqs.toList.flatMap (fun req => [100, 2].filterMap (scanF req)),
+     if untidy then (cfg.reqs.toList.flatMap (fun req => [100, 2].map (diffF req))).countP id else 0)
+  else
+    let n := cfg.keys.size
+    let whole := [scanF {} (n + 1), scanF { forward := false } (n + 1)].filterMap id
+    let near := gkeys.flatMap (fun k => match cfg.keyIdx[k]? with
+      | some j => [k] ++ (if j > 0 then [cfg.keys[j - 1]!] else []) ++
+          (if j + 1 < n then [cfg.keys[j + 1]!] else [])
+      | none => [k])
+    let (dk, s1) := draw rng 200 n
+    let (dr, _) := draw s1 20 cfg.reqs.size
+    let gets := if b % 50 == 0 then cfg.keys.toList else near ++ dk.map (fun j => cfg.keys[j]!)
+    (whole ++ gets.filterMap getF ++
+      dr.flatMap (fun j => [100, 2].filterMap (scanF cfg.reqs[j]!)),
+     if untidy then
+       ([diffF {} (n + 1), diffF { forward := false } (n + 1)] ++
+         dr.flatMap (fun j => [100, 2].map (diffF cfg.reqs[j]!))).countP id
+     else 0)
+
+/-- TP24, the search through the skip pointers, at the times given. -/
+def skipCheck (v : View BVal) (times : List Time) : List (String × String) :=
+  times.flatMap (fun t => [false, true].filterMap (fun mid =>
+    if findSuperRootAt v t mid == topAt v t then none
+    else some ("Skip", s!"at {t}{if mid then " and a half" else ""}: {findSuperRootAt v t mid}, the root's entry {topAt v t}")))
+
+/-- A6 (and A6'), on P@t as a list. -/
+def a6Check (p : Params) (P : Nodes) (t : Time) : List (String × String) :=
+  let Pl : Struct BVal := P.toList.map (fun (x, nd) => (x, { nd with hist := nd.hist.upTo t }))
+  let sp := ptrSpec p
+  let rl := reachList sp Pl t
+  let ad := SIS.Check.adoptFailures sp Pl t (Std.HashSet.ofList rl) rl
+  (if ad.1.isEmpty then [] else [("A6", s!"A6' at {t}: {ad.1.take 5}")]) ++
+    (if ad.2.isEmpty then [] else [("A6", s!"A6 at {t}: {ad.2.take 5}")])
+
+/-- The checks of one boundary: K1, K1ref, K4 or K5, A6 and Skip, and the
+counts of 5.6. -/
+def checkBnd (cfg : Cfg) (P : Nodes) (bd : Bnd) (ref : Ref) (kvs : List (Key × Nat))
+    (gkeys : List Key) (b rng : Nat) (ts : Array Tx) (what : String) : BRes := Id.run do
+  let p := cfg.p
+  let t := bd.t
+  let v := viewAt P t
+  let what := s!"{what} b{b}{if bd.tidy then "" else " untidy"}"
+  let (f1, sd) := k1 cfg v t ref kvs gkeys b rng what (!bd.tidy) P.size
+  let mut fs : List (String × String) := f1
+  if cfg.small then
+    let r := refKvs ts.toList t
+    if r != kvs then fs := fs ++ [("K1ref", s!"{what}: the program's map at {t} is not refKvs")]
+  -- K4 and K5: the walk.
+  let faults := faultsAt p v t
+  let root := rootAt v t
+  let mut fill := 0
+  let mut k4 := false
+  if bd.tidy then
+    if !faults.isEmpty then
+      k4 := true
+      fs := fs ++ (faults.take 5).map (fun f => ("K4", s!"{what}: {f}"))
+  else
+    -- The pending keys' paths by MT's own `Mt.path` (`Mt.pathAt`).
+    let paths := bd.pending.map (fun k => Mt.pathAt p k t v)
+    let onPath : Std.HashSet NodeId := Std.HashSet.ofList (paths.flatMap (fun r => match r with
+      | .ok ns => ns
+      | .error _ => []))
+    for r in paths do
+      if let .error e := r then fs := fs ++ [("K5", s!"{what}: Mt.pathAt: {e}")]
+    let bad := faults.filter (fun f => !k5Allowed onPath f)
+    fs := fs ++ (bad.take 5).map (fun f => ("K5", s!"{what}: {f}"))
+    fill := ((faults.filter (fun f => faultName f == "FillOK")).filterMap faultNode).eraseDups.length
+  -- `balanced`, at every boundary.
+  match root with
+  | some r =>
+    if !(balance p v t p.fuel r).2.2 then
+      fs := fs ++ [(if bd.tidy then "K4" else "K5", s!"{what}: a segment tree is not balanced")]
+      if bd.tidy then k4 := true
+  | none => pure ()
+  -- K4's checks beside the walk, from `checkSt`.
+  if bd.tidy then
+    let nodes := keyNodes p v t
+    let live := kvs.length
+    let allow := 1 + live * p.fuel
+    let klongs := nodes.foldl (fun s x => match knodeOf p v x with
+      | some n => s + n.size
+      | none => s) 0
+    let trees := 1 + ((kvs.flatMap (fun q => (List.range (q.1.length - 1)).map
+      (fun j => q.1.take (j + 1)))).eraseDups).length
+    let bu1 := trees + (live + trees - 1) / (p.mergeBelow - 1)
+    let counts : List String :=
+      (if nodes.length ≤ allow then [] else [s!"DeletedNoNode: {nodes.length} key nodes reachable, {live} live keys"]) ++
+      (if klongs ≤ p.M * allow then [] else [s!"KlongBound: {klongs} klongs reachable, {live} live keys"]) ++
+      (if !p.merges || nodes.length ≤ bu1 then [] else
+        [s!"BU1: {nodes.length} key nodes reachable, more than {bu1}: {live} live keys, {trees} segment trees"])
+    if !counts.isEmpty then
+      k4 := true
+      fs := fs ++ counts.map (fun m => ("K4", s!"{what}: {m}"))
+    -- The noop delete.
+    let cands := if cfg.small then cfg.keys.toList else
+      ((draw (rng + 1) 20 cfg.keys.size).1.map (fun j => cfg.keys[j]!))
+    let noops := (cands.filter (fun k => !ref.contains k)).filterMap (fun k =>
+      match userRun cfg (P.size * 4 + 10 ^ 12) [.del k] (t + 1) v with
+      | .ok (_, w) =>
+        let c := changesOf (t + 1) w
+        if c.new.isEmpty && c.adds.isEmpty then none
+        else some s!"NoopOK: a delete of {k} without a value changes P"
+      | .error e => some s!"NoopOK: a delete of {k}: {e}")
+    if !noops.isEmpty then
+      k4 := true
+      fs := fs ++ (noops.take 3).map (fun m => ("K4", s!"{what}: {m}"))
+  -- A6 and the skip pointers.
+  if cfg.small || b % 50 == 0 then
+    fs := fs ++ a6Check p P t
+    let (dt, _) := draw (rng + 2) 5 (t + 1)
+    fs := fs ++ skipCheck v ([t, t - 1] ++ dt)
+  let em := match root with
+    | some r =>
+      let (any, n) := emptyIdx p v t p.fuel r
+      n - (if any then 0 else 1)
+    | none => 0
+  return { fails := fs, fill := fill, emptyBelow := em > 0, empties := em, scanDiff := sd,
+           height := heightOf p v t, k4 := k4 }
+
+/-- K3 for one transaction at time t: every key node it made is reachable at
+t; it took nothing back (MT); a top node it made is the root's live child. -/
+def k3 (cfg : Cfg) (P : Nodes) (t : Time) (w : W) (what : String) : List (String × String) :=
+  let p := cfg.p
+  let v := viewAt P t
+  let c := changesOf t w
+  let reach : Std.HashSet NodeId := Std.HashSet.ofList (keyNodes p v t)
+  let made := c.new.filter (fun n => !n.isData && decide (n.level ≤ p.keyMax))
+  let lost := made.filter (fun n => !reach.contains n.id)
+  (if lost.isEmpty then [] else [("K3", s!"{what} at {t}: key nodes made and not reachable: {(lost.map (·.id)).take 8}")]) ++
+  (if cfg.today || w.taken.isEmpty then [] else [("K3", s!"{what} at {t}: nodes taken back: {w.taken.take 8}")]) ++
+  (if !w.newTop || topAt v t == some w.top.id then [] else
+    [("K3", s!"{what} at {t}: top node {w.top.id} made, the root's entry {topAt v t}")])
+
+/-- The top nodes of the changes. -/
+def topsOf (p : Params) (c : Changes BVal) : List NodeId :=
+  (c.new.filter (fun n => !n.isData && decide (p.topLevel 0 ≤ n.level) && decide (n.level < p.rootLevel))).map (·.id)
+
+/-- The cost of a transaction at time t (026-17, 5.5), its changes c, read on a
+view after it; `valB` and `otherB` the bytes of its value nodes and of its
+delete or fix nodes. -/
+def costOf (p : Params) (v : View BVal) (t : Time) (c : Changes BVal) (valB otherB : Nat) : Cost :=
+  let isKey (x : NodeId) : Bool := match v x with
+    | some nd => !nd.isData && decide (nd.level ≤ p.keyMax)
+    | none => false
+  let bytes (x : NodeId) : Nat := match v x with
+    | some nd => 32 + 16 * (klongsOf (nd.hist.upTo t)).length
+    | none => 0
+  let made := (c.new.filter (fun n => !n.isData && decide (n.level ≤ p.keyMax))).map (·.id)
+  let keyAdds := c.adds.filter (fun q => isKey q.1)
+  let changedSet : Std.HashSet NodeId := Std.HashSet.ofList (made ++ keyAdds.map (·.1))
+  let changed := changedSet.toList
+  let tops := topsOf p c
+  let topB := tops.foldl (fun s z => s + 48 + 16 * (match v z with
+    | some nd => nd.hist.countP (fun e => match e.val with
+      | .skip _ _ => true
+      | _ => false)
+    | none => 0)) 0
+  let common := 48 + 16 * changed.length + valB + otherB + topB
+  { made := made.length, changed := changed.length, klongs := keyAdds.length, tops := tops.length,
+    bNew := common + made.foldl (fun s x => s + bytes x) 0,
+    bAll := common + changed.foldl (fun s x => s + bytes x) 0, vals := valB }
+
+def valBytes (ops : List Tree.Op) : Nat :=
+  ops.foldl (fun s op => match op with
+    | .put k _ => s + 40 + 8 * k.length
+    | .del _ => s) 0
+
+def delBytes (ops : List Tree.Op) (noops : List Bool) : Nat :=
+  (ops.zip noops).foldl (fun s (op, noop) => match op with
+    | .del k => if noop then s else s + 28 + 8 * k.length
+    | .put _ _ => s) 0
+
+/-! ## A group (026-17, 5.1) -/
+
+def kindIdx (d : Nat) : Nat := if d == 0 then 0 else if d == 1 then 1 else 2
+
+/-- One group from the run's state: today's writer and MT on the user
+transaction from the same tree, MT's fix steps, the checks at every boundary,
+the comparison, the counts. The run goes on from MT's tree. -/
+def group (cfg : Cfg) (rs : RS) (ops : List Tree.Op) (st : Stats) : RS × Stats := Id.run do
+  let p := cfg.p
+  let i := rs.t + 1
+  let base := rs.next
+  let v0 := viewN rs.P
+  let what := s!"{cfg.name} group {st.groups + 1} at {i} {showOps ops}"
+  let mut st := { st with groups := st.groups + 1 }
+  -- Today's writer: the tree A, a view over P.
+  let ra := runOps cfg.pw base ops i v0
+  if let .error e := ra then return (rs, st.err "today" what e)
+  let .ok (noopsA, wA) := ra | return (rs, st)
+  let cA := changesOf i wA
+  let vA := overlay rs.P i cA
+  -- MT's user transaction.
+  let ru := if cfg.today then .ok (noopsA, wA) else Mt.runUser p base ops i v0
+  if let .error e := ru then return (rs, st.err "MT" what e)
+  let .ok (noops, wU) := ru | return (rs, st)
+  let cU := changesOf i wU
+  let r1 := applyC rs.P i cU
+  if let .error e := r1 then return (rs, st.fail "apply" s!"{what}: {e}")
+  let .ok P1 := r1 | return (rs, st)
+  let keys := Mt.deletedKeys ops noops
+  if noops != noopsA then
+    st := st.fail "noops" s!"{what}: MT's noops {noops}, today's {noopsA}"
+  -- MT's driver (R5).
+  let applyW : Nodes → Time → W → Except String Nodes := fun s t w => applyC s t (changesOf t w)
+  let drv : Except String (Nodes × Time × NodeId × List Mt.Step) :=
+    if cfg.today then .ok (P1, i, wU.next, [])
+    else Mt.fixAll p viewN applyW keys P1 i wU.next (if cfg.mode == .mutant then 1 else 0)
+  if let .error e := drv then return (rs, st.err "MT" what e)
+  let .ok (P2, t2, n2, steps) := drv | return (rs, st)
+  -- K6: a call that made no fix step changed nothing.
+  let k6 (ss : List Mt.Step) : List (String × String) := ss.filterMap (fun s =>
+    if s.fixed then none else
+      let c := changesOf s.time s.w
+      if c.new.isEmpty && c.adds.isEmpty then none
+      else some ("K6", s!"{what}: a fix step for {s.key} at {s.time} returned false and changed P"))
+  st := st.fails' (k6 steps)
+  -- K7: one more pass over the keys; a fix step made is a second pass.
+  let mut P' := P2
+  let mut tEnd := t2
+  let mut next := n2
+  let mut extra : Array Mt.Step := #[]
+  if cfg.mode == .mt && !keys.isEmpty then
+    let mut done := false
+    for _ in [0:4] do
+      if !done then
+        match Mt.fixAll p viewN applyW keys P' tEnd next 0 with
+        | .error e =>
+          st := st.err "MT" s!"{what} (K7's pass)" e
+          done := true
+        | .ok (P3, t3, n3, s3) =>
+          st := st.fails' (k6 s3)
+          let fixed := s3.filter (·.fixed)
+          P' := P3
+          tEnd := t3
+          next := n3
+          if fixed.isEmpty then done := true
+          else
+            st := { st with secondPass := st.secondPass + fixed.length }
+            extra := extra ++ fixed.toArray
+    if !done then st := st.fail "K7" s!"{what}: the fixing goes on after four more passes"
+  -- The boundaries.
+  let fixed := steps.filter (·.fixed)
+  let mkB (s : Mt.Step) (pend : List Key) : Bnd :=
+    { t := s.time, w := s.w, fix := some s.key, pending := pend, tidy := false }
+  let bs0 : List Bnd := { t := i, w := wU, fix := none, pending := keys, tidy := false } ::
+    (fixed.map (fun s => mkB s (keys.dropWhile (· != s.key)))) ++
+    -- A second pass's steps (K7): the driver's order again, so the strict set too.
+    (extra.toList.map (fun s => mkB s (keys.dropWhile (· != s.key))))
+  let nb := bs0.length
+  let bs := bs0.zipIdx.map (fun (bd, j) => { bd with tidy := j + 1 == nb })
+  -- The reference after the user transaction: the group's.
+  let ref' := ops.foldl (fun r op => match op with
+    | .put k h => r.insert k h
+    | .del k => r.erase k) rs.ref
+  let kvs := ref'.toList
+  let ts' := if cfg.small then
+      (rs.ts.push { base := base, ops := ops }) ++ Array.replicate (nb - 1) ({ base := 0, ops := [] } : Tx)
+    else rs.ts
+  -- The checks and the costs at every boundary.
+  let gkeys := ops.map (·.key)
+  let mut costMt : Cost := {}
+  let mut hMax := 0
+  let mut hLast := 0
+  let mut b := rs.b
+  let mut rng := rs.rng
+  for bd in bs do
+    b := b + 1
+    rng := nextRand rng
+    let r := checkBnd cfg P' bd ref' kvs gkeys b rng ts' what
+    st := st.fails' r.fails
+    st := st.fails' (k3 cfg P' bd.t bd.w (match bd.fix with
+      | none => s!"{what}: the user transaction"
+      | some k => s!"{what}: the fix step for {k}"))
+    hMax := max hMax r.height
+    hLast := r.height
+    let c := changesOf bd.t bd.w
+    let cost := match bd.fix with
+      | none => costOf p (viewAt P' bd.t) bd.t c (valBytes ops) (delBytes ops noops)
+      | some k => costOf p (viewAt P' bd.t) bd.t c 0 (32 + 8 * k.length)
+    costMt := costMt.add cost
+    st := { st with bnd := st.bnd + 1, untidy := st.untidy + (if bd.tidy then 0 else 1),
+                    maxFill := max st.maxFill r.fill,
+                    emptyBelow := st.emptyBelow + (if r.emptyBelow then 1 else 0),
+                    maxEmpty := max st.maxEmpty r.empties,
+                    scanDiff := st.scanDiff + r.scanDiff,
+                    scanDiffBnd := st.scanDiffBnd + (if r.scanDiff > 0 then 1 else 0),
+                    k4 := st.k4 + (if r.k4 then 1 else 0) }
+    match bd.fix with
+    | none =>
+      st := { st with topsMtUser := st.topsMtUser + (topsOf p c).length,
+                      reachMt := reach st.reachMt bd.w.trail }
+      if !bd.tidy && bd.w.trail.contains "user.emptied" &&
+          (fixed ++ extra.toList).any (fun s => s.w.trail.contains "fix.unlink") then
+        st := { st with emptiedRead := st.emptiedRead + 1 }
+    | some _ =>
+      st := { st with topsFix := st.topsFix + (topsOf p c).length,
+                      reachFix := reach st.reachFix bd.w.trail,
+                      emptyTwo := st.emptyTwo + (if bd.w.trail.contains "fix.merge.empty" &&
+                        bd.w.trail.contains "fix.merge.two" then 1 else 0) }
+  -- Today's tree against MT's (5.4), the costs (5.5), the heights (5.6).
+  let d := keys.length
+  let kd := kindIdx d
+  let shA := shapeAt p vA i
+  let shB := shapeAt p (viewN P') tEnd
+  if shA == shB then st := { st with eq := st.eq.modify kd (· + 1) }
+  else
+    let (na, ka) := sizeAt p vA i
+    let (nb', kb) := sizeAt p (viewN P') tEnd
+    let ha := heightOf p vA i
+    st := { st with ne := st.ne.modify kd (· + 1),
+                    diffNodes := st.diffNodes + (nb' : Int) - na,
+                    diffKlongs := st.diffKlongs + (kb : Int) - ka,
+                    diffHeight := st.diffHeight + (if ha == hLast then 0 else 1),
+                    diffEx := if st.diffEx.size < 3 then st.diffEx.push
+                      s!"{what}: today {na} key nodes, height {ha}, {ka} live klongs; MT {nb'} key nodes, height {hLast}, {kb} live klongs"
+                      else st.diffEx }
+  let costA := costOf p vA i cA (valBytes ops) (delBytes ops noopsA)
+  st := { st with costMt := st.costMt.add costMt, costToday := st.costToday.add costA,
+                  reachToday := reach st.reachToday wA.trail,
+                  todayMerges := st.todayMerges + wA.merges,
+                  todayTakebacks := st.todayTakebacks + wA.trail.countP (· == "merge.takeback"),
+                  topsToday := st.topsToday + (topsOf p cA).length }
+  if d > 0 then
+    let xm : Int := (costMt.made : Int) - costA.made
+    let xn : Int := (costMt.bNew : Int) - costA.bNew
+    let xa : Int := (costMt.bAll : Int) - costA.bAll
+    st := { st with delKeys := st.delKeys + d, extraMade := st.extraMade + xm,
+                    extraNew := st.extraNew + xn, extraAll := st.extraAll + xa,
+                    maxExtraMade := max st.maxExtraMade (xm / d),
+                    maxExtraNew := max st.maxExtraNew (xn / d) }
+  let hBefore := heightOf p v0 rs.t
+  let hToday := heightOf p vA i
+  let top := max hBefore hToday
+  st := { st with maxHMt := max st.maxHMt hMax, maxHToday := max st.maxHToday (max hToday hBefore),
+                  hAbove := if hMax > top then bumpN st.hAbove (hMax - top) else st.hAbove }
+  -- Fix steps (5.6, as T3's finding 2 asks): a group's sum; a deleted key as
+  -- its group's mean; the counts a key, by height and by path, only for
+  -- groups of one delete, where they are that key's path's fixing.
+  let gsum := (fixed ++ extra.toList).length
+  if d > 0 then
+    let fuel := d * (p.M + 2) * p.fuel
+    st := { st with fixSteps := st.fixSteps + gsum, groupFixMax := max st.groupFixMax gsum,
+                    groupHist := bumpN st.groupHist gsum,
+                    maxGroupMean := max st.maxGroupMean (gsum * 100 / d),
+                    fuelNear := if gsum * st.fuelNear.2 > st.fuelNear.1 * fuel then (gsum, fuel) else st.fuelNear }
+  if d == 1 then
+    for k in keys do
+      let (h, len) := pathHeight p v0 rs.t k
+      st := { st with fixHist := bumpN st.fixHist gsum, fixByH := bump3 st.fixByH h gsum,
+                      fixByPath := bump3 st.fixByPath len gsum,
+                      oneDelKeys := st.oneDelKeys + 1, oneDelSteps := st.oneDelSteps + gsum }
+  -- The reference at every 10th time (K2).
+  let snaps := (List.range (tEnd - i + 1)).foldl (fun a j =>
+    if (i + j) % 10 == 0 then a.push (i + j, ref') else a) rs.snaps
+  let untidyT := bs.foldl (fun h bd => if bd.tidy then h else h.insert bd.t) rs.untidyT
+  return ({ P := P', t := tEnd, next := next, ref := ref', ts := ts', snaps := snaps, b := b,
+            rng := rng, untidyT := untidyT }, st)
+
+/-- The operations of a transaction as the Dag gets them: one a key, in key
+order (`normalize`), and no delete of a key without a value (Java's record
+leaves them out). -/
+def prep (rs : RS) (ops : List Tree.Op) : List Tree.Op :=
+  (normalize ops).filter (fun op => match op with
+    | .del k => rs.ref.contains k
+    | .put _ _ => true)
+
+/-- A group, if it has an operation. -/
+def step (cfg : Cfg) (q : RS × Stats) (ops : List Tree.Op) : RS × Stats :=
+  let ops := prep q.1 ops
+  if ops.isEmpty then q else group cfg q.1 ops q.2
+
+/-- A run's end: K2, the reads of every 10th time against the reference of
+that time, on the final P; the skip pointers at every time. -/
+def finish (cfg : Cfg) (rs : RS) (st : Stats) : Stats := Id.run do
+  let p := cfg.p
+  let v := viewN rs.P
+  let mut st := { st with runs := st.runs + 1 }
+  let mut rng := rs.rng
+  for (t, ref) in rs.snaps do
+    if t ≤ rs.t then
+      rng := nextRand rng
+      let kvs := ref.toList
+      let keys := if cfg.small then cfg.keys.toList
+        else (draw rng 200 cfg.keys.size).1.map (fun j => cfg.keys[j]!)
+      let gets := keys.filterMap (fun k =>
+        let m := get p v t k
+        if m == ref[k]? then none else some ("K2", s!"{cfg.name}: get {k} at {t}: the model {m}, the reference {ref[k]?}"))
+      let sc := (scanAt p v t (rs.untidyT.contains t) rs.P.size {} (kvs.length + 1)).1
+      let scans := if sc == kvs then [] else [("K2", s!"{cfg.name}: the forward scan at {t} differs")]
+      st := st.fails' (gets ++ scans)
+  st := st.fails' (skipCheck v (List.range (rs.t + 1)))
+  return st
+
+/-! ## Workloads (026-17, section 6) -/
+
+def p30 : Params := ({ M := 30, G := 2, H := 6 } : Params).withMerges.withTheta
+
+def pFor (m : Nat) : Params :=
+  if m == 30 then p30 else ({ M := m, G := 2, H := if m ≥ 30 then 6 else 8 } : Params).withMerges.withTheta
+
+def sortKeys (ks : List Key) : List Key := ks.mergeSort (fun a b => !keyLt b a)
+
+/-- Groups of at most n of a list, in order. -/
+def chunks {α : Type} (n : Nat) (l : List α) : List (List α) :=
+  let r := l.foldl (fun (acc : Array (List α) × List α × Nat) x =>
+    if acc.2.2 + 1 ≥ n then (acc.1.push (x :: acc.2.1).reverse, [], 0)
+    else (acc.1, x :: acc.2.1, acc.2.2 + 1)) (#[], [], 0)
+  (if r.2.1.isEmpty then r.1 else r.1.push r.2.1.reverse).toList
+
+def shuffle {α : Type} (a : Array α) (seed : Nat) : Array α := Id.run do
+  let mut a := a
+  let mut s := seed
+  for j in [0:a.size] do
+    let k := a.size - 1 - j
+    s := nextRand s
+    a := a.swapIfInBounds k ((s / 65536) % (k + 1))
+  return a
+
+/-- The puts of the keys, n a transaction, in the order given. -/
+def putAll (cfg : Cfg) (q : RS × Stats) (keys : List Key) (n : Nat) : RS × Stats :=
+  (chunks n keys).foldl (fun q ks =>
+    step cfg q (ks.zipIdx.map (fun (k, j) => Tree.Op.put k (1000 * (q.1.t + 1) + j)))) q
+
+def delAll (cfg : Cfg) (q : RS × Stats) (keys : List Key) (n : Nat) : RS × Stats :=
+  (chunks n keys).foldl (fun q ks => step cfg q (ks.map Tree.Op.del)) q
+
+/-- TreeTest's random transaction: up to `maxOps` operations on the keys, a
+delete with `delPct` percent. -/
+def randOps (keys : Array Key) (maxOps delPct g s : Nat) : List Tree.Op × Nat :=
+  let s1 := nextRand s
+  let count := 1 + (s1 / 65536) % maxOps
+  (List.range count).foldl (fun (q : List Tree.Op × Nat) j =>
+    let a := nextRand q.2
+    let b := nextRand a
+    let k := keys[(a / 65536) % keys.size]!
+    (q.1 ++ [if (b / 65536) % 100 < delPct then Tree.Op.del k else Tree.Op.put k (1000 * g + j)], b)) ([], s1)
+
+/-- The stats line of a run, while a family goes on. -/
+def progress (name : String) (st : Stats) (t0 : Nat) : IO Unit := do
+  let ms := (← IO.monoMsNow) - t0
+  IO.println s!"  {name}: {st.groups} groups, {st.bnd} boundaries, {st.fails.size} failures so far, {ms / 1000} s"
+  (← IO.getStdout).flush
+
+/-- Pseudo-random transactions from the empty tree (TreeTest's `randomRun`). -/
+def randomRun (cfg : Cfg) (gen : Array Key) (seed steps maxOps delPct : Nat) (st : Stats) : Stats := Id.run do
+  let mut q := (initRS cfg seed, st)
+  let mut s := seed * 7919
+  for g in [1:steps + 1] do
+    let (ops, s') := randOps gen maxOps delPct g s
+    s := s'
+    q := step cfg q ops
+  return finish cfg q.1 q.2
+
+structure Fam where
+  name : String
+  p : Params
+  /-- The runs, each a function of the stats so far. -/
+  runs : List (String × (Cfg → Stats → Stats))
+  keys : List Key
+
+def runFam (mode : Mode) (f : Fam) : IO Stats := do
+  let t0 ← IO.monoMsNow
+  let mut st : Stats := {}
+  for (name, r) in f.runs do
+    st := r (mkCfg f.p mode s!"{f.name} {name}" f.keys) st
+    progress s!"{f.name} {name}" st t0
+  pure st
+
+/-- A, random-100; B, random-1000: TreeTest's random runs. A uses TreeTest's
+rule of `random` (at most 1 + seed % 16 operations); B up to 40. -/
+def famRandom (name : String) (p : Params) (gen : Array Key) (seeds steps maxOps delPct : Nat)
+    (treetestRule : Bool) : Fam :=
+  { name := name, p := p, keys := gen.toList,
+    runs := (List.range seeds).map (fun j => (s!"seed {j + 1}", fun cfg st =>
+      randomRun cfg gen (j + 1) steps (if treetestRule then 1 + (j + 1) % maxOps else maxOps)
+        (if delPct == 0 then 20 + 10 * ((j + 1) % 5) else delPct) st)) }
+
+/-- C, mixed-1000: a pool of 2,000 keys, a tree of 1,000 (every second key of
+the pool, 50 a transaction); then transactions of up to 20 operations: 30 %
+deletes of keys with a value, the rest puts, half of them of keys with a value. -/
+def famC (seeds steps : Nat) : Fam :=
+  let pool := (manyKeys 2000).toArray
+  { name := "C mixed-1000", p := p30, keys := pool.toList,
+    runs := (List.range seeds).map (fun j => (s!"seed {j + 1}", fun cfg st => Id.run do
+      let mut q := putAll cfg (initRS cfg (j + 1), st)
+        ((List.range 1000).map (fun x => pool[2 * x]!)) 50
+      let mut s := (j + 1) * 7919
+      for _ in [0:steps] do
+        s := nextRand s
+        let count := 1 + (s / 65536) % 20
+        let mut ops : List Tree.Op := []
+        for o in [0:count] do
+          s := nextRand s
+          let kind := (s / 65536) % 100
+          let wantLive := kind < 30 || kind % 2 == 0
+          -- A pool key with or without a value, drawn until found.
+          let mut k : Option Key := none
+          for _ in [0:64] do
+            if k.isNone then
+              s := nextRand s
+              let c := pool[(s / 65536) % pool.size]!
+              if q.1.ref.contains c == wantLive then k := some c
+          match k with
+          | some key => ops := ops ++ [if kind < 30 then Tree.Op.del key else Tree.Op.put key (1000 * (q.1.t + 1) + o)]
+          | none => pure ()
+        q := step cfg q ops
+      return finish cfg q.1 q.2)) }
+
+/-- The ways to delete every key (D, F, G): name, keys a transaction, random
+order (else key order), seeded. -/
+def delWays : List (String × Nat × Bool) :=
+  [("one a tx, key order", 1, false), ("one a tx, random", 1, true),
+   ("10 a tx, random", 10, true), ("100 a tx, key order", 100, false)]
+
+/-- D, shrink-1000: 1,000 keys put, 50 a transaction; then all deleted, in
+four ways, the random ones with `seeds` seeds. -/
+def famD (seeds : Nat) (m : Nat := 30) (nkeys : Nat := 1000) : Fam :=
+  let keys := sortKeys (manyKeys nkeys)
+  { name := s!"D shrink-{nkeys}{if m == 30 then "" else s!" M={m}"}", p := pFor m, keys := keys,
+    runs := delWays.flatMap (fun (wn, per, random) =>
+      (List.range (if random then seeds else 1)).map (fun j => (s!"{wn}{if random then s!" seed {j + 1}" else ""}",
+        fun cfg st =>
+          let q := putAll cfg (initRS cfg (j + 1), st) keys 50
+          let order := if random then (shuffle keys.toArray ((j + 1) * 7919)).toList else keys
+          let q := delAll cfg q order per
+          finish cfg q.1 q.2))) }
+
+/-- E, mass-1000: 1,000 keys built in one transaction, 50 a transaction, or one
+a transaction; then one transaction that deletes the middle half, every
+second key, or all. -/
+def famE : Fam :=
+  let keys := sortKeys (manyKeys 1000)
+  let builds : List (String × Nat) := [("built in one", 1000), ("built 50 a tx", 50), ("built one a tx", 1)]
+  let dels : List (String × List Key) :=
+    [("the middle half", (keys.drop 250).take 500),
+     ("every second", (keys.zipIdx.filter (fun q => q.2 % 2 == 0)).map (·.1)),
+     ("all", keys)]
+  { name := "E mass-1000", p := p30, keys := keys,
+    runs := builds.flatMap (fun (bn, per) => dels.map (fun (dn, ds) => (s!"{bn}, delete {dn}",
+      fun cfg st =>
+        let q := putAll cfg (initRS cfg 1, st) keys per
+        let q := step cfg q (ds.map Tree.Op.del)
+        finish cfg q.1 q.2))) }
+
+/-- F, dead-1000: every key put twice (50 a transaction), so that the nodes are
+full of dead klongs; then all deleted in D's two random ways. -/
+def famF (seeds : Nat) : Fam :=
+  let keys := sortKeys (manyKeys 1000)
+  { name := "F dead-1000", p := p30, keys := keys,
+    runs := ((delWays.filter (·.2.2)).flatMap (fun (wn, per, _) =>
+      (List.range seeds).map (fun j => (s!"{wn} seed {j + 1}", fun cfg st =>
+        let q := putAll cfg (initRS cfg (j + 1), st) keys 50
+        let q := putAll cfg q keys 50
+        let q := delAll cfg q (shuffle keys.toArray ((j + 1) * 7919)).toList per
+        finish cfg q.1 q.2)))) }
+
+/-- G, segments: 30 first segments with 20 keys each; 3 with 200 each; 100 keys
+of three segments. Put 50 a transaction; all deleted in random order, one and
+10 a transaction; then put again in random order, as many a transaction. -/
+def famG (seeds : Nat) : Fam :=
+  let sets : List (String × List Key) :=
+    [("30 x 20", (List.range 30).flatMap (fun a => (List.range 20).map (fun j => [(a + 1) * 64 + 56, j * 64 + 8]))),
+     ("3 x 200", (List.range 3).flatMap (fun a => (List.range 200).map (fun j => [(a + 1) * 64 + 56, j * 64 + 8]))),
+     ("100 of three segments", (List.range 2).flatMap (fun a => (List.range 5).flatMap (fun c =>
+        (List.range 10).map (fun j => [(a + 1) * 64 + 56, (c + 1) * 64 + 56, j * 64 + 8]))))]
+  { name := "G segments", p := p30, keys := sets.flatMap (·.2),
+    runs := sets.flatMap (fun (sn, ks) => [1, 10].flatMap (fun per => (List.range seeds).map (fun j =>
+      (s!"{sn}, {per} a tx, seed {j + 1}", fun cfg st =>
+        let ks := sortKeys ks
+        let q := putAll cfg (initRS cfg (j + 1), st) ks 50
+        let q := delAll cfg q (shuffle ks.toArray ((j + 1) * 7919)).toList per
+        let q := putAll cfg q (shuffle ks.toArray ((j + 1) * 7919 + 1)).toList per
+        finish cfg q.1 q.2)))) }
+
+/-- H, deep-6000: one-segment keys put 200 a transaction; all deleted in random
+order, 20 a transaction. -/
+def famH (seeds nkeys : Nat) : Fam :=
+  let keys := sortKeys ([0] :: (List.range (nkeys - 1)).map (fun j => [(j + 2) * 64 + 8]))
+  { name := s!"H deep-{nkeys}", p := p30, keys := keys,
+    runs := (List.range seeds).map (fun j => (s!"seed {j + 1}", fun cfg st =>
+      let q := putAll cfg (initRS cfg (j + 1), st) keys 200
+      let q := delAll cfg q (shuffle keys.toArray ((j + 1) * 7919)).toList 20
+      finish cfg q.1 q.2)) }
+
+/-- The time of a boundary: n keys put 50 a transaction, then `groups` groups of
+20 random deletes. -/
+def famMeasure (nkeys groups : Nat) : Fam :=
+  let keys := sortKeys (manyKeys nkeys)
+  { name := s!"measure-{nkeys}", p := p30, keys := keys,
+    runs := [("seed 1", fun cfg st =>
+      let q := putAll cfg (initRS cfg 1, st) keys 50
+      let q := delAll cfg q (((shuffle keys.toArray 7919).toList).take (20 * groups)) 20
+      finish cfg q.1 q.2)] }
+
+/-! ## TreeTest's forms -/
+
+/-- A state to start from: 0, the primordial structure; 1, every key put in
+one transaction; 2, each in its own, in key order; 3, as 2 and then every key
+in one; 4, as 2 twice. -/
+def prefixRS (cfg : Cfg) (keys : List Key) (pre : Nat) (st : Stats) : RS × Stats :=
+  let sorted := sortKeys keys
+  let q := (initRS cfg 1, st)
+  match pre with
+  | 0 => q
+  | 1 => putAll cfg q sorted sorted.length
+  | 2 => putAll cfg q sorted 1
+  | 3 => putAll cfg (putAll cfg q sorted 1) sorted sorted.length
+  | _ => putAll cfg (putAll cfg q sorted 1) sorted 1
+
+def exhaust (cfg : Cfg) (keys : List Key) (pairs : Bool) : Nat → RS → Stats → Stats
+  | 0, rs, st => finish cfg rs st
+  | d + 1, rs, st =>
+    (choicesAt keys pairs (rs.t + 1)).foldl (fun st ops =>
+      let ops := prep rs ops
+      if ops.isEmpty then st else
+        let (rs', st') := group cfg rs ops st
+        if rs'.t == rs.t then st' else exhaust cfg keys pairs d rs' st') st
+
+def famSubsets (m nkeys pre depth : Nat) (puts : Bool) : Fam :=
+  let keys := keysFor nkeys
+  { name := s!"subsets M={m} keys={nkeys} prefix={pre} depth={depth}{if puts then " puts" else ""}",
+    p := pFor m, keys := keys,
+    runs := [("all", fun cfg st =>
+      let (rs, st) := prefixRS cfg keys pre st
+      let i := rs.t + 1
+      let sorted := (sortKeys keys).zipIdx
+      let choices : List (List Tree.Op) := sorted.foldr (fun (q : Key × Nat) acc =>
+        let mine : List (List Tree.Op) := [[]] ++
+          (if rs.ref.contains q.1 then [[Tree.Op.del q.1]] else []) ++
+          (if puts then [[Tree.Op.put q.1 (1000 * i + q.2)]] else [])
+        mine.flatMap (fun a => acc.map (fun b => a ++ b))) [[]]
+      (choices.filter (!·.isEmpty)).foldl (fun st ops =>
+        let (rs', st') := group cfg rs ops st
+        if rs'.t == rs.t then st' else exhaust cfg keys false depth rs' st') st)] }
+
+def famExhaustive (m depth nkeys pre : Nat) (pairs : Bool) : Fam :=
+  let keys := keysFor nkeys
+  { name := s!"exhaustive M={m} depth={depth} keys={nkeys} prefix={pre}{if pairs then " pairs" else ""}",
+    p := pFor m, keys := keys,
+    runs := [("all", fun cfg st =>
+      let (rs, st) := prefixRS cfg keys pre st
+      exhaust cfg keys pairs depth rs st)] }
+
+/-! ## The report -/
+
+def ratio (a b : Nat) : String :=
+  if b == 0 then "-" else
+    let r := (a * 100 + b / 2) / b
+    s!"{r / 100}.{if r % 100 < 10 then "0" else ""}{r % 100}"
+
+def mean (a : Int) (b : Nat) : String :=
+  if b == 0 then "-" else
+    let r := (a * 100) / (b : Int)
+    let s := if r < 0 then "-" else ""
+    let r := r.natAbs
+    s!"{s}{r / 100}.{if r % 100 < 10 then "0" else ""}{r % 100}"
+
+def sortedS (m : Std.HashMap String Nat) : String :=
+  ", ".intercalate ((m.toList.mergeSort (fun a b => decide (a.1 ≤ b.1))).map (fun (n, k) => s!"{n} {k}"))
+
+def sortedN (m : Std.HashMap Nat Nat) : String :=
+  ", ".intercalate ((m.toList.mergeSort (fun a b => decide (a.1 ≤ b.1))).map (fun (n, k) => s!"{n}: {k}"))
+
+def sorted3 (m : Std.HashMap Nat (Nat × Nat × Nat)) : String :=
+  ", ".intercalate ((m.toList.mergeSort (fun a b => decide (a.1 ≤ b.1))).map (fun (n, (k, s, x)) =>
+    s!"{n}: {k} keys, mean {mean s k}, most {x}"))
+
+def costLine (a b : Cost) : String :=
+  s!"made {a.made}/{b.made} ({ratio a.made b.made}), changed {a.changed}/{b.changed} ({ratio a.changed b.changed}), klongs {a.klongs}/{b.klongs} ({ratio a.klongs b.klongs}), tops {a.tops}/{b.tops}, B-new {a.bNew}/{b.bNew} ({ratio a.bNew b.bNew}), B-all {a.bAll}/{b.bAll} ({ratio a.bAll b.bAll}); the index alone: B-new {a.bNew - a.vals}/{b.bNew - b.vals} ({ratio (a.bNew - a.vals) (b.bNew - b.vals)}), B-all {a.bAll - a.vals}/{b.bAll - b.vals} ({ratio (a.bAll - a.vals) (b.bAll - b.vals)})"
+
+/-- Prints a family's summary; true if no check failed (for `mutant`: if K4
+found faults). -/
+def report (mode : Mode) (name : String) (st : Stats) (ms : Nat) : IO Bool := do
+  let nfail := st.failBy.fold (fun s _ n => s + n) 0
+  IO.println s!"{name} [{repr mode}]: {st.runs} runs, {st.groups} groups, {st.bnd} boundaries ({st.untidy} untidy), {st.bounds} beyond the level bounds, {nfail} failures; {ms / 1000} s, {ratio ms (max st.bnd 1)} ms a boundary"
+  IO.println s!"  failures by check: {if st.failBy.isEmpty then "none" else sortedS st.failBy}"
+  IO.println s!"  K4 at tidy boundaries: {st.k4} with a fault; K7 second pass: {st.secondPass} fix steps"
+  IO.println s!"  bounds by side: {sortedS st.boundsBy}"
+  IO.println s!"  reached MT's user transactions: {sortedS st.reachMt}"
+  IO.println s!"  reached MT's fix steps: {sortedS st.reachFix}"
+  IO.println s!"  fix steps merging an empty node into two: {st.emptyTwo}; untidy boundaries read after a user transaction that emptied a leaf, in a group with an unlink: {st.emptiedRead}"
+  IO.println s!"  reached today: {sortedS st.reachToday}"
+  IO.println s!"  5.4 the tree against today's: equal {st.eq[0]!}/{st.eq[1]!}/{st.eq[2]!}, different {st.ne[0]!}/{st.ne[1]!}/{st.ne[2]!} (groups of no, one, several deletes); in the different: MT - today key nodes {st.diffNodes}, live klongs {st.diffKlongs}, height differs in {st.diffHeight}"
+  for e in st.diffEx do
+    IO.println s!"    {e}"
+  IO.println s!"  5.5 cost MT/today: {costLine st.costMt st.costToday}"
+  IO.println s!"  5.5 a deleted key ({st.delKeys}): extra made mean {mean st.extraMade st.delKeys}, most {st.maxExtraMade}; extra B-new mean {mean st.extraNew st.delKeys}, most {st.maxExtraNew}; extra B-all mean {mean st.extraAll st.delKeys}; today's merges {st.todayMerges}, take-backs {st.todayTakebacks}"
+  IO.println s!"  5.6 fix steps a group with deletes (steps: groups): {sortedN st.groupHist}; most {st.groupFixMax}; nearest the driver's fuel: {st.fuelNear.1} of {st.fuelNear.2}"
+  IO.println s!"  5.6 a deleted key as its group's mean: mean {mean st.fixSteps st.delKeys}, most {mean st.maxGroupMean 100}"
+  IO.println s!"  5.6 groups of one delete ({st.oneDelKeys}, mean {mean st.oneDelSteps st.oneDelKeys}) (steps: keys): {sortedN st.fixHist}"
+  IO.println s!"  5.6 groups of one delete, by the height of the key's segment tree: {sorted3 st.fixByH}"
+  IO.println s!"  5.6 groups of one delete, by the path's nodes: {sorted3 st.fixByPath}"
+  IO.println s!"  5.6 height: MT's greatest above before and today's in {st.hAbove.fold (fun s _ n => s + n) 0} groups (by how much: {sortedN st.hAbove}); H needed: MT {st.maxHMt}, today {st.maxHToday}"
+  IO.println s!"  5.6 untidy: {st.untidy} boundaries; most key nodes with a fill fault at one: {st.maxFill}; boundaries with an index node without a live key below: {st.emptyBelow}, most such key nodes at one: {st.maxEmpty}"
+  IO.println s!"  A1: K1's scans at untidy boundaries where scan and scanWith differ: {st.scanDiff}, at {st.scanDiffBnd} boundaries"
+  IO.println s!"  5.6 top nodes made: by fix steps {st.topsFix}, by MT's user transactions {st.topsMtUser}, by today's {st.topsToday}"
+  for f in st.fails.toList.take 12 do
+    IO.println s!"  {f}"
+  (← IO.getStdout).flush
+  if mode == .mutant || mode == .selfmutant then pure (st.k4 > 0) else pure (nfail == 0)
+
+def famOf (args : List String) : Option Fam :=
+  let nums := args.drop 1
+  let nat := fun (i : Nat) (d : Nat) => (nums[i]?.bind String.toNat?).getD d
+  match args.head? with
+  | some "A" => some (famRandom "A random-100" p30 (manyKeys 100).toArray (nat 0 10) (nat 1 300) 16 50 true)
+  | some "B" => some (famRandom "B random-1000" p30 (manyKeys 1000).toArray (nat 0 5) (nat 1 400) 40 50 false)
+  | some "C" => some (famC (nat 0 5) (nat 1 400))
+  | some "D" => some (famD (nat 0 3) (nat 1 30) (nat 2 1000))
+  | some "E" => some famE
+  | some "F" => some (famF (nat 0 3))
+  | some "G" => some (famG (nat 0 3))
+  | some "H" => some (famH (nat 0 2) (nat 1 6000))
+  | some "measure" => some (famMeasure (nat 0 1000) (nat 1 10))
+  | some "random" =>
+    let m := nat 0 8
+    some (famRandom s!"random M={m} seeds={nat 1 20} steps={nat 2 150} keys={nat 3 14}" (pFor m)
+      (keysFor (nat 3 14)).toArray (nat 1 20) (nat 2 150) (nat 4 6) (nat 5 0) true)
+  | some "subsets" => some (famSubsets (nat 0 8) (nat 1 10) (nat 2 1) (nat 3 0) (args.contains "puts"))
+  | some "exhaustive" => some (famExhaustive (nat 0 4) (nat 1 5) (nat 2 4) (nat 3 0) (args.contains "pairs"))
+  | _ => none
+
+end MtTest
+
+open MtTest in
+def main (args : List String) : IO UInt32 := do
+  let (mode, rest) := match args.head? with
+    | some "selftest" => (Mode.selftest, args.drop 1)
+    | some "mutant" => (Mode.mutant, args.drop 1)
+    | some "selfmutant" => (Mode.selfmutant, args.drop 1)
+    | _ => (Mode.mt, args)
+  let rest := rest.filter (fun a => a != "puts" && a != "pairs") ++
+    (if args.contains "puts" then ["puts"] else []) ++ (if args.contains "pairs" then ["pairs"] else [])
+  match famOf rest with
+  | none =>
+    IO.println "usage: mttest [selftest | mutant] (A | B | C | D | E | F | G | H | measure | random | subsets | exhaustive) [numbers]"
+    return 2
+  | some f =>
+    let t0 ← IO.monoMsNow
+    let st ← runFam mode f
+    let ms := (← IO.monoMsNow) - t0
+    let ok ← report mode f.name st ms
+    IO.println (if ok then "MTTEST OK" else "MTTEST FAILED")
+    return (if ok then 0 else 1)

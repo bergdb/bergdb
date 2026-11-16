@@ -1,0 +1,37 @@
+  subsets M=8 keys=12 prefix=2 depth=0 all: 4107 groups, 11871 boundaries, 20 failures so far, 21 s
+subsets M=8 keys=12 prefix=2 depth=0 [MtTest.Mode.mutant]: 4095 runs, 4107 groups, 11871 boundaries (7764 untidy), 0 beyond the level bounds, 5042 failures; 21 s, 1.83 ms a boundary
+  failures by check: K4 5042
+  K4 at tidy boundaries: 4019 with a fault; K7 second pass: 0 fix steps
+  bounds by side: 
+  reached MT's user transactions: bitmap.inplace 5888, bitmap.inplace.dead 1792, bitmap.new 16896, dead.compact 1792, lone-time-klong 512, segment.new 2, split.space1 2, split.space3 1, split.time1 1792, split.time2 2, top.new 3, user.emptied 3840
+  reached MT's fix steps: bitmap.dead 64, bitmap.new 2337, dead.compact 104, fix.collapse.space 35, fix.merge.empty 1447, fix.merge.inner 20, fix.merge.one 5327, fix.merge.two 1, fix.pass.onlychild 1, fix.unlink 2401, lone-time-klong 64, merge.inner 20, merge.leaf 5308, merge.left 1941, merge.one 5327, merge.parent.dead 40, merge.parent.delete 3032, merge.parent.full 2256, merge.right 3387, merge.two 1, rc.replace.space 35, split.space3 20, split.time1 84, split.time2 2276, top.new 2331
+  fix steps merging an empty node into two: 0; untidy boundaries read after a user transaction that emptied a leaf, in a group with an unlink: 2194
+  reached today: bitmap.inplace 5710, bitmap.inplace.dead 1216, bitmap.new 17650, dead.compact 1260, lone-time-klong 1, merge.leaf 8534, merge.left 4490, merge.made.left 4285, merge.made.right 1430, merge.one 8106, merge.parent.dead 44, merge.parent.delete 5543, merge.parent.full 2947, merge.right 4044, merge.takeback 5715, merge.two 428, rc.takeback.space 840, segment.new 2, split.space1 2, split.space3 1, split.time.inplace 45, split.time1 1215, split.time2 3284, top.inplace 840, top.new 3285, up.climb 2560, up.root-kept-empty 1, up.stop-at-segment-leaf 2560, up.unlink 2560
+  5.4 the tree against today's: equal 12/7/69, different 0/5/4014 (groups of no, one, several deletes); in the different: MT - today key nodes 3783, live klongs 3783, height differs in 825
+    subsets M=8 keys=12 prefix=2 depth=0 all group 19 at 13 [del[328] del[392] del[456]]: today 6 key nodes, height 1, 14 live klongs; MT 7 key nodes, height 1, 15 live klongs
+    subsets M=8 keys=12 prefix=2 depth=0 all group 23 at 13 [del[264] del[392] del[456]]: today 6 key nodes, height 1, 14 live klongs; MT 7 key nodes, height 1, 15 live klongs
+    subsets M=8 keys=12 prefix=2 depth=0 all group 25 at 13 [del[264] del[328] del[456]]: today 6 key nodes, height 1, 14 live klongs; MT 7 key nodes, height 1, 15 live klongs
+  5.5 cost MT/today: made 9552/6915 (1.38), changed 31378/13163 (2.38), klongs 46194/29158 (1.58), tops 2334/3285, B-new 3311936/2255536 (1.47), B-all 6159216/3216016 (1.92); the index alone: B-new 3311328/2254928 (1.47), B-all 6158608/3215408 (1.92)
+  5.5 a deleted key (24576): extra made mean 0.10, most 1; extra B-new mean 42.98, most 261; extra B-all mean 119.75; today's merges 8534, take-backs 5715
+  5.6 fix steps a group with deletes (steps: groups): 0: 650, 1: 1059, 2: 1291, 3: 413, 4: 551, 5: 116, 6: 5, 7: 10; most 7; nearest the driver's fuel: 1 of 320
+  5.6 a deleted key as its group's mean: mean 0.31, most 1.00
+  5.6 groups of one delete (12, mean 0.08) (steps: keys): 0: 11, 1: 1
+  5.6 groups of one delete, by the height of the key's segment tree: 0: 4 keys, mean 0.25, most 1, 1: 8 keys, mean 0.00, most 0
+  5.6 groups of one delete, by the path's nodes: 2: 8 keys, mean 0.00, most 0, 3: 4 keys, mean 0.25, most 1
+  5.6 height: MT's greatest above before and today's in 20 groups (by how much: 1: 20); H needed: MT 2, today 1
+  5.6 untidy: 7764 boundaries; most key nodes with a fill fault at one: 4; boundaries with an index node without a live key below: 6796
+  5.6 top nodes made: by fix steps 2331, by MT's user transactions 3, by today's 3285
+  K4: subsets M=8 keys=12 prefix=2 depth=0 all group 19 at 13 [del[328] del[392] del[456]] b13: FillOK: key node 1056, not a root, has 1 live klongs at 13, fewer than m = 2
+  K4: subsets M=8 keys=12 prefix=2 depth=0 all group 23 at 13 [del[264] del[392] del[456]] b13: FillOK: key node 1056, not a root, has 1 live klongs at 13, fewer than m = 2
+  K4: subsets M=8 keys=12 prefix=2 depth=0 all group 25 at 13 [del[264] del[328] del[456]] b13: FillOK: key node 1056, not a root, has 1 live klongs at 13, fewer than m = 2
+  K4: subsets M=8 keys=12 prefix=2 depth=0 all group 26 at 13 [del[264] del[328] del[392]] b13: FillOK: key node 1056, not a root, has 1 live klongs at 13, fewer than m = 2
+  K4: subsets M=8 keys=12 prefix=2 depth=0 all group 27 at 13 [del[264] del[328] del[392] del[456]] b13: NonEmptyOK: key node 1056 has no live klong at 13
+  K4: subsets M=8 keys=12 prefix=2 depth=0 all group 27 at 13 [del[264] del[328] del[392] del[456]] b13: FillOK: key node 1056, not a root, has 0 live klongs at 13, fewer than m = 2
+  K4: subsets M=8 keys=12 prefix=2 depth=0 all group 28 at 13 [del[200]] b13: FillOK: key node 1044, not a root, has 1 live klongs at 13, fewer than m = 2
+  K4: subsets M=8 keys=12 prefix=2 depth=0 all group 29 at 13 [del[200] del[456]] b13: FillOK: key node 1044, not a root, has 1 live klongs at 13, fewer than m = 2
+  K4: subsets M=8 keys=12 prefix=2 depth=0 all group 30 at 13 [del[200] del[392]] b13: FillOK: key node 1044, not a root, has 1 live klongs at 13, fewer than m = 2
+  K4: subsets M=8 keys=12 prefix=2 depth=0 all group 31 at 13 [del[200] del[392] del[456]] b13: FillOK: key node 1044, not a root, has 1 live klongs at 13, fewer than m = 2
+  K4: subsets M=8 keys=12 prefix=2 depth=0 all group 32 at 13 [del[200] del[328]] b13: FillOK: key node 1044, not a root, has 1 live klongs at 13, fewer than m = 2
+  K4: subsets M=8 keys=12 prefix=2 depth=0 all group 33 at 13 [del[200] del[328] del[456]] b13: FillOK: key node 1044, not a root, has 1 live klongs at 13, fewer than m = 2
+MTTEST OK
+exit 0

@@ -1,0 +1,64 @@
+-- 026-17, T4: the smallest run of the scan finding (report, section 5).
+-- Run in lean/ of the branch with `lake env lean` after `lake build SIS.Tree.Mt`.
+-- Prints, for n keys put in one transaction and [lo, hi) deleted in one, the empty
+-- leaves at the untidy boundary, the gets, `scan` and the same scan with a large fuel.
+import SIS.Tree.Mt
+open SIS SIS.Check SIS.Tree
+
+def viewP (P : Struct BVal) : View BVal := fun x => P.get? x
+def k (j : Nat) : Key := [j * 64 + 8]
+
+/-- scanGo with a nextGo fuel of f. -/
+def scanF (p : Params) (view : View BVal) (t : Time) (req : ScanReq) (limit f : Nat) : List Kvt :=
+  match rootAt view t with
+  | none => []
+  | some r =>
+    let rec go : Nat → Chain → List Kvt → List Kvt
+      | 0, _, acc => acc
+      | g + 1, ch, acc =>
+        if acc.length ≥ limit then acc else
+          match nextGo p view t req f ch with
+          | (none, _) => acc
+          | (some kv, ch') => go g ch' (acc ++ [kv])
+    go limit (chainSetup p view t req r) []
+
+/-- Put keys 0..n-1 in one user transaction (MT), then delete [lo, hi) in one (MT's user transaction only). -/
+def state (p : Params) (n lo hi : Nat) : Except String (Struct BVal) := do
+  let P0 := initStruct p
+  let (_, w1) ← SIS.Tree.Mt.runUser p 10 ((List.range n).map (fun j => .put (k j) (j + 1))) 1 (viewP P0)
+  let P1 := P0.apply 1 (changesOf 1 w1)
+  let (_, w2) ← SIS.Tree.Mt.runUser p w1.next (((List.range n).filter (fun j => lo ≤ j && j < hi)).map (fun j => .del (k j))) 2 (viewP P1)
+  pure (P1.apply 2 (changesOf 2 w2))
+
+def check (p : Params) (n lo hi : Nat) : String :=
+  match state p n lo hi with
+  | .error e => s!"ERROR {e}"
+  | .ok P =>
+    let v := viewP P
+    let ref := ((List.range n).filter (fun j => j < lo || hi ≤ j)).map k
+    let fw := (scan p v 2 {} (n + 1)).map (·.key)
+    let bw := (scan p v 2 { forward := false } (n + 1)).map (·.key)
+    let fwBig := (scanF p v 2 {} (n + 1) 10000).map (·.key)
+    let bwBig := (scanF p v 2 { forward := false } (n + 1) 10000).map (·.key)
+    let gets := (List.range n).all (fun j => (get p v 2 (k j)).isSome == (j < lo || hi ≤ j))
+    let leaves := match rootAt v 2 with
+      | some r => (nodesAt p v 2 p.fuel r).filter (fun x => match knodeOf p v x with
+          | some n => n.leaf && (n.liveAt 2).isEmpty
+          | none => false) |>.length
+      | none => 0
+    s!"n={n} del [{lo},{hi}): empty leaves {leaves}; gets ok {gets}; scan fwd ok {fw == ref} ({fw.length}/{ref.length}), bwd ok {bw == ref.reverse} ({bw.length}); big fuel: fwd ok {fwBig == ref}, bwd ok {bwBig == ref.reverse}; nextGo fuel {2 * p.fuel + 2}"
+
+def p30 : Params := ({ M := 30, G := 2, H := 6 } : Params).withMerges.withTheta
+
+/-- The smallest r such that deleting keys [1, 1 + r) of r + 2 keys makes a scan wrong. -/
+def fails (p : Params) (n lo hi : Nat) : Bool :=
+  match state p n lo hi with
+  | .error _ => true
+  | .ok P =>
+    let v := viewP P
+    let ref := ((List.range n).filter (fun j => j < lo || hi ≤ j)).map k
+    (scan p v 2 {} (n + 1)).map (·.key) != ref || (scan p v 2 { forward := false } (n + 1)).map (·.key) != ref.reverse
+def pS : Params := ({ M := 8, G := 0, H := 3 } : Params).withMerges.withTheta
+#eval check p30 377 1 376
+#eval check p30 376 1 375
+#eval check pS 21 1 20

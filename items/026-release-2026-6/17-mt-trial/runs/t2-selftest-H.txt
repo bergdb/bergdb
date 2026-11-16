@@ -1,0 +1,18 @@
+  H deep-6000 seed 1: 330 groups, 330 boundaries, 0 failures so far, 82 s
+  H deep-6000 seed 2: 660 groups, 660 boundaries, 0 failures so far, 161 s
+H deep-6000 [MtTest.Mode.selftest]: 2 runs, 660 groups, 660 boundaries (0 untidy), 0 beyond the level bounds, 0 failures; 161 s, 245.25 ms a boundary
+  failures by check: none
+  K4 at tidy boundaries: 0 with a fault; K7 second pass: 0 fix steps
+  reached MT: bitmap.dead 77, bitmap.full 343, bitmap.inplace 726, bitmap.inplace.dead 52, bitmap.new 10802, dead.compact 406, lone-time-klong 2, merge.inner 88, merge.leaf 1146, merge.left 686, merge.made.left 107, merge.made.right 108, merge.one 926, merge.parent.dead 220, merge.parent.delete 1003, merge.parent.full 11, merge.right 548, merge.takeback 215, merge.two 308, rc.replace.space 4, rc.takeback.space 2, split.space1 118, split.space1.inplace 802, split.space3 6, split.time.inplace 4, split.time1 731, split.time2 36, top.inplace 2, top.new 46, up.root-kept-empty 2
+  reached today: bitmap.dead 77, bitmap.full 343, bitmap.inplace 726, bitmap.inplace.dead 52, bitmap.new 10802, dead.compact 406, lone-time-klong 2, merge.inner 88, merge.leaf 1146, merge.left 686, merge.made.left 107, merge.made.right 108, merge.one 926, merge.parent.dead 220, merge.parent.delete 1003, merge.parent.full 11, merge.right 548, merge.takeback 215, merge.two 308, rc.replace.space 4, rc.takeback.space 2, split.space1 118, split.space1.inplace 802, split.space3 6, split.time.inplace 4, split.time1 731, split.time2 36, top.inplace 2, top.new 46, up.root-kept-empty 2
+  5.4 the tree against today's: equal 60/0/600, different 0/0/0 (groups of no, one, several deletes); in the different: MT - today key nodes 0, live klongs 0, height differs in 0
+  5.5 cost MT/today: made 3148/3148 (1.00), changed 13875/13875 (1.00), klongs 53902/53902 (1.00), tops 46/46, B-new 2086864/2086864 (1.00), B-all 6088832/6088832 (1.00); the index alone: B-new 1510864/1510864 (1.00), B-all 5512832/5512832 (1.00)
+  5.5 a deleted key (12000): extra made mean 0.00, most 0; extra B-new mean 0.00, most 0; extra B-all mean 0.00; today's merges 1234, take-backs 215
+  5.6 fix steps a key (steps: keys): 0: 12000; mean 0.00; a group: most 0
+  5.6 by the height of the key's segment tree: 1: 340 keys, mean 0.00, most 0, 2: 3600 keys, mean 0.00, most 0, 3: 8060 keys, mean 0.00, most 0
+  5.6 by the path's nodes: 2: 340 keys, mean 0.00, most 0, 3: 3600 keys, mean 0.00, most 0, 4: 8060 keys, mean 0.00, most 0
+  5.6 height: MT's greatest above before and today's in 0 groups (by how much: ); H needed: MT 3, today 3
+  5.6 untidy: 0 boundaries; most key nodes with a fill fault at one: 0; boundaries with an index node without a live key below: 0
+  5.6 top nodes made: by fix steps 0, by MT's user transactions 46, by today's 46
+MTTEST OK
+exit 0, 162 s: mttest selftest H

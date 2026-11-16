@@ -1,7 +1,8 @@
 # 026-17. MT's trial: maintenance transactions in the model
 
-Created 2026-11-16 by Frans Lundberg. Status: open (the trial running
-since 2026-11-16, 11:17).
+Created 2026-11-16 by Frans Lundberg. Status: done (the trial run
+2026-11-16, 11:17 to 13:36; the result below; Frans decides A1, and MT,
+NW or neither).
 
 A trial, in the Lean model only, of MT (006-28, section 7.5): a user
 transaction makes no merge, no upward delete and no root collapse; each
@@ -51,6 +52,68 @@ plan makes exact):
    as sketched.
 7. The complexity: the lines of the model's definitions that MT adds and
    removes.
+
+# Result
+
+T8, 2026-11-16, agent A of coord-1116; every count is in
+`17-mt-trial/report.md`, the code on the branch `026-17-mt-trial`.
+
+**Verdict: MT as specified passes, with one rule added, A1, whose
+reading is Frans's.** 0 failures at 32,017 boundaries at node size 30
+(families A to H, nothing cut) and 298,235 at node size 8.
+
+- **Q1, nothing taken back: pass**, by K3 (every key node made is
+  reachable at its time; the `MT:` errors cannot fire, T3). Entries
+  still are: `toPrev` stays in the user transaction's split.
+- **Q2, gets and scans: pass with A1**; without it, scans after a mass
+  delete fail (below). Every get was right.
+- **Q3, today's invariants after the last fix step: pass**: no fault at
+  a tidy boundary (K4), between only the fill's three on a pending
+  key's path (K5). The tree is today's in all but 161 of 27,309 groups
+  at 30, all with deletes: MT merges after the whole transaction.
+- **Q4, the fixing ends: pass**: no group near its fuel (most 74 of
+  416,000), no second pass (K7). The fuel is a guard, not a proof.
+- **Q5, the cost at 30:** 0.082 fix steps a deleted key (0.03 to 0.11
+  by family; most in a group 10, 110 in E's mass delete of 1,000 keys).
+  Bytes against today, B-new and B-all: 1.05 and 1.06 over all; A to C
+  (C the mixed, the user's number) 1.01 to 1.03; D, F to H 1.03 to
+  1.12; E 1.15 and 1.17. The height between never above today's at 30.
+- **Q6: R3 passes; R4 "not reached" at 30**: the merge of an empty leaf
+  423 times (117 of two empty leaves); the only child passed over 46
+  times (under 100), 1,248 at 8 and in guards. No inner node empty, no
+  `LeftmostOK` fault: LE-b is not needed.
+- **Q7: C1 is above C2.** MT's writer is 373 lines (258 new); it frees
+  329 lines and copies 7 definitions: Exec.lean 1,089 lines, 86 fewer.
+  The gain is in the proofs, an estimate: what MT frees is named in
+  8.4 % of lean/SIS/Tree by name, 19.9 % by text (an upper bound).
+
+**The scan finding.** Smallest run at 30: put keys 0 to 376 in one
+transaction, delete 1 to 375 in one; right after, 25 empty leaves lie
+side by side and a full scan gives one of the two keys. Cause: the
+model's scan gives each `next` 2 · fuel + 2 steps, a budget that
+assumes a live key below every index node (TP27). Java's
+`GetMany.Chain.next()` has no budget: right by reading (not run), at
+two node visits for each empty node crossed. Runs: 325 such scans at 56
+boundaries of E (30), 17,448 at 21 of D (8). Two readings of S2: A1,
+the budget as the model's artifact (`Mt.scanWith`, accepted
+provisionally by the coordinator); or strictly, a reader that must
+change: MT off as specified. Frans decides. Under 026-18 neither
+applies: readers see only the states between main transactions.
+
+**At 10 million keys** (height 5 or 6), by the runs' trend: about 0.1
+fix steps a deleted key (it did not grow from height 1 to 3: merges
+rarely go above the leaf); a single delete at most a step a level and a
+collapse; a mass delete about a step a node it empties. Bytes 1 to 3 %
+above today's for mixed work, up to about 17 % for mass deletes, with
+the plan's stand-ins. **They cannot say:** Java's bytes (B-new and
+B-all only bracket them), a commit's time (P1), restarts between the
+steps (P2), reclaim and eviction over the in-between states, the
+record's format, heights above 3, a proof that the fixing ends.
+
+**Rules added:** A1 only. **Cut:** nothing. **Not reached:** R4 100
+times at 30; a fix step that grows the tree at 30 (2,740 at 8); an
+empty leaf merged into two nodes (T3, finding 6).
+
 
 The plan follows.
 
@@ -994,3 +1057,13 @@ reference map, `Node.lean`'s parameters, `TreeTest.lean`,
 `segfit-check` and `live-counts-check` of 024-12, the lakefile, and the
 night's `treetest` report of 15 November. Nothing built, nothing run.
 The trial is not started.
+
+2026-11-16. The trial run by coord-1116, 11:17 to 13:36: T0 by the
+coordinator, agents A (T1, T4, T7, T8; Opus at xhigh) and B (T2, T5,
+T6; Opus at high) and the reviewer R (T3; Opus at high). The result
+above; the counts in 17-mt-trial/report.md, which the coordinator saved
+from agent A's text (the harness refused the agent's write). The branch
+`026-17-mt-trial` kept in the main repository at cbe51516, not merged.
+The coordinator checked five numbers of the result against
+`runs/30-E.txt`, `30-C.txt`, `30-D.txt` and `30-H.txt`, and that all 17
+runs of T5 and T6 end with MTTEST OK.

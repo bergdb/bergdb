@@ -1,0 +1,26 @@
+  exhaustive M=8 depth=2 keys=12 prefix=2 pairs all: 82902 groups, 116092 boundaries, 0 failures so far, 414 s
+exhaustive M=8 depth=2 keys=12 prefix=2 pairs [MtTest.Mode.mt]: 82602 runs, 82902 groups, 116092 boundaries (33190 untidy), 0 beyond the level bounds, 0 failures; 414 s, 3.57 ms a boundary
+  failures by check: none
+  K4 at tidy boundaries: 0 with a fault; K7 second pass: 0 fix steps
+  bounds by side: 
+  reached MT's user transactions: bitmap.dead 50, bitmap.full 17342, bitmap.inplace 1590, bitmap.inplace.dead 46, bitmap.new 54388, dead.compact 152, lone-time-klong 112, segment.new 531, split.space1 6276, split.space3 25, split.time1 32851, split.time2 7140, top.new 7165, user.emptied 6488
+  reached MT's fix steps: bitmap.dead 6, bitmap.full 65, bitmap.new 6173, dead.compact 24, fix.collapse.space 180, fix.merge.empty 488, fix.merge.inner 180, fix.merge.one 26600, fix.merge.two 166, fix.unlink 6244, lone-time-klong 25, merge.inner 180, merge.leaf 26586, merge.left 16401, merge.one 26600, merge.parent.dead 18, merge.parent.delete 14801, merge.parent.full 11947, merge.right 10365, merge.two 166, rc.replace.space 180, split.space1 6, split.space3 2256, split.time1 83, split.time2 9697, top.new 12133
+  fix steps merging an empty node into two: 0; untidy boundaries read after a user transaction that emptied a leaf, in a group with an unlink: 6241
+  reached today: bitmap.dead 50, bitmap.full 17288, bitmap.inplace 1421, bitmap.new 54657, dead.compact 104, merge.inner 180, merge.leaf 26606, merge.left 16418, merge.made.left 1765, merge.made.right 1092, merge.one 26696, merge.parent.dead 4, merge.parent.delete 18171, merge.parent.full 8611, merge.right 10368, merge.takeback 2857, merge.two 90, rc.takeback.space 180, segment.new 534, split.space1 6279, split.space3 1321, split.time1 32705, split.time2 17619, top.inplace 180, top.new 18940, up.climb 6247, up.stop-at-segment-leaf 6247, up.takeback 57, up.unlink 6190
+  5.4 the tree against today's: equal 25590/40149/16104, different 0/1059/0 (groups of no, one, several deletes); in the different: MT - today key nodes 2019, live klongs 2019, height differs in 960
+    exhaustive M=8 depth=2 keys=12 prefix=2 pairs all group 3810 at 16 [del[0] put[184, 136]]: today 5 key nodes, height 1, 15 live klongs; MT 6 key nodes, height 1, 16 live klongs
+    exhaustive M=8 depth=2 keys=12 prefix=2 pairs all group 3850 at 16 [del[72] put[184, 136]]: today 5 key nodes, height 1, 15 live klongs; MT 6 key nodes, height 1, 16 live klongs
+    exhaustive M=8 depth=2 keys=12 prefix=2 pairs all group 4391 at 15 [del[0] put[200]]: today 5 key nodes, height 1, 15 live klongs; MT 6 key nodes, height 1, 16 live klongs
+  5.5 cost MT/today: made 96641/91161 (1.06), changed 250857/201730 (1.24), klongs 440770/386636 (1.14), tops 19298/18940, B-new 27999280/23803280 (1.18), B-all 48473904/39048368 (1.24); the index alone: B-new 23957296/19761296 (1.21), B-all 44431920/35006384 (1.27)
+  5.5 a deleted key (73416): extra made mean 0.07, most 3; extra B-new mean 57.15, most 516; extra B-all mean 128.38; today's merges 26786, take-backs 2857
+  5.6 fix steps a group with deletes (steps: groups): 0: 31576, 1: 19239, 2: 5765, 3: 549, 4: 141, 5: 42; most 5; nearest the driver's fuel: 5 of 640
+  5.6 a deleted key as its group's mean: mean 0.45, most 2.50
+  5.6 groups of one delete (41208, mean 0.45) (steps: keys): 0: 25666, 1: 12368, 2: 3174
+  5.6 groups of one delete, by the height of the key's segment tree: 0: 13736 keys, mean 0.48, most 2, 1: 27472 keys, mean 0.43, most 1
+  5.6 groups of one delete, by the path's nodes: 2: 27472 keys, mean 0.43, most 1, 3: 13736 keys, mean 0.48, most 2
+  5.6 height: MT's greatest above before and today's in 1140 groups (by how much: 1: 1140); H needed: MT 2, today 2
+  5.6 untidy: 33190 boundaries; most key nodes with a fill fault at one: 2; boundaries with an index node without a live key below: 7334, most such key nodes at one: 2
+  A1: K1's scans at untidy boundaries where scan and scanWith differ: 0, at 0 boundaries
+  5.6 top nodes made: by fix steps 12133, by MT's user transactions 7165, by today's 18940
+MTTEST OK
+exit 0, 415 s: mttest exhaustive 8 2 12 2 pairs

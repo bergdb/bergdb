@@ -1,0 +1,34 @@
+  G segments 30 x 20, 1 a tx, seed 1: 1212 groups, 1212 boundaries, 0 failures so far, 15 s
+  G segments 30 x 20, 1 a tx, seed 2: 2424 groups, 2424 boundaries, 0 failures so far, 32 s
+  G segments 30 x 20, 1 a tx, seed 3: 3636 groups, 3636 boundaries, 0 failures so far, 47 s
+  G segments 30 x 20, 10 a tx, seed 1: 3768 groups, 3768 boundaries, 0 failures so far, 49 s
+  G segments 30 x 20, 10 a tx, seed 2: 3900 groups, 3900 boundaries, 0 failures so far, 51 s
+  G segments 30 x 20, 10 a tx, seed 3: 4032 groups, 4032 boundaries, 0 failures so far, 53 s
+  G segments 3 x 200, 1 a tx, seed 1: 5244 groups, 5244 boundaries, 0 failures so far, 69 s
+  G segments 3 x 200, 1 a tx, seed 2: 6456 groups, 6456 boundaries, 0 failures so far, 84 s
+  G segments 3 x 200, 1 a tx, seed 3: 7668 groups, 7668 boundaries, 0 failures so far, 99 s
+  G segments 3 x 200, 10 a tx, seed 1: 7800 groups, 7800 boundaries, 0 failures so far, 101 s
+  G segments 3 x 200, 10 a tx, seed 2: 7932 groups, 7932 boundaries, 0 failures so far, 103 s
+  G segments 3 x 200, 10 a tx, seed 3: 8064 groups, 8064 boundaries, 0 failures so far, 104 s
+  G segments 100 of three segments, 1 a tx, seed 1: 8266 groups, 8266 boundaries, 0 failures so far, 105 s
+  G segments 100 of three segments, 1 a tx, seed 2: 8468 groups, 8468 boundaries, 0 failures so far, 106 s
+  G segments 100 of three segments, 1 a tx, seed 3: 8670 groups, 8670 boundaries, 0 failures so far, 107 s
+  G segments 100 of three segments, 10 a tx, seed 1: 8692 groups, 8692 boundaries, 0 failures so far, 107 s
+  G segments 100 of three segments, 10 a tx, seed 2: 8714 groups, 8714 boundaries, 0 failures so far, 107 s
+  G segments 100 of three segments, 10 a tx, seed 3: 8736 groups, 8736 boundaries, 0 failures so far, 108 s
+G segments [MtTest.Mode.selftest]: 18 runs, 8736 groups, 8736 boundaries (0 untidy), 0 beyond the level bounds, 0 failures; 108 s, 12.37 ms a boundary
+  failures by check: none
+  K4 at tidy boundaries: 0 with a fault; K7 second pass: 0 fix steps
+  reached MT: bitmap.dead 145, bitmap.full 405, bitmap.inplace 631, bitmap.inplace.dead 54, bitmap.new 6565, dead.compact 374, lone-time-klong 4, merge.leaf 351, merge.left 186, merge.made.left 24, merge.made.right 30, merge.one 246, merge.parent.dead 71, merge.parent.delete 275, merge.parent.full 5, merge.right 165, merge.takeback 54, merge.two 105, rc.replace.segment 14, rc.replace.space 6, rc.takeback.segment 4, segment.new 540, split.space1 287, split.space1.inplace 162, split.space2 26, split.space2.inplace 18, split.space3 12, split.time.inplace 1, split.time1 936, split.time2 39, top.new 57, up.climb 258, up.stop-at-segment-leaf 258, up.takeback 8, up.unlink 262
+  reached today: bitmap.dead 145, bitmap.full 405, bitmap.inplace 631, bitmap.inplace.dead 54, bitmap.new 6565, dead.compact 374, lone-time-klong 4, merge.leaf 351, merge.left 186, merge.made.left 24, merge.made.right 30, merge.one 246, merge.parent.dead 71, merge.parent.delete 275, merge.parent.full 5, merge.right 165, merge.takeback 54, merge.two 105, rc.replace.segment 14, rc.replace.space 6, rc.takeback.segment 4, segment.new 540, split.space1 287, split.space1.inplace 162, split.space2 26, split.space2.inplace 18, split.space3 12, split.time.inplace 1, split.time1 936, split.time2 39, top.new 57, up.climb 258, up.stop-at-segment-leaf 258, up.takeback 8, up.unlink 262
+  5.4 the tree against today's: equal 4446/3900/390, different 0/0/0 (groups of no, one, several deletes); in the different: MT - today key nodes 0, live klongs 0, height differs in 0
+  5.5 cost MT/today: made 2791/2791 (1.00), changed 16579/16579 (1.00), klongs 46354/46354 (1.00), tops 57/57, B-new 2542816/2542816 (1.00), B-all 7243344/7243344 (1.00); the index alone: B-new 1659616/1659616 (1.00), B-all 6360144/6360144 (1.00)
+  5.5 a deleted key (7800): extra made mean 0.00, most 0; extra B-new mean 0.00, most 0; extra B-all mean 0.00; today's merges 351, take-backs 54
+  5.6 fix steps a key (steps: keys): 0: 7800; mean 0.00; a group: most 0
+  5.6 by the height of the key's segment tree: 0: 4472 keys, mean 0.00, most 0, 1: 3328 keys, mean 0.00, most 0
+  5.6 by the path's nodes: 2: 374 keys, mean 0.00, most 0, 3: 7426 keys, mean 0.00, most 0
+  5.6 height: MT's greatest above before and today's in 0 groups (by how much: ); H needed: MT 1, today 1
+  5.6 untidy: 0 boundaries; most key nodes with a fill fault at one: 0; boundaries with an index node without a live key below: 0
+  5.6 top nodes made: by fix steps 0, by MT's user transactions 57, by today's 57
+MTTEST OK
+exit 0, 108 s: mttest selftest G

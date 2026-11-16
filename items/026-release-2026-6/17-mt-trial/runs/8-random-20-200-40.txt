@@ -1,0 +1,45 @@
+  random M=8 seeds=20 steps=200 keys=40 seed 1: 162 groups, 182 boundaries, 0 failures so far, 2 s
+  random M=8 seeds=20 steps=200 keys=40 seed 2: 340 groups, 396 boundaries, 0 failures so far, 5 s
+  random M=8 seeds=20 steps=200 keys=40 seed 3: 523 groups, 620 boundaries, 0 failures so far, 8 s
+  random M=8 seeds=20 steps=200 keys=40 seed 4: 705 groups, 863 boundaries, 0 failures so far, 13 s
+  random M=8 seeds=20 steps=200 keys=40 seed 5: 893 groups, 1121 boundaries, 0 failures so far, 17 s
+  random M=8 seeds=20 steps=200 keys=40 seed 6: 1085 groups, 1386 boundaries, 0 failures so far, 22 s
+  random M=8 seeds=20 steps=200 keys=40 seed 7: 1278 groups, 1661 boundaries, 0 failures so far, 27 s
+  random M=8 seeds=20 steps=200 keys=40 seed 8: 1463 groups, 1940 boundaries, 0 failures so far, 33 s
+  random M=8 seeds=20 steps=200 keys=40 seed 9: 1653 groups, 2230 boundaries, 0 failures so far, 38 s
+  random M=8 seeds=20 steps=200 keys=40 seed 10: 1844 groups, 2540 boundaries, 0 failures so far, 45 s
+  random M=8 seeds=20 steps=200 keys=40 seed 11: 2040 groups, 2865 boundaries, 0 failures so far, 52 s
+  random M=8 seeds=20 steps=200 keys=40 seed 12: 2190 groups, 3028 boundaries, 0 failures so far, 54 s
+  random M=8 seeds=20 steps=200 keys=40 seed 13: 2354 groups, 3215 boundaries, 0 failures so far, 56 s
+  random M=8 seeds=20 steps=200 keys=40 seed 14: 2514 groups, 3417 boundaries, 0 failures so far, 59 s
+  random M=8 seeds=20 steps=200 keys=40 seed 15: 2701 groups, 3643 boundaries, 0 failures so far, 62 s
+  random M=8 seeds=20 steps=200 keys=40 seed 16: 2883 groups, 3872 boundaries, 0 failures so far, 66 s
+  random M=8 seeds=20 steps=200 keys=40 seed 17: 3076 groups, 4143 boundaries, 0 failures so far, 70 s
+  random M=8 seeds=20 steps=200 keys=40 seed 18: 3269 groups, 4424 boundaries, 0 failures so far, 76 s
+  random M=8 seeds=20 steps=200 keys=40 seed 19: 3464 groups, 4701 boundaries, 0 failures so far, 80 s
+  random M=8 seeds=20 steps=200 keys=40 seed 20: 3657 groups, 4999 boundaries, 0 failures so far, 86 s
+random M=8 seeds=20 steps=200 keys=40 [MtTest.Mode.mt]: 20 runs, 3657 groups, 4999 boundaries (1342 untidy), 0 beyond the level bounds, 0 failures; 86 s, 17.34 ms a boundary
+  failures by check: none
+  K4 at tidy boundaries: 0 with a fault; K7 second pass: 0 fix steps
+  bounds by side: 
+  reached MT's user transactions: bitmap.dead 39, bitmap.full 863, bitmap.inplace 64, bitmap.inplace.dead 14, bitmap.new 2127, dead.compact 155, lone-time-klong 6, segment.new 28, split.space1 869, split.space2 145, split.space3 75, split.space3.inplace 1, split.time.inplace 2, split.time1 2563, split.time2 240, top.inplace 1, top.new 315, user.emptied 32
+  reached MT's fix steps: bitmap.dead 1, bitmap.full 2, bitmap.new 5, dead.compact 207, fix.collapse.segment 127, fix.collapse.space 47, fix.merge.empty 21, fix.merge.inner 223, fix.merge.one 1016, fix.merge.two 144, fix.unlink 8, merge.inner 223, merge.leaf 937, merge.left 725, merge.one 1016, merge.parent.dead 192, merge.parent.delete 435, merge.parent.full 533, merge.right 435, merge.two 144, rc.replace.segment 127, rc.replace.space 47, split.space1 61, split.space3 11, split.time1 615, split.time2 315, top.new 373
+  fix steps merging an empty node into two: 0; untidy boundaries read after a user transaction that emptied a leaf, in a group with an unlink: 8
+  reached today: bitmap.dead 41, bitmap.full 857, bitmap.inplace 54, bitmap.inplace.dead 9, bitmap.new 2146, dead.compact 340, merge.inner 221, merge.leaf 991, merge.left 764, merge.made.left 327, merge.made.right 286, merge.one 1066, merge.parent.dead 183, merge.parent.delete 617, merge.parent.full 412, merge.right 448, merge.takeback 613, merge.two 146, rc.replace.segment 64, rc.replace.space 16, rc.takeback.segment 73, rc.takeback.space 34, segment.new 29, split.space1 873, split.space1.inplace 4, split.space2 145, split.space3 78, split.space3.inplace 2, split.time.inplace 6, split.time1 2990, split.time2 481, top.inplace 36, top.new 575, up.climb 9, up.stop-at-segment-leaf 9, up.unlink 9
+  5.4 the tree against today's: equal 1616/1254/677, different 0/35/75 (groups of no, one, several deletes); in the different: MT - today key nodes 130, live klongs 130, height differs in 12
+    random M=8 seeds=20 steps=200 keys=40 seed 1 group 59 at 63 [del[776] put[1032]]: today 10 key nodes, height 2, 28 live klongs; MT 12 key nodes, height 2, 30 live klongs
+    random M=8 seeds=20 steps=200 keys=40 seed 4 group 581 at 71 [del[120, 8] del[120, 328] put[120, 520] put[1800]]: today 12 key nodes, height 2, 33 live klongs; MT 13 key nodes, height 2, 34 live klongs
+    random M=8 seeds=20 steps=200 keys=40 seed 4 group 618 at 122 [put[1032] del[1288] del[1928]]: today 9 key nodes, height 2, 26 live klongs; MT 9 key nodes, height 2, 26 live klongs
+  5.5 cost MT/today: made 7620/6561 (1.16), changed 15968/13190 (1.21), klongs 30712/27055 (1.14), tops 688/575, B-new 1759316/1508324 (1.17), B-all 2889188/2412820 (1.20); the index alone: B-new 1429772/1178780 (1.21), B-all 2559644/2083276 (1.23)
+  5.5 a deleted key (3107): extra made mean 0.34, most 6; extra B-new mean 80.78, most 1136; extra B-all mean 153.32; today's merges 1212, take-backs 613
+  5.6 fix steps a group with deletes (steps: groups): 0: 1217, 1: 463, 2: 255, 3: 68, 4: 25, 5: 13; most 5; nearest the driver's fuel: 4 of 320
+  5.6 a deleted key as its group's mean: mean 0.43, most 4.00
+  5.6 groups of one delete (1289, mean 0.39) (steps: keys): 0: 920, 1: 247, 2: 106, 3: 14, 4: 2
+  5.6 groups of one delete, by the height of the key's segment tree: 0: 120 keys, mean 0.07, most 2, 1: 250 keys, mean 0.50, most 3, 2: 918 keys, mean 0.40, most 4, 3: 1 keys, mean 4.00, most 4
+  5.6 groups of one delete, by the path's nodes: 1: 9 keys, mean 0.00, most 0, 2: 82 keys, mean 0.28, most 3, 3: 942 keys, mean 0.39, most 4, 4: 90 keys, mean 0.15, most 4, 5: 166 keys, mean 0.60, most 2
+  5.6 height: MT's greatest above before and today's in 13 groups (by how much: 1: 13); H needed: MT 3, today 3
+  5.6 untidy: 1342 boundaries; most key nodes with a fill fault at one: 3; boundaries with an index node without a live key below: 32, most such key nodes at one: 1
+  A1: K1's scans at untidy boundaries where scan and scanWith differ: 0, at 0 boundaries
+  5.6 top nodes made: by fix steps 373, by MT's user transactions 315, by today's 575
+MTTEST OK
+exit 0, 87 s: mttest random 8 20 200 40 12 50

@@ -1,0 +1,71 @@
+== node size 30 (T5): 8 files, 63 runs, 27309 groups, 32017 boundaries (4708 untidy), failures 0, bounds 0, K4 faults at tidy 0, K7 second pass 0
+  fix steps by kind: fix.merge.one 3324, fix.merge.two 999, fix.merge.inner 275, fix.merge.empty 423, fix.merge.bothempty 117, fix.unlink 287, fix.collapse.space 48, fix.collapse.segment 50, fix.pass.onlychild 46
+  inside fix steps: merge.parent.full 113, merge.parent.dead 803, split.time1 793, split.time2 230, split.space1 12, split.space2 5, split.space3 0, bitmap.full 7, bitmap.dead 26
+  fix steps 4708 for 57431 deleted keys: 0.082 a deleted key
+  most fix steps of one group: 110 (30-E.txt)
+  made: MT 22295, today 20641, 1.080
+  changed: MT 114344, today 106571, 1.073
+  klongs: MT 374331, today 359812, 1.040
+  B-new: MT 16319452, today 15564724, 1.048
+  B-all: MT 49738188, today 46956036, 1.059
+  B-new, the index alone: MT 11135428, today 10380700, 1.073
+  B-all, the index alone: MT 44554164, today 41772012, 1.067
+  a deleted key: B-new +13.1 bytes, B-all +48.4 bytes, made +0.029 nodes
+  height between: groups where MT's greatest is above before and today's: 0; H needed MT/today by file: 
+  A1: untidy scans where scan and scanWith differ: 325 at 56 boundaries; most index nodes without a live key below at one boundary: 110
+  by file: 30-A.txt: B-new 1.01, B-all 1.02, made 1.01, fix/del 0.031; 30-B.txt: B-new 1.02, B-all 1.03, made 1.01, fix/del 0.047; 30-C.txt: B-new 1.01, B-all 1.02, made 1.01, fix/del 0.048; 30-D.txt: B-new 1.08, B-all 1.12, made 1.12, fix/del 0.108; 30-E.txt: B-new 1.15, B-all 1.17, made 1.71, fix/del 0.092; 30-F.txt: B-new 1.05, B-all 1.09, made 1.03, fix/del 0.107; 30-G.txt: B-new 1.03, B-all 1.05, made 1.02, fix/del 0.081; 30-H.txt: B-new 1.08, B-all 1.12, made 1.07, fix/del 0.102
+== node size 8 (T6): 9 files, 147759 runs, 156676 groups, 298235 boundaries (141559 untidy), failures 0, bounds 0, K4 faults at tidy 0, K7 second pass 0
+  fix steps by kind: fix.merge.one 96737, fix.merge.two 2245, fix.merge.inner 19705, fix.merge.empty 9554, fix.merge.bothempty 111, fix.unlink 18705, fix.collapse.space 23409, fix.collapse.segment 463, fix.pass.onlychild 1318
+  inside fix steps: merge.parent.full 25475, merge.parent.dead 28346, split.time1 16621, split.time2 35654, split.space1 90, split.space2 7, split.space3 2740, bitmap.full 476, bitmap.dead 77
+  fix steps 141559 for 181519 deleted keys: 0.780 a deleted key
+  most fix steps of one group: 57 (8-D.txt)
+  made: MT 366954, today 208740, 1.758
+  changed: MT 685282, today 385490, 1.778
+  klongs: MT 1254451, today 804664, 1.559
+  B-new: MT 85731508, today 52666292, 1.628
+  B-all: MT 127558708, today 76926660, 1.658
+  B-new, the index alone: MT 76533244, today 43468028, 1.761
+  B-all, the index alone: MT 118360444, today 67728396, 1.748
+  a deleted key: B-new +182.2 bytes, B-all +278.9 bytes, made +0.872 nodes
+  height between: groups where MT's greatest is above before and today's: 18603; H needed MT/today by file: 8-subsets-12-2-0.txt 2/1
+  A1: untidy scans where scan and scanWith differ: 17448 at 21 boundaries; most index nodes without a live key below at one boundary: 51
+  by file: 8-D.txt: B-new 1.36, B-all 1.48, made 1.33, fix/del 0.556; 8-exh-2-12-2-pairs.txt: B-new 1.18, B-all 1.24, made 1.06, fix/del 0.452; 8-exh-3-12-2.txt: B-new 1.13, B-all 1.16, made 1.00, fix/del 0.450; 8-exh-3-12-4.txt: B-new 1.47, B-all 1.49, made 1.44, fix/del 1.245; 8-random-10-200-124.txt: B-new 1.20, B-all 1.24, made 1.18, fix/del 0.511; 8-random-20-200-40.txt: B-new 1.17, B-all 1.20, made 1.16, fix/del 0.432; 8-subsets-12-2-0.txt: B-new 1.96, B-all 2.32, made 2.12, fix/del 0.479; 8-subsets-210-0-1-puts.txt: B-new 1.00, B-all 1.00, made 1.00, fix/del 0.004; 8-subsets-9-3-0-puts.txt: B-new 2.60, B-all 3.00, made 3.01, fix/del 1.397
+== node size 8 without D (T6's treetest sets): 8 files, 147751 runs, 155782 groups, 296452 boundaries (140670 untidy), failures 0, bounds 0, K4 faults at tidy 0, K7 second pass 0
+  fix steps by kind: fix.merge.one 95956, fix.merge.two 2211, fix.merge.inner 19433, fix.merge.empty 9468, fix.merge.bothempty 55, fix.unlink 18697, fix.collapse.space 23369, fix.collapse.segment 437, fix.pass.onlychild 1248
+  inside fix steps: merge.parent.full 25152, merge.parent.dead 28235, split.time1 16164, split.time2 35578, split.space1 67, split.space2 0, split.space3 2735, bitmap.full 473, bitmap.dead 74
+  fix steps 140670 for 179919 deleted keys: 0.782 a deleted key
+  most fix steps of one group: 8 (8-subsets-12-2-0.txt)
+  made: MT 364262, today 206723, 1.762
+  changed: MT 680506, today 382336, 1.780
+  klongs: MT 1244754, today 797118, 1.562
+  B-new: MT 85136660, today 52228964, 1.630
+  B-all: MT 126681108, today 76335476, 1.660
+  B-new, the index alone: MT 76018332, today 43110636, 1.763
+  B-all, the index alone: MT 117562780, today 67217148, 1.749
+  a deleted key: B-new +182.9 bytes, B-all +279.8 bytes, made +0.876 nodes
+  height between: groups where MT's greatest is above before and today's: 18601; H needed MT/today by file: 8-subsets-12-2-0.txt 2/1
+  A1: untidy scans where scan and scanWith differ: 0 at 0 boundaries; most index nodes without a live key below at one boundary: 8
+  by file: 8-exh-2-12-2-pairs.txt: B-new 1.18, B-all 1.24, made 1.06, fix/del 0.452; 8-exh-3-12-2.txt: B-new 1.13, B-all 1.16, made 1.00, fix/del 0.450; 8-exh-3-12-4.txt: B-new 1.47, B-all 1.49, made 1.44, fix/del 1.245; 8-random-10-200-124.txt: B-new 1.20, B-all 1.24, made 1.18, fix/del 0.511; 8-random-20-200-40.txt: B-new 1.17, B-all 1.20, made 1.16, fix/del 0.432; 8-subsets-12-2-0.txt: B-new 1.96, B-all 2.32, made 2.12, fix/del 0.479; 8-subsets-210-0-1-puts.txt: B-new 1.00, B-all 1.00, made 1.00, fix/del 0.004; 8-subsets-9-3-0-puts.txt: B-new 2.60, B-all 3.00, made 3.01, fix/del 1.397
+
+| run | groups | bnd | untidy | dels | fix/del | most | made | B-new | B-all | idx B-new |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 30-A | 2766 | 2845 | 79 | 2551 | 0.031 | 2 | 1.01 | 1.01 | 1.02 | 1.01 |
+| 30-B | 1965 | 2376 | 411 | 8732 | 0.047 | 4 | 1.01 | 1.02 | 1.03 | 1.03 |
+| 30-C | 2100 | 2405 | 305 | 6348 | 0.048 | 3 | 1.01 | 1.01 | 1.02 | 1.02 |
+| 30-D | 4470 | 5335 | 865 | 8000 | 0.108 | 10 | 1.12 | 1.08 | 1.12 | 1.11 |
+| 30-E | 3072 | 3626 | 554 | 6000 | 0.092 | 110 | 1.71 | 1.15 | 1.17 | 1.24 |
+| 30-F | 3540 | 4180 | 640 | 6000 | 0.107 | 7 | 1.03 | 1.05 | 1.09 | 1.07 |
+| 30-G | 8736 | 9371 | 635 | 7800 | 0.081 | 10 | 1.02 | 1.03 | 1.05 | 1.05 |
+| 30-H | 660 | 1879 | 1219 | 12000 | 0.102 | 8 | 1.07 | 1.08 | 1.12 | 1.11 |
+
+| run | groups | bnd | untidy | dels | fix/del | most | made | B-new | B-all | idx B-new |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 8-D | 894 | 1783 | 889 | 1600 | 0.556 | 57 | 1.33 | 1.36 | 1.48 | 1.44 |
+| 8-exh-2-12-2-pairs | 82902 | 116092 | 33190 | 73416 | 0.452 | 5 | 1.06 | 1.18 | 1.24 | 1.21 |
+| 8-exh-3-12-2 | 13596 | 16529 | 2933 | 6516 | 0.450 | 2 | 1.00 | 1.13 | 1.16 | 1.15 |
+| 8-exh-3-12-4 | 13608 | 21722 | 8114 | 6516 | 1.245 | 4 | 1.44 | 1.47 | 1.49 | 1.53 |
+| 8-random-10-200-124 | 1847 | 2675 | 828 | 1619 | 0.511 | 6 | 1.18 | 1.20 | 1.24 | 1.26 |
+| 8-random-20-200-40 | 3657 | 4999 | 1342 | 3107 | 0.432 | 5 | 1.16 | 1.17 | 1.20 | 1.21 |
+| 8-subsets-12-2-0 | 4107 | 15890 | 11783 | 24576 | 0.479 | 8 | 2.12 | 1.96 | 2.32 | 1.96 |
+| 8-subsets-210-0-1-puts | 16373 | 16391 | 18 | 5120 | 0.004 | 1 | 1.00 | 1.00 | 1.00 | 1.00 |
+| 8-subsets-9-3-0-puts | 19692 | 102154 | 82462 | 59049 | 1.397 | 8 | 3.01 | 2.60 | 3.00 | 2.99 |

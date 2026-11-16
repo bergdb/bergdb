@@ -1,0 +1,115 @@
+/-
+MT's trial (bergdb 026-17, section 5.7, C2): the walk of the dependencies.
+Run with `lake env lean MtDeps.lean` in lean/, after `lake build SIS.Tree.Mt`.
+
+From Lean's own environment: the constants that today's writer uses, from
+`SIS.Tree.exec?`, through every call; and those that MT uses, from
+`SIS.Tree.Mt.runUser`, `runFix` and `fixAll`, with `changesOf` (section 3.2:
+MT's changes are today's `changesOf`, unchanged). A constant's calls are the
+constants in its value (`Expr.getUsedConstants`); theorems are not followed
+(their values are proofs, not calls). Only constants under `SIS` are followed.
+
+Auxiliary constants are not counted as uses of their owner: a matcher
+(`match_N`) can be shared between definitions (an `Mt.merge` may use
+`SIS.Tree.merge.match_2`), so a matcher, a proof (`proof_N`), an equation
+(`eq_N`) and any other internal name is followed but names no definition. The
+parts of a recursive definition (`_unary`, `_mutual`, `_sunfold`) and a
+`where` function count for their owner.
+
+Output, one line each, for C2's script (/Users/f/fl/bench/026-17/t7/c2.py):
+`TODAY module name`, `MT module name` for the definitions used, and `CALL
+caller callee` for the calls among MT's (to tell which of today's definitions
+MT keeps only for the split's code).
+-/
+import Lean
+import SIS.Tree.Mt
+
+open Lean
+
+namespace MtDeps
+
+/-- A name component that marks a constant that names no definition of its
+own and may be shared (a matcher, a proof, an equation, an internal name). -/
+def skipComp (s : String) : Bool :=
+  s.startsWith "match_" || s.startsWith "proof_" || s.startsWith "eq_" ||
+    (s.startsWith "_" && !(s.startsWith "_unary" || s.startsWith "_mutual" || s.startsWith "_sunfold"))
+
+/-- A component that is a part of its owner's definition. -/
+def partComp (s : String) : Bool :=
+  s.startsWith "_unary" || s.startsWith "_mutual" || s.startsWith "_sunfold"
+
+/-- The name's components, outermost first. -/
+def comps (n : Name) : List String :=
+  n.components.map (fun c => match c with
+    | .str _ s => s
+    | .num _ k => s!"{k}"
+    | .anonymous => "")
+
+/-- A constant that names no definition: one of its components is a skip
+component. -/
+def isSkip (n : Name) : Bool := (comps n).any skipComp
+
+/-- The definition a constant belongs to: its name without trailing part
+components. -/
+def owner (n : Name) : Name :=
+  match n with
+  | .str p s => if partComp s then owner p else n
+  | _ => n
+
+/-- The calls of a constant: the constants under `SIS` in its value, for a
+definition or an opaque; none for a theorem, an axiom, an inductive. -/
+def callsOf (env : Environment) (n : Name) : Array Name :=
+  let v? : Option Expr := match env.find? n with
+    | some (.defnInfo d) => some d.value
+    | some (.opaqueInfo o) => some o.value
+    | _ => none
+  match v? with
+  | some v => v.getUsedConstants.filter (fun c => (`SIS).isPrefixOf c)
+  | none => #[]
+
+/-- Every constant reached from the roots, the roots included. -/
+def reach (env : Environment) (roots : List Name) : NameSet := Id.run do
+  let mut seen : NameSet := {}
+  let mut todo : Array Name := roots.toArray
+  let mut fuel := 1000000
+  while !todo.isEmpty && fuel > 0 do
+    fuel := fuel - 1
+    let n := todo.back!
+    todo := todo.pop
+    if !seen.contains n then
+      seen := seen.insert n
+      for c in callsOf env n do
+        if !seen.contains c then todo := todo.push c
+  return seen
+
+/-- The definitions used: the owners of the constants reached, but the skipped. -/
+def used (s : NameSet) : NameSet :=
+  s.toArray.foldl (fun acc n => if isSkip n then acc else acc.insert (owner n)) {}
+
+def moduleOf (env : Environment) (n : Name) : Name :=
+  match env.getModuleIdxFor? n with
+  | some i => env.header.moduleNames[i.toNat]!
+  | none => `this
+
+def sorted (s : NameSet) : Array Name :=
+  s.toArray.qsort (fun a b => a.toString < b.toString)
+
+#eval show CoreM Unit from do
+  let env ← getEnv
+  let today := used (reach env [`SIS.Tree.exec?])
+  let mtAll := reach env [`SIS.Tree.Mt.runUser, `SIS.Tree.Mt.runFix, `SIS.Tree.Mt.fixAll,
+    `SIS.Tree.changesOf]
+  let mt := used mtAll
+  for n in sorted today do
+    IO.println s!"TODAY {moduleOf env n} {n}"
+  for n in sorted mt do
+    IO.println s!"MT {moduleOf env n} {n}"
+  -- The calls among MT's definitions, by owner.
+  for n in sorted mtAll do
+    if !isSkip n then
+      let calls := (callsOf env n).foldl (fun (acc : NameSet) c =>
+        if isSkip c then acc else acc.insert (owner c)) {}
+      for c in sorted calls do
+        if owner n != c then IO.println s!"CALL {owner n} {c}"
+
+end MtDeps

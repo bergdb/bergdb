@@ -1,0 +1,35 @@
+  random M=8 seeds=10 steps=200 keys=124 seed 1: 162 groups, 195 boundaries, 0 failures so far, 1 s
+  random M=8 seeds=10 steps=200 keys=124 seed 2: 339 groups, 428 boundaries, 0 failures so far, 2 s
+  random M=8 seeds=10 steps=200 keys=124 seed 3: 530 groups, 693 boundaries, 0 failures so far, 4 s
+  random M=8 seeds=10 steps=200 keys=124 seed 4: 713 groups, 955 boundaries, 0 failures so far, 6 s
+  random M=8 seeds=10 steps=200 keys=124 seed 5: 898 groups, 1214 boundaries, 0 failures so far, 8 s
+  random M=8 seeds=10 steps=200 keys=124 seed 6: 1089 groups, 1488 boundaries, 0 failures so far, 11 s
+  random M=8 seeds=10 steps=200 keys=124 seed 7: 1279 groups, 1793 boundaries, 0 failures so far, 13 s
+  random M=8 seeds=10 steps=200 keys=124 seed 8: 1466 groups, 2072 boundaries, 0 failures so far, 16 s
+  random M=8 seeds=10 steps=200 keys=124 seed 9: 1656 groups, 2368 boundaries, 0 failures so far, 18 s
+  random M=8 seeds=10 steps=200 keys=124 seed 10: 1847 groups, 2675 boundaries, 0 failures so far, 21 s
+random M=8 seeds=10 steps=200 keys=124 [MtTest.Mode.mt]: 10 runs, 1847 groups, 2675 boundaries (828 untidy), 0 beyond the level bounds, 0 failures; 21 s, 8.08 ms a boundary
+  failures by check: none
+  K4 at tidy boundaries: 0 with a fault; K7 second pass: 0 fix steps
+  bounds by side: 
+  reached MT's user transactions: bitmap.dead 34, bitmap.full 410, bitmap.inplace 55, bitmap.inplace.dead 24, bitmap.new 1096, dead.compact 135, lone-time-klong 18, segment.new 51, split.space1 39, split.space2 322, split.space2.inplace 1, split.space3 49, split.time.inplace 4, split.time1 1228, split.time2 215, top.new 264, user.emptied 43
+  reached MT's fix steps: bitmap.dead 3, bitmap.full 6, bitmap.new 12, dead.compact 142, fix.collapse.segment 310, fix.collapse.space 61, fix.merge.empty 17, fix.merge.one 410, fix.merge.two 26, fix.pass.onlychild 1, fix.unlink 21, merge.leaf 436, merge.left 206, merge.one 410, merge.parent.dead 121, merge.parent.delete 207, merge.parent.full 108, merge.right 230, merge.two 26, rc.replace.segment 310, rc.replace.space 61, split.space3 15, split.time1 268, split.time2 131, top.new 207
+  fix steps merging an empty node into two: 0; untidy boundaries read after a user transaction that emptied a leaf, in a group with an unlink: 21
+  reached today: bitmap.dead 32, bitmap.full 405, bitmap.inplace 48, bitmap.inplace.dead 12, bitmap.new 1122, dead.compact 246, merge.leaf 463, merge.left 221, merge.made.left 114, merge.made.right 81, merge.one 432, merge.parent.dead 118, merge.parent.delete 268, merge.parent.full 77, merge.right 242, merge.takeback 195, merge.two 31, rc.replace.segment 166, rc.replace.space 26, rc.takeback.segment 165, rc.takeback.space 36, segment.new 56, split.space1 37, split.space2 322, split.space2.inplace 2, split.space3 57, split.space3.inplace 1, split.time.inplace 10, split.time1 1360, split.time2 302, top.inplace 37, top.new 385, up.climb 26, up.stop-at-segment-leaf 26, up.unlink 26
+  5.4 the tree against today's: equal 752/704/350, different 0/21/20 (groups of no, one, several deletes); in the different: MT - today key nodes 56, live klongs 56, height differs in 7
+    random M=8 seeds=10 steps=200 keys=124 seed 1 group 66 at 80 [del[184, 72] put[184, 136]]: today 4 key nodes, height 0, 14 live klongs; MT 6 key nodes, height 1, 16 live klongs
+    random M=8 seeds=10 steps=200 keys=124 seed 2 group 234 at 86 [del[120, 72] put[120, 456]]: today 8 key nodes, height 1, 24 live klongs; MT 10 key nodes, height 1, 26 live klongs
+    random M=8 seeds=10 steps=200 keys=124 seed 3 group 374 at 49 [put[120, 264] put[184, 72] del[248, 136] put[248, 392]]: today 8 key nodes, height 1, 20 live klongs; MT 10 key nodes, height 1, 22 live klongs
+  5.5 cost MT/today: made 3593/3033 (1.18), changed 7520/5962 (1.26), klongs 13789/11864 (1.16), tops 471/385, B-new 909860/760324 (1.20), B-all 1431780/1153220 (1.24); the index alone: B-new 721764/572228 (1.26), B-all 1243684/965124 (1.29)
+  5.5 a deleted key (1619): extra made mean 0.34, most 6; extra B-new mean 92.36, most 960; extra B-all mean 172.05; today's merges 463, take-backs 195
+  5.6 fix steps a group with deletes (steps: groups): 0: 694, 1: 58, 2: 294, 3: 21, 4: 23, 5: 3, 6: 2; most 6; nearest the driver's fuel: 3 of 320
+  5.6 a deleted key as its group's mean: mean 0.51, most 3.00
+  5.6 groups of one delete (725, mean 0.50) (steps: keys): 0: 525, 1: 38, 2: 158, 3: 4
+  5.6 groups of one delete, by the height of the key's segment tree: 0: 375 keys, mean 0.09, most 3, 1: 350 keys, mean 0.94, most 2
+  5.6 groups of one delete, by the path's nodes: 1: 3 keys, mean 0.00, most 0, 2: 230 keys, mean 0.32, most 2, 3: 351 keys, mean 0.48, most 3, 4: 141 keys, mean 0.86, most 2
+  5.6 height: MT's greatest above before and today's in 7 groups (by how much: 1: 7); H needed: MT 1, today 1
+  5.6 untidy: 828 boundaries; most key nodes with a fill fault at one: 4; boundaries with an index node without a live key below: 42, most such key nodes at one: 1
+  A1: K1's scans at untidy boundaries where scan and scanWith differ: 0, at 0 boundaries
+  5.6 top nodes made: by fix steps 207, by MT's user transactions 264, by today's 385
+MTTEST OK
+exit 0, 22 s: mttest random 8 10 200 124 20 50

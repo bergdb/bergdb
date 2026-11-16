@@ -1,0 +1,24 @@
+  D shrink-1000 one a tx, key order: 1020 groups, 1020 boundaries, 0 failures so far, 12 s
+  D shrink-1000 one a tx, random seed 1: 2040 groups, 2040 boundaries, 0 failures so far, 34 s
+  D shrink-1000 one a tx, random seed 2: 3060 groups, 3060 boundaries, 0 failures so far, 57 s
+  D shrink-1000 one a tx, random seed 3: 4080 groups, 4080 boundaries, 0 failures so far, 80 s
+  D shrink-1000 10 a tx, random seed 1: 4200 groups, 4200 boundaries, 0 failures so far, 83 s
+  D shrink-1000 10 a tx, random seed 2: 4320 groups, 4320 boundaries, 0 failures so far, 86 s
+  D shrink-1000 10 a tx, random seed 3: 4440 groups, 4440 boundaries, 0 failures so far, 90 s
+  D shrink-1000 100 a tx, key order: 4470 groups, 4470 boundaries, 0 failures so far, 90 s
+D shrink-1000 [MtTest.Mode.selftest]: 8 runs, 4470 groups, 4470 boundaries (0 untidy), 0 beyond the level bounds, 0 failures; 90 s, 20.29 ms a boundary
+  failures by check: none
+  K4 at tidy boundaries: 0 with a fault; K7 second pass: 0 fix steps
+  reached MT: bitmap.dead 45, bitmap.full 255, bitmap.inplace 1098, bitmap.inplace.dead 98, bitmap.new 6504, dead.compact 336, lone-time-klong 3, merge.inner 58, merge.leaf 856, merge.left 339, merge.made.left 191, merge.made.right 129, merge.one 604, merge.parent.dead 146, merge.parent.delete 754, merge.parent.full 14, merge.right 575, merge.takeback 320, merge.two 310, rc.replace.segment 10, rc.replace.space 11, rc.takeback.segment 4, rc.takeback.space 5, segment.new 8, split.space1 174, split.space1.inplace 400, split.space2 6, split.space2.inplace 8, split.space3 16, split.time.inplace 75, split.time1 446, split.time2 75, top.inplace 5, top.new 102, up.climb 8, up.root-kept-empty 7, up.stop-at-segment-leaf 8, up.takeback 2, up.unlink 6
+  reached today: bitmap.dead 45, bitmap.full 255, bitmap.inplace 1098, bitmap.inplace.dead 98, bitmap.new 6504, dead.compact 336, lone-time-klong 3, merge.inner 58, merge.leaf 856, merge.left 339, merge.made.left 191, merge.made.right 129, merge.one 604, merge.parent.dead 146, merge.parent.delete 754, merge.parent.full 14, merge.right 575, merge.takeback 320, merge.two 310, rc.replace.segment 10, rc.replace.space 11, rc.takeback.segment 4, rc.takeback.space 5, segment.new 8, split.space1 174, split.space1.inplace 400, split.space2 6, split.space2.inplace 8, split.space3 16, split.time.inplace 75, split.time1 446, split.time2 75, top.inplace 5, top.new 102, up.climb 8, up.root-kept-empty 7, up.stop-at-segment-leaf 8, up.takeback 2, up.unlink 6
+  5.4 the tree against today's: equal 160/4000/310, different 0/0/0 (groups of no, one, several deletes); in the different: MT - today key nodes 0, live klongs 0, height differs in 0
+  5.5 cost MT/today: made 2252/2252 (1.00), changed 8702/8702 (1.00), klongs 36811/36811 (1.00), tops 102/102, B-new 1639712/1639712 (1.00), B-all 3981424/3981424 (1.00); the index alone: B-new 1239776/1239776 (1.00), B-all 3581488/3581488 (1.00)
+  5.5 a deleted key (8000): extra made mean 0.00, most 0; extra B-new mean 0.00, most 0; extra B-all mean 0.00; today's merges 914, take-backs 320
+  5.6 fix steps a key (steps: keys): 0: 8000; mean 0.00; a group: most 0
+  5.6 by the height of the key's segment tree: 0: 199 keys, mean 0.00, most 0, 1: 3052 keys, mean 0.00, most 0, 2: 4749 keys, mean 0.00, most 0
+  5.6 by the path's nodes: 1: 94 keys, mean 0.00, most 0, 2: 1381 keys, mean 0.00, most 0, 3: 4622 keys, mean 0.00, most 0, 4: 311 keys, mean 0.00, most 0, 5: 1406 keys, mean 0.00, most 0, 6: 186 keys, mean 0.00, most 0
+  5.6 height: MT's greatest above before and today's in 0 groups (by how much: ); H needed: MT 2, today 2
+  5.6 untidy: 0 boundaries; most key nodes with a fill fault at one: 0; boundaries with an index node without a live key below: 0
+  5.6 top nodes made: by fix steps 0, by MT's user transactions 102, by today's 102
+MTTEST OK
+exit 0, 91 s: mttest selftest D

@@ -1,0 +1,30 @@
+  A random-100 seed 1: 68 groups, 68 boundaries, 0 failures so far, 3 s
+  A random-100 seed 2: 157 groups, 157 boundaries, 14 failures so far, 8 s
+  A random-100 seed 3: 247 groups, 247 boundaries, 17 failures so far, 14 s
+A random-100 [MtTest.Mode.selfmutant]: 3 runs, 247 groups, 247 boundaries (0 untidy), 0 beyond the level bounds, 17 failures; 14 s, 59.91 ms a boundary
+  failures by check: K4 17
+  K4 at tidy boundaries: 17 with a fault; K7 second pass: 0 fix steps
+  reached MT: bitmap.full 7, bitmap.inplace.dead 1, bitmap.new 85, dead.compact 3, segment.new 3, split.space1 2, split.space3 3, split.time1 23, split.time2 5, top.new 8
+  reached today: bitmap.full 7, bitmap.inplace.dead 1, bitmap.new 85, dead.compact 3, segment.new 3, split.space1 2, split.space3 3, split.time1 23, split.time2 5, top.new 8
+  5.4 the tree against today's: equal 162/77/8, different 0/0/0 (groups of no, one, several deletes); in the different: MT - today key nodes 0, live klongs 0, height differs in 0
+  5.5 cost MT/today: made 44/44 (1.00), changed 374/374 (1.00), klongs 822/822 (1.00), tops 8/8, B-new 46484/46484 (1.00), B-all 160564/160564 (1.00); the index alone: B-new 31036/31036 (1.00), B-all 145116/145116 (1.00)
+  5.5 a deleted key (93): extra made mean 0.00, most 0; extra B-new mean 0.00, most 0; extra B-all mean 0.00; today's merges 0, take-backs 0
+  5.6 fix steps a key (steps: keys): 0: 93; mean 0.00; a group: most 0
+  5.6 by the height of the key's segment tree: 0: 19 keys, mean 0.00, most 0, 1: 74 keys, mean 0.00, most 0
+  5.6 by the path's nodes: 1: 6 keys, mean 0.00, most 0, 2: 76 keys, mean 0.00, most 0, 3: 11 keys, mean 0.00, most 0
+  5.6 height: MT's greatest above before and today's in 0 groups (by how much: ); H needed: MT 1, today 1
+  5.6 untidy: 0 boundaries; most key nodes with a fill fault at one: 0; boundaries with an index node without a live key below: 0
+  5.6 top nodes made: by fix steps 0, by MT's user transactions 8, by today's 8
+  K4: A random-100 seed 2 group 135 at 67 [put[3336] del[4040]] b67: FillOK: key node 1178, not a root, has 7 live klongs at 67, fewer than m = 8
+  K4: A random-100 seed 2 group 136 at 68 [put[1928]] b68: FillOK: key node 1178, not a root, has 7 live klongs at 68, fewer than m = 8
+  K4: A random-100 seed 2 group 137 at 69 [put[4296]] b69: FillOK: key node 1178, not a root, has 7 live klongs at 69, fewer than m = 8
+  K4: A random-100 seed 2 group 138 at 70 [put[968]] b70: FillOK: key node 1178, not a root, has 7 live klongs at 70, fewer than m = 8
+  K4: A random-100 seed 2 group 139 at 71 [put[968] del[4744]] b71: FillOK: key node 1178, not a root, has 6 live klongs at 71, fewer than m = 8
+  K4: A random-100 seed 2 group 140 at 72 [del[1736]] b72: FillOK: key node 1178, not a root, has 6 live klongs at 72, fewer than m = 8
+  K4: A random-100 seed 2 group 141 at 73 [del[648] put[1416] put[3272]] b73: FillOK: key node 1178, not a root, has 6 live klongs at 73, fewer than m = 8
+  K4: A random-100 seed 2 group 142 at 74 [put[3528]] b74: FillOK: key node 1178, not a root, has 6 live klongs at 74, fewer than m = 8
+  K4: A random-100 seed 2 group 143 at 75 [put[120, 1416]] b75: FillOK: key node 1178, not a root, has 6 live klongs at 75, fewer than m = 8
+  K4: A random-100 seed 2 group 144 at 76 [put[712] del[1800]] b76: FillOK: key node 1178, not a root, has 6 live klongs at 76, fewer than m = 8
+  K4: A random-100 seed 2 group 145 at 77 [put[968]] b77: FillOK: key node 1178, not a root, has 6 live klongs at 77, fewer than m = 8
+  K4: A random-100 seed 2 group 146 at 78 [put[6280]] b78: FillOK: key node 1178, not a root, has 7 live klongs at 78, fewer than m = 8
+MTTEST OK

@@ -1,0 +1,7 @@
+# The stanza that branch 026-17-mt-trial adds to lean/lakefile.toml
+# (not a default target: `lake build` is as on main).
+
+
+[[lean_exe]]
+name = "mttest"
+root = "MtTest"

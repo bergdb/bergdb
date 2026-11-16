@@ -1,0 +1,43 @@
+  G segments 30 x 20, 1 a tx, seed 1: 1212 groups, 1246 boundaries, 0 failures so far, 16 s
+  G segments 30 x 20, 1 a tx, seed 2: 2424 groups, 2491 boundaries, 0 failures so far, 33 s
+  G segments 30 x 20, 1 a tx, seed 3: 3636 groups, 3737 boundaries, 0 failures so far, 50 s
+  G segments 30 x 20, 10 a tx, seed 1: 3768 groups, 3903 boundaries, 0 failures so far, 52 s
+  G segments 30 x 20, 10 a tx, seed 2: 3900 groups, 4068 boundaries, 0 failures so far, 55 s
+  G segments 30 x 20, 10 a tx, seed 3: 4032 groups, 4234 boundaries, 0 failures so far, 57 s
+  G segments 3 x 200, 1 a tx, seed 1: 5244 groups, 5505 boundaries, 0 failures so far, 75 s
+  G segments 3 x 200, 1 a tx, seed 2: 6456 groups, 6780 boundaries, 0 failures so far, 93 s
+  G segments 3 x 200, 1 a tx, seed 3: 7668 groups, 8055 boundaries, 0 failures so far, 111 s
+  G segments 3 x 200, 10 a tx, seed 1: 7800 groups, 8245 boundaries, 0 failures so far, 116 s
+  G segments 3 x 200, 10 a tx, seed 2: 7932 groups, 8437 boundaries, 0 failures so far, 120 s
+  G segments 3 x 200, 10 a tx, seed 3: 8064 groups, 8627 boundaries, 0 failures so far, 125 s
+  G segments 100 of three segments, 1 a tx, seed 1: 8266 groups, 8841 boundaries, 0 failures so far, 126 s
+  G segments 100 of three segments, 1 a tx, seed 2: 8468 groups, 9055 boundaries, 0 failures so far, 127 s
+  G segments 100 of three segments, 1 a tx, seed 3: 8670 groups, 9269 boundaries, 0 failures so far, 128 s
+  G segments 100 of three segments, 10 a tx, seed 1: 8692 groups, 9303 boundaries, 0 failures so far, 128 s
+  G segments 100 of three segments, 10 a tx, seed 2: 8714 groups, 9337 boundaries, 0 failures so far, 128 s
+  G segments 100 of three segments, 10 a tx, seed 3: 8736 groups, 9371 boundaries, 0 failures so far, 128 s
+G segments [MtTest.Mode.mt]: 18 runs, 8736 groups, 9371 boundaries (635 untidy), 0 beyond the level bounds, 0 failures; 128 s, 13.74 ms a boundary
+  failures by check: none
+  K4 at tidy boundaries: 0 with a fault; K7 second pass: 0 fix steps
+  bounds by side: 
+  reached MT's user transactions: bitmap.dead 129, bitmap.full 403, bitmap.inplace 638, bitmap.inplace.dead 50, bitmap.new 6580, dead.compact 259, lone-time-klong 1, segment.new 540, split.space1 287, split.space1.inplace 162, split.space2 26, split.space2.inplace 18, split.space3 12, split.time1 848, split.time2 8, top.new 20, user.emptied 258
+  reached MT's fix steps: bitmap.dead 21, bitmap.full 7, bitmap.new 242, dead.compact 110, fix.collapse.segment 18, fix.collapse.space 6, fix.merge.one 246, fix.merge.two 95, fix.unlink 270, lone-time-klong 1, merge.leaf 341, merge.left 177, merge.one 246, merge.parent.dead 78, merge.parent.delete 258, merge.parent.full 5, merge.right 164, merge.two 95, rc.replace.segment 18, rc.replace.space 6, split.time1 89, split.time2 33, top.new 39
+  fix steps merging an empty node into two: 0; untidy boundaries read after a user transaction that emptied a leaf, in a group with an unlink: 167
+  reached today: bitmap.dead 139, bitmap.full 407, bitmap.inplace 633, bitmap.inplace.dead 52, bitmap.new 6569, dead.compact 358, lone-time-klong 2, merge.leaf 348, merge.left 180, merge.made.left 20, merge.made.right 29, merge.one 242, merge.parent.dead 74, merge.parent.delete 269, merge.parent.full 5, merge.right 168, merge.takeback 49, merge.two 106, rc.replace.segment 14, rc.replace.space 6, rc.takeback.segment 3, segment.new 540, split.space1 287, split.space1.inplace 162, split.space2 26, split.space2.inplace 18, split.space3 12, split.time.inplace 1, split.time1 922, split.time2 40, top.new 58, up.climb 258, up.stop-at-segment-leaf 258, up.takeback 9, up.unlink 261
+  5.4 the tree against today's: equal 4446/3900/376, different 0/0/14 (groups of no, one, several deletes); in the different: MT - today key nodes -5, live klongs -5, height differs in 0
+    G segments 3 x 200, 10 a tx, seed 1 group 7699 at 38 [del[120, 4616] del[120, 5384] del[120, 6536] del[120, 10120] del[184, 5384] del[184, 9096] del[248, 1736] del[248, 5256] del[248, 5896] del[248, 12296]]: today 42 key nodes, height 1, 451 live klongs; MT 41 key nodes, height 1, 450 live klongs
+    G segments 3 x 200, 10 a tx, seed 1 group 7723 at 91 [del[120, 4424] del[120, 5128] del[184, 1416] del[184, 8712] del[248, 520] del[248, 1800] del[248, 4360] del[248, 4936] del[248, 10888] del[248, 11400]]: today 19 key nodes, height 1, 188 live klongs; MT 19 key nodes, height 1, 188 live klongs
+    G segments 3 x 200, 10 a tx, seed 1 group 7727 at 99 [del[120, 1800] del[120, 9096] del[184, 3592] del[184, 7752] del[184, 8968] del[248, 6920] del[248, 7112] del[248, 7368] del[248, 11528] del[248, 12424]]: today 15 key nodes, height 1, 144 live klongs; MT 15 key nodes, height 1, 144 live klongs
+  5.5 cost MT/today: made 2840/2781 (1.02), changed 17432/16564 (1.05), klongs 47314/46226 (1.02), tops 59/58, B-new 2623632/2540592 (1.03), B-all 7579744/7238688 (1.05); the index alone: B-new 1740432/1657392 (1.05), B-all 6696544/6355488 (1.05)
+  5.5 a deleted key (7800): extra made mean 0.00, most 2; extra B-new mean 10.64, most 512; extra B-all mean 43.72; today's merges 348, take-backs 49
+  5.6 fix steps a group with deletes (steps: groups): 0: 3848, 1: 350, 2: 59, 3: 16, 4: 4, 5: 2, 6: 2, 8: 2, 9: 5, 10: 2; most 10; nearest the driver's fuel: 3 of 832
+  5.6 a deleted key as its group's mean: mean 0.08, most 3.00
+  5.6 groups of one delete (3900, mean 0.08) (steps: keys): 0: 3604, 1: 273, 2: 20, 3: 3
+  5.6 groups of one delete, by the height of the key's segment tree: 0: 2241 keys, mean 0.06, most 3, 1: 1659 keys, mean 0.10, most 2
+  5.6 groups of one delete, by the path's nodes: 2: 203 keys, mean 0.28, most 1, 3: 3697 keys, mean 0.07, most 3
+  5.6 height: MT's greatest above before and today's in 0 groups (by how much: ); H needed: MT 1, today 1
+  5.6 untidy: 635 boundaries; most key nodes with a fill fault at one: 4; boundaries with an index node without a live key below: 278, most such key nodes at one: 10
+  A1: K1's scans at untidy boundaries where scan and scanWith differ: 0, at 0 boundaries
+  5.6 top nodes made: by fix steps 39, by MT's user transactions 20, by today's 58
+MTTEST OK
+exit 0, 129 s: mttest G

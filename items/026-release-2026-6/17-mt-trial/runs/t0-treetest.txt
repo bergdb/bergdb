@@ -1,0 +1,4 @@
+random M=30 seeds=3 steps=100 keys=100 ops<=16 deletes 50% merges theta=7: 300 states, 0 beyond the level bounds, 0 failures
+  merges: at most 1 in one operation, 1 in one transaction; TP23 (dirtyNodeBound) exceeded in 0 transactions
+  reached: bitmap.full 7, bitmap.inplace.dead 1, bitmap.new 85, dead.compact 3, merge.leaf 2, merge.left 2, merge.parent.delete 2, merge.two 2, segment.new 3, split.space1 2, split.space3 3, split.time1 21, split.time2 5, top.new 8
+TREETEST OK
