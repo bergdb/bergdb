@@ -745,3 +745,19 @@ later round the live counts hold, so the branch is harmless there.
 state). The node-map lemmas of the steps are proved
 (`liveEdges_collapseSpace`: the space root replaced by its child;
 `liveEdges_collapseSeg`: a segment leaf's klong names the child instead).
+
+2026-11-16, 23:58 to 2026-11-17, 00:00. Step 4, second part, prover l4a
+(LiveCollapseStep.lean). `collapseStepLiveOK_of`: the collapse's step from
+`CollapseSegFullLiveOK`, which asks it only at a segment root that existed
+before the transaction whose segment leaf has no room for one more klong or
+would compact (`replaceRoot`'s cascade at the leaf). Proved: at the space root,
+`takeBackRoot` and `replaceRoot` (the child the new space root,
+`liveEdges_collapseSpace`); below a segment leaf, `takeBackRoot` (the leaf's
+klong pointed in place) and `replaceRoot` with room (a new klong of the same
+compare value), both by `liveEdges_collapseSeg`. `writerWP_afterDelete_liveRF`:
+`afterDelete` with premises `MergeLiveFullOK`, `CollapseSegFullLiveOK`,
+`MergeParamsOK` and R3 after the merges' loop. Left of steps 3 and 4: the two
+full cases. The collapse's has no hole (the leaf's klong names a filled child),
+so `writerWP_appendKlongs_chainGL` applies as it stands, with the chain's facts
+as `writerWP_replaceRoot_seg_cascadeF` (CollapseCascade.lean) derives them; the
+merge's needs the cascade with the hole below the chain (R4) and R1 through it.

@@ -412,7 +412,13 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   (`liveEdges_collapseSpace`, `liveEdges_collapseSeg`); R3 (a root the transaction made with
   no made-for entry) is the narrowed premise `R3At` at collapse's start, after the merges'
   loop. `writerWP_afterDelete_liveR`: `afterDelete` with premises `MergeLiveOK`,
-  `CollapseStepLiveOK` and R3 after the merges' loop.
+  `CollapseStepLiveOK` and R3 after the merges' loop. 00:00 (step 4's second part,
+  `LiveCollapseStep.lean`): `CollapseStepLiveOK` is proved at the space root, for a root the
+  transaction made (taken back in place) and for a segment root whose leaf has room; left is
+  `CollapseSegFullLiveOK` (`replaceRoot`'s cascade at a full segment leaf; no hole there, so
+  `chainGL` as it stands). `writerWP_afterDelete_liveRF`: `afterDelete` from the call's facts
+  to `LiveEdges`, premises `MergeLiveFullOK`, `CollapseSegFullLiveOK`, `MergeParamsOK` and R3
+  after the merges' loop.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next
