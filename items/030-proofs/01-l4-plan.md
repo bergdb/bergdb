@@ -761,3 +761,24 @@ full cases. The collapse's has no hole (the leaf's klong names a filled child),
 so `writerWP_appendKlongs_chainGL` applies as it stands, with the chain's facts
 as `writerWP_replaceRoot_seg_cascadeF` (CollapseCascade.lean) derives them; the
 merge's needs the cascade with the hole below the chain (R4) and R1 through it.
+
+2026-11-16, 23:50, to 2026-11-17, 00:03. Step 6, first part, prover l4b. The
+leaf at the space root emptied with room: after its bitmap the root is an empty
+leaf that reaches nothing (`liveDel_emptyRootRoom`, LiveUpLeaf.lean, proved,
+no obligation). R2's live part: `liveEdgesH_up`, the emptied chain's frame
+(the tree's mirror `tReach_up_sub_tr`): after the chain leaves the tree and the
+stop node keeps its other live klongs, the live counts hold but at the stop
+node. The upward walks with the stop node's cached pair (LiveUpWalk.lean, about
+920 lines, near-copies of `writerWP_deleteUpward_upT_getJMBK` and
+`takeJ2_deleteUpward_upTMBKD`: their continuations get `ghOf`'s pair at a state
+of the invariant, and the inner stop node's leaf flag). With `LiveCounts` at the
+start the stop node is a segment leaf (`lebStop_false`), so the upward delete
+calls `afterDelete` at (g, 0) like the leaf with room. A stall point found (R2's
+heights): l4a's `writerWP_afterDelete_live` needs `HtInv` at the call; over
+`putKv` the chain's take-backs keep the heights only with the checked copy's
+checks (`ht_takeBackChk`: no other overlay node names the node taken back), so
+`HtInv` at the stop node's call is not available over `putKv`. Ways: the
+upward case over the checked copy (`putKvDelChk2`, its results equal by
+`OpDelChk2ORJ`, proved), or an invariant over `putKv` that the checks verify.
+Left in step 6: R1 at the stop node, the heights at its call, the full root and
+the full stop node (with the cascade).
