@@ -205,4 +205,163 @@ theorem liveDel_emptyRootRoom (p : Params) (R : Struct BVal → Time → Prop)
   rw [hN, hvtop]
   exact liveEdges_emptyRoot p _ _ L n' (updN_self _ _ _) (by rw [hleafeq]; exact hnl) hempty
 
+/-! ## The leaf at the space root emptied, full -/
+
+/-- A node's last version without the compare value cv whose live klongs are all
+of cv has no live klong. -/
+theorem lastVersionGivenDel_liveAt_nil (n : KNode) (cv : Nat) (t : Time)
+    (hall : n.allKeysIn (bitsUnion n.lastBitmap (n.bitsOf cv)) = true) :
+    (n.lastVersionGivenDel t (bitsUnion n.lastBitmap (n.bitsOf cv))).liveAt t = [] := by
+  have htimes : ∀ s, Klong.time s ∈ (n.lastVersionGivenDel t (bitsUnion n.lastBitmap (n.bitsOf cv))).ks →
+      s ≤ t := by
+    intro s hs
+    simp only [KNode.lastVersionGivenDel, List.mem_cons, List.mem_map] at hs
+    rcases hs with he | ⟨_, _, he⟩
+    · cases he; exact Nat.le_refl _
+    · cases he
+  rw [KNode.liveAt_of_times _ t htimes]
+  cases hl : (n.lastVersionGivenDel t (bitsUnion n.lastBitmap (n.bitsOf cv))).live with
+  | nil => rfl
+  | cons q rest =>
+    exfalso
+    have hq : q ∈ (n.lastVersionGivenDel t (bitsUnion n.lastBitmap (n.bitsOf cv))).live := by
+      rw [hl]; exact List.mem_cons_self
+    have hlk := lookup_of_mem_nodup _ (KNode.live_keys_nodup _) q.1 q.2 hq
+    rw [KNode.delete_live_lookup] at hlk
+    by_cases hqc : q.1 = cv
+    · rw [hqc] at hlk; simp at hlk
+    · have hb : (q.1 == cv) = false := by simp [hqc]
+      rw [hb] at hlk
+      simp only [Bool.false_eq_true, ↓reduceIte] at hlk
+      exact hqc (allKeysIn_live_cv n cv hall q.1 q.2 (bk_mem_of_lookup _ _ _ hlk))
+
+theorem foldl_fixed {α β : Type} (f : β → α → β) :
+    ∀ (xs : List α) (acc : β), (∀ x ∈ xs, ∀ m, f m x = m) → xs.foldl f acc = acc := by
+  intro xs
+  induction xs with
+  | nil => intro acc _; rfl
+  | cons x xs ih =>
+    intro acc h
+    simp only [List.foldl_cons]
+    rw [h x List.mem_cons_self acc]
+    exact ih acc (fun y hy => h y (List.mem_cons_of_mem _ hy))
+
+theorem lastVersionGivenDel_ks_allIn (n : KNode) (t : Time) (del : List Nat)
+    (hall : n.allKeysIn del = true) : (n.lastVersionGivenDel t del).ks = [.time t] := by
+  unfold KNode.allKeysIn at hall
+  unfold KNode.lastVersionGivenDel
+  simp only []
+  rw [foldl_fixed _ _ _ ?_]
+  · simp
+  · intro x hx m
+    have hx' := List.all_eq_true.mp hall x hx
+    rcases x with ⟨k, i⟩
+    cases k with
+    | key c y =>
+      simp only at hx' ⊢
+      have hi : i ∈ del := by simpa using hx'
+      simp [hi]
+    | time _ => rfl
+    | del _ => rfl
+
+set_option maxHeartbeats 1600000 in
+/-- The leaf at the space root emptied (bergdb 030-01, step 6), with room or full:
+after its bitmap, or its split in time when full (its last version without the key
+has no key klong), the space root is an empty leaf, and the live counts hold. -/
+theorem liveDel_emptyRoot (p : Params) (R : Struct BVal → Time → Prop) (hsa2 : 2 ≤ p.splitAbove)
+    (hRL : ∀ P t, R P t → RunLinksOK p P t) :
+    ∀ ts tx, Within p (ts ++ [tx]) → R (treeRun p ts) ts.length → ∀ z top,
+      lastTop (view (treeSpec p) (treeRun p ts) ts.length) = some z →
+      topOf p (ctxOf p ts).view z = .ok top →
+      ∀ pre op post, tx.ops = pre ++ op :: post →
+      ∀ r w, (pre.mapM putKv) (ctxOf p ts) (wInit tx top) = .ok (r, w) →
+      PutInv (ctxOf p ts) (viewOf (treeRun p ts)) w →
+      DelEmptyRootM (ctxOf p ts) (viewOf (treeRun p ts)) w op →
+      WriterWP (putKv op) (ctxOf p ts) w (fun _ w' =>
+        LiveEdges p (wNode p (viewOf (treeRun p ts)) w') (ts.length + 1) w'.top.rootKey) := by
+  intro ts tx hw hr z top hz htop ops op post hops r w hpre hI hPc
+  obtain ⟨pre, cv, L0, n0, hop', hm, hK, hne0, hall0, hroot0⟩ := hPc
+  by_cases hroom0 : DelRoom (ctxOf p ts) cv n0
+  · exact liveDel_emptyRootRoom p R hRL ts tx hw hr z top hz htop ops op post hops r w hpre hI
+      ⟨pre, cv, L0, n0, hop', hm, hK, hne0, hall0, hroot0, hroom0⟩
+  subst hop'
+  obtain ⟨rk, hrk, _⟩ := keyLeaf_rk hK
+  refine writerWP_del_toLeafMK (ctxOf p ts) _ (viewCoherent_ctxOf p ts) pre cv rk w (fun _ => True) trivial
+    (fun s f x v _ _ => writerWP_true _ _ _) (fun _ _ _ _ _ _ _ _ _ => trivial) trivial hrk
+    (hI.pathUntaken _) hI.wf _ ?_ ?_
+  · intro v hv
+    unfold fresh
+    simp only [writerWP_bind, writerWP_get, writerWP_set, writerWP_pure]
+    exact hv
+  intro L n P w3 hL hn hnl hr03 _ hlk3 hp3' hlinkP hXD _
+  obtain ⟨hne, hall, hLr, hfull⟩ := keyLeaf_all2 hK hrk
+    (fun L' m => bitsUnion m.lastBitmap (m.bitsOf cv) ≠ m.lastBitmap ∧
+      m.allKeysIn (bitsUnion m.lastBitmap (m.bitsOf cv)) = true ∧ L' = w.top.rootKey ∧
+      ¬ DelRoom (ctxOf p ts) cv m)
+    ⟨hne0, hall0, hroot0, hroom0⟩ L n hL hn hnl
+  have hPnil := path_nil_of_root _ _ w hI.tree P hlinkP (by rw [hXD, hLr])
+  subst hPnil
+  have hp0 : (w3.path[0]?).map (·.2) = some L := by rw [hp3', hLr]; rfl
+  refine writerWP_deleteUpward_rootEmpty (ctxOf p ts) L n cv (pre ++ [cv]) w3 hlk3 hp0 hnl hne hall _ ?_
+  have hLt : w.taken.contains L = false :=
+    hI.pathUntaken _ (L, cv) (fromVisits_append _ _ _ pre cv _ rk hrk _ hL)
+  have hlk3' : ({ w3 with trail := "up.root-kept-empty" :: w3.trail } : W).nodes.lookup L = some n := hlk3
+  refine writerWP_appendDeleteKlong_full_of L 0 cv n _ _ hlk3' hne hfull _ ?_
+  intro compact s
+  generalize hw4 : ({ ({ w3 with trail := "up.root-kept-empty" :: w3.trail } : W) with
+    trail := s :: ({ w3 with trail := "up.root-kept-empty" :: w3.trail } : W).trail } : W) = w4
+  have h4n : w4.nodes = w3.nodes := by rw [← hw4]
+  have h4t : w4.taken = w3.taken := by rw [← hw4]
+  have h4top : w4.top = w3.top := by rw [← hw4]
+  have h4next : w4.next = w3.next := by rw [← hw4]
+  have hlk4 : w4.nodes.lookup L = some n := by rw [h4n]; exact hlk3
+  have hL4t : w4.taken.contains L = false := by rw [h4t, hr03.2.2.1]; exact hLt
+  generalize hlast : n.lastVersionGivenDel (ctxOf p ts).i (bitsUnion n.lastBitmap (n.bitsOf cv)) = last
+  have hlastks : last.leaf = n.leaf := by rw [← hlast]; rfl
+  have hlastE : last.liveAt (ts.length + 1) = [] := by
+    rw [← hlast]; exact lastVersionGivenDel_liveAt_nil n cv _ hall
+  have hlastNode : (⟨n.leaf, last.ks⟩ : KNode) = last := by rw [← hlastks]
+  have hcs : (!compact && decide (last.size > (ctxOf p ts).p.splitAbove)) = false := by
+    have hsz : last.size = 1 := by
+      rw [← hlast]
+      simp only [KNode.size, lastVersionGivenDel_ks_allIn n _ _ hall, List.length_singleton]
+    rw [hsz]
+    have : ¬ (1 > (ctxOf p ts).p.splitAbove) := by simp only [ctxOf]; omega
+    simp [this]
+  have hI3 := putInv_of_readsAs _ _ w w3 hI hr03
+  unfold handleFull
+  cases hfirst : n.firstTime == some (ctxOf p ts).i with
+  | true =>
+    have hfirst' : n.firstTime = some (ctxOf p ts).i := by simpa using hfirst
+    refine writerWP_mono (writerWP_handleFullWith_timeInPlace_nilV _ 0 L n last compact (ctxOf p ts) _
+      (viewCoherent_ctxOf p ts) w4 hlk4 hL4t hfirst' hcs) ?_
+    rintro _ v ⟨_, hvtop, _, hvN⟩
+    have hvr : v.top.rootKey = L := by rw [hvtop, h4top, hr03.2.1, hLr]
+    rw [hvr]
+    refine liveEdges_emptyRoot p _ _ L last ?_ (by rw [hlastks]; exact hnl) hlastE
+    rw [show (ctxOf p ts).p = p from rfl] at hvN
+    rw [hvN L]
+    simp [hlastNode]
+  | false =>
+    have hfirst' : n.firstTime ≠ some (ctxOf p ts).i := by simpa using hfirst
+    have hLn : L < w4.next := by
+      rw [h4next]; exact hI3.ids.1 L (by rw [hlk3]; rfl)
+    have hny : w4.nodes.lookup w4.next = none := by
+      rw [h4n, h4next]
+      cases h' : w3.nodes.lookup w3.next with
+      | none => rfl
+      | some m => have := hI3.ids.1 w3.next (by rw [h']; rfl); omega
+    refine writerWP_mono (writerWP_handleFullWith_rootTimeSplit_nilV _ L n last compact (ctxOf p ts) w4 hlk4
+      hfirst' hcs hLn hny) ?_
+    rintro _ v ⟨⟨hvt, hvr, hvN⟩, _⟩
+    rw [hvr]
+    have hnt : v.taken.contains w4.next = false := by
+      rw [hvt, h4t, h4next]
+      cases h' : w3.taken.contains w3.next with
+      | false => rfl
+      | true => have := hI3.ids.2.2.1 w3.next h'; omega
+    refine liveEdges_emptyRoot p _ _ w4.next last ?_ (by rw [hlastks]; exact hnl) hlastE
+    have hx : w4.next ≠ L := by omega
+    simp only [wNode, hnt, Bool.false_eq_true, ↓reduceIte, hvN w4.next, hx, hlastNode]
+
 end SIS.Tree

@@ -406,7 +406,10 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   the upward steps (`UpHtWalk`, the open R2 heights); with l4a's loop it keeps the live counts
   (`liveDel_upRoom_live`, premises `MergeLiveOK`, `CollapseLiveOK`, `UpHtWalk`). R1 at the stop
   node is proved (`holeAtW_stop`, `LiveUpHole.lean`: the descent's path is the walk's,
-  `linkedFrom_unique`; the stop node ends one segment's search; the key's descent is cut there). 23:35 (prover l4a, step 3's first part): the merges' loop with
+  `linkedFrom_unique`; the stop node ends one segment's search; the key's descent is cut there). 00:22
+  (l4b): the space root emptied, full too: its last version without the key has no key
+  klong, so it splits in time into an empty leaf (`liveDel_emptyRoot`, `DelEmptyRootM` proved
+  with no premise). 23:35 (prover l4a, step 3's first part): the merges' loop with
   the hole (`LiveLoop.lean`): `writerWP_afterDelete_live`, from `DelInvJAE`, the books,
   `HtInv` and `LiveHoleW key g 0` at a call of `afterDelete`, ends with `LiveEdges`, given
   two obligations: `MergeLiveOK` (a merge of a round keeps the hole one height up, or into
