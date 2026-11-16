@@ -684,3 +684,20 @@ the found node is the segment's root (`descend_exit_shape`, by `dhP_inner`), a
 filled node meets `ChildOK`, and before any merge the hole is a leaf
 (`found_leaf_of_h0`, the books). Choice (by rule, KISS): the hole at the call is
 at height 0, the leaf's, so no separate leaf premise.
+
+2026-11-16, 23:36 to 23:45. Step 3, second part, prover l4a (LiveMergeRoom.lean,
+about 1,300 lines, about 400 of them near-copies of the pilot's writer-level
+merge and round). `mergeLiveOK_of_full`: `MergeLiveOK` from `MergeLiveFullOK`,
+which asks it only where the parent has no room or may compact (`¬ MergeRoom`).
+Proved: every merge whose parent has room and no compaction, of nodes the
+transaction made (taken back, `writerWP_mergeCleanup_frameV`) or not, into one
+node (`liveEdgesH_mergeOne`) or into two (`liveEdges_mergeTwo`: no hole; the new
+nodes are filled, halves of more than `mergeMax` klongs; the parent keeps its
+number of live klongs, `live_len_mergeTwo`, the second node's compare value
+being no other live one of the parent's, as `dw_mergeTail` shows for `d4`).
+`writerWP_afterDelete_liveF`: `afterDelete` with premises `MergeLiveFullOK` and
+`CollapseLiveOK` (and `MergeParamsOK`). The pilot's three lemmas are instances
+of the room ones (`writerWP_mergeTail_liveRoom`, `writerWP_merge_liveRoom`,
+`liveHoleW_merge_room`); the close step can drop them. Left in step 3: the full
+parent (`mergeParent`'s `full`: `handleFull` of its last version and the
+cascade, the hole below the chain, and R1 through the cascade).

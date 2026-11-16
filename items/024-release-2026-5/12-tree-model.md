@@ -391,7 +391,14 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   two nodes leaves none; the pilot is its first case) and `CollapseLiveOK` (root collapse
   from the loop's exit form `LiveExit`: the hole, after a merge, only at the root of segment
   g that collapse's descent finds). The loop is the stratum's with the hole and the heights
-  beside it; its exits (the space root, a segment root, a filled node) are proved.
+  beside it; its exits (the space root, a segment root, a filled node) are proved. 23:45
+  (step 3's second part, `LiveMergeRoom.lean`): `MergeLiveOK` is proved for every merge whose
+  parent has room and no compaction (`MergeRoom`), of nodes the transaction made or not, into
+  one node (the hole one height up) or two (no hole: both new nodes filled, the parent keeps
+  its count, `live_len_mergeTwo`); left of it is `MergeLiveFullOK`, the merges whose parent is
+  full or compacts (its split and cascade with the hole below the chain).
+  `writerWP_afterDelete_liveF`: `afterDelete` from the call's facts to `LiveEdges`, premises
+  `MergeLiveFullOK` and `CollapseLiveOK`.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next
