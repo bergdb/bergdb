@@ -8,6 +8,9 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import bergdb.common.Bytes;
@@ -54,6 +57,7 @@ import bergdb.pub.util.LookupTimeNotAvailableException;
 import bergdb.pub.util.SyncLevel;
 import bergdb.storage.BufferedStream;
 import bergdb.storage.RecoverableStream;
+import bergdb.storage.StorageManager;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
 import bergdb.storage.VersioningStreamException;
@@ -434,6 +438,148 @@ public class PubTester {
         Assert.assertEquals("a", d2.connection().get("/a", String.class));
         Assert.assertEquals("b", d2.connection().get("/b", String.class));
         d2.close();
+    }
+    
+    /**
+     * bergdb 028-07: a start whose creation's sync waits holds up no other start. Here a
+     * test hook holds the sync of the start of directory a (Db.syncCreation) on a latch, as
+     * a slow disk, or a sync after an OutOfMemoryError, can hold it. Meanwhile a start of
+     * directory b and one of memory() run to the end, and a start of a is refused at once,
+     * with DirectoryInUseException as the cause: one database at a time has a directory.
+     * Until 028-07 DatabaseImp.createAndStart() held the lock of its class through the
+     * sync, and every start in the JVM waited for it (bergdb 026-13, U13-3).
+     */
+    @Nano
+    public static void testStartDoesNotWaitForAnotherStart(TestEnvironment env) 
+            throws Exception {
+        final File tmp = env.createTempDir();
+        final File a = new File(tmp, "a");
+        final String b = new File(tmp, "b").getPath();
+        final CountDownLatch entered = new CountDownLatch(1);
+        final CountDownLatch release = new CountDownLatch(1);
+        final AtomicReference<Object> resultA = new AtomicReference<Object>();
+        final Thread threadA = new Thread(() -> {
+            try {
+                resultA.set(Factory.database().create(a.getPath()).start());
+            } catch (Throwable e) {
+                resultA.set(e);
+            }
+        }, "028-07 start of a");
+        StorageManager.testHookSync = () -> {
+            if (Thread.currentThread() == threadA && entered.getCount() > 0) {
+                entered.countDown();        // Its first sync only.
+                try {
+                    release.await(20, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        };
+        Database dbB = null;
+        Database dbM = null;
+        boolean ok = false;
+        try {
+            threadA.start();
+            Assert.assertTrue("a's start reached its sync", entered.await(30, TimeUnit.SECONDS));
+            
+            dbB = Factory.database().create(b).start();
+            dbB.connection().put("/b", "b");
+            dbB.sync();
+            dbM = Factory.database().memory().start();
+            dbM.connection().put("/m", "m");
+            try {
+                Factory.database().create(a.getPath()).start().close();
+                throw new AssertionError("a second database started on a's directory");
+            } catch (StreamIoException e) {
+                Assert.assertTrue("the cause, " + e.getCause(), 
+                        e.getCause() instanceof DirectoryInUseException);
+            }
+            Assert.assertTrue("a's start is held still", threadA.isAlive() 
+                    && resultA.get() == null);
+            ok = true;
+        } finally {
+            release.countDown();
+            threadA.join(30_000);
+            StorageManager.testHookSync = null;
+            if (dbB != null) dbB.close();
+            if (dbM != null) dbM.close();
+            if (!ok && resultA.get() instanceof Database) ((Database) resultA.get()).close();
+        }
+        
+        Assert.assertFalse("a's start ended", threadA.isAlive());
+        Object r = resultA.get();
+        Assert.assertTrue("a started: " + r, r instanceof Database);
+        Database dbA = (Database) r;
+        try {
+            Assert.assertTrue("a's created.txt", new File(a, "created.txt").exists());
+            dbA.connection().put("/a", "a");
+            Assert.assertEquals("a", dbA.connection().get("/a", String.class));
+        } finally {
+            dbA.close();
+        }
+        Database dbB2 = Factory.database().open(b).start();
+        Assert.assertEquals("b", dbB2.connection().get("/b", String.class));
+        dbB2.close();
+    }
+    
+    /**
+     * bergdb 028-07: starts of one directory at the same time, from several threads, now
+     * that no lock of DatabaseImp's class orders them: one starts the database, and each
+     * other is refused with DirectoryInUseException as the cause (FileStream's lock, bergdb
+     * 005-63). The database holds what the one wrote.
+     */
+    @Nano
+    public static void testStartsOfOneDirectoryAtOnce(TestEnvironment env) throws Exception {
+        final int n = 4;
+        final File tmp = env.createTempDir();
+        for (int round = 0; round < 3; round++) {
+            final String dir = new File(tmp, "d" + round).getPath();
+            final CountDownLatch go = new CountDownLatch(1);
+            final Object[] results = new Object[n];
+            Thread[] threads = new Thread[n];
+            for (int k = 0; k < n; k++) {
+                final int kk = k;
+                threads[k] = new Thread(() -> {
+                    try {
+                        go.await(30, TimeUnit.SECONDS);
+                        results[kk] = Factory.database().create(dir).start();
+                    } catch (Throwable e) {
+                        results[kk] = e;
+                    }
+                });
+                threads[k].start();
+            }
+            go.countDown();
+            for (Thread t : threads) {
+                t.join(30_000);
+            }
+            Database started = null;
+            String failure = null;
+            for (int k = 0; k < n; k++) {
+                Assert.assertFalse("a start ended", threads[k].isAlive());
+                Object r = results[k];
+                if (r instanceof Database) {
+                    if (started != null) {
+                        ((Database) r).close();
+                        failure = "two databases started on one directory";
+                    } else {
+                        started = (Database) r;
+                    }
+                } else if (!(r instanceof StreamIoException 
+                        && ((StreamIoException) r).getCause() instanceof DirectoryInUseException)) {
+                    failure = "a start threw " + r;
+                }
+            }
+            if (started != null) {
+                started.connection().put("/k", "v" + round);
+                started.close();
+            }
+            Assert.assertTrue(failure, failure == null);
+            Assert.assertTrue("no database started", started != null);
+            Database again = Factory.database().open(dir).start();
+            Assert.assertEquals("v" + round, again.connection().get("/k", String.class));
+            again.close();
+        }
     }
     
     /**
