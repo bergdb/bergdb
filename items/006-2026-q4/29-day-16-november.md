@@ -102,6 +102,17 @@ at xhigh, each in its own clone made at 14:40 (W6,
 * **l4plan**, a planning agent (030, D1): writes 030-01, `l4`'s plan;
   brief `night/briefs/l4plan.md`; the coordinator commits.
 * STOP for the main line: `/Users/f/fl/bench/2026-11-16/night/STOP`.
+* **Added at 17:05** (the coordinator's proposal, by default from 17:30;
+  Frans left at 17:08): `night.sh` from 22:05 (the first night run
+  since 028-07 and 028-14 landed); **t16**, 028-16 (Opus at high, clone
+  `/Users/f/fl/bench/2026-11-16/t16/clone`, brief `night/briefs/t16.md`;
+  the coordinator lands it after BEFORE COMMIT OK); **d3plan**, the plan
+  for 030's D3, the bridges, as 030-02 (Opus at xhigh, brief
+  `night/briefs/d3plan.md`); and a prover on `l4` once 030-01 is
+  written, only if its route needs no statement change.
+* Unattended from 17:10 until Tuesday 07:00 (Frans: "I am about to
+  leave", 17:08; the return time a default): check-ins every 20
+  minutes, the watchdog, a one-off at 22:03 that starts the night.
 
 **The rules of the night:**
 
