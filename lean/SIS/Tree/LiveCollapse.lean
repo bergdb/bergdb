@@ -80,7 +80,7 @@ theorem onlyStep_none_fold (del : List Nat) (ks : List Klong) :
   rwa [List.reverse_reverse] at this
 
 /-- `keyLookup` finds a compare value that a kept key klong has. -/
-theorem keyLookup_ne_none_of_kept (del : List Nat) (c : Nat) :
+theorem keyLookup_fold_ne_none_of_kept (del : List Nat) (c : Nat) :
     ∀ (xs : List (Klong × Nat)) (acc : Option NodeId),
       (acc ≠ none ∨ ∃ y j, (Klong.key c y, j) ∈ xs ∧ j ∉ del) →
       xs.foldl (keyLookupStep del c) acc ≠ none := by
@@ -122,7 +122,7 @@ theorem two_le_live_of_onlyNone (n : KNode) (h : n.onlyLiveKlong = none) (hne : 
       c ∈ n.live.map Prod.fst := by
     intro j c y hj hd
     have hk : keyLookup n.ks n.lastBitmap c ≠ none :=
-      keyLookup_ne_none_of_kept n.lastBitmap c n.ks.zipIdx none
+      keyLookup_fold_ne_none_of_kept n.lastBitmap c n.ks.zipIdx none
         (Or.inr ⟨y, j, List.mem_zipIdx_iff_getElem?.mpr hj, hd⟩)
     rw [← KNode.live_lookup] at hk
     cases hl : n.live.lookup c with
