@@ -103,8 +103,9 @@ at xhigh, each in its own clone made at 14:40 (W6,
   brief `night/briefs/l4plan.md`; the coordinator commits.
 * STOP for the main line: `/Users/f/fl/bench/2026-11-16/night/STOP`.
 * **Added at 17:05** (the coordinator's proposal, by default from 17:30;
-  Frans left at 17:08): `night.sh` from 22:05 (the first night run
-  since 028-07 and 028-14 landed); **t16**, 028-16 (Opus at high, clone
+  Frans left at 17:08): `night.sh`, started at 17:12 on Frans's word
+  ("Should we run night.sh now. I dont need the computer", 17:11), the
+  first night run since 028-07 and 028-14 landed; **t16**, 028-16 (Opus at high, clone
   `/Users/f/fl/bench/2026-11-16/t16/clone`, brief `night/briefs/t16.md`;
   the coordinator lands it after BEFORE COMMIT OK); **d3plan**, the plan
   for 030's D3, the bridges, as 030-02 (Opus at xhigh, brief
