@@ -37,7 +37,9 @@ Frans's words:
 
 ## 4. Progress
 
-* 08:40 006-28 and this plan created; W1 started.
+* 08:28 006-28 and this plan created (bb255d4b); W1 started.
+* 08:39 and 08:43 the agent stopped on API 529 (Fable overloaded); resumed 08:40 and 08:54.
+* 09:07 006-28 done (816 lines; the counts in 28-simpler-algorithms/): top three NW (a writer that computes the net change; a one-day spike in the model before SF10), RT (Rule A with times; measure S1 first), OT (one tree, after `l4`); scan removal: no. Six questions for Frans, section 7.
 
 
 ## 5. Outcome

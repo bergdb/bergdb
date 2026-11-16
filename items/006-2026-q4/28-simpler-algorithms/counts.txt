@@ -1,0 +1,98 @@
+== lean/ by directory: files, lines, theorems and lemmas
+.                9     1682      0
+BergDB/Index    11     5220    157
+Check            8     2413     30
+SIS             51     9262     89
+SIS/Proof      108    50364   1861
+SIS/Tree       474   167243   4874
+total 661 236184 7011
+
+== lines by kind of declaration
+.: def 1263, header 341, structure 54, example 24
+BergDB/Index: theorem 4129, def 387, inductive 294, header 210, structure 197, abbrev 3
+Check: def 1544, theorem 471, structure 216, header 159, instance 16, abbrev 7
+SIS: def 5780, theorem 1586, header 1351, structure 398, inductive 97, abbrev 28, example 22
+SIS/Proof: theorem 46460, header 1984, def 1188, structure 706, inductive 18, abbrev 8
+SIS/Tree: theorem 148206, def 10131, header 8106, structure 527, inductive 142, abbrev 106, class 25
+
+== SIS/Tree by the writer's rule (167243 lines): declarations, lines, share
+merge                                         899   35225  21.1 %
+general                                      2029   30719  18.4 %
+split and cascade                             563   30544  18.3 %
+delete: leaf bitmap and its steps             777   18167  10.9 %
+upward delete, stop node, LE-b                324   16634   9.9 %
+key node: klongs, searches, encoding          651    7776   4.6 %
+new segments                                  201    7651   4.6 %
+root collapse                                 257    7372   4.4 %
+put: leaf with room, setValue                 325    7256   4.3 %
+top node, skip pointers                       196    2529   1.5 %
+scan                                          138    2013   1.2 %
+earlier times                                 102    1357   0.8 %
+
+== SIS/Tree by concern: declarations, lines, share
+tree shape: pointers, kinds, sizes, cache            1656   35180  21.0 %
+take-back, previous versions, made-for, books        1019   29494  17.6 %
+reading (TP10)                                        712   28104  16.8 %
+fuel and heights                                      994   21032  12.6 %
+key order and ranges                                  181   13968   8.4 %
+dead klongs (theta)                                   422   11252   6.7 %
+general                                               422   10449   6.2 %
+live counts (fill)                                    339    7363   4.4 %
+key node: klongs, searches, encoding                  535    7251   4.3 %
+scan (TP11)                                           123    2105   1.3 %
+earlier times                                          59    1045   0.6 %
+
+== SIS/Tree, rule by concern, lines (cells of 800 lines or more)
+  10322  split and cascade  /  tree shape: pointers, kinds, sizes, cache
+   9630  merge  /  take-back, previous versions, made-for, books
+   9463  split and cascade  /  reading (TP10)
+   8460  general  /  tree shape: pointers, kinds, sizes, cache
+   6856  general  /  fuel and heights
+   6845  merge  /  tree shape: pointers, kinds, sizes, cache
+   5830  upward delete, stop node, LE-b  /  take-back, previous versions, made-for, books
+   5195  delete: leaf bitmap and its steps  /  fuel and heights
+   5084  merge  /  reading (TP10)
+   4698  general  /  take-back, previous versions, made-for, books
+   4373  merge  /  key order and ranges
+   4003  general  /  reading (TP10)
+   3449  upward delete, stop node, LE-b  /  general
+   3312  root collapse  /  take-back, previous versions, made-for, books
+   3305  key node: klongs, searches, encoding  /  key node: klongs, searches, encoding
+   3102  split and cascade  /  key order and ranges
+   2871  merge  /  dead klongs (theta)
+   2868  upward delete, stop node, LE-b  /  fuel and heights
+   2406  new segments  /  reading (TP10)
+   2363  split and cascade  /  dead klongs (theta)
+   2347  merge  /  general
+   2327  delete: leaf bitmap and its steps  /  key order and ranges
+   2293  merge  /  fuel and heights
+   2149  delete: leaf bitmap and its steps  /  take-back, previous versions, made-for, books
+   2141  delete: leaf bitmap and its steps  /  tree shape: pointers, kinds, sizes, cache
+   2137  put: leaf with room, setValue  /  tree shape: pointers, kinds, sizes, cache
+   2028  general  /  live counts (fill)
+   1930  delete: leaf bitmap and its steps  /  general
+   1778  general  /  key order and ranges
+   1662  split and cascade  /  take-back, previous versions, made-for, books
+   1485  new segments  /  tree shape: pointers, kinds, sizes, cache
+   1402  upward delete, stop node, LE-b  /  reading (TP10)
+   1393  key node: klongs, searches, encoding  /  reading (TP10)
+   1331  general  /  general
+   1321  put: leaf with room, setValue  /  reading (TP10)
+   1299  scan  /  scan (TP11)
+   1289  delete: leaf bitmap and its steps  /  dead klongs (theta)
+   1262  delete: leaf bitmap and its steps  /  key node: klongs, searches, encoding
+   1250  upward delete, stop node, LE-b  /  dead klongs (theta)
+   1151  split and cascade  /  fuel and heights
+   1108  split and cascade  /  live counts (fill)
+   1097  key node: klongs, searches, encoding  /  tree shape: pointers, kinds, sizes, cache
+   1090  merge  /  live counts (fill)
+   1086  root collapse  /  reading (TP10)
+   1080  top node, skip pointers  /  tree shape: pointers, kinds, sizes, cache
+   1032  general  /  dead klongs (theta)
+    952  new segments  /  dead klongs (theta)
+    833  delete: leaf bitmap and its steps  /  live counts (fill)
+    823  put: leaf with room, setValue  /  take-back, previous versions, made-for, books
+    808  upward delete, stop node, LE-b  /  tree shape: pointers, kinds, sizes, cache
+
+== SIS/Tree, the files with most lines under no rule ("general")
+RangeSim 902; NoOutsideRun1 896; WriterKindsRules 895; GetCommit 838; GetFrame 753; HeightsFillLoop 624; RangeSteps 590; MadeForView 547; MadeForOld 538; WriterTree 504; WriterPtrs 497; NoOutsideRun2 496; InvAssembly 456; CacheGood 422; NoOutsideBase 414; WriterBook 398; LiveStepsX 389; FreshCache 387; WriterNonempty 380; WriterCacheUnique 370; Exec 366; ApplyBridge 361; Bound 330; GetWriter 327; NoOutsideRun3 327; LiveCounts 310; WriterHeightsRules 299; WriterTreeVisits 292; GetReachBack 267; WriterKindsRun 266; Props 262; DeadLocal 258; HeightsFill 254; WriterFields 249; WriterTakenOps 247; WriterGoodOps 242; HeightsFuel 239; PointersRun 238; WriterSizeOps 237; PremisesFalse 231; WriterFrame 231; WriterGood 230; KindsStep 228; WriterStateInvariant 222; LatestJoint 215; TakeDeadAssembly 212; TreeGet 209; HeightsUnder 208; WriterTaken 208; WriterSize 207; Read 206; HeightsNode 205; HeightsRun 205; WriterBookOps 205; SizeRules 202; WriterPtrsOps 200; HeightsStep 199; WriterLeft 198; WriterNonemptyRun 196; GetNewRoot 195
