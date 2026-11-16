@@ -42,6 +42,11 @@ Frans's words:
 * **W3, 028-14 and 028-07** (agents t14 and t07, Opus at high, each in
   a clone; Frans, 11:01): fix or options; the coordinator lands after
   `before-commit.sh`.
+* **W4, MT's trial, 026-17** (Frans, 11:17: "Run the trial unattended
+  now; if you run out of usage, restart it at 22:01 tonight."): T0 by
+  the coordinator, then agents A (Opus at xhigh for T1 and T4) and B
+  (Opus at high) by 026-17's plan; STOP at a week of 99 %, resumed at
+  22:01. The trial's state: `/Users/f/fl/bench/026-17/state.md`.
 * **028-15** registered (the startup distance in an internal KV; Frans,
   10:32), taken by 2026.6.
 
@@ -60,6 +65,9 @@ Frans's words:
 * 10:47 026-17 registered; agent mtplan started (Fable at high).
 * 11:02 agents t14 (028-14) and t07 (028-07) started (Opus at high).
 * 11:04 026-17's plan written: T0 to T8, about 12.5 agent-hours, 7 to 9 h on the clock, 5 to 10 % of a week; not before the reset; eight questions for Frans (section 11).
+
+* 11:14 028-07 landed (c925c11e); 028-16 registered (d8da4a35).
+* 11:18 MT's trial: T0 done; agents A (T1) and B (T2) started.
 
 
 ## 5. Outcome

@@ -1,7 +1,7 @@
 # 026-17. MT's trial: maintenance transactions in the model
 
-Created 2026-11-16 by Frans Lundberg. Status: open (the plan written;
-the trial not started).
+Created 2026-11-16 by Frans Lundberg. Status: open (the trial running
+since 2026-11-16, 11:17).
 
 A trial, in the Lean model only, of MT (006-28, section 7.5): a user
 transaction makes no merge, no upward delete and no root collapse; each
@@ -22,6 +22,14 @@ Frans, 10:47: "About the trial. So, you suggest model-first to
 investigate this. I like this. It is a new way of working for me and I am
 excited about it. Plan for the trial. Run a Fable High agent that makes a
 plan for excuting the trial."
+
+Frans, 11:17, the go: "Run the trial unattended now; if you run out of
+usage, restart it at 22:01 tonight." With it the defaults of section 11
+stand (node size 30 plus 8; Frans, 10:57, "Good." to the coordinator's
+view of 30 for the counts and 8 as a stress check). The week's ceiling
+until 22:00 is 99 % (Frans, 10:57); `usage-watch.sh` in
+`/Users/f/fl/bench/026-17/` touches `STOP` there, and the coordinator
+resumes the trial at 22:01.
 
 **What the trial answers** (the coordinator's outline of 10:29, which the
 plan makes exact):
