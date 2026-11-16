@@ -195,8 +195,8 @@ Index
   followed by long unattended work; one subitem per entry, started by
   Frans. First, a model-first rewrite of BergDB (025-01).
 * **026-release-2026-6** (open). Release 2026.6, after 2026.5: its plan,
-  its decisions and the work towards it. Preliminary theme: a stable
-  stream.
+  its decisions and the work towards it. Preliminary theme: simpler
+  algorithms.
 * **027-algorithms** (open). The algorithms of BergDB as they are, kept
   current with `java/` and `lean/`, for every implementation; a skeleton
   so far. Holds the former `docs/` as a snapshot (027-01), the trace

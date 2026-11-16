@@ -4,16 +4,11 @@
 Created 2026-11-11 by Frans Lundberg. Status: open.
 
 Release 2026.6 of BergDB, after 2026.5 (024): its plan, its decisions and
-the work towards it. Its preliminary theme: **a stable stream** (Frans,
-2026-11-11, 06:56: "Create an item for release-2026-6. The preliminary
-theme of the release is "a stable stream". Keep it short, we will add to
-it later.").
+the work towards it. Its preliminary theme: **simpler algorithms**
+(Frans, 2026-11-16, 10:26; the study behind it is 006-28).
 
-The theme was first that of 2026.5 (Frans, 2026-11-10, 19:54) and moved
-here when 2026.5 became "solid algorithms" (024-04): the stream format is
-the algorithms' output, so it is made stable when they have stopped
-moving. The specification's draft is 027-03 (024-02 until 2026-11-13),
-kept up to date with the code.
+The stream format's draft specification is 027-03 (024-02 until
+2026-11-13), kept up to date with the code.
 
 Work moved here from 2026.5:
 
@@ -191,3 +186,6 @@ proposals to the decided work (Frans, 09:23: "Yes, decided work.").
 (Frans, 09:38).
 
 2026-11-13. 026-10 registered (026-07's Q4; Frans, 09:48).
+
+2026-11-16. Preliminary theme: simpler algorithms (Frans, 10:26), from
+006-28.
