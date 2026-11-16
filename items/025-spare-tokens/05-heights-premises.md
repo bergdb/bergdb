@@ -1057,3 +1057,44 @@ back has its cached height h(x) below p.fuel.
   take-back is false for the delete's own new root (height up to p.fuel);
   the merges' counter bounds h(x) only by the changed node's height plus
   p.fuel; `descendHeight` bounds the root's height only by h plus p.fuel.
+
+2026-11-16, 22:59, to 2026-11-17, 00:45. Step 8 done (prover htbl): `htbL`
+proved, `takeBelowFuelDelSL_holds p hp : TakeBelowFuelDelSL p` (HtbTop.lean),
+with no premise but `hp`. No statement changed; 10 new files, about 3,900
+lines. The argument is not section 4.4's start-path form but a frame of the
+nodes the claim speaks of; neither that form nor the fallback was needed.
+
+- **The tall nodes.** At a delete's start w, a node of w.gh not taken back
+  with a cached height at or above p.fuel (`TallAt`) is an inner node of
+  the transaction (no node of P has a height above H) with two live klongs
+  or more (the live counts and the take-back's node facts at the start,
+  `tallOK_start`). `TallOK` (HtbFrame.lean) says that of every tall node of
+  a state: below the next id, not taken back, its node an inner node of the
+  transaction with two live klongs or more.
+- **The delete keeps it.** The delete runs as a checked copy,
+  `putKvDelChk2G` with `afterDeleteH`, which checks the stratum's state at
+  each call of `afterDelete` and, after the merges' loop, the take-back's
+  node facts (`TcH`; `opDelChkH_holds`, from the stratum's chain
+  `opDelChk6TOKR_of_chk7T`). That copy keeps `TallOK` (`tk_putKvDelChk2G`,
+  HtbPrefix.lean): the chain and root collapse take back nodes with at most
+  one live klong; a merge takes back the two merged children, of the
+  loop's height, below p.fuel by the loop's counter (`tk_mergeUpChk`,
+  HtbLoop.lean). So the delete takes back no tall node.
+- **The loop's last merge.** Only there can the parent q be tall. A merge
+  into one makes the loop throw (its counter is spent). A merge into two
+  keeps q in place, q being a node of the transaction: with room q names
+  both new nodes; full, q becomes its last version, which names both, or,
+  split in place, the first half of it, which has two live klongs or names
+  the second new node beside the first or a child of q (`Shape1`,
+  `shape_mp`, `qx_cleanup`, HtbExcWalk.lean; `qx_mergeChk`, HtbExc.lean;
+  `tk_exc`, HtbTop.lean). The check after the loop turns two such names
+  into two live klongs: a key klong of a node not taken back that names a
+  node of the transaction is live (`excE_conv`).
+- **Files:** HtbFrame (the frame's lemmas per writer action), HtbDefs (the
+  checked copy with any `afterDelete`, and its refinement chain), HtbPrefix
+  (the delete's descents and upward loop), HtbWalk (the merge and root
+  collapse), HtbLoop (the merges' loop and `afterDeleteH`), HtbExcFrame,
+  HtbExcShape, HtbExcWalk, HtbExc (the last merge's case), HtbTop.
+
+**Next: step 9**, `invGetScanOK_merges_noTb` (premises `hp`, `hth`, `l4`):
+`invGetScanOK_merges_tbL` with `takeBelowFuelDelSL_holds`.
