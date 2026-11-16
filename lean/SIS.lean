@@ -102,6 +102,8 @@ import SIS.Proof.TreeRoot
 import SIS.Proof.TreeInit
 import SIS.Tree.DeadDelete
 import SIS.Tree.DeadTop
+import SIS.Tree.HtbTop
+import SIS.Tree.HtbNoTb
 import SIS.Tree.FuelNext
 import SIS.Tree.Stratum
 import SIS.Tree.StratumSteps
