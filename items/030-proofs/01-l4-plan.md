@@ -667,3 +667,20 @@ the pilot's hypotheses are the facts at a round that the stratum's loop
 (`writerWP_mergeUp_delJAE`) carries (`DelInvJT`'s tree and ranges, the
 books) plus `HtInv` and `PathCached` at the descent's end, which
 `ht_descendToHeight` and `writerWP_descendToHeight_path_cached` give.
+
+2026-11-16, 23:14 to 23:35. Step 3, first part, prover l4a (LiveLoop.lean,
+about 600 lines): the loop. `writerWP_afterDelete_live`: at a call of
+`afterDelete key g 0` with `DelInvJAE`, `PutBook`, `HtInv` and `LiveHoleW key g 0`,
+every run ends with `LiveEdges`, given `MergeLiveOK` (a merge at a round, from
+the round's facts: the stratum's `DelInvJ` at a fuel, the books, `PathOK`, the
+heights at the descent's end, keeps `LiveHoleW` one height up, or ends with
+`LiveEdges`) and `CollapseLiveOK` (root collapse from the exit form). The exit
+form `LiveExit`: `LiveEdgesH` with, after a merge, the hole only at the node that
+collapse's descent finds (`SegRootW`). The loop (`writerWP_mergeUp_liveJW`) is
+the stratum's `writerWP_mergeUp_delJW` with the hole, the heights
+(`ht_descendToHeight`, `ht_merge_of_J`) and the books beside its invariant; the
+exits are proved (`liveExit_round`): at the space root or under a segment leaf
+the found node is the segment's root (`descend_exit_shape`, by `dhP_inner`), a
+filled node meets `ChildOK`, and before any merge the hole is a leaf
+(`found_leaf_of_h0`, the books). Choice (by rule, KISS): the hole at the call is
+at height 0, the leaf's, so no separate leaf premise.

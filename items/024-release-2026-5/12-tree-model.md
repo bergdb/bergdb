@@ -384,7 +384,14 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   are `DelInvJT`'s tree, the books and `HtInv` at the descent. `HoleAtW` (the node every
   successful descent finds) replaces `HoleAt` (which asked for a run). Left: 030-01's steps 3
   to 7 (every merge and the loop, root collapse, the leaf's change, the upward delete, the
-  family and `l4L`).
+  family and `l4L`). 23:35 (prover l4a, step 3's first part): the merges' loop with
+  the hole (`LiveLoop.lean`): `writerWP_afterDelete_live`, from `DelInvJAE`, the books,
+  `HtInv` and `LiveHoleW key g 0` at a call of `afterDelete`, ends with `LiveEdges`, given
+  two obligations: `MergeLiveOK` (a merge of a round keeps the hole one height up, or into
+  two nodes leaves none; the pilot is its first case) and `CollapseLiveOK` (root collapse
+  from the loop's exit form `LiveExit`: the hole, after a merge, only at the root of segment
+  g that collapse's descent finds). The loop is the stratum's with the hole and the heights
+  beside it; its exits (the space root, a segment root, a filled node) are proved.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next
