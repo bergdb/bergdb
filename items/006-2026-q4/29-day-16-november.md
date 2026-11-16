@@ -14,6 +14,8 @@ decisions for Frans, most of them for after the week's reset (Monday
 
 Frans's words:
 
+* 10:26: 2026.6's preliminary theme is "simpler algorithms" (026).
+* 10:29, on 006-28's questions 7 to 9: MT's trial first, but not started yet, its plan first; the provers wait for it; deletes may cost more bytes ("Let's keep measuring performance and and judge complexity so we can make the right tradeoffs.").
 * 08:26: a study, "Simpler algorithms for simpler proofs", as a
   subitem of 006 (006-28), by an agent at Fable High: "No rush, take
   your time."
@@ -40,6 +42,10 @@ Frans's words:
 * 08:28 006-28 and this plan created (bb255d4b); W1 started.
 * 08:39 and 08:43 the agent stopped on API 529 (Fable overloaded); resumed 08:40 and 08:54.
 * 09:07 006-28 done (816 lines; the counts in 28-simpler-algorithms/): top three NW (a writer that computes the net change; a one-day spike in the model before SF10), RT (Rule A with times; measure S1 first), OT (one tree, after `l4`); scan removal: no. Six questions for Frans, section 7.
+
+* 10:11 006-28's section 7 (Frans's Q1 to Q4: MT, maintenance transactions) committed 1bdda15e.
+* 10:26 2026.6's theme: simpler algorithms (d93d9d7a).
+* 10:29 Frans's answers to 006-28's questions 7 to 9 recorded in 006-28, section 8; the provers (`l4`, `htbL`) wait for MT's trial.
 
 
 ## 5. Outcome

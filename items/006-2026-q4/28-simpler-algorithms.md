@@ -1149,6 +1149,16 @@ Each with my default, which the study follows.
    "no significant loss", to be judged on the spike's counts and then on
    a run at 10M keys.
 
+**Frans's answers to 7 to 9** (2026-11-16, 10:29):
+
+* 7: "MT's trial first. Yes, let me know what you mean by "trial" here
+  and how we should plan this. Do not start the work."
+* 8: "Yes." (The provers wait for MT's trial.)
+* 9: "Yes. Deletes can cost more. In general, trading performance for
+  simplicity can be good trade. But this is a judgement call, a
+  tradeoff. Let's keep measuring performance and and judge complexity so
+  we can make the right tradeoffs."
+
 
 # 9. What I could not verify
 
