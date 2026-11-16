@@ -25,9 +25,11 @@ Frans's words:
 
 * Usage tight (week 90 %, reset Monday 22:00): at most two agents at a
   time.
-* STOP for the study: `/Users/f/fl/bench/2026-11-16/simpler/STOP`,
-  set by the coordinator if the week reaches 97 % before the reset; the
-  agent then writes its State note in 006-28 and ends, and is resumed
+* Agents may run until the week reaches 99 % before the reset (Frans,
+  10:57: "No need to leave tokens "on the table" so to speak.").
+* STOP for an agent: `/Users/f/fl/bench/2026-11-16/NAME/STOP`, set by
+  the coordinator if the week reaches 99 % before the reset; the
+  agent then writes its State note in its item and ends, and is resumed
   after the reset.
 
 
@@ -35,6 +37,13 @@ Frans's words:
 
 * **W1, the study 006-28** (agent simpler, Fable at high): writes
   006-28 in the main tree; the coordinator commits.
+* **W2, the plan for MT's trial, 026-17** (agent mtplan, Fable at high;
+  Frans, 10:47): writes 026-17 in the main tree; the trial not started.
+* **W3, 028-14 and 028-07** (agents t14 and t07, Opus at high, each in
+  a clone; Frans, 11:01): fix or options; the coordinator lands after
+  `before-commit.sh`.
+* **028-15** registered (the startup distance in an internal KV; Frans,
+  10:32), taken by 2026.6.
 
 
 ## 4. Progress
@@ -46,6 +55,11 @@ Frans's words:
 * 10:11 006-28's section 7 (Frans's Q1 to Q4: MT, maintenance transactions) committed 1bdda15e.
 * 10:26 2026.6's theme: simpler algorithms (d93d9d7a).
 * 10:29 Frans's answers to 006-28's questions 7 to 9 recorded in 006-28, section 8; the provers (`l4`, `htbL`) wait for MT's trial.
+
+* 10:32 028-15 registered (a9001d7e).
+* 10:47 026-17 registered; agent mtplan started (Fable at high).
+* 11:02 agents t14 (028-14) and t07 (028-07) started (Opus at high).
+* 11:04 026-17's plan written: T0 to T8, about 12.5 agent-hours, 7 to 9 h on the clock, 5 to 10 % of a week; not before the reset; eight questions for Frans (section 11).
 
 
 ## 5. Outcome
