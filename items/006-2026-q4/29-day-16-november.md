@@ -78,6 +78,8 @@ Frans's words:
 * 13:40 026-17 committed (c03296e3), news.md entry.
 * 14:13 026-19's plan written: statements I and I_sub, the fix step's and the readers' theorems, about 14 prover-hours, one night from 22:05 on Frans's go.
 * 14:32 030-proofs made (96918d92): the map of all proof work; Frans: both proof lines tonight.
+* 19:58 night.sh: NIGHT OK (166 minutes) on 5b8f337b, all steps.
+* 20:18 the going-public preparation started (three agents).
 
 
 ## 5. The night of 16 to 17 November
@@ -111,6 +113,14 @@ at xhigh, each in its own clone made at 14:40 (W6,
   for 030's D3, the bridges, as 030-02 (Opus at xhigh, brief
   `night/briefs/d3plan.md`); and a prover on `l4` once 030-01 is
   written, only if its route needs no statement change.
+* **The going-public preparation** (Frans, 20:08 and 20:17: "Yes. Go
+  ahead with those three. [...] do it now using a new agent."), started
+  20:18, Opus at high, nothing committed or published: **gp-inventory**,
+  the full inventory of the history (a file of Frans's private notes); **gp-dryrun**, a dry run of the
+  cleaned public history (`/Users/f/fl/bench/2026-11-16/public/build/`,
+  no push); **gp-drafts**, README, LICENSE (Apache-2.0) and NOTICE,
+  CONTRIBUTING and SECURITY on the branch `029-public-files` of a clone.
+  The morning adds a one-page checklist of the release's decisions.
 * Unattended from 17:10 until Tuesday 07:00 (Frans: "I am about to
   leave", 17:08; the return time a default): check-ins every 20
   minutes, the watchdog, a one-off at 22:03 that starts the night.
