@@ -80,6 +80,11 @@ Frans's words:
 * 14:32 030-proofs made (96918d92): the map of all proof work; Frans: both proof lines tonight.
 * 19:58 night.sh: NIGHT OK (166 minutes) on 5b8f337b, all steps.
 * 20:18 to 20:43 the preparation for the public release (three agents; details outside this repository).
+* 22:03 the night started: the week reset to 0 %; six agents: PT-A and PT-B (026-19), htbl (`htbL`), l4plan (030-01), d3plan (030-02), all Opus at xhigh; t16 (028-16), Opus at high.
+* 22:10 028-16 landed (4197d95e): a refused second start of one Db closes nothing; BEFORE COMMIT OK, LEVEL 1 OK.
+* 22:26 030-01, `l4`'s plan, written and committed (6f0add3a): route B, additions only, no statement change; prover l4 started on its steps 1, 0 and 2.
+* 22:31 `l4`'s step 1 landed (d10be66a): `invGetScanOK_merges_l4L` from hp, hth, htbL and l4L. 030-02, the bridges' plan, written and committed (54d2d7be): TP14 and TP19 false as stated at the top node ordinal bound, by reading; no D3 prover tonight (not agreed; Frans's question 1 first).
+* 23:12 `l4`'s steps 0 and 2 landed (66143c55, 26571c02): the run check, 0 failures in 15 families; the hole's form; the pilot. Steps 3 to 6 split over two provers, l4a (3, 4) and l4b (5, 6), Opus at xhigh.
 
 
 ## 5. The night of 16 to 17 November
@@ -126,7 +131,11 @@ at xhigh, each in its own clone made at 14:40 (W6,
 * The clock: no new step after 04:30; provers stop at 05:30; all ends at
   06:00 (026-19, section 6.3).
 * Usage: 026-19's provers stop at 9 % of the new week (10 % with the
-  write-up; 026-19, question 2, default). The coordinator sets every STOP
+  write-up; 026-19, question 2, default). Changed at 22:57 by the
+  coordinator: the week's figure is shared with the main line's
+  provers (4 % at 22:56, about half of it 026-19's), so 026-19's STOP is
+  set at 16 % of the whole week, about 9 % of its own. At 23:13, with
+  five provers, 20 % for 026-19 and 30 % for all (the week at 5 %). The coordinator sets every STOP
   file if the whole week reaches 25 % before 06:00 (the coordinator's
   rule: about 10 % for 026-19, the rest for the main line, a margin for
   Tuesday).

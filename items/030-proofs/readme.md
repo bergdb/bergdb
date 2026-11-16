@@ -103,9 +103,16 @@ D3. The bridges to the abstract model
   the tree, so that recovery, restarts, lazy reading and eviction are
   proved for BergDB's tree, not only for any structure that meets the
   assumptions (006-26, sections 5.2 and 8, item 4).
-* **State:** open, not started; tested on traces.
-* **Next:** after D1's top theorem, or after D2's decision if MT is
-  taken (with MT, 006-28 says the take-back drops out of these).
+* **State (2026-11-16, 22:30):** open, not started; tested on traces.
+  The plan is 030-02: all three bridges rest on one bundle of D1's facts,
+  so on `l4` and `htbL` only. Its finding, by reading, not built: TP14
+  and TP19 are false as stated, since the model's writer has no guard at
+  the top node ordinal 2^48, which Java has refused since 005-02; TP16
+  holds. Frans's question 1 in 030-02 (default: prove the bounded forms
+  as new statements now; add the guard to the model later).
+* **Next:** 030-02's steps 0 to 3 when a prover is free and Frans agrees;
+  steps 4 to 8 after D2's decision (with MT, 006-28 says the take-back
+  drops out of these).
 
 D4. Bounded startup's premises
 ------------------------------
@@ -153,7 +160,17 @@ One line a day by the coordinator: what moved, where.
 Files
 =====
 
-None yet. 030-01, `l4`'s plan, comes on 2026-11-16's night.
+* [030-01](01-l4-plan.md). The plan for `l4`, the live counts' premise
+  of D1's top theorem: route B (hu's option (b) done route P's way, as
+  additions), no statement change; 8 steps, 3,000 to 5,500 lines; step 1
+  (`l4` reduced to its case at the induction's runs) proved in scratch.
+  Written 2026-11-16, 22:04 to 22:30. Status: open.
+* [030-02](02-bridges-plan.md). The plan for D3, the bridges to the
+  abstract model (TP14, TP16, TP19): all three rest on `l4` and `htbL`
+  only; TP14 and TP19 found false as stated after 2^48 top nodes (no
+  guard in the model's writer), so proved below that bound by default;
+  10 steps, 9,000 to 22,000 lines, tests first. Written 2026-11-16, 22:04
+  to 22:31. Status: open.
 
 
 Log

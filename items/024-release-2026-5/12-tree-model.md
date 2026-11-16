@@ -35,6 +35,10 @@ htb, l4; `invGetScanOK_merges_free_noD4` is its corollary.
 Since 2026-11-15, 14:35 (025-05, part 2, on htb's branch until it lands):
 `invGetScanOK_merges_tbL` (DeadTop.lean), premises hp, hth, l4 and `htbL` (`htb` at one delete
 whose start has the first stratum's facts); `invGetScanOK_merges_noFit` is its corollary.
+Since 2026-11-16, 22:30 (030-01, step 1, on l4's branch until it lands):
+`invGetScanOK_merges_l4L` (LiveTop.lean), premises hp, hth, `htbL` and `l4L` (`l4`'s open case
+at one delete of the induction's runs whose start has the first stratum's facts);
+`invGetScanOK_merges_tbL` is its corollary.
 
 **What this means for BergDB (2026-11-14, latest).** The key tree's proofs reach their top
 theorem. For Java's own parameters (record format 7's merge thresholds and option 2's theta,
@@ -360,6 +364,103 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   at all 6420 states between operations of runs with merges and collapses
   (`12-tree-model/live-counts-check.lean.txt`), and at 8843 more with Java's theta on
   (`dead-all-check.lean.txt`).
+  Its plan is 030-01 (route B, as additions). State 2026-11-16, 22:30 (prover l4): step 1 is
+  done as a reduction: `invGetScanOK_merges_l4L` (`LiveTop.lean`), premises `hp`, `hth`,
+  `htbL` and `l4L` (`LiveDelSL`: `l4`'s open case at one delete of the induction's runs whose
+  start has `PutInv`, the ranges, `LiveCounts`, `HtInv`, the writer's tree and `J2At`);
+  `liveDelSL_of` gives `l4L` from `l4`, so `invGetScanOK_merges_tbL` is its corollary
+  (`invGetScanOK_merges_tbL_of_l4L`). The induction takes the deletes' live case with these
+  facts (`jointHtJ_reachedJSL` and its wrappers `jointHtJ_reached0L` to `_1L`, near-copies).
+  Left: `l4L` itself, 030-01's steps 0 and 2 to 7. 22:38: step 0 done, 0 failures of C1 to C6
+  in 15 families (030-01's evidence `live-inside-check.lean.txt`); C4's branch never ran.
+  22:56: step 2's first part: the hole's form `LiveEdgesH` and `HoleAt` (`LiveHole.lean`), a
+  merge into one node moves the hole to the parent (`liveEdgesH_mergeOne`, on node maps), and
+  R1's core: the merges' descent one height up, on a state that reads alike above the hole,
+  stops at the hole's parent (`descendToHeight_up`, `LiveHoleDescent.lean`). 23:10: step 2 is
+  done: `liveHoleW_merge_pilot` (`LiveHolePilot.lean`): at a round of the merges' loop at
+  (g, h), a merge into one node, the parent with room, no compaction and no child made by
+  the transaction, takes `LiveHoleW key g h` to `LiveHoleW key g (h + 1)`; the heights' walk
+  at the round's descent (`HtInv`) gives R1 (`gradedL_of_ht`). R1 did not stall: the facts
+  are `DelInvJT`'s tree, the books and `HtInv` at the descent. `HoleAtW` (the node every
+  successful descent finds) replaces `HoleAt` (which asked for a run). Left: 030-01's steps 3
+  to 7 (every merge and the loop, root collapse, the leaf's change, the upward delete, the
+  family and `l4L`). 23:47 (prover l4b): step 5's
+  first part, the leaf with room: `liveDel_room` (`LiveDelLeaf.lean`): the delete calls
+  `afterDelete` at the leaf's cached pair (g, 0) from a state with `DelInvJT`, the books,
+  `HtInv` and `LiveHoleW key g 0`; with l4a's loop (`writerWP_afterDelete_live`) it keeps the
+  live counts given `MergeLiveOK` and `CollapseLiveOK` (`liveDel_room_live`). R1 at the leaf
+  (`holeAtW_leaf`, `LiveHoleLeaf.lean`): the merges' descent at the leaf's pair finds the
+  leaf, by the segments along the descent (`SegRd`, from the books and the kinds' walk) and
+  the key's reading on the walk's cached path; the space root's segment is not needed. 00:00
+  (l4b): step 6, first part: the leaf at the space root emptied, with room, keeps the live
+  counts (`liveDel_emptyRootRoom`, `LiveUpLeaf.lean`); the emptied chain's live frame
+  (`liveEdgesH_up`: after the chain leaves the tree, the live counts hold but at the stop
+  node); the upward walks with the stop node's cached pair (`LiveUpWalk.lean`, copies of
+  `writerWP_deleteUpward_upT_getJMBK` and `takeJ2_deleteUpward_upTMBKD`). With the live
+  counts at the start the stop node is a segment leaf (`lebStop_false`). Open in step 6: the
+  heights at the stop node's call (R2's heights: over `putKv` the take-back's heights need the
+  checked copy's checks, `ht_takeBackChk`), R1 at the stop node, the full root and the full
+  stop node. 00:18 (l4b): step 6, second part: the upward delete with room
+  (`liveDel_upRoom`, `LiveUpRoom.lean`) calls `afterDelete key g 0` at the stop node (a
+  segment leaf) with `DelInvJT`, `PutBook`, `HtInv` and `LiveHoleW`, given the heights through
+  the upward steps (`UpHtWalk`, the open R2 heights); with l4a's loop it keeps the live counts
+  (`liveDel_upRoom_live`, premises `MergeLiveOK`, `CollapseLiveOK`, `UpHtWalk`). R1 at the stop
+  node is proved (`holeAtW_stop`, `LiveUpHole.lean`: the descent's path is the walk's,
+  `linkedFrom_unique`; the stop node ends one segment's search; the key's descent is cut there). 00:22
+  (l4b): the space root emptied, full too: its last version without the key has no key
+  klong, so it splits in time into an empty leaf (`liveDel_emptyRoot`, `DelEmptyRootM` proved
+  with no premise). 00:27 (l4b): step 5, the full leaf that the transaction made,
+  its last version without the key within a split's bound: it splits in time in place, and
+  the delete calls `afterDelete` with the hole at the leaf (`liveDel_fullMade`,
+  `LiveDelFull.lean`; with l4a's loop `liveDel_fullMade_live`, premises `MergeLiveOK`,
+  `CollapseLiveOK`); the room case's argument made a lemma for any change of the leaf alone
+  (`liveHoleW_leafChange`). 00:40 (l4b): the full leaf not made by the transaction, split in time
+  below a parent with room (`DelFullTimeRoomM`): with l4a's `writerWP_handleFull_timeRoom_liveGh`
+  the copy is the hole, and the merges' descent finds it (`holeAtW_copy`,
+  `LiveDelFullCopy.lean`): `liveDel_fullTimeRoom`, `liveDel_fullTimeRoom_live` (premises
+  `MergeLiveOK`, `CollapseLiveOK`). Left of step 5: the space split (no hole), the parent
+  full (the cascade), the leaf at the space root, the made leaf's space split. 23:35 (prover l4a, step 3's first part): the merges' loop with
+  the hole (`LiveLoop.lean`): `writerWP_afterDelete_live`, from `DelInvJAE`, the books,
+  `HtInv` and `LiveHoleW key g 0` at a call of `afterDelete`, ends with `LiveEdges`, given
+  two obligations: `MergeLiveOK` (a merge of a round keeps the hole one height up, or into
+  two nodes leaves none; the pilot is its first case) and `CollapseLiveOK` (root collapse
+  from the loop's exit form `LiveExit`: the hole, after a merge, only at the root of segment
+  g that collapse's descent finds). The loop is the stratum's with the hole and the heights
+  beside it; its exits (the space root, a segment root, a filled node) are proved. 23:45
+  (step 3's second part, `LiveMergeRoom.lean`): `MergeLiveOK` is proved for every merge whose
+  parent has room and no compaction (`MergeRoom`), of nodes the transaction made or not, into
+  one node (the hole one height up) or two (no hole: both new nodes filled, the parent keeps
+  its count, `live_len_mergeTwo`); left of it is `MergeLiveFullOK`, the merges whose parent is
+  full or compacts (its split and cascade with the hole below the chain).
+  `writerWP_afterDelete_liveF`: `afterDelete` from the call's facts to `LiveEdges`, premises
+  `MergeLiveFullOK` and `CollapseLiveOK`. 23:58 (step 4's first part, `LiveCollapse.lean`):
+  root collapse from the exit form (`writerWP_collapseRoot_live`): its exits are proved (a leaf
+  root, or one with no only live klong, two at least, `two_le_live_of_onlyNone`); its step is
+  the obligation `CollapseStepLiveOK`, with the node-map lemmas for both kinds of step proved
+  (`liveEdges_collapseSpace`, `liveEdges_collapseSeg`); R3 (a root the transaction made with
+  no made-for entry) is the narrowed premise `R3At` at collapse's start, after the merges'
+  loop. `writerWP_afterDelete_liveR`: `afterDelete` with premises `MergeLiveOK`,
+  `CollapseStepLiveOK` and R3 after the merges' loop. 00:00 (step 4's second part,
+  `LiveCollapseStep.lean`): `CollapseStepLiveOK` is proved at the space root, for a root the
+  transaction made (taken back in place) and for a segment root whose leaf has room; left is
+  `CollapseSegFullLiveOK` (`replaceRoot`'s cascade at a full segment leaf; no hole there, so
+  `chainGL` as it stands). `writerWP_afterDelete_liveRF`: `afterDelete` from the call's facts
+  to `LiveEdges`, premises `MergeLiveFullOK`, `CollapseSegFullLiveOK`, `MergeParamsOK` and R3
+  after the merges' loop. 00:03 (step 4 done but R3, `LiveCollapseFull.lean`): `CollapseSegFullLiveOK`
+  holds (`collapseSegFullLiveOK_holds`: `replaceRoot`'s cascade at a full segment leaf keeps
+  the live counts, `writerWP_replaceRoot_seg_cascadeL`, the tree's cascadeC with `chainGL`).
+  `writerWP_afterDelete_liveFR`: `afterDelete` from the call's facts to `LiveEdges`, premises
+  `MergeLiveFullOK` (the merges with a full or compacting parent), `MergeParamsOK` and R3 after
+  the merges' loop. 00:17 (step 3's rest): R4's stop rule fired (a hole parameter for
+  `chainGLX` is a copy of about 2,400 lines, with a live copy of the full node's split on top),
+  so the narrower lemma, the parent's split below a grandparent with room:
+  `writerWP_handleFull_timeRoom_live` (`LiveSplitRoom.lean`; the hole moves to the time split's
+  copy) and its R1, `descendToHeight_redirect` (`LiveRedirectDescent.lean`; the next round's
+  descent ends at the copy). Not yet composed into `MergeLiveFullOK`: the merge's tail with
+  `mergeParent`'s `full` (both branches, one or two nodes, time or space split), the cleanup
+  with the parent left behind, the copy's cached height. State for a successor: 030-01's log of
+  2026-11-17, 00:04 to 00:15; what is left of `l4`'s afterDelete is `MergeLiveFullOK` and R3
+  (`R3At`, narrowed); steps 5 and 6 (prover l4b) have their own.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next

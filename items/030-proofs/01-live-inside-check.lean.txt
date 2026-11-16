@@ -1,0 +1,447 @@
+/-
+The live counts inside a delete, checked on runs (bergdb 030-01, step 0: the
+hole's form for `l4`). Not part of the Lean project; run it from lean/:
+
+  lake env lean <this file>
+
+It copies the writer's delete path from Exec.lean (as 024-12's
+fuel-inside-check.lean.txt did) and checks, at each state inside a delete with
+the merges on, `LiveEdges` (`LiveEdgesBase.lean`: `RootOK` at the space root,
+`ChildOK` at every link of the tree reached) but for one hole, the node of
+segment g at height h on the key's path as `descendToHeight key g h` finds it,
+with a live klong:
+
+* C1 `hole:leaf`, `hole:stop`: after the leaf's change (the bitmap with room,
+  the full leaf's split), or the upward delete's stop node's, (g, h) the changed
+  node's cached pair; `live:keptempty` after the space root kept empty (no hole);
+* C2 `hole:merge1` after a merge into one node, at (g, h + 1); `live:merge2`
+  after a merge into two (no hole);
+* C3 `exit`: at the merges' loop's end, no hole, or the hole is segment g's root,
+  inner, with one live klong, and the loop merged;
+* C4 `c4`: at root collapse's early return for a made root with no made-for
+  entry, the root is not a hole; how often the branch runs;
+* C5 `hole:round`: at each round of the loop, `descendToHeight key g h` reaches
+  the hole (and the descent succeeds);
+* `hole:coll`: after each step of root collapse, the hole, if any, is segment
+  g's root;
+* C6 `live:end` after `afterDelete`, and `lc:del` (`LiveCounts`) after each
+  delete.
+
+A FAIL names the site; `nodesc` is a descent that failed, `many` more than one
+node off the form, `other` one node that is not the one at (g, h).
+Result (2026-11-16, 22:38; 2 min 26 s): 0 failures of C1 to C6 in 15 families
+(fuel-inside-check's and live-counts-check's runs within reach, at uP1, uP2,
+Java's thresholds at node sizes 8, 10 and 14 with and without theta, and the new
+C4 families cFamily, cFamily2: new segments split in the same transaction beside
+deletes under old prefixes). Checked: 13,101 states after a leaf's change (3,502
+with a hole), 2,145 after a stop node's (464 with a hole), 18 after the space
+root kept empty; 2,322 merges into one node (1,471 leave the hole one height up;
+the rest leave a filled parent) and 2,090 into two (no hole); 13,156 loop exits
+(1,025 with the hole at segment g's root, inner, one live klong, after a merge);
+17,568 rounds (5,437 with the hole at the node the descent finds); 1,025 steps of
+root collapse (after each, no hole); 15,246 ends of `afterDelete` and 21,940
+deletes with `LiveCounts`. Covered: 822 full merge parents, 312 compactions, 5,089
+made nodes taken back by a merge, 892 roots taken back and 133 replaced by root
+collapse, 2,145 upward deletes (687 take-backs). C4's branch (a made root with no
+made-for entry) never ran, nor the inner stop node.
+-/
+import SIS.Tree.MergeProofBundle
+
+set_option autoImplicit false
+set_option maxRecDepth 100000
+
+namespace SIS.Tree
+
+open SIS SIS.Check
+
+def linksB (N : NodeId → Option KNode) (t : Time) (u : NodeId) : List (Nat × NodeId) :=
+  match N u with
+  | some n => n.liveAt t
+  | none => []
+
+def reachB (N : NodeId → Option KNode) (t : Time) : Nat → List NodeId → List NodeId → List NodeId
+  | 0, _, acc => acc
+  | _ + 1, [], acc => acc
+  | f + 1, u :: todo, acc =>
+    if acc.contains u then reachB N t f todo acc
+    else reachB N t f (todo ++ (linksB N t u).map (·.2)) (u :: acc)
+
+/-- `ChildOK` and `RootOK` (LiveEdgesBase.lean) as Booleans. -/
+def childOKB (p : Params) (t : Time) (un yn : KNode) : Bool :=
+  !(yn.liveAt t).isEmpty && (!un.leaf || yn.leaf || decide (2 ≤ (yn.liveAt t).length)) &&
+  (un.leaf || !p.merges || decide (p.mergeBelow ≤ (yn.liveAt t).length))
+
+def rootOKB (t : Time) (rn : KNode) : Bool :=
+  (!(rn.liveAt t).isEmpty || rn.leaf) && (rn.leaf || decide (2 ≤ (rn.liveAt t).length))
+
+/-- The nodes where `LiveEdges` fails: the root if `RootOK` fails, and every node
+that a link of a reached node names whose `ChildOK` fails. -/
+def badNodes (p : Params) (N : NodeId → Option KNode) (t : Time) (r : NodeId) : List NodeId :=
+  let R := reachB N t 100000 [r] []
+  let rb := match N r with
+    | some rn => if rootOKB t rn then [] else [r]
+    | none => []
+  (rb ++ R.flatMap (fun u => match N u with
+    | some un => (un.liveAt t).filterMap (fun q => match N q.2 with
+        | some yn => if childOKB p t un yn then none else some q.2
+        | none => none)
+    | none => [])).eraseDups
+
+/-- `LiveCounts` as a Boolean (live-counts-check.lean.txt). -/
+def lcNodes (N : NodeId → Option KNode) (t : Time) :
+    Nat → List (NodeId × Bool × Bool) → List (NodeId × Bool × Bool) → List (NodeId × Bool × Bool)
+  | 0, _, acc => acc
+  | _ + 1, [], acc => acc
+  | f + 1, q :: todo, acc =>
+    if acc.contains q then lcNodes N t f todo acc
+    else
+      match N q.1 with
+      | none => lcNodes N t f todo (q :: acc)
+      | some n => lcNodes N t f (todo ++ (n.liveAt t).map (fun e =>
+          if n.leaf then (e.2, true, false) else (e.2, false, q.2.2))) (q :: acc)
+
+def lcB (p : Params) (N : NodeId → Option KNode) (t : Time) (r : NodeId) : Bool :=
+  (lcNodes N t 100000 [(r, true, true)] []).all (fun q =>
+    match N q.1 with
+    | none => true
+    | some n =>
+      let len := (n.liveAt t).length
+      (!(n.liveAt t).isEmpty || (q.2.1 && q.2.2 && n.leaf)) &&
+      (n.leaf || !q.2.1 || decide (2 ≤ len)) &&
+      (!p.merges || q.2.1 || decide (p.mergeBelow ≤ len)))
+
+def runQuiet {α : Type} (m : M α) (c : Ctx) (w : W) : Option α :=
+  match m c w with
+  | .ok (a, _) => some a
+  | .error _ => none
+
+/-- The node of segment g at height h on the key's path, its depth, and whether it
+is its segment tree's root (depth 0 or a segment leaf above). -/
+def nodeAtGH (key : Key) (g h : Nat) : M (NodeId × Nat × Bool) := do
+  let d ← descendToHeight key g h
+  let x ← pathNode d
+  let isRoot ← if d == 0 then pure true else do pure (← getNode (← pathNode (d - 1))).leaf
+  pure (x, d, isRoot)
+
+def liveOf (N : NodeId → Option KNode) (t : Time) (x : NodeId) : Nat :=
+  match N x with
+  | some n => (n.liveAt t).length
+  | none => 0
+
+/-- C1, C2, C5: `LiveEdges` but for the node at (g, h), with a live klong. -/
+def holeNote (c : Ctx) (base : View BVal) (w : W) (key : Key) (g h : Nat) (site : String) : String :=
+  let N := wNode c.p base w
+  let B := badNodes c.p N c.i w.top.rootKey
+  let H := runQuiet (nodeAtGH key g h) c w
+  let res := match B, H with
+    | [], some _ => "ok:none"
+    | [], none => "ok:none:nodesc"
+    | [x], some (y, _, _) => if x == y && 0 < liveOf N c.i x then "ok:hole" else "FAIL:other"
+    | [_], none => "FAIL:nodesc"
+    | _, _ => "FAIL:many"
+  "hole:" ++ site ++ ":" ++ res
+
+/-- `LiveEdges` with no hole. -/
+def liveNote (c : Ctx) (base : View BVal) (w : W) (site : String) : String :=
+  let N := wNode c.p base w
+  let B := badNodes c.p N c.i w.top.rootKey
+  "live:" ++ site ++ ":" ++ (if B.isEmpty then "ok" else "FAIL:" ++ toString B.length)
+
+/-- C3, at the loop's exit at height h. -/
+def exitNote (c : Ctx) (base : View BVal) (w : W) (key : Key) (g h : Nat) (merged : Bool) : String :=
+  let N := wNode c.p base w
+  let B := badNodes c.p N c.i w.top.rootKey
+  let res := match B, runQuiet (nodeAtGH key g h) c w with
+    | [], _ => "ok:none"
+    | [x], some (y, _, isRoot) =>
+      match N x with
+      | some n => if x == y && isRoot && !n.leaf && (n.liveAt c.i).length == 1 && merged then "ok:root1"
+          else s!"FAIL:x{x}=y{y}:root{isRoot}:leaf{n.leaf}:live{(n.liveAt c.i).length}:merged{merged}"
+      | none => "FAIL:nonode"
+    | [_], none => "FAIL:nodesc"
+    | _, _ => "FAIL:many"
+  "exit:" ++ res
+
+/-- After a step of root collapse: the hole, if any, is segment g's root. -/
+def collNote (c : Ctx) (base : View BVal) (w : W) (key : Key) (g : Nat) : String :=
+  let N := wNode c.p base w
+  let B := badNodes c.p N c.i w.top.rootKey
+  let res := match B, runQuiet (descendToSegmentRoot key g) c w with
+    | [], _ => "ok:none"
+    | [x], some y => if x == y && 0 < liveOf N c.i x then "ok:root" else "FAIL:other"
+    | [_], none => "FAIL:nodesc"
+    | _, _ => "FAIL:many"
+  "hole:coll:" ++ res
+
+def collapseRootC (base : View BVal) (key : Key) (segment : Nat) : Nat → M Unit
+  | 0 => throw "bounds: root collapse went below the height bound"
+  | fuel + 1 => do
+    let c ← read
+    let root ← descendToSegmentRoot key segment
+    let n ← getNode root
+    if n.leaf then return
+    let made := n.firstTime == some c.i
+    if made && (← replacedBy root).isNone then
+      let w ← getThe W
+      let B := badNodes c.p (wNode c.p base w) c.i w.top.rootKey
+      note ("c4:" ++ (if B.contains root then "FAIL:hole" else "ok") ++
+        (if n.onlyLiveKlong.isSome then ":one" else ":more"))
+      return
+    match n.onlyLiveKlong with
+    | none => return
+    | some only =>
+      if n.cv? only != some 0 then
+        throw s!"Bug: root collapse at {c.i}: the one live klong of root {root} is not the empty key"
+      let depth := (← pathSize) - 1
+      if made then takeBackRoot root depth only else replaceRoot root depth only
+      note (collNote c base (← getThe W) key segment)
+      collapseRootC base key segment fuel
+
+def mergeUpC (base : View BVal) (key : Key) (g : Nat) : Nat → Nat → Bool → M Bool
+  | 0, _, _ => throw "bounds: the merges went above the height bound"
+  | f + 1, h, merged => do
+    let c ← read
+    note (holeNote c base (← getThe W) key g h "round")
+    let d ← descendToHeight key g h
+    let ex : M Bool := do
+      note (exitNote c base (← getThe W) key g h merged)
+      pure merged
+    if d == 0 then return (← ex)
+    let x ← pathNode d
+    let q ← pathNode (d - 1)
+    if (← getNode q).leaf then return (← ex)
+    if (← getNode x).cnt ≥ c.p.mergeBelow then return (← ex)
+    let r ← merge x d
+    if r == 2 then
+      note (liveNote c base (← getThe W) "merge2")
+      note "exit:two"
+      return true
+    note (holeNote c base (← getThe W) key g (h + 1) "merge1")
+    mergeUpC base key g f (h + 1) true
+
+def afterDeleteC (base : View BVal) (key : Key) (g h : Nat) : M Unit := do
+  let c ← read
+  if c.p.merges then
+    if ← mergeUpC base key g c.p.fuel h false then
+      collapseRootC base key g c.p.fuel
+    note (liveNote c base (← getThe W) "end")
+
+def deleteUpwardC (base : View BVal) (leaf : NodeId) (depth : Nat) (cv : Nat) (key : Key) : M Bool := do
+  let c ← read
+  let tt := c.i
+  let n ← getNode leaf
+  let leafDel := n.lastBitmap
+  let leafUnion := bitsUnion leafDel (n.bitsOf cv)
+  if leafUnion == leafDel then return true
+  if !n.allKeysIn leafUnion then
+    let (g, h) ← ghOf leaf
+    let _ ← appendDeleteKlong leaf depth cv
+    note (holeNote c base (← getThe W) key g h "leaf")
+    afterDeleteC base key g h
+    return false
+  -- The leaf is empty after the delete: UP.
+  let stop ← climb depth
+  if stop == depth then
+    note "up.root-kept-empty"
+    let _ ← appendDeleteKlong leaf depth cv
+    note (liveNote c base (← getThe W) "keptempty")
+    return false
+  note "up.climb"
+  let path := (← getThe W).path
+  let segment ← (path.take stop).foldlM (fun s (e : Option Nat × NodeId) => do
+    pure (if (← getNode e.2).leaf then s + 1 else s)) 0
+  for j in List.range (depth - stop) do
+    let k := depth - j
+    let x ← pathNode k
+    let xn ← getNode x
+    if xn.firstTime == some tt then takeBack x (← pathNode (k - 1)) (← klongAt k)
+    else
+      note "up.unlink"
+      unlink x
+  let s ← pathNode stop
+  let cs ← klongAt (stop + 1)
+  let sn ← getNode s
+  let (gs, hs) ← ghOf s
+  if sn.leaf then
+    note "up.stop-at-segment-leaf"
+    let _ ← appendDeleteKlong s stop cs
+    note (holeNote c base (← getThe W) key gs hs "stop")
+    afterDeleteC base key gs hs
+    return false
+  note "STOP-INNER"
+  if sn.smallestLive != some 0 then
+    throw s!"Bug: the upward unlink at {tt}: inner node {s} has no live klong of the empty key"
+  if cs != 0 then
+    let _ ← appendDeleteKlong s stop cs
+  else
+    emptyKeyNext s stop
+  if c.p.merges then
+    let _ ← mergeUpC base key gs c.p.fuel hs false
+  collapseRootC base key segment (c.p.fuel)
+  return false
+
+def setValueC (base : View BVal) (segRoot : NodeId) (cv : Nat) (key : Key) (value : Option Nat) : M Bool := do
+  let c ← read
+  let leaf ← descendLte cv c.p.fuel segRoot
+  match value with
+  | none =>
+    let noop ← deleteUpwardC base leaf ((← pathSize) - 1) cv key
+    if !noop then
+      let _ ← fresh
+    pure noop
+  | some h =>
+    let v ← newValue h
+    let n ← getNode leaf
+    let n' := n.add c.i (.key cv v)
+    if n.size + 1 < c.p.M && !deadOver c.p n' then putNode leaf n'
+    else appendKlongs ((← pathSize) - 1) leaf [(cv, v)]
+    pure false
+
+def putSegsC (base : View BVal) (key : Key) (value : Option Nat) : List Nat → NodeId → M Bool
+  | [], _ => throw "corrupt: a key without segments"
+  | [cv], segRoot => setValueC base segRoot cv key value
+  | cv :: rest, segRoot => do
+    match ← setNode segRoot cv value.isSome with
+    | none => pure true
+    | some next => putSegsC base key value rest next
+
+def putKvC (base : View BVal) (op : Op) : M Bool := do
+  let c ← read
+  pathClear
+  let root ← findRoot
+  let r ← match op with
+    | .put key h => putSegsC base key (some h) key root
+    | .del key => putSegsC base key none key root
+  let w ← getThe W
+  match op with
+  | .del _ => note ("lc:del:" ++ (if lcB c.p (wNode c.p base w) c.i w.top.rootKey then "ok" else "FAIL"))
+  | .put _ _ => note ("lc:put:" ++ (if lcB c.p (wNode c.p base w) c.i w.top.rootKey then "ok" else "FAIL"))
+  pure r
+
+def withinB (p : Params) (all : List Tx) : Bool :=
+  all.all (fun t => t.sorted && t.wf) &&
+  (List.range all.length).all (fun j =>
+    match all[j]? with
+    | none => false
+    | some tj => (treeRun p (all.take j)).all (fun q => decide (q.1 < tj.base)) &&
+        isOk (exec? p tj (j + 1) (view (treeSpec p) (treeRun p (all.take j)) j)))
+
+def runLive (p : Params) (all : List Tx) : List String :=
+  if !withinB p all then ["NOT-WITHIN"] else
+  (List.range all.length).foldl (fun acc j =>
+    match all[j]? with
+    | none => acc
+    | some tx =>
+      let ts := all.take j
+      let v := view (treeSpec p) (treeRun p ts) ts.length
+      match lastTop v with
+      | none => acc ++ ["notop"]
+      | some z =>
+        match topOf p (ctxOf p ts).view z with
+        | .error _ => acc ++ ["toperr"]
+        | .ok top =>
+          match (tx.ops.mapM (putKvC (viewOf (treeRun p ts)))) (ctxOf p ts) (wInit tx top) with
+          | .ok (_, w) => acc ++ w.trail.reverse
+          | .error e => acc ++ ["ERR " ++ e]) []
+
+def summL (l : List String) : String :=
+  let pre (s : String) := (l.filter (fun x => x.startsWith s)).length
+  let fails := l.filter (fun x => (x.splitOn "FAIL").length > 1)
+  s!"C1 leaf {pre "hole:leaf:"} (hole {pre "hole:leaf:ok:hole"}) stop {pre "hole:stop:"} (hole {pre "hole:stop:ok:hole"}) keptempty {pre "live:keptempty"}; " ++
+  s!"C2 merge1 {pre "hole:merge1:"} (hole {pre "hole:merge1:ok:hole"}) merge2 {pre "live:merge2"}; " ++
+  s!"C3 exit {pre "exit:ok"} (root1 {pre "exit:ok:root1"}) two {pre "exit:two"}; C4 {pre "c4:"} (one {pre "c4:ok:one"}); " ++
+  s!"C5 round {pre "hole:round:"} (hole {pre "hole:round:ok:hole"}); coll {pre "hole:coll:"} (hole {pre "hole:coll:ok:root"}); " ++
+  s!"C6 end {pre "live:end"} lc:del {pre "lc:del:"} lc:put {pre "lc:put:"}; " ++
+  s!"merges {pre "merge.one"}+{pre "merge.two"} parent.full {pre "merge.parent.full"} parent.dead {pre "merge.parent.dead"} made {pre "merge.made."} takeback {pre "merge.takeback"}; " ++
+  s!"rc takeback {pre "rc.takeback"} replace {pre "rc.replace"}; up {pre "up.climb"} up.takeback {pre "up.takeback"} bitmap.full {pre "bitmap.full"} bitmap.dead {pre "bitmap.dead"} inner-stop {pre "STOP-INNER"}; " ++
+  s!"FAIL {fails.length} {fails.take 3}; other {(l.filter (fun s => s.startsWith "ERR" || s.startsWith "NOT" || s.startsWith "not" || s.startsWith "toperr")).take 3}"
+
+end SIS.Tree
+
+namespace SIS.Tree
+def uP1 : Params := {M := 8, G := 1, H := 2, mergeBelow := 2, mergeMax := 3, splitAbove := 4}
+def uP2 : Params := {M := 10, G := 2, H := 2, mergeBelow := 2, mergeMax := 4, splitAbove := 5}
+def fP8 : Params := ({M := 8, G := 1, H := 2} : Params).withMerges.withTheta
+def fP14 : Params := ({M := 14, G := 2, H := 3} : Params).withMerges.withTheta
+def lcP8 : Params := ({M := 8, G := 1, H := 2} : Params).withMerges
+def lcP10 : Params := ({M := 10, G := 2, H := 2} : Params).withMerges
+def lcP14 : Params := ({M := 14, G := 2, H := 3} : Params).withMerges
+def uPutsAB (as bs : List Nat) : List Op := (as.flatMap (fun a => bs.map (fun b => .put [a, b] (a * 1000 + b + 1))))
+def uDels (as bs : List Nat) : List Op := (as.flatMap (fun a => bs.map (fun b => .del [a, b])))
+def uA (n : Nat) : List Nat := (List.range n).map (fun i => 64 * i + 56)
+def uBs (n : Nat) : List Nat := (List.range n).map (fun j => 64 * j + 8)
+-- fuel-inside-check's families (cost's, DelChk.lean)
+def uRun (na nb k1 keep : Nat) : List Tx :=
+  let a0 := 64 * (na / 2) + 56
+  [{base := 1000, ops := uPutsAB (uA na) (uBs 2)},
+   {base := 3000, ops := uPutsAB [a0] ((uBs nb).drop 2)},
+   {base := 5000, ops := uDels [a0] ((uBs nb).take k1)},
+   {base := 7000, ops := uDels [a0] (((uBs nb).drop k1).take (nb - k1 - keep))}]
+def uFamily : List (List Tx) :=
+  [1, 3, 7, 9].flatMap (fun na => [12, 16, 24].flatMap (fun nb =>
+    [nb / 2, nb - 9, nb - 5].flatMap (fun k1 => [0, 1, 2].map (fun keep => uRun na nb k1 keep))))
+def uRunAll (na nb : Nat) : List Tx :=
+  [{base := 1000, ops := uPutsAB (uA na) (uBs nb)},
+   {base := 5000, ops := uDels ((uA na).take (na / 2 + 1)) (uBs nb)}]
+def uFamilyAll : List (List Tx) :=
+  [2, 3, 5].flatMap (fun na => [1, 2, 3, 6, 10, 12, 16, 24].map (fun nb => uRunAll na nb))
+def uRunAll2 (na nb : Nat) : List Tx :=
+  [{base := 1000, ops := uPutsAB (uA na) (uBs nb)},
+   {base := 5000, ops := uDels (uA na) (uBs nb)}]
+def uFamilyAll2 : List (List Tx) :=
+  [2, 3].flatMap (fun na => [8, 12, 16, 24, 32].map (fun nb => uRunAll2 na nb))
+def uRunMany (na nb : Nat) : List Tx :=
+  [{base := 1000, ops := uPutsAB (uA na) (uBs nb)},
+   {base := 5000, ops := uDels ((uA na).filter (fun a => a % 128 == 56)) (uBs nb)},
+   {base := 9000, ops := uDels ((uA na).filter (fun a => a % 128 != 56)) (uBs nb)}]
+def uFamilyMany : List (List Tx) :=
+  [8, 12, 16, 20].flatMap (fun na => [1, 2, 3, 5].map (fun nb => uRunMany na nb))
+-- live-counts-check's families
+def mkRun1 (n k : Nat) : List Tx :=
+  [{base := 1000, ops := (List.range n).map (fun j => .put [64*j+8] (j+1))},
+   {base := 3000, ops := (List.range k).map (fun j => .del [64*(2*j)+8])},
+   {base := 5000, ops := (List.range n).map (fun j => .del [64*j+8])}]
+def family1 : List (List Tx) :=
+  [10, 25, 40].flatMap (fun n => [3, 8, 15].map (fun k => mkRun1 n k))
+-- new (C4): one transaction puts keys under new prefixes (new segments, split in
+-- the same transaction) and deletes keys under old prefixes (some emptied: the
+-- upward delete in the first segment's tree, which the puts split) and keys under
+-- the new prefixes that are not there (noops), in key order.
+def newSegOps (a : Nat) (nn : Nat) : List Op :=
+  (List.range nn).flatMap (fun j => [.put [a, 64 * j + 8] (a * 1000 + j + 1), .del [a, 64 * j + 40]])
+def cOld (n : Nat) : List Nat := (List.range n).map (fun i => 128 * i + 56)
+def cRun (na nb nn kd every : Nat) : List Tx :=
+  [{base := 1000, ops := uPutsAB (cOld na) (uBs nb)},
+   {base := 5000, ops := (List.range na).flatMap (fun i =>
+      uDels [128 * i + 56] ((uBs nb).take (if i % 2 == 0 then nb else kd)) ++
+      (if i % every == 0 then newSegOps (128 * i + 120) nn else []))}]
+def cFamily : List (List Tx) :=
+  [4, 7, 10].flatMap (fun na => [2, 5, 9].flatMap (fun nb => [1, 4, 9].flatMap (fun nn =>
+    [1, 3].flatMap (fun kd => [1, 2].map (fun every => cRun na nb nn kd every)))))
+-- and a third transaction deletes under the new prefixes too
+def cRun2 (na nb nn kd every : Nat) : List Tx :=
+  cRun na nb nn kd every ++
+  [{base := 9000, ops := (List.range na).flatMap (fun i =>
+      if i % every == 0 then uDels [128 * i + 120] ((uBs nn).take (nn - i % 3)) else [])}]
+def cFamily2 : List (List Tx) :=
+  [4, 7, 10].flatMap (fun na => [2, 5].flatMap (fun nb => [4, 9].flatMap (fun nn =>
+    [1, 3].map (fun kd => cRun2 na nb nn kd 2))))
+end SIS.Tree
+
+namespace SIS.Tree
+#eval summL (uFamily.flatMap (fun r => runLive uP1 r))
+#eval summL (uFamilyAll.flatMap (fun r => runLive uP1 r))
+#eval summL (uFamilyAll.flatMap (fun r => runLive uP2 r))
+#eval summL (uFamilyAll2.flatMap (fun r => runLive uP1 r))
+#eval summL (uFamilyMany.flatMap (fun r => runLive uP1 r))
+#eval summL (uFamilyMany.flatMap (fun r => runLive uP2 r))
+#eval summL (uFamily.flatMap (fun r => runLive fP8 r))
+#eval summL (uFamilyAll.flatMap (fun r => runLive fP8 r))
+#eval summL (uFamilyMany.flatMap (fun r => runLive fP14 r))
+#eval summL (family1.flatMap (fun r => runLive lcP8 r))
+#eval summL (family1.flatMap (fun r => runLive lcP14 r))
+#eval summL (cFamily.flatMap (fun r => runLive uP1 r))
+#eval summL (cFamily.flatMap (fun r => runLive fP8 r))
+#eval summL (cFamily2.flatMap (fun r => runLive uP1 r))
+#eval summL (cFamily2.flatMap (fun r => runLive lcP10 r))
+end SIS.Tree

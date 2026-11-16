@@ -104,6 +104,10 @@ reduced to its case at one delete whose start has the first stratum's facts
 induction's facts at every state, and `hchk`, with no `htb`, no fit and no
 heights' bound: inside a delete only the tree's facts are needed, and route P's
 invariant holds at the state after the leaf's change taken as its own reference.
+`invGetScanOK_merges_l4L` (SIS/Tree/LiveTop.lean; bergdb 030-01, step 1) has `l4`
+reduced the same way, to its open case at one delete whose start has the first
+stratum's facts (`LiveDelSL`): premises `hp`, `hth`, `htbL`, `l4L`, and
+`invGetScanOK_merges_tbL` is its corollary.
 
 `hU` is false as stated, for every parameter set, and so were `hHL` and `hCoU`:
 they speak of every writer state that meets a local invariant, which carries
