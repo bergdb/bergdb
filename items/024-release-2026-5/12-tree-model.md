@@ -371,7 +371,13 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   `liveDelSL_of` gives `l4L` from `l4`, so `invGetScanOK_merges_tbL` is its corollary
   (`invGetScanOK_merges_tbL_of_l4L`). The induction takes the deletes' live case with these
   facts (`jointHtJ_reachedJSL` and its wrappers `jointHtJ_reached0L` to `_1L`, near-copies).
-  Left: `l4L` itself, 030-01's steps 0 and 2 to 7.
+  Left: `l4L` itself, 030-01's steps 0 and 2 to 7. 22:38: step 0 done, 0 failures of C1 to C6
+  in 15 families (030-01's evidence `live-inside-check.lean.txt`); C4's branch never ran.
+  22:56: step 2's first part: the hole's form `LiveEdgesH` and `HoleAt` (`LiveHole.lean`), a
+  merge into one node moves the hole to the parent (`liveEdgesH_mergeOne`, on node maps), and
+  R1's core: the merges' descent one height up, on a state that reads alike above the hole,
+  stops at the hole's parent (`descendToHeight_up`, `LiveHoleDescent.lean`). Left for step 2:
+  the heights' facts that give its gradedness premise, and the merge at the writer's level.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next
