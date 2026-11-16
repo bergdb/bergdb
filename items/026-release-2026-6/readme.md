@@ -185,6 +185,11 @@ Files
   to pick up later, with the coordinator's view, the open questions and
   a proposed short proof trial; nothing decided.
 
+* 19-proof-trial.md. 026-19, the proof trial of 026-18 (Frans,
+  2026-11-16, 13:48): one fix step keeps the in-between invariant, and
+  gets and scans are right at visible times, proved on MT's rules of
+  026-17; the plan by an agent first; perhaps from 22:00 that day.
+
 
 Log
 ===
@@ -224,3 +229,6 @@ proposals to the decided work (Frans, 09:23: "Yes, decided work.").
 Frans's idea (12:54, 13:11).
 
 2026-11-16. 026-17 done: MT's trial, the result for Frans.
+
+2026-11-16. 026-19 registered: 026-18's proof trial, the plan first
+(Frans, 13:48).
