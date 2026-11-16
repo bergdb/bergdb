@@ -102,7 +102,6 @@ Open
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins and sequential keys | none | open |
 | [028-13](13-startup-distance-ranges.md) | Decide | The startup distance's two ranges disagree | decision | open |
 | [028-15](15-startup-distance-in-a-kv.md) | Change | The startup distance out of the meta block, into an internal KV | A or B | open |
-| [028-16](16-second-start-closes-db.md) | Fix | A refused second start of one Db closes the database the first started | none | open |
 
 
 Closed
@@ -110,6 +109,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-16](16-second-start-closes-db.md) | Fix | A refused second start of one Db closes the database the first started | none | done | 2026-11-16 |
 | [028-14](14-corrupt-node-no-end.md) | Investigate | A damaged node with its checksum right: a start that does not end | none | done | 2026-11-16 |
 | [028-07](07-start-lock-across-sync.md) | Investigate | One start's sync blocks every start of the JVM | none | done | 2026-11-16 |
 | [028-10](10-public-start-params.md) | Investigate | The public Db.start(StartParams) takes unchecked values | A | done | 2026-11-14 |
@@ -146,3 +146,6 @@ coord-1116.
 
 2026-11-16. 028-14 done: a skip pointer to its own top node looped a
 get; the walk now takes only older top nodes, by an agent of coord-1116.
+
+2026-11-16. 028-16 done: a refused second start of one `Db` closes
+nothing, by an agent of coord-1116.
