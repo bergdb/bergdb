@@ -265,7 +265,7 @@ The computed clauses are the definitions of `Bridge.lean` and
 `BridgeTop.lean`, run on the checker's heap as they stand; `Made`, 030-08's
 `TopStep` and TREE are computed by functions proved to give them
 (`madeCheck_sound`, `topStepB_sound`, `treeOkB_sound`). The three sets take
-about two minutes, with `--model` about eleven. `bridge-faults.sh`: faults
+about two minutes, with `--model` about eight. `bridge-faults.sh`: faults
 made by hand (an entry with another compare value, a delete entry with
 another one, a value without its NEW line, a key node on level 0, a skip
 pointer left out, another root pointer, a node left out of a TOUCH line,
@@ -354,3 +354,5 @@ GATED 50feb1f2: `MeetsFull`, every clause in the contract's words (the top by 03
 so T1, T2, lazy reading, the handles and the cut; `fullHistoryOk_meets`; Example3 meets it;
 195 traces, 29,735 transactions pass `bridge-check.sh`, `check.sh` CONTRACT OK;
 `gate.sh 863b69cb` GATE OK (67 theorems).
+16:58 `bridgecheck --model` on the 195 traces: the clauses in the model's words pass too (TOP,
+TOUCH, A6', COPY: 0 failures), with both verdicts. Merged main 0b316ceb (no change to the tree).

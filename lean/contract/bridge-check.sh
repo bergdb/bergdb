@@ -10,7 +10,7 @@
 # every trace go to java/build/traces/tree-SET/bridge.txt. First the checker's own
 # test, bridge-faults.sh, if the small and the reclaim set are there: faults made
 # in a trace must fail it. About 2 minutes for the three sets. The clauses in
-# the model's words too: .lake/build/bin/bridgecheck --model TRACE... (about 11
+# the model's words too: .lake/build/bin/bridgecheck --model TRACE... (about 8
 # minutes for the three sets).
 cd "$(dirname "$0")"
 CHECK=.lake/build/bin/bridgecheck
