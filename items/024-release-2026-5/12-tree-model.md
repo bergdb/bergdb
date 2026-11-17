@@ -785,6 +785,12 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   of k1 names y (l4b's `halves_leaf_searchEq_ins`): `redirectSeg2`'s premises. Writer shapes
   for R1: 62 of the 69; left the 7 through a space split at the root (`split.space3`, and q's
   in-place space split under the root's time split).
+  03:51 (prover l4g, `LiveRootSpaceHole.lean`): the one where q, the space root, not made,
+  splits in space (`split.space3`): `writerWP_appendKlongs_rootSpaceHole` (no premises): the
+  new inner space root's search at k1 names the half holding y's klong, which names y
+  (`searchLte_twoRoot`): `descendToHeight_topSeg_innerRoot`'s premises. Writer shapes for
+  R1: 63 of the 69; left the 6 where q, made, splits in space in place below the space root,
+  which splits in time.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next
