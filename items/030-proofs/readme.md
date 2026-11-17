@@ -242,6 +242,10 @@ Files
   before step 4: the checker passes ERROR lines and does not check that a
   trace is a history; the clauses step 4 needs (TREE shown not implied,
   in Lean). Written 2026-11-17, 14:48 to 15:40. Status: done.
+* [030-08](08-shape-top.md). The tree's shape and its top in the
+  contract (step 4b): TREE as a clause, Java's top nodes and skip
+  pointers with the readers' top search (TP24), the reads' theorems over
+  the tree with its top. Started 2026-11-17, 15:09. Status: open.
 
 
 Log
