@@ -253,6 +253,11 @@ Files
   `historyOk_meets`), LIVE lines checked, the assumptions reads rest on in
   030-04, 3.5, and Java's commit-time check in its tests. Status: open.
 
+* [030-10](10-writer-spike.md). A spike of 030-04's optional step 5, the
+  night of 17 November: does the model's writer meet the contract? The
+  refinement map from the writer's state to the contract's tree, checked on
+  the traces; the statement; how far a proof got and what the rest costs.
+  Status: open.
 
 Log
 ===

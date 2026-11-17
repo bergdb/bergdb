@@ -33,3 +33,5 @@ open Contract
 #print axioms applyTx_linesOf
 #print axioms java_start
 #print axioms java_meetsTop
+#print axioms writerMeets_of_opStep
+#print axioms runs_meetsTop_of_opStep

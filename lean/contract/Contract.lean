@@ -24,3 +24,4 @@ import Contract.TheoremsTop
 import Contract.HistoryTop
 import Contract.Rebuild
 import Contract.Writer
+import Contract.Proof.WriterRun

@@ -118,7 +118,8 @@ def bookFaults (p : MParams) (i : Time) (base : NodeId) (h : Heap) (w : MW) : Li
   -- B6: every id of the state is below the next id; a node made is at or
   -- above the first id, and no node of s.
   (if w.nodes.all (fun q => decide (q.1 < w.next)) && w.vals.all (fun q => decide (q.1 < w.next)) &&
-      madeIds.all (fun x => decide (x < w.next) && decide (base ≤ x) && !h.objs.contains x)
+      madeIds.all (fun x => decide (x < w.next) && decide (base ≤ x) && !h.objs.contains x) &&
+      decide (base ≤ w.next) && (!w.newTop || decide (w.top.id < w.next))
     then [] else ["B6 ids"]) ++
   -- B7: a key node of s in the overlay that is not reached at i has its klongs of s.
   (if live.all (fun q => match h.objs[q.1]? with

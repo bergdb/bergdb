@@ -28,6 +28,7 @@ operation. Nothing here needs Mathlib.
 -/
 import SIS.Tree.Exec
 import Contract.ShapeStatement
+import Contract.Shape
 
 namespace Contract
 
@@ -148,5 +149,191 @@ structure Books (i : Time) (base : NodeId) (s : Tree) (tp : Top) : Prop where
   rootTimes : ∀ r ∈ s.roots, r.1 < i
   ids : ∀ x, base ≤ x → s.obj x = none ∧ tp.node x = none
   roots : s.roots = rootsOf tp
+
+/-! ## 3. The statement
+
+English. The parameters of the contract and of the writer's rules are the
+model's: the node size M; H, m and theta.
+
+### 3.1 Between two operations
+
+`Mid`: what holds of the writer's state w between two operations of the
+transaction at time i from the tree s with the top tp, after the operations
+`done`. The times of s are before i and the writer makes no time after i, so
+the tree at time i is the tree, and s at time i - 1 is s.
+
+* J1. The map of w meets the contract's invariants.
+* J2. Its contents are those of s with the operations done applied.
+* J3. The frame, from s, with D the overlay.
+* J4. TREE.
+* J5. The top's clauses, and the space roots are the top's.
+* BalancedOK, of the writer's own rules: a key node is a segment leaf exactly
+  at height 0 of its segment tree, and an inner node's children are one level
+  below it. (The other four rules of Shape.lean, the fill among them, are not
+  here: see 3.3.)
+* The writer's books within a transaction (`MidBooks`), B1 to B12:
+  * B1. A key node of the overlay that is kept (not taken back) is a node of s
+    exactly if its first time is not i: the nodes made are those of first
+    time i.
+  * B2. No klong of the overlay has a time after i.
+  * B3. A node replaced (`W.madeFor`'s second) is a key node of s.
+  * B4. No klong, live or dead, of a node kept names a node taken back.
+  * B5. A node kept has the level of its segment and height (`W.gh`), and is
+    a segment leaf exactly at height 0.
+  * B6. Every id of the state is below the next id, the top node's too if
+    the writer made it; a node made has an id at or above the first id, and
+    so has the next id.
+  * B7. A key node of s in the overlay that is not reached has its klongs of
+    s (a node replaced has lost its klongs of the transaction).
+  * B8. A node made and kept is reached (or is the top node).
+  * B9. A node taken back was made by the transaction.
+  * B10. A node of the overlay is a node of s or was made by the transaction.
+  * B11. No key node was made outside the bounds G and H of the levels.
+  * B12. A node made with a node it replaces is of that node's segment, at
+    its height or above.
+
+### 3.2 The statement
+
+`OpStep`, one operation: from a state with `Mid`, an operation that the writer
+accepts (`putKv` gives no error), and that leaves no key node outside G and
+H, ends in a state with `Mid`, the operation done.
+
+`WriterMeets`, one transaction: from a tree s and a top tp that meet the
+contract's invariants, TREE and BalancedOK, with the books of a start
+(`Books`), shown to the writer by its view (`Shows`): if the writer accepts
+the operations one by one (`OpsRun`: each `putKv` gives no error, and no key
+node is outside G and H after it), then the map of its last state meets the
+writer's contract for the transaction, with TREE and the top's clauses, and
+BalancedOK again.
+
+### 3.3 What is not in it
+
+* The fill (FillOK), the two live klongs of an inner root (RootsOK), the
+  leftmost rule (LeftmostOK) and the bound on dead klongs (DeadOK). The writer
+  checks what it relies on as it goes and gives an error (Java's `Bug`) where
+  a rule fails: no sibling to merge with, an inner node without the empty
+  key's klong, an emptied inner space root. A transaction with an error is not
+  accepted, and the statement speaks of the accepted ones, as the contract
+  does (bergdb 030-04, section 3.2). That the writer never gives an error from
+  a tree in shape is a statement of its own, not made here; there the fill
+  comes back.
+* The bounds G and H are the model's, not Java's (bergdb 024-12, D5): a
+  transaction with a key node outside them is not covered, even if a later
+  operation takes the node back.
+* The view after the transaction (the model's `changesOf`, applied to P, must
+  show the map of the last state): the model's own round trip from klongs to
+  entries and back (bergdb 024-12, D3 and D4). -/
+
+/-- The contract's parameters, from the model's. -/
+def cpOf (p : MParams) : Params := { M := p.M }
+
+/-- The parameters of the writer's own rules, from the model's. -/
+def shapeOf (p : MParams) : ShapeParams := ⟨p.H, p.mergeBelow, p.theta⟩
+
+/-- BalancedOK of the writer's own rules (Shape.lean). -/
+def Balanced (p : MParams) (s : Tree) : Prop := "BalancedOK" ∉ shapeFaults (shapeOf p) s
+
+/-- The writer's books within the transaction at time i, B1 to B12. -/
+structure MidBooks (p : MParams) (i : Time) (base : NodeId) (s : Tree) (w : MW) : Prop where
+  first : ∀ x n, w.nodes.lookup x = some n → w.taken.contains x = false →
+    ((s.obj x).isSome = true ↔ n.firstTime ≠ some i)
+  times : ∀ x n, w.nodes.lookup x = some n → ∀ t, SIS.Tree.Klong.time t ∈ n.ks → t ≤ i
+  madeFor : ∀ m o, (m, o) ∈ w.madeFor → ∃ n, s.obj o = some (.key n)
+  named : ∀ x n, w.nodes.lookup x = some n → w.taken.contains x = false →
+    ∀ c y, SIS.Tree.Klong.key c y ∈ n.ks → w.taken.contains y = false
+  levels : ∀ x n, w.nodes.lookup x = some n → w.taken.contains x = false →
+    ∃ g h, w.gh.lookup x = some (g, h) ∧ wLevel s w x = p.keyLevel g h ∧ n.leaf = (h == 0)
+  ids : (∀ x n, w.nodes.lookup x = some n → x < w.next) ∧
+    (∀ x h, w.vals.lookup x = some h → x < w.next) ∧
+    (∀ m ∈ w.made, m.id < w.next ∧ base ≤ m.id) ∧
+    base ≤ w.next ∧ (w.newTop = true → w.top.id < w.next)
+  old : ∀ x n n0, w.nodes.lookup x = some n → w.taken.contains x = false →
+    s.obj x = some (.key n0) → x ∉ reach (treeOf i s w) → n.ks.map kOf = n0.ks
+  reached : ∀ m ∈ w.made, w.taken.contains m.id = false → m.id ≠ w.top.id →
+    m.id ∈ reach (treeOf i s w)
+  taken : ∀ x, w.taken.contains x = true → x ∈ w.made.map (·.id)
+  overlay : ∀ x n, w.nodes.lookup x = some n → (s.obj x).isSome = true ∨ x ∈ w.made.map (·.id)
+  within : w.outside = []
+  madeSeg : ∀ m o g h n, (m, o) ∈ w.madeFor → w.gh.lookup m = some (g, h) →
+    s.obj o = some (.key n) → g = p.segOf n.level ∧ p.heightOf n.level ≤ h
+
+/-- What holds between two operations of the transaction at time i from the
+tree s with the top tp, after the operations `done`: J1 to J5, BalancedOK and
+the books. -/
+structure Mid (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top) (done : List Op)
+    (w : MW) : Prop where
+  inv : invOk (cpOf p) (treeOf i s w) = true
+  contents : contents (treeOf i s w) = applyOps done (contents s)
+  frame : Frame i s (dirtyOf w) (treeOf i s w)
+  tree : TreeOk (treeOf i s w)
+  top : TopStep i tp (topOf i tp w)
+  roots : (treeOf i s w).roots = rootsOf (topOf i tp w)
+  balanced : Balanced p (treeOf i s w)
+  books : MidBooks p i base s w
+
+/-- One operation: the writer's `putKv` from the state w, accepted, with no
+key node outside G and H after it, keeps `Mid`. -/
+def OpStep (p : MParams) (op : MOp) : Prop :=
+  ∀ (i : Time) (base : NodeId) (s : Tree) (tp : Top) (v : View BVal) (z : NodeId)
+    (done : List Op) (w w' : MW) (b : Bool),
+    Shows p v z s tp → Books i base s tp → Mid p i base s tp done w →
+    SIS.Tree.putKv op { p := p, i := i, view := v } w = .ok (b, w') → w'.outside = [] →
+    Mid p i base s tp (done ++ [opOf op]) w'
+
+/-- The writer accepts the operations one by one, from the state w to the
+state w', with no key node outside G and H after any of them. -/
+inductive OpsRun (c : SIS.Tree.Ctx) : MW → List MOp → MW → Prop where
+  | nil (w : MW) : OpsRun c w [] w
+  | cons (w w1 w' : MW) (op : MOp) (ops : List MOp) (b : Bool) :
+      SIS.Tree.putKv op c w = .ok (b, w1) → w1.outside = [] → OpsRun c w1 ops w' →
+      OpsRun c w (op :: ops) w'
+
+/-- The tree s with the top tp before the transaction at time i with first id
+`base`: the contract's invariants, TREE, BalancedOK, a top, and the books. -/
+structure Before (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top) : Prop where
+  inv : invOk (cpOf p) s = true
+  tree : TreeOk s
+  balanced : Balanced p s
+  books : Books i base s tp
+
+/-- One transaction: the model's writer meets the writer's contract. -/
+def WriterMeets (p : MParams) (ops : List MOp) : Prop :=
+  ∀ (i : Time) (base : NodeId) (s : Tree) (tp : Top) (v : View BVal) (z : NodeId) (t : SIS.Tree.Top)
+    (w : MW),
+    Before p i base s tp → Shows p v z s tp → SIS.Tree.topOf p v z = .ok t →
+    OpsRun { p := p, i := i, view := v } { next := base, top := t } ops w →
+    Contract (cpOf p) i s (ops.map opOf) (dirtyOf w) (treeOf i s w) ∧
+      TreeOk ((treeOf i s w).at i) ∧ TopStep i tp (topOf i tp w) ∧
+      (treeOf i s w).roots = rootsOf (topOf i tp w) ∧
+      invOk (cpOf p) (treeOf i s w) = true ∧ TreeOk (treeOf i s w) ∧
+      Balanced p (treeOf i s w) ∧
+      (∀ x n, (treeOf i s w).obj x = some (.key n) → timesBefore (i + 1) n.ks = true) ∧
+      (∀ r ∈ (treeOf i s w).roots, r.1 < i + 1) ∧
+      (∀ x, w.next ≤ x → (treeOf i s w).obj x = none ∧ (topOf i tp w).node x = none)
+
+/-! ## 4. A run
+
+English. A run of the model's writer (`Runs`): from a start tree, empty, with
+its top, that meets `Before` for the first transaction; then transaction by
+transaction, the j-th at time j: a view that shows the tree and the top to the
+writer, a first id above every id of the tree and the top, and the writer
+accepts the operations one by one. The tree and the top after the
+transaction are the map of the writer's last state.
+
+`WriterMeets` for every transaction gives: a run is a history that meets the
+writer's contract, TREE and the top's clauses (`runs_meetsTop`,
+Proof/WriterRun.lean), the premise of the theorems on reads. -/
+
+/-- A run of the model's writer from a start tree: the transactions' operations,
+the tree and the top after them. -/
+inductive Runs (p : MParams) : List (List Op) → Tree → Top → Prop where
+  | start (s : Tree) (tp : Top) (base : NodeId) :
+      Before p 1 base s tp → contents s = [] → TopStart tp → Runs p [] s tp
+  | step (txs : List (List Op)) (s : Tree) (tp : Top) (ops : List MOp) (base : NodeId)
+      (v : View BVal) (z : NodeId) (t : SIS.Tree.Top) (w : MW) :
+      Runs p txs s tp → Shows p v z s tp → SIS.Tree.topOf p v z = .ok t →
+      (∀ x, base ≤ x → s.obj x = none ∧ tp.node x = none) →
+      OpsRun { p := p, i := txs.length + 1, view := v } { next := base, top := t } ops w →
+      Runs p (txs ++ [ops.map opOf]) (treeOf (txs.length + 1) s w) (topOf (txs.length + 1) tp w)
 
 end Contract
