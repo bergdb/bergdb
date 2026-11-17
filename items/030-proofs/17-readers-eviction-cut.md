@@ -58,7 +58,23 @@ Kept current; the Log has the times.
   top from time 2 (`topFrom_cut`); under eviction, Java's get of [16] at
   time 3 gives 6 and of [8] at time 2, between records, gives 5, without top
   node 5; at time 1 the search needs it.
-- **K-LEVEL in contractcheck:** to do (brief item 2).
+- **K-LEVEL in contractcheck** (brief item 2): `contractcheck` checks KIND
+  (every key node of the start and of D after each transaction has the kind
+  that its level gives with the TREE line's h), and its verdict is now
+  `checkVerdict` (030-15's `contractVerdict` and K-LEVEL), proved
+  (`checkVerdict_sound`) to give `MeetsTop` and K-LEVEL for the start tree
+  and the tree after every transaction, in the contract's words (`KindsAll`:
+  every key node of the tree, not only D's; the frame carries the rest). Its
+  fault: `faults.sh`'s `kindh0` (the TREE line's h set to 0: KIND fails, no
+  other clause). On the small, drain and reclaim sets: CONTRACT OK, 195
+  traces, 29,735 transactions, KIND 0 in both checkers.
+- **Found and fixed: `bridge-faults.sh` failed on `main` 3f1e2fea.** The
+  hand-made `test/small.trace` (030-15) has a segment leaf on level 2 with
+  the TREE line's h = 3, which K-LEVEL (030-14) refuses: `bridgecheck` gives
+  KIND 1, so the fault test's "small PASS" fails, and with it `check.sh` and
+  `bridge-check.sh` wherever the small and the reclaim sets are both present
+  (level2.sh's step 8b writes small and drain only, so it passes in a fresh
+  clone). Fixed in the test trace: h = 0, which its levels fit (decision 5).
 
 
 # 2. The theorems, in plain English beside the Lean
@@ -133,6 +149,24 @@ and `TopFrom`.
    distinct top nodes made at or after f, and the kept top has an entry for
    each (the ids of a top built by the clauses are distinct:
    `TopGood.nodup`, `length_from_le`). Not a premise.
+5. **`test/small.trace`'s TREE line: h = 0, not 3** (45fc446d). Its key
+   nodes are all segment leaves, one on level 1 and one on level 2: with
+   h = 3 a level-2 node is an inner node by K-LEVEL, which no Java trace has;
+   with h = 0 every segment tree is one leaf high and the levels fit. The
+   trace is the review's test input of the strict grammar (030-15); its
+   faults still fail for their own reasons, and it passes both checkers.
+   Rejected: dropping KIND for traces made by hand (a clause that holds only
+   for some traces is no clause).
+6. **K-LEVEL in contractcheck as a verdict of its own, joined to 030-15's**
+   (`checkVerdict = contractVerdict && K-LEVEL`, Contract/KindsCheck.lean),
+   not a change of `contractVerdict`: no existing statement changes, and
+   `checkVerdict_sound` has `contractVerdict_sound`'s conclusion and more.
+   The clause in the contract's words is said of every key node of every
+   tree (`KindsAll`), from the D-only check and the frame (clause 3: a node
+   not in D is as it was, a new key node is in D), a little more than the
+   bridge's `KindsOK` (D only). The start check is RecoverCheck.lean's
+   `startKindsOk` again (`startKindsB`), so that the contract checker does
+   not import Mathlib.
 4. **New files only**, as the common rules ask: `Contract/RecoverCut.lean`
    (the definition, to read and trust), `Contract/RecoverCutTheorems.lean`
    (the theorems), `Contract/Proof/TopFrom.lean`,
@@ -144,7 +178,8 @@ and `TopFrom`.
 
 # 4. Premises and assumptions
 
-- No new clause for item 1.
+- No new clause for item 1. K-LEVEL (030-14's clause) is now checked by both
+  checkers.
 - **030-04, 3.5, item 13, extended** (not a new item): Java's tree after a
   startup, a lazy startup, a startup from a cut stream, or with objects
   evicted and loaded again, holds the view the model gives back, and Java's
@@ -158,8 +193,8 @@ and `TopFrom`.
 
 # State
 
-2026-11-17, 21:20. Item 1 done and gated (the Log has the commit). Next:
-item 2 (K-LEVEL in contractcheck), then item 3 if useful.
+2026-11-17, 21:30. Items 1 and 2 done and gated (the Log has the commits).
+Next: item 3 (the whole-node form of `HoldsView`), if useful.
 
 
 # Log
@@ -177,3 +212,20 @@ lazy startup and after reclaim's safe cuts (`evict_java_reads`,
 only the top nodes that `TopFrom f` names (`findRoot_from`), which the cut
 stream keeps (`cut_keeps_top`); a closed example without a gone top node;
 030-04 3.5 item 13 extended; `gate.sh 3f1e2fea` GATE OK (172 theorems).
+21:22 `bridge-faults.sh` fails on `main` 3f1e2fea: "small: WRONG, expected
+PASS" (KIND 1 on `test/small.trace`); fixed by the trace's TREE line (h = 0),
+BRIDGE FAULTS OK. Commit 45fc446d.
+GATED 45fc446d: fix: `bridge-faults.sh` failed on main 3f1e2fea (and with it
+`check.sh` and `bridge-check.sh` where the reclaim set is present):
+`test/small.trace`'s TREE line h = 0 so that its levels fit K-LEVEL; no Lean
+changed (the gate of 3a7d6c87 holds).
+21:28 K-LEVEL in `contractcheck`: `checkVerdict`, `checkVerdict_sound`, KIND
+counts, `faults.sh` `kindh0` (FAULTS OK); Java built, the small, drain and
+reclaim sets written (`treeconf.sh`, TREECHECK=none); `check.sh small drain
+reclaim`: CONTRACT OK (195 traces, 29,735 transactions, KIND 0 in both
+checkers; faults.sh, faults-top.sh, bridge-faults.sh first). `gate.sh
+3f1e2fea`: GATE OK (173 theorems). Commit d295d76a.
+GATED d295d76a: K-LEVEL in `contractcheck` (KIND; `checkVerdict` with
+`checkVerdict_sound`: MeetsTop and K-LEVEL for every tree), the fault
+`kindh0` in faults.sh; check.sh small drain reclaim CONTRACT OK (195 traces,
+KIND 0); `gate.sh 3f1e2fea` GATE OK (173 theorems).
