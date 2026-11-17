@@ -132,9 +132,10 @@ Index
 * **007-bounds** (open). Bounds on BergDB's costs, the planned T3 and T4:
   first, that startup takes a bounded time, whatever the size and the age
   of the database.
-* **008-release-2026-1** (done). Release 2026.1, internal: the tagged code,
-  the jar and the release notes, and the baseline for performance
-  measurements before handles (004) and gradual eviction.
+* **008-release-2026-1** (done). Release 2026.1, internal until the
+  repository went public (029): the tagged code, the jar and the release
+  notes, and the baseline for performance measurements before handles
+  (004) and gradual eviction.
 * **009-handles** (done). Handles in BergDB, from 004's direction:
   eviction with bounded work and no stop-the-world. The plan, the work on
   `main` and on the branch `009-handles`, the measurements, the outcome.
