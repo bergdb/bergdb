@@ -59,6 +59,15 @@ def showsFaults (p : MParams) (i : Time) (base : NodeId) (P : SIS.Check.Tree.PMa
     match o with
     | .key n =>
       if !timesBefore i n.ks then f := f ++ [s!"key node {x} has a time at or after {i}"]
+      match n.ks with
+      | .time _ :: _ => pure ()
+      | _ => f := f ++ [s!"key node {x} does not start with a time klong"]
+      if n.level == 0 then f := f ++ [s!"key node {x} has level 0"]
+      if !n.leaf && !(n.ks.all (fun k => match k with
+          | .key _ y => (match h.objs[y]? with
+            | some (.key m) => m.level + 1 == n.level
+            | _ => false)
+          | _ => true)) then f := f ++ [s!"inner node {x} names a node not one level below"]
       match P[x]? with
       | some nd =>
         if nd.isData || nd.level != n.level || p.keyMax < n.level ||
@@ -135,6 +144,15 @@ def bookFaults (p : MParams) (i : Time) (base : NodeId) (h : Heap) (w : MW) : Li
     else ["B10 overlay nodes are of s or made"]) ++
   -- B11: an outside node (beyond G, H) is not reached.
   (if w.outside.all (fun q => w.taken.contains q.1) then [] else ["B11 outside nodes taken back"]) ++
+  -- B13: every node kept of the overlay starts with a time klong.
+  (if live.all (fun q => match q.2.ks with
+      | .time _ :: _ => true
+      | _ => false) then [] else ["B13 a time klong first"]) ++
+  -- B14: BalancedOK for every node kept of the overlay and every key klong of it,
+  -- live or dead: an inner node's klong names a key node one level below.
+  (if live.all (fun q => q.2.leaf || (named q.2.ks).all (fun y => match s.obj y, s.obj q.1 with
+      | some (.key m), some (.key n) => m.level + 1 == n.level
+      | _, _ => false)) then [] else ["B14 every klong of an inner node names a node one level below"]) ++
   -- B12: a made node's `madeFor`, if any, is of its segment, at its height or
   -- below (a root made by a split replaces the node split).
   (if w.madeFor.all (fun q => match w.gh.lookup q.1, h.objs[q.2]? with
