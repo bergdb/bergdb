@@ -1349,3 +1349,21 @@ last version's klongs its live ones, not taken back), moved by the swap. Corolla
 `invGetScanOK_merges_noL4bU` (l4b's `invGetScanOK_merges_noL4b` with
 `UpCascCallBelowRuns` for `hCasc`, by `upCascCallRuns_of_below` and
 `delCaseLive_emptyCasc`).
+
+2026-11-17, 02:09 to 02:15. Step 6, the stop node below the root split in space, prover
+l4e (`LiveUpCascBelow.lean`, about 630 lines, about 370 of them the tree's below-root swap
+prelude, `writerWP_upCasc_below_delST`, again). `writerWP_upCasc_below_spaceH`: a full stop
+node X (D + 1) below the space root, not made by the transaction, split in space with no
+compaction (a last version of more than `splitAbove` klongs), ends with the heights and the
+live counts, no hole. At the state whose stop node has its bitmap (S') the tree is the
+start's without the chain, and S' is filled (it holds a half's live klongs, `HalfOK`,
+`liveAt_length_le`), so the live counts hold there (`liveEdgesH_up`,
+`liveEdges_of_oneHole`); l4b's `writerWP_handleFull_spaceChain_live` (inner parent) or
+`writerWP_handleFull_segSpaceChain_live` (the stop node a segment root) take the split and
+its cascade, with the chain's ranges and lengths as the tree's swap has them; the heights
+by `htInv_upFrame` and `ht_handleFull` at that state; all moved by the swap.
+`upCascCallBelowOK_of_rest`: `UpCascCallBelowOK` from `UpCascSplitRestOK`, the cases left at
+the stop node's split (after the bitmap's note): a split in time (the copy, or the stop
+node made by the transaction, is the hole), a made stop node's split in space in place,
+and a made space root. `upCascCallRuns_of_rest` at the runs; no new top corollary (the
+coordinator's word, 02:10: none more carrying `R3Calls`).
