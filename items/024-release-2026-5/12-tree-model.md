@@ -506,7 +506,10 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   (`writerWP_upCasc_below_madeTime`, `LiveUpCascMade.lean`: the hole is the stop node, R1 by
   `holeAtW_stop`; heights for any split below the root, `writerWP_upCasc_below_ht`); left
   `UpCascSplitRest2OK` (the copy of a stop node not made split in time, a made stop node's
-  space split, a made root), `upCascCallRuns_of_rest2`. 23:35 (prover l4a, step 3's first part): the merges' loop with
+  space split, a made root), `upCascCallRuns_of_rest2`. 02:27 (l4e): the made stop node below
+  the root split in space in place is proved (`writerWP_upCasc_below_madeSpaceH`, no hole); left
+  `UpCascSplitRest3OK` (a stop node not made split in time, the copy the hole; a made space
+  root), `upCascCallRuns_of_rest3`. 23:35 (prover l4a, step 3's first part): the merges' loop with
   the hole (`LiveLoop.lean`): `writerWP_afterDelete_live`, from `DelInvJAE`, the books,
   `HtInv` and `LiveHoleW key g 0` at a call of `afterDelete`, ends with `LiveEdges`, given
   two obligations: `MergeLiveOK` (a merge of a round keeps the hole one height up, or into
