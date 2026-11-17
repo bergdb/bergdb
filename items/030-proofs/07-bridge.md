@@ -356,3 +356,6 @@ so T1, T2, lazy reading, the handles and the cut; `fullHistoryOk_meets`; Example
 `gate.sh 863b69cb` GATE OK (67 theorems).
 16:58 `bridgecheck --model` on the 195 traces: the clauses in the model's words pass too (TOP,
 TOUCH, A6', COPY: 0 failures), with both verdicts. Merged main 0b316ceb (no change to the tree).
+GATED 33266194: the same proofs as 50feb1f2, merged with main 0b316ceb; `gate.sh 0b316ceb`
+GATE OK (67 theorems); `bridge-check.sh small drain reclaim` BRIDGE OK; `check.sh` CONTRACT OK.
+The brief's work list is done.
