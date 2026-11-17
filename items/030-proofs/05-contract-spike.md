@@ -36,7 +36,7 @@ All of it is on the branch `030-04-spike`; nothing is on `main`.
   prints GATE OK.
 - **Lines, hours, share.** 4,890 lines of Lean: 867 to read and trust,
   3,434 of proof, 486 of the checker, the rest the example and the
-  gate. About an hour and a half, 11:31 to 12:58. About 4 % of the
+  gate. About an hour and a half, 11:31 to 12:56. About 4 % of the
   week: 20 % at the start, 24 % at the end, by the coordinator's watch.
 
 Proved means a Lean theorem with no premise left open. What is proved
@@ -174,7 +174,7 @@ frame, and Java's GET and SCAN lines against the readers.
 
 # State
 
-2026-11-17, 12:58. GATED, by 030-04, section 7.6.
+2026-11-17, 12:56. GATED, by 030-04, section 7.6.
 
 - Branch `030-04-spike` in the clone
   `/Users/f/fl/bench/2026-11-17/spike/clone`, from `main` 66db6126.
@@ -187,6 +187,6 @@ frame, and Java's GET and SCAN lines against the readers.
 
 # Log
 
-2026-11-17, 11:31 to 12:58. The spike, one agent (Fable at high).
+2026-11-17, 11:31 to 12:56. The spike, one agent (Fable at high).
 11:53 the definitions and the checker, passing on the traces; 12:11 the
 get proved; 12:35 the scan proved; 12:40 the example and the gate.
