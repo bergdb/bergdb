@@ -24,14 +24,11 @@ The public repository is a new one, made from the private one with its
 history kept from 2013: the commits of 2013 to 2017 come first, then
 those of 2026. The history was cleaned, so every commit hash changed:
 
-* Frans's private notes and a private planning document were dropped
-  from every version, and so were the earlier versions of two documents
-  with personal details;
+* private material was removed from every version: private notes,
+  personal details and contact data, and old login names; every
+  author, committer and tagger is frans.lundberg@gmail.com;
 * the release binaries were dropped from every version; they are on the
   releases page;
-* a phone number, private e-mail addresses and old login names were
-  removed from every version, and every author, committer and tagger is
-  frans.lundberg@gmail.com;
 * `Co-Authored-By` lines were removed from the commit messages;
 * `LICENSE` reads the Apache License 2.0 in every version of the 2026
   history;
