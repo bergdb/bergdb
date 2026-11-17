@@ -60,6 +60,21 @@ night of 17 November.
   to a transaction and a history is proved (`writerMeets_of_opStep`,
   `runs_meetsTop_of_opStep`). What the puts are proved to keep is `MidP`,
   `Mid` without the six books that only a delete reads.
+- **The view** (the second review's first point; section 6 has the
+  route). `Shows`, the writer's view at each transaction, is still a
+  premise of a run. Towards having it from the model's own structure
+  (`exec?`'s changes applied, then `SIS.view`), two of three parts are
+  proved for the key nodes (`Contract/Proof/WriterView.lean`): the
+  structure after the model's changes holds the tree of the writer's
+  state (`holds_apply`, by the old package's `apply_keyNode`, imported),
+  and the model's own view shows the key nodes that the tree reaches,
+  if the space root is reachable (`reachable_of_holds`,
+  `shows_key_of_holds`). Left: the top, two premises to take from `Mid`,
+  and the join with the run; 1,500 to 3,000 lines by my estimate.
+- **030-16's deletes on the restated statement**: its delete of a
+  one-segment key, the merges' loop and root collapse (main 53e66e73)
+  are carried to the balance rule for the nodes reached and to `Shows`
+  for the nodes reached (section 3, 22:15).
 - **The main answer** (item 5, section 5): the old route's hard cases do
   not come back. `l4`, R3, R4 and ValOld are all about the fill and the
   rule of two live klongs in an inner root. The old theorem needed them
