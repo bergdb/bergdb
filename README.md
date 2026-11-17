@@ -89,8 +89,8 @@ public class Hello {
     javac -cp java/build/bergdb-release.jar Hello.java
     java -cp java/build/bergdb-release.jar:. Hello
 
-`create` makes a new database in a new or empty directory; `open` opens
-an existing one.
+`create` opens the database in the directory, or makes a new one if there
+is none; `open` only opens an existing one and never makes one.
 
 Stored Java objects, a transaction, an index and a query of the past,
 in `Accounts.java`:
@@ -177,7 +177,8 @@ What a running database needs:
 
 * `stop()` or `close()` for every database that is started.
 * The ZGC collector (`-XX:+UseZGC`), or Shenandoah without generations,
-  for short pauses. With G1, eviction brings pauses of hundreds of
+  for short pauses. With G1, eviction (dropping cached index nodes from
+  memory when the cache is full) brings pauses of hundreds of
   milliseconds.
 * Storage that returns the bytes as they were written. BergDB's checks
   for damaged bytes are a best effort.
@@ -201,7 +202,8 @@ limits". The ones a user meets first:
 * **The startup distance.** The default, 50 MB, suits up to about 10M
   keys; beyond that, use 200 to 1000 MB. At a fixed startup distance, the
   stream bytes written for each put grow with the number of keys.
-* **Reclaim keeps more than the live data.** With a finite retention,
+* **Reclaim keeps more than the live data.** Reclaim cuts old history
+  from the front of the stream. With a finite retention,
   the stream holds the kept history and, beyond it, up to about 6 times
   the live data.
 * **Each database allocates a 10 MB write buffer at its start**, whatever
