@@ -15,13 +15,17 @@ traced transaction alone, on Java's tree before and after it:
 * R1, the reads: each GET line is `get`, each SCAN line is `scan`, on the tree
   after it at the line's time;
 * S, the writer's own rules (`shapeFaults`), reported apart: they are not in
-  the contract.
+  the contract;
+* C4, TREE (bergdb 030-08): no node reached twice from the space root of the
+  tree after it, at its time (`treeOkB`; with C1 to C3 `checkShapeTx`, which
+  is the contract with TREE: `checkShapeTx_sound`, Contract/CheckShape.lean).
 
 For TX 0: the start tree meets the invariants and is empty (`Start`).
 Prints one line per trace and CONTRACT OK or CONTRACT FAILED; a failure
 names the trace and the transaction.
 -/
 import Contract.Trace
+import Contract.CheckShape
 
 open Contract
 
@@ -34,6 +38,7 @@ structure Counts where
   c2 : Nat := 0
   c3 : Nat := 0
   r1 : Nat := 0
+  c4 : Nat := 0
   shape : Nat := 0
   shapeNames : List String := []
   first : Option String := none
@@ -54,6 +59,7 @@ def checkTrace (tr : Trace) : Counts := Id.run do
     if i == 0 then
       if !(invOk p s') then c := { c.fail "TX 0: C1, the start tree's invariants" with c1 := c.c1 + 1 }
       if !(contents s').isEmpty then c := { c.fail "TX 0: C2, the start tree is not empty" with c2 := c.c2 + 1 }
+      if !(treeOkB s') then c := { c.fail "TX 0: C4, TREE" with c4 := c.c4 + 1 }
     else
       c := { c with txs := c.txs + 1, ops := c.ops + tx.ops.length }
       if !(invOk p s') then c := { c.fail s!"TX {i}: C1, the invariants" with c1 := c.c1 + 1 }
@@ -64,6 +70,9 @@ def checkTrace (tr : Trace) : Counts := Id.run do
       if checkTx p i h tx.ops d h' != (invOk p s' &&
           contents s' == applyOps tx.ops (contents (h.tree.at (i - 1))) && frameCheck i h d h') then
         c := { c.fail s!"TX {i}: checkTx differs from its parts" with c3 := c.c3 + 1 }
+      if !(treeOkB s') then c := { c.fail s!"TX {i}: C4, TREE" with c4 := c.c4 + 1 }
+      if checkShapeTx p i h tx.ops d h' != (checkTx p i h tx.ops d h' && treeOkB s') then
+        c := { c.fail s!"TX {i}: checkShapeTx differs from its parts" with c4 := c.c4 + 1 }
     for g in tx.gets do
       c := { c with gets := c.gets + 1 }
       if get (h'.tree.at g.t) g.key != g.v then
@@ -91,15 +100,15 @@ def main (args : List String) : IO UInt32 := do
       failed := failed + 1
     | .ok tr =>
       let c := checkTrace tr
-      let bad := c.c1 + c.c2 + c.c3 + c.r1
-      IO.println s!"{path}: M={tr.M} {c.txs} transactions, {c.ops} operations, {c.gets} GET, {c.scans} SCAN; failures: C1 {c.c1}, C2 {c.c2}, C3 {c.c3}, R1 {c.r1}; shape faults {c.shape} {c.shapeNames}{match c.first with | some m => "; first: " ++ m | none => ""}"
+      let bad := c.c1 + c.c2 + c.c3 + c.r1 + c.c4
+      IO.println s!"{path}: M={tr.M} {c.txs} transactions, {c.ops} operations, {c.gets} GET, {c.scans} SCAN; failures: C1 {c.c1}, C2 {c.c2}, C3 {c.c3}, R1 {c.r1}, C4 {c.c4}; shape faults {c.shape} {c.shapeNames}{match c.first with | some m => "; first: " ++ m | none => ""}"
       if bad != 0 || c.txs == 0 then failed := failed + 1
       total := { total with txs := total.txs + c.txs, ops := total.ops + c.ops,
                             gets := total.gets + c.gets, scans := total.scans + c.scans,
                             c1 := total.c1 + c.c1, c2 := total.c2 + c.c2, c3 := total.c3 + c.c3,
-                            r1 := total.r1 + c.r1, shape := total.shape + c.shape,
+                            r1 := total.r1 + c.r1, c4 := total.c4 + c.c4, shape := total.shape + c.shape,
                             shapeNames := (total.shapeNames ++ c.shapeNames).eraseDups }
-  IO.println s!"total: {args.length} traces, {total.txs} transactions, {total.ops} operations, {total.gets} GET, {total.scans} SCAN; failures: C1 {total.c1}, C2 {total.c2}, C3 {total.c3}, R1 {total.r1}; shape faults {total.shape} {total.shapeNames}"
+  IO.println s!"total: {args.length} traces, {total.txs} transactions, {total.ops} operations, {total.gets} GET, {total.scans} SCAN; failures: C1 {total.c1}, C2 {total.c2}, C3 {total.c3}, R1 {total.r1}, C4 {total.c4}; shape faults {total.shape} {total.shapeNames}"
   if failed == 0 then
     IO.println "CONTRACT OK"
     return 0

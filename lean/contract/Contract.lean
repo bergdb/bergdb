@@ -8,3 +8,8 @@ import Contract.Theorems
 import Contract.Example
 import Contract.Example3
 import Contract.ExampleDag
+import Contract.Reach
+import Contract.ShapeStatement
+import Contract.CheckShape
+import Contract.TheoremsShape
+import Contract.ExampleShape
