@@ -1818,3 +1818,12 @@ p's copy, which holds p's last version and p's cached segment and height. `_R1`:
 round's descent on S, the split's start reading as S above q0 (those nodes old and none of
 p, q, q0), the space roots alike and p's cached height h + 1, the descent at (g, h + 1) after
 the split finds p's copy. The split step's R1 now holds for 40 of the 69 (25 + 15).
+
+2026-11-17, 04:01 to 04:03. The split step's R1 for the 6 where q, made, splits in place,
+prover l4g (`LiveInPlaceChildHole.lean`, about 260 lines, about 110 of them l4b's in-place
+split and 03:46's lemma again with the cache). `writerWP_handleFull_inPlaceChildHole`: p
+(depth d'' + 2, not made) split in time below q (made, without room or compacting), which
+splits in time in place: q's node a leaf whose search of k1 names p's copy, which holds p's
+last version and p's cached segment and height. `_R1` with the reads of the split's start as
+the round's above q: the descent at (g, h + 1) after the split finds the copy
+(`descendToHeight_redirectSeg`). The split step's R1: 46 of the 69 (25 + 15 + 6).
