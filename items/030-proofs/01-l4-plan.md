@@ -1704,3 +1704,16 @@ the merge's `LiveEdgesH` with the hole p (`liveEdgesH_mergeOne`'s form) as `Live
 with this split (`writerWP_mergeTail_liveSplitX`'s one-node branch with `LiveHoleW` at h + 1
 instead of `liveEdges_of_oneHole`), R1 with the copy's node and height, and the writer
 shapes of q's space splits (15 below q0, 7 at the root).
+
+2026-11-17, 03:38 to 03:40. R1 through two changed levels for the delete's leaf, prover l4g
+(`LiveDelHole2.lean`, about 310 lines, about 140 of them `holeAtW_copyG`'s prelude again).
+`holeAtW_copyG2`, no premises: l4b's `holeAtW_copyG` with the redirect one level higher, for
+l4b's `DelFullTimeHole2M`: the key's leaf L split in time, its copy y the hole; L's parent
+q (inner) split too, its copy or the half with L's klong a new inner node q', named by q's
+parent q0 (inner, its node changed in place). Where the reads are alike but at q0, q, L, q'
+and y, q0's search of the key's last compare value names q' and q' names y, the merges'
+descent at (g, 0) finds y. The segment's tree holds q0 and q (both inner: neither is a
+segment leaf, so the descent below the segment root has two steps or more), and l4e's
+`lteP_redirect2` at q0 does it. Not covered: q a segment root (q0 a segment leaf), q the
+space root. Left for l4b's case: the writer's two splits with y the hole; y is named by an
+inner node there, so the live counts need a `LiveEdgesH` version of l4b's chain lemma.

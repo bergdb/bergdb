@@ -500,6 +500,12 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   for any redirected parent node): `liveDel_fullTimeMadeParent`. Left of R4
   `DelFullTimeHole2M` (the parent the space root, not made, or split in space);
   `invGetScanOK_merges_noL4d`.
+  03:40 (l4g, `LiveDelHole2.lean`): R1 for it at the state level where the parent q (inner)
+  is not the space root and its parent q0 (inner) keeps its id: `holeAtW_copyG2` (no
+  premises): `holeAtW_copyG` with q0's search naming q's new node q' (its copy, or the half
+  with L's klong), q' naming the copy y (l4e's `lteP_redirect2`). Left: the writer's two
+  splits with y the hole (the leaf's copy is named by an inner node, so l4b's
+  `writerWP_appendKlongs_chainGLX` with E y does not apply: a `LiveEdgesH` chain is needed).
   `invGetScanOK_merges_noL4U` is `invGetScanOK_merges_noL4` with that premise for `hCasc`.
   02:08 (l4e): the obligation at the space root not made by the transaction is proved
   (`upCascCallOK_of_below`, `LiveUpCascRootH.lean`; the heights through the swap,
