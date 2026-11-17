@@ -1,6 +1,6 @@
 # 030-15. Strict trace parsing, one verdict, and a gate that pins the statements
 
-Created 2026-11-17 by Frans Lundberg. Status: open.
+Created 2026-11-17 by Frans Lundberg. Status: done.
 
 The fixes of an independent review of the contract package (another model,
 the night of 17 November; its sections 4 and 5): malformed trace lines
@@ -30,7 +30,11 @@ All three items of the brief are done.
    trace made valid) and in Java's traces; they are in `faults.sh` and
    `bridge-faults.sh` with five more (a number with `_`, two spaces, lines
    out of order, a transaction without `BASE`, a wrong GET or a wrong key
-   entry). The 195 traces of the small, drain and reclaim sets pass.
+   entry). The 195 traces of the small, drain and reclaim sets pass, and
+   four traces made with every kind of line of format 2 and 3 (`probe`,
+   `rune=random` and `every` with `ereads` and `erestart`, `retain`, `live`:
+   PROBE, FIRST, SLOT, the handles' lines, FA, CUT, PHYSCUT, TOUCH; 686
+   transactions) pass the contract checker.
 2. **One verdict.** `contractcheck` passes a trace only if
    `contractVerdict` of its lines is true (Contract/Verdict.lean): whole,
    readable, `startTopOk` and `historyTopOk` on the history its lines give
@@ -136,7 +140,29 @@ them), the shell scripts but gate.sh (tests).
 
 # 4. State note
 
-To be written at the end.
+Done; the last gated commit is in the Log. For whoever goes on:
+
+- **The gate's step 5 and other branches.** When this lands, every later
+  commit that changes a pinned file must change `statements.pin` in the
+  same commit (`lean/contract/pin.sh`, then commit both). A pin fixed in a
+  later commit does not help: the gate names the earlier commit; squash
+  the pin into it (`git commit --amend`, or a rebase). Commits whose
+  parent has no pin file are not checked, so branches started before this
+  one lands pass step 5's commit check, but their tree fails the hash check
+  until `pin.sh` is run: the coordinator runs `pin.sh` in the merge and
+  reviews the pinned files that the gate lists as changed since BASE. A
+  new theorem in Axioms.lean can add files to the closure: the gate then
+  says "not in statements.pin".
+- **Tools:** `lake env lean Statements.lean` (the closure's files, about 7
+  s); `pin.sh`; `check.sh SET...` (both checkers); `faults.sh` and
+  `bridge-faults.sh` (the strict faults, with `test/small.trace`).
+- **What is left (not in this brief):** the checkers' `main` functions
+  (reading the files, the exit status) are read, not proved; a combined
+  executable whose verdict is `contractVerdict && fullHistoryOk` would make
+  "both pass" one theorem (the bridge checker needs the old package's
+  parser for its changes, so it is more than a few lines). The review's
+  other findings (the leaf flag in `Rep`, restart over supplied changes,
+  values as hashes) are not this item's.
 
 
 Log
