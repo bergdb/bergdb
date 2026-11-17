@@ -1,0 +1,74 @@
+/-
+The proof trial of 026-18 (bergdb 026-19, step B2): scans at a visible time, from
+`StInv` (`t_scans_of_full`). `scan_eq_contents` and `rootContents_sorted`
+(ScanLatest.lean) apply unchanged; the contents are the reference's from the gets
+(`ReadsOK`), as `rootContents_eq_refKvs` has it for today's runs.
+-/
+import SIS.Tree.MtStep
+
+set_option autoImplicit false
+
+namespace SIS.Tree.Mt
+
+open SIS SIS.Check SIS.Tree
+
+/-- Every user operation of a reached state has a well-formed key. -/
+theorem reached_ops_wf (p : Params) (s : St) (h : Reached p s) :
+    ∀ op ∈ s.ops, keyWf op.key = true := by
+  induction h with
+  | init => intro op hop; cases hop
+  | step s s' _ hs ih =>
+    cases hs with
+    | user tx noops w _ _ hwf _ _ =>
+      intro op hop
+      rcases List.mem_append.mp hop with hop | hop
+      · exact ih op hop
+      · simp only [Tx.wf, List.all_eq_true] at hwf
+        exact hwf op hop
+    | fix => exact ih
+    | done => exact ih
+
+-- restated from refKvs_keyWf (ScanLatest.lean)
+theorem refKvs_ref_keyWf (p : Params) (s : St) (hs : Reached p s) (t : Time) (k : Key) (h : Nat)
+    (hm : (k, h) ∈ refKvs s.ref t) : keyWf k = true := by
+  have hk := refGet_some_key s.ref t k h ((mem_refKvs s.ref t k h).mp hm)
+  obtain ⟨op, hop, hk⟩ := List.mem_map.mp hk
+  obtain ⟨tx, htx, hop⟩ := List.mem_flatMap.mp hop
+  have htx' : tx ∈ s.ref := List.mem_of_mem_take htx
+  simp only [St.ref, List.mem_singleton] at htx'
+  subst htx'
+  rw [← hk]
+  exact reached_ops_wf p s hs op hop
+
+-- restated from rootContents_eq_refKvs (ScanLatest.lean)
+theorem rootContents_eq_ref (p : Params) (s : St) (hs : Reached p s) (hK : HighKindsOK p s.P)
+    (hE : ViewEncoded (viewOf s.P)) (hD : DataEntriesOK s.P) (hI : InvOK p s.P s.t)
+    (hR : ReadsOK p s) : rootContents p s.P s.t = refKvs s.ref 1 := by
+  apply eq_of_sorted_mem _ _ (rootContents_sorted p _ _ hK hD hE hI) (refKvs_sorted s.ref 1)
+  intro ⟨k, h⟩
+  by_cases hk : keyWf k = true
+  · rw [← get_mem_rootContents p _ _ hK hI k hk h, hR k hk, mem_refKvs]
+  · constructor
+    · intro hm
+      exfalso
+      apply hk
+      unfold rootContents at hm
+      cases hr : rootAt (viewOf s.P) s.t with
+      | none => simp [hr] at hm
+      | some r =>
+        rw [hr] at hm
+        exact treeContents_keyWf_of_encoded p _ s.t p.fuel r hE (k, h) hm
+    · intro hm
+      exact absurd (refKvs_ref_keyWf p s hs 1 k h hm) hk
+
+/-- (d) At a visible time, scans are right. -/
+theorem t_scans_of_full (p : Params) : T_scans_of_full p := by
+  intro s hs hI hpend req limit hreq
+  obtain ⟨hsub, htimes, hK, hD, hE, hR⟩ := hI
+  rw [hpend] at hsub
+  have hInv : InvOK p s.P s.t := (t_full_of_sub p s.P s.t htimes hsub).2.2.1.1
+  rw [scan_eq_contents p _ s.t hK hD hE hInv req hreq limit,
+    rootContents_eq_ref p s hs hK hE hD hInv hR]
+  simp only [refScan, orient]
+
+end SIS.Tree.Mt

@@ -1,0 +1,201 @@
+/-
+The proof trial of 026-18 (bergdb 026-19, sections 3.2 to 3.7): the two
+invariants, the obligations of each kind of subtransaction, and the trial's
+targets as propositions (`T_...`); a proved target is `theorem t_... : T_... p`.
+
+Draft of 2026-11-16 by the plan, written from main's code by reading and
+type-checked against stand-ins. Made this file in step P0b (2026-11-16), as the
+draft, no statement changed: it builds against the real definitions (`lake build
+SIS.Tree.MtSub`), and the stand-ins of FReach and LiveCounts were copies of them.
+A later change of a working statement is said in the GATED message that brings it.
+-/
+import SIS.Tree.MtRun
+import SIS.Tree.DeadTop
+
+set_option autoImplicit false
+
+namespace SIS.Tree.Mt
+
+open SIS SIS.Check SIS.Tree
+
+/-! ## (a) The holes and the two invariants -/
+
+/-- `LiveCounts` (LiveCounts.lean) asked only of the nodes outside H, the holes. -/
+def LiveCountsH (p : Params) (N : NodeId → Option KNode) (t : Time) (r : NodeId)
+    (H : NodeId → Prop) : Prop :=
+  ∀ x b s n, FReach N t r x b s → N x = some n → ¬ H x →
+    (n.liveAt t = [] → b = true ∧ s = true ∧ n.leaf = true) ∧
+    (n.leaf = false → b = true → 2 ≤ (n.liveAt t).length) ∧
+    (p.merges = true → b = false → p.mergeBelow ≤ (n.liveAt t).length)
+
+/-- x is on the key access path of a key of D in P at t: a node that a reading of
+the key visits (`fromVisits`, GetFrame.lean). K5's `Mt.pathAt`, as a pure function. -/
+def Hole (p : Params) (P : Struct BVal) (t : Time) (D : List Key) (x : NodeId) : Prop :=
+  ∃ k ∈ D, ∃ r cv, rootAt (viewOf P) t = some r ∧
+    (x, cv) ∈ fromVisits (knodeOf p (viewOf P)) t p.fuel k r
+
+/-- The same in a writer's state. -/
+def HoleW (c : Ctx) (base : View BVal) (w : W) (key : Key) (x : NodeId) : Prop :=
+  ∃ cv, (x, cv) ∈ fromVisits (wNode c.p base w) c.i c.p.fuel key w.top.rootKey
+
+/-- I, the full invariant: today's run invariant (DeadRun.lean, TakeBackRun.lean). -/
+abbrev Full (p : Params) (P : Struct BVal) (t : Time) : Prop := RunTreeQ p (LatestQD p) P t
+
+/-- I_sub, the in-between invariant with the pending keys D: the parts of `Full`,
+with `InvOK` as the parts that `invOK_snocR` (LatestJoint.lean) builds it from, and
+the three live counts asked only outside the paths of D. -/
+structure Sub (p : Params) (P : Struct BVal) (t : Time) (D : List Key) : Prop where
+  links : RunLinksOK p P t
+  tree : TreeAt p P t
+  kinds : KindsAllOK p P
+  heights : HeightAllOK p P t
+  size : SizeOK p P
+  left : LeftAllOK p P
+  dead : DeadAllOK p P
+  range : RangeAtOK p P t
+  live : ∀ r, rootAt (viewOf P) t = some r →
+    LiveCountsH p (knodeOf p (viewOf P)) t r (Hole p P t D)
+
+/-- What the induction over an MT run carries. -/
+def StInv (p : Params) (s : St) : Prop :=
+  Sub p s.P s.t s.pend ∧ StructTimesLE s.P s.t ∧ HighKindsOK p s.P ∧ DataEntriesOK s.P ∧
+    ViewEncoded (viewOf s.P) ∧ ReadsOK p s
+
+/-- (a1) Without holes the live counts are today's. -/
+def T_liveCountsH_none : Prop :=
+  ∀ p N t r, LiveCountsH p N t r (fun _ => False) ↔ LiveCounts p N t r
+
+/-- (a2) With no pending key, I_sub is I. -/
+def T_full_of_sub (p : Params) : Prop :=
+  ∀ P t, StructTimesLE P t → Sub p P t [] → Full p P t
+
+/-- (a3) I gives I_sub with no pending key. -/
+def T_sub_of_full (p : Params) : Prop :=
+  ∀ P t, StructTimesLE P t → Full p P t → Sub p P t []
+
+/-! ## (b) The fix step -/
+
+def IsMerge (f : Fix) : Prop := ∃ x d, f = .merge x d
+def IsUnlink (f : Fix) : Prop := ∃ d, f = .unlink d
+def IsCollapse (f : Fix) : Prop := ∃ x d, f = .collapse x d
+
+/-- The first state of a fix step: nothing made, nothing taken back, and no node
+with a klong of the step's time. -/
+def FixStart (c : Ctx) (base : View BVal) (w : W) : Prop :=
+  w.made = [] ∧ w.taken = [] ∧
+    ∀ y yn, wNode c.p base w y = some yn → ∀ s, Klong.time s ∈ yn.ks → s < c.i
+
+/-- (b), at the writer's state: a fix step of kind C keeps `PutInv`, the ranges
+and every reading, and leaves the live counts' holes where they were or on its
+key's path. The interface between the two provers. Two hypotheses added by prover B
+on 2026-11-16 (A4): the writer's books at the start (`PutBase`, `PutBook`, which
+give `PutInvG` after the step), and the state after the step fitting the fuel
+(`SegFits`, which `writerWP_merge_get_inv` asks to keep the readings); both hold at
+the first state of a fix step from a reached state (`putBase_at`, `putBook_at`,
+and the heights after the step, `t_fitFix_*`). A third added by prover B on 2026-11-17
+(tier 3, the collapse): the state before the step fitting the fuel (`SegFits`, which
+`getFromR_collapse` asks; from the structure's heights, `segFits_start`). A fourth, the same
+day: the live children of a reached inner node exist (`InnerChildrenExist`, from the
+structure's kinds and pointers, `innerChildren_of_kinds`); without it a collapse of the space
+root at the empty key, which reads no child, could make a root that is no node. -/
+def FixW (p : Params) (C : Fix → Prop) : Prop :=
+  ∀ (key : Key) (c : Ctx) (base : View BVal) (w : W) (H : NodeId → Prop), c.p = p →
+    ViewCoherent c base → FixStart c base w → PutInv c base w → PutInvG c base w →
+    RangeOrder (wNode p base w) c.i w.top.rootKey →
+    LiveCountsH p (wNode p base w) c.i w.top.rootKey H →
+    (∀ f w1, (do path key; target : M Fix) c w = .ok (f, w1) → C f) →
+    (∃ B top0, PutBase c base B ∧ PutBook c B top0 w) →
+    (∀ w', fixStep key c w = .ok (true, w') →
+      SegFits (wNode p base w') c.i (p.fuel - 1) w'.top.rootKey) →
+    SegFits (wNode p base w) c.i (p.fuel - 1) w.top.rootKey →
+    InnerChildrenExist (wNode p base w) c.i w.top.rootKey →
+    WriterWP (fixStep key) c w (fun r w' => r = true →
+      PutInv c base w' ∧ PutInvG c base w' ∧
+      RangeOrder (wNode p base w') c.i w'.top.rootKey ∧
+      LiveCountsH p (wNode p base w') c.i w'.top.rootKey
+        (fun y => H y ∨ HoleW c base w' key y) ∧
+      ∀ k, wGet p c.i base w' k = wGet p c.i base w k)
+
+/-- (b), the frame: a fix step keeps every key's path through the nodes that
+stay in the tree. -/
+def FrameW (p : Params) : Prop :=
+  ∀ (key k' : Key) (c : Ctx) (base : View BVal) (w : W), c.p = p →
+    ViewCoherent c base → FixStart c base w → PutInv c base w → PutInvG c base w →
+    RangeOrder (wNode p base w) c.i w.top.rootKey →
+    WriterWP (fixStep key) c w (fun _ w' => ∀ y, HoleW c base w k' y →
+      TReach (wNode p base w') c.i w'.top.rootKey y → HoleW c base w' k' y)
+
+/-- (b), at a reached state: a fix step of kind C takes I_sub to I_sub with the
+same pending keys, and keeps every get. -/
+def FixStepOK (p : Params) (C : Fix → Prop) : Prop :=
+  ∀ (s : St) (k : Key) (rest : List Key) (base : NodeId) (w : W) (f : Fix) (w1 : W),
+    Reached p s → StInv p s → s.pend = k :: rest →
+    (∀ q ∈ s.P, q.1 < base) →
+    runFix p base k (s.t + 1) (view (treeSpec p) s.P s.t) = .ok (true, w) →
+    fixOf p base k (s.t + 1) (view (treeSpec p) s.P s.t) = .ok (f, w1) → C f →
+    StInv p ⟨commit s.P (s.t + 1) w, s.t + 1, k :: rest, s.ops⟩
+
+def T_fixW_merge (p : Params) : Prop :=
+  MergeParamsOK p → (2 ≤ p.theta ∨ p.theta = 0) → FixW p IsMerge
+
+def T_fixStep_merge (p : Params) : Prop :=
+  MergeParamsOK p → (2 ≤ p.theta ∨ p.theta = 0) → FixStepOK p IsMerge
+
+/-! ## (c) The user subtransaction -/
+
+/-- (c): the user subtransaction takes I to I_sub with its deleted keys pending,
+and every key reads as the reference after its operations. -/
+def UserStepOK (p : Params) : Prop :=
+  ∀ (s : St) (tx : Tx) (noops : List Bool) (w : W), Reached p s → StInv p s → s.pend = [] →
+    tx.sorted = true → tx.wf = true → (∀ q ∈ s.P, q.1 < tx.base) →
+    runUser p tx.base tx.ops (s.t + 1) (view (treeSpec p) s.P s.t) = .ok (noops, w) →
+    StInv p ⟨commit s.P (s.t + 1) w, s.t + 1, deletedKeys tx.ops noops, s.ops ++ tx.ops⟩
+
+/-- (c), at the writer's state, one delete: R1's bitmap. -/
+def DelW (p : Params) : Prop :=
+  ∀ (key : Key) (c : Ctx) (base : View BVal) (w : W) (H : NodeId → Prop), c.p = p →
+    keyWf key = true → ViewCoherent c base → PutInv c base w → PutInvG c base w →
+    RangeOrder (wNode p base w) c.i w.top.rootKey →
+    LiveCountsH p (wNode p base w) c.i w.top.rootKey H →
+    WriterWP (putKv (.del key)) c w (fun _ w' =>
+      PutInv c base w' ∧ PutInvG c base w' ∧
+      RangeOrder (wNode p base w') c.i w'.top.rootKey ∧
+      LiveCountsH p (wNode p base w') c.i w'.top.rootKey
+        (fun y => H y ∨ HoleW c base w' key y) ∧
+      ∀ k, keyWf k = true →
+        wGet p c.i base w' k = if k == key then none else wGet p c.i base w k)
+
+/-! ## (e) The driver's end for a key -/
+
+/-- (e): a key whose path needs no fix leaves the pending keys, and I_sub holds
+without it. -/
+def DoneOK (p : Params) : Prop :=
+  ∀ (s : St) (k : Key) (rest : List Key) (base : NodeId) (w : W),
+    Reached p s → StInv p s → s.pend = k :: rest →
+    (∀ q ∈ s.P, q.1 < base) →
+    runFix p base k (s.t + 1) (view (treeSpec p) s.P s.t) = .ok (false, w) →
+    StInv p ⟨s.P, s.t, rest, s.ops⟩
+
+/-! ## (d) and the trial's top -/
+
+/-- (d): at a visible time, a state with I and right gets has right scans. -/
+def T_scans_of_full (p : Params) : Prop :=
+  ∀ s, Reached p s → StInv p s → s.pend = [] → ScansOK p s
+
+/-- The induction: every reached state has the run's invariant. -/
+def T_reached_inv (p : Params) : Prop :=
+  MergeParamsOK p → (2 ≤ p.theta ∨ p.theta = 0) →
+  UserStepOK p → FixStepOK p IsMerge → FixStepOK p IsUnlink → FixStepOK p IsCollapse →
+  DoneOK p → ∀ s, Reached p s → StInv p s
+
+/-- The trial's top statement: at every visible time of an MT run, today's
+invariant, and gets and scans as the reference. -/
+def VisibleOK (p : Params) : Prop :=
+  ∀ s, Reached p s → s.pend = [] → Full p s.P s.t ∧ ReadsOK p s ∧ ScansOK p s
+
+def T_visible (p : Params) : Prop :=
+  MergeParamsOK p → (2 ≤ p.theta ∨ p.theta = 0) →
+  UserStepOK p → FixStepOK p IsMerge → FixStepOK p IsUnlink → FixStepOK p IsCollapse →
+  DoneOK p → VisibleOK p
+
+end SIS.Tree.Mt

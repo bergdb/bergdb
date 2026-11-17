@@ -935,6 +935,18 @@ a segment leaf or the leaf at the space root (a new root above the halves), the
 made leaf's space split in place, and a compacting split ("bitmap.dead") of a
 last version above h.
 
+2026-11-17, 00:58 to 01:02. Step 5, the full leaf at the space root, prover
+l4b: not made by the transaction (`DelFullRootM`, LiveDelRoot.lean), any branch
+of the bitmap: a time split puts its last version without the key in a new root
+(a leaf root asks no count of its own, `liveEdges_root_shrink`; then
+`liveEdgesX_rootTimeStep`), a space split puts its halves (`HalfOK`) under a new
+inner root of two live klongs (`liveEdgesX_rootSpaceStep`); the live counts hold
+after with no hole (`writerWP_handleFull_root_live`): `liveDel_fullRoot` and,
+with l4a's loop, `liveDel_fullRoot_live`. Left of step 5: the parent full (the
+cascade), the parent a segment leaf, the made leaf's space split in place, the
+made space root's space split, and a compacting split of a last version above h
+below a parent.
+
 2026-11-17, 00:41 to 01:12. Step 3's rest, second part, prover l4c
 (`LiveMergeFull.lean`, about 2,000 lines; about 600 of them the room tail's preludes
 again). `MergeTailFullOK` reduced to `MergeTailFullRestOK`, which asks it but in the
@@ -961,6 +973,40 @@ if generalized over p's new node), p's space split, p the space root (d = 1) or 
 root (q a segment leaf: R1 at the segment root), and q full or compacting (the cascade,
 R4). No stop rule fired.
 
+2026-11-17, 01:10 to 01:11. Step 5, the made leaf's space split in place,
+prover l4b: the leaf made by the transaction, "bitmap.full", its last version
+without the key above h, below an inner parent with room for the second half's
+klong (`DelFullSpaceMadeRoomM`, LiveDelSpaceMade.lean): the leaf keeps the first
+half, a new node the second, and both are `HalfOK`; the live counts hold after
+with no hole (`writerWP_handleFull_spaceInPlaceRoom_live`, by
+`liveEdgesX_spaceInPlaceStep`): `liveDel_fullSpaceMadeRoom` and, with l4a's
+loop, `liveDel_fullSpaceMadeRoom_live`. Left of step 5: the parent full (the
+cascade), the parent a segment leaf, the made space root's space split, and a
+compacting split of a last version above h below a parent.
+
+2026-11-17, 01:14 to 01:15. Step 5, the leaf below a segment leaf, prover l4b:
+not made by the transaction, "bitmap.full", its last version without the key
+above h, the segment leaf above with room for one klong
+(`DelFullSegSpaceRoomM`, LiveDelSegSpace.lean): the halves (`HalfOK`) under a
+new inner segment root of two live klongs, which the segment leaf names by the
+leaf's klong; the live counts hold after with no hole
+(`writerWP_handleFull_segSpaceRoom_live`, by `liveEdgesX_segSpaceStep`):
+`liveDel_fullSegSpaceRoom` and, with l4a's loop,
+`liveDel_fullSegSpaceRoom_live`. Left of step 5: the parent full (the cascade),
+the made segment root's space split, the made space root's space split, and a
+compacting split of a last version above h below a parent.
+
+2026-11-17, 01:15 to 01:18. Step 5, the made segment root's space split, prover
+l4b: the leaf made by the transaction, a segment root, "bitmap.full", its last
+version without the key above h (`DelFullSegSpaceMadeM`,
+LiveDelSegSpaceMade.lean): it keeps the first half, a new node the second, under
+a new segment root that the segment leaf's klong names instead, in place (no
+room asked); the live counts hold after with no hole
+(`writerWP_handleFull_segSpaceMade_live`, by `liveEdgesX_segSpaceInPlaceStep`):
+`liveDel_fullSegSpaceMade` and, with l4a's loop, `liveDel_fullSegSpaceMade_live`.
+Left of step 5: the parent full (the cascade), the made space root's space split,
+and a compacting split of a last version above h below a parent.
+
 2026-11-17, 01:13 to 01:22. Step 3's rest, third part, prover l4c
 (`LiveMergeMade.lean`, about 1,000 lines; about 450 of them the room tail again, with the
 parent's change and the heights' cache's frame). `MergeTailFullRestOK` reduced to
@@ -975,4 +1021,3 @@ reads and heights alike from the tail's frames, `writerWP_mergeCleanup_ghp` for 
 Left: p's space split (made, in place, or not), p not made and the space root (d = 1) or
 a segment root (R1 at the root), and q full or compacting (the cascade, R4). No stop rule
 fired.
-

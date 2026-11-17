@@ -98,6 +98,7 @@ D2. Simpler algorithms: MT and subtransactions
     transactions (A1 then not needed).
   * 026-19: the proof trial's plan; it runs from 2026-11-16, 22:05, on
     the branch `026-19-proof-trial`.
+  * 026-19 done 2026-11-17, 00:55: gain not supported; 026-19's Result.
 * **Next:** 026-19's result; then Frans decides MT, NW or neither, with
   SF10 (006-28, section 7.7).
 * **Items:** 006-28; 026-17; 026-18; 026-19.

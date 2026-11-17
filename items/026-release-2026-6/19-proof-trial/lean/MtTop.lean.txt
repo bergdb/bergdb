@@ -1,0 +1,231 @@
+/-
+The proof trial of 026-18 (bergdb 026-19, step B4): the induction over MT's runs
+(`t_reached_inv`) and the trial's top statement (`t_visible`), from the obligations
+of each kind of subtransaction.
+-/
+import SIS.Tree.MtReaders
+import SIS.Tree.MtLiftProof
+import SIS.Tree.MtParts
+import SIS.Tree.MtDone
+import SIS.Tree.MtDead
+import SIS.Tree.MtKinds
+import SIS.Tree.MtKindsW
+import SIS.Tree.MtHeights
+import SIS.Tree.MtUnlink
+import SIS.Tree.MtCollapse
+import SIS.Tree.MtUnlinkW
+import SIS.Tree.MtFit
+import SIS.Tree.MtMerge
+import SIS.Tree.DelChkRefines
+
+set_option autoImplicit false
+
+namespace SIS.Tree.Mt
+
+open SIS SIS.Check SIS.Tree
+
+/-! ## The first state -/
+
+theorem treeRun_nil_eq (p : Params) : treeRun p [] = initStruct p := rfl
+
+theorem refGet_init (p : Params) (t : Time) (key : Key) : refGet (St.init p).ref t key = none := by
+  cases t <;> simp [refGet, St.ref, St.init]
+
+/-- The first state has the run's invariant. -/
+theorem stInv_init (p : Params) (hM : 2 ≤ p.M) : StInv p (St.init p) := by
+  have htimes : StructTimesLE (initStruct p) 0 := treeRun_timesLE p []
+  refine ⟨?_, htimes, treeRun_highKindsOK p [], treeRun_dataEntriesOK p [],
+    structEncoded_viewOf _ (treeRun_encoded p [] (fun tx ht => by cases ht)), ?_⟩
+  · exact t_sub_of_full p (initStruct p) 0 htimes
+      ⟨runLinksOK_init p, treeAt_init p, latestQD_init p hM⟩
+  · intro key _
+    show get p (viewOf (initStruct p)) 0 key = refGet (St.init p).ref 1 key
+    rw [get_init, refGet_init p]
+
+/-! ## A fix step's kind -/
+
+/-- A fix step that made a fix chose one of the three kinds. -/
+theorem fix_kind (p : Params) (base : NodeId) (k : Key) (i : Time) (v : View BVal) (w : W)
+    (h : runFix p base k i v = .ok (true, w)) :
+    ∃ f w1, fixOf p base k i v = .ok (f, w1) ∧ (IsMerge f ∨ IsUnlink f ∨ IsCollapse f) := by
+  unfold runFix at h
+  split at h
+  · cases h
+  unfold runWith at h
+  unfold fixOf runWith
+  split at h
+  · cases h
+  rename_i z _
+  split at h
+  · cases h
+  rename_i top _
+  simp only [ReaderT.run, StateT.run] at h ⊢
+  obtain ⟨a, w', hfs, hb⟩ := (m_bind_ok _ _ _ _ _).mp h
+  obtain ⟨u, w'', _, hp⟩ := (m_bind_ok _ _ _ _ _).mp hb
+  have ha : a = true := by
+    simp only [pure, ReaderT.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hp
+    exact hp.1
+  subst ha
+  unfold fixStep at hfs
+  obtain ⟨u1, w1, hpath, hrest⟩ := (m_bind_ok _ _ _ _ _).mp hfs
+  obtain ⟨f, w2, htgt, hmatch⟩ := (m_bind_ok _ _ _ _ _).mp hrest
+  refine ⟨f, w2, (m_bind_ok _ _ _ _ _).mpr ⟨u1, w1, hpath, htgt⟩, ?_⟩
+  cases f with
+  | none =>
+    simp only [pure, ReaderT.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hmatch
+    cases hmatch.1
+  | merge x d => exact Or.inl ⟨x, d, rfl⟩
+  | unlink d => exact Or.inr (Or.inl ⟨d, rfl⟩)
+  | collapse x d => exact Or.inr (Or.inr ⟨x, d, rfl⟩)
+
+/-! ## The induction and the top -/
+
+/-- The induction: every reached state has the run's invariant. -/
+theorem t_reached_inv (p : Params) : T_reached_inv p := by
+  intro hp _ hU hM hUn hC hD s hs
+  induction hs with
+  | init => exact stInv_init p (by have := hp.2.2.2.1; omega)
+  | step s s' hs hstep ih =>
+    cases hstep with
+    | user tx noops w h1 h2 h3 h4 h5 => exact hU s tx noops w hs ih h1 h2 h3 h4 h5
+    | fix k rest base w h1 h2 h3 =>
+      obtain ⟨f, w1, hf, hk⟩ := fix_kind p base k (s.t + 1) _ w h3
+      rcases hk with hk | hk | hk
+      · exact hM s k rest base w f w1 hs ih h1 h2 h3 hf hk
+      · exact hUn s k rest base w f w1 hs ih h1 h2 h3 hf hk
+      · exact hC s k rest base w f w1 hs ih h1 h2 h3 hf hk
+    | done k rest base w h1 h2 h3 => exact hD s k rest base w hs ih h1 h2 h3
+
+/-- The trial's top statement, reduced to the obligations of its premises. -/
+theorem t_visible (p : Params) : T_visible p := by
+  intro hp hth hU hM hUn hC hD s hs hpend
+  have hI := t_reached_inv p hp hth hU hM hUn hC hD s hs
+  have hsub := hI.1
+  rw [hpend] at hsub
+  exact ⟨t_full_of_sub p s.P s.t hI.2.1 hsub, hI.2.2.2.2.2, t_scans_of_full p s hs hI hpend⟩
+
+/-- The top with the merge's step at the writer's state (`FixW`, prover A's A3 and A4;
+`FrameW`, C1) and B1's lift and the other parts of `Sub` (`LiftFix`, `PartsFix`) in
+place of `FixStepOK p IsMerge`. -/
+theorem t_visible_fixW (p : Params) :
+    MergeParamsOK p → (2 ≤ p.theta ∨ p.theta = 0) →
+    UserStepOK p → FixW p IsMerge → FrameW p → LiftFix p IsMerge → PartsFix p IsMerge →
+    FixStepOK p IsUnlink → FixStepOK p IsCollapse → DoneOK p → VisibleOK p :=
+  fun hp hth hU hF hFr hL hPa hUn hC hD =>
+    t_visible p hp hth hU (t_fixStepOK_of p IsMerge hF hFr hL hPa
+      (t_fitFix p IsMerge (fun _ h => Or.inl h))) hUn hC hD
+
+/-- The top with B1's lift proved for the merge (`t_liftFix_merge`): what is left of
+`FixStepOK p IsMerge` is `FixW` and `FrameW` at the writer's state and the other parts of
+`Sub` (`PartsFix`). -/
+theorem t_visible_merge (p : Params) :
+    MergeParamsOK p → (2 ≤ p.theta ∨ p.theta = 0) →
+    UserStepOK p → FixW p IsMerge → FrameW p → PartsFix p IsMerge →
+    FixStepOK p IsUnlink → FixStepOK p IsCollapse → DoneOK p → VisibleOK p :=
+  fun hp hth hU hF hFr hPa hUn hC hD =>
+    t_visible_fixW p hp hth hU hF hFr (t_liftFix_merge p) hPa hUn hC hD
+
+/-- The top with B1's lift and B3's sizes and empty keys proved for the merge: what is left
+of `FixStepOK p IsMerge` is `FixW` and `FrameW` at the writer's state and the kinds, heights
+and dead klongs after the step (`PartsKHD`). -/
+theorem t_visible_mergeKHD (p : Params) :
+    MergeParamsOK p → (2 ≤ p.theta ∨ p.theta = 0) →
+    UserStepOK p → FixW p IsMerge → FrameW p → PartsKHD p IsMerge →
+    FixStepOK p IsUnlink → FixStepOK p IsCollapse → DoneOK p → VisibleOK p :=
+  fun hp hth hU hF hFr hK hUn hC hD =>
+    t_visible_merge p hp hth hU hF hFr (t_partsFix_merge p hp hK) hUn hC hD
+
+/-- The top with the driver's end proved (`t_doneOK`, step E): what is left is the user
+subtransaction, the merge's `FixW` and `FrameW` at the writer's state, its kinds, heights and
+dead klongs (`PartsKHD`), and the two other kinds of fix step. -/
+theorem t_visible_best (p : Params) :
+    MergeParamsOK p → (2 ≤ p.theta ∨ p.theta = 0) →
+    UserStepOK p → FixW p IsMerge → FrameW p → PartsKHD p IsMerge →
+    FixStepOK p IsUnlink → FixStepOK p IsCollapse → VisibleOK p :=
+  fun hp hth hU hF hFr hK hUn hC =>
+    t_visible_mergeKHD p hp hth hU hF hFr hK hUn hC (t_doneOK p hp)
+
+/-- The top with the dead klongs after a merge proved (`t_partsKHD_merge`): of the parts of
+`Sub` after a merge only the kinds and the heights are left (`PartsKH`). -/
+theorem t_visible_KH (p : Params) :
+    MergeParamsOK p → (2 ≤ p.theta ∨ p.theta = 0) →
+    UserStepOK p → FixW p IsMerge → FrameW p → PartsKH p IsMerge →
+    FixStepOK p IsUnlink → FixStepOK p IsCollapse → VisibleOK p :=
+  fun hp hth hU hF hFr hKH hUn hC =>
+    t_visible_best p hp hth hU hF hFr (t_partsKHD_merge p hp hth hKH) hUn hC
+
+/-- The top with the kinds and heights after a merge reduced to the writer's caches at the
+step's end (`KindsHtEnd`). -/
+theorem t_visible_KHW (p : Params) :
+    MergeParamsOK p → (2 ≤ p.theta ∨ p.theta = 0) →
+    UserStepOK p → FixW p IsMerge → FrameW p → KindsHtEnd p IsMerge →
+    FixStepOK p IsUnlink → FixStepOK p IsCollapse → VisibleOK p :=
+  fun hp hth hU hF hFr hKH hUn hC =>
+    t_visible_KH p hp hth hU hF hFr (t_partsKH_merge p hKH) hUn hC
+
+/-- The top with the kinds after a merge proved: of the parts of `Sub` after a merge only the
+writer's heights cache at the step's end is left (`HtEnd`). -/
+theorem t_visible_HtW (p : Params) :
+    MergeParamsOK p → (2 ≤ p.theta ∨ p.theta = 0) →
+    UserStepOK p → FixW p IsMerge → FrameW p → HtEnd p IsMerge →
+    FixStepOK p IsUnlink → FixStepOK p IsCollapse → VisibleOK p :=
+  fun hp hth hU hF hFr hH hUn hC =>
+    t_visible_KHW p hp hth hU hF hFr (t_kindsHtEnd_merge p hH) hUn hC
+
+/-- B3 for the merge, as the plan states it (026-19, 3.3): a merge fix step keeps the run's
+invariant from `FixW` and `FrameW` alone; the lift and every other part of `Sub` are proved. -/
+theorem t_fixStep_merge_of (p : Params) (hp : MergeParamsOK p) (hth : 2 ≤ p.theta ∨ p.theta = 0)
+    (hF : FixW p IsMerge) (hFr : FrameW p) : FixStepOK p IsMerge :=
+  t_fixStepOK_of p IsMerge hF hFr (t_liftFix_merge p)
+    (t_partsFix_merge p hp (t_partsKHD_merge p hp hth (t_partsKH_merge p (t_kindsHtEnd_merge p
+      (t_htEnd_merge p))))) (t_fitFix p IsMerge (fun _ h => Or.inl h))
+
+/-- The top with every part of `Sub` after a merge proved: what is left is the user
+subtransaction, the merge's `FixW` (prover A) and `FrameW` (C1), and the two other kinds of fix
+step. -/
+theorem t_visible_now (p : Params) :
+    MergeParamsOK p → (2 ≤ p.theta ∨ p.theta = 0) →
+    UserStepOK p → FixW p IsMerge → FrameW p →
+    FixStepOK p IsUnlink → FixStepOK p IsCollapse → VisibleOK p :=
+  fun hp hth hU hF hFr hUn hC =>
+    t_visible_HtW p hp hth hU hF hFr (t_htEnd_merge p) hUn hC
+
+/-- The top with the unlink's step at the structure proved: what is left is the user
+subtransaction, `FixW` for the merge and the unlink at the writer's state, `FrameW`, and the
+collapse's step. -/
+theorem t_visible_now2 (p : Params) :
+    MergeParamsOK p → (2 ≤ p.theta ∨ p.theta = 0) →
+    UserStepOK p → FixW p IsMerge → FixW p IsUnlink → FrameW p →
+    FixStepOK p IsCollapse → VisibleOK p :=
+  fun hp hth hU hF hFu hFr hC =>
+    t_visible_now p hp hth hU hF hFr (t_fixStep_unlink_of p hp hth hFu hFr) hC
+
+/-- The top with every fix step reduced to its writer's state: what is left is the user
+subtransaction, `FixW` for the three kinds of fix step, and `FrameW`. -/
+theorem t_visible_writer (p : Params) :
+    MergeParamsOK p → (2 ≤ p.theta ∨ p.theta = 0) →
+    UserStepOK p → FixW p IsMerge → FixW p IsUnlink → FixW p IsCollapse → FrameW p →
+    VisibleOK p :=
+  fun hp hth hU hF hFu hFc hFr =>
+    t_visible_now2 p hp hth hU hF hFu hFr (t_fixStep_collapse_of p hp hth hFc hFr)
+
+/-- The top with A4 proved: the merge's `FixW` from A3's live counts (`FixLiveW`) and A5's
+merge of an empty child (`FixWEmpty`). -/
+theorem t_visible_A4 (p : Params) :
+    MergeParamsOK p → (2 ≤ p.theta ∨ p.theta = 0) →
+    UserStepOK p → FixLiveW p IsMerge → FixWEmpty p → FixW p IsUnlink → FixW p IsCollapse →
+    FrameW p → VisibleOK p :=
+  fun hp hth hU hL hE hFu hFc hFr =>
+    t_visible_writer p hp hth hU (t_fixW_merge_of p hp hL hE) hFu hFc hFr
+
+/-- The top with the unlink's room case proved (`t_fixW_unlink_of`): the unlink of an empty
+segment root whose segment leaf has room for the bitmap; the full leaf a named premise
+(`FixWUnlinkFull`). -/
+theorem t_visible_unlinkRoom (p : Params) :
+    MergeParamsOK p → (2 ≤ p.theta ∨ p.theta = 0) →
+    UserStepOK p → FixLiveW p IsMerge → FixWEmpty p → FixWUnlinkFull p → FixW p IsCollapse →
+    FrameW p → VisibleOK p :=
+  fun hp hth hU hL hE hUf hFc hFr =>
+    t_visible_A4 p hp hth hU hL hE (t_fixW_unlink_of p hUf) hFc hFr
+
+end SIS.Tree.Mt

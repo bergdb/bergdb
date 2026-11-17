@@ -1,0 +1,398 @@
+/-
+The proof trial of 026-18 (bergdb 026-19, step A2): MT's key access path and the
+fix step's target. After `Mt.path key` the writer reads as before, made and took
+back nothing, and its path is the space root and steps linked from it in the
+state before, every node cached, each a node that a reading of the key visits
+(`fromVisits`); in the form of `PathOK` (GetMergeInv.lean) for today's merge lemmas.
+If `target` returns `merge x d`: d is above 0, x is the path's node at depth d with
+fewer than m live klongs, and the node above is inner with two or more.
+-/
+import SIS.Tree.MtBridge
+
+set_option autoImplicit false
+set_option linter.unusedSimpArgs false
+
+namespace SIS.Tree.Mt
+
+open SIS SIS.Check SIS.Tree
+
+theorem writerWP_getNode_made (x : NodeId) (c : Ctx) (w : W) :
+    WriterWP (getNode x) c w (fun _ v => v.made = w.made) := by
+  unfold getNode
+  simp only [writerWP_bind, writerWP_get]
+  split
+  · simp only [writerWP_pure]
+  · simp only [writerWP_bind, writerWP_read]
+    split
+    · split
+      · exact writerWP_throw _ _ _ _
+      · simp only [writerWP_bind, writerWP_set, writerWP_pure]
+    · exact writerWP_throw _ _ _ _
+
+theorem writerWP_descendLte_made (cv : Nat) (c : Ctx) :
+    ∀ (f : Nat) (x : NodeId) (w : W), WriterWP (descendLte cv f x) c w (fun _ v => v.made = w.made) := by
+  intro f
+  induction f with
+  | zero => intro x w; exact writerWP_throw _ _ _ _
+  | succ f ih =>
+    intro x w
+    unfold descendLte
+    simp only [writerWP_bind, writerWP_read]
+    refine writerWP_mono (writerWP_getNode_made x c w) ?_
+    intro n v hv
+    split
+    · simp only [writerWP_pure]; exact hv
+    · split
+      · exact writerWP_throw _ _ _ _
+      · simp only [pathAdd, writerWP_bind, writerWP_modify]
+        refine writerWP_mono (ih _ _) ?_
+        intro _ v' h'
+        rw [h']; exact hv
+
+/-- The loop of MT's path from a node a reached at the end of a linked path: the
+path after is linked from the space root, every node of it cached when a segment
+was searched, each new node one that a reading of the segments from a visits; the
+state reads as w and made nothing. -/
+theorem writerWP_pathGo (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base) (w : W)
+    (hRt : ∀ y, TReach (wNode c.p base w) c.i w.top.rootKey y → w.taken.contains y = false)
+    (hwf : ∀ y yn, TReach (wNode c.p base w) c.i w.top.rootKey y → wNode c.p base w y = some yn →
+      klongsWf yn.ks = true) :
+    ∀ (segs : List Nat) (a : NodeId) (v : W) (ps : List (Option Nat × NodeId)),
+      ReadsAs c.p base w v → w.nodes <+: v.nodes → v.made = w.made →
+      TReach (wNode c.p base w) c.i w.top.rootKey a →
+      v.path = (none, w.top.rootKey) :: ps → LinkedFrom (wNode c.p base w) c.i w.top.rootKey ps →
+      pathEnd w.top.rootKey ps = a → PathReady a v →
+      WriterWP (pathGo segs a) c v (fun _ v' => ReadsAs c.p base w v' ∧ w.nodes <+: v'.nodes ∧
+        v'.made = w.made ∧ ∃ qs, v'.path = (none, w.top.rootKey) :: (ps ++ qs) ∧
+          LinkedFrom (wNode c.p base w) c.i w.top.rootKey (ps ++ qs) ∧
+          (segs ≠ [] → PathCached v' ∧
+            ∀ z ∈ a :: qs.map (·.2), ∃ cv, (z, cv) ∈ fromVisits (wNode c.p base w) c.i c.p.fuel segs a)) := by
+  intro segs
+  induction segs with
+  | nil =>
+    intro a v ps hrv hpre hmv _ hvp hlf _ _
+    simp only [pathGo, writerWP_pure]
+    exact ⟨hrv, hpre, hmv, [], by simp [hvp], by simpa using hlf, fun h => absurd rfl h⟩
+  | cons cv rest ih =>
+    intro a v ps hrv hpre hmv hra hvp hlf hend hready
+    have hNv : wNode c.p base v = wNode c.p base w := hrv.1
+    have ht1 : ∀ q ∈ eqVisits (wNode c.p base v) c.i cv c.p.fuel a, v.taken.contains q.1 = false := by
+      intro q hq
+      rw [hrv.2.2.1]
+      rw [hNv] at hq
+      exact hRt q.1 (reachS_tReach _ _ _ _ (eqVisits_reach _ _ _ _ _ a q.1 q.2
+        (tReach_reachS _ _ _ _ hra) hq))
+    unfold pathGo
+    simp only [writerWP_bind, writerWP_read]
+    refine writerWP_mono (writerWP_and (writerWP_and (writerWP_and (writerWP_and
+      (writerWP_descendLte_reads cv c base hvc c.p.fuel a v ht1)
+      (writerWP_descendLte_steps cv c base hvc c.p.fuel a v ht1))
+      (writerWP_descendLte_cache cv c base hvc c.p.fuel a v ht1))
+      (writerWP_descendLte_made cv c c.p.fuel a v))
+      (writerWP_descendLte_path_cached cv c.p.fuel a c v hready)) ?_
+    intro L w3 ⟨⟨⟨⟨⟨hr3, n, hn, hnl, hlk3, hvisL, hgetL⟩, ⟨steps1, hpf, hp3, hLe⟩⟩,
+      ⟨_, _, hpre3⟩⟩, hm3⟩, hc3⟩
+    rw [hNv] at hn hpf hvisL hgetL
+    have hLr : TReach (wNode c.p base w) c.i w.top.rootKey L :=
+      reachS_tReach _ _ _ _ (eqVisits_reach _ _ _ _ _ a L cv (tReach_reachS _ _ _ _ hra) hvisL)
+    have hvisAll := PathFrom.mem_eqVisits _ _ _ c.p.fuel a steps1 hpf
+      (fun m hm => by rw [← hLe, hn] at hm; cases hm; exact hnl) (by rw [← hLe]; exact hvisL)
+    have hr03 : ReadsAs c.p base w w3 := ReadsAs.trans _ _ _ _ _ hrv hr3
+    have hlf3 : LinkedFrom (wNode c.p base w) c.i w.top.rootKey (ps ++ steps1) := by
+      refine LinkedFrom.append _ _ _ ps _ hlf ?_
+      rw [hend]
+      exact LinkedFrom.of_pathFrom _ _ cv a steps1 hpf
+    have hp3' : w3.path = (none, w.top.rootKey) :: (ps ++ steps1) := by rw [hp3, hvp]; rfl
+    have hm03 : w3.made = w.made := by rw [hm3, hmv]
+    have hpre03 : w.nodes <+: w3.nodes := hpre.trans hpre3
+    have hvis1 : ∀ z ∈ a :: steps1.map (·.2), (z, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel a := by
+      intro z hz
+      rcases List.mem_cons.mp hz with hz | hz
+      · rw [hz]; exact hvisAll.1
+      · obtain ⟨e, he, rfl⟩ := List.mem_map.mp hz
+        exact hvisAll.2 e he
+    have hfv1 : ∀ z ∈ a :: steps1.map (·.2), ∃ cv', (z, cv') ∈ fromVisits (wNode c.p base w) c.i c.p.fuel
+        (cv :: rest) a := by
+      intro z hz
+      refine ⟨cv, ?_⟩
+      cases rest with
+      | nil => exact hvis1 z hz
+      | cons _ _ => exact List.mem_append_left _ (hvis1 z hz)
+    split
+    · rename_i hrest
+      simp only [writerWP_pure]
+      refine ⟨hr03, hpre03, hm03, steps1, hp3', hlf3, fun _ => ⟨hc3, ?_⟩⟩
+      exact hfv1
+    · rename_i hrest
+      rw [writerWP_bind, writerWP_getNode_known L n c w3 hlk3]
+      split
+      · simp only [writerWP_pure]
+        exact ⟨hr03, hpre03, hm03, steps1, hp3', hlf3, fun _ => ⟨hc3, hfv1⟩⟩
+      · rename_i fd hfd
+        simp only [pathAdd, writerWP_bind, writerWP_modify]
+        have hready4 := (writerWP_pathAdd_ready (some fd.c) fd.y c w3 hc3) () _ rfl
+        have hfdc : fd.c = cv := KNode.searchEq_c n c.i cv fd hfd
+        have hlink : (fd.c, fd.y) ∈ n.liveAt c.i := by
+          rw [hfdc]
+          exact KNode.searchEq_mem n c.i cv fd (hwf L n hLr hn) hfd
+        have hlf4 : LinkedFrom (wNode c.p base w) c.i w.top.rootKey (ps ++ steps1 ++ [(some fd.c, fd.y)]) := by
+          refine LinkedFrom.append _ _ _ _ _ hlf3 ?_
+          rw [pathEnd_append_gen, hend, ← hLe]
+          exact LinkedFrom.cons L n fd.c fd.y [] hn hlink (LinkedFrom.nil _)
+        have hend4 : pathEnd w.top.rootKey (ps ++ steps1 ++ [(some fd.c, fd.y)]) = fd.y := by
+          have := pathEnd_cons_append w.top.rootKey fd.y (some fd.c) (ps ++ steps1) []
+          simp [pathEnd] at this ⊢
+        refine writerWP_mono (ih fd.y _ (ps ++ steps1 ++ [(some fd.c, fd.y)])
+          (ReadsAs.trans _ _ _ _ _ hr03 ⟨by funext y; rfl, rfl, rfl, rfl, rfl⟩) hpre03 hm03
+          (TReach.link hLr ⟨n, hn, hlink⟩) (by simp only [hp3']; simp) hlf4 hend4 hready4) ?_
+        rintro _ v' ⟨h1, h2, h3, qs, h5, h6, h7⟩
+        have hrest' : rest ≠ [] := by
+          intro h; subst h; exact hrest rfl
+        obtain ⟨h8, h9⟩ := h7 hrest'
+        refine ⟨h1, h2, h3, steps1 ++ [(some fd.c, fd.y)] ++ qs, by rw [h5]; simp, by simpa using h6,
+          fun _ => ⟨h8, ?_⟩⟩
+        intro z hz
+        have hge : getEqR (wNode c.p base w) c.i cv c.p.fuel a = some fd.y := by
+          rw [hgetL, hfd]; rfl
+        have hz' : z ∈ a :: steps1.map (·.2) ∨ z ∈ fd.y :: qs.map (·.2) := by
+          rcases List.mem_cons.mp hz with h | h
+          · exact Or.inl (List.mem_cons.mpr (Or.inl h))
+          · rw [List.map_append, List.map_append] at h
+            rcases List.mem_append.mp h with h | h
+            · rcases List.mem_append.mp h with h | h
+              · exact Or.inl (List.mem_cons_of_mem _ h)
+              · simp only [List.map_cons, List.map_nil, List.mem_singleton] at h
+                exact Or.inr (List.mem_cons.mpr (Or.inl h))
+            · exact Or.inr (List.mem_cons_of_mem _ h)
+        rcases hz' with hz' | hz'
+        · exact hfv1 z hz'
+        · obtain ⟨cv', hcv'⟩ := h9 z hz'
+          refine ⟨cv', ?_⟩
+          cases rest with
+          | nil => exact absurd rfl hrest'
+          | cons r1 rrest =>
+            show (z, cv') ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel a ++
+              (match getEqR (wNode c.p base w) c.i cv c.p.fuel a with
+                | some y => fromVisits (wNode c.p base w) c.i c.p.fuel (r1 :: rrest) y
+                | none => [])
+            rw [hge]
+            exact List.mem_append_right _ hcv'
+
+/-- MT's path: from w, the state reads as w, made nothing, and its path is the space
+root and steps linked from it, every node cached, each a node that a reading of the
+key visits. -/
+theorem writerWP_mtPath (key : Key) (hkey : key ≠ []) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (w : W)
+    (hRt : ∀ y, TReach (wNode c.p base w) c.i w.top.rootKey y → w.taken.contains y = false)
+    (hwf : ∀ y yn, TReach (wNode c.p base w) c.i w.top.rootKey y → wNode c.p base w y = some yn →
+      klongsWf yn.ks = true) :
+    WriterWP (Mt.path key) c w (fun _ v => ReadsAs c.p base w v ∧ w.nodes <+: v.nodes ∧
+      v.made = w.made ∧ ∃ ps, v.path = (none, w.top.rootKey) :: ps ∧
+        LinkedFrom (wNode c.p base w) c.i w.top.rootKey ps ∧ PathCached v ∧
+        ∀ z ∈ w.top.rootKey :: ps.map (·.2), ∃ cv,
+          (z, cv) ∈ fromVisits (wNode c.p base w) c.i c.p.fuel key w.top.rootKey) := by
+  unfold Mt.path pathClear findRoot pathAdd
+  simp only [writerWP_bind, writerWP_modify, writerWP_get, writerWP_pure]
+  generalize hw1 : ({ ({ w with path := [] } : W) with
+    path := ([] : List (Option Nat × NodeId)) ++ [(none, w.top.rootKey)] } : W) = w1
+  have hr01 : ReadsAs c.p base w w1 := by subst hw1; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
+  have hp1 : w1.path = (none, w.top.rootKey) :: [] := by subst hw1; rfl
+  have hpre1 : w.nodes <+: w1.nodes := by subst hw1; exact List.prefix_refl _
+  have hm1 : w1.made = w.made := by subst hw1; rfl
+  have hready : PathReady w.top.rootKey w1 := by
+    intro e he
+    rw [hp1] at he
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at he
+    exact Or.inl (by rw [he])
+  refine writerWP_mono (writerWP_pathGo c base hvc w hRt hwf key w.top.rootKey w1 [] hr01 hpre1 hm1
+    TReach.root hp1 (LinkedFrom.nil _) rfl hready) ?_
+  rintro _ v ⟨h1, h2, h3, qs, h5, h6, h7⟩
+  obtain ⟨h8, h9⟩ := h7 hkey
+  exact ⟨h1, h2, h3, qs, by simpa using h5, by simpa using h6, h8, by simpa using h9⟩
+
+/-- What `target` chose, if a merge: x is the path's node at depth d ≥ 1, cached with
+fewer than m live klongs; the node above is inner and cached with two or more. -/
+def MergeAt (c : Ctx) (v : W) (x : NodeId) (d : Nat) : Prop :=
+  1 ≤ d ∧ (v.path[d]?).map (·.2) = some x ∧ ∃ q qn xn, (v.path[d - 1]?).map (·.2) = some q ∧
+    v.nodes.lookup q = some qn ∧ qn.leaf = false ∧ 2 ≤ qn.cnt ∧
+    v.nodes.lookup x = some xn ∧ xn.cnt < c.p.mergeBelow
+
+theorem pathCached_lookup {v : W} (hc : PathCached v) {d : Nat} {e : Option Nat × NodeId}
+    (he : v.path[d]? = some e) : ∃ n, v.nodes.lookup e.2 = some n :=
+  hc e (List.mem_of_getElem? he)
+
+theorem writerWP_targetGo (c : Ctx) :
+    ∀ (k : Nat) (v : W), PathCached v →
+      WriterWP (targetGo k) c v (fun f v' => stripW v' = stripW v ∧
+        ∀ x d, f = .merge x d → MergeAt c v x d) := by
+  intro k
+  induction k with
+  | zero =>
+    intro v _
+    show WriterWP (pure Fix.none) c v _
+    rw [writerWP_pure]
+    exact ⟨rfl, fun x d h => by cases h⟩
+  | succ d ih =>
+    intro v hc
+    unfold targetGo
+    simp only [writerWP_bind, writerWP_read]
+    unfold pathNode
+    simp only [writerWP_bind, writerWP_get]
+    split
+    · rename_i e he
+      obtain ⟨xn, hxn⟩ := pathCached_lookup hc he
+      simp only [writerWP_pure]
+      rw [writerWP_getNode_known e.2 xn c v hxn]
+      have hno : ∀ f, (∀ x d, f ≠ Fix.merge x d) → WriterWP (pure f : M Fix) c v
+          (fun f v' => stripW v' = stripW v ∧ ∀ x d, f = .merge x d → MergeAt c v x d) := by
+        intro f hf
+        rw [writerWP_pure]
+        exact ⟨rfl, fun x d h => absurd h (hf x d)⟩
+      have hrec := ih v hc
+      have hnote : ∀ s, WriterWP (do note s; targetGo d) c v
+          (fun f v' => stripW v' = stripW v ∧ ∀ x d, f = .merge x d → MergeAt c v x d) := by
+        intro s
+        simp only [note, writerWP_bind, writerWP_modify]
+        refine writerWP_mono (ih _ hc) ?_
+        intro f v' ⟨h1, h2⟩
+        exact ⟨h1, fun x d hf => h2 x d hf⟩
+      have hroot : WriterWP (if xn.leaf = true then
+            (if (xn.cnt == 0 && d != 0) = true then pure (Fix.unlink d) else targetGo d)
+          else if (xn.cnt == 1) = true then pure (Fix.collapse e.snd d) else targetGo d) c v
+          (fun f v' => stripW v' = stripW v ∧ ∀ x d, f = .merge x d → MergeAt c v x d) := by
+        split
+        · split
+          · exact hno _ (fun x d h => by cases h)
+          · exact hrec
+        · split
+          · exact hno _ (fun x d h => by cases h)
+          · exact hrec
+      by_cases hemp : (!xn.leaf && xn.cnt == 0) = true
+      · simp only [hemp, ↓reduceIte, writerWP_bind]; exact writerWP_throw _ _ _ _
+      simp only [hemp, Bool.false_eq_true, ↓reduceIte]
+      cases d with
+      | zero =>
+        dsimp only
+        rw [writerWP_bind, writerWP_pure]
+        exact hroot
+      | succ e1 =>
+        simp only [writerWP_bind, writerWP_get]
+        split
+        · rename_i e' he'
+          obtain ⟨qn, hqn⟩ := pathCached_lookup hc he'
+          simp only [writerWP_pure]
+          rw [writerWP_getNode_known e'.2 qn c v hqn]
+          try simp only [writerWP_pure]
+          by_cases hql : qn.leaf = true
+          · simp only [hql, ↓reduceIte]; exact hroot
+          · have hql' : qn.leaf = false := by simpa using hql
+            simp only [hql', Bool.false_eq_true, ↓reduceIte]
+            split
+            · rename_i hxc
+              split
+              · rename_i hqc
+                rw [writerWP_pure]
+                refine ⟨rfl, fun x d hf => ?_⟩
+                cases hf
+                exact ⟨by omega, by rw [he]; rfl, e'.2, qn, xn, by rw [show e1 + 1 - 1 = e1 by omega, he']; rfl,
+                  hqn, hql', hqc, hxn, hxc⟩
+              · exact hnote _
+            · exact hrec
+        · exact writerWP_throw _ _ _ _
+    · exact writerWP_throw _ _ _ _
+
+theorem pathOK_mono {c : Ctx} {w : W} {d D : Nat} {X : Nat → NodeId} {K : Nat → Nat}
+    {Nn : Nat → KNode} (h : PathOK c w D X K Nn) (hd : d ≤ D) : PathOK c w d X K Nn := by
+  obtain ⟨h1, h2, h3, h4, h5⟩ := h
+  exact ⟨fun i hi => h1 i (by omega), fun i h0 hi => h2 i h0 (by omega),
+    fun i hi => h3 i (by omega), fun i h0 hi => h4 i h0 (by omega), h5⟩
+
+/-- The fix step's path and target (A2): from w, after `path key; target`, the
+state reads as w, made nothing, and if the target is `merge x d`, the path down to
+depth d is `PathOK` with x at depth d, d ≥ 1, the node above inner with two live
+klongs or more and x with fewer than m; every node of the path is one that a
+reading of the key visits. -/
+theorem writerWP_pathTarget (key : Key) (hkey : key ≠ []) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (w : W)
+    (hRt : ∀ y, TReach (wNode c.p base w) c.i w.top.rootKey y → w.taken.contains y = false)
+    (hwf : ∀ y yn, TReach (wNode c.p base w) c.i w.top.rootKey y → wNode c.p base w y = some yn →
+      klongsWf yn.ks = true) :
+    WriterWP (do Mt.path key; target : M Fix) c w (fun f v => ReadsAs c.p base w v ∧
+      w.nodes <+: v.nodes ∧ v.made = w.made ∧ PathCached v ∧
+      (∀ e ∈ v.path, ∃ cv, (e.2, cv) ∈ fromVisits (wNode c.p base w) c.i c.p.fuel key w.top.rootKey) ∧
+      ∀ x d, f = .merge x d → ∃ X K Nn, PathOK c v d X K Nn ∧ X d = x ∧ 0 < d ∧
+        (Nn (d - 1)).leaf = false ∧ 2 ≤ (Nn (d - 1)).cnt ∧ (Nn d).cnt < c.p.mergeBelow ∧
+        TReach (wNode c.p base w) c.i w.top.rootKey x) := by
+  rw [writerWP_bind]
+  refine writerWP_mono (writerWP_mtPath key hkey c base hvc w hRt hwf) ?_
+  rintro _ v1 ⟨hr1, hpre1, hm1, ps, hp1, hlf1, hc1, hfv1⟩
+  unfold target pathSize
+  simp only [writerWP_bind, writerWP_get, writerWP_pure]
+  refine writerWP_mono (writerWP_targetGo c _ v1 hc1) ?_
+  rintro f v ⟨hs, hmg⟩
+  obtain ⟨hn, hg, hmd, hv, htk, hnx, hpth, htop, _, _, _, _⟩ := strip_fields hs
+  have hrv : ReadsAs c.p base v1 v :=
+    ⟨wNode_strip c.p base hs, htop, htk, hv, hnx⟩
+  have hr : ReadsAs c.p base w v := ReadsAs.trans _ _ _ _ _ hr1 hrv
+  have hc : PathCached v := by
+    intro e he; rw [hpth] at he; obtain ⟨m, hm⟩ := hc1 e he; exact ⟨m, by rw [hn]; exact hm⟩
+  have hp : v.path = (none, w.top.rootKey) :: ps := by rw [hpth, hp1]
+  refine ⟨hr, by rw [hn]; exact hpre1, by rw [hmd, hm1], hc, ?_, ?_⟩
+  · intro e he
+    rw [hp] at he
+    exact hfv1 e.2 (by
+      rcases List.mem_cons.mp he with he | he
+      · rw [he]; exact List.mem_cons_self
+      · exact List.mem_cons_of_mem _ (List.mem_map_of_mem he))
+  · intro x d hf
+    obtain ⟨hd1, hpx, q, qn, xn, hpq, hlq, hql, hqc, hlx, hxc⟩ := hmg x d hf
+    rw [← hn] at hlq hlx
+    have hPO := pathOK_of_linked c base w v ps hr hp hlf1 hc hRt
+    have hdl : d ≤ ps.length := by
+      have : d < ((none, w.top.rootKey) :: ps).length := by
+        rw [← hp1]
+        cases h : v1.path[d]? with
+        | none => rw [h] at hpx; cases hpx
+        | some _ => exact (List.getElem?_eq_some_iff.mp h).1
+      simp at this; omega
+    have hPd := pathOK_mono hPO hdl
+    refine ⟨_, _, _, hPd, ?_, by omega, ?_, ?_, ?_, ?_⟩
+    · have := hPd.1 d (Nat.le_refl _)
+      rw [hpth, hpx] at this
+      exact (Option.some.inj this).symm
+    · have hX := hPd.1 (d - 1) (by omega)
+      rw [hpth, hpq] at hX
+      have hlk := (hPd.2.2.1 (d - 1) (by omega)).1
+      rw [← Option.some.inj hX, hlq] at hlk
+      have e := Option.some.inj hlk
+      dsimp only at e ⊢
+      rw [← e]; exact hql
+    · have hX := hPd.1 (d - 1) (by omega)
+      rw [hpth, hpq] at hX
+      have hlk := (hPd.2.2.1 (d - 1) (by omega)).1
+      rw [← Option.some.inj hX, hlq] at hlk
+      have e := Option.some.inj hlk
+      dsimp only at e ⊢
+      rw [← e]; exact hqc
+    · have hX := hPd.1 d (Nat.le_refl _)
+      rw [hpth, hpx] at hX
+      have hlk := (hPd.2.2.1 d (Nat.le_refl _)).1
+      rw [← Option.some.inj hX, hlx] at hlk
+      have e := Option.some.inj hlk
+      dsimp only at e ⊢
+      rw [← e]; exact hxc
+    · have hX := hPd.1 d (Nat.le_refl _)
+      rw [hpth, hpx] at hX
+      rw [Option.some.inj hX]
+      have := pathOK_reach c base v d _ _ _ hPd d (Nat.le_refl _)
+      rw [hr.1, hr.2.1] at this
+      exact this
+
+/-- A state that reads as a fix step's first state and made nothing is one again. -/
+theorem fixStart_of_reads {c : Ctx} {base : View BVal} {w v : W} (h : FixStart c base w)
+    (hr : ReadsAs c.p base w v) (hm : v.made = w.made) : FixStart c base v := by
+  obtain ⟨h1, h2, h3⟩ := h
+  refine ⟨by rw [hm, h1], by rw [hr.2.2.1, h2], fun y yn hy => h3 y yn ?_⟩
+  rw [← hr.1]; exact hy
+
+end SIS.Tree.Mt

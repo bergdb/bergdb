@@ -1,0 +1,282 @@
+/-
+The proof trial of 026-18 (bergdb 026-19, step B3): the parts of `Sub` that `FixW` does
+not speak of, after a fix step that made a merge (`PartsFix p IsMerge`): the sizes, the
+empty key of inner nodes, the kinds, the dead klongs, the heights. Each as today's step
+of the run (SizeStep.lean, LeftStep.lean, KindsStep.lean, DeadRun.lean, HeightsStep.lean),
+restated with the books of the last state, and the writer's family run over Mt's text.
+-/
+import SIS.Tree.MtLiftProof
+
+set_option autoImplicit false
+
+namespace SIS.Tree.Mt
+
+open SIS SIS.Check SIS.Tree
+
+/-! ## The sizes -/
+
+theorem sized_pathGo (key : List Nat) (x : NodeId) : KeepsSized (pathGo key x) := by
+  induction key generalizing x with
+  | nil => intro c w hv hw; simpa only [pathGo, writerWP_pure] using hw
+  | cons cv rest ih =>
+    intro c w hv hw
+    unfold pathGo
+    repeat' first
+      | wpSimplify
+      | szCore
+      | szUse (sized_descendLte _ _ _)
+      | szUse (ih _)
+      | wpSplit
+      | split
+      | contradiction
+
+theorem sized_path (key : Key) : KeepsSized (path key) := by
+  intro c w hv hw
+  unfold path
+  repeat' first
+    | wpSimplify
+    | szCore
+    | szUse (sized_pathGo _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem sized_targetGo (d : Nat) : KeepsSized (targetGo d) := by
+  induction d with
+  | zero => intro c w hv hw; simpa only [targetGo, writerWP_pure] using hw
+  | succ d ih =>
+    intro c w hv hw
+    unfold targetGo
+    repeat' first
+      | wpSimplify
+      | szCore
+      | szUse ih
+      | wpSplit
+      | split
+      | contradiction
+
+theorem sized_target : KeepsSized target := by
+  intro c w hv hw
+  unfold target
+  repeat' first
+    | wpSimplify
+    | szCore
+    | szUse (sized_targetGo _)
+    | wpSplit
+    | split
+    | contradiction
+
+-- restated from sized_merge (WriterSizeMerge.lean)
+set_option maxHeartbeats 1600000 in
+theorem sized_mtMerge (x : NodeId) (d : Nat) : KeepsSized (Mt.merge x d) := by
+  intro c w hv hw
+  obtain ⟨hp1, hp2, hp3, hp4, hp5, hp6⟩ := hv.params
+  unfold Mt.merge
+  repeat' first
+    | wpSimplify
+    | szNewKlongs
+    | szSib
+    | szCore
+    | szUse (sized_mergeParent _ _ _ _ _ _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+/-! ## The empty key of inner nodes -/
+
+theorem left_pathGo (B : NodeId) (key : List Nat) (x : NodeId) : KeepsLeft0 B (pathGo key x) := by
+  induction key generalizing x with
+  | nil => intro c w hv hp hl hw hb hn; simpa only [pathGo, writerWP_pure] using ⟨hw, hb, Kept.refl w, hn⟩
+  | cons cv rest ih =>
+    intro c w hv hp hl hw hb hn
+    have hpos := hv.pos
+    unfold pathGo
+    repeat' first
+      | wpSimplify
+      | lfCore
+      | lfUse0 (left_descendLte0 _ _ _ _)
+      | lfUse0 (ih _)
+      | wpSplit
+      | split
+      | contradiction
+
+theorem left_path (B : NodeId) (key : Key) : KeepsLeft0 B (path key) := by
+  intro c w hv hp hl hw hb hn
+  have hpos := hv.pos
+  unfold path
+  repeat' first
+    | wpSimplify
+    | lfCore
+    | lfUse0 (left_pathGo _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem left_targetGo (B : NodeId) (d : Nat) : KeepsLeft0 B (targetGo d) := by
+  induction d with
+  | zero => intro c w hv hp hl hw hb hn; simpa only [targetGo, writerWP_pure] using ⟨hw, hb, Kept.refl w, hn⟩
+  | succ d ih =>
+    intro c w hv hp hl hw hb hn
+    have hpos := hv.pos
+    unfold targetGo
+    repeat' first
+      | wpSimplify
+      | lfCore
+      | lfUse0 ih
+      | wpSplit
+      | split
+      | contradiction
+
+theorem left_target (B : NodeId) : KeepsLeft0 B target := by
+  intro c w hv hp hl hw hb hn
+  have hpos := hv.pos
+  unfold target
+  repeat' first
+    | wpSimplify
+    | lfCore
+    | lfUse0 (left_targetGo _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+-- restated from left_merge (WriterLeftMerge.lean)
+set_option maxHeartbeats 1600000 in
+theorem left_mtMerge (B : NodeId) (x : NodeId) (d : Nat) : KeepsLeft0 B (Mt.merge x d) := by
+  intro c w hv hp hl hw hb hn
+  have hpos := hv.pos
+  unfold Mt.merge
+  repeat' first
+    | wpSimplify
+    | lfCore
+    | lfSibling
+    | lfMP
+    | wpSplit
+    | split
+    | contradiction
+
+/-! ## The two parts after a merge step -/
+
+/-- A family's keeps of path, target and merge give it for a fix step that made a merge. -/
+theorem keeps_fix_merge (Q : W → Prop) (k : Key) (c : Ctx) (w0 w : W) (x : NodeId) (d : Nat)
+    (w1 : W) (hfs : fixStep k c w0 = .ok (true, w))
+    (hpt : (do path k; target : M Fix) c w0 = .ok (.merge x d, w1)) (h0 : Q w0)
+    (hp : WriterWP (path k) c w0 (fun _ v => Q v))
+    (ht : ∀ v, Q v → WriterWP target c v (fun _ v' => Q v'))
+    (hm : ∀ v, Q v → WriterWP (Mt.merge x d) c v (fun _ v' => Q v')) : Q w := by
+  obtain ⟨u, w2, hp', ht', m, hm'⟩ := fixStep_merge_split k c w0 w x d w1 hfs hpt
+  have q2 := hp u w2 hp'
+  have q1 := ht w2 q2 _ w1 ht'
+  exact hm w1 q1 m w hm'
+
+-- restated from sizeOK_step (SizeStep.lean)
+theorem sizeOK_e (p : Params) (P : Struct BVal) (t : Time) (base : NodeId) (top : Top) (w : W)
+    (hfresh : ∀ q ∈ P, q.1 < base) (htimes : StructTimesLE P t)
+    (hroot : ∃ r, P.get? root = some r ∧ p.keyMax < r.level) (hH : KeyHistOK p P)
+    (hS : SizeOK p P) (hE : EndW p P (t + 1) base top w) (hw : WriterSizeOK p w) :
+    SizeOK p (P.apply (t + 1) (changesOf (t + 1) w)) := by
+  intro x n hn
+  unfold keyNodeAt at hn
+  cases hx : (P.apply (t + 1) (changesOf (t + 1) w)).get? x with
+  | none => simp [hx] at hn
+  | some nd' =>
+    rw [hx] at hn
+    cases hd : nd'.isData with
+    | true => simp [hd] at hn
+    | false =>
+      by_cases hlv : nd'.level ≤ p.keyMax
+      · simp only [hd, hlv, Bool.not_false, decide_true, Bool.and_self, ↓reduceIte,
+          Option.some.injEq] at hn
+        subst hn
+        show (klongsOf nd'.hist).length ≤ p.M
+        rcases apply_keyNode_e p P (t + 1) base top w (by omega) hfresh htimes hroot hH hE x nd' hx
+          hd hlv with ⟨n0, hlook, _, _, hks, _⟩ | ⟨hp0, _⟩
+        · rw [hks]
+          exact (hw _ (mem_ids_of_lookup _ x n0 hlook)).1
+        · have := hS x _ (keyNodeAt_of p P x nd' hp0 hd hlv)
+          simpa [nodeK, KNode.size] using this
+      · simp [hd, hlv] at hn
+
+-- restated from leftAllOK_step (LeftStep.lean)
+theorem leftAllOK_e (p : Params) (P : Struct BVal) (t : Time) (base : NodeId) (top : Top) (w : W)
+    (hfresh : ∀ q ∈ P, q.1 < base) (htimes : StructTimesLE P t)
+    (hroot : ∃ r, P.get? root = some r ∧ p.keyMax < r.level) (hH : KeyHistOK p P)
+    (hE : EndW p P (t + 1) base top w) (hL : LeftAllOK p P) (hLW : LeftCache w) :
+    LeftAllOK p (P.apply (t + 1) (changesOf (t + 1) w)) := by
+  intro x nd hx hd hlv
+  rcases apply_keyNode_e p P (t + 1) base top w (by omega) hfresh htimes hroot hH hE x nd hx hd hlv with
+    ⟨n, hlook, hnt, _, _, _⟩ | ⟨hP, _⟩
+  · have hk := (overlayLift_e p P (t + 1) base top w (by omega) hfresh htimes hroot hH hE).1 x n
+      hlook hnt
+    have hlv' : ¬ p.keyMax < nd.level := by omega
+    have hn : n = ⟨p.heightOf nd.level == 0, klongsOf nd.hist⟩ := by
+      simp only [knodeOf, viewOf, hx, hd, hlv', Bool.false_or, decide_false, Bool.false_eq_true,
+        ↓reduceIte, Option.some.injEq] at hk
+      exact hk.symm
+    rw [← hn]
+    exact hLW (x, n) (mem_ids_of_lookup w.nodes x n hlook)
+  · exact hL x nd hP hd hlv
+
+/-- The sizes and the empty key of inner nodes after a fix step that made a merge. -/
+theorem sizeLeft_fix_merge (p : Params) (hp : MergeParamsOK p) (P : Struct BVal) (t : Time)
+    (base : NodeId) (k : Key) (z : NodeId) (top : Top) (w : W) (x : NodeId) (d : Nat) (w1 : W)
+    (hfresh : ∀ q ∈ P, q.1 < base) (htimes : StructTimesLE P t) (hL : RunLinksOK p P t)
+    (hS : SizeOK p P) (hLA : LeftAllOK p P)
+    (htop : topOf p (ctxAt p P t).view z = .ok top)
+    (hfs : fixStep k (ctxAt p P t) (wStart base top) = .ok (true, w))
+    (hpt : (do path k; target : M Fix) (ctxAt p P t) (wStart base top) = .ok (.merge x d, w1)) :
+    WriterSizeOK p w ∧ LeftCache w := by
+  have hB := putBase_at p P t base hfresh htimes hL
+  have hb0 := putBook_at p P t base hfresh htimes hL z top htop
+  have hvs : ViewSized (ctxAt p P t) :=
+    ⟨hp, viewSizeOK_rootless p _ (sizeStep_view p P t htimes hS)⟩
+  have hvl : ViewLeftOK p (ctxAt p P t).view :=
+    left_viewLeft_rootless p _ (viewLeftOK_of_leftAll p P t htimes hLA)
+  refine ⟨keeps_fix_merge (fun v => CacheSized (ctxAt p P t) v) k _ _ w x d w1 hfs hpt
+    (by intro q hq; simp [wStart] at hq) (sized_path k _ _ hvs (by intro q hq; simp [wStart] at hq))
+    (fun v hv => sized_target _ v hvs hv) (fun v hv => sized_mtMerge x d _ v hvs hv), ?_⟩
+  have h := keeps_fix_merge (fun v => CacheGood base (ctxAt p P t) v ∧ Book base (ctxAt p P t) v ∧
+      LeftCacheE [] v) k _ _ w x d w1 hfs hpt
+    ⟨hb0.good, hb0.book, by intro q hq; simp [wStart] at hq⟩
+    (writerWP_mono (left_path base k _ _ hB.good hp hvl hb0.good hb0.book
+      (by intro q hq; simp [wStart] at hq)) (fun _ _ h => ⟨h.1, h.2.1, h.2.2.2⟩))
+    (fun v hv => writerWP_mono (left_target base _ v hB.good hp hvl hv.1 hv.2.1 hv.2.2)
+      (fun _ _ h => ⟨h.1, h.2.1, h.2.2.2⟩))
+    (fun v hv => writerWP_mono (left_mtMerge base x d _ v hB.good hp hvl hv.1 hv.2.1 hv.2.2)
+      (fun _ _ h => ⟨h.1, h.2.1, h.2.2.2⟩))
+  exact leftCache_of_nil h.2.2
+
+/-! ## `PartsFix` for the merge -/
+
+/-- The parts of `Sub` after a fix step of kind C that this file does not prove: the kinds,
+the heights, the dead klongs. Today's lemmas for them (`kd_merge`, `ht_merge`, `dw_merge`)
+ask for books of the path that MT's `path` builds (step A2) and speak of Exec's `merge`
+(the bridge, A1). -/
+def PartsKHD (p : Params) (C : Fix → Prop) : Prop :=
+  ∀ (s : St) (k : Key) (rest : List Key) (base : NodeId) (w : W) (f : Fix) (w1 : W), Reached p s →
+    StInv p s → s.pend = k :: rest → (∀ q ∈ s.P, q.1 < base) →
+    runFix p base k (s.t + 1) (view (treeSpec p) s.P s.t) = .ok (true, w) →
+    fixOf p base k (s.t + 1) (view (treeSpec p) s.P s.t) = .ok (f, w1) → C f →
+    KindsAllOK p (commit s.P (s.t + 1) w) ∧ HeightAllOK p (commit s.P (s.t + 1) w) (s.t + 1) ∧
+      DeadAllOK p (commit s.P (s.t + 1) w)
+
+/-- B3's parts for the merge: the sizes and the empty key of inner nodes proved, the kinds,
+heights and dead klongs from `PartsKHD`. -/
+theorem t_partsFix_merge (p : Params) (hp : MergeParamsOK p) (hK : PartsKHD p IsMerge) :
+    PartsFix p IsMerge := by
+  intro s k rest base w f w1 hs hI hpend hfresh hrun hfix hC
+  obtain ⟨hKA, hHA, hDA⟩ := hK s k rest base w f w1 hs hI hpend hfresh hrun hfix hC
+  obtain ⟨hsub, htimes, _, _, hEnc, _⟩ := hI
+  obtain ⟨z, top, _, htop, hfs, hout, hfo⟩ := runFix_true p s.P s.t base k w hrun
+  obtain ⟨x, d, rfl⟩ := hC
+  have hpt := hfo _ w1 hfix
+  have hrootL : ∃ r, s.P.get? root = some r ∧ p.keyMax < r.level := by
+    obtain ⟨nd, h1, h2, _⟩ := reached_root p s hs
+    exact ⟨nd, h1, by rw [h2]; exact rootLevel_gt p⟩
+  have hne := ne_fix_merge p s.P s.t base k z top w x d w1 hfresh htimes hsub.links htop hfs hpt
+  have hE := endW_fix p s.P s.t base k z top w hfresh htimes hsub.links hEnc htop hfs hout hne
+  obtain ⟨hsz, hlc⟩ := sizeLeft_fix_merge p hp s.P s.t base k z top w x d w1 hfresh htimes
+    hsub.links hsub.size hsub.left htop hfs hpt
+  exact ⟨hKA, hHA, sizeOK_e p s.P s.t base top w hfresh htimes hrootL hsub.links.2.1 hsub.size hE hsz,
+    leftAllOK_e p s.P s.t base top w hfresh htimes hrootL hsub.links.2.1 hE hsub.left hlc, hDA⟩
+
+end SIS.Tree.Mt

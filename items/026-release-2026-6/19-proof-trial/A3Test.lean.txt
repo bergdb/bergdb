@@ -1,0 +1,81 @@
+import SIS.Tree.Mt
+open SIS SIS.Check SIS.Tree SIS.Tree.Mt SIS.Tree.Mt.Small
+
+def faultName (f : String) : String := String.ofList (f.toList.takeWhile (· != ':'))
+def faultNode (f : String) : Option Nat :=
+  let cs := (f.toList.dropWhile (· != ':')).dropWhile (fun c => !c.isDigit)
+  (String.ofList (cs.takeWhile Char.isDigit)).toNat?
+def fillNodes (p : Params) (v : View BVal) (t : Time) : List Nat :=
+  ((faultsAt p v t).filter (fun f => ["NonEmptyOK", "RootsOK", "FillOK"].contains (faultName f))).filterMap faultNode
+def otherFaults (p : Params) (v : View BVal) (t : Time) : List String :=
+  (faultsAt p v t).filter (fun f => !["NonEmptyOK", "RootsOK", "FillOK"].contains (faultName f))
+
+/-- For every merge fix step of a group: the fill faults after it lie in those
+before it or on the step's key's path after it (FixW's LiveCountsH line, A3). -/
+def checkGroup (p : Params) (P : Struct BVal) (t : Time) (next : NodeId) (ops : List Op) :
+    Except String (Struct BVal × Time × NodeId × List String × Nat) := do
+  let ops := normalize ops
+  let i := t + 1
+  let (noops, w) ← runUser p next ops i (viewP P)
+  let P := P.apply i (changesOf i w)
+  let (P, t', next', steps) ← fixAll p viewP (fun P i w => .ok (P.apply i (changesOf i w)))
+    (deletedKeys ops noops) P i w.next
+  let v := viewP P
+  let mut bad : List String := []
+  let mut n := 0
+  for st in steps do
+    if st.fixed && st.w.trail.any (fun s => s.startsWith "fix.merge") then
+      n := n + 1
+      let before := fillNodes p v (st.time - 1)
+      let after := fillNodes p v st.time
+      let path := match pathAt p st.key st.time v with
+        | .ok ns => ns
+        | .error _ => []
+      let extra := after.filter (fun x => !before.contains x && !path.contains x)
+      if !extra.isEmpty then
+        bad := bad ++ [s!"merge at {st.time} key {st.key}: new fill faults off the path: {extra}; path {path}; trail {st.w.trail.reverse.filter (·.startsWith "fix.")}"]
+      let oth := otherFaults p v st.time
+      if !oth.isEmpty then bad := bad ++ [s!"other faults at {st.time}: {oth.take 3}"]
+  pure (P, t', next', bad, n)
+
+def runAll (p : Params) (txs : List (List Op)) : String := Id.run do
+  let mut P := initStruct p
+  let mut t := 0
+  let mut next := 10
+  let mut bad : List String := []
+  let mut n := 0
+  for ops in txs do
+    match checkGroup p P t next ops with
+    | .error e => return s!"error: {e}"
+    | .ok (P', t', next', b, k) =>
+      P := P'; t := t'; next := next'; bad := bad ++ b; n := n + k
+  return s!"merges {n}, bad {bad.length}: {bad.take 4}"
+
+def lcg (s : Nat) : Nat := (s * 1103515245 + 12345) % 2147483648
+
+/-- Random groups: puts and deletes of keys below m. -/
+def randTxs (seed m groups size : Nat) : List (List Op) := Id.run do
+  let mut s := seed
+  let mut out : List (List Op) := []
+  for _ in List.range groups do
+    let mut ops : List Op := []
+    s := lcg s
+    let delHeavy := s % 3 != 0
+    for _ in List.range size do
+      s := lcg s
+      let j := (s / 65536) % m
+      s := lcg s
+      let isDel := if delHeavy then (s / 65536) % 4 != 0 else (s / 65536) % 4 == 0
+      ops := ops ++ [if isDel then .del (k j) else .put (k j) j]
+    out := out ++ [ops]
+  return out
+
+#eval runAll p8 [puts (List.range 12), dels [2, 3]]
+#eval runAll p8 [puts (List.range 6), dels [0, 1]]
+#eval runAll p8 [puts (List.range 12), dels [0, 1, 2, 3, 4, 5]]
+#eval runAll p8 [puts (List.range 40), dels (List.range 20)]
+#eval runAll p8 [puts (List.range 40), dels (List.range 40)]
+#eval runAll p8 [puts (List.range 40), dels ((List.range 20).map (· * 2))]
+#eval runAll p8 ([puts (List.range 60)] ++ randTxs 7 60 30 12)
+#eval runAll p8 ([puts (List.range 100)] ++ randTxs 11 100 40 25)
+#eval runAll p8 ([puts (List.range 100)] ++ randTxs 23 100 40 40)

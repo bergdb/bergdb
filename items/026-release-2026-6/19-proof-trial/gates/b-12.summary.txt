@@ -1,0 +1,9 @@
+head: 87e349dd 026-19: the collapse step at the structure (t_liftFix_collapse, t_partsFix_collapse, t_fixS; 2026-11-16 23:22
+forbidden: 0 lines
+main's lean/ unchanged: 21 files added; MT's four files as 026-17-mt-trial
+lake build: exit 0, Build completed successfully (704 jobs), real 0m0.285s
+lake build SIS.Tree.Mt SIS.Tree.MtBooks SIS.Tree.MtBridge SIS.Tree.MtCollapse SIS.Tree.MtDead SIS.Tree.MtDone SIS.Tree.MtHeights SIS.Tree.MtKinds SIS.Tree.MtKindsW SIS.Tree.MtLift SIS.Tree.MtLiftProof SIS.Tree.MtParts SIS.Tree.MtPath SIS.Tree.MtReaders SIS.Tree.MtRun SIS.Tree.MtStep SIS.Tree.MtSub SIS.Tree.MtTop SIS.Tree.MtUnlink : exit 0, real 0m0.179s
+audit: 31 theorems t_..., 31 on the standard axioms only: t_doneOK t_fixStepOK_of t_fixStep_collapse_of t_fixStep_merge_of t_fixStep_unlink_of t_full_of_sub t_htEnd_merge t_kindsHtEnd_merge t_liftFix_collapse t_liftFix_merge t_liftFix_unlink t_liveCountsH_none t_partsFix_collapse t_partsFix_merge t_partsFix_unlink t_partsKHD_merge t_partsKH_merge t_reached_inv t_scans_of_full t_sub_of_full t_visible t_visible_HtW t_visible_KH t_visible_KHW t_visible_best t_visible_fixW t_visible_merge t_visible_mergeKHD t_visible_now t_visible_now2 t_visible_writer 
+fixed statements: git diff P0b (c778c01794fc3bb7d87cf7fa63d2bed59da87a48) -- MtRun.lean MtSub.lean: 0 lines changed
+lines: 7586 in the trial's files (SIS/Tree/MtBooks.lean SIS/Tree/MtBridge.lean SIS/Tree/MtCollapse.lean SIS/Tree/MtDead.lean SIS/Tree/MtDone.lean SIS/Tree/MtHeights.lean SIS/Tree/MtKinds.lean SIS/Tree/MtKindsW.lean SIS/Tree/MtLift.lean SIS/Tree/MtLiftProof.lean SIS/Tree/MtParts.lean SIS/Tree/MtPath.lean SIS/Tree/MtReaders.lean SIS/Tree/MtRun.lean SIS/Tree/MtStep.lean SIS/Tree/MtSub.lean SIS/Tree/MtTop.lean SIS/Tree/MtUnlink.lean )
+GATE PASS

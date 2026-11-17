@@ -1,0 +1,251 @@
+/-
+The proof trial of 026-18 (bergdb 026-19, step A4, taken by prover B): `FixW` for the merge,
+its parts other than the live counts: `PutInv`, `PutInvG`, the ranges and the readings after
+MT's merge, from today's whole-merge lemmas (`writerWP_merge_tree_inv2`,
+`writerWP_merge_range_inv`, `writerWP_merge_get_inv`) through prover A's bridge
+(`writerWP_mtMerge`, MtBridge.lean) and path (`writerWP_pathTarget`, MtPath.lean); the live
+counts from A3's statement (`FixLiveW`), and the merge of an empty node (R3, where the bridge
+does not apply) a named premise (`FixWEmpty`, A5's).
+-/
+import SIS.Tree.MtFit
+
+set_option autoImplicit false
+
+namespace SIS.Tree.Mt
+
+open SIS SIS.Check SIS.Tree
+
+/-- The empty key's path never asks for a merge: its path is the space root alone. -/
+theorem pathTarget_nil_noMerge (c : Ctx) (w : W) :
+    WriterWP (do path []; target : M Fix) c w (fun f _ => ∀ x d, f ≠ Fix.merge x d) := by
+  simp only [writerWP_bind]
+  unfold path pathGo
+  simp only [pathClear, findRoot, pathAdd, writerWP_bind, writerWP_modify, writerWP_get, writerWP_pure]
+  unfold target pathSize
+  simp only [writerWP_bind, writerWP_get, writerWP_pure, List.nil_append, List.length_cons,
+    List.length_nil, Nat.zero_add]
+  rw [targetGo]
+  simp only [writerWP_bind, writerWP_read]
+  apply pathNode_wp
+  intro e he
+  intro xn v _
+  have hpureOK : ∀ (f : Fix) (u : W), (∀ x d, f ≠ Fix.merge x d) →
+      WriterWP (pure f : M Fix) c u (fun f _ => ∀ x d, f ≠ Fix.merge x d) :=
+    fun f u hf => (writerWP_pure _ _ _ _).mpr hf
+  have hgo0 : ∀ u, WriterWP (targetGo 0) c u (fun f _ => ∀ x d, f ≠ Fix.merge x d) := by
+    intro u; rw [targetGo]; exact hpureOK _ _ (fun x d h => by cases h)
+  repeat' first
+    | exact writerWP_throw _ _ _ _
+    | exact hgo0 _
+    | exact hpureOK _ _ (fun x d h => by cases h)
+    | wpSplit
+    | (simp only [writerWP_bind, writerWP_pure])
+    | split
+    | contradiction
+    | (exfalso; simp_all)
+
+theorem firstTime_mem (n : KNode) (t : Time) (h : n.firstTime = some t) : Klong.time t ∈ n.ks := by
+  unfold KNode.firstTime at h
+  obtain ⟨k, hk, hk'⟩ := List.exists_of_findSome?_eq_some h
+  cases k with
+  | time x =>
+    simp only [Option.some.injEq] at hk'
+    subst hk'
+    exact hk
+  | key _ _ => simp at hk'
+  | del _ => simp at hk'
+
+theorem lastTime_fold_mem (t : Time) : ∀ (ks : List Klong) (acc : Option Time),
+    ks.foldl (fun t k => match k with
+      | .time x => some x
+      | _ => t) acc = some t → acc = some t ∨ Klong.time t ∈ ks := by
+  intro ks
+  induction ks with
+  | nil => intro acc h; exact Or.inl h
+  | cons k rest ih =>
+    intro acc h
+    simp only [List.foldl_cons] at h
+    rcases ih _ h with h1 | h1
+    · cases k with
+      | time x =>
+        simp only [Option.some.injEq] at h1
+        subst h1
+        exact Or.inr List.mem_cons_self
+      | key _ _ => exact Or.inl h1
+      | del _ => exact Or.inl h1
+    · exact Or.inr (List.mem_cons_of_mem _ h1)
+
+theorem lastTime_mem (n : KNode) (t : Time) (h : n.lastTime = some t) : Klong.time t ∈ n.ks := by
+  unfold KNode.lastTime at h
+  rcases lastTime_fold_mem t n.ks none h with h1 | h1
+  · cases h1
+  · exact h1
+
+/-- A run of `fixStep` gives a run of its path and target. -/
+theorem fixStep_pt (k : Key) (c : Ctx) (w : W) (r : Bool) (w' : W) (h : fixStep k c w = .ok (r, w')) :
+    ∃ f w1, (do path k; target : M Fix) c w = .ok (f, w1) := by
+  unfold fixStep at h
+  obtain ⟨u, w2, hp, hrest⟩ := (m_bind_ok _ _ _ _ _).mp h
+  obtain ⟨f, w1, ht, _⟩ := (m_bind_ok _ _ _ _ _).mp hrest
+  exact ⟨f, w1, (m_bind_ok _ _ _ _ _).mpr ⟨u, w2, hp, ht⟩⟩
+
+/-! ## The statements around A4 -/
+
+/-- A3's statement (prover A's `FixWLive p C fixStep`, MtMergeLive.lean): FixW's live counts. -/
+def FixLiveW (p : Params) (C : Fix → Prop) : Prop :=
+  ∀ (key : Key) (c : Ctx) (base : View BVal) (w : W) (H : NodeId → Prop), c.p = p →
+    ViewCoherent c base → FixStart c base w → PutInv c base w → PutInvG c base w →
+    RangeOrder (wNode p base w) c.i w.top.rootKey →
+    LiveCountsH p (wNode p base w) c.i w.top.rootKey H →
+    (∀ f w1, (do path key; target : M Fix) c w = .ok (f, w1) → C f) →
+    WriterWP (fixStep key) c w (fun r w' => r = true →
+      LiveCountsH p (wNode p base w') c.i w'.top.rootKey (fun y => H y ∨ HoleW c base w' key y))
+
+/-- The parent's live children at the state after the path and the target hold a live klong:
+where the bridge applies. -/
+def ChildrenLive (c : Ctx) (base : View BVal) (v : W) (d : Nat) : Prop :=
+  ∀ q qn, (v.path[d - 1]?).map (·.2) = some q → wNode c.p base v q = some qn →
+    ∀ cv z zn, (cv, z) ∈ qn.live → wNode c.p base v z = some zn → zn.live.isEmpty = false
+
+/-- `FixW` for a merge whose parent has an empty child (R3, where the bridge does not apply),
+but the live counts, which A3's `FixLiveW` gives for every merge: A5's statement. -/
+def FixWEmpty (p : Params) : Prop :=
+  ∀ (key : Key) (c : Ctx) (base : View BVal) (w : W) (H : NodeId → Prop), c.p = p →
+    ViewCoherent c base → FixStart c base w → PutInv c base w → PutInvG c base w →
+    RangeOrder (wNode p base w) c.i w.top.rootKey →
+    LiveCountsH p (wNode p base w) c.i w.top.rootKey H →
+    (∀ f w1, (do path key; target : M Fix) c w = .ok (f, w1) → IsMerge f) →
+    (∃ B top0, PutBase c base B ∧ PutBook c B top0 w) →
+    (∀ w', fixStep key c w = .ok (true, w') →
+      SegFits (wNode p base w') c.i (p.fuel - 1) w'.top.rootKey) →
+    (∀ x d w1, (do path key; target : M Fix) c w = .ok (.merge x d, w1) →
+      ¬ ChildrenLive c base w1 d) →
+    WriterWP (fixStep key) c w (fun r w' => r = true →
+      PutInv c base w' ∧ PutInvG c base w' ∧
+      RangeOrder (wNode p base w') c.i w'.top.rootKey ∧
+      ∀ k, wGet p c.i base w' k = wGet p c.i base w k)
+
+/-! ## A4: `FixW` for the merge -/
+
+/-- `FixW` for the merge: the live counts from A3 (`FixLiveW`), the merge of an empty child from
+A5 (`FixWEmpty`), and the rest proved here through the bridge. -/
+theorem t_fixW_merge_of (p : Params) (hp : MergeParamsOK p) (hLive : FixLiveW p IsMerge)
+    (hEmpty : FixWEmpty p) : FixW p IsMerge := by
+  intro key c base w H hcp hvc hst hPI hPG hRO hLH hkind hbooks hfit _ _
+  intro r w' hrun hr
+  subst hr
+  obtain ⟨f, w1, hpt⟩ := fixStep_pt key c w true w' hrun
+  obtain ⟨x, d, rfl⟩ := hkind f w1 hpt
+  have hlive := hLive key c base w H hcp hvc hst hPI hPG hRO hLH hkind true w' hrun rfl
+  by_cases hCL : ChildrenLive c base w1 d
+  case neg =>
+    obtain ⟨h1, h2, h3, h4⟩ := hEmpty key c base w H hcp hvc hst hPI hPG hRO hLH hkind hbooks hfit
+      (by
+        intro x' d' w1' h'
+        rw [hpt] at h'
+        simp only [Except.ok.injEq, Prod.mk.injEq, Fix.merge.injEq] at h'
+        obtain ⟨⟨rfl, rfl⟩, rfl⟩ := h'
+        exact hCL) true w' hrun rfl
+    exact ⟨h1, h2, h3, hlive, h4⟩
+  subst hcp
+  have hkey : key ≠ [] := by
+    intro h0
+    subst h0
+    exact pathTarget_nil_noMerge c w _ w1 hpt x d rfl
+  have htk0 : w.taken = [] := hst.2.1
+  obtain ⟨hr1, _, _, _, _, hmg⟩ := writerWP_pathTarget key hkey c base hvc w
+    (fun y _ => by rw [htk0]; rfl) (fun y yn _ hy => hPI.wf y yn hy) _ w1 hpt
+  obtain ⟨X, K, Nn, hP, hXd, hd0, hql, _, _, _⟩ := hmg x d rfl
+  obtain ⟨u, w2, _, _, m, hmm⟩ := fixStep_merge_split key c w w' x d w1 hrun hpt
+  -- the books at the state after the path and the target
+  have hPI1 := putInv_of_readsAs c base w w1 hPI hr1
+  have hPG1 := putInvG_of_readsAs c base w w1 hPG hr1
+  have hRO1 : RangeOrder (wNode c.p base w1) c.i w1.top.rootKey := by
+    rw [hr1.1, hr1.2.1]; exact hRO
+  have htk1 : ∀ z, w1.taken.contains z = false := by intro z; rw [hr1.2.2.1, htk0]; rfl
+  have hsa2 : 2 ≤ c.p.splitAbove := by have h1 := hp.1; have h2 := hp.2.2.1; omega
+  have hcap : 1 ≤ c.p.mergeMax := by have h1 := hp.1; have h2 := hp.2.1; omega
+  -- the bridge's premise: the parent's live children are good to merge
+  have hT1 := hPI1.tree
+  have hG : ∀ q qn, (w1.path[d - 1]?).map (·.2) = some q → wNode c.p base w1 q = some qn →
+      ∀ cv z zn, (cv, z) ∈ qn.live → wNode c.p base w1 z = some zn → MergeGood c w1 d z zn := by
+    intro q qn hq hqn cv z zn hz hzn
+    have hzt : ∀ s, Klong.time s ∈ zn.ks → s < c.i := by
+      rw [hr1.1] at hzn
+      exact hst.2.2 z zn hzn
+    refine ⟨hCL q qn hq hqn cv z zn hz hzn, ?_, ?_, ?_, ?_⟩
+    · cases hft : zn.firstTime with
+      | none => rfl
+      | some t' =>
+        have := hzt t' (firstTime_mem zn t' hft)
+        simp only [beq_eq_false_iff_ne, ne_eq, Option.some.injEq]
+        omega
+    · cases hlt : zn.lastTime with
+      | none => rfl
+      | some t' =>
+        have := hzt t' (lastTime_mem zn t' hlt)
+        simp only [beq_eq_false_iff_ne, ne_eq, Option.some.injEq]
+        omega
+    · rintro ⟨j, hj, hjz⟩
+      have hX := hP.1
+      have hqX : q = X (d - 1) := by
+        rw [hX (d - 1) (by omega)] at hq; exact (Option.some.inj hq).symm
+      subst hqX
+      have hzX : z = X j := by
+        rw [hX j (by omega)] at hjz; exact (Option.some.inj hjz).symm
+      have hlen1 := pathOK_depth c base w1 d X K Nn hP (d - 1) (by omega)
+      have hlink : TLink (wNode c.p base w1) c.i (X (d - 1)) cv z := by
+        refine ⟨qn, hqn, ?_⟩
+        rw [KNode.liveAt_of_times qn c.i (hPI1.times _ _ hqn)]
+        exact hz
+      have hlenz : PathLen (wNode c.p base w1) c.i w1.top.rootKey z (d - 1 + 1) := PathLen.link hlen1 hlink
+      have hlenj := pathOK_depth c base w1 d X K Nn hP j (by omega)
+      rw [← hzX] at hlenj
+      have := PathLen.depth_unique hT1 _ z _ hlenz hlenj
+      omega
+    · exact hPG1.links q qn cv z hqn (by rw [KNode.liveAt_of_times qn c.i (hPI1.times _ _ hqn)]; exact hz)
+  -- today's whole-merge lemmas at w1, for Mt.merge through the bridge
+  have hfR : 2 ≤ c.p.fuel := by have := fuel_gt_H c.p; omega
+  have hQ := writerWP_mtMerge x d c base hvc w1 htk1 hG
+    (fun _ v => TreeOK (wNode c.p base v) c.i v.top.rootKey ∧
+      RangeOrder (wNode c.p base v) c.i v.top.rootKey ∧
+      (SegFits (wNode c.p base v) c.i (c.p.fuel - 1) v.top.rootKey →
+        ∀ key, wGetAt c.p c.i base v c.p.fuel key = wGetAt c.p c.i base w1 c.p.fuel key))
+    (by
+      intro a v1 v2 hs h
+      have hn := wNode_strip c.p base hs
+      have hv := wValue_strip base hs
+      have htop := (strip_fields hs).2.2.2.2.2.2.2.1
+      refine ⟨by rw [hn, htop]; exact h.1, by rw [hn, htop]; exact h.2.1, ?_⟩
+      intro hf key
+      have h3 := h.2.2 (by rw [← hn, ← htop]; exact hf) key
+      unfold wGetAt at h3 ⊢
+      rw [hn, hv, htop]
+      exact h3)
+    (writerWP_and (writerWP_merge_tree_inv2 x d c base hvc w1 hPI1 hPG1 hRO1 X K Nn hP hd0 hXd hql
+        hsa2 hcap)
+      (writerWP_and (writerWP_merge_range_inv x d c base hvc w1 hPI1 hPG1 hRO1 X K Nn hP hd0 hXd hql
+          hsa2 hcap)
+        (writerWP_merge_get_inv c.p.fuel hfR x d c base hvc w1 hPI1 hPG1 hRO1 X K Nn hP hd0 hXd hql
+          hsa2 hcap)))
+    m w' hmm
+  obtain ⟨hT', hRO', hget'⟩ := hQ
+  -- the books after the step
+  obtain ⟨B, top0, hB, hbk⟩ := hbooks
+  have hbk' := putBook_of_keeps (fixStep key) c base B top0 hB w hbk (klongsWf_fixStep key)
+    (good_fixStep B key) (book_fixStep B key) (@state_fixStep (allocatedIdsInvariant B) key)
+    (@state_fixStep (commitInvariant top0) key) (freshCache_fixStep key) (ptrs_fixStep _ key) true w' hrun
+  have hG' := putInvG_of_book c base B top0 w' hB hbk'
+  have htk' : w'.taken = [] := takenP_fixStep (fun l => l = []) key c w htk0 true w' hrun
+  have hPI' : PutInv c base w' := by
+    refine putInv_of_parts c base w' hG' hT' (fun y _ => by rw [htk']; rfl) ?_
+    exact leafOrder_of_rangeOrder _ _ _ hRO' (fun y yn hy s hs => hG'.times y yn hy s hs)
+  refine ⟨hPI', hG', hRO', hlive, ?_⟩
+  intro k
+  have h1 := hget' (hfit w' hrun) k
+  show wGetAt c.p c.i base w' c.p.fuel k = wGetAt c.p c.i base w c.p.fuel k
+  rw [h1]
+  unfold wGetAt
+  rw [hr1.1, hr1.2.1, ReadsAs.value c.p base w w1 hr1]
+
+end SIS.Tree.Mt
