@@ -73,11 +73,16 @@ def bitmapOk (ks : List Klong) (i : Nat) (before bits : List Nat) : Bool :=
   bits.all (fun j => (List.range j).all (fun j' =>
     cvAt ks j' != cvAt ks j || bits.contains j'))
 
+/-- One step of the check of the bitmaps, at klong k with index i. The state:
+no fault so far, and the bitmap before. -/
+def bmStep (ks : List Klong) (acc : Bool × List Nat) (k : Klong) (i : Nat) : Bool × List Nat :=
+  match k with
+  | .del bits => (acc.1 && bitmapOk ks i acc.2 bits, bits)
+  | _ => acc
+
 /-- W2, W3 and W4 for every bitmap. -/
 def bitmapsOk (ks : List Klong) : Bool :=
-  (ks.zipIdx.foldl (fun (acc : Bool × List Nat) (k, i) => match k with
-    | .del bits => (acc.1 && bitmapOk ks i acc.2 bits, bits)
-    | _ => acc) (true, [])).1
+  (ks.zipIdx.foldl (fun acc ki => bmStep ks acc ki.1 ki.2) (true, [])).1
 
 /-- The klongs of a node are well formed: W1 to W4. -/
 def klongsWf (ks : List Klong) : Bool := timesOk ks && bitmapsOk ks

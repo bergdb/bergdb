@@ -7,29 +7,6 @@ import Contract.Proof.Good
 
 namespace Contract
 
-/-- In a list in strictly increasing order of its keys, a lookup finds
-exactly the pairs of the list. -/
-theorem lookup_iff_mem {α β : Type} [BEq α] [LawfulBEq α] [Preorder α] {l : List (α × β)}
-    (h : l.Pairwise (fun a b => a.1 < b.1)) (k : α) (v : β) :
-    l.lookup k = some v ↔ (k, v) ∈ l := by
-  induction l with
-  | nil => simp
-  | cons a r ih =>
-    obtain ⟨k0, v0⟩ := a
-    rw [List.pairwise_cons] at h
-    rw [List.lookup_cons]
-    by_cases hk : k = k0
-    · subst hk
-      simp only [beq_self_eq_true, Option.some.injEq, List.mem_cons, Prod.mk.injEq, true_and]
-      constructor
-      · intro h1; exact Or.inl h1.symm
-      · rintro (h1 | h1)
-        · exact h1.symm
-        · exact absurd (h.1 _ h1) (lt_irrefl k)
-    · have hb : (k == k0) = false := by simpa using hk
-      simp only [hb, List.mem_cons, Prod.mk.injEq, hk, false_and, false_or]
-      exact ih h.2
-
 variable {s : Tree}
 
 /-- A get from a sound node finds exactly what the node holds. -/

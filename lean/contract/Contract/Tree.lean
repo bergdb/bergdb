@@ -158,20 +158,23 @@ def Pos.is (p : Pos) (c : Nat) : Bool :=
   | .at d => c == d
   | _ => false
 
-/-- `KeyNode.searchEq`: Java's loop, with the bitmaps in their order: a key
-klong of c is the match; a bitmap that deletes the match leaves none. The
-state: the bitmap so far, and the match's index and pointee. -/
+/-- One step of the loop of `KeyNode.searchEq` for compare value c, at klong k
+with index i. The state: the bitmap so far, and the match's index and
+pointee. A klong that the bitmap so far deletes is passed over; a key klong
+of c is the match; a bitmap that deletes the match leaves none. -/
+def eqStep (c : Nat) (acc : List Nat × Option (Nat × NodeId)) (k : Klong) (i : Nat) :
+    List Nat × Option (Nat × NodeId) :=
+  if acc.1.contains i then acc else
+    match k with
+    | .time _ => acc
+    | .key c' y => if c' == c then (acc.1, some (i, y)) else acc
+    | .del b => (b, match acc.2 with
+      | some f => if b.contains f.1 then none else some f
+      | none => none)
+
+/-- `KeyNode.searchEq`: Java's loop, with the bitmaps in their order. -/
 def searchEq (ks : List Klong) (c : Nat) : Option NodeId :=
-  (ks.zipIdx.foldl
-    (fun (acc : List Nat × Option (Nat × NodeId)) (k, i) =>
-      if acc.1.contains i then acc else
-        match k with
-        | .time _ => acc
-        | .key c' y => if c' == c then (acc.1, some (i, y)) else acc
-        | .del b => (b, match acc.2 with
-          | some f => if b.contains f.1 then none else some f
-          | none => none))
-    ([], none)).2.map (·.2)
+  (ks.zipIdx.foldl (fun acc ki => eqStep c acc ki.1 ki.2) ([], none)).2.map (·.2)
 
 /-- The common loop of the four other searches: over the klongs that the last
 bitmap does not delete, a key klong replaces the best so far when `better`
