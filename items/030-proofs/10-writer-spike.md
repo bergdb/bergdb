@@ -585,3 +585,8 @@ new form asks; 030-16's `WriterBalancedFalse.lean` keeps its theorem
 about the old form under a name of its own. 030-16 should not restate
 `BalancedAll` itself, and gets the new form by pulling main. Also on the
 put side, after that: `SNamed` given back (in work).
+2026-11-17, 20:35. `WriterPutNamed.lean`: a put gives `SNamed` back
+(`putKv_put_named`, `writerMeets_put_named`); `RunsPuts` asks it of the
+start tree only (`runs_meetsTop_puts`). `gate.sh dc642af1` (main's head as
+merged): GATE OK (159 theorems).
+GATED 00c5075d: SNamed given back after a put; a transaction of puts that runOpsFrom accepts meets the contract (writerMeets_exec_put); the example with keys of two segments.
