@@ -10,7 +10,8 @@
 # as launchd's job was before ProcessType Interactive (2026-10-22) or a
 # background process is (nice, taskpolicy -b), the timing tests fail.
 #
-# Usage: java/night.sh          the night run, about 100 minutes on F53
+# Usage: java/night.sh          the night run, about 100 minutes on F53 before
+#                               bergdb 030-13, which adds about 30 to 35
 #        java/night.sh large    the same and the large conformance set,
 #                               about 6 hours; by hand
 #        java/night.sh tests [-c classPattern] [-m methodPattern] [-v | -vv | -d | -s]
@@ -66,7 +67,9 @@
 #      27 traces of 120 to 800 transactions, node sizes 8 to 62, written with
 #      no tree check, which would take over an hour), then the writer's
 #      contract (lean/contract/check.sh) and the bridge
-#      (lean/contract/bridge-check.sh) on its traces (bergdb 030-13).
+#      (lean/contract/bridge-check.sh) on its traces, four at a time (bergdb
+#      030-13); 32 minutes on F53 under a heavy load (2026-11-17), most of it
+#      the bridge's six traces of m-d30 and m-d62.
 #      level2.sh's step 8b checks both on the small and drain sets.
 #  12. With "large": stress/conformance.sh large, 12 traces of 1,000 to 5,000
 #      transactions at node sizes 8 to 62; about 5 hours, most of it the two
