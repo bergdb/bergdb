@@ -106,6 +106,14 @@ The defaults below go ahead unless Frans says otherwise before he leaves.
 * **Not tonight:** `night.sh` (Frans: little need); deleting the old proofs (030-04,
   step 4's end: they go when the new package covers what they claimed, a decision
   for the morning).
-* **Usage:** week 24 % at 14:51. All agents stop at 45 % of the week (a watcher
-  makes their STOP files); at most four agents at a time.
+* **Usage:** week 24 % at 14:51. All agents stop at 60 % of the week (a watcher
+  makes their STOP files); at most six agents at a time (Frans, 15:06: "Work hard
+  and unattended on this. Take it forward as far as possible. Do not stop to ask
+  me, take decisions yourself on this so the work can continue. If needed you can
+  use up to 60% of the AI usage").
+* **15:10, the agents:** the review 030-06 is done (sound, with fixes; merged).
+  Three agents from main fc183148: 030-07, the bridge to the abstract model (Fable
+  at high); 030-08, the tree's shape and its top (Opus at xhigh); 030-09, the
+  trace's completeness and Java's own check of the contract (Opus at high). Each
+  reports its gated pieces in its item's Log; the coordinator lands them.
 * **The morning:** the outcome in section 6 and a `news.md` summary by 06:30.

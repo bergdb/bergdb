@@ -15,3 +15,8 @@ open Contract
 #print axioms Contract.Example.meets
 #print axioms Contract.Example3.meets
 #print axioms Contract.ExampleDag.meets
+#print axioms tree_right
+#print axioms MeetsShape.meets
+#print axioms checkShapeTx_sound
+#print axioms Contract.Example3.meetsShape
+#print axioms Contract.ExampleDag.not_tree
