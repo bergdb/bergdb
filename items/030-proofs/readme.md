@@ -253,6 +253,9 @@ Files
   `historyOk_meets`), LIVE lines checked, the assumptions reads rest on in
   030-04, 3.5, Java's own check of the contract in its tests (TransCheck),
   the medium set checked (27 of 27). Status: done.
+* [030-12](12-contract-large.md). The contract check on the reclaim,
+  medium and large sets of `treeconf.sh`, with `live=1`: more evidence
+  that Java meets the writer's contract. Status: open.
 
 
 Log
