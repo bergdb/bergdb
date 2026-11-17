@@ -1795,3 +1795,16 @@ r); (3) `MergeTailFullRest10OK` reduced, its case of the 69 proved. For l4b's
 `writerWP_appendKlongs_chainGLX`'s E does not fit: their writer side needs a `LiveEdgesH`
 form of the chain (the hole carried up through q's copy or half), and R1 where q is a
 segment root or the space root.
+
+2026-11-17, 03:56 to 03:59. The split step's R1 for the 25 at the space root, prover l4g
+(`LiveRootChildHole.lean`, about 230 lines, about 90 of them 03:30's root split again with
+the cache). `writerWP_handleFull_rootChildTimeHole`: `handleFull` of the merge's parent p at
+depth 1, not made, split in time (any last version within the split's bound, or
+compacting), below the space root q, a leaf not made, which gets p's copy without room (or
+compacting) and splits in time: after it the space root is q's copy, a leaf whose search of
+p's klong names p's copy (the next id), which holds p's last version and p's cached segment
+and height; the other nodes but p, q and the two new ones kept. `_R1`: with the round's
+descent at (g, h) on a state S (p at depth d - 1 below the segment leaf q, every node above q
+inner) and p's cached height h + 1, the descent at (g, h + 1) on the state after the split
+finds p's copy. Left for these 25: the merge's tail with the hole around it (route (1) of
+03:54) and the cleanup's frame for R1.

@@ -799,6 +799,13 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   the 69: the merge's tail with the hole (the split from V with p thin, the live counts by
   `writerWP_handleFull_timeChainV_liveHole`, R1 by these shapes with y's node and height, and
   the cleanup), then `MergeTailFullRest10OK` reduced.
+  03:59 (prover l4g, `LiveRootChildHole.lean`): for the 25 at the space root, p's whole split
+  with R1 after it: `writerWP_handleFull_rootChildTimeHole` (no premises): p (depth 1, not
+  made) split in time, the space root q (a leaf, not made) without room split in time: the
+  new root a leaf whose search of k1 names p's copy, the copy holding p's last version and
+  p's cached segment and height (l4a's `writerWP_handleFullWith_time_up_last_gh`, the root's
+  split keeping the cache, `writerWP_appendKlongs_rootTimeGh`); `_R1`: the descent at
+  (g, h + 1) on the state after it finds the copy (`descendToHeight_topSeg_leafRoot`).
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next
