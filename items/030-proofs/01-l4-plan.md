@@ -1376,3 +1376,25 @@ Left: the space root split in time into two nodes (29) or in space (12), the tim
 cascade (196, R4), a space split below a full inner parent (0; the inner cousin
 `writerWP_handleFull_spaceChain_live` would carry over the same way), and p made and split
 in space (0). No stop rule fired.
+
+2026-11-17, 02:22 to 02:30. Step 3's rest, ninth part, prover l4f
+(`LiveMergeRootSplit.lean`, about 310 lines, about 150 of them l4b's root split again;
+`LiveMergeSpace.lean`, about 120 lines more). The no-hole split tail folded: the space
+tail now takes any split of p as a premise, `SplitStepOKX` (`handleFull` at p's depth
+d - 1, the compaction flag free, from the live counts of the merged tree V with p's node
+its last version; the start's frame as in `SplitStepOKW`, and V read as the start's tree
+on its reached nodes but p): `writerWP_mergeTail_liveSplitX` (any depth) and its round
+`writerWP_mergeTail_liveSplitRoundX`; the space tail and round of the earlier parts are
+instances (`splitStepOKX_of_W` derives q's facts and the halves' from the last version's
+sorted klongs), statements unchanged. At the space root the premise is l4b's root split
+on V (`writerWP_handleFull_rootV_live`: in time a new root with the last version, in
+space the halves under a new inner root, with the nodes reached after;
+`splitStepOKX_root`). `MergeTailFullRest7OK` reduced to `MergeTailFullRest8OK`, its case
+`MergeFullRootX` proved: p, not made, the space root, a merge into two nodes whatever
+the split (29 on the runs) or into one with a space split (12); with
+`MergeFullTimeRoot1` every merge whose parent is the space root, not made, is proved.
+`writerWP_afterDelete_liveTR8`: premises `MergeTailFullRest8OK`, `MergeParamsOK`, R3.
+Proved cases on the runs: 938 of 1,134 (83%). Left: the time split's cascade (196, R4's
+general case: the hole below the chain), a space split below a full inner parent (0), and
+p made and split in space (0). The prelude fold of the five tails (the coordinator's step
+1) is still open; the no-hole tails are one now. No stop rule fired.
