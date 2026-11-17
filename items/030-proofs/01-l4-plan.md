@@ -1552,20 +1552,6 @@ transaction, or splitting in space, or the space root (the parent's own split an
 cascade above with the copy the hole, as l4b's `DelFullTimeHole2M` for the leaf);
 `upCascCallRuns_of_rest7` at the runs.
 
-<<<<<<< HEAD
-2026-11-17, 02:56 to 03:02. Step 6, which full stop nodes occur on runs, prover l4e.
-Step 0's checker with each upward delete whose stop node (a segment leaf) is full
-classified as the reductions of `UpCascCallOK` take it
-(`/Users/f/fl/bench/2026-11-16/night/l4e/runs/upcasc-cases.lean.txt`, a copy of l4c's
-merge-full-cases; output `upcasc-cases-out.txt` beside it; 2 min 30 s, the same 15
-families, 0 failures of C1 to C6). Of 294 full stop nodes: the space root not made 98
-(01:56), made 48 (02:36); below the root, made, in time 56 (02:22) and in space 27 (02:27);
-not made, in space 12 without a cascade and 13 with (02:15); in time with the copy filled
-26 without a cascade and 6 with (02:33); the copy under the fill below a parent with room
-8 (02:50); below a made parent split in place 0 (02:55); `UpCascSplitRest7OK`'s case (the
-copy's parent not made, splitting in space, or the space root) 0. So every full stop node
-on the runs is in a proved case; the premise left never ran (as R3's C4 branch).
-=======
 2026-11-17, 02:44 to 02:55. Step 3's rest, the merge tails' shared prelude folded (the
 coordinator's step 1, scaled to what fits), prover l4f. Rule: the full continuation lemma
 (the prelude up to `mergeParent` with the state's facts handed on) was judged too big for
@@ -1594,7 +1580,19 @@ for Java's parameters, premises `hp`, `hth`, `MergeTailRuns9`, `R3Calls` (believ
 at unreached states, so the theorem is believed vacuous until R3 is restated),
 `DelCaseLive DelFullTimeHole2M` and `DelCaseLive DelEmptyCascM`: l4b's
 `invGetScanOK_merges_noL4d` with `MergeTailRuns9` for `MergeTailRuns6`.
->>>>>>> 087214aa375df99ff02100e0fb823cc9c51694d9
+
+2026-11-17, 02:56 to 03:02. Step 6, which full stop nodes occur on runs, prover l4e.
+Step 0's checker with each upward delete whose stop node (a segment leaf) is full
+classified as the reductions of `UpCascCallOK` take it
+(`/Users/f/fl/bench/2026-11-16/night/l4e/runs/upcasc-cases.lean.txt`, a copy of l4c's
+merge-full-cases; output `upcasc-cases-out.txt` beside it; 2 min 30 s, the same 15
+families, 0 failures of C1 to C6). Of 294 full stop nodes: the space root not made 98
+(01:56), made 48 (02:36); below the root, made, in time 56 (02:22) and in space 27 (02:27);
+not made, in space 12 without a cascade and 13 with (02:15); in time with the copy filled
+26 without a cascade and 6 with (02:33); the copy under the fill below a parent with room
+8 (02:50); below a made parent split in place 0 (02:55); `UpCascSplitRest7OK`'s case (the
+copy's parent not made, splitting in space, or the space root) 0. So every full stop node
+on the runs is in a proved case; the premise left never ran (as R3's C4 branch).
 
 2026-11-17, 03:04 to 03:09. R4's two changed levels, first piece, prover l4e
 (`LiveRedirect2.lean`, about 80 lines). `lteP_redirect2`: `lteP_redirect` one level
