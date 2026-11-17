@@ -1045,3 +1045,19 @@ at the runs, the loop's take-backs pass it (`step_takeBack`, `HoldInv`). The
 true form needs the heights at the stop node's call from the walk's start and
 the loop's frame, not an invariant of every step (next).
 
+2026-11-17, 01:21 to 01:26. Step 5, the space split's cascade, prover l4b. After
+a space split no hole is left (both halves `HalfOK`), so R4's hole below the
+chain does not arise: the parent's klongs to the halves go up through
+`writerWP_appendKlongs_chainGL` (s = 0), whose live post needs only the live
+counts of the tree with the halves in place and the parent's klongs put
+(`liveEdgesX_spaceSplit_gen` from the start's), then the leaf left behind is not
+reached (`liveEdges_updN_unreach`): `writerWP_handleFull_spaceChain_live`
+(LiveDelSpaceChain.lean). Its chain premises come from the walk's `PathOK` and
+`RangeOrder` as in `writerWP_appendDeleteKlong_full_invT` (`rangeG_of_rangeOrder`,
+`lenG_of_splitAbove`, `pathOK_dist`; the divider in the parent's range by
+`mrg_child_range`). The case: the leaf not made by the transaction,
+"bitmap.full", above h, below an inner parent with or without room
+(`DelFullSpaceChainM`): `liveDel_fullSpaceChain` and, with l4a's loop,
+`liveDel_fullSpaceChain_live`. Left of step 5: the time split's cascade (R4), the
+made leaf's and the segment root's space split below a full parent (the same
+route), and a compacting split of a last version above h.
