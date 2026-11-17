@@ -510,6 +510,15 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   l4b's chain lemmas at the swapped state); left `UpCascSplitRestOK` (time splits, the copy or a
   made stop node the hole; a made stop node's space split; a made root), `upCascCallRuns_of_rest`. 23:35 (prover l4a, step 3's first part): the merges' loop with
 
+  made stop node the hole; a made stop node's space split; a made root), `upCascCallRuns_of_rest`.
+  02:22 (l4e): the made stop node below the root split in time in place is proved
+  (`writerWP_upCasc_below_madeTime`, `LiveUpCascMade.lean`: the hole is the stop node, R1 by
+  `holeAtW_stop`; heights for any split below the root, `writerWP_upCasc_below_ht`); left
+  `UpCascSplitRest2OK` (the copy of a stop node not made split in time, a made stop node's
+  space split, a made root), `upCascCallRuns_of_rest2`. 02:27 (l4e): the made stop node below
+  the root split in space in place is proved (`writerWP_upCasc_below_madeSpaceH`, no hole); left
+  `UpCascSplitRest3OK` (a stop node not made split in time, the copy the hole; a made space
+  root), `upCascCallRuns_of_rest3`.
   (the copy below an inner parent with fewer than m live klongs). 02:18 (l4b): R4 narrowed
   further (`LiveDelHoleMade.lean`): below a parent that the transaction made, full or
   compacting, whose own split is in time (in place), the copy stays the hole under the same

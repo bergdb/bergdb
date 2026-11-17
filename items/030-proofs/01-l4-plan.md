@@ -1441,3 +1441,14 @@ carried to `afterDelete`'s call, 01:56 and 02:01 above); what is left of R4
 space: R1 through two changed levels or a hole below the cascade); step 6's full
 stop node (l4e's). Refuted: `UpHtWalk` (l4d's `upHtWalk_false`; 00:18's premise of
 `liveDel_upRoom_live`, replaced by l4d's `liveDel_upRoom_liveH`).
+
+2026-11-17, 02:23 to 02:27. Step 6, the made stop node's split in space, prover l4e
+(`LiveUpCascMade.lean`, about 400 lines more, most of them the swap prelude again).
+`writerWP_upCasc_below_madeSpaceH`: a full stop node below the root that the transaction
+made, split in space in place, leaves no hole: at the state with its bitmap it is filled
+(it holds a half's live klongs), and l4b's in-place lemmas take the split and its cascade
+(`writerWP_handleFull_spaceInPlaceChain_live` below an inner parent,
+`writerWP_handleFull_segSpaceMade_live` below a segment leaf). `upCascSplitRest2OK_of_rest3`:
+left `UpCascSplitRest3OK`, a stop node below the root not made by the transaction split in
+time (the copy the hole, below a parent with room, or with the cascade: 030-01's R4) and a
+made space root; `upCascCallRuns_of_rest3` at the runs.
