@@ -62,7 +62,6 @@ theorem wdt_inPlace {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : To
       (MW.withNode { w with trail := T } x ⟨n.leaf, r.ks⟩) := by
   intro _
   have htx := wdt_taken h
-  have hI := h.hyp
   have hx := h.look
   have hA := wdt_treeA h
   have hBt : treeOf i s (MW.withNode { w with trail := T } x ⟨n.leaf, r.ks⟩) =
@@ -81,7 +80,7 @@ theorem wdt_inPlace {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : To
     intro z hz
     rw [hA, hBt]
     simp [Tree.set, hz]
-  have hxok := hI.sound.nodes x hxr _ hAx
+  have hxok := h.vsound.nodes x hxr _ hAx
   simp only [ite_true] at hxok
   obtain ⟨-, -, hxp⟩ := ts_nodeOk_iff.mp hxok
   have hNode : NodeIs (treeOf i s (MW.withNode { w with trail := T } x ⟨n.leaf, r.ks⟩)) x
@@ -93,7 +92,7 @@ theorem wdt_inPlace {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : To
       by_cases hy : y = x
       · rw [hy, hBx]; rfl
       · rw [hsame y hy]; exact this
-  have hS := Sound.inPlace hI.sound hAx hNode hsame
+  have hS := Sound.inPlace h.vsound hAx hNode hsame
   have hfirst := h.books.first x n hx htx
   refine ⟨⟨?_, hS, ?_, h.wtop, ?_, ?_⟩, ⟨rfl, ?_, le_refl _, ?_⟩⟩
   · rw [hBt]; exact h.wroot
@@ -101,7 +100,7 @@ theorem wdt_inPlace {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : To
     exact absurd hnt (hfirst.mp (by rw [hs0]; rfl))
   · refine balancedAll_withNode (w := { w with trail := T }) h.wbal hx htx rfl
       (fun hl c y hy => ?_)
-    exact ts_kids hA hI.balanced hl (hrk c y (ts_key_mem_ksOf hy))
+    exact ts_kids hA h.vbal hl (hrk c y (ts_key_mem_ksOf hy))
   · refine putBooks_withNode (w := { w with trail := T })
       (putBooks_congr h.books rfl rfl rfl rfl rfl rfl rfl rfl rfl) hx htx rfl ?_ ?_
     · obtain ⟨rest, hr⟩ := hrf
@@ -150,7 +149,6 @@ theorem wdt_root {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
   have hF := h.wframe
   have hT := h.wtop
   have hB := h.wbal
-  have hI := h.hyp
   have hx := h.look
   have hxr : x = w.top.rootKey := by
     obtain ⟨c0, hon⟩ := h.on
@@ -160,7 +158,7 @@ theorem wdt_root {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
   obtain ⟨g', hh', hgh, hG, hH, hlev, hleaf⟩ := h.books.levels x n hx htx
   rw [hg] at hgh
   cases hgh
-  obtain ⟨-, hs0, hn0, -, ht0, hm0⟩ := treeOf_fresh hb h.books (Nat.le_refl w.next)
+  obtain ⟨hf0, hs0, hn0, -, ht0, hm0⟩ := treeOf_fresh hb h.books (Nat.le_refl w.next)
   have hxne : x ≠ w.next := Nat.ne_of_lt (h.books.ids.1 x n hx)
   have hA := wdt_treeA h
   have hAx : (treeOf i s (w.withNode x V)).obj x =
@@ -192,8 +190,8 @@ theorem wdt_root {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     rw [hobj2, hT1]
     rfl
   -- the rule
-  have hxok := hI.sound.nodes x
-    (by rw [show (w.withNode x V).top.rootKey = x from hxr.symm]
+  have hxok := h.vsound.nodes x
+    (by rw [← hxr]
         exact tc_self _ _ _) _ hAx
   simp only [ite_true] at hxok
   obtain ⟨-, -, hxp⟩ := ts_nodeOk_iff.mp hxok
@@ -217,12 +215,12 @@ theorem wdt_root {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     show (ksOf r).length ≤ p.M
     rw [ksOf_length]; exact hrs
   have hS0 : Sound p.M (some x) (treeOf i s (w.withNode x V)) x C := by
-    have := hI.sound
-    rw [show (w.withNode x V).top.rootKey = x from hxr.symm] at this
+    have := h.vsound
+    rw [← hxr] at this
     exact this
   obtain ⟨hSB, -, hreach⟩ := Sound.timeSplitRoot hS0 hAx
     (show (treeOf i s (w.withNode x V)).obj w.next = none from
-      (treeOf_fresh hb hI.books (Nat.le_refl _)).1) hBy (by rw [hBobj]; simp)
+      by rw [hA]; simpa [Tree.set, Ne.symm hxne] using hf0) hBy (by rw [hBobj]; simp)
     (fun z e1 e2 => by rw [hBobj, hA]; simp [Tree.set, e1, e2])
   -- the frame, BalancedOK, the books
   have hF1 : Frame i s (dirtyOf W1) (treeOf i s W1) :=
@@ -232,7 +230,7 @@ theorem wdt_root {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
   have hB1 : BalancedAll p (treeOf i s W1) :=
     balancedAll_afterNewKey g hh n.leaf r.ks hB hs0 hn0 ht0 hm0 hH hleaf (fun hl c y hy => by
       rw [← hlev]
-      exact ts_kids hA hI.balanced hl (hrk c y (ts_key_mem_ksOf hy)))
+      exact ts_kids hA h.vbal hl (hrk c y (ts_key_mem_ksOf hy)))
   have hB2 : BalancedAll p (treeOf i s W2) := by
     unfold BalancedAll; rw [hobj2]; exact hB1
   have hB3 := balancedAll_withNode hB2 hx2 ht2 (rfl : (n.toPrev (i - 1)).leaf = n.leaf)
@@ -311,12 +309,11 @@ theorem wdt_parentPre {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
   have hF := h.wframe
   have hT := h.wtop
   have hB := h.wbal
-  have hI := h.hyp
   have hx := h.look
   obtain ⟨g', hh', hgh, hG, hH, hlev, hleaf⟩ := h.books.levels x n hx htx
   rw [hg] at hgh
   cases hgh
-  obtain ⟨-, hs0, hn0, -, ht0, hm0⟩ := treeOf_fresh hb h.books (Nat.le_refl w.next)
+  obtain ⟨hf0, hs0, hn0, -, ht0, hm0⟩ := treeOf_fresh hb h.books (Nat.le_refl w.next)
   have hxne : x ≠ w.next := Nat.ne_of_lt (h.books.ids.1 x n hx)
   -- the parent
   obtain ⟨-, -, htq⟩ := h.path.lookup (Nat.le_succ d) hq
@@ -343,13 +340,13 @@ theorem wdt_parentPre {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
   have hAq : (treeOf i s (w.withNode x V)).obj q =
       some (.key ⟨wLevel s w q, nq.leaf, ksOf nq⟩) := by
     rw [hAo q hqx]; exact treeOf_obj_overlay i s hqn htq
-  have hreachP := ts_path_reach (w := w) hI.sound.good hB h.path h.inner hk1 hAo
+  have hreachP := ts_path_reach (w := w) h.vsound.good hB h.path h.inner hk1 hAo
   have hqr := hreachP d (Nat.le_succ d) c0 q hq
   have hxr := hreachP (d + 1) (Nat.le_refl _) (some k1) x hk1
-  have hxok := hI.sound.nodes x hxr _ hAx
+  have hxok := h.vsound.nodes x hxr _ hAx
   simp only [ite_true] at hxok
   obtain ⟨-, -, hxp⟩ := ts_nodeOk_iff.mp hxok
-  have hqok := hI.sound.nodes q hqr _ hAq
+  have hqok := h.vsound.nodes q hqr _ hAq
   simp only [Option.some.injEq, Ne.symm hqx, ite_false] at hqok
   obtain ⟨hqlen, hqwf, hqp⟩ := ts_nodeOk_iff.mp hqok
   -- the states
@@ -419,9 +416,9 @@ theorem wdt_parentPre {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
     simp only [Ne.symm hqx, hxne, ↓reduceIte]
     rw [treeOf_obj_overlay i s hx htx]
     rfl
-  obtain ⟨hSB, hxnot, hreach⟩ := Sound.timeSplit hI.sound hqr hAq hk1l hAx
+  obtain ⟨hSB, hxnot, hreach⟩ := Sound.timeSplit h.vsound hqr hAq hk1l hAx
     (show (treeOf i s (w.withNode x V)).obj w.next = none from
-      (treeOf_fresh hb hI.books (Nat.le_refl _)).1) hBy hBq hBx
+      by rw [hA]; simpa [Tree.set, Ne.symm hxne] using hf0) hBy hBq hBx
     (fun z e1 e2 e3 => by rw [hBobj, hAo z e1]; simp [e2, e3])
   -- the frame, BalancedOK, the books
   have hF1 : Frame i s (dirtyOf W1) (treeOf i s W1) :=
@@ -429,7 +426,7 @@ theorem wdt_parentPre {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
   have hB1 : BalancedAll p (treeOf i s W1) :=
     balancedAll_afterNewKey g hh n.leaf r.ks hB hs0 hn0 ht0 hm0 hH hleaf (fun hl c y hy => by
       rw [← hlev]
-      exact ts_kids hA hI.balanced hl (hrk c y (ts_key_mem_ksOf hy)))
+      exact ts_kids hA h.vbal hl (hrk c y (ts_key_mem_ksOf hy)))
   obtain ⟨tq, restq, hnq⟩ := h.books.timeFirst q nq hqn htq
   refine ⟨⟨hqn1, ⟨c0, hq⟩, ?_, ?_, hK1, hqwf, ?_, Or.inl rfl, ?_, ⟨?_, hSB, ?_, hT, ?_, ?_⟩⟩,
     hxnot, hreach⟩
@@ -673,7 +670,7 @@ theorem wdt_handleFullWith {p : MParams} {i : Time} {base : NodeId} {s : Tree} {
       intro z hz
       rw [wdt_treeA h]
       simp [Tree.set, hz]
-    have hxr := ts_path_reach (w := w) h.hyp.sound.good hB h.path h.inner hon hAo depth
+    have hxr := ts_path_reach (w := w) h.vsound.good hB h.path h.inner hon hAo depth
       (Nat.le_refl _) c0 x hon
     cases depth with
     | zero =>
