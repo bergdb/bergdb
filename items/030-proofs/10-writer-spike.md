@@ -29,8 +29,9 @@ night of 17 November.
   above a full leaf, which is split while the new leaf has no klong yet).
   On the standard three axioms. The premises that are left are in section
   6: the parameters (`ParamsOK`: Java's meet them), the writer's view at
-  each transaction (`Shows`), the bounds G and H, and, in work when this
-  was written, `SNamed`.
+  each transaction (`Shows`: it shows the nodes reached), and `SNamed` of
+  the start tree. For a transaction that the model's `runOpsFrom` accepts
+  the bounds G and H need no premise (`writerMeets_exec_put`).
 - **Not vacuous:** `Contract/WriterExample.lean` and `WriterExample2.lean`
   run the model's writer from the primordial tree with Java's parameters
   at node size 8, two transactions of one put each: keys of one segment,
@@ -54,7 +55,8 @@ night of 17 November.
   contents, the frame, TREE, the top, BalancedOK and fourteen books of the
   writer); `WriterMeets`, one transaction meets the contract. Checked on
   the same traces after every one of the 318,900 operations, inside the
-  transactions too: no failure. For any operation the step from operations
+  transactions too, the writer reading through the model's own view
+  (since 21:40; section 3): no failure. For any operation the step from operations
   to a transaction and a history is proved (`writerMeets_of_opStep`,
   `runs_meetsTop_of_opStep`). What the puts are proved to keep is `MidP`,
   `Mid` without the six books that only a delete reads.
@@ -218,6 +220,31 @@ Decisions, with reasons:
   the recursion asks that no node is twice on the path (`CasPre.nodup`),
   which the old form's levels had given. Tested: the checker's shape
   faults (BalancedOK) after every operation.
+
+
+- **Restated at 21:40, `Shows` for the nodes reached** (finding 1 of a
+  second independent review, the Log's entry of 21:32). `Shows` asked the
+  view to show every key node of the tree. The model's view (`SIS.view`)
+  holds only the nodes reachable at the time, and the tree keeps the nodes
+  of earlier times; so the old `Shows` could not hold for the model's own
+  view after a split. `writercheck` had not seen it: it gave the writer the
+  whole accumulated structure. With the model's view in the checker: the
+  old `Shows` fails before 29,153 of the 29,735 traced transactions; the
+  new one, for the key nodes reached from the space root, holds before
+  all, and the writer's run is the same. What it cost the proofs: a node
+  that the writer reads from its view must be reached in the tree before
+  the transaction, so the operations' theorems carry `OldReach` (a node of
+  s that is reached in the state's map was reached in s: the writer links
+  no node of an earlier time again), a new field of `Mid` (the checker's
+  B16, no failure).
+- **The checker and the statement** (the review's finding 3): the
+  checker's B8 is now the statement's (key nodes). B11 stays the model's
+  own check (a node made outside G and H was taken back); the statement
+  asks that none is made (`within`, `OpsRun`), and the checker counts the
+  operations where that differs: 1 of 318,900 (a delete in the drain set
+  that makes a root one height too far and takes it back in the same
+  operation). Its transaction is accepted by the model and not covered by
+  `OpsRun` (D3); for puts there is no such case (`opsRun_of_runOps`).
 
 
 # 4. What is proved (items 3 and 4)
@@ -456,10 +483,17 @@ the premises that are not proved or not given back, each tested:
   names a node kept", which also gives B4), when the delete's proofs say
   what they keep of it. `writercheck` tests it at every traced start.
 - **The view** (`Shows`): at each transaction the writer's view shows the
-  tree and the top (section 3, D4), with the super root's skip pointers
-  at the bits of its ordinal. Given at each step of `Runs`; that the
-  model's own change gives such a view again is the model's round trip
-  between klongs and entries. Tested (S; the tree checker's C-T2).
+  key nodes reached and the top (section 3, D4), with the super root's
+  skip pointers at the bits of its ordinal. Given at each step of `Runs`;
+  that the model's own change (`changesOf`, applied to the abstract
+  structure, then `SIS.view`) gives such a view again is not proved: the
+  model's round trip between klongs and entries, and that the model's
+  reachable nodes are the tree's reached ones. This is what the second
+  review asks for as "the refinement through `exec?`'s real steps"; of
+  those steps the run and the bounds check are proved for puts
+  (`opsRun_of_runOps`), the view and `changesOf` are not. Tested: S, with
+  the model's view computed from Java's structure before every traced
+  transaction; the tree checker's C-T2.
 - **The bounds G and H** (D3): each accepted operation leaves no key node
   outside them (`OpsRun`). Tested (B11). Two of the proofs' gaps were of
   this kind. For a transaction of puts that the model's `runOpsFrom`
@@ -483,18 +517,17 @@ the premises that are not proved or not given back, each tested:
 
 # State
 
-2026-11-17, 19:55. Items 1 and 2 done; item 3 (the puts) done for every
+2026-11-17, 22:00. Items 1 and 2 done; item 3 (the puts) done for every
 key; item 4: the first delete done, the rest is 030-16's since 19:12;
-item 5 written (section 5). In work: `SNamed` given back after a put
-(`WriterPutNamed.lean`), and an example run with keys of more segments
-(`WriterExample2.lean`).
+item 5 written (section 5). The statement was restated three times this
+evening on findings (section 3: the balance rule, `Shows`, the checker).
 
 - Branch `030-10-writer` in the clone
-  `/Users/f/fl/bench/2026-11-17/night/s4d/clone`, on main 84e7b8e3.
-  Last gated commit: 3c0208d7.
+  `/Users/f/fl/bench/2026-11-17/night/s4d/clone`, on main dc642af1.
+  Last gated commit: caa4bdd4.
 - Build: `cd lean/contract && lake build`. Gate: `lean/contract/gate.sh
-  84e7b8e3`; after a change of a pinned file `lean/contract/pin.sh`, the
-  pin file in the same commit.
+  dc642af1` (main's head as merged); after a change of a pinned file
+  `lean/contract/pin.sh`, the pin file in the same commit.
 - Traces: `java/build.sh`, `cd lean && lake build treecheck`,
   `java/stress/treeconf.sh small`, `drain` and `reclaim`; then
   `lean/contract/writer.sh` (and `check.sh`; see the Log, 19:45, on its
@@ -502,10 +535,20 @@ item 5 written (section 5). In work: `SNamed` given back after a put
 - To read first: `Contract/Writer.lean` (the map, the statement),
   `Contract/Proof/WriterState.lean`, `WriterCascadeDefs.lean`,
   `WriterCascadeDefsG.lean`, `WriterCascadeDefsO.lean` (the put's
-  invariant and the recursion's three forms), `WriterPutAll.lean` (the
-  theorems), `WriterCheck.lean`.
-- To go on with the puts: section 6. The largest is `OpStep` itself for a
-  put: the six books of the delete through the put's rules.
+  invariant and the recursion's three forms), `WriterPutAll.lean` and
+  `WriterPutNamed.lean` (the theorems), `WriterExec.lean`,
+  `WriterCheck.lean`.
+- Open on the put side (section 6), in the order I would take them:
+  the view after a transaction (the model's `changesOf` and `SIS.view`
+  give `Shows` again); `SNamed` as a book of `Mid`; the delete's books
+  through the put (with 030-16: its `LinkLive`, parked in
+  `/Users/f/fl/bench/2026-11-17/night/s4j/linklive/`, was proved for the
+  forms of before the restatements); the bounds by heights, so that
+  `OpsRun` is what `runOpsFrom` accepts for deletes too.
+- The three forms of the recursion (`CasPre`, `CasPreG`, `CasPreO`) and
+  the two of `handleFullWith`'s time split for a delete (`CasPreH` here,
+  `CasPreD` of 030-16) are copies with the statement's form changed; one
+  form would do (about 5,000 lines less).
 - The provers' briefs, as examples of the method:
   `/Users/f/fl/bench/2026-11-17/night/s4d/scratch/brief-*.md`.
 
