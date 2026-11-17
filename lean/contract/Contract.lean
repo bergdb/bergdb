@@ -41,6 +41,13 @@ import Contract.BridgeBound
 import Contract.BridgeFull
 import Contract.Writer
 import Contract.Proof.WriterRun
+import Contract.BridgeExample4
+import Contract.BridgePolicy
+import Contract.Recover
+import Contract.Proof.Recover
+import Contract.Proof.RecoverModel
+import Contract.RecoverTheorems
+import Contract.RecoverExample
 import Contract.Proof.TreeCtx
 import Contract.Proof.NodeAlg
 import Contract.Proof.Sound

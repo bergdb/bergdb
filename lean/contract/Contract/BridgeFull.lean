@@ -3,7 +3,10 @@ The contract package (bergdb 030-07): the bridge's theorems for a history
 that meets every clause in the contract's words (`MeetsFull`,
 BridgeTop.lean): the writer's contract, the bridge's clauses about key nodes
 and values, the top's clauses of bergdb 030-08 with clause TB, the touch,
-TREE, A6' and A-COPY. No clause is in the abstract model's words.
+TREE, A6' and A-COPY. No clause is in the abstract model's words, but TB
+reads the top nodes' and the root's levels, which the contract's top does
+not have, from the change's NEW lines through the model's structure
+(bergdb 030-11, finding 5).
 
 Such a history meets `MeetsBridge` and `MeetsEvict` (`MeetsFull.meetsBoth`),
 so every theorem of BridgeTheorems.lean holds for it; the main ones are
@@ -15,7 +18,9 @@ through the skip pointers, are right on it at every time (`jget_right`,
 Proved: these theorems from `MeetsFull`. Tested, not proved: that Java's
 writer meets `MeetsFull` (the bridge checker computes it for every trace:
 `fullHistoryOk_meets`), and that Java's records are the model's
-(`tracecheck`, on the same instance of the model).
+(`tracecheck`, on the same instance of the model). Each transaction's change
+is given: that Java's writer makes the same change after a restart or with
+eviction is 030-04, 3.5, item 9 (bergdb 030-11, finding 1).
 -/
 import Contract.BridgeTheorems
 import Contract.TheoremsTop

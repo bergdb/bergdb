@@ -261,12 +261,29 @@ Files
   `historyOk_meets`), LIVE lines checked, the assumptions reads rest on in
   030-04, 3.5, Java's own check of the contract in its tests (TransCheck),
   the medium set checked (27 of 27). Status: done.
+* [030-11](11-night-review.md). An independent review of 030-07 to 030-09:
+  sound, with fixes. The top theorems say what the items claim, with no
+  hidden premise; the bridge's instance is `tracecheck`'s; one history of
+  four transactions meets every statement (`BridgeExample4`). Should fix:
+  the restart and eviction theorems take each change as given (the writer's
+  repeatability is 030-04, 3.5, item 9); three tested assumptions missing
+  from 3.5; reads after a crash not stated end to end. Fixed: the bridge
+  checker now requires a whole trace; `PolicyCutOK` proved for policies
+  that read no stream. Written 2026-11-17, 17:02 to 17:55. Status: done.
 
 * [030-10](10-writer-spike.md). A spike of 030-04's optional step 5, the
   night of 17 November: does the model's writer meet the contract? The
   refinement map from the writer's state to the contract's tree, checked on
   the traces; the statement; how far a proof got and what the rest costs.
   Status: open.
+* [030-14](14-reads-after-crash.md). Reads after a crash, a restart and
+  under eviction, end to end (030-11, finding 3): a reader of the model's
+  view at a time, proved right for any history that meets `MeetsFull`, so
+  that after a crash, restarts, a lazy startup, eviction with handles and
+  safe cuts every get and scan at every available time gives the plain
+  map's value; the map keeps the live klongs (`live_klongsOfE`); a closed
+  example from `BridgeExample4`; 030-04, 3.5, item 13. The night of 17
+  November. Status: open.
 
 Log
 ===
