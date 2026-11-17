@@ -74,7 +74,7 @@ Kept current; the Log has the times.
   KIND 1, so the fault test's "small PASS" fails, and with it `check.sh` and
   `bridge-check.sh` wherever the small and the reclaim sets are both present
   (level2.sh's step 8b writes small and drain only, so it passes in a fresh
-  clone). Fixed in the test trace: h = 0, which its levels fit (decision 5).
+  clone). Fixed in the test trace: h = 0, which its levels fit (decision 4).
 
 
 # 2. The theorems, in plain English beside the Lean
@@ -149,7 +149,7 @@ and `TopFrom`.
    distinct top nodes made at or after f, and the kept top has an entry for
    each (the ids of a top built by the clauses are distinct:
    `TopGood.nodup`, `length_from_le`). Not a premise.
-5. **`test/small.trace`'s TREE line: h = 0, not 3** (45fc446d). Its key
+4. **`test/small.trace`'s TREE line: h = 0, not 3** (45fc446d). Its key
    nodes are all segment leaves, one on level 1 and one on level 2: with
    h = 3 a level-2 node is an inner node by K-LEVEL, which no Java trace has;
    with h = 0 every segment tree is one leaf high and the levels fit. The
@@ -157,7 +157,7 @@ and `TopFrom`.
    faults still fail for their own reasons, and it passes both checkers.
    Rejected: dropping KIND for traces made by hand (a clause that holds only
    for some traces is no clause).
-6. **K-LEVEL in contractcheck as a verdict of its own, joined to 030-15's**
+5. **K-LEVEL in contractcheck as a verdict of its own, joined to 030-15's**
    (`checkVerdict = contractVerdict && K-LEVEL`, Contract/KindsCheck.lean),
    not a change of `contractVerdict`: no existing statement changes, and
    `checkVerdict_sound` has `contractVerdict_sound`'s conclusion and more.
@@ -167,13 +167,15 @@ and `TopFrom`.
    bridge's `KindsOK` (D only). The start check is RecoverCheck.lean's
    `startKindsOk` again (`startKindsB`), so that the contract checker does
    not import Mathlib.
-4. **New files only**, as the common rules ask: `Contract/RecoverCut.lean`
+6. **New files only**, as the common rules ask: `Contract/RecoverCut.lean`
    (the definition, to read and trust), `Contract/RecoverCutTheorems.lean`
    (the theorems), `Contract/Proof/TopFrom.lean`,
    `Contract/Proof/RecoverCut.lean` (the proofs),
-   `Contract/RecoverCutExample.lean`; shared files in small hunks
-   (`Contract.lean`, `Axioms.lean`, `statements.pin`), and 030-04, 3.5, item
-   13 extended.
+   `Contract/RecoverCutExample.lean`, `Contract/KindsCheck.lean` (K-LEVEL
+   in the contract checker, with its proof); shared files in small hunks
+   (`Contract.lean`, `Axioms.lean`, `statements.pin`, `ContractCheck.lean`:
+   the KIND count and the verdict, `faults.sh`: one fault,
+   `test/small.trace`: one line), and 030-04, 3.5, item 13 extended.
 
 
 # 4. Premises and assumptions
