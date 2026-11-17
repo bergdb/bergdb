@@ -160,3 +160,9 @@ GATED 7acde0f3: `RunOK`, T1 (recovery, crash) and T2 (restarts) for the key tree
 cut for the tree, proved.
 GATED 44734190: lazy reading, eviction with handles and reclaim's cut for the key tree from
 `MeetsBridge` and `MeetsEvict`; TREE is 030-08's clause; `gate.sh 9a6692cf` GATE OK.
+16:10 the clauses in the model's words computed (`topOkB`, `touchB`, `adoptB`, `copyB`, each
+proved to give its clause) and passing on the 195 traces; D as state (`frame_modelD`); T4's debt
+and the live height.
+GATED 541d2036: every clause of `MeetsBridge` and `MeetsEvict` checked on the level 2 and reclaim
+traces by `bridgecheck` (195 traces, 29,735 transactions, no failure); `frame_modelD`,
+`bridge_debt`, `bridge_liveHeight`; `gate.sh 9a6692cf` GATE OK.
