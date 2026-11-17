@@ -1,8 +1,7 @@
 BergDB 2026.4
 =============
 
-Released 2026-11-11 by Frans Lundberg. **A preview: not for
-production.** As planned in bergdb item 020
+Released 2026-11-11 by Frans Lundberg. As planned in bergdb item 020
 ([../../items/020-release-2026-4/readme.md](../../items/020-release-2026-4/readme.md)).
 
 A bug-free database (020; Frans, 2026-11-06). 2026.4 adds to 2026.3's

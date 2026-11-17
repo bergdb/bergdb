@@ -1,8 +1,7 @@
 BergDB 2026.3
 =============
 
-Released 2026-11-07 by Frans Lundberg. **A preview: not for
-production.** As planned in bergdb item 018
+Released 2026-11-07 by Frans Lundberg. As planned in bergdb item 018
 ([../../items/018-release-2026-3/01-plan.md](../../items/018-release-2026-3/01-plan.md)).
 
 A bug-free Core: at the release no fault of the Core is known (018-01,

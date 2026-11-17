@@ -31,22 +31,35 @@ stores strings, byte arrays and objects under path-like keys, with
 secondary indexes.
 
 
-Status: a preview
------------------
+Status
+------
 
-**BergDB is a preview. Do not use it in production.**
+BergDB has been tested thoroughly, release by release. Whether that is
+enough for your use is yours to judge: the code, the tests and each
+release's test results are all in this repository.
 
-* There is no promise about the stream format or the API until a stable
-  release. A database made by one release may not open in the next:
-  release 2026.5 refuses the databases of 2026.4 and earlier. There is no
-  upgrade tool; read the data with the old release and put it with the
-  new one.
-* The latest release is 2026.5, of 2026-11-13, tag `release-2026.5`. Its
-  notes, [releases/2026.5/readme.md](releases/2026.5/readme.md), say what
-  it is, how it was tested and what is known not to work. The `main`
-  branch moves ahead of it.
-* It is tested on JDK 17 and 27, on macOS and Linux, and on an Android
-  emulator (the Core from API level 33, objects from 34), not on a phone.
+How the latest release, 2026.5 (2026-11-13, tag `release-2026.5`), was
+tested on its release commit:
+
+* 1,700 unit tests, 89 functional tests and 26 longer tests, all passed,
+  on macOS with JDK 27 and on Linux with JDK 17 and 27; the unit tests
+  also on an Android emulator.
+* A thousand kills of a process in the middle of its writes, each
+  followed by a restart that checks every transaction for lost or changed
+  data; power-loss tests of the stream's files on Linux.
+* Fuzz tests of the API and of the index, concurrency tests with
+  jcstress, and Java's index checked, transaction by transaction, against
+  an independent model of the algorithm on generated workloads.
+* Programs written against the public API alone, as a user writes them.
+* Most of it in one seven-hour run; the release notes,
+  [releases/2026.5/readme.md](releases/2026.5/readme.md), section
+  "Verification", list each step and its result.
+
+No bug is known in 2026.5. The API and the stored format will likely
+change before a stable release: a database made by one release may not
+open in the next (2026.5 refuses those of 2026.4 and earlier). There is
+no upgrade tool; read the data with the old release and put it with the
+new one. The `main` branch moves ahead of the latest release.
 
 Each release's jar and Javadoc are on the repository's GitHub Releases
 page, under the release's tag; `releases/VERSION/` holds its notes and
@@ -186,28 +199,22 @@ What a running database needs:
   fails the database, and the process should end.
 
 
-Known issues and limits
------------------------
+Known issues
+------------
 
-The full list is in the release notes,
-[releases/2026.5/readme.md](releases/2026.5/readme.md), "Known issues and
-limits". The ones a user meets first:
+No bug is known in release 2026.5. Two things to plan for:
 
-* **The format changes between releases** (above).
-* **Limits.** A key is at most 111 bytes, a value at most 8 MiB, a
-  transaction at most 500 operations and 32 MiB. A call over a limit
-  throws and writes nothing.
-* **No replication, no encryption.** For a backup, copy the stream's
-  files; against the loss of a disk, use a mirrored disk.
-* **The startup distance.** The default, 50 MB, suits up to about 10M
-  keys; beyond that, use 200 to 1000 MB. At a fixed startup distance, the
-  stream bytes written for each put grow with the number of keys.
-* **Reclaim keeps more than the live data.** Reclaim cuts old history
-  from the front of the stream. With a finite retention,
-  the stream holds the kept history and, beyond it, up to about 6 times
-  the live data.
-* **Each database allocates a 10 MB write buffer at its start**, whatever
-  its size.
+* **The API may change** between releases.
+* **The stream format may change** between releases (Status, above).
+
+
+Limits
+------
+
+A key is at most 111 bytes, a value at most 8 MiB, a transaction at most
+500 operations and 32 MiB; a call over a limit throws and writes nothing.
+The release notes, [releases/2026.5/readme.md](releases/2026.5/readme.md),
+"Known issues and limits", give the rest.
 
 
 How it works

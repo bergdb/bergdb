@@ -19,8 +19,8 @@ say when a fix is out and, if you wish, name you in the release notes.
 Supported versions
 ------------------
 
-BergDB is a preview. Fixes go into the `main` branch and the next
-release; earlier releases get no fixes.
+Fixes go into the `main` branch and the next release; earlier releases
+get no fixes.
 
 
 What BergDB protects, and what it does not
