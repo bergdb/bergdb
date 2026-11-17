@@ -126,8 +126,6 @@ limits". The ones a user meets first:
   the live data.
 * **Each database allocates a 10 MB write buffer at its start**, whatever
   its size.
-* **Not everything is proved** (see "The Lean model" below), and
-  concurrency is tested, not proved.
 
 
 How it works
@@ -149,27 +147,11 @@ and reports ([items/readme.md](items/readme.md)). Documents and code
 comments cite them by number, such as `027-01` or `010-01, P5`.
 
 
-The Lean model
---------------
-
-TO CHECK (Frans): what this paragraph claims.
-
-`lean/` holds a model of BergDB's algorithm in Lean 4: the stream and
-recovery, bounded startup, reclaim, eviction and the key tree, with
-theorems about them. Some of the theorems are proved; others are stated
-and still open. [lean/README.md](lean/README.md) says which. The proofs
-are about the model, not about the Java code. The Java code is checked
-against the model: its runs are traced, and the traces are replayed in
-the model. Concurrency and resource bounds are not in the model. To check
-the proofs, install [elan](https://github.com/leanprover/elan) and run
-`cd lean && lake build`.
-
-
 Repository
 ----------
 
 * `java/`: the implementation, its build scripts and its tests.
-* `lean/`: the Lean model and its proofs.
+* `lean/`: a model of the algorithm, used in testing; work in progress.
 * `items/`: the work items, the design documents among them.
 * `releases/`: each release's notes and checksums.
 * `docs/log.md`: the development log.
@@ -177,9 +159,8 @@ Repository
 BergDB was first developed from 2012 to 2017, with releases from 2013 to
 2015. The work went on in October 2026 from the 2017 source: it fixed the
 bugs that had stopped it, made a model of the algorithm, and added
-reclaim and eviction. Much of the 2026 code, tests, documentation and
-Lean development was written by Frans Lundberg together with AI
-assistants.
+reclaim and eviction. Much of the 2026 code, tests and documentation
+was written by Frans Lundberg together with AI assistants.
 
 
 Contributing and security
