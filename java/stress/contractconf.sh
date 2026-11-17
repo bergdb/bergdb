@@ -60,14 +60,14 @@ fi
 s=$(date +%s)
 sh ../lean/contract/check.sh $SET > $LOG/$SET-contract.txt 2>&1
 grep -q '^CONTRACT OK' $LOG/$SET-contract.txt || fail "lean/contract/check.sh $SET" $LOG/$SET-contract.txt
-echo "contract $(grep '^tree-' $LOG/$SET-contract.txt | cut -c1-150); $(( $(date +%s) - s )) s"
+echo "contract, $(( $(date +%s) - s )) s: $(grep '^tree-' $LOG/$SET-contract.txt | cut -c1-200)"
 
 # bridge-check.sh runs its fault test only if a small and a reclaim trace are
 # in build/traces/ (in night.sh, from level2.sh's step 8).
 s=$(date +%s)
 sh ../lean/contract/bridge-check.sh $SET > $LOG/$SET-bridge.txt 2>&1
 grep -q '^BRIDGE OK' $LOG/$SET-bridge.txt || fail "lean/contract/bridge-check.sh $SET" $LOG/$SET-bridge.txt
-echo "bridge $(grep '^tree-' $LOG/$SET-bridge.txt | cut -c1-150); $(( $(date +%s) - s )) s"
+echo "bridge, $(( $(date +%s) - s )) s: $(grep '^tree-' $LOG/$SET-bridge.txt | cut -c1-200)"
 
 echo "Time: $(( $(date +%s) - START )) s"
 echo "CONTRACTCONF OK"
