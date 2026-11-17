@@ -6,3 +6,5 @@ import Contract.Shape
 import Contract.Trace
 import Contract.Theorems
 import Contract.Example
+import Contract.Example3
+import Contract.ExampleDag

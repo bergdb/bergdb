@@ -235,6 +235,13 @@ Files
   axioms only), the contract checked on the 180 traces of the level 2
   sets with no failure; what is next for step 4. On the branch
   `030-04-spike`. Written 2026-11-17, 11:31 to 12:56. Status: done.
+* [030-06](06-contract-review.md). An independent review of 030-05: sound,
+  with fixes. The theorems proved and not vacuous (a history of three
+  transactions added in Lean); the checker is the contract; Java met it
+  on 120 traces (20,154 transactions, node sizes 8 to 62). Must fix
+  before step 4: the checker passes ERROR lines and does not check that a
+  trace is a history; the clauses step 4 needs (TREE shown not implied,
+  in Lean). Written 2026-11-17, 14:48 to 15:40. Status: done.
 
 
 Log
