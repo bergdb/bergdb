@@ -477,6 +477,12 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   DelEmptyCascM` (the stop node without room, l4e's). `liveDelSL_of_pieces` gives `l4L`:
   `SJ0` from the induction's facts, then the cases (`delMerge_cover`, `delEmptyM_split`,
   `delEmptyOther_split`, `delFullM_cover`). 01:53 (l4b): `invGetScanOK_merges_noL4b`, the
+  same with l4c's narrower `MergeTailFullRest4OK` (`MergeTailRuns4`). 02:04 (l4e): `DelCaseLive … DelEmptyCascM` is
+  reduced to the full stop node's split alone (`delCaseLive_emptyCasc`, `LiveUpCascCall.lean`,
+  premise `UpCascCallRuns`: at the upward loop's end a full segment-leaf stop node's bitmap
+  ends at the call's facts); where the stop node has room, l4d's argument over the new walk;
+  `invGetScanOK_merges_noL4U` is `invGetScanOK_merges_noL4` with that premise for `hCasc`. 23:35 (prover l4a, step 3's first part): the merges' loop with
+
   same with l4c's narrower `MergeTailFullRest4OK` (`MergeTailRuns4`). 02:08 (l4b): R3Calls is
   believed false at unreached states (no fact at `afterDelete`'s call carries made-for
   entries; R3 holds at the runs by key order; 030-01's log, 01:56), so noL4 and its
@@ -491,7 +497,16 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   parent (`writerWP_handleFull_timeMadeParent_liveGh`, R1 by `holeAtW_copyG`, `holeAtW_copy`
   for any redirected parent node): `liveDel_fullTimeMadeParent`. Left of R4
   `DelFullTimeHole2M` (the parent the space root, not made, or split in space);
-  `invGetScanOK_merges_noL4d`. 23:35 (prover l4a, step 3's first part): the merges' loop with
+  `invGetScanOK_merges_noL4d`.
+  `invGetScanOK_merges_noL4U` is `invGetScanOK_merges_noL4` with that premise for `hCasc`.
+  02:08 (l4e): the obligation at the space root not made by the transaction is proved
+  (`upCascCallOK_of_below`, `LiveUpCascRootH.lean`; the heights through the swap,
+  `writerWP_upCasc_root_ht`); left `UpCascCallBelowOK` (a stop node below the root, or a
+  made root); `invGetScanOK_merges_noL4bU` (on l4b's `noL4b`, premise `UpCascCallBelowRuns`).
+  02:15 (l4e): the space split of a stop node below the root not made by the transaction is
+  proved (`writerWP_upCasc_below_spaceH`, `LiveUpCascBelow.lean`: no hole after, the cascade by
+  l4b's chain lemmas at the swapped state); left `UpCascSplitRestOK` (time splits, the copy or a
+  made stop node the hole; a made stop node's space split; a made root), `upCascCallRuns_of_rest`. 23:35 (prover l4a, step 3's first part): the merges' loop with
   the hole (`LiveLoop.lean`): `writerWP_afterDelete_live`, from `DelInvJAE`, the books,
   `HtInv` and `LiveHoleW key g 0` at a call of `afterDelete`, ends with `LiveEdges`, given
   two obligations: `MergeLiveOK` (a merge of a round keeps the hole one height up, or into

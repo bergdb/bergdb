@@ -1260,6 +1260,21 @@ the halves, no hole); and p made and split in space, in place (0). Before more c
 the five tails' common prelude into one continuation lemma (about 1,000 lines fewer), and
 give the round lemmas one shared derivation of the tail's facts.
 
+2026-11-17, 01:58 to 02:04. Step 6, the stop node without room, prover l4e
+(`LiveUpCascCall.lean`, about 490 lines, most of them near-copies of the stratum's walk
+and of l4d's `writerWP_del_upRoomLiveH`). l4b's premise `hCasc` (`DelCaseLive …
+DelEmptyCascM`) reduced to one narrow obligation, `UpCascCallOK`: at the upward loop's
+end, a full segment-leaf stop node's bitmap (its split, maybe a cascade) ends at the
+call's facts (`DelInvJT`, `PutBook`, `HtInv`, `LiveHoleW key g 0`, (g, 0) the stop
+node's pair). `delCaseLive_emptyCasc` (premise `UpCascCallRuns`, the obligation at the
+runs) and `invGetScanOK_merges_noL4U` (`invGetScanOK_merges_noL4` with it for `hCasc`).
+`DelEmptyCascM`'s stop candidate need not be the climb's stop, so the walk
+(`takeJ2_deleteUpward_stepMBKGDS`) splits by the room at the climb's stop: with room,
+l4d's argument (`liveEdgesH_up`, `holeAtW_stop`, `htInv_upFrame`) over the new walk;
+full, the obligation; an inner stop node is excluded by the live counts. Next: the
+obligation at the space root (01:56's argument, with the heights through the swap),
+then the space splits below it.
+
 2026-11-17, 01:56 to 02:00. R3Calls checked, prover l4b. No Lean counterexample
 found within the time box; what was found:
 
@@ -1320,6 +1335,38 @@ parent, fewer than m live klongs), `delCaseLive_timeCasc_of_hole`.
 `invGetScanOK_merges_noL4c`: premises `hp`, `hth`, `MergeTailRuns6` (l4c's
 `MergeTailFullRest6OK`), `R3Calls` (believed false), `DelFullTimeHoleM`,
 `DelEmptyCascM`.
+
+2026-11-17, 02:05 to 02:08. Step 6, the obligation at the space root, prover l4e
+(`LiveUpCascRootH.lean`, about 400 lines, about 170 of them 01:56's root lemma's
+prelude again). `upCascCallOK_of_below`: `UpCascCallOK` holds where the stop node is
+the space root not made by the transaction, so it is left only below the root or at a
+made root (`UpCascCallBelowOK`). After the root's split no node is under the fill, so the
+hole's form holds for the stop node's pair; the tree's facts by `upCascJ2OKT_holds`, the
+books by `putBook_appendDeleteKlong`, and the heights (`writerWP_upCasc_root_ht`): at the
+state whose root has its bitmap, `htInv_upFrame` gives `HtInv` from the walk's start, the
+books by `book_putNode`, and `ht_handleFull` gives it after the split (the root a leaf, the
+last version's klongs its live ones, not taken back), moved by the swap. Corollary
+`invGetScanOK_merges_noL4bU` (l4b's `invGetScanOK_merges_noL4b` with
+`UpCascCallBelowRuns` for `hCasc`, by `upCascCallRuns_of_below` and
+`delCaseLive_emptyCasc`).
+
+2026-11-17, 02:09 to 02:15. Step 6, the stop node below the root split in space, prover
+l4e (`LiveUpCascBelow.lean`, about 630 lines, about 370 of them the tree's below-root swap
+prelude, `writerWP_upCasc_below_delST`, again). `writerWP_upCasc_below_spaceH`: a full stop
+node X (D + 1) below the space root, not made by the transaction, split in space with no
+compaction (a last version of more than `splitAbove` klongs), ends with the heights and the
+live counts, no hole. At the state whose stop node has its bitmap (S') the tree is the
+start's without the chain, and S' is filled (it holds a half's live klongs, `HalfOK`,
+`liveAt_length_le`), so the live counts hold there (`liveEdgesH_up`,
+`liveEdges_of_oneHole`); l4b's `writerWP_handleFull_spaceChain_live` (inner parent) or
+`writerWP_handleFull_segSpaceChain_live` (the stop node a segment root) take the split and
+its cascade, with the chain's ranges and lengths as the tree's swap has them; the heights
+by `htInv_upFrame` and `ht_handleFull` at that state; all moved by the swap.
+`upCascCallBelowOK_of_rest`: `UpCascCallBelowOK` from `UpCascSplitRestOK`, the cases left at
+the stop node's split (after the bitmap's note): a split in time (the copy, or the stop
+node made by the transaction, is the hole), a made stop node's split in space in place,
+and a made space root. `upCascCallRuns_of_rest` at the runs; no new top corollary (the
+coordinator's word, 02:10: none more carrying `R3Calls`).
 
 2026-11-17, 02:10 to 02:18. R4 narrowed further, prover l4b (LiveDelHoleMade.lean):
 the leaf's time split whose copy is a hole, below a parent q that the transaction
