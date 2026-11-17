@@ -450,10 +450,13 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   (`writerWP_handleFull_spaceChain_live`, `LiveDelSpaceChain.lean`; the chain's premises
   from `PathOK` and `RangeOrder` as the tree's proof takes them): the leaf not made by the
   transaction below an inner parent (`DelFullSpaceChainM`): `liveDel_fullSpaceChain`,
-  `liveDel_fullSpaceChain_live`. Left of step 5: the time split's cascade (the copy the hole
-  below the chain, R4), the made leaf's and the segment root's space split with a full
-  parent, and a compacting split ("bitmap.dead") of a last version above h below a parent or
-  at a made root. 23:35 (prover l4a, step 3's first part): the merges' loop with
+  `liveDel_fullSpaceChain_live`. 01:37 (l4b): the same cascade for the made leaf's space
+  split in place below an inner parent (`DelFullSpaceMadeChainM`) and the segment root's
+  below its segment leaf (`DelFullSegSpaceChainM`), `LiveDelSpaceChain2.lean`:
+  `liveDel_fullSpaceMadeChain_live`, `liveDel_fullSegSpaceChain_live`. So every space split
+  of the full leaf is proved (with `MergeLiveOK`, `CollapseLiveOK`). Left of step 5: the time
+  split's cascade (the copy the hole below the chain, R4) and a compacting split
+  ("bitmap.dead") of a last version above h below a parent or at a made root. 23:35 (prover l4a, step 3's first part): the merges' loop with
   the hole (`LiveLoop.lean`): `writerWP_afterDelete_live`, from `DelInvJAE`, the books,
   `HtInv` and `LiveHoleW key g 0` at a call of `afterDelete`, ends with `LiveEdges`, given
   two obligations: `MergeLiveOK` (a merge of a round keeps the hole one height up, or into

@@ -1056,3 +1056,16 @@ and B (prover l4d's `upHtWalk_false`, LiveUpHtFalse.lean: a take-back from an
 `liveDel_upRoom_live` never applies as stated; its true form (`HtInv` at the stop
 node's call from the walk's start and the loop's frame) is l4d's. No step of l4b
 builds on `UpHtWalk`.
+
+2026-11-17, 01:29 to 01:37. Step 5, the space split's cascade, the other
+branches, prover l4b (LiveDelSpaceChain2.lean): the made leaf split in place
+below an inner parent (`writerWP_handleFull_spaceInPlaceChain_live`, the parent's
+one klong to the second half, `liveEdgesX_spaceInPlaceStep`) and the segment root
+not made below its segment leaf (`writerWP_handleFull_segSpaceChain_live`, the
+segment leaf's klong to the new segment root, `liveEdgesX_segSpaceStep`), each
+through `writerWP_appendKlongs_chainGL`: `liveDel_fullSpaceMadeChain_live`
+(`DelFullSpaceMadeChainM`) and `liveDel_fullSegSpaceChain_live`
+(`DelFullSegSpaceChainM`). With the room cases, the space root's and the made
+segment root's (no cascade), every space split of the full leaf is proved, given
+l4a's loop. Left of step 5: the time split's cascade (R4), and a compacting split
+of a last version above h.
