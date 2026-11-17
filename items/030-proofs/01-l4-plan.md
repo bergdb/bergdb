@@ -1489,3 +1489,15 @@ Proved cases on the runs: 938 of 1,134 (83%). Left: the time split's cascade (19
 general case: the hole below the chain), a space split below a full inner parent (0), and
 p made and split in space (0). The prelude fold of the five tails (the coordinator's step
 1) is still open; the no-hole tails are one now. No stop rule fired.
+
+2026-11-17, 02:33 to 02:36. Step 6, a made space root as the full stop node, prover l4e
+(`LiveUpCascRootMade.lean`, about 330 lines, most of them the root swap's prelude).
+`writerWP_upCasc_rootMade_H`: a full space root that the transaction made splits in place:
+in time, the root becomes a leaf with its last version (`liveEdges_root_shrink` from the
+state with its bitmap, where the root is the only hole and asks no count), or in space
+(l4b's `writerWP_handleFull_rootSpaceMade_live`); no hole either way; the heights as at the
+root not made (the swap). `upCascSplitRest4OK_of_rest5`: left `UpCascSplitRest5OK` alone, the
+copy of a stop node below the root, not made, split in time, under the fill below an inner
+parent (the hole at the copy: R1 at the copy with the key's descent cut there, and with a
+parent without room the cascade above it, 030-01's R4); `upCascCallRuns_of_rest5` at the
+runs.
