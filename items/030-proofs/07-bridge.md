@@ -349,3 +349,8 @@ three-transaction example (`BridgeExample3`).
 (`MeetsFull.meetsBridge`, `MeetsFull.meetsEvict`); the checker's verdict gives `MeetsFull`
 (`fullHistoryOk_meets`); Example3 meets `MeetsFull`; `MeetsFull.meetsTop`. The gate's base is
 863b69cb, main as merged (79678f4e and the coordinator's 006-30 line).
+GATED 50feb1f2: `MeetsFull`, every clause in the contract's words (the top by 030-08's
+`TopStep` and TB; the touch, A6', A-COPY said of the tree), gives `MeetsBridge` and `MeetsEvict`,
+so T1, T2, lazy reading, the handles and the cut; `fullHistoryOk_meets`; Example3 meets it;
+195 traces, 29,735 transactions pass `bridge-check.sh`, `check.sh` CONTRACT OK;
+`gate.sh 863b69cb` GATE OK (67 theorems).
