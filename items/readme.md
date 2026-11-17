@@ -210,8 +210,9 @@ Index
   mostly by an AI agent, often unattended; not tied to a release (a
   release item decides which it takes). Every new todo entry since
   2026-11-13.
-* **029-going-public** (open). Making BergDB's repository public: a
-  record of the changes made here for the public release.
+* **029-going-public** (done). Making BergDB's repository public: a
+  record of the changes made here for the public release. Public since
+  2026-11-17 at github.com/bergdb/bergdb, under Apache-2.0.
 * **030-proofs** (open). The home of BergDB's proof work: one map of
   every direction (today's model, simpler algorithms, the bridges,
   bounded startup, the rest), its state, its next step and the decision
