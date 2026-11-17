@@ -95,3 +95,7 @@ import Contract.Proof.RecoverCut
 import Contract.RecoverCutTheorems
 import Contract.RecoverCutExample
 import Contract.KindsCheck
+import Contract.RecoverWhole
+import Contract.Proof.Prefix
+import Contract.Proof.RecoverWhole
+import Contract.RecoverWholeTheorems

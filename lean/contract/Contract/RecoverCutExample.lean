@@ -11,9 +11,13 @@ search finds the right space root without it, and Java's reads under eviction
 are right (`evict_java_get16`, `evict_java_get8`); at time 1, before the
 first available time, the search needs top node 5, and without it finds no
 space root (`search_before`), where the whole top finds top node 5's
-(`search_whole`). The statements are closed: no premise is left.
+(`search_whole`). And with the premise said once, of whole nodes
+(`HoldsP`, RecoverWhole.lean), met by the tree as written: after a crash after
+the fourth transaction, Java's get of [16] at time 3 gives 6
+(`crash_whole_get16`). The statements are closed: no premise is left.
 -/
 import Contract.RecoverCutTheorems
+import Contract.RecoverWholeTheorems
 import Contract.RecoverExample
 
 namespace Contract.RecoverCutExample
@@ -65,5 +69,16 @@ time 1, between the records 1 and 2, it finds no space root without top node
 theorem search_before : findRoot tpCut 1 true = none := by decide
 
 theorem search_whole : findRoot (top4 4) 1 true = some 1 := by decide
+
+/-- After a crash after the fourth transaction, on the tree as written, which
+holds the startup's structure whole: at time 3 the get of [16] gives 6. -/
+theorem crash_whole_get16 :
+    let P' := (SIS.startup h4.spec ((SIS.run h4.spec h4.al0 h4.ts).S.take 5)).P
+    jget (h4.tree 4) (topOfP P') 3 false [16] = some 6 := by
+  intro P'
+  rw [(crash_java_whole BridgeExample4.meetsFull (by decide) kinds4 h4.al0 rfl (k := 4) (by decide)
+    (h4.tree 4) (crash_java_tree_whole BridgeExample4.meetsFull kinds4 h4.al0 rfl (by decide))
+    3 (by decide) false).1 [16]]
+  decide
 
 end Contract.RecoverCutExample
