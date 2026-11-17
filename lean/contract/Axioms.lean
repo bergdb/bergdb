@@ -186,3 +186,6 @@ open Contract
 #print axioms Contract.RecoverCutExample.evict_java_get8
 #print axioms Contract.RecoverCutExample.search_before
 #print axioms checkVerdict_sound
+#print axioms merge_spec_of_rest
+#print axioms mergeUp_spec
+#print axioms afterOkW_on

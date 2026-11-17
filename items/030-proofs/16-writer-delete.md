@@ -143,6 +143,36 @@ each, 19:20 to 19:50. They changed no statement.
   `ParamsOK`.
 
 
+- **The second independent review** (another model, at main 3f1e2fea,
+  `/Users/f/fl/bench/2026-11-17/night/codex2/review.md`, section 4; the
+  coordinator, 21:32), point by point, with where it stands:
+  - R1. `mergeParent_spec` assumes `MergeVirt` (the virtually updated
+    parent is sound). By design: the caller, `merge_spec`, gives it from the
+    tree rules `Sound.mergeOne` and `Sound.mergeTwo`.
+  - R2. The tree merge rules assume that other nodes' klongs to the merged
+    siblings stay valid (`hnames`). `merge_spec` gives it from the link book
+    `WcrLink`.
+  - R3. Root collapse is proved under `WcrLink` and `SNamed s` (`LinkLive`
+    is gone from it since 20:50), and their preservation through the whole
+    writer is unfinished. True: the open piece (section 4).
+  - R4. No landed `merge_spec`, `mergeUp_spec`, merges-on `AfterOk`. The
+    loop and `afterOkW_on` are proved given `merge_spec`; `merge_spec` in
+    work.
+  - R5. `AfterOk` is the correctness of `afterDelete` as an assumption.
+    `afterOkW_on` proves it with the merges on, from the link book; the leaf's
+    change does not yet give the link book back, so the two are not joined.
+  - R6. `hkeep` leaves out the upward unlink of an emptied leaf below the
+    space root (the climb, the take-back, LE-b). True; not started.
+- **F3. Every premise about all nodes of the map is a consequence of
+  `BalancedAll` speaking of all nodes.** `WcrLink` (H), `WmgFresh` (C: a
+  dead klong of a node not reached may name the next id, which the merge
+  then makes, so two nodes name it), `WmgSplitLink`: each is needed only
+  because a node not reached must not name a node taken back. With
+  `BalancedAll` on the nodes reached (the coordinator's decision, 21:32;
+  030-10 restates it), a book on the nodes reached does, and its proofs
+  through the splits exist (parked, F2).
+
+
 # 4. The plan for the rest
 
 - The merges: a tree rule `Sound.merge` (two siblings' live klongs in one
@@ -161,12 +191,31 @@ each, 19:20 to 19:50. They changed no statement.
 
 # State
 
-2026-11-17, 20:10. Section 1. Branch `030-16-writer-delete` in the clone
-`/Users/f/fl/bench/2026-11-17/night/s4j/clone`, on main 3df76ed5; gate
-`lean/contract/gate.sh 3df76ed5`. The provers' briefs:
-`/Users/f/fl/bench/2026-11-17/night/s4j/brief-*.md`; the probe that found F1:
-`/Users/f/fl/bench/2026-11-17/night/s4j/scratch/BalProbe.lean` (run with
-`lake env lean` in `lean/contract`).
+2026-11-17, 21:55. Section 1, with the merge (`merge_spec`) and the loop
+being finished by two provers until 22:20.
+
+- Branch `030-16-writer-delete` in the clone
+  `/Users/f/fl/bench/2026-11-17/night/s4j/clone`. Build: `cd lean/contract &&
+  lake build`; gate: `lean/contract/gate.sh <main's head>`. My commits are
+  squashed onto main before each GATED (the pins, gate step 5).
+- The provers' briefs: `/Users/f/fl/bench/2026-11-17/night/s4j/brief-*.md`;
+  the parked `LinkLive` proofs (the put's and the delete's time and space
+  splits keep a link book on the nodes reached, in the restated forms of
+  F2): `/Users/f/fl/bench/2026-11-17/night/s4j/linklive/`.
+- To go on, once 030-10's `BalancedAll` on the nodes reached (live klongs)
+  has landed: (1) take a link book on the nodes reached as the delete's
+  book (the parked `LinkLive`, or `WcrLink` restricted to namers reached),
+  replace `WcrLink`, `WmgFresh` and `WmgSplitLink` by it in
+  `collapseRoot_spec`, `merge_spec` and the loop (F3), and the tree rules'
+  `hnames` follows from it with TREE; (2) prove it kept by the put
+  (030-10's rules: the parked time and space split proofs, the recursion
+  `appendKlongs`, the leaf, a new segment) and by the delete's leaf change;
+  (3) join `putKv_del1_keep` with `afterOkW_on`: a delete of a one-segment
+  key whose leaf keeps a live klong, with the merges on; (4) the upward
+  unlink (the climb, the take-back, LE-b; tree rules `Sound.delKid` and
+  `Sound.leb` are written in
+  `/Users/f/fl/bench/2026-11-17/night/s4j/later-unlink-rules.lean.txt`, not
+  proved); (5) keys of more segments.
 
 
 # Log
@@ -182,3 +231,13 @@ GATED 7ef7ed2d: the merge as a tree rule (Sound.mergeOne, mergeTwo), a merge's p
 2026-11-17, 20:45. Main dc642af1 merged (my commits squashed onto it, for
 the pins). Two provers on `merge_spec` and the loop (`mergeUp_spec`,
 `afterOkW_on`); the week at 48 %.
+2026-11-17, 20:50 to 21:30. The merges' loop proved (`mergeUp_spec`,
+`afterOkW_on`: the merges after a delete keep `PInv`, the keys and
+`WcrLink`, given `merge_spec`); root collapse restated without `LinkLive`
+(only `WcrLink` and `SNamed s`); `LinkLive` retired from the package
+(parked). `merge_spec` in work (prover C, 1,850 lines so far): proved where
+the parent has room; for a full parent it takes the link book through the
+parent's split as a premise (`WmgSplitLink`), the one piece not proved.
+The coordinator, 21:32: a second independent review's points on the delete
+(section 3, R1 to R6); 030-10 restates `BalancedAll` (reached nodes, live
+klongs), my D3.
