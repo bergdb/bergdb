@@ -429,4 +429,333 @@ theorem Path.split {r : NodeId} (hG : Good s r 0 none) {links : List (NodeId × 
       rw [ih, hat]
       simp only [restD, atOf, h4, segsUp_push h2, List.reverse_append, List.append_assoc]
 
+/-! ## The end of a scan's range -/
+
+/-- A key is within the scan's end. -/
+def inEnd (req : ScanReq) (k : Key) : Bool :=
+  match req.endKey with
+  | none => true
+  | some e => if req.endInclusive then !keyLt e k else keyLt k e
+
+theorem past_eq (req : ScanReq) (segs : List Nat) (c : Nat) :
+    past req segs c = !inEnd req (segs ++ [c]) := by
+  unfold past inEnd pastEnd
+  cases req.endKey with
+  | none => rfl
+  | some e =>
+    cases req.endInclusive with
+    | true => simp
+    | false =>
+      simp only [Bool.not_false, Bool.and_true, Bool.false_eq_true, ite_false]
+      rw [Bool.eq_iff_iff]
+      simp only [Bool.or_eq_true, keyLt_iff, beq_iff_eq, Bool.not_eq_true', keyLt_false_iff]
+      rw [le_iff_lt_or_eq]
+      constructor
+      · rintro (h | h)
+        · exact Or.inl h
+        · exact Or.inr h.symm
+      · rintro (h | h)
+        · exact Or.inl h
+        · exact Or.inr h.symm
+
+theorem inEnd_false_of_le {req : ScanReq} {k k' : Key} (h : inEnd req k = false) (hle : k ≤ k') :
+    inEnd req k' = false := by
+  unfold inEnd at h ⊢
+  cases he : req.endKey with
+  | none => simp [he] at h
+  | some e =>
+    simp only [he] at h ⊢
+    cases hi : req.endInclusive with
+    | true =>
+      simp only [hi, ite_true, Bool.not_eq_false'] at h ⊢
+      rw [keyLt_iff] at h ⊢
+      exact lt_of_lt_of_le h hle
+    | false =>
+      simp only [hi, Bool.false_eq_true, ite_false] at h ⊢
+      rw [keyLt_false_iff] at h ⊢
+      exact le_trans h hle
+
+/-- The klongs at or above a position: the one at it, then those above it. -/
+theorem pend_incl_fwd (n : KNode) (p : Pos) :
+    pend true true n p = (live n.ks).filter (fun cy => p.is cy.1) ++ pend true false n p := by
+  simp only [pend, ite_true, Bool.false_eq_true, ite_false]
+  have h3 := sorted_split3 (live_sorted n.ks) p
+  have e1 : ((live n.ks).filter (fun cy => p.above cy.1)).filter (fun cy => !p.above cy.1) = [] := by
+    rw [List.filter_eq_nil_iff]
+    intro a ha
+    simp [(List.mem_filter.mp ha).2]
+  have e2 : ((live n.ks).filter (fun cy => p.is cy.1)).filter (fun cy => !p.above cy.1) =
+      (live n.ks).filter (fun cy => p.is cy.1) := by
+    rw [List.filter_eq_self]
+    intro a ha
+    have := (Pos.is_iff p a.1).mp (List.mem_filter.mp ha).2
+    rw [Bool.not_eq_true', ← Bool.not_eq_true, Pos.above_iff, this]
+    exact lt_irrefl _
+  have e3 : ((live n.ks).filter (fun cy => p.below cy.1)).filter (fun cy => !p.above cy.1) =
+      (live n.ks).filter (fun cy => p.below cy.1) := by
+    rw [List.filter_eq_self]
+    intro a ha
+    have := (Pos.below_iff p a.1).mp (List.mem_filter.mp ha).2
+    rw [Bool.not_eq_true', ← Bool.not_eq_true, Pos.above_iff]
+    exact not_lt_of_gt this
+  conv_lhs => rw [h3]
+  rw [List.filter_append, List.filter_append, e1, e2, e3, List.nil_append]
+
+/-- In an inner node, a key below the child of the klong with compare value
+c starts at or above c. -/
+theorem Good.kid_lower {x : NodeId} {lo : Nat} {hi : Option Nat} (h : Good s x lo hi) {n : KNode}
+    (hobj : s.obj x = some (.key n)) (hl : n.leaf = false) {c : Nat} {y : NodeId}
+    (hm : (c, y) ∈ live n.ks) :
+    ∀ k v, (k, v) ∈ L s y → ∃ d r', k = d :: r' ∧ c ≤ d := by
+  cases h with
+  | mk _ _ _ n' hobj' hwf hhi hlo hval hkey hseg hkid =>
+    rw [hobj] at hobj'
+    obtain rfl : n = n' := by injection hobj' with h1; injection h1
+    obtain ⟨pre', post, he⟩ := List.append_of_mem hm
+    intro k v hkv
+    obtain ⟨d, r', hd, hd1, _⟩ := (hkid hl pre' c y post he).range k v hkv
+    exact ⟨d, r', hd, le_trans (le_max_right _ _) hd1⟩
+
+/-- Forward, every key from the klong found on is at or after the key
+segments passed and the klong's compare value (`Chain.isPastEnd`'s reason). -/
+theorem lower_bound {r : NodeId} (hG : Good s r 0 none) {x : NodeId} {p : Pos}
+    {above : List (NodeId × Pos)} {segs : List Nat} {n : KNode}
+    (hpath : Path s r ((x, p) :: above) segs) (hobj : s.obj x = some (.key n)) {incl : Bool}
+    {c : Nat} {y : NodeId} {cs : List (Nat × NodeId)} (hp : pend true incl n p = (c, y) :: cs) :
+    ∀ kv ∈ entD s true segs n (pend true incl n p) ++ restD s true above (segsUp s above segs),
+      segs ++ [c] ≤ kv.1 := by
+  obtain ⟨lo, hi, hgx⟩ := hpath.good hG _ _ _ rfl
+  have hm : (c, y) ∈ live n.ks := mem_pend (by rw [hp]; simp)
+  -- what is left is the end of what the tree holds, so it is in order
+  have hsuf : ∃ B, L s r = B ++ (entD s true segs n (pend true incl n p) ++
+      restD s true above (segsUp s above segs)) := by
+    have hsp := hpath.split hG
+    simp only [restD, atOf, hobj] at hsp
+    cases incl with
+    | false => exact ⟨_, by rw [hsp]⟩
+    | true =>
+      refine ⟨(entD s false segs n (pend false false n p) ++
+        restD s false above (segsUp s above segs)).reverse, ?_⟩
+      rw [hsp, pend_incl_fwd]
+      simp only [entD_true, ent_append, List.append_assoc]
+  obtain ⟨B, hB⟩ := hsuf
+  have hsorted : (entD s true segs n (pend true incl n p) ++
+      restD s true above (segsUp s above segs)).Pairwise KvLt := by
+    have := hG.sorted
+    rw [hB, List.pairwise_append] at this
+    exact this.2.1
+  rw [hp, entD_cons] at hsorted ⊢
+  simp only [dir, ite_true, List.append_assoc] at hsorted ⊢
+  -- the keys of the klong found
+  have hE : ∀ kv ∈ (klongList s n.leaf (L s) c y).map (pre segs), segs ++ [c] ≤ kv.1 := by
+    intro kv hkv
+    obtain ⟨⟨k, v⟩, hk0, rfl⟩ := List.mem_map.mp hkv
+    simp only [pre]
+    rw [append_le_append_iff]
+    rcases mem_klongList.mp hk0 with ⟨_, _, k', rfl, _⟩ | ⟨_, _, rfl, _⟩ | ⟨hl, hkv⟩
+    · exact singleton_le_cons c k'
+    · exact le_refl _
+    · obtain ⟨d, r', rfl, hd⟩ := hgx.kid_lower hobj hl hm k v hkv
+      rcases lt_or_eq_of_le hd with h | h
+      · exact le_of_lt (cons_lt_cons_of_lt h _ _)
+      · subst h; exact singleton_le_cons c r'
+  have hne : (klongList s n.leaf (L s) c y).map (pre segs) ≠ [] := by
+    rcases hgx.kind hobj hm with ⟨hl, hlong, v, hv⟩ | ⟨hk, m, lo', hi', hy, _, hne, hgy⟩
+    · simp [klongList, hl, hlong, hv]
+    · rw [klong_child hy hk]
+      simp only [ne_eq, List.map_eq_nil_iff]
+      exact hgy.nonempty m hy hne
+  intro kv hkv
+  rcases List.mem_append.mp hkv with h | h
+  · exact hE kv h
+  · obtain ⟨a, ha⟩ := List.exists_mem_of_ne_nil _ hne
+    rw [List.pairwise_append] at hsorted
+    exact le_of_lt (lt_of_le_of_lt (hE a ha) (hsorted.2.2 a ha kv h))
+
+/-! ## `Chain.next` -/
+
+/-- `Chain.next` on a chain that is a path, with fuel enough to climb the
+chain and to descend, or to descend from a node just entered: it ends only
+if no key within the scan's end is left; else it gives the first key left
+and a chain with the rest after it. -/
+theorem nextGo_spec {r : NodeId} (hG : Good s r 0 none) (req : ScanReq)
+    (hend : req.endKey ≠ none → req.forward = true) :
+    ∀ (f : Nat) (ch : Chain), (ch.links = [] ∨ Path s r ch.links ch.segs) →
+      (ch.links.length + s.fuel r + 1 ≤ f ∨
+        (ch.first = false ∧ ∃ y above m,
+          ch.links = (y, if req.forward then Pos.lo else Pos.hi) :: above ∧
+          s.obj y = some (.key m) ∧ live m.ks ≠ [] ∧ m.level + 1 ≤ f)) →
+      ∀ res ch', nextGo s req f ch = (res, ch') →
+        (res = none → ∀ kv ∈ restX s req.forward (ch.first && req.inclusive && ch.eqMatch)
+          ch.links ch.segs, inEnd req kv.1 = false) ∧
+        (∀ kv, res = some kv →
+          restX s req.forward (ch.first && req.inclusive && ch.eqMatch) ch.links ch.segs =
+            kv :: restD s req.forward ch'.links ch'.segs ∧
+          inEnd req kv.1 = true ∧ Path s r ch'.links ch'.segs ∧ ch'.first = false) := by
+  intro f
+  induction f with
+  | zero =>
+    intro ch _ hf
+    rcases hf with hf | ⟨_, y, above, m, _, _, _, hf⟩
+    · omega
+    · omega
+  | succ f ih =>
+    intro ch hp hf res ch' hn
+    obtain ⟨links, segs, first, eqm⟩ := ch
+    simp only at hp hf ⊢
+    cases links with
+    | nil =>
+      simp only [nextGo] at hn
+      injection hn with h1 h2
+      subst h1
+      exact ⟨fun _ kv hkv => by simp [restX] at hkv, fun kv h => by simp at h⟩
+    | cons a above =>
+      obtain ⟨x, p⟩ := a
+      have hpath : Path s r ((x, p) :: above) segs := by
+        rcases hp with h | h
+        · simp at h
+        · exact h
+      obtain ⟨lo, hi, hgx⟩ := hpath.good hG _ _ _ rfl
+      obtain ⟨n, hobj⟩ := hgx.obj
+      simp only [nextGo, hobj] at hn
+      rw [nextSearch_pend] at hn
+      have hrx : restX s req.forward (first && req.inclusive && eqm) ((x, p) :: above) segs =
+          entD s req.forward segs n (pend req.forward (first && req.inclusive && eqm) n p) ++
+            restD s req.forward above (segsUp s above segs) := by
+        simp [restX, hobj]
+      rw [hrx]
+      cases hpd : pend req.forward (first && req.inclusive && eqm) n p with
+      | nil =>
+        rw [hpd] at hn
+        simp only [List.head?_nil] at hn
+        have hp1 : above = [] ∨ Path s r above (segsUp s above segs) := hpath.pop
+        have hf1 : above.length + s.fuel r + 1 ≤ f ∨
+            ((false : Bool) = false ∧ ∃ y above' m,
+              above = (y, if req.forward then Pos.lo else Pos.hi) :: above' ∧
+              s.obj y = some (.key m) ∧ live m.ks ≠ [] ∧ m.level + 1 ≤ f) := by
+          left
+          rcases hf with hf | ⟨hfirst, y, above', m, hl, hy, hne, _⟩
+          · simp only [List.length_cons] at hf; omega
+          · exfalso
+            injection hl with h1 h2
+            injection h1 with h1 h3
+            subst h1 h3
+            rw [hobj] at hy
+            obtain rfl : n = m := by injection hy with h6; injection h6
+            simp only [hfirst, Bool.false_and] at hpd
+            rw [pend_start] at hpd
+            cases hfw : req.forward <;> simp [dir, hfw] at hpd <;> exact hne hpd
+        have := ih _ hp1 hf1 res ch' hn
+        simp only [Bool.false_and, restX_false] at this
+        simpa [entD] using this
+      | cons a cs =>
+        obtain ⟨c, y⟩ := a
+        rw [hpd] at hn
+        simp only [List.head?_cons] at hn
+        have hm : (c, y) ∈ live n.ks := mem_pend (by rw [hpd]; simp)
+        rw [past_eq] at hn
+        by_cases hin : inEnd req (segs ++ [c]) = true
+        · simp only [hin, Bool.not_true, Bool.false_eq_true, ite_false] at hn
+          rcases hgx.kind hobj hm with ⟨hl, hlong, v, hv⟩ | ⟨hk, m, lo', hi', hy, hlt, hne, hgy⟩
+          · simp only [hv] at hn
+            injection hn with h1 h2
+            subst h1 h2
+            refine ⟨fun h => by simp at h, ?_⟩
+            intro kv hkv
+            injection hkv with hkv
+            subst hkv
+            refine ⟨?_, hin, hpath.setPos _, rfl⟩
+            have hkl : klongList s n.leaf (L s) c y = [([c], v)] := by
+              simp [klongList, hl, hlong, hv]
+            have hd : ∀ a : Key × Nat, dir req.forward [a] = [a] := by
+              intro a; cases req.forward <;> rfl
+            simp only [entD_cons, restD, hobj, pend_tail hpd, hkl, List.map_cons, List.map_nil,
+              hd, pre, List.cons_append, List.nil_append]
+          · simp only [hy] at hn
+            have hp2 : Path s r ((y, if req.forward then Pos.lo else Pos.hi) :: (x, Pos.at c) ::
+                above) (if n.leaf then segs ++ [c] else segs) :=
+              Path.push (hpath.setPos _) hobj hm hy
+            have hlv := hpath.level hG _ _ _ rfl n hobj
+            have hf2 : ((y, if req.forward then Pos.lo else Pos.hi) :: (x, Pos.at c) ::
+                above).length + s.fuel r + 1 ≤ f ∨
+                ((false : Bool) = false ∧ ∃ y' above' m',
+                  ((y, if req.forward then Pos.lo else Pos.hi) :: (x, Pos.at c) :: above) =
+                    (y', if req.forward then Pos.lo else Pos.hi) :: above' ∧
+                  s.obj y' = some (.key m') ∧ live m'.ks ≠ [] ∧ m'.level + 1 ≤ f) := by
+              refine Or.inr ⟨rfl, y, _, m, rfl, hy, hne, ?_⟩
+              rcases hf with hf | ⟨_, y', above', m', hl', hy', _, hf⟩
+              · simp only [List.length_cons] at hf hlv; omega
+              · injection hl' with h1 _
+                injection h1 with h1 _
+                subst h1
+                rw [hobj] at hy'
+                obtain rfl : n = m' := by injection hy' with h6; injection h6
+                omega
+            have := ih _ (Or.inr hp2) hf2 res ch' hn
+            simp only [Bool.false_and, restX_false] at this
+            have heq : entD s req.forward segs n ((c, y) :: cs) ++
+                restD s req.forward above (segsUp s above segs) =
+                restD s req.forward ((y, if req.forward then Pos.lo else Pos.hi) ::
+                  (x, Pos.at c) :: above) (if n.leaf then segs ++ [c] else segs) := by
+              simp only [restD, hy, hobj, segsUp_push hobj, pend_start, entD_dir, entD_cons,
+                pend_tail hpd, List.append_assoc]
+              rw [hgy.ent_live hy, klong_child hy hk]
+            rw [heq]
+            exact this
+        · simp only [Bool.not_eq_true] at hin
+          simp only [hin, Bool.not_false, ite_true] at hn
+          injection hn with h1 h2
+          subst h1
+          refine ⟨fun _ => ?_, fun kv h => by simp at h⟩
+          have hfw : req.forward = true := hend (by intro h0; simp [inEnd, h0] at hin)
+          intro kv hkv
+          rw [hfw] at hkv hpd
+          rw [← hpd] at hkv
+          exact inEnd_false_of_le hin (lower_bound hG hpath hobj hpd kv hkv)
+
+/-- The loop of a scan gives what is left after its chain, within the scan's
+end, the first `limit`. -/
+theorem scanGo_spec {r : NodeId} (hG : Good s r 0 none) (req : ScanReq)
+    (hend : req.endKey ≠ none → req.forward = true) (nf : Nat) (hnf : 2 * s.fuel r + 1 ≤ nf) :
+    ∀ (limit : Nat) (ch : Chain), (ch.links = [] ∨ Path s r ch.links ch.segs) →
+      scanGo s req nf limit ch =
+        ((restX s req.forward (ch.first && req.inclusive && ch.eqMatch) ch.links ch.segs).filter
+          (fun kv => inEnd req kv.1)).take limit := by
+  intro limit
+  induction limit with
+  | zero => intro ch _; simp [scanGo]
+  | succ limit ih =>
+    intro ch hp
+    have hfuel : ch.links.length + s.fuel r + 1 ≤ nf := by
+      rcases hp with h | h
+      · rw [h]; simp only [List.length_nil]; omega
+      · cases hl : ch.links with
+        | nil => simp only [List.length_nil]; omega
+        | cons a above =>
+          obtain ⟨x, p⟩ := a
+          rw [hl] at h
+          obtain ⟨lo, hi, hgx⟩ := h.good hG _ _ _ rfl
+          obtain ⟨n, hobj⟩ := hgx.obj
+          have := h.level hG _ _ _ rfl n hobj
+          omega
+    unfold scanGo
+    cases hn : nextGo s req nf ch with
+    | mk res ch' =>
+      obtain ⟨h1, h2⟩ := nextGo_spec hG req hend nf ch hp (Or.inl hfuel) res ch' hn
+      cases res with
+      | none =>
+        simp only
+        have : (restX s req.forward (ch.first && req.inclusive && ch.eqMatch) ch.links
+            ch.segs).filter (fun kv => inEnd req kv.1) = [] := by
+          rw [List.filter_eq_nil_iff]
+          intro kv hkv
+          simp [h1 rfl kv hkv]
+        rw [this]
+        rfl
+      | some kv =>
+        obtain ⟨h3, h4, h5, h6⟩ := h2 kv rfl
+        simp only
+        rw [h3, List.filter_cons, h4, ih ch' (Or.inr h5), h6]
+        simp only [ite_true, Bool.false_and, restX_false, List.take_succ_cons]
+
 end Contract
