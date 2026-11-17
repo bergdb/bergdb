@@ -1717,3 +1717,15 @@ segment leaf, so the descent below the segment root has two steps or more), and 
 `lteP_redirect2` at q0 does it. Not covered: q a segment root (q0 a segment leaf), q the
 space root. Left for l4b's case: the writer's two splits with y the hole; y is named by an
 inner node there, so the live counts need a `LiveEdgesH` version of l4b's chain lemma.
+
+2026-11-17, 03:41 to 03:43. R1 through two changed levels at the stop node, prover l4g
+(`LiveUpCascCopy3.lean`, about 450 lines, about 330 of them `holeAtW_stopCopy`'s prelude
+again). `holeAtW_stopCopy2`, no premises: l4e's `holeAtW_stopCopy` with the redirect one
+level higher, for l4e's `UpCascSplitRest7OK`: the stop node split in time, its copy the
+hole, its parent q (inner) split too, q's new inner node q' named by q's parent q0 (inner,
+changed in place) by its search of the chain's compare value, q' naming the copy. The stop
+node's segment's descent holds q0 and q (both inner, so it has two steps or more below the
+segment's root), `lteP_redirect2` at q0, the cut at the copy as before. With 03:40's
+`holeAtW_copyG2` and 03:19's `descendToHeight_redirectSeg2`, R1 through two changed levels
+is proved in the three forms R4's open part takes, where q0 keeps its id; q a segment root
+or the space root is left (for the merge's 69, `descendToHeight_topSeg` covers the root).

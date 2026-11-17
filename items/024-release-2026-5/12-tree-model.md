@@ -544,6 +544,11 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   made, split in space, or the space root), `upCascCallRuns_of_rest7`. On step 0's 15 families
   all 294 full stop nodes fall in proved cases; `UpCascSplitRest7OK`'s case never ran (030-01's
   log, 03:02; `l4e/runs/upcasc-cases.lean.txt`).
+  03:43 (l4g, `LiveUpCascCopy3.lean`): R1 for it at the state level where the copy's parent q
+  (inner) splits and q's parent q0 (inner) keeps its id: `holeAtW_stopCopy2` (no premises):
+  l4e's `holeAtW_stopCopy` with q0's search of the chain's compare value naming q's new node
+  q', which names the copy (`lteP_redirect2`). Left: the writer's two splits with the copy
+  the hole (a `LiveEdgesH` chain, as for l4b's leaf).
   (the copy below an inner parent with fewer than m live klongs). 02:18 (l4b): R4 narrowed
   further (`LiveDelHoleMade.lean`): below a parent that the transaction made, full or
   compacting, whose own split is in time (in place), the copy stays the hole under the same
