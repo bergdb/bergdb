@@ -20,3 +20,11 @@ open Contract
 #print axioms checkShapeTx_sound
 #print axioms Contract.Example3.meetsShape
 #print axioms Contract.ExampleDag.not_tree
+#print axioms findTop_right
+#print axioms top_right
+#print axioms jget_right
+#print axioms jscan_right
+#print axioms skip_closure
+#print axioms skip_dead
+#print axioms checkTopTx_sound
+#print axioms Contract.Example3.meetsTop

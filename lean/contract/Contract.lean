@@ -15,3 +15,6 @@ import Contract.ShapeStatement
 import Contract.CheckShape
 import Contract.TheoremsShape
 import Contract.ExampleShape
+import Contract.Top
+import Contract.TraceTop
+import Contract.TheoremsTop
