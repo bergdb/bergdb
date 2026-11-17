@@ -5,7 +5,10 @@
 #   3. `#print axioms` of the theorems (Axioms.lean) shows only `propext`,
 #      `Classical.choice` and `Quot.sound`;
 #   4. with a base commit as the first argument: no file changed since it outside
-#      lean/contract/ and items/030-proofs/.
+#      lean/contract/ and items/030-proofs/; but java/ (then java/before-commit.sh
+#      must print BEFORE COMMIT OK, which this script does not run) and the trace
+#      format, items/027-algorithms/02-trace-format.md (bergdb 030-09: the exporter
+#      and its format change with the checker).
 # Usage: lean/contract/gate.sh [BASE]. Prints GATE OK or GATE FAILED.
 cd "$(dirname "$0")"
 FAILED=0
@@ -23,8 +26,10 @@ M=$(echo "$AX" | grep -c "depends on axioms\|does not depend on any axioms")
 L=$(grep -c '^#print axioms' Axioms.lean)
 if [ "$M" -eq "$L" ] && [ -z "$OTHER" ] && ! echo "$AX" | grep -q 'error'; then echo "3. the standard axioms only ($L theorems)"; else echo "3. axioms: not the standard three only: $OTHER"; FAILED=1; fi
 if [ -n "$1" ]; then
-    OUT=$(git diff --name-only "$1" HEAD | grep -v -E '^lean/contract/|^items/030-proofs/')
-    DIRTY=$(git status --porcelain | grep -v -E ' lean/contract/| items/030-proofs/')
-    if [ -n "$OUT$DIRTY" ]; then echo "4. changed outside:"; echo "$OUT$DIRTY"; FAILED=1; else echo "4. no file changed outside lean/contract/ and items/030-proofs/ since $1"; fi
+    ALLOWED='lean/contract/|items/030-proofs/|java/|items/027-algorithms/02-trace-format.md'
+    OUT=$(git diff --name-only "$1" HEAD | grep -v -E "^($ALLOWED)")
+    DIRTY=$(git status --porcelain | grep -v -E " ($ALLOWED)")
+    if [ -n "$OUT$DIRTY" ]; then echo "4. changed outside:"; echo "$OUT$DIRTY"; FAILED=1; else echo "4. no file changed outside lean/contract/, items/030-proofs/, java/ and 027-02 since $1"
+        git diff --name-only "$1" HEAD | grep -q '^java/' && echo "   java/ changed: java/before-commit.sh must print BEFORE COMMIT OK"; fi
 fi
 if [ $FAILED -eq 0 ]; then echo "GATE OK"; else echo "GATE FAILED"; exit 1; fi

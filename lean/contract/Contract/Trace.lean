@@ -38,11 +38,12 @@ structure TxLines where
   dirty : List NodeId := []
   gets : List GetLine := []
   scans : List ScanLine := []
+  /-- LIVE lines (with the exporter's live=1): Java's live children of a node
+  at a time (bergdb 030-09). -/
+  lives : List (NodeId × Time × List NodeId) := []
   /-- The top (bergdb 030-08): the skip pointers made (`ADD z i S j y`), the
-  LIVE 0 lines (Java's top node at time t, none if it found none), the node
-  of the last VER line, and the SKIPT lines of its version (z, j, t). -/
+  node of the last VER line, and the SKIPT lines of its version (z, j, t). -/
   skipLines : List (NodeId × Nat × NodeId) := []
-  lives : Array (Time × Option NodeId) := #[]
   ver : NodeId := 0
   skipts : List (NodeId × Nat × Time) := []
 
@@ -72,7 +73,8 @@ def bitsOf (b : Nat) : List Nat := (List.range 64).filter (fun j => b.testBit j)
 
 /-- n klongs at the front of the tokens. -/
 def readKlongs : Nat → List String → Except String (List Klong)
-  | 0, _ => .ok []
+  | 0, [] => .ok []
+  | 0, _ :: _ => .error "a KN line with more tokens than its klongs"
   | n + 1, "T" :: t :: r => do
     let t ← num t
     let ks ← readKlongs n r
@@ -90,7 +92,8 @@ def readKlongs : Nat → List String → Except String (List Klong)
 
 /-- r keys with their values at the front of the tokens. -/
 def readKvs : Nat → List String → Except String (List (Key × Nat))
-  | 0, _ => .ok []
+  | 0, [] => .ok []
+  | 0, _ :: _ => .error "a SCAN line with more tokens than its results"
   | n + 1, toks => do
     let (k, r) ← readKey toks
     match k, r with
@@ -126,10 +129,13 @@ def readLine (tr : Trace) (cur : TxLines) (line : String) : Except String (Trace
     match ← readKey rest with
     | (some k, [v]) => return (tr, { cur with ops := cur.ops ++ [.put k (← num v)] })
     | _ => throw "an OP P line"
-  | "OP" :: _ :: rest =>
+  | "OP" :: d :: rest =>
+    if d != "D" && d != "N" then throw s!"an OP line of kind {d}"
     match ← readKey rest with
     | (some k, []) => return (tr, { cur with ops := cur.ops ++ [.del k] })
     | _ => throw "an OP D or OP N line"
+  | "LIVE" :: x :: t :: ys =>
+    return (tr, { cur with lives := cur.lives ++ [((← num x), (← num t), ← ys.mapM num)] })
   | "GD" :: rest => return (tr, { cur with gd := ← rest.mapM num })
   | "DIRTY" :: rest =>
     let xs ← rest.mapM num
@@ -152,12 +158,6 @@ def readLine (tr : Trace) (cur : TxLines) (line : String) : Except String (Trace
     | [] => throw "a SCAN line"
   | ["ADD", z, _, "S", j, y] =>
     return (tr, { cur with skipLines := cur.skipLines ++ [((← num z), (← num j), (← num y))] })
-  | "LIVE" :: "0" :: t :: rest =>
-    let z ← match rest with
-      | [z] => pure (some (← num z))
-      | [] => pure none
-      | _ => throw "a LIVE 0 line"
-    return (tr, { cur with lives := cur.lives.push ((← num t), z) })
   | ["VER", x, _] => return (tr, { cur with ver := ← num x })
   | ["SKIPT", j, t] =>
     return (tr, { cur with skipts := cur.skipts ++ [(cur.ver, (← num j), (← num t))] })

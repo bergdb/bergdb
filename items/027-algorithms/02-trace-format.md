@@ -276,8 +276,11 @@ and their compare values (`Keys.toSegments`); `-` stands for no key.
     OP N key                     a delete that changed nothing (not in the
                                  record)
     KN x l n k1 ... kn           in TX i, after the ADD lines: key node x after
-                                 T(i), for each key node that T(i) made or gave
-                                 an entry (in TX 0: every key node): l is 1 for
+                                 T(i), for each key node that T(i) made or whose
+                                 klongs it changed in any way, a diff of the
+                                 klongs (in TX 0: every key node; until 030-09
+                                 a diff of the entries, which left out a node
+                                 whose klongs were changed or removed): l is 1 for
                                  a segment leaf, 0 for an inner node; then its
                                  n klongs in order, each `T t` (a time klong, t
                                  a model time), `K c y` (a key klong: compare
@@ -295,6 +298,18 @@ and their compare values (`Keys.toSegments`); `-` stands for no key.
                                  (GetMany.GetN); start and end are keys or `-`;
                                  r results follow, each a key and its value's
                                  hash
+
+The writer's contract is checked on format 3 too (`lake exe contractcheck`
+in `lean/contract/`, `lean/contract/check.sh`; bergdb 030-04, 030-05 and
+030-09). It reads a trace only if it is whole: the first line `TRACE 3`, no
+`ERROR` line and no line of a kind not in this section or section 2, the
+transactions numbered 0, 1, 2, ... each from `TX i` to `END i`, and the last
+line `DONE n`; in each transaction a `NEW` line only for a node not made
+before, every `ADD` line at time i, a `KN` line for every key node made, an
+`ADD x i V h` line for every value made, an `ADD z i R y` line for every top
+node made, one `GD` and one `DIRTY` line (Contract/Complete.lean). Its `LIVE`
+lines, with `live=1`, are checked against the package's search and the space
+root at each time.
 
 A transaction with a TOUCH line (a step of reclaim; section 2) touches the
 paths of all the keys of its OP lines (Db.touchPaths, since bergdb 024-07):

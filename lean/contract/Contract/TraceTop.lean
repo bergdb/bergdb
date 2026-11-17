@@ -36,12 +36,16 @@ def skiptFaults (tp : Top) (tx : TxLines) : List (NodeId × Nat × Time) × Nat 
         else acc.1 ++ [(z, j, t)]), acc.2 + 1)
     | none => (acc.1 ++ [(z, j, t)], acc.2 + 1)) ([], 0)
 
-/-- The LIVE 0 lines of a transaction that differ from `findTop` on the top
-after it: (time, Java's top node). The second line of a time is between the
-records (`mid`). -/
-def liveFaults (tp : Top) (tx : TxLines) : List (Time × Option NodeId) :=
-  (tx.lives.foldl (fun (acc : List (Time × Option NodeId) × Option Time) (t, z) =>
+/-- The LIVE 0 lines of a transaction (`TxLines.lives` with node 0, bergdb
+030-09) that differ from `findTop` on the top after it: (time, Java's top
+node, none if Java found none); and the number of LIVE 0 lines. The second
+line of a time is between the records (`mid`). -/
+def liveFaults (tp : Top) (tx : TxLines) : List (Time × List NodeId) × Nat :=
+  let ls := tx.lives.filter (fun l => l.1 == 0)
+  let r := ls.foldl (fun (acc : List (Time × List NodeId) × Option Time) (_, t, ys) =>
     let mid := acc.2 == some t
-    ((if findTop tp t mid == z then acc.1 else acc.1 ++ [(t, z)]), some t)) ([], none)).1
+    ((if (findTop tp t mid).toList == ys then acc.1 else acc.1 ++ [(t, ys)]), some t))
+    ([], none)
+  (r.1, ls.length)
 
 end Contract

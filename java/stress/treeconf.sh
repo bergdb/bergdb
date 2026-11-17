@@ -19,6 +19,9 @@
 #   set, up to 5,000 transactions (the two l-big62 traces take long).
 #   seeds: per configuration (default 10 small, 10 drain, 3 reclaim, 3 medium,
 #   1 large).
+#   hot (small) and d-random (drain) run with live=1: their LIVE lines (Java's
+#   searches and top search at every time) are for lean/contract/check.sh
+#   (bergdb 030-09).
 #
 # PAR=N runs N traces at once (default 4), each an export and its check.
 # Needs java/build (java/build.sh) and the checker (cd lean && lake build).
@@ -42,7 +45,7 @@ small() {
     echo "big     -Dn=40 -Dkeys=200 -Dmaxnode=8 -Dsd=1000 -Dops=40 -Dexact=1"
     echo "bulk    -Dn=60 -Dkeys=100 -Dmaxnode=8 -Dsd=300 -Dbulk=40"
     echo "idle    -Dn=150 -Dkeys=30 -Dmaxnode=8 -Dsd=100 -Dops=2 -Dempty=30 -Dnodel=20"
-    echo "hot     -Dn=300 -Dkeys=1 -Dmaxnode=8 -Dsd=200 -Dops=1"
+    echo "hot     -Dn=300 -Dkeys=1 -Dmaxnode=8 -Dsd=200 -Dops=1 -Dlive=1"
     echo "a6      -Dn=40 -Dkeys=200 -Dmaxnode=8 -Dsd=1000 -Dops=40 -Dexact=1 -Dlong=1 -Ddel=25"
 }
 
@@ -52,7 +55,7 @@ drain() {
     echo "d-a6     -Dn=60 -Dkeys=200 -Dmaxnode=8 -Dsd=1000 -Dops=40 -Dexact=1 -Dlong=1 -Ddel=60"
     echo "d-b14    -Dn=80 -Dkeys=600 -Dmaxnode=14 -Dsd=2000 -Dops=80 -Dexact=1 -Ddel=55"
     # UnlinkFuzz's shapes and defaults.
-    echo "d-random -Dn=150 -Dkeys=60 -Dmaxnode=8 -Dsd=300 -Dops=6 -Ddel=40"
+    echo "d-random -Dn=150 -Dkeys=60 -Dmaxnode=8 -Dsd=300 -Dops=6 -Ddel=40 -Dlive=1"
     echo "d-fifo   -Dn=150 -Dkeys=60 -Dmaxnode=8 -Dsd=300 -Dops=6 -Dshape=fifo"
     echo "d-fifo2  -Dn=200 -Dkeys=400 -Dmaxnode=8 -Dsd=1000 -Dops=30 -Dshape=fifo"
     echo "d-long3  -Dn=150 -Dkeys=60 -Dmaxnode=8 -Dsd=300 -Dops=6 -Ddel=40 -Dshape=long3"
