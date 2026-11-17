@@ -634,3 +634,30 @@ reached-only book `LinkLive` suffices. I switch to it (`Balanced`,
 Contract/Writer.lean): no proof of the put needs the stronger form; the
 two gaps above go away with it, since a node cut back and a split node in
 its parent's "if" state are not reached.
+2026-11-17, 20:50 to 21:30. The balance rule restated in its final form
+through the statement, the put's files and 030-16's landed delete files
+(`Balanced.of_reach`; nine runs of provers); `gate.sh dc642af1`: GATE OK
+(159 theorems); `writer.sh`: WRITER OK; `contractcheck`, `bridgecheck` on
+small and drain: CONTRACT OK, BRIDGE OK.
+GATED ea73b414: the balance rule restated (Balanced: the nodes reached, their live klongs), every proof carried over; balancedAllOld_false kept as the record.
+2026-11-17, 21:32. **Findings of a second independent review** (another
+model, of main 3f1e2fea; the coordinator's message; the full text is
+`/Users/f/fl/bench/2026-11-17/night/codex2/review.md`), my work list in
+this order:
+1. `Shows` asks the view to show every key node of the tree, but the
+   model's view (`SIS.view`) holds only the nodes reachable at the time,
+   and `treeOf` keeps the nodes of earlier times: after a split the
+   model's own next view lacks the node replaced, so `Shows` cannot hold
+   for it (the review's probe: seven puts from the primordial tree).
+   `writercheck` did not see it: it gave the writer the whole accumulated
+   structure, not `SIS.view`. To do: `Shows` for the nodes reached; the
+   puts then need that a node of s that is reached now was reached in s;
+   `writercheck` with the model's view.
+2. `MidP` omits B3, B4, B7, B8, B12, B14 (section 6); `SNamed` at each
+   step of `RunsPut` (given back since 00c5075d: `RunsPuts`); `OpsRun`'s
+   bounds are stronger than `runOpsFrom`'s (for puts proved equal since
+   c8390ab0: `opsRun_of_runOps`).
+3. The checker and the statement differ: the checker's B8 counts values
+   (the statement: key nodes); its B11 lets a node outside the bounds
+   pass if it was taken back (the statement: none outside).
+4. `BalancedAll` in `WriterMeets`: restated (ea73b414).
