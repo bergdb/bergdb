@@ -60,6 +60,21 @@ night of 17 November.
   to a transaction and a history is proved (`writerMeets_of_opStep`,
   `runs_meetsTop_of_opStep`). What the puts are proved to keep is `MidP`,
   `Mid` without the six books that only a delete reads.
+- **The view** (the second review's first point; section 6 has the
+  route). `Shows`, the writer's view at each transaction, is still a
+  premise of a run. Towards having it from the model's own structure
+  (`exec?`'s changes applied, then `SIS.view`), two of three parts are
+  proved for the key nodes (`Contract/Proof/WriterView.lean`): the
+  structure after the model's changes holds the tree of the writer's
+  state (`holds_apply`, by the old package's `apply_keyNode`, imported),
+  and the model's own view shows the key nodes that the tree reaches,
+  if the space root is reachable (`reachable_of_holds`,
+  `shows_key_of_holds`). Left: the top, two premises to take from `Mid`,
+  and the join with the run; 1,500 to 3,000 lines by my estimate.
+- **030-16's deletes on the restated statement**: its delete of a
+  one-segment key, the merges' loop and root collapse (main 53e66e73)
+  are carried to the balance rule for the nodes reached and to `Shows`
+  for the nodes reached (section 3, 22:15).
 - **The main answer** (item 5, section 5): the old route's hard cases do
   not come back. `l4`, R3, R4 and ValOld are all about the fill and the
   rule of two live klongs in an inner root. The old theorem needed them
@@ -540,6 +555,44 @@ the premises that are not proved or not given back, each tested:
   (the two notions of reached), the top's part (3), and the join with
   `Mid`. Estimate: 2,000 to 4,000 lines. No old hard case is in it:
   nothing here reads the fill or asks that the writer accepts.
+  Done of it (22:45, `Contract/Proof/WriterView.lean`, 180 lines): the
+  relation for the key nodes, `Holds p P s` (each key node of s is a key
+  node of P with its level and its klongs), and part (2) for it,
+  `holds_apply`: after a run that the model accepts at time i from P@(i-1)
+  with the state w and the writer's books (`MidBooks`), the structure
+  after the model's changes holds `treeOf i s w`. Its premises on P are
+  the old `apply_keyNode`'s (`KeyHistOK`, `ViewLinksOK`, `StructTimesLE`,
+  the ids below the first id, the root above the key levels), which the
+  old package keeps along a run. **Decision: imported, not copied**
+  (`SIS.Tree.ApplyBridge`, `SIS.Tree.GetCommit`): `apply_keyNode` rests
+  on about 100 modules of the old package's plain facts about a run (no
+  klong of an earlier time changed, each node held once, klongs well
+  formed, the ids, the ledger); a copy would be thousands of lines for
+  nothing new. The cost: the first build takes about 6 minutes more, and
+  `lake build` now replays 29 linter warnings of those old files (unused
+  simp arguments; the gate prints "lake build has warnings" and passes;
+  the files are outside what this item may change). Not tested apart: it
+  is proved, and the traced M (the map is Java's tree) with the tree
+  checker's C-T2 (the model's changes are Java's) test the same.
+  Part (1) for the key nodes (22:57, the same file, 410 lines in all):
+  `reachable_of_holds`, the key nodes that the tree reaches are reachable
+  in the model's structure at the time, if the space root is; and
+  `shows_key_of_holds`, the model's own view (`SIS.view` of P at i-1,
+  without the root) then shows them as `Shows` asks. Premises, named: the
+  levels fall along the live klongs of the nodes reached (`LevFalls`; the
+  model follows a pointer only to a lower level), and the nodes reached
+  have well-formed klongs with W5 (030-07's `AllWf`, for the nodes
+  reached); both are tested for every node and klong by `bridgecheck`
+  (its clauses A4 and W5: BRIDGE OK on small and drain).
+  Left, in this order: part (3), the top (the root's last top node and
+  its root pointer: the space root is reachable, and `Shows.top`; kept by
+  the changes of a new top node); `LevFalls` and the well-formed klongs
+  from `Mid` (for inner nodes the balance rule gives the levels; for a
+  segment leaf the segments' levels are needed); the old package's
+  premises on P along the run (`keyHistOK_step` keeps the first; the
+  others have their run theorems there); the join: `Runs` with the
+  structure's relation at the start in place of the view at each step.
+  Estimate for what is left: 1,500 to 3,000 lines.
 - **The bounds G and H** (D3): each accepted operation leaves no key node
   outside them (`OpsRun`). Tested (B11). Two of the proofs' gaps were of
   this kind. For a transaction of puts that the model's `runOpsFrom`
@@ -563,7 +616,7 @@ the premises that are not proved or not given back, each tested:
 
 # State
 
-2026-11-17, 22:30. Items 1 and 2 done; item 3 (the puts) done for every
+2026-11-17, 23:00. Items 1 and 2 done; item 3 (the puts) done for every
 key; item 4: the first delete done, the rest is 030-16's since 19:12;
 item 5 written (section 5). The statement was restated three times this
 evening on findings (section 3: the balance rule, `Shows`, the checker),
@@ -572,7 +625,7 @@ to the restated statement.
 
 - Branch `030-10-writer` in the clone
   `/Users/f/fl/bench/2026-11-17/night/s4d/clone`, on main 53e66e73.
-  Last gated commit: a3ec5ff8.
+  Last gated commit: 6ad9b53a.
 - Build: `cd lean/contract && lake build`. Gate: `lean/contract/gate.sh
   53e66e73` (main's head as merged); after a change of a pinned file
   `lean/contract/pin.sh`, the pin file in the same commit.
@@ -585,10 +638,12 @@ to the restated statement.
   `WriterCascadeDefsG.lean`, `WriterCascadeDefsO.lean` (the put's
   invariant and the recursion's three forms), `WriterPutAll.lean` and
   `WriterPutNamed.lean` (the theorems), `WriterExec.lean`,
-  `WriterCheck.lean`.
+  `WriterView.lean` (the structure after a transaction), `WriterCheck.lean`.
 - Open on the put side (section 6), in the order I would take them:
   the view after a transaction (the model's `changesOf` and `SIS.view`
-  give `Shows` again); `SNamed` as a book of `Mid`; the delete's books
+  give `Shows` again; section 6 has the route in three parts, parts (1)
+  and (2) are done for the key nodes: next part (3), the top, then the
+  join); `SNamed` as a book of `Mid`; the delete's books
   through the put (with 030-16: its `LinkLive`, parked in
   `/Users/f/fl/bench/2026-11-17/night/s4j/linklive/`, was proved for the
   forms of before the restatements); the bounds by heights, so that
@@ -776,3 +831,21 @@ changes two proof files and no checker): `writer.sh`: WRITER OK, the
 counts as above; `contractcheck`, `bridgecheck` on small and drain:
 CONTRACT OK, BRIDGE OK.
 GATED a3ec5ff8: main 53e66e73 merged; the balance rule and Shows restated (the nodes reached; OldReach) through the puts and 030-16's delete, merges and root collapse; writercheck with the model's view; mergeOk_of_rest.
+2026-11-17, 22:30 to 22:50. The second review's point 1, the view after a
+transaction (week 57 %, under the coordinator's 58 %): the route written
+(section 6); the old package's `apply_keyNode` and round trip found;
+`WriterView.lean`: `Holds`, `holds_apply` (one prover, 4 minutes; no
+hypothesis added). `gate.sh 53e66e73`: GATE OK (193 theorems, 135 files
+pinned: the old package's files that the statement reads are pinned now);
+the gate's step 1 prints "lake build has warnings" for the old package's
+files built with it (section 6, the decision to import). No checker
+changed: the traces' results of 22:25 stand.
+GATED 10489bff: the model's structure after a transaction holds the tree of the writer's state (Holds, holds_apply), by the old package's apply_keyNode, imported.
+2026-11-17, 22:47 to 22:57. Part (1) of the view's route: `LevFalls`,
+`reachable_of_holds`, `shows_key_of_holds` (the same prover, 8 minutes;
+one hypothesis added: the nodes reached have well-formed klongs with W5,
+needed for 030-07's `mem_blive_entriesOf`). `gate.sh 53e66e73`: GATE OK
+(195 theorems). No checker changed.
+GATED 6ad9b53a: the model's own view shows the key nodes that the tree reaches (reachable_of_holds, shows_key_of_holds), given the space root reachable, falling levels and well-formed klongs.
+2026-11-17, 23:00. The week is at 58 %: by the coordinator's word of 22:00
+no new part is started. The night's STOP file is not there yet.

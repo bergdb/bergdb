@@ -198,5 +198,7 @@ open Contract
 #print axioms merge_spec_of_rest
 #print axioms mergeOk_of_rest
 #print axioms holds_apply
+#print axioms reachable_of_holds
+#print axioms shows_key_of_holds
 #print axioms mergeUp_spec
 #print axioms afterOkW_on
