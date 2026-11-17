@@ -12,10 +12,11 @@
 #   seeds: as treeconf.sh's (default 3 for medium).
 # Builds the two Lean packages with lake (lean/ for treecheck; lean/contract/,
 # with Mathlib: if its .lake has no Mathlib, lake exe cache get fetches the
-# Mathlib cache first, about 5 GB). Needs java/build (java/build.sh). Logs go to
-# build/contractconf/; the traces and the checkers' outputs to
-# build/traces/tree-SET/. Prints the summary of each check, then CONTRACTCONF OK
-# or CONTRACTCONF FAILED. Set JAVA_HOME or PATH for the JDK.
+# Mathlib cache first: 7.6 GB, about 4 minutes, bergdb 030-13). Needs
+# java/build (java/build.sh). Logs go to build/contractconf/; the traces and
+# the checkers' outputs to build/traces/tree-SET/. Prints the summary of each
+# check, then CONTRACTCONF OK or CONTRACTCONF FAILED. Set JAVA_HOME or PATH for
+# the JDK.
 
 cd "$(dirname "$0")/.."
 

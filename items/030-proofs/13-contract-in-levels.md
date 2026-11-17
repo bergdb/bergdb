@@ -45,7 +45,14 @@ The run: see section 3.
   before.
 - **The Mathlib cache**: level2.sh and contractconf.sh run
   `lake exe cache get` in `lean/contract/` only if `.lake/packages/mathlib`
-  is missing, then `lake build`. night.sh copies the main tree's
+  is missing, then `lake build`. Its cost, measured in a fresh clone on
+  F53 (17:20): 263 s, of which the clones of Mathlib and its six
+  dependencies from GitHub and the build of the cache tool are most, and 71 s
+  the unpacking of 8,907 files; nothing was downloaded, since F53's
+  `~/.cache/mathlib` (448 MB) had them all; on a new machine add that
+  download. The result: 7.6 GB in `.lake`. A first `lake build` then builds
+  the contract package and the old package `lean/` it depends on (not
+  measured; `lean/.lake` was in place). night.sh copies the main tree's
   `lean/contract/.lake` (7.7 GB) with `cp -cR` (clonefile: 28 s on F53, no
   disk space), falling back to `cp -R`.
 - **AGENTS.md's line on the level scripts** names the contract package, since
