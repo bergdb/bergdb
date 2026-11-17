@@ -1,0 +1,656 @@
+/-
+The proof trial of 026-18 (bergdb 026-19, tier 3): `FixW` for the unlink when the segment leaf
+above has room for the bitmap (the room case); the full leaf (handleFull and its cascade) a named
+premise (`FixWUnlinkFull`): no lemma of main covers a segment pointer's bitmap in a full leaf.
+-/
+import SIS.Tree.MtMerge
+
+set_option autoImplicit false
+
+namespace SIS.Tree.Mt
+
+open SIS SIS.Check SIS.Tree
+
+theorem targetGo_unlinkX (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base) :
+    ∀ (d : Nat) (w : W), (∀ y, w.taken.contains y = false) →
+      WriterWP (targetGo d) c w (fun f _ => ∀ e, f = Fix.unlink e → e ≠ 0 ∧
+        (∃ q qn, w.path[e - 1]? = some q ∧ wNode c.p base w q.2 = some qn ∧ qn.leaf = true) ∧
+        ∃ ex xn, w.path[e]? = some ex ∧ wNode c.p base w ex.2 = some xn ∧ xn.leaf = true ∧ xn.cnt = 0) := by
+  intro d
+  induction d with
+  | zero => intro w _; simp only [targetGo, writerWP_pure]; intro e h; cases h
+  | succ d ih =>
+    intro w ht
+    rw [targetGo]
+    simp only [writerWP_bind, writerWP_read]
+    apply pathNode_wp
+    intro e0 he0
+    refine writerWP_mono (getNode_rp e0.2 c w base hvc) ?_
+    intro xn v ⟨hrv, hpv, hxn'⟩
+    have hxn := hxn' (ht e0.2)
+    have htv : ∀ y, v.taken.contains y = false := by intro y; rw [hrv.2.2.1]; exact ht y
+    have hrec : ∀ v', ReadsAs c.p base w v' → v'.path = w.path →
+        WriterWP (targetGo d) c v' (fun f _ => ∀ e, f = Fix.unlink e → e ≠ 0 ∧
+          (∃ q qn, w.path[e - 1]? = some q ∧ wNode c.p base w q.2 = some qn ∧ qn.leaf = true) ∧
+          ∃ ex xn, w.path[e]? = some ex ∧ wNode c.p base w ex.2 = some xn ∧ xn.leaf = true ∧
+            xn.cnt = 0) := by
+      intro v' hr hp
+      have ht' : ∀ y, v'.taken.contains y = false := by intro y; rw [hr.2.2.1]; exact ht y
+      refine writerWP_mono (ih v' ht') ?_
+      intro f _ h e he
+      have := h e he
+      rw [hr.1, hp] at this
+      exact this
+    have hother : ∀ (f : Fix) v', (∀ e, f ≠ Fix.unlink e) →
+        WriterWP (pure f : M Fix) c v' (fun f _ => ∀ e, f = Fix.unlink e → e ≠ 0 ∧
+          (∃ q qn, w.path[e - 1]? = some q ∧ wNode c.p base w q.2 = some qn ∧ qn.leaf = true) ∧
+          ∃ ex xn, w.path[e]? = some ex ∧ wNode c.p base w ex.2 = some xn ∧ xn.leaf = true ∧
+            xn.cnt = 0) := by
+      intro f v' hf
+      simp only [writerWP_pure]
+      intro e he
+      exact absurd he (hf e)
+    split
+    · simp only [writerWP_bind]; exact writerWP_throw _ _ _ _
+    · cases d with
+      | zero =>
+        simp only [writerWP_bind, writerWP_pure]
+        rw [if_pos trivial]
+        by_cases hl : xn.leaf = true
+        · rw [if_pos hl]
+          have h00 : ¬ ((xn.cnt == 0 && 0 != 0) = true) := by simp
+          rw [if_neg h00]
+          exact hrec v hrv hpv
+        · rw [if_neg hl]
+          by_cases hc : (xn.cnt == 1) = true
+          · rw [if_pos hc]; exact hother _ v (fun e h => by cases h)
+          · rw [if_neg hc]; exact hrec v hrv hpv
+      | succ e1 =>
+        simp only [writerWP_bind, writerWP_pure]
+        apply pathNode_wp
+        intro e' he'
+        rw [hpv] at he'
+        refine writerWP_mono (getNode_rp e'.2 c v base hvc) ?_
+        intro qn v2 ⟨hr2, hp2, hqn'⟩
+        have hqn := hqn' (htv e'.2)
+        rw [hrv.1] at hqn
+        have hr02 := ReadsAs.trans _ _ _ _ _ hrv hr2
+        have hp02 : v2.path = w.path := hp2.trans hpv
+        by_cases hql : qn.leaf = true
+        · rw [if_pos hql]
+          by_cases hl : xn.leaf = true
+          · rw [if_pos hl]
+            by_cases hc : (xn.cnt == 0 && e1 + 1 != 0) = true
+            · rw [if_pos hc]
+              simp only [writerWP_pure]
+              intro e he
+              cases he
+              exact ⟨by omega, ⟨e', qn, by simpa using he', hqn, hql⟩, e0, xn, by simpa using he0, hxn,
+                hl, by simpa using hc⟩
+            · rw [if_neg hc]; exact hrec v2 hr02 hp02
+          · rw [if_neg hl]
+            by_cases hc : (xn.cnt == 1) = true
+            · rw [if_pos hc]; exact hother _ v2 (fun e h => by cases h)
+            · rw [if_neg hc]; exact hrec v2 hr02 hp02
+        · rw [if_neg hql]
+          by_cases hlt : xn.cnt < c.p.mergeBelow
+          · rw [if_pos hlt]
+            by_cases hq2 : 2 ≤ qn.cnt
+            · rw [if_pos hq2]; exact hother _ v2 (fun e h => by cases h)
+            · rw [if_neg hq2]
+              simp only [writerWP_bind]
+              rw [writerWP_note_iff]
+              exact hrec _ (ReadsAs.trans _ _ _ _ _ hr02 ⟨by funext y; rfl, rfl, rfl, rfl, rfl⟩) hp02
+          · rw [if_neg hlt]; exact hrec v2 hr02 hp02
+
+
+/-! ## The path's links -/
+
+/-- Each entry after the first of a path linked from r is a live child of the entry before. -/
+theorem linkedFrom_at (N : NodeId → Option KNode) (t : Time) :
+    ∀ (ps : List (Option Nat × NodeId)) (r : NodeId), LinkedFrom N t r ps →
+      ∀ j a y, ((none, r) :: ps)[j + 1]? = some (a, y) →
+        ∃ k z n, a = some k ∧ (((none, r) :: ps)[j]?).map (·.2) = some z ∧ N z = some n ∧
+          (k, y) ∈ n.liveAt t := by
+  intro ps
+  induction ps with
+  | nil => intro r _ j a y h; simp at h
+  | cons e ps ih =>
+    intro r hl j a y h
+    cases hl with
+    | cons _ n k y0 rest hn hk hrest =>
+      cases j with
+      | zero =>
+        simp only [List.getElem?_cons_succ, List.getElem?_cons_zero, Option.some.injEq,
+          Prod.mk.injEq] at h
+        obtain ⟨rfl, rfl⟩ := h
+        exact ⟨k, r, n, rfl, rfl, hn, hk⟩
+      | succ j =>
+        simp only [List.getElem?_cons_succ] at h
+        obtain ⟨k', z', n', ha, he', hn', hk'⟩ := ih y0 hrest j a y (by simpa using h)
+        refine ⟨k', z', n', ha, ?_, hn', hk'⟩
+        cases j with
+        | zero =>
+          simp only [List.getElem?_cons_zero, Option.map_some, Option.some.injEq] at he'
+          subst he'
+          rfl
+        | succ j =>
+          simpa using he'
+
+/-! ## Readings after the unlink's bitmap in the leaf above -/
+
+/-- A search from x through readers that differ only at the leaf q, where the new one has lost
+the pointer of compare value cv to x0. -/
+theorem getEqR_unlinkLeaf (N N' : NodeId → Option KNode) (t : Time) (q x0 : NodeId)
+    (qn qn' : KNode) (cv : Nat) (hq : N q = some qn) (hq' : N' q = some qn') (hl : qn.leaf = true)
+    (hl' : qn'.leaf = true)
+    (hs : ∀ c, c ≠ cv → (qn'.searchEq t c).map (·.y) = (qn.searchEq t c).map (·.y))
+    (hs0 : (qn'.searchEq t cv).map (·.y) = none) (hsx : (qn.searchEq t cv).map (·.y) = some x0)
+    (hother : ∀ y, y ≠ q → N' y = N y) (c : Nat) :
+    ∀ (f : Nat) (x : NodeId), getEqR N' t c f x = getEqR N t c f x ∨
+      (c = cv ∧ getEqR N' t c f x = none ∧ getEqR N t c f x = some x0) := by
+  intro f
+  induction f with
+  | zero => intro x; exact Or.inl rfl
+  | succ f ih =>
+    intro x
+    by_cases hxq : x = q
+    · subst hxq
+      simp only [getEqR, hq, hq', hl, hl', ↓reduceIte]
+      by_cases hc : c = cv
+      · subst hc
+        exact Or.inr ⟨rfl, hs0, hsx⟩
+      · exact Or.inl (hs c hc)
+    · simp only [getEqR, hother x hxq]
+      cases hn : N x with
+      | none => exact Or.inl rfl
+      | some n =>
+        simp only
+        split
+        · exact Or.inl rfl
+        · split
+          · exact Or.inl rfl
+          · exact ih _
+
+theorem getFromR_emptyLeaf (N : NodeId → Option KNode) (V : NodeId → Option Nat) (t : Time)
+    (f : Nat) (x0 : NodeId) (xn : KNode) (hx : N x0 = some xn) (hxl : xn.leaf = true)
+    (hxs : ∀ c, (xn.searchEq t c).map (·.y) = none) :
+    ∀ key, getFromR N V t f key x0 = none := by
+  intro key
+  have hg : ∀ c, getEqR N t c f x0 = none := by
+    intro c
+    cases f with
+    | zero => rfl
+    | succ f => simp only [getEqR, hx, hxl, ↓reduceIte]; exact hxs c
+  cases key with
+  | nil => rfl
+  | cons c rest =>
+    cases rest with
+    | nil => simp only [getFromR, hg c, Option.bind_none]
+    | cons d rest => simp only [getFromR, hg c]
+
+/-- The readings after the unlink's bitmap: as before (the pointer's subtree, an empty leaf,
+read none). -/
+theorem getFromR_unlinkLeaf (N N' : NodeId → Option KNode) (V : NodeId → Option Nat) (t : Time)
+    (f : Nat) (q x0 : NodeId) (qn qn' xn : KNode) (cv : Nat) (hq : N q = some qn)
+    (hq' : N' q = some qn') (hl : qn.leaf = true) (hl' : qn'.leaf = true)
+    (hs : ∀ c, c ≠ cv → (qn'.searchEq t c).map (·.y) = (qn.searchEq t c).map (·.y))
+    (hs0 : (qn'.searchEq t cv).map (·.y) = none) (hsx : (qn.searchEq t cv).map (·.y) = some x0)
+    (hother : ∀ y, y ≠ q → N' y = N y)
+    (hx : N x0 = some xn) (hxl : xn.leaf = true) (hxs : ∀ c, (xn.searchEq t c).map (·.y) = none)
+    (hVx : V x0 = none) :
+    ∀ key r, getFromR N' V t f key r = getFromR N V t f key r := by
+  have hsome : ∀ y, (N' y).isSome = (N y).isSome := by
+    intro y
+    by_cases hy : y = q
+    · subst hy; rw [hq, hq']; rfl
+    · rw [hother y hy]
+  intro key
+  induction key with
+  | nil => intro r; rfl
+  | cons c rest ih =>
+    intro r
+    rcases getEqR_unlinkLeaf N N' t q x0 qn qn' cv hq hq' hl hl' hs hs0 hsx hother c f r with
+      he | ⟨_, h1, h2⟩
+    · cases rest with
+      | nil => simp only [getFromR, he]
+      | cons d rest' =>
+        simp only [getFromR, he]
+        cases getEqR N t c f r with
+        | none => rfl
+        | some y =>
+          simp only [hsome y]
+          split
+          · exact ih y
+          · rfl
+    · cases rest with
+      | nil => simp only [getFromR, h1, h2, Option.bind_none, Option.bind_some, hVx]
+      | cons d rest' =>
+        simp only [getFromR, h1, h2, hx, Option.isSome_some, ↓reduceIte]
+        exact (getFromR_emptyLeaf N V t f x0 xn hx hxl hxs _).symm
+
+theorem eqVisits_unlinkLeaf (N N' : NodeId → Option KNode) (t : Time) (q : NodeId) (qn qn' : KNode)
+    (hq : N q = some qn) (hq' : N' q = some qn') (hl : qn.leaf = true) (hl' : qn'.leaf = true)
+    (hother : ∀ y, y ≠ q → N' y = N y) (c : Nat) :
+    ∀ (f : Nat) (x : NodeId), eqVisits N' t c f x = eqVisits N t c f x := by
+  intro f
+  induction f with
+  | zero => intro x; rfl
+  | succ f ih =>
+    intro x
+    by_cases hxq : x = q
+    · subst hxq
+      simp only [eqVisits, hq, hq', hl, hl', ↓reduceIte]
+    · simp only [eqVisits, hother x hxq]
+      cases N x with
+      | none => rfl
+      | some n =>
+        simp only
+        split
+        · rfl
+        · split
+          · rfl
+          · rw [ih]
+
+/-- A node a reading visits before the unlink's bitmap it visits after, but the unlinked leaf. -/
+theorem fromVisits_unlinkLeaf (N N' : NodeId → Option KNode) (t : Time) (f : Nat) (q x0 : NodeId)
+    (qn qn' xn : KNode) (cv : Nat) (hq : N q = some qn)
+    (hq' : N' q = some qn') (hl : qn.leaf = true) (hl' : qn'.leaf = true)
+    (hs : ∀ c, c ≠ cv → (qn'.searchEq t c).map (·.y) = (qn.searchEq t c).map (·.y))
+    (hs0 : (qn'.searchEq t cv).map (·.y) = none) (hsx : (qn.searchEq t cv).map (·.y) = some x0)
+    (hother : ∀ y, y ≠ q → N' y = N y) (hx : N x0 = some xn) (hxl : xn.leaf = true)
+    (hxs : ∀ c, (xn.searchEq t c).map (·.y) = none) :
+    ∀ key r e, e ∈ fromVisits N t f key r → e ∈ fromVisits N' t f key r ∨ e.1 = x0 := by
+  have hg0 : ∀ c, getEqR N t c f x0 = none := by
+    intro c
+    cases f with
+    | zero => rfl
+    | succ f => simp only [getEqR, hx, hxl, ↓reduceIte]; exact hxs c
+  have hev0 : ∀ c e, e ∈ eqVisits N t c f x0 → e.1 = x0 := by
+    intro c e he
+    cases f with
+    | zero => simp [eqVisits] at he
+    | succ f =>
+      simp only [eqVisits, hx, hxl, ↓reduceIte, List.mem_cons, List.not_mem_nil, or_false] at he
+      rw [he]
+  have hev : ∀ c x, eqVisits N' t c f x = eqVisits N t c f x :=
+    fun c x => eqVisits_unlinkLeaf N N' t q qn qn' hq hq' hl hl' hother c f x
+  intro key
+  induction key with
+  | nil => intro r e he; simp [fromVisits] at he
+  | cons c rest ih =>
+    intro r e he
+    cases rest with
+    | nil =>
+      simp only [fromVisits] at he ⊢
+      exact Or.inl (by rw [hev]; exact he)
+    | cons d rest' =>
+      simp only [fromVisits, List.mem_append] at he ⊢
+      rcases he with he | he
+      · exact Or.inl (Or.inl (by rw [hev]; exact he))
+      · rcases getEqR_unlinkLeaf N N' t q x0 qn qn' cv hq hq' hl hl' hs hs0 hsx hother c f r with
+          hge | ⟨_, h1, h2⟩
+        · rw [hge]
+          cases hg : getEqR N t c f r with
+          | none => rw [hg] at he; cases he
+          | some y =>
+            rw [hg] at he
+            rcases ih y e he with h | h
+            · exact Or.inl (Or.inr h)
+            · exact Or.inr h
+        · rw [h2] at he
+          right
+          cases rest' with
+          | nil =>
+            simp only [fromVisits] at he
+            exact hev0 d e he
+          | cons d2 rest'' =>
+            simp only [fromVisits, List.mem_append, hg0 d] at he
+            rcases he with he | he
+            · exact hev0 d e he
+            · cases he
+
+/-! ## The tree, its reach and its ranges, when a leaf loses links -/
+
+theorem tReach_sub (N N' : NodeId → Option KNode) (t : Time) (r : NodeId)
+    (hlink : ∀ x c y, TLink N' t x c y → TLink N t x c y) :
+    ∀ y, TReach N' t r y → TReach N t r y := by
+  intro y h
+  induction h with
+  | root => exact TReach.root
+  | link _ hl ih => exact TReach.link ih (hlink _ _ _ hl)
+
+theorem treeOK_sub (N N' : NodeId → Option KNode) (t : Time) (r : NodeId) (hT : TreeOK N t r)
+    (hr : ∃ n, N' r = some n) (hlink : ∀ x c y, TLink N' t x c y → TLink N t x c y) :
+    TreeOK N' t r := by
+  refine ⟨hr, ?_, ?_⟩
+  · intro x c hx hl
+    exact hT.rootFree x c (tReach_sub N N' t r hlink x hx) (hlink _ _ _ hl)
+  · intro x c x' c' y hx hx' hl hl'
+    exact hT.oneLink x c x' c' y (tReach_sub N N' t r hlink x hx) (tReach_sub N N' t r hlink x' hx')
+      (hlink _ _ _ hl) (hlink _ _ _ hl')
+
+theorem fReach_sub (N N' : NodeId → Option KNode) (t : Time) (r : NodeId)
+    (hnode : ∀ x n', N' x = some n' → ∃ n, N x = some n ∧ n.leaf = n'.leaf ∧
+      ∀ c y, (c, y) ∈ n'.liveAt t → (c, y) ∈ n.liveAt t) :
+    ∀ x b s, FReach N' t r x b s → FReach N t r x b s := by
+  intro x b s h
+  induction h with
+  | root => exact FReach.root
+  | inner x b s n' c y _ hn hl hc ih =>
+    obtain ⟨n, hn0, hll, hlv⟩ := hnode x n' hn
+    exact FReach.inner x b s n c y ih hn0 (by rw [hll]; exact hl) (hlv c y hc)
+  | seg x b s n' c y _ hn hl hc ih =>
+    obtain ⟨n, hn0, hll, hlv⟩ := hnode x n' hn
+    exact FReach.seg x b s n c y ih hn0 (by rw [hll]; exact hl) (hlv c y hc)
+
+/-- Ranges kept when only a leaf loses live klongs: a leaf's children start new segments. -/
+theorem rangeOrder_leafSub (N N' : NodeId → Option KNode) (t : Time) (r q : NodeId) (qn qn' : KNode)
+    (hR : RangeOrder N t r) (hq : N q = some qn) (hq' : N' q = some qn') (hl : qn.leaf = true)
+    (hl' : qn'.leaf = true) (hsub : ∀ c y, (c, y) ∈ qn'.liveAt t → (c, y) ∈ qn.liveAt t)
+    (hother : ∀ y, y ≠ q → N' y = N y) : RangeOrder N' t r := by
+  have hreach : ∀ x lo hi, ReachR N' t r x lo hi → ReachR N t r x lo hi := by
+    intro x lo hi h
+    induction h with
+    | root => exact ReachR.root
+    | inner x n lo hi c y b _ hn hlf hb ih =>
+      have hxq : x ≠ q := by
+        intro h; subst h; rw [hq'] at hn; cases hn; rw [hl'] at hlf; cases hlf
+      rw [hother x hxq] at hn
+      exact ReachR.inner x n lo hi c y b ih hn hlf hb
+    | seg x n lo hi c y _ hn hlf hc ih =>
+      by_cases hxq : x = q
+      · subst hxq
+        rw [hq'] at hn; cases hn
+        exact ReachR.seg x qn lo hi c y ih hq hl (hsub c y hc)
+      · rw [hother x hxq] at hn
+        exact ReachR.seg x n lo hi c y ih hn hlf hc
+  intro x lo hi n hx hn
+  have hx0 := hreach x lo hi hx
+  by_cases hxq : x = q
+  · subst hxq
+    rw [hq'] at hn; cases hn
+    have h0 := hR x lo hi qn hx0 hq
+    intro e he
+    have := h0 e (hsub e.1 e.2 he)
+    rw [hl] at this; rw [hl']
+    exact this
+  · rw [hother x hxq] at hn
+    exact hR x lo hi n hx0 hn
+
+/-! ## `FixW` for the unlink -/
+
+/-- The empty key's path never asks for an unlink: its path is the space root alone. -/
+theorem pathTarget_nil_noUnlink (c : Ctx) (w : W) :
+    WriterWP (do path []; target : M Fix) c w (fun f _ => ∀ d, f ≠ Fix.unlink d) := by
+  simp only [writerWP_bind]
+  unfold path pathGo
+  simp only [pathClear, findRoot, pathAdd, writerWP_bind, writerWP_modify, writerWP_get, writerWP_pure]
+  unfold target pathSize
+  simp only [writerWP_bind, writerWP_get, writerWP_pure, List.nil_append, List.length_cons,
+    List.length_nil, Nat.zero_add]
+  rw [targetGo]
+  simp only [writerWP_bind, writerWP_read]
+  apply pathNode_wp
+  intro e he
+  intro xn v _
+  have hpureOK : ∀ (f : Fix) (u : W), (∀ d, f ≠ Fix.unlink d) →
+      WriterWP (pure f : M Fix) c u (fun f _ => ∀ d, f ≠ Fix.unlink d) :=
+    fun f u hf => (writerWP_pure _ _ _ _).mpr hf
+  have hgo0 : ∀ u, WriterWP (targetGo 0) c u (fun f _ => ∀ d, f ≠ Fix.unlink d) := by
+    intro u; rw [targetGo]; exact hpureOK _ _ (fun d h => Fix.noConfusion h)
+  repeat' first
+    | exact writerWP_throw _ _ _ _
+    | exact hgo0 _
+    | exact hpureOK _ _ (fun d h => Fix.noConfusion h)
+    | wpSplit
+    | (simp only [writerWP_bind, writerWP_pure])
+    | split
+    | contradiction
+    | (rename_i h; rw [Bool.and_eq_true] at h; exact absurd h.2 (by decide))
+    | (exfalso; simp_all)
+
+/-- The segment leaf above the unlinked root has room for the bitmap, at the state after the path
+and the target. -/
+def UnlinkRoomAt (c : Ctx) (v : W) (d : Nat) : Prop :=
+  ∀ a q k x qn, v.path[d - 1]? = some (a, q) → v.path[d]? = some (some k, x) →
+    v.nodes.lookup q = some qn →
+    bitsUnion qn.lastBitmap (qn.bitsOf k) ≠ qn.lastBitmap ∧ qn.size + 1 < c.p.M ∧
+    deadOver c.p (qn.setAt (qn.size - 1) (.del (bitsUnion qn.lastBitmap (qn.bitsOf k)))) = false ∧
+    deadOver c.p (qn.add c.i (.del (bitsUnion qn.lastBitmap (qn.bitsOf k)))) = false
+
+/-- `FixW` for an unlink whose segment leaf is full (no room for the bitmap: `handleFull` and its
+cascade): a named premise. -/
+def FixWUnlinkFull (p : Params) : Prop :=
+  ∀ (key : Key) (c : Ctx) (base : View BVal) (w : W) (H : NodeId → Prop), c.p = p →
+    ViewCoherent c base → FixStart c base w → PutInv c base w → PutInvG c base w →
+    RangeOrder (wNode p base w) c.i w.top.rootKey →
+    LiveCountsH p (wNode p base w) c.i w.top.rootKey H →
+    (∀ f w1, (do path key; target : M Fix) c w = .ok (f, w1) → IsUnlink f) →
+    (∃ B top0, PutBase c base B ∧ PutBook c B top0 w) →
+    (∀ w', fixStep key c w = .ok (true, w') →
+      SegFits (wNode p base w') c.i (p.fuel - 1) w'.top.rootKey) →
+    SegFits (wNode p base w) c.i (p.fuel - 1) w.top.rootKey →
+    InnerChildrenExist (wNode p base w) c.i w.top.rootKey →
+    (∀ d w1, (do path key; target : M Fix) c w = .ok (.unlink d, w1) → ¬ UnlinkRoomAt c w1 d) →
+    WriterWP (fixStep key) c w (fun r w' => r = true →
+      PutInv c base w' ∧ PutInvG c base w' ∧
+      RangeOrder (wNode p base w') c.i w'.top.rootKey ∧
+      LiveCountsH p (wNode p base w') c.i w'.top.rootKey
+        (fun y => H y ∨ HoleW c base w' key y) ∧
+      ∀ k, wGet p c.i base w' k = wGet p c.i base w k)
+
+theorem live_nodup (n : KNode) : (n.live.map Prod.fst).Nodup :=
+  List.pairwise_map.mpr ((KNode.live_order n).imp (fun h => Nat.ne_of_lt h))
+
+/-- `FixW` for the unlink: the room case proved, the full leaf from `FixWUnlinkFull`. -/
+theorem t_fixW_unlink_of (p : Params) (hFull : FixWUnlinkFull p) : FixW p IsUnlink := by
+  intro key c base w H hcp hvc hst hPI hPG hRO hLH hkind hbooks hfit hfit0 hice
+  intro r w' hrun hr
+  subst hr
+  obtain ⟨f, w1, hpt⟩ := fixStep_pt key c w true w' hrun
+  obtain ⟨d, rfl⟩ := hkind f w1 hpt
+  by_cases hroom : UnlinkRoomAt c w1 d
+  case neg =>
+    refine hFull key c base w H hcp hvc hst hPI hPG hRO hLH hkind hbooks hfit hfit0 hice ?_ true w' hrun rfl
+    intro d' w1' h'
+    rw [hpt] at h'
+    simp only [Except.ok.injEq, Prod.mk.injEq, Fix.unlink.injEq] at h'
+    obtain ⟨rfl, rfl⟩ := h'
+    exact hroom
+  subst hcp
+  have hkey : key ≠ [] := by
+    intro h0
+    subst h0
+    exact pathTarget_nil_noUnlink c w _ w1 hpt d rfl
+  have htk0 : w.taken = [] := hst.2.1
+  obtain ⟨u, w2, hp, ht, hul⟩ := fixStep_unlink_split key c w w' d w1 hrun hpt
+  obtain ⟨hr2, _, _, ps, hps, hlinked, hcached2, hvis⟩ := writerWP_mtPath key hkey c base hvc w
+    (fun y _ => by rw [htk0]; rfl) (fun y yn _ hy => hPI.wf y yn hy) u w2 hp
+  -- the target reads only: w1 is w2 but the notes
+  have hgo : targetGo w2.path.length c w2 = .ok (.unlink d, w1) := by
+    unfold target at ht
+    obtain ⟨n, w3, hsz, hgo⟩ := (m_bind_ok _ _ _ _ _).mp ht
+    simp only [pathSize, bind, ReaderT.bind, StateT.bind, get, getThe, MonadStateOf.get,
+      liftM, monadLift, MonadLift.monadLift, StateT.get, pure, ReaderT.pure, StateT.pure,
+      Except.pure, Except.bind] at hsz
+    have hsz' : (Except.ok (w2.path.length, w2) : Except String (Nat × W)) = .ok (n, w3) := hsz
+    simp only [Except.ok.injEq, Prod.mk.injEq] at hsz'
+    obtain ⟨rfl, rfl⟩ := hsz'
+    exact hgo
+  obtain ⟨hs12, _⟩ := writerWP_targetGo c _ w2 hcached2 _ w1 hgo
+  obtain ⟨hn12, _, _, hv12, ht12, hnx12, hp12, htop12, _⟩ := strip_fields hs12
+  have ht2 : ∀ y, w2.taken.contains y = false := by intro y; rw [hr2.2.2.1, htk0]; rfl
+  obtain ⟨hd0, ⟨q, qn, hq, hqn, hql⟩, ⟨ex, xn, hex, hxn, hxl, hxc⟩⟩ :=
+    targetGo_unlinkX c base hvc _ w2 ht2 _ w1 hgo d rfl
+  obtain ⟨a, q', kk, hq', ⟨y, hky⟩, hadk⟩ := unlinkTree_run d _ w1 w' hul
+  rw [hp12] at hq' hky
+  rw [hq] at hq'
+  simp only [Option.some.injEq] at hq'
+  subst hq'
+  rw [hex] at hky
+  simp only [Option.some.injEq] at hky
+  subst hky
+  dsimp only at hqn hxn
+  -- the readers
+  have hN2 : wNode c.p base w2 = wNode c.p base w := hr2.1
+  rw [hN2] at hqn hxn
+  -- the link from q to x on the path
+  have hlink : (kk, y) ∈ qn.liveAt c.i := by
+    have hd' : d = (d - 1) + 1 := by omega
+    have hpe : ((none, w.top.rootKey) :: ps)[(d - 1) + 1]? = some (some kk, y) := by
+      rw [← hps, ← hd', hex]
+    obtain ⟨k', z, n, hk', hz, hn, hkn⟩ := linkedFrom_at _ _ ps w.top.rootKey hlinked (d - 1) _ _ hpe
+    simp only [Option.some.injEq] at hk'
+    subst hk'
+    rw [← hps, hq] at hz
+    simp only [Option.map_some, Option.some.injEq] at hz
+    subst hz
+    rw [hqn] at hn
+    cases hn
+    exact hkn
+  -- q cached at w1
+  obtain ⟨qn1, hqn1⟩ := hcached2 (a, q') (List.mem_of_getElem? hq)
+  have hqq : qn1 = qn := by
+    have h1 : wNode c.p base w2 q' = some qn1 := by
+      simp only [wNode, ht2 q', Bool.false_eq_true, ↓reduceIte, hqn1]
+    rw [hN2, hqn] at h1
+    exact (Option.some.inj h1).symm
+  subst hqq
+  have hqlk1 : w1.nodes.lookup q' = some qn1 := by rw [hn12]; exact hqn1
+  obtain ⟨hne, hrm, hd1, hd2⟩ := hroom a q' kk y qn1 (by rw [hp12]; exact hq)
+    (by rw [hp12]; exact hex) hqlk1
+  have hqt : ∀ s, Klong.time s ∈ qn1.ks → s ≤ c.i := hPI.times _ _ hqn
+  have hqw : klongsWf qn1.ks = true := hPI.wf _ _ hqn
+  obtain ⟨ht', htop', hvals', hpath', hnext', _, n', hnodes', hl', hw', htm', hlk', _⟩ :=
+    writerWP_appendDeleteKlong_room_exact q' (d - 1) kk qn1 c
+      { w1 with trail := "fix.unlink" :: w1.trail } hqlk1 hqt hqw hne hrm hd1 hd2 false w' hadk
+  -- the node map after the step
+  have htk1 : w1.taken = [] := by rw [ht12, hr2.2.2.1, htk0]
+  have htk' : w'.taken = [] := by rw [ht']; exact htk1
+  have hN' : ∀ z, wNode c.p base w' z = if z = q' then some n' else wNode c.p base w z := by
+    intro z
+    have e1 : wNode c.p base w1 = wNode c.p base w := by
+      have : wNode c.p base w1 = wNode c.p base w2 := by
+        funext z'; simp only [wNode, hn12, ht12]
+      rw [this, hN2]
+    simp only [wNode, htk', htk1, show w'.nodes = upsert w1.nodes q' n' from hnodes', lookup_upsert]
+    by_cases hz : z = q'
+    · simp [hz]
+    · simp only [hz, ↓reduceIte]
+      have := congrFun e1 z
+      simp only [wNode, htk1] at this
+      exact this
+  have hq' : wNode c.p base w' q' = some n' := by rw [hN']; simp
+  have hother : ∀ z, z ≠ q' → wNode c.p base w' z = wNode c.p base w z := by
+    intro z hz; rw [hN']; simp [hz]
+  have hn't : ∀ s, Klong.time s ∈ n'.ks → s ≤ c.i := htm'
+  have hsearch : ∀ (m : KNode), klongsWf m.ks = true → (∀ s, Klong.time s ∈ m.ks → s ≤ c.i) →
+      ∀ cc, (m.searchEq c.i cc).map (·.y) = m.live.lookup cc :=
+    fun m hw ht cc => KNode.searchEq_live m c.i hw ht cc
+  have hlive' : ∀ cc z, (cc, z) ∈ n'.liveAt c.i → (cc, z) ∈ qn1.liveAt c.i := by
+    intro cc z hm
+    rw [KNode.liveAt_of_times n' c.i hn't] at hm
+    rw [KNode.liveAt_of_times qn1 c.i hqt]
+    have h1 := lookup_some_of_mem (live_nodup n') hm
+    rw [hlk'] at h1
+    by_cases hc : cc = kk
+    · subst hc; simp at h1
+    · simp only [beq_iff_eq, hc, ↓reduceIte] at h1
+      exact lookup_some_mem h1
+  have hxk : qn1.live.lookup kk = some y := by
+    rw [KNode.liveAt_of_times qn1 c.i hqt] at hlink
+    exact lookup_some_of_mem (live_nodup qn1) hlink
+  have hxt : ∀ s, Klong.time s ∈ xn.ks → s ≤ c.i := hPI.times _ _ hxn
+  have hxw : klongsWf xn.ks = true := hPI.wf _ _ hxn
+  have hxs : ∀ cc, (xn.searchEq c.i cc).map (·.y) = none := by
+    intro cc
+    rw [hsearch xn hxw hxt]
+    have : xn.live = [] := List.eq_nil_of_length_eq_zero hxc
+    rw [this]; rfl
+  have hxq : y ≠ q' := by
+    intro h
+    rw [h, hqn] at hxn
+    have hx : qn1 = xn := Option.some.inj hxn
+    rw [KNode.liveAt_of_times _ c.i hqt] at hlink
+    have : qn1.live = [] := by rw [hx]; exact List.eq_nil_of_length_eq_zero hxc
+    rw [this] at hlink
+    cases hlink
+  have hs : ∀ cc, cc ≠ kk → (n'.searchEq c.i cc).map (·.y) = (qn1.searchEq c.i cc).map (·.y) := by
+    intro cc hc
+    rw [hsearch n' hw' hn't, hsearch qn1 hqw hqt, hlk']
+    simp [hc]
+  have hs0 : (n'.searchEq c.i kk).map (·.y) = none := by
+    rw [hsearch n' hw' hn't, hlk']; simp
+  have hsx : (qn1.searchEq c.i kk).map (·.y) = some y := by
+    rw [hsearch qn1 hqw hqt, hxk]
+  have hl'' : n'.leaf = true := by rw [hl']; exact hql
+  -- the tree and the ranges
+  have htop'' : w'.top = w.top := by rw [htop', htop12, hr2.2.1]
+  have hT' : TreeOK (wNode c.p base w') c.i w'.top.rootKey := by
+    rw [htop'']
+    refine treeOK_sub _ _ _ _ hPI.tree ?_ ?_
+    · by_cases hrq : w.top.rootKey = q'
+      · rw [hrq]; exact ⟨n', hq'⟩
+      · rw [hother _ hrq]; exact hPI.tree.rootKey
+    · rintro z cc yy ⟨m, hm, hmc⟩
+      by_cases hz : z = q'
+      · subst hz
+        rw [hq'] at hm; cases hm
+        exact ⟨qn1, hqn, hlive' cc yy hmc⟩
+      · rw [hother z hz] at hm
+        exact ⟨m, hm, hmc⟩
+  have hRO' : RangeOrder (wNode c.p base w') c.i w'.top.rootKey := by
+    rw [htop'']
+    exact rangeOrder_leafSub _ _ _ _ q' qn1 n' hRO hqn hq' hql hl'' hlive' hother
+  -- the books
+  obtain ⟨B, top0, hB, hbk⟩ := hbooks
+  have hbk' := putBook_of_keeps (fixStep key) c base B top0 hB w hbk (klongsWf_fixStep key)
+    (good_fixStep B key) (book_fixStep B key) (@state_fixStep (allocatedIdsInvariant B) key)
+    (@state_fixStep (commitInvariant top0) key) (freshCache_fixStep key) (ptrs_fixStep _ key) true w' hrun
+  have hG' := putInvG_of_book c base B top0 w' hB hbk'
+  have hPI' : PutInv c base w' := by
+    refine putInv_of_parts c base w' hG' hT' (fun z _ => by rw [htk']; rfl) ?_
+    exact leafOrder_of_rangeOrder _ _ _ hRO' (fun z zn hz s hs => hG'.times z zn hz s hs)
+  -- the values
+  have hV' : wValue base w' = wValue base w := by
+    funext z
+    simp only [wValue, htk', htk0, show w'.vals = w.vals by rw [hvals', hv12, hr2.2.2.2.1]]
+  refine ⟨hPI', hG', hRO', ?_, ?_⟩
+  · -- the live counts: q is on the key's path after the step
+    rw [htop'']
+    intro z b s' m hz hm hnot
+    have hz0 := fReach_sub (wNode c.p base w) (wNode c.p base w') c.i w.top.rootKey (by
+      intro x0 m0 hx0
+      by_cases hx0q : x0 = q'
+      · subst hx0q
+        rw [hq'] at hx0; cases hx0
+        exact ⟨qn1, hqn, by rw [hl'', hql], hlive'⟩
+      · rw [hother x0 hx0q] at hx0
+        exact ⟨m0, hx0, rfl, fun _ _ h => h⟩) z b s' hz
+    by_cases hzq : z = q'
+    · exfalso
+      rw [hzq] at hnot
+      have hmem : q' ∈ w.top.rootKey :: ps.map (·.2) := by
+        have h1 : (a, q') ∈ w2.path := List.mem_of_getElem? hq
+        rw [hps] at h1
+        simp only [List.mem_cons, List.mem_map] at h1 ⊢
+        rcases h1 with h1 | h1
+        · exact Or.inl (Prod.mk.inj h1).2
+        · exact Or.inr ⟨(a, q'), h1, rfl⟩
+      obtain ⟨cv, hcv⟩ := hvis q' hmem
+      rcases fromVisits_unlinkLeaf (wNode c.p base w) (wNode c.p base w') c.i c.p.fuel q' y qn1 n' xn
+        kk hqn hq' hql hl'' hs hs0 hsx hother hxn hxl hxs key w.top.rootKey (q', cv) hcv with h | h
+      · exact hnot (Or.inr ⟨cv, by rw [htop'']; exact h⟩)
+      · exact hxq h.symm
+    · rw [hother z hzq] at hm
+      exact hLH z b s' m hz0 hm (fun h => hnot (Or.inl h))
+  · intro k'
+    show getFromR (wNode c.p base w') (wValue base w') c.i c.p.fuel k' w'.top.rootKey =
+      getFromR (wNode c.p base w) (wValue base w) c.i c.p.fuel k' w.top.rootKey
+    rw [hV', htop'']
+    exact getFromR_unlinkLeaf (wNode c.p base w) (wNode c.p base w') (wValue base w) c.i c.p.fuel q'
+      y qn1 n' xn kk hqn hq' hql hl'' hs hs0 hsx hother hxn hxl hxs
+      (hPI.keyNoValue _ _ hxn) k' w.top.rootKey
+
+end SIS.Tree.Mt

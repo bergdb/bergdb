@@ -1,0 +1,309 @@
+/-
+The proof trial of 026-18 (bergdb 026-19, after tier 3): the user subtransaction (c),
+`UserStepOK`, reduced to its writer-level parts. The run's induction over the operations, the
+transfer to the committed structure and the reads against the reference are proved; the puts
+with holes (`PutWH`), the user's frame (`FrameUser`), the parts of `Sub` that the writer's facts do
+not give (`PartsUser`) and, for now, the lift (`LiftUser`) are named premises; the deletes are
+`DelWB` (MtUserDel.lean), whose full leaf is `DelWFull`.
+-/
+import SIS.Tree.MtUserDel
+
+set_option autoImplicit false
+set_option linter.unusedSimpArgs false
+
+namespace SIS.Tree.Mt
+
+open SIS SIS.Check SIS.Tree
+
+/-- A put at the writer's state with holes: today's put kept the writer's facts without holes; with
+holes, as a named premise. -/
+def PutWH (p : Params) : Prop :=
+  ∀ (key : Key) (h : Nat) (c : Ctx) (base : View BVal) (w : W) (H : NodeId → Prop), c.p = p →
+    keyWf key = true → ViewCoherent c base → PutInv c base w → PutInvG c base w →
+    RangeOrder (wNode p base w) c.i w.top.rootKey →
+    LiveCountsH p (wNode p base w) c.i w.top.rootKey H →
+    (∃ B top0, PutBase c base B ∧ PutBook c B top0 w) →
+    InnerChildrenExist (wNode p base w) c.i w.top.rootKey →
+    SegFits (wNode p base w) c.i (p.fuel - 1) w.top.rootKey →
+    WriterWP (putKv (.put key h)) c w (fun _ w' =>
+      PutInv c base w' ∧ PutInvG c base w' ∧
+      RangeOrder (wNode p base w') c.i w'.top.rootKey ∧
+      LiveCountsH p (wNode p base w') c.i w'.top.rootKey H ∧
+      (∀ k, keyWf k = true →
+        wGet p c.i base w' k = if k == key then some h else wGet p c.i base w k) ∧
+      (∃ B top0, PutBase c base B ∧ PutBook c B top0 w') ∧
+      InnerChildrenExist (wNode p base w') c.i w'.top.rootKey ∧
+      SegFits (wNode p base w') c.i (p.fuel - 1) w'.top.rootKey)
+
+/-- The user's frame: an operation keeps a node on a key's path there while the node stays in the
+tree (as `FrameW` for a fix step). -/
+def FrameUser (p : Params) : Prop :=
+  ∀ (op : Op) (k' : Key) (c : Ctx) (base : View BVal) (w : W), c.p = p →
+    keyWf op.key = true → ViewCoherent c base → PutInv c base w → PutInvG c base w →
+    RangeOrder (wNode p base w) c.i w.top.rootKey →
+    WriterWP (putKv op) c w (fun _ w' => ∀ y, HoleW c base w k' y →
+      TReach (wNode p base w') c.i w'.top.rootKey y → HoleW c base w' k' y)
+
+/-- The parts of `Sub` after a user subtransaction that the writer's facts do not give: the
+kinds, the heights, the sizes, the empty key of inner nodes, the dead klongs. -/
+def PartsUser (p : Params) : Prop :=
+  ∀ (s : St) (tx : Tx) (noops : List Bool) (w : W), Reached p s → StInv p s → s.pend = [] →
+    tx.sorted = true → tx.wf = true → (∀ q ∈ s.P, q.1 < tx.base) →
+    runUser p tx.base tx.ops (s.t + 1) (view (treeSpec p) s.P s.t) = .ok (noops, w) →
+    KindsAllOK p (commit s.P (s.t + 1) w) ∧ HeightAllOK p (commit s.P (s.t + 1) w) (s.t + 1) ∧
+      SizeOK p (commit s.P (s.t + 1) w) ∧ LeftAllOK p (commit s.P (s.t + 1) w) ∧
+      DeadAllOK p (commit s.P (s.t + 1) w)
+
+/-- B1's lift after a user subtransaction. -/
+def LiftUser (p : Params) : Prop :=
+  ∀ (s : St) (tx : Tx) (noops : List Bool) (w : W), Reached p s → StInv p s → s.pend = [] →
+    tx.sorted = true → tx.wf = true → (∀ q ∈ s.P, q.1 < tx.base) →
+    runUser p tx.base tx.ops (s.t + 1) (view (treeSpec p) s.P s.t) = .ok (noops, w) →
+    LiftOK p s.P s.t w
+
+/-- One step of the user's run. -/
+def userStep (op : Op) : M Bool := do
+  let noop ← putKv op
+  boundsNow
+  pure noop
+
+/-- The deleted keys before their sort. -/
+def dkeys (ops : List Op) (noops : List Bool) : List Key :=
+  (ops.zip noops).filterMap (fun (op, noop) => match op with
+    | .del k => if noop then none else some k
+    | .put _ _ => none)
+
+/-- The reference's value of a key after the operations L, from none. -/
+def refFold (L : List Op) (k : Key) : Option Nat :=
+  L.foldl (fun v op => if op.key == k then (match op with
+    | .put _ h => some h
+    | .del _ => none) else v) none
+
+theorem refFold_snoc (L : List Op) (op : Op) (k : Key) :
+    refFold (L ++ [op]) k = if op.key == k then (match op with
+      | .put _ h => some h
+      | .del _ => none) else refFold L k := by
+  unfold refFold
+  rw [List.foldl_append]
+  rfl
+
+theorem refGet_one (L : List Op) (k : Key) : refGet [{ base := 0, ops := L }] 1 k = refFold L k := by
+  unfold refGet refFold
+  have : (List.take 1 [({ base := 0, ops := L } : Tx)]).flatMap (·.ops) = L := by simp
+  rw [this]
+  congr 1
+
+/-- The user's run, as the writer's run from its first state. -/
+theorem runUser_ok (p : Params) (P : Struct BVal) (t : Time) (base : NodeId) (ops : List Op)
+    (noops : List Bool) (w : W)
+    (h : runUser p base ops (t + 1) (view (treeSpec p) P t) = .ok (noops, w)) :
+    ∃ z top, lastTop (view (treeSpec p) P t) = some z ∧ topOf p (ctxAt p P t).view z = .ok top ∧
+      ops.mapM userStep (ctxAt p P t) (wStart base top) = .ok (noops, w) := by
+  unfold runUser runWith at h
+  cases hz : lastTop (view (treeSpec p) P t) with
+  | none => rw [hz] at h; cases h
+  | some z =>
+    rw [hz] at h
+    simp only at h
+    cases htop : topOf p (rootless (view (treeSpec p) P t)) z with
+    | error e => rw [htop] at h; cases h
+    | ok top =>
+      rw [htop] at h
+      simp only [ReaderT.run, StateT.run] at h
+      exact ⟨z, top, rfl, htop, h⟩
+
+/-- The writer's facts along the user's run: the holes on the paths of the keys deleted so far,
+the reads as the reference after the operations so far. -/
+structure UserJ (p : Params) (c : Ctx) (base : View BVal) (D : List Key) (L : List Op) (w : W) :
+    Prop where
+  pi : PutInv c base w
+  pg : PutInvG c base w
+  ro : RangeOrder (wNode p base w) c.i w.top.rootKey
+  lh : LiveCountsH p (wNode p base w) c.i w.top.rootKey (fun y => ∃ k ∈ D, HoleW c base w k y)
+  books : ∃ B top0, PutBase c base B ∧ PutBook c B top0 w
+  ice : InnerChildrenExist (wNode p base w) c.i w.top.rootKey
+  fit : SegFits (wNode p base w) c.i (p.fuel - 1) w.top.rootKey
+  reads : ∀ k, keyWf k = true → wGet p c.i base w k = refFold L k
+
+theorem userStep_ok (op : Op) (c : Ctx) (w w1 : W) (b : Bool) (h : userStep op c w = .ok (b, w1)) :
+    putKv op c w = .ok (b, w1) := by
+  unfold userStep at h
+  obtain ⟨noop, u, h1, h2⟩ := (m_bind_ok _ _ _ _ _).mp h
+  obtain ⟨_, u', h3, h4⟩ := (m_bind_ok _ _ _ _ _).mp h2
+  obtain ⟨rfl, _⟩ := boundsNow_ok _ _ _ _ h3
+  simp only [pure, ReaderT.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at h4
+  obtain ⟨rfl, rfl⟩ := h4
+  exact h1
+
+/-- One operation keeps the writer's facts. -/
+theorem userJ_step (p : Params) (hDel : DelWB p) (hPut : PutWH p) (hFr : FrameUser p) (c : Ctx)
+    (base : View BVal) (hcp : c.p = p) (hvc : ViewCoherent c base) (D : List Key) (L : List Op)
+    (op : Op) (hk : keyWf op.key = true) (w w1 : W) (b : Bool) (hJ : UserJ p c base D L w)
+    (hrun : putKv op c w = .ok (b, w1)) :
+    UserJ p c base (D ++ dkeys [op] [b]) (L ++ [op]) w1 := by
+  have hfr : ∀ k ∈ D, ∀ y, HoleW c base w k y →
+      TReach (wNode p base w1) c.i w1.top.rootKey y → HoleW c base w1 k y :=
+    fun k _ => hFr op k c base w hcp hk hvc hJ.pi hJ.pg hJ.ro b w1 hrun
+  obtain ⟨B, top0, hB, hbk⟩ := hJ.books
+  cases op with
+  | put key h =>
+    obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8⟩ := hPut key h c base w _ hcp hk hvc hJ.pi hJ.pg hJ.ro hJ.lh
+      ⟨B, top0, hB, hbk⟩ hJ.ice hJ.fit b w1 hrun
+    refine ⟨h1, h2, h3, ?_, h6, h7, h8, ?_⟩
+    · have hd : dkeys [Op.put key h] [b] = [] := rfl
+      rw [hd, List.append_nil]
+      refine liveCountsH_mono p _ _ _ _ _ h4 ?_
+      intro y bb ss hy ⟨k, hkD, hw⟩
+      exact ⟨k, hkD, hfr k hkD y hw (fReach_tReach hy)⟩
+    · intro k hkw
+      rw [h5 k hkw, refFold_snoc, hJ.reads k hkw]
+      by_cases hkk : k = key
+      · subst hkk; simp [Op.key]
+      · have e1 : (k == key) = false := by simpa using hkk
+        have e2 : (key == k) = false := by simpa using (Ne.symm hkk)
+        simp [Op.key, e1, e2]
+  | del key =>
+    obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8⟩ := hDel key c base w _ hcp hk hvc hJ.pi hJ.pg hJ.ro hJ.lh
+      ⟨B, top0, hB, hbk⟩ hJ.ice hJ.fit b w1 hrun
+    refine ⟨h1, h2, h3, ?_, h6, h7, h8, ?_⟩
+    · refine liveCountsH_mono p _ _ _ _ _ h4 ?_
+      intro y bb ss hy hh
+      rcases hh with ⟨k, hkD, hw⟩ | ⟨hb, hw⟩
+      · exact ⟨k, List.mem_append_left _ hkD, hfr k hkD y hw (fReach_tReach hy)⟩
+      · refine ⟨key, List.mem_append_right _ ?_, hw⟩
+        subst hb
+        simp [dkeys]
+    · intro k hkw
+      rw [h5 k hkw, refFold_snoc, hJ.reads k hkw]
+      by_cases hkk : k = key
+      · subst hkk; simp [Op.key]
+      · have e1 : (k == key) = false := by simpa using hkk
+        have e2 : (key == k) = false := by simpa using (Ne.symm hkk)
+        simp [Op.key, e1, e2]
+
+/-- The user's run keeps the writer's facts, operation by operation. -/
+theorem userJ_run (p : Params) (hDel : DelWB p) (hPut : PutWH p) (hFr : FrameUser p) (c : Ctx)
+    (base : View BVal) (hcp : c.p = p) (hvc : ViewCoherent c base) :
+    ∀ (ops : List Op) (D : List Key) (L : List Op) (w : W) (noops : List Bool) (w' : W),
+      (∀ op ∈ ops, keyWf op.key = true) → UserJ p c base D L w →
+      ops.mapM userStep c w = .ok (noops, w') →
+      UserJ p c base (D ++ dkeys ops noops) (L ++ ops) w' := by
+  intro ops
+  induction ops with
+  | nil =>
+    intro D L w noops w' _ hJ hrun
+    simp only [List.mapM_nil, pure, ReaderT.pure, StateT.pure, Except.pure, Except.ok.injEq,
+      Prod.mk.injEq] at hrun
+    obtain ⟨rfl, rfl⟩ := hrun
+    simpa [dkeys] using hJ
+  | cons op ops ih =>
+    intro D L w noops w' hk hJ hrun
+    rw [List.mapM_cons] at hrun
+    obtain ⟨b, w1, h1, h2⟩ := (m_bind_ok _ _ _ _ _).mp hrun
+    obtain ⟨bs, w2, h3, h4⟩ := (m_bind_ok _ _ _ _ _).mp h2
+    simp only [pure, ReaderT.pure, StateT.pure, Except.pure, Except.ok.injEq,
+      Prod.mk.injEq] at h4
+    obtain ⟨rfl, rfl⟩ := h4
+    have hJ1 := userJ_step p hDel hPut hFr c base hcp hvc D L op (hk op List.mem_cons_self) w w1 b hJ
+      (userStep_ok op c w w1 b h1)
+    have hJ2 := ih (D ++ dkeys [op] [b]) (L ++ [op]) w1 bs w2
+      (fun o ho => hk o (List.mem_cons_of_mem _ ho)) hJ1 h3
+    have e1 : D ++ dkeys [op] [b] ++ dkeys ops bs = D ++ dkeys (op :: ops) (b :: bs) := by
+      cases op <;> cases b <;> simp [dkeys, List.filterMap_cons, List.append_assoc]
+    rw [e1, List.append_assoc] at hJ2
+    simpa using hJ2
+
+/-- The user subtransaction (c), reduced (bergdb 026-19): from I, the user's run keeps the
+writer's facts operation by operation (`userJ_run`: `PutWH` for a put, `DelWB` for a delete,
+`FrameUser` for the holes made before), and the committed structure has I_sub with the deleted
+keys pending and reads as the reference, by the lift (`LiftUser`) and the parts (`PartsUser`). -/
+theorem t_userStep_of (p : Params) (hPut : PutWH p) (hDel : DelWB p) (hFr : FrameUser p)
+    (hPa : PartsUser p) (hL : LiftUser p) : UserStepOK p := by
+  intro s tx noops w hs hI hpend hsorted hwf hfresh hrun
+  obtain ⟨z, top, hz, htop, hmap⟩ := runUser_ok p s.P s.t tx.base tx.ops noops w hrun
+  have hlift := hL s tx noops w hs hI hpend hsorted hwf hfresh hrun
+  have hparts := hPa s tx noops w hs hI hpend hsorted hwf hfresh hrun
+  obtain ⟨hsub, htimes, _, _, hE, hR⟩ := hI
+  rw [hpend] at hsub
+  have hroot := rootAt_of_top p s.P s.t htimes z top hz htop
+  obtain ⟨hPI, hPG⟩ := putInv_at p s.P s.t tx.base hfresh htimes hsub.links hsub.tree hsub.range z top
+    hz htop
+  have hRO := rangeOrder_at p s.P s.t htimes hsub.range top.rootKey hroot tx.base top rfl
+  have hcoh := viewCoherent_at p s.P s.t htimes
+  let c := ctxAt p s.P s.t
+  let w0 := wStart tx.base top
+  -- the writer's facts at the first state
+  have hJ0 : UserJ p c (viewOf s.P) [] s.ops w0 := by
+    refine ⟨hPI, hPG, hRO, ?_, ⟨tx.base, top, putBase_at p s.P s.t tx.base hfresh htimes hsub.links,
+      putBook_at p s.P s.t tx.base hfresh htimes hsub.links z top htop⟩, ?_, ?_, ?_⟩
+    · have h0 := liveCountsH_at p s.P s.t htimes top.rootKey _ (hsub.live top.rootKey hroot) tx.base
+        top rfl
+      exact liveCountsH_mono p _ _ _ _ _ h0 (fun y _ _ _ hy => by
+        obtain ⟨k, hk, _⟩ := hy; cases hk)
+    · exact innerChildren_of_kinds p s.P tx.base c w0 rfl hsub.kinds hsub.links.1
+        (putBook_at p s.P s.t tx.base hfresh htimes hsub.links z top htop).book
+        (by intro x n g h hx; simp [w0, wStart] at hx) (fun x _ => by simp [w0, wStart])
+    · exact segFits_start p s.P s.t tx.base z top hfresh htimes hsub.links hE hsub.kinds hsub.heights
+        htop
+    · intro k hk
+      show wGet p (s.t + 1) (viewOf s.P) (wStart tx.base top) k = refFold s.ops k
+      rw [wGet_start p s.P s.t htimes tx.base top hroot k, hR k hk]
+      exact refGet_one s.ops k
+  have hkw : ∀ op ∈ tx.ops, keyWf op.key = true := by
+    intro op hop
+    have := List.all_eq_true.mp hwf op hop
+    simpa using this
+  have hJ := userJ_run p hDel hPut hFr c (viewOf s.P) rfl hcoh tx.ops [] s.ops w0 noops w hkw hJ0 hmap
+  simp only [List.nil_append] at hJ
+  -- the committed structure
+  have hknode : knodeOf p (viewOf (commit s.P (s.t + 1) w)) = wNode p (viewOf s.P) w :=
+    funext hlift.knode
+  have hkey : keyNodeAt p (commit s.P (s.t + 1) w) = wNode p (viewOf s.P) w :=
+    funext (fun x => (keyNodeAt_eq_knodeOf p _ x).trans (hlift.knode x))
+  have hholeW : ∀ k' ∈ dkeys tx.ops noops, ∀ y, HoleW c (viewOf s.P) w k' y →
+      Hole p (commit s.P (s.t + 1) w) (s.t + 1) (deletedKeys tx.ops noops) y := by
+    intro k' hk' y ⟨cv, hm⟩
+    refine ⟨k', ?_, w.top.rootKey, cv, hlift.root, ?_⟩
+    · unfold deletedKeys
+      rw [List.mem_mergeSort]
+      exact hk'
+    · rw [hknode]
+      exact hm
+  obtain ⟨hKA, hHA, hSA, hLA, hDA⟩ := hparts
+  refine ⟨⟨hlift.links, ⟨w.top.rootKey, hlift.root, ?_⟩, hKA, hHA, hSA, hLA, hDA, ?_, ?_⟩,
+    hlift.times, hlift.high, hlift.data, hlift.enc, ?_⟩
+  · rw [hknode]
+    exact hJ.pi.tree
+  · intro r hr
+    rw [hlift.root] at hr
+    simp only [Option.some.injEq] at hr
+    subst hr
+    rw [hkey]
+    exact hJ.ro
+  · intro r hr
+    rw [hlift.root] at hr
+    simp only [Option.some.injEq] at hr
+    subst hr
+    rw [hknode]
+    refine liveCountsH_mono p _ _ _ _ _ hJ.lh ?_
+    intro y _ _ _ ⟨k', hk', hw⟩
+    exact hholeW k' hk' y hw
+  · intro key hk
+    show get p (viewOf (commit s.P (s.t + 1) w)) (s.t + 1) key =
+      refGet [{ base := 0, ops := s.ops ++ tx.ops }] 1 key
+    rw [hlift.reads key hk, refGet_one]
+    exact hJ.reads key hk
+
+/-- The top with the user subtransaction reduced: what is left are the full nodes' cascades (a
+merge's full parent, a full segment leaf under an unlink, a collapse or the user's delete), the
+puts with holes, the two frames, and the user run's parts and lift. -/
+theorem t_visible_user (p : Params) :
+    MergeParamsOK p → p.merges = true → (2 ≤ p.theta ∨ p.theta = 0) →
+    PutWH p → DelWFull p → FrameUser p → PartsUser p → LiftUser p →
+    MergeFullLive p → MergeFullEmpty p → FixWUnlinkFull p → FixWCollapseSeg p →
+    FrameW p → VisibleOK p :=
+  fun hp hmg hth hPut hDF hFU hPa hL hM hE hUf hSeg hFr =>
+    t_visible_collapse p hp hmg hth (t_userStep_of p hPut (t_delWB_of p hDF) hFU hPa hL) hM hE hUf
+      hSeg hFr
+
+end SIS.Tree.Mt

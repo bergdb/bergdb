@@ -1,0 +1,216 @@
+/-
+The proof trial of 026-18 (bergdb 026-19, step B3): the fix step at the structure,
+`FixW p C → FrameW p → FixStepOK p C`, with (a1) to (a3) of section 3.2.
+-/
+import SIS.Tree.MtLift
+import SIS.Tree.ChildrenKinds
+
+set_option autoImplicit false
+
+namespace SIS.Tree.Mt
+
+open SIS SIS.Check SIS.Tree
+
+/-- (a1) Without holes the live counts are today's. -/
+theorem t_liveCountsH_none : T_liveCountsH_none :=
+  fun _ _ _ _ => ⟨fun h x b s n h1 h2 => h x b s n h1 h2 (fun h => h),
+    fun h x b s n h1 h2 _ => h x b s n h1 h2⟩
+
+/-- No pending key, no hole. -/
+theorem hole_nil (p : Params) (P : Struct BVal) (t : Time) (x : NodeId) : ¬ Hole p P t [] x := by
+  rintro ⟨k, hk, _⟩
+  cases hk
+
+/-- With no pending key, `Sub`'s live counts are `LiveCounts`. -/
+theorem sub_nil_live (p : Params) (P : Struct BVal) (t : Time) (h : Sub p P t []) (r : NodeId)
+    (hr : rootAt (viewOf P) t = some r) : LiveCounts p (knodeOf p (viewOf P)) t r :=
+  fun x b s n h1 h2 => h.live r hr x b s n h1 h2 (hole_nil p P t x)
+
+/-- (a2) With no pending key, I_sub is I: the last lines of `invOK_snocR`
+(LatestJoint.lean), at any structure. -/
+theorem t_full_of_sub (p : Params) : T_full_of_sub p := by
+  intro P t htimes h
+  have hT := h.tree
+  obtain ⟨r, hr, _⟩ := hT
+  obtain ⟨hNE, hRT, hF⟩ := liveCounts_parts p P t r hr (sub_nil_live p P t h r hr)
+  have hLM : LeftmostOK p P t := leftmostOK_of_leftAll p P t htimes h.links.2.1 h.left
+  have hI : InvOK p P t :=
+    invOK_of_parts p P t (rootKeyOK_of_treeAt p P t h.tree)
+      (keyNodesOK_of_parts p P h.size h.links.2.1 h.links.1 h.dead) h.kinds
+      (heightLiveOK_of_all p P t h.heights (ht_keyNodesAt_key p P t)) hNE hLM hRT hF h.range
+  exact ⟨h.links, h.tree, ⟨hI, h.links.1, h.kinds, h.heights, h.size, h.left⟩, h.dead⟩
+
+/-! ## (a3) I gives I_sub -/
+
+/-- A node reached at t is reached at t + 1, in a structure without entries after t. -/
+theorem fReach_succ (p : Params) (P : Struct BVal) (t : Time) (hP : StructTimesLE P t)
+    (r x : NodeId) (b s : Bool) (h : FReach (knodeOf p (viewOf P)) t r x b s) :
+    FReach (knodeOf p (viewOf P)) (t + 1) r x b s := by
+  induction h with
+  | root => exact FReach.root
+  | inner x b s n c y _ hn hl hc ih =>
+    rw [← liveAt_succ_of_timesLE p P t hP x n hn] at hc
+    exact FReach.inner x b s n c y ih hn hl hc
+  | seg x b s n c y _ hn hl hc ih =>
+    rw [← liveAt_succ_of_timesLE p P t hP x n hn] at hc
+    exact FReach.seg x b s n c y ih hn hl hc
+
+theorem reachR_succ (p : Params) (P : Struct BVal) (t : Time) (hP : StructTimesLE P t)
+    (r x : NodeId) (lo : Nat) (hi : Option Nat) (h : ReachR (knodeOf p (viewOf P)) t r x lo hi) :
+    ReachR (knodeOf p (viewOf P)) (t + 1) r x lo hi := by
+  induction h with
+  | root => exact ReachR.root
+  | inner x n lo hi c y b _ hn hl hb ih =>
+    rw [← liveAt_succ_of_timesLE p P t hP x n hn] at hb
+    exact ReachR.inner x n lo hi c y b ih hn hl hb
+  | seg x n lo hi c y _ hn hl hc ih =>
+    rw [← liveAt_succ_of_timesLE p P t hP x n hn] at hc
+    exact ReachR.seg x n lo hi c y ih hn hl hc
+
+/-- `LiveCounts` at the structure's own time, from TP7's invariant: `liveCounts_init`
+(LiveCounts.lean) at any P. -/
+theorem liveCounts_of_invOK (p : Params) (P : Struct BVal) (t : Time) (hP : StructTimesLE P t)
+    (r : NodeId) (hr : rootAt (viewOf P) t = some r) (hI : InvOK p P t) :
+    LiveCounts p (knodeOf p (viewOf P)) t r := by
+  intro x b s n hx hn
+  obtain ⟨f, lo, hi, hw⟩ := walk_of_fReach p P t hP r hr hI x b s (fReach_succ p P t hP r x b s hx)
+    n hn
+  obtain ⟨nd, hg, hd, _, hnd⟩ := knodeOf_viewOf p _ x n hn
+  obtain ⟨_, ⟨t1, _, t3, t4, _⟩, _⟩ :=
+    (walk_succ_eq_nil_iff p _ t f x lo hi b s nd hg hd).mp hw
+  have hnk : n = nodeK p nd := hnd
+  subst hnk
+  generalize (nodeK p nd).liveAt t = lv at t1 t3 t4 ⊢
+  generalize (nodeK p nd).leaf = lf at t1 t3 t4 ⊢
+  refine ⟨fun hE => ?_, fun hl hb => ?_, fun hm hb => ?_⟩
+  · subst hE
+    cases b <;> cases s <;> cases lf <;> simp_all
+  · subst hl hb
+    simp only [Bool.not_false, Bool.true_and, decide_eq_false_iff_not] at t3
+    omega
+  · subst hb
+    simp only [hm, Bool.not_false, Bool.true_and, decide_eq_false_iff_not] at t4
+    omega
+
+/-- `RangeAtOK` from TP7's invariant: `rangeOrder_init` (PutInvRange.lean) at any P. -/
+theorem rangeAtOK_of_invOK (p : Params) (P : Struct BVal) (t : Time) (hP : StructTimesLE P t)
+    (hI : InvOK p P t) : RangeAtOK p P t := by
+  intro r hr
+  have hk : keyNodeAt p P = knodeOf p (viewOf P) := funext (fun x => keyNodeAt_eq_knodeOf p P x)
+  rw [hk]
+  intro x lo hi n hx hn
+  obtain ⟨f, isRoot, space, hw⟩ := walk_of_reachR p P t hP r hr hI x lo hi
+    (reachR_succ p P t hP r x lo hi hx) n hn
+  obtain ⟨nd, hg, hd, _, hnd⟩ := knodeOf_viewOf p _ x n hn
+  have hrange := walk_current_range p (viewOf P) t f x lo hi isRoot space nd hg hd hw
+  rw [← hnd] at hrange
+  exact hrange
+
+/-- (a3) I gives I_sub with no pending key. -/
+theorem t_sub_of_full (p : Params) : T_sub_of_full p := by
+  intro P t htimes h
+  obtain ⟨hL, hT, ⟨hI, _, hK, hH, hS, hLA⟩, hD⟩ := h
+  exact ⟨hL, hT, hK, hH, hS, hLA, hD, rangeAtOK_of_invOK p P t htimes hI,
+    fun r hr x b s n h1 h2 _ => liveCounts_of_invOK p P t htimes r hr hI x b s n h1 h2⟩
+
+/-! ## (b) The fix step at the structure -/
+
+/-- `LiveCountsH` asks less where the holes are more, on the nodes reached. -/
+theorem liveCountsH_mono (p : Params) (N : NodeId → Option KNode) (t : Time) (r : NodeId)
+    (H H' : NodeId → Prop) (h : LiveCountsH p N t r H)
+    (hH : ∀ x b s, FReach N t r x b s → H x → H' x) : LiveCountsH p N t r H' :=
+  fun x b s n hx hn hx' => h x b s n hx hn (fun hh => hx' (hH x b s hx hh))
+
+/-- B3: a fix step of kind C keeps the run's invariant, from `FixW` and `FrameW` at the
+writer's state, the lift (`LiftFix`, B1) and the parts of `Sub` that `FixW` does not
+speak of (`PartsFix`). -/
+theorem t_fixStepOK_of (p : Params) (C : Fix → Prop) (hF : FixW p C) (hFr : FrameW p)
+    (hL : LiftFix p C) (hPa : PartsFix p C) (hFit : FitFix p C) : FixStepOK p C := by
+  intro s k rest base w f w1 hs hI hpend hfresh hrun hfix hC
+  have hFit' := hFit s k rest base w f w1
+  have hI0 := hI
+  have hlift := hL s k base w f w1 hs hI hfresh hrun hfix hC
+  have hparts := hPa s k rest base w f w1 hs hI hpend hfresh hrun hfix hC
+  obtain ⟨hsub, htimes, hK, hD, hE, hR⟩ := hI
+  rw [hpend] at hsub
+  obtain ⟨z, top, hz, htop, hfs, hout, hfo⟩ := runFix_true p s.P s.t base k w hrun
+  have hroot := rootAt_of_top p s.P s.t htimes z top hz htop
+  obtain ⟨hPI, hPG⟩ := putInv_at p s.P s.t base hfresh htimes hsub.links hsub.tree hsub.range z top
+    hz htop
+  have hRO := rangeOrder_at p s.P s.t htimes hsub.range top.rootKey hroot base top rfl
+  have hcoh := viewCoherent_at p s.P s.t htimes
+  have hstart := fixStart_at p s.P s.t htimes base top
+  -- the holes at the first state: the pending keys' paths there
+  let c := ctxAt p s.P s.t
+  let w0 := wStart base top
+  let H : NodeId → Prop := fun y => ∃ k' ∈ k :: rest, HoleW c (viewOf s.P) w0 k' y
+  have hLH : LiveCountsH p (wNode p (viewOf s.P) w0) c.i w0.top.rootKey H := by
+    have h0 := liveCountsH_at p s.P s.t htimes top.rootKey _ (hsub.live top.rootKey hroot) base top rfl
+    exact liveCountsH_mono p _ _ _ _ _ h0 (fun y _ _ _ hy =>
+      (hole_iff_start p s.P s.t htimes (k :: rest) base top hroot y).mp hy)
+  have hkind : ∀ f' w1', (do path k; target : M Fix) c w0 = .ok (f', w1') → C f' := by
+    intro f' w1' h'
+    have h2 := hfo f w1 hfix
+    rw [h'] at h2
+    simp only [Except.ok.injEq, Prod.mk.injEq] at h2
+    rw [h2.1]
+    exact hC
+  have hbooks : ∃ B top0, PutBase c (viewOf s.P) B ∧ PutBook c B top0 w0 :=
+    ⟨base, top, putBase_at p s.P s.t base hfresh htimes hsub.links,
+      putBook_at p s.P s.t base hfresh htimes hsub.links z top htop⟩
+  have hfit : ∀ w', fixStep k c w0 = .ok (true, w') →
+      SegFits (wNode p (viewOf s.P) w') c.i (p.fuel - 1) w'.top.rootKey := by
+    intro w' h'
+    rw [hfs] at h'
+    simp only [Except.ok.injEq, Prod.mk.injEq, true_and] at h'
+    subst h'
+    exact (hFit' z top hs hI0 hpend hfresh hz htop hfs hout (hfo f w1 hfix) hC).2
+  have hfit0 : SegFits (wNode p (viewOf s.P) w0) c.i (p.fuel - 1) w0.top.rootKey :=
+    (hFit' z top hs hI0 hpend hfresh hz htop hfs hout (hfo f w1 hfix) hC).1
+  have hice : InnerChildrenExist (wNode p (viewOf s.P) w0) c.i w0.top.rootKey :=
+    innerChildren_of_kinds p s.P base c w0 rfl hsub.kinds hsub.links.1
+      (putBook_at p s.P s.t base hfresh htimes hsub.links z top htop).book
+      (by intro x n g h hx; simp [w0, wStart] at hx) (fun x _ => by simp [w0, wStart])
+  obtain ⟨hPI', _, hRO', hLH', hget'⟩ :=
+    hF k c (viewOf s.P) w0 H rfl hcoh hstart hPI hPG hRO hLH hkind hbooks hfit hfit0 hice true w hfs rfl
+  have hframe : ∀ k', ∀ y, HoleW c (viewOf s.P) w0 k' y →
+      TReach (wNode p (viewOf s.P) w) c.i w.top.rootKey y → HoleW c (viewOf s.P) w k' y :=
+    fun k' => hFr k k' c (viewOf s.P) w0 rfl hcoh hstart hPI hPG hRO true w hfs
+  have hknode : knodeOf p (viewOf (commit s.P (s.t + 1) w)) = wNode p (viewOf s.P) w :=
+    funext hlift.knode
+  have hkey : keyNodeAt p (commit s.P (s.t + 1) w) = wNode p (viewOf s.P) w :=
+    funext (fun x => (keyNodeAt_eq_knodeOf p _ x).trans (hlift.knode x))
+  -- a node on a pending key's path in w is a hole of the structure after the step
+  have hholeW : ∀ k' ∈ k :: rest, ∀ y, HoleW c (viewOf s.P) w k' y →
+      Hole p (commit s.P (s.t + 1) w) (s.t + 1) (k :: rest) y := by
+    intro k' hk' y ⟨cv, hm⟩
+    refine ⟨k', hk', w.top.rootKey, cv, hlift.root, ?_⟩
+    rw [hknode]
+    exact hm
+  obtain ⟨hKA, hHA, hSA, hLA, hDA⟩ := hparts
+  refine ⟨⟨hlift.links, ⟨w.top.rootKey, hlift.root, ?_⟩, hKA, hHA, hSA, hLA, hDA, ?_, ?_⟩,
+    hlift.times, hlift.high, hlift.data, hlift.enc, ?_⟩
+  · rw [hknode]
+    exact hPI'.tree
+  · intro r hr
+    rw [hlift.root] at hr
+    simp only [Option.some.injEq] at hr
+    subst hr
+    rw [hkey]
+    exact hRO'
+  · intro r hr
+    rw [hlift.root] at hr
+    simp only [Option.some.injEq] at hr
+    subst hr
+    rw [hknode]
+    refine liveCountsH_mono p _ _ _ _ _ hLH' ?_
+    intro y b s' hy hh
+    rcases hh with ⟨k', hk', hw0⟩ | hw
+    · exact hholeW k' hk' y (hframe k' y hw0 (fReach_tReach hy))
+    · exact hholeW k (List.mem_cons_self) y hw
+  · intro key hk
+    show get p (viewOf (commit s.P (s.t + 1) w)) (s.t + 1) key = refGet s.ref 1 key
+    rw [hlift.reads key hk]
+    exact (hget' key).trans ((wGet_start p s.P s.t htimes base top hroot key).trans (hR key hk))
+
+end SIS.Tree.Mt

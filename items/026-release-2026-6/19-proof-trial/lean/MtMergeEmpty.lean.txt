@@ -1,0 +1,540 @@
+/-
+The proof trial of 026-18 (bergdb 026-19, step A5): `FixW` for a merge whose parent has an
+empty child (R3), where the bridge to today's merge does not apply (today's merge stops at an
+empty child). Proved at the level of the node map, from A3's state after MT's tail
+(`writerWP_mtTailRoom`, `wNode_room_final`) and today's node-map lemmas of the merge
+(`treeOK_mergeOneAfter`, `rangeOrder_mergeOne`, `getFromR_mergeOne` and their two-node forms),
+when the merge's parent has room; the full parent is a named premise (`MergeFullEmpty`).
+-/
+import SIS.Tree.MtMerge
+import SIS.Tree.MtMergeLive
+import SIS.Tree.GetMergeAny
+import SIS.Tree.RangeMergeFull
+import SIS.Tree.WriterTreeMergeTwo
+import SIS.Tree.MtLiveTop
+
+set_option autoImplicit false
+set_option linter.unusedSimpArgs false
+
+namespace SIS.Tree.Mt
+
+open SIS SIS.Check SIS.Tree
+
+/-- A merge with room at the level of the node map: the parent's node and the new nodes change,
+nothing else; the tree, the ranges and the readings stay. -/
+theorem mergeRoom_after (N N' : NodeId → Option KNode) (V : NodeId → Option Nat) (t : Time)
+    (r0 : NodeId) (fuel cap : Nat) (hcap : 1 ≤ cap)
+    (hT : TreeOK N t r0) (htimes : ∀ y yn, N y = some yn → ∀ s, Klong.time s ∈ yn.ks → s ≤ t)
+    (hwfN : ∀ y yn, N y = some yn → klongsWf yn.ks = true)
+    (nx : NodeId) (hnext : ∀ y, TReach N t r0 y → y < nx) (hfreshN : ∀ z, nx ≤ z → N z = none)
+    (hRO : RangeOrder N t r0)
+    (pp l r : NodeId) (pn xn ln rn : KNode) (il ir cL cR : Nat)
+    (hp : TReach N t r0 pp) (hpn : N pp = some pn) (hpl : pn.leaf = false)
+    (hL : pn.ks[il]? = some (.key cL l)) (hLL : LastLive pn.ks pn.lastBitmap il cL)
+    (hR : pn.ks[ir]? = some (.key cR r)) (hRL : LastLive pn.ks pn.lastBitmap ir cR)
+    (hlt : cL < cR) (hadj : ∀ cc z, (cc, z) ∈ pn.live → cc ≤ cL ∨ cR ≤ cc)
+    (hln : N l = some ln) (hrn : N r = some rn) (hll : ln.leaf = xn.leaf) (hrl : rn.leaf = xn.leaf)
+    (first : List (Nat × NodeId)) (second : Option (List (Nat × NodeId) × Nat))
+    (hmk : mergeKlongs (!xn.leaf) cap cR ln.live rn.live = (first, second))
+    (hheads : xn.leaf = false → (ln.live.head?.map (·.1)) = some 0 ∧ (rn.live.head?.map (·.1)) = some 0)
+    (hN'p : N' pp = some (mergeParentNode pn t il cL nx ir cR (second.map (fun q => (nx + 2, q.2)))))
+    (hN'1 : N' nx = some ⟨xn.leaf, newKlongs t first⟩)
+    (hN'2 : ∀ ks2 g2, second = some (ks2, g2) → N' (nx + 2) = some ⟨xn.leaf, newKlongs t ks2⟩)
+    (hN'o : ∀ y, y ≠ pp → y ≠ nx → (∀ ks2 g2, second = some (ks2, g2) → y ≠ nx + 2) → N' y = N y) :
+    TreeOK N' t r0 ∧ RangeOrder N' t r0 ∧
+      ∀ key, getFromR N' V t fuel key r0 = getFromR N V t fuel key r0 := by
+  have hpt := htimes pp pn hpn
+  have hpwf := hwfN pp pn hpn
+  have hlive_p : pn.liveAt t = pn.live := KNode.liveAt_of_times pn t hpt
+  have hlt' := htimes l ln hln
+  have hrt' := htimes r rn hrn
+  have hl : (cL, l) ∈ pn.liveAt t := by rw [hlive_p]; exact live_of_last pn il cL l hLL (by
+    unfold KNode.ptr?; rw [hL])
+  have hrr : (cR, r) ∈ pn.liveAt t := by rw [hlive_p]; exact live_of_last pn ir cR r hRL (by
+    unfold KNode.ptr?; rw [hR])
+  have hadjA : ∀ cc z, (cc, z) ∈ pn.liveAt t → cc ≤ cL ∨ cR ≤ cc := by
+    intro cc z h; rw [hlive_p] at h; exact hadj cc z h
+  have hadjR : ∀ q ∈ pn.liveAt t, cL < q.1 → cR ≤ q.1 := by
+    intro q hq h1
+    rcases hadjA q.1 q.2 hq with h | h
+    · omega
+    · exact h
+  have hfreshL : ∀ z, nx ≤ z → ∀ u c, TReach N t r0 u → ¬ TLink N t u c z := by
+    intro z hz u c hu hlk
+    have := hnext z (TReach.link hu hlk)
+    omega
+  have hm1N : N nx = none := hfreshN nx (Nat.le_refl _)
+  have hm1R : ¬ TReach N t r0 nx := fun h => by have := hnext nx h; omega
+  -- the children's ranges
+  obtain ⟨hlr1, hlr2⟩ := mrg_child_range N t r0 hRO pp pn (tReach_reachS _ _ _ _ hp) hpn hpl cL l ln
+    hl hln
+  obtain ⟨hrr1, hrr2⟩ := mrg_child_range N t r0 hRO pp pn (tReach_reachS _ _ _ _ hp) hpn hpl cR r rn
+    hrr hrn
+  have hlrange : ∀ cc z, (cc, z) ∈ ln.liveAt t → cc < cR := fun cc z h => hlr2 cR r hrr hlt cc z h
+  have hrrange : ∀ cc z, (cc, z) ∈ rn.liveAt t → ((!xn.leaf) = true → cc = 0 ∨ cR < cc) ∧
+      ((!xn.leaf) = false → cR ≤ cc) := by
+    intro cc z h
+    obtain ⟨h1, h2⟩ := hrr1 cc z h
+    refine ⟨fun hi => ?_, fun hi => ?_⟩
+    · have hxl : xn.leaf = false := by simpa using hi
+      rcases h2 (by rw [hrl, hxl]) with h | h
+      · exact Or.inl h
+      · exact Or.inr (h (by omega))
+    · have hxl : xn.leaf = true := by simpa using hi
+      exact h1 (by rw [hrl, hxl]) (by omega)
+  have hllow : ∀ cc z, (cc, z) ∈ ln.liveAt t →
+      ((!xn.leaf) = true → cc = 0 ∨ cL < cc) ∧ ((!xn.leaf) = false → cL ≤ cc) := by
+    intro cc z h
+    have h1 := hlr1 cc z h
+    rw [hll] at h1
+    constructor
+    · intro hin
+      have hxl : xn.leaf = false := by simpa using hin
+      rcases (h1.2 hxl) with h0 | h0
+      · exact Or.inl h0
+      · rcases Nat.eq_zero_or_pos cL with hc0 | hc0
+        · rcases Nat.eq_zero_or_pos cc with hcc | hcc
+          · exact Or.inl hcc
+          · exact Or.inr (by omega)
+        · exact Or.inr (h0 hc0)
+    · intro hin
+      have hxl : xn.leaf = true := by simpa using hin
+      rcases Nat.eq_zero_or_pos cL with hc0 | hc0
+      · omega
+      · exact h1.1 hxl hc0
+  have hrhead : (!xn.leaf) = true → ∃ y0 tl, rn.live = (0, y0) :: tl := by
+    intro hi
+    have hxl : xn.leaf = false := by simpa using hi
+    obtain ⟨_, h2⟩ := hheads hxl
+    cases hrl' : rn.live with
+    | nil => rw [hrl'] at h2; cases h2
+    | cons q tl =>
+      rw [hrl'] at h2
+      simp only [List.head?_cons, Option.map_some, Option.some.injEq] at h2
+      exact ⟨q.2, tl, by rw [← h2]⟩
+  have hhead : (!xn.leaf) = true → ∃ y, rn.live.head? = some (0, y) := by
+    intro hi; obtain ⟨y0, tl, h⟩ := hrhead hi; exact ⟨y0, by rw [h]; rfl⟩
+  have hsortE := mrg_mergeList_sorted ln rn t (!xn.leaf) cR hlt' hrt' hlrange hrrange hrhead
+  have hndE : ((mergeList (!xn.leaf) cR ln.live rn.live).map Prod.fst).Nodup :=
+    List.pairwise_map.mpr (hsortE.imp (by intro a b hab; omega))
+  have hll' : ln.leaf = !(!xn.leaf) := by rw [hll]; simp
+  have hrl' : rn.leaf = !(!xn.leaf) := by rw [hrl]; simp
+  have hinner : (!xn.leaf) = !ln.leaf := by rw [hll]
+  obtain ⟨hparOne, hparTwo⟩ := mrg_parent_liveAt pn t il cL nx ir cR l r hpwf hpt hL hLL hR hRL
+    (by omega)
+  have hpnl' : ∀ m2, (mergeParentNode pn t il cL nx ir cR m2).leaf = false := fun m2 => by
+    rw [mrg_mergeParentNode_leaf]; exact hpl
+  have hpnt' : ∀ m2, ∀ s, Klong.time s ∈ (mergeParentNode pn t il cL nx ir cR m2).ks → s ≤ t :=
+    fun m2 => (mergeParentNode_liveAt pn t il cL nx ir cR m2 l r hpwf hL hLL hR hRL (by omega)
+      hpt).2.2.2.1
+  rcases hsec : second with _ | ⟨ks2, g2⟩
+  · -- one new node
+    rw [hsec] at hmk hN'p
+    have hfirst : first = mergeList (!xn.leaf) cR ln.live rn.live := splitMerged_one _ _ _ _ hmk
+    have hmn : ∀ cc z, (cc, z) ∈ (⟨xn.leaf, newKlongs t first⟩ : KNode).liveAt t ↔
+        (cc, z) ∈ mergeList (!xn.leaf) cR ln.live rn.live := by
+      intro cc z
+      rw [mrg_newKlongs_liveAt_iff _ t first (by rw [hfirst]; exact hndE) cc z, hfirst]
+    have hother : ∀ y, y ≠ pp → y ≠ l → y ≠ r → y ≠ nx → N' y = N y :=
+      fun y hyp _ _ hyx => hN'o y hyp hyx (fun ks2 g2 h => by rw [hsec] at h; cases h)
+    simp only [Option.map_none] at hN'p
+    refine ⟨?_, ?_, ?_⟩
+    · exact treeOK_mergeOneAfter N N' t r0 pp l r nx pn ln rn _ _ (!xn.leaf) cL cR hT hp hpn hl hrr
+        (by omega) hln hrn hlt' hrt' hm1N (hfreshL nx (Nat.le_refl _)) hN'1
+        (fun cc z h => (hmn cc z).mp h) hN'p (fun cc z h => (hparOne cc z).mp h) hother
+    · exact rangeOrder_mergeOne N N' t r0 pp l r nx pn ln rn _ _ (!xn.leaf) cL cR hRO hT hp hpn hpl
+        hl hrr hlt hadjR hln hrn hlt' hrt' hinner (hrl.trans hll.symm) hhead hm1N
+        (hfreshL nx (Nat.le_refl _)) hN'1 hll.symm (fun cc z h => (hmn cc z).mp h) hN'p (hpnl' _)
+        (fun cc z h => (hparOne cc z).mp h) hother
+    · exact getFromR_mergeOne N N' V t fuel r0 pp l r nx pn ln rn _ _ (!xn.leaf) cL cR hT hp hpn hpl
+        hl hrr hlt hadjA hln hrn hll' hrl' hlrange hrrange hrhead hN'1 (by simp) hmn hN'p (hpnl' _)
+        hparOne hother hm1R htimes (newKlongs_times t first) (hpnt' none) hwfN
+        (klongsWf_newKlongs t first)
+  · -- two new nodes
+    rw [hsec] at hmk hN'p
+    have hN'2' := hN'2 ks2 g2 hsec
+    simp only [Option.map_some] at hN'p
+    obtain ⟨yg, hE1, hgs, hE2⟩ := mrg_splitMerged_two (!xn.leaf) cap hcap _ first ks2 g2 hmk
+    have hElen : cap < (mergeList (!xn.leaf) cR ln.live rn.live).length := by
+      rcases Nat.lt_or_ge cap (mergeList (!xn.leaf) cR ln.live rn.live).length with h | h
+      · exact h
+      · exfalso
+        unfold mergeKlongs splitMerged at hmk
+        simp only [show (mergeList (!xn.leaf) cR ln.live rn.live).length ≤ cap from h,
+          ↓reduceIte, Prod.mk.injEq, reduceCtorEq, and_false] at hmk
+    have hlnL : ∀ q ∈ ln.live, q.1 < cR ∧ ((!xn.leaf) = true → q.1 = 0 ∨ cL < q.1) ∧
+        ((!xn.leaf) = false → cL ≤ q.1) := by
+      intro q hq
+      have hq' : (q.1, q.2) ∈ ln.liveAt t := by rw [KNode.liveAt_of_times ln t hlt']; exact hq
+      exact ⟨hlrange _ _ hq', hllow _ _ hq'⟩
+    have hrnR : ∀ q ∈ rn.live, ((!xn.leaf) = true → q.1 = 0 ∨ cR < q.1) ∧
+        ((!xn.leaf) = false → cR ≤ q.1) := by
+      intro q hq
+      have hq' : (q.1, q.2) ∈ rn.liveAt t := by rw [KNode.liveAt_of_times rn t hrt']; exact hq
+      exact hrrange _ _ hq'
+    obtain ⟨hgL, _, hgU0⟩ := mrg_two_g (!xn.leaf) cL cR ln.live rn.live
+      (((mergeList (!xn.leaf) cR ln.live rn.live).length + 1) / 2) g2 yg hsortE (by omega) hgs
+      hlt hlnL hrnR
+    have hgU : ∀ k z, (k, z) ∈ pn.liveAt t → cR < k → g2 < k := by
+      intro k z hk hkc
+      apply hgU0 k hkc
+      intro q hq
+      have hq' : (q.1, q.2) ∈ rn.liveAt t := by rw [KNode.liveAt_of_times rn t hrt']; exact hq
+      exact hrr2 k z hk hkc _ _ hq'
+    have hnd1 : (first.map Prod.fst).Nodup := by
+      rw [hE1]
+      exact List.pairwise_map.mpr ((hsortE.sublist (List.take_sublist _ _)).imp
+        (by intro a b hab; omega))
+    have hsortD : CvSorted ((mergeList (!xn.leaf) cR ln.live rn.live).drop
+        (((mergeList (!xn.leaf) cR ln.live rn.live).length + 1) / 2)) :=
+      hsortE.sublist (List.drop_sublist _ _)
+    have hnd2 : (ks2.map Prod.fst).Nodup := by
+      rw [hE2]
+      apply List.pairwise_map.mpr
+      apply List.Pairwise.imp (R := fun a b : Nat × NodeId => a.1 < b.1)
+        (by intro a b hab; omega)
+      generalize hb : (!xn.leaf) = b at hsortD hgs ⊢
+      cases b with
+      | false =>
+        simp only [Bool.false_eq_true, ↓reduceIte]
+        exact hsortD
+      | true =>
+        simp only [↓reduceIte]
+        apply renameHead_sorted 0 _ hsortD
+        intro q hq
+        cases hd : (mergeList true cR ln.live rn.live).drop
+            (((mergeList true cR ln.live rn.live).length + 1) / 2) with
+        | nil => rw [hd] at hq; simp at hq
+        | cons a tl =>
+          rw [hd] at hq hgs hsortD
+          simp only [List.head?_cons, Option.some.injEq] at hgs
+          subst hgs
+          simp only [List.tail_cons] at hq
+          have := (List.pairwise_cons.mp hsortD).1 q hq
+          simp at this; omega
+    have hTD : List.Pairwise (fun a b : Nat × NodeId => a.1 < b.1)
+        ((mergeList (!xn.leaf) cR ln.live rn.live).take
+          (((mergeList (!xn.leaf) cR ln.live rn.live).length + 1) / 2) ++
+         (mergeList (!xn.leaf) cR ln.live rn.live).drop
+          (((mergeList (!xn.leaf) cR ln.live rn.live).length + 1) / 2)) := by
+      rw [List.take_append_drop]; exact hsortE
+    have hTDlt := (List.pairwise_append.mp hTD).2.2
+    have hgD : (g2, yg) ∈ (mergeList (!xn.leaf) cR ln.live rn.live).drop
+        (((mergeList (!xn.leaf) cR ln.live rn.live).length + 1) / 2) := List.mem_of_head? hgs
+    have hE : (first ++ ks2).map Prod.snd = (ln.live ++ rn.live).map Prod.snd := by
+      rw [splitMerged_map_snd _ _ _ first ks2 g2 hmk, mergeList_map_snd, List.map_append]
+    have hother : ∀ y, y ≠ pp → y ≠ l → y ≠ r → y ≠ nx → y ≠ nx + 2 → N' y = N y :=
+      fun y hyp _ _ h1 h2 => hN'o y hyp h1 (fun a b h => by rw [hsec] at h; cases h; exact h2)
+    have hm2N : N (nx + 2) = none := hfreshN _ (by omega)
+    have hmn1 : ∀ cc z, (cc, z) ∈ (⟨xn.leaf, newKlongs t first⟩ : KNode).liveAt t ↔
+        (cc, z) ∈ (mergeList (!xn.leaf) cR ln.live rn.live).take
+          (((mergeList (!xn.leaf) cR ln.live rn.live).length + 1) / 2) := by
+      intro cc z; rw [mrg_newKlongs_liveAt_iff _ t first hnd1 cc z, hE1]
+    have hmn2 : ∀ cc z, (cc, z) ∈ (⟨xn.leaf, newKlongs t ks2⟩ : KNode).liveAt t ↔
+        (cc, z) ∈ (if (!xn.leaf) then renameHead 0 ((mergeList (!xn.leaf) cR ln.live rn.live).drop
+          (((mergeList (!xn.leaf) cR ln.live rn.live).length + 1) / 2))
+        else (mergeList (!xn.leaf) cR ln.live rn.live).drop
+          (((mergeList (!xn.leaf) cR ln.live rn.live).length + 1) / 2)) := by
+      intro cc z; rw [mrg_newKlongs_liveAt_iff _ t ks2 hnd2 cc z, hE2]
+    have hpar3 : ∀ cc z, (cc, z) ∈ (mergeParentNode pn t il cL nx ir cR (some (nx + 2, g2))).liveAt t →
+        (cc = cL ∧ z = nx) ∨ (cc = g2 ∧ z = nx + 2) ∨ ((cc, z) ∈ pn.liveAt t ∧ cc ≠ cL ∧ cc ≠ cR) := by
+      intro cc z h
+      rcases (hparTwo (nx + 2) g2 cc z).mp h with h1 | ⟨_, h2, h3⟩ | ⟨_, h2, h3, h4⟩
+      · exact Or.inr (Or.inl h1)
+      · exact Or.inl ⟨h2, h3⟩
+      · exact Or.inr (Or.inr ⟨h4, h2, h3⟩)
+    refine ⟨?_, ?_, ?_⟩
+    · exact treeOK_mergeTwoAfter N N' t r0 pp l r nx (nx + 2) pn ln rn _ _ _ cL cR g2 first ks2 hT hp
+        hpn hl hrr (by omega) hln hrn hlt' hrt' hm1N (hfreshL nx (Nat.le_refl _)) hm2N
+        (hfreshL _ (by omega)) (by omega) hE hN'1
+        (fun cc z h => liveAt_newKlongs_mem _ t t first cc z h) hN'2'
+        (fun cc z h => liveAt_newKlongs_mem _ t t ks2 cc z h) hN'p hpar3 hother
+    · apply rangeOrder_mergeTwo N N' t r0 pp l r nx (nx + 2) pn ln rn _ ⟨xn.leaf, newKlongs t first⟩
+        ⟨xn.leaf, newKlongs t ks2⟩ (!xn.leaf) cL cR g2
+        hRO hT hp hpn hpl hl hrr hlt hadjR hln hrn hlt' hrt' hinner (hrl.trans hll.symm)
+        hhead hm1N (hfreshL nx (Nat.le_refl _)) hm2N (hfreshL _ (by omega)) (by omega) hN'1 hll.symm
+      · intro cc z hm
+        rw [hmn1] at hm
+        exact ⟨List.mem_of_mem_take hm, hTDlt _ hm _ hgD⟩
+      · exact hN'2'
+      · exact hll.symm
+      · intro cc z hm
+        rw [hmn2] at hm
+        obtain ⟨tl, hdtl⟩ : ∃ tl, (mergeList (!xn.leaf) cR ln.live rn.live).drop
+            (((mergeList (!xn.leaf) cR ln.live rn.live).length + 1) / 2) = (g2, yg) :: tl := by
+          cases hd : (mergeList (!xn.leaf) cR ln.live rn.live).drop
+              (((mergeList (!xn.leaf) cR ln.live rn.live).length + 1) / 2) with
+          | nil => rw [hd] at hgs; simp at hgs
+          | cons a tl =>
+            rw [hd] at hgs
+            simp only [List.head?_cons, Option.some.injEq] at hgs
+            exact ⟨tl, by rw [hgs]⟩
+        have hmemD : ∀ q, q ∈ (g2, yg) :: tl → q ∈ (mergeList (!xn.leaf) cR ln.live rn.live) :=
+          fun q hq => List.mem_of_mem_drop (by rw [hdtl]; exact hq)
+        have hsD := hsortD
+        rw [hdtl] at hsD hm
+        have htl : ∀ q ∈ tl, g2 < q.1 := fun q hq => (List.pairwise_cons.mp hsD).1 q hq
+        by_cases hin : (!xn.leaf) = true
+        · rw [ite_eq_left hin] at hm
+          simp only [renameHead, List.mem_cons] at hm
+          rcases hm with h | h
+          · simp only [Prod.mk.injEq] at h
+            exact ⟨g2, Nat.le_refl _, by rw [h.2]; exact hmemD _ List.mem_cons_self,
+              by rw [ite_eq_left ⟨rfl, hin⟩]; exact h.1⟩
+          · have h3 : g2 < cc := htl _ h
+            exact ⟨cc, Nat.le_of_lt h3, hmemD _ (List.mem_cons_of_mem _ h),
+              by rw [ite_eq_right (fun h' => absurd h'.1 (by omega))]⟩
+        · rw [ite_eq_right hin] at hm
+          rcases List.mem_cons.mp hm with h | h
+          · simp only [Prod.mk.injEq] at h
+            exact ⟨g2, Nat.le_refl _, by rw [h.2]; exact hmemD _ List.mem_cons_self,
+              by rw [ite_eq_right (fun h' => hin h'.2)]; exact h.1⟩
+          · have h3 : g2 < cc := htl _ h
+            exact ⟨cc, Nat.le_of_lt h3, hmemD _ (List.mem_cons_of_mem _ h),
+              by rw [ite_eq_right (fun h' => absurd h'.1 (by omega))]⟩
+      · exact ⟨yg, List.mem_of_mem_drop hgD⟩
+      · obtain ⟨q, hq⟩ : ∃ q, q ∈ (mergeList (!xn.leaf) cR ln.live rn.live).take
+            (((mergeList (!xn.leaf) cR ln.live rn.live).length + 1) / 2) := by
+          cases ht : (mergeList (!xn.leaf) cR ln.live rn.live).take
+              (((mergeList (!xn.leaf) cR ln.live rn.live).length + 1) / 2) with
+          | nil =>
+            exfalso
+            have := congrArg List.length ht
+            simp only [List.length_take, List.length_nil] at this
+            omega
+          | cons q _ => exact ⟨q, List.mem_cons_self⟩
+        exact ⟨q.1, q.2, List.mem_of_mem_take hq, hTDlt _ hq _ hgD⟩
+      · exact hN'p
+      · exact hpnl' _
+      · exact hpar3
+      · exact (hparTwo (nx + 2) g2 g2 (nx + 2)).mpr (Or.inl ⟨rfl, rfl⟩)
+      · exact hother
+    · exact getFromR_mergeTwo N N' V t fuel r0 pp l r nx (nx + 2) (nx + 1) pn ln rn _ _ _ (!xn.leaf)
+        cL cR _ g2 yg hT hp hpn hpl hl hrr hlt hadjA hln hrn hll' hrl' hlrange hrrange hrhead hgs hgL
+        hgU hN'1 (by simp) hmn1 hN'2' (by simp) hmn2 hN'p (hpnl' _) (hparTwo (nx + 2) g2) hother
+        (by
+          intro z hz
+          have hz' : nx ≤ z := by rcases hz with rfl | rfl | rfl <;> omega
+          exact ⟨hfreshN z hz', hfreshL z hz'⟩)
+        (by omega) (by omega) htimes hwfN (newKlongs_times t first) (newKlongs_times t ks2)
+        (hpnt' _) (klongsWf_newKlongs t first) (klongsWf_newKlongs t ks2)
+
+/-! ## The writer: the room case -/
+
+set_option maxHeartbeats 2000000 in
+/-- MT's tail with the parent's room keeps the values (A3's `writerWP_mtTailRoom`, for `vals`). -/
+theorem writerWP_mtTailRoom_vals (c : Ctx) (x : NodeId) (d : Nat) (pp : NodeId) (pn xn : KNode)
+    (ls : Bool) (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId) (rn : KNode) (ir : Nat) (u : W)
+    (cL cR : Nat) (hcl : pn.cv? il = some cL) (hcr : pn.cv? ir = some cR)
+    (hlkx : u.nodes.lookup x = some xn) (hlkp : u.nodes.lookup pp = some pn) :
+    WriterWP (mtTailWith mergeParentRoom c x d pp pn xn ls l ln il r rn ir) c u
+      (fun _ u' => u'.vals = u.vals) := by
+  unfold mtTailWith
+  simp only [hcl, hcr]
+  try dsimp only
+  repeat' first
+    | (with_unfolding_none exact writerWP_throw _ _ _ _)
+    | (simp only [writerWP_bind]; with_unfolding_none exact writerWP_throw _ _ _ _)
+    | (with_reducible refine writerWP_ghOf_cached x xn c _ (by exact hlkx) _ (fun gh => ?_))
+    | (with_reducible refine writerWP_mono (writerWP_newKey_frame _ _ _ _ c _) ?_; rintro m1 v1 ⟨hm1, hn1, ht1, htop1, hnx1, hv1, -, -⟩)
+    | (with_reducible refine writerWP_if _ _ _ _ _ _ (fun _ => ?_) (fun _ => ?_))
+    | (simp only [writerWP_bind, writerWP_pure, writerWP_modify, note])
+  all_goals simp only at hm1 ht1 htop1 hnx1 hn1 hv1
+  all_goals rcases hmk : mergeKlongs (!xn.leaf) c.p.mergeMax cR ln.live rn.live with ⟨first, second⟩
+  all_goals simp only [hmk] at hn1 ⊢
+  all_goals have hlk1 : v1.nodes.lookup pp = some pn := (by rw [hn1, List.lookup_append, hlkp]; rfl)
+  all_goals subst hm1
+  all_goals rcases second with _ | ⟨ks2, g2⟩
+  all_goals dsimp only
+  all_goals first
+    | (simp only [pure_bind]
+       refine writerWP_mergeParentRoom pp (d - 1) il cL u.next ir cR none c v1 pn hlk1 _ _ (fun s hr => ?_)
+       rw [writerWP_pure]
+       exact hv1)
+    | (rw [writerWP_bind]
+       refine writerWP_mono (writerWP_newKey_frame _ _ _ _ c _) ?_
+       rintro y v2 ⟨hy, hn2, ht2, htop2, hnx2, hv2, -, -⟩
+       simp only [pure_bind]
+       have hlk2 : v2.nodes.lookup pp = some pn := by rw [hn2, List.lookup_append, hlk1]; rfl
+       rw [hy, hnx1] at *
+       refine writerWP_mergeParentRoom pp (d - 1) il cL u.next ir cR (some (u.next + 2, g2)) c v2 pn hlk2 _ _
+         (fun s hr => ?_)
+       rw [writerWP_pure]
+       exact hv2.trans hv1)
+
+/-- The fix step when its merge's parent has room: the tree, the ranges and the readings stay
+(A3's `t_fixWLive_room`'s path to the state after the tail, then `mergeRoom_after`). -/
+theorem mergeRoom_writer (p : Params) (hpar : MergeParamsOK p) (key : Key) (c : Ctx)
+    (base : View BVal) (w : W) (hcp : c.p = p) (hvc : ViewCoherent c base) (hFS : FixStart c base w)
+    (hI : PutInv c base w) (hRO : RangeOrder (wNode p base w) c.i w.top.rootKey)
+    (hC : ∀ f w1, (do path key; target : M Fix) c w = .ok (f, w1) → IsMerge f) :
+    WriterWP (fixStepRoom key) c w (fun r w' => r = true →
+      TreeOK (wNode p base w') c.i w'.top.rootKey ∧ RangeOrder (wNode p base w') c.i w'.top.rootKey ∧
+      ∀ k, wGet p c.i base w' k = wGet p c.i base w k) := by
+  subst hcp
+  obtain ⟨_, htaken, _⟩ := hFS
+  have htkw : ∀ z, w.taken.contains z = false := by intro z; rw [htaken]; rfl
+  unfold fixStepRoom fixStepWith
+  rw [← bind_assoc, writerWP_bind]
+  intro f v hrun
+  obtain ⟨x, d, rfl⟩ := hC f v hrun
+  by_cases hkey : key = []
+  · subst hkey; exact absurd rfl (pathTarget_nil_noMerge_A c w _ v hrun x d)
+  obtain ⟨hrv, _, _, _, _, hmg⟩ := writerWP_pathTarget key hkey c base hvc w (fun y _ => htkw y)
+    (fun y yn _ h => hI.wf y yn h) (Fix.merge x d) v hrun
+  obtain ⟨X, K, Nn, hPO, hXd, hd0, hql, _, _, _⟩ := hmg x d rfl
+  dsimp only
+  rw [writerWP_bind]
+  have htkv : ∀ z, v.taken.contains z = false := fun z => by rw [hrv.2.2.1]; exact htkw z
+  refine writerWP_mergeP_facts (mtTailWith mergeParentRoom) x d c base hvc v htkv _ ?_
+  intro pp pn xn ls l ln il r rn ir u cL cR hTF
+  have hlkx : u.nodes.lookup x = some xn := by
+    rcases hTF.xlr with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
+    · exact hTF.lkl
+    · exact hTF.lkr
+  intro n u' hrunT
+  obtain ⟨first, second, m2, hmk, hheads, hm2, _, hnodes, htaken', htop'⟩ :=
+    writerWP_mtTailRoom c x d pp pn xn ls l ln il r rn ir u cL cR (cv?_of_ks hTF.kl)
+      (cv?_of_ks hTF.kr) hlkx hTF.lkp n u' hrunT
+  have hvals' := writerWP_mtTailRoom_vals c x d pp pn xn ls l ln il r rn ir u cL cR (cv?_of_ks hTF.kl)
+      (cv?_of_ks hTF.kr) hlkx hTF.lkp n u' hrunT
+  rw [writerWP_pure]
+  intro _
+  -- the readers
+  have hrvu := hTF.pre.1
+  have hNv : wNode c.p base v = wNode c.p base w := hrv.1
+  have hNu : wNode c.p base u = wNode c.p base w := hrvu.1.trans hNv
+  have hutop : u.top = w.top := hrvu.2.1.trans hrv.2.1
+  have hunext : u.next = w.next := hrvu.2.2.2.2.trans hrv.2.2.2.2
+  have htku : ∀ z, u.taken.contains z = false := fun z => by rw [hrvu.2.2.1]; exact htkv z
+  have hNfresh : ∀ z, w.next ≤ z → wNode c.p base w z = none := by
+    intro z hz
+    have hnl : w.nodes.lookup z = none := by
+      cases h : w.nodes.lookup z with
+      | none => rfl
+      | some _ => have := hI.ids.1 z (by rw [h]; rfl); omega
+    simp only [wNode, htkw z, Bool.false_eq_true, ↓reduceIte, hnl, (hI.fresh z hz).1]
+  have hulk : ∀ z, w.next ≤ z → u.nodes.lookup z = none := by
+    intro z hz
+    have h1 := hNfresh z hz
+    rw [← hNu] at h1
+    cases h : u.nodes.lookup z with
+    | none => rfl
+    | some n => simp only [wNode, htku z, Bool.false_eq_true, ↓reduceIte, h] at h1; cases h1
+  have hnext := tReach_lt_next c base w hI
+  -- the path's facts
+  obtain ⟨epp, hepp, hepp2⟩ : ∃ e, v.path[d - 1]? = some e ∧ e.2 = pp := by
+    have := hTF.path
+    cases h : v.path[d - 1]? with
+    | none => rw [h] at this; cases this
+    | some e => rw [h] at this; exact ⟨e, rfl, Option.some.inj this⟩
+  have hpX : pp = X (d - 1) := by
+    have h1 := hPO.1 (d - 1) (by omega)
+    rw [hepp] at h1
+    simp only [Option.map_some, Option.some.injEq] at h1
+    rw [← hepp2, h1]
+  have hdp' := pathOK_depth c base v d X K Nn hPO (d - 1) (by omega)
+  rw [hNv, hrv.2.1] at hdp'
+  rw [← hpX] at hdp'
+  have hpn : wNode c.p base w pp = some pn := by rw [← hNv]; exact hTF.wp
+  have hpl : pn.leaf = false := by
+    have h1 := hPO.2.2.1 (d - 1) (by omega)
+    have h2 : wNode c.p base v (X (d - 1)) = some (Nn (d - 1)) := by
+      simp only [wNode, h1.2, Bool.false_eq_true, ↓reduceIte, h1.1]
+    rw [← hpX, hTF.wp] at h2
+    rw [Option.some.inj h2]; exact hql
+  have hppR : TReach (wNode c.p base w) c.i w.top.rootKey pp := hdp'.reach
+  have hppn := hnext pp hppR
+  -- the end state's reader
+  have hfx : u.nodes.lookup u.next = none := hulk u.next (by omega)
+  obtain ⟨hN'p, hN'1, hN'2, hN'o⟩ := wNode_room_final c.p base u u' pp u.next _ _ _ hnodes htaken' htku hfx
+    (by omega)
+  have hrt : u'.top.rootKey = w.top.rootKey := by rw [htop', hutop]
+  have hV : wValue base u' = wValue base w := by
+    have ht' : u'.taken = w.taken := by rw [htaken', hrvu.2.2.1, hrv.2.2.1]
+    have hv' : u'.vals = w.vals := by rw [hvals', hrvu.2.2.2.1, hrv.2.2.2.1]
+    funext z
+    simp only [wValue, ht', hv']
+  have hcap : 1 ≤ c.p.mergeMax := by have := hpar.1; have := hpar.2.1; omega
+  have hN2' : ∀ ks2 g2, second = some (ks2, g2) →
+      wNode c.p base u' (u.next + 2) = some ⟨xn.leaf, newKlongs c.i ks2⟩ := by
+    intro ks2 g2 hs
+    subst hs
+    refine hN'2 (u.next + 2) _ (by omega) (by omega) (hulk _ (by omega)) ?_
+    simp [List.lookup]
+  have hNo' : ∀ y, y ≠ pp → y ≠ u.next → (∀ ks2 g2, second = some (ks2, g2) → y ≠ u.next + 2) →
+      wNode c.p base u' y = wNode c.p base w y := by
+    intro y hyp hyx hy2
+    rw [hN'o y hyp hyx ?_, hNu]
+    rcases hs : second with _ | ⟨ks2, g2⟩
+    · rfl
+    · have := hy2 ks2 g2 hs
+      have hb : (y == u.next + 2) = false := by simpa using this
+      simp [List.lookup, hb]
+  obtain ⟨hT', hR', hG'⟩ := mergeRoom_after (wNode c.p base w) (wNode c.p base u') (wValue base w) c.i
+    w.top.rootKey c.p.fuel c.p.mergeMax hcap hI.tree hI.times hI.wf u.next
+    (fun y hy => by rw [hunext]; exact hnext y hy) (fun z hz => hNfresh z (by omega)) hRO
+    pp l r pn xn ln rn il ir cL cR hppR hpn hpl hTF.kl hTF.ll hTF.kr hTF.rl hTF.lt hTF.adj
+    (by rw [← hNv]; exact hTF.wl) (by rw [← hNv]; exact hTF.wr) hTF.lleaf hTF.rleaf first second hmk
+    hheads (by rw [← hm2]; exact hN'p) hN'1 hN2' hNo'
+  refine ⟨by rw [hrt]; exact hT', by rw [hrt]; exact hR', fun k => ?_⟩
+  show getFromR (wNode c.p base u') (wValue base u') c.i c.p.fuel k u'.top.rootKey =
+    getFromR (wNode c.p base w) (wValue base w) c.i c.p.fuel k w.top.rootKey
+  rw [hV, hrt]
+  exact hG' k
+
+/-! ## A5: `FixWEmpty`, the full parent a named premise -/
+
+/-- The named premise left by A5: `FixWEmpty`'s conclusion for a fix step whose merge's parent
+is full (a split by rule O, or a compaction; A3's `fixStepFull`). -/
+def MergeFullEmpty (p : Params) : Prop :=
+  ∀ (key : Key) (c : Ctx) (base : View BVal) (w : W) (H : NodeId → Prop), c.p = p →
+    ViewCoherent c base → FixStart c base w → PutInv c base w → PutInvG c base w →
+    RangeOrder (wNode p base w) c.i w.top.rootKey →
+    LiveCountsH p (wNode p base w) c.i w.top.rootKey H →
+    (∀ f w1, (do path key; target : M Fix) c w = .ok (f, w1) → IsMerge f) →
+    (∃ B top0, PutBase c base B ∧ PutBook c B top0 w) →
+    (∀ w', fixStep key c w = .ok (true, w') →
+      SegFits (wNode p base w') c.i (p.fuel - 1) w'.top.rootKey) →
+    (∀ x d w1, (do path key; target : M Fix) c w = .ok (.merge x d, w1) →
+      ¬ ChildrenLive c base w1 d) →
+    WriterWP (fixStepFull key) c w (fun r w' => r = true →
+      PutInv c base w' ∧ PutInvG c base w' ∧
+      RangeOrder (wNode p base w') c.i w'.top.rootKey ∧
+      ∀ k, wGet p c.i base w' k = wGet p c.i base w k)
+
+/-- A5 (bergdb 026-19): `FixW` but the live counts for a merge whose parent has an empty child,
+proved when the parent has room (for any merge with room, empty children or not); the full
+parent from `MergeFullEmpty`. -/
+theorem t_fixWEmpty_of (p : Params) (hpar : MergeParamsOK p) (hFull : MergeFullEmpty p) :
+    FixWEmpty p := by
+  intro key c base w H hcp hvc hst hPI hPG hRO hLH hkind hbooks hfit hnCL r w' hrun hr
+  rcases r3_fixStep key c w (r, w') hrun with hR | hF
+  · subst hr
+    obtain ⟨hT', hRO', hgets⟩ := mergeRoom_writer p hpar key c base w hcp hvc hst hPI hRO hkind true w'
+      hR rfl
+    subst hcp
+    have htk0 : w.taken = [] := hst.2.1
+    obtain ⟨B, top0, hB, hbk⟩ := hbooks
+    have hbk' := putBook_of_keeps (fixStep key) c base B top0 hB w hbk (klongsWf_fixStep key)
+      (good_fixStep B key) (book_fixStep B key) (@state_fixStep (allocatedIdsInvariant B) key)
+      (@state_fixStep (commitInvariant top0) key) (freshCache_fixStep key) (ptrs_fixStep _ key) true w'
+      hrun
+    have hG' := putInvG_of_book c base B top0 w' hB hbk'
+    have htk' : w'.taken = [] := takenP_fixStep (fun l => l = []) key c w htk0 true w' hrun
+    refine ⟨?_, hG', hRO', hgets⟩
+    refine putInv_of_parts c base w' hG' hT' (fun y _ => by rw [htk']; rfl) ?_
+    exact leafOrder_of_rangeOrder _ _ _ hRO' (fun y yn hy s hs => hG'.times y yn hy s hs)
+  · exact hFull key c base w H hcp hvc hst hPI hPG hRO hLH hkind hbooks hfit hnCL r w' hF hr
+
+/-- The top with A3, A4, A5 and the unlink's room case: of the fix steps' `FixW`, only the full
+parents and full segment leaves (`MergeFullLive`, `MergeFullEmpty`, `FixWUnlinkFull`) and the
+collapse stay premises. -/
+theorem t_visible_A5 (p : Params) :
+    MergeParamsOK p → (2 ≤ p.theta ∨ p.theta = 0) →
+    UserStepOK p → MergeFullLive p → MergeFullEmpty p → FixWUnlinkFull p → FixW p IsCollapse →
+    FrameW p → VisibleOK p :=
+  fun hp hth hU hM hE hUf hFc hFr =>
+    t_visible_unlinkRoom p hp hth hU (t_fixLiveW_merge p hp hM) (t_fixWEmpty_of p hp hE) hUf hFc hFr
+
+end SIS.Tree.Mt

@@ -1,0 +1,442 @@
+/-
+The proof trial of 026-18 (bergdb 026-19, step B1): a subtransaction's first state
+and its lift to the structure, for any structure P at its time t (not only
+`treeRun`). The first state of a subtransaction at t + 1 (`ctxAt`, `wStart`) has the
+facts that `FixW` asks (`PutInv`, `PutInvG`, the ranges, the live counts with holes,
+the reading); the lift (`LiftOK`) says how the structure after it reads.
+-/
+import SIS.Tree.MtSub
+import SIS.Tree.DelChkRefines
+
+set_option autoImplicit false
+
+namespace SIS.Tree.Mt
+
+open SIS SIS.Check SIS.Tree
+
+/-- The writer's context of a subtransaction at t + 1 from P at t (`runWith`'s). -/
+def ctxAt (p : Params) (P : Struct BVal) (t : Time) : Ctx :=
+  { p := p, i := t + 1, view := rootless (view (treeSpec p) P t) }
+
+/-- The writer's first state (`runWith`'s). -/
+def wStart (base : NodeId) (top : Top) : W := { next := base, top := top }
+
+theorem wNode_wStart (p : Params) (v : View BVal) (base : NodeId) (top : Top) :
+    wNode p v (wStart base top) = knodeOf p v := by
+  funext x
+  simp [wNode, wStart]
+
+/-! ## The first state -/
+
+-- restated from viewCoherent_ctxOf (GetFrame.lean)
+theorem viewCoherent_at (p : Params) (P : Struct BVal) (t : Time) (hP : StructTimesLE P t) :
+    ViewCoherent (ctxAt p P t) (viewOf P) := by
+  intro x nd h
+  simp only [ctxAt, rootless] at h
+  split at h
+  · cases h
+  · obtain ⟨nd0, h0, hnd⟩ := view_some p _ _ _ _ h
+    subst hnd
+    rw [upTo_of_timesLE _ _ hP x nd0 h0]
+    exact h0
+
+-- restated from rootAt_of_writerTop (GetWriter.lean)
+theorem rootAt_of_top (p : Params) (P : Struct BVal) (t : Time) (hP : StructTimesLE P t)
+    (z : NodeId) (top : Top) (hz : lastTop (view (treeSpec p) P t) = some z)
+    (htop : topOf p (ctxAt p P t).view z = .ok top) :
+    rootAt (viewOf P) t = some top.rootKey := by
+  unfold lastTop at hz
+  cases hv : view (treeSpec p) P t root with
+  | none => rw [hv] at hz; cases hz
+  | some r =>
+    rw [hv] at hz
+    obtain ⟨nd0, h0, hr⟩ := view_some p _ _ _ _ hv
+    subst hr
+    simp only at hz
+    have htopAt : topAt (viewOf P) t = some z := by
+      unfold topAt
+      simp only [viewOf, h0]
+      exact hz
+    unfold rootAt
+    rw [htopAt]
+    simp only [Option.bind_some]
+    unfold topOf at htop
+    simp only [ctxAt, rootless] at htop
+    by_cases hzr : (z == root) = true
+    · simp only [hzr, ↓reduceIte] at htop
+      cases htop
+    · simp only [hzr, Bool.false_eq_true, ↓reduceIte] at htop
+      cases hvz : view (treeSpec p) P t z with
+      | none => rw [hvz] at htop; cases htop
+      | some ndz =>
+        rw [hvz] at htop
+        obtain ⟨ndz0, hz0, hzr0⟩ := view_some p _ _ _ _ hvz
+        subst hzr0
+        simp only at htop
+        rw [upTo_of_timesLE _ _ hP z ndz0 hz0] at htop
+        unfold rootKeyOf
+        simp only [viewOf, hz0, Option.bind_some]
+        split at htop
+        · rename_i t y hf
+          simp only [Except.ok.injEq] at htop
+          subst htop
+          exact findSome_rootKey ndz0.hist t y hf
+        · cases htop
+
+-- restated from putBase_of_run (PutInvInit.lean)
+theorem putBase_at (p : Params) (P : Struct BVal) (t : Time) (base : NodeId)
+    (hfresh : ∀ q ∈ P, q.1 < base) (htimes0 : StructTimesLE P t) (hR : RunLinksOK p P t) :
+    PutBase (ctxAt p P t) (viewOf P) base := by
+  obtain ⟨hP, hH, hN⟩ := hR
+  have htimes : StructTimesLE P (t + 1 - 1) := htimes0
+  have hl : ViewLinksOK base p (view (treeSpec p) P (t + 1 - 1)) :=
+    viewLinksOK_of p _ _ base hfresh htimes hP hN
+  refine ⟨?_, ?_, viewCoherent_at p P t htimes0, ?_, ?_⟩
+  · intro x nd hx
+    exact hfresh _ (mem_of_get? hx)
+  · intro x n hx
+    obtain ⟨nd, hg, hd, hlv, hn⟩ := knodeOf_viewOf p _ x n hx
+    subst hn
+    refine ⟨(hH x nd hg hd hlv).1, ?_, ?_⟩
+    · intro s hs
+      have := knodeOf_timesLE p P t htimes0 x _ hx s hs
+      show s ≤ t + 1
+      omega
+    · intro cv y hk
+      obtain ⟨e, he, hv⟩ := klongsOf_key_mem nd.hist cv y hk
+      have hy := hP _ (mem_of_get? hg) e he y (by rw [hv]; simp [bptrs])
+      cases hgy : P.get? y with
+      | none => simp [hgy] at hy
+      | some ny => exact hfresh _ (mem_of_get? hgy)
+  · exact viewGood_of p P (t + 1) base (by omega) hfresh htimes hl
+  · exact viewKlongsWf_rootless p _ (viewKlongsWf_of p P _ htimes0 hH)
+
+-- restated from putBook_init (PutInvInit.lean)
+theorem putBook_at (p : Params) (P : Struct BVal) (t : Time) (base : NodeId)
+    (hfresh : ∀ q ∈ P, q.1 < base) (htimes : StructTimesLE P t) (hR : RunLinksOK p P t)
+    (z : NodeId) (top : Top) (htop : topOf p (ctxAt p P t).view z = .ok top) :
+    PutBook (ctxAt p P t) base top (wStart base top) := by
+  have ht : top.time ≠ t + 1 := by
+    obtain ⟨nd, hv, e, he, het⟩ := topOf_time p _ z top htop
+    simp only [ctxAt, rootless] at hv
+    split at hv
+    · cases hv
+    · obtain ⟨nd0, _, hnd⟩ := view_some p _ _ _ _ hv
+      subst hnd
+      have := (List.mem_filter.mp he).2
+      simp only [decide_eq_true_eq] at this
+      omega
+  obtain ⟨h1, h2, h3⟩ := topOf_old p P t htimes hR.1 z top htop
+  have hlt : ∀ y, (P.get? y).isSome = true → y < base := by
+    intro y hy
+    cases hg : P.get? y with
+    | none => rw [hg] at hy; cases hy
+    | some nd => exact hfresh _ (mem_of_get? hg)
+  refine ⟨?_, ⟨Nat.le_refl _, ?_⟩, book_start base _ top, ?_, ?_, ?_, ?_⟩
+  · intro q hq; cases hq
+  · intro q hq; cases hq
+  · refine ⟨Nat.le_refl _, ?_, ?_⟩
+    · simp [wStart]
+    · intro n hn; cases hn
+  · refine ⟨ht, fun _ => rfl, fun h => by simp [wStart] at h, by simp [wStart], by simp [wStart],
+      by simp [wStart]⟩
+  · exact ⟨Nat.le_refl _, by simp [wStart], by simp [wStart], by simp [wStart]⟩
+  · exact ptrs_start (fun y => y < base) (ctxAt p P t) base top
+      ⟨hlt _ h1, hlt _ h2, fun q hq => hlt _ (h3 q hq)⟩
+
+/-- The live klongs of P's key nodes at t + 1 are those at t. -/
+theorem liveAt_knode_succ (p : Params) (P : Struct BVal) (t : Time) (hP : StructTimesLE P t)
+    (x : NodeId) (n : KNode) (hx : knodeOf p (viewOf P) x = some n) :
+    n.liveAt (t + 1) = n.liveAt t :=
+  liveAt_succ_of_timesLE p P t hP x n hx
+
+theorem fReach_pred (p : Params) (P : Struct BVal) (t : Time) (hP : StructTimesLE P t)
+    (r x : NodeId) (b s : Bool) (h : FReach (knodeOf p (viewOf P)) (t + 1) r x b s) :
+    FReach (knodeOf p (viewOf P)) t r x b s := by
+  induction h with
+  | root => exact FReach.root
+  | inner x b s n c y _ hn hl hc ih =>
+    rw [liveAt_succ_of_timesLE p P t hP x n hn] at hc
+    exact FReach.inner x b s n c y ih hn hl hc
+  | seg x b s n c y _ hn hl hc ih =>
+    rw [liveAt_succ_of_timesLE p P t hP x n hn] at hc
+    exact FReach.seg x b s n c y ih hn hl hc
+
+theorem reachR_pred (p : Params) (P : Struct BVal) (t : Time) (hP : StructTimesLE P t)
+    (r x : NodeId) (lo : Nat) (hi : Option Nat)
+    (h : ReachR (knodeOf p (viewOf P)) (t + 1) r x lo hi) :
+    ReachR (knodeOf p (viewOf P)) t r x lo hi := by
+  induction h with
+  | root => exact ReachR.root
+  | inner x n lo hi c y b _ hn hl hb ih =>
+    rw [liveAt_succ_of_timesLE p P t hP x n hn] at hb
+    exact ReachR.inner x n lo hi c y b ih hn hl hb
+  | seg x n lo hi c y _ hn hl hc ih =>
+    rw [liveAt_succ_of_timesLE p P t hP x n hn] at hc
+    exact ReachR.seg x n lo hi c y ih hn hl hc
+
+/-- The ranges at the first state, from `RangeAtOK` at t. -/
+theorem rangeOrder_at (p : Params) (P : Struct BVal) (t : Time) (hP : StructTimesLE P t)
+    (hRA : RangeAtOK p P t) (r : NodeId) (hr : rootAt (viewOf P) t = some r) (base : NodeId)
+    (top : Top) (hrt : top.rootKey = r) :
+    RangeOrder (wNode p (viewOf P) (wStart base top)) (t + 1) (wStart base top).top.rootKey := by
+  rw [wNode_wStart]
+  show RangeOrder (knodeOf p (viewOf P)) (t + 1) top.rootKey
+  rw [hrt]
+  have h0 := hRA r hr
+  have hk : keyNodeAt p P = knodeOf p (viewOf P) := funext (fun x => keyNodeAt_eq_knodeOf p P x)
+  rw [hk] at h0
+  intro x lo hi n hx hn q hq
+  rw [liveAt_succ_of_timesLE p P t hP x n hn] at hq
+  exact h0 x lo hi n (reachR_pred p P t hP r x lo hi hx) hn q hq
+
+/-- The live counts with holes at the first state, from those at t. -/
+theorem liveCountsH_at (p : Params) (P : Struct BVal) (t : Time) (hP : StructTimesLE P t)
+    (r : NodeId) (H : NodeId → Prop) (hL : LiveCountsH p (knodeOf p (viewOf P)) t r H)
+    (base : NodeId) (top : Top) (hrt : top.rootKey = r) :
+    LiveCountsH p (wNode p (viewOf P) (wStart base top)) (t + 1) (wStart base top).top.rootKey H := by
+  rw [wNode_wStart]
+  show LiveCountsH p (knodeOf p (viewOf P)) (t + 1) top.rootKey H
+  rw [hrt]
+  intro x b s n hx hn hH
+  rw [liveAt_succ_of_timesLE p P t hP x n hn]
+  exact hL x b s n (fReach_pred p P t hP r x b s hx) hn hH
+
+-- restated from writerTreeOK_init (WriterTree.lean)
+theorem treeOK_at (p : Params) (P : Struct BVal) (t : Time) (hP : StructTimesLE P t)
+    (hT : TreeAt p P t) (base : NodeId) (top : Top) (hroot : rootAt (viewOf P) t = some top.rootKey) :
+    TreeOK (wNode p (viewOf P) (wStart base top)) (t + 1) (wStart base top).top.rootKey := by
+  obtain ⟨r, hr, ht⟩ := hT
+  rw [hr] at hroot
+  simp only [Option.some.injEq] at hroot
+  rw [wNode_wStart]
+  show TreeOK (knodeOf p (viewOf P)) (t + 1) top.rootKey
+  rw [← hroot]
+  apply treeOK_congr_time _ t (t + 1) r _ ht
+  intro x n hx
+  exact (liveAt_succ_of_timesLE p P t hP x n hx).symm
+
+/-- `PutInv` at the first state. -/
+theorem putInv_at (p : Params) (P : Struct BVal) (t : Time) (base : NodeId)
+    (hfresh : ∀ q ∈ P, q.1 < base) (hP : StructTimesLE P t) (hR : RunLinksOK p P t)
+    (hT : TreeAt p P t) (hRA : RangeAtOK p P t) (z : NodeId) (top : Top)
+    (hz : lastTop (view (treeSpec p) P t) = some z)
+    (htop : topOf p (ctxAt p P t).view z = .ok top) :
+    PutInv (ctxAt p P t) (viewOf P) (wStart base top) ∧ PutInvG (ctxAt p P t) (viewOf P) (wStart base top) := by
+  have hB := putBase_at p P t base hfresh hP hR
+  have hG := putInvG_of_book _ _ _ _ _ hB (putBook_at p P t base hfresh hP hR z top htop)
+  have hroot := rootAt_of_top p P t hP z top hz htop
+  have hTw := treeOK_at p P t hP hT base top hroot
+  have hO := rangeOrder_at p P t hP hRA top.rootKey hroot base top rfl
+  refine ⟨putInv_of_parts _ _ _ hG hTw ?_ ?_, hG⟩
+  · intro x _; simp [wStart]
+  · apply leafOrder_of_rangeOrder _ _ _ hO
+    intro x n hx s hs
+    rw [wNode_wStart] at hx
+    have := knodeOf_timesLE p P t hP x n hx s hs
+    show s ≤ t + 1
+    omega
+
+-- restated from initGetOK (GetWriter.lean)
+theorem wGet_start (p : Params) (P : Struct BVal) (t : Time) (hP : StructTimesLE P t)
+    (base : NodeId) (top : Top) (hroot : rootAt (viewOf P) t = some top.rootKey) (key : Key) :
+    wGet p (t + 1) (viewOf P) (wStart base top) key = get p (viewOf P) t key := by
+  have hval : wValue (viewOf P) (wStart base top) = valueOf (viewOf P) := by
+    funext y
+    simp [wValue, wStart]
+  unfold wGet
+  rw [wNode_wStart, hval, ← getFrom_eq_getFromR, getFrom_succ_of_timesLE p _ t hP]
+  unfold get
+  rw [hroot]
+  rfl
+
+/-- The first state of a fix step. -/
+theorem fixStart_at (p : Params) (P : Struct BVal) (t : Time) (hP : StructTimesLE P t)
+    (base : NodeId) (top : Top) : FixStart (ctxAt p P t) (viewOf P) (wStart base top) := by
+  refine ⟨rfl, rfl, ?_⟩
+  intro y yn hy s hs
+  rw [wNode_wStart] at hy
+  have := knodeOf_timesLE p P t hP y yn hy s hs
+  show s < t + 1
+  omega
+
+/-! ## The paths at t + 1 -/
+
+theorem eqVisits_succ (p : Params) (P : Struct BVal) (t : Time) (hP : StructTimesLE P t)
+    (cv : Nat) (f : Nat) (x : NodeId) :
+    eqVisits (knodeOf p (viewOf P)) (t + 1) cv f x = eqVisits (knodeOf p (viewOf P)) t cv f x := by
+  induction f generalizing x with
+  | zero => rfl
+  | succ f ih =>
+    simp only [eqVisits]
+    cases hn : knodeOf p (viewOf P) x with
+    | none => rfl
+    | some n =>
+      have hpre := knodeOf_prefix_succ p P t hP x n hn
+      simp only
+      unfold KNode.searchLte
+      rw [KNode.searchBy_prefix n t (t + 1) hpre]
+      split
+      · rfl
+      · split
+        · rfl
+        · rw [ih]
+
+theorem getEqR_succ (p : Params) (P : Struct BVal) (t : Time) (hP : StructTimesLE P t)
+    (cv : Nat) (f : Nat) (x : NodeId) :
+    getEqR (knodeOf p (viewOf P)) (t + 1) cv f x = getEqR (knodeOf p (viewOf P)) t cv f x := by
+  induction f generalizing x with
+  | zero => rfl
+  | succ f ih =>
+    simp only [getEqR]
+    cases hn : knodeOf p (viewOf P) x with
+    | none => rfl
+    | some n =>
+      have hpre := knodeOf_prefix_succ p P t hP x n hn
+      simp only
+      rw [KNode.searchEq_prefix n t (t + 1) hpre]
+      unfold KNode.searchLte
+      rw [KNode.searchBy_prefix n t (t + 1) hpre]
+      split
+      · rfl
+      · split
+        · rfl
+        · exact ih _
+
+theorem fromVisits_succ (p : Params) (P : Struct BVal) (t : Time) (hP : StructTimesLE P t)
+    (fuel : Nat) (key : List Nat) (r : NodeId) :
+    fromVisits (knodeOf p (viewOf P)) (t + 1) fuel key r = fromVisits (knodeOf p (viewOf P)) t fuel key r := by
+  induction key generalizing r with
+  | nil => rfl
+  | cons c rest ih =>
+    cases rest with
+    | nil => simp only [fromVisits, eqVisits_succ p P t hP]
+    | cons d rest =>
+      simp only [fromVisits, eqVisits_succ p P t hP, getEqR_succ p P t hP]
+      split
+      · rw [ih]
+      · rfl
+
+/-- A hole of P at t is a node on the writer's path at its first state. -/
+theorem hole_iff_start (p : Params) (P : Struct BVal) (t : Time) (hP : StructTimesLE P t)
+    (D : List Key) (base : NodeId) (top : Top) (hroot : rootAt (viewOf P) t = some top.rootKey)
+    (y : NodeId) :
+    Hole p P t D y ↔ ∃ k ∈ D, HoleW (ctxAt p P t) (viewOf P) (wStart base top) k y := by
+  constructor
+  · rintro ⟨k, hk, r, cv, hr, hm⟩
+    rw [hroot] at hr
+    simp only [Option.some.injEq] at hr
+    subst hr
+    refine ⟨k, hk, cv, ?_⟩
+    show (y, cv) ∈ fromVisits (wNode p (viewOf P) (wStart base top)) (t + 1) p.fuel k top.rootKey
+    rw [wNode_wStart, fromVisits_succ p P t hP]
+    exact hm
+  · rintro ⟨k, hk, cv, hm⟩
+    change (y, cv) ∈ fromVisits (wNode p (viewOf P) (wStart base top)) (t + 1) p.fuel k top.rootKey at hm
+    rw [wNode_wStart, fromVisits_succ p P t hP] at hm
+    exact ⟨k, hk, top.rootKey, cv, hroot, hm⟩
+
+/-! ## A run of a fix step, step by step -/
+
+theorem boundsNow_ok (c : Ctx) (u u' : W) (x : Unit) (h : boundsNow c u = .ok (x, u')) :
+    u' = u ∧ u.outside = [] := by
+  unfold boundsNow at h
+  simp only [bind, ReaderT.bind, StateT.bind, read, readThe, MonadReaderOf.read, ReaderT.read,
+    getThe, MonadStateOf.get, liftM, monadLift, MonadLift.monadLift,
+    StateT.get, pure, Except.bind, StateT.pure, Except.pure] at h
+  cases ho : u.outside with
+  | nil =>
+    rw [ho] at h
+    simp only [List.head?_nil] at h
+    have h' : (Except.ok ((), u) : Except String (Unit × W)) = .ok (x, u') := h
+    cases h'
+    exact ⟨rfl, rfl⟩
+  | cons q qs =>
+    rw [ho] at h
+    simp only [List.head?_cons] at h
+    cases h
+
+/-- A fix step that made a fix, as the writer's run from its first state. -/
+theorem runFix_true (p : Params) (P : Struct BVal) (t : Time) (base : NodeId) (k : Key) (w : W)
+    (h : runFix p base k (t + 1) (view (treeSpec p) P t) = .ok (true, w)) :
+    ∃ z top, lastTop (view (treeSpec p) P t) = some z ∧ topOf p (ctxAt p P t).view z = .ok top ∧
+      fixStep k (ctxAt p P t) (wStart base top) = .ok (true, w) ∧ w.outside = [] ∧
+      ∀ f w1, fixOf p base k (t + 1) (view (treeSpec p) P t) = .ok (f, w1) →
+        (do path k; target : M Fix) (ctxAt p P t) (wStart base top) = .ok (f, w1) := by
+  unfold runFix at h
+  split at h
+  · cases h
+  unfold runWith at h
+  cases hz : lastTop (view (treeSpec p) P t) with
+  | none => rw [hz] at h; cases h
+  | some z =>
+    rw [hz] at h
+    simp only at h
+    cases htop : topOf p (rootless (view (treeSpec p) P t)) z with
+    | error e => rw [htop] at h; cases h
+    | ok top =>
+      rw [htop] at h
+      simp only [ReaderT.run, StateT.run] at h
+      obtain ⟨a, w', hfs, hb⟩ := (m_bind_ok _ _ _ _ _).mp h
+      obtain ⟨u, w'', hbn, hp⟩ := (m_bind_ok _ _ _ _ _).mp hb
+      simp only [pure, ReaderT.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hp
+      obtain ⟨ha, hw⟩ := hp
+      subst ha hw
+      obtain ⟨hw', hout⟩ := boundsNow_ok _ _ _ _ hbn
+      subst hw'
+      refine ⟨z, top, rfl, htop, hfs, hout, ?_⟩
+      intro f w1 hf
+      unfold fixOf runWith at hf
+      rw [hz] at hf
+      simp only at hf
+      rw [htop] at hf
+      simp only [ReaderT.run, StateT.run] at hf
+      exact hf
+
+/-! ## The lift, as a statement -/
+
+/-- B1's lift: the structure after a subtransaction at t + 1 whose writer ended in w,
+from P at t, reads as w's nodes, from w's space root, and gives w's gets; and it
+keeps the run's facts. -/
+structure LiftOK (p : Params) (P : Struct BVal) (t : Time) (w : W) : Prop where
+  knode : ∀ x, knodeOf p (viewOf (commit P (t + 1) w)) x = wNode p (viewOf P) w x
+  root : rootAt (viewOf (commit P (t + 1) w)) (t + 1) = some w.top.rootKey
+  reads : ∀ key, keyWf key = true →
+    get p (viewOf (commit P (t + 1) w)) (t + 1) key = wGet p (t + 1) (viewOf P) w key
+  links : RunLinksOK p (commit P (t + 1) w) (t + 1)
+  times : StructTimesLE (commit P (t + 1) w) (t + 1)
+  high : HighKindsOK p (commit P (t + 1) w)
+  data : DataEntriesOK (commit P (t + 1) w)
+  enc : ViewEncoded (viewOf (commit P (t + 1) w))
+
+/-- The lift for every fix step of kind C from a reached state with the run's invariant. -/
+def LiftFix (p : Params) (C : Fix → Prop) : Prop :=
+  ∀ (s : St) (k : Key) (base : NodeId) (w : W) (f : Fix) (w1 : W), Reached p s → StInv p s →
+    (∀ q ∈ s.P, q.1 < base) →
+    runFix p base k (s.t + 1) (view (treeSpec p) s.P s.t) = .ok (true, w) →
+    fixOf p base k (s.t + 1) (view (treeSpec p) s.P s.t) = .ok (f, w1) → C f → LiftOK p s.P s.t w
+
+/-- The parts of `Sub` that `FixW` does not speak of, after a fix step of kind C: the
+kinds, the heights, the sizes, the empty key of inner nodes, the dead klongs. -/
+def PartsFix (p : Params) (C : Fix → Prop) : Prop :=
+  ∀ (s : St) (k : Key) (rest : List Key) (base : NodeId) (w : W) (f : Fix) (w1 : W), Reached p s →
+    StInv p s → s.pend = k :: rest → (∀ q ∈ s.P, q.1 < base) →
+    runFix p base k (s.t + 1) (view (treeSpec p) s.P s.t) = .ok (true, w) →
+    fixOf p base k (s.t + 1) (view (treeSpec p) s.P s.t) = .ok (f, w1) → C f →
+    KindsAllOK p (commit s.P (s.t + 1) w) ∧ HeightAllOK p (commit s.P (s.t + 1) w) (s.t + 1) ∧
+      SizeOK p (commit s.P (s.t + 1) w) ∧ LeftAllOK p (commit s.P (s.t + 1) w) ∧
+      DeadAllOK p (commit s.P (s.t + 1) w)
+
+/-- The states before and after a fix step of kind C from a reached state fit the fuel
+(`SegFits` with p.fuel - 1, as today's heights give it): FixW's fuel hypotheses at the step's
+start. -/
+def FitFix (p : Params) (C : Fix → Prop) : Prop :=
+  ∀ (s : St) (k : Key) (rest : List Key) (base : NodeId) (w : W) (f : Fix) (w1 : W) (z : NodeId)
+    (top : Top), Reached p s → StInv p s → s.pend = k :: rest → (∀ q ∈ s.P, q.1 < base) →
+    lastTop (view (treeSpec p) s.P s.t) = some z → topOf p (ctxAt p s.P s.t).view z = .ok top →
+    fixStep k (ctxAt p s.P s.t) (wStart base top) = .ok (true, w) → w.outside = [] →
+    (do path k; target : M Fix) (ctxAt p s.P s.t) (wStart base top) = .ok (f, w1) → C f →
+    SegFits (wNode p (viewOf s.P) (wStart base top)) (s.t + 1) (p.fuel - 1) top.rootKey ∧
+      SegFits (wNode p (viewOf s.P) w) (s.t + 1) (p.fuel - 1) w.top.rootKey
+
+end SIS.Tree.Mt

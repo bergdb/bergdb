@@ -1,0 +1,492 @@
+/-
+The proof trial of 026-18 (bergdb 026-19, tier 3, the user's delete): `DelW`, R1's delete at the
+writer's state (`Mt.putKv (.del key)`): a bitmap in the key's leaf and no more. Its walk is
+today's (`setNode`, `descendLte`), its leaf step MT's `deleteLeaf`. Proved: a key whose segment is
+missing and a key that is not there (noops), and a leaf with room for the bitmap (today's
+`writerWP_appendDeleteKlong_room_exactD` and `delInvF_after_bitmap`); a full leaf (the split and
+its cascade) is a named premise (`DelWFull`). `DelW` needs three hypotheses more, all held at the
+reached states as for `FixW`: the books, the children (`InnerChildrenExist`) and the fuel fit
+(`DelWB`).
+-/
+import SIS.Tree.MtCollapseW
+import SIS.Tree.DelStepsRoom
+import SIS.Tree.DelStepsTree
+import SIS.Tree.FuelNext
+import SIS.Tree.GetCaseBridge
+import SIS.Tree.DelStepsBook
+
+set_option autoImplicit false
+set_option linter.unusedSimpArgs false
+
+namespace SIS.Tree.Mt
+
+open SIS SIS.Check SIS.Tree
+
+/-- MT's walk over a key's segments to the tree of its last one, when it is there: reads only. -/
+theorem writerWP_mtPutSegs_prefix (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (value : Option Nat) (cv : Nat) (post : Bool → W → Prop) (hval : value = none) (J : W → Prop)
+    (hJd : ∀ (s f : Nat) (x : NodeId) (v : W), J v → WriterWP (descendLte s f x) c v (fun _ v' => J v'))
+    (hJp : ∀ (s : Option Nat) (x : NodeId) (v : W), J v → J { v with path := v.path ++ [(s, x)] }) :
+    ∀ (pre : List Nat) (r rk : NodeId) (w : W), J w →
+      (∀ q ∈ fromVisits (wNode c.p base w) c.i c.p.fuel (pre ++ [cv]) r,
+        w.taken.contains q.1 = false) →
+      segRootR (wNode c.p base w) c.i c.p.fuel pre r = some rk →
+      (∀ w', ReadsAs c.p base w w' → J w' → WriterWP (Mt.setValue rk cv value) c w' post) →
+      WriterWP (Mt.putSegs value (pre ++ [cv]) r) c w post := by
+  subst hval
+  intro pre
+  induction pre with
+  | nil =>
+    intro r rk w hJ _ hrk hcont
+    simp only [segRootR, Option.some.injEq] at hrk
+    subst hrk
+    rw [List.nil_append, Mt.putSegs.eq_2]
+    exact hcont w (ReadsAs.refl _ _ _) hJ
+  | cons s rest ih =>
+    intro r rk w hJ ht hrk hcont
+    have hne : rest ++ [cv] ≠ [] := by simp
+    rw [List.cons_append, Mt.putSegs.eq_3 none r s (rest ++ [cv]) hne]
+    simp only [segRootR] at hrk
+    cases hg : getEqR (wNode c.p base w) c.i s c.p.fuel r with
+    | none => rw [hg] at hrk; cases hrk
+    | some y =>
+      rw [hg] at hrk
+      simp only at hrk
+      split at hrk
+      · obtain ⟨d, rest', he⟩ : ∃ d rest', rest ++ [cv] = d :: rest' := by
+          cases h' : rest ++ [cv] with
+          | nil => exact absurd h' hne
+          | cons d rest' => exact ⟨d, rest', rfl⟩
+        have hvis : ∀ q ∈ fromVisits (wNode c.p base w) c.i c.p.fuel (s :: d :: rest') r,
+            w.taken.contains q.1 = false := by
+          intro q hq; apply ht q; rw [List.cons_append, he]; exact hq
+        simp only [fromVisits] at hvis
+        have ht1 : ∀ q ∈ eqVisits (wNode c.p base w) c.i s c.p.fuel r,
+            w.taken.contains q.1 = false := fun q hq => hvis q (List.mem_append_left _ hq)
+        unfold setNode
+        wpSimplify
+        refine writerWP_mono (writerWP_and (writerWP_descendLte_reads s c base hvc c.p.fuel r w ht1)
+          (hJd s c.p.fuel r w hJ)) ?_
+        intro L w3 ⟨⟨hr3, n, hn, hnl, hlk3, _, hget⟩, hJ3⟩
+        rw [writerWP_getNode_known L n c _ hlk3]
+        rw [hg] at hget
+        cases hfd : n.searchEq c.i s with
+        | none => rw [hfd] at hget; cases hget
+        | some fd =>
+          rw [hfd] at hget
+          simp only [Option.map_some, Option.some.injEq] at hget
+          simp only [pathAdd, writerWP_bind, writerWP_modify, writerWP_pure]
+          rw [← hget]
+          generalize hw4 : ({ w3 with path := w3.path ++ [(some fd.c, y)] } : W) = w4
+          have hr04 : ReadsAs c.p base w w4 := by
+            subst hw4
+            exact ReadsAs.trans _ _ _ _ _ hr3 ⟨rfl, rfl, rfl, rfl, rfl⟩
+          apply ih y rk w4 (by rw [← hw4]; exact hJp _ _ w3 hJ3)
+          · intro q hq
+            rw [hr04.2.2.1]
+            rw [hr04.1] at hq
+            apply hvis q
+            apply List.mem_append_right
+            rw [hg]
+            simp only
+            rw [← he]
+            exact hq
+          · rw [hr04.1]; exact hrk
+          · intro w' hr' hJ'
+            exact hcont w' (ReadsAs.trans _ _ _ _ _ hr04 hr') hJ'
+      · cases hrk
+
+/-- MT's walk when a segment of the key is missing: a noop that only reads (or fails). -/
+theorem writerWP_mtPutSegs_missing (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (cv : Nat) (J : W → Prop)
+    (hJd : ∀ (s f : Nat) (x : NodeId) (v : W), J v → WriterWP (descendLte s f x) c v (fun _ v' => J v'))
+    (hJp : ∀ (s : Option Nat) (x : NodeId) (v : W), J v → J { v with path := v.path ++ [(s, x)] }) :
+    ∀ (pre : List Nat) (r : NodeId) (w : W), J w →
+      (∀ q ∈ fromVisits (wNode c.p base w) c.i c.p.fuel (pre ++ [cv]) r,
+        w.taken.contains q.1 = false) →
+      segRootR (wNode c.p base w) c.i c.p.fuel pre r = none →
+      WriterWP (Mt.putSegs none (pre ++ [cv]) r) c w (fun _ v => ReadsAs c.p base w v ∧ J v) := by
+  intro pre
+  induction pre with
+  | nil => intro r w _ _ hrk; simp [segRootR] at hrk
+  | cons s rest ih =>
+    intro r w hJ ht hrk
+    have hne : rest ++ [cv] ≠ [] := by simp
+    rw [List.cons_append, Mt.putSegs.eq_3 none r s (rest ++ [cv]) hne]
+    obtain ⟨d, rest', he⟩ : ∃ d rest', rest ++ [cv] = d :: rest' := by
+      cases h' : rest ++ [cv] with
+      | nil => exact absurd h' hne
+      | cons d rest' => exact ⟨d, rest', rfl⟩
+    have hvis : ∀ q ∈ fromVisits (wNode c.p base w) c.i c.p.fuel (s :: d :: rest') r,
+        w.taken.contains q.1 = false := by
+      intro q hq; apply ht q; rw [List.cons_append, he]; exact hq
+    simp only [fromVisits] at hvis
+    have ht1 : ∀ q ∈ eqVisits (wNode c.p base w) c.i s c.p.fuel r,
+        w.taken.contains q.1 = false := fun q hq => hvis q (List.mem_append_left _ hq)
+    unfold setNode
+    wpSimplify
+    refine writerWP_mono (writerWP_and (writerWP_descendLte_reads s c base hvc c.p.fuel r w ht1)
+      (hJd s c.p.fuel r w hJ)) ?_
+    intro L w3 ⟨⟨hr3, n, hn, hnl, hlk3, _, hget⟩, hJ3⟩
+    rw [writerWP_getNode_known L n c _ hlk3]
+    cases hfd : n.searchEq c.i s with
+    | none =>
+      simp only [Option.isSome_none, Bool.not_false, ↓reduceIte, writerWP_pure]
+      exact ⟨hr3, hJ3⟩
+    | some fd =>
+      rw [hfd] at hget
+      simp only [Option.map_some] at hget
+      simp only [pathAdd, writerWP_bind, writerWP_modify, writerWP_pure]
+      generalize hw4 : ({ w3 with path := w3.path ++ [(some fd.c, fd.y)] } : W) = w4
+      have hr04 : ReadsAs c.p base w w4 := by
+        subst hw4
+        exact ReadsAs.trans _ _ _ _ _ hr3 ⟨rfl, rfl, rfl, rfl, rfl⟩
+      have hvisY : ∀ q ∈ fromVisits (wNode c.p base w) c.i c.p.fuel (rest ++ [cv]) fd.y,
+          w.taken.contains q.1 = false := by
+        intro q hq
+        apply hvis q
+        apply List.mem_append_right
+        rw [hget]
+        simp only
+        rw [← he]
+        exact hq
+      simp only [segRootR, hget] at hrk
+      by_cases hy : (wNode c.p base w fd.y).isSome = true
+      · simp only [hy, ↓reduceIte] at hrk
+        refine writerWP_mono (ih fd.y w4 (by rw [← hw4]; exact hJp _ _ w3 hJ3)
+          (by rw [hr04.1, hr04.2.2.1]; exact hvisY) (by rw [hr04.1]; exact hrk)) ?_
+        intro _ v ⟨hv, hJv⟩
+        exact ⟨ReadsAs.trans _ _ _ _ _ hr04 hv, hJv⟩
+      · -- the next segment's root is no node: the walk fails there
+        have hyn : wNode c.p base w fd.y = none := by
+          cases h : wNode c.p base w fd.y with
+          | none => rfl
+          | some _ => rw [h] at hy; simp at hy
+        have hyt : w4.taken.contains fd.y = false := by
+          rw [hr04.2.2.1]
+          apply hvisY (fd.y, d)
+          rw [he]
+          cases rest' with
+          | nil => simp [fromVisits, eqVisits, Params.fuel]
+          | cons e rest'' =>
+            simp only [fromVisits]
+            apply List.mem_append_left
+            obtain ⟨f, hf⟩ : ∃ f, c.p.fuel = f + 1 := ⟨c.p.fuel - 1, by have := fuel_pos c.p; omega⟩
+            rw [hf]; simp [eqVisits]
+        have hfail : ∀ (s' f : Nat) (post : NodeId → W → Prop),
+            WriterWP (descendLte s' f fd.y) c w4 post := by
+          intro s' f post
+          cases f with
+          | zero => simp only [descendLte]; exact writerWP_throw _ _ _ _
+          | succ f =>
+            simp only [descendLte, writerWP_bind, writerWP_read]
+            refine writerWP_mono (pre_getNode c base hvc w4 w4 (preI_refl _ _ _) fd.y) ?_
+            rintro m v ⟨_, _, hwn, _⟩
+            have := hwn hyt
+            rw [hr04.1, hyn] at this
+            cases this
+        cases rest' with
+        | nil =>
+          have hrc : rest ++ [cv] = [d] := he
+          rw [hrc, Mt.putSegs.eq_2]
+          unfold Mt.setValue
+          simp only [writerWP_bind, writerWP_read]
+          exact hfail _ _ _
+        | cons e rest'' =>
+          rw [he, Mt.putSegs.eq_3 none fd.y d (e :: rest'') (by simp)]
+          unfold setNode
+          simp only [writerWP_bind, writerWP_read]
+          exact hfail _ _ _
+
+theorem putInvG_next (c : Ctx) (base : View BVal) (w : W) (k : NodeId) (h : PutInvG c base w)
+    (hk : w.next ≤ k) : PutInvG c base { w with next := k } := by
+  obtain ⟨hwf, ht, ⟨i1, i2, i3, i4⟩, hf, hl, hkv⟩ := h
+  exact ⟨hwf, ht, ⟨fun z hz => Nat.lt_of_lt_of_le (i1 z hz) hk,
+    fun z hz => Nat.lt_of_lt_of_le (i2 z hz) hk, fun z hz => Nat.lt_of_lt_of_le (i3 z hz) hk,
+    fun q hq => Nat.lt_of_lt_of_le (i4 q hq) hk⟩, fun z hz => hf z (Nat.le_trans hk hz),
+    fun x xn cc z hxn hz => Nat.lt_of_lt_of_le (hl x xn cc z hxn hz) hk, hkv⟩
+
+theorem reachS_sub (N N' : NodeId → Option KNode) (t : Time) (r : NodeId)
+    (hnode : ∀ x n', N' x = some n' → ∃ n, N x = some n ∧
+      ∀ c y, (c, y) ∈ n'.liveAt t → (c, y) ∈ n.liveAt t) :
+    ∀ x, ReachS N' t r x → ReachS N t r x := by
+  intro x h
+  induction h with
+  | root => exact ReachS.root
+  | step x n' c z _ hn hc ih =>
+    obtain ⟨n, hn0, hsub⟩ := hnode x n' hn
+    exact ReachS.step x n c z ih hn0 (hsub c z hc)
+
+theorem putBook_fresh (c : Ctx) (base : View BVal) (B : NodeId) (top0 : Top) (hB : PutBase c base B)
+    (w : W) (hw : PutBook c B top0 w) : PutBook c B top0 { w with next := w.next + 2 } := by
+  have h := putBook_of_keeps fresh c base B top0 hB w hw klongsWf_fresh (good_fresh B) (book_fresh B)
+    (@state_fresh (allocatedIdsInvariant B)) (@state_fresh (commitInvariant top0)) freshCache_fresh
+    (ptrs_fresh _)
+  simp only [fresh, writerWP_bind, writerWP_get, writerWP_set, writerWP_pure] at h
+  exact h
+
+/-- `DelW`'s conclusion at a state that reads as w, the key reading none. -/
+theorem delW_readsAs (c : Ctx) (base : View BVal) (w v : W) (H : NodeId → Prop) (key : Key)
+    (r : Bool) (hPI : PutInv c base w) (hPG : PutInvG c base w)
+    (hRO : RangeOrder (wNode c.p base w) c.i w.top.rootKey)
+    (hLH : LiveCountsH c.p (wNode c.p base w) c.i w.top.rootKey H)
+    (hice : InnerChildrenExist (wNode c.p base w) c.i w.top.rootKey)
+    (hfit : SegFits (wNode c.p base w) c.i (c.p.fuel - 1) w.top.rootKey)
+    (hr : ReadsAs c.p base w v) (hbv : ∃ B top0, PutBase c base B ∧ PutBook c B top0 v)
+    (hnone : wGet c.p c.i base w key = none) :
+    PutInv c base v ∧ PutInvG c base v ∧ RangeOrder (wNode c.p base v) c.i v.top.rootKey ∧
+      LiveCountsH c.p (wNode c.p base v) c.i v.top.rootKey
+        (fun y => H y ∨ (r = false ∧ HoleW c base v key y)) ∧
+      (∀ k, keyWf k = true →
+        wGet c.p c.i base v k = if k == key then none else wGet c.p c.i base w k) ∧
+      (∃ B top0, PutBase c base B ∧ PutBook c B top0 v) ∧
+      InnerChildrenExist (wNode c.p base v) c.i v.top.rootKey ∧
+      SegFits (wNode c.p base v) c.i (c.p.fuel - 1) v.top.rootKey := by
+  refine ⟨putInv_of_readsAs c base w v hPI hr, putInvG_of_readsAs c base w v hPG hr,
+    by rw [hr.1, hr.2.1]; exact hRO, ?_, ?_, hbv, by rw [hr.1, hr.2.1]; exact hice,
+    by rw [hr.1, hr.2.1]; exact hfit⟩
+  · rw [hr.1, hr.2.1]
+    exact liveCountsH_mono c.p _ _ _ _ _ hLH (fun _ _ _ _ h => Or.inl h)
+  · intro k _
+    have hsame : wGet c.p c.i base v k = wGet c.p c.i base w k := by
+      unfold wGet; rw [hr.1, hr.2.1, ReadsAs.value _ _ _ _ hr]
+    rw [hsame]
+    by_cases hkk : k = key
+    · subst hkk; simp [hnone]
+    · have : (k == key) = false := by simpa using hkk
+      simp [this]
+
+/-- The key's leaf has no room for its bitmap. -/
+def DelLeafFull (c : Ctx) (base : View BVal) (w : W) (key : Key) : Prop :=
+  ∃ pre cv rk L n, key = pre ++ [cv] ∧
+    segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey = some rk ∧
+    (L, cv) ∈ eqVisits (wNode c.p base w) c.i cv c.p.fuel rk ∧ wNode c.p base w L = some n ∧
+    n.leaf = true ∧ bitsUnion n.lastBitmap (n.bitsOf cv) ≠ n.lastBitmap ∧ ¬ DelRoom c cv n
+
+/-- `DelW` with the books, the children and the fuel fit at the start (as `FixW` has them),
+and the same after; the key's path is a hole only when the delete was no noop. -/
+def DelWB (p : Params) : Prop :=
+  ∀ (key : Key) (c : Ctx) (base : View BVal) (w : W) (H : NodeId → Prop), c.p = p →
+    keyWf key = true → ViewCoherent c base → PutInv c base w → PutInvG c base w →
+    RangeOrder (wNode p base w) c.i w.top.rootKey →
+    LiveCountsH p (wNode p base w) c.i w.top.rootKey H →
+    (∃ B top0, PutBase c base B ∧ PutBook c B top0 w) →
+    InnerChildrenExist (wNode p base w) c.i w.top.rootKey →
+    SegFits (wNode p base w) c.i (p.fuel - 1) w.top.rootKey →
+    WriterWP (putKv (.del key)) c w (fun r w' =>
+      PutInv c base w' ∧ PutInvG c base w' ∧
+      RangeOrder (wNode p base w') c.i w'.top.rootKey ∧
+      LiveCountsH p (wNode p base w') c.i w'.top.rootKey
+        (fun y => H y ∨ (r = false ∧ HoleW c base w' key y)) ∧
+      (∀ k, keyWf k = true →
+        wGet p c.i base w' k = if k == key then none else wGet p c.i base w k) ∧
+      (∃ B top0, PutBase c base B ∧ PutBook c B top0 w') ∧
+      InnerChildrenExist (wNode p base w') c.i w'.top.rootKey ∧
+      SegFits (wNode p base w') c.i (p.fuel - 1) w'.top.rootKey)
+
+/-- The user's delete into a full leaf (its split and the cascade): `DelWB`'s conclusion, a named
+premise. -/
+def DelWFull (p : Params) : Prop :=
+  ∀ (key : Key) (c : Ctx) (base : View BVal) (w : W) (H : NodeId → Prop), c.p = p →
+    keyWf key = true → ViewCoherent c base → PutInv c base w → PutInvG c base w →
+    RangeOrder (wNode p base w) c.i w.top.rootKey →
+    LiveCountsH p (wNode p base w) c.i w.top.rootKey H →
+    (∃ B top0, PutBase c base B ∧ PutBook c B top0 w) →
+    InnerChildrenExist (wNode p base w) c.i w.top.rootKey →
+    SegFits (wNode p base w) c.i (p.fuel - 1) w.top.rootKey →
+    DelLeafFull c base w key →
+    WriterWP (putKv (.del key)) c w (fun r w' =>
+      PutInv c base w' ∧ PutInvG c base w' ∧
+      RangeOrder (wNode p base w') c.i w'.top.rootKey ∧
+      LiveCountsH p (wNode p base w') c.i w'.top.rootKey
+        (fun y => H y ∨ (r = false ∧ HoleW c base w' key y)) ∧
+      (∀ k, keyWf k = true →
+        wGet p c.i base w' k = if k == key then none else wGet p c.i base w k) ∧
+      (∃ B top0, PutBase c base B ∧ PutBook c B top0 w') ∧
+      InnerChildrenExist (wNode p base w') c.i w'.top.rootKey ∧
+      SegFits (wNode p base w') c.i (p.fuel - 1) w'.top.rootKey)
+
+/-- The user's delete (bergdb 026-19, tier 3): R1's bitmap keeps the writer's invariant, leaves
+holes only on its key's path, and its key reads none; a full leaf from `DelWFull`. -/
+theorem t_delWB_of (p : Params) (hFull : DelWFull p) : DelWB p := by
+  intro key c base w H hcp hkey hvc hPI hPG hRO hLH hbooks hice hfit0
+  by_cases hfull : DelLeafFull c base w key
+  · exact hFull key c base w H hcp hkey hvc hPI hPG hRO hLH hbooks hice hfit0 hfull
+  subst hcp
+  have hne : key ≠ [] := by intro h; rw [h] at hkey; simp [keyWf] at hkey
+  obtain ⟨pre, cv, rfl⟩ : ∃ pre cv, key = pre ++ [cv] :=
+    ⟨key.dropLast, key.getLast hne, (List.dropLast_concat_getLast hne).symm⟩
+  obtain ⟨B, top0, hB, hbk⟩ := hbooks
+  have ht := hPI.pathUntaken (pre ++ [cv])
+  unfold putKv pathClear findRoot pathAdd
+  wpSimplify
+  generalize hw2 : ({ ({ w with path := [] } : W) with
+    path := ([] : List (Option Nat × NodeId)) ++ [(none, w.top.rootKey)] } : W) = w2
+  have hr02 : ReadsAs c.p base w w2 := by subst hw2; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
+  have hb2 : PutBook c B top0 w2 := by
+    rw [← hw2]
+    exact putBook_pathAdd none w.top.rootKey c base B top0 hB _
+      (putBook_pathClear c base B top0 hB w hbk)
+  cases hrk : segRootR (wNode c.p base w) c.i c.p.fuel pre w.top.rootKey with
+  | none =>
+    refine writerWP_mono (writerWP_mtPutSegs_missing c base hvc cv (PutBook c B top0)
+      (fun s f x v hv => putBook_descendLte s f x c base B top0 hB v hv)
+      (fun s x v hv => putBook_pathAdd s x c base B top0 hB v hv) pre w.top.rootKey w2 hb2
+      (by rw [hr02.1, hr02.2.2.1]; exact ht) (by rw [hr02.1]; exact hrk)) ?_
+    intro r v ⟨hv, hbv⟩
+    exact delW_readsAs c base w v H (pre ++ [cv]) r hPI hPG hRO hLH hice hfit0
+      (ReadsAs.trans _ _ _ _ _ hr02 hv) ⟨B, top0, hB, hbv⟩
+      (by unfold wGet; rw [getFromR_append, hrk]; rfl)
+  | some rk =>
+    refine writerWP_mtPutSegs_prefix c base hvc none cv _ rfl (PutBook c B top0)
+      (fun s f x v hv => putBook_descendLte s f x c base B top0 hB v hv)
+      (fun s x v hv => putBook_pathAdd s x c base B top0 hB v hv) pre w.top.rootKey rk w2 hb2
+      (by rw [hr02.1, hr02.2.2.1]; exact ht) (by rw [hr02.1]; exact hrk) ?_
+    intro w2' hr2' hb2'
+    have hr0 := ReadsAs.trans _ _ _ _ _ hr02 hr2'
+    unfold Mt.setValue
+    wpSimplify
+    have ht2 : ∀ q ∈ eqVisits (wNode c.p base w2') c.i cv c.p.fuel rk,
+        w2'.taken.contains q.1 = false := by
+      rw [hr0.1, hr0.2.2.1]
+      exact fun q hq => ht q (fromVisits_append _ _ _ pre cv _ rk hrk q hq)
+    refine writerWP_mono (writerWP_and (writerWP_descendLte_reads cv c base hvc c.p.fuel rk w2' ht2)
+      (putBook_descendLte cv c.p.fuel rk c base B top0 hB w2' hb2')) ?_
+    intro L w3 ⟨⟨hr23, n, hn, hnl, hlk3, hvisL, hget⟩, hb3⟩
+    rw [hr0.1] at hn hvisL hget
+    have hr03 := ReadsAs.trans _ _ _ _ _ hr0 hr23
+    have hwf := hPI.wf L n hn
+    have htimes := hPI.times L n hn
+    have hLt : w.taken.contains L = false :=
+      ht (L, cv) (fromVisits_append _ _ _ pre cv _ rk hrk _ hvisL)
+    unfold pathSize deleteLeaf
+    wpSimplify
+    rw [writerWP_getNode_known L n c _ hlk3]
+    by_cases hnoop : bitsUnion n.lastBitmap (n.bitsOf cv) = n.lastBitmap
+    · have hnoopb : (bitsUnion n.lastBitmap (n.bitsOf cv) == n.lastBitmap) = true := by
+        rw [hnoop]; simp
+      simp only [hnoopb, ↓reduceIte, writerWP_pure, Bool.not_true, Bool.false_eq_true]
+      exact delW_readsAs c base w w3 H (pre ++ [cv]) _ hPI hPG hRO hLH hice hfit0 hr03
+        ⟨B, top0, hB, hb3⟩ (by
+        unfold wGet
+        rw [getFromR_append, hrk]
+        simp only [Option.bind_some, getFromR]
+        rw [hget, KNode.searchEq_noop n c.i cv hwf htimes hnoop]
+        rfl)
+    · have hroomD : DelRoom c cv n := by
+        apply Classical.byContradiction
+        intro hnr
+        exact hfull ⟨pre, cv, rk, L, n, rfl, hrk, hvisL, hn, hnl, hnoop, hnr⟩
+      have hnb : (bitsUnion n.lastBitmap (n.bitsOf cv) == n.lastBitmap) = false := by
+        simpa using hnoop
+      simp only [hnb, Bool.false_eq_true, ↓reduceIte]
+      have hcore : ∀ u : W, u.nodes = w3.nodes → u.taken = w3.taken → u.top = w3.top →
+          u.vals = w3.vals → PutBook c B top0 u →
+          WriterWP (do let _ ← appendDeleteKlong L (w3.path.length - 1) cv; pure false) c u
+            (fun a w' => WriterWP (if (!a) = true then do let _ ← fresh; pure a else pure a) c w'
+              (fun r w' => PutInv c base w' ∧ PutInvG c base w' ∧
+                RangeOrder (wNode c.p base w') c.i w'.top.rootKey ∧
+                (LiveCountsH c.p (wNode c.p base w') c.i w'.top.rootKey
+                  fun y => H y ∨ (r = false ∧ HoleW c base w' (pre ++ [cv]) y)) ∧
+                (∀ (k : Key), keyWf k = true →
+                  wGet c.p c.i base w' k =
+                    if (k == pre ++ [cv]) = true then none else wGet c.p c.i base w k) ∧
+                (∃ B top0, PutBase c base B ∧ PutBook c B top0 w') ∧
+                InnerChildrenExist (wNode c.p base w') c.i w'.top.rootKey ∧
+                SegFits (wNode c.p base w') c.i (c.p.fuel - 1) w'.top.rootKey)) := by
+        intro u hun hut hutop huv hbu
+        have hlku : u.nodes.lookup L = some n := by rw [hun]; exact hlk3
+        rw [writerWP_bind]
+        refine writerWP_mono (writerWP_and (writerWP_appendDeleteKlong_room_exactD L _ cv n c u hlku
+          htimes hwf hnoop hroomD) (putBook_appendDeleteKlong L _ cv c base B top0 hB u hbu)) ?_
+        rintro _ v ⟨⟨h1, h2, h3, _, _, _, h7⟩, hbv⟩
+        rw [writerWP_pure]
+        simp only [Bool.not_false, ↓reduceIte, writerWP_bind]
+        unfold fresh
+        simp only [writerWP_bind, writerWP_get, writerWP_set, writerWP_pure]
+        obtain ⟨n', hnodes', hl', hwf', ht', hlk', hbm⟩ := h7
+        have hD := delInvF_after_bitmap c base B top0 hB w w3 v pre cv rk L n hPI hRO hice hfit0 hkey
+          hrk hvisL hn hnl hr03 hLt (by rw [h1, hut]) (by rw [h2, hutop]) (by rw [h3, huv])
+          ⟨n', by rw [hnodes', hun], hl', hwf', ht', hlk', hbm⟩ hbv
+        obtain ⟨hPIv, hPGv, hROv, hICEv, _, hRDv, _⟩ := hD
+        -- the node map after the bitmap
+        have hnt := htimes
+        have hLt3 : w3.taken.contains L = false := by rw [hr03.2.2.1]; exact hLt
+        have hvt : v.taken = w3.taken := by rw [h1, hut]
+        have hN : ∀ y, wNode c.p base v y = if y = L then some n' else wNode c.p base w y := by
+          intro y
+          rw [← hr03.1]
+          by_cases hy : y = L
+          · subst hy
+            simp only [wNode, hvt, hLt3, Bool.false_eq_true, ↓reduceIte, hnodes', hun, lookup_upsert]
+          · simp only [wNode, hvt, hnodes', hun, lookup_upsert, hy, ↓reduceIte]
+        have hvL : wNode c.p base v L = some n' := by rw [hN L]; simp
+        have hvo : ∀ y, y ≠ L → wNode c.p base v y = wNode c.p base w y := by
+          intro y hy; rw [hN y]; simp [hy]
+        have htopv : v.top = w.top := by rw [h2, hutop, hr03.2.1]
+        have hlive := liveAt_iff_of_delete_lookup n n' c.i cv hnt ht' hlk'
+        have hnode : ∀ x m', wNode c.p base v x = some m' → ∃ m, wNode c.p base w x = some m ∧
+            m.leaf = m'.leaf ∧ ∀ cc y, (cc, y) ∈ m'.liveAt c.i → (cc, y) ∈ m.liveAt c.i := by
+          intro x m' hx
+          by_cases hxL : x = L
+          · subst hxL
+            rw [hvL] at hx; cases hx
+            exact ⟨n, hn, hl'.symm, fun cc y h => ((hlive cc y).mp h).1⟩
+          · rw [hvo x hxL] at hx
+            exact ⟨m', hx, rfl, fun _ _ h => h⟩
+        have hSFv : SegFits (wNode c.p base v) c.i (c.p.fuel - 1) v.top.rootKey := by
+          rw [htopv]
+          refine segFits_transfer (wNode c.p base w) (wNode c.p base v) c.i (c.p.fuel - 1)
+            w.top.rootKey w.top.rootKey hfit0 ?_ ?_
+          · exact reachS_sub (wNode c.p base w) (wNode c.p base v) c.i w.top.rootKey
+              (fun x m' hx => let ⟨m, h1, _, h3⟩ := hnode x m' hx; ⟨m, h1, h3⟩)
+          · intro u un' _ hun' hul
+            obtain ⟨m, hm, hml, hsub⟩ := hnode u un' hun'
+            exact ⟨m, hm, by rw [hml]; exact hul, fun cc y h => ⟨cc, hsub cc y h⟩⟩
+        refine ⟨putInv_next c base v (v.next + 2) hPIv (by omega),
+          putInvG_next c base v (v.next + 2) hPGv (by omega), hROv, ?_, ?_,
+          ⟨B, top0, hB, putBook_fresh c base B top0 hB v hbv⟩, hICEv, hSFv⟩
+        · -- the live counts: the leaf is on the key's path
+          intro z b s m hz hm hnot
+          change FReach (wNode c.p base v) c.i v.top.rootKey z b s at hz
+          change wNode c.p base v z = some m at hm
+          rw [htopv] at hz
+          have hz0 := fReach_sub (wNode c.p base w) (wNode c.p base v) c.i w.top.rootKey hnode z b s hz
+          by_cases hzL : z = L
+          · exfalso
+            apply hnot
+            right
+            refine ⟨by first | rfl | trivial, ?_⟩
+            subst hzL
+            have hold : (z, cv) ∈ fromVisits (wNode c.p base w) c.i c.p.fuel (pre ++ [cv])
+                w.top.rootKey := fromVisits_append _ _ _ pre cv _ rk hrk _ hvisL
+            obtain ⟨c', hc'⟩ := fromVisits_frame_mem (wNode c.p base w) (wNode c.p base v) c.i c.p.fuel
+              (pre ++ [cv]) w.top.rootKey z cv hold (fun y _ _ hy => hvo y hy)
+            refine ⟨c', ?_⟩
+            show (z, c') ∈ fromVisits (wNode c.p base v) c.i c.p.fuel (pre ++ [cv]) v.top.rootKey
+            rw [htopv]; exact hc'
+          · rw [hvo z hzL] at hm
+            exact hLH z b s m hz0 hm (fun h => hnot (Or.inl h))
+        · intro k hk
+          have hfp := fuel_pos c.p
+          have hwfw : ∀ x xn, ReachS (wNode c.p base w) c.i w.top.rootKey x →
+              wNode c.p base w x = some xn → klongsWf xn.ks = true := fun x xn _ h => hPI.wf x xn h
+          have hwfv : ∀ x xn, ReachS (wNode c.p base v) c.i v.top.rootKey x →
+              wNode c.p base v x = some xn → klongsWf xn.ks = true := fun x xn _ h => hPIv.wf x xn h
+          show wGetAt c.p c.i base v c.p.fuel k = _
+          rw [wGetAt_fuel_eq c base v (c.p.fuel - 1) c.p.fuel (c.p.fuel + 1) hwfv hSFv (by omega)
+            (by omega) k, hRDv k hk]
+          rw [← wGetAt_fuel_eq c base w (c.p.fuel - 1) c.p.fuel (c.p.fuel + 1) hwfw hfit0 (by omega)
+            (by omega) k]
+          by_cases hkk : k = pre ++ [cv]
+          · subst hkk; simp
+          · have e1 : (k == pre ++ [cv]) = false := by simpa using hkk
+            have e2 : (pre ++ [cv] == k) = false := by simpa using (Ne.symm hkk)
+            simp only [e1, e2, Bool.false_eq_true, ↓reduceIte]
+            rfl
+      split
+      · rw [writerWP_bind, writerWP_note_iff]
+        exact hcore _ rfl rfl rfl rfl (putBook_note "user.emptied" c base B top0 hB w3 hb3)
+      · exact hcore w3 rfl rfl rfl rfl hb3
+
+end SIS.Tree.Mt

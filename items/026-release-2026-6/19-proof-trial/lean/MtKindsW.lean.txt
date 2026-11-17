@@ -1,0 +1,255 @@
+/-
+The proof trial of 026-18 (bergdb 026-19, B3's parts): the writer's kinds cache at the end of a
+fix step that made a merge (`KindCache`, half of `KindsHtEnd`): `kd_merge` (WriterKindsMerge.lean)
+restated for MT's merge, and the kinds' books along MT's path and target.
+-/
+import SIS.Tree.MtKinds
+
+set_option autoImplicit false
+
+namespace SIS.Tree.Mt
+
+open SIS SIS.Check SIS.Tree
+
+set_option maxHeartbeats 4000000 in
+-- restated from kd_merge (WriterKindsMerge.lean)
+theorem kd_mtMerge (K : KindOracle) (B : NodeId) (x : NodeId) (d : Nat) (c : Ctx) (w : W)
+    (hv : ViewIdsBelow B c.view) (hk : ViewKinds K B c) (hb : Book B c w) (hi : KdInv K B w)
+    (hd : d ≠ 0) (ax : Option Nat) (hpx : w.path[d]? = some (ax, x))
+    (hpq : ∀ a q, w.path[d - 1]? = some (a, q) →
+      ∃ nq, w.nodes.lookup q = some nq ∧ nq.leaf = false) :
+    WriterWP (Mt.merge x d) c w
+      (fun _ v => Book B c v ∧ KdInv K B v ∧ KdLe w v ∧ v.path = w.path) := by
+  obtain ⟨e, rfl⟩ : ∃ e, d = e + 1 := ⟨d - 1, by omega⟩
+  unfold Mt.merge
+  kdSimp
+  refine writerWP_mono (kd_pathNode (e + 1 - 1) c w) ?_
+  rintro p w0 ⟨hw0, ap, hpp⟩
+  rw [hw0]
+  clear hw0
+  simp only [Nat.add_sub_cancel] at hpp hpq
+  obtain ⟨nq, hnq, hnql⟩ := hpq ap p hpp
+  have hpg : p ∈ w.gh.map (·.1) := hi.pathGh e ap p hpp (List.getElem?_eq_some_iff.mp hpx).1
+  obtain ⟨⟨p', gp, hp⟩, hpt, hpe⟩ := List.mem_map.mp hpg
+  simp only at hpe
+  subst hpe
+  have hh : hp ≠ 0 := by
+    intro h0; subst h0
+    have := kd_leaf hb hnq hpt
+    rw [hnql] at this; simp at this
+  obtain ⟨k, hak⟩ : ∃ k, ax = some k := by
+    cases ax with
+    | none => exact absurd rfl (hi.pathSome e none x hpx)
+    | some k => exact ⟨k, rfl⟩
+  subst hak
+  have hxs : IsKeySeg K w x gp := (hi.path e ap p' k x hpp hpx gp hp hpt).1 hh
+  refine writerWP_mono (kd_getNode K B p' c w hv hk hb hi) ?_
+  rintro pn w1 ⟨hb1, hi1, hle1, hl1, hp1, -⟩
+  have hpt1 := KdLe.gh' hpt hle1
+  refine writerWP_mono (kd_getNode K B x c w1 hv hk hb1 hi1) ?_
+  rintro xn w2 ⟨hb2, hi2, hle2, hl2, hp2, -⟩
+  obtain ⟨gx, hx, hxt⟩ := kd_tag_of_lookup hb2 hl2
+  have := kd_seg_unique hb2 hk hxt (hxs.kdMono (hle1.trans hle2))
+  subst this
+  have hxl : xn.leaf = (hx == 0) := kd_leaf hb2 hl2 hxt
+  have hpp2 : w.path[e]? = some (ap, p') := hpp
+  clear hpq hnq hnql hpx hxs
+  repeat' first
+    | kdSimp
+    | simp only [List.forIn_cons, List.forIn_nil]
+    | kdSibM hl1 hpt1 hh hxl
+    | kdGhX hxt
+    | kdCreateM
+    | kdMPm hpp2 hpt hh
+    | kdRet
+    | kdTake
+    | kdUseP (kd_unlink _ _ _)
+    | kdCore
+    | wpSplit
+    | split
+    | contradiction
+
+
+/-- The walk of `target` reads only: the kinds' books and the path are kept. -/
+theorem kd_targetGo (K : KindOracle) (B : NodeId) : ∀ d, KdKeepsP K B (targetGo d) := by
+  intro d
+  induction d with
+  | zero =>
+    intro c w hv hk hb hi
+    simp only [targetGo, writerWP_pure]
+    exact ⟨hb, hi, KdLe.refl w, trivial⟩
+  | succ d ih =>
+    intro c w hv hk hb hi
+    rw [targetGo]
+    kdSimp
+    refine writerWP_mono (kd_pathNode d c w) ?_
+    rintro x w0 ⟨hw0, -⟩
+    rw [hw0]
+    refine writerWP_mono (kd_getNode K B x c w hv hk hb hi) ?_
+    rintro xn w1 ⟨hb1, hi1, hle1, -, hp1, -⟩
+    have fin : ∀ (r : Fix) v, Book B c v → KdInv K B v → KdLe w v → v.path = w.path →
+        WriterWP (pure r : M Fix) c v (fun _ u => Book B c u ∧ KdInv K B u ∧ KdLe w u ∧ u.path = w.path) := by
+      intro r v h1 h2 h3 h4; simp only [writerWP_pure]; exact ⟨h1, h2, h3, h4⟩
+    have hrec : ∀ v, Book B c v → KdInv K B v → KdLe w v → v.path = w.path →
+        WriterWP (targetGo d) c v (fun _ u => Book B c u ∧ KdInv K B u ∧ KdLe w u ∧ u.path = w.path) :=
+      fun v h1 h2 h3 h4 => writerWP_mono (ih c v hv hk h1 h2)
+        (fun _ u h => ⟨h.1, h.2.1, h3.trans h.2.2.1, h.2.2.2.trans h4⟩)
+    have noteRec : ∀ v, Book B c v → KdInv K B v → KdLe w v → v.path = w.path →
+        WriterWP (do note "fix.pass.onlychild"; targetGo d) c v
+          (fun _ u => Book B c u ∧ KdInv K B u ∧ KdLe w u ∧ u.path = w.path) := by
+      intro v h1 h2 h3 h4
+      rw [writerWP_bind]
+      refine writerWP_mono (kd_note K B "fix.pass.onlychild" c v hv hk h1 h2) ?_
+      rintro _ u ⟨g1, g2, g3, g4, -⟩
+      exact hrec u g1 g2 (h3.trans g3) (g4.trans h4)
+    split
+    · simp only [writerWP_bind]; exact writerWP_throw _ _ _ _
+    · cases d with
+      | zero =>
+        simp only [writerWP_bind, writerWP_pure]
+        repeat' first
+          | wpSplit
+          | (exact fin _ _ hb1 hi1 hle1 hp1)
+          | (exact hrec _ hb1 hi1 hle1 hp1)
+          | (exact noteRec _ hb1 hi1 hle1 hp1)
+          | split
+      | succ e =>
+        simp only [writerWP_bind]
+        refine writerWP_mono (kd_pathNode e c w1) ?_
+        rintro q w2 ⟨hw2, -⟩
+        rw [hw2]
+        refine writerWP_mono (kd_getNode K B q c w1 hv hk hb1 hi1) ?_
+        rintro qn w3 ⟨hb3, hi3, hle3, -, hp3, -⟩
+        simp only [writerWP_pure]
+        have hle13 := hle1.trans hle3
+        have hp13 : w3.path = w.path := hp3.trans hp1
+        repeat' first
+          | wpSplit
+          | (exact fin _ _ hb3 hi3 hle13 hp13)
+          | (exact hrec _ hb3 hi3 hle13 hp13)
+          | (exact noteRec _ hb3 hi3 hle13 hp13)
+          | split
+
+theorem kd_target (K : KindOracle) (B : NodeId) : KdKeepsP K B target := by
+  intro c w hv hk hb hi
+  unfold target
+  kdSimp
+  refine writerWP_mono (kd_pathSize c w) ?_
+  rintro n w0 ⟨hw0, rfl⟩
+  rw [hw0]
+  exact kd_targetGo K B _ c w hv hk hb hi
+
+/-- `pathGo` from the path's last node keeps the kinds' books (the fold of
+`kd_descendToSegmentRoot`, WriterKindsDelete.lean). -/
+theorem kd_pathGo (K : KindOracle) (B : NodeId) :
+    ∀ (key : List Nat) (x : NodeId) (c : Ctx) (w : W), ViewIdsBelow B c.view → ViewKinds K B c →
+      Book B c w → KdInv K B w → KdPathLast w x →
+      WriterWP (pathGo key x) c w (fun _ v => Book B c v ∧ KdInv K B v ∧ KdLe w v) := by
+  intro key
+  induction key with
+  | nil =>
+    intro x c w _ _ hb hi _
+    simp only [pathGo, writerWP_pure]
+    exact ⟨hb, hi, KdLe.refl w⟩
+  | cons cv rest ih =>
+    intro x c w hv hk hb hi hlu
+    unfold pathGo
+    kdSimp
+    refine writerWP_mono (kd_descendLte K B cv c.p.fuel x c w hv hk hb hi (Or.inl hlu)) ?_
+    rintro leaf u1 ⟨hb3, hi3, hle3, hlast, -⟩
+    have hl3 : KdPathLast u1 leaf := by
+      rcases hlast with h | ⟨rfl, hp, -⟩
+      · exact h
+      · obtain ⟨a, ha⟩ := hlu
+        exact ⟨a, by rw [hp]; exact ha⟩
+    split
+    · simp only [writerWP_pure]; exact ⟨hb3, hi3, hle3⟩
+    · kdSimp
+      refine writerWP_mono (kd_getNode K B leaf c u1 hv hk hb3 hi3) ?_
+      rintro n u2 ⟨hb4, hi4, hle4, hl4, hp4, -⟩
+      split
+      · simp only [writerWP_pure]; exact ⟨hb4, hi4, hle3.trans hle4⟩
+      · rename_i fd hfd
+        obtain ⟨g, h, hm⟩ := kd_tag_of_lookup hb4 hl4
+        obtain ⟨a, ha⟩ := hl3
+        kdSimp
+        refine writerWP_mono (kd_pathAdd K B fd.c fd.y c u2 hv hb4 hi4 a leaf g h
+          (by rw [hp4]; exact ha) hm
+          (kd_cache_node hi4 hl4 hm _ _ (kd_searchEq_mem n c.i cv fd hfd))) ?_
+        rintro _ u3 ⟨hb5, hi5, hle5, hp5, -⟩
+        refine writerWP_mono (ih fd.y c u3 hv hk hb5 hi5 ⟨some fd.c, by rw [hp5]; exact kd_pathLast_append _ _⟩) ?_
+        rintro _ v ⟨hb6, hi6, hle6⟩
+        exact ⟨hb6, hi6, hle3.trans (hle4.trans (hle5.trans hle6))⟩
+
+theorem kd_path (K : KindOracle) (B : NodeId) (key : Key) (c : Ctx) (w : W)
+    (hv : ViewIdsBelow B c.view) (hk : ViewKinds K B c) (hb : Book B c w) (hi : KdInv K B w) :
+    WriterWP (path key) c w (fun _ v => Book B c v ∧ KdInv K B v ∧ KdLe w v) := by
+  unfold path
+  kdSimp
+  refine writerWP_mono (kd_pathClear K B c w hv hb hi) ?_
+  rintro _ w1 ⟨hb1, hi1, hle1, hp1, -⟩
+  refine writerWP_mono (kd_findRoot K B c w1 hv hb1 hi1 hp1) ?_
+  rintro root w2 ⟨hb2, hi2, hle2, hp2, -⟩
+  refine writerWP_mono (kd_pathGo K B key root c w2 hv hk hb2 hi2 ⟨none, by rw [hp2]; rfl⟩) ?_
+  rintro _ v ⟨hb3, hi3, hle3⟩
+  exact ⟨hb3, hi3, hle1.trans (hle2.trans hle3)⟩
+
+/-- The kinds' cache at the end of a fix step that made a merge. -/
+theorem kindCache_fix_merge (p : Params) (s : St) (k : Key) (rest : List Key) (base : NodeId)
+    (w : W) (x : NodeId) (d : Nat) (w1 : W) (z : NodeId) (top : Top) (hs : Reached p s)
+    (hI : StInv p s) (hpend : s.pend = k :: rest) (hfresh : ∀ q ∈ s.P, q.1 < base)
+    (htop : topOf p (ctxAt p s.P s.t).view z = .ok top)
+    (hfs : fixStep k (ctxAt p s.P s.t) (wStart base top) = .ok (true, w))
+    (hpt : (do path k; target : M Fix) (ctxAt p s.P s.t) (wStart base top) = .ok (.merge x d, w1)) :
+    KindCache (kindOracleOf p s.P) w := by
+  have hkey : k ≠ [] := key_ne_nil_of_wf k (reached_pend_wf p s hs k (by rw [hpend]; exact List.mem_cons_self))
+  obtain ⟨hsub, htimes, _, _, _, _⟩ := hI
+  rw [hpend] at hsub
+  have hvc := viewCoherent_at p s.P s.t htimes
+  have hN : wNode p (viewOf s.P) (wStart base top) = knodeOf p (viewOf s.P) := wNode_wStart _ _ _ _
+  have hwf0 : ∀ y yn, wNode p (viewOf s.P) (wStart base top) y = some yn → klongsWf yn.ks = true := by
+    intro y yn hy
+    rw [hN] at hy
+    obtain ⟨nd, hg, hd, hlv, hn⟩ := knodeOf_viewOf p _ y yn hy
+    subst hn
+    exact (hsub.links.2.1 y nd hg hd hlv).1
+  obtain ⟨_, _, _, _, _, hmg⟩ := writerWP_pathTarget k hkey (ctxAt p s.P s.t) (viewOf s.P) hvc
+    (wStart base top) (fun _ _ => rfl) (fun y yn _ hy => hwf0 y yn hy) _ w1 hpt
+  obtain ⟨X, K, Nn, hP, hXd, hd0, hql, _, _, _⟩ := hmg x d rfl
+  obtain ⟨hX, hK, hS2, _, _⟩ := hP
+  have hv : ViewIdsBelow base (ctxAt p s.P s.t).view :=
+    viewIdsBelow_rootless base _ (viewIdsBelow_view p s.P s.t base hfresh)
+  have hk : ViewKinds (kindOracleOf p s.P) base (ctxAt p s.P s.t) :=
+    viewKinds_of p s.P s.t base hfresh htimes hsub.links.1 hsub.kinds
+  obtain ⟨u, w2, hp, ht, m, hmm⟩ := fixStep_merge_split k _ _ w x d w1 hfs hpt
+  obtain ⟨hb2, hi2, _⟩ := kd_path (kindOracleOf p s.P) base k _ _ hv hk (book_start base _ top)
+    (kdInv_start _ base top) u w2 hp
+  obtain ⟨hb1, hi1, _, _⟩ := kd_target (kindOracleOf p s.P) base _ w2 hv hk hb2 hi2 _ w1 ht
+  have hpx : w1.path[d]? = some (some (K d), x) := by rw [← hXd]; exact hK d hd0 (Nat.le_refl _)
+  have hpq : ∀ a q, w1.path[d - 1]? = some (a, q) →
+      ∃ nq, w1.nodes.lookup q = some nq ∧ nq.leaf = false := by
+    intro a q hq
+    have h1 := hX (d - 1) (by omega)
+    rw [hq] at h1
+    simp only [Option.map_some, Option.some.injEq] at h1
+    subst h1
+    exact ⟨Nn (d - 1), (hS2 (d - 1) (by omega)).1, hql⟩
+  exact (kd_mtMerge (kindOracleOf p s.P) base x d _ w1 hv hk hb1 hi1 (by omega) _ hpx hpq m w hmm).2.1.cache
+
+/-- The heights' cache at the end of a fix step of kind C: what is left of `KindsHtEnd`. -/
+def HtEnd (p : Params) (C : Fix → Prop) : Prop :=
+  ∀ (s : St) (k : Key) (rest : List Key) (base : NodeId) (w : W) (f : Fix) (w1 : W) (z : NodeId)
+    (top : Top), Reached p s → StInv p s → s.pend = k :: rest → (∀ q ∈ s.P, q.1 < base) →
+    lastTop (view (treeSpec p) s.P s.t) = some z → topOf p (ctxAt p s.P s.t).view z = .ok top →
+    fixStep k (ctxAt p s.P s.t) (wStart base top) = .ok (true, w) →
+    (do path k; target : M Fix) (ctxAt p s.P s.t) (wStart base top) = .ok (f, w1) → C f →
+    HtCache (ctxAt p s.P s.t) (htOracleOf p s.P) w
+
+/-- `KindsHtEnd` for the merge with the kinds proved. -/
+theorem t_kindsHtEnd_merge (p : Params) (hH : HtEnd p IsMerge) : KindsHtEnd p IsMerge := by
+  intro s k rest base w f w1 z top hs hI hpend hfresh hz htop hfs hpt hC
+  have hHt := hH s k rest base w f w1 z top hs hI hpend hfresh hz htop hfs hpt hC
+  obtain ⟨x, d, rfl⟩ := hC
+  exact ⟨kindCache_fix_merge p s k rest base w x d w1 z top hs hI hpend hfresh htop hfs hpt, hHt⟩
+
+end SIS.Tree.Mt

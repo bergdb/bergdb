@@ -1,0 +1,396 @@
+/-
+The proof trial of 026-18 (bergdb 026-19, B3's parts): the writer's heights cache at the end of
+a fix step that made a merge (`HtCache`, `HtEnd`): `ht_mergeTailChk` and `ht_merge`
+(WriterHeightsMerge.lean) restated for MT's merge, which takes nothing back (no holder premise),
+and the heights' books along MT's path and target.
+-/
+import SIS.Tree.MtKindsW
+
+set_option autoImplicit false
+
+namespace SIS.Tree.Mt
+
+open SIS SIS.Check SIS.Tree
+
+section
+variable {H : NodeId → Nat → Prop}
+
+set_option maxHeartbeats 3200000 in
+/-- The merge's tail with the check keeps the walk: l and r, live children of
+the path's node p at depth d - 1, of the height below p's; x one of them. -/
+-- restated from ht_mergeTailChk (WriterHeightsMerge.lean)
+theorem ht_mtTail (B : NodeId) (c : Ctx) (x : NodeId) (d : Nat) (p : NodeId) (pn xn : KNode)
+    (leftSome : Bool) (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId) (rn : KNode) (ir : Nat)
+    (w : W) (hvo : ViewHtOK H B c) (hpos : 0 < c.i) (hb : Book B c w) (hi : HtInv H B c w)
+    (a : Option Nat) (hpx : w.path[d - 1]? = some (a, p)) (hpf : PathFreeTo w (d - 1 + 1))
+    (gp hp : Nat) (hpt : (p, gp, hp) ∈ w.gh) (hp0 : hp ≠ 0)
+    (hxn : w.nodes.lookup x = some xn) (hln : w.nodes.lookup l = some ln)
+    (hrn : w.nodes.lookup r = some rn) (hxlr : x = l ∨ x = r)
+    (hlh : HtP c H w hp 0 l) (hrh : HtP c H w hp 0 r) :
+    WriterWP (mtTail c x d p pn xn leftSome l ln il r rn ir) c w
+      (fun _ v => Book B c v ∧ HtInv H B c v ∧ Kept w v ∧ v.path = w.path) := by
+  have hvh := hvo.heights
+  have hNode : ∀ o on, w.nodes.lookup o = some on → HtP c H w hp 0 o →
+      ∃ go, (o, go, hp - 1) ∈ w.gh ∧ NodeHt c H w (hp - 1) on := by
+    intro o on hl ho
+    obtain ⟨go, ho', hm⟩ := kd_tag_of_lookup hb hl
+    have := hasHt_tag hb hvh hm (ho.2 hp0)
+    subst this
+    exact ⟨go, hm, hi.cache o on go _ (bk_mem_of_lookup _ _ _ hl) hm ho.1⟩
+  obtain ⟨gl, hlt, hNl⟩ := hNode l ln hln hlh
+  obtain ⟨gr, hrt, hNr⟩ := hNode r rn hrn hrh
+  have hxh : HtP c H w hp 0 x := by rcases hxlr with rfl | rfl <;> assumption
+  obtain ⟨gx, hxt, -⟩ := hNode x xn hxn hxh
+  have hxleaf : xn.leaf = (hp - 1 == 0) := kd_leaf hb hxn hxt
+  have hpg : p ∈ w.gh.map (·.1) := kd_mem_ids hpt
+  have hxH : HasHt H w x (hp - 1) := hxh.2 hp0
+  clear hNode
+  unfold mtTail
+  repeat' first
+    | htSimp
+    | htGhM hvo hxH
+    | htCreateM hpos hxleaf hNl hNr
+    | htCore
+    | htRead
+    | wpSplit
+    | split
+    | contradiction
+  all_goals
+    refine writerWP_mono (ht_mergeParent B p (d - 1) _ _ _ _ _ _ c _ hvo hpos (by htState)
+      (by assumption) a (kd_path_at hpx (by htPathEq)) (ht_pf_le hpf (by htPathEq) (by htChain)
+      (Nat.le_refl _)) gp hp (HtLe.gh' hpt (by htChain)) (fun cv => ht_P_new (by htFree) (by htTag))
+      (fun y g he cv => by cases he <;> exact ht_P_new (by htFree) (by htTag))) ?_
+    rintro _ v1 ⟨hb1, hi1, hle1, hp1⟩
+    first
+      | (simp only [writerWP_pure]; exact ⟨hb1, hi1, (HtLe.trans (by htChain) hle1).1, by rw [hp1]; htPathEq⟩)
+      | exact ⟨hb1, hi1, (HtLe.trans (by htChain) hle1).1, by rw [hp1]; htPathEq⟩
+
+-- restated from ht_merge (WriterHeightsMerge.lean)
+theorem ht_mtMerge (B : NodeId) (J : Ctx → W → Prop)
+    (hJn : ∀ c v y, J c v → WriterWP (getNode y) c v (fun _ v' => J c v'))
+    (x : NodeId) (d : Nat) (c : Ctx) (w : W)
+    (hvo : ViewHtOK H B c) (hpos : 0 < c.i) (hb : Book B c w) (hi : HtInv H B c w)
+    (hd : d ≠ 0) (ax : Option Nat) (hpx : w.path[d]? = some (ax, x)) (hpf : PathFreeTo w (d + 1))
+    (hpq : ∀ a q, w.path[d - 1]? = some (a, q) →
+      ∃ nq, w.nodes.lookup q = some nq ∧ nq.leaf = false) (hJ : J c w) :
+    WriterWP (Mt.merge x d) c w
+      (fun _ v => Book B c v ∧ HtInv H B c v ∧ Kept w v ∧ v.path = w.path) := by
+  unfold Mt.merge
+  simp only [writerWP_bind, writerWP_read]
+  refine writerWP_mono (kd_pathNode (d - 1) c w) ?_
+  rintro p w0 ⟨hw0, ap, hpp⟩
+  subst hw0
+  obtain ⟨nq, hnq, hnql⟩ := hpq ap p hpp
+  have hlen : d - 1 + 1 < w0.path.length := by
+    have := (List.getElem?_eq_some_iff.mp hpx).1; omega
+  have hpg : p ∈ w0.gh.map (·.1) := hi.pathGh (d - 1) ap p hpp hlen
+  obtain ⟨⟨p', gp, hp⟩, hpt, hpe⟩ := List.mem_map.mp hpg
+  simp only at hpe
+  subst hpe
+  have hpfree : w0.taken.contains p' = false := hpf (d - 1) ap p' (by omega) hpp
+  have hh : hp ≠ 0 := by
+    intro h0; subst h0
+    have := kd_leaf hb hnq hpt
+    rw [hnql] at this; simp at this
+  refine writerWP_mono (ht_getNodeJ B J hJn p' c w0 hvo hb hi hJ) ?_
+  rintro pn w1 ⟨hb1, hi1, hle1, hl1, hp1, hpre1, hJ1⟩
+  have hNp : NodeHt c H w1 hp pn := ht_cache_at hl1 hi1 (HtLe.gh' hpt hle1) (ht_free_le hpfree hle1)
+    (HtLe.refl _)
+  refine writerWP_mono (ht_getNodeJ B J hJn x c w1 hvo hb1 hi1 hJ1) ?_
+  rintro xn w2 ⟨hb2, hi2, hle2, hl2, hp2, hpre2, hJ2⟩
+  have hl12 := hpre2 _ _ hl1
+  refine writerWP_mono (kd_klongAt d c w2) ?_
+  rintro cx w2' ⟨hw2, -, -⟩
+  subst hw2
+  generalize hmi : mergeIdx pn cx = mi
+  obtain ⟨ixo, ia, ib⟩ := mi
+  have hML := mergeIdx_last pn cx
+  rw [hmi] at hML
+  obtain ⟨hMx, hMa, hMb⟩ := hML
+  have hpf2 : PathFreeTo w2' (d - 1 + 1) := ht_pf_le hpf (by rw [hp2, hp1]) (hle1.trans hle2)
+    (by omega)
+  have hpx2 : w2'.path[d - 1]? = some (ap, p') := by rw [hp2, hp1]; exact hpp
+  have hpt2 : (p', gp, hp) ∈ w2'.gh := HtLe.gh' hpt (hle1.trans hle2)
+  -- the tail from any later state, with its nodes known
+  have tailOK : ∀ (leftSome : Bool) (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId)
+      (rn : KNode) (ir : Nat) (w3 : W), Book B c w3 → HtInv H B c w3 → HtLe w2' w3 →
+      w3.path = w2'.path → J c w3 →
+      (∀ z m, w2'.nodes.lookup z = some m → w3.nodes.lookup z = some m) →
+      w3.nodes.lookup l = some ln → w3.nodes.lookup r = some rn → (x = l ∨ x = r) →
+      HtP c H w2' hp 0 l → HtP c H w2' hp 0 r →
+      WriterWP (mtTail c x d p' pn xn leftSome l ln il r rn ir) c w3
+        (fun _ v => Book B c v ∧ HtInv H B c v ∧ Kept w0 v ∧ v.path = w0.path) := by
+    intro leftSome l ln il r rn ir w3 hb3 hi3 hle3 hp3 hJ3 hpre3 hln3 hrn3 hxlr hlh hrh
+    refine writerWP_mono (ht_mtTail B c x d p' pn xn leftSome l ln il r rn ir w3 hvo hpos
+      hb3 hi3 ap (kd_path_at hpx2 hp3) (ht_pf_le hpf2 hp3 hle3 (Nat.le_refl _)) gp hp
+      (HtLe.gh' hpt2 hle3) hh (hpre3 _ _ hl2) hln3 hrn3 hxlr (hlh.mono hle3) (hrh.mono hle3)) ?_
+    rintro _ v ⟨hbv, hiv, hkv, hpv⟩
+    exact ⟨hbv, hiv, ((hle1.trans hle2).trans hle3).1.trans hkv, by rw [hpv, hp3, hp2, hp1]⟩
+  have hchild : ∀ i cv y, LastLive pn.ks pn.lastBitmap i cv → pn.ptr? i = some y →
+      HtP c H w2' hp 0 y := by
+    intro i cv y hl hy
+    obtain ⟨_, hm⟩ := ht_live_of_last hl hy
+    exact HtP.mono (show HtP c H w1 hp cv y from hNp.1 cv y hm) hle2
+  split
+  · rename_i ix hix
+    simp only [writerWP_bind, writerWP_pure]
+    have hLx := hMx ix hix
+    refine writerWP_if _ _ _ _ _ _ (fun _ => ?_) (fun hptr => ?_)
+    · simp only [writerWP_bind]; exact writerWP_throw _ _ _ _
+    have hpx' : pn.ptr? ix = some x := by simpa using hptr
+    have hxh := hchild ix cx x hLx hpx'
+    -- the right sibling, read from a state wb
+    have hright : ∀ (wb : W) (ia0 cva : Nat), Book B c wb → HtInv H B c wb → HtLe w2' wb →
+        wb.path = w2'.path → J c wb →
+        (∀ z m, w2'.nodes.lookup z = some m → wb.nodes.lookup z = some m) →
+        LastLive pn.ks pn.lastBitmap ia0 cva →
+        WriterWP (do
+          let __x ← sibling p' pn ia0 !xn.leaf
+          mtTail c x d p' pn xn false x xn ix __x.1 __x.2 ia0) c wb
+          (fun _ v => Book B c v ∧ HtInv H B c v ∧ Kept w0 v ∧ v.path = w0.path) := by
+      intro wb ia0 cva hbb hib hleb hpb hJb hpreb hLa
+      rw [writerWP_bind]
+      refine writerWP_mono (ht_siblingJ B J hJn p' pn ia0 (!xn.leaf) c wb hvo hbb hib hJb) ?_
+      rintro ⟨rs, rsn⟩ w4 ⟨hb4, hi4, hle4, hp4, hs4, hl4, hpre4, hJ4⟩
+      exact tailOK false x xn ix rs rsn ia0 w4 hb4 hi4 (hleb.trans hle4) (by rw [hp4, hpb]) hJ4
+        (fun z m hz => hpre4 z m (hpreb z m hz)) (hpre4 _ _ (hpreb _ _ hl2)) hl4 (Or.inl rfl)
+        hxh (hchild ia0 cva rs hLa hs4)
+    split
+    · rename_i ib0 cvb
+      obtain ⟨hLb, _⟩ := hMb ib0 cvb rfl
+      simp only [writerWP_bind]
+      refine writerWP_mono (ht_siblingJ B J hJn p' pn ib0 (!xn.leaf) c w2' hvo hb2 hi2 hJ2) ?_
+      rintro ⟨ls, lsn⟩ w3 ⟨hb3, hi3, hle3, hp3, hs3, hl3, hpre3, hJ3⟩
+      refine writerWP_if _ _ _ _ _ _ (fun _ => ?_) (fun _ => ?_)
+      · show WriterWP (mtTail c x d p' pn xn true ls lsn ib0 x xn ix) c w3 _
+        exact tailOK true ls lsn ib0 x xn ix w3 hb3 hi3 hle3 hp3 hJ3 hpre3 hl3 (hpre3 _ _ hl2)
+          (Or.inr rfl) (hchild ib0 cvb ls hLb hs3) hxh
+      · rw [writerWP_bind, writerWP_pure]
+        dsimp only
+        split
+        · rename_i ia0 cva _
+          obtain ⟨hLa, _⟩ := hMa ia0 cva rfl
+          exact hright w3 ia0 cva hb3 hi3 hle3 hp3 hJ3 hpre3 hLa
+        · exact writerWP_throw _ _ _ _
+    · rw [writerWP_bind, writerWP_pure]
+      dsimp only
+      split
+      · rename_i ia0 cva
+        obtain ⟨hLa, _⟩ := hMa ia0 cva rfl
+        exact hright w2' ia0 cva hb2 hi2 (HtLe.refl _) rfl hJ2 (fun _ _ h => h) hLa
+      · exact writerWP_throw _ _ _ _
+  · exact writerWP_throw _ _ _ _
+
+
+end
+
+section
+variable {H : NodeId → Nat → Prop}
+
+/-- `pathGo` from the path's last node keeps the heights' books (the fold of
+`ht_descendToSegmentRoot`, WriterHeightsDel.lean). -/
+theorem ht_pathGo (B : NodeId) :
+    ∀ (key : List Nat) (x : NodeId) (c : Ctx) (w : W), ViewHtOK H B c → Book B c w →
+      HtInv H B c w → ViewKlongsWf c.p c.view → WriterKlongsWf w → HtPathLast w x →
+      PathFreeTo w w.path.length →
+      WriterWP (pathGo key x) c w (fun _ v => Book B c v ∧ HtInv H B c v ∧ HtLe w v) := by
+  intro key
+  induction key with
+  | nil =>
+    intro x c w _ hb hi _ _ _ _
+    simp only [pathGo, writerWP_pure]
+    exact ⟨hb, hi, HtLe.refl w⟩
+  | cons cv rest ih =>
+    intro x c w hvo hb hi hkw hwf hlu hpfu
+    unfold pathGo
+    htSimp
+    refine writerWP_mono (writerWP_and (ht_descendLte B cv c.p.fuel x c w hvo hb hi hpfu
+      (Or.inl hlu)) (klongsWf_descendLte cv c.p.fuel x c w hkw hwf)) ?_
+    rintro leaf u1 ⟨⟨hb3, hi3, hle3, hlast, ⟨nl, hnl, hnll⟩, hpf3⟩, hwf3⟩
+    have hl3 : HtPathLast u1 leaf := by
+      rcases hlast with h | ⟨rfl, hp, -⟩
+      · exact h
+      · obtain ⟨a, ha⟩ := hlu
+        exact ⟨a, by rw [hp]; exact ha⟩
+    split
+    · simp only [writerWP_pure]; exact ⟨hb3, hi3, hle3⟩
+    · htSimp
+      refine writerWP_mono (writerWP_and (hw_getNode B leaf c u1 hvo hb3 hi3)
+        (klongsWf_getNode leaf c u1 hkw hwf3)) ?_
+      rintro n u2 ⟨⟨hb4, hi4, hle4, hl4, hp4⟩, hwf4, hnwf⟩
+      split
+      · simp only [writerWP_pure]; exact ⟨hb4, hi4, hle3.trans hle4⟩
+      · rename_i fd hfd
+        obtain ⟨g, h, hm⟩ := kd_tag_of_lookup hb4 hl4
+        obtain ⟨a, ha⟩ := hl3
+        have ha4 : u2.path[u2.path.length - 1]? = some (a, leaf) := by rw [hp4]; exact ha
+        have hL : 0 < u2.path.length := by
+          have := (List.getElem?_eq_some_iff.mp ha4).1; omega
+        have hpf4 : PathFreeTo u2 u2.path.length := by
+          rw [hp4]; exact ht_pf_le hpf3 hp4 hle4 (Nat.le_refl _)
+        have hlf : u2.taken.contains leaf = false := hpf4 _ a leaf (by omega) ha4
+        have hN := ht_cache_at hl4 hi4 hm hlf (HtLe.refl _)
+        htSimp
+        refine writerWP_mono (writerWP_and (ht_pathAdd B fd.c fd.y c u2 hvo hb4 hi4 a leaf n
+          (ht_getLast_of ha4) hl4 cv (ht_searchEq_live hnwf hN.3 hfd) hlf)
+          (klongsWf_pathAdd (some fd.c) fd.y c u2 hkw hwf4)) ?_
+        rintro _ u3 ⟨⟨hb5, hi5, hk5, hp5, ht5, hyf⟩, hwf5⟩
+        refine writerWP_mono (ih fd.y c u3 hvo hb5 hi5 hkw hwf5
+          ⟨some fd.c, by rw [hp5]; exact kd_pathLast_append _ _⟩
+          (PathFreeTo.append hpf4 _ hp5 ht5 hyf)) ?_
+        rintro _ v ⟨hb6, hi6, hle6⟩
+        exact ⟨hb6, hi6, hle3.trans (hle4.trans ((show HtLe u2 u3 from ⟨hk5, ht5⟩).trans hle6))⟩
+
+theorem ht_path (B : NodeId) (key : Key) (c : Ctx) (w : W) (hvo : ViewHtOK H B c) (hb : Book B c w)
+    (hi : HtInv H B c w) (hkw : ViewKlongsWf c.p c.view) (hwf : WriterKlongsWf w) :
+    WriterWP (path key) c w (fun _ v => Book B c v ∧ HtInv H B c v ∧ HtLe w v) := by
+  unfold path
+  htSimp
+  refine writerWP_mono (writerWP_and (ht_pathClear B c w hvo hb hi) (klongsWf_pathClear c w hkw hwf)) ?_
+  rintro _ w1 ⟨⟨hb1, hi1, hk1, hp1, ht1⟩, hwf1⟩
+  refine writerWP_mono (writerWP_and (ht_findRoot B c w1 hvo hb1 hi1 hp1)
+    (klongsWf_findRoot c w1 hkw hwf1)) ?_
+  rintro root w2 ⟨⟨hb2, hi2, hk2, hp2, ht2, hpf2⟩, hwf2⟩
+  refine writerWP_mono (ht_pathGo B key root c w2 hvo hb2 hi2 hkw hwf2 ⟨none, by rw [hp2]; rfl⟩
+    (by rw [hp2]; exact hpf2)) ?_
+  rintro _ v ⟨hb3, hi3, hle3⟩
+  exact ⟨hb3, hi3, (show HtLe w w1 from ⟨hk1, ht1⟩).trans ((show HtLe w1 w2 from ⟨hk2, ht2⟩).trans hle3)⟩
+
+/-- The walk of `target` reads only: the heights' books and the path are kept. -/
+theorem ht_targetGo (B : NodeId) : ∀ (d : Nat) (c : Ctx) (w : W), ViewHtOK H B c → Book B c w →
+    HtInv H B c w → WriterWP (targetGo d) c w (fun _ v => Book B c v ∧ HtInv H B c v ∧
+      HtLe w v ∧ v.path = w.path) := by
+  intro d
+  induction d with
+  | zero =>
+    intro c w _ hb hi
+    simp only [targetGo, writerWP_pure]
+    exact ⟨hb, hi, HtLe.refl w, trivial⟩
+  | succ d ih =>
+    intro c w hvo hb hi
+    rw [targetGo]
+    htSimp
+    refine writerWP_mono (kd_pathNode d c w) ?_
+    rintro x w0 ⟨hw0, -⟩
+    rw [hw0]
+    refine writerWP_mono (ht_getNode B x c w hvo hb hi) ?_
+    rintro xn w1 ⟨hb1, hi1, hk1, -, hp1, ht1⟩
+    have hle1 : HtLe w w1 := ⟨hk1, ht1⟩
+    have fin : ∀ (r : Fix) v, Book B c v → HtInv H B c v → HtLe w v → v.path = w.path →
+        WriterWP (pure r : M Fix) c v (fun _ u => Book B c u ∧ HtInv H B c u ∧ HtLe w u ∧ u.path = w.path) := by
+      intro r v h1 h2 h3 h4; simp only [writerWP_pure]; exact ⟨h1, h2, h3, h4⟩
+    have hrec : ∀ v, Book B c v → HtInv H B c v → HtLe w v → v.path = w.path →
+        WriterWP (targetGo d) c v (fun _ u => Book B c u ∧ HtInv H B c u ∧ HtLe w u ∧ u.path = w.path) :=
+      fun v h1 h2 h3 h4 => writerWP_mono (ih c v hvo h1 h2)
+        (fun _ u h => ⟨h.1, h.2.1, h3.trans h.2.2.1, h.2.2.2.trans h4⟩)
+    have noteRec : ∀ v, Book B c v → HtInv H B c v → HtLe w v → v.path = w.path →
+        WriterWP (do note "fix.pass.onlychild"; targetGo d) c v
+          (fun _ u => Book B c u ∧ HtInv H B c u ∧ HtLe w u ∧ u.path = w.path) := by
+      intro v h1 h2 h3 h4
+      rw [writerWP_bind]
+      refine writerWP_mono (ht_note B "fix.pass.onlychild" c v hvo h1 h2) ?_
+      rintro _ u ⟨g1, g2, g3, g4, g5⟩
+      exact hrec u g1 g2 (h3.trans ⟨g3, g5⟩) (g4.trans h4)
+    split
+    · simp only [writerWP_bind]; exact writerWP_throw _ _ _ _
+    · cases d with
+      | zero =>
+        simp only [writerWP_bind, writerWP_pure]
+        repeat' first
+          | wpSplit
+          | (exact fin _ _ hb1 hi1 hle1 hp1)
+          | (exact hrec _ hb1 hi1 hle1 hp1)
+          | (exact noteRec _ hb1 hi1 hle1 hp1)
+          | split
+      | succ e =>
+        simp only [writerWP_bind]
+        refine writerWP_mono (kd_pathNode e c w1) ?_
+        rintro q w2 ⟨hw2, -⟩
+        rw [hw2]
+        refine writerWP_mono (ht_getNode B q c w1 hvo hb1 hi1) ?_
+        rintro qn w3 ⟨hb3, hi3, hk3, -, hp3, ht3⟩
+        simp only [writerWP_pure]
+        have hle13 : HtLe w w3 := hle1.trans ⟨hk3, ht3⟩
+        have hp13 : w3.path = w.path := hp3.trans hp1
+        repeat' first
+          | wpSplit
+          | (exact fin _ _ hb3 hi3 hle13 hp13)
+          | (exact hrec _ hb3 hi3 hle13 hp13)
+          | (exact noteRec _ hb3 hi3 hle13 hp13)
+          | split
+
+theorem ht_target (B : NodeId) (c : Ctx) (w : W) (hvo : ViewHtOK H B c) (hb : Book B c w)
+    (hi : HtInv H B c w) : WriterWP target c w (fun _ v => Book B c v ∧ HtInv H B c v ∧
+      HtLe w v ∧ v.path = w.path) := by
+  unfold target
+  htSimp
+  refine writerWP_mono (kd_pathSize c w) ?_
+  rintro n w0 ⟨hw0, rfl⟩
+  rw [hw0]
+  exact ht_targetGo B _ c w hvo hb hi
+
+end
+
+-- restated from viewHtOK_of_run (HeightsRun.lean)
+theorem viewHtOK_at (p : Params) (P : Struct BVal) (t : Time) (base : NodeId)
+    (hfresh : ∀ q ∈ P, q.1 < base) (htimes : StructTimesLE P t) (hR : RunLinksOK p P t)
+    (hK : KindsAllOK p P) (hA : HeightAllOK p P t) :
+    ViewHtOK (htOracleOf p P) base (ctxAt p P t) := by
+  have hP := hR.1
+  have hB := putBase_at p P t base hfresh htimes hR
+  refine ⟨hB.good.ids, viewHeights_of p P t base hfresh htimes hP hK hA, hB.good.ptrs, ?_⟩
+  intro x nd hx t' ht
+  have hlt := hB.good.times x nd hx
+  exact klongsOf_times nd.hist (ctxAt p P t).i (fun e he => Nat.le_of_lt (hlt e he)) _ ht t' rfl
+
+/-- The heights' cache at the end of a fix step that made a merge. -/
+theorem htCache_fix_merge (p : Params) (s : St) (k : Key) (rest : List Key) (base : NodeId)
+    (w : W) (x : NodeId) (d : Nat) (w1 : W) (z : NodeId) (top : Top) (hs : Reached p s)
+    (hI : StInv p s) (hpend : s.pend = k :: rest) (hfresh : ∀ q ∈ s.P, q.1 < base)
+    (htop : topOf p (ctxAt p s.P s.t).view z = .ok top)
+    (hfs : fixStep k (ctxAt p s.P s.t) (wStart base top) = .ok (true, w))
+    (hpt : (do path k; target : M Fix) (ctxAt p s.P s.t) (wStart base top) = .ok (.merge x d, w1)) :
+    HtCache (ctxAt p s.P s.t) (htOracleOf p s.P) w := by
+  have hkey : k ≠ [] := key_ne_nil_of_wf k (reached_pend_wf p s hs k (by rw [hpend]; exact List.mem_cons_self))
+  obtain ⟨hsub, htimes, _, _, _, _⟩ := hI
+  rw [hpend] at hsub
+  have hvc := viewCoherent_at p s.P s.t htimes
+  have hN : wNode p (viewOf s.P) (wStart base top) = knodeOf p (viewOf s.P) := wNode_wStart _ _ _ _
+  have hwf0 : ∀ y yn, wNode p (viewOf s.P) (wStart base top) y = some yn → klongsWf yn.ks = true := by
+    intro y yn hy
+    rw [hN] at hy
+    obtain ⟨nd, hg, hd, hlv, hn⟩ := knodeOf_viewOf p _ y yn hy
+    subst hn
+    exact (hsub.links.2.1 y nd hg hd hlv).1
+  obtain ⟨hr1, _, _, _, _, hmg⟩ := writerWP_pathTarget k hkey (ctxAt p s.P s.t) (viewOf s.P) hvc
+    (wStart base top) (fun _ _ => rfl) (fun y yn _ hy => hwf0 y yn hy) _ w1 hpt
+  obtain ⟨X, K, Nn, hP, hXd, hd0, hql, _, _, _⟩ := hmg x d rfl
+  obtain ⟨hX, hK, hS2, _, _⟩ := hP
+  have hB := putBase_at p s.P s.t base hfresh htimes hsub.links
+  have hvo := viewHtOK_at p s.P s.t base hfresh htimes hsub.links hsub.kinds hsub.heights
+  obtain ⟨u, w2, hp, ht, m, hmm⟩ := fixStep_merge_split k _ _ w x d w1 hfs hpt
+  obtain ⟨hb2, hi2, _⟩ := ht_path (H := htOracleOf p s.P) base k _ _ hvo (book_start base _ top)
+    (htInv_start _ base _ top) hB.wf (by intro q hq; simp [wStart] at hq) u w2 hp
+  obtain ⟨hb1, hi1, _, _⟩ := ht_target base _ w2 hvo hb2 hi2 _ w1 ht
+  have hpx : w1.path[d]? = some (some (K d), x) := by rw [← hXd]; exact hK d hd0 (Nat.le_refl _)
+  have hpq : ∀ a q, w1.path[d - 1]? = some (a, q) →
+      ∃ nq, w1.nodes.lookup q = some nq ∧ nq.leaf = false := by
+    intro a q hq
+    have h1 := hX (d - 1) (by omega)
+    rw [hq] at h1
+    simp only [Option.map_some, Option.some.injEq] at h1
+    subst h1
+    exact ⟨Nn (d - 1), (hS2 (d - 1) (by omega)).1, hql⟩
+  have hpf : PathFreeTo w1 (d + 1) := by
+    intro _ _ q _ _
+    rw [hr1.2.2.1]; rfl
+  exact (ht_mtMerge base (fun _ _ => True) (fun _ _ _ _ _ _ _ => trivial) x d _ w1 hvo
+    (by show 0 < s.t + 1; omega) hb1 hi1 (by omega) _ hpx hpf hpq trivial m w hmm).2.1.cache
+
+/-- B3's parts for the merge: the heights' cache proved, so `HtEnd` holds. -/
+theorem t_htEnd_merge (p : Params) : HtEnd p IsMerge := by
+  intro s k rest base w f w1 z top hs hI hpend hfresh _ htop hfs hpt hC
+  obtain ⟨x, d, rfl⟩ := hC
+  exact htCache_fix_merge p s k rest base w x d w1 z top hs hI hpend hfresh htop hfs hpt
+
+end SIS.Tree.Mt

@@ -1,0 +1,4 @@
+selftest sorry: failed as it must (GATE FAIL: forbidden words (forbidden.txt))
+selftest mainfile: failed as it must (GATE FAIL: main's lean/ changed (diff-main-bad.txt))
+selftest axiom: failed as it must (GATE FAIL: forbidden words (forbidden.txt))
+SELFTEST PASS

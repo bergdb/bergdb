@@ -1,0 +1,9 @@
+head: 90c5adb2 026-19: B3: a fix step keeps the run's invariant from FixW, FrameW, the lift (LiftFix) and ; 2026-11-16 22:17
+forbidden: 0 lines
+main's lean/ unchanged: 9 files added; MT's four files as 026-17-mt-trial
+lake build: exit 0, Build completed successfully (704 jobs), real 0m0.284s
+lake build SIS.Tree.Mt SIS.Tree.MtLift SIS.Tree.MtReaders SIS.Tree.MtRun SIS.Tree.MtStep SIS.Tree.MtSub SIS.Tree.MtTop : exit 0, real 0m0.175s
+audit: 8 theorems t_..., 8 on the standard axioms only: t_fixStepOK_of t_full_of_sub t_liveCountsH_none t_reached_inv t_scans_of_full t_sub_of_full t_visible t_visible_fixW 
+fixed statements: git diff P0b (c778c01794fc3bb7d87cf7fa63d2bed59da87a48) -- MtRun.lean MtSub.lean: 0 lines changed
+lines: 1074 in the trial's files (SIS/Tree/MtLift.lean SIS/Tree/MtReaders.lean SIS/Tree/MtRun.lean SIS/Tree/MtStep.lean SIS/Tree/MtSub.lean SIS/Tree/MtTop.lean )
+GATE PASS

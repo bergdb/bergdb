@@ -1,0 +1,28 @@
+/-
+The proof trial of 026-18 (bergdb 026-19, step A3 in the top): A3's fill line
+(`t_fixWLive_merge`, MtMergeLive.lean) is prover B's `FixLiveW` (MtMerge.lean), so the
+top statement keeps, of the merge's fill, only the case of a full parent (`MergeFullLive`).
+-/
+import SIS.Tree.MtTop
+import SIS.Tree.MtMergeLive
+
+set_option autoImplicit false
+
+namespace SIS.Tree.Mt
+
+open SIS SIS.Check SIS.Tree
+
+/-- A3 in B's form. -/
+theorem t_fixLiveW_merge (p : Params) (hp : MergeParamsOK p) (hfull : MergeFullLive p) :
+    FixLiveW p IsMerge :=
+  t_fixWLive_merge p hp hfull
+
+/-- The top with A3 and A4: the merge's fill premise reduced to the full parent's case. -/
+theorem t_visible_A3 (p : Params) :
+    MergeParamsOK p → (2 ≤ p.theta ∨ p.theta = 0) →
+    UserStepOK p → MergeFullLive p → FixWEmpty p → FixW p IsUnlink → FixW p IsCollapse →
+    FrameW p → VisibleOK p :=
+  fun hp hth hU hM hE hFu hFc hFr =>
+    t_visible_A4 p hp hth hU (t_fixLiveW_merge p hp hM) hE hFu hFc hFr
+
+end SIS.Tree.Mt

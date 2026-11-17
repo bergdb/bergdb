@@ -1,0 +1,1131 @@
+/-
+The proof trial of 026-18 (bergdb 026-19, step A1): the bridge from MT's merge to
+today's. A successful run of `Mt.merge x d` is a run of `merge x d` (Exec.lean) that
+ends in the same state but for the two books that no rule of a fix step reads: the
+notes (`trail`) and `madeFor`; when the two merged nodes have a live klong, are not
+on the key access path above the merge, and have no klong of the step's time.
+With it today's lemmas about `merge` apply to `Mt.merge` (step A4).
+
+- `stripW`, `SR`, `Obl`: two runs that agree but for the books, and the actions
+  whose runs do (every action of a merge's parent change, `obl_mergeParent`).
+- `mergeParent_frame`: the parent change leaves the cached nodes off the path as
+  they are.
+- `mtTail`, `mt_merge_eqP`: `Mt.merge` as `mergeP` (DelMergeFree.lean) with its
+  own tail; `sr_tail` relates the two tails, `mt_merge_bridge` the two merges.
+-/
+import SIS.Tree.MtSub
+
+set_option autoImplicit false
+set_option linter.unusedSimpArgs false
+
+namespace SIS.Tree.Mt
+
+open SIS SIS.Check SIS.Tree
+
+/-! ## Two runs that agree but for the books -/
+
+/-- The writer's state without its notes and `madeFor`. -/
+def stripW (w : W) : W := { w with madeFor := [], trail := [] }
+
+/-- f from w1 runs as g from w2: the same result, and end states that agree but for
+the books. -/
+def SR {α : Type} (f g : M α) (c : Ctx) (w1 w2 : W) : Prop :=
+  ∀ a v1, f c w1 = .ok (a, v1) → ∃ v2, g c w2 = .ok (a, v2) ∧ stripW v1 = stripW v2
+
+/-- f runs alike from any two states that agree but for the books. -/
+def Obl {α : Type} (f : M α) : Prop := ∀ c w1 w2, stripW w1 = stripW w2 → SR f f c w1 w2
+
+theorem sr_bind {α β : Type} {m1 m2 : M α} {k1 k2 : α → M β} {c : Ctx} {w1 w2 : W}
+    (hm : SR m1 m2 c w1 w2)
+    (hk : ∀ a v1 v2, m1 c w1 = .ok (a, v1) → stripW v1 = stripW v2 → SR (k1 a) (k2 a) c v1 v2) :
+    SR (m1 >>= k1) (m2 >>= k2) c w1 w2 := by
+  intro b u1 h
+  obtain ⟨a, v1, h1, h2⟩ := (m_bind_ok m1 k1 c w1 (b, u1)).mp h
+  obtain ⟨v2, h3, h4⟩ := hm a v1 h1
+  obtain ⟨u2, h5, h6⟩ := hk a v1 v2 h1 h4 b u1 h2
+  exact ⟨u2, (m_bind_ok m2 k2 c w2 (b, u2)).mpr ⟨a, v2, h3, h5⟩, h6⟩
+
+theorem obl_bind {α β : Type} {m : M α} {k : α → M β} (hm : Obl m) (hk : ∀ a, Obl (k a)) :
+    Obl (m >>= k) := by
+  intro c w1 w2 hw
+  exact sr_bind (hm c w1 w2 hw) (fun a v1 v2 _ hv => hk a c v1 v2 hv)
+
+theorem obl_pure {α : Type} (a : α) : Obl (pure a : M α) := by
+  intro c w1 w2 hw b v1 h
+  simp only [pure, ReaderT.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at h
+  obtain ⟨rfl, rfl⟩ := h
+  exact ⟨w2, rfl, hw⟩
+
+theorem obl_read : Obl (read : M Ctx) := by
+  intro c w1 w2 hw b v1 h
+  simp only [read, readThe, MonadReaderOf.read, ReaderT.read, pure, StateT.pure, Except.pure,
+    Except.ok.injEq, Prod.mk.injEq] at h
+  obtain ⟨rfl, rfl⟩ := h
+  exact ⟨w2, rfl, hw⟩
+
+theorem obl_throw {α : Type} (e : String) : Obl (throw e : M α) := by
+  intro c w1 w2 _ b v1 h
+  simp [throw, throwThe, MonadExceptOf.throw, liftM, monadLift, MonadLift.monadLift,
+    StateT.lift, bind, Except.bind] at h
+
+theorem obl_modify (f : W → W) (hf : ∀ w1 w2, stripW w1 = stripW w2 → stripW (f w1) = stripW (f w2)) :
+    Obl (modify f : M Unit) := by
+  intro c w1 w2 hw b v1 h
+  have e : ∀ w, (modify f : M Unit) c w = .ok ((), f w) := fun w => rfl
+  rw [e] at h
+  simp only [Except.ok.injEq, Prod.mk.injEq] at h
+  obtain ⟨_, rfl⟩ := h
+  cases b
+  exact ⟨f w2, e w2, hf w1 w2 hw⟩
+
+theorem obl_ite {α : Type} {b : Prop} [Decidable b] {f g : M α} (hf : b → Obl f) (hg : ¬ b → Obl g) :
+    Obl (if b then f else g) := by
+  by_cases h : b
+  · simp only [h, ↓reduceIte]; exact hf h
+  · simp only [h, ↓reduceIte]; exact hg h
+
+/-- The fields of two states that agree but for the books. -/
+theorem strip_fields {w1 w2 : W} (h : stripW w1 = stripW w2) :
+    w1.nodes = w2.nodes ∧ w1.gh = w2.gh ∧ w1.made = w2.made ∧ w1.vals = w2.vals ∧
+      w1.taken = w2.taken ∧ w1.next = w2.next ∧ w1.path = w2.path ∧ w1.top = w2.top ∧
+      w1.newTop = w2.newTop ∧ w1.merges = w2.merges ∧ w1.spaceSplits = w2.spaceSplits ∧
+      w1.outside = w2.outside := by
+  cases w1; cases w2
+  simp only [stripW, W.mk.injEq] at h
+  obtain ⟨h1, h2, h3, h4, h5, _, h6, h7, h8, h9, _, h10, h11, h12⟩ := h
+  exact ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12⟩
+
+/-- Two states agree but for the books when their other fields are equal. -/
+theorem strip_of_fields {w1 w2 : W} (h1 : w1.nodes = w2.nodes) (h2 : w1.gh = w2.gh)
+    (h3 : w1.made = w2.made) (h4 : w1.vals = w2.vals) (h5 : w1.taken = w2.taken)
+    (h6 : w1.next = w2.next) (h7 : w1.path = w2.path) (h8 : w1.top = w2.top)
+    (h9 : w1.newTop = w2.newTop) (h10 : w1.merges = w2.merges)
+    (h11 : w1.spaceSplits = w2.spaceSplits) (h12 : w1.outside = w2.outside) :
+    stripW w1 = stripW w2 := by
+  cases w1; cases w2
+  simp only at h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 h11 h12
+  subst h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 h11 h12
+  rfl
+
+theorem sr_pure {α : Type} (a : α) (c : Ctx) (w1 w2 : W) (hw : stripW w1 = stripW w2) :
+    SR (pure a : M α) (pure a) c w1 w2 := obl_pure a c w1 w2 hw
+
+theorem sr_throw {α : Type} (e : String) (g : M α) (c : Ctx) (w1 w2 : W) :
+    SR (throw e : M α) g c w1 w2 := by
+  intro b v1 h
+  simp [throw, throwThe, MonadExceptOf.throw, liftM, monadLift, MonadLift.monadLift,
+    StateT.lift, bind, Except.bind] at h
+
+theorem sr_set (v1 v2 : W) (hv : stripW v1 = stripW v2) (c : Ctx) (w1 w2 : W) :
+    SR (set v1 : M Unit) (set v2) c w1 w2 := by
+  intro b u h
+  have e : ∀ v w, (set v : M Unit) c w = .ok ((), v) := fun _ _ => rfl
+  rw [e] at h
+  simp only [Except.ok.injEq, Prod.mk.injEq] at h
+  obtain ⟨_, rfl⟩ := h
+  cases b
+  exact ⟨v2, e v2 w2, hv⟩
+
+theorem sr_ite {α : Type} {b : Prop} [Decidable b] {f g : M α} {c : Ctx} {w1 w2 : W}
+    (hf : b → SR f f c w1 w2) (hg : ¬ b → SR g g c w1 w2) :
+    SR (if b then f else g) (if b then f else g) c w1 w2 := by
+  by_cases h : b
+  · simp only [h, ↓reduceIte]; exact hf h
+  · simp only [h, ↓reduceIte]; exact hg h
+
+/-- A get and what follows, when what follows runs alike from states that agree. -/
+theorem obl_getBind {α : Type} (k : W → M α)
+    (hk : ∀ c w1 w2, stripW w1 = stripW w2 → SR (k w1) (k w2) c w1 w2) :
+    Obl ((MonadState.get : M W) >>= k) := by
+  intro c w1 w2 hw b v1 h
+  have e : ∀ w, ((MonadState.get : M W) >>= k) c w = k w c w := fun _ => rfl
+  rw [e] at h ⊢
+  exact hk c w1 w2 hw b v1 h
+
+theorem obl_readBind {α : Type} (k : Ctx → M α) (hk : ∀ c, Obl (k c)) :
+    Obl ((read : M Ctx) >>= k) := obl_bind obl_read hk
+
+theorem obl_note (s : String) : Obl (note s) := by
+  unfold note
+  apply obl_modify
+  intro w1 w2 hw
+  have := strip_fields hw
+  exact strip_of_fields this.1 this.2.1 this.2.2.1 this.2.2.2.1 this.2.2.2.2.1 this.2.2.2.2.2.1
+    this.2.2.2.2.2.2.1 this.2.2.2.2.2.2.2.1 this.2.2.2.2.2.2.2.2.1 this.2.2.2.2.2.2.2.2.2.1
+    this.2.2.2.2.2.2.2.2.2.2.1 this.2.2.2.2.2.2.2.2.2.2.2
+
+/-- A modification of the fields but the books, by a function of those fields. -/
+macro "oblFields" : tactic => `(tactic| (
+  intro w1 w2 hw
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12⟩ := strip_fields hw
+  exact strip_of_fields (by simp only [h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12])
+    (by simp only [h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12])
+    (by simp only [h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12])
+    (by simp only [h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12])
+    (by simp only [h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12])
+    (by simp only [h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12])
+    (by simp only [h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12])
+    (by simp only [h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12])
+    (by simp only [h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12])
+    (by simp only [h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12])
+    (by simp only [h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12])
+    (by simp only [h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12])))
+
+theorem obl_putNode (x : NodeId) (n : KNode) : Obl (putNode x n) := by
+  unfold putNode; apply obl_modify; oblFields
+
+theorem obl_setMadeFor (x : NodeId) (o : Option NodeId) : Obl (setMadeFor x o) := by
+  unfold setMadeFor
+  split
+  · apply obl_modify; oblFields
+  · exact obl_pure _
+
+theorem obl_takenBack (x : NodeId) : Obl (takenBack x) := by
+  unfold takenBack; apply obl_modify; oblFields
+
+theorem obl_pathClear : Obl pathClear := by
+  unfold pathClear; apply obl_modify; oblFields
+
+theorem obl_pathAdd (cv : Option Nat) (x : NodeId) : Obl (pathAdd cv x) := by
+  unfold pathAdd; apply obl_modify; oblFields
+
+theorem obl_fresh : Obl fresh := by
+  unfold fresh
+  apply obl_getBind
+  intro c w1 w2 hw
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12⟩ := strip_fields hw
+  refine sr_bind (sr_set _ _ ?_ c w1 w2) (fun _ v1 v2 _ hv => ?_)
+  · exact strip_of_fields h1 h2 h3 h4 h5 (by simp only [h6]) h7 h8 h9 h10 h11 h12
+  · rw [h6]; exact sr_pure _ c v1 v2 hv
+
+theorem obl_getNode (x : NodeId) : Obl (getNode x) := by
+  unfold getNode
+  apply obl_getBind
+  intro c w1 w2 hw
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12⟩ := strip_fields hw
+  rw [h1]
+  split
+  · exact sr_pure _ c w1 w2 hw
+  · refine sr_bind (obl_read c w1 w2 hw) (fun c' v1 v2 hr hv => ?_)
+    split
+    · split
+      · exact sr_throw _ _ c v1 v2
+      · refine sr_bind (sr_set _ _ ?_ c v1 v2) (fun _ u1 u2 _ hu => sr_pure _ c u1 u2 hu)
+        exact strip_of_fields (by simp only [h1]) (by simp only [h2]) h3 h4 h5 h6 h7 h8 h9 h10 h11 h12
+    · exact sr_throw _ _ c v1 v2
+
+theorem obl_ghOf (x : NodeId) : Obl (ghOf x) := by
+  unfold ghOf
+  refine obl_bind (obl_getNode x) (fun _ => ?_)
+  apply obl_getBind
+  intro c w1 w2 hw
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12⟩ := strip_fields hw
+  rw [h2]
+  split
+  · exact sr_pure _ c w1 w2 hw
+  · exact sr_throw _ _ c w1 w2
+
+theorem obl_pathSize : Obl pathSize := by
+  unfold pathSize
+  apply obl_getBind
+  intro c w1 w2 hw
+  rw [(strip_fields hw).2.2.2.2.2.2.1]
+  exact sr_pure _ c w1 w2 hw
+
+theorem obl_pathNode (d : Nat) : Obl (pathNode d) := by
+  unfold pathNode
+  apply obl_getBind
+  intro c w1 w2 hw
+  rw [(strip_fields hw).2.2.2.2.2.2.1]
+  split
+  · exact sr_pure _ c w1 w2 hw
+  · exact sr_throw _ _ c w1 w2
+
+theorem obl_klongAt (d : Nat) : Obl (klongAt d) := by
+  unfold klongAt
+  apply obl_getBind
+  intro c w1 w2 hw
+  rw [(strip_fields hw).2.2.2.2.2.2.1]
+  split
+  · exact sr_pure _ c w1 w2 hw
+  · exact sr_throw _ _ c w1 w2
+
+theorem obl_parentAt (d : Nat) : Obl (parentAt d) := by
+  unfold parentAt
+  cases d with
+  | zero => exact obl_pure _
+  | succ d => exact obl_bind (obl_pathNode d) (fun _ => obl_pure _)
+
+theorem obl_newKey (g h : Nat) (leaf : Bool) (ks : List Klong) : Obl (newKey g h leaf ks) := by
+  unfold newKey
+  refine obl_readBind _ (fun c => obl_bind obl_fresh (fun x => ?_))
+  dsimp only
+  split
+  · refine obl_bind ?_ (fun _ => obl_bind ?_ (fun _ => obl_pure _))
+    · apply obl_modify; oblFields
+    · apply obl_modify; oblFields
+  · refine obl_bind ?_ (fun _ => obl_pure _)
+    apply obl_modify; oblFields
+
+theorem obl_newSuperRoot (y : NodeId) : Obl (newSuperRoot y) := by
+  unfold newSuperRoot
+  refine obl_readBind _ (fun c => ?_)
+  apply obl_getBind
+  intro c' w1 w2 hw
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12⟩ := strip_fields hw
+  rw [h8]
+  split
+  · refine sr_bind (sr_set _ _ ?_ c' w1 w2) (fun _ v1 v2 _ hv => obl_note _ c' v1 v2 hv)
+    exact strip_of_fields h1 h2 h3 h4 h5 h6 h7 (by simp only [h8]) h9 h10 h11 h12
+  · refine sr_bind (obl_note _ c' w1 w2 hw) (fun _ v1 v2 _ hv => ?_)
+    refine sr_bind (obl_fresh c' v1 v2 hv) (fun z u1 u2 _ hu => ?_)
+    refine (obl_modify _ ?_) c' u1 u2 hu
+    oblFields
+
+theorem obl_foldlM {α β : Type} (xs : List α) (f : β → α → M β) (b : β)
+    (hf : ∀ b a, Obl (f b a)) : Obl (xs.foldlM f b) := by
+  induction xs generalizing b with
+  | nil => exact obl_pure _
+  | cons a xs ih =>
+    simp only [List.foldlM_cons]
+    exact obl_bind (hf b a) (fun b => ih b)
+
+/-- `madeFor` read, then written: the books' own business. -/
+theorem obl_replaced_set {α : Type} (x y : NodeId) (k : PUnit → M α) (hk : ∀ u, Obl (k u)) :
+    Obl (replacedBy x >>= fun o => setMadeFor y o >>= k) := by
+  intro c w1 w2 hw b v1 h
+  have e1 : ∀ w, (replacedBy x) c w = .ok (w.madeFor.lookup x, w) := fun _ => rfl
+  have e2 : ∀ (o : Option NodeId) w, (setMadeFor y o) c w =
+      .ok ((), match o with
+        | some o => { w with madeFor := (y, o) :: w.madeFor }
+        | none => w) := by
+    intro o w; cases o <;> rfl
+  obtain ⟨o, u1, h1, h2⟩ := (m_bind_ok _ _ c w1 (b, v1)).mp h
+  rw [e1] at h1
+  simp only [Except.ok.injEq, Prod.mk.injEq] at h1
+  obtain ⟨rfl, rfl⟩ := h1
+  obtain ⟨u, z1, h3, h4⟩ := (m_bind_ok _ _ c w1 (b, v1)).mp h2
+  rw [e2] at h3
+  simp only [Except.ok.injEq, Prod.mk.injEq] at h3
+  obtain ⟨_, rfl⟩ := h3
+  cases u
+  have hz : stripW (match w1.madeFor.lookup x with
+      | some o => { w1 with madeFor := (y, o) :: w1.madeFor }
+      | none => w1) = stripW (match w2.madeFor.lookup x with
+      | some o => { w2 with madeFor := (y, o) :: w2.madeFor }
+      | none => w2) := by
+    obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12⟩ := strip_fields hw
+    split <;> split <;> exact strip_of_fields h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 h11 h12
+  obtain ⟨v2, h5, h6⟩ := hk () c _ _ hz b v1 h4
+  refine ⟨v2, ?_, h6⟩
+  rw [m_bind_ok]
+  refine ⟨w2.madeFor.lookup x, w2, e1 w2, ?_⟩
+  rw [m_bind_ok]
+  exact ⟨(), _, e2 _ w2, h5⟩
+
+theorem obl_addKeys (x : NodeId) (ins : List (Nat × NodeId)) : Obl (addKeys x ins) := by
+  unfold addKeys
+  exact obl_readBind _ (fun _ => obl_bind (obl_getNode x) (fun _ => obl_putNode _ _))
+
+theorem obl_replaceOrAdd (last : KNode) (ins : List (Nat × NodeId)) :
+    Obl (replaceOrAdd last ins) := by
+  unfold replaceOrAdd
+  refine obl_readBind _ (fun c => obl_foldlM _ _ _ (fun b a => ?_))
+  repeat' first | exact obl_throw _ | exact obl_pure _ | split
+
+macro "oblStep" : tactic => `(tactic| first
+  | (with_reducible exact obl_pure _)
+  | (with_reducible exact obl_read)
+  | (with_reducible exact obl_throw _)
+  | (with_reducible exact obl_note _)
+  | (with_reducible exact obl_putNode _ _)
+  | (with_reducible exact obl_setMadeFor _ _)
+  | (with_reducible exact obl_fresh)
+  | (with_reducible exact obl_getNode _)
+  | (with_reducible exact obl_ghOf _)
+  | (with_reducible exact obl_pathSize)
+  | (with_reducible exact obl_pathNode _)
+  | (with_reducible exact obl_klongAt _)
+  | (with_reducible exact obl_parentAt _)
+  | (with_reducible exact obl_newKey _ _ _ _)
+  | (with_reducible exact obl_newSuperRoot _)
+  | (with_reducible exact obl_addKeys _ _)
+  | (with_reducible exact obl_replaceOrAdd _ _)
+  | (with_reducible apply obl_modify; oblFields)
+  | (with_reducible refine obl_replaced_set _ _ _ (fun _ => ?_))
+  | (with_reducible refine obl_bind ?_ (fun _ => ?_))
+  | dsimp only
+  | split)
+
+set_option maxHeartbeats 1000000 in
+theorem obl_handleFullWith (up : NodeId → List (Nat × NodeId) → M Unit)
+    (hup : ∀ q more, Obl (up q more)) (depth : Nat) (x : NodeId) (ins : List (Nat × NodeId))
+    (last : KNode) (compact : Bool) : Obl (handleFullWith up depth x ins last compact) := by
+  unfold handleFullWith
+  repeat' first
+    | (with_reducible exact hup _ _)
+    | oblStep
+
+theorem obl_appendKlongs (depth : Nat) (x : NodeId) (ins : List (Nat × NodeId)) :
+    Obl (appendKlongs depth x ins) := by
+  induction depth generalizing x ins with
+  | zero =>
+    rw [appendKlongs_step_dead]
+    refine obl_readBind _ (fun c => obl_bind (obl_getNode x) (fun n => ?_))
+    dsimp only
+    split
+    · exact obl_handleFullWith _ (fun _ _ => obl_throw _) _ _ _ _ _
+    · split
+      · exact obl_handleFullWith _ (fun _ _ => obl_throw _) _ _ _ _ _
+      · exact obl_addKeys _ _
+  | succ depth ih =>
+    rw [appendKlongs_step_dead]
+    refine obl_readBind _ (fun c => obl_bind (obl_getNode x) (fun n => ?_))
+    dsimp only
+    split
+    · exact obl_handleFullWith _ (fun q more => ih q more) _ _ _ _ _
+    · split
+      · exact obl_handleFullWith _ (fun q more => ih q more) _ _ _ _ _
+      · exact obl_addKeys _ _
+
+theorem obl_handleFull (depth : Nat) (x : NodeId) (last : KNode) (compact : Bool) :
+    Obl (handleFull depth x last compact) := by
+  unfold handleFull
+  refine obl_handleFullWith _ ?_ _ _ _ _ _
+  intro q more
+  cases depth with
+  | zero => exact obl_throw _
+  | succ d => exact obl_appendKlongs d q more
+
+set_option maxHeartbeats 1000000 in
+theorem obl_mergeParent (p : NodeId) (depth il cL : Nat) (m1 : NodeId) (ir cR : Nat)
+    (m2 : Option (NodeId × Nat)) : Obl (mergeParent p depth il cL m1 ir cR m2) := by
+  unfold mergeParent
+  refine obl_readBind _ (fun c => obl_bind (obl_getNode p) (fun pn => ?_))
+  rcases m2 with _ | ⟨y, g⟩
+  all_goals dsimp only
+  all_goals repeat' first
+    | (with_reducible exact obl_handleFull _ _ _ _)
+    | (generalize replaceKlong _ _ _ _ = rk; rcases rk with _ | _ | _ <;> dsimp only)
+    | (with_reducible exact obl_pure _)
+    | (with_reducible exact obl_throw _)
+    | (with_reducible exact obl_note _)
+    | (with_reducible exact obl_putNode _ _)
+    | (with_reducible refine obl_bind ?_ (fun _ => ?_))
+    | (refine obl_ite (fun _ => ?_) (fun _ => ?_))
+    | (split <;> first | (with_reducible exact obl_pure _) | (with_reducible exact obl_throw _))
+
+/-! ## The parent change leaves the cached nodes off the path as they are -/
+
+/-- From v0 on: the next id has not gone down, the path is v0's, and every node of
+v0's cache below v0's next id and outside Pth is cached as it was. -/
+def FrameI (v0 : W) (Pth : NodeId → Prop) (w : W) : Prop :=
+  v0.next ≤ w.next ∧ w.path = v0.path ∧
+    ∀ z n, z < v0.next → ¬ Pth z → v0.nodes.lookup z = some n → w.nodes.lookup z = some n
+
+/-- The nodes on v0's path at depths up to D. -/
+def PathUpTo (v0 : W) (D : Nat) (z : NodeId) : Prop :=
+  ∃ j, j ≤ D ∧ (v0.path[j]?).map (·.2) = some z
+
+theorem frameI_refl (v0 : W) (Pth : NodeId → Prop) : FrameI v0 Pth v0 :=
+  ⟨Nat.le_refl _, rfl, fun _ _ _ _ h => h⟩
+
+theorem frI_same {v0 w w' : W} {Pth : NodeId → Prop} (h : FrameI v0 Pth w)
+    (hn : w'.nodes = w.nodes) (hx : w'.next = w.next) (hp : w'.path = w.path) : FrameI v0 Pth w' := by
+  refine ⟨by rw [hx]; exact h.1, by rw [hp]; exact h.2.1, fun z n h1 h2 h3 => ?_⟩
+  rw [hn]; exact h.2.2 z n h1 h2 h3
+
+theorem frI_getNode (v0 : W) (Pth : NodeId → Prop) (y : NodeId) (c : Ctx) (w : W)
+    (h : FrameI v0 Pth w) : WriterWP (getNode y) c w (fun _ w' => FrameI v0 Pth w') := by
+  refine writerWP_mono (writerWP_and (writerWP_getNode_cache y c w) (writerWP_getNode_frame y c w)) ?_
+  intro n w' ⟨⟨_, hpre, hp⟩, _, _, hx, _⟩
+  refine ⟨by rw [hx]; exact h.1, by rw [hp]; exact h.2.1, fun z m h1 h2 h3 => ?_⟩
+  exact lookup_of_prefix _ _ hpre z m (h.2.2 z m h1 h2 h3)
+
+theorem frI_putNode (v0 : W) (Pth : NodeId → Prop) (x : NodeId) (n : KNode) (c : Ctx) (w : W)
+    (h : FrameI v0 Pth w) (hx : Pth x ∨ v0.next ≤ x) :
+    WriterWP (putNode x n) c w (fun _ w' => FrameI v0 Pth w') := by
+  simp only [putNode, writerWP_modify]
+  refine ⟨h.1, h.2.1, fun z m h1 h2 h3 => ?_⟩
+  show (upsert w.nodes x n).lookup z = some m
+  rw [lookup_upsert]
+  have hzx : z ≠ x := by
+    intro he; subst he
+    rcases hx with hx | hx
+    · exact h2 hx
+    · omega
+  simp only [hzx, ↓reduceIte]
+  exact h.2.2 z m h1 h2 h3
+
+theorem frI_newKey (v0 : W) (Pth : NodeId → Prop) (g hh : Nat) (leaf : Bool) (ks : List Klong)
+    (c : Ctx) (w : W) (h : FrameI v0 Pth w) :
+    WriterWP (newKey g hh leaf ks) c w (fun y w' => FrameI v0 Pth w' ∧ v0.next ≤ y) := by
+  refine writerWP_mono (writerWP_newKey_frame g hh leaf ks c w) ?_
+  intro y w' ⟨hy, hn, _, _, hx, _, hp, _⟩
+  refine ⟨⟨by rw [hx]; have := h.1; omega, by rw [hp]; exact h.2.1, fun z m h1 h2 h3 => ?_⟩,
+    by rw [hy]; exact h.1⟩
+  rw [hn]
+  exact lookup_of_prefix _ _ (List.prefix_append _ _) z m (h.2.2 z m h1 h2 h3)
+
+theorem frI_modify (v0 : W) (Pth : NodeId → Prop) (f : W → W) (c : Ctx) (w : W)
+    (h : FrameI v0 Pth w) (hn : (f w).nodes = w.nodes) (hx : (f w).next = w.next)
+    (hp : (f w).path = w.path) : WriterWP (modify f) c w (fun _ w' => FrameI v0 Pth w') := by
+  simp only [writerWP_modify]
+  exact frI_same h hn hx hp
+
+theorem frI_note (v0 : W) (Pth : NodeId → Prop) (s : String) (c : Ctx) (w : W)
+    (h : FrameI v0 Pth w) : WriterWP (note s) c w (fun _ w' => FrameI v0 Pth w') :=
+  frI_modify v0 Pth _ c w h rfl rfl rfl
+
+theorem frI_setMadeFor (v0 : W) (Pth : NodeId → Prop) (y : NodeId) (o : Option NodeId) (c : Ctx)
+    (w : W) (h : FrameI v0 Pth w) : WriterWP (setMadeFor y o) c w (fun _ w' => FrameI v0 Pth w') := by
+  refine writerWP_mono (writerWP_setMadeFor_frame y o c w) ?_
+  intro _ w' ⟨hn, _, _, hx, _, hp⟩
+  exact frI_same h hn hx hp
+
+theorem frI_replacedBy (v0 : W) (Pth : NodeId → Prop) (y : NodeId) (c : Ctx) (w : W)
+    (h : FrameI v0 Pth w) : WriterWP (replacedBy y) c w (fun _ w' => FrameI v0 Pth w') := by
+  simp only [replacedBy, writerWP_bind, writerWP_get, writerWP_pure]
+  exact h
+
+theorem frI_ghOf (v0 : W) (Pth : NodeId → Prop) (y : NodeId) (c : Ctx) (w : W)
+    (h : FrameI v0 Pth w) : WriterWP (ghOf y) c w (fun _ w' => FrameI v0 Pth w') := by
+  unfold ghOf
+  rw [writerWP_bind]
+  refine writerWP_mono (frI_getNode v0 Pth y c w h) ?_
+  intro _ w1 h1
+  simp only [writerWP_bind, writerWP_get]
+  split
+  · simp only [writerWP_pure]; exact h1
+  · exact writerWP_throw _ _ _ _
+
+theorem frI_klongAt (v0 : W) (Pth : NodeId → Prop) (d : Nat) (c : Ctx) (w : W)
+    (h : FrameI v0 Pth w) : WriterWP (klongAt d) c w (fun _ w' => FrameI v0 Pth w') := by
+  unfold klongAt
+  simp only [writerWP_bind, writerWP_get]
+  split
+  · simp only [writerWP_pure]; exact h
+  · exact writerWP_throw _ _ _ _
+
+theorem frI_parentAt (v0 : W) (Pth : NodeId → Prop) (d : Nat) (c : Ctx) (w : W)
+    (h : FrameI v0 Pth w) : WriterWP (parentAt d) c w (fun r w' => FrameI v0 Pth w' ∧
+      ∀ q, r = some q → ∃ e, d = e + 1 ∧ (v0.path[e]?).map (·.2) = some q) := by
+  unfold parentAt
+  cases d with
+  | zero => simp only [writerWP_pure]; exact ⟨h, fun q hq => by cases hq⟩
+  | succ e =>
+    simp only [pathNode, writerWP_bind, writerWP_get]
+    split
+    · rename_i en hen
+      simp only [writerWP_pure]
+      refine ⟨h, fun q hq => ⟨e, rfl, ?_⟩⟩
+      rw [← h.2.1, hen]
+      simp only [Option.some.injEq] at hq
+      simp [hq]
+    · exact writerWP_throw _ _ _ _
+
+theorem frI_newSuperRoot (v0 : W) (Pth : NodeId → Prop) (y : NodeId) (c : Ctx) (w : W)
+    (h : FrameI v0 Pth w) : WriterWP (newSuperRoot y) c w (fun _ w' => FrameI v0 Pth w') := by
+  unfold newSuperRoot note fresh
+  simp only [writerWP_bind, writerWP_read, writerWP_get]
+  split
+  · simp only [writerWP_bind, writerWP_set, writerWP_modify, writerWP_pure]
+    exact h
+  · simp only [writerWP_bind, writerWP_set, writerWP_modify, writerWP_get, writerWP_pure]
+    exact ⟨by have := h.1; simp only; omega, h.2.1, h.2.2⟩
+
+theorem frI_replaceOrAdd (v0 : W) (Pth : NodeId → Prop) (last : KNode) (ins : List (Nat × NodeId))
+    (c : Ctx) (w : W) (h : FrameI v0 Pth w) :
+    WriterWP (replaceOrAdd last ins) c w (fun _ w' => FrameI v0 Pth w') := by
+  unfold replaceOrAdd
+  simp only [writerWP_bind, writerWP_read]
+  refine writerWP_foldlM_state ins _ last c w (fun _ w' => FrameI v0 Pth w') h ?_
+  intro a b v hv
+  split
+  · exact writerWP_throw _ _ _ _
+  · simp only [writerWP_pure]; exact hv
+  · simp only [writerWP_pure]; exact hv
+
+theorem frI_addKeys (v0 : W) (Pth : NodeId → Prop) (x : NodeId) (ins : List (Nat × NodeId))
+    (c : Ctx) (w : W) (h : FrameI v0 Pth w) (hx : Pth x ∨ v0.next ≤ x) :
+    WriterWP (addKeys x ins) c w (fun _ w' => FrameI v0 Pth w') := by
+  unfold addKeys
+  simp only [writerWP_bind, writerWP_read]
+  refine writerWP_mono (frI_getNode v0 Pth x c w h) ?_
+  intro _ w1 h1
+  exact frI_putNode v0 Pth x _ c w1 h1 hx
+
+theorem pth_of_parent {v0 : W} {Pth : NodeId → Prop} {depth : Nat} {q : NodeId}
+    (hpth : ∀ e q, depth = e + 1 → (v0.path[e]?).map (·.2) = some q → Pth q)
+    (hq : ∀ q', some q = some q' → ∃ e, depth = e + 1 ∧ (v0.path[e]?).map (·.2) = some q') :
+    Pth q := by
+  obtain ⟨e, he, hp⟩ := hq q rfl
+  exact hpth e q he hp
+
+macro "frSide" : tactic => `(tactic| first
+  | (exact Or.inl ‹_›)
+  | (exact Or.inr ‹_›)
+  | (exact Or.inl (pth_of_parent ‹_› ‹_›)))
+
+macro "frStep" : tactic => `(tactic| first
+  | (with_unfolding_none exact writerWP_throw _ _ _ _)
+  | (with_unfolding_none refine writerWP_mono (frI_getNode _ _ _ _ _ (by assumption)) ?_; intro _ _ _)
+  | (with_unfolding_none refine writerWP_mono (frI_ghOf _ _ _ _ _ (by assumption)) ?_; intro _ _ _)
+  | (with_unfolding_none refine writerWP_mono (frI_note _ _ _ _ _ (by assumption)) ?_; intro _ _ _)
+  | (with_unfolding_none refine writerWP_mono (frI_setMadeFor _ _ _ _ _ _ (by assumption)) ?_; intro _ _ _)
+  | (with_unfolding_none refine writerWP_mono (frI_replacedBy _ _ _ _ _ (by assumption)) ?_; intro _ _ _)
+  | (with_unfolding_none refine writerWP_mono (frI_klongAt _ _ _ _ _ (by assumption)) ?_; intro _ _ _)
+  | (with_unfolding_none refine writerWP_mono (frI_newSuperRoot _ _ _ _ _ (by assumption)) ?_; intro _ _ _)
+  | (with_unfolding_none refine writerWP_mono (frI_replaceOrAdd _ _ _ _ _ _ (by assumption)) ?_; intro _ _ _)
+  | (with_unfolding_none refine writerWP_mono (frI_newKey _ _ _ _ _ _ _ _ (by assumption)) ?_; rintro _ _ ⟨_, _⟩)
+  | (with_unfolding_none refine writerWP_mono (frI_parentAt _ _ _ _ _ (by assumption)) ?_; rintro _ _ ⟨_, _⟩)
+  | (with_unfolding_none refine writerWP_mono (frI_putNode _ _ _ _ _ _ (by assumption) (by frSide)) ?_; intro _ _ _)
+  | (with_unfolding_none refine writerWP_mono (frI_modify _ _ _ _ _ (by assumption) rfl rfl rfl) ?_; intro _ _ _))
+
+set_option maxHeartbeats 2000000 in
+theorem frI_handleFullWith (v0 : W) (Pth : NodeId → Prop) (up : NodeId → List (Nat × NodeId) → M Unit)
+    (depth : Nat) (x : NodeId) (ins : List (Nat × NodeId)) (last : KNode) (compact : Bool)
+    (c : Ctx) (w : W) (h : FrameI v0 Pth w) (hx : Pth x)
+    (hpth : ∀ e q, depth = e + 1 → (v0.path[e]?).map (·.2) = some q → Pth q)
+    (hup : ∀ q more w', FrameI v0 Pth w' →
+      (∀ q', some q = some q' → ∃ e, depth = e + 1 ∧ (v0.path[e]?).map (·.2) = some q') →
+      WriterWP (up q more) c w' (fun _ w'' => FrameI v0 Pth w'')) :
+    WriterWP (handleFullWith up depth x ins last compact) c w (fun _ w' => FrameI v0 Pth w') := by
+  unfold handleFullWith
+  repeat' first
+    | (simp only [writerWP_bind, writerWP_read, writerWP_pure, writerWP_get]; done)
+    | (with_unfolding_none refine writerWP_mono (hup _ _ _ (by assumption) (by assumption)) ?_; intro _ _ _)
+    | frStep
+    | (simp only [writerWP_bind, writerWP_read, writerWP_pure, writerWP_get])
+    | (exact ‹FrameI _ _ _›)
+    | split
+
+theorem frI_appendKlongs (v0 : W) (D : Nat) :
+    ∀ depth x ins c w, FrameI v0 (PathUpTo v0 D) w → depth ≤ D →
+      (v0.path[depth]?).map (·.2) = some x →
+      WriterWP (appendKlongs depth x ins) c w (fun _ w' => FrameI v0 (PathUpTo v0 D) w') := by
+  intro depth
+  induction depth with
+  | zero =>
+    intro x ins c w h hd hx
+    rw [appendKlongs_step_dead]
+    simp only [writerWP_bind, writerWP_read]
+    refine writerWP_mono (frI_getNode _ _ x c w h) ?_
+    intro n w1 h1
+    try dsimp only
+    have hpx : PathUpTo v0 D x := ⟨0, hd, hx⟩
+    split
+    · exact frI_handleFullWith _ _ _ _ _ _ _ _ c w1 h1 hpx (fun e q he _ => by omega)
+        (fun q more w' _ hq => by obtain ⟨e, he, _⟩ := hq q rfl; omega)
+    · split
+      · exact frI_handleFullWith _ _ _ _ _ _ _ _ c w1 h1 hpx (fun e q he _ => by omega)
+          (fun q more w' _ hq => by obtain ⟨e, he, _⟩ := hq q rfl; omega)
+      · exact frI_addKeys _ _ x ins c w1 h1 (Or.inl hpx)
+  | succ d ih =>
+    intro x ins c w h hd hx
+    rw [appendKlongs_step_dead]
+    simp only [writerWP_bind, writerWP_read]
+    refine writerWP_mono (frI_getNode _ _ x c w h) ?_
+    intro n w1 h1
+    try dsimp only
+    have hpx : PathUpTo v0 D x := ⟨d + 1, hd, hx⟩
+    have hpth : ∀ e q, d + 1 = e + 1 → (v0.path[e]?).map (·.2) = some q → PathUpTo v0 D q :=
+      fun e q he hq => ⟨e, by omega, hq⟩
+    have hup : ∀ q more w', FrameI v0 (PathUpTo v0 D) w' →
+        (∀ q', some q = some q' → ∃ e, d + 1 = e + 1 ∧ (v0.path[e]?).map (·.2) = some q') →
+        WriterWP (appendKlongs d q more) c w' (fun _ w'' => FrameI v0 (PathUpTo v0 D) w'') := by
+      intro q more w' h' hq
+      obtain ⟨e, he, hqe⟩ := hq q rfl
+      have hed : e = d := by omega
+      subst hed
+      exact ih q more c w' h' (by omega) hqe
+    split
+    · exact frI_handleFullWith _ _ _ _ _ _ _ _ c w1 h1 hpx hpth hup
+    · split
+      · exact frI_handleFullWith _ _ _ _ _ _ _ _ c w1 h1 hpx hpth hup
+      · exact frI_addKeys _ _ x ins c w1 h1 (Or.inl hpx)
+
+theorem frI_handleFull (v0 : W) (D depth : Nat) (x : NodeId) (last : KNode) (compact : Bool)
+    (c : Ctx) (w : W) (h : FrameI v0 (PathUpTo v0 D) w) (hd : depth ≤ D)
+    (hx : (v0.path[depth]?).map (·.2) = some x) :
+    WriterWP (handleFull depth x last compact) c w (fun _ w' => FrameI v0 (PathUpTo v0 D) w') := by
+  unfold handleFull
+  refine frI_handleFullWith _ _ _ _ _ _ _ _ c w h ⟨depth, hd, hx⟩
+    (fun e q he hq => ⟨e, by omega, hq⟩) ?_
+  intro q more w' h' hq
+  obtain ⟨e, he, hqe⟩ := hq q rfl
+  subst he
+  exact frI_appendKlongs v0 D e q more c w' h' (by omega) hqe
+
+set_option maxHeartbeats 1000000 in
+theorem frI_mergeParent (v0 : W) (D : Nat) (p : NodeId) (depth il cL : Nat) (m1 : NodeId)
+    (ir cR : Nat) (m2 : Option (NodeId × Nat)) (c : Ctx) (w : W)
+    (h : FrameI v0 (PathUpTo v0 D) w) (hd : depth ≤ D)
+    (hp : (v0.path[depth]?).map (·.2) = some p) :
+    WriterWP (mergeParent p depth il cL m1 ir cR m2) c w
+      (fun _ w' => FrameI v0 (PathUpTo v0 D) w') := by
+  have hpp : PathUpTo v0 D p := ⟨depth, hd, hp⟩
+  unfold mergeParent
+  simp only [writerWP_bind, writerWP_read]
+  refine writerWP_mono (frI_getNode _ _ p c w h) ?_
+  intro pn w1 h1
+  rcases m2 with _ | ⟨y, g⟩
+  all_goals dsimp only
+  all_goals repeat' first
+    | (with_unfolding_none refine writerWP_mono (frI_handleFull _ _ _ _ _ _ _ _ (by assumption) hd hp) ?_; intro _ _ _)
+    | frStep
+    | (simp only [writerWP_bind, writerWP_read, writerWP_pure, writerWP_get]; done)
+    | (simp only [writerWP_bind, writerWP_read, writerWP_pure, writerWP_get])
+    | (exact ‹FrameI _ _ _›)
+    | (generalize replaceKlong _ _ _ _ = rk; rcases rk with _ | _ | _ <;> dsimp only)
+    | (refine writerWP_if _ _ _ _ _ _ ?_ ?_ <;> intro _)
+
+/-! ## MT's merge as `mergeP` with its own tail -/
+
+/-- `Mt.merge` after its two nodes are chosen: its code from the note of the side
+on, as `mergeTail` (WriterTreeMergeOp.lean) is today's. -/
+def mtTail (c : Ctx) (x : NodeId) (d : Nat) (p : NodeId) (pn xn : KNode) (leftSome : Bool)
+    (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId) (rn : KNode) (ir : Nat) : M Nat := do
+  let tt := c.i
+  let inner := !xn.leaf
+  note (if leftSome then "merge.left" else "merge.right")
+  let cL ← match pn.cv? il with
+    | some v => pure v
+    | none => throw s!"Bug: merge at {tt}: no klong {il} in {p}"
+  let cR ← match pn.cv? ir with
+    | some v => pure v
+    | none => throw s!"Bug: merge at {tt}: no klong {ir} in {p}"
+  let lvL := ln.live
+  let lvR := rn.live
+  if inner && (lvL.isEmpty || lvR.isEmpty) then
+    throw s!"Bug: merge at {tt}: key node {l} or {r} has no live klong"
+  if inner && ((lvL.head?.map (·.1)) != some 0 || (lvR.head?.map (·.1)) != some 0) then
+    throw s!"Bug: merge at {tt}: inner node {l} or {r} has no live klong of the empty key first"
+  if ln.firstTime == some tt || rn.firstTime == some tt then
+    throw s!"MT: a fix step merges a node of its own transaction: key node {l} or {r} at {tt}"
+  let (first, second) := mergeKlongs inner c.p.mergeMax cR lvL lvR
+  modify (fun w => { w with merges := w.merges + 1 })
+  note (if second.isSome then "merge.two" else "merge.one")
+  note (if inner then "merge.inner" else "merge.leaf")
+  note (if second.isSome then "fix.merge.two" else "fix.merge.one")
+  if inner then note "fix.merge.inner"
+  if lvL.isEmpty || lvR.isEmpty then note "fix.merge.empty"
+  if lvL.isEmpty && lvR.isEmpty then note "fix.merge.bothempty"
+  let (g, h) ← ghOf x
+  let m1 ← newKey g h (!inner) (newKlongs tt first)
+  let m2 ← match second with
+    | some (ks2, g2) => do
+      let y ← newKey g h (!inner) (newKlongs tt ks2)
+      pure (some (y, g2))
+    | none => pure none
+  mergeParent p (d - 1) il cL m1 ir cR m2
+  pure (if second.isSome then 2 else 1)
+
+theorem mt_merge_eqP (x : NodeId) (d : Nat) : Mt.merge x d = mergeP mtTail x d := rfl
+
+theorem strip_note (s : String) (w : W) : stripW { w with trail := s :: w.trail } = stripW w := rfl
+
+/-- f from w1 runs as g from w2 when f's end state has P. -/
+def SRP {α : Type} (f g : M α) (c : Ctx) (w1 w2 : W) (P : W → Prop) : Prop :=
+  ∀ a v1, f c w1 = .ok (a, v1) → P v1 → ∃ v2, g c w2 = .ok (a, v2) ∧ stripW v1 = stripW v2
+
+theorem srp_bind {α β : Type} {m : M α} {k1 k2 : α → M β} {c : Ctx} {w1 w2 : W} {P : W → Prop}
+    (hm : Obl m) (hw : stripW w1 = stripW w2)
+    (hk : ∀ a v1 v2, stripW v1 = stripW v2 → SRP (k1 a) (k2 a) c v1 v2 P) :
+    SRP (m >>= k1) (m >>= k2) c w1 w2 P := by
+  intro b u1 h hP
+  obtain ⟨a, v1, h1, h2⟩ := (m_bind_ok m k1 c w1 (b, u1)).mp h
+  obtain ⟨v2, h3, h4⟩ := hm c w1 w2 hw a v1 h1
+  obtain ⟨u2, h5, h6⟩ := hk a v1 v2 h4 b u1 h2 hP
+  exact ⟨u2, (m_bind_ok m k2 c w2 (b, u2)).mpr ⟨a, v2, h3, h5⟩, h6⟩
+
+theorem srp_pure {α : Type} (a : α) (c : Ctx) (w1 w2 : W) (P : W → Prop) (hw : stripW w1 = stripW w2) :
+    SRP (pure a : M α) (pure a) c w1 w2 P := fun b v1 h _ => obl_pure a c w1 w2 hw b v1 h
+
+theorem srp_throw {α : Type} (e : String) (g : M α) (c : Ctx) (w1 w2 : W) (P : W → Prop) :
+    SRP (throw e : M α) g c w1 w2 P := fun b v1 h _ => sr_throw e g c w1 w2 b v1 h
+
+theorem srp_throw_bind {α β : Type} (e : String) (k : α → M β) (g : M β) (c : Ctx) (w1 w2 : W)
+    (P : W → Prop) : SRP (throw e >>= k) g c w1 w2 P := by
+  intro b v1 h _
+  rw [run_throw_bind] at h
+  cases h
+
+theorem srp_note_l {α : Type} (s : String) (k : PUnit → M α) (g : M α) (c : Ctx) (w1 w2 : W)
+    (P : W → Prop) (h : SRP (k ()) g c { w1 with trail := s :: w1.trail } w2 P) :
+    SRP (note s >>= k) g c w1 w2 P := by
+  intro a v1 hr hP
+  rw [run_bind_ok _ _ c w1 () _ (run_note s c w1)] at hr
+  exact h a v1 hr hP
+
+theorem srp_note_r {α : Type} (s : String) (f : M α) (k : PUnit → M α) (c : Ctx) (w1 w2 : W)
+    (P : W → Prop) (h : SRP f (k ()) c w1 { w2 with trail := s :: w2.trail } P) :
+    SRP f (note s >>= k) c w1 w2 P := by
+  intro a v1 hr hP
+  obtain ⟨v2, h2, h3⟩ := h a v1 hr hP
+  exact ⟨v2, by rw [run_bind_ok _ _ c w2 () _ (run_note s c w2)]; exact h2, h3⟩
+
+theorem srp_setMadeFor_r {α : Type} (y o : NodeId) (f : M α) (k : PUnit → M α) (c : Ctx)
+    (w1 w2 : W) (P : W → Prop) (h : SRP f (k ()) c w1 { w2 with madeFor := (y, o) :: w2.madeFor } P) :
+    SRP f (setMadeFor y (some o) >>= k) c w1 w2 P := by
+  intro a v1 hr hP
+  obtain ⟨v2, h2, h3⟩ := h a v1 hr hP
+  exact ⟨v2, by rw [run_bind_ok _ _ c w2 () _ rfl]; exact h2, h3⟩
+
+/-- The end of the two tails: today's last loop unlinks the two merged nodes, which
+changes nothing when they are cached without a klong of the step's time. -/
+theorem srp_unlinks {α : Type} (a : α) (p m1 l r : NodeId) (c : Ctx) (w1 w2 : W)
+    (P : W → Prop)
+    (hP : ∀ v, P v → (∃ ln, v.nodes.lookup l = some ln ∧ (ln.lastTime == some c.i) = false) ∧
+      (∃ rn, v.nodes.lookup r = some rn ∧ (rn.lastTime == some c.i) = false))
+    (hw : stripW w1 = stripW w2) :
+    SRP (pure a) ((forIn [(l, false), (r, false)] PUnit.unit (fun q _ => if q.2 = true then (do
+        retarget p q.1 m1
+        takenBack q.1
+        note "merge.takeback"
+        pure (ForInStep.yield PUnit.unit)) else (do
+        unlink q.1
+        pure (ForInStep.yield PUnit.unit)))) >>= fun _ => pure a) c w1 w2 P := by
+  intro b v1 h hv
+  simp only [pure, ReaderT.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at h
+  obtain ⟨rfl, rfl⟩ := h
+  obtain ⟨⟨ln, hl, hlt⟩, ⟨rn, hr, hrt⟩⟩ := hP w1 hv
+  have hn := (strip_fields hw).1
+  rw [hn] at hl hr
+  have hu1 : unlink l c w2 = .ok ((), w2) := by rw [run_unlink l ln c w2 hl, hlt]; rfl
+  have hu2 : unlink r c w2 = .ok ((), w2) := by rw [run_unlink r rn c w2 hr, hrt]; rfl
+  refine ⟨w2, ?_, hw⟩
+  simp only [List.forIn_cons, List.forIn_nil, Bool.false_eq_true, ↓reduceIte, bind_assoc,
+    pure_bind]
+  rw [run_bind_ok _ _ c w2 () w2 hu1]
+  rw [run_bind_ok _ _ c w2 () w2 hu2]
+  rfl
+
+macro "srpStep" : tactic => `(tactic| first
+  | (with_reducible exact srp_throw _ _ _ _ _ _)
+  | (with_reducible exact srp_throw_bind _ _ _ _ _ _ _)
+  | (with_reducible exact srp_pure _ _ _ _ _ (by with_unfolding_all assumption))
+  | (with_reducible refine srp_note_l _ _ _ _ _ _ _ ?_)
+  | (with_reducible refine srp_note_r _ _ _ _ _ _ _ ?_)
+  | (with_reducible refine srp_setMadeFor_r _ _ _ _ _ _ _ _ ?_)
+  | (with_reducible refine srp_bind (obl_mergeParent _ _ _ _ _ _ _ _) (by with_unfolding_all assumption) (fun _ _ _ _ => ?_))
+  | (with_reducible refine srp_bind (obl_newKey _ _ _ _) (by with_unfolding_all assumption) (fun _ _ _ _ => ?_))
+  | (with_reducible refine srp_bind (obl_ghOf _) (by with_unfolding_all assumption) (fun _ _ _ _ => ?_))
+  | (with_reducible refine srp_bind (obl_pure _) (by with_unfolding_all assumption) (fun _ _ _ _ => ?_))
+  | (with_reducible refine srp_bind (obl_modify _ (by oblFields)) (by with_unfolding_all assumption) (fun _ _ _ _ => ?_))
+  | (with_reducible refine srp_unlinks _ _ _ _ _ _ _ _ _ (by assumption) (by with_unfolding_all assumption))
+  | (simp only [pure_bind, Option.isSome_some, Option.isSome_none, ↓reduceIte, Bool.false_eq_true])
+  | dsimp only
+  | (split <;> (rename_i h; simp only [h, Option.isSome_some, Option.isSome_none, ↓reduceIte,
+      Bool.false_eq_true])))
+
+set_option maxHeartbeats 4000000 in
+/-- MT's tail runs as today's when the two merged nodes have a live klong and no
+klong of the step's time, and the end state has them cached without one. -/
+theorem srp_tail (c : Ctx) (x : NodeId) (d : Nat) (p : NodeId) (pn xn : KNode) (ls : Bool)
+    (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId) (rn : KNode) (ir : Nat) (w1 w2 : W)
+    (hw : stripW w1 = stripW w2) (P : W → Prop)
+    (hP : ∀ v, P v → (∃ ln, v.nodes.lookup l = some ln ∧ (ln.lastTime == some c.i) = false) ∧
+      (∃ rn, v.nodes.lookup r = some rn ∧ (rn.lastTime == some c.i) = false))
+    (hL : ln.live.isEmpty = false) (hR : rn.live.isEmpty = false)
+    (hlf : (ln.firstTime == some c.i) = false) (hrf : (rn.firstTime == some c.i) = false) :
+    SRP (mtTail c x d p pn xn ls l ln il r rn ir) (mergeTail c x d p pn xn ls l ln il r rn ir) c w1 w2
+      P := by
+  unfold mtTail mergeTail
+  rcases hcl : pn.cv? il with _ | cL <;> rcases hcr : pn.cv? ir with _ | cR <;> cases hxl : xn.leaf <;>
+    by_cases hh : ((ln.live.head?.map (·.1)) != some 0 || (rn.live.head?.map (·.1)) != some 0) = true <;>
+    simp only [hL, hR, hlf, hrf, hcl, hcr, hxl, hh, Bool.or_false, Bool.and_false, Bool.false_eq_true,
+      ↓reduceIte, Bool.not_true, Bool.not_false, Bool.true_and, Bool.false_and, Bool.and_true,
+      Bool.true_or, Bool.or_true]
+  all_goals repeat' srpStep
+
+set_option maxHeartbeats 1000000 in
+/-- MT's tail leaves the cached nodes off the path above the merge as they are. -/
+theorem frI_mtTail (c : Ctx) (x : NodeId) (d : Nat) (p : NodeId) (pn xn : KNode) (ls : Bool)
+    (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId) (rn : KNode) (ir : Nat) (w : W)
+    (hp : (w.path[d - 1]?).map (·.2) = some p) :
+    WriterWP (mtTail c x d p pn xn ls l ln il r rn ir) c w
+      (fun _ w' => FrameI w (PathUpTo w (d - 1)) w') := by
+  have h0 := frameI_refl w (PathUpTo w (d - 1))
+  unfold mtTail
+  repeat' first
+    | (with_unfolding_none refine writerWP_mono (frI_mergeParent _ _ _ _ _ _ _ _ _ _ _ _ (by assumption) (Nat.le_refl _) hp) ?_; intro _ _ _)
+    | frStep
+    | (simp only [writerWP_bind, writerWP_read, writerWP_pure, writerWP_get]; done)
+    | (simp only [writerWP_bind, writerWP_read, writerWP_pure, writerWP_get])
+    | (exact ‹FrameI _ _ _›)
+    | (refine writerWP_if _ _ _ _ _ _ ?_ ?_ <;> intro _)
+    | split
+
+/-- MT's tail runs as today's: the two merged nodes cached at the tail's start with a
+live klong and no klong of the step's time, below the next id and off the path
+above the merge. -/
+theorem sr_tail (c : Ctx) (x : NodeId) (d : Nat) (p : NodeId) (pn xn : KNode) (ls : Bool)
+    (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId) (rn : KNode) (ir : Nat) (w1 w2 : W)
+    (hw : stripW w1 = stripW w2) (hp : (w1.path[d - 1]?).map (·.2) = some p)
+    (hlk : w1.nodes.lookup l = some ln) (hrk : w1.nodes.lookup r = some rn)
+    (hlt : l < w1.next) (hrt : r < w1.next)
+    (hloff : ¬ PathUpTo w1 (d - 1) l) (hroff : ¬ PathUpTo w1 (d - 1) r)
+    (hL : ln.live.isEmpty = false) (hR : rn.live.isEmpty = false)
+    (hlf : (ln.firstTime == some c.i) = false) (hrf : (rn.firstTime == some c.i) = false)
+    (hlT : (ln.lastTime == some c.i) = false) (hrT : (rn.lastTime == some c.i) = false) :
+    SR (mtTail c x d p pn xn ls l ln il r rn ir) (mergeTail c x d p pn xn ls l ln il r rn ir) c w1 w2 := by
+  intro a v1 h
+  have hF := frI_mtTail c x d p pn xn ls l ln il r rn ir w1 hp a v1 h
+  refine srp_tail c x d p pn xn ls l ln il r rn ir w1 w2 hw (FrameI w1 (PathUpTo w1 (d - 1))) ?_
+    hL hR hlf hrf a v1 h hF
+  intro v hv
+  exact ⟨⟨ln, hv.2.2 l ln hlt hloff hlk, hlT⟩, ⟨rn, hv.2.2 r rn hrt hroff hrk, hrT⟩⟩
+
+/-! ## The merge's choice of its two nodes -/
+
+/-- What a merged node must be for the bridge: a live klong, no klong of the step's
+time, below the next id and off the key access path above the merge. -/
+def MergeGood (c : Ctx) (w : W) (d : Nat) (z : NodeId) (zn : KNode) : Prop :=
+  zn.live.isEmpty = false ∧ (zn.firstTime == some c.i) = false ∧ (zn.lastTime == some c.i) = false ∧
+    ¬ PathUpTo w (d - 1) z ∧ z < w.next
+
+/-- The klong that `mergeIdx` chose names a live child. -/
+theorem live_of_last (n : KNode) (i cv : Nat) (z : NodeId) (hl : LastLive n.ks n.lastBitmap i cv)
+    (hp : n.ptr? i = some z) : (cv, z) ∈ n.live := by
+  obtain ⟨⟨y, hy⟩, _, _⟩ := id hl
+  have hyz : y = z := by
+    unfold KNode.ptr? at hp
+    rw [hy] at hp
+    exact Option.some.inj hp
+  subst hyz
+  have h1 := keyLookup_of_last n.lastBitmap cv n.ks i y hy hl
+  rw [← KNode.live_lookup] at h1
+  exact bk_mem_of_lookup _ _ _ h1
+
+/-- The prefix's state: it reads as w, extends w's cache, and keeps w's path. -/
+def PreI (p : Params) (base : View BVal) (w v : W) : Prop :=
+  ReadsAs p base w v ∧ w.nodes <+: v.nodes ∧ v.path = w.path
+
+theorem pre_getNode (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base) (w v : W)
+    (hv : PreI c.p base w v) (z : NodeId) :
+    WriterWP (getNode z) c v (fun n v' => PreI c.p base w v' ∧ v'.nodes.lookup z = some n ∧
+      (w.taken.contains z = false → wNode c.p base w z = some n) ∧ v.nodes <+: v'.nodes) := by
+  refine writerWP_mono (writerWP_and (writerWP_getNode_all z c v base hvc)
+    (writerWP_getNode_cache z c v)) ?_
+  intro n v' ⟨⟨hr, hl, hw, hpre, _⟩, _, _, hp⟩
+  refine ⟨⟨ReadsAs.trans c.p base w v v' hv.1 hr, hv.2.1.trans hpre, by rw [hp, hv.2.2]⟩, hl, ?_, hpre⟩
+  intro ht
+  have := hw (by rw [hv.1.2.2.1]; exact ht)
+  rw [hv.1.1] at this
+  exact this
+
+theorem pre_sibling (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base) (w v : W)
+    (hv : PreI c.p base w v) (q : NodeId) (pn : KNode) (i : Nat) (inner : Bool) :
+    WriterWP (sibling q pn i inner) c v (fun sn v' => PreI c.p base w v' ∧
+      v'.nodes.lookup sn.1 = some sn.2 ∧ pn.ptr? i = some sn.1 ∧
+      (w.taken.contains sn.1 = false → wNode c.p base w sn.1 = some sn.2) ∧ v.nodes <+: v'.nodes) := by
+  unfold sibling
+  simp only [writerWP_bind, writerWP_read]
+  split
+  · exact writerWP_throw _ _ _ _
+  · rename_i s hs
+    rw [writerWP_bind]
+    refine writerWP_mono (pre_getNode c base hvc w v hv s) ?_
+    intro sn v' ⟨h1, h2, h3, h4⟩
+    split
+    · simp only [writerWP_bind]; exact writerWP_throw _ _ _ _
+    · simp only [writerWP_pure]; exact ⟨h1, h2, hs, h3, h4⟩
+
+/-- A cached lookup stays through the prefix. -/
+theorem pre_lookup {p : Params} {base : View BVal} {w v v' : W} (z : NodeId) (n : KNode)
+    (h : v.nodes.lookup z = some n) (_hv : PreI p base w v) (hv' : PreI p base v v') :
+    v'.nodes.lookup z = some n := lookup_of_prefix _ _ hv'.2.1 z n h
+
+theorem obl_sibling (q : NodeId) (pn : KNode) (i : Nat) (inner : Bool) :
+    Obl (sibling q pn i inner) := by
+  unfold sibling
+  refine obl_readBind _ (fun c => ?_)
+  dsimp only
+  split
+  · exact obl_throw _
+  · refine obl_bind (obl_getNode _) (fun sn => ?_)
+    split
+    · exact obl_bind (obl_throw _) (fun _ => obl_pure _)
+    · exact obl_pure _
+
+theorem sr_throw_bind {α β : Type} (e : String) (k : α → M β) (g : M β) (c : Ctx) (w1 w2 : W) :
+    SR (throw e >>= k) g c w1 w2 := by
+  intro b v1 h
+  rw [run_throw_bind] at h
+  cases h
+
+theorem preI_refl (p : Params) (base : View BVal) (w : W) : PreI p base w w :=
+  ⟨ReadsAs.refl p base w, List.prefix_refl _, rfl⟩
+
+theorem preI_trans {p : Params} {base : View BVal} {u v w : W} (h1 : PreI p base u v)
+    (h2 : PreI p base v w) : PreI p base u w :=
+  ⟨ReadsAs.trans p base u v w h1.1 h2.1, h1.2.1.trans h2.2.1, h2.2.2.trans h1.2.2⟩
+
+theorem pathNode_ok {d : Nat} {c : Ctx} {w : W} {p : NodeId} {v : W}
+    (h : pathNode d c w = .ok (p, v)) : v = w ∧ (w.path[d]?).map (·.2) = some p := by
+  unfold pathNode at h
+  rw [run_get_bind] at h
+  cases he : w.path[d]? with
+  | none => simp only [he] at h; cases h
+  | some e =>
+    simp only [he] at h
+    rw [run_pure] at h
+    simp only [Except.ok.injEq, Prod.mk.injEq] at h
+    obtain ⟨rfl, rfl⟩ := h
+    exact ⟨rfl, rfl⟩
+
+theorem klongAt_ok {d : Nat} {c : Ctx} {w : W} {k : Nat} {v : W}
+    (h : klongAt d c w = .ok (k, v)) : v = w := by
+  unfold klongAt at h
+  rw [run_get_bind] at h
+  cases he : w.path[d]? with
+  | none => simp only [he] at h; cases h
+  | some e =>
+    simp only [he] at h
+    rcases e with ⟨_ | k', y⟩
+    · cases h
+    · have e : (pure k' : M Nat) c w = .ok (k', w) := rfl
+      change (pure k' : M Nat) c w = _ at h
+      rw [e] at h
+      simp only [Except.ok.injEq, Prod.mk.injEq] at h
+      exact h.2.symm
+
+theorem pathUpTo_of_path {v w : W} (h : v.path = w.path) (D : Nat) (z : NodeId) :
+    PathUpTo v D z ↔ PathUpTo w D z := by
+  unfold PathUpTo; rw [h]
+
+/-- MT's tail runs as today's from the state v after the merge's reads from w, when
+the two nodes chosen are live children of the parent that are good for the bridge. -/
+theorem sr_tail_good (c : Ctx) (base : View BVal) (w v1 v2 : W) (hpre : PreI c.p base w v1)
+    (hw : stripW v1 = stripW v2) (x : NodeId) (d : Nat) (p : NodeId) (pn xn : KNode) (ls : Bool)
+    (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId) (rn : KNode) (ir : Nat)
+    (hp : (w.path[d - 1]?).map (·.2) = some p)
+    (hlk : v1.nodes.lookup l = some ln) (hrk : v1.nodes.lookup r = some rn)
+    (hgl : MergeGood c w d l ln) (hgr : MergeGood c w d r rn) :
+    SR (mtTail c x d p pn xn ls l ln il r rn ir) (mergeTail c x d p pn xn ls l ln il r rn ir) c v1 v2 := by
+  have hpath := hpre.2.2
+  have hnext : v1.next = w.next := hpre.1.2.2.2.2
+  obtain ⟨hL, hlf, hlT, hloff, hlt⟩ := hgl
+  obtain ⟨hR, hrf, hrT, hroff, hrt⟩ := hgr
+  exact sr_tail c x d p pn xn ls l ln il r rn ir v1 v2 hw (by rw [hpath]; exact hp) hlk hrk
+    (by rw [hnext]; exact hlt) (by rw [hnext]; exact hrt)
+    (by rw [pathUpTo_of_path hpath]; exact hloff) (by rw [pathUpTo_of_path hpath]; exact hroff)
+    hL hR hlf hrf hlT hrT
+
+/-- The bridge (bergdb 026-19, step A1): from a state with no node taken back, a run of
+`Mt.merge x d` is a run of today's `merge x d` with the same result, to a state that
+differs only in the notes and `madeFor`, when every live child of the parent (the
+node at depth d - 1 of the key access path) is good for the bridge: a live klong, no
+klong of the step's time, below the next id and off the path above the merge. -/
+theorem mt_merge_bridge (x : NodeId) (d : Nat) (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (w : W) (htk : ∀ z, w.taken.contains z = false)
+    (hG : ∀ p pn, (w.path[d - 1]?).map (·.2) = some p → wNode c.p base w p = some pn →
+      ∀ cv z zn, (cv, z) ∈ pn.live → wNode c.p base w z = some zn → MergeGood c w d z zn) :
+    SR (Mt.merge x d) (SIS.Tree.merge x d) c w w := by
+  rw [mt_merge_eqP, merge_eqP]
+  unfold mergeP
+  have hw : stripW w = stripW w := rfl
+  refine sr_bind (obl_read c w w hw) (fun c1 v1 v2 h1 hv1 => ?_)
+  have e1 : (read : M Ctx) c w = .ok (c, w) := rfl
+  rw [e1] at h1
+  cases h1
+  dsimp only
+  refine sr_bind (obl_pathNode _ c w v2 hv1) (fun p v3 v4 h3 hv3 => ?_)
+  obtain ⟨hv3w, hp⟩ := pathNode_ok h3
+  rw [hv3w] at hv3 ⊢
+  refine sr_bind (obl_getNode p c w v4 hv3) (fun pn v5 v6 h5 hv5 => ?_)
+  obtain ⟨hP5, hlk5, hwn5, _⟩ := pre_getNode c base hvc w w (preI_refl _ _ _) p pn v5 h5
+  have hwp : wNode c.p base w p = some pn := hwn5 (htk p)
+  refine sr_bind (obl_getNode x c v5 v6 hv5) (fun xn v7 v8 h7 hv7 => ?_)
+  obtain ⟨hP7, hlk7, hwn7, _⟩ := pre_getNode c base hvc w v5 hP5 x xn v7 h7
+  refine sr_bind (obl_klongAt d c v7 v8 hv7) (fun cx v9 v10 h9 hv9 => ?_)
+  obtain rfl := klongAt_ok h9
+  have hML := mergeIdx_last pn cx
+  generalize hmi : mergeIdx pn cx = mi at hML
+  rcases mi with ⟨_ | ix, ia, ib⟩
+  · exact sr_throw_bind _ _ _ c _ _
+  simp only [pure_bind]
+  by_cases hpx : (pn.ptr? ix != some x) = true
+  · simp only [hpx, ↓reduceIte]
+    exact sr_throw_bind _ _ _ c _ _
+  simp only [hpx, Bool.false_eq_true, ↓reduceIte]
+  have hpx' : pn.ptr? ix = some x := by simpa using hpx
+  have hgx : MergeGood c w d x xn :=
+    hG p pn hp hwp cx x xn (live_of_last pn ix cx x (hML.1 ix rfl) hpx') (hwn7 (htk x))
+  -- the right sibling, when it is the one merged
+  have hright : ∀ (ia : Nat) (ca : Nat), (some (ia, ca) : Option (Nat × Nat)) = (some (ia, ca)) →
+      LastLive pn.ks pn.lastBitmap ia ca → ∀ (u1 u2 : W), PreI c.p base w u1 → stripW u1 = stripW u2 →
+      u1.nodes.lookup x = some xn →
+      SR (sibling p pn ia (!xn.leaf) >>= fun sn => mtTail c x d p pn xn false x xn ix sn.1 sn.2 ia)
+        (sibling p pn ia (!xn.leaf) >>= fun sn => mergeTail c x d p pn xn false x xn ix sn.1 sn.2 ia)
+        c u1 u2 := by
+    intro ia ca _ hla u1 u2 hu hu12 hux
+    refine sr_bind (obl_sibling p pn ia _ c u1 u2 hu12) (fun sn v11 v12 h11 hv11 => ?_)
+    obtain ⟨hP11, hlk11, hps11, hwn11, hx11⟩ := pre_sibling c base hvc w u1 hu p pn ia _ sn v11 h11
+    have hg := hG p pn hp hwp ca sn.1 sn.2 (live_of_last pn ia ca sn.1 hla hps11) (hwn11 (htk _))
+    exact sr_tail_good c base w v11 v12 hP11 hv11 x d p pn xn false x xn ix sn.1 sn.2 ia hp
+      (lookup_of_prefix _ _ hx11 x xn hux) hlk11 hgx hg
+  rcases ib with _ | ⟨ib, cb⟩
+  · simp only [pure_bind]
+    rcases ia with _ | ⟨ia, ca⟩
+    · exact sr_throw_bind _ _ _ c _ _
+    · exact hright ia ca rfl (hML.2.1 ia ca rfl).1 v9 v10 hP7 hv9 hlk7
+  · refine sr_bind (obl_sibling p pn ib _ c v9 v10 hv9) (fun sn v11 v12 h11 hv11 => ?_)
+    obtain ⟨hP11, hlk11, hps11, hwn11, hx11⟩ := pre_sibling c base hvc w v9 hP7 p pn ib _ sn v11 h11
+    by_cases hcnd : (ia.isNone || decide (sn.2.cnt + xn.cnt ≤ c.p.mergeMax)) = true
+    · simp only [hcnd, ↓reduceIte, pure_bind]
+      have hg := hG p pn hp hwp cb sn.1 sn.2
+        (live_of_last pn ib cb sn.1 (hML.2.2 ib cb rfl).1 hps11) (hwn11 (htk _))
+      exact sr_tail_good c base w v11 v12 hP11 hv11 x d p pn xn true sn.1 sn.2 ib x xn ix hp hlk11
+        (lookup_of_prefix _ _ hx11 x xn hlk7) hg hgx
+    · simp only [hcnd, Bool.false_eq_true, ↓reduceIte, pure_bind]
+      rcases ia with _ | ⟨ia, ca⟩
+      · exact sr_throw_bind _ _ _ c _ _
+      · exact hright ia ca rfl (hML.2.1 ia ca rfl).1 v11 v12 hP11 hv11
+          (lookup_of_prefix _ _ hx11 x xn hlk7)
+
+/-- A property of the result and of the fields but the books. -/
+def StripInv (post : Nat → W → Prop) : Prop :=
+  ∀ a v1 v2, stripW v1 = stripW v2 → post a v2 → post a v1
+
+/-- Today's lemmas about `merge` hold for `Mt.merge` under the bridge's premises. -/
+theorem writerWP_mtMerge (x : NodeId) (d : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (w : W) (htk : ∀ z, w.taken.contains z = false)
+    (hG : ∀ p pn, (w.path[d - 1]?).map (·.2) = some p → wNode c.p base w p = some pn →
+      ∀ cv z zn, (cv, z) ∈ pn.live → wNode c.p base w z = some zn → MergeGood c w d z zn)
+    (post : Nat → W → Prop) (hpost : StripInv post)
+    (h : WriterWP (SIS.Tree.merge x d) c w post) : WriterWP (Mt.merge x d) c w post := by
+  intro a v1 h1
+  obtain ⟨v2, h2, h3⟩ := mt_merge_bridge x d c base hvc w htk hG a v1 h1
+  exact hpost a v1 v2 h3 (h a v2 h2)
+
+/-- The writer's reading is a field of the state but the books. -/
+theorem wNode_strip (p : Params) (base : View BVal) {v1 v2 : W} (h : stripW v1 = stripW v2) :
+    wNode p base v1 = wNode p base v2 := by
+  obtain ⟨h1, _, _, _, h5, _⟩ := strip_fields h
+  funext y; simp only [wNode, h1, h5]
+
+theorem wValue_strip (base : View BVal) {v1 v2 : W} (h : stripW v1 = stripW v2) :
+    wValue base v1 = wValue base v2 := by
+  obtain ⟨_, _, _, h4, h5, _⟩ := strip_fields h
+  funext y; simp only [wValue, h4, h5]
+
+/-- A put of MT is today's put. -/
+theorem mt_setValue_some (segRoot : NodeId) (cv : Nat) (key : Key) (h : Nat) :
+    Mt.setValue segRoot cv (some h) = SIS.Tree.setValue segRoot cv key (some h) := rfl
+
+theorem mt_putSegs_some (key : Key) (h : Nat) :
+    ∀ segs root, Mt.putSegs (some h) segs root = SIS.Tree.putSegs key (some h) segs root
+  | [], _ => rfl
+  | [cv], root => mt_setValue_some root cv key h
+  | cv :: cv' :: rest, root => by
+    unfold Mt.putSegs SIS.Tree.putSegs
+    simp only [mt_putSegs_some key h (cv' :: rest)]
+    rfl
+
+theorem mt_putKv_put (key : Key) (h : Nat) : Mt.putKv (.put key h) = SIS.Tree.putKv (.put key h) := by
+  unfold Mt.putKv SIS.Tree.putKv
+  simp only [mt_putSegs_some key h key]
+
+end SIS.Tree.Mt

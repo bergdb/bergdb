@@ -188,9 +188,10 @@ Files
 * 19-proof-trial.md. 026-19, the proof trial of 026-18 (Frans,
   2026-11-16, 13:48): one fix step keeps the in-between invariant, and
   gets and scans are right at visible times, proved on MT's rules of
-  026-17; the plan written 14:13 (about 14 prover-hours, one night,
-  about 10 % of a week), with draft statements in 19-proof-trial/; it
-  starts on Frans's go, perhaps from 22:05 that day.
+  026-17; done in the night of 16 to 17 November (22:03 to 00:55):
+  reduced, not proved; by its rule the proofs' gain is not supported, nor
+  refuted; the frames are the largest new cost; the evidence and the
+  Lean as text in 19-proof-trial/, the branch `026-19-proof-trial` kept.
 
 
 Log
@@ -234,3 +235,5 @@ Frans's idea (12:54, 13:11).
 
 2026-11-16. 026-19 registered: 026-18's proof trial, the plan first
 (Frans, 13:48).
+
+2026-11-17. 026-19 done: the proof trial's result (00:55 to 01:10).
