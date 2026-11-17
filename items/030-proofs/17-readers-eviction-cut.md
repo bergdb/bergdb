@@ -139,6 +139,30 @@ scope, `OpsOK` for the lazy read, `CutOK`, `PolicyCutOK` and reads from the
 first available time on for the cut. And the two of section 1: `HoldsView`
 and `TopFrom`.
 
+Item 3, `Contract/RecoverWholeTheorems.lean` (`HoldsP` in
+`Contract/RecoverWhole.lean`, the proofs in `Proof/Prefix.lean` and
+`Proof/RecoverWhole.lean`):
+
+- `entriesOf_prefixAt`: under W1, the entries of the klongs that a reader at
+  t sees are the entries of all the klongs up to t. `klongsWf_prefixAt`,
+  `fullOk_prefixAt`: W1 to W5 hold for them.
+- `MeetsFull.holdsView_whole`: a tree that holds the model's structure after
+  k whole, with each key node's kind from its level, holds its view at every
+  time t up to k.
+- `crash_java_whole`, `restart_java_whole`: after a crash after k (also
+  after restarts), a tree that holds the startup's structure whole, read
+  with the top that structure holds: Java's get and scan right at every
+  t ≤ k. `handles_java_whole`: the same under eviction, for the writer's
+  structure, with any top that holds the history's top from t.
+  `crash_java_tree_whole`: the tree as written holds the startup's
+  structure whole.
+
+Item 2, `Contract/KindsCheck.lean`: `KindsAll kind s` (every key node of s
+has the kind of its level); `checkVerdict` (the checker's verdict:
+`contractVerdict` and K-LEVEL computed); `checkVerdict_sound` (a trace with
+that verdict is whole, readable, meets `MeetsTop`, and its start tree and
+the tree after each transaction meet `KindsAll` with the TREE line's h).
+
 
 # 3. Decisions
 
@@ -226,7 +250,28 @@ and `TopFrom`.
 
 # State
 
-2026-11-17, 21:40. Items 1 to 3 done and gated (the Log has the commits).
+2026-11-17, 21:45. The brief's work list is done: items 1 to 3 proved and
+gated, merged with `main` d7966251 (the Log has the commits; the last gated
+one is 1e87043b). Branch `030-17-top-eviction-cut` in
+`/Users/f/fl/bench/2026-11-17/night/s4k/clone`. Java unchanged.
+
+Open, for whoever takes them:
+
+1. A closed example of `cut_java_reads` with a cut run (BridgeExample4 with
+   a cut and its `CutOK` proved); today the cut's theorems are shown not
+   vacuous only through their premises (`cut_holds`, `TopGood.topFrom`) and
+   the search without a gone top node (`RecoverCutExample.lean`).
+2. The whole-node form (`HoldsP`) for the lazy startup, whose read returns
+   a list of nodes rather than a structure; and for the cut, a form said of
+   the nodes that a reader from the first available time on reaches.
+3. The bridge checker's KIND on the medium set's m-d8, m-d30, m-d62 and
+   m-fifo (here `contractcheck`'s KIND passed on all 27 medium traces).
+
+To check: `cd lean/contract && lake build`; `lean/contract/gate.sh
+d7966251`; traces: `java/build.sh`, then `TREECHECK=none
+java/stress/treeconf.sh small` (and drain, reclaim, medium), then
+`lean/contract/check.sh small drain reclaim` (runs faults.sh with `kindh0`,
+faults-top.sh, bridge-faults.sh first).
 
 
 # Log
