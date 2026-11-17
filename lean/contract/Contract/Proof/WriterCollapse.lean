@@ -11,8 +11,9 @@ A root taken back is no node of the map: no node reached from the child names
 it, since a key klong of an inner node names a node one level below
 (BalancedOK) and every node reached from the child is below the root.
 
-The statement as given (`PInv` and `LinkLive` before) is false, and
-`collapseRoot_spec` has two premises more (030-16, prover H, 17 November):
+The statement first given (`PInv` and `LinkLive` before, the same after) is
+false; `collapseRoot_spec` has two premises more (030-16, prover H, 17
+November), and gives `WcrLink` after the step in place of `LinkLive`:
 
 * `WcrLink`, a link book: a key node reached that is no node of s is named,
   by key klongs of other key nodes of the map, by one node at most, and by
@@ -28,10 +29,13 @@ The statement as given (`PInv` and `LinkLive` before) is false, and
   made it, else the next round's take-back of the child leaves a klong to no
   node. With it the klongs of before name nodes of s only.
 
-`ParamsOK` was a premise and is not needed: removed. `wcr_loop` also gives
-`WcrLink` after the step, for a caller that goes on.
+`ParamsOK` was a premise and is not needed: removed. `LinkLive` (an
+earlier link book on the nodes reached only, retired) is not needed either
+(wave 3): no proof step reads it, as `WcrLink` says all that a take-back of
+the root asks; it was a premise and a conclusion only, and is dropped from
+both.
 -/
-import Contract.Proof.WriterLinkDefs
+import Contract.Proof.WriterDelDefs
 import Contract.Proof.TreeRulesUp
 import Contract.Proof.WriterCascadeDefsG
 
@@ -41,9 +45,9 @@ open SIS (View)
 open SIS.Check (BVal)
 open SIS.Tree (Ctx)
 
-/-- The link book that root collapse needs beside `LinkLive`: a key node reached that is no
-node of s is named, by key klongs of other key nodes of the map, by one node at most, and by
-none if it is the space root. -/
+/-- The link book that root collapse needs: a key node reached that is no node of s is
+named, by key klongs of other key nodes of the map, by one node at most, and by none if it is
+the space root. -/
 def WcrLink (i : Time) (s : Tree) (w : MW) : Prop :=
   ∀ m ∈ reachOf i s w, ∀ mn, (treeOf i s w).obj m = some (.key mn) → s.obj m = none →
     ∀ u nu c, (treeOf i s w).obj u = some (.key nu) → Klong.key c m ∈ nu.ks → u ≠ m →
@@ -266,8 +270,8 @@ theorem wcr_post {M : Nat} {i : Time} {s : Tree} {C : List (Key × Nat)} {w w' :
         ((treeOf i s w').obj o).isSome = true)
     (hBx : ∀ nx, (treeOf i s w').obj x = some (.key nx) → ∀ c o, Klong.key c o ∈ nx.ks →
       (s.obj o).isSome = true)
-    (hL : LinkLive i s w) (hK : WcrLink i s w) :
-    Sound M none (treeOf i s w') y C ∧ LinkLive i s w' ∧ WcrLink i s w' ∧
+    (hK : WcrLink i s w) :
+    Sound M none (treeOf i s w') y C ∧ WcrLink i s w' ∧
       ∀ z ∈ reachOf i s w', z ≠ x ∧ z ∈ reachOf i s w := by
   obtain ⟨hSy, hxy, hsub⟩ := hS.collapse hAx hrl hlive
   have hBy : ∀ z ∈ reachAt (treeOf i s w) ((treeOf i s w).fuel y) y,
@@ -284,7 +288,7 @@ theorem wcr_post {M : Nat} {i : Time} {s : Tree} {C : List (Key × Nat)} {w w' :
     unfold reachOf; rw [hx]
   have hxy' : Klong.key 0 y ∈ nr.ks := ss_live_mem (by rw [hlive]; simp)
   have hyx : y ≠ x := fun e => hxy (e ▸ tc_self _ _ _)
-  refine ⟨?_, ?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_⟩
   · obtain ⟨n, ho, hne⟩ := hSy.key
     refine ⟨⟨n, (hBy y (tc_self _ _ _)).trans ho, hne⟩, hSy.good.agree hBy, ?_, ?_, ?_⟩
     · intro z hz m hm
@@ -300,10 +304,6 @@ theorem wcr_post {M : Nat} {i : Time} {s : Tree} {C : List (Key × Nat)} {w w' :
       | del b => rfl
     · rw [← hSy.holds]; exact L_agree hBy
     · rw [hR]; exact hSy.tree
-  · intro u hu nu hBu hl c o hk hso
-    rw [hRw'] at hu
-    rw [hBy u hu] at hBu
-    exact hL u (by rw [hRw]; exact hsub u hu) nu hBu hl c o hk hso
   · intro m hm mn hBm hsm u nu c hBu hk hum
     rw [hRw'] at hm
     rw [hBy m hm] at hBm
@@ -372,12 +372,12 @@ node with the one live klong (0, y), klong `only`: y is the space root, and x is
 back. -/
 theorem wcr_take {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     {v : View BVal} (hb : Books i base s tp) {C : List (Key × Nat)} {w : MW} {x y : NodeId}
-    {n : MNode} {only : Nat} (hI : PInv p i base s tp none C w) (hL : LinkLive i s w)
-    (hK : WcrLink i s w) (hx : w.top.rootKey = x) (hlk : w.nodes.lookup x = some n)
+    {n : MNode} {only : Nat} (hI : PInv p i base s tp none C w) (hK : WcrLink i s w)
+    (hx : w.top.rootKey = x) (hlk : w.nodes.lookup x = some n)
     (hleaf : n.leaf = false) (hmade : n.firstTime = some i)
     (hy : n.ks[only]? = some (.key 0 y)) (hlive : live (ksOf n) = [(0, y)]) :
     WP (SIS.Tree.takeBackRoot x 0 only) { p := p, i := i, view := v } w
-      (fun _ w' => PInv p i base s tp none C w' ∧ LinkLive i s w' ∧ WcrLink i s w') := by
+      (fun _ w' => PInv p i base s tp none C w' ∧ WcrLink i s w') := by
   have hptr : n.ptr? only = some y := by simp [SIS.Tree.KNode.ptr?, hy]
   let wA : MW := { w with trail := "rc.takeback.space" :: w.trail }
   let wB : MW := MW.afterSuperRoot wA p i y
@@ -420,7 +420,7 @@ theorem wcr_take {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
       (treeOf i s w).obj z := fun z hz => by simp only [hC, hz, ↓reduceIte]
   have hCx : (treeOf i s { wB with taken := x :: wB.taken }).obj x = none := by
     simp only [hC, ↓reduceIte]
-  obtain ⟨hS', hL', hK', -⟩ := wcr_post (w' := { wB with taken := x :: wB.taken }) hS hx hrk hAx
+  obtain ⟨hS', hK', -⟩ := wcr_post (w' := { wB with taken := x :: wB.taken }) hS hx hrk hAx
     hleaf hlive hCne
     (by
       intro z hz m hm c o hk
@@ -429,8 +429,8 @@ theorem wcr_take {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
         exact (hfree z m c hm hk (fun e => hxy (e ▸ hz))).elim
       · rw [hCne o hox]
         exact wcr_named hS (hsub z hz) hm hk)
-    (by intro nx hnx; rw [hCx] at hnx; cases hnx) hL hK
-  refine ⟨⟨?_, by show Sound _ _ _ wB.top.rootKey _; rw [hrk]; exact hS', ?_, ?_, ?_, ?_⟩, hL',
+    (by intro nx hnx; rw [hCx] at hnx; cases hnx) hK
+  refine ⟨⟨?_, by show Sound _ _ _ wB.top.rootKey _; rw [hrk]; exact hS', ?_, ?_, ?_, ?_⟩,
     hK'⟩
   · show (treeOf i s wB).root = some wB.top.rootKey
     rw [hrootB, hrk]
@@ -472,7 +472,7 @@ its klongs of before (the state wU), `newSuperRoot y`: y is the space root. -/
 theorem wcr_replace_post {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     (hb : Books i base s tp) (hsn : SNamed s) {C : List (Key × Nat)} {w wU : MW}
     {x y : NodeId} {n : MNode} {n0 : KNode} (hI : PInv p i base s tp none C w)
-    (hL : LinkLive i s w) (hK : WcrLink i s w) (hx : w.top.rootKey = x)
+    (hK : WcrLink i s w) (hx : w.top.rootKey = x)
     (hlk : w.nodes.lookup x = some n) (ht : w.taken.contains x = false)
     (hleaf : n.leaf = false) (hlive : live (ksOf n) = [(0, y)])
     (hs0 : s.obj x = some (.key n0))
@@ -481,7 +481,7 @@ theorem wcr_replace_post {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp
     (hUd : dirtyOf wU = dirtyOf w) (hUt : wU.top = w.top) (hUn : wU.newTop = w.newTop)
     (hUk : PutBooks p i base s wU) :
     PInv p i base s tp none C (MW.afterSuperRoot wU p i y) ∧
-      LinkLive i s (MW.afterSuperRoot wU p i y) ∧ WcrLink i s (MW.afterSuperRoot wU p i y) := by
+      WcrLink i s (MW.afterSuperRoot wU p i y) := by
   have hAx := treeOf_obj_overlay i s hlk ht
   obtain ⟨hlev0, hleaf0, hext⟩ := frame_overlay_ext hI.frame hlk ht hs0
   obtain ⟨hobjB, hrootB, hdirtyB⟩ := treeOf_afterSuperRoot i s p y (w := wU) hUk.ids.1
@@ -497,7 +497,7 @@ theorem wcr_replace_post {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp
     rcases hext with h | ⟨more, h⟩
     · rw [h]; exact hk
     · rw [h]; exact List.mem_append_left _ hk
-  obtain ⟨hS', hL', hK', -⟩ := wcr_post (w' := MW.afterSuperRoot wU p i y) hS hx hrk hAx
+  obtain ⟨hS', hK', -⟩ := wcr_post (w' := MW.afterSuperRoot wU p i y) hS hx hrk hAx
     hleaf hlive hBne
     (by
       intro z hz m hm c o hk
@@ -510,10 +510,10 @@ theorem wcr_replace_post {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp
       rw [hBx] at hnx
       simp only [Option.some.injEq, Obj.key.injEq] at hnx
       rw [← hnx] at hk
-      exact hsn x n0 hs0 c o hk) hL hK
+      exact hsn x n0 hs0 c o hk) hK
   refine ⟨⟨by rw [hrootB, hrk], by rw [hrk]; exact hS', ?_,
     topInv_afterSuperRoot y (topInv_congr hI.top hUt hUn) hb hUk.ids.2.2.2.1, ?_,
-    putBooks_afterSuperRoot y hUk⟩, hL', hK'⟩
+    putBooks_afterSuperRoot y hUk⟩, hK'⟩
   · -- the frame
     obtain ⟨f1, f2, -⟩ := hI.frame
     rw [hdirtyB, hUd]
@@ -574,11 +574,11 @@ space root. -/
 theorem wcr_replace {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     {v : View BVal} (hb : Books i base s tp) (hsn : SNamed s) {C : List (Key × Nat)} {w : MW}
     {x y : NodeId} {n : MNode} {only : Nat} (hI : PInv p i base s tp none C w)
-    (hL : LinkLive i s w) (hK : WcrLink i s w) (hx : w.top.rootKey = x)
+    (hK : WcrLink i s w) (hx : w.top.rootKey = x)
     (hlk : w.nodes.lookup x = some n) (hleaf : n.leaf = false) (hmade : n.firstTime ≠ some i)
     (hy : n.ks[only]? = some (.key 0 y)) (hlive : live (ksOf n) = [(0, y)]) :
     WP (SIS.Tree.replaceRoot x 0 only) { p := p, i := i, view := v } w
-      (fun _ w' => PInv p i base s tp none C w' ∧ LinkLive i s w' ∧ WcrLink i s w') := by
+      (fun _ w' => PInv p i base s tp none C w' ∧ WcrLink i s w') := by
   have hptr : n.ptr? only = some y := by simp [SIS.Tree.KNode.ptr?, hy]
   obtain ⟨n1, hr1, -⟩ := hI.sound.key
   have ht : w.taken.contains x = false := by rw [← hx]; exact wput_taken hr1
@@ -615,7 +615,7 @@ theorem wcr_replace {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : To
     have hks : ksOf (n.toPrev (i - 1)) = n0.ks :=
       toPrev_ext (prim_timesBefore (hb.times x n0 hs0)) (hb.first x n0 hs0) hext
     have hWn := treeOf_withNode i s (w := wA) (x := x) (n.toPrev (i - 1)) ht
-    refine wcr_replace_post hb hsn hI hL hK hx hlk ht hleaf hlive hs0 ?_ ?_
+    refine wcr_replace_post hb hsn hI hK hx hlk ht hleaf hlive hs0 ?_ ?_
       (dirtyOf_withNode hlkA) rfl rfl ?_
     · intro z hz
       rw [hWn, ← hTA]
@@ -643,7 +643,7 @@ theorem wcr_replace {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : To
       exact hok.1.2.1
     have hks : ksOf n = n0.ks := wcr_ks_old hwf (ss_timesLe (hI.books.times x n hlk)) hext
       (by simpa using hlt)
-    refine wcr_replace_post hb hsn hI hL hK hx hlk ht hleaf hlive hs0
+    refine wcr_replace_post hb hsn hI hK hx hlk ht hleaf hlive hs0
       (fun z _ => by rw [hTA]) ?_ rfl rfl rfl hkA
     rw [hTA, hAx, hks]
 
@@ -651,12 +651,11 @@ theorem wcr_replace {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : To
 
 /-- The link books speak only of the map and the space root. -/
 theorem wcr_books_congr {i : Time} {s : Tree} {w w' : MW} (hT : treeOf i s w' = treeOf i s w)
-    (hr : w'.top.rootKey = w.top.rootKey) (hL : LinkLive i s w) (hK : WcrLink i s w) :
-    LinkLive i s w' ∧ WcrLink i s w' := by
+    (hr : w'.top.rootKey = w.top.rootKey) (hK : WcrLink i s w) : WcrLink i s w' := by
   have hR : reachOf i s w' = reachOf i s w := by unfold reachOf; rw [hT, hr]
-  unfold LinkLive WcrLink
+  unfold WcrLink
   rw [hR, hT, hr]
-  exact ⟨hL, hK⟩
+  exact hK
 
 /-- A join point of the do notation: the body with the join point's value. -/
 theorem wcr_wp_have {α β : Type} {v : α} {b : α → SIS.Tree.M β} {c : Ctx} {w : MW}
@@ -670,13 +669,13 @@ theorem wcr_loop {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     {v : View BVal} {z : NodeId} (hs : Shows p v z s tp) (hb : Books i base s tp)
     (hsn : SNamed s) (cv : Nat) :
     ∀ (f : Nat) (w : MW) (C : List (Key × Nat)), PInv p i base s tp none C w →
-      LinkLive i s w → WcrLink i s w →
+      WcrLink i s w →
       WP (SIS.Tree.collapseRoot [cv] 0 f) { p := p, i := i, view := v } w
-        (fun _ w' => PInv p i base s tp none C w' ∧ LinkLive i s w' ∧ WcrLink i s w')
-  | 0, w, C, _, _, _ => by
+        (fun _ w' => PInv p i base s tp none C w' ∧ WcrLink i s w')
+  | 0, w, C, _, _ => by
     unfold SIS.Tree.collapseRoot
     exact wp_throw _ _ _ _
-  | f + 1, w, C, hI, hL, hK => by
+  | f + 1, w, C, hI, hK => by
     unfold SIS.Tree.collapseRoot
     refine wput_read ?_
     refine wput_ok (wcr_descend_eq _ w cv) ?_
@@ -690,19 +689,19 @@ theorem wcr_loop {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
       · exact ⟨rfl, rfl⟩
       · exact ⟨rfl, rfl⟩
     have hx2 : w2.top.rootKey = w.top.rootKey := by rw [hfields.1]
-    obtain ⟨hL2, hK2⟩ := wcr_books_congr hT2 hx2 hL hK
+    have hK2 := wcr_books_congr hT2 hx2 hK
     split
     · rw [wp_pure]
-      exact ⟨hI2, hL2, hK2⟩
+      exact ⟨hI2, hK2⟩
     · next hleaf =>
       have hleaf' : n.leaf = false := by simpa using hleaf
       refine wput_ok (replacedBy_eq _ _ _) ?_
       split
       · rw [wp_pure]
-        exact ⟨hI2, hL2, hK2⟩
+        exact ⟨hI2, hK2⟩
       · split
         · rw [wp_pure]
-          exact ⟨hI2, hL2, hK2⟩
+          exact ⟨hI2, hK2⟩
         · next only honly =>
           obtain ⟨c, y, hy, hlive⟩ := wcr_onlyLive honly
           refine wcr_wp_have ?_
@@ -722,30 +721,29 @@ theorem wcr_loop {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
             split
             · next hmade =>
               rw [wp_bind]
-              refine (wcr_take hb hI2 hL2 hK2 hx2 hlk2 hleaf' (by simpa using hmade) hy
+              refine (wcr_take hb hI2 hK2 hx2 hlk2 hleaf' (by simpa using hmade) hy
                 hlive).mono ?_
-              rintro - w3 ⟨hI3, hL3, hK3⟩
-              exact wcr_loop hs hb hsn cv f w3 C hI3 hL3 hK3
+              rintro - w3 ⟨hI3, hK3⟩
+              exact wcr_loop hs hb hsn cv f w3 C hI3 hK3
             · next hmade =>
               rw [wp_bind]
-              refine (wcr_replace hb hsn hI2 hL2 hK2 hx2 hlk2 hleaf' (by simpa using hmade) hy
+              refine (wcr_replace hb hsn hI2 hK2 hx2 hlk2 hleaf' (by simpa using hmade) hy
                 hlive).mono ?_
-              rintro - w3 ⟨hI3, hL3, hK3⟩
-              exact wcr_loop hs hb hsn cv f w3 C hI3 hL3 hK3
-
+              rintro - w3 ⟨hI3, hK3⟩
+              exact wcr_loop hs hb hsn cv f w3 C hI3 hK3
 
 /-! ## 7. The statement -/
 
-/-- Root collapse at the space root keeps `PInv` and the link book, from the link book
-`WcrLink` and a tree before whose klongs name its nodes (`SNamed`). -/
+/-- Root collapse at the space root keeps `PInv` and the link book `WcrLink`, from a tree
+before whose klongs name its nodes (`SNamed`). -/
 theorem collapseRoot_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     {v : View BVal} {z : NodeId} (hs : Shows p v z s tp)
     (hb : Books i base s tp) (hsn : SNamed s) (cv : Nat) :
     ∀ (f : Nat) (w : MW) (C : List (Key × Nat)), PInv p i base s tp none C w →
-      LinkLive i s w → WcrLink i s w →
+      WcrLink i s w →
       WP (SIS.Tree.collapseRoot [cv] 0 f) { p := p, i := i, view := v } w
-        (fun _ w' => w'.outside = [] → PInv p i base s tp none C w' ∧ LinkLive i s w') := by
-  intro f w C hI hL hK
-  exact (wcr_loop hs hb hsn cv f w C hI hL hK).mono (fun _ _ h _ => ⟨h.1, h.2.1⟩)
+        (fun _ w' => w'.outside = [] → PInv p i base s tp none C w' ∧ WcrLink i s w') := by
+  intro f w C hI hK
+  exact (wcr_loop hs hb hsn cv f w C hI hK).mono (fun _ _ h _ => h)
 
 end Contract

@@ -195,3 +195,6 @@ open Contract
 #print axioms handles_java_whole
 #print axioms crash_java_tree_whole
 #print axioms Contract.RecoverCutExample.crash_whole_get16
+#print axioms merge_spec_of_rest
+#print axioms mergeUp_spec
+#print axioms afterOkW_on
