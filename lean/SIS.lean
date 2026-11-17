@@ -151,3 +151,4 @@ import SIS.Tree.LiveDelSpaceChain
 import SIS.Tree.LiveDelSpaceChain2
 import SIS.Tree.LiveDelFullDead
 import SIS.Tree.LiveAssembly
+import SIS.Tree.LiveAssembly2
