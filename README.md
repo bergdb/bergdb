@@ -208,15 +208,6 @@ No bug is known in release 2026.5. Two things to plan for:
 * **The stream format may change** between releases (Status, above).
 
 
-Limits
-------
-
-A key is at most 111 bytes, a value at most 8 MiB, a transaction at most
-500 operations and 32 MiB; a call over a limit throws and writes nothing.
-The release notes, [releases/2026.5/readme.md](releases/2026.5/readme.md),
-"Known issues and limits", give the rest.
-
-
 How it works
 ------------
 
