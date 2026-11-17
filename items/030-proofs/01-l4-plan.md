@@ -1750,3 +1750,13 @@ q, names that half (`searchLte_add_two`: kq's klong renamed and a new one above 
 divider above kq by `divider_gt_first` and the range fact that q's live compare values are
 at least kq). The premises of `descendToHeight_redirectSeg2` but y's node and height.
 Writer shapes for R1: 62 of the 69; left the 7 through a space split at the space root.
+
+2026-11-17, 03:49 to 03:51. The writer's side of the one of the 69 at the space root split
+in space, prover l4g (`LiveRootSpaceHole.lean`, about 150 lines).
+`writerWP_appendKlongs_rootSpaceHole`: p's copy y put by k1 into the space root q (a leaf,
+not made) without room, over the split's bound: q's halves and a new inner space root over
+them (l4b's `writerWP_handleFullWith_rootSpace_term`); the new root's search at k1 names the
+half on k1's side (`searchLte_twoRoot`), a leaf whose search of k1 names y
+(`halves_leaf_searchEq_ins`): the premises of `descendToHeight_topSeg_innerRoot` but y's
+node and height. Writer shapes for R1: 63 of the 69; left the 6 where q, made, splits in
+space in place below the space root, which then splits in time.
