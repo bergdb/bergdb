@@ -335,7 +335,10 @@ The checks, on the level 2 traces (the small, drain and reclaim sets, copied
 from 030-11's clone; java/ unchanged): `bridge-faults.sh` BRIDGE FAULTS OK
 (the new fault `kind-h0` fails with KIND 52 and nothing else);
 `bridge-check.sh small drain reclaim` BRIDGE OK, 195 traces, 29,735
-transactions, KIND 0 (traces with 1 to 5 key segments).
+transactions, KIND 0 (traces with 1 to 5 key segments). And 15 traces of
+030-12's medium set (m-mixed, m-big, m-long, m-r-del, m-long3, seeds 1 to 3,
+read in place from the clone that made them): BRIDGE OK, 7,967 transactions,
+10,085 touched, KIND 0.
 
 
 # State
@@ -352,7 +355,8 @@ would take them:
    (`SameFrom` keeps only the root's live children). Both need a statement of
    what Java's top holds then.
 2. K-LEVEL in `contractcheck` too (it reads the TREE line and the KN lines),
-   and on the medium and large sets (030-12's traces).
+   and on the large set and the medium set's m-d8, m-d30 and m-fifo
+   (030-12's traces; 15 medium traces done).
 3. The entries of a node at t from its klongs at t
    (`entriesOf (prefixAt ks t) = (entriesOf ks).upTo t` under W1), so that
    `HoldsView` can be said of whole nodes, not of their klongs at t.
@@ -398,3 +402,5 @@ Java's reads after a crash and restarts with the top that the stream holds
 (`crash_java_reads`, `restart_java_reads`, `crash_java_tree`, `topOfP_eq`,
 `tree_holds`); merged `main` 556cc927; `gate.sh 556cc927` GATE OK (122
 theorems).
+18:54 `bridgecheck` on 15 traces of 030-12's medium set: BRIDGE OK, 7,967
+transactions, KIND 0. The work list is done.
