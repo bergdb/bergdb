@@ -540,6 +540,26 @@ the premises that are not proved or not given back, each tested:
   (the two notions of reached), the top's part (3), and the join with
   `Mid`. Estimate: 2,000 to 4,000 lines. No old hard case is in it:
   nothing here reads the fill or asks that the writer accepts.
+  Done of it (22:45, `Contract/Proof/WriterView.lean`, 180 lines): the
+  relation for the key nodes, `Holds p P s` (each key node of s is a key
+  node of P with its level and its klongs), and part (2) for it,
+  `holds_apply`: after a run that the model accepts at time i from P@(i-1)
+  with the state w and the writer's books (`MidBooks`), the structure
+  after the model's changes holds `treeOf i s w`. Its premises on P are
+  the old `apply_keyNode`'s (`KeyHistOK`, `ViewLinksOK`, `StructTimesLE`,
+  the ids below the first id, the root above the key levels), which the
+  old package keeps along a run. **Decision: imported, not copied**
+  (`SIS.Tree.ApplyBridge`, `SIS.Tree.GetCommit`): `apply_keyNode` rests
+  on about 100 modules of the old package's plain facts about a run (no
+  klong of an earlier time changed, each node held once, klongs well
+  formed, the ids, the ledger); a copy would be thousands of lines for
+  nothing new. The cost: the first build takes about 6 minutes more, and
+  `lake build` now replays 29 linter warnings of those old files (unused
+  simp arguments; the gate prints "lake build has warnings" and passes;
+  the files are outside what this item may change). Not tested apart: it
+  is proved, and the traced M (the map is Java's tree) with the tree
+  checker's C-T2 (the model's changes are Java's) test the same.
+  Left: part (1), part (3), the values, the join with `Runs`.
 - **The bounds G and H** (D3): each accepted operation leaves no key node
   outside them (`OpsRun`). Tested (B11). Two of the proofs' gaps were of
   this kind. For a transaction of puts that the model's `runOpsFrom`
@@ -563,7 +583,7 @@ the premises that are not proved or not given back, each tested:
 
 # State
 
-2026-11-17, 22:30. Items 1 and 2 done; item 3 (the puts) done for every
+2026-11-17, 22:50. Items 1 and 2 done; item 3 (the puts) done for every
 key; item 4: the first delete done, the rest is 030-16's since 19:12;
 item 5 written (section 5). The statement was restated three times this
 evening on findings (section 3: the balance rule, `Shows`, the checker),
@@ -572,7 +592,7 @@ to the restated statement.
 
 - Branch `030-10-writer` in the clone
   `/Users/f/fl/bench/2026-11-17/night/s4d/clone`, on main 53e66e73.
-  Last gated commit: a3ec5ff8.
+  Last gated commit: 10489bff.
 - Build: `cd lean/contract && lake build`. Gate: `lean/contract/gate.sh
   53e66e73` (main's head as merged); after a change of a pinned file
   `lean/contract/pin.sh`, the pin file in the same commit.
@@ -585,10 +605,11 @@ to the restated statement.
   `WriterCascadeDefsG.lean`, `WriterCascadeDefsO.lean` (the put's
   invariant and the recursion's three forms), `WriterPutAll.lean` and
   `WriterPutNamed.lean` (the theorems), `WriterExec.lean`,
-  `WriterCheck.lean`.
+  `WriterView.lean` (the structure after a transaction), `WriterCheck.lean`.
 - Open on the put side (section 6), in the order I would take them:
   the view after a transaction (the model's `changesOf` and `SIS.view`
-  give `Shows` again); `SNamed` as a book of `Mid`; the delete's books
+  give `Shows` again; section 6 has the route in three parts, part (2)
+  is done for the key nodes: next part (1), the two notions of reached); `SNamed` as a book of `Mid`; the delete's books
   through the put (with 030-16: its `LinkLive`, parked in
   `/Users/f/fl/bench/2026-11-17/night/s4j/linklive/`, was proved for the
   forms of before the restatements); the bounds by heights, so that
@@ -776,3 +797,13 @@ changes two proof files and no checker): `writer.sh`: WRITER OK, the
 counts as above; `contractcheck`, `bridgecheck` on small and drain:
 CONTRACT OK, BRIDGE OK.
 GATED a3ec5ff8: main 53e66e73 merged; the balance rule and Shows restated (the nodes reached; OldReach) through the puts and 030-16's delete, merges and root collapse; writercheck with the model's view; mergeOk_of_rest.
+2026-11-17, 22:30 to 22:50. The second review's point 1, the view after a
+transaction (week 57 %, under the coordinator's 58 %): the route written
+(section 6); the old package's `apply_keyNode` and round trip found;
+`WriterView.lean`: `Holds`, `holds_apply` (one prover, 4 minutes; no
+hypothesis added). `gate.sh 53e66e73`: GATE OK (193 theorems, 135 files
+pinned: the old package's files that the statement reads are pinned now);
+the gate's step 1 prints "lake build has warnings" for the old package's
+files built with it (section 6, the decision to import). No checker
+changed: the traces' results of 22:25 stand.
+GATED 10489bff: the model's structure after a transaction holds the tree of the writer's state (Holds, holds_apply), by the old package's apply_keyNode, imported.
