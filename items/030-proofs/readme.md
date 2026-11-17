@@ -63,24 +63,21 @@ D1. The key tree, today's model (the main line)
   parameters and the merges on: after any run, the tree keeps its
   invariants and every get and scan, at the latest time and at every
   earlier one, returns what a plain map returns.
-* **State (2026-11-17, 01:00):** reduced to one premise. `htbL` is
-  PROVED (`takeBelowFuelDelSL_holds`, from `hp` only; 025-05, step 8,
-  the night of 16 to 17 November). The best top theorem is
-  `invGetScanOK_merges_noTb` (lean/SIS/Tree/HtbNoTb.lean): TP7, TP10 and
-  TP11 for Java's parameters from `hp`, `hth` (both proved for Java's
-  parameters) and `l4`. `l4` is in progress by 030-01's route B (the
-  reduction `invGetScanOK_merges_l4L`; the hole's form, the merges' loop,
-  root collapse, the leaf and the upward delete each proved but for named
-  narrower pieces; left: the merge whose parent is full and cascades, the
-  full leaf's cascade, R2's heights and R3's made-root branch; 030-01's
-  log).
-* **Next:**
-  * `htbL`: proved on 2026-11-17, 00:49 (025-05, section 8).
-  * `l4`: its plan first, 030-01, by a planning agent from 22:05 (006-27,
-    decision 1: option (b) against copies or the generic families, and
-    what MT would change).
-  * Then the close step: one top theorem a route, the superseded
-    corollaries and unused lines removed (006-27, decision 3).
+* **State (2026-11-17, 04:25):** `htbL` is PROVED
+  (`takeBelowFuelDelSL_holds`, from `hp` only; 025-05, step 8). The best
+  top theorem with no premise known false is `invGetScanOK_merges_noTb`
+  (lean/SIS/Tree/HtbNoTb.lean): TP7, TP10 and TP11 for Java's parameters
+  from `hp`, `hth` and `l4`. `l4` is in pieces by 030-01's route B: the
+  night's top `invGetScanOK_merges_noL4Night` (LiveNightTop.lean) has
+  four named premises, the merge's full parent's rest
+  (`MergeTailRuns10`), R4 at the leaf and at the stop node, and
+  `R3Calls`, which is believed false at unreached states, so that
+  theorem is believed vacuous (030-01's log, 01:56 to 02:22). R3's plan
+  is 030-03; R4's pieces are proved but the merge tail with the hole
+  (030-01's log, 03:54, 04:13).
+* **Next:** R3 by 030-03's route M0 to M5 (one night); R4's merge tail
+  with the hole and its leaf and stop-node forms; then the close step
+  (the vacuous lemmas, the `noL4` family, the superseded corollaries).
 * **Items:** 024-12, section 1; 025-04; 025-05; 006-27, section 8.
 
 D2. Simpler algorithms: MT and subtransactions
@@ -162,6 +159,10 @@ One line a day by the coordinator: what moved, where.
   026-18 written down; 026-19 planned; this map made. Provers paused
   since the morning (Frans, 10:29); the night from 22:05: 026-19 (two
   provers), `htbL`'s step 8 (one prover), `l4`'s plan (030-01).
+* 2026-11-17 (coord-1116, the night): `htbL` proved; `l4` in pieces
+  (about 60 landings, `lean/` 236k to 279k lines); 026-19 done (MT not
+  supported nor refuted as a proof saving); `UpHtWalk` refuted; R3 found
+  to need a made-for invariant (030-03); 030-02 and 030-03 written.
 
 
 Files

@@ -1,6 +1,7 @@
 # 006-29 Day work, 16 November 2026
 
-Created 2026-11-16 by Frans Lundberg. Status: open. The plan for the
+Created 2026-11-16 by Frans Lundberg. Status: done (the outcome written
+2026-11-17, 04:25). The plan for the
 coordinator's day of 2026-11-16 (coord-1116), a Monday: the progress and
 the outcome. The way of working is 013-02's (the coordinator).
 
@@ -154,4 +155,64 @@ evidence. Frans decides the direction.
 
 ## 6. Outcome
 
-Not yet.
+Written 2026-11-17, 04:25, by coord-1116; nothing runs after 04:16.
+
+**The day (16 November).** The study 006-28 (where the proofs'
+complexity is; MT, Frans's idea of maintenance transactions); 2026.6's
+theme "simpler algorithms" (026); MT's trial in the model (026-17: MT
+passes every check, one rule added, A1); Frans's idea of main
+transactions and subtransactions written down (026-18); the proof
+trial's plan (026-19); the map of all proof work (030); 028-07, 028-14
+and 028-16 fixed and landed; 028-15 registered (the startup distance in
+an internal KV, for 2026.6); `night.sh` OK on 5b8f337b; the preparation
+for the public release (details outside this repository, 029).
+
+**The night (22:03 to 04:16)**, 13 Opus agents, about 60 landings on
+`main`, each gated on the combined tree; `lean/` from 236,184 to 279,136
+lines; the week from 0 % to 19 %.
+
+* **`htbL` proved** (025-05, step 8; prover htbl, about 3,950 lines): a
+  delete never takes back a node it found at its start with a height at
+  or above the fuel. The key tree's best top theorem with no premise
+  known false is now `invGetScanOK_merges_noTb`: TP7, TP10 and TP11 for
+  Java's parameters from `hp`, `hth` and `l4` (030, D1).
+* **026-19, the proof trial of MT with subtransactions:** reduced, not
+  proved; by its rule the proofs' gain is not supported, nor refuted.
+  The merge's room case is smaller under MT; the hard case left (a
+  merge whose parent is full, with its cascade) is the same as `l4`'s;
+  MT adds the frames (about 6,000 lines each, by estimate). Result in
+  026-19.
+* **`l4`, by 030-01's route B** (provers l4, l4a to l4g): most of the
+  delete is proved in pieces (the merges' loop, root collapse, every
+  full leaf but R4's case, the upward delete, the full parent in 94 % of
+  the cases on the runs). The night's top theorem
+  `invGetScanOK_merges_noL4Night` has four named premises; one of them,
+  `R3Calls`, is believed false at unreached states (030-01's log, 01:56
+  to 02:22), so that theorem is believed vacuous. Two findings: the
+  premise `UpHtWalk` (added at 00:18) is false, proved in Lean, and its
+  true form is proved; R3 needs a new made-for invariant, planned in
+  030-03 (one night, no statement change). R4's general case: every
+  piece but the merge tail with the hole is proved (prover l4g).
+* **Plans:** 030-01 (`l4`), 030-02 (the bridges TP14, TP16, TP19; TP14
+  and TP19 false as stated at the top node ordinal 2^48, by reading),
+  030-03 (R3).
+
+**For Frans to decide**, each with a recommendation:
+
+1. The direction (026-19): today's model, or one more MT night ("holes
+   as key ranges") before SF10. Recommended: today's model; MT kept as a
+   record (026-17, 026-18, 026-19, the branches).
+2. R3 (030-03): its route M0 to M5 in the next night. Recommended: yes.
+3. R4 (030-01's log, 03:54 and 04:13): the merge tail with the hole
+   (about 3 hours) and the leaf's and stop node's forms. Recommended:
+   beside R3.
+4. The bridges (030-02, question 1, the ordinal bound). Recommended: its
+   default (b), the bounded forms as new statements.
+5. 028-15, older streams: A or B. Recommended: A if SF4 gives no
+   fallback.
+6. The close step: the vacuous lemmas (`liveDel_upRoom`,
+   `liveDel_upRoom_live`), the `noL4` family until R3, the superseded
+   corollaries. Recommended: after R3.
+7. The branch `026-17-mt-trial` on `origin` (pushed 13:40): keep or
+   delete. Recommended: keep.
+8. The public release's checklist: in Frans's private notes.
