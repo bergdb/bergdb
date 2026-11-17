@@ -650,4 +650,22 @@ theorem searchGte_spec (ks : List Klong) (p : Pos) :
       (fun a b => le_total b a) _ ks)
     (best_head? (live_sorted ks))
 
+theorem searchLte_best (ks : List Klong) (p : Pos) :
+    Best (· ≤ ·) (fun c => !p.below c) (live ks) (searchLte ks p) :=
+  searchBy_best (le := (· ≤ ·)) le_refl (fun _ _ _ => le_trans) le_total _ ks
+
+theorem searchLt_best (ks : List Klong) (p : Pos) :
+    Best (· ≤ ·) (fun c => p.above c) (live ks) (searchLt ks p) :=
+  searchBy_best (le := (· ≤ ·)) le_refl (fun _ _ _ => le_trans) le_total _ ks
+
+theorem searchGt_best (ks : List Klong) (p : Pos) :
+    Best (· ≥ ·) (fun c => p.below c) (live ks) (searchGt ks p) :=
+  searchBy_best (le := (· ≥ ·)) le_refl (fun _ _ _ h1 h2 => le_trans h2 h1)
+    (fun a b => le_total b a) _ ks
+
+theorem searchGte_best (ks : List Klong) (p : Pos) :
+    Best (· ≥ ·) (fun c => !p.above c) (live ks) (searchGte ks p) :=
+  searchBy_best (le := (· ≥ ·)) le_refl (fun _ _ _ h1 h2 => le_trans h2 h1)
+    (fun a b => le_total b a) _ ks
+
 end Contract
