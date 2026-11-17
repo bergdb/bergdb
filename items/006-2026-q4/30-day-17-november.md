@@ -72,3 +72,40 @@ Frans's words:
 * 11:58 bergdb.org verified for the bergdb organisation on GitHub (Frans); the TXT record by session sk26 (Hostup MCP). W5: the public build's rules for 11:40's decisions; a run on main 49af99ba passed every check (14), public main 5b5f719e.
 * 12:07 Frans 12:06: staging. Private repo bergdb/bergdb-staging made; pushed public build 5b5f719e (main, map-cache-1707, 15 tags). Delete after the switch.
 * 12:56 W4 done: the spike succeeded (030-05): every get and scan proved right, at every time, for any history that meets the writer's contract (4,890 lines of Lean, Lean's three standard axioms only); the contract and Java's gets and scans hold on 180 traces of the level 2 sets (21,000 transactions); the fill rule is not needed for reads. About 1.5 hours, about 4 % of the week. Merged 50cb1628. Step 4 after the switch.
+* 14:18 W5 done: BergDB is public (Frans, 14:17: "go"): github.com/bergdb/bergdb, a new repository with the cleaned history from 2013; five releases with jars and Javadoc; the site https://bergdb.org (HTTPS); the old private repository archived. A privacy scan of every version found a phone number and old login names; both removed from every version before the switch.
+* 14:47 W7, the contract's review (030-06; Frans, 14:47): agent review, Opus at xhigh. W8, the release's follow-ups (Frans, 14:48): agent followups, Opus at high.
+
+
+## 5. Unattended, 17 November 14:51 to 18 November 07:00
+
+Frans, 14:51: "I would like to finish my work for today. Until 07:00 in in the
+morning, I want you to focus on the proofs in the new direction. Work unattended.
+There should be little need for running all the testing (night.sh). Priority is the
+new proofs."
+
+The defaults below go ahead unless Frans says otherwise before he leaves.
+
+* **The work, in order** (030-04, steps 3 and 4; 030-05's State note):
+  1. W7, the review 030-06 (running). Its must-fix findings are fixed first, in
+     `lean/contract/`, by the agent that fixes them (Fable at high).
+  2. Step 4a: the bridge to the abstract model: the contract clauses that the
+     abstract model assumes (`StepOK`, TREE, A6', A-COPY), and recovery, restarts,
+     lazy reading, eviction and reclaim's cut from them by the existing proofs
+     (Fable at high, as the spike; Frans 11:30: "We need high intelligence for
+     this").
+  3. Step 4b, beside 4a: the two simplifications 030-05 names: the top nodes and
+     skip pointers in the contract's model of the top; the trace reader's step from
+     trace lines to Java's tree (Opus at xhigh).
+  4. Step 4c, beside: Java's check of the contract at each commit, in the tests
+     (Opus at high; gated by `before-commit.sh`).
+* **Landing:** only gated work: `lake build` of `lean/contract/` with no `sorry`,
+  `admit`, `native_decide` or axiom of its own, `#print axioms` standard only, the
+  contract check on the level 2 traces; for Java, BEFORE COMMIT OK. The coordinator
+  lands on `main` and pushes. The repository is public: before each push, a check for
+  private data (addresses, numbers, local paths beyond the scripts').
+* **Not tonight:** `night.sh` (Frans: little need); deleting the old proofs (030-04,
+  step 4's end: they go when the new package covers what they claimed, a decision
+  for the morning).
+* **Usage:** week 24 % at 14:51. All agents stop at 45 % of the week (a watcher
+  makes their STOP files); at most four agents at a time.
+* **The morning:** the outcome in section 6 and a `news.md` summary by 06:30.
