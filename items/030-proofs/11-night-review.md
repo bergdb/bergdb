@@ -1,6 +1,6 @@
 # 030-11. An independent review of the night's proofs
 
-Created 2026-11-17 by Frans Lundberg. Status: open.
+Created 2026-11-17 by Frans Lundberg. Status: done.
 
 A review, with fresh eyes and skeptically, of what three agents proved on
 the evening of 17 November on top of the writer's contract (030-05,
@@ -11,8 +11,9 @@ eviction with handles and reclaim's cut by the old proofs) and 030-09 (the
 trace's completeness, `historyOk_meets`, Java's `TransCheck`). Written by a
 review agent of coord-1117 ("I" below), on the branch `030-11-review` from
 `main` 903a228a, from the coordinator's brief of six questions. No existing
-statement is changed. Added: one example, one lemma with a corollary, and a
-fix of the bridge checker (sections 3, 4 and 5).
+statement is changed. Added: one example, one lemma with a corollary, a
+fix of the bridge checker (sections 3, 4 and 5), and the words of findings
+1, 2 and 5 in 030-04, 030-07 and two Lean headers.
 
 
 # 1. The result
@@ -26,8 +27,9 @@ pointer, a delete, an overwrite and a touch, meets every statement at once
 model is the trace checker's own (`bspec`, with BergDB's still-dirty test
 and marking, as `tracecheck` runs it), and its theorems carry over with no
 premise in the abstract model's words. I found no clause that Java fails:
-the bridge's clauses pass on 030-07's 195 traces again and on 9 traces of
-the medium set that no one had run them on.
+the bridge's clauses pass on 030-07's 195 traces again, and on 15 traces
+of the medium and large sets that no one had run them on (20,360
+transactions, node sizes 8 to 62).
 
 The findings, most serious first:
 
@@ -39,15 +41,17 @@ The findings, most serious first:
    the same changes, startup gives back the structure and D so that the
    same records follow. That Java's writer makes the same change after a
    restart or with objects evicted is 030-04, 3.5, item 9 (tested), not a
-   part of T2. 030-07, section 1 does not say so. Fix: one sentence there
-   and in the headers of `BridgeTheorems.lean` and `BridgeFull.lean`.
+   part of T2. 030-07, section 1 did not say so. Fixed in words: a
+   sentence there and in the headers of `BridgeTheorems.lean` and
+   `BridgeFull.lean`.
 2. **Should fix: 030-04, 3.5 lacks three tested assumptions that the
    bridge's claims rest on** (section 2.2): (10) Java's records and D are
    the model's for the trace's changes (`tracecheck`); (11) a cut of
    reclaim is safe (`CutOK`); (12) a trace's lines are Java's change
-   (`LinesOf`, 030-08). A fourth, `PolicyCutOK`, is now proved for every
-   policy that reads no stream, as `tracecheck` takes Java's
-   (`policyCutOK_of_blind`, `full_cut_blind`, new), so it leaves the list.
+   (`LinesOf`, 030-08). Added to 3.5 as items 10 to 12. A fourth,
+   `PolicyCutOK`, is now proved for every policy that reads no stream, as
+   `tracecheck` takes Java's (`policyCutOK_of_blind`, `full_cut_blind`,
+   new), so it is not on the list.
 3. **Should, next: reads after a crash, a restart or under eviction are not
    stated end to end** (section 4.2). The reads' theorems speak of the
    contract's tree (klongs), the bridge's of the model's structure
@@ -67,17 +71,19 @@ The findings, most serious first:
    TB reads the top nodes' and the root's levels from the model's
    structure (`levelIn (h.P j)`, `BridgeTop.lean`:70-71), so from the NEW
    lines; `BridgeFull.lean`:6 says "No clause is in the abstract model's
-   words". Harmless (a level is a witness; 030-07's State, item 3).
+   words". Harmless (a level is a witness; 030-07's State, item 3); the
+   header now says so.
 6. **Note: two checkers, two halves.** `bridgecheck`'s verdict is one
    computed value proved to give `MeetsFull`, hence `MeetsTop`;
    `contractcheck`'s is its loop, by reading (030-08, section 5, item 3),
    but only it checks the GET, SCAN, LIVE and SKIPT lines. Neither runs in
    `level2.sh` yet (030-07's State, item 1). Run both.
-7. **Note: the bridge checker is slow on large traces** (section 4.1):
-   A-COPY, A6' and the touch test membership in lists of every node
-   reached, about quadratic in the tree a transaction. The medium traces
-   took 118 s; one trace of the large set (5,000 transactions) took more
-   than 10 minutes where `contractcheck` takes 72 s.
+7. **Note: the bridge checker is slow on large trees** (section 4.1): A5,
+   A-COPY, A6' and the touch test membership in lists of the nodes reached
+   (`noResOk`, `copyOk`, `adoptOk`, `touchOk`), about quadratic in the
+   tree, for every transaction, and the verdict computes it all again.
+   l-big62 of the large set (node size 62, 3,000 keys) took 1,032 s, where
+   `contractcheck` took 132 s; on small trees the two take about as long.
 8. **Note: what the trust rests on** (section 6). Beyond the package, the
    bridge's statements rest on the abstract model's definitions in `lean/`
    (about 3,600 lines), and its proofs on 51,000 lines of the old package;
@@ -245,9 +251,9 @@ Not vacuous.
   and with it top node 7 with its skip pointer to top node 5; a delete by
   a bitmap) is proved and in `Axioms.lean`. With `MeetsFull.meetsTop` and
   `MeetsTop.shape` it meets `MeetsTop` and `MeetsShape` too.
-- One more, `Contract/BridgeExample4.lean` (new, about 20 s to build): the same
-  three, then at time 4 a put of the key [16] that is there, with a touch
-  of reclaim's kind. Leaf 6 gets a second key klong of compare value 16
+- One more, `Contract/BridgeExample4.lean` (new, about 20 s to build):
+  the same three, then at time 4 a put of the key [16] that is there, with
+  a touch of reclaim's kind. Leaf 6 gets a second key klong of compare value 16
   (the first is then dead and names the old value, which A6' allows);
   value node 8 is made; the touch is `7 4 6`, the super root and the
   put's path. No example before met the touch rules with a touched node.
@@ -283,8 +289,10 @@ the other agents wrote them (format 3, the exporter of `main`):
   and 1.2 GB a trace with their LIVE lines; the old reader that the bridge
   checker also runs reads a trace as one string), with the machine at a
   load of 20 to 30.
-- The large set, 030-12's `live=0` traces (6 traces, 17,000
-  transactions): see the Log; started 17:07.
+- The large set, 030-12's `live=0` traces, one trace a run (l-hot,
+  l-mixed, l-long with keys of several segments, l-big62 with node size 62,
+  l-few, l-5000): BRIDGE OK, 6 traces, 17,000 transactions, 71,148 nodes
+  made, 187,190 entries; 10, 62, 290, 1,032, 83 and 71 s.
 - `check.sh small drain reclaim` (with `faults.sh` and `faults-top.sh`
   first): CONTRACT OK, 195 traces, 29,735 transactions, 2,729,666 LIVE
   lines, 75,568 SKIPT lines, no failure; 168 s.
@@ -402,7 +410,7 @@ which each transaction meets the writer's contract with its clauses:
 
 **Given these assumptions, each tested** (030-04, 3.5, with 10 to 12 of
 this review): that Java's writer meets the contract and its clauses (the
-traces: 195 traces, 29,735 transactions with every clause, and more with
+traces: 210 traces, 50,095 transactions with every clause, and more with
 the contract alone; Java's own `TransCheck` in every unit test and
 f-test); that Java's searches are the Lean ones; that Java writes the
 model's records; that a cut is safe; that a trace's lines are Java's
@@ -436,7 +444,12 @@ correctness).
    Reason: the common rules (new files; shared files in small hunks).
 4. **No statement is changed.** The findings are wording, a missing list
    entry, and a missing theorem; none showed a statement false.
-5. **m-d8 and m-d30 of the medium set are not run through the bridge
+5. **The words of findings 1, 2 and 5 are fixed here:** a bullet in 030-07,
+   section 1, items 10 to 12 in 030-04, 3.5 (030-09 added items 6 to 9 the
+   same way), and the headers of `BridgeTheorems.lean` and
+   `BridgeFull.lean` (comments only). Reason: each is a few lines, plainly
+   right, and a claim read without them says more than the proofs.
+6. **m-d8 and m-d30 of the medium set are not run through the bridge
    checker.** Reason: 0.5 to 1.2 GB a trace, read as one string by the old
    reader, on a machine at a load of 20 to 30; the 9 smaller traces and
    the large set cover the same code paths of the clauses.
@@ -469,12 +482,16 @@ correctness).
 The review is written; the Log has the last gated commit. Open, for whoever
 takes them:
 
-1. Findings 1 and 2: the sentences in 030-07, section 1 and the headers;
-   items 10 to 12 in 030-04, 3.5 (030-04 is the coordinator's to edit).
-2. Finding 3: the statement of section 4.2, a new file of the bridge.
-3. Finding 7: sets instead of lists in `adoptOk`, `copyOk` and `touchOk`'s
+1. Finding 3: the statement of section 4.2, a new file of the bridge.
+2. Finding 7: sets instead of lists in `adoptOk`, `copyOk` and `touchOk`'s
    checks (the statements may stay; a computed form proved equal), before
    the bridge checker joins `level2.sh`.
+3. Finding 8: 030-06's finding 8, the gate pinning the package's statement
+   files.
+
+Findings 1, 2 and 5 are fixed in words (030-07, section 1; 030-04, 3.5,
+items 10 to 12; the headers of `BridgeTheorems.lean` and
+`BridgeFull.lean`); finding 4 in the checker.
 
 To check: `cd lean/contract && lake build`; `lean/contract/gate.sh
 903a228a`; the traces as 030-07's State says; `bridge-check.sh small drain
@@ -495,3 +512,22 @@ background; the medium ones BRIDGE OK in 118 s.
 17:18 `gate.sh 903a228a`: GATE OK (72 theorems). Commit 222d9bdf.
 17:21 `java/build.sh` in the clone; `check.sh small drain reclaim` CONTRACT
 OK (168 s).
+GATED f63f8ab6: the review written (sound, with fixes; findings 1 to 8),
+`BridgeExample4`, `policyCutOK_of_blind`, `full_cut_blind`, `bridgecheck`
+requires a whole trace; `gate.sh 903a228a` GATE OK (72 theorems).
+17:24 Findings 1, 2 and 5 fixed in words (030-07, 030-04 3.5 items 10 to
+12, two Lean headers); GATE OK. Commit accdf158. The large set's first run
+had not ended l-5000-1 after 13 minutes of CPU; I stopped it and ran the
+set again, one trace a run. l-5000-1 then took 71 s: the first run's
+binary had been relinked under it at 17:11 (the completeness fix), which I
+take to be the cause, not the checker. A lesson: no rebuild while a run
+uses the binary.
+17:48 The large set's l-hot, l-mixed, l-long and l-big62: BRIDGE OK (7,000
+transactions; l-big62 1,032 s).
+17:50 l-few and l-5000: BRIDGE OK; the large set done, 17,000
+transactions.
+GATED 882b064b: the review done: sound, with fixes; findings 1, 2 and 5
+fixed in words, 4 in the checker; `BridgeExample4` (every statement at
+once), `policyCutOK_of_blind`, `full_cut_blind`; the bridge's clauses on
+the medium and large sets (15 traces, 20,360 transactions); `gate.sh
+903a228a` GATE OK (72 theorems).

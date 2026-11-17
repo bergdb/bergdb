@@ -231,6 +231,21 @@ describes, so a claim about Java's reads rests on four more, each tested
    sets, level 2 to level 4), and by Java's commit-time check, which runs
    in every unit test and f-test (030-09, section 3).
 
+The bridge to the abstract model (030-07) speaks of the model's stream and
+of the trees that the checkers build from a trace's lines, so a claim about
+recovery, restarts, eviction and reclaim's cut rests on three more, each
+tested (added by 030-11, finding 2):
+
+10. **Java's records and D are the model's** for the trace's changes:
+    `tracecheck` runs the model's step on every traced transaction and
+    compares the record written and D (level 2 to level 4).
+11. **A cut of reclaim is safe** (`CutOK`): `tracecheck` at every cut of
+    the reclaim traces; that BergDB's waits give one is not proved (006-26,
+    section 3.3).
+12. **A trace's lines are Java's change** (`LinesOf`, 030-08, section 5):
+    030-09's completeness checks, `tracecheck` (the ADD lines against the
+    records) and `treecheck` (the KN lines against the model's writer).
+
 ## 3.6 Later, optional
 
 - **The model's writer meets the contract.** Such a proof plugs in as one
