@@ -508,6 +508,38 @@ the premises that are not proved or not given back, each tested:
   (`opsRun_of_runOps`), the view and `changesOf` are not. Tested: S, with
   the model's view computed from Java's structure before every traced
   transaction; the tree checker's C-T2.
+  A route for it (a plan, nothing of it written in Lean): a relation
+  between the model's abstract structure P and the tree s with the top tp
+  before time i, stronger than `Shows` because it speaks of every node of
+  P, reached or not: the key node x of s with klongs ks is in P with its
+  level and the entries of ks (`SIS.Tree.entriesOf`), the top nodes and
+  the root's entries are tp's, the values are s's. Then three parts.
+  (1) The relation gives `Shows` for `rootless (SIS.view P (i-1))`: the
+  model's reachable nodes at i-1 (`SIS.reachFrom`, by the live entries up
+  to the time, a pointer followed only to a lower level) are the tree's
+  reached ones (`reach`, by the live klongs; the level test is the
+  balance rule), and klongs to entries and back is the identity for
+  `klongsWf` klongs. (2) `P.apply i (changesOf i w)` has the relation
+  with `treeOf i s w` and `topOf i tp w`: for a node of the overlay not
+  taken, the entries of time i added are the new klongs' (the frame: the
+  klongs of earlier times are kept); a node made and not taken is new; a
+  node made and taken is in neither; a node of s taken keeps its entries.
+  (3) The same for the top node made. With (1) to (3), `Runs` no longer
+  takes the view at each step, only the relation at the start. The old
+  package has two of the pieces, proved for every accepted run with
+  premises on P only, none of them the joint induction's (read 22:30, not
+  yet used here): the round trip (`SIS.Tree.klongsRoundTrip`,
+  KlongRoundTrip.lean), and part (2) for the key nodes
+  (`SIS.Tree.apply_keyNode`, ApplyBridge.lean, the old TP7: a key node of
+  the structure after the transaction is an overlay node not taken, with
+  the overlay's klongs, or a node of P as it was; its premises
+  `KeyHistOK`, `ViewLinksOK`, `StructTimesLE` and the ids are the relation
+  in the old package's words, and `keyHistOK_step` keeps the first).
+  They can be imported: lean/contract depends on the old package since
+  030-07. Left to write: the relation in the contract's words, part (1)
+  (the two notions of reached), the top's part (3), and the join with
+  `Mid`. Estimate: 2,000 to 4,000 lines. No old hard case is in it:
+  nothing here reads the fill or asks that the writer accepts.
 - **The bounds G and H** (D3): each accepted operation leaves no key node
   outside them (`OpsRun`). Tested (B11). Two of the proofs' gaps were of
   this kind. For a transaction of puts that the model's `runOpsFrom`
