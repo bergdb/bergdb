@@ -1,6 +1,6 @@
 # 006-30 Day work, 17 November 2026
 
-Created 2026-11-17 by Frans Lundberg. Status: done (the outcome written 2026-11-17, 23:35). The plan for the
+Created 2026-11-17 by Frans Lundberg. Status: done (the outcome written 2026-11-17, 23:29). The plan for the
 coordinator's day of 2026-11-17 (coord-1117), a Tuesday: the progress
 and the outcome. The way of working is 013-02's (the coordinator).
 
@@ -132,7 +132,7 @@ The defaults below go ahead unless Frans says otherwise before he leaves.
 
 ## 6. Outcome
 
-Written 2026-11-17, 23:35, by coord-1117. The provers stopped at 23:00
+Written 2026-11-17, 23:29, by coord-1117. The provers stopped at 23:00
 with the week at 58 % (Frans's cap 60 %); a third independent review
 (Codex) checked this outcome against the Lean at a16e5903.
 
