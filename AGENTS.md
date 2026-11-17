@@ -8,6 +8,21 @@ item 027, [items/027-algorithms](items/027-algorithms/readme.md); until 027
 is written, start reading at 027-01's [levels.md](items/027-algorithms/01-docs-2026-11-12/levels.md),
 a snapshot of the former `docs/` of 2026-11-12.
 
+## Public repository
+
+- The repository is public (github.com/bergdb/bergdb, since 2026-11-17):
+  a push to `main` publishes at once. Before a commit, check the change
+  for private data: e-mail addresses other than frans.lundberg@gmail.com,
+  phone numbers, local paths beyond the ones the scripts need, passwords
+  and keys, private notes.
+- Commits are Frans's, with no AI attribution: no `Co-Authored-By` or
+  similar lines in commit messages.
+- The history was rewritten when the repository went public (029): a
+  commit hash of before 2026-11-17 cited outside this repository, in
+  notes, reports or old clones, does not resolve here. The hashes cited
+  in this repository's files and commit messages were mapped to the new
+  ones.
+
 ## Items
 
 - Work is organized in items. [items/readme.md](items/readme.md) holds the
@@ -51,10 +66,10 @@ a snapshot of the former `docs/` of 2026-11-12.
 
 ## News
 
-- `news.md` (not tracked by Git) is Frans's morning news of background work:
-  `night.sh`, scheduled runs, unattended sessions. Add an entry with
-  `tools/news.sh STATUS SOURCE TEXT` when such work finishes, fails, or stops
-  for Frans's decision; STATUS is `OK`, `FAILED` or `needs a look`. One or two
+- `news.md` (not tracked by Git; it stays local and is never committed) is
+  Frans's morning news of background work: `night.sh`, scheduled runs,
+  unattended sessions. Add an entry with `tools/news.sh STATUS SOURCE TEXT`
+  when such work finishes, fails, or stops for Frans's decision; STATUS is `OK`, `FAILED` or `needs a look`. One or two
   lines and a reference (an item such as `012-03`, a file, a commit): the
   details belong in the item. An unattended session ends its night with a
   summary entry. The helper drops `OK` entries after 3 weekdays.
@@ -72,6 +87,7 @@ a snapshot of the former `docs/` of 2026-11-12.
 ## General
 
 - Preserve unrelated worktree changes.
-- Frans's private notes are kept outside this repository and are not
-  public; `frans/` at the root is ignored by Git. Their IDs (F1-007,
-  F1-008) appear in older items and comments (items/readme.md).
+- Frans's private notes are kept outside this repository and are never
+  cited; `frans/` at the root is ignored by Git. Their IDs (F1-007,
+  F1-008) appear in older items and comments as a record
+  (items/readme.md); do not add new citations.
