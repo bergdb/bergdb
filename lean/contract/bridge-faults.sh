@@ -8,7 +8,9 @@
 # the link); a touched node left out of the TOUCH line (TOUCH); the primordial
 # top node's root pointer to another node (the start); and, since bergdb 030-11,
 # a trace that is not whole: an ERROR line, no DONE line, a trace cut after a
-# transaction (`completeFault`).
+# transaction (`completeFault`); and, since bergdb 030-14, the kinds of the key
+# nodes that do not follow their levels (KIND, K-LEVEL: the TREE line's h set
+# to 0, so that every level is a segment leaf's).
 #
 # Usage: lean/contract/bridge-faults.sh
 # Needs: the checker (cd lean/contract && lake build bridgecheck) and the traces
@@ -54,6 +56,8 @@ fault delete-entry $G '!d && /^ADD [0-9]+ [0-9]+ D 1 / { $6 = $6 + 8; d = 1 } { 
 fault no-new $G '!d && /^NEW [0-9]+ 0 D$/ { d = 1; next } { print }'
 # The first key node made in TX 2 is on level 0.
 fault level-0 $G 'tx == 2 && !d && /^NEW [0-9]+ [1-9][0-9]* I$/ { $3 = 0; d = 1 } /^TX / { tx = $2 } { print }'
+# The TREE line's h is 0: every level is a segment leaf's, and the inner nodes fail KIND.
+fault kind-h0 $G '/^TREE / && !d { $4 = 0; d = 1 } { print }'
 # The first skip pointer of a top node is left out.
 fault no-skip $G '!d && /^ADD [0-9]+ [0-9]+ S / { d = 1; next } { print }'
 # The root pointer of the top node made in TX 2 names another node.

@@ -325,6 +325,15 @@ theorem Good.transfer {s s' : Tree} (R : NodeId → Prop)
           simp only [Bool.false_eq_true, ite_false]
           rw [hval' c y hl hm hs]
 
+/-- A get from a sound node: what the node holds for the key. -/
+theorem getGo_of_good {s : Tree} {r : NodeId} (hG : Good s r 0 none) (k : Key) :
+    getGo s (s.fuel r) k r = (L s r).lookup k := by
+  apply Option.ext
+  intro v
+  rw [hG.getGo_iff _ (le_refl _)]
+  show (k, v) ∈ L s r ↔ List.lookup k (L s r) = some v
+  rw [lookup_iff_mem hG.sorted]
+
 /-- A get on a sound tree: what its space root holds for the key. -/
 theorem get_of_good {s : Tree} {r : NodeId} (hr : s.root = some r) (hG : Good s r 0 none)
     (k : Key) : get s k = (L s r).lookup k := by
@@ -337,17 +346,15 @@ theorem get_of_good {s : Tree} {r : NodeId} (hr : s.root = some r) (hG : Good s 
   show (k, v) ∈ L s r ↔ List.lookup k (L s r) = some v
   rw [lookup_iff_mem hG.sorted]
 
-/-- A scan on a sound tree: the keys and values that its space root holds,
-in the scan's range and order, the first `limit`. -/
-theorem scan_of_good {s : Tree} {r : NodeId} (hr : s.root = some r) (hG : Good s r 0 none)
+/-- A scan from a sound node: the keys and values that it holds, in the
+scan's range and order, the first `limit`. -/
+theorem scanFrom_of_good {s : Tree} {r : NodeId} (hG : Good s r 0 none)
     (req : ScanReq) (hreq : req.wf = true) (limit : Nat) :
-    scan s req limit = refScan (L s r) req limit := by
+    scanGo s req (2 * s.fuel r + 2) limit (chainSetup s req (s.fuel r) r) =
+      refScan (L s r) req limit := by
   obtain ⟨n, ho⟩ : ∃ n, s.obj r = some (.key n) := by
     cases hG with
     | mk _ _ _ n hobj _ _ _ _ _ _ _ => exact ⟨n, hobj⟩
-  unfold scan
-  rw [hr]
-  simp only
   have hend : req.endKey ≠ none → req.forward = true := by
     intro he
     simp only [ScanReq.wf, Bool.and_eq_true] at hreq
@@ -368,6 +375,15 @@ theorem scan_of_good {s : Tree} {r : NodeId} (hr : s.root = some r) (hG : Good s
   cases req.forward with
   | true => simp [dir]
   | false => simp [dir, List.filter_reverse]
+
+/-- A scan on a sound tree: the keys and values that its space root holds,
+in the scan's range and order, the first `limit`. -/
+theorem scan_of_good {s : Tree} {r : NodeId} (hr : s.root = some r) (hG : Good s r 0 none)
+    (req : ScanReq) (hreq : req.wf = true) (limit : Nat) :
+    scan s req limit = refScan (L s r) req limit := by
+  unfold scan
+  rw [hr]
+  exact scanFrom_of_good hG req hreq limit
 
 /-- Two trees with one space root, the first sound, the second agreeing with
 it on a set of nodes that holds the root and the live pointees of its key
