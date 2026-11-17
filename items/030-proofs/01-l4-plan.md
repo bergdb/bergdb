@@ -1174,3 +1174,8 @@ the cases: the noop and the key with no leaf excluded by the open case,
 (`liveDel_room`), the full leaf by `delFullM_cover` into nine cases, all proved but
 R4. `afterDelete` at every call by `writerWP_afterDelete_liveTR3`
 (`afterDelete_live_runs`). When a piece lands, its premise goes.
+
+2026-11-17, 01:53. Step 7, a successor as l4c's fifth part landed:
+`invGetScanOK_merges_noL4b`, `invGetScanOK_merges_noL4` with `MergeTailRuns4`
+(l4c's `MergeTailFullRest4OK` at the runs' contexts) for `MergeTailRuns`, by
+`mergeTailFullRest3OK_of_rest4` (`mergeTailRuns_of_4`).
