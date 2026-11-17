@@ -185,3 +185,6 @@ exporter's klong diff and fault, faults.sh; the level 2 sets rerun.
 GATED e58d56f8: the trace's completeness (F1, F2, F7), KN from a klong diff, LIVE lines
 checked, `historyOk_meets`, faults.sh, 030-04 3.5 items 6 to 9 (F6); BEFORE COMMIT OK,
 level 2 sets TREECONF OK and CONTRACT OK.
+GATED 2c8a9da3: Java's own check of the contract in its tests (TransCheck, off by default;
+on in the unit tests, the f-tests in stress/transcheck.sh, a night.sh step), TransCheckTester;
+BEFORE COMMIT OK (63 s), TRANSCHECK OK; gate base 9a6692cf.
