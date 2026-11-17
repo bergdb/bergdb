@@ -74,3 +74,5 @@ open Contract
 #print axioms full_restart
 #print axioms full_eviction
 #print axioms full_cut
+#print axioms writerMeets_of_opStep
+#print axioms runs_meetsTop_of_opStep

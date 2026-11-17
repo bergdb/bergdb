@@ -39,3 +39,5 @@ import Contract.BridgeExample
 import Contract.BridgeExample3
 import Contract.BridgeBound
 import Contract.BridgeFull
+import Contract.Writer
+import Contract.Proof.WriterRun

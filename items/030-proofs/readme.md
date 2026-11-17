@@ -262,6 +262,11 @@ Files
   030-04, 3.5, Java's own check of the contract in its tests (TransCheck),
   the medium set checked (27 of 27). Status: done.
 
+* [030-10](10-writer-spike.md). A spike of 030-04's optional step 5, the
+  night of 17 November: does the model's writer meet the contract? The
+  refinement map from the writer's state to the contract's tree, checked on
+  the traces; the statement; how far a proof got and what the rest costs.
+  Status: open.
 
 Log
 ===
