@@ -1142,3 +1142,20 @@ h + 1. Into two nodes the copy is filled under the segment leaf too
 Left: p not made and the space root (d = 1; 93 on the runs), a segment root's space split
 (127), q full or compacting (the cascade, R4; 196), and p made and split in space (0 on the
 runs). No stop rule fired.
+
+2026-11-17, 01:46 to 01:50. Step 3's rest, sixth part, prover l4c. `MergeTailFullRest4OK`
+reduced to `MergeTailFullRest5OK`, its case `MergeFullSpaceG` proved: a segment root, not
+made, split in space below its segment leaf with room (67 on the runs). l4b's segment-root
+split on the merged tree (`writerWP_handleFull_segSpaceRoomV_live`, with the nodes reached
+after from `treeOK_segSpaceStep`); the space tail and its round now take the split as a
+premise (`SplitStepOK`; `writerWP_mergeTail_liveSpaceG`, `writerWP_mergeTail_liveSpaceRoundG`;
+`splitStepOK_spaceRoom` and `splitStepOK_segSpace` its instances; the earlier lemmas are
+instances, statements unchanged). `writerWP_afterDelete_liveTR5`: premises
+`MergeTailFullRest5OK`, `MergeParamsOK`, R3. Left: p not made and the space root (d = 1;
+93 on the runs: a time split makes the copy the new space root, `newSuperRoot`, R1 at the
+root; a space split a new root above the halves, no hole), q full or compacting (the
+cascade, R4; 196 on the runs; for a space split l4b's cascade lemmas for the leaf may
+serve on the merged tree, as its split lemmas did; a time split's cascade keeps the hole
+below the chain, R4's general case), and p made and split in space (0 on the runs). No
+stop rule fired.
+

@@ -551,6 +551,16 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   segment root that splits in space, q full or compacting (the cascade, R4), and p made and
   split in space. `writerWP_afterDelete_liveTR4`: premises `MergeTailFullRest4OK`,
   `MergeParamsOK` and R3.
+  01:50 (prover l4c): `MergeTailFullRest4OK` reduced to `MergeTailFullRest5OK`, its case
+  `MergeFullSpaceG` proved: p, not made, a segment root split in space below its segment
+  leaf with room (l4b's `writerWP_handleFull_segSpaceRoom_live` on the merged tree,
+  `writerWP_handleFull_segSpaceRoomV_live`); the space tail now takes the split as a premise
+  (`SplitStepOK`, `writerWP_mergeTail_liveSpaceG`), with the inner parent's and the segment
+  leaf's splits its instances. Left in `MergeTailFullRest5OK`: p not made and the space root
+  (d = 1; 93 on the runs), q full or compacting (the cascade, R4; 196 on the runs, about 60
+  of them a segment root's space split, which l4b's cascade lemmas may serve on the merged
+  tree), and p made and split in space (0 on the runs). `writerWP_afterDelete_liveTR5`:
+  premises `MergeTailFullRest5OK`, `MergeParamsOK` and R3.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next
