@@ -1350,6 +1350,37 @@ last version's klongs its live ones, not taken back), moved by the swap. Corolla
 `UpCascCallBelowRuns` for `hCasc`, by `upCascCallRuns_of_below` and
 `delCaseLive_emptyCasc`).
 
+2026-11-17, 02:09 to 02:15. Step 6, the stop node below the root split in space, prover
+l4e (`LiveUpCascBelow.lean`, about 630 lines, about 370 of them the tree's below-root swap
+prelude, `writerWP_upCasc_below_delST`, again). `writerWP_upCasc_below_spaceH`: a full stop
+node X (D + 1) below the space root, not made by the transaction, split in space with no
+compaction (a last version of more than `splitAbove` klongs), ends with the heights and the
+live counts, no hole. At the state whose stop node has its bitmap (S') the tree is the
+start's without the chain, and S' is filled (it holds a half's live klongs, `HalfOK`,
+`liveAt_length_le`), so the live counts hold there (`liveEdgesH_up`,
+`liveEdges_of_oneHole`); l4b's `writerWP_handleFull_spaceChain_live` (inner parent) or
+`writerWP_handleFull_segSpaceChain_live` (the stop node a segment root) take the split and
+its cascade, with the chain's ranges and lengths as the tree's swap has them; the heights
+by `htInv_upFrame` and `ht_handleFull` at that state; all moved by the swap.
+`upCascCallBelowOK_of_rest`: `UpCascCallBelowOK` from `UpCascSplitRestOK`, the cases left at
+the stop node's split (after the bitmap's note): a split in time (the copy, or the stop
+node made by the transaction, is the hole), a made stop node's split in space in place,
+and a made space root. `upCascCallRuns_of_rest` at the runs; no new top corollary (the
+coordinator's word, 02:10: none more carrying `R3Calls`).
+
+2026-11-17, 02:10 to 02:18. R4 narrowed further, prover l4b (LiveDelHoleMade.lean):
+the leaf's time split whose copy is a hole, below a parent q that the transaction
+made, not the space root, full or compacting with the copy's klong, whose own
+last version is within a split's bound: q splits in time in place
+(`writerWP_handleFullWith_timeInPlace_termGh`), its node its last version with
+its klong of the leaf naming the copy, so the copy stays the hole under q
+(`writerWP_handleFull_timeMadeParent_liveGh`, by `liveEdgesH_redirect`) and R1
+holds as for a parent with room (`holeAtW_copyG`: `holeAtW_copy` for any new
+parent node whose searches are q's but its klong naming the copy;
+`KNode.searchLte_redirect`). `liveDel_fullTimeMadeParent`. Left of R4:
+`DelFullTimeHole2M` (the hole's parent the space root, not made by the
+transaction, or splitting in space). `invGetScanOK_merges_noL4d`.
+
 2026-11-17, 02:04 to 02:18. Step 3's rest, eighth part, prover l4f (`LiveMergeChain.lean`,
 about 450 lines, about 280 of them l4b's segment-root cascade again; `LiveMergeSpace.lean`
 generalized, about 180 lines added). Order: the coordinator's step 1 (fold the five tails'
@@ -1376,6 +1407,40 @@ Left: the space root split in time into two nodes (29) or in space (12), the tim
 cascade (196, R4), a space split below a full inner parent (0; the inner cousin
 `writerWP_handleFull_spaceChain_live` would carry over the same way), and p made and split
 in space (0). No stop rule fired.
+
+2026-11-17, 02:16 to 02:22. Step 6, the made stop node's split in time, prover l4e
+(`LiveUpCascMade.lean`, about 720 lines, about 330 of them the swap prelude again for the
+heights). `writerWP_upCasc_below_madeTime`: a full stop node below the space root that the
+transaction made, split in time in place (compacting or not), becomes its last version
+without the chain's klong, with the live klongs its bitmap would leave: the live counts hold
+but at the stop node (`liveEdgesH_up`), and the merges' descent at its pair finds it
+(`holeAtW_stop`, the key's path given as the walk's from its start: `linkedFrom_of_nodes`;
+the segments from the kinds after the split, `kd_handleFull`). `writerWP_upCasc_below_ht`:
+the heights after any split of a stop node below the root (the swap, `htInv_upFrame`,
+`ht_handleFull`). `upCascSplitRestOK_of_rest2`: `UpCascSplitRestOK` from
+`UpCascSplitRest2OK`, its cases left: a stop node not made split in time (the copy the
+hole, below a parent with room or with the cascade), a made stop node's split in space in
+place, and a made space root; at the runs `upCascCallRuns_of_rest2`.
+
+2026-11-17, 02:22. Prover l4b stops (steps 5, 6 and 7). Proved, each
+with l4a's or l4c's loop for `afterDelete`: the bitmap with room (`liveDel_room`);
+the full leaf's cases (`delFullM_cover`): the made leaf in time in place
+(`liveDel_fullMadeG`), not made in time below a parent with room
+(`liveDel_fullTimeRoomG`), every space split with any parent through the cascade
+(`liveDel_fullSpaceChain`, `liveDel_fullSegSpaceChain`, `liveDel_fullSpaceMadeChain`,
+`liveDel_fullSegSpaceMade`), the space root's splits (`liveDel_fullRoot`,
+`liveDel_fullRootSpaceMade`), the time split through the cascade with the copy
+filled (`liveDel_fullTimeChainF`) and below a made parent split in time in place
+(`liveDel_fullTimeMadeParent`); the emptied space root (`liveDel_emptyRoot`, no
+premise); R1 at the leaf, the copy and the stop node. Step 7: `liveDelSL_of_pieces`
+and the top theorems `invGetScanOK_merges_noL4` to `noL4d` (LiveAssembly.lean,
+LiveAssembly2.lean, LiveDelHoleMade.lean). Open: R3 (`R3Calls`, believed false at
+unreached states: the noL4 family is believed vacuous until a made-for fact is
+carried to `afterDelete`'s call, 01:56 and 02:01 above); what is left of R4
+(`DelFullTimeHole2M`: the hole's parent the space root, not made, or splitting in
+space: R1 through two changed levels or a hole below the cascade); step 6's full
+stop node (l4e's). Refuted: `UpHtWalk` (l4d's `upHtWalk_false`; 00:18's premise of
+`liveDel_upRoom_live`, replaced by l4d's `liveDel_upRoom_liveH`).
 
 2026-11-17, 02:22 to 02:30. Step 3's rest, ninth part, prover l4f
 (`LiveMergeRootSplit.lean`, about 310 lines, about 150 of them l4b's root split again;
