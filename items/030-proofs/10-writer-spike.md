@@ -520,3 +520,18 @@ the space split in that form is not made.
 2026-11-17, 19:15. The last put, in work: a new segment leaf above which
 the segment leaf is full (`WriterCascadeDefsO.lean`: soundness read on the
 map with the new leaves set as they will be right after the recursion).
+2026-11-17, 19:15 to 19:45. The fifth wave done: a put of a key of more
+segments whose segment trees exist, and one that makes new segment leaves
+where the leaf above has room. Main 84e7b8e3 merged (the coordinator,
+19:35). The commits since 84e7b8e3 are one commit, c9015c05: one of mine
+had changed a file that was pinned later without the pin file, which the
+gate's step 5 refuses for every commit since the base; nothing landed was
+rewritten. `gate.sh 84e7b8e3`: GATE OK (141 theorems). `writer.sh`: WRITER
+OK. `contractcheck` and `bridgecheck` on the small and drain sets, run
+directly: CONTRACT OK, BRIDGE OK.
+For the coordinator: `check.sh` stops in this clone at main's own
+`bridge-faults.sh`: its case `small` (`test/small.trace`, 030-15) is
+expected to pass and fails KIND (030-14's K-LEVEL), on main 84e7b8e3 as
+it is, before any file of mine. `check.sh` runs `bridge-faults.sh` only
+where the reclaim set is there, so a clone without it does not see this.
+GATED c9015c05: keys of more segments: putKv_put_routed, putKv_put_newseg, writerMeets_puts; the recursion with an unfilled segment leaf (handleFull_time_o, handleFull_space_o); handleFull_time_h for the delete.
