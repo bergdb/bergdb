@@ -1442,6 +1442,31 @@ space: R1 through two changed levels or a hole below the cascade); step 6's full
 stop node (l4e's). Refuted: `UpHtWalk` (l4d's `upHtWalk_false`; 00:18's premise of
 `liveDel_upRoom_live`, replaced by l4d's `liveDel_upRoom_liveH`).
 
+2026-11-17, 02:23 to 02:27. Step 6, the made stop node's split in space, prover l4e
+(`LiveUpCascMade.lean`, about 400 lines more, most of them the swap prelude again).
+`writerWP_upCasc_below_madeSpaceH`: a full stop node below the root that the transaction
+made, split in space in place, leaves no hole: at the state with its bitmap it is filled
+(it holds a half's live klongs), and l4b's in-place lemmas take the split and its cascade
+(`writerWP_handleFull_spaceInPlaceChain_live` below an inner parent,
+`writerWP_handleFull_segSpaceMade_live` below a segment leaf). `upCascSplitRest2OK_of_rest3`:
+left `UpCascSplitRest3OK`, a stop node below the root not made by the transaction split in
+time (the copy the hole, below a parent with room, or with the cascade: 030-01's R4) and a
+made space root; `upCascCallRuns_of_rest3` at the runs.
+
+2026-11-17, 02:28 to 02:33. Step 6, the stop node's time split with its copy filled,
+prover l4e (`LiveUpCascTime.lean`, about 560 lines, most of them the swap prelude again).
+`writerWP_upCasc_below_timeFillH`: a full stop node below the root, not made by the
+transaction, split in time (compacting or not) whose copy, its last version without the
+chain's klong, is filled under its parent (at least `mergeBelow` live klongs below an inner
+parent; below a segment leaf any live klong, and the stop node keeps one, as it empties
+only at the space root) leaves no hole after the split and its cascade, whatever the
+parents' room: at the state with its bitmap the stop node meets `ChildOK` under its parent
+(the tree's one link, `oneLink`), and l4b's `writerWP_handleFull_timeChain_live` (02:0x,
+`LiveAssembly2.lean`) takes the split. `upCascSplitRest3OK_of_rest4`: left
+`UpCascSplitRest4OK`, the copy under the fill below an inner parent (the hole at the copy,
+with or without the cascade: R1 at the copy with the key's descent cut there, and R4) and a
+made space root; `upCascCallRuns_of_rest4` at the runs.
+
 2026-11-17, 02:22 to 02:30. Step 3's rest, ninth part, prover l4f
 (`LiveMergeRootSplit.lean`, about 310 lines, about 150 of them l4b's root split again;
 `LiveMergeSpace.lean`, about 120 lines more). The no-hole split tail folded: the space
