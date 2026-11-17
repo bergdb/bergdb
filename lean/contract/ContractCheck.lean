@@ -19,6 +19,13 @@ traced transaction alone, on Java's tree before and after it:
 * C4, TREE (bergdb 030-08): no node reached twice from the space root of the
   tree after it, at its time (`treeOkB`; with C1 to C3 `checkShapeTx`, which
   is the contract with TREE: `checkShapeTx_sound`, Contract/CheckShape.lean).
+* C5, the top (bergdb 030-08): the top's clauses (`TopStart`, `topStepB`:
+  at most one new top node, the old ones fixed, the skip pointers as
+  `TopDs.newSuperRoot` makes them) and the tree's space roots the top nodes'
+  root pointers; with C1 to C4 `checkTopTx`, a step of `MeetsTop`
+  (`checkTopTx_sound`). And each SKIPT line is the cached time of the top
+  (`skiptFaults`). With LIVE lines, L2: each LIVE 0 line is the Lean search
+  through the skip pointers, `findTop` (`liveFaults`; Contract/TraceTop.lean).
 
 For TX 0: the start tree meets the invariants and is empty (`Start`).
 
@@ -36,6 +43,7 @@ names the trace and the transaction.
 import Contract.Complete
 import Contract.Trace
 import Contract.CheckShape
+import Contract.TraceTop
 
 open Contract
 
@@ -51,6 +59,10 @@ structure Counts where
   lives : Nat := 0
   l1 : Nat := 0
   c4 : Nat := 0
+  c5 : Nat := 0
+  skipts : Nat := 0
+  lives0 : Nat := 0
+  l2 : Nat := 0
   shape : Nat := 0
   shapeNames : List String := []
   first : Option String := none
@@ -65,12 +77,25 @@ def checkTrace (tr : Trace) : Counts := Id.run do
   let mut dirtyBefore : List NodeId := []
   let mut j := 0
   let mut topRoot : List (NodeId × NodeId) := []
+  let mut tp : Top := []
   for tx in tr.txs do
     if tx.i != j then c := { c.fail s!"TX {tx.i} read as transaction {j}" with c1 := c.c1 + 1 }
     let d := dirtyBefore ++ tx.gd
     let h' := applyTx h tx
     let i := tx.i
     let s' := h'.tree.at i
+    let tp' := applyTop tp tx
+    if !((if i == 0 then topStartB tp' else topStepB i tp tp') && h'.roots == rootsOf tp') then
+      c := { c.fail s!"TX {i}: C5, the top" with c5 := c.c5 + 1 }
+    if i != 0 && checkTopTx p i h tp tx.ops d h' tp' !=
+        (checkShapeTx p i h tx.ops d h' && topStepB i tp tp' && h'.roots == rootsOf tp') then
+      c := { c.fail s!"TX {i}: checkTopTx differs from its parts" with c5 := c.c5 + 1 }
+    let (skf, skn) := skiptFaults tp' tx
+    c := { c with skipts := c.skipts + skn }
+    if !skf.isEmpty then c := { c.fail s!"TX {i}: C5, SKIPT lines {skf}" with c5 := c.c5 + skf.length }
+    let (lf, ln) := liveFaults tp' tx
+    c := { c with lives0 := c.lives0 + ln }
+    if !lf.isEmpty then c := { c.fail s!"TX {i}: L2, LIVE 0 lines {lf.take 3}" with l2 := c.l2 + lf.length }
     if i == 0 then
       if !(invOk p s') then c := { c.fail "TX 0: C1, the start tree's invariants" with c1 := c.c1 + 1 }
       if !(contents s').isEmpty then c := { c.fail "TX 0: C2, the start tree is not empty" with c2 := c.c2 + 1 }
@@ -106,6 +131,7 @@ def checkTrace (tr : Trace) : Counts := Id.run do
       c := { c with shape := c.shape + sf.length,
                     shapeNames := (c.shapeNames ++ sf).eraseDups }
     h := h'
+    tp := tp'
     dirtyBefore := tx.dirty
     j := j + 1
   return c
@@ -124,16 +150,18 @@ def main (args : List String) : IO UInt32 := do
       failed := failed + 1
     | .ok tr =>
       let c := checkTrace tr
-      let bad := c.c1 + c.c2 + c.c3 + c.r1 + c.l1 + c.c4
-      IO.println s!"{path}: M={tr.M} {c.txs} transactions, {c.ops} operations, {c.gets} GET, {c.scans} SCAN, {c.lives} LIVE; failures: C1 {c.c1}, C2 {c.c2}, C3 {c.c3}, R1 {c.r1}, L1 {c.l1}, C4 {c.c4}; shape faults {c.shape} {c.shapeNames}{match c.first with | some m => "; first: " ++ m | none => ""}"
+      let bad := c.c1 + c.c2 + c.c3 + c.r1 + c.l1 + c.c4 + c.c5 + c.l2
+      IO.println s!"{path}: M={tr.M} {c.txs} transactions, {c.ops} operations, {c.gets} GET, {c.scans} SCAN, {c.lives} LIVE; failures: C1 {c.c1}, C2 {c.c2}, C3 {c.c3}, R1 {c.r1}, L1 {c.l1}, C4 {c.c4}, C5 {c.c5} ({c.skipts} SKIPT), L2 {c.l2} ({c.lives0} LIVE 0); shape faults {c.shape} {c.shapeNames}{match c.first with | some m => "; first: " ++ m | none => ""}"
       if bad != 0 || c.txs == 0 then failed := failed + 1
       total := { total with txs := total.txs + c.txs, ops := total.ops + c.ops,
                             gets := total.gets + c.gets, scans := total.scans + c.scans,
                             c1 := total.c1 + c.c1, c2 := total.c2 + c.c2, c3 := total.c3 + c.c3,
                             r1 := total.r1 + c.r1, lives := total.lives + c.lives,
-                            l1 := total.l1 + c.l1, c4 := total.c4 + c.c4, shape := total.shape + c.shape,
+                            l1 := total.l1 + c.l1, c4 := total.c4 + c.c4, c5 := total.c5 + c.c5,
+                            skipts := total.skipts + c.skipts, lives0 := total.lives0 + c.lives0,
+                            l2 := total.l2 + c.l2, shape := total.shape + c.shape,
                             shapeNames := (total.shapeNames ++ c.shapeNames).eraseDups }
-  IO.println s!"total: {args.length} traces, {total.txs} transactions, {total.ops} operations, {total.gets} GET, {total.scans} SCAN, {total.lives} LIVE; failures: C1 {total.c1}, C2 {total.c2}, C3 {total.c3}, R1 {total.r1}, L1 {total.l1}, C4 {total.c4}; shape faults {total.shape} {total.shapeNames}"
+  IO.println s!"total: {args.length} traces, {total.txs} transactions, {total.ops} operations, {total.gets} GET, {total.scans} SCAN, {total.lives} LIVE; failures: C1 {total.c1}, C2 {total.c2}, C3 {total.c3}, R1 {total.r1}, L1 {total.l1}, C4 {total.c4}, C5 {total.c5} ({total.skipts} SKIPT), L2 {total.l2} ({total.lives0} LIVE 0); shape faults {total.shape} {total.shapeNames}"
   if failed == 0 then
     IO.println "CONTRACT OK"
     return 0

@@ -41,6 +41,11 @@ structure TxLines where
   /-- LIVE lines (with the exporter's live=1): Java's live children of a node
   at a time (bergdb 030-09). -/
   lives : List (NodeId × Time × List NodeId) := []
+  /-- The top (bergdb 030-08): the skip pointers made (`ADD z i S j y`), the
+  node of the last VER line, and the SKIPT lines of its version (z, j, t). -/
+  skipLines : List (NodeId × Nat × NodeId) := []
+  ver : NodeId := 0
+  skipts : List (NodeId × Nat × Time) := []
 
 /-- A trace: the node size, the writer's parameters, the transactions. -/
 structure Trace where
@@ -151,6 +156,11 @@ def readLine (tr : Trace) (cur : TxLines) (line : String) : Except String (Trace
                              endKey := endKey, endInclusive := b == "1" }
       return (tr, { cur with scans := cur.scans ++ [⟨(← num t), req, (← num n), res⟩] })
     | [] => throw "a SCAN line"
+  | ["ADD", z, _, "S", j, y] =>
+    return (tr, { cur with skipLines := cur.skipLines ++ [((← num z), (← num j), (← num y))] })
+  | ["VER", x, _] => return (tr, { cur with ver := ← num x })
+  | ["SKIPT", j, t] =>
+    return (tr, { cur with skipts := cur.skipts ++ [(cur.ver, (← num j), (← num t))] })
   | _ => return (tr, cur)
 
 /-- Reads a trace from its lines. -/

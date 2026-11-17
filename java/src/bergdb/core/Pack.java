@@ -55,6 +55,7 @@ public class Pack implements IPack {
         SystemClock.class,
         Tester.class,
         Trans.class,
+        TransCheckTester.class,
         TransNodes.class,
         TransSeq.class
     };
