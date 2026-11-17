@@ -254,6 +254,7 @@ structure DescInvG (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top
   route : Route (treeOf i s w) x (c :: rest) leaf [cv]
   lev : LevDown i s w depth
   reached : x ∈ reach (treeOf i s w)
+  old : OldReach i s w
 
 /-- After the descent with the segment c from the state w: the map and the
 super root as in w; `PInv`; the node returned is a segment leaf of the
@@ -291,7 +292,7 @@ theorem wputg_descend {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
     obtain ⟨lo, hi, hGx⟩ := hD.good
     obtain ⟨m, hxm⟩ := wput_good_obj hGx
     obtain ⟨n, w1, hget, hks, hleaf, hlk1, hT1, hI1, hw1, -⟩ :=
-      getNode_spec hs hb hD.inv hxm hD.reached
+      getNode_spec hs hb hD.inv hxm hD.reached hD.old
     refine wput_ok hget ?_
     have hfield : w1.path = w.path ∧ w1.top = w.top ∧ w1.taken = w.taken ∧
         ∀ u n0, w.nodes.lookup u = some n0 → w1.nodes.lookup u = some n0 := by
@@ -360,7 +361,7 @@ theorem wputg_descend {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
         have hD2 : DescInvG p i base s tp C key leaf cv c rest w2 (depth + 1) fd.y := by
           refine ⟨hI1.congr rfl rfl rfl rfl rfl rfl rfl rfl rfl, ?_, ⟨_, hpb⟩, ?_, ?_, ?_,
             ⟨lo', hi', by rw [hT2]; exact hG'⟩, ⟨nl, by rw [hT2]; exact hnl, hnll⟩, ?_,
-            by rw [hT2]; exact hr', ?_, ?_⟩
+            by rw [hT2]; exact hr', ?_, ?_, wput_old_congr hD.old hT2⟩
           · show (w1.path ++ [(some fd.c, fd.y)]).length = depth + 1 + 1
             rw [List.length_append, hlen1]
             rfl
@@ -408,15 +409,17 @@ theorem wputg_descend {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
 /-- The state after the new value, with the value's klong added to the
 segment leaf, meets `PInv` with the leaf over its size and holds the keys
 with the put applied (`Sound.put`); and the leaf, of a sound tree, is well
-formed and fits a node. `wput_put_fact` for a key of any number of segments. -/
+formed and fits a node; `OldReach` is kept. `wput_put_fact` for a key of any
+number of segments. -/
 theorem wputg_put_fact {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     {C : List (Key × Nat)} (hb : Books i base s tp) {w : MW} {leaf : NodeId} {nl : MNode}
-    {key : Key} {cv h : Nat} (hI : PInv p i base s tp none C w)
+    {key : Key} {cv h : Nat} (hI : PInv p i base s tp none C w) (ho : OldReach i s w)
     (hlk : w.nodes.lookup leaf = some nl)
     (ht : w.taken.contains leaf = false) (hl : nl.leaf = true)
     (hr : Route (treeOf i s w) w.top.rootKey key leaf [cv]) (hcv : isLong cv = false) :
-    PInv p i base s tp (some leaf) (mapPut key h C)
+    (PInv p i base s tp (some leaf) (mapPut key h C)
       ((w.afterNewValue h).withNode leaf (nl.add i (.key cv w.next))) ∧
+      OldReach i s ((w.afterNewValue h).withNode leaf (nl.add i (.key cv w.next)))) ∧
       klongsWf (ksOf nl) = true ∧ nl.size ≤ p.M := by
   obtain ⟨hTv, hsv, hnv, hvv, htv, -⟩ := treeOf_fresh hb hI.books (Nat.le_refl w.next)
   have hlv : leaf ≠ w.next := Nat.ne_of_lt (hI.books.ids.1 leaf nl hlk)
@@ -477,7 +480,7 @@ theorem wputg_put_fact {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp :
   obtain ⟨hSnd, hRch⟩ := Sound.put hI.sound hr hAx hl hcv hTv hBv hBx hsame
   have hrootW : (treeOf i s ((w.afterNewValue h).withNode leaf (nl.add i (.key cv w.next)))).root =
       some w.top.rootKey := hI.root
-  refine ⟨hI.root, hSnd, ?_, hI.top, ?_, ?_⟩
+  refine ⟨⟨hI.root, hSnd, ?_, hI.top, ?_, ?_⟩, ?_⟩
   · -- the frame
     refine frame_withNode hF4 hlk4 ht4 hleaf' (fun n0 hs0 => ?_)
     obtain ⟨-, -, he⟩ := frame_overlay_ext hF4 hlk4 ht4 hs0
@@ -514,6 +517,16 @@ theorem wputg_put_fact {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp :
     obtain ⟨rest', hr1⟩ := add_first (t := i) (.key cv w.next) hr0
     refine putBooks_withNode hk4 hlk4 ht4 hleaf' (by rw [hr1, hr0]; rfl) ?_
     exact timesLe_model (add_timesLe (wput_timesLe hI.books hlk) _ (fun t' e => by cases e))
+  · -- OldReach: a node reached was reached before, or is the new value
+    refine wput_old_step hb ho (fun z hz => ?_)
+    rw [reach_of_root hrootW] at hz
+    rcases hRch z hz with h1 | h1
+    · left
+      rw [reach_of_root hI.root]
+      exact h1
+    · right
+      rw [h1]
+      exact hI.books.ids.2.2.2.1
 
 /-- `setNode` for a segment of the key but the last: the descent to the
 segment leaf, whose live long klong of the segment names the root of the next
@@ -564,7 +577,7 @@ theorem wputg_setNode {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
       rw [List.getElem?_append_right (by omega), hD3]
       simp
     refine ⟨fd.y, D + 1, rfl, hI3.congr rfl rfl rfl rfl rfl rfl rfl rfl rfl, ?_, ⟨_, hpb⟩, ?_, ?_,
-      ?_, ⟨lo', hi', hG'⟩, ?_, ?_, hry, ?_, ?_⟩
+      ?_, ⟨lo', hi', hG'⟩, ?_, ?_, hry, ?_, ?_, wput_old_congr hD.old hT3⟩
     · show (w3.path ++ [(some c, fd.y)]).length = D + 1 + 1
       rw [List.length_append, hD3]
       rfl
@@ -613,7 +626,8 @@ theorem wputg_setValue {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp :
     (hn : SNamed s) {w : MW} {depth : Nat} {x : NodeId} (hk : keyWf [c] = true)
     (hD : DescInvG p i base s tp C key leaf cv c [] w depth x) :
     WP (SIS.Tree.setValue x c key (some h)) { p := p, i := i, view := v } w
-      (fun _ w' => w'.outside = [] → PInv p i base s tp none (mapPut key h C) w') := by
+      (fun _ w' => w'.outside = [] → PInv p i base s tp none (mapPut key h C) w' ∧
+        OldReach i s w') := by
   unfold SIS.Tree.setValue
   refine wput_read ?_
   rw [wp_bind]
@@ -631,7 +645,8 @@ theorem wputg_setValue {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp :
     rw [hT3, htop3]
     exact hD.full
   obtain ⟨-, -, hnv, hvv, htv, -⟩ := treeOf_fresh hb hI3.books (Nat.le_refl w3.next)
-  obtain ⟨hfact, hwf, hsz⟩ := wputg_put_fact (h := h) hb hI3 hlk3 ht3 hl3 hfull hcv
+  obtain ⟨⟨hfact, hold⟩, hwf, hsz⟩ := wputg_put_fact (h := h) hb hI3
+    (wput_old_congr hD.old hT3) hlk3 ht3 hl3 hfull hcv
   refine wput_ok (newValue_eq _ _ _) ?_
   refine wput_ok (getNode_hit _ (w := w3.afterNewValue h) hlk3) ?_
   split
@@ -643,7 +658,7 @@ theorem wputg_setValue {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp :
       simp only [Bool.and_eq_true, decide_eq_true_eq] at hc
       exact hc.1
     have := add_size nl i (.key c w3.next)
-    exact wput_pinv_fit hfact (lookup_upsert_self _ _ _) (by omega)
+    exact ⟨wput_pinv_fit hfact (lookup_upsert_self _ _ _) (by omega), hold⟩
   · refine wput_ok (pathSize_eq _ _) ?_
     rw [wp_bind]
     refine (appendKlongs_spec_g hp hb hn _ L [(c, w3.next)] (w3.afterNewValue h) nl _
@@ -654,7 +669,17 @@ theorem wputg_setValue {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp :
     intro r W hW
     rw [wp_pure]
     intro hout
-    exact (hW hout).1
+    obtain ⟨hPW, hCW⟩ := hW hout
+    refine ⟨hPW, wput_old_step hb hold (fun z hz => ?_)⟩
+    rw [reach_of_root hPW.root] at hz
+    rcases hCW.reach z hz with h1 | h1
+    · left
+      rw [reach_of_root hfact.root]
+      exact h1
+    · right
+      have h2 : (w3.afterNewValue h).next = w3.next + 2 := rfl
+      have h3 := hI3.books.ids.2.2.2.1
+      omega
 
 /-- `putSegs` over the segments c :: rest of the key that are left, from
 their segment tree's root x. -/
@@ -665,7 +690,8 @@ theorem wputg_putSegs {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
     ∀ (rest : Key) (c : Nat) (w : MW) (depth : Nat) (x : NodeId), keyWf (c :: rest) = true →
       DescInvG p i base s tp C key leaf cv c rest w depth x →
       WP (SIS.Tree.putSegs key (some h) (c :: rest) x) { p := p, i := i, view := v } w
-        (fun _ w' => w'.outside = [] → PInv p i base s tp none (mapPut key h C) w') := by
+        (fun _ w' => w'.outside = [] → PInv p i base s tp none (mapPut key h C) w' ∧
+          OldReach i s w') := by
   intro rest
   induction rest with
   | nil =>
@@ -682,17 +708,19 @@ theorem wputg_putSegs {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
       exact hk.2
     exact ih c2 w' depth' y hk' hD'
 
-/-- A put of a key whose segment trees exist keeps `MidP`. -/
+/-- A put of a key whose segment trees exist keeps `MidP` and `OldReach`. -/
 theorem putKv_put_routed {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     {v : View BVal} {z : NodeId} (hp : ParamsOK p) (hs : Shows p v z s tp)
     (hb : Books i base s tp) (hn : SNamed s) {done : List Op} {w w' : MW} {b : Bool} {key : Key}
-    {h : Nat} (hm : MidP p i base s tp done w) (hkey : keyWf key = true)
+    {h : Nat} (hm : MidP p i base s tp done w) (ho : OldReach i s w) (hkey : keyWf key = true)
     (hroute : ∃ leaf cv nl, Route (treeOf i s w) w.top.rootKey key leaf [cv] ∧
       (treeOf i s w).obj leaf = some (.key nl) ∧ nl.leaf = true)
     (hrun : SIS.Tree.putKv (.put key h) { p := p, i := i, view := v } w = .ok (b, w'))
-    (hout : w'.outside = []) : MidP p i base s tp (done ++ [Op.put key h]) w' := by
+    (hout : w'.outside = []) :
+    MidP p i base s tp (done ++ [Op.put key h]) w' ∧ OldReach i s w' := by
   suffices hW : WP (SIS.Tree.putKv (.put key h)) { p := p, i := i, view := v } w
-      (fun _ w' => w'.outside = [] → MidP p i base s tp (done ++ [Op.put key h]) w') from
+      (fun _ w' => w'.outside = [] →
+        MidP p i base s tp (done ++ [Op.put key h]) w' ∧ OldReach i s w') from
     hW b w' hrun hout
   have hC : applyOps (done ++ [Op.put key h]) (contents s) =
       mapPut key h (applyOps done (contents s)) := by
@@ -714,7 +742,7 @@ theorem putKv_put_routed {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp
         fun d hd => absurd hd (Nat.not_lt_zero d), by
           show w.top.rootKey ∈ reach (treeOf i s w)
           rw [reach_of_root hm.root]
-          exact tc_self _ _ _⟩
+          exact tc_self _ _ _, wput_old_congr ho rfl⟩
 
 /-! ## 4. A transaction of such puts -/
 
@@ -759,20 +787,21 @@ def WriterMeetsRouted (p : MParams) (ops : List MOp) : Prop :=
       (∀ z zn, (topOf i tp w).getLast? = some (z, zn) → ∀ q ∈ zn.skips,
         ((topOf i tp w).node q.2.1).map (·.time) = some q.2.2)
 
-/-- The accepted routed puts keep `MidP`. -/
+/-- The accepted routed puts keep `MidP` and `OldReach`. -/
 theorem wputg_midP_run {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     {v : View BVal} {z : NodeId} (hp : ParamsOK p) (hs : Shows p v z s tp)
     (hb : Books i base s tp) (hn : SNamed s) :
     ∀ (ops : List MOp) (w w' : MW), OpsRunRouted { p := p, i := i, view := v } s w ops w' →
-      ∀ done, MidP p i base s tp done w → MidP p i base s tp (done ++ ops.map opOf) w' := by
+      ∀ done, MidP p i base s tp done w → OldReach i s w →
+        MidP p i base s tp (done ++ ops.map opOf) w' ∧ OldReach i s w' := by
   intro ops w w' hrun
   induction hrun with
-  | nil w => intro done hm; simpa using hm
+  | nil w => intro done hm ho; exact ⟨by simpa using hm, ho⟩
   | cons w w1 w' key h ops b hk hr h1 h2 _ ih =>
-    intro done hm
-    have hm1 := putKv_put_routed hp hs hb hn hm hk hr h1 h2
-    have := ih _ hm1
-    simpa [opOf] using this
+    intro done hm ho
+    obtain ⟨hm1, ho1⟩ := putKv_put_routed hp hs hb hn hm ho hk hr h1 h2
+    obtain ⟨this, ho'⟩ := ih _ hm1 ho1
+    exact ⟨by simpa [opOf] using this, ho'⟩
 
 /-- A transaction of routed puts meets the writer's contract. -/
 theorem writerMeets_routed {p : MParams} (hp : ParamsOK p) (ops : List MOp) :
@@ -780,7 +809,8 @@ theorem writerMeets_routed {p : MParams} (hp : ParamsOK p) (ops : List MOp) :
   intro i base s tp v z t w hn hbf hs ht hrun
   have hb := hbf.books
   have hm : MidP p i base s tp (ops.map opOf) w := by
-    have := wputg_midP_run hp hs hb hn ops _ w hrun [] (wput_midP_start hs ht hbf)
+    have := (wputg_midP_run hp hs hb hn ops _ w hrun [] (wput_midP_start hs ht hbf)
+      (wput_old_start i s base t)).1
     simpa using this
   obtain ⟨hinv, hcont, htree⟩ := (sound_iff (M := p.M)).mpr ⟨_, hm.root, hm.sound⟩
   have hinv' : invOk (cpOf p) (treeOf i s w) = true := hinv

@@ -108,7 +108,7 @@ theorem before0 : Before p 1 3 s0 tp0 where
 
 theorem shows0 : Shows p v0 2 s0 tp0 where
   key := by
-    intro x n hx
+    intro x _ n hx
     obtain ⟨rfl, rfl⟩ := wbf_s0_key hx
     exact ⟨_, rfl, rfl, rfl, by decide, by decide, rfl⟩
   top := ⟨t0, zn0, top0, rfl, rfl, rfl, rfl, rfl, rfl⟩

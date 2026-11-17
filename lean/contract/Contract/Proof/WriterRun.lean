@@ -144,7 +144,7 @@ theorem mid_start {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     rw [hb.books.roots]
     exact List.mem_map.mpr ⟨(z, zn), List.mem_of_getLast? h2, rfl⟩
   refine ⟨by rw [h0]; exact hb.inv, by rw [h0]; rfl, ?_, by rw [h0]; exact hb.tree, htop,
-    by rw [h0]; exact hb.balanced, ?_⟩
+    by rw [h0]; exact hb.balanced, by unfold OldReach; rw [h0]; exact fun z hz _ => hz, ?_⟩
   · rw [h0]
     refine ⟨fun x o hx => ⟨o, hx, Ext.refl i o, fun _ => rfl⟩, ?_, [], by simp, by simp⟩
     intro x n hx hn

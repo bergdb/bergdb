@@ -24,19 +24,19 @@ key [cv]'s path (`afterDelete [cv] g 0`) keep `PInv` and the keys. -/
 def AfterOk (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top) (v : View BVal)
     (cv : Nat) : Prop :=
   ∀ (g : Nat) (w : MW) (C : List (Key × Nat)), PInv p i base s tp none C w →
-    WP (SIS.Tree.afterDelete [cv] g 0) { p := p, i := i, view := v } w
-      (fun _ w' => w'.outside = [] → PInv p i base s tp none C w')
+    OldReach i s w → WP (SIS.Tree.afterDelete [cv] g 0) { p := p, i := i, view := v } w
+      (fun _ w' => w'.outside = [] → PInv p i base s tp none C w' ∧ OldReach i s w')
 
 /-- With the merges off, `afterDelete` changes nothing. -/
 theorem afterOk_off {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     {v : View BVal} (hmg : p.merges = false) (cv : Nat) : AfterOk p i base s tp v cv := by
-  intro g w C hI
+  intro g w C hI ho
   unfold SIS.Tree.afterDelete
   refine wput_read ?_
   dsimp only
   simp only [hmg, Bool.false_eq_true, ↓reduceIte]
   rw [wp_pure]
-  exact fun _ => hI
+  exact fun _ => ⟨hI, ho⟩
 
 /-! ## No node outside the bounds is taken back
 
@@ -555,8 +555,9 @@ that keeps `PInv` when it leaves no key node outside the bounds. -/
 theorem wdk_putKv {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     {v : View BVal} {z : NodeId} (hs : Shows p v z s tp) (hb : Books i base s tp)
     {done : List Op} {w : MW} {cv : Nat} (hm : MidP p i base s tp done w)
+    (ho : OldReach i s w)
     (hdel : ∀ (leaf : NodeId) (w3 : MW) (nl : MNode),
-      PInv p i base s tp none (applyOps done (contents s)) w3 →
+      PInv p i base s tp none (applyOps done (contents s)) w3 → OldReach i s w3 →
       w3.nodes.lookup leaf = some nl → w3.taken.contains leaf = false → nl.leaf = true →
       (∃ c0, w3.path[w3.path.length - 1]? = some (c0, leaf)) →
       PathOk i s w3 (w3.path.length - 1) → PathInner w3 (w3.path.length - 1) →
@@ -565,9 +566,11 @@ theorem wdk_putKv {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
       WP (SIS.Tree.deleteUpward leaf (w3.path.length - 1) cv [cv])
         { p := p, i := i, view := v } w3
         (fun _ w4 => w4.outside = [] →
-          PInv p i base s tp none (mapDel [cv] (applyOps done (contents s))) w4)) :
+          PInv p i base s tp none (mapDel [cv] (applyOps done (contents s))) w4 ∧
+            OldReach i s w4)) :
     WP (SIS.Tree.putKv (.del [cv])) { p := p, i := i, view := v } w
-      (fun _ w' => w'.outside = [] → MidP p i base s tp (done ++ [Op.del [cv]]) w') := by
+      (fun _ w' => w'.outside = [] →
+        MidP p i base s tp (done ++ [Op.del [cv]]) w' ∧ OldReach i s w') := by
   have hC : applyOps (done ++ [Op.del [cv]]) (contents s) =
       mapDel [cv] (applyOps done (contents s)) := by
     rw [applyOps, List.foldl_append]
@@ -582,20 +585,21 @@ theorem wdk_putKv {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
   refine wput_read ?_
   rw [wp_bind]
   refine (wput_descend_root (cv := cv) hs hb (w := { w with path := [(none, w.top.rootKey)] })
-    (hm.congr rfl rfl rfl rfl rfl rfl rfl rfl rfl) rfl _).mono ?_
+    (hm.congr rfl rfl rfl rfl rfl rfl rfl rfl rfl) (wput_old_congr ho rfl) rfl _).mono ?_
   rintro leaf (w3 : MW) ⟨hT3, htop3, hI3, ⟨nl, hlk3, hl3⟩, hc0, hP3, hin3, hr3⟩
   dsimp only
   obtain ⟨c0, hc0'⟩ := hc0
   obtain ⟨-, -, ht3⟩ := hP3.lookup (Nat.le_refl _) hc0'
   refine wput_ok (pathSize_eq _ _) ?_
   rw [wp_bind]
-  refine (hdel leaf w3 nl hI3 hlk3 ht3 hl3 ⟨c0, hc0'⟩ hP3 hin3 hr3 hT3 htop3).mono ?_
+  refine (hdel leaf w3 nl hI3 (wput_old_congr ho hT3) hlk3 ht3 hl3 ⟨c0, hc0'⟩ hP3 hin3 hr3 hT3
+    htop3).mono ?_
   intro noop w4 h4
   split
   · refine wput_ok (f := SIS.Tree.fresh) (a := w4.next) (w' := { w4 with next := w4.next + 2 })
       rfl ?_
     rw [wp_pure]
-    exact fun ho => wdel_pinv_next (h4 ho)
+    exact fun hout => ⟨wdel_pinv_next (h4 hout).1, wput_old_congr (h4 hout).2 rfl⟩
   · rw [wp_pure]
     exact h4
 
@@ -608,14 +612,16 @@ theorem wdk_core {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     (hgrow : ∀ g (u : MW), WP (SIS.Tree.afterDelete [cv] g 0) { p := p, i := i, view := v } u
       (fun _ u' => u'.outside = [] → u.outside = []))
     {w3 : MW} {leaf : NodeId} {nl : MNode} {d : Nat}
-    (hI3 : PInv p i base s tp none C w3) (hlk3 : w3.nodes.lookup leaf = some nl)
+    (hI3 : PInv p i base s tp none C w3) (ho3 : OldReach i s w3)
+    (hlk3 : w3.nodes.lookup leaf = some nl)
     (ht3 : w3.taken.contains leaf = false) (hl3 : nl.leaf = true)
     (hon : ∃ c0, w3.path[d]? = some (c0, leaf))
     (hP3 : PathOk i s w3 d) (hin3 : PathInner w3 d)
     (hr3 : Route (treeOf i s w3) w3.top.rootKey [cv] leaf [cv])
     (hkeep : dropCv cv (live (ksOf nl)) ≠ [] ∨ leaf = w3.top.rootKey) :
     WP (SIS.Tree.deleteUpward leaf d cv [cv]) { p := p, i := i, view := v } w3
-      (fun _ w4 => w4.outside = [] → PInv p i base s tp none (mapDel [cv] C) w4) := by
+      (fun _ w4 => w4.outside = [] → PInv p i base s tp none (mapDel [cv] C) w4 ∧
+        OldReach i s w4) := by
   have hAx := treeOf_obj_overlay i s hlk3 ht3
   have hreach := (hr3.tc_target hI3.sound.good).2
   have hok := hI3.sound.nodes leaf hreach _ hAx
@@ -633,9 +639,9 @@ theorem wdk_core {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     rw [wp_pure]
     intro _
     have hsame := delUnion_noop hwf0 hno
-    exact ⟨hI3.root, (Sound.del hI3.sound hr3 hAx hl3 hcv hkeep
+    exact ⟨⟨hI3.root, (Sound.del hI3.sound hr3 hAx hl3 hcv hkeep
       ⟨_, hAx, rfl, hl3, hsame.symm, hok⟩ (fun _ _ => rfl)).1, hI3.frame, hI3.top,
-      hI3.balanced, hI3.books⟩
+      hI3.balanced, hI3.books⟩, ho3⟩
   · next hnn =>
     have hno : (delUnion nl cv == nl.lastBitmap) = false := by
       cases h : (delUnion nl cv == nl.lastBitmap)
@@ -652,11 +658,11 @@ theorem wdk_core {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
       rw [wp_bind]
       dsimp only
       refine (wdb_spec hp hb hlk3 hon hP3 hin3 hI3.books hwf0 hsz0 hI3.root hI3.frame hI3.top
-        hI3.balanced hno hV).mono ?_
+        hI3.balanced ho3 hno hV).mono ?_
       rintro _ w4 ⟨-, h4⟩
       rw [wp_bind]
       by_cases ho4 : w4.outside = []
-      · refine (hafter g w4 _ (h4 ho4).1).mono ?_
+      · refine (hafter g w4 _ (h4 ho4).1 (h4 ho4).2.2.2).mono ?_
         intro _ w5 h5
         rw [wp_pure]
         exact h5
@@ -691,12 +697,12 @@ theorem wdk_core {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
         (depth := 0) hp hb hlk3 ⟨c0, hc0⟩
         (hP3.congr rfl rfl rfl rfl (treeOf_congr i s rfl rfl rfl rfl rfl rfl)) hin3
         (putBooks_congr hI3.books rfl rfl rfl rfl rfl rfl rfl rfl rfl) hwf0 hsz0 hI3.root
-        hI3.frame hI3.top hI3.balanced hno
+        hI3.frame hI3.top hI3.balanced (wput_old_congr ho3 rfl) hno
         (wdk_fact (hI3.congr rfl rfl rfl rfl rfl rfl rfl rfl rfl) hlk3 ht3 hl3 hr3 hcv hkeep)
       refine hu.mono ?_
       rintro _ w4 ⟨-, h4⟩
       rw [wp_pure]
-      exact fun ho => (h4 ho).1
+      exact fun ho => ⟨(h4 ho).1, (h4 ho).2.2.2⟩
 
 /-! ## The delete -/
 
@@ -705,19 +711,20 @@ root keeps `MidP`, given that the merges keep `PInv`. -/
 theorem putKv_del1_keep {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     {v : View BVal} {z : NodeId} (hp : ParamsOK p) (hs : Shows p v z s tp)
     (hb : Books i base s tp) {done : List Op} {w w' : MW} {b : Bool} {cv : Nat}
-    (hm : MidP p i base s tp done w) (hcv : isLong cv = false)
+    (hm : MidP p i base s tp done w) (ho : OldReach i s w) (hcv : isLong cv = false)
     (hafter : AfterOk p i base s tp v cv)
     (hkeep : ∀ leaf nl, Route (treeOf i s w) w.top.rootKey [cv] leaf [cv] →
       (treeOf i s w).obj leaf = some (.key nl) → nl.leaf = true →
       (live nl.ks).filter (fun a => a.1 != cv) ≠ [] ∨ leaf = w.top.rootKey)
     (hrun : SIS.Tree.putKv (.del [cv]) { p := p, i := i, view := v } w = .ok (b, w'))
     (hout : w'.outside = []) :
-    MidP p i base s tp (done ++ [Op.del [cv]]) w' := by
-  refine wdk_putKv hs hb hm (fun leaf w3 nl hI3 hlk3 ht3 hl3 hc0 hP3 hin3 hr3 hT3 htop3 => ?_)
-    b w' hrun hout
+    MidP p i base s tp (done ++ [Op.del [cv]]) w' ∧ OldReach i s w' := by
+  refine wdk_putKv hs hb hm ho
+    (fun leaf w3 nl hI3 ho3 hlk3 ht3 hl3 hc0 hP3 hin3 hr3 hT3 htop3 => ?_) b w' hrun hout
   have hAx := treeOf_obj_overlay i s hlk3 ht3
   have hk := hkeep leaf _ (by rw [← hT3, ← htop3]; exact hr3) (by rw [← hT3]; exact hAx) hl3
-  refine wdk_core hp hb hcv hafter (fun g u => (wdk_grow_afterDelete _ g 0).out _ u) hI3 hlk3
+  refine wdk_core hp hb hcv hafter (fun g u => (wdk_grow_afterDelete _ g 0).out _ u) hI3 ho3
+    hlk3
     ht3 hl3 hc0 hP3 hin3 hr3 ?_
   rcases hk with hk | hk
   · exact Or.inl hk
@@ -729,13 +736,14 @@ theorem putKv_del1_keep {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp 
 theorem putKv_del1_keep_off {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     {v : View BVal} {z : NodeId} (hp : ParamsOK p) (hs : Shows p v z s tp)
     (hb : Books i base s tp) {done : List Op} {w w' : MW} {b : Bool} {cv : Nat}
-    (hm : MidP p i base s tp done w) (hcv : isLong cv = false) (hmg : p.merges = false)
+    (hm : MidP p i base s tp done w) (ho : OldReach i s w) (hcv : isLong cv = false)
+    (hmg : p.merges = false)
     (hkeep : ∀ leaf nl, Route (treeOf i s w) w.top.rootKey [cv] leaf [cv] →
       (treeOf i s w).obj leaf = some (.key nl) → nl.leaf = true →
       (live nl.ks).filter (fun a => a.1 != cv) ≠ [] ∨ leaf = w.top.rootKey)
     (hrun : SIS.Tree.putKv (.del [cv]) { p := p, i := i, view := v } w = .ok (b, w'))
     (hout : w'.outside = []) :
-    MidP p i base s tp (done ++ [Op.del [cv]]) w' :=
-  putKv_del1_keep hp hs hb hm hcv (afterOk_off hmg cv) hkeep hrun hout
+    MidP p i base s tp (done ++ [Op.del [cv]]) w' ∧ OldReach i s w' :=
+  putKv_del1_keep hp hs hb hm ho hcv (afterOk_off hmg cv) hkeep hrun hout
 
 end Contract

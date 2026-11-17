@@ -90,6 +90,7 @@ structure DescInvS (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top
   route : Route (treeOf i s w) x (c :: rest) leaf kend
   lev : LevDown i s w depth
   reached : x ∈ reach (treeOf i s w)
+  old : OldReach i s w
 
 /-- After the descent with the segment c from the state w: the map and the
 super root as in w; `PInv`; the node returned is a segment leaf of the
@@ -127,7 +128,7 @@ theorem wputs_descend {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
     obtain ⟨lo, hi, hGx⟩ := hD.good
     obtain ⟨m, hxm⟩ := wput_good_obj hGx
     obtain ⟨n, w1, hget, hks, hleaf, hlk1, hT1, hI1, hw1, -⟩ :=
-      getNode_spec hs hb hD.inv hxm hD.reached
+      getNode_spec hs hb hD.inv hxm hD.reached hD.old
     refine wput_ok hget ?_
     have hfield : w1.path = w.path ∧ w1.top = w.top ∧ w1.taken = w.taken ∧
         ∀ u n0, w.nodes.lookup u = some n0 → w1.nodes.lookup u = some n0 := by
@@ -196,7 +197,7 @@ theorem wputs_descend {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
         have hD2 : DescInvS p i base s tp C key leaf kend c rest w2 (depth + 1) fd.y := by
           refine ⟨hI1.congr rfl rfl rfl rfl rfl rfl rfl rfl rfl, ?_, ⟨_, hpb⟩, ?_, ?_, ?_,
             ⟨lo', hi', by rw [hT2]; exact hG'⟩, ⟨nl, by rw [hT2]; exact hnl, hnll⟩, ?_,
-            by rw [hT2]; exact hr', ?_, ?_⟩
+            by rw [hT2]; exact hr', ?_, ?_, wput_old_congr hD.old hT2⟩
           · show (w1.path ++ [(some fd.c, fd.y)]).length = depth + 1 + 1
             rw [List.length_append, hlen1]
             rfl
@@ -289,7 +290,7 @@ theorem wputs_setNode {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
       rw [List.getElem?_append_right (by omega), hD3]
       simp
     refine ⟨fd.y, D + 1, rfl, hT3, hI3.congr rfl rfl rfl rfl rfl rfl rfl rfl rfl, ?_, ⟨_, hpb⟩,
-      ?_, ?_, ?_, ⟨lo', hi', hG'⟩, ?_, ?_, hry, ?_, ?_⟩
+      ?_, ?_, ?_, ⟨lo', hi', hG'⟩, ?_, ?_, hry, ?_, ?_, wput_old_congr hD.old hT3⟩
     · show (w3.path ++ [(some c, fd.y)]).length = D + 1 + 1
       rw [List.length_append, hD3]
       rfl
@@ -734,7 +735,8 @@ theorem wputs_newseg {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : T
     {x : NodeId} (hT : treeOf i s w = T)
     (hD : DescInvS p i base s tp C key leaf (cv :: rest) cv rest w depth x) :
     WP (SIS.Tree.putSegs key (some h) (cv :: rest) x) { p := p, i := i, view := v } w
-      (fun _ w' => w'.outside = [] → PInv p i base s tp none (mapPut key h C) w') := by
+      (fun _ w' => w'.outside = [] → PInv p i base s tp none (mapPut key h C) w' ∧
+        OldReach i s w') := by
   have hk2 : isLong cv = true ∧ keyWf rest = true := by
     cases rest with
     | nil => exact absurd rfl hrne
@@ -906,7 +908,7 @@ theorem wputs_newseg {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : T
         have hrootF : (treeOf i s wf).root = some w3.top.rootKey := by
           rw [hWf.root, htopf]
           rfl
-        refine ⟨hWf.root, ?_, hWf.frame, hWf.top, ?_, hWf.books.toBooks hnoe⟩
+        refine ⟨⟨hWf.root, ?_, hWf.frame, hWf.top, ?_, hWf.books.toBooks hnoe⟩, ?_⟩
         · rw [htopf]
           exact hS
         · -- BalancedOK, by the nodes reached
@@ -944,6 +946,20 @@ theorem wputs_newseg {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : T
               refine ⟨h1, by simp [h2, h3], fun hl' => ?_⟩
               rw [h2] at hl'
               cases hl'
+        · -- OldReach: a node reached was reached before, or is new
+          refine wput_old_step hb (wput_old_congr hD.old hT3) (fun z hz => ?_)
+          rw [reach_of_root hrootF] at hz
+          rcases hRch z hz with h1 | h1
+          · left
+            rw [reach_of_root hI3.root]
+            exact h1
+          · right
+            have h2 := hI3.books.ids.2.2.2.1
+            rcases hids z h1 with h3 | h3
+            · rw [h3]
+              exact h2
+            · rw [hn6] at h3
+              exact Nat.le_trans h2 (Nat.le_trans (Nat.le_add_right _ 2) h3)
       · show p.keyLevel (g + 1) 0 < wLevel s w3 L
         rw [hlv]
         exact wputs_keyLevel_lt p hg1
@@ -984,7 +1000,8 @@ theorem wputs_putSegs {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
     ∀ (tail : Key) (c : Nat) (w : MW) (depth : Nat) (x : NodeId), treeOf i s w = T →
       keyWf (c :: tail) = true → DescInvS p i base s tp C key leaf (cv :: rest) c tail w depth x →
       WP (SIS.Tree.putSegs key (some h) (c :: tail) x) { p := p, i := i, view := v } w
-        (fun _ w' => w'.outside = [] → PInv p i base s tp none (mapPut key h C) w') := by
+        (fun _ w' => w'.outside = [] → PInv p i base s tp none (mapPut key h C) w' ∧
+          OldReach i s w') := by
   intro tail
   induction tail with
   | nil =>
@@ -1021,15 +1038,17 @@ theorem wputs_putSegs {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
 theorem putKv_put_newseg {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     {v : View BVal} {z : NodeId} (hp : ParamsOK p) (hs : Shows p v z s tp)
     (hb : Books i base s tp) {done : List Op} {w w' : MW} {b : Bool} {key : Key} {h : Nat}
-    (hm : MidP p i base s tp done w) (hkey : keyWf key = true)
+    (hm : MidP p i base s tp done w) (ho : OldReach i s w) (hkey : keyWf key = true)
     (hroute : ∃ leaf cv rest nl, rest ≠ [] ∧
       Route (treeOf i s w) w.top.rootKey key leaf (cv :: rest) ∧
       (treeOf i s w).obj leaf = some (.key nl) ∧ nl.leaf = true ∧
       (∀ y, (cv, y) ∉ live nl.ks) ∧ nl.ks.length + 2 ≤ p.M)
     (hrun : SIS.Tree.putKv (.put key h) { p := p, i := i, view := v } w = .ok (b, w'))
-    (hout : w'.outside = []) : MidP p i base s tp (done ++ [Op.put key h]) w' := by
+    (hout : w'.outside = []) :
+    MidP p i base s tp (done ++ [Op.put key h]) w' ∧ OldReach i s w' := by
   suffices hW : WP (SIS.Tree.putKv (.put key h)) { p := p, i := i, view := v } w
-      (fun _ w' => w'.outside = [] → MidP p i base s tp (done ++ [Op.put key h]) w') from
+      (fun _ w' => w'.outside = [] →
+        MidP p i base s tp (done ++ [Op.put key h]) w' ∧ OldReach i s w') from
     hW b w' hrun hout
   have hC : applyOps (done ++ [Op.put key h]) (contents s) =
       mapPut key h (applyOps done (contents s)) := by
@@ -1051,7 +1070,7 @@ theorem putKv_put_newseg {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp
         fun d hd => absurd hd (Nat.not_lt_zero d), by
           show w.top.rootKey ∈ reach (treeOf i s w)
           rw [reach_of_root hm.root]
-          exact tc_self _ _ _⟩
+          exact tc_self _ _ _, wput_old_congr ho rfl⟩
 
 /-! ## 5. A transaction of puts of both kinds -/
 
@@ -1117,23 +1136,24 @@ def WriterMeetsPuts (p : MParams) (ops : List MOp) : Prop :=
       (∀ z zn, (topOf i tp w).getLast? = some (z, zn) → ∀ q ∈ zn.skips,
         ((topOf i tp w).node q.2.1).map (·.time) = some q.2.2)
 
-/-- The accepted puts of both kinds keep `MidP`. -/
+/-- The accepted puts of both kinds keep `MidP` and `OldReach`. -/
 theorem wputs_midP_run {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     {v : View BVal} {z : NodeId} (hp : ParamsOK p) (hs : Shows p v z s tp)
     (hb : Books i base s tp) (hn : SNamed s) :
     ∀ (ops : List MOp) (w w' : MW), OpsRunPuts { p := p, i := i, view := v } s w ops w' →
-      ∀ done, MidP p i base s tp done w → MidP p i base s tp (done ++ ops.map opOf) w' := by
+      ∀ done, MidP p i base s tp done w → OldReach i s w →
+        MidP p i base s tp (done ++ ops.map opOf) w' ∧ OldReach i s w' := by
   intro ops w w' hrun
   induction hrun with
-  | nil w => intro done hm; simpa using hm
+  | nil w => intro done hm ho; exact ⟨by simpa using hm, ho⟩
   | cons w w1 w' key h ops b hk hr h1 h2 _ ih =>
-    intro done hm
-    have hm1 : MidP p i base s tp (done ++ [Op.put key h]) w1 := by
+    intro done hm ho
+    have hm1 : MidP p i base s tp (done ++ [Op.put key h]) w1 ∧ OldReach i s w1 := by
       rcases hr with hr | hr
-      · exact putKv_put_routed hp hs hb hn hm hk hr h1 h2
-      · exact putKv_put_newseg hp hs hb hm hk hr h1 h2
-    have := ih _ hm1
-    simpa [opOf] using this
+      · exact putKv_put_routed hp hs hb hn hm ho hk hr h1 h2
+      · exact putKv_put_newseg hp hs hb hm ho hk hr h1 h2
+    obtain ⟨this, ho'⟩ := ih _ hm1.1 hm1.2
+    exact ⟨by simpa [opOf] using this, ho'⟩
 
 /-- A transaction of puts of both kinds meets the writer's contract. -/
 theorem writerMeets_puts {p : MParams} (hp : ParamsOK p) (ops : List MOp) :
@@ -1141,7 +1161,8 @@ theorem writerMeets_puts {p : MParams} (hp : ParamsOK p) (ops : List MOp) :
   intro i base s tp v z t w hn hbf hs ht hrun
   have hb := hbf.books
   have hm : MidP p i base s tp (ops.map opOf) w := by
-    have := wputs_midP_run hp hs hb hn ops _ w hrun [] (wput_midP_start hs ht hbf)
+    have := (wputs_midP_run hp hs hb hn ops _ w hrun [] (wput_midP_start hs ht hbf)
+      (wput_old_start i s base t)).1
     simpa using this
   obtain ⟨hinv, hcont, htree⟩ := (sound_iff (M := p.M)).mpr ⟨_, hm.root, hm.sound⟩
   have hinv' : invOk (cpOf p) (treeOf i s w) = true := hinv

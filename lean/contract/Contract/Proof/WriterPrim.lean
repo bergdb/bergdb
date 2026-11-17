@@ -363,7 +363,7 @@ theorem getNode_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : T
     {v : View BVal} {z : NodeId} {ex : Option NodeId} {C : List (Key × Nat)} {w : MW}
     (hs : Shows p v z s tp) (hb : Books i base s tp) (hI : PInv p i base s tp ex C w)
     {x : NodeId} {m : KNode} (hx : (treeOf i s w).obj x = some (.key m))
-    (hxr : x ∈ reach (treeOf i s w)) :
+    (hxr : x ∈ reach (treeOf i s w)) (ho : OldReach i s w) :
     ∃ n w', SIS.Tree.getNode x { p := p, i := i, view := v } w = .ok (n, w') ∧
       ksOf n = m.ks ∧ n.leaf = m.leaf ∧ w'.nodes.lookup x = some n ∧
       treeOf i s w' = treeOf i s w ∧ PInv p i base s tp ex C w' ∧
@@ -390,7 +390,8 @@ theorem getNode_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : T
       | some h => simp [treeOf, hlk, e] at hx
     have hsx : s.obj x = some (.key m) := by
       simpa only [treeOf, ht, hlk, hv, Bool.false_eq_true, ↓reduceIte] using hx
-    obtain ⟨nd, hvx, hd, hlev, hkm, hks, hleaf⟩ := hs.key x m hsx
+    have hxs : x ∈ reach s := ho x hxr (by rw [hsx]; rfl)
+    obtain ⟨nd, hvx, hd, hlev, hkm, hks, hleaf⟩ := hs.key x hxs m hsx
     have hget := getNode_miss { p := p, i := i, view := v } hlk hvx hd (by rw [hlev]; exact hkm)
     let n : MNode := ⟨p.heightOf nd.level == 0, SIS.Tree.klongsOf nd.hist⟩
     have hksn : ksOf n = m.ks := hks

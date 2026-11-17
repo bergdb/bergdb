@@ -21,6 +21,8 @@ Prints one line per trace and WRITER OK or WRITER FAILED; a failure names the
 trace, the transaction and the operation. Not part of what is trusted.
 -/
 import Check.Tree
+import SIS.Tree.Spec
+import Std.Data.HashSet
 import Contract.Writer
 import Contract.Trace
 import Contract.CheckShape
@@ -41,6 +43,13 @@ structure WCounts where
   j5 : Nat := 0
   books : List (String × Nat) := []
   shape : List (String × Nat) := []
+  /-- Transactions before which some key node of an earlier time, not reached,
+  is not in the model's view (`Shows` for every node, the form until 21:40,
+  fails there). -/
+  hidden : Nat := 0
+  /-- Operations after which a key node made outside G and H is there (taken
+  back): `OpsRun` does not cover them. -/
+  outside : Nat := 0
   first : Option String := none
 
 def WCounts.fail (c : WCounts) (msg : String) : WCounts :=
@@ -50,10 +59,32 @@ def bump (l : List (String × Nat)) (name : String) : List (String × Nat) :=
   if l.any (·.1 == name) then l.map (fun q => if q.1 == name then (q.1, q.2 + 1) else q)
   else l ++ [(name, 1)]
 
+/-- The model's view of the structure P at time i - 1, as the model's own
+`exec?` gets it: `SIS.view (treeSpec p) P (i - 1)` (lean/SIS/Basic.lean), the
+nodes reachable then, each with its entries up to then. The reachable nodes
+(`SIS.reachList`) are computed once; a lookup is `SIS.view`'s. (Until a second
+independent review, bergdb 030-10's log of 21:32, the checker gave the writer
+the whole structure, which also holds the nodes of earlier times.) -/
+def modelView (p : MParams) (i : Time) (P : SIS.Check.Tree.PMap) : SIS.View SIS.Check.BVal :=
+  let rl : Std.HashSet NodeId :=
+    Std.HashSet.ofList (SIS.reachList (SIS.Tree.treeSpec p) P.toList (i - 1))
+  fun y => if rl.contains y then (P[y]?).map (fun n => { n with hist := n.hist.upTo (i - 1) })
+    else none
+
+/-- The view does not show key node x of the heap (`Shows`' clause for one
+node). -/
+def notShown (p : MParams) (v : SIS.View SIS.Check.BVal) (x : NodeId) (n : KNode) : Bool :=
+  match v x with
+  | some nd =>
+    nd.isData || nd.level != n.level || decide (p.keyMax < n.level) ||
+      (SIS.Tree.klongsOf nd.hist).map kOf != n.ks || n.leaf != (p.heightOf n.level == 0)
+  | none => true
+
 /-- `Shows`, computed over the heap; and the books of the start. -/
-def showsFaults (p : MParams) (i : Time) (base : NodeId) (P : SIS.Check.Tree.PMap) (h : Heap)
+def showsFaults (p : MParams) (i : Time) (base : NodeId) (v : SIS.View SIS.Check.BVal) (h : Heap)
     (tp : Top) : List String := Id.run do
   let mut f : List String := []
+  let reached : Std.HashSet NodeId := Std.HashSet.ofList (reach h.tree)
   for (x, o) in h.objs.toList do
     if base ≤ x then f := f ++ [s!"node {x} is not below the first id {base}"]
     match o with
@@ -63,13 +94,15 @@ def showsFaults (p : MParams) (i : Time) (base : NodeId) (P : SIS.Check.Tree.PMa
       | .time _ :: _ => pure ()
       | _ => f := f ++ [s!"key node {x} does not start with a time klong"]
       if n.level == 0 then f := f ++ [s!"key node {x} has level 0"]
+      -- `Shows`: the view shows every key node reached.
+      if reached.contains x && notShown p v x n then
+        f := f ++ [s!"the view does not show key node {x}, which is reached"]
       -- SNamed (bergdb 030-10, the puts of keys of more segments): every key klong
       -- names a node.
       if !(n.ks.all (fun k => match k with
           | .key _ y => h.objs.contains y
           | _ => true)) then f := f ++ [s!"key node {x} has a klong that names no node"]
     | .val _ => pure ()
-  let v : SIS.View SIS.Check.BVal := fun y => P[y]?
   match SIS.Tree.lastTop v, tp.getLast? with
   | some z, some (z', zn) =>
     match SIS.Tree.topOf p (SIS.Tree.rootless v) z with
@@ -97,7 +130,8 @@ def named (ks : List MKlong) : List NodeId :=
 
 /-- The candidates for the writer's books within a transaction, on the state w
 of the transaction at time i from the heap h: the names of those that fail. -/
-def bookFaults (p : MParams) (i : Time) (base : NodeId) (h : Heap) (w : MW) : List String :=
+def bookFaults (p : MParams) (i : Time) (base : NodeId) (h : Heap)
+    (sreach : Std.HashSet NodeId) (w : MW) : List String :=
   let s := treeOf i h.tree w
   let reached := reach (s.at i)
   let live := w.nodes.filter (fun q => !w.taken.contains q.1)
@@ -132,15 +166,22 @@ def bookFaults (p : MParams) (i : Time) (base : NodeId) (h : Heap) (w : MW) : Li
   (if live.all (fun q => match h.objs[q.1]? with
       | some (.key n) => reached.contains q.1 || q.2.ks.map kOf == n.ks
       | _ => true) then [] else ["B7 an old node not reached is as it was"]) ++
-  -- B8: a node made and not taken back is reached at i.
-  (if madeIds.all (fun x => w.taken.contains x || reached.contains x || x == w.top.id) then []
-    else ["B8 a node made is reached"]) ++
+  -- B8: a key node made and not taken back is reached at i.
+  (if (w.made.filter (fun m => !m.isData)).all (fun m =>
+      w.taken.contains m.id || reached.contains m.id || m.id == w.top.id) then []
+    else ["B8 a key node made is reached"]) ++
+  -- B16 (`Mid`'s `old`): a node of s that is reached was reached in s.
+  (if reached.all (fun z => !h.objs.contains z || sreach.contains z) then []
+    else ["B16 a node of s that is reached was reached in s"]) ++
   -- B9: a node taken back was made by the transaction.
   (if w.taken.all (fun x => madeIds.contains x) then [] else ["B9 taken back was made"]) ++
   -- B10: a node of the overlay that is no node of s was made by the transaction.
   (if w.nodes.all (fun q => h.objs.contains q.1 || madeIds.contains q.1) then []
     else ["B10 overlay nodes are of s or made"]) ++
-  -- B11: an outside node (beyond G, H) is not reached.
+  -- B11: a key node made outside G and H was taken back (the model's own check at
+  -- the transaction's end, `boundsOK`). `MidBooks.within` and `OpsRun` ask more: none
+  -- made outside; the operations after which one is there, taken back, are counted
+  -- apart (`outside`): the statement does not cover their transactions.
   (if w.outside.all (fun q => w.taken.contains q.1) then [] else ["B11 outside nodes taken back"]) ++
   -- B13: every node kept of the overlay starts with a time klong.
   (if live.all (fun q => match q.2.ks with
@@ -193,9 +234,14 @@ def checkWriterTrace (p : MParams) (tr : Trace) (old : SIS.Check.Trace)
       | none => c := { c.fail s!"TX {i}: no BASE line" with errs := c.errs + 1 }
       | some base =>
         -- S: the start.
-        let sf := showsFaults p i base P h tp
+        let v : SIS.View SIS.Check.BVal := modelView p i P
+        let sreach : Std.HashSet NodeId := Std.HashSet.ofList (reach h.tree)
+        -- For the record: key nodes of earlier times, not reached, that the view lacks.
+        if h.objs.toList.any (fun xo => match xo.2 with
+            | .key n => !sreach.contains xo.1 && notShown p v xo.1 n
+            | .val _ => false) then c := { c with hidden := c.hidden + 1 }
+        let sf := showsFaults p i base v h tp
         if !sf.isEmpty then c := { c.fail s!"TX {i}: S, {sf.take 2}" with s := c.s + 1 }
-        let v : SIS.View SIS.Check.BVal := fun y => P[y]?
         match SIS.Tree.lastTop v with
         | none => c := { c.fail s!"TX {i}: no super root" with errs := c.errs + 1 }
         | some z =>
@@ -233,7 +279,8 @@ def checkWriterTrace (p : MParams) (tr : Trace) (old : SIS.Check.Trace)
                   if !(topStepB i tp tpw && (treeOf i h.tree w).roots == rootsOf tpw &&
                       (if w.newTop then w.top.time == i else w.top == top)) then
                     c := { c.fail s!"TX {i}, operation {k}: J5, the top" with j5 := c.j5 + 1 }
-                  for b in bookFaults p i base h w do
+                  if !w.outside.isEmpty then c := { c with outside := c.outside + 1 }
+                  for b in bookFaults p i base h sreach w do
                     c := { c.fail s!"TX {i}, operation {k}: {b}" with books := bump c.books b }
                   for b in (shapeFaults tr.shape s').eraseDups do
                     c := { c with shape := bump c.shape b }
@@ -280,15 +327,17 @@ def main (args : List String) : IO UInt32 := do
       let c := checkWriterTrace p tr old tt
       let nb := (c.books.map (·.2)).foldl (· + ·) 0
       let bad := c.errs + c.s + c.m + c.j1 + c.j2 + c.j3 + c.j4 + c.j5 + nb
-      IO.println s!"{path}: {c.txs} transactions, {c.ops} operations; failures: errors {c.errs}, S {c.s}, M {c.m}, J1 {c.j1}, J2 {c.j2}, J3 {c.j3}, J4 {c.j4}, J5 {c.j5}; books: {showCounts c.books}; shape faults: {showCounts c.shape}{match c.first with | some m => "; first: " ++ m | none => ""}"
+      IO.println s!"{path}: {c.txs} transactions, {c.ops} operations; failures: errors {c.errs}, S {c.s}, M {c.m}, J1 {c.j1}, J2 {c.j2}, J3 {c.j3}, J4 {c.j4}, J5 {c.j5}; books: {showCounts c.books}; shape faults: {showCounts c.shape}; transactions with a node of an earlier time that the view lacks: {c.hidden}; operations with a node outside the bounds, taken back: {c.outside}{match c.first with | some m => "; first: " ++ m | none => ""}"
       if bad != 0 || c.txs == 0 then failed := failed + 1
       total := { total with txs := total.txs + c.txs, ops := total.ops + c.ops,
                             errs := total.errs + c.errs, s := total.s + c.s, m := total.m + c.m,
                             j1 := total.j1 + c.j1, j2 := total.j2 + c.j2, j3 := total.j3 + c.j3,
                             j4 := total.j4 + c.j4, j5 := total.j5 + c.j5,
                             books := addCounts total.books c.books,
-                            shape := addCounts total.shape c.shape }
-  IO.println s!"total: {args.length} traces, {total.txs} transactions, {total.ops} operations; failures: errors {total.errs}, S {total.s}, M {total.m}, J1 {total.j1}, J2 {total.j2}, J3 {total.j3}, J4 {total.j4}, J5 {total.j5}; books: {showCounts total.books}; shape faults: {showCounts total.shape}"
+                            shape := addCounts total.shape c.shape,
+                            hidden := total.hidden + c.hidden,
+                            outside := total.outside + c.outside }
+  IO.println s!"total: {args.length} traces, {total.txs} transactions, {total.ops} operations; failures: errors {total.errs}, S {total.s}, M {total.m}, J1 {total.j1}, J2 {total.j2}, J3 {total.j3}, J4 {total.j4}, J5 {total.j5}; books: {showCounts total.books}; shape faults: {showCounts total.shape}; transactions with a node of an earlier time that the view lacks: {total.hidden}; operations with a node outside the bounds, taken back: {total.outside}"
   if failed == 0 then
     IO.println "WRITER OK"
     return 0
