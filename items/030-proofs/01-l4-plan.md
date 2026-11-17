@@ -1673,3 +1673,17 @@ y, the other nodes and the taken set kept: the premises of
 after, y the hole, are l4b's `writerWP_appendKlongs_chainGLX` with s = D = 0 and E the copy
 y (a segment root named by a segment leaf). Left for the 25: the merge's tail with the hole
 (`writerWP_mergeTail_liveSplitX` with a hole after the split and `LiveHoleW` at h + 1).
+
+2026-11-17, 03:30 to 03:32. The writer's side of the second group of the 69, prover l4g
+(`LiveTimeRoomHole.lean`, about 170 lines). The 15 where q, not made, splits in time below
+an inner q0 with room. `writerWP_appendKlongs_timeRoom`: `appendKlongs` at q without room
+(or compacting), by l4b's `writerWP_handleFullWith_time_upN` and
+`writerWP_appendKlongs_room` at q0: q's copy (the next id) holds q's last version with the
+klongs, q0 names it by q's klong, q its klongs before the transaction, the rest kept.
+`writerWP_appendKlongs_timeRoomHole`: with p's copy y put by k1, q0's search at k1 (where
+it named q) names the copy, a leaf whose search of k1 names y (`searchLte_add_key`,
+`KNode.searchEq_live`): the premises of `descendToHeight_redirectSeg2` but y's node and
+height. Writer shapes for R1 now cover 25 + 15 of the 69; the 7 where q, made, splits in
+time in place keep q's id (02:22's R1 with q's new node; below a parent, l4b's
+`writerWP_handleFullWith_timeInPlace_termN` gives it); left the 15 with q split in space
+and the 7 at the root through a space split.

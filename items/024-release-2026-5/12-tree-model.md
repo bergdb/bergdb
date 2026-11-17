@@ -745,6 +745,11 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   its last version within a split's bound, ends with a new space root, a leaf whose search
   of k1 names y, the other nodes and the taken set kept: what `_leafRoot` takes
   (`writerWP_handleFullWith_rootTimeSplit_ins`, the root's time split with klongs to put).
+  03:32 (prover l4g, `LiveTimeRoomHole.lean`): the same for the 15 where q, not made, splits
+  in time below an inner q0 with room: `writerWP_appendKlongs_timeRoomHole` (no premises):
+  q0's search at k1 names q's copy (the next id), a leaf whose search of k1 names y, the
+  other nodes kept: what `redirectSeg2` takes. Left of the 69's writer shapes: q split in
+  space (15), the 7 at the root through a space split (6 + 1), and q made, in place (7).
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next
