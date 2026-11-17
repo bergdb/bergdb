@@ -1137,10 +1137,10 @@ hole below the chain, R4).
 2026-11-17, 01:33 to 01:45. Step 3's rest, fifth part, prover l4c. Which full-parent
 merges occur on step 0's runs: step 0's checker with each merge whose parent goes `full`
 classified by its notes (`/Users/f/fl/bench/2026-11-16/night/l4c/runs/merge-full-cases.lean.txt`,
-2 min 30 s, the same 15 families). Of 1,198 full-parent merges: the parent a segment root
+2 min 30 s, the same 15 families). Of 1,134 full-parent merges: the parent a segment root
 split in time below its segment leaf, no cascade, 454 (233 into one node, 221 into two);
-the same with a cascade, 194; made, split in time in place, about 155 (proved); below an
-inner parent, split in time, no cascade, about 100 (proved); the space root split in time
+the same with a cascade, 194; made, split in time in place, 162 (proved); below an
+inner parent, split in time, no cascade, 100 (proved); the space root split in time
 (d = 1), 81; a segment root split in space, 67 without a cascade and 60 with; the space
 root split in space, 12; below an inner parent split in space, 2 (proved); in time with
 a cascade, 2. So the segment root case was taken next: `MergeTailFullRest3OK` reduced to
@@ -1176,3 +1176,25 @@ the cases: the noop and the key with no leaf excluded by the open case,
 (`liveDel_room`), the full leaf by `delFullM_cover` into nine cases, all proved but
 R4. `afterDelete` at every call by `writerWP_afterDelete_liveTR3`
 (`afterDelete_live_runs`). When a piece lands, its premise goes.
+
+(127, 60 of them with a cascade), q full or compacting (the cascade, R4; 256 in all: 196
+in time, 60 in space), and p made and split in space (0 on the runs). No stop rule fired.
+
+2026-11-17, 01:46 to 01:50. Step 3's rest, sixth part, prover l4c. `MergeTailFullRest4OK`
+reduced to `MergeTailFullRest5OK`, its case `MergeFullSpaceG` proved: a segment root, not
+made, split in space below its segment leaf with room (67 on the runs). l4b's segment-root
+split on the merged tree (`writerWP_handleFull_segSpaceRoomV_live`, with the nodes reached
+after from `treeOK_segSpaceStep`); the space tail and its round now take the split as a
+premise (`SplitStepOK`; `writerWP_mergeTail_liveSpaceG`, `writerWP_mergeTail_liveSpaceRoundG`;
+`splitStepOK_spaceRoom` and `splitStepOK_segSpace` its instances; the earlier lemmas are
+instances, statements unchanged). `writerWP_afterDelete_liveTR5`: premises
+`MergeTailFullRest5OK`, `MergeParamsOK`, R3. Left: p not made and the space root (d = 1;
+93 on the runs: a time split makes the copy the new space root, `newSuperRoot`, R1 at the
+root; a space split a new root above the halves, no hole), q full or compacting (the
+cascade, R4; 256 on the runs, 196 in time and 60 in space; for a space split l4b's
+cascade lemmas for the leaf may
+serve on the merged tree, as its split lemmas did; a time split's cascade keeps the hole
+below the chain, R4's general case), and p made and split in space (0 on the runs). With
+this part the proved cases cover 785 of the 1,134 full-parent merges on the runs (69%);
+left 349: the cascade 256, the space root 93. No stop rule fired.
+
