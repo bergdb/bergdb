@@ -21,8 +21,9 @@ the focus.
   node two levels down. `writerMeets_false`: one transaction of 14 puts and 4
   deletes at node size 6 (`Contract/WriterBalancedFalse.lean`, evaluated in
   the kernel). Readers do not care (a dead klong is never followed), and
-  the writer's own rule as Shape.lean tests it (live klongs only) holds. Not
-  yet restated (section 3, D3).
+  the writer's own rule as Shape.lean tests it (live klongs only) holds.
+  030-10 restates it to the nodes reached and their live klongs (the
+  coordinator's decision, 21:32; my D3).
 - **Proved, a delete of a one-segment key whose segment leaf keeps a live
   klong, or is the space root** (`putKv_del1_keep`), for any parameters with
   `ParamsOK`, option 2 (theta) on or off, given that the merges after it keep
@@ -50,8 +51,10 @@ the focus.
 - **The take-back needs a link book, and it must speak of every node** (F2,
   section 3): `WcrLink` (a node reached that the transaction made is named by
   one node of the map at most, by none if it is the space root) with `SNamed
-  s` (030-10's: a klong of before names a node of before). Root collapse and
-  the merge take it as a premise and give it back. That every other step of
+  s` (030-10's: a klong of before names a node of before), and for the merge
+  `WmgFresh` (no klong names an id not yet given out). Root collapse and the
+  merge take them as premises and give them back. With `BalancedAll` on the
+  nodes reached, a book on the nodes reached should do (F3). That every other step of
   the writer keeps it (the put's, the bitmap's, the splits') is not proved:
   the one open piece between the merges and a whole delete with the merges on.
 - **Not yet:** the upward unlink of an emptied leaf (the climb, the
