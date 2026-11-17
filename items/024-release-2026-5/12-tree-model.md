@@ -582,6 +582,8 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   `MergeTailFullRest6OK`: the space root split in time with a merge into two nodes (29) or
   in space (12), q full or compacting (the cascade, R4; 256), and p made and split in space
   (0). `writerWP_afterDelete_liveTR6`: premises `MergeTailFullRest6OK`, `MergeParamsOK` and R3.
+  02:00: prover l4c stopped by 030-01's size rule (about 6,500 lines, about 3,000 of them
+  near-copies of the merge tail's prelude); what is left and how: 030-01's log, 02:00.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next
