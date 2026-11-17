@@ -550,7 +550,7 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   `MergeFullTimeRoomG` proved: p, not made, a segment root (q a segment leaf) split in time
   below q with room, one node or two (`descendToHeight_redirectSeg`: the next round's
   segment search finds p's copy through q's long klong; `writerWP_mergeTail_liveFullTime2G`).
-  On step 0's runs this is the most frequent full-parent case (454 of 1,198; counts in
+  On step 0's runs this is the most frequent full-parent case (454 of 1,134; counts in
   030-01's log). Left in `MergeTailFullRest4OK`: p not made and the space root (d = 1), a
   segment root that splits in space, q full or compacting (the cascade, R4), and p made and
   split in space. `writerWP_afterDelete_liveTR4`: premises `MergeTailFullRest4OK`,
@@ -561,8 +561,8 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   `writerWP_handleFull_segSpaceRoomV_live`); the space tail now takes the split as a premise
   (`SplitStepOK`, `writerWP_mergeTail_liveSpaceG`), with the inner parent's and the segment
   leaf's splits its instances. Left in `MergeTailFullRest5OK`: p not made and the space root
-  (d = 1; 93 on the runs), q full or compacting (the cascade, R4; 196 on the runs, about 60
-  of them a segment root's space split, which l4b's cascade lemmas may serve on the merged
+  (d = 1; 93 on the runs), q full or compacting (the cascade, R4; 256 on the runs, 60 of
+  them a segment root's space split, which l4b's cascade lemmas may serve on the merged
   tree), and p made and split in space (0 on the runs). `writerWP_afterDelete_liveTR5`:
   premises `MergeTailFullRest5OK`, `MergeParamsOK` and R3.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
