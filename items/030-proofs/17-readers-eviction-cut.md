@@ -70,7 +70,9 @@ Kept current; the Log has the times.
   traces, 29,735 transactions, KIND 0 in both checkers; on the whole medium
   set (`treeconf.sh medium`, 27 traces: m-big, m-mixed, m-long, m-long3,
   m-r-del, m-fifo, m-d8, m-d30, m-d62, 3 seeds each; 13,667 transactions,
-  736,718 operations): every trace passes `contractcheck`, KIND 0.
+  736,718 operations): every trace passes `contractcheck`, KIND 0; and on
+  the large set (6 traces: l-hot, l-mixed, l-long, l-big62, l-few, l-5000;
+  17,000 transactions): every trace passes, KIND 0.
 - **One premise for every time** (brief item 3, 030-14's State note item
   3): Java's tree after a startup need only hold the model's structure
   **whole** (`HoldsP`: every node but the root and the top nodes, a key node
@@ -329,3 +331,7 @@ reclaim CONTRACT OK.
 (`treeconf.sh medium`, TREECHECK=none, 87 s): 27 traces, 13,667
 transactions, all pass, KIND 0 (par.sh, 4 parts, about 12 minutes at a load
 of 40). The large set started the same way.
+21:51 The large set (`treeconf.sh large`, TREECHECK=none, 194 s), then
+`contractcheck` on it (par.sh, 4 parts, 8 minutes): 6 traces, 17,000
+transactions, all pass, KIND 0. `bridgecheck` on the whole medium set
+running (par.sh, 3 parts).
