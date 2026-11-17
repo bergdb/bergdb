@@ -12,3 +12,5 @@ open Contract
 #print axioms scan_right
 #print axioms checkTx_sound
 #print axioms Contract.Example.meets
+#print axioms Contract.Example3.meets
+#print axioms Contract.ExampleDag.meets
