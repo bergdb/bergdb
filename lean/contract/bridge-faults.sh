@@ -6,7 +6,9 @@
 # its NEW line (N); a key node made on level 0 (L, A4); a top node's skip
 # pointer left out (TOP, R4); a top node's root pointer to another node (TOP,
 # the link); a touched node left out of the TOUCH line (TOUCH); the primordial
-# top node's root pointer to another node (the start).
+# top node's root pointer to another node (the start); and, since bergdb 030-11,
+# a trace that is not whole: an ERROR line, no DONE line, a trace cut after a
+# transaction (`completeFault`).
 #
 # Usage: lean/contract/bridge-faults.sh
 # Needs: the checker (cd lean/contract && lake build bridgecheck) and the traces
@@ -60,6 +62,12 @@ fault root-pointer $G 'tx == 2 && !d && /^ADD [0-9]+ 2 R / { $5 = $5 - 2; d = 1 
 fault touch $R '!d && /^TOUCH / { NF = NF - 1; d = 1 } { print }'
 # The primordial top node names another key node.
 fault start $G '!d && /^ADD [0-9]+ 0 R / { $5 = $5 + 2; d = 1 } { print }'
+# An ERROR line after the head (bergdb 030-11).
+fault error-line $G '/^TX 0$/ && !d { print "ERROR a change the lines cannot express"; d = 1 } { print }'
+# No DONE line.
+fault no-done $G '!/^DONE / { print }'
+# Cut after TX 9: TX 10 and the rest left out.
+fault cut $G '/^TX 10$/ { c = 1 } !c { print }'
 
 rm -rf $DIR
 if [ $FAILED -eq 0 ]; then
