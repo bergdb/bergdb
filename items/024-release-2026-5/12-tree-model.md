@@ -813,6 +813,10 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   04:03 (prover l4g, `LiveInPlaceChildHole.lean`): the same for the 6 where q, made, splits in
   time in place below an inner parent: `writerWP_handleFull_inPlaceChildHole` and `_R1`
   (`descendToHeight_redirectSeg`). The split step's R1: 46 of the 69.
+  04:06 (prover l4g, `LiveSpaceRoomChildHole.lean`): the same for the 15 where q, not made,
+  splits in space below q0 with room: `writerWP_handleFull_spaceRoomChildHole` and `_R1`
+  (`descendToHeight_redirectSeg2` with the half). The split step's R1: 61 of the 69; left the
+  8 at the space root through a space split or in place (1 + 6 + 1).
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next
