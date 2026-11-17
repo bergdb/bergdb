@@ -196,49 +196,9 @@ theorem writerWP_mergeTail_liveMade (c : Ctx) (base : View BVal) (x : NodeId) (d
         (∃ pn', w'.nodes.lookup p = some pn' ∧ pn'.leaf = pn.leaf) ∧
         w'.top = w3.top) ∧
         (res ≠ 1 → LiveEdges c.p (wNode c.p base w') c.i w'.top.rootKey)) := by
-  -- the tree's facts
-  have hpL : (cL, l) ∈ pn.liveAt c.i := by
-    rw [KNode.liveAt_of_times pn c.i hpt]
-    apply bk_mem_of_lookup
-    rw [KNode.live_lookup]
-    exact keyLookup_of_last _ _ _ il l hL hLL
-  have hpR : (cR, r) ∈ pn.liveAt c.i := by
-    rw [KNode.liveAt_of_times pn c.i hpt]
-    apply bk_mem_of_lookup
-    rw [KNode.live_lookup]
-    exact keyLookup_of_last _ _ _ ir r hR hRL
-  have hc : cL ≠ cR := Nat.ne_of_lt hclt
-  have hlink_l : TLink N c.i p cL l := ⟨pn, hpn, hpL⟩
-  have hlink_r : TLink N c.i p cR r := ⟨pn, hpn, hpR⟩
-  have hpl : p ≠ l := fun h => hT.no_self_link p cL hp (by rw [← h] at hlink_l; exact hlink_l)
-  have hpr : p ≠ r := fun h => hT.no_self_link p cR hp (by rw [← h] at hlink_r; exact hlink_r)
-  have hlr : l ≠ r := fun h => hc (hT.oneLink p cL p cR l hp hp hlink_l (by rw [h]; exact hlink_r)).2
-  have hlt := hch cL l ln hpL hln
-  have hrt := hch cR r rn hpR hrn
-  have hcvL : pn.cv? il = some cL := by simp [KNode.cv?, hL]
-  have hcvR : pn.cv? ir = some cR := by simp [KNode.cv?, hR]
-  have hlt_nx : ∀ y yn, N y = some yn → y < nx := by
-    intro y yn hy
-    rcases Nat.lt_or_ge y nx with h | h
-    · exact h
-    · have := (hfree y h).1; rw [this] at hy; cases hy
-  have hlnx := hlt_nx l ln hln
-  have hrnx := hlt_nx r rn hrn
-  have hpnx := hlt_nx p pn hpn
-  -- the sibling of the hole is filled: the two hold m live klongs or more
-  have hsib : c.p.mergeBelow ≤ ln.live.length + rn.live.length := by
-    have hok : ∀ s sn, N s = some sn → (∃ cs, (cs, s) ∈ pn.liveAt c.i) → s ≠ x →
-        c.p.mergeBelow ≤ (sn.liveAt c.i).length := by
-      intro s sn hs ⟨cs, hcs⟩ hsx
-      exact ((hLive.2 p pn cs s sn hp hpn hcs hs).1 (fun h => hsx (hHl s h))).2.2 hpleaf hm
-    rcases hxlr with hx | hx
-    · have := hok r rn hrn ⟨cR, hpR⟩ (by rw [hx]; exact hlr.symm)
-      rw [KNode.liveAt_of_times rn c.i hrt] at this
-      omega
-    · have := hok l ln hln ⟨cL, hpL⟩ (by rw [hx]; exact hlr)
-      rw [KNode.liveAt_of_times ln c.i hlt] at this
-      omega
-  have hmb : 2 ≤ c.p.mergeBelow := hMP.1
+  obtain ⟨hpL, hpR, hc, hlink_l, hlink_r, hpl, hpr, hlr, hlt, hrt, hcvL, hcvR, hlt_nx, hlnx, hrnx,
+    hpnx, hsib, hmb⟩ := mergeTail_treeFacts c x p pn ln rn l r il ir cL cR N root nx Hl hm hMP hT hp hpn
+    hL hLL hR hRL hclt hxlr hln hrn hpt hch (fun z hz => (hfree z hz).1) hpleaf hLive hHl
   unfold mergeTail
   simp only [hcvL, hcvR]
   generalize hLM : (ln.firstTime == some c.i) = lMade
@@ -262,87 +222,17 @@ theorem writerWP_mergeTail_liveMade (c : Ctx) (base : View BVal) (x : NodeId) (d
       rw [hr'] at hne2
       simp only [List.head?_cons, Option.map_some, Option.some.injEq] at hne2
       exact ⟨a.2, tl, by rw [← hne2.2]⟩
-  have hsortE := mrg_mergeList_sorted ln rn c.i (!xn.leaf) cR hlt hrt hlrange hrrange hrhead
   have hmkd : splitMerged (!xn.leaf) c.p.mergeMax (mergeList (!xn.leaf) cR ln.live rn.live) =
       (first, second) := hmk
-  have hElen : (mergeList (!xn.leaf) cR ln.live rn.live).length = ln.live.length + rn.live.length :=
-    by simpa using congrArg List.length (mergeList_map_snd (!xn.leaf) cR ln.live rn.live)
-  -- the new nodes: their klongs name children of l or r, and they are filled
-  have hsrcE : ∀ z, z ∈ (mergeList (!xn.leaf) cR ln.live rn.live).map Prod.snd →
-      (∃ c0, (c0, z) ∈ ln.liveAt c.i) ∨ (∃ c0, (c0, z) ∈ rn.liveAt c.i) := by
-    intro z hz
-    rw [mergeList_map_snd] at hz
-    rcases List.mem_append.mp hz with h | h
-    · obtain ⟨q', hq', he⟩ := List.mem_map.mp h
-      exact Or.inl ⟨q'.1, by rw [KNode.liveAt_of_times ln c.i hlt, ← he]; exact hq'⟩
-    · obtain ⟨q', hq', he⟩ := List.mem_map.mp h
-      exact Or.inr ⟨q'.1, by rw [KNode.liveAt_of_times rn c.i hrt, ← he]; exact hq'⟩
-  have hnewT : ∀ ks : List (Nat × NodeId), ∀ s, Klong.time s ∈
-      ({ leaf := !!xn.leaf, ks := newKlongs c.i ks } : KNode).ks → s ≤ c.i := by
-    intro ks s hs
-    simp only [newKlongs, List.mem_cons, Klong.time.injEq, List.mem_map, reduceCtorEq, and_false,
-      exists_false, or_false] at hs
-    omega
-  have hnewSrc : ∀ ks : List (Nat × NodeId), (∀ z, z ∈ ks.map Prod.snd →
-      z ∈ (mergeList (!xn.leaf) cR ln.live rn.live).map Prod.snd) → ∀ cc z,
-      (cc, z) ∈ ({ leaf := !!xn.leaf, ks := newKlongs c.i ks } : KNode).liveAt c.i →
-      (∃ c0, (c0, z) ∈ ln.liveAt c.i) ∨ (∃ c0, (c0, z) ∈ rn.liveAt c.i) := by
-    intro ks hks cc z hmem
-    have hm2 := liveAt_newKlongs_mem (!!xn.leaf) c.i c.i ks cc z hmem
-    exact hsrcE z (hks z (List.mem_map.mpr ⟨(cc, z), hm2, rfl⟩))
-  have hnewFill : ∀ ks : List (Nat × NodeId), CvSorted ks → c.p.mergeBelow ≤ ks.length →
-      ({ leaf := !!xn.leaf, ks := newKlongs c.i ks } : KNode).liveAt c.i ≠ [] ∧
-      c.p.mergeBelow ≤ (({ leaf := !!xn.leaf, ks := newKlongs c.i ks } : KNode).liveAt c.i).length := by
-    intro ks hks hlen
-    have hcnt : (({ leaf := !!xn.leaf, ks := newKlongs c.i ks } : KNode).liveAt c.i).length =
-        ks.length := by
-      rw [KNode.liveAt_of_times _ c.i (hnewT ks)]
-      exact newKlongs_cnt_of_sorted _ _ _ hks
-    refine ⟨fun h0 => ?_, by rw [hcnt]; exact hlen⟩
-    have : (({ leaf := !!xn.leaf, ks := newKlongs c.i ks } : KNode).liveAt c.i).length = 0 := by
-      rw [h0]; rfl
-    omega
+  obtain ⟨hsortE, hElen, hsrcE, hnewT, hnewSrc, hnewFill⟩ :=
+    mergeTail_newFacts c xn ln rn cR hlt hrt hlrange hrrange hrhead hmb
   simp only [writerWP_bind, writerWP_modify]
   refine writerWP_mono (writerWP_and (writerWP_ghOf_frame x c _) (writerWP_ghOf_ghL x c _)) ?_
   intro gh w4 ⟨⟨h4t, h4top, h4n, h4v, h4p, h4m, h4l⟩, h4gh⟩
   have hlk4 : ∀ y, y ≠ x → w4.nodes.lookup y = w3.nodes.lookup y := h4l
-  have hnone3 : ∀ z, nx ≤ z → w3.nodes.lookup z = none := by
-    intro z hz
-    cases h' : w3.nodes.lookup z with
-    | none => rfl
-    | some _ => have := h3src z (by rw [h']; rfl); omega
-  have hpx : p ≠ x := by rcases hxlr with h | h <;> rw [h] <;> assumption
-  have hxnx : x < nx := by rcases hxlr with h | h <;> rw [h] <;> assumption
-  have hpT : w3.taken.contains p = false := by
-    have := hN3 ▸ hpn
-    unfold wNode at this
-    split at this
-    · cases this
-    · rename_i h; simpa using h
-  have hNw3 : ∀ y, wNode c.p base w3 y = N y := fun y => by rw [hN3]
-  have hcl' : ∀ y, y ≠ l → y ≠ r → ∀ q ∈ [(l, lMade), (r, rMade)], y ≠ (q : NodeId × Bool).1 := by
-    intro y hyl hyr q hq
-    simp only [List.mem_cons, List.mem_nil_iff, or_false] at hq
-    rcases hq with h | h <;> rw [h] <;> assumption
-  have hne' : ∀ q ∈ [(l, lMade), (r, rMade)], (q : NodeId × Bool).1 ≠ p := by
-    intro q hq
-    simp only [List.mem_cons, List.mem_nil_iff, or_false] at hq
-    rcases hq with h | h <;> rw [h]
-    · exact Ne.symm hpl
-    · exact Ne.symm hpr
-  have hlr' : ∀ (q : NodeId × Bool), q ∈ [(l, lMade), (r, rMade)] → q.1 = l ∨ q.1 = r := by
-    intro q hq
-    simp only [List.mem_cons, List.mem_nil_iff, or_false] at hq
-    rcases hq with h | h <;> rw [h]
-    · exact Or.inl rfl
-    · exact Or.inr rfl
-  have hnoOld : ∀ z, (z = l ∨ z = r) → ∀ cc, (cc, z) ∈ pn.liveAt c.i → cc ≠ cL → cc ≠ cR → False := by
-    intro z hz cc hmem h1 h2
-    rcases hz with hz | hz
-    · rw [hz] at hmem
-      exact h1 (hT.oneLink p cc p cL l hp hp ⟨pn, hpn, hmem⟩ hlink_l).2
-    · rw [hz] at hmem
-      exact h2 (hT.oneLink p cc p cR r hp hp ⟨pn, hpn, hmem⟩ hlink_r).2
+  obtain ⟨hnone3, hpx, hxnx, hpT, hNw3, hcl', hne', hlr', hnoOld, hmpT⟩ :=
+    mergeTail_frameFacts c base x p pn l r cL cR N root nx w3 lMade rMade hT hp hpn hxlr hpt hN3 h3src
+      hlink_l hlink_r hpl hpr hlnx hrnx
   try dsimp only
   cases lMade <;> cases rMade <;>
     simp only [Bool.false_eq_true, ↓reduceIte, writerWP_bind, writerWP_modify, writerWP_pure,
@@ -476,84 +366,9 @@ theorem writerWP_mergeTail_liveMade (c : Ctx) (base : View BVal) (x : NodeId) (d
     | some ksg =>
       obtain ⟨ks2, g2⟩ := ksg
       rw [hsec] at hmkd
-      have hcap : 1 ≤ c.p.mergeMax := by have := hMP.1; have := hMP.2.1; omega
-      obtain ⟨yg, hE1, hgs, hE2⟩ := mrg_splitMerged_two (!xn.leaf) c.p.mergeMax hcap _ first ks2 g2 hmkd
-      have hElt : c.p.mergeMax < (mergeList (!xn.leaf) cR ln.live rn.live).length := by
-        rcases Nat.lt_or_ge c.p.mergeMax (mergeList (!xn.leaf) cR ln.live rn.live).length with h | h
-        · exact h
-        · exfalso
-          unfold splitMerged at hmkd
-          simp only [show (mergeList (!xn.leaf) cR ln.live rn.live).length ≤ c.p.mergeMax from h,
-            ↓reduceIte, Prod.mk.injEq, reduceCtorEq, and_false] at hmkd
-      have hlnL : ∀ q ∈ ln.live, q.1 < cR ∧ ((!xn.leaf) = true → q.1 = 0 ∨ cL < q.1) ∧
-          ((!xn.leaf) = false → cL ≤ q.1) := by
-        intro q hq
-        have hq' : (q.1, q.2) ∈ ln.liveAt c.i := by rw [KNode.liveAt_of_times ln c.i hlt]; exact hq
-        exact ⟨hlrange _ _ hq', hllow _ _ hq'⟩
-      have hrnR : ∀ q ∈ rn.live, ((!xn.leaf) = true → q.1 = 0 ∨ cR < q.1) ∧
-          ((!xn.leaf) = false → cR ≤ q.1) := by
-        intro q hq
-        have hq' : (q.1, q.2) ∈ rn.liveAt c.i := by rw [KNode.liveAt_of_times rn c.i hrt]; exact hq
-        exact hrrange _ _ hq'
-      obtain ⟨hgL, _, hgU0⟩ := mrg_two_g (!xn.leaf) cL cR ln.live rn.live
-        (((mergeList (!xn.leaf) cR ln.live rn.live).length + 1) / 2) g2 yg hsortE (by omega) hgs
-        hclt hlnL hrnR
-      have hg2 : g2 ≠ cR → pn.live.lookup g2 = none := by
-        intro hne
-        cases hlg : pn.live.lookup g2 with
-        | none => rfl
-        | some z =>
-          exfalso
-          have hm : (g2, z) ∈ pn.liveAt c.i := by
-            rw [KNode.liveAt_of_times pn c.i hpt]; exact bk_mem_of_lookup _ _ _ hlg
-          rcases hadj g2 z hm with h1 | h1
-          · omega
-          · have hgt : cR < g2 := by omega
-            have := hgU0 g2 hgt (fun q hq => hrup g2 z hm hgt q.1 q.2 (by
-              rw [KNode.liveAt_of_times rn c.i hrt]; exact hq))
-            omega
-      -- the halves: sorted, filled, naming children of l or r
-      have hsortD : CvSorted ((mergeList (!xn.leaf) cR ln.live rn.live).drop
-          (((mergeList (!xn.leaf) cR ln.live rn.live).length + 1) / 2)) :=
-        hsortE.sublist (List.drop_sublist _ _)
-      have hS1 : CvSorted first := by rw [hE1]; exact hsortE.sublist (List.take_sublist _ _)
-      have hS2 : CvSorted ks2 := by
-        rw [hE2]
-        generalize hb : (!xn.leaf) = b at hsortD hgs ⊢
-        cases b with
-        | false =>
-          simp only [Bool.false_eq_true, ↓reduceIte]
-          exact hsortD
-        | true =>
-          simp only [↓reduceIte]
-          apply renameHead_sorted 0 _ hsortD
-          intro q hq
-          cases hd : (mergeList true cR ln.live rn.live).drop
-              (((mergeList true cR ln.live rn.live).length + 1) / 2) with
-          | nil => rw [hd] at hq; simp at hq
-          | cons a tl =>
-            rw [hd] at hq hgs hsortD
-            simp only [List.head?_cons, Option.some.injEq] at hgs
-            subst hgs
-            simp only [List.tail_cons] at hq
-            have := (List.pairwise_cons.mp hsortD).1 q hq
-            simp at this; omega
-      have hlen1 : first.length = ((mergeList (!xn.leaf) cR ln.live rn.live).length + 1) / 2 := by
-        rw [hE1, List.length_take]; omega
-      have hlen2 : ks2.length = (mergeList (!xn.leaf) cR ln.live rn.live).length -
-          ((mergeList (!xn.leaf) cR ln.live rn.live).length + 1) / 2 := by
-        rw [hE2]
-        split <;> simp [renameHead_length, List.length_drop]
-      have hmb2 := hMP.2.1
-      obtain ⟨hmne1, hmfill1⟩ := hnewFill first hS1 (by omega)
-      obtain ⟨hmne2, hmfill2⟩ := hnewFill ks2 hS2 (by omega)
-      have hsnd := splitMerged_map_snd (!xn.leaf) c.p.mergeMax _ first ks2 g2 hmkd
-      have hsrc1 : ∀ z, z ∈ first.map Prod.snd →
-          z ∈ (mergeList (!xn.leaf) cR ln.live rn.live).map Prod.snd := by
-        intro z hz; rw [← hsnd, List.map_append]; exact List.mem_append_left _ hz
-      have hsrc2 : ∀ z, z ∈ ks2.map Prod.snd →
-          z ∈ (mergeList (!xn.leaf) cR ln.live rn.live).map Prod.snd := by
-        intro z hz; rw [← hsnd, List.map_append]; exact List.mem_append_right _ hz
+      obtain ⟨hcap, hElt, hgL, _, hlen1, hlen2, hmb2, hg2, hmne1, hmfill1, hmne2, hmfill2, hsnd, hsrc1,
+        hsrc2⟩ := mergeTail_twoFacts c hMP pn xn ln rn cL cR first ks2 g2 hmkd hsortE hlt hrt hpt hclt hadj
+          hlrange hllow hrrange hrup hnewFill
       simp only [writerWP_bind, writerWP_pure]
       refine writerWP_mono (writerWP_newKey_frame _ _ _ _ c _) ?_
       intro m2 w7 ⟨hm2, h7n, h7t, h7top, h7next, h7v, h7p, h7m⟩

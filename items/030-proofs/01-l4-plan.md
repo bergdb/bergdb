@@ -1551,3 +1551,32 @@ finds the copy (`holeAtW_stopCopy` with the parent's new node, `KNode.searchLte_
 transaction, or splitting in space, or the space root (the parent's own split and the
 cascade above with the copy the hole, as l4b's `DelFullTimeHole2M` for the leaf);
 `upCascCallRuns_of_rest7` at the runs.
+
+2026-11-17, 02:44 to 02:55. Step 3's rest, the merge tails' shared prelude folded (the
+coordinator's step 1, scaled to what fits), prover l4f. Rule: the full continuation lemma
+(the prelude up to `mergeParent` with the state's facts handed on) was judged too big for
+the night (about 80 named facts in its continuation, the tails' do-block shapes to match;
+about 2 hours), so the prelude's pure parts became three lemmas in LiveMergeRoom.lean, each
+tail taking them by one `obtain` with the same names: `mergeTail_treeFacts` (l's and r's
+links from p, the nodes distinct and below the next id, the sibling filled),
+`mergeTail_newFacts` (the merged klongs sorted, counted, naming children of l or r; a new
+node of them filled), `mergeTail_frameFacts` (after x's heights are read: the overlay above
+the next id empty, p not taken, the cleanup's list, p's other links), and
+`mergeTail_twoFacts` (a merge into two: g2's klong, both new nodes filled, their klongs).
+Tails changed (proofs only, statements unchanged): `writerWP_mergeTail_liveRoomB`,
+`_liveFullTime`, `_liveFullTime2G`, `_liveMade`, `_liveSplitX`, `_liveFullRoot`. About 680
+lines fewer (with the no-hole tails' fold of 02:22, `writerWP_mergeTail_liveSplitX`, the
+merge tails are about 1,000 lines shorter than at 02:00). Left for a successor: the
+monadic part of the prelude (`ghOf`, the new nodes' `newKey` and `setMadeFor`, about 40
+lines a tail) and the merged tree's facts after `mergeParent` (about 75 lines, the same in
+the one-node branches of `_liveSplitX`, `_liveFullRoot` and, but for 7 lines,
+`_liveFullTime`): a lemma over the merged tree V as a function (`wNode` of the state given
+by its agreement with N but at the new nodes) would fold the second.
+
+2026-11-17, 02:57. Step 7 with the merge's tail narrowed, prover l4f
+(`LiveMergeAssembly.lean`): `MergeTailRuns9` (`MergeTailFullRest9OK` at the runs'
+contexts), `mergeTailRuns6_of_9`, and `invGetScanOK_merges_noL4f`: TP7, TP10 and TP11
+for Java's parameters, premises `hp`, `hth`, `MergeTailRuns9`, `R3Calls` (believed false
+at unreached states, so the theorem is believed vacuous until R3 is restated),
+`DelCaseLive DelFullTimeHole2M` and `DelCaseLive DelEmptyCascM`: l4b's
+`invGetScanOK_merges_noL4d` with `MergeTailRuns9` for `MergeTailRuns6`.
