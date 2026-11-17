@@ -132,3 +132,5 @@ import SIS.Tree.LiveDelFull
 import SIS.Tree.LiveDelFullCopy
 import SIS.Tree.LiveDelSpace
 import SIS.Tree.LiveDelRoot
+import SIS.Tree.LiveDelSpaceMade
+import SIS.Tree.LiveDelSegSpace

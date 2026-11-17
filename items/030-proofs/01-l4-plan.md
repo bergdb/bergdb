@@ -935,8 +935,6 @@ a segment leaf or the leaf at the space root (a new root above the halves), the
 made leaf's space split in place, and a compacting split ("bitmap.dead") of a
 last version above h.
 
-
-
 2026-11-17, 00:58 to 01:02. Step 5, the full leaf at the space root, prover
 l4b: not made by the transaction (`DelFullRootM`, LiveDelRoot.lean), any branch
 of the bitmap: a time split puts its last version without the key in a new root
@@ -974,3 +972,26 @@ in place; its tree is the room case's with p's last version, so the room tail wo
 if generalized over p's new node), p's space split, p the space root (d = 1) or a segment
 root (q a segment leaf: R1 at the segment root), and q full or compacting (the cascade,
 R4). No stop rule fired.
+
+2026-11-17, 01:10 to 01:11. Step 5, the made leaf's space split in place,
+prover l4b: the leaf made by the transaction, "bitmap.full", its last version
+without the key above h, below an inner parent with room for the second half's
+klong (`DelFullSpaceMadeRoomM`, LiveDelSpaceMade.lean): the leaf keeps the first
+half, a new node the second, and both are `HalfOK`; the live counts hold after
+with no hole (`writerWP_handleFull_spaceInPlaceRoom_live`, by
+`liveEdgesX_spaceInPlaceStep`): `liveDel_fullSpaceMadeRoom` and, with l4a's
+loop, `liveDel_fullSpaceMadeRoom_live`. Left of step 5: the parent full (the
+cascade), the parent a segment leaf, the made space root's space split, and a
+compacting split of a last version above h below a parent.
+
+2026-11-17, 01:14 to 01:15. Step 5, the leaf below a segment leaf, prover l4b:
+not made by the transaction, "bitmap.full", its last version without the key
+above h, the segment leaf above with room for one klong
+(`DelFullSegSpaceRoomM`, LiveDelSegSpace.lean): the halves (`HalfOK`) under a
+new inner segment root of two live klongs, which the segment leaf names by the
+leaf's klong; the live counts hold after with no hole
+(`writerWP_handleFull_segSpaceRoom_live`, by `liveEdgesX_segSpaceStep`):
+`liveDel_fullSegSpaceRoom` and, with l4a's loop,
+`liveDel_fullSegSpaceRoom_live`. Left of step 5: the parent full (the cascade),
+the made segment root's space split, the made space root's space split, and a
+compacting split of a last version above h below a parent.
