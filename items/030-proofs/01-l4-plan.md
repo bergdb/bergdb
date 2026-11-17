@@ -1320,3 +1320,16 @@ parent, fewer than m live klongs), `delCaseLive_timeCasc_of_hole`.
 `invGetScanOK_merges_noL4c`: premises `hp`, `hth`, `MergeTailRuns6` (l4c's
 `MergeTailFullRest6OK`), `R3Calls` (believed false), `DelFullTimeHoleM`,
 `DelEmptyCascM`.
+
+2026-11-17, 02:10 to 02:18. R4 narrowed further, prover l4b (LiveDelHoleMade.lean):
+the leaf's time split whose copy is a hole, below a parent q that the transaction
+made, not the space root, full or compacting with the copy's klong, whose own
+last version is within a split's bound: q splits in time in place
+(`writerWP_handleFullWith_timeInPlace_termGh`), its node its last version with
+its klong of the leaf naming the copy, so the copy stays the hole under q
+(`writerWP_handleFull_timeMadeParent_liveGh`, by `liveEdgesH_redirect`) and R1
+holds as for a parent with room (`holeAtW_copyG`: `holeAtW_copy` for any new
+parent node whose searches are q's but its klong naming the copy;
+`KNode.searchLte_redirect`). `liveDel_fullTimeMadeParent`. Left of R4:
+`DelFullTimeHole2M` (the hole's parent the space root, not made by the
+transaction, or splitting in space). `invGetScanOK_merges_noL4d`.

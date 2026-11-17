@@ -485,7 +485,13 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   l4c's `MergeTailFullRest6OK` (`MergeTailRuns6`), and R4 narrowed to its hole: the leaf's
   time split with its copy filled (`ChildOK` at the copy) is proved through the cascade
   (`writerWP_handleFull_timeChain_live`, `liveDel_fullTimeChainF`); left `DelFullTimeHoleM`
-  (the copy below an inner parent with fewer than m live klongs). 23:35 (prover l4a, step 3's first part): the merges' loop with
+  (the copy below an inner parent with fewer than m live klongs). 02:18 (l4b): R4 narrowed
+  further (`LiveDelHoleMade.lean`): below a parent that the transaction made, full or
+  compacting, whose own split is in time (in place), the copy stays the hole under the same
+  parent (`writerWP_handleFull_timeMadeParent_liveGh`, R1 by `holeAtW_copyG`, `holeAtW_copy`
+  for any redirected parent node): `liveDel_fullTimeMadeParent`. Left of R4
+  `DelFullTimeHole2M` (the parent the space root, not made, or split in space);
+  `invGetScanOK_merges_noL4d`. 23:35 (prover l4a, step 3's first part): the merges' loop with
   the hole (`LiveLoop.lean`): `writerWP_afterDelete_live`, from `DelInvJAE`, the books,
   `HtInv` and `LiveHoleW key g 0` at a call of `afterDelete`, ends with `LiveEdges`, given
   two obligations: `MergeLiveOK` (a merge of a round keeps the hole one height up, or into
