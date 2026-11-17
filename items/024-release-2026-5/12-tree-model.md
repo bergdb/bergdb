@@ -464,7 +464,14 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   `compact_time_of_path`), `LiveDelFullDead.lean`: `liveDel_fullMadeG_live` (made, in place)
   and `liveDel_fullTimeRoomG_live` (not made, the copy the hole, parent with room) widen
   00:27's and 00:40's. Left of step 5: only the time split's cascade (the leaf not made, its
-  parent without room for the copy's klong: the copy the hole below the chain, R4). 23:35 (prover l4a, step 3's first part): the merges' loop with
+  parent without room for the copy's klong: the copy the hole below the chain, R4). 01:50
+  (l4b): step 7, the assembly: `invGetScanOK_merges_noL4` (`LiveAssembly.lean`), TP7, TP10
+  and TP11 for Java's parameters without `l4`, premises `hp`, `hth` and `l4`'s open narrow
+  pieces at the induction's runs: `MergeTailRuns` (l4c's `MergeTailFullRest3OK`), `R3Calls`
+  (R3 at `afterDelete`'s calls), `DelCaseLive … DelFullTimeCascM` (R4) and `DelCaseLive …
+  DelEmptyCascM` (the stop node without room, l4e's). `liveDelSL_of_pieces` gives `l4L`:
+  `SJ0` from the induction's facts, then the cases (`delMerge_cover`, `delEmptyM_split`,
+  `delEmptyOther_split`, `delFullM_cover`). 23:35 (prover l4a, step 3's first part): the merges' loop with
   the hole (`LiveLoop.lean`): `writerWP_afterDelete_live`, from `DelInvJAE`, the books,
   `HtInv` and `LiveHoleW key g 0` at a call of `afterDelete`, ends with `LiveEdges`, given
   two obligations: `MergeLiveOK` (a merge of a round keeps the hole one height up, or into
