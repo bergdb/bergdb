@@ -219,7 +219,12 @@ Several sessions share the main tree, the Git index, the CPU and
 `news.md`. Today's coordinator owns:
 
 * **commits to `main`.** Other sessions report finished, gated files to
-  it, with their hunks of shared files, and it commits them;
+  it, with their hunks of shared files, and it commits them. `main`'s
+  remote, `origin`, is the public repository github.com/bergdb/bergdb
+  (since 2026-11-17): a commit to `main` is public once pushed, and a
+  push cannot be taken back (`main` refuses force pushes). Before each
+  commit the coordinator checks the change for private data (AGENTS.md,
+  "Public repository");
 * **new item numbers** in shared series such as 006 and 019. A
   session asks it before taking one;
 * **heavy runs**: the four gates (about 45 minutes on all cores), timed
@@ -244,7 +249,9 @@ Two places:
   It is made when the first task is delegated. Its sections follow
   013-01, section 3, step 3: the requests, quoted, with Frans's answers;
   the ground rules; the tasks; the timeline; the progress, with times
-  from `date`; and the Outcome. This is the record. It is committed.
+  from `date`; and the Outcome. This is the record. It is committed, and
+  so public: nothing private goes into it (AGENTS.md, "Public
+  repository"); what is private stays out of the repository.
 * **The state file**, `/Users/f/fl/bench/coord/YYYY-MM-DD/state.md`
   (from the skill's template). It is not in a repository. It holds what
   changes by the minute:

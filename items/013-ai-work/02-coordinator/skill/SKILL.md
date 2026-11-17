@@ -74,7 +74,8 @@ lines instead. Otherwise:
 Make the day's plan, a subitem of the quarter's item in bergdb (such as
 006-10), when the first task is delegated, not before. Follow
 `items/readme.md` and 013-01, section 3, step 3, for its sections. Take
-its number from the main tree right before writing it.
+its number from the main tree right before writing it. The plan is
+committed and the repository is public: nothing private goes into it.
 
 ### `attended`
 
@@ -329,7 +330,10 @@ Rules
   word when he gave one. A usage limit reached goes into the events with
   its times.
 * **Shared things.** Today's coordinator owns:
-  * commits to `main`, in Frans's name, with no AI attribution;
+  * commits to `main`, in Frans's name, with no AI attribution. `origin`
+    is the public github.com/bergdb/bergdb: a pushed commit is public at
+    once. Check each change for private data first (AGENTS.md, "Public
+    repository");
   * new numbers in shared item series;
   * heavy runs, one at a time;
   * the summary in `news.md`.
