@@ -132,11 +132,14 @@ the model's view of it (the tree checker's):
 
 - `Mid`, between two operations of a transaction: J1 the contract's
   invariants; J2 the contents are those before the transaction with the
-  operations so far applied; J3 the frame; J4 TREE; J5 the top's clauses;
+  operations so far applied; J3 the frame; J4 TREE; J5 the top (`WTopInv`:
+  the writer's super root is the one it started with, or one it made, of
+  time i, with skip pointers that meet the top's clause);
   BalancedOK for every node and klong (`BalancedAll`); and the books B1 to
-  B13 (which nodes are made, the times, what `madeFor` names, no klong
-  names a node taken back, the levels, the ids, replaced nodes as they
-  were, made key nodes reached, the bounds, a time klong first).
+  B14 (which nodes are made, the times, what `madeFor` names, no klong
+  names a node taken back, the levels within G and H, the ids, replaced
+  nodes as they were, made key nodes reached, the bounds, a time klong
+  first, the link of a made node).
 - `OpStep`: an operation on a key as `Keys.toSegments` makes it that
   `putKv` accepts, and that leaves no key node outside the bounds G and H,
   keeps `Mid`.
@@ -197,6 +200,16 @@ Decisions, with reasons:
     that puts one key twice (the first value is made, kept and no longer
     reached); Java gives the Dag one operation a key, so the traces do not
     show it.
+- **Restated at 16:50 to 17:00**, from the proof of the new top node and
+  the take-back's reading:
+  - J5 is `WTopInv` (first named `TopInv`; 030-07 has that name), not only
+    the top's clauses: the writer makes the next top node's skip pointers
+    from its super root's, so the statement must say what its super root
+    is. `Shows` says that the super root's skip pointers are at the bits
+    of its ordinal, and `Books` that they name top nodes with their times;
+    `WriterMeets` gives the second back; the first is the view's.
+  - B5 says that the segment and the height are within G and H.
+  - B14, the link of a made node, added (section 5.2, the take-back).
 
 
 # 4. What is proved (items 3 and 4)
@@ -520,3 +533,18 @@ the space split in that form is not made.
 2026-11-17, 19:15. The last put, in work: a new segment leaf above which
 the segment leaf is full (`WriterCascadeDefsO.lean`: soundness read on the
 map with the new leaves set as they will be right after the recursion).
+2026-11-17, 19:15 to 19:45. The fifth wave done: a put of a key of more
+segments whose segment trees exist, and one that makes new segment leaves
+where the leaf above has room. Main 84e7b8e3 merged (the coordinator,
+19:35). The commits since 84e7b8e3 are one commit, c9015c05: one of mine
+had changed a file that was pinned later without the pin file, which the
+gate's step 5 refuses for every commit since the base; nothing landed was
+rewritten. `gate.sh 84e7b8e3`: GATE OK (141 theorems). `writer.sh`: WRITER
+OK. `contractcheck` and `bridgecheck` on the small and drain sets, run
+directly: CONTRACT OK, BRIDGE OK.
+For the coordinator: `check.sh` stops in this clone at main's own
+`bridge-faults.sh`: its case `small` (`test/small.trace`, 030-15) is
+expected to pass and fails KIND (030-14's K-LEVEL), on main 84e7b8e3 as
+it is, before any file of mine. `check.sh` runs `bridge-faults.sh` only
+where the reclaim set is there, so a clone without it does not see this.
+GATED c9015c05: keys of more segments: putKv_put_routed, putKv_put_newseg, writerMeets_puts; the recursion with an unfilled segment leaf (handleFull_time_o, handleFull_space_o); handleFull_time_h for the delete.
