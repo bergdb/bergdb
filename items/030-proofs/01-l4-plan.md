@@ -1772,3 +1772,26 @@ klong, searches k1 to q (below the divider) or the second half (`searchLte_looku
 a node whose live klongs are n's and a new one above the klong n's search found), a leaf
 whose search of k1 names y. The premises of `descendToHeight_topSeg_innerRoot` but y's node
 and height. Writer shapes for R1 now cover all 69 thin-copy cascades on the runs.
+
+2026-11-17, 03:54. Prover l4g's state for a successor (R4's open part, steps 03:13 to 03:54,
+gates 1 to 11). Proved, no premises: R1 through two changed levels in the three forms
+(`descendToHeight_redirectSeg2`, `holeAtW_copyG2`, `holeAtW_stopCopy2`, q0 keeping its id),
+R1 for any new first-segment tree (`descendToHeight_topSeg`), the writer shapes of all six
+ways the 69 split q (`writerWP_appendKlongs_rootTimeHole`, `_timeRoomHole`,
+`_timeInPlaceHole`, `_rootInPlaceHole`, `_spaceRoomHole`, `_rootSpaceHole`,
+`_inPlaceSpaceRootHole`), and the live counts of p's time split with any cascade, the copy
+the hole (`writerWP_handleFull_timeChainV_liveHole`). The route left for the 69 (about 3 to
+4 hours): (1) a hole version of l4f's `writerWP_mergeTail_liveSplitX`: its one-node branch
+with p's last version thin takes a split premise from the tail's `hLV` (`LiveEdgesH` V with
+the hole p; `liveEdgesX_of_holeH`, p's namer a segment leaf) in place of
+`liveEdges_of_oneHole`, and ends with `LiveHoleW key g (h + 1)` (`liveEdgesH_of_holeX`, the
+copy keeping the merged node's klong, then `liveHoleW_of_hole`); (2) that premise's instance:
+the live counts by `writerWP_handleFull_timeChainV_liveHole`, the up call's shape by the
+lemma for q's kind (its conditions: q0's room, the range fact from `RangeOrder`), y's node
+(p's last version) and height (p's, the copy made by `newKey` with p's cached pair), and R1
+at the end state by the `descendToHeight_*` lemma (the merge's cleanup touches only p, l and
+r); (3) `MergeTailFullRest10OK` reduced, its case of the 69 proved. For l4b's
+`DelFullTimeHole2M` and l4e's `UpCascSplitRest7OK` the copy is named by an inner node, so
+`writerWP_appendKlongs_chainGLX`'s E does not fit: their writer side needs a `LiveEdgesH`
+form of the chain (the hole carried up through q's copy or half), and R1 where q is a
+segment root or the space root.
