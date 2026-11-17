@@ -28,3 +28,4 @@ open Contract
 #print axioms skip_dead
 #print axioms checkTopTx_sound
 #print axioms Contract.Example3.meetsTop
+#print axioms historyTopOk_meetsTop
