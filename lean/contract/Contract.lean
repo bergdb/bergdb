@@ -48,6 +48,12 @@ import Contract.Proof.Recover
 import Contract.Proof.RecoverModel
 import Contract.RecoverTheorems
 import Contract.RecoverExample
+import Contract.RecoverCheck
+import Contract.RecoverJava
+import Contract.Proof.RecoverJava
+import Contract.RecoverLeafGap
+import Contract.Proof.RecoverTop
+import Contract.RecoverJavaTheorems
 import Contract.Proof.TreeCtx
 import Contract.Proof.NodeAlg
 import Contract.Proof.Sound

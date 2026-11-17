@@ -22,7 +22,8 @@ from a cut stream gives it) reads the tree `viewTree V leaf`:
 * a data node of V is a value, with its data entry's value;
 * an index node of V other than the root is a key node with V's level, the
   kind `leaf x` (segment leaf or inner node: the model's entries do not hold
-  it; Java's record does), and as klongs one time klong and then, for each
+  it; Java's record does; the theorems take it from the level, `kindOf`,
+  below), and as klongs one time klong and then, for each
   compare value that the node holds live, its key klong: the pointee of its
   last key entry, unless a later delete entry names the compare value (the
   fold of `blive`, lean/SIS/Tree/Val.lean).
@@ -32,8 +33,10 @@ else of V. `vget` and `vscan` are the readers of Read.lean on that tree.
 
 `ReadsRight V leaf txs t`: every get and every scan of that reader gives what
 the plain map after the first t transactions of txs gives. The theorems
-(RecoverTheorems.lean) prove it for the views after a crash, after restarts,
-under eviction with handles, after a lazy startup and after safe cuts.
+(RecoverTheorems.lean) prove it, with the kinds from the levels
+(`kindOf kind V`) for a history that meets K-LEVEL (`KindsOK`), for the views
+after a crash, after restarts, under eviction with handles, after a lazy
+startup and after safe cuts.
 
 Everything here runs; nothing needs Mathlib.
 -/
@@ -106,11 +109,49 @@ def vscan (V : View BVal) (leaf : NodeId → Bool) (req : ScanReq) (limit : Nat)
     List (Key × Nat) :=
   scan (viewTree V leaf) req limit
 
-/-- The kinds of the key nodes of a tree: true for a segment leaf. -/
-def leafOf (s : Tree) (x : NodeId) : Bool :=
-  match s.obj x with
-  | some (.key n) => n.leaf
-  | _ => false
+/-! ## The kinds of the key nodes, by their levels
+
+English. The model's nodes have a level, a data flag and entries; the kind of
+a key node (segment leaf or inner node) is not among them, and the reads need
+it: in a segment leaf a klong consumes a key segment, in an inner node it
+does not (Read.lean). Java writes the kind in the node's record
+(`StoredKeyNode`). Two histories that differ only in one node's kind can have
+one model structure and one stream, and different reads (bergdb 030-14,
+section 2: an independent review's `FullLeafGap`). So the kind must come
+through the model's structure: here, through the level, which the model has
+and recovery gives back.
+
+* K-LEVEL, a clause of the history: a key node's kind is a function `kind` of
+  its level. Java's traces: a key node in segment s at height e has level
+  1 + (g - s)(h + 1) + e, a segment leaf height 0 (bergdb 027-02, section 4,
+  the TREE line), so `kind l` is `(l - 1) % (h + 1) == 0`
+  (`kindOfHeight h`). Checked on every key node of D after every transaction
+  and on the start (`kindsOk`; RecoverCheck.lean, the bridge checker).
+* The reader of a view takes each node's kind from its level in the view
+  (`kindOf kind V`). -/
+
+/-- The kind that the TREE line's h gives a level: a segment leaf if its
+height in its segment tree is 0. -/
+def kindOfHeight (h : Nat) (l : Nat) : Bool := (l - 1) % (h + 1) == 0
+
+/-- The kinds of the nodes of a view, from their levels. -/
+def kindOf (kind : Nat → Bool) (V : View BVal) (x : NodeId) : Bool :=
+  match V x with
+  | some n => kind n.level
+  | none => false
+
+/-- K-LEVEL for the key nodes xs of a tree, computed. -/
+def kindsOk (kind : Nat → Bool) (s : Tree) (xs : List NodeId) : Bool :=
+  xs.all (fun x => match s.obj x with
+    | some (.key n) => n.leaf == kind n.level
+    | _ => true)
+
+/-- K-LEVEL for a history: every key node of the start, and every key node of
+D after every transaction, has the kind of its level. (A key node that is not
+in D is unchanged: the frame.) -/
+def KindsOK (kind : Nat → Bool) (h : BHist) : Prop :=
+  (∀ x n, h.s0.obj x = some (.key n) → n.leaf = kind n.level) ∧
+  ∀ j (hj : j < h.txs.length), kindsOk kind (h.tree (j + 1)) h.txs[j].D = true
 
 /-- The view that a list of nodes with their contents gives: what a read
 through the handles, or a lazy read, returns (`SIS.Mem.read`). -/

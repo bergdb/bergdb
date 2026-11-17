@@ -122,7 +122,7 @@ theorem view_of_reachable {sp : SIS.Spec BVal Nat} {P : Struct BVal} {t : Nat} {
 and every node that the tree reaches as the tree has it: a key node with the
 same level, kind and live klongs, a value with its value. -/
 theorem BInv.view_agree {t : Nat} (hi : BInv h t) (lf : NodeId → Bool)
-    (hlf : ∀ x n, (h.tree t).obj x = some (.key n) → lf x = n.leaf) :
+    (hlf : ∀ x n, x ∈ reach (h.tree t) → (h.tree t).obj x = some (.key n) → lf x = n.leaf) :
     (viewTree (SIS.view h.spec (h.P t) t) lf).root = (h.tree t).root ∧
     ∀ x o, x ∈ reach (h.tree t) → (h.tree t).obj x = some o →
       ∃ o', (viewTree (SIS.view h.spec (h.P t) t) lf).obj x = some o' ∧ ObjAgree o o' := by
@@ -167,7 +167,7 @@ theorem BInv.view_agree {t : Nat} (hi : BInv h t) (lf : NodeId → Bool)
       · simp only [viewTree, hx0, ite_false, hv, hup, Option.bind_some, objOf]
         rfl
       · obtain ⟨hwf, hfull⟩ := hi.wf x nx ho
-        exact ⟨rfl, hlf x nx ho, live_klongsOfE nx.ks hwf hfull, klongsOfE_wf _⟩
+        exact ⟨rfl, hlf x nx hx ho, live_klongsOfE nx.ks hwf hfull, klongsOfE_wf _⟩
     | val v =>
       obtain ⟨t0, ht0, hP⟩ := hrep
       have hv := view_of_reachable hrx hP
@@ -200,12 +200,19 @@ theorem invOk_good {s : Tree} (h : invOk p s = true) : ∃ r, s.root = some r �
         simp only [Bool.and_eq_true] at h
         exact ⟨r, rfl, walk_good _ _ _ _ h.2⟩
 
+/-- The kinds of a tree's key nodes (a helper of the proofs). -/
+def leafOf (s : Tree) (x : NodeId) : Bool :=
+  match s.obj x with
+  | some (.key n) => n.leaf
+  | _ => false
+
 /-- For a history that meets the bridge's clauses: the reader of the view of
-the model's structure after transaction k, at any time t up to k, with the
-kinds of the tree after k, is right. -/
-theorem MeetsBridge.view_reads (hm : MeetsBridge p h) (hM : 1 ≤ p.M) {k t : Nat}
-    (hk : k ≤ h.txs.length) (htk : t ≤ k) :
-    ReadsRight (SIS.view h.spec (h.P k) t) (leafOf (h.tree k)) (h.txs.map (·.ops)) t := by
+the model's structure after transaction k, at any time t up to k, with kinds
+that are right on the key nodes that the tree after t reaches, is right. -/
+theorem MeetsBridge.view_reads_lf (hm : MeetsBridge p h) (hM : 1 ≤ p.M) {k t : Nat}
+    (hk : k ≤ h.txs.length) (htk : t ≤ k) (lf : NodeId → Bool)
+    (hlf : ∀ x n, x ∈ reach (h.tree t) → (h.tree t).obj x = some (.key n) → lf x = n.leaf) :
+    ReadsRight (SIS.view h.spec (h.P k) t) lf (h.txs.map (·.ops)) t := by
   rw [view_later hm htk hk]
   have ht : t ≤ h.txs.length := le_trans htk hk
   have hi := hm.binv t ht
@@ -217,12 +224,8 @@ theorem MeetsBridge.view_reads (hm : MeetsBridge p h) (hM : 1 ≤ p.M) {k t : Na
     rw [List.take_of_length_le (by rw [hlen]), List.map_take]
   rw [htake] at hcont
   obtain ⟨r, hr, hG⟩ := invOk_good hinv
-  have hlf : ∀ x n, (h.tree t).obj x = some (.key n) → leafOf (h.tree k) x = n.leaf := by
-    intro x n hx
-    obtain ⟨n', h1, h2⟩ := hm.leaf_later k htk hk x n hx
-    simp [leafOf, h1, h2]
-  obtain ⟨hroot, hag⟩ := hi.view_agree (leafOf (h.tree k)) hlf
-  have hr' : (viewTree (SIS.view h.spec (h.P t) t) (leafOf (h.tree k))).root = some r := by
+  obtain ⟨hroot, hag⟩ := hi.view_agree lf hlf
+  have hr' : (viewTree (SIS.view h.spec (h.P t) t) lf).root = some r := by
     rw [hroot, hr]
   obtain ⟨n0, hobj0⟩ : ∃ n0, (h.tree t).obj r = some (.key n0) := by
     cases hG with
@@ -243,5 +246,43 @@ theorem MeetsBridge.view_reads (hm : MeetsBridge p h) (hM : 1 ≤ p.M) {k t : Na
   · intro req hreq limit
     unfold vscan
     rw [scan_eq_of_agree hr hr' hG _ hR hag hRr req hreq, scan_contents hinv req hreq, hcont]
+
+/-- K-LEVEL for every key node of every tree of a history that meets the
+contract: the start's and D's are checked, the others are unchanged (the
+frame). -/
+theorem MeetsBridge.kinds (hm : MeetsBridge p h) {kind : Nat → Bool} (hkd : KindsOK kind h) :
+    ∀ j, j ≤ h.txs.length → ∀ x m, (h.tree j).obj x = some (.key m) → m.leaf = kind m.level
+  | 0, _, x, m, hx => hkd.1 x m hx
+  | j + 1, hj, x, m, hx => by
+    have hjl : j < h.txs.length := by omega
+    by_cases hD : x ∈ h.txs[j].D
+    · have := List.all_eq_true.mp (hkd.2 j hjl) x hD
+      rw [hx] at this
+      simpa using this
+    · have hfr := (hm.step j hjl).1.2
+      cases ho : (h.tree j).obj x with
+      | some o =>
+        obtain ⟨o', ho', _, hsame⟩ := hfr.1 x o ho
+        rw [hsame hD, hx] at ho'
+        injection ho' with ho'
+        rw [← ho'] at ho
+        exact hm.kinds hkd j (by omega) x m ho
+      | none => exact absurd (hfr.2.1 x m hx ho) hD
+
+/-- For a history that meets the bridge's clauses and K-LEVEL: the reader of
+the view of the model's structure after transaction k, at any time t up to
+k, with the kinds that the view's levels give, is right. -/
+theorem MeetsBridge.view_reads (hm : MeetsBridge p h) (hM : 1 ≤ p.M) {kind : Nat → Bool}
+    (hkd : KindsOK kind h) {k t : Nat} (hk : k ≤ h.txs.length) (htk : t ≤ k) :
+    ReadsRight (SIS.view h.spec (h.P k) t) (kindOf kind (SIS.view h.spec (h.P k) t))
+      (h.txs.map (·.ops)) t := by
+  apply hm.view_reads_lf hM hk htk
+  intro x n hx ho
+  rw [view_later hm htk hk]
+  have hi := hm.binv t (le_trans htk hk)
+  have hrx := hi.mem_reach_model hx
+  have hP : (h.P t).get? x = some ⟨n.level, false, entriesOf n.ks⟩ := hi.rep x _ ho
+  simp only [kindOf, view_of_reachable hrx hP]
+  exact (hm.kinds hkd t (le_trans htk hk) x n ho).symm
 
 end Contract

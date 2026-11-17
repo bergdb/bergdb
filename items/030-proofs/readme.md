@@ -278,12 +278,15 @@ Files
   Status: open.
 * [030-14](14-reads-after-crash.md). Reads after a crash, a restart and
   under eviction, end to end (030-11, finding 3): a reader of the model's
-  view at a time, proved right for any history that meets `MeetsFull`, so
+  view at a time, with each key node's kind from its level (K-LEVEL, a new
+  clause checked by `bridgecheck`, after an independent review's
+  `FullLeafGap`), proved right for any history that meets `MeetsFull`, so
   that after a crash, restarts, a lazy startup, eviction with handles and
   safe cuts every get and scan at every available time gives the plain
-  map's value; the map keeps the live klongs (`live_klongsOfE`); a closed
-  example from `BridgeExample4`; 030-04, 3.5, item 13. The night of 17
-  November. Status: open.
+  map's value; Java's readers after a crash, with their search through the
+  skip pointers over the top that the stream holds; closed examples from
+  `BridgeExample4`; 030-04, 3.5, item 13. The night of 17 November.
+  Status: open.
 
 Log
 ===

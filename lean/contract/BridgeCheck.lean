@@ -14,12 +14,15 @@ the contract's words (Contract/Bridge.lean, Contract/BridgeTop.lean):
   trace's lines give (`applyTop`), the tree's space roots are the top's, and
   clause TB (`topChangeOk`);
 * TOUCH, A6' and COPY (`touchOk`, `adoptOk`, `copyOk`);
+* KIND, K-LEVEL (bergdb 030-14): every key node of D has the kind that its
+  level gives with the TREE line's h (`kindsOk`, `kindOfHeight`);
 
-and for TX 0 the start (`startCheck`, `topStartOk`), TREE and A6'. Then the
+and for TX 0 the start (`startCheck`, `topStartOk`), TREE, A6' and KIND. Then the
 verdict on the whole trace as one value (`fullHistoryOk`, with the writer's
 contract for every transaction), which gives a history that meets every
 clause (`MeetsFull`: `fullHistoryOk_meets`), and so `MeetsBridge` and
-`MeetsEvict`.
+`MeetsEvict`; and the verdict on K-LEVEL (`kindsHistoryOk`, which gives
+`KindsOK`: `kindsHistoryOk_meets`).
 
 With `--model` as the first argument also the clauses in the model's words, on
 the model's structure before and after the transaction (the trace checker's:
@@ -43,6 +46,7 @@ import Contract.Complete
 import Contract.BridgeHeap
 import Contract.Trace
 import Contract.TraceTop
+import Contract.RecoverCheck
 
 open Contract
 
@@ -67,6 +71,7 @@ structure BCounts where
   mtch : Nat := 0
   ma6 : Nat := 0
   mcopy : Nat := 0
+  kd : Nat := 0
   first : Option String := none
 
 def BCounts.fail (c : BCounts) (msg : String) : BCounts :=
@@ -74,10 +79,10 @@ def BCounts.fail (c : BCounts) (msg : String) : BCounts :=
 
 def BCounts.bad (c : BCounts) : Nat :=
   c.s + c.n + c.k + c.l + c.a2 + c.a3 + c.a5 + c.tree + c.tb + c.tch + c.a6 + c.copy +
-    c.mtop + c.mtch + c.ma6 + c.mcopy
+    c.mtop + c.mtch + c.ma6 + c.mcopy + c.kd
 
 def BCounts.show (c : BCounts) (model : Bool) : String :=
-  s!"{c.txs} transactions, {c.news} nodes made, {c.adds} entries, {c.touch} touched; failures: start {c.s}, N {c.n}, K {c.k}, L {c.l}, A2 {c.a2}, A3 {c.a3}, A5 {c.a5}, TREE {c.tree}, TB {c.tb}, TOUCH {c.tch}, A6' {c.a6}, COPY {c.copy}" ++
+  s!"{c.txs} transactions, {c.news} nodes made, {c.adds} entries, {c.touch} touched; failures: start {c.s}, N {c.n}, K {c.k}, L {c.l}, A2 {c.a2}, A3 {c.a3}, A5 {c.a5}, TREE {c.tree}, TB {c.tb}, TOUCH {c.tch}, A6' {c.a6}, COPY {c.copy}, KIND {c.kd}" ++
   (if model then s!"; in the model's words: TOP {c.mtop}, TOUCH {c.mtch}, A6' {c.ma6}, COPY {c.mcopy}" else "")
 
 def BCounts.add (a c : BCounts) : BCounts :=
@@ -86,7 +91,7 @@ def BCounts.add (a c : BCounts) : BCounts :=
     a2 := a.a2 + c.a2, a3 := a.a3 + c.a3, a5 := a.a5 + c.a5, tree := a.tree + c.tree,
     tb := a.tb + c.tb, tch := a.tch + c.tch, a6 := a.a6 + c.a6, copy := a.copy + c.copy,
     mtop := a.mtop + c.mtop, mtch := a.mtch + c.mtch, ma6 := a.ma6 + c.ma6,
-    mcopy := a.mcopy + c.mcopy }
+    mcopy := a.mcopy + c.mcopy, kd := a.kd + c.kd }
 
 def checkBridgeTrace (model : Bool) (tr : Trace) (old : SIS.Check.Trace) : BCounts := Id.run do
   let chs := old.recs.map SIS.Check.changesOf
@@ -94,6 +99,7 @@ def checkBridgeTrace (model : Bool) (tr : Trace) (old : SIS.Check.Trace) : BCoun
   let p0 := SIS.Struct.apply (V := SIS.Check.BVal) [] 0 c0
   let sp := SIS.Check.bspec chs p0 true
   let topLevel := sp.topLevel
+  let kind := kindOfHeight tr.shape.H
   let mut P := p0
   let mut tp : Top := []
   let mut tp0 : Top := []
@@ -118,6 +124,7 @@ def checkBridgeTrace (model : Bool) (tr : Trace) (old : SIS.Check.Trace) : BCoun
       if !(topStartOk ch tp' h'.tree) then c := { c.fail "TX 0: TB, the start's top" with tb := c.tb + 1 }
       if !(treeOkB (h'.tree.at 0)) then c := { c.fail "TX 0: TREE" with tree := c.tree + 1 }
       if !(adoptOk (h'.tree.at 0)) then c := { c.fail "TX 0: A6'" with a6 := c.a6 + 1 }
+      if !(startKindsOk kind h') then c := { c.fail "TX 0: KIND" with kd := c.kd + 1 }
       if model then
         if !(adoptB sp p0 0) then c := { c.fail "TX 0: A6' in the model's words" with ma6 := c.ma6 + 1 }
     else
@@ -141,6 +148,7 @@ def checkBridgeTrace (model : Bool) (tr : Trace) (old : SIS.Check.Trace) : BCoun
       if !(touchOk (s.at (i - 1)) tp ch.touch) then c := { c.fail s!"TX {i}: TOUCH" with tch := c.tch + 1 }
       if !(adoptOk (s'.at i)) then c := { c.fail s!"TX {i}: A6'" with a6 := c.a6 + 1 }
       if !(copyOk i s s' tp ch) then c := { c.fail s!"TX {i}: COPY" with copy := c.copy + 1 }
+      if !(kindsOk kind s' d) then c := { c.fail s!"TX {i}: KIND" with kd := c.kd + 1 }
       let P' := P.apply i ch
       if model then
         if !(topOkB sp P P' i s s' ch) then
@@ -161,6 +169,8 @@ def checkBridgeTrace (model : Bool) (tr : Trace) (old : SIS.Check.Trace) : BCoun
   if c.bad == 0 then
     if !(fullHistoryOk { M := tr.M } h0 c0 tp0 steps.toList) then
       c := { c.fail "the verdict on the whole trace (fullHistoryOk) fails" with s := c.s + 1 }
+    if !(kindsHistoryOk kind h0 steps.toList) then
+      c := { c.fail "the verdict on K-LEVEL (kindsHistoryOk) fails" with s := c.s + 1 }
     if model && !(bridgeHistoryOk { M := tr.M } h0 c0 steps.toList) then
       c := { c.fail "the verdict on the whole trace in the model's words (bridgeHistoryOk) fails" with s := c.s + 1 }
   return c
