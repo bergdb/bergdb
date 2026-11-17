@@ -1601,3 +1601,27 @@ the time split's cascade into one node with the copy thin (69 on the runs: a seg
 below a full segment leaf, the copy one live klong; the classifier's hole note shows the
 descent at h + 1 finding the copy on every one, so the case's R1 holds on the runs), and
 p made by the transaction split in space (in place; 0 on the runs).
+
+2026-11-17, 02:56 to 03:02. Step 6, which full stop nodes occur on runs, prover l4e.
+Step 0's checker with each upward delete whose stop node (a segment leaf) is full
+classified as the reductions of `UpCascCallOK` take it
+(`/Users/f/fl/bench/2026-11-16/night/l4e/runs/upcasc-cases.lean.txt`, a copy of l4c's
+merge-full-cases; output `upcasc-cases-out.txt` beside it; 2 min 30 s, the same 15
+families, 0 failures of C1 to C6). Of 294 full stop nodes: the space root not made 98
+(01:56), made 48 (02:36); below the root, made, in time 56 (02:22) and in space 27 (02:27);
+not made, in space 12 without a cascade and 13 with (02:15); in time with the copy filled
+26 without a cascade and 6 with (02:33); the copy under the fill below a parent with room
+8 (02:50); below a made parent split in place 0 (02:55); `UpCascSplitRest7OK`'s case (the
+copy's parent not made, splitting in space, or the space root) 0. So every full stop node
+on the runs is in a proved case; the premise left never ran (as R3's C4 branch).
+
+2026-11-17, 03:04 to 03:09. R4's two changed levels, first piece, prover l4e
+(`LiveRedirect2.lean`, about 80 lines). `lteP_redirect2`: `lteP_redirect` one level
+higher: on a descent through q0 and its child to a leaf a, where at the new reads q0's
+search names a new inner node q' whose search names a leaf y, and the reads agree on the
+descent's nodes before q0, the new descent ends at y. It is the descent's core for R1 when
+the hole's parent splits too (its copy or a half between q0 and the hole): l4b's
+`DelFullTimeHole2M` and l4e's `UpCascSplitRest7OK`. Not yet used: what is left for each is
+R1 at the state level (a `holeAtW_stopCopy` with this lemma for `lteP_redirect`) and the
+writer's two splits with the hole below (the parent's split with the copy's klong put,
+`handleFullWith` with `ins`), as a successor's step.
