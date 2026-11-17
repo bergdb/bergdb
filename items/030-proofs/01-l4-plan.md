@@ -1133,3 +1133,27 @@ unchanged otherwise: `liveDel_fullMadeG_live` (made, in place) and
 cases are now all proved but one, given l4a's loop: the leaf not made, split in
 time, its parent without room for the copy's klong (the cascade with the copy the
 hole below the chain, R4).
+
+2026-11-17, 01:33 to 01:45. Step 3's rest, fifth part, prover l4c. Which full-parent
+merges occur on step 0's runs: step 0's checker with each merge whose parent goes `full`
+classified by its notes (`/Users/f/fl/bench/2026-11-16/night/l4c/runs/merge-full-cases.lean.txt`,
+2 min 30 s, the same 15 families). Of 1,198 full-parent merges: the parent a segment root
+split in time below its segment leaf, no cascade, 454 (233 into one node, 221 into two);
+the same with a cascade, 194; made, split in time in place, about 155 (proved); below an
+inner parent, split in time, no cascade, about 100 (proved); the space root split in time
+(d = 1), 81; a segment root split in space, 67 without a cascade and 60 with; the space
+root split in space, 12; below an inner parent split in space, 2 (proved); in time with
+a cascade, 2. So the segment root case was taken next: `MergeTailFullRest3OK` reduced to
+`MergeTailFullRest4OK`, its case `MergeFullTimeRoomG` proved (p not made, split in time,
+below q, a segment leaf or inner, with room; one node or two). R1 at the segment root
+(`descendToHeight_redirectSeg`, LiveMergeFull.lean): the round's descent below the segment
+root is one step (q, a leaf, cannot be inner on it), so p is the segment root and q the
+leaf above; at the next round the segment search reads alike up to q, q's long klong now
+names the copy (`KNode.add_key_searchEq`), and the descent stops at the copy, of height
+h + 1. Into two nodes the copy is filled under the segment leaf too
+(`writerWP_mergeTail_liveFullTime2G`, by `childOK_grow`). The round lemma
+`writerWP_mergeTail_liveFullTimeRoundG` takes both; the earlier ones are its instances.
+`writerWP_afterDelete_liveTR4`: premises `MergeTailFullRest4OK`, `MergeParamsOK`, R3.
+Left: p not made and the space root (d = 1; 93 on the runs), a segment root's space split
+(127), q full or compacting (the cascade, R4; 196), and p made and split in space (0 on the
+runs). No stop rule fired.
