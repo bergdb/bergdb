@@ -506,6 +506,15 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   `MergeTailFullRestOK`: p made by the transaction, p's space split, p the space root or a
   segment root, and q full or compacting (the cascade, R4). `writerWP_afterDelete_liveTR`:
   premises `MergeTailFullRestOK`, `MergeParamsOK` and R3.
+  01:22 (prover l4c, `LiveMergeMade.lean`, about 1,000 lines, about 450 of them the room
+  tail again): `MergeTailFullRestOK` reduced to `MergeTailFullRest2OK`, its case
+  `MergeFullMadeTime` proved: p made by the transaction splits in time in place, so p's node
+  becomes its last version and nothing else changes; the room tail's steps carry over
+  (`writerWP_mergeTail_liveMade`), and the next round's descent finds p
+  (`writerWP_mergeTail_liveMadeRound`, `descendToHeight_up`, the heights' cache read alike
+  from the tail's frames). Left in `MergeTailFullRest2OK`: p's space split (made or not), p
+  not made and the space root or a segment root, and q full or compacting (the cascade, R4).
+  `writerWP_afterDelete_liveTR2`: premises `MergeTailFullRest2OK`, `MergeParamsOK` and R3.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next
