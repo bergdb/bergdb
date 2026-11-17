@@ -43,3 +43,8 @@ import Contract.Writer
 import Contract.Proof.WriterRun
 import Contract.BridgeExample4
 import Contract.BridgePolicy
+import Contract.Recover
+import Contract.Proof.Recover
+import Contract.Proof.RecoverModel
+import Contract.RecoverTheorems
+import Contract.RecoverExample
