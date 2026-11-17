@@ -247,18 +247,22 @@ tested (added by 030-11, finding 2):
     records) and `treecheck` (the KN lines against the model's writer).
 
 The reads after a crash, restarts, eviction and the cut (030-14) speak of a
-reader of the model's view at a time (P@t), so a claim about Java's reads
-after a startup rests on one more, tested (added by 030-14):
+reader of the model's view at a time (P@t), and Java's reads after a startup
+of a tree and a top that hold it, so a claim about Java's reads after a
+startup rests on one more, tested (added by 030-14):
 
-13. **Java's tree after a startup reads as the model's view:** each key node
-    that Java's startup or a first touch reads from the stream has the
-    entries that the model's startup gives back for it, its klongs well
-    formed, and the kind (segment leaf or inner node) it was written with,
-    which the model's entries do not hold; each value its value; and Java's
-    top search finds the root's live top node of the time. Tested by run B
+13. **Java's startup builds what the stream holds:** a tree that holds the
+    model's view (030-14, `HoldsView`: each key node that Java's startup or a
+    first touch reads has the entries that the model's startup gives back for
+    it, its klongs well formed, and the kind, segment leaf or inner node, it
+    was written with; each value its value), and the top that the stream
+    holds (`topOfP`: the top nodes' root and skip pointers). That Java's
+    search and reads are then right is proved (030-14). Tested by run B
     (`conformance.sh`, probe: a restart after a transaction and its lookups
     against the workload) and run E (`ereads=N`: lookups at random times
     under eviction; `erestart=K`), level 2 to level 4; the bytes by item 5.
+    The kind's agreement with the level, which the reads after a crash use,
+    is a checked clause, K-LEVEL (`bridgecheck`, KIND), not an assumption.
 
 ## 3.6 Later, optional
 
