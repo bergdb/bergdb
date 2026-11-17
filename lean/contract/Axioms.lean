@@ -179,3 +179,4 @@ open Contract
 #print axioms Contract.RecoverCutExample.evict_java_get16
 #print axioms Contract.RecoverCutExample.evict_java_get8
 #print axioms Contract.RecoverCutExample.search_before
+#print axioms checkVerdict_sound
