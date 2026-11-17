@@ -63,8 +63,8 @@ def checkBridgeTrace (tr : Trace) (old : SIS.Check.Trace) : BCounts := Id.run do
         c := { c.fail s!"TX {i}: N, the nodes made" with n := c.n + 1 }
       if !(addsOk s s' d ch) then c := { c.fail s!"TX {i}: K, the entries added" with k := c.k + 1 }
       if !(localOk i s s' d) then c := { c.fail s!"TX {i}: L, the key nodes of D" with l := c.l + 1 }
-      let now := nodesAt (s'.at i)
-      let before := nodesAt (s.at (i - 1))
+      let now := reach (s'.at i)
+      let before := reach (s.at (i - 1))
       if !(currentOk (s'.at i) ch now) then c := { c.fail s!"TX {i}: A2" with a2 := c.a2 + 1 }
       if !(madeOk (s'.at i) ch now) then c := { c.fail s!"TX {i}: A3" with a3 := c.a3 + 1 }
       if !(noResOk ch before now) then c := { c.fail s!"TX {i}: A5" with a5 := c.a5 + 1 }

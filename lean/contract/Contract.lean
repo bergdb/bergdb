@@ -15,3 +15,6 @@ import Contract.ShapeStatement
 import Contract.CheckShape
 import Contract.TheoremsShape
 import Contract.ExampleShape
+import Contract.Bridge
+import Contract.BridgeHeap
+import Contract.Proof.BridgeMap

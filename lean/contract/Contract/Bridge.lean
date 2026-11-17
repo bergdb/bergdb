@@ -20,8 +20,8 @@ changes meet its assumptions. Here:
 * Section 3, the clauses that the contract lacks for the model (bergdb 030-06,
   findings 3 to 5). The ones about key nodes and values are in the contract's
   words, on the tree, and computed (`bridgeOk`). The ones about the root and
-  the top nodes, which the contract's tree does not have, and the touch, TREE,
-  A6' and A-COPY are in the model's words, on the model's structure of the
+  the top nodes, which the contract's tree does not have, and the touch, A6'
+  and A-COPY are in the model's words, on the model's structure of the
   history (`BHist.P`), each named.
 * Section 4, a history that meets the contract and the bridge's clauses
   (`MeetsBridge`, and `MeetsEvict` for eviction).
@@ -34,6 +34,7 @@ import SIS.Assumptions
 import SIS.Phys
 import Check.Trace
 import Contract.Statement
+import Contract.Reach
 
 namespace Contract
 
@@ -283,7 +284,7 @@ def localOk (i : Nat) (s s' : Tree) (D : List NodeId) : Bool :=
 /-! ### 3.4 What is reached
 
 English. The nodes reached: from the space root through the live klongs, key
-nodes and values (`nodesAt`: the walk of `contents`).
+nodes and values (`reach`, Reach.lean, bergdb 030-08: the walk of TREE).
 
 * A2. An entry is added only to a node that s' reaches at time i. (An entry
   of a node that is no node of s' is the root's, node 0, or a made node's:
@@ -291,25 +292,6 @@ nodes and values (`nodesAt`: the walk of `contents`).
 * A3. Every node made, key node or value, is reached by s' at time i.
 * A5. Every node that s' reaches at time i was reached by s at time i - 1, or
   is made by the transaction: no node comes back. -/
-
-/-- The nodes reached from key node x, x first; a value is reached from the
-segment leaf that names it. -/
-def nodesFrom (s : Tree) : Nat → NodeId → List NodeId
-  | 0, _ => []
-  | f + 1, x =>
-    match s.obj x with
-    | some (.key n) =>
-      x :: (live n.ks).flatMap (fun cy =>
-        match s.obj cy.2 with
-        | some (.val _) => [cy.2]
-        | _ => nodesFrom s f cy.2)
-    | _ => []
-
-/-- The nodes that the tree reaches. At time t: `nodesAt (s.at t)`. -/
-def nodesAt (s : Tree) : List NodeId :=
-  match s.root with
-  | some r => nodesFrom s (s.fuel r) r
-  | none => []
 
 /-- Clause A2, computed, `now` the nodes that s' reaches at time i. -/
 def currentOk (s' : Tree) (c : Changes BVal) (now : List NodeId) : Bool :=
@@ -330,8 +312,8 @@ A2, A3 and A5. `topLevel` is the level of the primordial top node. -/
 def bridgeOk (topLevel : Nat) (i : Nat) (s s' : Tree) (D : List NodeId) (c : Changes BVal) :
     Bool :=
   newsOk topLevel s s' c && addsOk s s' D c && localOk i s s' D &&
-  currentOk (s'.at i) c (nodesAt (s'.at i)) && madeOk (s'.at i) c (nodesAt (s'.at i)) &&
-  noResOk c (nodesAt (s.at (i - 1))) (nodesAt (s'.at i))
+  currentOk (s'.at i) c (reach (s'.at i)) && madeOk (s'.at i) c (reach (s'.at i)) &&
+  noResOk c (reach (s.at (i - 1))) (reach (s'.at i))
 
 /-! ### 3.5 The top (for bergdb 030-08)
 
@@ -403,10 +385,11 @@ transaction, the j-th at time j, meets the writer's contract (Statement.lean,
 section 5), the computed clauses of sections 3.2 to 3.4, `Made`, the top's
 clauses and the touch rules.
 
-`MeetsEvict` adds what the model assumes for eviction (`EvictRunOK`), as it
-stands, on the model's structure: TREE after every transaction (every node
-reachable but the root is the live child of exactly one reachable node; for
-bergdb 030-08), A6' after every transaction (`adoptAt`: a pointer of a
+`MeetsEvict` adds what the model assumes for eviction (`EvictRunOK`): TREE
+after every transaction and at the start, in the contract's words, as bergdb
+030-08 states it (`TreeOk`, Reach.lean: no node is reached twice; the
+model's TREE, `treeAt`, follows: BridgeTheorems.lean); and, as they stand, on
+the model's structure, A6' after every transaction (`adoptAt`: a pointer of a
 reachable node that is not live names a data node, a node not reachable, or a
 node below it), and A-COPY for every change (`CopyStep`: the pointer of a new
 entry names a node made, a node of the writer's paths, or a pointee of one). -/
@@ -427,7 +410,7 @@ structure MeetsBridge (p : Params) (h : BHist) : Prop where
 /-- What eviction needs besides: TREE and A6' after every transaction, A-COPY
 for every change. -/
 structure MeetsEvict (h : BHist) : Prop where
-  tree : ∀ j ≤ h.txs.length, SIS.treeAt h.spec (h.P j) j
+  tree : ∀ j ≤ h.txs.length, TreeOk ((h.tree j).at j)
   adopt : ∀ j ≤ h.txs.length, SIS.adoptAt h.spec (h.P j) j
   copy : ∀ j (hj : j < h.txs.length), SIS.CopyStep h.spec (h.P j) (j + 1) h.txs[j].c
 
