@@ -148,3 +148,7 @@ open Contract
 #print axioms writerMeets_puts
 #print axioms handleFull_time_o
 #print axioms handleFull_space_o
+#print axioms appendKlongs_spec_o
+#print axioms putKv_put
+#print axioms writerMeets_put
+#print axioms runs_meetsTop_put
