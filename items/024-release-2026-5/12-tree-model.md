@@ -824,6 +824,11 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   04:11 (prover l4g, `LiveRootInPlaceChildHole.lean`): q made, the space root, in place:
   `writerWP_handleFull_rootInPlaceChildHole` and `_R1`. The split step's R1: 68 of the 69;
   left the space root's own space split (`split.space3`, 1).
+  04:13 (prover l4g, `LiveRootSpaceChildHole.lean`): the space root's own space split:
+  `writerWP_handleFull_rootSpaceChildHole` and `_R1`. The split step's R1 (p's split and its
+  cascade, then the descent one height up finds p's copy) is proved for all 69. Left for the
+  69: the merge's tail with the hole around the split (030-01's log, 03:54, route (1)) and
+  the cleanup's frame for R1; then `MergeTailFullRest10OK` reduced.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next

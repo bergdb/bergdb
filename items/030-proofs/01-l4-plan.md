@@ -1853,3 +1853,17 @@ made in place there).
 and splits in time in place, prover l4g (`LiveRootInPlaceChildHole.lean`, about 180 lines).
 `writerWP_handleFull_rootInPlaceChildHole` and `_R1` (`descendToHeight_topSeg_leafRoot`, the
 space root kept). The split step's R1: 68 of the 69; left the space root's own space split.
+
+2026-11-17, 04:11 to 04:13. The split step's R1 for the space root's own space split, prover
+l4g (`LiveRootSpaceChildHole.lean`, about 290 lines, about 150 of them l4b's root space split
+and 03:51's lemma again with the cache). `writerWP_handleFull_rootSpaceChildHole` and `_R1`
+(`descendToHeight_topSeg_innerRoot`). With 03:59 to 04:11's, the split step's R1 is proved
+for every way the 69 split: after `handleFull` of the merge's parent p (not made, in time)
+and its cascade, the merges' descent one height up finds p's copy, which holds p's last
+version and p's cached segment and height (`writerWP_handleFull_*ChildHole_R1`, six forms,
+each with its conditions: q's room, kind and made-ness, q0's room, the range fact, the
+reads of the split's start as the round's above the changed nodes). The live counts of the
+same split: 03:36's `writerWP_handleFull_timeChainV_liveHole`. Left for the 69: route (1) of
+03:54 (the merge's tail with the hole: the split premise from the tail's `hLV`, and the
+cleanup's frame, which touches only p, l and r, for R1 and the live counts), then
+`MergeTailFullRest10OK` reduced to its rest without the 69.
