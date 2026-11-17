@@ -122,6 +122,7 @@ import SIS.Tree.LiveRedirectDescent
 import SIS.Tree.LiveSplitRoom2
 import SIS.Tree.LiveMergeTail
 import SIS.Tree.LiveMergeFull
+import SIS.Tree.LiveMergeMade
 import SIS.Tree.LiveHoleLeaf
 import SIS.Tree.LiveDelLeaf
 import SIS.Tree.LiveUpWalk

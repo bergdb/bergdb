@@ -960,3 +960,19 @@ in place; its tree is the room case's with p's last version, so the room tail wo
 if generalized over p's new node), p's space split, p the space root (d = 1) or a segment
 root (q a segment leaf: R1 at the segment root), and q full or compacting (the cascade,
 R4). No stop rule fired.
+
+2026-11-17, 01:13 to 01:22. Step 3's rest, third part, prover l4c
+(`LiveMergeMade.lean`, about 1,000 lines; about 450 of them the room tail again, with the
+parent's change and the heights' cache's frame). `MergeTailFullRestOK` reduced to
+`MergeTailFullRest2OK`, its case `MergeFullMadeTime` proved: the merge's parent p, made by
+the transaction, goes `full` and splits in time, which is in place
+(`writerWP_handleFullWith_timeInPlace_nodesL`: p's node becomes its last version, nothing
+else changes). So the room proof's steps carry over with `mergeFullLast` for
+`mergeParentNode` (`writerWP_mergeTail_liveMade`, one node or two), and the next round's
+descent finds p (`writerWP_mergeTail_liveMadeRound`, `descendToHeight_up`, the path's
+reads and heights alike from the tail's frames, `writerWP_mergeCleanup_ghp` for p's).
+`writerWP_afterDelete_liveTR2`: premises `MergeTailFullRest2OK`, `MergeParamsOK`, R3.
+Left: p's space split (made, in place, or not), p not made and the space root (d = 1) or
+a segment root (R1 at the root), and q full or compacting (the cascade, R4). No stop rule
+fired.
+
