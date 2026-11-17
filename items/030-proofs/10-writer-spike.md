@@ -125,7 +125,8 @@ the model's view of it (the tree checker's):
   operations so far applied; J3 the frame; J4 TREE; J5 the top (`WTopInv`:
   the writer's super root is the one it started with, or one it made, of
   time i, with skip pointers that meet the top's clause);
-  BalancedOK for every node and klong (`BalancedAll`); and the books B1 to
+  BalancedOK for the key nodes reached and their live klongs (`Balanced`;
+  until 20:50 `BalancedAll`, for every node and klong); and the books B1 to
   B14 (which nodes are made, the times, what `madeFor` names, no klong
   names a node taken back, the levels within G and H, the ids, replaced
   nodes as they were, made key nodes reached, the bounds, a time klong
@@ -200,6 +201,23 @@ Decisions, with reasons:
     `WriterMeets` gives the second back; the first is the view's.
   - B5 says that the segment and the height are within G and H.
   - B14, the link of a made node, added (section 5.2, the take-back).
+
+
+- **Restated at 20:50, `BalancedAll` to `Balanced`** (the coordinator's
+  decision of 20:46 on 030-16's finding F1; the Log has both). My form of
+  16:25, for every key node and every key klong, live or dead, was shown
+  false in Lean by 030-16: a take-back leaves a dead klong that names a
+  node two levels down (`Contract/WriterBalancedFalse.lean`:
+  `balancedAllOld_false`, kept as the record; `balanced_last`: the same run
+  meets the new rule). The rule is now Shape.lean's BalancedOK: for a key
+  node reached from the space root, a level above 0, a segment leaf
+  exactly at height 0, and each live klong of an inner node names a key
+  node one level below. What it cost the put's proofs: the rule is carried
+  from one map to the next by the nodes reached (`Balanced.of_reach`), not
+  node by node; a node read must be shown reached (`getNode_spec`); and
+  the recursion asks that no node is twice on the path (`CasPre.nodup`),
+  which the old form's levels had given. Tested: the checker's shape
+  faults (BalancedOK) after every operation.
 
 
 # 4. What is proved (items 3 and 4)
@@ -429,14 +447,14 @@ false in what it concluded.
 For a claim "the model's writer meets the contract for puts", these are
 the premises that are not proved or not given back, each tested:
 
-- **`SNamed`** (keys of more segments only): every klong of the tree
-  before the transaction names a node of it. Used where a segment leaf's
-  klong is pointed to a new segment root in place. The put's theorems do
-  not give it for the tree after the transaction, so a history of such
-  transactions needs it at each one. To close it: a book of `Mid` (every
-  klong of a node kept names a node kept), through every rule, about as
-  BalancedOK is; the take-back needs the same book (B4). `writercheck`
-  tests it at every traced start.
+- **`SNamed`**: every klong of the tree before the transaction names a
+  node of it. Used where a segment leaf's klong is pointed to a new
+  segment root in place. A put gives it back (`putKv_put_named`), so a
+  run of puts needs it of the start tree only (`RunsPuts`); it is not in
+  `Mid`, so `OpStep` as stated cannot be proved for a put without it: the
+  shared statement should get it (a book "every klong of a node kept
+  names a node kept", which also gives B4), when the delete's proofs say
+  what they keep of it. `writercheck` tests it at every traced start.
 - **The view** (`Shows`): at each transaction the writer's view shows the
   tree and the top (section 3, D4), with the super root's skip pointers
   at the bits of its ordinal. Given at each step of `Runs`; that the
@@ -444,12 +462,19 @@ the premises that are not proved or not given back, each tested:
   between klongs and entries. Tested (S; the tree checker's C-T2).
 - **The bounds G and H** (D3): each accepted operation leaves no key node
   outside them (`OpsRun`). Tested (B11). Two of the proofs' gaps were of
-  this kind.
+  this kind. For a transaction of puts that the model's `runOpsFrom`
+  accepts it is proved (`opsRun_of_runOps`): a put takes nothing back, so
+  the model's own check at the transaction's end gives it for every
+  operation.
 - **The parameters** (`ParamsOK`): M ≥ 6, 2 ≤ h, h + 2 ≤ M. Java's sizes
   meet them; nothing checks it in the model or in Java.
 - **The delete's books** (B3, B4, B7, B8, B12, B14): the puts are proved
   to keep `MidP`, which is `Mid` without them. A transaction of puts and
-  deletes needs the puts to keep them too.
+  deletes needs the puts to keep what the delete reads of them. Which
+  that is, the delete's proofs say (030-16): its link book for the nodes
+  reached (`LinkLive`) is proved kept by the put's splits in 030-16's
+  parked files (`/Users/f/fl/bench/2026-11-17/night/s4j/linklive/`), in
+  the forms of before this evening's restatements; not joined here.
 - **The books are tested as computed over the heap's nodes** (D5), the
   statements speak of every node.
 - **The statement is "what the writer accepts is right".** That the
