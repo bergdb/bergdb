@@ -67,6 +67,25 @@ structure Chain where
   eqMatch : Bool := false
   deriving Repr, Inhabited
 
+/-- The segment of the start key that `Chain.setup` looks for with `index`
+segments passed: past the key's end, `Long.MAX_VALUE` forward and -1
+backward. -/
+def startSeg (forward : Bool) (start : List Pos) (index : Nat) : Pos :=
+  match start[index]? with
+  | some p => p
+  | none => if forward then .hi else .lo
+
+/-- The search of `Chain.setup` in one node: once the chain has left the
+start key, the last klong forward and the first one backward; else the last
+klong at or below the start key's segment, but backward in a segment leaf the
+first one at or above it. -/
+def setupSearch (forward hasDiff leaf : Bool) (ks : List Klong) (sks : Pos) :
+    Option (Nat × NodeId) :=
+  if hasDiff then (if forward then searchLt ks .hi else searchGt ks .lo)
+  else if forward then searchLte ks sks
+  else if leaf then searchGte ks sks
+  else searchLte ks sks
+
 /-- The loop of `Chain.setup`: down from node x, with `index` segments of the
 start key passed and `hasDiff` true once the chain has left the start key. -/
 def setupGo (s : Tree) (forward : Bool) (start : List Pos) :
@@ -75,25 +94,18 @@ def setupGo (s : Tree) (forward : Bool) (start : List Pos) :
   | f + 1, x, index, hasDiff, ch =>
     match s.obj x with
     | some (.key n) =>
-      let sks : Pos := match start[index]? with
-        | some p => p
-        | none => if forward then .hi else .lo
-      let fd :=
-        if hasDiff then (if forward then searchLt n.ks .hi else searchGt n.ks .lo)
-        else if forward then searchLte n.ks sks
-        else if n.leaf then searchGte n.ks sks
-        else searchLte n.ks sks
-      match fd with
+      match setupSearch forward hasDiff n.leaf n.ks (startSeg forward start index) with
       | none =>
         let beforeFirst := !forward && !hasDiff && !n.leaf
         { ch with links := (x, if forward || beforeFirst then .lo else .hi) :: ch.links }
       | some (c, y) =>
-        let ch := { ch with links := (x, .at c) :: ch.links }
-        if n.leaf && !isLong c then ch
+        if n.leaf && !isLong c then { ch with links := (x, .at c) :: ch.links }
         else if n.leaf then
-          setupGo s forward start f y (index + 1) (hasDiff || !sks.is c)
-            { ch with segs := ch.segs ++ [c] }
-        else setupGo s forward start f y index hasDiff ch
+          setupGo s forward start f y (index + 1)
+            (hasDiff || !(startSeg forward start index).is c)
+            { ch with links := (x, .at c) :: ch.links, segs := ch.segs ++ [c] }
+        else setupGo s forward start f y index hasDiff
+          { ch with links := (x, .at c) :: ch.links }
     | _ => ch
 
 /-- `Chain.eqMatch`: the setup ended at the start key itself. -/
@@ -129,7 +141,31 @@ def pastEnd (segs : List Nat) (cv : Nat) (endKey : Key) (endInclusive : Bool) : 
   keyLt endKey k || (k == endKey && !endInclusive)
 
 /-- The chain when a scan has ended. -/
-def Chain.done (ch : Chain) : Chain := { ch with links := [], segs := [] }
+def Chain.done (ch : Chain) : Chain := { ch with links := [], segs := [], first := false }
+
+/-- The search of `Chain.next` in the last link's node, from the link's
+position: the next klong in the scan's order, or the klong at the position
+itself for the first `next` of a scan that includes its start key and was set
+up at it. -/
+def nextSearch (forward incl : Bool) (ks : List Klong) (lc : Pos) : Option (Nat × NodeId) :=
+  if incl then (if forward then searchGte ks lc else searchLte ks lc)
+  else (if forward then searchGt ks lc else searchLt ks lc)
+
+/-- `Chain.isPastEnd` with the request's end key, if it has one. -/
+def past (req : ScanReq) (segs : List Nat) (c : Nat) : Bool :=
+  match req.endKey with
+  | some e => pastEnd segs c e req.endInclusive
+  | none => false
+
+/-- The key segments passed, after the last link is removed
+(`removeKeySegment` if the link below it is a segment leaf's). -/
+def segsUp (s : Tree) (rest : List (NodeId × Pos)) (segs : List Nat) : List Nat :=
+  match rest with
+  | (q, _) :: _ =>
+    (match s.obj q with
+     | some (.key m) => if m.leaf then segs.dropLast else segs
+     | _ => segs)
+  | [] => segs
 
 /-- `Chain.next`: the next key and value in the scan's order, and the chain
 after it; none at the end. A step goes up a link, goes down one, or ends; the
@@ -142,33 +178,21 @@ def nextGo (s : Tree) (req : ScanReq) : Nat → Chain → Option (Key × Nat) ×
     | (x, lc) :: rest =>
       match s.obj x with
       | some (.key n) =>
-        let fd :=
-          if ch.first && req.inclusive && ch.eqMatch then
-            (if req.forward then searchGte n.ks lc else searchLte n.ks lc)
-          else (if req.forward then searchGt n.ks lc else searchLt n.ks lc)
-        let ch := { ch with first := false }
-        match fd with
+        match nextSearch req.forward (ch.first && req.inclusive && ch.eqMatch) n.ks lc with
         | none =>
-          let segs := match rest with
-            | (q, _) :: _ =>
-              (match s.obj q with
-               | some (.key m) => if m.leaf then ch.segs.dropLast else ch.segs
-               | _ => ch.segs)
-            | [] => ch.segs
-          nextGo s req f { ch with links := rest, segs := segs }
+          nextGo s req f { ch with first := false, links := rest, segs := segsUp s rest ch.segs }
         | some (c, y) =>
-          let past := match req.endKey with
-            | some e => pastEnd ch.segs c e req.endInclusive
-            | none => false
-          if past then (none, ch.done)
+          if past req ch.segs c then (none, ch.done)
           else
-            let links := (x, Pos.at c) :: rest
             match s.obj y with
             | none => (none, ch.done)
-            | some (.val h) => (some (ch.segs ++ [c], h), { ch with links := links })
+            | some (.val h) =>
+              (some (ch.segs ++ [c], h),
+                { ch with first := false, links := (x, Pos.at c) :: rest })
             | some (.key _) =>
               nextGo s req f
-                { ch with links := (y, if req.forward then .lo else .hi) :: links,
+                { ch with first := false,
+                          links := (y, if req.forward then .lo else .hi) :: (x, Pos.at c) :: rest,
                           segs := if n.leaf then ch.segs ++ [c] else ch.segs }
       | _ => (none, ch.done)
 
