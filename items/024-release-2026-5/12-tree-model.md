@@ -437,10 +437,12 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   (`DelFullSegSpaceRoomM`): the halves under a new segment root of two live klongs
   (`liveEdgesX_segSpaceStep`; `writerWP_handleFull_segSpaceRoom_live`,
   `LiveDelSegSpace.lean`): `liveDel_fullSegSpaceRoom`, `liveDel_fullSegSpaceRoom_live`
-  (premises `MergeLiveOK`, `CollapseLiveOK`). Left of step 5: the parent full (the cascade),
-  the made segment root's space split (in place below its segment leaf), the made space
-  root's space split, and a compacting split ("bitmap.dead") of a last version above h
-  below a parent. 23:35 (prover l4a, step 3's first part): the merges' loop with
+  (premises `MergeLiveOK`, `CollapseLiveOK`). 01:18 (l4b): the made segment root's space
+  split in place below its segment leaf (`DelFullSegSpaceMadeM`, no room asked: the segment
+  leaf's klong is repointed; `liveEdgesX_segSpaceInPlaceStep`, `LiveDelSegSpaceMade.lean`):
+  `liveDel_fullSegSpaceMade`, `liveDel_fullSegSpaceMade_live`. Left of step 5: the parent
+  full (the cascade), the made space root's space split, and a compacting split
+  ("bitmap.dead") of a last version above h below a parent. 23:35 (prover l4a, step 3's first part): the merges' loop with
   the hole (`LiveLoop.lean`): `writerWP_afterDelete_live`, from `DelInvJAE`, the books,
   `HtInv` and `LiveHoleW key g 0` at a call of `afterDelete`, ends with `LiveEdges`, given
   two obligations: `MergeLiveOK` (a merge of a round keeps the hole one height up, or into
