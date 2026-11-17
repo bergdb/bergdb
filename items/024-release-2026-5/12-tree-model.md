@@ -712,6 +712,14 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   02:57: at the top, `invGetScanOK_merges_noL4f` (`LiveMergeAssembly.lean`): l4b's
   `invGetScanOK_merges_noL4d` with `MergeTailRuns9` (`MergeTailFullRest9OK` at the runs)
   for `MergeTailRuns6`.
+  03:04 (prover l4f, `LiveMergeInnerChain.lean`): `MergeTailFullRest9OK` reduced to
+  `MergeTailFullRest10OK`, its case `MergeFullSpaceInnerChain` proved (p, not made, split
+  in space below an inner parent, whatever its room; 0 on the runs). Left: the time
+  split's cascade into one node with the copy thin (69 on the runs; R4's general case: the
+  copy is the hole and the next round's descent must find it through the cascade) and p
+  made and split in space (0). Top: `invGetScanOK_merges_noL4Night` (`LiveNightTop.lean`),
+  premises `hp`, `hth`, `MergeTailRuns10`, `R3Calls` (believed false at unreached states),
+  `DelCaseLive DelFullTimeHole2M`, `UpCascSplitRest7Runs`.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next
