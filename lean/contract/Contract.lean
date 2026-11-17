@@ -19,3 +19,4 @@ import Contract.Top
 import Contract.TraceTop
 import Contract.TheoremsTop
 import Contract.HistoryTop
+import Contract.Rebuild

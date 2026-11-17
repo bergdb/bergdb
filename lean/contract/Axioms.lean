@@ -29,3 +29,7 @@ open Contract
 #print axioms checkTopTx_sound
 #print axioms Contract.Example3.meetsTop
 #print axioms historyTopOk_meetsTop
+#print axioms applyTx_rebuilds
+#print axioms applyTx_linesOf
+#print axioms java_start
+#print axioms java_meetsTop

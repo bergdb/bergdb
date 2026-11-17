@@ -49,16 +49,19 @@ theorem historyTopOk_meetsTop' (p : Params) :
       (by simpa [Nat.add_assoc] using hc.2)
     simpa [lastTop, List.append_assoc] using this
 
+/-- The start, computed, gives the start of `MeetsTop`. -/
+theorem startTopOk_meetsTop (p : Params) (h : Heap) (tp : Top) (hs : startTopOk p h tp = true) :
+    MeetsTop p [] h.tree tp := by
+  simp only [startTopOk, Bool.and_eq_true, beq_iff_eq] at hs
+  obtain ⟨⟨⟨h1, h2⟩, h3⟩, h4⟩ := hs
+  exact MeetsTop.start h.tree tp (startOk_sound p h h1) (treeOkB_sound _ h2) (topStartB_sound tp h3) h4
+
 /-- What the trace checker computes for a whole trace with its top gives a
 history that meets the contract with TREE and the top. -/
 theorem historyTopOk_meetsTop (p : Params) (h : Heap) (tp : Top)
     (steps : List (List Op × List NodeId × Heap × Top)) (hs : startTopOk p h tp = true)
     (hc : historyTopOk p 1 h tp steps = true) :
     MeetsTop p (steps.map (·.1)) (lastTop (h, tp) steps).1.tree (lastTop (h, tp) steps).2 := by
-  simp only [startTopOk, Bool.and_eq_true, beq_iff_eq] at hs
-  obtain ⟨⟨⟨h1, h2⟩, h3⟩, h4⟩ := hs
-  have hm : MeetsTop p [] h.tree tp :=
-    MeetsTop.start h.tree tp (startOk_sound p h h1) (treeOkB_sound _ h2) (topStartB_sound tp h3) h4
-  simpa using historyTopOk_meetsTop' p steps [] h tp hm (by simpa using hc)
+  simpa using historyTopOk_meetsTop' p steps [] h tp (startTopOk_meetsTop p h tp hs) (by simpa using hc)
 
 end Contract
