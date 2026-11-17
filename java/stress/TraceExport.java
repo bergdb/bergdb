@@ -61,7 +61,14 @@ import bergdb.stream.MemoryStream;
  *   probe=K    run B: a restart after every K transactions (default 0: no run B)
  *   live=1     LIVE lines: Java's own live children, for each node, at each of its times
  *   tree=1     trace format 3 (bergdb 024-12, section 2.6; 027-02, section 4):
- *              the lines the tree model needs: TREE, BASE, OP, KN, GET and SCAN; gets=N: N GET lines and one SCAN line after each transaction (default 4)
+ *              the lines the tree model needs: TREE, BASE, OP, KN, GET and SCAN; gets=N: N GET lines and one SCAN line after each transaction (default 4);
+ *              a KN line for every key node that the transaction made or whose klongs
+ *              it changed in any way, from a diff of the klongs (bergdb 030-09), so that
+ *              the contract's checker sees a klong changed or removed too
+ *   fault=I    a test of the checkers (bergdb 030-09): when R(I) is recorded, a key
+ *              klong of a key node made before it gets another compare value in
+ *              memory, a change that Java never makes; the trace must then fail
+ *              (default -1: none); use the last record, as the run goes on from it
  *   retain=S   reclaim on, with a retain duration of S seconds, as RestartInvariance's option
  *              (default 0: off); transactions are then 0.01 to 0.2 s apart
  *   maint=K    a call of Db.maintain() after every K-th user transaction, in runs A, B and
@@ -141,6 +148,7 @@ public class TraceExport {
     final boolean live = "1".equals(System.getProperty("live"));
     final boolean tree = "1".equals(System.getProperty("tree"));
     final int treeGets = Integer.getInteger("gets", 4);
+    final int faultAt = Integer.getInteger("fault", -1);
     /** maint=K: a call of Db.maintain() after every K-th user transaction (bergdb 024-32). */
     final int maint = Integer.getInteger("maint", 0);
     final int retain = Integer.getInteger("retain", 0);
@@ -844,6 +852,7 @@ public class TraceExport {
 
         for (ValueNode v : created) register(v, rec.index);
         for (Node y : x.transInfo.gotDirtyNodes) register(y, rec.index);
+        if (rec.index == faultAt) injectFault(before);
         walk(db, rec.index);
         recordChanges(before, rec, ns);
         parseRecord(db, rec);
@@ -899,15 +908,44 @@ public class TraceExport {
         return b.toString();
     }
 
+    /** The KN line of each key node as the last transaction left it (trace format 3). */
+    final Map<Long, String> lastKn = new HashMap<Long, String>();
+
     /** R(0)'s lines: its key nodes. */
     void recordTreeInit(Db db, Rec rec, NodeStream ns) {
         for (PNode pn : nodes.values()) {
-            if (pn.obj instanceof KeyNode) rec.treeLines.add(klongs(pn, ns));
+            if (pn.obj instanceof KeyNode) {
+                String line = klongs(pn, ns);
+                rec.treeLines.add(line);
+                lastKn.put(pn.id, line);
+            }
         }
     }
 
+    /**
+     * The fault of the property fault (bergdb 030-09): the first key klong of the first key
+     * node made before this record gets another compare value, of the same length, in
+     * memory. Java never changes a klong of a node made before; the trace's ERROR line and the
+     * node's KN line (a klong diff) must make the contract's checker fail.
+     */
+    void injectFault(Map<Long, List<Ent>> before) {
+        for (PNode pn : nodes.values()) {
+            if (!(pn.obj instanceof KeyNode) || !before.containsKey(pn.id)) continue;
+            KeyNode k = (KeyNode) pn.obj;
+            for (int i = 0; i < k.size; i++) {
+                if (Klong.getIntType(k.klongs[i]) != Klong.INT_TYPE_KEY) continue;
+                long cv = Klong.getCompareValue(k.klongs[i]);
+                k.klongs[i] = Klong.compareValueToKeyKlong(cv ^ (1L << 20));
+                System.out.println("fault: node " + pn.id + ", klong " + i + " changed in memory");
+                return;
+            }
+        }
+        System.out.println("fault: no key node to change");
+    }
+
     /** The lines of T(i) for the tree model: its first id, its operations, the key nodes
-     *  it made or changed, and reads of Java at random times. */
+     *  it made or whose klongs it changed (a diff of the klongs, not of the entries: bergdb
+     *  030-09), and reads of Java at random times. */
     void recordTree(Db db, Trans t, Rec rec, NodeStream ns) {
         rec.treeHead.add("BASE " + mid(rec.tpos + 1));
         for (Object[] op : treeOps) {
@@ -919,11 +957,13 @@ public class TraceExport {
                 rec.treeHead.add("OP " + (op[2] == Boolean.TRUE ? "D " : "N ") + segs(key));
             }
         }
-        Set<Long> changed = new TreeSet<Long>(rec.newNodes);
-        for (long[] a : rec.addsNode) changed.add(a[0]);
-        for (long id : changed) {
-            PNode pn = nodes.get(id);
-            if (pn != null && pn.obj instanceof KeyNode) rec.treeLines.add(klongs(pn, ns));
+        for (PNode pn : nodes.values()) {
+            if (!(pn.obj instanceof KeyNode)) continue;
+            String line = klongs(pn, ns);
+            if (!line.equals(lastKn.get(pn.id))) {
+                rec.treeLines.add(line);
+                lastKn.put(pn.id, line);
+            }
         }
         if (treeKeys == null) {
             Set<String> all = new TreeSet<String>();

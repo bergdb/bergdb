@@ -199,6 +199,38 @@ section 2.5).
 A claim then reads: "proved, given these five stated assumptions, each
 of which is tested". Step 4 names the exact test beside each assumption.
 
+The theorems speak of the package's readers on the tree that the contract
+describes, so a claim about Java's reads rests on four more, each tested
+(030-06, finding 6; added by 030-09):
+
+6. **Java's readers are the package's readers:** `KeyNode`'s searches,
+   `Dag.getOne`, `Dag.getMany` and the top search
+   (`TopDs.findSuperRootAtTime`) give what `get`, `scan` and the space root
+   at a time give. Tested by the GET and SCAN lines of every traced
+   transaction (`lean/contract/check.sh`, R1), and by the LIVE lines of
+   the configurations with `live=1` (`hot`, `d-random`): Java's search of
+   every compare value of every node at each of its times, and Java's top
+   node at every time, the record times and the times between them (L1).
+7. **The OP lines are the user's transaction:** what `Db.putKvs` gives the
+   Dag, after the key and value transformations, is what the user's
+   transaction asked for. Tested by run B's lookups against the workload
+   (`conformance.sh`, `probe=K`), Java's unit tests and f-tests, and
+   Java's commit-time check in its tests (030-09, section 3: each key of
+   the transaction has its new value at its time).
+8. **A refused transaction changes nothing:** everything that may refuse
+   a transaction is checked before the go point (bergdb 005-01), so a
+   history holds only the transactions that ran. Tested by
+   `DbTesterLimits` (L1 to L5: nothing written),
+   `DbTesterDelete.testRefusedTransUnchanged` (024-16), and
+   `DbTesterRestart.testEndOfOrdinals` (005-02: the keys keep their
+   values, no node in the writer's list, and the same after a restart).
+9. **What run A checks holds in every run:** the contract is checked on
+   the traces' run A, a writer that never restarts or evicts. Java's writer
+   after a restart, with eviction and with reclaim is tied to run A by the
+   stream comparisons of runs B and E (`conformance.sh`'s probe and evict
+   sets, level 2 to level 4), and by Java's commit-time check, which runs
+   in every unit test and f-test (030-09, section 3).
+
 ## 3.6 Later, optional
 
 - **The model's writer meets the contract.** Such a proof plugs in as one
