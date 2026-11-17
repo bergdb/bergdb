@@ -31,11 +31,12 @@ night of 17 November.
   6: the parameters (`ParamsOK`: Java's meet them), the writer's view at
   each transaction (`Shows`), the bounds G and H, and, in work when this
   was written, `SNamed`.
-- **Not vacuous:** `Contract/WriterExample.lean` runs the model's writer
-  from the primordial tree with Java's parameters at node size 8, two
-  transactions of one put each; the run meets every premise, so
-  `runs_meetsTop_put1` gives `MeetsTop` for it, and `jget_right` then the
-  reads.
+- **Not vacuous:** `Contract/WriterExample.lean` and `WriterExample2.lean`
+  run the model's writer from the primordial tree with Java's parameters
+  at node size 8, two transactions of one put each: keys of one segment,
+  and keys of two segments, the first making a new segment leaf, the
+  second put into it. The runs meet every premise, so the theorems give
+  `MeetsTop` for them, and `jget_right` then the reads.
 - **The first delete is proved** (item 4): a delete of a one-segment key
   whose segment leaf has room for a bitmap and keeps a live klong, and
   after which no merge is due; also the delete of a key that is not there
@@ -267,13 +268,12 @@ The files, in the order they build:
   `WriterTimeSplitH.lean` (780: `handleFullWith`'s time split for any
   caller), `NodeAlg5.lean` (110).
 
-How it went: I wrote the definitions and each file's statements; ten
-runs of provers (Opus, xhigh) proved one file each, in three waves; they
-corrected six of my statements (a missing "q is a key node", three unused
-hypotheses, an unneeded case split) and found none false beyond that.
-Measured: 10,900 lines of proof in two and a half hours (15:50 to 18:25),
-2.7 million tokens of provers, about 7 points of the week with the other
-agents' work in them.
+How it went: I wrote the definitions and each file's statements; provers
+(Opus, xhigh) proved one file each, in waves of two to five at once, and
+reported where a statement was wrong or lacked a hypothesis. The first
+put, of a one-segment key, took ten runs in three waves: 10,900 lines of
+proof in two and a half hours (15:50 to 18:25). The cost of all puts is in
+section 5.3.
 
 What the proof showed that the statement did not have (all now in
 `Contract/Writer.lean`, each tested by `writercheck`):
