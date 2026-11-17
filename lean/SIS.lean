@@ -125,6 +125,7 @@ import SIS.Tree.LiveMergeFull
 import SIS.Tree.LiveMergeMade
 import SIS.Tree.LiveMergeSpace
 import SIS.Tree.LiveMergeRoot
+import SIS.Tree.LiveMergeChain
 import SIS.Tree.LiveHoleLeaf
 import SIS.Tree.LiveDelLeaf
 import SIS.Tree.LiveUpWalk
