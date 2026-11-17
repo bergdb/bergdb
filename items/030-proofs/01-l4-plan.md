@@ -1432,3 +1432,17 @@ made, split in space in place, leaves no hole: at the state with its bitmap it i
 left `UpCascSplitRest3OK`, a stop node below the root not made by the transaction split in
 time (the copy the hole, below a parent with room, or with the cascade: 030-01's R4) and a
 made space root; `upCascCallRuns_of_rest3` at the runs.
+
+2026-11-17, 02:28 to 02:33. Step 6, the stop node's time split with its copy filled,
+prover l4e (`LiveUpCascTime.lean`, about 560 lines, most of them the swap prelude again).
+`writerWP_upCasc_below_timeFillH`: a full stop node below the root, not made by the
+transaction, split in time (compacting or not) whose copy, its last version without the
+chain's klong, is filled under its parent (at least `mergeBelow` live klongs below an inner
+parent; below a segment leaf any live klong, and the stop node keeps one, as it empties
+only at the space root) leaves no hole after the split and its cascade, whatever the
+parents' room: at the state with its bitmap the stop node meets `ChildOK` under its parent
+(the tree's one link, `oneLink`), and l4b's `writerWP_handleFull_timeChain_live` (02:0x,
+`LiveAssembly2.lean`) takes the split. `upCascSplitRest3OK_of_rest4`: left
+`UpCascSplitRest4OK`, the copy under the fill below an inner parent (the hole at the copy,
+with or without the cascade: R1 at the copy with the key's descent cut there, and R4) and a
+made space root; `upCascCallRuns_of_rest4` at the runs.
