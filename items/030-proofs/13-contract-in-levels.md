@@ -1,6 +1,6 @@
 # 030-13. The contract's checks in the routine tests
 
-Created 2026-11-17 by Frans Lundberg. Status: open.
+Created 2026-11-17 by Frans Lundberg. Status: done.
 
 The contract's checks (030-04, 030-07, 030-09) run as part of the existing
 test levels, so that they keep holding as the code changes. Written by an
@@ -105,10 +105,46 @@ to 86).
 - `par.sh` tested: on the small set its `total:` line is the one-part
   line, character for character; a trace with a line of an unknown kind
   among 20 fails it (status 1).
-- `java/before-commit.sh`: BEFORE COMMIT OK (97 s) at f06ef176.
-- `lean/contract/gate.sh 903a228a`: steps 1 to 3 pass (67 theorems, the
-  standard axioms); step 4 lists only AGENTS.md (section 2).
+- `java/before-commit.sh`: BEFORE COMMIT OK at f06ef176 (97 s) and at
+  f76634c6 (81 s).
+- `lean/contract/gate.sh 903a228a` at f76634c6 (AGENTS.md as on main):
+  GATE OK (67 theorems, the standard axioms). With the AGENTS.md line, its
+  step 4 lists AGENTS.md only (section 2).
 
 
 # 4. State
 
+2026-11-17, 21:05. The brief's three steps are done; nothing is open. The
+last gated commit is f76634c6; the commit after the Log's GATED line adds
+AGENTS.md's line alone (outside the gate's paths; the coordinator lands it
+or not). night.sh itself was not run (the brief): its new step 11b was run
+alone, and its copy of `lean/contract/.lake` (`cp -cR`) was timed alone,
+not inside night.sh. What could follow:
+
+- The first night.sh run with step 11b: read its report's
+  `contract-medium` line and time (expected about 30 minutes, and about
+  80 s more in level2).
+- `bridgecheck` is slow on large trees (744 s for one m-d62 trace); a
+  faster checker would let the night check the large set too.
+- `bridgecheck --model` in the night (about 8 minutes for three sets, by
+  030-07's measure), if wanted.
+- The old tree model's check of the medium set (`TREE=1
+  java/stress/contractconf.sh medium`) is not run by any level; over an
+  hour.
+
+
+# Log
+
+2026-11-17, 17:03. Started (coord-1117's brief s4g).
+2026-11-17, 17:05 to 17:59. level2.sh with step 8b: LEVEL 2 OK.
+2026-11-17, 18:00 to 18:30. The medium set with the tree check: too slow,
+stopped; the step writes the traces only.
+2026-11-17, 18:33 to 20:04. contractconf.sh medium, serial: CONTRACTCONF OK
+in 93 minutes; then the checkers in parts (par.sh).
+2026-11-17, 20:04 to 20:36. contractconf.sh medium with par.sh:
+CONTRACTCONF OK in 32 minutes.
+2026-11-17, 20:36 to 20:53. level2.sh again: LEVEL 2 OK.
+GATED f76634c6: the contract and bridge checks in level2.sh (small, drain)
+and night.sh (medium, contractconf.sh), four at a time; LEVEL 2 OK,
+CONTRACTCONF OK, BEFORE COMMIT OK. AGENTS.md's line in the next commit,
+apart.

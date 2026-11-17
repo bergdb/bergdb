@@ -280,7 +280,8 @@ Files
 * [030-13](13-contract-in-levels.md). The contract's checks in the routine
   tests: the contract and the bridge checks in `level2.sh` (small and drain
   sets) and in `night.sh` (the medium set, `java/stress/contractconf.sh`);
-  where each check runs. Started 2026-11-17, 17:03. Status: open.
+  where each check runs; the checkers four at a time (par.sh). Written
+  2026-11-17, 17:03 to 21:05. Status: done.
 
 
 Log
