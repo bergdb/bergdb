@@ -905,3 +905,26 @@ the merge's tail with the two nodes chosen and their facts, where `¬
 MergeParentRoom`. `mergeLiveOK_of_tailFull` and `writerWP_afterDelete_liveTF`
 (premises `MergeTailFullOK`, `MergeParamsOK`, R3). No stop rule fired.
 
+2026-11-17, 00:41 to 01:02. Step 3's rest, second part, prover l4c
+(`LiveMergeFull.lean`, about 1,300 lines; about 300 of them the room tail's prelude
+again). `MergeTailFullOK` reduced to `MergeTailFullRestOK`, which asks it but in the
+case `MergeFullTimeRoom`, now proved: a merge into one node whose parent p, not made by
+the transaction, goes `full` (`writerWP_mergeParent_fullB`) and splits in time (it
+compacts, or its last version has at most `splitAbove` klongs), below its inner parent q
+(depth d - 2) with room for one more klong and no compaction. The tail
+(`writerWP_mergeTail_liveFullTime`): the merged tree with p's last version has the hole at
+p (`liveEdgesH_mergeOne`, its tree `treeOK_mergeOneAfter`, l and r not reached
+`mergeV_reach`, q reached by its path above p `tReach_of_pathLen_agree`), the time split
+moves it to p's copy (`writerWP_handleFull_timeRoom_liveGh`), and the cleanup changes only
+p, l and r, which are no longer reached (`redirect_reach`, `liveEdgesH_congr_reach`,
+`writerWP_mergeCleanup_frameL`). The round (`writerWP_mergeTail_liveFullTimeRound`): R1
+by `descendToHeight_redirect`; q's search at the key finds the copy (`descend_qsearch`:
+the descent's step at q, `dhP_step`; `searchLte_add_key`); the copy's height is p's, one
+above x's (`gradedL_get`); the path above q reads alike (the tail's frames of nodes and
+of the heights' cache). `writerWP_afterDelete_liveTR`: premises `MergeTailFullRestOK`,
+`MergeParamsOK`, R3. Left in `MergeTailFullRestOK`: the full parent with a merge into two
+nodes (no hole; the copy filled, `live_len_mergeTwo`; the same tail with
+`liveEdges_mergeTwo`), p made by the transaction (split in place), p's space split, p
+the space root (d = 1) or a segment root (q a segment leaf: R1 at the segment root), and
+q full or compacting (the cascade, R4). No stop rule fired.
+

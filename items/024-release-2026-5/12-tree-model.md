@@ -463,6 +463,18 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   the room lemmas of `LiveMergeRoom.lean` now take the branch's exact condition,
   `writerWP_mergeTail_liveRoomB`, `liveHoleW_merge_G`; the old ones are their instances).
   `writerWP_afterDelete_liveTF`: premises `MergeTailFullOK`, `MergeParamsOK` and R3.
+  01:02 (prover l4c, `LiveMergeFull.lean`, about 1,300 lines, about 300 of them the room
+  tail's prelude again): `MergeTailFullOK` reduced to `MergeTailFullRestOK`, its case
+  `MergeFullTimeRoom` proved: a merge into one node whose parent p, not made by the
+  transaction, goes `full` and splits in time below its inner parent q with room and no
+  compaction (`writerWP_mergeTail_liveFullTime`: `handleFull`'s time split moves the hole to
+  p's copy, `writerWP_handleFull_timeRoom_liveGh`; p, l and r are left behind, so the cleanup
+  changes nothing reached; `writerWP_mergeTail_liveFullTimeRound`: the next round's descent
+  finds the copy, `descendToHeight_redirect`, with q's search, `descend_qsearch`, and the
+  copy's height, p's). Left in `MergeTailFullRestOK`: the full parent with a merge into two
+  nodes, p made by the transaction, p's space split, p the space root or a segment root, and
+  q full or compacting (the cascade, R4). `writerWP_afterDelete_liveTR`: premises
+  `MergeTailFullRestOK`, `MergeParamsOK` and R3.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next
