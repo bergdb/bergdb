@@ -68,6 +68,22 @@ Kept current; the Log has the times.
   fault: `faults.sh`'s `kindh0` (the TREE line's h set to 0: KIND fails, no
   other clause). On the small, drain and reclaim sets: CONTRACT OK, 195
   traces, 29,735 transactions, KIND 0 in both checkers.
+- **One premise for every time** (brief item 3, 030-14's State note item
+  3): Java's tree after a startup need only hold the model's structure
+  **whole** (`HoldsP`: every node but the root and the top nodes, a key node
+  with its level, kind and well-formed klongs whose entries are the node's
+  whole history; a value with its value); then it holds the view at every
+  time (`MeetsFull.holdsView_whole`), so Java's reads are right at every time
+  up to the last transaction after a crash, after restarts and under
+  eviction (`crash_java_whole`, `restart_java_whole`, `handles_java_whole`).
+  The steps: well-formed klongs cut at t stay well formed, W1 to W5
+  (`klongsWf_prefixAt`, `fullOk_prefixAt`), and their entries are the whole
+  entries up to t (`entriesOf_prefixAt`, under W1). The tree as written meets
+  the premise (`crash_java_tree_whole`); a closed example
+  (`crash_whole_get16`). Not for the cut: a startup from a cut stream gives
+  back a structure whose nodes may lack the entries before the cut, while
+  Java's key node keeps its klongs; there the view's form (`HoldsView` from
+  the first available time on) is the right premise.
 - **Found and fixed: `bridge-faults.sh` failed on `main` 3f1e2fea.** The
   hand-made `test/small.trace` (030-15) has a segment leaf on level 2 with
   the TREE line's h = 3, which K-LEVEL (030-14) refuses: `bridgecheck` gives
@@ -167,12 +183,22 @@ and `TopFrom`.
    bridge's `KindsOK` (D only). The start check is RecoverCheck.lean's
    `startKindsOk` again (`startKindsB`), so that the contract checker does
    not import Mathlib.
-6. **New files only**, as the common rules ask: `Contract/RecoverCut.lean`
+6. **Item 3 done although item 1 did not need it.** The brief asks for the
+   whole-node form only if 030-14's State note says item 1 needs it; it does
+   not (item 1's theorems use `HoldsView` at t, as 030-14's). I did it after
+   items 1 and 2 because it makes assumption 13 one statement about a
+   startup, true at every time, instead of one per time, and costs no
+   statement change (new definitions and theorems beside 030-14's). The
+   cut keeps `HoldsView` (section 1).
+7. **New files only**, as the common rules ask: `Contract/RecoverCut.lean`
    (the definition, to read and trust), `Contract/RecoverCutTheorems.lean`
    (the theorems), `Contract/Proof/TopFrom.lean`,
    `Contract/Proof/RecoverCut.lean` (the proofs),
    `Contract/RecoverCutExample.lean`, `Contract/KindsCheck.lean` (K-LEVEL
-   in the contract checker, with its proof); shared files in small hunks
+   in the contract checker, with its proof), `Contract/RecoverWhole.lean`
+   (`HoldsP`), `Contract/RecoverWholeTheorems.lean`,
+   `Contract/Proof/Prefix.lean`, `Contract/Proof/RecoverWhole.lean`; shared
+   files in small hunks
    (`Contract.lean`, `Axioms.lean`, `statements.pin`, `ContractCheck.lean`:
    the KIND count and the verdict, `faults.sh`: one fault,
    `test/small.trace`: one line), and 030-04, 3.5, item 13 extended.
@@ -195,8 +221,7 @@ and `TopFrom`.
 
 # State
 
-2026-11-17, 21:30. Items 1 and 2 done and gated (the Log has the commits).
-Next: item 3 (the whole-node form of `HoldsView`), if useful.
+2026-11-17, 21:40. Items 1 to 3 done and gated (the Log has the commits).
 
 
 # Log
@@ -231,3 +256,14 @@ GATED d295d76a: K-LEVEL in `contractcheck` (KIND; `checkVerdict` with
 `checkVerdict_sound`: MeetsTop and K-LEVEL for every tree), the fault
 `kindh0` in faults.sh; check.sh small drain reclaim CONTRACT OK (195 traces,
 KIND 0); `gate.sh 3f1e2fea` GATE OK (173 theorems).
+21:35 Item 3: `HoldsP` (the tree holds the structure whole), the prefix
+lemmas (`entriesOf_prefixAt`, `klongsWf_prefixAt`, `fullOk_prefixAt`),
+`holdsView_whole`; `crash_java_whole`, `restart_java_whole`,
+`handles_java_whole`, `crash_java_tree_whole`; the example
+`crash_whole_get16`. `gate.sh 3f1e2fea`: GATE OK (182 theorems). Commit
+f5ec04d6.
+GATED f5ec04d6: Java's reads after a crash, restarts and under eviction with
+one premise for every time (`HoldsP`: Java's tree holds the structure whole;
+`holdsView_whole` from the prefix lemmas W1 to W5 and `entriesOf_prefixAt`);
+the premise met by the tree as written; `gate.sh 3f1e2fea` GATE OK (182
+theorems).
